@@ -29,6 +29,7 @@
 #include <linux/syscore_ops.h>
 
 #include <asm/mach/time.h>
+#include <asm/delay.h>
 #include <asm/smp_twd.h>
 #include <asm/sched_clock.h>
 
@@ -207,6 +208,10 @@ static struct syscore_ops tegra_timer_syscore_ops = {
 	.resume = tegra_timer_resume,
 };
 
+extern void __tegra_delay(unsigned long cycles);
+extern void __tegra_const_udelay(unsigned long loops);
+extern void __tegra_udelay(unsigned long usecs);
+
 void __init tegra_init_timer(void)
 {
 	struct clk *clk;
@@ -276,4 +281,8 @@ void __init tegra_init_timer(void)
 	register_syscore_ops(&tegra_timer_syscore_ops);
 
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
+
+	arm_delay_ops.delay		= __tegra_delay;
+	arm_delay_ops.const_udelay	= __tegra_const_udelay;
+	arm_delay_ops.udelay		= __tegra_udelay;
 }
