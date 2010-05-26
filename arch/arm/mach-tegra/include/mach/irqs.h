@@ -172,6 +172,8 @@
 /* Tegra30 has 8 banks of 32 GPIOs */
 #define INT_GPIO_NR			(32 * 8)
 
+#define FIQ_START			INT_GIC_BASE
+
 #define TEGRA_NR_IRQS			(INT_GPIO_BASE + INT_GPIO_NR)
 
 #define INT_BOARD_BASE			TEGRA_NR_IRQS
