@@ -922,3 +922,17 @@ struct platform_device tegra_wdt_device = {
 	.num_resources	= ARRAY_SIZE(tegra_wdt_resources),
 	.resource	= tegra_wdt_resources,
 };
+
+static struct resource tegra_pwfm_resource = {
+	.start	= TEGRA_PWFM_BASE,
+	.end	= TEGRA_PWFM_BASE + TEGRA_PWFM_SIZE - 1,
+	.flags	= IORESOURCE_MEM,
+};
+
+struct platform_device tegra_pwfm_device = {
+	.name		= "tegra-pwm",
+	.id		= 0,
+	.num_resources	= 1,
+	.resource	= &tegra_pwfm_resource,
+};
+
