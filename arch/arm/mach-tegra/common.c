@@ -97,6 +97,12 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 
 }
 
+static void __init tegra_init_power(void)
+{
+	tegra_powergate_power_off(TEGRA_POWERGATE_MPE);
+	tegra_powergate_power_off(TEGRA_POWERGATE_3D);
+}
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void __init tegra20_init_early(void)
 {
@@ -105,6 +111,7 @@ void __init tegra20_init_early(void)
 	tegra_init_cache(0x331, 0x441);
 	tegra_powergate_init();
 	tegra20_hotplug_init();
+	tegra_init_power();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
