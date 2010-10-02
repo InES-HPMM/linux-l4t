@@ -167,7 +167,12 @@
 
 /* Tegra30 has 5 banks of 32 IRQs */
 #define INT_MAIN_NR			(32 * 5)
-#define INT_GPIO_BASE			(INT_PRI_BASE + INT_MAIN_NR)
+
+#define INT_SYNCPT_THRESH_BASE		(INT_PRI_BASE + INT_MAIN_NR)
+#define INT_SYNCPT_THRESH_NR		32
+
+#define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
+					 INT_SYNCPT_THRESH_NR)
 
 /* Tegra30 has 8 banks of 32 GPIOs */
 #define INT_GPIO_NR			(32 * 8)
