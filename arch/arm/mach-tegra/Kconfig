@@ -64,3 +64,6 @@ config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"
 
 endif
+
+config TEGRA_ARB_SEMAPHORE
+	bool
