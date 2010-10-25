@@ -69,6 +69,11 @@ u32 tegra_fuse_readl(unsigned long offset)
 	return tegra_apb_readl(TEGRA_FUSE_BASE + offset);
 }
 
+void tegra_fuse_writel(u32 value, unsigned long offset)
+{
+	tegra_apb_writel(value, TEGRA_FUSE_BASE + offset);
+}
+
 bool tegra_spare_fuse(int bit)
 {
 	return tegra_fuse_readl(tegra_fuse_spare_bit + bit * 4);
