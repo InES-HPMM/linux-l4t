@@ -994,6 +994,7 @@ static void qh_link_async (struct ehci_hcd *ehci, struct ehci_qh *qh)
 	qh->qh_state = QH_STATE_LINKED;
 	qh->xacterrs = 0;
 	qh->exception = 0;
+	wmb();
 	/* qtd completions reported later by interrupt */
 
 	enable_async(ehci);
