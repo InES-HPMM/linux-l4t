@@ -24,6 +24,8 @@
 #include <linux/slab.h>
 #include <linux/tegra_rpc.h>
 #include <linux/types.h>
+#include <linux/moduleparam.h>
+#include <linux/stat.h>
 
 #include <mach/clk.h>
 #include <mach/nvmap.h>
@@ -33,6 +35,16 @@
 #include "avp_msg.h"
 #include "trpc.h"
 #include "avp.h"
+
+enum {
+	AVP_DBG_TRACE_SVC		= 1U << 0,
+};
+
+static u32 debug_mask = 0;
+module_param_named(debug_mask, debug_mask, uint, S_IWUSR | S_IRUGO);
+
+#define DBG(flag, args...) \
+	do { if (unlikely(debug_mask & (flag))) pr_info(args); } while (0)
 
 enum {
 	CLK_REQUEST_VCP		= 0,
