@@ -34,6 +34,11 @@
 #define FLOW_CTRL_HALT_CPU1_EVENTS	0x14
 #define FLOW_CTRL_CPU1_CSR		0x18
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define FLOW_CTRL_CSR_WFE_CPU0		(1 << 4)
+#define FLOW_CTRL_CSR_WFE_BITMAP	(3 << 4)
+#endif
+
 #ifndef __ASSEMBLY__
 u32 flowctrl_read_cpu_csr(unsigned int cpuid);
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value);

@@ -30,7 +30,12 @@ void __init tegra30_init_early(void);
 void __init tegra_map_common_io(void);
 void __init tegra_init_irq(void);
 void __init tegra_dt_init_irq(void);
+void __init tegra_reserve(void);
 int __init tegra_pcie_init(bool init_port0, bool init_port1);
+void tegra_init_cache(void);
+
+extern unsigned long tegra_lp0_vec_start;
+extern unsigned long tegra_lp0_vec_size;
 
 void tegra_init_late(void);
 
