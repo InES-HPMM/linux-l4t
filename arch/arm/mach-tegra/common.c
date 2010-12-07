@@ -40,7 +40,7 @@
 #include "apbio.h"
 #include "sleep.h"
 
-#define MC_SECURITY_CFG2 0x7c
+#define MC_SECURITY_CFG2	0x7c
 
 unsigned long tegra_bootloader_fb_start;
 unsigned long tegra_bootloader_fb_size;
@@ -110,6 +110,30 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
 	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	{
+		void __iomem *misc = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+		u32 val = readl(misc + APB_MISC_HIDREV);
+		u32 major = (val>>4) & 0xf;
+		u32 netlist = readl(misc + 0x860);
+
+		if ((major == 0) && ((netlist & 0xFFFF) >= 12)) {
+			/* Enable PL310 double line fill feature. */
+			writel(((1<<30) | 7), p + L2X0_PREFETCH_CTRL);
+		} else {
+			writel(7, p + L2X0_PREFETCH_CTRL);
+		}
+	}
+#else
+	writel(7, p + L2X0_PREFETCH_CTRL);
+	writel(2, p + L2X0_POWER_CTRL);
+#endif	
+
+	/* Enable PL310 double line fill feature. */
+	writel(((1<<30) | 7), p + L2X0_PREFETCH_CTRL);
+#endif
+
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
 	aux_ctrl |= 0x7C400001;
@@ -146,6 +170,7 @@ void __init tegra30_init_early(void)
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
+	tegra_init_power();
 }
 #endif
 

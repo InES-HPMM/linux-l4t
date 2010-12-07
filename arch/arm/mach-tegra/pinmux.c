@@ -131,7 +131,7 @@ static char *tegra_mux_names[TEGRA_MAX_MUX] = {
 	[TEGRA_MUX_POPSDIO4] = "POPSDIO4",
 	[TEGRA_MUX_POPSDMMC4] = "POPSDMMC4",
 	[TEGRA_MUX_PWM0] = "PWM0",
-	[TEGRA_MUX_PWM1] = "PWM2",
+	[TEGRA_MUX_PWM1] = "PWM1",
 	[TEGRA_MUX_PWM2] = "PWM2",
 	[TEGRA_MUX_PWM3] = "PWM3",
 	[TEGRA_MUX_SATA] = "SATA",
@@ -217,6 +217,22 @@ static const char *pupd_name(unsigned long val)
 	}
 }
 
+#if defined(TEGRA_PINMUX_HAS_IO_DIRECTION)
+static const char *io_name(unsigned long val)
+{
+	switch (val) {
+	case 0:
+		return "OUTPUT";
+
+	case 1:
+		return "INPUT";
+
+	default:
+		return "RSVD";
+	}
+}
+#endif
+
 static int nbanks;
 static void __iomem **regs;
 
@@ -270,6 +286,10 @@ static int tegra_pinmux_set_func(const struct tegra_pingroup_config *config)
 	reg = pg_readl(pingroups[pg].mux_bank, pingroups[pg].mux_reg);
 	reg &= ~(0x3 << pingroups[pg].mux_bit);
 	reg |= mux << pingroups[pg].mux_bit;
+#if defined(TEGRA_PINMUX_HAS_IO_DIRECTION)
+	reg &= ~(0x1 << 5);
+	reg |= ((config->io & 0x1) << 5);
+#endif
 	pg_writel(reg, pingroups[pg].mux_bank, pingroups[pg].mux_reg);
 
 	spin_unlock_irqrestore(&mux_lock, flags);
@@ -871,7 +891,7 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 
 		seq_printf(s, "\t{TEGRA_PINGROUP_%s", pingroups[i].name);
 		len = strlen(pingroups[i].name);
-		dbg_pad_field(s, 5 - len);
+		dbg_pad_field(s, 15 - len);
 
 		if (pingroups[i].mux_reg < 0) {
 			seq_printf(s, "TEGRA_MUX_NONE");
@@ -880,10 +900,12 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 			reg = pg_readl(pingroups[i].mux_bank,
 					pingroups[i].mux_reg);
 			mux = (reg >> pingroups[i].mux_bit) & 0x3;
-			if (pingroups[i].funcs[mux] == TEGRA_MUX_RSVD) {
+			BUG_ON(pingroups[i].funcs[mux] == 0);
+			if (pingroups[i].funcs[mux] & TEGRA_MUX_RSVD) {
 				seq_printf(s, "TEGRA_MUX_RSVD%1lu", mux+1);
 				len = 5;
 			} else {
+				BUG_ON(!tegra_mux_names[pingroups[i].funcs[mux]]);
 				seq_printf(s, "TEGRA_MUX_%s",
 					   tegra_mux_names[pingroups[i].funcs[mux]]);
 				len = strlen(tegra_mux_names[pingroups[i].funcs[mux]]);
@@ -891,6 +913,16 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 		}
 		dbg_pad_field(s, 13-len);
 
+#if defined(TEGRA_PINMUX_HAS_IO_DIRECTION)
+		{
+			unsigned long io;
+			io = (pg_readl(pingroups[i].mux_bank,
+					pingroups[i].mux_reg) >> 5) & 0x1;
+			seq_printf(s, "TEGRA_PIN_%s", io_name(io));
+			len = strlen(io_name(io));
+			dbg_pad_field(s, 6 - len);
+		}
+#endif
 		if (pingroups[i].pupd_reg < 0) {
 			seq_printf(s, "TEGRA_PUPD_NORMAL");
 			len = strlen("NORMAL");

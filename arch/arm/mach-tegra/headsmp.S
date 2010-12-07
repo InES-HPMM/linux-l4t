@@ -70,6 +70,38 @@ ENTRY(tegra_secondary_startup)
 ENDPROC(tegra_secondary_startup)
 #endif
 
+#ifdef CONFIG_PM
+/*
+ *	tegra_resume
+ *
+ *	  CPU boot vector when restarting the master CPU following
+ *	  an LP2 transition. Also branched to by LP0 and LP1 resume after
+ *	  re-enabling sdram.
+ */
+ENTRY(tegra_resume)
+	bl	tegra_invalidate_l1
+	bl	tegra_enable_coresite
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	@ Clear the flow controller flags for this CPU.
+	mov32	r2, TEGRA_FLOW_CTRL_BASE+8	@ CPU0 CSR
+	ldr	r1, [r2]
+	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
+	movw	r0, #0x0FFD	@ enable, cluster_switch, immed, & bitmaps
+	bic	r1, r1, r0
+	str	r1, [r2]
+#endif
+
+	/* enable SCU */
+	ldr	r0, =TEGRA_ARM_PERIF_BASE
+	ldr	r1, [r0]
+	orr	r1, r1, #1
+	str	r1, [r0]
+
+	b	cpu_resume
+ENDPROC(tegra_resume)
+#endif
+
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_start)
 

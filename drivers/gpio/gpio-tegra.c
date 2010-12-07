@@ -26,6 +26,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/irqdomain.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/pinctrl/consumer.h>
@@ -182,6 +183,15 @@ static void tegra_gpio_irq_ack(struct irq_data *d)
 	int gpio = d->hwirq;
 
 	tegra_gpio_writel(1 << GPIO_BIT(gpio), GPIO_INT_CLR(gpio));
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA platforms have a serializer between the GPIO
+	   block and interrupt controller. Allow time for
+	   clearing of the GPIO interrupt to propagate to the
+	   interrupt controller before re-enabling the IRQ
+	   to prevent double interrupts. */
+	udelay(15);
+#endif
 }
 
 static void tegra_gpio_irq_mask(struct irq_data *d)

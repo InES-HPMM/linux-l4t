@@ -107,6 +107,9 @@ static unsigned long clk_predict_rate_from_parent(struct clk *c, struct clk *p)
 
 	rate = clk_get_rate(p);
 
+	if (c->ops && c->ops->recalculate_rate)
+		c->ops->recalculate_rate(c);
+
 	if (c->mul != 0 && c->div != 0) {
 		rate *= c->mul;
 		rate += c->div - 1; /* round up */
@@ -315,13 +318,16 @@ EXPORT_SYMBOL(clk_get_parent);
 int clk_set_rate_locked(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
-	unsigned long old_rate;
+	unsigned long old_rate, max_rate;
 	long new_rate;
 
 	old_rate = clk_get_rate_locked(c);
 
-	if (rate > c->max_rate)
-		rate = c->max_rate;
+	max_rate = c->max_rate;
+	if (c->ops && c->ops->get_max_rate)
+		max_rate = c->ops->get_max_rate(c);
+	if (rate > max_rate)
+		rate = max_rate;
 
 	if (c->ops && c->ops->round_rate) {
 		new_rate = c->ops->round_rate(c, rate);
@@ -378,6 +384,8 @@ unsigned long clk_get_rate_all_locked(struct clk *c)
 
 	while (p) {
 		c = p;
+		if (c->ops && c->ops->recalculate_rate)
+			c->ops->recalculate_rate(c);
 		if (c->mul != 0 && c->div != 0) {
 			mul *= c->mul;
 			div *= c->div;
@@ -394,7 +402,7 @@ unsigned long clk_get_rate_all_locked(struct clk *c)
 
 long clk_round_rate(struct clk *c, unsigned long rate)
 {
-	unsigned long flags;
+	unsigned long flags, max_rate;
 	long ret;
 
 	clk_lock_save(c, &flags);
@@ -404,8 +412,11 @@ long clk_round_rate(struct clk *c, unsigned long rate)
 		goto out;
 	}
 
-	if (rate > c->max_rate)
-		rate = c->max_rate;
+	max_rate = c->max_rate;
+	if (c->ops && c->ops->get_max_rate)
+		max_rate = c->ops->get_max_rate(c);
+	if (rate > max_rate)
+		rate = max_rate;
 
 	ret = c->ops->round_rate(c, rate);
 
@@ -684,6 +695,11 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 	struct clk *child;
 	const char *state = "uninit";
 	char div[8] = {0};
+	unsigned long rate = clk_get_rate_all_locked(c);
+	unsigned long max_rate = c->max_rate;
+
+	if (c->ops && c->ops->get_max_rate)
+		max_rate = c->ops->get_max_rate(c);
 
 	if (c->state == ON)
 		state = "on";
@@ -709,10 +725,10 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 
 	seq_printf(s, "%*s%c%c%-*s %-6s %-3d %-8s %-10lu\n",
 		level * 3 + 1, "",
-		c->rate > c->max_rate ? '!' : ' ',
+		rate > max_rate ? '!' : ' ',
 		!c->set ? '*' : ' ',
 		30 - level * 3, c->name,
-		state, c->refcnt, div, clk_get_rate_all_locked(c));
+		state, c->refcnt, div, rate);
 
 	if (c->dvfs)
 		dvfs_show_one(s, c->dvfs, level + 1);

@@ -21,11 +21,13 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
-#include <linux/clk-provider.h>
-#include <linux/clkdev.h>
-#include <linux/list.h>
-#include <linux/mutex.h>
-#include <linux/spinlock.h>
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
+#else
+/* !!!FIXME!!! PLL lock bits should work on Tegra3 */
+#define USE_PLL_LOCK_BITS 0	/* Use lock bits for PLL stabiliation */
+#endif
+
 #include <linux/clk/tegra.h>
 
 #define DIV_BUS			(1 << 0)
@@ -53,6 +55,14 @@
 #define DIV_U71_IDLE            (1 << 22)
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB           (1 << 29)
+
+#ifndef __ASSEMBLY__
+
+#include <linux/clk-provider.h>
+#include <linux/clkdev.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
+#include <linux/spinlock.h>
 
 #define MAX_SAME_LIMIT_SKU_IDS	16
 
@@ -91,6 +101,8 @@ struct clk_ops {
 	int		(*set_parent)(struct clk *, struct clk *);
 	int		(*set_rate)(struct clk *, unsigned long);
 	long		(*round_rate)(struct clk *, unsigned long);
+	unsigned long	(*get_max_rate)(struct clk *);
+	void		(*recalculate_rate)(struct clk *);
 	void		(*reset)(struct clk *, bool);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
@@ -150,6 +162,7 @@ struct clk {
 		struct {
 			struct clk			*main;
 			struct clk			*backup;
+			unsigned long			lp_max_rate;
 		} cpu;
 		struct {
 			struct list_head		node;
@@ -304,4 +317,5 @@ struct tegra_cpufreq_table_data {
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void);
 #endif
 
+#endif
 #endif

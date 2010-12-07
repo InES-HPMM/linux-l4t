@@ -71,7 +71,7 @@ static int tegra_powergate_set(int id, bool new_state)
 
 	spin_lock_irqsave(&tegra_powergate_lock, flags);
 
-	status = pmc_read(PWRGATE_STATUS) & (1 << id);
+	status = !!(pmc_read(PWRGATE_STATUS) & (1 << id));
 
 	if (status == new_state) {
 		spin_unlock_irqrestore(&tegra_powergate_lock, flags);
@@ -119,6 +119,7 @@ int tegra_powergate_remove_clamping(int id)
 	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	/*
 	 * Tegra 2 has a bug where PCIE and VDE clamping masks are
 	 * swapped relatively to the partition ids
@@ -128,6 +129,7 @@ int tegra_powergate_remove_clamping(int id)
 	else if	(id == TEGRA_POWERGATE_PCIE)
 		mask = (1 << TEGRA_POWERGATE_VDEC);
 	else
+#endif
 		mask = (1 << id);
 
 	pmc_write(mask, REMOVE_CLAMPING);

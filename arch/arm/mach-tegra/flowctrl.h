@@ -30,6 +30,8 @@
 #define FLOW_CTRL_CPU0_CSR		0x8
 #define	FLOW_CTRL_CSR_INTR_FLAG		(1 << 15)
 #define FLOW_CTRL_CSR_EVENT_FLAG	(1 << 14)
+#define FLOW_CTRL_CSR_IMMEDIATE_WAKE	(1 << 3)
+#define FLOW_CTRL_CSR_SWITCH_CLUSTER	(1 << 2)
 #define FLOW_CTRL_CSR_ENABLE		(1 << 0)
 #define FLOW_CTRL_HALT_CPU1_EVENTS	0x14
 #define FLOW_CTRL_CPU1_CSR		0x18
@@ -37,6 +39,11 @@
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define FLOW_CTRL_CSR_WFE_CPU0		(1 << 4)
 #define FLOW_CTRL_CSR_WFE_BITMAP	(3 << 4)
+#define FLOW_CTRL_CSR_WFI_BITMAP	0
+#else
+#define FLOW_CTRL_CSR_WFE_BITMAP	(0xF << 4)
+#define FLOW_CTRL_CSR_WFI_CPU0		(1 << 8)
+#define FLOW_CTRL_CSR_WFI_BITMAP	(0xF << 8)
 #endif
 
 #ifndef __ASSEMBLY__

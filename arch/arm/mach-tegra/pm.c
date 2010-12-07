@@ -51,6 +51,7 @@
 #include <mach/irqs.h>
 
 #include "board.h"
+#include "clock.h"
 #include "flowctrl.h"
 #include "iomap.h"
 #include "pm.h"
@@ -279,16 +280,46 @@ static void restore_cpu_complex(void)
 	writel(tegra_sctx.pllp_base, clk_rst + CLK_RESET_PLLP_BASE);
 	writel(tegra_sctx.pllp_outa, clk_rst + CLK_RESET_PLLP_OUTA);
 	writel(tegra_sctx.pllp_outb, clk_rst + CLK_RESET_PLLP_OUTB);
-	udelay(300);
-	writel(tegra_sctx.cclk_divider, clk_rst + CLK_RESET_CCLK_DIVIDER);
-	writel(tegra_sctx.cpu_burst, clk_rst + CLK_RESET_CCLK_BURST);
+
+	/* Is CPU complex already running on PLLX? */
+	reg = readl(clk_rst + CLK_RESET_CCLK_BURST);
+	reg &= 0xF;
+	if (reg != 0x8) {
+		/* restore original burst policy setting; PLLX state restored
+		 * by CPU boot-up code - wait for PLL stabilization if PLLX
+		 * was enabled */
+
+		BUG_ON(readl(clk_rst + CLK_RESET_PLLX_BASE) !=
+		       tegra_sctx.pllx_base);
+
+		if (tegra_sctx.pllx_base & (1<<30)) {
+#if USE_PLL_LOCK_BITS
+			/* Enable lock detector */
+			reg = readl(clk_rst + CLK_RESET_PLLX_MISC);
+			reg |= 1<<18;
+			writel(reg, clk_rst + CLK_RESET_PLLX_MISC);
+			while (!(readl(clk_rst + CLK_RESET_PLLX_BASE) &&
+				 (1<<27)))
+				cpu_relax();
+#else
+			udelay(300);
+#endif
+		}
+		writel(tegra_sctx.cclk_divider, clk_rst +
+		       CLK_RESET_CCLK_DIVIDER);
+		writel(tegra_sctx.cpu_burst, clk_rst +
+		       CLK_RESET_CCLK_BURST);
+	}
+
 	writel(tegra_sctx.clk_csite_src, clk_rst + CLK_RESET_SOURCE_CSITE);
 
 	/* do not power-gate the CPU when flow controlled */
 	for (i = 0; i < num_possible_cpus(); i++) {
 		reg = flowctrl_read_cpu_csr(i);
 		reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
+		reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
 		reg &= ~FLOW_CTRL_CSR_ENABLE;		/* clear enable */
+		reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr */
 		reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event */
 		flowctrl_write_cpu_csr(i, reg);
 		wmb();
@@ -325,8 +356,13 @@ static void suspend_cpu_complex(void)
 
 	reg = flowctrl_read_cpu_csr(cpu);
 	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
+	reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
 	reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event flag */
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	reg |= FLOW_CTRL_CSR_WFE_CPU0 << cpu;	/* enable power gating on wfe */
+#else
+	reg |= FLOW_CTRL_CSR_WFI_CPU0 << cpu;	/* enable power gating on wfi */
+#endif
 	reg |= FLOW_CTRL_CSR_ENABLE;		/* enable power gating */
 	flowctrl_write_cpu_csr(cpu, reg);
 	wmb();
@@ -336,6 +372,7 @@ static void suspend_cpu_complex(void)
 			continue;
 		reg = flowctrl_read_cpu_csr(i);
 		reg |= FLOW_CTRL_CSR_EVENT_FLAG;
+		reg |= FLOW_CTRL_CSR_INTR_FLAG;
 		flowctrl_write_cpu_csr(i, reg);
 		flowctrl_write_cpu_halt(i, 0);
 		wmb();
@@ -367,7 +404,7 @@ int tegra_reset_other_cpus(int cpu)
 	return 0;
 }
 
-void tegra_idle_lp2_last(void)
+void tegra_idle_lp2_last(unsigned int flags)
 {
 	u32 reg;
 	int i;
@@ -383,6 +420,7 @@ void tegra_idle_lp2_last(void)
 	reg = readl(pmc + PMC_CTRL);
 	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 	reg |= TEGRA_POWER_PWRREQ_OE;
+	reg |= flags;
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
 	pmc_32kwritel(reg, PMC_CTRL);
 
@@ -394,6 +432,9 @@ void tegra_idle_lp2_last(void)
 	 */
 	set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer,
 		clk_get_rate_all_locked(tegra_pclk));
+
+	if (flags & TEGRA_POWER_CLUSTER_MASK)
+		tegra_cluster_switch_prolog(reg);
 
 	cpu_cluster_pm_enter();
 
@@ -407,6 +448,9 @@ void tegra_idle_lp2_last(void)
 	l2x0_enable();
 	restore_cpu_complex();
 	cpu_cluster_pm_exit();
+
+	if (flags & TEGRA_POWER_CLUSTER_MASK)
+		tegra_cluster_switch_epilog(reg);
 
 	for_each_online_cpu(i)
 		if (i != cpu)
@@ -431,7 +475,7 @@ void tegra_idle_lp2(void)
 	cpu_pm_enter();
 
 	if (last_cpu)
-		tegra_idle_lp2_last();
+		tegra_idle_lp2_last(0);
 	else
 		tegra_sleep_wfi(PHYS_OFFSET - PAGE_OFFSET);
 

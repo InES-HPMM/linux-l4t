@@ -20,6 +20,7 @@
 
 enum tegra_mux_func {
 	TEGRA_MUX_RSVD = 0x8000,
+	TEGRA_MUX_RSVD0 = TEGRA_MUX_RSVD,
 	TEGRA_MUX_RSVD1 = 0x8000,
 	TEGRA_MUX_RSVD2 = 0x8001,
 	TEGRA_MUX_RSVD3 = 0x8002,
@@ -43,6 +44,7 @@ enum tegra_mux_func {
 	TEGRA_MUX_GMI_INT,
 	TEGRA_MUX_HDMI,
 	TEGRA_MUX_I2C,
+	TEGRA_MUX_I2C1 = TEGRA_MUX_I2C,
 	TEGRA_MUX_I2C2,
 	TEGRA_MUX_I2C3,
 	TEGRA_MUX_IDE,
@@ -65,9 +67,13 @@ enum tegra_mux_func {
 	TEGRA_MUX_PWR_ON,
 	TEGRA_MUX_RTCK,
 	TEGRA_MUX_SDIO1,
+	TEGRA_MUX_SDMMC1 = TEGRA_MUX_SDIO1,
 	TEGRA_MUX_SDIO2,
+	TEGRA_MUX_SDMMC2 = TEGRA_MUX_SDIO2,
 	TEGRA_MUX_SDIO3,
+	TEGRA_MUX_SDMMC3 = TEGRA_MUX_SDIO3,
 	TEGRA_MUX_SDIO4,
+	TEGRA_MUX_SDMMC4 = TEGRA_MUX_SDIO4,
 	TEGRA_MUX_SFLASH,
 	TEGRA_MUX_SPDIF,
 	TEGRA_MUX_SPI1,
@@ -172,6 +178,7 @@ struct tegra_pingroup_config {
 	enum tegra_mux_func	func;
 	enum tegra_pullupdown	pupd;
 	enum tegra_tristate	tristate;
+	enum tegra_pin_io	io;
 };
 
 enum tegra_slew {

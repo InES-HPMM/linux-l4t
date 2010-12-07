@@ -30,12 +30,42 @@
 #include "fuse.h"
 #include "flowctrl.h"
 #include "reset.h"
+#include "pm.h"
 
 #include "common.h"
 #include "iomap.h"
 
 #define EVP_CPU_RESET_VECTOR \
 	(IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x100)
+
+static unsigned int available_cpus(void);
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+static inline int is_g_cluster_available(unsigned int cpu)
+{ return -EPERM; }
+static inline bool is_cpu_powered(unsigned int cpu)
+{ return true; }
+static inline int power_up_cpu(unsigned int cpu)
+{ return 0; }
+
+/* For Tegra2 use the software-written value of the reset regsiter for status.*/
+#define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET
+
+#else
+static int is_g_cluster_available(unsigned int cpu);
+static bool is_cpu_powered(unsigned int cpu);
+static int power_up_cpu(unsigned int cpu);
+
+#define CAR_BOND_OUT_V \
+	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x390)
+#define CAR_BOND_OUT_V_CPU_G	(1<<0)
+#define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
+	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
+
+#define FUSE_SKU_DIRECT_CONFIG \
+	(IO_ADDRESS(TEGRA_FUSE_BASE) + 0x1F4)
+#define FUSE_SKU_DISABLE_ALL_CPUS	(1<<5)
+#define FUSE_SKU_NUM_DISABLED_CPUS(x)	(((x) >> 3) & 3)
+#endif
 
 extern void tegra_secondary_startup(void);
 
@@ -47,6 +77,23 @@ static void __cpuinit tegra_secondary_init(unsigned int cpu)
 
 static int tegra20_power_up_cpu(unsigned int cpu)
 {
+	int status;
+
+	if (is_lp_cluster()) {
+		/* The G CPU may not be available for a
+		   variety of reasons. */
+		status = is_g_cluster_available(cpu);
+		if (status)
+			return status;
+
+		/* Switch to the G CPU before continuing. */
+		status = tegra_cluster_control(0,
+					       TEGRA_POWER_CLUSTER_G |
+					       TEGRA_POWER_CLUSTER_IMMEDIATE);
+		if (status)
+			return status;
+	}
+
 	/* Enable the CPU clock. */
 	tegra_enable_cpu_clock(cpu);
 
@@ -94,7 +141,8 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
 
-	return 0;
+done:
+	return status;
 }
 
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
@@ -145,7 +193,7 @@ done:
  */
 static void __init tegra_smp_init_cpus(void)
 {
-	unsigned int i, ncores = scu_get_core_count(scu_base);
+	unsigned int i, ncores = available_cpus();
 
 	if (ncores > nr_cpu_ids) {
 		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",
@@ -161,6 +209,86 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
 	tegra_cpu_reset_handler_init();
 	scu_enable(scu_base);
+}
+
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+
+static bool is_cpu_powered(unsigned int cpu)
+{
+	if (is_lp_cluster())
+		return true;
+	else
+		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
+}
+
+static int power_up_cpu(unsigned int cpu)
+{
+	int ret;
+	unsigned long timeout;
+
+	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(is_lp_cluster());
+
+	if (!is_cpu_powered(cpu))
+	{
+		ret = tegra_powergate_power_on(TEGRA_CPU_POWERGATE_ID(cpu));
+		if (ret)
+			goto fail;
+
+		/* Wait for the power to come up. */
+		timeout = jiffies + 10*HZ;
+
+		do {
+			if (is_cpu_powered(cpu))
+				goto remove_clamps;
+			udelay(10);
+		} while (time_before(jiffies, timeout));
+		ret = -ETIMEDOUT;
+		goto fail;
+	}
+
+remove_clamps:
+	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
+fail:
+	return ret;
+}
+
+static int is_g_cluster_available(unsigned int cpu)
+{
+	u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
+	u32 bond_out = readl(CAR_BOND_OUT_V);
+
+	/* Does the G CPU complex exist at all? */
+	if ((fuse_sku & FUSE_SKU_DISABLE_ALL_CPUS) ||
+	    (bond_out & CAR_BOND_OUT_V_CPU_G))
+		return -EPERM;
+
+	if (cpu >= available_cpus())
+		return -EPERM;
+
+	/* FIXME: The G CPU can be unavailable for a number of reasons
+	 *	  (e.g., low battery, over temperature, etc.). Add checks for
+	 *	  these conditions. */
+
+	return 0;
+}
+#endif
+
+static unsigned int available_cpus(void)
+{
+	static unsigned int ncores = 0;
+
+	if (ncores == 0) {
+		ncores = scu_get_core_count(scu_base);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+		if (ncores > 1) {
+			u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
+			ncores -= FUSE_SKU_NUM_DISABLED_CPUS(fuse_sku);
+			BUG_ON((int)ncores <= 0);
+		}
+#endif
+	}
+	return ncores;
 }
 
 struct smp_operations tegra_smp_ops __initdata = {
