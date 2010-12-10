@@ -74,4 +74,22 @@ static inline int harmony_pcie_init(void) { return 0; }
 void __init tegra_paz00_wifikill_init(void);
 
 extern void tegra_init_timer(void);
+
+enum board_fab {
+	BOARD_FAB_A = 0,
+	BOARD_FAB_B,
+	BOARD_FAB_C,
+	BOARD_FAB_D,
+};
+
+struct board_info {
+	u16 board_id;
+	u16 sku;
+	u8  fab;
+	u8  major_revision;
+	u8  minor_revision;
+};
+
+void tegra_get_board_info(struct board_info *);
+
 #endif
