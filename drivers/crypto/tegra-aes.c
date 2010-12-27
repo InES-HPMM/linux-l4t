@@ -40,6 +40,7 @@
 #include <linux/interrupt.h>
 #include <linux/completion.h>
 #include <linux/workqueue.h>
+#include <linux/delay.h>
 
 #include <crypto/scatterwalk.h>
 #include <crypto/aes.h>
@@ -152,6 +153,7 @@ struct tegra_aes_dev {
 	dma_addr_t ivkey_phys_base;
 	void __iomem *ivkey_base;
 	struct clk *aes_clk;
+	struct clk *pclk;
 	struct tegra_aes_ctx *ctx;
 	int irq;
 	unsigned long flags;
@@ -209,6 +211,38 @@ static inline u32 aes_readl(struct tegra_aes_dev *dd, u32 offset)
 static inline void aes_writel(struct tegra_aes_dev *dd, u32 val, u32 offset)
 {
 	writel(val, dd->io_base + offset);
+}
+
+static int aes_hw_init(struct tegra_aes_dev *dd)
+{
+	int ret = 0;
+
+	ret = clk_prepare_enable(dd->pclk);
+	if (ret < 0) {
+		dev_err(dd->dev, "%s: pclock enable fail(%d)\n", __func__, ret);
+		return ret;
+	}
+
+	tegra_periph_reset_assert(dd->iclk);
+	udelay(50);
+	tegra_periph_reset_deassert(dd->iclk);
+	udelay(50);
+
+	ret = clk_prepare_enable(dd->aes_clk);
+	if (ret < 0) {
+		dev_err(dd->dev, "%s: iclock enable fail(%d)\n", __func__, ret);
+		clk_disable_unprepare(dd->pclk);
+		return ret;
+	}
+
+	aes_writel(dd, 0x33, TEGRA_AES_INT_ENB);
+	return ret;
+}
+
+static void aes_hw_deinit(struct tegra_aes_dev *dd)
+{
+	clk_disable_unprepare(dd->aes_clk);
+	clk_disable_unprepare(dd->pclk);
 }
 
 static int aes_start_crypt(struct tegra_aes_dev *dd, u32 in_addr, u32 out_addr,
@@ -570,16 +604,16 @@ static void aes_workqueue_handler(struct work_struct *work)
 	struct tegra_aes_dev *dd = aes_dev;
 	int ret;
 
-	ret = clk_prepare_enable(dd->aes_clk);
+	ret = aes_hw_init(dd);
 	if (ret)
-		BUG_ON("clock enable failed");
+		BUG_ON("hw init failed");
 
 	/* empty the crypto queue and then return */
 	do {
 		ret = tegra_aes_handle_req(dd);
 	} while (!ret);
 
-	clk_disable_unprepare(dd->aes_clk);
+	aes_hw_deinit(dd);
 }
 
 static irqreturn_t aes_irq(int irq, void *dev_id)
@@ -671,10 +705,10 @@ static int tegra_aes_get_random(struct crypto_rng *tfm, u8 *rdata,
 	/* take mutex to access the aes hw */
 	mutex_lock(&aes_lock);
 
-	ret = clk_prepare_enable(dd->aes_clk);
-	if (ret) {
-		mutex_unlock(&aes_lock);
-		return ret;
+	ret = aes_hw_init(dd);
+	if (ret < 0) {
+		dev_err(dd->dev, "%s: hw init fail(%d)\n", __func__, ret);
+		goto fail;
 	}
 
 	ctx->dd = dd;
@@ -700,7 +734,9 @@ static int tegra_aes_get_random(struct crypto_rng *tfm, u8 *rdata,
 	}
 
 out:
-	clk_disable_unprepare(dd->aes_clk);
+	aes_hw_deinit(dd);
+
+fail:
 	mutex_unlock(&aes_lock);
 
 	dev_dbg(dd->dev, "%s: done\n", __func__);
@@ -758,10 +794,10 @@ static int tegra_aes_rng_reset(struct crypto_rng *tfm, u8 *seed,
 
 	dd->flags = FLAGS_ENCRYPT | FLAGS_RNG;
 
-	ret = clk_prepare_enable(dd->aes_clk);
-	if (ret) {
-		mutex_unlock(&aes_lock);
-		return ret;
+	ret = aes_hw_init(dd);
+	if (ret < 0) {
+		dev_err(dd->dev, "%s: hw init fail(%d)\n", __func__, ret);
+		goto fail;
 	}
 
 	aes_set_key(dd);
@@ -790,7 +826,9 @@ static int tegra_aes_rng_reset(struct crypto_rng *tfm, u8 *seed,
 	memcpy(dd->dt, dt, DEFAULT_RNG_BLK_SZ);
 
 out:
-	clk_disable_unprepare(dd->aes_clk);
+	aes_hw_deinit(dd);
+
+fail:
 	mutex_unlock(&aes_lock);
 
 	dev_dbg(dd->dev, "%s: done\n", __func__);
@@ -923,6 +961,14 @@ static int tegra_aes_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+	/* Initialise the master bsev clock */
+	dd->pclk = clk_get(dev, "bsev");
+	if (IS_ERR(dd->pclk)) {
+		dev_err(dev, "pclock initialization failed.\n");
+		err = -ENODEV;
+		goto out;
+	}
+
 	/* Initialize the vde clock */
 	dd->aes_clk = clk_get(dev, "vde");
 	if (IS_ERR(dd->aes_clk)) {
@@ -1035,6 +1081,8 @@ out:
 			dd->buf_out, dd->dma_buf_out);
 	if (!IS_ERR(dd->aes_clk))
 		clk_put(dd->aes_clk);
+	if (dd->pclk)
+		clk_put(dd->pclk);
 	if (aes_wq)
 		destroy_workqueue(aes_wq);
 	spin_lock(&list_lock);
@@ -1069,6 +1117,7 @@ static int tegra_aes_remove(struct platform_device *pdev)
 	dma_free_coherent(dev, AES_HW_DMA_BUFFER_SIZE_BYTES,
 			  dd->buf_out, dd->dma_buf_out);
 	clk_put(dd->aes_clk);
+	clk_put(dd->pclk);
 	aes_dev = NULL;
 
 	return 0;
