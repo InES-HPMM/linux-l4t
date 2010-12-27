@@ -855,7 +855,7 @@ static struct crypto_alg algs[] = {
 	{
 		.cra_name = "ecb(aes)",
 		.cra_driver_name = "ecb-aes-tegra",
-		.cra_priority = 300,
+		.cra_priority = 100,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
 		.cra_blocksize = AES_BLOCK_SIZE,
 		.cra_alignmask = 3,
@@ -870,7 +870,7 @@ static struct crypto_alg algs[] = {
 	}, {
 		.cra_name = "cbc(aes)",
 		.cra_driver_name = "cbc-aes-tegra",
-		.cra_priority = 300,
+		.cra_priority = 100,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
 		.cra_blocksize = AES_BLOCK_SIZE,
 		.cra_alignmask = 3,
