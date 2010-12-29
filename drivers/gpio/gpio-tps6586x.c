@@ -76,8 +76,12 @@ static int tps6586x_gpio_output(struct gpio_chip *gc, unsigned offset,
 {
 	struct tps6586x_gpio *tps6586x_gpio = to_tps6586x_gpio(gc);
 	uint8_t val, mask;
+	int ret;
 
-	tps6586x_gpio_set(gc, offset, value);
+	val = value << offset;
+	mask = 0x1 << offset;
+	ret = tps6586x_update(tps6586x_gpio->parent, TPS6586X_GPIOSET2,
+				val, mask);
 
 	val = 0x1 << (offset * 2);
 	mask = 0x3 << (offset * 2);
