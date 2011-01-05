@@ -12,6 +12,7 @@ obj-y                                   += delay.o
 obj-$(CONFIG_PM_SLEEP)			+= pm.o
 obj-$(CONFIG_PM_SLEEP)			+= pm-irq.o
 obj-y					+= fuse.o
+obj-y                                   += kfuse.o
 obj-y					+= pmc.o
 obj-y					+= flowctrl.o
 obj-y					+= powergate.o
