@@ -29,4 +29,9 @@ struct tegra_ehci_platform_data {
 	int vbus_gpio;
 };
 
+struct tegra_otg_platform_data {
+	struct platform_device* (*host_register)(void);
+	void (*host_unregister)(struct platform_device*);
+};
+
 #endif /* _TEGRA_USB_H_ */
