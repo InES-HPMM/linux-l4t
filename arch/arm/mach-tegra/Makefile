@@ -28,7 +28,7 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_fuse.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_save.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra2_emc.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= wakeups-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= wakeups-t3.o
@@ -45,6 +45,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += headsmp-t3.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 obj-$(CONFIG_TEGRA_PCI)			+= pcie.o
+obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-dt-tegra20.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= board-dt-tegra30.o
