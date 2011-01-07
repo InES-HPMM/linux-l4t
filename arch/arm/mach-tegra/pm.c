@@ -322,7 +322,6 @@ static void restore_cpu_complex(void)
 		reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr */
 		reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event */
 		flowctrl_write_cpu_csr(i, reg);
-		wmb();
 	}
 }
 
@@ -365,7 +364,6 @@ static void suspend_cpu_complex(void)
 #endif
 	reg |= FLOW_CTRL_CSR_ENABLE;		/* enable power gating */
 	flowctrl_write_cpu_csr(cpu, reg);
-	wmb();
 
 	for (i = 0; i < num_possible_cpus(); i++) {
 		if (i == cpu)
@@ -375,7 +373,6 @@ static void suspend_cpu_complex(void)
 		reg |= FLOW_CTRL_CSR_INTR_FLAG;
 		flowctrl_write_cpu_csr(i, reg);
 		flowctrl_write_cpu_halt(i, 0);
-		wmb();
 	}
 }
 

@@ -90,7 +90,7 @@
 
 #define SYSFS_CLUSTER_PRINTS	   1	/* Nonzero: enable status prints */
 #define SYSFS_CLUSTER_DEBUG_PRINTS 0	/* Nonzero: enable debug prints */
-#define SYSFS_CLUSTER_POWER_MODE   1	/* Nonzero: use power modes other than LP2*/
+#define SYSFS_CLUSTER_POWER_MODE   0	/* Nonzero: use power modes other than LP2*/
 
 #if SYSFS_CLUSTER_DEBUG_PRINTS
 #define DEBUG_CLUSTER(x) printk x
@@ -107,7 +107,6 @@
 static struct kobject *cluster_kobj;
 static spinlock_t cluster_lock;
 static unsigned int flags = 0;
-static unsigned int power_mode = 2;
 static unsigned int wake_ms = 0;
 
 static ssize_t sysfscluster_show(struct kobject *kobj,
@@ -132,8 +131,9 @@ static struct kobj_attribute cluster_force_attr =
 static struct kobj_attribute cluster_wake_ms_attr =
 		__ATTR(wake_ms, 0640, sysfscluster_show, sysfscluster_store);
 
-#if SYSFS_CLUSTER_POWER_MODE
-/* LPx power mode to use when switching CPUs: 1, 2 */
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
+/* LPx power mode to use when switching CPUs: 1=LP1, 2=LP2 */
+static unsigned int power_mode = 2;
 static struct kobj_attribute cluster_powermode_attr =
 		__ATTR(power_mode, 0640, sysfscluster_show, sysfscluster_store);
 #endif
@@ -145,7 +145,7 @@ typedef enum
 	ClusterAttr_Immediate,
 	ClusterAttr_Force,
 	ClusterAttr_WakeMs,
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	ClusterAttr_PowerMode
 #endif
 } ClusterAttr;
@@ -160,7 +160,7 @@ static ClusterAttr GetClusterAttr(const char *name)
 		return ClusterAttr_Force;
 	if (!strcmp(name, "wake_ms"))
 		return ClusterAttr_WakeMs;
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	if (!strcmp(name, "power_mode"))
 		return ClusterAttr_PowerMode;
 #endif
@@ -196,7 +196,7 @@ static ssize_t sysfscluster_show(struct kobject *kobj,
 		len = sprintf(buf, "%d\n", wake_ms);
 		break;
 
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	case ClusterAttr_PowerMode:
 		len = sprintf(buf, "%d\n", power_mode);
 		break;
@@ -258,7 +258,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			(flags & TEGRA_POWER_CLUSTER_G) ? "G" : "LP"));
 
 		request = flags;
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 		if (power_mode == 1) {
 			request |= TEGRA_POWER_SDRAM_SELFREFRESH;
 		}
@@ -314,7 +314,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		PRINT_CLUSTER(("cluster/wake_ms -> %d\n", wake_ms));
 		break;
 
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	case ClusterAttr_PowerMode:
 		if ((count == 1) && (*buf == '2'))
 			power_mode = 2;
@@ -365,7 +365,7 @@ static int __init sysfscluster_init(void)
 	CREATE_FILE(immediate);
 	CREATE_FILE(force);
 	CREATE_FILE(wake_ms);
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	CREATE_FILE(powermode);
 #endif
 
@@ -387,7 +387,7 @@ fail:
 static void __exit sysfscluster_exit(void)
 {
 	DEBUG_CLUSTER(("+sysfscluster_exit\n"));
-#if SYSFS_CLUSTER_POWER_MODE
+#if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	REMOVE_FILE(powermode);
 #endif
 	REMOVE_FILE(wake_ms);
