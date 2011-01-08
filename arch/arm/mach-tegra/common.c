@@ -134,6 +134,7 @@ void __init tegra_dt_init_irq(void)
 
 void tegra_assert_system_reset(char mode, const char *cmd)
 {
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
 
@@ -157,6 +158,10 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	reg = readl_relaxed(reset);
 	reg |= 0x10;
 	writel_relaxed(reg, reset);
+#else
+	printk("tegra_assert_system_reset() call attempted on FPGA target platform.....");
+	do { } while (1);
+#endif
 }
 static int modem_id;
 int tegra_sku_override;
