@@ -252,6 +252,8 @@ unsigned long clk_get_rate_locked(struct clk *c);
 void clk_set_cansleep(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
 int clk_reparent(struct clk *c, struct clk *parent);
+int tegra_emc_set_rate(unsigned long rate);
+long tegra_emc_round_rate(unsigned long rate);
 #endif /* !CONFIG_COMMON_CLK */
 
 struct tegra_sku_rate_limit {
