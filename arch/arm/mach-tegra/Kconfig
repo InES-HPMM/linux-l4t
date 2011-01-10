@@ -62,7 +62,12 @@ config TEGRA_AHB
 comment "Tegra board type"
 
 config TEGRA_FPGA_PLATFORM
-	bool
+        bool "Support for NVIDIA Tegra FPGA platform"
+        default n
+        help
+         This enables the NVIDIA Tegra FPGA platform support.
+         Select this only if you are an NVIDIA developer working on
+         an FPGA platforms. All others must leave this unselected.
 
 config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"
