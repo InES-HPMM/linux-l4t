@@ -848,7 +848,7 @@ void tegra_aes_cra_exit(struct crypto_tfm *tfm)
 
 static struct crypto_alg algs[] = {
 	{
-		.cra_name = "ecb(aes)",
+		.cra_name = "disabled_ecb(aes)",
 		.cra_driver_name = "ecb-aes-tegra",
 		.cra_priority = 100,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
@@ -863,7 +863,7 @@ static struct crypto_alg algs[] = {
 			.decrypt = tegra_aes_ecb_decrypt,
 		},
 	}, {
-		.cra_name = "cbc(aes)",
+		.cra_name = "disabled_cbc(aes)",
 		.cra_driver_name = "cbc-aes-tegra",
 		.cra_priority = 100,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
@@ -879,7 +879,7 @@ static struct crypto_alg algs[] = {
 			.decrypt = tegra_aes_cbc_decrypt,
 		}
 	}, {
-		.cra_name = "ofb(aes)",
+		.cra_name = "disabled_ofb(aes)",
 		.cra_driver_name = "ofb-aes-tegra",
 		.cra_priority = 300,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
@@ -895,7 +895,7 @@ static struct crypto_alg algs[] = {
 			.decrypt = tegra_aes_ofb_decrypt,
 		}
 	}, {
-		.cra_name = "ansi_cprng",
+		.cra_name = "disabled_ansi_cprng",
 		.cra_driver_name = "rng-aes-tegra",
 		.cra_flags = CRYPTO_ALG_TYPE_RNG,
 		.cra_ctxsize = sizeof(struct tegra_aes_ctx),
