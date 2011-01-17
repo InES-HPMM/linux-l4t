@@ -54,6 +54,8 @@
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB           (1 << 29)
 
+#define MAX_SAME_LIMIT_SKU_IDS	16
+
 struct clk;
 
 #ifdef CONFIG_COMMON_CLK
@@ -238,6 +240,12 @@ void clk_set_cansleep(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
 int clk_reparent(struct clk *c, struct clk *parent);
 #endif /* !CONFIG_COMMON_CLK */
+
+struct tegra_sku_rate_limit {
+	const char *clk_name;
+	unsigned long max_rate;
+	int sku_ids[MAX_SAME_LIMIT_SKU_IDS];
+};
 
 void tegra2_init_clocks(void);
 void tegra30_init_clocks(void);
