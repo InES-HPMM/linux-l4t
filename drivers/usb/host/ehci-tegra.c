@@ -394,6 +394,10 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	/* EHCI registers start at offset 0x100 */
 	ehci->caps = hcd->regs + 0x100;
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	ehci->has_hostpc = 1;
+#endif
+
 	/* switch to host mode */
 	hcd->has_tt = 1;
 
