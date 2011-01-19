@@ -20,6 +20,8 @@
 
 struct tegra_i2c_platform_data {
 	unsigned long bus_clk_rate;
+	int retries;
+	int timeout;	/* in jiffies */
 };
 
 #endif /* _LINUX_I2C_TEGRA_H */
