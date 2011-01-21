@@ -522,5 +522,11 @@ config REGULATOR_AS3711
 	  This driver provides support for the voltage regulators on the
 	  AS3711 PMIC
 
+config REGULATOR_TPS6591X
+	tristate "TI TPS6591X Power regulators"
+	depends on MFD_TPS6591X
+	help
+	  This driver supports TPS6591X voltage regulator chips.
+
 endif
 
