@@ -156,3 +156,4 @@ obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o vexpress-sysreg.o
 obj-$(CONFIG_MFD_RETU)		+= retu-mfd.o
 obj-$(CONFIG_MFD_AS3711)	+= as3711.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c.o
+obj-$(CONFIG_MFD_MAX8907C)	+= max8907c-irq.o
