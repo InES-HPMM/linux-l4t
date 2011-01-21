@@ -155,5 +155,6 @@ obj-$(CONFIG_MFD_LM3533)	+= lm3533-core.o lm3533-ctrlbank.o
 obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o vexpress-sysreg.o
 obj-$(CONFIG_MFD_RETU)		+= retu-mfd.o
 obj-$(CONFIG_MFD_AS3711)	+= as3711.o
+obj-$(CONFIG_MFD_TPS6591X)	+= tps6591x.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c-irq.o
