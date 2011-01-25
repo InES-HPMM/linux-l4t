@@ -916,7 +916,9 @@ static int ulpi_phy_power_on(struct tegra_usb_phy *phy)
 	int ret;
 	unsigned long val;
 	void __iomem *base = phy->regs;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra_ulpi_config *config = phy->config;
+#endif
 
 	clk_prepare_enable(phy->clk);
 	msleep(1);
@@ -1009,6 +1011,7 @@ static int ulpi_phy_power_off(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int ret;
 
 	/* Disable VbusValid, SessEnd comparators */
@@ -1032,7 +1035,6 @@ static int ulpi_phy_power_off(struct tegra_usb_phy *phy)
 	/* Clear WKCN/WKDS/WKOC wake-on events that can cause the USB
 	 * Controller to immediately bring the ULPI PHY out of low power
 	 */
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	val = readl(base + USB_PORTSC1);
 	val &= ~(USB_PORTSC1_WKOC | USB_PORTSC1_WKDS | USB_PORTSC1_WKCN);
 	writel(val, base + USB_PORTSC1);
