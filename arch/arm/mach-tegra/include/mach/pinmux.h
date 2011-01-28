@@ -155,6 +155,24 @@ enum tegra_pin_io {
 	TEGRA_PIN_INPUT = 1,
 };
 
+enum tegra_pin_lock {
+	TEGRA_PIN_LOCK_DEFAULT = 0,
+	TEGRA_PIN_LOCK_DISABLE,
+	TEGRA_PIN_LOCK_ENABLE,
+};
+
+enum tegra_pin_od {
+	TEGRA_PIN_OD_DEFAULT = 0,
+	TEGRA_PIN_OD_DISABLE,
+	TEGRA_PIN_OD_ENABLE,
+};
+
+enum tegra_pin_ioreset {
+	TEGRA_PIN_IO_RESET_DEFAULT = 0,
+	TEGRA_PIN_IO_RESET_DISABLE,
+	TEGRA_PIN_IO_RESET_ENABLE,
+};
+
 enum tegra_vddio {
 	TEGRA_VDDIO_BB = 0,
 	TEGRA_VDDIO_LCD,
@@ -179,6 +197,9 @@ struct tegra_pingroup_config {
 	enum tegra_pullupdown	pupd;
 	enum tegra_tristate	tristate;
 	enum tegra_pin_io	io;
+	enum tegra_pin_lock	lock;
+	enum tegra_pin_od	od;
+	enum tegra_pin_ioreset	ioreset;
 };
 
 enum tegra_slew {
