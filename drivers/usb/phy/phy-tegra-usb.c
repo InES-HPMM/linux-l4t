@@ -34,6 +34,7 @@
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>
 #include <mach/clk.h>
+#include <linux/regulator/consumer.h>
 #include "fuse.h"
 
 #define TEGRA_USB_BASE		0xC5000000
@@ -307,6 +308,8 @@
 
 #define TEGRA_PMC_USB_AO		0xf0
 #define   TEGRA_PMC_USB_AO_VBUS_WAKEUP_PD_P0	(1 << 2)
+
+#define ICUSB_CTRL		0x15c
 #endif
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
@@ -467,11 +470,6 @@ static void utmip_pad_power_on(struct tegra_usb_phy *phy)
 
 	clk_prepare_enable(phy->pad_clk);
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	tegra_periph_reset_assert(phy->pad_clk);
-	udelay(100);
-	tegra_periph_reset_deassert(phy->pad_clk);
-#endif
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 
 	if (utmip_pad_count++ == 0) {
@@ -586,8 +584,37 @@ static void utmi_phy_clk_enable(struct tegra_usb_phy *phy)
 		pr_err("%s: timeout waiting for phy to stabilize\n", __func__);
 }
 
+static void regulator_control(bool enable)
+{
+	struct regulator *reg_vbus = NULL;
+	struct regulator *reg_5v0_supply = NULL;
+
+	reg_5v0_supply =  regulator_get(NULL, "vdd_5v0_sys");
+	if (WARN_ON(IS_ERR_OR_NULL(reg_5v0_supply)))
+		printk("couldn't get regulator vdd_5v0_sys: %ld\n",
+			 PTR_ERR(reg_5v0_supply));
+	else {
+		if (enable)
+			regulator_enable(reg_5v0_supply);
+		else
+			regulator_disable(reg_5v0_supply);
+	}
+
+	reg_vbus = regulator_get(NULL, "vdd_vbus_typea_usb");
+	if (WARN_ON(IS_ERR_OR_NULL(reg_vbus)))
+		printk("couldn't get regulator vdd_vbus_typea_usb: %ld\n",
+			 PTR_ERR(reg_vbus));
+	else {
+		if (enable)
+			regulator_enable(reg_vbus);
+		else
+			regulator_disable(reg_vbus);
+	}
+}
+
 static void vbus_enable(int gpio)
 {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int gpio_status;
 
 	if (gpio == -1)
@@ -606,15 +633,22 @@ static void vbus_enable(int gpio)
 		return;
 	}
 	gpio_set_value(gpio, 1);
+#else
+	regulator_control(true);
+#endif
 }
 
 static void vbus_disable(int gpio)
 {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	if (gpio == -1)
 		return;
 
 	gpio_set_value(gpio, 0);
 	gpio_free(gpio);
+#else
+	regulator_control(false);
+#endif
 }
 
 static int utmi_phy_power_on(struct tegra_usb_phy *phy)
@@ -623,6 +657,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	struct tegra_utmip_config *config = phy->config;
 
+	utmip_pad_power_on(phy);
 	val = readl(base + USB_SUSP_CTRL);
 	val |= UTMIP_RESET;
 	writel(val, base + USB_SUSP_CTRL);
@@ -679,8 +714,6 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
-	utmip_pad_power_on(phy);
-
 	val = readl(base + UTMIP_XCVR_CFG0);
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
 		 UTMIP_FORCE_PD2_POWERDOWN | UTMIP_FORCE_PDZI_POWERDOWN |
@@ -729,7 +762,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 #else
-	if (phy->instance == 1) {
+	if ((phy->instance == 1) || (phy->instance == 2)) {
 		val = readl(base + USB_SUSP_CTRL);
 		val |= UTMIP_PHY_ENABLE;
 		writel(val, base + USB_SUSP_CTRL);
@@ -750,6 +783,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		val = readl(base + USB_SUSP_CTRL);
 		val &= ~USB_SUSP_SET;
 		writel(val, base + USB_SUSP_CTRL);
+		if (phy->mode == TEGRA_USB_PHY_MODE_HOST)
+			vbus_enable();
+#endif
 	}
 
 	utmi_phy_clk_enable(phy);
@@ -760,10 +796,20 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + USB_PORTSC1);
 	}
 #else
+	if(phy->instance == 2) {
+		writel(0, base + ICUSB_CTRL);
+
+		val = readl(base + TEGRA_USB_USBMODE_REG_OFFSET);
+		writel((val | TEGRA_USB_USBMODE_HOST),
+			(base + TEGRA_USB_USBMODE_REG_OFFSET));
+	}
 	val = readl(base + HOSTPC1_DEVLC);
 	val &= ~HOSTPC1_DEVLC_PTS(~0);
 	val |= HOSTPC1_DEVLC_STS;
 	writel(val, base + HOSTPC1_DEVLC);
+	if (phy->instance == 2 && phy->mode == TEGRA_USB_PHY_MODE_HOST) {
+		vbus_enable();
+	}
 #endif
 	if (phy->mode == TEGRA_USB_PHY_MODE_HOST) {
 		vbus_enable(usb_phy_data[phy->instance].vbus_gpio);
@@ -780,7 +826,15 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	utmi_phy_clk_disable(phy);
 
 	if (phy->mode == TEGRA_USB_PHY_MODE_HOST) {
-		vbus_disable(usb_phy_data[phy->instance].vbus_gpio);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+		if (phy->instance == 0) {
+			vbus_disable(usb_phy_data[phy->instance].vbus_gpio);
+		}
+#else
+		if (phy->instance == 2) {
+			vbus_disable(usb_phy_data[phy->instance].vbus_gpio);
+		}
+#endif
 	}
 
 	if (phy->mode == TEGRA_USB_PHY_MODE_DEVICE) {
