@@ -89,7 +89,7 @@ struct tegra_usb_phy {
 	struct clk *pad_clk;
 	enum tegra_usb_phy_mode mode;
 	void *config;
-	struct regulator *reg_vdd;
+	struct regulator *reg_vbus;
 	bool regulator_on;
 	struct usb_phy *ulpi;
 	struct usb_phy u_phy;
