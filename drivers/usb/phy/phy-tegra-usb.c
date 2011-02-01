@@ -307,6 +307,7 @@
 
 #define TEGRA_PMC_USB_AO		0xf0
 #define   TEGRA_PMC_USB_AO_VBUS_WAKEUP_PD_P0	(1 << 2)
+#define   TEGRA_PMC_USB_AO_ID_PD_P0		(1 << 3)
 
 #define ICUSB_CTRL		0x15c
 #endif
@@ -778,7 +779,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~HOSTPC1_DEVLC_PTS(~0);
 	val |= HOSTPC1_DEVLC_STS;
 	writel(val, base + HOSTPC1_DEVLC);
-	if (phy->instance == 2 && phy->mode == TEGRA_USB_PHY_MODE_HOST) {
+	if (((phy->instance == 0 ) || (phy->instance == 2))
+			&& phy->mode == TEGRA_USB_PHY_MODE_HOST) {
 		vbus_enable(phy);
 	}
 #endif
@@ -802,7 +804,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			vbus_disable(phy);
 		}
 #else
-		if (phy->instance == 2) {
+		if (phy->instance == 0 || phy->instance == 2) {
 			vbus_disable(phy);
 		}
 #endif
@@ -1508,11 +1510,15 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	phy->u_phy.shutdown = tegra_usb_phy_close;
 	phy->u_phy.set_suspend = tegra_usb_phy_suspend;
 
-	phy->reg_vdd = regulator_get(NULL, "avdd_usb");
-	if (WARN_ON(IS_ERR_OR_NULL(phy->reg_vdd))) {
-		pr_err("couldn't get regulator avdd_usb: %ld \n",
-			 PTR_ERR(phy->reg_vbus));
-		err = PTR_ERR(phy->reg_vbus);
+	if (phy->instance == 0)
+		phy->reg_vbus = regulator_get(NULL, "vdd_vbus_micro_usb");
+	else if (phy->instance == 2)
+		phy->reg_vbus = regulator_get(NULL, "vdd_vbus_typea_usb");
+	else
+		return phy;
+	if (WARN_ON(IS_ERR_OR_NULL(phy->reg_vbus))) {
+		pr_err("couldn't get regulator vdd_vbus_usb: %ld, instance : %d\n",
+			 PTR_ERR(phy->reg_vbus), phy->instance);
 		goto err1;
 	}
 
