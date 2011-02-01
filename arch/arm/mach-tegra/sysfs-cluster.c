@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 NVIDIA Corporation.
+ * Copyright (c) 2010-2011 NVIDIA Corporation.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -89,13 +89,13 @@
 #include "power.h"
 
 #define SYSFS_CLUSTER_PRINTS	   1	/* Nonzero: enable status prints */
-#define SYSFS_CLUSTER_DEBUG_PRINTS 0	/* Nonzero: enable debug prints */
+#define SYSFS_CLUSTER_TRACE_PRINTS 0	/* Nonzero: enable trace prints */
 #define SYSFS_CLUSTER_POWER_MODE   0	/* Nonzero: use power modes other than LP2*/
 
-#if SYSFS_CLUSTER_DEBUG_PRINTS
-#define DEBUG_CLUSTER(x) printk x
+#if SYSFS_CLUSTER_TRACE_PRINTS
+#define TRACE_CLUSTER(x) printk x
 #else
-#define DEBUG_CLUSTER(x)
+#define TRACE_CLUSTER(x)
 #endif
 
 #if SYSFS_CLUSTER_PRINTS
@@ -138,6 +138,12 @@ static struct kobj_attribute cluster_powermode_attr =
 		__ATTR(power_mode, 0640, sysfscluster_show, sysfscluster_store);
 #endif
 
+#if DEBUG_CLUSTER_SWITCH
+unsigned int tegra_cluster_debug = 1;
+static struct kobj_attribute cluster_debug_attr =
+		__ATTR(debug, 0640, sysfscluster_show, sysfscluster_store);
+#endif
+
 typedef enum
 {
 	ClusterAttr_Invalid = 0,
@@ -146,7 +152,10 @@ typedef enum
 	ClusterAttr_Force,
 	ClusterAttr_WakeMs,
 #if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
-	ClusterAttr_PowerMode
+	ClusterAttr_PowerMode,
+#endif
+#if DEBUG_CLUSTER_SWITCH
+	ClusterAttr_Debug
 #endif
 } ClusterAttr;
 
@@ -164,7 +173,11 @@ static ClusterAttr GetClusterAttr(const char *name)
 	if (!strcmp(name, "power_mode"))
 		return ClusterAttr_PowerMode;
 #endif
-	DEBUG_CLUSTER(("GetClusterAttr(%s): invalid\n", name));
+#if DEBUG_CLUSTER_SWITCH
+	if (!strcmp(name, "debug"))
+		return ClusterAttr_Debug;
+#endif
+	TRACE_CLUSTER(("GetClusterAttr(%s): invalid\n", name));
 	return ClusterAttr_Invalid;
 }
 
@@ -174,7 +187,7 @@ static ssize_t sysfscluster_show(struct kobject *kobj,
 	ClusterAttr type;
 	ssize_t len;
 
-	DEBUG_CLUSTER(("+sysfscluster_show\n"));
+	TRACE_CLUSTER(("+sysfscluster_show\n"));
 
 	type = GetClusterAttr(attr->attr.name);
 	switch (type) {
@@ -202,12 +215,18 @@ static ssize_t sysfscluster_show(struct kobject *kobj,
 		break;
 #endif
 
+#if DEBUG_CLUSTER_SWITCH
+	case ClusterAttr_Debug:
+		len = sprintf(buf, "%d\n", tegra_cluster_debug);
+		break;
+#endif
+
 	default:
 		len = sprintf(buf, "invalid\n");
 		break;
 	}
 
-	DEBUG_CLUSTER(("-sysfscluster_show\n"));
+	TRACE_CLUSTER(("-sysfscluster_show\n"));
 	return len;
 }
 
@@ -221,7 +240,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 	int tmp;
 	int cnt;
 
-	DEBUG_CLUSTER(("+sysfscluster_store: %p, %d\n", buf, count));
+	TRACE_CLUSTER(("+sysfscluster_store: %p, %d\n", buf, count));
 
 	/* The count includes data bytes follow by a line feed character. */
 	if (!buf || (count < 1)) {
@@ -330,6 +349,22 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		break;
 #endif
 
+#if DEBUG_CLUSTER_SWITCH
+	case ClusterAttr_Debug:
+		if ((count == 1) && (*buf == '0'))
+			tegra_cluster_debug = 0;
+		else if ((count == 1) && (*buf == '1'))
+			tegra_cluster_debug = 1;
+		else {
+			PRINT_CLUSTER(("cluster/debug: '%*.*s' invalid, "
+				"must be 0 or 1\n", count, count, buf));
+			ret = -EINVAL;
+			break;
+		}
+		PRINT_CLUSTER(("cluster/debug -> %d\n",tegra_cluster_debug));
+		break;
+#endif
+
 	default:
 		ret = -ENOENT;
 		break;
@@ -338,7 +373,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 	spin_unlock(&cluster_lock);
 
 fail:
-	DEBUG_CLUSTER(("-sysfscluster_store: %d\n", count));
+	TRACE_CLUSTER(("-sysfscluster_store: %d\n", count));
 	return ret;
 }
 
@@ -346,7 +381,7 @@ fail:
 	do { \
 		e = sysfs_create_file(cluster_kobj, &cluster_##x##_attr.attr); \
 		if (e) { \
-			DEBUG_CLUSTER(("cluster/" __stringify(x) \
+			TRACE_CLUSTER(("cluster/" __stringify(x) \
 				": sysfs_create_file failed!\n")); \
 			goto fail; \
 		} \
@@ -356,7 +391,7 @@ static int __init sysfscluster_init(void)
 {
 	int e;
 
-	DEBUG_CLUSTER(("+sysfscluster_init\n"));
+	TRACE_CLUSTER(("+sysfscluster_init\n"));
 
 	spin_lock_init(&cluster_lock);
 	cluster_kobj = kobject_create_and_add("cluster", kernel_kobj);
@@ -368,6 +403,9 @@ static int __init sysfscluster_init(void)
 #if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	CREATE_FILE(powermode);
 #endif
+#if DEBUG_CLUSTER_SWITCH
+	CREATE_FILE(debug);
+#endif
 
 	spin_lock(&cluster_lock);
 	if (is_lp_cluster())
@@ -377,7 +415,7 @@ static int __init sysfscluster_init(void)
 	spin_unlock(&cluster_lock);
 
 fail:
-	DEBUG_CLUSTER(("-sysfscluster_init\n"));
+	TRACE_CLUSTER(("-sysfscluster_init\n"));
 	return e;
 }
 
@@ -386,7 +424,10 @@ fail:
 
 static void __exit sysfscluster_exit(void)
 {
-	DEBUG_CLUSTER(("+sysfscluster_exit\n"));
+	TRACE_CLUSTER(("+sysfscluster_exit\n"));
+#if DEBUG_CLUSTER_SWITCH
+	REMOVE_FILE(debug);
+#endif
 #if defined(CONFIG_PM) && SYSFS_CLUSTER_POWER_MODE
 	REMOVE_FILE(powermode);
 #endif
@@ -395,7 +436,7 @@ static void __exit sysfscluster_exit(void)
 	REMOVE_FILE(immediate);
 	REMOVE_FILE(active);
 	kobject_del(cluster_kobj);
-	DEBUG_CLUSTER(("-sysfscluster_exit\n"));
+	TRACE_CLUSTER(("-sysfscluster_exit\n"));
 }
 
 module_init(sysfscluster_init);
