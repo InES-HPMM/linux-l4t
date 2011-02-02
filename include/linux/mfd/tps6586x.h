@@ -73,6 +73,19 @@ struct tps6586x_subdev_info {
 	struct device_node *of_node;
 };
 
+struct tps6586x_epoch_start {
+	int year;
+	int month;
+	int day;
+	int hour;
+	int min;
+	int sec;
+};
+
+struct tps6586x_rtc_platform_data {
+	struct tps6586x_epoch_start start;
+};
+
 struct tps6586x_platform_data {
 	int num_subdevs;
 	struct tps6586x_subdev_info *subdevs;
