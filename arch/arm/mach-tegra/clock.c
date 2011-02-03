@@ -37,11 +37,7 @@
 /* Global data of Tegra CPU CAR ops */
 struct tegra_cpu_car_ops *tegra_cpu_car_ops;
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define DISABLE_BOOT_CLOCKS 1
-#else
-#define DISABLE_BOOT_CLOCKS 0	/* !!!FIXME!!! DISABLED FOR EMMC ON CARDHU */
-#endif
 
 /*
  * Locking:
