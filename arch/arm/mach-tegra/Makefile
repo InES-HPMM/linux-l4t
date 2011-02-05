@@ -47,6 +47,9 @@ obj-$(CONFIG_SMP)			+= headsmp.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += headsmp-t3.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
+ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
+endif
 obj-$(CONFIG_TEGRA_PCI)			+= pcie.o
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 
