@@ -130,6 +130,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	s64 us;
 
 	local_irq_disable();
+	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	local_fiq_disable();
 	enter = ktime_get();
 
@@ -143,6 +144,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	us = ktime_to_us(exit);
 
 	local_fiq_enable();
+	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 	local_irq_enable();
 
 	smp_rmb();
