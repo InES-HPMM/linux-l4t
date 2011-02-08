@@ -24,7 +24,6 @@
 #include <linux/serial_8250.h>
 #include <linux/i2c-tegra.h>
 #include <mach/irqs.h>
-#include <mach/sata.h>
 #include <linux/usb/tegra_usb_phy.h>
 
 #include "gpio-names.h"
@@ -961,8 +960,6 @@ struct platform_device tegra_otg_device = {
 #ifdef CONFIG_SATA_AHCI_TEGRA
 static u64 tegra_sata_dma_mask = DMA_BIT_MASK(32);
 
-static struct tegra_sata_platform_data tegra_sata_pdata;
-
 static struct resource tegra_sata_resources[] = {
 	[0] = {
 		.start = TEGRA_SATA_BAR5_BASE,
@@ -985,7 +982,7 @@ struct platform_device tegra_sata_device = {
 	.name 	= "tegra-sata",
 	.id 	= 0,
 	.dev 	= {
-		.platform_data = &tegra_sata_pdata,
+		.platform_data = 0,
 		.coherent_dma_mask = DMA_BIT_MASK(32),
 		.dma_mask = &tegra_sata_dma_mask,
 	},
