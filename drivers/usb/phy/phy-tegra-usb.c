@@ -1091,7 +1091,7 @@ static int	tegra_phy_init(struct usb_phy *x)
 	struct tegra_ulpi_config *ulpi_config;
 	int err;
 
-	if (phy_is_ulpi(phy)) {
+	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_ULPI) {
 		ulpi_config = phy->config;
 
 		if (ulpi_config->inf_type == TEGRA_USB_LINK_ULPI) {
@@ -1441,7 +1441,8 @@ static irqreturn_t usb_phy_vbus_irq_thr(int irq, void *pdata)
 }
 
 struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
-	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode)
+	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode
+	enum tegra_usb_phy_type usb_phy_type)
 {
 	struct tegra_usb_phy *phy;
 	unsigned long parent_rate;
@@ -1458,6 +1459,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	phy->config = config;
 	phy->mode = phy_mode;
 	phy->dev = dev;
+	phy->usb_phy_type = usb_phy_type;
 	phy->initialized = 0;
 	phy->regulator_on = 0;
 
@@ -1547,7 +1549,7 @@ EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
 
 void tegra_usb_phy_preresume(struct tegra_usb_phy *phy)
 {
-	if (!phy_is_ulpi(phy))
+	if (phy->usb_phy_type != TEGRA_USB_PHY_TYPE_ULPI)
 		utmi_phy_preresume(phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_preresume);
@@ -1587,7 +1589,7 @@ EXPORT_SYMBOL_GPL(tegra_ehci_phy_restore_end);
 
 void tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy)
 {
-	if (!phy_is_ulpi(phy))
+	if (phy->usb_phy_type != TEGRA_USB_PHY_TYPE_ULPI)
 		utmi_phy_clk_disable(phy);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_clk_disable);

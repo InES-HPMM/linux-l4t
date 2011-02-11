@@ -71,6 +71,13 @@ enum tegra_usb_phy_mode {
 	TEGRA_USB_PHY_MODE_HOST,
 };
 
+enum tegra_usb_phy_type {
+	TEGRA_USB_PHY_TYPE_UTMIP = 1,
+	TEGRA_USB_PHY_TYPE_ULPI = 2,
+	TEGRA_USB_PHY_TYPE_HSIC = 3,
+	TEGRA_USB_PHY_TYPE_ICUSB = 4,
+};
+
 struct usb_phy_plat_data {
 	int instance;
 	int vbus_irq;
@@ -90,6 +97,7 @@ struct tegra_usb_phy {
 	enum tegra_usb_phy_mode mode;
 	void *config;
 	struct regulator *reg_vbus;
+	enum tegra_usb_phy_type usb_phy_type;
 	bool regulator_on;
 	struct usb_phy *ulpi;
 	struct usb_phy u_phy;
@@ -98,7 +106,8 @@ struct tegra_usb_phy {
 };
 
 struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
-	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode);
+	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode,
+	enum tegra_usb_phy_type usb_phy_type);
 
 void tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy);
 
