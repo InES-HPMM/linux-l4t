@@ -535,6 +535,12 @@ config SRAM
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
 
+config BCM4329_RFKILL
+	bool "Enable BCM4329 RFKILL driver"
+	default n
+	---help---
+	Adds BCM4329 RFKILL driver for Broadcom BCM4329 chipset
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
