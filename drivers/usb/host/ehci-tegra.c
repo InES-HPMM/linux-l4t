@@ -293,6 +293,9 @@ static void tegra_ehci_shutdown(struct usb_hcd *hcd)
 		tegra_ehci_power_up(hcd);
 
 	ehci_shutdown(hcd);
+
+	/* we are ready to shut down, powerdown the phy */
+	tegra_ehci_power_down(hcd);
 }
 
 static int tegra_ehci_setup(struct usb_hcd *hcd)
@@ -797,9 +800,12 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	if (!IS_ERR(tegra->transceiver))
 		otg_set_host(tegra->transceiver->otg, NULL);
 
+	/* Turn Off Interrupts */
+	ehci_writel(tegra->ehci, 0, &tegra->ehci->regs->intr_enable);
+	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
-
+	tegra_usb_phy_power_off(tegra->phy);
 	usb_phy_shutdown(&tegra->phy->u_phy);
 
 	clk_disable_unprepare(tegra->clk);
