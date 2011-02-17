@@ -20,6 +20,7 @@
 
 struct tegra_i2c_platform_data {
 	unsigned long bus_clk_rate;
+	bool is_clkon_always;
 	int retries;
 	int timeout;	/* in jiffies */
 	u16 slave_addr;

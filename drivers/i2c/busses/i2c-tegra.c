@@ -171,6 +171,7 @@ struct tegra_i2c_dev {
 	unsigned long bus_clk_rate;
 	bool is_suspended;
 	u16 slave_addr;
+	bool is_clkon_always;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -795,6 +796,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->irq = irq;
 	i2c_dev->cont_id = pdev->id;
 	i2c_dev->dev = &pdev->dev;
+	i2c_dev->is_clkon_always = pdata->is_clkon_always;
 
 	i2c_dev->bus_clk_rate = 100000; /* default clock rate */
 	if (pdata) {
@@ -826,6 +828,9 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	init_completion(&i2c_dev->msg_complete);
 
 	platform_set_drvdata(pdev, i2c_dev);
+
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_enable(i2c_dev);
 
 	ret = tegra_i2c_init(i2c_dev);
 	if (ret) {
@@ -873,6 +878,10 @@ static int tegra_i2c_remove(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 	i2c_del_adapter(&i2c_dev->adapter);
+
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_disable(i2c_dev);
+
 	return 0;
 }
 
@@ -882,7 +891,11 @@ static int tegra_i2c_suspend_noirq(struct device *dev)
 	struct tegra_i2c_dev *i2c_dev = dev_get_drvdata(dev);
 
 	i2c_lock_adapter(&i2c_dev->adapter);
+
 	i2c_dev->is_suspended = true;
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_disable(i2c_dev);
+
 	i2c_unlock_adapter(&i2c_dev->adapter);
 
 	return 0;
@@ -894,6 +907,9 @@ static int tegra_i2c_resume_noirq(struct device *dev)
 	int ret;
 
 	i2c_lock_adapter(&i2c_dev->adapter);
+
+	if (i2c_dev->is_clkon_always)
+		tegra_i2c_clock_enable(i2c_dev);
 
 	ret = tegra_i2c_init(i2c_dev);
 
