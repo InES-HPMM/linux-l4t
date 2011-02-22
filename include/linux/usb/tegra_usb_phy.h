@@ -17,6 +17,7 @@
 #define __TEGRA_USB_PHY_H
 
 #include <linux/clk.h>
+#include <linux/regulator/consumer.h>
 #include <linux/usb/otg.h>
 
 struct tegra_utmip_config {
@@ -70,6 +71,12 @@ enum tegra_usb_phy_mode {
 	TEGRA_USB_PHY_MODE_HOST,
 };
 
+struct usb_phy_plat_data {
+	int instance;
+	int vbus_irq;
+	int vbus_gpio;
+};
+
 struct tegra_xtal_freq;
 
 struct tegra_usb_phy {
@@ -82,6 +89,8 @@ struct tegra_usb_phy {
 	struct clk *pad_clk;
 	enum tegra_usb_phy_mode mode;
 	void *config;
+	struct regulator *reg_vdd;
+	bool regulator_on;
 	struct usb_phy *ulpi;
 	struct usb_phy u_phy;
 	struct device *dev;
@@ -111,5 +120,7 @@ int tegra_usb_phy_bus_reset(struct tegra_usb_phy *phy);
 int tegra_usb_phy_bus_idle(struct tegra_usb_phy *phy);
 
 bool tegra_usb_phy_is_device_connected(struct tegra_usb_phy *phy);
+
+int __init tegra_usb_phy_init(struct usb_phy_plat_data *pdata, int size);
 
 #endif /* __TEGRA_USB_PHY_H */
