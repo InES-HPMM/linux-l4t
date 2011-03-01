@@ -28,6 +28,11 @@
 #include "tegra2_emc.h"
 #include "fuse.h"
 
+#define TEGRA_MRR_DIVLD        (1<<20)
+#define TEGRA_EMC_STATUS       0x02b4
+#define TEGRA_EMC_MRR          0x00ec
+static DEFINE_MUTEX(tegra_emc_mrr_lock);
+
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
 #else
@@ -46,6 +51,35 @@ static inline void emc_writel(u32 val, unsigned long addr)
 static inline u32 emc_readl(unsigned long addr)
 {
 	return readl(emc_regbase + addr);
+}
+
+/* read LPDDR2 memory modes */
+static int tegra_emc_read_mrr(unsigned long addr)
+{
+	u32 value;
+	int count = 100;
+
+	mutex_lock(&tegra_emc_mrr_lock);
+	do {
+		emc_readl(TEGRA_EMC_MRR);
+	} while (--count && (emc_readl(TEGRA_EMC_STATUS) & TEGRA_MRR_DIVLD));
+	if (count == 0) {
+		pr_err("%s: Failed to read memory type\n", __func__);
+		BUG();
+	}
+	value = (1 << 30) | (addr << 16);
+	emc_writel(value, TEGRA_EMC_MRR);
+
+	count = 100;
+	while (--count && !(emc_readl(TEGRA_EMC_STATUS) & TEGRA_MRR_DIVLD));
+	if (count == 0) {
+		pr_err("%s: Failed to read memory type\n", __func__);
+		BUG();
+	}
+	value = emc_readl(TEGRA_EMC_MRR) & 0xFFFF;
+	mutex_unlock(&tegra_emc_mrr_lock);
+
+	return value;
 }
 
 static const unsigned long emc_reg_addr[TEGRA_EMC_NUM_REGS] = {
@@ -100,7 +134,7 @@ static const unsigned long emc_reg_addr[TEGRA_EMC_NUM_REGS] = {
 /* Select the closest EMC rate that is higher than the requested rate */
 long tegra_emc_round_rate(unsigned long rate)
 {
-	struct tegra_emc_pdata *pdata;
+	struct tegra_emc_chip *pdata;
 	int i;
 	int best = -1;
 	unsigned long distance = ULONG_MAX;
@@ -144,7 +178,7 @@ long tegra_emc_round_rate(unsigned long rate)
  */
 int tegra_emc_set_rate(unsigned long rate)
 {
-	struct tegra_emc_pdata *pdata;
+	struct tegra_emc_chip *pdata;
 	int i;
 	int j;
 
@@ -176,6 +210,52 @@ int tegra_emc_set_rate(unsigned long rate)
 	return 0;
 }
 
+static struct tegra_emc_chip *tegra_emc_choose_chip(
+		struct platform_device *pdev)
+{
+	struct tegra_emc_pdata *pdata = pdev->dev.platform_data;
+	int i;
+	int vid;
+	int rev_id1;
+	int rev_id2;
+	int pid;
+	int chip_matched = -1;
+
+	vid = tegra_emc_read_mrr(5);
+	rev_id1 = tegra_emc_read_mrr(6);
+	rev_id2 = tegra_emc_read_mrr(7);
+	pid = tegra_emc_read_mrr(8);
+
+	for (i = 0; i < pdata->num_chips; i++) {
+		if (pdata->chips[i].mem_manufacturer_id >= 0) {
+			if (pdata->chips[i].mem_manufacturer_id != vid)
+				continue;
+		}
+		if (pdata->chips[i].mem_revision_id1 >= 0) {
+			if (pdata->chips[i].mem_revision_id1 != rev_id1)
+				continue;
+		}
+		if (pdata->chips[i].mem_revision_id2 >= 0) {
+			if (pdata->chips[i].mem_revision_id2 != rev_id2)
+				continue;
+		}
+		if (pdata->chips[i].mem_pid >= 0) {
+			if (pdata->chips[i].mem_pid != pid)
+				continue;
+		}
+
+		chip_matched = i;
+		break;
+	}
+
+	if (chip_matched >= 0) {
+		pr_info("%s: %s memory found\n", __func__,
+			pdata->chips[chip_matched].description);
+		return &pdata->chips[chip_matched];
+	}
+	return NULL;
+}
+
 #ifdef CONFIG_OF
 static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 {
@@ -192,12 +272,12 @@ static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
 	return NULL;
 }
 
-static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
+static struct tegra_emc_chip *tegra_emc_dt_parse_pdata(
 		struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *tnp, *iter;
-	struct tegra_emc_pdata *pdata;
+	struct tegra_emc_chip *pdata;
 	int ret, i, num_tables;
 
 	if (!np)
@@ -261,17 +341,17 @@ out:
 	return pdata;
 }
 #else
-static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
+static struct tegra_emc_chip *tegra_emc_dt_parse_pdata(
 		struct platform_device *pdev)
 {
 	return NULL;
 }
 #endif
 
-static struct tegra_emc_pdata *tegra_emc_fill_pdata(struct platform_device *pdev)
+static struct tegra_emc_chip *tegra_emc_fill_pdata(struct platform_device *pdev)
 {
 	struct clk *c = clk_get_sys(NULL, "emc");
-	struct tegra_emc_pdata *pdata;
+	struct tegra_emc_chip *pdata;
 	unsigned long khz;
 	int i;
 
@@ -298,7 +378,7 @@ static struct tegra_emc_pdata *tegra_emc_fill_pdata(struct platform_device *pdev
 
 static int tegra_emc_probe(struct platform_device *pdev)
 {
-	struct tegra_emc_pdata *pdata;
+	struct tegra_emc_chip *pdata;
 	struct resource *res;
 
 	if (!emc_enable) {
@@ -318,7 +398,8 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	pdata = pdev->dev.platform_data;
+	if (pdev->dev.platform_data)
+		pdata = tegra_emc_choose_chip(pdev);
 
 	if (!pdata)
 		pdata = tegra_emc_dt_parse_pdata(pdev);
