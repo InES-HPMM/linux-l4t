@@ -27,6 +27,10 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra30_emc.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
+#include <asm/cputime.h>
 
 #include <mach/iomap.h>
 
@@ -180,13 +184,20 @@ enum {
 #undef DEFINE_REG
 
 static struct clk_mux_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
-static int emc_last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
+static int emc_last_sel;
 static struct tegra_emc_table start_timing;
 
 static u32 dram_type;
 static u32 dram_dev_num;
 
 static struct clk *emc;
+
+static struct {
+	cputime64_t time_at_clock[TEGRA_EMC_TABLE_MAX_SIZE];
+	u64 last_update;
+	u64 clkchange_count;
+	spinlock_t spinlock;
+} emc_stats;
 
 static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
@@ -198,6 +209,26 @@ static inline void emc_writel(int bank, u32 val, unsigned long addr)
 static inline u32 emc_readl(int bank, unsigned long addr)
 {
 	return readl(emc_regbases[bank] + addr);
+}
+
+static void emc_last_stats_update(int last_sel)
+{
+	unsigned long flags;
+	u64 cur_jiffies = get_jiffies_64();
+
+	spin_lock_irqsave(&emc_stats.spinlock, flags);
+
+	emc_stats.time_at_clock[emc_last_sel] =
+		emc_stats.time_at_clock[emc_last_sel] +
+			(cur_jiffies - emc_stats.last_update);
+
+	emc_stats.last_update = cur_jiffies;
+
+	if (last_sel < TEGRA_EMC_TABLE_MAX_SIZE) {
+		emc_stats.clkchange_count++;
+		emc_last_sel = last_sel;
+	}
+	spin_unlock_irqrestore(&emc_stats.spinlock, flags);
 }
 
 static int wait_for_update(u32 status_reg, u32 bit_mask, bool updated_state)
@@ -498,7 +529,9 @@ int tegra_emc_set_rate(unsigned long rate)
 	if (i >= tegra_emc_table_size)
 		return -EINVAL;
 
-	if (emc_last_sel >= tegra_emc_table_size) {
+	if (!emc_stats.clkchange_count) {
+		/* can not assume that boot timing matches dfs table even
+		   if boot frequency matches one of the table nodes */
 		emc_get_timing(&start_timing);
 		last_timing = &start_timing;
 	}
@@ -507,7 +540,7 @@ int tegra_emc_set_rate(unsigned long rate)
 
 	clk_setting = tegra_emc_clk_sel[i].value;
 	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
-	emc_last_sel = i;
+	emc_last_stats_update(i);
 
 	pr_debug("%s: rate %lu setting 0x%x\n", __func__, rate, clk_setting);
 
@@ -603,10 +636,16 @@ static int tegra_emc_probe(struct platform_device *pdev)
 	int i;
 	u32 reg, div_value;
 	bool pllm_entry = false;
+	unsigned long boot_rate;
 	const struct clk_mux_sel *sel;
+
+	emc_stats.clkchange_count = 0;
+	spin_lock_init(&emc_stats.spinlock);
+	emc_stats.last_update = get_jiffies_64();
 
 	emc = tegra_get_clock_by_name("emc");
 	BUG_ON(!emc);
+	boot_rate = clk_get_rate(emc) / 1000;
 
 	if (emc->parent != tegra_get_clock_by_name("pll_m")) {
 		pr_warn("tegra: boot parent %s is not supported by EMC DFS\n",
@@ -644,6 +683,9 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		sel = find_matching_input(table_rate, &div_value);
 		if (!sel)
 			continue;
+
+		if (table_rate == boot_rate)
+			emc_last_sel = i;
 
 		tegra_emc_clk_sel[i] = *sel;
 		BUG_ON(div_value >
@@ -697,3 +739,64 @@ static int __init tegra_init_emc(void)
 	return platform_driver_register(&tegra_emc_driver);
 }
 device_initcall(tegra_emc_init);
+
+#ifdef CONFIG_DEBUG_FS
+
+static struct dentry *emc_debugfs_root;
+
+static int emc_stats_show(struct seq_file *s, void *data)
+{
+	int i;
+
+	emc_last_stats_update(TEGRA_EMC_TABLE_MAX_SIZE);
+
+	seq_printf(s, "%-10s %-10s \n", "rate kHz", "time");
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_clk_sel[i].input == NULL)
+			continue;	/* invalid entry */
+
+		seq_printf(s, "%-10lu %-10llu \n", tegra_emc_table[i].rate,
+			   cputime64_to_clock_t(emc_stats.time_at_clock[i]));
+	}
+	seq_printf(s, "%-15s %llu\n", "transitions:",
+		   emc_stats.clkchange_count);
+	seq_printf(s, "%-15s %llu\n", "time-stamp:",
+		   cputime64_to_clock_t(emc_stats.last_update));
+
+	return 0;
+}
+
+static int emc_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, emc_stats_show, inode->i_private);
+}
+
+static const struct file_operations emc_stats_fops = {
+	.open		= emc_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int __init tegra_emc_debug_init(void)
+{
+	if (!tegra_emc_table)
+		return 0;
+
+	emc_debugfs_root = debugfs_create_dir("tegra_emc", NULL);
+	if (!emc_debugfs_root)
+		return -ENOMEM;
+
+	if (!debugfs_create_file(
+		"stats", S_IRUGO, emc_debugfs_root, NULL, &emc_stats_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(emc_debugfs_root);
+	return -ENOMEM;
+}
+
+late_initcall(tegra_emc_debug_init);
+#endif
