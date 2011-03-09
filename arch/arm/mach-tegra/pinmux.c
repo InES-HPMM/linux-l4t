@@ -504,8 +504,8 @@ static int tegra_drive_pinmux_set_pull_up(int pg,
 	spin_lock_irqsave(&mux_lock, flags);
 
 	reg = pg_readl(drive_pingroups[pg].reg_bank, drive_pingroups[pg].reg);
-	reg &= ~(0x1f << 12);
-	reg |= pull_up << 12;
+	reg &= ~(0x1f << 20);
+	reg |= pull_up << 20;
 	pg_writel(reg, drive_pingroups[pg].reg_bank, drive_pingroups[pg].reg);
 
 	spin_unlock_irqrestore(&mux_lock, flags);
