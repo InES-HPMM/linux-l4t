@@ -13,6 +13,10 @@
 #define TPS6586X_SLEW_RATE_SET		0x08
 #define TPS6586X_SLEW_RATE_MASK         0x07
 
+#define SM0_PWM_BIT 0
+#define SM1_PWM_BIT 1
+#define SM2_PWM_BIT 2
+
 enum {
 	TPS6586X_ID_SYS,
 	TPS6586X_ID_SM_0,
@@ -62,8 +66,16 @@ enum {
 	TPS6586X_INT_RTC_ALM2,
 };
 
+enum pwm_pfm_mode {
+	PWM_ONLY,
+	AUTO_PWM_PFM,
+	NOT_CONFIGURABLE
+};
+
 struct tps6586x_settings {
 	int slew_rate;
+	/* SM0, SM1 and SM2 have PWM-only and auto PWM/PFM mode */
+	enum pwm_pfm_mode sm_pwm_mode;
 };
 
 struct tps6586x_subdev_info {
