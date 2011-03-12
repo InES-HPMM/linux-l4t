@@ -266,6 +266,39 @@ static int tps6586x_regulator_set_slew_rate(struct platform_device *pdev,
 			setting->slew_rate & TPS6586X_SLEW_RATE_MASK);
 }
 
+static inline int tps6586x_regulator_set_pwm_mode(struct platform_device *pdev,
+			int id, struct regulator_init_data *p)
+{
+	struct device *parent = pdev->dev.parent;
+	struct tps6586x_settings *setting = p->driver_data;
+	int ret = 0;
+	uint8_t mask;
+
+	if (setting == NULL)
+		return 0;
+
+	switch (id) {
+	case TPS6586X_ID_SM_0:
+		mask = 1 << SM0_PWM_BIT;
+		break;
+	case TPS6586X_ID_SM_1:
+		mask = 1 << SM1_PWM_BIT;
+		break;
+	case TPS6586X_ID_SM_2:
+		mask = 1 << SM2_PWM_BIT;
+		break;
+	default:
+		/* not all regulators have PWM/PFM option */
+		return 0;
+	}
+
+	if (setting->sm_pwm_mode == PWM_ONLY)
+		ret = tps6586x_set_bits(parent, TPS6586X_SMODE1, mask);
+	else if (setting->sm_pwm_mode == AUTO_PWM_PFM)
+		ret = tps6586x_clr_bits(parent, TPS6586X_SMODE1, mask);
+
+	return ret;
+}
 static inline struct tps6586x_regulator *find_regulator_info(int id)
 {
 	struct tps6586x_regulator *ri;
@@ -426,6 +459,8 @@ static int tps6586x_regulator_probe(struct platform_device *pdev)
 				regulator_unregister(rdev[id]);
 				goto fail;
 			}
+
+			tps6586x_regulator_set_pwm_mode(pdev, id, reg_data);
 		}
 	}
 
