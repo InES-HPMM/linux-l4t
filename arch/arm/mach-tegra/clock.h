@@ -104,11 +104,14 @@ struct clk_ops {
 	int		(*set_parent)(struct clk *, struct clk *);
 	int		(*set_rate)(struct clk *, unsigned long);
 	long		(*round_rate)(struct clk *, unsigned long);
-	unsigned long	(*get_max_rate)(struct clk *);
-	void		(*recalculate_rate)(struct clk *);
 	void		(*reset)(struct clk *, bool);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
+};
+
+enum cpu_mode {
+	MODE_G = 0,
+	MODE_LP,
 };
 
 struct clk {
@@ -165,7 +168,7 @@ struct clk {
 		struct {
 			struct clk			*main;
 			struct clk			*backup;
-			unsigned long			lp_max_rate;
+			enum cpu_mode			mode;
 		} cpu;
 		struct {
 			struct list_head		node;
@@ -253,6 +256,7 @@ struct tegra_clk_init_table {
 void clk_init(struct clk *clk);
 unsigned long clk_get_rate_locked(struct clk *c);
 void clk_set_cansleep(struct clk *c);
+unsigned long clk_get_max_rate(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
 int clk_reparent(struct clk *c, struct clk *parent);
 int tegra_emc_set_rate(unsigned long rate);
