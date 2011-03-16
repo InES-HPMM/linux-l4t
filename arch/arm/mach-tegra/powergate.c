@@ -205,11 +205,13 @@ int __init tegra_powergate_init(void)
 	switch (tegra_chip_id) {
 	case TEGRA20:
 		tegra_num_powerdomains = 7;
+		powergate_name = powergate_name_t20;
 		break;
 	case TEGRA30:
 		tegra_num_powerdomains = 14;
 		tegra_num_cpu_domains = 4;
 		tegra_cpu_domains = tegra30_cpu_domains;
+		powergate_name = powergate_name_t30;
 		break;
 	default:
 		/* Unknown Tegra variant. Disable powergating */
@@ -219,8 +221,6 @@ int __init tegra_powergate_init(void)
 
 	return 0;
 }
-
-#ifdef CONFIG_DEBUG_FS
 
 static const char * const *powergate_name;
 
@@ -251,6 +251,16 @@ static const char * const powergate_name_t30[] = {
 	[TEGRA_POWERGATE_3D1]	= "3d1",
 };
 
+const char* tegra_powergate_get_name(int id)
+{
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
+		return "invalid";
+
+	return powergate_name[id];
+}
+
+#ifdef CONFIG_DEBUG_FS
+
 static int powergate_show(struct seq_file *s, void *data)
 {
 	int i;
@@ -279,15 +289,6 @@ static const struct file_operations powergate_fops = {
 int __init tegra_powergate_debugfs_init(void)
 {
 	struct dentry *d;
-
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		powergate_name = powergate_name_t20;
-		break;
-	case TEGRA30:
-		powergate_name = powergate_name_t30;
-		break;
-	}
 
 	if (powergate_name) {
 		d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
