@@ -37,6 +37,7 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	unsigned long size);
+bool is_tegra_debug_uartport_hs(void);
 
 extern unsigned long tegra_bootloader_fb_start;
 extern unsigned long tegra_bootloader_fb_size;
