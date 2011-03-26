@@ -233,13 +233,13 @@ unsigned long long tegra_chip_uid(void)
 		break;
 	}
 
-	vendor = fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
-	fab = fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
+	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
+	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
 
 	/* Lot code must be re-encoded from a 5 digit base-36 'BCD' number
 	   to a binary number. */
 	lot = 0;
-	reg = fuse_readl(FUSE_LOT_CODE_1) << 2;
+	reg = tegra_fuse_readl(FUSE_LOT_CODE_1) << 2;
 
 	for (i = 0; i < 5; ++i) {
 		u32 digit = (reg & 0xFC000000) >> 26;
@@ -249,9 +249,9 @@ unsigned long long tegra_chip_uid(void)
 		reg <<= 6;
 	}
 
-	wafer = fuse_readl(FUSE_WAFER_ID) & FUSE_WAFER_ID_MASK;
-	x = fuse_readl(FUSE_X_COORDINATE) & FUSE_X_COORDINATE_MASK;
-	y = fuse_readl(FUSE_Y_COORDINATE) & FUSE_Y_COORDINATE_MASK;
+	wafer = tegra_fuse_readl(FUSE_WAFER_ID) & FUSE_WAFER_ID_MASK;
+	x = tegra_fuse_readl(FUSE_X_COORDINATE) & FUSE_X_COORDINATE_MASK;
+	y = tegra_fuse_readl(FUSE_Y_COORDINATE) & FUSE_Y_COORDINATE_MASK;
 
 	uid = ((unsigned long long)cid  << 60ull)
 	    | ((unsigned long long)vendor << 56ull)
