@@ -10,7 +10,7 @@
  * where the final input plaintext, keys and the IV have to be copied
  * before starting the encrypt/decrypt operation.
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2010-2011, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
