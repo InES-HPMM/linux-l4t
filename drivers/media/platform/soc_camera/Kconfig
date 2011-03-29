@@ -58,6 +58,13 @@ config VIDEO_SH_MOBILE_CEU
 	---help---
 	  This is a v4l2 driver for the SuperH Mobile CEU Interface
 
+config VIDEO_TEGRA
+	tristate "Tegra soc_camera host driver"
+	depends on VIDEO_DEV && ARCH_TEGRA && SOC_CAMERA && HAS_DMA && HAVE_CLK
+	select VIDEOBUF2_DMA_NVMAP
+	---help---
+	  This is a v4l2 driver for the Tegra camera interface
+
 config VIDEO_OMAP1
 	tristate "OMAP1 Camera Interface driver"
 	depends on VIDEO_DEV && ARCH_OMAP1 && SOC_CAMERA
