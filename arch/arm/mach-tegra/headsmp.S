@@ -60,6 +60,7 @@ ENTRY(v7_invalidate_l1)
 ENDPROC(v7_invalidate_l1)
 
 
+#ifdef CONFIG_SMP
 ENTRY(tegra_secondary_startup)
         bl      v7_invalidate_l1
 	/* Enable coresight */
@@ -67,6 +68,7 @@ ENTRY(tegra_secondary_startup)
 	mcr	p14, 0, r0, c7, c12, 6
         b       secondary_startup
 ENDPROC(tegra_secondary_startup)
+#endif
 
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_start)
