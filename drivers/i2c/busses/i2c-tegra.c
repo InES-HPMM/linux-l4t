@@ -103,6 +103,9 @@
 #define I2C_HEADER_CONTINUE_XFER		(1<<15)
 #define I2C_HEADER_MASTER_ADDR_SHIFT		12
 #define I2C_HEADER_SLAVE_ADDR_SHIFT		1
+
+#define SL_ADDR1(addr) (addr & 0xff)
+#define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 /*
  * msg_end_type: The bus control which need to be send at end of transfer.
  * @MSG_END_STOP: Send stop pulse at end of transfer.
@@ -167,6 +170,7 @@ struct tegra_i2c_dev {
 	int msgs_num;
 	unsigned long bus_clk_rate;
 	bool is_suspended;
+	u16 slave_addr;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -375,6 +379,13 @@ static void tegra_i2c_slave_init(struct tegra_i2c_dev *i2c_dev)
 	u32 val = I2C_SL_CNFG_NEWSL | I2C_SL_CNFG_NACK;
 
 	i2c_writel(i2c_dev, val, I2C_SL_CNFG);
+
+	if (i2c_dev->slave_addr) {
+		u16 addr = i2c_dev->slave_addr;
+
+		i2c_writel(i2c_dev, SL_ADDR1(addr), I2C_SL_ADDR1);
+		i2c_writel(i2c_dev, SL_ADDR2(addr), I2C_SL_ADDR2);
+	}
 }
 
 static inline int tegra_i2c_clock_enable(struct tegra_i2c_dev *i2c_dev)
@@ -811,6 +822,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	} else if (pdev->id == 3) {
 		i2c_dev->is_dvc = 1;
 	}
+	i2c_dev->slave_addr = pdata->slave_addr;
 	init_completion(&i2c_dev->msg_complete);
 
 	platform_set_drvdata(pdev, i2c_dev);
