@@ -8,6 +8,7 @@ obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
 obj-y                                   += pinmux.o
+obj-$(CONFIG_PM_SLEEP)			+= pm-irq.o
 obj-y					+= fuse.o
 obj-y					+= pmc.o
 obj-y					+= flowctrl.o
