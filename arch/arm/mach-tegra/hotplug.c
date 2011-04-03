@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/smp.h>
 #include <linux/clk/tegra.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/cacheflush.h>
 #include <asm/smp_plat.h>
@@ -19,12 +20,23 @@
 
 static void (*tegra_hotplug_shutdown)(void);
 
+int tegra_cpu_kill(unsigned int cpu)
+{
+	cpu = cpu_logical_map(cpu);
+
+	tegra_wait_cpu_in_reset(cpu);
+
+	tegra_disable_cpu_clock(cpu);
+
+	return 1;
+}
+
 /*
  * platform-specific code to shutdown a CPU
  *
  * Called with IRQs disabled
  */
-void __ref tegra_cpu_die(unsigned int cpu)
+void tegra_cpu_die(unsigned int cpu)
 {
 	cpu = cpu_logical_map(cpu);
 
