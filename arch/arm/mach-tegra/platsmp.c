@@ -7,10 +7,13 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
+ *  Copyright (C) 2010 NVIDIA Corporation
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
 #include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
@@ -20,8 +23,6 @@
 #include <linux/io.h>
 #include <linux/clk/tegra.h>
 
-#include <asm/cacheflush.h>
-#include <asm/mach-types.h>
 #include <asm/smp_scu.h>
 
 #include <mach/powergate.h>
@@ -33,12 +34,12 @@
 #include "common.h"
 #include "iomap.h"
 
+#define EVP_CPU_RESET_VECTOR \
+	(IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x100)
+
 extern void tegra_secondary_startup(void);
 
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
-
-#define EVP_CPU_RESET_VECTOR \
-	(IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x100)
 
 static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
