@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA, Corp.
+ * Copyright (C) 2010-2011 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -22,6 +22,7 @@
 #include <linux/io.h>
 #include <linux/export.h>
 #include <linux/tegra-soc.h>
+#include <linux/init.h>
 
 #include "fuse.h"
 #include "iomap.h"
@@ -57,6 +58,7 @@ int tegra_chip_id;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
 enum tegra_revision tegra_revision;
+struct tegra_id tegra_id;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
@@ -96,11 +98,28 @@ bool tegra_spare_fuse(int bit)
 	return tegra_fuse_readl(tegra_fuse_spare_bit + bit * 4);
 }
 
-static enum tegra_revision tegra_get_revision(u32 id)
+static enum tegra_revision tegra_get_revision()
 {
-	u32 minor_rev = (id >> 16) & 0xf;
+	if (tegra_chip_id == TEGRA30) {
+		switch (tegra_id.major) {
+		case 0:
+			if (tegra_id.minor != 1)
+				return TEGRA_REVISION_UNKNOWN;
+			else if (tegra_id.netlist == 12 && (tegra_id.patch & 0xf) == 12)
+				return TEGRA_REVISION_A01;
+			else if (tegra_id.netlist == 12 && (tegra_id.patch & 0xf) > 12)
+				return TEGRA_REVISION_A02;
+			else if (tegra_id.netlist > 12)
+				return TEGRA_REVISION_A02;
+			else
+				return TEGRA_REVISION_UNKNOWN;
+		case 1:
+			break;
+		default:
+			return TEGRA_REVISION_UNKNOWN;
+	}
 
-	switch (minor_rev) {
+	switch (tegra_id.minor) {
 	case 1:
 		return TEGRA_REVISION_A01;
 	case 2:
@@ -135,7 +154,7 @@ u32 tegra_read_chipid(void)
 
 void tegra_init_fuse(void)
 {
-	u32 id;
+	u32 id, netlist;
 
 	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 	reg |= 1 << 28;
@@ -147,8 +166,17 @@ void tegra_init_fuse(void)
 	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
 	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 
-	id = tegra_read_chipid();
-	tegra_chip_id = (id >> 8) & 0xff;
+	if (tegra_id.chipid) {
+		tegra_chip_id = tegra_id.chipid;
+	} else {
+		id = tegra_read_chipid();
+		netlist = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860);
+		tegra_chip_id = (id >> 8) & 0xff;
+		tegra_id.major = (id >> 4) & 0xf;
+		tegra_id.minor = (id >> 16) & 0xf;
+		tegra_id.netlist = (netlist >> 0) & 0xffff;
+		tegra_id.patch = (netlist >> 16) & 0xffff;
+	}
 
 	switch (tegra_chip_id) {
 	case TEGRA20:
@@ -165,7 +193,7 @@ void tegra_init_fuse(void)
 		tegra_init_speedo_data = &tegra_get_process_id;
 	}
 
-	tegra_revision = tegra_get_revision(id);
+	tegra_revision = tegra_get_revision();
 	tegra_init_speedo_data();
 
 	pr_info("Tegra Revision: %s SKU: %d CPU Process: %d Core Process: %d\n",
@@ -265,3 +293,26 @@ unsigned long long tegra_chip_uid(void)
 #endif
 }
 EXPORT_SYMBOL(tegra_chip_uid);
+
+static int __init tegra_bootloader_tegraid(char *str)
+{
+	u32 id[5];
+	int i = 0;
+
+	do {
+		id[i++] = simple_strtoul(str, &str, 16);
+	} while (*str++ && i < ARRAY_SIZE(id));
+
+	while (i < ARRAY_SIZE(id))
+		id[i++] = 0;
+
+	tegra_chip_id = id[0];
+	tegra_id.major = id[1];
+	tegra_id.minor = id[2];
+	tegra_id.netlist = id[3];
+	tegra_id.patch = id[4];
+	return 0;
+}
+
+/* tegraid=chipid.major.minor.netlist.patch */
+early_param("tegraid", tegra_bootloader_tegraid);
