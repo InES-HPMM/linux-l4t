@@ -269,6 +269,7 @@ int clk_reparent(struct clk *c, struct clk *parent);
 int tegra_emc_set_rate(unsigned long rate);
 long tegra_emc_round_rate(unsigned long rate);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
+void tegra_emc_timing_invalidate(void);
 #endif /* !CONFIG_COMMON_CLK */
 
 struct tegra_sku_rate_limit {

@@ -186,6 +186,7 @@ enum {
 static struct clk_mux_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 static int emc_last_sel;
 static struct tegra_emc_table start_timing;
+static bool emc_timing_in_sync;
 
 static u32 dram_type;
 static u32 dram_dev_num;
@@ -597,7 +598,7 @@ int tegra_emc_set_rate(unsigned long rate)
 	if (i >= tegra_emc_table_size)
 		return -EINVAL;
 
-	if (!emc_stats.clkchange_count) {
+	if (!emc_timing_in_sync) {
 		/* can not assume that boot timing matches dfs table even
 		   if boot frequency matches one of the table nodes */
 		emc_get_timing(&start_timing);
@@ -608,6 +609,7 @@ int tegra_emc_set_rate(unsigned long rate)
 
 	clk_setting = tegra_emc_clk_sel[i].value;
 	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
+	emc_timing_in_sync = true;
 	emc_last_stats_update(i);
 
 	pr_debug("%s: rate %lu setting 0x%x\n", __func__, rate, clk_setting);
@@ -809,6 +811,11 @@ static int __init tegra_init_emc(void)
 	return platform_driver_register(&tegra_emc_driver);
 }
 device_initcall(tegra_emc_init);
+
+void tegra_emc_timing_invalidate(void)
+{
+	emc_timing_in_sync = false;
+}
 
 #ifdef CONFIG_DEBUG_FS
 
