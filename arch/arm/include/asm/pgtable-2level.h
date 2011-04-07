@@ -141,6 +141,7 @@
 #define L_PTE_MT_DEV_WC		(_AT(pteval_t, 0x09) << 2)	/* 1001 */
 #define L_PTE_MT_DEV_CACHED	(_AT(pteval_t, 0x0b) << 2)	/* 1011 */
 #define L_PTE_MT_MASK		(_AT(pteval_t, 0x0f) << 2)
+#define L_PTE_MT_INNER_WB	(_AT(pteval_t, 0x05) << 2)	/* 0101 (armv6, armv7) */
 
 #ifndef __ASSEMBLY__
 
