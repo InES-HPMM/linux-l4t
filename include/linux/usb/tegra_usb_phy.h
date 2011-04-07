@@ -59,6 +59,7 @@ struct tegra_usb_phy {
 	struct usb_phy *ulpi;
 	struct usb_phy u_phy;
 	struct device *dev;
+	int initialized;
 };
 
 struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
