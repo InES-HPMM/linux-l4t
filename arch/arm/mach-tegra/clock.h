@@ -24,6 +24,7 @@
 #include <linux/clk-provider.h>
 #include <linux/clkdev.h>
 #include <linux/list.h>
+#include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
 
@@ -96,6 +97,7 @@ struct clk_ops {
 struct clk {
 	/* node for master clocks list */
 	struct list_head	node;		/* node for list of all clocks */
+	struct dvfs 		*dvfs;
 	struct clk_lookup	lookup;
 
 #ifdef CONFIG_DEBUG_FS
@@ -103,9 +105,12 @@ struct clk {
 #endif
 	bool			set;
 	struct clk_ops		*ops;
+	unsigned long		dvfs_rate;
 	unsigned long		rate;
 	unsigned long		max_rate;
 	unsigned long		min_rate;
+	bool			auto_dvfs;
+	bool			cansleep;
 	u32			flags;
 	const char		*name;
 
@@ -151,6 +156,7 @@ struct clk {
 		} shared_bus_user;
 	} u;
 
+	struct mutex mutex;
 	spinlock_t spinlock;
 };
 
@@ -228,6 +234,7 @@ struct tegra_clk_init_table {
 #ifndef CONFIG_COMMON_CLK
 void clk_init(struct clk *clk);
 unsigned long clk_get_rate_locked(struct clk *c);
+void clk_set_cansleep(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
 int clk_reparent(struct clk *c, struct clk *parent);
 #endif /* !CONFIG_COMMON_CLK */
@@ -236,5 +243,46 @@ void tegra2_init_clocks(void);
 void tegra30_init_clocks(void);
 struct clk *tegra_get_clock_by_name(const char *name);
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table);
+
+#ifndef CONFIG_COMMON_CLK
+static inline bool clk_is_auto_dvfs(struct clk *c)
+{
+	return c->auto_dvfs;
+}
+
+static inline bool clk_is_dvfs(struct clk *c)
+{
+	return (c->dvfs != NULL);
+}
+
+static inline bool clk_cansleep(struct clk *c)
+{
+	return c->cansleep;
+}
+
+static inline void clk_lock_save(struct clk *c, unsigned long *flags)
+{
+	if (clk_cansleep(c)) {
+		*flags = 0;
+		mutex_lock(&c->mutex);
+	} else {
+		spin_lock_irqsave(&c->spinlock, *flags);
+	}
+}
+
+static inline void clk_unlock_restore(struct clk *c, unsigned long *flags)
+{
+	if (clk_cansleep(c))
+		mutex_unlock(&c->mutex);
+	else
+		spin_unlock_irqrestore(&c->spinlock, *flags);
+}
+
+static inline void clk_lock_init(struct clk *c)
+{
+	mutex_init(&c->mutex);
+	spin_lock_init(&c->spinlock);
+}
+#endif
 
 #endif

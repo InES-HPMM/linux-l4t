@@ -32,6 +32,7 @@
 
 #include "board.h"
 #include "common.h"
+#include "dvfs.h"
 #include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
