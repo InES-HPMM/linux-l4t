@@ -1,5 +1,5 @@
 /*
- * drivers/rtc/rtc-tps6591x.c
+ * drivers/rtc/rtc_tps6591x.c
  *
  * RTC driver for TI TPS6591x
  *
@@ -38,8 +38,11 @@
 #define RTC_SECONDS_REG		0x0
 #define RTC_ALARM		0x8
 #define RTC_INT			0x12
-#define RTC_INT_MASK		0x51
 #define RTC_RESET_STATUS	0x16
+
+#define ENABLE_ALARM_INT 0x8
+#define RTC_RESET_VALUE 0x80
+#define ALARM_INT_STATUS 0x40
 
 struct tps6591x_rtc {
 	unsigned long		epoch_start;
@@ -52,6 +55,16 @@ static int tps6591x_read_regs(struct device *dev, int reg, int len,
 	uint8_t *val)
 {
 	int ret;
+
+	/* dummy read of STATUS_REG as per data sheet */
+	ret = tps6591x_reads(dev->parent, RTC_STATUS, 1, val);
+	if (ret < 0) {
+		dev_err(dev->parent, "\n %s failed reading from RTC_STATUS\n",
+			__func__);
+		WARN_ON(1);
+		return ret;
+	}
+
 	ret = tps6591x_reads(dev->parent, reg, len, val);
 	if (ret < 0) {
 		dev_err(dev->parent, "\n %s failed reading from 0x%02x\n",
@@ -78,7 +91,7 @@ static int tps6591x_write_regs(struct device *dev, int reg, int len,
 
 static int tps6591x_rtc_valid_tm(struct rtc_time *tm)
 {
-	if (tm->tm_year <= 99
+	if (tm->tm_year > 99
 		|| ((unsigned)tm->tm_mon) >= 12
 		|| tm->tm_mday < 1
 		|| tm->tm_mday > rtc_month_days(tm->tm_mon, tm->tm_year + 1900)
@@ -113,9 +126,9 @@ static void convert_decimal_to_bcd(u8 *buf, u8 len)
 		buf[i] = dec2bcd(buf[i]);
 }
 
-static void print_time(struct rtc_time *tm)
+static void print_time(struct device *dev, struct rtc_time *tm)
 {
-	printk(KERN_INFO "\n TPS6591x RTC Time : %d-%d-%d %d:%d:%d\n",
+	dev_info(dev, "RTC Time : %d-%d-%d %d:%d:%d\n",
 		tm->tm_mday, tm->tm_mon, tm->tm_year,
 		tm->tm_hour, tm->tm_min , tm->tm_sec);
 }
@@ -137,7 +150,7 @@ static int tps6591x_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_mon = buff[4];
 	tm->tm_year = buff[5];
 	tm->tm_wday = buff[6];
-	print_time(tm);
+	print_time(dev, tm);
 	return tps6591x_rtc_valid_tm(tm);
 }
 
@@ -226,7 +239,7 @@ static int tps6591x_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	buff[5] = tm->tm_year;
 	buff[6] = tm->tm_wday;
 
-	print_time(tm);
+	print_time(dev, tm);
 	convert_decimal_to_bcd(buff, sizeof(buff));
 	err = tps6591x_rtc_stop(dev);
 	if (err < 0) {
@@ -261,7 +274,7 @@ static int tps6591x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return -EIO;
 
 	dev_info(dev->parent, "\n setting alarm to requested time::\n");
-	print_time(&alrm->time);
+	print_time(dev->parent, &alrm->time);
 	rtc_tm_to_time(&alrm->time, &seconds);
 	tps6591x_rtc_read_time(dev, &tm);
 	rtc_tm_to_time(&tm, &rtc->epoch_start);
@@ -311,7 +324,7 @@ static int tps6591x_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alrm->time.tm_year = buff[5];
 
 	dev_info(dev->parent, "\n getting alarm time::\n");
-	print_time(&alrm->time);
+	print_time(dev, &alrm->time);
 
 	return 0;
 }
@@ -367,8 +380,14 @@ static irqreturn_t tps6591x_rtc_irq(int irq, void *data)
 	u8 reg;
 	int err;
 
-	/* clear Alarm stray interrupt and Power_up status bits.*/
-	reg = 0xC0;
+	/* clear Alarm status bits.*/
+	err = tps6591x_read_regs(dev, RTC_STATUS, 1, &reg);
+	if (err) {
+		dev_err(dev->parent, "unable to read RTC_STATUS reg\n");
+		return -EBUSY;
+	}
+
+	reg = ALARM_INT_STATUS;
 	err = tps6591x_write_regs(dev, RTC_STATUS, 1, &reg);
 	if (err) {
 		dev_err(dev->parent, "unable to program RTC_STATUS reg\n");
@@ -402,7 +421,7 @@ static int tps6591x_rtc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "\n no IRQ specified, wakeup is disabled\n");
 
 	dev_set_drvdata(&pdev->dev, rtc);
-	rtc->rtc = rtc_device_register("rtc-tps6591x", &pdev->dev,
+	rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
 				       &tps6591x_rtc_ops, THIS_MODULE);
 
 	if (IS_ERR(rtc->rtc)) {
@@ -420,20 +439,12 @@ static int tps6591x_rtc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "\n %s unable to read status\n", __func__);
 		return -EBUSY;
 	}
-	if (reg & 0x80)
+
+	if (reg & RTC_RESET_VALUE)
 		dev_info(&pdev->dev, "\n %s RTC reset occured\n", __func__);
 
-	/* cear Alarm stray interrupt and Power_up status bits.*/
-	reg = 0xC0;
-	tps6591x_write_regs(&pdev->dev, RTC_STATUS, 1, &reg);
-	if (err) {
-		dev_err(&pdev->dev, "unable to program RTC_STATUS reg\n");
-		return -EBUSY;
-	}
-
-	/* enable ALARM INT only */
-	reg = 0xBF;
-	tps6591x_write_regs(&pdev->dev, RTC_INT_MASK, 1, &reg);
+	reg = ENABLE_ALARM_INT;
+	tps6591x_write_regs(&pdev->dev, RTC_INT, 1, &reg);
 	if (err) {
 		dev_err(&pdev->dev, "unable to program Interrupt Mask reg\n");
 		return -EBUSY;
@@ -442,15 +453,14 @@ static int tps6591x_rtc_probe(struct platform_device *pdev)
 	if (pdata && (pdata->irq >= 0)) {
 		rtc->irq = pdata->irq;
 		err = request_threaded_irq(pdata->irq, NULL, tps6591x_rtc_irq,
-					   IRQF_ONESHOT, "rtc-tps6591x",
-					   &pdev->dev);
+					IRQF_ONESHOT, "rtc_tps6591x",
+					&pdev->dev);
 		if (err) {
 			dev_err(&pdev->dev, "request IRQ:%d fail\n", rtc->irq);
 			rtc->irq = -1;
 		} else {
 			device_init_wakeup(&pdev->dev, 1);
 			enable_irq_wake(rtc->irq);
-			disable_irq(rtc->irq);
 		}
 	}
 	return 0;
@@ -475,7 +485,7 @@ static int tps6591x_rtc_remove(struct platform_device *pdev)
 
 static struct platform_driver tps6591x_rtc_driver = {
 	.driver	= {
-		.name	= "rtc-tps6591x",
+		.name	= "rtc_tps6591x",
 		.owner	= THIS_MODULE,
 	},
 	.probe	= tps6591x_rtc_probe,
@@ -497,4 +507,4 @@ module_exit(tps6591x_rtc_exit);
 MODULE_DESCRIPTION("TI TPS6591x RTC driver");
 MODULE_AUTHOR("NVIDIA Corporation");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:rtc-tps6591x");
+MODULE_ALIAS("platform:rtc_tps6591x");
