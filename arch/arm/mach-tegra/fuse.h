@@ -31,6 +31,7 @@ enum tegra_revision {
 
 struct tegra_id {
 	unsigned int major, minor, netlist, patch;
+	char *priv;
 };
 
 #define SKU_ID_T20	8

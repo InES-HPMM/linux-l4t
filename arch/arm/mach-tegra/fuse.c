@@ -23,6 +23,7 @@
 #include <linux/export.h>
 #include <linux/tegra-soc.h>
 #include <linux/init.h>
+#include <linux/string.h>
 
 #include "fuse.h"
 #include "iomap.h"
@@ -126,7 +127,7 @@ static enum tegra_revision tegra_get_revision()
 		return TEGRA_REVISION_A02;
 	case 3:
 		if (tegra_chip_id == TEGRA20 &&
-			(tegra_spare_fuse(18) || tegra_spare_fuse(19)))
+			(*tegra_id.priv) == 'p')
 			return TEGRA_REVISION_A03p;
 		else
 			return TEGRA_REVISION_A03;
@@ -166,9 +167,7 @@ void tegra_init_fuse(void)
 	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
 	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 
-	if (tegra_id.chipid) {
-		tegra_chip_id = tegra_id.chipid;
-	} else {
+	if (!tegra_chip_id) {
 		id = tegra_read_chipid();
 		netlist = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860);
 		tegra_chip_id = (id >> 8) & 0xff;
@@ -176,6 +175,10 @@ void tegra_init_fuse(void)
 		tegra_id.minor = (id >> 16) & 0xf;
 		tegra_id.netlist = (netlist >> 0) & 0xffff;
 		tegra_id.patch = (netlist >> 16) & 0xffff;
+
+		if (tegra_chip_id == TEGRA20 &&
+		    (tegra_spare_fuse(18) || tegra_spare_fuse(19)))
+			tegra_id.priv = "p";
 	}
 
 	switch (tegra_chip_id) {
@@ -294,14 +297,23 @@ unsigned long long tegra_chip_uid(void)
 }
 EXPORT_SYMBOL(tegra_chip_uid);
 
+static char chippriv[16]; /* Permanent buffer for private string */
 static int __init tegra_bootloader_tegraid(char *str)
 {
 	u32 id[5];
 	int i = 0;
+	char *priv = NULL;
 
 	do {
 		id[i++] = simple_strtoul(str, &str, 16);
 	} while (*str++ && i < ARRAY_SIZE(id));
+
+	if (*(str - 1) == '.') {
+		strncpy(chippriv, str, sizeof(chippriv) - 1);
+		priv = chippriv;
+		if (strlen(str) > sizeof(chippriv) - 1)
+			pr_err("### tegraid.priv in kernel arg truncated\n");
+	}
 
 	while (i < ARRAY_SIZE(id))
 		id[i++] = 0;
@@ -311,8 +323,9 @@ static int __init tegra_bootloader_tegraid(char *str)
 	tegra_id.minor = id[2];
 	tegra_id.netlist = id[3];
 	tegra_id.patch = id[4];
+	tegra_id.priv = priv;
 	return 0;
 }
 
-/* tegraid=chipid.major.minor.netlist.patch */
+/* tegraid=chipid.major.minor.netlist.patch[.priv] */
 early_param("tegraid", tegra_bootloader_tegraid);
