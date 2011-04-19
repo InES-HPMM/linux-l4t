@@ -65,6 +65,8 @@ static struct {
 	unsigned int last_lp2_int_count[NR_IRQS];
 } idle_stats;
 
+static unsigned int tegra_lp2_min_residency;
+
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
@@ -143,6 +145,8 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	local_irq_enable();
 
 	smp_rmb();
+	if (state->target_residency < tegra_lp2_min_residency)
+		state->target_residency = tegra_lp2_min_residency;
 
 	idle_stats.cpu_wants_lp2_time[dev->cpu] += us;
 
@@ -158,9 +162,13 @@ static int __init tegra_cpuidle_init(void)
 	struct cpuidle_device *dev;
 	struct cpuidle_driver *drv = &tegra_idle_driver;
 
+	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
+
 	tegra_idle_driver.states[1].exit_latency = tegra_cpu_power_good_time();
 	tegra_idle_driver.states[1].target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();
+	if (tegra_idle_driver.states[1].target_residency < tegra_lp2_min_residency)
+		tegra_idle_driver.states[1].target_residency = tegra_lp2_min_residency;
 
 	ret = cpuidle_register_driver(&tegra_idle_driver);
 	if (ret) {
