@@ -52,6 +52,7 @@ struct tegra_ehci_hcd {
 	struct tegra_usb_phy *phy;
 	struct clk *clk;
 	struct clk *emc_clk;
+	struct clk *sclk_clk;
 	struct usb_phy *transceiver;
 	int host_resumed;
 	int port_resuming;
@@ -64,6 +65,7 @@ static void tegra_ehci_power_up(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 
 	clk_prepare_enable(tegra->emc_clk);
+	clk_prepare_enable(tegra->sclk_clk);
 	clk_prepare_enable(tegra->clk);
 	usb_phy_set_suspend(&tegra->phy->u_phy, 0);
 	tegra->host_resumed = 1;
@@ -76,6 +78,7 @@ static void tegra_ehci_power_down(struct usb_hcd *hcd)
 	tegra->host_resumed = 0;
 	usb_phy_set_suspend(&tegra->phy->u_phy, 1);
 	clk_disable_unprepare(tegra->clk);
+	clk_disable_unprepare(tegra->sclk_clk);
 	clk_disable_unprepare(tegra->emc_clk);
 }
 
@@ -954,6 +957,16 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	if (err)
 		goto fail_clk;
 
+	tegra->sclk_clk = devm_clk_get(&pdev->dev, "sclk");
+	if (IS_ERR(tegra->sclk_clk)) {
+		dev_err(&pdev->dev, "Can't get sclk clock\n");
+		err = PTR_ERR(tegra->sclk_clk);
+		goto fail_sclk_clk;
+	}
+
+	clk_prepare_enable(tegra->sclk_clk);
+	clk_set_rate(tegra->sclk_clk, 80000000);
+
 	tegra->emc_clk = devm_clk_get(&pdev->dev, "emc");
 	if (IS_ERR(tegra->emc_clk)) {
 		dev_err(&pdev->dev, "Can't get emc clock\n");
@@ -1072,6 +1085,8 @@ fail:
 fail_io:
 	clk_disable_unprepare(tegra->emc_clk);
 fail_emc_clk:
+	clk_disable_unprepare(tegra->sclk_clk);
+fail_sclk_clk:
 	clk_disable_unprepare(tegra->clk);
 fail_clk:
 	usb_put_hcd(hcd);
@@ -1107,6 +1122,8 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	usb_phy_shutdown(&tegra->phy->u_phy);
 
 	clk_disable_unprepare(tegra->clk);
+
+	clk_disable_unprepare(tegra->sclk_clk);
 
 	clk_disable_unprepare(tegra->emc_clk);
 
