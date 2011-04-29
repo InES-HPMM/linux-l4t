@@ -52,6 +52,8 @@
 #define FUSE_X_COORDINATE_MASK	0x1ff
 #define FUSE_Y_COORDINATE	0x218
 #define FUSE_Y_COORDINATE_MASK	0x1ff
+#define FUSE_GPU_INFO		0x390
+#define FUSE_GPU_INFO_MASK	(1<<2)
 #endif
 
 int tegra_sku_id;
@@ -306,6 +308,24 @@ unsigned long long tegra_chip_uid(void)
 #endif
 }
 EXPORT_SYMBOL(tegra_chip_uid);
+
+int tegra_gpu_register_sets(void)
+{
+	u32 reg;
+
+	if (tegra_chip_id == TEGRA20)
+		return 1;
+
+	if (tegra_chip_id == TEGRA30) {
+		u32 reg = readl(IO_TO_VIRT(TEGRA_CLK_RESET_BASE + FUSE_GPU_INFO));
+		if (reg & FUSE_GPU_INFO_MASK)
+			return 1;
+		else
+			return 2;
+	}
+
+	BUG();
+}
 
 static char chippriv[16]; /* Permanent buffer for private string */
 static int __init tegra_bootloader_tegraid(char *str)
