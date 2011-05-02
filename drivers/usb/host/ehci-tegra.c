@@ -156,9 +156,13 @@ static int tegra_ehci_hub_control(
 
 	if (typeReq == GetPortStatus) {
 		temp = ehci_readl(ehci, status_reg);
-		if (tegra->port_resuming && !(temp & PORT_SUSPEND)) {
+		if (tegra->port_resuming && !(temp & PORT_SUSPEND) &&
+		    time_after_eq(jiffies, ehci->reset_done[wIndex-1])) {
 			/* Resume completed, re-enable disconnect detection */
 			tegra->port_resuming = 0;
+			clear_bit((wIndex & 0xff) - 1, &ehci->suspended_ports);
+			ehci->reset_done[wIndex-1] = 0;
+			clear_bit(wIndex-1, &ehci->resuming_ports);
 			tegra_usb_phy_postresume(tegra->phy);
 		}
 	}
@@ -211,10 +215,10 @@ static int tegra_ehci_hub_control(
 		if (!(temp & PORT_SUSPEND))
 			goto done;
 
+		tegra->port_resuming = 1;
+
 		/* Disable disconnect detection during port resume */
 		tegra_usb_phy_preresume(tegra->phy);
-
-		ehci->reset_done[wIndex-1] = jiffies + msecs_to_jiffies(25);
 
 		ehci_dbg(ehci, "%s:USBSTS = 0x%x", __func__,
 			ehci_readl(ehci, &ehci->regs->status));
@@ -237,26 +241,12 @@ static int tegra_ehci_hub_control(
 
 		udelay(20);
 		temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
-		/* start resume signalling */
+		/* start resume signaling */
 		ehci_writel(ehci, temp | PORT_RESUME, status_reg);
 		set_bit(wIndex-1, &ehci->resuming_ports);
 
-		spin_unlock_irqrestore(&ehci->lock, flags);
-		msleep(20);
-		spin_lock_irqsave(&ehci->lock, flags);
-
-		/* Poll until the controller clears RESUME and SUSPEND */
-		if (handshake(ehci, status_reg, PORT_RESUME, 0, 2000))
-			pr_err("%s: timeout waiting for RESUME\n", __func__);
-		if (handshake(ehci, status_reg, PORT_SUSPEND, 0, 2000))
-			pr_err("%s: timeout waiting for SUSPEND\n", __func__);
-
-		ehci->reset_done[wIndex-1] = 0;
-		clear_bit(wIndex-1, &ehci->resuming_ports);
-
-		ehci->reset_done[wIndex-1] = 0;
-
-		tegra->port_resuming = 1;
+		ehci->reset_done[wIndex-1] = jiffies + msecs_to_jiffies(25);
+		/* whoever resumes must GetPortStatus to complete it!! */
 		goto done;
 	}
 
@@ -575,8 +565,6 @@ static int controller_resume(struct device *dev)
 	tegra_ehci_restart(hcd);
 
  done:
-	tegra_usb_phy_preresume(tegra->phy);
-	tegra->port_resuming = 1;
 	return 0;
 }
 
