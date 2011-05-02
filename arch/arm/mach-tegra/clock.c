@@ -31,6 +31,7 @@
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
 #include <linux/uaccess.h>
+#include <trace/events/power.h>
 
 #include "board.h"
 #include "clock.h"
@@ -260,6 +261,7 @@ int clk_enable(struct clk *c)
 
 		if (c->ops && c->ops->enable) {
 			ret = c->ops->enable(c);
+			trace_clock_enable(c->name, 1, smp_processor_id());
 			if (ret) {
 				if (c->parent)
 					clk_disable(c->parent);
@@ -289,9 +291,10 @@ void clk_disable(struct clk *c)
 		return;
 	}
 	if (c->refcnt == 1) {
-		if (c->ops && c->ops->disable)
+		if (c->ops && c->ops->disable) {
+			trace_clock_disable(c->name, 0, smp_processor_id());
 			c->ops->disable(c);
-
+		}
 		if (c->parent)
 			clk_disable(c->parent);
 
@@ -390,6 +393,7 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 			return ret;
 	}
 
+	trace_clock_set_rate(c->name, rate, smp_processor_id());
 	ret = c->ops->set_rate(c, rate);
 	if (ret)
 		return ret;
