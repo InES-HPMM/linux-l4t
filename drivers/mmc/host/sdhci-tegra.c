@@ -116,6 +116,36 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *host)
 	return gpio_get_value(plat->wp_gpio);
 }
 
+static void sdhci_status_notify_cb(int card_present, void *dev_id)
+{
+	struct sdhci_host *host = (struct sdhci_host *)dev_id;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	unsigned int status, oldstat;
+
+	pr_debug("%s: card_present %d\n", mmc_hostname(host->mmc),
+		card_present);
+
+	if (!plat->mmc_data.status) {
+		mmc_detect_change(host->mmc, 0);
+		return;
+	}
+
+	status = plat->mmc_data.status(mmc_dev(host->mmc));
+
+	oldstat = plat->mmc_data.card_present;
+	plat->mmc_data.card_present = status;
+	if (status ^ oldstat) {
+		pr_debug("%s: Slot status change detected (%d -> %d)\n",
+			mmc_hostname(host->mmc), oldstat, status);
+		if (status && !plat->mmc_data.built_in)
+			mmc_detect_change(host->mmc, (5 * HZ) / 2);
+		else
+			mmc_detect_change(host->mmc, 0);
+	}
+}
+
 static irqreturn_t carddetect_irq(int irq, void *data)
 {
 	struct sdhci_host *sdhost = (struct sdhci_host *)data;
@@ -289,6 +319,15 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	pltfm_host->priv = tegra_host;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (plat->mmc_data.embedded_sdio)
+		mmc_set_embedded_sdio_data(host->mmc,
+			&plat->mmc_data.embedded_sdio->cis,
+			&plat->mmc_data.embedded_sdio->cccr,
+			plat->mmc_data.embedded_sdio->funcs,
+			plat->mmc_data.embedded_sdio->num_funcs);
+#endif
+
 	if (gpio_is_valid(plat->power_gpio)) {
 		rc = gpio_request(plat->power_gpio, "sdhci_power");
 		if (rc) {
@@ -317,6 +356,12 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			goto err_cd_irq_req;
 		}
 
+	} else if (plat->mmc_data.register_status_notify) {
+		plat->mmc_data.register_status_notify(sdhci_status_notify_cb, host);
+	}
+
+	if (plat->mmc_data.status) {
+		plat->mmc_data.card_present = plat->mmc_data.status(mmc_dev(host->mmc));
 	}
 
 	if (gpio_is_valid(plat->wp_gpio)) {
