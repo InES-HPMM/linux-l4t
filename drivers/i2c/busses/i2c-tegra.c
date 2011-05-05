@@ -32,6 +32,7 @@
 #include <linux/of_device.h>
 #include <linux/module.h>
 #include <linux/clk/tegra.h>
+#include <linux/spinlock.h>
 
 #include <asm/unaligned.h>
 
@@ -427,6 +428,10 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 		return err;
 	}
 
+	/* Interrupt generated before sending stop signal so
+	* wait for some time so that stop signal can be send proerly */
+	udelay(100);
+
 	tegra_periph_reset_assert(i2c_dev->div_clk);
 	udelay(2);
 	tegra_periph_reset_deassert(i2c_dev->div_clk);
@@ -472,7 +477,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 {
 	u32 status;
-	const u32 status_err = I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST;
+	const u32 status_err = I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST | I2C_INT_TX_FIFO_OVERFLOW;
 	struct tegra_i2c_dev *i2c_dev = dev_id;
 
 	status = i2c_readl(i2c_dev, I2C_INT_STATUS);
@@ -502,6 +507,14 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 		if (status & I2C_INT_ARBITRATION_LOST) {
 			i2c_dev->msg_err |= I2C_ERR_ARBITRATION_LOST;
 			dev_warn(i2c_dev->dev, "arbitration lost during "
+				" communicate to add 0x%x\n", i2c_dev->msg_add);
+			dev_warn(i2c_dev->dev, "Packet status 0x%08x\n",
+				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
+		}
+
+		if (status & I2C_INT_TX_FIFO_OVERFLOW) {
+			i2c_dev->msg_err |= I2C_INT_TX_FIFO_OVERFLOW;
+			dev_warn(i2c_dev->dev, "Tx fifo overflow during "
 				" communicate to add 0x%x\n", i2c_dev->msg_add);
 			dev_warn(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
@@ -573,7 +586,7 @@ err:
 	/* An error occurred, mask all interrupts */
 	tegra_i2c_mask_irq(i2c_dev, I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST |
 		I2C_INT_PACKET_XFER_COMPLETE | I2C_INT_TX_FIFO_DATA_REQ |
-		I2C_INT_RX_FIFO_DATA_REQ);
+		I2C_INT_RX_FIFO_DATA_REQ | I2C_INT_TX_FIFO_OVERFLOW);
 
 	i2c_writel(i2c_dev, status, I2C_INT_STATUS);
 
@@ -631,7 +644,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	if (!(msg->flags & I2C_M_RD))
 		tegra_i2c_fill_tx_fifo(i2c_dev);
 
-	int_mask = I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST;
+	int_mask = I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST | I2C_INT_TX_FIFO_OVERFLOW;
 	if (msg->flags & I2C_M_RD)
 		int_mask |= I2C_INT_RX_FIFO_DATA_REQ;
 	else if (i2c_dev->msg_buf_remaining)
@@ -668,6 +681,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 		udelay(DIV_ROUND_UP(2 * 1000000, i2c_dev->bus_clk_rate));
 
 	tegra_i2c_init(i2c_dev);
+
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK) {
 		if (msg->flags & I2C_M_IGNORE_NAK)
 			return 0;
@@ -711,6 +725,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 		if (ret)
 			break;
 	}
+
 	tegra_i2c_clock_disable(i2c_dev);
 
 	i2c_dev->msgs = NULL;
