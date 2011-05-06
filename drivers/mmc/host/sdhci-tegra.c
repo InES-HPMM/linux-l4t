@@ -39,6 +39,8 @@
 #define NVQUIRK_ENABLE_BLOCK_GAP_DET	BIT(1)
 #define NVQUIRK_ENABLE_SDHCI_SPEC_300	BIT(2)
 
+#define SDHCI_VENDOR_CLOCK_CNTRL       0x100
+
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
 	u32 nvquirks;
@@ -47,6 +49,7 @@ struct sdhci_tegra_soc_data {
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
+	bool	clk_enabled;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -195,6 +198,35 @@ static int tegra_sdhci_buswidth(struct sdhci_host *host, int bus_width)
 	return 0;
 }
 
+static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	pr_debug("%s %s %u enabled=%u\n", __func__,
+		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
+
+	if (clock && !tegra_host->clk_enabled) {
+		clk_prepare_enable(pltfm_host->clk);
+		sdhci_writeb(sdhci, 1, SDHCI_VENDOR_CLOCK_CNTRL);
+		tegra_host->clk_enabled = true;
+	} else if (!clock && tegra_host->clk_enabled) {
+		sdhci_writeb(sdhci, 0, SDHCI_VENDOR_CLOCK_CNTRL);
+		clk_disable_unprepare(pltfm_host->clk);
+		tegra_host->clk_enabled = false;
+	}
+}
+
+static void tegra_sdhci_suspend(struct sdhci_host *sdhci)
+{
+	tegra_sdhci_set_clock(sdhci, 0);
+}
+
+static void tegra_sdhci_resume(struct sdhci_host *sdhci)
+{
+	tegra_sdhci_set_clock(sdhci, 1);
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 	.get_ro     = tegra_sdhci_get_ro,
 	.read_l     = tegra_sdhci_readl,
@@ -202,6 +234,9 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.write_l    = tegra_sdhci_writel,
 	.platform_bus_width = tegra_sdhci_buswidth,
 	.platform_reset_exit = tegra_sdhci_reset_exit,
+	.set_clock  = tegra_sdhci_set_clock,
+	.platform_suspend	= tegra_sdhci_suspend,
+	.platform_resume	= tegra_sdhci_resume,
 };
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -380,8 +415,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		rc = PTR_ERR(clk);
 		goto err_clk_get;
 	}
-	clk_prepare_enable(clk);
+	rc = clk_prepare_enable(clk);
+	if (rc != 0)
+		goto err_clk_put;
 	pltfm_host->clk = clk;
+	tegra_host->clk_enabled = true;
 
 	host->mmc->pm_caps = plat->pm_flags;
 
@@ -396,6 +434,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 err_add_host:
 	clk_disable_unprepare(pltfm_host->clk);
+err_clk_put:
 	clk_put(pltfm_host->clk);
 err_clk_get:
 	if (gpio_is_valid(plat->wp_gpio))
@@ -436,7 +475,8 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 	if (gpio_is_valid(plat->power_gpio))
 		gpio_free(plat->power_gpio);
 
-	clk_disable_unprepare(pltfm_host->clk);
+	if (tegra_host->clk_enabled)
+		clk_disable_unprepare(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
 	sdhci_pltfm_free(pdev);
