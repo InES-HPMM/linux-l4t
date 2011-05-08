@@ -597,6 +597,24 @@ out:
 	return ret;
 }
 
+/* dvfs initialization may lower default maximum rate */
+void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
+{
+	struct clk *shared_bus_user;
+
+	if (c->max_rate <= max_rate)
+		return;
+
+	pr_warning("Lowering %s maximum rate from %lu to %lu\n",
+		c->name, c->max_rate, max_rate);
+
+	c->max_rate = max_rate;
+	list_for_each_entry(shared_bus_user,
+			    &c->shared_bus_list, u.shared_bus_user.node) {
+		shared_bus_user->max_rate = max_rate;
+	}
+}
+
 static bool tegra_keep_boot_clocks = false;
 static int __init tegra_keep_boot_clocks_setup(char *__unused)
 {

@@ -267,6 +267,7 @@ struct tegra_clk_init_table {
 };
 
 #ifndef CONFIG_COMMON_CLK
+void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void clk_init(struct clk *clk);
 unsigned long clk_get_rate_locked(struct clk *c);
 void clk_set_cansleep(struct clk *c);
