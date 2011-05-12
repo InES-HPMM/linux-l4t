@@ -418,6 +418,13 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 
 	tegra_ehci_post_reset(tegra->phy);
 
+	/*
+	 * Resetting the controller has the side effect of resetting the PHY.
+	 * So, never reset the controller after the calling
+	 * tegra_ehci_reinit API.
+	 */
+	ehci->controller_resets_phy = 1;
+
 	return 0;
 }
 
