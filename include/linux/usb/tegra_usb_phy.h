@@ -95,7 +95,7 @@ struct tegra_usb_phy {
 	int initialized;
 };
 
-typedef int (*tegra_phy_fp)(struct tegra_usb_phy *phy);
+typedef int (*tegra_phy_fp)(struct tegra_usb_phy *phy, bool is_dpd);
 
 struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode,
@@ -105,11 +105,11 @@ void tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_clk_enable(struct tegra_usb_phy *phy);
 
-void tegra_usb_phy_preresume(struct tegra_usb_phy *phy);
+void tegra_usb_phy_preresume(struct tegra_usb_phy *phy, bool is_dpd);
 
-void tegra_usb_phy_postresume(struct tegra_usb_phy *phy);
+void tegra_usb_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd);
 
-void tegra_ehci_post_reset(struct tegra_usb_phy *phy);
+void tegra_ehci_post_reset(struct tegra_usb_phy *phy, bool is_dpd);
 
 void tegra_ehci_phy_restore_start(struct tegra_usb_phy *phy,
 				 enum tegra_usb_phy_port_speed port_speed);
