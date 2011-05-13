@@ -127,6 +127,7 @@ config TEGRA_AUTO_HOTPLUG
 config TEGRA_EDP_LIMITS
 	bool "Enforce electrical design limits"
 	depends on CPU_FREQ
+	default y if ARCH_TEGRA_3x_SOC
 	default n
 	help
 	  Limit maximum CPU frequency based on temperature and number
