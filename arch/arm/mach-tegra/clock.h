@@ -152,6 +152,7 @@ struct clk {
 	u32				reg_shift;
 
 	struct list_head		shared_bus_list;
+	struct clk_mux_sel		shared_bus_backup;
 
 	union {
 		struct {
@@ -188,6 +189,9 @@ struct clk {
 			struct list_head		node;
 			bool				enabled;
 			unsigned long			rate;
+			const char			*client_id;
+			struct clk			*client;
+			u32				client_div;
 		} shared_bus_user;
 	} u;
 
