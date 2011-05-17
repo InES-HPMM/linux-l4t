@@ -655,6 +655,12 @@ out:
 	return ret;
 }
 
+int tegra_is_clk_enabled(struct clk *c)
+{
+	return c->refcnt;
+}
+EXPORT_SYMBOL(tegra_is_clk_enabled);
+
 /* dvfs initialization may lower default maximum rate */
 void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 {

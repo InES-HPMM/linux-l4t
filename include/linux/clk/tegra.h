@@ -161,6 +161,15 @@ int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb);
 void tegra_unregister_clk_rate_notifier(
 	struct clk *c, struct notifier_block *nb);
 int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
+
+/**
+ * tegra_is_clk_enabled - get info if the clk is enabled or not
+ * @clk: clock source
+ *
+ * Returns refcnt.
+ */
+int tegra_is_clk_enabled(struct clk *clk);
+
 #endif
 
 #endif /* __LINUX_CLK_TEGRA_H_ */

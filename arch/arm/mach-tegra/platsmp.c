@@ -142,7 +142,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 
 	/* If this is the first boot, toggle powergates directly. */
 	if (!tegra_powergate_is_powered(pwrgateid)) {
-		ret = tegra_powergate_power_on(pwrgateid);
+		ret = tegra_unpowergate_partition(pwrgateid);
 		if (ret)
 			return ret;
 
