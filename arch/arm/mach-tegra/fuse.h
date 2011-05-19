@@ -19,15 +19,7 @@
 #ifndef __MACH_TEGRA_FUSE_H
 #define __MACH_TEGRA_FUSE_H
 
-enum tegra_revision {
-	TEGRA_REVISION_UNKNOWN = 0,
-	TEGRA_REVISION_A01,
-	TEGRA_REVISION_A02,
-	TEGRA_REVISION_A03,
-	TEGRA_REVISION_A03p,
-	TEGRA_REVISION_A04,
-	TEGRA_REVISION_MAX,
-};
+#include <mach/hardware.h>
 
 #define SKU_ID_T20	8
 #define SKU_ID_T25SE	20
@@ -36,16 +28,11 @@ enum tegra_revision {
 #define SKU_ID_AP25E	27
 #define SKU_ID_T25E	28
 
-#define TEGRA20		0x20
-#define TEGRA30		0x30
-
 extern int tegra_sku_id;
 extern int tegra_cpu_process_id;
 extern int tegra_core_process_id;
-extern int tegra_chip_id;
 extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 extern int tegra_soc_speedo_id;
-extern enum tegra_revision tegra_revision;
 
 extern int tegra_bct_strapping;
 
