@@ -29,11 +29,6 @@ enum tegra_revision {
 	TEGRA_REVISION_MAX,
 };
 
-struct tegra_id {
-	unsigned int major, minor, netlist, patch;
-	char *priv;
-};
-
 #define SKU_ID_T20	8
 #define SKU_ID_T25SE	20
 #define SKU_ID_AP25	23
@@ -51,7 +46,6 @@ extern int tegra_chip_id;
 extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 extern int tegra_soc_speedo_id;
 extern enum tegra_revision tegra_revision;
-extern struct tegra_id tegra_id;
 
 extern int tegra_bct_strapping;
 

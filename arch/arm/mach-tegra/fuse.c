@@ -59,7 +59,11 @@ int tegra_chip_id;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
 enum tegra_revision tegra_revision;
-struct tegra_id tegra_id;
+static unsigned int tegra_chip_major;
+static unsigned int tegra_chip_minor;
+static unsigned int tegra_chip_netlist;
+static unsigned int tegra_chip_patch;
+static char *tegra_chip_priv;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
@@ -102,15 +106,15 @@ bool tegra_spare_fuse(int bit)
 static enum tegra_revision tegra_get_revision()
 {
 	if (tegra_chip_id == TEGRA30) {
-		switch (tegra_id.major) {
+		switch (tegra_chip_major) {
 		case 0:
-			if (tegra_id.minor != 1)
+			if (tegra_chip_minor != 1)
 				return TEGRA_REVISION_UNKNOWN;
-			else if (tegra_id.netlist == 12 && (tegra_id.patch & 0xf) == 12)
+			else if (tegra_chip_netlist == 12 && (tegra_chip_patch & 0xf) == 12)
 				return TEGRA_REVISION_A01;
-			else if (tegra_id.netlist == 12 && (tegra_id.patch & 0xf) > 12)
+			else if (tegra_chip_netlist == 12 && (tegra_chip_patch & 0xf) > 12)
 				return TEGRA_REVISION_A02;
-			else if (tegra_id.netlist > 12)
+			else if (tegra_chip_netlist > 12)
 				return TEGRA_REVISION_A02;
 			else
 				return TEGRA_REVISION_UNKNOWN;
@@ -120,14 +124,15 @@ static enum tegra_revision tegra_get_revision()
 			return TEGRA_REVISION_UNKNOWN;
 	}
 
-	switch (tegra_id.minor) {
+	switch (tegra_chip_minor) {
 	case 1:
+		BUG_ON(tegra_chip_id == TEGRA20);
 		return TEGRA_REVISION_A01;
 	case 2:
 		return TEGRA_REVISION_A02;
 	case 3:
 		if (tegra_chip_id == TEGRA20 &&
-			(*tegra_id.priv) == 'p')
+			(*tegra_chip_priv) == 'p')
 			return TEGRA_REVISION_A03p;
 		else
 			return TEGRA_REVISION_A03;
@@ -171,14 +176,14 @@ void tegra_init_fuse(void)
 		id = tegra_read_chipid();
 		netlist = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860);
 		tegra_chip_id = (id >> 8) & 0xff;
-		tegra_id.major = (id >> 4) & 0xf;
-		tegra_id.minor = (id >> 16) & 0xf;
-		tegra_id.netlist = (netlist >> 0) & 0xffff;
-		tegra_id.patch = (netlist >> 16) & 0xffff;
+		tegra_chip_major = (id >> 4) & 0xf;
+		tegra_chip_minor = (id >> 16) & 0xf;
+		tegra_chip_netlist = (netlist >> 0) & 0xffff;
+		tegra_chip_patch = (netlist >> 16) & 0xffff;
 
 		if (tegra_chip_id == TEGRA20 &&
 		    (tegra_spare_fuse(18) || tegra_spare_fuse(19)))
-			tegra_id.priv = "p";
+			tegra_chip_priv = "p";
 	}
 
 	switch (tegra_chip_id) {
@@ -236,7 +241,7 @@ unsigned long long tegra_chip_uid(void)
 	   various fields is <fieldname:size_in_bits> with the UID composed
 	   thusly:
 
-            <CID:4><VENDOR:4><FAB:6><LOT:26><WAFER:6><X:9><Y:9>
+	   <CID:4><VENDOR:4><FAB:6><LOT:26><WAFER:6><X:9><Y:9>
 
 	   Where:
 
@@ -246,7 +251,7 @@ unsigned long long tegra_chip_uid(void)
 		VENDOR     4     56     Vendor code
 		FAB        6     50     FAB code
 		LOT       26     24     Lot code (5-digit base-36-coded-decimal,
-				            re-encoded to 26 bits binary)
+					re-encoded to 26 bits binary)
 		WAFER      6     18     Wafer id
 		X          9      9     Wafer X-coordinate
 		Y          9      0     Wafer Y-coordinate
@@ -259,7 +264,7 @@ unsigned long long tegra_chip_uid(void)
 	reg = (reg & 0xFF00) >> 8;
 
 	switch (reg) {
-	case 0x30:
+	case TEGRA30:
 		cid = 0;
 		break;
 
@@ -322,11 +327,11 @@ static int __init tegra_bootloader_tegraid(char *str)
 		id[i++] = 0;
 
 	tegra_chip_id = id[0];
-	tegra_id.major = id[1];
-	tegra_id.minor = id[2];
-	tegra_id.netlist = id[3];
-	tegra_id.patch = id[4];
-	tegra_id.priv = priv;
+	tegra_chip_major = id[1];
+	tegra_chip_minor = id[2];
+	tegra_chip_netlist = id[3];
+	tegra_chip_patch = id[4];
+	tegra_chip_priv = priv;
 	return 0;
 }
 
