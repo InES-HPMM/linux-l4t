@@ -37,7 +37,7 @@
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define FUSE_UID_LOW		0x108
 #define FUSE_UID_HIGH		0x10c
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#else
 #define FUSE_VENDOR_CODE	0x200
 #define FUSE_VENDOR_CODE_MASK	0xf
 #define FUSE_FAB_CODE		0x204
