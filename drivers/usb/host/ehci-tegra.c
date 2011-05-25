@@ -379,8 +379,12 @@ static void tegra_ehci_restart(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	unsigned int temp;
 
+	ehci->controller_resets_phy = 0;
 	ehci_reset(ehci);
 	tegra_ehci_post_reset(tegra->phy, false);
+
+	if (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_NULL_ULPI)
+		ehci->controller_resets_phy = 1;
 
 	/* setup the frame list and Async q heads */
 	ehci_writel(ehci, ehci->periodic_dma, &ehci->regs->frame_list);
@@ -445,12 +449,14 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 
 	tegra_ehci_post_reset(tegra->phy, false);
 
-	/*
-	 * Resetting the controller has the side effect of resetting the PHY.
-	 * So, never reset the controller after the calling
-	 * tegra_ehci_reinit API.
-	 */
-	ehci->controller_resets_phy = 1;
+	if (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_NULL_ULPI) {
+		/*
+		 * Resetting the controller has the side effect of resetting the PHY.
+		 * So, never reset the controller after the calling
+		 * tegra_ehci_reinit API.
+		 */
+		ehci->controller_resets_phy = 1;
+	}
 
 	return 0;
 }

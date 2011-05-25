@@ -200,7 +200,9 @@ struct ehci_hcd {			/* one per controller */
 	unsigned		has_synopsys_hc_bug:1; /* Synopsys HC */
 	unsigned		frame_index_bug:1; /* MosChip (AKA NetMos) */
 	unsigned		need_oc_pp_cycle:1; /* MPC834X port power */
+#ifdef CONFIG_USB_EHCI_TEGRA
 	unsigned		controller_resets_phy:1;
+#endif
 
 	/* required for usb32 quirk */
 	#define OHCI_CTRL_HCFS          (3 << 6)
