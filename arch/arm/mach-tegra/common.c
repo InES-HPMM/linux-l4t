@@ -132,7 +132,7 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 #endif	
 
 	/* Enable PL310 double line fill feature. */
-	writel(((1<<30) | 7), p + L2X0_PREFETCH_CTRL);
+	writel(((1<<30) | 0), p + L2X0_PREFETCH_CTRL);
 #endif
 
 	cache_type = readl(p + L2X0_CACHE_TYPE);
