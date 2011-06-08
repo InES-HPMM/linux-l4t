@@ -24,6 +24,8 @@
 #include <linux/tegra-soc.h>
 #include <linux/init.h>
 #include <linux/string.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
 
 #include "fuse.h"
 #include "iomap.h"
@@ -56,6 +58,7 @@ int tegra_sku_id;
 int tegra_cpu_process_id;
 int tegra_core_process_id;
 int tegra_chip_id;
+int tegra_chip_rev;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
 enum tegra_revision tegra_revision;
@@ -202,6 +205,7 @@ void tegra_init_fuse(void)
 	}
 
 	tegra_revision = tegra_get_revision();
+	tegra_chip_rev = (int)tegra_revision;
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	tegra_init_speedo_data();
 #endif
@@ -334,6 +338,9 @@ static int __init tegra_bootloader_tegraid(char *str)
 	tegra_chip_priv = priv;
 	return 0;
 }
+
+module_param(tegra_chip_id, int, 0444);
+module_param(tegra_chip_rev, int, 0444);
 
 /* tegraid=chipid.major.minor.netlist.patch[.priv] */
 early_param("tegraid", tegra_bootloader_tegraid);
