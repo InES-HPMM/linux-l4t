@@ -195,6 +195,8 @@ struct clk {
 		} shared_bus_user;
 	} u;
 
+	struct raw_notifier_head			*rate_change_nh;
+
 	struct mutex mutex;
 	spinlock_t spinlock;
 };

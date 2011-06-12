@@ -147,6 +147,7 @@ static inline void tegra_clocks_apply_init_table(void)
 {}
 
 struct dvfs;
+struct notifier_block;
 
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
@@ -156,6 +157,9 @@ static inline int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 #endif
 unsigned long clk_get_rate_all_locked(struct clk *c);
 int tegra_dvfs_rail_disable_by_name(const char *reg_id);
+int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb);
+void tegra_unregister_clk_rate_notifier(
+	struct clk *c, struct notifier_block *nb);
 int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
 #endif
 
