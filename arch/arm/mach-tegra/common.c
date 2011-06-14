@@ -251,7 +251,6 @@ void __init tegra20_init_early(void)
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 	tegra_init_power();
-	tegra20_mc_init(); /* !!!FIXME!!! Change Tegra3 behavior to match Tegra2 */
 	tegra_init_ahb_gizmo_settings();
 }
 #endif
@@ -265,7 +264,6 @@ void __init tegra30_init_early(void)
 	tegra_powergate_init();
 	tegra30_hotplug_init();
 	tegra_init_power();
-	tegra30_mc_init();
 	tegra_init_ahb_gizmo_settings();
 }
 #endif

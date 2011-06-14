@@ -185,7 +185,7 @@ out:
 	return IRQ_HANDLED;
 }
 
-void __init tegra30_mc_init(void)
+static void __init tegra30_mc_init(void)
 {
 	void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
 	u32 reg;
@@ -206,3 +206,4 @@ void __init tegra30_mc_init(void)
 		writel(reg, mc + MC_INT_MASK);
 	}
 }
+arch_initcall(tegra30_mc_init);

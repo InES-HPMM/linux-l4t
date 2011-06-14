@@ -177,7 +177,7 @@ out:
 	return IRQ_HANDLED;
 }
 
-void __init tegra20_mc_init(void)
+static void __init tegra20_mc_init(void)
 {
 	if (request_irq(INT_MC_GENERAL, tegra_mc_error_isr, 0,
 			"mc_status", NULL)) {
@@ -189,3 +189,4 @@ void __init tegra20_mc_init(void)
 		writel(reg, mc + MC_INT_MASK);
 	}
 }
+arch_initcall(tegra20_mc_init);
