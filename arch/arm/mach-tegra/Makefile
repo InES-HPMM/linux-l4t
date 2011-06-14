@@ -39,6 +39,7 @@ obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)	+= arb_sema.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
 endif
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_fuse.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
