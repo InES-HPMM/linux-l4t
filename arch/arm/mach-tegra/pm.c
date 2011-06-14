@@ -297,6 +297,7 @@ static int create_suspend_pgtable(void)
 	return 0;
 }
 
+#ifdef CONFIG_SMP
 static int tegra_reset_sleeping_cpu(int cpu)
 {
 	int ret = 0;
@@ -330,6 +331,16 @@ static void tegra_wake_reset_cpu(int cpu)
 	/* unhalt the cpu */
 	flowctrl_write_cpu_halt(1, 0);
 }
+#else
+static int tegra_reset_sleeping_cpu(int cpu)
+{
+	return 0;
+}
+
+static void tegra_wake_reset_cpu(int cpu)
+{
+}
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 /*
@@ -449,6 +460,7 @@ static void suspend_cpu_complex(void)
 	}
 }
 
+#ifdef CONFIG_SMP
 int tegra_reset_other_cpus(int cpu)
 {
 	int i;
@@ -473,7 +485,14 @@ int tegra_reset_other_cpus(int cpu)
 
 	return 0;
 }
+#else
+int tegra_reset_other_cpus(int cpu)
+{
+	return 0;
+}
+#endif
 
+#ifdef CONFIG_SMP
 void tegra_idle_lp2_last(unsigned int flags)
 {
 	u32 reg;
@@ -547,6 +566,11 @@ void tegra_idle_lp2_last(unsigned int flags)
 	}
 #endif
 }
+#else
+void tegra_idle_lp2_last(unsigned int flags)
+{
+}
+#endif
 
 void tegra_idle_lp2(void)
 {
@@ -565,9 +589,11 @@ void tegra_idle_lp2(void)
 
 	cpu_pm_enter();
 
+#ifdef CONFIG_SMP
 	if (last_cpu)
 		tegra_idle_lp2_last(0);
 	else
+#endif
 		tegra_sleep_wfi(PHYS_OFFSET - PAGE_OFFSET);
 
 	cpu_pm_exit();
@@ -656,6 +682,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
 
 	switch (mode) {
+#ifdef CONFIG_SMP
 	case TEGRA_SUSPEND_LP0:
 		/*
 		 * lp0 boots through the AVP, which then resumes the AVP to
@@ -688,6 +715,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		writel(virt_to_phys(tegra_resume), evp_reset);
 		rate = clk_get_rate(tegra_pclk);
 		break;
+#endif
 	default:
 		BUG();
 	}
