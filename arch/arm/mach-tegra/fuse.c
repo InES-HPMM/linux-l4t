@@ -137,6 +137,7 @@ static enum tegra_revision tegra_get_revision()
 		return TEGRA_REVISION_A02;
 	case 3:
 		if (tegra_chip_id == TEGRA20 &&
+			tegra_chip_priv != NULL &&
 			(*tegra_chip_priv) == 'p')
 			return TEGRA_REVISION_A03p;
 		else
