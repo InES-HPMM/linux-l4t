@@ -19,6 +19,7 @@ obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
 obj-y                                   += gic.o
 obj-y                                   += fuse.o
 obj-y                                   += kfuse.o
+obj-y                                   += tegra_odm_fuses.o
 obj-y                                   += pmc.o
 obj-y                                   += flowctrl.o
 obj-y                                   += powergate.o
@@ -41,7 +42,6 @@ ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
 endif
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_fuse.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
 endif
