@@ -178,6 +178,9 @@ static int tegra_ehci_hub_control(
 		temp |= PORT_WKDISC_E | PORT_WKOC_E;
 		ehci_writel(ehci, temp | PORT_SUSPEND, status_reg);
 
+		/* Need a 4ms delay before the controller goes to suspend */
+		mdelay(4);
+
 		/*
 		 * If a transaction is in progress, there may be a delay in
 		 * suspending the port. Poll until the port is suspended.
@@ -545,6 +548,9 @@ static int controller_resume(struct device *dev)
 	if ((val & PORT_POWER) && (val & PORT_PE)) {
 		val |= PORT_SUSPEND;
 		writel(val, &hw->port_status[0]);
+
+		/* Need a 4ms delay before the controller goes to suspend */
+		mdelay(4);
 
 		/* Wait until port suspend completes */
 		if (handshake(ehci, &hw->port_status[0], PORT_SUSPEND,
