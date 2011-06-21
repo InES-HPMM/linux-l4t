@@ -43,6 +43,9 @@ module_param(emc_enable, bool, 0644);
 static struct platform_device *emc_pdev;
 static void __iomem *emc_regbase;
 
+static unsigned long tegra_emc_max_bus_rate;  /* 2 * 1000 * maximum emc_clock rate */
+static unsigned long tegra_emc_min_bus_rate;  /* 2 * 1000 * minimum emc_clock rate */
+
 static inline void emc_writel(u32 val, unsigned long addr)
 {
 	writel(val, emc_regbase + addr);
@@ -144,6 +147,14 @@ long tegra_emc_round_rate(unsigned long rate)
 
 	pdata = emc_pdev->dev.platform_data;
 
+	if (rate >= tegra_emc_max_bus_rate) {
+		best = pdata->num_tables - 1;
+		goto round_out;
+	} else if (rate <= tegra_emc_min_bus_rate) {
+		best = 0;
+		goto round_out;
+	}
+
 	pr_debug("%s: %lu\n", __func__, rate);
 
 	/*
@@ -163,6 +174,7 @@ long tegra_emc_round_rate(unsigned long rate)
 	if (best < 0)
 		return -EINVAL;
 
+round_out:
 	pr_debug("%s: using %lu\n", __func__, pdata->tables[best].rate);
 
 	return pdata->tables[best].rate * 2 * 1000;
@@ -193,11 +205,11 @@ int tegra_emc_set_rate(unsigned long rate)
 	 */
 	rate = rate / 2 / 1000;
 
-	for (i = 0; i < pdata->num_tables; i++)
+	for (i = pdata->num_tables - 1; i >= 0; i--)
 		if (pdata->tables[i].rate == rate)
 			break;
 
-	if (i >= pdata->num_tables)
+	if (i < 0)
 		return -EINVAL;
 
 	pr_debug("%s: setting to %lu\n", __func__, rate);
@@ -406,6 +418,9 @@ static int tegra_emc_probe(struct platform_device *pdev)
 
 	if (!pdata)
 		pdata = tegra_emc_fill_pdata(pdev);
+
+	tegra_emc_min_bus_rate = pdata->tables[0].rate * 2 * 1000;
+	tegra_emc_max_bus_rate = pdata->tables[pdata->num_tables - 1].rate * 2 * 1000;
 
 	pdev->dev.platform_data = pdata;
 
