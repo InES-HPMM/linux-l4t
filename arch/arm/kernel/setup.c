@@ -880,7 +880,11 @@ static int c_show(struct seq_file *m, void *v)
 	int i, j;
 	u32 cpuid;
 
+# if defined(CONFIG_REPORT_PRESENT_CPUS)
+	for_each_present_cpu(i) {
+# else
 	for_each_online_cpu(i) {
+# endif
 		/*
 		 * glibc reads /proc/cpuinfo to determine the number of
 		 * online processors, looking for lines beginning with
