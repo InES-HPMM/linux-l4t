@@ -25,6 +25,7 @@
 
 #include <linux/device.h>
 #include <linux/regmap.h>
+#include <linux/rtc.h>
 
 /* Pull-ups/Pull-downs */
 #define TPS80031_CFG_INPUT_PUPD1			0xF0
@@ -504,6 +505,10 @@ enum tps80031_pupd_settings {
 	TPS80031_PUPD_NORMAL,
 	TPS80031_PUPD_PULLDOWN,
 	TPS80031_PUPD_PULLUP,
+};
+
+struct tps80031_rtc_platform_data {
+	struct rtc_time time;
 };
 
 struct tps80031 {
