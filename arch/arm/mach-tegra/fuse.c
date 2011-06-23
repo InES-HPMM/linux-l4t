@@ -224,7 +224,7 @@ void tegra_init_fuse(void)
 	tegra_init_speedo_data();
 #endif
 
-	pr_info("Tegra Revision: %s SKU: %d CPU Process: %d Core Process: %d\n"
+	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n"
 		tegra_revision_name[tegra_revision], tegra_sku_id,
 		tegra_cpu_process_id, tegra_core_process_id);
 }
