@@ -120,6 +120,12 @@ enum cpu_mode {
 	MODE_LP,
 };
 
+enum shared_bus_users_mode {
+	SHARED_FLOOR = 0,
+	SHARED_BW,
+	SHARED_CEILING,
+};
+
 struct clk {
 	/* node for master clocks list */
 	struct list_head	node;		/* node for list of all clocks */
@@ -192,6 +198,7 @@ struct clk {
 			const char			*client_id;
 			struct clk			*client;
 			u32				client_div;
+			enum shared_bus_users_mode	mode;
 		} shared_bus_user;
 	} u;
 
