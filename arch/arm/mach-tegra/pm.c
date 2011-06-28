@@ -89,7 +89,7 @@ struct suspend_context tegra_sctx;
 
 static void __iomem *iram_code = IO_ADDRESS(TEGRA_IRAM_CODE_AREA);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *evp_reset =
 	IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE) + 0x100;
@@ -208,7 +208,7 @@ static void tegra_suspend_check_pwr_stats(void)
 		(1 << TEGRA_POWERGATE_PCIE)	|
 		(1 << TEGRA_POWERGATE_VDEC)	|
 		(1 << TEGRA_POWERGATE_MPE);
-	
+
 	int partid;
 
 	for_each_set_bit(partid, &pwrgate_partid_mask, BITS_PER_LONG)
@@ -331,7 +331,7 @@ static void tegra_wake_reset_cpu(int cpu)
 	flowctrl_write_cpu_halt(1, 0);
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 /*
  * restore_cpu_complex
  *
@@ -852,7 +852,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 
 	create_suspend_pgtable();
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 
 	if ((tegra_chip_id == TEGRA30) &&
 	    (tegra_revision == TEGRA_REVISION_A01) &&

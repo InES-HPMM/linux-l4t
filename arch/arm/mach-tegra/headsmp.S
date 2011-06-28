@@ -70,7 +70,7 @@ ENTRY(tegra_secondary_startup)
 ENDPROC(tegra_secondary_startup)
 #endif
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 /*
  *	tegra_resume
  *
