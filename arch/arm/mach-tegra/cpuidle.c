@@ -52,6 +52,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 static bool lp2_in_idle __read_mostly = true;
 module_param(lp2_in_idle, bool, 0644);
+static bool lp2_disabled_by_suspend;
 
 static struct {
 	unsigned int cpu_ready_count[2];
@@ -128,6 +129,9 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	ktime_t enter, exit;
 	s64 us;
 
+	if (lp2_disabled_by_suspend)
+		return tegra_idle_enter_lp3(dev, state);
+
 	local_irq_disable();
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	enter = ktime_get();
@@ -154,6 +158,21 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	return index;
 }
+
+static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
+	unsigned long event, void *dummy)
+{
+	if (event == PM_SUSPEND_PREPARE)
+		lp2_disabled_by_suspend = true;
+	else if (event == PM_POST_SUSPEND)
+		lp2_disabled_by_suspend = false;
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra_cpuidle_pm_notifier = {
+	.notifier_call = tegra_cpuidle_pm_notify,
+};
 
 static int __init tegra_cpuidle_init(void)
 {
@@ -188,6 +207,8 @@ static int __init tegra_cpuidle_init(void)
 			return ret;
 		}
 	}
+	register_pm_notifier(&tegra_cpuidle_pm_notifier);
+
 	return 0;
 }
 device_initcall(tegra_cpuidle_init);
