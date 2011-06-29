@@ -96,6 +96,7 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
 bool tegra_dvfs_rail_updating(struct clk *clk);
+int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 #else
 static inline int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 { return 0; }
@@ -113,6 +114,8 @@ static inline void tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 {}
 static inline bool tegra_dvfs_rail_updating(struct clk *clk)
 { return false; }
+static inline int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
+{ return 0; }
 #endif
 
 #endif
