@@ -94,6 +94,11 @@ struct cpuidle_driver tegra_idle_driver = {
 
 static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
 
+void tegra_lp2_in_idle(bool enable)
+{
+	lp2_in_idle = enable;
+}
+
 static inline unsigned int time_to_bin(unsigned int time)
 {
 	return fls(time);
@@ -129,7 +134,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	ktime_t enter, exit;
 	s64 us;
 
-	if (lp2_disabled_by_suspend)
+	if (!lp2_in_idle || lp2_disabled_by_suspend)
 		return tegra_idle_enter_lp3(dev, state);
 
 	local_irq_disable();
@@ -181,6 +186,7 @@ static int __init tegra_cpuidle_init(void)
 	struct cpuidle_device *dev;
 	struct cpuidle_driver *drv = &tegra_idle_driver;
 
+	/* !!!FIXME!!! Add tegra_lp2_power_off_time */
 	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
 
 	tegra_idle_driver.states[1].exit_latency = tegra_cpu_power_good_time();

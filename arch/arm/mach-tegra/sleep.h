@@ -112,6 +112,8 @@ extern void tegra_lp1_reset;
 extern void tegra_iram_start;
 extern void tegra_iram_end;
 
+void tegra_lp2_in_idle(bool enable);
+
 void tegra_sleep_wfi(unsigned long v2p);
 void tegra_sleep_cpu(unsigned long v2p);
 void tegra_sleep_core(unsigned long v2p);
