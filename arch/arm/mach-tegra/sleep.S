@@ -66,7 +66,7 @@
  * corrupts r0-r3, r12
  */
 ENTRY(tegra_pen_lock)
-	ldr	r3, =TEGRA_PMC_VIRT
+	mov32	r3, TEGRA_PMC_VIRT
 	cpu_id	r0
 	add	r1, r3, #PMC_SCRATCH37
 	cmp	r0, #0
@@ -91,7 +91,7 @@ ENDPROC(tegra_pen_lock)
 
 ENTRY(tegra_pen_unlock)
 	dsb
-	ldr	r3, =TEGRA_PMC_VIRT
+	mov32	r3, TEGRA_PMC_VIRT
 	cpu_id	r0
 	cmp	r0, #0
 	addeq	r2, r3, #PMC_SCRATCH38
@@ -135,7 +135,7 @@ ENTRY(tegra_cpu_save)
 	mcr	p15, 0, r4, c1, c0, 1	@ exit coherency
 	isb
 	cpu_id	r4
-	ldr	r5, =TEGRA_ARM_PERIF_VIRT + 0xC
+	mov32	r5, TEGRA_ARM_PERIF_VIRT + 0xC
 	mov	r4, r4, lsl #2
 	mov	r6, #0xf
 	mov	r6, r6, lsl r4
@@ -156,7 +156,7 @@ ENTRY(tegra_sleep_cpu)
 	mov	r3, lr			@ set resume address to lr
 	bl	tegra_cpu_save
 
-	ldr	r1, =tegra_tear_down_cpu
+	mov32	r1, tegra_tear_down_cpu
 	add	r1, r1, r0
 	b	tegra_turn_off_mmu
 ENDPROC(tegra_sleep_cpu)
@@ -197,7 +197,7 @@ tegra_turn_off_mmu:
 	 * and MMU shut-off will be mapped virtual == physical
 	 */
 	mrc	p15, 0, r2, c2, c0, 0	@ TTB 0
-	ldr	r3, =~PAGE_MASK
+	mov32	r3, ~PAGE_MASK
 	and	r2, r2, r3
 	ldr	r3, tegra_pgd_phys_address
 	ldr	r3, [r3]
@@ -213,7 +213,7 @@ tegra_turn_off_mmu:
 	mcr	p15, 0, r2, c7, c5, 6	@ flush BTAC
 	mcr	p15, 0, r2, c7, c5, 0	@ flush instruction cache
 
-	ldr	r3, =tegra_shut_off_mmu
+	mov32	r3, tegra_shut_off_mmu
 	add	r3, r3, r0
 	mov	r0, r1
 	mov	pc, r3
@@ -247,7 +247,7 @@ tegra_shut_off_mmu:
  */
  tegra_cpu_pllp:
 	/* in LP2 idle (SDRAM active), set the CPU burst policy to PLLP */
-	ldr	r5, =TEGRA_CLK_RESET_BASE
+	mov32	r5, TEGRA_CLK_RESET_BASE
 	mov	r0, #(2 << 28)	/* burst policy = run mode */
 	orr	r0, r0, #(4 << 4) /* use PLLP in run mode burst */
 	str	r0, [r5, #CLK_RESET_CCLK_BURST]

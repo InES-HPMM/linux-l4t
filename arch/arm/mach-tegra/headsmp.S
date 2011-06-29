@@ -93,7 +93,7 @@ ENTRY(tegra_resume)
 #endif
 
 	/* enable SCU */
-	ldr	r0, =TEGRA_ARM_PERIF_BASE
+	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
 	str	r1, [r0]
