@@ -149,7 +149,7 @@ static inline void tegra_clocks_apply_init_table(void)
 struct dvfs;
 struct notifier_block;
 
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
 #else
 static inline int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)

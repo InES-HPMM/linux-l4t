@@ -139,10 +139,7 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 	tag_latency = 0x331;
 	data_latency = 0x441;
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	tag_latency = 0x770;
-	data_latency = 0x770;
-#else
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (is_lp_cluster()) {
 		tag_latency = 0x221;
 		data_latency = 0x221;
@@ -150,6 +147,9 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 		tag_latency = 0x331;
 		data_latency = 0x441;
 	}
+#else
+	tag_latency = 0x770;
+	data_latency = 0x770;
 #endif
 #endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);

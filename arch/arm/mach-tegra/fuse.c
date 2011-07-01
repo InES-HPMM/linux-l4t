@@ -209,7 +209,7 @@ void tegra_init_fuse(void)
 
 	tegra_revision = tegra_get_revision();
 	tegra_chip_rev = (int)tegra_revision;
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	tegra_init_speedo_data();
 #endif
 
