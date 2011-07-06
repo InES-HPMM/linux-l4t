@@ -1,12 +1,35 @@
+/*
+ * arch/arm/mach-tegra/headsmp.S
+ *
+ * CPU initialization routines for Tegra SoCs
+ *
+ * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2011 Google, Inc.
+ * Author: Colin Cross <ccross@android.com>
+ *         Gary King <gking@nvidia.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
 #include <linux/linkage.h>
 #include <linux/init.h>
 
 #include <asm/cache.h>
+#include <asm/page.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
 #include "reset.h"
 #include "sleep.h"
+
+#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
 
 #define APB_MISC_GP_HIDREV	0x804
 #define PMC_SCRATCH41	0x140
@@ -17,7 +40,6 @@
 	__CPUINIT
 
 /*
- * Tegra specific entry point for secondary CPUs.
  *   The secondary kernel init calls v7_flush_dcache_all before it enables
  *   the L1; however, the L1 comes out of reset in an undefined state, so
  *   the clean + invalidate performed by v7_flush_dcache_all causes a bunch
@@ -61,6 +83,13 @@ ENDPROC(v7_invalidate_l1)
 
 
 #ifdef CONFIG_SMP
+/* 
+ *	tegra_secondary_startup
+ *
+ *	 Initial secondary processor boot vector; jumps to kernel's
+ *	 secondary_startup routine. Used for initial boot and hotplug
+ *	 of secondary CPUs.
+ */
 ENTRY(tegra_secondary_startup)
         bl      v7_invalidate_l1
 	/* Enable coresight */
@@ -74,13 +103,17 @@ ENDPROC(tegra_secondary_startup)
 /*
  *	tegra_resume
  *
- *	  CPU boot vector when restarting the master CPU following
+ *	  CPU boot vector when restarting the a CPU following
  *	  an LP2 transition. Also branched to by LP0 and LP1 resume after
  *	  re-enabling sdram.
  */
 ENTRY(tegra_resume)
-	bl	tegra_invalidate_l1
 	bl	tegra_enable_coresite
+	bl	tegra_invalidate_l1
+
+	cpu_id	r0
+	cmp	r0, #0				@ CPU0?
+	bne	cpu_resume      		@ no
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	@ Clear the flow controller flags for this CPU.
@@ -126,6 +159,11 @@ ENTRY(__tegra_cpu_reset_handler_start)
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler)
 
+#if DEBUG_CPU_RESET_HANDLER
+	mov32	r0, 0xC5ACCE55
+	mcr	p14, 0, r0, c7, c12, 6		@ Enable CoreSight access
+	b	.
+#endif
 	cpsid	aif, 0x13			@ SVC mode, interrupts disabled
 	mrc	p15, 0, r10, c0, c0, 5		@ MPIDR
 	and	r10, r10, #0x3			@ R10 = CPU number
@@ -155,6 +193,35 @@ ENTRY(__tegra_cpu_reset_handler)
 1:
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+	/* Waking up from LP1? */
+	ldr	r8, [r12, #RESET_DATA(MASK_LP1)]
+	tst	r8, r11				@ if in_lp1
+	beq	__is_not_lp1
+	cmp	r10, #0
+	bne	__die				@ only CPU0 can be here
+	ldr	lr, [r12, #RESET_DATA(STARTUP_LP1)]
+	cmp	lr, #0
+	bleq	__die				@ no LP1 startup handler
+	bx	lr
+__is_not_lp1:
+#endif
+
+	/* Waking up from LP2? */
+	ldr	r9, [r12, #RESET_DATA(MASK_LP2)]
+	tst	r9, r11				@ if in_lp2
+	beq	__is_not_lp2
+#if defined(CONFIG_SMP) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	/* Tegra2 CPU1 LP2 wakeup uses the secondary startup handler */
+	cmp	r10, #1
+	bne	__is_not_lp2
+#endif
+	ldr	lr, [r12, #RESET_DATA(STARTUP_LP2)]
+	cmp	lr, #0
+	bleq	__die				@ no LP2 startup handler
+	bx	lr
+
+__is_not_lp2:
 #ifdef CONFIG_SMP
 	/*
 	 * Can only be secondary boot (initial or hotplug) but CPU 0
