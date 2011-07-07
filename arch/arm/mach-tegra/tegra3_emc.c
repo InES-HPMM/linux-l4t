@@ -195,10 +195,10 @@ static int emc_last_sel;
 static struct tegra_emc_table start_timing;
 static bool emc_timing_in_sync;
 
-static u32 dram_type;
 static u32 dram_dev_num;
 static u32 emc_cfg_saved;
 
+static u32 dram_type = -1;
 static struct clk *emc;
 
 static struct {
@@ -906,6 +906,11 @@ device_initcall(tegra_emc_init);
 void tegra_emc_timing_invalidate(void)
 {
 	emc_timing_in_sync = false;
+}
+
+int tegra_emc_get_dram_type(void)
+{
+	return dram_type;
 }
 
 #ifdef CONFIG_DEBUG_FS
