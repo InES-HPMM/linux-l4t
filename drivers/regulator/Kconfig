@@ -536,5 +536,12 @@ config REGULATOR_TPS6591X
 	help
 	  This driver supports TPS6591X voltage regulator chips.
 
+config REGULATOR_RICOH583
+	tristate "RICOH 583 Power regulators"
+	depends on MFD_RICOH583
+	default n
+	help
+	  This driver supports regulator driver for RICOH583 PMIC.
+
 endif
 
