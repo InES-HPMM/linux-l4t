@@ -82,9 +82,15 @@ static DEFINE_SPINLOCK(tegra_powergate_lock);
 
 #define MAX_HOTRESET_CLIENT_NUM		3
 
+enum clk_type {
+	CLK_AND_RST,
+	RST_ONLY,
+	CLK_ONLY,
+};
+
 struct partition_clk_info {
 	const char *clk_name;
-	bool only_reset;
+	enum clk_type clk_type;
 	/* true if clk is only used in assert/deassert reset and not while enable-den*/
 	struct clk *clk_ptr;
 };
@@ -100,37 +106,41 @@ static struct powergate_partition powergate_partition_info[] = {
 	[TEGRA_POWERGATE_L2]	= { "l2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_3D]	= { "3d0",
 						{MC_CLIENT_NV, MC_CLIENT_LAST},
-						{{"3d", false} }, },
+						{{"3d", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_PCIE]	= { "pcie",
 						{MC_CLIENT_AFI, MC_CLIENT_LAST},
-						{{"afi", false},
-						{"pcie", false},
-						{"pciex", true} }, },
+						{{"afi", CLK_AND_RST},
+						{"pcie", CLK_AND_RST},
+						{"pciex", RST_ONLY} }, },
 	[TEGRA_POWERGATE_VDEC]	= { "vde",
 						{MC_CLIENT_VDE, MC_CLIENT_LAST},
-						{{"vde", false} }, },
+						{{"vde", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_MPE]	= { "mpe",
 						{MC_CLIENT_MPE, MC_CLIENT_LAST},
-						{{"mpe", false} }, },
+						{{"mpe", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_VENC]	= { "ve",
 						{MC_CLIENT_ISP, MC_CLIENT_VI, MC_CLIENT_LAST},
-						{{"isp", false}, {"vi", false},
-						{"csi", false} }, },
+						{{"isp", CLK_AND_RST},
+						{"vi", CLK_AND_RST},
+						{"csi", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_CPU1]	= { "cpu1",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CPU2]	= { "cpu2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CPU3]	= { "cpu3",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_A9LP]	= { "a9lp",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_SATA]	= { "sata",     {MC_CLIENT_SATA, MC_CLIENT_LAST},
-						{{"sata", false},
-						{"sata_cold", true} }, },
+						{{"sata", CLK_AND_RST},
+						{"sata_oob", CLK_AND_RST},
+						{"cml1", CLK_ONLY},
+						{"sata_cold", RST_ONLY} }, },
 	[TEGRA_POWERGATE_3D1]	= { "3d1",
 						{MC_CLIENT_NV2, MC_CLIENT_LAST},
-						{{"3d2", false} }, },
+						{{"3d2", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_HEG]	= { "heg",
 						{MC_CLIENT_G2, MC_CLIENT_EPP, MC_CLIENT_HC},
-						{{"2d", false}, {"epp", false},
-						{"host1x", false},
-						{"3d", true} }, },
+						{{"2d", CLK_AND_RST},
+						{"epp", CLK_AND_RST},
+						{"host1x", CLK_AND_RST},
+						{"3d", RST_ONLY} }, },
 };
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -304,15 +314,17 @@ static int partition_clk_enable(int id)
 	int ret;
 	u32 idx;
 	struct clk *clk;
+	struct partition_clk_info *clk_info;
 
 	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
-		clk = powergate_partition_info[id].clk_info[idx].clk_ptr;
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		clk = clk_info->clk_ptr;
 		if (!clk)
 			break;
 
-		if (!powergate_partition_info[id].clk_info[idx].only_reset) {
+		if (clk_info->clk_type != RST_ONLY) {
 			ret = clk_prepare_enable(clk);
 			if (ret)
 				goto err_clk_en;
@@ -324,11 +336,9 @@ static int partition_clk_enable(int id)
 err_clk_en:
 	WARN(1, "Could not enable clk %s", clk->name);
 	while (idx--) {
-		if (!powergate_partition_info[id].clk_info[idx].only_reset) {
-			clk = powergate_partition_info[id].
-						clk_info[idx].clk_ptr;
-			clk_disable_unprepare(clk);
-		}
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		if (clk_info->clk_type != RST_ONLY)
+			clk_disable_unprepare(clk_info->clk_ptr);
 	}
 
 	return ret;
@@ -338,16 +348,18 @@ static int is_partition_clk_disabled(int id)
 {
 	u32 idx;
 	struct clk *clk;
+	struct partition_clk_info *clk_info;
 	int ret = 0;
 
 	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
-		clk = powergate_partition_info[id].clk_info[idx].clk_ptr;
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		clk = clk_info->clk_ptr;
 		if (!clk)
 			break;
 
-		if (!powergate_partition_info[id].clk_info[idx].only_reset) {
+		if (clk_info->clk_type != RST_ONLY) {
 			if (tegra_is_clk_enabled(clk)) {
 				ret = -1;
 				break;
@@ -362,15 +374,17 @@ static void partition_clk_disable(int id)
 {
 	u32 idx;
 	struct clk *clk;
+	struct partition_clk_info *clk_info;
 
 	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
-		clk = powergate_partition_info[id].clk_info[idx].clk_ptr;
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		clk = clk_info->clk_ptr;
 		if (!clk)
 			break;
 
-		if (!powergate_partition_info[id].clk_info[idx].only_reset)
+		if (clk_info->clk_type != RST_ONLY)
 			clk_disable_unprepare(clk);
 	}
 }
@@ -378,29 +392,36 @@ static void partition_clk_disable(int id)
 static void powergate_partition_assert_reset(int id)
 {
 	u32 idx;
+	struct clk *clk_ptr;
+	struct partition_clk_info *clk_info;
 
 	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
-		if (!powergate_partition_info[id].clk_info[idx].clk_ptr)
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		clk_ptr = clk_info->clk_ptr;
+		if (!clk_ptr)
 			break;
-		tegra_periph_reset_assert(
-			powergate_partition_info[id].
-						clk_info[idx].clk_ptr);
-		}
+		if (clk_info->clk_type != CLK_ONLY)
+			tegra_periph_reset_assert(clk_ptr);
+	}
 }
 
 static void powergate_partition_deassert_reset(int id)
 {
 	u32 idx;
+	struct clk *clk_ptr;
+	struct partition_clk_info *clk_info;
 
 	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
-		if (!powergate_partition_info[id].clk_info[idx].clk_ptr)
+		clk_info = &powergate_partition_info[id].clk_info[idx];
+		clk_ptr = clk_info->clk_ptr;
+		if (!clk_ptr)
 			break;
-		tegra_periph_reset_deassert(
-			powergate_partition_info[id].clk_info[idx].clk_ptr);
+		if (clk_info->clk_type != CLK_ONLY)
+			tegra_periph_reset_deassert(clk_ptr);
 	}
 }
 
