@@ -20,7 +20,7 @@
 #ifndef __TEGRA_EMC_H_
 #define __TEGRA_EMC_H_
 
-#define TEGRA_EMC_NUM_REGS	105
+#define TEGRA_EMC_NUM_REGS	110
 
 struct tegra30_emc_table {
 	u8 rev;
