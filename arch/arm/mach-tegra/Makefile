@@ -15,6 +15,7 @@ obj-y                                   += pinmux.o
 obj-y                                   += delay.o
 obj-y                                   += pm.o
 obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
+obj-y                                   += gic.o
 obj-y                                   += fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += pmc.o

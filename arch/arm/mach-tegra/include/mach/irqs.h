@@ -165,6 +165,8 @@
 #define INT_QUAD_RES_30			(INT_QUAD_BASE + 30)
 #define INT_QUAD_RES_31			(INT_QUAD_BASE + 31)
 
+#define INT_GIC_NR			(INT_QUAD_BASE + 32)
+
 /* Tegra30 has 5 banks of 32 IRQs */
 #define INT_MAIN_NR			(32 * 5)
 
@@ -354,7 +356,9 @@
 #define INT_QUINT_RES_30		(INT_QUINT_BASE + 30)
 #define INT_QUINT_RES_31		(INT_QUINT_BASE + 31)
 
-#define INT_MAIN_NR			(INT_QUINT_BASE + 32 - INT_PRI_BASE)
+#define INT_GIC_NR			(INT_QUINT_BASE + 32)
+
+#define INT_MAIN_NR			(INT_GIC_NR - INT_PRI_BASE)
 
 #define INT_SYNCPT_THRESH_BASE		(INT_QUINT_BASE + 32)
 #define INT_SYNCPT_THRESH_NR		32
