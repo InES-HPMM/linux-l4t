@@ -1,6 +1,7 @@
 asflags-y				+= -march=armv7-a
 
 obj-y                                   += board-pinmux.o
+obj-y                                   += ahb.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += io.o
