@@ -39,6 +39,9 @@
 #define FLOW_CTRL_IRQ_RESUME		(1 << 10)
 #define FLOW_CTRL_FIQ_RESUME		(1 << 8)
 
+#define FLOW_CTRL_CSR_INTR_FLAG		(1<<15)
+#define FLOW_CTRL_CSR_EVENT_FLAG	(1<<14)
+
 #define TEGRA_ARM_PERIF_VIRT (TEGRA_ARM_PERIF_BASE - IO_CPU_PHYS \
 					+ IO_CPU_VIRT)
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
@@ -101,20 +104,51 @@ static inline void tegra20_hotplug_init(void) {}
 static inline void tegra30_hotplug_init(void) {}
 #endif
 
-/* assembly routines implemented in sleep.S */
 void tegra_pen_lock(void);
 void tegra_pen_unlock(void);
 void tegra_cpu_wfi(void);
-void tegra_cpu_set_resettable_soon(void);
-int tegra_cpu_is_resettable_soon(void);
 
-extern void tegra_lp1_reset;
-extern void tegra_iram_start;
-extern void tegra_iram_end;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+extern void tegra2_iram_start;
+extern void tegra2_iram_end;
+extern void tegra2_lp1_reset;
+int  tegra2_cpu_is_resettable_soon(void);
+void tegra2_cpu_reset(int cpu);
+void tegra2_cpu_set_resettable_soon(void);
+void tegra2_sleep_core(unsigned long v2p);
+void tegra2_sleep_reset(void);
+void tegra2_sleep_wfi(unsigned long v2p);
+#endif
 
-void tegra_sleep_wfi(unsigned long v2p);
+static inline void *tegra_iram_start(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	return &tegra2_iram_start;
+#endif
+}
+
+static inline void *tegra_iram_end(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	return &tegra2_iram_end;
+#endif
+}
+
+static inline void *tegra_lp1_reset(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	return &tegra2_lp1_reset;
+#endif
+}
+
+static inline void tegra_sleep_core(unsigned long v2p)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	tegra2_sleep_core(v2p);
+#endif
+}
+
 void tegra_sleep_cpu(unsigned long v2p);
-void tegra_sleep_core(unsigned long v2p);
 void tegra_resume(void);
 void tegra_secondary_resume(void);
 
