@@ -21,7 +21,10 @@ obj-y                                   += pmc.o
 obj-y                                   += flowctrl.o
 obj-y                                   += powergate.o
 obj-y                                   += apbio.o
-obj-$(CONFIG_CPU_IDLE)                  += cpuidle.o
+ifeq ($(CONFIG_CPU_IDLE),y)
+obj-y                                   += cpuidle.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpuidle-t2.o
+endif
 obj-$(CONFIG_CPU_IDLE)                  += sleep.o
 obj-y                                   += mc.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
