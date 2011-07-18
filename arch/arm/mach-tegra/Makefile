@@ -53,7 +53,7 @@ obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
-obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)	+= arb_sema.o
+obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
@@ -67,17 +67,17 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= wakeups-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= wakeups-t3.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pm-t2.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += wakeups-t2.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += wakeups-t3.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pinmux-tegra20-tables.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= pinmux-tegra30-tables.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += pinmux-t11-tables.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= sleep-t30.o
-obj-$(CONFIG_SMP)			+= platsmp.o
+obj-$(CONFIG_SMP)                       += platsmp.o
 obj-y                                   += reset.o
 obj-y                                   += headsmp.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
@@ -85,15 +85,15 @@ obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
-obj-$(CONFIG_TEGRA_PCI)			+= pcie.o
+obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
 obj-$(CONFIG_SENSORS_TEGRA_TSENSOR)     += tegra3_tsensor.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 obj-$(CONFIG_TEGRA_USB_MODEM_POWER)     += tegra_usb_modem_power.o
 
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-dt-tegra20.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= board-dt-tegra30.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += board-dt-tegra20.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += board-dt-tegra30.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-harmony-pcie.o
 
