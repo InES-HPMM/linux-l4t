@@ -23,7 +23,9 @@ obj-y                                   += powergate.o
 obj-y                                   += apbio.o
 ifeq ($(CONFIG_CPU_IDLE),y)
 obj-y                                   += cpuidle.o
+ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpuidle-t2.o
+endif
 endif
 obj-$(CONFIG_CPU_IDLE)                  += sleep.o
 obj-y                                   += mc.o

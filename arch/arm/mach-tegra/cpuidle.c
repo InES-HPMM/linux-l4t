@@ -48,6 +48,7 @@
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index);
+#ifdef CONFIG_PM_SLEEP
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index);
 
@@ -56,6 +57,7 @@ module_param(lp2_in_idle, bool, 0644);
 static bool lp2_disabled_by_suspend;
 
 static unsigned int tegra_lp2_min_residency;
+#endif
 
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
@@ -71,6 +73,7 @@ struct cpuidle_driver tegra_idle_driver = {
 			.name			= "LP3",
 			.desc			= "CPU flow-controlled",
 		},
+#ifdef CONFIG_PM_SLEEP
 		[1] = {
 			.enter			= tegra_idle_enter_lp2,
 			.power_usage		= 0,
@@ -78,15 +81,11 @@ struct cpuidle_driver tegra_idle_driver = {
 			.name			= "LP2",
 			.desc			= "CPU power-gate",
 		},
+#endif
 	},
 };
 
 static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
-
-void tegra_lp2_in_idle(bool enable)
-{
-	lp2_in_idle = enable;
-}
 
 static inline unsigned int time_to_bin(unsigned int time)
 {
@@ -117,6 +116,14 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	return index;
 }
 
+void tegra_lp2_in_idle(bool enable)
+{
+#ifdef CONFIG_PM_SLEEP
+	lp2_in_idle = enable;
+#endif
+}
+
+#ifdef CONFIG_PM_SLEEP
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	struct cpuidle_driver *drv, int index)
 {
@@ -156,10 +163,12 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
 	unsigned long event, void *dummy)
 {
+#ifdef CONFIG_PM_SLEEP
 	if (event == PM_SUSPEND_PREPARE)
 		lp2_disabled_by_suspend = true;
 	else if (event == PM_POST_SUSPEND)
 		lp2_disabled_by_suspend = false;
+#endif
 
 	return NOTIFY_OK;
 }
@@ -175,6 +184,7 @@ static int __init tegra_cpuidle_init(void)
 	struct cpuidle_device *dev;
 	struct cpuidle_driver *drv = &tegra_idle_driver;
 
+#ifdef CONFIG_PM_SLEEP
 	/* !!!FIXME!!! Add tegra_lp2_power_off_time */
 	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
 
@@ -183,6 +193,9 @@ static int __init tegra_cpuidle_init(void)
 		tegra_cpu_power_good_time();
 	if (tegra_idle_driver.states[1].target_residency < tegra_lp2_min_residency)
 		tegra_idle_driver.states[1].target_residency = tegra_lp2_min_residency;
+#endif
+	
+	drv->state_count = ARRAY_SIZE(drv->states);
 
 	ret = cpuidle_register_driver(&tegra_idle_driver);
 	if (ret) {
@@ -208,7 +221,7 @@ static int __init tegra_cpuidle_init(void)
 }
 device_initcall(tegra_cpuidle_init);
 
-#ifdef CONFIG_DEBUG_FS
+#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_PM_SLEEP)
 static int tegra_lp2_debug_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, tegra_lp2_debug_show, inode->i_private);
