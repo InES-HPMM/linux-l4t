@@ -27,6 +27,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
+#include <linux/export.h>
 
 #include <asm/mach/time.h>
 #include <asm/delay.h>
@@ -285,4 +286,19 @@ void __init tegra_init_timer(void)
 	arm_delay_ops.delay		= __tegra_delay;
 	arm_delay_ops.const_udelay	= __tegra_const_udelay;
 	arm_delay_ops.udelay		= __tegra_udelay;
+}
+
+void tegra2_lp2_set_trigger(unsigned long cycles)
+{
+	timer_writel(0, TIMER4_OFFSET + TIMER_PTV);
+	if (cycles) {
+		u32 reg = 0x80000000ul | min(0x1ffffffful, cycles);
+		timer_writel(reg, TIMER4_OFFSET + TIMER_PTV);
+	}
+}
+EXPORT_SYMBOL(tegra2_lp2_set_trigger);
+
+unsigned long tegra2_lp2_timer_remain(void)
+{
+	return timer_readl(TIMER4_OFFSET + TIMER_PCR) & 0x1ffffffful;
 }
