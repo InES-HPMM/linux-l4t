@@ -76,8 +76,9 @@ ENTRY(tegra20_hotplug_shutdown)
 	bl	tegra20_cpu_shutdown
 	mov	pc, lr			@ should never get here
 ENDPROC(tegra20_hotplug_shutdown)
+#endif
 
-#if defined(CONFIG_PM_SLEEP)
+#if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_cpu_shutdown(int cpu)
  *
@@ -120,6 +121,7 @@ ENTRY(tegra20_cpu_shutdown)
 ENDPROC(tegra20_cpu_shutdown)
 #endif
 
+#ifdef CONFIG_PM_SLEEP
 /*
  * tegra2_cpu_set_resettable_soon(void)
  *
