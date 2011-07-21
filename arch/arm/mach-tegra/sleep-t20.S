@@ -58,6 +58,8 @@
 #define CLK_RESET_PLLX_BASE		0xe0
 #define CLK_RESET_PLLX_MISC		0xe4
 
+#define CLK_RESET_RST_CPU_CMPLX_SET 	0x340
+
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_hotplug_shutdown(void)
@@ -107,7 +109,7 @@ ENTRY(tegra20_cpu_shutdown)
 	movw	r1, 0x1011
 	mov	r1, r1, lsl r0
 	mov32	r3, TEGRA_CLK_RESET_VIRT
-	str	r1, [r3, #0x340]	@ put slave CPU in reset
+	str	r1, [r3, #CLK_RESET_RST_CPU_CMPLX_SET]	@ put slave CPU in reset
 	isb
 	dsb
 	cpu_id	r3
