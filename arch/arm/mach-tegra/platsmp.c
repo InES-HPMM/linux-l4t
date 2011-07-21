@@ -44,17 +44,12 @@ static DECLARE_BITMAP(tegra_cpu_init_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits);
 #define tegra_cpu_init_map	(*(cpumask_t *)tegra_cpu_init_mask)
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-/* For Tegra2 use the software-written value of the reset register for status.*/
-#define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET
-#else
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 #define CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x34c)
 #define CAR_BOND_OUT_V \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x390)
 #define CAR_BOND_OUT_V_CPU_G	(1<<0)
-#define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
-	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
 #endif
 
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);

@@ -56,6 +56,7 @@
 #include "clock.h"
 #include "cpuidle.h"
 #include "flowctrl.h"
+#include "fuse.h"
 #include "gic.h"
 #include "iomap.h"
 #include "pm.h"
@@ -436,16 +437,16 @@ bool tegra_set_cpu_in_lp2(int cpu)
 
 unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 {
-	u32 reg;
+	u32 mode;	/* hardware + software power mode flags */
 	unsigned int remain;
 
 	/* Only the last cpu down does the final suspend steps */
-	reg = readl(pmc + PMC_CTRL);
-	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
-	reg |= TEGRA_POWER_PWRREQ_OE;
-	reg |= flags;
-	reg &= ~TEGRA_POWER_EFFECT_LP0;
-	pmc_32kwritel(reg, PMC_CTRL);
+	mode = readl(pmc + PMC_CTRL);
+	mode |= TEGRA_POWER_CPU_PWRREQ_OE;
+	mode |= TEGRA_POWER_PWRREQ_OE;
+	mode &= ~TEGRA_POWER_EFFECT_LP0;
+	pmc_32kwritel(mode, PMC_CTRL);
+	mode |= flags;
 
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
 
@@ -457,7 +458,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		clk_get_rate_all_locked(tegra_pclk));
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK)
-		tegra_cluster_switch_prolog(reg);
+		tegra_cluster_switch_prolog(mode);
 
 	if (sleep_time)
 		tegra_lp2_set_trigger(sleep_time);
@@ -483,7 +484,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		tegra_lp2_set_trigger(0);
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK)
-		tegra_cluster_switch_epilog(reg);
+		tegra_cluster_switch_epilog(mode);
 
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_epilog);
 

@@ -52,6 +52,16 @@
 					+ IO_PPSB_VIRT)
 
 #ifdef __ASSEMBLY__
+/* waits until the microsecond counter (base) is > rn */
+.macro	wait_until, rn, base, tmp
+	add	\rn, \rn, #1
+1002:	ldr	\tmp, [\base]
+	sub	\tmp, \tmp, \rn
+	ands	\tmp, \tmp, #0x80000000
+	dmb
+	bne	1002b
+.endm
+
 /* returns the offset of the flow controller halt register for a cpu */
 .macro cpu_to_halt_reg rd, rcpu
 	cmp	\rcpu, #0
@@ -118,12 +128,18 @@ void tegra2_cpu_reset(int cpu);
 void tegra2_cpu_set_resettable_soon(void);
 void tegra2_sleep_core(unsigned long v2p);
 void tegra2_sleep_wfi(unsigned long v2p);
+#else
+extern void tegra3_iram_start;
+extern void tegra3_iram_end;
+void tegra3_sleep_core(unsigned long v2p);
 #endif
 
 static inline void *tegra_iram_start(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return &tegra2_iram_start;
+#else
+	return &tegra3_iram_start;
 #endif
 }
 
@@ -131,6 +147,8 @@ static inline void *tegra_iram_end(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return &tegra2_iram_end;
+#else
+	return &tegra3_iram_end;
 #endif
 }
 
@@ -138,6 +156,9 @@ static inline void tegra_sleep_core(unsigned long v2p)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_sleep_core(v2p);
+#else
+	/* tegra3_sleep_core(v2p);    !!!FIXME!!! not supported yet */
+	BUG();
 #endif
 }
 
