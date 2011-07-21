@@ -27,6 +27,8 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
+#include <mach/tegra_fuse.h>
+
 #include "fuse.h"
 #include "iomap.h"
 #include "apbio.h"
@@ -54,6 +56,14 @@
 #define FUSE_Y_COORDINATE_MASK	0x1ff
 #define FUSE_GPU_INFO		0x390
 #define FUSE_GPU_INFO_MASK	(1<<2)
+/* fuse registers used in public fuse data read API */
+#define FUSE_TEST_PROGRAM_REVISION_0	0x128
+/* fuse spare bits are used to get Tj-ADT values */
+#define FUSE_SPARE_BIT_0_0	0x244
+#define NUM_TSENSOR_SPARE_BITS	28
+/* tsensor calibration register */
+#define FUSE_TSENSOR_CALIB_0	0x198
+
 #endif
 
 int tegra_sku_id;
@@ -218,6 +228,64 @@ void tegra_init_fuse(void)
 		tegra_revision_name[tegra_revision], tegra_sku_id,
 		tegra_cpu_process_id, tegra_core_process_id);
 }
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+int tegra_fuse_get_revision(u32 *rev)
+{
+	return -ENOENT;
+}
+EXPORT_SYMBOL(tegra_fuse_get_revision);
+
+int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
+{
+	return -ENOENT;
+}
+EXPORT_SYMBOL(tegra_fuse_get_tsensor_calibration_data);
+
+int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
+{
+	return -ENOENT;
+}
+EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
+
+#else
+
+int tegra_fuse_get_revision(u32 *rev)
+{
+	/* fuse revision */
+	*rev = tegra_fuse_readl(FUSE_TEST_PROGRAM_REVISION_0);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_fuse_get_revision);
+
+int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
+{
+	/* tsensor calibration fuse */
+	*calib = tegra_fuse_readl(FUSE_TSENSOR_CALIB_0);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_fuse_get_tsensor_calibration_data);
+
+int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
+{
+	u32 value;
+	int i;
+
+	BUG_ON(NUM_TSENSOR_SPARE_BITS > (sizeof(u32) * 8));
+	if (!spare_bits)
+		return -ENOMEM;
+	*spare_bits = 0;
+	/* spare bits 0-27 */
+	for (i = 0; i < NUM_TSENSOR_SPARE_BITS; i++) {
+		value = tegra_fuse_readl(FUSE_SPARE_BIT_0_0 +
+			(i << 2));
+		if (value)
+			*spare_bits |= BIT(i);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
+#endif
 
 unsigned long long tegra_chip_uid(void)
 {
