@@ -92,13 +92,14 @@ ENDPROC(cpu_v7_dcache_clean_area)
 
 /* Suspend/resume support: derived from arch/arm/mach-s5pv210/sleep.S */
 .globl	cpu_v7_suspend_size
-.equ	cpu_v7_suspend_size, 4 * 8
+.equ	cpu_v7_suspend_size, 4 * 9
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
 	stmfd	sp!, {r4 - r10, lr}
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
-	stmia	r0!, {r4 - r5}
+	mrc	p15, 0, r6, c15, c0, 1	@ diag
+	stmia	r0!, {r4 - r6}
 	mrc	p15, 0, r6, c3, c0, 0	@ Domain ID
 	mrc	p15, 0, r7, c2, c0, 1	@ TTB 1
 	mrc	p15, 0, r11, c2, c0, 2	@ TTB control register
@@ -114,9 +115,10 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, ip, c8, c7, 0	@ invalidate TLBs
 	mcr	p15, 0, ip, c7, c5, 0	@ invalidate I cache
 	mcr	p15, 0, ip, c13, c0, 1	@ set reserved context ID
-	ldmia	r0!, {r4 - r5}
+	ldmia	r0!, {r4 - r6}
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
+	mcr	p15, 0, r6, c15, c0, 1	@ diag
 	ldmia	r0, {r6 - r11}
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
 #ifndef CONFIG_ARM_LPAE
