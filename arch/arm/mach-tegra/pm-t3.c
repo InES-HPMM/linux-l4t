@@ -90,7 +90,7 @@
 #define CPU_CLOCK(cpu)	(0x1<<(8+cpu))
 #define CPU_RESET(cpu)	(0x1111ul<<(cpu))
 
-
+#ifdef CONFIG_PM_SLEEP
 static int cluster_switch_prolog_clock(unsigned int flags)
 {
 	u32 reg;
@@ -335,3 +335,4 @@ void tegra_lp0_resume_mc(void)
 	writel(mc_reserved_rsv, mc + MC_RESERVED_RSV);
 	writel(mc_emem_arb_override, mc + MC_EMEM_ARB_OVERRIDE);
 }
+#endif
