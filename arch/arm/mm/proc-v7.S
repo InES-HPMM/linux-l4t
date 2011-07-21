@@ -92,7 +92,37 @@ ENDPROC(cpu_v7_dcache_clean_area)
 
 /* Suspend/resume support: derived from arch/arm/mach-s5pv210/sleep.S */
 .globl	cpu_v7_suspend_size
-.equ	cpu_v7_suspend_size, 4 * 9
+.equ	cpu_v7_suspend_size, (4 * (9 + 4 + (16 * 2) + (16 * 2)))
+/* 10 CP15 registers
+ * 4 CP14 registers
+ * 16x2 CP14 breakpoint registers (maximum)
+ * 16x2 CP14 watchpoint registers (maximum)
+ */
+
+.macro  save_brkpt cm
+	mrc	p14, 0, r4, c0, \cm, 4
+	mrc	p14, 0, r5, c0, \cm, 5
+	stmia	r0!, {r4 - r5}
+.endm
+
+.macro  restore_brkpt cm
+	ldmia	r0!, {r4 - r5}
+	mcr	p14, 0, r4, c0, \cm, 4
+	mcr	p14, 0, r5, c0, \cm, 5
+.endm
+
+.macro  save_wpt cm
+	mrc	p14, 0, r4, c0, \cm, 6
+	mrc	p14, 0, r5, c0, \cm, 7
+	stmia	r0!, {r4 - r5}
+.endm
+
+.macro  restore_wpt cm
+	ldmia	r0!, {r4 - r5}
+	mcr	p14, 0, r4, c0, \cm, 6
+	mcr	p14, 0, r5, c0, \cm, 7
+.endm
+
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
 	stmfd	sp!, {r4 - r10, lr}
@@ -106,7 +136,71 @@ ENTRY(cpu_v7_do_suspend)
 	mrc	p15, 0, r8, c1, c0, 0	@ Control register
 	mrc	p15, 0, r9, c1, c0, 1	@ Auxiliary control register
 	mrc	p15, 0, r10, c1, c0, 2	@ Co-processor access control
-	stmia	r0, {r6 - r11}
+	stmia	r0!, {r6 - r11}
+
+	/* Save CP14 debug controller context */
+	mrc	p14, 0, r4, c0, c1, 0	@ DSCR
+	mrc	p14, 0, r5, c0, c6, 0	@ WFAR
+	mrc	p14, 0, r6, c0, c7, 0	@ VCR
+	mrc	p14, 0, r7, c7, c9, 6	@ CLAIM
+	stmia	r0!, {r4-r7}
+
+	mrc	p14, 0, r8, c0, c0, 0   @ read IDR
+	mov	r3, r8, lsr #24
+	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	rsb	r3, r3, #0xf
+
+	/* r3 = (15 - #of brkpt) ;
+	   switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	*/
+	add	r3, r3, r3, lsl #1
+	sub	r3, r3, #1
+	add	pc, pc, r3, lsl #2
+
+	save_brkpt	c15
+	save_brkpt	c14
+	save_brkpt	c13
+	save_brkpt	c12
+	save_brkpt	c11
+	save_brkpt	c10
+	save_brkpt	c9
+	save_brkpt	c8
+	save_brkpt	c7
+	save_brkpt	c6
+	save_brkpt	c5
+	save_brkpt	c4
+	save_brkpt	c3
+	save_brkpt	c2
+	save_brkpt	c1
+	save_brkpt	c0
+
+	mov	r3, r8, lsr #28		@ r3 has the number of wpt
+	rsb	r3, r3, #0xf
+
+	/* r3 = (15 - #of wpt) ;
+	   switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	*/
+	add	r3, r3, r3, lsl #1
+	sub	r3, r3, #1
+	add	pc, pc, r3, lsl #2
+
+	save_wpt	c15
+	save_wpt	c14
+	save_wpt	c13
+	save_wpt	c12
+	save_wpt	c11
+	save_wpt	c10
+	save_wpt	c9
+	save_wpt	c8
+	save_wpt	c7
+	save_wpt	c6
+	save_wpt	c5
+	save_wpt	c4
+	save_wpt	c3
+	save_wpt	c2
+	save_wpt	c1
+	save_wpt	c0
+
 	ldmfd	sp!, {r4 - r10, pc}
 ENDPROC(cpu_v7_do_suspend)
 
@@ -119,7 +213,7 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
 	mcr	p15, 0, r6, c15, c0, 1	@ diag
-	ldmia	r0, {r6 - r11}
+	ldmia	r0!, {r6 - r11}
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
 #ifndef CONFIG_ARM_LPAE
 	ALT_SMP(orr	r1, r1, #TTB_FLAGS_SMP)
@@ -136,6 +230,74 @@ ENTRY(cpu_v7_do_resume)
 	ldr	r5, =NMRR		@ NMRR
 	mcr	p15, 0, r4, c10, c2, 0	@ write PRRR
 	mcr	p15, 0, r5, c10, c2, 1	@ write NMRR
+	isb
+
+	/* Restore CP14 debug controller context */
+	ldmia	r0!, {r2 - r5}
+	mcr	p14, 0, r3, c0, c6, 0	@ WFAR
+	mcr	p14, 0, r4, c0, c7, 0	@ VCR
+	mcr	p14, 0, r5, c7, c8, 6	@ CLAIM
+
+	mrc	p14, 0, r6, c0, c0, 0	@ read IDR
+	mov	r3, r6, lsr #24
+	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	rsb	r3, r3, #0xf
+
+	/*
+	 * r3 = (15 - # of wpt) ;
+	 * switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	 */
+	add     r3, r3, r3, lsl #1
+	sub	r3, r3, #1
+	add	pc, pc, r3, lsl #2
+
+	restore_brkpt	c15
+	restore_brkpt	c14
+	restore_brkpt	c13
+	restore_brkpt	c12
+	restore_brkpt	c11
+	restore_brkpt	c10
+	restore_brkpt	c9
+	restore_brkpt	c8
+	restore_brkpt	c7
+	restore_brkpt	c6
+	restore_brkpt	c5
+	restore_brkpt	c4
+	restore_brkpt	c3
+	restore_brkpt	c2
+	restore_brkpt	c1
+	restore_brkpt	c0
+
+	mov	r3, r6, lsr #28		@ r3 has the number of wpt
+	rsb	r3, r3, #0xf
+
+	/* r3 = (15 - #of wpt) ;
+	   switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	*/
+	add     r3, r3, r3, lsl #1
+	sub	r3, r3, #1
+	add	pc, pc, r3, lsl #2
+
+start_restore_wpt:
+	restore_wpt	c15
+	restore_wpt	c14
+	restore_wpt	c13
+	restore_wpt	c12
+	restore_wpt	c11
+	restore_wpt	c10
+	restore_wpt	c9
+	restore_wpt	c8
+	restore_wpt	c7
+	restore_wpt	c6
+	restore_wpt	c5
+	restore_wpt	c4
+	restore_wpt	c3
+	restore_wpt	c2
+	restore_wpt	c1
+	restore_wpt	c0
+	isb
+
+	mcr	p14, 0, r2, c0, c2, 2	@ DSCR
 	isb
 	dsb
 	mov	r0, r8			@ control register
