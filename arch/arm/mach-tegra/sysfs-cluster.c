@@ -86,9 +86,10 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 
-#include "iomap.h"
-#include "pm.h"
 #include "clock.h"
+#include "iomap.h"
+#include "sleep.h"
+#include "pm.h"
 
 #define SYSFS_CLUSTER_PRINTS	   1	/* Nonzero: enable status prints */
 #define SYSFS_CLUSTER_TRACE_PRINTS 0	/* Nonzero: enable trace prints */
