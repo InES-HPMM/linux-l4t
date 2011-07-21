@@ -193,33 +193,6 @@ static unsigned long
 #define tegra_cluster_switch_time(flags, id) do {} while(0)
 #endif
 
-#ifdef CONFIG_PM_SLEEP
-static void tegra_suspend_check_pwr_stats(void)
-{
-	/* cpus and l2 are powered off later */
-	unsigned long pwrgate_partid_mask =
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-		(1 << TEGRA_POWERGATE_HEG)	|
-		(1 << TEGRA_POWERGATE_SATA)	|
-		(1 << TEGRA_POWERGATE_3D1)	|
-#endif
-		(1 << TEGRA_POWERGATE_3D)	|
-		(1 << TEGRA_POWERGATE_VENC)	|
-		(1 << TEGRA_POWERGATE_PCIE)	|
-		(1 << TEGRA_POWERGATE_VDEC)	|
-		(1 << TEGRA_POWERGATE_MPE);
-
-	int partid;
-
-	for_each_set_bit(partid, &pwrgate_partid_mask, BITS_PER_LONG)
-		if (tegra_powergate_is_powered(partid) == 1)
-			pr_warning("partition %s is left on before suspend\n",
-				tegra_powergate_get_name(partid));
-
-	return;
-}
-#endif
-
 unsigned long tegra_cpu_power_good_time(void)
 {
 	if (WARN_ON_ONCE(!pdata))
@@ -242,6 +215,28 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 		return 2000;
 
 	return pdata->cpu_lp2_min_residency;
+}
+
+/*
+ * create_suspend_pgtable
+ *
+ * Creates a page table with identity mappings of physical memory and IRAM
+ * for use when the MMU is off, in addition to all the regular kernel mappings.
+ */
+static int create_suspend_pgtable(void)
+{
+	tegra_pgd = pgd_alloc(&init_mm);
+	if (!tegra_pgd)
+		return -ENOMEM;
+
+	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
+		IO_IRAM_VIRT, 0);
+	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
+		IO_IRAM_VIRT + SECTION_SIZE, 0);
+
+	tegra_pgd_phys = virt_to_phys(tegra_pgd);
+
+	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -276,31 +271,7 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 	}
 	tegra_last_pclk = pclk;
 }
-#endif
 
-/*
- * create_suspend_pgtable
- *
- * Creates a page table with identity mappings of physical memory and IRAM
- * for use when the MMU is off, in addition to all the regular kernel mappings.
- */
-static int create_suspend_pgtable(void)
-{
-	tegra_pgd = pgd_alloc(&init_mm);
-	if (!tegra_pgd)
-		return -ENOMEM;
-
-	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
-		IO_IRAM_VIRT, 0);
-	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
-		IO_IRAM_VIRT + SECTION_SIZE, 0);
-
-	tegra_pgd_phys = virt_to_phys(tegra_pgd);
-
-	return 0;
-}
-
-#ifdef CONFIG_PM_SLEEP
 /*
  * restore_cpu_complex
  *
@@ -630,6 +601,31 @@ static const char *lp_state[TEGRA_MAX_SUSPEND_MODE] = {
 static int tegra_suspend_enter(suspend_state_t state)
 {
 	return tegra_suspend_dram(current_suspend_mode);
+}
+
+static void tegra_suspend_check_pwr_stats(void)
+{
+	/* cpus and l2 are powered off later */
+	unsigned long pwrgate_partid_mask =
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+		(1 << TEGRA_POWERGATE_HEG)	|
+		(1 << TEGRA_POWERGATE_SATA)	|
+		(1 << TEGRA_POWERGATE_3D1)	|
+#endif
+		(1 << TEGRA_POWERGATE_3D)	|
+		(1 << TEGRA_POWERGATE_VENC)	|
+		(1 << TEGRA_POWERGATE_PCIE)	|
+		(1 << TEGRA_POWERGATE_VDEC)	|
+		(1 << TEGRA_POWERGATE_MPE);
+
+	int partid;
+
+	for_each_set_bit(partid, &pwrgate_partid_mask, BITS_PER_LONG)
+		if (tegra_powergate_is_powered(partid) == 1)
+			pr_warning("partition %s is left on before suspend\n",
+				tegra_powergate_get_name(partid));
+
+	return;
 }
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode)
