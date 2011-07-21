@@ -14,9 +14,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/const.h>
+#include <linux/init.h>
 #include <linux/linkage.h>
 
 #include <asm/assembler.h>
+#include <asm/cache.h>
+#include <asm/domain.h>
+#include <asm/memory.h>
+#include <asm/page.h>
+#include <asm/ptrace.h>
+#include <asm/asm-offsets.h>
+#include <asm/glue-cache.h>
+#include <asm/glue-proc.h>
+#include <asm/cp15.h>
 
 #include "sleep.h"
 #include "flowctrl.h"
@@ -80,6 +91,7 @@ delay_1:
 	ldr	r3, [r1]			@ read CSR
 	str	r3, [r1]			@ clear CSR
 	tst	r0, #TEGRA30_POWER_HOTPLUG_SHUTDOWN
+	moveq	r3, #FLOW_CTRL_WAIT_FOR_INTERRUPT	@ For LP2
 	movne	r3, #FLOW_CTRL_WAITEVENT		@ For hotplug
 	str	r3, [r2]
 	ldr	r0, [r2]
