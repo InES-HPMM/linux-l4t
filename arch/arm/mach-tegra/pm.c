@@ -56,12 +56,13 @@
 #include "clock.h"
 #include "cpuidle.h"
 #include "flowctrl.h"
+#include "gic.h"
 #include "iomap.h"
 #include "pm.h"
 #include "pm-irq.h"
 #include "reset.h"
 #include "sleep.h"
-#include "fuse.h"
+#include "timer.h"
 
 struct suspend_context {
 	/*
@@ -385,6 +386,14 @@ static void suspend_cpu_complex(void)
 		reg |= FLOW_CTRL_CSR_INTR_FLAG;
 		flowctrl_write_cpu_csr(i, reg);
 	}
+
+	tegra_gic_cpu_disable();
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	/* Tegra3 enters LPx states via WFI - do not propagate legacy IRQs
+	   to CPU core to avoid fall through WFI (IRQ-to-flow controller wake
+	   path is not affected). */
+	tegra_gic_pass_through_disable();
+#endif
 }
 
 void tegra_clear_cpu_in_lp2(int cpu)
@@ -454,7 +463,6 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		tegra_lp2_set_trigger(sleep_time);
 
 	cpu_cluster_pm_enter();
-
 	suspend_cpu_complex();
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 	flush_cache_all();
