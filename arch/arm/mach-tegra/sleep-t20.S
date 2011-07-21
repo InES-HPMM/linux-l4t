@@ -77,6 +77,7 @@ ENTRY(tegra20_hotplug_shutdown)
 	mov	pc, lr			@ should never get here
 ENDPROC(tegra20_hotplug_shutdown)
 
+#if defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_cpu_shutdown(int cpu)
  *
@@ -513,3 +514,4 @@ tegra2_sdram_pad_save:
 	.globl tegra2_iram_end
 tegra2_iram_end:
 	b	.
+#endif

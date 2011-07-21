@@ -101,6 +101,7 @@ ENTRY(tegra_pen_unlock)
 	mov	pc, lr
 ENDPROC(tegra_pen_unlock)
 
+#ifdef CONFIG_PM_SLEEP
 /*
  * tegra_cpu_save
  *
@@ -143,8 +144,6 @@ ENTRY(tegra_cpu_save)
 
 	mov	pc, lr
 ENDPROC(tegra_cpu_save)
-
-.word
 
 /*
  * tegra_sleep_cpu(unsigned long v2p)
@@ -255,4 +254,4 @@ ENTRY(tegra_cpu_pllp)
 	str	r0, [r5, #CLK_RESET_CCLK_DIVIDER]
 	mov	pc, lr
 ENDPROC(tegra_cpu_pllp)
-
+#endif
