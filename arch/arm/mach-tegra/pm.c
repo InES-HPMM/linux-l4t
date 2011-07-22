@@ -84,6 +84,8 @@ struct suspend_context {
 
 	u32 mc[3];
 	u8 uart[5];
+
+	struct tegra_twd_context twd;
 };
 
 #ifdef CONFIG_PM_SLEEP
@@ -280,7 +282,7 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
  *
  * Always called on CPU 0.
  */
-static void restore_cpu_complex(void)
+static void restore_cpu_complex(u32 mode)
 {
 	int cpu = smp_processor_id();
 	unsigned int reg;
@@ -335,6 +337,11 @@ static void restore_cpu_complex(void)
 	reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr */
 	reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event */
 	flowctrl_write_cpu_csr(cpu, reg);
+
+	/* If an immedidate cluster switch is being perfomed, restore the
+	   local timer registers. See save_cpu_complex() for the details. */
+	if (mode & (TEGRA_POWER_CLUSTER_MASK | TEGRA_POWER_CLUSTER_IMMEDIATE))
+		tegra_twd_resume(&tegra_sctx.twd);
 }
 
 /*
@@ -345,7 +352,7 @@ static void restore_cpu_complex(void)
  *
  * Must always be called on cpu 0.
  */
-static void suspend_cpu_complex(void)
+static void suspend_cpu_complex(u32 mode)
 {
 	int cpu = smp_processor_id();
 	unsigned int reg;
@@ -365,6 +372,13 @@ static void suspend_cpu_complex(void)
 	tegra_sctx.pllp_outb = readl(clk_rst + CLK_RESET_PLLP_OUTB);
 	tegra_sctx.pllp_misc = readl(clk_rst + CLK_RESET_PLLP_MISC);
 	tegra_sctx.cclk_divider = readl(clk_rst + CLK_RESET_CCLK_DIVIDER);
+
+	/* If an immedidate cluster switch is being perfomed, save the
+	   local timer registers. For calls resulting from CPU LP2 in
+	   idle or system suspend, the local timer is shut down and
+	   timekeeping switches over to the global system timer. */
+	if (mode & (TEGRA_POWER_CLUSTER_MASK | TEGRA_POWER_CLUSTER_IMMEDIATE))
+		tegra_twd_suspend(&tegra_sctx.twd);
 
 	reg = flowctrl_read_cpu_csr(cpu);
 	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
@@ -464,7 +478,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		tegra_lp2_set_trigger(sleep_time);
 
 	cpu_cluster_pm_enter();
-	suspend_cpu_complex();
+	suspend_cpu_complex(mode);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 	flush_cache_all();
 	outer_flush_all();
@@ -476,7 +490,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	l2x0_enable();
 #endif
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
-	restore_cpu_complex();
+	restore_cpu_complex(mode);
 	cpu_cluster_pm_exit();
 
 	remain = tegra_lp2_timer_remain();
@@ -670,7 +684,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode)
 	if (mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_suspend_mc();
 
-	suspend_cpu_complex();
+	suspend_cpu_complex(0);
 	flush_cache_all();
 	outer_flush_all();
 	outer_disable();
@@ -685,7 +699,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode)
 	if (mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_resume_mc();
 
-	restore_cpu_complex();
+	restore_cpu_complex(0);
 
 	cpu_cluster_pm_exit();
 	cpu_pm_exit();
