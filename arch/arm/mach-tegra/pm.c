@@ -54,6 +54,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "cpuidle.h"
 #include "flowctrl.h"
 #include "iomap.h"
 #include "pm.h"
