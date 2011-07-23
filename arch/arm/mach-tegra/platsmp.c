@@ -80,11 +80,10 @@ static int tegra20_power_up_cpu(unsigned int cpu)
 	if (is_lp_cluster()) {
 		struct clk *cpu_clk, *cpu_g_clk;
 
-		/* The G CPU may not be available for a
-		   variety of reasons. */
+		/* The G CPU may not be available for a variety of reasons. */
 		status = is_g_cluster_available(cpu);
 		if (status)
-			return status;
+			goto done;
 
 		cpu_clk = tegra_get_clock_by_name("cpu");
 		cpu_g_clk = tegra_get_clock_by_name("cpu_g");
@@ -98,7 +97,7 @@ static int tegra20_power_up_cpu(unsigned int cpu)
 			status = clk_set_parent(cpu_clk, cpu_g_clk);
 
 		if (status)
-			return status;
+			goto done;
 	}
 
 	/* Enable the CPU clock. */
@@ -200,7 +199,8 @@ done:
  */
 static void __init tegra_smp_init_cpus(void)
 {
-	unsigned int i, ncores = available_cpus();
+	unsigned int ncores = available_cpus();
+	unsigned int i;
 
 	if (ncores > nr_cpu_ids) {
 		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",

@@ -555,7 +555,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 	switch (mode) {
 	case TEGRA_SUSPEND_LP0:
 		/*
-		 * lp0 boots through the AVP, which then resumes the AVP to
+		 * LP0 boots through the AVP, which then resumes the AVP to
 		 * the address in scratch 39, and the cpu to the address in
 		 * scratch 41 to tegra_resume
 		 */
@@ -569,7 +569,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		break;
 	case TEGRA_SUSPEND_LP1:
 		/*
-		 * lp1 boots through the normal cpu reset vector pointing to
+		 * LP1 boots through the normal cpu reset vector pointing to
 		 * tegra_lp1_reset in IRAM, which resumes the CPU to
 		 * the address in scratch 41 to tegra_resume
 		 */
@@ -579,7 +579,7 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		break;
 	case TEGRA_SUSPEND_LP2:
 		/*
-		 * lp2 boots through the normal cpu reset vector directly to
+		 * LP2 boots through the normal cpu reset vector directly to
 		 * tegra_resume
 		 */
 		writel(virt_to_phys(tegra_resume), evp_reset);
