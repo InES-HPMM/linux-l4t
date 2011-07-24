@@ -82,7 +82,6 @@ static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 };
 
 static int threshold_index;
-static int package_id;
 
 static void fuse_speedo_calib(u32 *speedo_g, u32 *speedo_lp)
 {
@@ -135,7 +134,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			threshold_index = THRESHOLD_INDEX_1;
 			break;
 		case 0x81:
-			switch (package_id) {
+			switch (tegra_package_id) {
 			case 1:
 				tegra_cpu_speedo_id = 2;
 				tegra_soc_speedo_id = 2;
@@ -147,13 +146,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				threshold_index = THRESHOLD_INDEX_7;
 				break;
 			default:
-				pr_err("Tegra30: Unknown pkg %d\n", package_id);
+				pr_err("Tegra30: Unknown pkg %d\n", tegra_package_id);
 				BUG();
 				break;
 			}
 			break;
 		case 0x80:
-			switch (package_id) {
+			switch (tegra_package_id) {
 			case 1:
 				tegra_cpu_speedo_id = 5;
 				tegra_soc_speedo_id = 2;
@@ -165,13 +164,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				threshold_index = THRESHOLD_INDEX_9;
 				break;
 			default:
-				pr_err("Tegra30: Unknown pkg %d\n", package_id);
+				pr_err("Tegra30: Unknown pkg %d\n", tegra_package_id);
 				BUG();
 				break;
 			}
 			break;
 		case 0x83:
-			switch (package_id) {
+			switch (tegra_package_id) {
 			case 1:
 				tegra_cpu_speedo_id = 7;
 				tegra_soc_speedo_id = 1;
@@ -183,7 +182,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				threshold_index = THRESHOLD_INDEX_3;
 				break;
 			default:
-				pr_err("Tegra30: Unknown pkg %d\n", package_id);
+				pr_err("Tegra30: Unknown pkg %d\n", tegra_package_id);
 				BUG();
 				break;
 			}
@@ -209,7 +208,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			threshold_index = THRESHOLD_INDEX_6;
 			break;
 		case 0:
-			switch (package_id) {
+			switch (tegra_package_id) {
 			case 1:
 				tegra_cpu_speedo_id = 2;
 				tegra_soc_speedo_id = 2;
@@ -221,7 +220,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				threshold_index = THRESHOLD_INDEX_3;
 				break;
 			default:
-				pr_err("Tegra30: Unknown pkg %d\n", package_id);
+				pr_err("Tegra30: Unknown pkg %d\n", tegra_package_id);
 				BUG();
 				break;
 			}
@@ -254,7 +253,7 @@ void tegra30_init_speedo_data(void)
 	BUILD_BUG_ON(ARRAY_SIZE(core_process_speedos) !=
 			THRESHOLD_INDEX_COUNT);
 
-	package_id = tegra_fuse_readl(FUSE_PACKAGE_INFO) & 0x0F;
+	tegra_package_id = tegra_fuse_readl(FUSE_PACKAGE_INFO) & 0x0F;
 
 	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 	fuse_speedo_calib(&cpu_speedo_val, &core_speedo_val);

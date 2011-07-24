@@ -63,6 +63,7 @@ int tegra_chip_id;
 int tegra_chip_rev;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
+int tegra_package_id;
 enum tegra_revision tegra_revision;
 static unsigned int tegra_chip_major;
 static unsigned int tegra_chip_minor;
