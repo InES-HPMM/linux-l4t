@@ -9,6 +9,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += common-t3.o
 obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
+obj-y                                   += timer.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += timer-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += timer-t3.o
 obj-y                                   += pinmux.o
