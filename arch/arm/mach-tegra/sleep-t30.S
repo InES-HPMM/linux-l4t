@@ -42,13 +42,13 @@
  * Should never return.
  */
 ENTRY(tegra30_hotplug_shutdown)
-	/* Turn off SMP coherency */
-	exit_smp r4, r5
+	mov	r6, lr
+	bl	tegra_cpu_exit_coherency
 
 	/* Powergate this CPU */
 	mov	r0, #TEGRA30_POWER_HOTPLUG_SHUTDOWN
 	bl	tegra30_cpu_shutdown
-	mov	pc, lr			@ should never get here
+	mov	pc, r6			@ should never get here
 ENDPROC(tegra30_hotplug_shutdown)
 
 /*
@@ -126,6 +126,7 @@ ENDPROC(tegra30_cpu_shutdown)
 ENTRY(tegra3_sleep_cpu)
 	mov	r3, lr			@ set resume address to lr
 	bl	tegra_cpu_save
+	bl	tegra_cpu_exit_coherency
 
 	mov32	r1, tegra3_tear_down_cpu
 	add	r1, r1, r0
