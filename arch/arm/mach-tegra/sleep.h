@@ -106,7 +106,6 @@ int  tegra2_cpu_is_resettable_soon(void);
 void tegra2_cpu_reset(int cpu);
 void tegra2_cpu_set_resettable_soon(void);
 void tegra2_sleep_core(unsigned long v2p);
-void tegra2_sleep_reset(void);
 void tegra2_sleep_wfi(unsigned long v2p);
 #endif
 
