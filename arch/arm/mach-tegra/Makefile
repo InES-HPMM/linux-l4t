@@ -54,7 +54,6 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= sleep-t30.o
 obj-$(CONFIG_SMP)			+= platsmp.o
 obj-y                                   += reset.o
 obj-y                                   += headsmp.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += headsmp-t3.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
