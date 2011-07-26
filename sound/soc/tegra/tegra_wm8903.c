@@ -274,6 +274,11 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 	}
 	pdata = &machine->pdata;
 
+	if (machine_is_cardhu()) {
+		tegra_wm8903_dai.codec_name = "wm8903.4-001a",
+		tegra_wm8903_dai.cpu_dai_name = "tegra30-i2s.1";
+	}
+
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
