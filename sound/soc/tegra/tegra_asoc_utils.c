@@ -154,13 +154,63 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 		goto err_put_pll_a_out0;
 	}
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	data->clk_out1 = ERR_PTR(-ENOENT);
+#else
+	data->clk_out1 = clk_get_sys("clk_out_1", "extern1");
+	if (IS_ERR(data->clk_out1)) {
+		dev_err(data->dev, "Can't retrieve clk out1\n");
+		ret = PTR_ERR(data->clk_out1);
+		goto err_put_cdev1;
+	}
+#endif
+
+	ret = clk_enable(data->clk_pll_a);
+	if (ret) {
+		dev_err(data->dev, "Can't enable clk pll_a");
+		goto err_put_out1;
+	}
+
+	ret = clk_enable(data->clk_pll_a_out0);
+	if (ret) {
+		dev_err(data->dev, "Can't enable clk pll_a_out0");
+		goto err_put_out1;
+	}
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	ret = clk_set_parent(data->clk_cdev1, data->clk_pll_a_out0);
+	if (ret) {
+		dev_err(data->dev, "Can't set clk cdev1/extern1 parent");
+		goto err_put_out1;
+	}
+#endif
+
+	ret = clk_enable(data->clk_cdev1);
+	if (ret) {
+		dev_err(data->dev, "Can't enable clk cdev1/extern1");
+		goto err_put_out1;
+	}
+
+	if (!IS_ERR(data->clk_out1)) {
+		ret = clk_enable(data->clk_out1);
+		if (ret) {
+			dev_err(data->dev, "Can't enable clk out1");
+			goto err_put_out1;
+		}
+	}
+
 	ret = tegra_asoc_utils_set_rate(data, 44100, 256 * 44100);
 	if (ret)
 		goto err_put_cdev1;
 
 	return 0;
 
+err_put_out1:
+	if (!IS_ERR(data->clk_out1))
+		clk_put(data->clk_out1);
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 err_put_cdev1:
+#endif
 	clk_put(data->clk_cdev1);
 err_put_pll_a_out0:
 	clk_put(data->clk_pll_a_out0);
@@ -173,6 +223,8 @@ EXPORT_SYMBOL_GPL(tegra_asoc_utils_init);
 
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 {
+	if (!IS_ERR(data->clk_out1))
+		clk_put(data->clk_out1);
 	clk_put(data->clk_cdev1);
 	clk_put(data->clk_pll_a_out0);
 	clk_put(data->clk_pll_a);
