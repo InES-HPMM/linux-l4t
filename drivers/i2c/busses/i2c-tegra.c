@@ -25,6 +25,7 @@
 #include <linux/i2c.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
+#include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/i2c-tegra.h>
@@ -109,6 +110,8 @@
 
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
+
+#define MAX_BUSCLEAR_CLOCK			(9 * 8 + 1)
 /*
  * msg_end_type: The bus control which need to be send at end of transfer.
  * @MSG_END_STOP: Send stop pulse at end of transfer.
@@ -176,6 +179,8 @@ struct tegra_i2c_dev {
 	bool is_suspended;
 	u16 slave_addr;
 	bool is_clkon_always;
+	int scl_gpio;
+	int sda_gpio;
 };
 
 static void dvc_writel(struct tegra_i2c_dev *i2c_dev, u32 val, unsigned long reg)
@@ -680,6 +685,14 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK)
 		udelay(DIV_ROUND_UP(2 * 1000000, i2c_dev->bus_clk_rate));
 
+	/* Arbitration Lost occurs, Start recovery */
+	if (i2c_dev->msg_err == I2C_ERR_ARBITRATION_LOST) {
+		i2c_algo_busclear_gpio(i2c_dev->dev,
+			i2c_dev->scl_gpio, GPIOF_OPEN_DRAIN,
+			i2c_dev->sda_gpio,GPIOF_OPEN_DRAIN,
+			MAX_BUSCLEAR_CLOCK, 100000);
+	}
+
 	tegra_i2c_init(i2c_dev);
 
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK) {
@@ -872,6 +885,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	i2c_dev->scl_gpio = pdata->scl_gpio;
+	i2c_dev->sda_gpio = pdata->sda_gpio;
 	i2c_set_adapdata(&i2c_dev->adapter, i2c_dev);
 	i2c_dev->adapter.owner = THIS_MODULE;
 	i2c_dev->adapter.class = I2C_CLASS_HWMON;
