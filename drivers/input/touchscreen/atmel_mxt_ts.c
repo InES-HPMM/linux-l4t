@@ -2,6 +2,7 @@
  * Atmel maXTouch Touchscreen driver
  *
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
+ * Copyright (C) 2011 Atmel Corporation
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -175,10 +176,12 @@
 /* Define for MXT_GEN_COMMAND_T6 */
 #define MXT_BOOT_VALUE		0xa5
 #define MXT_BACKUP_VALUE	0x55
-#define MXT_BACKUP_TIME		25	/* msec */
-#define MXT_RESET_TIME		65	/* msec */
 
-#define MXT_FWRESET_TIME	175	/* msec */
+/* Delay times */
+#define MXT_BACKUP_TIME		25	/* msec */
+#define MXT_RESET_TIME		200	/* msec */
+#define MXT_RESET_NOCHGREAD	400	/* msec */
+#define MXT_FWRESET_TIME	1000	/* msec */
 
 /* Command to unlock bootloader */
 #define MXT_UNLOCK_CMD_MSB	0xaa
@@ -816,7 +819,9 @@ static int mxt_initialize(struct mxt_data *data)
 	struct i2c_client *client = data->client;
 	struct mxt_info *info = &data->info;
 	int error;
+	int timeout_counter = 0;
 	u8 val;
+	u8 command_register;
 
 	error = mxt_get_info(data);
 	if (error)
@@ -847,11 +852,35 @@ static int mxt_initialize(struct mxt_data *data)
 			MXT_COMMAND_BACKUPNV,
 			MXT_BACKUP_VALUE);
 	msleep(MXT_BACKUP_TIME);
+	do {
+		error =  mxt_read_object(data, MXT_GEN_COMMAND_T6,
+					 MXT_COMMAND_BACKUPNV,
+					 &command_register);
+		if (error)
+			return error;
+		msleep(20);
+	} while ((command_register != 0) && (timeout_counter++ <= 100));
+	if (timeout_counter > 100) {
+		dev_err(&client->dev, "No response after backup!\n");
+		return -EIO;
+	}
 
 	/* Soft reset */
 	mxt_write_object(data, MXT_GEN_COMMAND_T6,
 			MXT_COMMAND_RESET, 1);
-	msleep(MXT_RESET_TIME);
+	if (data->pdata->read_chg == NULL) {
+		msleep(MXT_RESET_NOCHGREAD);
+	} else {
+		msleep(MXT_RESET_TIME);
+
+		timeout_counter = 0;
+		while ((timeout_counter++ <= 100) && data->pdata->read_chg())
+			msleep(20);
+		if (timeout_counter > 100) {
+			dev_err(&client->dev, "No response after reset!\n");
+			return -EIO;
+		}
+	}
 
 	/* Update matrix size at info struct */
 	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, &val);
