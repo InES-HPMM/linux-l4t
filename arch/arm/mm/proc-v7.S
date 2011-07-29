@@ -590,10 +590,11 @@ __v7_setup:
 1:
 #endif
 #ifdef CONFIG_ARM_ERRATA_752520
-	cmp	r6, #0x29			@ present prior to r2p9
-	mrclt	p15, 0, r10, c15, c0, 1		@ read diagnostic register
-	orrlt	r10, r10, #1 << 20		@ set bit #20
-	mcrlt	p15, 0, r10, c15, c0, 1		@ write diagnostic register
+	cmp	r6, #0x28			@ present prior to r2p9
+	teqlt	r5, #0x00200000			@ present from r2p0
+	mrceq	p15, 0, r10, c15, c0, 1		@ read diagnostic register
+	orreq	r10, r10, #1 << 20		@ set bit #20
+	mcreq	p15, 0, r10, c15, c0, 1		@ write diagnostic register
 #endif
 #endif
 
