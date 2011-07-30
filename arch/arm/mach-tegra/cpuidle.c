@@ -51,52 +51,10 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 #ifdef CONFIG_PM_SLEEP
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 				struct cpuidle_driver *drv, int index);
-
-static bool lp2_disabled_by_suspend;
-static bool lp2_in_idle __read_mostly = true;
-static bool lp2_in_idle_modifiable __read_mostly = true;
-
-void tegra_lp2_in_idle(bool enable)
-{
-#ifdef CONFIG_PM_SLEEP
-	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
-	if (lp2_in_idle_modifiable) {
-		lp2_in_idle = enable;
-		lp2_in_idle_modifiable = enable;
-		if (!enable)
-			pr_warn("LP2 in idle disabled\n");
-	}
 #endif
-}
-
-static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
-{
-#ifdef CONFIG_PM_SLEEP
-	int ret;
-
-	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
-	if (lp2_in_idle_modifiable) {
-		ret = param_set_bool(arg, kp);
-		return ret;
-	}
-#endif
-	return -ENODEV;
-}
-
-static int lp2_in_idle_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_bool(buffer, kp);
-}
-
-static struct kernel_param_ops lp2_in_idle_ops = {
-	.set = lp2_in_idle_set,
-	.get = lp2_in_idle_get,
-};
-module_param_cb(lp2_in_idle, &lp2_in_idle_ops, &lp2_in_idle, 0644);
 
 int tegra_lp2_exit_latency;
 static unsigned int tegra_lp2_min_residency;
-#endif
 
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
@@ -151,6 +109,28 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 }
 
 #ifdef CONFIG_PM_SLEEP
+#define LP2_IN_IDLE_INIT	true
+#else
+#define LP2_IN_IDLE_INIT	false
+#endif
+
+static bool lp2_in_idle __read_mostly = LP2_IN_IDLE_INIT;
+
+#ifdef CONFIG_PM_SLEEP
+static bool lp2_in_idle_modifiable __read_mostly = true;
+static bool lp2_disabled_by_suspend;
+
+void tegra_lp2_in_idle(bool enable)
+{
+	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
+	if (lp2_in_idle_modifiable) {
+		lp2_in_idle = enable;
+		lp2_in_idle_modifiable = enable;
+		if (!enable)
+			pr_warn("LP2 in idle disabled\n");
+	}
+}
+
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	struct cpuidle_driver *drv, int index)
 {
@@ -251,6 +231,31 @@ static int __init tegra_cpuidle_init(void)
 	return 0;
 }
 device_initcall(tegra_cpuidle_init);
+
+static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
+{
+#ifdef CONFIG_PM_SLEEP
+	int ret;
+
+	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
+	if (lp2_in_idle_modifiable) {
+		ret = param_set_bool(arg, kp);
+		return ret;
+	}
+#endif
+	return -ENODEV;
+}
+
+static int lp2_in_idle_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_bool(buffer, kp);
+}
+
+static struct kernel_param_ops lp2_in_idle_ops = {
+	.set = lp2_in_idle_set,
+	.get = lp2_in_idle_get,
+};
+module_param_cb(lp2_in_idle, &lp2_in_idle_ops, &lp2_in_idle, 0644);
 
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_PM_SLEEP)
 static int tegra_lp2_debug_open(struct inode *inode, struct file *file)
