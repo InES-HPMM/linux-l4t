@@ -30,6 +30,7 @@
 #include <linux/err.h>
 #include <linux/spinlock.h>
 #include <linux/hwmon-sysfs.h>
+#include <linux/hwmon.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/module.h>
@@ -584,25 +585,15 @@ labelErr:
 	return 0;
 }
 
-static SENSOR_DEVICE_ATTR(tsensor_TH1, S_IRUGO | S_IWUSR,
-		show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH1);
-static SENSOR_DEVICE_ATTR(tsensor_TH2, S_IRUGO | S_IWUSR,
-		show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH2);
-static SENSOR_DEVICE_ATTR(tsensor_TH3, S_IRUGO | S_IWUSR,
-		show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH3);
-static SENSOR_DEVICE_ATTR(tsensor_temperature, S_IRUGO | S_IWUSR,
-		tsensor_show_counters, NULL, TSENSOR_TEMPERATURE);
-
-static struct attribute *tsensor_attributes[] = {
-	&sensor_dev_attr_tsensor_TH1.dev_attr.attr,
-	&sensor_dev_attr_tsensor_TH2.dev_attr.attr,
-	&sensor_dev_attr_tsensor_TH3.dev_attr.attr,
-	&sensor_dev_attr_tsensor_temperature.dev_attr.attr,
-	NULL
-};
-
-static const struct attribute_group tsensor_attr_group = {
-	.attrs = tsensor_attributes,
+static struct sensor_device_attribute tsensor_nodes[] = {
+	SENSOR_ATTR(tsensor_TH1, S_IRUGO | S_IWUSR,
+			show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH1),
+	SENSOR_ATTR(tsensor_TH2, S_IRUGO | S_IWUSR,
+			show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH2),
+	SENSOR_ATTR(tsensor_TH3, S_IRUGO | S_IWUSR,
+			show_tsensor_param, set_tsensor_param, TSENSOR_PARAM_TH3),
+	SENSOR_ATTR(tsensor_temperature, S_IRUGO | S_IWUSR,
+			tsensor_show_counters, NULL, TSENSOR_TEMPERATURE),
 };
 
 /*
@@ -1500,6 +1491,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 	struct resource *r;
 	int err;
 	unsigned int reg;
+	u8 i;
 
 	data = kzalloc(sizeof(struct tegra_tsensor_data), GFP_KERNEL);
 	if (!data) {
@@ -1511,14 +1503,18 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 
 	/* Register sysfs hooks */
-	err = sysfs_create_group(&pdev->dev.kobj, &tsensor_attr_group);
-	if (err < 0)
-		goto err0;
+	for (i = 0; i < ARRAY_SIZE(tsensor_nodes); i++) {
+		err = device_create_file(&pdev->dev, &tsensor_nodes[i].dev_attr);
+		if (err) {
+			dev_err(&pdev->dev, "device_create_file failed.\n");
+			goto err0;
+		}
+	}
 
 	data->hwmon_dev = hwmon_device_register(&pdev->dev);
 	if (IS_ERR(data->hwmon_dev)) {
 		err = PTR_ERR(data->hwmon_dev);
-		goto err0b;
+		goto err1;
 	}
 
 	dev_set_drvdata(data->hwmon_dev, data);
@@ -1531,7 +1527,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s,line=%d]: Failed to get io "
 			"resource\n", __func__, __LINE__);
 		err = -ENODEV;
-		goto err0b;
+		goto err2;
 	}
 
 	if (!request_mem_region(r->start, (r->end - r->start) + 1,
@@ -1539,7 +1535,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s,line=%d]: Error mem busy\n",
 			__func__, __LINE__);
 		err = -EBUSY;
-		goto err0b;
+		goto err2;
 	}
 
 	data->phys = r->start;
@@ -1549,7 +1545,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s, line=%d]: can't ioremap "
 			"tsensor iomem\n", __FILE__, __LINE__);
 		err = -ENOMEM;
-		goto err1;
+		goto err3;
 	}
 
 	/* map pmc rst_status register  */
@@ -1558,7 +1554,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s,line=%d]: Failed to get io "
 			"resource\n", __func__, __LINE__);
 		err = -ENODEV;
-		goto err2;
+		goto err4;
 	}
 
 	if (!request_mem_region(r->start, (r->end - r->start) + 1,
@@ -1566,7 +1562,7 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s, line=%d]: Error mem busy\n",
 			__func__, __LINE__);
 		err = -EBUSY;
-		goto err2;
+		goto err4;
 	}
 
 	data->pmc_phys = r->start;
@@ -1576,13 +1572,13 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, " [%s, line=%d]: can't ioremap "
 			"pmc iomem\n", __FILE__, __LINE__);
 		err = -ENOMEM;
-		goto err3;
+		goto err5;
 	}
 
 	/* tsensor active instance decided based on fuse revision */
 	err = tegra_fuse_get_revision(&reg);
 	if (err)
-		goto err4;
+		goto err6;
 	/* instance 1 is used for fuse revision 8 till 20 */
 	/* instance 0 is used for fuse revision 21 onwards */
 	if ((reg & 0xf) >= TSENSOR_FUSE_REVISION_DECIMAL_REV1)
@@ -1593,24 +1589,25 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 
 	/* tegra tsensor - setup and init */
 	if (tegra_tsensor_setup(pdev) != 0)
-		goto err4;
+		goto err6;
 
 	dev_dbg(&pdev->dev, "\n end tegra_tsensor_probe ");
 	return 0;
-err4:
+err6:
 	iounmap(data->pmc_rst_base);
-err3:
+err5:
 	release_mem_region(data->pmc_phys, (data->pmc_phys_end -
 		data->pmc_phys) + 1);
-err2:
+err4:
 	iounmap(data->base);
-err1:
+err3:
 	release_mem_region(data->phys, (data->phys_end -
 		data->phys) + 1);
-err0b:
-	sysfs_remove_group(&pdev->dev.kobj, &tsensor_attr_group);
+err2:
 	hwmon_device_unregister(data->hwmon_dev);
-
+err1:
+	for (i = 0; i < ARRAY_SIZE(tsensor_nodes); i++)
+		device_remove_file(&pdev->dev, &tsensor_nodes[i].dev_attr);
 err0:
 	kfree(data);
 exit:
@@ -1621,8 +1618,11 @@ exit:
 static int tegra_tsensor_remove(struct platform_device *pdev)
 {
 	struct tegra_tsensor_data *data = platform_get_drvdata(pdev);
+	u8 i;
 
 	hwmon_device_unregister(data->hwmon_dev);
+	for (i = 0; i < ARRAY_SIZE(tsensor_nodes); i++)
+		device_remove_file(&pdev->dev, &tsensor_nodes[i].dev_attr);
 
 	free_irq(data->irq, data);
 
@@ -1632,8 +1632,7 @@ static int tegra_tsensor_remove(struct platform_device *pdev)
 	iounmap(data->base);
 	release_mem_region(data->phys, (data->phys_end -
 		data->phys) + 1);
-	sysfs_remove_group(&pdev->dev.kobj, &tsensor_attr_group);
-	platform_set_drvdata(pdev, NULL);
+
 	kfree(data);
 
 	return 0;
