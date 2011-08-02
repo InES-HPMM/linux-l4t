@@ -719,6 +719,16 @@ config MFD_MAX8907C
 	  accessing the device, additional drivers must be enabled in order
 	  to use the functionality of the device.
 
+config MFD_MAX77663
+	tristate "Maxim Semiconductor MAX77663 PMIC Support"
+	select MFD_CORE
+	depends on I2C
+	help
+	  Say yes here to support for Maxim Semiconductor MAX77663. This is
+	  a Power Management IC. This driver provies common support for
+	  accessing the device, additional drivers must be enabled in order
+	  to use the functionality of the device.
+
 config MFD_TI_SSP
 	tristate "TI Sequencer Serial Port support"
 	depends on ARCH_DAVINCI_TNETV107X && GENERIC_HARDIRQS
