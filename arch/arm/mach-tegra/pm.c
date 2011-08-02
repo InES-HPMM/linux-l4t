@@ -42,6 +42,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/export.h>
 #include <linux/vmalloc.h>
+#include <linux/memblock.h>
 
 #include <asm/cacheflush.h>
 #include <asm/hardware/cache-l2x0.h>
@@ -240,7 +241,7 @@ static __init int create_suspend_pgtable(void)
 		return -ENOMEM;
 
 	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
-		IO_IRAM_VIRT, 0);
+		phys_to_virt(PHYS_OFFSET) + memblock_phys_mem_size(), 0);
 	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
 		IO_IRAM_VIRT + SECTION_SIZE, 0);
 
