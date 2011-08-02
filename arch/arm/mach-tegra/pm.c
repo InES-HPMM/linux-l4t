@@ -89,6 +89,8 @@ struct suspend_context {
 };
 
 #ifdef CONFIG_PM_SLEEP
+phys_addr_t tegra_pgd_phys;	/* pgd used by hotplug & LP2 bootup */
+static pgd_t *tegra_pgd;
 static DEFINE_SPINLOCK(tegra_lp2_lock);
 static cpumask_t tegra_in_lp2;
 static cpumask_t *iram_cpu_lp2_mask;
@@ -152,10 +154,9 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
 
+#ifdef CONFIG_PM_SLEEP
 phys_addr_t tegra_pgd_phys;  /* pgd used by hotplug & LP2 bootup */
 static pgd_t *tegra_pgd;
-
-#ifdef CONFIG_PM_SLEEP
 static int tegra_last_pclk;
 #endif
 static struct clk *tegra_pclk;
@@ -197,6 +198,7 @@ static unsigned long
 #define tegra_cluster_switch_time(flags, id) do {} while(0)
 #endif
 
+#ifdef CONFIG_PM_SLEEP
 unsigned long tegra_cpu_power_good_time(void)
 {
 	if (WARN_ON_ONCE(!pdata))
@@ -243,7 +245,6 @@ static int create_suspend_pgtable(void)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
 /* ensures that sufficient time is passed for a register write to
  * serialize into the 32KHz domain */
 static void pmc_32kwritel(u32 val, unsigned long offs)
@@ -801,14 +802,13 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 
 	preset_lpj = loops_per_jiffy;
 
+#ifdef CONFIG_PM_SLEEP
 	if (create_suspend_pgtable() < 0) {
 		pr_err("%s: Memory allocation failed -- LP0/LP1/LP2 unavailable\n",
 				__func__);
 		plat->suspend_mode = TEGRA_SUSPEND_NONE;
 		goto fail;
 	}
-
-#ifdef CONFIG_PM_SLEEP
 
 	if ((tegra_chip_id == TEGRA30) &&
 	    (tegra_revision == TEGRA_REVISION_A01) &&
