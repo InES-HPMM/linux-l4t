@@ -1,7 +1,7 @@
 asflags-y				+= -march=armv7-a
 
 obj-y                                   += board-pinmux.o
-obj-y                                   += ahb.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += ahb.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += common-t2.o
