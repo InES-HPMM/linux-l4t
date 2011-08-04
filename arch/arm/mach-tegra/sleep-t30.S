@@ -125,7 +125,6 @@ ENDPROC(tegra30_cpu_shutdown)
 ENTRY(tegra3_sleep_cpu_secondary)
 	mov	r3, lr				@ set resume address to lr
 	bl	tegra_cpu_save
-	bl	tegra_cpu_exit_coherency
 
 	/* Powergate this CPU. */
 	mov	r0, #0				@ power mode flags (!hotplug)
