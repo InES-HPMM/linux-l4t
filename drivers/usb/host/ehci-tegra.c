@@ -1193,9 +1193,10 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(tegra->clk);
 
-	clk_disable_unprepare(tegra->sclk_clk);
-
-	clk_disable_unprepare(tegra->emc_clk);
+	if (tegra->clock_enabled) {
+		clk_disable_unprepare(tegra->sclk_clk);
+		clk_disable_unprepare(tegra->emc_clk);
+	}
 
 	return 0;
 }
