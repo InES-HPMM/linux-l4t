@@ -123,8 +123,8 @@ ENDPROC(tegra30_cpu_shutdown)
  * Enters LP2 on secondary CPU by exiting coherency and powergating the CPU.
  */
 ENTRY(tegra3_sleep_cpu_secondary)
-	mov	r3, lr				@ set resume address to lr
-	bl	tegra_cpu_save
+	mov	r12, pc 			@ return here is via r12
+	b	tegra_cpu_save
 
 	/* Powergate this CPU. */
 	mov	r0, #0				@ power mode flags (!hotplug)
