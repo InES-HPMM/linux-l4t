@@ -53,6 +53,7 @@
 #define STS_SRI	(1<<7)	/*	SOF Recieved	*/
 
 #define TEGRA_HSIC_CONNECTION_MAX_RETRIES 5
+#define HOSTPC_REG_OFFSET       0x1b4
 
 struct tegra_ehci_hcd {
 	struct ehci_hcd *ehci;
@@ -789,7 +790,10 @@ static int controller_suspend(struct device *dev)
 	ehci_halt(ehci);
 
 	spin_lock_irqsave(&ehci->lock, flags);
-	tegra->port_speed = (readl(&hw->port_status[0]) >> 26) & 0x3;
+	if (tegra->ehci->has_hostpc)
+		tegra->port_speed = (readl(hcd->regs + HOSTPC_REG_OFFSET) >> 25) & 0x3;
+	else
+		tegra->port_speed = (readl(&hw->port_status[0]) >> 26) & 0x3;
 	spin_unlock_irqrestore(&ehci->lock, flags);
 
 	tegra_ehci_power_down(hcd);
