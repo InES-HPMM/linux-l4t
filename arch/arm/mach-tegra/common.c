@@ -146,8 +146,8 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 		tag_latency = 0x221;
 		data_latency = 0x221;
 	} else {
-		tag_latency = 0x331;
-		data_latency = 0x441;
+		tag_latency = 0x441;
+		data_latency = 0x551;
 	}
 #else
 	tag_latency = 0x770;
