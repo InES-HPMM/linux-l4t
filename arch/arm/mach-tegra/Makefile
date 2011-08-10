@@ -102,8 +102,9 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-harmony-pcie.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
-obj-${CONFIG_MACH_CARDHU}               += baseband-xmm-power.o
-obj-m += baseband-xmm-power2.o
-
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
+
+obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
+obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
+
