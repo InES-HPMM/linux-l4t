@@ -1275,6 +1275,16 @@ static int uhsic_phy_postsuspend(struct tegra_usb_phy *phy, bool is_dpd)
 	return 0;
 }
 
+static int uhsic_phy_preresume(struct tegra_usb_phy *phy, bool is_dpd)
+{
+	struct tegra_uhsic_config *uhsic_config = phy->config;
+
+	if (uhsic_config->preresume)
+		uhsic_config->preresume();
+
+	return 0;
+}
+
 static int uhsic_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -2156,7 +2166,7 @@ void tegra_usb_phy_preresume(struct tegra_usb_phy *phy)
 		utmi_phy_preresume,
 		NULL,
 		NULL,
-		NULL,
+		uhsic_phy_preresume,
 	};
 
 	if (preresume[phy->usb_phy_type])
