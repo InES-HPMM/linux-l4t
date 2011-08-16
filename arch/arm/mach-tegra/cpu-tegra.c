@@ -102,13 +102,18 @@ static unsigned int edp_limit;
 
 static void edp_update_limit(void)
 {
-	int i;
 	unsigned int limit = cpumask_weight(&edp_cpumask);
+#ifndef CONFIG_TEGRA_EDP_EXACT_FREQ
+	int i;
+#endif
 
 	if (!cpu_edp_limits)
 		return;
 
 	BUG_ON((edp_thermal_index >= cpu_edp_limits_size) || (limit == 0));
+#ifdef CONFIG_TEGRA_EDP_EXACT_FREQ
+	edp_limit = cpu_edp_limits[edp_thermal_index].freq_limits[limit - 1];
+#else
 	limit = cpu_edp_limits[edp_thermal_index].freq_limits[limit - 1];
 
 	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
@@ -118,6 +123,7 @@ static void edp_update_limit(void)
 	}
 	BUG_ON(i == 0);	/* min freq above the limit or table empty */
 	edp_limit = freq_table[i-1].frequency;
+#endif
 }
 
 static unsigned int edp_governor_speed(unsigned int requested_speed)
