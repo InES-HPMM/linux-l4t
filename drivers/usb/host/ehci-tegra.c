@@ -254,6 +254,10 @@ static int tegra_ehci_hub_control(
 			ehci->reset_done[wIndex-1] = 0;
 			clear_bit(wIndex-1, &ehci->resuming_ports);
 			tegra_usb_phy_postresume(tegra->phy, false);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+			ehci->command |= CMD_RUN;
+			ehci_writel(ehci, ehci->command, &ehci->regs->command);
+#endif
 		}
 	} else if (typeReq == SetPortFeature && wValue == USB_PORT_FEAT_SUSPEND) {
 		temp = ehci_readl(ehci, status_reg);
@@ -310,7 +314,7 @@ static int tegra_ehci_hub_control(
 
 		/* Disable disconnect detection during port resume */
 		tegra_usb_phy_preresume(tegra->phy, false);
-
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		ehci_dbg(ehci, "%s:USBSTS = 0x%x", __func__,
 			ehci_readl(ehci, &ehci->regs->status));
 		usbsts_reg = ehci_readl(ehci, &ehci->regs->status);
@@ -331,6 +335,7 @@ static int tegra_ehci_hub_control(
 			pr_err("%s: timeout set STS_SRI\n", __func__);
 
 		udelay(20);
+#endif
 		temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		/* start resume signaling */
 		ehci_writel(ehci, temp | PORT_RESUME, status_reg);
@@ -818,6 +823,10 @@ static int controller_suspend(struct device *dev)
 		msleep(10);
 
 	ehci_halt(ehci);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	tegra->ehci->command = ehci_readl(tegra->ehci,
+					&tegra->ehci->regs->command);
+#endif
 
 	spin_lock_irqsave(&ehci->lock, flags);
 	if (tegra->ehci->has_hostpc)
