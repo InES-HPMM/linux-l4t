@@ -42,6 +42,7 @@
 #include "pmc.h"
 #include "apbio.h"
 #include "sleep.h"
+#include "reset.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
