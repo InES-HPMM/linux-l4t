@@ -423,6 +423,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	host->mmc->pm_caps = plat->pm_flags;
 
+	host->mmc->caps |= MMC_CAP_ERASE;
 	if (plat->is_8bit)
 		host->mmc->caps |= MMC_CAP_8_BIT_DATA;
 
