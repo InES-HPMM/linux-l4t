@@ -47,7 +47,7 @@ void tegra_secondary_startup(void);
 		 __tegra_cpu_reset_handler_start)
 
 #ifdef CONFIG_PM_SLEEP
-#define tegra_cpu_lp1_map (*(unsigned long *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE + \
+#define tegra_cpu_lp1_mask ((unsigned long *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE + \
 		((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_LP1] - \
 		 (u32)__tegra_cpu_reset_handler_start))))
 

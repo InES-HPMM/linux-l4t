@@ -61,6 +61,15 @@
 					+ IO_PPSB_VIRT)
 
 #ifdef __ASSEMBLY__
+/* waits until the microsecond counter (base) ticks, for exact timing loops */
+.macro  wait_for_us, rd, base, tmp
+	ldr    \rd, [\base]
+1001:   ldr    \tmp, [\base]
+	cmp    \rd, \tmp
+	beq    1001b
+	mov    \tmp, \rd
+.endm
+
 /* waits until the microsecond counter (base) is > rn */
 .macro	wait_until, rn, base, tmp
 	add	\rn, \rn, #1
@@ -207,8 +216,7 @@ static inline void tegra_sleep_core(unsigned long v2p)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_sleep_core(v2p);
 #else
-	/* tegra3_sleep_core(v2p);    !!!FIXME!!! not supported yet */
-	BUG();
+	tegra3_sleep_core(v2p);
 #endif
 }
 
