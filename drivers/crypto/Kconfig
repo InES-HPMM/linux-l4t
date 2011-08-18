@@ -18,7 +18,7 @@ config CRYPTO_DEV_PADLOCK
 	  (so called VIA PadLock ACE, Advanced Cryptography Engine)
 	  that provides instructions for very fast cryptographic
 	  operations with supported algorithms.
-	  
+
 	  The instructions are used only when the CPU supports them.
 	  Otherwise software encryption is used.
 
@@ -313,7 +313,8 @@ config CRYPTO_DEV_TEGRA_SE
 	depends on ARCH_TEGRA_3x_SOC
 	select CRYPTO_AES
 	help
-	  This option allows you to have support of Security Engine for crypto acceleration.
+	  This option allows you to have support of Security Engine for crypto
+	  acceleration.
 
 config CRYPTO_DEV_NX
 	bool "Support for IBM Power7+ in-Nest cryptographic acceleration"
