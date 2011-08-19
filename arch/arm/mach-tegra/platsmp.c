@@ -180,6 +180,12 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 
 	BUG_ON(cpu == smp_processor_id());
 
+	/* Avoid timer calibration on slave cpus. Use the value calibrated
+	 * on master cpu. This reduces the bringup time for each slave cpu
+	 * by around 260ms.
+	 */
+	preset_lpj = loops_per_jiffy;
+
 	/*
 	 * Force the CPU into reset. The CPU must remain in reset when the
 	 * flow controller state is cleared (which will cause the flow
