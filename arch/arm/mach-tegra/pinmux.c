@@ -220,6 +220,7 @@ static const char *pupd_name(unsigned long val)
 	}
 }
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static const char *lock_name(unsigned long val)
 {
 	switch(val) {
@@ -267,6 +268,7 @@ static const char *ioreset_name(unsigned long val)
 		return "IO_RESET_DEFAULT";
 	}
 }
+#endif
 
 #if defined(TEGRA_PINMUX_HAS_IO_DIRECTION)
 static const char *io_name(unsigned long val)
