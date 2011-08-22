@@ -525,6 +525,10 @@ struct tps80031_pupd_init_data {
 	int setting;
 };
 
+struct tps80031_bg_platform_data {
+	int irq_base;
+};
+
 /*
  * struct tps80031_regulator_platform_data - tps80031 regulator platform data.
  *
