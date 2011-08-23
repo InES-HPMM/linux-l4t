@@ -40,6 +40,7 @@ config ARCH_TEGRA_3x_SOC
 	select PINCTRL_TEGRA30
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select TEGRA_IOVMM
+	select TEGRA_CLUSTER_CONTROL if PM_SLEEP
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
 	select USB_ULPI_VIEWPORT if USB_PHY
@@ -136,6 +137,9 @@ config TEGRA_CLOCK_DEBUG_WRITE
 	bool "Enable debugfs write access to clock tree"
 	depends on DEBUG_FS
 	default n
+
+config TEGRA_CLUSTER_CONTROL
+	bool
 
 config TEGRA_AUTO_HOTPLUG
 	bool "Enable automatic CPU hot-plugging"
