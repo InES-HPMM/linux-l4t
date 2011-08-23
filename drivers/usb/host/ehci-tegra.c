@@ -59,6 +59,9 @@
 #define TEGRA_HSIC_CONNECTION_MAX_RETRIES 5
 #define HOSTPC_REG_OFFSET       0x1b4
 
+#define HOSTPC1_DEVLC_STS 		(1 << 28)
+#define HOSTPC1_DEVLC_PTS(x)		(((x) & 0x7) << 29)
+
 struct tegra_ehci_hcd {
 	struct ehci_hcd *ehci;
 	struct tegra_usb_phy *phy;
@@ -170,8 +173,12 @@ static void irq_work(struct work_struct *irq_work)
 	struct tegra_ehci_hcd *tegra =
 		container_of(irq_work, struct tegra_ehci_hcd, irq_work);
 	hcd = ehci_to_hcd(tegra->ehci);
-	if (!tegra->host_resumed)
+	if (!tegra->host_resumed) {
+#ifdef CONFIG_USB_HOTPLUG
+		clk_enable(tegra->clk);
+#endif
 		tegra_ehci_power_up(hcd, false);
+	}
 }
 
 static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
@@ -225,7 +232,9 @@ static int tegra_ehci_hub_control(
 	int		ports = HCS_N_PORTS(ehci->hcs_params);
 	u32		temp, status;
 	u32 __iomem	*status_reg;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	u32		usbsts_reg;
+#endif
 	unsigned long	flags;
 	int		retval = 0;
 	unsigned	selector;
@@ -718,9 +727,9 @@ static int tegra_ehci_urb_enqueue (
 	struct tegra_ehci_hcd *pdata;
 	int xfertype;
 	int transfer_buffer_length;
-	pdata = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	unsigned long flags;
+	pdata = dev_get_drvdata(hcd->self.controller);
 
 	xfertype = usb_endpoint_type(&urb->ep->desc);
 	transfer_buffer_length = urb->transfer_buffer_length;
@@ -865,8 +874,18 @@ static int controller_resume(struct device *dev)
 	/* Force the phy to keep data lines in suspend state */
 	tegra_ehci_phy_restore_start(tegra->phy, tegra->port_speed);
 
+	if (tegra->ehci->has_hostpc)
+		ehci_reset(ehci);
+
 	/* Enable host mode */
 	tdi_reset(ehci);
+
+	if (tegra->ehci->has_hostpc) {
+		val = readl(hcd->regs + HOSTPC_REG_OFFSET);
+		val &= ~HOSTPC1_DEVLC_PTS(~0);
+		val |= HOSTPC1_DEVLC_STS;
+		writel(val, hcd->regs + HOSTPC_REG_OFFSET);
+	}
 
 	/* Enable Port Power */
 	val = readl(&hw->port_status[0]);
@@ -971,12 +990,20 @@ static int tegra_ehci_suspend(struct device *dev)
 	 */
 	if (HCD_HW_ACCESSIBLE(hcd))
 		rc = controller_suspend(dev);
+#ifdef CONFIG_USB_HOTPLUG
+	clk_disable(tegra->clk);
+#endif
 	return rc;
 }
 
 static int tegra_ehci_resume(struct device *dev)
 {
+	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	int rc;
+
+#ifdef CONFIG_USB_HOTPLUG
+	clk_enable(tegra->clk);
+#endif
 
 	rc = controller_resume(dev);
 	if (rc == 0) {
