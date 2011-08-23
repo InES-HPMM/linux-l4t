@@ -268,6 +268,7 @@ struct mxt_data {
 	unsigned int max_y;
 	struct bin_attribute mem_access_attr;
 	bool debug_enabled;
+	bool driver_paused;
 };
 
 static bool mxt_object_readable(unsigned int type)
@@ -593,6 +594,9 @@ static void mxt_input_touchevent(struct mxt_data *data,
 	int y;
 	int area;
 	int pressure;
+
+	if (data->driver_paused)
+		return;
 
 	/* Check the touch is present on the screen */
 	if (!(status & MXT_DETECT)) {
@@ -1108,6 +1112,35 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 	return count;
 }
 
+static ssize_t mxt_pause_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	ssize_t count;
+	char c;
+
+	c = data->driver_paused ? '1' : '0';
+	count = sprintf(buf, "%c\n", c);
+
+	return count;
+}
+
+static ssize_t mxt_pause_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int i;
+
+	if (sscanf(buf, "%u", &i) == 1 && i < 2) {
+		data->driver_paused = (i == 1);
+		dev_dbg(dev, "%s\n", i ? "paused" : "unpaused");
+		return count;
+	} else {
+		dev_dbg(dev, "pause_driver write error\n");
+		return -EINVAL;
+	}
+}
+
 static ssize_t mxt_debug_enable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1192,11 +1225,14 @@ static DEVICE_ATTR(object, S_IRUGO, mxt_object_show, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, mxt_update_fw_store);
 static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,
 		   mxt_debug_enable_store);
+static DEVICE_ATTR(pause_driver, S_IWUSR | S_IRUSR, mxt_pause_show,
+		   mxt_pause_store);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_object.attr,
 	&dev_attr_update_fw.attr,
 	&dev_attr_debug_enable.attr,
+	&dev_attr_pause_driver.attr,
 	NULL
 };
 
