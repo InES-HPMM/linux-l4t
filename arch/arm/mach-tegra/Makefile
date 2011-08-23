@@ -67,7 +67,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
 obj-$(CONFIG_TEGRA_PCI)			+= pcie.o
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= sysfs-cluster.o
+obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_tsensor.o
 obj-$(CONFIG_TEGRA_DYNAMIC_PWRDET)      += powerdetect.o
 
