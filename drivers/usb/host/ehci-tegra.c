@@ -702,8 +702,13 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int error_status = 0;
 
+	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
 	tegra->bus_suspended_fail = false;
 	tegra_ehci_disable_phy_interrupt(hcd);
+	/* ehci_shutdown touches the USB controller registers, make sure
+	 * controller has clocks to it */
+	if (!tegra->host_resumed)
+		tegra_ehci_power_up(hcd, false);
 	error_status = ehci_bus_suspend(hcd);
 	if (error_status)
 		tegra->bus_suspended_fail = true;
@@ -711,6 +716,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 		tegra_usb_suspend(hcd, false);
 		tegra->bus_suspended = 1;
 	}
+	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
 
 	return error_status;
 }
