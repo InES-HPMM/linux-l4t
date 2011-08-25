@@ -1620,6 +1620,7 @@ static int	tegra_phy_init(struct usb_phy *x)
 	struct tegra_ulpi_config *ulpi_config;
 	struct tegra_ulpi_config *uhsic_config;
 	int err;
+	int reset_gpio, enable_gpio;
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) {
 		err = utmip_pad_open(phy);
@@ -1658,24 +1659,25 @@ static int	tegra_phy_init(struct usb_phy *x)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	else if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC) {
 		uhsic_config = config;
-		gpio_request(uhsic_config->enable_gpio,
+		enable_gpio = gpio_request(uhsic_config->enable_gpio,
 			"uhsic_enable");
-		if (uhsic_config->reset_gpio != -1)
-			gpio_request(uhsic_config->reset_gpio,
+		reset_gpio = gpio_request(uhsic_config->reset_gpio,
 				"uhsic_reset");
 		/* hsic enable signal deasserted, hsic reset asserted */
-		gpio_direction_output(uhsic_config->enable_gpio,
+		if (!enable_gpio)
+			gpio_direction_output(uhsic_config->enable_gpio,
 			0 /* deasserted */);
-		if (uhsic_config->reset_gpio != -1)
+		if (!reset_gpio)
 			gpio_direction_output(uhsic_config->reset_gpio,
 				0 /* asserted */);
 		/* keep hsic reset asserted for 1 ms */
 		udelay(1000);
 		/* enable (power on) hsic */
-		gpio_set_value_cansleep(uhsic_config->enable_gpio, 1);
+		if (!enable_gpio)
+			gpio_set_value_cansleep(uhsic_config->enable_gpio, 1);
 		udelay(1000);
 		/* deassert reset */
-		if (uhsic_config->reset_gpio != -1)
+		if (!reset_gpio)
 			gpio_set_value_cansleep(uhsic_config->reset_gpio, 1);
 	}
 #endif
