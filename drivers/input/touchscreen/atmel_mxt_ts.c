@@ -228,8 +228,8 @@ struct mxt_info {
 struct mxt_object {
 	u8 type;
 	u16 start_address;
-	u8 size;
-	u8 instances;
+	u16 size;
+	u16 instances;
 	u8 num_report_ids;
 
 	/* to map object and message */
@@ -503,7 +503,7 @@ static int mxt_write_object(struct mxt_data *data,
 	u16 reg;
 
 	object = mxt_get_object(data, type);
-	if (!object || offset >= object->size + 1)
+	if (!object || offset >= object->size)
 		return -EINVAL;
 
 	reg = object->start_address;
@@ -628,7 +628,8 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 			goto end;
 
 		max_reportid = object->max_reportid;
-		min_reportid = max_reportid - object->num_report_ids + 1;
+		min_reportid = max_reportid -
+			object->num_report_ids * object->instances + 1;
 		id = reportid - min_reportid;
 
 		if (reportid >= min_reportid && reportid <= max_reportid)
@@ -661,7 +662,7 @@ static int mxt_check_reg_init(struct mxt_data *data)
 			continue;
 
 		for (j = 0;
-		     j < (object->size + 1) * (object->instances + 1);
+		     j < object->size * object->instances;
 		     j++) {
 			config_offset = index + j;
 			if (config_offset > pdata->config_length) {
@@ -671,7 +672,7 @@ static int mxt_check_reg_init(struct mxt_data *data)
 			mxt_write_object(data, object->type, j,
 					 pdata->config[config_offset]);
 		}
-		index += (object->size + 1) * (object->instances + 1);
+		index += object->size * object->instances;
 	}
 
 	return 0;
@@ -800,13 +801,12 @@ static int mxt_get_object_table(struct mxt_data *data)
 
 		object->type = buf[0];
 		object->start_address = (buf[2] << 8) | buf[1];
-		object->size = buf[3];
-		object->instances = buf[4];
+		object->size = buf[3] + 1;
+		object->instances = buf[4] + 1;
 		object->num_report_ids = buf[5];
 
 		if (object->num_report_ids) {
-			reportid += object->num_report_ids *
-					(object->instances + 1);
+			reportid += object->num_report_ids * object->instances;
 			object->max_reportid = reportid;
 		}
 	}
@@ -947,7 +947,7 @@ static ssize_t mxt_object_show(struct device *dev,
 			continue;
 		}
 
-		for (j = 0; j < object->size + 1; j++) {
+		for (j = 0; j < object->size; j++) {
 			error = mxt_read_object(data,
 						object->type, j, &val);
 			if (error)
