@@ -6,6 +6,7 @@ config ARCH_TEGRA_2x_SOC
 	bool "Enable support for Tegra20 family"
 	depends on !ARCH_TEGRA_3x_SOC
 	select ARCH_NEEDS_CPU_IDLE_COUPLED if SMP
+	select ARCH_SUPPORTS_MSI if TEGRA_PCI
 	select ARCH_TEGRA_HAS_PCIE
 	select ARM_ERRATA_720789
 	select ARM_ERRATA_742230 if SMP
@@ -16,6 +17,7 @@ config ARCH_TEGRA_2x_SOC
 	select COMMON_CLK
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
+	select PCI_MSI if TEGRA_PCI
 	select PINCTRL
 	select PINCTRL_TEGRA20
 	select PL310_ERRATA_727915 if CACHE_L2X0
@@ -29,6 +31,7 @@ config ARCH_TEGRA_2x_SOC
 
 config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
+	select ARCH_SUPPORTS_MSI if TEGRA_PCI
 	select ARCH_TEGRA_HAS_PCIE
 	select ARCH_TEGRA_HAS_SATA
 	select ARCH_TEGRA_HAS_DUAL_3D
@@ -41,6 +44,7 @@ config ARCH_TEGRA_3x_SOC
 	select COMMON_CLK
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
+	select PCI_MSI if TEGRA_PCI
 	select PINCTRL
 	select PINCTRL_TEGRA30
 	select PL310_ERRATA_769419 if CACHE_L2X0
