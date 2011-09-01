@@ -385,14 +385,17 @@ int tegra_gpu_register_sets(void)
 
 	if (tegra_chip_id == TEGRA20)
 		return 1;
-
-	if (tegra_chip_id == TEGRA30) {
+#ifdef CONFIG_ARCH_TEGRA_HAS_DUAL_3D
+	else {
 		u32 reg = readl(IO_TO_VIRT(TEGRA_CLK_RESET_BASE + FUSE_GPU_INFO));
 		if (reg & FUSE_GPU_INFO_MASK)
 			return 1;
 		else
 			return 2;
 	}
+#else
+	return 1;
+#endif
 
 	BUG();
 }
