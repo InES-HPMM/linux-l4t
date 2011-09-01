@@ -153,8 +153,7 @@ static inline void tegra_cluster_switch_epilog(unsigned int flags) {}
 void tegra2_lp0_suspend_init(void);
 void tegra2_lp2_set_trigger(unsigned long cycles);
 unsigned long tegra2_lp2_timer_remain(void);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 void tegra3_lp2_set_trigger(unsigned long cycles);
 unsigned long tegra3_lp2_timer_remain(void);
 int tegra3_is_lp2_timer_ready(unsigned int cpu);
@@ -172,8 +171,7 @@ static inline void tegra_lp2_set_trigger(unsigned long cycles)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_lp2_set_trigger(cycles);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	tegra3_lp2_set_trigger(cycles);
 #endif
 }
@@ -182,8 +180,7 @@ static inline unsigned long tegra_lp2_timer_remain(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_lp2_timer_remain();
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	return tegra3_lp2_timer_remain();
 #endif
 }
