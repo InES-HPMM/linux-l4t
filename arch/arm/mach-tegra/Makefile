@@ -10,8 +10,11 @@ obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += timer-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += timer-t3.o
+ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
+obj-y                                   += timer-t2.o
+else
+obj-y                                   += timer-t3.o
+endif
 obj-y                                   += pinmux.o
 obj-y                                   += delay.o
 obj-y                                   += pm.o
@@ -37,7 +40,6 @@ obj-y                                   += mc.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)	+= arb_sema.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
@@ -55,6 +57,7 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pinmux-tegra20-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= pinmux-tegra30-tables.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= sleep-t30.o
 obj-$(CONFIG_SMP)			+= platsmp.o
