@@ -6,6 +6,7 @@ config ARCH_TEGRA_2x_SOC
 	bool "Enable support for Tegra20 family"
 	depends on !ARCH_TEGRA_3x_SOC
 	select ARCH_NEEDS_CPU_IDLE_COUPLED if SMP
+	select ARCH_TEGRA_HAS_PCIE
 	select ARM_ERRATA_720789
 	select ARM_ERRATA_742230 if SMP
 	select ARM_ERRATA_751472
@@ -28,6 +29,10 @@ config ARCH_TEGRA_2x_SOC
 
 config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
+	select ARCH_TEGRA_HAS_PCIE
+	select ARCH_TEGRA_HAS_SATA
+	select ARCH_TEGRA_HAS_DUAL_3D
+	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select ARM_ERRATA_743622
 	select ARM_ERRATA_751472
 	select ARM_ERRATA_754322
@@ -40,7 +45,6 @@ config ARCH_TEGRA_3x_SOC
 	select PINCTRL_TEGRA30
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select TEGRA_IOVMM
-	select TEGRA_CLUSTER_CONTROL if PM_SLEEP
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
 	select USB_ULPI_VIEWPORT if USB_PHY
@@ -48,10 +52,23 @@ config ARCH_TEGRA_3x_SOC
 	  Support for NVIDIA Tegra T30 processor family, based on the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
 
+config ARCH_TEGRA_HAS_DUAL_3D
+	bool
+
+config ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	bool
+
+config ARCH_TEGRA_HAS_PCIE
+	bool
+
+config ARCH_TEGRA_HAS_SATA
+	bool
+
 config TEGRA_PCI
 	bool "PCI Express support"
 	depends on ARCH_TEGRA_2x_SOC
 	select PCI
+	depends on ARCH_TEGRA_HAS_PCIE
 
 config TEGRA_AHB
 	bool "Enable AHB driver for NVIDIA Tegra SoCs"
@@ -140,6 +157,8 @@ config TEGRA_CLOCK_DEBUG_WRITE
 
 config TEGRA_CLUSTER_CONTROL
 	bool
+	depends on ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	default y if PM_SLEEP
 
 config TEGRA_AUTO_HOTPLUG
 	bool "Enable automatic CPU hot-plugging"
