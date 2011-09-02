@@ -22,6 +22,7 @@ obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
 obj-y                                   += gic.o
 obj-y                                   += fuse.o
 obj-y                                   += kfuse.o
+obj-y                                   += csi.o
 obj-$(CONFIG_TEGRA_SILICON_PLATFORM)    += tegra_odm_fuses.o
 obj-y                                   += pmc.o
 obj-y                                   += flowctrl.o
