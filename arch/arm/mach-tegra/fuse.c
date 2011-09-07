@@ -121,25 +121,7 @@ bool tegra_spare_fuse(int bit)
 
 static enum tegra_revision tegra_get_revision()
 {
-	if (tegra_chip_id == TEGRA30) {
-		switch (tegra_chip_major) {
-		case 0:
-			if (tegra_chip_minor != 1)
-				return TEGRA_REVISION_UNKNOWN;
-			else if (tegra_chip_netlist == 12 && (tegra_chip_patch & 0xf) == 12)
-				return TEGRA_REVISION_A01;
-			else if (tegra_chip_netlist == 12 && (tegra_chip_patch & 0xf) > 12)
-				return TEGRA_REVISION_A02;
-			else if (tegra_chip_netlist > 12)
-				return TEGRA_REVISION_A02;
-			else
-				return TEGRA_REVISION_UNKNOWN;
-		case 1:
-			break;
-		default:
-			return TEGRA_REVISION_UNKNOWN;
-	}
-
+#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 	switch (tegra_chip_minor) {
 	case 1:
 		BUG_ON(tegra_chip_id == TEGRA20);
@@ -158,6 +140,8 @@ static enum tegra_revision tegra_get_revision()
 	default:
 		return TEGRA_REVISION_UNKNOWN;
 	}
+#endif
+	return TEGRA_REVISION_UNKNOWN;
 }
 
 static void tegra_get_process_id(void)
