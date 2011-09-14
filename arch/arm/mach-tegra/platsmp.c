@@ -132,7 +132,7 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	 * On first boot entry do not wait - go to direct ungate.
 	 */
 	if (cpu_isset(cpu, tegra_cpu_init_map)) {
-		timeout = jiffies + HZ;
+		timeout = jiffies + 5;
 		do {
 			if (tegra_powergate_is_powered(pwrgateid))
 				goto remove_clamps;
