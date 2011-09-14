@@ -47,6 +47,10 @@
 		.drvup_mask = drv_up_mask,			\
 		.drvdown_offset = drv_down_offset,		\
 		.drvdown_mask = drv_down_mask,			\
+		.slewrise_offset = slew_rise_offset,	\
+		.slewrise_mask = slew_rise_mask,	\
+		.slewfall_offset = slew_fall_offset,	\
+		.slewfall_mask = slew_fall_mask,	\
 	}
 
 #define DEFAULT_DRIVE_PINGROUP(pg_name, r)		\
@@ -58,6 +62,10 @@
 		.drvup_mask = 0x1f, 			\
 		.drvdown_offset = 12,			\
 		.drvdown_mask = 0x1f,			\
+		.slewrise_offset = 28,			\
+		.slewrise_mask = 0x3,			\
+		.slewfall_offset = 30,			\
+		.slewfall_mask = 0x3,			\
 	}
 
 const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE_PINGROUP] = {
