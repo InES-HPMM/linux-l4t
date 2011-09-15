@@ -57,7 +57,7 @@
 #define STS_SRI	(1<<7)	/*	SOF Recieved	*/
 
 #define TEGRA_HSIC_CONNECTION_MAX_RETRIES 5
-#define HOSTPC_REG_OFFSET       0x1b4
+#define HOSTPC_REG_OFFSET		0x1b4
 
 #define HOSTPC1_DEVLC_STS 		(1 << 28)
 #define HOSTPC1_DEVLC_PTS(x)		(((x) & 0x7) << 29)
@@ -173,6 +173,15 @@ static irqreturn_t tegra_ehci_irq (struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	u32 val;
 
+	if ((tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) &&
+		(tegra->ehci->has_hostpc)) {
+		/* check if there is any remote wake event */
+		if (tegra_usb_phy_is_remotewake_detected(tegra->phy)) {
+			spin_lock (&ehci->lock);
+			usb_hcd_resume_root_hub(hcd);
+			spin_unlock (&ehci->lock);
+		}
+	}
 	if (tegra->phy->instance == 2) {
 		spin_lock(&ehci->lock);
 		val = readl(hcd->regs + TEGRA_USB_SUSP_CTRL_OFFSET);
@@ -241,8 +250,15 @@ static int tegra_ehci_hub_control(
 			clear_bit(wIndex-1, &ehci->resuming_ports);
 			tegra_usb_phy_postresume(tegra->phy, false);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-			ehci->command |= CMD_RUN;
-			ehci_writel(ehci, ehci->command, &ehci->regs->command);
+			if (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) {
+				ehci->command |= CMD_RUN;
+				/*
+				 * ehci run bit is disabled to avoid SOF.
+				 * 2LS WAR is executed by now enable the run bit.
+				 */
+				ehci_writel(ehci, ehci->command,
+					&ehci->regs->command);
+			}
 #endif
 		}
 	} else if (typeReq == SetPortFeature && wValue == USB_PORT_FEAT_SUSPEND) {
@@ -812,8 +828,15 @@ static int controller_suspend(struct device *dev)
 
 	ehci_halt(ehci);
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra->ehci->command = ehci_readl(tegra->ehci,
-					&tegra->ehci->regs->command);
+	if (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) {
+		/*
+		 * Ehci run bit is disabled by now read this into command variable
+		 * so that bus resume will not enable run bit immedialty.
+		 * this is required for 2LS WAR on UTMIP interface.
+		 */
+		tegra->ehci->command = ehci_readl(tegra->ehci,
+						&tegra->ehci->regs->command);
+	}
 #endif
 
 	spin_lock_irqsave(&ehci->lock, flags);
@@ -850,13 +873,16 @@ static int controller_resume(struct device *dev)
 	/* Force the phy to keep data lines in suspend state */
 	tegra_ehci_phy_restore_start(tegra->phy, tegra->port_speed);
 
-	if (tegra->ehci->has_hostpc)
+	if ((tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) &&
+		(tegra->ehci->has_hostpc)) {
 		ehci_reset(ehci);
+	}
 
 	/* Enable host mode */
 	tdi_reset(ehci);
 
-	if (tegra->ehci->has_hostpc) {
+	if ((tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) &&
+		(tegra->ehci->has_hostpc)) {
 		val = readl(hcd->regs + HOSTPC_REG_OFFSET);
 		val &= ~HOSTPC1_DEVLC_PTS(~0);
 		val |= HOSTPC1_DEVLC_STS;
@@ -868,6 +894,12 @@ static int controller_resume(struct device *dev)
 	val |= PORT_POWER;
 	writel(val, &hw->port_status[0]);
 	udelay(10);
+
+	if ((tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) &&
+		(tegra->ehci->has_hostpc) && (tegra->phy->remote_wakeup)) {
+		ehci->command |= CMD_RUN;
+		ehci_writel(ehci, ehci->command, &ehci->regs->command);
+	}
 
 	/* Check if the phy resume from LP0. When the phy resume from LP0
 	 * USB register will be reset. */
