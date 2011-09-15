@@ -20,6 +20,7 @@
 #include <linux/of_platform.h>
 
 #include <asm/cputype.h>
+#include <asm/system_info.h>
 #include <asm/setup.h>
 #include <asm/page.h>
 #include <asm/smp_plat.h>
@@ -183,6 +184,9 @@ struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 	unsigned int score, mdesc_score = ~1;
 	unsigned long dt_root;
 	const char *model;
+	__be32 *serial_prop;
+	u64 serial = 0;
+	unsigned long len;
 
 #ifdef CONFIG_ARCH_MULTIPLATFORM
 	DT_MACHINE_START(GENERIC_DT, "Generic DT based system")
@@ -233,7 +237,16 @@ struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 		model = of_get_flat_dt_prop(dt_root, "compatible", NULL);
 	if (!model)
 		model = "<unknown>";
-	pr_info("Machine: %s, model: %s\n", mdesc_best->name, model);
+
+	serial_prop = of_get_flat_dt_prop(dt_root, "serial-num", &len);
+	if (serial_prop) {
+		serial = of_read_number(serial_prop, len / 4);
+	}
+	system_serial_high = serial >> 32;
+	system_serial_low = serial;
+
+	pr_info("Machine: %s, model: %s, serial: %llu\n", mdesc_best->name,
+		model, serial);
 
 	/* Retrieve various information from the /chosen node */
 	of_scan_flat_dt(early_init_dt_scan_chosen, boot_command_line);
