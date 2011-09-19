@@ -434,6 +434,7 @@ static void tegra_ehci_restart(struct usb_hcd *hcd)
 	unsigned int temp;
 
 	ehci->controller_resets_phy = 0;
+	tegra_ehci_pre_reset(tegra->phy, false);
 	ehci_reset(ehci);
 	tegra_ehci_post_reset(tegra->phy, false);
 
@@ -496,6 +497,8 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 
 	/* switch to host mode */
 	hcd->has_tt = 1;
+
+	tegra_ehci_pre_reset(tegra->phy, false);
 
 	retval = ehci_setup(hcd);
 	if (retval)
