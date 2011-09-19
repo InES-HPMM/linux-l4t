@@ -309,29 +309,33 @@ struct tegra_pingroup_desc {
 	s16 tri_bank;	/* Register bank the tri_reg exists within */
 	s16 mux_bank;	/* Register bank the mux_reg exists within */
 	s16 pupd_bank;	/* Register bank the pupd_reg exists within */
-	s16 tri_reg; 	/* offset into the TRISTATE_REG_* register bank */
+	s16 tri_reg;	/* offset into the TRISTATE_REG_* register bank */
 	s16 mux_reg;	/* offset into the PIN_MUX_CTL_* register bank */
 	s16 pupd_reg;	/* offset into the PULL_UPDOWN_REG_* register bank */
-	s8 tri_bit; 	/* offset into the TRISTATE_REG_* register bit */
+	s8 tri_bit;	/* offset into the TRISTATE_REG_* register bit */
 	s8 mux_bit;	/* offset into the PIN_MUX_CTL_* register bit */
 	s8 pupd_bit;	/* offset into the PULL_UPDOWN_REG_* register bit */
 	s8 lock_bit;	/* offset of the LOCK bit into mux register bit */
 	s8 od_bit;	/* offset of the OD bit into mux register bit */
 	s8 ioreset_bit;	/* offset of the IO_RESET bit into mux register bit */
+	int gpionr;
 };
 
 typedef void (*pinmux_init) (const struct tegra_pingroup_desc **pg,
 	int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
-	int *pgdrive_max);
+	int *pgdrive_max, const int **gpiomap, int *gpiomap_max);
 
 void tegra20_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max);
+	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
+	const int **gpiomap, int *gpiomap_max);
 
 void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
-	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max);
+	const struct tegra_drive_pingroup_desc **pgdrive, int *pgdrive_max,
+	const int **gpiomap, int *gpiomap_max);
 
 int tegra_pinmux_get_func(int pg);
 int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate);
+int tegra_pinmux_get_pingroup(int gpio_nr);
 int tegra_pinmux_set_pullupdown(int pg, enum tegra_pullupdown pupd);
 
 void tegra_pinmux_config_table(const struct tegra_pingroup_config *config,
