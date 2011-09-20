@@ -327,7 +327,7 @@ recheck:
 	}
 
 	if (val != state) {
-		dev_err(&client->dev, "Unvalid bootloader mode state\n");
+		dev_err(&client->dev, "Invalid bootloader mode state\n");
 		return -EINVAL;
 	}
 
@@ -440,8 +440,7 @@ static int mxt_read_object_table(struct i2c_client *client,
 				   object_buf);
 }
 
-static struct mxt_object *
-mxt_get_object(struct mxt_data *data, u8 type)
+static struct mxt_object *mxt_get_object(struct mxt_data *data, u8 type)
 {
 	struct mxt_object *object;
 	int i;
@@ -452,7 +451,7 @@ mxt_get_object(struct mxt_data *data, u8 type)
 			return object;
 	}
 
-	dev_err(&data->client->dev, "Invalid object type\n");
+	dev_err(&data->client->dev, "Invalid object type T%u\n", type);
 	return NULL;
 }
 
@@ -783,6 +782,7 @@ static int mxt_get_info(struct mxt_data *data)
 
 static int mxt_get_object_table(struct mxt_data *data)
 {
+	struct device *dev = &data->client->dev;
 	int error;
 	int i;
 	u16 reg;
@@ -815,6 +815,11 @@ static int mxt_get_object_table(struct mxt_data *data)
 
 		if (end_address >= data->mem_size)
 			data->mem_size = end_address + 1;
+
+		dev_dbg(dev, "T%u, start:%u size:%u instances:%u "
+			"max_reportid:%u\n",
+			object->type, object->start_address, object->size,
+			object->instances, object->max_reportid);
 	}
 
 	return 0;
@@ -843,13 +848,18 @@ static int mxt_initialize(struct mxt_data *data)
 
 	/* Get object table information */
 	error = mxt_get_object_table(data);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "Error %d reading object table\n", error);
 		return error;
+	}
 
 	/* Check register init values */
 	error = mxt_check_reg_init(data);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "Error %d initialising configuration\n",
+			error);
 		return error;
+	}
 
 	mxt_handle_pdata(data);
 
@@ -900,12 +910,12 @@ static int mxt_initialize(struct mxt_data *data)
 	info->matrix_ysize = val;
 
 	dev_info(&client->dev,
-			"Family ID: %d Variant ID: %d Version: %d Build: %d\n",
+			"Family ID: %u Variant ID: %u Version: %u Build: %u\n",
 			info->family_id, info->variant_id, info->version,
 			info->build);
 
 	dev_info(&client->dev,
-			"Matrix X Size: %d Matrix Y Size: %d Object Num: %d\n",
+			"Matrix X Size: %u Matrix Y Size: %u Object Num: %u\n",
 			info->matrix_xsize, info->matrix_ysize,
 			info->object_num);
 
@@ -1252,21 +1262,29 @@ static int mxt_probe(struct i2c_client *client,
 	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
 			pdata->irqflags, client->dev.driver->name, data);
 	if (error) {
-		dev_err(&client->dev, "Failed to register interrupt\n");
+		dev_err(&client->dev, "Error %d registering irq\n", error);
 		goto err_free_object;
 	}
 
 	error = mxt_make_highchg(data);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "Error %d clearing messages\n", error);
 		goto err_free_irq;
+	}
 
 	error = input_register_device(input_dev);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "Error %d registering input device\n",
+			error);
 		goto err_free_irq;
+	}
 
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "Failure %d creating sysfs group\n",
+			error);
 		goto err_unregister_device;
+	}
 
 	sysfs_bin_attr_init(&data->mem_access_attr);
 	data->mem_access_attr.attr.name = "mem_access";
