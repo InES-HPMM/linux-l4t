@@ -133,6 +133,8 @@ static struct snd_soc_ops tegra_wm8753_ops = {
 	.hw_params = tegra_wm8753_hw_params,
 };
 
+static struct snd_soc_ops tegra_spdif_ops;
+
 static struct snd_soc_jack tegra_wm8753_hp_jack;
 
 static struct snd_soc_jack_pin tegra_wm8753_hp_jack_pins[] = {
@@ -326,22 +328,35 @@ static int tegra_wm8753_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static struct snd_soc_dai_link tegra_wm8753_dai = {
-	.name = "WM8753",
-	.stream_name = "WM8753 PCM HIFI",
-	.codec_name = "wm8753-codec.4-001a",
-	.platform_name = "tegra-pcm-audio",
-	.cpu_dai_name = "tegra20-i2s.0",
-	.codec_dai_name = "wm8753-hifi",
-	.init = tegra_wm8753_init,
-	.ops = &tegra_wm8753_ops,
+static struct snd_soc_dai_link tegra_wm8753_dai[] = {
+	{
+		.name = "WM8753",
+		.stream_name = "WM8753 PCM HIFI",
+		.codec_name = "wm8753-codec.4-001a",
+		.platform_name = "tegra-pcm-audio",
+		.cpu_dai_name = "tegra20-i2s.0",
+		.codec_dai_name = "wm8753-hifi",
+		.init = tegra_wm8753_init,
+		.ops = &tegra_wm8753_ops,
+	},
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	{
+		.name = "SPDIF",
+		.stream_name = "SPDIF PCM",
+		.codec_name = "spdif-dit",
+		.platform_name = "tegra-pcm-audio",
+		.cpu_dai_name = "tegra20-spdif",
+		.codec_dai_name = "dit-hifi",
+		.ops = &tegra_spdif_ops,
+	}
+#endif
 };
 
 static struct snd_soc_card snd_soc_tegra_wm8753 = {
 	.name = "tegra-wm8753",
 	.owner = THIS_MODULE,
-	.dai_link = &tegra_wm8753_dai,
-	.num_links = 1,
+	.dai_link = tegra_wm8753_dai,
+	.num_links = ARRAY_SIZE(tegra_wm8753_dai),
 
 	.dapm_widgets = tegra_wm8753_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(tegra_wm8753_dapm_widgets),
