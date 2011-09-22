@@ -178,7 +178,10 @@ static int tdi_in_host_mode (struct ehci_hcd *ehci)
 {
 	u32		tmp;
 
-	tmp = ehci_readl(ehci, &ehci->regs->usbmode);
+	if (ehci->has_hostpc)
+		tmp = ehci_readl(ehci, &ehci->regs->usbmode_ex);
+	else
+		tmp = ehci_readl(ehci, &ehci->regs->usbmode);
 	return (tmp & 3) == USBMODE_CM_HC;
 }
 
