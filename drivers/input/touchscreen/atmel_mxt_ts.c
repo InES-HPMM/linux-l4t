@@ -509,6 +509,12 @@ static int mxt_write_object(struct mxt_data *data,
 	if (!object || offset >= object->size)
 		return -EINVAL;
 
+	if (offset >= object->size * object->instances) {
+		dev_err(&data->client->dev, "Tried to write outside object T%d"
+			" offset:%d, size:%d\n", type, offset, object->size);
+		return -EINVAL;
+	}
+
 	reg = object->start_address;
 	return mxt_write_reg(data->client, reg + offset, val);
 }
