@@ -238,6 +238,7 @@ struct mxt_object {
 	u8 num_report_ids;
 
 	/* to map object and message */
+	u8 min_reportid;
 	u8 max_reportid;
 };
 
@@ -608,10 +609,8 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 	struct mxt_message message;
 	struct mxt_object *object;
 	struct device *dev = &data->client->dev;
-	int id;
+	int touchid;
 	u8 reportid;
-	u8 max_reportid;
-	u8 min_reportid;
 
 	do {
 		if (mxt_read_message(data, &message)) {
@@ -621,18 +620,15 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 
 		reportid = message.reportid;
 
-		/* whether reportid is thing of MXT_TOUCH_MULTI_T9 */
 		object = mxt_get_object(data, MXT_TOUCH_MULTI_T9);
 		if (!object)
 			goto end;
 
-		max_reportid = object->max_reportid;
-		min_reportid = max_reportid -
-			object->num_report_ids * object->instances + 1;
-		id = reportid - min_reportid;
-
-		if (reportid >= min_reportid && reportid <= max_reportid)
-			mxt_input_touchevent(data, &message, id);
+		if (reportid >= object->min_reportid
+		    && reportid <= object->max_reportid) {
+			touchid = reportid - object->min_reportid;
+			mxt_input_touchevent(data, &message, touchid);
+		}
 	} while (reportid != MXT_RPTID_NOMSG);
 
 end:
@@ -808,6 +804,8 @@ static int mxt_get_object_table(struct mxt_data *data)
 		if (object->num_report_ids) {
 			reportid += object->num_report_ids * object->instances;
 			object->max_reportid = reportid;
+			object->min_reportid = object->max_reportid -
+				object->instances * object->num_report_ids + 1;
 		}
 
 		end_address = object->start_address
@@ -817,9 +815,10 @@ static int mxt_get_object_table(struct mxt_data *data)
 			data->mem_size = end_address + 1;
 
 		dev_dbg(dev, "T%u, start:%u size:%u instances:%u "
-			"max_reportid:%u\n",
+			"min_reportid:%u max_reportid:%u\n",
 			object->type, object->start_address, object->size,
-			object->instances, object->max_reportid);
+			object->instances,
+			object->min_reportid, object->max_reportid);
 	}
 
 	return 0;
