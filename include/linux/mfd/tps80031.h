@@ -643,4 +643,7 @@ static inline int tps80031_irq_get_virq(struct device *dev, int irq)
 extern int tps80031_ext_power_req_config(struct device *dev,
 		unsigned long ext_ctrl_flag, int preq_bit,
 		int state_reg_add, int trans_reg_add);
+
+extern int tps80031_gpadc_conversion(int channle_no);
+
 #endif /*__LINUX_MFD_TPS80031_H */
