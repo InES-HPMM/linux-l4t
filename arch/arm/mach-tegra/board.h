@@ -85,6 +85,8 @@ void tegra_init_cache(bool init);
 #else
 static inline void tegra_init_cache(bool init) {}
 #endif
+void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
+void __init tegra_ram_console_debug_init(void);
 void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);
