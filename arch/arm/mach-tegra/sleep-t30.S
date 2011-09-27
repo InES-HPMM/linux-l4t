@@ -583,8 +583,8 @@ tegra3_enter_sleep:
 	ldr	r0, [r6, r2] /* memory barrier */
 
 halted:
-	dsb
 	isb
+	dsb
 	wfi	/* CPU should be power gated here */
 
 	/* !!!FIXME!!! Implement halt failure handler */
