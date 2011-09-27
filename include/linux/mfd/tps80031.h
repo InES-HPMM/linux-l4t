@@ -435,6 +435,28 @@ enum {
 #define TPS80031_I2C_ID2_ADDR				0x49
 #define TPS80031_I2C_ID3_ADDR				0x4A
 
+enum adc_channel {
+	BATTERY_TYPE			= 0,  /* External ADC */
+	BATTERY_TEMPERATURE		= 1,  /* External ADC */
+	AUDIO_ACCESSORY			= 2,  /* External ADC */
+	TEMPERATURE_EXTERNAL_DIODE	= 3,  /* External ADC */
+	TEMPERATURE_MEASUREMENT		= 4,  /* External ADC */
+	GENERAL_PURPOSE_1		= 5,  /* External ADC */
+	GENERAL_PURPOSE_2		= 6,  /* External ADC */
+	SYSTEM_SUPPLY			= 7,  /* Internal ADC */
+	BACKUP_BATTERY			= 8,  /* Internal ADC */
+	EXTERNAL_CHARGER_INPUT		= 9,  /* Internal ADC */
+	VBUS				= 10, /* Internal ADC */
+	VBUS_DCDC_OUTPUT_CURRENT	= 11, /* Internal ADC */
+	DIE_TEMPERATURE_1		= 12, /* Internal ADC */
+	DIE_TEMPERATURE_2		= 13, /* Internal ADC */
+	USB_ID_LINE			= 14, /* Internal ADC */
+	TEST_NETWORK_1			= 15, /* Internal ADC */
+	TEST_NETWORK_2			= 16, /* Internal ADC */
+	BATTERY_CHARGING_CURRENT	= 17, /* Internal ADC */
+	BATTERY_VOLTAGE			= 18, /* Internal ADC */
+};
+
 enum {
 	TPS80031_REGULATOR_VIO,
 	TPS80031_REGULATOR_SMPS1,
