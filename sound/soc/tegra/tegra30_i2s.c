@@ -77,6 +77,8 @@ int tegra30_i2s_startup(struct snd_pcm_substream *substream,
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	int ret;
 
+	tegra30_i2s_enable_clocks(i2s);
+
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = tegra30_ahub_allocate_tx_fifo(&i2s->playback_fifo_cif,
 					&i2s->playback_dma_data.addr,
@@ -95,6 +97,8 @@ int tegra30_i2s_startup(struct snd_pcm_substream *substream,
 					       i2s->capture_i2s_cif);
 	}
 
+	tegra30_i2s_disable_clocks(i2s);
+
 	return ret;
 }
 
@@ -103,6 +107,8 @@ void tegra30_i2s_shutdown(struct snd_pcm_substream *substream,
 {
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 
+	tegra30_i2s_enable_clocks(i2s);
+
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		tegra30_ahub_unset_rx_cif_source(i2s->playback_i2s_cif);
 		tegra30_ahub_free_tx_fifo(i2s->playback_fifo_cif);
@@ -110,6 +116,8 @@ void tegra30_i2s_shutdown(struct snd_pcm_substream *substream,
 		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 		tegra30_ahub_free_rx_fifo(i2s->capture_fifo_cif);
 	}
+
+	tegra30_i2s_disable_clocks(i2s);
 }
 
 static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
