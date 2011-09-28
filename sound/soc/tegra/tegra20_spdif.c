@@ -28,6 +28,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <mach/hdmi-audio.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -67,7 +68,7 @@ static int tegra20_spdif_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = dai->dev;
 	struct tegra20_spdif *spdif = snd_soc_dai_get_drvdata(dai);
 	unsigned int mask, val;
-	int ret, spdifclock;
+	int ret, srate, spdifclock;
 	u32 ch_sta[2] = {0, 0};
 
 	mask = TEGRA20_SPDIF_CTRL_PACK |
@@ -83,6 +84,7 @@ static int tegra20_spdif_hw_params(struct snd_pcm_substream *substream,
 
 	regmap_update_bits(spdif->regmap, TEGRA20_SPDIF_CTRL, mask, val);
 
+	srate = params_rate(params);
 	switch (params_rate(params)) {
 	case 32000:
 		spdifclock = 4096000;
@@ -137,6 +139,12 @@ static int tegra20_spdif_hw_params(struct snd_pcm_substream *substream,
 	regmap_update_bits(spdif->regmap, TEGRA20_SPDIF_CH_STA_TX_B, mask, ch_sta[1]);
 
 	clk_disable(spdif->clk_spdif_out);
+
+	ret = tegra_hdmi_setup_audio_freq_source(srate, SPDIF);
+	if (ret) {
+		dev_err(dev, "Can't set HDMI audio freq source: %d\n", ret);
+		return ret;
+	}
 
 	return 0;
 }
