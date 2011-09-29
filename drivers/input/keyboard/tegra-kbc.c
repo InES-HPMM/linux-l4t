@@ -72,6 +72,8 @@ struct tegra_kbc {
 	void __iomem *mmio;
 	struct input_dev *idev;
 	unsigned int irq;
+	unsigned int wake_enable_rows;
+	unsigned int wake_enable_cols;
 	spinlock_t lock;
 	unsigned int repoll_dly;
 	unsigned long cp_dly_jiffies;
@@ -291,11 +293,21 @@ static void tegra_kbc_setup_wakekeys(struct tegra_kbc *kbc, bool filter)
 	int i;
 	unsigned int rst_val;
 
-	/* Either mask all keys or none. */
-	rst_val = (filter && !pdata->wakeup) ? ~0 : 0;
+	BUG_ON(pdata->wake_cnt > KBC_MAX_KEY);
+	rst_val = (filter && pdata->wake_cnt) ? ~0 : 0;
 
 	for (i = 0; i < KBC_MAX_ROW; i++)
 		writel(rst_val, kbc->mmio + KBC_ROW0_MASK_0 + i * 4);
+
+	if (filter) {
+		for (i = 0; i < pdata->wake_cnt; i++) {
+			u32 val, addr;
+			addr = pdata->wake_cfg[i].row * 4 + KBC_ROW0_MASK_0;
+			val = readl(kbc->mmio + addr);
+			val &= ~(1 << pdata->wake_cfg[i].col);
+			writel(val, kbc->mmio + addr);
+		}
+	}
 }
 
 static void tegra_kbc_config_pins(struct tegra_kbc *kbc)
@@ -572,6 +584,7 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 	struct resource *res;
 	int irq;
 	int err;
+	int i;
 	int num_rows = 0;
 	unsigned int debounce_cnt;
 	unsigned int scan_time_rows;
@@ -624,6 +637,13 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 	if (IS_ERR(kbc->clk)) {
 		dev_err(&pdev->dev, "failed to get keyboard clock\n");
 		return PTR_ERR(kbc->clk);
+	}
+
+	kbc->wake_enable_rows = 0;
+	kbc->wake_enable_cols = 0;
+	for (i = 0; i < pdata->wake_cnt; i++) {
+		kbc->wake_enable_rows |= (1 << pdata->wake_cfg[i].row);
+		kbc->wake_enable_cols |= (1 << pdata->wake_cfg[i].col);
 	}
 
 	/*
