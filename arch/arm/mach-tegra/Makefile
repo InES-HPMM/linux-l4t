@@ -36,7 +36,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuidle-t3.o
 endif
 endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3-throttle.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_throttle.o
 endif
 obj-y                                   += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
