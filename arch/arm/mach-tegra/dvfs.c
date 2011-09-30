@@ -219,8 +219,11 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 
 	if (!rail->reg) {
 		reg = regulator_get(NULL, rail->reg_id);
-		if (IS_ERR(reg))
+		if (IS_ERR(reg)) {
+			pr_err("tegra_dvfs: failed to connect %s rail\n",
+			       rail->reg_id);
 			return -EINVAL;
+		}
 		rail->reg = reg;
 	}
 
@@ -540,15 +543,20 @@ bool tegra_dvfs_rail_updating(struct clk *clk)
  */
 int __init tegra_dvfs_late_init(void)
 {
+	bool connected = true;
 	struct dvfs_rail *rail;
 
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
-		dvfs_rail_connect_to_regulator(rail);
+		if (dvfs_rail_connect_to_regulator(rail))
+			connected = false;
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
-		dvfs_rail_update(rail);
+		if (connected)
+			dvfs_rail_update(rail);
+		else
+			__tegra_dvfs_rail_disable(rail);
 
 	mutex_unlock(&dvfs_lock);
 
