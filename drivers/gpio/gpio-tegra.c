@@ -482,6 +482,7 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);
 			tegra_gpio_writel(0x00, GPIO_INT_ENB(gpio));
+			tegra_gpio_writel(0x00, GPIO_INT_STA(gpio));
 		}
 	}
 
@@ -505,11 +506,12 @@ static int tegra_gpio_probe(struct platform_device *pdev)
 	for (i = 0; i < tegra_gpio_bank_count; i++) {
 		bank = &tegra_gpio_banks[i];
 
-		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
-		irq_set_handler_data(bank->irq, bank);
-
 		for (j = 0; j < 4; j++)
 			spin_lock_init(&bank->lvl_lock[j]);
+
+		irq_set_handler_data(bank->irq, bank);
+		irq_set_chained_handler(bank->irq, tegra_gpio_irq_handler);
+
 	}
 
 	return 0;
