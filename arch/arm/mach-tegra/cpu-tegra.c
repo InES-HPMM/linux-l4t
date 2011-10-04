@@ -35,6 +35,7 @@
 #include <linux/cpu.h>
 
 #include <mach/edp.h>
+#include <mach/thermal.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
@@ -642,6 +643,10 @@ static int __init tegra_cpufreq_init(void)
 		return -EINVAL;
 
 	suspend_index = table_data->suspend_index;
+
+	ret = tegra_thermal_init();
+	if (ret)
+		return ret;
 
 	ret = tegra_throttle_init(&tegra_cpu_lock);
 	if (ret)

@@ -38,6 +38,7 @@ endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_throttle.o
 endif
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_thermal.o
 obj-y                                   += sleep.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-y                                   += mc.o
