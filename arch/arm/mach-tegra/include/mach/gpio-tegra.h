@@ -25,6 +25,14 @@
 
 #define TEGRA_NR_GPIOS		INT_GPIO_NR
 
+struct gpio_init_pin_info {
+	char name[16];
+	int gpio_nr;
+	bool is_gpio;
+	bool is_input;
+	int value; /* Value if it is output*/
+};
+
 void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
 
 #endif
