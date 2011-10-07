@@ -21,6 +21,9 @@
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
 
 /* Version */
 #define MXT_VER_20		20
@@ -231,6 +234,11 @@ struct mxt_info {
 	u8 object_num;
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mxt_early_suspend(struct early_suspend *es);
+static void mxt_late_resume(struct early_suspend *es);
+#endif
+
 struct mxt_object {
 	u8 type;
 	u16 start_address;
@@ -279,6 +287,9 @@ struct mxt_data {
 	u8 idle_cycle_time;
 	u8 is_stopped;
 	u8 max_reportid;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend early_suspend;
+#endif
 };
 
 /* I2C slave address pairs */
@@ -1784,6 +1795,13 @@ static int mxt_probe(struct i2c_client *client,
 		goto err_free_object;
 	}
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	data->early_suspend.suspend = mxt_early_suspend;
+	data->early_suspend.resume = mxt_late_resume;
+	register_early_suspend(&data->early_suspend);
+#endif
+
 	if (data->state == APPMODE) {
 		error = mxt_make_highchg(data);
 		if (error)
@@ -1843,6 +1861,10 @@ static int mxt_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	free_irq(data->irq, data);
 	input_unregister_device(data->input_dev);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	unregister_early_suspend(&data->early_suspend);
+#endif
+
 	kfree(data->object_table);
 	kfree(data);
 
@@ -1881,6 +1903,27 @@ static int mxt_resume(struct device *dev)
 
 	return 0;
 }
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mxt_early_suspend(struct early_suspend *es)
+{
+	struct mxt_data *mxt;
+	mxt = container_of(es, struct mxt_data, early_suspend);
+
+	if (mxt_suspend(&mxt->client->dev) != 0)
+		dev_err(&mxt->client->dev, "%s: failed\n", __func__);
+}
+
+static void mxt_late_resume(struct early_suspend *es)
+{
+	struct mxt_data *mxt;
+	mxt = container_of(es, struct mxt_data, early_suspend);
+
+	if (mxt_resume(&mxt->client->dev) != 0)
+		dev_err(&mxt->client->dev, "%s: failed\n", __func__);
+}
+#endif
+
 #endif
 
 static SIMPLE_DEV_PM_OPS(mxt_pm_ops, mxt_suspend, mxt_resume);
