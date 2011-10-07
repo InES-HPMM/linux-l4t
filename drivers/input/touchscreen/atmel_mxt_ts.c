@@ -94,6 +94,9 @@
 #define MXT_POWER_ACTVACQINT	1
 #define MXT_POWER_ACTV2IDLETO	2
 
+#define MXT_POWER_CFG_RUN		0
+#define MXT_POWER_CFG_DEEPSLEEP		1
+
 /* MXT_GEN_ACQUIRE_T8 field */
 #define MXT_ACQUIRE_CHRGTIME	0
 #define MXT_ACQUIRE_TCHDRIFT	2
@@ -270,6 +273,9 @@ struct mxt_data {
 	struct bin_attribute mem_access_attr;
 	bool debug_enabled;
 	bool driver_paused;
+	u8 actv_cycle_time;
+	u8 idle_cycle_time;
+	u8 is_stopped;
 };
 
 static bool mxt_object_writable(unsigned int type)
@@ -820,6 +826,70 @@ static void mxt_handle_pdata(struct mxt_data *data)
 	}
 }
 
+static int mxt_set_power_cfg(struct mxt_data *data, u8 sleep)
+{
+	struct device *dev = &data->client->dev;
+	int error;
+	u8 actv_cycle_time = 0;
+	u8 idle_cycle_time = 0;
+
+	if (!sleep) {
+		actv_cycle_time = data->actv_cycle_time;
+		idle_cycle_time = data->idle_cycle_time;
+	}
+
+	error = mxt_write_object(data, MXT_GEN_POWER_T7, MXT_POWER_ACTVACQINT,
+				 actv_cycle_time);
+	if (error)
+		goto i2c_error;
+
+	error = mxt_write_object(data, MXT_GEN_POWER_T7, MXT_POWER_IDLEACQINT,
+				 idle_cycle_time);
+	if (error)
+		goto i2c_error;
+
+	dev_dbg(dev, "Set ACTV %d, IDLE %d\n", actv_cycle_time, idle_cycle_time);
+
+	data->is_stopped = sleep;
+
+	return 0;
+
+i2c_error:
+	dev_err(dev, "Failed to set power cfg\n");
+	return error;
+}
+
+static int mxt_init_power_cfg(struct mxt_data *data)
+{
+	struct device *dev = &data->client->dev;
+	int error;
+
+	error = mxt_read_object(data, MXT_GEN_POWER_T7,
+				MXT_POWER_ACTVACQINT,
+				&data->actv_cycle_time);
+	if (error)
+		return error;
+
+	error = mxt_read_object(data, MXT_GEN_POWER_T7,
+				MXT_POWER_IDLEACQINT,
+				&data->idle_cycle_time);
+	if (error)
+		return error;
+
+	/* On init, power up */
+	error = mxt_set_power_cfg(data, MXT_POWER_CFG_RUN);
+	if (error)
+		return error;
+
+	dev_info(dev, "Initialised power cfg: ACTV %d, IDLE %d\n",
+			data->actv_cycle_time, data->idle_cycle_time);
+
+	if (data->actv_cycle_time == 0 || data->idle_cycle_time == 0)
+		dev_err(dev, "Warning: cycle time set to zero.\n");
+
+	return 0;
+}
+
 static int mxt_get_info(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -938,6 +1008,12 @@ static int mxt_initialize(struct mxt_data *data)
 	}
 
 	mxt_handle_pdata(data);
+
+	error = mxt_init_power_cfg(data);
+	if (error) {
+		dev_err(&client->dev, "Failed to initialize power cfg\n");
+		return error;
+	}
 
 	/* Update matrix size at info struct */
 	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, &val);
@@ -1210,16 +1286,30 @@ static const struct attribute_group mxt_attr_group = {
 
 static void mxt_start(struct mxt_data *data)
 {
-	/* Touch enable */
-	mxt_write_object(data,
-			MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL, 0x83);
+	int error;
+	struct device *dev = &data->client->dev;
+
+	if (data->is_stopped == 0)
+		return;
+
+	error = mxt_set_power_cfg(data, MXT_POWER_CFG_RUN);
+
+	if (!error)
+		dev_dbg(dev, "MXT started\n");
 }
 
 static void mxt_stop(struct mxt_data *data)
 {
-	/* Touch disable */
-	mxt_write_object(data,
-			MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL, 0);
+	int error;
+	struct device *dev = &data->client->dev;
+
+	if (data->is_stopped)
+		return;
+
+	error = mxt_set_power_cfg(data, MXT_POWER_CFG_DEEPSLEEP);
+
+	if (!error)
+		dev_dbg(dev, "MXT suspended\n");
 }
 
 static int mxt_input_open(struct input_dev *dev)
