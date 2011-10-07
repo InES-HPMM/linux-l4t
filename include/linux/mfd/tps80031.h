@@ -549,6 +549,7 @@ struct tps80031_pupd_init_data {
 
 struct tps80031_bg_platform_data {
 	int irq_base;
+	int battery_present;
 };
 
 /*
