@@ -635,17 +635,77 @@ end:
 	return IRQ_HANDLED;
 }
 
+static int mxt_make_highchg(struct mxt_data *data)
+{
+	struct device *dev = &data->client->dev;
+	struct mxt_message message;
+	int count = 10;
+	int error;
+
+	/* Read dummy message to make high CHG pin */
+	do {
+		error = mxt_read_message(data, &message);
+		if (error)
+			return error;
+	} while (message.reportid != MXT_RPTID_NOMSG && --count);
+
+	if (!count) {
+		dev_err(dev, "CHG pin isn't cleared\n");
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
 static int mxt_check_reg_init(struct mxt_data *data)
 {
+	struct i2c_client *client = data->client;
 	const struct mxt_platform_data *pdata = data->pdata;
 	struct mxt_object *object;
+	struct mxt_message message;
 	struct device *dev = &data->client->dev;
 	int index = 0;
+	int timeout_counter = 0;
 	int i, j, config_offset;
+	int error;
+	u32 current_crc;
+	u8 command_register;
 
 	if (!pdata->config) {
 		dev_dbg(dev, "No cfg data defined, skipping reg init\n");
 		return 0;
+	}
+
+	/* Try to read the config checksum of the existing cfg */
+	mxt_write_object(data, MXT_GEN_COMMAND_T6,
+		MXT_COMMAND_REPORTALL, 1);
+	msleep(30);
+
+	error = mxt_read_message(data, &message);
+	if (error)
+		return error;
+
+	object = mxt_get_object(data, MXT_GEN_COMMAND_T6);
+	if (!object)
+		return -EIO;
+
+	/* Check if this message is from command processor (which has
+	only one reporting ID), if so, bytes 1-3 are the checksum. */
+	if (message.reportid == object->max_reportid) {
+		current_crc = message.message[1] | (message.message[2] << 8) |
+			(message.message[3] << 16);
+	} else {
+		dev_err(dev, "Failure retrieving cfg checksum, "
+			"forcing load\n");
+		current_crc = 0xFFFFFFFF;
+	}
+
+	if (current_crc == pdata->config_crc) {
+		dev_info(dev, "Config CRC 0x%06X: OK\n", current_crc);
+		return 0;
+	} else {
+		dev_info(dev, "Config CRC 0x%06X: does not match file 0x%06X\n",
+			current_crc, pdata->config_crc);
 	}
 
 	for (i = 0; i < data->info.object_num; i++) {
@@ -668,26 +728,45 @@ static int mxt_check_reg_init(struct mxt_data *data)
 		index += object->size * object->instances;
 	}
 
-	return 0;
-}
+	dev_info(dev, "Config written\n");
 
-static int mxt_make_highchg(struct mxt_data *data)
-{
-	struct device *dev = &data->client->dev;
-	struct mxt_message message;
-	int count = 10;
-	int error;
+	error = mxt_make_highchg(data);
+	if (error)
+		return error;
 
-	/* Read dummy message to make high CHG pin */
+	/* Backup to memory */
+	mxt_write_object(data, MXT_GEN_COMMAND_T6,
+			MXT_COMMAND_BACKUPNV,
+			MXT_BACKUP_VALUE);
+	msleep(MXT_BACKUP_TIME);
 	do {
-		error = mxt_read_message(data, &message);
+		error =  mxt_read_object(data, MXT_GEN_COMMAND_T6,
+					MXT_COMMAND_BACKUPNV,
+					&command_register);
 		if (error)
 			return error;
-	} while (message.reportid != MXT_RPTID_NOMSG && --count);
+		msleep(20);
+	} while ((command_register != 0) && (timeout_counter++ <= 100));
+	if (timeout_counter > 100) {
+		dev_err(&client->dev, "No response after backup!\n");
+		return -EIO;
+	}
 
-	if (!count) {
-		dev_err(dev, "CHG pin isn't cleared\n");
-		return -EBUSY;
+	/* Soft reset */
+	mxt_write_object(data, MXT_GEN_COMMAND_T6,
+			MXT_COMMAND_RESET, 1);
+	if (data->pdata->read_chg == NULL) {
+		msleep(MXT_RESET_NOCHGREAD);
+	} else {
+		msleep(MXT_RESET_TIME);
+
+		timeout_counter = 0;
+		while ((timeout_counter++ <= 100) && data->pdata->read_chg())
+			msleep(20);
+		if (timeout_counter > 100) {
+			dev_err(&client->dev, "No response after reset!\n");
+			return -EIO;
+		}
 	}
 
 	return 0;
@@ -829,9 +908,7 @@ static int mxt_initialize(struct mxt_data *data)
 	struct i2c_client *client = data->client;
 	struct mxt_info *info = &data->info;
 	int error;
-	int timeout_counter = 0;
 	u8 val;
-	u8 command_register;
 
 	error = mxt_get_info(data);
 	if (error)
@@ -861,41 +938,6 @@ static int mxt_initialize(struct mxt_data *data)
 	}
 
 	mxt_handle_pdata(data);
-
-	/* Backup to memory */
-	mxt_write_object(data, MXT_GEN_COMMAND_T6,
-			MXT_COMMAND_BACKUPNV,
-			MXT_BACKUP_VALUE);
-	msleep(MXT_BACKUP_TIME);
-	do {
-		error =  mxt_read_object(data, MXT_GEN_COMMAND_T6,
-					 MXT_COMMAND_BACKUPNV,
-					 &command_register);
-		if (error)
-			return error;
-		msleep(20);
-	} while ((command_register != 0) && (timeout_counter++ <= 100));
-	if (timeout_counter > 100) {
-		dev_err(&client->dev, "No response after backup!\n");
-		return -EIO;
-	}
-
-	/* Soft reset */
-	mxt_write_object(data, MXT_GEN_COMMAND_T6,
-			MXT_COMMAND_RESET, 1);
-	if (data->pdata->read_chg == NULL) {
-		msleep(MXT_RESET_NOCHGREAD);
-	} else {
-		msleep(MXT_RESET_TIME);
-
-		timeout_counter = 0;
-		while ((timeout_counter++ <= 100) && data->pdata->read_chg())
-			msleep(20);
-		if (timeout_counter > 100) {
-			dev_err(&client->dev, "No response after reset!\n");
-			return -EIO;
-		}
-	}
 
 	/* Update matrix size at info struct */
 	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, &val);
