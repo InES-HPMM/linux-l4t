@@ -7,7 +7,7 @@
  * Author: Mike Rapoport <mike@compulab.co.il>
  *
  * Based on NVIDIA PCIe driver
- * Copyright (c) 2008-2011, NVIDIA Corporation.
+ * Copyright (c) 2008-2012, NVIDIA Corporation.
  *
  * Bits taken from arch/arm/mach-dove/pcie.c
  *
@@ -336,6 +336,9 @@ static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 static struct tegra_pcie_info tegra_pcie;
 
+static struct resource pcie_mem_space;
+static struct resource pcie_prefetch_mem_space;
+
 static inline void afi_writel(u32 value, unsigned long offset)
 {
 	writel(value, offset + AFI_OFFSET + tegra_pcie.regs);
@@ -491,6 +494,25 @@ static void tegra_pcie_relax_enable(struct pci_dev *dev)
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, tegra_pcie_relax_enable);
 
+static void __init tegra_pcie_preinit(void)
+{
+	pcie_mem_space.name = "PCIe MEM Space";
+	pcie_mem_space.start = MEM_BASE_0;
+	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE - 1;
+	pcie_mem_space.flags = IORESOURCE_MEM;
+	if (request_resource(&iomem_resource, &pcie_mem_space))
+		panic("can't allocate PCIe MEM space");
+
+	pcie_prefetch_mem_space.name = "PCIe PREFETCH MEM Space";
+	pcie_prefetch_mem_space.start = PREFETCH_MEM_BASE_0;
+	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE
+					- 1;
+	pcie_prefetch_mem_space.flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
+	if (request_resource(&iomem_resource, &pcie_prefetch_mem_space))
+		panic("can't allocate PCIe PREFETCH MEM space");
+
+}
+
 static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 {
 	struct tegra_pcie_port *pp;
@@ -502,40 +524,10 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 	pp->root_bus_nr = sys->busnr;
 
 	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
-
-	/*
-	 * IORESOURCE_MEM
-	 */
-	snprintf(pp->mem_space_name, sizeof(pp->mem_space_name),
-		 "PCIe %d MEM", pp->index);
-	pp->mem_space_name[sizeof(pp->mem_space_name) - 1] = 0;
-	pp->res[0].name = pp->mem_space_name;
-	pp->res[0].start = MEM_BASE_0;
-	pp->res[0].end = pp->res[0].start + MEM_SIZE - 1;
-	pp->res[0].flags = IORESOURCE_MEM;
-	if (request_resource(&iomem_resource, &pp->res[0])) {
-		pr_err("Request PCIe Memory resource failed\n");
-		/* return failure */
-		return -EBUSY;
-	}
-	pci_add_resource_offset(&sys->resources, &pp->res[0], sys->mem_offset);
-
-	/*
-	 * IORESOURCE_MEM | IORESOURCE_PREFETCH
-	 */
-	snprintf(pp->prefetch_space_name, sizeof(pp->prefetch_space_name),
-		 "PCIe %d PREFETCH MEM", pp->index);
-	pp->prefetch_space_name[sizeof(pp->prefetch_space_name) - 1] = 0;
-	pp->res[1].name = pp->prefetch_space_name;
-	pp->res[1].start = PREFETCH_MEM_BASE_0;
-	pp->res[1].end = pp->res[1].start + PREFETCH_MEM_SIZE - 1;
-	pp->res[1].flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
-	if (request_resource(&iomem_resource, &pp->res[1])) {
-		pr_err("Request PCIe Prefetch Memory resource failed\n");
-		/* return failure */
-		return -EBUSY;
-	}
-	pci_add_resource_offset(&sys->resources, &pp->res[1], sys->mem_offset);
+	pci_add_resource_offset(&sys->resources, &pcie_mem_space,
+		sys->mem_offset);
+	pci_add_resource_offset(&sys->resources, &pcie_prefetch_mem_space,
+		sys->mem_offset);
 
 	return 1;
 }
@@ -562,6 +554,7 @@ static struct pci_bus *tegra_pcie_scan_bus(int nr,
 
 static struct hw_pci tegra_pcie_hw = {
 	.nr_controllers	= MAX_PCIE_SUPPORTED_PORTS,
+	.preinit	= tegra_pcie_preinit,
 	.setup		= tegra_pcie_setup,
 	.scan		= tegra_pcie_scan_bus,
 	.map_irq	= tegra_pcie_map_irq,
