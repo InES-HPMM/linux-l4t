@@ -405,6 +405,9 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&tegra_hda_device,
 #endif
 	&tegra_avp_device,
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+	&tegra_se_device,
+#endif
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
 #endif
