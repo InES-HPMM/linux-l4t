@@ -2085,12 +2085,39 @@ static void sdhci_card_event(struct mmc_host *mmc)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+int sdhci_enable(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
+		return 0;
+
+	if (mmc->ios.clock)
+		sdhci_set_clock(host, mmc->ios.clock);
+
+	return 0;
+}
+
+int sdhci_disable(struct mmc_host *mmc, int lazy)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
+		return 0;
+
+	sdhci_set_clock(host, 0);
+
+	return 0;
+}
+
 static const struct mmc_host_ops sdhci_ops = {
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
 	.get_cd		= sdhci_get_cd,
 	.get_ro		= sdhci_get_ro,
 	.hw_reset	= sdhci_hw_reset,
+	.enable		= sdhci_enable,
+	.disable	= sdhci_disable,
 	.enable_sdio_irq = sdhci_enable_sdio_irq,
 	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,
 	.execute_tuning			= sdhci_execute_tuning,
