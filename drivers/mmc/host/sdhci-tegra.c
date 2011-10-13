@@ -355,6 +355,7 @@ static void tegra_sdhci_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	unsigned long timeout;
 
 	/* Enable the power rails if any */
 	if (tegra_host->vdd_io_reg)
@@ -364,6 +365,28 @@ static void tegra_sdhci_resume(struct sdhci_host *sdhci)
 
 	/* Setting the min identification clock of freq 400KHz */
 	tegra_sdhci_set_clock(sdhci, 400000);
+
+	/* Reset the controller and power on if MMC_KEEP_POWER flag is set*/
+	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
+		sdhci_writeb(sdhci, SDHCI_RESET_ALL, SDHCI_SOFTWARE_RESET);
+
+		/* Wait max 100 ms */
+		timeout = 100;
+
+		/* hw clears the bit when it's done */
+		while (sdhci_readb(sdhci, SDHCI_SOFTWARE_RESET) & SDHCI_RESET_ALL) {
+			if (timeout == 0) {
+				printk(KERN_ERR "%s: Reset 0x%x never completed.\n",
+					mmc_hostname(sdhci->mmc), (int)SDHCI_RESET_ALL);
+				return -ETIMEDOUT;
+			}
+			timeout--;
+			mdelay(1);
+		}
+
+		sdhci_writeb(sdhci, SDHCI_POWER_ON, SDHCI_POWER_CONTROL);
+		sdhci->pwr = 0;
+	}
 }
 
 static const struct sdhci_ops tegra_sdhci_ops = {
@@ -595,10 +618,16 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->caps |= MMC_CAP_ERASE;
 	if (plat->is_8bit)
 		host->mmc->caps |= MMC_CAP_8_BIT_DATA;
+	host->mmc->caps |= MMC_CAP_SDIO_IRQ;
 
 	if (plat->mmc_data.built_in) {
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 	}
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
+	if (plat->mmc_data.embedded_sdio)
+		host->mmc->pm_flags = MMC_PM_KEEP_POWER;
+#endif
 
 	rc = sdhci_add_host(host);
 	if (rc)
