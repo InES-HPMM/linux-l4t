@@ -117,6 +117,7 @@
 
 #define UTMIP_XCVR_MAX_OFFSET		2
 #define UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
+#define UTMIP_XCVR_SETUP_MIN_VALUE	0
 #define XCVR_SETUP_MSB_CALIB(x)	((x) >> 4)
 
 #define UTMIP_BIAS_CFG0		0x80c
@@ -271,6 +272,7 @@
 
 #define UTMIP_XCVR_MAX_OFFSET		2
 #define UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
+#define UTMIP_XCVR_SETUP_MIN_VALUE	0
 #define XCVR_SETUP_MSB_CALIB(x)	((x) >> 4)
 
 #define UTMIP_BIAS_CFG0		0x80c
@@ -963,7 +965,7 @@ static void utmip_phy_enable_trking_data(struct tegra_usb_phy *phy)
 
 static unsigned int tegra_phy_xcvr_setup_value(struct tegra_utmip_config *cfg)
 {
-	unsigned long val;
+	signed long val;
 
 	if (cfg->xcvr_use_fuses) {
 		val = FUSE_USB_CALIB_XCVR_SETUP(
@@ -975,12 +977,16 @@ static unsigned int tegra_phy_xcvr_setup_value(struct tegra_utmip_config *cfg)
 			val = UTMIP_XCVR_SETUP_MAX_VALUE;
 			pr_info("%s: reset XCVR_SETUP to max value\n",
 				 __func__);
+		} else if (val < UTMIP_XCVR_SETUP_MIN_VALUE) {
+			val = UTMIP_XCVR_SETUP_MIN_VALUE;
+			pr_info("%s: reset XCVR_SETUP to min value\n",
+				 __func__);
 		}
 	} else {
 		val = cfg->xcvr_setup;
 	}
 
-	return val;
+	return (unsigned int)val;
 }
 
 static int utmi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
