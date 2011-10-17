@@ -879,14 +879,17 @@ static int controller_resume(struct device *dev)
 	struct usb_hcd *hcd = ehci_to_hcd(ehci);
 	struct ehci_regs __iomem *hw = ehci->regs;
 	unsigned long val;
-	int hsic = 0;
+	bool hsic;
+	bool null_ulpi;
 
+	null_ulpi = (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_NULL_ULPI);
 	hsic = (tegra->phy->usb_phy_type == TEGRA_USB_PHY_TYPE_HSIC);
 
 	tegra_ehci_power_up(hcd);
 	set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 
-	if ((tegra->port_speed > TEGRA_USB_PHY_PORT_SPEED_HIGH) || (hsic))
+	if ((tegra->port_speed > TEGRA_USB_PHY_PORT_SPEED_HIGH) || (hsic) ||
+	    (null_ulpi))
 		goto restart;
 
 	/* Force the phy to keep data lines in suspend state */
@@ -983,6 +986,29 @@ static int controller_resume(struct device *dev)
 	goto done;
 
  restart:
+	if (null_ulpi) {
+		bool LP0 = !readl(&hw->async_next);
+
+		if (LP0) {
+			static int cnt = 1;
+
+			pr_info("LP0 restart %d\n", cnt++);
+			tegra_ehci_phy_restore_start(tegra->phy,
+						     tegra->port_speed);
+		}
+
+		val = readl(&hw->port_status[0]);
+		if (!((val & PORT_POWER) && (val & PORT_PE))) {
+			tegra_ehci_restart(hcd);
+			usb_set_device_state(udev, USB_STATE_CONFIGURED);
+		}
+
+		if (LP0)
+			tegra_ehci_phy_restore_end(tegra->phy);
+
+		return 0;
+	}
+
 	if ((tegra->port_speed <= TEGRA_USB_PHY_PORT_SPEED_HIGH) && (!hsic))
 		tegra_ehci_phy_restore_end(tegra->phy);
 	if (hsic) {
