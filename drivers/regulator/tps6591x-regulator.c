@@ -175,7 +175,8 @@ static void wait_for_voltage_change(struct tps6591x_regulator *ri, int uV)
 
 static int __tps6591x_vio_set_voltage(struct device *parent,
 				      struct tps6591x_regulator *ri,
-				      int min_uV, int max_uV)
+				      int min_uV, int max_uV,
+				      unsigned *selector)
 {
 	int uV;
 	uint8_t mask;
@@ -188,6 +189,8 @@ static int __tps6591x_vio_set_voltage(struct device *parent,
 
 		/* use the first in-range value */
 		if (min_uV <= uV && uV <= max_uV) {
+			if (selector)
+				*selector = val;
 
 			reg_val = ri->supply_reg.cache_val;
 			val <<= ri->supply_reg.shift_bits;
@@ -210,12 +213,14 @@ static int __tps6591x_vio_set_voltage(struct device *parent,
 }
 
 static int tps6591x_vio_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV)
+				    int min_uV, int max_uV,
+				    unsigned *selector)
 {
 	struct tps6591x_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps6591x_dev(rdev);
 
-	return __tps6591x_vio_set_voltage(parent, ri, min_uV, max_uV);
+	return __tps6591x_vio_set_voltage(parent, ri, min_uV, max_uV,
+					  selector);
 }
 
 static int tps6591x_vio_get_voltage(struct regulator_dev *rdev)
@@ -244,8 +249,9 @@ static int tps6591x_ldo_list_voltage(struct regulator_dev *rdev,
 }
 
 static int __tps6591x_ldo1_set_voltage(struct device *parent,
-				      struct tps6591x_regulator *ri,
-				      int min_uV, int max_uV)
+				       struct tps6591x_regulator *ri,
+				       int min_uV, int max_uV,
+				       unsigned *selector)
 {
 	int val, uV;
 	uint8_t mask;
@@ -257,6 +263,8 @@ static int __tps6591x_ldo1_set_voltage(struct device *parent,
 
 		/* use the first in-range value */
 		if (min_uV <= uV && uV <= max_uV) {
+			if (selector)
+				*selector = val;
 			reg_val = ri->supply_reg.cache_val;
 			val += 4;
 			val <<= ri->supply_reg.shift_bits;
@@ -278,12 +286,14 @@ static int __tps6591x_ldo1_set_voltage(struct device *parent,
 }
 
 static int tps6591x_ldo1_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV)
+				     int min_uV, int max_uV,
+				     unsigned *selector)
 {
 	struct tps6591x_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps6591x_dev(rdev);
 
-	return __tps6591x_ldo1_set_voltage(parent, ri, min_uV, max_uV);
+	return __tps6591x_ldo1_set_voltage(parent, ri, min_uV, max_uV,
+					   selector);
 }
 
 static int tps6591x_ldo1_get_voltage(struct regulator_dev *rdev)
@@ -308,7 +318,9 @@ static int tps6591x_ldo1_get_voltage(struct regulator_dev *rdev)
 }
 
 static int __tps6591x_ldo3_set_voltage(struct device *parent,
-		struct tps6591x_regulator *ri, int min_uV, int max_uV)
+				       struct tps6591x_regulator *ri,
+				       int min_uV, int max_uV,
+				       unsigned *selector)
 {
 	int val, uV;
 	uint8_t mask;
@@ -320,6 +332,8 @@ static int __tps6591x_ldo3_set_voltage(struct device *parent,
 
 		/* use the first in-range value */
 		if (min_uV <= uV && uV <= max_uV) {
+			if (selector)
+				*selector = val;
 			reg_val = ri->supply_reg.cache_val;
 			val += 2;
 			val <<= ri->supply_reg.shift_bits;
@@ -342,12 +356,14 @@ static int __tps6591x_ldo3_set_voltage(struct device *parent,
 }
 
 static int tps6591x_ldo3_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV)
+				     int min_uV, int max_uV,
+				     unsigned *selector)
 {
 	struct tps6591x_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps6591x_dev(rdev);
 
-	return __tps6591x_ldo3_set_voltage(parent, ri, min_uV, max_uV);
+	return __tps6591x_ldo3_set_voltage(parent, ri, min_uV, max_uV,
+					   selector);
 }
 
 static int tps6591x_ldo3_get_voltage(struct regulator_dev *rdev)
@@ -373,7 +389,8 @@ static int tps6591x_ldo3_get_voltage(struct regulator_dev *rdev)
 
 static int __tps6591x_vdd_set_voltage(struct device *parent,
 				      struct tps6591x_regulator *ri,
-				      int min_uV, int max_uV)
+				      int min_uV, int max_uV,
+				      unsigned *selector)
 {
 	int val, uV, ret;
 	uint8_t mask;
@@ -385,6 +402,8 @@ static int __tps6591x_vdd_set_voltage(struct device *parent,
 
 		/* use the first in-range value */
 		if (min_uV <= uV && uV <= max_uV) {
+			if (selector)
+				*selector = val;
 			op_reg_val = ri->op_reg.cache_val;
 			val += 3;
 			if (op_reg_val & 0x80) {
@@ -419,12 +438,14 @@ static int __tps6591x_vdd_set_voltage(struct device *parent,
 }
 
 static int tps6591x_vdd_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV)
+				    int min_uV, int max_uV,
+				    unsigned *selector)
 {
 	struct tps6591x_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_tps6591x_dev(rdev);
 
-	return __tps6591x_vdd_set_voltage(parent, ri, min_uV, max_uV);
+	return __tps6591x_vdd_set_voltage(parent, ri, min_uV, max_uV,
+					  selector);
 }
 
 static int tps6591x_vdd_get_voltage(struct regulator_dev *rdev)
@@ -701,7 +722,7 @@ static inline int tps6591x_regulator_preinit(struct device *parent,
 		case TPS6591X_ID_VIO:
 			ret = __tps6591x_vio_set_voltage(parent, ri,
 					tps6591x_pdata->init_uV,
-					tps6591x_pdata->init_uV);
+					tps6591x_pdata->init_uV, 0);
 			break;
 
 		case TPS6591X_ID_LDO_1:
@@ -709,7 +730,7 @@ static inline int tps6591x_regulator_preinit(struct device *parent,
 		case TPS6591X_ID_LDO_4:
 			ret = __tps6591x_ldo1_set_voltage(parent, ri,
 					tps6591x_pdata->init_uV,
-					tps6591x_pdata->init_uV);
+					tps6591x_pdata->init_uV, 0);
 			break;
 
 		case TPS6591X_ID_LDO_3:
@@ -719,7 +740,7 @@ static inline int tps6591x_regulator_preinit(struct device *parent,
 		case TPS6591X_ID_LDO_8:
 			ret = __tps6591x_ldo3_set_voltage(parent, ri,
 					tps6591x_pdata->init_uV,
-					tps6591x_pdata->init_uV);
+					tps6591x_pdata->init_uV, 0);
 			break;
 
 		case TPS6591X_ID_VDD_1:
@@ -727,7 +748,7 @@ static inline int tps6591x_regulator_preinit(struct device *parent,
 		case TPS6591X_ID_VDDCTRL:
 			ret = __tps6591x_vdd_set_voltage(parent, ri,
 					tps6591x_pdata->init_uV,
-					tps6591x_pdata->init_uV);
+					tps6591x_pdata->init_uV, 0);
 			break;
 
 		default:
