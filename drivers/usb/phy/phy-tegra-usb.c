@@ -1045,7 +1045,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 
 	utmip_pad_power_on(phy);
 
-	xcvr_setup_value = tegra_phy_xcvr_setup_value(config);
+	xcvr_setup_value = phy->xcvr_setup_value;
 
 	val = readl(base + UTMIP_XCVR_CFG0);
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
@@ -1833,6 +1833,7 @@ static int	tegra_phy_init(struct usb_phy *x)
 
 	if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_UTMIP) {
 		err = utmip_pad_open(phy);
+		phy->xcvr_setup_value = tegra_phy_xcvr_setup_value(phy->config);
 		if (err < 0)
 			goto err1;
 	} else if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_LINK_ULPI) {
@@ -2379,6 +2380,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	phy->regulator_on = 0;
 	phy->power_on = 0;
 	phy->remote_wakeup = false;
+	phy->xcvr_setup_value = 0;
 
 	if (!phy->config) {
 		if (phy->usb_phy_type == TEGRA_USB_PHY_TYPE_LINK_ULPI ||
