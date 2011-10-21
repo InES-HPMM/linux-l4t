@@ -36,6 +36,11 @@
 #include <sound/jack.h>
 #include <sound/asoundef.h>
 #include <sound/tlv.h>
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+#include <mach/hdmi-audio.h>
+#endif
+
 #include "hda_codec.h"
 #include "hda_local.h"
 #include "hda_jack.h"
@@ -1448,6 +1453,21 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	bool non_pcm;
 
 	non_pcm = check_non_pcm_per_cvt(codec, cvt_nid);
+
+#if defined(CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA) && defined(CONFIG_TEGRA_DC)
+	if (codec->preset->id == 0x10de0020) {
+		int err = 0;
+		/* Set hdmi:audio freq and source selection*/
+		err = tegra_hdmi_setup_audio_freq_source(
+					substream->runtime->rate, HDA);
+		if ( err < 0 ) {
+			snd_printk(KERN_ERR
+				"Unable to set hdmi audio freq to %d \n",
+						substream->runtime->rate);
+			return err;
+		}
+	}
+#endif
 
 	hdmi_set_channel_count(codec, cvt_nid, substream->runtime->channels);
 
