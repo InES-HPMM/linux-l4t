@@ -690,6 +690,13 @@ config GPIO_TPS65910
 	  Select this option to enable GPIO driver for the TPS65910
 	  chip family.
 
+config GPIO_PALMAS
+	bool "PALMAS GPIO"
+	depends on MFD_PALMAS
+	help
+	  Select this option to enable GPIO driver for the Palmas
+	  chip familly.
+
 config GPIO_MSIC
 	bool "Intel MSIC mixed signal gpio support"
 	depends on MFD_INTEL_MSIC
