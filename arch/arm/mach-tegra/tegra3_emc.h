@@ -25,6 +25,9 @@
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
+struct clk;
+
+void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 
 #ifdef CONFIG_PM_SLEEP
