@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra30_emc.h>
+#include <linux/suspend.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
@@ -197,9 +198,10 @@ static bool emc_timing_in_sync;
 
 static u32 dram_dev_num;
 static u32 emc_cfg_saved;
-
 static u32 dram_type = -1;
+
 static struct clk *emc;
+static struct clk *bridge;
 
 static struct {
 	cputime64_t time_at_clock[TEGRA_EMC_TABLE_MAX_SIZE];
@@ -737,7 +739,8 @@ static bool is_emc_bridge(void)
 {
 	int mv;
 	unsigned long rate;
-	struct clk *bridge = tegra_get_clock_by_name("bridge.emc");
+
+	bridge = tegra_get_clock_by_name("bridge.emc");
 	BUG_ON(!bridge);
 
 	/* LPDDR2 does not need a bridge entry in DFS table: just lock bridge
@@ -762,6 +765,44 @@ static bool is_emc_bridge(void)
 
 	return true;
 }
+
+static int tegra_emc_suspend_notify(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	if (event != PM_SUSPEND_PREPARE)
+		return NOTIFY_OK;
+
+	if (dram_type == DRAM_TYPE_DDR3) {
+		if (clk_enable(bridge)) {
+			pr_info("Tegra emc suspend:"
+				" failed to enable bridge.emc\n");
+			return NOTIFY_STOP;
+		}
+		pr_info("Tegra emc suspend: enabled bridge.emc\n");
+	}
+	return NOTIFY_OK;
+};
+static struct notifier_block tegra_emc_suspend_nb = {
+	.notifier_call = tegra_emc_suspend_notify,
+	.priority = 2,
+};
+
+static int tegra_emc_resume_notify(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	if (event != PM_POST_SUSPEND)
+		return NOTIFY_OK;
+
+	if (dram_type == DRAM_TYPE_DDR3) {
+		clk_disable(bridge);
+		pr_info("Tegra emc resume: disabled bridge.emc\n");
+	}
+	return NOTIFY_OK;
+};
+static struct notifier_block tegra_emc_resume_nb = {
+	.notifier_call = tegra_emc_resume_notify,
+	.priority = -1,
+};
 
 static int tegra_emc_probe(struct platform_device *pdev)
 {
@@ -880,6 +921,9 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		pr_err("tegra: invalid EMC DFS table: emc bridge not found");
 	}
 	pr_info("tegra: validated EMC DFS table\n");
+
+	register_pm_notifier(&tegra_emc_suspend_nb);
+	register_pm_notifier(&tegra_emc_resume_nb);
 
 	return 0;
 }
