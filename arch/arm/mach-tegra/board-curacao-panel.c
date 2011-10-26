@@ -47,6 +47,8 @@
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
+static atomic_t sd_brightness = ATOMIC_INIT(255);
+
 static int curacao_backlight_init(struct device *dev)
 {
 #if DSI_PANEL_218
@@ -129,6 +131,48 @@ static struct resource curacao_disp1_resources[] = {
 		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+};
+
+static struct tegra_dc_sd_settings curacao_sd_settings = {
+	.enable = 0, /* Normal mode operation */
+	.use_auto_pwm = false,
+	.hw_update_delay = 0,
+	.bin_width = -1,
+	.aggressiveness = 1,
+	.use_vid_luma = false,
+	.k_limit_enable = false,
+	.sd_window_enable = false,
+	.soft_clipping_enable = false,
+	/* Default video coefficients */
+	.coeff = {5, 9, 2},
+	.fc = {0, 0},
+	/* Immediate backlight changes */
+	.blp = {1024, 255},
+	/* Gammas: R: 2.2 G: 2.2 B: 2.2 */
+	/* Default BL TF */
+	.bltf = {
+			{
+				{57, 65, 73, 82},
+				{92, 103, 114, 125},
+				{138, 150, 164, 178},
+				{193, 208, 224, 241},
+			},
+		},
+	/* Default LUT */
+	.lut = {
+			{
+				{255, 255, 255},
+				{199, 199, 199},
+				{153, 153, 153},
+				{116, 116, 116},
+				{85, 85, 85},
+				{59, 59, 59},
+				{36, 36, 36},
+				{17, 17, 17},
+				{0, 0, 0},
+			}
+		},
+	.sd_brightness = &sd_brightness,
 };
 
 static struct tegra_dc_mode curacao_panel_modes[] = {
@@ -241,6 +285,8 @@ static struct tegra_dsi_out curacao_dsi = {
 };
 
 static struct tegra_dc_out curacao_disp1_out = {
+	.sd_settings	= &curacao_sd_settings,
+
 	.type		= TEGRA_DC_OUT_DSI,
 	.dsi		= &curacao_dsi,
 
