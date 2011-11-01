@@ -1183,7 +1183,17 @@ struct platform_device tegra_dam_device2 = {
 
 struct platform_device spdif_dit_device = {
 	.name = "spdif-dit",
-	.id = -1,
+	.id = 0,
+};
+
+struct platform_device bluetooth_dit_device = {
+	.name = "spdif-dit",
+	.id = 1,
+};
+
+struct platform_device baseband_dit_device = {
+	.name = "spdif-dit",
+	.id = 2,
 };
 
 #if defined(CONFIG_SND_HDA_TEGRA)
