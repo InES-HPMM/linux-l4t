@@ -66,6 +66,12 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 	/* Set HW params now that initialization is complete */
 	snd_soc_set_runtime_hwparams(substream, &tegra_pcm_hardware);
 
+	/* Ensure period size is multiple of 8 */
+	ret = snd_pcm_hw_constraint_step(substream->runtime, 0,
+		SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 0x8);
+	if (ret < 0)
+		goto err;
+
 	ret = snd_dmaengine_pcm_open_request_chan(substream, NULL, NULL);
 	if (ret) {
 		dev_err(dev, "dmaengine pcm open failed with err %d\n", ret);
