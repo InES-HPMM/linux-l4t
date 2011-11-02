@@ -36,6 +36,7 @@ struct tegra30_emc_table {
 	u32 emc_mode_reset;
 	u32 emc_mode_1;
 	u32 emc_mode_2;
+	u32 emc_dsr;
 };
 
 struct tegra30_emc_pdata {
