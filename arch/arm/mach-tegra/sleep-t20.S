@@ -60,8 +60,6 @@
 
 #define CLK_RESET_RST_CPU_CMPLX_SET 	0x340
 
-#define TEGRA_PL310_VIRT	(TEGRA_ARM_PL310_BASE - IO_PPSB_PHYS + IO_PPSB_VIRT)
-
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 /*
  * tegra20_hotplug_shutdown(void)
@@ -252,7 +250,8 @@ ENTRY(tegra2_sleep_wfi)
 #ifdef CONFIG_CACHE_L2X0
 	/* Issue a PL310 cache sync operation */
 	dsb
-	mov32	r2, TEGRA_PL310_VIRT + 0x730	@ cache sync
+	mov32	r2, TEGRA_PL310_VIRT
+	movw	r1, 0x730	@ cache sync
 	add	r2, r2, r1
 	mov	r1, #0
 	str	r1, [r2]
