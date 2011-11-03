@@ -146,26 +146,32 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 
 	mask |= TEGRA30_I2S_CTRL_FRAME_FORMAT_MASK |
 		TEGRA30_I2S_CTRL_LRCK_MASK;
+	i2s->reg_ch_ctrl &= ~TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK;
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_DSP_A:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
+		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		val |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
+		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 		break;
 	case SND_SOC_DAIFMT_I2S:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
 		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
+		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
 		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
+		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_LRCK;
 		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
+		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
 		break;
 	default:
 		return -EINVAL;
@@ -185,7 +191,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = dai->dev;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	unsigned int mask, val, reg;
-	int ret, sample_size, srate, i2sclock, bitcnt;
+	int ret, sample_size, srate, i2sclock, bitcnt, sym_bitclk;
 
 	if (params_channels(params) != 2)
 		return -EINVAL;
@@ -207,9 +213,9 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	/* Final "* 2" required by Tegra hardware */
 	i2sclock = srate * params_channels(params) * sample_size * 2;
 
-	bitcnt = (i2sclock / (2 * srate)) - 1;
-	if (bitcnt < 0 || bitcnt > TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_MASK_US)
-		return -EINVAL;
+	/* Additional "* 2" is needed for FSYNC mode */
+	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		i2sclock *= 2;
 
 	ret = clk_set_rate(i2s->clk_i2s, i2sclock);
 	if (ret) {
@@ -217,9 +223,17 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
+	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
+		bitcnt = (i2sclock / srate) - 1;
+		sym_bitclk = !(i2sclock % srate);
+	} else {
+		bitcnt = (i2sclock / (2 * srate)) - 1;
+		sym_bitclk = !(i2sclock % (2 * srate));
+	}
+
 	val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
 
-	if (i2sclock % (2 * srate))
+	if (!sym_bitclk)
 		val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 
 	regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
@@ -243,6 +257,18 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	val = (1 << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
 	      (1 << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
 	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
+
+	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
+
+	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		val &= ~TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
+		val |= (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
+	} else {
+		val &= ~TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
+		val |= (1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
+	}
+	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
 
 	return 0;
 }
