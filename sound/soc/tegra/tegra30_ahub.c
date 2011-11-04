@@ -433,6 +433,53 @@ static const struct regmap_config tegra30_ahub_ahub_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
+int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
+				     unsigned int audio_ch,
+				     unsigned int client_ch)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
+	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
+				     unsigned int audio_ch,
+				     unsigned int client_ch)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_TX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_MASK);
+	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
+
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
 static int tegra30_ahub_probe(struct platform_device *pdev)
 {
 	struct clk *clk;
