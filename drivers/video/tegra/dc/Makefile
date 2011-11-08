@@ -1,3 +1,4 @@
+GCOV_PROFILE := y
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 obj-y += dc.o bandwidth.o mode.o clock.o lut.o csc.o window.o
 obj-y += rgb.o

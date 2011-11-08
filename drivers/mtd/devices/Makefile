@@ -1,6 +1,7 @@
 #
 # linux/drivers/mtd/devices/Makefile
 #
+GCOV_PROFILE := y
 
 obj-$(CONFIG_MTD_DOCG3)		+= docg3.o
 obj-$(CONFIG_MTD_SLRAM)		+= slram.o

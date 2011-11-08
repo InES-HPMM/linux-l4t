@@ -1,6 +1,7 @@
 #
 # Makefile for physical layer USB drivers
 #
+GCOV_PROFILE_tegra-otg.o := y
 
 ccflags-$(CONFIG_USB_DEBUG) := -DDEBUG
 

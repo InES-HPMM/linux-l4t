@@ -1,3 +1,5 @@
+GCOV_PROFILE := y
+
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 
 nvhost-t20-objs  = \
