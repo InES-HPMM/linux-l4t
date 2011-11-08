@@ -40,9 +40,12 @@
 #include <sound/soc.h>
 
 #include "tegra30_ahub.h"
+#include "tegra30_dam.h"
 #include "tegra30_i2s.h"
 
 #define DRV_NAME "tegra30-i2s"
+
+static struct tegra30_i2s  i2scont[TEGRA30_NR_I2S_IFC];
 
 static int tegra30_i2s_runtime_suspend(struct device *dev)
 {
@@ -80,13 +83,18 @@ int tegra30_i2s_startup(struct snd_pcm_substream *substream,
 	tegra30_i2s_enable_clocks(i2s);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		/* increment the playback ref count */
+		i2s->playback_ref_count++;
+
 		ret = tegra30_ahub_allocate_tx_fifo(&i2s->playback_fifo_cif,
 					&i2s->playback_dma_data.addr,
 					&i2s->playback_dma_data.req_sel);
 		i2s->playback_dma_data.wrap = 4;
 		i2s->playback_dma_data.width = 32;
-		tegra30_ahub_set_rx_cif_source(i2s->playback_i2s_cif,
-					       i2s->playback_fifo_cif);
+
+		if (!i2s->is_dam_used)
+			tegra30_ahub_set_rx_cif_source(i2s->playback_i2s_cif,
+						       i2s->playback_fifo_cif);
 	} else {
 		ret = tegra30_ahub_allocate_rx_fifo(&i2s->capture_fifo_cif,
 					&i2s->capture_dma_data.addr,
@@ -110,8 +118,14 @@ void tegra30_i2s_shutdown(struct snd_pcm_substream *substream,
 	tegra30_i2s_enable_clocks(i2s);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		tegra30_ahub_unset_rx_cif_source(i2s->playback_i2s_cif);
+		if (i2s->playback_ref_count == 1)
+			tegra30_ahub_unset_rx_cif_source(i2s->playback_i2s_cif);
+
+		/* free the apbif dma channel*/
 		tegra30_ahub_free_tx_fifo(i2s->playback_fifo_cif);
+
+		/* decrement the playback ref count */
+		i2s->playback_ref_count--;
 	} else {
 		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 		tegra30_ahub_free_rx_fifo(i2s->capture_fifo_cif);
@@ -286,16 +300,20 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 static void tegra30_i2s_start_playback(struct tegra30_i2s *i2s)
 {
 	tegra30_ahub_enable_tx_fifo(i2s->playback_fifo_cif);
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-			   TEGRA30_I2S_CTRL_XFER_EN_TX,
-			   TEGRA30_I2S_CTRL_XFER_EN_TX);
+	/* if this is the only user of i2s tx then enable it*/
+	if (i2s->playback_ref_count == 1)
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_TX,
+				   TEGRA30_I2S_CTRL_XFER_EN_TX);
 }
 
 static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 {
 	tegra30_ahub_disable_tx_fifo(i2s->playback_fifo_cif);
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-			   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
+	/* if this is the only user of i2s tx then disable it*/
+	if (i2s->playback_ref_count == 1)
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_TX, 0);
 }
 
 static void tegra30_i2s_start_capture(struct tegra30_i2s *i2s)
@@ -443,12 +461,7 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	int ret;
 
-	i2s = devm_kzalloc(&pdev->dev, sizeof(struct tegra30_i2s), GFP_KERNEL);
-	if (!i2s) {
-		dev_err(&pdev->dev, "Can't allocate tegra30_i2s\n");
-		ret = -ENOMEM;
-		goto err;
-	}
+	i2s = &i2scont[pdev->id];
 	dev_set_drvdata(&pdev->dev, i2s);
 
 	i2s->dai = tegra30_i2s_dai_template;

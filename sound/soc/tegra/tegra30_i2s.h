@@ -225,6 +225,9 @@
 #define TEGRA30_I2S_LCOEF_COEF_MASK_US			0xffff
 #define TEGRA30_I2S_LCOEF_COEF_MASK			(TEGRA30_I2S_LCOEF_COEF_MASK_US << TEGRA30_I2S_LCOEF_COEF_SHIFT)
 
+/* Number of i2s controllers*/
+#define TEGRA30_NR_I2S_IFC				5
+
 struct tegra30_i2s {
 	struct snd_soc_dai_driver dai;
 	int cif_id;
@@ -237,6 +240,8 @@ struct tegra30_i2s {
 	struct tegra_pcm_dma_params playback_dma_data;
 	struct regmap *regmap;
 	u32 reg_ch_ctrl;
+	int  playback_ref_count;
+	bool is_dam_used;
 };
 
 #endif
