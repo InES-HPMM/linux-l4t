@@ -1341,7 +1341,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 	writel(val, base + UTMIP_BIAS_CFG1);
 #endif
 
-	if (phy->instance == 2) {
+	if (phy->hotplug) {
 		val = readl(base + USB_PORTSC1);
 		val |= USB_PORTSC1_WKCN;
 		writel(val, base + USB_PORTSC1);
@@ -1354,7 +1354,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy, bool is_dpd)
 
 	utmi_phy_clk_disable(phy);
 
-	if (phy->instance == 2) {
+	if (phy->hotplug) {
 		val = readl(base + USB_SUSP_CTRL);
 		val |= USB_PHY_CLK_VALID_INT_ENB;
 		writel(val, base + USB_SUSP_CTRL);
@@ -2381,6 +2381,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	phy->regulator_on = 0;
 	phy->power_on = 0;
 	phy->remote_wakeup = false;
+	phy->hotplug = 0;
 	phy->xcvr_setup_value = 0;
 
 	if (!phy->config) {
