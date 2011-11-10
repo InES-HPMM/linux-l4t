@@ -863,7 +863,7 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 		ctrl &= ~SDHCI_CTRL_DMA_MASK;
 		if ((host->flags & SDHCI_REQ_USE_DMA) &&
 			(host->flags & SDHCI_USE_ADMA))
-			ctrl |= SDHCI_CTRL_ADMA32;
+			ctrl |= SDHCI_CTRL_ADMA2;
 		else
 			ctrl |= SDHCI_CTRL_SDMA;
 		sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
