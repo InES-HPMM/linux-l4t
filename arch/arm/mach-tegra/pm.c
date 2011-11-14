@@ -535,7 +535,10 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	/* Only the last cpu down does the final suspend steps */
 	mode = readl(pmc + PMC_CTRL);
 	mode |= TEGRA_POWER_CPU_PWRREQ_OE;
-	mode |= TEGRA_POWER_PWRREQ_OE;
+	if (pdata->combined_req)
+		mode &= ~TEGRA_POWER_PWRREQ_OE;
+	else
+		mode |= TEGRA_POWER_PWRREQ_OE;
 	mode &= ~TEGRA_POWER_EFFECT_LP0;
 	pmc_32kwritel(mode, PMC_CTRL);
 	mode |= flags;
@@ -662,11 +665,19 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 
 	reg = readl(pmc + PMC_CTRL);
 	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
-	reg |= TEGRA_POWER_PWRREQ_OE;
+	if (pdata->combined_req)
+		reg &= ~TEGRA_POWER_PWRREQ_OE;
+	else
+		reg |= TEGRA_POWER_PWRREQ_OE;
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
 
 	switch (mode) {
 	case TEGRA_SUSPEND_LP0:
+		if (pdata->combined_req) {
+			reg |= TEGRA_POWER_PWRREQ_OE;
+			reg &= ~TEGRA_POWER_CPU_PWRREQ_OE;
+		}
+
 		/*
 		 * LP0 boots through the AVP, which then resumes the AVP to
 		 * the address in scratch 39, and the cpu to the address in
@@ -811,6 +822,19 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		*iram_cpu_lp1_mask = 0;
 
 	restore_cpu_complex(flags);
+
+	/* for platforms where the core & CPU power requests are
+	 * combined as a single request to the PMU, transition out
+	 * of LP0 state by temporarily enabling both requests
+	 */
+	if (mode == TEGRA_SUSPEND_LP0 && pdata->combined_req) {
+		u32 reg;
+		reg = readl(pmc + PMC_CTRL);
+		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
+		pmc_32kwritel(reg, PMC_CTRL);
+		reg &= ~TEGRA_POWER_PWRREQ_OE;
+		pmc_32kwritel(reg, PMC_CTRL);
+	}
 
 	cpu_cluster_pm_exit();
 	cpu_pm_exit();
@@ -1051,7 +1075,8 @@ out:
 
 	/* now enable requests */
 	reg |= TEGRA_POWER_SYSCLK_OE;
-	reg |= TEGRA_POWER_PWRREQ_OE;
+	if (!pdata->combined_req)
+		reg |= TEGRA_POWER_PWRREQ_OE;
 	pmc_32kwritel(reg, PMC_CTRL);
 
 	if (pdata->suspend_mode == TEGRA_SUSPEND_LP0)
