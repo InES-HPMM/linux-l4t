@@ -840,7 +840,15 @@ static int sbs_suspend(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(sbs_pm_ops, sbs_suspend, NULL);
+static int sbs_resume(struct i2c_client *client)
+{
+	struct sbs_info *chip = i2c_get_clientdata(client);
+
+	schedule_delayed_work(&chip->work, HZ);
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(sbs_pm_ops, sbs_suspend, sbs_resume);
 #define SBS_PM_OPS (&sbs_pm_ops)
 
 #else
