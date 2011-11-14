@@ -20,7 +20,7 @@
 #include "fuse.h"
 
 #define CORE_PROCESS_CORNERS_NUM	1
-#define CPU_PROCESS_CORNERS_NUM		6
+#define CPU_PROCESS_CORNERS_NUM		7
 
 #define FUSE_SPEEDO_CALIB_0	0x114
 #define FUSE_PACKAGE_INFO	0X1FC
@@ -48,6 +48,8 @@ enum {
 	THRESHOLD_INDEX_9,
 	THRESHOLD_INDEX_10,
 	THRESHOLD_INDEX_11,
+	THRESHOLD_INDEX_12,
+	THRESHOLD_INDEX_13,
 	THRESHOLD_INDEX_COUNT,
 };
 
@@ -64,6 +66,8 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 	{180},
 	{180},
 	{180},
+	{185},
+	{185},
 };
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
@@ -79,6 +83,8 @@ static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 	{364, 364, 364, 364, 397, UINT_MAX},
 	{295, 336, 358, 375, 391, UINT_MAX},
 	{295, 336, 358, 375, 391, UINT_MAX},
+	{300, 311, 360, 371, 381, 415, 431},
+	{300, 311, 410, 431},
 };
 
 static int threshold_index;
@@ -207,6 +213,18 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			tegra_soc_speedo_id = 2;
 			threshold_index = THRESHOLD_INDEX_6;
 			break;
+		case 0x91: /* T30AGS-Ax */
+		case 0xb0: /* T30IQS-Ax */
+		case 0xb1: /* T30MQS-Ax */
+		case 0x90: /* T30AQS-Ax */
+			tegra_soc_speedo_id = 3;
+			threshold_index = THRESHOLD_INDEX_12;
+			break;
+		case 0x93: /* T30AG-Ax */
+			tegra_cpu_speedo_id = 11;
+			tegra_soc_speedo_id = 3;
+			threshold_index = THRESHOLD_INDEX_13;
+			break;
 		case 0:
 			switch (tegra_package_id) {
 			case 1:
@@ -248,8 +266,8 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
  * latter is resolved by the dvfs code)
  */
 static const int cpu_speedo_nominal_millivolts[] =
-/* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8 */
-	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150 };
+/* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8,   9,  10,  11 */
+	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150, 912, 850, 850};
 
 void tegra30_init_speedo_data(void)
 {
@@ -280,6 +298,13 @@ void tegra30_init_speedo_data(void)
 		       cpu_speedo_val);
 		tegra_cpu_process_id = 0;
 		tegra_cpu_speedo_id = 1;
+	} else {
+		if (threshold_index == 12) {
+			if (tegra_cpu_process_id <= 2)
+				tegra_cpu_speedo_id = 9;
+			else if (tegra_cpu_process_id >= 3 && tegra_cpu_process_id < 6)
+				tegra_cpu_speedo_id = 10;
+		}
 	}
 
 	for (i = 0; i < CORE_PROCESS_CORNERS_NUM; i++) {
@@ -314,6 +339,9 @@ void tegra30_init_speedo_data(void)
 		/* fall thru for T30L or T30SL */
 	case 2:
 		tegra_core_speedo_mv = 1300;
+		break;
+	case 3:
+		tegra_core_speedo_mv = 1250;
 		break;
 	default:
 		BUG();
