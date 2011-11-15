@@ -34,5 +34,6 @@ struct gpio_init_pin_info {
 };
 
 void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value);
+void tegra_gpio_set_tristate(int gpio, enum tegra_tristate ts);
 
 #endif
