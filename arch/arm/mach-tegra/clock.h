@@ -288,6 +288,7 @@ void clk_set_cansleep(struct clk *c);
 unsigned long clk_get_min_rate(struct clk *c);
 unsigned long clk_get_max_rate(struct clk *c);
 int clk_set_rate_locked(struct clk *c, unsigned long rate);
+int clk_set_parent_locked(struct clk *c, struct clk *parent);
 int clk_reparent(struct clk *c, struct clk *parent);
 int tegra_clk_shared_bus_update(struct clk *c);
 int tegra_emc_set_rate(unsigned long rate);
