@@ -42,11 +42,21 @@
 #define NVQUIRK_ENABLE_SDHCI_SPEC_300	BIT(2)
 
 #define SDHCI_VENDOR_CLOCK_CNTRL       0x100
+#define SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK	0x1
 #define SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE	0x8
+#define SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT	8
+
+#define SDHCI_VENDOR_MISC_CNTRL		0x120
+#define SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0	0x20
+
+static unsigned int tegra3_sdhost_max_clk[4] = {
+	208000000,	104000000,	208000000,	104000000 };
 
 struct tegra_sdhci_hw_ops{
 	/* Set the internal clk and card clk.*/
 	void	(*set_card_clock)(struct sdhci_host *sdhci, unsigned int clock);
+	/* Post reset vendor registers configuration */
+	void	(*sdhost_init)(struct sdhci_host *sdhci);
 };
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -56,9 +66,11 @@ static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock);
+static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
 
 static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
+	.sdhost_init = tegra3_sdhci_post_reset_init,
 };
 #endif
 
@@ -75,6 +87,8 @@ struct sdhci_tegra {
 	bool	clk_enabled;
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
+	/* Host controller instance */
+	unsigned int instance;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -101,7 +115,6 @@ static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 		/* Erratum: Version register is invalid in HW. */
 		return SDHCI_SPEC_200;
 	}
-
 	return readw(host->ioaddr + reg);
 }
 
@@ -142,6 +155,39 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *host)
 		return -1;
 
 	return gpio_get_value(plat->wp_gpio);
+}
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
+{
+	u16 ctrl;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+
+	/* Set the base clock frequency */
+	ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
+	ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
+	ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
+		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+	sdhci_writew(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+
+	/* Enable SDHOST v3.0 support */
+	ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
+	ctrl |= SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0;
+	sdhci_writew(sdhci, ctrl, SDHCI_VENDOR_MISC_CNTRL);
+}
+#endif
+
+static void tegra_sdhci_reset_exit(struct sdhci_host *sdhci, u8 mask)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+
+	if (mask & SDHCI_RESET_ALL) {
+		if (soc_data->hw_ops->sdhost_init)
+			soc_data->hw_ops->sdhost_init(sdhci);
+	}
 }
 
 static void sdhci_status_notify_cb(int card_present, void *dev_id)
@@ -316,6 +362,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+	u8 ctrl;
 
 	pr_debug("%s %s %u enabled=%u\n", __func__,
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
@@ -323,7 +370,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	if (clock) {
 		if (!tegra_host->clk_enabled) {
 			clk_prepare_enable(pltfm_host->clk);
-			sdhci_writeb(sdhci, 1, SDHCI_VENDOR_CLOCK_CNTRL);
+			ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
+			ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
+			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 			tegra_host->clk_enabled = true;
 		}
 		if (soc_data->hw_ops->set_card_clock)
@@ -331,7 +380,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	} else if (!clock && tegra_host->clk_enabled) {
 		if (soc_data->hw_ops->set_card_clock)
 			soc_data->hw_ops->set_card_clock(sdhci, clock);
-		sdhci_writeb(sdhci, 0, SDHCI_VENDOR_CLOCK_CNTRL);
+		ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
+		ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
+		sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 		clk_disable_unprepare(pltfm_host->clk);
 		tegra_host->clk_enabled = false;
 	}
@@ -399,6 +450,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.set_clock  = tegra_sdhci_set_clock,
 	.platform_suspend	= tegra_sdhci_suspend,
 	.platform_resume	= tegra_sdhci_resume,
+	.platform_reset_exit = tegra_sdhci_reset_exit,
 };
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -582,7 +634,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			tegra_host->vdd_io_reg = NULL;
 		} else {
 			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
-				3280000, 3320000);
+				2700000, 3600000);
 			if (rc) {
 				dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
 					"vddio_sdmmc", rc);
@@ -612,6 +664,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_clk_put;
 	pltfm_host->clk = clk;
 	tegra_host->clk_enabled = true;
+	tegra_host->instance = pdev->id;
 
 	host->mmc->pm_caps = plat->pm_flags;
 
