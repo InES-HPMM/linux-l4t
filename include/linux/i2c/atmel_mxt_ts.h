@@ -30,13 +30,10 @@
 
 /* The platform data for the Atmel maXTouch touchscreen driver */
 struct mxt_platform_data {
-	const u8 *config;
-	size_t config_length;
 	unsigned long irqflags;
 	bool is_tp;
 	const unsigned int key_map[MXT_NUM_GPIO];
 	u8(*read_chg) (void);
-	u32 config_crc;
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */
