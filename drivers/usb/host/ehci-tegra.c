@@ -431,7 +431,7 @@ done:
 }
 
 #ifdef CONFIG_PM
-static void tegra_ehci_restart(struct usb_hcd *hcd)
+static void tegra_ehci_restart(struct usb_hcd *hcd, bool is_dpd)
 {
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
@@ -460,7 +460,10 @@ static void tegra_ehci_restart(struct usb_hcd *hcd)
 	}
 
 	down_write(&ehci_cf_port_reset_rwsem);
-	hcd->state = HC_STATE_RUNNING;
+	if(is_dpd)
+		hcd->state = HC_STATE_SUSPENDED;
+	else
+		hcd->state = HC_STATE_RUNNING;
 	ehci_writel(ehci, FLAG_CF, &ehci->regs->configured_flag);
 	/* flush posted writes */
 	ehci_readl(ehci, &ehci->regs->command);
@@ -1018,8 +1021,7 @@ static int controller_resume(struct device *dev)
 
 		val = readl(&hw->port_status[0]);
 		if (!((val & PORT_POWER) && (val & PORT_PE))) {
-			tegra_ehci_restart(hcd);
-			usb_set_device_state(udev, USB_STATE_CONFIGURED);
+			tegra_ehci_restart(hcd, is_dpd);
 		}
 
 		if (LP0)
@@ -1033,7 +1035,7 @@ static int controller_resume(struct device *dev)
 	if (hsic) {
 		val = readl(&hw->port_status[0]);
 		if (!((val & PORT_POWER) && (val & PORT_PE))) {
-			tegra_ehci_restart(hcd);
+			tegra_ehci_restart(hcd, false);
 			usb_set_device_state(udev, USB_STATE_CONFIGURED);
 		}
 		tegra_usb_phy_bus_idle(tegra->phy);
@@ -1041,7 +1043,7 @@ static int controller_resume(struct device *dev)
 		if (!tegra_usb_phy_is_device_connected(tegra->phy))
 			schedule_delayed_work(&tegra->work, 50);
 	} else {
-		tegra_ehci_restart(hcd);
+		tegra_ehci_restart(hcd, false);
 	}
 
  done:
