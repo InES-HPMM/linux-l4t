@@ -458,7 +458,7 @@ static int vfp_pm_suspend(void)
 
 	/* if vfp is on, then save state for resumption */
 	if (fpexc & FPEXC_EN) {
-		pr_debug("%s: saving vfp state\n", __func__);
+		//pr_debug("%s: saving vfp state\n", __func__);
 		vfp_save_state(&ti->vfpstate, fpexc);
 
 		/* disable, just in case */
