@@ -370,6 +370,21 @@ static int tegra30_i2s_probe(struct snd_soc_dai *dai)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+int tegra30_i2s_resume(struct snd_soc_dai *cpu_dai)
+{
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+	int i, ret = 0;
+
+	if (i2s->dam_ch_refcount)
+		ret = tegra30_dam_resume(i2s->dam_ifc);
+
+	return ret;
+}
+#else
+#define tegra30_i2s_resume NULL
+#endif
+
 static struct snd_soc_dai_ops tegra30_i2s_dai_ops = {
 	.startup	= tegra30_i2s_startup,
 	.shutdown	= tegra30_i2s_shutdown,
@@ -380,6 +395,7 @@ static struct snd_soc_dai_ops tegra30_i2s_dai_ops = {
 
 static const struct snd_soc_dai_driver tegra30_i2s_dai_template = {
 	.probe = tegra30_i2s_probe,
+	.resume = tegra30_i2s_resume,
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
