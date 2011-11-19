@@ -203,3 +203,30 @@ ENTRY(tegra_cpu_pllp)
 	mov	pc, lr
 ENDPROC(tegra_cpu_pllp)
 #endif
+
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+/*
+ * tegra_generic_smc
+ *
+ * r0 = smc type
+ * r1 = smc subtype
+ * r2 = argument passed to smc
+ *
+ * issues SMC (secure monitor call) instruction with
+ * the specified parameters.
+ */
+ENTRY(tegra_generic_smc)
+	adr	r3, __tegra_smc_stack
+	stmia	r3, {r4-r12, lr}
+	mov	r3, #0
+	mov	r4, #0
+	dsb
+	smc	#0
+	adr	r3, __tegra_smc_stack
+	ldmia	r3, {r4-r12, pc}
+ENDPROC(tegra_generic_smc)
+	.type   __tegra_smc_stack, %object
+__tegra_smc_stack:
+	.long   0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	.size   __tegra_smc_stack, . - __tegra_smc_stack
+#endif

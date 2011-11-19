@@ -234,7 +234,9 @@ ENTRY(cpu_v7_do_resume)
 	ldmia	r0!, {r4 - r6}
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 	mcr	p15, 0, r6, c15, c0, 1	@ diag
+#endif
 	ldmia	r0!, {r6 - r11}
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
 #ifndef CONFIG_ARM_LPAE
@@ -497,6 +499,7 @@ __v7_setup:
 2:	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
 	teq	r0, r10
 	bne	3f
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 	cmp	r6, #0x10			@ power ctrl reg added r1p0
 	mrcge	p15, 0, r10, c15, c0, 0		@ read power control register
 	orrge	r10, r10, #1			@ enable dynamic clock gating
@@ -547,6 +550,7 @@ __v7_setup:
 	mrclt	p15, 0, r10, c15, c0, 1		@ read diagnostic register
 	orrlt	r10, r10, #1 << 20		@ set bit #20
 	mcrlt	p15, 0, r10, c15, c0, 1		@ write diagnostic register
+#endif
 #endif
 
 3:	mov	r10, #0

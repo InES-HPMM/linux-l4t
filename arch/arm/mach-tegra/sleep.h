@@ -19,11 +19,13 @@
 
 #include "iomap.h"
 
-#define TEGRA_PL310_VIRT	(TEGRA_ARM_PL310_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
-
-/* FIXME: The core associated with this should be removed if our change to
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+/* FIXME: The code associated with this should be removed if our change to
    save the diagnostic regsiter in the CPU context is accepted. */
 #define USE_TEGRA_DIAG_REG_SAVE	1
+#else
+#define USE_TEGRA_DIAG_REG_SAVE	0
+#endif
 
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */
 #define TEGRA_POWER_SDRAM_SELFREFRESH	(1 << 26) /* SDRAM is in self-refresh */
@@ -51,6 +53,7 @@
 #define CPU_NOT_RESETTABLE		0
 #endif
 
+#define TEGRA_PL310_VIRT (TEGRA_ARM_PL310_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
 #define TEGRA_ARM_PERIF_VIRT (TEGRA_ARM_PERIF_BASE - IO_CPU_PHYS \
 					+ IO_CPU_VIRT)
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
@@ -143,7 +146,7 @@
 #endif
 .endm
 
-#else
+#else	/* !defined(__ASSEMBLY__) */
 
 #ifdef CONFIG_HOTPLUG_CPU
 void tegra20_hotplug_init(void);
@@ -157,6 +160,7 @@ void tegra_pen_lock(void);
 void tegra_pen_unlock(void);
 void tegra_cpu_wfi(void);
 int tegra_sleep_cpu_finish(unsigned long v2p);
+void tegra_resume(void);
 void tegra_cpu_resume(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -192,19 +196,5 @@ static inline void *tegra_iram_end(void)
 	return &tegra3_iram_end;
 #endif
 }
-
-static inline void tegra_sleep_core(unsigned long v2p)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	cpu_suspend(v2p, tegra2_sleep_core_finish);
-#else
-	cpu_suspend(v2p, tegra3_sleep_core_finish);
 #endif
-}
-
-void tegra_sleep_cpu(unsigned long v2p);
-void tegra_resume(void);
-
-#endif
-
 #endif

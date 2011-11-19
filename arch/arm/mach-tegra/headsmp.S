@@ -164,6 +164,11 @@ ENTRY(tegra_resume)
 #endif
 	str	r1, [r0]
 
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	/* wake up (should have specified args?) */
+	bl	tegra_generic_smc
+#endif
+
 	b	cpu_resume
 ENDPROC(tegra_resume)
 #endif

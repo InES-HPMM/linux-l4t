@@ -26,6 +26,7 @@
 #include "irammap.h"
 #include "reset.h"
 #include "fuse.h"
+#include "pm.h"
 #include "sleep.h"
 
 #define TEGRA_IRAM_RESET_BASE (TEGRA_IRAM_BASE + \
@@ -36,10 +37,12 @@ static bool is_enabled;
 static void __init tegra_cpu_reset_handler_enable(void)
 {
 	void __iomem *iram_base = IO_ADDRESS(TEGRA_IRAM_RESET_BASE);
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 	void __iomem *evp_cpu_reset =
 		IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x100);
 	void __iomem *sb_ctrl = IO_ADDRESS(TEGRA_SB_BASE);
 	u32 reg;
+#endif
 
 	BUG_ON(is_enabled);
 	BUG_ON(tegra_cpu_reset_handler_size > TEGRA_IRAM_RESET_HANDLER_SIZE);
@@ -47,6 +50,10 @@ static void __init tegra_cpu_reset_handler_enable(void)
 	memcpy(iram_base, (void *)__tegra_cpu_reset_handler_start,
 			tegra_cpu_reset_handler_size);
 
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	tegra_generic_smc(0xFFFFF200,
+		TEGRA_IRAM_RESET_BASE + tegra_cpu_reset_handler_offset, 0);
+#else
 	/*
 	 * NOTE: This must be the one and only write to the EVP CPU reset
 	 *       vector in the entire system.
@@ -66,6 +73,7 @@ static void __init tegra_cpu_reset_handler_enable(void)
 		writel(reg, sb_ctrl);
 		wmb();
 	}
+#endif
 
 	is_enabled = true;
 }
