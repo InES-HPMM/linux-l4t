@@ -84,6 +84,9 @@ static char *tegra_chip_priv;
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
 
+int tegra_cpu_speedo_mv = 1000;
+int tegra_core_speedo_mv = 1200;
+
 /* The BCT to use at boot is specified by board straps that can be read
  * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
  */

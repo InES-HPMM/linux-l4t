@@ -33,6 +33,8 @@ extern int tegra_cpu_process_id;
 extern int tegra_core_process_id;
 extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 extern int tegra_soc_speedo_id;
+extern int tegra_cpu_speedo_mv;
+extern int tegra_core_speedo_mv;
 extern int tegra_package_id;
 
 extern int tegra_bct_strapping;

@@ -242,6 +242,15 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	}
 }
 
+/*
+ * CPU and core nominal voltage levels as determined by chip SKU and speedo
+ * (not final - can be lowered by dvfs tables and rail dependencies; the
+ * latter is resolved by the dvfs code)
+ */
+static const int cpu_speedo_nominal_millivolts[] =
+/* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8 */
+	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150 };
+
 void tegra30_init_speedo_data(void)
 {
 	u32 cpu_speedo_val;
@@ -288,4 +297,25 @@ void tegra30_init_speedo_data(void)
 
 	pr_info("Tegra30: CPU Speedo ID %d, Soc Speedo ID %d",
 		tegra_cpu_speedo_id, tegra_soc_speedo_id);
+
+	tegra_cpu_speedo_mv =
+		cpu_speedo_nominal_millivolts[tegra_cpu_speedo_id];
+	
+	switch (tegra_soc_speedo_id) {
+	case 0:
+		tegra_core_speedo_mv = 1200;
+		break;
+	case 1:
+		if ((tegra_cpu_speedo_id != 7) &&
+		    (tegra_cpu_speedo_id != 8)) {
+			tegra_core_speedo_mv = 1200;
+			break;
+		}
+		/* fall thru for T30L or T30SL */
+	case 2:
+		tegra_core_speedo_mv = 1300;
+		break;
+	default:
+		BUG();
+	}
 }
