@@ -49,6 +49,8 @@
 #define SDHCI_VENDOR_MISC_CNTRL		0x120
 #define SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0	0x20
 
+#define SDHOST_1V8_OCR_MASK		0x8
+
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 
@@ -89,6 +91,10 @@ struct sdhci_tegra {
 	struct regulator *vdd_slot_reg;
 	/* Host controller instance */
 	unsigned int instance;
+	/* vddio_min */
+	unsigned int vddio_min_uv;
+	/* vddio_max */
+	unsigned int vddio_max_uv;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -626,7 +632,19 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		gpio_direction_input(plat->wp_gpio);
 	}
 
+
 	if (!plat->mmc_data.built_in) {
+		if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
+			tegra_host->vddio_min_uv = 1800000;
+			tegra_host->vddio_max_uv = 1800000;
+		} else {
+			/*
+			 * Set the minV and maxV to default
+			 * voltage range of 2.7V - 3.6V
+			 */
+			tegra_host->vddio_min_uv = 2700000;
+			tegra_host->vddio_max_uv = 3600000;
+		}
 		tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc), "vddio_sdmmc");
 		if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {
 			dev_err(mmc_dev(host->mmc), "%s regulator not found: %ld\n",
@@ -634,7 +652,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			tegra_host->vdd_io_reg = NULL;
 		} else {
 			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
-				2700000, 3600000);
+				tegra_host->vddio_min_uv,
+				tegra_host->vddio_max_uv);
 			if (rc) {
 				dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
 					"vddio_sdmmc", rc);
