@@ -71,6 +71,9 @@
 #define INT_UARTB			(INT_SEC_BASE + 5)
 #define INT_I2C				(INT_SEC_BASE + 6)
 #define INT_SPI				(INT_SEC_BASE + 7)
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define INT_DTV				INT_SPI
+#endif
 #define INT_TWC				(INT_SEC_BASE + 8)
 #define INT_TMR3			(INT_SEC_BASE + 9)
 #define INT_TMR4			(INT_SEC_BASE + 10)
@@ -231,6 +234,7 @@
 #define INT_UARTB			(INT_SEC_BASE + 5)
 #define INT_I2C				(INT_SEC_BASE + 6)
 #define INT_SPI				(INT_SEC_BASE + 7)
+#define INT_DTV				INT_SPI
 #define INT_TWC				(INT_SEC_BASE + 8)
 #define INT_TMR3			(INT_SEC_BASE + 9)
 #define INT_TMR4			(INT_SEC_BASE + 10)
