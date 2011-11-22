@@ -134,6 +134,9 @@ static struct powergate_partition powergate_partition_info[] = {
 						{MC_CLIENT_AFI, MC_CLIENT_LAST},
 						{{"afi", CLK_AND_RST},
 						{"pcie", CLK_AND_RST},
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+						{"cml0", CLK_ONLY},
+#endif
 						{"pciex", RST_ONLY} }, },
 	[TEGRA_POWERGATE_VDEC]	= { "vde",
 						{MC_CLIENT_VDE, MC_CLIENT_LAST},
