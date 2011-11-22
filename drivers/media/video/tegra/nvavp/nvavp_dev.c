@@ -586,7 +586,7 @@ err_ucode_pin:
 err_ucode_mmap:
 	nvmap_free(nvavp->nvmap, ucode_info->handle);
 err_ucode_alloc:
-	kfree(nvavp);
+	kfree(nvavp->ucode_info.ucode_bin);
 err_ubin_alloc:
 	release_firmware(nvavp_ucode_fw);
 err_req_ucode:
@@ -595,10 +595,12 @@ err_req_ucode:
 
 static void nvavp_unload_os(struct nvavp_info *nvavp)
 {
-#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 	nvmap_unpin(nvavp->nvmap, nvavp->os_info.handle);
 	nvmap_munmap(nvavp->os_info.handle, nvavp->os_info.data);
+#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 	nvmap_free(nvavp->nvmap, nvavp->os_info.handle);
+#elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU)
+	nvmap_free_iovm(nvavp->nvmap, nvavp->os_info.handle);
 #endif
 	kfree(nvavp->os_info.os_bin);
 }
@@ -1291,7 +1293,11 @@ err_get_cop_clk:
 err_nvmap_pin:
 	nvmap_munmap(nvavp->os_info.handle, nvavp->os_info.data);
 err_nvmap_mmap:
+#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 	nvmap_free(nvavp->nvmap, nvavp->os_info.handle);
+#elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU)
+	nvmap_free_iovm(nvavp->nvmap, nvavp->os_info.handle);
+#endif
 err_nvmap_alloc:
 	nvmap_client_put(nvavp->nvmap);
 err_nvmap_create_drv_client:
