@@ -271,40 +271,6 @@ struct mxt_data {
 	bool driver_paused;
 };
 
-static bool mxt_object_readable(unsigned int type)
-{
-	switch (type) {
-	case MXT_GEN_MESSAGE_T5:
-	case MXT_GEN_COMMAND_T6:
-	case MXT_GEN_POWER_T7:
-	case MXT_GEN_ACQUIRE_T8:
-	case MXT_GEN_DATASOURCE_T53:
-	case MXT_TOUCH_MULTI_T9:
-	case MXT_TOUCH_KEYARRAY_T15:
-	case MXT_TOUCH_PROXIMITY_T23:
-	case MXT_TOUCH_PROXKEY_T52:
-	case MXT_PROCI_GRIPFACE_T20:
-	case MXT_PROCG_NOISE_T22:
-	case MXT_PROCI_ONETOUCH_T24:
-	case MXT_PROCI_TWOTOUCH_T27:
-	case MXT_PROCI_GRIP_T40:
-	case MXT_PROCI_PALM_T41:
-	case MXT_PROCI_TOUCHSUPPRESSION_T42:
-	case MXT_PROCI_STYLUS_T47:
-	case MXT_PROCG_NOISESUPPRESSION_T48:
-	case MXT_SPT_COMMSCONFIG_T18:
-	case MXT_SPT_GPIOPWM_T19:
-	case MXT_SPT_SELFTEST_T25:
-	case MXT_SPT_CTECONFIG_T28:
-	case MXT_SPT_USERDATA_T38:
-	case MXT_SPT_DIGITIZER_T43:
-	case MXT_SPT_CTECONFIG_T46:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static bool mxt_object_writable(unsigned int type)
 {
 	switch (type) {
@@ -960,53 +926,6 @@ static void mxt_calc_resolution(struct mxt_data *data)
 	}
 }
 
-static ssize_t mxt_object_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct mxt_data *data = dev_get_drvdata(dev);
-	struct mxt_object *object;
-	int count = 0;
-	int i, j;
-	int error;
-	u8 val;
-
-	for (i = 0; i < data->info.object_num; i++) {
-		object = data->object_table + i;
-
-		count += snprintf(buf + count, PAGE_SIZE - count,
-				"Object[%d] (Type %d)\n",
-				i + 1, object->type);
-		if (count >= PAGE_SIZE)
-			return PAGE_SIZE - 1;
-
-		if (!mxt_object_readable(object->type)) {
-			count += snprintf(buf + count, PAGE_SIZE - count,
-					"\n");
-			if (count >= PAGE_SIZE)
-				return PAGE_SIZE - 1;
-			continue;
-		}
-
-		for (j = 0; j < object->size; j++) {
-			error = mxt_read_object(data,
-						object->type, j, &val);
-			if (error)
-				return error;
-
-			count += snprintf(buf + count, PAGE_SIZE - count,
-					"\t[%2d]: %02x (%d)\n", j, val, val);
-			if (count >= PAGE_SIZE)
-				return PAGE_SIZE - 1;
-		}
-
-		count += snprintf(buf + count, PAGE_SIZE - count, "\n");
-		if (count >= PAGE_SIZE)
-			return PAGE_SIZE - 1;
-	}
-
-	return count;
-}
-
 static int mxt_load_fw(struct device *dev, const char *fn)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
@@ -1221,7 +1140,6 @@ static ssize_t mxt_mem_access_write(struct file *filp, struct kobject *kobj,
 	return ret == 0 ? count : 0;
 }
 
-static DEVICE_ATTR(object, S_IRUGO, mxt_object_show, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, mxt_update_fw_store);
 static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,
 		   mxt_debug_enable_store);
@@ -1229,7 +1147,6 @@ static DEVICE_ATTR(pause_driver, S_IWUSR | S_IRUSR, mxt_pause_show,
 		   mxt_pause_store);
 
 static struct attribute *mxt_attrs[] = {
-	&dev_attr_object.attr,
 	&dev_attr_update_fw.attr,
 	&dev_attr_debug_enable.attr,
 	&dev_attr_pause_driver.attr,
