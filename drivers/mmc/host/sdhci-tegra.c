@@ -51,6 +51,12 @@
 
 #define SDHOST_1V8_OCR_MASK		0x8
 
+#define TEGRA_SDHOST_MIN_FREQ	50000000
+#define TEGRA2_SDHOST_STD_FREQ	50000000
+#define TEGRA3_SDHOST_STD_FREQ	104000000
+
+static unsigned int tegra_sdhost_min_freq;
+
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 
@@ -81,6 +87,7 @@ struct sdhci_tegra_soc_data {
 	u32 nvquirks;
 	/* Pointer to the chip specific HW ops */
 	struct tegra_sdhci_hw_ops *hw_ops;
+	unsigned int sdhost_std_freq;
 };
 
 struct sdhci_tegra {
@@ -398,7 +405,6 @@ set_clk:
 
 	clk |= SDHCI_CLOCK_CARD_EN;
 	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
 out:
 	sdhci->clock = clock;
 }
@@ -422,6 +428,13 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 			tegra_host->clk_enabled = true;
 		}
+		if (clock <= tegra_sdhost_min_freq)
+			clk_set_rate(pltfm_host->clk, tegra_sdhost_min_freq);
+		else if (clock <= soc_data->sdhost_std_freq)
+			clk_set_rate(pltfm_host->clk, soc_data->sdhost_std_freq);
+		else
+			clk_set_rate(pltfm_host->clk, clock);
+		sdhci->max_clk = clk_get_rate(pltfm_host->clk);
 		if (soc_data->hw_ops->set_card_clock)
 			soc_data->hw_ops->set_card_clock(sdhci, clock);
 	} else if (!clock && tegra_host->clk_enabled) {
@@ -515,6 +528,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 	.hw_ops = &tegra_2x_sdhci_ops,
+	.sdhost_std_freq = TEGRA2_SDHOST_STD_FREQ,
 };
 #endif
 
@@ -533,6 +547,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra30 = {
 	.pdata = &sdhci_tegra30_pdata,
 	.nvquirks = NVQUIRK_ENABLE_SDHCI_SPEC_300,
 	.hw_ops = &tegra_3x_sdhci_ops,
+	.sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ,
 };
 #endif
 
@@ -749,6 +764,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (plat->mmc_data.embedded_sdio)
 		host->mmc->pm_flags = MMC_PM_KEEP_POWER;
 #endif
+
+	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 
 	rc = sdhci_add_host(host);
 	if (rc)
