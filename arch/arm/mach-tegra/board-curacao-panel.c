@@ -287,6 +287,13 @@ static struct nvmap_platform_carveout curacao_carveouts[] = {
 		.size		= 0,	/* Filled in by curacao_panel_init() */
 		.buddy_size	= SZ_32K,
 	},
+	[2] = {
+		.name		= "vpr",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
+		.base		= 0,	/* Filled in by curacao_panel_init() */
+		.size		= 0,	/* Filled in by curacao_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
 };
 
 static struct nvmap_platform_data curacao_nvmap_data = {
@@ -318,6 +325,8 @@ int __init curacao_panel_init(void)
 
 	curacao_carveouts[1].base = tegra_carveout_start;
 	curacao_carveouts[1].size = tegra_carveout_size;
+	curacao_carveouts[2].base = tegra_vpr_start;
+	curacao_carveouts[2].size = tegra_vpr_size;
 
 	err = platform_add_devices(curacao_gfx_devices,
 				   ARRAY_SIZE(curacao_gfx_devices));
