@@ -97,6 +97,10 @@ static bool lp2_disabled_by_suspend;
 
 void tegra_lp2_in_idle(bool enable)
 {
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	/* !!!DELETEME!!! THIS IS A TEMPORARY HACK */
+	lp2_in_idle_modifiable = false;
+#endif
 	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
 	if (lp2_in_idle_modifiable) {
 		lp2_in_idle = enable;
