@@ -1423,15 +1423,10 @@ iso_stream_schedule (
 		base = now & ~0x07;
 		start = base + SCHEDULING_DELAY;
 
-		/* find a uframe slot with enough bandwidth.
-		 * Early uframes are more precious because full-speed
-		 * iso IN transfers can't use late uframes,
-		 * and therefore they should be allocated last.
-		 */
-		next = start;
-		start += period;
-		do {
-			start--;
+		/* find a uframe slot with enough bandwidth */
+		next = start + period;
+		for (; start < next; start++) {
+
 			/* check schedule: enough space? */
 			if (stream->highspeed) {
 				if (itd_slot_ok(ehci, mod, start,
@@ -1444,7 +1439,7 @@ iso_stream_schedule (
 						start, sched, period))
 					done = 1;
 			}
-		} while (start > next && !done);
+		}
 
 		/* no room in the schedule */
 		if (!done) {
