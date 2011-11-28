@@ -523,6 +523,7 @@ struct azx {
 	/* platform driver clocks */
 	struct clk **platform_clks;
 	int platform_clk_count;
+	int platform_clk_enable;
 #endif
 
 	/* locks */
@@ -1503,14 +1504,21 @@ static void azx_platform_enable_clocks(struct azx *chip)
 
 	for (i = 0; i < chip->platform_clk_count; i++)
 		clk_enable(chip->platform_clks[i]);
+
+	chip->platform_clk_enable++;
 }
 
 static void azx_platform_disable_clocks(struct azx *chip)
 {
 	int i;
 
+	if (!chip->platform_clk_enable)
+		return;
+
 	for (i = 0; i < chip->platform_clk_count; i++)
 		clk_disable(chip->platform_clks[i]);
+
+	chip->platform_clk_enable--;
 }
 #endif /* CONFIG_SND_HDA_PLATFORM_DRIVER */
 
@@ -3041,6 +3049,12 @@ static int azx_suspend(struct device *dev)
 	if (chip->disabled)
 		return 0;
 
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
+	defined(CONFIG_SND_HDA_POWER_SAVE)
+	if (!chip->platform_clk_enable)
+		azx_platform_enable_clocks(chip);
+#endif
+
 	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
 	azx_clear_irq_pending(chip);
 	list_for_each_entry(p, &chip->pcm_list, list)
@@ -3112,6 +3126,13 @@ static int azx_resume(struct device *dev)
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
+	defined(CONFIG_SND_HDA_POWER_SAVE)
+	if (chip->pdev)
+		azx_platform_disable_clocks(chip);
+#endif
+
 	return 0;
 }
 #endif /* CONFIG_PM_SLEEP || SUPPORT_VGA_SWITCHEROO */
@@ -3123,6 +3144,9 @@ static int azx_runtime_suspend(struct device *dev)
 	struct azx *chip = card->private_data;
 
 	azx_stop_chip(chip);
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	azx_platform_disable_clocks(chip);
+#endif
 	azx_clear_irq_pending(chip);
 	return 0;
 }
@@ -3133,6 +3157,9 @@ static int azx_runtime_resume(struct device *dev)
 	struct azx *chip = card->private_data;
 
 	azx_init_pci(chip);
+#ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
+	azx_platform_enable_clocks(chip);
+#endif
 	azx_init_chip(chip, 1);
 	return 0;
 }
@@ -3169,8 +3196,22 @@ static const struct dev_pm_ops azx_pm = {
 static int azx_halt(struct notifier_block *nb, unsigned long event, void *buf)
 {
 	struct azx *chip = container_of(nb, struct azx, reboot_notifier);
+
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
+	defined(CONFIG_SND_HDA_POWER_SAVE)
+	if (chip->pdev)
+		azx_platform_enable_clocks(chip);
+#endif
+
 	snd_hda_bus_reboot_notify(chip->bus);
 	azx_stop_chip(chip);
+
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
+	defined(CONFIG_SND_HDA_POWER_SAVE)
+	if (chip->pdev)
+		azx_platform_disable_clocks(chip);
+#endif
+
 	return NOTIFY_OK;
 }
 
