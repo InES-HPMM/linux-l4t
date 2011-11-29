@@ -321,6 +321,22 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 	return true;
 }
 
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+static unsigned int g_diag_reg;
+
+static void save_cpu_arch_register(void)
+{
+	/* read diagnostic register */
+	asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(g_diag_reg) : : "cc");
+}
+
+static void restore_cpu_arch_register(void)
+{
+	/* write diagnostic register */
+	asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(g_diag_reg) : "cc");
+}
+#endif
+
 static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
@@ -375,7 +391,15 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = ktime_to_us(entry_time) + request;
 	smp_wmb();
 
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+	save_cpu_arch_register();
+#endif
+
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
+
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+	restore_cpu_arch_register();
+#endif
 
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
