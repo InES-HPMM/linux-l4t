@@ -102,6 +102,8 @@ struct sdhci_tegra {
 	unsigned int vddio_min_uv;
 	/* vddio_max */
 	unsigned int vddio_max_uv;
+	/* max clk supported by the platform */
+	unsigned int max_clk_limit;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -319,6 +321,38 @@ static int tegra_sdhci_buswidth(struct sdhci_host *host, int bus_width)
 	return 0;
 }
 
+static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
+	unsigned int clock)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+	unsigned int clk_rate;
+
+	if (sdhci->mmc->card &&
+		mmc_card_ddr_mode(sdhci->mmc->card)) {
+		/*
+		 * In ddr mode, tegra sdmmc controller clock frequency
+		 * should be double the card clock frequency.
+		 */
+		 clk_rate = clock * 2;
+	} else {
+		if (clock <= tegra_sdhost_min_freq)
+			clk_rate = tegra_sdhost_min_freq;
+		else if (clock <= soc_data->sdhost_std_freq)
+			clk_rate = soc_data->sdhost_std_freq;
+		else
+			clk_rate = clock;
+	}
+
+	if (tegra_host->max_clk_limit &&
+		(clk_rate > tegra_host->max_clk_limit))
+		clk_rate = tegra_host->max_clk_limit;
+
+	clk_set_rate(pltfm_host->clk, clk_rate);
+	sdhci->max_clk = clk_get_rate(pltfm_host->clk);
+}
+
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
@@ -428,13 +462,7 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 			tegra_host->clk_enabled = true;
 		}
-		if (clock <= tegra_sdhost_min_freq)
-			clk_set_rate(pltfm_host->clk, tegra_sdhost_min_freq);
-		else if (clock <= soc_data->sdhost_std_freq)
-			clk_set_rate(pltfm_host->clk, soc_data->sdhost_std_freq);
-		else
-			clk_set_rate(pltfm_host->clk, clock);
-		sdhci->max_clk = clk_get_rate(pltfm_host->clk);
+		tegra_sdhci_set_clk_rate(sdhci, clock);
 		if (soc_data->hw_ops->set_card_clock)
 			soc_data->hw_ops->set_card_clock(sdhci, clock);
 	} else if (!clock && tegra_host->clk_enabled) {
@@ -745,6 +773,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		goto err_clk_put;
 	pltfm_host->clk = clk;
 	tegra_host->clk_enabled = true;
+	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->instance = pdev->id;
 
 	host->mmc->pm_caps = plat->pm_flags;
