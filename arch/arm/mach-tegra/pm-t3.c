@@ -35,7 +35,6 @@
 #include "clock.h"
 #include "cpuidle.h"
 #include "flowctrl.h"
-#include "gpio-names.h"
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"

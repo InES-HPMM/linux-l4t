@@ -27,7 +27,6 @@
 
 #include <mach/irqs.h>
 
-#include "gpio-names.h"
 #include "iomap.h"
 
 #define PMC_SCRATCH3	0x5c
