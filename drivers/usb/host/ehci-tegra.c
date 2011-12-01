@@ -79,6 +79,7 @@ struct tegra_ehci_hcd {
 	bool clock_enabled;
 	bool timer_event;
 	int hsic_connect_retries;
+	unsigned int irq;
 };
 
 static void tegra_ehci_power_up(struct usb_hcd *hcd)
@@ -1269,6 +1270,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		err = -ENODEV;
 		goto fail;
 	}
+	tegra->irq = irq;
 
 #ifdef CONFIG_USB_EHCI_ONOFF_FEATURE
 	if (instance == 1) {
@@ -1286,8 +1288,16 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to add USB HCD\n");
+		dev_err(&pdev->dev, "Failed to add USB HCD error = %d\n", err);
 		goto fail;
+	}
+
+	err = enable_irq_wake(tegra->irq);
+	if (err < 0) {
+		dev_warn(&pdev->dev,
+			"Couldn't enable USB host mode wakeup, irq=%d, "
+			"error=%d\n", tegra->irq, err);
+		err = 0;
 	}
 
 #ifdef CONFIG_USB_EHCI_ONOFF_FEATURE
@@ -1346,6 +1356,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	/* Turn Off Interrupts */
 	ehci_writel(tegra->ehci, 0, &tegra->ehci->regs->intr_enable);
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+	disable_irq_wake(tegra->irq);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 	cancel_delayed_work(&tegra->work);
