@@ -145,6 +145,7 @@ void tegra_init_cache(bool init)
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl, cache_type;
 	u32 tag_latency, data_latency;
+	u32 speedo;
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tag_latency = 0x331;
@@ -155,8 +156,15 @@ void tegra_init_cache(bool init)
 		tag_latency = 0x221;
 		data_latency = 0x221;
 	} else {
-		tag_latency = 0x442;
-		data_latency = 0x552;
+		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
+		speedo = tegra_cpu_speedo_id;
+		if (speedo == 4 || speedo == 5 || speedo == 6) {
+			tag_latency = 0x442;
+			data_latency = 0x552;
+		} else {
+			tag_latency = 0x441;
+			data_latency = 0x551;
+		}
 	}
 #else
 	tag_latency = 0x770;
