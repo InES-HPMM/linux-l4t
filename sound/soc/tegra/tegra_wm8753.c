@@ -76,7 +76,6 @@ static int tegra_wm8753_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_wm8753 *machine = snd_soc_card_get_drvdata(card);
 	int srate, mclk, i2s_daifmt;
 	int err;
-
 	srate = params_rate(params);
 	switch (srate) {
 	case 8000:
@@ -532,6 +531,7 @@ static int tegra_wm8753_driver_probe(struct platform_device *pdev)
 	struct tegra_wm8753_platform_data *pdata;
 	int ret;
 
+
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data supplied\n");
@@ -590,6 +590,11 @@ static int tegra_wm8753_driver_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
 		goto err_fini_utils;
+	}
+
+	if (!card->instantiated) {
+		dev_err(&pdev->dev, "No WM8753 codec\n");
+		goto err_unregister_card;
 	}
 
 	return 0;
