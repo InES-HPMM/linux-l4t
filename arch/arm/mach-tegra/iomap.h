@@ -53,6 +53,9 @@
 #define TEGRA_ARM_PERIF_BASE		0x50040000
 #define TEGRA_ARM_PERIF_SIZE		SZ_8K
 
+#define TEGRA_MSELECT_BASE		0x50042000
+#define TEGRA_MSELECT_SIZE		80
+
 #define TEGRA_ARM_PL310_BASE		0x50043000
 #define TEGRA_ARM_PL310_SIZE		SZ_4K
 
@@ -246,6 +249,9 @@
 #define TEGRA_I2S2_BASE			0x70002A00
 #define TEGRA_I2S2_SIZE			SZ_256
 
+#define TEGRA_PCIE_BASE			0x80000000
+#define TEGRA_PCIE_SIZE			SZ_1G
+
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 
 #define TEGRA_TSENSOR_BASE		0x70014000
@@ -298,6 +304,9 @@
 
 #define TEGRA_SPDIF_BASE		0x70080B00
 #define TEGRA_SPDIF_SIZE		SZ_256
+
+#define TEGRA_PCIE_BASE			0x00000000
+#define TEGRA_PCIE_SIZE			SZ_1G
 
 #endif
 
@@ -536,9 +545,6 @@
 #define IO_HOST1X_PHYS	0x54000000
 #define IO_HOST1X_VIRT	IOMEM(0xFE700000)
 #define IO_HOST1X_SIZE	SZ_4M
-
-#define TEGRA_PCIE_BASE		0x80000000
-#define TEGRA_PCIE_IO_BASE	(TEGRA_PCIE_BASE + SZ_4M)
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
 #define IO_TO_VIRT_XLATE(p, pst, vst)	(((p) - (pst) + (vst)))

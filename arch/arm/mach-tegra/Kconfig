@@ -65,10 +65,11 @@ config ARCH_TEGRA_HAS_SATA
 	bool
 
 config TEGRA_PCI
-	bool "PCI Express support"
-	depends on ARCH_TEGRA_2x_SOC
+	bool "PCIe host controller driver"
 	select PCI
 	depends on ARCH_TEGRA_HAS_PCIE
+	help
+	  Adds PCIe Host controller driver for tegra based systems
 
 config TEGRA_AHB
 	bool "Enable AHB driver for NVIDIA Tegra SoCs"
