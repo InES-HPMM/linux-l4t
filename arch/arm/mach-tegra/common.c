@@ -146,6 +146,7 @@ void tegra_init_cache(bool init)
 	u32 aux_ctrl, cache_type;
 	u32 tag_latency, data_latency;
 	u32 speedo;
+	u32 tmp;
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tag_latency = 0x331;
@@ -181,12 +182,17 @@ void tegra_init_cache(bool init)
 #endif	
 #endif
 
+	cache_type = readl(p + L2X0_CACHE_TYPE);
+	aux_ctrl = (cache_type & 0x700) << (17-8);
+	aux_ctrl |= 0x7C400001;
 	if (init) {
-		cache_type = readl(p + L2X0_CACHE_TYPE);
-		aux_ctrl = (cache_type & 0x700) << (17-8);
-		aux_ctrl |= 0x7C400001;
-
 		l2x0_init(p, aux_ctrl, 0x8200c3fe);
+	} else {
+		tmp = aux_ctrl;
+		aux_ctrl = readl(p + L2X0_AUX_CTRL);
+		aux_ctrl &= 0x8200c3fe;
+		aux_ctrl |= tmp;
+		writel(aux_ctrl, p + L2X0_AUX_CTRL);
 	}
 #endif
 }
