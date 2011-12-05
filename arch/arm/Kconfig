@@ -611,6 +611,7 @@ config ARCH_TEGRA
 	select MIGHT_HAVE_CACHE_L2X0
 	select USE_OF
 	select FIQ
+	select PCI
 	help
 	  This enables support for NVIDIA Tegra based systems (Tegra APX,
 	  Tegra 6xx and Tegra 2 series).
