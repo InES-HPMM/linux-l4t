@@ -376,6 +376,8 @@ int tegra30_i2s_resume(struct snd_soc_dai *cpu_dai)
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
 	int i, ret = 0;
 
+	tegra30_ahub_apbif_resume();
+
 	if (i2s->dam_ch_refcount)
 		ret = tegra30_dam_resume(i2s->dam_ifc);
 
