@@ -29,6 +29,7 @@
 #define SKU_ID_T25E	28
 
 extern int tegra_sku_id;
+extern int tegra_sku_override;
 extern int tegra_cpu_process_id;
 extern int tegra_core_process_id;
 extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
