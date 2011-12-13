@@ -232,6 +232,9 @@ struct tegra30_i2s {
 	struct snd_soc_dai_driver dai;
 	int cif_id;
 	struct clk *clk_i2s;
+	struct clk *clk_i2s_sync;
+	struct clk *clk_audio_2x;
+	struct clk *clk_pll_a_out0;
 	enum tegra30_ahub_txcif capture_i2s_cif;
 	enum tegra30_ahub_rxcif capture_fifo_cif;
 	struct tegra_pcm_dma_params capture_dma_data;

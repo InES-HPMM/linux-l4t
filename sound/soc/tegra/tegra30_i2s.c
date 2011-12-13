@@ -222,35 +222,68 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	srate = params_rate(params);
 
-	/* Final "* 2" required by Tegra hardware */
-	i2sclock = srate * params_channels(params) * sample_size * 2;
+	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
+		/* Final "* 2" required by Tegra hardware */
+		i2sclock = srate * params_channels(params) * sample_size * 2;
 
-	/* Additional "* 2" is needed for FSYNC mode */
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
-		i2sclock *= 2;
+		/* Additional "* 2" is needed for FSYNC mode */
+		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+			i2sclock *= 2;
 
-	ret = clk_set_rate(i2s->clk_i2s, i2sclock);
-	if (ret) {
-		dev_err(dev, "Can't set I2S clock rate: %d\n", ret);
-		return ret;
-	}
+		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
+		if (ret) {
+			dev_err(dev, "Can't set parent of I2S clock\n");
+			return ret;
+		}
 
-	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
-		bitcnt = (i2sclock / srate) - 1;
-		sym_bitclk = !(i2sclock % srate);
-		i2s_client_ch = params_channels(params);
+		ret = clk_set_rate(i2s->clk_i2s, i2sclock);
+		if (ret) {
+			dev_err(dev, "Can't set I2S clock rate: %d\n", ret);
+			return ret;
+		}
+
+		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
+			bitcnt = (i2sclock / srate) - 1;
+			sym_bitclk = !(i2sclock % srate);
+		} else {
+			bitcnt = (i2sclock / (2 * srate)) - 1;
+			sym_bitclk = !(i2sclock % (2 * srate));
+			i2s_client_ch = 2;
+		}
+		val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
+
+		if (!sym_bitclk)
+			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
+
+		tegra30_i2s_enable_clocks(i2s);
+
+		regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
 	} else {
-		bitcnt = (i2sclock / (2 * srate)) - 1;
-		sym_bitclk = !(i2sclock % (2 * srate));
-		i2s_client_ch = 2;
+		i2sclock = srate * params_channels(params) * sample_size;
+
+		ret = clk_set_rate(i2s->clk_i2s_sync, i2sclock);
+		if (ret) {
+			dev_err(dev, "Can't set I2S sync clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_rate(i2s->clk_audio_2x, i2sclock);
+		if (ret) {
+			dev_err(dev, "Can't set I2S sync clock rate\n");
+			return ret;
+		}
+
+		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_audio_2x);
+		if (ret) {
+			dev_err(dev, "Can't set parent of audio2x clock\n");
+			return ret;
+		}
+
+		tegra30_i2s_enable_clocks(i2s);
 	}
 
-	val = bitcnt << TEGRA30_I2S_TIMING_CHANNEL_BIT_COUNT_SHIFT;
-
-	if (!sym_bitclk)
-		val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
-
-	regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
+	i2s_client_ch = (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) ?
+			params_channels(params) : 2;
 
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
 	      ((params_channels(params) - 1) <<
@@ -750,11 +783,32 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	i2s->clk_i2s_sync = clk_get(&pdev->dev, "ext_audio_sync");
+	if (IS_ERR(i2s->clk_i2s_sync)) {
+		dev_err(&pdev->dev, "Can't retrieve i2s_sync clock\n");
+		ret = PTR_ERR(i2s->clk_i2s_sync);
+		goto err_i2s_clk_put;
+	}
+
+	i2s->clk_audio_2x = clk_get(&pdev->dev, "audio_sync_2x");
+	if (IS_ERR(i2s->clk_audio_2x)) {
+		dev_err(&pdev->dev, "Can't retrieve audio 2x clock\n");
+		ret = PTR_ERR(i2s->clk_audio_2x);
+		goto err_i2s_sync_clk_put;
+	}
+
+	i2s->clk_pll_a_out0 = clk_get_sys(NULL, "pll_a_out0");
+	if (IS_ERR(i2s->clk_pll_a_out0)) {
+		dev_err(&pdev->dev, "Can't retrieve pll_a_out0 clock\n");
+		ret = PTR_ERR(i2s->clk_pll_a_out0);
+		goto err_audio_2x_clk_put;
+	}
+
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!mem) {
 		dev_err(&pdev->dev, "No memory resource\n");
 		ret = -ENODEV;
-		goto err_clk_put;
+		goto err_pll_a_out0_clk_put;
 	}
 
 	memregion = devm_request_mem_region(&pdev->dev, mem->start,
@@ -762,7 +816,7 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	if (!memregion) {
 		dev_err(&pdev->dev, "Memory region already claimed\n");
 		ret = -EBUSY;
-		goto err_clk_put;
+		goto err_pll_a_out0_clk_put;
 	}
 
 	regs = devm_ioremap(&pdev->dev, mem->start, resource_size(mem));
@@ -810,7 +864,13 @@ err_suspend:
 		tegra30_i2s_runtime_suspend(&pdev->dev);
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
-err_clk_put:
+err_pll_a_out0_clk_put:
+	clk_put(i2s->clk_pll_a_out0);
+err_audio_2x_clk_put:
+	clk_put(i2s->clk_audio_2x);
+err_i2s_sync_clk_put:
+	clk_put(i2s->clk_i2s_sync);
+err_i2s_clk_put:
 	clk_put(i2s->clk_i2s);
 err:
 	return ret;
@@ -827,6 +887,9 @@ static int tegra30_i2s_platform_remove(struct platform_device *pdev)
 	tegra_pcm_platform_unregister(&pdev->dev);
 	snd_soc_unregister_dai(&pdev->dev);
 
+	clk_put(i2s->clk_pll_a_out0);
+	clk_put(i2s->clk_audio_2x);
+	clk_put(i2s->clk_i2s_sync);
 	clk_put(i2s->clk_i2s);
 
 	return 0;
