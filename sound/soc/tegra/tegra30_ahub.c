@@ -517,7 +517,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	struct resource *res0, *res1, *region;
 	u32 of_dma[2];
 	void __iomem *regs_apbif, *regs_ahub;
-	int ret = 0;
+	int ret = 0, i = 0, cache_idx_rsvd;
 
 	if (ahub)
 		return -ENODEV;
@@ -645,6 +645,25 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		if (ret)
 			goto err_pm_disable;
 	}
+
+	/* cache the POR values of ahub/apbif regs*/
+	tegra30_ahub_enable_clocks();
+
+	for (i = 0; i < TEGRA30_AHUB_AUDIO_RX_COUNT; i++)
+		ahub->ahub_reg_cache[i] = tegra30_audio_read(i<<2);
+
+	cache_idx_rsvd = TEGRA30_APBIF_CACHE_REG_INDEX_RSVD;
+	for (i = 0; i < TEGRA30_APBIF_CACHE_REG_COUNT; i++) {
+		if (i == cache_idx_rsvd) {
+			cache_idx_rsvd +=
+				TEGRA30_APBIF_CACHE_REG_INDEX_RSVD_STRIDE;
+			continue;
+		}
+
+		ahub->apbif_reg_cache[i] = tegra30_apbif_read(i<<2);
+	}
+
+	tegra30_ahub_disable_clocks();
 
 	of_platform_populate(pdev->dev.of_node, NULL, ahub_auxdata,
 			     &pdev->dev);
