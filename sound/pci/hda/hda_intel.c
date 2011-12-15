@@ -3051,7 +3051,7 @@ static int azx_suspend(struct device *dev)
 
 #if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
 	defined(CONFIG_SND_HDA_POWER_SAVE)
-	if (!chip->platform_clk_enable)
+	if (chip->pdev)
 		azx_platform_enable_clocks(chip);
 #endif
 
@@ -3076,8 +3076,11 @@ static int azx_suspend(struct device *dev)
 	}
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
-	if (chip->pdev)
-		azx_platform_disable_clocks(chip);
+	if (chip->pdev) {
+		/* Disable all clk references */
+		while (chip->platform_clk_enable)
+			azx_platform_disable_clocks(chip);
+	}
 #endif
 
 	return 0;
