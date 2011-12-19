@@ -517,7 +517,10 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	struct resource *res0, *res1, *region;
 	u32 of_dma[2];
 	void __iomem *regs_apbif, *regs_ahub;
-	int ret = 0, i = 0, cache_idx_rsvd;
+	int ret = 0;
+#ifdef CONFIG_PM
+	int i = 0, cache_idx_rsvd;
+#endif
 
 	if (ahub)
 		return -ENODEV;
@@ -646,6 +649,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
+#ifdef CONFIG_PM
 	/* cache the POR values of ahub/apbif regs*/
 	tegra30_ahub_enable_clocks();
 
@@ -664,6 +668,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	}
 
 	tegra30_ahub_disable_clocks();
+#endif
 
 	of_platform_populate(pdev->dev.of_node, NULL, ahub_auxdata,
 			     &pdev->dev);
