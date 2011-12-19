@@ -23,6 +23,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/nvhost.h>
 
 #include <linux/usb/tegra_usb_phy.h>
 
@@ -130,4 +131,6 @@ extern struct platform_device tegra_se_device;
 extern struct platform_device debug_uarte_device;
 #endif
 
+extern struct nvhost_device tegra_disp1_device;
+extern struct platform_device tegra_nvmap_device;
 #endif
