@@ -45,6 +45,7 @@
 #define SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK	0x1
 #define SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE	0x8
 #define SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT	8
+#define SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT	16
 
 #define SDHCI_VENDOR_MISC_CNTRL		0x120
 #define SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0	0x20
@@ -175,21 +176,30 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *host)
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 {
-	u16 ctrl;
+	u16 misc_ctrl;
+	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
 	/* Set the base clock frequency */
-	ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-	ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-	ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
+	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
+	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
+	vendor_ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
 		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
-	sdhci_writew(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+	/* Set tap delay */
+	if (plat->tap_delay) {
+		vendor_ctrl &= ~(0xFF <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+		vendor_ctrl |= (plat->tap_delay <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+	}
+	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 
 	/* Enable SDHOST v3.0 support */
-	ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
-	ctrl |= SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0;
-	sdhci_writew(sdhci, ctrl, SDHCI_VENDOR_MISC_CNTRL);
+	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
+	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_SDMMC_SPARE0_ENABLE_SD_3_0;
+	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
 #endif
 
