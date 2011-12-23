@@ -352,6 +352,7 @@ void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg, int *pg_max,
 
 int tegra_pinmux_get_func(int pg);
 int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate);
+int tegra_pinmux_set_io(int pg, enum tegra_pin_io input);
 int tegra_pinmux_get_pingroup(int gpio_nr);
 int tegra_pinmux_set_pullupdown(int pg, enum tegra_pullupdown pupd);
 

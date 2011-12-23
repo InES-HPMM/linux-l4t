@@ -203,6 +203,7 @@ int tegra_pinmux_get_pingroup(int gpio_nr)
 {
 	return gpio_to_pingroups_map[gpio_nr];
 }
+EXPORT_SYMBOL_GPL(tegra_pinmux_get_pingroup);
 
 static int tegra_pinmux_set_func(const struct tegra_pingroup_config *config)
 {
@@ -327,6 +328,25 @@ int tegra_pinmux_set_tristate(int pg, enum tegra_tristate tristate)
 
 	return 0;
 }
+
+int tegra_pinmux_set_io(int pg, enum tegra_pin_io input)
+{
+#if defined(TEGRA_PINMUX_HAS_IO_DIRECTION)
+	unsigned long io;
+
+	if (pg < 0 || pg >=  pingroup_max)
+		return -ERANGE;
+
+	io = pg_readl(pingroups[pg].mux_bank, pingroups[pg].mux_reg);
+	if (input)
+		io |= 0x20;
+	else
+		io &= ~(1 << 5);
+	pg_writel(io, pingroups[pg].mux_bank, pingroups[pg].mux_reg);
+#endif
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_pinmux_set_io);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static int tegra_pinmux_set_lock(int pg, enum tegra_pin_lock lock)
