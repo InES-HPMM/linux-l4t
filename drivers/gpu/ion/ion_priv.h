@@ -78,7 +78,8 @@ void ion_handle_add(struct ion_client *client, struct ion_handle *handle);
  *			handle, used for debugging
  * @pid:		pid of last client to reference this buffer in a
  *			handle, used for debugging
-*/
+ * @pages:		list for allocated pages for the buffer
+ */
 struct ion_buffer {
 	struct kref ref;
 	union {
@@ -104,6 +105,7 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
+	struct page **pages;
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
@@ -301,6 +303,18 @@ ion_phys_addr_t ion_carveout_allocate(struct ion_heap *heap, unsigned long size,
 				      unsigned long align);
 void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
 		       unsigned long size);
+#ifdef CONFIG_ION_IOMMU
+struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *);
+void ion_iommu_heap_destroy(struct ion_heap *);
+#else
+static inline struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *)
+{
+	return NULL;
+}
+static inline void ion_iommu_heap_destroy(struct ion_heap *)
+{
+}
+#endif
 /**
  * The carveout heap returns physical addresses, since 0 may be a valid
  * physical address, this is used to indicate allocation failed
