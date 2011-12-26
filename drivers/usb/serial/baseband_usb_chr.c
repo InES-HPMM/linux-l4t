@@ -51,6 +51,7 @@ module_param(baseband_usb_chr_intf, ulong, 0644);
 MODULE_PARM_DESC(baseband_usb_chr_intf, "baseband (usb chr) - USB interface");
 
 static struct baseband_usb *baseband_usb_chr;
+static bool usb_device_connection;
 
 static atomic_t g_rx_count = ATOMIC_INIT(0);
 
@@ -620,6 +621,11 @@ static int baseband_usb_chr_rx_urb_submit(struct baseband_usb *usb)
 
 	pr_debug("baseband_usb_chr_rx_urb_submit { usb %p\n", usb);
 
+	if (!usb_device_connection) {
+		pr_err("!!no usb device conenction!!!!!\n");
+		return -1;
+	}
+
 	/* check input */
 	if (usb->usb.rx_urb) {
 		pr_err("previous urb still active\n");
@@ -791,6 +797,7 @@ static int baseband_usb_driver_probe(struct usb_interface *intf,
 		baseband_usb_chr->usb.pipe.interrupt.in);
 	pr_debug("baseband_usb_chr->usb.pipe.interrupt.out %x\n",
 		baseband_usb_chr->usb.pipe.interrupt.out);
+	usb_device_connection = true;
 
 	/* start usb rx */
 	err = baseband_usb_chr_rx_urb_submit(baseband_usb_chr);
@@ -805,8 +812,19 @@ static int baseband_usb_driver_probe(struct usb_interface *intf,
 
 static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 {
+	struct usb_device *usb_dev = interface_to_usbdev(intf);
 	pr_debug("%s(%d) { intf %p\n", __func__, __LINE__, intf);
 	pr_debug("%s(%d) }\n", __func__, __LINE__);
+	if (baseband_usb_chr->usb.interface != intf) {
+		pr_info("%s(%d) -ENODEV\n", __func__, __LINE__);
+		return;
+	}
+	if (baseband_usb_chr->usb.device == usb_dev) {
+		pr_info("%s: Matching usb device: Flush workqueue\n", __func__);
+		flush_workqueue(baseband_usb_chr->ipc->workqueue);
+		usb_device_connection = false;
+	}
+
 }
 
 static char baseband_usb_driver_name[32];
