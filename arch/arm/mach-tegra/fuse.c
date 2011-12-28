@@ -419,6 +419,19 @@ enum tegra_revision tegra_get_revision(void)
 	return tegra_id.revision;
 }
 
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
+		/* Boot loader did not pass a valid chip ID.
+		 * Get it from hardware */
+		tegra_get_tegraid_from_hw();
+	}
+	*netlist = tegra_id.netlist;
+	*patchid = tegra_id.patch & 0xF;
+}
+#endif
+
 static int get_chip_id(char *val, const struct kernel_param *kp)
 {
 	return param_get_uint(val, kp);
