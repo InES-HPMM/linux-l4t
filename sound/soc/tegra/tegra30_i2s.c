@@ -352,16 +352,18 @@ static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 static void tegra30_i2s_start_capture(struct tegra30_i2s *i2s)
 {
 	tegra30_ahub_enable_rx_fifo(i2s->capture_fifo_cif);
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-			   TEGRA30_I2S_CTRL_XFER_EN_RX,
-			   TEGRA30_I2S_CTRL_XFER_EN_RX);
+	if (!i2s->is_call_mode_rec)
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_RX,
+				   TEGRA30_I2S_CTRL_XFER_EN_RX);
 }
 
 static void tegra30_i2s_stop_capture(struct tegra30_i2s *i2s)
 {
 	tegra30_ahub_disable_rx_fifo(i2s->capture_fifo_cif);
-	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-			   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
+	if (!i2s->is_call_mode_rec)
+		regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+				   TEGRA30_I2S_CTRL_XFER_EN_RX, 0);
 }
 
 static int tegra30_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
