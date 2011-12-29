@@ -1401,6 +1401,22 @@ void ion_device_destroy(struct ion_device *dev)
 	kfree(dev);
 }
 
+struct ion_client *ion_client_get_file(int fd)
+{
+	struct ion_client *client = ERR_PTR(-EFAULT);
+	struct file *f = fget(fd);
+	if (!f)
+		return ERR_PTR(-EINVAL);
+
+	if (f->f_op == &ion_fops) {
+		client = f->private_data;
+		ion_client_get(client);
+	}
+
+	fput(f);
+	return client;
+}
+
 void __init ion_reserve(struct ion_platform_data *data)
 {
 	int i;
