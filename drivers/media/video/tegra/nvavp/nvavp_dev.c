@@ -1022,7 +1022,7 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = clientctx;
 
-	nvhost_module_busy(&nvavp->nvhost_dev->host->mod);
+	nvhost_module_busy(nvavp->nvhost_dev->host->dev);
 	mutex_unlock(&nvavp->open_lock);
 
 	return ret;
@@ -1037,7 +1037,7 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp)
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: ++\n", __func__);
 
 	filp->private_data = NULL;
-	nvhost_module_idle(&nvavp->nvhost_dev->host->mod);
+	nvhost_module_idle(nvavp->nvhost_dev->host->dev);
 
 	mutex_lock(&nvavp->open_lock);
 
@@ -1357,7 +1357,7 @@ static int tegra_nvavp_suspend(struct nvhost_device *ndev, pm_message_t state)
 	struct nvavp_info *nvavp = nvhost_get_drvdata(ndev);
 
 	if (nvavp->refcount)
-		nvhost_module_idle(&ndev->host->mod);
+		nvhost_module_idle(ndev);
 	return 0;
 }
 
@@ -1366,7 +1366,7 @@ static int tegra_nvavp_resume(struct nvhost_device *ndev)
 	struct nvavp_info *nvavp = nvhost_get_drvdata(ndev);
 
 	if (nvavp->refcount)
-		nvhost_module_busy(&ndev->host->mod);
+		nvhost_module_busy(ndev);
 	return 0;
 }
 #endif
