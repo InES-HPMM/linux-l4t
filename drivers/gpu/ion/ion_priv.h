@@ -25,8 +25,32 @@
 #include <linux/sched.h>
 #include <linux/shrinker.h>
 #include <linux/types.h>
+#include <linux/miscdevice.h>
+
+struct ion_device;
+struct ion_client;
+struct ion_handle;
+
+bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle);
+
+void ion_buffer_get(struct ion_buffer *buffer);
 
 struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
+
+struct ion_client *ion_client_get_file(int fd);
+
+void ion_client_get(struct ion_client *client);
+
+int ion_client_put(struct ion_client *client);
+
+void ion_handle_get(struct ion_handle *handle);
+
+int ion_handle_put(struct ion_handle *handle);
+
+struct ion_handle *ion_handle_create(struct ion_client *client,
+				     struct ion_buffer *buffer);
+
+void ion_handle_add(struct ion_client *client, struct ion_handle *handle);
 
 /**
  * struct ion_buffer - metadata for a particular buffer

@@ -254,7 +254,7 @@ static void _ion_buffer_destroy(struct kref *kref)
 		ion_buffer_destroy(buffer);
 }
 
-static void ion_buffer_get(struct ion_buffer *buffer)
+void ion_buffer_get(struct ion_buffer *buffer)
 {
 	kref_get(&buffer->ref);
 }
@@ -340,12 +340,12 @@ struct ion_buffer *ion_handle_buffer(struct ion_handle *handle)
 	return handle->buffer;
 }
 
-static void ion_handle_get(struct ion_handle *handle)
+void ion_handle_get(struct ion_handle *handle)
 {
 	kref_get(&handle->ref);
 }
 
-static int ion_handle_put(struct ion_handle *handle)
+int ion_handle_put(struct ion_handle *handle)
 {
 	return kref_put(&handle->ref, ion_handle_destroy);
 }
@@ -364,7 +364,7 @@ static struct ion_handle *ion_handle_lookup(struct ion_client *client,
 	return NULL;
 }
 
-static bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
+bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
 {
 	struct rb_node *n = client->handles.rb_node;
 
@@ -381,7 +381,7 @@ static bool ion_handle_validate(struct ion_client *client, struct ion_handle *ha
 	return false;
 }
 
-static void ion_handle_add(struct ion_client *client, struct ion_handle *handle)
+void ion_handle_add(struct ion_client *client, struct ion_handle *handle)
 {
 	struct rb_node **p = &client->handles.rb_node;
 	struct rb_node *parent = NULL;
