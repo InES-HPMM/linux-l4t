@@ -105,6 +105,7 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A03]     = "A03",
 	[TEGRA_REVISION_A03p]    = "A03 prime",
 	[TEGRA_REVISION_A04]     = "A04",
+	[TEGRA_REVISION_A04p]    = "A04 prime",
 };
 
 u32 tegra_fuse_readl(unsigned long offset)
@@ -139,6 +140,10 @@ static enum tegra_revision tegra_get_revision()
 		else
 			return TEGRA_REVISION_A03;
 	case 4:
+		if (tegra_chip_id == TEGRA20 &&
+			tegra_chip_priv != NULL &&
+			(*tegra_chip_priv) == 'p')
+			return TEGRA_REVISION_A04p;
 		return TEGRA_REVISION_A04;
 	default:
 		return TEGRA_REVISION_UNKNOWN;
