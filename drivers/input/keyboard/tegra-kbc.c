@@ -701,7 +701,9 @@ static int tegra_kbc_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	__set_bit(EV_REP, input_dev->evbit);
+	if (!pdata->disable_ev_rep)
+		__set_bit(EV_REP, input_dev->evbit);
+
 	input_set_capability(input_dev, EV_MSC, MSC_SCAN);
 
 	input_set_drvdata(input_dev, kbc);
