@@ -976,6 +976,16 @@ static int tegra_ehci_suspend(struct device *dev)
 			platform_get_drvdata(to_platform_device(dev));
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 	int rc = 0;
+	u32 val;
+
+	pm_runtime_resume();
+
+	if (tegra->phy->hotplug) {
+		/* Disable PHY clock valid interrupts while going into suspend*/
+		val = readl(hcd->regs + TEGRA_USB_SUSP_CTRL_OFFSET);
+		val &= ~TEGRA_USB_PHY_CLK_VALID_INT_ENB;
+		writel(val , (hcd->regs + TEGRA_USB_SUSP_CTRL_OFFSET));
+	}
 
 	/*
 	 * When system sleep is supported and USB controller wakeup is
