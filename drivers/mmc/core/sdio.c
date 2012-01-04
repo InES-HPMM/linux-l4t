@@ -781,7 +781,7 @@ try_again:
 			goto remove;
 
 		/* Card is an ultra-high-speed card */
-		mmc_card_set_uhs(card);
+		mmc_sd_card_set_uhs(card);
 	} else {
 		/*
 		 * Switch to high-speed (if supported).
