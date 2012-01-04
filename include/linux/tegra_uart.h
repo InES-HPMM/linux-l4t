@@ -31,6 +31,7 @@ struct uart_clk_parent {
 struct tegra_uart_platform_data {
 	struct uart_clk_parent *parent_clk_list;
 	int parent_clk_count;
+	bool is_loopback;
 };
 
 int tegra_uart_is_tx_empty(struct uart_port *);
