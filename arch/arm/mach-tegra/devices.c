@@ -5,7 +5,7 @@
  *	Colin Cross <ccross@android.com>
  *	Erik Gilling <ccross@android.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,11 +29,11 @@
 #include <linux/nvhost.h>
 #include <mach/irqs.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <mach/tegra_smmu.h>
 
 #include "gpio-names.h"
 #include "iomap.h"
 #include "devices.h"
-#include "tegra_smmu.h"
 
 #define TEGRA_DMA_REQ_SEL_I2S_1			2
 #define TEGRA_DMA_REQ_SEL_SPD_I			3

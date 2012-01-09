@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -33,6 +33,7 @@
 #include <asm/system_info.h>
 
 #include <mach/powergate.h>
+#include <mach/tegra_smmu.h>
 
 #include "board.h"
 #include "common.h"
