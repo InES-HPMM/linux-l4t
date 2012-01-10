@@ -611,10 +611,10 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	u32 int_mask;
 	int ret;
 
-	tegra_i2c_flush_fifos(i2c_dev);
-
 	if (msg->len == 0)
 		return -EINVAL;
+
+	tegra_i2c_flush_fifos(i2c_dev);
 
 	i2c_dev->msg_buf = msg->buf;
 	i2c_dev->msg_buf_remaining = msg->len;
