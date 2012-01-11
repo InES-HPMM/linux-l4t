@@ -20,6 +20,11 @@ config TEGRA_DC_CMU
     default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
     default y
 
+config TEGRA_SD_GEN2
+    bool
+    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+    default y
+
 config FB_TEGRA
 	tristate "Tegra Framebuffer driver"
 	depends on TEGRA_DC && FB = y
