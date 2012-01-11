@@ -101,3 +101,5 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
 obj-${CONFIG_MACH_CARDHU}               += baseband-xmm-power.o
 obj-m += baseband-xmm-power2.o
+
+obj-${CONFIG_MACH_KAI}                  += board-touch-kai-raydium_spi.o
