@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
+#include <linux/tegra_uart.h>
 #include <linux/i2c.h>
 #include <linux/i2c/panjit_ts.h>
 #include <linux/dma-mapping.h>
@@ -389,10 +390,6 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&tegra_otg_device,
 #endif
 	&debug_uart,
-	&tegra_uartb_device,
-	&tegra_uartc_device,
-	&tegra_uartd_device,
-	&tegra_uarte_device,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
@@ -457,6 +454,48 @@ static void curacao_usb_init(void)
 	platform_device_register(&tegra_ehci2_device);
 }
 
+static struct platform_device *curacao_hs_uart_devices[] __initdata = {
+	&tegra_uartb_device,
+	&tegra_uartc_device,
+	&tegra_uartd_device,
+	&tegra_uarte_device,
+};
+
+static struct uart_clk_parent uart_parent_clk[] = {
+	[0] = {.name = "clk_m"},
+};
+
+static struct tegra_uart_platform_data curacao_uart_pdata;
+static struct tegra_uart_platform_data curacao_loopback_uart_pdata;
+
+static void __init curacao_hs_uart_init(void)
+{
+	struct clk *c;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
+		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+					uart_parent_clk[i].name);
+			continue;
+		}
+		uart_parent_clk[i].parent_clk = c;
+		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	curacao_uart_pdata.parent_clk_list = uart_parent_clk;
+	curacao_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
+	curacao_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	curacao_loopback_uart_pdata.parent_clk_count =
+						ARRAY_SIZE(uart_parent_clk);
+	curacao_loopback_uart_pdata.is_loopback = true;
+	tegra_uartb_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uartc_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uartd_device.dev.platform_data = &curacao_uart_pdata;
+	tegra_uarte_device.dev.platform_data = &curacao_loopback_uart_pdata;
+	platform_add_devices(curacao_hs_uart_devices,
+				ARRAY_SIZE(curacao_hs_uart_devices));
+}
 
 static void __init tegra_curacao_init(void)
 {
@@ -474,6 +513,7 @@ static void __init tegra_curacao_init(void)
 	curacao_keys_init();
 	curacao_usb_init();
 	curacao_panel_init();
+	curacao_hs_uart_init();
 	curacao_bt_rfkill();
 }
 
