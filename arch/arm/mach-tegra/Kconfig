@@ -44,7 +44,7 @@ config ARCH_TEGRA_3x_SOC
 	select COMMON_CLK
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
-	select GIC_SET_MULTIPLE_CPUS
+	select GIC_SET_MULTIPLE_CPUS if SMP
 	select PCI_MSI if TEGRA_PCI
 	select PINCTRL
 	select PINCTRL_TEGRA30
