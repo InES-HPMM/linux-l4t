@@ -15,6 +15,8 @@
  *
  */
 
+#define pr_fmt(fmt)	"%s():%d: " fmt, __func__, __LINE__
+
 #include <linux/device.h>
 #include <linux/file.h>
 #include <linux/freezer.h>
@@ -130,7 +132,7 @@ static void ion_buffer_add(struct ion_device *dev,
 		} else if (buffer > entry) {
 			p = &(*p)->rb_right;
 		} else {
-			pr_err("%s: buffer already found.", __func__);
+			pr_err("buffer already found.");
 			BUG();
 		}
 	}
@@ -378,6 +380,8 @@ bool ion_handle_validate(struct ion_client *client, struct ion_handle *handle)
 		else
 			return true;
 	}
+	WARN(1, "invalid handle passed h=0x%x,comm=%d\n", handle,
+		current->group_leader->comm);
 	return false;
 }
 
@@ -495,8 +499,7 @@ int ion_phys(struct ion_client *client, struct ion_handle *handle,
 	buffer = handle->buffer;
 
 	if (!buffer->heap->ops->phys) {
-		pr_err("%s: ion_phys is not implemented by this heap.\n",
-		       __func__);
+		pr_err("ion_phys is not implemented by this heap.\n");
 		mutex_unlock(&client->lock);
 		return -ENODEV;
 	}
@@ -572,8 +575,7 @@ void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
 	buffer = handle->buffer;
 
 	if (!handle->buffer->heap->ops->map_kernel) {
-		pr_err("%s: map_kernel is not implemented by this heap.\n",
-		       __func__);
+		pr_err("map_kernel is not implemented by this heap.\n");
 		mutex_unlock(&client->lock);
 		return ERR_PTR(-ENODEV);
 	}
@@ -707,7 +709,7 @@ void ion_client_destroy(struct ion_client *client)
 	struct ion_device *dev = client->dev;
 	struct rb_node *n;
 
-	pr_debug("%s: %d\n", __func__, __LINE__);
+	pr_debug("\n");
 	while ((n = rb_first(&client->handles))) {
 		struct ion_handle *handle = rb_entry(n, struct ion_handle,
 						     node);
@@ -1187,7 +1189,7 @@ static int ion_open(struct inode *inode, struct file *file)
 	struct ion_device *dev = container_of(miscdev, struct ion_device, dev);
 	struct ion_client *client;
 
-	pr_debug("%s: %d\n", __func__, __LINE__);
+	pr_debug("\n");
 	client = ion_client_create(dev, "user");
 	if (IS_ERR_OR_NULL(client))
 		return PTR_ERR(client);
