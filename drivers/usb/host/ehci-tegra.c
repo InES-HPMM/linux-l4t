@@ -71,6 +71,7 @@ struct tegra_ehci_hcd {
 	struct usb_phy *transceiver;
 	int host_resumed;
 	int port_resuming;
+	int default_enable;
 	struct delayed_work work;
 	enum tegra_usb_phy_port_speed port_speed;
 	struct work_struct clk_timer_work;
@@ -85,9 +86,8 @@ static void tegra_ehci_power_up(struct usb_hcd *hcd)
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 
-#ifndef CONFIG_USB_HOTPLUG
-	clk_enable(tegra->clk);
-#endif
+	if (!tegra->default_enable)
+		clk_enable(tegra->clk);
 	usb_phy_set_suspend(&tegra->phy->u_phy, 0);
 	tegra->host_resumed = 1;
 }
@@ -98,9 +98,8 @@ static void tegra_ehci_power_down(struct usb_hcd *hcd)
 
 	tegra->host_resumed = 0;
 	usb_phy_set_suspend(&tegra->phy->u_phy, 1);
-#ifndef CONFIG_USB_HOTPLUG
-	clk_disable(tegra->clk);
-#endif
+	if (!tegra->default_enable)
+		clk_disable(tegra->clk);
 }
 
 static int tegra_ehci_internal_port_reset(
@@ -987,9 +986,8 @@ static int tegra_ehci_suspend(struct device *dev)
 	 */
 	if (HCD_HW_ACCESSIBLE(hcd))
 		rc = controller_suspend(dev);
-#ifdef CONFIG_USB_HOTPLUG
-	clk_disable(tegra->clk);
-#endif
+	if (tegra->default_enable)
+		clk_disable(tegra->clk);
 	return rc;
 }
 
@@ -998,9 +996,8 @@ static int tegra_ehci_resume(struct device *dev)
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	int rc;
 
-#ifdef CONFIG_USB_HOTPLUG
-	clk_enable(tegra->clk);
-#endif
+	if (tegra->default_enable)
+		clk_enable(tegra->clk);
 
 	rc = controller_resume(dev);
 	if (rc == 0) {
@@ -1070,6 +1067,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, tegra);
+	tegra->default_enable = pdata->default_enable;
 
 	tegra->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(tegra->clk)) {
