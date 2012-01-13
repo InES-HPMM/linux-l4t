@@ -84,7 +84,7 @@ static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 	{295, 336, 358, 375, 391, UINT_MAX},
 	{295, 336, 358, 375, 391, UINT_MAX},
 	{300, 311, 360, 371, 381, 415, 431},
-	{300, 311, 410, 431},
+	{300, 311, 410, 431, UINT_MAX},
 };
 
 static int threshold_index;
