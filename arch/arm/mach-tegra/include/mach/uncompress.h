@@ -11,7 +11,7 @@
  *	Doug Anderson <dianders@chromium.org>
  *	Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -76,6 +76,16 @@ volatile u8 *uart;
 #define DEBUG_UART_RST_CLR_REG		0
 #define DEBUG_UART_RST_CLR_BIT		0
 #endif
+#define PLLP_BASE			(TEGRA_CLK_RESET_BASE + 0x0a0)
+#define PLLP_BASE_OVERRIDE		(1 << 28)
+#define PLLP_BASE_DIVP_SHIFT		20
+#define PLLP_BASE_DIVP_MASK		(0x7 << 20)
+#define PLLP_BASE_DIVN_SHIFT		8
+#define PLLP_BASE_DIVN_MASK		(0x3FF << 8)
+
+#define DEBUG_UART_DLL_216		0x75
+#define DEBUG_UART_DLL_408		0xdd
+#define DEBUG_UART_DLL_204		0x6f
 
 static void putc(int c)
 {
@@ -175,7 +185,9 @@ static inline void arch_decomp_setup(void)
 {
 	int uart_id;
 	volatile u32 *apb_misc = (volatile u32 *)TEGRA_APB_MISC_BASE;
-	u32 chip, div;
+	volatile u32 *addr;
+	u32 div = DEBUG_UART_DLL_216;
+	u32 val;
 
 #if defined(CONFIG_TEGRA_DEBUG_UART_AUTO_ODMDATA)
 	uart_id = auto_odmdata();
@@ -200,11 +212,33 @@ static inline void arch_decomp_setup(void)
 	if (uart == NULL)
 		return;
 
-	chip = (apb_misc[0x804 / 4] >> 8) & 0xff;
-	if (chip == 0x20)
-		div = 0x0075;
-	else
-		div = 0x00dd;
+	/*
+	 * On Tegra2 platforms PLLP always run at 216MHz
+	 * On Tegra3 platforms PLLP can run at 216MHz, 204MHz, or 408MHz
+	 * Discrimantion algorithm below assumes that PLLP is configured
+	 * according to h/w recomendations with update rate 1MHz or 1.2MHz
+	 * depending on oscillator frequency
+	 */
+	addr = (volatile u32 *)PLLP_BASE;
+	val = *addr;
+	if (val & PLLP_BASE_OVERRIDE) {
+		u32 p = (val & PLLP_BASE_DIVP_MASK) >> PLLP_BASE_DIVP_SHIFT;
+		val = (val & PLLP_BASE_DIVN_MASK) >> (PLLP_BASE_DIVN_SHIFT + p);
+		switch (val) {
+		case 170:
+		case 204:
+			div = DEBUG_UART_DLL_204;
+			break;
+		case 340:
+		case 408:
+			div = DEBUG_UART_DLL_408;
+			break;
+		case 180:
+		case 216:
+		default:
+			break;
+		}
+	}
 
 	uart[UART_LCR << DEBUG_UART_SHIFT] |= UART_LCR_DLAB;
 	uart[UART_DLL << DEBUG_UART_SHIFT] = div & 0xff;
