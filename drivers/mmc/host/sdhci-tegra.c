@@ -121,6 +121,8 @@ struct sdhci_tegra {
 	/* max clk supported by the platform */
 	unsigned int max_clk_limit;
 	struct tegra_io_dpd *dpd;
+	bool card_present;
+	bool is_rail_enabled;
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -289,8 +291,8 @@ static void sdhci_status_notify_cb(int card_present, void *dev_id)
 
 	status = plat->mmc_data.status(mmc_dev(host->mmc));
 
-	oldstat = plat->mmc_data.card_present;
-	plat->mmc_data.card_present = status;
+	oldstat = tegra_host->card_present;
+	tegra_host->card_present = status;
 	if (status ^ oldstat) {
 		pr_debug("%s: Slot status change detected (%d -> %d)\n",
 			mmc_hostname(host->mmc), oldstat, status);
@@ -304,6 +306,29 @@ static void sdhci_status_notify_cb(int card_present, void *dev_id)
 static irqreturn_t carddetect_irq(int irq, void *data)
 {
 	struct sdhci_host *sdhost = (struct sdhci_host *)data;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhost);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+
+	tegra_host->card_present = (gpio_get_value(plat->cd_gpio) == 0);
+
+	if (tegra_host->card_present) {
+		if (!tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_slot_reg)
+				regulator_enable(tegra_host->vdd_slot_reg);
+			if (tegra_host->vdd_io_reg)
+				regulator_enable(tegra_host->vdd_io_reg);
+			tegra_host->is_rail_enabled = 1;
+		}
+	} else {
+		if (tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_io_reg)
+				regulator_disable(tegra_host->vdd_io_reg);
+			if (tegra_host->vdd_slot_reg)
+				regulator_disable(tegra_host->vdd_slot_reg);
+			tegra_host->is_rail_enabled = 0;
+                }
+	}
 
 	tasklet_schedule(&sdhost->card_tasklet);
 	return IRQ_HANDLED;
@@ -580,6 +605,15 @@ static void tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		regulator_disable(tegra_host->vdd_slot_reg);
 	if (tegra_host->vdd_io_reg)
 		regulator_disable(tegra_host->vdd_io_reg);
+	if (tegra_host->card_present) {
+		if (tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_io_reg)
+				regulator_disable(tegra_host->vdd_io_reg);
+			if (tegra_host->vdd_slot_reg)
+				regulator_disable(tegra_host->vdd_slot_reg);
+			tegra_host->is_rail_enabled = 0;
+		}
+	}
 }
 
 static void tegra_sdhci_resume(struct sdhci_host *sdhci)
@@ -589,10 +623,17 @@ static void tegra_sdhci_resume(struct sdhci_host *sdhci)
 	unsigned long timeout;
 
 	/* Enable the power rails if any */
-	if (tegra_host->vdd_io_reg)
-		regulator_enable(tegra_host->vdd_io_reg);
-	if (tegra_host->vdd_slot_reg)
-		regulator_enable(tegra_host->vdd_slot_reg);
+	if (tegra_host->card_present) {
+		if (!tegra_host->is_rail_enabled) {
+			if (tegra_host->vdd_slot_reg)
+				regulator_enable(tegra_host->vdd_slot_reg);
+			if (tegra_host->vdd_io_reg) {
+				regulator_enable(tegra_host->vdd_io_reg);
+				tegra_sdhci_signal_voltage_switch(sdhci, MMC_SIGNAL_VOLTAGE_330);
+			}
+			tegra_host->is_rail_enabled = 1;
+		}
+	}
 
 	/* Setting the min identification clock of freq 400KHz */
 	tegra_sdhci_set_clock(sdhci, 400000);
@@ -784,7 +825,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		}
 		gpio_direction_input(plat->cd_gpio);
 
-		rc = request_irq(gpio_to_irq(plat->cd_gpio), carddetect_irq,
+		tegra_host->card_present = (gpio_get_value(plat->cd_gpio) == 0);
+
+		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
+				 carddetect_irq,
 				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 				 mmc_hostname(host->mmc), host);
 
@@ -803,7 +847,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	if (plat->mmc_data.status) {
-		plat->mmc_data.card_present = plat->mmc_data.status(mmc_dev(host->mmc));
+		tegra_host->card_present = plat->mmc_data.status(mmc_dev(host->mmc));
 	}
 
 	if (gpio_is_valid(plat->wp_gpio)) {
@@ -841,8 +885,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			if (rc) {
 				dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
 					"vddio_sdmmc", rc);
-			} else {
-				regulator_enable(tegra_host->vdd_io_reg);
 			}
 		}
 
@@ -852,7 +894,13 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 				"vddio_sd_slot", PTR_ERR(tegra_host->vdd_slot_reg));
 			tegra_host->vdd_slot_reg = NULL;
 		} else {
-			regulator_enable(tegra_host->vdd_slot_reg);
+			if (tegra_host->card_present) {
+				if (tegra_host->vdd_slot_reg)
+					regulator_enable(tegra_host->vdd_slot_reg);
+				if (tegra_host->vdd_io_reg)
+					regulator_enable(tegra_host->vdd_io_reg);
+				tegra_host->is_rail_enabled = 1;
+			}
 		}
 	}
 
