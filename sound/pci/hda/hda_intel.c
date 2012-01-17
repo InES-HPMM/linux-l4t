@@ -3639,7 +3639,7 @@ static void azx_check_snoop_available(struct azx *chip)
 }
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-static const char *tegra_clk_names[] __initdata = {
+static const char *tegra_clk_names[] = {
 	"hda",
 	"hda2codec",
 	"hda2hdmi",
@@ -3738,7 +3738,7 @@ static int azx_first_init(struct azx *chip)
 	int dev = chip->dev_index;
 	struct pci_dev *pci = chip->pci;
 	struct snd_card *card = chip->card;
-	int i, err;
+	int i, err = 0;
 	unsigned short gcap;
 
 #if BITS_PER_LONG != 64
@@ -4381,7 +4381,7 @@ static const struct platform_device_id azx_platform_ids[] = {
 MODULE_DEVICE_TABLE(platform, azx_platform_ids);
 
 /* platform_driver definition */
-static struct platform_driver driver_platform = {
+static struct platform_driver hda_platform_driver = {
 	.driver = {
 		.name = "hda-platform"
 		.pm = AZX_PM_OPS,
@@ -4393,4 +4393,4 @@ static struct platform_driver driver_platform = {
 #endif /* CONFIG_SND_HDA_PLATFORM_DRIVER */
 
 module_pci_driver(azx_driver);
-module_platform_driver(driver_platform);
+module_platform_driver(hda_platform_driver);
