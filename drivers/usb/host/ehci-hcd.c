@@ -804,6 +804,9 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 			ehci_dbg (ehci, "port %d remote wakeup\n", i + 1);
 			usb_hcd_start_port_resume(&hcd->self, i);
 			mod_timer(&hcd->rh_timer, ehci->reset_done[i]);
+#ifdef CONFIG_USB_EHCI_TEGRA
+			ehci->controller_remote_wakeup = true;
+#endif
 		}
 	}
 

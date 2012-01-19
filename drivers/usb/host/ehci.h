@@ -202,6 +202,7 @@ struct ehci_hcd {			/* one per controller */
 	unsigned		need_oc_pp_cycle:1; /* MPC834X port power */
 #ifdef CONFIG_USB_EHCI_TEGRA
 	unsigned		controller_resets_phy:1;
+	unsigned		controller_remote_wakeup:1;
 #endif
 
 	/* required for usb32 quirk */
