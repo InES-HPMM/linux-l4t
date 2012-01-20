@@ -545,7 +545,7 @@ static int tegra_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 	return INT_PCIE_INTR;
 }
 
-static struct pci_bus __init *tegra_pcie_scan_bus(int nr,
+static struct pci_bus *tegra_pcie_scan_bus(int nr,
 						  struct pci_sys_data *sys)
 {
 	struct tegra_pcie_port *pp;
@@ -560,7 +560,7 @@ static struct pci_bus __init *tegra_pcie_scan_bus(int nr,
 				 &sys->resources);
 }
 
-static struct hw_pci tegra_pcie_hw __initdata = {
+static struct hw_pci tegra_pcie_hw = {
 	.nr_controllers	= MAX_PCIE_SUPPORTED_PORTS,
 	.setup		= tegra_pcie_setup,
 	.scan		= tegra_pcie_scan_bus,
