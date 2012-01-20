@@ -38,7 +38,7 @@ CONFIG_AEABI=y
 # CONFIG_OABI_COMPAT is not set
 CONFIG_ZBOOT_ROM_TEXT=0x0
 CONFIG_ZBOOT_ROM_BSS=0x0
-CONFIG_CMDLINE="mem=448@2048M console=ttyS0,115200n8 earlyprintk init=/bin/ash"
+CONFIG_CMDLINE="tegraid=35.1.1.0.0 initrd=0x85000000,6724352 mem=512M@2048M vmalloc=256M console=ttyS0,115200n8 video=tegrafb earlyprintk init=/bin/ash"
 CONFIG_VFP=y
 CONFIG_NEON=y
 # CONFIG_SUSPEND is not set
