@@ -532,7 +532,7 @@ static void __init tegra_curacao_reserve(void)
 #endif
 }
 
-MACHINE_START(CURACAO, "curacao")
+MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.boot_params    = 0x80000100,
 	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
