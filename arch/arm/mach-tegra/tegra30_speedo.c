@@ -338,7 +338,10 @@ void tegra30_init_speedo_data(void)
 		}
 		/* fall thru for T30L or T30SL */
 	case 2:
-		tegra_core_speedo_mv = 1300;
+		if (tegra_cpu_speedo_id != 13)
+			tegra_core_speedo_mv = 1300;
+		else /* T37 */
+			tegra_core_speedo_mv = 1350;
 		break;
 	case 3:
 		tegra_core_speedo_mv = 1250;
