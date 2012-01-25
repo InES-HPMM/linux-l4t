@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corp.
+ * Copyright (C) 2011-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -32,6 +32,7 @@ enum tegra_revision {
 
 #define TEGRA20		0x20
 #define TEGRA30		0x30
+#define TEGRA11		0x35
 
 extern int tegra_chip_id;
 extern enum tegra_revision tegra_revision;

@@ -148,6 +148,14 @@ static enum tegra_revision tegra_get_revision()
 	default:
 		return TEGRA_REVISION_UNKNOWN;
 	}
+#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
+	if (tegra_chip_id == TEGRA11) {
+		if ((tegra_chip_major == 0) && (tegra_chip_minor == 1))
+			return TEGRA_REVISION_A01;
+	}
+#elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
+	if (tegra_chip_id == TEGRA11)
+		return TEGRA_REVISION_A01;
 #endif
 	return TEGRA_REVISION_UNKNOWN;
 }
@@ -313,7 +321,7 @@ unsigned long long tegra_chip_uid(void)
 
 		Field    Bits  Position Data
 		-------  ----  -------- ----------------------------------------
-		CID        4     60     Chip id (encoded as zero for T30)
+		CID        4     60     Chip id
 		VENDOR     4     56     Vendor code
 		FAB        6     50     FAB code
 		LOT       26     24     Lot code (5-digit base-36-coded-decimal,
@@ -332,6 +340,10 @@ unsigned long long tegra_chip_uid(void)
 	switch (reg) {
 	case TEGRA30:
 		cid = 0;
+		break;
+
+	case TEGRA_CHIPID_TEGRA11:
+		cid = 1;
 		break;
 
 	default:
