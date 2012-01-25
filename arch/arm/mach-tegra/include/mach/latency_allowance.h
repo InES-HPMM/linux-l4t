@@ -87,7 +87,7 @@ enum tegra_la_id {
 	TEGRA_LA_MAX_ID
 };
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_TEGRA_FPGA_PLATFORM)
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || !defined(CONFIG_TEGRA_SILICON_PLATFORM)
 static inline int tegra_set_latency_allowance(enum tegra_la_id id,
 						int bandwidth_in_mbps)
 {
@@ -104,7 +104,6 @@ static inline int tegra_enable_latency_scaling(enum tegra_la_id id,
 
 static inline void tegra_disable_latency_scaling(enum tegra_la_id id)
 {
-	return;
 }
 #else
 int tegra_set_latency_allowance(enum tegra_la_id id,

@@ -201,7 +201,8 @@ static void mc_write(u32 val, unsigned long reg)
 	writel(val, mc + reg);
 }
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && \
+	!defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 
 #define MC_CLIENT_HOTRESET_CTRL	0x200
 #define MC_CLIENT_HOTRESET_STAT	0x204
