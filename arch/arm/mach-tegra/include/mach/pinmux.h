@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tegra/include/mach/pinmux.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010,2011 Nvidia, Inc.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -124,7 +124,16 @@
 	TEGRA_MUX(VGP4) \
 	TEGRA_MUX(VGP5) \
 	TEGRA_MUX(VGP6) \
-	/* End of Tegra3 MUX selectors */
+	/* End of Tegra3 MUX selectors */ \
+	TEGRA_MUX(USB) \
+	TEGRA_MUX(SOC) \
+	TEGRA_MUX(CPU) \
+	TEGRA_MUX(CLK) \
+	TEGRA_MUX(PWRON) \
+	TEGRA_MUX(PMI) \
+	TEGRA_MUX(CLDVFS) \
+	TEGRA_MUX(RESET_OUT_N) \
+	/* End of Tegra114 MUX selectors */
 
 enum tegra_mux_func {
 #define TEGRA_MUX(mux) TEGRA_MUX_##mux,
