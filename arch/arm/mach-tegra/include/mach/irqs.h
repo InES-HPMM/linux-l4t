@@ -24,17 +24,17 @@
 
 #define INT_GIC_BASE			0
 
-#define IRQ_LOCALTIMER                  29
+#define IRQ_LOCALTIMER			29
 
 /* Primary Interrupt Controller */
 #define INT_PRI_BASE			(INT_GIC_BASE + 32)
 #define INT_TMR1			(INT_PRI_BASE + 0)
 #define INT_TMR2			(INT_PRI_BASE + 1)
 #define INT_RTC				(INT_PRI_BASE + 2)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_I2S2			(INT_PRI_BASE + 3)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_CEC				(INT_PRI_BASE + 3)
 #endif
 #define INT_SHR_SEM_INBOX_IBF		(INT_PRI_BASE + 4)
@@ -49,23 +49,27 @@
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define INT_I2S1			(INT_PRI_BASE + 13)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_SATA_RX_STAT		(INT_PRI_BASE + 13)
 #endif
 #define INT_SDMMC1			(INT_PRI_BASE + 14)
 #define INT_SDMMC2			(INT_PRI_BASE + 15)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_XIO				(INT_PRI_BASE + 16)
+#endif
 #define INT_VDE				(INT_PRI_BASE + 17)
 #define INT_AVP_UCQ			(INT_PRI_BASE + 18)
 #define INT_SDMMC3			(INT_PRI_BASE + 19)
 #define INT_USB				(INT_PRI_BASE + 20)
 #define INT_USB2			(INT_PRI_BASE + 21)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_PRI_RES_22			(INT_PRI_BASE + 22)
 #define INT_EIDE			(INT_PRI_BASE + 23)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define INT_HSMMC			(INT_PRI_BASE + 22)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_SATA_CTL			(INT_PRI_BASE + 23)
 #endif
 #define INT_NANDFLASH			(INT_PRI_BASE + 24)
@@ -86,51 +90,77 @@
 #define INT_UARTA			(INT_SEC_BASE + 4)
 #define INT_UARTB			(INT_SEC_BASE + 5)
 #define INT_I2C				(INT_SEC_BASE + 6)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_USB3_HOST_INT		(INT_SEC_BASE + 7)
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_SPI				(INT_SEC_BASE + 7)
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define INT_DTV				INT_SPI
 #endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_USB3_NOT_SMI		(INT_SEC_BASE + 8)
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_TWC				(INT_SEC_BASE + 8)
+#endif
 #define INT_TMR3			(INT_SEC_BASE + 9)
 #define INT_TMR4			(INT_SEC_BASE + 10)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_FLOW_RSM0			(INT_SEC_BASE + 11)
 #define INT_FLOW_RSM1			(INT_SEC_BASE + 12)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#else
+#define INT_USB3_HOST_PME		(INT_SEC_BASE + 11)
+#define INT_USB3_DEV_HOST		(INT_SEC_BASE + 12)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_SPDIF			(INT_SEC_BASE + 13)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_ACTMON			(INT_SEC_BASE + 13)
 #endif
 #define INT_UARTC			(INT_SEC_BASE + 14)
 #define INT_MIPI			(INT_SEC_BASE + 15)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_EVENTA			(INT_SEC_BASE + 16)
 #define INT_EVENTB			(INT_SEC_BASE + 17)
 #define INT_EVENTC			(INT_SEC_BASE + 18)
 #define INT_EVENTD			(INT_SEC_BASE + 19)
+#else
+#define INT_TSEC			(INT_SEC_BASE + 18)
+#define INT_EDP				(INT_SEC_BASE + 19)
+#endif
 #define INT_VFIR			(INT_SEC_BASE + 20)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define INT_DVC				(INT_SEC_BASE + 21)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_I2C5			(INT_SEC_BASE + 21)
 #endif
 #define INT_SYS_STATS_MON		(INT_SEC_BASE + 22)
 #define INT_GPIO5			(INT_SEC_BASE + 23)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_CPU0_PMU_INTR		(INT_SEC_BASE + 24)
 #define INT_CPU1_PMU_INTR		(INT_SEC_BASE + 25)
 #define INT_SEC_RES_26			(INT_SEC_BASE + 26)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define INT_SPEEDO_PMON_0		(INT_SEC_BASE + 24)
 #define INT_SPEEDO_PMON_1		(INT_SEC_BASE + 25)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_USB3_DEV_SMI		(INT_SEC_BASE + 24)
+#define INT_USB3_DEV_PME		(INT_SEC_BASE + 25)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_SE				(INT_SEC_BASE + 26)
 #endif
 #define INT_SPI_1			(INT_SEC_BASE + 27)
 #define INT_APB_DMA_COP			(INT_SEC_BASE + 28)
 #define INT_AHB_DMA_COP			(INT_SEC_BASE + 29)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_DMA_TX			(INT_SEC_BASE + 30)
 #define INT_DMA_RX			(INT_SEC_BASE + 31)
+#endif
 
 /* Tertiary Interrupt Controller */
 #define INT_TRI_BASE			(INT_SEC_BASE + 32)
@@ -146,17 +176,23 @@
 #define INT_DISPLAY_GENERAL		(INT_TRI_BASE + 9)
 #define INT_DISPLAY_B_GENERAL		(INT_TRI_BASE + 10)
 #define INT_HDMI			(INT_TRI_BASE + 11)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_TVO_GENERAL			(INT_TRI_BASE + 12)
+#endif
 #define INT_MC_GENERAL			(INT_TRI_BASE + 13)
 #define INT_EMC_GENERAL			(INT_TRI_BASE + 14)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_TRI_RES_15			(INT_TRI_BASE + 15)
 #define INT_TRI_RES_16			(INT_TRI_BASE + 16)
 #define INT_AC97			(INT_TRI_BASE + 17)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_SPI_6			(INT_SEC_BASE + 15)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_NOR_FLASH			(INT_TRI_BASE + 16)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_HDA				(INT_TRI_BASE + 17)
 #endif
 #define INT_SPI_2			(INT_TRI_BASE + 18)
@@ -165,16 +201,18 @@
 #define INT_KBC				(INT_TRI_BASE + 21)
 #define INT_EXTERNAL_PMU		(INT_TRI_BASE + 22)
 #define INT_GPIO6			(INT_TRI_BASE + 23)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_TVDAC			(INT_TRI_BASE + 24)
+#endif
 #define INT_GPIO7			(INT_TRI_BASE + 25)
 #define INT_UARTD			(INT_TRI_BASE + 26)
 #define INT_UARTE			(INT_TRI_BASE + 27)
 #define INT_I2C3			(INT_TRI_BASE + 28)
 #define INT_SPI_4			(INT_TRI_BASE + 29)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_TRI_RES_30			(INT_TRI_BASE + 30)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_SPI_5			(INT_TRI_BASE + 30)
 #endif
 #define INT_SW_RESERVED			(INT_TRI_BASE + 31)
@@ -185,13 +223,13 @@
 #define INT_USB3			(INT_QUAD_BASE + 1)
 #define INT_PCIE_INTR			(INT_QUAD_BASE + 2)
 #define INT_PCIE_MSI			(INT_QUAD_BASE + 3)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_QUAD_RES_4			(INT_QUAD_BASE + 4)
 #define INT_QUAD_RES_5			(INT_QUAD_BASE + 5)
 #define INT_QUAD_RES_6			(INT_QUAD_BASE + 6)
 #define INT_QUAD_RES_7			(INT_QUAD_BASE + 7)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_PCIE			(INT_QUAD_BASE + 4)
 #define INT_AVP_CACHE			(INT_QUAD_BASE + 5)
 #define INT_TSENSOR			(INT_QUAD_BASE + 6)
@@ -213,7 +251,7 @@
 #define INT_APB_DMA_CH13		(INT_QUAD_BASE + 21)
 #define INT_APB_DMA_CH14		(INT_QUAD_BASE + 22)
 #define INT_APB_DMA_CH15		(INT_QUAD_BASE + 23)
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_QUAD_RES_24			(INT_QUAD_BASE + 24)
 #define INT_QUAD_RES_25			(INT_QUAD_BASE + 25)
 #define INT_QUAD_RES_26			(INT_QUAD_BASE + 26)
@@ -222,7 +260,7 @@
 #define INT_QUAD_RES_29			(INT_QUAD_BASE + 29)
 #define INT_QUAD_RES_30			(INT_QUAD_BASE + 30)
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_I2C4			(INT_QUAD_BASE + 24)
 #define INT_TMR5			(INT_QUAD_BASE + 25)
 #define INT_TMR_SHARED			(INT_QUAD_BASE + 26) /* Deprecated */
@@ -231,11 +269,16 @@
 #define INT_GPIO8			(INT_QUAD_BASE + 29)
 #define INT_CAR				(INT_QUAD_BASE + 30)
 #endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_QUAD_RES_31			(INT_QUAD_BASE + 31)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_HIER_GROUP1_CPU		(INT_QUAD_BASE + 31)
+#endif
 
 /* Quintary Interrupt Controller */
 #define INT_QUINT_BASE			(INT_QUAD_BASE + 32)
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INT_APB_DMA_CH16		(INT_QUINT_BASE + 0)
 #define INT_APB_DMA_CH17		(INT_QUINT_BASE + 1)
 #define INT_APB_DMA_CH18		(INT_QUINT_BASE + 2)
@@ -256,18 +299,31 @@
 #define INT_CPU1_PMU_INTR		(INT_QUINT_BASE + 17)
 #define INT_CPU2_PMU_INTR		(INT_QUINT_BASE + 18)
 #define INT_CPU3_PMU_INTR		(INT_QUINT_BASE + 19)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define INT_CPU4_PMU_INTR		(INT_QUINT_BASE + 20)
 #define INT_CPU5_PMU_INTR		(INT_QUINT_BASE + 21)
 #define INT_CPU6_PMU_INTR		(INT_QUINT_BASE + 22)
 #define INT_CPU7_PMU_INTR		(INT_QUINT_BASE + 23)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_SDMMC1_SYS			(INT_QUINT_BASE + 20)
+#define INT_SDMMC2_SYS			(INT_QUINT_BASE + 21)
+#define INT_SDMMC3_SYS			(INT_QUINT_BASE + 22)
+#define INT_SDMMC4_SYS			(INT_QUINT_BASE + 23)
+#endif
 #define INT_TMR6			(INT_QUINT_BASE + 24)
 #define INT_TMR7			(INT_QUINT_BASE + 25)
 #define INT_TMR8			(INT_QUINT_BASE + 26)
 #define INT_TMR9			(INT_QUINT_BASE + 27)
 #define INT_TMR10			(INT_QUINT_BASE + 28)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define INT_QUINT_RES_29		(INT_QUINT_BASE + 29)
 #define INT_QUINT_RES_30		(INT_QUINT_BASE + 30)
 #define INT_QUINT_RES_31		(INT_QUINT_BASE + 31)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define INT_HIER_GROUP1_COP		(INT_QUINT_BASE + 29)
+#define INT_MC0_GENERAL			(INT_QUINT_BASE + 30)
+#define INT_EMC0_GENERAL		(INT_QUINT_BASE + 31)
 #endif
 
 #define INT_GIC_NR			(INT_QUINT_BASE + 32)
