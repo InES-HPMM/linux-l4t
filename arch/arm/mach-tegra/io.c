@@ -87,6 +87,20 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.length = IO_PCIE_SIZE,
 		.type = MT_DEVICE,
 	}
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	{
+		.virtual = IO_SMC_VIRT,
+		.pfn = __phys_to_pfn(IO_SMC_PHYS),
+		.length = IO_SMC_SIZE,
+		.type = MT_DEVICE,
+	},
+	{
+		.virtual = IO_SIM_ESCAPE_VIRT,
+		.pfn = __phys_to_pfn(IO_SIM_ESCAPE_PHYS),
+		.length = IO_SIM_ESCAPE_SIZE,
+		.type = MT_DEVICE,
+	},
+#endif
 };
 
 void __init tegra_map_common_io(void)
