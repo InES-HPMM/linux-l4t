@@ -305,6 +305,7 @@ int tegra_gpu_register_sets(void)
 #endif
 }
 
+#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 struct chip_revision {
 	enum tegra_chipid	chipid;
 	unsigned int		major;
@@ -321,15 +322,17 @@ struct chip_revision {
 	.revision = TEGRA_REVISION_##rev }
 
 static struct chip_revision tegra_chip_revisions[] = {
-	CHIP_REVISION(TEGRA2, 1, 2, 0,   A02),
-	CHIP_REVISION(TEGRA2, 1, 3, 0,   A03),
-	CHIP_REVISION(TEGRA2, 1, 3, 'p', A03p),
-	CHIP_REVISION(TEGRA2, 1, 4, 0,   A04),
-	CHIP_REVISION(TEGRA2, 1, 4, 'p', A04p),
-	CHIP_REVISION(TEGRA3, 1, 1, 0,   A01),
-	CHIP_REVISION(TEGRA3, 1, 2, 0,   A02),
-	CHIP_REVISION(TEGRA3, 1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA2,  1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA2,  1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA2,  1, 3, 'p', A03p),
+	CHIP_REVISION(TEGRA2,  1, 4, 0,   A04),
+	CHIP_REVISION(TEGRA2,  1, 4, 'p', A04p),
+	CHIP_REVISION(TEGRA3,  1, 1, 0,   A01),
+	CHIP_REVISION(TEGRA3,  1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA3,  1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA11, 1, 0, 0,   A01),
 };
+#endif
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 {
@@ -354,6 +357,15 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 		revision = tegra_chip_revisions[i].revision;
 		break;
 	}
+
+#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
+	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11) {
+		if ((id->major == 0) && (id->minor == 1))
+			revision = TEGRA_REVISION_A01;
+	}
+#elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
+	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11)
+		revision = TEGRA_REVISION_A01;
 #endif
 
 	return revision;
