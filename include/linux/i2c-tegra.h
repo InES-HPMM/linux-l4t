@@ -28,6 +28,8 @@ struct tegra_i2c_platform_data {
 	u16 slave_addr;
 	int scl_gpio;
 	int sda_gpio;
+	bool is_high_speed_enable;
+	u16 hs_master_code;
 };
 
 struct tegra_i2c_slave_platform_data {
