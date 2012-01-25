@@ -99,6 +99,11 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-harmony-pcie.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
+obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-power.o
+
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
 
