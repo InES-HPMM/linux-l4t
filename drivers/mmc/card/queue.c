@@ -89,6 +89,12 @@ static int mmc_queue_thread(void *d)
 			mq->mqrq_prev = mq->mqrq_cur;
 			mq->mqrq_cur = tmp;
 		} else {
+			/*
+			 * Since the queue is empty, start synchronous
+			 * background ops if there is a request for it.
+			 */
+			if (mmc_card_need_bkops(mq->card))
+				mmc_start_bkops(mq->card, true);
 			if (kthread_should_stop()) {
 				set_current_state(TASK_RUNNING);
 				break;
