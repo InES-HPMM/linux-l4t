@@ -15,7 +15,11 @@ obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += timer-t2.o
 else
+ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-y                                   += timer-t3.o
+else
+obj-y                                   += tegra11_clocks.o
+endif
 endif
 obj-y                                   += pinmux.o
 obj-y                                   += delay.o
