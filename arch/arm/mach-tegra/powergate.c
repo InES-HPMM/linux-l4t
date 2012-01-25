@@ -129,6 +129,7 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 	[TEGRA_POWERGATE_3D]	= { "3d0",
 						{MC_CLIENT_NV, MC_CLIENT_LAST},
 						{{"3d", CLK_AND_RST} }, },
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	[TEGRA_POWERGATE_PCIE]	= { "pcie",
 						{MC_CLIENT_AFI, MC_CLIENT_LAST},
 						{{"afi", CLK_AND_RST},
@@ -137,15 +138,16 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 						{"cml0", CLK_ONLY},
 #endif
 						{"pciex", RST_ONLY} }, },
+#endif
 	[TEGRA_POWERGATE_VDEC]	= { "vde",
 						{MC_CLIENT_VDE, MC_CLIENT_LAST},
 						{{"vde", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_MPE]	= { "mpe",
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-					{MC_CLIENT_MPE, MC_CLIENT_LAST},
+						{MC_CLIENT_MPE, MC_CLIENT_LAST},
 #else
-					{MC_CLIENT_MPEA, MC_CLIENT_MPEB,
-					 MC_CLIENT_MPEC, MC_CLIENT_LAST},
+						{MC_CLIENT_MPEA, MC_CLIENT_MPEB,
+						 MC_CLIENT_MPEC, MC_CLIENT_LAST},
 #endif
 						{{"mpe", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_VENC]	= { "ve",
@@ -158,14 +160,18 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 	[TEGRA_POWERGATE_CPU2]	= { "cpu2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CPU3]	= { "cpu3",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CELP]	= { "celp",	{MC_CLIENT_LAST}, },
+#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	[TEGRA_POWERGATE_SATA]	= { "sata",     {MC_CLIENT_SATA, MC_CLIENT_LAST},
 						{{"sata", CLK_AND_RST},
 						{"sata_oob", CLK_AND_RST},
 						{"cml1", CLK_ONLY},
 						{"sata_cold", RST_ONLY} }, },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_DUAL_3D
 	[TEGRA_POWERGATE_3D1]	= { "3d1",
 						{MC_CLIENT_NV2, MC_CLIENT_LAST},
 						{{"3d2", CLK_AND_RST} }, },
+#endif
 	[TEGRA_POWERGATE_HEG]	= { "heg",
 						{MC_CLIENT_G2, MC_CLIENT_EPP,
 							MC_CLIENT_HC,
@@ -175,6 +181,17 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 						{"host1x", CLK_AND_RST},
 						{"3d", RST_ONLY} }, },
 #endif
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	[TEGRA_POWERGATE_CRAIL]	= { "crail",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_C0NC]	= { "c0nc",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_C1NC]	= { "c1nc",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_DISA]	= { "disa",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_DISB]	= { "disb",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_XUSBA]	= { "xusba",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_XUSBB]	= { "xusbb",	{MC_CLIENT_LAST}, },
+	[TEGRA_POWERGATE_XUSBC]	= { "xusbc",	{MC_CLIENT_LAST}, },
+#endif
+
 };
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
