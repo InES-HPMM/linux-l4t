@@ -126,6 +126,9 @@
 #define INT_EVENTC			(INT_SEC_BASE + 18)
 #define INT_EVENTD			(INT_SEC_BASE + 19)
 #else
+#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
+#define IRQ_ETH				(INT_SEC_BASE + 16)
+#endif
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)
 #endif
@@ -187,7 +190,7 @@
 #define INT_AC97			(INT_TRI_BASE + 17)
 #endif
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#define INT_SPI_6			(INT_SEC_BASE + 15)
+#define INT_SPI_6			(INT_TRI_BASE + 15)
 #endif
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define INT_NOR_FLASH			(INT_TRI_BASE + 16)
