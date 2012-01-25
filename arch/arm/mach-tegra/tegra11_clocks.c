@@ -38,7 +38,7 @@
 #include "dvfs.h"
 #include "pm.h"
 #include "sleep.h"
-#include "tegra3_emc.h"  /* FIXME: tegra11_emc.h */
+#include "tegra11_emc.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -2345,13 +2345,8 @@ static struct clk_ops tegra_clk_out_ops = {
 static void tegra11_emc_clk_init(struct clk *c)
 {
 	tegra11_periph_clk_init(c);
-
-	/* On A01 limit EMC maximum rate to boot frequency;
-	   starting with A02 full PLLM range should be supported */
-	if (tegra_get_revision() == TEGRA_REVISION_A01)
-		c->max_rate = clk_get_rate_locked(c);
-	else
-		c->max_rate = clk_get_rate(c->parent);
+	tegra_emc_dram_type_init(c);
+	c->max_rate = clk_get_rate(c->parent);
 }
 
 static long tegra11_emc_clk_round_rate(struct clk *c, unsigned long rate)
