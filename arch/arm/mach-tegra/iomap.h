@@ -550,65 +550,50 @@
 #endif
 
 /* On TEGRA, many peripherals are very closely packed in
- * two 256MB io windows (that actually only use about 64KB
+ * two 256 MB io windows (that actually only use about 64 KB
  * at the start of each).
  *
- * We will just map the first 1MB of each window (to minimize
+ * We will just map the first 1 MB of each window (to minimize
  * pt entries needed) and provide a macro to transform physical
  * io addresses to an appropriate void __iomem *.
  *
+ * Always map simulation specific devices to lowest address.
+ *
+ * The base address of each aperture must be aligned to a PMD
+ * (2 MB boundary).
+ *
  */
 
-#define IO_VIRT_BASE	0xFB000000
+#define ROUND_UP(x, n)		(((x) + (n) - 1) & ~((n) - 1))
+#define IO_VIRT_ROUND_UP(x)	ROUND_UP(x, SZ_2M)
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_PCIE_PHYS	0x80000000
-#else
-#define IO_PCIE_PHYS	0x00000000
-#endif
-#define IO_PCIE_VIRT	IOMEM(IO_VIRT_BASE)
-#define IO_PCIE_SIZE	(SZ_16M * 3)
+/* Define physical aperture limits */
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 #define IO_SMC_PHYS	0x77000000
-#define IO_SMC_VIRT	IOMEM(0xFDC00000)
 #define IO_SMC_SIZE	SZ_1M
 
 #define IO_SIM_ESCAPE_PHYS	0x538f0000
-#define IO_SIM_ESCAPE_VIRT	IOMEM(0xFDE00000)
 #define IO_SIM_ESCAPE_SIZE	SZ_4K
 #endif
 
+#define IO_IRAM_PHYS	0x40000000
+#define IO_IRAM_SIZE	SZ_256K
+
 #define IO_CPU_PHYS	0x50000000
-#define IO_CPU_VIRT	IOMEM(IO_PCIE_VIRT + IO_PCIE_SIZE)
 #define IO_CPU_SIZE	SZ_1M
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define IO_PPCS_PHYS	0xC4000000
-#else
-#define IO_PPCS_PHYS	0x7C000000
-#endif
-#define IO_PPCS_VIRT	IOMEM(IO_CPU_VIRT + IO_CPU_SIZE)
-#define IO_PPCS_SIZE	SZ_1M
-
 #define IO_PPSB_PHYS	0x60000000
-#define IO_PPSB_VIRT	IOMEM(IO_PPCS_VIRT + IO_PPCS_SIZE)
 #define IO_PPSB_SIZE	SZ_1M
 
 #define IO_APB_PHYS	0x70000000
-#define IO_APB_VIRT	IOMEM(IO_PPSB_VIRT + IO_PPSB_SIZE)
 #define IO_APB_SIZE	SZ_1M
-
-#define IO_IRAM_PHYS	0x40000000
-#define IO_IRAM_VIRT	IOMEM(IO_APB_VIRT + IO_APB_SIZE)
-#define IO_IRAM_SIZE	SZ_256K
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_USB_PHYS	0xC5000000
 #else
 #define IO_USB_PHYS	0x7D000000
 #endif
-#define IO_USB_VIRT	IOMEM(IO_IRAM_VIRT + IO_IRAM_SIZE)
 #define IO_USB_SIZE	SZ_1M
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -616,12 +601,43 @@
 #else
 #define IO_SDMMC_PHYS	0x78000000
 #endif
-#define IO_SDMMC_VIRT	IOMEM(IO_USB_VIRT + IO_USB_SIZE)
 #define IO_SDMMC_SIZE	SZ_1M
 
 #define IO_HOST1X_PHYS	0x54000000
-#define IO_HOST1X_VIRT	IOMEM(IO_SDMMC_VIRT + IO_SDMMC_SIZE)
 #define IO_HOST1X_SIZE	SZ_8M
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define IO_PPCS_PHYS	0xC4000000
+#else
+#define IO_PPCS_PHYS	0x7C000000
+#endif
+#define IO_PPCS_SIZE	SZ_1M
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define IO_PCIE_PHYS	0x80000000
+#else
+#define IO_PCIE_PHYS	0x00000000
+#endif
+#define IO_PCIE_SIZE	(SZ_16M * 3)
+
+/* Virtual aperture limits are packed into the I/O space from the higest
+   address to lowest with each aperture base address adjusted as necessary
+   for proper section mapping boundary (2 MB) rounding. */
+
+#define IO_LAST_ADDR		IOMEM(0xFF000000)
+#define IO_HOST1X_VIRT		IOMEM((IO_LAST_ADDR - IO_VIRT_ROUND_UP(IO_HOST1X_SIZE)))
+#define IO_SDMMC_VIRT		IOMEM((IO_HOST1X_VIRT - IO_VIRT_ROUND_UP(IO_SDMMC_SIZE)))
+#define IO_USB_VIRT		IOMEM((IO_SDMMC_VIRT - IO_VIRT_ROUND_UP(IO_USB_SIZE)))
+#define IO_APB_VIRT		IOMEM((IO_USB_VIRT - IO_VIRT_ROUND_UP(IO_APB_SIZE)))
+#define IO_PPSB_VIRT		IOMEM((IO_APB_VIRT - IO_VIRT_ROUND_UP(IO_PPSB_SIZE)))
+#define IO_CPU_VIRT		IOMEM((IO_PPSB_VIRT - IO_VIRT_ROUND_UP(IO_CPU_SIZE)))
+#define IO_IRAM_VIRT		IOMEM((IO_CPU_VIRT - IO_VIRT_ROUND_UP(IO_IRAM_SIZE)))
+#define IO_PPCS_VIRT		IOMEM((IO_IRAM_VIRT - IO_VIRT_ROUND_UP(IO_PPCS_SIZE)))
+#define IO_PCIE_VIRT		IOMEM((IO_PPCS_VIRT - IO_VIRT_ROUND_UP(IO_PCIE_SIZE)))
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+#define IO_SIM_ESCAPE_VIRT	IOMEM((IO_PCIE_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE)))
+#define IO_SMC_VIRT		IOMEM((IO_SIM_ESCAPE_VIRT - IO_VIRT_ROUND_UP(IO_SMC_SIZE)))
+#endif
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
 #define IO_TO_VIRT_XLATE(p, pst, vst)	(((p) - (pst) + (vst)))
