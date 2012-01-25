@@ -112,6 +112,14 @@ config TEGRA_AHB
 
 comment "Tegra board type"
 
+config MACH_CURACAO
+       bool "Curacao board"
+       depends on ARCH_TEGRA_11x_SOC
+       select TEGRA_FPGA_PLATFORM
+       help
+         Support for NVIDIA Curacao FPGA development platform
+
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
