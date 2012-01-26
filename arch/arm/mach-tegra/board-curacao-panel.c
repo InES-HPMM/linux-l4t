@@ -22,55 +22,52 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/resource.h>
-#include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/pwm_backlight.h>
 #include <linux/nvhost.h>
+
 #include <mach/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
 
+#include <asm/mach-types.h>
+
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
 
-#define PANEL_ENABLE		0
+#define PANEL_ENABLE	1
 
 #if PANEL_ENABLE
 
-#define curacao_lvds_shutdown	TEGRA_GPIO_PB2
-#define curacao_bl_enb		TEGRA_GPIO_PW1
+#define DSI_PANEL_218	1
+
+#define DSI_PANEL_RESET	1
+#define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static int curacao_backlight_init(struct device *dev)
 {
-	int ret;
-
-	ret = gpio_request(curacao_bl_enb, "backlight_enb");
-	if (ret < 0)
-		return ret;
-
-	ret = gpio_direction_output(curacao_bl_enb, 1);
-	if (ret < 0)
-		gpio_free(curacao_bl_enb);
-	else
-		tegra_gpio_enable(curacao_bl_enb);
-
-	return ret;
-};
+#if DSI_PANEL_218
+	/* TODO: Enable backlight for dsi panel */
+#endif
+	return -ENODEV;
+}
 
 static void curacao_backlight_exit(struct device *dev)
 {
-	gpio_set_value(curacao_bl_enb, 0);
-	gpio_free(curacao_bl_enb);
-	tegra_gpio_disable(curacao_bl_enb);
+#if DSI_PANEL_218
+	/* TODO: Exit backlight for dsi panel */
+#endif
 }
 
 static int curacao_backlight_notify(struct device *unused, int brightness)
 {
-	gpio_set_value(curacao_bl_enb, !!brightness);
-	return brightness;
+#if DSI_PANEL_218
+	/* TODO: Backlight notify for dsi panel */
+#endif
+	return -ENODEV;
 }
 
 static struct platform_pwm_backlight_data curacao_backlight_data = {
@@ -93,38 +90,31 @@ static struct platform_device curacao_backlight_device = {
 
 static int curacao_panel_enable(void)
 {
-	static struct regulator *reg;
-
-	if (reg == NULL) {
-		reg = regulator_get(NULL, "avdd_lvds");
-		if (WARN_ON(IS_ERR(reg)))
-			pr_err("%s: couldn't get regulator avdd_lvds: %ld\n",
-			       __func__, PTR_ERR(reg));
-		else
-			regulator_enable(reg);
-	}
-
-	gpio_set_value(curacao_lvds_shutdown, 1);
-	return 0;
+#if DSI_PANEL_218
+	/* TODO: DSI panel enable */
+#endif
+	return -ENODEV;
 }
 
 static int curacao_panel_disable(void)
 {
-	gpio_set_value(curacao_lvds_shutdown, 0);
-	return 0;
+#if DSI_PANEL_218
+	/* TODO: DSI panel disable */
+#endif
+	return -ENODEV;
 }
 
 static struct resource curacao_disp1_resources[] = {
 	{
 		.name	= "irq",
-		.start	= INT_DISPLAY_GENERAL,
-		.end	= INT_DISPLAY_GENERAL,
+		.start	= INT_DISPLAY_B_GENERAL,
+		.end	= INT_DISPLAY_B_GENERAL,
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
 		.name	= "regs",
-		.start	= TEGRA_DISPLAY_BASE,
-		.end	= TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE-1,
+		.start	= TEGRA_DISPLAY2_BASE,
+		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE-1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -133,36 +123,131 @@ static struct resource curacao_disp1_resources[] = {
 		.end	= 0,	/* Filled in by curacao_panel_init() */
 		.flags	= IORESOURCE_MEM,
 	},
+	{
+		.name	= "dsi_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
 };
 
 static struct tegra_dc_mode curacao_panel_modes[] = {
+#if DSI_PANEL_218
 	{
-		.pclk = 18000000,
-		.h_ref_to_sync = 8,
-		.v_ref_to_sync = 2,
-		.h_sync_width = 4,
-		.v_sync_width = 1,
-		.h_back_porch = 20,
-		.v_back_porch = 7,
-		.h_active = 480,
-		.v_active = 640,
-		.h_front_porch = 8,
-		.v_front_porch = 8,
+		.pclk = 323000000,
+		.h_ref_to_sync = 11,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 16,
+		.v_sync_width = 4,
+		.h_back_porch = 16,
+		.v_back_porch = 4,
+		.h_active = 864,
+		.v_active = 480,
+		.h_front_porch = 16,
+		.v_front_porch = 4,
 	},
+#endif
 };
 
 static struct tegra_fb_data curacao_fb_data = {
 	.win		= 0,
-	.xres		= 480,
-	.yres		= 640,
-	.bits_per_pixel	= 16,
+#if DSI_PANEL_218
+	.xres		= 864,
+	.yres		= 480,
+#endif
+	.bits_per_pixel = 32,
+	.flags		= TEGRA_FB_FLIP_ON_PROBE,
+};
+
+static struct tegra_dsi_cmd dsi_init_cmd[] = {
+#if DSI_PANEL_218
+	DSI_CMD_SHORT(0x05, 0x11, 0x00),
+	DSI_DLY_MS(20),
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+	DSI_CMD_SHORT(0x15, 0x35, 0x00),
+#endif
+	DSI_CMD_SHORT(0x05, 0x29, 0x00),
+	DSI_DLY_MS(20),
+#endif
+};
+
+static struct tegra_dsi_cmd dsi_early_suspend_cmd[] = {
+#if DSI_PANEL_218
+	DSI_CMD_SHORT(0x05, 0x28, 0x00),
+	DSI_DLY_MS(20),
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+	DSI_CMD_SHORT(0x05, 0x34, 0x00),
+#endif
+#endif
+};
+
+static struct tegra_dsi_cmd dsi_late_resume_cmd[] = {
+#if DSI_PANEL_218
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+	DSI_CMD_SHORT(0x15, 0x35, 0x00),
+#endif
+	DSI_CMD_SHORT(0x05, 0x29, 0x00),
+	DSI_DLY_MS(20),
+#endif
+};
+
+static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
+#if DSI_PANEL_218
+	DSI_CMD_SHORT(0x05, 0x28, 0x00),
+	DSI_DLY_MS(20),
+#if (DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
+	DSI_CMD_SHORT(0x05, 0x34, 0x00),
+#endif
+	DSI_CMD_SHORT(0x05, 0x10, 0x00),
+	DSI_DLY_MS(5),
+#endif
+};
+
+static struct tegra_dsi_out curacao_dsi = {
+#if DSI_PANEL_218
+	.n_data_lanes = 2,
+#else
+	.n_data_lanes = 4,
+#endif
+	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
+	.refresh_rate = 60,
+	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
+
+	.dsi_instance = 0,
+	.controller_vs = DSI_VS_1,
+
+	.panel_reset = DSI_PANEL_RESET,
+	.power_saving_suspend = true,
+
+	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
+	.dsi_init_cmd = dsi_init_cmd,
+
+	.n_early_suspend_cmd = ARRAY_SIZE(dsi_early_suspend_cmd),
+	.dsi_early_suspend_cmd = dsi_early_suspend_cmd,
+
+	.n_late_resume_cmd = ARRAY_SIZE(dsi_late_resume_cmd),
+	.dsi_late_resume_cmd = dsi_late_resume_cmd,
+
+	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+	.dsi_suspend_cmd = dsi_suspend_cmd,
+
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+	.lp_cmd_mode_freq_khz = 20000,
+
+	/* TODO: Get the vender recommended freq */
+	.lp_read_cmd_mode_freq_khz = 200000,
+
+	.fpga_freq_khz = 162000,
 };
 
 static struct tegra_dc_out curacao_disp1_out = {
-	.type		= TEGRA_DC_OUT_RGB,
+	.type		= TEGRA_DC_OUT_DSI,
+	.dsi		= &curacao_dsi,
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+
+	.flags		= DC_CTRL_MODE,
 
 	.modes		= curacao_panel_modes,
 	.n_modes	= ARRAY_SIZE(curacao_panel_modes),
@@ -179,7 +264,7 @@ static struct tegra_dc_platform_data curacao_disp1_pdata = {
 
 static struct nvhost_device curacao_disp1_device = {
 	.name		= "tegradc",
-	.id		= 0,
+	.id		= 1,
 	.resource	= curacao_disp1_resources,
 	.num_resources	= ARRAY_SIZE(curacao_disp1_resources),
 	.dev = {
