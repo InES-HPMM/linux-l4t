@@ -50,6 +50,7 @@ enum {
 	THRESHOLD_INDEX_11,
 	THRESHOLD_INDEX_12,
 	THRESHOLD_INDEX_13,
+	THRESHOLD_INDEX_14,
 	THRESHOLD_INDEX_COUNT,
 };
 
@@ -68,6 +69,7 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 	{180},
 	{185},
 	{185},
+	{220},
 };
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
@@ -85,6 +87,7 @@ static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 	{295, 336, 358, 375, 391, UINT_MAX},
 	{300, 311, 360, 371, 381, 415, 431},
 	{300, 311, 410, 431, UINT_MAX},
+	{368, 368, 368, 368, 392, UINT_MAX},
 };
 
 static int threshold_index;
@@ -197,6 +200,25 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 			tegra_cpu_speedo_id = 8;
 			tegra_soc_speedo_id = 1;
 			threshold_index = THRESHOLD_INDEX_11;
+			break;
+		case 0xA0: /* T37 or A37 */
+			switch (tegra_package_id) {
+			case 1: /* MID => T37 */
+				tegra_cpu_speedo_id = 13;
+				tegra_soc_speedo_id = 2;
+				threshold_index = THRESHOLD_INDEX_14;
+				break;
+			case 2: /* DSC => AP37 */
+				tegra_cpu_speedo_id = 12;
+				tegra_soc_speedo_id = 2;
+				threshold_index = THRESHOLD_INDEX_9;
+				break;
+			default:
+				pr_err("Tegra3 Rev-A02: Reserved pkg: %d\n",
+						tegra_package_id);
+				BUG();
+				break;
+			}
 			break;
 		case 0x08:
 			tegra_cpu_speedo_id = 1;
