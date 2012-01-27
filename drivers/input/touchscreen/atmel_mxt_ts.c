@@ -694,6 +694,11 @@ static void mxt_input_touchevent(struct mxt_data *data,
 	if (data->driver_paused)
 		return;
 
+	if (id > MXT_MAX_FINGER) {
+		dev_err(dev, "MXT_MAX_FINGER exceeded!\n");
+		return;
+	}
+
 	/* Check the touch is present on the screen */
 	if (!(status & MXT_DETECT)) {
 		if (status & MXT_RELEASE) {
