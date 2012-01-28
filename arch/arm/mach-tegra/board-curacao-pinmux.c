@@ -132,7 +132,7 @@ static __initdata struct tegra_pingroup_config curacao_pinmux[] = {
 	DEFAULT_PINMUX(GMI_RST_N,       GMI,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GEN2_I2C_SCL,    I2C2,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GEN2_I2C_SDA,    I2C2,            NORMAL,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_CLK,      SDMMC4,          NORMAL,    NORMAL,     OUTPUT),
+	DEFAULT_PINMUX(SDMMC4_CLK,      SDMMC4,          NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SDMMC4_CMD,      SDMMC4,          PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(SDMMC4_DAT0,     SDMMC4,          PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(SDMMC4_DAT1,     SDMMC4,          PULL_UP,   NORMAL,     INPUT),
