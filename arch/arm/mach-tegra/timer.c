@@ -200,6 +200,15 @@ static void __init tegra_twd_init(void)
 		pr_err("twd_local_timer_register failed %d\n", err);
 }
 
+int tegra_twd_get_state(struct tegra_twd_context *context)
+{
+	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
+	context->twd_load = readl(twd_base + TWD_TIMER_LOAD);
+	context->twd_cnt = readl(twd_base + TWD_TIMER_COUNTER);
+
+	return 0;
+}
+
 void tegra_twd_suspend(struct tegra_twd_context *context)
 {
 	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
