@@ -306,6 +306,12 @@ int tegra_emc_set_rate(unsigned long rate);
 long tegra_emc_round_rate(unsigned long rate);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
 void tegra_emc_timing_invalidate(void);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
+{ return true; }
+#else
+bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
+#endif
 #endif /* !CONFIG_COMMON_CLK */
 
 struct tegra_sku_rate_limit {
