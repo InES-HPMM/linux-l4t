@@ -51,6 +51,7 @@
 #define KBC_CONTROL_FIFO_CNT_INT_EN	(1 << 3)
 #define KBC_CONTROL_KEYPRESS_INT_EN	(1 << 1)
 #define KBC_CONTROL_KBC_EN		(1 << 0)
+#define KBC_CONTROL_KP_INT_EN		(1<<1)
 
 /* KBC Interrupt Register */
 #define KBC_INT_0	0x4
@@ -377,6 +378,7 @@ static int tegra_kbc_start(struct tegra_kbc *kbc)
 	val |= KBC_FIFO_TH_CNT_SHIFT(1); /* set fifo interrupt threshold to 1 */
 	val |= KBC_CONTROL_FIFO_CNT_INT_EN;  /* interrupt on FIFO threshold */
 	val |= KBC_CONTROL_KBC_EN;     /* enable */
+	val |= KBC_CONTROL_KP_INT_EN;
 	writel(val, kbc->mmio + KBC_CONTROL_0);
 
 	writel(DEFAULT_INIT_DLY, kbc->mmio + KBC_INIT_DLY_0);
