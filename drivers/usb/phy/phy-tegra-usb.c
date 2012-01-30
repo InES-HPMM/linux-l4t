@@ -2017,6 +2017,7 @@ static void tegra_usb_phy_close(struct usb_phy *x)
 static int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 {
 	int ret = 0;
+	bool is_dpd = false;
 
 	const tegra_phy_fp power_on[] = {
 		utmi_phy_power_on,
@@ -2028,13 +2029,17 @@ static int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 	if (phy->power_on)
 		return ret;
 
+	if ((phy->instance == 0) && usb_phy_data[0].vbus_irq &&
+		(phy->mode == TEGRA_USB_PHY_MODE_DEVICE))
+		is_dpd = true;
+
 	if (phy->reg_vdd && !phy->regulator_on) {
 		regulator_enable(phy->reg_vdd);
 		phy->regulator_on = 1;
 	}
 
 	if (power_on[phy->usb_phy_type])
-		ret = power_on[phy->usb_phy_type](phy, false);
+		ret = power_on[phy->usb_phy_type](phy, is_dpd);
 
 	phy->power_on = true;
 	return ret;
@@ -2042,6 +2047,7 @@ static int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 
 static int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 {
+	bool is_dpd = false;
 	const tegra_phy_fp power_off[] = {
 		utmi_phy_power_off,
 		ulpi_phy_power_off,
@@ -2052,10 +2058,14 @@ static int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 	if (!phy->power_on)
 		return;
 
-	if (power_off[phy->usb_phy_type])
-		power_off[phy->usb_phy_type](phy, false);
+	if ((phy->instance == 0) && usb_phy_data[0].vbus_irq &&
+		(phy->mode == TEGRA_USB_PHY_MODE_DEVICE))
+		is_dpd = true;
 
-	if (phy->reg_vdd && phy->regulator_on) {
+	if (power_off[phy->usb_phy_type])
+		power_off[phy->usb_phy_type](phy, is_dpd);
+
+	if (phy->reg_vdd && phy->regulator_on && is_dpd) {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		if (tegra_get_revision() >= TEGRA_REVISION_A03)
 #endif
