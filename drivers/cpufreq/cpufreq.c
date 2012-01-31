@@ -1677,8 +1677,8 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	int ret = 0, failed = 1;
 	unsigned int pmin = policy->min;
 	unsigned int pmax = policy->max;
-	unsigned int qmin = pm_qos_request(PM_QOS_CPU_FREQ_MIN);
-	unsigned int qmax = pm_qos_request(PM_QOS_CPU_FREQ_MAX);
+	unsigned int qmin = min(pm_qos_request(PM_QOS_CPU_FREQ_MIN), data->max);
+	unsigned int qmax = max(pm_qos_request(PM_QOS_CPU_FREQ_MAX), data->min);
 
 	pr_debug("setting new policy for CPU %u: %u - %u (%u - %u) kHz\n",
 		policy->cpu, pmin, pmax, qmin, qmax);
