@@ -197,13 +197,10 @@ subsys_initcall(tegra_legacy_irq_syscore_init);
 #define tegra_set_wake NULL
 #endif
 
-void __iomem *tegra_gic_cpu_base;
-
 void __init tegra_init_irq(void)
 {
 	int i;
 	void __iomem *distbase;
-	u32 midr;
 
 	distbase = IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE);
 	num_ictlrs = readl_relaxed(distbase + GIC_DIST_CTR) & 0x1f;
@@ -230,19 +227,7 @@ void __init tegra_init_irq(void)
 	gic_arch_extn.irq_set_wake = tegra_set_wake;
 	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
-	__asm__("mrc p15, 0, %0, c0, c0, 0\n" : "=r" (midr));
-
-	if ((midr & 0x0000FFF0) == 0x0000C090)
-		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
-	else
-		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x2000);
-
-	/*
-	 * Check if there is a devicetree present, since the GIC will be
-	 * initialized elsewhere under DT.
-	 */
-	if (!of_have_populated_dt())
-		gic_init(0, 29, distbase, tegra_gic_cpu_base);
+	tegra_gic_init();
 }
 
 void tegra_init_legacy_irq_cop(void)

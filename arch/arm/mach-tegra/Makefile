@@ -19,7 +19,6 @@ obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
 else
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 endif
-endif
 
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
