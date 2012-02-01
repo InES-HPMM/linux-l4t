@@ -50,6 +50,7 @@ config ARCH_TEGRA_3x_SOC
 	select PINCTRL_TEGRA30
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select TEGRA_LP2_ARM_TWD if HAVE_ARM_TWD
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
 	select USB_ULPI_VIEWPORT if USB_PHY
@@ -245,6 +246,9 @@ config TEGRA_WDT_RECOVERY
 	help
 	  Enables watchdog recovery mechanism to protect against
 	  suspend/resume hangs.
+
+config TEGRA_LP2_ARM_TWD
+	bool
 endif
 
 config TEGRA_SLOW_CSITE
