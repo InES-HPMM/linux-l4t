@@ -15,11 +15,29 @@ obj-y                                   += clock.o
 obj-y                                   += timer.o
 obj-y                                   += timerinfo.o
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
-obj-y                                   += timer-t2.o
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
 else
-ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
-obj-y                                   += timer-t3.o
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 endif
+endif
+
+ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
+obj-y                                   += common-t2.o
+obj-y                                   += pm-t2.o
+obj-y                                   += sleep-t2.o
+obj-y                                   += timer-t2.o
+obj-y                                   += wakeups-t2.o
+else
+obj-y                                   += common-t3.o
+obj-y                                   += pm-t3.o
+obj-y                                   += sleep-t30.o
+obj-y                                   += timer-t3.o
+obj-y                                   += wakeups-t3.o
+ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+obj-y                                   += cpu-tegra3.o
+endif
+endif
+
 obj-y                                   += pinmux.o
 obj-y                                   += delay.o
 obj-y                                   += pm.o
@@ -61,7 +79,6 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += pinmux-t11-tables.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra20_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= sleep-t30.o
 obj-$(CONFIG_HOTPLUG_CPU)               += hotplug.o
 obj-y					+= pmc.o
 obj-y					+= flowctrl.o
@@ -72,9 +89,6 @@ obj-$(CONFIG_SMP)                       += platsmp.o
 obj-y                                   += reset.o
 obj-y                                   += headsmp.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
-ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
-endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_PM_SLEEP),y)

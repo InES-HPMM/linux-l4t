@@ -3,7 +3,7 @@
  *
  * Declarations for power state transition code
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -34,8 +34,7 @@ bool tegra2_lp2_is_allowed(struct cpuidle_device *dev,
 #ifdef CONFIG_DEBUG_FS
 int tegra2_lp2_debug_show(struct seq_file *s, void *data);
 #endif
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 bool tegra3_idle_lp2(struct cpuidle_device *dev, struct cpuidle_state *state);
 void tegra3_cpu_idle_stats_lp2_ready(unsigned int cpu);
 void tegra3_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us);
@@ -60,8 +59,7 @@ static inline void tegra_cpu_idle_stats_lp2_ready(unsigned int cpu)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_cpu_idle_stats_lp2_ready(cpu);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	tegra3_cpu_idle_stats_lp2_ready(cpu);
 #endif
 }
@@ -70,8 +68,7 @@ static inline void tegra_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_cpu_idle_stats_lp2_time(cpu, us);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	tegra3_cpu_idle_stats_lp2_time(cpu, us);
 #endif
 }
@@ -81,8 +78,7 @@ static inline bool tegra_idle_lp2(struct cpuidle_device *dev,
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_idle_lp2(dev, state);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	return tegra3_idle_lp2(dev, state);
 #endif
 }
@@ -92,8 +88,7 @@ static inline bool tegra_lp2_is_allowed(struct cpuidle_device *dev,
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_lp2_is_allowed(dev, state);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	return tegra3_lp2_is_allowed(dev, state);
 #endif
 }
@@ -113,8 +108,7 @@ static inline int tegra_lp2_debug_show(struct seq_file *s, void *data)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_lp2_debug_show(s, data);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#else
 	return tegra3_lp2_debug_show(s, data);
 #endif
 }
