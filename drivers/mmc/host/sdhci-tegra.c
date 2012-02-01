@@ -601,10 +601,6 @@ static void tegra_sdhci_suspend(struct sdhci_host *sdhci)
 	tegra_sdhci_set_clock(sdhci, 0);
 
 	/* Disable the power rails if any */
-	if (tegra_host->vdd_slot_reg)
-		regulator_disable(tegra_host->vdd_slot_reg);
-	if (tegra_host->vdd_io_reg)
-		regulator_disable(tegra_host->vdd_io_reg);
 	if (tegra_host->card_present) {
 		if (tegra_host->is_rail_enabled) {
 			if (tegra_host->vdd_io_reg)
