@@ -18,6 +18,7 @@
 #include <linux/irqnr.h>
 
 #include <asm/hardware/gic.h>
+#include <asm/cpu_pm.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -128,6 +129,27 @@ void tegra_gic_affinity_to_cpu0(void)
 	wmb();
 }
 #endif
+
+static int tegra_gic_notifier(struct notifier_block *self, unsigned long cmd, void *v)
+{
+	u32 gic_cpu_ctrl;
+
+	switch (cmd) {
+	case CPU_PM_ENTER:
+		gic_cpu_ctrl = readl(tegra_gic_cpu_base + GIC_CPU_CTRL);
+		if (gic_cpu_ctrl & 1) {
+			gic_cpu_ctrl |= 0x1E0;
+			writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
+		}
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra_gic_notifier_block = {
+	.notifier_call = tegra_gic_notifier,
+};
 #endif
 
 void __init tegra_gic_init(void)
@@ -146,4 +168,9 @@ void __init tegra_gic_init(void)
 
 	gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
 		 tegra_gic_cpu_base);
+
+#ifdef CONFIG_PM_SLEEP
+	if (is_vgic)
+		cpu_pm_register_notifier(&tegra_gic_notifier_block);
+#endif
 }
