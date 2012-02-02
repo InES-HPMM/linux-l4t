@@ -31,9 +31,19 @@ static bool is_vgic;
 
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 
-void tegra_gic_cpu_disable(void)
+void tegra_gic_cpu_disable(bool pass_through)
 {
-	writel(0, tegra_gic_cpu_base + GIC_CPU_CTRL);
+	u32 gic_cpu_ctrl = 0;
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	if (pass_through) {
+		if (is_vgic)
+			gic_cpu_ctrl = 0x1E0;
+		else
+			gic_cpu_ctrl = 2;
+	}
+#endif
+	writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
 }
 
 void tegra_gic_cpu_enable(void)
@@ -41,16 +51,6 @@ void tegra_gic_cpu_enable(void)
 	writel(1, tegra_gic_cpu_base + GIC_CPU_CTRL);
 }
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-
-void tegra_gic_pass_through_disable(void)
-{
-	u32 val = readl(tegra_gic_cpu_base + GIC_CPU_CTRL);
-	val |= 2; /* enableNS = disable GIC pass through */
-	writel(val, tegra_gic_cpu_base + GIC_CPU_CTRL);
-}
-
-#endif
 #endif
 
 #if defined(CONFIG_PM_SLEEP)

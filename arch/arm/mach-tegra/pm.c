@@ -433,13 +433,7 @@ static void suspend_cpu_complex(u32 mode)
 		flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(i));
 	}
 
-	tegra_gic_cpu_disable();
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Tegra3 enters LPx states via WFI - do not propagate legacy IRQs
-	   to CPU core to avoid fall through WFI (IRQ-to-flow controller wake
-	   path is not affected). */
-	tegra_gic_pass_through_disable();
-#endif
+	tegra_gic_cpu_disable(true);
 }
 
 void tegra_clear_cpu_in_lp2(int cpu)

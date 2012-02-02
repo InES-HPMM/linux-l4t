@@ -43,13 +43,7 @@ void tegra_cpu_die(unsigned int cpu)
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* Disable GIC CPU interface for this CPU. */
-	tegra_gic_cpu_disable();
-
-	/* Tegra3 enters LPx states via WFI - do not propagate legacy IRQs
-	   to CPU core to avoid fall through WFI; then GIC output will be
-	   enabled, however at this time - CPU is dying - no interrupt should
-	   have affinity to this CPU. */
-	tegra_gic_pass_through_disable();
+	tegra_gic_cpu_disable(false);
 #endif
 
 	/* Flush the L1 data cache. */
