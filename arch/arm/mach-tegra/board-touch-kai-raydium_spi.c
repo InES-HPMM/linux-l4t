@@ -40,7 +40,6 @@ struct spi_board_info rm31080a_spi_board[] = {
 		.modalias = "rm_ts_spidev",
 		.bus_num = 0,
 		.chip_select = 0,
-		.irq = TEGRA_GPIO_TO_IRQ(TOUCH_GPIO_IRQ_RAYDIUM_SPI),
 		.max_speed_hz = 18*1000*1000,
 		.mode = SPI_MODE_0,
 		.platform_data = &rm31080ts_data,
@@ -60,6 +59,8 @@ int __init touch_init_raydium(void)
 	msleep(1);
 	gpio_set_value(TOUCH_GPIO_RST_RAYDIUM_SPI, 1);
 	msleep(100);
+
+	rm31080a_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 
 	spi_register_board_info(rm31080a_spi_board,
 					ARRAY_SIZE(rm31080a_spi_board));
