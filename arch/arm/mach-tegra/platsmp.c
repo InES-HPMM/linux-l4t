@@ -51,14 +51,29 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 #define CAR_BOND_OUT_V_CPU_G	(1<<0)
 #endif
 
+#ifdef CONFIG_HAVE_ARM_SCU
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
+static inline unsigned int get_core_count(void)
+{
+	return scu_get_core_count(scu_base);
+}
+#else
+static inline unsigned int get_core_count(void)
+{
+	u32 l2ctlr;
+
+	__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
+
+	return ((l2ctlr >> 24) & 3) + 1;
+}
+#endif
 
 static unsigned int available_cpus(void)
 {
 	static unsigned int ncores;
 
 	if (ncores == 0) {
-		ncores = scu_get_core_count(scu_base);
+		ncores = get_core_count();
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		if (ncores > 1) {
 			u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
@@ -305,7 +320,10 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 			__raw_writel(scu_ctrl, scu_base);
 	}
 #endif
+
+#ifdef CONFIG_HAVE_ARM_SCU
 	scu_enable(scu_base);
+#endif
 }
 
 struct smp_operations tegra_smp_ops __initdata = {

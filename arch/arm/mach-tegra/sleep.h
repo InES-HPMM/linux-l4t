@@ -79,8 +79,10 @@
 #ifdef CONFIG_CACHE_L2X0
 #define TEGRA_PL310_VIRT (TEGRA_ARM_PL310_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
 #endif
+#ifdef CONFIG_HAVE_ARM_SCU
 #define TEGRA_ARM_PERIF_VIRT (TEGRA_ARM_PERIF_BASE - IO_CPU_PHYS \
 					+ IO_CPU_VIRT)
+#endif
 #define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
 					+ IO_PPSB_VIRT)
 #define TEGRA_CLK_RESET_VIRT (TEGRA_CLK_RESET_BASE - IO_PPSB_PHYS \
@@ -142,6 +144,7 @@
 	bic	\tmp1, \tmp1, #(1<<6) | (1<<0)	@ clear ACTLR.SMP | ACTLR.FW
 	mcr	p15, 0, \tmp1, c1, c0, 1	@ ACTLR
 	isb
+#ifdef CONFIG_HAVE_ARM_SCU
 	cpu_id	\tmp1
 	mov	\tmp1, \tmp1, lsl #2
 	mov	\tmp2, #0xf
@@ -149,6 +152,7 @@
 	mov32	\tmp1, TEGRA_ARM_PERIF_VIRT + 0xC
 	str	\tmp2, [\tmp1]			@ invalidate SCU tags for CPU
 	dsb
+#endif
 .endm
 
 #define DEBUG_CONTEXT_STACK	0

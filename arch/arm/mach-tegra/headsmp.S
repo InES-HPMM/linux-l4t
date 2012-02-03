@@ -81,6 +81,7 @@ ENTRY(tegra_resume)
 	str	r1, [r2]
 #endif
 
+#ifdef CONFIG_HAVE_ARM_SCU
 	/* enable SCU */
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
@@ -91,6 +92,7 @@ ENTRY(tegra_resume)
 	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
 #endif
 	str	r1, [r0]
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* wake up (should have specified args?) */
