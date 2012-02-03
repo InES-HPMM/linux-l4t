@@ -67,6 +67,7 @@ config FIQ_DEBUGGER_CONSOLE_DEFAULT_ENABLE
 	help
 	  If enabled, this puts the fiq debugger into console mode by default.
 	  Otherwise, the fiq debugger will start out in debug mode.
+
 config GIC_SET_MULTIPLE_CPUS
 	bool "Use affinity hint to allow multiple CPUs for IRQ"
 	depends on ARM_GIC && SMP
