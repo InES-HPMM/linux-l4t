@@ -62,6 +62,7 @@
 
 #include "board.h"
 #include "clock.h"
+#include "common.h"
 #include "cpuidle.h"
 #include "fuse.h"
 #include "gic.h"
