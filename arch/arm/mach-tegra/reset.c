@@ -20,7 +20,6 @@
 #include <linux/bitops.h>
 
 #include <asm/cacheflush.h>
-#include <asm/hardware/cache-l2x0.h>
 
 #include "iomap.h"
 #include "irammap.h"

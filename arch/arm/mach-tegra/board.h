@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -78,7 +78,13 @@ void __init tegra_init_irq(void);
 void __init tegra_dt_init_irq(void);
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size);
+/* FIXME: The following needs to move common.h when arm_soc_desc is
+	  introduced in a future version of the kernel */
+#ifdef CONFIG_CACHE_L2X0
 void tegra_init_cache(bool init);
+#else
+static inline void tegra_init_cache(bool init) {}
+#endif
 void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);

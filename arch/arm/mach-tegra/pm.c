@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,6 @@
 #include <trace/events/power.h>
 
 #include <asm/cacheflush.h>
-#include <asm/hardware/cache-l2x0.h>
 #include <asm/idmap.h>
 #include <asm/localtimer.h>
 #include <asm/pgalloc.h>
@@ -577,9 +576,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
-#ifdef CONFIG_CACHE_L2X0
 	tegra_init_cache(false);
-#endif
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
 	restore_cpu_complex(mode);
 	cpu_cluster_pm_exit();
