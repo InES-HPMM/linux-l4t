@@ -261,6 +261,12 @@ config MACH_CURACAO
        help
          Support for NVIDIA Curacao FPGA development platform
 
+config MACH_BONAIRE
+       bool "Bonaire board"
+       depends on ARCH_TEGRA_12x_SOC
+       select TEGRA_FPGA_PLATFORM
+       help
+         Support for NVIDIA Bonaire FPGA development platform
 
 config MACH_DALMORE
        bool "Dalmore board"
