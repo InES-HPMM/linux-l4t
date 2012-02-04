@@ -3790,7 +3790,7 @@ static unsigned int hda_sync_power_state(struct hda_codec *codec,
 		if (time_after_eq(jiffies, end_time))
 			break;
 		/* wait until the codec reachs to the target state */
-		msleep(1);
+		mdelay(1);
 	}
 	return state;
 }
