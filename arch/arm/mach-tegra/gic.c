@@ -16,9 +16,9 @@
 #include <linux/cpumask.h>	/* Required by asm/hardware/gic.h */
 #include <linux/io.h>
 #include <linux/irqnr.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/hardware/gic.h>
-#include <asm/cpu_pm.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
