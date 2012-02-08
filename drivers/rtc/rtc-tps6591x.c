@@ -162,7 +162,7 @@ static int tps6591x_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_min = buff[1];
 	tm->tm_hour = buff[2];
 	tm->tm_mday = buff[3];
-	tm->tm_mon = buff[4];
+	tm->tm_mon = buff[4] - 1;
 	tm->tm_year = buff[5];
 	tm->tm_wday = buff[6];
 	print_time(dev, tm);
@@ -250,7 +250,7 @@ static int tps6591x_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	buff[1] = tm->tm_min;
 	buff[2] = tm->tm_hour;
 	buff[3] = tm->tm_mday;
-	buff[4] = tm->tm_mon;
+	buff[4] = tm->tm_mon + 1;
 	buff[5] = tm->tm_year;
 	buff[6] = tm->tm_wday;
 
@@ -309,7 +309,7 @@ static int tps6591x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	buff[1] = alrm->time.tm_min;
 	buff[2] = alrm->time.tm_hour;
 	buff[3] = alrm->time.tm_mday;
-	buff[4] = alrm->time.tm_mon;
+	buff[4] = alrm->time.tm_mon + 1;
 	buff[5] = alrm->time.tm_year;
 	convert_decimal_to_bcd(buff, sizeof(buff));
 	err = tps6591x_write_regs(dev, RTC_ALARM, sizeof(buff), buff);
@@ -333,7 +333,7 @@ static int tps6591x_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alrm->time.tm_min = buff[1];
 	alrm->time.tm_hour = buff[2];
 	alrm->time.tm_mday = buff[3];
-	alrm->time.tm_mon = buff[4];
+	alrm->time.tm_mon = buff[4] - 1;
 	alrm->time.tm_year = buff[5];
 
 	dev_info(dev->parent, "\n getting alarm time::\n");
