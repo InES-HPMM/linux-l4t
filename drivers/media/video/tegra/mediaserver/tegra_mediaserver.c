@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 NVIDIA Corp.
+ * Copyright (C) 2011-2012 NVIDIA Corp.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -283,7 +283,7 @@ block_done:
 					      PAGE_SIZE);
 				e = nvmap_alloc_handle_id(mediasrv->nvmap, id,
 					NVMAP_HEAP_CARVEOUT_IRAM, align,
-					NVMAP_HANDLE_WRITE_COMBINE);
+					0, NVMAP_HANDLE_WRITE_COMBINE);
 				CHECK_STATUS(e, iram_shared_alloc_fail);
 
 				physical_address =
