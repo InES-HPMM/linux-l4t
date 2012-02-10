@@ -1680,6 +1680,11 @@ static struct resource tegra_grhost_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
+		.start = TEGRA_TSEC_BASE,
+		.end = TEGRA_TSEC_BASE + TEGRA_TSEC_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	{
 		.start = INT_SYNCPT_THRESH_BASE,
 		.end = INT_SYNCPT_THRESH_BASE + INT_SYNCPT_THRESH_NR - 1,
 		.flags = IORESOURCE_IRQ,
