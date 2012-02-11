@@ -2,7 +2,6 @@
  * arch/arch/mach-tegra/timer.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -203,7 +202,25 @@ static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
 static void __init tegra_twd_init(void)
 {
-	int err = twd_local_timer_register(&twd_local_timer);
+	struct clk *cpu;
+	int ret;
+	int err;
+
+	/* The twd clock is a detached child of the CPU complex clock.
+	   Force an update of the twd clock after DVFS has updated the
+	   CPU clock rate. */
+
+	twd_clk = tegra_get_clock_by_name("twd");
+	BUG_ON(!twd_clk);
+	cpu = tegra_get_clock_by_name("cpu");
+	ret = clk_set_rate(twd_clk, clk_get_rate(cpu));
+
+	if (ret)
+		pr_err("Failed to set twd clock rate: %d\n", ret);
+	else
+		pr_debug("TWD clock rate: %ld\n", clk_get_rate(twd_clk));
+
+	err = twd_local_timer_register(&twd_local_timer);
 	if (err)
 		pr_err("twd_local_timer_register failed %d\n", err);
 }
