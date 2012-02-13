@@ -349,6 +349,8 @@ enum {
 	TEGRA_DC_OUT_RGB,
 	TEGRA_DC_OUT_HDMI,
 	TEGRA_DC_OUT_DSI,
+	TEGRA_DC_OUT_DP,
+	TEGRA_DC_OUT_LVDS,
 };
 
 struct tegra_dc_out_pin {
