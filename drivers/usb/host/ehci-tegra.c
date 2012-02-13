@@ -41,6 +41,11 @@ static const char driver_name[] = "tegra-ehci";
 
 #define TEGRA_USB_DMA_ALIGN 32
 
+#define HOSTPC_REG_OFFSET		0x1b4
+
+#define HOSTPC1_DEVLC_STS 		(1 << 28)
+#define HOSTPC1_DEVLC_NYT_ASUS		1
+
 struct tegra_ehci_hcd {
 	struct ehci_hcd *ehci;
 	struct tegra_usb_phy *phy;
@@ -311,6 +316,9 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int retval;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	u32 val;
+#endif
 
 	/* EHCI registers start at offset 0x100 */
 	ehci->caps = hcd->regs + 0x100;
@@ -318,6 +326,14 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	ehci->has_hostpc = tegra_usb_phy_has_hostpc(tegra->phy) ? 1 : 0;
 	ehci->broken_hostpc_phcd = true;
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	ehci->has_hostpc = 1;
+
+	val = readl(hcd->regs + HOSTPC_REG_OFFSET);
+	val &= ~HOSTPC1_DEVLC_STS;
+	val &= ~HOSTPC1_DEVLC_NYT_ASUS;
+	writel(val, hcd->regs + HOSTPC_REG_OFFSET);
+#endif
 	/* switch to host mode */
 	hcd->has_tt = 1;
 
