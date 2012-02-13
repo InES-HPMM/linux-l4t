@@ -54,9 +54,9 @@ static irqreturn_t rmi_i2c_irq_thread(int irq, void *p)
 
 #if IRQ_DEBUG
 	dev_dbg(phys->dev, "ATTN gpio, value: %d.\n",
-			gpio_get_value(irq_to_gpio(irq)));
+			gpio_get_value(pdata->irq));
 #endif
-	if (gpio_get_value(irq_to_gpio(irq)) == pdata->irq_polarity) {
+	if (gpio_get_value(pdata->irq) == pdata->irq_polarity) {
 		phys->info.attn_count++;
 		if (driver && driver->irq_handler && rmi_dev)
 			driver->irq_handler(rmi_dev, irq);

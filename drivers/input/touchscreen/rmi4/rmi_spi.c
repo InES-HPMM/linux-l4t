@@ -65,7 +65,7 @@ static irqreturn_t rmi_spi_hard_irq(int irq, void *p)
 	struct rmi_device_platform_data *pdata = phys->dev->platform_data;
 
 	if (data->split_read_pending &&
-		      gpio_get_value(irq_to_gpio(irq)) == pdata->irq_polarity) {
+		      gpio_get_value(pdata->irq) == pdata->irq_polarity) {
 		phys->info.attn_count++;
 		complete(&data->irq_comp);
 		return IRQ_HANDLED;
@@ -81,7 +81,7 @@ static irqreturn_t rmi_spi_irq_thread(int irq, void *p)
 	struct rmi_driver *driver = rmi_dev->driver;
 	struct rmi_device_platform_data *pdata = phys->dev->platform_data;
 
-	if (gpio_get_value(irq_to_gpio(irq)) == pdata->irq_polarity) {
+	if (gpio_get_value(pdata->irq) == pdata->irq_polarity) {
 		phys->info.attn_count++;
 		if (driver && driver->irq_handler)
 			driver->irq_handler(rmi_dev, irq);
