@@ -375,7 +375,7 @@
 					 INT_GPIO_NR)
 #define INT_PCI_MSI_NR			(32 * 8)
 
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 
 /* Primary Interrupt Controller */
 #define INT_PRI_BASE			(INT_GIC_BASE + 32)
