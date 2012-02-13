@@ -200,9 +200,9 @@ static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
 			      IRQ_LOCALTIMER);
 static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
-static void __init tegra_twd_init(void)
+void __init tegra_twd_init(void)
 {
-	struct clk *cpu;
+	struct clk *cpu, *twd_clk;
 	int ret;
 	int err;
 

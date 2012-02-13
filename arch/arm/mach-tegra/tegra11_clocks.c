@@ -713,29 +713,6 @@ static struct clk_ops tegra_super_ops = {
 	.set_rate		= tegra11_super_clk_set_rate,
 };
 
-static int tegra11_twd_clk_set_rate(struct clk *c, unsigned long rate)
-{
-	/* The input value 'rate' is the clock rate of the CPU complex. */
-	c->rate = (rate * c->mul) / c->div;
-	return 0;
-}
-
-static struct clk_ops tegra11_twd_ops = {
-	.set_rate	= tegra11_twd_clk_set_rate,
-};
-
-static struct clk tegra11_clk_twd = {
-	/* NOTE: The twd clock must have *NO* parent. It's rate is directly
-		 updated by tegra11_cpu_cmplx_clk_set_rate() because the
-		 frequency change notifer for the twd is called in an
-		 atomic context which cannot take a mutex. */
-	.name     = "twd",
-	.ops      = &tegra11_twd_ops,
-	.max_rate = 1400000000,	/* Same as tegra_clk_cpu_cmplx.max_rate */
-	.mul      = 1,
-	.div      = 2,
-};
-
 /* virtual cpu clock functions */
 /* some clocks can not be stopped (cpu, memory bus) while the SoC is running.
    To change the frequency of these clocks, the parent pll may need to be
@@ -874,12 +851,6 @@ static int tegra11_cpu_cmplx_clk_set_rate(struct clk *c, unsigned long rate)
 	clk_lock_save(parent, &flags);
 
 	ret = clk_set_rate_locked(parent, rate);
-
-	/* We can't parent the twd to directly to the CPU complex because
-	   the TWD frequency update notifier is called in an atomic context
-	   and the CPU frequency update requires a mutex. Update the twd
-	   clock rate with the new CPU complex rate. */
-	clk_set_rate(&tegra11_clk_twd, clk_get_rate_locked(parent));
 
 	clk_unlock_restore(parent, &flags);
 
@@ -4087,7 +4058,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("sbc4", "spi_slave_tegra.3", NULL),
 	CLK_DUPLICATE("sbc5", "spi_slave_tegra.4", NULL),
 	CLK_DUPLICATE("sbc6", "spi_slave_tegra.5", NULL),
-	CLK_DUPLICATE("twd", "smp_twd", NULL),
 };
 
 struct clk *tegra_ptr_clks[] = {
@@ -4130,7 +4100,6 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
 	&tegra_clk_emc,
-	&tegra11_clk_twd,
 	&tegra_clk_emc_bridge,
 	&tegra_clk_cbus,
 };
