@@ -107,6 +107,7 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A03p]    = "A03 prime",
 	[TEGRA_REVISION_A04]     = "A04",
 	[TEGRA_REVISION_A04p]    = "A04 prime",
+	[TEGRA_REVISION_QT]      = "QT",
 };
 
 u32 tegra_fuse_readl(unsigned long offset)
@@ -359,9 +360,11 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 	}
 
 #elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11) {
-		if ((id->major == 0) && (id->minor == 1))
+	if (id->major == 0) {
+		if (id->minor == 1)
 			revision = TEGRA_REVISION_A01;
+		else
+			revision = TEGRA_REVISION_QT;
 	}
 #elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11)
