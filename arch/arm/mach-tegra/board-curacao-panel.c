@@ -267,8 +267,8 @@ static struct tegra_fb_data curacao_fb_data = {
 #else
 	.xres		= 864,
 	.yres		= 480,
-#endif
 	.bits_per_pixel = 32,
+#endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 #endif
 };
