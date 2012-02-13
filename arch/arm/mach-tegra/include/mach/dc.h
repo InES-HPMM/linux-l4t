@@ -163,6 +163,7 @@ struct tegra_dsi_out {
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
+	u8		ganged_mode_type;
 
 	u16		panel_buffer_size_byte;
 	u16		panel_reset_timeout_msec;
@@ -229,6 +230,11 @@ enum {
 	TEGRA_DC_OUT_HDMI,
 	TEGRA_DC_OUT_DSI,
 	TEGRA_DC_OUT_DSI2LVDS,
+};
+
+enum {
+	DSI2LVDS_LEFT_RIGHT,
+	DSI2LVDS_ODD_EVEN,
 };
 
 struct tegra_dc_out_pin {
