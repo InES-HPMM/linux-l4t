@@ -41,6 +41,13 @@ extern struct platform_device tegra_pci_device;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 extern struct platform_device tegra_i2c_device5;
 #endif
+extern struct platform_device tegra11_i2c_device1;
+extern struct platform_device tegra11_i2c_device2;
+extern struct platform_device tegra11_i2c_device3;
+extern struct platform_device tegra11_i2c_device4;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+extern struct platform_device tegra11_i2c_device5;
+#endif
 extern struct platform_device tegra_spi_device1;
 extern struct platform_device tegra_spi_device2;
 extern struct platform_device tegra_spi_device3;
