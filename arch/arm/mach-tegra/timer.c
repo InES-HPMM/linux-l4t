@@ -257,12 +257,30 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 	writel(context->twd_load, tegra_twd_base + TWD_TIMER_LOAD);
 	writel(context->twd_ctrl, tegra_twd_base + TWD_TIMER_CONTROL);
 }
+
+static void __init tegra_init_late_twd(void)
+{
+	int err = twd_local_timer_register(&twd_local_timer);
+	if (err)
+		pr_err("twd_timer_register failed %d\n", err);
+}
 #else
 #define tegra_twd_init()	do {} while(0)
+static inline void tegra_init_late_twd(void) {}
 #define tegra_twd_get_state	do {} while(0)
 #define tegra_twd_suspend	do {} while(0)
 #define tegra_twd_resume	do {} while(0)
 #endif
+
+void __init tegra_init_early_timer(void)
+{
+	tegra_twd_init();
+}
+
+static void __init tegra_init_late_timer(void)
+{
+	tegra_init_late_twd();
+}
 
 extern void __tegra_delay(unsigned long cycles);
 extern void __tegra_const_udelay(unsigned long loops);
@@ -351,7 +369,7 @@ void __init tegra_init_timer(void)
 	clockevents_register_device(&tegra_clockevent);
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
-	tegra_twd_init();
+	late_time_init = tegra_init_late_timer;
 
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
 
