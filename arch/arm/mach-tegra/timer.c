@@ -31,8 +31,11 @@
 #include <linux/syscore_ops.h>
 
 #include <asm/mach/time.h>
+#include <asm/arch_timer.h>
+#include <asm/cputype.h>
 #include <asm/delay.h>
 #include <asm/smp_twd.h>
+#include <asm/system.h>
 #include <asm/sched_clock.h>
 
 #include <mach/irqs.h>
@@ -272,14 +275,115 @@ static inline void tegra_init_late_twd(void) {}
 #define tegra_twd_resume	do {} while(0)
 #endif
 
+#ifdef CONFIG_ARM_ARCH_TIMER
+
+/* Time Stamp Counter (TSC) base address */
+static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
+static bool arch_timer_initialized;
+
+#define TSC_CNTCR		0		/* TSC control registers */
+#define TSC_CNTCR_ENABLE	(1 << 0)	/* Enable*/
+#define TSC_CNTCR_HDBG		(1 << 1)	/* Halt on debug */
+
+#define TSC_CNTCV0		0x8		/* TSC counter (LSW) */
+#define TSC_CNTCV1		0xC		/* TSC counter (MSW) */
+#define TSC_CNTFID0		0x20		/* TSC freq id 0 */
+
+#define tsc_writel(value, reg) \
+	__raw_writel(value, tsc + (reg))
+#define tsc_readl(reg) \
+	__raw_readl(tsc + (reg))
+
+
+/* Is the optional system timer available? */
+static int local_timer_is_architected(void)
+{
+	return (cpu_architecture() >= CPU_ARCH_ARMv7) &&
+	       ((read_cpuid_ext(CPUID_EXT_PFR1) >> 16) & 0xf) == 1;
+}
+
+static int __init tegra_init_early_arch_timer(void)
+{
+	u32 tsc_ref_freq;
+	u32 reg;
+
+	if (!local_timer_is_architected())
+		return -ENODEV;
+
+	tsc_ref_freq = tegra_clk_measure_input_freq();
+
+	/* Set the Timer System Counter (TSC) reference frequency
+	   NOTE: this is a write once register */
+	tsc_writel(tsc_ref_freq, TSC_CNTFID0);
+
+	/* Program CNTFRQ to the same value.
+	   NOTE: this is a write once register */
+	__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
+
+	/* CNTREQ must agree with the TSC reference frequency. */
+	__asm__("mrc p15, 0, %0, c14, c0, 0\n" : "=r" (reg));
+	BUG_ON(reg != tsc_ref_freq);
+
+	/* Enable the TSC. */
+	reg = tsc_readl(TSC_CNTCR);
+	reg |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
+	tsc_writel(reg, TSC_CNTCR);
+	return 0;
+}
+
+static int __init tegra_init_arch_timer(void)
+{
+	int err = arch_timer_sched_clock_init();
+	if (!err)
+		arch_timer_initialized = true;
+	else
+		pr_err("%s: Unable to initialize arch timer sched_clock: %d\n",
+		     __func__, err);
+	return err;
+}
+
+static struct resource arch_timer_resources[] __initdata = {
+	{
+		.start	= 29,
+		.end	= 29,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= 30,
+		.end	= 30,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static int __init tegra_init_late_arch_timer(void)
+{
+	int err = -ENODEV;
+
+	if (arch_timer_initialized) {
+		err = arch_timer_register(arch_timer_resources,
+			ARRAY_SIZE(arch_timer_resources));
+		if (err)
+			pr_err("%s: Unable to register arch timer: %d\n",
+			     __func__, err);
+	}
+	return err;
+}
+#else
+static inline int tegra_init_early_arch_timer(void) { return -ENODEV; }
+static inline int tegra_init_arch_timer(void) { return -ENODEV; }
+static inline int tegra_init_late_arch_timer(void) { return -ENODEV; }
+#endif
+
 void __init tegra_init_early_timer(void)
 {
-	tegra_twd_init();
+	if (tegra_init_early_arch_timer())
+		tegra_twd_init();
 }
 
 static void __init tegra_init_late_timer(void)
 {
-	tegra_init_late_twd();
+	if (tegra_init_late_arch_timer())
+		tegra_init_late_twd();
 }
 
 extern void __tegra_delay(unsigned long cycles);
@@ -345,28 +449,39 @@ void __init tegra_init_timer(void)
 	tegra30_init_timer();
 #endif
 
-	setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
+	/* Architectural timers take precedence over broadcast timers.
+	   Only register a broadcast clockevent device if architectural
+	   timers do not exist or cannot be initialized. */
+	if (tegra_init_arch_timer()) {
+		/* Architectural timers do not exist or cannot be initialzied.
+		   Fall back to using the broadcast timer as the sched clock. */
+		setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
 
-	if (clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
-		"timer_us", 1000000, 300, 32, clocksource_mmio_readl_up)) {
-		pr_err("Failed to register clocksource\n");
-		BUG();
+		ret = clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
+			"timer_us", 1000000, 300, 32,
+			clocksource_mmio_readl_up);
+		if (ret) {
+			pr_err("%s: Failed to register clocksource: %d\n",
+				__func__, ret);
+			BUG();
+		}
+
+		ret = setup_irq(tegra_timer_irq.irq, &tegra_timer_irq);
+		if (ret) {
+			pr_err("%s: Failed to register timer IRQ: %d\n",
+				__func__, ret);
+			BUG();
+		}
+
+		clockevents_calc_mult_shift(&tegra_clockevent, 1000000, 5);
+		tegra_clockevent.max_delta_ns =
+			clockevent_delta2ns(0x1fffffff, &tegra_clockevent);
+		tegra_clockevent.min_delta_ns =
+			clockevent_delta2ns(0x1, &tegra_clockevent);
+		tegra_clockevent.cpumask = cpu_all_mask;
+		tegra_clockevent.irq = tegra_timer_irq.irq;
+		clockevents_register_device(&tegra_clockevent);
 	}
-
-	ret = setup_irq(tegra_timer_irq.irq, &tegra_timer_irq);
-	if (ret) {
-		pr_err("Failed to register timer IRQ: %d\n", ret);
-		BUG();
-	}
-
-	clockevents_calc_mult_shift(&tegra_clockevent, 1000000, 5);
-	tegra_clockevent.max_delta_ns =
-		clockevent_delta2ns(0x1fffffff, &tegra_clockevent);
-	tegra_clockevent.min_delta_ns =
-		clockevent_delta2ns(0x1, &tegra_clockevent);
-	tegra_clockevent.cpumask = cpu_all_mask;
-	tegra_clockevent.irq = tegra_timer_irq.irq;
-	clockevents_register_device(&tegra_clockevent);
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
 	late_time_init = tegra_init_late_timer;
