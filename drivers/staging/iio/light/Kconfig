@@ -40,4 +40,12 @@ config TSL2x7x
 	 tmd2672, tsl2772, tmd2772 devices.
 	 Provides iio_events and direct access via sysfs.
 
+config SENSORS_LTR558
+	tristate "LTR558 Ambient light and proximity sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for ambient light sensing and
+	  proximity ir sensing from Lite On Technology LTR558.
+
 endmenu
