@@ -193,9 +193,8 @@ enum {
 static int emc_num_burst_regs;
 
 static struct clk_mux_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
-static int emc_last_sel;
 static struct tegra_emc_table start_timing;
-static bool emc_timing_in_sync;
+static const struct tegra_emc_table *emc_timing;
 
 static u32 dram_dev_num;
 static u32 emc_cfg_saved;
@@ -206,6 +205,7 @@ static struct clk *bridge;
 
 static struct {
 	cputime64_t time_at_clock[TEGRA_EMC_TABLE_MAX_SIZE];
+	int last_sel;
 	u64 last_update;
 	u64 clkchange_count;
 	spinlock_t spinlock;
@@ -230,15 +230,16 @@ static void emc_last_stats_update(int last_sel)
 
 	spin_lock_irqsave(&emc_stats.spinlock, flags);
 
-	emc_stats.time_at_clock[emc_last_sel] =
-		emc_stats.time_at_clock[emc_last_sel] +
+	if (emc_stats.last_sel < TEGRA_EMC_TABLE_MAX_SIZE)
+		emc_stats.time_at_clock[emc_stats.last_sel] =
+			emc_stats.time_at_clock[emc_stats.last_sel] +
 			(cur_jiffies - emc_stats.last_update);
 
 	emc_stats.last_update = cur_jiffies;
 
 	if (last_sel < TEGRA_EMC_TABLE_MAX_SIZE) {
 		emc_stats.clkchange_count++;
-		emc_last_sel = last_sel;
+		emc_stats.last_sel = last_sel;
 	}
 	spin_unlock_irqrestore(&emc_stats.spinlock, flags);
 }
@@ -677,20 +678,20 @@ int tegra_emc_set_rate(unsigned long rate)
 	if (i >= tegra_emc_table_size)
 		return -EINVAL;
 
-	if (!emc_timing_in_sync) {
+	if (!emc_timing) {
 		/* can not assume that boot timing matches dfs table even
 		   if boot frequency matches one of the table nodes */
 		emc_get_timing(&start_timing);
 		last_timing = &start_timing;
 	}
 	else
-		last_timing = &tegra_emc_table[emc_last_sel];
+		last_timing = emc_timing;
 
 	clk_setting = tegra_emc_clk_sel[i].value;
 	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
-	if (!emc_timing_in_sync)
+	if (!emc_timing)
 		emc_cfg_power_restore();
-	emc_timing_in_sync = true;
+	emc_timing = &tegra_emc_table[i];
 	emc_last_stats_update(i);
 
 	pr_debug("%s: rate %lu setting 0x%x\n", __func__, rate, clk_setting);
@@ -889,6 +890,7 @@ static int tegra_emc_probe(struct platform_device *pdev)
 	emc_stats.clkchange_count = 0;
 	spin_lock_init(&emc_stats.spinlock);
 	emc_stats.last_update = get_jiffies_64();
+	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
 
 	boot_rate = clk_get_rate(emc) / 1000;
 	max_rate = clk_get_max_rate(emc) / 1000;
@@ -959,7 +961,7 @@ static int tegra_emc_probe(struct platform_device *pdev)
 			continue;
 
 		if (table_rate == boot_rate)
-			emc_last_sel = i;
+			emc_stats.last_sel = i;
 
 		if (table_rate == max_rate)
 			max_entry = true;
@@ -1034,7 +1036,7 @@ device_initcall(tegra_emc_init);
 
 void tegra_emc_timing_invalidate(void)
 {
-	emc_timing_in_sync = false;
+	emc_timing = NULL;
 }
 
 void tegra_emc_dram_type_init(struct clk *c)
