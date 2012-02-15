@@ -25,10 +25,17 @@
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
+enum {
+	DRAM_OVER_TEMP_NONE = 0,
+	DRAM_OVER_TEMP_REFRESH,
+};
+
 struct clk;
 
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
+int tegra_emc_get_dram_temperature(void);
+int tegra_emc_set_over_temp_state(unsigned long state);
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_mc_timing_restore(void);
@@ -109,6 +116,8 @@ static inline void tegra_mc_timing_restore(void)
 #define EMC_MODE_SET_DLL_RESET			(0x1 << 8)
 #define EMC_MODE_SET_LONG_CNT			(0x1 << 26)
 #define EMC_EMRS				0xd0
+#define EMC_REF					0xd4
+#define EMC_REF_FORCE_CMD			1
 
 #define EMC_SELF_REF				0xe0
 #define EMC_SELF_REF_CMD_ENABLED		(0x1 << 0)
@@ -124,6 +133,11 @@ enum {
 
 #define EMC_MRW					0xe8
 #define EMC_MRR					0xec
+#define EMC_MRR_MA_SHIFT			16
+#define EMC_MRR_MA_MASK				(0xFF << EMC_MRR_MA_SHIFT)
+#define EMC_MRR_DATA_MASK			((0x1 << EMC_MRR_MA_SHIFT) - 1)
+#define LPDDR2_MR4_TEMP_MASK			0x7
+
 #define EMC_XM2DQSPADCTRL3			0xf8
 #define EMC_XM2DQSPADCTRL3_VREF_ENABLE		(0x1 << 5)
 #define EMC_FBIO_SPARE				0x100
@@ -153,6 +167,7 @@ enum {
 #define EMC_AUTO_CAL_STATUS_ACTIVE		(0x1 << 31)
 #define EMC_STATUS				0x2b4
 #define EMC_STATUS_TIMING_UPDATE_STALLED	(0x1 << 23)
+#define EMC_STATUS_MRR_DIVLD			(0x1 << 20)
 
 #define EMC_CFG_2				0x2b8
 #define EMC_CFG_2_MODE_SHIFT			0
