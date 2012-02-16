@@ -1911,6 +1911,17 @@ struct platform_device tegra_se_device = {
 	.resource = tegra_se_resources,
 	.num_resources = ARRAY_SIZE(tegra_se_resources),
 };
+
+struct platform_device tegra11_se_device = {
+	.name = "tegra11-se",
+	.id = -1,
+	.dev = {
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.dma_mask = &tegra_se_dma_mask,
+	},
+	.resource = tegra_se_resources,
+	.num_resources = ARRAY_SIZE(tegra_se_resources),
+};
 #endif
 
 static struct resource tegra_disp1_resources[] = {
