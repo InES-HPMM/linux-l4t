@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 NVIDIA Corporation.
+ * Copyright (c) 2010-2012 NVIDIA Corporation.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,12 @@
  *			'n' = (n > 0) wake-up after 'n' milliseconds or the
  *			      next non-timer interrupt (whichever comes first)
  *		read: returns the current wake_ms value
+ *
+ * power_gate: additional power gate partitions
+ *		write:	'none' = no additional partitions
+ *			'noncpu' = CxNC partition
+ *			'crail' = CRAIL partition (implies noncpu also)
+ *		read: returns the current power_gate value
  *
  * Writing the force, immediate and wake_ms attributes simply updates the
  * state of internal variables that will be used for the next switch request.
@@ -141,6 +147,24 @@ static struct kobj_attribute cluster_powermode_attr =
 		__ATTR(power_mode, 0640, sysfscluster_show, sysfscluster_store);
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+/* Additional partitions to power gate. */
+static unsigned int power_gate;
+static struct kobj_attribute cluster_powergate_attr =
+		__ATTR(power_gate, 0640, sysfscluster_show, sysfscluster_store);
+
+static const char *decode_power_gate(unsigned int mode)
+{
+	if (mode & TEGRA_POWER_CLUSTER_PART_CRAIL)
+		return "crail";
+	else if (mode & TEGRA_POWER_CLUSTER_PART_NONCPU)
+		return "noncpu";
+	else
+		return "none";
+}
+
+#endif
+
 #if DEBUG_CLUSTER_SWITCH
 unsigned int tegra_cluster_debug = 0;
 static struct kobj_attribute cluster_debug_attr =
@@ -156,6 +180,9 @@ typedef enum
 	ClusterAttr_WakeMs,
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 	ClusterAttr_PowerMode,
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	ClusterAttr_PowerGate,
 #endif
 #if DEBUG_CLUSTER_SWITCH
 	ClusterAttr_Debug
@@ -175,6 +202,10 @@ static ClusterAttr GetClusterAttr(const char *name)
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 	if (!strcmp(name, "power_mode"))
 		return ClusterAttr_PowerMode;
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	if (!strcmp(name, "power_gate"))
+		return ClusterAttr_PowerGate;
 #endif
 #if DEBUG_CLUSTER_SWITCH
 	if (!strcmp(name, "debug"))
@@ -215,6 +246,12 @@ static ssize_t sysfscluster_show(struct kobject *kobj,
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 	case ClusterAttr_PowerMode:
 		len = sprintf(buf, "%d\n", power_mode);
+		break;
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	case ClusterAttr_PowerGate:
+		len = sprintf(buf, "%s\n", decode_power_gate(power_gate));
 		break;
 #endif
 
@@ -289,6 +326,9 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			(flags & TEGRA_POWER_CLUSTER_G) ? "G" : "LP"));
 
 		request = flags;
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+		request |= power_gate;
+#endif
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 		if (power_mode == 1) {
 			request |= TEGRA_POWER_SDRAM_SELFREFRESH;
@@ -358,6 +398,26 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		break;
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	case ClusterAttr_PowerGate:
+		if (!strncasecmp(buf, "crail", count))
+			power_gate = TEGRA_POWER_CLUSTER_PART_CRAIL;
+		else if (!strncasecmp(buf, "noncpu", count))
+			power_gate = TEGRA_POWER_CLUSTER_PART_NONCPU;
+		else if (!strncasecmp(buf, "none", count))
+			power_gate = 0;
+		else {
+			PRINT_CLUSTER(("cluster/power_gate: '%*.*s' invalid, "
+				"must be 'none', 'crail', or 'noncpu'\n",
+				count, count, buf));
+			ret = -EINVAL;
+			break;
+		}
+		PRINT_CLUSTER(("cluster/power_gate -> %s\n",
+				decode_power_gate(power_gate)));
+		break;
+#endif
+
 #if DEBUG_CLUSTER_SWITCH
 	case ClusterAttr_Debug:
 		if ((count == 1) && (*buf == '0'))
@@ -419,6 +479,9 @@ static int __init sysfscluster_init(void)
 	CREATE_FILE(wake_ms);
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 	CREATE_FILE(powermode);
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	CREATE_FILE(powergate);
 #endif
 #if DEBUG_CLUSTER_SWITCH
 	CREATE_FILE(debug);

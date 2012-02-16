@@ -28,6 +28,14 @@
 #endif
 
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+#define TEGRA_POWER_CLUSTER_PART_CRAIL	(1 << 24) /* Power gate CRAIL partition */
+#define TEGRA_POWER_CLUSTER_PART_NONCPU	(1 << 25) /* Power gate CxNC partition */
+#define TEGRA_POWER_CLUSTER_PART_MASK	(TEGRA_POWER_CLUSTER_PART_CRAIL | \
+						TEGRA_POWER_CLUSTER_PART_NONCPU)
+#endif
+
 #define TEGRA_POWER_SDRAM_SELFREFRESH	(1 << 26) /* SDRAM is in self-refresh */
 #define TEGRA_POWER_HOTPLUG_SHUTDOWN	(1 << 27) /* Hotplug shutdown */
 #define TEGRA_POWER_CLUSTER_G		(1 << 28) /* G CPU */
