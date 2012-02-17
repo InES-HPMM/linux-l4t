@@ -427,6 +427,7 @@ static const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 
 static __initdata struct tegra_drive_pingroup_config t30_def_drive_pinmux[] = {
 	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
+	SET_DRIVE(DAP1, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
 };
 
 void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg,
