@@ -197,6 +197,8 @@ static struct tegra_emc_table start_timing;
 static const struct tegra_emc_table *emc_timing;
 static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
+static const u32 *dram_to_soc_bit_map;
+
 static u32 dram_dev_num;
 static u32 emc_cfg_saved;
 static u32 dram_type = -1;
@@ -1081,6 +1083,12 @@ void tegra_emc_timing_invalidate(void)
 	emc_timing = NULL;
 }
 
+void tegra_init_dram_bit_map(const u32 *bit_map, int map_size)
+{
+	BUG_ON(map_size != 32);
+	dram_to_soc_bit_map = bit_map;
+}
+
 void tegra_emc_dram_type_init(struct clk *c)
 {
 	emc = c;
@@ -1097,6 +1105,29 @@ void tegra_emc_dram_type_init(struct clk *c)
 int tegra_emc_get_dram_type(void)
 {
 	return dram_type;
+}
+
+static u32 soc_to_dram_bit_swap(u32 soc_val, u32 dram_mask, u32 dram_shift)
+{
+	int bit;
+	u32 dram_val = 0;
+
+	/* tegra clocks definitions use shifted mask always */
+	if (!dram_to_soc_bit_map)
+		return soc_val & dram_mask;
+
+	for (bit = dram_shift; bit < 32; bit++) {
+		u32 dram_bit_mask = 0x1 << bit;
+		u32 soc_bit_mask = dram_to_soc_bit_map[bit];
+
+		if (!(dram_bit_mask & dram_mask))
+			break;
+
+		if (soc_bit_mask & soc_val)
+			dram_val |= dram_bit_mask;
+	}
+
+	return dram_val;
 }
 
 static int emc_read_mrr(int dev, int addr)
@@ -1119,7 +1150,6 @@ static int emc_read_mrr(int dev, int addr)
 	if (ret)
 		return ret;
 
-	/* FIXME: bit swap decoding */
 	val = emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK;
 	return val;
 }
@@ -1136,9 +1166,10 @@ int tegra_emc_get_dram_temperature(void)
 		spin_unlock_irqrestore(&emc_access_lock, flags);
 		return mr4;
 	}
-
-	mr4 &= LPDDR2_MR4_TEMP_MASK;
 	spin_unlock_irqrestore(&emc_access_lock, flags);
+
+	mr4 = soc_to_dram_bit_swap(
+		mr4, LPDDR2_MR4_TEMP_MASK, LPDDR2_MR4_TEMP_SHIFT);
 	return mr4;
 }
 
