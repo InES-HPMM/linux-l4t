@@ -194,9 +194,14 @@ static int tegra20_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	regmap_write(i2s->regmap, TEGRA20_I2S_TIMING, val);
 
-	regmap_write(i2s->regmap, TEGRA20_I2S_FIFO_SCR,
-		     TEGRA20_I2S_FIFO_SCR_FIFO2_ATN_LVL_FOUR_SLOTS |
-		     TEGRA20_I2S_FIFO_SCR_FIFO1_ATN_LVL_FOUR_SLOTS);
+	if (sample_size * params_channels(params) >= 32)
+		regmap_write(i2s->regmap, TEGRA20_I2S_FIFO_SCR,
+			     TEGRA20_I2S_FIFO_SCR_FIFO2_ATN_LVL_FOUR_SLOTS |
+			     TEGRA20_I2S_FIFO_SCR_FIFO1_ATN_LVL_FOUR_SLOTS);
+	else
+		regmap_write(i2s->regmap, TEGRA20_I2S_FIFO_SCR,
+			     TEGRA20_I2S_FIFO_SCR_FIFO2_ATN_LVL_EIGHT_SLOTS |
+			     TEGRA20_I2S_FIFO_SCR_FIFO1_ATN_LVL_EIGHT_SLOTS);
 
 	i2s->reg_ctrl &= ~TEGRA20_I2S_CTRL_FIFO_FORMAT_MASK;
 	reg = tegra20_i2s_read(i2s, TEGRA20_I2S_PCM_CTRL);
@@ -208,12 +213,17 @@ static int tegra20_i2s_hw_params(struct snd_pcm_substream *substream,
 		else
 			i2s->reg_ctrl |= TEGRA20_I2S_CTRL_FIFO_FORMAT_32;
 
+		i2s->capture_dma_data.width = sample_size;
+		i2s->playback_dma_data.width = sample_size;
+
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			reg |= TEGRA20_I2S_PCM_CTRL_TRM_MODE_EN;
 		else
 			reg |= TEGRA20_I2S_PCM_CTRL_RCV_MODE_EN;
 	} else {
 		i2s->reg_ctrl |= TEGRA20_I2S_CTRL_FIFO_FORMAT_PACKED;
+		i2s->capture_dma_data.width = 32;
+		i2s->playback_dma_data.width = 32;
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			reg &= ~TEGRA20_I2S_PCM_CTRL_TRM_MODE_EN;
 		else
