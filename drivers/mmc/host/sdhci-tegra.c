@@ -54,6 +54,7 @@
 #define SDHCI_VENDOR_MISC_CNTRL		0x120
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT	0x8
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT	0x10
+#define SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT	0x200
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SD_3_0	0x20
 
 #define SDMMC_SDMEMCOMPPADCTRL	0x1E0
@@ -84,7 +85,13 @@ static unsigned int tegra_sdhost_std_freq;
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock);
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
+#endif
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
+#endif
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 #endif
@@ -99,12 +106,14 @@ struct tegra_sdhci_hw_ops{
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 };
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#elif CONFIG_ARCH_TEGRA_3x_SOC
 static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
 	.sdhost_init = tegra3_sdhci_post_reset_init,
+};
+#else
+static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
+        .sdhost_init = tegra11x_sdhci_post_reset_init,
 };
 #endif
 
@@ -255,6 +264,41 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_SD_3_0 |
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
+	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
+}
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
+{
+	u16 misc_ctrl;
+	u32 vendor_ctrl;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	struct tegra_sdhci_platform_data *plat;
+
+	plat = pdev->dev.platform_data;
+	/* Set the base clock frequency */
+	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
+	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
+	vendor_ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
+		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
+	/* Set tap delay */
+	if (plat->tap_delay) {
+		vendor_ctrl &= ~(0xFF <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+		vendor_ctrl |= (plat->tap_delay <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+	}
+	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+
+	/* Enable SDHOST v3.0 support */
+	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
+	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
+		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT |
+		SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT;
 	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
 #endif
@@ -1261,8 +1305,11 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA2_SDHOST_STD_FREQ;
-#else
+#elif CONFIG_ARCH_TEGRA_3x_SOC
 	tegra_host->hw_ops = &tegra_3x_sdhci_ops;
+	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
+#else
+	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #endif
 
