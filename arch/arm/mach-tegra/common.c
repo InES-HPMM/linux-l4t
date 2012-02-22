@@ -45,6 +45,7 @@
 #include "apbio.h"
 #include "sleep.h"
 #include "reset.h"
+#include "devices.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
@@ -282,6 +283,7 @@ void __init tegra20_init_early(void)
 	tegra20_hotplug_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -301,6 +303,7 @@ void __init tegra30_init_early(void)
 	tegra30_hotplug_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
 }
 #endif
 

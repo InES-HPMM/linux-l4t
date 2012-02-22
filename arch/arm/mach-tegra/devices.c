@@ -132,12 +132,6 @@ struct platform_device tegra_pinmux_device = {
 	.num_resources	= ARRAY_SIZE(pinmux_resource),
 };
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#define UART_SOURCE_RATE 408000000
-#else
-#define UART_SOURCE_RATE 216000000
-#endif
-
 static struct resource i2c_resource1[] = {
 	[0] = {
 		.start	= INT_I2C,
@@ -902,7 +896,6 @@ static struct plat_serial8250_port debug_uarta_platform_data[] = {
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
-		.uartclk        = UART_SOURCE_RATE,
 	},
 	{
 		.flags          = 0,
@@ -918,7 +911,6 @@ static struct plat_serial8250_port debug_uartb_platform_data[] = {
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
-		.uartclk        = UART_SOURCE_RATE,
 	},
 	{
 		.flags          = 0,
@@ -934,7 +926,6 @@ static struct plat_serial8250_port debug_uartc_platform_data[] = {
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
-		.uartclk        = UART_SOURCE_RATE,
 	},
 	{
 		.flags          = 0,
@@ -950,7 +941,6 @@ static struct plat_serial8250_port debug_uartd_platform_data[] = {
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
-		.uartclk        = UART_SOURCE_RATE,
 	},
 	{
 		.flags          = 0,
@@ -967,7 +957,6 @@ static struct plat_serial8250_port debug_uarte_platform_data[] = {
 		.type           = PORT_TEGRA,
 		.iotype         = UPIO_MEM,
 		.regshift       = 2,
-		.uartclk        = UART_SOURCE_RATE,
 	},
 	{
 		.flags          = 0,
@@ -1787,7 +1776,7 @@ struct platform_device tegra_nvmap_device = {
 	.id	= -1,
 };
 
-void tegra_init_debug_uart_rate(void)
+void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;
 	struct clk *debug_uart_parent = clk_get_sys(NULL, "pll_p");
