@@ -49,6 +49,7 @@
 #include <mach/hardware.h>
 
 #include "../../../../video/tegra/nvmap/nvmap.h"
+#include "../../../../arch/arm/mach-tegra/common.h"
 
 #include "headavp.h"
 #include "avp_msg.h"
@@ -988,23 +989,33 @@ static int avp_init(struct tegra_avp_info *avp)
 		&& avp->kernel_phys != 0x0ff00000);
 	sprintf(fw_file, "nvrm_avp_%08lx.bin", (unsigned long)avp->kernel_phys);
 	avp->reset_addr = avp->kernel_phys;
-#else /* nvmem= carveout */
-	/* paddr is found in nvmem= carveout */
+#else
+	/*
+	 * Neither MMU (Tegra2) nor SMMU (Tegra3-).
+	 * OS must have reserved tegra_avp_kernel_size bytes starting
+	 * at tegra_avp_kernel_start for AVP kernel.
+	 * AVP app is loaded at allocation from generic carveout by nvmap.
+	 */
 	/* vaddr is same as paddr */
-	/* Find nvmem carveout */
-	if (!pfn_valid(__phys_to_pfn(0x8e000000)))
-		avp->kernel_phys = 0x8e000000;
-	else if (!pfn_valid(__phys_to_pfn(0x9e000000)))
-		avp->kernel_phys = 0x9e000000;
-	else if (!pfn_valid(__phys_to_pfn(0xbe000000)))
-		avp->kernel_phys = 0xbe000000;
-	} else {
-		pr_err("Cannot find nvmem= carveout to load AVP kernel\n");
-		pr_err("Check kernel command line "
-			"to see if nvmem= is defined\n");
+	switch (tegra_avp_kernel_start) {
+	case 0x8e000000:
+	case 0x9e000000:
+	case 0xbe000000:
+		avp->kernel_phys = tegra_avp_kernel_start;
+		break;
+	default:
+		pr_err("Cannot find matching AVP kernel for start addr=%lx\n",
+			tegra_avp_kernel_start);
 		BUG();
 	}
-	pr_info("%s: Using nvmem= carveout at %lx to load AVP kernel\n",
+
+	if (tegra_avp_kernel_size < SZ_1M) {
+		pr_err("Reserved AVP kernel area (%ldKiB) too small "
+			"(min %ldKiB)\n",
+			tegra_avp_kernel_size/1024, SZ_1M/1024);
+		BUG();
+	}
+	pr_info("%s: Using tegra_avp_kernel_start=%lx to load AVP kernel\n",
 		__func__, (unsigned long)avp->kernel_phys);
 	sprintf(fw_file, "nvrm_avp_%08lx.bin", (unsigned long)avp->kernel_phys);
 	avp->reset_addr = avp->kernel_phys;
