@@ -319,13 +319,6 @@ static inline void msg_ack_remote(struct tegra_avp_info *avp, u32 cmd, u32 arg)
 	wmb();
 }
 
-static inline u32 msg_recv_get_cmd(struct tegra_avp_info *avp)
-{
-	volatile u32 *cmd = avp->msg_from_avp;
-	rmb();
-	return *cmd;
-}
-
 static inline int __msg_write(struct tegra_avp_info *avp, void *hdr,
 			      size_t hdr_len, void *buf, size_t len)
 {
@@ -340,17 +333,16 @@ static inline int msg_write(struct tegra_avp_info *avp, void *hdr,
 			    size_t hdr_len, void *buf, size_t len)
 {
 	/* rem_ack is a pointer into shared memory that the AVP modifies */
-	volatile u32 *rem_ack = avp->msg_to_avp;
 	unsigned long endtime = jiffies + HZ;
 
 	/* the other side ack's the message by clearing the first word,
 	 * wait for it to do so */
 	rmb();
-	while (*rem_ack != 0 && time_before(jiffies, endtime)) {
+	while (readl(avp->msg_to_avp) && time_before(jiffies, endtime)) {
 		usleep_range(100, 2000);
 		rmb();
 	}
-	if (*rem_ack != 0)
+	if (readl(avp->msg_to_avp))
 		return -ETIMEDOUT;
 	__msg_write(avp, hdr, hdr_len, buf, len);
 	return 0;
@@ -373,7 +365,6 @@ static inline int msg_check_ack(struct tegra_avp_info *avp, u32 cmd, u32 *arg)
 static int msg_wait_ack_locked(struct tegra_avp_info *avp, u32 cmd, u32 *arg)
 {
 	/* rem_ack is a pointer into shared memory that the AVP modifies */
-	volatile u32 *rem_ack = avp->msg_to_avp;
 	unsigned long endtime = jiffies + msecs_to_jiffies(400);
 	int ret;
 
@@ -387,7 +378,7 @@ static int msg_wait_ack_locked(struct tegra_avp_info *avp, u32 cmd, u32 *arg)
 		ret = msg_check_ack(avp, cmd, arg);
 
 	/* clear out the ack */
-	*rem_ack = 0;
+	writel(0, avp->msg_to_avp);
 	wmb();
 	return ret;
 }
@@ -772,7 +763,7 @@ static int process_message(struct tegra_avp_info *avp, struct msg_data *raw_msg,
 	int len;
 	int ret;
 
-	len = min(port_msg->msg_len, (u32)TEGRA_RPC_MAX_MSG_LEN);
+	len = min_t(u32, port_msg->msg_len, (u32)TEGRA_RPC_MAX_MSG_LEN);
 
 	if (avp_debug_mask & AVP_DBG_TRACE_XPC_MSG) {
 		pr_info("%s: got message cmd=%x port=%x len=%d\n", __func__,
@@ -911,7 +902,8 @@ static int avp_reset(struct tegra_avp_info *avp, unsigned long reset_addr)
 
 	writel(stub_code_phys, TEGRA_AVP_RESET_VECTOR_ADDR);
 
-	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n",
+		__func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
 	pr_info("%s: Resetting AVP: reset_addr=%lx\n", __func__, reset_addr);
 
 	tegra_periph_reset_assert(avp->cop_clk);
@@ -924,16 +916,19 @@ static int avp_reset(struct tegra_avp_info *avp, unsigned long reset_addr)
 	 * starts, so a dead kernel can be detected by polling this value */
 	timeout = jiffies + msecs_to_jiffies(2000);
 	while (time_before(jiffies, timeout)) {
-		pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+		pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n",
+			__func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
 		if (readl(TEGRA_AVP_RESET_VECTOR_ADDR) != stub_code_phys)
 			break;
 		cpu_relax();
 	}
 	if (readl(TEGRA_AVP_RESET_VECTOR_ADDR) == stub_code_phys) {
-		pr_err("%s: Timed out waiting for AVP kernel to start\n", __func__);
+		pr_err("%s: Timed out waiting for AVP kernel to start\n",
+			__func__);
 		ret = -EINVAL;
 	}
-	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n", __func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
+	pr_debug("%s: TEGRA_AVP_RESET_VECTOR=%x\n",
+			__func__, readl(TEGRA_AVP_RESET_VECTOR_ADDR));
 	WARN_ON(ret);
 	dma_unmap_single(NULL, stub_data_phys,
 			 sizeof(_tegra_avp_boot_stub_data),
@@ -997,16 +992,13 @@ static int avp_init(struct tegra_avp_info *avp)
 	/* paddr is found in nvmem= carveout */
 	/* vaddr is same as paddr */
 	/* Find nvmem carveout */
-	if (!pfn_valid(__phys_to_pfn(0x8e000000))) {
+	if (!pfn_valid(__phys_to_pfn(0x8e000000)))
 		avp->kernel_phys = 0x8e000000;
-	}
-	else if (!pfn_valid(__phys_to_pfn(0x9e000000))) {
+	else if (!pfn_valid(__phys_to_pfn(0x9e000000)))
 		avp->kernel_phys = 0x9e000000;
-	}
-	else if (!pfn_valid(__phys_to_pfn(0xbe000000))) {
+	else if (!pfn_valid(__phys_to_pfn(0xbe000000)))
 		avp->kernel_phys = 0xbe000000;
-	}
-	else {
+	} else {
 		pr_err("Cannot find nvmem= carveout to load AVP kernel\n");
 		pr_err("Check kernel command line "
 			"to see if nvmem= is defined\n");
@@ -1456,7 +1448,7 @@ static int tegra_avp_release_fops(struct inode *inode, struct file *file)
 
 static int avp_enter_lp0(struct tegra_avp_info *avp)
 {
-	volatile u32 *avp_suspend_done = avp->iram_backup_data
+	unsigned long avp_suspend_done = (unsigned long)avp->iram_backup_data
 		+ TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE;
 	struct svc_enter_lp0 svc;
 	unsigned long endtime;
@@ -1467,7 +1459,7 @@ static int avp_enter_lp0(struct tegra_avp_info *avp)
 	svc.buf_addr = (u32)avp->iram_backup_phys;
 	svc.buf_size = TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE;
 
-	*avp_suspend_done = 0;
+	writel(0, avp_suspend_done);
 	wmb();
 
 	ret = trpc_send_msg(avp->rpc_node, avp->avp_ep, &svc, sizeof(svc),
@@ -1479,13 +1471,13 @@ static int avp_enter_lp0(struct tegra_avp_info *avp)
 
 	endtime = jiffies + msecs_to_jiffies(1000);
 	rmb();
-	while ((*avp_suspend_done == 0) && time_before(jiffies, endtime)) {
+	while (!readl(avp_suspend_done) && time_before(jiffies, endtime)) {
 		udelay(10);
 		rmb();
 	}
 
 	rmb();
-	if (*avp_suspend_done == 0) {
+	if (!readl(avp_suspend_done)) {
 		pr_err("%s: AVP failed to suspend\n", __func__);
 		ret = -ETIMEDOUT;
 		goto err;
