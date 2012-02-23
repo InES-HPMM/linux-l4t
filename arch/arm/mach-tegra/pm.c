@@ -546,6 +546,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 {
 	u32 mode;	/* hardware + software power mode flags */
 	unsigned int remain;
+	pgd_t *pgd;
 
 	/* Only the last cpu down does the final suspend steps */
 	mode = readl(pmc + PMC_CTRL);
@@ -580,6 +581,14 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	suspend_cpu_complex(mode);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 	flush_cache_all();
+	/*
+	 * No need to flush complete L2. Cleaning kernel and IO mappings
+	 * is enough for the LP code sequence that has L2 disabled but
+	 * MMU on.
+	 */
+	pgd = cpu_get_pgd();
+	outer_clean_range(__pa(pgd + USER_PTRS_PER_PGD),
+			  __pa(pgd + PTRS_PER_PGD));
 	outer_disable();
 
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
