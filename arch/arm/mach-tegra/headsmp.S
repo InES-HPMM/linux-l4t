@@ -40,6 +40,38 @@
 	__CPUINIT
 
 /*
+ *	__invalidate_cpu_state
+ *
+ *	  Invalidates volatile CPU state (SCU tags, caches, branch address
+ *	  arrays, exclusive monitor, etc.) so that they can be safely enabled
+ *	  instruction caching and branch predicition enabled
+ */
+__invalidate_cpu_state:
+	clrex
+	mov	r0, #0
+	mcr	p15, 0, r0, c1, c0, 1	@ disable SMP, prefetch, broadcast
+	isb
+	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
+	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
+	mcr	p15, 0, r0, c8, c7, 0	@ invalidate unified TLB
+	dsb
+	isb
+
+	cpu_id	r0
+	cmp	r0, #0
+	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
+	movne	r0, r0, lsl #2
+	movne	r2, #0xf
+	movne	r2, r2, lsl r0
+	strne	r2, [r1]		@ invalidate SCU tags for CPU
+
+	dsb
+	mov	r0, #0x1800
+	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
+	isb
+	/* fall through */
+
+/*
  *   The secondary kernel init calls v7_flush_dcache_all before it enables
  *   the L1; however, the L1 comes out of reset in an undefined state, so
  *   the clean + invalidate performed by v7_flush_dcache_all causes a bunch
@@ -91,7 +123,7 @@ ENDPROC(v7_invalidate_l1)
  *	 of secondary CPUs.
  */
 ENTRY(tegra_secondary_startup)
-        bl      v7_invalidate_l1
+	bl	__invalidate_cpu_state
         b       secondary_startup
 ENDPROC(tegra_secondary_startup)
 #endif
@@ -105,7 +137,7 @@ ENDPROC(tegra_secondary_startup)
  *	  re-enabling sdram.
  */
 ENTRY(tegra_resume)
-	bl	tegra_invalidate_l1
+	bl	__invalidate_cpu_state
 
 	cpu_id	r0
 	cmp	r0, #0				@ CPU0?
