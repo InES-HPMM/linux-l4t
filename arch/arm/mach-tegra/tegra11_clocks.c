@@ -4115,6 +4115,16 @@ static void tegra11_init_one_clock(struct clk *c)
 	clkdev_add(&c->lookup);
 }
 
+bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
+{
+	if (c->flags & PERIPH_ON_CBUS)
+		return p != &tegra_pll_m;
+	else
+		return p != &tegra_pll_c;
+
+	return true;
+}
+
 void __init tegra_soc_init_clocks(void)
 {
 	int i;
