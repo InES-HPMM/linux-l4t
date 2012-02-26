@@ -245,7 +245,7 @@ static int __init tegra30_mc_init(void)
 	u32 reg;
 	int ret = 0;
 
-	reg = 0x0A7F1010;
+	reg = 0x0F7F1010;
 	writel(reg, mc + MC_RESERVED_RSV);
 
 	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
