@@ -43,6 +43,7 @@ struct clk;
 #define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
 #define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
 #define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
 #endif
 
 #define DIV_BUS			(1 << 0)

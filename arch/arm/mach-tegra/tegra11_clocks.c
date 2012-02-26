@@ -1215,19 +1215,20 @@ static struct clk_ops tegra_blink_clk_ops = {
 };
 
 /* PLL Functions */
-static int tegra11_pll_clk_wait_for_lock(struct clk *c, u32 lock_reg, u32 lock_bit)
+static int tegra11_pll_clk_wait_for_lock(
+	struct clk *c, u32 lock_reg, u32 lock_bits)
 {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 #if USE_PLL_LOCK_BITS
 	int i;
-	for (i = 0; i < c->u.pll.lock_delay; i++) {
-		if (clk_readl(lock_reg) & lock_bit) {
+	for (i = 0; i < (c->u.pll.lock_delay / PLL_PRE_LOCK_DELAY + 1); i++) {
+		udelay(PLL_PRE_LOCK_DELAY);
+		if ((clk_readl(lock_reg) & lock_bits) == lock_bits) {
 			udelay(PLL_POST_LOCK_DELAY);
 			return 0;
 		}
-		udelay(2);		/* timeout = 2 * lock time */
 	}
-	pr_err("Timed out waiting for lock bit on pll %s", c->name);
+	pr_err("Timed out waiting for lock bit on pll %s\n", c->name);
 	return -1;
 #endif
 	udelay(c->u.pll.lock_delay);
