@@ -302,7 +302,8 @@ static int __cpuinit twd_timer_setup(struct clock_event_device *clk)
 	*this_cpu_clk = clk;
 
 	clockevents_config_and_register(clk, twd_timer_rate,
-					0xf, 0xffffffff);
+				0xf, 0xffffffff);
+
 	enable_percpu_irq(clk->irq, 0);
 
 	return 0;
