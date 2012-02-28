@@ -1,7 +1,7 @@
 #
 # Makefile for regulator drivers.
 #
-
+GCOV_PROFILE := y
 
 obj-$(CONFIG_REGULATOR) += core.o dummy.o fixed-helper.o
 obj-$(CONFIG_OF) += of_regulator.o
