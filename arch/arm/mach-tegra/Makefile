@@ -117,6 +117,7 @@ obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-power.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-sdhci.o
+obj-${CONFIG_MACH_CURACAO}              += board-curacao-sensors.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
