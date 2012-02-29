@@ -53,6 +53,7 @@ struct cm3217_info {
 	struct workqueue_struct *lp_wq;
 
 	int als_enable;
+	int als_enabled_before_suspend;
 	uint16_t *adc_table;
 	uint16_t cali_table[10];
 	int irq;
@@ -994,6 +995,7 @@ static int cm3217_probe(struct i2c_client *client,
 		goto err_create_ls_device_file;
 
 	lpi->als_enable = 0;
+	lpi->als_enabled_before_suspend = 0;
 	D("[CM3217] %s: Probe success!\n", __func__);
 
 	return ret;
