@@ -85,6 +85,8 @@
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
+unsigned long tegra_avp_kernel_start;
+unsigned long tegra_avp_kernel_size;
 unsigned long tegra_bootloader_fb_start;
 unsigned long tegra_bootloader_fb_size;
 unsigned long tegra_fb_start;
@@ -774,6 +776,21 @@ out:
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
+	const size_t avp_kernel_reserve = SZ_32M;
+#if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
+	!defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 & up with SMMU */
+	/* Reserve hardcoded AVP kernel load area starting at 0xXe000000*/
+	tegra_avp_kernel_size = SZ_1M;
+	tegra_avp_kernel_start = memblock_end_of_DRAM() - avp_kernel_reserve;
+	if (memblock_remove(tegra_avp_kernel_start, avp_kernel_reserve)) {
+		pr_err("Failed to remove AVP kernel load area %08lx@%08lx "
+				"from memory map\n",
+			(unsigned long)avp_kernel_reserve,
+			tegra_avp_kernel_start);
+		tegra_avp_kernel_size = 0;
+	}
+#endif
+
 	if (carveout_size) {
 		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
 		if (memblock_remove(tegra_carveout_start, carveout_size)) {
@@ -872,6 +889,18 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_carveout_start + tegra_carveout_size - 1 : 0,
 		tegra_vpr_start,
 		tegra_vpr_size ? tegra_vpr_start + tegra_vpr_size - 1 : 0);
+
+	if (tegra_avp_kernel_size) {
+		/* Return excessive memory reserved for AVP kernel */
+		if (tegra_avp_kernel_size < avp_kernel_reserve)
+			memblock_add(
+				tegra_avp_kernel_start + tegra_avp_kernel_size,
+				avp_kernel_reserve - tegra_avp_kernel_size);
+		pr_info(
+		"AVP kernel: %08lx - %08lx\n",
+			tegra_avp_kernel_start,
+			tegra_avp_kernel_start + tegra_avp_kernel_size - 1);
+	}
 }
 
 static struct resource ram_console_resources[] = {

@@ -8,3 +8,5 @@ static inline void tegra_init_cache(bool init) {}
 
 extern void tegra_cpu_die(unsigned int cpu);
 extern int tegra_cpu_kill(unsigned int cpu);
+extern unsigned long tegra_avp_kernel_start;
+extern unsigned long tegra_avp_kernel_size;
