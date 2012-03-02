@@ -125,7 +125,6 @@ static void st_send_frame(unsigned char chnl_id, struct st_data_s *st_gdata)
 			(st_gdata->list[chnl_id]->priv_data, st_gdata->rx_skb)
 			     != 0)) {
 			pr_err(" proto stack %d's ->recv failed", chnl_id);
-			kfree_skb(st_gdata->rx_skb);
 			return;
 		}
 	} else {
