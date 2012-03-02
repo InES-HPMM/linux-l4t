@@ -23,6 +23,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/cpumask.h>
 
+#include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
 
 #include <mach/powergate.h>
@@ -140,16 +141,22 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 {
 	int ret;
 	unsigned long timeout;
+	bool booted = false;
 
 	BUG_ON(cpu == smp_processor_id());
 	BUG_ON(is_lp_cluster());
+
+	if (cpu_isset(cpu, tegra_cpu_init_map))
+		booted = true;
+
+	cpu = cpu_logical_map(cpu);
 
 	/* If this cpu has booted this function is entered after
 	 * CPU has been already un-gated by flow controller. Wait
 	 * for confirmation that cpu is powered and remove clamps.
 	 * On first boot entry do not wait - go to direct ungate.
 	 */
-	if (cpu_isset(cpu, tegra_cpu_init_map)) {
+	if (booted) {
 		timeout = jiffies + 5;
 		do {
 			if (is_cpu_powered(cpu))
@@ -199,6 +206,8 @@ fail:
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
+
+	cpu = cpu_logical_map(cpu);
 
 	/* Avoid timer calibration on slave cpus. Use the value calibrated
 	 * on master cpu. This reduces the bringup time for each slave cpu
