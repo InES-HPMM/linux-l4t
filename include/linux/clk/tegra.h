@@ -170,6 +170,8 @@ int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting);
  */
 int tegra_is_clk_enabled(struct clk *clk);
 
+void tegra_cpu_user_cap_set(unsigned int speed_khz);
+
 #endif
 
 #endif /* __LINUX_CLK_TEGRA_H_ */
