@@ -248,8 +248,9 @@ static __init int create_suspend_pgtable(void)
 	if (!tegra_pgd)
 		return -ENOMEM;
 
+	/* Only identity-map size of lowmem (high_memory - PAGE_OFFSET) */
 	identity_mapping_add(tegra_pgd, phys_to_virt(PHYS_OFFSET),
-		phys_to_virt(PHYS_OFFSET) + memblock_phys_mem_size(), 0);
+		high_memory, 0);
 	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
 		IO_IRAM_VIRT + SECTION_SIZE, 0);
 
