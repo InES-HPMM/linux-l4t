@@ -2059,7 +2059,7 @@ static int	tegra_phy_init(struct usb_phy *x)
 	struct tegra_ulpi_config *ulpi_config;
 	int err;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	struct tegra_ulpi_config *uhsic_config;
+	struct tegra_uhsic_config *uhsic_config;
 	int reset_gpio, enable_gpio;
 #endif
 
