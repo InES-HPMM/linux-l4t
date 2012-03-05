@@ -1347,7 +1347,10 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	if (present < 0) {
 		/* If polling, assume that the card is always present. */
 		if (host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION)
-			present = 1;
+			if (host->ops->get_cd)
+				present = host->ops->get_cd(host);
+			else
+				present = 1;
 		else
 			present = sdhci_readl(host, SDHCI_PRESENT_STATE) &
 					SDHCI_CARD_PRESENT;
@@ -3005,7 +3008,7 @@ int sdhci_add_host(struct sdhci_host *host)
 		mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
 
 	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
-	    !(host->mmc->caps & MMC_CAP_NONREMOVABLE))
+	    !(host->mmc->caps & MMC_CAP_NONREMOVABLE) && !(host->ops->get_cd))
 		mmc->caps |= MMC_CAP_NEEDS_POLL;
 
 	/* If vqmmc regulator and no 1.8V signalling, then there's no UHS */
