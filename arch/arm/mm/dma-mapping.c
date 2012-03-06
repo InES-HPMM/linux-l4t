@@ -1023,6 +1023,57 @@ fs_initcall(dma_debug_do_init);
 
 /* IOMMU */
 
+static size_t arm_iommu_iova_get_free_total(struct device *dev)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+	unsigned long flags;
+	size_t size = 0;
+	unsigned long start = 0;
+
+	BUG_ON(!dev);
+	BUG_ON(!mapping);
+
+	spin_lock_irqsave(&mapping->lock, flags);
+	while (1) {
+		unsigned long end;
+
+		start = bitmap_find_next_zero_area(mapping->bitmap,
+						   mapping->bits, start, 1, 0);
+		if (start > mapping->bits)
+			break;
+
+		end = find_next_bit(mapping->bitmap, mapping->bits, start);
+		size += end - start;
+		start = end;
+	}
+	spin_unlock_irqrestore(&mapping->lock, flags);
+	return size << (mapping->order + PAGE_SHIFT);
+}
+
+static size_t arm_iommu_iova_get_free_max(struct device *dev)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+	unsigned long flags;
+	size_t max_free = 0;
+	unsigned long start = 0;
+
+	spin_lock_irqsave(&mapping->lock, flags);
+	while (1) {
+		unsigned long end;
+
+		start = bitmap_find_next_zero_area(mapping->bitmap,
+						   mapping->bits, start, 1, 0);
+		if (start > mapping->bits)
+			break;
+
+		end = find_next_bit(mapping->bitmap, mapping->bits, start);
+		max_free = max_t(size_t, max_free, end - start);
+		start = end;
+	}
+	spin_unlock_irqrestore(&mapping->lock, flags);
+	return max_free << (mapping->order + PAGE_SHIFT);
+}
+
 static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 				      size_t size)
 {
@@ -1787,6 +1838,9 @@ struct dma_map_ops iommu_ops = {
 	.sync_sg_for_device	= arm_iommu_sync_sg_for_device,
 
 	.set_dma_mask		= arm_dma_set_mask,
+
+	.iova_get_free_total	= arm_iommu_iova_get_free_total,
+	.iova_get_free_max	= arm_iommu_iova_get_free_max,
 };
 
 struct dma_map_ops iommu_coherent_ops = {
