@@ -344,6 +344,15 @@ config TEGRA_PRE_SILICON_SUPPORT
           Select this only if you are an NVIDIA developer working on
           FPGA, Emulation or Simulation.
 
+config TEGRA_SIMULATION_SPLIT_MEM
+        bool "Tegra Simulation Split Memory Configuration"
+        default n
+        help
+          This enables support for a Tegra split memory
+          simulation. It can be used as part of ASIM/QT test
+          setup. Select this only if you are an NVIDIA developer
+          working on a simulation platform.
+
 config TEGRA_FIQ_DEBUGGER
 	bool "Enable the FIQ serial debugger on Tegra"
 	default n
