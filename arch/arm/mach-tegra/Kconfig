@@ -16,6 +16,7 @@ config ARCH_TEGRA_2x_SOC
 	select ARM_GIC
 	select ARM_SAVE_DEBUG_CONTEXT
 	select COMMON_CLK
+	select CPA
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
 	select PCI_MSI if TEGRA_PCI
@@ -44,6 +45,7 @@ config ARCH_TEGRA_3x_SOC
 	select ARM_GIC
 	select ARM_SAVE_DEBUG_CONTEXT
 	select COMMON_CLK
+	select CPA
 	select CPU_FREQ_TABLE if CPU_FREQ
 	select CPU_V7
 	select GIC_SET_MULTIPLE_CPUS if SMP
