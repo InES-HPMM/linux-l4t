@@ -1638,8 +1638,9 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	 * and no enabled module clocks should use it as a source during clock
 	 * init.
 	 */
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	BUG_ON(c->state == ON);
-
+#endif
 	/*
 	 * Most of PLLCX register fields are shadowed, and can not be read
 	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
