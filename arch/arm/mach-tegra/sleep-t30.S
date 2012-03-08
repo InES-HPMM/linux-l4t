@@ -613,6 +613,18 @@ tegra3_enter_sleep:
 	dsb
 	ldr	r0, [r6, r2] /* memory barrier */
 
+#ifndef CONFIG_ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
+	/* Set the Debug OS Double Lock for Debug Arch v7.1 or greater.
+	   With this lock set, the debugger is completely locked out.
+	   Disable this to debug WFI/powergating failures.
+	*/
+	mrc	p15, 0, r3, c0, c1, 2	@ ID_DFR0
+	and	r3, r3, #0xF		@ coprocessor debug model
+	cmp	r3, #5			@ debug arch >= v7.1?
+
+	mov32	r1, 0xC5ACCE55
+	mcrge	p14, 0, r1, c1, c3, 4	@ DBGOSDLR
+#endif
 halted:
 	isb
 	dsb
