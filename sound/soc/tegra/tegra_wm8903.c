@@ -463,10 +463,10 @@ static const struct snd_soc_dapm_route cardhu_audio_map[] = {
 static const struct snd_kcontrol_new cardhu_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
-	SOC_DAPM_PIN_SWITCH("LineOut"),
+	SOC_DAPM_PIN_SWITCH("Line Out"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
-	SOC_DAPM_PIN_SWITCH("LineIn"),
+	SOC_DAPM_PIN_SWITCH("Line In"),
 };
 
 static const struct snd_kcontrol_new tegra_wm8903_controls[] = {
