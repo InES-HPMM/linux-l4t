@@ -298,8 +298,13 @@ static bool arch_timer_initialized;
 /* Is the optional system timer available? */
 static int local_timer_is_architected(void)
 {
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	/* HACK: The simulator does not yet support arch timers. */
+	return 0;
+#else
 	return (cpu_architecture() >= CPU_ARCH_ARMv7) &&
 	       ((read_cpuid_ext(CPUID_EXT_PFR1) >> 16) & 0xf) == 1;
+#endif
 }
 
 static int __init tegra_init_early_arch_timer(void)
