@@ -178,6 +178,7 @@ struct clk {
 			const struct clk_pll_freq_table	*freq_table;
 			int				lock_delay;
 			unsigned long			fixed_rate;
+			u32				misc1;
 		} pll;
 		struct {
 			unsigned long			default_rate;

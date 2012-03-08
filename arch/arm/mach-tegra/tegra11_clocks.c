@@ -142,6 +142,7 @@
 #define AUDIO_SYNC_DISABLE_BIT		0x10
 #define AUDIO_SYNC_TAP_NIBBLE_SHIFT(c)	((c->reg_shift - 24) * 4)
 
+/* PLL common */
 #define PLL_BASE			0x0
 #define PLL_BASE_BYPASS			(1<<31)
 #define PLL_BASE_ENABLE			(1<<30)
@@ -155,6 +156,13 @@
 #define PLL_BASE_DIVM_MASK		(0x1F)
 #define PLL_BASE_DIVM_SHIFT		0
 
+#define PLL_BASE_PARSE(pll, cfg, b)					       \
+	do {								       \
+		(cfg).m = ((b) & pll##_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT; \
+		(cfg).n = ((b) & pll##_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT; \
+		(cfg).p = ((b) & pll##_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT; \
+	} while (0)
+
 #define PLL_OUT_RATIO_MASK		(0xFF<<8)
 #define PLL_OUT_RATIO_SHIFT		8
 #define PLL_OUT_OVERRIDE		(1<<2)
@@ -163,6 +171,8 @@
 
 #define PLL_MISC(c)			\
 	(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
+#define PLL_MISCN(c, n)		\
+	((c)->u.pll.misc1 + ((n) - 1) * PLL_MISC(c))
 #define PLL_MISC_LOCK_ENABLE(c)	\
 	(((c)->flags & (PLLU | PLLD)) ? (1<<22) : (1<<18))
 
@@ -175,8 +185,12 @@
 #define PLL_MISC_VCOCON_MASK		(0xF<<PLL_MISC_VCOCON_SHIFT)
 #define PLLD_MISC_CLKENABLE		(1<<30)
 
+#define PLL_FIXED_MDIV(c, ref)		((ref) > (c)->u.pll.cf_max ? 2 : 1)
+
+/* PLLU */
 #define PLLU_BASE_POST_DIV		(1<<20)
 
+/* PLLD */
 #define PLLD_BASE_DSIB_MUX_SHIFT	25
 #define PLLD_BASE_DSIB_MUX_MASK		(1<<PLLD_BASE_DSIB_MUX_SHIFT)
 #define PLLD_BASE_CSI_CLKENABLE		(1<<26)
@@ -186,11 +200,13 @@
 
 #define PLLDU_LFCON_SET_DIVN		600
 
-#define PLLCX_USE_DFS			0
+/* PLLCX */
+#define PLLCX_USE_DYN_RAMP		0
 #define PLLCX_BASE_PHASE_LOCK		(1<<26)
 #define PLLCX_BASE_DIVP_MASK		(0x3<<PLL_BASE_DIVP_SHIFT)
 #define PLLCX_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
 #define PLLCX_BASE_DIVM_MASK		(0x3<<PLL_BASE_DIVM_SHIFT)
+#define PLLCX_PDIV_MAX	((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT))
 
 /* FIXME: double-check PLLCX MISC definitions for spec changes */
 #define PLLCX_MISC_STROBE		(1<<27)
@@ -1567,7 +1583,30 @@ static struct clk_ops tegra_plld_ops = {
 };
 
 
-/* FIXME: pllcx resume */
+/*
+ * Common configuration policy for dynamic ramp PLLs:
+ * - always set fixed M-value based on the reference rate
+ * - always set P-value value 1:1 for output rates above VCO minimum, and
+ *   choose minimum necessary P-value for output rates below VCO minimum
+ * - calculate N-value based on selected M and P
+ */
+static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
+			    unsigned long rate, unsigned long input_rate)
+{
+	cfg->m = PLL_FIXED_MDIV(c, input_rate);
+	cfg->p = DIV_ROUND_UP(c->u.pll.vco_min, rate);
+	cfg->output_rate = rate * cfg->p;
+	cfg->n = cfg->output_rate * cfg->m / input_rate;
+
+	/* can use PLLCX N-divider field layout for all dynamic ramp PLLs */
+	if ((cfg->n > (PLLCX_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
+	    (cfg->output_rate > c->u.pll.vco_max))
+		return -EINVAL;
+
+	return 0;
+}
+
+/* FIXME: pllcx suspend/resume */
 
 static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 					u32 n)
@@ -1618,9 +1657,9 @@ static void pllcx_strobe(struct clk *c)
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
 {
 	clk_writel(PLLCX_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
-	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + 2 * PLL_MISC(c));
-	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + 3 * PLL_MISC(c));
-	clk_writel(PLLCX_MISC3_DEFAULT_VALUE, c->reg + 4 * PLL_MISC(c));
+	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 1));
+	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 2));
+	clk_writel(PLLCX_MISC3_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 3));
 
 	pllcx_update_dynamic_koef(c, input_rate, n);
 }
@@ -1649,7 +1688,7 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	 * minimum VCO rate (the latter assured that shadowed divider settings
 	 * are within supported range).
 	 */
-	m = input_rate > c->u.pll.cf_max ? 2 : 1;
+	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
 	p = 2;
 	val = (m << PLL_BASE_DIVM_SHIFT) | (n << PLL_BASE_DIVN_SHIFT) |
@@ -1720,37 +1759,31 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	if (sel->input_rate == 0) {
 		sel = &cfg;
 
-		cfg.m = input_rate > c->u.pll.cf_max ? 2 : 1;
-		cfg.p = DIV_ROUND_UP(c->u.pll.vco_min, rate);
-		cfg.output_rate = rate * cfg.p;
-		cfg.n = cfg.output_rate * cfg.m / input_rate;
-
-		if ((cfg.n > (PLLCX_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
-		    (cfg.p > ((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT)+1))
-		    || (cfg.output_rate > c->u.pll.vco_max)) {
+		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate) ||
+		    (cfg.p > PLLCX_PDIV_MAX + 1)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 			       __func__, c->name, rate);
 			return -EINVAL;
 		}
 	}
 
-	BUG_ON((sel->m != 1) && (sel->m != 2));
+	BUG_ON(sel->p > PLLCX_PDIV_MAX + 1);
+	BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 	c->mul = sel->n;
 	c->div = sel->m * sel->p;
 
 	val = clk_readl(c->reg + PLL_BASE);
-	old_cfg.m = (val & PLLCX_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-	BUG_ON(old_cfg.m != sel->m);
-	old_cfg.n = (val & PLLCX_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
-	old_cfg.p = ((val & PLLCX_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT) + 1;
+	PLL_BASE_PARSE(PLLCX, old_cfg, val);
+	old_cfg.p++;
 
+	BUG_ON(old_cfg.m != sel->m);
 	if ((sel->n == old_cfg.n) && (sel->p == old_cfg.p))
 		return 0;
 
-#if PLLCX_USE_DFS
+#if PLLCX_USE_DYN_RAMP
 	if (c->state == ON) {
 		/*
-		 * Use DFS only if PLL is enabled, and M divider is unchanged
+		 * Dynamic ramp if PLL is enabled, and M divider is unchanged:
 		 * - Change P divider 1st if intermediate rate is below either
 		 *   old or new rate.
 		 * - Change N divider with DFS strobe - target rate is either
@@ -3251,6 +3284,7 @@ static struct clk tegra_pll_c2 = {
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
+		.misc1 = 0x4f0 - 0x4e8,
 	},
 };
 
@@ -3270,6 +3304,7 @@ static struct clk tegra_pll_c3 = {
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
+		.misc1 = 0x504 - 0x4fc,
 	},
 };
 
