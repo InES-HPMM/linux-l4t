@@ -940,6 +940,15 @@ config ARM_SAVE_DEBUG_CONTEXT
 	  This option enables save/restore of the ARM debug registers
 	  across CPU powerdown.
 
+config ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
+	bool "Don't lock out debugger access when saving debug context"
+	depends on ARM_SAVE_DEBUG_CONTEXT
+	help
+	  This option allows debugging of the code that saves/restores
+	  the ARM debug registers across CPU powerdown. This option
+	  should not be selected unless you are actively debugging
+	  the context save/restore code. If unsure, say N.
+
 config CPA
 	bool "Change Page Attributes"
 	depends on CPU_V7

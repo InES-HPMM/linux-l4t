@@ -147,6 +147,15 @@ ENTRY(cpu_v7_do_suspend)
 	stmia	r0!, {r6 - r11}
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
+	/* If Debug Architecture v7.1 or later, set OS lock. */
+	mrc	p15, 0, r11, c0, c1, 2	@ ID_DFR0
+	and	r11, r11, #0xF		@ coprocessor debug model
+	cmp	r11, #5			@ debug arch >= v7.1?
+#ifndef CONFIG_ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
+	ldrge	r4, =0xC5ACCE55		@ Lock value
+	mcrge	p14, 0, r4, c1, c0, 4	@ DBGOSLAR
+	isb
+#endif
 	/* Save CP14 debug controller context */
 
 	mrc	p14, 0, r4, c0, c2, 2	@ DBGDSCRext
@@ -155,9 +164,9 @@ ENTRY(cpu_v7_do_suspend)
 	mrc	p14, 0, r7, c7, c9, 6	@ DBGCLAIMCLR
 	stmia	r0!, {r4-r7}
 
-	mrc	p14, 0, r4, c0, c10, 0	@ DBGDSCCR
-	mrc	p14, 0, r5, c0, c11, 0	@ DBGDSMCR
-	stmia	r0!, {r4-r5}
+	mrclt	p14, 0, r4, c0, c10, 0	@ DBGDSCCR (debug arch v7 only)
+	mrclt	p14, 0, r5, c0, c11, 0	@ DBGDSMCR (debug arch v7 only)
+	stmltia	r0!, {r4-r5}		@ (debug arch v7 only)
 
 	tst	r4, #(1 << 29)		@ DBGDSCRext.TXfull
 	mrcne	p14, 0, r4, c0, c3, 2	@ DBGDTRTXext
@@ -257,6 +266,16 @@ ENTRY(cpu_v7_do_resume)
 	isb
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
+	/* If Debug Architecture v7.1 or later, set OS lock. */
+	mrc	p15, 0, r11, c0, c1, 2	@ ID_DFR0
+	and	r11, r11, #0xF		@ coprocessor debug model
+	cmp	r11, #5			@ debug arch >= v7.1?
+#ifndef CONFIG_ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
+	ldrge	r4, =0xC5ACCE55		@ Lock value
+	mcrge	p14, 0, r4, c1, c0, 4	@ DBGOSLAR
+	isb
+#endif
+
 	/* Restore CP14 debug controller context */
 
 	ldmia	r0!, {r2 - r5}
@@ -264,9 +283,9 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p14, 0, r4, c0, c7, 0	@ DBGVCR
 	mcr	p14, 0, r5, c7, c8, 6	@ DBGCLAIMSET
 
-	ldmia	r0!, {r4-r5}
-	mcr	p14, 0, r4, c0, c10, 0	@ DBGDSCCR
-	mcr	p14, 0, r5, c0, c11, 0	@ DBGDSMCR
+	ldmltia	r0!, {r4-r5}		@ (debug arch v7 only)
+	mcrlt	p14, 0, r4, c0, c10, 0	@ DBGDSCCR (debug arch v7 only)
+	mcrlt	p14, 0, r5, c0, c11, 0	@ DBGDSMCR (debug arch v7 only)
 
 	tst	r2, #(1 << 29)		@ DBGDSCRext.TXfull
 	ldrne	r4, [r0], #4
@@ -336,6 +355,13 @@ start_restore_wpt:
 
 	mcr	p14, 0, r2, c0, c2, 2	@ DSCR
 	isb
+
+#ifndef CONFIG_ARM_SAVE_DEBUG_CONTEXT_NO_LOCK
+	mov	r4, #0			@ non-lock value
+	cmp	r11, #5			@ debug arch >= v7.1?
+	mcrge	p14, 0, r4, c1, c0, 4	@ DBGOSLAR
+	isb
+#endif
 #endif
 	dsb
 	mov	r0, r8			@ control register
