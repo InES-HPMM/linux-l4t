@@ -338,7 +338,12 @@ static int __init tegra_init_early_arch_timer(void)
 
 static int __init tegra_init_arch_timer(void)
 {
-	int err = arch_timer_sched_clock_init();
+	int err;
+
+	if (!local_timer_is_architected())
+		return -ENODEV;
+
+	err = arch_timer_sched_clock_init();
 	if (!err)
 		arch_timer_initialized = true;
 	else
