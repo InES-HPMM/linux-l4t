@@ -261,6 +261,22 @@
 #define PLLX_HW_CTRL_CFG		0x548
 #define PLLX_HW_CTRL_CFG_SWCTRL		(0x1 << 0)
 
+/* PLLC */
+#define PLLC_BASE_LOCK_OVERRIDE		(1<<28)
+
+#define PLLC_MISC_IDDQ			(0x1 << 26)
+#define PLLC_MISC_LOCK_ENABLE		(0x1 << 24)
+
+#define PLLC_MISC1_CLAMP_NDIV		(0x1 << 26)
+#define PLLC_MISC1_EN_DYNRAMP		(0x1 << 25)
+#define PLLC_MISC1_DYNRAMP_STEPA_SHIFT	17
+#define PLLC_MISC1_DYNRAMP_STEPA_MASK	(0xFF << PLLC_MISC1_DYNRAMP_STEPA_SHIFT)
+#define PLLC_MISC1_DYNRAMP_STEPB_SHIFT	9
+#define PLLC_MISC1_DYNRAMP_STEPB_MASK	(0xFF << PLLC_MISC1_DYNRAMP_STEPB_SHIFT)
+#define PLLC_MISC1_NDIV_NEW_SHIFT	1
+#define PLLC_MISC1_NDIV_NEW_MASK	(0xFF << PLLC_MISC1_NDIV_NEW_SHIFT)
+#define PLLC_MISC1_DYNRAMP_DONE		(0x1 << 0)
+
 /* FIXME: OUT_OF_TABLE_CPCON per pll */
 #define OUT_OF_TABLE_CPCON		0x8
 
@@ -1943,9 +1959,13 @@ static void pllx_do_iddq(struct clk *c, bool set)
 
 static void pllc_do_iddq(struct clk *c, bool set)
 {
-	/* FIXME: implement */
+	u32 val = clk_readl(c->reg + PLL_MISC(c));
+	if (set)
+		val |= PLLC_MISC_IDDQ;
+	else
+		val &= ~PLLC_MISC_IDDQ;
+	clk_writel(val, c->reg + PLL_MISC(c));
 }
-
 
 static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 {
@@ -1965,7 +1985,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	/* Get ready dyn ramp state machine, disable lock override */
 	clk_writel(val, c->reg + PLL_MISCN(c, 2));
 
-	/* Enable outputs and configure lock */
+	/* Enable outputs to CPUs and configure lock */
 	val = 0;
 #if USE_PLL_LOCK_BITS
 	val |= PLL_MISC_LOCK_ENABLE(c);
@@ -1986,7 +2006,36 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 
 static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 {
-	/* FIXME: implement */
+	u32 val;
+	u32 step_a, step_b;
+
+	/* Get ready dyn ramp state machine */
+	pllxc_get_dyn_steps(c, input_rate, &step_a, &step_b);
+	val = step_a << PLLC_MISC1_DYNRAMP_STEPA_SHIFT;
+	val |= step_b << PLLC_MISC1_DYNRAMP_STEPB_SHIFT;
+	clk_writel(val, c->reg + PLL_MISCN(c, 1));
+
+	/* Configure lock and check/set IDDQ */
+	val = clk_readl(c->reg + PLL_BASE);
+	val &= ~PLLC_BASE_LOCK_OVERRIDE;
+	clk_writel(val, c->reg + PLL_BASE);
+
+	val = clk_readl(c->reg + PLL_MISC(c));
+#if USE_PLL_LOCK_BITS
+	val |= PLLC_MISC_LOCK_ENABLE;
+#else
+	val &= ~PLLC_MISC_LOCK_ENABLE
+#endif
+	clk_writel(val, c->reg + PLL_MISC(c));
+
+	if (c->state == ON) {
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+		BUG_ON(val & PLLC_MISC_IDDQ);
+#endif
+	} else {
+		val |= PLLC_MISC_IDDQ;
+		clk_writel(val, c->reg + PLL_MISC(c));
+	}
 }
 
 static void tegra11_pllxc_clk_init(struct clk *c)
@@ -2127,10 +2176,8 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 			u32 reg = c->reg + PLL_MISCN(c, 2);
 			PLLXC_DYN_RAMP(PLLX_MISC2, reg);
 		} else {
-			/* FIXME: PLLC definitions
 			u32 reg = c->reg + PLL_MISCN(c, 1);
 			PLLXC_DYN_RAMP(PLLC_MISC1, reg);
-			*/
 		}
 
 		return 0;
@@ -3517,60 +3564,30 @@ static struct clk tegra_pll_ref = {
 };
 
 static struct clk_pll_freq_table tegra_pll_c_freq_table[] = {
-	{ 12000000, 1040000000, 520,  6, 1, 8},
-	{ 13000000, 1040000000, 480,  6, 1, 8},
-	{ 16800000, 1040000000, 495,  8, 1, 8},		/* actual: 1039.5 MHz */
-	{ 19200000, 1040000000, 325,  6, 1, 6},
-	{ 26000000, 1040000000, 520, 13, 1, 8},
-
-	{ 12000000, 832000000, 416,  6, 1, 8},
-	{ 13000000, 832000000, 832, 13, 1, 8},
-	{ 16800000, 832000000, 396,  8, 1, 8},		/* actual: 831.6 MHz */
-	{ 19200000, 832000000, 260,  6, 1, 8},
-	{ 26000000, 832000000, 416, 13, 1, 8},
-
-	{ 12000000, 624000000, 624, 12, 1, 8},
-	{ 13000000, 624000000, 624, 13, 1, 8},
-	{ 16800000, 600000000, 520, 14, 1, 8},
-	{ 19200000, 624000000, 520, 16, 1, 8},
-	{ 26000000, 624000000, 624, 26, 1, 8},
-
-	{ 12000000, 600000000, 600, 12, 1, 8},
-	{ 13000000, 600000000, 600, 13, 1, 8},
-	{ 16800000, 600000000, 500, 14, 1, 8},
-	{ 19200000, 600000000, 375, 12, 1, 6},
-	{ 26000000, 600000000, 600, 26, 1, 8},
-
-	{ 12000000, 520000000, 520, 12, 1, 8},
-	{ 13000000, 520000000, 520, 13, 1, 8},
-	{ 16800000, 520000000, 495, 16, 1, 8},		/* actual: 519.75 MHz */
-	{ 19200000, 520000000, 325, 12, 1, 6},
-	{ 26000000, 520000000, 520, 26, 1, 8},
-
-	{ 12000000, 416000000, 416, 12, 1, 8},
-	{ 13000000, 416000000, 416, 13, 1, 8},
-	{ 16800000, 416000000, 396, 16, 1, 8},		/* actual: 415.8 MHz */
-	{ 19200000, 416000000, 260, 12, 1, 6},
-	{ 26000000, 416000000, 416, 26, 1, 8},
+	{ 12000000, 600000000, 100, 1, 2},
+	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
+	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
+	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
+	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
 static struct clk tegra_pll_c = {
 	.name      = "pll_c",
-	.flags	   = PLL_HAS_CPCON,
-	.ops       = &tegra_pll_ops,
+	.ops       = &tegra_pllxc_ops,
 	.reg       = 0x80,
 	.parent    = &tegra_pll_ref,
 	.max_rate  = 1400000000,
 	.u.pll = {
-		.input_min = 2000000,
-		.input_max = 31000000,
-		.cf_min    = 1000000,
-		.cf_max    = 6000000,
-		.vco_min   = 20000000,
+		.input_min = 12000000,
+		.input_max = 800000000,
+		.cf_min    = 12000000,
+		.cf_max    = 19200000,
+		.vco_min   = 620000000,
 		.vco_max   = 1400000000,
 		.freq_table = tegra_pll_c_freq_table,
 		.lock_delay = 300,
+		.misc1 = 0x88 - 0x80
 	},
 };
 
