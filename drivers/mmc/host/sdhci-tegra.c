@@ -1227,6 +1227,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			if (rc) {
 				dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
 					"vddio_sdmmc", rc);
+				regulator_put(tegra_host->vdd_io_reg);
+				tegra_host->vdd_io_reg = NULL;
 			}
 		}
 
