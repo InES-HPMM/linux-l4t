@@ -1657,10 +1657,19 @@ static struct clk_ops tegra_plld_ops = {
  * - calculate N-value based on selected M and P
  */
 static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
-			    unsigned long rate, unsigned long input_rate)
+	unsigned long rate, unsigned long input_rate, unsigned long p_max)
 {
+	unsigned long p;
+
+	if (!rate)
+		return -EINVAL;
+
+	p = DIV_ROUND_UP(c->u.pll.vco_min, rate);
+	if (p > p_max)
+		return -EINVAL;
+
 	cfg->m = PLL_FIXED_MDIV(c, input_rate);
-	cfg->p = DIV_ROUND_UP(c->u.pll.vco_min, rate);
+	cfg->p = p;
 	cfg->output_rate = rate * cfg->p;
 	cfg->n = cfg->output_rate * cfg->m / input_rate;
 
@@ -1825,8 +1834,8 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	if (sel->input_rate == 0) {
 		sel = &cfg;
 
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate) ||
-		    (cfg.p > PLLCX_PDIV_MAX + 1)) {
+		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
+				     PLLCX_PDIV_MAX + 1)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 			       __func__, c->name, rate);
 			return -EINVAL;
@@ -2141,8 +2150,8 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 	if (sel->input_rate == 0) {
 		sel = &cfg;
 
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate) ||
-		    (cfg.p > PLLXC_SW_PDIV_MAX + 1)) {
+		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
+				     PLLXC_SW_PDIV_MAX + 1)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 			       __func__, c->name, rate);
 			return -EINVAL;
