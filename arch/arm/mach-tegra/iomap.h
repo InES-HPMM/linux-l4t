@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -100,18 +100,24 @@
 
 #define TEGRA_GART_BASE			0x58000000
 #define TEGRA_GART_SIZE			SZ_32M
+#define TEGRA_IOMMU_BASE		TEGRA_GART_BASE
+#define TEGRA_IOMMU_SIZE		TEGRA_GART_SIZE
 
 #else
 
 #define TEGRA_SMMU_BASE_TEGRA3_A01	0xe0000000
 #define TEGRA_SMMU_SIZE_TEGRA3_A01	SZ_256M
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TEGRA_SMMU_BASE			0x00001000
 #define TEGRA_SMMU_SIZE			(SZ_1G - SZ_4K * 2)
 #else
 #define TEGRA_SMMU_BASE			0x01000000
 #define TEGRA_SMMU_SIZE			(SZ_1G - SZ_16M - SZ_4K)
 #endif
+
+#define TEGRA_IOMMU_BASE		TEGRA_SMMU_BASE
+#define TEGRA_IOMMU_SIZE		TEGRA_SMMU_SIZE
 #endif
 
 #define TEGRA_RES_SEMA_SIZE		SZ_4K
