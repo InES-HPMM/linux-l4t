@@ -97,6 +97,8 @@ unsigned long tegra_carveout_start;
 unsigned long tegra_carveout_size;
 unsigned long tegra_vpr_start;
 unsigned long tegra_vpr_size;
+unsigned long tegra_tsec_start;
+unsigned long tegra_tsec_size;
 unsigned long tegra_lp0_vec_start;
 unsigned long tegra_lp0_vec_size;
 bool tegra_lp0_vec_relocate;
@@ -501,6 +503,19 @@ static int __init tegra_vpr_arg(char *options)
 }
 early_param("vpr", tegra_vpr_arg);
 
+static int __init tegra_tsec_arg(char *options)
+{
+	char *p = options;
+
+	tegra_tsec_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_tsec_start = memparse(p+1, &p);
+	pr_info("Found tsec, start=0x%lx size=%lx",
+		tegra_tsec_start, tegra_tsec_size);
+	return 0;
+}
+early_param("tsec", tegra_tsec_arg);
+
 enum panel_type get_panel_type(void)
 {
 	return board_panel_type;
@@ -870,7 +885,8 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		"Framebuffer:            %08lx - %08lx\n"
 		"2nd Framebuffer:        %08lx - %08lx\n"
 		"Carveout:               %08lx - %08lx\n"
-		"Vpr:                    %08lx - %08lx\n",
+		"Vpr:                    %08lx - %08lx\n"
+		"Tsec:                   %08lx - %08lx\n",
 		tegra_lp0_vec_start,
 		tegra_lp0_vec_size ?
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
@@ -888,7 +904,11 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		tegra_carveout_size ?
 			tegra_carveout_start + tegra_carveout_size - 1 : 0,
 		tegra_vpr_start,
-		tegra_vpr_size ? tegra_vpr_start + tegra_vpr_size - 1 : 0);
+		tegra_vpr_size ?
+			tegra_vpr_start + tegra_vpr_size - 1 : 0,
+		tegra_tsec_start,
+		tegra_tsec_size ?
+			tegra_tsec_start + tegra_tsec_size - 1 : 0);
 
 	if (tegra_avp_kernel_size) {
 		/* Return excessive memory reserved for AVP kernel */

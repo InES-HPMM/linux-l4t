@@ -1,5 +1,8 @@
 extern struct smp_operations tegra_smp_ops;
 
+extern unsigned long tegra_tsec_start;
+extern unsigned long tegra_tsec_size;
+
 #ifdef CONFIG_CACHE_L2X0
 void tegra_init_cache(bool init);
 #else
