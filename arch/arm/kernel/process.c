@@ -288,11 +288,15 @@ void machine_power_off(void)
  */
 void machine_restart(char *cmd)
 {
-	smp_send_stop();
-
 	/* Flush the console to make sure all the relevant messages make it
 	 * out to the console drivers */
 	arm_machine_flush_console();
+
+	/* Disable interrupts first */
+	local_irq_disable();
+	local_fiq_disable();
+
+	smp_send_stop();
 
 	arm_pm_restart(reboot_mode, cmd);
 
