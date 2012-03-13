@@ -398,7 +398,7 @@ static u32 tsc_resume_start;
 
 #define TSC_TIMEOUT_US			32
 
-void tegra_arch_timer_suspend(void)
+void tegra_tsc_suspend(void)
 {
 	if (arch_timer_initialized) {
 		u32 reg = pmc_readl(PMC_DPD_ENABLE);
@@ -409,7 +409,7 @@ void tegra_arch_timer_suspend(void)
 	}
 }
 
-void tegra_arch_timer_resume(void)
+void tegra_tsc_resume(void)
 {
 	if (arch_timer_initialized) {
 		u32 reg = pmc_readl(PMC_DPD_ENABLE);
@@ -420,7 +420,7 @@ void tegra_arch_timer_resume(void)
 	}
 }
 
-void tegra_arch_timer_wait_for_suspend(void)
+void tegra_tsc_wait_for_suspend(void)
 {
 	if (arch_timer_initialized) {
 		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_suspend_start) <
@@ -432,7 +432,7 @@ void tegra_arch_timer_wait_for_suspend(void)
 	}
 }
 
-void tegra_arch_timer_wait_for_resume(void)
+void tegra_tsc_wait_for_resume(void)
 {
 	if (arch_timer_initialized) {
 		while ((timer_readl(TIMERUS_CNTR_1US) - tsc_resume_start) <

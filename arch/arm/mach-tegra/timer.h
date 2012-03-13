@@ -61,15 +61,15 @@ static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
 #endif
 
 #if defined(CONFIG_ARM_ARCH_TIMER) && defined(CONFIG_PM_SLEEP)
-void tegra_arch_timer_suspend(void);
-void tegra_arch_timer_resume(void);
-void tegra_arch_timer_wait_for_suspend(void);
-void tegra_arch_timer_wait_for_resume(void);
+void tegra_tsc_suspend(void);
+void tegra_tsc_resume(void);
+void tegra_tsc_wait_for_suspend(void);
+void tegra_tsc_wait_for_resume(void);
 #else
-static inline void tegra_arch_timer_suspend(void) {}
-static inline void tegra_arch_timer_resume(void) {}
-static inline void tegra_arch_timer_wait_for_suspend(void) {};
-static inline void tegra_arch_timer_wait_for_resume(void) {};
+static inline void tegra_tsc_suspend(void) {}
+static inline void tegra_tsc_resume(void) {}
+static inline void tegra_tsc_wait_for_suspend(void) {};
+static inline void tegra_tsc_wait_for_resume(void) {};
 #endif
 
 #endif /* _MACH_TEGRA_TIMER_H_ */

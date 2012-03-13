@@ -837,10 +837,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 			reg &= (~PMC_SCRATCH4_WAKE_CLUSTER_MASK);
 		pmc_32kwritel(reg, PMC_SCRATCH4);
 #endif
-		tegra_arch_timer_suspend();
+		tegra_tsc_suspend();
 		tegra_lp0_suspend_mc();
 		tegra_cpu_reset_handler_save();
-		tegra_arch_timer_wait_for_suspend();
+		tegra_tsc_wait_for_suspend();
 	}
 	else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 1;
@@ -859,10 +859,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	tegra_init_cache(true);
 
 	if (mode == TEGRA_SUSPEND_LP0) {
-		tegra_arch_timer_resume();
+		tegra_tsc_resume();
 		tegra_cpu_reset_handler_restore();
 		tegra_lp0_resume_mc();
-		tegra_arch_timer_wait_for_resume();
+		tegra_tsc_wait_for_resume();
 	} else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 0;
 
