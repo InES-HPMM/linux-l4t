@@ -586,6 +586,27 @@ static struct snd_soc_dai_link tegra_wm8903_dai[] = {
 	},
 };
 
+void tegra_wm8903_suspend_post(struct snd_soc_card *card)
+{
+	struct snd_soc_jack_gpio *gpio = &tegra_wm8903_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio))
+		disable_irq(gpio_to_irq(gpio->gpio));
+}
+
+void tegra_wm8903_resume_pre(struct snd_soc_card *card)
+{
+	int val;
+	struct snd_soc_jack_gpio *gpio = &tegra_wm8903_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio)) {
+		val = gpio_get_value(gpio->gpio);
+		val = gpio->invert ? !val : val;
+		snd_soc_jack_report(gpio->jack, val, gpio->report);
+		enable_irq(gpio_to_irq(gpio->gpio));
+	}
+}
+
 static struct snd_soc_card snd_soc_tegra_wm8903 = {
 	.name = "tegra-wm8903",
 	.owner = THIS_MODULE,
@@ -595,6 +616,8 @@ static struct snd_soc_card snd_soc_tegra_wm8903 = {
 	.remove = tegra_wm8903_remove,
 
 	.fully_routed = true,
+	.suspend_post = tegra_wm8903_suspend_post,
+	.resume_pre = tegra_wm8903_resume_pre,
 	//.set_bias_level = tegra30_soc_set_bias_level,
 	//.set_bias_level_post = tegra30_soc_set_bias_level_post,
 };
