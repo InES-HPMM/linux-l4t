@@ -179,16 +179,12 @@ ENTRY(tegra2_sleep_core_finish)
 ENDPROC(tegra2_sleep_core_finish)
 
 /*
- * tegra2_sleep_wfi(unsigned long v2p)
+ * tegra3_sleep_cpu_secondary_finish(unsigned long v2p)
+ *
+ * Enters WFI on secondary CPU by exiting coherency and saving CPU state.
  */
-ENTRY(tegra2_sleep_wfi)
-	stmfd	sp!, {r4 - r9, lr}
-	mov	r9, sp			@ save sp for aborted suspend
-	adr	r1, BSYM(tegra_sleep_cpu_save_finish)
-	bl	cpu_suspend
-	ldmfd	sp!, {r4 - r9, pc}
-
-tegra_sleep_cpu_save_finish:
+ENTRY(tegra2_finish_sleep_cpu_secondary)
+	mov	r6, lr	@ save address of cpu_suspend_abort
 	mrc	p15, 0, r11, c1, c0, 1	@ save actlr before exiting coherency
 
 	dsb
@@ -208,10 +204,6 @@ tegra_sleep_cpu_save_finish:
 
 	bl	tegra_cpu_wfi
 
-	mov32	r0, TEGRA_PMC_VIRT + PMC_SCRATCH41
-	mov	r3, #CPU_NOT_RESETTABLE
-	str	r3, [r0]
-
 	/*
 	 * cpu may be reset while in wfi, which will return through
 	 * tegra_resume to tegra_cpu_resume_phys to tegra_cpu_resume
@@ -221,8 +213,6 @@ tegra_sleep_cpu_save_finish:
 	 *
 	 * r11 contains the original actlr
 	 */
-
-	mov	sp, r9			@ restore SP for aborted suspend
 	bl	tegra_pen_lock
 
 	mov32	r3, TEGRA_PMC_VIRT
@@ -249,24 +239,8 @@ tegra_sleep_cpu_save_finish:
 #else
 	bl	__cpuc_flush_kern_all
 #endif
-
-#ifdef CONFIG_CACHE_L2X0
-	cpu_id  r2
-	cmp r2, #0
-	bne no_l2_sync
-	/* Issue a PL310 cache sync operation */
-	dsb
-	mov32	r2, TEGRA_PL310_VIRT
-	movw	r1, 0x730	@ cache sync
-	add	r2, r2, r1
-	mov	r1, #0
-	str	r1, [r2]
-
-no_l2_sync:
-#endif
-
-	ldmfd	sp!, {r4 - r9, pc}
-ENDPROC(tegra2_sleep_wfi)
+	mov	pc, r6
+ENDPROC(tegra2_finish_sleep_cpu_secondary)
 
 /*
  * tegra2_tear_down_cpu

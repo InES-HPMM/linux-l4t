@@ -287,7 +287,7 @@ static bool tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
 
 	tegra_twd_suspend(&twd_context);
 
-	tegra2_sleep_wfi(PHYS_OFFSET - PAGE_OFFSET);
+	cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra2_finish_sleep_cpu_secondary);
 
 	tegra2_cpu_clear_resettable();
 
