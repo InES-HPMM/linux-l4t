@@ -27,6 +27,7 @@
 #include <linux/clockchips.h>
 #include <linux/clocksource.h>
 #include <linux/clk.h>
+#include <linux/cpu.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 
@@ -322,10 +323,10 @@ static int __init tegra_init_early_arch_timer(void)
 	tsc_writel(tsc_ref_freq, TSC_CNTFID0);
 
 	/* Program CNTFRQ to the same value.
-	   NOTE: this is a write once register */
+	   NOTE: this is a write once (per CPU reset) register. */
 	__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
 
-	/* CNTREQ must agree with the TSC reference frequency. */
+	/* CNTFRQ must agree with the TSC reference frequency. */
 	__asm__("mrc p15, 0, %0, c14, c0, 0\n" : "=r" (reg));
 	BUG_ON(reg != tsc_ref_freq);
 
@@ -336,6 +337,36 @@ static int __init tegra_init_early_arch_timer(void)
 	return 0;
 }
 
+static void tegra_arch_timer_per_cpu_init(void)
+{
+	if (arch_timer_initialized) {
+		u32 tsc_ref_freq = tegra_clk_measure_input_freq();
+
+		/* Program CNTFRQ to the input frequency.
+		   NOTE: this is a write once (per CPU reset) register. */
+		__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
+	}
+}
+
+static int arch_timer_cpu_notify(struct notifier_block *self,
+				    unsigned long action, void *data)
+{
+	switch (action) {
+	case CPU_STARTING:
+	case CPU_STARTING_FROZEN:
+		tegra_arch_timer_per_cpu_init();
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block arch_timer_cpu_nb = {
+	.notifier_call = arch_timer_cpu_notify,
+};
+
 static int __init tegra_init_arch_timer(void)
 {
 	int err;
@@ -344,12 +375,15 @@ static int __init tegra_init_arch_timer(void)
 		return -ENODEV;
 
 	err = arch_timer_sched_clock_init();
-	if (!err)
-		arch_timer_initialized = true;
-	else
+	if (err) {
 		pr_err("%s: Unable to initialize arch timer sched_clock: %d\n",
 		     __func__, err);
-	return err;
+		return err;
+	}
+
+	register_cpu_notifier(&arch_timer_cpu_nb);
+	arch_timer_initialized = true;
+	return 0;
 }
 
 static struct resource arch_timer_resources[] __initdata = {
