@@ -34,6 +34,7 @@
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
 #include <asm/cputype.h>
+#include <asm/cpu_pm.h>
 #include <asm/delay.h>
 #include <asm/smp_twd.h>
 #include <asm/system.h>
@@ -367,6 +368,23 @@ static struct notifier_block arch_timer_cpu_nb = {
 	.notifier_call = arch_timer_cpu_notify,
 };
 
+static int arch_timer_cpu_pm_notify(struct notifier_block *self,
+				    unsigned long action, void *data)
+{
+	switch (action) {
+	case CPU_PM_EXIT:
+		tegra_arch_timer_per_cpu_init();
+		break;
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block arch_timer_cpu_pm_nb = {
+	.notifier_call = arch_timer_cpu_pm_notify,
+};
+
 static int __init tegra_init_arch_timer(void)
 {
 	int err;
@@ -382,6 +400,7 @@ static int __init tegra_init_arch_timer(void)
 	}
 
 	register_cpu_notifier(&arch_timer_cpu_nb);
+	cpu_pm_register_notifier(&arch_timer_cpu_pm_nb);
 	arch_timer_initialized = true;
 	return 0;
 }
