@@ -60,6 +60,8 @@
 #include "gpio-names.h"
 
 #define ENABLE_OTG 0
+/* uncomment for host only functionality (for FPGA) */
+/* #define USB_HOST_ONLY */
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
@@ -397,7 +399,9 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&debug_uart,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
+#if !defined(USB_HOST_ONLY)
 	&tegra_udc_device,
+#endif
 #if defined(CONFIG_TEGRA_IOVMM_SMMU)
 	&tegra_smmu_device,
 #endif
@@ -433,7 +437,7 @@ static int __init curacao_touch_init(void)
 	return 0;
 }
 
-
+#if defined(USB_HOST_ONLY)
 static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 	[0] = {
 			.phy_config = &utmi_phy_config[0],
@@ -452,12 +456,14 @@ static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
 			.power_down_on_bus_suspend = 0,
 	},
 };
-
+#endif
 
 static void curacao_usb_init(void)
 {
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
-	platform_device_register(&tegra_ehci2_device);
+#if defined(USB_HOST_ONLY)
+	tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
+	platform_device_register(&tegra_ehci1_device);
+#endif
 }
 
 static struct platform_device *curacao_hs_uart_devices[] __initdata = {
