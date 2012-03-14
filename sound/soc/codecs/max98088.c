@@ -2101,6 +2101,15 @@ static int max98088_probe(struct snd_soc_codec *codec)
        max98088->mic1pre = 0;
        max98088->mic2pre = 0;
 
+       ret = snd_soc_read(codec, M98088_REG_FF_REV_ID);
+       if (ret != 0x40) {
+               dev_err(codec->dev, "Failed to read device revision: %d\n",
+                       ret);
+               ret = -ENODEV;
+               goto err_access;
+       }
+       dev_info(codec->dev, "revision %c\n", ret - 0x40 + 'A');
+
        if (max98088->irq) {
                /* register an audio interrupt */
                ret = request_threaded_irq(max98088->irq, NULL,
@@ -2112,14 +2121,6 @@ static int max98088_probe(struct snd_soc_codec *codec)
                        goto err_access;
                }
        }
-
-       ret = snd_soc_read(codec, M98088_REG_FF_REV_ID);
-       if (ret < 0) {
-               dev_err(codec->dev, "Failed to read device revision: %d\n",
-                       ret);
-               goto err_access;
-       }
-       dev_info(codec->dev, "revision %c\n", ret - 0x40 + 'A');
 
        snd_soc_write(codec, M98088_REG_51_PWR_SYS, M98088_PWRSV);
 
