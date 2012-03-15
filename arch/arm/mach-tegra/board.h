@@ -81,6 +81,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 void tegra_init_cache(bool init);
 void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
+int  __init tegra_init_board_info(void);
 void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	unsigned long size);
 bool is_tegra_debug_uartport_hs(void);
