@@ -1697,6 +1697,13 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_fb_size = fb_size;
 	}
 
+#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
+	tegra_carveout_start = TEGRA_ASIM_QT_CARVEOUT_START;
+	tegra_carveout_size = TEGRA_ASIM_QT_CARVEOUT_SIZE;
+	tegra_fb_start = TEGRA_ASIM_QT_FB_START;
+	tegra_fb_size = TEGRA_ASIM_QT_FB_SIZE;
+#endif
+
 	if (tegra_fb_size)
 		tegra_grhost_aperture = tegra_fb_start;
 
