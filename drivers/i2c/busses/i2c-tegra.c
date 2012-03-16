@@ -159,6 +159,7 @@ struct tegra_i2c_dev {
 	struct i2c_adapter adapter;
 	struct clk *div_clk;
 	struct clk *fast_clk;
+	spinlock_t fifo_lock;
 	void __iomem *base;
 	int cont_id;
 	int irq;
@@ -328,6 +329,9 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 	u8 *buf = i2c_dev->msg_buf;
 	size_t buf_remaining = i2c_dev->msg_buf_remaining;
 	int words_to_transfer;
+	unsigned long flags;
+
+	spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
 
 	val = i2c_readl(i2c_dev, I2C_FIFO_STATUS);
 	tx_fifo_avail = (val & I2C_FIFO_STATUS_TX_MASK) >>
@@ -376,6 +380,8 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 
 		i2c_writel(i2c_dev, val, I2C_TX_FIFO);
 	}
+
+	spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
 
 	return 0;
 }
@@ -882,6 +888,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->is_high_speed_enable = pdata->is_high_speed_enable;
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
+	spin_lock_init(&i2c_dev->fifo_lock);
 
 	i2c_dev->hw = &tegra20_i2c_hw;
 
