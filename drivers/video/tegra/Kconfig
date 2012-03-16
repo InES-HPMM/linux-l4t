@@ -150,6 +150,13 @@ config TEGRA_DSI
 	help
 	  Say Y here to enable the DSI panel.
 
+config TEGRA_DSI2LVDS
+	bool "Support DSI to LVDS bridge"
+	default n
+	select TEGRA_DSI
+	help
+	  Say Y here to support DSI-to-LVDS bridge controller for display.
+
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && TEGRA_IOVMM_SMMU
