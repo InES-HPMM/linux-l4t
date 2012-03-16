@@ -696,6 +696,8 @@ bool tegra_dc_does_vsync_separate(struct tegra_dc *dc, s64 new_ts, s64 old_ts);
 
 int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode);
 struct fb_videomode;
+int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
+	const struct tegra_dc_mode *mode);
 int tegra_dc_set_fb_mode(struct tegra_dc *dc, const struct fb_videomode *fbmode,
 	bool stereo_mode);
 
