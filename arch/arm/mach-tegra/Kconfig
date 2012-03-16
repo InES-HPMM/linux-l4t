@@ -304,4 +304,10 @@ config TEGRA_SLOW_CSITE
 	help
 	  When enabled, csite will be running at 1 Mhz and the performance of
 	  jtag, lauterbach and other debugger will be extremely slow.
+
+config TEGRA_PREPOWER_WIFI
+	bool "Pre-power up WiFi "
+	default n
+	help
+	  Pre-power up the on board WiFi chip
 endif
