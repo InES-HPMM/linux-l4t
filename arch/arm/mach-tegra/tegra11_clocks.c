@@ -4762,11 +4762,7 @@ static void tegra11_init_one_clock(struct clk *c)
 
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
-	if (c->flags & PERIPH_ON_CBUS)
-		return p != &tegra_pll_m;
-	else
-		return p != &tegra_pll_c;
-
+	/* No policy limitations for now */
 	return true;
 }
 
