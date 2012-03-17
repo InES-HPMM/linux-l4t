@@ -1178,7 +1178,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->instance = pdev->id;
 	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
-	host->mmc->pm_caps = plat->pm_flags;
+	host->mmc->pm_caps |= plat->pm_caps;
+	host->mmc->pm_flags |= plat->pm_flags;
 
 	host->mmc->caps |= MMC_CAP_ERASE;
 	/* enable 1/8V DDR capable */
