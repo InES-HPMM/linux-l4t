@@ -103,10 +103,10 @@ struct tegra_sdhci_hw_ops{
 	void	(*sdhost_init)(struct sdhci_host *sdhci);
 };
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 };
-#elif CONFIG_ARCH_TEGRA_3x_SOC
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
 	.sdhost_init = tegra3_sdhci_post_reset_init,
@@ -1304,17 +1304,16 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 #endif
 
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA2_SDHOST_STD_FREQ;
-#elif CONFIG_ARCH_TEGRA_3x_SOC
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_host->hw_ops = &tegra_3x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #else
 	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #endif
-
 	rc = sdhci_add_host(host);
 	if (rc)
 		goto err_add_host;
