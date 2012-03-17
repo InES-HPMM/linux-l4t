@@ -2031,7 +2031,7 @@ static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 #if USE_PLL_LOCK_BITS
 	val |= PLLC_MISC_LOCK_ENABLE;
 #else
-	val &= ~PLLC_MISC_LOCK_ENABLE
+	val &= ~PLLC_MISC_LOCK_ENABLE;
 #endif
 	clk_writel(val, c->reg + PLL_MISC(c));
 
