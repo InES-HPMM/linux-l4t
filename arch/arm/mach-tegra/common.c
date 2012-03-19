@@ -170,6 +170,7 @@ static int modem_id;
 int tegra_sku_override;
 static int debug_uart_port_id;
 static enum audio_codec_type audio_codec_name;
+static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 
 #ifdef CONFIG_CACHE_L2X0
@@ -570,6 +571,21 @@ int get_tegra_uart_debug_port_id(void)
 	return debug_uart_port_id;
 }
 __setup("debug_uartport=", tegra_debug_uartport);
+
+static int __init tegra_image_type(char *options)
+{
+	if (!strcmp(options, "RCK"))
+		board_image_type = rck_image;
+
+	return 0;
+}
+
+enum image_type get_tegra_image_type(void)
+{
+	return board_image_type;
+}
+
+__setup("image=", tegra_image_type);
 
 static int __init tegra_audio_codec_type(char *info)
 {
