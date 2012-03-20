@@ -290,6 +290,13 @@ struct mxt_data {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
+
+	/* Cached parameters from object table */
+	u16 T5_address;
+	u8 T6_reportid;
+	u8 T9_reportid_min;
+	u8 T9_reportid_max;
+	u16 T44_address;
 };
 
 /* I2C slave address pairs */
@@ -558,16 +565,9 @@ static struct mxt_object *mxt_get_object(struct mxt_data *data, u8 type)
 static int mxt_read_message(struct mxt_data *data,
 				 struct mxt_message *message)
 {
-	struct mxt_object *object;
-	u16 reg;
 	int ret;
 
-	object = mxt_get_object(data, MXT_GEN_MESSAGE_T5);
-	if (!object)
-		return -EINVAL;
-
-	reg = object->start_address;
-	ret = mxt_read_reg(data->client, reg,
+	ret = mxt_read_reg(data->client, data->T5_address,
 			     sizeof(struct mxt_message), message);
 
 	if (ret == 0 && message->reportid != MXT_RPTID_NOMSG
@@ -741,7 +741,6 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 {
 	struct mxt_data *data = dev_id;
 	struct mxt_message message;
-	struct mxt_object *object;
 	struct device *dev = &data->client->dev;
 	int touchid;
 	u8 reportid;
@@ -754,13 +753,9 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 
 		reportid = message.reportid;
 
-		object = mxt_get_object(data, MXT_TOUCH_MULTI_T9);
-		if (!object)
-			goto end;
-
-		if (reportid >= object->min_reportid
-		    && reportid <= object->max_reportid) {
-			touchid = reportid - object->min_reportid;
+		if (reportid >= data->T9_reportid_min
+			&& reportid <= data->T9_reportid_max) {
+			touchid = reportid - data->T9_reportid_min;
 			mxt_input_touchevent(data, &message, touchid);
 		}
 	} while (reportid != MXT_RPTID_NOMSG);
@@ -1215,6 +1210,23 @@ static int mxt_get_object_table(struct mxt_data *data)
 
 		if (end_address >= data->mem_size)
 			data->mem_size = end_address + 1;
+
+		/* save data for objects used when processing interrupts */
+		switch (object->type) {
+		case MXT_TOUCH_MULTI_T9:
+			data->T9_reportid_max = object->max_reportid;
+			data->T9_reportid_min = object->min_reportid;
+			break;
+		case MXT_GEN_COMMAND_T6:
+			data->T6_reportid = object->max_reportid;
+			break;
+		case MXT_GEN_MESSAGE_T5:
+			data->T5_address = object->start_address;
+			break;
+		case MXT_SPT_MESSAGECOUNT_T44:
+			data->T44_address = object->start_address;
+			break;
+		}
 
 		dev_dbg(dev, "T%u, start:%u size:%u instances:%u "
 			"min_reportid:%u max_reportid:%u\n",
