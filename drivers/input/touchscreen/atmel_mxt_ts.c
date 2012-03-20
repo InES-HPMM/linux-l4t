@@ -472,7 +472,7 @@ static int mxt_unlock_bootloader(struct mxt_data *data)
 	return 0;
 }
 
-static int __mxt_read_reg(struct i2c_client *client,
+static int mxt_read_reg(struct i2c_client *client,
 			       u16 reg, u16 len, void *val)
 {
 	struct i2c_msg xfer[2];
@@ -499,11 +499,6 @@ static int __mxt_read_reg(struct i2c_client *client,
 	}
 
 	return 0;
-}
-
-static int mxt_read_reg(struct i2c_client *client, u16 reg, u8 *val)
-{
-	return __mxt_read_reg(client, reg, 1, val);
 }
 
 static int mxt_write_reg(struct i2c_client *client, u16 reg, u8 val)
@@ -545,13 +540,6 @@ int mxt_write_block(struct i2c_client *client, u16 addr, u16 length, u8 *value)
 		return -EIO;
 }
 
-static int mxt_read_object_table(struct i2c_client *client,
-				      u16 reg, u8 *object_buf)
-{
-	return __mxt_read_reg(client, reg, MXT_OBJECT_SIZE,
-				   object_buf);
-}
-
 static struct mxt_object *mxt_get_object(struct mxt_data *data, u8 type)
 {
 	struct mxt_object *object;
@@ -579,7 +567,7 @@ static int mxt_read_message(struct mxt_data *data,
 		return -EINVAL;
 
 	reg = object->start_address;
-	ret = __mxt_read_reg(data->client, reg,
+	ret = mxt_read_reg(data->client, reg,
 			     sizeof(struct mxt_message), message);
 
 	if (ret == 0 && message->reportid != MXT_RPTID_NOMSG
@@ -625,7 +613,7 @@ static int mxt_read_object(struct mxt_data *data,
 		return -EINVAL;
 
 	reg = object->start_address;
-	return __mxt_read_reg(data->client, reg + offset, 1, val);
+	return mxt_read_reg(data->client, reg + offset, 1, val);
 }
 
 static int mxt_write_object(struct mxt_data *data,
@@ -1184,65 +1172,36 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	return 0;
 }
 
-static int mxt_get_info(struct mxt_data *data)
-{
-	struct i2c_client *client = data->client;
-	struct mxt_info *info = &data->info;
-	int error;
-	u8 val;
-
-	error = mxt_read_reg(client, MXT_FAMILY_ID, &val);
-	if (error)
-		return error;
-	info->family_id = val;
-
-	error = mxt_read_reg(client, MXT_VARIANT_ID, &val);
-		if (error)
-			return error;
-	info->variant_id = val;
-
-	error = mxt_read_reg(client, MXT_VERSION, &val);
-		if (error)
-			return error;
-	info->version = val;
-
-	error = mxt_read_reg(client, MXT_BUILD, &val);
-	if (error)
-		return error;
-	info->build = val;
-
-	error = mxt_read_reg(client, MXT_OBJECT_NUM, &val);
-	if (error)
-		return error;
-	info->object_num = val;
-
-	return 0;
-}
-
 static int mxt_get_object_table(struct mxt_data *data)
 {
+	struct i2c_client *client = data->client;
 	struct device *dev = &data->client->dev;
 	int error;
 	int i;
-	u16 reg;
 	u16 end_address;
 	u8 reportid = 0;
-	u8 buf[MXT_OBJECT_SIZE];
+	u8 buf[data->info.object_num][MXT_OBJECT_SIZE];
 	data->mem_size = 0;
+
+	data->object_table = kcalloc(data->info.object_num,
+                                     sizeof(struct mxt_object), GFP_KERNEL);
+        if (!data->object_table) {
+                dev_err(dev, "Failed to allocate object table\n");
+                return -ENOMEM;
+        }
+
+        error = mxt_read_reg(client, MXT_OBJECT_START, sizeof(buf), buf);
+        if (error)
+                return error;
 
 	for (i = 0; i < data->info.object_num; i++) {
 		struct mxt_object *object = data->object_table + i;
 
-		reg = MXT_OBJECT_START + MXT_OBJECT_SIZE * i;
-		error = mxt_read_object_table(data->client, reg, buf);
-        if (error)
-                return error;
-
-		object->type = buf[0];
-		object->start_address = (buf[2] << 8) | buf[1];
-		object->size = buf[3] + 1;
-		object->instances = buf[4] + 1;
-		object->num_report_ids = buf[5];
+		object->type = buf[i][0];
+		object->start_address = (buf[i][2] << 8) | buf[i][1];
+		object->size = buf[i][3] + 1;
+		object->instances = buf[i][4] + 1;
+		object->num_report_ids = buf[i][5];
 
 		if (object->num_report_ids) {
 			reportid += object->num_report_ids * object->instances;
@@ -1279,12 +1238,12 @@ static int mxt_read_resolution(struct mxt_data *data)
 	unsigned char val;
 
 	/* Update matrix size in info struct */
-	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, &val);
+	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, 1, &val);
 	if (error)
 		return error;
 	data->info.matrix_xsize = val;
 
-	error = mxt_read_reg(client, MXT_MATRIX_Y_SIZE, &val);
+	error = mxt_read_reg(client, MXT_MATRIX_Y_SIZE, 1, &val);
 	if (error)
 		return error;
 	data->info.matrix_ysize = val;
@@ -1348,7 +1307,7 @@ static int mxt_initialize(struct mxt_data *data)
 	struct mxt_info *info = &data->info;
 	int error;
 
-	error = mxt_get_info(data);
+	error = mxt_read_reg(client, 0, sizeof(*info), info);
 	if (error) {
 		error = mxt_probe_bootloader(data);
 
@@ -1368,14 +1327,6 @@ static int mxt_initialize(struct mxt_data *data)
 		info->build, info->object_num);
 
 	data->state = APPMODE;
-
-	data->object_table = kcalloc(info->object_num,
-				     sizeof(struct mxt_object),
-				     GFP_KERNEL);
-	if (!data->object_table) {
-		dev_err(&client->dev, "Failed to allocate memory\n");
-		return -ENOMEM;
-	}
 
 	/* Get object table information */
 	error = mxt_get_object_table(data);
@@ -1657,7 +1608,7 @@ static ssize_t mxt_mem_access_read(struct file *filp, struct kobject *kobj,
 		return ret;
 
 	if (count > 0)
-		ret = __mxt_read_reg(data->client, off, count, buf);
+		ret = mxt_read_reg(data->client, off, count, buf);
 
 	return ret == 0 ? count : ret;
 }
