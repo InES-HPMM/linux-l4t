@@ -35,6 +35,7 @@
 #include "apbio.h"
 
 #define FUSE_SKU_INFO		0x110
+#define FUSE_VP8_ENABLE_0	0x1c4
 
 #define TEGRA20_FUSE_SPARE_BIT		0x200
 #define TEGRA30_FUSE_SPARE_BIT		0x244
@@ -84,6 +85,7 @@ int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
 int tegra_package_id;
 enum tegra_revision tegra_revision;
+static unsigned int tegra_fuse_vp8_enable;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
@@ -500,3 +502,17 @@ void tegra_init_fuse(void)
 		tegra_core_process_id());
 }
 
+static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
+{
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA2 ||
+		 tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
+		tegra_fuse_vp8_enable = 0;
+	else
+		tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+
+	return param_get_uint(val, kp);
+}
+
+module_param_call(tegra_fuse_vp8_enable, NULL, get_fuse_vp8_enable,
+		&tegra_fuse_vp8_enable, 0444);
+__MODULE_PARM_TYPE(tegra_fuse_vp8_enable, "uint");
