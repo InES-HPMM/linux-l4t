@@ -58,6 +58,7 @@ obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_ARB_SEMAPHORE)       += arb_sema.o
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-y                                   += dvfs.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_dvfs.o
 obj-y                                   += latency_allowance.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 endif
