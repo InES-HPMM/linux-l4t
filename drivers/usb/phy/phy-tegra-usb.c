@@ -30,6 +30,7 @@
 #include <asm/mach-types.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-tegra20.h>
 
 #define TEGRA_USB_BASE		0xC5000000
 #define TEGRA_USB_SIZE		SZ_16K
