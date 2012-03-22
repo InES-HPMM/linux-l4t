@@ -30,6 +30,7 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_fuse.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= wakeups-t2.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= pinmux-tegra20-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)		+= tegra30_speedo.o

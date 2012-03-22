@@ -31,7 +31,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm.h>
 
-#include "pm-irq.h"
+#include "../../arch/arm/mach-tegra/pm-irq.h"
 
 #define GPIO_BANK(x)		((x) >> 5)
 #define GPIO_PORT(x)		(((x) >> 3) & 0x3)
