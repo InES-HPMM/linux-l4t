@@ -33,7 +33,7 @@ void __init tegra_dt_init_irq(void);
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size);
 int __init tegra_pcie_init(bool init_port0, bool init_port1);
-void tegra_init_cache(u32 tag_latency, u32 data_latency);
+void tegra_init_cache();
 void __init tegra_protected_aperture_init(unsigned long aperture);
 void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	unsigned long size);

@@ -106,7 +106,20 @@ void tegra_init_cache(u32 tag_latency, u32 data_latency)
 #ifdef CONFIG_CACHE_L2X0
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl, cache_type;
+	u32 tag_latency, data_latency;
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	tag_latency = 0x331;
+	data_latency = 0x441;
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	tag_latency = 0x770;
+	data_latency = 0x770;
+#else
+	tag_latency = 0x331;
+	data_latency = 0x441;
+#endif
+#endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
 	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
@@ -155,7 +168,7 @@ void __init tegra20_init_early(void)
 {
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache(0x331, 0x441);
+	tegra_init_cache();
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 	tegra_init_power();
@@ -166,7 +179,7 @@ void __init tegra30_init_early(void)
 {
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache(0x441, 0x551);
+	tegra_init_cache();
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
