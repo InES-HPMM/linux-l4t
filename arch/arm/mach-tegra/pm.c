@@ -599,7 +599,12 @@ static int tegra_suspend_enter(suspend_state_t state)
 	else
 		tegra_sleep_core(PHYS_OFFSET - PAGE_OFFSET);
 
-	tegra_init_cache();
+#warning TODO
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	tegra_init_cache(0x331, 0x441);
+#elif CONFIG_ARCH_TEGRA_3x_SOC
+	tegra_init_cache(0x441, 0x551);
+#endif
 	restore_cpu_complex();
 
 	cpu_cluster_pm_exit();
