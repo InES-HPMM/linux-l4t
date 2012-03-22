@@ -78,7 +78,7 @@ static inline int tegra_core_process_id(void) { return 0; }
 static inline int tegra_cpu_speedo_id(void) { return 0; }
 static inline int tegra_soc_speedo_id(void) { return 0; }
 static inline int tegra_package_id(void) { return -1; }
-static inline int tegra_cpu_speedo_mv(void) { return 1000; }
+static inline int tegra_cpu_speedo_mv(void) { return 1250; }
 static inline int tegra_core_speedo_mv(void) { return 1200; }
 static inline void tegra_init_speedo_data(void) { }
 
