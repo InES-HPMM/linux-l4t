@@ -30,6 +30,7 @@
 #include <mach/pinmux-tegra30.h>
 
 #include "iomap.h"
+#include "pm.h"
 
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
