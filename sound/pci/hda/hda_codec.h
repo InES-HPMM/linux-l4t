@@ -905,7 +905,7 @@ struct hda_codec {
 	unsigned int (*power_filter)(struct hda_codec *codec, hda_nid_t nid,
 				     unsigned int power_state);
 
-	bool ac3dec_capable;
+	unsigned int recv_dec_cap;
 	/* codec-specific additional proc output */
 	void (*proc_widget_hook)(struct snd_info_buffer *buffer,
 				 struct hda_codec *codec, hda_nid_t nid);
