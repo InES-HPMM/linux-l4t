@@ -23,6 +23,8 @@
 #include <linux/idr.h>
 #include <linux/acpi.h>
 
+#include <asm/dma-iommu.h>
+
 #include "base.h"
 #include "power/power.h"
 

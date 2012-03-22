@@ -292,4 +292,8 @@ config CMA_AREAS
 
 endif
 
+config PLATFORM_ENABLE_IOMMU
+        bool "Make platform devices iommuable"
+	depends on IOMMU_API
+
 endmenu
