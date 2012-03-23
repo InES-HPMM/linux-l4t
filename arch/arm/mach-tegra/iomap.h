@@ -510,6 +510,9 @@
 #define TEGRA_TSC_SIZE			(SZ_64K)
 #endif
 
+#define TEGRA_CL_DVFS_BASE		0x70110000
+#define TEGRA_CL_DVFS_SIZE		SZ_1K
+
 #endif
 
 #define TEGRA_FUSE_BASE			0x7000F800
