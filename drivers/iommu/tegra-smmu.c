@@ -692,7 +692,7 @@ err_out:
 	return err;
 }
 
-static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 {
 	unsigned long *pte;
 	struct page *page;
@@ -700,16 +700,18 @@ static void __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 
 	pte = locate_pte(as, iova, false, &page, &count);
 	if (WARN_ON(!pte))
-		return;
+		return -EINVAL;
 
-	if (WARN_ON(*pte == _PTE_VACANT(iova)))
-		return;
+	if (*pte == _PTE_VACANT(iova))
+		return -EINVAL;
 
 	*pte = _PTE_VACANT(iova);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(as->smmu, as, iova, pte, page, 0);
 	if (!--(*count))
 		free_ptbl(as, iova);
+
+	return 0;
 }
 
 static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
@@ -757,13 +759,14 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
+	int err;
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-	__smmu_iommu_unmap(as, iova);
+	err = __smmu_iommu_unmap(as, iova);
 	spin_unlock_irqrestore(&as->lock, flags);
-	return SMMU_PAGE_SIZE;
+	return err ? 0 : SMMU_PAGE_SIZE;
 }
 
 static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
