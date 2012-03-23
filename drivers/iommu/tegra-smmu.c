@@ -776,14 +776,14 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 	unsigned long *pte;
 	unsigned int *count;
 	struct page *page;
-	unsigned long pfn;
+	unsigned long pfn = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&as->lock, flags);
 
-	pte = locate_pte(as, iova, true, &page, &count);
-	pfn = *pte & SMMU_PFN_MASK;
-	WARN_ON(!pfn_valid(pfn));
+	pte = locate_pte(as, iova, false, &page, &count);
+	if (pte)
+		pfn = *pte & SMMU_PFN_MASK;
 	dev_dbg(as->smmu->dev,
 		"iova:%08llx pfn:%08lx asid:%d\n", (unsigned long long)iova,
 		 pfn, as->asid);
