@@ -29,6 +29,7 @@
 #include <linux/rcupdate.h>	// rcu_read_lock
 #include <linux/sched.h>	// find_task_by_pid_type
 #include <linux/syscalls.h>	// sys_clock_gettime()
+#include <linux/module.h>
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
 #endif
