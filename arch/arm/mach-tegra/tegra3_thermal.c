@@ -25,6 +25,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
+#include <linux/module.h>
 #include <mach/thermal.h>
 #include <mach/edp.h>
 #include <linux/slab.h>
