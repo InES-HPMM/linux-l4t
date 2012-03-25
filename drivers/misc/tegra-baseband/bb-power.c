@@ -29,6 +29,7 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <mach/usb_phy.h>
 #include <mach/tegra-bb-power.h>
+#include <mach/gpio-tegra.h>
 #include "bb-power.h"
 
 static struct tegra_bb_callback *callback;
