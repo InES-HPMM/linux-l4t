@@ -25,6 +25,8 @@
 #include <linux/gpio.h>
 #include <linux/spi/rm31080a_ts.h>
 
+#include <mach/gpio-tegra.h>
+
 /* Raydium touchscreen                     Driver data */
 /*-----------------------------------------------------*/
 static const u8 rm31080_config_cardhu[] = {
