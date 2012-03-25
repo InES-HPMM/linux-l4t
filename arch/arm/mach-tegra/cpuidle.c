@@ -63,6 +63,7 @@ struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
 	.state_count = 1,
+	.safe_state_index = 0,
 	.states = {
 		[0] = {
 			.enter			= tegra_idle_enter_lp3,
@@ -143,18 +144,20 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 {
 	ktime_t enter, exit;
 	s64 us;
+	struct cpuidle_state *state = &dev->states[index];
+	bool entered_lp2;
 
 	if (!lp2_in_idle || lp2_disabled_by_suspend ||
 	    !tegra_lp2_is_allowed(dev, state)) {
-		dev->last_state = &dev->states[0];
-		return tegra_idle_enter_lp3(dev, state);
+		return dev->states[dev->safe_state_index].enter(dev,
+					dev->safe_state_index);
 	}
 
 	local_irq_disable();
 	enter = ktime_get();
 
 	tegra_cpu_idle_stats_lp2_ready(dev->cpu);
-	tegra_idle_lp2(dev, state);
+	entered_lp2 = tegra_idle_lp2(dev, state);
 
 	exit = ktime_sub(ktime_get(), enter);
 	us = ktime_to_us(exit);
@@ -167,7 +170,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	smp_rmb();
 
 	/* Update LP2 latency provided no fall back to LP3 */
-	if (state == dev->last_state) {
+	if (entered_lp2) {
 		tegra_lp2_set_global_latency(state);
 		tegra_lp2_update_target_residency(state);
 	}
