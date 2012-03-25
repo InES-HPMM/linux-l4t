@@ -45,7 +45,7 @@
 #include <linux/bitops.h>
 #include <linux/termios.h>
 #include <linux/wakelock.h>
-#include <mach/gpio.h>
+#include <linux/gpio.h>
 #include <linux/serial_core.h>
 #include <linux/tegra_uart.h>
 
