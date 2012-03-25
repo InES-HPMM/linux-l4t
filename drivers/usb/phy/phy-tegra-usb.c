@@ -32,7 +32,12 @@
 #include <asm/mach-types.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/pinmux.h>
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #include <mach/pinmux-tegra20.h>
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#include <mach/pinmux-tegra30.h>
+#endif
 
 #include "fuse.h"
 
