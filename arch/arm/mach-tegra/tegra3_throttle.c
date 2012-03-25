@@ -27,6 +27,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
+#include <linux/module.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
