@@ -22,6 +22,9 @@
 #include <linux/interrupt.h>
 #include <linux/spi/spi.h>
 #include <linux/rmi.h>
+
+#include <mach/gpio-tegra.h>
+
 #include "board.h"
 #include "board-kai.h"
 
