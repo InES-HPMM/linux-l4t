@@ -250,8 +250,8 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 		if (request < state->target_residency) {
 			/* Not enough time left to enter LP2 */
 			tegra_gic_dist_enable();
-			tegra3_lp3_fall_back(dev);
-			return;
+			tegra_cpu_wfi();
+			return false;
 		}
 
 		/* Cancel LP2 wake timers for all secondary CPUs */
