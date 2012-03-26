@@ -890,6 +890,42 @@ out:
 	spin_unlock(&as->client_lock);
 }
 
+#if !defined(CONFIG_TEGRA_IOMMU_SMMU_LINEAR)
+static inline void __smmu_iommu_map_linear(struct smmu_as *as,
+					   unsigned long start, size_t size)
+{
+	int i;
+	unsigned long count = size >> PAGE_SHIFT;
+
+	for (i = 0; i < count; i++) {
+		unsigned long addr;
+
+		addr = start + i * PAGE_SIZE;
+		__smmu_iommu_map_pfn(as, addr, __phys_to_pfn(addr));
+	}
+}
+
+void smmu_iommu_map_linear(unsigned long start, size_t size)
+{
+	int i;
+	struct smmu_device *smmu = smmu_handle;
+
+	for  (i = 0; i < smmu->num_as; i++) {
+		struct smmu_as *as;
+
+		as = &smmu->as[i];
+		if (!as->pdir_page)
+			continue;
+
+		__smmu_iommu_map_linear(as, start, size);
+
+		dev_dbg(smmu->dev, "%s as[%d]: %08lx(%x)\n",
+			__func__, i, start, size);
+	}
+}
+EXPORT_SYMBOL_GPL(smmu_iommu_map_linear);
+#endif
+
 static int smmu_iommu_domain_init(struct iommu_domain *domain)
 {
 	int i, err = -EAGAIN;
