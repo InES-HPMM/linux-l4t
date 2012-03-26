@@ -267,7 +267,7 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 	return 0;
 }
 
-static void tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
+static bool tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 #ifdef CONFIG_SMP
