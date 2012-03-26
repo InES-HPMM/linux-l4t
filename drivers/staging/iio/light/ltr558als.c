@@ -27,6 +27,7 @@
 
 #include "ltr558als.h"
 #include "../iio.h"
+#include "../sysfs.h"
 
 #define DRIVER_VERSION "1.0"
 #define DEVICE_NAME "LTR_558ALS"
