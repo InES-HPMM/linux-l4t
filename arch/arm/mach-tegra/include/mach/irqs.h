@@ -108,7 +108,12 @@
 #define INT_EVENTC			(INT_SEC_BASE + 18)
 #define INT_EVENTD			(INT_SEC_BASE + 19)
 #define INT_VFIR			(INT_SEC_BASE + 20)
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define INT_DVC				(INT_SEC_BASE + 21)
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define INT_I2C5			(INT_SEC_BASE + 21)
+#endif
 #define INT_SYS_STATS_MON		(INT_SEC_BASE + 22)
 #define INT_GPIO5			(INT_SEC_BASE + 23)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
