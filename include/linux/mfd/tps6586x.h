@@ -69,7 +69,7 @@ enum {
 enum pwm_pfm_mode {
 	PWM_ONLY,
 	AUTO_PWM_PFM,
-	NOT_CONFIGURABLE
+	PWM_DEFAULT_VALUE
 };
 
 struct tps6586x_settings {
