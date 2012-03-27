@@ -179,12 +179,11 @@ ENTRY(tegra2_sleep_core_finish)
 ENDPROC(tegra2_sleep_core_finish)
 
 /*
- * tegra3_sleep_cpu_secondary_finish(unsigned long v2p)
+ * tegra2_sleep_cpu_secondary_finish(unsigned long v2p)
  *
- * Enters WFI on secondary CPU by exiting coherency and saving CPU state.
+ * Enters WFI on secondary CPU by exiting coherency.
  */
 ENTRY(tegra2_finish_sleep_cpu_secondary)
-	mov	r6, lr	@ save address of cpu_suspend_abort
 	mrc	p15, 0, r11, c1, c0, 1	@ save actlr before exiting coherency
 
 	dsb
@@ -226,8 +225,8 @@ ENTRY(tegra2_finish_sleep_cpu_secondary)
 
 	/* Invalidate the TLBs & BTAC */
 	mov	r1, #0
-	mcr	p15, 0, r1, c8, c3, 0	@ invalidate shared TLBs
-	mcr	p15, 0, r1, c7, c1, 6	@ invalidate shared BTAC
+	mcr	p15, 0, r1, c8, c3, 0   @ invalidate shared TLBs
+	mcr	p15, 0, r1, c7, c1, 6   @ invalidate shared BTAC
 	dsb
 	isb
 
@@ -239,7 +238,11 @@ ENTRY(tegra2_finish_sleep_cpu_secondary)
 #else
 	bl	__cpuc_flush_kern_all
 #endif
-	mov	pc, r6
+
+	ldmia	sp!, {r1 - r3}		@ pop phys pgd, virt SP, phys resume fn
+	mov	r0, #0			@ return success
+	mov	sp, r2			@ sp is stored in r2 by __cpu_suspend
+	ldmfd	sp!, {r4 - r11, pc}
 ENDPROC(tegra2_finish_sleep_cpu_secondary)
 
 /*
