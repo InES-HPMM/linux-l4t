@@ -19,12 +19,6 @@
 
 #include "iomap.h"
 
-#ifdef CONFIG_CACHE_L2X0
-#define USE_TEGRA_CPU_SUSPEND	1
-#else
-#define USE_TEGRA_CPU_SUSPEND	0
-#endif
-
 #define TEGRA_PL310_VIRT	(TEGRA_ARM_PL310_BASE - IO_CPU_PHYS + IO_CPU_VIRT)
 
 /* FIXME: The core associated with this should be removed if our change to
