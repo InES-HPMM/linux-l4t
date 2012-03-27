@@ -99,6 +99,7 @@ struct platform_device tegra_gpio_device = {
 };
 
 static struct resource pinmux_resource[] = {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	[0] = {
 		/* Tri-state registers */
 		.start	= TEGRA_APB_MISC_BASE + 0x14,
@@ -123,10 +124,28 @@ static struct resource pinmux_resource[] = {
 		.end	= TEGRA_APB_MISC_BASE + 0x90c + 3,
 		.flags	= IORESOURCE_MEM,
 	},
+#else
+	[0] = {
+		/* Drive registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x868,
+		.end	= TEGRA_APB_MISC_BASE + 0x938 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		/* Mux registers */
+		.start	= TEGRA_APB_MISC_BASE + 0x3000,
+		.end	= TEGRA_APB_MISC_BASE + 0x33e0 + 3,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
 };
 
 struct platform_device tegra_pinmux_device = {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.name		= "tegra30-pinmux",
+#elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	.name		= "tegra20-pinctrl",
+#endif
 	.id		= -1,
 	.resource	= pinmux_resource,
 	.num_resources	= ARRAY_SIZE(pinmux_resource),

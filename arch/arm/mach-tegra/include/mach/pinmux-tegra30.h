@@ -18,6 +18,8 @@
 #ifndef __MACH_TEGRA_PINMUX_TEGRA30_H
 #define __MACH_TEGRA_PINMUX_TEGRA30_H
 
+void tegra30_default_pinmux(void);
+
 enum tegra_pingroup {
 	TEGRA_PINGROUP_ULPI_DATA0 = 0,
 	TEGRA_PINGROUP_ULPI_DATA1,

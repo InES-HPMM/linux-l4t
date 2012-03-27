@@ -28,6 +28,10 @@
 
 #include "iomap.h"
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA_PINMUX_HAS_IO_DIRECTION 1
+#endif
+
 #define HSM_EN(reg)	(((reg) >> 2) & 0x1)
 #define SCHMT_EN(reg)	(((reg) >> 3) & 0x1)
 #define LPMD(reg)	(((reg) >> 4) & 0x3)
@@ -900,16 +904,12 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 		((pinmux_init)(match->data))(&pingroups, &pingroup_max,
 			&drive_pingroups, &drive_max, &gpio_to_pingroups_map,
 			&gpio_to_pingroups_max);
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	else
-		/* no device tree available, so we must be on tegra20 */
-		tegra20_pinmux_init(&pingroups, &pingroup_max,
+		((pinmux_init)(pdev->id_entry->driver_data))
+					(&pingroups, &pingroup_max,
 					&drive_pingroups, &drive_max,
 					&gpio_to_pingroups_map,
 					&gpio_to_pingroups_max);
-#else
-	pr_warn("non Tegra20 platform requires pinmux devicetree node\n");
-#endif
 
 	for (i = 0; ; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
@@ -978,12 +978,25 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static struct platform_device_id tegra_pinmux_id[] = {
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	{ .name = "tegra20-pinmux",
+	  .driver_data = tegra20_pinmux_init, },
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	{ .name = "tegra30-pinmux",
+	  .driver_data = tegra30_pinmux_init, },
+#endif
+	{},
+};
+
 static struct platform_driver tegra_pinmux_driver = {
 	.driver		= {
 		.name	= "tegra-pinmux-disabled",
 		.owner	= THIS_MODULE,
 		.of_match_table = tegra_pinmux_of_match,
 	},
+	.id_table	= tegra_pinmux_id,
 	.probe		= tegra_pinmux_probe,
 };
 

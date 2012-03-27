@@ -451,7 +451,7 @@ void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg,
 	*gpiomap_max = TEGRA_MAX_GPIO;
 }
 
-void tegra30_default_pinmux()
+void tegra30_default_pinmux(void)
 {
 	tegra_drive_pinmux_config_table(t30_def_drive_pinmux,
 					ARRAY_SIZE(t30_def_drive_pinmux));
