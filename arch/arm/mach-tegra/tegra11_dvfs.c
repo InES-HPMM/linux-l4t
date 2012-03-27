@@ -26,6 +26,7 @@
 #include "dvfs.h"
 #include "fuse.h"
 #include "board.h"
+#include "tegra_cl_dvfs.h"
 
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
@@ -108,6 +109,17 @@ static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		    950,   1000,   1050,   1100,   1150,    1200,    1250,    1300,    1350 */
 };
 
+#define CL_DVFS(_speedo_id, _tune0, _tune1, _rate_min)		\
+	{							\
+		.speedo_id	= _speedo_id,			\
+		.tune0		= _tune0,			\
+		.tune1		= _tune1,			\
+		.droop_cpu_rate_min = _rate_min,		\
+	}
+
+static struct tegra_cl_dvfs_soc_data cl_dvfs_table[] = {
+	CL_DVFS(0, 0x030201, 0x00BB00AA, 700000000),
+};
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
@@ -160,6 +172,11 @@ module_param_cb(disable_core, &tegra_dvfs_disable_core_ops,
 	&tegra_dvfs_core_disabled, 0644);
 module_param_cb(disable_cpu, &tegra_dvfs_disable_cpu_ops,
 	&tegra_dvfs_cpu_disabled, 0644);
+
+static void __init init_cl_dvfs_soc_data(int speedo_id)
+{
+	tegra_cl_dvfs_set_soc_data(cl_dvfs_table);
+}
 
 static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 {
@@ -349,6 +366,9 @@ void __init tegra_soc_init_dvfs(void)
 	/* Initialize matching cpu dvfs entry already found when nominal
 	   voltage was determined */
 	init_dvfs_one(cpu_dvfs, cpu_nominal_mv_index);
+
+	/* CL DVFS characterization data */
+	init_cl_dvfs_soc_data(soc_speedo_id);
 
 	/* Finally disable dvfs on rails if necessary */
 	if (tegra_dvfs_core_disabled)
