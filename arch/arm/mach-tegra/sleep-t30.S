@@ -234,6 +234,16 @@ ENDPROC(tegra3_sleep_core_finish)
  */
 ENTRY(tegra3_sleep_cpu_secondary_finish)
 	mov	r6, lr
+
+	dsb
+#ifdef MULTI_CACHE
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
+	bl	__cpuc_flush_kern_all
+#endif
+
 	bl	tegra_cpu_exit_coherency
 
 	/* Powergate this CPU. */
