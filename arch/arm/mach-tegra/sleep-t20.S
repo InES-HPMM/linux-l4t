@@ -190,6 +190,16 @@ ENTRY(tegra2_sleep_wfi)
 
 tegra_sleep_cpu_save_finish:
 	mrc	p15, 0, r11, c1, c0, 1	@ save actlr before exiting coherency
+
+	dsb
+#ifdef MULTI_CACHE
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
+	bl	__cpuc_flush_kern_all
+#endif
+
 	bl	tegra_cpu_exit_coherency
 
 	mov32	r0, TEGRA_PMC_VIRT + PMC_SCRATCH41
