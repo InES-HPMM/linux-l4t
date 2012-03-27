@@ -73,6 +73,7 @@ config ARCH_TEGRA_3x_SOC
 config ARCH_TEGRA_11x_SOC
 	bool "Tegra 11x family SOC"
 	select ARCH_REQUIRE_GPIOLIB
+	select ARCH_TEGRA_HAS_CL_DVFS
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	select ARM_ARCH_TIMER
@@ -103,6 +104,9 @@ config ARCH_TEGRA_HAS_PCIE
 	bool
 
 config ARCH_TEGRA_HAS_SATA
+	bool
+
+config ARCH_TEGRA_HAS_CL_DVFS
 	bool
 
 config TEGRA_PCI
