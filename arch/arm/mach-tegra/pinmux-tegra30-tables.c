@@ -25,6 +25,7 @@
 #include <linux/io.h>
 #include <linux/init.h>
 #include <linux/string.h>
+#include <linux/syscore_ops.h>
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
@@ -439,6 +440,50 @@ static __initdata struct tegra_drive_pingroup_config t30_def_drive_pinmux[] = {
 	SET_DRIVE(DAP1, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
 };
 
+#ifdef CONFIG_PM_SLEEP
+
+static u32 pinmux_reg[TEGRA_MAX_PINGROUP + ARRAY_SIZE(tegra_soc_drive_pingroups)];
+
+static int tegra30_pinmux_suspend(void)
+{
+	unsigned int i;
+	u32 *ctx = pinmux_reg;
+
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
+				tegra_soc_pingroups[i].mux_reg);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
+		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg_bank,
+				tegra_soc_drive_pingroups[i].reg);
+	}
+
+	return 0;
+}
+
+static void tegra30_pinmux_resume(void)
+{
+	unsigned int i;
+	u32 *ctx = pinmux_reg;
+
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
+		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
+			tegra_soc_drive_pingroups[i].reg);
+	}
+}
+
+static struct syscore_ops tegra30_pinmux_syscore_ops = {
+	.suspend = tegra30_pinmux_suspend,
+	.resume = tegra30_pinmux_resume,
+};
+#endif
+
 void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg,
 		int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
 		int *pgdrive_max, const int **gpiomap, int *gpiomap_max)
@@ -449,6 +494,10 @@ void tegra30_pinmux_init(const struct tegra_pingroup_desc **pg,
 	*pgdrive_max = TEGRA_MAX_DRIVE_PINGROUP;
 	*gpiomap = gpio_to_pingroup;
 	*gpiomap_max = TEGRA_MAX_GPIO;
+
+#ifdef CONFIG_PM_SLEEP
+	register_syscore_ops(&tegra30_pinmux_syscore_ops);
+#endif
 }
 
 void tegra30_default_pinmux(void)

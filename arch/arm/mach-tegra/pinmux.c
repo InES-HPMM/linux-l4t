@@ -193,12 +193,12 @@ static const char *io_name(unsigned long val)
 static int nbanks;
 static void __iomem **regs;
 
-static inline u32 pg_readl(u32 bank, u32 reg)
+u32 pg_readl(u32 bank, u32 reg)
 {
 	return readl(regs[bank] + reg);
 }
 
-static inline void pg_writel(u32 val, u32 bank, u32 reg)
+void pg_writel(u32 val, u32 bank, u32 reg)
 {
 	writel(val, regs[bank] + reg);
 }
