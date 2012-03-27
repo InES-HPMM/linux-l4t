@@ -310,6 +310,9 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	/* Select Bus Speed Mode for host */
+	/* For HS200 we need to set UHS_MODE_SEL to SDR104.
+	 * It works as SDR 104 in SD 4-bit mode and HS200 in eMMC 8-bit mode.
+	 */
 	ctrl_2 &= ~SDHCI_CTRL_UHS_MASK;
 	switch (uhs) {
 	case MMC_TIMING_UHS_SDR12:
@@ -322,6 +325,7 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		ctrl_2 |= SDHCI_CTRL_UHS_SDR50;
 		break;
 	case MMC_TIMING_UHS_SDR104:
+	case MMC_TIMING_MMC_HS200:
 		ctrl_2 |= SDHCI_CTRL_UHS_SDR104;
 		break;
 	case MMC_TIMING_UHS_DDR50:
