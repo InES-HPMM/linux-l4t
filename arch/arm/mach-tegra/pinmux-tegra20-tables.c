@@ -26,6 +26,7 @@
 #include <linux/io.h>
 #include <linux/init.h>
 #include <linux/string.h>
+#include <linux/syscore_ops.h>
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>
@@ -273,17 +274,32 @@ static const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 };
 
 #ifdef CONFIG_PM_SLEEP
+#define TRISTATE_REG_NUM	4
+#define PIN_MUX_CTL_REG_NUM	8
+#define PULLUPDOWN_REG_NUM	5
 
-static u32 pinmux_reg[TEGRA_MAX_PINGROUP + ARRAY_SIZE(tegra_soc_drive_pingroups)];
+static u32 pinmux_reg[TRISTATE_REG_NUM + PIN_MUX_CTL_REG_NUM +
+		      PULLUPDOWN_REG_NUM +
+		      ARRAY_SIZE(tegra_soc_drive_pingroups)];
 
 static int tegra20_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 
-	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++) {
 		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
 				tegra_soc_pingroups[i].mux_reg);
+	}
+
+	for (i = 0; i < PULLUPDOWN_REG_NUM; i++) {
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].pupd_bank,
+				tegra_soc_pingroups[i].pupd_reg);
+	}
+
+	for (i = 0; i < TRISTATE_REG_NUM; i++) {
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].tri_bank,
+				tegra_soc_pingroups[i].tri_reg);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
@@ -299,9 +315,19 @@ static void tegra20_pinmux_resume(void)
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 
-	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++) {
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
-			tegra_soc_pingroups[i].mux_reg);
+				tegra_soc_pingroups[i].mux_reg);
+	}
+
+	for (i = 0; i < PULLUPDOWN_REG_NUM; i++) {
+		pg_writel(*ctx++, tegra_soc_pingroups[i].pupd_bank,
+				tegra_soc_pingroups[i].pupd_reg);
+	}
+
+	for (i = 0; i < TRISTATE_REG_NUM; i++) {
+		pg_writel(*ctx++, tegra_soc_pingroups[i].tri_bank,
+				tegra_soc_pingroups[i].tri_reg);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
