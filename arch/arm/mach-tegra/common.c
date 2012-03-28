@@ -891,6 +891,16 @@ void __init tegra_release_bootloader_fb(void)
 			pr_err("Failed to free bootloader fb.\n");
 }
 
+static struct platform_device *pinmux_devices[] = {
+	&tegra_gpio_device,
+	&tegra_pinmux_device,
+};
+
+void tegra_enable_pinmux(void)
+{
+	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
+}
+
 void __init tegra_init_late(void)
 {
 #ifndef CONFIG_COMMON_CLK
