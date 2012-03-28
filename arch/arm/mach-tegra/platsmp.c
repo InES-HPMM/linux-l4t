@@ -23,6 +23,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/cpumask.h>
 
+#include <asm/cputype.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
 
@@ -54,20 +55,27 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 
 #ifdef CONFIG_HAVE_ARM_SCU
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
-static inline unsigned int get_core_count(void)
+#endif
+
+static unsigned int get_core_count(void)
 {
-	return scu_get_core_count(scu_base);
-}
-#else
-static inline unsigned int get_core_count(void)
-{
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 l2ctlr;
 
-	__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
+	unsigned int cpuid = (read_cpuid_id() >> 4) & 0xFFF;
 
-	return ((l2ctlr >> 24) & 3) + 1;
-}
+	/* Cortex-A15? */
+	if (cpuid == 0xC0F) {
+		__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
+		return ((l2ctlr >> 24) & 3) + 1;
+	}
 #endif
+#ifdef CONFIG_HAVE_ARM_SCU
+	return scu_get_core_count(scu_base);
+#else
+	return 1;
+#endif
+}
 
 static unsigned int available_cpus(void)
 {
