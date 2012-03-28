@@ -19,6 +19,7 @@
 #include <linux/mutex.h>
 #include <linux/gfp.h>
 #include <linux/suspend.h>
+#include <trace/events/power.h>
 
 #include "smpboot.h"
 
@@ -349,6 +350,8 @@ int __ref cpu_down(unsigned int cpu)
 {
 	int err;
 
+	trace_cpu_hotplug(cpu, POWER_CPU_DOWN_START);
+
 	cpu_maps_update_begin();
 
 	if (cpu_hotplug_disabled) {
@@ -360,6 +363,7 @@ int __ref cpu_down(unsigned int cpu)
 
 out:
 	cpu_maps_update_done();
+	trace_cpu_hotplug(cpu, POWER_CPU_DOWN_DONE);
 	return err;
 }
 EXPORT_SYMBOL(cpu_down);
@@ -428,6 +432,8 @@ int __cpuinit cpu_up(unsigned int cpu)
 	pg_data_t	*pgdat;
 #endif
 
+	trace_cpu_hotplug(cpu, POWER_CPU_UP_START);
+
 	if (!cpu_possible(cpu)) {
 		printk(KERN_ERR "can't online cpu %d because it is not "
 			"configured as may-hotadd at boot time\n", cpu);
@@ -471,6 +477,7 @@ int __cpuinit cpu_up(unsigned int cpu)
 
 out:
 	cpu_maps_update_done();
+	trace_cpu_hotplug(cpu, POWER_CPU_UP_DONE);
 	return err;
 }
 EXPORT_SYMBOL_GPL(cpu_up);
