@@ -18,6 +18,7 @@
 
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -60,11 +61,18 @@
 #define CL_DVFS_TUNE1			0x10
 
 #define CL_DVFS_FREQ_REQ		0x14
+#define CL_DVFS_FREQ_REQ_FORCE_ENABLE	(0x1 << 28)
+#define CL_DVFS_FREQ_REQ_FORCE_SHIFT	16
+#define CL_DVFS_FREQ_REQ_FORCE_MASK     (0xfff << CL_DVFS_FREQ_REQ_FORCE_SHIFT)
+#define FORCE_MAX			2047
+#define FORCE_MIN			-2048
 #define CL_DVFS_FREQ_REQ_SCALE_SHIFT	8
 #define CL_DVFS_FREQ_REQ_SCALE_MASK     (0xff << CL_DVFS_FREQ_REQ_SCALE_SHIFT)
+#define SCALE_MAX			256
 #define CL_DVFS_FREQ_REQ_FREQ_VALID	(0x1 << 7)
 #define CL_DVFS_FREQ_REQ_FREQ_SHIFT	0
 #define CL_DVFS_FREQ_REQ_FREQ_MASK      (0x7f << CL_DVFS_FREQ_REQ_FREQ_SHIFT)
+#define FREQ_MAX			127
 
 #define CL_DVFS_SCALE_RAMP		0x18
 
@@ -91,6 +99,7 @@
 
 #define CL_DVFS_OUTPUT_FORCE		0x24
 #define CL_DVFS_MONITOR_CTRL		0x28
+#define CL_DVFS_MONITOR_CTRL_DISABLE	0
 
 #define CL_DVFS_I2C_CFG			0x40
 #define CL_DVFS_I2C_CFG_ARB_ENABLE	(0x1 << 20)
@@ -128,9 +137,16 @@
 		DIV_ROUND_CLOSEST((ref_rate), (out_rate) * (scale))
 
 enum tegra_cl_dvfs_ctrl_mode {
-	TEGRA_CL_DVFS_DISABLE = 0,
-	TEGRA_CL_DVFS_OPEN_LOOP = 1,
-	TEGRA_CL_DVFS_CLOSED_LOOP = 2,
+	TEGRA_CL_DVFS_UNINITIALIZED = 0,
+	TEGRA_CL_DVFS_DISABLED = 1,
+	TEGRA_CL_DVFS_OPEN_LOOP = 2,
+	TEGRA_CL_DVFS_CLOSED_LOOP = 3,
+};
+
+struct dfll_rate_req {
+	u8	freq;
+	u8	scale;
+	u8	output;
 };
 
 struct tegra_cl_dvfs {
@@ -151,6 +167,11 @@ struct tegra_cl_dvfs {
 	u8				clk_dvfs_map[MAX_DVFS_FREQS];
 	struct voltage_reg_map		*out_map[MAX_CL_DVFS_VOLTAGES];
 	u8				num_voltages;
+	u8				safe_ouput;
+
+	struct dfll_rate_req		last_req;
+	unsigned long			dfll_rate_min;
+	enum tegra_cl_dvfs_ctrl_mode	mode;
 };
 static struct tegra_cl_dvfs	cl_dvfs;
 
@@ -172,6 +193,14 @@ static inline void cl_dvfs_wmb(void)
 {
 	wmb();
 	cl_dvfs_readl(CL_DVFS_CTRL);
+}
+
+static inline void set_mode(struct tegra_cl_dvfs *cld,
+			    enum tegra_cl_dvfs_ctrl_mode mode)
+{
+	cld->mode = mode;
+	cl_dvfs_writel(mode - 1, CL_DVFS_CTRL);
+	cl_dvfs_wmb();
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
@@ -200,6 +229,7 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	struct voltage_reg_map *m;
 
 	BUILD_BUG_ON(MAX_DVFS_FREQS >= MAX_CL_DVFS_VOLTAGES);
+	BUILD_BUG_ON(MAX_CL_DVFS_VOLTAGES > OUT_MASK + 1);
 	BUG_ON(!cld->cpu_clk || !cld->cpu_clk->dvfs);
 
 	millivolts = cld->cpu_clk->dvfs->millivolts;
@@ -279,6 +309,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 
 	/* disable output, and set output limits, use medium volatge
 	   level as safe; disable and clear limit interrupts */
+	cld->safe_ouput = cld->num_voltages / 2;
 	val = ((cld->num_voltages / 2) << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		((cld->num_voltages - 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT);
 	cl_dvfs_writel(val, CL_DVFS_OUTPUT_CFG);
@@ -308,9 +339,8 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	u32 val;
 	struct tegra_cl_dvfs_cfg_param *param = cld->p_data->cfg_param;
 
-
 	/* configure mode, control loop parameters, DFLL tuning */
-	cl_dvfs_writel(TEGRA_CL_DVFS_DISABLE, CL_DVFS_CTRL);
+	set_mode(cld, TEGRA_CL_DVFS_DISABLED);
 
 	val = GET_DIV(cld->ref_rate, param->sample_rate, 32);
 	BUG_ON(val > CL_DVFS_CONFIG_DIV_MASK);
@@ -333,11 +363,17 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	val |= (param->droop_restore_ramp << CL_DVFS_DROOP_CTRL_RAMP_SHIFT);
 	cl_dvfs_writel(val, CL_DVFS_DROOP_CTRL);
 
+	/* FIXME: does dfll_rate_min require separate charact entry ? */
+	cld->dfll_rate_min = cld->soc_data->droop_cpu_rate_min;
+
+	cld->last_req.freq = 0;
+	cld->last_req.output = 0;
+	cld->last_req.scale = SCALE_MAX - 1;
 	cl_dvfs_writel(CL_DVFS_FREQ_REQ_SCALE_MASK, CL_DVFS_FREQ_REQ);
 	cl_dvfs_writel(param->scale_out_ramp, CL_DVFS_SCALE_RAMP);
 
 	/* disable monitoring */
-	cl_dvfs_writel(0, CL_DVFS_MONITOR_CTRL);
+	cl_dvfs_writel(CL_DVFS_MONITOR_CTRL_DISABLE, CL_DVFS_MONITOR_CTRL);
 	cl_dvfs_wmb();
 }
 
@@ -368,6 +404,12 @@ int __init tegra_init_cl_dvfs(void)
 	if (cl_dvfs.p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
 		cl_dvfs.i2c_clk = clk_get_sys("tegra_cl_dvfs", "i2c");
 		BUG_ON(IS_ERR_OR_NULL(cl_dvfs.i2c_clk));
+		ret = clk_enable(cl_dvfs.i2c_clk);
+		if (ret) {
+			pr_err("%s: Failed to enable %s\n",
+			       __func__, cl_dvfs.i2c_clk->name);
+			return ret;
+		}
 		cl_dvfs.i2c_rate = clk_get_rate(cl_dvfs.i2c_clk);
 	} else {
 		pr_err("%s: PMU interface is not I2C\n", __func__);
