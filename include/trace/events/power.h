@@ -39,7 +39,37 @@ DEFINE_EVENT(cpu, cpu_idle,
 #define _PWR_EVENT_AVOID_DOUBLE_DEFINING
 
 #define PWR_EVENT_EXIT -1
+
+enum {
+	POWER_CPU_SCALE_START,
+	POWER_CPU_SCALE_DONE,
+};
+
 #endif
+
+TRACE_EVENT(cpu_scale,
+
+	TP_PROTO(unsigned int cpu_id, unsigned int freq, int state),
+
+	TP_ARGS(cpu_id, freq, state),
+
+	TP_STRUCT__entry(
+		__field(u64, cpu_id)
+		__field(u32, freq)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->cpu_id = cpu_id;
+		__entry->freq = freq;
+		__entry->state = state;
+	),
+
+	TP_printk("cpu_id=%lu, freq=%lu, state=%lu",
+		  (unsigned long)__entry->cpu_id,
+		  (unsigned long)__entry->freq,
+		  (unsigned long)__entry->state)
+);
 
 DEFINE_EVENT(cpu, cpu_frequency,
 
