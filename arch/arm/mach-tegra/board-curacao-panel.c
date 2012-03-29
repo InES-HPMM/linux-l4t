@@ -278,6 +278,7 @@ static struct tegra_dsi_out curacao_dsi = {
 	.dsi_instance = 0,
 	.controller_vs = DSI_VS_1,
 
+	.source_invert = true,
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
 
