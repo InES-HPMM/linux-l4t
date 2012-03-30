@@ -34,7 +34,11 @@ obj-y                                   += sleep-t30.o
 obj-y                                   += timer-t3.o
 obj-y                                   += wakeups-t3.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
+ifeq ($(CONFIG_CPUQUIET_FRAMEWORK),y)
+obj-y                                   += cpuquiet.o
+else
 obj-y                                   += cpu-tegra3.o
+endif
 endif
 endif
 
