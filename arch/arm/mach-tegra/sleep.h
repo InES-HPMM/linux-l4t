@@ -143,24 +143,6 @@
 #endif
 .endm
 
-.macro push_ctx_regs, tmp1
-	push_stack_token \tmp1		@ debug check word
-	stmfd	sp!, {r4 - r11, lr}
-#if USE_TEGRA_DIAG_REG_SAVE
-	mrc	p15, 0, r4, c15, c0, 1	@ read diagnostic register
-	stmfd	sp!, {r4}
-#endif
-.endm
-
-.macro pop_ctx_regs, tmp1, tmp2
-#if USE_TEGRA_DIAG_REG_SAVE
-	ldmfd	sp!, {r4}
-	mcr	p15, 0, r4, c15, c0, 1	@ write diagnostic register
-#endif
-	ldmfd	sp!, {r4 - r11, lr}
-	pop_stack_token \tmp1, \tmp2	@ debug stack debug token
-.endm
-
 #else
 
 #ifdef CONFIG_HOTPLUG_CPU
@@ -174,6 +156,8 @@ static inline void tegra30_hotplug_init(void) {}
 void tegra_pen_lock(void);
 void tegra_pen_unlock(void);
 void tegra_cpu_wfi(void);
+int tegra_sleep_cpu_finish(unsigned long v2p);
+void tegra_cpu_resume(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 extern void tegra2_iram_start;
@@ -182,13 +166,13 @@ int  tegra2_cpu_is_resettable_soon(void);
 void tegra2_cpu_reset(int cpu);
 void tegra2_cpu_set_resettable_soon(void);
 void tegra2_cpu_clear_resettable(void);
-void tegra2_sleep_core(unsigned long v2p);
+int tegra2_sleep_core_finish(unsigned long int);
 void tegra2_sleep_wfi(unsigned long v2p);
 #else
 extern void tegra3_iram_start;
 extern void tegra3_iram_end;
-void tegra3_sleep_core(unsigned long v2p);
-void tegra3_sleep_cpu_secondary(unsigned long v2p);
+int tegra3_sleep_core_finish(unsigned long int);
+int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 #endif
 
 static inline void *tegra_iram_start(void)
@@ -212,9 +196,9 @@ static inline void *tegra_iram_end(void)
 static inline void tegra_sleep_core(unsigned long v2p)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_sleep_core(v2p);
+	cpu_suspend(v2p, tegra2_sleep_core_finish);
 #else
-	tegra3_sleep_core(v2p);
+	cpu_suspend(v2p, tegra3_sleep_core_finish);
 #endif
 }
 

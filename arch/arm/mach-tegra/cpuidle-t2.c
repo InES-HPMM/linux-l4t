@@ -40,6 +40,8 @@
 #include <linux/tick.h>
 #include <linux/cpu_pm.h>
 
+#include <asm/suspend.h>
+
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 

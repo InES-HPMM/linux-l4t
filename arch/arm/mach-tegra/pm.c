@@ -53,6 +53,7 @@
 #include <asm/pgalloc.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
+#include <asm/suspend.h>
 
 #include <mach/irqs.h>
 #include <mach/powergate.h>
@@ -256,18 +257,6 @@ static __init int create_suspend_pgtable(void)
 	/* inner/outer write-back/write-allocate, sharable */
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK) | 0x4A;
 
-	return 0;
-}
-
-/*
- * alloc_suspend_context
- *
- * Allocate a non-cacheable page to hold the CPU contexts.
- * The standard ARM CPU context save functions don't work if there's
- * an external L2 cache controller (like a PL310) in system.
- */
-static __init int alloc_suspend_context(void)
-{
 	return 0;
 }
 
@@ -487,6 +476,11 @@ bool tegra_set_cpu_in_lp2(int cpu)
 
 	spin_unlock(&tegra_lp2_lock);
 	return last_cpu;
+}
+
+static inline void tegra_sleep_cpu(unsigned long v2p)
+{
+	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
 unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
@@ -1005,13 +999,6 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 #else
 	if (create_suspend_pgtable() < 0) {
 		pr_err("%s: PGD memory alloc failed -- LP0/LP1/LP2 unavailable\n",
-				__func__);
-		plat->suspend_mode = TEGRA_SUSPEND_NONE;
-		goto fail;
-	}
-
-	if (alloc_suspend_context() < 0) {
-		pr_err("%s: CPU context alloc failed -- LP0/LP1/LP2 unavailable\n",
 				__func__);
 		plat->suspend_mode = TEGRA_SUSPEND_NONE;
 		goto fail;
