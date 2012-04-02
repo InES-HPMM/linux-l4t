@@ -195,12 +195,49 @@ static inline void cl_dvfs_wmb(void)
 	cl_dvfs_readl(CL_DVFS_CTRL);
 }
 
+static inline void dfll_reset(bool assert)
+{
+	u32 val = assert ? 1 : 0;
+	__raw_writel(val, (u32)IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x2f4);
+	udelay(2);
+}
+
+static inline void output_enable(bool enable)
+{
+	u32 val = cl_dvfs_readl(CL_DVFS_OUTPUT_CFG);
+
+	/* FIXME: PWM output control */
+	if (enable)
+		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+	else
+		val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+
+	cl_dvfs_writel(val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_wmb();
+}
+
 static inline void set_mode(struct tegra_cl_dvfs *cld,
 			    enum tegra_cl_dvfs_ctrl_mode mode)
 {
 	cld->mode = mode;
 	cl_dvfs_writel(mode - 1, CL_DVFS_CTRL);
 	cl_dvfs_wmb();
+}
+
+static int find_safe_output(
+	struct tegra_cl_dvfs *cld, unsigned long rate, u8 *safe_output)
+{
+	int i;
+	int n = cld->cpu_clk->dvfs->num_freqs;
+	unsigned long *freqs = cld->cpu_clk->dvfs->freqs;
+
+	for (i = 0; i < n; i++) {
+		if (freqs[i] >= rate) {
+			*safe_output = cld->clk_dvfs_map[i];
+			return 0;
+		}
+	}
+	return -EINVAL;
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
@@ -448,8 +485,6 @@ int __init tegra_init_cl_dvfs(void)
 
 	return 0;
 }
-late_initcall(tegra_init_cl_dvfs);
-
 
 void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data)
 {
@@ -460,3 +495,256 @@ void tegra_cl_dvfs_set_soc_data(struct tegra_cl_dvfs_soc_data *data)
 {
 	cl_dvfs.soc_data = data;
 }
+
+/*
+ * CL_DVFS states:
+ *
+ * - DISABLED: control logic mode - DISABLE, output interface disabled,
+ *   dfll in reset
+ * - OPEN_LOOP: control logic mode - OPEN_LOOP, output interface disabled,
+ *   dfll is running "unlocked"
+ * - CLOSED_LOOP: control logic mode - CLOSED_LOOP, output interface enabled,
+ *   dfll is running "locked"
+ */
+
+/* Switch from any other state to DISABLED state */
+void tegra_cl_dvfs_disable(void)
+{
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+
+	if ((cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) ||
+	    (cld->mode == TEGRA_CL_DVFS_DISABLED))
+		return;
+
+	output_enable(false);
+	set_mode(cld, TEGRA_CL_DVFS_DISABLED);
+	dfll_reset(true);
+}
+
+/* Switch from DISABLE state to OPEN_LOOP state */
+int tegra_cl_dvfs_enable(void)
+{
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+
+	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
+		pr_err("%s: Cannot enable DFLL in mode %d\n",
+		       __func__, cld->mode);
+		return -EINVAL;
+	}
+
+	if (cld->mode != TEGRA_CL_DVFS_DISABLED)
+		return 0;
+
+	dfll_reset(false);
+	set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
+	return 0;
+}
+
+/* Switch from OPEN_LOOP state to CLOSED_LOOP state */
+int tegra_cl_dvfs_lock(void)
+{
+	u32 val;
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+	struct dfll_rate_req *req = &cld->last_req;
+
+	switch (cld->mode) {
+	case TEGRA_CL_DVFS_CLOSED_LOOP:
+		return 0;
+
+	case TEGRA_CL_DVFS_OPEN_LOOP:
+		if (req->freq == 0) {
+			pr_err("%s: Cannot lock DFLL at rate 0\n", __func__);
+			return -EINVAL;
+		}
+
+		/* update control logic setting with last rate request;
+		   use request safe output to set safe volatge */
+		val = cl_dvfs_readl(CL_DVFS_OUTPUT_CFG);
+		val &= ~CL_DVFS_OUTPUT_CFG_SAFE_MASK;
+		val |= req->output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
+		cl_dvfs_writel(val, CL_DVFS_OUTPUT_CFG);
+		cld->safe_ouput = req->output;
+
+		val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
+		val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+		val |= CL_DVFS_FREQ_REQ_FREQ_VALID |
+			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+		cl_dvfs_writel(val, CL_DVFS_FREQ_REQ);
+
+		output_enable(true);
+		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
+		return 0;
+
+	default:
+		pr_err("%s: Cannot lock DFLL in mode %d\n",
+		       __func__, cld->mode);
+		return -EINVAL;
+	}
+}
+
+/* Switch from CLOSED_LOOP state to OPEN_LOOP state */
+int tegra_cl_dvfs_unlock(void)
+{
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+
+	switch (cld->mode) {
+	case TEGRA_CL_DVFS_CLOSED_LOOP:
+		output_enable(false);
+		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
+		return 0;
+
+	case TEGRA_CL_DVFS_OPEN_LOOP:
+		return 0;
+
+	default:
+		pr_err("%s: Cannot unlock DFLL in mode %d\n",
+		       __func__, cld->mode);
+		return -EINVAL;
+	}
+}
+/*
+ * Convert requested rate into the control logic settings. In CLOSED_LOOP mode,
+ * update new settings immediately to adjust DFLL output rate accordingly.
+ * Otherwise, just save them until next switch to closed loop.
+ */
+int tegra_cl_dvfs_request_rate(unsigned long rate)
+{
+	u32 val;
+	struct dfll_rate_req req;
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+
+	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
+		pr_err("%s: Cannot set DFLL rate in mode %d\n",
+		       __func__, cld->mode);
+		return -EINVAL;
+	}
+
+	/* Determine DFLL output scale */
+	req.scale = SCALE_MAX - 1;
+	if (rate < cld->dfll_rate_min) {
+		req.scale = rate / DIV_ROUND_UP(cld->dfll_rate_min, SCALE_MAX);
+		if (!req.scale) {
+			pr_err("%s: Rate %lu is below scalable range\n",
+			       __func__, rate);
+			return -EINVAL;
+		}
+		req.scale--;
+		rate = cld->dfll_rate_min;
+	}
+
+	/* Convert requested rate into frequency request and scale settings */
+	val = GET_REQUEST_FREQ(rate, cld->ref_rate);
+	if (val > FREQ_MAX) {
+		pr_err("%s: Rate %lu is above dfll range\n", __func__, rate);
+		return -EINVAL;
+	}
+	req.freq = val;
+
+	/* Find safe voltage for requested rate */
+	if (find_safe_output(cld, rate, &req.output)) {
+		pr_err("%s: Failed to find safe output for rate %lu\n",
+		       __func__, rate);
+		return -EINVAL;
+	}
+
+	/* Save validated request, and in CLOSED_LOOP mode actually update
+	   control logic settings; use request safe output to set forced
+	   voltage */
+	cld->last_req = req;
+
+	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
+		int force_val = req.output - cld->safe_ouput;
+		force_val = (force_val * 128) /
+			((s8)cld->p_data->cfg_param->cg);
+		force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
+		val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
+					CL_DVFS_FREQ_REQ_FORCE_MASK;
+
+		val |= req.scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+		val |= CL_DVFS_FREQ_REQ_FREQ_VALID |
+			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+		cl_dvfs_writel(val, CL_DVFS_FREQ_REQ);
+		cl_dvfs_wmb();
+	}
+	return 0;
+}
+
+#ifdef CONFIG_DEBUG_FS
+
+static struct dentry *cl_dvfs_debugfs_root;
+
+static int enable_get(void *data, u64 *val)
+{
+	*val = cl_dvfs.mode >= TEGRA_CL_DVFS_OPEN_LOOP;
+	return 0;
+}
+static int enable_set(void *data, u64 val)
+{
+	if (val) {
+		return tegra_cl_dvfs_enable();
+	} else {
+		tegra_cl_dvfs_disable();
+		return 0;
+	}
+}
+DEFINE_SIMPLE_ATTRIBUTE(enable_fops, enable_get, enable_set, "%llu\n");
+
+static int lock_get(void *data, u64 *val)
+{
+	*val = cl_dvfs.mode == TEGRA_CL_DVFS_CLOSED_LOOP;
+	return 0;
+}
+static int lock_set(void *data, u64 val)
+{
+	if (val)
+		return tegra_cl_dvfs_lock();
+	else
+		return tegra_cl_dvfs_unlock();
+}
+DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
+
+static int request_get(void *data, u64 *val)
+{
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+	struct dfll_rate_req *req = &cld->last_req;
+
+	*val = (cld->ref_rate / 2) * req->freq / SCALE_MAX * (req->scale + 1);
+	return 0;
+}
+static int request_set(void *data, u64 val)
+{
+	return tegra_cl_dvfs_request_rate(val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(request_fops, request_get, request_set, "%llu\n");
+
+static int __init tegra_cl_dvfs_debug_init(void)
+{
+	if (cl_dvfs.mode == TEGRA_CL_DVFS_UNINITIALIZED)
+		return 0;
+
+	cl_dvfs_debugfs_root = debugfs_create_dir("tegra_cl_dvfs", NULL);
+	if (!cl_dvfs_debugfs_root)
+		return -ENOMEM;
+
+	if (!debugfs_create_file("cl_dvfs_enable", S_IRUGO | S_IWUSR,
+				  cl_dvfs_debugfs_root, NULL, &enable_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("cl_dvfs_lock", S_IRUGO | S_IWUSR,
+				 cl_dvfs_debugfs_root, NULL, &lock_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("cl_dvfs_request", S_IRUGO | S_IWUSR,
+				 cl_dvfs_debugfs_root, NULL, &request_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(cl_dvfs_debugfs_root);
+	return -ENOMEM;
+}
+
+late_initcall(tegra_cl_dvfs_debug_init);
+#endif
+late_initcall(tegra_init_cl_dvfs);
