@@ -39,7 +39,31 @@ DEFINE_EVENT(cpu, cpu_idle,
 #define _PWR_EVENT_AVOID_DOUBLE_DEFINING
 
 #define PWR_EVENT_EXIT -1
+
+enum {
+	POWER_CPU_CLUSTER_START,
+	POWER_CPU_CLUSTER_DONE,
+};
+
 #endif
+
+TRACE_EVENT(cpu_cluster,
+
+	TP_PROTO(int state),
+
+	TP_ARGS(state),
+
+	TP_STRUCT__entry(
+		__field(u64, state)
+	),
+
+	TP_fast_assign(
+		__entry->state = state;
+	),
+
+	TP_printk("state=%lu",
+		  (unsigned long)__entry->state)
+);
 
 DEFINE_EVENT(cpu, cpu_frequency,
 
