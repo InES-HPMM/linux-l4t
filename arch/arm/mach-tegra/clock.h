@@ -74,6 +74,7 @@ struct clk;
 #define DIV_U71_INT		(1 << 21)
 #define DIV_U71_IDLE		(1 << 22)
 #define DIV_U151		(1 << 23)
+#define DFLL			(1 << 24)
 #define ENABLE_ON_INIT		(1 << 28)
 #define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)

@@ -30,7 +30,6 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <mach/clk.h>
 
 #include "tegra_cl_dvfs.h"
 #include "fuse.h"
@@ -169,6 +168,7 @@ struct tegra_cl_dvfs {
 	u8				num_voltages;
 	u8				safe_ouput;
 
+	struct clk			*dfll_clk;
 	struct dfll_rate_req		last_req;
 	unsigned long			dfll_rate_min;
 	enum tegra_cl_dvfs_ctrl_mode	mode;
@@ -417,6 +417,7 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 int __init tegra_init_cl_dvfs(void)
 {
 	int ret;
+	unsigned long flags;
 
 #if !USE_IRAM_TO_TEST
 #ifndef CONFIG_TEGRA_SILICON_PLATFORM
@@ -482,6 +483,12 @@ int __init tegra_init_cl_dvfs(void)
 
 	/* Configure control registers in disabled mode */
 	cl_dvfs_init_cntrl_logic(&cl_dvfs);
+
+	cl_dvfs.dfll_clk = tegra_get_clock_by_name("dfll");
+	BUG_ON(!cl_dvfs.dfll_clk);
+	clk_lock_save(cl_dvfs.dfll_clk, &flags);
+	cl_dvfs.dfll_clk->state = OFF;
+	clk_unlock_restore(cl_dvfs.dfll_clk, &flags);
 
 	return 0;
 }
@@ -669,25 +676,16 @@ int tegra_cl_dvfs_request_rate(unsigned long rate)
 	return 0;
 }
 
+unsigned long tegra_cl_dvfs_request_get(void)
+{
+	struct tegra_cl_dvfs *cld = &cl_dvfs;
+	struct dfll_rate_req *req = &cld->last_req;
+	return (cld->ref_rate / 2) * req->freq / SCALE_MAX * (req->scale + 1);
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static struct dentry *cl_dvfs_debugfs_root;
-
-static int enable_get(void *data, u64 *val)
-{
-	*val = cl_dvfs.mode >= TEGRA_CL_DVFS_OPEN_LOOP;
-	return 0;
-}
-static int enable_set(void *data, u64 val)
-{
-	if (val) {
-		return tegra_cl_dvfs_enable();
-	} else {
-		tegra_cl_dvfs_disable();
-		return 0;
-	}
-}
-DEFINE_SIMPLE_ATTRIBUTE(enable_fops, enable_get, enable_set, "%llu\n");
 
 static int lock_get(void *data, u64 *val)
 {
@@ -696,26 +694,10 @@ static int lock_get(void *data, u64 *val)
 }
 static int lock_set(void *data, u64 val)
 {
-	if (val)
-		return tegra_cl_dvfs_lock();
-	else
-		return tegra_cl_dvfs_unlock();
+	struct clk *c = (struct clk *)data;
+	return tegra_clk_cfg_ex(c, TEGRA_CLK_DFLL_LOCK, val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
-
-static int request_get(void *data, u64 *val)
-{
-	struct tegra_cl_dvfs *cld = &cl_dvfs;
-	struct dfll_rate_req *req = &cld->last_req;
-
-	*val = (cld->ref_rate / 2) * req->freq / SCALE_MAX * (req->scale + 1);
-	return 0;
-}
-static int request_set(void *data, u64 val)
-{
-	return tegra_cl_dvfs_request_rate(val);
-}
-DEFINE_SIMPLE_ATTRIBUTE(request_fops, request_get, request_set, "%llu\n");
 
 static int __init tegra_cl_dvfs_debug_init(void)
 {
@@ -726,16 +708,8 @@ static int __init tegra_cl_dvfs_debug_init(void)
 	if (!cl_dvfs_debugfs_root)
 		return -ENOMEM;
 
-	if (!debugfs_create_file("cl_dvfs_enable", S_IRUGO | S_IWUSR,
-				  cl_dvfs_debugfs_root, NULL, &enable_fops))
-		goto err_out;
-
-	if (!debugfs_create_file("cl_dvfs_lock", S_IRUGO | S_IWUSR,
-				 cl_dvfs_debugfs_root, NULL, &lock_fops))
-		goto err_out;
-
-	if (!debugfs_create_file("cl_dvfs_request", S_IRUGO | S_IWUSR,
-				 cl_dvfs_debugfs_root, NULL, &request_fops))
+	if (!debugfs_create_file("dfll_lock", S_IRUGO | S_IWUSR,
+		cl_dvfs_debugfs_root, cl_dvfs.dfll_clk, &lock_fops))
 		goto err_out;
 
 	return 0;

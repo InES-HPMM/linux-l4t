@@ -83,6 +83,12 @@ struct tegra_cl_dvfs_soc_data {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data);
 void tegra_cl_dvfs_set_soc_data(struct tegra_cl_dvfs_soc_data *data);
+void tegra_cl_dvfs_disable(void);
+int tegra_cl_dvfs_enable(void);
+int tegra_cl_dvfs_lock(void);
+int tegra_cl_dvfs_unlock(void);
+int tegra_cl_dvfs_request_rate(unsigned long rate);
+unsigned long tegra_cl_dvfs_request_get(void);
 #else
 static inline void tegra_cl_dvfs_set_plarform_data(
 		struct tegra_cl_dvfs_platform_data *data)
@@ -90,6 +96,18 @@ static inline void tegra_cl_dvfs_set_plarform_data(
 static inline void tegra_cl_dvfs_set_soc_data(
 		struct tegra_cl_dvfs_soc_data *data)
 {}
+static inline void tegra_cl_dvfs_disable(void)
+{}
+static inline int tegra_cl_dvfs_enable(void)
+{ return -ENOSYS; }
+static inline int tegra_cl_dvfs_lock(void)
+{ return -ENOSYS; }
+static inline int tegra_cl_dvfs_unlock(void)
+{ return -ENOSYS; }
+static inline int tegra_cl_dvfs_request_rate(unsigned long rate)
+{ return -ENOSYS; }
+static inline unsigned long tegra_cl_dvfs_request_get(void)
+{ return 0; }
 #endif
 
 #endif

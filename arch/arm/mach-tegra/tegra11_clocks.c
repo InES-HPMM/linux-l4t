@@ -39,6 +39,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "tegra11_emc.h"
+#include "tegra_cl_dvfs.h"
 
 #define RST_DEVICES_L			0x004
 #define RST_DEVICES_H			0x008
@@ -2343,6 +2344,43 @@ static struct clk_ops tegra_plle_ops = {
 	.disable		= tegra11_plle_clk_disable,
 };
 
+/* DFLL operations */
+static int tegra11_dfll_clk_enable(struct clk *c)
+{
+	return tegra_cl_dvfs_enable();
+}
+
+static void tegra11_dfll_clk_disable(struct clk *c)
+{
+	tegra_cl_dvfs_disable();
+}
+
+static int tegra11_dfll_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	int ret = tegra_cl_dvfs_request_rate(rate);
+
+	if (!ret)
+		c->rate = tegra_cl_dvfs_request_get();
+
+	return ret;
+}
+
+static int
+tegra11_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
+{
+	if (p == TEGRA_CLK_DFLL_LOCK)
+		return setting ? tegra_cl_dvfs_lock() : tegra_cl_dvfs_unlock();
+
+	return -EINVAL;
+}
+
+static struct clk_ops tegra_dfll_ops = {
+	.enable			= tegra11_dfll_clk_enable,
+	.disable		= tegra11_dfll_clk_disable,
+	.set_rate		= tegra11_dfll_clk_set_rate,
+	.clk_cfg_ex		= tegra11_dfll_clk_cfg_ex,
+};
+
 /* Clock divider ops */
 static void tegra11_pll_div_clk_init(struct clk *c)
 {
@@ -3952,6 +3990,12 @@ static struct clk tegra_pll_x_out0 = {
 	.max_rate  = 700000000,
 };
 
+static struct clk tegra_dfll = {
+	.name      = "dfll",
+	.flags     = DFLL,
+	.ops       = &tegra_dfll_ops,
+	.max_rate  = 1800000000,
+};
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
@@ -4732,6 +4776,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_u,
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
+	&tegra_dfll,
 	&tegra_pll_e,
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,
