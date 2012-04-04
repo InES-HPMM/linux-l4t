@@ -99,6 +99,7 @@
 #define CL_DVFS_OUTPUT_FORCE		0x24
 #define CL_DVFS_MONITOR_CTRL		0x28
 #define CL_DVFS_MONITOR_CTRL_DISABLE	0
+#define CL_DVFS_MONITOR_DATA		0x2c
 
 #define CL_DVFS_I2C_CFG			0x40
 #define CL_DVFS_I2C_CFG_ARB_ENABLE	(0x1 << 20)
@@ -708,6 +709,83 @@ static int lock_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
 
+static int monitor_get(void *data, u64 *val)
+{
+	*val = cl_dvfs_readl(CL_DVFS_MONITOR_DATA);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
+
+
+static int cl_register_show(struct seq_file *s, void *data)
+{
+	u32 offs;
+
+	seq_printf(s, "CONTROL REGISTERS:\n");
+	for (offs = 0; offs <= CL_DVFS_MONITOR_CTRL; offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, cl_dvfs_readl(offs));
+
+	seq_printf(s, "\nI2C and INTR REGISTERS:\n");
+	for (offs = CL_DVFS_I2C_CFG; offs <= CL_DVFS_I2C_STS; offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, cl_dvfs_readl(offs));
+
+	offs = CL_DVFS_INTR_STS;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(offs));
+	offs = CL_DVFS_INTR_EN;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(offs));
+	offs = CL_DVFS_I2C_CLK_DIVISOR;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(offs));
+
+	seq_printf(s, "\nLUT:\n");
+	for (offs = CL_DVFS_OUTPUT_LUT;
+	     offs < CL_DVFS_OUTPUT_LUT + 4 * MAX_CL_DVFS_VOLTAGES;
+	     offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, cl_dvfs_readl(offs));
+
+	return 0;
+}
+
+static int cl_register_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cl_register_show, inode->i_private);
+}
+
+static ssize_t cl_register_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	char buf[80];
+	u32 offs;
+	u32 val;
+
+	if (sizeof(buf) <= count)
+		return -EINVAL;
+
+	if (copy_from_user(buf, userbuf, count))
+		return -EFAULT;
+
+	/* terminate buffer and trim - white spaces may be appended
+	 *  at the end when invoked from shell command line */
+	buf[count] = '\0';
+	strim(buf);
+
+	if (sscanf(buf, "[0x%x] = 0x%x", &offs, &val) != 2)
+		return -1;
+
+	cl_dvfs_writel(val, offs & (~0x3));
+	return count;
+}
+
+static const struct file_operations cl_register_fops = {
+	.open		= cl_register_open,
+	.read		= seq_read,
+	.write		= cl_register_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init tegra_cl_dvfs_debug_init(void)
 {
 	if (cl_dvfs.mode == TEGRA_CL_DVFS_UNINITIALIZED)
@@ -719,6 +797,14 @@ static int __init tegra_cl_dvfs_debug_init(void)
 
 	if (!debugfs_create_file("dfll_lock", S_IRUGO | S_IWUSR,
 		cl_dvfs_debugfs_root, cl_dvfs.dfll_clk, &lock_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("monitor", S_IRUGO,
+		cl_dvfs_debugfs_root, NULL, &monitor_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
+		cl_dvfs_debugfs_root, NULL, &cl_register_fops))
 		goto err_out;
 
 	return 0;
