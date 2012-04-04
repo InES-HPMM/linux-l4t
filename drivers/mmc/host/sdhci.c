@@ -1034,7 +1034,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	if (cmd->flags & MMC_RSP_OPCODE)
 		flags |= SDHCI_CMD_INDEX;
 
-	/* CMD19 is special in that the Data Present Select should be set */
+	/* CMD19, CMD21 is special in that the Data Present Select should be set */
 	if (cmd->data || cmd->opcode == MMC_SEND_TUNING_BLOCK ||
 	    cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)
 		flags |= SDHCI_CMD_DATA;
@@ -1941,6 +1941,9 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		 * In response to CMD19, the card sends 64 bytes of tuning
 		 * block to the Host Controller. So we set the block size
 		 * to 64 here.
+		 * In response to CMD21, the card sends 128 bytes of tuning
+		 * block for MMC_BUS_WIDTH_8 and 64 bytes for MMC_BUS_WIDTH_4
+		 * to the Host Controller. So we set the block size to 64 here.
 		 */
 		if (cmd.opcode == MMC_SEND_TUNING_BLOCK_HS200) {
 			if (mmc->ios.bus_width == MMC_BUS_WIDTH_8)
@@ -2371,7 +2374,7 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 	u32 command;
 	BUG_ON(intmask == 0);
 
-	/* CMD19 generates _only_ Buffer Read Ready interrupt */
+	/* CMD19, CMD21 generates _only_ Buffer Read Ready interrupt */
 	if (intmask & SDHCI_INT_DATA_AVAIL) {
 		command = SDHCI_GET_CMD(sdhci_readw(host, SDHCI_COMMAND));
 		if (command == MMC_SEND_TUNING_BLOCK ||
