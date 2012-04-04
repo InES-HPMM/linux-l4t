@@ -175,6 +175,13 @@ struct tegra_cl_dvfs {
 };
 static struct tegra_cl_dvfs	cl_dvfs;
 
+static const char *mode_name[] = {
+	[TEGRA_CL_DVFS_UNINITIALIZED] = "uninitialized",
+	[TEGRA_CL_DVFS_DISABLED] = "disabled",
+	[TEGRA_CL_DVFS_OPEN_LOOP] = "open_loop",
+	[TEGRA_CL_DVFS_CLOSED_LOOP] = "closed_loop",
+};
+
 #if USE_IRAM_TO_TEST
 static void __iomem *cl_dvfs_base = IO_ADDRESS(TEGRA_IRAM_BASE + 0x3f000);
 #else
@@ -506,7 +513,7 @@ void tegra_cl_dvfs_set_soc_data(struct tegra_cl_dvfs_soc_data *data)
 /*
  * CL_DVFS states:
  *
- * - DISABLED: control logic mode - DISABLE, output interface disabled,
+ * - DISABLED: control logic mode - DISABLED, output interface disabled,
  *   dfll in reset
  * - OPEN_LOOP: control logic mode - OPEN_LOOP, output interface disabled,
  *   dfll is running "unlocked"
@@ -534,9 +541,9 @@ int tegra_cl_dvfs_enable(void)
 	struct tegra_cl_dvfs *cld = &cl_dvfs;
 
 	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
-		pr_err("%s: Cannot enable DFLL in mode %d\n",
-		       __func__, cld->mode);
-		return -EINVAL;
+		pr_err("%s: Cannot enable DFLL in %s mode\n",
+		       __func__, mode_name[cld->mode]);
+		return -EPERM;
 	}
 
 	if (cld->mode != TEGRA_CL_DVFS_DISABLED)
@@ -583,9 +590,10 @@ int tegra_cl_dvfs_lock(void)
 		return 0;
 
 	default:
-		pr_err("%s: Cannot lock DFLL in mode %d\n",
-		       __func__, cld->mode);
-		return -EINVAL;
+		BUG_ON(cld->mode > TEGRA_CL_DVFS_CLOSED_LOOP);
+		pr_err("%s: Cannot lock DFLL in %s mode\n",
+		       __func__, mode_name[cld->mode]);
+		return -EPERM;
 	}
 }
 
@@ -604,9 +612,10 @@ int tegra_cl_dvfs_unlock(void)
 		return 0;
 
 	default:
-		pr_err("%s: Cannot unlock DFLL in mode %d\n",
-		       __func__, cld->mode);
-		return -EINVAL;
+		BUG_ON(cld->mode > TEGRA_CL_DVFS_CLOSED_LOOP);
+		pr_err("%s: Cannot unlock DFLL in %s mode\n",
+		       __func__, mode_name[cld->mode]);
+		return -EPERM;
 	}
 }
 /*
@@ -621,9 +630,9 @@ int tegra_cl_dvfs_request_rate(unsigned long rate)
 	struct tegra_cl_dvfs *cld = &cl_dvfs;
 
 	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
-		pr_err("%s: Cannot set DFLL rate in mode %d\n",
-		       __func__, cld->mode);
-		return -EINVAL;
+		pr_err("%s: Cannot set DFLL rate in %s mode\n",
+		       __func__, mode_name[cld->mode]);
+		return -EPERM;
 	}
 
 	/* Determine DFLL output scale */
