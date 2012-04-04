@@ -360,7 +360,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	/* fill in LUT table */
 	for (i = 0; i < cld->num_voltages; i++) {
 		val = cld->out_map[i]->reg_value;
-		cl_dvfs_writel(val, CL_DVFS_OUTPUT_LUT + i);
+		cl_dvfs_writel(val, CL_DVFS_OUTPUT_LUT + i * 4);
 	}
 	cl_dvfs_wmb();
 
