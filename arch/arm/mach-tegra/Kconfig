@@ -18,6 +18,7 @@ config ARCH_TEGRA_2x_SOC
 	select ARM_ERRATA_754327 if SMP
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select ARM_SMP_TWD
 	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select COMMON_CLK
 	select CPA
@@ -50,6 +51,7 @@ config ARCH_TEGRA_3x_SOC
 	select ARM_ERRATA_754322
 	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
+	select ARM_SMP_TWD
 	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select COMMON_CLK
 	select CPA
