@@ -386,6 +386,10 @@
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 
+/* PLLP default fixed rate in h/w controlled mode */
+#define PLLP_DEFAULT_FIXED_RATE		216000000
+
+static void tegra11_pllp_init_dependencies(unsigned long pllp_rate);
 static int tegra11_clk_shared_bus_update(struct clk *bus);
 
 static struct clk *emc_bridge;
@@ -660,12 +664,19 @@ static void tegra11_super_clk_init(struct clk *c)
 
 	if (c->flags & DIV_U71) {
 		/* Init safe 7.1 divider value (does not affect PLLX path) */
-		clk_writel(SUPER_CLOCK_DIV_U71_MIN << SUPER_CLOCK_DIV_U71_SHIFT,
-			   c->reg + SUPER_CLK_DIVIDER);
 		c->mul = 2;
 		c->div = 2;
-		if (!(c->parent->flags & PLLX))
-			c->div += SUPER_CLOCK_DIV_U71_MIN;
+		if (!(c->parent->flags & PLLX)) {
+			val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
+			val &= SUPER_CLOCK_DIV_U71_MASK;
+			val >>= SUPER_CLOCK_DIV_U71_SHIFT;
+			val = max(val, c->u.cclk.div71);
+			c->u.cclk.div71 = val;
+			c->div += val;
+		}
+		/* FIXME: set h/w theramal control */
+		val = c->u.cclk.div71 << SUPER_CLOCK_DIV_U71_SHIFT;
+		clk_writel(val, c->reg + SUPER_CLK_DIVIDER);
 	}
 	else
 		clk_writel(0, c->reg + SUPER_CLK_DIVIDER);
@@ -750,12 +761,18 @@ static int tegra11_super_clk_set_parent(struct clk *c, struct clk *p)
 static int tegra11_super_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	if ((c->flags & DIV_U71) && (c->parent->flags & PLL_FIXED)) {
+		u32 val;
 		int div = clk_div71_get_divider(c->parent->u.pll.fixed_rate,
 					rate, c->flags, ROUND_DIVIDER_DOWN);
-		div = max(div, SUPER_CLOCK_DIV_U71_MIN);
+		if (div < 0)
+			return div;
 
-		clk_writel(div << SUPER_CLOCK_DIV_U71_SHIFT,
-			   c->reg + SUPER_CLK_DIVIDER);
+		val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
+		val &= ~SUPER_CLOCK_DIV_U71_MASK;
+		val |= div << SUPER_CLOCK_DIV_U71_SHIFT;
+		clk_writel_delay(val, c->reg + SUPER_CLK_DIVIDER);
+
+		c->u.cclk.div71 = div;
 		c->div = div + 2;
 		c->mul = 2;
 		return 0;
@@ -798,6 +815,7 @@ static void tegra11_cpu_clk_disable(struct clk *c)
 static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
+	unsigned long backup_rate;
 
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
@@ -825,8 +843,14 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 		goto out;
 	}
 
-	ret = clk_set_rate(c->parent, rate);
-	if (!ret && (rate <= clk_get_rate(c->parent)))
+	backup_rate = min(rate, c->u.cpu.backup_rate);
+	ret = clk_set_rate(c->parent, backup_rate);
+	if (ret) {
+		pr_err("Failed to set cpu rate %lu on backup source\n",
+		       backup_rate);
+		goto out;
+	}
+	if (rate == backup_rate)
 		goto out;
 
 	if (rate != clk_get_rate(c->u.cpu.main)) {
@@ -1394,6 +1418,8 @@ static void tegra11_pll_clk_init(struct clk *c)
 	if (c->flags & PLL_FIXED && !(val & PLL_BASE_OVERRIDE)) {
 		const struct clk_pll_freq_table *sel;
 		unsigned long input_rate = clk_get_rate(c->parent);
+		c->u.pll.fixed_rate = PLLP_DEFAULT_FIXED_RATE;
+
 		for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
 			if (sel->input_rate == input_rate &&
 				sel->output_rate == c->u.pll.fixed_rate) {
@@ -1415,10 +1441,10 @@ static void tegra11_pll_clk_init(struct clk *c)
 		else
 			c->div *= (0x1 << ((val & PLL_BASE_DIVP_MASK) >>
 					PLL_BASE_DIVP_SHIFT));
-		if (c->flags & PLL_FIXED) {
-			unsigned long rate = clk_get_rate_locked(c);
-			BUG_ON(rate != c->u.pll.fixed_rate);
-		}
+	}
+
+	if (c->flags & PLL_FIXED) {
+		c->u.pll.fixed_rate = clk_get_rate_locked(c);
 	}
 
 	if (c->flags & PLLU) {
@@ -1513,6 +1539,13 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
 			break;
 		default:
+			if (c->parent->flags & DIV_U71_FIXED) {
+				/* PLLP_OUT1 rate is not in PLLA table */
+				pr_warn("%s: failed %s ref/out rates %lu/%lu\n",
+					__func__, c->name, input_rate, rate);
+				cfreq = input_rate/(input_rate/1000000);
+				break;
+			}
 			pr_err("%s: Unexpected reference rate %lu\n",
 			       __func__, input_rate);
 			BUG();
@@ -1579,6 +1612,26 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 static struct clk_ops tegra_pll_ops = {
 	.init			= tegra11_pll_clk_init,
+	.enable			= tegra11_pll_clk_enable,
+	.disable		= tegra11_pll_clk_disable,
+	.set_rate		= tegra11_pll_clk_set_rate,
+};
+
+static void tegra11_pllp_clk_init(struct clk *c)
+{
+	tegra11_pll_clk_init(c);
+	tegra11_pllp_init_dependencies(c->u.pll.fixed_rate);
+}
+
+static void tegra11_pllp_clk_resume(struct clk *c)
+{
+	unsigned long rate = c->u.pll.fixed_rate;
+	tegra11_pll_clk_init(c);
+	BUG_ON(rate != c->u.pll.fixed_rate);
+}
+
+static struct clk_ops tegra_pllp_ops = {
+	.init			= tegra11_pllp_clk_init,
 	.enable			= tegra11_pll_clk_enable,
 	.disable		= tegra11_pll_clk_disable,
 	.set_rate		= tegra11_pll_clk_set_rate,
@@ -2381,6 +2434,7 @@ static struct clk_ops tegra_dfll_ops = {
 };
 
 /* Clock divider ops */
+static int tegra11_pll_div_clk_set_rate(struct clk *c, unsigned long rate);
 static void tegra11_pll_div_clk_init(struct clk *c)
 {
 	if (c->flags & DIV_U71) {
@@ -2391,6 +2445,12 @@ static void tegra11_pll_div_clk_init(struct clk *c)
 		if (!(val & PLL_OUT_RESET_DISABLE))
 			c->state = OFF;
 
+		if (c->u.pll_div.default_rate) {
+			int ret = tegra11_pll_div_clk_set_rate(
+					c, c->u.pll_div.default_rate);
+			if (!ret)
+				return;
+		}
 		divu71 = (val & PLL_OUT_RATIO_MASK) >> PLL_OUT_RATIO_SHIFT;
 		c->div = (divu71 + 2);
 		c->mul = 2;
@@ -3746,7 +3806,7 @@ static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
 static struct clk tegra_pll_p = {
 	.name      = "pll_p",
 	.flags     = ENABLE_ON_INIT | PLL_FIXED | PLL_HAS_CPCON,
-	.ops       = &tegra_pll_ops,
+	.ops       = &tegra_pllp_ops,
 	.reg       = 0xa0,
 	.parent    = &tegra_pll_ref,
 	.max_rate  = 432000000,
@@ -3759,11 +3819,6 @@ static struct clk tegra_pll_p = {
 		.vco_max   = 1400000000,
 		.freq_table = tegra_pll_p_freq_table,
 		.lock_delay = 300,
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-		.fixed_rate = 408000000,
-#else
-		.fixed_rate = 216000000,
-#endif
 	},
 };
 
@@ -4345,11 +4400,6 @@ static struct clk tegra_clk_sbus_cmplx = {
 		.hclk = &tegra_clk_hclk,
 		.sclk_low = &tegra_pll_p_out4,
 		.sclk_high = &tegra_pll_m_out1,
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-		.threshold = 204000000, /* exact factor of low range pll_p */
-#else
-		.threshold = 108000000, /* exact factor of low range pll_p */
-#endif
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
 };
@@ -4796,6 +4846,56 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cbus,
 };
 
+/*
+ * Backup pll is used as transitional CPU clock source while main pll is
+ * relocking; in addition all CPU rates below backup level are sourced from
+ * backup pll only. Target backup levels for each CPU mode are selected high
+ * enough to avoid voltage droop when CPU clock is switched between backup and
+ * main plls. Actual backup rates will be rounded to match backup source fixed
+ * frequency.
+ *
+ * Sbus threshold must be exact factor of pll_p rate.
+ */
+#define CPU_G_BACKUP_RATE_TARGET	200000000
+#define CPU_LP_BACKUP_RATE_TARGET	200000000
+
+static void tegra11_pllp_init_dependencies(unsigned long pllp_rate)
+{
+	u32 div;
+	unsigned long backup_rate;
+
+	switch (pllp_rate) {
+	case 216000000:
+		tegra_pll_p_out1.u.pll_div.default_rate = 28800000;
+		tegra_pll_p_out3.u.pll_div.default_rate = 72000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 108000000;
+		break;
+	case 408000000:
+		tegra_pll_p_out1.u.pll_div.default_rate = 9600000;
+		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
+		break;
+	case 204000000:
+		tegra_pll_p_out1.u.pll_div.default_rate = 4800000;
+		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
+		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
+		break;
+	default:
+		pr_err("tegra: PLLP rate: %lu is not supported\n", pllp_rate);
+		BUG();
+	}
+	pr_info("tegra: PLLP fixed rate: %lu\n", pllp_rate);
+
+	div = pllp_rate / CPU_G_BACKUP_RATE_TARGET;
+	backup_rate = pllp_rate / div;
+	tegra_clk_cclk_g.u.cclk.div71 = 2 * div - 2;
+	tegra_clk_virtual_cpu_g.u.cpu.backup_rate = backup_rate;
+
+	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
+	backup_rate = pllp_rate / div;
+	tegra_clk_cclk_lp.u.cclk.div71 = 2 * div - 2;
+	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
+}
 
 static void tegra11_init_one_clock(struct clk *c)
 {
@@ -5211,6 +5311,6 @@ void tegra_clk_resume(void)
 	tegra_emc_timing_invalidate();
 
 	tegra11_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
-	tegra11_pll_clk_init(&tegra_pll_p); /* Fire a bug if not restored */
+	tegra11_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
 }
 #endif
