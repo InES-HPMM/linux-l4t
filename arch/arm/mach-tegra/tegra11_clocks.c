@@ -799,21 +799,20 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
 
-	/* Hardware clock control is not possible on FPGA platforms.
-	   Report success so that upper level layers don't complain
-	   needlessly. */
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+	/* On SILICON allow CPU rate change only if cpu regulator is connected.
+	   Ignore regulator connection on FPGA and SIMULATION platforms. */
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
 		else if ((!c->dvfs->dvfs_rail->reg) &&
-			  (clk_get_rate_locked(c) < rate)) {
-			WARN(1, "Increasing CPU rate while regulator is not"
-				" ready may overclock CPU\n");
+			  (clk_get_rate_locked(c) != rate)) {
+			WARN(1, "Changing CPU rate while regulator is not"
+				" ready is not allowed\n");
 			return -ENOSYS;
 		}
 	}
-
+#endif
 	/*
 	 * Take an extra reference to the main pll so it doesn't turn
 	 * off when we move the cpu off of it
@@ -846,7 +845,7 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 
 out:
 	clk_disable(c->u.cpu.main);
-#endif
+
 	return ret;
 }
 
