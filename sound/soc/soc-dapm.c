@@ -3374,6 +3374,11 @@ int snd_soc_dapm_new_dai_widgets(struct snd_soc_dapm_context *dapm,
 	memset(&template, 0, sizeof(template));
 	template.reg = SND_SOC_NOPM;
 
+	/* DAIs can belong to codecs and platform component devices so check
+	   that we have not been created already with component */
+	if (dai->playback_widget || dai->capture_widget)
+		return 0;
+
 	if (dai->driver->playback.stream_name) {
 		template.id = snd_soc_dapm_dai_in;
 		template.name = dai->driver->playback.stream_name;
