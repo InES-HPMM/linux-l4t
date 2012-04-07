@@ -636,9 +636,12 @@ static struct clk_ops tegra_pll_ref_ops = {
 /* "super clocks" on tegra11x have two-stage muxes, fractional 7.1 divider and
  * clock skipping super divider.  We will ignore the clock skipping divider,
  * since we can't lower the voltage when using the clock skip, but we can if
- * we lower the PLL frequency. We will use 7.1 divider for CPU super-clock
- * only when its parent is a fixed rate PLL, since we can't change PLL rate
- * in this case.
+ * we lower the PLL frequency. Note that skipping divider can and will be used
+ * by thermal control h/w for automatic throttling. There is also a 7.1 divider
+ * that most CPU super-clock inputs can be routed through. We will not use it
+ * as well (keep default 1:1 state), to avoid high jitter on PLLX and DFLL path
+ * and possible concurrency access issues with thermal h/w (7.1 divider setting
+ * share register with clock skipping divider)
  */
 static void tegra11_super_clk_init(struct clk *c)
 {
@@ -663,19 +666,14 @@ static void tegra11_super_clk_init(struct clk *c)
 	c->parent = sel->input;
 
 	if (c->flags & DIV_U71) {
-		/* Init safe 7.1 divider value (does not affect PLLX path) */
 		c->mul = 2;
 		c->div = 2;
-		if (!(c->parent->flags & PLLX)) {
-			val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
-			val &= SUPER_CLOCK_DIV_U71_MASK;
-			val >>= SUPER_CLOCK_DIV_U71_SHIFT;
-			val = max(val, c->u.cclk.div71);
-			c->u.cclk.div71 = val;
-			c->div += val;
-		}
-		/* FIXME: set h/w theramal control */
-		val = c->u.cclk.div71 << SUPER_CLOCK_DIV_U71_SHIFT;
+
+		/* Make sure 7.1 divider is 1:1, clear s/w skipper control */
+		/* FIXME: set? preserve? thermal h/w skipper control */
+		val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
+		BUG_ON(val & SUPER_CLOCK_DIV_U71_MASK);
+		val = 0;
 		clk_writel(val, c->reg + SUPER_CLK_DIVIDER);
 	}
 	else
@@ -720,18 +718,10 @@ static int tegra11_super_clk_set_parent(struct clk *c, struct clk *p)
 			val &= ~(SUPER_SOURCE_MASK << shift);
 			val |= (sel->value & SUPER_SOURCE_MASK) << shift;
 
-			/* 7.1 divider for CPU super-clock does not affect
-			   PLLX path */
 			if (c->flags & DIV_U71) {
-				u32 div = 0;
-				if (!(p->flags & PLLX)) {
-					div = clk_readl(c->reg +
-							SUPER_CLK_DIVIDER);
-					div &= SUPER_CLOCK_DIV_U71_MASK;
-					div >>= SUPER_CLOCK_DIV_U71_SHIFT;
-				}
-				c->div = div + 2;
-				c->mul = 2;
+				/* Make sure 7.1 divider is 1:1 */
+				u32 div = clk_readl(c->reg + SUPER_CLK_DIVIDER);
+				BUG_ON(div & SUPER_CLOCK_DIV_U71_MASK);
 			}
 
 			if (c->refcnt)
@@ -754,29 +744,10 @@ static int tegra11_super_clk_set_parent(struct clk *c, struct clk *p)
  * does not allow the voltage to be scaled down. Instead adjust the rate of
  * the parent clock. This requires that the parent of a super clock have no
  * other children, otherwise the rate will change underneath the other
- * children. Special case: if fixed rate PLL is CPU super clock parent the
- * rate of this PLL can't be changed, and it has many other children. In
- * this case use 7.1 fractional divider to adjust the super clock rate.
+ * children.
  */
 static int tegra11_super_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	if ((c->flags & DIV_U71) && (c->parent->flags & PLL_FIXED)) {
-		u32 val;
-		int div = clk_div71_get_divider(c->parent->u.pll.fixed_rate,
-					rate, c->flags, ROUND_DIVIDER_DOWN);
-		if (div < 0)
-			return div;
-
-		val = clk_readl(c->reg + SUPER_CLK_DIVIDER);
-		val &= ~SUPER_CLOCK_DIV_U71_MASK;
-		val |= div << SUPER_CLOCK_DIV_U71_SHIFT;
-		clk_writel_delay(val, c->reg + SUPER_CLK_DIVIDER);
-
-		c->u.cclk.div71 = div;
-		c->div = div + 2;
-		c->mul = 2;
-		return 0;
-	}
 	return clk_set_rate(c->parent, rate);
 }
 
@@ -4379,7 +4350,7 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	.max_rate  = 1400000000,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
-		.backup    = &tegra_pll_p,
+		.backup    = &tegra_pll_p_out4,
 		.mode      = MODE_G,
 	},
 };
@@ -4391,7 +4362,7 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 	.max_rate  = 620000000,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
-		.backup    = &tegra_pll_p,
+		.backup    = &tegra_pll_p_out4,
 		.mode      = MODE_LP,
 	},
 };
@@ -4447,7 +4418,7 @@ static struct clk tegra_clk_sbus_cmplx = {
 	.u.system  = {
 		.pclk = &tegra_clk_pclk,
 		.hclk = &tegra_clk_hclk,
-		.sclk_low = &tegra_pll_p_out4,
+		.sclk_low = &tegra_pll_p_out2,
 		.sclk_high = &tegra_pll_m_out1,
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
@@ -4937,12 +4908,10 @@ static void tegra11_pllp_init_dependencies(unsigned long pllp_rate)
 
 	div = pllp_rate / CPU_G_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
-	tegra_clk_cclk_g.u.cclk.div71 = 2 * div - 2;
 	tegra_clk_virtual_cpu_g.u.cpu.backup_rate = backup_rate;
 
 	div = pllp_rate / CPU_LP_BACKUP_RATE_TARGET;
 	backup_rate = pllp_rate / div;
-	tegra_clk_cclk_lp.u.cclk.div71 = 2 * div - 2;
 	tegra_clk_virtual_cpu_lp.u.cpu.backup_rate = backup_rate;
 }
 
