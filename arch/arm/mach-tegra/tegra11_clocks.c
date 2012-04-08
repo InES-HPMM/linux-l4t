@@ -2399,30 +2399,36 @@ static struct clk_ops tegra_plle_ops = {
 /* DFLL operations */
 static int tegra11_dfll_clk_enable(struct clk *c)
 {
-	return tegra_cl_dvfs_enable();
+	return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
 }
 
 static void tegra11_dfll_clk_disable(struct clk *c)
 {
-	tegra_cl_dvfs_disable();
+	tegra_cl_dvfs_disable(c->u.dfll.cl_dvfs);
 }
 
 static int tegra11_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	int ret = tegra_cl_dvfs_request_rate(rate);
+	int ret = tegra_cl_dvfs_request_rate(c->u.dfll.cl_dvfs, rate);
 
 	if (!ret)
-		c->rate = tegra_cl_dvfs_request_get();
+		c->rate = tegra_cl_dvfs_request_get(c->u.dfll.cl_dvfs);
 
 	return ret;
+}
+
+static void tegra11_dfll_clk_reset(struct clk *c, bool assert)
+{
+	u32 val = assert ? 1 : 0;
+	clk_writel_delay(val, c->reg);
 }
 
 static int
 tegra11_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
 	if (p == TEGRA_CLK_DFLL_LOCK)
-		return setting ? tegra_cl_dvfs_lock() : tegra_cl_dvfs_unlock();
-
+		return setting ? tegra_cl_dvfs_lock(c->u.dfll.cl_dvfs) :
+				 tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
 	return -EINVAL;
 }
 
@@ -2430,6 +2436,7 @@ static struct clk_ops tegra_dfll_ops = {
 	.enable			= tegra11_dfll_clk_enable,
 	.disable		= tegra11_dfll_clk_disable,
 	.set_rate		= tegra11_dfll_clk_set_rate,
+	.reset			= tegra11_dfll_clk_reset,
 	.clk_cfg_ex		= tegra11_dfll_clk_cfg_ex,
 };
 
@@ -4044,12 +4051,44 @@ static struct clk tegra_pll_x_out0 = {
 	.max_rate  = 700000000,
 };
 
-static struct clk tegra_dfll = {
-	.name      = "dfll",
+/* FIXME: remove; for now, should be always checked-in as "0" */
+#define USE_IRAM_TO_TEST_DFLL		0
+
+static struct tegra_cl_dvfs cpu_cl_dvfs = {
+#if USE_IRAM_TO_TEST_DFLL
+	.cl_base = (u32)IO_ADDRESS(TEGRA_IRAM_BASE + 0x3f000),
+#else
+	.cl_base = (u32)IO_ADDRESS(TEGRA_CL_DVFS_BASE),
+#endif
+};
+
+static struct clk tegra_dfll_cpu = {
+	.name      = "dfll_cpu",
 	.flags     = DFLL,
 	.ops       = &tegra_dfll_ops,
+	.reg	   = 0x2f4,
 	.max_rate  = 1800000000,
+	.u.dfll = {
+		.cl_dvfs = &cpu_cl_dvfs,
+	},
 };
+
+static int tegra11_dfll_cpu_late_init(void)
+{
+#if !USE_IRAM_TO_TEST_DFLL
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	u32 netlist, patchid;
+	tegra_get_netlist_revision(&netlist, &patchid);
+	if (netlist < 13) {
+		pr_err("%s: CL-DVFS is not available on net %d\n",
+		       __func__, netlist);
+		return -ENOSYS;
+	}
+#endif
+#endif
+	return tegra_init_cl_dvfs(&tegra_dfll_cpu);
+}
+late_initcall(tegra11_dfll_cpu_late_init);
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
@@ -4825,7 +4864,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_u,
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
-	&tegra_dfll,
+	&tegra_dfll_cpu,
 	&tegra_pll_e,
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,

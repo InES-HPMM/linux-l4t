@@ -111,6 +111,7 @@ static struct dvfs core_dvfs_table[] = {
 
 #define CL_DVFS(_speedo_id, _tune0, _tune1, _rate_min)		\
 	{							\
+		.dfll_clk_name	= "dfll_cpu",			\
 		.speedo_id	= _speedo_id,			\
 		.tune0		= _tune0,			\
 		.tune1		= _tune1,			\

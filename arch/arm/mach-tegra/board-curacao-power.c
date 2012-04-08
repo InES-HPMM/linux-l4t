@@ -96,6 +96,7 @@ static void fill_reg_map(void)
 }
 
 static struct tegra_cl_dvfs_platform_data curacao_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
 	.u.pmu_i2c = {
 		.fs_rate = 50000,
