@@ -57,7 +57,7 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 #endif
 
-static unsigned int get_core_count(void)
+static noinline unsigned int get_core_count(void)
 {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 l2ctlr;
