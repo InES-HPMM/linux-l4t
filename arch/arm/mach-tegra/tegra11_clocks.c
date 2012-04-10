@@ -389,6 +389,8 @@
 /* PLLP default fixed rate in h/w controlled mode */
 #define PLLP_DEFAULT_FIXED_RATE		216000000
 
+static bool tegra11_is_dyn_ramp(struct clk *c,
+				unsigned long rate, bool from_vco_min);
 static void tegra11_pllp_init_dependencies(unsigned long pllp_rate);
 static int tegra11_clk_shared_bus_update(struct clk *bus);
 
@@ -783,11 +785,107 @@ static void tegra11_cpu_clk_disable(struct clk *c)
 	   either of them; accept request with no affect on h/w */
 }
 
-static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
+static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
-	unsigned long backup_rate;
+	bool on_main = false;
+	unsigned long backup_rate, main_rate;
+	unsigned long old_rate = clk_get_rate_locked(c);
+	unsigned long vco_min = c->u.cpu.main->u.pll.vco_min;
 
+	/*
+	 * Take an extra reference to the main pll so it doesn't turn off when
+	 * we move the cpu off of it. If possible, use main pll dynamic ramp
+	 * to reach target rate in one shot. Otherwise, use dynamic ramp to
+	 * lower current rate to pll VCO minimum level before switching to
+	 * backup source.
+	 */
+	if (c->parent->parent == c->u.cpu.main) {
+		bool dramp = (rate > c->u.cpu.backup_rate) &&
+			tegra11_is_dyn_ramp(c->u.cpu.main, rate, false);
+		clk_enable(c->u.cpu.main);
+		on_main = true;
+
+		if (dramp ||
+		    ((old_rate > vco_min) &&
+		     tegra11_is_dyn_ramp(c->u.cpu.main, vco_min, false))) {
+			main_rate = dramp ? rate : vco_min;
+			ret = clk_set_rate(c->u.cpu.main, main_rate);
+			if (ret) {
+				pr_err("Failed to set cpu rate %lu on source"
+				       " %s\n", main_rate, c->u.cpu.main->name);
+				goto out;
+			}
+			if (dramp)
+				goto out;
+		} else if (old_rate > vco_min) {
+			pr_warn("No dynamic ramp down: %s: %lu to %lu\n",
+				c->u.cpu.main->name, old_rate, vco_min);
+		}
+	}
+
+	/* Switch to back-up source, and stay on it if target rate is below
+	   backup rate */
+	if (c->parent->parent != c->u.cpu.backup) {
+		ret = clk_set_parent(c->parent, c->u.cpu.backup);
+		if (ret) {
+			pr_err("Failed to switch cpu to %s\n",
+			       c->u.cpu.backup->name);
+			goto out;
+		}
+	}
+
+	backup_rate = min(rate, c->u.cpu.backup_rate);
+	ret = clk_set_rate(c->u.cpu.backup, backup_rate);
+	if (ret) {
+		pr_err("Failed to set cpu rate %lu on backup source\n",
+		       backup_rate);
+		goto out;
+	}
+	if (rate == backup_rate)
+		goto out;
+
+	/* Switch from backup source to main at rate not exceeding pll VCO
+	   minimum. Use dynamic ramp to reach target rate if it is above VCO
+	   minimum. */
+	main_rate = rate;
+	if (rate > vco_min) {
+		if (tegra11_is_dyn_ramp(c->u.cpu.main, rate, true))
+			main_rate = vco_min;
+		else
+			pr_warn("No dynamic ramp up: %s: %lu to %lu\n",
+				c->u.cpu.main->name, vco_min, rate);
+	}
+
+	ret = clk_set_rate(c->u.cpu.main, main_rate);
+	if (ret) {
+		pr_err("Failed to set cpu rate %lu on source"
+		       " %s\n", main_rate, c->u.cpu.main->name);
+		goto out;
+	}
+	ret = clk_set_parent(c->parent, c->u.cpu.main);
+	if (ret) {
+		pr_err("Failed to switch cpu to %s\n", c->u.cpu.main->name);
+		goto out;
+	}
+	if (rate != main_rate) {
+		ret = clk_set_rate(c->u.cpu.main, rate);
+		if (ret) {
+			pr_err("Failed to set cpu rate %lu on source"
+			       " %s\n", rate, c->u.cpu.main->name);
+			goto out;
+		}
+	}
+
+out:
+	if (on_main)
+		clk_disable(c->u.cpu.main);
+
+	return ret;
+}
+
+static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
+{
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
@@ -802,46 +900,7 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 		}
 	}
 #endif
-	/*
-	 * Take an extra reference to the main pll so it doesn't turn
-	 * off when we move the cpu off of it
-	 */
-	clk_enable(c->u.cpu.main);
-
-	ret = clk_set_parent(c->parent, c->u.cpu.backup);
-	if (ret) {
-		pr_err("Failed to switch cpu to clock %s\n", c->u.cpu.backup->name);
-		goto out;
-	}
-
-	backup_rate = min(rate, c->u.cpu.backup_rate);
-	ret = clk_set_rate(c->parent, backup_rate);
-	if (ret) {
-		pr_err("Failed to set cpu rate %lu on backup source\n",
-		       backup_rate);
-		goto out;
-	}
-	if (rate == backup_rate)
-		goto out;
-
-	if (rate != clk_get_rate(c->u.cpu.main)) {
-		ret = clk_set_rate(c->u.cpu.main, rate);
-		if (ret) {
-			pr_err("Failed to change cpu pll to %lu\n", rate);
-			goto out;
-		}
-	}
-
-	ret = clk_set_parent(c->parent, c->u.cpu.main);
-	if (ret) {
-		pr_err("Failed to switch cpu to clock %s\n", c->u.cpu.main->name);
-		goto out;
-	}
-
-out:
-	clk_disable(c->u.cpu.main);
-
-	return ret;
+	return tegra11_cpu_clk_set_plls(c, rate);
 }
 
 static struct clk_ops tegra_cpu_ops = {
@@ -4865,6 +4924,42 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_emc_bridge,
 	&tegra_clk_cbus,
 };
+
+/* Return true from this function if the target rate can be locked without
+   switching pll clients to back-up source */
+static bool tegra11_is_dyn_ramp(
+	struct clk *c, unsigned long rate, bool from_vco_min)
+{
+#if PLLCX_USE_DYN_RAMP
+	/* PLLC2, PLLC3 support dynamic ramp within the entire output range */
+	if ((c == &tegra_pll_c2) || (c == &tegra_pll_c3))
+		return true;
+#endif
+
+#if PLLXC_USE_DYN_RAMP
+	/* PPLX, PLLC support dynamic ramp when changing NDIV only */
+	if ((c == &tegra_pll_x) || (c == &tegra_pll_c)) {
+		struct clk_pll_freq_table cfg, old_cfg;
+		unsigned long input_rate = clk_get_rate(c->parent);
+
+		if (from_vco_min) {
+			old_cfg.m = PLL_FIXED_MDIV(c, input_rate);
+			old_cfg.p = 1;
+		} else {
+			u32 val = clk_readl(c->reg + PLL_BASE);
+			PLL_BASE_PARSE(PLLXC, old_cfg, val);
+			old_cfg.p = pllxc_p[old_cfg.p];
+		}
+
+		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
+				      PLLXC_SW_PDIV_MAX + 1)) {
+			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
+				return true;
+		}
+	}
+#endif
+	return false;
+}
 
 /*
  * Backup pll is used as transitional CPU clock source while main pll is
