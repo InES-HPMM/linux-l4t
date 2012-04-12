@@ -1796,6 +1796,11 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	unsigned long input_rate = clk_get_rate(c->parent);
 	u32 m, n, p, val;
 
+	/* clip vco_min to exact multiple of input rate to avoid crossover
+	   by rounding */
+	c->u.pll.vco_min =
+		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
+
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
 
@@ -2102,6 +2107,11 @@ static void tegra11_pllxc_clk_init(struct clk *c)
 {
 	unsigned long input_rate = clk_get_rate(c->parent);
 	u32 m, p, val;
+
+	/* clip vco_min to exact multiple of input rate to avoid crossover
+	   by rounding */
+	c->u.pll.vco_min =
+		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
@@ -3691,7 +3701,7 @@ static struct clk tegra_pll_c = {
 		.input_max = 800000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,
-		.vco_min   = 620000000,
+		.vco_min   = 600000000,
 		.vco_max   = 1400000000,
 		.freq_table = tegra_pll_c_freq_table,
 		.lock_delay = 300,
@@ -3730,7 +3740,7 @@ static struct clk tegra_pll_c2 = {
 		.input_max = 48000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,
-		.vco_min   = 750000000,
+		.vco_min   = 739000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
@@ -3750,7 +3760,7 @@ static struct clk tegra_pll_c3 = {
 		.input_max = 48000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,
-		.vco_min   = 750000000,
+		.vco_min   = 739000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
@@ -4035,7 +4045,7 @@ static struct clk tegra_pll_x = {
 		.input_max = 800000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 50 MHz */
-		.vco_min   = 720000000,
+		.vco_min   = 700000000,
 		.vco_max   = 1800000000,
 		.freq_table = tegra_pll_x_freq_table,
 		.lock_delay = 300,
