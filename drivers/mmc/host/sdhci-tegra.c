@@ -1590,8 +1590,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_IGNORE_PM_NOTIFY;
 	if (plat->mmc_data.built_in) {
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
-		host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
+	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
