@@ -1585,6 +1585,16 @@ static struct resource tegra_aes_resources[] = {
 		.end	= TEGRA_BSEA_BASE + TEGRA_BSEA_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+	{
+		.start	= INT_VDE_BSE_V,
+		.end	= INT_VDE_BSE_V,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= INT_VDE_BSE_A,
+		.end	= INT_VDE_BSE_A,
+		.flags	= IORESOURCE_IRQ,
+	},
 };
 
 static u64 tegra_aes_dma_mask = DMA_BIT_MASK(32);
