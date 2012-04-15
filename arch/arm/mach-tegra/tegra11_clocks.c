@@ -4126,7 +4126,7 @@ static int tegra11_dfll_cpu_late_init(void)
 #ifndef CONFIG_TEGRA_SILICON_PLATFORM
 	u32 netlist, patchid;
 	tegra_get_netlist_revision(&netlist, &patchid);
-	if (netlist < 13) {
+	if (netlist < 12) {
 		pr_err("%s: CL-DVFS is not available on net %d\n",
 		       __func__, netlist);
 		return -ENOSYS;
