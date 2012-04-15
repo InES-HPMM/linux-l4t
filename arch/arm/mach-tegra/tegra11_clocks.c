@@ -300,8 +300,6 @@
 #define SUPER_CLK_DIVIDER		0x04
 #define SUPER_CLOCK_DIV_U71_SHIFT	16
 #define SUPER_CLOCK_DIV_U71_MASK	(0xff << SUPER_CLOCK_DIV_U71_SHIFT)
-/* guarantees safe cpu backup */
-#define SUPER_CLOCK_DIV_U71_MIN		0x2
 
 #define BUS_CLK_DISABLE			(1<<3)
 #define BUS_CLK_DIV_MASK		0x3
@@ -751,6 +749,12 @@ static int tegra11_super_clk_set_parent(struct clk *c, struct clk *p)
  */
 static int tegra11_super_clk_set_rate(struct clk *c, unsigned long rate)
 {
+	/* In tegra11_cpu_clk_set_plls() and  tegra11_sbus_cmplx_set_rate()
+	 * this call is skipped by directly setting rate of source plls. If we
+	 * ever use 7.1 divider at other than 1:1 setting, or exercise s/w
+	 * skipper control, not only this function, but cpu and sbus set_rate
+	 * APIs should be changed accordingly.
+	 */
 	return clk_set_rate(c->parent, rate);
 }
 
@@ -837,11 +841,13 @@ static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate)
 	}
 
 	backup_rate = min(rate, c->u.cpu.backup_rate);
-	ret = clk_set_rate(c->u.cpu.backup, backup_rate);
-	if (ret) {
-		pr_err("Failed to set cpu rate %lu on backup source\n",
-		       backup_rate);
-		goto out;
+	if (backup_rate != clk_get_rate_locked(c)) {
+		ret = clk_set_rate(c->u.cpu.backup, backup_rate);
+		if (ret) {
+			pr_err("Failed to set cpu rate %lu on backup source\n",
+			       backup_rate);
+			goto out;
+		}
 	}
 	if (rate == backup_rate)
 		goto out;
