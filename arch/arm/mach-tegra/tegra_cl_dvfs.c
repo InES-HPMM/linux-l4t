@@ -620,8 +620,6 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 
 #ifdef CONFIG_DEBUG_FS
 
-static struct dentry *cpu_cl_dvfs_dentry;
-
 static int lock_get(void *data, u64 *val)
 {
 	struct clk *c = (struct clk *)data;
@@ -719,17 +717,18 @@ static const struct file_operations cl_register_fops = {
 
 static int __init tegra_cl_dvfs_debug_init(void)
 {
+	struct dentry *cpu_cl_dvfs_dentry;
 	struct clk *dfll_cpu = tegra_get_clock_by_name("dfll_cpu");
 
-	if (!dfll_cpu || (dfll_cpu->state == UNINITIALIZED))
+	if (!dfll_cpu || !dfll_cpu->dent || (dfll_cpu->state == UNINITIALIZED))
 		return 0;
 
-	cpu_cl_dvfs_dentry = debugfs_create_dir("tegra_cl_dvfs_cpu", NULL);
-	if (!cpu_cl_dvfs_dentry)
-		return -ENOMEM;
-
 	if (!debugfs_create_file("lock", S_IRUGO | S_IWUSR,
-		cpu_cl_dvfs_dentry, dfll_cpu, &lock_fops))
+		dfll_cpu->dent, dfll_cpu, &lock_fops))
+		goto err_out;
+
+	cpu_cl_dvfs_dentry = debugfs_create_dir("cl_dvfs", dfll_cpu->dent);
+	if (!cpu_cl_dvfs_dentry)
 		goto err_out;
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
@@ -743,7 +742,7 @@ static int __init tegra_cl_dvfs_debug_init(void)
 	return 0;
 
 err_out:
-	debugfs_remove_recursive(cpu_cl_dvfs_dentry);
+	debugfs_remove_recursive(dfll_cpu->dent);
 	return -ENOMEM;
 }
 
