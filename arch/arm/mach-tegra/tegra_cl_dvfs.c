@@ -281,7 +281,7 @@ static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
 	BUG_ON(!val || (val > CL_DVFS_I2C_CLK_DIVISOR_MASK));
 	val = (val - 1) << CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT;
 	if (hs_mode) {
-		u32 div = GET_DIV(cld->i2c_rate, p_data->u.pmu_i2c.hs_rate, 8);
+		u32 div = GET_DIV(cld->i2c_rate, p_data->u.pmu_i2c.hs_rate, 12);
 		BUG_ON(!div || (div > CL_DVFS_I2C_CLK_DIVISOR_MASK));
 		val |= (div - 1) << CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT;
 	}
@@ -336,7 +336,8 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	val = (param->force_mode << CL_DVFS_PARAMS_FORCE_MODE_SHIFT) |
 		(param->cf << CL_DVFS_PARAMS_CF_PARAM_SHIFT) |
 		(param->ci << CL_DVFS_PARAMS_CI_PARAM_SHIFT) |
-		(param->cg << CL_DVFS_PARAMS_CG_PARAM_SHIFT);
+		((u8)param->cg << CL_DVFS_PARAMS_CG_PARAM_SHIFT) |
+		(param->cg_scale ? CL_DVFS_PARAMS_CG_SCALE : 0);
 	cl_dvfs_writel(cld, val, CL_DVFS_PARAMS);
 
 	cl_dvfs_writel(cld, cld->soc_data->tune0, CL_DVFS_TUNE0);
@@ -597,8 +598,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		int force_val = req.output - cld->safe_ouput;
-		force_val = (force_val * 128) /
-			((s8)cld->p_data->cfg_param->cg);
+		force_val = force_val * 128 / cld->p_data->cfg_param->cg;
 		force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
 		val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
 					CL_DVFS_FREQ_REQ_FORCE_MASK;

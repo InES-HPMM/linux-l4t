@@ -47,7 +47,8 @@ struct tegra_cl_dvfs_cfg_param {
 	enum tegra_cl_dvfs_force_mode force_mode;
 	u8		cf;
 	u8		ci;
-	u8		cg;
+	s8		cg;
+	bool		cg_scale;
 
 	u8		droop_cut_value;
 	u8		droop_restore_ramp;
