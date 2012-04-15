@@ -70,12 +70,12 @@ static struct tegra_suspend_platform_data curacao_suspend_data = {
 
 /* Board characterization parameters */
 static struct tegra_cl_dvfs_cfg_param curacao_cl_dvfs_param = {
-	.sample_rate = 12500,
+	.sample_rate = 2250,
 
 	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
-	.cf = 3,
-	.ci = 1,
-	.cg = 0xfa,
+	.cf = 16,
+	.ci = 7,
+	.cg = -12,
 
 	.droop_cut_value = 0x8,
 	.droop_restore_ramp = 0x10,
