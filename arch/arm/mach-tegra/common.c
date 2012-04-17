@@ -31,6 +31,7 @@
 #include <linux/bitops.h>
 #include <linux/sched.h>
 #include <linux/of.h>
+#include <linux/pstore_ram.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -489,6 +490,7 @@ void __init tegra20_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -510,6 +512,7 @@ void __init tegra30_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -1060,50 +1063,36 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 }
 
-static struct resource ram_console_resources[] = {
-	{
-		.flags = IORESOURCE_MEM,
-	},
+#ifdef CONFIG_PSTORE_RAM
+static struct persistent_ram_descriptor desc = {
+	.name = "ramoops",
 };
 
-static struct platform_device ram_console_device = {
-	.name		= "ram_console",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(ram_console_resources),
-	.resource	= ram_console_resources,
+static struct persistent_ram ram = {
+	.descs = &desc,
+	.num_descs = 1,
 };
 
 void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size)
 {
-	struct resource *res;
-	long ret;
+	int ret;
 
-	res = platform_get_resource(&ram_console_device, IORESOURCE_MEM, 0);
-	if (!res)
-		goto fail;
-	res->start = memblock_end_of_DRAM() - ram_console_size;
-	res->end = res->start + ram_console_size - 1;
-	ret = memblock_remove(res->start, ram_console_size);
+	ram.start = memblock_end_of_DRAM() - ram_console_size;
+	ram.size = ram_console_size;
+	ram.descs->size = ram_console_size;
+
+	INIT_LIST_HEAD(&ram.node);
+
+	ret = persistent_ram_early_init(&ram);
 	if (ret)
 		goto fail;
 
 	return;
 
 fail:
-	ram_console_device.resource = NULL;
-	ram_console_device.num_resources = 0;
 	pr_err("Failed to reserve memory block for ram console\n");
 }
-
-void __init tegra_ram_console_debug_init(void)
-{
-	int err;
-
-	err = platform_device_register(&ram_console_device);
-	if (err)
-		pr_err("%s: ram console registration failed (%d)!\n",
-			__func__, err);
-}
+#endif
 
 void __init tegra_release_bootloader_fb(void)
 {
