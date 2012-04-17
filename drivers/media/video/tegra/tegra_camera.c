@@ -48,6 +48,9 @@ struct tegra_camera_dev {
 	struct clk *csus_clk;
 	struct clk *csi_clk;
 	struct clk *emc_clk;
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	struct clk *pll_d2_clk;
+#endif
 	struct regulator *reg;
 	struct tegra_camera_clk_info info;
 	struct mutex tegra_camera_lock;
@@ -178,13 +181,6 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 	clk_set_rate(clk, parent_div_rate_pre);
 
 	if (info->clk_id == TEGRA_CAMERA_VI_CLK) {
-		/*
-		 * bit 25: 0 = pd2vi_Clk, 1 = vi_sensor_clk
-		 * bit 24: 0 = internal clock, 1 = external clock(pd2vi_clk)
-		 */
-		if (info->flag == TEGRA_CAMERA_ENABLE_PD2VI_CLK)
-			tegra_clk_cfg_ex(clk, TEGRA_CLK_VI_INP_SEL, 2);
-
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		{
 			u32 val;
@@ -192,6 +188,25 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 				IO_ADDRESS(TEGRA_APB_MISC_BASE);
 			val = readl(apb_misc + 0x42c);
 			writel(val | 0x1, apb_misc + 0x42c);
+		}
+#endif
+
+		if (info->flag == TEGRA_CAMERA_ENABLE_PD2VI_CLK) {
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+			tegra_clk_cfg_ex(dev->pll_d2_clk,
+						TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
+#else
+			/*
+			 * bit 25: 0 = pd2vi_Clk, 1 = vi_sensor_clk
+			 * bit 24: 0 = internal clock, 1 = external clock(pd2vi_clk)
+			*/
+			tegra_clk_cfg_ex(clk, TEGRA_CLK_VI_INP_SEL, 2);
+#endif
+		}
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+		else {
+			tegra_clk_cfg_ex(dev->pll_d2_clk,
+						TEGRA_CLK_PLLD_CSI_OUT_ENB, 0);
 		}
 #endif
 	}
@@ -477,11 +492,21 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	if (err)
 		goto emc_clk_get_err;
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	err = tegra_camera_clk_get(pdev, "pll_d2", &dev->pll_d2_clk);
+	if (err)
+		goto pll_d2_clk_get_err;
+#endif
+
 	/* dev is set in order to restore in _remove */
 	platform_set_drvdata(pdev, dev);
 
 	return 0;
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+pll_d2_clk_get_err:
+	clk_put(dev->pll_d2_clk);
+#endif
 emc_clk_get_err:
 	clk_put(dev->emc_clk);
 csi_clk_get_err:
