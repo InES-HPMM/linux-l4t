@@ -194,6 +194,7 @@
 /* PLLD */
 #define PLLD_BASE_DSIB_MUX_SHIFT	25
 #define PLLD_BASE_DSIB_MUX_MASK		(1<<PLLD_BASE_DSIB_MUX_SHIFT)
+#define PLLD_BASE_CSI_CLKSOURCE		(1<<24)
 #define PLLD_BASE_CSI_CLKENABLE		(1<<26)
 #define PLLD_MISC_DSI_CLKENABLE		(1<<30)
 #define PLLD_MISC_DIV_RST		(1<<23)
@@ -1674,7 +1675,7 @@ tegra11_plld_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 
 	switch (p) {
 	case TEGRA_CLK_PLLD_CSI_OUT_ENB:
-		mask = PLLD_BASE_CSI_CLKENABLE;
+		mask = PLLD_BASE_CSI_CLKENABLE | PLLD_BASE_CSI_CLKSOURCE;
 		reg = c->reg + PLL_BASE;
 		break;
 	case TEGRA_CLK_PLLD_DSI_OUT_ENB:
