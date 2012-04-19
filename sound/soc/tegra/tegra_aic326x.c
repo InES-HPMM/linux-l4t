@@ -1027,7 +1027,7 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 	}
 
-	ret = snd_soc_add_codec_controls(codec, tegra_aic326x_controls,
+	ret = snd_soc_add_card_controls(card, tegra_aic326x_controls,
 				   ARRAY_SIZE(tegra_aic326x_controls));
 	if (ret < 0)
 		return ret;
@@ -1133,6 +1133,7 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 
 static struct snd_soc_card snd_soc_tegra_aic326x = {
 	.name = "tegra-aic326x",
+	.owner = THIS_MODULE,
 	.dai_link = tegra_aic326x_dai,
 	.num_links = ARRAY_SIZE(tegra_aic326x_dai),
 };

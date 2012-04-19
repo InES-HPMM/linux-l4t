@@ -517,7 +517,7 @@ static int tegra_max98095_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 	}
 
-	ret = snd_soc_add_codec_controls(codec, tegra_max98095_controls,
+	ret = snd_soc_add_card_controls(card, tegra_max98095_controls,
 				   ARRAY_SIZE(tegra_max98095_controls));
 	if (ret < 0)
 		return ret;
@@ -603,6 +603,7 @@ static int tegra30_soc_set_bias_level_post(struct snd_soc_card *card,
 
 static struct snd_soc_card snd_soc_tegra_max98095 = {
 	.name = "tegra-max98095",
+	.owner = THIS_MODULE,
 	.dai_link = tegra_max98095_dai,
 	.num_links = ARRAY_SIZE(tegra_max98095_dai),
 	.set_bias_level = tegra30_soc_set_bias_level,

@@ -161,6 +161,7 @@ static struct snd_soc_dai_link tegra_p1852_dai_link[] = {
 
 static struct snd_soc_card snd_soc_tegra_p1852 = {
 	.name = "tegra-p1852",
+	.owner = THIS_MODULE,
 	.dai_link = tegra_p1852_dai_link,
 	.num_links = ARRAY_SIZE(tegra_p1852_dai_link),
 };

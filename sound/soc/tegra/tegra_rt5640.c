@@ -527,7 +527,7 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
-	ret = snd_soc_add_codec_controls(codec, cardhu_controls,
+	ret = snd_soc_add_card_controls(card, cardhu_controls,
 			ARRAY_SIZE(cardhu_controls));
 	if (ret < 0)
 		return ret;
@@ -579,6 +579,7 @@ static struct snd_soc_dai_link tegra_rt5640_dai[] = {
 
 static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
+	.owner = THIS_MODULE,
 	.dai_link = tegra_rt5640_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
 };
