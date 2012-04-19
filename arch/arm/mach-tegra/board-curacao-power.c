@@ -22,6 +22,10 @@
 #include <linux/platform_device.h>
 #include <linux/resource.h>
 #include <linux/io.h>
+#include <linux/regulator/machine.h>
+#include <linux/gpio.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/gpio-regulator.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -29,11 +33,84 @@
 #include "pm.h"
 #include "board.h"
 #include "tegra_cl_dvfs.h"
+#include "gpio-names.h"
 
 static int ac_online(void)
 {
 	return 1;
 }
+
+static struct regulator_consumer_supply gpio_reg_sdmmc3_vdd_sel_supply[] = {
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
+};
+
+static struct gpio_regulator_state gpio_reg_sdmmc3_vdd_sel_states[] = {
+	{
+		.gpios = 0,
+		.value = 1800000,
+	},
+	{
+		.gpios = 1,
+		.value = 3300000,
+	},
+};
+
+static struct gpio gpio_reg_sdmmc3_vdd_sel_gpios[] = {
+	{
+		.gpio = TEGRA_GPIO_PV1,
+		.flags = 0,
+		.label = "sdmmc3_vdd_sel",
+	},
+};
+
+/* Macro for defining gpio regulator device data */
+#define GPIO_REG(_id, _name, _input_supply, _active_high,	\
+		_boot_state, _delay_us, _minmv, _maxmv)		\
+	static struct regulator_init_data ri_data_##_name =	\
+{								\
+	.supply_regulator = NULL,				\
+	.num_consumer_supplies =				\
+		ARRAY_SIZE(gpio_reg_##_name##_supply),		\
+	.consumer_supplies = gpio_reg_##_name##_supply,		\
+	.constraints = {					\
+		.name = "gpio_reg_"#_name,			\
+		.min_uV = (_minmv)*1000,			\
+		.max_uV = (_maxmv)*1000,			\
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+				REGULATOR_MODE_STANDBY),	\
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+				REGULATOR_CHANGE_STATUS |	\
+				REGULATOR_CHANGE_VOLTAGE),	\
+	},							\
+};								\
+static struct gpio_regulator_config gpio_reg_##_name##_pdata =	\
+{								\
+	.supply_name = "vddio_sdmmc",				\
+	.enable_gpio = -EINVAL,					\
+	.enable_high = _active_high,				\
+	.enabled_at_boot = _boot_state,				\
+	.startup_delay = _delay_us,				\
+	.gpios = gpio_reg_##_name##_gpios,			\
+	.nr_gpios = ARRAY_SIZE(gpio_reg_##_name##_gpios),	\
+	.states = gpio_reg_##_name##_states,			\
+	.nr_states = ARRAY_SIZE(gpio_reg_##_name##_states),	\
+	.type = REGULATOR_VOLTAGE,				\
+	.init_data = &ri_data_##_name,				\
+};								\
+static struct platform_device gpio_reg_##_name##_dev = {	\
+	.name   = "gpio-regulator",				\
+	.id = _id,						\
+	.dev    = {						\
+		.platform_data = &gpio_reg_##_name##_pdata,	\
+	},							\
+}
+GPIO_REG(4, sdmmc3_vdd_sel, NULL,
+		true, true, 0, 1000, 3300);
+
+#define ADD_GPIO_REG(_name) (&gpio_reg_##_name##_dev)
+static struct platform_device *gpio_regs_devices[] = {
+	ADD_GPIO_REG(sdmmc3_vdd_sel),
+};
 
 static struct resource curacao_pda_resources[] = {
 	[0] = {
@@ -95,6 +172,21 @@ static void fill_reg_map(void)
 	}
 }
 
+static int __init curacao_gpio_regulator_init(void)
+{
+	int i, j;
+	for (i = 0; i < ARRAY_SIZE(gpio_regs_devices); ++i) {
+		struct gpio_regulator_config *gpio_reg_pdata =
+			gpio_regs_devices[i]->dev.platform_data;
+		for (j = 0; j < gpio_reg_pdata->nr_gpios; ++j) {
+			if (gpio_reg_pdata->gpios[j].gpio < TEGRA_NR_GPIOS)
+				tegra_gpio_enable(gpio_reg_pdata->gpios[j].gpio);
+		}
+	}
+	return platform_add_devices(gpio_regs_devices,
+			ARRAY_SIZE(gpio_regs_devices));
+}
+
 static struct tegra_cl_dvfs_platform_data curacao_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
@@ -115,7 +207,7 @@ int __init curacao_regulator_init(void)
 	platform_device_register(&curacao_pda_power_device);
 	fill_reg_map();
 	tegra_cl_dvfs_set_plarform_data(&curacao_cl_dvfs_data);
-	return 0;
+	return curacao_gpio_regulator_init();
 }
 
 int __init curacao_suspend_init(void)
