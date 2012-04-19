@@ -4100,6 +4100,7 @@ static struct clk tegra_pll_x_out0 = {
 
 /* FIXME: remove; for now, should be always checked-in as "0" */
 #define USE_IRAM_TO_TEST_DFLL		0
+#define USE_LP_CPU_TO_TEST_DFLL		0
 
 static struct tegra_cl_dvfs cpu_cl_dvfs = {
 #if USE_IRAM_TO_TEST_DFLL
@@ -4350,9 +4351,10 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ .input = &tegra_pll_m,	.value = 3},
 	{ .input = &tegra_pll_p,	.value = 4},
 	{ .input = &tegra_pll_p_out4,	.value = 5},
-	{ .input = &tegra_pll_p_out3,	.value = 6},
-	/* { .input = &tegra_clk_d,	.value = 7}, - no use on tegra11x */
+	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra11x */
+	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra11x */
 	{ .input = &tegra_pll_x,	.value = 8},
+	{ .input = &tegra_dfll_cpu,	.value = 15},
 	{ 0, 0},
 };
 
@@ -4363,9 +4365,12 @@ static struct clk_mux_sel mux_cclk_lp[] = {
 	{ .input = &tegra_pll_m,	.value = 3},
 	{ .input = &tegra_pll_p,	.value = 4},
 	{ .input = &tegra_pll_p_out4,	.value = 5},
-	{ .input = &tegra_pll_p_out3,	.value = 6},
-	/* { .input = &tegra_clk_d,	.value = 7}, - no use on tegra11x */
+	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra11x */
+	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra11x */
 	{ .input = &tegra_pll_x_out0,	.value = 8},
+#if USE_LP_CPU_TO_TEST_DFLL
+	{ .input = &tegra_dfll_cpu,	.value = 15},
+#endif
 	{ .input = &tegra_pll_x,	.value = 8 | SUPER_LP_DIV2_BYPASS},
 	{ 0, 0},
 };
@@ -4388,7 +4393,7 @@ static struct clk tegra_clk_cclk_g = {
 	.inputs	= mux_cclk_g,
 	.reg	= 0x368,
 	.ops	= &tegra_super_ops,
-	.max_rate = 1400000000,
+	.max_rate = 1800000000,
 };
 
 static struct clk tegra_clk_cclk_lp = {
@@ -4413,10 +4418,11 @@ static struct clk tegra_clk_virtual_cpu_g = {
 	.name      = "cpu_g",
 	.parent    = &tegra_clk_cclk_g,
 	.ops       = &tegra_cpu_ops,
-	.max_rate  = 1400000000,
+	.max_rate  = 1800000000,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p_out4,
+		.dynamic   = &tegra_dfll_cpu,
 		.mode      = MODE_G,
 	},
 };
@@ -4429,6 +4435,9 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p_out4,
+#if USE_LP_CPU_TO_TEST_DFLL
+		.dynamic   = &tegra_dfll_cpu,
+#endif
 		.mode      = MODE_LP,
 	},
 };
@@ -4443,7 +4452,7 @@ static struct clk tegra_clk_cpu_cmplx = {
 	.name      = "cpu",
 	.inputs    = mux_cpu_cmplx,
 	.ops       = &tegra_cpu_cmplx_ops,
-	.max_rate  = 1400000000,
+	.max_rate  = 1800000000,
 };
 
 static struct clk tegra_clk_cop = {

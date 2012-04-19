@@ -200,6 +200,7 @@ struct clk {
 		struct {
 			struct clk			*main;
 			struct clk			*backup;
+			struct clk			*dynamic;
 			unsigned long			backup_rate;
 			enum cpu_mode			mode;
 		} cpu;

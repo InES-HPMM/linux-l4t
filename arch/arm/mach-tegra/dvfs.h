@@ -70,6 +70,7 @@ struct dvfs_rail {
 	int millivolts;
 	int new_millivolts;
 	bool suspended;
+	bool auto_control;
 	struct rail_stats stats;
 };
 
