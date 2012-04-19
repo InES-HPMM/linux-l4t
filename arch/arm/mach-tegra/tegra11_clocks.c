@@ -399,6 +399,9 @@ static struct clk *emc_bridge;
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
 
+static bool use_dfll;
+module_param(use_dfll, bool, 0644);
+
 /**
 * Structure defining the fields for USB UTMI clocks Parameters.
 */
@@ -825,12 +828,12 @@ static void tegra11_cpu_clk_disable(struct clk *c)
 	   either of them; accept request with no affect on h/w */
 }
 
-static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate)
+static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate,
+				    unsigned long old_rate)
 {
 	int ret = 0;
 	bool on_main = false;
 	unsigned long backup_rate, main_rate;
-	unsigned long old_rate = clk_get_rate_locked(c);
 	unsigned long vco_min = c->u.cpu.main->u.pll.vco_min;
 
 	/*
@@ -926,23 +929,109 @@ out:
 	return ret;
 }
 
+static int tegra11_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
+				   unsigned long old_rate)
+{
+	int ret;
+	struct clk *dfll = c->u.cpu.dynamic;
+
+	/* dfll rate request */
+	ret = clk_set_rate(dfll, rate);
+	if (ret) {
+		pr_err("Failed to set cpu rate %lu on source"
+		       " %s\n", rate, dfll->name);
+		return ret;
+	}
+
+	/* 1st time - switch to dfll */
+	if (c->parent->parent != dfll) {
+		ret = clk_set_parent(c->parent, dfll);
+		if (ret) {
+			pr_err("Failed to switch cpu to %s\n", dfll->name);
+			return ret;
+		}
+		ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+		if (ret) {
+			pr_err("Failed to lock %s\n", dfll->name);
+			return ret;
+		}
+		/* prevent legacy dvfs voltage scaling */
+		if (c->dvfs && c->dvfs->dvfs_rail)
+			c->dvfs->dvfs_rail->auto_control = true;
+	}
+	return 0;
+}
+
+static int tegra11_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
+				    unsigned long old_rate)
+{
+	int ret;
+	struct clk *dfll = c->u.cpu.dynamic;
+	struct clk *pll = (old_rate <= c->u.cpu.backup_rate) ?
+		c->u.cpu.backup : c->u.cpu.main;
+
+	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
+	if (ret) {
+		pr_err("Failed to unlock %s\n", dfll->name);
+		return ret;
+	}
+
+	/* restore legacy dvfs operations and set appropriate voltage */
+	if (c->dvfs && c->dvfs->dvfs_rail)
+		c->dvfs->dvfs_rail->auto_control = false;
+
+	rate = max(rate, old_rate);
+	ret = tegra_dvfs_set_rate(c, rate);
+	if (ret) {
+		pr_err("Failed to set cpu rail for rate %lu\n", rate);
+		return ret;
+	}
+
+	/* set pll rate same as dfll old rate, and return to pll source */
+	ret = clk_set_rate(pll, old_rate);
+	if (ret) {
+		pr_err("Failed to set cpu rate %lu on source"
+		       " %s\n", old_rate, pll->name);
+		return ret;
+	}
+	ret = clk_set_parent(c->parent, pll);
+	if (ret) {
+		pr_err("Failed to switch cpu to %s\n", pll->name);
+		return ret;
+	}
+	return 0;
+}
+
 static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 {
+	unsigned long old_rate = clk_get_rate_locked(c);
+	bool has_dfll = c->u.cpu.dynamic &&
+		(c->u.cpu.dynamic->state != UNINITIALIZED);
+	bool is_dfll = c->parent->parent == c->u.cpu.dynamic;
+
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
-		else if ((!c->dvfs->dvfs_rail->reg) &&
-			  (clk_get_rate_locked(c) != rate)) {
+		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate != rate)) {
 			WARN(1, "Changing CPU rate while regulator is not"
 				" ready is not allowed\n");
 			return -ENOSYS;
 		}
 	}
 #endif
-	return tegra11_cpu_clk_set_plls(c, rate);
+	if (has_dfll) {
+		if (use_dfll)
+			return tegra11_cpu_clk_dfll_on(c, rate, old_rate);
+		else if (is_dfll) {
+			int ret = tegra11_cpu_clk_dfll_off(c, rate, old_rate);
+			if (ret)
+				return ret;
+		}
+	}
+	return tegra11_cpu_clk_set_plls(c, rate, old_rate);
 }
 
 static struct clk_ops tegra_cpu_ops = {
