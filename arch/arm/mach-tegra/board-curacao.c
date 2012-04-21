@@ -518,6 +518,9 @@ static void __init tegra_curacao_init(void)
 	tegra_clk_init_from_table(curacao_clk_init_table);
 	curacao_pinmux_init();
 
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		debug_uart_platform_data[0].uartclk = tegra_clk_measure_input_freq();
+
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
 
 	curacao_power_off_init();

@@ -40,11 +40,13 @@
 #include <asm/sched_clock.h>
 
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "clock.h"
 #include "iomap.h"
 #include "timer.h"
+#include "fuse.h"
 
 static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
@@ -317,6 +319,14 @@ static int __init tegra_init_early_arch_timer(void)
 		return -ENODEV;
 
 	tsc_ref_freq = tegra_clk_measure_input_freq();
+	if (tsc_ref_freq == 115200 || tsc_ref_freq == 230400) {
+		/*
+		 * OSC detection function will bug out if revision is not QT and
+		 * the detected frequency is one of these two.
+		 */
+		tsc_ref_freq = 13000000;
+		pr_info("fake tsc_ref_req=%d in QT\n", tsc_ref_freq);
+	}
 
 	/* Set the Timer System Counter (TSC) reference frequency
 	   NOTE: this is a write once register */
@@ -341,6 +351,13 @@ static void tegra_arch_timer_per_cpu_init(void)
 {
 	if (arch_timer_initialized) {
 		u32 tsc_ref_freq = tegra_clk_measure_input_freq();
+
+		/*
+		 * OSC detection function will bug out if revision is not QT and
+		 * the detected frequency is one of these two.
+		 */
+		if (tsc_ref_freq == 115200 || tsc_ref_freq == 230400)
+			tsc_ref_freq = 13000000;
 
 		/* Program CNTFRQ to the input frequency.
 		   NOTE: this is a write once (per CPU reset) register. */
@@ -570,6 +587,10 @@ void __init tegra_init_timer(void)
 		break;
 #endif
 	default:
+		if (tegra_revision == TEGRA_REVISION_QT) {
+			timer_writel(0x000c, TIMERUS_USEC_CFG);
+			break;
+		}
 		WARN(1, "Unknown clock rate");
 	}
 
