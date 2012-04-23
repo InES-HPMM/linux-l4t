@@ -237,7 +237,7 @@ static int pca954x_probe(struct i2c_client *client,
 
 	/* Get regulator pointer for pca954x vcc */
 	data->vcc_reg = regulator_get(&client->dev, "vcc");
-	if (PTR_ERR(data->vcc_reg) == -ENODEV)
+	if (PTR_ERR(data->vcc_reg) == -EPROBE_DEFER)
 		data->vcc_reg = NULL;
 	else if (IS_ERR(data->vcc_reg)) {
 		dev_err(&client->dev, "%s: failed to get vcc\n",
@@ -247,7 +247,7 @@ static int pca954x_probe(struct i2c_client *client,
 	}
 	/* Get regulator pointer for pca954x vcc_i2c */
 	data->i2c_reg = regulator_get(&client->dev, "vcc_i2c");
-	if (PTR_ERR(data->i2c_reg) == -ENODEV)
+	if (PTR_ERR(data->i2c_reg) == -EPROBE_DEFER)
 		data->i2c_reg = NULL;
 	else if (IS_ERR(data->i2c_reg)) {
 		dev_err(&client->dev, "%s: failed to get vcc_i2c\n",
