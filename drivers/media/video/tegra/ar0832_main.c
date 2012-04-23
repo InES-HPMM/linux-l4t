@@ -1979,7 +1979,7 @@ static int ar0832_focuser_set_position(struct ar0832_dev *dev,
 	return ret;
 }
 
-
+#ifdef AR0832_FOCUSER_DYNAMIC_STEP_TIME
 /*
  * This function is not currently called as we have the hardcoded
  * step time in ar0832_focuser_set_config function. If we need to
@@ -2035,6 +2035,7 @@ static u16 ar0832_get_focuser_vcm_step_time(struct ar0832_dev *dev)
 	return vt_pix_clk_freq_mhz;
 
 }
+#endif
 
 static inline
 int ar0832_get_sensorid(struct ar0832_dev *dev, u16 *sensor_id)
@@ -2150,7 +2151,6 @@ static long ar0832_ioctl(struct file *file,
 	}
 	case AR0832_IOCTL_SET_SENSOR_REGION:
 	{
-		struct ar0832_stereo_region region;
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_SET_SENSOR_REGION\n");
 		/* Right now, it doesn't do anything */
 
