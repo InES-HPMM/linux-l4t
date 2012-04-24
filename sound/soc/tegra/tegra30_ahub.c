@@ -124,6 +124,15 @@ static int tegra30_ahub_runtime_resume(struct device *dev)
 	return 0;
 }
 
+/*
+ * for TDM mode, ahub has to run faster than I2S controller.  This will avoid
+ * FIFO overflow/underflow, the causes of slot-hopping symptoms
+ */
+void tegra30_ahub_clock_set_rate(int rate)
+{
+	clk_set_rate(ahub->clk_d_audio, rate);
+}
+
 int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 				  unsigned long *fiforeg,
 				  unsigned long *reqsel)
@@ -166,6 +175,75 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tegra30_ahub_allocate_rx_fifo);
+
+int tegra30_ahub_rx_fifo_is_enabled(int i2s_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_RX_FIFO_ENABLED << (i2s_id*2));
+	val &= mask;
+	return val;
+}
+
+int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_TX_FIFO_ENABLED << (i2s_id*2));
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
+							unsigned int pack_mode)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	int reg, val;
+
+	tegra30_ahub_enable_clocks();
+	reg = TEGRA30_AHUB_CHANNEL_CTRL +
+	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_MASK;
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN;
+
+	if ((pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_16) ||
+		(pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_8_4))
+		val |= (TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN |
+						pack_mode);
+	tegra30_apbif_write(reg, val);
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
+							unsigned int pack_mode)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	int reg, val;
+
+	tegra30_ahub_enable_clocks();
+	reg = TEGRA30_AHUB_CHANNEL_CTRL +
+	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_MASK;
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN;
+
+	if ((pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_16) ||
+		(pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_8_4))
+		val |= (TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN |
+						pack_mode);
+	tegra30_apbif_write(reg, val);
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
 
 int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 {
@@ -510,6 +588,54 @@ int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 	return 0;
 }
 
+int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_TX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+
 static int tegra30_ahub_probe(struct platform_device *pdev)
 {
 	struct clk *clk;
@@ -561,6 +687,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		goto err;
 	}
 	clkm_rate = clk_get_rate(clk_get_parent(ahub->clk_d_audio));
+
 	while (clkm_rate > 12000000)
 		clkm_rate >>= 1;
 

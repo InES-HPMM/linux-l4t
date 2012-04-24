@@ -173,7 +173,7 @@
 /* Number of slots in frame, minus 1 */
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT		16
 #define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US	7
-#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOT_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOT_SHIFT)
+#define TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK		(TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK_US << TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT)
 
 /* TDM mode slot enable bitmask */
 #define TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT	8
@@ -228,6 +228,16 @@
 /* Number of i2s controllers*/
 #define TEGRA30_NR_I2S_IFC				5
 
+struct dsp_config_t {
+	int num_slots;
+	int rx_mask;
+	int tx_mask;
+	int slot_width;
+	int rx_data_offset;
+	int tx_data_offset;
+};
+
+
 struct tegra30_i2s {
 	struct snd_soc_dai_driver dai;
 	int cif_id;
@@ -252,6 +262,8 @@ struct tegra30_i2s {
 #endif
 	int call_record_dam_ifc;
 	int is_call_mode_rec;
+
+	struct dsp_config_t dsp_config;
 };
 
 struct codec_config {
