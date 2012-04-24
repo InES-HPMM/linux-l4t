@@ -31,12 +31,25 @@
 #ifndef __TEGRA_PCM_H__
 #define __TEGRA_PCM_H__
 
+#include <linux/nvmap.h>
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define TEGRA30_USE_SMMU 0
+#endif
+
 struct tegra_pcm_dma_params {
 	unsigned long addr;
 	unsigned long wrap;
 	unsigned long width;
 	unsigned long req_sel;
 };
+
+#ifdef TEGRA30_USE_SMMU
+struct tegra_smmu_data {
+	struct nvmap_client *pcm_nvmap_client;
+	struct nvmap_handle_ref *pcm_nvmap_handle;
+};
+#endif
 
 int tegra_pcm_platform_register(struct device *dev);
 void tegra_pcm_platform_unregister(struct device *dev);
