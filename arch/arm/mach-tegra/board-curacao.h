@@ -20,6 +20,23 @@
 #ifndef _MACH_TEGRA_BOARD_CURACAO_H
 #define _MACH_TEGRA_BOARD_CURACAO_H
 
+#include <mach/gpio.h>
+#include <mach/irqs.h>
+#include <linux/mfd/max77663-core.h>
+#include "gpio-names.h"
+
+/* External peripheral act as gpio */
+/* MAX77663 GPIO */
+#define MAX77663_GPIO_BASE      TEGRA_NR_GPIOS
+#define MAX77663_GPIO_END       (MAX77663_GPIO_BASE + MAX77663_GPIO_NR)
+
+/*****************Interrupt tables ******************/
+/* External peripheral act as interrupt controller */
+/* MAX77663 IRQs */
+#define MAX77663_IRQ_BASE       TEGRA_NR_IRQS
+#define MAX77663_IRQ_END        (MAX77663_IRQ_BASE + MAX77663_IRQ_NR)
+#define MAX77663_IRQ_ACOK_RISING MAX77663_IRQ_ONOFF_ACOK_RISING
+
 int curacao_regulator_init(void);
 int curacao_suspend_init(void);
 int curacao_sdhci_init(void);
