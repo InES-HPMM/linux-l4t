@@ -126,8 +126,11 @@
 /* Conversion macros (different scales for frequency request, and monitored
    rate is not a typo)*/
 #define GET_REQUEST_FREQ(rate, ref_rate)	((rate) / ((ref_rate) / 2))
+#define GET_REQUEST_RATE(freq, ref_rate)	((freq) * ((ref_rate) / 2))
 #define GET_MONITORED_RATE(freq, ref_rate)	((freq) * ((ref_rate) / 4))
 #define GET_DROOP_FREQ(rate, ref_rate)		((rate) / ((ref_rate) / 4))
+#define ROUND_MIN_RATE(rate, ref_rate)		\
+		(DIV_ROUND_UP(rate, (ref_rate) / 2) * ((ref_rate) / 2))
 #define GET_DIV(ref_rate, out_rate, scale)	\
 		DIV_ROUND_CLOSEST((ref_rate), (out_rate) * (scale))
 
@@ -352,7 +355,9 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
 
 	/* FIXME: does dfll_rate_min require separate charact entry ? */
+	/* round minimum rate to request unit (ref_rate/2) boundary */
 	cld->dfll_rate_min = cld->soc_data->droop_cpu_rate_min;
+	cld->dfll_rate_min = ROUND_MIN_RATE(cld->dfll_rate_min, cld->ref_rate);
 
 	cld->last_req.freq = 0;
 	cld->last_req.output = 0;
@@ -566,7 +571,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dfll_rate_min) {
-		req.scale = rate / DIV_ROUND_UP(cld->dfll_rate_min, SCALE_MAX);
+		req.scale = rate / 1000 * SCALE_MAX /
+			(cld->dfll_rate_min / 1000);
 		if (!req.scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
@@ -583,6 +589,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		return -EINVAL;
 	}
 	req.freq = val;
+	rate = GET_REQUEST_RATE(val, cld->ref_rate);
 
 	/* Find safe voltage for requested rate */
 	if (find_safe_output(cld, rate, &req.output)) {
@@ -615,7 +622,12 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 {
 	struct dfll_rate_req *req = &cld->last_req;
-	return (cld->ref_rate / 2) * req->freq / SCALE_MAX * (req->scale + 1);
+	u32 rate = GET_REQUEST_RATE(req->freq, cld->ref_rate);
+	if ((req->scale + 1) < SCALE_MAX) {
+		rate = DIV_ROUND_UP(rate / 1000 * (req->scale + 1), SCALE_MAX);
+		rate *= 1000;
+	}
+	return rate;
 }
 
 #ifdef CONFIG_DEBUG_FS
