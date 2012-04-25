@@ -5007,8 +5007,11 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("pwm", "tegra_pwm.3", NULL),
 	CLK_DUPLICATE("cop", "tegra-avp", "cop"),
 	CLK_DUPLICATE("bsev", "tegra-avp", "bsev"),
+	CLK_DUPLICATE("cop", "nvavp", "cop"),
+	CLK_DUPLICATE("bsev", "nvavp", "bsev"),
 	CLK_DUPLICATE("vde", "tegra-aes", "vde"),
 	CLK_DUPLICATE("bsea", "tegra-aes", "bsea"),
+	CLK_DUPLICATE("bsea", "nvavp", "bsea"),
 	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
 	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
@@ -5023,6 +5026,10 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("sbc4", "tegra11-spi-slave.3", NULL),
 	CLK_DUPLICATE("sbc5", "tegra11-spi-slave.4", NULL),
 	CLK_DUPLICATE("sbc6", "tegra11-spi-slave.5", NULL),
+	CLK_DUPLICATE("vcp", "nvavp", "vcp"),
+	CLK_DUPLICATE("avp.sclk", "nvavp", "sclk"),
+	CLK_DUPLICATE("avp.emc", "nvavp", "emc"),
+	CLK_DUPLICATE("vde.cbus", "nvavp", "vde"),
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 };
 
