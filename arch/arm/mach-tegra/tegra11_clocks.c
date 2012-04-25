@@ -1105,6 +1105,8 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	unsigned int flags, delay;
 	const struct clk_mux_sel *sel;
 	unsigned long rate = clk_get_rate(c->parent);
+	struct clk *dfll = c->parent->u.cpu.dynamic ? : p->u.cpu.dynamic;
+	struct clk *p_source;
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
 	BUG_ON(c->parent->u.cpu.mode != (is_lp_cluster() ? MODE_LP : MODE_G));
@@ -1151,18 +1153,47 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
 		TEGRA_POWER_CLUSTER_G;
 
-	/* Since in both LP and G mode CPU main and backup sources are the
-	   same, set rate on the new parent just synchronizes super-clock
-	   muxes before mode switch with no PLL re-locking */
-	ret = clk_set_rate(p, rate);
-	if (ret) {
-		pr_err("%s: Failed to set rate %lu for %s\n",
-		       __func__, rate, p->name);
-		return ret;
+	if (c->parent->parent->parent == dfll) {
+		/* G (DFLL selected as clock source) => LP switch:
+		 * turn DFLL into open loop mode ("release" VDD_CPU rail)
+		 * select target p_source for LP, and get its rate ready
+		 */
+		ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
+		if (ret)
+			return ret;
+
+		p_source = rate <= p->u.cpu.backup_rate ?
+			p->u.cpu.backup : p->u.cpu.main;
+		ret = clk_set_rate(p_source, rate);
+		if (ret)
+			return ret;
+	} else if (p->parent->parent == dfll) {
+		/* LP => G (DFLL selected as clock source) switch:
+		 * set DFLL rate ready (DFLL is still disabled)
+		 * (set target p_source as dfll, G source is already selected)
+		 */
+		p_source = dfll;
+		ret = clk_set_rate(p_source, rate);
+		if (ret)
+			return ret;
+	} else
+		/* DFLL is not selcted on either side of the switch:
+		 * set target p_source equal to current clock source
+		 */
+		p_source = c->parent->parent->parent;
+
+	/* Switch new parent to target clock source if necessary */
+	if (p->parent->parent != p_source) {
+		ret = clk_set_parent(p->parent, p_source);
+		if (ret) {
+			pr_err("%s: Failed to set parent %s for %s\n",
+			       __func__, p_source->name, p->name);
+			return ret;
+		}
 	}
 
 	/* Enabling new parent scales new mode voltage rail in advanvce
-	   before the switch happens*/
+	   before the switch happens (if p_source is DFLL: open loop mode) */
 	if (c->refcnt)
 		clk_enable(p);
 
@@ -1181,6 +1212,11 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		clk_disable(c->parent);
 
 	clk_reparent(c, p);
+
+	/* Lock DFLL now (resume closed loop VDD_CPU control) */
+	if (p_source == dfll)
+		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+
 	return 0;
 }
 
@@ -5122,7 +5158,9 @@ static bool tegra11_is_dyn_ramp(
  * backup pll only. Target backup levels for each CPU mode are selected high
  * enough to avoid voltage droop when CPU clock is switched between backup and
  * main plls. Actual backup rates will be rounded to match backup source fixed
- * frequency.
+ * frequency. Backup rates are also used as stay-on-backup thresholds, and must
+ * be kept the same in G and LP mode (will need to add a separate stay-on-backup
+ * parameter to allow different backup rates if necessary).
  *
  * Sbus threshold must be exact factor of pll_p rate.
  */
