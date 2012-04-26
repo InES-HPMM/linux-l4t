@@ -68,6 +68,15 @@
 	}
 #endif
 
+/* This information is passed by bootloader */
+#define COMMCHIP_DEFAULT		0
+#define COMMCHIP_NOCHIP			1
+#define COMMCHIP_BROADCOM_BCM4329	2
+#define COMMCHIP_BROADCOM_BCM4330	3
+#define COMMCHIP_MARVELL_SD8797		4
+#define COMMCHIP_BROADCOM_BCM43241	6
+
+
 struct memory_accessor;
 
 void tegra_assert_system_reset(char mode, const char *cmd);
@@ -173,6 +182,7 @@ void tegra_get_camera_board_info(struct board_info *bi);
 int get_core_edp(void);
 enum panel_type get_panel_type(void);
 int tegra_get_modem_id(void);
+int tegra_get_commchip_id(void);
 enum power_supply_type get_power_supply_type(void);
 enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_cpu_current_supported(void);
