@@ -4513,7 +4513,7 @@ static struct clk_mux_sel mux_sclk[] = {
 
 static struct clk tegra_clk_cclk_g = {
 	.name	= "cclk_g",
-	.flags  = DIV_U71 | DIV_U71_INT,
+	.flags  = DIV_U71 | DIV_U71_INT | MUX,
 	.inputs	= mux_cclk_g,
 	.reg	= 0x368,
 	.ops	= &tegra_super_ops,
@@ -4522,7 +4522,7 @@ static struct clk tegra_clk_cclk_g = {
 
 static struct clk tegra_clk_cclk_lp = {
 	.name	= "cclk_lp",
-	.flags  = DIV_2 | DIV_U71 | DIV_U71_INT,
+	.flags  = DIV_2 | DIV_U71 | DIV_U71_INT | MUX,
 	.inputs	= mux_cclk_lp,
 	.reg	= 0x370,
 	.ops	= &tegra_super_ops,
