@@ -475,6 +475,10 @@ int __init curacao_panel_init(void)
 		err = nvhost_device_register(&curacao_disp2_device);
 #endif
 
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
+	if (!err)
+		err = nvhost_device_register(&nvavp_device);
+#endif
 	return err;
 }
 #else
