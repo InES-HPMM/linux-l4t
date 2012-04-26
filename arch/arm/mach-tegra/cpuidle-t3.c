@@ -82,6 +82,7 @@ module_param(lp2_n_in_idle, bool, 0644);
 
 static struct clk *cpu_clk_for_dvfs;
 static struct clk *twd_clk;
+static struct clk *dfll;
 
 static int lp2_exit_latencies[5];
 
@@ -278,8 +279,12 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 
 	trace_power_start(POWER_CSTATE, 2, dev->cpu);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	if (!is_lp_cluster())
+	if (!is_lp_cluster()) {
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
+		/* If DFLL is used as CPU clock source go to open loop mode */
+		if (clk_get_parent(clk_get_parent(cpu_clk_for_dvfs)) == dfll)
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
+	}
 
 	if (tegra_idle_lp2_last(sleep_time, 0) == 0)
 		sleep_completed = true;
@@ -290,8 +295,12 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 	exit_time = ktime_get();
-	if (!is_lp_cluster())
+	if (!is_lp_cluster()) {
 		tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
+		/* If DFLL is used as CPU clock source go to closed loop mode */
+		if (clk_get_parent(clk_get_parent(cpu_clk_for_dvfs)) == dfll)
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	}
 	idle_stats.in_lp2_time[cpu_number(dev->cpu)] +=
 		ktime_to_us(ktime_sub(exit_time, entry_time));
 
@@ -466,6 +475,7 @@ int tegra3_cpudile_init_soc(void)
 
 	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
 	twd_clk = tegra_get_clock_by_name("twd");
+	dfll = tegra_get_clock_by_name("dfll_cpu");
 
 	for (i = 0; i < ARRAY_SIZE(lp2_exit_latencies); i++)
 		lp2_exit_latencies[i] = tegra_lp2_exit_latency;
