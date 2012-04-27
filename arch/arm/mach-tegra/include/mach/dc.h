@@ -73,6 +73,11 @@ enum {
 };
 
 enum {
+	TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT,
+	TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD,
+};
+
+enum {
 	TEGRA_DSI_PACKET_CMD,
 	TEGRA_DSI_DELAY_MS,
 };
@@ -134,6 +139,11 @@ enum {
 	DSI_VS_1 = 0x1,
 };
 
+enum {
+	DSI_INSTANCE_0,
+	DSI_INSTANCE_1,
+};
+
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
@@ -163,7 +173,7 @@ struct tegra_dsi_out {
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
-	u8		ganged_mode_type;
+	u8		ganged_type;
 
 	u16		panel_buffer_size_byte;
 	u16		panel_reset_timeout_msec;
@@ -176,9 +186,6 @@ struct tegra_dsi_out {
 					 * most panels. */
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
-	bool		source_invert; /* Invert the source of DSI. By
-					* defaut DCa is connected to
-					* DSIa. */
 
 	u32		max_panel_freq_khz;
 	u32		lp_cmd_mode_freq_khz;
