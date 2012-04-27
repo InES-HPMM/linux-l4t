@@ -507,6 +507,10 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 
 	clk_set_rate(pltfm_host->clk, clk_rate);
 	sdhci->max_clk = clk_get_rate(pltfm_host->clk);
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA supports 26MHz of clock for SDMMC. */
+	sdhci->max_clk = 26000000;
+#endif
 }
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
