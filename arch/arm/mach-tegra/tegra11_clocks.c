@@ -3501,9 +3501,18 @@ static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
 	if (!c->dvfs)
 		return rate;
 
-	/* update min now, since no dvfs table was available during init */
-	if (!c->min_rate)
-		c->min_rate = c->dvfs->freqs[0];
+	/* update min now, since no dvfs table was available during init
+	   (skip placeholder entries set to 1 kHz) */
+	if (!c->min_rate) {
+		for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
+			if (c->dvfs->freqs[i] > 1 * c->dvfs->freqs_mult) {
+				c->min_rate = c->dvfs->freqs[i];
+				break;
+			}
+		}
+		BUG_ON(!c->min_rate);
+	}
+	rate = max(rate, c->min_rate);
 
 	for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
 		unsigned long f = c->dvfs->freqs[i];
@@ -3579,7 +3588,7 @@ static void cbus_restore(struct clk *c)
 			user->u.shared_bus_user.client->parent);
 		if (back)
 			cbus_switch_one(user->u.shared_bus_user.client,
-					c->parent, user->div, false);
+					c->parent, c->div * user->div, false);
 	}
 }
 
@@ -3601,7 +3610,7 @@ static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 	if (ret)
 		goto out;
 
-	ret = clk_set_rate(c->parent, rate);
+	ret = clk_set_rate(c->parent, rate * c->div);
 	if (ret) {
 		pr_err("%s: failed to set %s clock rate %lu: %d\n",
 		       __func__, c->name, rate, ret);
@@ -3702,10 +3711,8 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
-		/* Ignore requests from disabled users and from users with
-		   fixed bus-to-client ratio */
-		if ((c->u.shared_bus_user.enabled) &&
-		    (!c->u.shared_bus_user.client_div)) {
+		/* Ignore requests from disabled users */
+		if (c->u.shared_bus_user.enabled) {
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_BW:
 				bw += c->u.shared_bus_user.rate;
@@ -3714,6 +3721,7 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 				ceiling = min(c->u.shared_bus_user.rate,
 					       ceiling);
 				break;
+			case SHARED_AUTO:
 			case SHARED_FLOOR:
 			default:
 				rate = max(c->u.shared_bus_user.rate, rate);
@@ -3744,6 +3752,9 @@ static void tegra_clk_shared_bus_init(struct clk *c)
 			       c->u.shared_bus_user.client_id);
 			return;
 		}
+		c->u.shared_bus_user.client->flags |=
+			c->parent->flags & PERIPH_ON_CBUS;
+		c->flags |= c->parent->flags & PERIPH_ON_CBUS;
 		c->div = c->u.shared_bus_user.client_div ? : 1;
 		c->mul = 1;
 	}
@@ -3761,6 +3772,10 @@ static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 
 static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 {
+	/* auto user follow others, by itself it run at minimum bus rate */
+	if (c->u.shared_bus_user.mode == SHARED_AUTO)
+		rate = 0;
+
 	return clk_round_rate(c->parent, rate);
 }
 
@@ -3909,7 +3924,7 @@ static struct clk tegra_pll_c = {
 static struct clk tegra_pll_c_out1 = {
 	.name      = "pll_c_out1",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71,
+	.flags     = DIV_U71 | PERIPH_ON_CBUS,
 	.parent    = &tegra_pll_c,
 	.reg       = 0x84,
 	.reg_shift = 0,
@@ -4801,6 +4816,9 @@ static struct clk tegra_clk_cbus = {
 	.parent    = &tegra_pll_c,
 	.ops       = &tegra_clk_cbus_ops,
 	.max_rate  = 520000000,
+	.mul	   = 1,
+	.div	   = 1,
+	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
 		.value = 2,
@@ -4993,7 +5011,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("tsec.emc",	"tegra_tsec",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 
-	SHARED_CLK("host1x.cbus", "tegra_host1x",	"host1x", &tegra_clk_cbus, "host1x", 2, 0),
+	SHARED_CLK("host1x.cbus", "tegra_host1x",	"host1x", &tegra_clk_cbus, "host1x", 2, SHARED_AUTO),
 	SHARED_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_cbus, "3d",  0, 0),
 	SHARED_CLK("3d2.cbus",	"tegra_gr3d",		"gr3d2", &tegra_clk_cbus, "3d2", 0, 0),
 	SHARED_CLK("2d.cbus",	"tegra_gr2d",		"gr2d",	&tegra_clk_cbus, "2d",  0, 0),
