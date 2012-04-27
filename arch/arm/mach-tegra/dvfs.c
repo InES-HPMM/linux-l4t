@@ -47,43 +47,22 @@ static LIST_HEAD(dvfs_rail_list);
 static DEFINE_MUTEX(dvfs_lock);
 static DEFINE_MUTEX(rail_disable_lock);
 
-/* May only be called during clock init, does not take any locks on clock c. */
-int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
+static int dvfs_rail_update(struct dvfs_rail *rail);
+
+void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 {
 	int i;
-
-	if (c->dvfs) {
-		pr_err("Error when enabling dvfs on %s for clock %s:\n",
-			d->dvfs_rail->reg_id, c->name);
-		pr_err("DVFS already enabled for %s\n",
-			c->dvfs->dvfs_rail->reg_id);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < MAX_DVFS_FREQS; i++) {
-		if (d->millivolts[i] == 0)
-			break;
-
-		d->freqs[i] *= d->freqs_mult;
-
-		/* If final frequencies are 0, pad with previous frequency */
-		if (d->freqs[i] == 0 && i > 1)
-			d->freqs[i] = d->freqs[i - 1];
-	}
-	d->num_freqs = i;
-
-	if (d->auto_dvfs) {
-		c->auto_dvfs = true;
-		clk_set_cansleep(c);
-	}
-
-	c->dvfs = d;
+	struct dvfs_relationship *rel;
 
 	mutex_lock(&dvfs_lock);
-	list_add_tail(&d->reg_node, &d->dvfs_rail->dvfs);
-	mutex_unlock(&dvfs_lock);
 
-	return 0;
+	for (i = 0; i < n; i++) {
+		rel = &rels[i];
+		list_add_tail(&rel->from_node, &rel->to->relationships_from);
+		list_add_tail(&rel->to_node, &rel->from->relationships_to);
+	}
+
+	mutex_unlock(&dvfs_lock);
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -108,26 +87,6 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 
 	return 0;
 };
-
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-
-static int dvfs_rail_update(struct dvfs_rail *rail);
-
-void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
-{
-	int i;
-	struct dvfs_relationship *rel;
-
-	mutex_lock(&dvfs_lock);
-
-	for (i = 0; i < n; i++) {
-		rel = &rels[i];
-		list_add_tail(&rel->from_node, &rel->to->relationships_from);
-		list_add_tail(&rel->to_node, &rel->from->relationships_to);
-	}
-
-	mutex_unlock(&dvfs_lock);
-}
 
 static int dvfs_solve_relationship(struct dvfs_relationship *rel)
 {
@@ -464,6 +423,45 @@ int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 	return ret;
 }
 EXPORT_SYMBOL(tegra_dvfs_set_rate);
+
+/* May only be called during clock init, does not take any locks on clock c. */
+int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
+{
+	int i;
+
+	if (c->dvfs) {
+		pr_err("Error when enabling dvfs on %s for clock %s:\n",
+			d->dvfs_rail->reg_id, c->name);
+		pr_err("DVFS already enabled for %s\n",
+			c->dvfs->dvfs_rail->reg_id);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < MAX_DVFS_FREQS; i++) {
+		if (d->millivolts[i] == 0)
+			break;
+
+		d->freqs[i] *= d->freqs_mult;
+
+		/* If final frequencies are 0, pad with previous frequency */
+		if (d->freqs[i] == 0 && i > 1)
+			d->freqs[i] = d->freqs[i - 1];
+	}
+	d->num_freqs = i;
+
+	if (d->auto_dvfs) {
+		c->auto_dvfs = true;
+		clk_set_cansleep(c);
+	}
+
+	c->dvfs = d;
+
+	mutex_lock(&dvfs_lock);
+	list_add_tail(&d->reg_node, &d->dvfs_rail->dvfs);
+	mutex_unlock(&dvfs_lock);
+
+	return 0;
+}
 
 static bool tegra_dvfs_all_rails_suspended(void)
 {
@@ -833,5 +831,4 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 	return 0;
 }
 
-#endif
 #endif

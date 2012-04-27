@@ -150,12 +150,7 @@ static inline void tegra_clocks_apply_init_table(void)
 struct dvfs;
 struct notifier_block;
 
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate);
-#else
-static inline int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
-{ return 0; }
-#endif
 unsigned long clk_get_rate_all_locked(struct clk *c);
 int tegra_dvfs_rail_disable_by_name(const char *reg_id);
 int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb);

@@ -103,10 +103,9 @@ extern struct dvfs_rail *tegra_cpu_rail;
 
 int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
-
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 int dvfs_debugfs_init(struct dentry *clk_debugfs_root);
 int tegra_dvfs_late_init(void);
+int tegra_dvfs_init_rails(struct dvfs_rail *dvfs_rails[], int n);
 void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n);
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail);
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
@@ -121,43 +120,6 @@ void tegra_dvfs_core_cap_level_set(int level);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
 void tegra_cpu_dvfs_alter(
 	int edp_thermal_index, const cpumask_t *cpus, bool before_clk_update);
-#else
-static inline int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
-{ return 0; }
-static inline int dvfs_debugfs_init(struct dentry *clk_debugfs_root)
-{ return 0; }
-static inline int tegra_dvfs_late_init(void)
-{ return 0; }
-static inline void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
-{}
-static inline void tegra_dvfs_rail_enable(struct dvfs_rail *rail)
-{}
-static inline void tegra_dvfs_rail_disable(struct dvfs_rail *rail)
-{}
-static inline bool tegra_dvfs_rail_updating(struct clk *clk)
-{ return false; }
-static inline void tegra_dvfs_rail_off(struct dvfs_rail *rail, ktime_t now)
-{}
-static inline void tegra_dvfs_rail_on(struct dvfs_rail *rail, ktime_t now)
-{}
-static inline void tegra_dvfs_rail_pause(
-	struct dvfs_rail *rail, ktime_t delta, bool on)
-{}
-static inline struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id)
-{ return NULL; }
-static inline int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
-{ return 0; }
-static inline void tegra_dvfs_core_cap_enable(bool enable)
-{}
-static inline void tegra_dvfs_core_cap_level_set(int level)
-{}
-static inline int tegra_dvfs_alt_freqs_set(struct dvfs *d,
-					   unsigned long *alt_freqs)
-{ return 0; }
-static inline void tegra_cpu_dvfs_alter(
-	int edp_thermal_index, const cpumask_t *cpus, bool before_clk_update)
-{}
-#endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);
