@@ -3713,18 +3713,20 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 			u.shared_bus_user.node) {
 		/* Ignore requests from disabled users */
 		if (c->u.shared_bus_user.enabled) {
+			unsigned long request_rate = c->u.shared_bus_user.rate *
+				(c->div ? : 1);
+
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_BW:
-				bw += c->u.shared_bus_user.rate;
+				bw += request_rate;
 				break;
 			case SHARED_CEILING:
-				ceiling = min(c->u.shared_bus_user.rate,
-					       ceiling);
+				ceiling = min(request_rate, ceiling);
 				break;
 			case SHARED_AUTO:
 			case SHARED_FLOOR:
 			default:
-				rate = max(c->u.shared_bus_user.rate, rate);
+				rate = max(request_rate, rate);
 			}
 		}
 	}
@@ -3776,6 +3778,10 @@ static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 	if (c->u.shared_bus_user.mode == SHARED_AUTO)
 		rate = 0;
 
+	if (c->div > 1) {
+		rate *= c->div;
+		return clk_round_rate(c->parent, rate) / c->div;
+	}
 	return clk_round_rate(c->parent, rate);
 }
 
@@ -5011,7 +5017,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("tsec.emc",	"tegra_tsec",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 
-	SHARED_CLK("host1x.cbus", "tegra_host1x",	"host1x", &tegra_clk_cbus, "host1x", 2, SHARED_AUTO),
+	SHARED_CLK("host1x.cbus", "tegra_host1x",	"host1x", &tegra_clk_cbus, "host1x", 2, 0),
 	SHARED_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_cbus, "3d",  0, 0),
 	SHARED_CLK("3d2.cbus",	"tegra_gr3d",		"gr3d2", &tegra_clk_cbus, "3d2", 0, 0),
 	SHARED_CLK("2d.cbus",	"tegra_gr2d",		"gr2d",	&tegra_clk_cbus, "2d",  0, 0),
