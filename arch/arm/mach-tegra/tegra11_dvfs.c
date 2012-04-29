@@ -36,7 +36,7 @@ static const int cpu_millivolts[MAX_DVFS_FREQS] = {
 	800, 825, 850, 900, 912, 975, 1000, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1237, 1250};
 
 static const int core_millivolts[MAX_DVFS_FREQS] = {
-	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
+	850,  900,  950, 1000, 1050, 1100, 1150, 1200, 1250};
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -55,7 +55,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
 	.max_millivolts = 1350,
-	.min_millivolts = 950,
+	.min_millivolts = 850,
 	.step = VDD_SAFE_STEP,
 };
 
@@ -106,7 +106,20 @@ static struct dvfs cpu_dvfs_table[] = {
 	}
 
 static struct dvfs core_dvfs_table[] = {
-	/* Core voltages (mV):		    950,   1000,   1050,   1100,   1150,    1200,    1250,    1300,    1350 */
+	/* Core voltages (mV):		    850,    900,    950,   1000,   1050,    1100,    1150,    1200,    1250 */
+	/* Clock limits for internal blocks, PLLs */
+	CORE_DVFS("epp",    0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
+	CORE_DVFS("2d",     0, 1, KHZ,    77200, 141200, 189200, 238200, 317500,  317500,  400000,  500700),
+	CORE_DVFS("3d",     0, 1, KHZ,    86800, 158900, 212800, 267900, 357200,  357200,  450000,  563300),
+	CORE_DVFS("3d2",    0, 1, KHZ,    86800, 158900, 212800, 267900, 357200,  357200,  450000,  563300),
+	CORE_DVFS("msenc",  0, 1, KHZ,    64200, 117600, 157500, 198300, 264300,  264300,  333000,  416900),
+	CORE_DVFS("se",     0, 1, KHZ,    67500, 123600, 165500, 208400, 277800,  277800,  350000,  438100),
+	CORE_DVFS("tsec",   0, 1, KHZ,    67500, 123600, 165500, 208400, 277800,  277800,  350000,  438100),
+	CORE_DVFS("vde",    0, 1, KHZ,    70600, 129200, 173100, 217900, 290500,  290500,  366000,  458200),
+
+	CORE_DVFS("host1x", 0, 1, KHZ,    57900, 105900, 141900, 178600, 238200,  238200,  300000,  300000),
+
+	CORE_DVFS("cbus",   0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
 };
 
 #define CL_DVFS(_speedo_id, _tune0, _tune1, _rate_min)		\
@@ -288,7 +301,11 @@ static int __init get_cpu_nominal_mv_index(
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	int mv = tegra_core_speedo_mv();
+#else
+	int mv = 1150;
+#endif
 	int core_edp_limit = get_core_edp();
 
 	/*
