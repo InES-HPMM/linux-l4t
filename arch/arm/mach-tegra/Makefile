@@ -43,6 +43,12 @@ obj-y                                   += pm.o
 obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
 obj-$(CONFIG_PM_SLEEP)                  += pm-irq.o
 obj-y                                   += gic.o
+
+obj-y                                   += sleep.o
+
+plus_sec := $(call as-instr,.arch_extension sec,+sec)
+AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
+
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
