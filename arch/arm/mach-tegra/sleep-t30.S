@@ -159,7 +159,11 @@ ENTRY(tegra30_cpu_shutdown)
 	movw	r12, \
 		FLOW_CTRL_CSR_INTR_FLAG | FLOW_CTRL_CSR_EVENT_FLAG | \
 		FLOW_CTRL_CSR_ENABLE
-	mov	r4, #(1 << 4)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov	r4, #(1 << 8)			@ wfi bitmap
+#else
+	mov	r4, #(1 << 4)			@ wfe bitmap
+#endif
 	orr	r12, r12, r4, lsl r3
 	str	r12, [r1]
 
@@ -181,7 +185,11 @@ delay_1:
 __cpu_reset_again:
 	dsb
 	.align 5
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	wfi					@ CPU should be power gated here
+#else
 	wfe					@ CPU should be power gated here
+#endif
 wfe_war:
 	b	__cpu_reset_again
 
