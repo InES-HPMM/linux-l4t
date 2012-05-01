@@ -1997,6 +1997,7 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	   by rounding */
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
+	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min, PLLCX_PDIV_MAX + 1);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
@@ -2309,6 +2310,8 @@ static void tegra11_pllxc_clk_init(struct clk *c)
 	   by rounding */
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
+	c->min_rate =
+		DIV_ROUND_UP(c->u.pll.vco_min, pllxc_p[PLLXC_SW_PDIV_MAX]);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
