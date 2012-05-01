@@ -614,7 +614,13 @@ tegra3_enter_sleep:
 	orr	r0, r0, #FLOW_CTRL_CSR_ENABLE
 	str	r0, [r6, r2]
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	tst	r0, #FLOW_CTRL_IMMEDIATE_WAKE
+	movne	r0, #FLOW_CTRL_WAITEVENT
+	moveq	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
+#else
 	mov	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
+#endif
 	orr	r0, r0, #FLOW_CTRL_HALT_CPU_IRQ | FLOW_CTRL_HALT_CPU_FIQ
 	cpu_to_halt_reg r2, r1
 	str	r0, [r6, r2]
