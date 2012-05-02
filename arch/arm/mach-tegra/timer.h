@@ -17,6 +17,8 @@
 #ifndef _MACH_TEGRA_TIMER_H_
 #define _MACH_TEGRA_TIMER_H_
 
+#include <linux/io.h>
+
 #define RTC_SECONDS		0x08
 #define RTC_SHADOW_SECONDS	0x0c
 #define RTC_MILLISECONDS	0x10
@@ -42,6 +44,7 @@ struct tegra_twd_context {
 };
 
 #ifdef CONFIG_HAVE_ARM_TWD
+static void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 int tegra_twd_get_state(struct tegra_twd_context *context);
 void tegra_twd_suspend(struct tegra_twd_context *context);
 void tegra_twd_resume(struct tegra_twd_context *context);

@@ -188,7 +188,6 @@ static struct syscore_ops tegra_timer_syscore_ops = {
 };
 
 #ifdef CONFIG_HAVE_ARM_TWD
-static void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
 			      TEGRA_ARM_PERIF_BASE + 0x600,
 			      IRQ_LOCALTIMER);
