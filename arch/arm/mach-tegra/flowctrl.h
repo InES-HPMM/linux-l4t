@@ -35,7 +35,9 @@
 #define FLOW_CTRL_CPU1_CSR		0x18
 
 #ifndef __ASSEMBLY__
+u32 flowctrl_read_cpu_csr(unsigned int cpuid);
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value);
+u32 flowctrl_read_cpu_halt(unsigned int cpuid);
 void flowctrl_write_cpu_halt(unsigned int cpuid, u32 value);
 #endif
 
