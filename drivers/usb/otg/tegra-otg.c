@@ -48,7 +48,7 @@ typedef void (*callback_t)(enum usb_otg_state to,
 				enum usb_otg_state from, void *args);
 
 struct tegra_otg_data {
-	struct otg_transceiver otg;
+	struct usb_phy otg;
 	unsigned long int_status;
 	spinlock_t lock;
 	void __iomem *regs;
@@ -186,7 +186,7 @@ static void irq_work(struct work_struct *work)
 {
 	struct tegra_otg_data *tegra =
 		container_of(work, struct tegra_otg_data, work);
-	struct otg_transceiver *otg = &tegra->otg;
+	struct usb_phy *otg = &tegra->otg;
 	enum usb_otg_state from = otg->state;
 	enum usb_otg_state to = OTG_STATE_UNDEFINED;
 	unsigned long flags;
@@ -274,7 +274,7 @@ void tegra_otg_check_vbus_detection(void)
 }
 EXPORT_SYMBOL(tegra_otg_check_vbus_detection);
 
-static int tegra_otg_set_peripheral(struct otg_transceiver *otg,
+static int tegra_otg_set_peripheral(struct usb_phy *otg,
 				struct usb_gadget *gadget)
 {
 	struct tegra_otg_data *tegra;
@@ -308,7 +308,7 @@ static int tegra_otg_set_peripheral(struct otg_transceiver *otg,
 	return 0;
 }
 
-static int tegra_otg_set_host(struct otg_transceiver *otg,
+static int tegra_otg_set_host(struct usb_phy *otg,
 				struct usb_bus *host)
 {
 	struct tegra_otg_data *tegra;
@@ -328,12 +328,12 @@ static int tegra_otg_set_host(struct otg_transceiver *otg,
 	return 0;
 }
 
-static int tegra_otg_set_power(struct otg_transceiver *otg, unsigned mA)
+static int tegra_otg_set_power(struct usb_phy *otg, unsigned mA)
 {
 	return 0;
 }
 
-static int tegra_otg_set_suspend(struct otg_transceiver *otg, int suspend)
+static int tegra_otg_set_suspend(struct usb_phy *otg, int suspend)
 {
 	return 0;
 }
@@ -451,7 +451,7 @@ static int tegra_otg_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra_otg = platform_get_drvdata(pdev);
-	struct otg_transceiver *otg = &tegra_otg->otg;
+	struct usb_phy *otg = &tegra_otg->otg;
 	enum usb_otg_state from = otg->state;
 	/* store the interupt enable for cable ID and VBUS */
 	clk_enable(tegra_otg->clk);
