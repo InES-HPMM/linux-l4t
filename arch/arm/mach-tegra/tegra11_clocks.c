@@ -3767,6 +3767,7 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 				ceiling = min(request_rate, ceiling);
 				break;
 			case SHARED_AUTO:
+				break;
 			case SHARED_FLOOR:
 			default:
 				rate = max(request_rate, rate);
@@ -3774,6 +3775,7 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 		}
 	}
 	rate = min(max(rate, bw), ceiling);
+	rate = clk_round_rate_locked(bus, rate);
 
 	old_rate = clk_get_rate_locked(bus);
 	if (rate == old_rate)
@@ -3817,15 +3819,22 @@ static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 
 static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 {
-	/* auto user follow others, by itself it run at minimum bus rate */
-	if (c->u.shared_bus_user.mode == SHARED_AUTO)
-		rate = 0;
+	/* Defer rounding requests until aggregated. BW users must not be
+	   rounded at all, others just clipped to bus range (some clients
+	   may use round api to find limits) */
+	if (c->u.shared_bus_user.mode != SHARED_BW) {
+		if (c->div > 1)
+			rate *= c->div;
 
-	if (c->div > 1) {
-		rate *= c->div;
-		return clk_round_rate(c->parent, rate) / c->div;
+		if (rate > c->parent->max_rate)
+			rate = c->parent->max_rate;
+		else if (rate < c->parent->min_rate)
+			rate = c->parent->min_rate;
+
+		if (c->div > 1)
+			rate /= c->div;
 	}
-	return clk_round_rate(c->parent, rate);
+	return rate;
 }
 
 static int tegra_clk_shared_bus_enable(struct clk *c)
