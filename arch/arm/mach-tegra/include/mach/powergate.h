@@ -21,7 +21,7 @@
 #ifndef _MACH_TEGRA_POWERGATE_H_
 #define _MACH_TEGRA_POWERGATE_H_
 
-struct clk;
+#include <linux/init.h>
 
 #define TEGRA_POWERGATE_CPU	0
 #define TEGRA_POWERGATE_3D	1
