@@ -21,6 +21,7 @@
 #include <linux/atomic.h>
 #include <linux/regulator/consumer.h>
 #include <linux/export.h>
+#include <linux/module.h>
 
 #include <media/ar0832_main.h>
 
@@ -2548,3 +2549,4 @@ static void __exit ar0832_exit(void)
 
 module_init(ar0832_init);
 module_exit(ar0832_exit);
+MODULE_LICENSE("GPL v2");
