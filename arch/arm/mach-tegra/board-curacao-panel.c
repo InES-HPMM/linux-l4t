@@ -250,6 +250,7 @@ static struct tegra_fb_data curacao_fb_data = {
 	.xres		= 240,
 	.yres		= 320,
 	.bits_per_pixel = 16,
+	.flags		= 0,
 #else
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
 	defined(CONFIG_TEGRA_DSI_GANGED_MODE)
@@ -260,8 +261,8 @@ static struct tegra_fb_data curacao_fb_data = {
 	.yres		= 480,
 #endif
 	.bits_per_pixel = 32,
-#endif
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
+#endif
 };
 
 static struct tegra_dsi_cmd dsi_init_cmd[] = {
