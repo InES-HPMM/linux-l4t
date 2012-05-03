@@ -891,7 +891,6 @@ static void handle_cpu_based_xfer(void *context_data, int error)
 	struct spi_transfer *t = tspi->cur;
 	unsigned long flags;
 
-	spin_lock_irqsave(&tspi->lock, flags);
 	if ((tspi->fifo_status & SPI_ERR) ||
 		!(tspi->trans_status & SPI_RDY) ||
 		error) {
@@ -909,6 +908,7 @@ static void handle_cpu_based_xfer(void *context_data, int error)
 		goto exit;
 	}
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	if (tspi->cur_direction & DATA_DIR_RX)
 		spi_tegra_read_rx_fifo_to_client_rxbuf(tspi, t);
 
@@ -918,6 +918,7 @@ static void handle_cpu_based_xfer(void *context_data, int error)
 		tspi->cur_pos = tspi->cur_rx_pos;
 	else
 		WARN_ON(1);
+	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	if (tspi->cur_pos == t->len) {
 		spi_tegra_curr_transfer_complete(tspi,
@@ -925,10 +926,11 @@ static void handle_cpu_based_xfer(void *context_data, int error)
 		goto exit;
 	}
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	spi_tegra_calculate_curr_xfer_param(tspi->cur_spi, tspi, t);
 	spi_tegra_start_cpu_based_transfer(tspi, t);
-exit:
 	spin_unlock_irqrestore(&tspi->lock, flags);
+exit:
 	return;
 }
 
@@ -986,7 +988,8 @@ static void spi_tegra_work(struct work_struct *work)
 		if (tspi->cur_direction & DATA_DIR_TX) {
 			if (tspi->fifo_status &
 				(SPI_TX_FIFO_UNF | SPI_TX_FIFO_OVF)) {
-				tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
+				tegra_dma_dequeue_req(tspi->tx_dma,
+					&tspi->tx_dma_req);
 				err += 1;
 			} else {
 				wait_status =
@@ -994,7 +997,8 @@ static void spi_tegra_work(struct work_struct *work)
 						&tspi->tx_dma_complete,
 						SPI_DMA_TIMEOUT);
 				if (wait_status <= 0) {
-					tegra_dma_dequeue_req(tspi->tx_dma, &tspi->tx_dma_req);
+					tegra_dma_dequeue_req(tspi->tx_dma,
+						&tspi->tx_dma_req);
 					dev_err(&tspi->pdev->dev,
 					 "Error in Dma Tx ws %d \r\n",
 					 wait_status);
@@ -1007,7 +1011,8 @@ static void spi_tegra_work(struct work_struct *work)
 		if (tspi->cur_direction & DATA_DIR_RX) {
 			if (tspi->fifo_status &
 				(SPI_RX_FIFO_UNF | SPI_RX_FIFO_OVF)) {
-				tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
+				tegra_dma_dequeue_req(tspi->rx_dma,
+					&tspi->rx_dma_req);
 				err += 2;
 			} else {
 				wait_status =
@@ -1015,7 +1020,8 @@ static void spi_tegra_work(struct work_struct *work)
 						&tspi->rx_dma_complete,
 						SPI_DMA_TIMEOUT);
 				if (wait_status <= 0) {
-					tegra_dma_dequeue_req(tspi->rx_dma, &tspi->rx_dma_req);
+					tegra_dma_dequeue_req(tspi->rx_dma,
+						&tspi->rx_dma_req);
 					dev_err(&tspi->pdev->dev,
 						"Error in Dma Rx transfer %d\n",
 						wait_status);
