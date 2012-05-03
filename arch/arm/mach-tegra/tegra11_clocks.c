@@ -3540,12 +3540,14 @@ static int cbus_switch_one(struct clk *c, struct clk *p, u32 div, bool abort)
 		}
 	}
 
-	ret = clk_set_parent(c, p);
-	if (ret) {
-		pr_err("%s: failed to set %s clock parent %s: %d\n",
-		       __func__, c->name, p->name, ret);
-		if (abort)
-			return ret;
+	if (c->parent != p) {
+		ret = clk_set_parent(c, p);
+		if (ret) {
+			pr_err("%s: failed to set %s clock parent %s: %d\n",
+			       __func__, c->name, p->name, ret);
+			if (abort)
+				return ret;
+		}
 	}
 
 	/* set new divider if it is smaller than the current one */
@@ -3567,8 +3569,7 @@ static int cbus_backup(struct clk *c)
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
 		bool enabled = user->u.shared_bus_user.client &&
-			(user->u.shared_bus_user.enabled ||
-			user->u.shared_bus_user.client->refcnt);
+			(user->u.shared_bus_user.client->state == ON);
 		if (enabled) {
 			ret = cbus_switch_one(user->u.shared_bus_user.client,
 					      c->shared_bus_backup.input,
@@ -3587,12 +3588,23 @@ static void cbus_restore(struct clk *c)
 
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
-		bool back = user->u.shared_bus_user.client && (c->parent !=
-			user->u.shared_bus_user.client->parent);
-		if (back)
+		if (user->u.shared_bus_user.client)
 			cbus_switch_one(user->u.shared_bus_user.client,
 					c->parent, c->div * user->div, false);
 	}
+}
+
+static int get_next_backup_div(struct clk *c, unsigned long rate)
+{
+	u32 div = c->div;
+	unsigned long backup_rate = clk_get_rate(c->shared_bus_backup.input);
+
+	rate = max(rate, clk_get_rate_locked(c));
+	if ((u64)rate * div < backup_rate)
+		div = DIV_ROUND_UP(backup_rate, rate);
+
+	BUG_ON(!div);
+	return div;
 }
 
 static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
@@ -3609,6 +3621,7 @@ static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 		return ret;
 	}
 
+	c->shared_bus_backup.value = get_next_backup_div(c, rate);
 	ret = cbus_backup(c);
 	if (ret)
 		goto out;
@@ -4830,7 +4843,6 @@ static struct clk tegra_clk_cbus = {
 	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
-		.value = 2,
 	}
 };
 
