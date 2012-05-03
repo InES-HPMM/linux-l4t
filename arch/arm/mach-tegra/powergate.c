@@ -2,7 +2,7 @@
  * drivers/powergate/tegra-powergate.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -430,6 +430,7 @@ static void mc_flush_done(int id) {}
 
 static int tegra_powergate_set(int id, bool new_state)
 {
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	bool status;
 	unsigned long flags;
 	/* 10us timeout for toggle operation if it takes affect*/
@@ -476,6 +477,7 @@ static int tegra_powergate_set(int id, bool new_state)
 
 	trace_power_domain_target(powergate_partition_info[id].name, new_state,
 			smp_processor_id());
+#endif
 
 	return 0;
 }
