@@ -978,9 +978,21 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	emc_regbase = devm_request_and_ioremap(&pdev->dev, res);
-	if (!emc_regbase) {
+	emc_regbases[0] = devm_request_and_ioremap(&pdev->dev, res);
+	if (!emc_regbases[0]) {
 		dev_err(&pdev->dev, "failed to remap registers\n");
+		return -ENOMEM;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		dev_err(&pdev->dev, "missing MC register base\n");
+		return -ENOMEM;
+	}
+
+	emc_regbases[1] = devm_request_and_ioremap(&pdev->dev, res);
+	if (!emc_regbases[1]) {
+		dev_err(&pdev->dev, "failed to remap MC registers\n");
 		return -ENOMEM;
 	}
 
