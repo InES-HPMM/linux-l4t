@@ -220,14 +220,23 @@ static DEFINE_SPINLOCK(emc_access_lock);
 
 static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
-static inline void emc_writel(int bank, u32 val, unsigned long addr)
+static inline void emc_writel(u32 val, unsigned long addr)
 {
-	writel(val, emc_regbases[bank] + addr);
+	writel(val, emc_regbases[0] + addr);
 	barrier();
 }
-static inline u32 emc_readl(int bank, unsigned long addr)
+static inline u32 emc_readl(unsigned long addr)
 {
-	return readl(emc_regbases[bank] + addr);
+	return readl(emc_regbases[0] + addr);
+}
+static inline void mc_writel(u32 val, unsigned long addr)
+{
+	writel(val, emc_regbases[1] + addr);
+	barrier();
+}
+static inline u32 mc_readl(unsigned long addr)
+{
+	return readl(emc_regbases[1] + addr);
 }
 
 static void emc_last_stats_update(int last_sel)
