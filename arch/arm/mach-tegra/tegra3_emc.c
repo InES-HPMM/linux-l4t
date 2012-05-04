@@ -1008,6 +1008,20 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	emc = clk_get(&pdev->dev, NULL);
+	if (IS_ERR(emc)) {
+		dev_err(&pdev->dev, "failed to get clock\n");
+		return -EINVAL;
+	}
+
+	dram_type = (emc_readl(EMC_FBIO_CFG5) &
+		     EMC_CFG5_TYPE_MASK) >> EMC_CFG5_TYPE_SHIFT;
+	if (dram_type == DRAM_TYPE_DDR3)
+		emc->min_rate = EMC_MIN_RATE_DDR3;
+
+	dram_dev_num = (mc_readl(MC_EMEM_ADR_CFG) & 0x1) + 1; /* 2 dev max */
+	emc_cfg_saved = emc_readl(EMC_CFG);
+
 	pdev->dev.platform_data = pdata;
 
 	if (!pdata->tables || !pdata->num_tables) {
@@ -1124,19 +1138,6 @@ void tegra_init_dram_bit_map(const u32 *bit_map, int map_size)
 {
 	BUG_ON(map_size != 32);
 	dram_to_soc_bit_map = bit_map;
-}
-
-void tegra_emc_dram_type_init(struct clk *c)
-{
-	emc = c;
-
-	dram_type = (emc_readl(EMC_FBIO_CFG5) &
-		     EMC_CFG5_TYPE_MASK) >> EMC_CFG5_TYPE_SHIFT;
-	if (dram_type == DRAM_TYPE_DDR3)
-		emc->min_rate = EMC_MIN_RATE_DDR3;
-
-	dram_dev_num = (mc_readl(MC_EMEM_ADR_CFG) & 0x1) + 1; /* 2 dev max */
-	emc_cfg_saved = emc_readl(EMC_CFG);
 }
 
 int tegra_emc_get_dram_type(void)
