@@ -1760,6 +1760,28 @@ struct platform_device tegra_nvmap_device = {
 	.id	= -1,
 };
 
+static struct resource tegra30_emc_resources[] = {
+	{
+		.name	= "emcregs",
+		.start	= TEGRA_EMC_BASE,
+		.end	= TEGRA_EMC_BASE + TEGRA_EMC_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "mcregs",
+		.start	= TEGRA_MC_BASE,
+		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device tegra30_emc_device = {
+	.name		= "tegra30-emc",
+	.id		= -1,
+	.resource	= tegra30_emc_resources,
+	.num_resources	= ARRAY_SIZE(tegra30_emc_resources),
+};
+
 void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;
