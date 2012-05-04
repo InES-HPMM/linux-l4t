@@ -29,6 +29,7 @@
  *
  */
 
+#include <asm/mach-types.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -253,10 +254,19 @@ static void tegra_pcm_free(struct snd_pcm *pcm)
 	tegra_pcm_deallocate_dma_buffer(pcm, SNDRV_PCM_STREAM_PLAYBACK);
 }
 
+static int tegra_pcm_probe(struct snd_soc_platform *platform)
+{
+	if(machine_is_kai())
+		platform->dapm.idle_bias_off = 1;
+
+	return 0;
+}
+
 static struct snd_soc_platform_driver tegra_pcm_platform = {
 	.ops		= &tegra_pcm_ops,
 	.pcm_new	= tegra_pcm_new,
 	.pcm_free	= tegra_pcm_free,
+	.probe		= tegra_pcm_probe,
 };
 
 int tegra_pcm_platform_register(struct device *dev)
