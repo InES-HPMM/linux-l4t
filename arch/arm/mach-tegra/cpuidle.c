@@ -48,11 +48,9 @@
 #include "pm.h"
 #include "sleep.h"
 
-static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int index);
+static int tegra_idle_enter_lp3(struct cpuidle_device *dev, int index);
 #ifdef CONFIG_PM_SLEEP
-static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int index);
+static int tegra_idle_enter_lp2(struct cpuidle_device *dev, int index);
 #endif
 
 int tegra_lp2_exit_latency;
@@ -62,34 +60,33 @@ static unsigned int tegra_lp2_min_residency;
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
-	.state_count = 1,
-	.safe_state_index = 0,
-	.states = {
-		[0] = {
-			.enter			= tegra_idle_enter_lp3,
-			.exit_latency		= 10,
-			.target_residency	= 10,
-			.power_usage		= 600,
-			.flags			= CPUIDLE_FLAG_TIME_VALID,
-			.name			= "LP3",
-			.desc			= "CPU flow-controlled",
-		},
-#ifdef CONFIG_PM_SLEEP
-		[1] = {
-			.enter			= tegra_idle_enter_lp2,
-			.power_usage		= 0,
-			.flags			= CPUIDLE_FLAG_TIME_VALID,
-			.name			= "LP2",
-			.desc			= "CPU power-gate",
-		},
-#endif
+};
+
+static struct cpuidle_state tegra_cpuidle_states[] = {
+	[0] = {
+		.enter			= tegra_idle_enter_lp3,
+		.exit_latency		= 10,
+		.target_residency	= 10,
+		.power_usage		= 600,
+		.flags			= CPUIDLE_FLAG_TIME_VALID,
+		.name			= "LP3",
+		.desc			= "CPU flow-controlled",
 	},
+#ifdef CONFIG_PM_SLEEP
+	[1] = {
+		.enter			= tegra_idle_enter_lp2,
+		.power_usage		= 0,
+		.flags			= CPUIDLE_FLAG_TIME_VALID,
+		.name			= "LP2",
+		.desc			= "CPU power-gate",
+	},
+#endif
 };
 
 static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
-	struct cpuidle_driver *drv, int index)
+	int index)
 {
 	ktime_t enter, exit;
 	s64 us;
@@ -140,7 +137,7 @@ void tegra_lp2_update_target_residency(struct cpuidle_state *state)
 }
 
 static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
-	struct cpuidle_driver *drv, int index)
+	int index)
 {
 	ktime_t enter, exit;
 	s64 us;
@@ -180,6 +177,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	return index;
 }
+#endif
 
 static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
 	unsigned long event, void *dummy)
@@ -214,15 +212,13 @@ static int __init tegra_cpuidle_init(void)
 	if (ret)
 		return ret;
 
-	tegra_idle_driver.states[1].exit_latency = tegra_cpu_power_good_time();
-	tegra_idle_driver.states[1].target_residency = tegra_cpu_power_off_time() +
+	tegra_cpuidle_states[1].exit_latency = tegra_cpu_power_good_time();
+	tegra_cpuidle_states[1].target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();
-	if (tegra_idle_driver.states[1].target_residency < tegra_lp2_min_residency)
-		tegra_idle_driver.states[1].target_residency = tegra_lp2_min_residency;
+	if (tegra_cpuidle_states[1].target_residency < tegra_lp2_min_residency)
+		tegra_cpuidle_states[1].target_residency = tegra_lp2_min_residency;
 #endif
 	
-	drv->state_count = ARRAY_SIZE(drv->states);
-
 	ret = cpuidle_register_driver(&tegra_idle_driver);
 	if (ret) {
 		pr_err("CPUidle driver registration failed\n");
@@ -233,7 +229,13 @@ static int __init tegra_cpuidle_init(void)
 		dev = &per_cpu(tegra_idle_device, cpu);
 		dev->cpu = cpu;
 
-		dev->state_count = drv->state_count;
+		memcpy(&dev->states, tegra_cpuidle_states,
+			ARRAY_SIZE(tegra_cpuidle_states) *
+			   sizeof(*tegra_cpuidle_states));
+
+		dev->state_count = ARRAY_SIZE(tegra_cpuidle_states);
+		dev->safe_state_index = 0;
+		dev->power_specified = 1;
 		ret = cpuidle_register_device(dev);
 		if (ret) {
 			pr_err("CPU%u: CPUidle device registration failed\n",
