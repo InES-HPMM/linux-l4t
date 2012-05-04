@@ -3582,6 +3582,22 @@ static int cbus_backup(struct clk *c)
 	return 0;
 }
 
+static int cbus_update_dvfs(struct clk *c, unsigned long rate)
+{
+	int ret;
+	struct clk *user;
+
+	list_for_each_entry(user, &c->shared_bus_list,
+			u.shared_bus_user.node) {
+		struct clk *c =  user->u.shared_bus_user.client;
+		if (c && c->refcnt)
+			ret = tegra_dvfs_set_rate(c, rate);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
 static void cbus_restore(struct clk *c)
 {
 	struct clk *user;
@@ -3610,6 +3626,7 @@ static int get_next_backup_div(struct clk *c, unsigned long rate)
 static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
+	bool dramp;
 
 	if (rate == 0)
 		return 0;
@@ -3621,10 +3638,13 @@ static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 		return ret;
 	}
 
-	c->shared_bus_backup.value = get_next_backup_div(c, rate);
-	ret = cbus_backup(c);
-	if (ret)
-		goto out;
+	dramp = tegra11_is_dyn_ramp(c->parent, rate * c->div, false);
+	if (!dramp) {
+		c->shared_bus_backup.value = get_next_backup_div(c, rate);
+		ret = cbus_backup(c);
+		if (ret)
+			goto out;
+	}
 
 	ret = clk_set_rate(c->parent, rate * c->div);
 	if (ret) {
@@ -3632,6 +3652,12 @@ static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 		       __func__, c->name, rate, ret);
 		goto out;
 	}
+
+	/* Safe voltage setting is taken care of by cbus clock dvfs; the call
+	 * below only records requirements for each enabled client.
+	 */
+	if (dramp)
+		ret = cbus_update_dvfs(c, rate);
 
 	cbus_restore(c);
 
