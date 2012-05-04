@@ -692,10 +692,13 @@ static inline void emc_get_timing(struct tegra30_emc_table *timing)
  */
 static inline void emc_cfg_power_restore(void)
 {
+	struct tegra30_emc_pdata *pdata;
 	u32 reg = emc_readl(EMC_CFG);
 	u32 pwr_mask = EMC_CFG_PWR_MASK;
 
-	if (tegra_emc_table[0].rev >= 0x32)
+	pdata = emc_pdev->dev.platform_data;
+
+	if (pdata->tables[0].rev >= 0x32)
 		pwr_mask &= ~EMC_CFG_DYN_SREF_ENABLE;
 
 	if ((reg ^ emc_cfg_saved) & pwr_mask) {
@@ -715,24 +718,27 @@ int tegra_emc_set_rate(unsigned long rate)
 {
 	int i;
 	u32 clk_setting;
+	struct tegra30_emc_pdata *pdata;
 	const struct tegra30_emc_table *last_timing;
 	unsigned long flags;
 
-	if (!tegra_emc_table)
+	if (!emc_pdev)
 		return -EINVAL;
+
+	pdata = emc_pdev->dev.platform_data;
 
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	for (i = 0; i < pdata->num_tables; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
-		if (tegra_emc_table[i].rate == rate)
+		if (pdata->tables[i].rate == rate)
 			break;
 	}
 
-	if (i >= tegra_emc_table_size)
+	if (i >= pdata->num_tables)
 		return -EINVAL;
 
 	if (!emc_timing) {
@@ -747,10 +753,10 @@ int tegra_emc_set_rate(unsigned long rate)
 	clk_setting = tegra_emc_clk_sel[i].value;
 
 	spin_lock_irqsave(&emc_access_lock, flags);
-	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
+	emc_set_clock(&pdata->tables[i], last_timing, clk_setting);
 	if (!emc_timing)
 		emc_cfg_power_restore();
-	emc_timing = &tegra_emc_table[i];
+	emc_timing = &pdata->tables[i];
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
 	emc_last_stats_update(i);
@@ -763,28 +769,31 @@ int tegra_emc_set_rate(unsigned long rate)
 /* Select the closest EMC rate that is higher than the requested rate */
 long tegra_emc_round_rate(unsigned long rate)
 {
+	struct tegra30_emc_pdata *pdata;
 	int i;
 	int best = -1;
 	unsigned long distance = ULONG_MAX;
 
-	if (!tegra_emc_table)
+	if (!emc_pdev)
 		return clk_get_rate_locked(emc); /* no table - no rate change */
 
 	if (!emc_enable)
 		return -EINVAL;
+
+	pdata = emc_pdev->dev.platform_data;
 
 	pr_debug("%s: %lu\n", __func__, rate);
 
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	for (i = 0; i < pdata->num_tables; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
-		if (tegra_emc_table[i].rate >= rate &&
-		    (tegra_emc_table[i].rate - rate) < distance) {
-			distance = tegra_emc_table[i].rate - rate;
+		if (pdata->tables[i].rate >= rate &&
+		    (pdata->tables[i].rate - rate) < distance) {
+			distance = pdata->tables[i].rate - rate;
 			best = i;
 		}
 	}
@@ -792,25 +801,28 @@ long tegra_emc_round_rate(unsigned long rate)
 	if (best < 0)
 		return -EINVAL;
 
-	pr_debug("%s: using %lu\n", __func__, tegra_emc_table[best].rate);
+	pr_debug("%s: using %lu\n", __func__, pdata->tables[best].rate);
 
-	return tegra_emc_table[best].rate * 1000;
+	return pdata->tables[best].rate * 1000;
 }
 
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 {
+	struct tegra30_emc_pdata *pdata;
 	int i;
 
-	if (!tegra_emc_table)
+	if (!emc_pdev)
 		return NULL;
+
+	pdata = emc_pdev->dev.platform_data;
 
 	pr_debug("%s: %lu\n", __func__, rate);
 
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
-		if (tegra_emc_table[i].rate == rate) {
+	for (i = 0; i < pdata->num_tables; i++) {
+		if (pdata->tables[i].rate == rate) {
 			*div_value = (tegra_emc_clk_sel[i].value &
 				EMC_CLK_DIV_MASK) >> EMC_CLK_DIV_SHIFT;
 			return tegra_emc_clk_sel[i].input;
@@ -1243,16 +1255,19 @@ static struct dentry *emc_debugfs_root;
 
 static int emc_stats_show(struct seq_file *s, void *data)
 {
+	struct tegra30_emc_pdata *pdata;
 	int i;
+
+	pdata = emc_pdev->dev.platform_data;
 
 	emc_last_stats_update(TEGRA_EMC_TABLE_MAX_SIZE);
 
 	seq_printf(s, "%-10s %-10s \n", "rate kHz", "time");
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	for (i = 0; i < pdata->num_tables; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
-		seq_printf(s, "%-10lu %-10llu \n", tegra_emc_table[i].rate,
+		seq_printf(s, "%-10lu %-10llu \n", pdata->tables[i].rate,
 			   cputime64_to_clock_t(emc_stats.time_at_clock[i]));
 	}
 	seq_printf(s, "%-15s %llu\n", "transitions:",
@@ -1335,7 +1350,7 @@ DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 
 static int __init tegra_emc_debug_init(void)
 {
-	if (!tegra_emc_table)
+	if (!emc_pdev)
 		return 0;
 
 	emc_debugfs_root = debugfs_create_dir("tegra_emc", NULL);
