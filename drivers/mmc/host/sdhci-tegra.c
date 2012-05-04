@@ -916,6 +916,9 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.read_w			= tegra_sdhci_readw,
 	.write_l		= tegra_sdhci_writel,
 	.platform_bus_width	= tegra_sdhci_buswidth,
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.set_card_clock = tegra_3x_sdhci_set_card_clock,
+#endif
 	.set_clock		= tegra_sdhci_set_clock,
 	.suspend		= tegra_sdhci_suspend,
 	.resume			= tegra_sdhci_resume,
