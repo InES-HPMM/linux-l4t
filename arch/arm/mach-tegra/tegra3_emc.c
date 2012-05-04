@@ -195,8 +195,8 @@ enum {
 static int emc_num_burst_regs;
 
 static struct clk_mux_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
-static struct tegra_emc_table start_timing;
-static const struct tegra_emc_table *emc_timing;
+static struct tegra30_emc_table start_timing;
+static const struct tegra30_emc_table *emc_timing;
 static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
 static const u32 *dram_to_soc_bit_map;
@@ -298,7 +298,7 @@ static inline void auto_cal_disable(void)
 }
 
 static inline void set_over_temp_timing(
-	const struct tegra_emc_table *next_timing, unsigned long state)
+	const struct tegra30_emc_table *next_timing, unsigned long state)
 {
 #define REFRESH_SPEEDUP(val)						      \
 	do {								      \
@@ -359,8 +359,8 @@ static inline void enable_early_ack(u32 mc_override)
 			MC_EMEM_ARB_OVERRIDE);
 }
 
-static inline bool dqs_preset(const struct tegra_emc_table *next_timing,
-			      const struct tegra_emc_table *last_timing)
+static inline bool dqs_preset(const struct tegra30_emc_table *next_timing,
+			      const struct tegra30_emc_table *last_timing)
 {
 	bool ret = false;
 
@@ -384,7 +384,7 @@ static inline bool dqs_preset(const struct tegra_emc_table *next_timing,
 }
 
 static inline void overwrite_mrs_wait_cnt(
-	const struct tegra_emc_table *next_timing,
+	const struct tegra30_emc_table *next_timing,
 	bool zcal_long)
 {
 	u32 reg;
@@ -411,8 +411,8 @@ static inline void overwrite_mrs_wait_cnt(
 	emc_writel(reg, EMC_MRS_WAIT_CNT);
 }
 
-static inline bool need_qrst(const struct tegra_emc_table *next_timing,
-			     const struct tegra_emc_table *last_timing,
+static inline bool need_qrst(const struct tegra30_emc_table *next_timing,
+			     const struct tegra30_emc_table *last_timing,
 			     u32 emc_dpd_reg)
 {
 	u32 last_mode = (last_timing->burst_regs[EMC_FBIO_CFG5_INDEX] &
@@ -446,8 +446,8 @@ static inline void periodic_qrst_enable(u32 emc_cfg_reg, u32 emc_dbg_reg)
 	emc_writel(emc_dbg_reg, EMC_DBG);
 }
 
-static inline int get_dll_change(const struct tegra_emc_table *next_timing,
-				 const struct tegra_emc_table *last_timing)
+static inline int get_dll_change(const struct tegra30_emc_table *next_timing,
+				 const struct tegra30_emc_table *last_timing)
 {
 	bool next_dll_enabled = !(next_timing->emc_mode_1 & 0x1);
 	bool last_dll_enabled = !(last_timing->emc_mode_1 & 0x1);
@@ -460,8 +460,8 @@ static inline int get_dll_change(const struct tegra_emc_table *next_timing,
 		return DLL_CHANGE_OFF;
 }
 
-static inline void set_dram_mode(const struct tegra_emc_table *next_timing,
-				 const struct tegra_emc_table *last_timing,
+static inline void set_dram_mode(const struct tegra30_emc_table *next_timing,
+				 const struct tegra30_emc_table *last_timing,
 				 int dll_change)
 {
 	if (dram_type == DRAM_TYPE_DDR3) {
@@ -507,8 +507,8 @@ static inline void do_clock_change(u32 clk_setting)
 	}
 }
 
-static noinline void emc_set_clock(const struct tegra_emc_table *next_timing,
-				   const struct tegra_emc_table *last_timing,
+static noinline void emc_set_clock(const struct tegra30_emc_table *next_timing,
+				   const struct tegra30_emc_table *last_timing,
 				   u32 clk_setting)
 {
 	int i, dll_change, pre_wait;
@@ -668,7 +668,7 @@ static noinline void emc_set_clock(const struct tegra_emc_table *next_timing,
 	mc_writel(mc_override, MC_EMEM_ARB_OVERRIDE);
 }
 
-static inline void emc_get_timing(struct tegra_emc_table *timing)
+static inline void emc_get_timing(struct tegra30_emc_table *timing)
 {
 	int i;
 
@@ -715,7 +715,7 @@ int tegra_emc_set_rate(unsigned long rate)
 {
 	int i;
 	u32 clk_setting;
-	const struct tegra_emc_table *last_timing;
+	const struct tegra30_emc_table *last_timing;
 	unsigned long flags;
 
 	if (!tegra_emc_table)
@@ -840,7 +840,7 @@ static const struct clk_mux_sel *find_matching_input(
 	return NULL;
 }
 
-static void adjust_emc_dvfs_table(const struct tegra_emc_table *table,
+static void adjust_emc_dvfs_table(const struct tegra30_emc_table *table,
 				  int table_size)
 {
 	int i, j;
