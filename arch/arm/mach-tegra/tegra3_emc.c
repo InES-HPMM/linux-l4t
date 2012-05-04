@@ -1109,7 +1109,7 @@ static struct platform_driver tegra_emc_driver = {
 	.probe		= tegra_emc_probe,
 };
 
-static int __init tegra_init_emc(void)
+static int __init tegra_emc_init(void)
 {
 	return platform_driver_register(&tegra_emc_driver);
 }
