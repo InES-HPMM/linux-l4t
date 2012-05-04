@@ -940,7 +940,7 @@ static struct notifier_block tegra_emc_resume_nb = {
 
 static int tegra_emc_probe(struct platform_device *pdev)
 {
-	struct tegra_emc_pdata *pdata = NULL;
+	struct tegra30_emc_pdata *pdata = NULL;
 	struct resource *res;
 	int i, mv;
 	u32 reg, div_value;
@@ -958,13 +958,13 @@ static int tegra_emc_probe(struct platform_device *pdev)
 
 	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
-		return;
+		return -EINVAL;
 	}
 
 	if (emc->parent != tegra_get_clock_by_name("pll_m")) {
 		pr_err("tegra: boot parent %s is not supported by EMC DFS\n",
 			emc->parent->name);
-		return;
+		return -EINVAL;
 	}
 
 	if (!emc_enable) {
@@ -998,15 +998,13 @@ static int tegra_emc_probe(struct platform_device *pdev)
 
 	pdev->dev.platform_data = pdata;
 
-	emc_pdev = pdev;
-
-	if (!table || !table_size) {
+	if (!pdata->tables || !pdata->num_tables) {
 		pr_err("tegra: EMC DFS table is empty\n");
-		return;
+		return -EINVAL;
 	}
 
-	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
-	switch (table[0].rev) {
+	pdata->num_tables = min(pdata->num_tables, TEGRA_EMC_TABLE_MAX_SIZE);
+	switch (pdata->tables[0].rev) {
 	case 0x30:
 		emc_num_burst_regs = 105;
 		break;
@@ -1017,17 +1015,17 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		break;
 	default:
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
-			table[0].rev);
-		return;
+			pdata->tables[0].rev);
+		return -EINVAL;
 	}
 
 	/* Match EMC source/divider settings with table entries */
-	for (i = 0; i < tegra_emc_table_size; i++) {
-		unsigned long table_rate = table[i].rate;
+	for (i = 0; i < pdata->num_tables; i++) {
+		unsigned long table_rate = pdata->tables[i].rate;
 		if (!table_rate)
 			continue;
 
-		BUG_ON(table[i].rev != table[0].rev);
+		BUG_ON(pdata->tables[i].rev != pdata->tables[0].rev);
 
 		sel = find_matching_input(table_rate, &div_value);
 		if (!sel)
@@ -1050,7 +1048,7 @@ static int tegra_emc_probe(struct platform_device *pdev)
 			tegra_emc_clk_sel[i].value |= EMC_CLK_LOW_JITTER_ENABLE;
 		}
 
-		if (table[i].burst_regs[MC_EMEM_ARB_MISC0_INDEX] &
+		if (pdata->tables[i].burst_regs[MC_EMEM_ARB_MISC0_INDEX] &
 		    MC_EMEM_ARB_MISC0_EMC_SAME_FREQ)
 			tegra_emc_clk_sel[i].value |= EMC_CLK_MC_SAME_FREQ;
 	}
@@ -1059,25 +1057,21 @@ static int tegra_emc_probe(struct platform_device *pdev)
 	if (!max_entry) {
 		pr_err("tegra: invalid EMC DFS table: entry for max rate"
 		       " %lu kHz is not found\n", max_rate);
-		return;
+		return -EINVAL;
 	}
 
-	tegra_emc_table = table;
-
-	adjust_emc_dvfs_table(tegra_emc_table, tegra_emc_table_size);
+	adjust_emc_dvfs_table(pdata->tables, pdata->num_tables);
 	mv = tegra_dvfs_predict_millivolts(emc, max_rate * 1000);
 	if ((mv <= 0) || (mv > emc->dvfs->max_millivolts)) {
-		tegra_emc_table = NULL;
 		pr_err("tegra: invalid EMC DFS table: maximum rate %lu kHz does"
 		       " not match nominal voltage %d\n",
 		       max_rate, emc->dvfs->max_millivolts);
-		return;
+		return -EINVAL;
 	}
 
 	if (!is_emc_bridge()) {
-		tegra_emc_table = NULL;
 		pr_err("tegra: invalid EMC DFS table: emc bridge not found");
-		return;
+		return -EINVAL;
 	}
 	pr_info("tegra: validated EMC DFS table\n");
 
@@ -1086,6 +1080,8 @@ static int tegra_emc_probe(struct platform_device *pdev)
 	reg |= ((dram_type == DRAM_TYPE_LPDDR2) ? EMC_CFG_2_PD_MODE :
 		EMC_CFG_2_SREF_MODE) << EMC_CFG_2_MODE_SHIFT;
 	emc_writel(reg, EMC_CFG_2);
+
+	emc_pdev = pdev;
 
 	register_pm_notifier(&tegra_emc_suspend_nb);
 	register_pm_notifier(&tegra_emc_resume_nb);
