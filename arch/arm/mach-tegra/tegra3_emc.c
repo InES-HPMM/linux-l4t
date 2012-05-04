@@ -950,6 +950,11 @@ static struct notifier_block tegra_emc_resume_nb = {
 	.priority = -1,
 };
 
+void tegra_emc_set_clk(struct clk *c)
+{
+	emc = c;
+}
+
 static int tegra_emc_probe(struct platform_device *pdev)
 {
 	struct tegra30_emc_pdata *pdata = NULL;
@@ -959,11 +964,26 @@ static int tegra_emc_probe(struct platform_device *pdev)
 	bool max_entry = false;
 	unsigned long boot_rate, max_rate;
 	const struct clk_mux_sel *sel;
+	struct clk *min_clk;
 
 	emc_stats.clkchange_count = 0;
 	spin_lock_init(&emc_stats.spinlock);
 	emc_stats.last_update = get_jiffies_64();
 	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
+
+	min_clk = clk_get(&pdev->dev, NULL);
+	if (IS_ERR(min_clk)) {
+		dev_err(&pdev->dev, "failed to get clock\n");
+		return -EINVAL;
+	}
+
+	dram_type = (emc_readl(EMC_FBIO_CFG5) &
+		     EMC_CFG5_TYPE_MASK) >> EMC_CFG5_TYPE_SHIFT;
+	if (dram_type == DRAM_TYPE_DDR3)
+		clk_set_rate(min_clk, EMC_MIN_RATE_DDR3);
+
+	dram_dev_num = (mc_readl(MC_EMEM_ADR_CFG) & 0x1) + 1; /* 2 dev max */
+	emc_cfg_saved = emc_readl(EMC_CFG);
 
 	boot_rate = clk_get_rate(emc) / 1000;
 	max_rate = clk_get_max_rate(emc) / 1000;
@@ -1007,20 +1027,6 @@ static int tegra_emc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to remap MC registers\n");
 		return -ENOMEM;
 	}
-
-	emc = clk_get(&pdev->dev, NULL);
-	if (IS_ERR(emc)) {
-		dev_err(&pdev->dev, "failed to get clock\n");
-		return -EINVAL;
-	}
-
-	dram_type = (emc_readl(EMC_FBIO_CFG5) &
-		     EMC_CFG5_TYPE_MASK) >> EMC_CFG5_TYPE_SHIFT;
-	if (dram_type == DRAM_TYPE_DDR3)
-		emc->min_rate = EMC_MIN_RATE_DDR3;
-
-	dram_dev_num = (mc_readl(MC_EMEM_ADR_CFG) & 0x1) + 1; /* 2 dev max */
-	emc_cfg_saved = emc_readl(EMC_CFG);
 
 	pdev->dev.platform_data = pdata;
 
