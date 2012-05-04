@@ -170,8 +170,7 @@ remove_clamps:
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
 
-done:
-	return status;
+	return 0;
 }
 
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
