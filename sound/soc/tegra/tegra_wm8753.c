@@ -869,7 +869,7 @@ static int tegra_wm8753_driver_probe(struct platform_device *pdev)
 	tegra_wm8753_dai.platform_of_node =
 				tegra_wm8753_dai.cpu_of_node;
 
-	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev);
+	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err;
 

@@ -153,7 +153,7 @@ int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data)
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_disable);
 
 int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
-			  struct device *dev)
+			  struct device *dev, struct snd_soc_card *card)
 {
 	int ret;
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !TEGRA30_I2S_MASTER_PLAYBACK
@@ -161,6 +161,7 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 #endif
 
 	data->dev = dev;
+	data->card = card;
 
 	if (of_machine_is_compatible("nvidia,tegra20"))
 		data->soc = TEGRA_ASOC_UTILS_SOC_TEGRA20;

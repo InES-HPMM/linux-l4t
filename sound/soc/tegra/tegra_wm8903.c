@@ -808,7 +808,7 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev);
+	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err;
 

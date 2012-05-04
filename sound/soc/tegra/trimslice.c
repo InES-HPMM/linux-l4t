@@ -160,7 +160,7 @@ static int tegra_snd_trimslice_probe(struct platform_device *pdev)
 				trimslice_tlv320aic23_dai.cpu_of_node;
 	}
 
-	ret = tegra_asoc_utils_init(&trimslice->util_data, &pdev->dev);
+	ret = tegra_asoc_utils_init(&trimslice->util_data, &pdev->dev, card);
 	if (ret)
 		goto err;
 

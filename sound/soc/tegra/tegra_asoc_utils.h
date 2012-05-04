@@ -37,6 +37,7 @@ enum tegra_asoc_utils_soc {
 struct tegra_asoc_utils_data {
 	struct device *dev;
 	enum tegra_asoc_utils_soc soc;
+	struct snd_soc_card *card;
 	struct clk *clk_pll_a;
 	struct clk *clk_pll_a_out0;
 	struct clk *clk_cdev1;
@@ -53,7 +54,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 void tegra_asoc_utils_lock_clk_rate(struct tegra_asoc_utils_data *data,
 				    int lock);
 int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
-			  struct device *dev);
+			  struct device *dev, struct snd_soc_card *card);
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_enable(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data);
