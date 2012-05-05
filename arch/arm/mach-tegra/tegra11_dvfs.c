@@ -191,6 +191,47 @@ static void __init init_cl_dvfs_soc_data(int speedo_id)
 	tegra_cl_dvfs_set_soc_data(cl_dvfs_table);
 }
 
+static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
+{
+	/* Don't update manual dvfs clocks */
+	if (!d->auto_dvfs)
+		return false;
+
+	/*
+	 * Don't update EMC shared bus, since EMC dvfs is board dependent: max
+	 * rate and EMC scaling frequencies are determined by tegra BCT (flashed
+	 * together with the image) and board specific EMC DFS table; we will
+	 * check the scaling ladder against nominal core voltage when the table
+	 * is loaded (and if on particular board the table is not loaded, EMC
+	 * scaling is disabled).
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_EMC_ENB))
+		return false;
+
+	/*
+	 * Don't update shared cbus, and don't propagate common cbus dvfs
+	 * limit down to shared users, but set maximum rate for each user
+	 * equal to the respective client limit.
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_ON_CBUS)) {
+		struct clk *user;
+		unsigned long rate;
+
+		list_for_each_entry(
+			user, &c->shared_bus_list, u.shared_bus_user.node) {
+			if (user->u.shared_bus_user.client) {
+				rate = user->u.shared_bus_user.client->max_rate;
+				user->max_rate = rate;
+				user->u.shared_bus_user.rate = rate;
+			}
+		}
+		return false;
+	}
+
+	/* Other, than EMC and cbus, auto-dvfs clocks can be updated */
+	return true;
+}
+
 static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 {
 	int ret;
@@ -202,16 +243,8 @@ static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 		return;
 	}
 
-	/*
-	 * Update max rate for auto-dvfs clocks, except EMC.
-	 * EMC is a special case, since EMC dvfs is board dependent: max rate
-	 * and EMC scaling frequencies are determined by tegra BCT (flashed
-	 * together with the image) and board specific EMC DFS table; we will
-	 * check the scaling ladder against nominal core voltage when the table
-	 * is loaded (and if on particular board the table is not loaded, EMC
-	 * scaling is disabled).
-	 */
-	if (!(c->flags & PERIPH_EMC_ENB) && d->auto_dvfs) {
+	/* Update max rate for auto-dvfs clocks, with shared bus exceptions */
+	if (can_update_max_rate(c, d)) {
 		BUG_ON(!d->freqs[nominal_mv_index]);
 		tegra_init_max_rate(
 			c, d->freqs[nominal_mv_index] * d->freqs_mult);

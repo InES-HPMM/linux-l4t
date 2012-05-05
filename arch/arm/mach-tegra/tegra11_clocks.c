@@ -3520,7 +3520,8 @@ static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
 
 	for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
 		unsigned long f = c->dvfs->freqs[i];
-		if (f >= rate)
+		int mv = c->dvfs->millivolts[i];
+		if ((f >= rate) || (mv >= c->dvfs->max_millivolts))
 			break;
 	}
 	return c->dvfs->freqs[i];
