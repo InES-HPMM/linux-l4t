@@ -1148,6 +1148,7 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 			return -ECANCELED;
 		}
 		flags = TEGRA_POWER_CLUSTER_IMMEDIATE;
+		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 		delay = 0;
 	}
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :

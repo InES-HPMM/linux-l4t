@@ -211,6 +211,14 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 	if (!target_cluster)
 		goto done;
 
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	reg &= ~FLOW_CTRL_CPU_CSR_ENABLE_EXT_MASK;
+	if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
+		reg |= FLOW_CTRL_CPU_CSR_ENABLE_EXT_CRAIL;
+	if (flags & TEGRA_POWER_CLUSTER_PART_NONCPU)
+		reg |= FLOW_CTRL_CPU_CSR_ENABLE_EXT_NCPU;
+#endif
+
 	if ((current_cluster != target_cluster) ||
 		(flags & TEGRA_POWER_CLUSTER_FORCE)) {
 		if (current_cluster != target_cluster) {
@@ -296,6 +304,9 @@ void tegra_cluster_switch_epilog(unsigned int flags)
 	reg = readl(FLOW_CTRL_CPU_CSR(0));
 	reg &= ~(FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE |
 		 FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER);
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	reg &= ~FLOW_CTRL_CPU_CSR_ENABLE_EXT_MASK;
+#endif
 	writel(reg, FLOW_CTRL_CPU_CSR(0));
 
 	/* Perform post-switch LP=>G clean-up */
@@ -359,10 +370,22 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
 			s64 t = ktime_to_us(ktime_sub(now, last_g2lp));
 			s64 t_off = tegra_cpu_power_off_time();
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+			u32 reg;
+#endif
 			if (t_off > t)
 				udelay((unsigned int)(t_off - t));
 
 			tegra_dvfs_rail_on(tegra_cpu_rail, now);
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+			reg = readl(FLOW_CTRL_RAM_REPAIR);
+			reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
+			writel(reg, FLOW_CTRL_RAM_REPAIR);
+			/* power up C rail */
+			reg = readl(FLOW_CTRL_CPU_PWR_CSR);
+			reg |= FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE;
+			writel(reg, FLOW_CTRL_CPU_PWR_CSR);
+#endif
 
 		} else {
 			last_g2lp = now;
@@ -428,6 +451,9 @@ void tegra_lp0_cpu_mode(bool enter)
 	if (entered_on_g) {
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
+#endif
 		tegra_cluster_control(0, flags);
 		pr_info("Tegra: switched to %s cluster\n", enter ? "LP" : "G");
 	}

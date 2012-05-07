@@ -66,7 +66,7 @@
  * power_gate: additional power gate partitions
  *		write:	'none' = no additional partitions
  *			'noncpu' = CxNC partition
- *			'crail' = CRAIL partition (implies noncpu also)
+ *			'crail' = CRAIL partition (implies noncpu also, default)
  *		read: returns the current power_gate value
  *
  * Writing the force, immediate and wake_ms attributes simply updates the
@@ -149,7 +149,7 @@ static struct kobj_attribute cluster_powermode_attr =
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 /* Additional partitions to power gate. */
-static unsigned int power_gate;
+static unsigned int power_gate = TEGRA_POWER_CLUSTER_PART_CRAIL;
 static struct kobj_attribute cluster_powergate_attr =
 		__ATTR(power_gate, 0640, sysfscluster_show, sysfscluster_store);
 
