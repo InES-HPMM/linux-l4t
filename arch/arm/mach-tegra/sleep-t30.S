@@ -618,10 +618,11 @@ tegra3_enter_sleep:
 	tst	r0, #FLOW_CTRL_IMMEDIATE_WAKE
 	movne	r0, #FLOW_CTRL_WAITEVENT
 	moveq	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
+	orr	r0, r0, #FLOW_CTRL_HALT_LIC_IRQ | FLOW_CTRL_HALT_LIC_FIQ
 #else
 	mov	r0, #FLOW_CTRL_WAIT_FOR_INTERRUPT
-#endif
 	orr	r0, r0, #FLOW_CTRL_HALT_CPU_IRQ | FLOW_CTRL_HALT_CPU_FIQ
+#endif
 	cpu_to_halt_reg r2, r1
 	str	r0, [r6, r2]
 	dsb
