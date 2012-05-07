@@ -30,6 +30,7 @@
 #include <linux/memblock.h>
 #include <linux/bitops.h>
 #include <linux/sched.h>
+#include <linux/of.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -730,11 +731,54 @@ __setup("audio_codec=", tegra_audio_codec_type);
 
 void tegra_get_board_info(struct board_info *bi)
 {
-	bi->board_id = (system_serial_high >> 16) & 0xFFFF;
-	bi->sku = (system_serial_high) & 0xFFFF;
-	bi->fab = (system_serial_low >> 24) & 0xFF;
-	bi->major_revision = (system_serial_low >> 16) & 0xFF;
-	bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+#ifdef CONFIG_OF
+	struct device_node *board_info;
+	u32 prop_val;
+	int err;
+
+	board_info = of_find_node_by_path("/chosen/board_info");
+	if (!IS_ERR_OR_NULL(board_info)) {
+		memset(bi, 0, sizeof(*bi));
+
+		err = of_property_read_u32(board_info, "id", &prop_val);
+		if (err)
+			pr_err("failed to read /chosen/board_info/id\n");
+		else
+			bi->board_id = prop_val;
+
+		err = of_property_read_u32(board_info, "sku", &prop_val);
+		if (err)
+			pr_err("failed to read /chosen/board_info/sku\n");
+		else
+			bi->sku = prop_val;
+
+		err = of_property_read_u32(board_info, "fab", &prop_val);
+		if (err)
+			pr_err("failed to read /chosen/board_info/fab\n");
+		else
+			bi->fab = prop_val;
+
+		err = of_property_read_u32(board_info, "major_revision", &prop_val);
+		if (err)
+			pr_err("failed to read /chosen/board_info/major_revision\n");
+		else
+			bi->major_revision = prop_val;
+
+		err = of_property_read_u32(board_info, "minor_revision", &prop_val);
+		if (err)
+			pr_err("failed to read /chosen/board_info/minor_revision\n");
+		else
+			bi->minor_revision = prop_val;
+	} else {
+#endif
+		bi->board_id = (system_serial_high >> 16) & 0xFFFF;
+		bi->sku = (system_serial_high) & 0xFFFF;
+		bi->fab = (system_serial_low >> 24) & 0xFF;
+		bi->major_revision = (system_serial_low >> 16) & 0xFF;
+		bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+#ifdef CONFIG_OF
+	}
+#endif
 }
 
 static int __init tegra_pmu_board_info(char *info)
