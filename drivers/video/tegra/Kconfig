@@ -250,6 +250,12 @@ config TEGRA_HDMI_74MHZ_LIMIT
 	  Say Y here to make kernel report only low bandwidth modes.
 	  Useful only for boards which can't deliver 148.50 MHz.
 
+config TEGRA_GK20A_NETLIST_FIRMWARE
+	bool "Support loading GK20A netlist"
+	default n
+	help
+	  Say Y here to load GK20A netlist from /system/etc/firmware.
+
 endif
 
 config TEGRA_CAMERA
