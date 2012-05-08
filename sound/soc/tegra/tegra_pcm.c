@@ -136,6 +136,13 @@ static int tegra_pcm_hw_free(struct snd_pcm_substream *substream)
 
 static int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct tegra_pcm_dma_params * dmap;a
+
+	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	if (!dmap)
+		return 0;
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
