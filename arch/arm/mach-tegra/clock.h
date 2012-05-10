@@ -215,6 +215,10 @@ struct clk {
 			unsigned long			threshold;
 		} system;
 		struct {
+			struct clk			*top_user;
+			struct clk			*slow_user;
+		} cbus;
+		struct {
 			struct list_head		node;
 			bool				enabled;
 			unsigned long			rate;

@@ -3582,7 +3582,7 @@ static int cbus_backup(struct clk *c)
 	return 0;
 }
 
-static int cbus_update_dvfs(struct clk *c, unsigned long rate)
+static int cbus_dvfs_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
 	struct clk *user;
@@ -3658,7 +3658,7 @@ static int tegra11_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 	 * below only records requirements for each enabled client.
 	 */
 	if (dramp)
-		ret = cbus_update_dvfs(c, rate);
+		ret = cbus_dvfs_set_rate(c, rate);
 
 	cbus_restore(c);
 
@@ -3667,12 +3667,110 @@ out:
 	return ret;
 }
 
+static inline bool cbus_user_is_slower(struct clk *a, struct clk *b)
+{
+	return a->u.shared_bus_user.client->max_rate * a->div <
+		b->u.shared_bus_user.client->max_rate * b->div;
+}
+
+#ifdef CONFIG_TEGRA_DYNAMIC_CBUS
+static int tegra11_clk_cbus_update(struct clk *bus)
+{
+	int ret, mv;
+	struct clk *c;
+	struct clk *slow = NULL;
+	struct clk *top = NULL;
+
+	unsigned long rate = bus->min_rate;
+	unsigned long ceiling = bus->max_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	list_for_each_entry(c, &bus->shared_bus_list,
+			u.shared_bus_user.node) {
+		/* Ignore requests from disabled users */
+		if (c->u.shared_bus_user.enabled) {
+			unsigned long request_rate = c->u.shared_bus_user.rate *
+				(c->div ? : 1);
+
+			switch (c->u.shared_bus_user.mode) {
+			case SHARED_CEILING:
+				ceiling = min(request_rate, ceiling);
+				break;
+			case SHARED_AUTO:
+				break;
+			case SHARED_FLOOR:
+			default:
+				if (rate < request_rate) {
+					rate = request_rate;
+					top = c;
+				}
+			}
+			if (c->u.shared_bus_user.client &&
+				(!slow || cbus_user_is_slower(c, slow)))
+				slow = c;
+		}
+	}
+
+	/* use dvfs table of the slowest enabled client as cbus dvfs table */
+	if (bus->dvfs && slow && (slow != bus->u.cbus.slow_user)) {
+		int i;
+		unsigned long *dest = &bus->dvfs->freqs[0];
+		unsigned long *src =
+			&slow->u.shared_bus_user.client->dvfs->freqs[0];
+		if (slow->div > 1)
+			for (i = 0; i < bus->dvfs->num_freqs; i++)
+				dest[i] = src[i] * slow->div;
+		else
+			memcpy(dest, src, sizeof(*dest) * bus->dvfs->num_freqs);
+	}
+
+	/* update bus state variables and rate */
+	bus->u.cbus.slow_user = slow;
+	bus->u.cbus.top_user = top;
+	rate = min(rate, ceiling);
+
+	rate = bus->ops->round_rate(bus, rate);
+	mv = tegra_dvfs_predict_millivolts(bus, rate);
+	if (IS_ERR_VALUE(mv))
+		return -EINVAL;
+
+	if (bus->dvfs) {
+		mv -= bus->dvfs->cur_millivolts;
+		if (bus->refcnt && (mv > 0)) {
+			ret = tegra_dvfs_set_rate(bus, rate);
+			if (ret)
+				return ret;
+		}
+	}
+
+	ret = bus->ops->set_rate(bus, rate);
+	if (ret)
+		return ret;
+
+	if (bus->dvfs) {
+		if (bus->refcnt && (mv <= 0)) {
+			ret = tegra_dvfs_set_rate(bus, rate);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return 0;
+};
+#endif
+
 static struct clk_ops tegra_clk_cbus_ops = {
 	.init = tegra11_clk_cbus_init,
 	.enable = tegra11_clk_cbus_enable,
 	.set_rate = tegra11_clk_cbus_set_rate,
 	.round_rate = tegra11_clk_cbus_round_rate,
+#ifdef CONFIG_TEGRA_DYNAMIC_CBUS
+	.shared_bus_update = tegra11_clk_cbus_update,
+#else
 	.shared_bus_update = tegra11_clk_shared_bus_update,
+#endif
 };
 
 /* shared bus ops */
@@ -3683,12 +3781,6 @@ static struct clk_ops tegra_clk_cbus_ops = {
  * enabled shared_bus_user clock, with a minimum value set by the
  * shared bus.
  */
-
-static int shared_bus_set_rate(struct clk *bus,
-				unsigned long rate, unsigned long old_rate)
-{
-	return clk_set_rate_locked(bus, rate);
-}
 
 static int tegra11_clk_shared_bus_update(struct clk *bus)
 {
@@ -3730,7 +3822,7 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 	if (rate == old_rate)
 		return 0;
 
-	return shared_bus_set_rate(bus, rate, old_rate);
+	return clk_set_rate_locked(bus, rate);
 };
 
 static void tegra_clk_shared_bus_init(struct clk *c)
