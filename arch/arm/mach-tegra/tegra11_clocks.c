@@ -3568,10 +3568,10 @@ static int cbus_backup(struct clk *c)
 
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
-		bool enabled = user->u.shared_bus_user.client &&
-			(user->u.shared_bus_user.client->state == ON);
-		if (enabled) {
-			ret = cbus_switch_one(user->u.shared_bus_user.client,
+		struct clk *client = user->u.shared_bus_user.client;
+		if (client && (client->state == ON) &&
+		    (client->parent == c->parent)) {
+			ret = cbus_switch_one(client,
 					      c->shared_bus_backup.input,
 					      c->shared_bus_backup.value *
 					      user->div, true);
@@ -3589,11 +3589,12 @@ static int cbus_update_dvfs(struct clk *c, unsigned long rate)
 
 	list_for_each_entry(user, &c->shared_bus_list,
 			u.shared_bus_user.node) {
-		struct clk *c =  user->u.shared_bus_user.client;
-		if (c && c->refcnt)
+		struct clk *client =  user->u.shared_bus_user.client;
+		if (client && client->refcnt && (client->parent == c->parent)) {
 			ret = tegra_dvfs_set_rate(c, rate);
-		if (ret)
-			return ret;
+			if (ret)
+				return ret;
+		}
 	}
 	return 0;
 }
