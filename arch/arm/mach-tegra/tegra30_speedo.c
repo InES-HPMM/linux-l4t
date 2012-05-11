@@ -288,8 +288,8 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
  * latter is resolved by the dvfs code)
  */
 static const int cpu_speedo_nominal_millivolts[] =
-/* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8,   9,  10,  11,   12,   13 */
-	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150, 912, 850, 850, 1237, 1237};
+/* speedo_id 0,    1,    2,    3,    4,    5,    6,    7,    8,   9,  10,  11,   12,    13,  14,  15 */
+	{ 1125, 1150, 1150, 1150, 1237, 1237, 1237, 1150, 1150, 1007, 916, 850, 1237, 1237, 950, 900};
 
 void tegra30_init_speedo_data(void)
 {
@@ -387,6 +387,31 @@ void tegra30_init_speedo_data(void)
 				tegra_cpu_speedo_id = 9;
 			else if (tegra_cpu_process_id >= 3 && tegra_cpu_process_id < 6)
 				tegra_cpu_speedo_id = 10;
+			if (tegra_cpu_process_id <= 2) {
+				switch(fuse_sku) {
+				case 0xb0:
+				case 0xb1:
+					tegra_cpu_speedo_id = 9;
+					break;
+				case 0x90:
+				case 0x91:
+					tegra_cpu_speedo_id = 14;
+				default:
+					break;
+				}
+			} else if (tegra_cpu_process_id >= 3 && tegra_cpu_process_id < 6) {
+				switch(fuse_sku) {
+				case 0xb0:
+				case 0xb1:
+					tegra_cpu_speedo_id = 10;
+					break;
+				case 0x90:
+				case 0x91:
+					tegra_cpu_speedo_id = 15;
+				default:
+					break;
+				}
+			}
 		}
 	}
 
