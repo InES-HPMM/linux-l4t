@@ -169,6 +169,7 @@
  * Keeping the name of bit masks same as before (PORTSCX_*) to have
  * minimum changes to code */
 #define USB_HOSTPCX_DEVLC_REG_OFFSET			0x1b4
+#define  HOSTPC1_DEVLC_ASUS			0x00020000
 
 #define  PORTSCX_PORT_FORCE_FULL_SPEED ((udc->has_hostpc) ? 0x00800000 \
 						: 0x01000000)
