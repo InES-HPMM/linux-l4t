@@ -156,6 +156,7 @@ struct nvavp_clientctx {
 	struct nvavp_info *nvavp;
 	int clock_stay_on;
 	int channel_id;
+	u32 clk_reqs;
 };
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
@@ -1231,14 +1232,14 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_clock_stay_on_state_args clock;
 
 	if (copy_from_user(&clock, (void __user *)arg,
-			sizeof(struct nvavp_clock_stay_on_state_args)))
+			   sizeof(struct nvavp_clock_stay_on_state_args)))
 		return -EFAULT;
 
 	dev_dbg(&nvavp->nvhost_dev->dev, "%s: state=%d\n",
 		__func__, clock.state);
 
 	if (clock.state != NVAVP_CLOCK_STAY_ON_DISABLED &&
-		clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
+		   clock.state !=  NVAVP_CLOCK_STAY_ON_ENABLED) {
 		dev_err(&nvavp->nvhost_dev->dev, "%s: invalid argument=%d\n",
 			__func__, clock.state);
 		return -EINVAL;
@@ -1253,6 +1254,16 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 		atomic_inc(&nvavp->clock_stay_on_refcount);
 	else if (clientctx->clock_stay_on == NVAVP_CLOCK_STAY_ON_DISABLED)
 		atomic_dec(&nvavp->clock_stay_on_refcount);
+
+	mutex_lock(&nvavp->open_lock);
+	if (clock.state) {
+		if (clientctx->clk_reqs++ == 0)
+			nvavp_clks_enable(nvavp);
+	} else {
+		if (--clientctx->clk_reqs == 0)
+			nvavp_clks_disable(nvavp);
+	}
+	mutex_unlock(&nvavp->open_lock);
 
 	return 0;
 }
@@ -1329,6 +1340,11 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp)
 
 	if (clientctx->clock_stay_on ==  NVAVP_CLOCK_STAY_ON_ENABLED)
 		atomic_dec(&nvavp->clock_stay_on_refcount);
+
+	/* if this client had any requests, drop our clk ref */
+	if (clientctx->clk_reqs)
+		nvavp_clks_disable(nvavp);
+
 	if (nvavp->refcount > 0)
 		nvavp->refcount--;
 	if (!nvavp->refcount)
