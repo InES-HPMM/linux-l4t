@@ -208,6 +208,7 @@ void tegra_init_cache(bool init)
 #endif	
 #endif
 
+	writel(0x3, p + L2X0_POWER_CTRL);
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
 	aux_ctrl |= 0x7C400001;
