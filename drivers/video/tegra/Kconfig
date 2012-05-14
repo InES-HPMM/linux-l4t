@@ -256,6 +256,14 @@ config TEGRA_GK20A_NETLIST_FIRMWARE
 	help
 	  Say Y here to load GK20A netlist from /system/etc/firmware.
 
+
+config TEGRA_GK20A_PMU
+	bool "Support GK20A PMU"
+	depends on TEGRA_GK20A
+	default n
+	help
+	  Say Y here to enable GK20A PMU features.
+
 endif
 
 config TEGRA_CAMERA
