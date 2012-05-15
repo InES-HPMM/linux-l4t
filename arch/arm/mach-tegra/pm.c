@@ -796,9 +796,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	trace_cpu_suspend(CPU_SUSPEND_START);
 
-	cpu_pm_enter();
-	cpu_cluster_pm_enter();
-
 	if (mode == TEGRA_SUSPEND_LP0) {
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
 		u32 reg = readl(pmc + PMC_SCRATCH4);
@@ -852,9 +849,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		reg &= ~TEGRA_POWER_PWRREQ_OE;
 		pmc_32kwritel(reg, PMC_CTRL);
 	}
-
-	cpu_cluster_pm_exit();
-	cpu_pm_exit();
 
 	if (pdata && pdata->board_resume)
 		pdata->board_resume(mode, TEGRA_RESUME_AFTER_CPU);
