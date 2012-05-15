@@ -225,7 +225,7 @@ void tegra_pen_unlock(void);
 void tegra_cpu_wfi(void);
 int tegra_sleep_cpu_finish(unsigned long v2p);
 void tegra_resume(void);
-void tegra_cpu_resume(void);
+void tegra_flush_l1_cache(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 extern void tegra2_iram_start;

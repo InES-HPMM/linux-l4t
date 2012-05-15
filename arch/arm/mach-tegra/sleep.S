@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -115,6 +115,54 @@ ENTRY(tegra_cpu_exit_coherency)
 	exit_smp r4, r5
 	mov	pc, lr
 ENDPROC(tegra_cpu_exit_coherency)
+
+/*
+ * tegra_flush_l1_cache
+ *
+ * clean & invalidate the L1 cache
+ *
+ * The flush_cache_all flushes all caches within level of coherence, this
+ * may not be desired if all we need is to flush L1 only. Therefore this
+ * function is implemented to flush the L1 cache only.
+ *
+ * Corrupted registers: r0-r7, r9-r11
+ */
+ENTRY(tegra_flush_l1_cache)
+	stmfd	sp!, {r4-r5, r7, r9-r11, lr}
+	dmb					@ ensure ordering with previous memory accesses
+	mov	r10, #0
+#ifdef CONFIG_PREEMPT
+	save_and_disable_irqs_notrace r9
+#endif
+	mcr	p15, 2, r10, c0, c0, 0		@ select cache level 0
+	isb
+	mrc	p15, 1, r1, c0, c0, 0		@ read the new csidr
+#ifdef CONFIG_PREEMPT
+	restore_irqs_notrace r9
+#endif
+	and	r2, r1, #7					@ extract the length of the cache lines
+	add	r2, r2, #4					@ add 4 (line length offset)
+	ldr	r4, =0x3ff
+	ands	r4, r4, r1, lsr #3		@ find maximum number on the way size
+	clz	r5, r4						@ find bit position of way size increment
+	ldr	r7, =0x7fff
+	ands	r7, r7, r1, lsr #13		@ extract max number of the index size
+1001:
+	mov	r9, r4						@ create working copy of max way size
+1002:
+	orr	r11, r10, r9, lsl r5		@ factor way and cache number into r11
+	orr	r11, r11, r7, lsl r2		@ factor index number into r11
+	mcr	p15, 0, r11, c7, c14, 2		@ op=c10/c14, clean/flush by set/way
+	subs	r9, r9, #1				@ decrement the way
+	bge	1002b
+	subs	r7, r7, #1				@ decrement the index
+	bge	1001b
+	mcr	p15, 2, r10, c0, c0, 0		@ restore cache level 0
+	isb
+	dsb
+	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}
+	mov	pc, lr
+ENDPROC(tegra_flush_l1_dcache)
 
 #ifdef CONFIG_PM_SLEEP
 /*
