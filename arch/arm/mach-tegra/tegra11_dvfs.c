@@ -108,6 +108,7 @@ static struct dvfs cpu_dvfs_table[] = {
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		    850,    900,    950,   1000,   1050,    1100,    1150,    1200,    1250 */
 	/* Clock limits for internal blocks, PLLs */
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	CORE_DVFS("epp",    0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
 	CORE_DVFS("2d",     0, 1, KHZ,    77200, 141200, 189200, 238200, 317500,  317500,  400000,  500700),
 	CORE_DVFS("3d",     0, 1, KHZ,    86800, 158900, 212800, 267900, 357200,  357200,  450000,  563300),
@@ -119,6 +120,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("host1x", 0, 1, KHZ,    57900, 105900, 141900, 178600, 238200,  238200,  300000,  300000),
 
 	CORE_DVFS("cbus",   0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
+#endif
 };
 
 #define CL_DVFS(_speedo_id, _tune0, _tune1, _rate_min)		\
