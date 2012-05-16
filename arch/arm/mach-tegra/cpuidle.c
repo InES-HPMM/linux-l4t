@@ -156,6 +156,60 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 }
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+#define	POWER_GATING_OPTION_LEN	8
+static char power_gating_option[8] __read_mostly =
+											{'c', 'r', 'a', 'i', 'l', '\0'};
+static int power_gating_mode = FLOW_CTRL_CPU_CSR_ENABLE_EXT_CRAIL;
+static struct kparam_string power_gating __read_mostly = {
+	.maxlen = POWER_GATING_OPTION_LEN,
+	.string = power_gating_option,
+};
+
+static int power_gating_set(const char *buffer, const struct kernel_param *kp)
+{
+	const struct kparam_string *kps = kp->str;
+	int len = strlen(buffer);
+	int mode = -1;
+
+	if (len > kp->str->maxlen-1) {
+		pr_err("%s: string %s does not fit in 6 chars.\n", kp->name, buffer);
+		return -ENOSPC;
+	}
+
+	if (!strncmp(buffer, "noncpu", 6))
+		mode = FLOW_CTRL_CPU_CSR_ENABLE_EXT_NCPU;
+	else if (!strncmp(buffer, "crail", 5))
+		mode = FLOW_CTRL_CPU_CSR_ENABLE_EXT_CRAIL;
+	else if (!strncmp(buffer, "emu", 3))
+		mode = FLOW_CTRL_CPU_CSR_ENABLE_EXT_MASK;
+	else if (!strncmp(buffer, "cpu", 3))
+		mode = 0;
+
+	if (mode >= 0) {
+		strcpy(kps->string, buffer);
+		kps->string[len - 1] = '\0';
+		power_gating_mode = mode;
+		return 0;
+	}
+
+	pr_err("%s: power gating option: noncpu, crail, emu, cpu.", kp->name);
+	return -EINVAL;
+}
+
+static struct kernel_param_ops power_gating_ops = {
+	.set = power_gating_set,
+	.get = param_get_string,
+};
+
+module_param_cb(power_gating, &power_gating_ops, &power_gating, 0644);
+
+int get_power_gating_partition(void)
+{
+	return power_gating_mode;
+}
+#endif
+
 static int tegra_cpuidle_register_device(unsigned int cpu)
 {
 	struct cpuidle_device *dev;
