@@ -31,7 +31,7 @@
 #include <linux/stat.h>
 
 #include <mach/clk.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 
 #include "../../../../video/tegra/nvmap/nvmap.h"
 
