@@ -206,7 +206,7 @@
 /* PLLC2 and PLLC3 (PLLCX) */
 #define PLLCX_USE_DYN_RAMP		0
 #define PLLCX_BASE_PHASE_LOCK		(1<<26)
-#define PLLCX_BASE_DIVP_MASK		(0x3<<PLL_BASE_DIVP_SHIFT)
+#define PLLCX_BASE_DIVP_MASK		(0xF<<PLL_BASE_DIVP_SHIFT)
 #define PLLCX_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
 #define PLLCX_BASE_DIVM_MASK		(0x3<<PLL_BASE_DIVM_SHIFT)
 #define PLLCX_PDIV_MAX	((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT))
@@ -4959,6 +4959,60 @@ static struct clk tegra_clk_emc = {
 	.rate_change_nh = &emc_rate_change_nh,
 };
 
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+static struct clk tegra_clk_c2bus = {
+	.name      = "c2bus",
+	.parent    = &tegra_pll_c2,
+	.ops       = &tegra_clk_cbus_ops,
+	.max_rate  = 600000000,
+	.mul       = 1,
+	.div       = 1,
+	.flags     = PERIPH_ON_CBUS,
+	.shared_bus_backup = {
+		.input = &tegra_pll_p,
+       }
+};
+static struct clk tegra_clk_c3bus = {
+	.name      = "c3bus",
+	.parent    = &tegra_pll_c3,
+	.ops       = &tegra_clk_cbus_ops,
+	.max_rate  = 600000000,
+	.mul       = 1,
+	.div       = 1,
+	.flags     = PERIPH_ON_CBUS,
+	.shared_bus_backup = {
+		.input = &tegra_pll_p,
+       }
+};
+
+static DEFINE_MUTEX(cbus_mutex);
+
+static struct clk_mux_sel mux_clk_cbus[] = {
+	{ .input = &tegra_clk_c2bus, .value = 0},
+	{ .input = &tegra_clk_c3bus, .value = 1},
+	{ 0, 0},
+};
+
+#define DUAL_CBUS_CLK(_name, _dev, _con, _parent, _id, _div, _mode)\
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id    = _con,		\
+		},					\
+		.ops       = &tegra_clk_shared_bus_ops,	\
+		.parent = _parent,			\
+		.inputs = mux_clk_cbus,			\
+		.flags = MUX,				\
+		.u.shared_bus_user = {			\
+			.client_id = _id,		\
+			.client_div = _div,		\
+			.mode = _mode,			\
+			.cross_bus_mutex = &cbus_mutex, \
+		},					\
+	}
+
+#else
 static struct clk tegra_clk_cbus = {
 	.name	   = "cbus",
 	.parent    = &tegra_pll_c,
@@ -4971,6 +5025,7 @@ static struct clk tegra_clk_cbus = {
 		.input = &tegra_pll_p,
 	}
 };
+#endif
 
 #define PERIPH_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
 	{						\
@@ -5157,6 +5212,19 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 	SHARED_CLK("tsec.emc",	"tegra_tsec",		"emc",	&tegra_clk_emc, NULL, 0, 0),
 
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	DUAL_CBUS_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_c2bus, "3d",  0, 0),
+	DUAL_CBUS_CLK("2d.cbus",	"tegra_gr2d",		"gr2d",	&tegra_clk_c2bus, "2d",  0, 0),
+	SHARED_CLK("cap.c2bus",	"cap.c3bus",		NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
+
+	DUAL_CBUS_CLK("host1x.cbus",	"tegra_host1x",		"host1x", &tegra_clk_c3bus, "host1x", 2, 0),
+	DUAL_CBUS_CLK("epp.cbus",	"tegra_gr2d",		"epp",	  &tegra_clk_c3bus, "epp", 0, 0),
+	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc",  &tegra_clk_c3bus, "msenc", 0, 0),
+	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",   &tegra_clk_c3bus, "tsec", 0, 0),
+	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	  &tegra_clk_c3bus, "vde", 0, 0),
+	DUAL_CBUS_CLK("se.cbus",	"tegra-se",		NULL,	  &tegra_clk_c3bus, "se",  0, 0),
+	SHARED_CLK("cap.c3bus",	"cap.c3bus",		NULL,	  &tegra_clk_c3bus, NULL,  0, SHARED_CEILING),
+#else
 	SHARED_CLK("host1x.cbus", "tegra_host1x",	"host1x", &tegra_clk_cbus, "host1x", 2, 0),
 	SHARED_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_cbus, "3d",  0, 0),
 	SHARED_CLK("2d.cbus",	"tegra_gr2d",		"gr2d",	&tegra_clk_cbus, "2d",  0, 0),
@@ -5166,6 +5234,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("vde.cbus",	"tegra-avp",		"vde",	&tegra_clk_cbus, "vde", 0, 0),
 	SHARED_CLK("se.cbus",	"tegra-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+#endif
 };
 
 #define CLK_DUPLICATE(_name, _dev, _con)		\
@@ -5275,7 +5344,12 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
 	&tegra_clk_emc,
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	&tegra_clk_c2bus,
+	&tegra_clk_c3bus,
+#else
 	&tegra_clk_cbus,
+#endif
 };
 
 /* Return true from this function if the target rate can be locked without

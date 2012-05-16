@@ -338,4 +338,7 @@ config TEGRA_PREPOWER_WIFI
 
 config TEGRA_DYNAMIC_CBUS
 	bool
+
+config TEGRA_DUAL_CBUS
+	bool
 endif
