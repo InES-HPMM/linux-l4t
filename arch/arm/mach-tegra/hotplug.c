@@ -63,7 +63,7 @@ void tegra_cpu_die(unsigned int cpu)
 #endif
 
 	/* Flush the L1 data cache. */
-	flush_cache_all();
+	tegra_flush_l1_cache();
 
 	/* Shut down the current CPU. */
 	tegra_hotplug_shutdown();
