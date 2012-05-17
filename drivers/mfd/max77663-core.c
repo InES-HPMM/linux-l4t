@@ -59,6 +59,7 @@
 #define MAX77663_REG_GPIO_ALT		0x40
 #define MAX77663_REG_ONOFF_CFG1		0x41
 #define MAX77663_REG_ONOFF_CFG2		0x42
+#define MAX77663_REG_CID5			0x5D
 
 #define IRQ_TOP_GLBL_MASK		(1 << 7)
 #define IRQ_TOP_GLBL_SHIFT		7
@@ -1297,6 +1298,7 @@ static int max77663_probe(struct i2c_client *client,
 	struct max77663_platform_data *pdata = client->dev.platform_data;
 	struct max77663_chip *chip;
 	int ret = 0;
+	u8 val;
 
 	if (pdata == NULL) {
 		dev_err(&client->dev, "probe: Invalid platform_data\n");
@@ -1328,6 +1330,14 @@ static int max77663_probe(struct i2c_client *client,
 	chip->irq_base = pdata->irq_base;
 	chip->gpio_base = pdata->gpio_base;
 	mutex_init(&chip->io_lock);
+
+	/* Dummy read to see if chip is present or not*/
+	ret = max77663_read(chip->dev, MAX77663_REG_CID5, &val, 1, 0);
+	if (ret < 0) {
+		dev_err(chip->dev, "preinit: Failed to get register 0x%x\n",
+				MAX77663_REG_CID5);
+		return ret;
+	}
 
 	max77663_gpio_init(chip);
 	max77663_irq_init(chip);
