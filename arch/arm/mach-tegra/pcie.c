@@ -516,7 +516,7 @@ static void tegra_pcie_relax_enable(struct pci_dev *dev)
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, tegra_pcie_relax_enable);
 
-static void __init tegra_pcie_preinit(void)
+static void tegra_pcie_preinit(void)
 {
 	pcie_mem_space.name = "PCIe MEM Space";
 	pcie_mem_space.start = MEM_BASE_0;
