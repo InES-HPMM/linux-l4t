@@ -1542,6 +1542,30 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 	return count;
 }
 
+static ssize_t mxt_version_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int count = 0;
+
+	count += sprintf(buf + count, "%d", data->info.version);
+	count += sprintf(buf + count, "\n");
+
+	return count;
+}
+
+static ssize_t mxt_build_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int count = 0;
+
+	count += sprintf(buf + count, "%d", data->info.build);
+	count += sprintf(buf + count, "\n");
+
+	return count;
+}
+
 static ssize_t mxt_pause_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1661,11 +1685,15 @@ static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,
 		   mxt_debug_enable_store);
 static DEVICE_ATTR(pause_driver, S_IWUSR | S_IRUSR, mxt_pause_show,
 		   mxt_pause_store);
+static DEVICE_ATTR(version, S_IRUGO, mxt_version_show, NULL);
+static DEVICE_ATTR(build, S_IRUGO, mxt_build_show, NULL);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_update_fw.attr,
 	&dev_attr_debug_enable.attr,
 	&dev_attr_pause_driver.attr,
+	&dev_attr_version.attr,
+	&dev_attr_build.attr,
 	NULL
 };
 
