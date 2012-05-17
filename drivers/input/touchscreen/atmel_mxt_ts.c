@@ -973,10 +973,10 @@ int mxt_download_config(struct mxt_data *data, const char *fn)
 			goto release;
 		}
 
+		/* This error may be encountered on using a config from a later
+		 * firmware version */
 		if (size > object->size) {
-			dev_err(dev, "Object length exceeded!\n");
-			ret = -EINVAL;
-			goto release;
+			dev_err(dev, "Warning: Object length exceeded\n");
 		}
 
 		if (instance >= object->instances) {
@@ -997,9 +997,11 @@ int mxt_download_config(struct mxt_data *data, const char *fn)
 				goto release;
 			}
 
-			ret = mxt_write_reg(data->client, reg + i, val);
-			if (ret)
-				goto release;
+			if (i < object->size) {
+				ret = mxt_write_reg(data->client, reg + i, val);
+				if (ret)
+					goto release;
+			}
 
 			pos += offset;
 		}
