@@ -1105,6 +1105,13 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 	return mapping->base + (start << (mapping->order + PAGE_SHIFT));
 }
 
+static dma_addr_t arm_iommu_iova_alloc(struct device *dev, size_t size)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+
+	return __alloc_iova(mapping, size);
+}
+
 static inline void __free_iova(struct dma_iommu_mapping *mapping,
 			       dma_addr_t addr, size_t size)
 {
@@ -1117,6 +1124,14 @@ static inline void __free_iova(struct dma_iommu_mapping *mapping,
 	spin_lock_irqsave(&mapping->lock, flags);
 	bitmap_clear(mapping->bitmap, start, count);
 	spin_unlock_irqrestore(&mapping->lock, flags);
+}
+
+static void arm_iommu_iova_free(struct device *dev, dma_addr_t addr,
+				size_t size)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+
+	__free_iova(mapping, addr, size);
 }
 
 static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
@@ -1839,6 +1854,8 @@ struct dma_map_ops iommu_ops = {
 
 	.set_dma_mask		= arm_dma_set_mask,
 
+	.iova_alloc		= arm_iommu_iova_alloc,
+	.iova_free		= arm_iommu_iova_free,
 	.iova_get_free_total	= arm_iommu_iova_get_free_total,
 	.iova_get_free_max	= arm_iommu_iova_get_free_max,
 };
