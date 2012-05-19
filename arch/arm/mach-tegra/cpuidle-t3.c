@@ -205,6 +205,7 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 	bool sleep_completed = false;
 	bool multi_cpu_entry = false;
 	int bin;
+	unsigned int flag = 0;
 	s64 sleep_time;
 
 	/* LP2 entry time */
@@ -286,7 +287,10 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	}
 
-	if (tegra_idle_lp2_last(sleep_time, 0) == 0)
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	flag = get_power_gating_partition();
+#endif
+	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
 		sleep_completed = true;
 	else {
 		int irq = tegra_gic_pending_interrupt();

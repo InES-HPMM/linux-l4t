@@ -160,7 +160,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 #define	POWER_GATING_OPTION_LEN	8
 static char power_gating_option[8] __read_mostly =
 											{'c', 'r', 'a', 'i', 'l', '\0'};
-static int power_gating_mode = FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+static int power_gating_mode = TEGRA_POWER_CLUSTER_PART_CRAIL;
 static struct kparam_string power_gating __read_mostly = {
 	.maxlen = POWER_GATING_OPTION_LEN,
 	.string = power_gating_option,
@@ -178,12 +178,12 @@ static int power_gating_set(const char *buffer, const struct kernel_param *kp)
 	}
 
 	if (!strncmp(buffer, "noncpu", 6))
-		mode = FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
+		mode = TEGRA_POWER_CLUSTER_PART_NONCPU;
 	else if (!strncmp(buffer, "crail", 5))
-		mode = FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+		mode = TEGRA_POWER_CLUSTER_PART_CRAIL;
 	else if (!strncmp(buffer, "emu", 3))
-		mode = FLOW_CTRL_CSR_ENABLE_EXT_MASK;
-	else if (!strncmp(buffer, "cpu", 3))
+		mode = TEGRA_POWER_CLUSTER_PART_MASK;
+	else if (!strncmp(buffer, "none", 4))
 		mode = 0;
 
 	if (mode >= 0) {

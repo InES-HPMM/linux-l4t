@@ -518,20 +518,20 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 
 unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 {
-	u32 mode;	/* hardware + software power mode flags */
+	u32 reg;
 	unsigned int remain;
 	pgd_t *pgd;
 
 	/* Only the last cpu down does the final suspend steps */
-	mode = readl(pmc + PMC_CTRL);
-	mode |= TEGRA_POWER_CPU_PWRREQ_OE;
+	reg = readl(pmc + PMC_CTRL);
+	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 	if (pdata->combined_req)
-		mode &= ~TEGRA_POWER_PWRREQ_OE;
+		reg &= ~TEGRA_POWER_PWRREQ_OE;
 	else
-		mode |= TEGRA_POWER_PWRREQ_OE;
-	mode &= ~TEGRA_POWER_EFFECT_LP0;
-	writel(mode, pmc + PMC_CTRL);
-	mode |= flags;
+		reg |= TEGRA_POWER_PWRREQ_OE;
+
+	reg &= ~TEGRA_POWER_EFFECT_LP0;
+	writel(reg, pmc + PMC_CTRL);
 
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_start);
 
@@ -553,17 +553,36 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 				writel(UN_PWRGATE_CPU,
 				       pmc + PMC_PWRGATE_TOGGLE);
 		}
-		tegra_cluster_switch_prolog(mode);
+		tegra_cluster_switch_prolog(flags);
 	} else {
 		set_power_timers(pdata->cpu_timer, pdata->cpu_off_timer,
 			clk_get_rate_all_locked(tegra_pclk));
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+		reg = readl(FLOW_CTRL_CPU_CSR(0));
+		reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
+		if (is_lp_cluster()) {
+			/* for LP cluster, there is no option for rail gating */
+			if ((flags & TEGRA_POWER_CLUSTER_PART_MASK) ==
+						TEGRA_POWER_CLUSTER_PART_MASK)
+				reg |= FLOW_CTRL_CSR_ENABLE_EXT_EMU;
+			else if (flags)
+				reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
+		}
+		else {
+			if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
+				reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+			if (flags & TEGRA_POWER_CLUSTER_PART_NONCPU)
+				reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
+		}
+		writel(reg, FLOW_CTRL_CPU_CSR(0));
+#endif
 	}
 
 	if (sleep_time)
 		tegra_lp2_set_trigger(sleep_time);
 
 	cpu_cluster_pm_enter();
-	suspend_cpu_complex(mode);
+	suspend_cpu_complex(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 	flush_cache_all();
 	/*
@@ -580,7 +599,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 
 	tegra_init_cache(false);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
-	restore_cpu_complex(mode);
+	restore_cpu_complex(flags);
 	cpu_cluster_pm_exit();
 
 	remain = tegra_lp2_timer_remain();
@@ -588,7 +607,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 		tegra_lp2_set_trigger(0);
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
-		tegra_cluster_switch_epilog(mode);
+		tegra_cluster_switch_epilog(flags);
 		trace_cpu_cluster(POWER_CPU_CLUSTER_DONE);
 	}
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_epilog);
