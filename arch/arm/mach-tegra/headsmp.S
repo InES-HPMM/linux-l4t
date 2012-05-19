@@ -3,7 +3,7 @@
  *
  * CPU initialization routines for Tegra SoCs
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -152,9 +152,11 @@ enable_icache_bp:
 /*
  *	tegra_invalidate_cache
  *
- *	  Invalidates the L1 or L2 data cache (no clean) during initial boot of a
- *    cpu. For architecture with external L2, invalidate L1 only. For
- *    architecture with integrated L2 and SCU, invalidate L2 instead.
+ *	  Invalidates the L1 or L2 data cache (no clean) during initial boot of
+ *	  a cpu. For architecture with external L2, invalidate L1 only. For
+ *	  architecture with integrated L2 and SCU, invalidate L2 if current CPU
+ *	  boots up with a power gated NC partition initially or power rail was
+ *	  initially off, invalidates L1 in other cases
  *
  *	  Corrupted registers: r0-r6
  */
@@ -162,7 +164,13 @@ tegra_invalidate_cache:
 #if defined(CONFIG_HAVE_ARM_SCU)
 	mov	r0, #0
 #else
-	mov	r0, #2
+	cpu_id	r0
+	cpu_to_csr_reg	r1, r0
+	mov32	r0, TEGRA_FLOW_CTRL_BASE
+	ldr	r0, [r0, r1]
+	tst	r0, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
+	movne	r0, #2
+	moveq	r0, #0
 #endif
 	mcr	p15, 2, r0, c0, c0, 0
 	mrc	p15, 1, r0, c0, c0, 0

@@ -244,9 +244,24 @@ ENTRY(tegra3_sleep_cpu_secondary_finish)
 
 	dsb
 #ifdef MULTI_CACHE
+#ifdef CONFIG_HAVE_ARM_SCU
 	mov32	r10, cpu_cache
 	mov	lr, pc
 	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
+	cpu_id	r2
+	cpu_to_csr_reg	r1,	r2
+	mov32	r10, TEGRA_FLOW_CTRL_VIRT
+	ldr	r10, [r10, r1]
+	tst	r10, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
+	beq	flush_l1
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+	b	no_l2_sync
+flush_l1:
+	bl	tegra_flush_l1_cache
+#endif
 #else
 	bl	__cpuc_flush_kern_all
 #endif

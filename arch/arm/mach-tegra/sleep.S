@@ -162,7 +162,7 @@ ENTRY(tegra_flush_l1_cache)
 	dsb
 	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}
 	mov	pc, lr
-ENDPROC(tegra_flush_l1_dcache)
+ENDPROC(tegra_flush_l1_cache)
 
 #ifdef CONFIG_PM_SLEEP
 /*
