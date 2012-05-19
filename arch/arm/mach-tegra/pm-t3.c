@@ -200,23 +200,23 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 	   and immediate flags. If an actual CPU switch is to be performed,
 	   re-write the CSR register with the desired values. */
 	reg = readl(FLOW_CTRL_CPU_CSR(0));
-	reg &= ~(FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE |
-		 FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER);
+	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
+		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
 
 	/* Program flow controller for immediate wake if requested */
 	if (flags & TEGRA_POWER_CLUSTER_IMMEDIATE)
-		reg |= FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE;
+		reg |= FLOW_CTRL_CSR_IMMEDIATE_WAKE;
 
 	/* Do nothing if no switch actions requested */
 	if (!target_cluster)
 		goto done;
 
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-	reg &= ~FLOW_CTRL_CPU_CSR_ENABLE_EXT_MASK;
+	reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
 	if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
-		reg |= FLOW_CTRL_CPU_CSR_ENABLE_EXT_CRAIL;
+		reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
 	if (flags & TEGRA_POWER_CLUSTER_PART_NONCPU)
-		reg |= FLOW_CTRL_CPU_CSR_ENABLE_EXT_NCPU;
+		reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
 #endif
 
 	if ((current_cluster != target_cluster) ||
@@ -229,7 +229,7 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 			}
 
 			/* Set up the flow controller to switch CPUs. */
-			reg |= FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER;
+			reg |= FLOW_CTRL_CSR_SWITCH_CLUSTER;
 		}
 	}
 
@@ -302,10 +302,10 @@ void tegra_cluster_switch_epilog(unsigned int flags)
 	   the flow controller to prevent undesirable side-effects
 	   for future users of the flow controller. */
 	reg = readl(FLOW_CTRL_CPU_CSR(0));
-	reg &= ~(FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE |
-		 FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER);
+	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
+		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-	reg &= ~FLOW_CTRL_CPU_CSR_ENABLE_EXT_MASK;
+	reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
 #endif
 	writel(reg, FLOW_CTRL_CPU_CSR(0));
 
