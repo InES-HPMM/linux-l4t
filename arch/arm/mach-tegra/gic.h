@@ -24,6 +24,8 @@ void tegra_gic_cpu_enable(void);
 
 #endif
 
+#define	GIC_V1	1
+#define	GIC_V2	2
 
 #if defined(CONFIG_PM_SLEEP)
 
@@ -41,6 +43,7 @@ void tegra_gic_affinity_to_cpu0(void);
 #endif
 #endif
 
+u32 tegra_gic_version(void);
 void __init tegra_gic_init(void);
 
 #endif /* _MACH_TEGRA_GIC_H_ */

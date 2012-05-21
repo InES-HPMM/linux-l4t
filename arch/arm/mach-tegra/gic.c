@@ -26,8 +26,10 @@
 #include "gic.h"
 #include "pm.h"
 
+#define ARM_VERSION_CORTEX_A15	0xC0F
+
 void __iomem *tegra_gic_cpu_base;
-static bool is_vgic;
+static u32 gic_version;
 
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 
@@ -37,7 +39,7 @@ void tegra_gic_cpu_disable(bool pass_through)
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (pass_through) {
-		if (is_vgic)
+		if (gic_version == GIC_V2)
 			gic_cpu_ctrl = 0x1E0;
 		else
 			gic_cpu_ctrl = 2;
@@ -152,16 +154,20 @@ static struct notifier_block tegra_gic_notifier_block = {
 };
 #endif
 
+u32 tegra_gic_version(void)
+{
+	return gic_version;
+}
+
 void __init tegra_gic_init(void)
 {
 	u32 midr;
 
 	__asm__("mrc p15, 0, %0, c0, c0, 0\n" : "=r" (midr));
 
-	if ((midr & 0x0000FFF0) != 0x0000C090)
-		is_vgic = true;
+	midr = (midr & 0x0000FFF0) >> 4;
 
-	if (is_vgic)
+	if (midr == ARM_VERSION_CORTEX_A15)
 		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x2000);
 	else
 		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
@@ -169,8 +175,11 @@ void __init tegra_gic_init(void)
 	gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
 		 tegra_gic_cpu_base);
 
+	gic_version = readl(IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE)+0xFE8);
+	gic_version = (gic_version & 0xF0) >> 4;
+
 #ifdef CONFIG_PM_SLEEP
-	if (is_vgic)
+	if (gic_version == GIC_V2)
 		cpu_pm_register_notifier(&tegra_gic_notifier_block);
 #endif
 }
