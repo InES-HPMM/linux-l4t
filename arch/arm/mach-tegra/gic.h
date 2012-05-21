@@ -19,7 +19,7 @@
 
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 
-void tegra_gic_cpu_disable(bool pass_through);
+void tegra_gic_cpu_disable(bool disable_pass_through);
 void tegra_gic_cpu_enable(void);
 
 #endif

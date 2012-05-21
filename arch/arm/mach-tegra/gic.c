@@ -33,12 +33,12 @@ static u32 gic_version;
 
 #if defined(CONFIG_HOTPLUG_CPU) || defined(CONFIG_PM_SLEEP)
 
-void tegra_gic_cpu_disable(bool pass_through)
+void tegra_gic_cpu_disable(bool disable_pass_through)
 {
 	u32 gic_cpu_ctrl = 0;
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	if (pass_through) {
+	if (disable_pass_through) {
 		if (gic_version == GIC_V2)
 			gic_cpu_ctrl = 0x1E0;
 		else
