@@ -150,13 +150,6 @@ config TEGRA_DSI
 	help
 	  Say Y here to enable the DSI panel.
 
-config TEGRA_DSI2LVDS
-	bool "Support DSI to LVDS bridge"
-	default n
-	select TEGRA_DSI
-	help
-	  Say Y here to support DSI-to-LVDS bridge controller for display.
-
 config TEGRA_DSI_GANGED_MODE
 	bool "Enable DSI ganged mode"
 	depends on ARCH_TEGRA_11x_SOC && TEGRA_DC
