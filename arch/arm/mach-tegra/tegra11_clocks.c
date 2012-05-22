@@ -3679,6 +3679,21 @@ static inline bool cbus_user_is_slower(struct clk *a, struct clk *b)
 		b->u.shared_bus_user.client->max_rate * b->div;
 }
 
+static inline bool cbus_user_request_is_lower(struct clk *a, struct clk *b)
+{
+	return a->u.shared_bus_user.rate * a->div <
+		b->u.shared_bus_user.rate * b->div;
+}
+
+static inline void cbus_move_enabled_user(
+	struct clk *user, struct clk *dst, struct clk *src)
+{
+	clk_enable(dst);
+	list_move_tail(&user->u.shared_bus_user.node, &dst->shared_bus_list);
+	clk_disable(src);
+	clk_reparent(user, dst);
+}
+
 #ifdef CONFIG_TEGRA_DYNAMIC_CBUS
 static int tegra11_clk_cbus_update(struct clk *bus)
 {
@@ -3767,6 +3782,56 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 };
 #endif
 
+static int tegra11_clk_cbus_migrate_users(struct clk *user)
+{
+#ifdef CONFIG_TEGRA_MIGRATE_CBUS_USERS
+	struct clk *src_bus, *dst_bus, *top_user, *c;
+	struct list_head *pos, *n;
+
+	if (!user->u.shared_bus_user.client || !user->inputs)
+		return 0;
+
+	/* Dual cbus on Tegra11 */
+	src_bus = user->inputs[0].input;
+	dst_bus = user->inputs[1].input;
+
+	if (!src_bus->u.cbus.top_user && !dst_bus->u.cbus.top_user)
+		return 0;
+
+	/* Make sure top user on the source bus is requesting highest rate */
+	if (!src_bus->u.cbus.top_user || (dst_bus->u.cbus.top_user &&
+		cbus_user_request_is_lower(src_bus->u.cbus.top_user,
+					   dst_bus->u.cbus.top_user)))
+		swap(src_bus, dst_bus);
+
+	/* If top user is the slow one on its own (source) bus, do nothing */
+	top_user = src_bus->u.cbus.top_user;
+	BUG_ON(!top_user->u.shared_bus_user.client);
+	if (top_user == src_bus->u.cbus.slow_user)
+		return 0;
+
+	/* If source bus top user is slower than all users on destination bus,
+	   move top user; otherwise move all users slower than the top one */
+	if (!dst_bus->u.cbus.slow_user ||
+	    cbus_user_is_slower(top_user, dst_bus->u.cbus.slow_user)) {
+		cbus_move_enabled_user(top_user, dst_bus, src_bus);
+	} else {
+		list_for_each_safe(pos, n, &src_bus->shared_bus_list) {
+			c = list_entry(pos, struct clk, u.shared_bus_user.node);
+			if (c->u.shared_bus_user.enabled &&
+			    c->u.shared_bus_user.client &&
+			    cbus_user_is_slower(c, top_user))
+				cbus_move_enabled_user(c, dst_bus, src_bus);
+		}
+	}
+
+	/* Update destination bus 1st (move clients), then source */
+	tegra_clk_shared_bus_update(dst_bus);
+	tegra_clk_shared_bus_update(src_bus);
+#endif
+	return 0;
+}
+
 static struct clk_ops tegra_clk_cbus_ops = {
 	.init = tegra11_clk_cbus_init,
 	.enable = tegra11_clk_cbus_enable,
@@ -3830,6 +3895,17 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 
 	return clk_set_rate_locked(bus, rate);
 };
+
+static int tegra_clk_shared_bus_migrate_users(struct clk *user)
+{
+	if (detach_shared_bus)
+		return 0;
+
+	/* Only cbus migration is supported */
+	if (user->flags & PERIPH_ON_CBUS)
+		return tegra11_clk_cbus_migrate_users(user);
+	return -ENOSYS;
+}
 
 static void tegra_clk_shared_bus_init(struct clk *c)
 {
@@ -3910,8 +3986,10 @@ static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 	c->u.shared_bus_user.rate = rate;
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
+	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+		tegra_clk_shared_bus_migrate_users(c);
 		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
+	}
 
 	return 0;
 }
@@ -3948,8 +4026,10 @@ static int tegra_clk_shared_bus_enable(struct clk *c)
 	if (c->u.shared_bus_user.client)
 		ret = clk_enable(c->u.shared_bus_user.client);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
+	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+		tegra_clk_shared_bus_migrate_users(c);
 		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
+	}
 
 	return ret;
 }
@@ -3964,8 +4044,10 @@ static void tegra_clk_shared_bus_disable(struct clk *c)
 	c->u.shared_bus_user.enabled = false;
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
+	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+		tegra_clk_shared_bus_migrate_users(c);
 		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
+	}
 }
 
 static void tegra_clk_shared_bus_reset(struct clk *c, bool assert)

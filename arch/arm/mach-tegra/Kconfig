@@ -341,4 +341,8 @@ config TEGRA_DYNAMIC_CBUS
 
 config TEGRA_DUAL_CBUS
 	bool "Use two plls (PLLC2/PLLC3) as graphics clocks sources"
+
+config TEGRA_MIGRATE_CBUS_USERS
+	bool "Move cbus users between source plls to optimize cumulative dvfs"
+	depends on TEGRA_DYNAMIC_CBUS && TEGRA_DUAL_CBUS
 endif
