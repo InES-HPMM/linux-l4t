@@ -139,6 +139,7 @@ config ARCH_TEGRA_HAS_ARM_SCU
 
 config ARCH_TEGRA_14x_SOC
 	bool "Tegra 14x family SOC"
+	select ARM_ERRATA_764369 if SMP
 	select ARM_GIC
 	select ARM_SMP_TWD
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
