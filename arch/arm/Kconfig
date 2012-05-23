@@ -2144,6 +2144,8 @@ endif
 
 source "drivers/cpuidle/Kconfig"
 
+source "drivers/cpuquiet/Kconfig"
+
 endmenu
 
 menu "Floating point emulation"
