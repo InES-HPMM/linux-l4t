@@ -769,6 +769,10 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	int ret;
 
+	/* See d4a2eca781bfd7323bfd98dbc7fd63c7d613fef2,
+	 * unfortunately, we've got some patches that require the id still */
+	BUG_ON(pdev->id < 0);
+
 	i2s = &i2scont[pdev->id];
 	dev_set_drvdata(&pdev->dev, i2s);
 
