@@ -337,8 +337,8 @@ config TEGRA_PREPOWER_WIFI
 	  Pre-power up the on board WiFi chip
 
 config TEGRA_DYNAMIC_CBUS
-	bool
+	bool "Adjust dynamically graphics clocks cumulative dvfs table"
 
 config TEGRA_DUAL_CBUS
-	bool
+	bool "Use two plls (PLLC2/PLLC3) as graphics clocks sources"
 endif
