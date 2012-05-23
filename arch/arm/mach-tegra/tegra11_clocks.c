@@ -603,6 +603,12 @@ static unsigned long tegra11_clk_m_autodetect_rate(struct clk *c)
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_4);
 		break;
+	case 115200:	/* fake 13M for QT */
+	case 230400:	/* fake 13M for QT */
+		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
+		c->rate = 13000000;
+		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		break;
 	default:
 		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
 		BUG();
