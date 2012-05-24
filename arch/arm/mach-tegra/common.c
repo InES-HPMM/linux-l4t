@@ -186,10 +186,12 @@ static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
 	{ "pll_p_out2",	 "pll_p",	102000000,	false },
 	{ "sclk",	 "pll_p_out2",	102000000,	true },
 	{ "pll_p_out4",	 "pll_p",	204000000,	true },
+	{ "host1x",	"pll_p",	102000000,	false },
 #else
 	{ "pll_p_out2",	"pll_p",	108000000,	false },
 	{ "sclk",	"pll_p_out2",	108000000,	true },
 	{ "pll_p_out4",	"pll_p",	216000000,	true },
+	{ "host1x",	"pll_p",	108000000,	false },
 #endif
 	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
 	{ "cl_dvfs_soc", "pll_p",	54000000,	false },
