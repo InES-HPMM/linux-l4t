@@ -1,3 +1,5 @@
+subdir-ccflags-y := -Werror
+
 # Tegra platform Support
 snd-soc-tegra-pcm-objs := tegra_pcm.o
 snd-soc-tegra-utils-objs += tegra_asoc_utils.o
