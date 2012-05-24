@@ -30,6 +30,7 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/w1.h>
 
@@ -107,6 +108,7 @@
 
 struct tegra_device {
 	bool ready;
+	struct platform_device  *pdev;
 	struct w1_bus_master bus_master;
 	struct clk *clk;
 	void __iomem *ioaddr;
@@ -174,7 +176,7 @@ static inline int w1_wait(struct tegra_device *dev, unsigned long mask)
 	spin_unlock_irqrestore(&dev->spinlock, irq_flags);
 
 	if (unlikely(intr_status & BIT_XFER_ERRORS ||
-		     !(intr_status & mask)))
+			!(intr_status & mask)))
 		return -EIO;
 	return 0;
 }
@@ -184,7 +186,7 @@ static inline int w1_wait(struct tegra_device *dev, unsigned long mask)
 static int w1_setup(struct tegra_device *dev)
 {
 	unsigned long value;
-	clk_enable(dev->clk);
+	pm_runtime_get_sync(&dev->pdev->dev);
 
 	value =
 		((dev->timings->tslot & ORWT_TSLOT_MASK) << ORWT_TSLOT_SHIFT) |
@@ -207,7 +209,7 @@ static int w1_setup(struct tegra_device *dev)
 	   anything was set in it. */
 	w1_imask(dev, 0);
 	w1_writel(dev, 0xFFFFFFFF, OWR_INTR_STATUS);
-	clk_disable(dev->clk);
+	pm_runtime_put_sync(&dev->pdev->dev);
 	return 0;
 }
 
@@ -254,7 +256,7 @@ static u8 tegra_w1_touch_bit(void *data, u8 bit)
 	if (!dev->ready)
 		goto done;
 
-	clk_enable(dev->clk);
+	pm_runtime_get_sync(&dev->pdev->dev);
 	w1_imask(dev, OI_BIT_XFER_DONE);
 	dev->transfer_completion = &touch_done;
 	control =
@@ -291,7 +293,7 @@ done:
 
 	w1_imask(dev, 0);
 	dev->transfer_completion = NULL;
-	clk_disable(dev->clk);
+	pm_runtime_put_sync(&dev->pdev->dev);
 	mutex_unlock(&dev->mutex);
 	return return_bit;
 }
@@ -310,7 +312,7 @@ static u8 tegra_w1_reset_bus(void *data)
 	if (!dev->ready)
 		goto done;
 
-	clk_enable(dev->clk);
+	pm_runtime_get_sync(&dev->pdev->dev);
 	w1_imask(dev, OI_PRESENCE_DONE);
 	dev->transfer_completion = &reset_done;
 	value =
@@ -335,9 +337,27 @@ done:
 
 	w1_imask(dev, 0);
 	dev->transfer_completion = NULL;
-	clk_disable(dev->clk);
+	pm_runtime_put_sync(&dev->pdev->dev);
 	mutex_unlock(&dev->mutex);
 	return presence;
+}
+
+static int tegra_w1_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_device *tegra_dev = platform_get_drvdata(pdev);
+
+	clk_disable(tegra_dev->clk);
+	return 0;
+}
+
+static int tegra_w1_runtime_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_device *tegra_dev = platform_get_drvdata(pdev);
+
+	clk_enable(tegra_dev->clk);
+	return 0;
 }
 
 static int tegra_w1_probe(struct platform_device *pdev)
@@ -368,10 +388,20 @@ static int tegra_w1_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	platform_set_drvdata(pdev, dev);
+	dev->pdev = pdev;
 	dev->clk = clk_get(&pdev->dev, plat->clk_id);
 	if (IS_ERR(dev->clk)) {
 		rc = PTR_ERR(dev->clk);
 		goto cleanup_alloc;
+	}
+
+	pm_runtime_enable(&pdev->dev);
+	if (!pm_runtime_enabled(&pdev->dev)) {
+		rc = tegra_w1_runtime_resume(&pdev->dev);
+		if (rc) {
+			dev_err(&pdev->dev, "runtime resume failed %d", rc);
+			goto err_pm_disable;
+		}
 	}
 
 	/* OWR requires 1MHz clock. */
@@ -422,6 +452,8 @@ cleanup_reqmem:
 			   res->end - res->start + 1);
 cleanup_clock:
 	clk_put(dev->clk);
+err_pm_disable:
+	pm_runtime_disable(&pdev->dev);
 cleanup_alloc:
 	platform_set_drvdata(pdev, NULL);
 	kfree(dev);
@@ -442,34 +474,50 @@ static int tegra_w1_remove(struct platform_device *pdev)
 	iounmap(dev->ioaddr);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	release_mem_region(res->start, res->end - res->start + 1);
+	pm_runtime_disable(&pdev->dev);
+	if (!pm_runtime_status_suspended(&pdev->dev))
+		tegra_w1_runtime_suspend(&pdev->dev);
 	clk_put(dev->clk);
 	platform_set_drvdata(pdev, NULL);
 	kfree(dev);
 	return 0;
 }
-
-static int tegra_w1_suspend(struct platform_device *pdev, pm_message_t state)
+#ifdef CONFIG_PM
+static int tegra_w1_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int tegra_w1_resume(struct platform_device *pdev)
+static int tegra_w1_resume(struct device *dev)
 {
-	struct tegra_device *dev = platform_get_drvdata(pdev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_device *tegra_dev = platform_get_drvdata(pdev);
 
 	/* TODO: Is this necessary? I would assume yes. */
-	w1_setup(dev);
+	w1_setup(tegra_dev);
 	return 0;
 }
+#endif
+
+
+static const struct dev_pm_ops tegra_w1_dev_pm_ops = {
+#if defined(CONFIG_PM_RUNTIME)
+	.runtime_suspend = tegra_w1_runtime_suspend,
+	.runtime_resume = tegra_w1_runtime_resume,
+#endif
+#ifdef CONFIG_PM
+	.suspend = tegra_w1_suspend,
+	.resume = tegra_w1_resume,
+#endif
+};
 
 static struct platform_driver tegra_w1_driver = {
 	.probe = tegra_w1_probe,
 	.remove = tegra_w1_remove,
-	.suspend = tegra_w1_suspend,
-	.resume = tegra_w1_resume,
 	.driver = {
 		   .name = DRIVER_NAME,
 		   .owner = THIS_MODULE,
+		   .pm = &tegra_w1_dev_pm_ops,
 	},
 };
 
