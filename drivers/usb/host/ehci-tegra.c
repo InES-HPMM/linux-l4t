@@ -449,7 +449,7 @@ static int tegra_ehci_hub_control(
 				if (hsic && (wIndex == 0))
 					tegra_usb_phy_bus_reset(tegra->phy);
 			}
-
+			clear_bit(wIndex-1, &ehci->resuming_ports);
 			break;
 		}
 		case USB_PORT_FEAT_POWER:
