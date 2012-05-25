@@ -31,6 +31,12 @@
 #define TEGRA_USB2_BASE			0xC5004000
 #define TEGRA_USB3_BASE			0xC5008000
 
+#if 0
+#define EHCI_DBG(stuff...)	pr_info("ehci-tegra: " stuff)
+#else
+#define EHCI_DBG(stuff...)	do {} while (0)
+#endif
+
 static const char driver_name[] = "tegra-ehci";
 
 #define TEGRA_USB_DMA_ALIGN 32
@@ -174,6 +180,11 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	spin_unlock(&ehci->lock);
 
+	EHCI_DBG("%s() cmd = 0x%x, int_sts = 0x%x, portsc = 0x%x\n", __func__,
+		ehci_readl(ehci, &ehci->regs->command),
+		ehci_readl(ehci, &ehci->regs->status),
+		ehci_readl(ehci, &ehci->regs->port_status[0]));
+
 	irq_status = ehci_irq(hcd);
 
 	if (pmc_remote_wakeup) {
@@ -182,8 +193,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 
 	if (ehci->controller_remote_wakeup) {
 		ehci->controller_remote_wakeup = false;
-		/* disable interrupts */
-		ehci_writel(ehci, 0, &ehci->regs->intr_enable);
 		tegra_usb_phy_pre_resume(tegra->phy, true);
 		tegra->port_resuming = 1;
 	}
@@ -212,33 +221,30 @@ static int tegra_ehci_hub_control(
 		return retval;
 	}
 
-	status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
-
-	spin_lock_irqsave(&ehci->lock, flags);
 	/* Do tegra phy specific actions based on the type request */
 	switch (typeReq) {
 	case GetPortStatus:
-		if (time_after_eq(jiffies, ehci->reset_done[wIndex - 1])) {
-			if (tegra->port_resuming) {
-				int delay = ehci->reset_done[wIndex-1] - jiffies;
-				/* Sometimes it seems we get called too soon... In that case, wait.*/
-				if (delay > 0) {
-					ehci_dbg(ehci, "GetPortStatus called too soon, waiting %dms...\n", delay);
-					mdelay(jiffies_to_msecs(delay));
-				}
-				/* Ensure the port PORT_SUSPEND and PORT_RESUME has cleared */
-				if (handshake(ehci, status_reg, (PORT_SUSPEND | PORT_RESUME), 0, 25000)) {
-					pr_err("%s: timeout waiting for SUSPEND to clear\n", __func__);
-				}
-				tegra_usb_phy_post_resume(tegra->phy);
-				tegra->port_resuming = 0;
-				/* If run bit is not set by now enable it */
-				if (ehci->command & CMD_RUN) {
-					ehci->command |= CMD_RUN;
-					ehci_writel(ehci, ehci->command,
-						&ehci->regs->command);
-				}
+		if (tegra->port_resuming) {
+			int delay = ehci->reset_done[wIndex-1] - jiffies;
+			/* Sometimes it seems we get called too soon... In that case, wait.*/
+			if (delay > 0) {
+				ehci_dbg(ehci, "GetPortStatus called too soon, waiting %dms...\n", delay);
+				mdelay(jiffies_to_msecs(delay));
 			}
+			status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
+			/* Ensure the port PORT_SUSPEND and PORT_RESUME has cleared */
+			if (handshake(ehci, status_reg, (PORT_SUSPEND | PORT_RESUME), 0, 25000)) {
+				pr_err("%s: timeout waiting for SUSPEND to clear\n", __func__);
+			}
+			tegra_usb_phy_post_resume(tegra->phy);
+			tegra->port_resuming = 0;
+			/* If run bit is not set by now enable it */
+			if (ehci->command & CMD_RUN) {
+				ehci->command |= CMD_RUN;
+				ehci_writel(ehci, ehci->command, &ehci->regs->command);
+			}
+			/* Now we can safely re-enable irqs */
+			ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
 		}
 		break;
 	case ClearPortFeature:
@@ -248,14 +254,12 @@ static int tegra_ehci_hub_control(
 		}
 		break;
 	}
-	spin_unlock_irqrestore(&ehci->lock, flags);
 
 	/* handle ehci hub control request */
 	retval = ehci_hub_control(hcd, typeReq, wValue, wIndex, buf, wLength);
 
 	/* do tegra phy specific actions based on the type request */
 	if (!retval) {
-		spin_lock_irqsave(&ehci->lock, flags);
 		switch (typeReq) {
 		case SetPortFeature:
 			if (wValue == USB_PORT_FEAT_SUSPEND) {
@@ -271,7 +275,6 @@ static int tegra_ehci_hub_control(
 			}
 			break;
 		}
-		spin_unlock_irqrestore(&ehci->lock, flags);
 	}
 
 	return retval;
@@ -323,7 +326,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int err = 0;
-
+	EHCI_DBG("%s() BEGIN\n", __func__);
 	mutex_lock(&tegra->sync_lock);
 	tegra->bus_suspended_fail = false;
 	err = ehci_bus_suspend(hcd);
@@ -332,6 +335,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	else
 		tegra_usb_phy_suspend(tegra->phy);
 	mutex_unlock(&tegra->sync_lock);
+	EHCI_DBG("%s() END\n", __func__);
 
 	return err;
 }
@@ -340,11 +344,13 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int err = 0;
+	EHCI_DBG("%s() BEGIN\n", __func__);
 
 	mutex_lock(&tegra->sync_lock);
 	tegra_usb_phy_resume(tegra->phy);
 	err = ehci_bus_resume(hcd);
 	mutex_unlock(&tegra->sync_lock);
+	EHCI_DBG("%s() END\n", __func__);
 
 	return err;
 }
