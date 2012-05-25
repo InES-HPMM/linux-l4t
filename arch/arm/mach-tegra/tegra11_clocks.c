@@ -206,7 +206,7 @@
 /* PLLC2 and PLLC3 (PLLCX) */
 #define PLLCX_USE_DYN_RAMP		0
 #define PLLCX_BASE_PHASE_LOCK		(1<<26)
-#define PLLCX_BASE_DIVP_MASK		(0xF<<PLL_BASE_DIVP_SHIFT)
+#define PLLCX_BASE_DIVP_MASK		(0x7<<PLL_BASE_DIVP_SHIFT)
 #define PLLCX_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
 #define PLLCX_BASE_DIVM_MASK		(0x3<<PLL_BASE_DIVM_SHIFT)
 #define PLLCX_PDIV_MAX	((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT))
@@ -1912,15 +1912,16 @@ static struct clk_ops tegra_plld_ops = {
  * - calculate N-value based on selected M and P
  */
 static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
-	unsigned long rate, unsigned long input_rate, unsigned long p_max)
+	unsigned long rate, unsigned long input_rate, u32 *pdiv)
 {
-	unsigned long p;
+	u32 p;
 
 	if (!rate)
 		return -EINVAL;
 
 	p = DIV_ROUND_UP(c->u.pll.vco_min, rate);
-	if (p > p_max)
+	p = c->u.pll.round_p_to_pdiv(p, pdiv);
+	if (IS_ERR_VALUE(p))
 		return -EINVAL;
 
 	cfg->m = PLL_FIXED_MDIV(c, input_rate);
@@ -1937,6 +1938,26 @@ static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 }
 
 /* FIXME: pllcx suspend/resume */
+
+static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
+/* PDIV: 0, 1, 2, 3, 4, 5,  6,  7 */
+/* p: */ 1, 2, 3, 4, 6, 8, 12, 16 };
+
+static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
+{
+	int i;
+
+	if (p) {
+		for (i = 0; i <= PLLCX_PDIV_MAX; i++) {
+			if (p <= pllcx_p[i]) {
+				if (pdiv)
+					*pdiv = i;
+				return pllcx_p[i];
+			}
+		}
+	}
+	return -EINVAL;
+}
 
 static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 					u32 n)
@@ -2002,7 +2023,7 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	   by rounding */
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
-	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min, PLLCX_PDIV_MAX + 1);
+	c->min_rate = DIV_ROUND_UP(c->u.pll.vco_min, pllcx_p[PLLCX_PDIV_MAX]);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
@@ -2025,9 +2046,9 @@ static void tegra11_pllcx_clk_init(struct clk *c)
 	 */
 	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
-	p = 2;
+	p = pllcx_p[1];
 	val = (m << PLL_BASE_DIVM_SHIFT) | (n << PLL_BASE_DIVN_SHIFT) |
-		((p - 1) << PLL_BASE_DIVP_SHIFT);
+		(1 << PLL_BASE_DIVP_SHIFT);
 	clk_writel(val, c->reg + PLL_BASE);	/* PLL disabled */
 
 	pllcx_set_defaults(c, input_rate, n);
@@ -2073,7 +2094,7 @@ static void tegra11_pllcx_clk_disable(struct clk *c)
 
 static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 {
-	u32 val;
+	u32 val, pdiv;
 	unsigned long input_rate;
 	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg, old_cfg;
@@ -2092,22 +2113,22 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	if (sel->input_rate == 0) {
 		sel = &cfg;
 
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
-				     PLLCX_PDIV_MAX + 1)) {
+		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, &pdiv)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 			       __func__, c->name, rate);
 			return -EINVAL;
 		}
+	} else {
+		val = c->u.pll.round_p_to_pdiv(sel->p, &pdiv);
+		BUG_ON(IS_ERR_VALUE(val));
 	}
-
-	BUG_ON(sel->p > PLLCX_PDIV_MAX + 1);
 	BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 	c->mul = sel->n;
 	c->div = sel->m * sel->p;
 
 	val = clk_readl(c->reg + PLL_BASE);
 	PLL_BASE_PARSE(PLLCX, old_cfg, val);
-	old_cfg.p++;
+	old_cfg.p = pllcx_p[old_cfg.p];
 
 	BUG_ON(old_cfg.m != sel->m);
 	if ((sel->n == old_cfg.n) && (sel->p == old_cfg.p))
@@ -2128,7 +2149,7 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 				PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
 		if (sel->p > old_cfg.p) {
 			val &= ~PLLCX_BASE_DIVP_MASK;
-			val |= (sel->p - 1) << PLL_BASE_DIVP_SHIFT;
+			val |= pdiv << PLL_BASE_DIVP_SHIFT;
 			clk_writel(val, c->reg + PLL_BASE);
 		}
 
@@ -2143,7 +2164,7 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 
 		if (sel->p < old_cfg.p) {
 			val &= ~PLLCX_BASE_DIVP_MASK;
-			val |= (sel->p - 1) << PLL_BASE_DIVP_SHIFT;
+			val |= pdiv << PLL_BASE_DIVP_SHIFT;
 			clk_writel(val, c->reg + PLL_BASE);
 		}
 		return 0;
@@ -2152,7 +2173,7 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 
 	val &= ~(PLLCX_BASE_DIVN_MASK | PLLCX_BASE_DIVP_MASK);
 	val |= (sel->n << PLL_BASE_DIVN_SHIFT) |
-		((sel->p - 1) << PLL_BASE_DIVP_SHIFT);
+		(pdiv << PLL_BASE_DIVP_SHIFT);
 
 	if (c->state == ON) {
 		tegra11_pllcx_clk_disable(c);
@@ -2181,10 +2202,14 @@ static u8 pllxc_p[PLLXC_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
 /* p: */ 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
 
-static u8 pllxc_pdiv(u8 p)
+static u32 pllxc_round_p_to_pdiv(u32 p, u32 *pdiv)
 {
-	BUG_ON(p > PLLXC_SW_PDIV_MAX + 1);
-	return p - 1;
+	if (!p || (p > PLLXC_SW_PDIV_MAX + 1))
+		return -EINVAL;
+
+	if (pdiv)
+		*pdiv = p - 1;
+	return p;
 }
 
 static void pllxc_get_dyn_steps(struct clk *c, unsigned long input_rate,
@@ -2413,14 +2438,15 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 	if (sel->input_rate == 0) {
 		sel = &cfg;
 
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
-				     PLLXC_SW_PDIV_MAX + 1)) {
+		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, &pdiv)) {
 			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
 			       __func__, c->name, rate);
 			return -EINVAL;
 		}
+	} else {
+		val = c->u.pll.round_p_to_pdiv(sel->p, &pdiv);
+		BUG_ON(IS_ERR_VALUE(val));
 	}
-	pdiv = pllxc_pdiv(sel->p);
 	BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 	if (rate >= c->u.pll.vco_min)
 		BUG_ON(sel->p != 1);
@@ -4139,7 +4165,8 @@ static struct clk tegra_pll_c = {
 		.vco_max   = 1400000000,
 		.freq_table = tegra_pll_c_freq_table,
 		.lock_delay = 300,
-		.misc1 = 0x88 - 0x80
+		.misc1 = 0x88 - 0x80,
+		.round_p_to_pdiv = pllxc_round_p_to_pdiv,
 	},
 };
 
@@ -4179,6 +4206,7 @@ static struct clk tegra_pll_c2 = {
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
 		.misc1 = 0x4f0 - 0x4e8,
+		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
 
@@ -4199,6 +4227,7 @@ static struct clk tegra_pll_c3 = {
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
 		.misc1 = 0x504 - 0x4fc,
+		.round_p_to_pdiv = pllcx_round_p_to_pdiv,
 	},
 };
 
@@ -4483,7 +4512,8 @@ static struct clk tegra_pll_x = {
 		.vco_max   = 1800000000,
 		.freq_table = tegra_pll_x_freq_table,
 		.lock_delay = 300,
-		.misc1 = 0x510 - 0xe0
+		.misc1 = 0x510 - 0xe0,
+		.round_p_to_pdiv = pllxc_round_p_to_pdiv,
 	},
 };
 
@@ -5466,8 +5496,7 @@ static bool tegra11_is_dyn_ramp(
 			old_cfg.p = pllxc_p[old_cfg.p];
 		}
 
-		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate,
-				      PLLXC_SW_PDIV_MAX + 1)) {
+		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
 				return true;
 		}

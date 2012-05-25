@@ -186,6 +186,7 @@ struct clk {
 			int				lock_delay;
 			unsigned long			fixed_rate;
 			u32				misc1;
+			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
 		struct {
 			struct tegra_cl_dvfs		*cl_dvfs;
