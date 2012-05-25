@@ -398,11 +398,18 @@ static int tegra_ehci_hub_control(
 		temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		/* start resume signaling */
 		ehci_writel(ehci, temp | PORT_RESUME, status_reg);
-		set_bit(wIndex-1, &ehci->resuming_ports);
 
-		ehci->reset_done[wIndex-1] = jiffies + msecs_to_jiffies(25);
-		/* whoever resumes must GetPortStatus to complete it!! */
-		goto done;
+		spin_unlock_irqrestore(&ehci->lock, flags);
+		msleep(20);
+		spin_lock_irqsave(&ehci->lock, flags);
+
+		/* Poll until the controller clears RESUME and SUSPEND */
+		if (handshake(ehci, status_reg, PORT_RESUME, 0, 2000))
+			pr_err("%s: timeout waiting for RESUME\n", __func__);
+		if (handshake(ehci, status_reg, PORT_SUSPEND, 0, 2000))
+			pr_err("%s: timeout waiting for SUSPEND\n", __func__);
+
+		ehci->reset_done[wIndex-1] = 0;
 	}
 
 	/* Handle port reset here */
@@ -449,7 +456,6 @@ static int tegra_ehci_hub_control(
 				if (hsic && (wIndex == 0))
 					tegra_usb_phy_bus_reset(tegra->phy);
 			}
-			clear_bit(wIndex-1, &ehci->resuming_ports);
 			break;
 		}
 		case USB_PORT_FEAT_POWER:
