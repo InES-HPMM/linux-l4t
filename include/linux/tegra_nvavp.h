@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_nvavp.h
  *
- * Copyright (C) 2011 NVIDIA Corp.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -89,8 +89,12 @@ struct nvavp_clock_stay_on_state_args {
 					__u32)
 #define NVAVP_IOCTL_FORCE_CLOCK_STAY_ON	_IOW(NVAVP_IOCTL_MAGIC, 0x67, \
 					struct nvavp_clock_stay_on_state_args)
+#define NVAVP_IOCTL_ENABLE_AUDIO_CLOCKS	 _IOWR(NVAVP_IOCTL_MAGIC, 0x68, \
+					struct nvavp_clock_args)
+#define NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS _IOWR(NVAVP_IOCTL_MAGIC, 0x69, \
+					struct nvavp_clock_args)
 
 #define NVAVP_IOCTL_MIN_NR		_IOC_NR(NVAVP_IOCTL_SET_NVMAP_FD)
-#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_FORCE_CLOCK_STAY_ON)
+#define NVAVP_IOCTL_MAX_NR		_IOC_NR(NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS)
 
 #endif /* __LINUX_TEGRA_NVAVP_H */

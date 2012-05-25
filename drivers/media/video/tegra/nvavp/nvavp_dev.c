@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corp.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -102,6 +102,10 @@ struct nvavp_info {
 	struct clk			*bsev_clk;
 	struct clk			*vde_clk;
 	struct clk			*cop_clk;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	struct clk			*bsea_clk;
+	struct clk			*vcp_clk;
+#endif
 
 	/* used for dvfs */
 	struct clk			*sclk;
@@ -116,6 +120,7 @@ struct nvavp_info {
 	int				video_initialized;
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	int				audio_initialized;
+	struct work_struct		app_notify_work;
 #endif
 	struct work_struct		clock_disable_work;
 
@@ -263,13 +268,25 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 	}
 }
 
-static u32 nvavp_check_idle(struct nvavp_info *nvavp)
+static u32 nvavp_check_idle(struct nvavp_info *nvavp, int channel_id)
 {
-	struct nvavp_channel *channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
+	struct nvavp_channel *channel_info = nvavp_get_channel_info(nvavp, channel_id);
 	struct nv_e276_control *control = channel_info->os_control;
 
 	return (control->put == control->get) ? 1 : 0;
 }
+
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+static void app_notify_handler(struct work_struct *work)
+{
+	struct nvavp_info *nvavp;
+
+	nvavp = container_of(work, struct nvavp_info,
+			    app_notify_work);
+
+	kobject_uevent(&nvavp->nvhost_dev->dev.kobj, KOBJ_CHANGE);
+}
+#endif
 
 static void clock_disable_handler(struct work_struct *work)
 {
@@ -282,7 +299,7 @@ static void clock_disable_handler(struct work_struct *work)
 	channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 	mutex_lock(&channel_info->pushbuffer_lock);
 	mutex_lock(&nvavp->open_lock);
-	if (nvavp_check_idle(nvavp) && nvavp->pending) {
+	if (nvavp_check_idle(nvavp, NVAVP_VIDEO_CHANNEL) && nvavp->pending) {
 		nvavp->pending = false;
 		nvavp_clks_disable(nvavp);
 	}
@@ -327,6 +344,13 @@ static int nvavp_service(struct nvavp_info *nvavp)
 	if (inbox & NVE276_OS_INTERRUPT_TIMEOUT)
 		dev_err(&nvavp->nvhost_dev->dev, "AVP timeout\n");
 	writel(inbox & NVAVP_INBOX_VALID, NVAVP_OS_INBOX);
+
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	if (inbox & NVE276_OS_INTERRUPT_APP_NOTIFY) {
+		pr_debug("nvavp_service NVE276_OS_INTERRUPT_APP_NOTIFY\n");
+		schedule_work(&nvavp->app_notify_work);
+	}
+#endif
 
 	return 0;
 }
@@ -968,18 +992,14 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	if (video_initialized) {
 		pr_debug("nvavp_uninit nvavp->video_initialized\n");
 		cancel_work_sync(&nvavp->clock_disable_work);
-
 		nvavp_halt_vde(nvavp);
-
-		clk_disable(nvavp->sclk);
-		clk_disable(nvavp->emc_clk);
-
 		nvavp_set_video_init_status(nvavp, 0);
 		video_initialized = 0;
 	}
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	if (audio_initialized) {
+		cancel_work_sync(&nvavp->app_notify_work);
 		nvavp_set_audio_init_status(nvavp, 0);
 		audio_initialized = 0;
 	}
@@ -988,6 +1008,9 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	/* Video and Audio both becomes uninitialized */
 	if (video_initialized == audio_initialized) {
 		pr_debug("nvavp_uninit both channels unitialized\n");
+
+		clk_disable(nvavp->sclk);
+		clk_disable(nvavp->emc_clk);
 		disable_irq(nvavp->mbox_from_avp_pend_irq);
 		nvavp_pushbuffer_deinit(nvavp);
 		nvavp_halt_avp(nvavp);
@@ -1248,6 +1271,62 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 	return 0;
 }
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+static int nvavp_enable_audio_clocks(struct file *filp, unsigned int cmd,
+					unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_clock_args config;
+
+	if (copy_from_user(&config, (void __user *)arg, sizeof(struct nvavp_clock_args)))
+		return -EFAULT;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id=%d\n",
+			__func__, config.id);
+
+	if (config.id == NVAVP_MODULE_ID_VCP)
+		clk_enable(nvavp->vcp_clk);
+	else if	(config.id == NVAVP_MODULE_ID_BSEA)
+		clk_enable(nvavp->bsea_clk);
+
+	return 0;
+}
+
+static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
+					unsigned long arg)
+{
+	struct nvavp_clientctx *clientctx = filp->private_data;
+	struct nvavp_info *nvavp = clientctx->nvavp;
+	struct nvavp_clock_args config;
+
+	if (copy_from_user(&config, (void __user *)arg, sizeof(struct nvavp_clock_args)))
+		return -EFAULT;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s: clk_id=%d\n",
+			__func__, config.id);
+
+	if (config.id == NVAVP_MODULE_ID_VCP)
+		clk_disable(nvavp->vcp_clk);
+	else if	(config.id == NVAVP_MODULE_ID_BSEA)
+		clk_disable(nvavp->bsea_clk);
+
+	return 0;
+}
+#else
+static int nvavp_enable_audio_clocks(struct file *filp, unsigned int cmd,
+					unsigned long arg)
+{
+	return 0;
+}
+
+static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
+					unsigned long arg)
+{
+	return 0;
+}
+#endif
+
 static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_id)
 {
 	struct miscdevice *miscdev = filp->private_data;
@@ -1364,6 +1443,12 @@ static long tegra_nvavp_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case NVAVP_IOCTL_FORCE_CLOCK_STAY_ON:
 		ret = nvavp_force_clock_stay_on_ioctl(filp, cmd, arg);
+		break;
+	case NVAVP_IOCTL_ENABLE_AUDIO_CLOCKS:
+		ret = nvavp_enable_audio_clocks(filp, cmd, arg);
+		break;
+	case NVAVP_IOCTL_DISABLE_AUDIO_CLOCKS:
+		ret = nvavp_disable_audio_clocks(filp, cmd, arg);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1538,6 +1623,22 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev,
 		goto err_get_emc_clk;
 	}
 
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	nvavp->bsea_clk = clk_get(&ndev->dev, "bsea");
+	if (IS_ERR(nvavp->bsea_clk)) {
+		dev_err(&ndev->dev, "cannot get bsea clock\n");
+		ret = -ENOENT;
+		goto err_get_bsea_clk;
+	}
+
+	nvavp->vcp_clk = clk_get(&ndev->dev, "vcp");
+	if (IS_ERR(nvavp->vcp_clk)) {
+		dev_err(&ndev->dev, "cannot get vcp clock\n");
+		ret = -ENOENT;
+		goto err_get_vcp_clk;
+	}
+#endif
+
 	nvavp->clk_enabled = 0;
 	nvavp_halt_avp(nvavp);
 
@@ -1556,6 +1657,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	}
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	INIT_WORK(&nvavp->app_notify_work, app_notify_handler);
 	nvavp->audio_misc_dev.minor = MISC_DYNAMIC_MINOR;
 	nvavp->audio_misc_dev.name = "tegra_audio_avpchannel";
 	nvavp->audio_misc_dev.fops = &tegra_audio_nvavp_fops;
@@ -1589,6 +1691,12 @@ err_audio_misc_reg:
 #endif
 	misc_deregister(&nvavp->video_misc_dev);
 err_misc_reg:
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+	clk_put(nvavp->vcp_clk);
+err_get_vcp_clk:
+	clk_put(nvavp->bsea_clk);
+err_get_bsea_clk:
+#endif
 	clk_put(nvavp->emc_clk);
 err_get_emc_clk:
 	clk_put(nvavp->sclk);
@@ -1637,6 +1745,8 @@ static int tegra_nvavp_remove(struct nvhost_device *ndev)
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	misc_deregister(&nvavp->audio_misc_dev);
+	clk_put(nvavp->vcp_clk);
+	clk_put(nvavp->bsea_clk);
 #endif
 	clk_put(nvavp->bsev_clk);
 	clk_put(nvavp->vde_clk);
@@ -1660,14 +1770,22 @@ static int tegra_nvavp_suspend(struct nvhost_device *ndev, pm_message_t state)
 	mutex_lock(&nvavp->open_lock);
 
 	if (nvavp->refcount) {
-		if (!nvavp->clk_enabled)
+		if (!nvavp->clk_enabled) {
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+			if (nvavp_check_idle(nvavp, NVAVP_AUDIO_CHANNEL))
+				nvavp_uninit(nvavp);
+			else
+				ret = -EBUSY;
+#else
 			nvavp_uninit(nvavp);
-		else
+#endif
+		}
+		else {
 			ret = -EBUSY;
+		}
 	}
 
 	mutex_unlock(&nvavp->open_lock);
-
 	return ret;
 }
 
@@ -1677,9 +1795,12 @@ static int tegra_nvavp_resume(struct nvhost_device *ndev)
 
 	mutex_lock(&nvavp->open_lock);
 
-	if (nvavp->refcount)
+	if (nvavp->refcount) {
 		nvavp_init(nvavp, NVAVP_VIDEO_CHANNEL);
-
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+		nvavp_init(nvavp, NVAVP_AUDIO_CHANNEL);
+#endif
+	}
 	mutex_unlock(&nvavp->open_lock);
 
 	return 0;
