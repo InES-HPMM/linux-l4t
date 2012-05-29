@@ -454,15 +454,26 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
 	bool entered_lp2;
+	bool cpu_gating_only = false;
 
 	cpu_pm_enter();
 
-	if (dev->cpu == 0) {
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	cpu_gating_only = get_power_gating_partition() ? false : true;
+#endif
+
+	if (cpu_gating_only)
+		tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+	else if (dev->cpu == 0) {
 		if (last_cpu) {
-			entered_lp2 = tegra3_idle_enter_lp2_cpu_0(dev, state, request);
+			tegra3_idle_enter_lp2_cpu_0(dev, state, request);
 		} else {
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+			tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+#else
 			tegra_cpu_wfi();
 			entered_lp2 = false;
+#endif
 		}
 	} else
 		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);

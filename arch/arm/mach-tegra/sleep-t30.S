@@ -143,8 +143,10 @@ ENDPROC(tegra30_hotplug_shutdown)
  */
 ENTRY(tegra30_cpu_shutdown)
 	cpu_id	r3
+#ifndef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	cmp	r3, #0
 	moveq	pc, lr		@ Must never be called for CPU 0
+#endif
 
 	ldr	r12, =TEGRA_FLOW_CTRL_VIRT
 	cpu_to_csr_reg r1, r3
