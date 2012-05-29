@@ -134,15 +134,9 @@ void tegra_gic_affinity_to_cpu0(void)
 
 static int tegra_gic_notifier(struct notifier_block *self, unsigned long cmd, void *v)
 {
-	u32 gic_cpu_ctrl;
-
 	switch (cmd) {
 	case CPU_PM_ENTER:
-		gic_cpu_ctrl = readl(tegra_gic_cpu_base + GIC_CPU_CTRL);
-		if (gic_cpu_ctrl & 1) {
-			gic_cpu_ctrl |= 0x1E0;
-			writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
-		}
+		writel(0x1E0, tegra_gic_cpu_base + GIC_CPU_CTRL);
 		break;
 	}
 
