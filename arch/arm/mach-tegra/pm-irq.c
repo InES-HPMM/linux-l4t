@@ -141,22 +141,9 @@ static inline void clear_pmc_sw_wake_status(void)
 #endif
 }
 
-int tegra_pm_irq_set_wake(int irq, int enable)
+int tegra_pm_irq_set_wake(int wake, int enable)
 {
-	int wake = tegra_irq_to_wake(irq);
-
-	if (wake == -EALREADY) {
-		/* EALREADY means wakeup event already accounted for */
-		return 0;
-	} else if (wake == -ENOTSUPP) {
-		/* ENOTSUPP means LP0 not supported with this wake source */
-		WARN(enable && warn_prevent_lp0, "irq %d prevents lp0\n", irq);
-		if (enable)
-			tegra_prevent_lp0++;
-		else if (!WARN_ON(tegra_prevent_lp0 == 0))
-			tegra_prevent_lp0--;
-		return 0;
-	} else if (wake < 0) {
+	if (wake < 0) {
 		return -EINVAL;
 	}
 
@@ -171,10 +158,8 @@ int tegra_pm_irq_set_wake(int irq, int enable)
 	return 0;
 }
 
-int tegra_pm_irq_set_wake_type(int irq, int flow_type)
+int tegra_pm_irq_set_wake_type(int wake, int flow_type)
 {
-	int wake = tegra_irq_to_wake(irq);
-
 	if (wake < 0)
 		return 0;
 

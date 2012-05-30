@@ -93,37 +93,54 @@ static int tegra_wake_event_irq[] = {
 	[30] = -EAGAIN,
 };
 
+static int last_gpio = -1;
+
+int tegra_gpio_to_wake(int gpio)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_wakes); i++) {
+		if (tegra_gpio_wakes[i] == gpio) {
+			pr_info("gpio wake%d for gpio=%d\n", i, gpio);
+			last_gpio = i;
+			return i;
+		}
+	}
+
+	return -EINVAL;
+}
+
 int tegra_irq_to_wake(int irq)
 {
 	int i;
-	static int last_wake = -1;
+	int ret = -EINVAL;
 
-	for (i = 0; i < ARRAY_SIZE(tegra_wake_event_irq); i++)
-		if (tegra_wake_event_irq[i] == irq)
+	for (i = 0; i < ARRAY_SIZE(tegra_wake_event_irq); i++) {
+		if (tegra_wake_event_irq[i] == irq) {
+			pr_info("Wake %d for irq=%d\n", i, irq);
+			ret = i;
 			goto out;
+		}
+	}
 
-	for (i = 0; i < ARRAY_SIZE(tegra_gpio_wakes); i++)
-		if (gpio_to_irq(tegra_gpio_wakes[i]) == irq)
-			goto out;
-
-	/* Two level wake irq search for gpio based wakeups -
-	 * 1. check for GPIO irq(based on tegra_wake_event_irq table)
-	 * e.g. for a board, wake7 based on GPIO PU6 and irq==358 done first
-	 * 2. check for gpio bank irq assuming search for GPIO irq
-	 *    preceded this search.
-	 * e.g. in this step check for gpio bank irq GPIO6 irq==119
+	/* The gpio set_wake code bubbles the set_wake call up to the irq
+	 * set_wake code. This insures that the nested irq set_wake call
+	 * succeeds, even though it doesn't have to do any pm setup for the
+	 * bank.
+	 *
+	 * This is very fragile - there's no locking, so two callers could
+	 * cause issues with this.
 	 */
-	if (last_wake < 0 || last_wake >= ARRAY_SIZE(tegra_gpio_wakes))
-		return -EINVAL;
+	if (last_gpio < 0)
+		goto out;
 
-	if (tegra_gpio_get_bank_int_nr(tegra_gpio_wakes[last_wake]) == irq)
-		return last_wake;
-
-	return -EINVAL;
+	if (tegra_gpio_get_bank_int_nr(tegra_gpio_wakes[last_gpio]) == irq) {
+		pr_info("gpio bank wake found: wake %d for irq=%d\n", i, irq);
+		ret = last_gpio;
+	}
 
 out:
-	last_wake = i;
-	return i;
+	return ret;
 }
 
 int tegra_wake_to_irq(int wake)
@@ -137,8 +154,11 @@ int tegra_wake_to_irq(int wake)
 		return -EINVAL;
 
 	ret = tegra_wake_event_irq[wake];
-	if (ret == -EAGAIN)
-		ret = gpio_to_irq(tegra_gpio_wakes[wake]);
+	if (ret == -EAGAIN) {
+		ret = tegra_gpio_wakes[wake];
+		if (ret != -EINVAL)
+			ret = gpio_to_irq(ret);
+	}
 
 	return ret;
 }

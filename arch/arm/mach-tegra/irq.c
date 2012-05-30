@@ -123,14 +123,18 @@ static int tegra_retrigger(struct irq_data *d)
 
 static int tegra_set_type(struct irq_data *d, unsigned int flow_type)
 {
-	return tegra_pm_irq_set_wake_type(d->irq, flow_type);
+	int wake = tegra_irq_to_wake(d->irq);
+
+	return tegra_pm_irq_set_wake_type(wake, flow_type);
 }
 
 
 #ifdef CONFIG_PM_SLEEP
 static int tegra_set_wake(struct irq_data *d, unsigned int enable)
 {
-	return tegra_pm_irq_set_wake(d->irq, enable);
+	int wake = tegra_irq_to_wake(d->irq);
+
+	return tegra_pm_irq_set_wake(wake, enable);
 }
 
 static int tegra_legacy_irq_suspend(void)

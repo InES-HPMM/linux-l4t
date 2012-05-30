@@ -269,6 +269,7 @@ static int tegra_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	int lvl_type;
 	int val;
 	unsigned long flags;
+	int wake = tegra_gpio_to_wake(d->hwirq);
 
 	switch (type & IRQ_TYPE_SENSE_MASK) {
 	case IRQ_TYPE_EDGE_RISING:
@@ -312,7 +313,7 @@ static int tegra_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	else if (type & (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING))
 		__irq_set_handler_locked(d->irq, handle_edge_irq);
 
-	tegra_pm_irq_set_wake_type(d->irq, type);
+	tegra_pm_irq_set_wake_type(wake, type);
 
 	return 0;
 }
@@ -394,8 +395,9 @@ static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
 {
 	struct tegra_gpio_bank *bank = irq_data_get_irq_chip_data(d);
 	int ret = 0;
+	int wake = tegra_gpio_to_wake(d->hwirq);
 
-	ret = tegra_pm_irq_set_wake(d->irq, enable);
+	ret = tegra_pm_irq_set_wake(wake, enable);
 
 	if (ret)
 		return ret;
@@ -403,7 +405,7 @@ static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
 	ret = irq_set_irq_wake(bank->irq, enable);
 
 	if (ret)
-		tegra_pm_irq_set_wake(d->irq, !enable);
+		tegra_pm_irq_set_wake(wake, !enable);
 
 	return ret;
 }
