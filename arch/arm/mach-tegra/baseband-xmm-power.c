@@ -81,12 +81,12 @@ static enum baseband_xmm_powerstate_t baseband_xmm_powerstate;
 static enum ipc_ap_wake_state_t ipc_ap_wake_state;
 static struct workqueue_struct *workqueue;
 static struct work_struct init2_work;
-static struct work_struct L2_resume_work;
+static struct work_struct l2_resume_work;
 static struct work_struct autopm_resume_work;
 static bool register_hsic_device;
 static struct wake_lock wakelock;
 static struct usb_device *usbdev;
-static bool CP_initiated_L2toL0;
+static bool cp_initiated_l2tol0;
 static bool modem_power_on;
 static int power_onoff;
 static int reenable_autosuspend;
@@ -164,6 +164,17 @@ static int tegra_baseband_rail_off(void)
 	return 0;
 }
 
+static inline enum baseband_xmm_powerstate_t baseband_xmm_get_power_status(void)
+{
+	enum baseband_xmm_powerstate_t status;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xmm_lock, flags);
+	status = baseband_xmm_powerstate;
+	spin_unlock_irqrestore(&xmm_lock, flags);
+	return status;
+}
+
 static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 {
 	/* set IPC_HSIC_ACTIVE active */
@@ -230,6 +241,7 @@ static int xmm_power_on(struct platform_device *device)
 	struct baseband_power_platform_data *pdata =
 			device->dev.platform_data;
 	struct xmm_power_data *data = &xmm_power_drv_data;
+	unsigned long flags;
 	int ret;
 
 	pr_debug("%s {\n", __func__);
@@ -239,13 +251,13 @@ static int xmm_power_on(struct platform_device *device)
 		pr_err("%s: !pdata\n", __func__);
 		return -EINVAL;
 	}
-	if (baseband_xmm_powerstate != BBXMM_PS_UNINIT)
+	if (baseband_xmm_get_power_status() != BBXMM_PS_UNINIT)
 		return -EINVAL;
 
 	tegra_baseband_rail_on();
 
 	/* reset the state machine */
-	baseband_xmm_powerstate = BBXMM_PS_INIT;
+	baseband_xmm_set_power_status(BBXMM_PS_INIT);
 	modem_sleep_flag = false;
 
 	pr_debug("%s wake_st(%d) modem version %lu\n", __func__,
@@ -255,7 +267,10 @@ static int xmm_power_on(struct platform_device *device)
 	if (!modem_flash) {
 		pr_debug("%s - %d\n", __func__, __LINE__);
 
+		spin_lock_irqsave(&xmm_lock, flags);
 		ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
+		spin_unlock_irqrestore(&xmm_lock, flags);
+
 		/* register usb host controller only once */
 		if (register_hsic_device) {
 			pr_debug("%s: register usb host controller\n",
@@ -282,8 +297,11 @@ static int xmm_power_on(struct platform_device *device)
 		 */
 
 		pr_debug("%s: reset flash modem\n", __func__);
+
 		modem_power_on = false;
+		spin_lock_irqsave(&xmm_lock, flags);
 		ipc_ap_wake_state = IPC_AP_WAKE_IRQ_READY;
+		spin_unlock_irqrestore(&xmm_lock, flags);
 		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 
 		xmm_power_reset_on(pdata);
@@ -302,14 +320,14 @@ static int xmm_power_off(struct platform_device *device)
 	struct baseband_power_platform_data *pdata =
 			device->dev.platform_data;
 	struct xmm_power_data *data = &xmm_power_drv_data;
-
 	int ret;
 	unsigned long flags;
 
 	pr_debug("%s {\n", __func__);
 
-	if (baseband_xmm_powerstate == BBXMM_PS_UNINIT)
+	if (baseband_xmm_get_power_status() == BBXMM_PS_UNINIT)
 		return -EINVAL;
+
 	/* check for device / platform data */
 	if (!device) {
 		pr_err("%s: !device\n", __func__);
@@ -320,7 +338,10 @@ static int xmm_power_off(struct platform_device *device)
 		return -EINVAL;
 	}
 
+	spin_lock_irqsave(&xmm_lock, flags);
 	ipc_ap_wake_state = IPC_AP_WAKE_UNINIT;
+	spin_unlock_irqrestore(&xmm_lock, flags);
+
 	ret = disable_irq_wake(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
 	if (ret < 0)
 		pr_err("%s: disable_irq_wake error\n", __func__);
@@ -343,13 +364,15 @@ static int xmm_power_off(struct platform_device *device)
 	/* sleep 1ms */
 	usleep_range(1000, 2000);
 
-	baseband_xmm_powerstate = BBXMM_PS_UNINIT;
-	modem_sleep_flag = false;
-	CP_initiated_L2toL0 = false;
+	baseband_xmm_set_power_status(BBXMM_PS_UNINIT);
+
 	spin_lock_irqsave(&xmm_lock, flags);
+	modem_sleep_flag = false;
+	cp_initiated_l2tol0 = false;
 	wakeup_pending = false;
 	system_suspending = false;
 	spin_unlock_irqrestore(&xmm_lock, flags);
+
 	/* start registration process once again on xmm on */
 	register_hsic_device = true;
 
@@ -430,23 +453,31 @@ static void xmm_power_l2_resume(void)
 	if (!pdata)
 		return;
 
+	/* erroneous remote-wakeup might call this from irq */
+	if (in_interrupt() || in_atomic()) {
+		pr_err("%s: not allowed in interrupt\n", __func__);
+		return;
+	}
+
 	/* claim the wakelock here to avoid any system suspend */
 	if (!wake_lock_active(&wakelock))
 		wake_lock_timeout(&wakelock, HZ*2);
-	modem_sleep_flag = false;
-	spin_lock_irqsave(&xmm_lock, flags);
-	wakeup_pending = false;
-	spin_unlock_irqrestore(&xmm_lock, flags);
 
-	if (CP_initiated_L2toL0)  {
+	spin_lock_irqsave(&xmm_lock, flags);
+	modem_sleep_flag = false;
+	wakeup_pending = false;
+
+	if (cp_initiated_l2tol0)  {
+		cp_initiated_l2tol0 = false;
+		queue_work(workqueue, &l2_resume_work);
+		spin_unlock_irqrestore(&xmm_lock, flags);
 		pr_info("CP L2->L0\n");
-		CP_initiated_L2toL0 = false;
-		queue_work(workqueue, &L2_resume_work);
 	} else {
 		/* set the slave wakeup request */
-		pr_info("AP/CP L2->L0\n");
 		value = gpio_get_value(pdata->modem.xmm.ipc_ap_wake);
+		spin_unlock_irqrestore(&xmm_lock, flags);
 		if (value) {
+			pr_info("AP/CP L2->L0\n");
 			drv->hostwake = 0;
 			/* wake bb */
 			gpio_set_value(pdata->modem.xmm.ipc_bb_wake, 1);
@@ -474,16 +505,21 @@ retry:
 	}
 }
 
-
+/* this function holds xmm_lock */
 void baseband_xmm_set_power_status(unsigned int status)
 {
 	struct baseband_power_platform_data *data = xmm_power_drv_data.pdata;
 	int value = 0;
 	unsigned long flags;
 
-	if (baseband_xmm_powerstate == status)
+	if (baseband_xmm_get_power_status() == status)
 		return;
-	pr_debug("%s\n", __func__);
+
+	/* avoid prints inside spinlock */
+	if (status <= BBXMM_PS_L2)
+		pr_info("%s\n", status == BBXMM_PS_L0 ? "L0" : "L2");
+
+	spin_lock_irqsave(&xmm_lock, flags);
 	switch (status) {
 	case BBXMM_PS_L0:
 		if (modem_sleep_flag) {
@@ -491,7 +527,6 @@ void baseband_xmm_set_power_status(unsigned int status)
 			 * xmm_power_driver_handle_resume(data);
 			 */
 		}
-		pr_info("L0\n");
 		baseband_xmm_powerstate = status;
 		if (!wake_lock_active(&wakelock))
 			wake_lock_timeout(&wakelock, HZ*2);
@@ -507,15 +542,13 @@ void baseband_xmm_set_power_status(unsigned int status)
 		}
 		break;
 	case BBXMM_PS_L2:
-		pr_info("L2\n");
 		baseband_xmm_powerstate = status;
-		spin_lock_irqsave(&xmm_lock, flags);
 		if (wakeup_pending) {
 			spin_unlock_irqrestore(&xmm_lock, flags);
 			pr_debug("%s: wakeup pending\n", __func__);
 			xmm_power_l2_resume();
+			spin_lock_irqsave(&xmm_lock, flags);
 		 } else {
-			spin_unlock_irqrestore(&xmm_lock, flags);
 			if (wake_lock_active(&wakelock))
 				wake_unlock(&wakelock);
 			modem_sleep_flag = true;
@@ -523,15 +556,14 @@ void baseband_xmm_set_power_status(unsigned int status)
 		break;
 	case BBXMM_PS_L2TOL0:
 		pr_debug("L2TOL0\n");
-		spin_lock_irqsave(&xmm_lock, flags);
 		system_suspending = false;
 		wakeup_pending = false;
-		spin_unlock_irqrestore(&xmm_lock, flags);
 		/* do this only from L2 state */
 		if (baseband_xmm_powerstate == BBXMM_PS_L2) {
 			baseband_xmm_powerstate = status;
-			pr_debug("BB XMM POWER STATE = %d\n", status);
+			spin_unlock_irqrestore(&xmm_lock, flags);
 			xmm_power_l2_resume();
+			spin_lock_irqsave(&xmm_lock, flags);
 		}
 		baseband_xmm_powerstate = status;
 		break;
@@ -540,6 +572,7 @@ void baseband_xmm_set_power_status(unsigned int status)
 		baseband_xmm_powerstate = status;
 		break;
 	}
+	spin_unlock_irqrestore(&xmm_lock, flags);
 	pr_debug("BB XMM POWER STATE = %d\n", status);
 }
 EXPORT_SYMBOL_GPL(baseband_xmm_set_power_status);
@@ -553,38 +586,40 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int value)
 	/* modem wakeup part */
 	if (!value) {
 		pr_debug("%s - falling\n", __func__);
-		if (drv->hostwake == 0) {
-			/* AP L2 to L0 wakeup */
-			pr_debug("received wakeup ap l2->l0\n");
-			drv->hostwake = 1;
-			wake_up_interruptible(&drv->bb_wait);
-		}
+		spin_lock(&xmm_lock);
+
+		/* AP L2 to L0 wakeup */
+		pr_debug("received wakeup ap l2->l0\n");
+		drv->hostwake = 1;
+		wake_up_interruptible(&drv->bb_wait);
+
 		/* First check it a CP ack or CP wake  */
 		value = gpio_get_value(data->modem.xmm.ipc_bb_wake);
 		if (value) {
 			pr_debug("cp ack for bb_wake\n");
 			ipc_ap_wake_state = IPC_AP_WAKE_L;
+			spin_unlock(&xmm_lock);
 			return IRQ_HANDLED;
 		}
 
-		spin_lock(&xmm_lock);
 		wakeup_pending = true;
-		if (system_suspending) {
-			spin_unlock(&xmm_lock);
-			pr_info("Set wakeup_pending = 1 in system_"
-					" suspending!!!\n");
-		} else {
-			if (baseband_xmm_powerstate == BBXMM_PS_L2) {
-				CP_initiated_L2toL0 = true;
+		if (system_suspending)
+			pr_info("set wakeup_pending 1 in system_suspending\n");
+		else {
+			if (baseband_xmm_powerstate == BBXMM_PS_L2 ||
+				baseband_xmm_powerstate == BBXMM_PS_L2TOL0) {
+				cp_initiated_l2tol0 = true;
 				spin_unlock(&xmm_lock);
 				baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
-			} else {
-				CP_initiated_L2toL0 = true;
-				spin_unlock(&xmm_lock);
-			}
+				spin_lock(&xmm_lock);
+			} else
+				cp_initiated_l2tol0 = true;
+
 		}
+
 		/* save gpio state */
 		ipc_ap_wake_state = IPC_AP_WAKE_L;
+		spin_unlock(&xmm_lock);
 	} else {
 		pr_debug("%s - rising\n", __func__);
 		value = gpio_get_value(data->modem.xmm.ipc_hsic_active);
@@ -846,9 +881,9 @@ static int xmm_power_pm_notifier_event(struct notifier_block *this,
 		if (wakeup_pending &&
 			(baseband_xmm_powerstate == BBXMM_PS_L2)) {
 			wakeup_pending = false;
+			cp_initiated_l2tol0 = true;
 			spin_unlock_irqrestore(&xmm_lock, flags);
 			pr_info("%s : Service Pending CP wakeup\n", __func__);
-			CP_initiated_L2toL0 = true;
 			baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
 			return NOTIFY_OK;
 		}
@@ -953,13 +988,13 @@ static int xmm_power_driver_probe(struct platform_device *device)
 
 	/* init work objects */
 	INIT_WORK(&init2_work, xmm_power_init2_work);
-	INIT_WORK(&L2_resume_work, xmm_power_l2_resume_work);
+	INIT_WORK(&l2_resume_work, xmm_power_l2_resume_work);
 	INIT_WORK(&autopm_resume_work, xmm_power_autopm_resume);
 
 	/* init state variables */
 	register_hsic_device = true;
-	CP_initiated_L2toL0 = false;
-	baseband_xmm_powerstate = BBXMM_PS_UNINIT;
+	cp_initiated_l2tol0 = false;
+	baseband_xmm_set_power_status(BBXMM_PS_UNINIT);
 	spin_lock_irqsave(&xmm_lock, flags);
 	wakeup_pending = false;
 	system_suspending = false;
@@ -988,9 +1023,8 @@ static int xmm_power_driver_remove(struct platform_device *device)
 	usb_unregister_notify(&usb_xmm_nb);
 
 	/* free baseband irq(s) */
-	if (modem_flash && modem_pm) {
+	if (modem_flash && modem_pm)
 		free_irq(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake), NULL);
-	}
 
 	/* free baseband gpio(s) */
 	gpio_free_array(tegra_baseband_gpios,

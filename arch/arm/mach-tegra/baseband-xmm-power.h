@@ -90,15 +90,13 @@ struct xmm_power_data {
 };
 
 enum baseband_xmm_powerstate_t {
-	BBXMM_PS_UNINIT	= 0,
-	BBXMM_PS_INIT	= 1,
-	BBXMM_PS_L0	= 2,
-	BBXMM_PS_L0TOL2	= 3,
-	BBXMM_PS_L2	= 4,
-	BBXMM_PS_L2TOL0	= 5,
-	BBXMM_PS_L2TOL3	= 6,
-	BBXMM_PS_L3	= 7,
-	BBXMM_PS_L3TOL0	= 8,
+	BBXMM_PS_L0	= 0,
+	BBXMM_PS_L2	= 1,
+	BBXMM_PS_L0TOL2	= 2,
+	BBXMM_PS_L2TOL0	= 3,
+	BBXMM_PS_UNINIT	= 4,
+	BBXMM_PS_INIT	= 5,
+	BBXMM_PS_L3	= 6,
 	BBXMM_PS_LAST	= -1,
 };
 
