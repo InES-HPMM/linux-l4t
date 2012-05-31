@@ -40,23 +40,6 @@ struct tegra_ulpi_trimmer {
 	u8 stpdirnxt_trimmer;	/* 0 ~ 7 */
 };
 
-struct tegra_ulpi_config {
-	int enable_gpio;
-	int reset_gpio;
-	const char *clk;
-	const struct tegra_ulpi_trimmer *trimmer;
-	int (*pre_phy_on)(void);
-	int (*post_phy_on)(void);
-	int (*pre_phy_off)(void);
-	int (*post_phy_off)(void);
-	void (*phy_restore_start)(void);
-	void (*phy_restore_end)(void);
-	int phy_restore_gpio; /* null phy restore ack from device */
-	int ulpi_dir_gpio; /* ulpi dir */
-	int ulpi_d0_gpio; /* usb linestate[0] */
-	int ulpi_d1_gpio; /* usb linestate[1] */
-};
-
 struct tegra_uhsic_config {
 	int enable_gpio;
 	int reset_gpio;
@@ -103,7 +86,7 @@ struct tegra_usb_phy {
 	void *config;
 	struct regulator *reg_vdd;
 	struct regulator *reg_vbus;
-	enum tegra_usb_phy_type usb_phy_type;
+	enum tegra_usb_phy_interface usb_phy_intf;
 	bool regulator_on;
 	struct usb_phy *ulpi;
 	struct usb_phy u_phy;
@@ -122,7 +105,7 @@ typedef void (*tegra_phy_restore_end_fp)(struct tegra_usb_phy *phy);
 
 struct tegra_usb_phy *tegra_usb_phy_open(struct device *dev, int instance,
 	void __iomem *regs, void *config, enum tegra_usb_phy_mode phy_mode,
-	enum tegra_usb_phy_type usb_phy_type);
+	enum tegra_usb_phy_interface usb_phy_type);
 
 void tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy);
 
