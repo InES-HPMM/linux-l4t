@@ -156,8 +156,9 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 	 * Refer to Bug 804085.
 	 */
 	if ((tegra_revision == TEGRA_REVISION_A01) &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
 		num_online_cpus() > 1)
-		return false;
+			return false;
 
 #ifndef CONFIG_TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	/* FIXME: All CPU's entering LP2 is not working.
