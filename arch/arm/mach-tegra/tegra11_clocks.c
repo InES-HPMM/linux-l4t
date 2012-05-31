@@ -210,6 +210,7 @@
 #define PLLCX_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
 #define PLLCX_BASE_DIVM_MASK		(0x3<<PLL_BASE_DIVM_SHIFT)
 #define PLLCX_PDIV_MAX	((PLLCX_BASE_DIVP_MASK >> PLL_BASE_DIVP_SHIFT))
+#define PLLCX_IS_DYN(new_p, old_p)	(((new_p) <= 8) && ((old_p) <= 8))
 
 /* FIXME: double-check PLLCX MISC definitions for spec changes */
 #define PLLCX_MISC_STROBE		(1<<27)
@@ -1897,9 +1898,8 @@ static struct clk_ops tegra_plld_ops = {
  * and switching across VCO minimum is never dynamic.
  *
  * PLLC2 and PLLC3 in addition to dynamic ramp mechanism have also glitchless
- * output dividers. They are non-boot plls, so fixed MDIV is enforced during
- * initialization. As a result PLLC2 and PLLC3 can dynamically scaled within
- * the entire output range.
+ * output dividers. However dynamic ramp without overshoot is guaranteed only
+ * when output divisor is less or equal 8.
  *
  * Of course, dynamic ramp is applied provided PLL is already enabled.
  */
@@ -2135,7 +2135,8 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 		return 0;
 
 #if PLLCX_USE_DYN_RAMP
-	if (c->state == ON) {
+	if (c->state == ON && ((sel->n == old_cfg.n) ||
+			       PLLCX_IS_DYN(sel->p, old_cfg.p))) {
 		/*
 		 * Dynamic ramp if PLL is enabled, and M divider is unchanged:
 		 * - Change P divider 1st if intermediate rate is below either
@@ -2145,8 +2146,6 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 		 * - If divider has been changed, exit without waiting for lock.
 		 *   Otherwise, wait for lock and change divider.
 		 */
-		tegra11_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
-				PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
 		if (sel->p > old_cfg.p) {
 			val &= ~PLLCX_BASE_DIVP_MASK;
 			val |= pdiv << PLL_BASE_DIVP_SHIFT;
@@ -2160,6 +2159,9 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 			clk_writel_delay(val, c->reg + PLL_BASE);
 
 			pllcx_strobe(c);
+
+			tegra11_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
+					PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
 		}
 
 		if (sel->p < old_cfg.p) {
@@ -5476,9 +5478,21 @@ static bool tegra11_is_dyn_ramp(
 	struct clk *c, unsigned long rate, bool from_vco_min)
 {
 #if PLLCX_USE_DYN_RAMP
-	/* PLLC2, PLLC3 support dynamic ramp within the entire output range */
-	if ((c == &tegra_pll_c2) || (c == &tegra_pll_c3))
-		return true;
+	/* PLLC2, PLLC3 support dynamic ramp only when output divider <= 8 */
+	if ((c == &tegra_pll_c2) || (c == &tegra_pll_c3)) {
+		struct clk_pll_freq_table cfg, old_cfg;
+		unsigned long input_rate = clk_get_rate(c->parent);
+
+		u32 val = clk_readl(c->reg + PLL_BASE);
+		PLL_BASE_PARSE(PLLCX, old_cfg, val);
+		old_cfg.p = pllcx_p[old_cfg.p];
+
+		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, NULL)) {
+			if ((cfg.n == old_cfg.n) ||
+			    PLLCX_IS_DYN(cfg.p, old_cfg.p))
+				return true;
+		}
+	}
 #endif
 
 #if PLLXC_USE_DYN_RAMP
