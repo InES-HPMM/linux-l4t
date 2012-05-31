@@ -168,16 +168,22 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 
 	/* clear phy low-power mode before changing wakeup flags */
 	if (ehci->has_hostpc) {
-		port = HCS_N_PORTS(ehci->hcs_params);
-		while (port--) {
-			u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
+#ifdef CONFIG_USB_EHCI_TEGRA
+		if (!ehci->broken_hostpc_phcd) {
+#endif
+			port = HCS_N_PORTS(ehci->hcs_params);
+			while (port--) {
+				u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
 
-			temp = ehci_readl(ehci, hostpc_reg);
-			ehci_writel(ehci, temp & ~HOSTPC_PHCD, hostpc_reg);
+				temp = ehci_readl(ehci, hostpc_reg);
+				ehci_writel(ehci, temp & ~HOSTPC_PHCD, hostpc_reg);
+			}
+			spin_unlock_irqrestore(&ehci->lock, flags);
+			msleep(5);
+			spin_lock_irqsave(&ehci->lock, flags);
+#ifdef CONFIG_USB_EHCI_TEGRA
 		}
-		spin_unlock_irq(&ehci->lock);
-		msleep(5);
-		spin_lock_irq(&ehci->lock);
+#endif
 	}
 
 	port = HCS_N_PORTS(ehci->hcs_params);
@@ -202,13 +208,19 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 
 	/* enter phy low-power mode again */
 	if (ehci->has_hostpc) {
-		port = HCS_N_PORTS(ehci->hcs_params);
-		while (port--) {
-			u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
+#ifdef CONFIG_USB_EHCI_TEGRA
+		if (!ehci->broken_hostpc_phcd) {
+#endif
+			port = HCS_N_PORTS(ehci->hcs_params);
+			while (port--) {
+				u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[port];
 
-			temp = ehci_readl(ehci, hostpc_reg);
-			ehci_writel(ehci, temp | HOSTPC_PHCD, hostpc_reg);
+				temp = ehci_readl(ehci, hostpc_reg);
+				ehci_writel(ehci, temp | HOSTPC_PHCD, hostpc_reg);
+			}
+#ifdef CONFIG_USB_EHCI_TEGRA
 		}
+#endif
 	}
 
 	/* Does the root hub have a port wakeup pending? */
@@ -298,7 +310,7 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 		}
 	}
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	if (changed && ehci->has_hostpc) {
+	if (changed && ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
 		spin_unlock_irq(&ehci->lock);
 		msleep(5);	/* 5 ms for HCD to enter low-power mode */
 		spin_lock_irq(&ehci->lock);
@@ -426,22 +438,28 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 
 	/* clear phy low-power mode before resume */
 	if (ehci->bus_suspended && ehci->has_hostpc) {
-		i = HCS_N_PORTS(ehci->hcs_params);
-		while (i--) {
-			if (test_bit(i, &ehci->bus_suspended)) {
-				u32 __iomem	*hostpc_reg =
+#ifdef CONFIG_USB_EHCI_TEGRA
+		if (!ehci->broken_hostpc_phcd) {
+#endif
+			i = HCS_N_PORTS(ehci->hcs_params);
+			while (i--) {
+				if (test_bit(i, &ehci->bus_suspended)) {
+					u32 __iomem	*hostpc_reg =
 							&ehci->regs->hostpc[i];
 
-				temp = ehci_readl(ehci, hostpc_reg);
-				ehci_writel(ehci, temp & ~HOSTPC_PHCD,
-						hostpc_reg);
+					temp = ehci_readl(ehci, hostpc_reg);
+					ehci_writel(ehci, temp & ~HOSTPC_PHCD,
+							hostpc_reg);
+				}
 			}
+			spin_unlock_irq(&ehci->lock);
+			msleep(5);
+			spin_lock_irq(&ehci->lock);
+			if (ehci->shutdown)
+				goto shutdown;
+#ifdef CONFIG_USB_EHCI_TEGRA
 		}
-		spin_unlock_irq(&ehci->lock);
-		msleep(5);
-		spin_lock_irq(&ehci->lock);
-		if (ehci->shutdown)
-			goto shutdown;
+#endif
 	}
 
 	/* manually resume the ports we suspended during bus_suspend() */
@@ -777,7 +795,11 @@ static int ehci_hub_control (
 				goto error;
 
 			/* clear phy low-power mode before resume */
+#ifdef CONFIG_USB_EHCI_TEGRA
+			if (ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
+#else
 			if (ehci->has_hostpc) {
+#endif
 				temp1 = ehci_readl(ehci, hostpc_reg);
 				ehci_writel(ehci, temp1 & ~HOSTPC_PHCD,
 						hostpc_reg);
@@ -1021,7 +1043,11 @@ static int ehci_hub_control (
 			temp &= ~PORT_WKCONN_E;
 			temp |= PORT_WKDISC_E | PORT_WKOC_E;
 			ehci_writel(ehci, temp | PORT_SUSPEND, status_reg);
+#ifdef CONFIG_USB_EHCI_TEGRA
+			if (ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
+#else
 			if (ehci->has_hostpc) {
+#endif
 				spin_unlock_irqrestore(&ehci->lock, flags);
 				msleep(5);/* 5ms for HCD enter low pwr mode */
 				spin_lock_irqsave(&ehci->lock, flags);
