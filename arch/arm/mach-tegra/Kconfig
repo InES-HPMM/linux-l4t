@@ -343,4 +343,13 @@ config TEGRA_DUAL_CBUS
 config TEGRA_MIGRATE_CBUS_USERS
 	bool "Move cbus users between source plls to optimize cumulative dvfs"
 	depends on TEGRA_DYNAMIC_CBUS && TEGRA_DUAL_CBUS
+
+config TEGRA_SKIN_THROTTLE
+	bool "Skin Temperature throttling"
+	depends on TEGRA_THERMAL_THROTTLE
+	depends on THERM_EST
+	default n
+	help
+	  Enable throttling to control the temperature of the skin/case
+	  of the device.
 endif
