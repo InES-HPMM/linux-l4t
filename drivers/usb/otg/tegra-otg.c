@@ -464,6 +464,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	tegra->pdev = pdev;
 	tegra->pdata = pdev->dev.platform_data;
+	clk_disable(tegra->clk);
 
 	dev_info(&pdev->dev, "otg transceiver registered\n");
 	return 0;
