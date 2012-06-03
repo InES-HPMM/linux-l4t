@@ -2224,13 +2224,10 @@ static void pllxc_get_dyn_steps(struct clk *c, unsigned long input_rate,
 {
 	switch (input_rate) {
 	case 12000000:
-		*step_a = 0x2B;
-		*step_b = 0x0B;
-		return;
 	case 13000000:
 	case 26000000:
-		*step_a = 0x20;
-		*step_b = 0x0A;
+		*step_a = 0x2B;
+		*step_b = 0x0B;
 		return;
 	case 16800000:
 		*step_a = 0x1A;
