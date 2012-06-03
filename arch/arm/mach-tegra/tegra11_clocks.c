@@ -462,6 +462,12 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 		udelay(2);						\
 	} while (0)
 
+#define pll_writel_delay(value, reg)					\
+	do {								\
+		__raw_writel((value), reg_clk_base + (reg));	\
+		udelay(1);						\
+	} while (0)
+
 
 static inline int clk_set_div(struct clk *c, u32 n)
 {
@@ -2003,10 +2009,10 @@ static void pllcx_strobe(struct clk *c)
 	u32 val = clk_readl(reg);
 
 	val |= PLLCX_MISC_STROBE;
-	clk_writel_delay(val, reg);
+	pll_writel_delay(val, reg);
 
 	val &= ~PLLCX_MISC_STROBE;
-	clk_writel_delay(val, reg);
+	clk_writel(val, reg);
 }
 
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
@@ -2070,14 +2076,13 @@ static int tegra11_pllcx_clk_enable(struct clk *c)
 	val = clk_readl(c->reg + PLL_BASE);
 	val &= ~PLL_BASE_BYPASS;
 	val |= PLL_BASE_ENABLE;
-	clk_writel_delay(val, c->reg + PLL_BASE);
+	pll_writel_delay(val, c->reg + PLL_BASE);
 
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val &= ~PLLCX_MISC_RESET;
-	clk_writel_delay(val, c->reg + PLL_MISC(c));
+	pll_writel_delay(val, c->reg + PLL_MISC(c));
 
 	pllcx_strobe(c);
-
 	tegra11_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
 			PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
 	return 0;
@@ -2094,7 +2099,7 @@ static void tegra11_pllcx_clk_disable(struct clk *c)
 
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLLCX_MISC_RESET;
-	clk_writel_delay(val, c->reg + PLL_MISC(c));
+	pll_writel_delay(val, c->reg + PLL_MISC(c));
 }
 
 static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
@@ -2161,10 +2166,9 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 			pllcx_update_dynamic_koef(c, input_rate, sel->n);
 			val &= ~PLLCX_BASE_DIVN_MASK;
 			val |= sel->n << PLL_BASE_DIVN_SHIFT;
-			clk_writel_delay(val, c->reg + PLL_BASE);
+			pll_writel_delay(val, c->reg + PLL_BASE);
 
 			pllcx_strobe(c);
-
 			tegra11_pll_clk_wait_for_lock(c, c->reg + PLL_BASE,
 					PLL_BASE_LOCK | PLLCX_BASE_PHASE_LOCK);
 		}
@@ -2397,7 +2401,7 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 
 	val = clk_readl(c->reg + PLL_BASE);
 	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
-	clk_writel_delay(val, c->reg + PLL_BASE);
+	pll_writel_delay(val, c->reg + PLL_BASE);
 }
 
 #define PLLXC_DYN_RAMP(pll_misc, reg)					\
@@ -2406,7 +2410,7 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 									\
 		misc &= ~pll_misc##_NDIV_NEW_MASK;			\
 		misc |= sel->n << pll_misc##_NDIV_NEW_SHIFT;		\
-		clk_writel_delay(misc, (reg));				\
+		pll_writel_delay(misc, (reg));				\
 									\
 		misc |= pll_misc##_EN_DYNRAMP;				\
 		clk_writel(misc, (reg));				\
@@ -2415,10 +2419,10 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 									\
 		val &= ~PLLXC_BASE_DIVN_MASK;				\
 		val |= sel->n << PLL_BASE_DIVN_SHIFT;			\
-		clk_writel_delay(val, c->reg + PLL_BASE);		\
+		pll_writel_delay(val, c->reg + PLL_BASE);		\
 									\
 		misc &= ~pll_misc##_EN_DYNRAMP;				\
-		clk_writel_delay(misc, (reg));				\
+		pll_writel_delay(misc, (reg));				\
 	} while (0)
 
 static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
@@ -2488,7 +2492,7 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->state == ON) {
 		/* Use "ENABLE" pulse without placing PLL into IDDQ */
 		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
-		clk_writel_delay(val, c->reg + PLL_BASE);
+		pll_writel_delay(val, c->reg + PLL_BASE);
 	}
 
 	val &= ~(PLLXC_BASE_DIVM_MASK |
