@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_usb_phy.h
  *
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -100,6 +100,7 @@ int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,
 
 int tegra3_usb_phy_init_ops(struct tegra_usb_phy *phy);
 int tegra2_usb_phy_init_ops(struct tegra_usb_phy *phy);
+int tegra11x_usb_phy_init_ops(struct tegra_usb_phy *phy);
 
 
 #endif /* __MACH_TEGRA_USB_PHY_H */

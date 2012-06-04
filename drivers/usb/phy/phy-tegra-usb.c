@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010 - 2011 NVIDIA Corporation
+ * Copyright (C) 2010 - 2012 NVIDIA Corporation
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -130,7 +130,11 @@ int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->has_hostpc)
+#if CONFIG_ARCH_TEGRA_11x_SOC
+		err = tegra11x_usb_phy_init_ops(phy);
+#else
 		err = tegra3_usb_phy_init_ops(phy);
+#endif
 	else
 		err = tegra2_usb_phy_init_ops(phy);
 
