@@ -609,6 +609,13 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	return IRQ_HANDLED;
 }
 
+static void phy_post_suspend(struct tegra_usb_phy *phy)
+{
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	/* Need a 4ms delay for controller to suspend */
+	mdelay(4);
+}
 
 static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
 {
@@ -1741,6 +1748,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.resume	= utmi_phy_resume,
 	.post_resume	= utmi_phy_post_resume,
 	.charger_detect = utmi_phy_charger_detect,
+	.post_suspend   = phy_post_suspend,
 };
 
 static struct tegra_usb_phy_ops uhsic_phy_ops = {
@@ -1753,6 +1761,7 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.post_resume	= uhsic_phy_post_resume,
 	.port_power	= uhsic_phy_bus_port_power,
 	.bus_reset	= uhsic_phy_bus_reset,
+	.post_suspend   = phy_post_suspend,
 };
 
 static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
@@ -1762,6 +1771,7 @@ static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
 	.power_on	= ulpi_link_phy_power_on,
 	.power_off	= ulpi_link_phy_power_off,
 	.resume		= ulpi_link_phy_resume,
+	.post_suspend   = phy_post_suspend,
 };
 
 static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
@@ -1770,6 +1780,7 @@ static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
 	.power_off	= ulpi_null_phy_power_off,
 	.pre_resume = ulpi_null_phy_pre_resume,
 	.resume = ulpi_null_phy_resume,
+	.post_suspend   = phy_post_suspend,
 };
 
 static struct tegra_usb_phy_ops icusb_phy_ops;

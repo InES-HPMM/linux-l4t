@@ -275,8 +275,6 @@ static int tegra_ehci_hub_control(
 		switch (typeReq) {
 		case SetPortFeature:
 			if (wValue == USB_PORT_FEAT_SUSPEND) {
-				/* Need a 4ms delay for controller to suspend */
-				mdelay(4);
 				tegra_usb_phy_post_suspend(tegra->phy);
 			} else if (wValue == USB_PORT_FEAT_RESET) {
 				if (ehci->reset_done[0] && wIndex == 0)
