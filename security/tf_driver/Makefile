@@ -32,5 +32,6 @@ tf_driver-objs += tf_conn.o
 tf_driver-objs += tf_device.o
 tf_driver-objs += tf_comm.o
 tf_driver-objs += tf_comm_tz.o
+tf_driver-objs += tf_teec.o
 
 obj-$(CONFIG_TRUSTED_FOUNDATIONS) += tf_driver.o
