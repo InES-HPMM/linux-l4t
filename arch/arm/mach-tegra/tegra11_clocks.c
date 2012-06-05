@@ -47,40 +47,50 @@
 #define RST_DEVICES_U			0x00C
 #define RST_DEVICES_V			0x358
 #define RST_DEVICES_W			0x35C
+#define RST_DEVICES_X			0x28C
 #define RST_DEVICES_SET_L		0x300
 #define RST_DEVICES_CLR_L		0x304
 #define RST_DEVICES_SET_V		0x430
 #define RST_DEVICES_CLR_V		0x434
-#define RST_DEVICES_NUM			5
+#define RST_DEVICES_SET_X		0x290
+#define RST_DEVICES_CLR_X		0x294
+#define RST_DEVICES_NUM			6
 
 #define CLK_OUT_ENB_L			0x010
 #define CLK_OUT_ENB_H			0x014
 #define CLK_OUT_ENB_U			0x018
 #define CLK_OUT_ENB_V			0x360
 #define CLK_OUT_ENB_W			0x364
+#define CLK_OUT_ENB_X			0x280
 #define CLK_OUT_ENB_SET_L		0x320
 #define CLK_OUT_ENB_CLR_L		0x324
 #define CLK_OUT_ENB_SET_V		0x440
 #define CLK_OUT_ENB_CLR_V		0x444
-#define CLK_OUT_ENB_NUM			5
+#define CLK_OUT_ENB_SET_X		0x284
+#define CLK_OUT_ENB_CLR_X		0x288
+#define CLK_OUT_ENB_NUM			6
 
 #define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1)
 #define CLK_OUT_ENB_V_CLK_ENB_CPULP_EN	(0x1 << 1)
 
 #define PERIPH_CLK_TO_BIT(c)		(1 << (c->u.periph.clk_num % 32))
 #define PERIPH_CLK_TO_RST_REG(c)	\
-	periph_clk_to_reg((c), RST_DEVICES_L, RST_DEVICES_V, 4)
+	periph_clk_to_reg((c), RST_DEVICES_L, RST_DEVICES_V, RST_DEVICES_X, 4)
 #define PERIPH_CLK_TO_RST_SET_REG(c)	\
-	periph_clk_to_reg((c), RST_DEVICES_SET_L, RST_DEVICES_SET_V, 8)
+	periph_clk_to_reg((c), RST_DEVICES_SET_L, RST_DEVICES_SET_V, \
+		RST_DEVICES_SET_X, 8)
 #define PERIPH_CLK_TO_RST_CLR_REG(c)	\
-	periph_clk_to_reg((c), RST_DEVICES_CLR_L, RST_DEVICES_CLR_V, 8)
+	periph_clk_to_reg((c), RST_DEVICES_CLR_L, RST_DEVICES_CLR_V, \
+		RST_DEVICES_CLR_X, 8)
 
 #define PERIPH_CLK_TO_ENB_REG(c)	\
-	periph_clk_to_reg((c), CLK_OUT_ENB_L, CLK_OUT_ENB_V, 4)
+	periph_clk_to_reg((c), CLK_OUT_ENB_L, CLK_OUT_ENB_V, CLK_OUT_ENB_X, 4)
 #define PERIPH_CLK_TO_ENB_SET_REG(c)	\
-	periph_clk_to_reg((c), CLK_OUT_ENB_SET_L, CLK_OUT_ENB_SET_V, 8)
+	periph_clk_to_reg((c), CLK_OUT_ENB_SET_L, CLK_OUT_ENB_SET_V, \
+		CLK_OUT_ENB_SET_X, 8)
 #define PERIPH_CLK_TO_ENB_CLR_REG(c)	\
-	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, 8)
+	periph_clk_to_reg((c), CLK_OUT_ENB_CLR_L, CLK_OUT_ENB_CLR_V, \
+		CLK_OUT_ENB_CLR_X, 8)
 
 #define CLK_MASK_ARM			0x44
 #define MISC_CLK_ENB			0x48
@@ -475,14 +485,16 @@ static inline int clk_set_div(struct clk *c, u32 n)
 }
 
 static inline u32 periph_clk_to_reg(
-	struct clk *c, u32 reg_L, u32 reg_V, int offs)
+	struct clk *c, u32 reg_L, u32 reg_V, u32 reg_X, int offs)
 {
 	u32 reg = c->u.periph.clk_num / 32;
 	BUG_ON(reg >= RST_DEVICES_NUM);
 	if (reg < 3)
 		reg = reg_L + (reg * offs);
-	else
+	else if (reg < 5)
 		reg = reg_V + ((reg - 3) * offs);
+	else
+		reg = reg_X;
 	return reg;
 }
 
