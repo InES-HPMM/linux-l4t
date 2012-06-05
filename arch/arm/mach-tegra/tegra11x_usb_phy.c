@@ -502,19 +502,6 @@ static int usb_phy_init(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static void usb_phy_fence_read(struct tegra_usb_phy *phy)
-{
-	/* Fence read for coherency of AHB master intiated writes */
-	if (phy->inst == 0)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-	else if (phy->inst == 1)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB2_PREFETCH_ID));
-	else if (phy->inst == 2)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB3_PREFETCH_ID));
-
-	return;
-}
-
 static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 {
 	unsigned long val, pmc_pad_cfg_val;
@@ -1191,7 +1178,6 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
 			readl(base + USB_USBMODE), readl(base + USB_USBCMD));
 
-	usb_phy_fence_read(phy);
 	/* check if there is any remote wake event */
 	if (utmi_phy_remotewake_detected(phy))
 		pr_info("%s: utmip remote wake detected\n", __func__);
@@ -1715,12 +1701,6 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static int uhsic_phy_irq(struct tegra_usb_phy *phy)
-{
-	usb_phy_fence_read(phy);
-	return IRQ_HANDLED;
-}
-
 static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
@@ -2168,12 +2148,6 @@ static int ulpi_null_phy_init(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static int ulpi_null_phy_irq(struct tegra_usb_phy *phy)
-{
-	usb_phy_fence_read(phy);
-	return IRQ_HANDLED;
-}
-
 static int ulpi_null_phy_cmd_reset(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
@@ -2322,7 +2296,6 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.init		= usb_phy_init,
 	.open		= uhsic_phy_open,
-	.irq		= uhsic_phy_irq,
 	.power_on	= uhsic_phy_power_on,
 	.power_off	= uhsic_phy_power_off,
 	.pre_resume = uhsic_phy_pre_resume,
@@ -2334,7 +2307,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 
 static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
 	.init		= ulpi_null_phy_init,
-	.irq		= ulpi_null_phy_irq,
 	.power_on	= ulpi_null_phy_power_on,
 	.power_off	= ulpi_null_phy_power_off,
 	.pre_resume = ulpi_null_phy_pre_resume,
