@@ -497,7 +497,6 @@ static int usb_phy_init(struct tegra_usb_phy *phy)
 
 	val = readl(base + HOSTPC1_DEVLC);
 	val &= ~HOSTPC1_DEVLC_STS;
-	val &= ~HOSTPC1_DEVLC_NYT_ASUS;
 	writel(val, base + HOSTPC1_DEVLC);
 
 	return 0;

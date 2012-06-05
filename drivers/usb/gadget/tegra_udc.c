@@ -351,12 +351,6 @@ static void dr_controller_run(struct tegra_udc *udc)
 	temp |= USB_MODE_CTRL_MODE_DEVICE;
 	udc_writel(udc, temp, USB_MODE_REG_OFFSET);
 
-	if (udc->has_hostpc) {
-		temp = udc_readl(udc, USB_HOSTPCX_DEVLC_REG_OFFSET);
-		temp &= ~HOSTPC1_DEVLC_ASUS;
-		udc_writel(udc, temp, USB_HOSTPCX_DEVLC_REG_OFFSET);
-	}
-
 	/* Set controller to Run */
 	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
 	if (can_pullup(udc))
