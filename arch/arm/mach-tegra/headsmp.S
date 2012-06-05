@@ -136,6 +136,9 @@ __invalidate_cpu_state:
 	tst	r0, #1
 	bne	enable_icache_bp
 	mrc	p15, 0x1, r0, c9, c0, 2
+	and	r1, r0, #7
+	cmp	r1, #2
+	beq	enable_icache_bp
 	bic r0, r0, #7
 	orr r0, r0, #2
 	mcr p15, 0x1, r0, c9, c0, 2
