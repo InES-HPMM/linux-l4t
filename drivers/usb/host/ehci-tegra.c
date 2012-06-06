@@ -58,6 +58,7 @@ struct tegra_ehci_hcd {
 	bool port_resuming;
 	unsigned int irq;
 	bool bus_suspended_fail;
+	bool unaligned_dma_buf_supported;
 };
 
 struct dma_align_buffer {
@@ -66,10 +67,14 @@ struct dma_align_buffer {
 	u8 data[0];
 };
 
-static void free_align_buffer(struct urb *urb)
+static void free_align_buffer(struct urb *urb, struct usb_hcd *hcd)
 {
 	struct dma_align_buffer *temp;
+	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	
+	if (tegra->unaligned_dma_buf_supported)
+		return;
+
 	if (!(urb->transfer_flags & URB_ALIGNED_TEMP_BUFFER))
 		return;
 
@@ -86,10 +91,15 @@ static void free_align_buffer(struct urb *urb)
 	kfree(temp->kmalloc_ptr);
 }
 
-static int alloc_align_buffer(struct urb *urb, gfp_t mem_flags)
+static int alloc_align_buffer(struct urb *urb, gfp_t mem_flags,
+	struct usb_hcd *hcd)
 {
 	struct dma_align_buffer *temp, *kmalloc_ptr;
 	size_t kmalloc_size;
+	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
+
+	if (tegra->unaligned_dma_buf_supported)
+		return 0;
 
 	if (urb->num_sgs || urb->sg ||
 		urb->transfer_buffer_length == 0 ||
@@ -124,7 +134,7 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 {
 	int ret;
 
-	ret = alloc_align_buffer(urb, mem_flags);
+	ret = alloc_align_buffer(urb, mem_flags, hcd);
 	if (ret)
 		return ret;
 
@@ -146,7 +156,7 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 	}
 
 	if (ret)
-		free_align_buffer(urb);
+		free_align_buffer(urb, hcd);
 
 	return ret;
 }
@@ -155,7 +165,7 @@ static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	struct urb *urb)
 {
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
-	free_align_buffer(urb);
+	free_align_buffer(urb, hcd);
 
 	if (urb->transfer_dma) {
 		enum dma_data_direction dir;
@@ -456,6 +466,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct usb_hcd *hcd;
 	struct tegra_ehci_hcd *tegra;
+	struct tegra_usb_platform_data *pdata;
 	int err = 0;
 	int irq;
 	int instance = pdev->id;
@@ -532,6 +543,9 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 	set_irq_flags(irq, IRQF_VALID);
 	tegra->irq = irq;
+
+	pdata = dev_get_platdata(&pdev->dev);
+	tegra->unaligned_dma_buf_supported = pdata->unaligned_dma_buf_supported;
 
 	tegra->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(tegra->phy)) {
