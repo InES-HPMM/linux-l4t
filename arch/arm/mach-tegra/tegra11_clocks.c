@@ -5387,11 +5387,6 @@ struct clk tegra_list_clks[] = {
  * table under two names.
  */
 struct clk_duplicate tegra_clk_duplicates[] = {
-	CLK_DUPLICATE("uarta",	"serial8250.0",	"uarta"),
-	CLK_DUPLICATE("uartb",	"serial8250.0",	"uartb"),
-	CLK_DUPLICATE("uartc",	"serial8250.0",	"uartc"),
-	CLK_DUPLICATE("uartd",	"serial8250.0",	"uartd"),
-	CLK_DUPLICATE("uarte",	"serial8250.0",	"uarte"),
 	CLK_DUPLICATE("usbd", "utmip-pad", NULL),
 	CLK_DUPLICATE("usbd", "tegra-ehci.0", NULL),
 	CLK_DUPLICATE("usbd", "tegra-otg", NULL),
