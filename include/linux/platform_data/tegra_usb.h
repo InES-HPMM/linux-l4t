@@ -121,6 +121,7 @@ struct tegra_usb_platform_data {
 	bool port_otg;
 	bool has_hostpc;
 	bool builtin_host_disabled;
+	bool unaligned_dma_buf_supported;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 
