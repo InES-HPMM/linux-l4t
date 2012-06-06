@@ -1218,72 +1218,6 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	return IRQ_HANDLED;
 }
 
-static void utmi_phy_enable_obs_bus(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	/* (2LS WAR)is not required for LS and FS devices and is only for HS */
-	if ((phy->port_speed == USB_PHY_PORT_SPEED_LOW) ||
-		(phy->port_speed == USB_PHY_PORT_SPEED_FULL)) {
-		/* do not enable the OBS bus */
-		val = readl(base + UTMIP_MISC_CFG0);
-		val &= ~(UTMIP_DPDM_OBSERVE_SEL(~0));
-		writel(val, base + UTMIP_MISC_CFG0);
-		DBG("%s(%d) Disable OBS bus\n", __func__, __LINE__);
-		return;
-	}
-	/* Force DP/DM pulldown active for Host mode */
-	val = readl(base + UTMIP_MISC_CFG0);
-	val |= FORCE_PULLDN_DM | FORCE_PULLDN_DP |
-			COMB_TERMS | ALWAYS_FREE_RUNNING_TERMS;
-	writel(val, base + UTMIP_MISC_CFG0);
-	val = readl(base + UTMIP_MISC_CFG0);
-	val &= ~UTMIP_DPDM_OBSERVE_SEL(~0);
-	if (phy->port_speed == USB_PHY_PORT_SPEED_LOW)
-		val |= UTMIP_DPDM_OBSERVE_SEL_FS_J;
-	else
-		val |= UTMIP_DPDM_OBSERVE_SEL_FS_K;
-	writel(val, base + UTMIP_MISC_CFG0);
-	udelay(1);
-
-	val = readl(base + UTMIP_MISC_CFG0);
-	val |= UTMIP_DPDM_OBSERVE;
-	writel(val, base + UTMIP_MISC_CFG0);
-	udelay(10);
-	DBG("%s(%d) Enable OBS bus\n", __func__, __LINE__);
-}
-
-static void utmi_phy_disable_obs_bus(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	/* check if OBS bus is already enabled */
-	val = readl(base + UTMIP_MISC_CFG0);
-	if (val & UTMIP_DPDM_OBSERVE) {
-		/* Change the UTMIP OBS bus to drive SE0 */
-		val = readl(base + UTMIP_MISC_CFG0);
-		val &= ~UTMIP_DPDM_OBSERVE_SEL(~0);
-		val |= UTMIP_DPDM_OBSERVE_SEL_FS_SE0;
-		writel(val, base + UTMIP_MISC_CFG0);
-
-		/* Wait for 3us(2 LS bit times) */
-		udelay(3);
-
-		/* Release UTMIP OBS bus */
-		val = readl(base + UTMIP_MISC_CFG0);
-		val &= ~UTMIP_DPDM_OBSERVE;
-		writel(val, base + UTMIP_MISC_CFG0);
-
-		/* Release DP/DM pulldown for Host mode */
-		val = readl(base + UTMIP_MISC_CFG0);
-		val &= ~(FORCE_PULLDN_DM | FORCE_PULLDN_DP |
-				COMB_TERMS | ALWAYS_FREE_RUNNING_TERMS);
-		writel(val, base + UTMIP_MISC_CFG0);
-	}
-}
-
 static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
@@ -1296,8 +1230,6 @@ static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
 		utmip_phy_disable_pmc_bus_ctrl(phy);
 	}
-
-	utmi_phy_disable_obs_bus(phy);
 
 	return 0;
 }
@@ -1313,8 +1245,6 @@ static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 	if (val & UTMIP_MASTER_ENABLE(inst)) {
 		if (!remote_wakeup)
 			utmip_phy_disable_pmc_bus_ctrl(phy);
-	} else {
-		utmi_phy_enable_obs_bus(phy);
 	}
 
 	return 0;
@@ -1559,7 +1489,6 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 				utmip_phy_disable_pmc_bus_ctrl(phy);
 		}
 	}
-	utmi_phy_enable_obs_bus(phy);
 }
 
 static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
