@@ -150,13 +150,6 @@ config TEGRA_DSI
 	help
 	  Say Y here to enable the DSI panel.
 
-config TEGRA_DSI_GANGED_MODE
-	bool "Enable DSI ganged mode"
-	depends on ARCH_TEGRA_11x_SOC && TEGRA_DC
-	default n
-	help
-	 Say Y here to enable DSI ganged mode feature.
-
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && TEGRA_IOVMM_SMMU
