@@ -38,11 +38,12 @@
 #include "devices.h"
 #include "gpio-names.h"
 
+#define TEGRA_DSI_GANGED_MODE 0
 #define PANEL_ENABLE	1
 
 #if PANEL_ENABLE
 
-#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
+#if TEGRA_DSI_GANGED_MODE
 #define DSI_PANEL_218	1
 #else
 #define DSI_PANEL_218	0
@@ -130,14 +131,7 @@ static struct resource curacao_disp1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 
-#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
-	{
-		.name	= "dsi_regs",
-		.start	= TEGRA_DSI_BASE,
-		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-#else
+#if TEGRA_DSI_GANGED_MODE
 	{
 		.name	= "ganged_dsia_regs",
 		.start	= TEGRA_DSI_BASE,
@@ -150,6 +144,14 @@ static struct resource curacao_disp1_resources[] = {
 		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#else
+	{
+		.name	= "dsi_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+
 #endif
 };
 
@@ -212,7 +214,7 @@ static struct tegra_dc_mode curacao_panel_modes[] = {
 	},
 #else
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
-	defined(CONFIG_TEGRA_DSI_GANGED_MODE)
+			TEGRA_DSI_GANGED_MODE
 	{
 		.pclk = 27000000,
 		.h_ref_to_sync = 1,
@@ -253,7 +255,7 @@ static struct tegra_fb_data curacao_fb_data = {
 	.flags		= 0,
 #else
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM) && \
-	defined(CONFIG_TEGRA_DSI_GANGED_MODE)
+		TEGRA_DSI_GANGED_MODE
 	.xres		= 640,
 	.yres		= 480,
 #else
@@ -313,7 +315,7 @@ static struct tegra_dsi_out curacao_dsi = {
 #if DSI_PANEL_218
 	.n_data_lanes = 2,
 #else
-#ifdef CONFIG_TEGRA_DSI_GANGED_MODE
+#if TEGRA_DSI_GANGED_MODE
 	.n_data_lanes = 8,
 #else
 	.n_data_lanes = 4,
@@ -343,7 +345,7 @@ static struct tegra_dsi_out curacao_dsi = {
 
 	.lp_cmd_mode_freq_khz = 20000,
 
-#ifdef CONFIG_TEGRA_DSI_GANGED_MODE
+#if TEGRA_DSI_GANGED_MODE
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
 	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
 	.ganged_type = TEGRA_DSI_GANGED_SYMMETRIC_LEFT_RIGHT,
@@ -414,14 +416,7 @@ static struct resource curacao_disp2_resources[] = {
 		.end	= 0,	/* Filled in by curacao_panel_init() */
 		.flags	= IORESOURCE_MEM,
 	},
-#ifndef CONFIG_TEGRA_DSI_GANGED_MODE
-	{
-		.name	= "dsi_regs",
-		.start	= TEGRA_DSI_BASE,
-		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-#else
+#if TEGRA_DSI_GANGED_MODE
 	{
 		.name	= "ganged_dsia_regs",
 		.start	= TEGRA_DSI_BASE,
@@ -434,6 +429,14 @@ static struct resource curacao_disp2_resources[] = {
 		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#else
+	{
+		.name	= "dsi_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+
 #endif
 };
 
