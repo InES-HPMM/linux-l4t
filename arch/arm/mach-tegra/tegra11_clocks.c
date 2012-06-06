@@ -2701,7 +2701,9 @@ static struct clk_ops tegra_dfll_ops = {
 	.clk_cfg_ex		= tegra11_dfll_clk_cfg_ex,
 };
 
-/* Clock divider ops */
+/* Clock divider ops (non-atomic shared register access) */
+static DEFINE_SPINLOCK(pll_div_lock);
+
 static int tegra11_pll_div_clk_set_rate(struct clk *c, unsigned long rate);
 static void tegra11_pll_div_clk_init(struct clk *c)
 {
@@ -2741,9 +2743,11 @@ static int tegra11_pll_div_clk_enable(struct clk *c)
 {
 	u32 val;
 	u32 new_val;
+	unsigned long flags;
 
 	pr_debug("%s: %s\n", __func__, c->name);
 	if (c->flags & DIV_U71) {
+		spin_lock_irqsave(&pll_div_lock, flags);
 		val = clk_readl(c->reg);
 		new_val = val >> c->reg_shift;
 		new_val &= 0xFFFF;
@@ -2753,6 +2757,7 @@ static int tegra11_pll_div_clk_enable(struct clk *c)
 		val &= ~(0xFFFF << c->reg_shift);
 		val |= new_val << c->reg_shift;
 		clk_writel_delay(val, c->reg);
+		spin_unlock_irqrestore(&pll_div_lock, flags);
 		return 0;
 	} else if (c->flags & DIV_2) {
 		return 0;
@@ -2764,9 +2769,11 @@ static void tegra11_pll_div_clk_disable(struct clk *c)
 {
 	u32 val;
 	u32 new_val;
+	unsigned long flags;
 
 	pr_debug("%s: %s\n", __func__, c->name);
 	if (c->flags & DIV_U71) {
+		spin_lock_irqsave(&pll_div_lock, flags);
 		val = clk_readl(c->reg);
 		new_val = val >> c->reg_shift;
 		new_val &= 0xFFFF;
@@ -2776,6 +2783,7 @@ static void tegra11_pll_div_clk_disable(struct clk *c)
 		val &= ~(0xFFFF << c->reg_shift);
 		val |= new_val << c->reg_shift;
 		clk_writel_delay(val, c->reg);
+		spin_unlock_irqrestore(&pll_div_lock, flags);
 	}
 }
 
@@ -2785,12 +2793,14 @@ static int tegra11_pll_div_clk_set_rate(struct clk *c, unsigned long rate)
 	u32 new_val;
 	int divider_u71;
 	unsigned long parent_rate = clk_get_rate(c->parent);
+	unsigned long flags;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 	if (c->flags & DIV_U71) {
 		divider_u71 = clk_div71_get_divider(
 			parent_rate, rate, c->flags, ROUND_DIVIDER_UP);
 		if (divider_u71 >= 0) {
+			spin_lock_irqsave(&pll_div_lock, flags);
 			val = clk_readl(c->reg);
 			new_val = val >> c->reg_shift;
 			new_val &= 0xFFFF;
@@ -2804,6 +2814,7 @@ static int tegra11_pll_div_clk_set_rate(struct clk *c, unsigned long rate)
 			clk_writel_delay(val, c->reg);
 			c->div = divider_u71 + 2;
 			c->mul = 2;
+			spin_unlock_irqrestore(&pll_div_lock, flags);
 			return 0;
 		}
 	} else if (c->flags & DIV_2)
