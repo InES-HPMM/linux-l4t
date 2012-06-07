@@ -138,6 +138,14 @@
 #define   ULPI_DIR_TRIMMER_LOAD		(1 << 24)
 #define   ULPI_DIR_TRIMMER_SEL(x)	(((x) & 0x7) << 25)
 
+#define USB_IF_SPARE	0x498
+#define   USB_HS_RSM_EOP_EN         (1 << 4)
+#define   USB_PORT_SUSPEND_EN       (1 << 5)
+
+#define USB_NEW_CONTROL  0x4c0
+#define   USB_COHRENCY_EN           (1 << 0)
+#define   USB_MEM_ALLIGNMENT_MUX_EN (1 << 1)
+
 #define UTMIP_XCVR_CFG0		0x808
 #define   UTMIP_XCVR_SETUP(x)			(((x) & 0xf) << 0)
 #define   UTMIP_XCVR_LSRSLEW(x)			(((x) & 0x3) << 8)
@@ -498,6 +506,15 @@ static int usb_phy_init(struct tegra_usb_phy *phy)
 	val = readl(base + HOSTPC1_DEVLC);
 	val &= ~HOSTPC1_DEVLC_STS;
 	writel(val, base + HOSTPC1_DEVLC);
+
+	val = readl(base + USB_IF_SPARE);
+	val |= USB_HS_RSM_EOP_EN;
+	val |= USB_PORT_SUSPEND_EN;
+	writel(val, base + USB_IF_SPARE);
+
+	val = readl(base + USB_NEW_CONTROL);
+	val |= USB_COHRENCY_EN;
+	writel(val, base + USB_NEW_CONTROL);
 
 	return 0;
 }
