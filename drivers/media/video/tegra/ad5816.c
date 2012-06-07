@@ -631,16 +631,6 @@ static int ad5816_dev_id(struct ad5816_info *info)
 	return err;
 }
 
-static void ad5816_sts_rd(struct ad5816_info *info)
-{
-	/**
-	* Device specific code for status
-	*
-	* TODO: Ad5816 has support to get status for over/under
-	* voltage conditions but currently this feature is not
-	* required.
-	*/
-}
 /**
  * Below are device specific functions.
  */
@@ -669,7 +659,6 @@ static int ad5816_position_wr(struct ad5816_info *info, unsigned position)
 	u16 data;
 
 	position = position + info->config.pos_low;
-
 	if(position > info->config.pos_high)
 		position = info->config.pos_high;
 
@@ -762,7 +751,7 @@ static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 }
 
 static int ad5816_param_wr_s(struct ad5816_info *info,
-			struct nvc_param *params, u32 u32val)
+		struct nvc_param *params, u32 u32val)
 {
 	u8 u8val;
 	int err = 0;

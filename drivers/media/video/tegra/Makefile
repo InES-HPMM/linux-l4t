@@ -1,3 +1,4 @@
+subdir-ccflags-y := -Werror
 obj-y				+= avp/
 obj-$(CONFIG_TEGRA_MEDIASERVER)		+= mediaserver/
 obj-$(CONFIG_TEGRA_NVAVP)	+= nvavp/
