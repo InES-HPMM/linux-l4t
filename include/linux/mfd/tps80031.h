@@ -531,6 +531,7 @@ enum tps80031_pupd_settings {
 
 struct tps80031_rtc_platform_data {
 	struct rtc_time time;
+	int msecure_gpio;
 };
 
 struct tps80031 {
