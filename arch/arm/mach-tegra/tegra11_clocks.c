@@ -451,8 +451,10 @@ static void __iomem *misc_gp_hidrev_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 
 /*
  * Some peripheral clocks share an enable bit, so refcount the enable bits
- * in registers CLK_ENABLE_L, ... CLK_ENABLE_W
+ * in registers CLK_ENABLE_L, ... CLK_ENABLE_W, and protect refcount updates
+ * with lock
  */
+static DEFINE_SPINLOCK(periph_refcount_lock);
 static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #define clk_writel(value, reg) \
@@ -2926,6 +2928,10 @@ static void tegra11_periph_clk_init(struct clk *c)
 	}
 
 	c->state = ON;
+
+	if (c->flags & PERIPH_NO_ENB)
+		return;
+
 	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
 		c->state = OFF;
 	if (!(c->flags & PERIPH_NO_RESET))
@@ -2935,11 +2941,19 @@ static void tegra11_periph_clk_init(struct clk *c)
 
 static int tegra11_periph_clk_enable(struct clk *c)
 {
+	unsigned long flags;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	tegra_periph_clk_enable_refcount[c->u.periph.clk_num]++;
-	if (tegra_periph_clk_enable_refcount[c->u.periph.clk_num] > 1)
+	if (c->flags & PERIPH_NO_ENB)
 		return 0;
+
+	spin_lock_irqsave(&periph_refcount_lock, flags);
+
+	tegra_periph_clk_enable_refcount[c->u.periph.clk_num]++;
+	if (tegra_periph_clk_enable_refcount[c->u.periph.clk_num] > 1) {
+		spin_unlock_irqrestore(&periph_refcount_lock, flags);
+		return 0;
+	}
 
 	clk_writel_delay(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_SET_REG(c));
 	if (!(c->flags & PERIPH_NO_RESET) && !(c->flags & PERIPH_MANUAL_RESET)) {
@@ -2948,13 +2962,19 @@ static int tegra11_periph_clk_enable(struct clk *c)
 			clk_writel(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_RST_CLR_REG(c));
 		}
 	}
+	spin_unlock_irqrestore(&periph_refcount_lock, flags);
 	return 0;
 }
 
 static void tegra11_periph_clk_disable(struct clk *c)
 {
-	unsigned long val;
+	unsigned long val, flags;
 	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	if (c->flags & PERIPH_NO_ENB)
+		return;
+
+	spin_lock_irqsave(&periph_refcount_lock, flags);
 
 	if (c->refcnt)
 		tegra_periph_clk_enable_refcount[c->u.periph.clk_num]--;
@@ -2969,6 +2989,7 @@ static void tegra11_periph_clk_disable(struct clk *c)
 		clk_writel_delay(
 			PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_CLR_REG(c));
 	}
+	spin_unlock_irqrestore(&periph_refcount_lock, flags);
 }
 
 static void tegra11_periph_clk_reset(struct clk *c, bool assert)
@@ -2976,6 +2997,9 @@ static void tegra11_periph_clk_reset(struct clk *c, bool assert)
 	unsigned long val;
 	pr_debug("%s %s on clock %s\n", __func__,
 		 assert ? "assert" : "deassert", c->name);
+
+	if (c->flags & PERIPH_NO_ENB)
+		return;
 
 	if (!(c->flags & PERIPH_NO_RESET)) {
 		if (assert) {
