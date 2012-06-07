@@ -246,8 +246,8 @@ static void emc_last_stats_update(int last_sel)
 	spin_lock_irqsave(&emc_stats.spinlock, flags);
 
 	if (emc_stats.last_sel < TEGRA_EMC_TABLE_MAX_SIZE)
-		emc_stats.time_at_clock[emc_stats.last_sel] = 
-			emc_stats.time_at_clock[emc_stats.last_sel] + 
+		emc_stats.time_at_clock[emc_stats.last_sel] =
+			emc_stats.time_at_clock[emc_stats.last_sel] +
 			(cur_jiffies - emc_stats.last_update);
 
 	emc_stats.last_update = cur_jiffies;
@@ -497,6 +497,7 @@ static inline void do_clock_change(u32 clk_setting)
 
 	mc_readl(MC_EMEM_ADR_CFG);	/* completes prev writes */
 	writel(clk_setting, clk_base + emc->reg);
+	readl(clk_base + emc->reg);/* completes prev write */
 
 	err = wait_for_update(EMC_INTSTATUS,
 			      EMC_INTSTATUS_CLKCHANGE_COMPLETE, true);
