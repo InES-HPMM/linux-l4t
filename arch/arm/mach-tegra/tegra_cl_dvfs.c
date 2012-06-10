@@ -347,16 +347,15 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, cld->soc_data->tune1, CL_DVFS_TUNE1);
 
 	/* configure droop (skipper 1) and scale (skipper 2) */
-	val = GET_DROOP_FREQ(cld->soc_data->droop_cpu_rate_min, cld->ref_rate);
+	val = GET_DROOP_FREQ(cld->soc_data->dfll_droop_rate_min, cld->ref_rate);
 	val <<= CL_DVFS_DROOP_CTRL_MIN_FREQ_SHIFT;
 	BUG_ON(val > CL_DVFS_DROOP_CTRL_MIN_FREQ_MASK);
 	val |= (param->droop_cut_value << CL_DVFS_DROOP_CTRL_CUT_SHIFT);
 	val |= (param->droop_restore_ramp << CL_DVFS_DROOP_CTRL_RAMP_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
 
-	/* FIXME: does dfll_rate_min require separate charact entry ? */
 	/* round minimum rate to request unit (ref_rate/2) boundary */
-	cld->dfll_rate_min = cld->soc_data->droop_cpu_rate_min;
+	cld->dfll_rate_min = cld->soc_data->dfll_out_rate_min;
 	cld->dfll_rate_min = ROUND_MIN_RATE(cld->dfll_rate_min, cld->ref_rate);
 
 	cld->last_req.freq = 0;

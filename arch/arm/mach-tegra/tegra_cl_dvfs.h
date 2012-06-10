@@ -89,7 +89,8 @@ struct tegra_cl_dvfs_soc_data {
 	int		speedo_id;
 	u32		tune0;
 	u32		tune1;
-	unsigned long	droop_cpu_rate_min;
+	unsigned long	dfll_droop_rate_min;
+	unsigned long	dfll_out_rate_min;
 };
 
 struct dfll_rate_req {
