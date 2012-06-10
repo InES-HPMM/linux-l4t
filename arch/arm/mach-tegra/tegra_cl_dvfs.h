@@ -91,6 +91,7 @@ struct tegra_cl_dvfs_soc_data {
 	u32		tune1;
 	unsigned long	dfll_droop_rate_min;
 	unsigned long	dfll_out_rate_min;
+	int		dfll_millivolts_min;
 };
 
 struct dfll_rate_req {

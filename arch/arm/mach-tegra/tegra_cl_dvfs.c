@@ -225,21 +225,16 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	millivolts = cld->cpu_clk->dvfs->millivolts;
 	v_max = cld->cpu_clk->dvfs->max_millivolts;
 
-	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
-		v = millivolts[i];
-		m = find_vdd_map_entry(cld, millivolts[i], true);
-		BUG_ON(!m);
+	v = cld->soc_data->dfll_millivolts_min;
+	BUG_ON(v > millivolts[0]);
 
-		if (!j || (m != cld->out_map[j - 1]))
-			cld->out_map[j++] = m;
-		cld->clk_dvfs_map[i] = j - 1;
+	cld->out_map[0] = find_vdd_map_entry(cld, v, true);
+	BUG_ON(!cld->out_map[0]);
 
-		if (v >= v_max)
-			break;
-
+	for (i = 0, j = 1; i < MAX_DVFS_FREQS; i++) {
 		for (;;) {
 			v += (v_max - v) / (MAX_CL_DVFS_VOLTAGES - j);
-			if (v >= millivolts[i + 1])
+			if (v >= millivolts[i])
 				break;
 
 			m = find_vdd_map_entry(cld, v, false);
@@ -247,6 +242,16 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 			if (m != cld->out_map[j - 1])
 				cld->out_map[j++] = m;
 		}
+
+		v = millivolts[i];
+		m = find_vdd_map_entry(cld, v, true);
+		BUG_ON(!m);
+		if (m != cld->out_map[j - 1])
+			cld->out_map[j++] = m;
+		cld->clk_dvfs_map[i] = j - 1;
+
+		if (v >= v_max)
+			break;
 	}
 	BUG_ON(millivolts[i] != v_max);
 	BUG_ON(j > MAX_CL_DVFS_VOLTAGES);

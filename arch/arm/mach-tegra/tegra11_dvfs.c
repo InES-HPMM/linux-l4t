@@ -128,7 +128,7 @@ static struct dvfs core_dvfs_table[] = {
 #endif
 };
 
-#define CL_DVFS(_speedo_id, _tune0, _tune1, _droop_min, _out_min) \
+#define CL_DVFS(_speedo_id, _tune0, _tune1, _droop_min, _out_min, _mv_min) \
 	{							\
 		.dfll_clk_name	= "dfll_cpu",			\
 		.speedo_id	= _speedo_id,			\
@@ -136,10 +136,11 @@ static struct dvfs core_dvfs_table[] = {
 		.tune1		= _tune1,			\
 		.dfll_droop_rate_min = _droop_min,		\
 		.dfll_out_rate_min = _out_min,			\
+		.dfll_millivolts_min = _mv_min,			\
 	}
 
 static struct tegra_cl_dvfs_soc_data cl_dvfs_table[] = {
-	CL_DVFS(0, 0x030201, 0x000BB0AA, 640000000, 670000000),
+	CL_DVFS(0, 0x030201, 0x000BB0AA, 640000000, 670000000, 750),
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
