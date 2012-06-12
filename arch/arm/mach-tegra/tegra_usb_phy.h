@@ -95,6 +95,7 @@ struct tegra_usb_phy {
 	bool remote_wakeup;
 	bool hw_accessible;
 	bool ulpi_clk_padout_ena;
+	bool pmc_sleepwalk;
 };
 
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,

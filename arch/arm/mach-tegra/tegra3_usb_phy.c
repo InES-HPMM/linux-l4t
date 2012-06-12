@@ -2009,6 +2009,7 @@ static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 	/* check whether we wake up from the remote resume */
 	if (UHSIC_WALK_PTR_VAL & val) {
 		phy->remote_wakeup = true;
+		pr_info("%s: uhsic remote wakeup detected\n", __func__);
 	} else {
 		if (!((UHSIC_STROBE_VAL_P0 | UHSIC_DATA_VAL_P0) & val)) {
 				uhsic_phy_disable_pmc_bus_ctrl(phy);
@@ -2210,6 +2211,15 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	phy->phy_clk_on = true;
 	phy->hw_accessible = true;
 
+	if (phy->pmc_sleepwalk) {
+		DBG("%s(%d) inst:[%d] restore phy\n", __func__, __LINE__,
+					phy->inst);
+		uhsic_phy_restore_start(phy);
+		usb_phy_bringup_host_controller(phy);
+		uhsic_phy_restore_end(phy);
+		phy->pmc_sleepwalk = false;
+	}
+
 	return 0;
 }
 
@@ -2231,7 +2241,10 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	/* Disable interrupts */
 	writel(0, base + USB_USBINTR);
 
-	uhsic_setup_pmc_wake_detect(phy);
+	if (phy->pmc_sleepwalk == false) {
+		uhsic_setup_pmc_wake_detect(phy);
+		phy->pmc_sleepwalk = true;
+	}
 
 	val = readl(base + HOSTPC1_DEVLC);
 	val |= HOSTPC1_DEVLC_PHCD;
@@ -2379,10 +2392,6 @@ static int uhsic_phy_bus_reset(struct tegra_usb_phy *phy)
 int uhsic_phy_resume(struct tegra_usb_phy *phy)
 {
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	uhsic_phy_restore_start(phy);
-	usb_phy_bringup_host_controller(phy);
-	uhsic_phy_restore_end(phy);
 
 	return 0;
 }
