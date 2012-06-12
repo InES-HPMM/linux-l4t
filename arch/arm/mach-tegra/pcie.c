@@ -917,6 +917,7 @@ err_exit:
 	return err;
 }
 
+#ifdef CONFIG_PM
 static int tegra_pcie_power_on(void)
 {
 	int err = 0;
@@ -935,6 +936,7 @@ static int tegra_pcie_power_on(void)
 err_exit:
 	return err;
 }
+#endif
 
 static int tegra_pcie_power_off(void)
 {
@@ -1266,6 +1268,7 @@ static int tegra_pci_probe(struct platform_device *pdev)
 	return ret;
 }
 
+#ifdef CONFIG_PM
 static int tegra_pcie_save_state(struct pci_dev *pdev, int ndev)
 {
 	int size;
@@ -1349,6 +1352,7 @@ static int tegra_pci_suspend(struct device *dev)
 
 	return tegra_pcie_power_off();
 }
+
 static int tegra_pci_resume_noirq(struct device *dev)
 {
 	struct pci_dev *pdev = NULL;
@@ -1388,6 +1392,7 @@ static int tegra_pci_resume(struct device *dev)
 
 	return ret;
 }
+#endif
 
 static int tegra_pci_remove(struct platform_device *pdev)
 {
