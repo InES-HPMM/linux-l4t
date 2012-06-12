@@ -808,6 +808,7 @@ static int __init bluesleep_init(void)
 	if (bsi->has_ext_wake == 1)
 		gpio_set_value(bsi->ext_wake, 1);
 	set_bit(BT_EXT_WAKE, &flags);
+	hci_register_notifier(&hci_event_nblock);
 
 	return 0;
 
@@ -842,6 +843,7 @@ static void __exit bluesleep_exit(void)
 			hsuart_power(1);
 	}
 
+	hci_unregister_notifier(&hci_event_nblock);
 	platform_driver_unregister(&bluesleep_driver);
 
 	remove_proc_entry("asleep", sleep_dir);
