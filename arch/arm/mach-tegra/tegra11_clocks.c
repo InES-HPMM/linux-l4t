@@ -4360,7 +4360,7 @@ static struct clk tegra_pll_p = {
 static struct clk tegra_pll_p_out1 = {
 	.name      = "pll_p_out1",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = ENABLE_ON_INIT | DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa4,
 	.reg_shift = 0,
@@ -4370,7 +4370,7 @@ static struct clk tegra_pll_p_out1 = {
 static struct clk tegra_pll_p_out2 = {
 	.name      = "pll_p_out2",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = ENABLE_ON_INIT | DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa4,
 	.reg_shift = 16,
@@ -4380,7 +4380,7 @@ static struct clk tegra_pll_p_out2 = {
 static struct clk tegra_pll_p_out3 = {
 	.name      = "pll_p_out3",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = ENABLE_ON_INIT | DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa8,
 	.reg_shift = 0,
@@ -4390,7 +4390,7 @@ static struct clk tegra_pll_p_out3 = {
 static struct clk tegra_pll_p_out4 = {
 	.name      = "pll_p_out4",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = ENABLE_ON_INIT | DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa8,
 	.reg_shift = 16,
@@ -5274,7 +5274,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("hda",	"hda",			NULL,   125,	0x428,	108000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2codec_2x",	"hda2codec_2x",	NULL,   111,	0x3e4,	48000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2hdmi",	"hda2hdmi",		NULL,	128,	0,	48000000,  mux_clk_m,			0),
-	PERIPH_CLK("xio",	"xio",			NULL,	45,	0x120,	150000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("sbc1",	"tegra11-spi.0",		NULL,	41,	0x134,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc2",	"tegra11-spi.1",		NULL,	44,	0x118,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc3",	"tegra11-spi.2",		NULL,	46,	0x11c,	160000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -5298,7 +5297,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	144000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71), /* max rate ??? */
 	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	26000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("owr",	"tegra_w1",		NULL,	71,	0x1cc,	26000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("nor",	"nor",			NULL,	42,	0x1d0,	127000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71), /* requires min voltage */
+	PERIPH_CLK("nor",	"tegra-nor",		NULL,	42,	0x1d0,	127000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71), /* requires min voltage */
 	PERIPH_CLK("mipi",	"mipi",			NULL,	50,	0x174,	60000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB), /* scales with voltage */
 	PERIPH_CLK("i2c1",	"tegra11-i2c.0",	"i2c-div",	12,	0x124,	26000000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c2",	"tegra11-i2c.1",	"i2c-div",	54,	0x198,	26000000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
