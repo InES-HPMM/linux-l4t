@@ -153,8 +153,6 @@ static void tegra_start_host(struct tegra_otg_data *tegra)
 	if (val)
 		goto error;
 
-	tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
-
 	val = platform_device_add(pdev);
 	if (val) {
 		pr_err("%s: platform_device_add failed\n", __func__);
@@ -393,6 +391,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra;
 	struct resource *res;
+	struct tegra_usb_otg_data *pdata = dev_get_platdata(&pdev->dev);
 	int err;
 
 	tegra = devm_kzalloc(&pdev->dev, sizeof(struct tegra_otg_data), GFP_KERNEL);
@@ -406,6 +405,10 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&tegra->lock);
+
+	if (pdata) {
+		tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
+	}
 
 	platform_set_drvdata(pdev, tegra);
 	tegra_clone = tegra;
