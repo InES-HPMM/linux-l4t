@@ -69,6 +69,7 @@ struct tegra_otg_data {
 	void	*charger_cb_data;
 	bool interrupt_mode;
 	bool builtin_host;
+	bool suspended
 };
 
 static struct tegra_otg_data *tegra_clone;
@@ -409,6 +410,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, tegra);
 	tegra_clone = tegra;
 	tegra->interrupt_mode = true;
+	tegra->suspended = false;
 
 	tegra->clk = clk_get(&pdev->dev, NULL);
 	if (IS_ERR(tegra->clk)) {
@@ -520,6 +522,8 @@ static int tegra_otg_suspend(struct device *dev)
 	if (from == OTG_STATE_B_PERIPHERAL)
 		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
 
+	tegra->suspended = true;
+
 	DBG("%s(%d) END\n", __func__, __LINE__);
 
 	return 0;
@@ -534,6 +538,9 @@ static void tegra_otg_resume(struct device *dev)
 	unsigned long flags;
 
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
+
+	if (!tegra->suspended)
+		return;
 
 	/* Clear pending interrupts */
 	clk_enable(tegra->clk);
@@ -558,6 +565,9 @@ static void tegra_otg_resume(struct device *dev)
 	irq_work(&tegra->work);
 
 	enable_interrupt(tegra, true);
+
+	tegra->suspended = false;
+
 	DBG("%s(%d) END\n", __func__, __LINE__);
 }
 
