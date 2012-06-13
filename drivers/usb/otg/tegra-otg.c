@@ -212,8 +212,7 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 
 	if (to != OTG_STATE_UNDEFINED && from != to) {
 		otg->phy->state = to;
-		dev_info(&tegra->pdev->dev, "%s --> %s\n", tegra_state_name(from),
-					      tegra_state_name(to));
+		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
 
 		if (tegra->charger_cb)
 			tegra->charger_cb(to, from, tegra->charger_cb_data);
