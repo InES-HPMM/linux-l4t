@@ -161,6 +161,8 @@ struct tegra_dc {
 	s64				frametime_ns;
 
 	struct tegra_dc_win		windows[DC_N_WINDOWS];
+	struct tegra_dc_win		shadow_windows[DC_N_WINDOWS];
+
 	struct tegra_dc_blend		blend;
 	int				n_windows;
 #ifdef CONFIG_TEGRA_DC_CMU
