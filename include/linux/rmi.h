@@ -1,54 +1,34 @@
 /*
- * Copyright (c) 2011 Synaptics Incorporated
+ * Copyright (c) 2011, 2012 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published by
+ * the Free Software Foundation.
  */
+
 #ifndef _RMI_H
 #define _RMI_H
 #include <linux/kernel.h>
+#include <linux/cdev.h>
+#include <linux/device.h>
+#include <linux/interrupt.h>
+#include <linux/input.h>
+#include <linux/list.h>
 #include <linux/lockdep.h>
 #include <linux/module.h>
-#include <linux/types.h>
-#include <linux/device.h>
-#include <linux/cdev.h>
 #include <linux/mutex.h>
 #include <linux/stat.h>
+#include <linux/types.h>
 #include <linux/wait.h>
-#include <linux/list.h>
-#include <linux/interrupt.h>
+#include <linux/debugfs.h>
+//#include <linux/earlysuspend.h>
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
+extern struct bus_type rmi_bus_type;
 
-#ifdef CONFIG_TOUCHSCREEN_SYN_RMI4_SPI
+extern struct device_type rmi_function_type;
+extern struct device_type rmi_sensor_type;
 
-#define CONFIG_RMI4_BUS
-#define CONFIG_RMI4_SPI
-#define CONFIG_RMI4_GENERIC
-#define CONFIG_RMI4_F09
-#define CONFIG_RMI4_F11
-#define CONFIG_RMI4_F19
-#define CONFIG_RMI4_F34
-#define CONFIG_RMI4_F54
-#define CONFIG_RMI4_DEV
-
-#endif
-
-// #define SYNAPTICS_SENSOR_POLL 1
 
 /* Permissions for sysfs attributes.  Since the permissions policy will change
  * on a global basis in the future, rather than edit all sysfs attrs everywhere
@@ -60,21 +40,31 @@
 #define RMI_RW_ATTR (S_IRUGO | S_IWUGO)
 #define RMI_WO_ATTR S_IWUGO
 
-#define PDT_START_SCAN_LOCATION 0x00e9
-
-enum rmi_irq_polarity {
-	RMI_IRQ_ACTIVE_LOW = 0,
-	RMI_IRQ_ACTIVE_HIGH = 1
+enum rmi_attn_polarity {
+	RMI_ATTN_ACTIVE_LOW = 0,
+	RMI_ATTN_ACTIVE_HIGH = 1
 };
 
 /**
- * struct rmi_f11_axis_alignmen - target axis alignment
+ * struct rmi_f11_axis_alignment - target axis alignment
  * @swap_axes: set to TRUE if desired to swap x- and y-axis
  * @flip_x: set to TRUE if desired to flip direction on x-axis
  * @flip_y: set to TRUE if desired to flip direction on y-axis
+ * @clip_X_low - reported X coordinates below this setting will be clipped to
+ *               the specified value
+ * @clip_X_high - reported X coordinates above this setting will be clipped to
+ *               the specified value
+ * @clip_Y_low - reported Y coordinates below this setting will be clipped to
+ *               the specified value
+ * @clip_Y_high - reported Y coordinates above this setting will be clipped to
+ *               the specified value
+ * @offset_X - this value will be added to all reported X coordinates
+ * @offset_Y - this value will be added to all reported Y coordinates
+ * @rel_report_enabled - if set to true, the relative reporting will be
+ *               automatically enabled for this sensor.
  */
 struct rmi_f11_2d_axis_alignment {
-	bool swap_axes;
+	u32 swap_axes;
 	bool flip_x;
 	bool flip_y;
 	int clip_X_low;
@@ -83,142 +73,164 @@ struct rmi_f11_2d_axis_alignment {
 	int clip_Y_high;
 	int offset_X;
 	int offset_Y;
-	int rel_report_enabled;
+	u8 delta_x_threshold;
+	u8 delta_y_threshold;
 };
 
 /**
- * RMI F11 - function control register parameters
- * Each register that has a specific bit-field setup has an accompanied
- * register definition so that the setting can be chosen as a one-word
- * register setting or per-bit setting.
+ * struct virtualbutton_map - describes rectangular areas of a 2D sensor that
+ * will be used by the driver to generate button events.
+ *
+ * @x - the x position of the low order corner of the rectangle, in RMI4
+ * position units.
+ * @y - the y position of the low order corner of the rectangle, in RMI4
+ * position units.
+ * @width - the width of the rectangle, in RMI4 position units.
+ * @height - the height of the rectangle, in RMI4 position units.
+ * @code - the input subsystem key event code that will be generated when a
+ * tap occurs within the rectangle.
  */
-union rmi_f11_2d_ctrl0 {
-	struct {
-		u8 reporting_mode:3;
-		u8 abs_pos_filt:1;
-		u8 rel_pos_filt:1;
-		u8 rel_ballistics:1;
-		u8 dribble:1;
-		u8 report_beyond_clip:1;
-	};
-	u8 reg;
+struct virtualbutton_map {
+	u16 x;
+	u16 y;
+	u16 width;
+	u16 height;
+	u16 code;
 };
 
-union rmi_f11_2d_ctrl1 {
-	struct {
-		u8 palm_detect_thres:4;
-		u8 motion_sensitivity:2;
-		u8 man_track_en:1;
-		u8 man_tracked_finger:1;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl2__3 {
-	struct {
-		u8 delta_x_threshold:8;
-		u8 delta_y_threshold:8;
-	};
-	u8 regs[2];
-};
-
-union rmi_f11_2d_ctrl4 {
-	struct {
-		u8 velocity:8;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl5 {
-	struct {
-		u8 acceleration:8;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl6__7 {
-	struct {
-		u16 sensor_max_x_pos:12;
-	};
-	u8 regs[2];
-};
-
-union rmi_f11_2d_ctrl8__9 {
-	struct {
-		u16 sensor_max_y_pos:12;
-	};
-	u8 regs[2];
-};
-
-union rmi_f11_2d_ctrl10 {
-	struct {
-		u8 single_tap_int_enable:1;
-		u8 tap_n_hold_int_enable:1;
-		u8 double_tap_int_enable:1;
-		u8 early_tap_int_enable:1;
-		u8 flick_int_enable:1;
-		u8 press_int_enable:1;
-		u8 pinch_int_enable:1;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl11 {
-	struct {
-		u8 palm_detect_int_enable:1;
-		u8 rotate_int_enable:1;
-		u8 touch_shape_int_enable:1;
-		u8 scroll_zone_int_enable:1;
-		u8 multi_finger_scroll_int_enable:1;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl12 {
-	struct {
-		u8 sensor_map:7;
-		u8 xy_sel:1;
-	};
-	u8 reg;
-};
-
-union rmi_f11_2d_ctrl14 {
-	struct {
-		u8 sens_adjustment:5;
-		u8 hyst_adjustment:3;
-	};
-	u8 reg;
-};
-
-/* The configuation is controlled as per register which means that if a register
- * is allocated for ctrl configuration one must make sure that all the bits are
- * set accordingly for that particular register.
+/**
+ * struct rmi_f11_virtualbutton_map - provides a list of virtual buttons for
+ * a 2D sensor.
+ *
+ * @buttons - the number of entries in the map.
+ * @map - an array of virtual button descriptions.
  */
-struct  rmi_f11_2d_ctrl {
-	union rmi_f11_2d_ctrl0		*ctrl0;
-	union rmi_f11_2d_ctrl1		*ctrl1;
-	union rmi_f11_2d_ctrl2__3	*ctrl2__3;
-	union rmi_f11_2d_ctrl4		*ctrl4;
-	union rmi_f11_2d_ctrl5		*ctrl5;
-	union rmi_f11_2d_ctrl6__7	*ctrl6__7;
-	union rmi_f11_2d_ctrl8__9	*ctrl8__9;
-	union rmi_f11_2d_ctrl10		*ctrl10;
-	union rmi_f11_2d_ctrl11		*ctrl11;
-	union rmi_f11_2d_ctrl12		*ctrl12;
-	u8				ctrl12_size;
-	union rmi_f11_2d_ctrl14		*ctrl14;
-	u8				*ctrl15;
-	u8				*ctrl16;
-	u8				*ctrl17;
-	u8				*ctrl18;
-	u8				*ctrl19;
+struct rmi_f11_virtualbutton_map {
+	u8 buttons;
+	struct virtualbutton_map *map;
 };
 
-struct rmi_f19_button_map {
-	unsigned char nbuttons;
-	unsigned char *map;
+/** This is used to override any hints an F11 2D sensor might have provided
+ * as to what type of sensor it is.
+ *
+ * @rmi_f11_sensor_default - do not override, determine from F11_2D_QUERY14 if
+ * available.
+ * @rmi_f11_sensor_touchscreen - treat the sensor as a touchscreen (direct
+ * pointing).
+ * @rmi_f11_sensor_touchpad - thread the sensor as a touchpad (indirect
+ * pointing).
+ */
+enum rmi_f11_sensor_type {
+	rmi_f11_sensor_default = 0,
+	rmi_f11_sensor_touchscreen,
+	rmi_f11_sensor_touchpad
 };
 
+/**
+ * struct rmi_f11_sensor_data - overrides defaults for a single F11 2D sensor.
+ * @axis_align - provides axis alignment overrides (see above).
+ * @virtual_buttons - describes areas of the touch sensor that will be treated
+ *                    as buttons.
+ * @type_a - all modern RMI F11 firmwares implement Multifinger Type B
+ * protocol.  Set this to true to force MF Type A behavior, in case you find
+ * an older sensor.
+ * @sensor_type - Forces the driver to treat the sensor as an indirect
+ * pointing device (touchpad) rather than a direct pointing device
+ * (touchscreen).  This is useful when F11_2D_QUERY14 register is not
+ * available.
+ */
+struct rmi_f11_sensor_data {
+	struct rmi_f11_2d_axis_alignment axis_align;
+	struct rmi_f11_virtualbutton_map virtual_buttons;
+	bool type_a;
+	enum rmi_f11_sensor_type sensor_type;
+};
+
+/**
+ * struct rmi_f01_power - override default power management settings.
+ *
+ */
+enum rmi_f01_nosleep {
+	RMI_F01_NOSLEEP_DEFAULT = 0,
+	RMI_F01_NOSLEEP_OFF = 1,
+	RMI_F01_NOSLEEP_ON = 2
+};
+
+/**
+ * struct rmi_f01_power_management -When non-zero, these values will be written
+ * to the touch sensor to override the default firmware settigns.  For a
+ * detailed explanation of what each field does, see the corresponding
+ * documention in the RMI4 specification.
+ *
+ * @nosleep - specifies whether the device is permitted to sleep or doze (that
+ * is, enter a temporary low power state) when no fingers are touching the
+ * sensor.
+ * @wakeup_threshold - controls the capacitance threshold at which the touch
+ * sensor will decide to wake up from that low power state.
+ * @doze_holdoff - controls how long the touch sensor waits after the last
+ * finger lifts before entering the doze state, in units of 100ms.
+ * @doze_interval - controls the interval between checks for finger presence
+ * when the touch sensor is in doze mode, in units of 10ms.
+ */
+struct rmi_f01_power_management {
+	enum rmi_f01_nosleep nosleep;
+	u8 wakeup_threshold;
+	u8 doze_holdoff;
+	u8 doze_interval;
+};
+
+/**
+ * struct rmi_button_map - used to specify the initial input subsystem key
+ * event codes to be generated by buttons (or button like entities) on the
+ * touch sensor.
+ * @nbuttons - length of the button map.
+ * @map - the key event codes for the corresponding buttons on the touch
+ * sensor.
+ */
+struct rmi_button_map {
+	u8 nbuttons;
+	u8 *map;
+};
+
+struct rmi_f30_gpioled_map {
+	u8 ngpioleds;
+	u8 *map;
+};
+
+/**
+ * struct rmi_device_platform_data_spi - provides parameters used in SPI
+ * communications.  All Synaptics SPI products support a standard SPI
+ * interface; some also support what is called SPI V2 mode, depending on
+ * firmware and/or ASIC limitations.  In V2 mode, the touch sensor can
+ * support shorter delays during certain operations, and these are specified
+ * separately from the standard mode delays.
+ *
+ * @block_delay - for standard SPI transactions consisting of both a read and
+ * write operation, the delay (in microseconds) between the read and write
+ * operations.
+ * @split_read_block_delay_us - for V2 SPI transactions consisting of both a
+ * read and write operation, the delay (in microseconds) between the read and
+ * write operations.
+ * @read_delay_us - the delay between each byte of a read operation in normal
+ * SPI mode.
+ * @write_delay_us - the delay between each byte of a write operation in normal
+ * SPI mode.
+ * @split_read_byte_delay_us - the delay between each byte of a read operation
+ * in V2 mode.
+ * @pre_delay_us - the delay before the start of a SPI transaction.  This is
+ * typically useful in conjunction with custom chip select assertions (see
+ * below).
+ * @post_delay_us - the delay after the completion of an SPI transaction.  This
+ * is typically useful in conjunction with custom chip select assertions (see
+ * below).
+ * @cs_assert - For systems where the SPI subsystem does not control the CS/SSB
+ * line, or where such control is broken, you can provide a custom routine to
+ * handle a GPIO as CS/SSB.  This routine will be called at the beginning and
+ * end of each SPI transaction.  The RMI SPI implementation will wait
+ * pre_delay_us after this routine returns before starting the SPI transfer;
+ * and post_delay_us after completion of the SPI transfer(s) before calling it
+ * with assert==FALSE.
+ */
 struct rmi_device_platform_data_spi {
 	int block_delay_us;
 	int split_read_block_delay_us;
@@ -232,29 +244,108 @@ struct rmi_device_platform_data_spi {
 	int (*cs_assert) (const void *cs_assert_data, const bool assert);
 };
 
+/**
+ * struct rmi_device_platform_data - system specific configuration info.
+ *
+ * @sensor_name - this is used for various diagnostic messages.
+ *
+ * @firmware_name - if specified will override default firmware name,
+ * for reflashing.
+ *
+ * @attn_gpio - the index of a GPIO that will be used to provide the ATTN
+ * interrupt from the touch sensor.
+ * @attn_polarity - indicates whether ATTN is active high or low.
+ * @level_triggered - by default, the driver uses edge triggered interrupts.
+ * However, this can cause problems with suspend/resume on some platforms.  In
+ * that case, set this to 1 to use level triggered interrupts.
+ * @gpio_config - a routine that will be called when the driver is loaded to
+ * perform any platform specific GPIO configuration, and when it is unloaded
+ * for GPIO de-configuration.  This is typically used to configure the ATTN
+ * GPIO and the I2C or SPI pins, if necessary.
+ * @gpio_data - platform specific data to be passed to the GPIO configuration
+ * function.
+ *
+ * @poll_interval_ms - the time in milliseconds between reads of the interrupt
+ * status register.  This is ignored if attn_gpio is non-zero.
+ *
+ * @reset_delay_ms - after issuing a reset command to the touch sensor, the
+ * driver waits a few milliseconds to give the firmware a chance to
+ * to re-initialize.  You can override the default wait period here.
+ *
+ * @spi_data - override default settings for SPI delays and SSB management (see
+ * above).
+ *
+ * @f11_sensor_data - an array of platform data for individual F11 2D sensors.
+ * @f11_sensor_count - the length of f11_sensor_data array.  Extra entries will
+ * be ignored; if there are too few entries, all settings for the additional
+ * sensors will be defaulted.
+ * @f11_rezero_wait - if non-zero, this is how may milliseconds the F11 2D
+ * sensor(s) will wait before being be rezeroed on exit from suspend.  If
+ * this value is zero, the F11 2D sensor(s) will not be rezeroed on resume.
+ * @pre_suspend - this will be called before any other suspend operations are
+ * done.
+ * @power_management - overrides default touch sensor doze mode settings (see
+ * above)
+ * @f19_button_map - provide initial input subsystem key mappings for F19.
+ * @f1a_button_map - provide initial input subsystem key mappings for F1A.
+ * @gpioled_map - provides initial settings for GPIOs and LEDs controlled by
+ * F30.
+ * @f41_button_map - provide initial input subsystem key mappings for F41.
+ * @f54_direct_touch_report_size - the size of the report used for direct
+ * touch.
+ *
+ * @post_suspend - this will be called after all suspend operations are
+ * completed.  This is the ONLY safe place to power off an RMI sensor
+ * during the suspend process.
+ * @pre_resume - this is called before any other resume operations.  If you
+ * powered off the RMI4 sensor in post_suspend(), then you MUST power it back
+ * here, and you MUST wait an appropriate time for the ASIC to come up
+ * (100ms to 200ms, depending on the sensor) before returning.
+ * @pm_data - this will be passed to the various (pre|post)_(suspend/resume)
+ * functions.
+ */
 struct rmi_device_platform_data {
-	char *driver_name;
+	char *sensor_name;	/* Used for diagnostics. */
 
-	int irq;
-	enum rmi_irq_polarity irq_polarity;
+	int attn_gpio;
+	enum rmi_attn_polarity attn_polarity;
+	bool level_triggered;
+	void *gpio_data;
 	int (*gpio_config)(void *gpio_data, bool configure);
+
+	int poll_interval_ms;
+
+	int reset_delay_ms;
 
 	struct rmi_device_platform_data_spi spi_data;
 
 	/* function handler pdata */
-	struct rmi_f11_2d_ctrl *f11_ctrl;
-	struct rmi_f11_2d_axis_alignment axis_align;
-	struct rmi_f19_button_map *button_map;
+	struct rmi_f11_sensor_data *f11_sensor_data;
+	u8 f11_sensor_count;
+	u16 f11_rezero_wait;
+	struct rmi_f01_power_management power_management;
+	struct rmi_button_map *f19_button_map;
+	struct rmi_button_map *f1a_button_map;
+	struct rmi_f30_gpioled_map *gpioled_map;
+	struct rmi_button_map *f41_button_map;
+	int f54_direct_touch_report_size;
+
+#ifdef CONFIG_RMI4_FWLIB
+	char *firmware_name;
+#endif
 
 #ifdef	CONFIG_PM
 	void *pm_data;
 	int (*pre_suspend) (const void *pm_data);
+	int (*post_suspend) (const void *pm_data);
+	int (*pre_resume) (const void *pm_data);
 	int (*post_resume) (const void *pm_data);
 #endif
 };
 
 /**
  * struct rmi_function_descriptor - RMI function base addresses
+ *
  * @query_base_addr: The RMI Query base address
  * @command_base_addr: The RMI Command base address
  * @control_base_addr: The RMI Control base address
@@ -276,145 +367,130 @@ struct rmi_function_descriptor {
 	u8 function_version;
 };
 
-struct rmi_function_container;
+struct rmi_function_dev;
 struct rmi_device;
 
 /**
- * struct rmi_function_handler - an RMI function handler
+ * struct rmi_function_driver - driver routines for a particular RMI function.
+ *
  * @func: The RMI function number
- * @init: Callback for RMI function init
- * @attention: Callback for RMI function attention
- * @suspend: Callback for function suspend, returns 0 for success.
- * @resume: Callback for RMI function resume, returns 0 for success.
- * @remove: Callback for RMI function removal
+ * @probe: Called when the handler is successfully matched to a function device.
+ * @reset: Called when a reset of the touch sensor is detected.  The routine
+ * should perform any out-of-the-ordinary reset handling that might be
+ * necessary.  Restoring of touch sensor configuration registers should be
+ * handled in the config() callback, below.
+ * @config: Called when the function container is first initialized, and
+ * after a reset is detected.  This routine should write any necessary
+ * configuration settings to the device.
+ * @attention: Called when the IRQ(s) for the function are set by the touch
+ * sensor.
+ * @suspend: Should perform any required operations to suspend the particular
+ * function.
+ * @resume: Should perform any required operations to resume the particular
+ * function.
  *
- * This struct describes the interface of an RMI function. These are
- * registered to the bus using the rmi_register_function_driver() call.
- *
+ * All callbacks are expected to return 0 on success, error code on failure.
  */
-struct rmi_function_handler {
-	int func;
-	int (*init)(struct rmi_function_container *fc);
-	int (*attention)(struct rmi_function_container *fc, u8 *irq_bits);
+struct rmi_function_driver {
+	struct device_driver driver;
+
+	u8 func;
+	int (*probe)(struct rmi_function_dev *fc);
+	int (*remove)(struct rmi_function_dev *fc);
+	int (*config)(struct rmi_function_dev *fc);
+	int (*reset)(struct rmi_function_dev *fc);
+	int (*attention)(struct rmi_function_dev *fc,
+				unsigned long *irq_bits);
 #ifdef CONFIG_PM
-	int (*suspend)(struct rmi_function_container *fc);
-	int (*resume)(struct rmi_function_container *fc);
+	int (*suspend)(struct rmi_function_dev *fc);
+	int (*resume)(struct rmi_function_dev *fc);
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	int (*early_suspend)(struct rmi_function_dev *fc);
+	int (*late_resume)(struct rmi_function_dev *fc);
 #endif
-	void (*remove)(struct rmi_function_container *fc);
+#endif
 };
 
-/**
- * struct rmi_function_device - represent an RMI function device
- * @dev: The device created
- *
- * The RMI function device implements the "psuedo" device that represents
- * an RMI4 function like function 0x11, function 0x34, etc. and is really
- * a placeholder to be able to create sysfs attributes for each function
- * in order to facilitate communication between user code and RMI4 functions.
- *
- */
-struct rmi_function_device {
-	struct device dev;
-};
+#define to_rmi_function_driver(d) \
+		container_of(d, struct rmi_function_driver, driver);
 
 /**
- * struct rmi_function_container - an element in a function handler list
- * @list: The list
+ * struct rmi_function_dev - represents an a particular RMI4 function on a given
+ * RMI4 sensor.
+ *
  * @fd: The function descriptor of the RMI function
- * @rmi_dev: Pointer to the RMI device associated with this function container
- * @fh: The callbacks connected to this function
+ * @rmi_dev: Pointer to the RMI device associated with this function device
+ * @dev: The device associated with this particular function.
+ *
  * @num_of_irqs: The number of irqs needed by this function
  * @irq_pos: The position in the irq bitfield this function holds
+ * @irq_mask: For convience, can be used to mask IRQ bits off during ATTN
+ * interrupt handling.
  * @data: Private data pointer
  *
+ * @list: Used to create a list of function devices.
+ * @debugfs_root: used during debugging
+ *
  */
-struct rmi_function_container {
-	struct list_head list;
+struct rmi_function_dev {
 
 	struct rmi_function_descriptor fd;
 	struct rmi_device *rmi_dev;
-	struct rmi_function_handler *fh;
 	struct device dev;
-
 	int num_of_irqs;
 	int irq_pos;
-	u8 *irq_mask;
-
+	unsigned long *irq_mask;
 	void *data;
-};
-#define to_rmi_function_container(d) \
-		container_of(d, struct rmi_function_container, dev);
-#define to_rmi_function_device(d) \
-		container_of(d, struct rmi_function_device, dev);
+	struct list_head list;
 
-
-#ifdef CONFIG_RMI4_DEV
-
-#define RMI_CHAR_DEV_TMPBUF_SZ 128
-#define RMI_REG_ADDR_PAGE_SELECT 0xFF
-
-struct rmi_char_dev {
-	/* mutex for file operation*/
-	struct mutex mutex_file_op;
-	/* main char dev structure */
-	struct cdev main_dev;
-
-	/* register address for RMI protocol */
-	/* filp->f_pos */
-
-	/* pointer to the corresponding phys device info for this sensor */
-	/* The phys device has the pointers to read, write, etc. */
-	struct rmi_phys_device *phys;
-	/* reference count */
-	int ref_count;
+	struct dentry *debugfs_root;
 };
 
-int rmi_char_dev_register(struct rmi_phys_device *phys);
-void rmi_char_dev_unregister(struct rmi_phys_device *phys);
-
-#endif /*CONFIG_RMI4_DEV*/
+#define to_rmi_function_dev(d) \
+		container_of(d, struct rmi_function_dev, dev);
 
 
+int __must_check __rmi_register_function_driver(struct rmi_function_driver *,
+						 struct module *, const char *);
+#define rmi_register_function_driver(handler) \
+	__rmi_register_function_driver(handler, THIS_MODULE, KBUILD_MODNAME)
+
+void rmi_unregister_function_driver(struct rmi_function_driver *);
 
 /**
- * struct rmi_driver - represents an RMI driver
+ * struct rmi_driver - driver for an RMI4 sensor on the RMI bus.
+ *
  * @driver: Device driver model driver
- * @probe: Callback for device probe
- * @remove: Callback for device removal
- * @shutdown: Callback for device shutdown
  * @irq_handler: Callback for handling irqs
- * @fh_add: Callback for function handler add
- * @fh_remove: Callback for function handler remove
+ * @reset_handler: Called when a reset is detected.
  * @get_func_irq_mask: Callback for calculating interrupt mask
  * @store_irq_mask: Callback for storing and replacing interrupt mask
  * @restore_irq_mask: Callback for restoring previously stored interrupt mask
+ * @store_productid: Callback for cache product id from function 01
  * @data: Private data pointer
- *
- * The RMI driver implements a driver on the RMI bus.
  *
  */
 struct rmi_driver {
 	struct device_driver driver;
 
-	int (*probe)(struct rmi_device *rmi_dev);
-	int (*remove)(struct rmi_device *rmi_dev);
-	void (*shutdown)(struct rmi_device *rmi_dev);
 	int (*irq_handler)(struct rmi_device *rmi_dev, int irq);
-	void (*fh_add)(struct rmi_device *rmi_dev,
-		       struct rmi_function_handler *fh);
-	void (*fh_remove)(struct rmi_device *rmi_dev,
-			  struct rmi_function_handler *fh);
-	u8* (*get_func_irq_mask)(struct rmi_device *rmi_dev,
-			    struct rmi_function_container *fc);
-	int (*store_irq_mask)(struct rmi_device *rmi_dev, u8* new_interupts);
+	int (*reset_handler)(struct rmi_device *rmi_dev);
+	int (*store_irq_mask)(struct rmi_device *rmi_dev,
+				unsigned long *new_interupts);
 	int (*restore_irq_mask)(struct rmi_device *rmi_dev);
+	int (*store_productid)(struct rmi_device *rmi_dev);
+	int (*set_input_params)(struct rmi_device *rmi_dev,
+			struct input_dev *input);
+	int (*remove)(struct rmi_device *rmi_dev);
 	void *data;
 };
+
 #define to_rmi_driver(d) \
 	container_of(d, struct rmi_driver, driver);
 
 /** struct rmi_phys_info - diagnostic information about the RMI physical
- * device, used in the phys sysfs file.
+ * device, used in the phys debugfs file.
+ *
  * @proto String indicating the protocol being used.
  * @tx_count Number of transmit operations.
  * @tx_bytes Number of bytes transmitted.
@@ -432,17 +508,19 @@ struct rmi_phys_info {
 	long rx_count;
 	long rx_bytes;
 	long rx_errs;
-	long attn_count;
 };
 
 /**
  * struct rmi_phys_device - represent an RMI physical device
+ *
  * @dev: Pointer to the communication device, e.g. i2c or spi
  * @rmi_dev: Pointer to the RMI device
- * @write: Callback for write
- * @write_block: Callback for writing a block of data
- * @read: Callback for read
- * @read_block: Callback for reading a block of data
+ * @write_block: Writing a block of data to the specified address
+ * @read_block: Read a block of data from the specified address.
+ * @irq_thread: if not NULL, the sensor driver will use this instead of the
+ * default irq_thread implementation.
+ * @hard_irq: if not NULL, the sensor driver will use this for the hard IRQ
+ * handling
  * @data: Private data pointer
  *
  * The RMI physical device implements the glue between different communication
@@ -453,40 +531,37 @@ struct rmi_phys_device {
 	struct device *dev;
 	struct rmi_device *rmi_dev;
 
-	int (*write)(struct rmi_phys_device *phys, u16 addr, u8 data);
-	int (*write_block)(struct rmi_phys_device *phys, u16 addr, u8 *buf,
-			   int len);
-	int (*read)(struct rmi_phys_device *phys, u16 addr, u8 *buf);
-	int (*read_block)(struct rmi_phys_device *phys, u16 addr, u8 *buf,
-			  int len);
+	int (*write_block)(struct rmi_phys_device *phys, u16 addr,
+			   const void *buf, const int len);
+	int (*read_block)(struct rmi_phys_device *phys, u16 addr,
+			  void *buf, const int len);
 
 	int (*enable_device) (struct rmi_phys_device *phys);
 	void (*disable_device) (struct rmi_phys_device *phys);
 
+	irqreturn_t (*irq_thread)(int irq, void *p);
+	irqreturn_t (*hard_irq)(int irq, void *p);
+
 	void *data;
 
 	struct rmi_phys_info info;
-
-#ifdef CONFIG_RMI4_DEV
-	/* pointer to attention char device and char device */
-	struct rmi_char_dev *char_dev;
-	struct class *rmi_char_device_class;
-#endif /*CONFIG_RMI4_DEV*/
 };
 
 /**
- * struct rmi_device - represents an RMI device
+ * struct rmi_device - represents an RMI4 sensor device on the RMI bus.
+ *
  * @dev: The device created for the RMI bus
+ * @number: Unique number for the device on the bus.
  * @driver: Pointer to associated driver
  * @phys: Pointer to the physical interface
- * @early_suspend_handler: Pointers to early_suspend and late_resume, if
+ * @early_suspend_handler: Pointers to early_suspend, if
  * configured.
- *
- * This structs represent an RMI device.
+ * @debugfs_root: base for this particular sensor device.
  *
  */
 struct rmi_device {
 	struct device dev;
+	int number;
 
 	struct rmi_driver *driver;
 	struct rmi_phys_device *phys;
@@ -494,22 +569,15 @@ struct rmi_device {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend_handler;
 #endif
+
+	struct dentry *debugfs_root;
 };
+
 #define to_rmi_device(d) container_of(d, struct rmi_device, dev);
 #define to_rmi_platform_data(d) ((d)->phys->dev->platform_data);
 
-static inline void rmi_set_driverdata(struct rmi_device *d, void *data)
-{
-	dev_set_drvdata(&d->dev, data);
-}
-
-static inline void *rmi_get_driverdata(struct rmi_device *d)
-{
-	return dev_get_drvdata(&d->dev);
-}
-
 /**
- * rmi_read - RMI read byte
+ * rmi_read - read a single byte
  * @d: Pointer to an RMI device
  * @addr: The address to read from
  * @buf: The read buffer
@@ -517,13 +585,13 @@ static inline void *rmi_get_driverdata(struct rmi_device *d)
  * Reads a byte of data using the underlaying physical protocol in to buf. It
  * returns zero or a negative error code.
  */
-static inline int rmi_read(struct rmi_device *d, u16 addr, u8 *buf)
+static inline int rmi_read(struct rmi_device *d, u16 addr, void *buf)
 {
-	return d->phys->read(d->phys, addr, buf);
+	return d->phys->read_block(d->phys, addr, buf, 1);
 }
 
 /**
- * rmi_read_block - RMI read block
+ * rmi_read_block - read a block of bytes
  * @d: Pointer to an RMI device
  * @addr: The start address to read from
  * @buf: The read buffer
@@ -532,14 +600,14 @@ static inline int rmi_read(struct rmi_device *d, u16 addr, u8 *buf)
  * Reads a block of byte data using the underlaying physical protocol in to buf.
  * It returns the amount of bytes read or a negative error code.
  */
-static inline int rmi_read_block(struct rmi_device *d, u16 addr, u8 *buf,
-				 int len)
+static inline int rmi_read_block(struct rmi_device *d, u16 addr, void *buf,
+				 const int len)
 {
 	return d->phys->read_block(d->phys, addr, buf, len);
 }
 
 /**
- * rmi_write - RMI write byte
+ * rmi_write - write a single byte
  * @d: Pointer to an RMI device
  * @addr: The address to write to
  * @data: The data to write
@@ -547,13 +615,13 @@ static inline int rmi_read_block(struct rmi_device *d, u16 addr, u8 *buf,
  * Writes a byte from buf using the underlaying physical protocol. It
  * returns zero or a negative error code.
  */
-static inline int rmi_write(struct rmi_device *d, u16 addr, u8 data)
+static inline int rmi_write(struct rmi_device *d, u16 addr, const u8 data)
 {
-	return d->phys->write(d->phys, addr, data);
+	return d->phys->write_block(d->phys, addr, &data, 1);
 }
 
 /**
- * rmi_write_block - RMI write block
+ * rmi_write_block - write a block of bytes
  * @d: Pointer to an RMI device
  * @addr: The start address to write to
  * @buf: The write buffer
@@ -562,95 +630,51 @@ static inline int rmi_write(struct rmi_device *d, u16 addr, u8 data)
  * Writes a block of byte data from buf using the underlaying physical protocol.
  * It returns the amount of bytes written or a negative error code.
  */
-static inline int rmi_write_block(struct rmi_device *d, u16 addr, u8 *buf,
-				  int len)
+static inline int rmi_write_block(struct rmi_device *d, u16 addr,
+				  const void *buf, const int len)
 {
 	return d->phys->write_block(d->phys, addr, buf, len);
 }
 
-/**
- * rmi_register_driver - register rmi driver
- * @driver: the driver to register
- *
- * This function registers an RMI driver to the RMI bus.
- */
-int rmi_register_driver(struct rmi_driver *driver);
-
-/**
- * rmi_unregister_driver - unregister rmi driver
- * @driver: the driver to unregister
- *
- * This function unregisters an RMI driver to the RMI bus.
- */
-void rmi_unregister_driver(struct rmi_driver *driver);
-
-/**
- * rmi_register_phys_device - register a physical device connection
- * @phys: the physical driver to register
- *
- * This function registers a physical driver to the RMI bus. These drivers
- * provide a communication layer for the drivers connected to the bus, e.g.
- * I2C, SPI and so on.
- */
 int rmi_register_phys_device(struct rmi_phys_device *phys);
-
-/**
- * rmi_unregister_phys_device - unregister a physical device connection
- * @phys: the physical driver to unregister
- *
- * This function unregisters a physical driver from the RMI bus.
- */
 void rmi_unregister_phys_device(struct rmi_phys_device *phys);
+int rmi_for_each_dev(void *data, int (*func)(struct device *dev, void *data));
 
 /**
- * rmi_register_function_driver - register an RMI function driver
- * @fh: the function handler to register
+ * module_rmi_function_driver() - Helper macro for registering a function driver
+ * @__rmi_driver: rmi_function_driver struct
  *
- * This function registers support for a new RMI function to the bus. All
- * drivers on the bus will be notified of the presence of the new function
- * driver.
+ * Helper macro for RMI4 function drivers which do not do anything special in
+ * module init/exit. This eliminates a lot of boilerplate. Each module
+ * may only use this macro once, and calling it replaces module_init()
+ * and module_exit().
  */
-int rmi_register_function_driver(struct rmi_function_handler *fh);
+#define module_rmi_function_driver(__rmi_driver)	\
+	module_driver(__rmi_driver,			\
+		      rmi_register_function_driver,	\
+		      rmi_unregister_function_driver)
 
 /**
- * rmi_unregister_function_driver - unregister an RMI function driver
- * @fh: the function handler to unregister
- *
- * This function unregisters a RMI function from the RMI bus. All drivers on
- * the bus will be notified of the removal of a function driver.
+ * Helper fn to convert a byte array representing a 16 bit value in the RMI
+ * endian-ness to a 16-bit value in the native processor's specific endianness.
+ * We don't use ntohs/htons here because, well, we're not dealing with
+ * a pair of 16 bit values. Casting dest to u16* wouldn't work, because
+ * that would imply knowing the byte order of u16 in the first place.  The
+ * same applies for using shifts and masks.
  */
-void rmi_unregister_function_driver(struct rmi_function_handler *fh);
-
+static inline u16 batohs(u8 *src)
+{
+	return src[1] << 8 | src[0];
+}
 /**
- * rmi_get_function_handler - get a pointer to specified RMI function
- * @id: the RMI function id
- *
- * This function gets the specified RMI function handler from the list of
- * supported functions.
+ * Helper function to convert a 16 bit value (in host processor endianess) to
+ * a byte array in the RMI endianess for u16s.  See above comment for
+ * why we dont us htons or something like that.
  */
-struct rmi_function_handler *rmi_get_function_handler(int id);
+static inline void hstoba(u8 *dest, u16 src)
+{
+	dest[0] = src & 0xFF;
+	dest[1] =  src >> 8;
+}
 
-/* Utility routine to handle writes to read-only attributes.  Hopefully
- * this will never happen, but if the user does something stupid, we
- * don't want to accept it quietly.
- */
-ssize_t rmi_store_error(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t count);
-
-/* Utility routine to handle reads to write-only attributes.  Hopefully
- * this will never happen, but if the user does something stupid, we
- * don't want to accept it quietly.
- */
-ssize_t rmi_show_error(struct device *dev,
-		       struct device_attribute *attr,
-		       char *buf);
-
-/* utility function for bit access of u8*'s */
-void u8_set_bit(u8 *target, int pos);
-void u8_clear_bit(u8 *target, int pos);
-bool u8_is_set(u8 *target, int pos);
-bool u8_is_any_set(u8 *target, int size);
-void u8_or(u8 *dest, u8* target1, u8* target2, int size);
-void u8_and(u8 *dest, u8* target1, u8* target2, int size);
 #endif
