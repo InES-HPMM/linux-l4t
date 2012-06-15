@@ -37,6 +37,7 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra11_host1x_devices.h"
 
 #define TEGRA_DSI_GANGED_MODE 0
 #define PANEL_ENABLE	1
@@ -530,8 +531,8 @@ int __init curacao_panel_init(void)
 	err = platform_add_devices(curacao_gfx_devices,
 				   ARRAY_SIZE(curacao_gfx_devices));
 
-#if defined(CONFIG_TEGRA_GRHOST)
-	err = nvhost_device_register(&tegra_grhost_device);
+#ifdef CONFIG_TEGRA_GRHOST
+	err = tegra11_register_host1x_devices();
 	if (err)
 		return err;
 #endif
