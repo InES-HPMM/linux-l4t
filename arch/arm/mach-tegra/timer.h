@@ -60,6 +60,16 @@ static inline void tegra_twd_suspend(struct tegra_twd_context *context) {}
 static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
 #endif
 
+#ifdef CONFIG_ARM_ARCH_TIMER
+struct arch_timer_context {
+	u32 cntp_tval;
+	u32 cntp_ctl;
+};
+
+void arch_timer_suspend(struct arch_timer_context *);
+void arch_timer_resume(struct arch_timer_context *);
+#endif
+
 #if defined(CONFIG_ARM_ARCH_TIMER) && defined(CONFIG_PM_SLEEP)
 void tegra_tsc_suspend(void);
 void tegra_tsc_resume(void);

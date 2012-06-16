@@ -275,6 +275,31 @@ static void __init tegra_init_late_timer(void)
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
+void arch_timer_suspend(struct arch_timer_context *context)
+{
+	u32 val;
+
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
+	context->cntp_tval = val;
+	asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r" (val));
+	context->cntp_ctl = val;
+}
+
+void arch_timer_resume(struct arch_timer_context *context)
+{
+	u32 val;
+
+	val = context->cntp_tval;
+	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(val));
+	val = context->cntp_ctl;
+	asm volatile("mcr p15, 0, %0, c14, c2, 1" : : "r"(val));
+}
+#else
+#define arch_timer_suspend do {} while(0)
+#define arch_timer_resume do {} while(0)
+#endif
+
+#ifdef CONFIG_ARM_ARCH_TIMER
 
 /* Time Stamp Counter (TSC) base address */
 static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
