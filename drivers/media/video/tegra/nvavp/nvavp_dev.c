@@ -144,7 +144,6 @@ struct nvavp_info {
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	struct miscdevice		audio_misc_dev;
 #endif
-	atomic_t			clock_stay_on_refcount;
 };
 
 struct nvavp_clientctx {
@@ -154,7 +153,6 @@ struct nvavp_clientctx {
 	struct nvmap_handle_ref *gather_mem;
 	int num_relocs;
 	struct nvavp_info *nvavp;
-	int clock_stay_on;
 	int channel_id;
 	u32 clk_reqs;
 };
@@ -274,8 +272,8 @@ static u32 nvavp_check_idle(struct nvavp_info *nvavp)
 {
 	struct nvavp_channel *channel_info = nvavp_get_channel_info(nvavp, NVAVP_VIDEO_CHANNEL);
 	struct nv_e276_control *control = channel_info->os_control;
-	return ((control->put == control->get)
-		&& (!atomic_read(&nvavp->clock_stay_on_refcount))) ? 1 : 0;
+
+	return (control->put == control->get) ? 1 : 0;
 }
 
 static void clock_disable_handler(struct work_struct *work)
@@ -1245,16 +1243,6 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 		return -EINVAL;
 	}
 
-	if (clientctx->clock_stay_on == clock.state)
-		return 0;
-
-	clientctx->clock_stay_on = clock.state;
-
-	if (clientctx->clock_stay_on == NVAVP_CLOCK_STAY_ON_ENABLED)
-		atomic_inc(&nvavp->clock_stay_on_refcount);
-	else if (clientctx->clock_stay_on == NVAVP_CLOCK_STAY_ON_DISABLED)
-		atomic_dec(&nvavp->clock_stay_on_refcount);
-
 	mutex_lock(&nvavp->open_lock);
 	if (clock.state) {
 		if (clientctx->clk_reqs++ == 0)
@@ -1264,7 +1252,6 @@ static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
 			nvavp_clks_disable(nvavp);
 	}
 	mutex_unlock(&nvavp->open_lock);
-
 	return 0;
 }
 
@@ -1296,7 +1283,6 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_
 
 	clientctx->nvmap = nvavp->nvmap;
 	clientctx->nvavp = nvavp;
-	clientctx->clock_stay_on = NVAVP_CLOCK_STAY_ON_DISABLED;
 
 	filp->private_data = clientctx;
 
@@ -1337,9 +1323,6 @@ static int tegra_nvavp_release(struct inode *inode, struct file *filp)
 		ret = -EINVAL;
 		goto out;
 	}
-
-	if (clientctx->clock_stay_on ==  NVAVP_CLOCK_STAY_ON_ENABLED)
-		atomic_dec(&nvavp->clock_stay_on_refcount);
 
 	/* if this client had any requests, drop our clk ref */
 	if (clientctx->clk_reqs)
