@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -391,6 +391,8 @@ struct tegra_ep {
 	struct ep_queue_head *qh;
 	const struct usb_endpoint_descriptor *desc;
 	struct usb_gadget *gadget;
+	struct ep_td_struct *last_td;
+	int last_dtd_count;
 
 	char name[14];
 	unsigned stopped:1;
