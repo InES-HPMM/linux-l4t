@@ -1874,7 +1874,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	if ((host->quirks & SDHCI_QUIRK_NON_STANDARD_TUNING) &&
 		host->ops->execute_freq_tuning) {
-		err = host->ops->execute_freq_tuning(host);
+		err = host->ops->execute_freq_tuning(host, opcode);
 		spin_unlock(&host->lock);
 		enable_irq(host->irq);
 		return err;

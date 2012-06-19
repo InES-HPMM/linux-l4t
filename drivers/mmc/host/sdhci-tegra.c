@@ -76,7 +76,8 @@
 #define TEGRA2_SDHOST_STD_FREQ	50000000
 #define TEGRA3_SDHOST_STD_FREQ	104000000
 
-#define SD_SEND_TUNING_PATTERN	19
+#define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8	128
+#define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4	64
 #define MAX_TAP_VALUES	256
 
 static unsigned int tegra_sdhost_min_freq;
@@ -772,7 +773,7 @@ static void sdhci_tegra_clear_set_irqs(struct sdhci_host *host,
 	sdhci_writel(host, ier, SDHCI_SIGNAL_ENABLE);
 }
 
-static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci)
+static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci, u32 opcode, u32 block_size)
 {
 	int err = 0;
 	u8 ctrl;
@@ -814,8 +815,11 @@ static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci)
 	 * In response to CMD19, the card sends 64 bytes of tuning
 	 * block to the Host Controller. So we set the block size
 	 * to 64 here.
+	 * In response to CMD21, the card sends 128 bytes of tuning
+	 * block for MMC_BUS_WIDTH_8 and 64 bytes for MMC_BUS_WIDTH_4
+	 * to the Host Controller. So we set the block size to 64 here.
 	 */
-	sdhci_writew(sdhci, SDHCI_MAKE_BLKSZ(7, 64), SDHCI_BLOCK_SIZE);
+	sdhci_writew(sdhci, SDHCI_MAKE_BLKSZ(7, block_size), SDHCI_BLOCK_SIZE);
 
 	sdhci_writeb(sdhci, 0xE, SDHCI_TIMEOUT_CONTROL);
 
@@ -827,7 +831,7 @@ static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci)
 	flags = SDHCI_CMD_RESP_SHORT | SDHCI_CMD_CRC | SDHCI_CMD_DATA;
 	/* Issue the command */
 	sdhci_writew(sdhci, SDHCI_MAKE_CMD(
-		SD_SEND_TUNING_PATTERN, flags), SDHCI_COMMAND);
+		opcode, flags), SDHCI_COMMAND);
 
 	timeout = 5;
 	do {
@@ -865,9 +869,10 @@ out:
 	return err;
 }
 
-static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci)
+static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 {
 	int err;
+	u32 block_size;
 	u16 ctrl_2;
 	u8 *tap_delay_status;
 	unsigned int i = 0;
@@ -891,6 +896,13 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci)
 		goto out;
 	}
 
+	/* Tuning should be done only for MMC_BUS_WIDTH_8 and MMC_BUS_WIDTH_4 */
+	if (sdhci->mmc->ios.bus_width == MMC_BUS_WIDTH_8)
+		block_size = MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8;
+	else if (sdhci->mmc->ios.bus_width == MMC_BUS_WIDTH_4)
+		block_size = MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4;
+	else
+		return -EINVAL;
 	/*
 	 * Set each tap delay value and run frequency tuning. After each
 	 * run, update the tap delay status as working or not working.
@@ -900,7 +912,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci)
 		sdhci_tegra_set_tap_delay(sdhci, i);
 
 		/* Run frequency tuning */
-		err = sdhci_tegra_run_frequency_tuning(sdhci);
+		err = sdhci_tegra_run_frequency_tuning(sdhci, opcode, block_size);
 
 		/* Update whether the tap delay worked or not */
 		tap_delay_status[i] = (err) ? 0: 1;
@@ -940,7 +952,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci)
 		(best_low_pass_tap + ((best_pass_window * 3) / 4)));
 
 	/* Run frequency tuning */
-	err = sdhci_tegra_run_frequency_tuning(sdhci);
+	err = sdhci_tegra_run_frequency_tuning(sdhci, opcode, block_size);
 
 out:
 	if (tap_delay_status)
