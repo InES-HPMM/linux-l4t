@@ -640,6 +640,7 @@ struct tegra_dc_win {
 #define TEGRA_WIN_FLAG_TILED		(1 << 5)
 #define TEGRA_WIN_FLAG_H_FILTER		(1 << 6)
 #define TEGRA_WIN_FLAG_V_FILTER		(1 << 7)
+#define TEGRA_WIN_FLAG_BLOCKLINEAR	(1 << 8)
 #define TEGRA_WIN_FLAG_SCAN_COLUMN	(1 << 9)
 
 
