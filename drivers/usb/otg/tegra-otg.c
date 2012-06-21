@@ -3,7 +3,7 @@
  *
  * OTG transceiver driver for Tegra UTMI phy
  *
- * Copyright (C) 2010 NVIDIA Corp.
+ * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
  * Copyright (C) 2010 Google, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -44,9 +44,6 @@
 #define  USB_INT_EN		(USB_VBUS_INT_EN | USB_ID_INT_EN | \
 						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
 
-typedef void (*callback_t)(enum usb_otg_state to,
-				enum usb_otg_state from, void *args);
-
 #ifdef DEBUG
 #define DBG(stuff...)	pr_info("tegra-otg: " stuff)
 #else
@@ -65,8 +62,6 @@ struct tegra_otg_data {
 	struct work_struct work;
 	unsigned int intr_reg_data;
 	bool clk_enabled;
-	callback_t	charger_cb;
-	void	*charger_cb_data;
 	bool interrupt_mode;
 	bool builtin_host;
 	bool suspended
@@ -185,15 +180,6 @@ static void tegra_stop_host(struct tegra_otg_data *tegra)
 	DBG("%s(%d) End\n", __func__, __LINE__);
 }
 
-int register_otg_callback(callback_t cb, void *args)
-{
-	if (!tegra_clone)
-		return -ENODEV;
-	tegra_clone->charger_cb = cb;
-	tegra_clone->charger_cb_data = args;
-	return 0;
-}
-EXPORT_SYMBOL_GPL(register_otg_callback);
 
 static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 				enum usb_otg_state to)
@@ -212,9 +198,6 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 	if (to != OTG_STATE_UNDEFINED && from != to) {
 		otg->phy->state = to;
 		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
-
-		if (tegra->charger_cb)
-			tegra->charger_cb(to, from, tegra->charger_cb_data);
 
 		if (from == OTG_STATE_A_SUSPEND) {
 			if (to == OTG_STATE_B_PERIPHERAL && otg->gadget)
