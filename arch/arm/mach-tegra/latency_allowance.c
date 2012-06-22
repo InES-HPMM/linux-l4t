@@ -374,6 +374,7 @@ static void set_vi_latency_thresholds(enum tegra_la_id id)
 	set_thresholds(&vi_info[id - ID(VI_WSB)], id);
 }
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 /* Sets latency allowance based on clients memory bandwitdh requirement.
  * Bandwidth passed is in mega bytes per second.
  */
@@ -497,6 +498,7 @@ void tegra_disable_latency_scaling(enum tegra_la_id id)
 	}
 	spin_unlock(&safety_lock);
 }
+#endif
 
 static int la_regs_show(struct seq_file *s, void *unused)
 {

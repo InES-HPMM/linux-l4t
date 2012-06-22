@@ -89,7 +89,7 @@ enum tegra_la_id {
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || !defined(CONFIG_TEGRA_SILICON_PLATFORM)
 static inline int tegra_set_latency_allowance(enum tegra_la_id id,
-						int bandwidth_in_mbps)
+						unsigned int bandwidth_in_mbps)
 {
 	return 0;
 }
