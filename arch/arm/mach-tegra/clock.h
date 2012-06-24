@@ -336,9 +336,12 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
 void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static inline int tegra_emc_backup(unsigned long rate)
+{ return 0; }
 static inline bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 { return true; }
 #else
+int tegra_emc_backup(unsigned long rate);
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p);
 #endif
 #endif /* !CONFIG_COMMON_CLK */
