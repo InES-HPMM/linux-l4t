@@ -80,10 +80,7 @@
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4	64
 #define MAX_TAP_VALUES	256
 
-static unsigned int tegra_sdhost_min_freq;
-static unsigned int tegra_sdhost_std_freq;
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock);
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
@@ -93,6 +90,8 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+static unsigned int tegra_sdhost_min_freq;
+static unsigned int tegra_sdhost_std_freq;
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 #endif
@@ -233,14 +232,13 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 	return gpio_get_value(plat->wp_gpio);
 }
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 {
 	u16 misc_ctrl;
 	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
@@ -268,7 +266,6 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
 	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
-#endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
@@ -516,7 +513,6 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 #endif
 }
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	int div;
@@ -601,7 +597,6 @@ set_clk:
 out:
 	sdhci->clock = clock;
 }
-#endif
 
 static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
@@ -1036,9 +1031,6 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.read_w     = tegra_sdhci_readw,
 	.write_l    = tegra_sdhci_writel,
 	.platform_bus_width = tegra_sdhci_buswidth,
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.set_card_clock = tegra_3x_sdhci_set_card_clock,
-#endif
 	.set_clock		= tegra_sdhci_set_clock,
 	.suspend		= tegra_sdhci_suspend,
 	.resume			= tegra_sdhci_resume,
