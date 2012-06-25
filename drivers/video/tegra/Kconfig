@@ -172,6 +172,17 @@ config NVMAP_OUTER_CACHE_MAINT_BY_SET_WAYS
 	  bigger than size of outer cache. This option has no effect on
 	  system without outer cache.
 
+config NVMAP_DEFERRED_CACHE_MAINT
+	bool "Enable deferred cache maintenance"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here if you want to defer flush requests for
+	  nvmap memory buffer. Cache maintenance of deferred requests
+	  is more efficient since there is a high chance that cache lines
+	  of earlier requests are already flushed. Also, if total size of
+	  deferred ranges is big enough, we flush whole inner or outer
+	  cache.
+
 config NVMAP_VPR
 	bool "Enable VPR Heap."
 	depends on TEGRA_NVMAP
