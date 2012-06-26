@@ -100,7 +100,7 @@ static void tegra_timer_set_mode(enum clock_event_mode mode,
 
 static struct clock_event_device tegra_clockevent = {
 	.name		= "timer0",
-	.rating		= 425,	/* Must be > dummy_timer and < local_timer */
+	.rating		= 300,
 	.features	= CLOCK_EVT_FEAT_ONESHOT | CLOCK_EVT_FEAT_PERIODIC,
 	.set_next_event	= tegra_timer_set_next_event,
 	.set_mode	= tegra_timer_set_mode,
