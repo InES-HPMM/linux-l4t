@@ -34,7 +34,6 @@
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
 #include <asm/cputype.h>
-#include <asm/cpu_pm.h>
 #include <asm/delay.h>
 #include <asm/smp_twd.h>
 #include <asm/system.h>
