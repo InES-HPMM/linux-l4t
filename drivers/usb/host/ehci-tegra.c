@@ -182,7 +182,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	irqreturn_t irq_status;
-	bool pmc_remote_wakeup = false;
 
 	spin_lock(&ehci->lock);
 	irq_status = tegra_usb_phy_irq(tegra->phy);
@@ -192,8 +191,9 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	if (tegra_usb_phy_remote_wakeup(tegra->phy)) {
 		ehci_info(ehci, "remote wakeup detected\n");
-		pmc_remote_wakeup = true;
 		usb_hcd_resume_root_hub(hcd);
+		spin_unlock(&ehci->lock);
+		return irq_status;
 	}
 	spin_unlock(&ehci->lock);
 
@@ -203,10 +203,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 		ehci_readl(ehci, &ehci->regs->port_status[0]));
 
 	irq_status = ehci_irq(hcd);
-
-	if (pmc_remote_wakeup) {
-		ehci->controller_remote_wakeup = false;
-	}
 
 	if (ehci->controller_remote_wakeup) {
 		ehci->controller_remote_wakeup = false;
