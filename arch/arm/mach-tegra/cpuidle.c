@@ -150,9 +150,6 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	/* cpu_idle expects us to return with IRQs enabled */
 	local_irq_enable();
 
-	/* cpu clockevents may have been reset by powerdown */
-	hrtimer_peek_ahead_timers();
-
 	smp_rmb();
 
 	/* Update LP2 latency provided no fall back to LP3 */
