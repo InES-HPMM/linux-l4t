@@ -100,6 +100,13 @@ config SND_HDA_PLATFORM_NVIDIA_TEGRA
 	  Say Y here to build NVIDIA Tegra platform driver interface for
 	  HD-audio driver.
 
+config SND_HDA_VPR
+	bool "Allocate PCM DMA buffer in video protected region"
+	depends on ARCH_TEGRA_11x_SOC && SND_HDA_PLATFORM_NVIDIA_TEGRA
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to allocate PCM DMA buffer in video protected region
+
 config SND_HDA_CODEC_REALTEK
 	bool "Build Realtek HD-audio codec support"
 	default y

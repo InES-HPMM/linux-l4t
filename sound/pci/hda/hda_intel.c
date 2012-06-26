@@ -64,6 +64,9 @@
 #include <linux/firmware.h>
 #include "hda_codec.h"
 
+#ifdef CONFIG_SND_HDA_VPR
+#include <linux/nvmap.h>
+#endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
@@ -524,6 +527,13 @@ struct azx {
 	struct clk **platform_clks;
 	int platform_clk_count;
 	int platform_clk_enable;
+#endif
+
+#ifdef CONFIG_SND_HDA_VPR
+	struct nvmap_client *hda_vpr;
+	struct nvmap_handle_ref *handle_ref;
+	unsigned char *vaddr;
+	phys_addr_t paddr;
 #endif
 
 	/* locks */
@@ -2780,9 +2790,35 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 	size = CONFIG_SND_HDA_PREALLOC_SIZE * 1024;
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
+#ifdef CONFIG_SND_HDA_VPR
+	chip->hda_vpr = nvmap_create_client(nvmap_dev, "hda_vpr");
+	for (s = 0; s < 2; s++) {
+		struct snd_pcm_substream *substream;
+		for (substream = pcm->streams[s].substream;
+		  substream; substream = substream->next) {
+			chip->handle_ref = nvmap_alloc(chip->hda_vpr, size, 32,
+			  NVMAP_HANDLE_WRITE_COMBINE, NVMAP_HEAP_CARVEOUT_VPR);
+			chip->vaddr =
+			  (unsigned char *) nvmap_mmap(chip->handle_ref);
+			chip->paddr =
+			  nvmap_pin(chip->hda_vpr, chip->handle_ref);
+			snd_printk(KERN_DEBUG SFX
+			  "paddr=%08x vaddr=%08x\n", chip->paddr, chip->vaddr);
+			substream->dma_buffer.area = chip->vaddr;
+			substream->dma_buffer.addr = chip->paddr;
+			substream->dma_buffer.bytes = size;
+			substream->dma_buffer.dev.dev = chip->dev;
+			if (substream->dma_buffer.bytes > 0)
+				substream->buffer_bytes_max =
+				   substream->dma_buffer.bytes;
+			substream->dma_max = MAX_PREALLOC_SIZE;
+		}
+	}
+#else
 	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV_SG,
 					      chip->dev,
 					      size, MAX_PREALLOC_SIZE);
+#endif
 	return 0;
 }
 
@@ -3407,6 +3443,13 @@ static int azx_free(struct azx *chip)
 		release_firmware(chip->fw);
 #endif
 	kfree(chip);
+#ifdef CONFIG_SND_HDA_VPR
+	if(chip->handle_ref) {
+		nvmap_unpin(chip->hda_vpr, chip->handle_ref);
+		nvmap_munmap(chip->handle_ref, chip->vaddr);
+		nvmap_free(chip->hda_vpr, chip->handle_ref);
+	}
+#endif
 
 	return 0;
 }
