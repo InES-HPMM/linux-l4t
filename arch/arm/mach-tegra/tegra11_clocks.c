@@ -1873,7 +1873,6 @@ static struct clk_ops tegra_plld_ops = {
 	.clk_cfg_ex		= tegra11_plld_clk_cfg_ex,
 };
 
-
 /*
  * Dynamic ramp PLLs:
  *  PLLC2 and PLLC3 (PLLCX)

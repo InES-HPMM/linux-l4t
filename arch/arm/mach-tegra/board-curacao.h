@@ -39,6 +39,7 @@
 
 int curacao_regulator_init(void);
 int curacao_suspend_init(void);
+
 int curacao_sdhci_init(void);
 int curacao_pinmux_init(void);
 int curacao_panel_init(void);
