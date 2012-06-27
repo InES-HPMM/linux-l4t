@@ -32,6 +32,12 @@
 #include "gpio-names.h"
 #include "iomap.h"
 
+static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+
+#define TRISTATE		(1<<4)
+#define PMC_IO_DPD_REQ_0	0x1B8
+#define PMC_IO_DPD2_REQ_0	0x1C0
+
 #define DRIVE_PINGROUP(pg_name, r)		\
 	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {	\
 		.name = #pg_name,		\
@@ -272,6 +278,17 @@ static void tegra_pinmux_resume(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
+	u32 *tmp = pinmux_reg;
+	u32 reg_value;
+
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+		reg_value = *tmp++;
+		reg_value |= TRISTATE;
+		pg_writel(reg_value, tegra_soc_pingroups[i].mux_reg);
+	}
+
+	writel(0x400fffff, pmc + PMC_IO_DPD_REQ_0);
+	writel(0x40001fff, pmc + PMC_IO_DPD2_REQ_0);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_reg);
