@@ -473,14 +473,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	unsigned int clk_rate;
 	unsigned int emc_clk;
 
-	/*
-	 * In SDR50 mode, run the sdmmc controller at freq greater than
-	 * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
-	 * is below 1.2V, CRC errors would occur during data transfers.
-	 */
-	if (sdhci->mmc->card &&
-		(mmc_card_ddr_mode(sdhci->mmc->card) ||
-		(sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50))) {
+	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_DDR50) {
 		/*
 		 * In ddr mode, tegra sdmmc controller clock frequency
 		 * should be double the card clock frequency.
@@ -495,6 +488,13 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		} else {
 			clk_rate = clock * 2;
 		}
+	} else 	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) {
+		/*
+		 * In SDR50 mode, run the sdmmc controller at freq greater than
+		 * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
+		 * is below 1.2V, CRC errors would occur during data transfers.
+		 */
+		clk_rate = clock * 2;
 	} else {
 		if (clock <= tegra_sdhost_min_freq)
 			clk_rate = tegra_sdhost_min_freq;
