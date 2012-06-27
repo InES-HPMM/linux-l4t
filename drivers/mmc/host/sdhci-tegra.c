@@ -274,7 +274,7 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	u16 misc_ctrl;
 	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	struct tegra_sdhci_platform_data *plat;
 
