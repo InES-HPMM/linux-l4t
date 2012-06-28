@@ -32,6 +32,7 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 
+#include <asm/cputype.h>
 #include <asm/hardware/gic.h>
 
 #include <trace/events/power.h>
@@ -241,13 +242,20 @@ done:
 static void cluster_switch_epilog_actlr(void)
 {
 	u32 actlr;
+	u32 cpuid;
 
-	/* TLB maintenance broadcast bit (FW) is stubbed out on LP CPU (reads
-	   as zero, writes ignored). Hence, it is not preserved across G=>LP=>G
-	   switch by CPU save/restore code, but SMP bit is restored correctly.
-	   Synchronize these two bits here after LP=>G transition. Note that
-	   only CPU0 core is powered on before and after the switch. See also
-	   bug 807595. */
+	/*
+	 * This is only needed for Cortex-A9, for Cortex-A15, do nothing!
+	 *
+	 * TLB maintenance broadcast bit (FW) is stubbed out on LP CPU (reads
+	 * as zero, writes ignored). Hence, it is not preserved across G=>LP=>G
+	 * switch by CPU save/restore code, but SMP bit is restored correctly.
+	 * Synchronize these two bits here after LP=>G transition. Note that
+	 * only CPU0 core is powered on before and after the switch. See also
+	 * bug 807595.
+	*/
+	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC0F)
+		return;
 
 	__asm__("mrc p15, 0, %0, c1, c0, 1\n" : "=r" (actlr));
 
