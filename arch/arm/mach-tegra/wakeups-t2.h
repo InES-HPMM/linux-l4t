@@ -27,9 +27,6 @@
 #error "Tegra 2 wakeup sources valid only for CONFIG_ARCH_TEGRA_2x_SOC"
 #endif
 
-int tegra_irq_to_wake(int irq);
-int tegra_wake_to_irq(int wake);
-
 #define TEGRA_WAKE_GPIO_PO5	0
 #define TEGRA_WAKE_GPIO_PV3	1
 #define TEGRA_WAKE_GPIO_PL1	2
