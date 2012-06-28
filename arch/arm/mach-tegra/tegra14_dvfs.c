@@ -36,7 +36,7 @@ static const int cpu_millivolts[MAX_DVFS_FREQS] = {
 	800, 825, 850, 900, 912, 975, 1000, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1237, 1250};
 
 static const int core_millivolts[MAX_DVFS_FREQS] = {
-	950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350};
+	850,  900,  950, 1000, 1050, 1100, 1150, 1200, 1250};
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -55,7 +55,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
 	.max_millivolts = 1350,
-	.min_millivolts = 950,
+	.min_millivolts = 850,
 	.step = VDD_SAFE_STEP,
 };
 
@@ -106,19 +106,41 @@ static struct dvfs cpu_dvfs_table[] = {
 	}
 
 static struct dvfs core_dvfs_table[] = {
-	/* Core voltages (mV):		    950,   1000,   1050,   1100,   1150,    1200,    1250,    1300,    1350 */
+	/* Core voltages (mV):		    850,    900,    950,   1000,   1050,    1100,    1150,    1200,    1250 */
+	/* Clock limits for internal blocks, PLLs */
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	CORE_DVFS("epp",    0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
+	CORE_DVFS("2d",     0, 1, KHZ,    77200, 141200, 189200, 238200, 317500,  317500,  400000,  500700),
+	CORE_DVFS("3d",     0, 1, KHZ,    86800, 158900, 212800, 267900, 357200,  357200,  450000,  563300),
+	CORE_DVFS("msenc",  0, 1, KHZ,    64200, 117600, 157500, 198300, 264300,  264300,  333000,  416900),
+	CORE_DVFS("se",     0, 1, KHZ,    67500, 123600, 165500, 208400, 277800,  277800,  350000,  438100),
+	CORE_DVFS("tsec",   0, 1, KHZ,    67500, 123600, 165500, 208400, 277800,  277800,  350000,  438100),
+	CORE_DVFS("vde",    0, 1, KHZ,    70600, 129200, 173100, 217900, 290500,  290500,  366000,  458200),
+
+	CORE_DVFS("host1x", 0, 1, KHZ,    57900, 105900, 141900, 178600, 238200,  238200,  300000,  300000),
+
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	CORE_DVFS("c2bus",  0, 1, KHZ,    77200, 141200, 189200, 238200, 317500,  317500,  400000,  500700),
+	CORE_DVFS("c3bus",  0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
+#else
+	CORE_DVFS("cbus",   0, 1, KHZ,    60400, 110500, 148000, 186400, 248500,  248500,  313000,  391800),
+#endif
+#endif
 };
 
-#define CL_DVFS(_speedo_id, _tune0, _tune1, _rate_min)		\
+#define CL_DVFS(_speedo_id, _tune0, _tune1, _droop_min, _out_min, _mv_min) \
 	{							\
+		.dfll_clk_name	= "dfll_cpu",			\
 		.speedo_id	= _speedo_id,			\
 		.tune0		= _tune0,			\
 		.tune1		= _tune1,			\
-		.droop_cpu_rate_min = _rate_min,		\
+		.dfll_droop_rate_min = _droop_min,		\
+		.dfll_out_rate_min = _out_min,			\
+		.dfll_millivolts_min = _mv_min,			\
 	}
 
 static struct tegra_cl_dvfs_soc_data cl_dvfs_table[] = {
-	CL_DVFS(0, 0x030201, 0x00BB00AA, 700000000),
+	CL_DVFS(0, 0x030201, 0x000BB0AA, 640000000, 670000000, 750),
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
@@ -178,6 +200,47 @@ static void __init init_cl_dvfs_soc_data(int speedo_id)
 	tegra_cl_dvfs_set_soc_data(cl_dvfs_table);
 }
 
+static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
+{
+	/* Don't update manual dvfs clocks */
+	if (!d->auto_dvfs)
+		return false;
+
+	/*
+	 * Don't update EMC shared bus, since EMC dvfs is board dependent: max
+	 * rate and EMC scaling frequencies are determined by tegra BCT (flashed
+	 * together with the image) and board specific EMC DFS table; we will
+	 * check the scaling ladder against nominal core voltage when the table
+	 * is loaded (and if on particular board the table is not loaded, EMC
+	 * scaling is disabled).
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_EMC_ENB))
+		return false;
+
+	/*
+	 * Don't update shared cbus, and don't propagate common cbus dvfs
+	 * limit down to shared users, but set maximum rate for each user
+	 * equal to the respective client limit.
+	 */
+	if (c->ops->shared_bus_update && (c->flags & PERIPH_ON_CBUS)) {
+		struct clk *user;
+		unsigned long rate;
+
+		list_for_each_entry(
+			user, &c->shared_bus_list, u.shared_bus_user.node) {
+			if (user->u.shared_bus_user.client) {
+				rate = user->u.shared_bus_user.client->max_rate;
+				user->max_rate = rate;
+				user->u.shared_bus_user.rate = rate;
+			}
+		}
+		return false;
+	}
+
+	/* Other, than EMC and cbus, auto-dvfs clocks can be updated */
+	return true;
+}
+
 static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 {
 	int ret;
@@ -189,16 +252,8 @@ static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 		return;
 	}
 
-	/*
-	 * Update max rate for auto-dvfs clocks, except EMC.
-	 * EMC is a special case, since EMC dvfs is board dependent: max rate
-	 * and EMC scaling frequencies are determined by tegra BCT (flashed
-	 * together with the image) and board specific EMC DFS table; we will
-	 * check the scaling ladder against nominal core voltage when the table
-	 * is loaded (and if on particular board the table is not loaded, EMC
-	 * scaling is disabled).
-	 */
-	if (!(c->flags & PERIPH_EMC_ENB) && d->auto_dvfs) {
+	/* Update max rate for auto-dvfs clocks, with shared bus exceptions */
+	if (can_update_max_rate(c, d)) {
 		BUG_ON(!d->freqs[nominal_mv_index]);
 		tegra_init_max_rate(
 			c, d->freqs[nominal_mv_index] * d->freqs_mult);
@@ -287,7 +342,11 @@ static int __init get_cpu_nominal_mv_index(
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	int mv = tegra_core_speedo_mv();
+#else
+	int mv = 1150;
+#endif
 	int core_edp_limit = get_core_edp();
 
 	/*
