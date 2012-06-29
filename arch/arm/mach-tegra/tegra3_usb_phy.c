@@ -722,10 +722,6 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 	val |= UTMIP_WAKE_VAL(inst, WAKE_VAL_NONE);
 	writel(val, pmc_base + PMC_SLEEP_CFG);
 
-	val = readl(pmc_base + PMC_TRIGGERS);
-	val |= UTMIP_CLR_WAKE_ALARM(inst) | UTMIP_CLR_WALK_PTR(inst);
-	writel(val, pmc_base + PMC_TRIGGERS);
-
 	val = readl(base + UTMIP_PMC_WAKEUP0);
 	val &= ~EVENT_INT_ENB;
 	writel(val, base + UTMIP_PMC_WAKEUP0);
@@ -744,6 +740,10 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 	val = readl(pmc_base + PMC_USB_AO);
 	val |= (USBOP_VAL_PD(inst) | USBON_VAL_PD(inst));
 	writel(val, pmc_base + PMC_USB_AO);
+
+	val = readl(pmc_base + PMC_TRIGGERS);
+	val |= UTMIP_CLR_WALK_PTR(inst);
+	writel(val, pmc_base + PMC_TRIGGERS);
 
 	phy->remote_wakeup = false;
 	PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, inst);
@@ -767,8 +767,7 @@ static bool utmi_phy_remotewake_detected(struct tegra_usb_phy *phy)
 			writel(val, pmc_base + PMC_SLEEP_CFG);
 
 			val = readl(pmc_base + PMC_TRIGGERS);
-			val |= UTMIP_CLR_WAKE_ALARM(inst) |
-				UTMIP_CLR_WALK_PTR(inst);
+			val |= UTMIP_CLR_WAKE_ALARM(inst);
 			writel(val, pmc_base + PMC_TRIGGERS);
 
 			val = readl(base + UTMIP_PMC_WAKEUP0);
