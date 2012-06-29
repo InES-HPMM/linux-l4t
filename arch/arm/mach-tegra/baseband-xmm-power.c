@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power.c
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -78,7 +78,7 @@ static struct gpio tegra_baseband_gpios[] = {
 	{ -1, GPIOF_OUT_INIT_LOW,  "BB_ON"   },
 	{ -1, GPIOF_OUT_INIT_LOW,  "IPC_BB_WAKE" },
 	{ -1, GPIOF_IN,            "IPC_AP_WAKE" },
-	{ -1, GPIOF_OUT_INIT_HIGH, "IPC_HSIC_ACTIVE" },
+	{ -1, GPIOF_OUT_INIT_LOW,  "IPC_HSIC_ACTIVE" },
 	{ -1, GPIOF_IN,            "IPC_HSIC_SUS_REQ" },
 };
 
@@ -559,15 +559,14 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	} else if (ipc_ap_wake_state == IPC_AP_WAKE_INIT1) {
 		if (!value) {
-			pr_debug("%s - IPC_AP_WAKE_INIT2"
-				" - wait for rising edge\n", __func__);
-		} else {
-			pr_debug("%s - IPC_AP_WAKE_INIT2"
-					" - got rising edge\n",	__func__);
+			pr_debug("%s - got falling edge at INIT1\n", __func__);
 			/* go to IPC_AP_WAKE_INIT2 state */
 			ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 			queue_work(workqueue, &init2_work);
-		}
+
+		} else
+			pr_debug("%s - IPC_AP_WAKE_INIT1"
+					" - got rising edge\n", __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -774,12 +773,11 @@ static void xmm_power_work_func(struct work_struct *work)
 	case BBXMM_WORK_INIT_FLASH_PM_STEP1:
 		pr_debug("BBXMM_WORK_INIT_FLASH_PM_STEP1\n");
 		pr_debug("%s: ipc_hsic_active -> 0\n", __func__);
-		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 1);
+		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 		/* reset / power on sequence */
 		xmm_power_reset_on(pdata);
 		/* set power status as on */
 		power_onoff = 1;
-		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 
 		/* expecting init2 performs register hsic to enumerate modem
 		 * software directly.
