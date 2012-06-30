@@ -228,7 +228,6 @@ static int tegra_ehci_hub_control(
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	unsigned long	flags;
 	int	retval = 0;
 	u32 __iomem	*status_reg;
 
