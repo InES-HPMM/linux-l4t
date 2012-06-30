@@ -371,7 +371,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
-void __init tegra_soc_init_dvfs(void)
+void __init tegra11x_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int soc_speedo_id = tegra_soc_speedo_id();

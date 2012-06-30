@@ -268,6 +268,7 @@ flush_l1:
 	bl	__cpuc_flush_kern_all
 #endif
 
+no_l2_sync:
 	bl	tegra_cpu_exit_coherency
 
 	/* Powergate this CPU. */

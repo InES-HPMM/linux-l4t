@@ -500,40 +500,6 @@ static inline u32 periph_clk_to_reg(
 	return reg;
 }
 
-unsigned long clk_measure_input_freq(void)
-{
-	u32 clock_autodetect;
-
-	clk_writel(OSC_FREQ_DET_TRIG | 1, OSC_FREQ_DET);
-	do {} while (clk_readl(OSC_FREQ_DET_STATUS) & OSC_FREQ_DET_BUSY);
-
-	clock_autodetect = clk_readl(OSC_FREQ_DET_STATUS);
-	if (clock_autodetect >= 732 - 3 && clock_autodetect <= 732 + 3) {
-		return 12000000;
-	} else if (clock_autodetect >= 794 - 3 && clock_autodetect <= 794 + 3) {
-		return 13000000;
-	} else if (clock_autodetect >= 1172 - 3 && clock_autodetect <= 1172 + 3) {
-		return 19200000;
-	} else if (clock_autodetect >= 1587 - 3 && clock_autodetect <= 1587 + 3) {
-		return 26000000;
-	} else if (clock_autodetect >= 1025 - 3 && clock_autodetect <= 1025 + 3) {
-		return 16800000;
-	} else if (clock_autodetect >= 2344 - 3 && clock_autodetect <= 2344 + 3) {
-		return 38400000;
-	} else if (clock_autodetect >= 2928 - 3 && clock_autodetect <= 2928 + 3) {
-		return 48000000;
-	} else if (tegra_revision == TEGRA_REVISION_QT) {
-		if (clock_autodetect >= 2 && clock_autodetect <= 9)
-			return 115200;
-		else if (clock_autodetect >= 13 && clock_autodetect <= 15)
-			return 230400;
-	} else {
-		pr_err("%s: Unexpected clock autodetect value %d", __func__, clock_autodetect);
-		BUG();
-		return 0;
-	}
-}
-
 static int clk_div_x1_get_divider(unsigned long parent_rate, unsigned long rate,
 			u32 max_x,
 				 u32 flags, u32 round_mode)
@@ -5642,7 +5608,7 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	return true;
 }
 
-void __init tegra_soc_init_clocks(void)
+void __init tegra11x_init_clocks(void)
 {
 	int i;
 	struct clk *c;

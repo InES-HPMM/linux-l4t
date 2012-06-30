@@ -16,7 +16,9 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/bug.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 
 #define DEFAULT_DRIVE(_name)					\
 	{							\

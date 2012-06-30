@@ -27,9 +27,11 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <linux/module.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 
 #include "tegra_cl_dvfs.h"
 #include "clock.h"

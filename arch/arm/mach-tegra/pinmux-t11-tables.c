@@ -27,11 +27,12 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/syscore_ops.h>
+#include <linux/bug.h>
 
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 #include "gpio-names.h"
-#include "pinmux-t11.h"
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 
@@ -42,6 +43,7 @@ static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 #define DRIVE_PINGROUP(pg_name, r)		\
 	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {	\
 		.name = #pg_name,		\
+		.reg_bank = 0,			\
 		.reg = r			\
 	}
 
@@ -98,6 +100,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 		.func_safe = TEGRA_MUX_ ## fs,			\
 		.tri_reg = reg,					\
 		.tri_bit = 4,					\
+		.mux_bank = 1,					\
 		.mux_reg = reg,					\
 		.mux_bit = 0,					\
 		.pupd_reg = reg,				\
@@ -309,26 +312,18 @@ const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 static u32 pinmux_reg[TEGRA_MAX_PINGROUP +
 		      ARRAY_SIZE(tegra_soc_drive_pingroups)];
 
-static inline unsigned long pg_readl(unsigned long offset)
-{
-	return readl(IO_TO_VIRT(TEGRA_APB_MISC_BASE + offset));
-}
-
-static inline void pg_writel(unsigned long value, unsigned long offset)
-{
-	writel(value, IO_TO_VIRT(TEGRA_APB_MISC_BASE + offset));
-}
-
 static int tegra_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
-		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_reg);
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
+				tegra_soc_pingroups[i].mux_reg);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
-		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg);
+		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg_bank,
+				tegra_soc_drive_pingroups[i].reg);
 
 	return 0;
 }
@@ -343,17 +338,20 @@ static void tegra_pinmux_resume(void)
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
 		reg_value = *tmp++;
 		reg_value |= TRISTATE;
-		pg_writel(reg_value, tegra_soc_pingroups[i].mux_reg);
+		pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
 	}
 
 	writel(0x400fffff, pmc + PMC_IO_DPD_REQ_0);
 	writel(0x40001fff, pmc + PMC_IO_DPD2_REQ_0);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
-		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_reg);
+		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
-		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg);
+		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
+			tegra_soc_drive_pingroups[i].reg);
 }
 
 static struct syscore_ops tegra_pinmux_syscore_ops = {

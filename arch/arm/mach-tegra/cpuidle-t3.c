@@ -464,13 +464,13 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 #endif
 
 	if (cpu_gating_only)
-		tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
 	else if (dev->cpu == 0) {
 		if (last_cpu) {
-			tegra3_idle_enter_lp2_cpu_0(dev, state, request);
+			entered_lp2 = tegra3_idle_enter_lp2_cpu_0(dev, state, request);
 		} else {
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-			tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+			entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
 #else
 			tegra_cpu_wfi();
 			entered_lp2 = false;

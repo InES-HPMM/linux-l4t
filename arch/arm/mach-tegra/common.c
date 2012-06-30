@@ -41,6 +41,7 @@
 
 #include "apbio.h"
 #include "board.h"
+#include "clock.h"
 #include "common.h"
 #include "dvfs.h"
 #include "fuse.h"
@@ -181,7 +182,7 @@ static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
+static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	{ "pll_p_out2",	 "pll_p",	102000000,	false },
 	{ "sclk",	 "pll_p_out2",	102000000,	true },
@@ -197,7 +198,7 @@ static __initdata struct tegra_clk_init_table tegra11_clk_init_table[] = {
 	{ "hclk",	"sclk",		108000000,	true },
 	{ "pclk",	"hclk",		54000000,	true },
 #endif
-	{ "wake.sclk",	 NULL,		250000000	true },
+	{ "wake.sclk",	 NULL,		250000000,	true },
 	{ "cl_dvfs_ref", "pll_p",	54000000,	false },
 	{ "cl_dvfs_soc", "pll_p",	54000000,	false },
 	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
@@ -468,7 +469,29 @@ void __init tegra30_init_early(void)
 	tegra_gpio_resume_init();
 }
 #endif
-
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+void __init tegra11x_init_early(void)
+{
+#ifndef CONFIG_SMP
+	/* For SMP system, initializing the reset handler here is too
+	   late. For non-SMP systems, the function that calls the reset
+	   handler initializer is not called, so do it here for non-SMP. */
+	tegra_cpu_reset_handler_init();
+#endif
+	tegra_init_fuse();
+	tegra11x_init_clocks();
+	tegra11x_init_dvfs();
+	tegra_common_init_clock();
+	tegra_clk_init_from_table(tegra11x_clk_init_table);
+	tegra_init_cache(true);
+	tegra_pmc_init();
+	tegra_powergate_init();
+	tegra_init_power();
+	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
+}
+#endif
 static int __init tegra_lp0_vec_arg(char *options)
 {
 	char *p = options;

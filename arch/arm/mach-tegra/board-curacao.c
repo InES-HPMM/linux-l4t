@@ -37,6 +37,7 @@
 #include <linux/platform_data/tegra_usb.h>
 
 #include <mach/clk.h>
+#include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
@@ -46,6 +47,7 @@
 #include <mach/audio.h>
 #include <mach/usb_phy.h>
 #include <mach/nand.h>
+#include <mach/hardware.h>
 
 #include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
@@ -180,7 +182,7 @@ static struct tegra_i2c_platform_data curacao_i2c2_platform_data = {
 
 static struct tegra_i2c_slave_platform_data curacao_i2c2_slave_platform_data = {
 	.adapter_nr	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 static struct tegra_i2c_platform_data curacao_i2c3_platform_data = {
@@ -581,7 +583,7 @@ static void __init tegra_curacao_init(void)
 	tegra_clk_init_from_table(curacao_clk_init_table);
 	curacao_pinmux_init();
 
-	if (tegra_get_revision() == TEGRA_REVISION_QT)
+	if (tegra_revision == TEGRA_REVISION_QT)
 		debug_uart_platform_data[0].uartclk = tegra_clk_measure_input_freq();
 
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
@@ -610,11 +612,11 @@ static void __init tegra_curacao_reserve(void)
 }
 
 MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
-	.boot_params    = 0x80000100,
+	.atag_offset    = 0x80000100,
 	.soc		= &tegra_soc_desc,
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_curacao_reserve,
-	.init_early	= tegra_init_early,
+	.init_early	= tegra11x_init_early,
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
