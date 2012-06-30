@@ -596,7 +596,6 @@ static int spi_tegra_line_settings(struct spi_device *spi,
 	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 	unsigned long val = 0;
 	u32 err = 0;
-	unsigned long delay_cycles;
 
 	/* Set Mode */
 	val = SPI_MODE_SEL(spi->mode & (SPI_CPHA|SPI_CPOL));
@@ -973,7 +972,7 @@ static void spi_tegra_work(struct work_struct *work)
 			(msecs_to_jiffies(1000)));
 		if (wait_status <= 0) {
 			dev_err(&tspi->pdev->dev, "Error in SPI"
-			" completion %d\r\n", wait_status);
+			" completion %ld\r\n", wait_status);
 			spi_tegra_reg_print(tspi);
 			err_val++;
 		}
@@ -1000,7 +999,7 @@ static void spi_tegra_work(struct work_struct *work)
 					tegra_dma_dequeue_req(tspi->tx_dma,
 						&tspi->tx_dma_req);
 					dev_err(&tspi->pdev->dev,
-					 "Error in Dma Tx ws %d \r\n",
+					 "Error in Dma Tx ws %ld \r\n",
 					 wait_status);
 					spi_tegra_reg_print(tspi);
 					err += 1;
@@ -1023,7 +1022,7 @@ static void spi_tegra_work(struct work_struct *work)
 					tegra_dma_dequeue_req(tspi->rx_dma,
 						&tspi->rx_dma_req);
 					dev_err(&tspi->pdev->dev,
-						"Error in Dma Rx transfer %d\n",
+						"Error in Dma Rx transfer %ld\n",
 						wait_status);
 					spi_tegra_reg_print(tspi);
 					err += 2;
@@ -1119,7 +1118,6 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	struct spi_tegra_data	*tspi;
 	struct resource		*r;
 	struct tegra_spi_platform_data *pdata = pdev->dev.platform_data;
-	enum tegra_chipid chip_id;
 	int ret;
 	char spi_wq_name[20];
 
