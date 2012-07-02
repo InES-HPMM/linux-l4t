@@ -489,6 +489,13 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 		}
 
+		ret = clk_set_parent(clk_get_parent(i2s->clk_audio_2x),
+						i2s->clk_i2s_sync);
+		if (ret) {
+			dev_err(dev, "Can't set parent of audio2x clock\n");
+			return ret;
+		}
+
 		ret = clk_set_rate(i2s->clk_audio_2x, i2sclock);
 		if (ret) {
 			dev_err(dev, "Can't set I2S sync clock rate\n");
