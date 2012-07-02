@@ -28,63 +28,86 @@
 #include <linux/string.h>
 #include <linux/syscore_ops.h>
 #include <linux/bug.h>
+#include <linux/bitops.h>
 
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>
+
 #include "gpio-names.h"
 
-static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+#define PINGROUP_REG_A	0x868
+#define MUXCTL_REG_A	0x3000
 
-#define TRISTATE		(1<<4)
-#define PMC_IO_DPD_REQ_0	0x1B8
-#define PMC_IO_DPD2_REQ_0	0x1C0
+#define SET_DRIVE_PINGROUP(pg_name, r, drv_down_offset, drv_down_mask, drv_up_offset, drv_up_mask,	\
+	slew_rise_offset, slew_rise_mask, slew_fall_offset, slew_fall_mask)	\
+	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {			\
+		.name = #pg_name,				\
+		.reg_bank = 0,					\
+		.reg = ((r) - PINGROUP_REG_A),			\
+		.drvup_offset = drv_up_offset,			\
+		.drvup_mask = drv_up_mask,			\
+		.drvdown_offset = drv_down_offset,		\
+		.drvdown_mask = drv_down_mask,			\
+		.slewrise_offset = slew_rise_offset,		\
+		.slewrise_mask = slew_rise_mask,		\
+		.slewfall_offset = slew_fall_offset,		\
+		.slewfall_mask = slew_fall_mask,		\
+	}
 
-#define DRIVE_PINGROUP(pg_name, r)		\
-	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {	\
-		.name = #pg_name,		\
-		.reg_bank = 0,			\
-		.reg = r			\
+#define DEFAULT_DRIVE_PINGROUP(pg_name, r)		\
+	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {		\
+		.name = #pg_name,			\
+		.reg_bank = 0,				\
+		.reg = ((r) - PINGROUP_REG_A),		\
+		.drvup_offset = 20,			\
+		.drvup_mask = 0x1f,			\
+		.drvdown_offset = 12,			\
+		.drvdown_mask = 0x1f,			\
+		.slewrise_offset = 28,			\
+		.slewrise_mask = 0x3,			\
+		.slewfall_offset = 30,			\
+		.slewfall_mask = 0x3,			\
 	}
 
 const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE_PINGROUP] = {
-	DRIVE_PINGROUP(AO1,		0x868),
-	DRIVE_PINGROUP(AO2,		0x86c),
-	DRIVE_PINGROUP(AT1,		0x870),
-	DRIVE_PINGROUP(AT2,		0x874),
-	DRIVE_PINGROUP(AT3,		0x878),
-	DRIVE_PINGROUP(AT4,		0x87c),
-	DRIVE_PINGROUP(AT5,		0x880),
-	DRIVE_PINGROUP(CDEV1,		0x884),
-	DRIVE_PINGROUP(CDEV2,		0x888),
-	DRIVE_PINGROUP(CSUS,		0x88c),
-	DRIVE_PINGROUP(DAP1,		0x890),
-	DRIVE_PINGROUP(DAP2,		0x894),
-	DRIVE_PINGROUP(DAP3,		0x898),
-	DRIVE_PINGROUP(DAP4,		0x89c),
-	DRIVE_PINGROUP(DBG,		0x8a0),
-	DRIVE_PINGROUP(SDIO3,		0x8b0),
-	DRIVE_PINGROUP(SPI,		0x8b4),
-	DRIVE_PINGROUP(UAA,		0x8b8),
-	DRIVE_PINGROUP(UAB,		0x8bc),
-	DRIVE_PINGROUP(UART2,		0x8c0),
-	DRIVE_PINGROUP(UART3,		0x8c4),
-	DRIVE_PINGROUP(SDIO1,		0x8ec),
-	DRIVE_PINGROUP(CRT,		0x8f8),
-	DRIVE_PINGROUP(DDC,		0x8fc),
-	DRIVE_PINGROUP(GMA,		0x900),
-	DRIVE_PINGROUP(GME,		0x910),
-	DRIVE_PINGROUP(GMF,		0x914),
-	DRIVE_PINGROUP(GMG,		0x918),
-	DRIVE_PINGROUP(GMH,		0x91c),
-	DRIVE_PINGROUP(OWR,		0x920),
-	DRIVE_PINGROUP(UAD,		0x924),
-	DRIVE_PINGROUP(GPV,		0x928),
-	DRIVE_PINGROUP(DEV3,		0x92c),
-	DRIVE_PINGROUP(CEC,		0x938),
-	DRIVE_PINGROUP(AT6,		0x994),
-	DRIVE_PINGROUP(DAP5,		0x998),
-	DRIVE_PINGROUP(VBUS,		0x99C),
+	DEFAULT_DRIVE_PINGROUP(AO1,		0x868),
+	DEFAULT_DRIVE_PINGROUP(AO2,		0x86c),
+	DEFAULT_DRIVE_PINGROUP(AT1,		0x870),
+	DEFAULT_DRIVE_PINGROUP(AT2,		0x874),
+	DEFAULT_DRIVE_PINGROUP(AT3,		0x878),
+	DEFAULT_DRIVE_PINGROUP(AT4,		0x87c),
+	DEFAULT_DRIVE_PINGROUP(AT5,		0x880),
+	DEFAULT_DRIVE_PINGROUP(CDEV1,		0x884),
+	DEFAULT_DRIVE_PINGROUP(CDEV2,		0x888),
+	DEFAULT_DRIVE_PINGROUP(CSUS,		0x88c),
+	DEFAULT_DRIVE_PINGROUP(DAP1,		0x890),
+	DEFAULT_DRIVE_PINGROUP(DAP2,		0x894),
+	DEFAULT_DRIVE_PINGROUP(DAP3,		0x898),
+	DEFAULT_DRIVE_PINGROUP(DAP4,		0x89c),
+	DEFAULT_DRIVE_PINGROUP(DBG,		0x8a0),
+	DEFAULT_DRIVE_PINGROUP(SDIO3,		0x8b0),
+	DEFAULT_DRIVE_PINGROUP(SPI,		0x8b4),
+	DEFAULT_DRIVE_PINGROUP(UAA,		0x8b8),
+	DEFAULT_DRIVE_PINGROUP(UAB,		0x8bc),
+	DEFAULT_DRIVE_PINGROUP(UART2,		0x8c0),
+	DEFAULT_DRIVE_PINGROUP(UART3,		0x8c4),
+	DEFAULT_DRIVE_PINGROUP(SDIO1,		0x8ec),
+	DEFAULT_DRIVE_PINGROUP(CRT,		0x8f8),
+	DEFAULT_DRIVE_PINGROUP(DDC,		0x8fc),
+	DEFAULT_DRIVE_PINGROUP(GMA,		0x900),
+	DEFAULT_DRIVE_PINGROUP(GME,		0x910),
+	DEFAULT_DRIVE_PINGROUP(GMF,		0x914),
+	DEFAULT_DRIVE_PINGROUP(GMG,		0x918),
+	DEFAULT_DRIVE_PINGROUP(GMH,		0x91c),
+	DEFAULT_DRIVE_PINGROUP(OWR,		0x920),
+	DEFAULT_DRIVE_PINGROUP(UAD,		0x924),
+	DEFAULT_DRIVE_PINGROUP(GPV,		0x928),
+	DEFAULT_DRIVE_PINGROUP(DEV3,		0x92c),
+	DEFAULT_DRIVE_PINGROUP(CEC,		0x938),
+	DEFAULT_DRIVE_PINGROUP(AT6,		0x994),
+	DEFAULT_DRIVE_PINGROUP(DAP5,		0x998),
+	DEFAULT_DRIVE_PINGROUP(VBUS,		0x99C),
 };
 
 #define PINGROUP(pg_name, gpio_nr, vdd, f0, f1, f2, f3, fs, iod, reg)	\
@@ -97,13 +120,16 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 			TEGRA_MUX_ ## f2,			\
 			TEGRA_MUX_ ## f3,			\
 		},						\
+		.gpionr = TEGRA_GPIO_ ## gpio_nr,		\
 		.func_safe = TEGRA_MUX_ ## fs,			\
-		.tri_reg = reg,					\
+		.tri_bank = 1,					\
+		.tri_reg = ((reg) - MUXCTL_REG_A),		\
 		.tri_bit = 4,					\
 		.mux_bank = 1,					\
-		.mux_reg = reg,					\
+		.mux_reg = ((reg) - MUXCTL_REG_A),		\
 		.mux_bit = 0,					\
-		.pupd_reg = reg,				\
+		.pupd_bank = 1,					\
+		.pupd_reg = ((reg) - MUXCTL_REG_A),		\
 		.pupd_bit = 2,					\
 		.io_default = TEGRA_PIN_ ## iod,		\
 		.od_bit = 6,					\
@@ -307,12 +333,27 @@ const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 
 };
 
+#define SET_DRIVE(_name, _hsm, _schmitt, _drive, _pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew) \
+	{							\
+		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
+		.hsm = TEGRA_HSM_##_hsm,			\
+		.schmitt = TEGRA_SCHMITT_##_schmitt,		\
+		.drive = TEGRA_DRIVE_##_drive,			\
+		.pull_down = TEGRA_PULL_##_pulldn_drive,	\
+		.pull_up = TEGRA_PULL_##_pullup_drive,		\
+		.slew_rising = TEGRA_SLEW_##_pulldn_slew,	\
+		.slew_falling = TEGRA_SLEW_##_pullup_slew,	\
+	}
+
+static __initdata struct tegra_drive_pingroup_config t11x_def_drive_pinmux[] = {
+	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
+};
+
 #ifdef CONFIG_PM_SLEEP
 
-static u32 pinmux_reg[TEGRA_MAX_PINGROUP +
-		      ARRAY_SIZE(tegra_soc_drive_pingroups)];
+static u32 pinmux_reg[TEGRA_MAX_PINGROUP + ARRAY_SIZE(tegra_soc_drive_pingroups)];
 
-static int tegra_pinmux_suspend(void)
+static int tegra11x_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
@@ -328,8 +369,12 @@ static int tegra_pinmux_suspend(void)
 	return 0;
 }
 
-static void tegra_pinmux_resume(void)
+#define PMC_IO_DPD_REQ		0x1B8
+#define PMC_IO_DPD2_REQ		0x1C0
+
+static void tegra11x_pinmux_resume(void)
 {
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 	u32 *tmp = pinmux_reg;
@@ -337,13 +382,13 @@ static void tegra_pinmux_resume(void)
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
 		reg_value = *tmp++;
-		reg_value |= TRISTATE;
+		reg_value |= BIT(4); /* tristate */
 		pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
 			tegra_soc_pingroups[i].mux_reg);
 	}
 
-	writel(0x400fffff, pmc + PMC_IO_DPD_REQ_0);
-	writel(0x40001fff, pmc + PMC_IO_DPD2_REQ_0);
+	writel(0x400fffff, pmc_base + PMC_IO_DPD_REQ);
+	writel(0x40001fff, pmc_base + PMC_IO_DPD2_REQ);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
@@ -355,33 +400,29 @@ static void tegra_pinmux_resume(void)
 }
 
 static struct syscore_ops tegra_pinmux_syscore_ops = {
-	.suspend = tegra_pinmux_suspend,
-	.resume = tegra_pinmux_resume,
+	.suspend = tegra11x_pinmux_suspend,
+	.resume = tegra11x_pinmux_resume,
 };
 #endif
 
-#define SET_DRIVE(_name, _hsm, _schmitt, _drive, _pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew) \
-	{							\
-		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
-		.hsm = TEGRA_HSM_##_hsm,			\
-		.schmitt = TEGRA_SCHMITT_##_schmitt,		\
-		.drive = TEGRA_DRIVE_##_drive,			\
-		.pull_down = TEGRA_PULL_##_pulldn_drive,	\
-		.pull_up = TEGRA_PULL_##_pullup_drive,		\
-		.slew_rising = TEGRA_SLEW_##_pulldn_slew,	\
-		.slew_falling = TEGRA_SLEW_##_pullup_slew,	\
-	}
-
-static __initdata struct tegra_drive_pingroup_config t30_def_drive_pinmux[] = {
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
-};
-
-void __init tegra_init_pinmux(void)
+void __devinit tegra11x_pinmux_init(const struct tegra_pingroup_desc **pg,
+		int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
+		int *pgdrive_max, const int **gpiomap, int *gpiomap_max)
 {
+	*pg = tegra_soc_pingroups;
+	*pg_max = TEGRA_MAX_PINGROUP;
+	*pgdrive = tegra_soc_drive_pingroups;
+	*pgdrive_max = TEGRA_MAX_DRIVE_PINGROUP;
+	*gpiomap = gpio_to_pingroup;
+	*gpiomap_max = TEGRA_MAX_GPIO;
+
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_pinmux_syscore_ops);
 #endif
+}
 
-	tegra_drive_pinmux_config_table(t30_def_drive_pinmux,
-					ARRAY_SIZE(t30_def_drive_pinmux));
+void tegra11x_default_pinmux(void)
+{
+	tegra_drive_pinmux_config_table(t11x_def_drive_pinmux,
+					ARRAY_SIZE(t11x_def_drive_pinmux));
 }

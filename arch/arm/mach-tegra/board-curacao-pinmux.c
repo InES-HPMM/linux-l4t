@@ -224,6 +224,7 @@ static __initdata struct tegra_pingroup_config curacao_pinmux[] = {
 
 void __init curacao_pinmux_init(void)
 {
+	tegra11x_default_pinmux();
 	tegra_pinmux_config_table(curacao_pinmux, ARRAY_SIZE(curacao_pinmux));
 	tegra_drive_pinmux_config_table(curacao_drive_pinmux,
 					ARRAY_SIZE(curacao_drive_pinmux));

@@ -18,7 +18,7 @@
 #ifndef __MACH_TEGRA_PINMUX_T11_H
 #define __MACH_TEGRA_PINMUX_T11_H
 
-#define TEGRA_PINMUX_HAS_IO_DIRECTION	1
+void tegra11x_default_pinmux(void);
 
 enum tegra_pingroup {
 	TEGRA_PINGROUP_ULPI_DATA0,
