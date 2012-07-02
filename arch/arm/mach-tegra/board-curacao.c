@@ -581,6 +581,7 @@ static void __init curacao_hs_uart_init(void)
 static void __init tegra_curacao_init(void)
 {
 	tegra_clk_init_from_table(curacao_clk_init_table);
+	tegra_enable_pinmux();
 	curacao_pinmux_init();
 
 	if (tegra_revision == TEGRA_REVISION_QT)
