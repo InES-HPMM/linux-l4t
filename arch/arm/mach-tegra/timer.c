@@ -30,6 +30,7 @@
 #include <linux/cpu.h>
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
+#include <linux/cpu_pm.h>
 
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
@@ -47,6 +48,8 @@
 #include "iomap.h"
 #include "timer.h"
 #include "fuse.h"
+
+extern int __init arch_timer_register(struct arch_timer *at);
 
 static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
@@ -421,13 +424,13 @@ static int __init tegra_init_arch_timer(void)
 	return 0;
 }
 
-static struct resource arch_timer_resources[] __initdata = {
-	{
+static struct arch_timer tegra_arch_timer = {
+	.res[0] = {
 		.start	= 29,
 		.end	= 29,
 		.flags	= IORESOURCE_IRQ,
 	},
-	{
+	.res[1] = {
 		.start	= 30,
 		.end	= 30,
 		.flags	= IORESOURCE_IRQ,
@@ -439,8 +442,7 @@ static int __init tegra_init_late_arch_timer(void)
 	int err = -ENODEV;
 
 	if (arch_timer_initialized) {
-		err = arch_timer_register(arch_timer_resources,
-			ARRAY_SIZE(arch_timer_resources));
+		err = arch_timer_register(&tegra_arch_timer);
 		if (err)
 			pr_err("%s: Unable to register arch timer: %d\n",
 			     __func__, err);
