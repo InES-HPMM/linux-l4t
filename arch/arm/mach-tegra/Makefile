@@ -27,6 +27,7 @@ else
 obj-y                                   += common-t3.o
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
+obj-$(CONFIG_DEBUG_FS)                  += clocks_stats.o
 obj-y                                   += timer-t3.o
 ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-y                                   += wakeups-t3.o
