@@ -209,7 +209,7 @@ static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
 			      IRQ_LOCALTIMER);
 static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
-void __init tegra_twd_init(void)
+void __init tegra_cpu_timer_init(void)
 {
 	struct clk *cpu, *twd_clk;
 	int ret;
@@ -267,15 +267,13 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 	writel(context->twd_ctrl, tegra_twd_base + TWD_TIMER_CONTROL);
 }
 
-static void __init tegra_init_late_twd(void)
+static void __init tegra_init_late_timer(void)
 {
 	int err = twd_local_timer_register(&twd_local_timer);
 	if (err)
 		pr_err("twd_timer_register failed %d\n", err);
 }
 #else
-#define tegra_twd_init()	do {} while(0)
-static inline void tegra_init_late_twd(void) {}
 #define tegra_twd_get_state	do {} while(0)
 #define tegra_twd_suspend	do {} while(0)
 #define tegra_twd_resume	do {} while(0)
@@ -313,13 +311,13 @@ static int local_timer_is_architected(void)
 #endif
 }
 
-static int __init tegra_init_early_arch_timer(void)
+void __init tegra_cpu_timer_init(void)
 {
 	u32 tsc_ref_freq;
 	u32 reg;
 
 	if (!local_timer_is_architected())
-		return -ENODEV;
+		return;
 
 	tsc_ref_freq = tegra_clk_measure_input_freq();
 	if (tsc_ref_freq == 115200 || tsc_ref_freq == 230400) {
@@ -347,7 +345,6 @@ static int __init tegra_init_early_arch_timer(void)
 	reg = tsc_readl(TSC_CNTCR);
 	reg |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
 	tsc_writel(reg, TSC_CNTCR);
-	return 0;
 }
 
 static void tegra_arch_timer_per_cpu_init(void)
@@ -437,7 +434,7 @@ static struct arch_timer tegra_arch_timer = {
 	},
 };
 
-static int __init tegra_init_late_arch_timer(void)
+static void __init tegra_init_late_timer(void)
 {
 	int err = -ENODEV;
 
@@ -447,7 +444,6 @@ static int __init tegra_init_late_arch_timer(void)
 			pr_err("%s: Unable to register arch timer: %d\n",
 			     __func__, err);
 	}
-	return err;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -518,22 +514,9 @@ void tegra_tsc_wait_for_resume(void)
 #endif
 
 #else
-static inline int tegra_init_early_arch_timer(void) { return -ENODEV; }
 static inline int tegra_init_arch_timer(void) { return -ENODEV; }
 static inline int tegra_init_late_arch_timer(void) { return -ENODEV; }
 #endif
-
-void __init tegra_init_early_timer(void)
-{
-	if (tegra_init_early_arch_timer())
-		tegra_twd_init();
-}
-
-static void __init tegra_init_late_timer(void)
-{
-	if (tegra_init_late_arch_timer())
-		tegra_init_late_twd();
-}
 
 extern void __tegra_delay(unsigned long cycles);
 extern void __tegra_const_udelay(unsigned long loops);

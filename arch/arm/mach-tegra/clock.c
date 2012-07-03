@@ -706,11 +706,7 @@ void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 
 void __init tegra_common_init_clock(void)
 {
-#ifdef CONFIG_ARM_ARCH_TIMER
-	tegra_init_early_timer()
-#else
-	tegra_twd_init();
-#endif
+	tegra_cpu_timer_init();
 }
 
 static bool tegra_keep_boot_clocks = false;
