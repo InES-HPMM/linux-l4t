@@ -153,6 +153,7 @@ struct sdhci_tegra {
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 {
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	u32 val;
 
 	if (unlikely(reg == SDHCI_PRESENT_STATE)) {
@@ -160,7 +161,7 @@ static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 		val = readl(host->ioaddr + reg);
 		return val | SDHCI_WRITE_PROTECT;
 	}
-
+#endif
 	return readl(host->ioaddr + reg);
 }
 
@@ -996,12 +997,14 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 }
 
 static const struct sdhci_ops tegra_sdhci_ops = {
-	.get_ro			= tegra_sdhci_get_ro,
-	.get_cd			= tegra_sdhci_get_cd,
-	.read_l			= tegra_sdhci_readl,
-	.read_w			= tegra_sdhci_readw,
-	.write_l		= tegra_sdhci_writel,
-	.platform_bus_width	= tegra_sdhci_buswidth,
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+	.get_ro     = tegra_sdhci_get_ro,
+#endif
+	.get_cd     = tegra_sdhci_get_cd,
+	.read_l     = tegra_sdhci_readl,
+	.read_w     = tegra_sdhci_readw,
+	.write_l    = tegra_sdhci_writel,
+	.platform_bus_width = tegra_sdhci_buswidth,
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
 #endif
