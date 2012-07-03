@@ -51,6 +51,7 @@ int edp_register_manager(struct edp_manager *mgr)
 	if (!find_manager(mgr->name)) {
 		list_add_tail(&mgr->link, &edp_managers);
 		mgr->registered = true;
+		INIT_LIST_HEAD(&mgr->clients);
 		r = 0;
 	}
 	mutex_unlock(&edp_lock);
@@ -61,16 +62,19 @@ EXPORT_SYMBOL(edp_register_manager);
 
 int edp_unregister_manager(struct edp_manager *mgr)
 {
-	int r = -ENODEV;
+	int r = 0;
 
 	if (!mgr)
 		return -EINVAL;
 
 	mutex_lock(&edp_lock);
-	if (mgr->registered) {
+	if (!mgr->registered) {
+		r = -ENODEV;
+	} else if (!list_empty(&mgr->clients)) {
+		r = -EBUSY;
+	} else {
 		list_del(&mgr->link);
 		mgr->registered = false;
-		r = 0;
 	}
 	mutex_unlock(&edp_lock);
 
@@ -89,3 +93,110 @@ struct edp_manager *edp_get_manager(const char *name)
 	return mgr;
 }
 EXPORT_SYMBOL(edp_get_manager);
+
+static struct edp_client *find_client(struct edp_manager *mgr,
+		const char *name)
+{
+	struct edp_client *p;
+
+	if (!name)
+		return NULL;
+
+	list_for_each_entry(p, &mgr->clients, link)
+		if (!strcmp(p->name, name))
+			return p;
+
+	return NULL;
+}
+
+static unsigned int e0_current_sum(struct edp_manager *mgr)
+{
+	struct edp_client *p;
+	unsigned int sum = 0;
+
+	list_for_each_entry(p, &mgr->clients, link)
+		sum += p->states[p->e0_index];
+
+	return sum;
+}
+
+static bool states_ok(struct edp_client *client)
+{
+	int i;
+
+	if (!client->states || !client->num_states ||
+			client->e0_index >= client->num_states)
+		return false;
+
+	/* state array should be sorted in descending order */
+	for (i = 1; i < client->num_states; i++)
+		if (client->states[i] >= client->states[i - 1])
+			return false;
+
+	return true;
+}
+
+static int register_client(struct edp_manager *mgr, struct edp_client *client)
+{
+	if (!mgr || !client)
+		return -EINVAL;
+
+	if (client->manager || find_client(mgr, client->name))
+		return -EEXIST;
+
+	if (!mgr->registered)
+		return -ENODEV;
+
+	if (!states_ok(client))
+		return -EINVAL;
+
+	/* make sure that we can satisfy E0 for all registered clients */
+	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->imax)
+		return -E2BIG;
+
+	list_add_tail(&client->link, &mgr->clients);
+	client->manager = mgr;
+
+	return 0;
+}
+
+int edp_register_client(struct edp_manager *mgr, struct edp_client *client)
+{
+	int r;
+
+	mutex_lock(&edp_lock);
+	r = register_client(mgr, client);
+	mutex_unlock(&edp_lock);
+
+	return r;
+}
+EXPORT_SYMBOL(edp_register_client);
+
+static int unregister_client(struct edp_client *client)
+{
+	if (!client)
+		return -EINVAL;
+
+	if (!client->manager)
+		return -ENODEV;
+
+	if (!client->manager->registered)
+		return -ENODEV;
+
+	list_del(&client->link);
+	client->manager = NULL;
+
+	return 0;
+}
+
+int edp_unregister_client(struct edp_client *client)
+{
+	int r;
+
+	mutex_lock(&edp_lock);
+	r = unregister_client(client);
+	mutex_unlock(&edp_lock);
+
+	return r;
+}
+EXPORT_SYMBOL(edp_unregister_client);

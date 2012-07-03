@@ -26,17 +26,40 @@
 
 struct edp_manager {
 	const char name[EDP_NAME_LEN];
-	const unsigned int max_current;
+	const unsigned int imax;
 
 	/* internal */
 	struct list_head link;
+	struct list_head clients;
 	bool registered;
+};
+
+/*
+ * @states: EDP state array holding the IMAX for each state.
+ *	This must be sorted in descending order.
+ * @num_states: length of the above array
+ * @e0_index: index of the E0 state in the above array
+ * Note that each EDP client is tied to a single EDP manager
+ */
+struct edp_client {
+	const char name[EDP_NAME_LEN];
+	const unsigned int *const states;
+	const unsigned int num_states;
+	const unsigned int e0_index;
+
+	/* internal */
+	struct list_head link;
+	struct edp_manager *manager;
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
 extern int edp_register_manager(struct edp_manager *mgr);
 extern int edp_unregister_manager(struct edp_manager *mgr);
 extern struct edp_manager *edp_get_manager(const char *name);
+
+extern int edp_register_client(struct edp_manager *mgr,
+		struct edp_client *client);
+extern int edp_unregister_client(struct edp_client *client);
 #else
 static inline int edp_register_manager(struct edp_manager *mgr)
 { return -ENODEV; }
@@ -44,6 +67,11 @@ static inline int edp_unregister_manager(struct edp_manager *mgr)
 { return -ENODEV; }
 static inline struct edp_manager *edp_get_manager(const char *name)
 { return NULL; }
+static inline int edp_register_client(struct edp_manager *mgr,
+		struct edp_client *client)
+{ return -ENODEV; }
+static inline int edp_unregister_client(struct edp_client *client)
+{ return -ENODEV; }
 #endif
 
 #endif
