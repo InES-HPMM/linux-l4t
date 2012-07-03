@@ -228,10 +228,6 @@ void __init tegra_cpu_timer_init(void)
 		pr_err("Failed to set twd clock rate: %d\n", ret);
 	else
 		pr_debug("TWD clock rate: %ld\n", clk_get_rate(twd_clk));
-
-	err = twd_local_timer_register(&twd_local_timer);
-	if (err)
-		pr_err("twd_local_timer_register failed %d\n", err);
 }
 
 int tegra_twd_get_state(struct tegra_twd_context *context)
