@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Based on arch/arm/plat-omap/cpu-omap.c, (C) 2005 Nokia Corporation
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -239,12 +239,12 @@ int tegra_edp_update_thermal_zone(int temperature)
 
 	/* Update cpu rate if cpufreq (at least on cpu0) is already started;
 	   alter cpu dvfs table for this thermal zone if necessary */
-	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true);
+	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true, 0);
 	if (target_cpu_speed[0]) {
 		edp_update_limit();
 		tegra_cpu_set_speed_cap(NULL);
 	}
-	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false);
+	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false, 0);
 	mutex_unlock(&tegra_cpu_lock);
 
 	return ret;
@@ -318,31 +318,31 @@ static int tegra_cpu_edp_notify(
 	case CPU_UP_PREPARE:
 		mutex_lock(&tegra_cpu_lock);
 		cpu_set(cpu, edp_cpumask);
-		tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true);
 		edp_update_limit();
 
 		cpu_speed = tegra_getspeed(0);
 		new_speed = edp_governor_speed(cpu_speed);
 		if (new_speed < cpu_speed) {
 			ret = tegra_cpu_set_speed_cap(NULL);
-			if (ret) {
-				cpu_clear(cpu, edp_cpumask);
-				edp_update_limit();
-			}
-
-			printk(KERN_DEBUG "tegra CPU:%sforce EDP limit %u kHz"
+			printk(KERN_DEBUG "cpu-tegra:%sforce EDP limit %u kHz"
 				"\n", ret ? " failed to " : " ", new_speed);
 		}
-		tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false);
+		if (!ret)
+			ret = tegra_cpu_dvfs_alter(
+				edp_thermal_index, &edp_cpumask, false, event);
+		if (ret) {
+			cpu_clear(cpu, edp_cpumask);
+			edp_update_limit();
+		}
 		mutex_unlock(&tegra_cpu_lock);
 		break;
 	case CPU_DEAD:
 		mutex_lock(&tegra_cpu_lock);
 		cpu_clear(cpu, edp_cpumask);
-		tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, true);
+		tegra_cpu_dvfs_alter(
+			edp_thermal_index, &edp_cpumask, true, event);
 		edp_update_limit();
 		tegra_cpu_set_speed_cap(NULL);
-		tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false);
 		mutex_unlock(&tegra_cpu_lock);
 		break;
 	}
