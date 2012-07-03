@@ -161,6 +161,8 @@ struct platform_device tegra_pinmux_device = {
 	.name		= "tegra30-pinmux",
 #elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	.name		= "tegra20-pinctrl",
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	.name		= "tegra11x-pinmux",
 #endif
 	.id		= -1,
 	.resource	= pinmux_resource,
