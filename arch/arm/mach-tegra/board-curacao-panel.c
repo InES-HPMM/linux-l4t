@@ -513,9 +513,6 @@ static struct platform_device curacao_nvmap_device = {
 
 static struct platform_device *curacao_gfx_devices[] __initdata = {
 	&curacao_nvmap_device,
-#ifdef CONFIG_TEGRA_GRHOST
-	&tegra_grhost_device,
-#endif
 	&tegra_pwfm2_device,
 	&curacao_backlight_device,
 };
@@ -532,6 +529,12 @@ int __init curacao_panel_init(void)
 
 	err = platform_add_devices(curacao_gfx_devices,
 				   ARRAY_SIZE(curacao_gfx_devices));
+
+#if defined(CONFIG_TEGRA_GRHOST)
+	err = nvhost_device_register(&tegra_grhost_device);
+	if (err)
+		return err;
+#endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	res = nvhost_get_resource_byname(&curacao_disp1_device,
