@@ -2371,14 +2371,15 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	val = clk_readl(c->reg + PLL_BASE);
+	val &= ~PLL_BASE_ENABLE;
+	clk_writel(val, c->reg + PLL_BASE);
+
 	if (c->flags & PLLX)
 		pllx_do_iddq(c, true);
 	else
 		pllc_do_iddq(c, true);
 
-	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_ENABLE;
-	pll_writel_delay(val, c->reg + PLL_BASE);
 }
 
 #define PLLXC_DYN_RAMP(pll_misc, reg)					\
