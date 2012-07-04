@@ -1927,6 +1927,33 @@ static int pll_dyn_ramp_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
+static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
+	unsigned long rate, unsigned long input_rate, u32 *pdiv)
+{
+	const struct clk_pll_freq_table *sel;
+
+	/* Check if the target rate is tabulated */
+	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
+		if (sel->input_rate == input_rate && sel->output_rate == rate) {
+			u32 p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
+			BUG_ON(IS_ERR_VALUE(p));
+			if (rate >= c->u.pll.vco_min)
+				BUG_ON(sel->p != 1);
+			BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
+			*cfg = *sel;
+			return 0;
+		}
+	}
+
+	/* Configure out-of-table rate */
+	if (pll_dyn_ramp_cfg(c, cfg, rate, input_rate, pdiv)) {
+		pr_err("%s: Failed to set %s out-of-table rate %lu\n",
+		       __func__, c->name, rate);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /* FIXME: pllcx suspend/resume */
 
 static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
@@ -2085,33 +2112,16 @@ static int tegra11_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, pdiv;
 	unsigned long input_rate;
-	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg, old_cfg;
+	const struct clk_pll_freq_table *sel = &cfg;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
 	input_rate = clk_get_rate(c->parent);
 
-	/* Check if the target rate is tabulated */
-	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
-		if (sel->input_rate == input_rate && sel->output_rate == rate)
-			break;
-	}
+	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
+		return -EINVAL;
 
-	/* Configure out-of-table rate */
-	if (sel->input_rate == 0) {
-		sel = &cfg;
-
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, &pdiv)) {
-			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
-			       __func__, c->name, rate);
-			return -EINVAL;
-		}
-	} else {
-		val = c->u.pll.round_p_to_pdiv(sel->p, &pdiv);
-		BUG_ON(IS_ERR_VALUE(val));
-	}
-	BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 	c->mul = sel->n;
 	c->div = sel->m * sel->p;
 
@@ -2407,35 +2417,15 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, pdiv;
 	unsigned long input_rate;
-	const struct clk_pll_freq_table *sel;
 	struct clk_pll_freq_table cfg, old_cfg;
+	const struct clk_pll_freq_table *sel = &cfg;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
 	input_rate = clk_get_rate(c->parent);
 
-	/* Check if the target rate is tabulated */
-	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
-		if (sel->input_rate == input_rate && sel->output_rate == rate)
-			break;
-	}
-
-	/* Configure out-of-table rate */
-	if (sel->input_rate == 0) {
-		sel = &cfg;
-
-		if (pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, &pdiv)) {
-			pr_err("%s: Failed to set %s out-of-table rate %lu\n",
-			       __func__, c->name, rate);
-			return -EINVAL;
-		}
-	} else {
-		val = c->u.pll.round_p_to_pdiv(sel->p, &pdiv);
-		BUG_ON(IS_ERR_VALUE(val));
-	}
-	BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
-	if (rate >= c->u.pll.vco_min)
-		BUG_ON(sel->p != 1);
+	if (pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, &pdiv))
+		return -EINVAL;
 
 	c->mul = sel->n;
 	c->div = sel->m * sel->p;
@@ -5511,7 +5501,7 @@ static bool tegra11_is_dyn_ramp(
 		PLL_BASE_PARSE(PLLCX, old_cfg, val);
 		old_cfg.p = pllcx_p[old_cfg.p];
 
-		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, NULL)) {
+		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.n == old_cfg.n) ||
 			    PLLCX_IS_DYN(cfg.p, old_cfg.p))
 				return true;
@@ -5534,7 +5524,7 @@ static bool tegra11_is_dyn_ramp(
 			old_cfg.p = pllxc_p[old_cfg.p];
 		}
 
-		if (!pll_dyn_ramp_cfg(c, &cfg, rate, input_rate, NULL)) {
+		if (!pll_dyn_ramp_find_cfg(c, &cfg, rate, input_rate, NULL)) {
 			if ((cfg.m == old_cfg.m) && (cfg.p == old_cfg.p))
 				return true;
 		}
