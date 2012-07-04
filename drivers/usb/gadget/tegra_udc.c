@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -37,6 +37,7 @@
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/pm_qos.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -96,7 +97,7 @@ static const u8 tegra_udc_test_packet[53] = {
 static struct tegra_udc *the_udc;
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	static struct pm_qos_request_list boost_cpu_freq_req;
+	static struct pm_qos_request boost_cpu_freq_req;
 	static u32 ep_queue_request_count;
 	static u8 boost_cpufreq_work_flag;
 #endif
