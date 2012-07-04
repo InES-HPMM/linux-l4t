@@ -605,8 +605,12 @@
  *
  */
 
+#ifdef CONFIG_ARM_LPAE
 #define ROUND_UP(x, n)		(((x) + (n) - 1) & ~((n) - 1))
 #define IO_VIRT_ROUND_UP(x)	ROUND_UP(x, SZ_2M)
+#else
+#define IO_VIRT_ROUND_UP(x)	(x)
+#endif
 
 /* Define physical aperture limits */
 
