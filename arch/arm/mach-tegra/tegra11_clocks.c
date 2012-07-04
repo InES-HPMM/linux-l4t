@@ -2332,7 +2332,6 @@ static void tegra11_pllxc_clk_init(struct clk *c)
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
-	BUG_ON(val & PLL_BASE_BYPASS);
 
 	m = (val & PLLXC_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
 	p = (val & PLLXC_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT;
@@ -2359,7 +2358,6 @@ static int tegra11_pllxc_clk_enable(struct clk *c)
 		pllc_do_iddq(c, false);
 
 	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLL_BASE_BYPASS;
 	val |= PLL_BASE_ENABLE;
 	clk_writel(val, c->reg + PLL_BASE);
 
@@ -2379,7 +2377,7 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 		pllc_do_iddq(c, true);
 
 	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
+	val &= ~PLL_BASE_ENABLE;
 	pll_writel_delay(val, c->reg + PLL_BASE);
 }
 
@@ -2470,7 +2468,7 @@ static int tegra11_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 #endif
 	if (c->state == ON) {
 		/* Use "ENABLE" pulse without placing PLL into IDDQ */
-		val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
+		val &= ~PLL_BASE_ENABLE;
 		pll_writel_delay(val, c->reg + PLL_BASE);
 	}
 
