@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010 - 2012 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -31,10 +31,13 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/usb/otg.h>
 
+#include <mach/hardware.h>
+
 /* HACK -- need to pass this through DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 #include "tegra_usb_phy.h"
+#include "fuse.h"
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
@@ -144,6 +147,16 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 {
 	struct tegra_usb_phy *phy = pdata;
+
+	if (phy->vdd_reg && !phy->vdd_reg_on) {
+		regulator_enable(phy->vdd_reg);
+		phy->vdd_reg_on = 1;
+		/*
+		 * Optimal time to get the regulator turned on
+		 * before detecting vbus interrupt.
+		 */
+		mdelay(15);
+	}
 
 	/* clk is disabled during phy power off and not here*/
 	if (!phy->ctrl_clk_on) {
@@ -260,7 +273,6 @@ void tegra_usb_phy_close(struct usb_phy *x)
 	}
 
 	if (phy->vdd_reg) {
-		regulator_disable(phy->vdd_reg);
 		regulator_put(phy->vdd_reg);
 	}
 
@@ -329,6 +341,18 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
+	if (phy->vdd_reg && phy->vdd_reg_on) {
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		regulator_disable(phy->vdd_reg);
+		phy->vdd_reg_on = false;
+#else
+		if (tegra_revision >= TEGRA_REVISION_A03) {
+			regulator_disable(phy->vdd_reg);
+			phy->vdd_reg_on = false;
+		}
+#endif
+	}
+
 	phy->phy_power_on = false;
 
 	return err;
@@ -342,6 +366,11 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 
 	if (phy->phy_power_on)
 		return status;
+
+	if (phy->vdd_reg && !phy->vdd_reg_on) {
+		regulator_enable(phy->vdd_reg);
+		phy->vdd_reg_on = true;
+	}
 
 	/* In device mode clock is turned on by pmu irq handler
 	 * if pmu irq is not available clocks will not be turned off/on
@@ -694,9 +723,6 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	phy->phy.init = tegra_usb_phy_init;
 	phy->phy.shutdown = tegra_usb_phy_close;
 	phy->phy.set_suspend = tegra_usb_phy_set_suspend;
-
-	if (phy->vdd_reg)
-		regulator_enable(phy->vdd_reg);
 
 	return phy;
 
