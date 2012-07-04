@@ -32,6 +32,7 @@ struct edp_manager {
 	struct list_head link;
 	struct list_head clients;
 	bool registered;
+	unsigned int remaining;
 };
 
 /*
@@ -50,6 +51,8 @@ struct edp_client {
 	/* internal */
 	struct list_head link;
 	struct edp_manager *manager;
+	const unsigned int *req;
+	const unsigned int *cur;
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
@@ -60,6 +63,8 @@ extern struct edp_manager *edp_get_manager(const char *name);
 extern int edp_register_client(struct edp_manager *mgr,
 		struct edp_client *client);
 extern int edp_unregister_client(struct edp_client *client);
+extern int edp_update_client_request(struct edp_client *client,
+		unsigned int req, unsigned int *approved);
 #else
 static inline int edp_register_manager(struct edp_manager *mgr)
 { return -ENODEV; }
@@ -71,6 +76,9 @@ static inline int edp_register_client(struct edp_manager *mgr,
 		struct edp_client *client)
 { return -ENODEV; }
 static inline int edp_unregister_client(struct edp_client *client)
+{ return -ENODEV; }
+static inline int edp_update_client_request(struct edp_client *client,
+		unsigned int req, unsigned int *approved)
 { return -ENODEV; }
 #endif
 

@@ -51,6 +51,7 @@ int edp_register_manager(struct edp_manager *mgr)
 	if (!find_manager(mgr->name)) {
 		list_add_tail(&mgr->link, &edp_managers);
 		mgr->registered = true;
+		mgr->remaining = mgr->imax;
 		INIT_LIST_HEAD(&mgr->clients);
 		r = 0;
 	}
@@ -156,6 +157,8 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 
 	list_add_tail(&client->link, &mgr->clients);
 	client->manager = mgr;
+	client->req = NULL;
+	client->cur = NULL;
 
 	return 0;
 }
@@ -172,6 +175,26 @@ int edp_register_client(struct edp_manager *mgr, struct edp_client *client)
 }
 EXPORT_SYMBOL(edp_register_client);
 
+static int mod_request(struct edp_client *client, const unsigned int *req)
+{
+	unsigned int old = client->cur ? *client->cur : 0;
+	unsigned int new = req ? *req : 0;
+	unsigned int need;
+
+	if (new < old) {
+		client->cur = req;
+		client->manager->remaining += old - new;
+	} else {
+		need = new - old;
+		if (need > client->manager->remaining)
+			return -ENODEV;
+		client->manager->remaining -= need;
+		client->cur = req;
+	}
+
+	return 0;
+}
+
 static int unregister_client(struct edp_client *client)
 {
 	if (!client)
@@ -180,9 +203,7 @@ static int unregister_client(struct edp_client *client)
 	if (!client->manager)
 		return -ENODEV;
 
-	if (!client->manager->registered)
-		return -ENODEV;
-
+	mod_request(client, NULL);
 	list_del(&client->link);
 	client->manager = NULL;
 
@@ -200,3 +221,37 @@ int edp_unregister_client(struct edp_client *client)
 	return r;
 }
 EXPORT_SYMBOL(edp_unregister_client);
+
+static int update_client_request(struct edp_client *client, unsigned int req,
+		int *approved)
+{
+	int r;
+
+	if (!client)
+		return -EINVAL;
+
+	if (!client->manager)
+		return -ENODEV;
+
+	if (req >= client->num_states)
+		return -EINVAL;
+
+	r = mod_request(client, client->states + req);
+	if (!r && approved)
+		*approved = client->cur - client->states;
+
+	return r;
+}
+
+int edp_update_client_request(struct edp_client *client, unsigned int req,
+		unsigned int *approved)
+{
+	int r;
+
+	mutex_lock(&edp_lock);
+	r = update_client_request(client, req, approved);
+	mutex_unlock(&edp_lock);
+
+	return r;
+}
+EXPORT_SYMBOL(edp_update_client_request);
