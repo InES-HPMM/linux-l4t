@@ -984,15 +984,15 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 static struct platform_device_id tegra_pinmux_id[] = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ .name = "tegra20-pinmux",
-	  .driver_data = tegra20_pinmux_init, },
+	  .driver_data = (kernel_ulong_t)tegra20_pinmux_init, },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	{ .name = "tegra30-pinmux",
-	  .driver_data = tegra30_pinmux_init, },
+	  .driver_data = (kernel_ulong_t)tegra30_pinmux_init, },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	{ .name = "tegra11x-pinmux",
-	  .driver_data = tegra11x_pinmux_init, },
+	  .driver_data = (kernel_ulong_t)tegra11x_pinmux_init, },
 #endif
 	{},
 };
