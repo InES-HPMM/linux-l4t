@@ -212,7 +212,6 @@ static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 void __init tegra_cpu_timer_init(void)
 {
 	struct clk *cpu, *twd_clk;
-	int ret;
 	int err;
 
 	/* The twd clock is a detached child of the CPU complex clock.
@@ -222,10 +221,10 @@ void __init tegra_cpu_timer_init(void)
 	twd_clk = tegra_get_clock_by_name("twd");
 	BUG_ON(!twd_clk);
 	cpu = tegra_get_clock_by_name("cpu");
-	ret = clk_set_rate(twd_clk, clk_get_rate(cpu));
+	err = clk_set_rate(twd_clk, clk_get_rate(cpu));
 
-	if (ret)
-		pr_err("Failed to set twd clock rate: %d\n", ret);
+	if (err)
+		pr_err("Failed to set twd clock rate: %d\n", err);
 	else
 		pr_debug("TWD clock rate: %ld\n", clk_get_rate(twd_clk));
 }

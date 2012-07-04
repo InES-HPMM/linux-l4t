@@ -242,7 +242,6 @@ done:
 static void cluster_switch_epilog_actlr(void)
 {
 	u32 actlr;
-	u32 cpuid;
 
 	/*
 	 * This is only needed for Cortex-A9, for Cortex-A15, do nothing!
