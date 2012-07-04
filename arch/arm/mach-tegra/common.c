@@ -322,8 +322,6 @@ void tegra_init_cache(bool init)
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 	u32 cache_type;
 	u32 tag_latency, data_latency;
-	u32 speedo;
-	u32 tmp;
 #endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
