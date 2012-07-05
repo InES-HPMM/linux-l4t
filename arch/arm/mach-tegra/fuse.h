@@ -30,6 +30,7 @@
 
 #define TEGRA20		0x20
 #define TEGRA30		0x30
+#define TEGRA11X	0x35
 
 extern int tegra_sku_id;
 extern int tegra_chip_id;
