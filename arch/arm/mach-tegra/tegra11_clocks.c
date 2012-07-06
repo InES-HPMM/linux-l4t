@@ -195,7 +195,6 @@
 #define PLL_MISC_LFCON_MASK		(0xF<<PLL_MISC_LFCON_SHIFT)
 #define PLL_MISC_VCOCON_SHIFT		0
 #define PLL_MISC_VCOCON_MASK		(0xF<<PLL_MISC_VCOCON_SHIFT)
-#define PLLD_MISC_CLKENABLE		(1<<30)
 
 #define PLL_FIXED_MDIV(c, ref)		((ref) > (c)->u.pll.cf_max ? 2 : 1)
 
@@ -203,10 +202,11 @@
 #define PLLU_BASE_POST_DIV		(1<<20)
 
 /* PLLD */
-#define PLLD_BASE_DSIB_MUX_SHIFT	25
-#define PLLD_BASE_DSIB_MUX_MASK		(1<<PLLD_BASE_DSIB_MUX_SHIFT)
-#define PLLD_BASE_CSI_CLKSOURCE		(1<<24)
 #define PLLD_BASE_CSI_CLKENABLE		(1<<26)
+#define PLLD_BASE_DSI_MUX_SHIFT		25
+#define PLLD_BASE_DSI_MUX_MASK		(1<<PLLD_BASE_DSI_MUX_SHIFT)
+#define PLLD_BASE_CSI_CLKSOURCE		(1<<24)
+
 #define PLLD_MISC_DSI_CLKENABLE		(1<<30)
 #define PLLD_MISC_DIV_RST		(1<<23)
 #define PLLD_MISC_DCCON_SHIFT		12
@@ -1863,12 +1863,9 @@ tegra11_plld_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 		reg = c->reg + PLL_MISC(c);
 		break;
 	case TEGRA_CLK_PLLD_MIPI_MUX_SEL:
-		if (!(c->flags & PLL_ALT_MISC_REG)) {
-			mask = PLLD_BASE_DSIB_MUX_MASK;
-			reg = c->reg + PLL_BASE;
-			break;
-		}
-	/* fall through - error since PLLD2 does not have MUX_SEL control */
+		mask = PLLD_BASE_DSI_MUX_MASK;
+		reg = c->reg + PLL_BASE;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -3008,7 +3005,7 @@ static inline u32 periph_clk_source_mask(struct clk *c)
 	else if (c->flags & MUX_CLK_OUT)
 		return 3 << (c->u.periph.clk_num + 4);
 	else if (c->flags & PLLD)
-		return PLLD_BASE_DSIB_MUX_MASK;
+		return PLLD_BASE_DSI_MUX_MASK;
 	else
 		return 3 << 30;
 }
@@ -3022,7 +3019,7 @@ static inline u32 periph_clk_source_shift(struct clk *c)
 	else if (c->flags & MUX_CLK_OUT)
 		return c->u.periph.clk_num + 4;
 	else if (c->flags & PLLD)
-		return PLLD_BASE_DSIB_MUX_SHIFT;
+		return PLLD_BASE_DSI_MUX_SHIFT;
 	else
 		return 30;
 }
@@ -3370,10 +3367,12 @@ static struct clk_ops tegra_dtv_clk_ops = {
 	.reset			= &tegra11_periph_clk_reset,
 };
 
-static int tegra11_dsib_clk_set_parent(struct clk *c, struct clk *p)
+static int tegra11_dsi_clk_set_parent(struct clk *c, struct clk *p)
 {
 	const struct clk_mux_sel *sel;
 	struct clk *d = tegra_get_clock_by_name("pll_d");
+	if (c->reg != d->reg)
+		d = tegra_get_clock_by_name("pll_d2");
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
 
@@ -3382,7 +3381,7 @@ static int tegra11_dsib_clk_set_parent(struct clk *c, struct clk *p)
 			if (c->refcnt)
 				clk_enable(p);
 
-			/* The DSIB parent selection bit is in PLLD base
+			/* The DSI parent selection bit is in PLLD base
 			   register - can not do direct r-m-w, must be
 			   protected by PLLD lock */
 			tegra_clk_cfg_ex(
@@ -3399,11 +3398,11 @@ static int tegra11_dsib_clk_set_parent(struct clk *c, struct clk *p)
 	return -EINVAL;
 }
 
-static struct clk_ops tegra_dsib_clk_ops = {
+static struct clk_ops tegra_dsi_clk_ops = {
 	.init			= &tegra11_periph_clk_init,
 	.enable			= &tegra11_periph_clk_enable,
 	.disable		= &tegra11_periph_clk_disable,
-	.set_parent		= &tegra11_dsib_clk_set_parent,
+	.set_parent		= &tegra11_dsi_clk_set_parent,
 	.set_rate		= &tegra11_periph_clk_set_rate,
 	.round_rate		= &tegra11_periph_clk_round_rate,
 	.reset			= &tegra11_periph_clk_reset,
@@ -5234,11 +5233,6 @@ static struct clk_mux_sel mux_pllp_out3[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_plld_out0[] = {
-	{ .input = &tegra_pll_d_out0, .value = 0},
-	{ 0, 0},
-};
-
 static struct clk_mux_sel mux_plld_out0_plld2_out0[] = {
 	{ .input = &tegra_pll_d_out0,  .value = 0},
 	{ .input = &tegra_pll_d2_out0, .value = 1},
@@ -5481,8 +5475,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0), /* requires min voltage */
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0), /* requires min voltage */
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			0), /* requires min voltage */
-	PERIPH_CLK("dsia",	"tegradc.0",		"dsia",	48,	0,	500000000, mux_plld_out0,		0),
-	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0xd0,	500000000, mux_plld_out0_plld2_out0,	MUX | PLLD,	&tegra_dsib_clk_ops),
+	PERIPH_CLK_EX("dsia",	"tegradc.0",		"dsia",	48,	0xd0,	500000000, mux_plld_out0_plld2_out0,	MUX | PLLD,	&tegra_dsi_clk_ops),
+	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0x4b8,	500000000, mux_plld_out0_plld2_out0,	MUX | PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
