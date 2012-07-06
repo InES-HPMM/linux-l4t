@@ -213,11 +213,6 @@ config TEGRA_THERMAL_THROTTLE
 	help
 	  Also requires enabling a temperature sensor such as NCT1008.
 
-config WIFI_CONTROL_FUNC
-	bool "Enable WiFi control function abstraction"
-	help
-	  Enables Power/Reset/Carddetect function abstraction
-
 config TEGRA_CLOCK_DEBUG_WRITE
 	bool "Enable debugfs write access to clock tree"
 	depends on DEBUG_FS
