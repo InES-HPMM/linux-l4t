@@ -93,7 +93,7 @@ enum mc_client {
 static int tegra_num_powerdomains;
 static int tegra_num_cpu_domains;
 static u8 *tegra_cpu_domains;
-static u8 tegra30_cpu_domains[] = {
+static u8 tegra_quad_cpu_domains[] = {
 	TEGRA_POWERGATE_CPU0,
 	TEGRA_POWERGATE_CPU1,
 	TEGRA_POWERGATE_CPU2,
@@ -771,7 +771,12 @@ int __init tegra_powergate_init(void)
 	case TEGRA30:
 		tegra_num_powerdomains = 14;
 		tegra_num_cpu_domains = 4;
-		tegra_cpu_domains = tegra30_cpu_domains;
+		tegra_cpu_domains = tegra_quad_cpu_domains;
+		break;
+	case TEGRA11X:
+		tegra_num_powerdomains = 23;
+		tegra_num_cpu_domains = 4;
+		tegra_cpu_domains = tegra_quad_cpu_domains;
 		break;
 	default:
 		/* Unknown Tegra variant. Disable powergating */
