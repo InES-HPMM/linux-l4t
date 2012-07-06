@@ -1,8 +1,8 @@
 /*
- * tegra_p1852.c - Tegra machine ASoC driver for P1852 Boards.
+ * tegra_vcm.c - Tegra machine ASoC driver for P852/P1852/P1853 Boards.
  *
  * Author: Nitin Pai <npai@nvidia.com>
- * Copyright (C) 2010-2012 - NVIDIA, Inc.
+ * Copyright (C) 2010-2012 - NVIDIA, Corporation. All rights reserved.
  *
  * Based on code copyright/by:
  * Copyright (c) 2009-2010, NVIDIA Corporation.
@@ -41,14 +41,23 @@
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
 
+#ifdef CONFIG_MACH_P1852
 #define DRV_NAME "tegra-snd-p1852"
+#endif
+#ifdef CONFIG_MACH_E1853
+#define DRV_NAME "tegra-snd-e1853"
+#endif
+#ifdef CONFIG_MACH_P852
+#define DRV_NAME "tegra-snd-p852"
+#endif
 
-struct tegra_p1852 {
+
+struct tegra_vcm {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_p1852_platform_data *pdata;
 };
 
-static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
+static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params,
 					int codec_id)
 {
@@ -57,7 +66,7 @@ static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
-	struct tegra_p1852 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_vcm *machine = snd_soc_card_get_drvdata(card);
 	int srate, mclk;
 	int i2s_daifmt = 0;
 	int err;
@@ -139,65 +148,66 @@ static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int tegra_p1852_hw_params_controller1(
+static int tegra_vcm_hw_params_controller1(
 				struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
-	return tegra_p1852_hw_params(substream, params, 0);
+	return tegra_vcm_hw_params(substream, params, 0);
 }
 
-static int tegra_p1852_hw_params_controller2(
+static int tegra_vcm_hw_params_controller2(
 				struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
-	return tegra_p1852_hw_params(substream, params, 1);
+	return tegra_vcm_hw_params(substream, params, 1);
 }
 
 static int tegra_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct tegra_p1852 *machine = snd_soc_card_get_drvdata(rtd->card);
+	struct tegra_vcm *machine = snd_soc_card_get_drvdata(rtd->card);
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 0);
 
 	return 0;
 }
 
-static struct snd_soc_ops tegra_p1852_ops_controller1 = {
-	.hw_params = tegra_p1852_hw_params_controller1,
+static struct snd_soc_ops tegra_vcm_ops_controller1 = {
+	.hw_params = tegra_vcm_hw_params_controller1,
 	.hw_free = tegra_hw_free,
 };
-static struct snd_soc_ops tegra_p1852_ops_controller2 = {
-	.hw_params = tegra_p1852_hw_params_controller2,
+static struct snd_soc_ops tegra_vcm_ops_controller2 = {
+	.hw_params = tegra_vcm_hw_params_controller2,
 	.hw_free = tegra_hw_free,
 };
 
-static struct snd_soc_dai_link tegra_p1852_dai_link[] = {
+static struct snd_soc_dai_link tegra_vcm_dai_link[] = {
 	{
 		.name = "I2S-TDM-1",
 		.stream_name = "TEGRA PCM",
 		.platform_name = "tegra-pcm-audio",
-		.ops = &tegra_p1852_ops_controller1,
+		.ops = &tegra_vcm_ops_controller1,
 	},
 	{
 		.name = "I2S-TDM-2",
 		.stream_name = "TEGRA PCM",
 		.platform_name = "tegra-pcm-audio",
-		.ops = &tegra_p1852_ops_controller2,
+		.ops = &tegra_vcm_ops_controller2,
 	}
 };
 
-static struct snd_soc_card snd_soc_tegra_p1852 = {
-	.name = "tegra-p1852",
+static struct snd_soc_card snd_soc_tegra_vcm = {
+	.name = "tegra-vcm",
 	.owner = THIS_MODULE,
-	.dai_link = tegra_p1852_dai_link,
-	.num_links = ARRAY_SIZE(tegra_p1852_dai_link),
+	.dai_link = tegra_vcm_dai_link,
+	.num_links = ARRAY_SIZE(tegra_vcm_dai_link),
+
 };
 
-static int tegra_p1852_driver_probe(struct platform_device *pdev)
+static int tegra_vcm_driver_probe(struct platform_device *pdev)
 {
-	struct snd_soc_card *card = &snd_soc_tegra_p1852;
-	struct tegra_p1852 *machine;
+	struct snd_soc_card *card = &snd_soc_tegra_vcm;
+	struct tegra_vcm *machine;
 	struct tegra_p1852_platform_data *pdata;
 	int ret;
 	int i;
@@ -208,9 +218,9 @@ static int tegra_p1852_driver_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	machine = kzalloc(sizeof(struct tegra_p1852), GFP_KERNEL);
+	machine = kzalloc(sizeof(struct tegra_vcm), GFP_KERNEL);
 	if (!machine) {
-		dev_err(&pdev->dev, "Can't allocate tegra_p1852 struct\n");
+		dev_err(&pdev->dev, "Can't allocate tegra_vcm struct\n");
 		return -ENOMEM;
 	}
 
@@ -219,17 +229,17 @@ static int tegra_p1852_driver_probe(struct platform_device *pdev)
 	/* The codec driver and codec dai have to come from the system
 	 * level board configuration file
 	 * */
-	for (i = 0; i < ARRAY_SIZE(tegra_p1852_dai_link); i++) {
-		tegra_p1852_dai_link[i].codec_name =
+	for (i = 0; i < ARRAY_SIZE(tegra_vcm_dai_link); i++) {
+		tegra_vcm_dai_link[i].codec_name =
 				pdata->codec_info[i].codec_name;
-		tegra_p1852_dai_link[i].cpu_dai_name =
+		tegra_vcm_dai_link[i].cpu_dai_name =
 				pdata->codec_info[i].cpu_dai_name;
-		tegra_p1852_dai_link[i].codec_dai_name =
+		tegra_vcm_dai_link[i].codec_dai_name =
 				pdata->codec_info[i].codec_dai_name;
-		tegra_p1852_dai_link[i].name =
+		tegra_vcm_dai_link[i].name =
 				pdata->codec_info[i].name;
 		if (pdata->codec_info[i].pcm_driver)
-			tegra_p1852_dai_link[i].platform_name =
+			tegra_vcm_dai_link[i].platform_name =
 				pdata->codec_info[i].pcm_driver;
 	}
 
@@ -264,10 +274,10 @@ err_free_machine:
 	return ret;
 }
 
-static int tegra_p1852_driver_remove(struct platform_device *pdev)
+static int tegra_vcm_driver_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct tegra_p1852 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_vcm *machine = snd_soc_card_get_drvdata(card);
 
 	snd_soc_unregister_card(card);
 	tegra_asoc_utils_fini(&machine->util_data);
@@ -276,29 +286,29 @@ static int tegra_p1852_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver tegra_p1852_driver = {
+static struct platform_driver tegra_vcm_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
 	},
-	.probe = tegra_p1852_driver_probe,
-	.remove = tegra_p1852_driver_remove,
+	.probe = tegra_vcm_driver_probe,
+	.remove = tegra_vcm_driver_remove,
 };
 
-static int __init tegra_p1852_modinit(void)
+static int __init tegra_vcm_modinit(void)
 {
-	return platform_driver_register(&tegra_p1852_driver);
+	return platform_driver_register(&tegra_vcm_driver);
 }
-module_init(tegra_p1852_modinit);
+module_init(tegra_vcm_modinit);
 
-static void __exit tegra_p1852_modexit(void)
+static void __exit tegra_vcm_modexit(void)
 {
-	platform_driver_unregister(&tegra_p1852_driver);
+	platform_driver_unregister(&tegra_vcm_driver);
 }
-module_exit(tegra_p1852_modexit);
+module_exit(tegra_vcm_modexit);
 
 MODULE_AUTHOR("Nitin Pai <npai@nvidia.com>");
-MODULE_DESCRIPTION("Tegra+P1852 machine ASoC driver");
+MODULE_DESCRIPTION("Tegra+VCM machine ASoC driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" DRV_NAME);
