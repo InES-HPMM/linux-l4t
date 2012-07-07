@@ -174,6 +174,8 @@ struct clk {
 	union {
 		struct {
 			unsigned int			clk_num;
+			u32				src_mask;
+			u32				src_shift;
 		} periph;
 		struct {
 			unsigned long			input_min;

@@ -2998,8 +2998,10 @@ static struct clk_ops tegra_pll_div_ops = {
 /* Periph clk ops */
 static inline u32 periph_clk_source_mask(struct clk *c)
 {
-	if (c->flags & MUX8)
-		 return 7 << 29;
+	if (c->u.periph.src_mask)
+		return c->u.periph.src_mask;
+	else if (c->flags & MUX8)
+		return 7 << 29;
 	else if (c->flags & MUX_PWM)
 		return 3 << 28;
 	else if (c->flags & MUX_CLK_OUT)
@@ -3012,8 +3014,10 @@ static inline u32 periph_clk_source_mask(struct clk *c)
 
 static inline u32 periph_clk_source_shift(struct clk *c)
 {
-	if (c->flags & MUX8)
-		 return 29;
+	if (c->u.periph.src_shift)
+		return c->u.periph.src_shift;
+	else if (c->flags & MUX8)
+		return 29;
 	else if (c->flags & MUX_PWM)
 		return 28;
 	else if (c->flags & MUX_CLK_OUT)
@@ -4849,6 +4853,21 @@ static struct clk tegra_sync_source_list[] = {
 	SYNC_SOURCE(vimclk),
 };
 
+static struct clk_mux_sel mux_d_audio_clk[] = {
+	{ .input = &tegra_pll_a_out0,		.value = 0},
+	{ .input = &tegra_pll_p,		.value = 0x8000},
+	{ .input = &tegra_clk_m,		.value = 0xc000},
+	{ .input = &tegra_sync_source_list[0],	.value = 0xE000},
+	{ .input = &tegra_sync_source_list[1],	.value = 0xE001},
+	{ .input = &tegra_sync_source_list[2],	.value = 0xE002},
+	{ .input = &tegra_sync_source_list[3],	.value = 0xE003},
+	{ .input = &tegra_sync_source_list[4],	.value = 0xE004},
+	{ .input = &tegra_sync_source_list[5],	.value = 0xE005},
+	{ .input = &tegra_pll_a_out0,		.value = 0xE006},
+	{ .input = &tegra_sync_source_list[6],	.value = 0xE007},
+	{ 0, 0 }
+};
+
 static struct clk_mux_sel mux_audio_sync_clk[] =
 {
 	{ .input = &tegra_sync_source_list[0],	.value = 0},
@@ -5200,14 +5219,6 @@ static struct clk_mux_sel mux_pllp_pllm_plld_plla_pllc_plld2_clkm[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_plla_pllc_pllp_clkm[] = {
-	{ .input = &tegra_pll_a_out0, .value = 0},
-	{ .input = &tegra_pll_c, .value = 1},
-	{ .input = &tegra_pll_p, .value = 2},
-	{ .input = &tegra_clk_m, .value = 3},
-	{ 0, 0},
-};
-
 static struct clk_mux_sel mux_pllp_pllc_clk32_clkm[] = {
 	{.input = &tegra_pll_p,     .value = 0},
 	{.input = &tegra_pll_c,     .value = 1},
@@ -5380,6 +5391,25 @@ static struct clk tegra_clk_cbus = {
 		},					\
 	}
 
+#define D_AUDIO_CLK(_name, _dev, _con, _clk_num, _reg, _max, _inputs, _flags) \
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id	   = _con,		\
+		},					\
+		.ops       = &tegra_periph_clk_ops,	\
+		.reg       = _reg,			\
+		.inputs    = _inputs,			\
+		.flags     = _flags,			\
+		.max_rate  = _max,			\
+		.u.periph = {				\
+			.clk_num   = _clk_num,		\
+			.src_mask  = 0xE01F << 16,	\
+			.src_shift = 16,		\
+		},					\
+	}
+
 #define SHARED_CLK(_name, _dev, _con, _parent, _id, _div, _mode)\
 	{						\
 		.name      = _name,			\
@@ -5412,10 +5442,10 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("spdif_out",	"tegra30-spdif",	"spdif_out",	10,	0x108,	100000000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_in",	"tegra30-spdif",	"spdif_in",	10,	0x10c,	100000000, mux_pllp_pllc_pllm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"pwm",			NULL,	17,	0x110,	432000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71),
-	PERIPH_CLK("dam0",	"tegra30-dam.0",	"dam.0",	108,	0x3d8,	48000000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71),
-	PERIPH_CLK("dam1",	"tegra30-dam.1",	"dam.1",	109,	0x3dc,	48000000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71),
-	PERIPH_CLK("dam2",	"tegra30-dam.2",	"dam.2",	110,	0x3e0,	48000000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71),
+	D_AUDIO_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71),
+	D_AUDIO_CLK("dam0",	"tegra30-dam.0",	"dam.0",	108,	0x3d8,	48000000,  mux_d_audio_clk,	MUX | DIV_U71),
+	D_AUDIO_CLK("dam1",	"tegra30-dam.1",	"dam.1",	109,	0x3dc,	48000000,  mux_d_audio_clk,	MUX | DIV_U71),
+	D_AUDIO_CLK("dam2",	"tegra30-dam.2",	"dam.2",	110,	0x3e0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71),
 	PERIPH_CLK("hda",	"hda",			NULL,   125,	0x428,	108000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2codec_2x",	"hda2codec_2x",	NULL,   111,	0x3e4,	48000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("hda2hdmi",	"hda2hdmi",		NULL,	128,	0,	48000000,  mux_clk_m,			0),
