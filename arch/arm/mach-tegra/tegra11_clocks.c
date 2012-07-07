@@ -3570,7 +3570,9 @@ static struct clk_ops tegra_emc_clk_ops = {
 	.shared_bus_update	= &tegra11_clk_shared_bus_update,
 };
 
-/* Clock doubler ops */
+/* Clock doubler ops (non-atomic shared register access) */
+static DEFINE_SPINLOCK(doubler_lock);
+
 static void tegra11_clk_double_init(struct clk *c)
 {
 	u32 val = clk_readl(c->reg);
@@ -3585,17 +3587,23 @@ static int tegra11_clk_double_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val;
 	unsigned long parent_rate = clk_get_rate(c->parent);
+	unsigned long flags;
+
 	if (rate == parent_rate) {
+		spin_lock_irqsave(&doubler_lock, flags);
 		val = clk_readl(c->reg) | (0x1 << c->reg_shift);
 		clk_writel(val, c->reg);
 		c->mul = 1;
 		c->div = 1;
+		spin_unlock_irqrestore(&doubler_lock, flags);
 		return 0;
 	} else if (rate == 2 * parent_rate) {
+		spin_lock_irqsave(&doubler_lock, flags);
 		val = clk_readl(c->reg) & (~(0x1 << c->reg_shift));
 		clk_writel(val, c->reg);
 		c->mul = 2;
 		c->div = 1;
+		spin_unlock_irqrestore(&doubler_lock, flags);
 		return 0;
 	}
 	return -EINVAL;
