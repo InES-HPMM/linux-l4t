@@ -4887,6 +4887,36 @@ static struct clk tegra_pll_u = {
 	},
 };
 
+static struct clk tegra_pll_u_480M = {
+	.name      = "pll_u_480M",
+	.flags     = PLLU,
+	.parent    = &tegra_pll_u,
+	.mul       = 1,
+	.div       = 1,
+	.state     = ON,
+	.max_rate  = 480000000,
+};
+
+static struct clk tegra_pll_u_60M = {
+	.name      = "pll_u_60M",
+	.flags     = PLLU,
+	.parent    = &tegra_pll_u,
+	.mul       = 1,
+	.div       = 8,
+	.state     = ON,
+	.max_rate  = 60000000,
+};
+
+static struct clk tegra_pll_u_48M = {
+	.name      = "pll_u_48M",
+	.flags     = PLLU,
+	.parent    = &tegra_pll_u,
+	.mul       = 1,
+	.div       = 10,
+	.state     = ON,
+	.max_rate  = 48000000,
+};
+
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
 	/* 1 GHz */
 	{ 12000000, 1000000000, 83, 1, 1},	/* actual: 996.0 MHz */
@@ -5937,6 +5967,9 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_d2,
 	&tegra_pll_d2_out0,
 	&tegra_pll_u,
+	&tegra_pll_u_480M,
+	&tegra_pll_u_60M,
+	&tegra_pll_u_48M,
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
