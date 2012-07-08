@@ -5389,14 +5389,8 @@ static struct clk tegra_clk_blink = {
 	.max_rate	= 32768,
 };
 
-static struct clk_mux_sel mux_pllm_pllc_pllp_plla[] = {
-	{ .input = &tegra_pll_m, .value = 0},
-	{ .input = &tegra_pll_c, .value = 1},
-	{ .input = &tegra_pll_p, .value = 2},
-	{ .input = &tegra_pll_a_out0, .value = 3},
-	{ 0, 0},
-};
 
+/* Multimedia modules muxes */
 static struct clk_mux_sel mux_pllm_pllc2_c_c3_pllp_plla[] = {
 	{ .input = &tegra_pll_m,  .value = 0},
 	{ .input = &tegra_pll_c2, .value = 1},
@@ -5407,11 +5401,52 @@ static struct clk_mux_sel mux_pllm_pllc2_c_c3_pllp_plla[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllm_pllc_pllp_plla[] = {
+	{ .input = &tegra_pll_m, .value = 0},
+	{ .input = &tegra_pll_c, .value = 1},
+	{ .input = &tegra_pll_p, .value = 2},
+	{ .input = &tegra_pll_a_out0, .value = 3},
+	{ 0, 0},
+};
+
+
+/* EMC muxes */
+/* FIXME: update main EMC mux to match h/w, and add EMC latency mux*/
 static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_m, .value = 0},
 	/* { .input = &tegra_pll_c, .value = 1}, not used on tegra11x */
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
+	{ 0, 0},
+};
+
+
+/* Display subsystem muxes */
+static struct clk_mux_sel mux_pllp_pllm_plld_plla_pllc_plld2_clkm[] = {
+	{.input = &tegra_pll_p, .value = 0},
+	{.input = &tegra_pll_m, .value = 1},
+	{.input = &tegra_pll_d_out0, .value = 2},
+	{.input = &tegra_pll_a_out0, .value = 3},
+	{.input = &tegra_pll_c, .value = 4},
+	{.input = &tegra_pll_d2_out0, .value = 5},
+	{.input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_plld_out0_plld2_out0[] = {
+	{ .input = &tegra_pll_d_out0,  .value = 0},
+	{ .input = &tegra_pll_d2_out0, .value = 1},
+	{ 0, 0},
+};
+
+/* Peripheral muxes */
+static struct clk_mux_sel mux_pllp_pllc2_c_c3_pllm_clkm[] = {
+	{ .input = &tegra_pll_p,  .value = 0},
+	{ .input = &tegra_pll_c2, .value = 1},
+	{ .input = &tegra_pll_c,  .value = 2},
+	{ .input = &tegra_pll_c3, .value = 3},
+	{ .input = &tegra_pll_m,  .value = 4},
+	{ .input = &tegra_clk_m,  .value = 6},
 	{ 0, 0},
 };
 
@@ -5423,30 +5458,16 @@ static struct clk_mux_sel mux_pllp_pllc_pllm_clkm[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllp_pllc2_c_c3_pllm_clkm[] = {
-	{ .input = &tegra_pll_p,  .value = 0},
-	{ .input = &tegra_pll_c2, .value = 1},
-	{ .input = &tegra_pll_c,  .value = 2},
-	{ .input = &tegra_pll_c3, .value = 3},
-	{ .input = &tegra_pll_m,  .value = 4},
-	{ .input = &tegra_clk_m,  .value = 6},
+static struct clk_mux_sel mux_pllp_pllc_pllm[] = {
+	{.input = &tegra_pll_p,     .value = 0},
+	{.input = &tegra_pll_c,     .value = 1},
+	{.input = &tegra_pll_m,     .value = 2},
 	{ 0, 0},
 };
 
 static struct clk_mux_sel mux_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 3},
-	{ 0, 0},
-};
-
-static struct clk_mux_sel mux_pllp_pllm_plld_plla_pllc_plld2_clkm[] = {
-	{.input = &tegra_pll_p, .value = 0},
-	{.input = &tegra_pll_m, .value = 1},
-	{.input = &tegra_pll_d_out0, .value = 2},
-	{.input = &tegra_pll_a_out0, .value = 3},
-	{.input = &tegra_pll_c, .value = 4},
-	{.input = &tegra_pll_d2_out0, .value = 5},
-	{.input = &tegra_clk_m, .value = 6},
 	{ 0, 0},
 };
 
@@ -5466,13 +5487,16 @@ static struct clk_mux_sel mux_pllp_pllc_clkm_clk32[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_pllp_pllc_pllm[] = {
-	{.input = &tegra_pll_p,     .value = 0},
-	{.input = &tegra_pll_c,     .value = 1},
-	{.input = &tegra_pll_m,     .value = 2},
+static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
+	{ .input = &tegra_pll_a_out0, .value = 0},
+	{ .input = &tegra_clk_32k,    .value = 1},
+	{ .input = &tegra_pll_p,      .value = 2},
+	{ .input = &tegra_clk_m,      .value = 3},
+	{ .input = &tegra_pll_e,      .value = 4},
 	{ 0, 0},
 };
 
+/* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
 	{ 0, 0},
@@ -5483,23 +5507,8 @@ static struct clk_mux_sel mux_pllp_out3[] = {
 	{ 0, 0},
 };
 
-static struct clk_mux_sel mux_plld_out0_plld2_out0[] = {
-	{ .input = &tegra_pll_d_out0,  .value = 0},
-	{ .input = &tegra_pll_d2_out0, .value = 1},
-	{ 0, 0},
-};
-
 static struct clk_mux_sel mux_clk_32k[] = {
 	{ .input = &tegra_clk_32k, .value = 0},
-	{ 0, 0},
-};
-
-static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
-	{ .input = &tegra_pll_a_out0, .value = 0},
-	{ .input = &tegra_clk_32k,    .value = 1},
-	{ .input = &tegra_pll_p,      .value = 2},
-	{ .input = &tegra_clk_m,      .value = 3},
-	{ .input = &tegra_pll_e,      .value = 4},
 	{ 0, 0},
 };
 
