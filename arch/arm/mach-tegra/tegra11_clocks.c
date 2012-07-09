@@ -2536,12 +2536,12 @@ static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
 	val |= PLLM_MISC_LOCK_DISABLE;
 #endif
 
-	if (c->state == ON)
+	if (c->state != ON)
+		val |= PLLM_MISC_IDDQ;
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	else
 		BUG_ON(val & PLLM_MISC_IDDQ);
 #endif
-	else
-		val |= PLLM_MISC_IDDQ;
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
