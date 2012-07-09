@@ -516,6 +516,7 @@ static int usb_phy_init(struct tegra_usb_phy *phy)
 
 	val = readl(base + USB_NEW_CONTROL);
 	val |= USB_COHRENCY_EN;
+	val |= USB_MEM_ALLIGNMENT_MUX_EN;
 	writel(val, base + USB_NEW_CONTROL);
 
 	return 0;
