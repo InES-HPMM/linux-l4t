@@ -86,7 +86,7 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.pfn = __phys_to_pfn(IO_PCIE_PHYS),
 		.length = IO_PCIE_SIZE,
 		.type = MT_DEVICE,
-	}
+	},
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	{
 		.virtual = IO_SMC_VIRT,
