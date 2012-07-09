@@ -46,6 +46,7 @@
 #include <asm/localtimer.h>
 #include <asm/suspend.h>
 #include <asm/smp_twd.h>
+#include <asm/cputype.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -343,13 +344,15 @@ static unsigned int g_diag_reg;
 static void save_cpu_arch_register(void)
 {
 	/* read diagnostic register */
-	asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(g_diag_reg) : : "cc");
+	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC09)
+		asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(g_diag_reg) : : "cc");
 }
 
 static void restore_cpu_arch_register(void)
 {
 	/* write diagnostic register */
-	asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(g_diag_reg) : "cc");
+	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC09)
+		asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(g_diag_reg) : "cc");
 }
 #endif
 
@@ -362,7 +365,9 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 	struct tegra_twd_context twd_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+#ifdef CONFIG_TEGRA_LP2_ARM_TWD
 	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
+#endif
 
 	if (!tegra_twd_get_state(&twd_context)) {
 		unsigned long twd_rate = clk_get_rate(twd_clk);
