@@ -1968,6 +1968,17 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 	return 0;
 }
 
+static inline void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
+{
+	u32 val = clk_readl(c->reg + offs);
+	if (set)
+		val |= iddq_bit;
+	else
+		val &= ~iddq_bit;
+	clk_writel_delay(val, c->reg + offs);
+}
+
+
 /* FIXME: pllcx suspend/resume */
 
 static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
@@ -2251,26 +2262,6 @@ static void pllxc_get_dyn_steps(struct clk *c, unsigned long input_rate,
 	}
 }
 
-static void pllx_do_iddq(struct clk *c, bool set)
-{
-	u32 val = clk_readl(c->reg + PLL_MISCN(c, 3));
-	if (set)
-		val |= PLLX_MISC3_IDDQ;
-	else
-		val &= ~PLLX_MISC3_IDDQ;
-	clk_writel_delay(val, c->reg + PLL_MISCN(c, 3));
-}
-
-static void pllc_do_iddq(struct clk *c, bool set)
-{
-	u32 val = clk_readl(c->reg + PLL_MISC(c));
-	if (set)
-		val |= PLLC_MISC_IDDQ;
-	else
-		val &= ~PLLC_MISC_IDDQ;
-	clk_writel_delay(val, c->reg + PLL_MISC(c));
-}
-
 static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 {
 	u32 val;
@@ -2377,9 +2368,9 @@ static int tegra11_pllxc_clk_enable(struct clk *c)
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
 	if (c->flags & PLLX)
-		pllx_do_iddq(c, false);
+		pll_do_iddq(c, PLL_MISCN(c, 3), PLLX_MISC3_IDDQ, false);
 	else
-		pllc_do_iddq(c, false);
+		pll_do_iddq(c, PLL_MISC(c), PLLC_MISC_IDDQ, false);
 
 	val = clk_readl(c->reg + PLL_BASE);
 	val |= PLL_BASE_ENABLE;
@@ -2400,9 +2391,9 @@ static void tegra11_pllxc_clk_disable(struct clk *c)
 	clk_writel(val, c->reg + PLL_BASE);
 
 	if (c->flags & PLLX)
-		pllx_do_iddq(c, true);
+		pll_do_iddq(c, PLL_MISCN(c, 3), PLLX_MISC3_IDDQ, true);
 	else
-		pllc_do_iddq(c, true);
+		pll_do_iddq(c, PLL_MISC(c), PLLC_MISC_IDDQ, true);
 
 }
 
@@ -2512,16 +2503,6 @@ static u32 pllm_round_p_to_pdiv(u32 p, u32 *pdiv)
 	return p;
 }
 
-static void pllm_do_iddq(struct clk *c, bool set)
-{
-	u32 val = clk_readl(c->reg + PLL_MISC(c));
-	if (set)
-		val |= PLLM_MISC_IDDQ;
-	else
-		val &= ~PLLM_MISC_IDDQ;
-	clk_writel_delay(val, c->reg + PLL_MISC(c));
-}
-
 static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
 {
 	u32 val = clk_readl(c->reg + PLL_MISC(c));
@@ -2581,7 +2562,7 @@ static int tegra11_pllm_clk_enable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
-	pllm_do_iddq(c, false);
+	pll_do_iddq(c, PLL_MISC(c), PLLM_MISC_IDDQ, false);
 
 	/* Just enable both base and override - one would work */
 	val = clk_readl(c->reg + PLL_BASE);
@@ -2612,7 +2593,7 @@ static void tegra11_pllm_clk_disable(struct clk *c)
 	val &= ~PLL_BASE_ENABLE;
 	clk_writel(val, c->reg + PLL_BASE);
 
-	pllm_do_iddq(c, true);
+	pll_do_iddq(c, PLL_MISC(c), PLLM_MISC_IDDQ, true);
 }
 
 static int tegra11_pllm_clk_set_rate(struct clk *c, unsigned long rate)
