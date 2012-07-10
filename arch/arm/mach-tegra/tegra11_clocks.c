@@ -317,6 +317,22 @@
 #define PMC_PLLM_WB0_OVERRIDE_2			0x2b0
 #define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0x1 << 27)
 
+/* PLLRE */
+#define PLLRE_BASE_DIVP_SHIFT		16
+#define PLLRE_BASE_DIVP_MASK		(0xF << PLLRE_BASE_DIVP_SHIFT)
+#define PLLRE_BASE_DIVN_MASK		(0xFF << PLL_BASE_DIVN_SHIFT)
+#define PLLRE_BASE_DIVM_MASK		(0xFF << PLL_BASE_DIVM_SHIFT)
+
+/* PLLRE has 4-bit PDIV, but entry 15 is not allowed in h/w,
+   and s/w usage is limited to 5 */
+#define PLLRE_PDIV_MAX			14
+#define PLLRE_SW_PDIV_MAX		5
+
+#define PLLRE_MISC_LOCK_ENABLE		(0x1 << 30)
+#define PLLRE_MISC_LOCK_OVERRIDE	(0x1 << 29)
+#define PLLRE_MISC_LOCK			(0x1 << 24)
+#define PLLRE_MISC_IDDQ			(0x1 << 16)
+
 /* FIXME: OUT_OF_TABLE_CPCON per pll */
 #define OUT_OF_TABLE_CPCON		0x8
 
@@ -2655,6 +2671,213 @@ static struct clk_ops tegra_pllm_ops = {
 };
 
 
+/* FIXME: pllre suspend/resume */
+/* non-monotonic mapping below is not a typo */
+static u8 pllre_p[PLLRE_PDIV_MAX + 1] = {
+/* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
+/* p: */ 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
+
+static u32 pllre_round_p_to_pdiv(u32 p, u32 *pdiv)
+{
+	if (!p || (p > PLLRE_SW_PDIV_MAX + 1))
+		return -EINVAL;
+
+	if (pdiv)
+		*pdiv = p - 1;
+	return p;
+}
+
+static void pllre_set_defaults(struct clk *c, unsigned long input_rate)
+{
+	u32 val = clk_readl(c->reg + PLL_MISC(c));
+
+	val &= ~PLLRE_MISC_LOCK_OVERRIDE;
+#if USE_PLL_LOCK_BITS
+	val |= PLLRE_MISC_LOCK_ENABLE;
+#else
+	val &= ~PLLRE_MISC_LOCK_ENABLE;
+#endif
+
+	if (c->state != ON)
+		val |= PLLRE_MISC_IDDQ;
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	else
+		BUG_ON(val & PLLRE_MISC_IDDQ);
+#endif
+
+	clk_writel(val, c->reg + PLL_MISC(c));
+}
+
+static void tegra11_pllre_clk_init(struct clk *c)
+{
+	unsigned long input_rate = clk_get_rate(c->parent);
+	u32 m, val;
+
+	/* clip vco_min to exact multiple of input rate to avoid crossover
+	   by rounding */
+	c->u.pll.vco_min =
+		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
+	c->min_rate = c->u.pll.vco_min;
+
+	val = clk_readl(c->reg + PLL_BASE);
+	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
+
+	if (!val) {
+		/* overwrite h/w por state with min setting */
+		m = PLL_FIXED_MDIV(c, input_rate);
+		val = (m << PLL_BASE_DIVM_SHIFT) |
+			(c->min_rate / input_rate << PLL_BASE_DIVN_SHIFT);
+		clk_writel(val, c->reg + PLL_BASE);
+	}
+
+	m = (val & PLLRE_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
+	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate));
+
+	c->div = m;
+	c->mul = (val & PLLRE_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
+
+	pllre_set_defaults(c, input_rate);
+}
+
+static int tegra11_pllre_clk_enable(struct clk *c)
+{
+	u32 val;
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	pll_do_iddq(c, PLL_MISC(c), PLLRE_MISC_IDDQ, false);
+
+	val = clk_readl(c->reg + PLL_BASE);
+	val |= PLL_BASE_ENABLE;
+	clk_writel(val, c->reg + PLL_BASE);
+
+	tegra11_pll_clk_wait_for_lock(c, c->reg + PLL_MISC(c), PLLRE_MISC_LOCK);
+	return 0;
+}
+
+static void tegra11_pllre_clk_disable(struct clk *c)
+{
+	u32 val;
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	val = clk_readl(c->reg + PLL_BASE);
+	val &= ~PLL_BASE_ENABLE;
+	clk_writel(val, c->reg + PLL_BASE);
+
+	pll_do_iddq(c, PLL_MISC(c), PLLRE_MISC_IDDQ, true);
+}
+
+static int tegra11_pllre_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	u32 val, old_base;
+	unsigned long input_rate;
+	struct clk_pll_freq_table cfg;
+
+	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+
+	if (rate < c->min_rate) {
+		pr_err("%s: Failed to set %s rate %lu\n",
+		       __func__, c->name, rate);
+		return -EINVAL;
+	}
+
+	input_rate = clk_get_rate(c->parent);
+	cfg.m = PLL_FIXED_MDIV(c, input_rate);
+	cfg.n = rate * cfg.m / input_rate;
+
+	c->mul = cfg.n;
+	c->div = cfg.m;
+
+	val = old_base = clk_readl(c->reg + PLL_BASE);
+	val &= ~(PLLRE_BASE_DIVM_MASK | PLLRE_BASE_DIVN_MASK);
+	val |= (cfg.m << PLL_BASE_DIVM_SHIFT) | (cfg.n << PLL_BASE_DIVN_SHIFT);
+	if (val == old_base)
+		return 0;
+
+	if (c->state == ON) {
+		/* Use "ENABLE" pulse without placing PLL into IDDQ */
+		val &= ~PLL_BASE_ENABLE;
+		old_base &= ~PLL_BASE_ENABLE;
+		pll_writel_delay(old_base, c->reg + PLL_BASE);
+	}
+
+	clk_writel(val, c->reg + PLL_BASE);
+
+	if (c->state == ON) {
+		val |= PLL_BASE_ENABLE;
+		clk_writel(val, c->reg + PLL_BASE);
+		tegra11_pll_clk_wait_for_lock(
+			c, c->reg + PLL_MISC(c), PLLRE_MISC_LOCK);
+	}
+	return 0;
+}
+
+static struct clk_ops tegra_pllre_ops = {
+	.init			= tegra11_pllre_clk_init,
+	.enable			= tegra11_pllre_clk_enable,
+	.disable		= tegra11_pllre_clk_disable,
+	.set_rate		= tegra11_pllre_clk_set_rate,
+};
+
+static void tegra11_pllre_out_clk_init(struct clk *c)
+{
+	u32 p, val;
+
+	val = clk_readl(c->reg);
+	p = (val & PLLRE_BASE_DIVP_MASK) >> PLLRE_BASE_DIVP_SHIFT;
+	BUG_ON(p > PLLRE_PDIV_MAX);
+	p = pllre_p[p];
+
+	c->div = p;
+	c->mul = 1;
+	c->state = c->parent->state;
+}
+
+static int tegra11_pllre_out_clk_enable(struct clk *c)
+{
+	return 0;
+}
+
+static void tegra11_pllre_out_clk_disable(struct clk *c)
+{
+}
+
+static int tegra11_pllre_out_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	u32 val, p, pdiv;
+	unsigned long input_rate, flags;
+
+	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+
+	clk_lock_save(c->parent, &flags);
+	input_rate = clk_get_rate_locked(c->parent);
+
+	p = DIV_ROUND_UP(input_rate, rate);
+	p = c->parent->u.pll.round_p_to_pdiv(p, &pdiv);
+	if (IS_ERR_VALUE(p)) {
+		pr_err("%s: Failed to set %s rate %lu\n",
+		       __func__, c->name, rate);
+		clk_unlock_restore(c->parent, &flags);
+		return -EINVAL;
+	}
+	c->div = p;
+
+	val = clk_readl(c->reg);
+	val &= ~PLLRE_BASE_DIVP_MASK;
+	val |= pdiv << PLLRE_BASE_DIVP_SHIFT;
+	clk_writel(val, c->reg);
+
+	clk_unlock_restore(c->parent, &flags);
+	return 0;
+}
+
+static struct clk_ops tegra_pllre_out_ops = {
+	.init			= tegra11_pllre_out_clk_init,
+	.enable			= tegra11_pllre_out_clk_enable,
+	.disable		= tegra11_pllre_out_clk_disable,
+	.set_rate		= tegra11_pllre_out_clk_set_rate,
+};
+
+
 static void tegra11_plle_clk_init(struct clk *c)
 {
 	u32 val;
@@ -4755,6 +4978,33 @@ static int tegra11_dfll_cpu_late_init(void)
 }
 late_initcall(tegra11_dfll_cpu_late_init);
 
+static struct clk tegra_pll_re_vco = {
+	.name      = "pll_re_vco",
+	.flags     = PLL_ALT_MISC_REG,
+	.ops       = &tegra_pllre_ops,
+	.reg       = 0x4c4,
+	.parent    = &tegra_pll_ref,
+	.max_rate  = 600000000,
+	.u.pll = {
+		.input_min = 12000000,
+		.input_max = 1000000000,
+		.cf_min    = 12000000,
+		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
+		.vco_min   = 300000000,
+		.vco_max   = 600000000,
+		.lock_delay = 300,
+		.round_p_to_pdiv = pllre_round_p_to_pdiv,
+	},
+};
+
+static struct clk tegra_pll_re_out = {
+	.name      = "pll_re_out",
+	.ops       = &tegra_pllre_out_ops,
+	.parent    = &tegra_pll_re_vco,
+	.reg       = 0x4c4,
+	.max_rate  = 600000000,
+};
+
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
 	{ 12000000,  100000000, 150, 1,  18, 11},
@@ -5664,6 +5914,8 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
+	&tegra_pll_re_vco,
+	&tegra_pll_re_out,
 	&tegra_pll_e,
 	&tegra_cml0_clk,
 	&tegra_cml1_clk,
