@@ -1,3 +1,4 @@
+subdir-ccflags-y := -Werror
 EXTRA_CFLAGS += -Idrivers/video/tegra/host
 obj-$(CONFIG_TEGRA_GRHOST) += host/
 obj-$(CONFIG_TEGRA_DC) += dc/
