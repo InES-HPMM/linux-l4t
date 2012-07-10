@@ -1353,12 +1353,14 @@ static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static void phy_post_suspend(struct tegra_usb_phy *phy)
+static int phy_post_suspend(struct tegra_usb_phy *phy)
 {
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	/* Need a 4ms delay for controller to suspend */
 	mdelay(4);
+
+	return 0;
 
 }
 

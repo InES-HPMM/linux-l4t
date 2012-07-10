@@ -30,7 +30,7 @@ static DEFINE_SPINLOCK(tegra_mc_lock);
 
 void tegra_mc_set_priority(unsigned long client, unsigned long prio)
 {
-	void __iomem *mc_base = IO_TO_VIRT(TEGRA_MC_BASE);
+	void __iomem *mc_base = (void __iomem *)IO_TO_VIRT(TEGRA_MC_BASE);
 	unsigned long reg = client >> 8;
 	int field = client & 0xff;
 	unsigned long val;

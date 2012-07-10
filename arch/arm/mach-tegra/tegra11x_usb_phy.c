@@ -858,7 +858,8 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	mdelay(1);
 }
 
-static void uhsic_powerdown_pmc_wake_detect(struct tegra_usb_phy *phy)
+#if 0
+static int uhsic_powerdown_pmc_wake_detect(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -879,23 +880,8 @@ static void uhsic_powerdown_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val &= ~UHSIC_WAKE_VAL_P0(~0);
 	val |= UHSIC_WAKE_VAL_P0(WAKE_VAL_NONE) | UHSIC_MASTER_ENABLE_P0;
 	writel(val, pmc_base + PMC_SLEEP_CFG);
-}
 
-static void uhsic_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-
-	/* turn on pad detectors for HSIC*/
-	val = readl(pmc_base + PMC_USB_AO);
-	val &= ~(HSIC_RESERVED_P0 | HSIC_STOBE_VAL_PD_P0 | HSIC_DATA_VAL_PD_P0);
-	writel(val, pmc_base + PMC_USB_AO);
-
-	/* Disable PMC master mode by clearing MASTER_EN */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~(UHSIC_MASTER_ENABLE_P0);
-	writel(val, pmc_base + PMC_SLEEP_CFG);
-	mdelay(1);
+	return 0;
 }
 
 static void usb_phy_power_down_pmc(void)
@@ -940,6 +926,24 @@ static void usb_phy_power_down_pmc(void)
 	UTMIP_MASTER_ENABLE(0) | UTMIP_MASTER_ENABLE(1) | UTMIP_MASTER_ENABLE(2) |
 	UHSIC_MASTER_ENABLE_P0;
 	writel(val, pmc_base + PMC_SLEEP_CFG);
+}
+#endif
+
+static void uhsic_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	/* turn on pad detectors for HSIC*/
+	val = readl(pmc_base + PMC_USB_AO);
+	val &= ~(HSIC_RESERVED_P0 | HSIC_STOBE_VAL_PD_P0 | HSIC_DATA_VAL_PD_P0);
+	writel(val, pmc_base + PMC_USB_AO);
+
+	/* Disable PMC master mode by clearing MASTER_EN */
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~(UHSIC_MASTER_ENABLE_P0);
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+	mdelay(1);
 }
 
 static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)

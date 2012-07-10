@@ -329,13 +329,6 @@ struct tegra_pcie_info {
 	struct tegra_pci_platform_data *plat_data;
 };
 
-static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-
-#define pmc_writel(value, reg) \
-	__raw_writel(value, reg_pmc_base + (reg))
-#define pmc_readl(reg) \
-	__raw_readl(reg_pmc_base + (reg))
-
 static struct tegra_pcie_info tegra_pcie;
 
 static struct resource pcie_mem_space;

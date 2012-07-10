@@ -112,8 +112,9 @@ struct la_client_info {
 	char *name;
 	bool scaling_supported;
 };
-
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static DEFINE_SPINLOCK(safety_lock);
+#endif
 
 static const int ns_per_tick = 30;
 /* fifo atom size in bytes for non-fdc clients*/
@@ -296,8 +297,10 @@ struct la_scaling_reg_info vi_info[] = {
 	}
 };
 
-static struct la_scaling_info scaling_info[TEGRA_LA_MAX_ID];
 static int la_scaling_enable_count;
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+static struct la_scaling_info scaling_info[TEGRA_LA_MAX_ID];
 
 #define VALIDATE_ID(id) \
 	do { \
@@ -374,7 +377,6 @@ static void set_vi_latency_thresholds(enum tegra_la_id id)
 	set_thresholds(&vi_info[id - ID(VI_WSB)], id);
 }
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 /* Sets latency allowance based on clients memory bandwitdh requirement.
  * Bandwidth passed is in mega bytes per second.
  */
