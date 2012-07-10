@@ -366,7 +366,11 @@ static struct tegra_dsi_out curacao_dsi = {
 static struct tegra_dc_out curacao_disp1_out = {
 	.sd_settings	= &curacao_sd_settings,
 
+#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+	.type		= TEGRA_DC_OUT_RGB,
+#else
 	.type		= TEGRA_DC_OUT_DSI,
+#endif
 	.dsi		= &curacao_dsi,
 
 	.align		= TEGRA_DC_ALIGN_MSB,
