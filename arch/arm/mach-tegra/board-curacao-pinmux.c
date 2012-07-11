@@ -176,7 +176,7 @@ static __initdata struct tegra_pingroup_config curacao_pinmux[] = {
 	DEFAULT_PINMUX(KB_COL2,         KBC,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(KB_COL3,         KBC,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(KB_COL4,         KBC,             NORMAL,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_COL5,         KBC,             NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(KB_COL5,         SDMMC1,          PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(KB_COL6,         KBC,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(KB_COL7,         KBC,             NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(CLK_32K_OUT,     BLINK,           NORMAL,    NORMAL,     OUTPUT),
