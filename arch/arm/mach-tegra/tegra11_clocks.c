@@ -5439,6 +5439,13 @@ static struct clk_mux_sel mux_plld_out0_plld2_out0[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_pllc_clkm[] = {
+	{.input = &tegra_pll_p,     .value = 0},
+	{.input = &tegra_pll_c,     .value = 1},
+	{.input = &tegra_clk_m,     .value = 3},
+	{ 0, 0},
+};
+
 /* Peripheral muxes */
 static struct clk_mux_sel mux_pllp_pllc2_c_c3_pllm_clkm[] = {
 	{ .input = &tegra_pll_p,  .value = 0},
@@ -5760,6 +5767,11 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
 	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	150000000, mux_clk_m,			0), /* same frequency as VI */
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("cilab",	"tegra_camera",		"cilab", 144,	0x614,	200000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
+	PERIPH_CLK("cilcd",	"tegra_camera",		"cilcd", 145,	0x618,	200000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
+	PERIPH_CLK("cile",	"tegra_camera",		"cile",  146,	0x61c,	200000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
+	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	100000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
+	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	100000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
@@ -5859,10 +5871,14 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("hdmi", "tegradc.1", "hdmi"),
 	CLK_DUPLICATE("dsib", "tegradc.0", "dsib"),
 	CLK_DUPLICATE("dsia", "tegradc.1", "dsia"),
+	CLK_DUPLICATE("dsiblp", "tegradc.0", "dsiblp"),
+	CLK_DUPLICATE("dsialp", "tegradc.1", "dsialp"),
 	CLK_DUPLICATE("dsia", "tegra_dc_dsi_vs1.0", "dsia"),
 	CLK_DUPLICATE("dsia", "tegra_dc_dsi_vs1.1", "dsia"),
+	CLK_DUPLICATE("dsialp", "tegra_dc_dsi_vs1.0", "dsialp"),
+	CLK_DUPLICATE("dsialp", "tegra_dc_dsi_vs1.1", "dsialp"),
 	CLK_DUPLICATE("dsi1_fixed", "tegra_dc_dsi_vs1.0", "dsi_fixed"),
-	CLK_DUPLICATE("dsi2_fixed", "tegra_dc_dsi_vs1.1", "dsi_fixed"),
+	CLK_DUPLICATE("dsi1_fixed", "tegra_dc_dsi_vs1.1", "dsi_fixed"),
 	CLK_DUPLICATE("pwm", "tegra_pwm.0", NULL),
 	CLK_DUPLICATE("pwm", "tegra_pwm.1", NULL),
 	CLK_DUPLICATE("pwm", "tegra_pwm.2", NULL),
