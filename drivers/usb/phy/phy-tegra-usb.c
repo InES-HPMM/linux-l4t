@@ -341,17 +341,12 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
-	if (phy->vdd_reg && phy->vdd_reg_on) {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	if (phy->vdd_reg && phy->vdd_reg_on) {
 		regulator_disable(phy->vdd_reg);
 		phy->vdd_reg_on = false;
-#else
-		if (tegra_revision >= TEGRA_REVISION_A03) {
-			regulator_disable(phy->vdd_reg);
-			phy->vdd_reg_on = false;
-		}
-#endif
 	}
+#endif
 
 	phy->phy_power_on = false;
 
@@ -367,10 +362,12 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 	if (phy->phy_power_on)
 		return status;
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
 		regulator_enable(phy->vdd_reg);
 		phy->vdd_reg_on = true;
 	}
+#endif
 
 	/* In device mode clock is turned on by pmu irq handler
 	 * if pmu irq is not available clocks will not be turned off/on
