@@ -3,7 +3,7 @@
  *
  * Battery charger driver for TI's tps80031
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,18 +66,41 @@ struct tps80031_charger {
 };
 
 static struct tps80031_charger *charger_data;
-static uint8_t charging_current_val_code[] = {
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0x27,
-	0x37, 0x28, 0x38, 0x29, 0x39, 0x2A, 0x3A, 0x2B, 0x3B, 0x2C,
-	0x3C, 0x2D, 0x3D, 0x2E,
+
+static uint8_t tps80031_get_vbus_input_current_limit_code(int max_uA)
+{
+	const uint8_t current_to_code[] = {
+		0x0,				    /* 0 - 50 mA */
+		0x0,  0x1,  0x2,  0x3,  0x4,  0x5,  /* 50,  100,  ..., 300mA */
+		0x6,  0x7,  0x8,  0x9,  0xA,  0xB,  /* 350, 400,  ..., 600mA */
+		0xC,  0xD,  0xE,  0x27, 0x37, 0x28, /* 650, 700,  ..., 900mA */
+		0x38, 0x29, 0x39, 0x2A, 0x3A, 0x2B, /* 950, 700,  ..., 1200mA */
+		0x3B, 0x2C, 0x3C, 0x2D, 0x3D, 0x2E, /* 1200,1250, ..., 1500mA */
+	};
+	int charge_mA;
+	uint8_t code;
+
+	charge_mA = max_uA / 1000;
+	if (charge_mA < 0)
+		BUG();
+	else if (charge_mA < 1800)
+		code = current_to_code[charge_mA / 50];
+	else if (charge_mA < 2100)
+		code = 0x20; /* use 1800mA code */
+	else if (charge_mA < 2250)
+		code = 0x21; /* use 2100mA code */
+	else
+		code = 0x22; /* use 2250mA code */
+
+	return code;
 };
 
 static int set_charge_current_limit(struct regulator_dev *rdev,
 		int min_uA, int max_uA)
 {
 	struct tps80031_charger *charger = rdev_get_drvdata(rdev);
-	int max_vbus_current = 1500;
 	int max_charge_current = 1500;
+	uint8_t code;
 	int ret;
 
 	dev_info(charger->dev, "%s(): Min curr %dmA and max current %dmA\n",
@@ -102,13 +125,9 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 		return ret;
 	}
 
-	max_vbus_current = min(max_uA/1000, max_vbus_current);
-	max_vbus_current = max_vbus_current/50;
-	if (max_vbus_current)
-		max_vbus_current--;
+	code = tps80031_get_vbus_input_current_limit_code(max_uA);
 	ret = tps80031_update(charger->dev->parent, SLAVE_ID2,
-			CHARGERUSB_CINLIMIT,
-			charging_current_val_code[max_vbus_current], 0x3F);
+			CHARGERUSB_CINLIMIT, code, 0x3F);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
 				__func__, CHARGERUSB_CINLIMIT);
