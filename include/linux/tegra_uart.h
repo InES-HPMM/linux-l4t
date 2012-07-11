@@ -1,6 +1,6 @@
 /* include/linux/tegra_uart.h
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,12 @@ struct tegra_uart_platform_data {
 	struct uart_clk_parent *parent_clk_list;
 	int parent_clk_count;
 	bool is_loopback;
+	bool is_irda;
+	int (*irda_init)(void);
+	int (*irda_mode_switch)(int);
+	void (*irda_start)(void);
+	void (*irda_shutdown)(void);
+	void (*irda_remove)(void);
 };
 
 int tegra_uart_is_tx_empty(struct uart_port *);
