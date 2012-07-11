@@ -235,7 +235,6 @@ struct clk {
 			struct clk			*client;
 			u32				client_div;
 			enum shared_bus_users_mode	mode;
-			struct mutex			*cross_bus_mutex;
 		} shared_bus_user;
 	} u;
 

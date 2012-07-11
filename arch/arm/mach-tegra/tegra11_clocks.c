@@ -4380,7 +4380,7 @@ static void tegra_clk_shared_bus_init(struct clk *c)
  * determine bus rate. Hence switching user from one parent/bus to another may
  * change rates of both parents. Therefore we need a cross-bus lock on top of
  * individual user and bus locks. For now limit bus switch support to cansleep
- * users with cross-bus mutex only.
+ * users with cross-clock mutex only.
  */
 static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
 {
@@ -4392,8 +4392,7 @@ static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
 	if (c->parent == p)
 		return 0;
 
-	if (!(c->inputs && c->u.shared_bus_user.cross_bus_mutex &&
-	      clk_cansleep(c)))
+	if (!(c->inputs && c->cross_clk_mutex && clk_cansleep(c)))
 		return -ENOSYS;
 
 	for (sel = c->inputs; sel->input != NULL; sel++) {
@@ -4403,7 +4402,6 @@ static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
 	if (!sel->input)
 		return -EINVAL;
 
-	mutex_lock(c->u.shared_bus_user.cross_bus_mutex);
 	if (c->refcnt)
 		clk_enable(p);
 
@@ -4416,22 +4414,16 @@ static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
 
 	clk_reparent(c, p);
 
-	mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
 	return 0;
 }
 
 static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 {
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
-		mutex_lock(c->u.shared_bus_user.cross_bus_mutex);
-
 	c->u.shared_bus_user.rate = rate;
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+	if (c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
-		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
-	}
 
 	return 0;
 }
@@ -4460,36 +4452,26 @@ static int tegra_clk_shared_bus_enable(struct clk *c)
 {
 	int ret = 0;
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
-		mutex_lock(c->u.shared_bus_user.cross_bus_mutex);
-
 	c->u.shared_bus_user.enabled = true;
 	tegra_clk_shared_bus_update(c->parent);
 	if (c->u.shared_bus_user.client)
 		ret = clk_enable(c->u.shared_bus_user.client);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+	if (c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
-		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
-	}
 
 	return ret;
 }
 
 static void tegra_clk_shared_bus_disable(struct clk *c)
 {
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c))
-		mutex_lock(c->u.shared_bus_user.cross_bus_mutex);
-
 	if (c->u.shared_bus_user.client)
 		clk_disable(c->u.shared_bus_user.client);
 	c->u.shared_bus_user.enabled = false;
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->u.shared_bus_user.cross_bus_mutex && clk_cansleep(c)) {
+	if (c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
-		mutex_unlock(c->u.shared_bus_user.cross_bus_mutex);
-	}
 }
 
 static void tegra_clk_shared_bus_reset(struct clk *c, bool assert)
@@ -5591,8 +5573,8 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 			.client_id = _id,		\
 			.client_div = _div,		\
 			.mode = _mode,			\
-			.cross_bus_mutex = &cbus_mutex, \
 		},					\
+		.cross_clk_mutex = &cbus_mutex,		\
 	}
 
 #else
