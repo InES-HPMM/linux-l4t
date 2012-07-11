@@ -53,7 +53,9 @@
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 static atomic_t sd_brightness = ATOMIC_INIT(255);
+#endif
 
 static int curacao_backlight_init(struct device *dev)
 {
@@ -96,6 +98,7 @@ static struct platform_device curacao_backlight_device = {
 	},
 };
 
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 static int curacao_panel_enable(void)
 {
 #if DSI_PANEL_218
@@ -393,87 +396,7 @@ static struct nvhost_device curacao_disp1_device = {
 		.platform_data = &curacao_disp1_pdata,
 	},
 };
-
-static struct resource curacao_disp2_resources[] = {
-	{
-		.name	= "irq",
-		.start	= INT_DISPLAY_B_GENERAL,
-		.end	= INT_DISPLAY_B_GENERAL,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "regs",
-		.start	= TEGRA_DISPLAY2_BASE,
-		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "fbmem",
-		.start	= 0,	/* Filled in by curacao_panel_init() */
-		.end	= 0,	/* Filled in by curacao_panel_init() */
-		.flags	= IORESOURCE_MEM,
-	},
-#if TEGRA_DSI_GANGED_MODE
-	{
-		.name	= "ganged_dsia_regs",
-		.start	= TEGRA_DSI_BASE,
-		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "ganged_dsib_regs",
-		.start	= TEGRA_DSIB_BASE,
-		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-#else
-	{
-		.name	= "dsi_regs",
-		.start	= TEGRA_DSI_BASE,
-		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-
 #endif
-};
-
-static struct tegra_dc_out curacao_disp2_out = {
-	.sd_settings	= &curacao_sd_settings,
-
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.type		= TEGRA_DC_OUT_RGB,
-#else
-	.type		= TEGRA_DC_OUT_DSI,
-#endif
-	.dsi		= &curacao_dsi,
-
-	.align		= TEGRA_DC_ALIGN_MSB,
-	.order		= TEGRA_DC_ORDER_RED_BLUE,
-
-	.flags		= DC_CTRL_MODE,
-
-	.modes		= curacao_panel_modes,
-	.n_modes	= ARRAY_SIZE(curacao_panel_modes),
-
-	.enable		= curacao_panel_enable,
-	.disable	= curacao_panel_disable,
-};
-
-static struct tegra_dc_platform_data curacao_disp2_pdata = {
-	.flags		= TEGRA_DC_FLAG_ENABLED,
-	.default_out	= &curacao_disp2_out,
-	.fb		= &curacao_fb_data,
-};
-
-static struct nvhost_device curacao_disp2_device = {
-	.name		= "tegradc",
-	.id		= 0,
-	.resource	= curacao_disp2_resources,
-	.num_resources	= ARRAY_SIZE(curacao_disp2_resources),
-	.dev = {
-		.platform_data = &curacao_disp2_pdata,
-	},
-};
 
 static struct nvmap_platform_carveout curacao_carveouts[] = {
 	[0] = {
@@ -521,7 +444,9 @@ static struct platform_device *curacao_gfx_devices[] __initdata = {
 int __init curacao_panel_init(void)
 {
 	int err;
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	struct resource *res;
+#endif
 
 	curacao_carveouts[1].base = tegra_carveout_start;
 	curacao_carveouts[1].size = tegra_carveout_size;

@@ -145,13 +145,6 @@ struct ov2710_platform_data curacao_ov2710_data = {
 	.power_off = curacao_ov2710_power_off,
 };
 
-static struct i2c_board_info curacao_i2c1_board_info[] = {
-	{
-		I2C_BOARD_INFO("ov5650", 0x36),
-		.platform_data = &curacao_ov5650_data,
-	},
-};
-
 static struct i2c_board_info curacao_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO("ov5650R", 0x36),
@@ -164,9 +157,6 @@ int __init curacao_sensors_init(void)
 	tegra_get_board_info(&board_info);
 
 	curacao_camera_init();
-
-/*	i2c_register_board_info(3, curacao_i2c1_board_info,
-		ARRAY_SIZE(curacao_i2c1_board_info));*/
 
 	i2c_register_board_info(3, curacao_i2c2_board_info,
 		ARRAY_SIZE(curacao_i2c2_board_info));
