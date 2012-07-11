@@ -8,7 +8,7 @@
  *
  * Based on code copyright/by:
  *
- * (c) 2010, 2011, 2012 Nvidia Graphics Pvt. Ltd.
+ * Copyright (c) 2010-12, NVIDIA CORPORATION. All rights reserved.
  *
  * Copyright 2007 Wolfson Microelectronics PLC.
  * Author: Graeme Gregory
@@ -32,6 +32,7 @@
 
 #include <asm/mach-types.h>
 
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -118,11 +119,12 @@ static int tegra_max98095_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_max98095 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
 #endif
-	unsigned int srate, mclk, sample_size;
-	int err;
+	unsigned int srate, mclk, sample_size, i2s_daifmt;
+	int err, rate;
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -154,6 +156,31 @@ static int tegra_max98095_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
+	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
+	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master; ?
+			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
+
+	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
+		case TEGRA_DAIFMT_I2S :
+			i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+			break;
+		case TEGRA_DAIFMT_DSP_A :
+			i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+			break;
+		case TEGRA_DAIFMT_DSP_B :
+			i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+			break;
+		case TEGRA_DAIFMT_LEFT_J :
+			i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
+			break;
+		case TEGRA_DAIFMT_RIGHT_J :
+			i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
+			break;
+		default :
+			dev_err(card->dev, "Can't configure i2s format\n");
+			return -EINVAL;
+	}
+
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
 		if (!(machine->util_data.set_mclk % mclk))
@@ -166,26 +193,20 @@ static int tegra_max98095_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
-	err = snd_soc_dai_set_fmt(codec_dai,
-					SND_SOC_DAIFMT_I2S |
-					SND_SOC_DAIFMT_NB_NF |
-					SND_SOC_DAIFMT_CBS_CFS);
+	rate = clk_get_rate(machine->util_data.clk_cdev1);
+	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
 		return err;
 	}
 
-	err = snd_soc_dai_set_fmt(cpu_dai,
-					SND_SOC_DAIFMT_I2S |
-					SND_SOC_DAIFMT_NB_NF |
-					SND_SOC_DAIFMT_CBS_CFS);
+	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
-					SND_SOC_CLOCK_IN);
+	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
@@ -667,6 +688,16 @@ static int tegra_max98095_driver_probe(struct platform_device *pdev)
 				ret);
 		goto err_unregister_card;
 	}
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	ret = tegra_asoc_utils_set_parent(&machine->util_data,
+				pdata->i2s_param[HIFI_CODEC].is_i2s_master);
+	if (ret) {
+		dev_err(&pdev->dev, "tegra_asoc_utils_set_parent failed (%d)\n",
+			ret);
+		goto err_switch_unregister;
+	}
+#endif
 
 	return 0;
 
