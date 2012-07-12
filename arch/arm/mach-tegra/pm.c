@@ -1202,6 +1202,10 @@ out:
 
 	iram_cpu_lp2_mask = tegra_cpu_lp2_mask;
 	iram_cpu_lp1_mask = tegra_cpu_lp1_mask;
+
+	/* clear io dpd settings before kernel */
+	tegra_bl_io_dpd_cleanup();
+
 fail:
 #endif
 	if (plat->suspend_mode == TEGRA_SUSPEND_NONE)
