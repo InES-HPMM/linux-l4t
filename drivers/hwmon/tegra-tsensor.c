@@ -1051,11 +1051,16 @@ static void get_quadratic_roots(struct tegra_tsensor_data *data,
 	and
 	(-(2*m*B+n)-sqrt(((2*m*B+n)^2-4*m(m*B^2+n*B+p-temp))))/(2*m*A)
 
+	After simplify ((2*m*B+n)^2-4*m(m*B^2+n*B+p-temp)),
+	Roots are:
+	(-(2*m*B+n)+sqrt((n^2-4*m(p-temp))))/(2*m*A)
+	and
+	(-(2*m*B+n)-sqrt((n^2-4*m(p-temp))))/(2*m*A)
 	*/
 
 	int v_e_minus6_2mB_n;
-	int v_e_minus4_mB2_nB_p_minusTemp;
-	int v_e_minus6_b2, v_e_minus6_4ac;
+	int v_e_minus6_4m_p_minusTemp;
+	int v_e_minus6_n2;
 	int v_e_minus6_b2_minus4ac;
 	int v_e_minus6_sqrt_b2_minus4ac;
 	s64 v_e_minus12_2mA;
@@ -1093,61 +1098,38 @@ static void get_quadratic_roots(struct tegra_tsensor_data *data,
 	v_e_minus12_2mA = temp_64;
 	/* computed 2mA */
 
-	/* m * B^2 calculation */
-	temp_64 = ((s64)data->B_e_minus6 * (s64)data->B_e_minus6);
+	temp_64 = ((s64)data->n_e_minus6 * (s64)data->n_e_minus6);
 	/* squaring give positive value */
 	temp_rem = do_div(temp_64, 1000000);
-	/* we see overflow if do not divide above */
-	temp_64 *= data->m_e_minus6;
-	is_neg = false;
-	if (temp_64 < 0) {
-		is_neg = true;
-		temp_64 *= -1;
-	}
-	temp_rem = do_div(temp_64, 1000000);
-	temp_rem = do_div(temp_64, 100);
-	if (is_neg)
-		temp_64 *= -1;
-	v_e_minus4_mB2_nB_p_minusTemp = (s32)temp_64;
+	v_e_minus6_n2 = (s32)temp_64;
+	/* computed n^2 */
 
-	/* n * B calculation */
-	temp_64 = ((s64)data->B_e_minus6 * (s64)data->n_e_minus6);
-	is_neg = false;
-	if (temp_64 < 0) {
-		is_neg = true;
-		temp_64 *= -1;
-	}
-	temp_rem = do_div(temp_64, 1000000);
-	temp_rem = do_div(temp_64, 100);
-	if (is_neg)
-		temp_64 *= -1;
-	temp_rem = (s32)temp_64;
-	v_e_minus4_mB2_nB_p_minusTemp += temp_rem;
-	v_e_minus4_mB2_nB_p_minusTemp += (
-		(data->p_e_minus2 * 100) - (temp * 10000));
-	/* computed ((m * B^2) + n * B + p - temp) * 10^4 */
+	v_e_minus6_4m_p_minusTemp = data->p_e_minus2 - (temp * 100);
+	v_e_minus6_4m_p_minusTemp *= 4 * data->m_e_minus6;
+	v_e_minus6_4m_p_minusTemp = DIV_ROUND_CLOSEST(
+		v_e_minus6_4m_p_minusTemp,100);
+	/* computed 4m*(p-T)*/
 
-	v_e_minus6_b2 = ((v_e_minus6_2mB_n / 1000)
-		* (v_e_minus6_2mB_n / 1000));
-	dev_dbg(data->hwmon_dev, "v_e_minus6_b2=%d\n", v_e_minus6_b2);
+	v_e_minus6_b2_minus4ac = (v_e_minus6_n2 - v_e_minus6_4m_p_minusTemp);
 
-	v_e_minus6_4ac = ((4 * data->m_e_minus6) / 10)
-		* ((v_e_minus4_mB2_nB_p_minusTemp) / 1000);
-	dev_dbg(data->hwmon_dev, "v_e_minus6_4ac=%d\n", v_e_minus6_4ac);
+	/* To preserve 1 decimal digits for sqrt(v_e_minus6_b2_minus4ac),
+	Make it 100 times, so
+	v_e_minus6_sqrt_b2_minus4ac=(int_sqrt(v_e_minus6_b2_minus4ac *100)*10^6)
+					/sqrt(10^6 * 100)
+	To avoid overflow,Simplify it to be:
+	v_e_minus6_sqrt_b2_minus4ac =(int_sqrt(v_e_minus6_b2_minus4ac *100)*100)
+	*/
 
-	v_e_minus6_b2_minus4ac = (v_e_minus6_b2 - v_e_minus6_4ac);
-
-	v_e_minus6_sqrt_b2_minus4ac = DIV_ROUND_CLOSEST(
-		(int_sqrt(v_e_minus6_b2_minus4ac)*1000000),
-		int_sqrt(1000000));
+	v_e_minus6_sqrt_b2_minus4ac = (int_sqrt(v_e_minus6_b2_minus4ac * 100)
+		 * 100);
 	dev_dbg(data->hwmon_dev, "A_e_minus12=%lld, B_e_minus6=%d, "
 		"m_e_minus6=%d, n_e_minus6=%d, p_e_minus2=%d, "
 		"temp=%d\n", data->A_e_minus12, data->B_e_minus6,
 		data->m_e_minus6,
 		data->n_e_minus6, data->p_e_minus2, (int)temp);
-	dev_dbg(data->hwmon_dev, "2mB_n=%d, 2mA=%lld, mB2_nB_p_minusTemp=%d,"
+	dev_dbg(data->hwmon_dev, "2mB_n=%d, 2mA=%lld, 4m_p_minusTemp=%d,"
 		"b2_minus4ac=%d\n", v_e_minus6_2mB_n,
-		v_e_minus12_2mA, v_e_minus4_mB2_nB_p_minusTemp,
+		v_e_minus12_2mA, v_e_minus6_4m_p_minusTemp,
 		v_e_minus6_b2_minus4ac);
 
 	temp_64=(s64)(-v_e_minus6_2mB_n - v_e_minus6_sqrt_b2_minus4ac) * 1000000;
