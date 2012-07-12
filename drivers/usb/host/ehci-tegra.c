@@ -539,7 +539,6 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		err = -ENODEV;
 		goto fail_io;
 	}
-	set_irq_flags(irq, IRQF_VALID);
 	tegra->irq = irq;
 
 	pdata = dev_get_platdata(&pdev->dev);
