@@ -433,6 +433,8 @@ void tps80031_battery_status(enum charging_states status, void *data)
 		di->usb_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		di->ac_online = 0;
 		di->usb_online = 0;
+	} else if (status == charging_state_charging_completed) {
+		di->usb_status = POWER_SUPPLY_STATUS_FULL;
 	}
 	power_supply_changed(&di->usb);
 	power_supply_changed(&di->bat);
