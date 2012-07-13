@@ -23,6 +23,8 @@
 #include <asm/uaccess.h>
 #include <asm/pgalloc.h>
 
+#include "mm.h"
+
 #ifdef CPA_DEBUG
 #define cpa_debug(x, ...)  printk(x, __VA_ARGS__)
 #else
@@ -546,7 +548,7 @@ static int split_large_page(pte_t *kpte, unsigned long address)
 		set_pte_ext(&pbase[i], pfn_pte(pfn, ref_prot), ext_prot);
 
 	if (address >= (unsigned long)__va(0) &&
-		address < (unsigned long)__va(lowmem_limit))
+		address < (unsigned long)__va(arm_lowmem_limit))
 		split_page_count(level);
 
 	/*
@@ -586,7 +588,7 @@ static int __cpa_process_fault(struct cpa_data *cpa, unsigned long vaddr,
 	 * on the initial value and the level returned by lookup_address().
 	 */
 	if (within(vaddr, PAGE_OFFSET,
-		   PAGE_OFFSET + lowmem_limit)) {
+		   PAGE_OFFSET + arm_lowmem_limit)) {
 		cpa->numpages = 1;
 		cpa->pfn = __pa(vaddr) >> PAGE_SHIFT;
 		return 0;
@@ -715,7 +717,7 @@ static int cpa_process_alias(struct cpa_data *cpa)
 	unsigned long vaddr;
 	int ret;
 
-	if (cpa->pfn >= (lowmem_limit >> PAGE_SHIFT))
+	if (cpa->pfn >= (arm_lowmem_limit >> PAGE_SHIFT))
 		return 0;
 
 	/*
@@ -733,7 +735,7 @@ static int cpa_process_alias(struct cpa_data *cpa)
 		vaddr = *cpa->vaddr;
 
 	if (!(within(vaddr, PAGE_OFFSET,
-		    PAGE_OFFSET + lowmem_limit))) {
+		    PAGE_OFFSET + arm_lowmem_limit))) {
 
 		alias_cpa = *cpa;
 		alias_cpa.vaddr = &laddr;
