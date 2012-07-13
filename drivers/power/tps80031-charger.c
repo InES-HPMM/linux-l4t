@@ -295,27 +295,41 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	return 0;
 }
 
-static irqreturn_t linch_status_isr(int irq, void *dev_id)
+static bool tps80031_check_charging_completed(struct tps80031_charger *charger)
 {
-	struct tps80031_charger *charger = dev_id;
-	uint8_t linch_status;
 	int ret;
-	dev_info(charger->dev, "%s() got called\n", __func__);
+	uint8_t linch_status;
 
 	ret = tps80031_read(charger->dev->parent, SLAVE_ID2,
 			LINEAR_CHRG_STS, &linch_status);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in reading register 0x%02x\n",
 				__func__, LINEAR_CHRG_STS);
+		return false;
+	}
+
+	if (linch_status & 0x20) {
+		charger->state = charging_state_charging_completed;
+		ret = true;
 	} else {
-		dev_info(charger->dev, "%s():The status of LINEAR_CHRG_STS is 0x%02x\n",
-				 __func__, linch_status);
-		if (linch_status & 0x20) {
-			charger->state = charging_state_charging_completed;
-			if (charger->charger_cb)
-				charger->charger_cb(charger->state,
+		charger->state = charging_state_charging_in_progress;
+		ret = false;
+	}
+
+	return ret;
+}
+
+static irqreturn_t linch_status_isr(int irq, void *dev_id)
+{
+	struct tps80031_charger *charger = dev_id;
+
+	dev_info(charger->dev, "%s() got called\n", __func__);
+
+	if (tps80031_check_charging_completed(charger)) {
+		charger->state = charging_state_charging_completed;
+		if (charger->charger_cb)
+			charger->charger_cb(charger->state,
 					charger->charger_cb_data);
-		}
 	}
 
 	return IRQ_HANDLED;
@@ -327,8 +341,22 @@ static irqreturn_t watchdog_expire_isr(int irq, void *dev_id)
 	int ret;
 
 	dev_info(charger->dev, "%s()\n", __func__);
-	if (charger->state != charging_state_charging_in_progress)
-		return IRQ_HANDLED;
+	if (charger->state != charging_state_charging_in_progress) {
+		/*
+		 * After the charge completed, the chip can enable the
+		 * charging again if battery voltage is 120mV below the
+		 * charging voltage (defined by VOREG register).
+		 */
+		if (tps80031_check_charging_completed(charger)) {
+			return IRQ_HANDLED;
+		} else {
+			/* "recharging" after charging completed happened */
+			charger->state = charging_state_charging_in_progress;
+			if (charger->charger_cb)
+				charger->charger_cb(charger->state,
+						charger->charger_cb_data);
+		}
+	}
 
 	/* Enable watchdog timer again*/
 	ret = tps80031_write(charger->dev->parent, SLAVE_ID2, CONTROLLER_WDG,
