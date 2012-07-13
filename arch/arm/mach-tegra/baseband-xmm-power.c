@@ -51,8 +51,6 @@ EXPORT_SYMBOL(modem_flash);
 unsigned long modem_pm = 1;
 EXPORT_SYMBOL(modem_pm);
 
-unsigned long enum_delay_ms = 1000; /* ignored if !modem_flash */
-
 module_param(modem_ver, ulong, 0644);
 MODULE_PARM_DESC(modem_ver,
 	"baseband xmm power - modem software version");
@@ -62,9 +60,6 @@ MODULE_PARM_DESC(modem_flash,
 module_param(modem_pm, ulong, 0644);
 MODULE_PARM_DESC(modem_pm,
 	"baseband xmm power - modem power management (1 = pm, 0 = no pm)");
-module_param(enum_delay_ms, ulong, 0644);
-MODULE_PARM_DESC(enum_delay_ms,
-	"baseband xmm power - delay in ms between modem on and enumeration");
 
 static struct usb_device_id xmm_pm_ids[] = {
 	{ USB_DEVICE(VENDOR_ID, PRODUCT_ID),
@@ -227,6 +222,18 @@ static int baseband_modem_power_on_async(
 	return 0;
 }
 
+static void xmm_power_reset_on(struct baseband_power_platform_data *pdata)
+{
+	/* reset / power on sequence */
+	gpio_set_value(pdata->modem.xmm.bb_rst, 0);
+	msleep(40);
+	gpio_set_value(pdata->modem.xmm.bb_rst, 1);
+	usleep_range(1000, 1100);
+	gpio_set_value(pdata->modem.xmm.bb_on, 1);
+	udelay(70);
+	gpio_set_value(pdata->modem.xmm.bb_on, 0);
+}
+
 static int xmm_power_on(struct platform_device *device)
 {
 	struct baseband_power_platform_data *pdata =
@@ -277,7 +284,19 @@ static int xmm_power_on(struct platform_device *device)
 								__func__);
 			baseband_modem_power_on_async(pdata);
 		}
+	} else {
+		/* reset flashed modem then it will respond with
+		 * ap-wake rising followed by falling gpio
+		 */
+
+		pr_debug("%s: reset flash modem\n", __func__);
+		modem_power_on = false;
+		ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
+		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
+
+		xmm_power_reset_on(pdata);
 	}
+
 	ret = enable_irq_wake(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
 	if (ret < 0)
 		pr_err("%s: enable_irq_wake error\n", __func__);
@@ -563,7 +582,6 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 			/* go to IPC_AP_WAKE_INIT2 state */
 			ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 			queue_work(workqueue, &init2_work);
-
 		} else
 			pr_debug("%s - IPC_AP_WAKE_INIT1"
 					" - got rising edge\n", __func__);
@@ -683,7 +701,6 @@ static void xmm_power_init2_work(struct work_struct *work)
 			pr_err("%s: hsic_register is missing\n", __func__);
 		register_hsic_device = false;
 	}
-
 }
 
 static void xmm_power_autopm_resume(struct work_struct *work)
@@ -722,19 +739,6 @@ static void xmm_power_l2_resume_work(struct work_struct *work)
 
 	pr_debug("} %s\n", __func__);
 }
-
-static void xmm_power_reset_on(struct baseband_power_platform_data *pdata)
-{
-	/* reset / power on sequence */
-	gpio_set_value(pdata->modem.xmm.bb_rst, 0);
-	msleep(40);
-	gpio_set_value(pdata->modem.xmm.bb_rst, 1);
-	usleep_range(1000, 2000);
-	gpio_set_value(pdata->modem.xmm.bb_on, 1);
-	udelay(70);
-	gpio_set_value(pdata->modem.xmm.bb_on, 0);
-}
-
 
 static void xmm_power_work_func(struct work_struct *work)
 {
@@ -906,7 +910,6 @@ static int xmm_power_driver_probe(struct platform_device *device)
 	int err;
 
 	pr_debug("%s\n", __func__);
-	pr_debug("[XMM] enum_delay_ms=%ld\n", enum_delay_ms);
 
 	/* check for platform data */
 	if (!pdata)
