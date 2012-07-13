@@ -592,7 +592,7 @@ static int max17048_resume(struct i2c_client *client)
 		return ret;
 	}
 
-	schedule_delayed_work(&chip->work, MAX17048_DELAY);
+	schedule_work(&chip->work);
 	return 0;
 }
 
