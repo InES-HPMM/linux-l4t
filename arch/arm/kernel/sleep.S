@@ -64,6 +64,15 @@ ENTRY(cpu_resume_mmu)
 	mov	r0, r0
 	mov	pc, r3			@ jump to virtual address
 ENDPROC(cpu_resume_mmu)
+	.ltorg
+	.align	5
+cpu_resume_turn_mmu_on:
+	mcr	p15, 0, r1, c1, c0, 0	@ turn on MMU, I-cache, etc
+	mrc	p15, 0, r1, c0, c0, 0	@ read id reg
+	mov	r1, r1
+	mov	r1, r1
+	mov	pc, r3			@ jump to virtual address
+ENDPROC(cpu_resume_turn_mmu_on)
 	.popsection
 cpu_resume_after_mmu:
 	bl	cpu_init		@ restore the und/abt/irq banked regs

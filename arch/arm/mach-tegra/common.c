@@ -276,6 +276,67 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 #endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
+	/* name		parent		rate		enabled */
+	{ "clk_m",	NULL,		0,		true },
+	{ "emc",	NULL,		0,		true },
+	{ "cpu",	NULL,		0,		true },
+	{ "kfuse",	NULL,		0,		true },
+	{ "fuse",	NULL,		0,		true },
+	{ "sclk",	NULL,		0,		true },
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	{ "pll_p",	NULL,		0,		true },
+	{ "pll_p_out1",	"pll_p",	0,		false },
+	{ "pll_p_out3",	"pll_p",	0,		true },
+	{ "pll_m_out1",	"pll_m",	275000000,	false },
+	{ "pll_p_out2",	 "pll_p",	102000000,	false },
+	{ "sclk",	 "pll_p_out2",	102000000,	true },
+	{ "pll_p_out4",	 "pll_p",	204000000,	true },
+	{ "host1x",	"pll_p",	102000000,	false },
+	{ "cl_dvfs_ref", "pll_p",       54000000,       false },
+	{ "cl_dvfs_soc", "pll_p",       54000000,       false },
+#else
+	{ "pll_p",	NULL,		0,		true },
+	{ "pll_p_out1",	"pll_p",	0,		false },
+	{ "pll_p_out3",	"pll_p",	0,		true },
+	{ "pll_m_out1",	"pll_m",	275000000,	true },
+	{ "pll_p_out2",	"pll_p",	108000000,	false },
+	{ "sclk",	"pll_p_out2",	108000000,	true },
+	{ "pll_p_out4",	"pll_p",	216000000,	true },
+	{ "host1x",	"pll_p",	108000000,	false },
+	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
+	{ "cl_dvfs_soc", "clk_m",	13000000,	false },
+	{ "hclk",	"sclk",		108000000,	true },
+	{ "pclk",	"hclk",		54000000,	true },
+	{ "wake.sclk",  NULL,           250000000,	true },
+	{ "mselect",	"pll_p",	108000000,	true },
+#endif
+#ifdef CONFIG_TEGRA_SLOW_CSITE
+	{ "csite",	"clk_m",	1000000,	true },
+#else
+	{ "csite",      NULL,           0,              true },
+#endif
+	{ "pll_u",	NULL,		480000000,	false },
+	{ "sdmmc1",	"pll_p",	48000000,	false},
+	{ "sdmmc3",	"pll_p",	48000000,	false},
+	{ "sdmmc4",	"pll_p",	48000000,	false},
+	{ "sbc1.sclk",	NULL,		40000000,	false},
+	{ "sbc2.sclk",	NULL,		40000000,	false},
+	{ "sbc3.sclk",	NULL,		40000000,	false},
+	{ "sbc4.sclk",	NULL,		40000000,	false},
+	{ "sbc5.sclk",	NULL,		40000000,	false},
+	{ "sbc6.sclk",	NULL,		40000000,	false},
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	300000000,	false },
+	{ "c3bus",	"pll_c3",	300000000,	false },
+#else
+	{ "cbus",	"pll_c",	416000000,	false },
+	{ "pll_c_out1",	"pll_c",	208000000,	false },
+#endif
+	{ NULL,		NULL,		0,		0},
+};
+#endif
 
 #ifdef CONFIG_CACHE_L2X0
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
@@ -661,6 +722,29 @@ void __init tegra11x_init_early(void)
 	tegra_gpio_resume_init();
 
 	init_dma_coherent_pool_size(SZ_1M);
+}
+#endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+void __init tegra14x_init_early(void)
+{
+#ifndef CONFIG_SMP
+	/* For SMP system, initializing the reset handler here is too
+	   late. For non-SMP systems, the function that calls the reset
+	   handler initializer is not called, so do it here for non-SMP. */
+	tegra_cpu_reset_handler_init();
+#endif
+	tegra_init_fuse();
+	tegra11x_init_clocks(); /* using Tegra11x for now */
+	tegra11x_init_dvfs(); /* using Tegra11x for now */
+	tegra_common_init_clock();
+	tegra_clk_init_from_table(tegra14x_clk_init_table);
+	tegra_init_cache(true);
+	tegra_pmc_init();
+	tegra_powergate_init();
+	tegra_init_power();
+	tegra_init_ahb_gizmo_settings();
+	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
 }
 #endif
 static int __init tegra_lp0_vec_arg(char *options)

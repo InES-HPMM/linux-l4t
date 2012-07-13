@@ -21,6 +21,8 @@
 #ifndef _MACH_TEGRA_POWERGATE_H_
 #define _MACH_TEGRA_POWERGATE_H_
 
+#include <linux/init.h>
+
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TEGRA_POWERGATE_CPU0	0
 #else

@@ -27,8 +27,11 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/syscore_ops.h>
+#include <linux/bug.h>
+#include <linux/bitops.h>
 
 #include <mach/pinmux.h>
+#include <mach/pinmux-t14.h>
 #include "gpio-names.h"
 #include "iomap.h"
 
@@ -38,39 +41,67 @@ static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 #define PMC_IO_DPD_REQ_0	0x1B8
 #define PMC_IO_DPD2_REQ_0	0x1C0
 
-#define DRIVE_PINGROUP(pg_name, r)		\
-	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {	\
-		.name = #pg_name,		\
-		.reg = r			\
+#define PINGROUP_REG_A	0x868
+#define MUXCTL_REG_A	0x3000
+
+#define SET_DRIVE_PINGROUP(pg_name, r, drv_down_offset, drv_down_mask, drv_up_offset, drv_up_mask,	\
+	slew_rise_offset, slew_rise_mask, slew_fall_offset, slew_fall_mask)	\
+	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {			\
+		.name = #pg_name,				\
+		.reg_bank = 0,					\
+		.reg = ((r) - PINGROUP_REG_A),			\
+		.drvup_offset = drv_up_offset,			\
+		.drvup_mask = drv_up_mask,			\
+		.drvdown_offset = drv_down_offset,		\
+		.drvdown_mask = drv_down_mask,			\
+		.slewrise_offset = slew_rise_offset,		\
+		.slewrise_mask = slew_rise_mask,		\
+		.slewfall_offset = slew_fall_offset,		\
+		.slewfall_mask = slew_fall_mask,		\
+	}
+
+#define DEFAULT_DRIVE_PINGROUP(pg_name, r)		\
+	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {		\
+		.name = #pg_name,			\
+		.reg_bank = 0,				\
+		.reg = ((r) - PINGROUP_REG_A),		\
+		.drvup_offset = 20,			\
+		.drvup_mask = 0x1f,			\
+		.drvdown_offset = 12,			\
+		.drvdown_mask = 0x1f,			\
+		.slewrise_offset = 28,			\
+		.slewrise_mask = 0x3,			\
+		.slewfall_offset = 30,			\
+		.slewfall_mask = 0x3,			\
 	}
 
 const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE_PINGROUP] = {
-	DRIVE_PINGROUP(AO1,		0x868),
-	DRIVE_PINGROUP(AO2,		0x86c),
-	DRIVE_PINGROUP(CDEV1,		0x884),
-	DRIVE_PINGROUP(CDEV2,		0x888),
-	DRIVE_PINGROUP(CSUS,		0x88c),
-	DRIVE_PINGROUP(DAP1,		0x890),
-	DRIVE_PINGROUP(DAP2,		0x894),
-	DRIVE_PINGROUP(DBG,		0x8a0),
-	DRIVE_PINGROUP(SDIO3,		0x8b0),
-	DRIVE_PINGROUP(UART2,		0x8c0),
-	DRIVE_PINGROUP(UART3,		0x8c4),
-	DRIVE_PINGROUP(PAD,		0x8e8),
-	DRIVE_PINGROUP(SDIO1,		0x8ec),
-	DRIVE_PINGROUP(DDC,		0x8fc),
-	DRIVE_PINGROUP(GMA,		0x900),
-	DRIVE_PINGROUP(GME,		0x910),
-	DRIVE_PINGROUP(OWR,		0x920),
-	DRIVE_PINGROUP(CEC,		0x938),
-	DRIVE_PINGROUP(DAP5,		0x998),
-	DRIVE_PINGROUP(DMIC0,		0x9a0),
-	DRIVE_PINGROUP(DMIC1,		0x9a4),
-	DRIVE_PINGROUP(AO3,		0x9a8),
-	DRIVE_PINGROUP(SPI2,		0x9ac),
-	DRIVE_PINGROUP(AO0,		0x9b0),
-	DRIVE_PINGROUP(DCA,		0x9b8),
-	DRIVE_PINGROUP(SPI3,		0x9bc),
+	DEFAULT_DRIVE_PINGROUP(AO1,		0x868),
+	DEFAULT_DRIVE_PINGROUP(AO2,		0x86c),
+	DEFAULT_DRIVE_PINGROUP(CDEV1,		0x884),
+	DEFAULT_DRIVE_PINGROUP(CDEV2,		0x888),
+	DEFAULT_DRIVE_PINGROUP(CSUS,		0x88c),
+	DEFAULT_DRIVE_PINGROUP(DAP1,		0x890),
+	DEFAULT_DRIVE_PINGROUP(DAP2,		0x894),
+	DEFAULT_DRIVE_PINGROUP(DBG,		0x8a0),
+	DEFAULT_DRIVE_PINGROUP(SDIO3,		0x8b0),
+	DEFAULT_DRIVE_PINGROUP(UART2,		0x8c0),
+	DEFAULT_DRIVE_PINGROUP(UART3,		0x8c4),
+	DEFAULT_DRIVE_PINGROUP(PAD,		0x8e8),
+	DEFAULT_DRIVE_PINGROUP(SDIO1,		0x8ec),
+	DEFAULT_DRIVE_PINGROUP(DDC,		0x8fc),
+	DEFAULT_DRIVE_PINGROUP(GMA,		0x900),
+	DEFAULT_DRIVE_PINGROUP(GME,		0x910),
+	DEFAULT_DRIVE_PINGROUP(OWR,		0x920),
+	DEFAULT_DRIVE_PINGROUP(CEC,		0x938),
+	DEFAULT_DRIVE_PINGROUP(DAP5,		0x998),
+	DEFAULT_DRIVE_PINGROUP(DMIC0,		0x9a0),
+	DEFAULT_DRIVE_PINGROUP(DMIC1,		0x9a4),
+	DEFAULT_DRIVE_PINGROUP(AO3,		0x9a8),
+	DEFAULT_DRIVE_PINGROUP(SPI2,		0x9ac),
+	DEFAULT_DRIVE_PINGROUP(AO0,		0x9b0),
+	DEFAULT_DRIVE_PINGROUP(DCA,		0x9b8),
+	DEFAULT_DRIVE_PINGROUP(SPI3,		0x9bc),
 
 };
 
@@ -84,12 +115,16 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 			TEGRA_MUX_ ## f2,			\
 			TEGRA_MUX_ ## f3,			\
 		},						\
+		.gpionr = TEGRA_GPIO_ ## gpio_nr,		\
 		.func_safe = TEGRA_MUX_ ## fs,			\
-		.tri_reg = reg,					\
+		.tri_bank = 1,					\
+		.tri_reg = ((reg) - MUXCTL_REG_A),		\
 		.tri_bit = 4,					\
-		.mux_reg = reg,					\
+		.mux_bank = 1,					\
+		.mux_reg = ((reg) - MUXCTL_REG_A),		\
 		.mux_bit = 0,					\
-		.pupd_reg = reg,				\
+		.pupd_bank = 1,					\
+		.pupd_reg = ((reg) - MUXCTL_REG_A),		\
 		.pupd_bit = 2,					\
 		.io_default = TEGRA_PIN_ ## iod,		\
 		.od_bit = 6,					\
@@ -98,7 +133,6 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	}
 
 /* !!!FIXME!!! FILL IN fSafe COLUMN IN TABLE ....... */
-
 #define PINGROUPS	\
 	/*       NAME		  GPIO		VDD	    f0		f1          f2          f3           fSafe       io	reg */\
 	PINGROUP(SDMMC1_CLK,	  PA0,		SDMMC1,     SDMMC1,	RSVD1,	    RSVD2,	RSVD3,       RSVD,	INPUT,	0x3048),\
@@ -245,36 +279,43 @@ const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 
 };
 
+#define SET_DRIVE(_name, _hsm, _schmitt, _drive, _pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew) \
+	{							\
+		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
+		.hsm = TEGRA_HSM_##_hsm,			\
+		.schmitt = TEGRA_SCHMITT_##_schmitt,		\
+		.drive = TEGRA_DRIVE_##_drive,			\
+		.pull_down = TEGRA_PULL_##_pulldn_drive,	\
+		.pull_up = TEGRA_PULL_##_pullup_drive,		\
+		.slew_rising = TEGRA_SLEW_##_pulldn_slew,	\
+		.slew_falling = TEGRA_SLEW_##_pullup_slew,	\
+	}
+
+static __initdata struct tegra_drive_pingroup_config t14x_def_drive_pinmux[] = {
+};
+
 #ifdef CONFIG_PM_SLEEP
 
 static u32 pinmux_reg[TEGRA_MAX_PINGROUP +
 		      ARRAY_SIZE(tegra_soc_drive_pingroups)];
 
-static inline unsigned long pg_readl(unsigned long offset)
-{
-	return readl(IO_TO_VIRT(TEGRA_APB_MISC_BASE + offset));
-}
-
-static inline void pg_writel(unsigned long value, unsigned long offset)
-{
-	writel(value, IO_TO_VIRT(TEGRA_APB_MISC_BASE + offset));
-}
-
-static int tegra_pinmux_suspend(void)
+static int tegra14x_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
-		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_reg);
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
+				tegra_soc_pingroups[i].mux_reg);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
-		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg);
+		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg_bank,
+				tegra_soc_drive_pingroups[i].reg);
 
 	return 0;
 }
 
-static void tegra_pinmux_resume(void)
+static void tegra14x_pinmux_resume(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
@@ -284,29 +325,46 @@ static void tegra_pinmux_resume(void)
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
 		reg_value = *tmp++;
 		reg_value |= TRISTATE;
-		pg_writel(reg_value, tegra_soc_pingroups[i].mux_reg);
+		pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
 	}
 
 	writel(0x400fffff, pmc + PMC_IO_DPD_REQ_0);
 	writel(0x40001fff, pmc + PMC_IO_DPD2_REQ_0);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
-		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_reg);
+		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
-		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg);
+		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
+			tegra_soc_drive_pingroups[i].reg);
 }
 
-static struct syscore_ops tegra_pinmux_syscore_ops = {
-	.suspend = tegra_pinmux_suspend,
-	.resume = tegra_pinmux_resume,
+static struct syscore_ops tegra14x_pinmux_syscore_ops = {
+	.suspend = tegra14x_pinmux_suspend,
+	.resume = tegra14x_pinmux_resume,
 };
 #endif
 
-void __init tegra_init_pinmux(void)
+void __devinit tegra14x_pinmux_init(const struct tegra_pingroup_desc **pg,
+		int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
+		int *pgdrive_max, const int **gpiomap, int *gpiomap_max)
 {
-#ifdef CONFIG_PM_SLEEP
-	register_syscore_ops(&tegra_pinmux_syscore_ops);
-#endif
+	*pg = tegra_soc_pingroups;
+	*pg_max = TEGRA_MAX_PINGROUP;
+	*pgdrive = tegra_soc_drive_pingroups;
+	*pgdrive_max = TEGRA_MAX_DRIVE_PINGROUP;
+	*gpiomap = gpio_to_pingroup;
+	*gpiomap_max = TEGRA_MAX_GPIO;
 
+#ifdef CONFIG_PM_SLEEP
+	register_syscore_ops(&tegra14x_pinmux_syscore_ops);
+#endif
+}
+
+void tegra14x_default_pinmux(void)
+{
+	tegra_drive_pinmux_config_table(t14x_def_drive_pinmux,
+					ARRAY_SIZE(t14x_def_drive_pinmux));
 }

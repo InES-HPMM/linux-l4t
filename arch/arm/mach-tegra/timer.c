@@ -275,6 +275,8 @@ static void __init tegra_init_late_timer(void)
 #define tegra_twd_get_state	do {} while(0)
 #define tegra_twd_suspend	do {} while(0)
 #define tegra_twd_resume	do {} while(0)
+void __init tegra_cpu_timer_init(void) {}
+static void __init tegra_init_late_timer(void) {}
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
