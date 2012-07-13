@@ -1287,7 +1287,7 @@ static struct platform_driver tegra_smmu_driver = {
 	.remove		= tegra_smmu_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
-		.name	= "tegra-smmu",
+		.name	= "tegra_smmu",
 		.pm	= &tegra_smmu_pm_ops,
 		.of_match_table = tegra_smmu_of_match,
 	},
