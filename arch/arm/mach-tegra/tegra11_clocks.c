@@ -4144,6 +4144,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	struct clk *slow = NULL;
 	struct clk *top = NULL;
 
+	unsigned long top_rate = 0;
 	unsigned long rate = bus->min_rate;
 	unsigned long ceiling = bus->max_rate;
 
@@ -4165,9 +4166,15 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 				break;
 			case SHARED_FLOOR:
 			default:
-				if (rate < request_rate) {
-					rate = request_rate;
-					top = c;
+				rate = max(request_rate, rate);
+				if (c->u.shared_bus_user.client) {
+					if (top_rate < request_rate) {
+						top_rate = request_rate;
+						top = c;
+					} else if ((top_rate == request_rate) &&
+						cbus_user_is_slower(c, top)) {
+						top = c;
+					}
 				}
 			}
 			if (c->u.shared_bus_user.client &&
@@ -4249,13 +4256,13 @@ static int tegra11_clk_cbus_migrate_users(struct clk *user)
 	/* If top user is the slow one on its own (source) bus, do nothing */
 	top_user = src_bus->u.cbus.top_user;
 	BUG_ON(!top_user->u.shared_bus_user.client);
-	if (top_user == src_bus->u.cbus.slow_user)
+	if (!cbus_user_is_slower(src_bus->u.cbus.slow_user, top_user))
 		return 0;
 
 	/* If source bus top user is slower than all users on destination bus,
 	   move top user; otherwise move all users slower than the top one */
 	if (!dst_bus->u.cbus.slow_user ||
-	    cbus_user_is_slower(top_user, dst_bus->u.cbus.slow_user)) {
+	    !cbus_user_is_slower(dst_bus->u.cbus.slow_user, top_user)) {
 		cbus_move_enabled_user(top_user, dst_bus, src_bus);
 	} else {
 		list_for_each_safe(pos, n, &src_bus->shared_bus_list) {
