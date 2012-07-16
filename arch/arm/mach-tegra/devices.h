@@ -166,4 +166,12 @@ extern struct platform_device tegra_cec_device;
 
 void __init tegra_init_debug_uart_rate(void);
 
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
+extern void tegra_smmu_init(void);
+#else
+static inline void tegra_smmu_init(void)
+{
+}
+#endif
+
 #endif

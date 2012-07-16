@@ -32,6 +32,10 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/tegra_smmu.h>
 
+#ifdef CONFIG_PLATFORM_IOMMUABLE
+#include <asm/dma-iommu.h>
+#endif
+
 #include "gpio-names.h"
 #include "iomap.h"
 #include "devices.h"
@@ -1703,6 +1707,30 @@ struct resource *tegra_smmu_window(int wnum)
 int tegra_smmu_window_count(void)
 {
 	return ARRAY_SIZE(tegra_smmu);
+}
+
+#ifdef CONFIG_PLATFORM_IOMMUABLE
+static void tegra_smmu_map_init(struct platform_device *pdev)
+{
+	struct dma_iommu_mapping *map;
+
+	map = arm_iommu_create_mapping(&platform_bus_type,
+				       TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE, 0);
+	if (IS_ERR(map))
+		dev_err(&pdev->dev, "Failed create IOVA map %08x-%08x\n",
+			TEGRA_IOMMU_BASE,
+			TEGRA_IOMMU_BASE + TEGRA_IOMMU_SIZE - 1);
+}
+#else
+static inline void tegra_smmu_map_init(struct platform_device *pdev)
+{
+}
+#endif
+
+void tegra_smmu_init(void)
+{
+	platform_device_register(&tegra_smmu_device);
+	tegra_smmu_map_init(&tegra_smmu_device);
 }
 #endif
 
