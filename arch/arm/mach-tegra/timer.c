@@ -583,36 +583,35 @@ void __init tegra_init_timer(void)
 	/* Architectural timers take precedence over broadcast timers.
 	   Only register a broadcast clockevent device if architectural
 	   timers do not exist or cannot be initialized. */
-	if (tegra_init_arch_timer()) {
+	if (tegra_init_arch_timer())
 		/* Architectural timers do not exist or cannot be initialzied.
 		   Fall back to using the broadcast timer as the sched clock. */
 		setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
 
-		ret = clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
-			"timer_us", 1000000, 300, 32,
-			clocksource_mmio_readl_up);
-		if (ret) {
-			pr_err("%s: Failed to register clocksource: %d\n",
-				__func__, ret);
-			BUG();
-		}
-
-		ret = setup_irq(tegra_timer_irq.irq, &tegra_timer_irq);
-		if (ret) {
-			pr_err("%s: Failed to register timer IRQ: %d\n",
-				__func__, ret);
-			BUG();
-		}
-
-		clockevents_calc_mult_shift(&tegra_clockevent, 1000000, 5);
-		tegra_clockevent.max_delta_ns =
-			clockevent_delta2ns(0x1fffffff, &tegra_clockevent);
-		tegra_clockevent.min_delta_ns =
-			clockevent_delta2ns(0x1, &tegra_clockevent);
-		tegra_clockevent.cpumask = cpu_all_mask;
-		tegra_clockevent.irq = tegra_timer_irq.irq;
-		clockevents_register_device(&tegra_clockevent);
+	ret = clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
+		"timer_us", 1000000, 300, 32,
+		clocksource_mmio_readl_up);
+	if (ret) {
+		pr_err("%s: Failed to register clocksource: %d\n",
+			__func__, ret);
+		BUG();
 	}
+
+	ret = setup_irq(tegra_timer_irq.irq, &tegra_timer_irq);
+	if (ret) {
+		pr_err("%s: Failed to register timer IRQ: %d\n",
+			__func__, ret);
+		BUG();
+	}
+
+	clockevents_calc_mult_shift(&tegra_clockevent, 1000000, 5);
+	tegra_clockevent.max_delta_ns =
+		clockevent_delta2ns(0x1fffffff, &tegra_clockevent);
+	tegra_clockevent.min_delta_ns =
+		clockevent_delta2ns(0x1, &tegra_clockevent);
+	tegra_clockevent.cpumask = cpu_all_mask;
+	tegra_clockevent.irq = tegra_timer_irq.irq;
+	clockevents_register_device(&tegra_clockevent);
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
 	late_time_init = tegra_init_late_timer;
