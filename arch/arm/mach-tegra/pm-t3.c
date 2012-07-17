@@ -420,7 +420,6 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
 			s64 t = ktime_to_us(ktime_sub(now, last_g2lp));
 			s64 t_off = tegra_cpu_power_off_time();
-
 			if (t_off > t)
 				udelay((unsigned int)(t_off - t));
 
