@@ -4501,6 +4501,66 @@ static struct clk_ops tegra_clk_shared_bus_ops = {
 	.reset = tegra_clk_shared_bus_reset,
 };
 
+/* coupled gate ops */
+/*
+ * Some clocks may have common enable/disable control, but run at different
+ * rates, and have different dvfs tables. Coupled gate clock synchronize
+ * enable/disable operations for such clocks.
+ */
+
+static int tegra11_clk_coupled_gate_enable(struct clk *c)
+{
+	int ret;
+	const struct clk_mux_sel *sel;
+
+	BUG_ON(!c->inputs);
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == c->parent)
+			continue;
+
+		ret = clk_enable(sel->input);
+		if (ret) {
+			while(sel != c->inputs) {
+				sel--;
+				if (sel->input == c->parent)
+					continue;
+				clk_disable(sel->input);
+			}
+			return ret;
+		}
+	}
+
+	return tegra11_periph_clk_enable(c);
+}
+
+static void tegra11_clk_coupled_gate_disable(struct clk *c)
+{
+	const struct clk_mux_sel *sel;
+
+	BUG_ON(!c->inputs);
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	tegra11_periph_clk_disable(c);
+
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == c->parent)
+			continue;
+
+		if (sel->input->set)	/* enforce coupling after boot only */
+			clk_disable(sel->input);
+	}
+}
+
+static struct clk_ops tegra_clk_coupled_gate_ops = {
+	.init			= tegra11_periph_clk_init,
+	.enable			= tegra11_clk_coupled_gate_enable,
+	.disable		= tegra11_clk_coupled_gate_disable,
+	.reset			= &tegra11_periph_clk_reset,
+};
+
+
 /* Clock definitions */
 static struct clk tegra_clk_32k = {
 	.name = "clk_32k",
@@ -5529,6 +5589,32 @@ static struct clk_mux_sel mux_plla_clk32_pllp_clkm_plle[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_clkm_pllp_pllc_pllre[] = {
+	{ .input = &tegra_clk_m,  .value = 0},
+	{ .input = &tegra_pll_p,  .value = 1},
+	{ .input = &tegra_pll_c,  .value = 3},
+	{ .input = &tegra_pll_re_out,  .value = 5},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_clkm_48M_pllp_480M[] = {
+	{ .input = &tegra_clk_m,      .value = 0},
+	{ .input = &tegra_pll_u_48M,  .value = 1},
+	{ .input = &tegra_pll_p,      .value = 2},
+	{ .input = &tegra_pll_u_480M, .value = 3},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
+	{ .input = &tegra_clk_m,      .value = 0},
+	{ .input = &tegra_pll_re_out, .value = 1},
+	{ .input = &tegra_clk_32k,    .value = 2},
+	{ .input = &tegra_pll_u_480M, .value = 3},
+	{ .input = &tegra_pll_c,      .value = 4},
+	{ .input = &tegra_pll_ref,    .value = 7},
+	{ 0, 0},
+};
+
 /* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
@@ -5876,6 +5962,39 @@ struct clk tegra_list_clks[] = {
 #endif
 };
 
+
+/* FIXME: XUSB driver device id */
+#define XUSB_ID "tegra_xusb"
+
+static struct clk tegra_xusb_source_clks[] = {
+	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	350000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("xusb_fs_src",	XUSB_ID, "fs_src",	143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("xusb_ss_src",	XUSB_ID, "ss_src",	143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("xusb_dev_src",	XUSB_ID, "dev_src",	95,	0x60c,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+};
+
+static struct clk_mux_sel mux_xusb_host[] = {
+	{ .input = &tegra_xusb_source_clks[0], .value = 0},
+	{ .input = &tegra_xusb_source_clks[1], .value = 1},
+	{ .input = &tegra_xusb_source_clks[2], .value = 2},
+	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_xusb_ss[] = {
+	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_source_clks[0], .value = 0},
+	{ .input = &tegra_xusb_source_clks[1], .value = 1},
+	{ 0, 0},
+};
+
+static struct clk tegra_xusb_coupled_clks[] = {
+	PERIPH_CLK_EX("xusb_host", XUSB_ID, "host", 89,	0, 350000000, mux_xusb_host, 0,	&tegra_clk_coupled_gate_ops),
+	PERIPH_CLK_EX("xusb_ss",   XUSB_ID, "ss",  156,	0, 350000000, mux_xusb_ss,   0,	&tegra_clk_coupled_gate_ops),
+};
+
+
 #define CLK_DUPLICATE(_name, _dev, _con)		\
 	{						\
 		.name	= _name,			\
@@ -6146,6 +6265,12 @@ void __init tegra11x_init_clocks(void)
 	init_clk_out_mux();
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_out_list); i++)
 		tegra11_init_one_clock(&tegra_clk_out_list[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_xusb_source_clks); i++)
+		tegra11_init_one_clock(&tegra_xusb_source_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_xusb_coupled_clks); i++)
+		tegra11_init_one_clock(&tegra_xusb_coupled_clks[i]);
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
