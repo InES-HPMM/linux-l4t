@@ -1665,10 +1665,27 @@ struct platform_device tegra_gart_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_IOVMM_SMMU)
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
+static struct resource tegra_smmu_resources[] = {
+	{
+		.name	= "mc",
+		.flags	= IORESOURCE_MEM,
+		.start	= TEGRA_MC_BASE,
+		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE - 1,
+	},
+	{
+		.name   = "ahbarb",
+		.flags  = IORESOURCE_MEM,
+		.start  = TEGRA_AHB_ARB_BASE,
+		.end    = TEGRA_AHB_ARB_BASE + TEGRA_AHB_ARB_SIZE - 1,
+	},
+};
+
 struct platform_device tegra_smmu_device = {
 	.name		= "tegra_smmu",
 	.id		= -1,
+	.num_resources	= ARRAY_SIZE(tegra_smmu_resources),
+	.resource	= tegra_smmu_resources
 };
 
 static struct resource tegra_smmu[] = {
