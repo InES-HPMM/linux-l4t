@@ -442,7 +442,6 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 		tegra_skin_device_register(device);
 #endif
 
-	register_pm_notifier(&tegra_thermal_nb);
 	return 0;
 }
 
@@ -477,6 +476,8 @@ int __init tegra_thermal_init(struct tegra_thermal_data *data,
 
 	throttle_list = tlist;
 	throttle_list_size = tlist_size;
+
+	register_pm_notifier(&tegra_thermal_nb);
 
 	return 0;
 }
