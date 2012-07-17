@@ -906,10 +906,25 @@ static int configure_dam(struct tegra30_i2s  *i2s, int out_channel,
 	tegra30_dam_set_samplerate(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 				in_rate);
 	tegra30_dam_set_gain(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC, 0x1000);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	tegra30_dam_set_acif(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC,
+			in_channels, in_bitsize, 1, 32);
+	tegra30_dam_set_acif(i2s->dam_ifc, TEGRA30_DAM_CHOUT,
+			out_channel, out_bitsize, out_channel, 32);
+#else
 	tegra30_dam_set_acif(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 			in_channels, in_bitsize, 1, 16);
 	tegra30_dam_set_acif(i2s->dam_ifc, TEGRA30_DAM_CHOUT,
 			out_channel, out_bitsize, out_channel, out_bitsize);
+#endif
+
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	tegra30_dam_write_coeff_ram(i2s->dam_ifc, in_rate, out_rate);
+	tegra30_dam_set_farrow_param(i2s->dam_ifc, in_rate, out_rate);
+	tegra30_dam_set_biquad_fixed_coef(i2s->dam_ifc);
+	tegra30_dam_enable_coeff_ram(i2s->dam_ifc);
+	tegra30_dam_set_filter_stages(i2s->dam_ifc, in_rate, out_rate);
+#endif
 
 	return 0;
 }
