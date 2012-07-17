@@ -551,6 +551,26 @@ static int _usb_phy_init(struct tegra_usb_phy *phy)
 
 	return 0;
 }
+static int usb_phy_reset(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+#if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
+        val =  readl(base + TEGRA_STREAM_DISABLE);
+        val |= TEGRA_STREAM_DISABLE_OFFSET;
+        writel(val , base + TEGRA_STREAM_DISABLE);
+#endif
+	val = readl(base + USB_TXFILLTUNING);
+	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
+		val = USB_FIFO_TXFILL_THRES(0x10);
+		writel(val, base + USB_TXFILLTUNING);
+	}
+
+return 0;
+}
 
 static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 {
@@ -2683,6 +2703,7 @@ static int ulpi_null_phy_resume(struct tegra_usb_phy *phy)
 
 static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.init		= _usb_phy_init,
+	.reset		= usb_phy_reset,
 	.open		= utmi_phy_open,
 	.close		= utmi_phy_close,
 	.irq		= utmi_phy_irq,
@@ -2708,6 +2729,7 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 
 static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
 	.init		= _usb_phy_init,
+	.reset		= usb_phy_reset,
         .open           = ulpi_link_phy_open,
         .close		= ulpi_link_phy_close,
         .irq            = ulpi_link_phy_irq,
