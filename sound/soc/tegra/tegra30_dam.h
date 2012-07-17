@@ -34,7 +34,15 @@
 #define TEGRA30_DAM_CH1_CTRL				0x20
 #define TEGRA30_DAM_CH1_CONV				0x24
 #define TEGRA30_DAM_AUDIOCIF_CH1_CTRL			0x2C
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0		0xf0
+#define TEGRA30_DAM_FARROW_PARAM_0			0xf4
+#define TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0		0xf8
+#define TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0		0xfc
+#define TEGRA30_DAM_CTRL_REGINDEX			(TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0 >> 2)
+#else
 #define TEGRA30_DAM_CTRL_REGINDEX			(TEGRA30_DAM_AUDIOCIF_CH1_CTRL >> 2)
+#endif
 #define TEGRA30_DAM_CTRL_RSVD_6				6
 #define TEGRA30_DAM_CTRL_RSVD_10			10
 
@@ -56,6 +64,9 @@
 #define TEGRA30_DAM_CTRL_FSOUT_FS48			(TEGRA30_DAM_FS_48KHZ << TEGRA30_DAM_CTRL_FSOUT_SHIFT)
 #define TEGRA30_DAM_CTRL_CG_EN				(1 << 1)
 #define TEGRA30_DAM_CTRL_DAM_EN				(1 << 0)
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_DAM_CTRL_STEREO_MIXING_ENABLE	(1 << 3)
+#endif
 
 
 /* Fields in TEGRA30_DAM_CLIP */
@@ -79,6 +90,10 @@
 #define TEGRA30_DAM_CH0_CTRL_DATA_SYNC_MASK		(0xf << TEGRA30_DAM_DATA_SYNC_SHIFT)
 #define TEGRA30_DAM_CH0_CTRL_DATA_SYNC			(TEGRA30_DAM_DATA_SYNC << TEGRA30_DAM_DATA_SYNC_SHIFT)
 #define TEGRA30_DAM_CH0_CTRL_EN				(1 << 0)
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_DAM_CH0_CTRL_COEFF_RAM_ENABLE		(1 << 15)
+#define TEGRA30_DAM_CH0_CTRL_FILT_STAGES_SHIFT	16
+#endif
 
 
 /* Fields in TEGRA30_DAM_CH0_CONV */
@@ -109,6 +124,17 @@
 #define TEGRA30_CIF_CH1					0
 #define TEGRA30_CIF_MONOCONV_COPY			(1<<0)
 #define TEGRA30_CIF_STEREOCONV_CH0			(0<<4)
+
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+/* TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0 */
+#define TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0_VAL		0x00800000
+
+/* TEGRA30_DAM_FARROW_PARAM_0 */
+#define TEGRA30_FARROW_PARAM_RESET	0xdee9a0a0
+#define TEGRA30_FARROW_PARAM_1	0
+#define TEGRA30_FARROW_PARAM_2	0xdee993a0
+#define TEGRA30_FARROW_PARAM_3	0xcccda093
+#endif
 
 /*
 * Audio Samplerates
@@ -159,5 +185,13 @@ int tegra30_dam_set_acif(int ifc, int chtype, unsigned int audio_channels,
 	unsigned int audio_bits, unsigned int client_channels,
 	unsigned int client_bits);
 void tegra30_dam_enable(int ifc, int on, int chtype);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout);
+void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout);
+void tegra30_dam_set_biquad_fixed_coef(int ifc);
+void tegra30_dam_enable_coeff_ram(int ifc);
+void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout);
+void tegra30_dam_enable_stereo_mixing(int ifc);
+#endif
 
 #endif

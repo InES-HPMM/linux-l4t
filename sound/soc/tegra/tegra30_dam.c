@@ -45,6 +45,7 @@ enum {
 	dam_ch_maxnum
 } tegra30_dam_chtype;
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 struct tegra30_dam_src_step_table  step_table[] = {
 	{ 8000, 44100, 80 },
 	{ 8000, 48000, 1 },
@@ -55,14 +56,272 @@ struct tegra30_dam_src_step_table  step_table[] = {
 	{ 44100, 16000, 441 },
 	{ 48000, 16000, 0 },
 };
+#endif
+
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+int coefRam16To44[64] = {
+				0x156105, // IIR Filter + interpolation
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x2,
+				0x21a102, // IIR Filter + interplation
+				0x00000e00,
+				0x00e2e000,0xff6e1a00,0x002aaa00,
+				0x00610a00,0xff5dda00,0x003ccc00,
+				0x00163a00,0xff3c0400,0x00633200,
+				0x3,
+				0x2c0204, // Farrow Filter
+				0x000aaaab,
+				0xffaaaaab,
+				0xfffaaaab,
+				0x00555555,
+				0xff600000,
+				0xfff55555,
+				0x00155555,
+				0x00055555,
+				0xffeaaaab,
+				0x00200000,
+				0x005101, //IIR Filter + Decimator
+				8252,
+				16067893,-13754014,5906912,
+				13037808,-13709975,7317389,
+				1,
+				0,0,0,0,0,
+				0,0,0,0,0,0
+};
+
+int coefRam8To48[64] = {
+				0x156105, // interpolation + FIlter
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x2, // ouptut gain
+				0x00a102, // filter + interpolation
+				0x00000e00,
+				0x00e2e000,0xff6e1a00,0x002aaa00,
+				0x00610a00,0xff5dda00,0x003ccc00,
+				0x00163a00,0xff3c0400,0x00633200,
+				0x3,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0
+};
+
+int coefRam16To48[64] = {
+				0x00a105, // interpolation + Filter
+				1924,
+				13390190,-13855175,5952947,
+				1289485,-12761191,6540917,
+				-4787304,-11454255,7249439,
+				-7239963,-10512732,7776366,
+				-8255332,-9999487,8101770,
+				-8632155,-9817625,8305531,
+				0x3,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0,0,
+				0,0
+};
+
+int coefRam44To16[64] = {
+				0x126104, // IIR Filter + interp0lation
+				2802,
+				5762750,-14772125,6628868,
+				-9304342,-14504578,7161825,
+				-12409641,-14227678,7732611,
+				-13291674,-14077653,8099947,
+				-13563385,-14061743,8309372,
+				2,
+				0x1d9204, // Farrwo Filter + Decimation
+				0x000aaaab,
+				0xffaaaaab,
+				0xfffaaaab,
+				0x00555555,
+				0xff600000,
+				0xfff55555,
+				0x00155555,
+				0x00055555,
+				0xffeaaaab,
+				0x00200000,
+				0x005105, // IIR Filter+decimation
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x1,
+				0,0,0,0,0,
+				0,0,0,0,0,
+				0,0,0,0
+};
+
+int coefRam44To8[64] = {
+				0x120104, // IIR Filter
+				2802,
+				5762750,-14772125,6628868,
+				-9304342,-14504578,7161825,
+				-12409641,-14227678,7732611,
+				-13291674,-14077653,8099947,
+				-13563385,-14061743,8309372,
+				1,
+				0x1d9204, // Farrwo Filter
+				0x000aaaab,
+				0xffaaaaab,
+				0xfffaaaab,
+				0x00555555,
+				0xff600000,
+				0xfff55555,
+				0x00155555,
+				0x00055555,
+				0xffeaaaab,
+				0x00200000,
+				0x005105, // IIR Filter
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x1,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0
+};
+
+int coefRam48To16[64] = {
+				0x009105, // IIR FIlter + Decimation
+				1924,
+				13390190,-13855175,5952947,
+				1289485,-12761191,6540917,
+				-4787304,-11454255,7249439,
+				-7239963,-10512732,7776366,
+				-8255332,-9999487,8101770,
+				-8632155,-9817625,8305531,
+				0x1,
+				0,0,0,
+				0,0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0
+};
+
+int coefRam48To8[64] = {
+				0x0c9102,	//IIR Filter + decimation
+				0x00000e00,
+				0x00e2e000,0xff6e1a00,0x002aaa00,
+				0x00610a00,0xff5dda00,0x003ccc00,
+				0x00163a00,0xff3c0400,0x00633200,
+				0x1,
+				0x005105,   //IIR Filter + Decimator
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x1, // ouptut gain
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0
+};
+
+int coefRam8To44[64] = {
+				0x0156105, // IIR filter +interpllation
+				0x0000d649,
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x2, // ouptut gain
+				0x21a102, // filter + interp0lation
+				0x00000e00,
+				0x00e2e000,0xff6e1a00,0x002aaa00,
+				0x00610a00,0xff5dda00,0x003ccc00,
+				0x00163a00,0xff3c0400,0x00633200,
+				0x3,
+				0x000204,
+				0x000aaaab,
+				0xffaaaaab,
+				0xfffaaaab,
+				0x00555555,
+				0xff600000,
+				0xfff55555,
+				0x00155555,
+				0x00055555,
+				0xffeaaaab,
+				0x00200000,
+				0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0,
+				0,0,0,0,0,0
+};
+
+int coefRam8To16[64] = {
+				0x00006105, // interpolation + IIR Filter
+				0x0000d649, // input gain
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x00000002, // ouptut gain
+};
+
+int coefRam16To8[64] = {
+				0x00005105,   //IIR Filter + Decimator
+				0x0000d649, //input gain
+				0x00e87afb, 0xff5f69d0, 0x003df3cf,
+				0x007ce488, 0xff99a5c8, 0x0056a6a0,
+				0x00344928, 0xffcba3e5, 0x006be470,
+				0x00137aa7, 0xffe60276, 0x00773410,
+				0x0005fa2a, 0xfff1ac11, 0x007c795b,
+				0x00012d36, 0xfff5eca2, 0x007f10ef,
+				0x00000001, // ouptut gain
+};
+#endif
 
 static void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
 		int fsout);
 static void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam,
 		int fsin);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 		int insample, int outsample);
 static void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step);
+#endif
 
 static inline void tegra30_dam_writel(struct tegra30_dam_context *dam,
 			u32 val, u32 reg)
@@ -290,7 +549,9 @@ void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
 	case dam_ch_in0:
 		tegra30_dam_set_input_samplerate(dam, samplerate);
 		dam->ch_insamplerate[dam_ch_in0] = samplerate;
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		tegra30_dam_set_step_reset(dam, samplerate, dam->outsamplerate);
+#endif
 		break;
 	case dam_ch_in1:
 		if (samplerate != dam->outsamplerate)
@@ -361,6 +622,7 @@ void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam, int fsin)
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 		int insample, int outsample)
 {
@@ -387,6 +649,7 @@ void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
 	val |= step << TEGRA30_DAM_CH0_CTRL_STEP_SHIFT;
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
+#endif
 
 int tegra30_dam_set_gain(int ifc, int chid, int gain)
 {
@@ -420,10 +683,17 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 	if (ifc >= TEGRA30_NR_DAM_IFC)
 		return -EINVAL;
 
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	/*ch0 takes input as mono/32bit always*/
+	if ((chid == dam_ch_in0) &&
+		((client_channels != 1) || (client_bits != 32)))
+		return -EINVAL;
+#else
 	/*ch0 takes input as mono/16bit always*/
 	if ((chid == dam_ch_in0) &&
 		((client_channels != 1) || (client_bits != 16)))
 		return -EINVAL;
+#endif
 
 	value |= TEGRA30_CIF_MONOCONV_COPY;
 	value |= TEGRA30_CIF_STEREOCONV_CH0;
@@ -453,6 +723,203 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 
 	return 0;
 }
+
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout)
+{
+	u32 val;
+	int i, *coefRam = NULL;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	tegra30_dam_writel(dams_cont_info[ifc], 0x00002000,
+			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				coefRam = coefRam8To48;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				coefRam = coefRam8To44;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam8To16;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				coefRam = coefRam16To48;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				coefRam = coefRam16To44;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam16To8;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam44To8;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam44To16;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				coefRam = coefRam48To8;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				coefRam = coefRam48To16;
+			break;
+
+		default:
+			break;
+	}
+
+	tegra30_dam_writel(dams_cont_info[ifc], 0x00005000,
+			TEGRA30_DAM_AUDIORAMCTL_DAM_CTRL_0);
+
+	for (i = 0; i < 64; i++) {
+		val = coefRam[i];
+		tegra30_dam_writel(dams_cont_info[ifc], val,
+				TEGRA30_DAM_AUDIORAMCTL_DAM_DATA_0);
+	}
+}
+
+void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout)
+{
+	u32 val = TEGRA30_FARROW_PARAM_RESET;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				val = TEGRA30_FARROW_PARAM_2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				val = TEGRA30_FARROW_PARAM_2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_3;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_3;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				val = TEGRA30_FARROW_PARAM_1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				val = TEGRA30_FARROW_PARAM_1;
+			break;
+
+		default:
+			break;
+	}
+
+	tegra30_dam_writel(dams_cont_info[ifc], val,
+			TEGRA30_DAM_FARROW_PARAM_0);
+}
+
+void tegra30_dam_set_biquad_fixed_coef(int ifc)
+{
+	u32 val = TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0_VAL;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	tegra30_dam_writel(dams_cont_info[ifc], val,
+			TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0);
+}
+
+void tegra30_dam_enable_coeff_ram(int ifc)
+{
+	u32 val;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
+	val |= TEGRA30_DAM_CH0_CTRL_COEFF_RAM_ENABLE;
+
+	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CH0_CTRL);
+}
+
+void tegra30_dam_set_filter_stages(int ifc, int fsin, int fsout)
+{
+	u32 val;
+	int filt_stages = 0;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CH0_CTRL);
+
+	switch(fsin) {
+		case TEGRA30_AUDIO_SAMPLERATE_8000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				filt_stages = 1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				filt_stages = 2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 0;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_16000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_48000)
+				filt_stages = 0;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_44100)
+				filt_stages = 3;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 0;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_44100:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 2;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 2;
+			break;
+
+		case TEGRA30_AUDIO_SAMPLERATE_48000:
+			if (fsout == TEGRA30_AUDIO_SAMPLERATE_8000)
+				filt_stages = 1;
+			else if (fsout == TEGRA30_AUDIO_SAMPLERATE_16000)
+				filt_stages = 0;
+			break;
+
+		default:
+			break;
+	}
+
+	val |= filt_stages << TEGRA30_DAM_CH0_CTRL_FILT_STAGES_SHIFT;
+
+	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CH0_CTRL);
+}
+
+void tegra30_dam_enable_stereo_mixing(int ifc)
+{
+	u32 val;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return;
+
+	val = tegra30_dam_readl(dams_cont_info[ifc], TEGRA30_DAM_CTRL);
+	val |= TEGRA30_DAM_CTRL_STEREO_MIXING_ENABLE;
+
+	tegra30_dam_writel(dams_cont_info[ifc], val, TEGRA30_DAM_CTRL);
+}
+#endif
 
 void tegra30_dam_enable(int ifc, int on, int chid)
 {
