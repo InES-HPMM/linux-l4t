@@ -270,6 +270,8 @@ void tegra_usb_phy_close(struct usb_phy *x)
 	}
 
 	if (phy->vdd_reg) {
+		if (phy->vdd_reg_on)
+			regulator_disable(phy->vdd_reg);
 		regulator_put(phy->vdd_reg);
 	}
 
@@ -337,9 +339,10 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 	}
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	if (phy->vdd_reg && phy->vdd_reg_on) {
-		regulator_disable(phy->vdd_reg);
-		phy->vdd_reg_on = false;
+	if (phy->vdd_reg && phy->vdd_reg_on)
+		if (phy->pdata->has_hostpc || phy->pdata->builtin_host_disabled) {
+			regulator_disable(phy->vdd_reg);
+			phy->vdd_reg_on = false;
 	}
 #endif
 
