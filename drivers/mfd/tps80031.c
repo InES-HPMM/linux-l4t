@@ -556,8 +556,9 @@ static int tps80031_remove(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM
-static int tps80031_i2c_suspend(struct i2c_client *client, pm_message_t state)
+static int tps80031_i2c_suspend(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
 	if (client->irq)
 		disable_irq(client->irq);
@@ -565,14 +566,22 @@ static int tps80031_i2c_suspend(struct i2c_client *client, pm_message_t state)
 	return 0;
 }
 
-static int tps80031_i2c_resume(struct i2c_client *client)
+static int tps80031_i2c_resume(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	struct tps80031 *tps80031 = i2c_get_clientdata(client);
 	tps80031_backup_battery_charger_control(tps80031, 1);
 	if (client->irq)
 		enable_irq(client->irq);
 	return 0;
 }
+static const struct dev_pm_ops tps80031_dev_pm_ops = {
+	.suspend	= tps80031_i2c_suspend,
+	.resume		= tps80031_i2c_resume,
+};
+#define TPS80031_DEV_PM (&tps80031_dev_pm_ops)
+#else
+#define TPS80031_DEV_PM NULL
 #endif
 
 static const struct i2c_device_id tps80031_id_table[] = {
@@ -586,13 +595,10 @@ static struct i2c_driver tps80031_driver = {
 	.driver	= {
 		.name	= "tps80031",
 		.owner	= THIS_MODULE,
+		.pm	= TPS80031_DEV_PM,
 	},
 	.probe		= tps80031_probe,
 	.remove		= tps80031_remove,
-#ifdef CONFIG_PM
-	.suspend	= tps80031_i2c_suspend,
-	.resume		= tps80031_i2c_resume,
-#endif
 	.id_table	= tps80031_id_table,
 };
 
