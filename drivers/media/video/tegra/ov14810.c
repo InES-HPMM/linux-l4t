@@ -886,7 +886,7 @@ static inline void ov14810_get_gain_reg(struct ov14810_reg *regs, u16 gain)
 
 static int ov14810_write16(struct i2c_client *client, u16 addr, u8 val)
 {
-	int err;
+	int err = 0;
 	struct i2c_msg msg;
 	unsigned char data[3];
 
@@ -913,7 +913,7 @@ static int ov14810_write16(struct i2c_client *client, u16 addr, u8 val)
 
 static int ov14810_write8(struct i2c_client *client, u8 addr, u8 val)
 {
-	int err;
+	int err = 0;
 	struct i2c_msg msg;
 	unsigned char data[2];
 
@@ -948,7 +948,7 @@ static int ov14810_write_table(struct ov14810_info *info,
 				const struct ov14810_reg override_list[],
 				int num_override_regs)
 {
-	int err;
+	int err = 0;
 	const struct ov14810_reg *next;
 	int i;
 	u16 val;
@@ -979,7 +979,7 @@ static int ov14810_write_table(struct ov14810_info *info,
 static int ov14810_set_mode(struct ov14810_info *info, struct ov14810_mode *mode)
 {
 	int sensor_mode;
-	int err;
+	int err = 0;
 	struct ov14810_reg reg_list[6];
 
 	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u\n",
@@ -1093,7 +1093,7 @@ static long ov14810_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
 	struct ov14810_info *info = file->private_data;
-	int err;
+	int err = 0;
 
 	switch (cmd) {
 	case OV14810_IOCTL_SET_MODE:
@@ -1170,7 +1170,7 @@ static int ov14810_slavedev_reset(void)
 static int ov14810uC_open(void)
 {
 	int i;
-	int err;
+	int err = 0;
 
 	pr_info("ov14810uC programmming started \n");
 
@@ -1187,7 +1187,7 @@ static int ov14810uC_open(void)
 
 static int ov14810_open(struct inode *inode, struct file *file)
 {
-	int err;
+	int err = 0;
 	pr_info("%s\n", __func__);
 	file->private_data = info;
 
@@ -1234,7 +1234,7 @@ static struct miscdevice ov14810_device = {
 static int ov14810_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int err;
+	int err = 0;
 	pr_info("%s: probing sensor.\n", __func__);
 
 	if (!info) {
