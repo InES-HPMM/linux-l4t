@@ -50,7 +50,7 @@ union tegra_bb_gpio_id {
 };
 
 typedef struct platform_device* (*ehci_register_cb)(void);
-typedef void (*ehci_unregister_cb)(struct platform_device *);
+typedef void (*ehci_unregister_cb)(struct platform_device **);
 
 struct tegra_bb_pdata {
 	union tegra_bb_gpio_id *id;

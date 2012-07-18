@@ -108,7 +108,7 @@ static void xmm_power2_step1(struct work_struct *work)
 
 	/* unregister usb host controller */
 	if (pdata->hsic_unregister)
-		pdata->hsic_unregister(data->hsic_device);
+		pdata->hsic_unregister(&data->hsic_device);
 	else
 		pr_err("%s: hsic_unregister is missing\n", __func__);
 

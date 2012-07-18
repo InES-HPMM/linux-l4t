@@ -241,7 +241,7 @@ static int m7400_attrib_write(struct device *dev, int value)
 	} else {
 		/* Unregister ehci controller */
 		if (ehci_device != NULL)
-			pdata->ehci_unregister(ehci_device);
+			pdata->ehci_unregister(&ehci_device);
 
 		/* Signal AP going down */
 		m7400_apdown_handshake();
