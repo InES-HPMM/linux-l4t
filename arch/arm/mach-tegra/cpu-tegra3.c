@@ -242,7 +242,7 @@ static noinline int tegra_cpu_speed_balance(void)
 	return TEGRA_CPU_SPEED_BALANCED;
 }
 
-static void tegra_auto_hotplug_work_func(struct work_struct *work)
+static void __cpuinit tegra_auto_hotplug_work_func(struct work_struct *work)
 {
 	bool up = false;
 	unsigned int cpu = nr_cpu_ids;
@@ -431,7 +431,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 	}
 }
 
-int tegra_auto_hotplug_init(struct mutex *cpu_lock)
+int __cpuinit tegra_auto_hotplug_init(struct mutex *cpu_lock)
 {
 	/*
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
