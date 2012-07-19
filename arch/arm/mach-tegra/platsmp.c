@@ -58,7 +58,9 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 #endif
 
-static noinline unsigned int get_core_count(void)
+static unsigned int number_of_cores;
+
+static void __init setup_core_count(void)
 {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 l2ctlr;
@@ -68,31 +70,31 @@ static noinline unsigned int get_core_count(void)
 	/* Cortex-A15? */
 	if (cpuid == 0xC0F) {
 		__asm__("mrc p15, 1, %0, c9, c0, 2\n" : "=r" (l2ctlr));
-		return ((l2ctlr >> 24) & 3) + 1;
+		number_of_cores = ((l2ctlr >> 24) & 3) + 1;
 	}
+	else {
 #endif
 #ifdef CONFIG_HAVE_ARM_SCU
-	return scu_get_core_count(scu_base);
+		number_of_cores = scu_get_core_count(scu_base);
 #else
-	return 1;
+		number_of_cores = 1;
+#endif
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	}
+	if (number_of_cores > 1) {
+		u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
+		number_of_cores -= FUSE_SKU_NUM_DISABLED_CPUS(fuse_sku);
+		BUG_ON((int)number_of_cores <= 0);
+	}
 #endif
 }
 
 static unsigned int available_cpus(void)
 {
-	static unsigned int ncores;
 
-	if (ncores == 0) {
-		ncores = get_core_count();
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-		if (ncores > 1) {
-			u32 fuse_sku = readl(FUSE_SKU_DIRECT_CONFIG);
-			ncores -= FUSE_SKU_NUM_DISABLED_CPUS(fuse_sku);
-			BUG_ON((int)ncores <= 0);
-		}
-#endif
-	}
-	return ncores;
+	BUG_ON((int)number_of_cores <= 0);
+
+	return number_of_cores;
 }
 
 static int is_g_cluster_available(unsigned int cpu)
@@ -301,8 +303,12 @@ done:
  */
 static void __init tegra_smp_init_cpus(void)
 {
-	unsigned int ncores = available_cpus();
+	unsigned int ncores;
 	unsigned int i;
+
+	setup_core_count();
+
+	ncores = available_cpus();
 
 	if (ncores > nr_cpu_ids) {
 		pr_warn("SMP: %u cores greater than maximum (%u), clipping\n",
