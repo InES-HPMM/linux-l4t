@@ -37,9 +37,6 @@
 
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
-        .section ".text.head", "ax"
-	__CPUINIT
-
 #ifdef CONFIG_SMP
 /*
  *	tegra_secondary_startup
@@ -53,9 +50,9 @@ ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
-	.previous
 #endif
 
+        .section ".text.head", "ax"
 #ifdef CONFIG_PM_SLEEP
 /*
  *	tegra_resume
