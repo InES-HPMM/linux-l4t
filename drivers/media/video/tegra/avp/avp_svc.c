@@ -2,7 +2,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Dima Zavin <dima@android.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -507,8 +507,11 @@ static void do_svc_module_clock_set(struct avp_svc_info *avp_svc,
 
 	if (msg->module_id == AVP_MODULE_ID_AVP)
 		resp.act_freq = clk_get_rate(avp_svc->sclk);
-	else
+	else {
+		if (aclk == NULL)
+			aclk = &avp_svc->clks[mod->clk_req];
 		resp.act_freq = clk_get_rate(aclk->clk);
+	}
 
 	mutex_unlock(&avp_svc->clk_lock);
 	resp.err = 0;
