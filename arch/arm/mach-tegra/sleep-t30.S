@@ -179,8 +179,14 @@ delay_1:
 	ldr	r3, [r1]			@ read CSR
 	str	r3, [r1]			@ clear CSR
 	tst	r0, #TEGRA30_POWER_HOTPLUG_SHUTDOWN
+#ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	mov	r3, #FLOW_CTRL_WAITEVENT
+	orreq	r3, r3, #FLOW_CTRL_HALT_GIC_IRQ
+	orreq	r3, r3, #FLOW_CTRL_HALT_GIC_FIQ
+#else
 	moveq	r3, #FLOW_CTRL_WAIT_FOR_INTERRUPT	@ For LP2
 	movne	r3, #FLOW_CTRL_WAITEVENT		@ For hotplug
+#endif
 	str	r3, [r2]
 	ldr	r0, [r2]
 	b	wfe_war
