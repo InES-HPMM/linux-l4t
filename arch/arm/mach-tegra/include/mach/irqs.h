@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/irqs.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -468,7 +468,9 @@
 #define INT_MC_GENERAL			(INT_TRI_BASE + 13)
 #define INT_EMC_GENERAL			(INT_TRI_BASE + 14)
 #define INT_SPI_6			(INT_SEC_BASE + 15)
-/* unused				(INT_TRI_BASE + 16) */
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INT_BB2AP_INT1			(INT_TRI_BASE + 16)
+#endif
 #define INT_HDA				(INT_TRI_BASE + 17)
 #define INT_SPI_2			(INT_TRI_BASE + 18)
 #define INT_SPI_3			(INT_TRI_BASE + 19)
@@ -476,7 +478,9 @@
 #define INT_KBC				(INT_TRI_BASE + 21)
 #define INT_EXTERNAL_PMU		(INT_TRI_BASE + 22)
 #define INT_GPIO6			(INT_TRI_BASE + 23)
-/* unused				(INT_TRI_BASE + 24) */
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INT_BB2AP_INT0			(INT_TRI_BASE + 24)
+#endif
 #define INT_GPIO7			(INT_TRI_BASE + 25)
 #define INT_UARTD			(INT_TRI_BASE + 26)
 #define INT_UARTE			(INT_TRI_BASE + 27)
