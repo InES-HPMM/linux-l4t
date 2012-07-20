@@ -282,9 +282,9 @@ static void tegra_thermal_alert_unlocked(void *data)
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	/* inform edp governor */
 	if (edp_thermal_zone_val != temp_tj) {
-		long temp_edp = (dev2tj(device, temp_tj) - therm->edp_offset) / 1000;
+		long temp_edp = (temp_tj - therm->edp_offset) / 1000;
 		tegra_edp_update_thermal_zone(temp_edp);
-		edp_thermal_zone_val = temp_edp;
+		edp_thermal_zone_val = temp_tj;
 	}
 #endif
 }
