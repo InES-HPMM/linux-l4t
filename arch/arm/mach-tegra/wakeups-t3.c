@@ -111,6 +111,7 @@ static int tegra_wake_event_irq[] = {
 	INT_USB, /* TEGRA_USB1_UTMIP, */	/* wake39 */
 	INT_USB2, /* TEGRA_USB2_UTMIP, */	/* wake40 */
 	INT_USB3, /* TEGRA_USB3_UTMIP, */	/* wake41 */
+	INT_USB2, /* TEGRA_USB2_UHSIC, */	/* wake42 */
 };
 
 static int last_gpio = -1;
