@@ -16,6 +16,8 @@
 
 #include <linux/kernel.h>
 #include <linux/bug.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
 
 #include "fuse.h"
 
@@ -91,6 +93,12 @@ static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 };
 
 static int threshold_index;
+
+/*
+ * Only AP37 supports App Profile
+ * This informs user space of support without exposing cpu id's
+ */
+static int enable_app_profiles;
 
 static void fuse_speedo_calib(u32 *speedo_g, u32 *speedo_lp)
 {
@@ -212,6 +220,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 				tegra_cpu_speedo_id = 12;
 				tegra_soc_speedo_id = 2;
 				threshold_index = THRESHOLD_INDEX_9;
+				enable_app_profiles = 1;
 				break;
 			default:
 				pr_err("Tegra3 Rev-A02: Reserved pkg: %d\n",
@@ -454,3 +463,15 @@ void tegra30_init_speedo_data(void)
 		BUG();
 	}
 }
+
+static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
+{
+	return param_get_uint(val, kp);
+}
+
+static struct kernel_param_ops tegra_profiles_ops = {
+	.get = get_enable_app_profiles,
+};
+
+module_param_cb(tegra_enable_app_profiles,
+	&tegra_profiles_ops, &enable_app_profiles, 0444);
