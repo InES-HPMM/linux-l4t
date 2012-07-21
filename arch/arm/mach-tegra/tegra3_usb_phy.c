@@ -2334,6 +2334,12 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 		return -EINVAL;
 	}
 
+	/* reset controller for reenumerating hsic device */
+	tegra_periph_reset_assert(phy->ctrlr_clk);
+	udelay(2);
+	tegra_periph_reset_deassert(phy->ctrlr_clk);
+	udelay(2);
+
 	uhsic_powerup_pmc_wake_detect(phy);
 
 	return 0;
