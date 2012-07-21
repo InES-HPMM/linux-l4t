@@ -1822,6 +1822,31 @@ static void uhsic_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	mdelay(1);
 }
 
+static void uhsic_powerdown_pmc_wake_detect(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	DBG("%s:%d\n", __func__, __LINE__);
+
+	/* turn off pad detectors for HSIC*/
+	val = readl(pmc_base + PMC_USB_AO);
+	val |= (HSIC_RESERVED_P0 | STROBE_VAL_PD_P0 | DATA_VAL_PD_P0);
+	writel(val, pmc_base + PMC_USB_AO);
+
+	/* enable pull downs on HSIC PMC */
+	val = UHSIC_STROBE_RPD_A | UHSIC_DATA_RPD_A | UHSIC_STROBE_RPD_B |
+		UHSIC_DATA_RPD_B | UHSIC_STROBE_RPD_C | UHSIC_DATA_RPD_C |
+		UHSIC_STROBE_RPD_D | UHSIC_DATA_RPD_D;
+	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
+
+	/* Turn over pad configuration to PMC */
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~UHSIC_WAKE_VAL_P0(~0);
+	val |= UHSIC_WAKE_VAL_P0(WAKE_VAL_NONE) | UHSIC_MASTER_ENABLE_P0;
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+}
+
 static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
@@ -2153,6 +2178,9 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 static void uhsic_phy_close(struct tegra_usb_phy *phy)
 {
 	int ret;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	uhsic_powerdown_pmc_wake_detect(phy);
 
 	ret = hsic_rail_disable(phy);
 	if (ret < 0)
