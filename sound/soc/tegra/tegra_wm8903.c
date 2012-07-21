@@ -117,7 +117,6 @@ static int tegra_wm8903_hw_params(struct snd_pcm_substream *substream,
 		     SND_SOC_DAIFMT_CBM_CFM;
 #endif
 
-
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
 		if (!(machine->util_data.set_mclk % mclk))
@@ -686,11 +685,15 @@ static struct snd_soc_card snd_soc_tegra_wm8903 = {
 	.name = "tegra-wm8903",
 	.owner = THIS_MODULE,
 	.dai_link = tegra_wm8903_dai,
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	.num_links = 1,
+#else
 	.num_links = ARRAY_SIZE(tegra_wm8903_dai),
+#endif
 
 	.remove = tegra_wm8903_remove,
 
-	.fully_routed = true,
 	.suspend_post = tegra_wm8903_suspend_post,
 	.resume_pre = tegra_wm8903_resume_pre,
 	//.set_bias_level = tegra30_soc_set_bias_level,
@@ -743,6 +746,11 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		tegra_wm8903_dai[1].cpu_dai_name = "tegra30-spdif";
 
 		tegra_wm8903_dai[2].cpu_dai_name = "tegra30-i2s.3";
+	}
+
+	if (machine_is_curacao() || machine_is_dolak()) {
+		tegra_wm8903_dai[0].codec_name = "wm8903.0-001a";
+		tegra_wm8903_dai[0].cpu_dai_name = "tegra30-i2s.0";
 	}
 
 #ifdef CONFIG_SWITCH
