@@ -124,6 +124,16 @@ config NVMAP_PAGE_POOLS
 	  when system is low on memory and acquired back during release of
 	  memory.
 
+config NVMAP_PAGE_POOLS_INIT_FILLUP
+	bool "Fill up page pools during page pools init"
+	depends on NVMAP_PAGE_POOLS
+	default y
+	help
+	  Say Y here to fill up the page pools during page pool init time.
+	  This helps in faster alloctions right from the early alloction
+	  requests. Page pools fill up during init would increase the boot time.
+	  If increase in boot time is not acceptable, keep this option disabled.
+
 config NVMAP_PAGE_POOL_SIZE
 	hex
 	default 0x0
