@@ -615,6 +615,7 @@ static void __init tegra_curacao_init(void)
 	curacao_hs_uart_init();
 	curacao_bt_rfkill();
 	curacao_sensors_init();
+	curacao_soctherm_init();
 }
 
 static void __init tegra_curacao_reserve(void)

@@ -38,6 +38,7 @@
 #include "board-curacao.h"
 #include "tegra_cl_dvfs.h"
 #include "gpio-names.h"
+#include "tegra11_soctherm.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -490,6 +491,11 @@ int __init curacao_suspend_init(void)
 {
 	tegra_init_suspend(&curacao_suspend_data);
 	return 0;
+}
+
+int __init curacao_soctherm_init(void)
+{
+	return tegra11_soctherm_init();
 }
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM

@@ -44,6 +44,7 @@ int curacao_sdhci_init(void);
 int curacao_pinmux_init(void);
 int curacao_panel_init(void);
 int curacao_sensors_init(void);
+int curacao_soctherm_init(void);
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 #define CURACAO_BOARD_NAME "curacao_sim"

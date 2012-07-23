@@ -430,6 +430,7 @@
 #define INT_ACTMON			(INT_SEC_BASE + 13)
 #define INT_UARTC			(INT_SEC_BASE + 14)
 #define INT_MIPI			(INT_SEC_BASE + 15)
+#define INT_THERMAL			(INT_SEC_BASE + 16)
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 #define IRQ_ETH                         (INT_SEC_BASE + 16)
 #endif
