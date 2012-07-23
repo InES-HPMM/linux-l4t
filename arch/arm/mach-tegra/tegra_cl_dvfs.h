@@ -67,7 +67,7 @@ struct tegra_cl_dvfs_platform_data {
 	union {
 		struct {
 			unsigned long		fs_rate;
-			unsigned long		hs_rate;
+			unsigned long		hs_rate; /* if 0 - no hs mode */
 			u8			hs_master_code;
 			u8			reg;
 			u16			slave_addr;

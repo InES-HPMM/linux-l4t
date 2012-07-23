@@ -120,8 +120,8 @@
 
 #define CL_DVFS_I2C_CLK_DIVISOR		0x16c
 #define CL_DVFS_I2C_CLK_DIVISOR_MASK	0xffff
-#define CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT 0
-#define CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT 16
+#define CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT 16
+#define CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT 0
 
 #define CL_DVFS_OUTPUT_LUT		0x200
 
@@ -134,7 +134,7 @@
 #define ROUND_MIN_RATE(rate, ref_rate)		\
 		(DIV_ROUND_UP(rate, (ref_rate) / 2) * ((ref_rate) / 2))
 #define GET_DIV(ref_rate, out_rate, scale)	\
-		DIV_ROUND_CLOSEST((ref_rate), (out_rate) * (scale))
+		DIV_ROUND_UP((ref_rate), (out_rate) * (scale))
 
 static const char *mode_name[] = {
 	[TEGRA_CL_DVFS_UNINITIALIZED] = "uninitialized",
@@ -267,10 +267,9 @@ static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
 {
-	u32 val;
+	u32 val, div;
 	struct tegra_cl_dvfs_platform_data *p_data = cld->p_data;
-	bool hs_mode = p_data->u.pmu_i2c.hs_master_code &&
-		p_data->u.pmu_i2c.hs_rate;
+	bool hs_mode = p_data->u.pmu_i2c.hs_rate;
 
 	/* PMU slave address, vdd register offset, and transfer mode */
 	val = p_data->u.pmu_i2c.slave_addr << CL_DVFS_I2C_CFG_SLAVE_ADDR_SHIFT;
@@ -291,10 +290,12 @@ static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
 	BUG_ON(!val || (val > CL_DVFS_I2C_CLK_DIVISOR_MASK));
 	val = (val - 1) << CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT;
 	if (hs_mode) {
-		u32 div = GET_DIV(cld->i2c_rate, p_data->u.pmu_i2c.hs_rate, 12);
+		div = GET_DIV(cld->i2c_rate, p_data->u.pmu_i2c.hs_rate, 12);
 		BUG_ON(!div || (div > CL_DVFS_I2C_CLK_DIVISOR_MASK));
-		val |= (div - 1) << CL_DVFS_I2C_CLK_DIVISOR_FS_SHIFT;
+	} else {
+		div = 2;	/* default hs divisor just in case */
 	}
+	val |= (div - 1) << CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT;
 	cl_dvfs_writel(cld, val, CL_DVFS_I2C_CLK_DIVISOR);
 	cl_dvfs_wmb(cld);
 }
@@ -611,7 +612,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		int force_val = req.output - cld->safe_ouput;
-		force_val = force_val * 128 / cld->p_data->cfg_param->cg;
+		int coef = cld->p_data->cfg_param->cg_scale ? 128 : 16;
+		force_val = force_val * coef / cld->p_data->cfg_param->cg;
 		force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
 		val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
 					CL_DVFS_FREQ_REQ_FORCE_MASK;
