@@ -70,8 +70,6 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	ktime_t enter, exit;
 	s64 us;
 
-	trace_power_start(POWER_CSTATE, 1, dev->cpu);
-
 	local_irq_disable();
 	local_fiq_disable();
 

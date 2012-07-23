@@ -283,7 +283,6 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 	idle_stats.lp2_count++;
 	idle_stats.lp2_count_bin[bin]++;
 
-	trace_power_start(POWER_CSTATE, 2, dev->cpu);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	if (!is_lp_cluster()) {
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
@@ -441,8 +440,6 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 #endif
 #endif
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
-
-	trace_power_start(POWER_CSTATE, 2, dev->cpu);
 
 	entry_time = ktime_get();
 
