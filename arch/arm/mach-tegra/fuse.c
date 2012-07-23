@@ -69,6 +69,21 @@
 
 #endif
 
+#define TEGRA_AGE_0_6 0x2cc /*Spare bit 34*/
+#define TEGRA_AGE_1_6 0x308 /*Spare bit 49*/
+#define TEGRA_AGE_0_5 0x2c8 /*Spare bit 33*/
+#define TEGRA_AGE_1_5 0x304 /*Spare bit 48*/
+#define TEGRA_AGE_0_4 0x2c4 /*Spare bit 32*/
+#define TEGRA_AGE_1_4 0x300 /*Spare bit 47*/
+#define TEGRA_AGE_0_3 0x2c0 /*Spare bit 31*/
+#define TEGRA_AGE_1_3 0x2fc /*Spare bit 46*/
+#define TEGRA_AGE_0_2 0x2bc /*Spare bit 30*/
+#define TEGRA_AGE_1_2 0x2f8 /*Spare bit 45*/
+#define TEGRA_AGE_0_1 0x2b8 /*Spare bit 29*/
+#define TEGRA_AGE_1_1 0x2f4 /*Spare bit 44*/
+#define TEGRA_AGE_0_0 0x2b4 /*Spare bit 28*/
+#define TEGRA_AGE_1_0 0x2f0 /*Spare bit 43*/
+
 struct tegra_id {
 	enum tegra_chipid chipid;
 	unsigned int major, minor, netlist, patch;
@@ -207,6 +222,35 @@ int tegra_fuse_get_cpu_iddq_mA(u32 *iddq)
 	return 0;
 }
 #endif
+
+#define TEGRA_READ_AGE_BIT(n, bit, age) {\
+	bit = tegra_fuse_readl(TEGRA_AGE_0_##n);\
+	bit |= tegra_fuse_readl(TEGRA_AGE_1_##n);\
+	bit = bit << n;\
+	age |= bit;\
+}
+
+int tegra_get_age(void)
+{
+	int linear_age, age_bit;
+	linear_age = age_bit = 0;
+
+	TEGRA_READ_AGE_BIT(6, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(5, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(4, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(3, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(2, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(1, age_bit, linear_age);
+	TEGRA_READ_AGE_BIT(0, age_bit, linear_age);
+
+	/*Default Aug, 2012*/
+	if (linear_age <= 0)
+		linear_age = 8;
+
+	pr_info("TEGRA: Linear age: %d\n", linear_age);
+
+	return linear_age;
+}
 
 unsigned long long tegra_chip_uid(void)
 {
