@@ -14,6 +14,7 @@ obj-$(CONFIG_AGP_PARISC)	+= parisc-agp.o
 obj-$(CONFIG_AGP_I460)		+= i460-agp.o
 obj-$(CONFIG_AGP_INTEL)		+= intel-agp.o
 obj-$(CONFIG_AGP_INTEL)		+= intel-gtt.o
+CFLAGS_nvidia-agp.o		 = -Werror
 obj-$(CONFIG_AGP_NVIDIA)	+= nvidia-agp.o
 obj-$(CONFIG_AGP_SGI_TIOCA)	+= sgi-agp.o
 obj-$(CONFIG_AGP_SIS)		+= sis-agp.o
