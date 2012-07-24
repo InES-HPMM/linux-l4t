@@ -314,39 +314,22 @@ static struct tegra_edp_limits edp_default_limits[] = {
 	{85, {1000000, 1000000, 1000000, 1000000} },
 };
 
-
-
-/*
- * Specify regulator current in mA, e.g. 5000mA
- * Use 0 for default
- */
-void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
+int init_cpu_edp_limits_lookup(int cpu_speedo_id)
 {
-	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int i, j;
 	struct tegra_edp_limits *e;
 	struct tegra_edp_entry *t = (struct tegra_edp_entry *)tegra_edp_map;
 	int tsize = sizeof(tegra_edp_map)/sizeof(struct tegra_edp_entry);
 
-	if (!regulator_mA) {
-		edp_limits = edp_default_limits;
-		edp_limits_size = ARRAY_SIZE(edp_default_limits);
-		return;
-	}
-	regulator_cur = regulator_mA;
-
 	for (i = 0; i < tsize; i++) {
 		if (t[i].speedo_id == cpu_speedo_id &&
-		    t[i].regulator_100mA <= regulator_mA / 100)
+		    t[i].regulator_100mA <= regulator_cur / 100)
 			break;
 	}
 
 	/* No entry found in tegra_edp_map */
-	if (i >= tsize) {
-		edp_limits = edp_default_limits;
-		edp_limits_size = ARRAY_SIZE(edp_default_limits);
-		return;
-	}
+	if (i >= tsize)
+		return -EINVAL;
 
 	/* Find all rows for this entry */
 	for (j = i + 1; j < tsize; j++) {
@@ -372,6 +355,28 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 		kfree(edp_limits);
 
 	edp_limits = e;
+	return 0;
+}
+
+/*
+ * Specify regulator current in mA, e.g. 5000mA
+ * Use 0 for default
+ */
+void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
+{
+	int cpu_speedo_id = tegra_cpu_speedo_id();
+	if (!regulator_mA) {
+		edp_limits = edp_default_limits;
+		edp_limits_size = ARRAY_SIZE(edp_default_limits);
+		return;
+	}
+	regulator_cur = regulator_mA;
+
+	if (!init_cpu_edp_limits_lookup(cpu_speedo_id))
+		return;
+
+	edp_limits = edp_default_limits;
+	edp_limits_size = ARRAY_SIZE(edp_default_limits);
 }
 
 
