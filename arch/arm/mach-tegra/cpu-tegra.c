@@ -579,6 +579,10 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 	int ret = 0;
 	unsigned int new_speed = tegra_cpu_highest_speed();
 
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+	edp_update_limit();
+#endif
+
 	if (is_suspended)
 		return -EBUSY;
 

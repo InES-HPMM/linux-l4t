@@ -23,19 +23,23 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+#include <linux/uaccess.h>
 #include <mach/edp.h>
 
 #include "fuse.h"
 #include "dvfs.h"
 #include "clock.h"
+#include "cpu-tegra.h"
 
 #define FREQ_STEP 10000000
 #define A_TEMP_LUT_MAX 7
 #define A_VOLTAGE_LUT_MAX 49
 
-static const struct tegra_edp_limits *edp_limits;
+static struct tegra_edp_limits *edp_limits;
 static int edp_limits_size;
 static unsigned int regulator_cur;
+/* Value to subtract from regulator current limit */
+static unsigned int edp_reg_override_mA = 0;
 
 static const unsigned int *system_edp_limits;
 
@@ -436,11 +440,11 @@ unsigned int edp_calculate_maxf(unsigned int a_temp,
 				unsigned int iddq_mA)
 {
 	unsigned int voltage_mV, a_voltage, leakage_mA, op_mA, freq_MHz;
+	unsigned int regulator_cur_effective = regulator_cur - edp_reg_override_mA;
 	int i;
 
 	for (i = freq_voltage_lut_size - 1; i  >= 0; i--) {
 		freq_MHz = freq_voltage_lut[i].freq / 1000000;
-
 		voltage_mV = freq_voltage_lut[i].a_voltage_lut->voltage;
 		a_voltage = freq_voltage_lut[i].a_voltage_lut->a_voltage;
 
@@ -459,7 +463,7 @@ unsigned int edp_calculate_maxf(unsigned int a_temp,
 		op_mA /= 100000;
 
 		/* TODO: Apply additional margin to total current calculated? */
-		if ((leakage_mA + op_mA) <= regulator_cur)
+		if ((leakage_mA + op_mA) <= regulator_cur_effective)
 			return freq_MHz * 1000;
 	}
 	return 0;
@@ -576,8 +580,19 @@ int init_cpu_edp_limits_calculated(int cpu_speedo_id)
 						iddq_mA);
 	}
 
-	edp_limits = edp_calculated_limits;
-	edp_limits_size = edp_calculated_limits_size;
+	/*
+	 * If this is an EDP table update, need to overwrite old table.
+	 * The old table's address must remain valid.
+	 */
+	if (edp_limits != edp_default_limits) {
+		memcpy(edp_limits, edp_calculated_limits,
+			sizeof(struct tegra_edp_limits) * edp_calculated_limits_size);
+		kfree(edp_calculated_limits);
+	}
+	else {
+		edp_limits = edp_calculated_limits;
+		edp_limits_size = edp_calculated_limits_size;
+	}
 
 	kfree(freq_voltage_lut);
 	return 0;
@@ -746,6 +761,59 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int edp_reg_override_show(struct seq_file *s, void *data)
+{
+	seq_printf(s,
+		"Regulator limit override: %u mA. Effective regulator limit: %u mA\n",
+		edp_reg_override_mA, regulator_cur - edp_reg_override_mA);
+	return 0;
+}
+
+static int edp_reg_override_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	char buf[32], *end;
+	unsigned int edp_reg_override_mA_temp;
+	int cpu_speedo_id;
+
+	if (sizeof(buf) <= count)
+		goto override_err;
+
+	if (copy_from_user(buf, userbuf, count))
+		goto override_err;
+
+	/* terminate buffer and trim - white spaces may be appended
+	 *  at the end when invoked from shell command line */
+	buf[count]='\0';
+	strim(buf);
+
+	edp_reg_override_mA_temp = simple_strtoul(buf, &end, 10);
+	if (*end != '\0')
+		goto override_err;
+
+	if (edp_reg_override_mA_temp >= regulator_cur)
+		goto override_err;
+
+	edp_reg_override_mA = edp_reg_override_mA_temp;
+	cpu_speedo_id = tegra_cpu_speedo_id();
+	if(init_cpu_edp_limits_calculated(cpu_speedo_id))
+		goto override_err;
+
+	if (tegra_cpu_set_speed_cap(NULL))
+		goto override_err;
+
+	pr_info("Reinitialized VDD_CPU EDP table with regulator current limit"
+			" %u mA\n", regulator_cur - edp_reg_override_mA);
+
+	return count;
+
+override_err:
+	pr_err("Failed to reinitialized VDD_CPU EDP table with override \"%s\"\n"
+		,buf);
+
+	return -EINVAL;
+
+}
 
 static int edp_debugfs_open(struct inode *inode, struct file *file)
 {
@@ -757,6 +825,10 @@ static int edp_limit_debugfs_open(struct inode *inode, struct file *file)
 	return single_open(file, edp_limit_debugfs_show, inode->i_private);
 }
 
+static int edp_reg_override_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, edp_reg_override_show, inode->i_private);
+}
 
 static const struct file_operations edp_debugfs_fops = {
 	.open		= edp_debugfs_open,
@@ -772,6 +844,14 @@ static const struct file_operations edp_limit_debugfs_fops = {
 	.release	= single_release,
 };
 
+static const struct file_operations edp_reg_override_debugfs_fops = {
+	.open		= edp_reg_override_open,
+	.read		= seq_read,
+	.write		= edp_reg_override_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init tegra_edp_debugfs_init(void)
 {
 	struct dentry *d;
@@ -783,6 +863,11 @@ static int __init tegra_edp_debugfs_init(void)
 
 	d = debugfs_create_file("edp_limit", S_IRUGO, NULL, NULL,
 				&edp_limit_debugfs_fops);
+
+	d = debugfs_create_file("edp_reg_override", S_IRUGO | S_IWUSR, NULL, NULL,
+				&edp_reg_override_debugfs_fops);
+	if (!d)
+		return -ENOMEM;
 
 	return 0;
 }
