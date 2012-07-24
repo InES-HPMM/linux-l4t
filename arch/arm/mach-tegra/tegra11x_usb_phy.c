@@ -2400,8 +2400,6 @@ static int ulpi_null_phy_pre_resume(struct tegra_usb_phy *phy,
 {
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	ulpi_null_phy_obs_read();
-	usb_phy_wait_for_sof(phy);
-	ulpi_null_phy_obs_read();
 	return 0;
 }
 
