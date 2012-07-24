@@ -5042,6 +5042,12 @@ static struct clk tegra_dfll_cpu = {
 
 static int tegra11_dfll_cpu_late_init(void)
 {
+	int ret;
+	unsigned long flags;
+	struct clk *cpu_clk;
+	struct clk *dfll_clk = &tegra_dfll_cpu;
+	struct tegra_cl_dvfs *cld = &cpu_cl_dvfs;
+
 #if !USE_IRAM_TO_TEST_DFLL
 #ifndef CONFIG_TEGRA_SILICON_PLATFORM
 	u32 netlist, patchid;
@@ -5053,7 +5059,28 @@ static int tegra11_dfll_cpu_late_init(void)
 	}
 #endif
 #endif
-	return tegra_init_cl_dvfs(&tegra_dfll_cpu);
+	cpu_clk = tegra_get_clock_by_name("cpu_g");
+	BUG_ON(!cpu_clk);
+
+	clk_lock_save(cpu_clk, &flags);
+
+	cld->safe_dvfs = cpu_clk->dvfs;
+	cld->ref_clk = clk_get_sys("tegra_cl_dvfs", "ref");
+	cld->soc_clk = clk_get_sys("tegra_cl_dvfs", "soc");
+	cld->i2c_clk = clk_get_sys("tegra_cl_dvfs", "i2c");
+	BUG_ON(IS_ERR_OR_NULL(cld->ref_clk) ||
+	       IS_ERR_OR_NULL(cld->soc_clk) ||
+	       IS_ERR_OR_NULL(cld->i2c_clk));
+
+	/* release dfll clock source reset, init cl_dvfs control logic, and
+	   move dfll to initialized state, so it can be used as CPU source */
+	dfll_clk->ops->reset(dfll_clk, false);
+	ret = tegra_init_cl_dvfs(cld);
+	if (!ret)
+		dfll_clk->state = OFF;
+
+	clk_unlock_restore(cpu_clk, &flags);
+	return ret;
 }
 late_initcall(tegra11_dfll_cpu_late_init);
 

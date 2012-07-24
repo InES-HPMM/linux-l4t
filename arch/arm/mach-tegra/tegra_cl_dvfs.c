@@ -197,8 +197,8 @@ static int find_safe_output(
 	struct tegra_cl_dvfs *cld, unsigned long rate, u8 *safe_output)
 {
 	int i;
-	int n = cld->cpu_clk->dvfs->num_freqs;
-	unsigned long *freqs = cld->cpu_clk->dvfs->freqs;
+	int n = cld->safe_dvfs->num_freqs;
+	unsigned long *freqs = cld->safe_dvfs->freqs;
 
 	for (i = 0; i < n; i++) {
 		if (freqs[i] >= rate) {
@@ -236,10 +236,10 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 
 	BUILD_BUG_ON(MAX_DVFS_FREQS >= MAX_CL_DVFS_VOLTAGES);
 	BUILD_BUG_ON(MAX_CL_DVFS_VOLTAGES > OUT_MASK + 1);
-	BUG_ON(!cld->cpu_clk || !cld->cpu_clk->dvfs);
+	BUG_ON(!cld->safe_dvfs);
 
-	millivolts = cld->cpu_clk->dvfs->millivolts;
-	v_max = cld->cpu_clk->dvfs->max_millivolts;
+	millivolts = cld->safe_dvfs->millivolts;
+	v_max = cld->safe_dvfs->max_millivolts;
 
 	v = cld->soc_data->dfll_millivolts_min;
 	BUG_ON(v > millivolts[0]);
@@ -391,11 +391,9 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-int __init tegra_init_cl_dvfs(struct clk *dfll_clk)
+int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 {
 	int ret;
-	unsigned long flags;
-	struct tegra_cl_dvfs *cld = dfll_clk->u.dfll.cl_dvfs;
 
 	/* Check platform and SoC data, get i2c clock */
 	if (!cld->soc_data) {
@@ -407,8 +405,6 @@ int __init tegra_init_cl_dvfs(struct clk *dfll_clk)
 		return -EINVAL;
 	}
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
-		cld->i2c_clk = clk_get_sys("tegra_cl_dvfs", "i2c");
-		BUG_ON(IS_ERR_OR_NULL(cld->i2c_clk));
 		ret = clk_enable(cld->i2c_clk);
 		if (ret) {
 			pr_err("%s: Failed to enable %s\n",
@@ -421,12 +417,7 @@ int __init tegra_init_cl_dvfs(struct clk *dfll_clk)
 		return -EINVAL;
 	}
 
-	/* Enable clocks, release control logic reset (DFLL is still reset) */
-	cld->ref_clk = tegra_get_clock_by_name("cl_dvfs_ref");
-	cld->soc_clk = tegra_get_clock_by_name("cl_dvfs_soc");
-	cld->cpu_clk = tegra_get_clock_by_name("cpu_g");
-	BUG_ON(!cld->ref_clk || !cld->soc_clk || !cld->cpu_clk);
-
+	/* Enable clocks, release control logic reset */
 	ret = clk_enable(cld->ref_clk);
 	if (ret) {
 		pr_err("%s: Failed to enable %s\n",
@@ -445,17 +436,11 @@ int __init tegra_init_cl_dvfs(struct clk *dfll_clk)
 	/* Get ready ouput voltage mapping*/
 	cl_dvfs_init_maps(cld);
 
-	/* setup PMU interface */
+	/* Setup PMU interface */
 	cl_dvfs_init_out_if(cld);
 
-	/* release DFLL reset and configure control registers in
-	   disabled mode (changing mode is protected by dfll clock
-	   lock) */
-	clk_lock_save(dfll_clk, &flags);
-	tegra_periph_reset_deassert(dfll_clk);
+	/* Configure control registers in disabled mode */
 	cl_dvfs_init_cntrl_logic(cld);
-	dfll_clk->state = OFF;
-	clk_unlock_restore(dfll_clk, &flags);
 
 	return 0;
 }

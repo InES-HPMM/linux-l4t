@@ -105,7 +105,7 @@ struct tegra_cl_dvfs {
 	struct tegra_cl_dvfs_soc_data		*soc_data;
 	struct tegra_cl_dvfs_platform_data	*p_data;
 
-	struct clk			*cpu_clk;
+	struct dvfs			*safe_dvfs;
 	struct clk			*soc_clk;
 	struct clk			*ref_clk;
 	struct clk			*i2c_clk;
@@ -129,7 +129,7 @@ struct tegra_cl_dvfs {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data);
 void tegra_cl_dvfs_set_soc_data(struct tegra_cl_dvfs_soc_data *data);
-int tegra_init_cl_dvfs(struct clk *dfll_clk);
+int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld);
 
 void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld);
 int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld);
@@ -144,7 +144,7 @@ static inline void tegra_cl_dvfs_set_plarform_data(
 static inline void tegra_cl_dvfs_set_soc_data(
 		struct tegra_cl_dvfs_soc_data *data)
 {}
-static inline int tegra_init_cl_dvfs(struct clk *dfll_clk)
+static inline int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 { return -ENOSYS; }
 
 static inline void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
