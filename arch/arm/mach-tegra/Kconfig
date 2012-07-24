@@ -75,6 +75,7 @@ config ARCH_TEGRA_3x_SOC
 config ARCH_TEGRA_11x_SOC
 	bool "Tegra 11x family SOC"
 	select ARCH_REQUIRE_GPIOLIB
+	select ARCH_TEGRA_4GB_MEMORY
 	select ARCH_TEGRA_HAS_CL_DVFS
 	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
 	select ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
@@ -363,4 +364,11 @@ config TEGRA_SKIN_THROTTLE
 	help
 	  Enable throttling to control the temperature of the skin/case
 	  of the device.
+
+config ARCH_TEGRA_4GB_MEMORY
+	bool "Full 4GB physical memory support"
+	default n
+	help
+	  Harmless to select this even if hardware does not support full
+	  4GB physical memory.
 endif

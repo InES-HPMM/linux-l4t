@@ -1078,6 +1078,7 @@ source arch/arm/mm/Kconfig
 config ARM_NR_BANKS
 	int
 	default 16 if ARCH_EP93XX
+	default 16 if ARCH_TEGRA_4GB_MEMORY
 	default 8
 
 config IWMMXT
