@@ -517,7 +517,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	sdhci->max_clk = 26000000;
 #endif
 }
-
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
 	int div;
@@ -602,6 +602,7 @@ set_clk:
 out:
 	sdhci->clock = clock;
 }
+#endif /*	#ifdef CONFIG_ARCH_TEGRA_3x_SOC */
 
 static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 {
