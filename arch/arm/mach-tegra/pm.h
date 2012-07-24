@@ -186,7 +186,7 @@ static inline unsigned long tegra_lp2_timer_remain(void)
 
 static inline int tegra_is_lp2_timer_ready(unsigned int cpu)
 {
-#if defined(CONFIG_TEGRA_LP2_ARM_TWD) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if defined(CONFIG_TEGRA_LP2_CPU_TIMER) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	return 1;
 #else
 	return tegra3_is_lp2_timer_ready(cpu);
