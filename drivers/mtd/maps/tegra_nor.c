@@ -139,7 +139,7 @@ static inline void snor_tegra_writel(struct tegra_nor_info *tnor,
 
 #define DRV_NAME "tegra-nor"
 
-static const char * const part_probes[] = { "cmdlinepart", NULL };
+static const char *part_probes[] = { "cmdlinepart", NULL };
 
 static int wait_for_dma_completion(struct tegra_nor_info *info)
 {
