@@ -2077,10 +2077,58 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 	}
 }
 
+static int hsic_rail_enable(struct tegra_usb_phy *phy)
+{
+	int ret;
+
+	if (phy->hsic_reg == NULL) {
+		phy->hsic_reg = regulator_get(NULL, "avdd_hsic");
+		if (IS_ERR_OR_NULL(phy->hsic_reg)) {
+			pr_err("HSIC: Could not get regulator avdd_hsic\n");
+			phy->hsic_reg = NULL;
+			return PTR_ERR(phy->hsic_reg);
+		}
+	}
+
+	ret = regulator_enable(phy->hsic_reg);
+	if (ret < 0) {
+		pr_err("%s avdd_hsic could not be enabled\n", __func__);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int hsic_rail_disable(struct tegra_usb_phy *phy)
+{
+	int ret;
+
+	if (phy->hsic_reg == NULL) {
+		pr_warn("%s: unbalanced disable\n", __func__);
+		return -EIO;
+	}
+
+	ret = regulator_disable(phy->hsic_reg);
+	if (ret < 0) {
+		pr_err("HSIC regulator avdd_hsic cannot be disabled\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int uhsic_phy_open(struct tegra_usb_phy *phy)
 {
 	unsigned long parent_rate;
 	int i;
+	int ret;
+
+	phy->hsic_reg = NULL;
+	ret = hsic_rail_enable(phy);
+	if (ret < 0) {
+		pr_err("%s avdd_hsic could not be enabled\n", __func__);
+		return ret;
+	}
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	parent_rate = clk_get_rate(clk_get_parent(phy->pllu_clk));
@@ -2098,6 +2146,15 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 	uhsic_powerup_pmc_wake_detect(phy);
 
 	return 0;
+}
+
+static void uhsic_phy_close(struct tegra_usb_phy *phy)
+{
+	int ret;
+
+	ret = hsic_rail_disable(phy);
+	if (ret < 0)
+		pr_err("%s avdd_hsic could not be disabled\n", __func__);
 }
 
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
@@ -2875,6 +2932,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 
 static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.open		= uhsic_phy_open,
+	.close		= uhsic_phy_close,
 	.irq		= uhsic_phy_irq,
 	.power_on	= uhsic_phy_power_on,
 	.power_off	= uhsic_phy_power_off,

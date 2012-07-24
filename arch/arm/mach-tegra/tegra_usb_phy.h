@@ -80,6 +80,7 @@ struct tegra_usb_phy {
 	struct clk *emc_clk;
 	struct clk *sys_clk;
 	struct regulator *vdd_reg;
+	struct regulator *hsic_reg;
 	struct regulator *vbus_reg;
 	struct tegra_usb_phy_ops *ops;
 	struct tegra_xtal_freq *freq;
