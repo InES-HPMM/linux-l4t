@@ -11,4 +11,5 @@ obj-$(CONFIG_W1_MASTER_MXC)		+= mxc_w1.o
 obj-$(CONFIG_W1_MASTER_DS1WM)		+= ds1wm.o
 obj-$(CONFIG_W1_MASTER_GPIO)		+= w1-gpio.o
 obj-$(CONFIG_HDQ_MASTER_OMAP)		+= omap_hdq.o
+CFLAGS_tegra_w1.o			 = -Werror
 obj-$(CONFIG_W1_MASTER_TEGRA)		+= tegra_w1.o
