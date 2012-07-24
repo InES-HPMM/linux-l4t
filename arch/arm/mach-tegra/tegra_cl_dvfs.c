@@ -112,6 +112,7 @@
 
 #define CL_DVFS_I2C_VDD_REG_ADDR	0x44
 #define CL_DVFS_I2C_STS			0x48
+#define CL_DVFS_I2C_STS_I2C_REQ_PENDING	0x1
 
 #define CL_DVFS_INTR_STS		0x5c
 #define CL_DVFS_INTR_EN			0x60
@@ -124,6 +125,8 @@
 #define CL_DVFS_I2C_CLK_DIVISOR_HS_SHIFT 0
 
 #define CL_DVFS_OUTPUT_LUT		0x200
+
+#define CL_DVFS_OUTPUT_PENDING_TIMEOUT	1000
 
 /* Conversion macros (different scales for frequency request, and monitored
    rate is not a typo)*/
@@ -169,6 +172,17 @@ static inline void output_enable(struct tegra_cl_dvfs *cld, bool enable)
 
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
+
+	if (!enable) {
+		int i;
+		for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT; i++) {
+			udelay(1);
+			val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+			if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
+				return;
+		}
+		pr_err("%s: I2C pending transaction timeout\n", __func__);
+	}
 }
 
 static inline void set_mode(struct tegra_cl_dvfs *cld,
