@@ -507,7 +507,11 @@ static int split_large_page(pte_t *kpte, unsigned long address)
 
 	BUG_ON((address & PMD_MASK) < __pa(_end));
 
+	if (!debug_pagealloc)
+		mutex_unlock(&cpa_lock);
 	pbase = pte_alloc_one_kernel(&init_mm, address);
+	if (!debug_pagealloc)
+		mutex_lock(&cpa_lock);
 	if (!pbase)
 		return -ENOMEM;
 
