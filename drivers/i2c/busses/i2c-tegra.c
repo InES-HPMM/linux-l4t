@@ -342,7 +342,7 @@ static int tegra_i2c_fill_tx_fifo(struct tegra_i2c_dev *i2c_dev)
 	u8 *buf;
 	size_t buf_remaining;
 	int words_to_transfer;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	if (!i2c_dev->hw->has_xfer_complete_interrupt) {
 		spin_lock_irqsave(&i2c_dev->fifo_lock, flags);
