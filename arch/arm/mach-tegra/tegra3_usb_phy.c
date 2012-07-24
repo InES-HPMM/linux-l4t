@@ -2588,7 +2588,16 @@ static int ulpi_null_phy_init(struct tegra_usb_phy *phy)
 
 static int ulpi_null_phy_irq(struct tegra_usb_phy *phy)
 {
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
 	usb_phy_fence_read(phy);
+	if (phy->bus_reseting){
+		val = readl(base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+		phy->bus_reseting = false;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -2610,6 +2619,23 @@ static int ulpi_null_phy_cmd_reset(struct tegra_usb_phy *phy)
 	val &=	~ULPIS2S_SLV0_CLAMP_XMIT;
 	writel(val, base + ULPIS2S_CTRL);
 	udelay(10);
+
+	return 0;
+}
+
+static int ulpi_phy_bus_reset(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	/*DISABLE RUN BIT */
+
+	val = readl(base + USB_USBCMD);
+	val &= ~USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
+	phy->bus_reseting = true;
 
 	return 0;
 }
@@ -2786,6 +2812,7 @@ static int ulpi_null_phy_power_on(struct tegra_usb_phy *phy)
 	}
 	udelay(10);
 
+	phy->bus_reseting = false;
 	phy->phy_clk_on = true;
 	phy->hw_accessible = true;
 
@@ -2871,6 +2898,7 @@ static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
 	.post_resume = ulpi_null_phy_post_resume,
 	.reset		= ulpi_null_phy_cmd_reset,
 	.post_suspend   = phy_post_suspend,
+	.bus_reset	= ulpi_phy_bus_reset,
 };
 
 static struct tegra_usb_phy_ops ulpi_link_phy_ops;
