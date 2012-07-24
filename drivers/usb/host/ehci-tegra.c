@@ -237,6 +237,7 @@ static int tegra_ehci_hub_control(
 	switch (typeReq) {
 	case GetPortStatus:
 		if (tegra->port_resuming) {
+			u32 cmd;
 			int delay = ehci->reset_done[wIndex-1] - jiffies;
 			/* Sometimes it seems we get called too soon... In that case, wait.*/
 			if (delay > 0) {
@@ -251,9 +252,11 @@ static int tegra_ehci_hub_control(
 			tegra_usb_phy_post_resume(tegra->phy);
 			tegra->port_resuming = 0;
 			/* If run bit is not set by now enable it */
-			if (ehci->command & CMD_RUN) {
+			cmd = ehci_readl(ehci, &ehci->regs->command);
+			if (!(cmd & CMD_RUN)) {
+				cmd |= CMD_RUN;
 				ehci->command |= CMD_RUN;
-				ehci_writel(ehci, ehci->command, &ehci->regs->command);
+				ehci_writel(ehci, cmd, &ehci->regs->command);
 			}
 			/* Now we can safely re-enable irqs */
 			ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
