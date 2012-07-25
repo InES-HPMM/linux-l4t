@@ -209,10 +209,15 @@ static unsigned int rt_profile_2[] = {
 	5,  13, 14, UINT_MAX
 };
 
+static unsigned int rt_profile_off[] = { /* disables runable thread */
+	0,  0,  0, UINT_MAX
+};
+
 static unsigned int *rt_profiles[] = {
 	rt_profile_default,
 	rt_profile_1,
-	rt_profile_2
+	rt_profile_2,
+	rt_profile_off
 };
 
 
