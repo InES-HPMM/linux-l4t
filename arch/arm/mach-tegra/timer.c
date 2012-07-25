@@ -275,6 +275,19 @@ static void __init tegra_init_late_timer(void)
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
+int arch_timer_get_state(struct arch_timer_context *context)
+{
+	u32 val;
+
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
+	context->cntp_tval = val;
+	asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r" (val));
+	context->cntp_ctl = val;
+	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (val));
+	context->cntfrq = val;
+	return 0;
+}
+
 void arch_timer_suspend(struct arch_timer_context *context)
 {
 	u32 val;
@@ -295,6 +308,7 @@ void arch_timer_resume(struct arch_timer_context *context)
 	asm volatile("mcr p15, 0, %0, c14, c2, 1" : : "r"(val));
 }
 #else
+#define arch_timer_get_state do {} while(0)
 #define arch_timer_suspend do {} while(0)
 #define arch_timer_resume do {} while(0)
 #endif

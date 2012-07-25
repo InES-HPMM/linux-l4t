@@ -64,8 +64,10 @@ static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
 struct arch_timer_context {
 	u32 cntp_tval;
 	u32 cntp_ctl;
+	u32 cntfrq;
 };
 
+int arch_timer_get_state(struct arch_timer_context *);
 void arch_timer_suspend(struct arch_timer_context *);
 void arch_timer_resume(struct arch_timer_context *);
 #endif
