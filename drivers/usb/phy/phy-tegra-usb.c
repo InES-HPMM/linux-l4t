@@ -667,7 +667,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	phy->vdd_reg = regulator_get(NULL, "avdd_usb");
+	phy->vdd_reg = regulator_get(&pdev->dev, "avdd_usb");
 	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
 		ERR("inst:[%d] couldn't get regulator avdd_usb: %ld\n",
 			phy->inst, PTR_ERR(phy->vdd_reg));
