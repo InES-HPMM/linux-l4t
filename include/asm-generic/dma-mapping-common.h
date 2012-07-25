@@ -191,6 +191,7 @@ dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
 #define dma_map_single(d, a, s, r) dma_map_single_attrs(d, a, s, r, NULL)
 #define dma_map_single_at(d, a, h, s, r)		\
 	dma_map_single_at_attrs(d, a, h, s, r, NULL)
+#define dma_map_linear(d, a, s, r) dma_map_linear_attrs(d, a, s, r, NULL)
 #define dma_unmap_single(d, a, s, r) dma_unmap_single_attrs(d, a, s, r, NULL)
 #define dma_map_sg(d, s, n, r) dma_map_sg_attrs(d, s, n, r, NULL)
 #define dma_unmap_sg(d, s, n, r) dma_unmap_sg_attrs(d, s, n, r, NULL)
