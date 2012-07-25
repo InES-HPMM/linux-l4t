@@ -38,9 +38,6 @@
 #include <linux/mutex.h>
 #include <linux/suspend.h>
 #include <linux/poll.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 
 #include <linux/errno.h>
 #include <linux/fs.h>
@@ -63,9 +60,6 @@
 struct mpu_private_data {
 	struct mldl_cfg mldl_cfg;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
 	struct mutex mutex;
 	wait_queue_head_t mpu_event_wait;
 	struct completion completion;
@@ -813,74 +807,6 @@ static long mpu_ioctl(struct file *file,
 	return retval;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-void mpu3050_early_suspend(struct early_suspend *h)
-{
-	struct mpu_private_data *mpu = container_of(h,
-						    struct
-						    mpu_private_data,
-						    early_suspend);
-	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
-	struct i2c_adapter *accel_adapter;
-	struct i2c_adapter *compass_adapter;
-	struct i2c_adapter *pressure_adapter;
-
-	accel_adapter = i2c_get_adapter(mldl_cfg->pdata->accel.adapt_num);
-	compass_adapter =
-	    i2c_get_adapter(mldl_cfg->pdata->compass.adapt_num);
-	pressure_adapter =
-	    i2c_get_adapter(mldl_cfg->pdata->pressure.adapt_num);
-
-	dev_dbg(&this_client->adapter->dev, "%s: %d, %d\n", __func__,
-		h->level, mpu->mldl_cfg.gyro_is_suspended);
-	if (MPU3050_EARLY_SUSPEND_IN_DRIVER) {
-		mutex_lock(&mpu->mutex);
-		(void) mpu3050_suspend(mldl_cfg, this_client->adapter,
-				accel_adapter, compass_adapter,
-				pressure_adapter, TRUE, TRUE, TRUE, TRUE);
-		mutex_unlock(&mpu->mutex);
-	}
-}
-
-void mpu3050_early_resume(struct early_suspend *h)
-{
-	struct mpu_private_data *mpu = container_of(h,
-						    struct
-						    mpu_private_data,
-						    early_suspend);
-	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
-	struct i2c_adapter *accel_adapter;
-	struct i2c_adapter *compass_adapter;
-	struct i2c_adapter *pressure_adapter;
-
-	accel_adapter = i2c_get_adapter(mldl_cfg->pdata->accel.adapt_num);
-	compass_adapter =
-	    i2c_get_adapter(mldl_cfg->pdata->compass.adapt_num);
-	pressure_adapter =
-	    i2c_get_adapter(mldl_cfg->pdata->pressure.adapt_num);
-
-	if (MPU3050_EARLY_SUSPEND_IN_DRIVER) {
-		if (mpu->pid) {
-			unsigned long sensors = mldl_cfg->requested_sensors;
-			mutex_lock(&mpu->mutex);
-			(void) mpu3050_resume(mldl_cfg,
-					this_client->adapter,
-					accel_adapter,
-					compass_adapter,
-					pressure_adapter,
-					sensors & ML_THREE_AXIS_GYRO,
-					sensors & ML_THREE_AXIS_ACCEL,
-					sensors & ML_THREE_AXIS_COMPASS,
-					sensors & ML_THREE_AXIS_PRESSURE);
-			mutex_unlock(&mpu->mutex);
-			dev_dbg(&this_client->adapter->dev,
-				"%s for pid %d\n", __func__, mpu->pid);
-		}
-	}
-	dev_dbg(&this_client->adapter->dev, "%s: %d\n", __func__, h->level);
-}
-#endif
-
 void mpu_shutdown(struct i2c_client *client)
 {
 	struct mpu_private_data *mpu =
@@ -1171,13 +1097,6 @@ int mpu3050_probe(struct i2c_client *client,
 			"Missing %s IRQ\n", MPU_NAME);
 	}
 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	mpu->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	mpu->early_suspend.suspend = mpu3050_early_suspend;
-	mpu->early_suspend.resume = mpu3050_early_resume;
-	register_early_suspend(&mpu->early_suspend);
-#endif
 	return res;
 
 out_mpuirq_failed:
@@ -1227,9 +1146,6 @@ static int mpu3050_remove(struct i2c_client *client)
 
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	unregister_early_suspend(&mpu->early_suspend);
-#endif
 	mpu3050_close(mldl_cfg, client->adapter,
 		accel_adapter, compass_adapter, pressure_adapter);
 

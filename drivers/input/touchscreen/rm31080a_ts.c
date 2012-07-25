@@ -30,9 +30,6 @@
 #include <linux/sched.h>	// find_task_by_pid_type
 #include <linux/syscalls.h>	// sys_clock_gettime()
 #include <linux/module.h>
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#endif
 
 #include <linux/spi/rm31080a_ts.h>
 //=============================================================================
@@ -98,9 +95,6 @@ struct rm31080_ts {
 	bool suspended;
 	char phys[32];
 	struct mutex access_mutex;
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
-#endif
 };
 
 struct rm31080_bus_ops {
@@ -133,10 +127,7 @@ struct rm31080_queue_info g_stQ;
 //=============================================================================
 //FUNCTION DECLARATION
 //=============================================================================
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void rm31080_early_suspend(struct early_suspend *es);
-static void rm31080_early_resume(struct early_suspend *es);
-#endif
+
 //=============================================================================
 // Description:
 //      Debug function: test speed.
@@ -1011,38 +1002,10 @@ static int rm31080_resume(struct device *dev)
 	return 0;
 }
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void rm31080_early_suspend(struct early_suspend *es)
-{
-	struct rm31080_ts *ts;
-	struct device *dev;
-
-	ts = container_of(es, struct rm31080_ts, early_suspend);
-	dev = ts->dev;
-
-	if (rm31080_suspend(dev) != 0) {
-		dev_err(dev, "%s: failed\n", __func__);
-	}
-}
-
-static void rm31080_early_resume(struct early_suspend *es)
-{
-	struct rm31080_ts *ts;
-	struct device *dev;
-
-	ts = container_of(es, struct rm31080_ts, early_suspend);
-	dev = ts->dev;
-
-	if (rm31080_resume(dev) != 0) {
-		dev_err(dev, "%s: failed\n", __func__);
-	}
-}
-#else
 static const struct dev_pm_ops rm31080_pm_ops = {
 	.suspend = rm31080_suspend,
 	.resume = rm31080_resume,
 };
-#endif
 #endif
 
 struct rm31080_ts *rm31080_input_init(struct device *dev, unsigned int irq,
@@ -1118,12 +1081,6 @@ struct rm31080_ts *rm31080_input_init(struct device *dev, unsigned int irq,
 	}
 
 	mutex_init(&ts->access_mutex);
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	ts->early_suspend.suspend = rm31080_early_suspend;
-	ts->early_suspend.resume = rm31080_early_resume;
-	register_early_suspend(&ts->early_suspend);
-#endif
 
 	__rm31080_disable(ts);
 
@@ -1345,7 +1302,7 @@ static struct spi_driver rm31080_spi_driver = {
 			.name = "rm_ts_spidev",
 			.bus = &spi_bus_type,
 			.owner = THIS_MODULE,
-#if !defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM)
 			.pm = &rm31080_pm_ops,
 #endif
 			},

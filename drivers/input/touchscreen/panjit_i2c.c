@@ -223,6 +223,7 @@ fail_i2c_or_register:
 	return ret;
 }
 
+#ifdef CONFIG_PM
 static int pj_suspend(struct i2c_client *client, pm_message_t state)
 {
 	struct pj_data *touch = i2c_get_clientdata(client);
@@ -266,6 +267,7 @@ static int pj_resume(struct i2c_client *client)
 
 	return 0;
 }
+#endif
 
 static int pj_remove(struct i2c_client *client)
 {
@@ -291,8 +293,10 @@ static const struct i2c_device_id panjit_ts_id[] = {
 static struct i2c_driver panjit_driver = {
 	.probe		= pj_probe,
 	.remove		= pj_remove,
+#ifdef CONFIG_PM
 	.suspend	= pj_suspend,
 	.resume		= pj_resume,
+#endif
 	.id_table	= panjit_ts_id,
 	.driver		= {
 		.name	= DRIVER_NAME,
