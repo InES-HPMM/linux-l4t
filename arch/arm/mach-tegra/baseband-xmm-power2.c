@@ -49,24 +49,13 @@ MODULE_PARM_DESC(XYZ,
 
 static struct workqueue_struct *workqueue;
 static bool free_ipc_ap_wake_irq;
-
-static enum {
-	IPC_AP_WAKE_UNINIT,
-	IPC_AP_WAKE_IRQ_READY,
-	IPC_AP_WAKE_INIT1,
-	IPC_AP_WAKE_INIT2,
-	IPC_AP_WAKE_L,
-	IPC_AP_WAKE_H,
-} ipc_ap_wake_state;
-
+static enum ipc_ap_wake_state_t ipc_ap_wake_state;
 
 static irqreturn_t xmm_power2_ipc_ap_wake_irq(int irq, void *dev_id)
 {
 	int value;
 	struct xmm_power_data *data = dev_id;
 	struct baseband_power_platform_data *pdata = data->pdata;
-
-	pr_debug("%s\n", __func__);
 
 	/* check for platform data */
 	if (!pdata)
@@ -79,8 +68,8 @@ static irqreturn_t xmm_power2_ipc_ap_wake_irq(int irq, void *dev_id)
 		pr_err("%s - spurious irq\n", __func__);
 	else if (ipc_ap_wake_state == IPC_AP_WAKE_IRQ_READY) {
 		if (!value) {
-			pr_debug("%s: IPC_AP_WAKE_INIT1 got falling edge\n",
-				__func__);
+			pr_debug("%s: IPC_AP_WAKE_IRQ_READY got falling edge\n",
+						__func__);
 			/* go to IPC_AP_WAKE_INIT2 state */
 			ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 			/* queue work */
@@ -88,7 +77,7 @@ static irqreturn_t xmm_power2_ipc_ap_wake_irq(int irq, void *dev_id)
 				BBXMM_WORK_INIT_FLASHLESS_PM_STEP2;
 			queue_work(workqueue, &data->work);
 		} else
-			pr_debug("%s: IPC_AP_WAKE_INIT1"
+			pr_debug("%s: IPC_AP_WAKE_IRQ_READY"
 				" wait for falling edge\n", __func__);
 	} else {
 		if (!value) {
@@ -98,7 +87,7 @@ static irqreturn_t xmm_power2_ipc_ap_wake_irq(int irq, void *dev_id)
 			pr_debug("%s - rising\n", __func__);
 			ipc_ap_wake_state = IPC_AP_WAKE_H;
 		}
-		return xmm_power_ipc_ap_wake_irq(irq, dev_id);
+		return xmm_power_ipc_ap_wake_irq(value);
 	}
 
 	return IRQ_HANDLED;

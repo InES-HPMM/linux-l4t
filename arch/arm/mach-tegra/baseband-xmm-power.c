@@ -77,18 +77,9 @@ static struct gpio tegra_baseband_gpios[] = {
 	{ -1, GPIOF_IN,            "IPC_HSIC_SUS_REQ" },
 };
 
-static enum {
-	IPC_AP_WAKE_UNINIT,
-	IPC_AP_WAKE_IRQ_READY,
-	IPC_AP_WAKE_INIT1,
-	IPC_AP_WAKE_INIT2,
-	IPC_AP_WAKE_L,
-	IPC_AP_WAKE_H,
-} ipc_ap_wake_state;
-
 static enum baseband_xmm_powerstate_t baseband_xmm_powerstate;
+static enum ipc_ap_wake_state_t ipc_ap_wake_state;
 static struct workqueue_struct *workqueue;
-static struct work_struct init1_work;
 static struct work_struct init2_work;
 static struct work_struct L2_resume_work;
 static struct work_struct autopm_resume_work;
@@ -256,7 +247,6 @@ static int xmm_power_on(struct platform_device *device)
 	/* reset the state machine */
 	baseband_xmm_powerstate = BBXMM_PS_INIT;
 	modem_sleep_flag = false;
-	ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 
 	pr_debug("%s wake_st(%d) modem version %lu\n", __func__,
 				ipc_ap_wake_state, modem_ver);
@@ -264,6 +254,8 @@ static int xmm_power_on(struct platform_device *device)
 	/* register usb host controller */
 	if (!modem_flash) {
 		pr_debug("%s - %d\n", __func__, __LINE__);
+
+		ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
 		/* register usb host controller only once */
 		if (register_hsic_device) {
 			pr_debug("%s: register usb host controller\n",
@@ -291,7 +283,7 @@ static int xmm_power_on(struct platform_device *device)
 
 		pr_debug("%s: reset flash modem\n", __func__);
 		modem_power_on = false;
-		ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
+		ipc_ap_wake_state = IPC_AP_WAKE_IRQ_READY;
 		gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 
 		xmm_power_reset_on(pdata);
@@ -552,41 +544,11 @@ void baseband_xmm_set_power_status(unsigned int status)
 }
 EXPORT_SYMBOL_GPL(baseband_xmm_set_power_status);
 
-irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
+
+irqreturn_t xmm_power_ipc_ap_wake_irq(int value)
 {
 	struct baseband_power_platform_data *data = xmm_power_drv_data.pdata;
 	struct xmm_power_data *drv = &xmm_power_drv_data;
-	int value;
-
-	value = gpio_get_value(data->modem.xmm.ipc_ap_wake);
-	pr_debug("%s g(%d), wake_st(%d)\n", __func__, value, ipc_ap_wake_state);
-
-	/* modem initialization/bootup part*/
-	if (unlikely(ipc_ap_wake_state < IPC_AP_WAKE_IRQ_READY)) {
-		pr_err("%s - spurious irq\n", __func__);
-		return IRQ_HANDLED;
-	} else if (ipc_ap_wake_state == IPC_AP_WAKE_IRQ_READY) {
-		if (!value) {
-			pr_debug("%s - IPC_AP_WAKE_INIT1"
-					" - got falling edge\n", __func__);
-			/* go to IPC_AP_WAKE_INIT1 state */
-			ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
-			queue_work(workqueue, &init1_work);
-		} else
-			pr_debug("%s - IPC_AP_WAKE_INIT1"
-				" - wait for falling edge\n", __func__);
-		return IRQ_HANDLED;
-	} else if (ipc_ap_wake_state == IPC_AP_WAKE_INIT1) {
-		if (!value) {
-			pr_debug("%s - got falling edge at INIT1\n", __func__);
-			/* go to IPC_AP_WAKE_INIT2 state */
-			ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
-			queue_work(workqueue, &init2_work);
-		} else
-			pr_debug("%s - IPC_AP_WAKE_INIT1"
-					" - got rising edge\n", __func__);
-		return IRQ_HANDLED;
-	}
 
 	/* modem wakeup part */
 	if (!value) {
@@ -646,41 +608,41 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 		/* save gpio state */
 		ipc_ap_wake_state = IPC_AP_WAKE_H;
 	}
-
 	return IRQ_HANDLED;
 }
 EXPORT_SYMBOL(xmm_power_ipc_ap_wake_irq);
 
-static void xmm_power_init1_work(struct work_struct *work)
+static irqreturn_t ipc_ap_wake_irq(int irq, void *dev_id)
 {
-	struct baseband_power_platform_data *pdata = xmm_power_drv_data.pdata;
+	struct baseband_power_platform_data *data = xmm_power_drv_data.pdata;
 	int value;
 
-	pr_debug("%s {\n", __func__);
+	value = gpio_get_value(data->modem.xmm.ipc_ap_wake);
+	pr_debug("%s g(%d), wake_st(%d)\n", __func__, value, ipc_ap_wake_state);
 
-	/* check if IPC_HSIC_ACTIVE high */
-	value = gpio_get_value(pdata->modem.xmm.ipc_hsic_active);
-	if (value != 1) {
-		pr_err("%s - expected IPC_HSIC_ACTIVE high!\n", __func__);
-		return;
+	/* modem wakeup part */
+	if (likely(ipc_ap_wake_state >= IPC_AP_WAKE_INIT2))
+		return xmm_power_ipc_ap_wake_irq(value);
+
+	/* modem initialization/bootup part*/
+	if (unlikely(ipc_ap_wake_state < IPC_AP_WAKE_IRQ_READY)) {
+		pr_err("%s - spurious irq\n", __func__);
+	} else if (ipc_ap_wake_state == IPC_AP_WAKE_IRQ_READY) {
+		if (value) {
+			/* make state ready for falling edge */
+			ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
+			pr_debug("%s - got rising edge\n", __func__);
+		}
+	} else if (ipc_ap_wake_state == IPC_AP_WAKE_INIT1) {
+		if (!value) {
+			pr_debug("%s - got falling edge at INIT1\n", __func__);
+			/* go to IPC_AP_WAKE_INIT2 state */
+			ipc_ap_wake_state = IPC_AP_WAKE_INIT2;
+			queue_work(workqueue, &init2_work);
+		} else
+			pr_debug("%s - unexpected rising edge\n", __func__);
 	}
-
-	/* wait 100 ms */
-	msleep(100);
-
-	/* set IPC_HSIC_ACTIVE low */
-	gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
-
-	/* wait 10 ms */
-	usleep_range(10000, 11000);
-
-	/* set IPC_HSIC_ACTIVE high */
-	gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 1);
-
-	/* wait 20 ms */
-	msleep(20);
-
-	pr_debug("%s }\n", __func__);
+	return IRQ_HANDLED;
 }
 
 static void xmm_power_init2_work(struct work_struct *work)
@@ -960,7 +922,7 @@ static int xmm_power_driver_probe(struct platform_device *device)
 		ipc_ap_wake_state = IPC_AP_WAKE_UNINIT;
 		err = request_threaded_irq(
 				gpio_to_irq(pdata->modem.xmm.ipc_ap_wake),
-				NULL, xmm_power_ipc_ap_wake_irq,
+				NULL, ipc_ap_wake_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				"IPC_AP_WAKE_IRQ", NULL);
 		if (err < 0) {
@@ -973,9 +935,9 @@ static int xmm_power_driver_probe(struct platform_device *device)
 		if (err < 0)
 			pr_err("%s: enable_irq_wake error\n", __func__);
 
-		pr_debug("%s: AP_WAKE_INIT1\n", __func__);
-		/* ver 1130 or later starts in INIT1 state */
-		ipc_ap_wake_state = IPC_AP_WAKE_INIT1;
+		pr_debug("%s: set state IPC_AP_WAKE_IRQ_READY\n", __func__);
+		/* ver 1130 or later start in IRQ_READY state */
+		ipc_ap_wake_state = IPC_AP_WAKE_IRQ_READY;
 	}
 
 	/* init work queue */
@@ -990,7 +952,6 @@ static int xmm_power_driver_probe(struct platform_device *device)
 	queue_work(workqueue, &xmm_power_drv_data.work);
 
 	/* init work objects */
-	INIT_WORK(&init1_work, xmm_power_init1_work);
 	INIT_WORK(&init2_work, xmm_power_init2_work);
 	INIT_WORK(&L2_resume_work, xmm_power_l2_resume_work);
 	INIT_WORK(&autopm_resume_work, xmm_power_autopm_resume);
