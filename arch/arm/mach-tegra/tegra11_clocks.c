@@ -5065,12 +5065,12 @@ static int tegra11_dfll_cpu_late_init(void)
 	clk_lock_save(cpu_clk, &flags);
 
 	cld->safe_dvfs = cpu_clk->dvfs;
-	cld->ref_clk = clk_get_sys("tegra_cl_dvfs", "ref");
-	cld->soc_clk = clk_get_sys("tegra_cl_dvfs", "soc");
-	cld->i2c_clk = clk_get_sys("tegra_cl_dvfs", "i2c");
-	BUG_ON(IS_ERR_OR_NULL(cld->ref_clk) ||
-	       IS_ERR_OR_NULL(cld->soc_clk) ||
-	       IS_ERR_OR_NULL(cld->i2c_clk));
+	cld->ref_clk = clk_get_sys("cpu_cl_dvfs", "ref");
+	cld->soc_clk = clk_get_sys("cpu_cl_dvfs", "soc");
+	cld->i2c_clk = clk_get_sys("cpu_cl_dvfs", "i2c");
+	cld->i2c_fast = clk_get_sys("cpu_cl_dvfs", "i2c_fast");
+	BUG_ON(IS_ERR_OR_NULL(cld->ref_clk) || IS_ERR_OR_NULL(cld->soc_clk) ||
+	       IS_ERR_OR_NULL(cld->i2c_clk) || IS_ERR_OR_NULL(cld->i2c_fast));
 
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
@@ -5925,8 +5925,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("afi",	"tegra-pcie",		"afi",	72,	0,	250000000, mux_clk_m, 			0),
 	PERIPH_CLK("se",	"se",			NULL,	127,	0x42c,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	108000000, mux_pllp_clkm,		MUX | DIV_U71),
-	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+	PERIPH_CLK("cl_dvfs_ref", "cpu_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
+	PERIPH_CLK("cl_dvfs_soc", "cpu_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_pllm_pllc_pllp_plla,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -6084,7 +6084,8 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("avp.sclk", "nvavp", "sclk"),
 	CLK_DUPLICATE("avp.emc", "nvavp", "emc"),
 	CLK_DUPLICATE("vde.cbus", "nvavp", "vde"),
-	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
+	CLK_DUPLICATE("i2c5", "cpu_cl_dvfs", "i2c"),
+	CLK_DUPLICATE("i2c5-fast", "cpu_cl_dvfs", "i2c_fast"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 
 };
