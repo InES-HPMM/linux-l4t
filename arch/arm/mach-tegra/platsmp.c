@@ -325,6 +325,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		status = tegra30_power_up_cpu(cpu);
 		break;
 	case TEGRA11X:
+	case TEGRA14X:
 		status = tegra11x_power_up_cpu(cpu);
 		break;
 	default:

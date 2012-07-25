@@ -1234,6 +1234,11 @@ int __init tegra_powergate_init(void)
 		tegra_num_cpu_domains = 4;
 		tegra_cpu_domains = tegra_quad_cpu_domains;
 		break;
+	case TEGRA14X:
+		tegra_num_powerdomains = 25;
+		tegra_num_cpu_domains = 4;
+		tegra_cpu_domains = tegra_quad_cpu_domains;
+		break;
 	default:
 		/* Unknown Tegra variant. Disable powergating */
 		tegra_num_powerdomains = 0;
