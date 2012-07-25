@@ -391,6 +391,27 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
+static int cl_dvfs_enable_clocks(struct tegra_cl_dvfs *cld)
+{
+	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
+		clk_enable(cld->i2c_clk);
+		clk_enable(cld->i2c_fast);
+	}
+	clk_enable(cld->ref_clk);
+	clk_enable(cld->soc_clk);
+	return 0;
+}
+
+static void cl_dvfs_disable_clocks(struct tegra_cl_dvfs *cld)
+{
+	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
+		clk_disable(cld->i2c_clk);
+		clk_disable(cld->i2c_fast);
+	}
+	clk_disable(cld->ref_clk);
+	clk_disable(cld->soc_clk);
+}
+
 int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 {
 	int ret;
@@ -406,6 +427,12 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	}
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
 		ret = clk_enable(cld->i2c_clk);
+		if (ret) {
+			pr_err("%s: Failed to enable %s\n",
+			       __func__, cld->i2c_clk->name);
+			return ret;
+		}
+		ret = clk_enable(cld->i2c_fast);
 		if (ret) {
 			pr_err("%s: Failed to enable %s\n",
 			       __func__, cld->i2c_clk->name);
@@ -439,8 +466,9 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	/* Setup PMU interface */
 	cl_dvfs_init_out_if(cld);
 
-	/* Configure control registers in disabled mode */
+	/* Configure control registers in disabled mode and disable clocks */
 	cl_dvfs_init_cntrl_logic(cld);
+	cl_dvfs_disable_clocks(cld);
 
 	return 0;
 }
@@ -479,6 +507,7 @@ void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 
 	output_enable(cld, false);
 	set_mode(cld, TEGRA_CL_DVFS_DISABLED);
+	cl_dvfs_disable_clocks(cld);
 }
 
 /* Switch from DISABLE state to OPEN_LOOP state */
@@ -493,6 +522,7 @@ int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld)
 	if (cld->mode != TEGRA_CL_DVFS_DISABLED)
 		return 0;
 
+	cl_dvfs_enable_clocks(cld);
 	set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
 	return 0;
 }
