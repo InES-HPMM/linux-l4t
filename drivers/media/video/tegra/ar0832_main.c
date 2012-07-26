@@ -2424,7 +2424,7 @@ static void ar0832_create_debugfs(struct ar0832_dev *dev)
 		goto remove_debugfs;
 
 	ret = debugfs_create_file("test_pattern",
-				S_IWUGO | S_IRUGO,
+				S_IWUSR | S_IRUGO,
 				dev->debugdir, dev,
 				&ar0832_debugfs_fops);
 	if (!ret)
