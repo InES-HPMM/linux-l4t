@@ -3270,6 +3270,16 @@ static int snd_hda_spdif_out_switch_put(struct snd_kcontrol *kcontrol,
 	return change;
 }
 
+int snd_hda_max_pcm_ch_info(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xFFFFFFFF;
+	return 0;
+}
+
 int snd_hda_hdmi_decode_info(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_info *uinfo)
 {
@@ -3277,6 +3287,15 @@ int snd_hda_hdmi_decode_info(struct snd_kcontrol *kcontrol,
 	uinfo->count = 1;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = 0xFFFFFFFF;
+	return 0;
+}
+
+static int snd_hda_max_pcm_ch_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct hda_codec *codec = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = codec->max_pcm_channels;
 	return 0;
 }
 
@@ -3323,6 +3342,12 @@ static struct snd_kcontrol_new dig_mixes[] = {
 		.name = "HDA Decode Capability",
 		.info = snd_hda_hdmi_decode_info,
 		.get = snd_hda_hdmi_decode_get,
+	},
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "HDA Maximum PCM Channels",
+		.info = snd_hda_max_pcm_ch_info,
+		.get = snd_hda_max_pcm_ch_get,
 	},
 	{ } /* end */
 };
