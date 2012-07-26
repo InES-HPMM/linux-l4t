@@ -989,7 +989,8 @@ static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 		/* Program the field PTC based on the saved speed mode */
 		val = readl(base + USB_PORTSC);
 		val &= ~USB_PORTSC_PTC(~0);
-		if (phy->port_speed == USB_PHY_PORT_SPEED_HIGH)
+		if ((phy->port_speed == USB_PHY_PORT_SPEED_HIGH) ||
+			(phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_HSIC))
 			val |= USB_PORTSC_PTC(5);
 		else if (phy->port_speed == USB_PHY_PORT_SPEED_FULL)
 			val |= USB_PORTSC_PTC(6);
@@ -2031,7 +2032,7 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 
 	unsigned long val;
 	void __iomem *base = phy->regs;
-	int wait_time_us = 3000; /* FPR should be set by this time */
+	int wait_time_us = 25000; /* FPR should be set by this time */
 
 	DBG("%s(%d)\n", __func__, __LINE__);
 
@@ -2047,7 +2048,8 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 				return;
 			}
 			wait_time_us--;
-		} while (!(val & USB_PORTSC_RESUME));
+		} while (val & (USB_PORTSC_RESUME | USB_PORTSC_SUSP));
+
 		/* wait for 25 ms to port resume complete */
 		msleep(25);
 		/* disable PMC master control */
