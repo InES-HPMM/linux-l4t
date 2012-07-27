@@ -695,12 +695,15 @@ int __init tegra_dvfs_late_init(void)
 
 	mutex_unlock(&dvfs_lock);
 
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	if (!connected)
+		return -ENODEV;
+#endif
 	register_pm_notifier(&tegra_dvfs_nb);
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
 
 	return 0;
 }
-late_initcall(tegra_dvfs_late_init);
 
 #ifdef CONFIG_DEBUG_FS
 static int dvfs_tree_sort_cmp(void *p, struct list_head *a, struct list_head *b)

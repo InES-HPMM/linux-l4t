@@ -721,7 +721,7 @@ __setup("tegra_keep_boot_clocks", tegra_keep_boot_clocks_setup);
  * Bootloader may not match kernel restrictions on CPU clock sources.
  * Make sure CPU clock is sourced from either main or backup parent.
  */
-static int tegra_sync_cpu_clock(void)
+static int __init tegra_sync_cpu_clock(void)
 {
 	int ret;
 	unsigned long rate;
@@ -736,7 +736,6 @@ static int tegra_sync_cpu_clock(void)
 		pr_info("CPU rate: %lu MHz\n", clk_get_rate(c) / 1000000);
 	return ret;
 }
-late_initcall(tegra_sync_cpu_clock);
 
 /*
  * Iterate through all clocks, disabling any for which the refcount is 0
@@ -773,7 +772,34 @@ static int __init tegra_init_disable_boot_clocks(void)
 #endif
 	return 0;
 }
-late_initcall(tegra_init_disable_boot_clocks);
+
+/* Get ready DFLL clock source (if available) for CPU */
+static int __init tegra_dfll_cpu_start(void)
+{
+	unsigned long flags;
+	struct clk *c = tegra_get_clock_by_name("cpu");
+	struct clk *dfll_cpu = tegra_get_clock_by_name("dfll_cpu");
+
+	BUG_ON(!c);
+	clk_lock_save(c, &flags);
+
+	if (dfll_cpu && dfll_cpu->ops && dfll_cpu->ops->init)
+		dfll_cpu->ops->init(dfll_cpu);
+
+	clk_unlock_restore(c, &flags);
+	return 0;
+}
+
+static int __init tegra_clk_late_init(void)
+{
+	tegra_init_disable_boot_clocks(); /* must before dvfs late init */
+	if (!tegra_dvfs_late_init())
+		tegra_dfll_cpu_start();	/* after successful dvfs init only */
+	tegra_sync_cpu_clock();		/* after attempt to get dfll ready */
+	return 0;
+}
+late_initcall(tegra_clk_late_init);
+
 
 /* Several extended clock configuration bits (e.g., clock routing, clock
  * phase control) are included in PLL and peripheral clock source

@@ -1048,8 +1048,8 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->dvfs) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
-		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate != rate)) {
-			WARN(1, "Changing CPU rate while regulator is not"
+		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate < rate)) {
+			WARN(1, "Increasing CPU rate while regulator is not"
 				" ready is not allowed\n");
 			return -ENOSYS;
 		}
@@ -3009,6 +3009,43 @@ static struct clk_ops tegra_plle_ops = {
 };
 
 /* DFLL operations */
+static void tegra11_dfll_cpu_late_init(struct clk *c)
+{
+	int ret;
+	struct clk *cpu_clk;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	u32 netlist, patchid;
+	tegra_get_netlist_revision(&netlist, &patchid);
+	if (netlist < 12) {
+		pr_err("%s: CL-DVFS is not available on net %d\n",
+		       __func__, netlist);
+		return;
+	}
+#endif
+
+	cpu_clk = tegra_get_clock_by_name("cpu_g");
+	BUG_ON(!cpu_clk);
+
+	cld->safe_dvfs = cpu_clk->dvfs;
+	cld->ref_clk = clk_get_sys("cpu_cl_dvfs", "ref");
+	cld->soc_clk = clk_get_sys("cpu_cl_dvfs", "soc");
+	cld->i2c_clk = clk_get_sys("cpu_cl_dvfs", "i2c");
+	cld->i2c_fast = clk_get_sys("cpu_cl_dvfs", "i2c_fast");
+	BUG_ON(IS_ERR_OR_NULL(cld->ref_clk) || IS_ERR_OR_NULL(cld->soc_clk) ||
+	       IS_ERR_OR_NULL(cld->i2c_clk) || IS_ERR_OR_NULL(cld->i2c_fast));
+
+	/* release dfll clock source reset, init cl_dvfs control logic, and
+	   move dfll to initialized state, so it can be used as CPU source */
+	tegra_periph_reset_deassert(c);
+	ret = tegra_init_cl_dvfs(cld);
+	if (!ret) {
+		c->state = OFF;
+		pr_info("Tegra CPU DFLL is initialized\n");
+	}
+}
+
 static int tegra11_dfll_clk_enable(struct clk *c)
 {
 	return tegra_cl_dvfs_enable(c->u.dfll.cl_dvfs);
@@ -5020,15 +5057,10 @@ static struct clk tegra_pll_x_out0 = {
 };
 
 /* FIXME: remove; for now, should be always checked-in as "0" */
-#define USE_IRAM_TO_TEST_DFLL		0
 #define USE_LP_CPU_TO_TEST_DFLL		0
 
 static struct tegra_cl_dvfs cpu_cl_dvfs = {
-#if USE_IRAM_TO_TEST_DFLL
-	.cl_base = (u32)IO_ADDRESS(TEGRA_IRAM_BASE + 0x3f000),
-#else
 	.cl_base = (u32)IO_ADDRESS(TEGRA_CL_DVFS_BASE),
-#endif
 };
 
 static struct clk tegra_dfll_cpu = {
@@ -5041,50 +5073,6 @@ static struct clk tegra_dfll_cpu = {
 		.cl_dvfs = &cpu_cl_dvfs,
 	},
 };
-
-static int tegra11_dfll_cpu_late_init(void)
-{
-	int ret;
-	unsigned long flags;
-	struct clk *cpu_clk;
-	struct clk *dfll_clk = &tegra_dfll_cpu;
-	struct tegra_cl_dvfs *cld = &cpu_cl_dvfs;
-
-#if !USE_IRAM_TO_TEST_DFLL
-#ifndef CONFIG_TEGRA_SILICON_PLATFORM
-	u32 netlist, patchid;
-	tegra_get_netlist_revision(&netlist, &patchid);
-	if (netlist < 12) {
-		pr_err("%s: CL-DVFS is not available on net %d\n",
-		       __func__, netlist);
-		return -ENOSYS;
-	}
-#endif
-#endif
-	cpu_clk = tegra_get_clock_by_name("cpu_g");
-	BUG_ON(!cpu_clk);
-
-	clk_lock_save(cpu_clk, &flags);
-
-	cld->safe_dvfs = cpu_clk->dvfs;
-	cld->ref_clk = clk_get_sys("cpu_cl_dvfs", "ref");
-	cld->soc_clk = clk_get_sys("cpu_cl_dvfs", "soc");
-	cld->i2c_clk = clk_get_sys("cpu_cl_dvfs", "i2c");
-	cld->i2c_fast = clk_get_sys("cpu_cl_dvfs", "i2c_fast");
-	BUG_ON(IS_ERR_OR_NULL(cld->ref_clk) || IS_ERR_OR_NULL(cld->soc_clk) ||
-	       IS_ERR_OR_NULL(cld->i2c_clk) || IS_ERR_OR_NULL(cld->i2c_fast));
-
-	/* release dfll clock source reset, init cl_dvfs control logic, and
-	   move dfll to initialized state, so it can be used as CPU source */
-	dfll_clk->ops->reset(dfll_clk, false);
-	ret = tegra_init_cl_dvfs(cld);
-	if (!ret)
-		dfll_clk->state = OFF;
-
-	clk_unlock_restore(cpu_clk, &flags);
-	return ret;
-}
-late_initcall(tegra11_dfll_cpu_late_init);
 
 static struct clk tegra_pll_re_vco = {
 	.name      = "pll_re_vco",
@@ -6304,6 +6292,9 @@ void __init tegra11x_init_clocks(void)
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
+
+	/* To be ready for DFLL late init */
+	tegra_dfll_cpu.ops->init = tegra11_dfll_cpu_late_init;
 }
 
 #ifdef CONFIG_CPU_FREQ
