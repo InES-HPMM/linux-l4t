@@ -1881,6 +1881,30 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val |= UHSIC_PWR;
 	writel(val, pmc_base + PMC_UTMIP_MASTER_CONFIG);
 
+	/* Make sure nothing is happening on the line with respect to PMC */
+	val = readl(pmc_base + PMC_UTMIP_UHSIC_FAKE);
+	val &= ~UHSIC_STROBE_VAL;
+	val &= ~UHSIC_DATA_VAL;
+	writel(val, pmc_base + PMC_UTMIP_UHSIC_FAKE);
+
+	/* Clear walk enable */
+	val = readl(pmc_base + PMC_SLEEPWALK_CFG);
+	val &= ~UHSIC_LINEVAL_WALK_EN;
+	writel(val, pmc_base + PMC_SLEEPWALK_CFG);
+
+	/* Make sure wake value for line is none */
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
+	val |= UHSIC_WAKE_VAL(WAKE_VAL_NONE);
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+
+	/* turn on pad detectors */
+	val = readl(pmc_base + PMC_USB_AO);
+	val &= ~(STROBE_VAL_PD_P0 | DATA_VAL_PD_P0);
+	writel(val, pmc_base + PMC_USB_AO);
+
+	/* Add small delay before usb detectors provide stable line values */
+	udelay(1);
 
 	/* Enable which type of event can trigger a walk,
 	* in this case usb_line_wake */
@@ -1897,19 +1921,16 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val |=  UHSIC_DATA_RPD_A;
 	val &= ~UHSIC_STROBE_RPD_A;
 	val |=  UHSIC_STROBE_RPU_A;
-	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
 
 	val &= ~UHSIC_DATA_RPD_B;
 	val |=  UHSIC_DATA_RPU_B;
 	val &= ~UHSIC_STROBE_RPU_B;
 	val |=  UHSIC_STROBE_RPD_B;
-	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
 
 	val &= ~UHSIC_DATA_RPD_C;
 	val |=  UHSIC_DATA_RPU_C;
 	val &= ~UHSIC_STROBE_RPU_C;
 	val |=  UHSIC_STROBE_RPD_C;
-	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
 
 	val &= ~UHSIC_DATA_RPD_D;
 	val |=  UHSIC_DATA_RPU_D;
@@ -1917,19 +1938,21 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val |=  UHSIC_STROBE_RPD_D;
 	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
 
-	/* turn on pad detectors */
-	val = readl(pmc_base + PMC_USB_AO);
-	val &= ~(STROBE_VAL_PD_P0 | DATA_VAL_PD_P0);
-	writel(val, pmc_base + PMC_USB_AO);
-	/* Add small delay before usb detectors provide stable line values */
-	udelay(1);
-
 	phy->remote_wakeup = false;
+
+	/* Setting Wake event*/
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
+	val |= UHSIC_WAKE_VAL(WAKE_VAL_SD10);
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+
+	/* Clear the walk pointers and wake alarm */
+	val = readl(pmc_base + PMC_TRIGGERS);
+	val |= UHSIC_CLR_WAKE_ALARM_P0 | UHSIC_CLR_WALK_PTR_P0;
+	writel(val, pmc_base + PMC_TRIGGERS);
 
 	/* Turn over pad configuration to PMC  for line wake events*/
 	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~UHSIC_WAKE_VAL(~0);
-	val |= UHSIC_WAKE_VAL(WAKE_VAL_SD10);
 	val |= UHSIC_MASTER_ENABLE;
 	writel(val, pmc_base + PMC_SLEEP_CFG);
 
@@ -1948,13 +1971,9 @@ static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 
 	DBG("%s (%d)\n", __func__, __LINE__);
 	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~UHSIC_WAKE_VAL(0x0);
+	val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
 	val |= UHSIC_WAKE_VAL(WAKE_VAL_NONE);
 	writel(val, pmc_base + PMC_SLEEP_CFG);
-
-	val = readl(pmc_base + PMC_TRIGGERS);
-	val |= UHSIC_CLR_WAKE_ALARM_P0 | UHSIC_CLR_WALK_PTR_P0;
-	writel(val, pmc_base + PMC_TRIGGERS);
 
 	val = readl(base + UHSIC_PMC_WAKEUP0);
 	val &= ~EVENT_INT_ENB;
@@ -1970,6 +1989,10 @@ static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 	val |= (STROBE_VAL_PD_P0 | DATA_VAL_PD_P0);
 	writel(val, pmc_base + PMC_USB_AO);
 
+	val = readl(pmc_base + PMC_TRIGGERS);
+	val |= (UHSIC_CLR_WALK_PTR_P0 | UHSIC_CLR_WAKE_ALARM_P0);
+	writel(val, pmc_base + PMC_TRIGGERS);
+
 	phy->remote_wakeup = false;
 }
 
@@ -1984,12 +2007,12 @@ static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 		val = readl(pmc_base + UTMIP_UHSIC_STATUS);
 		if (UHSIC_WAKE_ALARM & val) {
 			val = readl(pmc_base + PMC_SLEEP_CFG);
-			val &= ~UHSIC_WAKE_VAL(0x0);
+			val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
 			val |= UHSIC_WAKE_VAL(WAKE_VAL_NONE);
 			writel(val, pmc_base + PMC_SLEEP_CFG);
 
 			val = readl(pmc_base + PMC_TRIGGERS);
-			val |= UHSIC_CLR_WAKE_ALARM_P0 | UHSIC_CLR_WALK_PTR_P0;
+			val |= UHSIC_CLR_WAKE_ALARM_P0;
 			writel(val, pmc_base + PMC_TRIGGERS);
 
 			val = readl(base + UHSIC_PMC_WAKEUP0);
