@@ -115,6 +115,7 @@ static int curacao_panel_disable(void)
 	return -ENODEV;
 }
 
+#if TEGRA_DSI_GANGED_MODE
 static struct resource curacao_disp1_resources[] = {
 	{
 		.name	= "irq",
@@ -158,6 +159,7 @@ static struct resource curacao_disp1_resources[] = {
 
 #endif
 };
+#endif
 
 static struct tegra_dc_sd_settings curacao_sd_settings = {
 	.enable = 0, /* Normal mode operation */
@@ -363,6 +365,7 @@ static struct tegra_dsi_out curacao_dsi = {
 	.fpga_freq_khz = 162000,
 };
 
+#if TEGRA_DSI_GANGED_MODE
 static struct tegra_dc_out curacao_disp1_out = {
 	.sd_settings	= &curacao_sd_settings,
 
@@ -400,6 +403,7 @@ static struct nvhost_device curacao_disp1_device = {
 		.platform_data = &curacao_disp1_pdata,
 	},
 };
+#endif
 
 static struct resource curacao_disp2_resources[] = {
 	{
@@ -547,6 +551,17 @@ int __init curacao_panel_init(void)
 		return err;
 #endif
 
+#if TEGRA_DSI_GANGED_MODE
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
+	res = nvhost_get_resource_byname(&curacao_disp1_device,
+					 IORESOURCE_MEM, "fbmem");
+	res->start = tegra_fb_start;
+	res->end = tegra_fb_start + tegra_fb_size - 1;
+
+	if (!err)
+		err = nvhost_device_register(&curacao_disp1_device);
+#endif
+#else
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	res = nvhost_get_resource_byname(&curacao_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
@@ -555,6 +570,7 @@ int __init curacao_panel_init(void)
 
 	if (!err)
 		err = nvhost_device_register(&curacao_disp2_device);
+#endif
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
