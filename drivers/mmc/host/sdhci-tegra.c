@@ -1340,11 +1340,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	/* enable HS200 capable */
 	host->mmc->caps2 |= MMC_CAP2_HS200;
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
-	if (plat->mmc_data.embedded_sdio)
-		host->mmc->pm_flags = MMC_PM_KEEP_POWER;
-#endif
 
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
