@@ -8,31 +8,30 @@ obj-y                                   += ahb.o
 obj-y                                   += common.o
 obj-y                                   += devices.o
 obj-y                                   += board-info.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += common-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += common-t3.o
 obj-y                                   += io.o
 obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
 obj-y                                   += timerinfo.o
-ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
-obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
-else
-obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
-endif
 
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
 obj-y                                   += common-t2.o
 obj-y                                   += pm-t2.o
-obj-y                                   += sleep-t2.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
 obj-y                                   += timer-t2.o
 obj-y                                   += wakeups-t2.o
+ifeq ($(CONFIG_CPU_IDLE),y)
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t2.o
+endif
 else
 obj-y                                   += common-t3.o
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
 obj-y                                   += timer-t3.o
 obj-y                                   += wakeups-t3.o
+ifeq ($(CONFIG_CPU_IDLE),y)
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
+endif
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
 ifeq ($(CONFIG_CPUQUIET_FRAMEWORK),y)
 obj-y                                   += cpuquiet.o
@@ -54,7 +53,6 @@ obj-y                                   += sleep.o
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += sleep-t2.o
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
@@ -82,11 +80,6 @@ obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_emc.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= sleep-t20.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += wakeups-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += wakeups-t3.o
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pinmux-tegra20-tables.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pinmux-tegra30-tables.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += pinmux-t11-tables.o
@@ -103,12 +96,6 @@ obj-y                                   += reset.o
 obj-y                                   += headsmp.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
-ifeq ($(CONFIG_CPU_IDLE),y)
-ifeq ($(CONFIG_PM_SLEEP),y)
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpuidle-t2.o
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuidle-t3.o
-endif
-endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_throttle.o
 endif
