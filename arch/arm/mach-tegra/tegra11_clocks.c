@@ -480,9 +480,13 @@ static const struct utmi_clk_param utmi_parameters[] =
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-static void __iomem *misc_gp_hidrev_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
 
-#define MISC_GP_HIDREV                  0x804
+#define MISC_GP_HIDREV				0x804
+#define MISC_GP_TRANSACTOR_SCRATCH_0		0x864
+#define MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE	(0x1 << 1)
+#define MISC_GP_TRANSACTOR_SCRATCH_DDS_ENABLE	(0x1 << 2)
+#define MISC_GP_TRANSACTOR_SCRATCH_DP2_ENABLE	(0x1 << 3)
 
 /*
  * Some peripheral clocks share an enable bit, so refcount the enable bits
@@ -501,7 +505,7 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 #define pmc_readl(reg) \
 	__raw_readl((u32)reg_pmc_base + (reg))
 #define chipid_readl() \
-	__raw_readl((u32)misc_gp_hidrev_base + MISC_GP_HIDREV)
+	__raw_readl((u32)misc_gp_base + MISC_GP_HIDREV)
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
@@ -6224,6 +6228,40 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 
 	/* No other policy limitations for now */
 	return true;
+}
+
+/* Internal LA may request some clocks to be enabled on init via TRANSACTION
+   SCRATCH register settings */
+void __init tegra11x_clk_init_la(void)
+{
+	struct clk *c;
+	u32 reg = readl(misc_gp_base + MISC_GP_TRANSACTOR_SCRATCH_0);
+
+	if (!(reg & MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE))
+		return;
+
+	c = tegra_get_clock_by_name("la");
+	if (WARN(!c, "%s: could not find la clk\n", __func__))
+		return;
+	clk_enable(c);
+
+	if (reg & MISC_GP_TRANSACTOR_SCRATCH_DDS_ENABLE) {
+		c = tegra_get_clock_by_name("dds");
+		if (WARN(!c, "%s: could not find la clk\n", __func__))
+			return;
+		clk_enable(c);
+	}
+	if (reg & MISC_GP_TRANSACTOR_SCRATCH_DP2_ENABLE) {
+		c = tegra_get_clock_by_name("dp2");
+		if (WARN(!c, "%s: could not find la clk\n", __func__))
+			return;
+		clk_enable(c);
+
+		c = tegra_get_clock_by_name("hdmi");
+		if (WARN(!c, "%s: could not find la clk\n", __func__))
+			return;
+		clk_enable(c);
+	}
 }
 
 void __init tegra11x_init_clocks(void)
