@@ -429,8 +429,6 @@
 
 #define PLLE_AUX			0x48c
 #define PLLE_AUX_PLLP_SEL		(1<<2)
-#define PLLE_AUX_CML_SATA_ENABLE	(1<<1)
-#define PLLE_AUX_CML_PCIE_ENABLE	(1<<0)
 
 #define	PMC_SATA_PWRGT			0x1ac
 #define PMC_SATA_PWRGT_PLLE_IDDQ_VALUE	(1<<5)
@@ -3008,6 +3006,15 @@ static struct clk_ops tegra_plle_ops = {
 	.disable		= tegra11_plle_clk_disable,
 };
 
+/*
+ * Tegra11 includes dynamic frequency lock loop (DFLL) with automatic voltage
+ * control as possible CPU clock source. It is included in the Tegra11 clock
+ * tree as "complex PLL" with standard Tegra clock framework APIs. However,
+ * DFLL locking logic h/w access APIs are separated in the tegra_cl_dvfs.c
+ * module. Hence, DFLL operations, with the exception of initialization, are
+ * basically cl-dvfs wrappers.
+ */
+
 /* DFLL operations */
 static void tegra11_dfll_cpu_late_init(struct clk *c)
 {
@@ -3932,34 +3939,6 @@ static struct clk_ops tegra_audio_sync_clk_ops = {
 	.enable     = tegra11_audio_sync_clk_enable,
 	.disable    = tegra11_audio_sync_clk_disable,
 	.set_parent = tegra11_audio_sync_clk_set_parent,
-};
-
-/* cml0 (pcie), and cml1 (sata) clock ops */
-static void tegra11_cml_clk_init(struct clk *c)
-{
-	u32 val = clk_readl(c->reg);
-	c->state = val & (0x1 << c->u.periph.clk_num) ? ON : OFF;
-}
-
-static int tegra11_cml_clk_enable(struct clk *c)
-{
-	u32 val = clk_readl(c->reg);
-	val |= (0x1 << c->u.periph.clk_num);
-	clk_writel(val, c->reg);
-	return 0;
-}
-
-static void tegra11_cml_clk_disable(struct clk *c)
-{
-	u32 val = clk_readl(c->reg);
-	val &= ~(0x1 << c->u.periph.clk_num);
-	clk_writel(val, c->reg);
-}
-
-static struct clk_ops tegra_cml_clk_ops = {
-	.init			= &tegra11_cml_clk_init,
-	.enable			= &tegra11_cml_clk_enable,
-	.disable		= &tegra11_cml_clk_disable,
 };
 
 
@@ -5130,28 +5109,6 @@ static struct clk tegra_pll_e = {
 	},
 };
 
-static struct clk tegra_cml0_clk = {
-	.name      = "cml0",
-	.parent    = &tegra_pll_e,
-	.ops       = &tegra_cml_clk_ops,
-	.reg       = PLLE_AUX,
-	.max_rate  = 100000000,
-	.u.periph  = {
-		.clk_num = 0,
-	},
-};
-
-static struct clk tegra_cml1_clk = {
-	.name      = "cml1",
-	.parent    = &tegra_pll_e,
-	.ops       = &tegra_cml_clk_ops,
-	.reg       = PLLE_AUX,
-	.max_rate  = 100000000,
-	.u.periph  = {
-		.clk_num   = 1,
-	},
-};
-
 static struct clk tegra_pciex_clk = {
 	.name      = "pciex",
 	.parent    = &tegra_pll_e,
@@ -5919,6 +5876,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("cl_dvfs_soc", "cpu_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_pllm_pllc_pllp_plla,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
 
+	PERIPH_CLK("dds",	"dds",			NULL,	150,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
+	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
+
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("usbd.sclk",	"tegra-udc.0",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
@@ -6113,8 +6073,6 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_re_vco,
 	&tegra_pll_re_out,
 	&tegra_pll_e,
-	&tegra_cml0_clk,
-	&tegra_cml1_clk,
 	&tegra_pciex_clk,
 	&tegra_clk_cclk_g,
 	&tegra_clk_cclk_lp,
@@ -6246,7 +6204,16 @@ static void tegra11_init_one_clock(struct clk *c)
 
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
-	/* No policy limitations for now */
+	/*
+	 * Most of the Tegra11 multimedia and peripheral muxes include pll_c2
+	 * and pll_c3 as possible inputs. However, per clock policy these plls
+	 * are allowed to be used only by handful devices aggregated on cbus.
+	 * For all others, instead of enforcing policy at run-time in this
+	 * function, we simply stripped out pll_c2 and pll_c3 options from the
+	 * respective muxes statically.
+	 */
+
+	/* No other policy limitations for now */
 	return true;
 }
 
