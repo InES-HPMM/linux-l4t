@@ -259,7 +259,7 @@ static int clk_enable_locked(struct clk *c)
 
 	if (c->refcnt == 0) {
 		if (c->parent) {
-			ret = clk_enable(c->parent);
+			ret = tegra_clk_prepare_enable(c->parent);
 			if (ret)
 				return ret;
 		}
@@ -269,7 +269,7 @@ static int clk_enable_locked(struct clk *c)
 			trace_clock_enable(c->name, 1, 0);
 			if (ret) {
 				if (c->parent)
-					clk_disable(c->parent);
+					tegra_clk_disable_unprepare(c->parent);
 				return ret;
 			}
 			c->state = ON;
@@ -281,19 +281,6 @@ static int clk_enable_locked(struct clk *c)
 
 	return ret;
 }
-
-
-int clk_enable(struct clk *c)
-{
-	int ret = 0;
-	unsigned long flags;
-
-	clk_lock_save(c, &flags);
-	ret = clk_enable_locked(c);
-	clk_unlock_restore(c, &flags);
-	return ret;
-}
-EXPORT_SYMBOL(clk_enable);
 
 static void clk_disable_locked(struct clk *c)
 {
@@ -307,7 +294,7 @@ static void clk_disable_locked(struct clk *c)
 			c->ops->disable(c);
 		}
 		if (c->parent)
-			clk_disable(c->parent);
+			tegra_clk_disable_unprepare(c->parent);
 
 		c->state = OFF;
 		clk_stats_update(c);
@@ -318,6 +305,90 @@ static void clk_disable_locked(struct clk *c)
 		tegra_dvfs_set_rate(c, 0);
 }
 
+#ifdef CONFIG_HAVE_CLK_PREPARE
+/*
+ * The clk_enable/clk_disable may be called in atomic context, so they must not
+ * hold mutex. On the other hand clk_prepare/clk_unprepare can hold a mutex,
+ * as these APIs are called only in non-atomic context. Since tegra clock have
+ * "cansleep" attributte that indicates if clock requires preparation, we can
+ * split the interfaces respectively: do all work on sleeping clocks only in
+ * clk_prepare/clk_unprepare, and do all work for non-sleeping clocks only in
+ * clk_enable/clk_disable APIs. Calling "empty" APIs on either type of clocks
+ * is allowed as well, and actually expected, since clients may not know the
+ * clock attributes. However, calling clk_enable on non-prepared sleeping clock
+ * would fail.
+ */
+int clk_prepare(struct clk *c)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	if (!clk_cansleep(c))
+		return 0;
+
+	clk_lock_save(c, &flags);
+	ret = clk_enable_locked(c);
+	clk_unlock_restore(c, &flags);
+	return ret;
+}
+EXPORT_SYMBOL(clk_prepare);
+
+int clk_enable(struct clk *c)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	if (clk_cansleep(c)) {
+		if (WARN_ON(c->refcnt == 0))
+			return -ENOSYS;
+		return 0;
+	}
+
+	clk_lock_save(c, &flags);
+	ret = clk_enable_locked(c);
+	clk_unlock_restore(c, &flags);
+	return ret;
+}
+EXPORT_SYMBOL(clk_enable);
+
+void clk_unprepare(struct clk *c)
+{
+	unsigned long flags;
+
+	if (!clk_cansleep(c))
+		return;
+
+	clk_lock_save(c, &flags);
+	clk_disable_locked(c);
+	clk_unlock_restore(c, &flags);
+}
+EXPORT_SYMBOL(clk_unprepare);
+
+void clk_disable(struct clk *c)
+{
+	unsigned long flags;
+
+	if (clk_cansleep(c))
+		return;
+
+	clk_lock_save(c, &flags);
+	clk_disable_locked(c);
+	clk_unlock_restore(c, &flags);
+}
+EXPORT_SYMBOL(clk_disable);
+#else
+int clk_enable(struct clk *c)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	clk_lock_save(c, &flags);
+	ret = clk_enable_locked(c);
+	clk_unlock_restore(c, &flags);
+	return ret;
+}
+EXPORT_SYMBOL(clk_enable);
+
 void clk_disable(struct clk *c)
 {
 	unsigned long flags;
@@ -327,6 +398,7 @@ void clk_disable(struct clk *c)
 	clk_unlock_restore(c, &flags);
 }
 EXPORT_SYMBOL(clk_disable);
+#endif
 
 static int clk_rate_change_notify(struct clk *c, unsigned long rate)
 {
@@ -633,7 +705,7 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 	}
 
 	if (table->enabled) {
-		ret = clk_enable(c);
+		ret = tegra_clk_prepare_enable(c);
 		if (ret) {
 			pr_warning("Unable to enable clock %s: %d\n",
 				table->name, ret);
@@ -1265,9 +1337,9 @@ static int state_set(void *data, u64 val)
 	struct clk *c = (struct clk *)data;
 
 	if (val)
-		return clk_enable(c);
+		return tegra_clk_prepare_enable(c);
 	else {
-		clk_disable(c);
+		tegra_clk_disable_unprepare(c);
 		return 0;
 	}
 }

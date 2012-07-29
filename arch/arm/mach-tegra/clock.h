@@ -27,6 +27,7 @@
 
 #include <linux/clk-provider.h>
 #include <linux/clkdev.h>
+#include <linux/clk.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
@@ -397,6 +398,21 @@ static inline void clk_unlock_restore(struct clk *c, unsigned long *flags)
 	} else {
 		spin_unlock_irqrestore(&c->spinlock, *flags);
 	}
+}
+
+static inline int tegra_clk_prepare_enable(struct clk *c)
+{
+	if (clk_cansleep(c))
+		return clk_prepare_enable(c);
+	return clk_enable(c);
+}
+
+static inline void tegra_clk_disable_unprepare(struct clk *c)
+{
+	if (clk_cansleep(c))
+		clk_disable_unprepare(c);
+	else
+		clk_disable(c);
 }
 
 static inline void clk_lock_init(struct clk *c)
