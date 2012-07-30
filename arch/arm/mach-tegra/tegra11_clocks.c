@@ -3971,8 +3971,12 @@ static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
 {
 	int i;
 
-	if (!c->dvfs)
+	if (!c->dvfs) {
+		if (!c->min_rate)
+			c->min_rate = c->parent->min_rate;
+		rate = max(rate, c->min_rate);
 		return rate;
+	}
 
 	/* update min now, since no dvfs table was available during init
 	   (skip placeholder entries set to 1 kHz) */
