@@ -676,6 +676,14 @@ static const struct usb_device_id	products [] = {
 	USB_DEVICE(0x0489,0xE03A),
 	.driver_info = (unsigned long)&rmnet_info,
 },
+
+/* ZM5250 */
+{
+	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
+		 | USB_DEVICE_ID_MATCH_DEVICE,
+	USB_DEVICE(0x19D2,0x1554),
+	.driver_info = (unsigned long)&rmnet_info,
+},
 /*
  * WHITELIST!!!
  *
