@@ -150,7 +150,7 @@ static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 
 	if (phy->vdd_reg && !phy->vdd_reg_on) {
 		regulator_enable(phy->vdd_reg);
-		phy->vdd_reg_on = 1;
+		phy->vdd_reg_on = true;
 		/*
 		 * Optimal time to get the regulator turned on
 		 * before detecting vbus interrupt.
@@ -328,25 +328,29 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 	clk_disable_unprepare(phy->sys_clk);
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
 		if (!phy->pdata->u_data.host.hot_plug &&
-			!phy->pdata->u_data.host.remote_wakeup_supported)
-			clk_disable_unprepare(phy->ctrlr_clk);
-	} else {
-		/* In device mode clock is turned on by pmu irq handler
-		 * if pmu irq is not available clocks will not be turned off/on
-		 */
-		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
+			!phy->pdata->u_data.host.remote_wakeup_supported) {
 			clk_disable_unprepare(phy->ctrlr_clk);
 			phy->ctrl_clk_on = false;
+			if (phy->vdd_reg && phy->vdd_reg_on) {
+				regulator_disable(phy->vdd_reg);
+				phy->vdd_reg_on = false;
+			}
+		}
+	} else {
+		/* In device mode clock regulator/clocks will be turned off
+		 * only if pmu interrupt is present on the board and host mode
+		 * support through OTG is supported on the board.
+		 */
+		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
+			phy->pdata->builtin_host_disabled) {
+			clk_disable_unprepare(phy->ctrlr_clk);
+			phy->ctrl_clk_on = false;
+			if (phy->vdd_reg && phy->vdd_reg_on) {
+				regulator_disable(phy->vdd_reg);
+				phy->vdd_reg_on = false;
+			}
 		}
 	}
-
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	if (phy->vdd_reg && phy->vdd_reg_on)
-		if (phy->pdata->has_hostpc || phy->pdata->builtin_host_disabled) {
-			regulator_disable(phy->vdd_reg);
-			phy->vdd_reg_on = false;
-	}
-#endif
 
 	phy->phy_power_on = false;
 
