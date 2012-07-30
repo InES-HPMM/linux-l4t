@@ -107,7 +107,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 		if (tegra->builtin_host)
 			val |= USB_INT_EN;
 		else
-			val = USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
+			val |= USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
 	}
 	else
 		val &= ~USB_INT_EN;
