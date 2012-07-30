@@ -65,17 +65,6 @@ struct tegra_ulpi_config {
 };
 
 /**
- * configuration structure for setting up hsic phy
- */
-struct tegra_hsic_config {
-	u8 sync_start_delay;
-	u8 idle_wait_delay;
-	u8 term_range_adj;
-	u8 elastic_underrun_limit;
-	u8 elastic_overrun_limit;
-};
-
-/**
  * Platform specific operations that will be controlled
  * during the phy operations.
  */
@@ -134,7 +123,6 @@ struct tegra_usb_platform_data {
 	union {
 		struct tegra_utmi_config utmi;
 		struct tegra_ulpi_config ulpi;
-		struct tegra_hsic_config hsic;
 	} u_cfg;
 
 	struct tegra_usb_phy_platform_ops *ops;
