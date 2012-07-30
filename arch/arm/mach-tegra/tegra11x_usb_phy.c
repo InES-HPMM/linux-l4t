@@ -489,6 +489,12 @@
 #define DBG(stuff...)	do {} while (0)
 #endif
 
+/* define HSIC phy params */
+#define HSIC_SYNC_START_DELAY		9
+#define HSIC_IDLE_WAIT_DELAY		17
+#define HSIC_ELASTIC_UNDERRUN_LIMIT	16
+#define HSIC_ELASTIC_OVERRUN_LIMIT	16
+
 static u32 utmip_rctrl_val, utmip_tctrl_val;
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static int utmip_pad_count;
@@ -1955,7 +1961,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
-	struct tegra_hsic_config *config = &phy->pdata->u_cfg.hsic;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -1984,13 +1989,13 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 
 	val = readl(base + UHSIC_HSRX_CFG0);
-	val |= UHSIC_IDLE_WAIT(config->idle_wait_delay);
-	val |= UHSIC_ELASTIC_UNDERRUN_LIMIT(config->elastic_underrun_limit);
-	val |= UHSIC_ELASTIC_OVERRUN_LIMIT(config->elastic_overrun_limit);
+	val |= UHSIC_IDLE_WAIT(HSIC_IDLE_WAIT_DELAY);
+	val |= UHSIC_ELASTIC_UNDERRUN_LIMIT(HSIC_ELASTIC_UNDERRUN_LIMIT);
+	val |= UHSIC_ELASTIC_OVERRUN_LIMIT(HSIC_ELASTIC_OVERRUN_LIMIT);
 	writel(val, base + UHSIC_HSRX_CFG0);
 
 	val = readl(base + UHSIC_HSRX_CFG1);
-	val |= UHSIC_HS_SYNC_START_DLY(config->sync_start_delay);
+	val |= UHSIC_HS_SYNC_START_DLY(HSIC_SYNC_START_DELAY);
 	writel(val, base + UHSIC_HSRX_CFG1);
 
 	/* WAR HSIC TX */
