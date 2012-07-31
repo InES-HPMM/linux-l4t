@@ -75,6 +75,13 @@ config TEGRA_DC_BLOCK_LINEAR
     default y if ARCH_TEGRA_12x_SOC
     default n
 
+config TEGRA_DC_CLOCK_GEN2
+    bool
+    default y if ARCH_TEGRA_12x_SOC
+    default n
+    help
+        T12x redefined pll usages for pll_d and pll_d2.
+
 config TEGRA_SD_GEN2
 	bool
 	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
