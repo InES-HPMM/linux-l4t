@@ -399,7 +399,8 @@ static ssize_t load_unload_usb_host(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(load_host, 0666, show_usb_host, load_unload_usb_host);
+static DEVICE_ATTR(load_host, S_IRUSR | S_IWUSR, show_usb_host,
+		   load_unload_usb_host);
 
 static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 {
