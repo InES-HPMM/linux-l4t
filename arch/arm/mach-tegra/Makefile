@@ -1,7 +1,8 @@
 GCOV_PROFILE := y
 
 asflags-y				+= -march=armv7-a
-subdir-ccflags-y := -Werror
+#Keep -Werror disabled until most of the options are enabled.
+#subdir-ccflags-y := -Werror
 
 obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o
