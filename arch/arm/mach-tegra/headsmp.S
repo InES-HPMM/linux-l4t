@@ -3,7 +3,7 @@
  *
  * CPU initialization routines for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -90,8 +90,9 @@ ENTRY(tegra_resume)
 #endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
-	/* wake up (should have specified args?) */
-	bl	tegra_generic_smc
+	/* wake up */
+	mov	r0, #0x00000003
+	bl	tegra_generic_smc_local
 #endif
 
 	b	cpu_resume
