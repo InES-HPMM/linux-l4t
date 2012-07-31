@@ -20,6 +20,7 @@ config ARCH_TEGRA_2x_SOC
 	bool "Enable support for Tegra20 family"
 	depends on !ARCH_TEGRA_3x_SOC
 	depends on !ARCH_TEGRA_11x_SOC
+	depends on !ARCH_TEGRA_12x_SOC
 	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_NEEDS_CPU_IDLE_COUPLED if SMP
 	select ARCH_SUPPORTS_MSI if TEGRA_PCI
@@ -58,6 +59,7 @@ config ARCH_TEGRA_2x_SOC
 config ARCH_TEGRA_3x_SOC
 	bool "Enable support for Tegra30 family"
 	depends on !ARCH_TEGRA_11x_SOC
+	depends on !ARCH_TEGRA_12x_SOC
 	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_SUPPORTS_MSI if TEGRA_PCI
 	select ARCH_TEGRA_HAS_ARM_SCU
@@ -100,6 +102,7 @@ config ARCH_TEGRA_3x_SOC
 
 config ARCH_TEGRA_11x_SOC
 	bool "Tegra 11x family SOC"
+	depends on !ARCH_TEGRA_12x_SOC
 	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_HAS_PASR
 	select ARCH_TEGRA_4GB_MEMORY
@@ -139,8 +142,31 @@ config ARCH_TEGRA_11x_SOC
 	  Support for NVIDIA Tegra 11x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
 
-config ARCH_TEGRA_HAS_ARM_SCU
-	bool
+config ARCH_TEGRA_12x_SOC
+	bool "Tegra 12x family SOC"
+	depends on !ARCH_TEGRA_14x_SOC
+	select ARCH_TEGRA_HAS_DUAL_CPU_CLUSTERS
+	select CPU_V7
+	select ARM_L1_CACHE_SHIFT_6
+	select ARM_ARCH_TIMER
+	select ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	select ARM_CPU_SUSPEND if PM
+	select ARM_GIC
+	select ARCH_REQUIRE_GPIOLIB
+	select TEGRA_GK20A
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_EHCI_TEGRA if USB_SUPPORT
+	select USB_ULPI if USB_SUPPORT
+	select USB_ULPI_VIEWPORT if USB_SUPPORT
+	select USE_OF
+	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select ARCH_TEGRA_HAS_CL_DVFS
+	select TEGRA_DYNAMIC_CBUS
+	select TEGRA_DUAL_CBUS
+	select ARCH_TEGRA_VIC
+	help
+	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
+	  ARM Cortex-A15MP CPU
 
 config ARCH_TEGRA_14x_SOC
 	bool "Tegra 14x family SOC"
@@ -182,6 +208,9 @@ config ARCH_TEGRA_14x_SOC
 	help
 	  Support for NVIDIA Tegra 14x family of SoCs, based upon the
 	  ARM CortexA9MP CPU and the ARM PL310 L2 cache controller
+
+config ARCH_TEGRA_HAS_ARM_SCU
+	bool
 
 config ARCH_TEGRA_HAS_DUAL_3D
 	bool
@@ -331,6 +360,12 @@ config TEGRA_CORE_DVFS
 	depends on TEGRA_SILICON_PLATFORM
 	depends on TEGRA_CPU_DVFS
 	default y
+
+config TEGRA_GK20A
+        bool "Enable the GK20A graphics engine"
+        depends on ARCH_TEGRA_12x_SOC
+	help
+	  Enable support for the GK20A graphics engine
 
 config TEGRA_AVP_KERNEL_ON_MMU
 	bool "Use AVP MMU to relocate AVP kernel"
@@ -766,6 +801,12 @@ config TEGRA_PLLM_SCALED
 	  granularity of possible memory rate steps. In this case PLLC
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
+config ARCH_TEGRA_VIC
+	bool "Tegra Video Image Compositor present"
+	default y
+	help
+	  Say Y here if the SOC supports the Tegra Video Image Compositor.
+	  Note that this not the same as the ARM Vectored Interrupt Controller.
 
 config TEGRA_MC_DOMAINS
 	bool "Enable MC domains"
