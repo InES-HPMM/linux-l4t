@@ -154,6 +154,14 @@ config MACH_CURACAO
          Support for NVIDIA Curacao FPGA development platform
 
 
+config MACH_DALMORE
+       bool "Dalmore board"
+       depends on ARCH_TEGRA_3x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
+       help
+         Support for NVIDIA DALMORE development platform
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM

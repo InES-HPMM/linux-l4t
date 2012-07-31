@@ -124,6 +124,12 @@ obj-${CONFIG_MACH_CURACAO}              += board-curacao-sensors.o
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
 obj-y                                   += board-touch-raydium_spi.o
 
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-memory.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-pinmux.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-power.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sdhci.o
+
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
 
