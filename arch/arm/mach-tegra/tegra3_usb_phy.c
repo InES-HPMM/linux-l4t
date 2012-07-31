@@ -743,6 +743,7 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 
 	val = readl(pmc_base + PMC_TRIGGERS);
 	val |= UTMIP_CLR_WALK_PTR(inst);
+	val |= UTMIP_CLR_WAKE_ALARM(inst);
 	writel(val, pmc_base + PMC_TRIGGERS);
 
 	phy->remote_wakeup = false;
