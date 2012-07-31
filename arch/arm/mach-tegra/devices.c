@@ -175,6 +175,8 @@ struct platform_device tegra_pinmux_device = {
 	.name		= "tegra20-pinmux-ctl",
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	.name		= "tegra11x-pinmux-ctl",
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	.name		= "tegra12x-pinmux",
 #elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.name		= "tegra14x-pinmux",
 #endif
