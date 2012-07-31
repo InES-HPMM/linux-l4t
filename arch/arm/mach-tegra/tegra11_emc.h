@@ -5,8 +5,7 @@
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * the Free Software Foundation; version 2 of the License.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,17 +22,16 @@
 #define _MACH_TEGRA_TEGRA11_EMC_H
 
 /* !!!FIXME!!! Need actual Tegra11x values */
-#define TEGRA_EMC_NUM_REGS		110
-
-#define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
-#define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
+#define TEGRA_EMC_MAX_NUM_REGS		110
 
 struct tegra_emc_table {
 	u8 rev;
 	unsigned long rate;
+	int emc_min_mv;
+	const char *src_name;
 
 	/* unconditionally updated in one burst shot */
-	u32 burst_regs[TEGRA_EMC_NUM_REGS];
+	u32 burst_regs[TEGRA_EMC_MAX_NUM_REGS];
 
 	/* updated separately under some conditions */
 	u32 emc_zcal_cnt_long;
@@ -43,7 +41,6 @@ struct tegra_emc_table {
 	u32 emc_mode_1;
 	u32 emc_mode_2;
 	u32 emc_dsr;
-	int emc_min_mv;
 };
 
 struct clk;
@@ -67,5 +64,15 @@ enum {
 	DRAM_TYPE_DDR3   = 0,
 	DRAM_TYPE_LPDDR2 = 2,
 };
+
+#define EMC_CFG_2				0x2b8
+#define EMC_CFG_2_MODE_SHIFT			0
+#define EMC_CFG_2_MODE_MASK			(0x3 << EMC_CFG_2_MODE_SHIFT)
+#define EMC_CFG_2_SREF_MODE			0x1
+#define EMC_CFG_2_PD_MODE			0x3
+
+#define MC_EMEM_ADR_CFG				0x54
+#define MC_EMEM_ARB_MISC0			0xd8
+#define MC_EMEM_ARB_MISC0_EMC_SAME_FREQ		(0x1 << 27)
 
 #endif
