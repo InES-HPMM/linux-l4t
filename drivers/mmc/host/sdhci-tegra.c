@@ -89,9 +89,10 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static unsigned int tegra_sdhost_min_freq;
 static unsigned int tegra_sdhost_std_freq;
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static unsigned int tegra3_sdhost_max_clk[4] = {
 	208000000,	104000000,	208000000,	104000000 };
 #endif
@@ -232,6 +233,7 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 	return gpio_get_value(plat->wp_gpio);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 {
 	u16 misc_ctrl;
@@ -266,6 +268,7 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
 	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
