@@ -72,9 +72,6 @@ static int tegra_bb_power_gpio_init(struct tegra_bb_power_gdata *gdata)
 		else
 			gpio_direction_output(gpio_id, (!gpio_flags ? 0 : 1));
 
-		/* Enable the gpio */
-		tegra_gpio_enable(gpio_id);
-
 		/* Create a sysfs node, if requested */
 		if (gpiolist->doexport)
 			gpio_export(gpio_id, false);
