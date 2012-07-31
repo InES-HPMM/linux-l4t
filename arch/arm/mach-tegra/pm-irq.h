@@ -25,6 +25,7 @@ bool tegra_pm_irq_lp0_allowed(void);
 int tegra_gpio_to_wake(int gpio);
 int tegra_irq_to_wake(int irq);
 int tegra_wake_to_irq(int wake);
+int tegra_disable_wake_source(int wake);
 #else
 static inline int tegra_pm_irq_set_wake_type(int wake, int flow_type)
 {
@@ -35,6 +36,10 @@ static inline int tegra_gpio_to_wake(int gpio)
 	return 0;
 }
 static inline int tegra_irq_to_wake(int irq)
+{
+	return 0;
+}
+static inline int tegra_disable_wake_source(int wake)
 {
 	return 0;
 }
