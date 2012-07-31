@@ -203,11 +203,9 @@ struct spi_board_info rm31080a_spi_board[1] = {
 int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform)
 {
 	int err = 0;
-	tegra_gpio_enable(irq_gpio);
 	gpio_request(irq_gpio, "raydium-irq");
 	gpio_direction_input(irq_gpio);
 
-	tegra_gpio_enable(reset_gpio);
 	gpio_request(reset_gpio, "raydium-reset");
 	gpio_direction_output(reset_gpio, 0);
 
