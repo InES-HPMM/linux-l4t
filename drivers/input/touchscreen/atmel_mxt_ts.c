@@ -77,6 +77,7 @@
 #define MXT_SPT_DIGITIZER_T43		43
 #define MXT_SPT_MESSAGECOUNT_T44	44
 #define MXT_SPT_CTECONFIG_T46		46
+#define MXT_SPT_NOISESUPPRESSION_T48    48
 
 /* MXT_GEN_MESSAGE_T5 object */
 #define MXT_RPTID_NOMSG		0xff
@@ -296,6 +297,7 @@ struct mxt_data {
 	u8 T9_reportid_min;
 	u8 T9_reportid_max;
 	u16 T44_address;
+	u8 T48_reportid;
 };
 
 /* I2C slave address pairs */
@@ -724,6 +726,26 @@ static void mxt_proc_t9_messages(struct mxt_data *data, u8 *message)
 	}
 }
 
+static int mxt_proc_t48_messages(struct mxt_data *data, u8 *msg)
+{
+	struct device *dev = &data->client->dev;
+	u8 status, state;
+
+	status = msg[1];
+	state  = msg[4];
+
+	dev_dbg(dev, "T48 state %d status %02X %s%s%s%s%s\n",
+			state,
+			status,
+			(status & 0x01) ? "FREQCHG " : "",
+			(status & 0x02) ? "APXCHG " : "",
+			(status & 0x04) ? "ALGOERR " : "",
+			(status & 0x10) ? "STATCHG " : "",
+			(status & 0x20) ? "NLVLCHG " : "");
+
+	return 0;
+}
+
 static int mxt_proc_message(struct mxt_data *data, u8 *msg)
 {
 	u8 report_id = msg[0];
@@ -740,6 +762,8 @@ static int mxt_proc_message(struct mxt_data *data, u8 *msg)
 		mxt_proc_t9_messages(data, msg);
 	} else if (report_id == data->T6_reportid) {
 		mxt_proc_t6_messages(data, msg);
+	} else if (report_id == data->T48_reportid) {
+		mxt_proc_t48_messages(data, msg);
 	}
 
 	return 0;
@@ -1289,6 +1313,9 @@ static int mxt_get_object_table(struct mxt_data *data)
 			break;
 		case MXT_SPT_MESSAGECOUNT_T44:
 			data->T44_address = object->start_address;
+			break;
+                case MXT_SPT_NOISESUPPRESSION_T48:
+                        data->T48_reportid = object->max_reportid;
 			break;
 		}
 
