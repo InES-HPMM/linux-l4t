@@ -5484,12 +5484,13 @@ static struct clk_mux_sel mux_plla_pllc_pllp_clkm[] = {
 };
 
 /* EMC muxes */
-/* FIXME: update main EMC mux to match h/w, and add EMC latency mux*/
+/* FIXME: add EMC latency mux */
 static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_m, .value = 0},
-	/* { .input = &tegra_pll_c, .value = 1}, not used on tegra11x */
+	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
+	{ .input = &tegra_pll_m, .value = 4}, /* low jitter PLLM input */
 	{ 0, 0},
 };
 
@@ -5627,7 +5628,7 @@ static struct clk tegra_clk_emc = {
 	.max_rate = 800000000,
 	.min_rate = 25000000,
 	.inputs = mux_pllm_pllc_pllp_clkm,
-	.flags = MUX | DIV_U71 | PERIPH_EMC_ENB,
+	.flags = MUX | MUX8 | DIV_U71 | PERIPH_EMC_ENB,
 	.u.periph = {
 		.clk_num = 57,
 	},
