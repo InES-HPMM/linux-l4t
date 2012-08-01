@@ -38,6 +38,7 @@ struct ov9726_devinfo {
 	struct ov9726_power_rail	power_rail;
 	atomic_t			in_use;
 	__u32				mode;
+	struct ov9726_reg		grphold_temp[10];
 };
 
 static struct ov9726_reg mode_1280x720[] = {
@@ -603,6 +604,46 @@ static int ov9726_set_gain(struct i2c_client *i2c_client, u16 gain)
 	return ret;
 }
 
+static int ov9726_set_group_hold(struct ov9726_devinfo *dev,
+			struct ov9726_ae *ae)
+{
+#define OV9726_REG_PUSH8(p, a, v) \
+	do { \
+		(p)->addr = (a); \
+		(p)->val = (v); \
+		(p)++; \
+	} while (0)
+
+#define OV9726_REG_PUSH16(ptr, addr, val) do { \
+		OV9726_REG_PUSH8(ptr, (addr), (val) >> 8); \
+		OV9726_REG_PUSH8(ptr, (addr) + 1, (val) & 0xff); \
+	} while (0)
+
+	struct ov9726_reg *gptr = &dev->grphold_temp[0];
+
+	if (!ae->gain_enable &&
+		!ae->coarse_time_enable &&
+		!ae->frame_length_enable)
+		return 0;
+
+	OV9726_REG_PUSH8(gptr, 0x0104, 0x01);
+	if (ae->gain_enable)
+		OV9726_REG_PUSH16(gptr,
+			OV9726_REG_GAIN_HI, ae->gain);
+	if (ae->coarse_time_enable)
+		OV9726_REG_PUSH16(gptr,
+			OV9726_REG_COARSE_TIME_HI, ae->coarse_time);
+	if (ae->frame_length_enable) {
+		OV9726_REG_PUSH16(gptr,
+			OV9726_REG_FRAME_LENGTH_HI, ae->frame_length);
+	}
+	OV9726_REG_PUSH8(gptr, 0x0104, 0x00);
+	OV9726_REG_PUSH8(gptr, OV9726_TABLE_END, 0x00);
+
+	return ov9726_write_table(dev->i2c_client,
+				dev->grphold_temp, NULL, 0);
+}
+
 static int ov9726_get_status(struct i2c_client *i2c_client, u8 *status)
 {
 	int err;
@@ -681,19 +722,26 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		break;
 	}
-
 	case OV9726_IOCTL_SET_FRAME_LENGTH:
 		err = ov9726_set_frame_length(i2c_client, (u32)arg);
 		break;
-
 	case OV9726_IOCTL_SET_COARSE_TIME:
 		err = ov9726_set_coarse_time(i2c_client, (u32)arg);
 		break;
-
 	case OV9726_IOCTL_SET_GAIN:
 		err = ov9726_set_gain(i2c_client, (u16)arg);
 		break;
-
+	case OV9726_IOCTL_SET_GROUP_HOLD:
+	{
+		struct ov9726_ae ae;
+		if (copy_from_user(&ae,
+			(const void __user *)arg, sizeof(struct ov9726_ae))) {
+			pr_info("%s %d\n", __func__, __LINE__);
+			return -EFAULT;
+		}
+		err = ov9726_set_group_hold(dev, &ae);
+		break;
+	}
 	case OV9726_IOCTL_GET_STATUS:
 	{
 		u8 status;
@@ -706,7 +754,6 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-
 	default:
 		err = -EINVAL;
 		break;
