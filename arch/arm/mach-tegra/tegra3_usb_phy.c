@@ -2662,6 +2662,9 @@ static void ulpi_null_phy_close(struct tegra_usb_phy *phy)
 
 static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 {
+	unsigned int val;
+	void __iomem *base = phy->regs;
+
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (!phy->phy_clk_on) {
@@ -2673,6 +2676,9 @@ static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
 	ulpi_null_phy_set_tristate(true);
+	val = readl(base + ULPIS2S_CTRL);
+	val &= ~ULPIS2S_PLLU_MASTER_BLASTER60;
+	writel(val, base + ULPIS2S_CTRL);
 	return 0;
 }
 
