@@ -221,6 +221,7 @@ static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 	return tegra_host->card_present;
 }
 
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
@@ -232,6 +233,7 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 
 	return gpio_get_value(plat->wp_gpio);
 }
+#endif
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
