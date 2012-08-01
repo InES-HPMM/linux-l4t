@@ -671,11 +671,13 @@ static int bluesleep_probe(struct platform_device *pdev)
 	}
 	if (ret  < 0) {
 		BT_ERR("Couldn't acquire BT_HOST_WAKE IRQ");
-		goto free_bt_ext_wake;
+		goto free_wake_lock;
 	}
 
 	return 0;
 
+free_wake_lock:
+	wake_lock_destroy(&bsi->wake_lock);
 free_bt_ext_wake:
 	gpio_free(bsi->ext_wake);
 free_bt_host_wake:
