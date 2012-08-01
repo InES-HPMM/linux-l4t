@@ -1293,6 +1293,15 @@ static void mxt_start(struct mxt_data *data)
 		return;
 
 	error = mxt_set_power_cfg(data, MXT_POWER_CFG_RUN);
+	if (error)
+		return;
+
+	/* At this point, it may be necessary to clear state
+	 * by disabling/re-enabling the noise suppression object */
+
+	/* Recalibrate since chip has been in deep sleep */
+	error = mxt_write_object(data, MXT_GEN_COMMAND_T6,
+		MXT_COMMAND_CALIBRATE, 1);
 
 	if (!error)
 		dev_dbg(dev, "MXT started\n");
@@ -1484,12 +1493,6 @@ static int mxt_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
-
-	/* Soft reset */
-	mxt_write_object(data, MXT_GEN_COMMAND_T6,
-			MXT_COMMAND_RESET, 1);
-
-	msleep(MXT_RESET_TIME);
 
 	mutex_lock(&input_dev->mutex);
 
