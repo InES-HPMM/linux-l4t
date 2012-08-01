@@ -453,7 +453,20 @@ static int tps80031_battery_probe(struct platform_device *pdev)
 	uint8_t retval;
 	struct device *dev = &pdev->dev;
 	struct tps80031_device_info *di;
-	struct tps80031_bg_platform_data *pdata = pdev->dev.platform_data;
+	struct tps80031_platform_data *tps80031_pdata;
+	struct tps80031_bg_platform_data *pdata;
+
+	tps80031_pdata = dev_get_platdata(pdev->dev.parent);
+	if (!tps80031_pdata) {
+		dev_err(&pdev->dev, "no tps80031 platform_data specified\n");
+		return -EINVAL;
+	}
+
+	pdata = tps80031_pdata->bg_pdata;
+	if (!pdata) {
+		dev_err(&pdev->dev, "no battery_gauge platform data\n");
+		return -EINVAL;
+	}
 
 	di = devm_kzalloc(&pdev->dev, sizeof *di, GFP_KERNEL);
 	if (!di) {
