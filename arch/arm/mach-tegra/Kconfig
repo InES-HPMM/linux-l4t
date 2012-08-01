@@ -149,6 +149,7 @@ comment "Tegra board type"
 config MACH_CURACAO
        bool "Curacao board"
        depends on ARCH_TEGRA_11x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_WM8903 if SND_SOC
        select TEGRA_FPGA_PLATFORM
        help
          Support for NVIDIA Curacao FPGA development platform
