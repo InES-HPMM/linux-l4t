@@ -186,6 +186,9 @@
 #define MXT_RESET_VALUE		0x01
 #define MXT_BACKUP_VALUE	0x55
 
+/* Define for MXT_PROCG_NOISESUPPRESSION_T42 */
+#define MXT_T42_MSG_TCHSUP	(1 << 0)
+
 /* Delay times */
 #define MXT_BACKUP_TIME		25	/* msec */
 #define MXT_RESET_TIME		200	/* msec */
@@ -296,6 +299,8 @@ struct mxt_data {
 	u8 T6_reportid;
 	u8 T9_reportid_min;
 	u8 T9_reportid_max;
+	u8 T42_reportid_min;
+	u8 T42_reportid_max;
 	u16 T44_address;
 	u8 T48_reportid;
 };
@@ -726,6 +731,17 @@ static void mxt_proc_t9_messages(struct mxt_data *data, u8 *message)
 	}
 }
 
+static void mxt_proc_t42_messages(struct mxt_data *data, u8 *msg)
+{
+	struct device *dev = &data->client->dev;
+	u8 status = msg[1];
+
+	if (status & MXT_T42_MSG_TCHSUP)
+		dev_info(dev, "T42 suppress\n");
+	else
+		dev_info(dev, "T42 normal\n");
+}
+
 static int mxt_proc_t48_messages(struct mxt_data *data, u8 *msg)
 {
 	struct device *dev = &data->client->dev;
@@ -764,6 +780,9 @@ static int mxt_proc_message(struct mxt_data *data, u8 *msg)
 		mxt_proc_t6_messages(data, msg);
 	} else if (report_id == data->T48_reportid) {
 		mxt_proc_t48_messages(data, msg);
+	} else if (report_id >= data->T42_reportid_min
+		   && report_id <= data->T42_reportid_max) {
+		mxt_proc_t42_messages(data, msg);
 	}
 
 	return 0;
@@ -1310,6 +1329,10 @@ static int mxt_get_object_table(struct mxt_data *data)
 			/* CRC not enabled, therefore don't read last byte */
 			data->T5_msg_size = object->size - 1;
 			data->T5_address = object->start_address;
+			break;
+		case MXT_PROCI_TOUCHSUPPRESSION_T42:
+			data->T42_reportid_max = object->max_reportid;
+			data->T42_reportid_min = object->min_reportid;
 			break;
 		case MXT_SPT_MESSAGECOUNT_T44:
 			data->T44_address = object->start_address;
