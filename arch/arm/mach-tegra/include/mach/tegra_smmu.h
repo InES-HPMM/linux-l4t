@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  */
-#ifdef CONFIG_TEGRA_IOVMM_SMMU
+#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 extern struct resource *tegra_smmu_window(int wnum);
 extern int tegra_smmu_window_count(void);
 #endif
