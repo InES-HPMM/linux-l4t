@@ -146,6 +146,15 @@ static inline struct powergate_ops *tegra11x_powergate_init_chip_support(void)
 }
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+struct powergate_ops *tegra12x_powergate_init_chip_support(void);
+#else
+static inline struct powergate_ops *tegra12x_powergate_init_chip_support(void)
+{
+	return NULL;
+}
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 struct powergate_ops *tegra14x_powergate_init_chip_support(void);
 #else

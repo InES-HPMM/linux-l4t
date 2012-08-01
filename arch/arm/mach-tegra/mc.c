@@ -65,7 +65,7 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 	int type;
 
 	type = tegra_emc_get_dram_type();
-	WARN_ONCE(type == -1, "unknown type DRAM because DVFS is disabled\n");
+	/*WARN_ONCE(type == -1, "unknown type DRAM because DVFS is disabled\n");*/
 
 	if (type == DRAM_TYPE_DDR3)
 		return 2;
