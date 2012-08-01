@@ -576,6 +576,7 @@ struct tps80031_platform_data {
 	struct tps80031_regulator_platform_data
 			*regulator_pdata[TPS80031_REGULATOR_MAX];
 	struct tps80031_bg_platform_data *bg_pdata;
+	struct tps80031_charger_platform_data *battery_charger_pdata;
 };
 
 static inline int tps80031_write(struct device *dev, int sid,
