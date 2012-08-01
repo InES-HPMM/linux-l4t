@@ -480,10 +480,11 @@ static int mxt_unlock_bootloader(struct mxt_data *data)
 }
 
 static int mxt_read_reg(struct i2c_client *client,
-			       u16 reg, u16 len, void *val)
+			u16 reg, u16 len, void *val)
 {
 	struct i2c_msg xfer[2];
 	u8 buf[2];
+	int ret;
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
@@ -500,8 +501,10 @@ static int mxt_read_reg(struct i2c_client *client,
 	xfer[1].len = len;
 	xfer[1].buf = val;
 
-	if (i2c_transfer(client->adapter, xfer, 2) != 2) {
-		dev_err(&client->dev, "%s: i2c transfer failed\n", __func__);
+	ret = i2c_transfer(client->adapter, xfer, ARRAY_SIZE(xfer));
+	if (ret != ARRAY_SIZE(xfer)) {
+		dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
+			__func__, ret);
 		return -EIO;
 	}
 
