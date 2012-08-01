@@ -881,7 +881,7 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	struct page *page;
 	void __iomem *to_io;
 	void *from_virt;
-	unsigned long i;
+	unsigned long i, addr[] = { to, from, };
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
@@ -913,6 +913,9 @@ void tegra_move_framebuffer(unsigned long to, unsigned long from,
 
 		iounmap(from_io);
 	}
+
+	for (i = 0; i < ARRAY_SIZE(addr); i++)
+		dma_map_linear_at(NULL, addr[i], size, DMA_TO_DEVICE);
 out:
 	iounmap(to_io);
 }
