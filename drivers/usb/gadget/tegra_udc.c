@@ -1255,6 +1255,76 @@ static int tegra_set_selfpowered(struct usb_gadget *gadget, int is_on)
 	return 0;
 }
 
+static int tegra_usb_set_charging_current(struct tegra_udc *udc)
+{
+	int max_ua;
+
+	if (NULL == udc->vbus_reg)
+		return 0;
+
+	switch (udc->connect_type) {
+	case CONNECT_TYPE_NONE:
+		pr_debug("detected USB charging is disabled");
+		max_ua = 0;
+		break;
+	case CONNECT_TYPE_SDP:
+		pr_debug("detected SDP port");
+		max_ua = USB_CHARGING_SDP_CURRENT_LIMIT_UA;
+		break;
+	case CONNECT_TYPE_DCP:
+		pr_debug("detected DCP port(wall charger)");
+		max_ua = USB_CHARGING_DCP_CURRENT_LIMIT_UA;
+		break;
+	case CONNECT_TYPE_CDP:
+		pr_debug("detected CDP port(1A USB port)");
+		max_ua = USB_CHARGING_CDP_CURRENT_LIMIT_UA;
+		break;
+	case CONNECT_TYPE_NON_STANDARD_CHARGER:
+		pr_debug("detected non-standard charging port");
+		max_ua = USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA;
+		break;
+	default:
+		pr_debug("detected USB charging type is unknown");
+		max_ua = 0;
+	}
+
+	return regulator_set_current_limit(udc->vbus_reg, 0, max_ua);
+}
+
+static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
+{
+	u32 portsc;
+	u32 temp;
+	unsigned long flags;
+
+	/* use spinlock to prevent kernel preemption here */
+	spin_lock_irqsave(&udc->lock, flags);
+
+	/* set controller to run which cause D+ pull high */
+	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
+	temp |= USB_CMD_RUN_STOP;
+	udc_writel(udc, temp, USB_CMD_REG_OFFSET);
+
+	udelay(10);
+
+	/* use D+ and D- status to check it is CDP or DCP */
+	portsc = udc_readl(udc, PORTSCX_REG_OFFSET) & PORTSCX_LINE_STATUS_BITS;
+	if (portsc == (PORTSCX_LINE_STATUS_DP_BIT | PORTSCX_LINE_STATUS_DM_BIT))
+		udc->connect_type = CONNECT_TYPE_DCP;
+	else if (portsc == PORTSCX_LINE_STATUS_DP_BIT)
+		udc->connect_type = CONNECT_TYPE_CDP;
+	else
+		/*
+		 * If it take more 100mS between D+ pull high and read Line
+		 * Status, host might initiate the RESET, then we see both
+		 * line status as 0 (SE0). This really should not happen as we
+		 * disabled the kernel preemption before reaching here.
+		 */
+		BUG();
+
+	spin_unlock_irqrestore(&udc->lock, flags);
+}
+
 /**
  * Notify controller that VBUS is powered, called by whatever
  * detects VBUS sessions
@@ -1277,13 +1347,10 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		dr_controller_reset(udc);
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
+		udc->connect_type = CONNECT_TYPE_NONE;
 		spin_unlock(&udc->lock);
 		tegra_usb_phy_power_off(udc->phy);
-		if (udc->vbus_reg) {
-			/* set the current limit to 0mA */
-			regulator_set_current_limit(
-				udc->vbus_reg, 0, 0);
-		}
+		tegra_usb_set_charging_current(udc);
 	} else if (!udc->vbus_active && is_active) {
 		tegra_usb_phy_power_on(udc->phy);
 		/* setup the controller in the device mode */
@@ -1295,18 +1362,23 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		udc->ep0_state = WAIT_FOR_SETUP;
 		udc->ep0_dir = 0;
 		udc->vbus_active = 1;
+		if (tegra_usb_phy_charger_detected(udc->phy)) {
+			tegra_detect_charging_type_is_cdp_or_dcp(udc);
+		} else {
+			udc->connect_type = CONNECT_TYPE_SDP;
+			/*
+			 * Schedule work to wait for 1000 msec and check for
+			 * a non-standard charger if setup packet is not
+			 * received.
+			 */
+			schedule_delayed_work(&udc->work, msecs_to_jiffies(
+					USB_CHARGER_DETECTION_WAIT_TIME_MS));
+		}
 		/* start the controller */
 		dr_controller_run(udc);
-		if (udc->vbus_reg) {
-			/* set the current limit to 100mA */
-			regulator_set_current_limit(
-				udc->vbus_reg, 0, 100);
-		}
-		/* Schedule work to wait for 1000 msec and check for
-		 * charger if setup packet is not received */
-		schedule_delayed_work(&udc->work,
-			USB_CHARGER_DETECTION_WAIT_TIME_MS);
+		tegra_usb_set_charging_current(udc);
 	}
+
 	return 0;
 }
 
@@ -2134,26 +2206,18 @@ static void tegra_udc_irq_work(struct work_struct *irq_work)
 	DBG("%s(%d) END\n", __func__, __LINE__);
 }
 
-/**
- * If VBUS is detected and setup packet is not received in 100ms then
- * work thread starts and checks for the USB charger detection.
+/*
+ * When VBUS is detected we already know it is DCP/SDP/CDP devices if it is a
+ * standard device; If we did not receive EP0 setup packet, we can assuming it
+ * is a charger capable of 1.8A charging.
  */
 static void tegra_udc_charger_detect_work(struct work_struct *work)
 {
 	struct tegra_udc *udc = container_of(work, struct tegra_udc, work.work);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	/* check for the platform charger detection */
-	if (tegra_usb_phy_charger_detected(udc->phy)) {
-		printk(KERN_INFO "USB compliant charger detected\n");
-		/* check udc regulator is available for drawing vbus current*/
-		if (udc->vbus_reg) {
-			/* set the current limit in uA */
-			regulator_set_current_limit(
-				udc->vbus_reg, 0,
-				USB_CHARGING_CURRENT_LIMIT_MA*1000);
-		}
-	}
+	udc->connect_type = CONNECT_TYPE_NON_STANDARD_CHARGER;
+	tegra_usb_set_charging_current(udc);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 }
