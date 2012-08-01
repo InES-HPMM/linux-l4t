@@ -1409,9 +1409,9 @@ static int sh532u_set_focuser_capabilities(struct sh532u_info *info,
 					struct nvc_param *params)
 {
 	if (copy_from_user(&info->config, (const void __user *)params->p_value,
-		params->sizeofvalue)) {
+		sizeof(struct nv_focuser_config))) {
 		dev_err(&info->i2c_client->dev, "%s Error: copy_from_user bytes %d\n",
-				__func__, params->sizeofvalue);
+				__func__, sizeof(struct nv_focuser_config));
 		return -EFAULT;
 	}
 
@@ -1423,7 +1423,7 @@ static int sh532u_set_focuser_capabilities(struct sh532u_info *info,
 	info->config.slew_rate = info->config.slew_rate;
 
 	dev_dbg(&info->i2c_client->dev, "%s: copy_from_user bytes %d\n",
-			__func__,  params->sizeofvalue);
+			__func__,  sizeof(struct nv_focuser_config));
 	return 0;
 }
 
@@ -1494,7 +1494,7 @@ static int sh532u_param_rd(struct sh532u_info *info, unsigned long arg)
 		sh532u_get_focuser_capabilities(info);
 
 		data_ptr = &info->config;
-		data_size = params.sizeofvalue;
+		data_size = sizeof(info->config);
 		break;
 
 	case NVC_PARAM_STS:
