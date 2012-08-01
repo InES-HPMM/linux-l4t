@@ -96,7 +96,21 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.pfn = __phys_to_pfn(IO_NOR_PHYS),
 		.length = IO_NOR_SIZE,
 		.type = MT_DEVICE,
-	}
+	},
+#endif
+#ifdef CONFIG_TEGRA_GK20A
+	{
+		.virtual = (unsigned long)IO_GK20A_B0_VIRT,
+		.pfn = __phys_to_pfn(IO_GK20A_B0_PHYS),
+		.length = IO_GK20A_B0_SIZE,
+		.type = MT_DEVICE,
+	},
+	{
+		.virtual = (unsigned long)IO_GK20A_B1_VIRT,
+		.pfn = __phys_to_pfn(IO_GK20A_B1_PHYS),
+		.length = IO_GK20A_B1_SIZE,
+		.type = MT_DEVICE,
+	},
 #endif
 };
 
