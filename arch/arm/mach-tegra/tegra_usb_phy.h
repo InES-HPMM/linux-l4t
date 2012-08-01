@@ -98,6 +98,7 @@ struct tegra_usb_phy {
 	bool ulpi_clk_padout_ena;
 	bool pmc_sleepwalk;
 	bool bus_reseting;
+	bool linkphy_init;
 };
 
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,

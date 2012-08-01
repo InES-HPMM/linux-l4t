@@ -50,11 +50,13 @@
 #define   USB_USBSTS_SRI	(1 << 7)
 #define   USB_USBSTS_HCH	(1 << 12)
 
+#define USB_USBINTR		0x148
+
 #define USB_ASYNCLISTADDR	0x158
 
 #define USB_TXFILLTUNING		0x164
 #define USB_FIFO_TXFILL_THRES(x)   (((x) & 0x1f) << 16)
-#define USB_FIFO_TXFILL_MASK	0x1f0000
+#define USB_FIFO_TXFILL_MASK	0x3f0000
 
 #define ULPI_VIEWPORT		0x170
 #define   ULPI_WAKEUP		(1 << 31)
@@ -72,6 +74,7 @@
 #define   USB_PORTSC_PP	(1 << 12)
 #define   USB_PORTSC_LS(x) (((x) & 0x3) << 10)
 #define   USB_PORTSC_SUSP	(1 << 7)
+#define   USB_PORTSC_RESUME	(1 << 6)
 #define   USB_PORTSC_OCC	(1 << 5)
 #define   USB_PORTSC_PEC	(1 << 3)
 #define   USB_PORTSC_PE		(1 << 2)
@@ -721,7 +724,8 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			val |= USB_PHY_CLK_VALID_INT_ENB;
 			writel(val, base + USB_SUSP_CTRL);
 		} else {
-			/* Disable PHY clock valid interrupts while going into suspend*/
+			/* Disable PHY clock valid interrupts
+				while going into suspend*/
 			val = readl(base + USB_SUSP_CTRL);
 			val &= ~USB_PHY_CLK_VALID_INT_ENB;
 			writel(val, base + USB_SUSP_CTRL);
@@ -943,7 +947,8 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 
 			if (usb_phy_reg_status_wait(base + USB_USBCMD,
 				USB_USBCMD_RESET, 0, 2500) < 0) {
-				pr_err("%s: timeout waiting for reset\n", __func__);
+				pr_err("%s: timeout waiting for reset\n",
+					__func__);
 			}
 
 			val = readl(base + USB_USBMODE_REG_OFFSET);
@@ -960,7 +965,8 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 
 			if (usb_phy_reg_status_wait(base + USB_USBCMD,
 				USB_USBCMD_RS, USB_USBCMD_RS, 2500) < 0) {
-				pr_err("%s: timeout waiting for run bit\n", __func__);
+				pr_err("%s: timeout waiting for run bit\n",
+					__func__);
 			}
 
 			/* Enable Port Power */
@@ -970,7 +976,8 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 			udelay(10);
 
 			DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
-				readl(base + USB_USBSTS), readl(base + USB_PORTSC));
+				readl(base + USB_USBSTS),
+				readl(base + USB_PORTSC));
 		}
 	} else {
 		/* Restoring the pad powers */
@@ -1365,7 +1372,7 @@ static int ulpi_link_phy_open(struct tegra_usb_phy *phy)
 
 	phy->ulpi_vp = otg_ulpi_create(&ulpi_viewport_access_ops, 0);
 	phy->ulpi_vp->io_priv = phy->regs + ULPI_VIEWPORT;
-
+	phy->linkphy_init = true;
 	return err;
 }
 
@@ -1461,49 +1468,74 @@ static int ulpi_link_phy_power_on(struct tegra_usb_phy *phy)
 	}
 
 	val = readl(base + USB_SUSP_CTRL);
-	val |= UHSIC_RESET;
-	writel(val, base + USB_SUSP_CTRL);
 
-	val = readl(base + ULPI_TIMING_CTRL_0);
-	val |= ULPI_OUTPUT_PINMUX_BYP | ULPI_CLKOUT_PINMUX_BYP;
-	writel(val, base + ULPI_TIMING_CTRL_0);
+	/* Case for lp0 */
+	if (!(val & UHSIC_RESET)) {
+		val |= UHSIC_RESET;
+		writel(val, base + USB_SUSP_CTRL);
 
-	val = readl(base + USB_SUSP_CTRL);
-	val |= ULPI_PHY_ENABLE;
-	writel(val, base + USB_SUSP_CTRL);
+		val = 0;
+		writel(val, base + ULPI_TIMING_CTRL_1);
 
-	val = readl(base + USB_SUSP_CTRL);
-	val |= USB_SUSP_CLR;
-	writel(val, base + USB_SUSP_CTRL);
+		ulpi_set_trimmer(phy);
 
-	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL, USB_PHY_CLK_VALID,
-						USB_PHY_CLK_VALID, 2500))
-		pr_err("%s: timeout waiting for phy to stabilize\n", __func__);
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_OUTPUT_PINMUX_BYP | ULPI_CLKOUT_PINMUX_BYP;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAA, TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAB, TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_UDA, TEGRA_TRI_NORMAL);
+#endif
+		val = readl(base + USB_SUSP_CTRL);
+		val |= ULPI_PHY_ENABLE;
+		writel(val, base + USB_SUSP_CTRL);
 
-	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL, USB_CLKEN,
-						USB_CLKEN, 2500))
-		pr_err("%s: timeout waiting for AHB clock\n", __func__);
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2500) < 0)
+			pr_err("%s: timeout waiting for phy" \
+			"to stabilize\n", __func__);
 
-	val = readl(base + USB_SUSP_CTRL);
-	val &= ~USB_SUSP_CLR;
-	writel(val, base + USB_SUSP_CTRL);
+		val = readl(base + USB_TXFILLTUNING);
+		if ((val & USB_FIFO_TXFILL_MASK) !=
+				USB_FIFO_TXFILL_THRES(0x10)) {
+			val = USB_FIFO_TXFILL_THRES(0x10);
+			writel(val, base + USB_TXFILLTUNING);
+		}
+	} else {
+	/* Case for auto resume*/
+		val = readl(base + USB_SUSP_CTRL);
+		val |= USB_SUSP_CLR;
+		writel(val, base + USB_SUSP_CTRL);
 
-	val = 0;
-	writel(val, base + ULPI_TIMING_CTRL_1);
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2500) < 0)
+			pr_err("%s: timeout waiting for phy" \
+					"to stabilize\n", __func__);
 
-	ulpi_set_trimmer(phy);
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_CLKEN, USB_CLKEN, 2500) < 0)
+			pr_err("%s: timeout waiting for AHB clock\n", __func__);
 
-	/* Fix VbusInvalid due to floating VBUS */
-	ret = usb_phy_io_write(phy->ulpi_vp, 0x40, 0x08);
-	if (ret) {
-		pr_err("%s: ulpi write failed\n", __func__);
-		return ret;
+		val = readl(base + USB_SUSP_CTRL);
+		val &= ~USB_SUSP_CLR;
+		writel(val, base + USB_SUSP_CTRL);
 	}
+	if (phy->linkphy_init) {
+		/* To be done only incase of coldboot*/
+		/* Fix VbusInvalid due to floating VBUS */
+		ret = usb_phy_io_write(phy->ulpi_vp, 0x40, 0x08);
+		if (ret) {
+			pr_err("%s: ulpi write failed\n", __func__);
+			return ret;
+		}
 
-	ret = usb_phy_io_write(phy->ulpi_vp, 0x80, 0x0B);
-	if (ret) {
-		pr_err("%s: ulpi write failed\n", __func__);
-		return ret;
+		ret = usb_phy_io_write(phy->ulpi_vp, 0x80, 0x0B);
+		if (ret) {
+			pr_err("%s: ulpi write failed\n", __func__);
+			return ret;
+		}
+		phy->linkphy_init = false;
 	}
 
 	val = readl(base + USB_PORTSC);
@@ -1521,6 +1553,7 @@ static inline void ulpi_link_phy_set_tristate(bool enable)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int tristate = (enable) ? TEGRA_TRI_TRISTATE : TEGRA_TRI_NORMAL;
 
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV2, tristate);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAA, tristate);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAB, tristate);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UDA, tristate);
@@ -1546,6 +1579,7 @@ static void ulpi_link_phy_restore_end(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	int ret;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -1554,6 +1588,13 @@ static void ulpi_link_phy_restore_end(struct tegra_usb_phy *phy)
 	writel(val, base + ULPI_TIMING_CTRL_0);
 
 	ulpi_link_phy_set_tristate(false);
+
+	udelay(10);
+	ret = usb_phy_io_write(phy->ulpi_vp, 0x55, 0x04);
+	if (ret) {
+		pr_err("%s: ulpi write failed\n", __func__);
+		return;
+	}
 }
 
 static int ulpi_link_phy_resume(struct tegra_usb_phy *phy)
@@ -1573,7 +1614,70 @@ static int ulpi_link_phy_resume(struct tegra_usb_phy *phy)
 	return status;
 }
 
-static inline void ulpi_pinmux_bypass(struct tegra_usb_phy *phy, bool enable)
+static int ulpi_link_phy_pre_resume(struct tegra_usb_phy *phy,
+			bool remote_wakeup)
+{
+	int status = 0;
+	unsigned long val;
+	void __iomem *base = phy->regs;
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	val = readl(base + USB_PORTSC);
+	if (val & USB_PORTSC_RESUME) {
+
+		val = readl(base + USB_USBCMD);
+		val &= ~USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+
+		/* detect remote wakeup */
+		msleep(20);
+
+		val = readl(base + USB_PORTSC);
+
+		/* Poll until the controller clears RESUME and SUSPEND */
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_PORTSC_RESUME, 0, 2500))
+			pr_err("%s: timeout waiting for RESUME\n", __func__);
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_PORTSC_SUSP, 0, 2500))
+			pr_err("%s: timeout waiting for SUSPEND\n", __func__);
+
+		/* Since we skip remote wakeup event,
+		put controller in suspend again and
+		resume port later */
+		val = readl(base + USB_PORTSC);
+		val |= USB_PORTSC_SUSP;
+		writel(val, base + USB_PORTSC);
+		mdelay(4);
+		/* Wait until port suspend completes */
+		if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+			USB_PORTSC_SUSP, USB_PORTSC_SUSP, 2500))
+			pr_err("%s: timeout waiting for" \
+				"PORT_SUSPEND\n", __func__);
+
+		/* Disable interrupts */
+		writel(0, base + USB_USBINTR);
+		/* Clear the run bit to stop SOFs - 2LS WAR */
+		val = readl(base + USB_USBCMD);
+		val &= ~USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+		if (usb_phy_reg_status_wait(base + USB_USBSTS,
+			USB_USBSTS_HCH, USB_USBSTS_HCH, 2000)) {
+			pr_err("%s: timeout waiting for" \
+				"USB_USBSTS_HCH\n", __func__);
+		}
+		usb_phy_wait_for_sof(phy);
+
+		val = readl(base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+	}
+	return status;
+}
+
+
+static inline void ulpi_pinmux_bypass(struct tegra_usb_phy *phy,
+	bool enable)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
@@ -1806,7 +1910,8 @@ static int ulpi_null_phy_power_on(struct tegra_usb_phy *phy)
 	val = readl(base + ULPIS2S_CTRL);
 	val |= ULPIS2S_ENA;
 	val |= ULPIS2S_SUPPORT_DISCONNECT;
-	val |= ULPIS2S_SPARE((phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) ? 3 : 1);
+	val |= ULPIS2S_SPARE((phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+				? 3 : 1);
 	val |= ULPIS2S_PLLU_MASTER_BLASTER60;
 	writel(val, base + ULPIS2S_CTRL);
 
@@ -1920,6 +2025,7 @@ static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
 	.power_off	= ulpi_link_phy_power_off,
 	.resume		= ulpi_link_phy_resume,
 	.post_suspend   = phy_post_suspend,
+	.pre_resume	= ulpi_link_phy_pre_resume,
 };
 
 static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
