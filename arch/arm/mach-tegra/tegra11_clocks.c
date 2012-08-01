@@ -4366,6 +4366,8 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 			switch (c->u.shared_bus_user.mode) {
 			case SHARED_BW:
 				bw += request_rate;
+				if (bw > bus->max_rate)
+					bw = bus->max_rate;
 				break;
 			case SHARED_CEILING:
 				ceiling = min(request_rate, ceiling);
