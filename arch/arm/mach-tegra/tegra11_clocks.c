@@ -443,7 +443,8 @@
 static bool tegra11_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
 static void tegra11_pllp_init_dependencies(unsigned long pllp_rate);
-static int tegra11_clk_shared_bus_update(struct clk *bus);
+static unsigned long tegra11_clk_shared_bus_update(
+	struct clk *bus, struct clk **bus_top, struct clk **bus_slow);
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -1473,11 +1474,28 @@ static int tegra11_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
+static int tegra11_clk_sbus_update(struct clk *bus)
+{
+	unsigned long rate, old_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
+	rate = clk_round_rate_locked(bus, rate);
+
+	old_rate = clk_get_rate_locked(bus);
+	if (rate == old_rate)
+		return 0;
+
+	return clk_set_rate_locked(bus, rate);
+}
+
 static struct clk_ops tegra_sbus_cmplx_ops = {
 	.init = tegra11_sbus_cmplx_init,
 	.set_rate = tegra11_sbus_cmplx_set_rate,
 	.round_rate = tegra11_sbus_cmplx_round_rate,
-	.shared_bus_update = tegra11_clk_shared_bus_update,
+	.shared_bus_update = tegra11_clk_sbus_update,
 };
 
 /* Blink output functions */
@@ -3823,6 +3841,23 @@ static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
+static int tegra11_clk_emc_bus_update(struct clk *bus)
+{
+	unsigned long rate, old_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
+	rate = clk_round_rate_locked(bus, rate);
+
+	old_rate = clk_get_rate_locked(bus);
+	if (rate == old_rate)
+		return 0;
+
+	return clk_set_rate_locked(bus, rate);
+}
+
 static struct clk_ops tegra_emc_clk_ops = {
 	.init			= &tegra11_emc_clk_init,
 	.enable			= &tegra11_periph_clk_enable,
@@ -3830,7 +3865,7 @@ static struct clk_ops tegra_emc_clk_ops = {
 	.set_rate		= &tegra11_emc_clk_set_rate,
 	.round_rate		= &tegra11_emc_clk_round_rate,
 	.reset			= &tegra11_periph_clk_reset,
-	.shared_bus_update	= &tegra11_clk_shared_bus_update,
+	.shared_bus_update	= &tegra11_clk_emc_bus_update,
 };
 
 /* Clock doubler ops (non-atomic shared register access) */
@@ -4171,54 +4206,14 @@ static inline void cbus_move_enabled_user(
 static int tegra11_clk_cbus_update(struct clk *bus)
 {
 	int ret, mv;
-	struct clk *c;
 	struct clk *slow = NULL;
 	struct clk *top = NULL;
-
-	unsigned long top_rate = 0;
-	unsigned long rate = bus->min_rate;
-	unsigned long ceiling = bus->max_rate;
+	unsigned long rate;
 
 	if (detach_shared_bus)
 		return 0;
 
-	list_for_each_entry(c, &bus->shared_bus_list,
-			u.shared_bus_user.node) {
-		/*
-		 * Ignore requests from disabled floor and bw users, and from
-		 * auto-users riding the bus. Always honor ceiling users, even
-		 * if they are disabled - we do not want to keep enabled parent
-		 * bus just because ceiling is set.
-		 */
-		if (c->u.shared_bus_user.enabled ||
-		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
-			unsigned long request_rate = c->u.shared_bus_user.rate *
-				(c->div ? : 1);
-
-			switch (c->u.shared_bus_user.mode) {
-			case SHARED_CEILING:
-				ceiling = min(request_rate, ceiling);
-				break;
-			case SHARED_AUTO:
-				break;
-			case SHARED_FLOOR:
-			default:
-				rate = max(request_rate, rate);
-				if (c->u.shared_bus_user.client) {
-					if (top_rate < request_rate) {
-						top_rate = request_rate;
-						top = c;
-					} else if ((top_rate == request_rate) &&
-						cbus_user_is_slower(c, top)) {
-						top = c;
-					}
-				}
-			}
-			if (c->u.shared_bus_user.client &&
-				(!slow || cbus_user_is_slower(c, slow)))
-				slow = c;
-		}
-	}
+	rate = tegra11_clk_shared_bus_update(bus, &top, &slow);
 
 	/* use dvfs table of the slowest enabled client as cbus dvfs table */
 	if (bus->dvfs && slow && (slow != bus->u.cbus.slow_user)) {
@@ -4236,7 +4231,6 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	/* update bus state variables and rate */
 	bus->u.cbus.slow_user = slow;
 	bus->u.cbus.top_user = top;
-	rate = min(rate, ceiling);
 
 	rate = bus->ops->round_rate(bus, rate);
 	mv = tegra_dvfs_predict_millivolts(bus, rate);
@@ -4266,6 +4260,23 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 
 	return 0;
 };
+#else
+static int tegra11_clk_cbus_update(struct clk *bus)
+{
+	unsigned long rate, old_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
+	rate = clk_round_rate_locked(bus, rate);
+
+	old_rate = clk_get_rate_locked(bus);
+	if (rate == old_rate)
+		return 0;
+
+	return clk_set_rate_locked(bus, rate);
+}
 #endif
 
 static int tegra11_clk_cbus_migrate_users(struct clk *user)
@@ -4323,11 +4334,7 @@ static struct clk_ops tegra_clk_cbus_ops = {
 	.enable = tegra11_clk_cbus_enable,
 	.set_rate = tegra11_clk_cbus_set_rate,
 	.round_rate = tegra11_clk_cbus_round_rate,
-#ifdef CONFIG_TEGRA_DYNAMIC_CBUS
 	.shared_bus_update = tegra11_clk_cbus_update,
-#else
-	.shared_bus_update = tegra11_clk_shared_bus_update,
-#endif
 };
 
 /* shared bus ops */
@@ -4339,16 +4346,17 @@ static struct clk_ops tegra_clk_cbus_ops = {
  * shared bus.
  */
 
-static int tegra11_clk_shared_bus_update(struct clk *bus)
+static unsigned long tegra11_clk_shared_bus_update(
+	struct clk *bus, struct clk **bus_top, struct clk **bus_slow)
 {
 	struct clk *c;
-	unsigned long old_rate;
+	struct clk *slow = NULL;
+	struct clk *top = NULL;
+
+	unsigned long top_rate = 0;
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
 	unsigned long ceiling = bus->max_rate;
-
-	if (detach_shared_bus)
-		return 0;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
@@ -4377,17 +4385,28 @@ static int tegra11_clk_shared_bus_update(struct clk *bus)
 			case SHARED_FLOOR:
 			default:
 				rate = max(request_rate, rate);
+				if (c->u.shared_bus_user.client) {
+					if (top_rate < request_rate) {
+						top_rate = request_rate;
+						top = c;
+					} else if ((top_rate == request_rate) &&
+						cbus_user_is_slower(c, top)) {
+						top = c;
+					}
+				}
 			}
+			if (c->u.shared_bus_user.client &&
+				(!slow || cbus_user_is_slower(c, slow)))
+				slow = c;
 		}
 	}
 	rate = min(max(rate, bw), ceiling);
-	rate = clk_round_rate_locked(bus, rate);
 
-	old_rate = clk_get_rate_locked(bus);
-	if (rate == old_rate)
-		return 0;
-
-	return clk_set_rate_locked(bus, rate);
+	if (bus_top)
+		*bus_top = top;
+	if (bus_slow)
+		*bus_slow = slow;
+	return rate;
 };
 
 static int tegra_clk_shared_bus_migrate_users(struct clk *user)
