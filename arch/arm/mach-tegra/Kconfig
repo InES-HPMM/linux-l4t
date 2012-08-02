@@ -207,6 +207,7 @@ config TEGRA_SILICON_PLATFORM
 
 config TEGRA_SIMULATION_PLATFORM
         bool "Simulation"
+        select TEGRA_PRE_SILICON_SUPPORT
 	select LESS_GCC_OPT if DEBUG_KERNEL
         help
           This enables support for a Tegra simulation platform.
@@ -215,11 +216,19 @@ config TEGRA_SIMULATION_PLATFORM
 
 config TEGRA_FPGA_PLATFORM
         bool "FPGA"
+        select TEGRA_PRE_SILICON_SUPPORT
         help
           This enables support for a Tegra FPGA platform.
           Select this only if you are an NVIDIA developer working
           on a FPGA platform.
 endchoice
+
+config TEGRA_PRE_SILICON_SUPPORT
+        bool "Enable pre-silicon platform support"
+        help
+          This enables support for Tegra early development platforms.
+          Select this only if you are an NVIDIA developer working on
+          FPGA, Emulation or Simulation.
 
 config TEGRA_FIQ_DEBUGGER
 	bool "Enable the FIQ serial debugger on Tegra"
