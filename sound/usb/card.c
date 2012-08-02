@@ -799,7 +799,9 @@ static int __init snd_usb_audio_init(void)
 
 	err = usb_register(&usb_audio_driver);
 	if (err) {
+#ifdef CONFIG_SWITCH
 		switch_dev_unregister(&usb_switch_dev);
+#endif
 	}
 
 	return err;
