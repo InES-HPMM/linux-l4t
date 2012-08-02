@@ -387,7 +387,7 @@ static struct {
        { 0xFF, 0xFF, 0 }, /* 2C right SPK mixer */
        { 0xFF, 0xFF, 0 }, /* 2D SPK control */
        { 0xFF, 0xFF, 0 }, /* 2E sidetone */
-       { 0xFF, 0xFF, 0 }, /* 2F DAI1 playback level */
+       { 0xFF, 0xFF, 1 }, /* 2F DAI1 playback level */
 
        { 0xFF, 0xFF, 0 }, /* 30 DAI1 playback level */
        { 0xFF, 0xFF, 0 }, /* 31 DAI2 playback level */
