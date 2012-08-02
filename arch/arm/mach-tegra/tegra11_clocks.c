@@ -2542,7 +2542,9 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
 	if (c->state == ON) {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+#ifndef CONFIG_ARCH_TEGRA_14x_SOC
 		BUG_ON(val & PLLX_MISC3_IDDQ);
+#endif
 #endif
 	} else {
 		val |= PLLX_MISC3_IDDQ;
