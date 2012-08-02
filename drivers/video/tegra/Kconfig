@@ -207,6 +207,12 @@ config TEGRA_DSI
 	help
 	  Say Y here to enable the DSI panel.
 
+config TEGRA_DP
+	bool "Enable eDP panel."
+	default  n
+	help
+	  Say Y here to enable eDP panel.
+
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && IOMMU_API
