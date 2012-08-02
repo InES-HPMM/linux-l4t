@@ -157,7 +157,7 @@ static int tegra_max98095_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master; ?
+	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
 			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
 
 	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
