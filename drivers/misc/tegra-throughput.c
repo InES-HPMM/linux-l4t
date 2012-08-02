@@ -58,6 +58,9 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 			else
 				last_frame_time = (unsigned short) timediff;
 
+			if (last_frame_time == 0)
+				return NOTIFY_DONE;
+
 			throughput_hint =
 				((int) target_frame_time * 100)/last_frame_time;
 
