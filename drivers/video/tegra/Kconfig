@@ -65,6 +65,11 @@ config TEGRA_DC_SCAN_COLUMN
 	default y if ARCH_TEGRA_11x_SOC
 	default n
 
+config TEGRA_DC_BLENDER_GEN2
+    bool
+    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
+    default y
+
 config TEGRA_SD_GEN2
 	bool
 	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
