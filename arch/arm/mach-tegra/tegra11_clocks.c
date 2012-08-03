@@ -950,6 +950,31 @@ static struct clk_ops tegra_super_ops = {
 	.set_rate		= tegra11_super_clk_set_rate,
 };
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static int tegra14_twd_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	/* The input value 'rate' is the clock rate of the CPU complex. */
+	c->rate = (rate * c->mul) / c->div;
+	return 0;
+}
+
+static struct clk_ops tegra14_twd_ops = {
+	.set_rate	= tegra14_twd_clk_set_rate,
+};
+
+static struct clk tegra14_clk_twd = {
+	/* NOTE: The twd clock must have *NO* parent. It's rate is directly
+		 updated by tegra3_cpu_cmplx_clk_set_rate() because the
+		 frequency change notifer for the twd is called in an
+		 atomic context which cannot take a mutex. */
+	.name     = "twd",
+	.ops      = &tegra14_twd_ops,
+	.max_rate = 1400000000,	/* Same as tegra_clk_cpu_cmplx.max_rate */
+	.mul      = 1,
+	.div      = 2,
+};
+#endif
+
 /* virtual cpu clock functions */
 /* some clocks can not be stopped (cpu, memory bus) while the SoC is running.
    To change the frequency of these clocks, the parent pll may need to be
@@ -6551,6 +6576,9 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	CLK_DUPLICATE("twd", "smp_twd", NULL),
+#endif
 };
 
 struct clk *tegra_ptr_clks[] = {
@@ -6600,6 +6628,9 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
 	&tegra_clk_emc,
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	&tegra14_clk_twd,
+#endif
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
