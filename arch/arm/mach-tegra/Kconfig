@@ -514,6 +514,23 @@ config TEGRA_LATENCY_ALLOWANCE_SCALING
 	  programmed latency allowance values based on fifo threshold levels
 	  set for for display and vi hardware.
 
+config TEGRA_BASEBAND
+	bool "Enable integrated tegra baseband support"
+	default n
+	help
+	  This option enables support for integrated icera baseband
+	  This driver is used to setup shared memory space, provide
+	  functions to handle IPC mechanism and a sysfs interface for IPC
+	  notification which support polling on sysfs file.
+
+config TEGRA_BASEBAND_SIMU
+	bool "Enable integrated tegra baseband simulation"
+	select TEGRA_BASEBAND
+	help
+	  This option enables tegra baseband simulation when actual hardware
+	  is not present. IPC is simulated when writing to status file which
+	  allow high level tests in local loopback
+
 config TEGRA_MC_PTSA
 	bool "Enable MC PTSA programming"
 	depends on TEGRA_LATENCY_ALLOWANCE
