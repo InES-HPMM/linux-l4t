@@ -1,0 +1,7 @@
+config NVSHM
+	tristate "NV Tegra Baseband Shared Memory Interface"
+	depends on ARCH_TEGRA
+	depends on TEGRA_BASEBAND
+	help
+	    Say Y here to enable support for high level shared memory interface driver on NVIDIA Tegra integrated baseband
+
