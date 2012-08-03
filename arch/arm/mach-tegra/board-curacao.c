@@ -600,7 +600,6 @@ static void __init tegra_curacao_init(void)
 
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
 
-	curacao_power_off_init();
 	tegra_io_dpd_init();
 	curacao_sdhci_init();
 	curacao_i2c_init();

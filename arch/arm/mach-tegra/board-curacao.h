@@ -48,13 +48,8 @@ int curacao_emc_init(void);
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 #define CURACAO_BOARD_NAME "curacao_sim"
-int __init curacao_power_off_init(void);
 #else
 #define CURACAO_BOARD_NAME "curacao"
-static inline int curacao_power_off_init(void)
-{
-	return 0;
-}
 #endif
 
 #endif
