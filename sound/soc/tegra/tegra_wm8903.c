@@ -506,6 +506,11 @@ static int tegra_wm8903_event_ext_mic(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static const struct snd_soc_dapm_widget dolak_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_LINE("Line In", NULL),
+};
+
 static const struct snd_soc_dapm_widget cardhu_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_wm8903_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone Jack", tegra_wm8903_event_hp),
@@ -546,6 +551,18 @@ static const struct snd_soc_dapm_route cardhu_audio_map[] = {
 	{"IN1L", NULL, "Mic Jack"},
 	{"IN3L", NULL, "Line In"},
 	{"IN3R", NULL, "Line In"},
+};
+
+static const struct snd_soc_dapm_route dolak_audio_map[] = {
+	{"Headphone Jack", NULL, "HPOUTR"},
+	{"Headphone Jack", NULL, "HPOUTL"},
+	{"IN3L", NULL, "Line In"},
+	{"IN3R", NULL, "Line In"},
+};
+
+static const struct snd_kcontrol_new dolak_controls[] = {
+	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
+	SOC_DAPM_PIN_SWITCH("Line In"),
 };
 
 static const struct snd_kcontrol_new cardhu_controls[] = {
@@ -720,7 +737,7 @@ static struct snd_soc_card snd_soc_tegra_wm8903 = {
 	.owner = THIS_MODULE,
 	.dai_link = tegra_wm8903_dai,
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.num_links = 1,
 #else
 	.num_links = ARRAY_SIZE(tegra_wm8903_dai),
@@ -728,6 +745,7 @@ static struct snd_soc_card snd_soc_tegra_wm8903 = {
 
 	.remove = tegra_wm8903_remove,
 
+	.fully_routed = true,
 	.suspend_post = tegra_wm8903_suspend_post,
 	.resume_pre = tegra_wm8903_resume_pre,
 	//.set_bias_level = tegra30_soc_set_bias_level,
@@ -875,6 +893,12 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 
 			card->dapm_widgets = cardhu_dapm_widgets;
 			card->num_dapm_widgets = ARRAY_SIZE(cardhu_dapm_widgets);
+		} else if (machine_is_dolak()) {
+			card->controls = dolak_controls;
+			card->num_controls = ARRAY_SIZE(dolak_controls);
+
+			card->dapm_widgets = dolak_dapm_widgets;
+			card->num_dapm_widgets = ARRAY_SIZE(dolak_dapm_widgets);
 		} else {
 			card->controls = tegra_wm8903_controls;
 			card->num_controls = ARRAY_SIZE(tegra_wm8903_controls);
@@ -886,6 +910,9 @@ static int tegra_wm8903_driver_probe(struct platform_device *pdev)
 		if (machine_is_ventana() || machine_is_cardhu()) {
 			card->dapm_routes = cardhu_audio_map;
 			card->num_dapm_routes = ARRAY_SIZE(cardhu_audio_map);
+		} else if (machine_is_dolak()) {
+			card->dapm_routes = dolak_audio_map;
+			card->num_dapm_routes = ARRAY_SIZE(dolak_audio_map);
 		} else {
 			card->dapm_routes = harmony_audio_map;
 			card->num_dapm_routes = ARRAY_SIZE(harmony_audio_map);
