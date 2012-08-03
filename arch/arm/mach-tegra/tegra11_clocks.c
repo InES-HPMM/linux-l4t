@@ -3291,7 +3291,7 @@ static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 	int ret;
 	struct clk *cpu = tegra_get_clock_by_name("cpu");
 
-#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	u32 netlist, patchid;
 	tegra_get_netlist_revision(&netlist, &patchid);
 	if (netlist < 12) {
