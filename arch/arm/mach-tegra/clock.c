@@ -983,7 +983,7 @@ unsigned long tegra_clk_measure_input_freq(void)
 	} else if (clock_autodetect >= 2928 - 3 && clock_autodetect <= 2928 + 3) {
 		osc_freq = 48000000;
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	} else if (tegra_revision == TEGRA_REVISION_QT) {
+	} else if (tegra_platform_is_qt()) {
 		if (clock_autodetect >= 2 && clock_autodetect <= 9)
 			osc_freq = 115200;
 		else if (clock_autodetect >= 13 && clock_autodetect <= 15)

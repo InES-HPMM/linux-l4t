@@ -1356,7 +1356,6 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A03p]    = "A03 prime",
 	[TEGRA_REVISION_A04]     = "A04",
 	[TEGRA_REVISION_A04p]    = "A04 prime",
-	[TEGRA_REVISION_QT]      = "QT",
 };
 
 static const char * __init tegra_get_revision(void)

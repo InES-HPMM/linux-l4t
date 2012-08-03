@@ -137,7 +137,6 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A03p]    = "A03 prime",
 	[TEGRA_REVISION_A04]     = "A04",
 	[TEGRA_REVISION_A04p]    = "A04 prime",
-	[TEGRA_REVISION_QT]      = "QT",
 };
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
@@ -486,8 +485,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 	if (id->major == 0) {
 		/* Default to A01 */
 		revision = TEGRA_REVISION_A01;
-		if (id->minor == MINOR_QT)
-			revision = TEGRA_REVISION_QT;
 		return revision;
 	}
 #endif

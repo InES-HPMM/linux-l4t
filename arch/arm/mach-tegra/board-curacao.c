@@ -585,7 +585,7 @@ static void __init tegra_curacao_init(void)
 	tegra_smmu_init();
 	tegra_soc_device_init("curacao");
 
-	if (tegra_revision == TEGRA_REVISION_QT)
+	if (tegra_platform_is_qt())
 		debug_uart_platform_data[0].uartclk = tegra_clk_measure_input_freq();
 
 	platform_add_devices(curacao_devices, ARRAY_SIZE(curacao_devices));
