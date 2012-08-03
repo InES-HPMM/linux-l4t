@@ -334,6 +334,8 @@ void tegra3_set_cpu_skipper_delay(int delay);
 int tegra_emc_set_rate(unsigned long rate);
 long tegra_emc_round_rate(unsigned long rate);
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value);
+bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
+		unsigned long *parent_rate, unsigned long *backup_rate);
 void tegra_emc_timing_invalidate(void);
 unsigned long tegra_clk_measure_input_freq(void);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

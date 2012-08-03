@@ -127,14 +127,121 @@ int tegra_emc_set_rate(unsigned long rate)
 
 long tegra_emc_round_rate(unsigned long rate)
 {
-	/* FIXME: This is just a stub */
+	int i;
+
+	if (!tegra_emc_table)
+		return clk_get_rate_locked(emc); /* no table - no rate change */
+
+	if (!emc_enable)
+		return -EINVAL;
+
+	pr_debug("%s: %lu\n", __func__, rate);
+
+	/* Table entries specify rate in kHz */
+	rate = rate / 1000;
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_clk_sel[i].input == NULL)
+			continue;	/* invalid entry */
+
+		if (tegra_emc_table[i].rate >= rate) {
+			pr_debug("%s: using %lu\n",
+				 __func__, tegra_emc_table[i].rate);
+			return tegra_emc_table[i].rate * 1000;
+		}
+	}
+
 	return -EINVAL;
 }
 
 struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 {
-	/* FIXME: This is just a stub */
+	int i;
+
+	if (!tegra_emc_table) {
+		if (rate == clk_get_rate_locked(emc)) {
+			*div_value = emc->div - 2;
+			return emc->parent;
+		}
+		return NULL;
+	}
+
+	pr_debug("%s: %lu\n", __func__, rate);
+
+	/* Table entries specify rate in kHz */
+	rate = rate / 1000;
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_table[i].rate == rate) {
+			struct clk *p = tegra_emc_clk_sel[i].input;
+
+			if (p && (tegra_emc_clk_sel[i].input_rate ==
+				  clk_get_rate(p))) {
+				*div_value = (tegra_emc_clk_sel[i].value &
+					EMC_CLK_DIV_MASK) >> EMC_CLK_DIV_SHIFT;
+				return p;
+			}
+		}
+	}
 	return NULL;
+}
+
+bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
+		unsigned long *parent_rate, unsigned long *backup_rate)
+{
+
+	int i;
+	struct clk *p = NULL;
+	unsigned long p_rate;
+
+	if (!tegra_emc_table || !emc_enable)
+		return true;
+
+	pr_debug("%s: %lu\n", __func__, rate);
+
+	/* Table entries specify rate in kHz */
+	rate = rate / 1000;
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_table[i].rate == rate) {
+			p = tegra_emc_clk_sel[i].input;
+			if (!p)
+				continue;	/* invalid entry */
+
+			p_rate = tegra_emc_clk_sel[i].input_rate;
+			if (p_rate == clk_get_rate(p))
+				return true;
+			break;
+		}
+	}
+
+	/* Table match not found - "non existing parent" is ready */
+	if (!p)
+		return true;
+
+	/*
+	 * Table match found, but parent is not ready - continue search
+	 * for backup rate: min rate above requested that has different
+	 * parent source (since only pll_c is scaled and may not be ready,
+	 * any other parent can provide backup)
+	 */
+	*parent = p;
+	*parent_rate = p_rate;
+
+	for (i++; i < tegra_emc_table_size; i++) {
+		p = tegra_emc_clk_sel[i].input;
+		if (!p)
+			continue;	/* invalid entry */
+
+		if (p != (*parent)) {
+			*backup_rate = tegra_emc_table[i].rate * 1000;
+			return false;
+		}
+	}
+
+	/* Parent is not ready, and no backup found */
+	*backup_rate = -EINVAL;
+	return false;
 }
 
 static int find_matching_input(const struct tegra_emc_table *table,

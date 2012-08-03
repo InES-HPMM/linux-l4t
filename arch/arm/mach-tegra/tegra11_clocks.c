@@ -3795,7 +3795,7 @@ static void tegra11_emc_clk_init(struct clk *c)
 
 static long tegra11_emc_clk_round_rate(struct clk *c, unsigned long rate)
 {
-	long new_rate = rate;
+	long new_rate = max(rate, c->min_rate);
 
 	new_rate = tegra_emc_round_rate(new_rate);
 	if (new_rate < 0)
@@ -3818,8 +3818,11 @@ static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	 * to achieve requested rate. */
 	p = tegra_emc_predict_parent(rate, &div_value);
 	div_value += 2;		/* emc has fractional DIV_U71 divider */
-	if (!p)
+	if (IS_ERR_OR_NULL(p)) {
+		pr_err("%s: Failed to predict emc parent for rate %lu\n",
+		       __func__, rate);
 		return -EINVAL;
+	}
 
 	if (p == c->parent) {
 		if (div_value == c->div)
@@ -3843,7 +3846,8 @@ static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
 
 static int tegra11_clk_emc_bus_update(struct clk *bus)
 {
-	unsigned long rate, old_rate;
+	struct clk *p = NULL;
+	unsigned long rate, parent_rate, backup_rate;
 
 	if (detach_shared_bus)
 		return 0;
@@ -3851,9 +3855,31 @@ static int tegra11_clk_emc_bus_update(struct clk *bus)
 	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
 	rate = clk_round_rate_locked(bus, rate);
 
-	old_rate = clk_get_rate_locked(bus);
-	if (rate == old_rate)
+	if (rate == clk_get_rate_locked(bus))
 		return 0;
+
+	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
+		if (bus->parent == p) {
+			/* need backup to re-lock current parent */
+			if (IS_ERR_VALUE(backup_rate) ||
+			    clk_set_rate_locked(bus, backup_rate)) {
+				pr_err("%s: Failed to backup %s for rate %lu\n",
+				       __func__, bus->name, rate);
+				return -EINVAL;
+			}
+
+			if (p->refcnt) {
+				pr_err("%s: %s has other than emc child\n",
+				       __func__, p->name);
+				return -EINVAL;
+			}
+		}
+		if (clk_set_rate(p, parent_rate)) {
+			pr_err("%s: Failed to set %s rate %lu\n",
+			       __func__, p->name, parent_rate);
+			return -EINVAL;
+		}
+	}
 
 	return clk_set_rate_locked(bus, rate);
 }
