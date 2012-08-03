@@ -2492,13 +2492,7 @@ static int ulpi_link_phy_power_on(struct tegra_usb_phy *phy)
 
 static inline void ulpi_link_phy_set_tristate(bool enable)
 {
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	int tristate = (enable) ? TEGRA_TRI_TRISTATE : TEGRA_TRI_NORMAL;
 
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAA, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UAB, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_UDA, tristate);
-#endif
 }
 
 static void ulpi_link_phy_restore_start(struct tegra_usb_phy *phy)
