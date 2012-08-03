@@ -270,7 +270,8 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* set Pre Charge current to 400mA */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2, 0xDE, 0x3);
+	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+			CHARGERUSB_VICHRG_PC, 0x3);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
 				__func__, 0xDD);
