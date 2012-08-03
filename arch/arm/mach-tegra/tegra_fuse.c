@@ -89,6 +89,11 @@
 #define TEGRA_AGE_0_0 0x2b4 /*Spare bit 28*/
 #define TEGRA_AGE_1_0 0x2f0 /*Spare bit 43*/
 
+#define MINOR_QT		0
+#define MINOR_FPGA		1
+#define MINOR_ASIM_QT		2
+#define MINOR_ASIM_LINSIM	3
+
 struct tegra_id {
 	enum tegra_chipid chipid;
 	unsigned int major, minor, netlist, patch;
@@ -134,6 +139,17 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_A04p]    = "A04 prime",
 	[TEGRA_REVISION_QT]      = "QT",
 };
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+static enum tegra_platform tegra_platform;
+static bool cpu_is_asim;
+static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
+	[TEGRA_PLATFORM_SILICON] = "silicon",
+	[TEGRA_PLATFORM_QT]      = "quickturn",
+	[TEGRA_PLATFORM_LINSIM]  = "linsim",
+	[TEGRA_PLATFORM_FPGA]    = "fpga",
+};
+#endif
 
 u32 tegra_fuse_readl(unsigned long offset)
 {
@@ -432,7 +448,6 @@ module_param_cb(tegra_gpu_num_alus_per_pixel_pipe,
 		&tegra_gpu_num_alus_per_pixel_pipe_ops,
 		&tegra_gpu_num_alus_per_pixel_pipe, 0444);
 
-#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 struct chip_revision {
 	enum tegra_chipid	chipid;
 	unsigned int		major;
@@ -459,15 +474,23 @@ static struct chip_revision tegra_chip_revisions[] = {
 	CHIP_REVISION(TEGRA3,  1, 3, 0,   A03),
 	CHIP_REVISION(TEGRA11, 1, 1, 0,   A01),
 };
-#endif
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 {
 	enum tegra_revision revision = TEGRA_REVISION_UNKNOWN;
-
-#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 	int i ;
 	char prime;
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	/* For pre-silicon the major is 0, for silicon it is >= 1 */
+	if (id->major == 0) {
+		/* Default to A01 */
+		revision = TEGRA_REVISION_A01;
+		if (id->minor == MINOR_QT)
+			revision = TEGRA_REVISION_QT;
+		return revision;
+	}
+#endif
 
 	if (id->priv == NULL)
 		prime = 0;
@@ -485,18 +508,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 		break;
 	}
 
-#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	if (id->major == 0) {
-		if (id->minor == 1)
-			revision = TEGRA_REVISION_A01;
-		else
-			revision = TEGRA_REVISION_QT;
-	}
-#elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
-	if ((id->chipid & 0xff) == TEGRA_CHIPID_TEGRA11)
-		revision = TEGRA_REVISION_A01;
-#endif
-
 	return revision;
 }
 
@@ -511,6 +522,27 @@ static void tegra_set_tegraid(u32 chipid,
 	tegra_id.patch   = patch;
 	tegra_id.priv    = (char *)priv;
 	tegra_id.revision = tegra_decode_revision(&tegra_id);
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (tegra_id.major == 0) {
+		if (tegra_id.minor == MINOR_QT) {
+			cpu_is_asim = false;
+			tegra_platform = TEGRA_PLATFORM_QT;
+		} else if (tegra_id.minor == MINOR_FPGA) {
+			cpu_is_asim = false;
+			tegra_platform = TEGRA_PLATFORM_FPGA;
+		} else if (tegra_id.minor == MINOR_ASIM_QT) {
+			cpu_is_asim = true;
+			tegra_platform = TEGRA_PLATFORM_QT;
+		} else if (tegra_id.minor == MINOR_ASIM_LINSIM) {
+			cpu_is_asim = true;
+			tegra_platform = TEGRA_PLATFORM_LINSIM;
+		}
+	} else {
+		cpu_is_asim = false;
+		tegra_platform = TEGRA_PLATFORM_SILICON;
+	}
+#endif
 }
 
 static void tegra_get_tegraid_from_hw(void)
@@ -548,17 +580,43 @@ enum tegra_revision tegra_get_revision(void)
 	return tegra_id.revision;
 }
 
-#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
 {
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
-	}
+
+	if (!tegra_platform_is_fpga())
+		BUG();
+
 	*netlist = tegra_id.netlist;
 	*patchid = tegra_id.patch & 0xF;
 }
+
+enum tegra_platform tegra_get_platform(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+	return tegra_platform;
+}
+
+bool tegra_cpu_is_asim(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+	return cpu_is_asim;
+}
+
+static const char *tegra_platform_ptr;
+static int get_platform(char *val, const struct kernel_param *kp)
+{
+	tegra_platform_ptr = tegra_platform_name[tegra_platform];
+	return param_get_charp(val, kp);
+}
+static struct kernel_param_ops tegra_platform_ops = {
+	.get = get_platform,
+};
+module_param_cb(tegra_platform, &tegra_platform_ops, &tegra_platform_ptr, 0444);
 #endif
 
 static int get_chip_id(char *val, const struct kernel_param *kp)
@@ -624,6 +682,14 @@ void tegra_init_fuse(void)
 		tegra_revision_name[tegra_revision],
 		tegra_sku_id, tegra_cpu_process_id(),
 		tegra_core_process_id());
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (!tegra_platform_is_silicon()) {
+		pr_info("Tegra Platform: %s%s\n",
+			tegra_cpu_is_asim() ? "ASIM+" : "",
+			tegra_platform_name[tegra_platform]);
+	}
+#endif
 }
 
 static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
