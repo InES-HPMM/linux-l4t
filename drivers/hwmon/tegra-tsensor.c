@@ -1963,6 +1963,8 @@ static int tegra_tsensor_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+
 static void save_tsensor_regs(struct tegra_tsensor_data *data)
 {
 	int i;
@@ -1989,7 +1991,7 @@ static void restore_tsensor_regs(struct tegra_tsensor_data *data)
 	}
 }
 
-#ifdef CONFIG_PM
+
 static int tsensor_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
