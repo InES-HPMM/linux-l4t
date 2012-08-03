@@ -814,7 +814,6 @@ static int tegra_kbc_resume(struct device *dev)
 			 * handler.
 			 */
 			input_report_key(kbc->idev, kbc->wakeup_key, 1);
-			input_sync(kbc->idev);
 			input_report_key(kbc->idev, kbc->wakeup_key, 0);
 			input_sync(kbc->idev);
 		}
