@@ -163,6 +163,12 @@ config MACH_DALMORE
        help
          Support for NVIDIA DALMORE development platform
 
+config MACH_TEGRA_PLUTO
+       bool "Pluto board"
+       depends on ARCH_TEGRA_3x_SOC
+       help
+         Support for NVIDIA PLUTO development platform
+
 choice
        prompt "Tegra platform type"
        default TEGRA_SILICON_PLATFORM
