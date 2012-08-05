@@ -99,18 +99,23 @@ static int notifier_initialized;
 
 static int throughput_open(struct inode *inode, struct file *file)
 {
-	if (!notifier_initialized) {
-		tegra_dc_register_flip_notifier(&throughput_flip_nb);
-		notifier_initialized = 1;
-	}
+	int need_init = 0;
 
 	spin_lock(&lock);
+
+	if (!notifier_initialized) {
+		notifier_initialized = 1;
+		need_init = 1;
+	}
 
 	throughput_active_app_count++;
 	if (throughput_active_app_count > 1)
 		multiple_app_disable = 1;
 
 	spin_unlock(&lock);
+
+	if (need_init)
+		tegra_dc_register_flip_notifier(&throughput_flip_nb);
 
 	pr_debug("throughput_open node %p file %p\n", inode, file);
 
@@ -119,17 +124,22 @@ static int throughput_open(struct inode *inode, struct file *file)
 
 static int throughput_release(struct inode *inode, struct file *file)
 {
-	spin_lock(&lock);
-	throughput_active_app_count--;
-	spin_unlock(&lock);
+	int need_deinit = 0;
 
+	spin_lock(&lock);
+
+	throughput_active_app_count--;
 	if (throughput_active_app_count == 0) {
 		reset_target_frame_time();
 		multiple_app_disable = 0;
-		tegra_dc_unregister_flip_notifier(&throughput_flip_nb);
 		notifier_initialized = 0;
+		need_deinit = 1;
 	}
 
+	spin_unlock(&lock);
+
+	if (need_deinit)
+		tegra_dc_unregister_flip_notifier(&throughput_flip_nb);
 
 	pr_debug("throughput_release node %p file %p\n", inode, file);
 
