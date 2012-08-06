@@ -28,7 +28,11 @@ obj-y                                   += common-t3.o
 obj-y                                   += pm-t3.o
 obj-y                                   += sleep-t30.o
 obj-y                                   += timer-t3.o
+ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-y                                   += wakeups-t3.o
+else
+obj-y					+= wakeups-t11x.o
+endif
 ifeq ($(CONFIG_CPU_IDLE),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 endif

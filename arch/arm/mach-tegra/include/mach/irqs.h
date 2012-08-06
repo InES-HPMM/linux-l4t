@@ -434,7 +434,7 @@
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 #define IRQ_ETH                         (INT_SEC_BASE + 16)
 #endif
-/* unused				(INT_SEC_BASE + 17) */
+#define INT_XUSB_PADCTL			(INT_SEC_BASE + 17)
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)
 #define INT_VFIR			(INT_SEC_BASE + 20)
@@ -493,7 +493,6 @@
 #define INT_PCIE_MSI			(INT_QUAD_BASE + 3)
 #define INT_PCIE			(INT_QUAD_BASE + 4)
 #define INT_AVP_CACHE			(INT_QUAD_BASE + 5)
-#define INT_TSENSOR			(INT_QUAD_BASE + 6)
 #define INT_AUDIO_CLUSTER		(INT_QUAD_BASE + 7)
 #define INT_APB_DMA_CH0			(INT_QUAD_BASE + 8)
 #define INT_APB_DMA_CH1			(INT_QUAD_BASE + 9)
