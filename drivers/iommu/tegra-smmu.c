@@ -845,7 +845,8 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		page = as->smmu->avp_vector_page;
 		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page));
 
-		pr_info("Reserve \"page zero\" for AVP vectors using a common dummy\n");
+		pr_debug("Reserve \"page zero\" \
+			for AVP vectors using a common dummy\n");
 	}
 
 	dev_dbg(smmu->dev, "%s is attached\n", dev_name(dev));
