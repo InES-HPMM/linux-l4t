@@ -6286,7 +6286,15 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	 * respective muxes statically.
 	 */
 
-	/* No other policy limitations for now */
+	/* pll_c can be used as a clock source for EMC only on configuration
+	   with dual cbus, or as a clock source for single cbus */
+	if (p == &tegra_pll_c) {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+		return c->flags & PERIPH_EMC_ENB;
+#else
+		return c->flags & PERIPH_ON_CBUS;
+#endif
+	}
 	return true;
 }
 
