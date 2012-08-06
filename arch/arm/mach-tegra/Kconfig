@@ -233,11 +233,17 @@ config TEGRA_AVP_KERNEL_ON_SMMU
 config TEGRA_ARB_SEMAPHORE
 	bool
 
+config TEGRA_THERMAL
+	bool "Enable Tegra Thermal Framework"
+	depends on ARCH_TEGRA_3x_SOC
+	depends on THERMAL
+	default y
+
 config TEGRA_THERMAL_THROTTLE
 	bool "Enable throttling of CPU speed on overtemp"
 	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
-	depends on THERMAL
+	depends on TEGRA_THERMAL
 	default y
 	help
 	  Also requires enabling a temperature sensor such as NCT1008.
@@ -274,6 +280,7 @@ config TEGRA_EDP_LIMITS
 	bool "Enforce electrical design limits"
 	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
+	depends on TEGRA_THERMAL
 	default y if ARCH_TEGRA_3x_SOC
 	default n
 	help

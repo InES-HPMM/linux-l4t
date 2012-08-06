@@ -19,6 +19,9 @@
 
 #include <linux/therm_est.h>
 
+#ifndef CONFIG_THERMAL
+#endif
+
 enum thermal_device_id {
 	THERMAL_DEVICE_ID_NULL = 0x0,
 	THERMAL_DEVICE_ID_NCT_EXT = 0x1,
@@ -43,19 +46,15 @@ struct skin_therm_est_subdevice {
 struct tegra_thermal_data {
 	enum thermal_device_id shutdown_device_id;
 	long temp_shutdown;
-#if defined(CONFIG_TEGRA_EDP_LIMITS) || defined(CONFIG_TEGRA_THERMAL_THROTTLE)
 	enum thermal_device_id throttle_edp_device_id;
-#endif
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	long edp_offset;
 	long hysteresis_edp;
 #endif
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	long temp_throttle;
 	int tc1;
 	int tc2;
 	long passive_delay;
-#endif
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	enum thermal_device_id skin_device_id;
 	long temp_throttle_skin;
@@ -80,9 +79,7 @@ struct tegra_thermal_device {
 	int (*set_limits) (void *, long, long);
 	int (*set_alert)(void *, void (*)(void *), void *);
 	int (*set_shutdown_temp)(void *, long);
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	struct thermal_zone_device *thz;
-#endif
 	struct list_head node;
 };
 
@@ -113,7 +110,7 @@ static inline int balanced_throttle_register(struct balanced_throttle *bthrot)
 { return 0; }
 #endif
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_TEGRA_THERMAL
 int tegra_thermal_init(struct tegra_thermal_data *data,
 				struct balanced_throttle *throttle_list,
 				int throttle_list_size);
@@ -121,10 +118,10 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device);
 int tegra_thermal_exit(void);
 #else
 static inline int tegra_thermal_init(struct tegra_thermal_data *data,
-					struct balanced_throttle throttle_list,
-					int throttle_list_size);
+					struct balanced_throttle *throttle_list,
+					int throttle_list_size)
 { return 0; }
-static int tegra_thermal_device_register(struct tegra_thermal_device *device)
+static inline int tegra_thermal_device_register(struct tegra_thermal_device *device)
 { return 0; }
 static inline int tegra_thermal_exit(void)
 { return 0; }
