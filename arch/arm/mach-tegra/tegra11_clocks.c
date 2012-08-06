@@ -4157,6 +4157,7 @@ static int get_next_backup_div(struct clk *c, unsigned long rate)
 	unsigned long backup_rate = clk_get_rate(c->shared_bus_backup.input);
 
 	rate = max(rate, clk_get_rate_locked(c));
+	rate = rate - (rate >> 2);	/* 25% margin for backup rate */
 	if ((u64)rate * div < backup_rate)
 		div = DIV_ROUND_UP(backup_rate, rate);
 
