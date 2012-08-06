@@ -1362,9 +1362,7 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
 
 /* This special sbus round function is implemented because:
  *
- * (a) fractional dividers can not be used to derive system bus clock with one
- * exception: 1 : 2.5 divider is allowed at 1.2V and above (and we do need this
- * divider to reach top sbus frequencies from high frequency source).
+ * (a) fractional 1 : 1.5 divider can not be used to derive system bus clock
  *
  * (b) since sbus is a shared bus, and its frequency is set to the highest
  * enabled shared_bus_user clock, the target rate should be rounded up divider
@@ -1375,51 +1373,34 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
  * recursive calls. Lost 1Hz is added in tegra11_sbus_cmplx_set_rate before
  * actually setting divider rate.
  */
-static unsigned long sclk_high_2_5_rate;
-static bool sclk_high_2_5_valid;
-
 static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 {
-	int i, divider;
+	int divider;
 	unsigned long source_rate, round_rate;
 	struct clk *new_parent;
 
 	rate = max(rate, c->min_rate);
-
-	if (!sclk_high_2_5_rate) {
-		source_rate = clk_get_rate(c->u.system.sclk_high->parent);
-		sclk_high_2_5_rate = 2 * source_rate / 5;
-		i = tegra_dvfs_predict_millivolts(c, sclk_high_2_5_rate);
-		if (!IS_ERR_VALUE(i) && (i >= 1200) &&
-		    (sclk_high_2_5_rate <= c->max_rate))
-			sclk_high_2_5_valid = true;
-	}
 
 	new_parent = (rate <= c->u.system.threshold) ?
 		c->u.system.sclk_low : c->u.system.sclk_high;
 	source_rate = clk_get_rate(new_parent->parent);
 
 	divider = clk_div71_get_divider(source_rate, rate,
-		new_parent->flags | DIV_U71_INT, ROUND_DIVIDER_DOWN);
+		new_parent->flags, ROUND_DIVIDER_DOWN);
 	if (divider < 0)
 		return divider;
 
+	if (divider == 1)
+		divider = 0;
+
 	round_rate = source_rate * 2 / (divider + 2);
 	if (round_rate > c->max_rate) {
-		divider += 2;
+		divider = max(2, (divider + 1));
 		round_rate = source_rate * 2 / (divider + 2);
 	}
 
 	if (new_parent == c->u.system.sclk_high) {
-		/* Check if 1 : 2.5 ratio provides better approximation */
-		if (sclk_high_2_5_valid) {
-			if (((sclk_high_2_5_rate < round_rate) &&
-			    (sclk_high_2_5_rate >= rate)) ||
-			    ((round_rate < sclk_high_2_5_rate) &&
-			     (round_rate < rate)))
-				round_rate = sclk_high_2_5_rate;
-		}
-
+		/* Prevent oscillation across threshold */
 		if (round_rate <= c->u.system.threshold)
 			round_rate = c->u.system.threshold;
 	}
