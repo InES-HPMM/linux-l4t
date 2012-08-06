@@ -551,6 +551,13 @@ static int max77663_rtc_probe(struct platform_device *pdev)
 		goto out_kfree;
 	}
 
+	/*
+	 * RTC should be a wakeup source, or alarm dev can't link to
+	 * this devices. that cause Android time change not set into
+	 * RTC register.
+	 */
+	device_init_wakeup(&pdev->dev, true);
+
 	rtc->rtc = rtc_device_register("max77663-rtc", &pdev->dev,
 				       &max77663_rtc_ops, THIS_MODULE);
 	if (IS_ERR_OR_NULL(rtc->rtc)) {
