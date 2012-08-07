@@ -2271,16 +2271,17 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 	}
 
 	/* Disable ISR for OTG host mode */
-	if (udc->stopped) {
-		spin_unlock_irqrestore(&udc->lock, flags);
-		return status;
-	}
+	if (udc->stopped)
+		goto done;
 
 	/* Fence read for coherency of AHB master intiated writes */
 	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
 
 	irq_src = udc_readl(udc, USB_STS_REG_OFFSET) &
 				udc_readl(udc, USB_INTR_REG_OFFSET);
+
+	if (irq_src == 0)
+		goto done;
 
 	/* Clear notification bits */
 	udc_writel(udc, irq_src, USB_STS_REG_OFFSET);
@@ -2338,6 +2339,7 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 	if (irq_src & (USB_STS_ERR | USB_STS_SYS_ERR))
 		VDBG("Error IRQ %x", irq_src);
 
+done:
 	spin_unlock_irqrestore(&udc->lock, flags);
 	return status;
 }
