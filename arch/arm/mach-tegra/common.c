@@ -871,7 +871,7 @@ void __init tegra_protected_aperture_init(unsigned long aperture)
  * Due to conflicting restrictions on the placement of the framebuffer,
  * the bootloader is likely to leave the framebuffer pointed at a location
  * in memory that is outside the grhost aperture.  This function will move
- * the framebuffer contents from a physical address that is anywher (lowmem,
+ * the framebuffer contents from a physical address that is anywhere (lowmem,
  * highmem, or outside the memory map) to a physical address that is outside
  * the memory map.
  */
