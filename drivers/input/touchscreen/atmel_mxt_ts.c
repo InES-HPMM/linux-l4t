@@ -906,54 +906,6 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	return 0;
 }
 
-static void mxt_handle_pdata(struct mxt_data *data)
-{
-	const struct mxt_platform_data *pdata = data->pdata;
-	u8 voltage;
-
-	/* Set touchscreen lines */
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9, MXT_TOUCH_XSIZE,
-			pdata->x_line);
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9, MXT_TOUCH_YSIZE,
-			pdata->y_line);
-
-	/* Set touchscreen orient */
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9, MXT_TOUCH_ORIENT,
-			pdata->orient);
-
-	/* Set touchscreen burst length */
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_BLEN, pdata->blen);
-
-	/* Set touchscreen threshold */
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_TCHTHR, pdata->threshold);
-
-	/* Set touchscreen resolution */
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_XRANGE_LSB, (pdata->x_size - 1) & 0xff);
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_XRANGE_MSB, (pdata->x_size - 1) >> 8);
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_YRANGE_LSB, (pdata->y_size - 1) & 0xff);
-	mxt_write_object(data, MXT_TOUCH_MULTI_T9,
-			MXT_TOUCH_YRANGE_MSB, (pdata->y_size - 1) >> 8);
-
-	/* Set touchscreen voltage */
-	if (pdata->voltage) {
-		if (pdata->voltage < MXT_VOLTAGE_DEFAULT) {
-			voltage = (MXT_VOLTAGE_DEFAULT - pdata->voltage) /
-				MXT_VOLTAGE_STEP;
-			voltage = 0xff - voltage + 1;
-		} else
-			voltage = (pdata->voltage - MXT_VOLTAGE_DEFAULT) /
-				MXT_VOLTAGE_STEP;
-
-		mxt_write_object(data, MXT_SPT_CTECONFIG_T28,
-				MXT_CTE_VOLTAGE, voltage);
-	}
-}
-
 static int mxt_set_power_cfg(struct mxt_data *data, u8 sleep)
 {
 	struct device *dev = &data->client->dev;
@@ -1106,6 +1058,78 @@ static int mxt_get_object_table(struct mxt_data *data)
 	return 0;
 }
 
+static int mxt_read_resolution(struct mxt_data *data)
+{
+	struct i2c_client *client = data->client;
+	int error;
+	unsigned int x_range, y_range;
+	unsigned char orient;
+	unsigned char val;
+
+	/* Update matrix size in info struct */
+	error = mxt_read_reg(client, MXT_MATRIX_X_SIZE, &val);
+	if (error)
+		return error;
+	data->info.matrix_xsize = val;
+
+	error = mxt_read_reg(client, MXT_MATRIX_Y_SIZE, &val);
+	if (error)
+		return error;
+	data->info.matrix_ysize = val;
+
+	/* Read X/Y size of touchscreen */
+	error =  mxt_read_object(data, MXT_TOUCH_MULTI_T9,
+			MXT_TOUCH_XRANGE_MSB, &val);
+	if (error)
+		return error;
+	x_range = val << 8;
+
+	error =  mxt_read_object(data, MXT_TOUCH_MULTI_T9,
+			MXT_TOUCH_XRANGE_LSB, &val);
+	if (error)
+		return error;
+	x_range |= val;
+
+	error =  mxt_read_object(data, MXT_TOUCH_MULTI_T9,
+			MXT_TOUCH_YRANGE_MSB, &val);
+	if (error)
+		return error;
+	y_range = val << 8;
+
+	error =  mxt_read_object(data, MXT_TOUCH_MULTI_T9,
+			MXT_TOUCH_YRANGE_LSB, &val);
+	if (error)
+		return error;
+	y_range |= val;
+
+	error =  mxt_read_object(data, MXT_TOUCH_MULTI_T9,
+			MXT_TOUCH_ORIENT, &orient);
+	if (error)
+		return error;
+
+	/* Handle default values */
+	if (x_range == 0)
+		x_range = 1023;
+
+	if (y_range == 0)
+		y_range = 1023;
+
+	if (orient & MXT_XY_SWITCH) {
+		data->max_x = y_range;
+		data->max_y = x_range;
+	} else {
+		data->max_x = x_range;
+		data->max_y = y_range;
+	}
+
+	dev_info(&client->dev,
+			"Matrix Size X%uY%u Touchscreen size X%uY%u\n",
+			data->info.matrix_xsize, data->info.matrix_ysize,
+			data->max_x, data->max_y);
+
+	return 0;
+}
+
 static int mxt_initialize(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -1150,7 +1174,11 @@ static int mxt_initialize(struct mxt_data *data)
 		return error;
 	}
 
-	mxt_handle_pdata(data);
+	error = mxt_read_resolution(data);
+	if (error) {
+		dev_err(&client->dev, "Failed to initialize screen size\n");
+		return error;
+	}
 
 	error = mxt_init_power_cfg(data);
 	if (error) {
@@ -1170,30 +1198,12 @@ static int mxt_initialize(struct mxt_data *data)
 	info->matrix_ysize = val;
 
 	dev_info(&client->dev,
-			"Family ID: %u Variant ID: %u Version: %u Build: %u\n",
+			"Family ID: %u Variant ID: %u Version: %u Build: %u "
+			"Object Num: %d\n",
 			info->family_id, info->variant_id, info->version,
-			info->build);
-
-	dev_info(&client->dev,
-			"Matrix X Size: %u Matrix Y Size: %u Object Num: %u\n",
-			info->matrix_xsize, info->matrix_ysize,
-			info->object_num);
+			info->build, info->object_num);
 
 	return 0;
-}
-
-static void mxt_calc_resolution(struct mxt_data *data)
-{
-	unsigned int max_x = data->pdata->x_size - 1;
-	unsigned int max_y = data->pdata->y_size - 1;
-
-	if (data->pdata->orient & MXT_XY_SWITCH) {
-		data->max_x = max_y;
-		data->max_y = max_x;
-	} else {
-		data->max_x = max_x;
-		data->max_y = max_y;
-	}
 }
 
 static int mxt_load_fw(struct device *dev, const char *fn)
@@ -1546,8 +1556,6 @@ static int mxt_probe(struct i2c_client *client,
 	data->input_dev = input_dev;
 	data->pdata = pdata;
 	data->irq = client->irq;
-
-	mxt_calc_resolution(data);
 
 	__set_bit(EV_ABS, input_dev->evbit);
 	__set_bit(EV_KEY, input_dev->evbit);
