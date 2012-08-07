@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/board-bonaire-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2012, NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,6 +23,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/mmc/host.h>
+#include <linux/platform_data/mmc-sdhci-tegra.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
