@@ -487,15 +487,6 @@ int __init curacao_suspend_init(void)
 	return 0;
 }
 
-int __init curacao_soctherm_init(void)
-{
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	return 0;
-#else
-	return tegra11_soctherm_init();
-#endif
-}
-
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 
 #define COSIM_SHUTDOWN_REG         0x538f0ffc

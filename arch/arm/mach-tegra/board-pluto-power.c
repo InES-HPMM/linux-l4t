@@ -37,6 +37,7 @@
 #include "board-pluto.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
+#include "tegra11_soctherm.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -691,3 +692,35 @@ int __init pluto_edp_init(void)
 #endif
 	return 0;
 }
+
+static struct soctherm_platform_data pluto_soctherm_data = {
+	.therm_trip = 90,
+
+	.hw_backstop = 60,
+	.dividend = 1,
+	.divisor = 2,
+	.duration = 1,
+	.step = 1,
+
+	.sensor = {
+		.therm_a = 60,
+		.therm_b = 0,
+		.tall = 16300,
+		.tiddq = 1,
+		.ten_count = 1,
+		.tsample = 163
+	},
+
+	.passive = {
+		.trip_temp = 85000,
+		.tc1 = 0,
+		.tc2 = 1,
+		.passive_delay = 2000,
+	},
+};
+
+static int __init pluto_soctherm_init(void)
+{
+	return tegra11_soctherm_init(&pluto_soctherm_data);
+}
+module_init(pluto_soctherm_init);

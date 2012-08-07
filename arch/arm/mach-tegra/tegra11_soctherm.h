@@ -19,6 +19,45 @@
 #ifndef __MACH_TEGRA_TEGRA3_SOCTHERM_H
 #define __MACH_TEGRA_TEGRA3_SOCTHERM_H
 
-int __init tegra11_soctherm_init(void);
+#include <linux/thermal.h>
+
+struct soctherm_cdev {
+	struct thermal_cooling_device *cdev;
+	int trip_temp;
+	int tc1;
+	int tc2;
+	int passive_delay;
+};
+
+struct soctherm_sensor {
+	int tall;
+	int tiddq;
+	int ten_count;
+	int tsample;
+	int therm_a;
+	int therm_b;
+};
+
+struct soctherm_platform_data {
+	int therm_trip; /* in celcius */
+
+	int hw_backstop; /* in celcius */
+	int dividend;
+	int divisor;
+	int duration;
+	int step;
+
+	struct soctherm_sensor sensor;
+	struct soctherm_cdev passive;
+};
+
+#ifdef CONFIG_TEGRA_SOCTHERM
+int __init tegra11_soctherm_init(struct soctherm_platform_data *data);
+#else
+static inline int tegra11_soctherm_init(struct soctherm_platform_data *data)
+{
+	return 0;
+}
+#endif
 
 #endif

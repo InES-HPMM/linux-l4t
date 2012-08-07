@@ -508,4 +508,11 @@ config TEGRA_USE_DFLL
         help
 	  Enables dynamic frequency lock loop (DFLL) as CPU clock
 	  source.
+
+config TEGRA_SOCTHERM
+	bool "Enable soctherm"
+	default n
+        help
+	  Enables use of soctherm for thermal management.
+
 endif
