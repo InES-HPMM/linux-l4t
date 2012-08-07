@@ -36,6 +36,7 @@
 #include "dvfs.h"
 
 static struct tegra_thermal_data *therm;
+static struct tegra_skin_data *skin_therm;
 static LIST_HEAD(tegra_therm_list);
 static DEFINE_MUTEX(tegra_therm_mutex);
 
@@ -102,7 +103,7 @@ static int tegra_thermal_zone_bind(struct thermal_zone_device *thz,
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	if ((bthrot->id == BALANCED_THROTTLE_ID_SKIN) &&
-		(device->id == therm->skin_device_id))
+		(device->id == skin_therm->skin_device_id))
 		return thermal_zone_bind_cooling_device(thz, 0, cdevice);
 #endif
 
@@ -120,7 +121,7 @@ static int tegra_thermal_zone_unbind(struct thermal_zone_device *thz,
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	if ((bthrot->id == BALANCED_THROTTLE_ID_SKIN) &&
-		(device->id == therm->skin_device_id))
+		(device->id == skin_therm->skin_device_id))
 		return thermal_zone_unbind_cooling_device(thz, 0, cdevice);
 #endif
 
@@ -161,8 +162,8 @@ static int tegra_thermal_zone_get_trip_temp(struct thermal_zone_device *thz,
 	if (device->id == therm->throttle_edp_device_id)
 		*temp = therm->temp_throttle;
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	else if (device->id == therm->skin_device_id)
-		*temp = therm->temp_throttle_skin;
+	else if (device->id == skin_therm->skin_device_id)
+		*temp = skin_therm->temp_throttle_skin;
 #endif
 	else
 		return -EINVAL;
@@ -305,10 +306,10 @@ static int tegra_skin_device_register(struct tegra_thermal_device *device)
 	struct therm_est_subdevice *skin_dev =
 		kzalloc(sizeof(struct therm_est_subdevice), GFP_KERNEL);
 
-	for (i = 0; i < therm->skin_devs_size; i++) {
-		if (therm->skin_devs[i].id == device->id) {
+	for (i = 0; i < skin_therm->skin_devs_size; i++) {
+		if (skin_therm->skin_devs[i].id == device->id) {
 			memcpy(skin_dev->coeffs,
-				therm->skin_devs[i].coeffs,
+				skin_therm->skin_devs[i].coeffs,
 				sizeof(skin_devs[i]->coeffs));
 			break;
 		}
@@ -320,15 +321,15 @@ static int tegra_skin_device_register(struct tegra_thermal_device *device)
 	skin_devs[skin_devs_count++] = skin_dev;
 
 	/* Create skin thermal device */
-	if (skin_devs_count == therm->skin_devs_size) {
+	if (skin_devs_count == skin_therm->skin_devs_size) {
 		struct tegra_thermal_device *thermal_skin_device;
 		struct therm_estimator *skin_estimator;
 
 		skin_estimator = therm_est_register(
 					skin_devs,
 					skin_devs_count,
-					therm->skin_temp_offset,
-					therm->skin_period);
+					skin_therm->skin_temp_offset,
+					skin_therm->skin_period);
 		thermal_skin_device = kzalloc(sizeof(struct tegra_thermal_device),
 							GFP_KERNEL);
 		thermal_skin_device->name = "skin_pred";
@@ -372,7 +373,7 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 	}
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	if (device->id == therm->skin_device_id) {
+	if (device->id == skin_therm->skin_device_id) {
 		t1 = 0;
 		t2 = 1;
 		pdelay = 5000;
@@ -404,12 +405,12 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 	}
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	if (device->id == therm->skin_device_id) {
+	if (device->id == skin_therm->skin_device_id) {
 		if (create_thz)
 			device->set_alert(device->data,
 				tegra_skin_thermal_alert,
 				device);
-		device->set_limits(device->data, 0, therm->temp_throttle_skin);
+		device->set_limits(device->data, 0, skin_therm->temp_throttle_skin);
 	}
 #endif
 
@@ -421,7 +422,7 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 	}
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	if ((therm->skin_device_id == THERMAL_DEVICE_ID_SKIN) &&
+	if ((skin_therm->skin_device_id == THERMAL_DEVICE_ID_SKIN) &&
 		device->id && skin_devs_bitmap)
 		tegra_skin_device_register(device);
 #endif
@@ -442,10 +443,12 @@ static int __init throttle_list_init(void)
 late_initcall(throttle_list_init);
 
 int __init tegra_thermal_init(struct tegra_thermal_data *data,
+				struct tegra_skin_data *skin_data,
 				struct balanced_throttle *tlist,
 				int tlist_size)
 {
 	therm = data;
+	skin_therm = skin_data;
 #ifdef CONFIG_DEBUG_FS
 	thermal_debugfs_root = debugfs_create_dir("tegra_thermal", 0);
 #endif
@@ -453,8 +456,8 @@ int __init tegra_thermal_init(struct tegra_thermal_data *data,
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
 		int i;
-		for (i = 0; i < therm->skin_devs_size; i++)
-			skin_devs_bitmap |= therm->skin_devs[i].id;
+		for (i = 0; i < skin_therm->skin_devs_size; i++)
+			skin_devs_bitmap |= skin_therm->skin_devs[i].id;
 	}
 #endif
 
@@ -546,9 +549,6 @@ late_initcall(temp_tj_debug_init);
 
 TEGRA_THERM_DEBUGFS(temp_shutdown, shutdown_device_id, false, true);
 TEGRA_THERM_DEBUGFS(temp_throttle, throttle_edp_device_id, true, false);
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-TEGRA_THERM_DEBUGFS(temp_throttle_skin, skin_device_id, false, false);
-#endif
 
 #define THERM_DEBUGFS(_name) \
 	static int tegra_thermal_##_name##_set(void *data, u64 val) \
