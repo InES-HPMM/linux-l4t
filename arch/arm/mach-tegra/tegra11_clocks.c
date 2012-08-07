@@ -33,6 +33,7 @@
 #include <mach/iomap.h>
 #include <mach/edp.h>
 #include <mach/hardware.h>
+#include <mach/mc.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -4431,6 +4432,14 @@ static int tegra_clk_shared_bus_migrate_users(struct clk *user)
 static void tegra_clk_shared_bus_init(struct clk *c)
 {
 	c->max_rate = c->parent->max_rate;
+
+	/* EMC BW requets are normilized by the clients to 32 bit bus,
+	   hence, max limits should be scaled up to actual bus width */
+	if ((c->parent->flags & PERIPH_EMC_ENB) &&
+	    (c->u.shared_bus_user.mode == SHARED_BW)) {
+		c->max_rate *= tegra_mc_get_effective_bytes_width() / 4;
+	}
+
 	c->u.shared_bus_user.rate = c->parent->max_rate;
 	c->state = OFF;
 	c->set = true;
@@ -4523,6 +4532,10 @@ static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 
 		if (c->div > 1)
 			rate /= c->div;
+	} else if (c->parent->flags & PERIPH_EMC_ENB) {
+		/* EMC BW requets are normilized by the clients to 32 bit bus,
+		   and should be scaled down to actual bus width */
+		rate /= tegra_mc_get_effective_bytes_width() / 4;
 	}
 	return rate;
 }
