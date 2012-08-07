@@ -240,8 +240,8 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	n = cld->safe_dvfs->num_freqs;
 	BUG_ON(n >= MAX_CL_DVFS_VOLTAGES);
 
-	millivolts = cld->safe_dvfs->millivolts;
-	v_max = cld->safe_dvfs->max_millivolts;
+	millivolts = cld->safe_dvfs->dfll_millivolts;
+	v_max = millivolts[n - 1];
 
 	v = cld->soc_data->dfll_millivolts_min;
 	BUG_ON(v > millivolts[0]);

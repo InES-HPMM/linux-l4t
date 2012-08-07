@@ -85,6 +85,7 @@ struct dvfs {
 	unsigned long freqs[MAX_DVFS_FREQS];
 	unsigned long *alt_freqs;
 	const int *millivolts;
+	const int *dfll_millivolts;
 	struct dvfs_rail *dvfs_rail;
 	bool auto_dvfs;
 
@@ -97,6 +98,20 @@ struct dvfs {
 	struct list_head node;
 	struct list_head debug_node;
 	struct list_head reg_node;
+};
+
+struct cpu_cvb_dvfs_parameters {
+	unsigned long freq_mhz;
+	u32	c0;
+	u32	c1;
+	u32	c2;
+};
+
+struct cpu_cvb_dvfs {
+	int speedo_id;
+	int min_mv;
+	int margin;
+	struct cpu_cvb_dvfs_parameters cvb_table[MAX_DVFS_FREQS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;

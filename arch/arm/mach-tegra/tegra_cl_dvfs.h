@@ -86,7 +86,6 @@ struct tegra_cl_dvfs_platform_data {
 
 struct tegra_cl_dvfs_soc_data {
 	const char	*dfll_clk_name;
-	int		speedo_id;
 	u32		tune0;
 	u32		tune1;
 	unsigned long	dfll_droop_rate_min;
