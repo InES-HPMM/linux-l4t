@@ -25,8 +25,8 @@
 #define EDP_NAME_LEN	16
 
 struct edp_manager {
-	const char name[EDP_NAME_LEN];
-	const unsigned int imax;
+	char name[EDP_NAME_LEN];
+	unsigned int imax;
 
 	/* internal */
 	struct list_head link;
@@ -46,11 +46,11 @@ struct edp_manager {
  * Note that each EDP client is tied to a single EDP manager
  */
 struct edp_client {
-	const char name[EDP_NAME_LEN];
-	const unsigned int *const states;
-	const unsigned int num_states;
-	const unsigned int e0_index;
-	const unsigned int max_borrowers;
+	char name[EDP_NAME_LEN];
+	unsigned int *states;
+	unsigned int num_states;
+	unsigned int e0_index;
+	unsigned int max_borrowers;
 
 	void (*notify_loan_update)(unsigned int new_size,
 			struct edp_client *lender);
