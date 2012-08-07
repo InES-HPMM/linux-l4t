@@ -701,10 +701,12 @@ int tegra_cpu_timer_get_remain(s64 *time)
 
 #endif /* CONFIG_PM_SLEEP */
 
-#else
+#else  /* !CONFIG_ARM_ARCH_TIMER */
+void __init tegra_cpu_timer_init(void) {}
+static void __init tegra_init_late_timer(void) {}
 static inline int tegra_init_arch_timer(void) { return -ENODEV; }
 static inline int tegra_init_late_arch_timer(void) { return -ENODEV; }
-#endif
+#endif /* CONFIG_ARM_ARCH_TIMER */
 
 extern void __tegra_delay(unsigned long cycles);
 extern void __tegra_const_udelay(unsigned long loops);
