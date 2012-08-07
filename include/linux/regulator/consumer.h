@@ -281,11 +281,6 @@ static inline int regulator_disable_deferred(struct regulator *regulator,
 	return 0;
 }
 
-static inline int regulator_force_disable(struct regulator *regulator)
-{
-	return 0;
-}
-
 static inline int regulator_is_enabled(struct regulator *regulator)
 {
 	return 1;
