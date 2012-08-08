@@ -791,6 +791,33 @@ static int mxt_make_highchg(struct mxt_data *data)
 	return 0;
 }
 
+static int mxt_soft_reset(struct mxt_data *data, u8 value)
+{
+	int timeout_counter = 0;
+	struct device *dev = &data->client->dev;
+
+	dev_info(dev, "Resetting chip\n");
+
+	mxt_write_object(data, MXT_GEN_COMMAND_T6,
+			MXT_COMMAND_RESET, value);
+
+	if (data->pdata->read_chg == NULL) {
+		msleep(MXT_RESET_NOCHGREAD);
+	} else {
+		msleep(MXT_RESET_TIME);
+
+		timeout_counter = 0;
+		while ((timeout_counter++ <= 100) && data->pdata->read_chg())
+			msleep(20);
+		if (timeout_counter > 100) {
+			dev_err(dev, "No response after reset!\n");
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+
 static int mxt_check_reg_init(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -886,22 +913,9 @@ static int mxt_check_reg_init(struct mxt_data *data)
 		return -EIO;
 	}
 
-	/* Soft reset */
-	mxt_write_object(data, MXT_GEN_COMMAND_T6,
-			MXT_COMMAND_RESET, 1);
-	if (data->pdata->read_chg == NULL) {
-		msleep(MXT_RESET_NOCHGREAD);
-	} else {
-		msleep(MXT_RESET_TIME);
-
-		timeout_counter = 0;
-		while ((timeout_counter++ <= 100) && data->pdata->read_chg())
-			msleep(20);
-		if (timeout_counter > 100) {
-			dev_err(&client->dev, "No response after reset!\n");
-			return -EIO;
-		}
-	}
+	error = mxt_soft_reset(data, MXT_RESET_VALUE);
+	if (error)
+		return error;
 
 	return 0;
 }
@@ -1224,9 +1238,9 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 
 	if (data->state != BOOTLOADER) {
 		/* Change to the bootloader mode */
-		mxt_write_object(data, MXT_GEN_COMMAND_T6,
-				MXT_COMMAND_RESET, MXT_BOOT_VALUE);
-		msleep(MXT_RESET_TIME);
+		ret = mxt_soft_reset(data, MXT_BOOT_VALUE);
+		if (ret)
+			goto release_firmware;
 
 		ret = mxt_get_bootloader_address(data);
 		if (ret)
