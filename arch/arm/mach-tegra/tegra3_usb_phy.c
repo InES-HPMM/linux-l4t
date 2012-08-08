@@ -638,12 +638,6 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	writel(val, pmc_base + PMC_UTMIP_UHSIC_FAKE);
 
 	/* Enable which type of event can trigger a walk,
-	in this case usb_line_wake */
-	val = readl(pmc_base + PMC_SLEEPWALK_CFG);
-	val |= UTMIP_LINEVAL_WALK_EN(inst);
-	writel(val, pmc_base + PMC_SLEEPWALK_CFG);
-
-	/* Enable which type of event can trigger a walk,
 	* in this case usb_line_wake */
 	val = readl(pmc_base + PMC_SLEEPWALK_CFG);
 	val |= UTMIP_LINEVAL_WALK_EN(inst);
