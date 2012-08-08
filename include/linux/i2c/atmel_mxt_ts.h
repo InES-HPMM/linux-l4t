@@ -34,6 +34,7 @@ struct mxt_platform_data {
 	bool is_tp;
 	const unsigned int key_map[MXT_NUM_GPIO];
 	u8(*read_chg) (void);
+	const char *input_name;
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */
