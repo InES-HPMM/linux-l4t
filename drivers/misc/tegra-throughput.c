@@ -35,8 +35,16 @@ static unsigned short target_frame_time;
 static unsigned short last_frame_time;
 static ktime_t last_flip;
 static unsigned int multiple_app_disable;
-
 static spinlock_t lock;
+
+static struct work_struct work;
+static int throughput_hint;
+
+static void set_throughput_hint(struct work_struct *work)
+{
+	/* notify throughput hint clients here */
+	nvhost_scale3d_set_throughput_hint(throughput_hint);
+}
 
 static int throughput_flip_notifier(struct notifier_block *nb,
 					     unsigned long val,
@@ -48,7 +56,6 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 	else {
 		long timediff;
 		ktime_t now;
-		int throughput_hint;
 
 		now = ktime_get();
 		if (last_flip.tv64 != 0) {
@@ -67,8 +74,8 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 			throughput_hint =
 				((int) target_frame_time * 100)/last_frame_time;
 
-			/* notify throughput hint clients here */
-			nvhost_scale3d_set_throughput_hint(throughput_hint);
+			if (!work_pending(&work))
+				schedule_work(&work);
 		}
 		last_flip = now;
 	}
@@ -226,6 +233,7 @@ int __init throughput_init_miscdev(void)
 	pr_debug("%s: initializing\n", __func__);
 
 	spin_lock_init(&lock);
+	INIT_WORK(&work, set_throughput_hint);
 
 	ret = misc_register(&throughput_miscdev);
 	if (ret) {
@@ -242,6 +250,8 @@ module_init(throughput_init_miscdev);
 void __exit throughput_exit_miscdev(void)
 {
 	pr_debug("%s: exiting\n", __func__);
+
+	cancel_work_sync(&work);
 
 	misc_deregister(&throughput_miscdev);
 }
