@@ -529,7 +529,6 @@ static void tegra_otg_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
-	struct usb_otg *otg = tegra->phy.otg;
 	int val;
 	unsigned long flags;
 
@@ -545,10 +544,6 @@ static void tegra_otg_resume(struct device *dev)
 	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
 	clk_disable(tegra->clk);
 
-	/* Handle if host cable is replaced with device during suspend state */
-	if (otg->phy->state == OTG_STATE_A_HOST && (val & USB_ID_STATUS))
-		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
-
 	/* Enable interrupt and call work to set to appropriate state */
 	spin_lock_irqsave(&tegra->lock, flags);
 	if (tegra->builtin_host)
@@ -558,7 +553,7 @@ static void tegra_otg_resume(struct device *dev)
 			USB_ID_PIN_WAKEUP_EN;
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
-	irq_work(&tegra->work);
+	schedule_work(&tegra->work);
 
 	enable_interrupt(tegra, true);
 
