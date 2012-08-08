@@ -19,7 +19,7 @@ config UAP_SUPPORT
 config WIFI_DIRECT_SUPPORT
 	depends on SD8797
 	bool "WiFi Direct Support"
-	default n
+	default y
 
 config WIFI_DISPLAY_SUPPORT
 	depends on SD8797
@@ -37,3 +37,13 @@ config UAP_WEXT
 	depends on !CFG80211
 	bool "UAP wext support"
 	default n
+
+config DEBUG
+	depends on SD8797
+	bool "Debug option"
+	default n
+	---help---
+          DEBUG LEVEL n/1/2:
+          n: NO DEBUG
+          1: Only PRINTM(MMSG,...), PRINTM(MFATAL,...), ...
+          2: All PRINTM()

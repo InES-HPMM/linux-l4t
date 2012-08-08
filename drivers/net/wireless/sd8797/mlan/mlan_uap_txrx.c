@@ -43,7 +43,7 @@ Change log:
 /**
  *  @brief This function processes received packet and forwards it
  *  		to kernel/upper layer
- *
+ *  
  *  @param pmadapter A pointer to mlan_adapter
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
@@ -53,6 +53,7 @@ static mlan_status
 wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 {
     mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private priv = pmadapter->priv[pmbuf->bss_index];
     UapRxPD *prx_pd;
     ENTER();
     prx_pd = (UapRxPD *) (pmbuf->pbuf + pmbuf->data_offset);
@@ -71,6 +72,7 @@ wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
+    PRINTM_NETINTF(MDATA, priv);
     PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
@@ -91,7 +93,7 @@ wlan_upload_uap_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 
 /**
  *  @brief This function will check if unicast packet need be dropped
- *
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
  *
@@ -136,9 +138,9 @@ wlan_check_unicast_packet(mlan_private * priv, t_u8 * mac)
 /********************************************************
     Global Functions
 ********************************************************/
-/**
- *  @brief This function fill the txpd for tx packet
- *
+/** 
+ *  @brief This function fill the txpd for tx packet  
+ *  
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *
@@ -198,7 +200,7 @@ wlan_ops_uap_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
         wlan_wmm_compute_driver_packet_delay(pmpriv, pmbuf);
 
     if (plocal_tx_pd->priority < NELEMENTS(pmpriv->wmm.user_pri_pkt_tx_ctrl))
-        /*
+        /* 
          * Set the priority specific tx_control field, setting of 0 will
          *   cause the default value to be used later in this function
          */
@@ -209,6 +211,11 @@ wlan_ops_uap_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
     plocal_tx_pd->tx_pkt_offset =
         (t_u16) ((t_ptr) pmbuf->pbuf + pmbuf->data_offset -
                  (t_ptr) plocal_tx_pd);
+
+    if (!plocal_tx_pd->tx_control) {
+        /* TxCtrl set by user or default */
+        plocal_tx_pd->tx_control = pmpriv->pkt_tx_ctrl;
+    }
 
     if (pmbuf->buf_type == MLAN_BUF_TYPE_RAW_DATA) {
         plocal_tx_pd->tx_pkt_type = (t_u16) pkt_type;
@@ -229,7 +236,7 @@ wlan_ops_uap_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
 /**
  *  @brief This function processes received packet and forwards it
  *  		to kernel/upper layer
- *
+ *  
  *  @param adapter   A pointer to mlan_adapter
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
@@ -319,17 +326,14 @@ wlan_ops_uap_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
         wlan_free_mlan_buffer(pmadapter, pmbuf);
     }
   done:
-    if (priv->is_11n_enabled &&
-        (pmadapter->pending_bridge_pkts >= RX_MED_THRESHOLD))
-        wlan_send_delba_to_all_in_reorder_tbl(priv);
     LEAVE();
     return ret;
 }
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer or send back to firmware
- *
+ *  		to kernel/upper layer or send back to firmware 
+ *  
  *  @param priv      A pointer to mlan_private
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
@@ -365,7 +369,7 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
             /* Multicast pkt */
             if ((newbuf =
                  wlan_alloc_mlan_buffer(pmadapter, MLAN_TX_DATA_BUF_SIZE_2K, 0,
-                                        MTRUE))) {
+                                        MOAL_MALLOC_BUFFER))) {
                 newbuf->bss_index = pmbuf->bss_index;
                 newbuf->buf_type = pmbuf->buf_type;
                 newbuf->priority = pmbuf->priority;
@@ -391,7 +395,7 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
             /* Intra BSS packet */
             if ((newbuf =
                  wlan_alloc_mlan_buffer(pmadapter, MLAN_TX_DATA_BUF_SIZE_2K, 0,
-                                        MTRUE))) {
+                                        MOAL_MALLOC_BUFFER))) {
                 newbuf->bss_index = pmbuf->bss_index;
                 newbuf->buf_type = pmbuf->buf_type;
                 newbuf->priority = pmbuf->priority;
@@ -435,8 +439,8 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
 
 /**
  *  @brief This function processes received packet and forwards it
- *  		to kernel/upper layer or send back to firmware
- *
+ *  		to kernel/upper layer or send back to firmware 
+ *  
  *  @param priv      A pointer to mlan_private
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
@@ -481,7 +485,7 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
             /* Multicast pkt */
             if ((newbuf =
                  wlan_alloc_mlan_buffer(pmadapter, MLAN_TX_DATA_BUF_SIZE_2K, 0,
-                                        MTRUE))) {
+                                        MOAL_MALLOC_BUFFER))) {
                 newbuf->bss_index = pmbuf->bss_index;
                 newbuf->buf_type = pmbuf->buf_type;
                 newbuf->priority = pmbuf->priority;
@@ -538,6 +542,7 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
+    PRINTM_NETINTF(MDATA, priv);
     PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);

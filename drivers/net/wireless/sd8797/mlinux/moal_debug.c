@@ -189,10 +189,10 @@ static struct debug_data items[] = {
     ,
     {"rx_pending", item_handle_size(rx_pending), item_handle_addr(rx_pending)}
     ,
+    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)}
+    ,
     {"malloc_count", item_handle_size(malloc_count),
      item_handle_addr(malloc_count)}
-    ,
-    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)}
     ,
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
      item_handle_addr(mbufalloc_count)}
@@ -328,10 +328,10 @@ static struct debug_data uap_items[] = {
     ,
     {"rx_pending", item_handle_size(rx_pending), item_handle_addr(rx_pending)}
     ,
+    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)}
+    ,
     {"malloc_count", item_handle_size(malloc_count),
      item_handle_addr(malloc_count)}
-    ,
-    {"lock_count", item_handle_size(lock_count), item_handle_addr(lock_count)}
     ,
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
      item_handle_addr(mbufalloc_count)}
@@ -410,7 +410,9 @@ woal_debug_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
             p += sprintf(p, "\n");
             continue;
         }
-        if (strstr(d[i].name, "id") || strstr(d[i].name, "bitmap"))
+        if (strstr(d[i].name, "id")
+            || strstr(d[i].name, "bitmap")
+            )
             p += sprintf(p, "%s=0x%x\n", d[i].name, val);
         else
             p += sprintf(p, "%s=%d\n", d[i].name, val);
@@ -567,6 +569,8 @@ void
 woal_debug_entry(moal_private * priv)
 {
     struct proc_dir_entry *r;
+    int i;
+    int handle_items;
 
     ENTER();
 
@@ -601,40 +605,18 @@ woal_debug_entry(moal_private * priv)
             sizeof(uap_items) / sizeof(uap_items[0]);
     }
 #endif
+
     priv->items_priv.priv = priv;
-    priv->items_priv.items[priv->items_priv.num_of_items - 1].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 2].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 3].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 4].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 5].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 6].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 7].addr +=
-        (t_ptr) (priv->phandle);
+    handle_items = 7;
 #ifdef SDIO_MMC_DEBUG
-    priv->items_priv.items[priv->items_priv.num_of_items - 8].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 9].addr +=
-        (t_ptr) (priv->phandle);
-#ifdef SDIO_SUSPEND_RESUME
-    priv->items_priv.items[priv->items_priv.num_of_items - 10].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 11].addr +=
-        (t_ptr) (priv->phandle);
+    handle_items += 2;
 #endif
-#else
 #if defined(SDIO_SUSPEND_RESUME)
-    priv->items_priv.items[priv->items_priv.num_of_items - 8].addr +=
-        (t_ptr) (priv->phandle);
-    priv->items_priv.items[priv->items_priv.num_of_items - 9].addr +=
-        (t_ptr) (priv->phandle);
+    handle_items += 2;
 #endif
-#endif
+    for (i = 1; i <= handle_items; i++)
+        priv->items_priv.items[priv->items_priv.num_of_items - i].addr +=
+            (t_ptr) (priv->phandle);
 
     /* Create proc entry */
     r = create_proc_entry("debug", 0644, priv->proc_entry);

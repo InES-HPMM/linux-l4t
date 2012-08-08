@@ -67,7 +67,11 @@ Change log:
 #include        <asm/irq.h>
 #include        <asm/uaccess.h>
 #include        <asm/io.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#include        <asm/switch_to.h>
+#else
 #include        <asm/system.h>
+#endif
 
 /* Net header files */
 #include        <linux/netdevice.h>
@@ -99,6 +103,12 @@ Change log:
 #endif
 #ifdef STA_WEXT
 #include        "moal_priv.h"
+#endif
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,24)
+#define REFDATA __refdata
+#else
+#define REFDATA
 #endif
 
 /** Define BOOLEAN */
@@ -157,6 +167,11 @@ typedef struct _HostCmd_Header
 #define MIN(a,b)		((a) < (b) ? (a) : (b))
 #endif
 
+/** Find maximum */
+#ifndef MAX
+#define MAX(a,b)                ((a) > (b) ? (a) : (b))
+#endif
+
 /*
  * OS timer specific
  */
@@ -178,9 +193,9 @@ typedef struct _moal_drv_timer
     t_u32 timer_is_canceled;
 } moal_drv_timer, *pmoal_drv_timer;
 
-/**
+/** 
  *  @brief Timer handler
- *
+ *  
  *  @param fcontext	Timer context
  *
  *  @return		N/A
@@ -200,9 +215,9 @@ woal_timer_handler(unsigned long fcontext)
     }
 }
 
-/**
+/** 
  *  @brief Initialize timer
- *
+ *  
  *  @param timer		Timer structure
  *  @param TimerFunction	Timer function
  *  @param FunctionContext	Timer function context
@@ -227,9 +242,9 @@ woal_initialize_timer(pmoal_drv_timer timer,
     timer->timer_is_periodic = MFALSE;
 }
 
-/**
+/** 
  *  @brief Modify timer
- *
+ *  
  *  @param timer		Timer structure
  *  @param MillisecondPeriod	Time period in millisecond
  *
@@ -243,9 +258,9 @@ woal_mod_timer(pmoal_drv_timer timer, t_u32 MillisecondPeriod)
     timer->timer_is_canceled = MFALSE;
 }
 
-/**
+/** 
  *  @brief Cancel timer
- *
+ *  
  *  @param timer	Timer structure
  *
  *  @return		N/A
@@ -278,9 +293,9 @@ typedef struct _moal_thread
     void *handle;
 } moal_thread;
 
-/**
+/** 
  *  @brief Activate thread
- *
+ *  
  *  @param thr			Thread structure
  *  @return			N/A
  */
@@ -294,9 +309,9 @@ woal_activate_thread(moal_thread * thr)
     thr->pid = current->pid;
 }
 
-/**
+/** 
  *  @brief De-activate thread
- *
+ *  
  *  @param thr			Thread structure
  *  @return			N/A
  */
@@ -307,7 +322,7 @@ woal_deactivate_thread(moal_thread * thr)
     thr->pid = 0;
 }
 
-/**
+/** 
  *  @brief Create and run the thread
  *
  *  @param threadfunc		Thread function
@@ -346,9 +361,9 @@ woal_create_thread(int (*threadfunc) (void *), moal_thread * thr, char *name)
 #define MLAN_DELAYED_CONTAINER_OF(_ptr, _type, _m)  container_of(_ptr, _type, _m.work)
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20) */
 
-/**
+/** 
  *  @brief Schedule timeout
- *
+ *  
  *  @param millisec	Timeout duration in milli second
  *
  *  @return		N/A
@@ -488,10 +503,10 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 #define MRVDRV_DEFAULT_WATCHDOG_TIMEOUT (5 * HZ)
 
 #ifdef UAP_SUPPORT
-/** Default watchdog timeout
-    Increase the value to avoid kernel Tx timeout message in case
+/** Default watchdog timeout 
+    Increase the value to avoid kernel Tx timeout message in case 
     station in PS mode or left.
-    The default value of PS station ageout timer is 40 seconds.
+    The default value of PS station ageout timer is 40 seconds. 
     Hence, the watchdog timer is set to a value higher than it.
 */
 #define MRVDRV_DEFAULT_UAP_WATCHDOG_TIMEOUT (41 * HZ)
@@ -499,6 +514,14 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 
 /** Threshold value of number of times the Tx timeout happened */
 #define NUM_TX_TIMEOUT_THRESHOLD      5
+
+/** AP connected event */
+#define CUS_EVT_AP_CONNECTED           "EVENT=AP_CONNECTED"
+
+/** Port release event */
+#ifndef CUS_EVT_PORT_RELEASE
+#define CUS_EVT_PORT_RELEASE           "EVENT=PORT_RELEASE"
+#endif
 
 /** 10 seconds */
 #define MOAL_TIMER_10S                10000
@@ -532,6 +555,7 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 #else
 #define SKB_TOS(skb) (skb->nh.iph->tos)
 #endif
+#define SKB_TIDV6(skb)  (ipv6_get_dsfield(ipv6_hdr(skb)))
 
 /** Offset for TOS field in the IP header */
 #define IPTOS_OFFSET 5
@@ -723,8 +747,18 @@ struct _moal_private
     t_u16 key_len;
         /** key data */
     t_u8 key_material[MLAN_MAX_KEY_LENGTH];
+        /** beacon ie index */
+    t_u16 beacon_index;
+        /** proberesp ie index */
+    t_u16 proberesp_index;
+        /** assocresp ie index */
+    t_u16 assocresp_index;
         /** probereq index for mgmt ie */
     t_u16 probereq_index;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+        /** beacon wps index for mgmt ie */
+    t_u16 beacon_wps_index;
+#endif
 #endif
 #ifdef STA_CFG80211
 #ifdef STA_SUPPORT
@@ -744,8 +778,8 @@ struct _moal_private
     u8 last_rssi_high;
         /** mrvl rssi threshold */
     u8 mrvl_rssi_low;
-        /** rssi status */
-    u32 rssi_status;
+        /** last event */
+    u32 last_event;
 #endif                          /* STA_SUPPORT */
 #endif                          /* STA_CFG80211 */
         /** IOCTL wait queue */
@@ -773,6 +807,8 @@ struct _moal_private
     BOOLEAN reassoc_required;
         /** Flag of re-association on/off */
     BOOLEAN reassoc_on;
+        /** Set asynced essid flag */
+    BOOLEAN set_asynced_essid_flag;
 #endif                          /* REASSOCIATION */
         /** Report scan result */
     t_u8 report_scan_result;
@@ -876,12 +912,12 @@ struct _moal_handle
     atomic_t tx_pending;
         /** IOCTL pending count in mlan */
     atomic_t ioctl_pending;
-        /** Malloc count */
-    t_u32 malloc_count;
         /** lock count */
-    t_u32 lock_count;
+    atomic_t lock_count;
+        /** Malloc count */
+    atomic_t malloc_count;
         /** mlan buffer alloc count */
-    t_u32 mbufalloc_count;
+    atomic_t mbufalloc_count;
 #if defined(SDIO_SUSPEND_RESUME)
         /** hs skip count */
     t_u32 hs_skip_count;
@@ -916,6 +952,10 @@ struct _moal_handle
     enum nl80211_channel_type channel_type;
         /** cookie */
     t_u64 cookie;
+        /** GO timer set flag */
+    BOOLEAN is_go_timer_set;
+        /** GO timer */
+    moal_drv_timer go_timer __ATTRIB_ALIGN__;
 #endif
 #endif
         /** Read SDIO registers for debugging */
@@ -953,7 +993,6 @@ struct _moal_handle
     t_u8 scan_pending_on_block;
         /** Async scan semaphore */
     struct semaphore async_sem;
-
 #endif
         /** main state */
     t_u8 main_state;
@@ -967,11 +1006,13 @@ struct _moal_handle
         /** spinlock to stop_queue/wake_queue*/
     spinlock_t queue_lock;
 #endif
+        /** Driver spin lock */
+    spinlock_t driver_lock;
 };
 
-/**
- *  @brief set trans_start for each TX queue.
- *
+/** 
+ *  @brief set trans_start for each TX queue. 
+ *  
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -988,9 +1029,9 @@ woal_set_trans_start(struct net_device *dev)
     dev->trans_start = jiffies;
 }
 
-/**
+/** 
  *  @brief Start queue
- *
+ *  
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -1005,9 +1046,9 @@ woal_start_queue(struct net_device *dev)
 #endif
 }
 
-/**
+/** 
  *  @brief Stop queue
- *
+ *  
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -1030,9 +1071,9 @@ woal_stop_queue(struct net_device *dev)
 #endif
 }
 
-/**
+/** 
  *  @brief wake queue
- *
+ *  
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -1183,10 +1224,10 @@ hexdump(char *prompt, t_u8 * buf, int len)
 #define woal_cpu_to_le64(x) x
 #endif
 
-/**
+/** 
  *  @brief This function returns first available priv
  *  based on the BSS role
- *
+ *  
  *  @param handle    A pointer to moal_handle
  *  @param bss_role  BSS role or MLAN_BSS_ROLE_ANY
  *
@@ -1259,6 +1300,17 @@ typedef struct _HostCmd_DS_802_11_CFG_DATA
 #define WEXT_BGSCAN_INTERVAL_SECTION 'T'
 /** BGSCAN REPEAT SECTION */
 #define WEXT_BGSCAN_REPEAT_SECTION  'E'
+
+/** NL80211 scan configuration header */
+#define NL80211_SCANCFG_HEADER		"SCAN-CFG "
+/** NL80211 scan configuration header length */
+#define NL80211_SCANCFG_HEADER_SIZE		9
+/** NL80211 scan configuration active scan section */
+#define NL80211_SCANCFG_ACTV_DWELL_SECTION	'A'
+/** NL80211 scan configuration passive scan section */
+#define NL80211_SCANCFG_PASV_DWELL_SECTION	'P'
+/** NL80211 scan configuration specific scan section */
+#define NL80211_SCANCFG_SPCF_DWELL_SECTION	'S'
 
 /** band AUTO */
 #define	WIFI_FREQUENCY_BAND_AUTO		0
@@ -1383,9 +1435,9 @@ void woal_ioctl_get_info_resp(moal_private * priv, mlan_ds_get_info * info);
 /** Get signal information */
 mlan_status woal_get_signal_info(moal_private * priv, t_u8 wait_option,
                                  mlan_ds_get_signal * signal);
-#ifdef STA_WEXT
 /** Get mode */
 t_u32 woal_get_mode(moal_private * priv, t_u8 wait_option);
+#ifdef STA_WEXT
 /** Get data rates */
 mlan_status woal_get_data_rates(moal_private * priv, t_u8 wait_option,
                                 moal_802_11_rates * m_rates);
@@ -1437,6 +1489,8 @@ mlan_status woal_enable_wep_key(moal_private * priv, t_u8 wait_option);
 mlan_status woal_set_wpa_enable(moal_private * priv, t_u8 wait_option,
                                 t_u32 enable);
 
+/** cancel scan command */
+mlan_status woal_cancel_scan(moal_private * priv, t_u8 wait_option);
 /** Find best network to connect */
 mlan_status woal_find_best_network(moal_private * priv, t_u8 wait_option,
                                    mlan_ssid_bssid * ssid_bssid);
@@ -1476,9 +1530,12 @@ int woal_host_command(moal_private * priv, struct iwreq *wrq);
 #endif
 #if defined(WIFI_DIRECT_SUPPORT)
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-#if defined(STA_WEXT) || defined(UAP_WEXT)
 mlan_status woal_bss_role_cfg(moal_private * priv, t_u8 action,
                               t_u8 wait_option, t_u8 * bss_role);
+#if defined(STA_CFG80211) && defined(UAP_CFG80211)
+void woal_go_timer_func(void *context);
+#endif
+#if defined(STA_WEXT) || defined(UAP_WEXT)
 int woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq);
 #endif
 #endif
@@ -1543,14 +1600,24 @@ mlan_status woal_set_powermode(moal_private * priv, char *powermode);
 int woal_find_essid(moal_private * priv, mlan_ssid_bssid * ssid_bssid);
 mlan_status woal_do_scan(moal_private * priv, wlan_user_scan_cfg * scan_cfg);
 int woal_set_combo_scan(moal_private * priv, char *buf, int length);
+mlan_status woal_set_scan_time(moal_private * priv, t_u16 active_scan_time,
+                               t_u16 passive_scan_time,
+                               t_u16 specific_scan_time);
 mlan_status woal_get_band(moal_private * priv, int *band);
 mlan_status woal_set_band(moal_private * priv, char *pband);
 mlan_status woal_add_rxfilter(moal_private * priv, char *rxfilter);
 mlan_status woal_remove_rxfilter(moal_private * priv, char *rxfilter);
 mlan_status woal_set_qos_cfg(moal_private * priv, char *qos_cfg);
 int woal_set_sleeppd(moal_private * priv, char *psleeppd);
+int woal_set_scan_cfg(moal_private * priv, char *buf, int length);
+/* EVENT: BCN_RSSI_LOW */
+#define EVENT_BCN_RSSI_LOW 		   0x0001
+/* EVENT: PRE_BCN_LOST */
+#define EVENT_PRE_BCN_LOST		   0x0002
 mlan_status woal_set_rssi_low_threshold(moal_private * priv, char *rssi);
 mlan_status woal_set_rssi_threshold(moal_private * priv, t_u32 event_id);
+/* EVENT: BG_SCAN_REPORT */
+#define EVENT_BG_SCAN_REPORT		0x0004
 mlan_status woal_set_bg_scan(moal_private * priv, char *buf, int length);
 mlan_status woal_stop_bg_scan(moal_private * priv);
 void woal_reconfig_bgscan(moal_handle * handle);
@@ -1561,4 +1628,9 @@ struct tcp_sess *woal_get_tcp_sess(moal_private * priv,
                                    t_u32 dst_ip, t_u16 dst_port);
 void woal_check_tcp_fin(moal_private * priv, struct sk_buff *skb);
 
+void wlan_scan_create_brief_table_entry(t_u8 ** ppbuffer,
+                                        BSSDescriptor_t * pbss_desc);
+int wlan_get_scan_table_ret_entry(BSSDescriptor_t * pbss_desc, t_u8 ** ppbuffer,
+                                  int *pspace_left);
+BOOLEAN woal_ssid_valid(mlan_802_11_ssid * pssid);
 #endif /* _MOAL_MAIN_H */

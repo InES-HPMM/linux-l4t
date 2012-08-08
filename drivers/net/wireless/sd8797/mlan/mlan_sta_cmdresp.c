@@ -47,9 +47,9 @@ Change log:
 /********************************************************
                 Local Functions
 ********************************************************/
-/**
+/** 
  *  @brief This function handles the command response error
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -76,7 +76,7 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
             PRINTM(MERROR,
                    "PS_MODE_ENH command failed: result=0x%x action=0x%X\n",
                    resp->result, wlan_le16_to_cpu(pm->action));
-            /*
+            /* 
              * We do not re-try enter-ps command in ad-hoc mode.
              */
             if (wlan_le16_to_cpu(pm->action) == EN_AUTO_PS &&
@@ -98,7 +98,7 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     default:
         break;
     }
-    /*
+    /* 
      * Handling errors here
      */
     wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
@@ -111,9 +111,9 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     return;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of RSSI info
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -181,9 +181,9 @@ wlan_ret_802_11_rssi_info(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of mac_control
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -200,9 +200,9 @@ wlan_ret_mac_control(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of snmp_mib
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -307,9 +307,9 @@ wlan_ret_802_11_snmp_mib(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of get_log
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -362,18 +362,19 @@ wlan_ret_get_log(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Get power level and rate index
  *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param pdata_buf    Pointer to the data buffer
- *
+ * 
  *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
 wlan_get_power_level(pmlan_private pmpriv, void *pdata_buf)
 {
-    int length = -1, max_power = -1, min_power = -1;
+    t_u16 length = 0;
+    t_s8 max_power = -1, min_power = -1;
     MrvlTypes_Power_Group_t *ppg_tlv = MNULL;
     Power_Group_t *pg = MNULL;
 
@@ -402,8 +403,8 @@ wlan_get_power_level(pmlan_private pmpriv, void *pdata_buf)
             length -= sizeof(Power_Group_t);
         }
         if (ppg_tlv->length > 0) {
-            pmpriv->min_tx_power_level = (t_u8) min_power;
-            pmpriv->max_tx_power_level = (t_u8) max_power;
+            pmpriv->min_tx_power_level = min_power;
+            pmpriv->max_tx_power_level = max_power;
         }
     } else {
         LEAVE();
@@ -414,9 +415,9 @@ wlan_get_power_level(pmlan_private pmpriv, void *pdata_buf)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of tx_power_cfg
- *
+ * 
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -446,13 +447,13 @@ wlan_ret_tx_power_cfg(IN pmlan_private pmpriv,
         ppg_tlv->length = wlan_le16_to_cpu(ppg_tlv->length);
         if (pmpriv->adapter->hw_status == WlanHardwareStatusInitializing)
             wlan_get_power_level(pmpriv, ptxp_cfg);
-        pmpriv->tx_power_level = (t_u16) pg->power_min;
+        pmpriv->tx_power_level = (t_s16) pg->power_min;
         break;
 
     case HostCmd_ACT_GEN_SET:
         if (wlan_le32_to_cpu(ptxp_cfg->mode)) {
             if (pg->power_max == pg->power_min)
-                pmpriv->tx_power_level = (t_u16) pg->power_min;
+                pmpriv->tx_power_level = (t_s16) pg->power_min;
         }
         break;
 
@@ -514,9 +515,9 @@ wlan_ret_tx_power_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of rf_tx_power
- *
+ *    
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -556,9 +557,9 @@ wlan_ret_802_11_rf_tx_power(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sleep_period
- *
+ *    
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -597,9 +598,9 @@ wlan_ret_802_11_sleep_period(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sleep_params
- *
+ *    
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -643,9 +644,9 @@ wlan_ret_802_11_sleep_params(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of mac_address
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -679,9 +680,9 @@ wlan_ret_802_11_mac_address(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of multicast_address
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -756,9 +757,9 @@ wlan_ret_802_11_ad_hoc_stop(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of key_material
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -785,7 +786,7 @@ wlan_ret_802_11_key_material(IN pmlan_private pmpriv,
                 PRINTM(MINFO, "GTK_SET: Open port for WPA/WPA2 h-supp mode\n");
                 pmpriv->port_open = MTRUE;
             }
-            pmpriv->scan_block = MFALSE;
+            pmpriv->adapter->scan_block = MFALSE;
         }
     } else {
         if (pioctl_buf &&
@@ -813,6 +814,7 @@ wlan_ret_802_11_key_material(IN pmlan_private pmpriv,
                        pkey->key_param_set.key, sec->param.encrypt_key.key_len);
                 break;
             case KEY_TYPE_ID_AES:
+            case KEY_TYPE_ID_AES_CMAC:
                 sec->param.encrypt_key.key_len =
                     wlan_le16_to_cpu(pkey->key_param_set.key_len);
                 memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
@@ -1015,9 +1017,9 @@ wlan_ret_802_11_supplicant_profile(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of rf_channel
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -1110,13 +1112,13 @@ wlan_ret_ibss_coalescing_status(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of MGMT_IE_LIST
  *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *
+ *  
  *  @return             MLAN_STATUS_SUCCESS
  */
 static mlan_status
@@ -1193,9 +1195,9 @@ wlan_ret_mgmt_ie_list(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sysclock
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -1230,134 +1232,9 @@ wlan_ret_sysclock_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
- *  @brief This function handles the command response of reg_access
- *
- *  @param type         The type of reg access (MAC, BBP or RF)
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to command buffer
- *
- *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
- */
-static mlan_status
-wlan_ret_reg_access(mlan_adapter * pmadapter,
-                    t_u16 type,
-                    IN HostCmd_DS_COMMAND * resp,
-                    IN mlan_ioctl_req * pioctl_buf)
-{
-    mlan_ds_reg_mem *reg_mem = MNULL;
-    mlan_ds_reg_rw *reg_rw = MNULL;
-
-    ENTER();
-
-    if (pioctl_buf) {
-        reg_mem = (mlan_ds_reg_mem *) pioctl_buf->pbuf;
-        reg_rw = &reg_mem->param.reg_rw;
-        switch (type) {
-        case HostCmd_CMD_MAC_REG_ACCESS:
-            {
-                HostCmd_DS_MAC_REG_ACCESS *reg;
-                reg = (HostCmd_DS_MAC_REG_ACCESS *) & resp->params.mac_reg;
-                reg_rw->offset = (t_u32) wlan_le16_to_cpu(reg->offset);
-                reg_rw->value = wlan_le32_to_cpu(reg->value);
-                break;
-            }
-        case HostCmd_CMD_BBP_REG_ACCESS:
-            {
-                HostCmd_DS_BBP_REG_ACCESS *reg;
-                reg = (HostCmd_DS_BBP_REG_ACCESS *) & resp->params.bbp_reg;
-                reg_rw->offset = (t_u32) wlan_le16_to_cpu(reg->offset);
-                reg_rw->value = (t_u32) reg->value;
-                break;
-            }
-
-        case HostCmd_CMD_RF_REG_ACCESS:
-            {
-                HostCmd_DS_RF_REG_ACCESS *reg;
-                reg = (HostCmd_DS_RF_REG_ACCESS *) & resp->params.rf_reg;
-                reg_rw->offset = (t_u32) wlan_le16_to_cpu(reg->offset);
-                reg_rw->value = (t_u32) reg->value;
-                break;
-            }
-        case HostCmd_CMD_CAU_REG_ACCESS:
-            {
-                HostCmd_DS_RF_REG_ACCESS *reg;
-                reg = (HostCmd_DS_RF_REG_ACCESS *) & resp->params.rf_reg;
-                reg_rw->offset = (t_u32) wlan_le16_to_cpu(reg->offset);
-                reg_rw->value = (t_u32) reg->value;
-                break;
-            }
-        case HostCmd_CMD_802_11_EEPROM_ACCESS:
-            {
-                mlan_ds_read_eeprom *eeprom = &reg_mem->param.rd_eeprom;
-                HostCmd_DS_802_11_EEPROM_ACCESS *cmd_eeprom =
-                    (HostCmd_DS_802_11_EEPROM_ACCESS *) & resp->params.eeprom;
-                cmd_eeprom->byte_count =
-                    wlan_le16_to_cpu(cmd_eeprom->byte_count);
-                PRINTM(MINFO, "EEPROM read len=%x\n", cmd_eeprom->byte_count);
-                if (eeprom->byte_count < cmd_eeprom->byte_count) {
-                    eeprom->byte_count = 0;
-                    PRINTM(MINFO, "EEPROM read return length is too big\n");
-                    pioctl_buf->status_code = MLAN_ERROR_CMD_RESP_FAIL;
-                    LEAVE();
-                    return MLAN_STATUS_FAILURE;
-                }
-                eeprom->offset = wlan_le16_to_cpu(cmd_eeprom->offset);
-                eeprom->byte_count = cmd_eeprom->byte_count;
-                if (eeprom->byte_count > 0) {
-                    memcpy(pmadapter, &eeprom->value, &cmd_eeprom->value,
-                           MIN(MAX_EEPROM_DATA, eeprom->byte_count));
-                    HEXDUMP("EEPROM", (char *) &eeprom->value,
-                            MIN(MAX_EEPROM_DATA, eeprom->byte_count));
-                }
-                break;
-            }
-        default:
-            pioctl_buf->status_code = MLAN_ERROR_CMD_RESP_FAIL;
-            LEAVE();
-            return MLAN_STATUS_FAILURE;
-        }
-    }
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
- *  @brief This function handles the command response of mem_access
- *
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to command buffer
- *
- *  @return             MLAN_STATUS_SUCCESS
- */
-static mlan_status
-wlan_ret_mem_access(IN pmlan_private pmpriv,
-                    IN HostCmd_DS_COMMAND * resp,
-                    IN mlan_ioctl_req * pioctl_buf)
-{
-    mlan_ds_reg_mem *reg_mem = MNULL;
-    mlan_ds_mem_rw *mem_rw = MNULL;
-    HostCmd_DS_MEM_ACCESS *mem = (HostCmd_DS_MEM_ACCESS *) & resp->params.mem;
-
-    ENTER();
-
-    if (pioctl_buf) {
-        reg_mem = (mlan_ds_reg_mem *) pioctl_buf->pbuf;
-        mem_rw = &reg_mem->param.mem_rw;
-
-        mem_rw->addr = wlan_le32_to_cpu(mem->addr);
-        mem_rw->value = wlan_le32_to_cpu(mem->value);
-    }
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
+/** 
  *  @brief This function handles the command response of inactivity timeout
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp	        A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1391,10 +1268,10 @@ wlan_ret_inactivity_timeout(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of
  *  subscribe event
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1423,10 +1300,10 @@ wlan_ret_subscribe_event(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of
  *  OTP user data
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1461,9 +1338,9 @@ wlan_ret_otp_user_data(IN pmlan_private pmpriv,
 /********************************************************
                 Global Functions
 ********************************************************/
-/**
+/** 
  *  @brief This function handles the station command response
- *
+ *  
  *  @param priv             A pointer to mlan_private structure
  *  @param cmdresp_no       cmd no
  *  @param pcmd_buf         cmdresp buf
@@ -1714,6 +1591,12 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
         break;
     case HostCmd_CMD_OTP_READ_USER_DATA:
         ret = wlan_ret_otp_user_data(pmpriv, resp, pioctl_buf);
+        break;
+    case HostCmd_CMD_HS_WAKEUP_REASON:
+        ret = wlan_ret_hs_wakeup_reason(pmpriv, resp, pioctl_buf);
+        break;
+    case HostCmd_CMD_REJECT_ADDBA_REQ:
+        ret = wlan_ret_reject_addba_req(pmpriv, resp, pioctl_buf);
         break;
     default:
         PRINTM(MERROR, "CMD_RESP: Unknown command response %#x\n",

@@ -30,8 +30,6 @@ Change log:
 /** Maximum buffer length for WOAL_UAP_SET_GET_256_CHAR */
 #define MAX_BUF_LEN                 256
 
-/** Private command ID to Host command */
-#define	UAP_HOSTCMD			(SIOCDEVPRIVATE + 1)
 /** Private command ID to send ioctl */
 #define UAP_IOCTL_CMD		(SIOCDEVPRIVATE + 2)
 /** Updating ADDBA variables */
@@ -197,7 +195,7 @@ typedef struct _ds_hs_cfg
     /** Bit0: non-unicast data
      *  Bit1: unicast data
      *  Bit2: mac events
-     *  Bit3: magic packet
+     *  Bit3: magic packet 
      */
     t_u32 conditions;
     /** GPIO */
@@ -263,6 +261,8 @@ typedef struct _fw_info
     t_u32 fw_release_number;
     /** Device support for MIMO abstraction of MCSs */
     t_u8 hw_dev_mcs_support;
+    /** Region Code */
+    t_u16 region_code;
 } fw_info;
 
 typedef struct _tx_bf_cfg_para_hdr

@@ -63,6 +63,9 @@ enum _mlan_ioctl_req_id
 #ifdef WIFI_DIRECT_SUPPORT
     MLAN_OID_WIFI_DIRECT_MODE,
 #endif
+#ifdef STA_SUPPORT
+    MLAN_OID_BSS_LISTEN_INTERVAL,
+#endif
 
     /* Radio Configuration Group */
     MLAN_IOCTL_RADIO_CFG = 0x00030000,
@@ -132,6 +135,7 @@ enum _mlan_ioctl_req_id
     MLAN_OID_PM_CFG_PS_MODE,
 #endif /* UAP_SUPPORT */
     MLAN_OID_PM_INFO,
+    MLAN_OID_PM_HS_WAKEUP_REASON,
 
     /* WMM Configuration Group */
     MLAN_IOCTL_WMM_CFG = 0x000A0000,
@@ -161,6 +165,8 @@ enum _mlan_ioctl_req_id
     MLAN_OID_11N_CFG_TX_BF_CAP,
     MLAN_OID_11N_CFG_TX_BF_CFG,
     MLAN_OID_11N_CFG_STREAM_CFG,
+    MLAN_OID_11N_CFG_DELBA,
+    MLAN_OID_11N_CFG_REJECT_ADDBA_REQ,
 
     /* 802.11d Configuration Group */
     MLAN_IOCTL_11D_CFG = 0x000D0000,
@@ -214,6 +220,7 @@ enum _mlan_ioctl_req_id
     MLAN_OID_MISC_DRVDBG,
 #endif
     MLAN_OID_MISC_OTP_USER_DATA,
+    MLAN_OID_MISC_TXCONTROL,
 };
 
 /** Sub command size */
@@ -339,7 +346,7 @@ typedef struct _wlan_ioctl_get_scan_table_entry
      */
     wlan_get_scan_table_fixed fixed_fields;
 
-    /*
+    /* 
      *  Probe response or beacon scanned for the BSS.
      *
      *  Field layout:
@@ -762,6 +769,12 @@ typedef struct _wmm_parameter_t
     wmm_ac_parameters_t ac_params[MAX_AC_QUEUES];
 } wmm_parameter_t, *pwmm_parameter_t;
 
+/** 5G band */
+#define BAND_CONFIG_5G        0x01
+/** 2.4 G band */
+#define BAND_CONFIG_2G		  0x00
+/** MAX BG channel */
+#define MAX_BG_CHANNEL 14
 /** mlan_bss_param
  * Note: For each entry you must enter an invalid value
  * in the MOAL function woal_set_sys_config_invalid_data().
@@ -836,7 +849,7 @@ typedef struct _mlan_uap_bss_param
     wpa_param wpa_cfg;
     /** Mgmt IE passthru mask */
     t_u32 mgmt_ie_passthru_mask;
-    /*
+    /* 
      * 11n HT Cap  HTCap_t  ht_cap
      */
     /** HT Capabilities Info field */
@@ -921,17 +934,22 @@ typedef struct _mlan_ds_bss
         /** ATIM window for MLAN_OID_IBSS_ATIM_WINDOW */
         t_u32 atim_window;
 #ifdef UAP_SUPPORT
-        /** BSS param for AP mode */
+        /** BSS param for AP mode for MLAN_OID_UAP_BSS_CONFIG */
         mlan_uap_bss_param bss_config;
         /** deauth param for MLAN_OID_UAP_DEAUTH_STA */
         mlan_deauth_param deauth_param;
 #endif
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-        /** BSS role */
+        /** BSS role for MLAN_OID_BSS_ROLE */
         t_u8 bss_role;
 #endif
 #ifdef WIFI_DIRECT_SUPPORT
+        /** wifi direct mode for MLAN_OID_WIFI_DIRECT_MODE */
         t_u16 wfd_mode;
+#endif
+#ifdef STA_SUPPORT
+        /** Listen interval for MLAN_OID_BSS_LISTEN_INTERVAL */
+        t_u16 listen_interval;
 #endif
     } param;
 } mlan_ds_bss, *pmlan_ds_bss;
@@ -1168,7 +1186,7 @@ typedef struct _mlan_ds_uap_stats
 typedef struct _mlan_ds_get_signal
 {
     /** Selector of get operation */
-    /*
+    /* 
      * Bit0:  Last Beacon RSSI,  Bit1:  Average Beacon RSSI,
      * Bit2:  Last Data RSSI,    Bit3:  Average Data RSSI,
      * Bit4:  Last Beacon SNR,   Bit5:  Average Beacon SNR,
@@ -1220,6 +1238,8 @@ typedef struct _mlan_fw_info
     t_u8 hw_dev_mcs_support;
         /** fw supported band */
     t_u8 fw_bands;
+        /** region code */
+    t_u16 region_code;
 } mlan_fw_info, *pmlan_fw_info;
 
 /** Version string buffer length */
@@ -1254,15 +1274,17 @@ typedef struct _mlan_bss_info
     /** Radio on */
     t_u32 radio_on;
     /** Max power level in dBm */
-    t_u32 max_power_level;
+    t_s32 max_power_level;
     /** Min power level in dBm */
-    t_u32 min_power_level;
+    t_s32 min_power_level;
     /** Adhoc state */
     t_u32 adhoc_state;
     /** NF of last beacon */
     t_s32 bcn_nf_last;
     /** wep status */
     t_u32 wep_status;
+    /** scan block status */
+    t_u8 scan_block;
      /** Host Sleep configured flag */
     t_u32 is_hs_configured;
     /** Deep Sleep flag */
@@ -1562,10 +1584,12 @@ enum _mlan_psk_type
 #define KEY_FLAG_RX_SEQ_VALID	0x00000002
 /** key flag for group key */
 #define KEY_FLAG_GROUP_KEY      0x00000004
-/** key flag for tx and rx */
-#define KEY_FLAG_SET_TX_KEY	    0x00000008
+/** key flag for tx */
+#define KEY_FLAG_SET_TX_KEY     0x00000008
+/** key flag for mcast IGTK */
+#define KEY_FLAG_AES_MCAST_IGTK 0x00000010
 /** key flag for remove key */
-#define KEY_FLAG_REMOVE_KEY	    0x80000000
+#define KEY_FLAG_REMOVE_KEY     0x80000000
 
 /** Type definition of mlan_ds_encrypt_key for MLAN_OID_SEC_CFG_ENCRYPT_KEY */
 typedef struct _mlan_ds_encrypt_key
@@ -1788,12 +1812,11 @@ typedef struct _mlan_power_cfg_t
     /** Is power auto */
     t_u32 is_power_auto;
     /** Power level in dBm */
-    t_u32 power_level;
+    t_s32 power_level;
 } mlan_power_cfg_t;
 
 /** max power table size */
 #define MAX_POWER_TABLE_SIZE 	128
-
 /** The HT BW40 bit in Tx rate index */
 #define TX_RATE_HT_BW40_BIT 	MBIT(7)
 
@@ -1852,7 +1875,7 @@ typedef struct _mlan_ds_hs_cfg
     /** Bit0: broadcast data
      *  Bit1: unicast data
      *  Bit2: mac event
-     *  Bit3: multicast data
+     *  Bit3: multicast data 
      */
     t_u32 conditions;
     /** GPIO pin or 0xff for interface */
@@ -2038,6 +2061,12 @@ typedef struct _mlan_ds_ps_info
     t_u32 is_suspend_allowed;
 } mlan_ds_ps_info;
 
+/** Type definition of mlan_ds_wakeup_reason for MLAN_OID_PM_HS_WAKEUP_REASON */
+typedef struct _mlan_ds_hs_wakeup_reason
+{
+    t_u16 hs_wakeup_reason;
+} mlan_ds_hs_wakeup_reason;
+
 /** Type definition of mlan_ds_pm_cfg for MLAN_IOCTL_PM_CFG */
 typedef struct _mlan_ds_pm_cfg
 {
@@ -2064,6 +2093,8 @@ typedef struct _mlan_ds_pm_cfg
         mlan_ds_ps_mgmt ps_mgmt;
         /** power info for MLAN_OID_PM_INFO */
         mlan_ds_ps_info ps_info;
+        /** hs wakeup reason for MLAN_OID_PM_HS_WAKEUP_REASON */
+        mlan_ds_hs_wakeup_reason wakeup_reason;
     } param;
 } mlan_ds_pm_cfg, *pmlan_ds_pm_cfg;
 
@@ -2083,7 +2114,7 @@ typedef struct _mlan_ds_pm_cfg
 /**
  *  @brief IOCTL structure to send an ADDTS request and retrieve the response.
  *
- *  IOCTL structure from the application layer relayed to firmware to
+ *  IOCTL structure from the application layer relayed to firmware to 
  *    instigate an ADDTS management frame with an appropriate TSPEC IE as well
  *    as any additional IEs appended in the ADDTS Action frame.
  *
@@ -2104,7 +2135,7 @@ typedef struct
 /**
  *  @brief IOCTL structure to send a DELTS request.
  *
- *  IOCTL structure from the application layer relayed to firmware to
+ *  IOCTL structure from the application layer relayed to firmware to 
  *    instigate an DELTS management frame with an appropriate TSPEC IE.
  *
  *  @sa woal_wmm_delts_req_ioctl
@@ -2120,7 +2151,7 @@ typedef struct
 /**
  *  @brief IOCTL structure to configure a specific AC Queue's parameters
  *
- *  IOCTL structure from the application layer relayed to firmware to
+ *  IOCTL structure from the application layer relayed to firmware to 
  *    get, set, or default the WMM AC queue parameters.
  *
  *  - msdu_lifetime_expiry is ignored if set to 0 on a set command
@@ -2177,7 +2208,7 @@ typedef struct
 /** Type definition of mlan_ds_wmm_queue_stats for MLAN_OID_WMM_CFG_QUEUE_STATS */
   mlan_ds_wmm_queue_stats, *pmlan_ds_wmm_queue_stats;
 
-/**
+/** 
  *  @brief IOCTL sub structure for a specific WMM AC Status
  */
 typedef struct
@@ -2454,7 +2485,7 @@ typedef struct _mlan_ds_11n_tx_bf_cfg
     } body;
 } mlan_ds_11n_tx_bf_cfg, *pmlan_ds_11n_tx_bf_cfg;
 
-/** Type definition of mlan_ds_11n_amsdu_aggr_ctrl for
+/** Type definition of mlan_ds_11n_amsdu_aggr_ctrl for 
  * MLAN_OID_11N_AMSDU_AGGR_CTRL*/
 typedef struct _mlan_ds_11n_amsdu_aggr_ctrl
 {
@@ -2472,6 +2503,34 @@ typedef struct _mlan_ds_11n_aggr_prio_tbl
     /** amsdu priority table */
     t_u8 amsdu[MAX_NUM_TID];
 } mlan_ds_11n_aggr_prio_tbl, *pmlan_ds_11n_aggr_prio_tbl;
+
+/** DelBA All TIDs */
+#define DELBA_ALL_TIDS  0xff
+/** DelBA Tx */
+#define DELBA_TX        MBIT(0)
+/** DelBA Rx */
+#define DELBA_RX        MBIT(1)
+
+/** Type definition of mlan_ds_11n_delba for MLAN_OID_11N_CFG_DELBA */
+typedef struct _mlan_ds_11n_delba
+{
+    /** TID */
+    t_u8 tid;
+    /** Peer MAC address */
+    t_u8 peer_mac_addr[MLAN_MAC_ADDR_LENGTH];
+    /** Direction (Tx: bit 0, Rx: bit 1) */
+    t_u8 direction;
+} mlan_ds_11n_delba, *pmlan_ds_11n_delba;
+
+/** Type definition of mlan_ds_delba for MLAN_OID_11N_CFG_REJECT_ADDBA_REQ */
+typedef struct _mlan_ds_reject_addba_req
+{
+    /** Bit0    : host sleep activated
+     *  Bit1    : auto reconnect enabled
+     *  Others  : reserved
+     */
+    t_u32 conditions;
+} mlan_ds_reject_addba_req, *pmlan_ds_reject_addba_req;
 
 /** Type definition of mlan_ds_11n_cfg for MLAN_IOCTL_11N_CFG */
 typedef struct _mlan_ds_11n_cfg
@@ -2503,6 +2562,10 @@ typedef struct _mlan_ds_11n_cfg
         mlan_ds_11n_tx_bf_cfg tx_bf;
         /** HT stream configuration */
         t_u32 stream_cfg;
+        /** DelBA for MLAN_OID_11N_CFG_DELBA */
+        mlan_ds_11n_delba del_ba;
+        /** Reject Addba Req for MLAN_OID_11N_CFG_REJECT_ADDBA_REQ */
+        mlan_ds_reject_addba_req reject_addba_req;
     } param;
 } mlan_ds_11n_cfg, *pmlan_ds_11n_cfg;
 
@@ -2975,6 +3038,8 @@ typedef struct _mlan_ds_misc_cfg
         t_u32 drvdbg;
 #endif
         mlan_ds_misc_otp_user_data otp_user_data;
+        /** Tx control */
+        t_u32 tx_control;
     } param;
 } mlan_ds_misc_cfg, *pmlan_ds_misc_cfg;
 

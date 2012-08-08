@@ -27,7 +27,7 @@ Change log:
 #define _MLAN_DECL_H_
 
 /** MLAN release version */
-#define MLAN_RELEASE_VERSION		"311"
+#define MLAN_RELEASE_VERSION		"334"
 
 /** Re-define generic data types for MLAN/MOAL */
 /** Signed char (1-byte) */
@@ -189,6 +189,8 @@ typedef t_s32 t_sval;
 #define MLAN_RX_DATA_BUF_SIZE     (4 * 1024)
 /** Size of rx command buffer */
 #define MLAN_RX_CMD_BUF_SIZE      (2 * 1024)
+
+#define MLAN_USB_RX_DATA_BUF_SIZE       MLAN_RX_DATA_BUF_SIZE
 
 /** MLAN MAC Address Length */
 #define MLAN_MAC_ADDR_LENGTH     (6)
@@ -716,6 +718,7 @@ typedef struct _mlan_callbacks
     /** moal_free_mlan_buffer */
     mlan_status(*moal_free_mlan_buffer) (IN t_void * pmoal_handle,
                                          IN pmlan_buffer pmbuf);
+
     /** moal_write_reg */
     mlan_status(*moal_write_reg) (IN t_void * pmoal_handle,
                                   IN t_u32 reg, IN t_u32 data);

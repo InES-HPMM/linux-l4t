@@ -51,6 +51,18 @@ Change Log:
 #define WLAN_TX_PWR_EMEA_DEFAULT    20
 /** 2000mW */
 #define WLAN_TX_PWR_CN_2000MW       33
+/** 200mW */
+#define WLAN_TX_PWR_200MW   23
+/** 1000mW */
+#define WLAN_TX_PWR_1000MW   30
+/** 30mW */
+#define WLAN_TX_PWR_SP_30MW   14
+/** 60mW */
+#define WLAN_TX_PWR_SP_60MW   17
+/** 25mW */
+#define WLAN_TX_PWR_25MW   14
+/** 250mW */
+#define WLAN_TX_PWR_250MW   24
 
 /** Region code mapping */
 typedef struct _country_code_mapping
@@ -74,6 +86,11 @@ static country_code_mapping_t country_code_mapping[] = {
     {"FR", 0x32, 0x32},         /* France */
     {"JP", 0xFF, 0x40},         /* Japan */
     {"CN", 0x30, 0x50},         /* China */
+    {"DE", 0x30, 0x06},         /* Germany */
+    {"ES", 0x30, 0x07},         /* Spain */
+    {"AT", 0x30, 0x09},         /* Austria */
+    {"BR", 0x01, 0x09},         /* Brazil */
+    {"RU", 0x30, 0x0f},         /* Russia */
 };
 
 /**
@@ -178,6 +195,23 @@ static chan_freq_power_t channel_freq_power_JPNFE_BG[] = {
     {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT, MTRUE}
 };
 
+/** Band : 'B/G', Region: Brazil */
+static chan_freq_power_t channel_freq_power_BR_BG[] = {
+    {1, 2412, WLAN_TX_PWR_1000MW, MFALSE},
+    {2, 2417, WLAN_TX_PWR_1000MW, MFALSE},
+    {3, 2422, WLAN_TX_PWR_1000MW, MFALSE},
+    {4, 2427, WLAN_TX_PWR_1000MW, MFALSE},
+    {5, 2432, WLAN_TX_PWR_1000MW, MFALSE},
+    {6, 2437, WLAN_TX_PWR_1000MW, MFALSE},
+    {7, 2442, WLAN_TX_PWR_1000MW, MFALSE},
+    {8, 2447, WLAN_TX_PWR_1000MW, MFALSE},
+    {9, 2452, WLAN_TX_PWR_1000MW, MFALSE},
+    {10, 2457, WLAN_TX_PWR_1000MW, MFALSE},
+    {11, 2462, WLAN_TX_PWR_1000MW, MFALSE},
+    {12, 2467, WLAN_TX_PWR_1000MW, MFALSE},
+    {13, 2472, WLAN_TX_PWR_1000MW, MFALSE},
+};
+
 /** Band : 'B/G', Region: Special */
 static chan_freq_power_t channel_freq_power_SPECIAL_BG[] = {
     {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
@@ -200,6 +234,12 @@ static chan_freq_power_t channel_freq_power_SPECIAL_BG[] = {
  * The 2.4GHz CFP tables
  */
 static cfp_table_t cfp_table_BG[] = {
+    {
+     0x01,                      /* Brazil */
+     channel_freq_power_BR_BG,
+     sizeof(channel_freq_power_BR_BG) / sizeof(chan_freq_power_t),
+     }
+    ,
     {0x10,                      /* US FCC */
      channel_freq_power_US_BG,
      sizeof(channel_freq_power_US_BG) / sizeof(chan_freq_power_t),
@@ -331,9 +371,6 @@ static chan_freq_power_t channel_freq_power_EU_A[] = {
 
 /** Band: 'A', Region: Japan */
 static chan_freq_power_t channel_freq_power_JPN_A[] = {
-    {8, 5040, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
-    {12, 5060, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
-    {16, 5080, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
     {36, 5180, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
     {40, 5200, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
     {44, 5220, WLAN_TX_PWR_JP_A_DEFAULT, MFALSE},
@@ -366,6 +403,113 @@ static chan_freq_power_t channel_freq_power_CN_A[] = {
 
 /** Band: 'A', NULL */
 static chan_freq_power_t channel_freq_power_NULL_A[] = {
+};
+
+/** Band: 'A', Region: Germany */
+static chan_freq_power_t channel_freq_power_GRM_A[] = {
+    {36, 5180, WLAN_TX_PWR_200MW, MFALSE},
+    {40, 5200, WLAN_TX_PWR_200MW, MFALSE},
+    {44, 5220, WLAN_TX_PWR_200MW, MFALSE},
+    {48, 5240, WLAN_TX_PWR_200MW, MFALSE},
+    {52, 5260, WLAN_TX_PWR_200MW, MTRUE},
+    {56, 5280, WLAN_TX_PWR_200MW, MTRUE},
+    {60, 5300, WLAN_TX_PWR_200MW, MTRUE},
+    {64, 5320, WLAN_TX_PWR_200MW, MTRUE},
+    {100, 5500, WLAN_TX_PWR_1000MW, MTRUE},
+    {104, 5520, WLAN_TX_PWR_1000MW, MTRUE},
+    {108, 5540, WLAN_TX_PWR_1000MW, MTRUE},
+    {112, 5560, WLAN_TX_PWR_1000MW, MTRUE},
+    {116, 5580, WLAN_TX_PWR_1000MW, MTRUE},
+    {120, 5600, WLAN_TX_PWR_1000MW, MTRUE},
+    {124, 5620, WLAN_TX_PWR_1000MW, MTRUE},
+    {128, 5640, WLAN_TX_PWR_1000MW, MTRUE},
+    {132, 5660, WLAN_TX_PWR_1000MW, MTRUE},
+    {136, 5680, WLAN_TX_PWR_1000MW, MTRUE},
+    {140, 5700, WLAN_TX_PWR_1000MW, MTRUE},
+};
+
+/** Band: 'A', Region: Spain */
+static chan_freq_power_t channel_freq_power_SPN0_A[] = {
+    {36, 5180, WLAN_TX_PWR_SP_30MW, MFALSE},
+    {40, 5200, WLAN_TX_PWR_SP_30MW, MFALSE},
+    {44, 5220, WLAN_TX_PWR_SP_30MW, MFALSE},
+    {48, 5240, WLAN_TX_PWR_SP_30MW, MFALSE},
+};
+
+/** Band: 'A', Region: Spain */
+static chan_freq_power_t channel_freq_power_SPN1_A[] = {
+    {36, 5180, WLAN_TX_PWR_SP_60MW, MFALSE},
+    {40, 5200, WLAN_TX_PWR_SP_60MW, MFALSE},
+    {44, 5220, WLAN_TX_PWR_SP_60MW, MFALSE},
+    {48, 5240, WLAN_TX_PWR_SP_60MW, MFALSE},
+};
+
+/** Band: 'A', Region: Spain/Austria/Brazil */
+static chan_freq_power_t channel_freq_power_SPN2_A[] = {
+    {36, 5180, WLAN_TX_PWR_200MW, MFALSE},
+    {40, 5200, WLAN_TX_PWR_200MW, MFALSE},
+    {44, 5220, WLAN_TX_PWR_200MW, MFALSE},
+    {48, 5240, WLAN_TX_PWR_200MW, MFALSE},
+    {52, 5260, WLAN_TX_PWR_200MW, MTRUE},
+    {56, 5280, WLAN_TX_PWR_200MW, MTRUE},
+    {60, 5300, WLAN_TX_PWR_200MW, MTRUE},
+    {64, 5320, WLAN_TX_PWR_200MW, MTRUE},
+};
+
+/** Band: 'A', Region: Spain/Austria */
+static chan_freq_power_t channel_freq_power_SPN3_A[] = {
+    {100, 5500, WLAN_TX_PWR_1000MW, MTRUE},
+    {104, 5520, WLAN_TX_PWR_1000MW, MTRUE},
+    {108, 5540, WLAN_TX_PWR_1000MW, MTRUE},
+    {112, 5560, WLAN_TX_PWR_1000MW, MTRUE},
+    {116, 5580, WLAN_TX_PWR_1000MW, MTRUE},
+    {120, 5600, WLAN_TX_PWR_1000MW, MTRUE},
+    {124, 5620, WLAN_TX_PWR_1000MW, MTRUE},
+    {128, 5640, WLAN_TX_PWR_1000MW, MTRUE},
+    {132, 5660, WLAN_TX_PWR_1000MW, MTRUE},
+    {136, 5680, WLAN_TX_PWR_1000MW, MTRUE},
+    {140, 5700, WLAN_TX_PWR_1000MW, MTRUE},
+};
+
+/** Band: 'A', Region: Austria */
+static chan_freq_power_t channel_freq_power_AT_A[] = {
+    {149, 5745, WLAN_TX_PWR_25MW, MFALSE},
+    {153, 5765, WLAN_TX_PWR_25MW, MFALSE},
+    {157, 5785, WLAN_TX_PWR_25MW, MFALSE},
+    {161, 5805, WLAN_TX_PWR_25MW, MFALSE},
+    {165, 5825, WLAN_TX_PWR_25MW, MFALSE}
+};
+
+/** Band: 'A', Region: Brazil */
+static chan_freq_power_t channel_freq_power_BR1_A[] = {
+    {100, 5500, WLAN_TX_PWR_250MW, MTRUE},
+    {104, 5520, WLAN_TX_PWR_250MW, MTRUE},
+    {108, 5540, WLAN_TX_PWR_250MW, MTRUE},
+    {112, 5560, WLAN_TX_PWR_250MW, MTRUE},
+    {116, 5580, WLAN_TX_PWR_250MW, MTRUE},
+    {120, 5600, WLAN_TX_PWR_250MW, MTRUE},
+    {124, 5620, WLAN_TX_PWR_250MW, MTRUE},
+    {128, 5640, WLAN_TX_PWR_250MW, MTRUE},
+    {132, 5660, WLAN_TX_PWR_250MW, MTRUE},
+    {136, 5680, WLAN_TX_PWR_250MW, MTRUE},
+    {140, 5700, WLAN_TX_PWR_250MW, MTRUE},
+};
+
+/** Band: 'A', Region: Brazil */
+static chan_freq_power_t channel_freq_power_BR2_A[] = {
+    {149, 5745, WLAN_TX_PWR_1000MW, MFALSE},
+    {153, 5765, WLAN_TX_PWR_1000MW, MFALSE},
+    {157, 5785, WLAN_TX_PWR_1000MW, MFALSE},
+    {161, 5805, WLAN_TX_PWR_1000MW, MFALSE},
+    {165, 5825, WLAN_TX_PWR_1000MW, MFALSE}
+};
+
+/** Band: 'A', Region: Russia */
+static chan_freq_power_t channel_freq_power_RU_A[] = {
+    {149, 5745, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {153, 5765, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {157, 5785, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {161, 5805, WLAN_TX_PWR_DEFAULT, MFALSE},
 };
 
 /** Band: 'A', Code: 1, Low band (5150-5250 MHz) channels */
@@ -426,6 +570,77 @@ static chan_freq_power_t channel_freq_power_low_high_band[] = {
  * The 5GHz CFP tables
  */
 static cfp_table_t cfp_table_A[] = {
+    {0x1,                       /* Low band (5150-5250 MHz) channels */
+     channel_freq_power_low_band,
+     sizeof(channel_freq_power_low_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x2,                       /* Lower middle band (5250-5350 MHz) channels */
+     channel_freq_power_lower_middle_band,
+     sizeof(channel_freq_power_lower_middle_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x3,                       /* Upper middle band (5470-5725 MHz) channels */
+     channel_freq_power_upper_middle_band,
+     sizeof(channel_freq_power_upper_middle_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x4,                       /* High band (5725-5850 MHz) channels */
+     channel_freq_power_high_band,
+     sizeof(channel_freq_power_high_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x5,                       /* Low band (5150-5250 MHz) and High band
+                                   (5725-5850 MHz) channels */
+     channel_freq_power_low_high_band,
+     sizeof(channel_freq_power_low_high_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x06,                      /* GERMANY */
+     channel_freq_power_GRM_A,
+     sizeof(channel_freq_power_GRM_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x07,                      /* SPAIN */
+     channel_freq_power_SPN0_A,
+     sizeof(channel_freq_power_SPN0_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x08,                      /* SPAIN */
+     channel_freq_power_SPN1_A,
+     sizeof(channel_freq_power_SPN1_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x09,                      /* SPAIN/Austria/Brazil */
+     channel_freq_power_SPN2_A,
+     sizeof(channel_freq_power_SPN2_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x0a,                      /* SPAIN/Austria */
+     channel_freq_power_SPN3_A,
+     sizeof(channel_freq_power_SPN3_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x0b,                      /* Austria */
+     channel_freq_power_AT_A,
+     sizeof(channel_freq_power_AT_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x0c,                      /* Brazil */
+     channel_freq_power_BR1_A,
+     sizeof(channel_freq_power_BR1_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x0e,                      /* Brazil */
+     channel_freq_power_BR2_A,
+     sizeof(channel_freq_power_BR2_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x0f,                      /* Russia */
+     channel_freq_power_RU_A,
+     sizeof(channel_freq_power_RU_A) / sizeof(chan_freq_power_t),
+     }
+    ,
     {0x10,                      /* US FCC */
      channel_freq_power_A,
      sizeof(channel_freq_power_A) / sizeof(chan_freq_power_t),
@@ -469,32 +684,6 @@ static cfp_table_t cfp_table_A[] = {
     {0xff,                      /* Special */
      channel_freq_power_JPN_A,
      sizeof(channel_freq_power_JPN_A) / sizeof(chan_freq_power_t),
-     }
-    ,
-    {0x1,                       /* Low band (5150-5250 MHz) channels */
-     channel_freq_power_low_band,
-     sizeof(channel_freq_power_low_band) / sizeof(chan_freq_power_t)
-     }
-    ,
-    {0x2,                       /* Lower middle band (5250-5350 MHz) channels */
-     channel_freq_power_lower_middle_band,
-     sizeof(channel_freq_power_lower_middle_band) / sizeof(chan_freq_power_t)
-     }
-    ,
-    {0x3,                       /* Upper middle band (5470-5725 MHz) channels */
-     channel_freq_power_upper_middle_band,
-     sizeof(channel_freq_power_upper_middle_band) / sizeof(chan_freq_power_t)
-     }
-    ,
-    {0x4,                       /* High band (5725-5850 MHz) channels */
-     channel_freq_power_high_band,
-     sizeof(channel_freq_power_high_band) / sizeof(chan_freq_power_t)
-     }
-    ,
-    {0x5,                       /* Low band (5150-5250 MHz) and High band
-                                   (5725-5850 MHz) channels */
-     channel_freq_power_low_high_band,
-     sizeof(channel_freq_power_low_high_band) / sizeof(chan_freq_power_t)
      }
     ,
 /* Add new region here */
@@ -587,12 +776,12 @@ t_u8 SupportedRates_N[N_SUPPORTED_RATES] = { 0x02, 0x04, 0 };
 /********************************************************
     Local Functions
 ********************************************************/
-/**
+/** 
  *  @brief Find a character in a string.
- *
+ *   
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param s            A pointer to string
- *  @param c            Character to be located
+ *  @param c            Character to be located 
  *  @param n            The length of string
  *
  *  @return        A pointer to the first occurrence of c in string, or MNULL if c is not found.
@@ -615,10 +804,10 @@ wlan_memchr(pmlan_adapter pmadapter, void *s, int c, int n)
     return MNULL;
 }
 
-/**
- *  @brief This function finds the CFP in
+/** 
+ *  @brief This function finds the CFP in 
  *  		cfp_table_BG/A based on region/code and band parameter.
- *
+ *  
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param region     The region code
  *  @param band       The band
@@ -678,6 +867,41 @@ wlan_get_region_cfp_table(pmlan_adapter pmadapter, t_u8 region, t_u8 band,
     return MNULL;
 }
 
+/** 
+ *  @brief This function copies dynamic CFP elements from one table to another.
+ *         Only copy elements where channel numbers match.
+ *  
+ *  @param pmadapter   A pointer to mlan_adapter structure
+ *  @param cfp         Destination table
+ *  @param num_cfp     Number of elements in dest table
+ *  @param cfp_src     Source table
+ *  @param num_cfp_src Number of elements in source table
+ */
+static t_void
+wlan_cfp_copy_dynamic(pmlan_adapter pmadapter,
+                      chan_freq_power_t * cfp, t_u8 num_cfp,
+                      chan_freq_power_t * cfp_src, t_u8 num_cfp_src)
+{
+    int i, j;
+    ENTER();
+
+    /* first clear dest dynamic entries */
+    for (i = 0; i < num_cfp; i++)
+        memset(pmadapter, &cfp[i].dynamic, 0x00, sizeof(cfp_dyn_t));
+
+    /* copy dynamic entries from source where channels match */
+    if (cfp_src) {
+        for (i = 0; i < num_cfp; i++)
+            for (j = 0; j < num_cfp_src; j++)
+                if (cfp[i].channel == cfp_src[j].channel) {
+                    cfp[i].dynamic = cfp_src[j].dynamic;
+                    break;
+                }
+    }
+
+    LEAVE();
+}
+
 /********************************************************
     Global Functions
 ********************************************************/
@@ -717,14 +941,14 @@ wlan_misc_country_2_cfp_table_code(pmlan_adapter pmadapter, t_u8 * country_code,
 #ifdef STA_SUPPORT
 #endif /* STA_SUPPORT */
 
-/**
+/** 
  *  @brief Use index to get the data rate
- *
+ *   
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param index        The index of data rate
  *  @param ht_info      ht info
  *
- *  @return                     Data rate or 0
+ *  @return                     Data rate or 0 
  */
 
 t_u32
@@ -778,13 +1002,13 @@ wlan_index_to_data_rate(pmlan_adapter pmadapter, t_u8 index, t_u8 ht_info)
     return rate;
 }
 
-/**
+/** 
  *  @brief Use rate to get the index
- *
+ *   
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param rate         Data rate
  *
- *  @return                     Index or 0
+ *  @return                     Index or 0 
  */
 t_u8
 wlan_data_rate_to_index(pmlan_adapter pmadapter, t_u32 rate)
@@ -802,9 +1026,9 @@ wlan_data_rate_to_index(pmlan_adapter pmadapter, t_u32 rate)
     return 0;
 }
 
-/**
+/** 
  *  @brief Get active data rates
- *
+ *   
  *  @param pmpriv           A pointer to mlan_private structure
  *  @param bss_mode         The specified BSS mode (Infra/IBSS)
  *  @param config_bands     The specified band configuration
@@ -832,9 +1056,9 @@ wlan_get_active_data_rates(mlan_private * pmpriv, t_u32 bss_mode,
 }
 
 #ifdef STA_SUPPORT
-/**
- *  @brief This function search through all the regions cfp table to find the channel,
- *            if the channel is found then gets the MIN txpower of the channel
+/** 
+ *  @brief This function search through all the regions cfp table to find the channel, 
+ *            if the channel is found then gets the MIN txpower of the channel 
  *            present in all the regions.
  *
  *  @param pmpriv       A pointer to mlan_private structure
@@ -890,9 +1114,9 @@ wlan_get_txpwr_of_chan_from_cfp(mlan_private * pmpriv, t_u8 channel)
     return tx_power;
 }
 
-/**
+/** 
  *  @brief Get the channel frequency power info for a specific channel
- *
+ *   
  *  @param pmadapter            A pointer to mlan_adapter structure
  *  @param band                 It can be BAND_A, BAND_G or BAND_B
  *  @param channel              The channel to search for
@@ -967,9 +1191,9 @@ wlan_get_cfp_by_band_and_channel(pmlan_adapter pmadapter,
     return cfp;
 }
 
-/**
+/** 
  *  @brief Find the channel frequency power info for a specific channel
- *
+ *   
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param band         It can be BAND_A, BAND_G or BAND_B
  *  @param channel      The channel to search for
@@ -997,9 +1221,9 @@ wlan_find_cfp_by_band_and_channel(mlan_adapter * pmadapter,
     return cfp;
 }
 
-/**
+/** 
  *  @brief Find the channel frequency power info for a specific frequency
- *
+ *   
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param band         It can be BAND_A, BAND_G or BAND_B
  *  @param freq         The frequency to search for
@@ -1071,9 +1295,9 @@ wlan_find_cfp_by_band_and_freq(mlan_adapter * pmadapter, t_u8 band, t_u32 freq)
 }
 #endif /* STA_SUPPORT */
 
-/**
+/** 
  *  @brief Check if Rate Auto
- *
+ *   
  *  @param pmpriv               A pointer to mlan_private structure
  *
  *  @return                     MTRUE or MFALSE
@@ -1097,9 +1321,9 @@ wlan_is_rate_auto(mlan_private * pmpriv)
         return MFALSE;
 }
 
-/**
+/** 
  *  @brief Covert Rate Bitmap to Rate index
- *
+ *   
  *  @param pmadapter    Pointer to mlan_adapter structure
  *  @param rate_bitmap  Pointer to rate bitmap
  *  @param size         Size of the bitmap array
@@ -1124,9 +1348,9 @@ wlan_get_rate_index(pmlan_adapter pmadapter, t_u16 * rate_bitmap, int size)
     return -1;
 }
 
-/**
+/** 
  *  @brief Get supported data rates
- *
+ *   
  *  @param pmpriv           A pointer to mlan_private structure
  *  @param bss_mode         The specified BSS mode (Infra/IBSS)
  *  @param config_bands     The specified band configuration
@@ -1223,9 +1447,9 @@ wlan_get_supported_rates(mlan_private * pmpriv, t_u32 bss_mode,
     return k;
 }
 
-/**
- *  @brief This function sets region table.
- *
+/** 
+ *  @brief This function sets region table. 
+ *  
  *  @param pmpriv  A pointer to mlan_private structure
  *  @param region  The region code
  *  @param band    The band
@@ -1236,12 +1460,15 @@ mlan_status
 wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band)
 {
     mlan_adapter *pmadapter = pmpriv->adapter;
-    int i = 0;
+    int i = 0, j;
     chan_freq_power_t *cfp;
     int cfp_no;
+    region_chan_t region_chan_old[MAX_REGION_CHANNEL_NUM];
 
     ENTER();
 
+    memcpy(pmadapter, region_chan_old, pmadapter->region_channel,
+           sizeof(pmadapter->region_channel));
     memset(pmadapter, pmadapter->region_channel, 0,
            sizeof(pmadapter->region_channel));
 
@@ -1264,6 +1491,18 @@ wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band)
         else
             pmadapter->region_channel[i].band =
                 (band & BAND_G) ? BAND_G : BAND_B;
+
+        for (j = 0; j < MAX_REGION_CHANNEL_NUM; j++) {
+            if (region_chan_old[j].band & (BAND_B | BAND_G))
+                break;
+        }
+        if ((j < MAX_REGION_CHANNEL_NUM) && region_chan_old[j].valid)
+            wlan_cfp_copy_dynamic(pmadapter, cfp, cfp_no,
+                                  region_chan_old[j].pcfp,
+                                  region_chan_old[j].num_cfp);
+        else
+            wlan_cfp_copy_dynamic(pmadapter, cfp, cfp_no, MNULL, 0);
+
         i++;
     }
     if (band & (BAND_A | BAND_AN)) {
@@ -1279,6 +1518,17 @@ wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band)
         pmadapter->region_channel[i].valid = MTRUE;
         pmadapter->region_channel[i].region = region;
         pmadapter->region_channel[i].band = BAND_A;
+
+        for (j = 0; j < MAX_REGION_CHANNEL_NUM; j++) {
+            if (region_chan_old[j].band & BAND_A)
+                break;
+        }
+        if ((j < MAX_REGION_CHANNEL_NUM) && region_chan_old[j].valid)
+            wlan_cfp_copy_dynamic(pmadapter, cfp, cfp_no,
+                                  region_chan_old[j].pcfp,
+                                  region_chan_old[j].num_cfp);
+        else
+            wlan_cfp_copy_dynamic(pmadapter, cfp, cfp_no, MNULL, 0);
     }
     LEAVE();
     return MLAN_STATUS_SUCCESS;
@@ -1290,7 +1540,7 @@ wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band)
  *  @param priv    Private driver information structure
  *  @param chnl Channel to determine radar detection requirements
  *
- *  @return
+ *  @return 
  *    - MTRUE if radar detection is required
  *    - MFALSE otherwise
  */
@@ -1332,11 +1582,11 @@ wlan_get_cfp_radar_detect(mlan_private * priv, t_u8 chnl)
 
 /**
  *  @brief Get if scan type is passive or not on a certain channel for b/g band
- *
+ *  
  *  @param priv    Private driver information structure
  *  @param chnl Channel to determine scan type
- *
- *  @return
+ *  
+ *  @return 
  *    - MTRUE if scan type is passive
  *    - MFALSE otherwise
  */
@@ -1375,4 +1625,92 @@ wlan_bg_scan_type_is_passive(mlan_private * priv, t_u8 chnl)
   done:
     LEAVE();
     return passive;
+}
+
+/**
+ *  @brief Get if a channel is blacklisted or not
+ *  
+ *  @param priv     Private driver information structure
+ *  @param band     Band to check
+ *  @param chan     Channel to check
+ *  
+ *  @return 
+ *    - MTRUE if channel is blacklisted
+ *    - MFALSE otherwise
+ */
+
+t_bool
+wlan_is_chan_blacklisted(mlan_private * priv, t_u8 band, t_u8 chan)
+{
+    int i, j;
+    t_bool blacklist = MFALSE;
+    chan_freq_power_t *pcfp = MNULL;
+
+    ENTER();
+
+    /* get the cfp table first */
+    for (i = 0; i < MAX_REGION_CHANNEL_NUM; i++) {
+        if (priv->adapter->region_channel[i].band & band) {
+            pcfp = priv->adapter->region_channel[i].pcfp;
+            break;
+        }
+    }
+
+    if (pcfp) {
+        /* check table according to chan num */
+        for (j = 0; j < priv->adapter->region_channel[i].num_cfp; j++) {
+            if (pcfp[j].channel == chan) {
+                blacklist = pcfp[j].dynamic.blacklist;
+                break;
+            }
+        }
+    }
+
+    LEAVE();
+    return blacklist;
+}
+
+/**
+ *  @brief Set a channel as blacklisted or not
+ *  
+ *  @param priv     Private driver information structure
+ *  @param band     Band to check
+ *  @param chan     Channel to check
+ *  @param bl       Blacklist if MTRUE
+ *  
+ *  @return 
+ *    - MTRUE if channel setting is updated
+ *    - MFALSE otherwise
+ */
+
+t_bool
+wlan_set_chan_blacklist(mlan_private * priv, t_u8 band, t_u8 chan, t_bool bl)
+{
+    int i, j;
+    t_bool set_bl = MFALSE;
+    chan_freq_power_t *pcfp = MNULL;
+
+    ENTER();
+
+    /* get the cfp table first */
+    for (i = 0; i < MAX_REGION_CHANNEL_NUM; i++) {
+        if (priv->adapter->region_channel[i].band & band) {
+            pcfp = priv->adapter->region_channel[i].pcfp;
+            break;
+        }
+    }
+
+    if (pcfp) {
+        /* check table according to chan num */
+        for (j = 0; j < priv->adapter->region_channel[i].num_cfp; j++) {
+            if (pcfp[j].channel == chan) {
+                pcfp[j].dynamic.blacklist = bl;
+                set_bl = MTRUE;
+                break;
+            }
+        }
+    }
+
+    LEAVE();
+    return set_bl;
 }

@@ -128,7 +128,7 @@ t_u32 drvdbg = DEFAULT_DEBUG_MASK;
 
 /**
  *  @brief This function registers MOAL to MLAN module.
- *
+ *  
  *  @param pmdevice        A pointer to a mlan_device structure
  *                         allocated in MOAL
  *  @param ppmlan_adapter  A pointer to a t_void pointer to store
@@ -357,7 +357,7 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
 
 /**
  *  @brief This function unregisters MOAL from MLAN module.
- *
+ *  
  *  @param pmlan_adapter   A pointer to a mlan_device structure
  *                         allocated in MOAL
  *
@@ -404,7 +404,7 @@ mlan_unregister(IN t_void * pmlan_adapter)
 
 /**
  *  @brief This function downloads the firmware
- *
+ *  
  *  @param pmlan_adapter   A pointer to a t_void pointer to store
  *                         mlan_adapter structure pointer
  *  @param pmfw            A pointer to firmware image
@@ -513,7 +513,7 @@ mlan_set_init_param(IN t_void * pmlan_adapter, IN pmlan_init_param pparam)
 
 /**
  *  @brief This function initializes the firmware
- *
+ *  
  *  @param pmlan_adapter   A pointer to a t_void pointer to store
  *                         mlan_adapter structure pointer
  *
@@ -564,23 +564,27 @@ mlan_shutdown_fw(IN t_void * pmlan_adapter)
     t_s32 i = 0;
 
     ENTER();
+
     MASSERT(pmlan_adapter);
-    /* mlan already shutdown */
+    /* MLAN already shutdown */
     if (pmadapter->hw_status == WlanHardwareStatusNotReady) {
         LEAVE();
         return MLAN_STATUS_SUCCESS;
     }
 
     pmadapter->hw_status = WlanHardwareStatusClosing;
-    /* wait for mlan_process to complete */
+    /* Wait for mlan_process to complete */
     if (pmadapter->mlan_processing) {
-        PRINTM(MWARN, "mlan main processing is still running\n");
+        PRINTM(MWARN, "MLAN main processing is still running\n");
         LEAVE();
         return ret;
     }
 
-    /* shut down mlan */
-    PRINTM(MINFO, "Shutdown mlan...\n");
+    /* Shut down MLAN */
+    PRINTM(MINFO, "Shutdown MLAN...\n");
+
+    /* Cancel all pending commands and complete ioctls */
+    wlan_cancel_all_pending_cmd(pmadapter);
 
     /* Clean up priv structures */
     for (i = 0; i < pmadapter->priv_num; i++) {
@@ -729,7 +733,7 @@ mlan_main_process(IN t_void * pmlan_adapter)
             }
         }
 
-        /*
+        /* 
          * The ps_state may have been changed during processing of
          * Sleep Request event.
          */
@@ -849,7 +853,7 @@ mlan_send_packet(IN t_void * pmlan_adapter, IN pmlan_buffer pmbuf)
     return ret;
 }
 
-/**
+/** 
  *  @brief MLAN ioctl handler
  *
  *  @param adapter	A pointer to mlan_adapter structure
@@ -925,9 +929,9 @@ mlan_select_wmm_queue(IN t_void * pmlan_adapter, IN t_u8 bss_num, IN t_u8 tid)
     return ret;
 }
 
-/**
+/** 
  *  @brief This function gets interrupt status.
- *
+ *  
  *  @param adapter  A pointer to mlan_adapter structure
  *  @return         N/A
  */

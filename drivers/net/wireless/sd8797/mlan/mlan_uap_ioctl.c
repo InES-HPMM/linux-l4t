@@ -44,7 +44,7 @@ extern t_u8 tos_to_tid_inv[];
 /********************************************************
     Local Functions
 ********************************************************/
-/**
+/** 
  *  @brief Stop BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -94,7 +94,7 @@ wlan_uap_callback_bss_ioctl_start(IN t_void * priv)
     /* clear callback now that we're here */
     puap_state_chan_cb->get_chan_callback = MNULL;
 
-    /*
+    /* 
      * Check if the region and channel requires we check for radar.
      */
     if ((puap_state_chan_cb->band_config & BAND_CONFIG_5GHZ) &&
@@ -170,7 +170,7 @@ wlan_uap_callback_bss_ioctl_start(IN t_void * priv)
     return ret;
 }
 
-/**
+/** 
  *  @brief Start BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -205,7 +205,7 @@ wlan_uap_bss_ioctl_start(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief reset BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -223,7 +223,7 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
 
     ENTER();
 
-    /*
+    /* 
      * Reset any uap private parameters here
      */
     for (i = 0; i < pmadapter->max_mgmt_ie_index; i++) {
@@ -237,6 +237,8 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
         pmpriv->aggr_prio_tbl[i].amsdu = BA_STREAM_NOT_ALLOWED;
         pmpriv->addba_reject[i] = ADDBA_RSP_STATUS_ACCEPT;
     }
+    pmpriv->aggr_prio_tbl[6].ampdu_user =
+        pmpriv->aggr_prio_tbl[7].ampdu_user = BA_STREAM_NOT_ALLOWED;
 
     /* hs_configured, hs_activated are reset by main loop */
     pmadapter->hs_cfg.conditions = HOST_SLEEP_DEF_COND;
@@ -254,7 +256,7 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get MAC address
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -291,7 +293,7 @@ wlan_uap_bss_ioctl_mac_address(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Get Uap statistics
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -318,7 +320,7 @@ wlan_uap_get_stats(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get AP config
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -352,7 +354,7 @@ wlan_uap_bss_ioctl_config(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief deauth sta
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -384,8 +386,8 @@ wlan_uap_bss_ioctl_deauth_sta(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
- *  @brief Get station list
+/** 
+ *  @brief Get station list 
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
  *  @param pioctl_req	A pointer to ioctl request buffer
@@ -413,7 +415,7 @@ wlan_uap_get_sta_list(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/**
+/** 
  *  @brief soft_reset
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -441,7 +443,7 @@ wlan_uap_misc_ioctl_soft_reset(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Tx data pause
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -476,7 +478,7 @@ wlan_uap_misc_ioctl_txdatapause(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get Power mode
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -530,8 +532,8 @@ wlan_uap_pm_ioctl_mode(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
- *  @brief Set WAPI IE
+/** 
+ *  @brief Set WAPI IE   
  *
  *  @param priv         A pointer to mlan_private structure
  *  @param pioctl_req	A pointer to ioctl request buffer
@@ -581,7 +583,7 @@ wlan_uap_set_wapi_ie(mlan_private * priv, pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/**
+/** 
  *  @brief Set generic IE
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -620,7 +622,7 @@ wlan_uap_misc_ioctl_gen_ie(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get WAPI status
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -657,7 +659,7 @@ wlan_uap_sec_ioctl_wapi_enable(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set encrypt key
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -697,7 +699,7 @@ wlan_uap_sec_ioctl_set_encrypt_key(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Get BSS information
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -732,7 +734,7 @@ wlan_uap_get_bss_info(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/**
+/** 
  *  @brief Set Host Sleep configurations
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -956,7 +958,7 @@ wlan_uap_callback_11h_channel_check_req(IN t_void * priv)
     /* clear early to avoid race condition */
     puap_state_chan_cb->pioctl_req_curr = MNULL;
 
-    /*
+    /* 
      * Check if the region and channel requires a channel availability
      * check.
      */
@@ -965,7 +967,7 @@ wlan_uap_callback_11h_channel_check_req(IN t_void * priv)
         !wlan_11h_is_channel_under_nop(pmpriv->adapter,
                                        puap_state_chan_cb->channel)) {
 
-        /*
+        /* 
          * Radar detection is required for this channel, make sure
          * 11h is activated in the firmware
          */
@@ -1228,7 +1230,7 @@ wlan_uap_get_beacon_dtim(IN pmlan_private pmpriv)
     return ret;
 }
 
-/**
+/** 
  *  @brief MLAN uap ioctl handler
  *
  *  @param adapter	A pointer to mlan_adapter structure
@@ -1251,6 +1253,7 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
     mlan_ds_11h_cfg *cfg11h = MNULL;
     mlan_ds_radio_cfg *radiocfg = MNULL;
     mlan_ds_rate *rate = MNULL;
+    mlan_ds_reg_mem *reg_mem = MNULL;
     mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
 
     ENTER();
@@ -1300,6 +1303,7 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
             pget_info->param.fw_info.fw_bands = pmadapter->fw_bands;
             pget_info->param.fw_info.hw_dev_mcs_support =
                 pmadapter->hw_dev_mcs_support;
+            pget_info->param.fw_info.region_code = pmadapter->region_code;
         }
         break;
     case MLAN_IOCTL_MISC_CFG:
@@ -1323,6 +1327,8 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
         if (misc->sub_command == MLAN_OID_MISC_DRVDBG)
             status = wlan_set_drvdbg(pmadapter, pioctl_req);
 #endif
+        if (misc->sub_command == MLAN_OID_MISC_TXCONTROL)
+            status = wlan_misc_ioctl_txcontrol(pmadapter, pioctl_req);
         break;
     case MLAN_IOCTL_PM_CFG:
         pm = (mlan_ds_pm_cfg *) pioctl_req->pbuf;
@@ -1332,6 +1338,9 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
             status = wlan_uap_pm_ioctl_deepsleep(pmadapter, pioctl_req);
         if (pm->sub_command == MLAN_OID_PM_CFG_HS_CFG) {
             status = wlan_pm_ioctl_hscfg(pmadapter, pioctl_req);
+        }
+        if (pm->sub_command == MLAN_OID_PM_HS_WAKEUP_REASON) {
+            status = wlan_get_hs_wakeup_reason(pmadapter, pioctl_req);
         }
         if (pm->sub_command == MLAN_OID_PM_INFO) {
             status = wlan_get_pm_info(pmadapter, pioctl_req);
@@ -1383,6 +1392,17 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
         rate = (mlan_ds_rate *) pioctl_req->pbuf;
         if (rate->sub_command == MLAN_OID_RATE_CFG)
             status = wlan_rate_ioctl_cfg(pmadapter, pioctl_req);
+        else if (rate->sub_command == MLAN_OID_GET_DATA_RATE)
+            status = wlan_rate_ioctl_get_data_rate(pmadapter, pioctl_req);
+        break;
+    case MLAN_IOCTL_REG_MEM:
+        reg_mem = (mlan_ds_reg_mem *) pioctl_req->pbuf;
+        if (reg_mem->sub_command == MLAN_OID_REG_RW)
+            status = wlan_reg_mem_ioctl_reg_rw(pmadapter, pioctl_req);
+        else if (reg_mem->sub_command == MLAN_OID_EEPROM_RD)
+            status = wlan_reg_mem_ioctl_read_eeprom(pmadapter, pioctl_req);
+        else if (reg_mem->sub_command == MLAN_OID_MEM_RW)
+            status = wlan_reg_mem_ioctl_mem_rw(pmadapter, pioctl_req);
         break;
     default:
         pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;

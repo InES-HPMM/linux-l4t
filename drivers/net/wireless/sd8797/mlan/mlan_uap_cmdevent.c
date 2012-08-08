@@ -38,9 +38,9 @@ Change log:
 /********************************************************
     Local Functions
 ********************************************************/
-/**
+/** 
  *  @brief This function handles the command response error
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -59,7 +59,7 @@ uap_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
            resp->result);
     if (pioctl_buf)
         pioctl_buf->status_code = resp->result;
-    /*
+    /* 
      * Handling errors here
      */
     wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
@@ -72,9 +72,9 @@ uap_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     return;
 }
 
-/**
+/** 
  * @brief This function prepares command of hs_cfg.
- *
+ *   
  * @param pmpriv       A pointer to mlan_private structure
  * @param cmd          A pointer to HostCmd_DS_COMMAND structure
  * @param cmd_action   The action: GET or SET
@@ -113,7 +113,7 @@ wlan_uap_cmd_802_11_hs_cfg(IN pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares command of Tx data pause
- *
+ *  
  *  @param pmpriv		A pointer to mlan_private structure
  *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
@@ -146,12 +146,12 @@ wlan_uap_cmd_txdatapause(pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of Tx data pause
- *
+ *    
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -177,8 +177,8 @@ wlan_uap_ret_txdatapause(IN pmlan_private pmpriv,
 
 /**
  *  @brief This function will process tx pause event
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to event buf
  *
@@ -234,11 +234,11 @@ wlan_process_tx_pause_event(pmlan_private priv, pmlan_buffer pevent)
 
 /**
  *  @brief This function prepares command for config uap settings
- *
+ *  
  *  @param pmpriv		A pointer to mlan_private structure
  *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
@@ -899,11 +899,11 @@ wlan_uap_cmd_ap_config(pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares command of sys_config
- *
+ *  
  *  @param pmpriv		A pointer to mlan_private structure
  *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
@@ -1122,12 +1122,12 @@ wlan_uap_cmd_sys_configure(pmlan_private pmpriv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function handles command resp for get uap settings
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -1489,13 +1489,13 @@ wlan_uap_ret_cmd_ap_config(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sys_reset
  *         Clear various private state variables used by DFS.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -1520,12 +1520,12 @@ wlan_uap_ret_sys_reset(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sys_config
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -1666,12 +1666,12 @@ wlan_uap_ret_sys_config(IN pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares command of snmp_mib
- *
+ *           
  *  @param pmpriv		A pointer to mlan_private structure
  *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
  *  @param cmd_oid      Cmd oid: treated as sub command
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *  @param pdata_buf    A pointer to information buffer
  *  @return         MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -1754,12 +1754,12 @@ wlan_uap_cmd_snmp_mib(pmlan_private pmpriv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of snmp_mib
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -1886,7 +1886,7 @@ wlan_uap_ret_snmp_mib(IN pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares command of deauth station
- *
+ *           
  *  @param pmpriv		A pointer to mlan_private structure
  *  @param cmd	   		A pointer to HostCmd_DS_COMMAND structure
  *  @param pdata_buf    A pointer to data buffer
@@ -1912,7 +1912,7 @@ wlan_uap_cmd_sta_deauth(pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares command of key material
- *
+ *           
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -1946,6 +1946,9 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
 
     memset(pmpriv->adapter, &pkey_material->key_param_set, 0,
            sizeof(MrvlIEtype_KeyParamSet_t));
+    if (pkey->key_len &&
+        memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))
+        pmpriv->adapter->scan_block = MFALSE;
     if (pkey->is_wapi_key) {
         PRINTM(MINFO, "Set WAPI Key\n");
         pkey_material->key_param_set.key_type_id =
@@ -1963,10 +1966,10 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
         else
             pkey_material->key_param_set.key[1] = 0;    /* set 0 when re-key */
 
-        if (0 != memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac))) {     /* WAPI
-                                                                                           pairwise
-                                                                                           key:
-                                                                                           unicast
+        if (0 != memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac))) {     /* WAPI 
+                                                                                           pairwise 
+                                                                                           key: 
+                                                                                           unicast 
                                                                                          */
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_WAPI_UNICAST);
@@ -2012,10 +2015,10 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
             pkey_material->key_param_set.key_info =
                 !(wlan_cpu_to_le16(KEY_INFO_AES_ENABLED));
 
-        if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))    /* AES
-                                                                                   pairwise
-                                                                                   key:
-                                                                                   unicast
+        if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))    /* AES 
+                                                                                   pairwise 
+                                                                                   key: 
+                                                                                   unicast 
                                                                                  */
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_AES_UNICAST);
@@ -2029,10 +2032,10 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
         pkey_material->key_param_set.key_info =
             wlan_cpu_to_le16(KEY_INFO_TKIP_ENABLED);
 
-        if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))    /* TKIP
-                                                                                   pairwise
-                                                                                   key:
-                                                                                   unicast
+        if (memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))    /* TKIP 
+                                                                                   pairwise 
+                                                                                   key: 
+                                                                                   unicast 
                                                                                  */
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_TKIP_UNICAST);
@@ -2068,12 +2071,12 @@ wlan_uap_cmd_key_material(IN pmlan_private pmpriv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function handles the command response of sta_list
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure 
  *
  *  @return             MLAN_STATUS_SUCCESS
  */
@@ -2112,9 +2115,83 @@ wlan_uap_ret_sta_list(IN pmlan_private pmpriv,
 }
 
 /**
+ *  @brief This function will search for wps/wpa/rsn/wapi IE
+ *  		
+ *  
+ *  @param priv    A pointer to mlan_private
+ *  @param ie_buf  A pointer to ie_buf
+ *  @param ie_len  total ie length
+ *
+ *  @return	       MTRUE/MFALSE
+ */
+t_u8
+wlan_check_specific_ie(pmlan_private priv, t_u8 * ie_buf, t_u8 ie_len)
+{
+    t_u32 bytes_left = ie_len;
+    t_u8 *pcurrent_ptr = ie_buf;
+    t_u16 total_ie_len;
+    IEEEtypes_ElementId_e element_id;
+    t_u8 element_len;
+    IEEEtypes_VendorSpecific_t *pvendor_ie;
+    const t_u8 wps_oui[4] = { 0x00, 0x50, 0xf2, 0x04 };
+    const t_u8 wpa_oui[4] = { 0x00, 0x50, 0xf2, 0x01 };
+    t_u8 find_wps_ie = 0;
+    t_u8 find_sec_ie = 0;
+    t_u8 ret = MFALSE;
+
+    ENTER();
+
+    DBG_HEXDUMP(MCMD_D, "ie", ie_buf, ie_len);
+    while (bytes_left >= 2) {
+        element_id = (IEEEtypes_ElementId_e) (*((t_u8 *) pcurrent_ptr));
+        element_len = *((t_u8 *) pcurrent_ptr + 1);
+        total_ie_len = element_len + sizeof(IEEEtypes_Header_t);
+        if (bytes_left < total_ie_len) {
+            PRINTM(MERROR, "InterpretIE: Error in processing IE, "
+                   "bytes left < IE length\n");
+            break;
+        }
+        switch (element_id) {
+        case WAPI_IE:
+            PRINTM(MCMND, "Find WAPI ie\n");
+            find_sec_ie = MTRUE;
+            break;
+        case RSN_IE:
+            PRINTM(MCMND, "Find RSN ie\n");
+            find_sec_ie = MTRUE;
+            break;
+        case VENDOR_SPECIFIC_221:
+            pvendor_ie = (IEEEtypes_VendorSpecific_t *) pcurrent_ptr;
+            if (!memcmp
+                (priv->adapter, pvendor_ie->vend_hdr.oui, wpa_oui,
+                 sizeof(wpa_oui))) {
+                PRINTM(MCMND, "Find WPA ie\n");
+                find_sec_ie = MTRUE;
+            } else
+                if (!memcmp
+                    (priv->adapter, pvendor_ie->vend_hdr.oui, wps_oui,
+                     sizeof(wps_oui))) {
+                PRINTM(MCMND, "Find WPS ie\n");
+                find_wps_ie = MTRUE;
+            }
+            break;
+        default:
+            break;
+        }
+        pcurrent_ptr += element_len + 2;
+        /* Need to account for IE ID and IE Len */
+        bytes_left -= (element_len + 2);
+    }
+    if (find_sec_ie || find_wps_ie)
+        ret = MTRUE;
+    LEAVE();
+    return ret;
+}
+
+/**
  *  @brief This function will search for the specific ie
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to event buf
  *  @param sta_ptr A pointer to sta_node
@@ -2163,6 +2240,12 @@ wlan_check_sta_capability(pmlan_private priv, pmlan_buffer pevent,
                 assoc_req_ie =
                     (t_u8 *) tlv + sizeof(MrvlIETypes_MgmtFrameSet_t) +
                     assoc_ie_len;
+                if (wlan_check_specific_ie(priv, assoc_req_ie, ie_len))
+                    priv->adapter->scan_block = MTRUE;
+                sta_ptr->is_wmm_enabled =
+                    wlan_is_wmm_ie_present(priv->adapter, assoc_req_ie, ie_len);
+                PRINTM(MCMND, "STA: is_wmm_enabled=%d\n",
+                       sta_ptr->is_wmm_enabled);
                 pht_cap =
                     (IEEEtypes_HTCap_t *) wlan_get_specific_ie(priv,
                                                                assoc_req_ie,
@@ -2196,8 +2279,8 @@ wlan_check_sta_capability(pmlan_private priv, pmlan_buffer pevent,
 
 /**
  *  @brief This function will search for the specific ie
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to event buf
  *
@@ -2274,8 +2357,8 @@ wlan_check_uap_capability(pmlan_private priv, pmlan_buffer pevent)
 
 /**
  *  @brief This function will update WAPI PN in statation assoc event
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to event buf
  *
@@ -2329,11 +2412,11 @@ wlan_update_wapi_info_tlv(pmlan_private priv, pmlan_buffer pevent)
 
 /**
  *  @brief This function send sta_assoc_event to moal
- *  	   payload with sta mac address and assoc ie.
- *
+ *  	   payload with sta mac address and assoc ie. 
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param pevent  A pointer to mlan_event buffer
- *  @param pbuf    A pointer to mlan_buffer which has event content.
+ *  @param pbuf    A pointer to mlan_buffer which has event content. 
  *
  *  @return	       MFALSE
  */
@@ -2406,9 +2489,9 @@ wlan_process_sta_assoc_event(pmlan_private priv, mlan_event * pevent,
 /********************************************************
     Global Functions
 ********************************************************/
-/**
+/** 
  *  @brief This function prepare the command before sending to firmware.
- *
+ *  
  *  @param priv       A pointer to mlan_private structure
  *  @param cmd_no       Command number
  *  @param cmd_action   Command action: GET or SET
@@ -2498,11 +2581,17 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
             wlan_uap_cmd_802_11_hs_cfg(pmpriv, cmd_ptr, cmd_action,
                                        (hs_config_param *) pdata_buf);
         break;
+    case HostCmd_CMD_HS_WAKEUP_REASON:
+        ret = wlan_cmd_hs_wakeup_reason(pmpriv, cmd_ptr, pdata_buf);
+        break;
     case HostCmd_CMD_RECONFIGURE_TX_BUFF:
         ret = wlan_cmd_recfg_tx_buf(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
     case HostCmd_CMD_AMSDU_AGGR_CTRL:
         ret = wlan_cmd_amsdu_aggr_ctrl(pmpriv, cmd_ptr, cmd_action, pdata_buf);
+        break;
+    case HostCmd_CMD_11N_CFG:
+        ret = wlan_cmd_11n_cfg(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
     case HostCmd_CMD_11N_ADDBA_REQ:
         ret = wlan_cmd_11n_addba_req(pmpriv, cmd_ptr, pdata_buf);
@@ -2512,6 +2601,9 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
         break;
     case HostCmd_CMD_11N_ADDBA_RSP:
         ret = wlan_cmd_11n_addba_rspgen(pmpriv, cmd_ptr, pdata_buf);
+        break;
+    case HostCmd_CMD_REJECT_ADDBA_REQ:
+        ret = wlan_cmd_reject_addba_req(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
     case HostCmd_CMD_TX_BF_CFG:
         ret = wlan_cmd_tx_bf_cfg(pmpriv, cmd_ptr, cmd_action, pdata_buf);
@@ -2574,6 +2666,17 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
         ret =
             wlan_cmd_802_11_rf_antenna(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
+    case HostCmd_CMD_MAC_REG_ACCESS:
+    case HostCmd_CMD_BBP_REG_ACCESS:
+    case HostCmd_CMD_RF_REG_ACCESS:
+    case HostCmd_CMD_CAU_REG_ACCESS:
+    case HostCmd_CMD_802_11_EEPROM_ACCESS:
+        ret = wlan_cmd_reg_access(cmd_ptr, cmd_action, pdata_buf);
+        break;
+    case HostCmd_CMD_MEM_ACCESS:
+        ret = wlan_cmd_mem_access(cmd_ptr, cmd_action, pdata_buf);
+        break;
+
     default:
         PRINTM(MERROR, "PREP_CMD: unknown command- %#x\n", cmd_no);
         if (pioctl_req)
@@ -2585,9 +2688,9 @@ wlan_ops_uap_prepare_cmd(IN t_void * priv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function handles the AP mode command response
- *
+ *  
  *  @param priv             A pointer to mlan_private structure
  *  @param cmdresp_no       cmd no
  *  @param pcmd_buf         cmdresp buf
@@ -2673,6 +2776,9 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
     case HostCmd_CMD_802_11_HS_CFG_ENH:
         ret = wlan_ret_802_11_hs_cfg(pmpriv, resp, pioctl_buf);
         break;
+    case HostCmd_CMD_HS_WAKEUP_REASON:
+        ret = wlan_ret_hs_wakeup_reason(pmpriv, resp, pioctl_buf);
+        break;
     case HostCmd_CMD_11N_ADDBA_REQ:
         ret = wlan_ret_11n_addba_req(pmpriv, resp);
         break;
@@ -2708,6 +2814,12 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
     case HostCmd_CMD_AMSDU_AGGR_CTRL:
         ret = wlan_ret_amsdu_aggr_ctrl(pmpriv, resp, pioctl_buf);
         break;
+    case HostCmd_CMD_11N_CFG:
+        ret = wlan_ret_11n_cfg(pmpriv, resp, pioctl_buf);
+        break;
+    case HostCmd_CMD_REJECT_ADDBA_REQ:
+        ret = wlan_ret_reject_addba_req(pmpriv, resp, pioctl_buf);
+        break;
     case HostCmd_CMD_TX_BF_CFG:
         ret = wlan_ret_tx_bf_cfg(pmpriv, resp, pioctl_buf);
         break;
@@ -2740,6 +2852,18 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
     case HostCmd_CMD_802_11_RF_ANTENNA:
         ret = wlan_ret_802_11_rf_antenna(pmpriv, resp, pioctl_buf);
         break;
+    case HostCmd_CMD_MAC_REG_ACCESS:
+    case HostCmd_CMD_BBP_REG_ACCESS:
+    case HostCmd_CMD_RF_REG_ACCESS:
+    case HostCmd_CMD_CAU_REG_ACCESS:
+    case HostCmd_CMD_802_11_EEPROM_ACCESS:
+        ret =
+            wlan_ret_reg_access(pmpriv->adapter, cmdresp_no, resp, pioctl_buf);
+        break;
+    case HostCmd_CMD_MEM_ACCESS:
+        ret = wlan_ret_mem_access(pmpriv, resp, pioctl_buf);
+        break;
+
     default:
         PRINTM(MERROR, "CMD_RESP: Unknown command response %#x\n",
                resp->command);
@@ -2751,9 +2875,9 @@ wlan_ops_uap_process_cmdresp(IN t_void * priv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function handles events generated by firmware
- *
+ *  
  *  @param priv		A pointer to mlan_private structure
  *
  *  @return		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -2809,6 +2933,7 @@ wlan_ops_uap_process_event(IN t_void * priv)
         break;
     case EVENT_MICRO_AP_BSS_IDLE:
         PRINTM(MEVENT, "EVENT: MICRO_AP_BSS_IDLE\n");
+        pmadapter->scan_block = MFALSE;
         pevent->event_id = MLAN_EVENT_ID_UAP_FW_BSS_IDLE;
         pmpriv->media_connected = MFALSE;
         wlan_clean_txrx(pmpriv);
@@ -2855,6 +2980,7 @@ wlan_ops_uap_process_event(IN t_void * priv)
         break;
     case EVENT_MICRO_AP_STA_DEAUTH:
         PRINTM(MEVENT, "EVENT: MICRO_AP_STA_DEAUTH\n");
+        pmadapter->scan_block = MFALSE;
         pevent->event_id = MLAN_EVENT_ID_UAP_FW_STA_DISCONNECT;
         pevent->bss_index = pmpriv->bss_index;
         pevent->event_len = pmbuf->data_len - 4;
@@ -2884,18 +3010,29 @@ wlan_ops_uap_process_event(IN t_void * priv)
         break;
     case EVENT_ADDBA:
         PRINTM(MEVENT, "EVENT: ADDBA Request\n");
-        wlan_prepare_cmd(pmpriv, HostCmd_CMD_11N_ADDBA_RSP,
-                         HostCmd_ACT_GEN_SET, 0, MNULL, pmadapter->event_body);
+        if (pmpriv->media_connected == MTRUE)
+            ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_11N_ADDBA_RSP,
+                                   HostCmd_ACT_GEN_SET, 0, MNULL,
+                                   pmadapter->event_body);
+        else
+            PRINTM(MERROR, "Ignore ADDBA Request event in BSS idle state\n");
         break;
     case EVENT_DELBA:
         PRINTM(MEVENT, "EVENT: DELBA Request\n");
-        wlan_11n_delete_bastream(pmpriv, pmadapter->event_body);
+        if (pmpriv->media_connected == MTRUE)
+            wlan_11n_delete_bastream(pmpriv, pmadapter->event_body);
+        else
+            PRINTM(MERROR, "Ignore DELBA Request event in BSS idle state\n");
         break;
     case EVENT_BA_STREAM_TIMEOUT:
         PRINTM(MEVENT, "EVENT:  BA Stream timeout\n");
-        wlan_11n_ba_stream_timeout(pmpriv,
-                                   (HostCmd_DS_11N_BATIMEOUT *) pmadapter->
-                                   event_body);
+        if (pmpriv->media_connected == MTRUE)
+            wlan_11n_ba_stream_timeout(pmpriv,
+                                       (HostCmd_DS_11N_BATIMEOUT *) pmadapter->
+                                       event_body);
+        else
+            PRINTM(MERROR,
+                   "Ignore BA Stream timeout event in BSS idle state\n");
         break;
     case EVENT_RXBA_SYNC:
         PRINTM(MEVENT, "EVENT:  RXBA_SYNC\n");

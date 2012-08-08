@@ -81,6 +81,9 @@ extern void wlan_11h_priv_init(mlan_private * pmpriv);
 /** Get an initial random channel to start an adhoc network on */
 extern t_u8 wlan_11h_get_adhoc_start_channel(mlan_private * priv);
 
+/** Get channel that has been closed via Channel Switch Announcement */
+extern t_u8 wlan_11h_get_csa_closed_channel(mlan_private * priv);
+
 /** Check if radar detection is required on the specified channel */
 extern t_bool wlan_11h_radar_detect_required(mlan_private * priv, t_u8 channel);
 

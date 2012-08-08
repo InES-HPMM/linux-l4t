@@ -66,7 +66,7 @@ extern t_u8 ac_to_tid[4][2];
  *  @param pmpriv   A pointer to mlan_private structure
  *  @param idx		index to check for in use
  *
- *  @return		MLAN_STATUS_SUCCESS --unused, otherwise used.
+ *  @return		MLAN_STATUS_SUCCESS --unused, otherwise used. 
  */
 static mlan_status
 wlan_is_custom_ie_index_unused(IN pmlan_private pmpriv, IN t_u16 idx)
@@ -150,7 +150,7 @@ wlan_custom_ioctl_get_autoidx(IN pmlan_private pmpriv,
         if (!insert) {
             for (index = 0; index < pmpriv->adapter->max_mgmt_ie_index; index++) {
                 if (pmpriv->mgmt_ie[index].ie_length == 0) {
-                    /*
+                    /* 
                      * Check if this index is in use by other interface
                      * If yes, move ahead to next index
                      */
@@ -255,7 +255,7 @@ wlan_custom_ioctl_auto_delete(IN pmlan_private pmpriv,
                 Global Functions
 ********************************************************/
 
-/**
+/** 
  *  @brief send host cmd
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -334,7 +334,7 @@ wlan_misc_ioctl_init_shutdown(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Get debug information
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -517,7 +517,6 @@ wlan_get_info_debug_info(IN pmlan_adapter pmadapter,
                pmadapter->dbg.last_event, sizeof(pmadapter->dbg.last_event));
         info->param.debug_info.last_event_index =
             pmadapter->dbg.last_event_index;
-
         info->param.debug_info.mp_rd_bitmap = pmadapter->mp_rd_bitmap;
         info->param.debug_info.mp_wr_bitmap = pmadapter->mp_wr_bitmap;
         info->param.debug_info.curr_rd_port = pmadapter->curr_rd_port;
@@ -585,7 +584,7 @@ wlan_pm_reset_card(IN pmlan_adapter pmadapter)
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get HS configuration
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -662,13 +661,13 @@ wlan_pm_ioctl_hscfg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return status;
 }
 
-/**
+/** 
  *  @brief This function allocates a mlan_buffer.
  *
  *  @param pmadapter Pointer to mlan_adapter
  *  @param data_len   Data length
  *  @param head_room  head_room reserved in mlan_buffer
- *  @param malloc_flag  flag to user moal_malloc
+ *  @param malloc_flag  flag to user moal_malloc 
  *  @return           mlan_buffer pointer or MNULL
  */
 pmlan_buffer
@@ -687,7 +686,9 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
     data_len = ALIGN_SZ(data_len, MLAN_SDIO_BLOCK_SIZE);
 
     /* head_room is not implemented for malloc mlan buffer */
-    if (malloc_flag == MTRUE) {
+
+    switch (malloc_flag) {
+    case MOAL_MALLOC_BUFFER:
         buf_size = sizeof(mlan_buffer) + data_len + DMA_ALIGNMENT;
         ret =
             pcb->moal_malloc(pmadapter->pmoal_handle, buf_size,
@@ -706,7 +707,9 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
         pmbuf->data_offset = 0;
         pmbuf->data_len = data_len;
         pmbuf->flags |= MLAN_BUF_FLAG_MALLOC_BUF;
-    } else {
+        break;
+
+    case MOAL_ALLOC_MLAN_BUFFER:
         /* use moal_alloc_mlan_buffer, head_room supported */
         ret = pcb->moal_alloc_mlan_buffer(pmadapter->pmoal_handle,
                                           data_len + DMA_ALIGNMENT + head_room,
@@ -723,13 +726,15 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
             (t_u32) (tmp_buf - (pmbuf->pbuf + pmbuf->data_offset));
         pmbuf->data_len = data_len;
         pmbuf->flags = 0;
+        break;
     }
+
   exit:
     LEAVE();
     return pmbuf;
 }
 
-/**
+/** 
  *  @brief This function frees a mlan_buffer.
  *
  *  @param pmadapter  Pointer to mlan_adapter
@@ -754,9 +759,9 @@ wlan_free_mlan_buffer(mlan_adapter * pmadapter, pmlan_buffer pmbuf)
     return;
 }
 
-/**
+/** 
  *  @brief Delay function implementation
- *
+ *   
  *  @param pmadapter        A pointer to mlan_adapter structure
  *  @param delay            Delay value
  *  @param u                Units of delay (sec, msec or usec)
@@ -816,13 +821,13 @@ wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u)
 }
 
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-/**
+/** 
  *  @brief Set/Get BSS role
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
  *  @param pioctl_req	A pointer to ioctl request buffer
  *
- *  @return		MLAN_STATUS_SUCCESS --success, MLAN_STATUS_PENDING --pending
+ *  @return		MLAN_STATUS_PENDING --success, MLAN_STATUS_FAILURE
  */
 mlan_status
 wlan_bss_ioctl_bss_role(IN pmlan_adapter pmadapter,
@@ -844,6 +849,10 @@ wlan_bss_ioctl_bss_role(IN pmlan_adapter pmadapter,
     if (pioctl_req->action == MLAN_ACT_GET) {
         bss->param.bss_role = GET_BSS_ROLE(pmpriv);
     } else {
+        if (GET_BSS_ROLE(pmpriv) == bss->param.bss_role) {
+            PRINTM(MIOCTL, "BSS ie already in the desired role!\n");
+            goto done;
+        }
                 /** Switch BSS role */
         wlan_free_priv(pmpriv);
 
@@ -894,18 +903,26 @@ wlan_bss_ioctl_bss_role(IN pmlan_adapter pmadapter,
             bss_mode = BSS_MODE_WIFIDIRECT_CLIENT;
         else
             bss_mode = BSS_MODE_WIFIDIRECT_GO;
-        wlan_prepare_cmd(pmpriv, HostCmd_CMD_SET_BSS_MODE,
-                         HostCmd_ACT_GEN_SET, 0, MNULL, &bss_mode);
+        ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_SET_BSS_MODE,
+                               HostCmd_ACT_GEN_SET, 0, MNULL, &bss_mode);
+        if (ret)
+            goto done;
 #endif
-        pmpriv->ops.init_cmd(pmpriv, MFALSE);
+        ret = pmpriv->ops.init_cmd(pmpriv, MFALSE);
+        if (ret == MLAN_STATUS_FAILURE)
+            goto done;
 
         /* Issue dummy Get command to complete the ioctl */
         memset(pmadapter, &dummy, 0, sizeof(HostCmd_DS_VERSION_EXT));
-        wlan_prepare_cmd(pmpriv, HostCmd_CMD_VERSION_EXT, HostCmd_ACT_GEN_GET,
-                         0, (t_void *) pioctl_req, (t_void *) & dummy);
-        ret = MLAN_STATUS_PENDING;
+        ret =
+            wlan_prepare_cmd(pmpriv, HostCmd_CMD_VERSION_EXT,
+                             HostCmd_ACT_GEN_GET, 0, (t_void *) pioctl_req,
+                             (t_void *) & dummy);
+        if (ret == MLAN_STATUS_SUCCESS)
+            ret = MLAN_STATUS_PENDING;
     }
 
+  done:
     LEAVE();
     return ret;
 }
@@ -1047,7 +1064,7 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
                            pmpriv->mgmt_ie[index].ie_length +
                            MLAN_CUSTOM_IE_HDR_SIZE);
                 } else {
-                    /*
+                    /* 
                      * Check if this index is being used on any other
                      * interfaces. If yes, then the request needs to be rejected.
                      */
@@ -1066,14 +1083,15 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
                         MLAN_CUSTOM_IE_DELETE_MASK)
                         ie_data->ie_length = 0;
                     else {
-                        if ((pmpriv->mgmt_ie[index].ie_length ==
+                        if ((pmpriv->mgmt_ie[index].mgmt_subtype_mask ==
+                             ie_data->mgmt_subtype_mask) &&
+                            (pmpriv->mgmt_ie[index].ie_length ==
                              ie_data->ie_length) &&
                             !memcmp(pmpriv->adapter,
                                     pmpriv->mgmt_ie[index].ie_buffer,
-                                    ie_data->ie_buffer,
-                                    pmpriv->mgmt_ie[index].ie_length)) {
+                                    ie_data->ie_buffer, ie_data->ie_length)) {
                             PRINTM(MIOCTL,
-                                   "same customer ie already configured!\n");
+                                   "same custom ie already configured!\n");
                             goto done;
                         }
                     }
@@ -1117,9 +1135,141 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
     return ret;
 }
 
+/** 
+ *  @brief Read/write adapter register
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_reg_mem_ioctl_reg_rw(IN pmlan_adapter pmadapter,
+                          IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_reg_mem *reg_mem = MNULL;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    t_u16 cmd_action = 0, cmd_no;
+
+    ENTER();
+
+    reg_mem = (mlan_ds_reg_mem *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_GET)
+        cmd_action = HostCmd_ACT_GEN_GET;
+    else
+        cmd_action = HostCmd_ACT_GEN_SET;
+
+    switch (reg_mem->param.reg_rw.type) {
+    case MLAN_REG_MAC:
+        cmd_no = HostCmd_CMD_MAC_REG_ACCESS;
+        break;
+    case MLAN_REG_BBP:
+        cmd_no = HostCmd_CMD_BBP_REG_ACCESS;
+        break;
+    case MLAN_REG_RF:
+        cmd_no = HostCmd_CMD_RF_REG_ACCESS;
+        break;
+    case MLAN_REG_CAU:
+        cmd_no = HostCmd_CMD_CAU_REG_ACCESS;
+        break;
+    default:
+        pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+        ret = MLAN_STATUS_FAILURE;
+        goto exit;
+    }
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, cmd_no, cmd_action,
+                           0, (t_void *) pioctl_req,
+                           (t_void *) & reg_mem->param.reg_rw);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+  exit:
+    LEAVE();
+    return ret;
+}
+
+/** 
+ *  @brief Read the EEPROM contents of the card 
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_reg_mem_ioctl_read_eeprom(IN pmlan_adapter pmadapter,
+                               IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_reg_mem *reg_mem = MNULL;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    t_u16 cmd_action = 0;
+
+    ENTER();
+
+    reg_mem = (mlan_ds_reg_mem *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_GET)
+        cmd_action = HostCmd_ACT_GEN_GET;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv,
+                           HostCmd_CMD_802_11_EEPROM_ACCESS,
+                           cmd_action, 0, (t_void *) pioctl_req,
+                           (t_void *) & reg_mem->param.rd_eeprom);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/** 
+ *  @brief Read/write memory of device
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_reg_mem_ioctl_mem_rw(IN pmlan_adapter pmadapter,
+                          IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_reg_mem *reg_mem = MNULL;
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    t_u16 cmd_action = 0;
+
+    ENTER();
+
+    reg_mem = (mlan_ds_reg_mem *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_GET)
+        cmd_action = HostCmd_ACT_GEN_GET;
+    else
+        cmd_action = HostCmd_ACT_GEN_SET;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv,
+                           HostCmd_CMD_MEM_ACCESS,
+                           cmd_action, 0,
+                           (t_void *) pioctl_req,
+                           (t_void *) & reg_mem->param.mem_rw);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
 /**
  *  @brief This function will check if station list is empty
- *
+ *  
  *  @param priv    A pointer to mlan_private
  *
  *  @return	   MFALSE/MTRUE
@@ -1142,7 +1292,7 @@ wlan_is_station_list_empty(mlan_private * priv)
 /**
  *  @brief This function will return the pointer to station entry in station list
  *  		table which matches the give mac address
- *
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
  *
@@ -1183,7 +1333,7 @@ wlan_get_station_entry(mlan_private * priv, t_u8 * mac)
 /**
  *  @brief This function will add a pointer to station entry in station list
  *  		table with the give mac address, if it does not exist already
- *
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
  *
@@ -1224,10 +1374,10 @@ wlan_add_station_entry(mlan_private * priv, t_u8 * mac)
 
 /**
  *  @brief This function will delete a station entry from station list
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
- *  @param mac     station's mac address
+ *  @param mac     station's mac address 
  *
  *  @return	   N/A
  */
@@ -1280,7 +1430,7 @@ wlan_delete_station_list(pmlan_private priv)
     return;
 }
 
-/**
+/** 
  *  @brief Get extended version information
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1313,7 +1463,7 @@ wlan_get_info_ver_ext(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 
 #ifdef DEBUG_LEVEL1
-/**
+/** 
  *  @brief Set driver debug bit masks in order to enhance performance
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1337,7 +1487,7 @@ wlan_set_drvdbg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 #endif
 
-/**
+/** 
  *  @brief Rx mgmt frame forward register
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1374,7 +1524,7 @@ wlan_reg_rx_mgmt_ind(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 
 /**
  *   @brief This function processes the 802.11 mgmt Frame
- *
+ *     
  *   @param priv      A pointer to mlan_private
  *   @param payload   A pointer to the received buffer
  *   @param payload_len Length of the received buffer
@@ -1499,9 +1649,68 @@ wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
 }
 
 /**
+ *  @brief check if WMM ie present.
+ *
+ *  @param pmadapter A pointer to mlan_adapter structure
+ *  @param pbuf     A pointer to IE buffer
+ *  @param buf_len  IE buffer len
+ *
+ *  @return         MTRUE/MFALSE
+ */
+t_u8
+wlan_is_wmm_ie_present(pmlan_adapter pmadapter, t_u8 * pbuf, t_u16 buf_len)
+{
+    t_u16 bytes_left = buf_len;
+    IEEEtypes_ElementId_e element_id;
+    t_u8 *pcurrent_ptr = pbuf;
+    t_u8 element_len;
+    t_u16 total_ie_len;
+    IEEEtypes_VendorSpecific_t *pvendor_ie;
+    const t_u8 wmm_oui[4] = { 0x00, 0x50, 0xf2, 0x02 };
+    t_u8 find_wmm_ie = MFALSE;
+
+    ENTER();
+
+    /* Process variable IE */
+    while (bytes_left >= 2) {
+        element_id = (IEEEtypes_ElementId_e) (*((t_u8 *) pcurrent_ptr));
+        element_len = *((t_u8 *) pcurrent_ptr + 1);
+        total_ie_len = element_len + sizeof(IEEEtypes_Header_t);
+
+        if (bytes_left < total_ie_len) {
+            PRINTM(MERROR, "InterpretIE: Error in processing IE, "
+                   "bytes left < IE length\n");
+            bytes_left = 0;
+            continue;
+        }
+        switch (element_id) {
+        case VENDOR_SPECIFIC_221:
+            pvendor_ie = (IEEEtypes_VendorSpecific_t *) pcurrent_ptr;
+            if (!memcmp
+                (pmadapter, pvendor_ie->vend_hdr.oui, wmm_oui,
+                 sizeof(wmm_oui))) {
+                find_wmm_ie = MTRUE;
+                PRINTM(MINFO, "find WMM IE\n");
+            }
+            break;
+        default:
+            break;
+        }
+        pcurrent_ptr += element_len + 2;
+        /* Need to account for IE ID and IE Len */
+        bytes_left -= (element_len + 2);
+        if (find_wmm_ie)
+            break;
+    }
+
+    LEAVE();
+    return find_wmm_ie;
+}
+
+/**
  *  @brief This function will search for the specific ie
- *
- *
+ *  		
+ *  
  *  @param priv    A pointer to mlan_private
  *  @param ie_buf  A pointer to ie_buf
  *  @param ie_len  total ie length
@@ -1586,6 +1795,41 @@ wlan_get_pm_info(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 
 /**
+ *  @brief Get hs wakeup reason
+ *
+ *  @param pmadapter	A pointer to mlan_adapter structure
+ *  @param pioctl_req	A pointer to ioctl request buffer
+ *
+ *  @return		        MLAN_STATUS_SUCCESS --success
+ */
+mlan_status
+wlan_get_hs_wakeup_reason(IN pmlan_adapter pmadapter,
+                          IN pmlan_ioctl_req pioctl_req)
+{
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    pmlan_ds_pm_cfg pm_cfg = MNULL;
+    mlan_status ret = MLAN_STATUS_FAILURE;
+
+    ENTER();
+
+    pm_cfg = (mlan_ds_pm_cfg *) pioctl_req->pbuf;
+
+    /* Send command to firmware */
+    ret = wlan_prepare_cmd(pmpriv,
+                           HostCmd_CMD_HS_WAKEUP_REASON,
+                           HostCmd_ACT_GEN_GET,
+                           0,
+                           (t_void *) pioctl_req, &pm_cfg->param.wakeup_reason);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+
+}
+
+/** 
  *  @brief Set/Get radio status
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1635,7 +1879,7 @@ wlan_radio_ioctl_radio_ctl(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get antenna configuration
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1696,7 +1940,7 @@ wlan_radio_ioctl_ant_cfg(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Get rate value
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1757,7 +2001,7 @@ wlan_rate_ioctl_get_rate_value(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set rate value
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1842,7 +2086,7 @@ wlan_rate_ioctl_set_rate_value(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Get rate index
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1871,7 +2115,7 @@ wlan_rate_ioctl_get_rate_index(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set rate index
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1966,7 +2210,7 @@ wlan_rate_ioctl_set_rate_index(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Rate configuration command handler
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1999,82 +2243,43 @@ wlan_rate_ioctl_cfg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return status;
 }
 
-/**
- *  @brief This function prepares command of rf_antenna.
+/** 
+ *  @brief Get data rates
  *
- *  @param pmpriv   A pointer to mlan_private structure
- *  @param cmd      A pointer to HostCmd_DS_COMMAND structure
- *  @param cmd_action   The action: GET or SET
- *  @param pdata_buf    A pointer to data buffer
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
  *
- *  @return         MLAN_STATUS_SUCCESS
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
  */
 mlan_status
-wlan_cmd_802_11_rf_antenna(IN pmlan_private pmpriv,
-                           IN HostCmd_DS_COMMAND * cmd,
-                           IN t_u16 cmd_action, IN t_void * pdata_buf)
+wlan_rate_ioctl_get_data_rate(IN pmlan_adapter pmadapter,
+                              IN pmlan_ioctl_req pioctl_req)
 {
-    HostCmd_DS_802_11_RF_ANTENNA *pantenna = &cmd->params.antenna;
-    mlan_ds_ant_cfg *ant_cfg = (mlan_ds_ant_cfg *) pdata_buf;
-
-    ENTER();
-    cmd->command = wlan_cpu_to_le16(HostCmd_CMD_802_11_RF_ANTENNA);
-    cmd->size =
-        wlan_cpu_to_le16(sizeof(HostCmd_DS_802_11_RF_ANTENNA) + S_DS_GEN);
-
-    if (cmd_action == HostCmd_ACT_GEN_SET) {
-        pantenna->action_tx = wlan_cpu_to_le16(HostCmd_ACT_SET_TX);
-        pantenna->tx_antenna_mode =
-            wlan_cpu_to_le16((t_u16) ant_cfg->tx_antenna);
-        pantenna->action_rx = wlan_cpu_to_le16(HostCmd_ACT_SET_RX);
-        pantenna->rx_antenna_mode =
-            wlan_cpu_to_le16((t_u16) ant_cfg->rx_antenna);
-    } else {
-        pantenna->action_tx = wlan_cpu_to_le16(HostCmd_ACT_GET_TX);
-        pantenna->action_rx = wlan_cpu_to_le16(HostCmd_ACT_GET_RX);
-    }
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
- *  @brief This function handles the command response of rf_antenna
- *
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *
- *  @return             MLAN_STATUS_SUCCESS
- */
-mlan_status
-wlan_ret_802_11_rf_antenna(IN pmlan_private pmpriv,
-                           IN HostCmd_DS_COMMAND * resp,
-                           IN mlan_ioctl_req * pioctl_buf)
-{
-    HostCmd_DS_802_11_RF_ANTENNA *pantenna = &resp->params.antenna;
-    t_u16 tx_ant_mode = wlan_le16_to_cpu(pantenna->tx_antenna_mode);
-    t_u16 rx_ant_mode = wlan_le16_to_cpu(pantenna->rx_antenna_mode);
-    mlan_ds_radio_cfg *radio = MNULL;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_status ret = MLAN_STATUS_SUCCESS;
 
     ENTER();
 
-    PRINTM(MINFO, "RF_ANT_RESP: Tx action = 0x%x, Tx Mode = 0x%04x"
-           " Rx action = 0x%x, Rx Mode = 0x%04x\n",
-           wlan_le16_to_cpu(pantenna->action_tx), tx_ant_mode,
-           wlan_le16_to_cpu(pantenna->action_rx), rx_ant_mode);
-
-    if (pioctl_buf) {
-        radio = (mlan_ds_radio_cfg *) pioctl_buf->pbuf;
-        radio->param.ant_cfg.tx_antenna = tx_ant_mode;
-        radio->param.ant_cfg.rx_antenna = rx_ant_mode;
+    if (pioctl_req->action != MLAN_ACT_GET) {
+        ret = MLAN_STATUS_FAILURE;
+        goto exit;
     }
 
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv,
+                           HostCmd_CMD_802_11_TX_RATE_QUERY,
+                           HostCmd_ACT_GEN_GET,
+                           0, (t_void *) pioctl_req, MNULL);
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+  exit:
     LEAVE();
-    return MLAN_STATUS_SUCCESS;
+    return ret;
 }
 
 #ifdef WIFI_DIRECT_SUPPORT
-/**
+/** 
  *  @brief Set/Get wifi_direct_mode
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -2114,7 +2319,7 @@ wlan_bss_ioctl_wifi_direct_mode(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/**
+/** 
  *  @brief Set/Get remain on channel setting
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -2154,3 +2359,31 @@ wlan_radio_ioctl_remain_chan_cfg(IN pmlan_adapter pmadapter,
     return ret;
 }
 #endif
+
+/**
+ *  @brief Get/Set Tx control configuration
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_misc_ioctl_txcontrol(IN pmlan_adapter pmadapter,
+                          IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_ds_misc_cfg *misc = MNULL;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+
+    ENTER();
+
+    misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_SET)
+        pmpriv->pkt_tx_ctrl = misc->param.tx_control;
+    else
+        misc->param.tx_control = pmpriv->pkt_tx_ctrl;
+
+    LEAVE();
+    return ret;
+}

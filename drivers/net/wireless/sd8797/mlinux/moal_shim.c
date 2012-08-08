@@ -57,10 +57,9 @@ extern int cfg80211_wext;
 /********************************************************
 		Global Functions
 ********************************************************/
-
-/**
- *  @brief Alloc a buffer
- *
+/** 
+ *  @brief Alloc a buffer 
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param size 	The size of the buffer to be allocated
  *  @param flag 	The type of the buffer to be allocated
@@ -79,18 +78,18 @@ moal_malloc(IN t_void * pmoal_handle,
         mem_flag |= GFP_DMA;
 
     if (!(*ppbuf = kmalloc(size, mem_flag))) {
-        PRINTM(MERROR, "%s: allocate  buffer %d failed!\n", __FUNCTION__,
+        PRINTM(MERROR, "%s: allocate memory (%d bytes) failed!\n", __FUNCTION__,
                (int) size);
         return MLAN_STATUS_FAILURE;
     }
-    handle->malloc_count++;
+    atomic_inc(&handle->malloc_count);
 
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
- *  @brief Free a buffer
- *
+/** 
+ *  @brief Free a buffer 
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pbuf		Pointer to the buffer to be freed
  *
@@ -104,13 +103,13 @@ moal_mfree(IN t_void * pmoal_handle, IN t_u8 * pbuf)
     if (!pbuf)
         return MLAN_STATUS_FAILURE;
     kfree(pbuf);
-    handle->malloc_count--;
+    atomic_dec(&handle->malloc_count);
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
- *  @brief Fill memory with constant byte
- *
+/** 
+ *  @brief Fill memory with constant byte 
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pmem		Pointer to the memory area
  *  @param byte		A constant byte
@@ -130,9 +129,9 @@ moal_memset(IN t_void * pmoal_handle,
     return p;
 }
 
-/**
+/** 
  *  @brief Copy memory from one area to another
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pdest	Pointer to the dest memory
  *  @param psrc		Pointer to the src memory
@@ -152,9 +151,9 @@ moal_memcpy(IN t_void * pmoal_handle,
     return p;
 }
 
-/**
+/** 
  *  @brief Move memory from one area to another
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pdest	Pointer to the dest memory
  *  @param psrc		Pointer to the src memory
@@ -174,9 +173,9 @@ moal_memmove(IN t_void * pmoal_handle,
     return p;
 }
 
-/**
+/** 
  *  @brief Compare two memory areas
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pmem1	Pointer to the first memory
  *  @param pmem2	Pointer to the second memory
@@ -195,9 +194,9 @@ moal_memcmp(IN t_void * pmoal_handle,
     return result;
 }
 
-/**
+/** 
  *  @brief Delay function
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param delay  delay in micro-second
  *
@@ -212,14 +211,14 @@ moal_udelay(IN t_void * pmoal_handle, IN t_u32 delay)
         udelay(delay % 1000);
 }
 
-/**
+/** 
  *  @brief Retrieves the current system time
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param psec		Pointer to buf for the seconds of system time
  *  @param pusec 	Pointer to buf the micro seconds of system time
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_get_system_time(IN t_void * pmoal_handle,
@@ -234,15 +233,15 @@ moal_get_system_time(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Initializes the timer
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pptimer	Pointer to the timer
  *  @param callback 	Pointer to callback function
  *  @param pcontext 	Pointer to context
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE 
  */
 mlan_status
 moal_init_timer(IN t_void * pmoal_handle,
@@ -261,13 +260,13 @@ moal_init_timer(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Free the timer
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param ptimer	Pointer to the timer
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_free_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
@@ -285,9 +284,9 @@ moal_free_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Start the timer
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param ptimer	Pointer to the timer
  *  @param periodic     Periodic timer
@@ -308,9 +307,9 @@ moal_start_timer(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Stop the timer
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param ptimer	Pointer to the timer
  *
@@ -326,13 +325,13 @@ moal_stop_timer(IN t_void * pmoal_handle, IN t_void * ptimer)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Initializes the lock
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pplock	Pointer to the lock
  *
- *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE 
  */
 mlan_status
 moal_init_lock(IN t_void * pmoal_handle, OUT t_void ** pplock)
@@ -345,14 +344,14 @@ moal_init_lock(IN t_void * pmoal_handle, OUT t_void ** pplock)
     spin_lock_init(&mlock->lock);
     *pplock = (t_void *) mlock;
 
-    handle->lock_count++;
+    atomic_inc(&handle->lock_count);
 
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Free the lock
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param plock	Lock
  *
@@ -366,15 +365,15 @@ moal_free_lock(IN t_void * pmoal_handle, IN t_void * plock)
 
     if (mlock) {
         kfree(mlock);
-        handle->lock_count--;
+        atomic_dec(&handle->lock_count);
     }
 
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief Request a spin lock
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param plock	Pointer to the lock
  *
@@ -395,9 +394,9 @@ moal_spin_lock(IN t_void * pmoal_handle, IN t_void * plock)
     }
 }
 
-/**
+/** 
  *  @brief Request a spin_unlock
- *
+ *     
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param plock	Pointer to the lock
  *
@@ -417,7 +416,7 @@ moal_spin_unlock(IN t_void * pmoal_handle, IN t_void * plock)
     }
 }
 
-/**
+/** 
  *  @brief This function reads one block of firmware data from MOAL
  *
  *  @param pmoal_handle Pointer to the MOAL context
@@ -444,13 +443,13 @@ moal_get_fw_data(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function is called when MLAN completes the initialization firmware.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param status	The status code for mlan_init_fw request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_init_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
@@ -465,13 +464,13 @@ moal_init_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function is called when MLAN shutdown firmware is completed.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param status	The status code for mlan_shutdown request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_shutdown_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
@@ -485,14 +484,14 @@ moal_shutdown_fw_complete(IN t_void * pmoal_handle, IN mlan_status status)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function is called when an MLAN IOCTL is completed.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param pioctl_req	pointer to structure mlan_ioctl_req
+ *  @param pioctl_req	pointer to structure mlan_ioctl_req 
  *  @param status	The status code for mlan_ioctl request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_ioctl_complete(IN t_void * pmoal_handle,
@@ -538,12 +537,12 @@ moal_ioctl_complete(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function allocates mlan_buffer.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
- *  @param size		allocation size requested
- *  @param pmbuf	pointer to pointer to the allocated buffer
+ *  @param size		allocation size requested 
+ *  @param pmbuf	pointer to pointer to the allocated buffer 
  *
  *  @return    		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -557,9 +556,9 @@ moal_alloc_mlan_buffer(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function frees mlan_buffer.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pmbuf	pointer to buffer to be freed
  *
@@ -574,14 +573,14 @@ moal_free_mlan_buffer(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function is called when MLAN complete send data packet.
- *
+ *   
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pmbuf	Pointer to the mlan buffer structure
  *  @param status	The status code for mlan_send_packet request
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_send_packet_complete(IN t_void * pmoal_handle,
@@ -636,7 +635,7 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function write a command/data packet to card.
  *         This function blocks the call until it finishes
  *
@@ -655,7 +654,7 @@ moal_write_data_sync(IN t_void * pmoal_handle,
                                 timeout);
 }
 
-/**
+/** 
  *  @brief This function read data packet/event/command from card.
  *         This function blocks the call until it finish
  *
@@ -674,7 +673,7 @@ moal_read_data_sync(IN t_void * pmoal_handle,
                                timeout);
 }
 
-/**
+/** 
  *  @brief This function writes data into card register.
  *
  *  @param pmoal_handle Pointer to the MOAL context
@@ -689,7 +688,7 @@ moal_write_reg(IN t_void * pmoal_handle, IN t_u32 reg, IN t_u32 data)
     return woal_write_reg((moal_handle *) pmoal_handle, reg, data);
 }
 
-/**
+/** 
  *  @brief This function reads data from card register.
  *
  *  @param pmoal_handle Pointer to the MOAL context
@@ -704,7 +703,7 @@ moal_read_reg(IN t_void * pmoal_handle, IN t_u32 reg, OUT t_u32 * data)
     return woal_read_reg((moal_handle *) pmoal_handle, reg, data);
 }
 
-/**
+/** 
  *  @brief This function uploads the packet to the network stack
  *
  *  @param pmoal_handle Pointer to the MOAL context
@@ -763,17 +762,20 @@ moal_recv_packet(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
     return status;
 }
 
-/**
+/** 
  *  @brief This function handles event receive
  *
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param pmevent	Pointer to the mlan event structure
  *
- *  @return    		MLAN_STATUS_SUCCESS
+ *  @return    		MLAN_STATUS_SUCCESS 
  */
 mlan_status
 moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 {
+#ifdef STA_SUPPORT
+    int custom_len = 0;
+#endif
     moal_private *priv = NULL;
 #if defined(STA_WEXT) || defined(UAP_SUPPORT)
     moal_private *pmpriv = NULL;
@@ -833,6 +835,12 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         if (IS_STA_CFG80211(cfg80211_wext))
             memcpy(priv->cfg_bssid, pmevent->event_buf, ETH_ALEN);
 #endif
+        custom_len = strlen(CUS_EVT_AP_CONNECTED);
+        memmove(pmevent->event_buf + custom_len, pmevent->event_buf,
+                pmevent->event_len);
+        strncpy(pmevent->event_buf, CUS_EVT_AP_CONNECTED, custom_len);
+        pmevent->event_len += custom_len;
+        woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
         priv->media_connected = MTRUE;
         if (!netif_carrier_ok(priv->netdev))
             netif_carrier_on(priv->netdev);
@@ -864,6 +872,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
             }
 #endif /* STA_CFG80211 */
 
+            woal_broadcast_event(priv, (t_u8 *) & pmevent->event_id,
+                                 sizeof(mlan_event_id));
             priv->report_scan_result = MFALSE;
         }
         break;
@@ -907,31 +917,13 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
     case MLAN_EVENT_ID_FW_DISCONNECTED:
         woal_send_disconnect_to_system(priv);
-#ifdef STA_CFG80211
-        if (IS_STA_CFG80211(cfg80211_wext)) {
-            if (!priv->cfg_disconnect &&
-                priv->wdev->iftype != NL80211_IFTYPE_ADHOC) {
-                PRINTM(MINFO, "Successfully disconnected from %pM:"
-                       " Reason code %d\n", priv->cfg_bssid,
-                       WLAN_REASON_DEAUTH_LEAVING);
-                /* This function must be called only when disconnect issued by
-                   the FW, i.e. disconnected by AP. For IBSS mode this call is
-                   not valid */
-                cfg80211_disconnected(priv->netdev,
-                                      WLAN_REASON_DEAUTH_LEAVING, NULL, 0,
-                                      GFP_KERNEL);
-            }
-            priv->cfg_disconnect = 0;
-        }
-#endif /* STA_CFG80211 */
-        /* Reset wireless stats signal info */
 #ifdef STA_WEXT
+        /* Reset wireless stats signal info */
         if (IS_STA_WEXT(cfg80211_wext)) {
             priv->w_stats.qual.level = 0;
             priv->w_stats.qual.noise = 0;
         }
 #endif
-
 #ifdef REASSOCIATION
         if (priv->reassoc_on == MTRUE) {
             PRINTM(MINFO, "Reassoc: trigger the timer\n");
@@ -992,7 +984,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
             cfg80211_cqm_rssi_notify(priv->netdev,
                                      NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
                                      GFP_KERNEL);
-            priv->rssi_status = MLAN_EVENT_ID_FW_BCN_RSSI_LOW;
+            priv->last_event |= EVENT_BCN_RSSI_LOW;
 #endif
             woal_set_rssi_threshold(priv, MLAN_EVENT_ID_FW_BCN_RSSI_LOW);
         }
@@ -1069,6 +1061,8 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         if (IS_STA_WEXT(cfg80211_wext))
             woal_send_iwevcustom_event(priv, CUS_EVT_PORT_RELEASE);
 #endif
+        woal_broadcast_event(priv, CUS_EVT_PORT_RELEASE,
+                             strlen(CUS_EVT_PORT_RELEASE));
         break;
     case MLAN_EVENT_ID_FW_PRE_BCN_LOST:
 #ifdef STA_WEXT
@@ -1087,7 +1081,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
             cfg80211_cqm_rssi_notify(priv->netdev,
                                      NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
                                      GFP_KERNEL);
-            priv->rssi_status = MLAN_EVENT_ID_FW_PRE_BCN_LOST;
+            priv->last_event |= EVENT_PRE_BCN_LOST;
         }
 #endif
 #endif
@@ -1133,11 +1127,11 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 #endif
 #ifdef STA_CFG80211
         if (IS_STA_CFG80211(cfg80211_wext)) {
-            woal_inform_bss_from_scan_result(priv, NULL);
+            priv->last_event |= EVENT_BG_SCAN_REPORT;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35) || defined(COMPAT_WIRELESS)
             if (priv->mrvl_rssi_low) {
                 cfg80211_cqm_rssi_notify(priv->netdev,
-                                         NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
+                                         NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
                                          GFP_KERNEL);
             }
 #endif
@@ -1291,7 +1285,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
             /* copy the station mac address */
             memset(addr, 0xFF, ETH_ALEN);
             memcpy(addr, pmevent->event_buf, ETH_ALEN);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0) || defined(COMPAT_WIRELESS)
             if (pmevent->event_len > ETH_ALEN) {
                 /* set station info filled flag */
                 sinfo.filled |= STATION_INFO_ASSOC_REQ_IES;
@@ -1302,7 +1296,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
             }
 #endif /* KERNEL_VERSION */
-            if (priv->netdev)
+            if (priv->netdev && priv->wdev)
                 cfg80211_new_sta(priv->netdev,
                                  (t_u8 *) addr, &sinfo, GFP_KERNEL);
         }
@@ -1332,7 +1326,9 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         if (IS_UAP_CFG80211(cfg80211_wext)) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) || defined(COMPAT_WIRELESS)
             /* skip 2 bytes extra header will get the mac address */
-            cfg80211_del_sta(priv->netdev, pmevent->event_buf + 2, GFP_KERNEL);
+            if (priv->netdev && priv->wdev)
+                cfg80211_del_sta(priv->netdev, pmevent->event_buf + 2,
+                                 GFP_KERNEL);
 #endif /* KERNEL_VERSION */
         }
 #endif /* UAP_CFG80211 */
@@ -1374,11 +1370,19 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
                         pkt + PACKET_ADDR4_POS + ETH_ALEN,
                         pmevent->event_len - sizeof(pmevent->event_id)
                         - PACKET_ADDR4_POS - ETH_ALEN);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
                 cfg80211_rx_mgmt(priv->netdev, priv->phandle->chan.center_freq,
                                  0, ((const t_u8 *) pmevent->event_buf)
                                  + sizeof(pmevent->event_id),
                                  pmevent->event_len - sizeof(pmevent->event_id)
                                  - MLAN_MAC_ADDR_LENGTH, GFP_ATOMIC);
+#else
+                cfg80211_rx_mgmt(priv->netdev, priv->phandle->chan.center_freq,
+                                 0, ((const t_u8 *) pmevent->event_buf)
+                                 + sizeof(pmevent->event_id),
+                                 pmevent->event_len - sizeof(pmevent->event_id)
+                                 - MLAN_MAC_ADDR_LENGTH, GFP_ATOMIC);
+#endif
             }
 #endif /* KERNEL_VERSION */
         }
@@ -1412,6 +1416,10 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
                        "Execute delayed BSS Start command.\n");
 
                 req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
+                if (!req) {
+                    PRINTM(MERROR, "Failed to allocate ioctl request buffer\n");
+                    goto done;
+                }
                 bss = (mlan_ds_bss *) req->pbuf;
                 req->req_id = MLAN_IOCTL_BSS;
                 req->action = MLAN_ACT_SET;
@@ -1422,7 +1430,7 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 
                 if (woal_request_ioctl(priv, req, MOAL_NO_WAIT)
                     != MLAN_STATUS_PENDING) {
-                    PRINTM(MMSG, "Delayed BSS Start operation failed!\n");
+                    PRINTM(MERROR, "Delayed BSS Start operation failed!\n");
                     kfree(req);
                 }
 
@@ -1437,14 +1445,14 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prints the debug message in mlan
  *
  *  @param pmoal_handle Pointer to the MOAL context
  *  @param level	debug level
  *  @param pformat	point to string format buf
  *
- *  @return    		N/A
+ *  @return    		N/A 
  */
 t_void
 moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN t_s8 * pformat, IN ...)
@@ -1495,7 +1503,7 @@ moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN t_s8 * pformat, IN ...)
  *  @param bss_index    BSS index
  *  @param level        debug level
  *
- *  @return            N/A
+ *  @return            N/A 
  */
 t_void
 moal_print_netintf(IN t_void * pmoal_handle, IN t_u32 bss_index, IN t_u32 level)
@@ -1511,7 +1519,7 @@ moal_print_netintf(IN t_void * pmoal_handle, IN t_u32 bss_index, IN t_u32 level)
 #endif /* DEBUG_LEVEL1 */
 }
 
-/**
+/** 
  *  @brief This function asserts the existence of the passed argument
  *
  *  @param pmoal_handle     A pointer to moal_private structure

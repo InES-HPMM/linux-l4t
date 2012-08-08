@@ -49,9 +49,9 @@ Change log:
                 Local Functions
 ********************************************************/
 
-/**
+/** 
  *  @brief This function prepares command of RSSI info.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param pcmd         A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   Command action
@@ -85,9 +85,9 @@ wlan_cmd_802_11_rssi_info(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of mac_control.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param pcmd         A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   Command action
@@ -119,9 +119,9 @@ wlan_cmd_mac_control(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of snmp_mib.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -236,9 +236,9 @@ wlan_cmd_802_11_snmp_mib(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of get_log.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *
@@ -254,9 +254,9 @@ wlan_cmd_802_11_get_log(IN pmlan_private pmpriv, IN HostCmd_DS_COMMAND * cmd)
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of tx_power_cfg.
- *
+ *   
  *  @param pmpriv      A pointer to mlan_private structure
  *  @param cmd         A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action  The action: GET or SET
@@ -313,9 +313,9 @@ wlan_cmd_tx_power_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of rf_tx_power.
- *
+ *    
  *  @param pmpriv     A pointer to wlan_private structure
  *  @param cmd        A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action the action: GET or SET
@@ -348,16 +348,16 @@ wlan_cmd_802_11_rf_tx_power(IN pmlan_private pmpriv,
 
     case HostCmd_ACT_GEN_SET:
         prtp->action = wlan_cpu_to_le16(HostCmd_ACT_GEN_SET);
-        prtp->current_level = wlan_cpu_to_le16(*((t_u16 *) pdata_buf));
+        prtp->current_level = wlan_cpu_to_le16(*((t_s16 *) pdata_buf));
         break;
     }
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  * @brief This function prepares command of hs_cfg.
- *
+ *   
  * @param pmpriv       A pointer to mlan_private structure
  * @param cmd          A pointer to HostCmd_DS_COMMAND structure
  * @param cmd_action   The action: GET or SET
@@ -416,9 +416,9 @@ wlan_cmd_802_11_hs_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of mac_address.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -519,9 +519,9 @@ wlan_cmd_802_11_sleep_params(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of mac_multicast_adr.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -620,14 +620,9 @@ wlan_cmd_802_11_ad_hoc_stop(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** Length of WEP 40 bit key */
-#define WEP_40_BIT_LEN  5
-/** Length of WEP 104 bit key */
-#define WEP_104_BIT_LEN 13
-
-/**
+/** 
  *  @brief This function sets WEP key(s) to key_param_set TLV(s).
- *
+ *  
  *  @param priv           	A pointer to mlan_private structure
  *  @param key_param_set    A pointer to MrvlIEtype_KeyParamSet_t structure
  *  @param key_param_len    A pointer to the length variable
@@ -693,9 +688,9 @@ wlan_set_keyparamset_wep(mlan_private * priv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function prepares command of key_material.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -736,6 +731,8 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
             pkey_material->key_param_set.key_info |= KEY_INFO_MCAST_KEY;
         else
             pkey_material->key_param_set.key_info |= KEY_INFO_UCAST_KEY;
+        if (pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK)
+            pkey_material->key_param_set.key_info = KEY_INFO_AES_MCAST_IGTK;
         pkey_material->key_param_set.key_info =
             wlan_cpu_to_le16(pkey_material->key_param_set.key_info);
         goto done;
@@ -771,10 +768,10 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
         else
             pkey_material->key_param_set.key[1] = 0;    /* set 0 when re-key */
 
-        if (0 != memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))       /* WAPI
-                                                                                           pairwise
-                                                                                           key:
-                                                                                           unicast
+        if (0 != memcmp(pmpriv->adapter, pkey->mac_addr, bc_mac, sizeof(bc_mac)))       /* WAPI 
+                                                                                           pairwise 
+                                                                                           key: 
+                                                                                           unicast 
                                                                                          */
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_WAPI_UNICAST);
@@ -803,7 +800,9 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
                              S_DS_GEN);
         goto done;
     }
-    if (pkey->key_len == WPA_AES_KEY_LEN) {
+    /* IGTK key length is the same as AES key length */
+    if (pkey->key_len == WPA_AES_KEY_LEN &&
+        !(pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK)) {
         PRINTM(MCMND, "WPA_AES\n");
         pkey_material->key_param_set.key_type_id =
             wlan_cpu_to_le16(KEY_TYPE_ID_AES);
@@ -818,9 +817,25 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
                                                            unicast */
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_AES_UNICAST);
-        else                    /* AES group key: multicast */
+        else {                  /* AES group key: multicast */
+
             pkey_material->key_param_set.key_info |=
                 wlan_cpu_to_le16(KEY_INFO_AES_MCAST);
+        }
+    } else if ((pkey->key_flags & KEY_FLAG_AES_MCAST_IGTK) &&
+               pkey->key_len == WPA_IGTK_KEY_LEN) {
+        PRINTM(MCMND, "WPA_AES_CMAC\n");
+        pkey_material->key_param_set.key_type_id =
+            wlan_cpu_to_le16(KEY_TYPE_ID_AES_CMAC);
+        if (cmd_oid == KEY_INFO_ENABLED)
+            pkey_material->key_param_set.key_info =
+                wlan_cpu_to_le16(KEY_INFO_AES_ENABLED);
+        else
+            pkey_material->key_param_set.key_info =
+                !(wlan_cpu_to_le16(KEY_INFO_AES_ENABLED));
+
+        pkey_material->key_param_set.key_info |=
+            wlan_cpu_to_le16(KEY_INFO_AES_MCAST_IGTK);
     } else if (pkey->key_len == WPA_TKIP_KEY_LEN) {
         PRINTM(MCMND, "WPA_TKIP\n");
         pkey_material->key_param_set.key_type_id =
@@ -846,10 +861,28 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
                pkey->key_material, pkey->key_len);
         pkey_material->key_param_set.length =
             wlan_cpu_to_le16((t_u16) pkey->key_len + KEYPARAMSET_FIXED_LEN);
-
         key_param_len =
             (t_u16) (pkey->key_len + KEYPARAMSET_FIXED_LEN) +
             sizeof(MrvlIEtypesHeader_t);
+
+        /* key format with pn field is defined in Key Material V1 */
+        if (pkey_material->key_param_set.key_type_id ==
+            wlan_cpu_to_le16(KEY_TYPE_ID_AES_CMAC)) {
+            cmac_param *param;
+            param = (cmac_param *) pkey_material->key_param_set.key;
+            memcpy(pmpriv->adapter, param->ipn, pkey->pn, SEQ_MAX_SIZE);
+            memcpy(pmpriv->adapter, param->key, pkey->key_material,
+                   pkey->key_len);
+
+            pkey_material->key_param_set.key_len =
+                wlan_cpu_to_le16((t_u16) sizeof(cmac_param));
+            pkey_material->key_param_set.length =
+                wlan_cpu_to_le16((t_u16) sizeof(cmac_param) +
+                                 KEYPARAMSET_FIXED_LEN);
+            key_param_len =
+                (t_u16) (sizeof(cmac_param) + KEYPARAMSET_FIXED_LEN) +
+                sizeof(MrvlIEtypesHeader_t);
+        }
 
         cmd->size =
             wlan_cpu_to_le16(key_param_len + sizeof(pkey_material->action) +
@@ -860,9 +893,9 @@ wlan_cmd_802_11_key_material(IN pmlan_private pmpriv,
     return ret;
 }
 
-/**
+/** 
  *  @brief This function prepares command of supplicant pmk
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -886,26 +919,26 @@ wlan_cmd_802_11_supplicant_pmk(IN pmlan_private pmpriv,
     t_u8 zero_mac[] = { 0, 0, 0, 0, 0, 0 };
 
     ENTER();
-    /*
+    /* 
      * Parse the rest of the buf here
-     *      1)  <ssid="valid ssid"> - This will get the passphrase, AKMP
+     *      1)  <ssid="valid ssid"> - This will get the passphrase, AKMP 
      *          for specified ssid, if none specified then it will get all.
      *          Eg: iwpriv <mlanX> passphrase 0:ssid=marvell
      *      2)  <psk="psk">:<passphrase="passphare">:<bssid="00:50:43:ef:23:f3">
-     *          <ssid="valid ssid"> - passphrase and psk cannot be provided to
-     *          the same SSID, Takes one SSID at a time, If ssid= is present
+     *          <ssid="valid ssid"> - passphrase and psk cannot be provided to  
+     *          the same SSID, Takes one SSID at a time, If ssid= is present 
      *          the it should contain a passphrase or psk. If no arguments are
      *          provided then AKMP=802.1x, and passphrase should be provided
      *          after association.
      *          End of each parameter should be followed by a ':'(except for the
-     *          last parameter) as the delimiter. If ':' has to be used in
+     *          last parameter) as the delimiter. If ':' has to be used in 
      *          an SSID then a '/' should be preceded to ':' as a escape.
-     *          Eg:iwpriv <mlanX> passphrase
+     *          Eg:iwpriv <mlanX> passphrase 
      *                    "1:ssid=mrvl AP:psk=abcdefgh:bssid=00:50:43:ef:23:f3"
-     *          iwpriv <mlanX> passphrase
+     *          iwpriv <mlanX> passphrase 
      *                 "1:ssid=mrvl/: AP:psk=abcdefgd:bssid=00:50:43:ef:23:f3"
      *          iwpriv <mlanX> passphrase "1:ssid=mrvlAP:psk=abcdefgd"
-     *      3)  <ssid="valid ssid"> - This will clear the passphrase
+     *      3)  <ssid="valid ssid"> - This will clear the passphrase 
      *          for specified ssid, if none specified then it will clear all.
      *          Eg: iwpriv <mlanX> passphrase 2:ssid=marvell
      */
@@ -1046,9 +1079,9 @@ wlan_cmd_802_11_supplicant_profile(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of rf_channel.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -1083,9 +1116,9 @@ wlan_cmd_802_11_rf_channel(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of ibss_coalescing_status.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -1126,9 +1159,9 @@ wlan_cmd_ibss_coalescing_status(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of mgmt IE list.
- *
+ *  
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -1189,9 +1222,9 @@ wlan_cmd_mgmt_ie_list(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares system clock cfg command
- *
+ *  
  *  @param pmpriv    	A pointer to mlan_private structure
  *  @param cmd	   	A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action 	The action: GET or SET
@@ -1224,124 +1257,9 @@ wlan_cmd_sysclock_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
- *  @brief This function prepares command of reg_access.
- *
- *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
- *  @param cmd_action   the action: GET or SET
- *  @param pdata_buf    A pointer to data buffer
- *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
- */
-static mlan_status
-wlan_cmd_reg_access(IN HostCmd_DS_COMMAND * cmd,
-                    IN t_u16 cmd_action, IN t_void * pdata_buf)
-{
-    mlan_ds_reg_rw *reg_rw;
-
-    ENTER();
-
-    reg_rw = (mlan_ds_reg_rw *) pdata_buf;
-    switch (cmd->command) {
-    case HostCmd_CMD_MAC_REG_ACCESS:
-        {
-            HostCmd_DS_MAC_REG_ACCESS *mac_reg;
-            cmd->size =
-                wlan_cpu_to_le16(sizeof(HostCmd_DS_MAC_REG_ACCESS) + S_DS_GEN);
-            mac_reg = (HostCmd_DS_MAC_REG_ACCESS *) & cmd->params.mac_reg;
-            mac_reg->action = wlan_cpu_to_le16(cmd_action);
-            mac_reg->offset = wlan_cpu_to_le16((t_u16) reg_rw->offset);
-            mac_reg->value = wlan_cpu_to_le32(reg_rw->value);
-            break;
-        }
-    case HostCmd_CMD_BBP_REG_ACCESS:
-        {
-            HostCmd_DS_BBP_REG_ACCESS *bbp_reg;
-            cmd->size =
-                wlan_cpu_to_le16(sizeof(HostCmd_DS_BBP_REG_ACCESS) + S_DS_GEN);
-            bbp_reg = (HostCmd_DS_BBP_REG_ACCESS *) & cmd->params.bbp_reg;
-            bbp_reg->action = wlan_cpu_to_le16(cmd_action);
-            bbp_reg->offset = wlan_cpu_to_le16((t_u16) reg_rw->offset);
-            bbp_reg->value = (t_u8) reg_rw->value;
-            break;
-        }
-    case HostCmd_CMD_RF_REG_ACCESS:
-        {
-            HostCmd_DS_RF_REG_ACCESS *rf_reg;
-            cmd->size =
-                wlan_cpu_to_le16(sizeof(HostCmd_DS_RF_REG_ACCESS) + S_DS_GEN);
-            rf_reg = (HostCmd_DS_RF_REG_ACCESS *) & cmd->params.rf_reg;
-            rf_reg->action = wlan_cpu_to_le16(cmd_action);
-            rf_reg->offset = wlan_cpu_to_le16((t_u16) reg_rw->offset);
-            rf_reg->value = (t_u8) reg_rw->value;
-            break;
-        }
-    case HostCmd_CMD_CAU_REG_ACCESS:
-        {
-            HostCmd_DS_RF_REG_ACCESS *cau_reg;
-            cmd->size =
-                wlan_cpu_to_le16(sizeof(HostCmd_DS_RF_REG_ACCESS) + S_DS_GEN);
-            cau_reg = (HostCmd_DS_RF_REG_ACCESS *) & cmd->params.rf_reg;
-            cau_reg->action = wlan_cpu_to_le16(cmd_action);
-            cau_reg->offset = wlan_cpu_to_le16((t_u16) reg_rw->offset);
-            cau_reg->value = (t_u8) reg_rw->value;
-            break;
-        }
-    case HostCmd_CMD_802_11_EEPROM_ACCESS:
-        {
-            mlan_ds_read_eeprom *rd_eeprom = (mlan_ds_read_eeprom *) pdata_buf;
-            HostCmd_DS_802_11_EEPROM_ACCESS *cmd_eeprom =
-                (HostCmd_DS_802_11_EEPROM_ACCESS *) & cmd->params.eeprom;
-            cmd->size =
-                wlan_cpu_to_le16(sizeof(HostCmd_DS_802_11_EEPROM_ACCESS) +
-                                 S_DS_GEN);
-            cmd_eeprom->action = wlan_cpu_to_le16(cmd_action);
-            cmd_eeprom->offset = wlan_cpu_to_le16(rd_eeprom->offset);
-            cmd_eeprom->byte_count = wlan_cpu_to_le16(rd_eeprom->byte_count);
-            cmd_eeprom->value = 0;
-            break;
-        }
-    default:
-        LEAVE();
-        return MLAN_STATUS_FAILURE;
-    }
-    cmd->command = wlan_cpu_to_le16(cmd->command);
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
- *  @brief This function prepares command of mem_access.
- *
- *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
- *  @param cmd_action   the action: GET or SET
- *  @param pdata_buf    A pointer to data buffer
- *  @return             MLAN_STATUS_SUCCESS
- */
-static mlan_status
-wlan_cmd_mem_access(IN HostCmd_DS_COMMAND * cmd,
-                    IN t_u16 cmd_action, IN t_void * pdata_buf)
-{
-    mlan_ds_mem_rw *mem_rw = (mlan_ds_mem_rw *) pdata_buf;
-    HostCmd_DS_MEM_ACCESS *mem_access =
-        (HostCmd_DS_MEM_ACCESS *) & cmd->params.mem;
-
-    ENTER();
-
-    cmd->command = wlan_cpu_to_le16(HostCmd_CMD_MEM_ACCESS);
-    cmd->size = wlan_cpu_to_le16(sizeof(HostCmd_DS_MEM_ACCESS) + S_DS_GEN);
-
-    mem_access->action = wlan_cpu_to_le16(cmd_action);
-    mem_access->addr = wlan_cpu_to_le32(mem_rw->addr);
-    mem_access->value = wlan_cpu_to_le32(mem_rw->value);
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
+/** 
  *  @brief This function prepares command of subscribe event.
- *
+ *  
  *  @param pmpriv    	A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
@@ -1527,9 +1445,9 @@ wlan_cmd_subscribe_event(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/**
+/** 
  *  @brief This function prepares command of OTP user data.
- *
+ *  
  *  @param pmpriv    	A pointer to mlan_private structure
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
@@ -1565,7 +1483,7 @@ wlan_cmd_otp_user_data(IN pmlan_private pmpriv,
 
 /**
  *  @brief This function prepares inactivity timeout command
- *
+ *  
  *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   the action: GET or SET
  *  @param pdata_buf    A pointer to data buffer
@@ -1605,9 +1523,9 @@ wlan_cmd_inactivity_timeout(IN HostCmd_DS_COMMAND * cmd,
                 Global Functions
 ********************************************************/
 
-/**
+/** 
  *  @brief This function prepare the command before sending to firmware.
- *
+ *  
  *  @param priv       A pointer to mlan_private structure
  *  @param cmd_no       Command number
  *  @param cmd_action   Command action: GET or SET
@@ -1893,6 +1811,12 @@ wlan_ops_sta_prepare_cmd(IN t_void * priv,
         break;
     case HostCmd_CMD_OTP_READ_USER_DATA:
         ret = wlan_cmd_otp_user_data(pmpriv, cmd_ptr, cmd_action, pdata_buf);
+        break;
+    case HostCmd_CMD_HS_WAKEUP_REASON:
+        ret = wlan_cmd_hs_wakeup_reason(pmpriv, cmd_ptr, pdata_buf);
+        break;
+    case HostCmd_CMD_REJECT_ADDBA_REQ:
+        ret = wlan_cmd_reject_addba_req(pmpriv, cmd_ptr, cmd_action, pdata_buf);
         break;
     default:
         PRINTM(MERROR, "PREP_CMD: unknown command- %#x\n", cmd_no);

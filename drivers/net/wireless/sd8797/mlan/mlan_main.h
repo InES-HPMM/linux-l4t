@@ -361,6 +361,11 @@ do {                                    \
 /** Default country code */
 #define MRVDRV_DEFAULT_COUNTRY_CODE      "US"
 
+/** Japan country code */
+#define COUNTRY_CODE_JP_40	        0x40
+/** Japan special country code */
+#define COUNTRY_CODE_JP_FF	        0xFF
+
 /** Default factor for calculating beacon average */
 #define DEFAULT_BCN_AVG_FACTOR          8
 /** Default factor for calculating data average */
@@ -456,8 +461,6 @@ do {                                    \
 
 /** High threshold at which to start drop packets */
 #define  RX_HIGH_THRESHOLD           1024
-/** Medium threshold at which to disable Rx BA */
-#define  RX_MED_THRESHOLD            256
 /** Low threshold to allow Rx BA */
 #define  RX_LOW_THRESHOLD            128
 
@@ -628,6 +631,9 @@ typedef struct _tidTbl
 /** No packet priority (< lowest) */
 #define NO_PKT_PRIO_TID    -1
 
+/** Max driver packet delay in msec */
+#define WMM_DRV_DELAY_MAX	510
+
 /** Struct of WMM DESC */
 typedef struct _wmm_desc
 {
@@ -739,6 +745,13 @@ typedef struct _mrvl_wep_key_t
 /** Maximum number of region channel */
 #define MAX_REGION_CHANNEL_NUM  2
 
+/** CFP dynamic (non-const) elements */
+typedef struct _cfp_dyn_t
+{
+    /** TRUE: Channel is blacklisted (do not use) */
+    t_bool blacklist;
+} cfp_dyn_t;
+
 /** Chan-Freq-TxPower mapping table*/
 typedef struct _chan_freq_power_t
 {
@@ -748,11 +761,11 @@ typedef struct _chan_freq_power_t
     t_u32 freq;
     /** Max allowed Tx power level */
     t_u16 max_tx_power;
-    /** TRUE:radar detect required for BAND A or passive scan for BAND B/G;
+    /** TRUE:radar detect required for BAND A or passive scan for BAND B/G; 
       * FALSE:radar detect not required for BAND A or active scan for BAND B/G*/
     t_bool passive_scan_or_radar_detect;
-    /** TRUE:channel unsupported;  FALSE:supported */
-    t_u8 unsupported;
+    /** Elements associated to cfp that change at run-time */
+    cfp_dyn_t dynamic;
 } chan_freq_power_t;
 
 /** Region-band mapping table */
@@ -812,6 +825,10 @@ typedef struct
     t_bool adhoc_auto_sel_chan;
     /** Set when driver receives a STOP TX event from fw */
     t_bool tx_disabled;
+    /** Channel that ChanSwAnn was received for, non-zero = active */
+    t_u8 dfs_slave_csa_chan;
+    /** Expiry for above variable, seconds in system time */
+    t_u32 dfs_slave_csa_expire_at_sec;
 } wlan_11h_interface_state_t;
 
 #if defined(UAP_SUPPORT)
@@ -903,11 +920,11 @@ typedef struct _mlan_private
     t_u32 pkt_tx_ctrl;
 
     /** Tx power level */
-    t_u16 tx_power_level;
+    t_s16 tx_power_level;
     /** Maximum Tx power level */
-    t_u8 max_tx_power_level;
+    t_s8 max_tx_power_level;
     /** Minimum Tx power level */
-    t_u8 min_tx_power_level;
+    t_s8 min_tx_power_level;
     /** Tx rate */
     t_u8 tx_rate;
     /** tx ht_info */
@@ -1061,7 +1078,7 @@ typedef struct _mlan_private
     t_u32 assoc_rsp_size;
 
     /** Generic IEEE IEs passed from the application to be inserted into the
-     *    association request to firmware
+     *    association request to firmware 
      */
     t_u8 gen_ie_buf[MRVDRV_GENIE_BUF_SIZE];
     /** Length of the data stored in gen_ie_buf */
@@ -1086,9 +1103,6 @@ typedef struct _mlan_private
 
     /** Port open flag state at time of association attempt */
     t_u8 prior_port_status;
-
-    /** Scan block flag */
-    t_u8 scan_block;
     /** IP address operation */
     t_u32 op_code;
     /** IP address */
@@ -1156,6 +1170,8 @@ struct _RxReorderTbl
     /** BA stream status */
     baStatus_e ba_status;
     t_u8 amsdu;
+ /** no packet drop flag for rx_reorder_tbl */
+    t_u8 force_no_drop;
 };
 
 /** BSS priority node */
@@ -1224,6 +1240,8 @@ struct _sta_node
     sta_node *pnext;
     /** station mac address */
     t_u8 mac_addr[MLAN_MAC_ADDR_LENGTH];
+    /** wmm flag */
+    t_u8 is_wmm_enabled;
     /** 11n flag */
     t_u8 is_11n_enabled;
     /** AMPDU STA */
@@ -1363,8 +1381,8 @@ typedef struct
 
 /**
  * @brief Driver measurement state held in 'mlan_adapter' structure
- *
- *  Used to record a measurement request that the driver is pending on
+ *  
+ *  Used to record a measurement request that the driver is pending on 
  *    the result (received measurement report).
  */
 typedef struct
@@ -1562,22 +1580,22 @@ typedef struct _mlan_adapter
     t_u32 upld_len;
     /** Upload buffer*/
     t_u8 upld_buf[WLAN_UPLD_SIZE];
-    /** Data sent:
+    /** Data sent: 
      *       TRUE - Data is sent to fw, no Tx Done received
      *       FALSE - Tx done received for previous Tx
      */
     t_u8 data_sent;
-    /** CMD sent:
+    /** CMD sent: 
      *       TRUE - CMD is sent to fw, no CMD Done received
      *       FALSE - CMD done received for previous CMD
      */
     t_u8 cmd_sent;
-    /** CMD Response received:
+    /** CMD Response received: 
      *       TRUE - CMD is response is received from fw, and yet to process
      *       FALSE - No cmd response to process
      */
     t_u8 cmd_resp_received;
-    /** Event received:
+    /** Event received: 
      *       TRUE - Event received from fw, and yet to process
      *       FALSE - No events to process
      */
@@ -1668,6 +1686,8 @@ typedef struct _mlan_adapter
     t_u16 active_scan_time;
     /** Passive scan time */
     t_u16 passive_scan_time;
+    /** Scan block flag */
+    t_u8 scan_block;
     /** Extended scan or legacy scan */
     t_u8 ext_scan;
     t_u16 bcn_buf_size;
@@ -1940,6 +1960,9 @@ t_u8 wlan_bypass_tx_list_empty(mlan_adapter * pmadapter);
 /** Check if this is the last packet */
 t_u8 wlan_check_last_packet_indication(pmlan_private priv);
 
+#define MOAL_ALLOC_MLAN_BUFFER  (0)
+#define MOAL_MALLOC_BUFFER      (1)
+
 /** function to allocate a mlan_buffer */
 pmlan_buffer wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
                                     t_u32 head_room, t_u32 malloc_flag);
@@ -2020,6 +2043,17 @@ mlan_status wlan_ret_remain_on_channel(IN pmlan_private pmpriv,
 mlan_status wlan_get_pm_info(IN pmlan_adapter pmadapter,
                              IN pmlan_ioctl_req pioctl_req);
 
+mlan_status wlan_get_hs_wakeup_reason(IN pmlan_adapter pmadapter,
+                                      IN pmlan_ioctl_req pioctl_req);
+
+mlan_status wlan_cmd_hs_wakeup_reason(IN pmlan_private pmpriv,
+                                      IN HostCmd_DS_COMMAND * cmd,
+                                      IN t_void * pdata_buf);
+
+mlan_status wlan_ret_hs_wakeup_reason(IN pmlan_private pmpriv,
+                                      IN HostCmd_DS_COMMAND * resp,
+                                      IN mlan_ioctl_req * pioctl_buf);
+
 mlan_status wlan_radio_ioctl_radio_ctl(IN pmlan_adapter pmadapter,
                                        IN pmlan_ioctl_req pioctl_req);
 
@@ -2038,6 +2072,9 @@ mlan_status wlan_rate_ioctl_cfg(IN pmlan_adapter pmadapter,
 mlan_status wlan_ret_802_11_tx_rate_query(IN pmlan_private pmpriv,
                                           IN HostCmd_DS_COMMAND * resp,
                                           IN mlan_ioctl_req * pioctl_buf);
+
+mlan_status wlan_rate_ioctl_get_data_rate(IN pmlan_adapter pmadapter,
+                                          IN pmlan_ioctl_req pioctl_req);
 
 t_void wlan_host_sleep_activated_event(pmlan_private priv, t_u8 activated);
 /** Handles the command response of hs_cfg */
@@ -2260,12 +2297,18 @@ extern t_u16 region_code_index[MRVDRV_MAX_REGION_CODE];
 extern t_u16 cfp_code_index_bg[MRVDRV_MAX_CFP_CODE_BG];
 /** The table to keep CFP code for A */
 extern t_u16 cfp_code_index_a[MRVDRV_MAX_CFP_CODE_A];
+
 /** Set region table */
 mlan_status wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band);
 /** Get radar detection requirements*/
 t_bool wlan_get_cfp_radar_detect(mlan_private * priv, t_u8 chnl);
 /** check if scan type is passive for b/g band*/
 t_bool wlan_bg_scan_type_is_passive(mlan_private * priv, t_u8 chnl);
+/** check if channel is blacklisted */
+t_bool wlan_is_chan_blacklisted(mlan_private * priv, t_u8 band, t_u8 chan);
+/** set blacklist setting for a channel */
+t_bool wlan_set_chan_blacklist(mlan_private * priv, t_u8 band, t_u8 chan,
+                               t_bool bl);
 
 /* 802.11D related functions */
 /** Initialize 11D */
@@ -2342,10 +2385,12 @@ sta_node *wlan_add_station_entry(mlan_private * priv, t_u8 * mac);
 /** find specific ie */
 t_u8 *wlan_get_specific_ie(pmlan_private priv, t_u8 * ie_buf, t_u8 ie_len,
                            IEEEtypes_ElementId_e id);
+t_u8 wlan_is_wmm_ie_present(pmlan_adapter pmadapter, t_u8 * pbuf,
+                            t_u16 buf_len);
 
 /**
  *  @brief This function checks tx_pause flag for peer
- *
+ *  
  *  @param priv     A pointer to mlan_private
  *  @param ra       Address of the receiver STA
  *
@@ -2401,6 +2446,25 @@ mlan_status wlan_ret_802_11_rf_antenna(IN pmlan_private pmpriv,
                                        IN HostCmd_DS_COMMAND * resp,
                                        IN mlan_ioctl_req * pioctl_buf);
 
+mlan_status wlan_ret_reg_access(mlan_adapter * pmadapter,
+                                t_u16 type,
+                                IN HostCmd_DS_COMMAND * resp,
+                                IN mlan_ioctl_req * pioctl_buf);
+mlan_status wlan_ret_mem_access(IN pmlan_private pmpriv,
+                                IN HostCmd_DS_COMMAND * resp,
+                                IN mlan_ioctl_req * pioctl_buf);
+
+mlan_status wlan_reg_mem_ioctl_reg_rw(IN pmlan_adapter pmadapter,
+                                      IN pmlan_ioctl_req pioctl_req);
+mlan_status wlan_reg_mem_ioctl_read_eeprom(IN pmlan_adapter pmadapter,
+                                           IN pmlan_ioctl_req pioctl_req);
+mlan_status wlan_reg_mem_ioctl_mem_rw(IN pmlan_adapter pmadapter,
+                                      IN pmlan_ioctl_req pioctl_req);
+mlan_status wlan_cmd_reg_access(IN HostCmd_DS_COMMAND * cmd,
+                                IN t_u16 cmd_action, IN t_void * pdata_buf);
+mlan_status wlan_cmd_mem_access(IN HostCmd_DS_COMMAND * cmd,
+                                IN t_u16 cmd_action, IN t_void * pdata_buf);
+
 mlan_status wlan_get_info_ver_ext(IN pmlan_adapter pmadapter,
                                   IN pmlan_ioctl_req pioctl_req);
 
@@ -2415,9 +2479,12 @@ mlan_status wlan_set_drvdbg(IN pmlan_adapter pmadapter,
 mlan_status wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
                                     IN pmlan_ioctl_req pioctl_req);
 
-/**
+mlan_status wlan_misc_ioctl_txcontrol(IN pmlan_adapter pmadapter,
+                                      IN pmlan_ioctl_req pioctl_req);
+
+/** 
  *  @brief RA based queueing
- *
+ *   
  *  @param priv                 A pointer to mlan_private structure
  *
  *  @return 	   	        MTRUE or MFALSE
@@ -2425,7 +2492,7 @@ mlan_status wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
 static INLINE t_u8
 queuing_ra_based(pmlan_private priv)
 {
-    /*
+    /* 
      * Currently we assume if we are in Infra, then DA=RA. This might not be
      * true in the future
      */
@@ -2436,9 +2503,9 @@ queuing_ra_based(pmlan_private priv)
     return MTRUE;
 }
 
-/**
+/** 
  *  @brief Copy Rates
- *
+ *   
  *  @param dest                 A pointer to Dest Buf
  *  @param pos		        The position for copy
  *  @param src		        A pointer to Src Buf
@@ -2460,9 +2527,9 @@ wlan_copy_rates(t_u8 * dest, t_u32 pos, t_u8 * src, int len)
     return pos;
 }
 
-/**
+/** 
  *  @brief strlen
- *
+ *   
  *  @param str		        A pointer to string
  *
  *  @return 	   	        Length of string
@@ -2530,9 +2597,9 @@ t_void wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u);
 
 /** Get BSS number from priv */
 #define GET_BSS_NUM(priv)   (priv)->bss_num
-/**
+/** 
  *  @brief This function returns priv based on the BSS num and BSS type
- *
+ *  
  *  @param pmadapter A pointer to mlan_adapter
  *  @param bss_num   BSS number
  *  @param bss_type  BSS type
@@ -2554,10 +2621,10 @@ wlan_get_priv_by_id(mlan_adapter * pmadapter, t_u32 bss_num, t_u32 bss_type)
     return MNULL;
 }
 
-/**
+/** 
  *  @brief This function returns first available priv
  *  based on the BSS role
- *
+ *  
  *  @param pmadapter A pointer to mlan_adapter
  *  @param bss_role  BSS role or MLAN_BSS_ROLE_ANY
  *
@@ -2582,7 +2649,7 @@ wlan_get_priv(mlan_adapter * pmadapter, mlan_bss_role bss_role)
  *  @brief This function counts the number of occurences for a certain
  *  condition among privs.  Which privs are checked can be configured
  *  via a second condition.
- *
+ * 
  *  @param pmadapter  A pointer to mlan_adapter
  *  @param count_cond Function pointer to condition to count on privs
  *  @param check_cond Function pointer to condition to decide whether priv
@@ -2617,7 +2684,7 @@ wlan_count_priv_cond(mlan_adapter * pmadapter,
 /**
  *  @brief This function runs a procedure on each priv.
  *  Which privs it is run on can be configured via a condition.
- *
+ * 
  *  @param pmadapter  A pointer to mlan_adapter
  *  @param operation  Function pointer to produedure to operate on priv
  *  @param check_cond Function pointer to condition to decide whether priv

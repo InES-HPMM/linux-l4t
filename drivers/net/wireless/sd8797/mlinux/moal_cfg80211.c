@@ -123,6 +123,10 @@ struct ieee80211_supported_band cfg80211_band_5ghz = {
 #define WLAN_CIPHER_SUITE_SMS4      0x00000020
 #endif
 
+#ifndef WLAN_CIPHER_SUITE_AES_CMAC
+#define WLAN_CIPHER_SUITE_AES_CMAC  0x000FAC06
+#endif
+
 /* Supported crypto cipher suits to be advertised to cfg80211 */
 const u32 cfg80211_cipher_suites[] = {
     WLAN_CIPHER_SUITE_WEP40,
@@ -130,6 +134,7 @@ const u32 cfg80211_cipher_suites[] = {
     WLAN_CIPHER_SUITE_TKIP,
     WLAN_CIPHER_SUITE_CCMP,
     WLAN_CIPHER_SUITE_SMS4,
+    WLAN_CIPHER_SUITE_AES_CMAC,
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
@@ -176,7 +181,7 @@ woal_get_netdev_priv(struct net_device *dev)
     return (void *) netdev_priv(dev);
 }
 
-/**
+/** 
  *  @brief Set/Enable encryption key
  *
  *  @param priv             A pointer to moal_private structure
@@ -185,7 +190,7 @@ woal_get_netdev_priv(struct net_device *dev)
  *  @param key              A pointer to key
  *  @param key_len          Key length
  *  @param seq              A pointer to sequence
- *  @param seq_len          Sequence length
+ *  @param seq_len          Sequence length 
  *  @param key_index        Key index
  *  @param addr             Mac for which key is to be set
  *  @param disable          Key disabled or not
@@ -244,6 +249,7 @@ woal_cfg80211_set_key(moal_private * priv, t_u8 is_enable_wep,
             cipher != WLAN_CIPHER_SUITE_WEP104 &&
             cipher != WLAN_CIPHER_SUITE_TKIP &&
             cipher != WLAN_CIPHER_SUITE_SMS4 &&
+            cipher != WLAN_CIPHER_SUITE_AES_CMAC &&
             cipher != WLAN_CIPHER_SUITE_CCMP) {
             PRINTM(MERROR, "Invalid cipher suite specified\n");
             ret = MLAN_STATUS_FAILURE;
@@ -281,6 +287,9 @@ woal_cfg80211_set_key(moal_private * priv, t_u8 is_enable_wep,
                 memcpy(sec->param.encrypt_key.pn, seq, seq_len);
                 sec->param.encrypt_key.key_flags |= KEY_FLAG_RX_SEQ_VALID;
             }
+        }
+        if (cipher == WLAN_CIPHER_SUITE_AES_CMAC) {
+            sec->param.encrypt_key.key_flags |= KEY_FLAG_AES_MCAST_IGTK;
         }
     } else {
         if (key_index == KEY_INDEX_CLEAR_ALL)
@@ -616,6 +625,7 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
     moal_private *priv = (moal_private *) woal_get_netdev_priv(dev);
     mlan_ds_bss *bss = NULL;
     mlan_ioctl_req *req = NULL;
+    t_u8 bss_role;
 
     ENTER();
 
@@ -672,7 +682,11 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
             && (priv->wdev->iftype == NL80211_IFTYPE_AP
                 || priv->wdev->iftype == NL80211_IFTYPE_P2P_GO
                 || priv->wdev->iftype == NL80211_IFTYPE_P2P_CLIENT)) {
-            /* if we support wifi direct && priv->bss_type == wifi_direct, and
+            if (priv->phandle->is_go_timer_set) {
+                woal_cancel_timer(&priv->phandle->go_timer);
+                priv->phandle->is_go_timer_set = MFALSE;
+            }
+            /* if we support wifi direct && priv->bss_type == wifi_direct, and 
                currently the interface type is AP or GO or client, that means
                wpa_supplicant deinit() wifi direct interface, so we should
                deinit bss_role and wifi direct mode, for other bss_type, we
@@ -685,7 +699,11 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
         }
 #endif /* KERNEL_VERSION */
 #endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
-
+        if (priv->bss_type == MLAN_BSS_TYPE_UAP) {
+            bss_role = MLAN_BSS_ROLE_STA;
+            woal_cfg80211_bss_role_cfg(priv, MLAN_ACT_SET, &bss_role);
+            PRINTM(MIOCTL, "set bss role for STA\n");
+        }
         bss->param.bss_mode = MLAN_BSS_MODE_INFRA;
         priv->wdev->iftype = NL80211_IFTYPE_STATION;
         PRINTM(MINFO, "Setting interface type to managed\n");
@@ -693,6 +711,10 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
 #if defined(WIFI_DIRECT_SUPPORT)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
     case NL80211_IFTYPE_P2P_CLIENT:
+        if (priv->phandle->is_go_timer_set) {
+            woal_cancel_timer(&priv->phandle->go_timer);
+            priv->phandle->is_go_timer_set = MFALSE;
+        }
 
         if (MLAN_STATUS_SUCCESS != woal_cfg80211_init_p2p_client(priv)) {
             ret = -EFAULT;
@@ -715,11 +737,18 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
                 ret = -EFAULT;
                 goto done;
             }
+            priv->phandle->is_go_timer_set = MTRUE;
+            woal_mod_timer(&priv->phandle->go_timer, MOAL_TIMER_10S);
         }
         if (type == NL80211_IFTYPE_P2P_GO)
             priv->wdev->iftype = NL80211_IFTYPE_P2P_GO;
 #endif
 #endif
+        if (priv->bss_type == MLAN_BSS_TYPE_STA) {
+            bss_role = MLAN_BSS_ROLE_UAP;
+            woal_cfg80211_bss_role_cfg(priv, MLAN_ACT_SET, &bss_role);
+            PRINTM(MIOCTL, "set bss role for AP\n");
+        }
         if (type == NL80211_IFTYPE_AP)
             priv->wdev->iftype = NL80211_IFTYPE_AP;
         PRINTM(MINFO, "Setting interface type to P2P GO\n");
@@ -747,7 +776,8 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
     }
 
   done:
-    kfree(req);
+    if (req)
+        kfree(req);
     LEAVE();
     return ret;
 }
@@ -1013,23 +1043,29 @@ woal_cfg80211_mgmt_frame_register(struct wiphy *wiphy,
 #ifdef UAP_SUPPORT
     if ((priv->bss_type == MLAN_BSS_TYPE_UAP) &&
         (frame_type == IEEE80211_STYPE_PROBE_REQ)) {
+        PRINTM(MIOCTL, "Skip register PROBE_REQ in UAP mode\n");
         LEAVE();
         return;
     }
 #endif
     if (reg == MTRUE) {
         /* set mgmt_subtype_mask based on origin value */
-        last_mgmt_subtype_mask |= BIT(frame_type >> 4);
+        mgmt_subtype_mask = last_mgmt_subtype_mask | BIT(frame_type >> 4);
     } else {
         /* clear mgmt_subtype_mask */
-        last_mgmt_subtype_mask &= ~BIT(frame_type >> 4);
+        mgmt_subtype_mask = last_mgmt_subtype_mask & ~BIT(frame_type >> 4);
     }
-    mgmt_subtype_mask = last_mgmt_subtype_mask;
+    PRINTM(MIOCTL, "mgmt_subtype_mask=0x%x last_mgmt_subtype_mask=0x%x\n",
+           mgmt_subtype_mask, last_mgmt_subtype_mask);
+    if (mgmt_subtype_mask != last_mgmt_subtype_mask) {
 
-    /* Notify driver that a mgmt frame type was registered. Note that this
-       callback may not sleep, and cannot run concurrently with itself. */
-    status = woal_reg_rx_mgmt_ind(priv, MLAN_ACT_SET,
-                                  &mgmt_subtype_mask, MOAL_NO_WAIT);
+        last_mgmt_subtype_mask = mgmt_subtype_mask;
+        /* Notify driver that a mgmt frame type was registered. * Note that
+           this callback may not sleep, and cannot run * concurrently with
+           itself. */
+        status = woal_reg_rx_mgmt_ind(priv, MLAN_ACT_SET,
+                                      &mgmt_subtype_mask, MOAL_NO_WAIT);
+    }
 
     LEAVE();
 }
@@ -1058,6 +1094,9 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
                       const u8 * buf, size_t len,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
                       bool no_cck,
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+                      bool dont_wait_for_ack,
 #endif
                       u64 * cookie)
 {
@@ -1092,6 +1131,11 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
        receive action frame from peer device */
     framectrl = ((const struct ieee80211_mgmt *) buf)->frame_control;
     PRINTM(MIOCTL, "Mgmt: framectrl=0x%x\n", framectrl);
+    if ((GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP) &&
+        (framectrl == IEEE80211_STYPE_PROBE_RESP)) {
+        PRINTM(MIOCTL, "Skip send probe_resp in GO/UAP mode\n");
+        goto done;
+    }
 #if defined(WIFI_DIRECT_SUPPORT)
 #if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
     if ((priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT) &&
@@ -1115,6 +1159,10 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
             }
             priv->phandle->remain_on_channel = MFALSE;
         }
+#ifdef STA_CFG80211
+                /** cancel pending scan */
+        woal_cancel_scan(priv, MOAL_IOCTL_WAIT);
+#endif
         duration = wait;
         if (!wait)
             duration = MGMT_TX_DEFAULT_WAIT_TIME;
@@ -1185,7 +1233,7 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
         atomic_inc(&priv->phandle->tx_pending);
         queue_work(priv->phandle->workqueue, &priv->phandle->main_work);
 
-        /* delay 20ms to guarantee the packet has been already tx'ed becuase if
+        /* delay 20ms to guarantee the packet has been already tx'ed becuase if 
            we call cfg80211_mgmt_tx_status() immediately, then wpa_supplicant
            will call cancel_remain_on_channel(), which may affect the mgmt
            frame tx */
@@ -1239,10 +1287,10 @@ woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id)
     return NULL;
 }
 
-/**
+/** 
  *  @brief This function returns priv
  *  based on mgmt ie index
- *
+ *  
  *  @param handle    A pointer to moal_handle
  *  @param index     mgmt ie index
  *
@@ -1273,8 +1321,8 @@ woal_get_priv_by_mgmt_index(moal_handle * handle, t_u16 index)
  * @param assocresp_ies_data    Assoc resp ie
  * @param assocresp_index       The index for assoc resp when auto index
  * @param probereq_ies_data     Probe req ie
- * @param probereq_index        The index for probe req when auto index *
- *
+ * @param probereq_index        The index for probe req when auto index * 
+ * 
  * @return              0 -- success, otherwise fail
  */
 static int
@@ -1407,27 +1455,55 @@ woal_cfg80211_custom_ie(moal_private * priv,
  * @param ie              Pointer to IEs
  * @param len             Total length of ie
  * @param ie_out		  Pointer to out IE buf
+ * @param wps_flag	      flag for wps/p2p 		  
  *
  * @return                out IE length
  */
 static t_u16
-woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out)
+woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out, t_u8 wps_flag)
 {
     int left_len = len;
     const t_u8 *pos = ie;
     int length;
     t_u8 id = 0;
     t_u16 out_len = 0;
+    IEEEtypes_VendorSpecific_t *pVendorIe = NULL;
+    const u8 wps_oui[4] = { 0x00, 0x50, 0xf2, 0x04 };
+    const u8 p2p_oui[4] = { 0x50, 0x6f, 0x9a, 0x09 };
+    const u8 wfd_oui[4] = { 0x50, 0x6f, 0x9a, 0x0a };
+    const t_u8 wmm_oui[4] = { 0x00, 0x50, 0xf2, 0x02 };
 
-    /* ERP_INFO and RSN IE will be fileter out */
+    /* ERP_INFO/EXTENDED_SUPPORT_RATES/HT_CAPABILITY/HT_OPERATION/WMM and
+       WPS/P2P/WFD IE will be fileter out */
     while (left_len >= 2) {
         length = *(pos + 1);
         id = *pos;
         if ((length + 2) > left_len)
             break;
         switch (id) {
+        case EXTENDED_SUPPORTED_RATES:
         case WLAN_EID_ERP_INFO:
-        case RSN_IE:
+        case HT_CAPABILITY:
+        case HT_OPERATION:
+            break;
+        case VENDOR_SPECIFIC_221:
+            /* filter out wmm ie */
+            pVendorIe = (IEEEtypes_VendorSpecific_t *) pos;
+            if (!memcmp(pVendorIe->vend_hdr.oui, wmm_oui, sizeof(wmm_oui)))
+                break;
+            if (wps_flag) {
+                /* filter out wps/p2p ie */
+                pVendorIe = (IEEEtypes_VendorSpecific_t *) pos;
+                if (memcmp(pVendorIe->vend_hdr.oui, wps_oui, sizeof(wps_oui)) &&
+                    memcmp(pVendorIe->vend_hdr.oui, p2p_oui, sizeof(p2p_oui)) &&
+                    memcmp(pVendorIe->vend_hdr.oui, wfd_oui, sizeof(wfd_oui))) {
+                    memcpy(ie_out + out_len, pos, length + 2);
+                    out_len += length + 2;
+                }
+            } else {
+                memcpy(ie_out + out_len, pos, length + 2);
+                out_len += length + 2;
+            }
             break;
         default:
             memcpy(ie_out + out_len, pos, length + 2);
@@ -1451,9 +1527,9 @@ woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out)
  * @param assocresp_ies         A pointer to probe resp ies
  * @param assocresp_ies_len     Assoc resp ies length
  * @param probereq_ies          A pointer to probe req ies
- * @param probereq_ies_len      Probe req ies length *
+ * @param probereq_ies_len      Probe req ies length * 
  * @param mask					Mgmt frame mask
- *
+ * 
  * @return                      0 -- success, otherwise fail
  */
 int
@@ -1473,71 +1549,77 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
     custom_ie *probereq_ies_data = NULL;
 
     /* static variables for mgmt frame ie auto-indexing */
-    static t_u16 beacon_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-    static t_u16 proberesp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-    static t_u16 assocresp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-    static t_u16 probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    t_u16 beacon_index = priv->beacon_index;
+    t_u16 proberesp_index = priv->proberesp_index;
+    t_u16 assocresp_index = priv->assocresp_index;
+    t_u16 probereq_index = priv->probereq_index;
     moal_private *pmpriv = NULL;
-    static t_u16 rsn_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-    const t_u8 *rsn_ie;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+    t_u16 beacon_wps_index = priv->beacon_wps_index;
+#endif
 
     ENTER();
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+    if (mask & MGMT_MASK_BEACON_WPS_P2P) {
+        if (!(beacon_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+            ret = -ENOMEM;
+            goto done;
+        }
+        memset(beacon_ies_data, 0x00, sizeof(custom_ie));
+        if (beacon_ies && beacon_ies_len) {
+            beacon_ies_data->ie_index = beacon_wps_index;
+            beacon_ies_data->mgmt_subtype_mask = MGMT_MASK_BEACON;
+            beacon_ies_data->ie_length = beacon_ies_len;
+            pos = beacon_ies_data->ie_buffer;
+            memcpy(pos, beacon_ies, beacon_ies_len);
+        } else {
+            /* clear the beacon wps ies */
+            if (beacon_wps_index > MAX_MGMT_IE_INDEX) {
+                PRINTM(MERROR, "Invalid beacon wps index for mgmt frame ie.\n");
+                goto done;
+            }
+
+            beacon_ies_data->ie_index = beacon_wps_index;
+            beacon_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+            beacon_ies_data->ie_length = 0;
+            beacon_wps_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+        }
+        if (MLAN_STATUS_SUCCESS !=
+            woal_cfg80211_custom_ie(priv, beacon_ies_data, &beacon_wps_index,
+                                    proberesp_ies_data, &proberesp_index,
+                                    assocresp_ies_data, &assocresp_index,
+                                    probereq_ies_data, &probereq_index)) {
+            ret = -EFAULT;
+        }
+        priv->beacon_wps_index = beacon_wps_index;
+        goto done;
+    }
+#endif
     if (mask & MGMT_MASK_BEACON) {
         if (!(beacon_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
             ret = -ENOMEM;
             goto done;
         }
-        if (beacon_ies && beacon_ies_len) {
-            rsn_ie =
-                woal_parse_ie_tlv((t_u8 *) beacon_ies, (int) beacon_ies_len,
-                                  RSN_IE);
-            if (rsn_ie) {
-                beacon_ies_data->ie_index = rsn_index;
-                beacon_ies_data->mgmt_subtype_mask =
-                    MGMT_MASK_BEACON | MGMT_MASK_PROBE_RESP |
-                    MGMT_MASK_ASSOC_RESP;
-                beacon_ies_data->ie_length = rsn_ie[1] + 2;
-                memcpy(beacon_ies_data->ie_buffer, rsn_ie, rsn_ie[1] + 2);
-                if (MLAN_STATUS_SUCCESS !=
-                    woal_cfg80211_custom_ie(priv, beacon_ies_data, &rsn_index,
-                                            NULL, &proberesp_index, NULL,
-                                            &assocresp_index, NULL,
-                                            &probereq_index)) {
-                    ret = -EFAULT;
-                    goto done;
-                }
-            }
-        } else {
-            /* clear rsn_ie */
-            if (rsn_index <= MAX_MGMT_IE_INDEX) {
-                beacon_ies_data->ie_index = rsn_index;
-                beacon_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
-                beacon_ies_data->ie_length = 0;
-                rsn_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-                if (MLAN_STATUS_SUCCESS !=
-                    woal_cfg80211_custom_ie(priv, beacon_ies_data, &rsn_index,
-                                            NULL, &proberesp_index, NULL,
-                                            &assocresp_index, NULL,
-                                            &probereq_index)) {
-                    ret = -EFAULT;
-                    goto done;
-                }
-            }
-        }
     }
 
     if (mask & MGMT_MASK_PROBE_RESP) {
-        if (!(proberesp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
-            ret = -ENOMEM;
-            goto done;
+                /** set or clear proberesp ie */
+        if (proberesp_ies_len || (!proberesp_ies_len && !beacon_ies_len)) {
+            if (!(proberesp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+                ret = -ENOMEM;
+                goto done;
+            }
         }
     }
 
     if (mask & MGMT_MASK_ASSOC_RESP) {
-        if (!(assocresp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
-            ret = -ENOMEM;
-            goto done;
+                /** set or clear assocresp ie */
+        if (assocresp_ies_len || (!assocresp_ies_len && !beacon_ies_len)) {
+            if (!(assocresp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+                ret = -ENOMEM;
+                goto done;
+            }
         }
     }
     if (mask & MGMT_MASK_PROBE_REQ) {
@@ -1553,15 +1635,27 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
             /* set the beacon ies */
             beacon_ies_data->ie_index = beacon_index;
             beacon_ies_data->mgmt_subtype_mask = MGMT_MASK_BEACON;
-            beacon_ies_data->mgmt_subtype_mask |= MGMT_MASK_ASSOC_RESP;
-            beacon_ies_data->ie_length = woal_filter_beacon_ies(beacon_ies,
-                                                                beacon_ies_len,
-                                                                beacon_ies_data->
-                                                                ie_buffer);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0) && !defined(COMPAT_WIRELESS)
+            beacon_ies_data->mgmt_subtype_mask |=
+                MGMT_MASK_ASSOC_RESP | MGMT_MASK_PROBE_RESP;
+            beacon_ies_data->ie_length =
+                woal_filter_beacon_ies(beacon_ies, beacon_ies_len,
+                                       beacon_ies_data->ie_buffer, MTRUE);
+#else
+            /* wpa_supplicant 1.x, will pass beacon_ie, probe_resp_ie and
+               asso_resp_ie wpa_supplicant 1.0/2.x, will pass beacon_ie,
+               prebe_resp_ie Only beacon_ie include RSN/WPA IE, other ies only
+               include wps/p2p ie */
+            beacon_ies_data->mgmt_subtype_mask |=
+                MGMT_MASK_ASSOC_RESP | MGMT_MASK_PROBE_RESP;
+            beacon_ies_data->ie_length =
+                woal_filter_beacon_ies(beacon_ies, beacon_ies_len,
+                                       beacon_ies_data->ie_buffer, MFALSE);
+#endif
         } else {
             /* clear the beacon ies */
             if (beacon_index > MAX_MGMT_IE_INDEX) {
-                PRINTM(MERROR, "Invalid beacon index for mgmt frame ie.\n");
+                PRINTM(MINFO, "Invalid beacon index for mgmt frame ie.\n");
                 goto done;
             }
 
@@ -1670,9 +1764,14 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
         ret = -EFAULT;
         goto done;
     }
+    if (beacon_ies_data)
+        priv->beacon_index = beacon_index;
+    if (assocresp_ies_data)
+        priv->assocresp_index = assocresp_index;
+    if (proberesp_ies_data)
+        priv->proberesp_index = proberesp_index;
     if (probereq_ies_data)
         priv->probereq_index = probereq_index;
-
   done:
     if (beacon_ies_data)
         kfree(beacon_ies_data);
@@ -1680,8 +1779,61 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
         kfree(proberesp_ies_data);
     if (assocresp_ies_data)
         kfree(assocresp_ies_data);
+    if (probereq_ies_data)
+        kfree(probereq_ies_data);
 
     LEAVE();
 
     return ret;
+}
+
+/**
+ *  @brief Sets up the CFG802.11 specific HT capability fields
+ *  with default values
+ *
+ *  @param ht_info      A pointer to ieee80211_sta_ht_cap structure
+ *  @param dev_cap      Device capability informations
+ *  @param mcs_set      Device MCS sets
+ *
+ *  @return             N/A
+ */
+void
+woal_cfg80211_setup_ht_cap(struct ieee80211_sta_ht_cap *ht_info,
+                           t_u32 dev_cap, t_u8 * mcs_set)
+{
+    ENTER();
+
+    ht_info->ht_supported = true;
+    ht_info->ampdu_factor = 0x3;
+    ht_info->ampdu_density = 0;
+
+    memset(&ht_info->mcs, 0, sizeof(ht_info->mcs));
+    ht_info->cap = 0;
+    if (mcs_set)
+        memcpy(ht_info->mcs.rx_mask, mcs_set, sizeof(ht_info->mcs.rx_mask));
+    if (dev_cap & MBIT(8))      /* 40Mhz intolarance enabled */
+        ht_info->cap |= IEEE80211_HT_CAP_40MHZ_INTOLERANT;
+    if (dev_cap & MBIT(17))     /* Channel width 20/40Mhz support */
+        ht_info->cap |= IEEE80211_HT_CAP_SUP_WIDTH_20_40;
+    if ((dev_cap >> 20) & 0x03) /* Delayed ACK supported */
+        ht_info->cap |= IEEE80211_HT_CAP_DELAY_BA;
+    if (dev_cap & MBIT(22))     /* Rx LDPC supported */
+        ht_info->cap |= IEEE80211_HT_CAP_LDPC_CODING;
+    if (dev_cap & MBIT(23))     /* Short GI @ 20Mhz supported */
+        ht_info->cap |= IEEE80211_HT_CAP_SGI_20;
+    if (dev_cap & MBIT(24))     /* Short GI @ 40Mhz supported */
+        ht_info->cap |= IEEE80211_HT_CAP_SGI_40;
+    if (dev_cap & MBIT(25))     /* Tx STBC supported */
+        ht_info->cap |= IEEE80211_HT_CAP_TX_STBC;
+    if (dev_cap & MBIT(26))     /* Rx STBC supported */
+        ht_info->cap |= IEEE80211_HT_CAP_RX_STBC;
+    if (dev_cap & MBIT(27))     /* MIMO PS supported */
+        ht_info->cap |= IEEE80211_HT_CAP_SM_PS;
+    if (dev_cap & MBIT(29))     /* Green field supported */
+        ht_info->cap |= IEEE80211_HT_CAP_GRN_FLD;
+    if (dev_cap & MBIT(31))     /* MAX AMSDU supported */
+        ht_info->cap |= IEEE80211_HT_CAP_MAX_AMSDU;
+    ht_info->mcs.tx_params = IEEE80211_HT_MCS_TX_DEFINED;
+
+    LEAVE();
 }

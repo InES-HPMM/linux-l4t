@@ -44,6 +44,16 @@ endif
 # Compiler Flags
 #############################################################################
 
+ifeq ($(CONFIG_DEBUG),1)
+	EXTRA_CFLAGS += -DDEBUG_LEVEL1
+endif
+
+ifeq ($(CONFIG_DEBUG),2)
+	EXTRA_CFLAGS += -DDEBUG_LEVEL1
+	EXTRA_CFLAGS += -DDEBUG_LEVEL2
+	DBG=	-dbg
+endif
+
 EXTRA_CFLAGS += -Idrivers/net/wireless/sd8797/mlan
 EXTRA_CFLAGS += -DLINUX
 EXTRA_CFLAGS += -DFPNUM='"69"'

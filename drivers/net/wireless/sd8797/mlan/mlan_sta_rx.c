@@ -63,7 +63,7 @@ typedef struct
 /**
  *  @brief This function processes received packet and forwards it
  *  		to kernel/upper layer
- *
+ *  
  *  @param pmadapter A pointer to mlan_adapter
  *  @param pmbuf     A pointer to mlan_buffer which includes the received packet
  *
@@ -124,8 +124,8 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
                 appletalk_aarp_type, sizeof(appletalk_aarp_type)) &&
          memcmp(pmadapter, &prx_pkt->rfc1042_hdr.snap_type,
                 ipx_snap_type, sizeof(ipx_snap_type)))) {
-        /*
-         *  Replace the 803 header and rfc1042 header (llc/snap) with an
+        /* 
+         *  Replace the 803 header and rfc1042 header (llc/snap) with an 
          *    EthernetII header, keep the src/dst and snap_type (ethertype).
          *  The firmware only passes up SNAP frames converting
          *    all RX Data from 802.11 to 802.2/LLC/SNAP frames.
@@ -144,7 +144,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
         memcpy(pmadapter, peth_hdr->dest_addr, prx_pkt->eth803_hdr.dest_addr,
                sizeof(peth_hdr->dest_addr));
 
-        /* Chop off the RxPD + the excess memory from the 802.2/llc/snap header
+        /* Chop off the RxPD + the excess memory from the 802.2/llc/snap header 
            that was removed. */
         hdr_chop = (t_u32) ((t_ptr) peth_hdr - (t_ptr) prx_pd);
     } else {
@@ -172,6 +172,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);
+    PRINTM_NETINTF(MDATA, priv);
     PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
@@ -192,7 +193,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
 
 /**
  *   @brief This function processes the received buffer
- *
+ *     
  *   @param adapter A pointer to mlan_adapter
  *   @param pmbuf     A pointer to the received buffer
  *
@@ -250,7 +251,7 @@ wlan_ops_sta_process_rx_packet(IN t_void * adapter, IN pmlan_buffer pmbuf)
         goto done;
     }
 
-    /*
+    /* 
      * If the packet is not an unicast packet then send the packet
      * directly to os. Don't pass thru rx reordering
      */

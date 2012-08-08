@@ -45,6 +45,7 @@
 #define MGMT_MASK_PROBE_REQ             0x10
 #define MGMT_MASK_PROBE_RESP            0x20
 #define MGMT_MASK_BEACON                0x100
+#define MGMT_MASK_BEACON_WPS_P2P        0x8000
 
 /**
  * If multiple wiphys are registered e.g. a regular netdev with
@@ -121,36 +122,14 @@ int woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0) || defined(COMPAT_WIRELESS)
                           bool no_cck,
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+                          bool dont_wait_for_ack,
+#endif
                           u64 * cookie);
 
 extern struct ieee80211_supported_band cfg80211_band_2ghz;
 extern struct ieee80211_supported_band cfg80211_band_5ghz;
 extern const u32 cfg80211_cipher_suites[10];
-
-typedef struct _monitor_iface
-{
-    /* The priv data of interface on which the monitor iface is based */
-    moal_private *priv;
-    struct wireless_dev wdev;
-    int radiotap_enabled;
-    /* The net_device on which the monitor iface is based. */
-    struct net_device *base_ndev;
-    struct net_device *mon_ndev;
-    char ifname[IFNAMSIZ];
-    int flag;
-} monitor_iface;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,37) || defined(COMPAT_WIRELESS)
-struct net_device *woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
-                                                  char *name,
-                                                  enum nl80211_iftype type,
-                                                  u32 * flags,
-                                                  struct vif_params *params);
-#else
-int woal_cfg80211_add_virtual_intf(struct wiphy *wiphy,
-                                   char *name, enum nl80211_iftype type,
-                                   u32 * flags, struct vif_params *params);
-#endif
-int woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev);
 
 #if defined(WIFI_DIRECT_SUPPORT)
 /** Define kernel version for wifi direct */
@@ -163,6 +142,15 @@ int woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev);
 /** Define for remain on channel duration timer */
 #define MAX_REMAIN_ON_CHANNEL_DURATION      (1000 * 5)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+int woal_cfg80211_add_beacon(struct wiphy *wiphy,
+                             struct net_device *dev,
+                             struct cfg80211_ap_settings *params);
+
+int woal_cfg80211_set_beacon(struct wiphy *wiphy,
+                             struct net_device *dev,
+                             struct cfg80211_beacon_data *params);
+#else
 int woal_cfg80211_add_beacon(struct wiphy *wiphy,
                              struct net_device *dev,
                              struct beacon_parameters *params);
@@ -170,6 +158,7 @@ int woal_cfg80211_add_beacon(struct wiphy *wiphy,
 int woal_cfg80211_set_beacon(struct wiphy *wiphy,
                              struct net_device *dev,
                              struct beacon_parameters *params);
+#endif
 
 int woal_cfg80211_del_beacon(struct wiphy *wiphy, struct net_device *dev);
 
@@ -200,4 +189,7 @@ int woal_cfg80211_mgmt_frame_ie(moal_private * priv,
                                 size_t assocresp_ies_len,
                                 const t_u8 * probereq_ies,
                                 size_t probereq_ies_len, t_u16 mask);
+
+void woal_cfg80211_setup_ht_cap(struct ieee80211_sta_ht_cap *ht_info,
+                                t_u32 dev_cap, t_u8 * mcs_set);
 #endif /* _MOAL_CFG80211_H_ */

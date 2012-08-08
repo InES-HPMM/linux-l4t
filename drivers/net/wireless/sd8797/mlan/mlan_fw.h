@@ -133,6 +133,10 @@ extern t_u8 AdhocRates_A[A_SUPPORTED_RATES];
 
 /** WEP Key index mask */
 #define HostCmd_WEP_KEY_INDEX_MASK              0x3fff
+/** Length of WEP 40 bit key */
+#define WEP_40_BIT_LEN  5
+/** Length of WEP 104 bit key */
+#define WEP_104_BIT_LEN 13
 
 /** Key information enabled */
 #define KEY_INFO_ENABLED        0x01
@@ -146,6 +150,7 @@ typedef enum _KEY_TYPE_ID
     /** Key type : AES */
     KEY_TYPE_ID_AES,
     KEY_TYPE_ID_WAPI,
+    KEY_TYPE_ID_AES_CMAC,
 } KEY_TYPE_ID;
 
 /** Key Info flag for multicast key */
@@ -174,13 +179,18 @@ typedef enum _KEY_INFO_AES
 {
     KEY_INFO_AES_MCAST = 0x01,
     KEY_INFO_AES_UNICAST = 0x02,
-    KEY_INFO_AES_ENABLED = 0x04
+    KEY_INFO_AES_ENABLED = 0x04,
+    KEY_INFO_AES_MCAST_IGTK = 0x400,
 } KEY_INFO_AES;
 
 /** WPA AES key length */
 #define WPA_AES_KEY_LEN                 16
 /** WPA TKIP key length */
 #define WPA_TKIP_KEY_LEN                32
+/** WPA AES IGTK key length */
+#define CMAC_AES_KEY_LEN                16
+/** IGTK key length */
+#define WPA_IGTK_KEY_LEN                16
 
 /** WAPI key length */
 #define WAPI_KEY_LEN            50
@@ -201,11 +211,11 @@ typedef enum _KEY_INFO_WAPI
 /** The number of times to try when polling for status bits */
 #define MAX_POLL_TRIES			100
 
-/** The number of times to try when waiting for downloaded firmware to
+/** The number of times to try when waiting for downloaded firmware to 
      become active when multiple interface is present */
 #define MAX_MULTI_INTERFACE_POLL_TRIES  1000
 
-/** The number of times to try when waiting for downloaded firmware to
+/** The number of times to try when waiting for downloaded firmware to 
      become active. (polling the scratch register). */
 #define MAX_FIRMWARE_POLL_TRIES		100
 
@@ -857,6 +867,12 @@ typedef enum _WLAN_802_11_WEP_STATUS
 /** Host Command ID : OTP user data */
 #define HostCmd_CMD_OTP_READ_USER_DATA          0x0114
 
+/** Host Command ID: HS wakeup reason */
+#define HostCmd_CMD_HS_WAKEUP_REASON         0x0116
+
+/** Host Command ID: reject addba request */
+#define HostCmd_CMD_REJECT_ADDBA_REQ         0x0119
+
 /** Enhanced PS modes */
 typedef enum _ENH_PS_MODES
 {
@@ -1124,6 +1140,9 @@ typedef enum _ENH_PS_MODES
 /** Event ID: TX data pause event */
 #define EVENT_TX_DATA_PAUSE                  0x00000055
 
+/** Event ID: SAD Report */
+#define EVENT_SAD_REPORT                     0x00000066
+
 /** Event ID mask */
 #define EVENT_ID_MASK                   0xffff
 
@@ -1296,22 +1315,22 @@ typedef MLAN_PACK_START struct _UapTxPD
 /** RxPD Descriptor */
 typedef MLAN_PACK_START struct _UapRxPD
 {
-        /** BSS Type */
+    /** BSS Type */
     t_u8 bss_type;
-        /** BSS number*/
+    /** BSS number*/
     t_u8 bss_num;
-        /** Rx packet length */
+    /** Rx packet length */
     t_u16 rx_pkt_length;
-        /** Rx packet offset */
+    /** Rx packet offset */
     t_u16 rx_pkt_offset;
-        /** Rx packet type */
+    /** Rx packet type */
     t_u16 rx_pkt_type;
     /** Sequence number */
     t_u16 seq_num;
     /** Packet Priority */
     t_u8 priority;
-    /** reserved */
-    t_u8 reserved1;
+     /** Reserved */
+    t_u8 reserved;
 } MLAN_PACK_END UapRxPD, *PUapRxPD;
 
 /** Fixed size of station association event */
@@ -1467,7 +1486,15 @@ typedef MLAN_PACK_START struct _ChanScanMode_t
 {
 #ifdef BIG_ENDIAN_SUPPORT
     /** Reserved */
-    t_u8 reserved_2_7:6;
+    t_u8 reserved_6_7:2;
+    /** First channel in scan */
+    t_u8 first_chan:1;
+    /** Enable hidden ssid report */
+    t_u8 hidden_ssid_report:1;
+    /** Enable probe response timeout */
+    t_u8 rsp_timeout_en:1;
+    /** Multidomain scan mode */
+    t_u8 multidomain_scan:1;
     /** Disble channel filtering flag */
     t_u8 disable_chan_filt:1;
     /** Channel scan mode passive flag */
@@ -1477,8 +1504,16 @@ typedef MLAN_PACK_START struct _ChanScanMode_t
     t_u8 passive_scan:1;
     /** Disble channel filtering flag */
     t_u8 disable_chan_filt:1;
+    /** Multidomain scan mode */
+    t_u8 multidomain_scan:1;
+    /** Enable probe response timeout */
+    t_u8 rsp_timeout_en:1;
+    /** Enable hidden ssid report */
+    t_u8 hidden_ssid_report:1;
+    /** First channel in scan */
+    t_u8 first_chan:1;
     /** Reserved */
-    t_u8 reserved_2_7:6;
+    t_u8 reserved_6_7:2;
 #endif
 } MLAN_PACK_END ChanScanMode_t;
 
@@ -1714,6 +1749,19 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_RsnParamSet_t
 /** Key_param_set fixed length */
 #define KEYPARAMSET_FIXED_LEN 6
 
+/** PN size for PMF IGTK */
+#define IGTK_PN_SIZE            8
+/** WPA AES IGTK key length */
+#define CMAC_AES_KEY_LEN        16
+/** cmac_aes_param */
+typedef MLAN_PACK_START struct _cmac_param
+{
+    /** IGTK pn */
+    t_u8 ipn[IGTK_PN_SIZE];
+    /** aes key */
+    t_u8 key[CMAC_AES_KEY_LEN];
+} MLAN_PACK_END cmac_param;
+
 /** MrvlIEtype_KeyParamSet_t */
 typedef MLAN_PACK_START struct _MrvlIEtype_KeyParamSet_t
 {
@@ -1721,7 +1769,7 @@ typedef MLAN_PACK_START struct _MrvlIEtype_KeyParamSet_t
     t_u16 type;
     /** Length of Payload */
     t_u16 length;
-    /** Type of Key: WEP=0, TKIP=1, AES=2 */
+    /** Type of Key: WEP=0, TKIP=1, AES=2 WAPI=3 AES_CMAC=4 */
     t_u16 key_type_id;
     /** Key Control Info specific to a key_type_id */
     t_u16 key_info;
@@ -1922,7 +1970,7 @@ typedef enum _sleep_resp_ctrl
 } sleep_resp_ctrl;
 
 /** Structure definition for the new ieee power save parameters*/
-typedef struct __ps_param
+typedef MLAN_PACK_START struct __ps_param
 {
       /** Null packet interval */
     t_u16 null_pkt_interval;
@@ -1938,21 +1986,21 @@ typedef struct __ps_param
     t_u16 mode;
      /** Delay to PS in milliseconds */
     t_u16 delay_to_ps;
-} ps_param;
+} MLAN_PACK_END ps_param;
 
 /** Structure definition for the new auto deep sleep command */
-typedef struct __auto_ds_param
+typedef MLAN_PACK_START struct __auto_ds_param
 {
      /** Deep sleep inactivity timeout */
     t_u16 deep_sleep_timeout;
-} auto_ds_param;
+} MLAN_PACK_END auto_ds_param;
 
 /** Structure definition for sleep confirmation in the new ps command */
-typedef struct __sleep_confirm_param
+typedef MLAN_PACK_START struct __sleep_confirm_param
 {
      /** response control 0x00 - response not needed, 0x01 - response needed */
     t_u16 resp_ctrl;
-} sleep_confirm_param;
+} MLAN_PACK_END sleep_confirm_param;
 
 /** bitmap for get auto deepsleep */
 #define BITMAP_AUTO_DS         0x01
@@ -1963,13 +2011,13 @@ typedef struct __sleep_confirm_param
 /** bitmap for uap DTIM PS */
 #define BITMAP_UAP_DTIM_PS     0x200
 /** Structure definition for the new ieee power save parameters*/
-typedef struct _auto_ps_param
+typedef MLAN_PACK_START struct _auto_ps_param
 {
     /** bitmap for enable power save mode */
     t_u16 ps_bitmap;
     /* auto deep sleep parameter, sta power save parameter uap inactivity
        parameter uap DTIM parameter */
-} auto_ps_param;
+} MLAN_PACK_END auto_ps_param;
 
 /** fix size for auto ps */
 #define AUTO_PS_FIX_SIZE    4
@@ -2284,10 +2332,10 @@ typedef MLAN_PACK_START struct _AdHoc_BssDesc_t
     /** Supported data rates */
     t_u8 data_rates[HOSTCMD_SUPPORTED_RATES];
 
-    /*
+    /* 
      *  DO NOT ADD ANY FIELDS TO THIS STRUCTURE.
-     *  It is used in the Adhoc join command and will cause a
-     *  binary layout mismatch with the firmware
+     *  It is used in the Adhoc join command and will cause a 
+     *  binary layout mismatch with the firmware 
      */
 } MLAN_PACK_END AdHoc_BssDesc_t;
 
@@ -2559,11 +2607,11 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_RF_TX_POWER
     /** Action */
     t_u16 action;
     /** Current power level */
-    t_u16 current_level;
+    t_s16 current_level;
     /** Maximum power */
-    t_u8 max_power;
+    t_s8 max_power;
     /** Minimum power */
-    t_u8 min_power;
+    t_s8 min_power;
 } MLAN_PACK_END HostCmd_DS_802_11_RF_TX_POWER;
 
 /** Connection type infra */
@@ -2685,9 +2733,9 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEBody;
 #endif /* STA_SUPPORT */
 
-/*
- * This scan handle Country Information IE(802.11d compliant)
- * Define data structure for HostCmd_CMD_802_11_SCAN
+/* 
+ * This scan handle Country Information IE(802.11d compliant) 
+ * Define data structure for HostCmd_CMD_802_11_SCAN 
  */
 /** HostCmd_DS_802_11_SCAN */
 typedef MLAN_PACK_START struct _HostCmd_DS_802_11_SCAN
@@ -2698,9 +2746,9 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_SCAN
     t_u8 bssid[MLAN_MAC_ADDR_LENGTH];
     /** TLV buffer */
     t_u8 tlv_buffer[1];
-    /** MrvlIEtypes_SsIdParamSet_t      SsIdParamSet;
+    /** MrvlIEtypes_SsIdParamSet_t      SsIdParamSet; 
      *  MrvlIEtypes_ChanListParamSet_t  ChanListParamSet;
-     *  MrvlIEtypes_RatesParamSet_t     OpRateSet;
+     *  MrvlIEtypes_RatesParamSet_t     OpRateSet; 
      */
 } MLAN_PACK_END HostCmd_DS_802_11_SCAN;
 
@@ -2938,6 +2986,18 @@ typedef MLAN_PACK_START struct _HostCmd_DS_11N_CFG
     t_u16 misc_config;
 } MLAN_PACK_END HostCmd_DS_11N_CFG;
 
+/** HostCmd_DS_11N_CFG */
+typedef MLAN_PACK_START struct _HostCmd_DS_REJECT_ADDBA_REQ
+{
+    /** Action */
+    t_u16 action;
+    /** Bit0    : host sleep activated
+     *  Bit1    : auto reconnect enabled
+     *  Others  : reserved
+     */
+    t_u32 conditions;
+} MLAN_PACK_END HostCmd_DS_REJECT_ADDBA_REQ;
+
 /** HostCmd_DS_TXBUF_CFG*/
 typedef MLAN_PACK_START struct _HostCmd_DS_TXBUF_CFG
 {
@@ -3023,15 +3083,15 @@ typedef MLAN_PACK_START struct
 /**
  *  @brief Firmware command structure to retrieve the firmware WMM status.
  *
- *  Used to retrieve the status of each WMM AC Queue in TLV
+ *  Used to retrieve the status of each WMM AC Queue in TLV 
  *    format (MrvlIEtypes_WmmQueueStatus_t) as well as the current WMM
- *    parameter IE advertised by the AP.
- *
+ *    parameter IE advertised by the AP.  
+ *  
  *  Used in response to a EVENT_WMM_STATUS_CHANGE event signaling
  *    a QOS change on one of the ACs or a change in the WMM Parameter in
  *    the Beacon.
  *
- *  TLV based command, byte arrays used for max sizing purpose. There are no
+ *  TLV based command, byte arrays used for max sizing purpose. There are no 
  *    arguments sent in the command, the TLVs are returned by the firmware.
  */
 typedef MLAN_PACK_START struct
@@ -3079,7 +3139,7 @@ typedef MLAN_PACK_START struct
     mlan_wmm_ac_e access_category;         /**< WMM_AC_BK(0) to WMM_AC_VO(3) */
     /** @brief MSDU lifetime expiry per 802.11e
      *
-     *   - Ignored if 0 on a set command
+     *   - Ignored if 0 on a set command 
      *   - Set to the 802.11e specified 500 TUs when defaulted
      */
     t_u16 msdu_lifetime_expiry;
@@ -3362,7 +3422,7 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_Cipher_t
     t_u8 group_cipher;
 } MLAN_PACK_END MrvlIEtypes_Cipher_t;
 
-/* rsnMode -
+/* rsnMode -    
  *      Bit 0    : No RSN
  *      Bit 1-2  : RFU
  *      Bit 3    : WPA
@@ -3580,6 +3640,22 @@ typedef MLAN_PACK_START struct _HostCmd_DS_OTP_USER_DATA
         /** User data */
     t_u8 user_data[1];
 } MLAN_PACK_END HostCmd_DS_OTP_USER_DATA;
+
+/** HostCmd_CMD_HS_WAKEUP_REASON */
+typedef MLAN_PACK_START struct _HostCmd_DS_HS_WAKEUP_REASON
+{
+    /** wakeupReason:
+      * 0: unknown 
+      * 1: Broadcast data matched
+      * 2: Multicast data matched
+      * 3: Unicast data matched
+      * 4: Maskable event matched
+      * 5. Non-maskable event matched
+      * 6: Non-maskable condition matched (EAPoL rekey)
+      * 7: Magic pattern matched
+      * Others: reserved. (set to 0) */
+    t_u16 wakeup_reason;
+} MLAN_PACK_END HostCmd_DS_HS_WAKEUP_REASON;
 
 /** HostCmd_DS_INACTIVITY_TIMEOUT_EXT */
 typedef MLAN_PACK_START struct _HostCmd_DS_INACTIVITY_TIMEOUT_EXT
@@ -4237,8 +4313,8 @@ typedef MLAN_PACK_START struct
     t_u8 switch_count;  /**< Number of TBTTs until the switch is to occur */
 } MLAN_PACK_END HostCmd_DS_802_11_CHAN_SW_ANN;
 
-/**
- * @brief Enumeration of measurement types, including max supported
+/**        
+ * @brief Enumeration of measurement types, including max supported 
  *        enum for 11h/11k
  */
 typedef MLAN_PACK_START enum _MeasType_t
@@ -4249,7 +4325,7 @@ typedef MLAN_PACK_START enum _MeasType_t
 
 } MLAN_PACK_END MeasType_t;
 
-/**
+/**        
  * @brief Mode octet of the measurement request element (7.3.2.21)
  */
 typedef MLAN_PACK_START struct
@@ -4272,7 +4348,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasReqMode_t;
 
-/**
+/**        
  * @brief Common measurement request structure (7.3.2.21.1 to 7.3.2.21.3)
  */
 typedef MLAN_PACK_START struct
@@ -4283,23 +4359,23 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasReqCommonFormat_t;
 
-/**
+/**        
  * @brief Basic measurement request structure (7.3.2.21.1)
  */
 typedef MeasReqCommonFormat_t MeasReqBasic_t;
 
-/**
+/**        
  * @brief CCA measurement request structure (7.3.2.21.2)
  */
 typedef MeasReqCommonFormat_t MeasReqCCA_t;
 
-/**
+/**        
  * @brief RPI measurement request structure (7.3.2.21.3)
  */
 typedef MeasReqCommonFormat_t MeasReqRPI_t;
 
-/**
- * @brief Union of the availble measurement request types.  Passed in the
+/**        
+ * @brief Union of the availble measurement request types.  Passed in the 
  *        driver/firmware interface.
  */
 typedef union
@@ -4310,7 +4386,7 @@ typedef union
 
 } MeasRequest_t;
 
-/**
+/**        
  * @brief Mode octet of the measurement report element (7.3.2.22)
  */
 typedef MLAN_PACK_START struct
@@ -4329,7 +4405,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptMode_t;
 
-/**
+/**        
  * @brief Basic measurement report (7.3.2.22.1)
  */
 typedef MLAN_PACK_START struct
@@ -4341,7 +4417,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptBasic_t;
 
-/**
+/**        
  * @brief CCA measurement report (7.3.2.22.2)
  */
 typedef MLAN_PACK_START struct
@@ -4353,7 +4429,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptCCA_t;
 
-/**
+/**        
  * @brief RPI measurement report (7.3.2.22.3)
  */
 typedef MLAN_PACK_START struct
@@ -4365,8 +4441,8 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptRPI_t;
 
-/**
- * @brief Union of the availble measurement report types.  Passed in the
+/**        
+ * @brief Union of the availble measurement report types.  Passed in the 
  *        driver/firmware interface.
  */
 typedef union
@@ -4377,7 +4453,7 @@ typedef union
 
 } MeasReport_t;
 
-/**
+/**        
  * @brief Structure passed to firmware to perform a measurement
  */
 typedef MLAN_PACK_START struct
@@ -4390,7 +4466,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END HostCmd_DS_MEASUREMENT_REQUEST;
 
-/**
+/**        
  * @brief Structure passed back from firmware with a measurement report,
  *        also can be to send a measurement report to another STA
  */
@@ -4574,6 +4650,8 @@ typedef struct MLAN_PACK_START _HostCmd_DS_COMMAND
         HostCmd_DS_AMSDU_AGGR_CTRL amsdu_aggr_ctrl;
         /** 11n configuration */
         HostCmd_DS_11N_CFG htcfg;
+        /** reject addba req conditions configuration */
+        HostCmd_DS_REJECT_ADDBA_REQ rejectaddbareq;
         /** 11n configuration */
         HostCmd_DS_TX_BF_CFG tx_bf_cfg;
         /** WMM status get */
@@ -4637,6 +4715,7 @@ typedef struct MLAN_PACK_START _HostCmd_DS_COMMAND
         HostCmd_DS_REMAIN_ON_CHANNEL remain_on_chan;
         HostCmd_DS_WIFI_DIRECT_MODE wifi_direct_mode;
 #endif
+        HostCmd_DS_HS_WAKEUP_REASON hs_wakeup_reason;
     } params;
 } MLAN_PACK_END HostCmd_DS_COMMAND;
 
