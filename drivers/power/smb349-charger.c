@@ -406,6 +406,19 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 	int ret;
 
 	if (!max_uA) {
+		/* Wait for SMB349 to debounce and get reset to POR when cable is unpluged */
+		msleep(50);
+
+		ret =  smb349_read(client, SMB349_STS_REG_C);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed in reading register"
+				"0x%02x\n", __func__, SMB349_STS_REG_C);
+			return ret;
+		}
+
+		if (ret & CHARGING)
+			return 0;
+
 		charger->state = stopped;
 		charger->chrg_type = NONE;
 	} else {
