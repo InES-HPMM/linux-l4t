@@ -158,6 +158,11 @@ static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
 static u8 power_config;
 static u8 display_config;
+
+#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
+static int tegra_split_mem_set;
+#endif
+
 /*
  * Storage for debug-macro.S's state.
  *
@@ -1698,10 +1703,12 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 #ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
-	tegra_carveout_start = TEGRA_ASIM_QT_CARVEOUT_START;
-	tegra_carveout_size = TEGRA_ASIM_QT_CARVEOUT_SIZE;
-	tegra_fb_start = TEGRA_ASIM_QT_FB_START;
-	tegra_fb_size = TEGRA_ASIM_QT_FB_SIZE;
+	if (tegra_split_mem_active()) {
+		tegra_carveout_start = TEGRA_ASIM_QT_CARVEOUT_START;
+		tegra_carveout_size = TEGRA_ASIM_QT_CARVEOUT_SIZE;
+		tegra_fb_start = TEGRA_ASIM_QT_FB_START;
+		tegra_fb_size = TEGRA_ASIM_QT_FB_SIZE;
+	}
 #endif
 
 	if (tegra_fb_size)
@@ -2051,4 +2058,17 @@ static int __init asim_enet_init(void)
 rootfs_initcall(asim_enet_init);
 #endif
 
+#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
+int tegra_split_mem_active(void)
+{
+	return tegra_split_mem_set;
+}
+
+static int __init set_tegra_split_mem(char *options)
+{
+	tegra_split_mem_set = 1;
+	return 0;
+}
+early_param("tegra_split_mem", set_tegra_split_mem);
+#endif
 #endif
