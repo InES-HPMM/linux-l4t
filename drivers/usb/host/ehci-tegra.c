@@ -164,8 +164,6 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	struct urb *urb)
 {
-	usb_hcd_unmap_urb_for_dma(hcd, urb);
-	free_align_buffer(urb, hcd);
 
 	if (urb->transfer_dma) {
 		enum dma_data_direction dir;
@@ -175,6 +173,9 @@ static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 				urb->transfer_dma, urb->transfer_buffer_length,
 									   DMA_FROM_DEVICE);
 	}
+
+	usb_hcd_unmap_urb_for_dma(hcd, urb);
+	free_align_buffer(urb, hcd);
 }
 
 static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
