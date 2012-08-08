@@ -35,6 +35,7 @@
 
 #include "clock.h"
 #include "fuse.h"
+enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #include "dvfs.h"
 #include "iomap.h"
 #include "pm.h"
@@ -1301,6 +1302,8 @@ static int tegra12_bus_clk_set_rate(struct clk *c, unsigned long rate)
 	unsigned long parent_rate = clk_get_rate(c->parent);
 	int i;
 
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 	for (i = 1; i <= 4; i++) {
 		if (rate >= parent_rate / i) {
 			val &= ~(BUS_CLK_DIV_MASK << c->reg_shift);
@@ -1334,6 +1337,8 @@ static void tegra12_sbus_cmplx_init(struct clk *c)
 	/* Threshold must be an exact proper factor of low range parent,
 	   and both low/high range parents have 7.1 fractional dividers */
 	rate = clk_get_rate(c->u.system.sclk_low->parent);
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return;
 	if (c->u.system.threshold) {
 		BUG_ON(c->u.system.threshold > rate) ;
 		BUG_ON((rate % c->u.system.threshold) != 0);
@@ -1695,6 +1700,8 @@ static void tegra12_pll_clk_disable(struct clk *c)
 
 	val = clk_readl(c->reg);
 	val &= ~(PLL_BASE_BYPASS | PLL_BASE_ENABLE);
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return;
 	clk_writel(val, c->reg);
 }
 
@@ -1707,6 +1714,8 @@ static int tegra12_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
 
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 	if (c->flags & PLL_FIXED) {
 		int ret = 0;
 		if (rate != c->u.pll.fixed_rate) {
@@ -2134,6 +2143,8 @@ static int tegra12_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
 	const struct clk_pll_freq_table *sel = &cfg;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 
 	input_rate = clk_get_rate(c->parent);
 
@@ -2439,6 +2450,8 @@ static int tegra12_pllxc_clk_set_rate(struct clk *c, unsigned long rate)
 	const struct clk_pll_freq_table *sel = &cfg;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 
 	input_rate = clk_get_rate(c->parent);
 
@@ -2948,6 +2961,8 @@ static int tegra12_pll_div_clk_set_rate(struct clk *c, unsigned long rate)
 	unsigned long flags;
 
 	pr_debug("%s: %s %lu\n", __func__, c->name, rate);
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 	if (c->flags & DIV_U71) {
 		divider_u71 = clk_div71_get_divider(
 			parent_rate, rate, c->flags, ROUND_DIVIDER_UP);
@@ -3205,6 +3220,8 @@ static int tegra12_periph_clk_set_rate(struct clk *c, unsigned long rate)
 	int divider;
 	unsigned long parent_rate = clk_get_rate(c->parent);
 
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 	if (c->flags & DIV_U71) {
 		divider = clk_div71_get_divider(
 			parent_rate, rate, c->flags, ROUND_DIVIDER_UP);
@@ -3534,6 +3551,8 @@ static int tegra12_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	u32 div_value;
 	struct clk *p;
 
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
+		return 0;
 	/* The tegra12x memory controller has an interlock with the clock
 	 * block that allows memory shadowed registers to be updated,
 	 * and then transfer them to the main registers at the same
@@ -3867,6 +3886,8 @@ static int tegra12_clk_cbus_set_rate(struct clk *c, unsigned long rate)
 	bool dramp;
 
 	if (rate == 0)
+		return 0;
+	if (tegra_get_revision() == TEGRA_REVISION_QT)
 		return 0;
 	ret = clk_enable(c->parent);
 	if (ret) {
