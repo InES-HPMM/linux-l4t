@@ -194,6 +194,7 @@
 #define MXT_RESET_TIME		200	/* msec */
 #define MXT_RESET_NOCHGREAD	400	/* msec */
 #define MXT_FWRESET_TIME	1000	/* msec */
+#define MXT_WAKEUP_TIME		25	/* msec */
 
 /* Command to unlock bootloader */
 #define MXT_UNLOCK_CMD_MSB	0xaa
@@ -490,9 +491,11 @@ static int mxt_unlock_bootloader(struct mxt_data *data)
 static int mxt_read_reg(struct i2c_client *client,
 			u16 reg, u16 len, void *val)
 {
+	struct device *dev = &client->dev;
 	struct i2c_msg xfer[2];
 	u8 buf[2];
 	int ret;
+	u8 retry = 0;
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
@@ -509,11 +512,19 @@ static int mxt_read_reg(struct i2c_client *client,
 	xfer[1].len = len;
 	xfer[1].buf = val;
 
+retry_read:
 	ret = i2c_transfer(client->adapter, xfer, ARRAY_SIZE(xfer));
 	if (ret != ARRAY_SIZE(xfer)) {
-		dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
-			__func__, ret);
-		return -EIO;
+		if (!retry) {
+			dev_dbg(dev, "%s: i2c retry\n", __func__);
+			msleep(MXT_WAKEUP_TIME);
+			retry = 1;
+			goto retry_read;
+		} else {
+			dev_err(dev, "%s: i2c transfer failed (%d)\n",
+				__func__, ret);
+			return -EIO;
+		}
 	}
 
 	return 0;
@@ -521,15 +532,25 @@ static int mxt_read_reg(struct i2c_client *client,
 
 static int mxt_write_reg(struct i2c_client *client, u16 reg, u8 val)
 {
+	struct device *dev = &client->dev;
+	u8 retry = 0;
 	u8 buf[3];
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
 	buf[2] = val;
 
+retry_write:
 	if (i2c_master_send(client, buf, 3) != 3) {
-		dev_err(&client->dev, "%s: i2c send failed\n", __func__);
-		return -EIO;
+		if (!retry) {
+			dev_dbg(dev, "%s: i2c retry\n", __func__);
+			msleep(MXT_WAKEUP_TIME);
+			retry = 1;
+			goto retry_write;
+		} else {
+			dev_err(dev, "%s: i2c send failed\n", __func__);
+			return -EIO;
+		}
 	}
 
 	return 0;
