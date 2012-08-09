@@ -255,7 +255,7 @@ int balanced_throttle_register(struct balanced_throttle *bthrot)
 
 	mutex_lock(&bthrot_list_lock);
 	list_for_each_entry(dev, &bthrot_list, node) {
-		if (dev->id == bthrot->id) {
+		if (dev->tegra_cdev.id == bthrot->tegra_cdev.id) {
 			mutex_unlock(&bthrot_list_lock);
 			return -EINVAL;
 		}
@@ -276,7 +276,7 @@ int balanced_throttle_register(struct balanced_throttle *bthrot)
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	sprintf(name, "throttle_table%d", bthrot->id);
+	sprintf(name, "throttle_table%d", bthrot->tegra_cdev.id);
 	debugfs_create_file(name,0644, throttle_debugfs_root,
 				bthrot, &table_fops);
 #endif

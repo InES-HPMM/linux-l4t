@@ -18,6 +18,7 @@
 #define __MACH_THERMAL_H
 
 #include <linux/therm_est.h>
+#include <linux/thermal.h>
 
 #ifndef CONFIG_THERMAL
 #endif
@@ -27,14 +28,45 @@ enum thermal_device_id {
 	THERMAL_DEVICE_ID_NCT_EXT = 0x1,
 	THERMAL_DEVICE_ID_NCT_INT = 0x2,
 	THERMAL_DEVICE_ID_TSENSOR = 0x4,
-	THERMAL_DEVICE_ID_SKIN = 0x8,
+	THERMAL_DEVICE_ID_THERM_EST_SKIN = 0x8,
 };
 
 #define THERMAL_DEVICE_MAX	(4)
 
-enum balanced_throttle_id {
-	BALANCED_THROTTLE_ID_TJ,
-	BALANCED_THROTTLE_ID_SKIN,
+enum cooling_device_id {
+	CDEV_BTHROT_ID_TJ      = 0x00010000,
+	CDEV_BTHROT_ID_SKIN    = 0x00020000,
+	CDEV_EDPTABLE_ID_EDP   = 0x00030000,
+	CDEV_EDPTABLE_ID_EDP_0 = 0x00030000,
+	CDEV_EDPTABLE_ID_EDP_1 = 0x00030001,
+	CDEV_EDPTABLE_ID_EDP_2 = 0x00030002,
+	CDEV_EDPTABLE_ID_EDP_3 = 0x00030003,
+	CDEV_EDPTABLE_ID_EDP_4 = 0x00030004,
+};
+
+struct tegra_thermal_bind {
+	enum thermal_device_id tdev_id;
+	enum cooling_device_id cdev_id;
+	int type;
+	int (*get_trip_temp) (void *, long);
+	int (*get_trip_size) (void);
+	struct passive_params {
+		long trip_temp;
+		int tc1;
+		int tc2;
+		long passive_delay;
+	} passive;
+};
+
+/* All units in millicelsius */
+struct tegra_thermal_data {
+	enum thermal_device_id throttle_edp_device_id;
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+	long edp_offset;
+	long hysteresis_edp;
+#endif
+	long temp_throttle;
+	struct tegra_thermal_bind binds[];
 };
 
 struct skin_therm_est_subdevice {
@@ -42,27 +74,9 @@ struct skin_therm_est_subdevice {
 	long coeffs[HIST_LEN];
 };
 
-/* All units in millicelsius */
-struct tegra_thermal_data {
-	enum thermal_device_id shutdown_device_id;
-	long temp_shutdown;
-	enum thermal_device_id throttle_edp_device_id;
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	long edp_offset;
-	long hysteresis_edp;
-#endif
-	long temp_throttle;
-	int tc1;
-	int tc2;
-	long passive_delay;
-};
-
 struct tegra_skin_data {
 	enum thermal_device_id skin_device_id;
 	long temp_throttle_skin;
-	int tc1_skin;
-	int tc2_skin;
-	int passive_delay_skin;
 
 	long skin_temp_offset;
 	long skin_period;
@@ -84,6 +98,10 @@ struct tegra_thermal_device {
 	struct list_head node;
 };
 
+struct tegra_cooling_device {
+	enum cooling_device_id id;
+};
+
 struct throttle_table {
 	unsigned int cpu_freq;
 	int core_cap_level;
@@ -92,14 +110,11 @@ struct throttle_table {
 #define MAX_THROT_TABLE_SIZE	(32)
 
 struct balanced_throttle {
-	enum balanced_throttle_id id;
-
+	struct tegra_cooling_device tegra_cdev;
+	struct thermal_cooling_device *cdev;
+	struct list_head node;
 	int is_throttling;
 	int throttle_index;
-	struct thermal_cooling_device *cdev;
-
-	struct list_head node;
-
 	int throt_tab_size;
 	struct throttle_table throt_tab[MAX_THROT_TABLE_SIZE];
 };
