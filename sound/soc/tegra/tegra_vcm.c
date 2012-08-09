@@ -5,7 +5,7 @@
  * Copyright (C) 2010-2012 - NVIDIA, Corporation. All rights reserved.
  *
  * Based on code copyright/by:
- * Copyright (c) 2009-2010, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
  * Stephen Warren <swarren@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -85,6 +85,9 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 		mclk = 256 * srate;
 		break;
 	}
+
+	/* audio hub needs to be driven at 2x */
+	mclk *= 2;
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
