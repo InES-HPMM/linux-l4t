@@ -220,8 +220,8 @@ enum {
 #define _PTE_VACANT(addr)	(0)
 
 #ifdef	CONFIG_TEGRA_IOMMU_SMMU_LINEAR
-#undef	_PDE_VACANT(pdn)
-#undef	_PTE_VACANT(addr)
+#undef	_PDE_VACANT
+#undef	_PTE_VACANT
 #define	_PDE_VACANT(pdn)	(((pdn) << 10) | _PDE_ATTR)
 #define	_PTE_VACANT(addr)	(((addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
 #endif
