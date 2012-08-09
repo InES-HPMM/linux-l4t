@@ -230,13 +230,15 @@ static struct voltage_reg_map *find_vdd_map_entry(
 
 static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 {
-	int i, j, v, v_max;
+	int i, j, v, v_max, n;
 	const int *millivolts;
 	struct voltage_reg_map *m;
 
-	BUILD_BUG_ON(MAX_DVFS_FREQS >= MAX_CL_DVFS_VOLTAGES);
 	BUILD_BUG_ON(MAX_CL_DVFS_VOLTAGES > OUT_MASK + 1);
 	BUG_ON(!cld->safe_dvfs);
+
+	n = cld->safe_dvfs->num_freqs;
+	BUG_ON(n >= MAX_CL_DVFS_VOLTAGES);
 
 	millivolts = cld->safe_dvfs->millivolts;
 	v_max = cld->safe_dvfs->max_millivolts;
@@ -247,9 +249,9 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	cld->out_map[0] = find_vdd_map_entry(cld, v, true);
 	BUG_ON(!cld->out_map[0]);
 
-	for (i = 0, j = 1; i < MAX_DVFS_FREQS; i++) {
+	for (i = 0, j = 1; i < n; i++) {
 		for (;;) {
-			v += (v_max - v) / (MAX_CL_DVFS_VOLTAGES - j);
+			v += max(1, (v_max - v) / (MAX_CL_DVFS_VOLTAGES - j));
 			if (v >= millivolts[i])
 				break;
 
