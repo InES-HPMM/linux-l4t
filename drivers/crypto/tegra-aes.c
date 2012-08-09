@@ -142,10 +142,6 @@ struct tegra_aes_slot {
 	bool available;
 };
 
-static struct tegra_aes_slot ssk = {
-	.slot_num = SSK_SLOT_NUM,
-};
-
 struct tegra_aes_reqctx {
 	unsigned long mode;
 };
