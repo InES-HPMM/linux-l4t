@@ -512,6 +512,7 @@ static void __init tegra_dalmore_init(void)
 	dalmore_regulator_init();
 	dalmore_suspend_init();
 	dalmore_emc_init();
+	dalmore_panel_init();
 	tegra_release_bootloader_fb();
 	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
