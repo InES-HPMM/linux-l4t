@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -510,27 +510,17 @@ bool tegra_set_cpu_in_lp2(int cpu)
 	return last_cpu;
 }
 
-bool tegra_is_cpu_in_lp2(int cpu)
-{
-	bool in_lp2;
-
-	spin_lock(&tegra_lp2_lock);
-	in_lp2 = cpumask_test_cpu(cpu, &tegra_in_lp2);
-	spin_unlock(&tegra_lp2_lock);
-	return in_lp2;
-}
-
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	if (mode == TEGRA_SUSPEND_LP0) {
-		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE3,
-					   virt_to_phys(tegra_resume));
+		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE3,
+				  virt_to_phys(tegra_resume));
 	} else {
-		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE6,
-					   (TEGRA_RESET_HANDLER_BASE +
-					    tegra_cpu_reset_handler_offset));
+		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
+				  (TEGRA_RESET_HANDLER_BASE +
+				   tegra_cpu_reset_handler_offset));
 	}
 #endif
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -543,9 +533,9 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
-	tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE4,
-				   (TEGRA_RESET_HANDLER_BASE +
-				    tegra_cpu_reset_handler_offset));
+	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
+			  (TEGRA_RESET_HANDLER_BASE +
+			   tegra_cpu_reset_handler_offset));
 #endif
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
