@@ -679,7 +679,8 @@ static int bluesleep_probe(struct platform_device *pdev)
 free_wake_lock:
 	wake_lock_destroy(&bsi->wake_lock);
 free_bt_ext_wake:
-	gpio_free(bsi->ext_wake);
+	if (bsi->has_ext_wake)
+		gpio_free(bsi->ext_wake);
 free_bt_host_wake:
 	gpio_free(bsi->host_wake);
 free_bsi:
@@ -691,7 +692,8 @@ static int bluesleep_remove(struct platform_device *pdev)
 {
 	free_irq(bsi->host_wake_irq, NULL);
 	gpio_free(bsi->host_wake);
-	gpio_free(bsi->ext_wake);
+	if (bsi->has_ext_wake)
+		gpio_free(bsi->ext_wake);
 	wake_lock_destroy(&bsi->wake_lock);
 	kfree(bsi);
 	return 0;
