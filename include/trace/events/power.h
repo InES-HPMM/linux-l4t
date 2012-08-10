@@ -268,6 +268,20 @@ TRACE_EVENT(clock_set_parent,
 	TP_printk("%s parent=%s", __get_str(name), __get_str(parent_name))
 );
 
+DEFINE_EVENT(clock, clock_lock,
+
+	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
+
+	TP_ARGS(name, state, cpu_id)
+);
+
+DEFINE_EVENT(clock, clock_unlock,
+
+	TP_PROTO(const char *name, unsigned int state, unsigned int cpu_id),
+
+	TP_ARGS(name, state, cpu_id)
+);
+
 /*
  * The power domain events are used for power domains transitions
  */
