@@ -36,6 +36,7 @@ struct palmas_pmic;
 struct palmas_gpadc;
 struct palmas_resource;
 struct palmas_usb;
+struct palmas_rtc;
 
 struct palmas {
 	struct device *dev;
@@ -57,6 +58,7 @@ struct palmas {
 	struct palmas_gpadc *gpadc;
 	struct palmas_resource *resource;
 	struct palmas_usb *usb;
+	struct palmas_rtc *rtc;
 
 	/* GPIO MUXing */
 	u8 gpio_muxed;
@@ -423,6 +425,7 @@ enum usb_irq_events {
 /* helper macro to get correct slave number */
 #define PALMAS_BASE_TO_SLAVE(x)		((x >> 8) - 1)
 #define PALMAS_BASE_TO_REG(x, y)	((x & 0xff) + y)
+#define RTC_SLAVE			0
 
 /* Base addresses of IP blocks in Palmas */
 #define PALMAS_SMPS_DVS_BASE					0x20
