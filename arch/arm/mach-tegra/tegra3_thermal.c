@@ -27,7 +27,6 @@
 #include <linux/thermal.h>
 #include <linux/module.h>
 #include <mach/thermal.h>
-#include <mach/edp.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
 
@@ -44,10 +43,6 @@ static struct balanced_throttle *throttle_list;
 static int throttle_list_size;
 
 #define MAX_TEMP (120000)
-
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-static long edp_thermal_zone_val;
-#endif
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static int skin_devs_bitmap;
@@ -258,11 +253,8 @@ static void tegra_thermal_alert(void *data)
 	}
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-	tegra_get_cpu_edp_limits(&z, &zones_sz);
-
-/* edp table based off of tdiode measurements */
 #define EDP_TEMP_TJ(_index) (z[_index].temperature * 1000 + therm->edp_offset)
-
+	tegra_get_cpu_edp_limits(&z, &zones_sz);
 	if (temp_tj < EDP_TEMP_TJ(0)) {
 		lo_limit_edp_tj = temp_low_tj;
 		hi_limit_edp_tj = EDP_TEMP_TJ(0);
@@ -294,15 +286,6 @@ static void tegra_thermal_alert(void *data)
 	device->set_limits(device->data,
 				tj2dev(device, lo_limit_tj),
 				tj2dev(device, hi_limit_tj));
-
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	/* inform edp governor */
-	if (edp_thermal_zone_val != temp_tj) {
-		long temp_edp = (temp_tj - therm->edp_offset) / 1000;
-		tegra_edp_update_thermal_zone(temp_edp);
-		edp_thermal_zone_val = temp_tj;
-	}
-#endif
 }
 
 done:

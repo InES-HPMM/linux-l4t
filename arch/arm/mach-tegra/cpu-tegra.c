@@ -35,6 +35,7 @@
 #include <linux/cpu.h>
 
 #include <mach/edp.h>
+#include <mach/thermal.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
@@ -210,32 +211,60 @@ static unsigned int edp_governor_speed(unsigned int requested_speed)
 		return edp_limit;
 }
 
-int tegra_edp_update_thermal_zone(int temperature)
+int tegra_edp_get_trip_temp(void *data, long trip)
 {
-	int i;
-	int ret = 0;
-	int nlimits = cpu_edp_limits_size;
-	int index;
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+	return cpu_edp_limits[trip].temperature * 1000;
+}
+
+int tegra_edp_get_trip_size(void)
+{
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+	return cpu_edp_limits_size-1;
+}
+
+int tegra_edp_get_max_state(struct thermal_cooling_device *cdev,
+				unsigned long *max_state)
+{
+	*max_state = 1;
+	return 0;
+}
+
+/* Bitmask for which edp trip points have been breached */
+static int edp_state_mask;
+
+int tegra_edp_get_cur_state(struct thermal_cooling_device *cdev,
+				unsigned long *cur_state)
+{
+	struct tegra_cooling_device *tegra_cdev = cdev->devdata;
+	int index = tegra_cdev->id && 0xffff;
+	*cur_state = !!((1 << index) & edp_state_mask);
+	return 0;
+}
+
+int tegra_edp_set_cur_state(struct thermal_cooling_device *cdev,
+				unsigned long cur_state)
+{
+	struct tegra_cooling_device *tegra_cdev = cdev->devdata;
+	int index, i;
+
 
 	if (!cpu_edp_limits)
 		return -EINVAL;
 
-	index = nlimits - 1;
-
-	if (temperature < cpu_edp_limits[0].temperature) {
-		index = 0;
-	} else {
-		for (i = 0; i < (nlimits - 1); i++) {
-			if (temperature >= cpu_edp_limits[i].temperature &&
-			   temperature < cpu_edp_limits[i + 1].temperature) {
-				index = i + 1;
-				break;
-			}
-		}
-	}
-
 	mutex_lock(&tegra_cpu_lock);
-	edp_thermal_index = index;
+	index = tegra_cdev->id & 0xffff;
+
+	if (cur_state)
+		edp_state_mask |= 1 << index;
+	else
+		edp_state_mask &= ~(1 << index);
+
+	for (i=31; i>=0; i--)
+		if (edp_state_mask & (1 << i))
+			break;
+
+	edp_thermal_index = i + 1;
 
 	/* Update cpu rate if cpufreq (at least on cpu0) is already started;
 	   alter cpu dvfs table for this thermal zone if necessary */
@@ -247,9 +276,14 @@ int tegra_edp_update_thermal_zone(int temperature)
 	tegra_cpu_dvfs_alter(edp_thermal_index, &edp_cpumask, false, 0);
 	mutex_unlock(&tegra_cpu_lock);
 
-	return ret;
+	return 0;
 }
-EXPORT_SYMBOL_GPL(tegra_edp_update_thermal_zone);
+
+static struct thermal_cooling_device_ops tegra_edp_cooling_ops = {
+	.get_max_state = tegra_edp_get_max_state,
+	.get_cur_state = tegra_edp_get_cur_state,
+	.set_cur_state = tegra_edp_set_cur_state,
+};
 
 int tegra_system_edp_alarm(bool alarm)
 {
@@ -353,6 +387,16 @@ static struct notifier_block tegra_cpu_edp_notifier = {
 	.notifier_call = tegra_cpu_edp_notify,
 };
 
+static struct thermal_cooling_device *edp_cdev;
+static struct tegra_cooling_device edp_cooling_devices[] = {
+	{ .id = CDEV_EDPTABLE_ID_EDP_0 },
+	{ .id = CDEV_EDPTABLE_ID_EDP_1 },
+	{ .id = CDEV_EDPTABLE_ID_EDP_2 },
+	{ .id = CDEV_EDPTABLE_ID_EDP_3 },
+	{ .id = CDEV_EDPTABLE_ID_EDP_4 },
+};
+
+
 static void tegra_cpu_edp_init(bool resume)
 {
 	tegra_get_system_edp_limits(&system_edp_limits);
@@ -376,6 +420,17 @@ static void tegra_cpu_edp_init(bool resume)
 		register_hotcpu_notifier(&tegra_cpu_edp_notifier);
 		pr_info("cpu-tegra: init EDP limit: %u MHz\n", edp_limit/1000);
 	}
+
+	if (!edp_cdev) {
+		int i;
+		for (i=0; i<cpu_edp_limits_size-1; i++) {
+			edp_cdev = thermal_cooling_device_register(
+				"edp",
+				&edp_cooling_devices[i],
+				&tegra_edp_cooling_ops);
+		}
+	}
+
 }
 
 static void tegra_cpu_edp_exit(void)

@@ -42,9 +42,8 @@ struct system_edp_entry {
 };
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-
-
-int tegra_edp_update_thermal_zone(int temperature);
+int tegra_edp_get_trip_temp(void *, long trip);
+int tegra_edp_get_trip_size(void);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
 void tegra_init_system_edp_limits(unsigned int power_limit_mW);
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size);
@@ -57,8 +56,10 @@ static inline void tegra_init_cpu_edp_limits(int regulator_mA)
 {}
 static inline void tegra_init_system_edp_limits(int power_limit_mW)
 {}
-static inline int tegra_edp_update_thermal_zone(int temperature)
-{ return -1; }
+static inline int tegra_edp_get_trip_temp(void *data, long trip)
+{ return 0; }
+static inline int tegra_edp_get_trip_size(void)
+{ return 0; }
 static inline void tegra_get_cpu_edp_limits(struct tegra_edp_limits **limits,
 					    int *size)
 {}
