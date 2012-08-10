@@ -243,7 +243,7 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	millivolts = cld->safe_dvfs->dfll_millivolts;
 	v_max = millivolts[n - 1];
 
-	v = cld->soc_data->dfll_millivolts_min;
+	v = cld->dfll_data->millivolts_min;
 	BUG_ON(v > millivolts[0]);
 
 	cld->out_map[0] = find_vdd_map_entry(cld, v, true);
@@ -367,11 +367,11 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 		(param->cg_scale ? CL_DVFS_PARAMS_CG_SCALE : 0);
 	cl_dvfs_writel(cld, val, CL_DVFS_PARAMS);
 
-	cl_dvfs_writel(cld, cld->soc_data->tune0, CL_DVFS_TUNE0);
-	cl_dvfs_writel(cld, cld->soc_data->tune1, CL_DVFS_TUNE1);
+	cl_dvfs_writel(cld, cld->dfll_data->tune0, CL_DVFS_TUNE0);
+	cl_dvfs_writel(cld, cld->dfll_data->tune1, CL_DVFS_TUNE1);
 
 	/* configure droop (skipper 1) and scale (skipper 2) */
-	val = GET_DROOP_FREQ(cld->soc_data->dfll_droop_rate_min, cld->ref_rate);
+	val = GET_DROOP_FREQ(cld->dfll_data->droop_rate_min, cld->ref_rate);
 	val <<= CL_DVFS_DROOP_CTRL_MIN_FREQ_SHIFT;
 	BUG_ON(val > CL_DVFS_DROOP_CTRL_MIN_FREQ_MASK);
 	val |= (param->droop_cut_value << CL_DVFS_DROOP_CTRL_CUT_SHIFT);
@@ -379,7 +379,7 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
-	cld->dfll_rate_min = cld->soc_data->dfll_out_rate_min;
+	cld->dfll_rate_min = cld->dfll_data->out_rate_min;
 	cld->dfll_rate_min = ROUND_MIN_RATE(cld->dfll_rate_min, cld->ref_rate);
 
 	cld->last_req.freq = 0;
@@ -419,7 +419,7 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	int ret;
 
 	/* Check platform and SoC data, get i2c clock */
-	if (!cld->soc_data) {
+	if (!cld->dfll_data) {
 		pr_err("%s: SoC tuning data is not available\n", __func__);
 		return -EINVAL;
 	}
@@ -482,11 +482,11 @@ void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data)
 		c->u.dfll.cl_dvfs->p_data = data;
 }
 
-void tegra_cl_dvfs_set_soc_data(struct tegra_cl_dvfs_soc_data *data)
+void tegra_cl_dvfs_set_dfll_data(struct tegra_cl_dvfs_dfll_data *data)
 {
 	struct clk *c = tegra_get_clock_by_name(data->dfll_clk_name);
 	if (c && c->u.dfll.cl_dvfs)
-		c->u.dfll.cl_dvfs->soc_data = data;
+		c->u.dfll.cl_dvfs->dfll_data = data;
 }
 
 /*

@@ -107,11 +107,11 @@ static struct dvfs cpu_dvfs = {
 	.dvfs_rail	= &tegra11_dvfs_rail_vdd_cpu,
 };
 
-static struct tegra_cl_dvfs_soc_data cpu_dfll_data = {
+static struct tegra_cl_dvfs_dfll_data cpu_dfll_data = {
 		.dfll_clk_name	= "dfll_cpu",
 		.tune0		= 0x030201,
 		.tune1		= 0x000BB0AA,
-		.dfll_droop_rate_min = 640000000,
+		.droop_rate_min = 640000000,
 };
 
 /* Core DVFS tables */
@@ -301,7 +301,7 @@ static inline int get_cvb_voltage(int speedo,
 }
 
 static int __init get_cpu_nominal_mv_index(int speedo_id,
-	struct dvfs *cpu_dvfs, struct tegra_cl_dvfs_soc_data *dfll_data)
+	struct dvfs *cpu_dvfs, struct tegra_cl_dvfs_dfll_data *dfll_data)
 {
 	int i, j, mv, dfll_mv;
 	unsigned long fmax_at_vmin = 0;
@@ -367,8 +367,8 @@ static int __init get_cpu_nominal_mv_index(int speedo_id,
 	}
 
 	cpu_dvfs->speedo_id = speedo_id;
-	dfll_data->dfll_out_rate_min = fmax_at_vmin * MHZ;
-	dfll_data->dfll_millivolts_min = d->min_mv;
+	dfll_data->out_rate_min = fmax_at_vmin * MHZ;
+	dfll_data->millivolts_min = d->min_mv;
 	return j - 1;
 }
 
@@ -459,7 +459,7 @@ void __init tegra11x_init_dvfs(void)
 	init_dvfs_one(&cpu_dvfs, cpu_nominal_mv_index);
 
 	/* CL DVFS characterization data */
-	tegra_cl_dvfs_set_soc_data(&cpu_dfll_data);
+	tegra_cl_dvfs_set_dfll_data(&cpu_dfll_data);
 
 	/* Finally disable dvfs on rails if necessary */
 	if (tegra_dvfs_core_disabled)
