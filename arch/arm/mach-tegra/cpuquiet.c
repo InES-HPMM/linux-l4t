@@ -187,6 +187,9 @@ static void min_max_constraints_workfunc(struct work_struct *work)
 	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
 	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
 
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return;
+
 	if (is_lp_cluster())
 		return;
 
@@ -218,9 +221,12 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
 	bool g_cluster = false;
 
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return NOTIFY_OK;
+
 	mutex_lock(tegra3_cpu_lock);
 
-	if ((n >= 2) && is_lp_cluster()) {
+	if ((n >= 1) && is_lp_cluster()) {
 		/* make sure cpu rate is within g-mode range before switching */
 		unsigned long speed = max((unsigned long)tegra_getspeed(0),
 					clk_get_min_rate(cpu_g_clk) / 1000);
@@ -243,6 +249,9 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 
 static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
+	if (cpq_state == TEGRA_CPQ_DISABLED)
+		return NOTIFY_OK;
+
 	if (n < num_online_cpus())
 		schedule_work(&minmax_work);
 
