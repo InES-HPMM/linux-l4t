@@ -135,7 +135,11 @@ static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		    837,    900,    950,   1000,   1050,    1100,    1125, */
 	/* Clock limits for internal blocks, PLLs */
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+	CORE_DVFS("cpu_lp", -1, 1, KHZ,       1, 144000, 252000, 288000, 372000,  468000,  468000),
 	CORE_DVFS("emc",   -1, 1, KHZ,        1, 264000, 348000, 384000, 528000,  666000,  666000),
+	CORE_DVFS("sbus",  -1, 1, KHZ,        1,  81600, 102000, 136000, 204000,  204000,  204000),
+
+	CORE_DVFS("vi",    -1, 1, KHZ,        1, 102000, 144000, 144000, 192000,  240000,  240000),
 
 	CORE_DVFS("2d",    -1, 1, KHZ,        1, 132000, 180000, 204000, 264000,  336000,  336000),
 	CORE_DVFS("3d",    -1, 1, KHZ,        1, 132000, 180000, 204000, 264000,  336000,  336000),

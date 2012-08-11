@@ -5404,7 +5404,7 @@ static struct clk tegra_clk_cclk_lp = {
 	.inputs	= mux_cclk_lp,
 	.reg	= 0x370,
 	.ops	= &tegra_super_ops,
-	.max_rate = 620000000,
+	.max_rate = 700000000,
 };
 
 static struct clk tegra_clk_sclk = {
@@ -5433,7 +5433,7 @@ static struct clk tegra_clk_virtual_cpu_lp = {
 	.name      = "cpu_lp",
 	.parent    = &tegra_clk_cclk_lp,
 	.ops       = &tegra_cpu_ops,
-	.max_rate  = 620000000,
+	.max_rate  = 700000000,
 	.u.cpu = {
 		.main      = &tegra_pll_x,
 		.backup    = &tegra_pll_p_out4,
@@ -5900,7 +5900,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uarte_dbg",	"serial8250.0",		"uarte",66,	0x1c4,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
-	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT,	&tegra_vi_clk_ops),
+	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71,	&tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
