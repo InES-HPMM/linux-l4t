@@ -5592,9 +5592,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
 
 	DUAL_CBUS_CLK("vi.cbus",	"tegra_vi",		"vi",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.cbus",	"tegra_vi.1",		"vi.1",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.cbus",	"tegra_isp",		"isp",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.cbus",	"tegra_isp.1",		"isp.1", &tegra_clk_c3bus, "vi",    0, 0),
+	DUAL_CBUS_CLK("vi.1.cbus",	"tegra_vi.1",		"vi.1",	 &tegra_clk_c3bus, "vi",    0, 0),
+	DUAL_CBUS_CLK("vi.isp.cbus",	"tegra_isp",		"isp",	 &tegra_clk_c3bus, "vi",    0, 0),
+	DUAL_CBUS_CLK("vi.isp.1.cbus",	"tegra_isp.1",		"isp.1", &tegra_clk_c3bus, "vi",    0, 0),
 
 	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c3bus, "msenc", 0, 0),
 	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	 &tegra_clk_c3bus, "vde",   0, 0),
@@ -5603,9 +5603,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 #else
 	SHARED_CLK("vi.cbus",	  "tegra_vi",		"vi",	&tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.cbus",	  "tegra_vi.1",		"vi.1", &tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.cbus",	  "tegra_isp",		"isp",	&tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.cbus",	  "tegra_isp.1",	"isp.1",&tegra_clk_cbus, "vi", 0, 0),
+	SHARED_CLK("vi.1.cbus",	  "tegra_vi.1",		"vi.1", &tegra_clk_cbus, "vi", 0, 0),
+	SHARED_CLK("vi.isp.cbus",	  "tegra_isp",		"isp",	&tegra_clk_cbus, "vi", 0, 0),
+	SHARED_CLK("vi.isp.1.cbus",	  "tegra_isp.1",	"isp.1",&tegra_clk_cbus, "vi", 0, 0),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
 #endif
