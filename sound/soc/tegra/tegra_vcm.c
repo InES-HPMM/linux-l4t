@@ -131,15 +131,13 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 	default:
 		break;
 	}
+	i2s_daifmt |= SND_SOC_DAIFMT_NB_NF;
 
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
-
-	if (pdata->codec_info[codec_id].i2s_format == format_tdm)
-		i2s_daifmt |= SND_SOC_DAIFMT_NB_IF;
 
 	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
 	if (err < 0)
