@@ -559,8 +559,10 @@ static int rpm_suspend(struct device *dev, int rpmflags)
 		 * reschedule another autosuspend.
 		 */
 		if ((rpmflags & RPM_AUTO) &&
-		    pm_runtime_autosuspend_expiration(dev) != 0)
+		    pm_runtime_autosuspend_expiration(dev) != 0) {
+			wake_up_all(&dev->power.wait_queue);
 			goto repeat;
+		}
 	} else {
 		pm_runtime_cancel_pending(dev);
 	}
