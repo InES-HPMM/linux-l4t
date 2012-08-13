@@ -18,20 +18,6 @@
 #ifndef __MACH_TEGRA_PINMUX_H
 #define __MACH_TEGRA_PINMUX_H
 
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#include "pinmux-t2.h"
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-#include "pinmux-t3.h"
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#include "pinmux-t11.h"
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include "pinmux-t12.h"
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#include "pinmux-t14.h"
-#else
-#error "Undefined Tegra architecture"
-#endif
-
 #define TEGRA_MUX_LIST \
 	TEGRA_MUX(NONE) \
 	TEGRA_MUX(AHB_CLK) \
