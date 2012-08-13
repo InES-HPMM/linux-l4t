@@ -60,6 +60,7 @@
 #define   SPI_CS_SS_VAL			(1 << 20)
 #define   SPI_CS_SW_HW			(1 << 21)
 /* SPI_CS_POL_INACTIVE bits are default high */
+#define   SPI_CS_POL_INACTIVE	22
 #define   SPI_CS_POL_INACTIVE_0 (1 << 22)
 #define   SPI_CS_POL_INACTIVE_1 (1 << 23)
 #define   SPI_CS_POL_INACTIVE_2 (1 << 24)
@@ -514,8 +515,7 @@ static int spi_tegra_start_dma_based_transfer(
 		tspi->tx_dma_req.size = len;
 		ret = tegra_dma_enqueue_req(tspi->tx_dma, &tspi->tx_dma_req);
 		if (ret < 0) {
-			dev_err(&tspi->pdev->dev, "Error in starting tx dma "
-						" error = %d\n", ret);
+			dev_err(&tspi->pdev->dev, "tx dma error = %d\n", ret);
 			return ret;
 		}
 	}
@@ -524,8 +524,7 @@ static int spi_tegra_start_dma_based_transfer(
 		tspi->rx_dma_req.size = len;
 		ret = tegra_dma_enqueue_req(tspi->rx_dma, &tspi->rx_dma_req);
 		if (ret < 0) {
-			dev_err(&tspi->pdev->dev, "Error in starting rx dma "
-						" error = %d\n", ret);
+			dev_err(&tspi->pdev->dev, "rx dma error = %d\n", ret);
 			if (tspi->cur_direction & DATA_DIR_TX)
 				tegra_dma_dequeue_req(tspi->tx_dma,
 							&tspi->tx_dma_req);
@@ -553,9 +552,10 @@ static int spi_tegra_start_cpu_based_transfer(
 	if (tspi->cur_direction & DATA_DIR_RX)
 		val |= SPI_IE_RX;
 	spi_tegra_writel(tspi, val, SPI_DMA_CTL);
-	if (tspi->cur_direction & DATA_DIR_TX)
+	if (tspi->cur_direction & DATA_DIR_TX) {
 		curr_words = spi_tegra_fill_tx_fifo_from_client_txbuf(tspi, t);
-	else
+		tspi->curr_dma_words = curr_words;
+	} else
 		curr_words = tspi->curr_dma_words;
 
 	val = SPI_DMA_BLK_SET(curr_words - 1);
@@ -605,7 +605,7 @@ static int spi_tegra_line_settings(struct spi_device *spi,
 	if (spi->mode & SPI_CS_HIGH)
 		SPI_CS_POL_INACTIVE_SET_LOW(val, spi->chip_select);
 	else
-		val &= ~SPI_CS_POL_INACTIVE_MASK;
+		val |= ((1 << spi->chip_select) << SPI_CS_POL_INACTIVE);
 	val |= SPI_M_S;
 	if (cdata && !cdata->is_hw_based_cs)
 		val |= SPI_CS_SW_HW;
@@ -699,9 +699,9 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 				tspi->clk_state = 1;
 			}
 		}
-		spi_tegra_line_settings(spi, t);
 		tspi->is_reset = false;
 	}
+	spi_tegra_line_settings(spi, t);
 	spi_tegra_cs_change(spi, true);
 	spi_tegra_clear_status(tspi);
 	tspi->cur_direction = 0;
@@ -971,8 +971,8 @@ static void spi_tegra_work(struct work_struct *work)
 			&tspi->spi_complete,
 			(msecs_to_jiffies(1000)));
 		if (wait_status <= 0) {
-			dev_err(&tspi->pdev->dev, "Error in SPI"
-			" completion %ld\r\n", wait_status);
+			dev_err(&tspi->pdev->dev, "completion error %ld\r\n",
+				wait_status);
 			spi_tegra_reg_print(tspi);
 			err_val++;
 		}
