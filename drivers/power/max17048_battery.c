@@ -221,10 +221,11 @@ static void max17048_work(struct work_struct *work)
 
 	if (chip->vcell != chip->lasttime_vcell ||
 		chip->soc != chip->lasttime_soc ||
-		chip->status !=	chip->lasttime_status) {
+		chip->status != chip->lasttime_status) {
 
 		chip->lasttime_vcell = chip->vcell;
 		chip->lasttime_soc = chip->soc;
+		chip->lasttime_status = chip->status;
 
 		power_supply_changed(&chip->battery);
 	}
@@ -239,14 +240,13 @@ static void max17048_battery_status(enum charging_states status,
 	chip->ac_online = 0;
 	chip->usb_online = 0;
 
-	if (chrg_type == AC)
-		chip->ac_online = 1;
-	else if (chrg_type == USB)
-		chip->usb_online = 1;
-
-	if (status == progress)
+	if (status == progress) {
 		chip->status = POWER_SUPPLY_STATUS_CHARGING;
-	else
+		if (chrg_type == AC)
+			chip->ac_online = 1;
+		else if (chrg_type == USB)
+			chip->usb_online = 1;
+	} else
 		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
 
 
@@ -591,6 +591,8 @@ static int max17048_resume(struct i2c_client *client)
 		dev_err(&client->dev, "failed in exiting hibernate mode\n");
 		return ret;
 	}
+
+	update_charger_status();
 
 	schedule_work(&chip->work);
 	return 0;
