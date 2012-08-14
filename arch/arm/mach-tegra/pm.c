@@ -1147,6 +1147,21 @@ out:
 		plat->suspend_mode = TEGRA_SUSPEND_LP2;
 	}
 
+#ifdef CONFIG_TEGRA_LP1_950
+	if (pdata->lp1_lowvolt_support) {
+		u32 lp1_core_lowvolt, lp1_core_highvolt;
+		memcpy(tegra_lp1_register_pmuslave_addr(), &pdata->pmuslave_addr, 4);
+		memcpy(tegra_lp1_register_i2c_base_addr(), &pdata->i2c_base_addr, 4);
+
+		lp1_core_lowvolt = 0;
+		lp1_core_lowvolt = (pdata->lp1_core_volt_low << 8) | pdata->core_reg_addr;
+		memcpy(tegra_lp1_register_core_lowvolt(), &lp1_core_lowvolt, 4);
+
+		lp1_core_highvolt = 0;
+		lp1_core_highvolt = (pdata->lp1_core_volt_high << 8) | pdata->core_reg_addr;
+		memcpy(tegra_lp1_register_core_highvolt(), &lp1_core_highvolt, 4);
+	}
+#endif
 	/* !!!FIXME!!! THIS IS TEGRA2 ONLY */
 	/* Initialize scratch registers used for CPU LP2 synchronization */
 	writel(0, pmc + PMC_SCRATCH37);
