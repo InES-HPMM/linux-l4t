@@ -49,6 +49,7 @@
 #include "cpuidle.h"
 #include "pm.h"
 #include "sleep.h"
+#include "timer.h"
 
 int tegra_lp2_exit_latency;
 static int tegra_lp2_power_off_time;
@@ -130,10 +131,18 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	}
 
 	/* cpu_idle calls us with IRQs disabled */
+	trace_printk("LP2 entry at %lu us\n",
+		     (unsigned long)readl(IO_ADDRESS(TEGRA_TMR1_BASE)
+					  + TIMERUS_CNTR_1US));
+
 	enter = ktime_get();
 
 	tegra_cpu_idle_stats_lp2_ready(dev->cpu);
 	entered_lp2 = tegra_idle_lp2(dev, state);
+
+	trace_printk("LP2 exit at %lu us\n",
+		     (unsigned long)readl(IO_ADDRESS(TEGRA_TMR1_BASE)
+					  + TIMERUS_CNTR_1US));
 
 	exit = ktime_sub(ktime_get(), enter);
 	us = ktime_to_us(exit);
