@@ -1405,6 +1405,11 @@ exit:
 		wait_prepared = false;
 	}
 
+#ifdef CONFIG_FREEZER
+	current->flags &= ~(PF_KTHREAD);
+	current->flags |= (saved_flags & PF_KTHREAD);
+#endif
+
 	return result;
 }
 
