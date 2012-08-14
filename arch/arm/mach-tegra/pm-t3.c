@@ -560,9 +560,12 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	udelay(1);
 	dpd_status = readl(pmc + (APBDEV_PMC_IO_DPD_STATUS_0 +
 					hnd->io_dpd_reg_index * 8));
-	if (!(dpd_status & (1 << hnd->io_dpd_bit)))
+	if (!(dpd_status & (1 << hnd->io_dpd_bit))) {
+#if !defined(CONFIG_TEGRA_FPGA_PLATFORM)
 		pr_info("Error: dpd%d enable failed, status=%#x\n",
 		(hnd->io_dpd_reg_index + 1), dpd_status);
+#endif
+	}
 	/* Sample register must be reset before next sample operation */
 	writel(0x0, pmc + PMC_DPD_SAMPLE);
 	spin_unlock(&tegra_io_dpd_lock);
@@ -587,9 +590,12 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 					hnd->io_dpd_reg_index * 8));
 	dpd_status = readl(pmc + (APBDEV_PMC_IO_DPD_STATUS_0 +
 					hnd->io_dpd_reg_index * 8));
-	if (dpd_status & (1 << hnd->io_dpd_bit))
+	if (dpd_status & (1 << hnd->io_dpd_bit)) {
+#if !defined(CONFIG_TEGRA_FPGA_PLATFORM)
 		pr_info("Error: dpd%d disable failed, status=%#x\n",
 		(hnd->io_dpd_reg_index + 1), dpd_status);
+#endif
+	}
 	spin_unlock(&tegra_io_dpd_lock);
 	return;
 }
