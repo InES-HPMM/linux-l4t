@@ -1669,11 +1669,11 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 	if (UTMIP_WALK_PTR_VAL(inst) & val) {
 		phy->remote_wakeup = true;
 	} else if(!phy->remote_wakeup) {
-		if (!((UTMIP_USBON_VAL(phy->inst) |
-			UTMIP_USBOP_VAL(phy->inst)) & val)) {
-				utmip_phy_disable_pmc_bus_ctrl(phy);
-		}
+		val = readl(pmc_base + PMC_SLEEP_CFG);
+		if (val & UTMIP_MASTER_ENABLE(inst))
+			utmip_phy_disable_pmc_bus_ctrl(phy);
 	}
+
 	utmi_phy_enable_obs_bus(phy);
 }
 
