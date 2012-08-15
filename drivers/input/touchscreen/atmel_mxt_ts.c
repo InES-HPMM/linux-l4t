@@ -516,13 +516,18 @@ recheck:
 	return 0;
 }
 
-static int mxt_unlock_bootloader(struct mxt_data *data)
+static int mxt_send_bootloader_cmd(struct mxt_data *data, bool unlock)
 {
 	int ret;
 	u8 buf[2];
 
-	buf[0] = MXT_UNLOCK_CMD_LSB;
-	buf[1] = MXT_UNLOCK_CMD_MSB;
+	if (unlock) {
+		buf[0] = MXT_UNLOCK_CMD_LSB;
+		buf[1] = MXT_UNLOCK_CMD_MSB;
+	} else {
+		buf[0] = 0x01;
+		buf[1] = 0x01;
+	}
 
 	ret = mxt_bootloader_write(data, buf, 2);
 	if (ret) {
@@ -1734,16 +1739,32 @@ static int mxt_initialize(struct mxt_data *data)
 	struct i2c_client *client = data->client;
 	struct mxt_info *info = &data->info;
 	int error;
+	u8 retry_count = 0;
 
+retry_probe:
+	/* Read info block */
 	error = mxt_read_reg(client, 0, sizeof(*info), info);
 	if (error) {
 		error = mxt_probe_bootloader(data);
-
 		if (error) {
+			/* Chip is not in appmode or bootloader mode */
 			return error;
 		} else {
-			data->state = BOOTLOADER;
-			return 0;
+			if (++retry_count > 10) {
+				dev_err(&client->dev,
+					"Could not recover device from "
+					"bootloader mode\n");
+				data->state = BOOTLOADER;
+				/* this is not an error state, we can reflash
+				 * from here */
+				return 0;
+			}
+
+			/* Tell bootloader to enter app mode. Ignore errors
+			 * since we're in a retry loop */
+			mxt_send_bootloader_cmd(data, false);
+			msleep(MXT_FWRESET_TIME);
+			goto retry_probe;
 		}
 	}
 
@@ -1860,7 +1881,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 		dev_info(dev, "Unlocking bootloader\n");
 
 		/* Unlock bootloader */
-		ret = mxt_unlock_bootloader(data);
+		ret = mxt_send_bootloader_cmd(data, true);
 		if (ret) {
 			data->state = FAILED;
 			goto release_firmware;
