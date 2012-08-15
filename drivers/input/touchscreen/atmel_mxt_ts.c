@@ -426,6 +426,27 @@ static int mxt_probe_bootloader(struct mxt_data *data)
 	return 0;
 }
 
+static int mxt_wait_for_chg(struct mxt_data *data)
+{
+	int timeout_counter = 0;
+	int count = 1E6;
+
+	if (data->pdata->read_chg == NULL) {
+		msleep(10);
+		return 0;
+	}
+
+	while ((timeout_counter++ <= count) && data->pdata->read_chg())
+		udelay(20);
+
+	if (timeout_counter > count) {
+		dev_err(&data->client->dev, "mxt_wait_for_chg() timeout!\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static u8 mxt_get_bootloader_version(struct mxt_data *data, u8 val)
 {
 	struct device *dev = &data->client->dev;
@@ -475,9 +496,10 @@ recheck:
 		val &= ~MXT_BOOT_STATUS_MASK;
 		break;
 	case MXT_FRAME_CRC_PASS:
-		if (val == MXT_FRAME_CRC_CHECK)
+		if (val == MXT_FRAME_CRC_CHECK) {
+			mxt_wait_for_chg(data);
 			goto recheck;
-		if (val == MXT_FRAME_CRC_FAIL) {
+		} else if (val == MXT_FRAME_CRC_FAIL) {
 			dev_err(dev, "Bootloader CRC fail\n");
 			return -EINVAL;
 		}
@@ -1826,6 +1848,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 
 	ret = mxt_check_bootloader(data, MXT_WAITING_BOOTLOAD_CMD);
 	if (ret) {
+		mxt_wait_for_chg(data);
 		/* Bootloader may still be unlocked from previous update
 		 * attempt */
 		ret = mxt_check_bootloader(data, MXT_WAITING_FRAME_DATA);
@@ -1845,6 +1868,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 	}
 
 	while (pos < fw->size) {
+		mxt_wait_for_chg(data);
 		ret = mxt_check_bootloader(data, MXT_WAITING_FRAME_DATA);
 		if (ret) {
 			data->state = FAILED;
@@ -1863,6 +1887,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 			goto release_firmware;
 		}
 
+		mxt_wait_for_chg(data);
 		ret = mxt_check_bootloader(data, MXT_FRAME_CRC_PASS);
 		if (ret) {
 			retry++;
