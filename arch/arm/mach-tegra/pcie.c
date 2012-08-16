@@ -107,6 +107,7 @@
 
 #define AFI_CONFIGURATION						0xac
 #define AFI_CONFIGURATION_EN_FPCI				(1 << 0)
+#define AFI_CONFIGURATION_DFPCI_RSPPASSPW			(1 << 2)
 
 #define AFI_FPCI_ERROR_MASKS						0xb0
 
@@ -857,8 +858,11 @@ static int tegra_pcie_enable_controller(void)
 	/* Take the PCIe interface module out of reset */
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
+	/* WAR avoid hang on CPU read/write while gpu transfers in progress */
+	val = afi_readl(AFI_CONFIGURATION) | AFI_CONFIGURATION_DFPCI_RSPPASSPW;
+
 	/* Finally enable PCIe */
-	val = afi_readl(AFI_CONFIGURATION) | AFI_CONFIGURATION_EN_FPCI;
+	val |=  AFI_CONFIGURATION_EN_FPCI;
 	afi_writel(val, AFI_CONFIGURATION);
 
 	val = (AFI_INTR_EN_INI_SLVERR | AFI_INTR_EN_INI_DECERR |
