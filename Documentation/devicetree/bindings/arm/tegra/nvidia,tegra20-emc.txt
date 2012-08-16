@@ -4,14 +4,15 @@ Properties:
 - name : Should be emc
 - #address-cells : Should be 1
 - #size-cells : Should be 0
-- compatible : Should contain "nvidia,tegra20-emc".
+- compatible : Should contain "nvidia,tegra20-emc" or "nvidia,tegra30-emc"
 - reg : Offset and length of the register set for the device
 - nvidia,use-ram-code : If present, the sub-nodes will be addressed
   and chosen using the ramcode board selector. If omitted, only one
   set of tables can be present and said tables will be used
   irrespective of ram-code configuration.
 
-Child device nodes describe the memory settings for different configurations and clock rates.
+Child device nodes describe the memory settings for different configurations
+and clock rates.
 
 Example:
 
@@ -61,6 +62,8 @@ There are two ways of specifying which tables to use:
   these strappings can be read through a register in the SoC, and thus
   used to select which tables to use.
 
+Tables for Tegra20:
+
 Properties:
 - name : Should be emc-table
 - compatible : Should contain "nvidia,tegra20-emc-table".
@@ -97,4 +100,75 @@ Properties:
 						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 						 0 0 0 0 >;
+		};
+
+Tables for Tegra30:
+
+Properties:
+- name : Should be emc-table
+- compatible : Should contain "nvidia,tegra30-emc-table".
+- reg : either an opaque enumerator to tell different tables apart, or
+  the valid frequency for which the table should be used (in kHz).
+- nvidia,revision : SDRAM revision
+- clock-frequency : the clock frequency for the EMC at which this
+  table should be used (in kHz).
+- nvidia,emc-registers : a word array of EMC registers to be programmed
+  for operation at the 'clock-frequency' setting.
+  The order and contents of the registers are:
+    RC, RFC, RAS, RP, R2W, W2R, R2P, W2P, RD_RCD, WR_RCD, RRD, REXT,
+    WEXT, WDV, QUSE, QRST, QSAFE, RDV, REFRESH,   BURST_REFRESH_NUM,
+    PRE_REFRESH_REQ_CNT, PDEX2WR, PDEX2RD, PCHG2PDEN, ACT2PDEN,
+    AR2PDEN, RW2PDEN, TXSR, TXSRDLL, TCKE, TFAW, TRPAB,TCLKSTABLE,
+    TCLKSTOP, TREFBW, QUSE_EXTRA, FBIO_CFG6, ODT_WRITE, ODT_READ,
+    FBIO_CFG5, CFG_DIG_DLL, CFG_DIG_DLL_PERIOD,
+    DLL_XFORM_DQS0, DLL_XFORM_DQS1, DLL_XFORM_DQS2, DLL_XFORM_DQS3,
+    DLL_XFORM_DQS4, DLL_XFORM_DQS5, DLL_XFORM_DQS6, DLL_XFORM_DQS7,
+    DLL_XFORM_QUSE0, DLL_XFORM_QUSE1, DLL_XFORM_QUSE2, DLL_XFORM_QUSE3,
+    DLL_XFORM_QUSE4, DLL_XFORM_QUSE5, DLL_XFORM_QUSE6, DLL_XFORM_QUSE7,
+    DLI_TRIM_TXDQS0, DLI_TRIM_TXDQS1, DLI_TRIM_TXDQS2, DLI_TRIM_TXDQS3,
+    DLI_TRIM_TXDQS4, DLI_TRIM_TXDQS5, DLI_TRIM_TXDQS6, DLI_TRIM_TXDQS7,
+    DLL_XFORM_DQ0, DLL_XFORM_DQ1, DLL_XFORM_DQ2, DLL_XFORM_DQ3,
+    DLL_XFORM_DQ1, DLL_XFORM_DQ2, DLL_XFORM_DQ3, XM2CMDPADCTRL, XM2DQSPADCTRL2,
+    XM2DQPADCTRL2, XM2CLKPADCTRL, XM2COMPPADCTRL, XM2VTTGENPADCTRL,
+    XM2VTTGENPADCTRL2, XM2QUSEPADCTRL, XM2DQSPADCTRL3, CTT_TERM_CTRL,
+    ZCAL_INTERVAL, ZCAL_WAIT_CNT, MRS_WAIT_CNT, AUTO_CAL_CONFIG, CTT,
+    CTT_DURATION, DYN_SELF_REF_CONTROL, EMEM_ARB_CFG, EMEM_ARB_OUTSTANDING_REQ,
+    EMEM_ARB_TIMING_RCD, EMEM_ARB_TIMING_RP, EMEM_ARB_TIMING_RC,
+    EMEM_ARB_TIMING_RAS, EMEM_ARB_TIMING_FAW, EMEM_ARB_TIMING_RRD,
+    EMEM_ARB_TIMING_RAP2PRE, EMEM_ARB_TIMING_WAP2PRE, EMEM_ARB_TIMING_R2R,
+    EMEM_ARB_TIMING_W2W, EMEM_ARB_TIMING_R2W, EMEM_ARB_TIMING_W2R,
+    EMEM_ARB_DA_TURNS, EMEM_ARB_DA_COVERS, EMEM_ARB_MISC0,
+    EMEM_ARB_RING1_THROTTLE, FBIO_SPARE, CFG_RSV
+
+optional properties:
+- nvidia,emc-zcal-cnt-long : EMC_ZCAL_WAIT_CNT after clock change
+- nvidia,emc-acal-interval : EMC_AUTO_CAL_INTERVAL
+- nvidia,emc-periodic-qrst : EMC_CFG.PERIODIC_QRST
+- nvidia,emc-mode-reset : Mode Register 0
+- nvidia,emc-mode-1 : Mode Register 1
+- nvidia,emc-mode-2 : Mode Register 2
+- nvidia,emc-dsr : EMC_CFG.DYN_SELF_REF
+- nvidia,emc-min-mv : Minimum voltage
+
+		emc-table@166000 {
+			reg = <166000>;
+			compatible = "nvidia,tegra30-emc-table";
+			clock-frequency = < 166000 >;
+			nvidia,revision = <0>;
+			nvidia,emc-registers = < 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+						 0 0 0 0 0 0 0 0 0 0 0 0>;
+			nvidia,emc-zcal-cnt-long = <0>;
+			nvidia,emc-acal-interval = <0>;
+			nvidia,emc-periodic-qrst = <0>;
+			nvidia,emc-mode-reset = <0>;
+			nvidia,emc-mode-1 = <0>;
+			nvidia,emc-mode-2 = <0>;
+			nvidia,emc-dsr = <0>;
+			nvidia,emc-min-mv = <0>;
 		};
