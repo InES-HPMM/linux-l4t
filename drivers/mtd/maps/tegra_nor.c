@@ -1,9 +1,5 @@
 /*
- * drivers/mtd/maps/tegra_nor.c
- *
- * MTD mapping driver for the internal SNOR controller in Tegra SoCs
- *
- * Copyright (C) 2009 - 2012 NVIDIA Corporation
+ * Copyright (C) 2009-2012, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Raghavendra VK <rvk@nvidia.com>
@@ -21,6 +17,11 @@
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * drivers/mtd/maps/tegra_nor.c
+ *
+ * MTD mapping driver for the internal SNOR controller in Tegra SoCs
+ *
  */
 
 #include <linux/platform_device.h>
@@ -160,6 +161,7 @@ static void tegra_flash_dma(struct map_info *map,
 	u32 copy_to = (u32)to;
 	struct tegra_nor_info *c =
 	    container_of(map, struct tegra_nor_info, map);
+	struct tegra_nor_chip_parms *chip_parm = &c->plat->chip_parms;
 	unsigned int bytes_remaining = len;
 
 	snor_config = c->init_config;
@@ -174,9 +176,52 @@ static void tegra_flash_dma(struct map_info *map,
 		 * controller register only after all parameters are set.
 		 */
 		/* SNOR CONFIGURATION SETUP */
-		snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
-		/* 8 word page */
-		snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(2);
+		switch(chip_parm->ReadMode)
+		{
+			case NorReadMode_Async:
+				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(0);
+				break;
+
+			case NorReadMode_Page:
+				switch(chip_parm->PageLength)
+				{
+					case NorPageLength_Unsupported :
+						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(0);
+						break;
+
+					case NorPageLength_4Word :
+						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
+						snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(1);
+						break;
+
+					case NorPageLength_8Word :
+						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
+						snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(2);
+						break;
+				}
+				break;
+
+			case NorReadMode_Burst:
+				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(2);
+				switch(chip_parm->BurstLength)
+				{
+					case NorBurstLength_CntBurst :
+						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(0);
+						break;
+					case NorBurstLength_8Word :
+						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(1);
+						break;
+
+					case NorBurstLength_16Word :
+						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(2);
+						break;
+
+					case NorBurstLength_32Word :
+						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(3);
+						break;
+				}
+				break;
+		}
 		snor_config |= TEGRA_SNOR_CONFIG_MST_ENB;
 		/* SNOR DMA CONFIGURATION SETUP */
 		/* NOR -> AHB */
@@ -273,8 +318,28 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	default:
 		return -EINVAL;
 	}
-	config |= TEGRA_SNOR_CONFIG_BURST_LEN(0);
-	config &= ~TEGRA_SNOR_CONFIG_MUX_MODE;
+	switch (chip_parm->MuxMode)
+	{
+		case NorMuxMode_ADNonMux:
+			config &= ~TEGRA_SNOR_CONFIG_MUX_MODE;
+			break;
+		case NorMuxMode_ADMux:
+			config |= TEGRA_SNOR_CONFIG_MUX_MODE;
+			break;
+		default:
+			return -EINVAL;
+	}
+	switch (chip_parm->ReadyActive)
+	{
+		case NorReadyActive_WithData:
+			config &= ~TEGRA_SNOR_CONFIG_RDY_ACTIVE;
+			break;
+		case NorReadyActive_BeforeData:
+			config |= TEGRA_SNOR_CONFIG_RDY_ACTIVE;
+			break;
+		default:
+			return -EINVAL;
+	}
 	snor_tegra_writel(info, config, TEGRA_SNOR_CONFIG_REG);
 	info->init_config = config;
 
