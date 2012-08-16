@@ -364,11 +364,18 @@ static inline void tegra_iovmm_resume(void)
 	tegra_iommu_create_vm((c)->dev, i, s, p)
 #define tegra_iovmm_free_vm(v)	tegra_iommu_free_vm(v)
 
-#define tegra_iovmm_get_vm_size(c)	arm_iommu_iova_avail((c)->dev)
-#define tegra_iovmm_get_max_free(c)	arm_iommu_iova_max_free((c)->dev)
+#define tegra_iovmm_get_vm_size(c)	dma_iova_get_free_total((c)->dev)
+#define tegra_iovmm_get_max_free(c)	dma_iova_get_free_max((c)->dev)
 
-#define tegra_iovmm_vm_insert_pfn(a, v, n)				\
-	dma_map_page_at((a)->dev, pfn_to_page(n), v, 0, PAGE_SIZE, DMA_NONE);
+#define tegra_iovmm_vm_insert_pfn(area, handle, pfn)			\
+	do {								\
+		struct device *dev = area->dev;				\
+		struct dma_map_ops *ops = get_dma_ops(dev);		\
+		DEFINE_DMA_ATTRS(attrs);				\
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);		\
+		ops->map_page_at(dev, pfn_to_page(pfn), handle,		\
+				 PAGE_SIZE, 0, 0, &attrs);		\
+	} while (0)
 
 struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
 		       dma_addr_t req, size_t size, pgprot_t prot);
