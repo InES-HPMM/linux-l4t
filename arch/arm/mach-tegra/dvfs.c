@@ -716,6 +716,26 @@ bool tegra_dvfs_rail_updating(struct clk *clk)
 		  (clk->dvfs->dvfs_rail->updating))));
 }
 
+#ifdef CONFIG_OF
+int __init of_tegra_dvfs_init(const struct of_device_id *matches)
+{
+	int ret;
+	struct device_node *np;
+
+	for_each_matching_node(np, matches) {
+		const struct of_device_id *match = of_match_node(matches, np);
+		of_tegra_dvfs_init_cb_t dvfs_init_cb = match->data;
+		ret = dvfs_init_cb(np);
+		if (ret) {
+			pr_err("dt: Failed to read %s tables from DT\n",
+							match->compatible);
+			return ret;
+		}
+	}
+	return 0;
+}
+#endif
+
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported
  * by the regulator api for each one.  Must be called in late init, after

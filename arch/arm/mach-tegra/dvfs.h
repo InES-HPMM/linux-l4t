@@ -21,7 +21,10 @@
 #ifndef _TEGRA_DVFS_H_
 #define _TEGRA_DVFS_H_
 
+#include <linux/of.h>
+
 #define MAX_DVFS_FREQS	40
+#define MAX_DVFS_TABLES	80
 #define DVFS_RAIL_STATS_TOP_BIN	42
 
 struct clk;
@@ -121,6 +124,22 @@ struct cpu_cvb_dvfs {
 
 extern struct dvfs_rail *tegra_cpu_rail;
 extern struct dvfs_rail *tegra_core_rail;
+
+struct dvfs_data {
+	struct dvfs_rail *rail;
+	struct dvfs *tables;
+	int *millivolts;
+	unsigned int num_tables;
+	unsigned int num_voltages;
+};
+
+#ifdef CONFIG_OF
+typedef int (*of_tegra_dvfs_init_cb_t)(struct device_node *);
+int of_tegra_dvfs_init(const struct of_device_id *matches);
+#else
+static inline int of_tegra_dvfs_init(const struct of_device_id *matches)
+{ return -ENODATA; }
+#endif
 
 void tegra11x_init_dvfs(void);
 int tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d);
