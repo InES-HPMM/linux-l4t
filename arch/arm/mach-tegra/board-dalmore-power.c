@@ -24,6 +24,7 @@
 #include <linux/io.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/fixed.h>
 #include <linux/mfd/max77663-core.h>
 #include <linux/regulator/max77663-regulator.h>
 #include <linux/regulator/tps51632-regulator.h>
@@ -302,6 +303,146 @@ static struct max77663_platform_data max7763_pdata = {
 };
 
 
+/* EN_AVDD_USB_HDMI From PMU GP1 */
+static struct regulator_consumer_supply fixed_reg_en_avdd_hdmi_usb_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi", NULL),
+	REGULATOR_SUPPLY("avdd_usb", NULL),
+	REGULATOR_SUPPLY("hvdd_usb3", NULL),
+};
+
+/* EN_3V3 From PMU GP2 */
+static struct regulator_consumer_supply fixed_reg_en_3v3_sys_supply[] = {
+	REGULATOR_SUPPLY("vdd_3v3_sys", NULL),
+};
+
+/* EN_5V0 From PMU GP3 */
+static struct regulator_consumer_supply fixed_reg_en_5v0_supply[] = {
+	REGULATOR_SUPPLY("vdd_5v0_sys", NULL),
+	REGULATOR_SUPPLY("vdd_hdmi_con", NULL),
+	REGULATOR_SUPPLY("vdd_spk", NULL),
+};
+
+/* EN_CAM_1v8 From PMU GP5 */
+static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
+	REGULATOR_SUPPLY("dvdd_cam", NULL),
+};
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+/* EN_3V3_FUSE From TEGRA GPIO PX4 */
+static struct regulator_consumer_supply fixed_reg_en_3v3_fuse_supply[] = {
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
+};
+
+/* EN_USB1_VBUS From TEGRA GPIO PN4 */
+static struct regulator_consumer_supply fixed_reg_en_usb1_vbus_supply[] = {
+	REGULATOR_SUPPLY("vdd_vbus_micro_usb", NULL),
+};
+
+/* EN_USB3_VBUS From TEGRA GPIO PM5 */
+static struct regulator_consumer_supply fixed_reg_en_usb3_vbus_supply[] = {
+	REGULATOR_SUPPLY("usb3_vbus_con", NULL),
+};
+#endif
+
+static struct regulator_consumer_supply fixed_reg_en_vddio_hv_supply[] = {
+	REGULATOR_SUPPLY("vddio_hv", NULL),
+};
+
+/* Macro for defining fixed regulator sub device data */
+#define FIXED_SUPPLY(_name) "fixed_reg_"#_name
+#define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
+	_gpio_nr, _active_high, _boot_state, _millivolts)	\
+	static struct regulator_init_data ri_data_##_var =		\
+	{								\
+		.supply_regulator = _in_supply,				\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(fixed_reg_##_name##_supply),		\
+		.consumer_supplies = fixed_reg_##_name##_supply,	\
+		.constraints = {					\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+			.always_on = _always_on,			\
+			.boot_on = _boot_on,				\
+		},							\
+	};								\
+	static struct fixed_voltage_config fixed_reg_##_var##_pdata =	\
+	{								\
+		.supply_name = FIXED_SUPPLY(_name),			\
+		.microvolts = _millivolts * 1000,			\
+		.gpio = _gpio_nr,					\
+		.enable_high = _active_high,				\
+		.enabled_at_boot = _boot_state,				\
+		.init_data = &ri_data_##_var,				\
+	};								\
+	static struct platform_device fixed_reg_##_var##_dev = {	\
+		.name = "reg-fixed-voltage",				\
+		.id = _id,						\
+		.dev = {						\
+			.platform_data = &fixed_reg_##_var##_pdata,	\
+		},							\
+	}
+
+FIXED_REG(1,	en_3v3_sys,	en_3v3_sys,
+	NULL,	1,	0,
+	MAX77663_GPIO_BASE + MAX77663_GPIO2,	true,	1,	3300);
+FIXED_REG(2,	en_avdd_hdmi_usb,	en_avdd_hdmi_usb,
+	FIXED_SUPPLY(en_3v3_sys),	0,	0,
+	MAX77663_GPIO_BASE + MAX77663_GPIO1,	true,	1,	3300);
+FIXED_REG(3,	en_1v8_cam,	en_1v8_cam,
+	max77663_rails(sd2),	0,	0,
+	MAX77663_GPIO_BASE + MAX77663_GPIO5,	true,	0,	1800);
+FIXED_REG(4,	en_5v0,	en_5v0,
+	NULL,	0,	0,
+	MAX77663_GPIO_BASE + MAX77663_GPIO3,	true,	0,	5000);
+FIXED_REG(5,	en_vddio_hv,	en_vddio_hv,
+	FIXED_SUPPLY(en_3v3_sys),	0,	0,
+	-1,	true,	0,	3300);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+FIXED_REG(6,	en_3v3_fuse,	en_3v3_fuse,
+	max77663_rails(sd2),	0,	0,
+	TEGRA_GPIO_PX4,	true,	0,	3300);
+FIXED_REG(7,	en_usb1_vbus,	en_usb1_vbus,
+	FIXED_SUPPLY(en_5v0),	0,	0,
+	TEGRA_GPIO_PN4,	true,	0,	5000);
+FIXED_REG(8,	en_usb3_vbus,	en_usb3_vbus,
+	FIXED_SUPPLY(en_5v0),	0,	0,
+	TEGRA_GPIO_PM5,	true,	0,	5000);
+#endif
+
+/*
+ * Creating the fixed regulator device tables
+ */
+
+#define ADD_FIXED_REG(_name)    (&fixed_reg_##_name##_dev)
+
+#define E1612_COMMON_FIXED_REG			\
+	ADD_FIXED_REG(en_3v3_sys),		\
+	ADD_FIXED_REG(en_avdd_hdmi_usb),	\
+	ADD_FIXED_REG(en_1v8_cam),		\
+	ADD_FIXED_REG(en_5v0),			\
+	ADD_FIXED_REG(en_vddio_hv),		\
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+
+#define E1612_T114_FIXED_REG			\
+	ADD_FIXED_REG(en_3v3_fuse),		\
+	ADD_FIXED_REG(en_usb1_vbus),		\
+	ADD_FIXED_REG(en_usb3_vbus),		\
+
+#endif
+
+/* Gpio switch regulator platform data for Dalmore E1612 */
+static struct platform_device *fixed_reg_devs_a00[] = {
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	E1612_T114_FIXED_REG,
+#endif
+	E1612_COMMON_FIXED_REG
+
+};
+
 static struct i2c_board_info __initdata max77663_regulators[] = {
 	{
 		/* The I2C address was determined by OTP factory setting */
@@ -398,6 +539,30 @@ static int __init dalmore_max77663_regulator_init(void)
 
 	return 0;
 }
+
+static int __init dalmore_fixed_regulator_init(void)
+{
+	int i;
+	struct board_info board_info;
+	struct platform_device **fixed_reg_devs;
+	int nfixreg_devs;
+
+	tegra_get_board_info(&board_info);
+	fixed_reg_devs = fixed_reg_devs_a00;
+	nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_a00);
+
+	for (i = 0; i < nfixreg_devs; ++i) {
+		int gpio_nr;
+		struct fixed_voltage_config *fixed_reg_pdata =
+			fixed_reg_devs[i]->dev.platform_data;
+		gpio_nr = fixed_reg_pdata->gpio;
+
+	}
+
+	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
+}
+subsys_initcall_sync(dalmore_fixed_regulator_init);
+
 
 int __init dalmore_regulator_init(void)
 {
