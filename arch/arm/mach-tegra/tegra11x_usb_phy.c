@@ -2172,94 +2172,6 @@ static int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static int uhsic_phy_bus_reset(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	/* Change the USB controller PHY type to HSIC */
-	val = readl(base + HOSTPC1_DEVLC);
-	val &= ~HOSTPC1_DEVLC_PTS(HOSTPC1_DEVLC_PTS_MASK);
-	val |= HOSTPC1_DEVLC_PTS(HOSTPC1_DEVLC_PTS_HSIC);
-	val &= ~HOSTPC1_DEVLC_PSPD(HOSTPC1_DEVLC_PSPD_MASK);
-	val |= HOSTPC1_DEVLC_PSPD(HOSTPC1_DEVLC_PSPD_HIGH_SPEED);
-	val &= ~HOSTPC1_DEVLC_STS;
-	writel(val, base + HOSTPC1_DEVLC);
-	/* wait here, otherwise HOSTPC1_DEVLC_PSPD will timeout */
-	mdelay(5);
-
-	val = readl(base + USB_PORTSC);
-	val |= USB_PORTSC_PTC(5);
-	writel(val, base + USB_PORTSC);
-	udelay(2);
-
-	val = readl(base + USB_PORTSC);
-	val &= ~(USB_PORTSC_PTC(~0));
-	writel(val, base + USB_PORTSC);
-	udelay(2);
-
-	if (usb_phy_reg_status_wait(base + USB_PORTSC, USB_PORTSC_LS(0),
-						 0, 2000)) {
-		pr_err("%s: timeout waiting for USB_PORTSC_LS\n", __func__);
-		return -ETIMEDOUT;
-	}
-
-	/* Poll until CCS is enabled */
-	if (usb_phy_reg_status_wait(base + USB_PORTSC, USB_PORTSC_CCS,
-						 USB_PORTSC_CCS, 2000)) {
-		pr_err("%s: timeout waiting for USB_PORTSC_CCS\n", __func__);
-		return -ETIMEDOUT;
-	}
-
-	if (usb_phy_reg_status_wait(base + HOSTPC1_DEVLC,
-			HOSTPC1_DEVLC_PSPD(2),
-			HOSTPC1_DEVLC_PSPD(2), 2000) < 0) {
-		pr_err("%s: timeout waiting hsic high speed configuration\n",
-						__func__);
-			return -ETIMEDOUT;
-	}
-
-	val = readl(base + USB_USBCMD);
-	val &= ~USB_USBCMD_RS;
-	writel(val, base + USB_USBCMD);
-
-	if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_HCH,
-						 USB_USBSTS_HCH, 2000)) {
-		pr_err("%s: timeout waiting for USB_USBSTS_HCH\n", __func__);
-		return -ETIMEDOUT;
-	}
-
-	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~UHSIC_RPU_STROBE;
-	val |= UHSIC_RPD_STROBE;
-	writel(val, base + UHSIC_PADS_CFG1);
-
-	mdelay(50);
-
-	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~UHSIC_RPD_STROBE;
-	val |= UHSIC_RPU_STROBE;
-	writel(val, base + UHSIC_PADS_CFG1);
-
-	val = readl(base + USB_USBCMD);
-	val |= USB_USBCMD_RS;
-	writel(val, base + USB_USBCMD);
-
-	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~UHSIC_RPU_STROBE;
-	writel(val, base + UHSIC_PADS_CFG1);
-
-	if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
-						 USB_USBCMD_RS, 2000)) {
-		pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
-		return -ETIMEDOUT;
-	}
-
-	return 0;
-}
-
 static int uhsic_phy_resume(struct tegra_usb_phy *phy)
 {
 	void __iomem *base = phy->regs;
@@ -2974,7 +2886,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.resume = uhsic_phy_resume,
 	.post_resume = uhsic_phy_post_resume,
 	.port_power = uhsic_phy_bus_port_power,
-	.bus_reset	= uhsic_phy_bus_reset,
 };
 
 static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
