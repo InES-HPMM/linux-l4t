@@ -6,6 +6,7 @@
 #
 
 obj-$(CONFIG_EDP_FRAMEWORK)	+= edp/
+obj-$(CONFIG_CPUQUIET_FRAMEWORK) += cpuquiet/
 
 obj-y				+= irqchip/
 obj-y				+= bus/
