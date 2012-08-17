@@ -30,7 +30,11 @@
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/pinmux.h>
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#include <mach/pinmux-t14.h>
+#else
 #include <mach/pinmux-t11.h>
+#endif
 #include <asm/mach-types.h>
 #include "tegra_usb_phy.h"
 #include "gpio-names.h"
@@ -646,9 +650,9 @@ static int usb_phy_reset(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
-        val =  readl(base + TEGRA_STREAM_DISABLE);
-        val |= TEGRA_STREAM_DISABLE_OFFSET;
-        writel(val , base + TEGRA_STREAM_DISABLE);
+	val =  readl(base + TEGRA_STREAM_DISABLE);
+	val |= TEGRA_STREAM_DISABLE_OFFSET;
+	writel(val , base + TEGRA_STREAM_DISABLE);
 #endif
 	val = readl(base + USB_TXFILLTUNING);
 	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
@@ -2733,7 +2737,7 @@ static inline void ulpi_pinmux_bypass(struct tegra_usb_phy *phy, bool enable)
 
 static inline void ulpi_null_phy_set_tristate(bool enable)
 {
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	int tristate = (enable) ? TEGRA_TRI_TRISTATE : TEGRA_TRI_NORMAL;
 	DBG("%s(%d) inst:[%s] FIXME enable pin group +++\n", __func__,
 				__LINE__, enable ? "TRISTATE" : "NORMAL");
@@ -3089,7 +3093,7 @@ static int ulpi_null_phy_resume(struct tegra_usb_phy *phy)
 		/* enable ULPI pinmux bypass */
 		ulpi_pinmux_bypass(phy, true);
 		udelay(5);
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		/* remove DIR tristate */
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DIR,
 					  TEGRA_TRI_NORMAL);

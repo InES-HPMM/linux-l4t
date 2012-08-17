@@ -133,14 +133,15 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->has_hostpc)
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined (CONFIG_ARCH_TEGRA_11x_SOC) || defined (CONFIG_ARCH_TEGRA_14x_SOC)
 		err = tegra11x_usb_phy_init_ops(phy);
 #else
 		err = tegra3_usb_phy_init_ops(phy);
 #endif
+#if defined (CONFIG_ARCH_TEGRA_2x_SOC)
 	else
 		err = tegra2_usb_phy_init_ops(phy);
-
+#endif
 	return err;
 }
 
