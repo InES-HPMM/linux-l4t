@@ -199,11 +199,11 @@ config SND_SOC_TEGRA_RT5640
 	tristate "SoC Audio support for Tegra boards using a ALC5640 codec"
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_RT5640
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
 	select SND_SOC_RT5640
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the ALC5640 codec. Currently, the supported boards

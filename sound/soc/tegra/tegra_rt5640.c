@@ -35,11 +35,13 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/delay.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
-
 #include <mach/tegra_asoc_pdata.h>
+#include <mach/gpio-tegra.h>
+#include <mach/tegra_rt5640_pdata.h>
 
 #include <sound/core.h>
 #include <sound/jack.h>
@@ -688,7 +690,11 @@ static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
 	.owner = THIS_MODULE,
 	.dai_link = tegra_rt5640_dai,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	.num_links = 1,
+#else
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
+#endif
 	.resume_pre = tegra_rt5640_resume_pre,
 	.set_bias_level = tegra_rt5640_set_bias_level,
 	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
@@ -718,25 +724,43 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
+		ret = gpio_request(pdata->gpio_ldo1_en, "rt5640");
+		if (ret) {
+			dev_err(&pdev->dev, "Fail gpio_request AUDIO_LDO1\n");
+		}
+		ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
+		if (ret) {
+			dev_err(&pdev->dev, "Fail gpio_direction AUDIO_LDO1\n");
+		}
+		msleep(200);
+	}
+
 	machine->pdata = pdata;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
 
-	machine->cdc_en = regulator_get(NULL, "cdc_en");
-	if (WARN_ON(IS_ERR(machine->cdc_en))) {
-		dev_err(&pdev->dev, "Couldn't get regulator cdc_en: %ld\n",
-						PTR_ERR(machine->cdc_en));
-		machine->cdc_en = 0;
-	} else {
-		regulator_enable(machine->cdc_en);
+	if (pdata->cdc_regulator_id) {
+		machine->cdc_en = regulator_get(NULL, pdata->cdc_regulator_id);
+		if (WARN_ON(IS_ERR(machine->cdc_en))) {
+			dev_err(&pdev->dev,
+				"Failed regulator_get cdc_en: %ld\n",
+				PTR_ERR(machine->cdc_en));
+			machine->cdc_en = 0;
+		} else {
+			regulator_enable(machine->cdc_en);
+		}
 	}
 
-	machine->spk_reg = regulator_get(&pdev->dev, "vdd_spk_amp");
-	if (IS_ERR(machine->spk_reg)) {
-		dev_info(&pdev->dev, "No speaker regulator found\n");
-		machine->spk_reg = 0;
+	if (pdata->spk_regulator_id) {
+		machine->spk_reg = regulator_get(&pdev->dev,
+						 pdata->spk_regulator_id);
+		if (IS_ERR(machine->spk_reg)) {
+			dev_info(&pdev->dev, "No speaker regulator found\n");
+			machine->spk_reg = 0;
+		}
 	}
 
 #ifdef CONFIG_SWITCH
@@ -759,7 +783,7 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 
 	if (!card->instantiated) {
 		ret = -ENODEV;
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+		dev_err(&pdev->dev, "sound card not instantiated (%d)\n",
 			ret);
 		goto err_unregister_card;
 	}
