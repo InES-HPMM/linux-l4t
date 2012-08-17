@@ -1483,7 +1483,13 @@ static int wm8903_hw_params(struct snd_pcm_substream *substream,
 	clock1 |= sample_rates[dsp_config].value;
 
 	aif1 &= ~WM8903_AIF_WL_MASK;
+
+#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
+	bclk = 8 * fs;
+#else
 	bclk = 4 * fs;
+#endif
+
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		bclk *= 16;
