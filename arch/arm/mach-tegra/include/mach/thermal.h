@@ -58,17 +58,6 @@ struct tegra_thermal_bind {
 	} passive;
 };
 
-/* All units in millicelsius */
-struct tegra_thermal_data {
-	enum thermal_device_id throttle_edp_device_id;
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	long edp_offset;
-	long hysteresis_edp;
-#endif
-	long temp_throttle;
-	struct tegra_thermal_bind binds[];
-};
-
 struct skin_therm_est_subdevice {
 	enum thermal_device_id id;
 	long coeffs[HIST_LEN];
@@ -76,7 +65,6 @@ struct skin_therm_est_subdevice {
 
 struct tegra_skin_data {
 	enum thermal_device_id skin_device_id;
-	long temp_throttle_skin;
 
 	long skin_temp_offset;
 	long skin_period;
@@ -127,14 +115,14 @@ static inline int balanced_throttle_register(struct balanced_throttle *bthrot)
 #endif
 
 #ifdef CONFIG_TEGRA_THERMAL
-int tegra_thermal_init(struct tegra_thermal_data *data,
+int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds,
 				struct tegra_skin_data *skin_data,
 				struct balanced_throttle *throttle_list,
 				int throttle_list_size);
 int tegra_thermal_device_register(struct tegra_thermal_device *device);
 int tegra_thermal_exit(void);
 #else
-static inline int tegra_thermal_init(struct tegra_thermal_data *data,
+static inline int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds,
 					struct tegra_skin_data *skin_data,
 					struct balanced_throttle *throttle_list,
 					int throttle_list_size)

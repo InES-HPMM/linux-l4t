@@ -34,7 +34,7 @@
 #include "cpu-tegra.h"
 #include "dvfs.h"
 
-static struct tegra_thermal_data *therm;
+static struct tegra_thermal_bind *thermal_binds;
 static struct tegra_skin_data *skin_therm;
 static LIST_HEAD(tegra_therm_list);
 static DEFINE_MUTEX(tegra_therm_mutex);
@@ -51,43 +51,6 @@ static int skin_devs_count;
 #endif
 static bool tegra_thermal_suspend;
 
-#ifdef CONFIG_DEBUG_FS
-static struct dentry *thermal_debugfs_root;
-#endif
-
-static inline long dev2tj(struct tegra_thermal_device *dev,
-				long dev_temp)
-{
-	return dev_temp + dev->offset;
-}
-
-static inline long tj2dev(struct tegra_thermal_device *dev,
-				long tj_temp)
-{
-	return tj_temp - dev->offset;
-}
-
-static int tegra_thermal_get_temp_unlocked(long *tj_temp, bool offsetted)
-{
-	struct tegra_thermal_device *dev = NULL;
-	int ret = 0;
-
-	list_for_each_entry(dev, &tegra_therm_list, node)
-		if (dev->id == therm->throttle_edp_device_id)
-			break;
-
-	if (dev) {
-		dev->get_temp(dev->data, tj_temp);
-		if (offsetted)
-			*tj_temp = dev2tj(dev, *tj_temp);
-	} else {
-		*tj_temp = 0xdeadbeef;
-		ret = -1;
-	}
-
-	return ret;
-}
-
 static int tegra_thermal_zone_bind(struct thermal_zone_device *thz,
 				struct thermal_cooling_device *cdevice)
 {
@@ -95,12 +58,12 @@ static int tegra_thermal_zone_bind(struct thermal_zone_device *thz,
 	struct tegra_cooling_device *tegra_cdev = cdevice->devdata;
 	struct tegra_thermal_device *device = thz->devdata;
 
-	for (i=0; therm->binds[i].tdev_id; i++) {
-		if(device->id == therm->binds[i].tdev_id) {
-			trip_size = therm->binds[i].get_trip_size();
+	for (i=0; thermal_binds[i].tdev_id; i++) {
+		if(device->id == thermal_binds[i].tdev_id) {
+			trip_size = thermal_binds[i].get_trip_size();
 			index = tegra_cdev->id & 0xffff;
 
-			if (therm->binds[i].cdev_id  == (tegra_cdev->id & 0xffff0000)) {
+			if (thermal_binds[i].cdev_id  == (tegra_cdev->id & 0xffff0000)) {
 				for (j=0; j < trip_size; j++) {
 					thermal_zone_bind_cooling_device(
 							thz,
@@ -122,11 +85,11 @@ static int tegra_thermal_zone_unbind(struct thermal_zone_device *thz,
 	struct tegra_cooling_device *tegra_cdev = cdevice->devdata;
 	struct tegra_thermal_device *device = thz->devdata;
 
-	for (i=0; therm->binds[i].tdev_id; i++) {
-		if(device->id == therm->binds[i].tdev_id) {
-			if (tegra_cdev->id == therm->binds[i].cdev_id)
+	for (i=0; thermal_binds[i].tdev_id; i++) {
+		if(device->id == thermal_binds[i].tdev_id) {
+			if (tegra_cdev->id == thermal_binds[i].cdev_id)
 				thermal_zone_unbind_cooling_device(thz, trip, cdevice);
-			trip += therm->binds[i].get_trip_size();
+			trip += thermal_binds[i].get_trip_size();
 		}
 	}
 
@@ -151,11 +114,11 @@ static int tegra_thermal_zone_get_trip_type(
 	int i, trip_count = 0;
 	struct tegra_thermal_device *device = thz->devdata;
 
-	for (i=0; therm->binds[i].tdev_id; i++) {
-		if(device->id == therm->binds[i].tdev_id) {
-			trip_count += therm->binds[i].get_trip_size();
+	for (i=0; thermal_binds[i].tdev_id; i++) {
+		if(device->id == thermal_binds[i].tdev_id) {
+			trip_count += thermal_binds[i].get_trip_size();
 			if (trip < trip_count) {
-				*type = therm->binds[i].type;
+				*type = thermal_binds[i].type;
 				return 0;
 			}
 		}
@@ -170,13 +133,13 @@ static int tegra_thermal_zone_get_trip_temp(struct thermal_zone_device *thz,
 	int i, j, trip_size, trip_count = 0;
 	struct tegra_thermal_device *device = thz->devdata;
 
-	for (i=0; therm->binds[i].tdev_id; i++) {
-		if(device->id == therm->binds[i].tdev_id) {
-			trip_size = therm->binds[i].get_trip_size();
+	for (i=0; thermal_binds[i].tdev_id; i++) {
+		if(device->id == thermal_binds[i].tdev_id) {
+			trip_size = thermal_binds[i].get_trip_size();
 			for (j=0; j < trip_size; j++) {
 				if (trip == trip_count) {
-					*temp = therm->binds[i].get_trip_temp(
-							&therm->binds[i], j);
+					*temp = thermal_binds[i].get_trip_temp(
+							&thermal_binds[i], j);
 					return 0;
 				}
 				trip_count++;
@@ -217,90 +180,36 @@ static struct notifier_block tegra_thermal_nb = {
 static void tegra_thermal_alert(void *data)
 {
 	struct tegra_thermal_device *device = data;
-	long temp_tj;
-	long lo_limit_throttle_tj, hi_limit_throttle_tj;
-	long lo_limit_edp_tj = 0, hi_limit_edp_tj = 0;
-	long temp_low_dev, temp_low_tj;
-	int lo_limit_tj = 0, hi_limit_tj = 0;
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-	const struct tegra_edp_limits *z;
-	int zones_sz;
-	int i;
-#endif
+	long temp, trip_temp, low_temp = 0, high_temp = MAX_TEMP;
+	int count;
 
 	mutex_lock(&tegra_therm_mutex);
 
-	if (device->thz)
-		if ((!device->thz->passive) && (!tegra_thermal_suspend))
-			thermal_zone_device_update(device->thz);
-
-	/* Convert all temps to tj and then do all work/logic in terms of
-	   tj in order to avoid confusion */
-	if (tegra_thermal_get_temp_unlocked(&temp_tj, true))
+	if (!device->thz)
 		goto done;
 
-	device->get_temp_low(device, &temp_low_dev);
-	temp_low_tj = dev2tj(device, temp_low_dev);
+	if ((!device->thz->passive) && (!tegra_thermal_suspend))
+		thermal_zone_device_update(device->thz);
 
-	lo_limit_throttle_tj = temp_low_tj;
-	hi_limit_throttle_tj = dev2tj(device, MAX_TEMP);
+	device->thz->ops->get_temp(device->thz, &temp);
 
-	hi_limit_throttle_tj = dev2tj(device, therm->temp_throttle);
+	for (count = 0; count < device->thz->trips; count++) {
+		device->thz->ops->get_trip_temp(device->thz, count, &trip_temp);
 
-	if (temp_tj > dev2tj(device, therm->temp_throttle)) {
-		lo_limit_throttle_tj = dev2tj(device, therm->temp_throttle);
-		hi_limit_throttle_tj = dev2tj(device, MAX_TEMP);
+		if ((trip_temp >= temp) && (trip_temp < high_temp))
+			high_temp = trip_temp;
+
+		if ((trip_temp < temp) && (trip_temp > low_temp))
+			low_temp = trip_temp;
 	}
 
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-#define EDP_TEMP_TJ(_index) (z[_index].temperature * 1000 + therm->edp_offset)
-	tegra_get_cpu_edp_limits(&z, &zones_sz);
-	if (temp_tj < EDP_TEMP_TJ(0)) {
-		lo_limit_edp_tj = temp_low_tj;
-		hi_limit_edp_tj = EDP_TEMP_TJ(0);
-	} else if (temp_tj >= EDP_TEMP_TJ(zones_sz-1)) {
-		lo_limit_edp_tj = EDP_TEMP_TJ(zones_sz-1) -
-					therm->hysteresis_edp;
-		hi_limit_edp_tj = dev2tj(device, MAX_TEMP);
-	} else {
-		for (i = 0; (i + 1) < zones_sz; i++) {
-			if ((temp_tj >= EDP_TEMP_TJ(i)) &&
-				(temp_tj < EDP_TEMP_TJ(i+1))) {
-				lo_limit_edp_tj = EDP_TEMP_TJ(i) -
-							therm->hysteresis_edp;
-				hi_limit_edp_tj = EDP_TEMP_TJ(i+1);
-				break;
-			}
-		}
-	}
-#undef EDP_TEMP_TJ
-#else
-	lo_limit_edp_tj = temp_low_tj;
-	hi_limit_edp_tj = dev2tj(device, MAX_TEMP);
-#endif
-
-	/* Get smallest window size */
-	lo_limit_tj = max(lo_limit_throttle_tj, lo_limit_edp_tj);
-	hi_limit_tj = min(hi_limit_throttle_tj, hi_limit_edp_tj);
-
-	device->set_limits(device->data,
-				tj2dev(device, lo_limit_tj),
-				tj2dev(device, hi_limit_tj));
-}
-
+	if (device->set_limits && device->thz->trips)
+		device->set_limits(device->data, low_temp, high_temp);
 done:
 	mutex_unlock(&tegra_therm_mutex);
 }
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static void tegra_skin_thermal_alert(void *data)
-{
-	struct tegra_thermal_device *dev = data;
-
-	if (!dev->thz->passive)
-		thermal_zone_device_update(dev->thz);
-}
-
 static int tegra_skin_device_register(struct tegra_thermal_device *device)
 {
 	int i;
@@ -365,7 +274,7 @@ static int passive_get_trip_size(void)
 int tegra_thermal_device_register(struct tegra_thermal_device *device)
 {
 	struct tegra_thermal_device *dev;
-	struct thermal_zone_device *thz;
+	struct thermal_zone_device *thz = NULL;
 	int i, t1 = 0, t2 = 0, pdelay = 0, trips=0;
 
 	mutex_lock(&tegra_therm_mutex);
@@ -376,29 +285,29 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 		}
 	}
 
-	for (i=0; therm->binds[i].tdev_id; i++) {
-		if(device->id == therm->binds[i].tdev_id) {
-			switch(therm->binds[i].type) {
+	for (i=0; thermal_binds[i].tdev_id; i++) {
+		if(device->id == thermal_binds[i].tdev_id) {
+			switch(thermal_binds[i].type) {
 			case THERMAL_TRIP_PASSIVE:
 				/* only one passive type allowed for now */
 				if (pdelay)
 					return -EINVAL;
 
 				/* These should be set only for ACTIVE types */
-				if (therm->binds[i].get_trip_temp ||
-					therm->binds[i].get_trip_size)
+				if (thermal_binds[i].get_trip_temp ||
+					thermal_binds[i].get_trip_size)
 					return -EINVAL;
 
-				t1 = therm->binds[i].passive.tc1;
-				t2 = therm->binds[i].passive.tc2;
-				pdelay = therm->binds[i].passive.passive_delay;
+				t1 = thermal_binds[i].passive.tc1;
+				t2 = thermal_binds[i].passive.tc2;
+				pdelay = thermal_binds[i].passive.passive_delay;
 
-				therm->binds[i].get_trip_temp = passive_get_trip_temp;
-				therm->binds[i].get_trip_size = passive_get_trip_size;
+				thermal_binds[i].get_trip_temp = passive_get_trip_temp;
+				thermal_binds[i].get_trip_size = passive_get_trip_size;
 				break;
 			}
 
-			trips += therm->binds[i].get_trip_size();
+			trips += thermal_binds[i].get_trip_size();
 		}
 	}
 
@@ -421,20 +330,8 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 	list_add(&device->node, &tegra_therm_list);
 	mutex_unlock(&tegra_therm_mutex);
 
-#ifdef CONFIG_TEGRA_SKIN_THROTTLE
-	if (device->id == skin_therm->skin_device_id) {
-		if (create_thz)
-			device->set_alert(device->data,
-				tegra_skin_thermal_alert,
-				device);
-		device->set_limits(device->data, 0, skin_therm->temp_throttle_skin);
-	}
-#endif
-
-	if (device->id == therm->throttle_edp_device_id) {
+	if (thz) {
 		device->set_alert(device->data, tegra_thermal_alert, device);
-
-		/* initialize limits */
 		tegra_thermal_alert(device);
 	}
 
@@ -459,16 +356,13 @@ static int __init throttle_list_init(void)
 }
 late_initcall(throttle_list_init);
 
-int __init tegra_thermal_init(struct tegra_thermal_data *data,
+int __init tegra_thermal_init(struct tegra_thermal_bind *binds,
 				struct tegra_skin_data *skin_data,
 				struct balanced_throttle *tlist,
 				int tlist_size)
 {
-	therm = data;
+	thermal_binds = binds;
 	skin_therm = skin_data;
-#ifdef CONFIG_DEBUG_FS
-	thermal_debugfs_root = debugfs_create_dir("tegra_thermal", 0);
-#endif
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	{
@@ -498,73 +392,3 @@ int tegra_thermal_exit(void)
 	return 0;
 }
 
-#ifdef CONFIG_DEBUG_FS
-static int tegra_thermal_temp_tj_get(void *data, u64 *val)
-{
-	long temp_tj;
-
-	mutex_lock(&tegra_therm_mutex);
-	if (tegra_thermal_get_temp_unlocked(&temp_tj, false))
-		temp_tj = -1;
-	mutex_unlock(&tegra_therm_mutex);
-
-	*val = (u64)temp_tj;
-
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(temp_tj_fops,
-			tegra_thermal_temp_tj_get,
-			NULL,
-			"%llu\n");
-
-static int __init temp_tj_debug_init(void)
-{
-	debugfs_create_file("temp_tj", 0644, thermal_debugfs_root,
-		NULL, &temp_tj_fops);
-	return 0;
-}
-late_initcall(temp_tj_debug_init);
-
-#define THERM_DEBUGFS(_name) \
-	static int tegra_thermal_##_name##_set(void *data, u64 val) \
-	{ \
-		struct tegra_thermal_device *dev; \
-		mutex_lock(&tegra_therm_mutex); \
-		list_for_each_entry(dev, &tegra_therm_list, node) \
-			if (dev->id == therm->throttle_edp_device_id) \
-				break; \
-		if (dev) \
-			dev->thz->_name = val; \
-		mutex_unlock(&tegra_therm_mutex); \
-		return 0; \
-	} \
-	static int tegra_thermal_##_name##_get(void *data, u64 *val) \
-	{ \
-		struct tegra_thermal_device *dev; \
-		mutex_lock(&tegra_therm_mutex); \
-		list_for_each_entry(dev, &tegra_therm_list, node) \
-			if (dev->id == therm->throttle_edp_device_id) \
-				break; \
-		if (dev) \
-			*val = (u64)dev->thz->_name; \
-		mutex_unlock(&tegra_therm_mutex); \
-		return 0; \
-	} \
-	DEFINE_SIMPLE_ATTRIBUTE(_name##_fops, \
-			tegra_thermal_##_name##_get, \
-			tegra_thermal_##_name##_set, \
-			"%llu\n"); \
-	static int __init _name##_debug_init(void) \
-	{ \
-		debugfs_create_file(#_name, 0644, thermal_debugfs_root, \
-			NULL, &_name##_fops); \
-		return 0; \
-	} \
-	late_initcall(_name##_debug_init);
-
-
-THERM_DEBUGFS(tc1);
-THERM_DEBUGFS(tc2);
-THERM_DEBUGFS(passive_delay);
-#endif
