@@ -77,7 +77,10 @@
 #define I2C_INT_ARBITRATION_LOST		(1<<2)
 #define I2C_INT_TX_FIFO_DATA_REQ		(1<<1)
 #define I2C_INT_RX_FIFO_DATA_REQ		(1<<0)
+
 #define I2C_CLK_DIVISOR				0x06c
+#define I2C_CLK_DIVISOR_STD_FAST_MODE_SHIFT	16
+#define I2C_CLK_MULTIPLIER_STD_FAST_MODE	8
 
 #define DVC_CTRL_REG1				0x000
 #define DVC_CTRL_REG1_INTR_EN			(1<<10)
@@ -142,9 +145,12 @@ struct tegra_i2c_hw_feature {
 	bool has_continue_xfer_support;
 	bool timeout_irq_occurs_before_bus_inactive;
 	bool has_xfer_complete_interrupt;
-	u16 i2c_clock_multiplier;
 	bool has_hw_arb_support;
 	bool has_fast_clock;
+	bool has_clk_divisor_std_fast_mode;
+	u16 clk_divisor_std_fast_mode;
+	u16 clk_divisor_hs_mode;
+	int clk_multiplier_hs_mode;
 };
 
 /**
@@ -474,10 +480,25 @@ static inline void tegra_i2c_clock_disable(struct tegra_i2c_dev *i2c_dev)
 		clk_disable_unprepare(i2c_dev->fast_clk);
 }
 
+static void tegra_i2c_set_clk_rate(struct tegra_i2c_dev *i2c_dev)
+{
+	u32 clk_multiplier;
+	if (i2c_dev->is_high_speed_enable)
+		clk_multiplier = i2c_dev->hw->clk_multiplier_hs_mode
+			* (i2c_dev->hw->clk_divisor_hs_mode + 1);
+	else
+		clk_multiplier = I2C_CLK_MULTIPLIER_STD_FAST_MODE
+		* (i2c_dev->hw->clk_divisor_std_fast_mode + 1);
+
+	clk_set_rate(i2c_dev->div_clk, i2c_dev->bus_clk_rate
+							* clk_multiplier);
+}
+
 static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 {
 	u32 val;
 	int err = 0;
+	u32 clk_divisor = 0;
 
 	err = tegra_i2c_clock_enable(i2c_dev);
 	if (err < 0) {
@@ -497,10 +518,13 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	i2c_writel(i2c_dev, val, I2C_CNFG);
 	i2c_writel(i2c_dev, 0, I2C_INT_MASK);
 
-	clk_set_rate(i2c_dev->div_clk, i2c_dev->bus_clk_rate
-			* i2c_dev->hw->i2c_clock_multiplier);
+	tegra_i2c_set_clk_rate(i2c_dev);
 
-	i2c_writel(i2c_dev, 0x3, I2C_CLK_DIVISOR);
+	clk_divisor |= i2c_dev->hw->clk_divisor_hs_mode;
+	if (i2c_dev->hw->has_clk_divisor_std_fast_mode)
+		clk_divisor |= i2c_dev->hw->clk_divisor_std_fast_mode
+				<< I2C_CLK_DIVISOR_STD_FAST_MODE_SHIFT;
+	i2c_writel(i2c_dev, clk_divisor, I2C_CLK_DIVISOR);
 
 	if (!i2c_dev->is_dvc) {
 		u32 sl_cfg = i2c_readl(i2c_dev, I2C_SL_CNFG);
@@ -874,9 +898,12 @@ static const struct tegra_i2c_hw_feature tegra20_i2c_hw = {
 	.has_continue_xfer_support = false,
 	.timeout_irq_occurs_before_bus_inactive = true,
 	.has_xfer_complete_interrupt = false,
-	.i2c_clock_multiplier = 8,
 	.has_hw_arb_support = false,
 	.has_fast_clock = true,
+	.has_clk_divisor_std_fast_mode = false,
+	.clk_divisor_std_fast_mode = 0,
+	.clk_divisor_hs_mode = 3,
+	.clk_multiplier_hs_mode = 12,
 };
 
 static const struct tegra_i2c_hw_feature tegra30_i2c_hw = {
@@ -892,9 +919,12 @@ static const struct tegra_i2c_hw_feature tegra11_i2c_hw = {
 	.has_continue_xfer_support = true,
 	.timeout_irq_occurs_before_bus_inactive = false,
 	.has_xfer_complete_interrupt = true,
-	.i2c_clock_multiplier = 200,
 	.has_hw_arb_support = true,
 	.has_fast_clock = false,
+	.has_clk_divisor_std_fast_mode = true,
+	.clk_divisor_std_fast_mode = 0x19,
+	.clk_divisor_hs_mode = 1,
+	.clk_multiplier_hs_mode = 3,
 };
 
 #if defined(CONFIG_OF)
