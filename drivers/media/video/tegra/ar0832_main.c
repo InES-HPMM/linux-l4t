@@ -25,10 +25,12 @@
 
 #include <media/ar0832_main.h>
 
+
 #define POS_ACTUAL_LOW			0
 #define POS_ACTUAL_HIGH			255
 #define SETTLE_TIME				100
-#define SLEW_RATE_DEFAULT		1
+#define AR0832_SLEW_RATE_DISABLED  0
+#define AR0832_SLEW_RATE_SLOWEST   7
 
 
 struct ar0832_sensor_info {
@@ -1932,13 +1934,26 @@ static int ar0832_focuser_set_config(struct ar0832_dev *dev)
 	struct i2c_client *i2c_client = dev->i2c_client;
 	struct ar0832_reg reg_vcm_ctrl, reg_vcm_step_time;
 	int ret = 0;
-	u8 vcm_slew = 1;
+	u8 vcm_slew;
+	u16 vcm_control_data;
+	u16 vcm_step_time = 1024;
+
+	/* slew_rate of disabled (0) or default value (1) will disable    */
+	/* the slew rate in this case. Any value of 2 onwards will enable */
+	/* the slew rate to a different degree */
+	if (dev->focuser_info->config.slew_rate == SLEW_RATE_DISABLED ||
+	   dev->focuser_info->config.slew_rate == SLEW_RATE_DEFAULT)
+		vcm_slew = AR0832_SLEW_RATE_DISABLED;
+	else
+		vcm_slew = dev->focuser_info->config.slew_rate - 1;
+
+	if (vcm_slew > AR0832_SLEW_RATE_SLOWEST)
+		vcm_slew = AR0832_SLEW_RATE_SLOWEST;
 
 	/* bit15(0x80) means that VCM driver enable bit. */
 	/* bit3(0x08) means that keep VCM(AF position) */
 	/* while sensor is in soft standby mode during mode transitions. */
-	u16 vcm_control_data = (0x80 << 8 | (0x08 | (vcm_slew & 0x07)));
-	u16 vcm_step_time = 1024;
+	vcm_control_data = (0x80 << 8 | (0x08 | (vcm_slew & 0x07)));
 
 	ar0832_get_focuser_vcm_control_regs(&reg_vcm_ctrl, vcm_control_data);
 	ret = ar0832_write_reg16(dev->i2c_client, reg_vcm_ctrl.addr,
