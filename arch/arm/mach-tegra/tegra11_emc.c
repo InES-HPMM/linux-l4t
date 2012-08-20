@@ -192,7 +192,7 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 
 	int i;
 	struct clk *p = NULL;
-	unsigned long p_rate;
+	unsigned long p_rate = 0;
 
 	if (!tegra_emc_table || !emc_enable)
 		return true;
