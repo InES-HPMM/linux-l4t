@@ -34,6 +34,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm.h>
 
+#include <mach/hardware.h>
 #include <mach/legacy_irq.h>
 
 #include "../../arch/arm/mach-tegra/pm-irq.h"
@@ -224,14 +225,13 @@ static void tegra_gpio_irq_ack(struct irq_data *d)
 
 	tegra_gpio_writel(1 << GPIO_BIT(gpio), GPIO_INT_CLR(gpio));
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	/* FPGA platforms have a serializer between the GPIO
 	   block and interrupt controller. Allow time for
 	   clearing of the GPIO interrupt to propagate to the
 	   interrupt controller before re-enabling the IRQ
 	   to prevent double interrupts. */
-	udelay(15);
-#endif
+	if (tegra_platform_is_fpga())
+		udelay(15);
 }
 
 static void tegra_gpio_irq_mask(struct irq_data *d)
