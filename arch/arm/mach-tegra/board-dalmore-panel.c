@@ -35,6 +35,7 @@
 
 #if TEGRA_PANEL_ENABLE
 
+#define TEGRA_DSI_GANGED_MODE 0
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
@@ -57,12 +58,27 @@ static struct resource dalmore_disp1_resources[] __initdata = {
 		.end	= 0, /* Filled in by dalmore_panel_init() */
 		.flags	= IORESOURCE_MEM,
 	},
+#if TEGRA_DSI_GANGED_MODE
+	{
+		.name	= "ganged_dsia_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "ganged_dsib_regs",
+		.start	= TEGRA_DSIB_BASE,
+		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#else
 	{
 		.name	= "dsi_regs",
 		.start	= TEGRA_DSI_BASE,
 		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#endif
 };
 
 static struct resource dalmore_disp2_resources[] __initdata = {
