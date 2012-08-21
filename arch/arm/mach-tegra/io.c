@@ -28,6 +28,7 @@
 
 #include <asm/page.h>
 #include <asm/mach/map.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -95,7 +96,10 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.type = MT_DEVICE,
 	}
 #endif
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
+};
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+static struct map_desc tegra_io_desc_linsim[] __initdata = {
 	{
 		.virtual = (unsigned long)IO_SMC_VIRT,
 		.pfn = __phys_to_pfn(IO_SMC_PHYS),
@@ -108,11 +112,17 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.length = IO_SIM_ESCAPE_SIZE,
 		.type = MT_DEVICE,
 	},
-#endif
 };
+#endif
 
 void __init tegra_map_common_io(void)
 {
 	debug_ll_io_init();
 	iotable_init(tegra_io_desc, ARRAY_SIZE(tegra_io_desc));
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (tegra_platform_is_linsim())
+		iotable_init(tegra_io_desc_linsim,
+			ARRAY_SIZE(tegra_io_desc_linsim));
+#endif
 }

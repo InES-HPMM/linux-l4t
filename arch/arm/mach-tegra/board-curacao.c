@@ -356,27 +356,6 @@ static struct platform_device curacao_audio_device = {
 		.platform_data  = &curacao_audio_pdata,
 	},
 };
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
-static struct resource tegra_sim_smc91x_resources[] = {
-	[0] = {
-		.start		= TEGRA_SIM_ETH_BASE,
-		.end		= TEGRA_SIM_ETH_BASE + TEGRA_SIM_ETH_SIZE - 1,
-		.flags		= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start		= IRQ_ETH,
-		.end		= IRQ_ETH,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_sim_smc91x_device = {
-	.name		= "smc91x",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(tegra_sim_smc91x_resources),
-	.resource	= tegra_sim_smc91x_resources,
-};
-#endif
 
 static struct platform_device *curacao_devices[] __initdata = {
 #if ENABLE_OTG
@@ -401,10 +380,6 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&curacao_audio_device,
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
-#endif
-
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
-	&tegra_sim_smc91x_device,
 #endif
 };
 
