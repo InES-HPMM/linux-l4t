@@ -458,21 +458,6 @@ static struct tegra_cl_dvfs_platform_data curacao_cl_dvfs_data = {
 	.cfg_param = &curacao_cl_dvfs_param,
 };
 
-static int __init curacao_gpio_regulator_init(void)
-{
-	int i, j;
-	for (i = 0; i < ARRAY_SIZE(gpio_regs_devices); ++i) {
-		struct gpio_regulator_config *gpio_reg_pdata =
-			gpio_regs_devices[i]->dev.platform_data;
-		for (j = 0; j < gpio_reg_pdata->nr_gpios; ++j) {
-			if (gpio_reg_pdata->gpios[j].gpio < TEGRA_NR_GPIOS)
-				tegra_gpio_enable(gpio_reg_pdata->gpios[j].gpio);
-		}
-	}
-	return platform_add_devices(gpio_regs_devices,
-			ARRAY_SIZE(gpio_regs_devices));
-}
-
 int __init curacao_regulator_init(void)
 {
 	int ret;
@@ -484,7 +469,9 @@ int __init curacao_regulator_init(void)
 
 	fill_reg_map();
 	tegra_cl_dvfs_set_plarform_data(&curacao_cl_dvfs_data);
-	return curacao_gpio_regulator_init();
+
+	return platform_add_devices(gpio_regs_devices,
+			ARRAY_SIZE(gpio_regs_devices));
 }
 
 int __init curacao_suspend_init(void)

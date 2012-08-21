@@ -423,14 +423,6 @@ static struct platform_device *curacao_devices[] __initdata = {
 #endif
 };
 
-static void curacao_keys_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(curacao_keys); i++)
-		tegra_gpio_enable(curacao_keys[i].gpio);
-}
-
 static int __init curacao_touch_init(void)
 {
 	return 0;
@@ -609,7 +601,6 @@ static void __init tegra_curacao_init(void)
 	curacao_regulator_init();
 	curacao_suspend_init();
 	curacao_touch_init();
-	curacao_keys_init();
 	curacao_usb_init();
 	curacao_panel_init();
 	curacao_hs_uart_init();
