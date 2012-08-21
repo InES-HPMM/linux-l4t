@@ -21,6 +21,8 @@
 #include <linux/errno.h>
 
 #define EDP_NAME_LEN	16
+#define EDP_MIN_PRIO	0
+#define EDP_MAX_PRIO	19
 
 struct edp_manager {
 	char name[EDP_NAME_LEN];
@@ -39,6 +41,7 @@ struct edp_manager {
  * @num_states: length of the above array
  * @e0_index: index of the E0 state in the above array
  * @max_borrowers: maximum number of clients allowed to borrow from this
+ * @priority: client priority - should be between EDP_MIN_PRIO & EDP_MAX_PRIO
  * @notify_loan_update: for receiving loan size change notifications
  * @notify_loan_close: for receiving loan closure notification
  * Note that each EDP client is tied to a single EDP manager
@@ -49,6 +52,7 @@ struct edp_client {
 	unsigned int num_states;
 	unsigned int e0_index;
 	unsigned int max_borrowers;
+	int priority;
 
 	void (*notify_loan_update)(unsigned int new_size,
 			struct edp_client *lender);

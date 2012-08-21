@@ -142,6 +142,21 @@ static bool states_ok(struct edp_client *client)
 	return true;
 }
 
+/* Keep the list sorted on priority */
+static void add_client(struct edp_client *new, struct list_head *head)
+{
+	struct edp_client *p;
+
+	list_for_each_entry(p, head, link) {
+		if (p->priority > new->priority) {
+			list_add_tail(&new->link, &p->link);
+			return;
+		}
+	}
+
+	list_add_tail(&new->link, &p->link);
+}
+
 static int register_client(struct edp_manager *mgr, struct edp_client *client)
 {
 	if (!mgr || !client)
@@ -153,14 +168,15 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	if (!mgr->registered)
 		return -ENODEV;
 
-	if (!states_ok(client))
+	if (!states_ok(client) || client->priority < EDP_MIN_PRIO ||
+			client->priority > EDP_MAX_PRIO)
 		return -EINVAL;
 
 	/* make sure that we can satisfy E0 for all registered clients */
 	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->imax)
 		return -E2BIG;
 
-	list_add_tail(&client->link, &mgr->clients);
+	add_client(client, &mgr->clients);
 	client->manager = mgr;
 	client->req = NULL;
 	client->cur = NULL;
@@ -356,6 +372,21 @@ static struct loan_client *find_borrower(struct edp_client *lender,
 	return NULL;
 }
 
+/* Keep the list sorted on priority */
+static void add_borrower(struct loan_client *new, struct list_head *head)
+{
+	struct loan_client *p;
+
+	list_for_each_entry(p, head, link) {
+		if (p->client->priority > new->client->priority) {
+			list_add_tail(&new->link, &p->link);
+			return;
+		}
+	}
+
+	list_add_tail(&new->link, &p->link);
+}
+
 static int register_loan(struct edp_client *lender, struct edp_client *borrower)
 {
 	struct loan_client *p;
@@ -381,7 +412,7 @@ static int register_loan(struct edp_client *lender, struct edp_client *borrower)
 	p->client = borrower;
 	lender->num_borrowers++;
 	borrower->num_loans++;
-	list_add_tail(&p->link, &lender->borrowers);
+	add_borrower(p, &lender->borrowers);
 
 	update_loans(lender);
 	return 0;
