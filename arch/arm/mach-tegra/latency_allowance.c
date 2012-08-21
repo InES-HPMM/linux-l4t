@@ -258,6 +258,37 @@ void tegra_disable_latency_scaling(enum tegra_la_id id)
 	spin_unlock(&safety_lock);
 }
 
+void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick)
+{
+	int i = 0;
+	int la;
+	unsigned long reg_read;
+	unsigned long reg_write;
+	unsigned long scale_factor = new_ns_per_tick / ns_per_tick;
+
+	if (scale_factor > 1) {
+		spin_lock(&safety_lock);
+		ns_per_tick = new_ns_per_tick;
+		for (i = 0; i < ARRAY_SIZE(la_info_array) - 1; i++) {
+			reg_read = readl(la_info_array[i].reg_addr);
+			la = ((reg_read & la_info_array[i].mask) >>
+				la_info_array[i].shift) / scale_factor;
+
+			reg_write = (reg_read & ~la_info_array[i].mask) |
+					(la << la_info_array[i].shift);
+			writel(reg_write, la_info_array[i].reg_addr);
+			scaling_info[i].la_set = la;
+		}
+		spin_unlock(&safety_lock);
+
+		/* Re-scale G2PR, G2SR, G2DR, G2DW with updated ns_per_tick */
+		tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
+		tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
+		tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
+		tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
+	}
+}
+
 static int la_regs_show(struct seq_file *s, void *unused)
 {
 	unsigned i;
