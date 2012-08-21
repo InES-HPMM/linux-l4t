@@ -206,6 +206,7 @@ struct tegra_dsi_out {
 	bool		te_polarity_low;
 	bool		power_saving_suspend;
 	bool		dsi2lvds_bridge_enable;
+	bool		dsi2edp_bridge_enable;
 
 	u32		max_panel_freq_khz;
 	u32		lp_cmd_mode_freq_khz;
