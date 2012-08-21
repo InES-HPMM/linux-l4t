@@ -108,6 +108,7 @@
 #define L2X0_WAY_SIZE_SHIFT		3
 
 #define REV_PL310_R2P0				4
+#define REV_PL310_R3P1_50			7
 
 #ifndef __ASSEMBLY__
 extern void l2x0_init(void __iomem *base, u32 aux_val, u32 aux_mask);

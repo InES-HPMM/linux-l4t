@@ -97,7 +97,8 @@ static inline void l2x0_inv_line(unsigned long addr)
 	writel_relaxed(addr, base + L2X0_INV_LINE_PA);
 }
 
-#if defined(CONFIG_PL310_ERRATA_588369) || defined(CONFIG_PL310_ERRATA_727915)
+#if !defined(CONFIG_TRUSTED_FOUNDATIONS) && \
+	(defined(CONFIG_PL310_ERRATA_588369) || defined(CONFIG_PL310_ERRATA_727915))
 static inline void debug_writel(unsigned long val)
 {
 	if (outer_cache.set_debug)
@@ -178,7 +179,7 @@ static void l2x0_flush_all(void)
 	unsigned long flags;
 
 #ifdef CONFIG_PL310_ERRATA_727915
-	if (is_pl310_rev(REV_PL310_R2P0)) {
+	if (is_pl310_rev(REV_PL310_R2P0) || is_pl310_rev(REV_PL310_R3P1_50)) {
 		l2x0_for_each_set_way(l2x0_base + L2X0_CLEAN_INV_LINE_IDX);
 		return;
 	}
@@ -195,7 +196,7 @@ static void l2x0_clean_all(void)
 	unsigned long flags;
 
 #ifdef CONFIG_PL310_ERRATA_727915
-	if (is_pl310_rev(REV_PL310_R2P0)) {
+	if (is_pl310_rev(REV_PL310_R2P0) || is_pl310_rev(REV_PL310_R3P1_50)) {
 		l2x0_for_each_set_way(l2x0_base + L2X0_CLEAN_LINE_IDX);
 		return;
 	}
