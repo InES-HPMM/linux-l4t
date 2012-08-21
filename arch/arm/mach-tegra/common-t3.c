@@ -3,7 +3,7 @@
  *
  * Tegra 3 SoC-specific initialization (memory controller, etc.)
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@
 	((MC_EMEM_ARB_TIMING_W2R - MC_EMEM_ARB_CFG) / 4 + 1)
 #define MC_TIMING_REG_NUM2 \
 	((MC_EMEM_ARB_MISC1 - MC_EMEM_ARB_DA_TURNS) / 4 + 1)
+#define MC_TIMING_REG_NUM3 \
+	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_AFI) / 4 + 1)
 
 struct mc_client {
 	const char *name;
@@ -59,7 +61,8 @@ static void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
 
 
 #ifdef CONFIG_PM_SLEEP
-static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2 + 4];
+static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
+				+ MC_TIMING_REG_NUM3 + 4];
 
 static void tegra_mc_timing_save(void)
 {
@@ -75,6 +78,10 @@ static void tegra_mc_timing_save(void)
 	*ctx++ = readl(mc + MC_EMEM_ARB_RING3_THROTTLE);
 	*ctx++ = readl(mc + MC_EMEM_ARB_OVERRIDE);
 	*ctx++ = readl(mc + MC_RESERVED_RSV);
+
+	for (off = MC_LATENCY_ALLOWANCE_AFI; off <= MC_LATENCY_ALLOWANCE_VI_2;
+		off += 4)
+		*ctx++ = readl(mc + off);
 
 	*ctx++ = readl(mc + MC_INT_MASK);
 }
@@ -93,6 +100,10 @@ void tegra_mc_timing_restore(void)
 	__raw_writel(*ctx++, mc + MC_EMEM_ARB_RING3_THROTTLE);
 	__raw_writel(*ctx++, mc + MC_EMEM_ARB_OVERRIDE);
 	__raw_writel(*ctx++, mc + MC_RESERVED_RSV);
+
+	for (off = MC_LATENCY_ALLOWANCE_AFI; off <= MC_LATENCY_ALLOWANCE_VI_2;
+		off += 4)
+		__raw_writel(*ctx++, mc + off);
 
 	writel(*ctx++, mc + MC_INT_MASK);
 	off = readl(mc + MC_INT_MASK);
