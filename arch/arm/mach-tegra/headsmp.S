@@ -83,9 +83,7 @@ ENTRY(tegra_resume)
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
-	orr	r1, r1, #(1 << 3)	@ Enable SCU speculative line fill.
-	orr	r1, r1, #(1 << 5)	@ Enable IC standby.
-	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
+	orr	r1, r1, #(1 << 3)	@ Enabled SCU speculative line fill.
 	str	r1, [r0]
 #endif
 
