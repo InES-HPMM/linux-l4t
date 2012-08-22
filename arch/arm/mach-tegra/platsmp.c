@@ -343,14 +343,6 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 	   reset handler. Do it now before the secondary CPUs are started. */
 	tegra_cpu_reset_handler_init();
 
-#if defined(CONFIG_HAVE_ARM_SCU)
-	{
-		u32 scu_ctrl = __raw_readl(scu_base) | 1 << 3;
-		if (!(scu_ctrl & 1))
-			__raw_writel(scu_ctrl, scu_base);
-	}
-#endif
-
 #ifdef CONFIG_HAVE_ARM_SCU
 	scu_enable(scu_base);
 #endif
