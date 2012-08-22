@@ -410,8 +410,12 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	/* For pre-silicon the major is 0, for silicon it is >= 1 */
 	if (id->major == 0) {
-		/* Default to A01 */
-		revision = TEGRA_REVISION_A01;
+		if (id->minor == 1)
+			revision = TEGRA_REVISION_A01;
+		else if (id->minor == 2)
+			revision = TEGRA_REVISION_QT;
+		else if (id->minor == 3)
+			revision = TEGRA_REVISION_SIM;
 		return revision;
 	}
 #endif
