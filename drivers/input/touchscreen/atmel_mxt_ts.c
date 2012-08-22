@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
  * Copyright (C) 2011 Atmel Corporation
+ * Copyright (C) 2011-2012 NVIDIA Corporation
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -32,7 +33,6 @@
 
 /* Firmware files */
 #define MXT_FW_NAME		"maxtouch.fw"
-#define MXT_CFG_NAME		"maxtouch.cfg"
 #define MXT_CFG_MAGIC		"OBP_RAW V1"
 
 /* Registers */
@@ -1497,7 +1497,7 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	int ret;
 	u8 command_register;
 
-	ret = mxt_download_config(data, MXT_CFG_NAME);
+	ret = mxt_download_config(data, data->pdata->mxt_cfg_name);
 	if (ret < 0)
 		return ret;
 	else if (ret == 0)

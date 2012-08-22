@@ -28,6 +28,8 @@
 #define MXT_ROTATED_180		0x6
 #define MXT_DIAGONAL_COUNTER	0x7
 
+#define CFG_NAME_SIZE		64
+
 /* The platform data for the Atmel maXTouch touchscreen driver */
 struct mxt_platform_data {
 	unsigned long irqflags;
@@ -35,6 +37,7 @@ struct mxt_platform_data {
 	const unsigned int key_map[MXT_NUM_GPIO];
 	u8(*read_chg) (void);
 	const char *input_name;
+	char mxt_cfg_name[CFG_NAME_SIZE];
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */
