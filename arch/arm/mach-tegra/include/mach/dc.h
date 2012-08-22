@@ -24,6 +24,7 @@
 
 #include <linux/pm.h>
 #include <linux/types.h>
+#include <linux/fb.h>
 #include <drm/drm_fixed.h>
 
 #define TEGRA_MAX_DC		2
@@ -481,6 +482,8 @@ struct tegra_dc_out {
 
 	u8			*out_sel_configs;
 	unsigned		n_out_sel_configs;
+	bool			user_needs_vblank;
+	struct completion	user_vblank_comp;
 
 	int	(*enable)(struct device *);
 	int	(*postpoweron)(void);
@@ -664,6 +667,8 @@ bool tegra_dc_get_connected(struct tegra_dc *);
 bool tegra_dc_hpd(struct tegra_dc *dc);
 
 
+void tegra_dc_get_fbvblank(struct tegra_dc *dc, struct fb_vblank *vblank);
+int tegra_dc_wait_for_vsync(struct tegra_dc *dc);
 void tegra_dc_blank(struct tegra_dc *dc);
 
 void tegra_dc_enable(struct tegra_dc *dc);
