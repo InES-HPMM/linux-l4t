@@ -33,6 +33,9 @@ struct edp_manager {
 	struct list_head clients;
 	bool registered;
 	unsigned int remaining;
+	struct edp_governor *gov;
+	struct work_struct work;
+	unsigned int num_denied;
 };
 
 /*
@@ -42,7 +45,9 @@ struct edp_manager {
  * @e0_index: index of the E0 state in the above array
  * @max_borrowers: maximum number of clients allowed to borrow from this
  * @priority: client priority - should be between EDP_MIN_PRIO & EDP_MAX_PRIO
+ * @throttle: throttle callback function
  * @notify_loan_update: for receiving loan size change notifications
+ *	(clients should return the amount of loan consumed)
  * @notify_loan_close: for receiving loan closure notification
  * Note that each EDP client is tied to a single EDP manager
  */
@@ -54,7 +59,9 @@ struct edp_client {
 	unsigned int max_borrowers;
 	int priority;
 
-	void (*notify_loan_update)(unsigned int new_size,
+	void (*throttle)(unsigned int new_state);
+	void (*notify_promotion)(unsigned int new_state);
+	unsigned int (*notify_loan_update)(unsigned int new_size,
 			struct edp_client *lender);
 	void (*notify_loan_close)(struct edp_client *lender);
 
@@ -67,6 +74,25 @@ struct edp_client {
 	unsigned int ithreshold;
 	unsigned int num_borrowers;
 	unsigned int num_loans;
+
+	/* governor internal */
+	unsigned int gwt;
+};
+
+struct edp_governor {
+	char name[EDP_NAME_LEN];
+	struct module *owner;
+
+	int (*start)(struct edp_manager *mgr);
+	void (*stop)(struct edp_manager *mgr);
+	void (*update_request)(struct edp_client *client,
+			const unsigned int *req);
+	void (*update_loans)(struct edp_client *client);
+	void (*promote)(struct edp_manager *mgr);
+
+	/* internal */
+	struct list_head link;
+	unsigned int refcnt;
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
@@ -109,6 +135,11 @@ extern int edp_unregister_loan(struct edp_client *lender,
 		struct edp_client *borrower);
 extern int edp_update_loan_threshold(struct edp_client *lender,
 		unsigned int threshold);
+
+extern int edp_register_governor(struct edp_governor *gov);
+extern int edp_unregister_governor(struct edp_governor *gov);
+extern struct edp_governor *edp_get_governor(const char *name);
+extern int edp_set_governor(struct edp_manager *mgr, struct edp_governor *gov);
 #else
 static inline int edp_register_manager(struct edp_manager *mgr)
 { return -ENODEV; }
@@ -134,6 +165,15 @@ static inline int edp_unregister_loan(struct edp_client *lender,
 { return -ENODEV; }
 static inline int edp_update_loan_threshold(struct edp_client *lender,
 		unsigned int threshold)
+{ return -ENODEV; }
+static inline int edp_register_governor(struct edp_governor *gov)
+{ return -ENODEV; }
+static inline int edp_unregister_governor(struct edp_governor *gov)
+{ return -ENODEV; }
+static inline struct edp_governor *edp_get_governor(const char *name)
+{ return NULL; }
+static inline int edp_set_governor(struct edp_manager *mgr,
+		struct edp_governor *gov)
 { return -ENODEV; }
 #endif
 
