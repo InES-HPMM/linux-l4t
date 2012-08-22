@@ -2,7 +2,7 @@
  * linux/sound/soc/codecs/aic3262_tiload.h
  *
  *
- * Copyright (C) 2012 Texas Instruments, Inc.
+ * Copyright (C) 2011 Texas Instruments Inc.
  *
  *
  *
@@ -23,9 +23,6 @@
 
 #ifndef _AIC3262_TILOAD_H
 #define _AIC3262_TILOAD_H
-
-/* typedefs required for the included header files */
-typedef char *string;
 
 /* defines */
 #define DEVICE_NAME		"tiload_node"
