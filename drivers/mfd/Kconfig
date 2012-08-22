@@ -399,6 +399,11 @@ config MFD_RETU
 	  Retu and Tahvo are a multi-function devices found on Nokia
 	  Internet Tablets (770, N800 and N810).
 
+config AIC3262_CODEC
+	bool
+	select MFD_CORE
+	default n
+
 config MFD_PCF50633
 	tristate "NXP PCF50633"
 	depends on I2C
