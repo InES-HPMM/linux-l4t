@@ -1386,7 +1386,7 @@ static int max77663_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 static int max77663_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1423,7 +1423,7 @@ static int max77663_resume(struct device *dev)
 #else
 #define max77663_suspend      NULL
 #define max77663_resume       NULL
-#endif /* CONFIG_PM */
+#endif /* CONFIG_PM_SLEEP */
 
 static const struct i2c_device_id max77663_id[] = {
 	{"max77663", 0},
