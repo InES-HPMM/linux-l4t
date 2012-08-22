@@ -20,6 +20,7 @@
 #include <linux/kthread.h>
 #include <linux/mfd/core.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
@@ -145,6 +146,8 @@ struct max77663_chip {
 	struct device *dev;
 	struct i2c_client *i2c_power;
 	struct i2c_client *i2c_rtc;
+	struct regmap *regmap_power;
+	struct regmap *regmap_rtc;
 
 	struct max77663_platform_data *pdata;
 	struct mutex io_lock;
@@ -255,79 +258,66 @@ static struct max77663_irq_data max77663_irqs[MAX77663_IRQ_NR] = {
 	unlikely((_addr == MAX77663_REG_ONOFF_CFG1) &&	\
 		 ((_val & CHECK_ONOFF_CFG1_MASK) == CHECK_ONOFF_CFG1_MASK))
 
-static inline int max77663_i2c_write(struct i2c_client *client, u8 addr,
-				     void *src, u32 bytes)
+static inline int max77663_i2c_write(struct max77663_chip *chip, u8 addr,
+				     void *src, u32 bytes, bool is_rtc)
 {
-	u8 buf[bytes * 2];
-	int ret;
+	int ret = 0;
 
-	dev_dbg(&client->dev, "i2c_write: addr=0x%02x, src=0x%02x, bytes=%u\n",
+	dev_dbg(chip->dev, "i2c_write: addr=0x%02x, src=0x%02x, bytes=%u\n",
 		addr, *((u8 *)src), bytes);
 
-	if (client->addr == max77663_chip->rtc_i2c_addr) {
+	if (is_rtc) {
 		/* RTC registers support sequential writing */
-		buf[0] = addr;
-		memcpy(&buf[1], src, bytes);
+		ret = regmap_bulk_write(chip->regmap_rtc, addr, src, bytes);
 	} else {
 		/* Power registers support register-data pair writing */
 		u8 *src8 = (u8 *)src;
+		unsigned int val;
 		int i;
 
-		for (i = 0; i < (bytes * 2); i++) {
-			if (i % 2) {
-				if (CHECK_ONOFF_CFG1(buf[i - 1], *src8))
-					buf[i] = *src8++ & ~ONOFF_PWR_OFF_MASK;
-				else
-					buf[i] = *src8++;
-			} else {
-				buf[i] = addr++;
-			}
+		for (i = 0; i < bytes; i++) {
+			if (CHECK_ONOFF_CFG1(addr, *src8))
+				val = *src8++ & ~ONOFF_PWR_OFF_MASK;
+			else
+				val = *src8++;
+			ret = regmap_write(chip->regmap_power, addr, val);
+			if (ret < 0)
+				break;
+			addr++;
 		}
-		bytes = (bytes * 2) - 1;
 	}
-
-	ret = i2c_master_send(client, buf, bytes + 1);
 	if (ret < 0)
-		return ret;
-	return 0;
+		dev_err(chip->dev, "%s() failed, e %d\n", __func__, ret);
+	return ret;
 }
 
-static inline int max77663_i2c_read(struct i2c_client *client, u8 addr,
-				    void *dest, u32 bytes)
+static inline int max77663_i2c_read(struct max77663_chip *chip, u8 addr,
+				    void *dest, u32 bytes, bool is_rtc)
 {
-	int ret;
+	int ret = 0;
+	struct regmap *regmap = chip->regmap_power;
 
-	if (bytes > 1) {
-		ret = i2c_smbus_read_i2c_block_data(client, addr, bytes, dest);
-		if (ret < 0)
-			return ret;
-	} else {
-		ret = i2c_smbus_read_byte_data(client, addr);
-		if (ret < 0)
-			return ret;
-
-		*((u8 *)dest) = (u8)ret;
+	if (is_rtc)
+		regmap = chip->regmap_rtc;
+	ret = regmap_bulk_read(regmap, addr, dest, bytes);
+	if (ret < 0) {
+		dev_err(chip->dev, "%s() failed, e %d\n", __func__, ret);
+		return ret;
 	}
 
-	dev_dbg(&client->dev, "i2c_read: addr=0x%02x, dest=0x%02x, bytes=%u\n",
+	dev_dbg(chip->dev, "i2c_read: addr=0x%02x, dest=0x%02x, bytes=%u\n",
 		addr, *((u8 *)dest), bytes);
-	return 0;
+	return ret;
 }
 
 int max77663_read(struct device *dev, u8 addr, void *values, u32 len,
 		  bool is_rtc)
 {
 	struct max77663_chip *chip = dev_get_drvdata(dev);
-	struct i2c_client *client = NULL;
 	int ret;
 
 	mutex_lock(&chip->io_lock);
-	if (!is_rtc)
-		client = chip->i2c_power;
-	else
-		client = chip->i2c_rtc;
-
-	ret = max77663_i2c_read(client, addr, values, len);
+	ret = max77663_i2c_read(chip, addr, values, len, is_rtc);
 	mutex_unlock(&chip->io_lock);
 	return ret;
 }
@@ -337,16 +327,10 @@ int max77663_write(struct device *dev, u8 addr, void *values, u32 len,
 		   bool is_rtc)
 {
 	struct max77663_chip *chip = dev_get_drvdata(dev);
-	struct i2c_client *client = NULL;
 	int ret;
 
 	mutex_lock(&chip->io_lock);
-	if (!is_rtc)
-		client = chip->i2c_power;
-	else
-		client = chip->i2c_rtc;
-
-	ret = max77663_i2c_write(client, addr, values, len);
+	ret = max77663_i2c_write(chip, addr, values, len, is_rtc);
 	mutex_unlock(&chip->io_lock);
 	return ret;
 }
@@ -356,21 +340,14 @@ int max77663_set_bits(struct device *dev, u8 addr, u8 mask, u8 value,
 		      bool is_rtc)
 {
 	struct max77663_chip *chip = dev_get_drvdata(dev);
-	struct i2c_client *client = NULL;
-	u8 tmp;
 	int ret;
+	struct regmap *regmap = chip->regmap_power;
+
+	if (is_rtc)
+		regmap = chip->regmap_rtc;
 
 	mutex_lock(&chip->io_lock);
-	if (!is_rtc)
-		client = chip->i2c_power;
-	else
-		client = chip->i2c_rtc;
-
-	ret = max77663_i2c_read(client, addr, &tmp, 1);
-	if (ret == 0) {
-		value = (tmp & ~mask) | (value & mask);
-		ret = max77663_i2c_write(client, addr, &value, 1);
-	}
+	ret = regmap_update_bits(regmap, addr, mask, value);
 	mutex_unlock(&chip->io_lock);
 	return ret;
 }
@@ -1292,6 +1269,44 @@ static inline void max77663_debugfs_exit(struct max77663_chip *chip)
 }
 #endif /* CONFIG_DEBUG_FS */
 
+static bool rd_wr_reg_power(struct device *dev, unsigned int reg)
+{
+	if (reg < 0x60)
+		return true;
+
+	dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
+	BUG();
+	return false;
+}
+
+static bool rd_wr_reg_rtc(struct device *dev, unsigned int reg)
+{
+	if (reg < 0x1C)
+		return true;
+
+	dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
+	BUG();
+	return false;
+}
+
+static const struct regmap_config max77663_regmap_config_power = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.max_register = 0x60,
+	.writeable_reg = rd_wr_reg_power,
+	.readable_reg = rd_wr_reg_power,
+	.cache_type = REGCACHE_RBTREE,
+};
+
+static const struct regmap_config max77663_regmap_config_rtc = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.max_register = 0x1C,
+	.writeable_reg = rd_wr_reg_rtc,
+	.readable_reg = rd_wr_reg_rtc,
+	.cache_type = REGCACHE_RBTREE,
+};
+
 static int max77663_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
@@ -1315,6 +1330,14 @@ static int max77663_probe(struct i2c_client *client,
 	chip->i2c_power = client;
 	i2c_set_clientdata(client, chip);
 
+	chip->regmap_power = devm_regmap_init_i2c(client,
+					&max77663_regmap_config_power);
+	if (IS_ERR(chip->regmap_power)) {
+		ret = PTR_ERR(chip->regmap_power);
+		dev_err(&client->dev, "power regmap init failed: %d\n", ret);
+		return ret;
+	}
+
 	if (pdata->rtc_i2c_addr)
 		chip->rtc_i2c_addr = pdata->rtc_i2c_addr;
 	else
@@ -1326,8 +1349,15 @@ static int max77663_probe(struct i2c_client *client,
 				chip->rtc_i2c_addr);
 		return -ENOMEM;
 	}
-
 	i2c_set_clientdata(chip->i2c_rtc, chip);
+
+	chip->regmap_rtc = devm_regmap_init_i2c(chip->i2c_rtc,
+					&max77663_regmap_config_rtc);
+	if (IS_ERR(chip->regmap_rtc)) {
+		ret = PTR_ERR(chip->regmap_rtc);
+		dev_err(&client->dev, "rtc tegmap init failed: %d\n", ret);
+		goto out_rtc_regmap_fail;
+	}
 
 	chip->dev = &client->dev;
 	chip->pdata = pdata;
@@ -1369,6 +1399,8 @@ out_exit:
 	max77663_gpio_exit(chip);
 	max77663_irq_exit(chip);
 	mutex_destroy(&chip->io_lock);
+
+out_rtc_regmap_fail:
 	i2c_unregister_device(chip->i2c_rtc);
 	max77663_chip = NULL;
 	return ret;
