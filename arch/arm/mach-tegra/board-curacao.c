@@ -463,9 +463,6 @@ static void ulpi_link_platform_open(void)
 
 	gpio_request(reset_gpio, "ulpi_phy_reset");
 	gpio_direction_output(reset_gpio, 0);
-	tegra_gpio_enable(reset_gpio);
-
-	gpio_direction_output(reset_gpio, 0);
 	msleep(5);
 	gpio_direction_output(reset_gpio, 1);
 }

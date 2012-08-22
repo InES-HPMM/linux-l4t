@@ -230,9 +230,6 @@ static int __init curacao_wifi_init(void)
 	gpio_request(CURACAO_WLAN_PWR, "wlan_power");
 	gpio_request(CURACAO_WLAN_RST, "wlan_rst");
 
-	tegra_gpio_enable(CURACAO_WLAN_PWR);
-	tegra_gpio_enable(CURACAO_WLAN_RST);
-
 	gpio_direction_output(CURACAO_WLAN_PWR, 0);
 	gpio_direction_output(CURACAO_WLAN_RST, 0);
 
