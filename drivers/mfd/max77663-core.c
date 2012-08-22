@@ -180,6 +180,13 @@ struct max77663_chip *max77663_chip;
 		.cache_idx = CACHE_IRQ_LBT,		\
 	}
 
+#define IRQ_DATA_GPIO_TOP()				\
+	[MAX77663_IRQ_INT_TOP_GPIO] = {			\
+		.top_mask = IRQ_TOP_GPIO_MASK,		\
+		.top_shift = IRQ_TOP_GPIO_SHIFT,	\
+		.cache_idx = -1,			\
+	}
+
 #define IRQ_DATA_GPIO(_name)				\
 	[MAX77663_IRQ_GPIO##_name] = {			\
 		.mask = (1 << _name),			\
@@ -198,6 +205,7 @@ struct max77663_chip *max77663_chip;
 	}
 
 static struct max77663_irq_data max77663_irqs[MAX77663_IRQ_NR] = {
+	IRQ_DATA_GPIO_TOP(),
 	IRQ_DATA_LBT(LB, 3),
 	IRQ_DATA_LBT(THERM_ALRM1, 2),
 	IRQ_DATA_LBT(THERM_ALRM2, 1),

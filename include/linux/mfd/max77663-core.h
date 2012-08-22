@@ -21,6 +21,7 @@
  * Interrupts
  */
 enum {
+	MAX77663_IRQ_INT_TOP_GPIO,	/* TOP GPIO internal int to max77663 */
 	MAX77663_IRQ_LBT_LB,		/* Low-Battery */
 	MAX77663_IRQ_LBT_THERM_ALRM1,	/* Thermal alarm status, > 120C */
 	MAX77663_IRQ_LBT_THERM_ALRM2,	/* Thermal alarm status, > 140C */
