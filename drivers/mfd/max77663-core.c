@@ -1321,6 +1321,12 @@ static int max77663_probe(struct i2c_client *client,
 		chip->rtc_i2c_addr = MAX77663_RTC_I2C_ADDR;
 
 	chip->i2c_rtc = i2c_new_dummy(client->adapter, chip->rtc_i2c_addr);
+	if (!chip->i2c_rtc) {
+		dev_err(&client->dev, "can't attach client at addr 0x%x\n",
+				chip->rtc_i2c_addr);
+		return -ENOMEM;
+	}
+
 	i2c_set_clientdata(chip->i2c_rtc, chip);
 
 	chip->dev = &client->dev;
@@ -1363,6 +1369,7 @@ out_exit:
 	max77663_gpio_exit(chip);
 	max77663_irq_exit(chip);
 	mutex_destroy(&chip->io_lock);
+	i2c_unregister_device(chip->i2c_rtc);
 	max77663_chip = NULL;
 	return ret;
 }
@@ -1376,6 +1383,7 @@ static int max77663_remove(struct i2c_client *client)
 	max77663_irq_exit(chip);
 	max77663_gpio_exit(chip);
 	mutex_destroy(&chip->io_lock);
+	i2c_unregister_device(chip->i2c_rtc);
 	max77663_chip = NULL;
 
 	return 0;
