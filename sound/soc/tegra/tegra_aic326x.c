@@ -973,6 +973,7 @@ static const struct snd_soc_dapm_widget tegra_aic326x_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("Ext Mic"),
 	SND_SOC_DAPM_LINE("Linein", NULL),
 	SND_SOC_DAPM_MIC("Int Mic", NULL),
+	SND_SOC_DAPM_MIC("DMIC", NULL),
 };
 
 static const struct snd_soc_dapm_route aic326x_audio_map[] = {
@@ -989,6 +990,10 @@ static const struct snd_soc_dapm_route aic326x_audio_map[] = {
 	{"IN2R", NULL, "Mic Bias Int"},
 	{"IN1L", NULL, "Mic Bias Ext"},
 	{"Mic Bias Ext" ,NULL, "Mic Jack"},
+	/* Connect LDMIC and RDMIC to DMIC widget*/
+	{"Left DMIC", NULL, "Mic Bias Int"},
+	{"Right DMIC", NULL, "Mic Bias Int"},
+	{"Mic Bias Int", NULL, "Int Mic"},
 /*	{"CM1L" ,NULL, "Mic Jack"}, */
 /*	{"IN1L", NULL, "Mic Bias Ext"}, */
 /*	{"IN1L", NULL, "CM1L"}, */
