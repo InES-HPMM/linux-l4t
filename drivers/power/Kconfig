@@ -192,6 +192,12 @@ config BATTERY_GAUGE_TPS8003X
 	help
 	 Say Y here to enable support for battery gauge for TPS80031x chips.
 
+config CHARGER_TPS65090
+	tristate "TPS65090 battery charger driver"
+	depends on MFD_TPS65090
+	help
+	 Say Y here to enable support for battery charging with TPS65090 chips.
+
 config CHARGER_SMB349
 	tristate "SMB349 battery charger driver"
 	depends on I2C
