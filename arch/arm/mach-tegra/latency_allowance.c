@@ -43,15 +43,10 @@
 /* Bug 995270 */
 #define HACK_LA_FIFO 1
 
-static struct dentry *latency_debug_dir;
-
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static DEFINE_SPINLOCK(safety_lock);
-#endif
-
+static struct dentry *latency_debug_dir;
 static int la_scaling_enable_count;
-
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static unsigned short id_to_index[ID(MAX_ID) + 1];
 static struct la_scaling_info scaling_info[TEGRA_LA_MAX_ID];
 
@@ -262,7 +257,6 @@ void tegra_disable_latency_scaling(enum tegra_la_id id)
 	}
 	spin_unlock(&safety_lock);
 }
-#endif
 
 static int la_regs_show(struct seq_file *s, void *unused)
 {
@@ -374,4 +368,5 @@ static int __init test_la(void)
 }
 
 late_initcall(test_la);
+#endif
 #endif
