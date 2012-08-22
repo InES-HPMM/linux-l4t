@@ -22,6 +22,7 @@
 #include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
+#include <linux/tegra_pwm_bl.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -29,6 +30,7 @@
 
 #include "board.h"
 #include "devices.h"
+#include "gpio-names.h"
 #include "tegra11_host1x_devices.h"
 
 #define TEGRA_PANEL_ENABLE 0
@@ -36,8 +38,12 @@
 #if TEGRA_PANEL_ENABLE
 
 #define TEGRA_DSI_GANGED_MODE 0
+#define IS_EXTERNAL_PWM	0
+
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
+
+static atomic_t sd_brightness = ATOMIC_INIT(255);
 
 static struct resource dalmore_disp1_resources[] __initdata = {
 	{
@@ -273,6 +279,50 @@ static struct platform_device dalmore_nvmap_device __initdata = {
 	},
 };
 
+static int dalmore_disp1_bl_notify(struct device *unused, int brightness)
+{
+	int cur_sd_brightness = atomic_read(&sd_brightness);
+
+	/* SD brightness is a percentage */
+	brightness = (brightness * cur_sd_brightness) / 255;
+
+	/* Apply any backlight response curve */
+	if (brightness > 255)
+		pr_info("Error: Brightness > 255!\n");
+	else
+		/* TODO: backlight response LUT */
+		brightness = brightness;
+
+	return brightness;
+}
+
+static int dalmore_disp1_check_fb(struct device *dev, struct fb_info *info)
+{
+	return info->device == &dalmore_disp1_device.dev;
+}
+
+static struct platform_tegra_pwm_backlight_data dalmore_disp1_bl_data = {
+	.which_dc		= 0,
+	.which_pwm		= TEGRA_PWM_PM1,
+	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
+	.max_brightness		= 255,
+	.dft_brightness		= 224,
+	.notify			= dalmore_disp1_bl_notify,
+	.period			= 0x3F,
+	.clk_div		= 0x3FF,
+	.clk_select		= 0,
+	/* Only toggle backlight on fb blank notifications for disp1 */
+	.check_fb		= dalmore_disp1_check_fb,
+};
+
+static struct platform_device dalmore_disp1_bl_device __initdata = {
+	.name	= "tegra-pwm-bl",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &dalmore_disp1_bl_data,
+	},
+};
+
 int __init dalmore_panel_init(void)
 {
 	int err = 0;
@@ -320,6 +370,14 @@ int __init dalmore_panel_init(void)
 		pr_err("disp2 device registration failed\n");
 		return err;
 	}
+
+#if !IS_EXTERNAL_PWM
+	err = platform_device_register(&dalmore_disp1_bl_device);
+	if (err) {
+		pr_err("disp1 bl device registration failed");
+		return err;
+	}
+#endif
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
