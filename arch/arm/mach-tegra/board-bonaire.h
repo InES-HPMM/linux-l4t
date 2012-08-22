@@ -59,16 +59,5 @@ int bonaire_panel_init(void);
 int bonaire_sensors_init(void);
 int bonaire_suspend_init(void);
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-
-#define BONAIRE_BOARD_NAME "bonaire_sim"
-
 int bonaire_power_off_init(void);
-
-#else
-
-#define BONAIRE_BOARD_NAME "bonaire"
-
-#endif
-
 #endif

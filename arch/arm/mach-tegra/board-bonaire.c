@@ -658,7 +658,7 @@ static const char * const bonaire_dt_board_compat[] = {
 	NULL
 };
 
-MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
+MACHINE_START(BONAIRE, "bonaire")
 	.atag_offset    = 0x80000100,
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_bonaire_reserve,
