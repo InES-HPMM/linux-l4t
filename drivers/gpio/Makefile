@@ -1,5 +1,7 @@
 # generic gpio support: platform drivers, dedicated expander chips, etc
 
+GCOV_PROFILE := y
+
 ccflags-$(CONFIG_DEBUG_GPIO)	+= -DDEBUG
 
 obj-$(CONFIG_GPIO_DEVRES)	+= devres.o
