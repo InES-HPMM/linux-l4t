@@ -258,7 +258,7 @@ static struct max77663_irq_data max77663_irqs[MAX77663_IRQ_NR] = {
 static inline int max77663_i2c_write(struct i2c_client *client, u8 addr,
 				     void *src, u32 bytes)
 {
-	u8 buf[bytes + 1];
+	u8 buf[bytes * 2];
 	int ret;
 
 	dev_dbg(&client->dev, "i2c_write: addr=0x%02x, src=0x%02x, bytes=%u\n",
