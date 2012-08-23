@@ -63,12 +63,6 @@ static int tsensor_get_temp(void *vdata, long *milli_temp)
 	return tsensor_thermal_get_temp(data, milli_temp);
 }
 
-static int tsensor_get_temp_low(void *vdata, long *milli_temp)
-{
-	struct tegra_tsensor_data *data = vdata;
-	return tsensor_thermal_get_temp_low(data, milli_temp);
-}
-
 static int tsensor_set_limits(void *vdata,
 			long lo_limit_milli,
 			long hi_limit_milli)
@@ -87,12 +81,6 @@ static int tsensor_set_alert(void *vdata,
 	return tsensor_thermal_set_alert(data, alert_func, alert_data);
 }
 
-static int tsensor_set_shutdown_temp(void *vdata, long shutdown_temp_milli)
-{
-	struct tegra_tsensor_data *data = vdata;
-	return tsensor_thermal_set_shutdown_temp(data, shutdown_temp_milli);
-}
-
 static void tegra3_tsensor_probe_callback(struct tegra_tsensor_data *data)
 {
 	struct tegra_thermal_device *thermal_device;
@@ -108,12 +96,9 @@ static void tegra3_tsensor_probe_callback(struct tegra_tsensor_data *data)
 	thermal_device->name = "tsensor";
 	thermal_device->data = data;
 	thermal_device->id = THERMAL_DEVICE_ID_TSENSOR;
-	thermal_device->offset = TSENSOR_OFFSET;
 	thermal_device->get_temp = tsensor_get_temp;
-	thermal_device->get_temp_low = tsensor_get_temp_low;
 	thermal_device->set_limits = tsensor_set_limits;
 	thermal_device->set_alert = tsensor_set_alert;
-	thermal_device->set_shutdown_temp = tsensor_set_shutdown_temp;
 
 	/* This should not fail */
 	if (tegra_thermal_device_register(thermal_device))

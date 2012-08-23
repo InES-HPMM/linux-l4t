@@ -20,22 +20,18 @@
 #include <linux/therm_est.h>
 #include <linux/thermal.h>
 
-#ifndef CONFIG_THERMAL
-#endif
-
 enum thermal_device_id {
-	THERMAL_DEVICE_ID_NULL = 0x0,
-	THERMAL_DEVICE_ID_NCT_EXT = 0x1,
-	THERMAL_DEVICE_ID_NCT_INT = 0x2,
-	THERMAL_DEVICE_ID_TSENSOR = 0x4,
-	THERMAL_DEVICE_ID_THERM_EST_SKIN = 0x8,
+	THERMAL_DEVICE_ID_NULL = 0,
+	THERMAL_DEVICE_ID_NCT_EXT = 1,
+	THERMAL_DEVICE_ID_NCT_INT = 2,
+	THERMAL_DEVICE_ID_TSENSOR = 3,
+	THERMAL_DEVICE_ID_THERM_EST_SKIN = 4,
 };
 
-#define THERMAL_DEVICE_MAX	(4)
+#define THERMAL_DEVICE_MAX	(5)
 
 enum cooling_device_id {
 	CDEV_BTHROT_ID_TJ      = 0x00010000,
-	CDEV_BTHROT_ID_SKIN    = 0x00020000,
 	CDEV_EDPTABLE_ID_EDP   = 0x00030000,
 	CDEV_EDPTABLE_ID_EDP_0 = 0x00030000,
 	CDEV_EDPTABLE_ID_EDP_1 = 0x00030001,
@@ -58,30 +54,13 @@ struct tegra_thermal_bind {
 	} passive;
 };
 
-struct skin_therm_est_subdevice {
-	enum thermal_device_id id;
-	long coeffs[HIST_LEN];
-};
-
-struct tegra_skin_data {
-	enum thermal_device_id skin_device_id;
-
-	long skin_temp_offset;
-	long skin_period;
-	int skin_devs_size;
-	struct skin_therm_est_subdevice skin_devs[];
-};
-
 struct tegra_thermal_device {
 	char *name;
 	enum thermal_device_id id;
 	void *data;
-	long offset;
 	int (*get_temp) (void *, long *);
-	int (*get_temp_low)(void *, long *);
 	int (*set_limits) (void *, long, long);
 	int (*set_alert)(void *, void (*)(void *), void *);
-	int (*set_shutdown_temp)(void *, long);
 	struct thermal_zone_device *thz;
 	struct list_head node;
 };
@@ -108,27 +87,27 @@ struct balanced_throttle {
 };
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-int balanced_throttle_register(struct balanced_throttle *bthrot);
+struct thermal_cooling_device *balanced_throttle_register(
+	struct balanced_throttle *bthrot);
 #else
-static inline int balanced_throttle_register(struct balanced_throttle *bthrot)
-{ return 0; }
+static inline struct thermal_cooling_device *balanced_throttle_register(
+	struct balanced_throttle *bthrot)
+{ return ERR_PTR(-EINVAL); }
 #endif
 
 #ifdef CONFIG_TEGRA_THERMAL
-int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds,
-				struct tegra_skin_data *skin_data,
-				struct balanced_throttle *throttle_list,
-				int throttle_list_size);
+int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds);
 int tegra_thermal_device_register(struct tegra_thermal_device *device);
+struct tegra_thermal_device *tegra_thermal_get_device(enum thermal_device_id id);
 int tegra_thermal_exit(void);
 #else
-static inline int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds,
-					struct tegra_skin_data *skin_data,
-					struct balanced_throttle *throttle_list,
-					int throttle_list_size)
+static inline int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds)
 { return 0; }
 static inline int tegra_thermal_device_register(struct tegra_thermal_device *device)
 { return 0; }
+static inline struct tegra_thermal_device *tegra_thermal_get_device(
+	enum thermal_device_id id)
+{ return NULL; }
 static inline int tegra_thermal_exit(void)
 { return 0; }
 #endif

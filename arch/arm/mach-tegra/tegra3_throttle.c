@@ -246,7 +246,8 @@ static struct dentry *throttle_debugfs_root;
 #endif /* CONFIG_DEBUG_FS */
 
 
-int balanced_throttle_register(struct balanced_throttle *bthrot)
+struct thermal_cooling_device *balanced_throttle_register(
+	struct balanced_throttle *bthrot)
 {
 #ifdef CONFIG_DEBUG_FS
 	char name[32];
@@ -257,7 +258,7 @@ int balanced_throttle_register(struct balanced_throttle *bthrot)
 	list_for_each_entry(dev, &bthrot_list, node) {
 		if (dev->tegra_cdev.id == bthrot->tegra_cdev.id) {
 			mutex_unlock(&bthrot_list_lock);
-			return -EINVAL;
+			return ERR_PTR(-EINVAL);
 		}
 	}
 
@@ -272,7 +273,7 @@ int balanced_throttle_register(struct balanced_throttle *bthrot)
 
 	if (IS_ERR(bthrot->cdev)) {
 		bthrot->cdev = NULL;
-		return -ENODEV;
+		return ERR_PTR(-ENODEV);
 	}
 
 #ifdef CONFIG_DEBUG_FS
@@ -281,7 +282,7 @@ int balanced_throttle_register(struct balanced_throttle *bthrot)
 				bthrot, &table_fops);
 #endif
 
-	return 0;
+	return bthrot->cdev;
 }
 
 int __init tegra_throttle_init(struct mutex *cpu_lock)

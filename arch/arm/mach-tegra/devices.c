@@ -1899,6 +1899,17 @@ struct platform_device tegra_kbc_device = {
 	},
 };
 
+#if defined(CONFIG_TEGRA_SKIN_THROTTLE)
+struct platform_device tegra_skin_therm_est_device = {
+	.name	= "therm_est",
+	.id	= -1,
+	.num_resources	= 0,
+	.dev = {
+		.platform_data = 0,
+	},
+};
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static struct resource tegra_tsensor_resources[]= {
 	{
