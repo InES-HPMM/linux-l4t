@@ -41,7 +41,7 @@
 
 #define TPS65090_NOITERM	BIT(5)
 #define CHARGER_ENABLE		0x01
-#define	TPS65090_VACG		0x02
+#define TPS65090_VACG		0x02
 
 struct tps65090_charger {
 	struct	device	*dev;
@@ -160,8 +160,9 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 	uint8_t retval = 0;
 	int ret;
 	struct tps65090_charger *charger_data;
-	struct tps65090_plat_data *pdata = pdev->dev.platform_data;
+	struct tps65090_platform_data *pdata;
 
+	pdata = dev_get_platdata(pdev->dev.parent);
 	if (!pdata) {
 		dev_err(&pdev->dev, "%s():no platform data available\n",
 				__func__);
@@ -215,8 +216,10 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 	}
 
 	ret = tps65090_config_charger(charger_data);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(&pdev->dev, "charger config failed, err %d\n", ret);
 		goto fail_config;
+	}
 
 	return 0;
 fail_config:
@@ -227,7 +230,7 @@ fail_suppy_reg:
 	return ret;
 }
 
-static int tps65090_charger_remove(struct platform_device *pdev)
+static int __devexit tps65090_charger_remove(struct platform_device *pdev)
 {
 	struct tps65090_charger *charger = dev_get_drvdata(&pdev->dev);
 
@@ -247,6 +250,6 @@ static struct platform_driver tps65090_charger_driver = {
 
 module_platform_driver(tps65090_charger_driver);
 
-MODULE_LICENSE("GPL V2");
+MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Syed Rafiuddin <srafiuddin@nvidia.com>");
 MODULE_DESCRIPTION("tps65090 battery charger driver");
