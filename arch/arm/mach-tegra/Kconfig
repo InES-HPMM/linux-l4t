@@ -77,6 +77,7 @@ config ARCH_TEGRA_3x_SOC
 	select PL310_ERRATA_727915
 	select PL310_ERRATA_769419 if CACHE_L2X0
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
+	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_LP2_CPU_TIMER if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_ULPI if USB_PHY
@@ -418,4 +419,13 @@ config TEGRA_LP1_950
 	depends on ARCH_TEGRA_3x_SOC
 	help
 		Enable support for LP1 Core voltage to set to lowest
+config TEGRA_LATENCY_ALLOWANCE
+	bool "Allow memory clients to configure latency allowance"
+	help
+	  Latency allowance is a per-memory-client setting that tells the
+	  memory controller how long it can ignore a request in favor of
+	  others. In other words, It indicates how long a request from specific
+	  memory client can wait before it is served.
+	  Enabling this option allows memory clients configure the
+	  latency allowance as per their bandwidth requirement.
 endif
