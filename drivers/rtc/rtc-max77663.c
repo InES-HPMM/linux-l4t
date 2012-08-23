@@ -227,9 +227,10 @@ static inline int max77663_rtc_tm_to_reg(struct max77663_rtc *rtc, u8 *buf,
 	/* The wday is configured only when disabled alarm. */
 	if (!alarm)
 		buf[RTC_WEEKDAY] = (1 << tm->tm_wday);
-	else
-		buf[RTC_WEEKDAY] = 0;
-
+	else {
+	/* Configure its default reset value 0x01, and not enable it. */
+		buf[RTC_WEEKDAY] = 0x01;
+	}
 	return 0;
 }
 
