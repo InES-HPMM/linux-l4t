@@ -73,7 +73,7 @@ static int tps65090_enable_charging(struct tps65090_charger *charger,
 	uint8_t enable)
 {
 	int ret;
-	uint8_t retval;
+	uint8_t retval = 0;
 
 	ret = tps65090_read(charger->dev->parent, TPS65090_CG_CTRL0, &retval);
 	if (ret < 0) {
@@ -132,7 +132,7 @@ static irqreturn_t tps65090_charger_isr(int irq, void *dev_id)
 {
 	struct tps65090_charger *charger = dev_id;
 	int ret;
-	uint8_t retval;
+	uint8_t retval = 0;
 
 	ret = tps65090_read(charger->dev->parent, TPS65090_INTR_STS, &retval);
 	if (ret < 0) {
@@ -157,7 +157,7 @@ error:
 
 static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 {
-	uint8_t retval;
+	uint8_t retval = 0;
 	int ret;
 	struct tps65090_charger *charger_data;
 	struct tps65090_plat_data *pdata = pdev->dev.platform_data;
