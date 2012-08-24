@@ -555,7 +555,7 @@ static struct tegra_fb_data bonaire_dsi_fb_data = {
 static struct tegra_dc_out bonaire_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
-#if defined (TEGRA_DC_TEMPORAL_DITHER) /* mds hack */
+#if defined (CONFIG_TEGRA_DC_TEMPORAL_DITHER) /* mds hack */
 	.dither		= TEGRA_DC_TEMPORAL_DITHER,
 #endif
 
