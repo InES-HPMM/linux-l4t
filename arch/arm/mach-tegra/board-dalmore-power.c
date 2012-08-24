@@ -137,6 +137,7 @@ static struct max77663_regulator_platform_data max77663_regulator_pdata_##_id =\
 {									\
 	.init_data = {							\
 			.constraints = {				\
+				.name = max77663_rails(_id),		\
 				.min_uV = _min_uV,			\
 				.max_uV = _max_uV,			\
 				.valid_modes_mask = (REGULATOR_MODE_NORMAL |  \

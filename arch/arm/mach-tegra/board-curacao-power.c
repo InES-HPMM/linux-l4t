@@ -121,6 +121,7 @@ static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
 {								\
 	.init_data = {						\
 			.constraints = {				\
+				.name = max77663_rails(_id),		\
 				.min_uV = _min_uV,			\
 				.max_uV = _max_uV,			\
 				.valid_modes_mask = (REGULATOR_MODE_NORMAL |  \
