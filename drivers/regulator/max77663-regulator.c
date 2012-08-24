@@ -154,27 +154,33 @@ struct max77663_register {
 	u8 val;
 };
 
-struct max77663_regulator {
-	struct regulator_dev *rdev;
-	struct device *dev;
-	struct max77663_regulator_platform_data *pdata;
-
+struct max77663_regulator_info {
 	u8 id;
 	u8 type;
 	u32 min_uV;
 	u32 max_uV;
 	u32 step_uV;
-	int safe_down_uV; /* for stable down scaling */
-	u32 regulator_mode;
 
 	struct max77663_register regs[3]; /* volt, cfg, fps */
-	enum max77663_regulator_fps_src fps_src;
+
+	struct regulator_desc desc;
 
 	u8 volt_mask;
 
-	u8 power_mode;
 	u8 power_mode_mask;
 	u8 power_mode_shift;
+};
+
+struct max77663_regulator {
+	struct max77663_regulator_info *rinfo;
+	struct regulator_dev *rdev;
+	struct device *dev;
+	struct max77663_regulator_platform_data *pdata;
+	u32 regulator_mode;
+	u8 power_mode;
+	enum max77663_regulator_fps_src fps_src;
+	u8 val[3]; /* volt, cfg, fps */
+	int safe_down_uV; /* for stable down scaling */
 };
 
 #define fps_src_name(fps_src)	\
@@ -229,8 +235,9 @@ max77663_regulator_set_fps_src(struct max77663_regulator *reg,
 			       enum max77663_regulator_fps_src fps_src)
 {
 	int ret;
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 
-	if ((reg->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE) ||
+	if ((rinfo->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE) ||
 			(reg->fps_src == fps_src))
 		return 0;
 
@@ -246,9 +253,9 @@ max77663_regulator_set_fps_src(struct max77663_regulator *reg,
 		return -EINVAL;
 	}
 
-	ret = max77663_regulator_cache_write(reg, reg->regs[FPS_REG].addr,
+	ret = max77663_regulator_cache_write(reg, rinfo->regs[FPS_REG].addr,
 					FPS_SRC_MASK, fps_src << FPS_SRC_SHIFT,
-					&reg->regs[FPS_REG].val);
+					&reg->val[FPS_REG]);
 	if (ret < 0)
 		return ret;
 
@@ -259,10 +266,11 @@ max77663_regulator_set_fps_src(struct max77663_regulator *reg,
 static int max77663_regulator_set_fps(struct max77663_regulator *reg)
 {
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	u8 fps_val = 0, fps_mask = 0;
 	int ret = 0;
 
-	if (reg->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE)
+	if (reg->rinfo->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE)
 		return 0;
 
 	if (reg->fps_src == FPS_SRC_NONE)
@@ -282,8 +290,8 @@ static int max77663_regulator_set_fps(struct max77663_regulator *reg)
 
 	if (fps_val || fps_mask)
 		ret = max77663_regulator_cache_write(reg,
-					reg->regs[FPS_REG].addr, fps_mask,
-					fps_val, &reg->regs[FPS_REG].val);
+					rinfo->regs[FPS_REG].addr, fps_mask,
+					fps_val, &reg->val[FPS_REG]);
 
 	return ret;
 }
@@ -341,20 +349,21 @@ max77663_regulator_set_fps_cfgs(struct max77663_regulator *reg,
 static int
 max77663_regulator_set_power_mode(struct max77663_regulator *reg, u8 power_mode)
 {
-	u8 mask = reg->power_mode_mask;
-	u8 shift = reg->power_mode_shift;
+	struct max77663_regulator_info *rinfo = reg->rinfo;
+	u8 mask = rinfo->power_mode_mask;
+	u8 shift = rinfo->power_mode_shift;
 	int ret;
 
-	if (reg->type == REGULATOR_TYPE_SD)
+	if (rinfo->type == REGULATOR_TYPE_SD)
 		ret = max77663_regulator_cache_write(reg,
-						     reg->regs[CFG_REG].addr,
+						     rinfo->regs[CFG_REG].addr,
 						     mask, power_mode << shift,
-						     &reg->regs[CFG_REG].val);
+						     &reg->val[CFG_REG]);
 	else
 		ret = max77663_regulator_cache_write(reg,
-						     reg->regs[VOLT_REG].addr,
+						     rinfo->regs[VOLT_REG].addr,
 						     mask, power_mode << shift,
-						     &reg->regs[VOLT_REG].val);
+						     &reg->val[VOLT_REG]);
 
 	if (ret < 0)
 		return ret;
@@ -365,13 +374,14 @@ max77663_regulator_set_power_mode(struct max77663_regulator *reg, u8 power_mode)
 
 static u8 max77663_regulator_get_power_mode(struct max77663_regulator *reg)
 {
-	u8 mask = reg->power_mode_mask;
-	u8 shift = reg->power_mode_shift;
+	struct max77663_regulator_info *rinfo = reg->rinfo;
+	u8 mask = rinfo->power_mode_mask;
+	u8 shift = rinfo->power_mode_shift;
 
-	if (reg->type == REGULATOR_TYPE_SD)
-		reg->power_mode = (reg->regs[CFG_REG].val & mask) >> shift;
+	if (rinfo->type == REGULATOR_TYPE_SD)
+		reg->power_mode = (reg->val[CFG_REG] & mask) >> shift;
 	else
-		reg->power_mode = (reg->regs[VOLT_REG].val & mask) >> shift;
+		reg->power_mode = (reg->val[VOLT_REG] & mask) >> shift;
 
 	return reg->power_mode;
 }
@@ -379,26 +389,27 @@ static u8 max77663_regulator_get_power_mode(struct max77663_regulator *reg)
 static int max77663_regulator_do_set_voltage(struct max77663_regulator *reg,
 					     int min_uV, int max_uV)
 {
-	u8 addr = reg->regs[VOLT_REG].addr;
-	u8 mask = reg->volt_mask;
-	u8 *cache = &reg->regs[VOLT_REG].val;
+	struct max77663_regulator_info *rinfo = reg->rinfo;
+	u8 addr = rinfo->regs[VOLT_REG].addr;
+	u8 mask = rinfo->volt_mask;
+	u8 *cache = &reg->val[VOLT_REG];
 	u8 val;
 	int old_uV, new_uV, safe_uV;
 	int i, steps = 1;
 	int ret = 0;
 
-	if (min_uV < reg->min_uV || max_uV > reg->max_uV)
+	if (min_uV < rinfo->min_uV || max_uV > rinfo->max_uV)
 		return -EDOM;
 
-	old_uV = (*cache & mask) * reg->step_uV + reg->min_uV;
+	old_uV = (*cache & mask) * rinfo->step_uV + rinfo->min_uV;
 
-	if ((old_uV > min_uV) && (reg->safe_down_uV >= reg->step_uV)) {
+	if ((old_uV > min_uV) && (reg->safe_down_uV >= rinfo->step_uV)) {
 		steps = DIV_ROUND_UP(old_uV - min_uV, reg->safe_down_uV);
 		safe_uV = -reg->safe_down_uV;
 	}
 
 	if (steps == 1) {
-		val = (min_uV - reg->min_uV) / reg->step_uV;
+		val = (min_uV - rinfo->min_uV) / rinfo->step_uV;
 		ret = max77663_regulator_cache_write(reg, addr, mask, val,
 						     cache);
 	} else {
@@ -413,7 +424,7 @@ static int max77663_regulator_do_set_voltage(struct max77663_regulator *reg,
 				reg->rdev->desc->name, i + 1, steps, old_uV,
 				new_uV);
 
-			val = (new_uV - reg->min_uV) / reg->step_uV;
+			val = (new_uV - rinfo->min_uV) / rinfo->step_uV;
 			ret = max77663_regulator_cache_write(reg, addr, mask,
 							     val, cache);
 			if (ret < 0)
@@ -440,19 +451,21 @@ static int max77663_regulator_set_voltage(struct regulator_dev *rdev,
 static int max77663_regulator_get_voltage(struct regulator_dev *rdev)
 {
 	struct max77663_regulator *reg = rdev_get_drvdata(rdev);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	int volt;
 
-	volt = (reg->regs[VOLT_REG].val & reg->volt_mask)
-		* reg->step_uV + reg->min_uV;
+	volt = (reg->val[VOLT_REG] & rinfo->volt_mask)
+		* rinfo->step_uV + rinfo->min_uV;
 
 	dev_dbg(&rdev->dev, "get_voltage: name=%s, volt=%d, val=0x%02x\n",
-		rdev->desc->name, volt, reg->regs[VOLT_REG].val);
+		rdev->desc->name, volt, reg->val[VOLT_REG]);
 	return volt;
 }
 
 static int max77663_regulator_enable(struct regulator_dev *rdev)
 {
 	struct max77663_regulator *reg = rdev_get_drvdata(rdev);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
 	int power_mode = (pdata->flags & GLPM_ENABLE) ?
 			 POWER_MODE_GLPM : POWER_MODE_NORMAL;
@@ -463,7 +476,7 @@ static int max77663_regulator_enable(struct regulator_dev *rdev)
 		return 0;
 	}
 
-	if ((reg->id == MAX77663_REGULATOR_ID_SD0)
+	if ((rinfo->id == MAX77663_REGULATOR_ID_SD0)
 			&& (pdata->flags & EN2_CTRL_SD0)) {
 		dev_dbg(&rdev->dev,
 			"enable: Regulator %s is controlled by EN2\n",
@@ -472,7 +485,7 @@ static int max77663_regulator_enable(struct regulator_dev *rdev)
 	}
 
 	/* N-Channel LDOs don't support Low-Power mode. */
-	if ((reg->type != REGULATOR_TYPE_LDO_N) &&
+	if ((rinfo->type != REGULATOR_TYPE_LDO_N) &&
 			(reg->regulator_mode == REGULATOR_MODE_STANDBY))
 		power_mode = POWER_MODE_LPM;
 
@@ -483,6 +496,7 @@ static int max77663_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77663_regulator *reg = rdev_get_drvdata(rdev);
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	int power_mode = POWER_MODE_DISABLE;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
@@ -491,7 +505,7 @@ static int max77663_regulator_disable(struct regulator_dev *rdev)
 		return 0;
 	}
 
-	if ((reg->id == MAX77663_REGULATOR_ID_SD0)
+	if ((rinfo->id == MAX77663_REGULATOR_ID_SD0)
 			&& (pdata->flags & EN2_CTRL_SD0)) {
 		dev_dbg(&rdev->dev,
 			"disable: Regulator %s is controlled by EN2\n",
@@ -506,6 +520,7 @@ static int max77663_regulator_is_enabled(struct regulator_dev *rdev)
 {
 	struct max77663_regulator *reg = rdev_get_drvdata(rdev);
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	int ret = 1;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
@@ -514,7 +529,7 @@ static int max77663_regulator_is_enabled(struct regulator_dev *rdev)
 		return 1;
 	}
 
-	if ((reg->id == MAX77663_REGULATOR_ID_SD0)
+	if ((rinfo->id == MAX77663_REGULATOR_ID_SD0)
 			&& (pdata->flags & EN2_CTRL_SD0)) {
 		dev_dbg(&rdev->dev,
 			"is_enable: Regulator %s is controlled by EN2\n",
@@ -533,6 +548,7 @@ static int max77663_regulator_set_mode(struct regulator_dev *rdev,
 {
 	struct max77663_regulator *reg = rdev_get_drvdata(rdev);
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	u8 power_mode;
 	int ret;
 
@@ -541,7 +557,7 @@ static int max77663_regulator_set_mode(struct regulator_dev *rdev,
 			     POWER_MODE_GLPM : POWER_MODE_NORMAL;
 	else if (mode == REGULATOR_MODE_STANDBY) {
 		/* N-Channel LDOs don't support Low-Power mode. */
-		power_mode = (reg->type != REGULATOR_TYPE_LDO_N) ?
+		power_mode = (rinfo->type != REGULATOR_TYPE_LDO_N) ?
 			     POWER_MODE_LPM : POWER_MODE_NORMAL;
 	} else
 		return -EINVAL;
@@ -573,6 +589,7 @@ static struct regulator_ops max77663_ldo_ops = {
 static int max77663_regulator_preinit(struct max77663_regulator *reg)
 {
 	struct max77663_regulator_platform_data *pdata = _to_pdata(reg);
+	struct max77663_regulator_info *rinfo = reg->rinfo;
 	struct device *parent = _to_parent(reg);
 	int i;
 	u8 val, mask;
@@ -580,21 +597,21 @@ static int max77663_regulator_preinit(struct max77663_regulator *reg)
 
 	/* Update registers */
 	for (i = 0; i <= FPS_REG; i++) {
-		ret = max77663_read(parent, reg->regs[i].addr,
-				    &reg->regs[i].val, 1, 0);
+		ret = max77663_read(parent, rinfo->regs[i].addr,
+				    &reg->val[i], 1, 0);
 		if (ret < 0) {
 			dev_err(reg->dev,
 				"preinit: Failed to get register 0x%x\n",
-				reg->regs[i].addr);
+				rinfo->regs[i].addr);
 			return ret;
 		}
 	}
 
 	/* Update FPS source */
-	if (reg->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE)
+	if (rinfo->regs[FPS_REG].addr == MAX77663_REG_FPS_NONE)
 		reg->fps_src = FPS_SRC_NONE;
 	else
-		reg->fps_src = (reg->regs[FPS_REG].val & FPS_SRC_MASK)
+		reg->fps_src = (reg->val[FPS_REG] & FPS_SRC_MASK)
 				>> FPS_SRC_SHIFT;
 
 	dev_dbg(reg->dev, "preinit: initial fps_src=%s\n",
@@ -613,7 +630,7 @@ static int max77663_regulator_preinit(struct max77663_regulator *reg)
 
 	/* If metal revision is less than rev.3,
 	 * set safe_down_uV for stable down scaling. */
-	if ((reg->type == REGULATOR_TYPE_SD) &&
+	if ((rinfo->type == REGULATOR_TYPE_SD) &&
 			((val & CID_DIDM_MASK) >> CID_DIDM_SHIFT) <= 2)
 		reg->safe_down_uV = SD_SAFE_DOWN_UV;
 	else
@@ -628,7 +645,7 @@ static int max77663_regulator_preinit(struct max77663_regulator *reg)
 	}
 
 	/* N-Channel LDOs don't support Low-Power mode. */
-	if ((reg->type == REGULATOR_TYPE_LDO_N) &&
+	if ((rinfo->type == REGULATOR_TYPE_LDO_N) &&
 			(pdata->flags & GLPM_ENABLE))
 		pdata->flags &= ~GLPM_ENABLE;
 
@@ -688,7 +705,7 @@ static int max77663_regulator_preinit(struct max77663_regulator *reg)
 	}
 
 skip_init_apply:
-	if (reg->type == REGULATOR_TYPE_SD) {
+	if (rinfo->type == REGULATOR_TYPE_SD) {
 		val = 0;
 		mask = 0;
 
@@ -713,16 +730,16 @@ skip_init_apply:
 			val |= SD_FSRADE_MASK;
 
 		ret = max77663_regulator_cache_write(reg,
-				reg->regs[CFG_REG].addr, mask, val,
-				&reg->regs[CFG_REG].val);
+				rinfo->regs[CFG_REG].addr, mask, val,
+				&reg->val[CFG_REG]);
 		if (ret < 0) {
 			dev_err(reg->dev, "preinit: "
 				"Failed to set register 0x%x\n",
-				reg->regs[CFG_REG].addr);
+				rinfo->regs[CFG_REG].addr);
 			return ret;
 		}
 
-		if ((reg->id == MAX77663_REGULATOR_ID_SD0)
+		if ((rinfo->id == MAX77663_REGULATOR_ID_SD0)
 				&& (pdata->flags & EN2_CTRL_SD0)) {
 			val = POWER_MODE_DISABLE;
 			ret = max77663_regulator_set_power_mode(reg, val);
@@ -743,7 +760,7 @@ skip_init_apply:
 		}
 	}
 
-	if ((reg->id == MAX77663_REGULATOR_ID_LDO4)
+	if ((rinfo->id == MAX77663_REGULATOR_ID_LDO4)
 			&& (pdata->flags & LDO4_EN_TRACKING)) {
 		val = TRACK4_MASK;
 		ret = max77663_write(parent, MAX77663_REG_LDO_CFG3, &val, 1, 0);
@@ -777,8 +794,6 @@ skip_init_apply:
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
-		.regulator_mode = REGULATOR_MODE_NORMAL,	\
-		.power_mode = POWER_MODE_NORMAL,		\
 		.power_mode_mask = SD_POWER_MODE_MASK,		\
 		.power_mode_shift = SD_POWER_MODE_SHIFT,	\
 	}
@@ -802,13 +817,11 @@ skip_init_apply:
 		.min_uV = _min_uV,				\
 		.max_uV = _max_uV,				\
 		.step_uV = _step_uV,				\
-		.regulator_mode = REGULATOR_MODE_NORMAL,	\
-		.power_mode = POWER_MODE_NORMAL,		\
 		.power_mode_mask = LDO_POWER_MODE_MASK,		\
 		.power_mode_shift = LDO_POWER_MODE_SHIFT,	\
 	}
 
-static struct max77663_regulator max77663_regs[MAX77663_REGULATOR_ID_NR] = {
+static struct max77663_regulator_info max77663_regs_info[MAX77663_REGULATOR_ID_NR] = {
 	REGULATOR_SD(SD0,    SDX, SD0,  600000, 3387500, 12500),
 	REGULATOR_SD(DVSSD0, SDX, NONE, 600000, 3387500, 12500),
 	REGULATOR_SD(SD1,    SD1, SD1,  800000, 1587500, 12500),
@@ -867,10 +880,18 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	reg = devm_kzalloc(&pdev->dev, sizeof(*reg), GFP_KERNEL);
+	if (!reg) {
+		dev_err(&pdev->dev, "mem alloc for reg failed\n");
+		return -ENOMEM;
+	}
+
 	rdesc = &max77663_rdesc[pdev->id];
-	reg = &max77663_regs[pdev->id];
+	reg->rinfo = &max77663_regs_info[pdev->id];
 	reg->dev = &pdev->dev;
 	reg->pdata = dev_get_platdata(&pdev->dev);
+	reg->regulator_mode = REGULATOR_MODE_NORMAL;
+	reg->power_mode = POWER_MODE_NORMAL;
 
 	dev_dbg(&pdev->dev, "probe: name=%s\n", rdesc->name);
 
@@ -888,6 +909,7 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 			rdesc->name);
 		return PTR_ERR(reg->rdev);
 	}
+	platform_set_drvdata(pdev, reg);
 
 	return 0;
 }
