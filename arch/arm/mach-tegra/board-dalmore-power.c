@@ -133,27 +133,28 @@ static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
 		_always_on, _boot_on, _apply_uV,			\
 		_init_apply, _init_enable, _init_uV,			\
 		_fps_src, _fps_pu_period, _fps_pd_period, _flags)	\
+	static struct regulator_init_data max77663_regulator_idata_##_id = {   \
+		.supply_regulator = _supply_reg,			\
+		.constraints = {					\
+			.name = max77663_rails(_id),			\
+			.min_uV = _min_uV,				\
+			.max_uV = _max_uV,				\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |  	\
+					     REGULATOR_MODE_STANDBY), 	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |    	\
+					   REGULATOR_CHANGE_STATUS |  	\
+					   REGULATOR_CHANGE_VOLTAGE), 	\
+			.always_on = _always_on,			\
+			.boot_on = _boot_on,				\
+			.apply_uV = _apply_uV,				\
+		},							\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(max77663_##_id##_supply),		\
+		.consumer_supplies = max77663_##_id##_supply,		\
+	};								\
 static struct max77663_regulator_platform_data max77663_regulator_pdata_##_id =\
 {									\
-	.init_data = {							\
-			.constraints = {				\
-				.name = max77663_rails(_id),		\
-				.min_uV = _min_uV,			\
-				.max_uV = _max_uV,			\
-				.valid_modes_mask = (REGULATOR_MODE_NORMAL |  \
-						     REGULATOR_MODE_STANDBY), \
-				.valid_ops_mask = (REGULATOR_CHANGE_MODE |    \
-						   REGULATOR_CHANGE_STATUS |  \
-						   REGULATOR_CHANGE_VOLTAGE), \
-				.always_on = _always_on,		\
-				.boot_on = _boot_on,			\
-				.apply_uV = _apply_uV,			\
-			},						\
-			.num_consumer_supplies =			\
-				ARRAY_SIZE(max77663_##_id##_supply),	\
-			.consumer_supplies = max77663_##_id##_supply,	\
-			.supply_regulator = _supply_reg,		\
-		},							\
+		.reg_init_data = &max77663_regulator_idata_##_id,	\
 		.init_apply = _init_apply,				\
 		.init_enable = _init_enable,				\
 		.init_uV = _init_uV,					\
