@@ -212,7 +212,7 @@
 #define PLLD_MISC_DIV_RST		(1<<23)
 #define PLLD_MISC_DCCON_SHIFT		12
 
-#define PLLDU_LFCON_SET_DIVN		600
+#define PLLDU_LFCON			2
 
 /* PLLC2 and PLLC3 (PLLCX) */
 #define PLLCX_USE_DYN_RAMP		0
@@ -334,7 +334,6 @@
 #define PLLRE_MISC_LOCK			(0x1 << 24)
 #define PLLRE_MISC_IDDQ			(0x1 << 16)
 
-/* FIXME: OUT_OF_TABLE_CPCON per pll */
 #define OUT_OF_TABLE_CPCON		0x8
 
 #define SUPER_CLK_MUX			0x00
@@ -1755,7 +1754,7 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 	/* Configure out-of-table rate */
 	if (sel->input_rate == 0) {
-		unsigned long cfreq;
+		unsigned long cfreq, vco;
 		BUG_ON(c->flags & PLLU);
 		sel = &cfg;
 
@@ -1784,14 +1783,15 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 			BUG();
 		}
 
-		/* Raise VCO to guarantee 0.5% accuracy */
-		for (cfg.output_rate = rate; cfg.output_rate < 200 * cfreq;
-		      cfg.output_rate <<= 1, p_div++);
+		/* Raise VCO to guarantee 0.5% accuracy, and vco min boundary */
+		vco = max(200 * cfreq, c->u.pll.vco_min);
+		for (cfg.output_rate = rate; cfg.output_rate < vco; p_div++)
+			cfg.output_rate <<= 1;
 
 		cfg.p = 0x1 << p_div;
 		cfg.m = input_rate / cfreq;
 		cfg.n = cfg.output_rate / cfreq;
-		cfg.cpcon = OUT_OF_TABLE_CPCON;
+		cfg.cpcon = c->u.pll.cpcon_default ? : OUT_OF_TABLE_CPCON;
 
 		if ((cfg.m > (PLL_BASE_DIVM_MASK >> PLL_BASE_DIVM_SHIFT)) ||
 		    (cfg.n > (PLL_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
@@ -1827,8 +1827,7 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		val |= sel->cpcon << PLL_MISC_CPCON_SHIFT;
 		if (c->flags & (PLLU | PLLD)) {
 			val &= ~PLL_MISC_LFCON_MASK;
-			if (sel->n >= PLLDU_LFCON_SET_DIVN)
-				val |= 0x1 << PLL_MISC_LFCON_SHIFT;
+			val |= PLLDU_LFCON << PLL_MISC_LFCON_SHIFT;
 		}
 		clk_writel(val, c->reg + PLL_MISC(c));
 	}
@@ -4966,6 +4965,7 @@ static struct clk tegra_pll_d = {
 		.vco_max   = 1000000000,
 		.freq_table = tegra_pll_d_freq_table,
 		.lock_delay = 1000,
+		.cpcon_default = 12,
 	},
 };
 
@@ -4993,6 +4993,7 @@ static struct clk tegra_pll_d2 = {
 		.vco_max   = 1000000000,
 		.freq_table = tegra_pll_d_freq_table,
 		.lock_delay = 1000,
+		.cpcon_default = 12,
 	},
 };
 
@@ -5029,6 +5030,7 @@ static struct clk tegra_pll_u = {
 		.vco_max   = 960000000,
 		.freq_table = tegra_pll_u_freq_table,
 		.lock_delay = 1000,
+		.cpcon_default = 12,
 	},
 };
 
