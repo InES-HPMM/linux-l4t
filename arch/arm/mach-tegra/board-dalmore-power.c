@@ -29,6 +29,8 @@
 #include <linux/regulator/max77663-regulator.h>
 #include <linux/regulator/tps51632-regulator.h>
 
+#include <asm/mach-types.h>
+
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
@@ -550,6 +552,9 @@ static int __init dalmore_fixed_regulator_init(void)
 	tegra_get_board_info(&board_info);
 	fixed_reg_devs = fixed_reg_devs_a00;
 	nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_a00);
+
+	if (!machine_is_dalmore())
+		return 0;
 
 	for (i = 0; i < nfixreg_devs; ++i) {
 		int gpio_nr;
