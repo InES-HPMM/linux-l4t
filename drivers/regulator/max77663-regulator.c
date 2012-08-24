@@ -796,6 +796,13 @@ skip_init_apply:
 		.step_uV = _step_uV,				\
 		.power_mode_mask = SD_POWER_MODE_MASK,		\
 		.power_mode_shift = SD_POWER_MODE_SHIFT,	\
+		.desc = {					\
+			.name = max77663_rails(_id),		\
+			.id = MAX77663_REGULATOR_ID_##_id,	\
+			.ops = &max77663_ldo_ops,		\
+			.type = REGULATOR_VOLTAGE,		\
+			.owner = THIS_MODULE,			\
+		},						\
 	}
 
 #define REGULATOR_LDO(_id, _type, _min_uV, _max_uV, _step_uV)	\
@@ -819,6 +826,13 @@ skip_init_apply:
 		.step_uV = _step_uV,				\
 		.power_mode_mask = LDO_POWER_MODE_MASK,		\
 		.power_mode_shift = LDO_POWER_MODE_SHIFT,	\
+		.desc = {					\
+			.name = max77663_rails(_id),		\
+			.id = MAX77663_REGULATOR_ID_##_id,	\
+			.ops = &max77663_ldo_ops,		\
+			.type = REGULATOR_VOLTAGE,		\
+			.owner = THIS_MODULE,			\
+		},						\
 	}
 
 static struct max77663_regulator_info max77663_regs_info[MAX77663_REGULATOR_ID_NR] = {
@@ -841,34 +855,6 @@ static struct max77663_regulator_info max77663_regs_info[MAX77663_REGULATOR_ID_N
 	REGULATOR_LDO(LDO8, N, 800000, 3950000, 50000),
 };
 
-#define REGULATOR_DESC(_id, _name)			\
-	[MAX77663_REGULATOR_ID_##_id] = {		\
-		.name = max77663_rails(_name),		\
-		.id = MAX77663_REGULATOR_ID_##_id,	\
-		.ops = &max77663_ldo_ops,		\
-		.type = REGULATOR_VOLTAGE,		\
-		.owner = THIS_MODULE,			\
-	}
-
-static struct regulator_desc max77663_rdesc[MAX77663_REGULATOR_ID_NR] = {
-	REGULATOR_DESC(SD0, sd0),
-	REGULATOR_DESC(DVSSD0, dvssd0),
-	REGULATOR_DESC(SD1, sd1),
-	REGULATOR_DESC(DVSSD1, dvssd1),
-	REGULATOR_DESC(SD2, sd2),
-	REGULATOR_DESC(SD3, sd3),
-	REGULATOR_DESC(SD4, sd4),
-	REGULATOR_DESC(LDO0, ldo0),
-	REGULATOR_DESC(LDO1, ldo1),
-	REGULATOR_DESC(LDO2, ldo2),
-	REGULATOR_DESC(LDO3, ldo3),
-	REGULATOR_DESC(LDO4, ldo4),
-	REGULATOR_DESC(LDO5, ldo5),
-	REGULATOR_DESC(LDO6, ldo6),
-	REGULATOR_DESC(LDO7, ldo7),
-	REGULATOR_DESC(LDO8, ldo8),
-};
-
 static int max77663_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_desc *rdesc;
@@ -886,7 +872,7 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	rdesc = &max77663_rdesc[pdev->id];
+	rdesc = &max77663_regs_info[pdev->id].desc;
 	reg->rinfo = &max77663_regs_info[pdev->id];
 	reg->dev = &pdev->dev;
 	reg->pdata = dev_get_platdata(&pdev->dev);
