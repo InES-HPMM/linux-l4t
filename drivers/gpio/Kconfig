@@ -358,6 +358,13 @@ config GPIO_MAX732X_IRQ
 	  Say yes here to enable the max732x to be used as an interrupt
 	  controller. It requires the driver to be built in the kernel.
 
+config GPIO_MAX77663
+	bool "GPIO suport for PMIC MAX77663"
+	depends on MFD_MAX77663
+	help
+	  Say yes here to enable the max77663 to be used as gpio controller.
+	  It requires the driver to be built in the kernel.
+
 config GPIO_MC9S08DZ60
 	bool "MX35 3DS BOARD MC9S08DZ60 GPIO functions"
 	depends on I2C=y && MACH_MX35_3DS
