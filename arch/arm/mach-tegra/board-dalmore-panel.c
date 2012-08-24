@@ -44,13 +44,16 @@
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
 #define PANEL_10_1_PANASONIC_1920_1200 1
 #define PANEL_11_6_AUO_1920_1080 0
+#define PANEL_10_1_SHARP_2560_1600 0
 
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 /* regulators */
-#if PANEL_10_1_PANASONIC_1920_1200 || PANEL_11_6_AUO_1920_1080
+#if PANEL_10_1_PANASONIC_1920_1200 || \
+	PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_12v;
 #endif
@@ -124,11 +127,14 @@ static struct resource dalmore_disp2_resources[] __initdata = {
 	},
 };
 
-static struct tegra_dsi_cmd dsi_init_cmd[]= {
+static struct tegra_dsi_cmd dsi_init_cmd[] = {
 #if PANEL_10_1_PANASONIC_1920_1200
 	/* no init command required */
 #endif
 #if PANEL_11_6_AUO_1920_1080
+	/* TODO */
+#endif
+#if PANEL_10_1_SHARP_2560_1600
 	/* TODO */
 #endif
 };
@@ -154,7 +160,9 @@ static int dalmore_dsi_panel_enable(void)
 {
 	int err = 0;
 
-#if PANEL_10_1_PANASONIC_1920_1200 || PANEL_11_6_AUO_1920_1080
+#if PANEL_10_1_PANASONIC_1920_1200 || \
+	PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
 	if (avdd_lcd_3v3) {
 		err = regulator_enable(avdd_lcd_3v3);
 		if (err < 0) {
@@ -176,7 +184,9 @@ static int dalmore_dsi_panel_enable(void)
 
 static int dalmore_dsi_panel_disable(void)
 {
-#if PANEL_10_1_PANASONIC_1920_1200 || PANEL_11_6_AUO_1920_1080
+#if PANEL_10_1_PANASONIC_1920_1200 || \
+	PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
 	if (vdd_lcd_bl_12v)
 		regulator_disable(vdd_lcd_bl_12v);
 
@@ -211,6 +221,21 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 #if PANEL_11_6_AUO_1920_1080
 	/* TODO */
 #endif
+#if PANEL_10_1_SHARP_2560_1600
+	{
+		.pclk = 10000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 16,
+		.v_sync_width = 2,
+		.h_back_porch = 16,
+		.v_back_porch = 33,
+		.h_active = 2560,
+		.v_active = 1600,
+		.h_front_porch = 128,
+		.v_front_porch = 10,
+	},
+#endif
 };
 
 static struct tegra_dc_out dalmore_disp1_out = {
@@ -233,6 +258,10 @@ static struct tegra_dc_out dalmore_disp1_out = {
 #if PANEL_11_6_AUO_1920_1080
 	.width		= 256,
 	.height		= 144,
+#endif
+#if PANEL_10_1_SHARP_2560_1600
+	.width		= 216,
+	.height		= 135,
 #endif
 };
 
@@ -286,6 +315,10 @@ static struct tegra_fb_data dalmore_disp1_fb_data = {
 #if PANEL_11_6_AUO_1920_1080
 	.xres		= 1920,
 	.yres		= 1080,
+#endif
+#if PANEL_10_1_SHARP_2560_1600
+	.xres		= 2560,
+	.yres		= 1600,
 #endif
 };
 
@@ -414,7 +447,9 @@ static int dalmore_dsi_regulator_get(void)
 {
 	int err = 0;
 
-#if PANEL_10_1_PANASONIC_1920_1200 || PANEL_11_6_AUO_1920_1080
+#if PANEL_10_1_PANASONIC_1920_1200 || \
+	PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
 	avdd_lcd_3v3 = regulator_get(NULL, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
 		pr_err("avdd_lcd regulator get failed\n");
