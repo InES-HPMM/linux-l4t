@@ -14,7 +14,6 @@
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
-#include <linux/gpio.h>
 #include <linux/slab.h>
 #include <linux/ratelimit.h>
 #include <linux/kthread.h>
@@ -159,17 +158,25 @@ struct max77663_chip {
 	u8 cache_irq_top_mask;
 	u16 cache_irq_mask[CACHE_IRQ_NR];
 
-	struct gpio_chip gpio;
-	int gpio_base;
-	u8 cache_gpio_ctrl[MAX77663_GPIO_NR];
-	u8 cache_gpio_pu;
-	u8 cache_gpio_pd;
-	u8 cache_gpio_alt;
-
 	u8 rtc_i2c_addr;
 };
 
 struct max77663_chip *max77663_chip;
+
+static struct resource gpio_resources[] = {
+	{
+		.start	= MAX77663_IRQ_INT_TOP_GPIO,
+		.end	= MAX77663_IRQ_INT_TOP_GPIO,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+static struct mfd_cell max77663_cells[] = {
+	{
+		.name = "max77663-gpio",
+		.num_resources	= ARRAY_SIZE(gpio_resources),
+		.resources	= &gpio_resources[0],
+	},
+};
 
 #define IRQ_DATA_LBT(_name, _shift)			\
 	[MAX77663_IRQ_LBT_##_name] = {			\
@@ -182,14 +189,6 @@ struct max77663_chip *max77663_chip;
 
 #define IRQ_DATA_GPIO_TOP()				\
 	[MAX77663_IRQ_INT_TOP_GPIO] = {			\
-		.top_mask = IRQ_TOP_GPIO_MASK,		\
-		.top_shift = IRQ_TOP_GPIO_SHIFT,	\
-		.cache_idx = -1,			\
-	}
-
-#define IRQ_DATA_GPIO(_name)				\
-	[MAX77663_IRQ_GPIO##_name] = {			\
-		.mask = (1 << _name),			\
 		.top_mask = IRQ_TOP_GPIO_MASK,		\
 		.top_shift = IRQ_TOP_GPIO_SHIFT,	\
 		.cache_idx = -1,			\
@@ -209,14 +208,6 @@ static struct max77663_irq_data max77663_irqs[MAX77663_IRQ_NR] = {
 	IRQ_DATA_LBT(LB, 3),
 	IRQ_DATA_LBT(THERM_ALRM1, 2),
 	IRQ_DATA_LBT(THERM_ALRM2, 1),
-	IRQ_DATA_GPIO(0),
-	IRQ_DATA_GPIO(1),
-	IRQ_DATA_GPIO(2),
-	IRQ_DATA_GPIO(3),
-	IRQ_DATA_GPIO(4),
-	IRQ_DATA_GPIO(5),
-	IRQ_DATA_GPIO(6),
-	IRQ_DATA_GPIO(7),
 	IRQ_DATA_ONOFF(HRDPOWRN,     0),
 	IRQ_DATA_ONOFF(EN0_1SEC,     1),
 	IRQ_DATA_ONOFF(EN0_FALLING,  2),
@@ -410,412 +401,6 @@ static inline int max77663_cache_write(struct device *dev, u8 addr, u8 mask,
 	return 0;
 }
 
-static inline
-struct max77663_chip *max77663_chip_from_gpio(struct gpio_chip *gpio)
-{
-	return container_of(gpio, struct max77663_chip, gpio);
-}
-
-static int max77663_gpio_set_pull_up(struct max77663_chip *chip, int offset,
-				     int pull_up)
-{
-	u8 val = 0;
-
-	if ((offset < MAX77663_GPIO0) || (MAX77663_GPIO7 < offset))
-		return -EINVAL;
-
-	if (pull_up == GPIO_PU_ENABLE)
-		val = (1 << offset);
-
-	return max77663_cache_write(chip->dev, MAX77663_REG_GPIO_PU,
-				    (1 << offset), val, &chip->cache_gpio_pu);
-}
-
-static int max77663_gpio_set_pull_down(struct max77663_chip *chip, int offset,
-				       int pull_down)
-{
-	u8 val = 0;
-
-	if ((offset < MAX77663_GPIO0) || (MAX77663_GPIO7 < offset))
-		return -EINVAL;
-
-	if (pull_down == GPIO_PD_ENABLE)
-		val = (1 << offset);
-
-	return max77663_cache_write(chip->dev, MAX77663_REG_GPIO_PD,
-				    (1 << offset), val, &chip->cache_gpio_pd);
-}
-
-static inline
-int max77663_gpio_is_alternate(struct max77663_chip *chip, int offset)
-{
-	return (chip->cache_gpio_alt & (1 << offset)) ? 1 : 0;
-}
-
-int max77663_gpio_set_alternate(int gpio, int alternate)
-{
-	struct max77663_chip *chip = max77663_chip;
-	u8 val = 0;
-	int ret = 0;
-
-	if (!chip)
-		return -ENXIO;
-
-	gpio -= chip->gpio_base;
-	if ((gpio < MAX77663_GPIO0) || (MAX77663_GPIO7 < gpio))
-		return -EINVAL;
-
-	if (alternate == GPIO_ALT_ENABLE) {
-		val = (1 << gpio);
-		if (gpio == MAX77663_GPIO7) {
-			ret = max77663_gpio_set_pull_up(chip, gpio, 0);
-			if (ret < 0)
-				return ret;
-
-			ret = max77663_gpio_set_pull_down(chip, gpio, 0);
-			if (ret < 0)
-				return ret;
-		}
-	}
-
-	return max77663_cache_write(chip->dev, MAX77663_REG_GPIO_ALT,
-				    (1 << gpio), val, &chip->cache_gpio_alt);
-}
-EXPORT_SYMBOL(max77663_gpio_set_alternate);
-
-static int max77663_gpio_dir_input(struct gpio_chip *gpio, unsigned offset)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-
-	if (max77663_gpio_is_alternate(chip, offset)) {
-		dev_warn(chip->dev, "gpio_dir_input: "
-			"gpio%u is used as alternate mode\n", offset);
-		return 0;
-	}
-
-	return max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
-				    GPIO_CTRL_DIR_MASK, GPIO_CTRL_DIR_MASK,
-				    &chip->cache_gpio_ctrl[offset]);
-}
-
-static int max77663_gpio_get(struct gpio_chip *gpio, unsigned offset)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-	u8 val;
-	int ret;
-
-	if (max77663_gpio_is_alternate(chip, offset)) {
-		dev_warn(chip->dev, "gpio_get: "
-			"gpio%u is used as alternate mode\n", offset);
-		return 0;
-	}
-
-	ret = max77663_read(chip->dev, GPIO_REG_ADDR(offset), &val, 1, 0);
-	if (ret < 0)
-		return ret;
-
-	chip->cache_gpio_ctrl[offset] = val;
-	return (val & GPIO_CTRL_DIN_MASK) >> GPIO_CTRL_DIN_SHIFT;
-}
-
-static int max77663_gpio_dir_output(struct gpio_chip *gpio, unsigned offset,
-				    int value)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-	u8 mask = GPIO_CTRL_DIR_MASK | GPIO_CTRL_DOUT_MASK;
-	u8 val = (value ? 1 : 0) << GPIO_CTRL_DOUT_SHIFT;
-
-	if (max77663_gpio_is_alternate(chip, offset)) {
-		dev_warn(chip->dev, "gpio_dir_output: "
-			"gpio%u is used as alternate mode\n", offset);
-		return 0;
-	}
-
-	return max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset), mask, val,
-				    &chip->cache_gpio_ctrl[offset]);
-}
-
-static int max77663_gpio_set_debounce(struct gpio_chip *gpio, unsigned offset,
-				      unsigned debounce)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-	u8 shift = GPIO_CTRL_DBNC_SHIFT;
-	u8 val = 0;
-
-	if (max77663_gpio_is_alternate(chip, offset)) {
-		dev_warn(chip->dev, "gpio_set_debounce: "
-			"gpio%u is used as alternate mode\n", offset);
-		return 0;
-	}
-
-	if (debounce == 0)
-		val = 0;
-	else if ((0 < debounce) && (debounce <= 8))
-		val = (GPIO_DBNC_8MS << shift);
-	else if ((8 < debounce) && (debounce <= 16))
-		val = (GPIO_DBNC_16MS << shift);
-	else if ((16 < debounce) && (debounce <= 32))
-		val = (GPIO_DBNC_32MS << shift);
-	else
-		return -EINVAL;
-
-	return max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
-				    GPIO_CTRL_DBNC_MASK, val,
-				    &chip->cache_gpio_ctrl[offset]);
-}
-
-static void max77663_gpio_set(struct gpio_chip *gpio, unsigned offset,
-			      int value)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-	u8 val = (value ? 1 : 0) << GPIO_CTRL_DOUT_SHIFT;
-
-	if (max77663_gpio_is_alternate(chip, offset)) {
-		dev_warn(chip->dev, "gpio_set: "
-			"gpio%u is used as alternate mode\n", offset);
-		return;
-	}
-
-	max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
-			     GPIO_CTRL_DOUT_MASK, val,
-			     &chip->cache_gpio_ctrl[offset]);
-}
-
-static int max77663_gpio_to_irq(struct gpio_chip *gpio, unsigned offset)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-
-	return chip->irq_base + IRQ_GPIO_BASE + offset;
-}
-
-#ifdef CONFIG_DEBUG_FS
-static void max77663_gpio_dbg_show(struct seq_file *s, struct gpio_chip *gpio)
-{
-	struct max77663_chip *chip = max77663_chip_from_gpio(gpio);
-	int i;
-
-	for (i = 0; i < gpio->ngpio; i++) {
-		u8 ctrl_val;
-		const char *label;
-		int is_out;
-		int ret;
-
-		label = gpiochip_is_requested(gpio, i);
-		if (!label)
-			label = "Unrequested";
-
-		seq_printf(s, " gpio-%-3d (%-20.20s) ", i + chip->gpio_base,
-			   label);
-
-		if (chip->cache_gpio_alt & (1 << i)) {
-			seq_printf(s, "alt\n");
-			continue;
-		}
-
-		ret = max77663_read(chip->dev, GPIO_REG_ADDR(i), &ctrl_val, 1,
-				    0);
-		if (ret < 0) {
-			seq_printf(s, "\n");
-			continue;
-		}
-
-		is_out = ctrl_val & GPIO_CTRL_DIR_MASK ? 0 : 1;
-		seq_printf(s, "%s %s", (is_out ? "out" : "in"), (is_out ?
-			   (ctrl_val & GPIO_CTRL_DOUT_MASK ? "hi" : "lo")
-			   : (ctrl_val & GPIO_CTRL_DIN_MASK ? "hi" : "lo")));
-
-		if (!is_out) {
-			int irq = gpio_to_irq(i + chip->gpio_base);
-			struct irq_desc *desc = irq_to_desc(irq);
-			u8 dbnc;
-
-			if (irq >= 0 && desc->action) {
-				u8 mask = GPIO_CTRL_REFE_IRQ_MASK;
-				u8 shift = GPIO_CTRL_REFE_IRQ_SHIFT;
-				char *trigger;
-
-				switch ((ctrl_val & mask) >> shift) {
-				case GPIO_REFE_IRQ_EDGE_FALLING:
-					trigger = "edge-falling";
-					break;
-				case GPIO_REFE_IRQ_EDGE_RISING:
-					trigger = "edge-rising";
-					break;
-				case GPIO_REFE_IRQ_EDGE_BOTH:
-					trigger = "edge-both";
-					break;
-				default:
-					trigger = "masked";
-					break;
-				}
-
-				seq_printf(s, " irq-%d %s", irq, trigger);
-			}
-
-			dbnc = (ctrl_val & GPIO_CTRL_DBNC_MASK)
-				>> GPIO_CTRL_DBNC_SHIFT;
-			seq_printf(s, " debounce-%s",
-				   dbnc ==  GPIO_DBNC_8MS ? "8ms" :
-				   dbnc ==  GPIO_DBNC_16MS ? "16ms" :
-				   dbnc ==  GPIO_DBNC_32MS ? "32ms" : "none");
-		} else {
-			seq_printf(s, " %s",
-				   (ctrl_val & GPIO_CTRL_OUT_DRV_MASK ?
-				   "output-drive" : "open-drain"));
-		}
-
-		seq_printf(s, "\n");
-	}
-}
-#else
-#define max77663_gpio_dbg_show		NULL
-#endif /* CONFIG_DEBUG_FS */
-
-static int max77663_gpio_set_config(struct max77663_chip *chip,
-				    struct max77663_gpio_config *gpio_cfg)
-{
-	int gpio = gpio_cfg->gpio;
-	u8 val = 0, mask = 0;
-	int ret = 0;
-
-	if ((gpio < MAX77663_GPIO0) || (MAX77663_GPIO7 < gpio))
-		return -EINVAL;
-
-	if (gpio_cfg->pull_up != GPIO_PU_DEF) {
-		ret = max77663_gpio_set_pull_up(chip, gpio, gpio_cfg->pull_up);
-		if (ret < 0) {
-			dev_err(chip->dev, "gpio_set_config: "
-				"Failed to set gpio%d pull-up\n", gpio);
-			return ret;
-		}
-	}
-
-	if (gpio_cfg->pull_down != GPIO_PD_DEF) {
-		ret = max77663_gpio_set_pull_down(chip, gpio,
-						  gpio_cfg->pull_down);
-		if (ret < 0) {
-			dev_err(chip->dev, "gpio_set_config: "
-				"Failed to set gpio%d pull-down\n", gpio);
-			return ret;
-		}
-	}
-
-	if (gpio_cfg->dir != GPIO_DIR_DEF) {
-		mask = GPIO_CTRL_DIR_MASK;
-		if (gpio_cfg->dir == GPIO_DIR_IN) {
-			val |= GPIO_CTRL_DIR_MASK;
-		} else {
-			if (gpio_cfg->dout != GPIO_DOUT_DEF) {
-				mask |= GPIO_CTRL_DOUT_MASK;
-				if (gpio_cfg->dout == GPIO_DOUT_HIGH)
-					val |= GPIO_CTRL_DOUT_MASK;
-			}
-
-			if (gpio_cfg->out_drv != GPIO_OUT_DRV_DEF) {
-				mask |= GPIO_CTRL_OUT_DRV_MASK;
-				if (gpio_cfg->out_drv == GPIO_OUT_DRV_PUSH_PULL)
-					val |= GPIO_CTRL_OUT_DRV_MASK;
-			}
-		}
-
-		ret = max77663_cache_write(chip->dev, GPIO_REG_ADDR(gpio), mask,
-					   val, &chip->cache_gpio_ctrl[gpio]);
-		if (ret < 0) {
-			dev_err(chip->dev, "gpio_set_config: "
-				"Failed to set gpio%d control\n", gpio);
-			return ret;
-		}
-	}
-
-	if (gpio_cfg->alternate != GPIO_ALT_DEF) {
-		ret = max77663_gpio_set_alternate(gpio + chip->gpio_base,
-						  gpio_cfg->alternate);
-		if (ret < 0) {
-			dev_err(chip->dev, "gpio_set_config: "
-				"Failed to set gpio%d alternate\n", gpio);
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
-static int max77663_gpio_init(struct max77663_chip *chip)
-{
-	int i;
-	int ret;
-
-	chip->gpio.label = chip->i2c_power->name;
-	chip->gpio.dev = chip->dev;
-	chip->gpio.owner = THIS_MODULE;
-	chip->gpio.direction_input = max77663_gpio_dir_input;
-	chip->gpio.get = max77663_gpio_get;
-	chip->gpio.direction_output = max77663_gpio_dir_output;
-	chip->gpio.set_debounce = max77663_gpio_set_debounce;
-	chip->gpio.set = max77663_gpio_set;
-	chip->gpio.to_irq = max77663_gpio_to_irq;
-	chip->gpio.dbg_show = max77663_gpio_dbg_show;
-	chip->gpio.ngpio = MAX77663_GPIO_NR;
-	chip->gpio.can_sleep = 1;
-	if (chip->gpio_base)
-		chip->gpio.base = chip->gpio_base;
-	else
-		chip->gpio.base = -1;
-
-	ret = max77663_read(chip->dev, MAX77663_REG_GPIO_CTRL0,
-			    chip->cache_gpio_ctrl, MAX77663_GPIO_NR, 0);
-	if (ret < 0) {
-		dev_err(chip->dev, "gpio_init: Failed to get gpio control\n");
-		return ret;
-	}
-
-	ret = max77663_read(chip->dev, MAX77663_REG_GPIO_PU,
-			    &chip->cache_gpio_pu, 1, 0);
-	if (ret < 0) {
-		dev_err(chip->dev, "gpio_init: Failed to get gpio pull-up\n");
-		return ret;
-	}
-
-	ret = max77663_read(chip->dev, MAX77663_REG_GPIO_PD,
-			    &chip->cache_gpio_pd, 1, 0);
-	if (ret < 0) {
-		dev_err(chip->dev, "gpio_init: Failed to get gpio pull-down\n");
-		return ret;
-	}
-
-	ret = max77663_read(chip->dev, MAX77663_REG_GPIO_ALT,
-			    &chip->cache_gpio_alt, 1, 0);
-	if (ret < 0) {
-		dev_err(chip->dev, "gpio_init: Failed to get gpio alternate\n");
-		return ret;
-	}
-
-	ret = gpiochip_add(&chip->gpio);
-	if (ret < 0) {
-		dev_err(chip->dev, "gpio_init: Failed to add gpiochip\n");
-		return ret;
-	}
-	chip->gpio_base = chip->gpio.base;
-
-	for (i = 0; i < chip->pdata->num_gpio_cfgs; i++) {
-		ret = max77663_gpio_set_config(chip,
-					       &chip->pdata->gpio_cfgs[i]);
-		if (ret < 0) {
-			dev_err(chip->dev,
-				"gpio_init: Failed to set gpio config\n");
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
-static void max77663_gpio_exit(struct max77663_chip *chip)
-{
-	if (gpiochip_remove(&chip->gpio) < 0)
-		dev_err(chip->dev, "gpio_exit: Failed to remove gpiochip\n");
-}
-
 static void max77663_irq_mask(struct irq_data *data)
 {
 	struct max77663_chip *chip = irq_data_get_irq_chip_data(data);
@@ -883,27 +468,6 @@ static void max77663_irq_sync_unlock(struct irq_data *data)
 			goto out;
 
 		chip->cache_irq_mask[idx] = irq_mask;
-	} else if ((idx == -1) && (irq_data->top_mask == IRQ_TOP_GPIO_MASK)) {
-		unsigned offset = data->irq - chip->irq_base - IRQ_GPIO_BASE;
-		u8 shift = GPIO_CTRL_REFE_IRQ_SHIFT;
-
-		if (irq_data->is_unmask) {
-			if (irq_data->trigger_type)
-				irq_mask = irq_data->trigger_type;
-			else
-				irq_mask = GPIO_REFE_IRQ_EDGE_FALLING << shift;
-		} else {
-			irq_mask = GPIO_REFE_IRQ_NONE << shift;
-		}
-
-		ret = max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
-					   GPIO_CTRL_REFE_IRQ_MASK, irq_mask,
-					   &chip->cache_gpio_ctrl[offset]);
-		if (ret < 0)
-			goto out;
-
-		if (irq_data->is_unmask)
-			irq_data->trigger_type = irq_mask;
 	}
 
 	if (update_irq_top && (irq_top_mask != chip->cache_irq_top_mask)) {
@@ -916,39 +480,6 @@ static void max77663_irq_sync_unlock(struct irq_data *data)
 
 out:
 	mutex_unlock(&chip->irq_lock);
-}
-
-static int max77663_irq_gpio_set_type(struct irq_data *data, unsigned int type)
-{
-	struct max77663_chip *chip = irq_data_get_irq_chip_data(data);
-	struct max77663_irq_data *irq_data =
-			&max77663_irqs[data->irq - chip->irq_base];
-	unsigned offset = data->irq - chip->irq_base - IRQ_GPIO_BASE;
-	u8 shift = GPIO_CTRL_REFE_IRQ_SHIFT;
-	u8 val;
-
-	switch (type) {
-	case IRQ_TYPE_NONE:
-	case IRQ_TYPE_EDGE_FALLING:
-		val = (GPIO_REFE_IRQ_EDGE_FALLING << shift);
-		break;
-	case IRQ_TYPE_EDGE_RISING:
-		val = (GPIO_REFE_IRQ_EDGE_RISING << shift);
-		break;
-	case IRQ_TYPE_EDGE_BOTH:
-		val = (GPIO_REFE_IRQ_EDGE_BOTH << shift);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	irq_data->trigger_type = val;
-	if (!(chip->cache_gpio_ctrl[offset] & GPIO_CTRL_REFE_IRQ_MASK))
-		return 0;
-
-	return max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
-				    GPIO_CTRL_REFE_IRQ_MASK, val,
-				    &chip->cache_gpio_ctrl[offset]);
 }
 
 static inline int max77663_do_irq(struct max77663_chip *chip, u8 addr,
@@ -999,12 +530,8 @@ static irqreturn_t max77663_irq(int irq, void *data)
 			return IRQ_NONE;
 	}
 
-	if (irq_top & IRQ_TOP_GPIO_MASK) {
-		ret = max77663_do_irq(chip, MAX77663_REG_GPIO_IRQ,
-				      IRQ_GPIO_BASE, IRQ_GPIO_END);
-		if (ret < 0)
-			return IRQ_NONE;
-	}
+	if (irq_top & IRQ_TOP_GPIO_MASK)
+		handle_nested_irq(MAX77663_IRQ_INT_TOP_GPIO + chip->irq_base);
 
 	if (irq_top & IRQ_TOP_ONOFF_MASK) {
 		ret = max77663_do_irq(chip, MAX77663_REG_ONOFF_IRQ,
@@ -1030,15 +557,6 @@ static irqreturn_t max77663_irq(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-
-static struct irq_chip max77663_irq_gpio_chip = {
-	.name = "max77663-irq",
-	.irq_mask = max77663_irq_mask,
-	.irq_unmask = max77663_irq_unmask,
-	.irq_set_type = max77663_irq_gpio_set_type,
-	.irq_bus_lock = max77663_irq_lock,
-	.irq_bus_sync_unlock = max77663_irq_sync_unlock,
-};
 
 static struct irq_chip max77663_irq_chip = {
 	.name = "max77663-irq",
@@ -1077,25 +595,22 @@ static int max77663_irq_init(struct max77663_chip *chip)
 	max77663_read(chip->dev, MAX77663_REG_LBT_IRQ, &temp, 1, 0);
 	max77663_read(chip->dev, MAX77663_REG_SD_IRQ, &temp, 1, 0);
 	max77663_read(chip->dev, MAX77663_REG_LDOX_IRQ, &temp, 2, 0);
-	max77663_read(chip->dev, MAX77663_REG_GPIO_IRQ, &temp, 1, 0);
+	//max77663_read(chip->dev, MAX77663_REG_GPIO_IRQ, &temp, 1, 0);
 	max77663_read(chip->dev, MAX77663_REG_ONOFF_IRQ, &temp, 1, 0);
 
 	for (i = chip->irq_base; i < (MAX77663_IRQ_NR + chip->irq_base); i++) {
+		int irq = i - chip->irq_base;
 		if (i >= NR_IRQS) {
 			dev_err(chip->dev,
 				"irq_init: Can't set irq chip for irq %d\n", i);
 			continue;
 		}
+		if ((irq >= MAX77663_IRQ_GPIO0) && (irq <= MAX77663_IRQ_GPIO7))
+			continue;
 
 		irq_set_chip_data(i, chip);
 
-		if ((IRQ_GPIO_BASE <= i - chip->irq_base) &&
-				(i - chip->irq_base <= IRQ_GPIO_END))
-			irq_set_chip_and_handler(i, &max77663_irq_gpio_chip,
-						 handle_edge_irq);
-		else
-			irq_set_chip_and_handler(i, &max77663_irq_chip,
-						 handle_edge_irq);
+		irq_set_chip_and_handler(i, &max77663_irq_chip, handle_edge_irq);
 #ifdef CONFIG_ARM
 		set_irq_flags(i, IRQF_VALID);
 #else
@@ -1370,7 +885,6 @@ static int max77663_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	chip->pdata = pdata;
 	chip->irq_base = pdata->irq_base;
-	chip->gpio_base = pdata->gpio_base;
 	mutex_init(&chip->io_lock);
 
 	/* Dummy read to see if chip is present or not*/
@@ -1381,7 +895,6 @@ static int max77663_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	max77663_gpio_init(chip);
 	max77663_irq_init(chip);
 	max77663_debugfs_init(chip);
 	ret = max77663_sleep(chip, false);
@@ -1393,18 +906,26 @@ static int max77663_probe(struct i2c_client *client,
 	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = max77663_power_off;
 
+	ret =  mfd_add_devices(&client->dev, -1, max77663_cells,
+			ARRAY_SIZE(max77663_cells), NULL, chip->irq_base);
+	if (ret < 0) {
+		 dev_err(&client->dev, "mfd add dev failed, e = %d\n", ret);
+		goto out_exit;
+	}
+
 	ret = mfd_add_devices(&client->dev, 0, pdata->sub_devices,
 			      pdata->num_subdevs, NULL, 0);
 	if (ret != 0) {
 		dev_err(&client->dev, "probe: Failed to add subdev: %d\n", ret);
-		goto out_exit;
+		goto out_mfd_clean;
 	}
 
 	return 0;
 
+out_mfd_clean:
+	mfd_remove_devices(chip->dev);
 out_exit:
 	max77663_debugfs_exit(chip);
-	max77663_gpio_exit(chip);
 	max77663_irq_exit(chip);
 	mutex_destroy(&chip->io_lock);
 
@@ -1421,7 +942,6 @@ static int max77663_remove(struct i2c_client *client)
 	mfd_remove_devices(chip->dev);
 	max77663_debugfs_exit(chip);
 	max77663_irq_exit(chip);
-	max77663_gpio_exit(chip);
 	mutex_destroy(&chip->io_lock);
 	i2c_unregister_device(chip->i2c_rtc);
 	max77663_chip = NULL;
