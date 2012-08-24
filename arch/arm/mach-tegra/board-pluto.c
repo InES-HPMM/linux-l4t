@@ -512,6 +512,7 @@ static void __init tegra_pluto_init(void)
 	pluto_regulator_init();
 	pluto_suspend_init();
 	pluto_emc_init();
+	pluto_panel_init();
 	tegra_release_bootloader_fb();
 	pluto_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
