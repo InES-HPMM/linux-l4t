@@ -3755,8 +3755,10 @@ regulator_register(const struct regulator_desc *regulator_desc,
 
 	if (init_data && init_data->supply_regulator)
 		supply = init_data->supply_regulator;
+#if 0 /* Reenable when EPROBE_DEFER is pulled. */
 	else if (regulator_desc->supply_name)
 		supply = regulator_desc->supply_name;
+#endif
 
 	if (supply) {
 		struct regulator_dev *r;
