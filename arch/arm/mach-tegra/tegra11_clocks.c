@@ -3135,6 +3135,9 @@ static void tegra11_pll_div_clk_init(struct clk *c)
 		}
 		else
 			BUG();
+	} else if (c->flags & PLLU) {
+		u32 val = clk_readl(c->reg);
+		c->state = val & (0x1 << c->reg_shift) ? ON : OFF;
 	} else {
 		c->state = ON;
 		c->div = 1;
@@ -3164,6 +3167,12 @@ static int tegra11_pll_div_clk_enable(struct clk *c)
 		return 0;
 	} else if (c->flags & DIV_2) {
 		return 0;
+	} else if (c->flags & PLLU) {
+		clk_lock_save(c->parent, &flags);
+		val = clk_readl(c->reg) | (0x1 << c->reg_shift);
+		clk_writel_delay(val, c->reg);
+		clk_unlock_restore(c->parent, &flags);
+		return 0;
 	}
 	return -EINVAL;
 }
@@ -3187,6 +3196,11 @@ static void tegra11_pll_div_clk_disable(struct clk *c)
 		val |= new_val << c->reg_shift;
 		clk_writel_delay(val, c->reg);
 		spin_unlock_irqrestore(&pll_div_lock, flags);
+	} else if (c->flags & PLLU) {
+		clk_lock_save(c->parent, &flags);
+		val = clk_readl(c->reg) & (~(0x1 << c->reg_shift));
+		clk_writel_delay(val, c->reg);
+		clk_unlock_restore(c->parent, &flags);
 	}
 }
 
@@ -5037,31 +5051,49 @@ static struct clk tegra_pll_u = {
 static struct clk tegra_pll_u_480M = {
 	.name      = "pll_u_480M",
 	.flags     = PLLU,
+	.ops       = &tegra_pll_div_ops,
+	.reg       = 0xc0,
+	.reg_shift = 22,
 	.parent    = &tegra_pll_u,
 	.mul       = 1,
 	.div       = 1,
-	.state     = ON,
 	.max_rate  = 480000000,
 };
 
 static struct clk tegra_pll_u_60M = {
 	.name      = "pll_u_60M",
 	.flags     = PLLU,
+	.ops       = &tegra_pll_div_ops,
+	.reg       = 0xc0,
+	.reg_shift = 23,
 	.parent    = &tegra_pll_u,
 	.mul       = 1,
 	.div       = 8,
-	.state     = ON,
 	.max_rate  = 60000000,
 };
 
 static struct clk tegra_pll_u_48M = {
 	.name      = "pll_u_48M",
 	.flags     = PLLU,
+	.ops       = &tegra_pll_div_ops,
+	.reg       = 0xc0,
+	.reg_shift = 25,
 	.parent    = &tegra_pll_u,
 	.mul       = 1,
 	.div       = 10,
-	.state     = ON,
 	.max_rate  = 48000000,
+};
+
+static struct clk tegra_pll_u_12M = {
+	.name      = "pll_u_12M",
+	.flags     = PLLU,
+	.ops       = &tegra_pll_div_ops,
+	.reg       = 0xc0,
+	.reg_shift = 21,
+	.parent    = &tegra_pll_u,
+	.mul       = 1,
+	.div       = 40,
+	.max_rate  = 12000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_x_freq_table[] = {
@@ -6138,6 +6170,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_u_480M,
 	&tegra_pll_u_60M,
 	&tegra_pll_u_48M,
+	&tegra_pll_u_12M,
 	&tegra_pll_x,
 	&tegra_pll_x_out0,
 	&tegra_dfll_cpu,
