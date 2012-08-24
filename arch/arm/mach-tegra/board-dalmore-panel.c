@@ -23,6 +23,7 @@
 #include <linux/nvhost.h>
 #include <linux/init.h>
 #include <linux/tegra_pwm_bl.h>
+#include <linux/regulator/consumer.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -40,10 +41,18 @@
 #define TEGRA_DSI_GANGED_MODE 0
 #define IS_EXTERNAL_PWM	0
 
+/* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
+#define PANEL_10_1_PANASONIC_1920_1200 1
+
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
+/* regulators */
+#if PANEL_10_1_PANASONIC_1920_1200
+static struct regulator *avdd_lcd_3v3;
+static struct regulator *vdd_lcd_bl_12v;
+#endif
 
 static struct resource dalmore_disp1_resources[] __initdata = {
 	{
@@ -114,6 +123,12 @@ static struct resource dalmore_disp2_resources[] __initdata = {
 	},
 };
 
+static struct tegra_dsi_cmd dsi_init_cmd[]= {
+#if PANEL_10_1_PANASONIC_1920_1200
+	/* no init command required */
+#endif
+};
+
 static struct tegra_dsi_out dalmore_dsi = {
 	.n_data_lanes = 4,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
@@ -126,18 +141,45 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+
+	.dsi_init_cmd = dsi_init_cmd,
+	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
-static int dalmore_panel_enable(void)
+static int dalmore_dsi_panel_enable(void)
 {
-	/* TODO */
-	return -EPERM;
+	int err = 0;
+
+#if PANEL_10_1_PANASONIC_1920_1200
+	if (avdd_lcd_3v3) {
+		err = regulator_enable(avdd_lcd_3v3);
+		if (err < 0) {
+			pr_err("avdd_lcd regulator enable failed\n");
+			return err;
+		}
+	}
+
+	if (vdd_lcd_bl_12v) {
+		err = regulator_enable(vdd_lcd_bl_12v);
+		if (err < 0) {
+			pr_err("vdd_lcd_bl regulator enable failed\n");
+			return err;
+		}
+	}
+#endif
+	return err;
 }
 
-static int dalmore_panel_disable(void)
+static int dalmore_dsi_panel_disable(void)
 {
-	/* TODO */
-	return -EPERM;
+#if PANEL_10_1_PANASONIC_1920_1200
+	if (avdd_lcd_3v3)
+		regulator_disable(avdd_lcd_3v3);
+
+	if (vdd_lcd_bl_12v)
+		regulator_disable(vdd_lcd_bl_12v);
+#endif
+	return 0;
 }
 
 static int dalmore_dsi_panel_postsuspend(void)
@@ -146,15 +188,41 @@ static int dalmore_dsi_panel_postsuspend(void)
 	return -EPERM;
 }
 
+static struct tegra_dc_mode dalmore_dsi_modes[] = {
+#if PANEL_10_1_PANASONIC_1920_1200
+	{
+		.pclk = 10000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 16,
+		.v_sync_width = 2,
+		.h_back_porch = 32,
+		.v_back_porch = 16,
+		.h_active = 1920,
+		.v_active = 1200,
+		.h_front_porch = 112,
+		.v_front_porch = 17,
+	},
+#endif
+};
+
 static struct tegra_dc_out dalmore_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 	.dsi		= &dalmore_dsi,
 
 	.flags		= DC_CTRL_MODE,
 
-	.enable		= dalmore_panel_enable,
-	.disable	= dalmore_panel_disable,
+	.modes		= dalmore_dsi_modes,
+	.n_modes	= ARRAY_SIZE(dalmore_dsi_modes),
+
+	.enable		= dalmore_dsi_panel_enable,
+	.disable	= dalmore_dsi_panel_disable,
 	.postsuspend	= dalmore_dsi_panel_postsuspend,
+
+#if PANEL_10_1_PANASONIC_1920_1200
+	.width		= 217,
+	.height		= 135,
+#endif
 };
 
 static int dalmore_hdmi_enable(void)
@@ -200,6 +268,10 @@ static struct tegra_fb_data dalmore_disp1_fb_data = {
 	.win		= 0,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
+#if PANEL_10_1_PANASONIC_1920_1200
+	.xres		= 1920,
+	.yres		= 1200,
+#endif
 };
 
 static struct tegra_dc_platform_data dalmore_disp1_pdata = {
@@ -323,6 +395,30 @@ static struct platform_device dalmore_disp1_bl_device __initdata = {
 	},
 };
 
+static int dalmore_dsi_regulator_get(void)
+{
+	int err = 0;
+
+#if PANEL_10_1_PANASONIC_1920_1200
+	avdd_lcd_3v3 = regulator_get(NULL, "avdd_lcd");
+	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
+		pr_err("avdd_lcd regulator get failed\n");
+		err = PTR_ERR(avdd_lcd_3v3);
+		avdd_lcd_3v3 = NULL;
+		return err;
+	}
+
+	vdd_lcd_bl_12v = regulator_get(NULL, "vdd_lcd_bl");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_12v)) {
+		pr_err("vdd_lcd_bl regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_12v);
+		vdd_lcd_bl_12v = NULL;
+		return err;
+	}
+#endif
+	return err;
+}
+
 int __init dalmore_panel_init(void)
 {
 	int err = 0;
@@ -378,6 +474,12 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 #endif
+
+	err = dalmore_dsi_regulator_get();
+	if (err < 0) {
+		pr_err("regulator get failed\n");
+		return err;
+	}
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
