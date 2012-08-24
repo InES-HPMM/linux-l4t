@@ -29,6 +29,7 @@
 
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
+#include <mach/gpufuse.h>
 
 #include "fuse.h"
 #include "iomap.h"
@@ -102,6 +103,8 @@ int tegra_soc_speedo_id;
 int tegra_package_id;
 enum tegra_revision tegra_revision;
 static unsigned int tegra_fuse_vp8_enable;
+static int tegra_gpu_num_pixel_pipes;
+static int tegra_gpu_num_alus_per_pixel_pipe;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
@@ -359,6 +362,51 @@ int tegra_gpu_register_sets(void)
 	return 1;
 #endif
 }
+
+void tegra_gpu_get_info(struct gpu_info *pInfo)
+{
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) {
+		pInfo->num_pixel_pipes = 4;
+		pInfo->num_alus_per_pixel_pipe = 3;
+	} else {
+		pInfo->num_pixel_pipes = 1;
+		pInfo->num_alus_per_pixel_pipe = 1;
+	}
+}
+
+static int get_gpu_num_pixel_pipes(char *val, const struct kernel_param *kp)
+{
+	struct gpu_info gpu_info;
+
+	tegra_gpu_get_info(&gpu_info);
+	tegra_gpu_num_pixel_pipes = gpu_info.num_pixel_pipes;
+	return param_get_uint(val, kp);
+}
+
+static int get_gpu_num_alus_per_pixel_pipe(char *val,
+						const struct kernel_param *kp)
+{
+	struct gpu_info gpu_info;
+
+	tegra_gpu_get_info(&gpu_info);
+	tegra_gpu_num_alus_per_pixel_pipe = gpu_info.num_alus_per_pixel_pipe;
+
+	return param_get_uint(val, kp);
+}
+
+static struct kernel_param_ops tegra_gpu_num_pixel_pipes_ops = {
+	.get = get_gpu_num_pixel_pipes,
+};
+
+static struct kernel_param_ops tegra_gpu_num_alus_per_pixel_pipe_ops = {
+	.get = get_gpu_num_alus_per_pixel_pipe,
+};
+
+module_param_cb(tegra_gpu_num_pixel_pipes, &tegra_gpu_num_pixel_pipes_ops,
+		&tegra_gpu_num_pixel_pipes, 0444);
+module_param_cb(tegra_gpu_num_alus_per_pixel_pipe,
+		&tegra_gpu_num_alus_per_pixel_pipe_ops,
+		&tegra_gpu_num_alus_per_pixel_pipe, 0444);
 
 #if defined(CONFIG_TEGRA_SILICON_PLATFORM)
 struct chip_revision {
