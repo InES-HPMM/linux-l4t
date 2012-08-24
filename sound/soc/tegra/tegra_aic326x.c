@@ -44,6 +44,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <linux/mfd/tlv320aic3262-registers.h>
 
 #include "../codecs/tlv320aic326x.h"
 
@@ -353,6 +354,9 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
 	}
+
+	err = snd_soc_dai_set_pll(codec_dai, 0, AIC3262_PLL_CLKIN_MCLK1 , rate,
+		params_rate(params));
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	err = tegra20_das_connect_dac_to_dap(TEGRA20_DAS_DAP_SEL_DAC1,
@@ -737,7 +741,15 @@ static int tegra_aic326x_voice_call_hw_params(
 		return err;
 	}
 
-	if(!machine_is_tegra_enterprise()) {
+	err = snd_soc_dai_set_pll(codec_dai, 0, AIC3262_PLL_CLKIN_MCLK1 , rate,
+			params_rate(params));
+
+	if (err < 0) {
+		dev_err(card->dev, "codec_dai PLL clock not set\n");
+		return err;
+	}
+
+	if (!machine_is_tegra_enterprise()) {
 		if (params_rate(params) == 8000) {
 			/* Change these Settings for 8KHz*/
 			pcmdiv = 1;
@@ -889,7 +901,7 @@ enum headset_state {
 static int aic326x_headset_switch_notify(struct notifier_block *self,
 	unsigned long action, void *dev)
 {
-	int state = 0;
+	int state = BIT_NO_HEADSET;
 
 	switch (action) {
 	case SND_JACK_HEADPHONE:
@@ -975,10 +987,11 @@ static const struct snd_soc_dapm_route aic326x_audio_map[] = {
 	{"IN2L", NULL, "Mic Bias Int"},
 	{"Mic Bias Int" ,NULL, "Int Mic"},
 	{"IN2R", NULL, "Mic Bias Int"},
-	{"Mic Bias Ext" ,NULL, "Mic Jack"},
-	{"CM1L" ,NULL, "Mic Jack"},
 	{"IN1L", NULL, "Mic Bias Ext"},
-	{"IN1L", NULL, "CM1L"},
+	{"Mic Bias Ext" ,NULL, "Mic Jack"},
+/*	{"CM1L" ,NULL, "Mic Jack"}, */
+/*	{"IN1L", NULL, "Mic Bias Ext"}, */
+/*	{"IN1L", NULL, "CM1L"}, */
 };
 
 static const struct snd_kcontrol_new tegra_aic326x_controls[] = {
@@ -1105,7 +1118,8 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 		tegra_aic326x_hp_jack_pins);
 #endif
 
-	aic326x_headset_detect(codec, &tegra_aic326x_hp_jack,
+	/* update jack status during boot */
+	aic3262_hs_jack_detect(codec, &tegra_aic326x_hp_jack,
 		SND_JACK_HEADSET);
 
 	/* Add call mode switch control */
@@ -1119,9 +1133,9 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
-	snd_soc_dapm_force_enable_pin(dapm, "MICBIAS_EXT ON");
-	snd_soc_dapm_force_enable_pin(dapm,"MICBIAS_INT ON");
-	snd_soc_dapm_sync(dapm);
+/*	snd_soc_dapm_force_enable_pin(dapm, "Mic Bias Ext");
+	snd_soc_dapm_force_enable_pin(dapm,"Mic Bias Int");
+	snd_soc_dapm_sync(dapm); */
 
 	return 0;
 }
@@ -1130,14 +1144,14 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 	[DAI_LINK_HIFI] = {
 		.name = "AIC3262",
 		.stream_name = "AIC3262 PCM HIFI",
-		.codec_name = "aic3262-codec.4-0018",
+		.codec_name = "tlv320aic3262-codec",
 		.platform_name = "tegra-pcm-audio",
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		.cpu_dai_name = "tegra20-i2s.0",
 #else
 		.cpu_dai_name = "tegra30-i2s.0",
 #endif
-		.codec_dai_name = "aic3262-asi1",
+		.codec_dai_name = "aic326x-asi1",
 		.init = tegra_aic326x_init,
 		.ops = &tegra_aic326x_hifi_ops,
 		},
@@ -1171,10 +1185,10 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 	[DAI_LINK_VOICE_CALL] = {
 			.name = "VOICE CALL",
 			.stream_name = "VOICE CALL PCM",
-			.codec_name = "aic3262-codec.4-0018",
+			.codec_name = "tlv320aic3262-codec",
 			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
-			.codec_dai_name = "aic3262-asi2",
+			.codec_dai_name = "aic326x-asi2",
 			.ops = &tegra_aic326x_voice_call_ops,
 		},
 	[DAI_LINK_BT_VOICE_CALL] = {
@@ -1262,10 +1276,10 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 #endif
 
-	if(machine_is_tegra_enterprise()) {
-		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name = "aic3262-codec.0-0018";
-		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name = "aic3262-codec.0-0018";
-		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name = "aic3262-asi1";
+	if (machine_is_tegra_enterprise()) {
+		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name = "tlv320aic3262-codec";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name = "tlv320aic3262-codec";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name = "aic326x-asi1";
 	}
 
 	ret = snd_soc_register_card(card);
