@@ -181,6 +181,11 @@ static void tegra_stop_host(struct tegra_otg_data *tegra)
 	DBG("%s(%d) End\n", __func__, __LINE__);
 }
 
+static void tegra_otg_notify_event(struct tegra_otg_data *tegra, int event)
+{
+	tegra->phy.last_event = event;
+	atomic_notifier_call_chain(&tegra->phy.notifier, event, tegra->phy.otg->gadget);
+}
 
 static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 				enum usb_otg_state to)
@@ -201,14 +206,20 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
 
 		if (from == OTG_STATE_A_SUSPEND) {
-			if (to == OTG_STATE_B_PERIPHERAL && otg->gadget)
+			if (to == OTG_STATE_B_PERIPHERAL && otg->gadget) {
 				usb_gadget_vbus_connect(otg->gadget);
-			else if (to == OTG_STATE_A_HOST)
+				tegra_otg_notify_event(tegra, USB_EVENT_VBUS);
+			}
+			else if (to == OTG_STATE_A_HOST) {
 				tegra_start_host(tegra);
+				tegra_otg_notify_event(tegra, USB_EVENT_ID);
+			}
 		} else if (from == OTG_STATE_A_HOST && to == OTG_STATE_A_SUSPEND) {
-				tegra_stop_host(tegra);
+			tegra_stop_host(tegra);
+			tegra_otg_notify_event(tegra, USB_EVENT_NONE);
 		} else if (from == OTG_STATE_B_PERIPHERAL && otg->gadget && to == OTG_STATE_A_SUSPEND) {
-				usb_gadget_vbus_disconnect(otg->gadget);
+			usb_gadget_vbus_disconnect(otg->gadget);
+			tegra_otg_notify_event(tegra, USB_EVENT_NONE);
 		}
 	}
 }
