@@ -31,6 +31,7 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/export.h>
+#include <linux/pm_runtime.h>
 
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
@@ -102,6 +103,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 {
 	unsigned long val;
 
+	pm_runtime_get_sync(tegra->phy.dev);
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
@@ -116,6 +118,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	/* Add delay to make sure register is updated */
 	udelay(1);
 	clk_disable(tegra->clk);
+	pm_runtime_put_sync(tegra->phy.dev);
 
 	return val;
 }
@@ -328,12 +331,14 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 
 	otg->host = host;
 
+	pm_runtime_get_sync(tegra->phy.dev);
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
 	val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
+	pm_runtime_put_sync(tegra->phy.dev);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
@@ -423,10 +428,6 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	err = clk_enable(tegra->clk);
-	if (err)
-		goto err_clken;
-
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "Failed to get I/O memory\n");
@@ -465,6 +466,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	INIT_WORK(&tegra->work, irq_work);
 
+	tegra->phy.dev = &pdev->dev;
 	tegra->phy.label = "tegra-otg";
 	tegra->phy.otg->set_host = tegra_otg_set_host;
 	tegra->phy.otg->set_peripheral = tegra_otg_set_peripheral;
@@ -472,6 +474,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	tegra->phy.set_power = tegra_otg_set_power;
 	tegra->phy.state = OTG_STATE_A_SUSPEND;
 	tegra->phy.otg->phy = &tegra->phy;
+
 
 	err = usb_set_transceiver(&tegra->phy);
 	if (err) {
@@ -485,7 +488,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
-	clk_disable(tegra->clk);
+	pm_runtime_enable(tegra->phy.dev);
 
 	dev_info(&pdev->dev, "otg transceiver registered\n");
 	return 0;
@@ -494,8 +497,6 @@ err_irq:
 	usb_set_transceiver(NULL);
 	iounmap(tegra->regs);
 err_io:
-	clk_disable(tegra->clk);
-err_clken:
 	clk_put(tegra->clk);
 err_clk:
 	return err;
@@ -505,9 +506,9 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 
+	pm_runtime_disable(tegra->phy.dev);
 	usb_set_transceiver(NULL);
 	iounmap(tegra->regs);
-	clk_disable(tegra->clk);
 	clk_put(tegra->clk);
 	platform_set_drvdata(pdev, NULL);
 	mutex_destroy(&tegra->irq_work_mutex);
@@ -528,11 +529,13 @@ static int tegra_otg_suspend(struct device *dev)
 	DBG("%s(%d) BEGIN state : %s\n", __func__, __LINE__,
 				tegra_state_name(phy->otg->phy->state));
 
+	pm_runtime_get_sync(dev);
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_ID_INT_EN | USB_VBUS_INT_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
+	pm_runtime_put_sync(dev);
 
 	/* suspend peripheral mode, host mode is taken care by host driver */
 	if (from == OTG_STATE_B_PERIPHERAL)
@@ -562,11 +565,13 @@ static void tegra_otg_resume(struct device *dev)
 	}
 
 	/* Clear pending interrupts */
+	pm_runtime_get_sync(dev);
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
 	clk_disable(tegra->clk);
+	pm_runtime_put_sync(dev);
 
 	/* Enable interrupt and call work to set to appropriate state */
 	spin_lock_irqsave(&tegra->lock, flags);
