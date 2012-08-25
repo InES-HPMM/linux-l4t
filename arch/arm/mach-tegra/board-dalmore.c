@@ -55,7 +55,7 @@
 #include <mach/io.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
-#include <mach/tegra_rt5640_pdata.h>
+#include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
@@ -143,7 +143,9 @@ static struct tegra_i2c_platform_data dalmore_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-
+static struct i2c_board_info __initdata rt5640_board_info = {
+	I2C_BOARD_INFO("rt5640", 0x1c),
+};
 
 static void dalmore_i2c_init(void)
 {
@@ -156,6 +158,8 @@ static void dalmore_i2c_init(void)
 	tegra_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
 	tegra_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
 	tegra_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
+
+	i2c_register_board_info(0, &rt5640_board_info, 1);
 
 	platform_device_register(&tegra_i2c_device5);
 	platform_device_register(&tegra_i2c_device4);
@@ -308,12 +312,18 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-static struct tegra_rt5640_platform_data dalmore_audio_pdata = {
+static struct tegra_asoc_platform_data dalmore_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
+	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 1,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+	},
 };
 
 static struct platform_device dalmore_audio_device = {
@@ -339,6 +349,12 @@ static struct platform_device *dalmore_devices[] __initdata = {
 	&tegra_se_device,
 #endif
 	&tegra_ahub_device,
+	&tegra_dam_device0,
+	&tegra_dam_device1,
+	&tegra_dam_device2,
+	&tegra_i2s_device1,
+	&tegra_i2s_device3,
+	&tegra_i2s_device4,
 	&dalmore_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
@@ -480,7 +496,7 @@ static void dalmore_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	dalmore_audio_pdata.codec_name = "rt5640.4-001c";
+	dalmore_audio_pdata.codec_name = "rt5640.0-001c";
 	dalmore_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 

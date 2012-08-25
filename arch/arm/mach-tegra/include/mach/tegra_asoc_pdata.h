@@ -42,6 +42,7 @@ struct tegra_asoc_platform_data {
 	int gpio_hp_mute;
 	int gpio_int_mic_en;
 	int gpio_ext_mic_en;
+	int gpio_ldo1_en;
 	unsigned int debounce_time_hp;
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
 };
