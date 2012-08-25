@@ -62,6 +62,7 @@ static struct dvfs_rail *tegra11_dvfs_rails[] = {
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
+		.max_mv = 1150,
 		.min_mv = 850,
 		.margin = 103,
 		.cvb_table = {
@@ -387,6 +388,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		mv = get_cvb_voltage(speedo, cvb);
 		dfll_mv = round_cvb_voltage(mv);
 		dfll_mv = max(dfll_mv, d->min_mv);
+		if (dfll_mv > d->max_mv)
+			break;
 
 		/* Check maximum frequency at minimum voltage */
 		if (dfll_mv > d->min_mv) {
@@ -416,8 +419,10 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		return -ENOENT;
 	}
 
+	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = speedo_id;
-	cpu_dvfs->dvfs_rail->nominal_millivolts = cpu_millivolts[j - 1];
+	cpu_dvfs->dvfs_rail->nominal_millivolts =
+		min(cpu_millivolts[j - 1], d->max_mv);
 	*max_freq_index = j - 1;
 
 	dfll_data->out_rate_min = fmax_at_vmin * MHZ;

@@ -109,6 +109,7 @@ struct cpu_cvb_dvfs_parameters {
 
 struct cpu_cvb_dvfs {
 	int speedo_id;
+	int max_mv;
 	int min_mv;
 	int margin;
 	struct cpu_cvb_dvfs_parameters cvb_table[MAX_DVFS_FREQS];
