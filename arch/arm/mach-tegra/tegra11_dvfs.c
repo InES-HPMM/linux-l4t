@@ -89,13 +89,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	}
 };
 
-/* FIXME: remove */
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-#define CPU_AUTO true
-#else
-#define CPU_AUTO false
-#endif
-
 static int cpu_millivolts[MAX_DVFS_FREQS];
 static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
 
@@ -104,7 +97,7 @@ static struct dvfs cpu_dvfs = {
 	.process_id	= -1,
 	.millivolts	= cpu_millivolts,
 	.dfll_millivolts = cpu_dfll_millivolts,
-	.auto_dvfs	= CPU_AUTO,
+	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra11_dvfs_rail_vdd_cpu,
 };
 
