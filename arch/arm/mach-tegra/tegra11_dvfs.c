@@ -358,7 +358,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	unsigned long fmax_at_vmin = 0;
 	struct cpu_cvb_dvfs *d = NULL;
 	struct cpu_cvb_dvfs_parameters *cvb = NULL;
-	int speedo = 0; /* FIXME: tegra_cpu_speedo_val(); */
+	int speedo = tegra_cpu_speedo_value();
 
 	/* Find matching cvb dvfs entry */
 	for (i = 0; i < ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
@@ -434,11 +434,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	int mv = 1100; /* FIXME: tegra_core_speedo_mv(); */
-#else
-	int mv = 1100;
-#endif
+	int mv = tegra_core_speedo_mv();
 	int core_edp_limit = get_core_edp();
 
 	/*
