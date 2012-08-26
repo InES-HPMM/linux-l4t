@@ -102,9 +102,9 @@ struct dvfs {
 
 struct cpu_cvb_dvfs_parameters {
 	unsigned long freq;
-	u32	c0;
-	u32	c1;
-	u32	c2;
+	int	c0;
+	int	c1;
+	int	c2;
 };
 
 struct cpu_cvb_dvfs {
@@ -113,6 +113,8 @@ struct cpu_cvb_dvfs {
 	int min_mv;
 	int margin;
 	int freqs_mult;
+	int speedo_scale;
+	int voltage_scale;
 	struct cpu_cvb_dvfs_parameters cvb_table[MAX_DVFS_FREQS];
 };
 

@@ -36,6 +36,7 @@ static bool tegra_dvfs_core_disabled;
 
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
+#define CVB_ALIGN_STEP_UV		12500
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -62,29 +63,31 @@ static struct dvfs_rail *tegra11_dvfs_rails[] = {
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
-		.max_mv = 1150,
+		.max_mv = 1250,
 		.min_mv = 850,
 		.margin = 103,
 		.freqs_mult = MHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 100,
 		.cvb_table = {
-			/*f      c0,   c1,   c2 */
-			{ 306,  800,    0,    0},
-			{ 408,  812,    0,    0},
-			{ 510,  825,    0,    0},
-			{ 612,  850,    0,    0},
-			{ 714,  850,    0,    0},
-			{ 816,  858,    0,    0},
-			{ 918,  900,    0,    0},
-			{1020,  912,    0,    0},
-			{1122,  937,    0,    0},
-			{1224,  937,    0,    0},
-			{1326,  975,    0,    0},
-			{1428, 1000,    0,    0},
-			{1530, 1000,    0,    0},
-			{1632, 1100,    0,    0},
-			{1734, 1150,    0,    0},
-			{1836, 1200,    0,    0},
-			{   0,    0,    0,    0},
+			/*f      c0,    c1,    c2 */
+			{ 306,  9251,  12837, -570},
+			{ 408,  11737, 12957, -570},
+			{ 510,  14282, 13076, -570},
+			{ 612,  16887, 13196, -570},
+			{ 714,  19552, 13315, -570},
+			{ 816,  22277, 13435, -570},
+			{ 918,  25061, 13554, -570},
+			{1020,  27905, 13674, -570},
+			{1122,  30809, 13793, -570},
+			{1224,  33773, 13913, -570},
+			{1326,  36797, 14032, -570},
+			{1428,  39880, 14152, -570},
+			{1530,  43023, 14271, -570},
+			{1632,  46226, 14391, -570},
+			{1734,  49489, 14511, -570},
+			{1836,  52812, 14630, -570},
+			{   0,      0,     0,    0},
 		},
 	}
 };
@@ -330,18 +333,23 @@ static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
 	return true;
 }
 
-static inline int round_cvb_voltage(int mv)
-{
-	/* round to 12.5mV */
-	return DIV_ROUND_UP(mv * 2, 25) * 25 / 2;
-}
 
-static inline int get_cvb_voltage(int speedo,
+/* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
+static inline int get_cvb_voltage(int speedo, int s_scale,
 				  struct cpu_cvb_dvfs_parameters *cvb)
 {
-	/* FIXME: normalize */
-	int mv = cvb->c0 + cvb->c1 * speedo + cvb->c2 * speedo * speedo;
+	/* apply only speedo scale: output mv = cvb_mv * v_scale */
+	int mv;
+	mv = DIV_ROUND_CLOSEST(cvb->c2 * speedo, s_scale);
+	mv = DIV_ROUND_CLOSEST((mv + cvb->c1) * speedo, s_scale) + cvb->c0;
 	return mv;
+}
+
+static inline int round_cvb_voltage(int mv, int v_scale)
+{
+	/* combined: apply voltage scale and round to cvb alignment step */
+	return DIV_ROUND_UP(mv * 1000, v_scale * CVB_ALIGN_STEP_UV) *
+		CVB_ALIGN_STEP_UV / 1000;
 }
 
 static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
@@ -378,8 +386,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		if (!cvb->freq)
 			break;
 
-		mv = get_cvb_voltage(speedo, cvb);
-		dfll_mv = round_cvb_voltage(mv);
+		mv = get_cvb_voltage(speedo, d->speedo_scale, cvb);
+		dfll_mv = round_cvb_voltage(mv, d->voltage_scale);
 		dfll_mv = max(dfll_mv, d->min_mv);
 		if (dfll_mv > d->max_mv)
 			break;
@@ -396,7 +404,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		if (!j || (dfll_mv > cpu_dfll_millivolts[j - 1])) {
 			cpu_dvfs->freqs[j] = cvb->freq;
 			cpu_dfll_millivolts[j] = dfll_mv;
-			mv = round_cvb_voltage(mv * d->margin / 100);
+			mv = mv * d->margin / 100;
+			mv = round_cvb_voltage(mv, d->voltage_scale);
 			cpu_millivolts[j] = max(mv, d->min_mv);
 			j++;
 		} else {
