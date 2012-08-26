@@ -58,6 +58,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += latency_allowance.o
 obj-$(CONFIG_TEGRA_EDP_LIMITS)          += edp.o
 endif
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
 endif
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
