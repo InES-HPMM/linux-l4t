@@ -1338,9 +1338,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 	}
 
-	/* enable HS200 capable */
-	host->mmc->caps2 |= MMC_CAP2_HS200;
-
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
@@ -1351,6 +1348,8 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 #else
 	tegra_host->hw_ops = &tegra_11x_sdhci_ops;
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
+	/* enable HS200 capable */
+	host->mmc->caps2 |= MMC_CAP2_HS200;
 #endif
 	rc = sdhci_add_host(host);
 	if (rc)
