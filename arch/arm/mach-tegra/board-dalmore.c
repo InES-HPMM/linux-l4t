@@ -169,7 +169,6 @@ static struct platform_device *dalmore_uart_devices[] __initdata = {
 	&tegra_uartb_device,
 	&tegra_uartc_device,
 	&tegra_uartd_device,
-	&tegra_uarte_device,
 };
 static struct uart_clk_parent uart_parent_clk[] = {
 	[0] = {.name = "clk_m"},
@@ -227,15 +226,6 @@ static void __init uart_debug_init(void)
 			debug_uartd_device.dev.platform_data))->mapbase;
 		break;
 
-	case 4:
-		/* UARTE is the debug port. */
-		pr_info("Selecting UARTE as the debug console\n");
-		dalmore_uart_devices[4] = &debug_uarte_device;
-		debug_uart_clk = clk_get_sys("serial8250.0", "uarte");
-		debug_uart_port_base = ((struct plat_serial8250_port *)(
-			debug_uarte_device.dev.platform_data))->mapbase;
-		break;
-
 	default:
 		pr_info("The debug console id %d is invalid, Assuming UARTA",
 			debug_port_id);
@@ -272,8 +262,6 @@ static void __init dalmore_uart_init(void)
 	tegra_uartb_device.dev.platform_data = &dalmore_uart_pdata;
 	tegra_uartc_device.dev.platform_data = &dalmore_uart_pdata;
 	tegra_uartd_device.dev.platform_data = &dalmore_uart_pdata;
-	/* UARTE is used for loopback test purpose */
-	tegra_uarte_device.dev.platform_data = &dalmore_loopback_uart_pdata;
 
 	/* Register low speed only if it is selected */
 	if (!is_tegra_debug_uartport_hs()) {
