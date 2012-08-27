@@ -22,7 +22,9 @@
 #include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <linux/tegra_pwm_bl.h>
+#include <linux/regulator/consumer.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -39,10 +41,21 @@
 
 #define IS_EXTERNAL_PWM	0
 
+/* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
+#define PANEL_5_LG_720_1280 1
+
 #define DSI_PANEL_RESET	1
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
+
+/* regulators */
+#if PANEL_5_LG_720_1280
+static struct regulator *avdd_lcd_2v8;
+static struct regulator *vdd_lcd_1v8;
+#define EN_VDD_LCD_1V8	PMU_TPS65913_GPIO_PORT04
+#endif
+
 
 static struct resource pluto_disp1_resources[] __initdata = {
 	{
@@ -98,6 +111,101 @@ static struct resource pluto_disp2_resources[] __initdata = {
 	},
 };
 
+static u8 panel_dsi_config[] = {0xe0, 0x43, 0x0, 0x80, 0x0, 0x0};
+static u8 panel_disp_ctrl1[] = {0xb5, 0x34, 0x20, 0x40, 0x0, 0x20};
+static u8 panel_disp_ctrl2[] = {0xb6, 0x04, 0x74, 0x0f, 0x16, 0x13};
+static u8 panel_internal_clk[] = {0xc0, 0x01, 0x08};
+static u8 panel_pwr_ctrl3[] =
+	{0xc3, 0x0, 0x09, 0x10, 0x02, 0x0, 0x66, 0x20, 0x13, 0x0};
+static u8 panel_pwr_ctrl4[] = {0xc4, 0x23, 0x24, 0x17, 0x17, 0x59};
+static u8 panel_positive_gamma_red[] =
+	{0xd0, 0x21, 0x13, 0x67, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_negetive_gamma_red[] =
+	{0xd1, 0x32, 0x13, 0x66, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_positive_gamma_green[] =
+	{0xd2, 0x41, 0x14, 0x56, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_negetive_gamma_green[] =
+	{0xd3, 0x52, 0x14, 0x55, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_positive_gamma_blue[] =
+	{0xd4, 0x41, 0x14, 0x56, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_negetive_gamma_blue[] =
+	{0xd5, 0x52, 0x14, 0x55, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+static u8 panel_ce2[] = {0x71, 0x0, 0x0, 0x01, 0x01};
+static u8 panel_ce3[] = {0x72, 0x01, 0x0e};
+static u8 panel_ce4[] = {0x73, 0x34, 0x52, 0x0};
+static u8 panel_ce5[] = {0x74, 0x05, 0x0, 0x06};
+static u8 panel_ce6[] = {0x75, 0x03, 0x0, 0x07};
+static u8 panel_ce7[] = {0x76, 0x07, 0x0, 0x06};
+static u8 panel_ce8[] = {0x77, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f};
+static u8 panel_ce9[] = {0x78, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
+static u8 panel_ce10[] =
+	{0x79, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
+static u8 panel_ce11[] = {0x7a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+static u8 panel_ce12[] = {0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+static u8 panel_ce13[] = {0x7c, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+static struct tegra_dsi_cmd dsi_init_cmd[] = {
+#if PANEL_5_LG_720_1280
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_dsi_config),
+
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_disp_ctrl1),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_disp_ctrl2),
+
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_internal_clk),
+
+	/*  panel power control 1 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc1, 0x0),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_pwr_ctrl3),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_pwr_ctrl4),
+
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_positive_gamma_red),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_negetive_gamma_red),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_positive_gamma_green),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_negetive_gamma_green),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_positive_gamma_blue),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_negetive_gamma_blue),
+
+	DSI_CMD_SHORT(DSI_DCS_WRITE_1_PARAM, DSI_DCS_SET_ADDR_MODE, 0x0b),
+
+	/* panel OTP 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x0),
+
+	/* panel CE 1 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0x70, 0x0),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce2),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce3),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce4),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce5),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce6),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce7),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce8),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce9),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce10),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce11),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce12),
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce13),
+
+	/* panel power control 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc2, 0x02),
+	DSI_DLY_MS(15),
+	/* panel power control 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc2, 0x06),
+	DSI_DLY_MS(15),
+	/* panel power control 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc2, 0x4e),
+	DSI_DLY_MS(85),
+
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x0),
+	DSI_DLY_MS(15),
+
+	/* panel OTP 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x80),
+	DSI_DLY_MS(15),
+
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x0),
+#endif
+};
+
 static struct tegra_dsi_out pluto_dsi = {
 	.n_data_lanes = 4,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
@@ -110,18 +218,47 @@ static struct tegra_dsi_out pluto_dsi = {
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+
+	.dsi_init_cmd = dsi_init_cmd,
+	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
 static int pluto_dsi_panel_enable(void)
 {
-	/* TODO */
-	return -EPERM;
+	int err = 0;
+
+#if PANEL_5_LG_720_1280
+	if (avdd_lcd_2v8) {
+		err = regulator_enable(avdd_lcd_2v8);
+		if (err < 0) {
+			pr_err("avdd_lcd regulator enable failed\n");
+			return err;
+		}
+	}
+
+	if (vdd_lcd_1v8) {
+		err = regulator_enable(vdd_lcd_1v8);
+		if (err < 0) {
+			pr_err("vdd_lcd_1v8 regulator enable failed\n");
+			return err;
+		}
+	}
+
+	gpio_direction_output(EN_VDD_LCD_1V8, 1);
+#endif
+	return err;
 }
 
 static int pluto_dsi_panel_disable(void)
 {
-	/* TODO */
-	return -EPERM;
+#if PANEL_5_LG_720_1280
+	if (vdd_lcd_1v8)
+		regulator_disable(vdd_lcd_1v8);
+
+	if (avdd_lcd_2v8)
+		regulator_disable(avdd_lcd_2v8);
+#endif
+	return 0;
 }
 
 static int pluto_dsi_panel_postsuspend(void)
@@ -130,15 +267,40 @@ static int pluto_dsi_panel_postsuspend(void)
 	return -EPERM;
 }
 
+static struct tegra_dc_mode pluto_dsi_modes[] = {
+#if PANEL_5_LG_720_1280
+	{
+		.pclk = 10000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 2,
+		.v_sync_width = 4,
+		.h_back_porch = 88,
+		.v_back_porch = 8,
+		.h_active = 720,
+		.v_active = 1280,
+		.h_front_porch = 4,
+		.v_front_porch = 20,
+	},
+#endif
+};
+
 static struct tegra_dc_out pluto_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 	.dsi		= &pluto_dsi,
 
 	.flags		= DC_CTRL_MODE,
 
+	.modes		= pluto_dsi_modes,
+	.n_modes	= ARRAY_SIZE(pluto_dsi_modes),
+
 	.enable		= pluto_dsi_panel_enable,
 	.disable	= pluto_dsi_panel_disable,
 	.postsuspend	= pluto_dsi_panel_postsuspend,
+
+#if PANEL_5_LG_720_1280
+	/* TODO: active area width and height in mm */
+#endif
 };
 
 static int pluto_hdmi_enable(void)
@@ -184,6 +346,10 @@ static struct tegra_fb_data pluto_disp1_fb_data = {
 	.win		= 0,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
+#if PANEL_5_LG_720_1280
+	.xres		= 720,
+	.yres		= 1280,
+#endif
 };
 
 static struct tegra_dc_platform_data pluto_disp1_pdata = {
@@ -307,6 +473,44 @@ static struct platform_device pluto_disp1_bl_device __initdata = {
 	},
 };
 
+static int pluto_dsi_regulator_get(void)
+{
+	int err = 0;
+
+#if PANEL_5_LG_720_1280
+	avdd_lcd_2v8 = regulator_get(NULL, "avdd_lcd_ld02");
+	if (IS_ERR_OR_NULL(avdd_lcd_2v8)) {
+		pr_err("avdd_lcd regulator get failed\n");
+		err = PTR_ERR(avdd_lcd_2v8);
+		avdd_lcd_2v8 = NULL;
+		return err;
+	}
+
+	vdd_lcd_1v8 = regulator_get(NULL, "vdd_1v8_smps8");
+	if (IS_ERR_OR_NULL(vdd_lcd_1v8)) {
+		pr_err("vdd_lcd_1v8 regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_1v8);
+		vdd_lcd_1v8 = NULL;
+		return err;
+	}
+#endif
+	return err;
+}
+
+static int pluto_dsi_gpio_get(void)
+{
+	int err = 0;
+
+#if PANEL_5_LG_720_1280
+	err = gpio_request(EN_VDD_LCD_1V8, "panel regulator enable");
+	if (err < 0) {
+		pr_err("panel regulator enable gpio request failed\n");
+		return err;
+	}
+#endif
+	return err;
+}
+
 int __init pluto_panel_init(void)
 {
 	int err = 0;
@@ -362,6 +566,18 @@ int __init pluto_panel_init(void)
 		return err;
 	}
 #endif
+
+	err = pluto_dsi_regulator_get();
+	if (err < 0) {
+		pr_err("panel regulator get failed\n");
+		return err;
+	}
+
+	err = pluto_dsi_gpio_get();
+	if (err < 0) {
+		pr_err("panel gpio get failed\n");
+		return err;
+	}
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
