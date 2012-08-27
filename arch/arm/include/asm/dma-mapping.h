@@ -190,6 +190,15 @@ static inline void dma_iova_free(struct device *dev, dma_addr_t addr,
 	ops->iova_free(dev, addr, size);
 }
 
+static inline dma_addr_t dma_iova_alloc_at(struct device *dev, dma_addr_t addr,
+					   size_t size)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	BUG_ON(!ops);
+
+	return ops->iova_alloc_at(dev, addr, size);
+}
+
 static inline size_t dma_iova_get_free_total(struct device *dev)
 {
 	struct dma_map_ops *ops = get_dma_ops(dev);
