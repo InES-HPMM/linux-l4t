@@ -152,7 +152,7 @@ static void dalmore_i2c_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	tegra_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
 	tegra_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
 	tegra_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
@@ -166,6 +166,19 @@ static void dalmore_i2c_init(void)
 	platform_device_register(&tegra_i2c_device3);
 	platform_device_register(&tegra_i2c_device2);
 	platform_device_register(&tegra_i2c_device1);
+#else
+	tegra11_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
+	tegra11_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
+	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
+	tegra11_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
+	tegra11_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
+
+	platform_device_register(&tegra11_i2c_device5);
+	platform_device_register(&tegra11_i2c_device4);
+	platform_device_register(&tegra11_i2c_device3);
+	platform_device_register(&tegra11_i2c_device2);
+	platform_device_register(&tegra11_i2c_device1);
+#endif
 }
 
 static struct platform_device *dalmore_uart_devices[] __initdata = {
