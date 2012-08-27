@@ -14,5 +14,5 @@ obj-y += dc_sysfs.o
 obj-y += dc_config.o
 obj-$(CONFIG_TEGRA_DP) += dp.o
 obj-$(CONFIG_TEGRA_DP) += sor.o
-obj-$(CONFIG_TEGRA_OVERLAY) += overlay.o
+obj-$(CONFIG_TEGRA_LVDS) += lvds.o
 obj-$(CONFIG_TEGRA_DC_EXTENSIONS) += ext/

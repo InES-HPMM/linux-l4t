@@ -230,6 +230,12 @@ config TEGRA_DP
 	help
 	  Say Y here to enable eDP panel.
 
+config TEGRA_LVDS
+	bool "Enable LVDS panel."
+	default  n
+	help
+	  Say Y here to enable LVDS panel.
+
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
 	depends on TEGRA_NVMAP && IOMMU_API

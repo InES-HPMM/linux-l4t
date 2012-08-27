@@ -236,13 +236,15 @@ static struct resource bonaire_disp1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 #endif
-#if defined(CONFIG_TEGRA_DP)
+#if defined(CONFIG_TEGRA_DP) || defined(CONFIG_TEGRA_LVDS)
 	{
 		.name	= "sor",
 		.start	= TEGRA_SOR_BASE,
 		.end	= TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
+#endif
+#if defined(CONFIG_TEGRA_DP)
 	{
 		.name	= "dpaux",
 		.start	= TEGRA_DPAUX_BASE,
@@ -562,11 +564,13 @@ static struct tegra_dc_out bonaire_disp1_out = {
 #if defined(CONFIG_TEGRA_DP)
 	.type		= TEGRA_DC_OUT_DP,
 
+	.modes		= bonaire_panel_modes,
+	.n_modes	= ARRAY_SIZE(bonaire_panel_modes),
+#elif defined(CONFIG_TEGRA_LVDS)
+	.type		= TEGRA_DC_OUT_LVDS,
+
 	.modes	 	= bonaire_panel_modes,
 	.n_modes 	= ARRAY_SIZE(bonaire_panel_modes),
-
-	.enable		= bonaire_panel_enable,
-	.disable	= bonaire_panel_disable,
 #elif defined(CONFIG_TEGRA_BONAIRE_DSI)
 	.type		= TEGRA_DC_OUT_DSI,
 
