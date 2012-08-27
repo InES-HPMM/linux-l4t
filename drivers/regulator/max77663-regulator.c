@@ -677,34 +677,6 @@ static int max77663_regulator_preinit(struct max77663_regulator *reg)
 		return ret;
 	}
 
-	/* Set initial state */
-	if (!pdata->init_apply)
-		goto skip_init_apply;
-
-	if (pdata->init_uV >= 0) {
-		ret = max77663_regulator_do_set_voltage(reg, pdata->init_uV,
-							pdata->init_uV);
-		if (ret < 0) {
-			dev_err(reg->dev, "preinit: Failed to set voltage to "
-				"%d\n", pdata->init_uV);
-			return ret;
-		}
-	}
-
-	if (pdata->init_enable)
-		val = (pdata->flags & GLPM_ENABLE) ?
-		      POWER_MODE_GLPM : POWER_MODE_NORMAL;
-	else
-		val = POWER_MODE_DISABLE;
-
-	ret = max77663_regulator_set_power_mode(reg, val);
-	if (ret < 0) {
-		dev_err(reg->dev,
-			"preinit: Failed to set power mode to %d\n", val);
-		return ret;
-	}
-
-skip_init_apply:
 	if (rinfo->type == REGULATOR_TYPE_SD) {
 		val = 0;
 		mask = 0;
