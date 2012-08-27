@@ -88,8 +88,11 @@ static int tegra_set_avp_device(struct snd_kcontrol *kcontrol,
 			prtd = substream->runtime->private_data;
 			if (prtd->running)
 				return -EBUSY;
-			if (prtd)
+			if (prtd) {
 				prtd->disable_intr = true;
+				if (data->avp_dma_addr || prtd->avp_dma_addr)
+					prtd->avp_dma_addr = data->avp_dma_addr;
+			}
 		}
 	}
 	data->avp_device_id = id;
@@ -123,6 +126,30 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_asoc_utils_data *data = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *card = data->card;
+	struct snd_soc_pcm_runtime *rtd;
+	struct snd_pcm_substream *substream;
+	struct tegra_runtime_data *prtd;
+
+	data->avp_dma_addr = ucontrol->value.integer.value[0];
+
+	rtd = &card->rtd[data->avp_device_id];
+	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+	if (!substream || !substream->runtime)
+		return 0;
+
+	prtd = substream->runtime->private_data;
+	if (!prtd)
+		return 0;
+
+	prtd->avp_dma_addr = data->avp_dma_addr;
+	return 1;
+}
+
 static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
@@ -130,6 +157,7 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	struct snd_soc_card *card = data->card;
 	struct snd_soc_pcm_runtime *rtd;
 	struct snd_pcm_substream *substream;
+	struct tegra_runtime_data *prtd;
 
 	ucontrol->value.integer.value[0] = 0;
 	if (data->avp_device_id < 0)
@@ -140,7 +168,14 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	ucontrol->value.integer.value[0] = substream->runtime->dma_addr;
+	prtd = substream->runtime->private_data;
+	if (!prtd || !prtd->dma_chan)
+		return 0;
+
+	ucontrol->value.integer.value[0] = prtd->avp_dma_addr ?
+					   prtd->avp_dma_addr :
+					   substream->runtime->dma_addr;
+
 	return 0;
 }
 
@@ -150,7 +185,7 @@ struct snd_kcontrol_new tegra_avp_controls[] = {
 	SOC_SINGLE_EXT("AVP DMA channel id", 0, 0, TEGRA_DMA_MAX_CHANNELS, \
 			0, tegra_get_dma_ch_id, NULL),
 	SOC_SINGLE_EXT("AVP DMA address", 0, 0, 0xFFFFFFFF, \
-			0, tegra_get_dma_addr, NULL),
+			0, tegra_get_dma_addr, tegra_set_dma_addr),
 };
 
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
