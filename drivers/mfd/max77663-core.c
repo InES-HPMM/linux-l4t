@@ -170,11 +170,24 @@ static struct resource gpio_resources[] = {
 		.flags  = IORESOURCE_IRQ,
 	}
 };
+
+static struct resource rtc_resources[] = {
+	{
+		.start	= MAX77663_IRQ_RTC,
+		.end	= MAX77663_IRQ_RTC,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static struct mfd_cell max77663_cells[] = {
 	{
 		.name = "max77663-gpio",
 		.num_resources	= ARRAY_SIZE(gpio_resources),
 		.resources	= &gpio_resources[0],
+	}, {
+		.name = "max77663-rtc",
+		.num_resources	= ARRAY_SIZE(rtc_resources),
+		.resources	= &rtc_resources[0],
 	},
 };
 
