@@ -25,6 +25,13 @@ struct dma_map_ops {
 			       unsigned long offset, size_t size,
 			       enum dma_data_direction dir,
 			       struct dma_attrs *attrs);
+
+	dma_addr_t (*map_page_at)(struct device *dev, struct page *page,
+				  dma_addr_t dma_handle,
+				  unsigned long offset, size_t size,
+				  enum dma_data_direction dir,
+				  struct dma_attrs *attrs);
+
 	void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
 			   size_t size, enum dma_data_direction dir,
 			   struct dma_attrs *attrs);

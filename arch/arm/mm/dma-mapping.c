@@ -1779,6 +1779,23 @@ static dma_addr_t arm_iommu_map_page(struct device *dev, struct page *page,
 	return arm_coherent_iommu_map_page(dev, page, offset, size, dir, attrs);
 }
 
+static dma_addr_t arm_iommu_map_page_at(struct device *dev, struct page *page,
+		 dma_addr_t dma_addr, unsigned long offset, size_t size,
+		 enum dma_data_direction dir, struct dma_attrs *attrs)
+{
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+	int ret, len = PAGE_ALIGN(size + offset);
+
+	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+		__dma_page_cpu_to_dev(page, offset, size, dir);
+
+	ret = iommu_map(mapping->domain, dma_addr, page_to_phys(page), len, 0);
+	if (ret < 0)
+		return DMA_ERROR_CODE;
+
+	return dma_addr + offset;
+}
+
 /**
  * arm_coherent_iommu_unmap_page
  * @dev: valid struct device pointer
@@ -1877,6 +1894,7 @@ struct dma_map_ops iommu_ops = {
 	.get_sgtable	= arm_iommu_get_sgtable,
 
 	.map_page		= arm_iommu_map_page,
+	.map_page_at		= arm_iommu_map_page_at,
 	.unmap_page		= arm_iommu_unmap_page,
 	.sync_single_for_cpu	= arm_iommu_sync_single_for_cpu,
 	.sync_single_for_device	= arm_iommu_sync_single_for_device,
