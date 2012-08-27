@@ -172,9 +172,10 @@ static const struct tegra_pingroup_config i2c2_gen2 = {
 };
 #endif
 
-static struct tegra_i2c_slave_platform_data curacao_i2c2_slave_platform_data = {
-	.adapter_nr	= 1,
-	.bus_clk_rate	= 100000,
+static struct tegra_i2c_platform_data curacao_i2c2_platform_data = {
+	.adapter_nr	= 2,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 100000, 0 },
 };
 
 static struct tegra_i2c_platform_data curacao_i2c3_platform_data = {
@@ -209,8 +210,7 @@ static struct i2c_board_info __initdata wm8903_board_info = {
 static void curacao_i2c_init(void)
 {
 	tegra11_i2c_device1.dev.platform_data = &curacao_i2c1_platform_data;
-	tegra_i2c_slave_device2.dev.platform_data =
-					&curacao_i2c2_slave_platform_data;
+	tegra11_i2c_device2.dev.platform_data = &curacao_i2c2_platform_data;
 	tegra11_i2c_device3.dev.platform_data = &curacao_i2c3_platform_data;
 	tegra11_i2c_device4.dev.platform_data = &curacao_i2c4_platform_data;
 	tegra11_i2c_device5.dev.platform_data = &curacao_i2c5_platform_data;
@@ -220,7 +220,7 @@ static void curacao_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
 	platform_device_register(&tegra11_i2c_device3);
-	platform_device_register(&tegra_i2c_slave_device2);
+	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 }
 
