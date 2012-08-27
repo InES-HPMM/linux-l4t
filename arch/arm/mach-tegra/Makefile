@@ -136,6 +136,7 @@ obj-${CONFIG_MACH_DALMORE}              += board-dalmore-pinmux.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-power.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-sdhci.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-panel.o
+obj-${CONFIG_MACH_DALMORE}              += board-dalmore-kbc.o
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
