@@ -374,58 +374,6 @@ struct platform_device tegra11_i2c_device5 = {
 };
 #endif
 
-struct platform_device tegra_i2c_slave_device1 = {
-	.name		= "tegra-i2c-slave",
-	.id		= 0,
-	.resource	= i2c_resource1,
-	.num_resources	= ARRAY_SIZE(i2c_resource1),
-	.dev = {
-		.platform_data = 0,
-	},
-};
-
-struct platform_device tegra_i2c_slave_device2 = {
-	.name		= "tegra-i2c-slave",
-	.id		= 1,
-	.resource	= i2c_resource2,
-	.num_resources	= ARRAY_SIZE(i2c_resource2),
-	.dev = {
-		.platform_data = 0,
-	},
-};
-
-struct platform_device tegra_i2c_slave_device3 = {
-	.name		= "tegra-i2c-slave",
-	.id		= 2,
-	.resource	= i2c_resource3,
-	.num_resources	= ARRAY_SIZE(i2c_resource3),
-	.dev = {
-		.platform_data = 0,
-	},
-};
-
-struct platform_device tegra_i2c_slave_device4 = {
-	.name		= "tegra-i2c-slave",
-	.id		= 3,
-	.resource	= i2c_resource4,
-	.num_resources	= ARRAY_SIZE(i2c_resource4),
-	.dev = {
-		.platform_data = 0,
-	},
-};
-
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-struct platform_device tegra_i2c_slave_device5 = {
-	.name		= "tegra-i2c-slave",
-	.id		= 4,
-	.resource	= i2c_resource5,
-	.num_resources	= ARRAY_SIZE(i2c_resource5),
-	.dev = {
-		.platform_data = 0,
-	},
-};
-#endif
-
 static struct resource spi_resource1[] = {
 	[0] = {
 		.start	= INT_SPI_1,
