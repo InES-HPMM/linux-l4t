@@ -32,7 +32,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/tegra_smmu.h>
 
-#ifdef CONFIG_PLATFORM_IOMMUABLE
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 #include <asm/dma-iommu.h>
 #endif
 
@@ -1657,7 +1657,7 @@ int tegra_smmu_window_count(void)
 	return ARRAY_SIZE(tegra_smmu);
 }
 
-#ifdef CONFIG_PLATFORM_IOMMUABLE
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 static void tegra_smmu_map_init(struct platform_device *pdev)
 {
 	struct dma_iommu_mapping *map;
