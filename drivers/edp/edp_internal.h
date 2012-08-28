@@ -58,4 +58,9 @@ struct edp_governor *edp_find_governor_unlocked(const char *s);
 int edp_set_governor_unlocked(struct edp_manager *mgr,
 		struct edp_governor *gov);
 
+void edp_manager_add_kobject(struct edp_manager *mgr);
+void edp_manager_remove_kobject(struct edp_manager *mgr);
+void edp_client_add_kobject(struct edp_client *client);
+void edp_client_remove_kobject(struct edp_client *client);
+
 #endif

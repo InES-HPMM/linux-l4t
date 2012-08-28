@@ -64,6 +64,8 @@ int edp_register_manager(struct edp_manager *mgr)
 		mgr->gov = NULL;
 		INIT_LIST_HEAD(&mgr->clients);
 		INIT_WORK(&mgr->work, promote);
+		mgr->kobj = NULL;
+		edp_manager_add_kobject(mgr);
 		r = 0;
 	}
 	mutex_unlock(&edp_lock);
@@ -122,6 +124,7 @@ int edp_unregister_manager(struct edp_manager *mgr)
 	} else if (!list_empty(&mgr->clients)) {
 		r = -EBUSY;
 	} else {
+		edp_manager_remove_kobject(mgr);
 		edp_set_governor_unlocked(mgr, NULL);
 		list_del(&mgr->link);
 		mgr->registered = false;
@@ -228,6 +231,8 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	client->num_borrowers = 0;
 	client->num_loans = 0;
 	client->ithreshold = client->states[0];
+	client->kobj = NULL;
+	edp_client_add_kobject(client);
 
 	return 0;
 }
@@ -305,6 +310,7 @@ static int unregister_client(struct edp_client *client)
 	if (client->num_loans)
 		return -EBUSY;
 
+	edp_client_remove_kobject(client);
 	close_all_loans(client);
 	mod_request(client, NULL);
 	list_del(&client->link);

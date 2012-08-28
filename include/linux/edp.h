@@ -36,6 +36,7 @@ struct edp_manager {
 	struct edp_governor *gov;
 	struct work_struct work;
 	unsigned int num_denied;
+	struct kobject *kobj;
 };
 
 /*
@@ -74,6 +75,7 @@ struct edp_client {
 	unsigned int ithreshold;
 	unsigned int num_borrowers;
 	unsigned int num_loans;
+	struct kobject *kobj;
 
 	/* governor internal */
 	unsigned int gwt;
