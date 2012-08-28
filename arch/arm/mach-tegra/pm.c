@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,6 +103,7 @@ struct suspend_context {
 };
 
 #ifdef CONFIG_PM_SLEEP
+void *tegra_cpu_context;        /* non-cacheable page for CPU context */
 phys_addr_t tegra_pgd_phys;	/* pgd used by hotplug & LP2 bootup */
 static pgd_t *tegra_pgd;
 static DEFINE_SPINLOCK(tegra_lp2_lock);
@@ -270,6 +271,37 @@ static __init int create_suspend_pgtable(void)
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK) | 0x4A;
 
 	return 0;
+}
+/*
+ * alloc_suspend_context
+ *
+ * Allocate a non-cacheable page to hold the CPU contexts.
+ * The standard ARM CPU context save functions don't work if there's
+ * an external L2 cache controller (like a PL310) in system.
+ */
+static __init int alloc_suspend_context(void)
+{
+	pgprot_t prot = __pgprot_modify(pgprot_kernel, L_PTE_MT_MASK,
+					L_PTE_MT_BUFFERABLE | L_PTE_XN);
+	struct page *ctx_page;
+
+	ctx_page = alloc_pages(GFP_KERNEL, 0);
+	if (IS_ERR_OR_NULL(ctx_page))
+		goto fail;
+
+	tegra_cpu_context = vm_map_ram(&ctx_page, 1, -1, prot);
+	if (IS_ERR_OR_NULL(tegra_cpu_context))
+		goto fail;
+
+	return 0;
+
+fail:
+	if (!IS_ERR(ctx_page) && ctx_page)
+		__free_page(ctx_page);
+	if (!IS_ERR(tegra_cpu_context) && tegra_cpu_context)
+		vm_unmap_ram((void *)tegra_cpu_context, 1);
+	tegra_cpu_context = NULL;
+	return -ENOMEM;
 }
 
 /* ensures that sufficient time is passed for a register write to
@@ -516,15 +548,25 @@ bool tegra_set_cpu_in_lp2(int cpu)
 	return last_cpu;
 }
 
+bool tegra_is_cpu_in_lp2(int cpu)
+{
+	bool in_lp2;
+
+	spin_lock(&tegra_lp2_lock);
+	in_lp2 = cpumask_test_cpu(cpu, &tegra_in_lp2);
+	spin_unlock(&tegra_lp2_lock);
+	return in_lp2;
+}
+
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	if (mode == TEGRA_SUSPEND_LP0) {
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE3,
+		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE3,
 				  virt_to_phys(tegra_resume));
 	} else {
-		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
+		tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE6,
 				  (TEGRA_RESET_HANDLER_BASE +
 				   tegra_cpu_reset_handler_offset));
 	}
@@ -539,7 +581,7 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
+	tegra_generic_smc_uncached(0xFFFFFFFC, 0xFFFFFFE4,
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
 #endif
@@ -1101,6 +1143,13 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 #else
 	if (create_suspend_pgtable() < 0) {
 		pr_err("%s: PGD memory alloc failed -- LP0/LP1/LP2 unavailable\n",
+				__func__);
+		plat->suspend_mode = TEGRA_SUSPEND_NONE;
+		goto fail;
+	}
+
+	if (alloc_suspend_context() < 0) {
+		pr_err("%s: alloc_suspend_context failed -- LP0/LP1/LP2 unavailable\n",
 				__func__);
 		plat->suspend_mode = TEGRA_SUSPEND_NONE;
 		goto fail;
