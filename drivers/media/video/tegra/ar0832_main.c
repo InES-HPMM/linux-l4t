@@ -2071,8 +2071,51 @@ int ar0832_get_sensorid(struct ar0832_dev *dev, u16 *sensor_id)
 	return ret;
 }
 
+static long ar0832_set_focuser_capabilities(struct ar0832_dev *dev,
+						unsigned long arg)
+{
+	struct i2c_client *i2c_client = dev->i2c_client;
+	struct nv_focuser_config config;
+
+	/* backup the current contents of dev->focuser_info->config for
+	 * selective restore later on */
+	memcpy(&config, &dev->focuser_info->config,
+		sizeof(struct nv_focuser_config));
+
+	if (copy_from_user(&dev->focuser_info->config,
+		(const void __user *)arg,
+		sizeof(struct nv_focuser_config))) {
+		dev_err(&i2c_client->dev,
+			"%s: copy_from_user() failed\n", __func__);
+		return -EFAULT;
+	}
+
+	/* Now do selectively restore members that are overwriten */
+
+	/* Unconditionally restore actual low and high positions */
+	dev->focuser_info->config.pos_actual_low = config.pos_actual_low;
+	dev->focuser_info->config.pos_actual_high = config.pos_actual_high;
+
+	if (dev->focuser_info->config.pos_working_low == AF_POS_INVALID_VALUE)
+		dev->focuser_info->config.pos_working_low =
+						config.pos_working_low;
+
+	if (dev->focuser_info->config.pos_working_high == AF_POS_INVALID_VALUE)
+		dev->focuser_info->config.pos_working_high =
+						config.pos_working_high;
+
+	if (dev->focuser_info->config.focuser_set[0].settle_time == INT_MAX)
+		dev->focuser_info->config.focuser_set[0].settle_time =
+					config.focuser_set[0].settle_time;
+
+	if (dev->focuser_info->config.slew_rate == INT_MAX)
+		dev->focuser_info->config.slew_rate = config.slew_rate;
+
+	return 0;
+}
+
 static long ar0832_ioctl(struct file *file,
-				unsigned int cmd, unsigned long arg)
+	unsigned int cmd, unsigned long arg)
 {
 	int err;
 	struct ar0832_dev *dev = file->private_data;
@@ -2189,12 +2232,9 @@ static long ar0832_ioctl(struct file *file,
 	case AR0832_FOCUSER_IOCTL_SET_CONFIG:
 		dev_info(&i2c_client->dev,
 				"%s AR0832_FOCUSER_IOCTL_SET_CONFIG\n", __func__);
-		if (copy_from_user(&dev->focuser_info->config,
-			(const void __user *)arg,
-			sizeof(struct nv_focuser_config)))
-		{
+		if (ar0832_set_focuser_capabilities(dev, arg) != 0) {
 			dev_err(&i2c_client->dev,
-					"%s: AR0832_FOCUSER_IOCTL_SET_CONFIG failed\n", __func__);
+			"%s: AR0832_IOCTL_SET_CONFIG failed\n", __func__);
 			return -EFAULT;
 		}
 		dev_dbg(&i2c_client->dev,
@@ -2480,7 +2520,7 @@ static int ar0832_probe(struct i2c_client *client,
 	dev->i2c_client = client;
 
 	/* focuser */
-	dev->focuser_info->config.settle_time = SETTLE_TIME;
+	dev->focuser_info->config.focuser_set[0].settle_time = SETTLE_TIME;
 	dev->focuser_info->config.slew_rate = SLEW_RATE_DEFAULT;
 	dev->focuser_info->config.pos_actual_low = POS_ACTUAL_LOW;
 	dev->focuser_info->config.pos_actual_high = POS_ACTUAL_HIGH;

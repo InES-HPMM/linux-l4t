@@ -1367,12 +1367,11 @@ static void sh532u_get_focuser_capabilities(struct sh532u_info *info)
 	info->config.max_aperture = info->nvc.fnumber;
 	info->config.range_ends_reversed = (SH532U_POS_SIGN_CHANGER == -1)
 								? 1 : 0;
-
-	info->config.settle_time = info->cap.settle_time;
-
 	/*
 	 * We do not use pos_working_low and pos_working_high
-	 * in the kernel driver.
+	 * in the kernel driver. It is OK to set them to invalid
+	 * as the caller will reconstruct them from
+	 * focuser_set[0].inf and focuser_set[0].macro
 	 */
 	info->config.pos_working_low = AF_POS_INVALID_VALUE;
 	info->config.pos_working_high = AF_POS_INVALID_VALUE;
@@ -1390,11 +1389,11 @@ static void sh532u_get_focuser_capabilities(struct sh532u_info *info)
 	 * Till we have these routines, we pass them up as part of the get call.
 	 */
 	info->config.num_focuser_sets = 1;
-	info->config.focuser_set[0].posture = 'S';
+	info->config.focuser_set[0].posture = 's';
 	info->config.focuser_set[0].macro = info->cap.focus_macro;
 	info->config.focuser_set[0].hyper = info->cap.focus_hyper;
 	info->config.focuser_set[0].inf = info->cap.focus_infinity;
-	info->config.focuser_set[0].hysteresis = 0;
+	info->config.focuser_set[0].hysteresis = INT_MAX;
 	info->config.focuser_set[0].settle_time = info->cap.settle_time;
 	info->config.focuser_set[0].num_dist_pairs = 0;
 
@@ -1408,6 +1407,13 @@ static void sh532u_get_focuser_capabilities(struct sh532u_info *info)
 static int sh532u_set_focuser_capabilities(struct sh532u_info *info,
 					struct nvc_param *params)
 {
+	static struct nv_focuser_config config;
+
+	/* backup the current contents of dev->focuser_info->config for
+	 * selective restore later on */
+	memcpy(&config, &info->config,
+		sizeof(struct nv_focuser_config));
+
 	if (copy_from_user(&info->config, (const void __user *)params->p_value,
 		sizeof(struct nv_focuser_config))) {
 		dev_err(&info->i2c_client->dev, "%s Error: copy_from_user bytes %d\n",
@@ -1415,12 +1421,38 @@ static int sh532u_set_focuser_capabilities(struct sh532u_info *info,
 		return -EFAULT;
 	}
 
-	/* info.config.focuser_set[0].posture, macro, hyper, infinity and
-	 * hysterisis can remain there only. We need only settle_time &
-	 * slew_rate for use here.
-	 */
+	/* Now do selectively restore members that are overwriten */
+
+	/* Unconditionally restore actual low and high positions */
+	info->config.pos_actual_low = config.pos_actual_low;
+	info->config.pos_actual_high = config.pos_actual_high;
+
+	if (info->config.pos_working_low == AF_POS_INVALID_VALUE)
+		info->config.pos_working_low = config.pos_working_low;
+
+	if (info->config.pos_working_high == AF_POS_INVALID_VALUE)
+		info->config.pos_working_high = config.pos_working_high;
+
+	if (info->config.slew_rate == INT_MAX)
+		info->config.slew_rate = config.slew_rate;
+	info->cap.slew_rate = info->config.slew_rate;
+
+	if (info->config.focuser_set[0].settle_time  == INT_MAX)
+		info->config.focuser_set[0].settle_time =
+					config.focuser_set[0].settle_time;
 	info->cap.settle_time = info->config.focuser_set[0].settle_time;
-	info->config.slew_rate = info->config.slew_rate;
+
+	if (info->config.focuser_set[0].macro == AF_POS_INVALID_VALUE)
+		info->config.focuser_set[0].macro = config.focuser_set[0].macro;
+	info->cap.focus_macro = info->config.focuser_set[0].macro;
+
+	if (info->config.focuser_set[0].hyper == AF_POS_INVALID_VALUE)
+		info->config.focuser_set[0].hyper = config.focuser_set[0].hyper;
+	info->cap.focus_hyper = info->config.focuser_set[0].hyper;
+
+	if (info->config.focuser_set[0].inf == AF_POS_INVALID_VALUE)
+		info->config.focuser_set[0].inf = config.focuser_set[0].inf;
+	info->cap.focus_infinity = info->config.focuser_set[0].inf;
 
 	dev_dbg(&info->i2c_client->dev, "%s: copy_from_user bytes %d\n",
 			__func__,  sizeof(struct nv_focuser_config));

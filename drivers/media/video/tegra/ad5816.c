@@ -681,7 +681,6 @@ static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
 	info->nv_config.fnumber = info->nvc.fnumber;
 	info->nv_config.max_aperture = info->nvc.fnumber;
 	info->nv_config.range_ends_reversed = 0;
-	info->nv_config.settle_time = info->cap.settle_time;
 
 	info->nv_config.pos_working_low = AF_POS_INVALID_VALUE;
 	info->nv_config.pos_working_high = AF_POS_INVALID_VALUE;
