@@ -51,4 +51,11 @@ static inline unsigned int req_index(struct edp_client *c)
 	return c->req ? c->req - c->states : c->num_states;
 }
 
+extern struct mutex edp_lock;
+extern struct list_head edp_governors;
+
+struct edp_governor *edp_find_governor_unlocked(const char *s);
+int edp_set_governor_unlocked(struct edp_manager *mgr,
+		struct edp_governor *gov);
+
 #endif

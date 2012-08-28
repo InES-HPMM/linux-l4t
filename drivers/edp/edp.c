@@ -25,7 +25,7 @@
 
 DEFINE_MUTEX(edp_lock);
 static LIST_HEAD(edp_managers);
-static LIST_HEAD(edp_governors);
+LIST_HEAD(edp_governors);
 
 static struct edp_manager *find_manager(const char *name)
 {
@@ -72,7 +72,8 @@ int edp_register_manager(struct edp_manager *mgr)
 }
 EXPORT_SYMBOL(edp_register_manager);
 
-static int set_governor(struct edp_manager *mgr, struct edp_governor *gov)
+int edp_set_governor_unlocked(struct edp_manager *mgr,
+		struct edp_governor *gov)
 {
 	int r = 0;
 
@@ -121,7 +122,7 @@ int edp_unregister_manager(struct edp_manager *mgr)
 	} else if (!list_empty(&mgr->clients)) {
 		r = -EBUSY;
 	} else {
-		set_governor(mgr, NULL);
+		edp_set_governor_unlocked(mgr, NULL);
 		list_del(&mgr->link);
 		mgr->registered = false;
 	}
@@ -205,11 +206,11 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	if (!mgr || !client)
 		return -EINVAL;
 
-	if (client->manager || find_client(mgr, client->name))
-		return -EEXIST;
-
 	if (!mgr->registered)
 		return -ENODEV;
+
+	if (client->manager || find_client(mgr, client->name))
+		return -EEXIST;
 
 	if (!states_ok(client) || client->priority < EDP_MIN_PRIO ||
 			client->priority > EDP_MAX_PRIO)
@@ -500,7 +501,7 @@ int edp_update_loan_threshold(struct edp_client *client, unsigned int threshold)
 }
 EXPORT_SYMBOL(edp_update_loan_threshold);
 
-static struct edp_governor *find_governor(const char *s)
+struct edp_governor *edp_find_governor_unlocked(const char *s)
 {
 	struct edp_governor *g;
 
@@ -522,7 +523,7 @@ int edp_register_governor(struct edp_governor *gov)
 		return -EINVAL;
 
 	mutex_lock(&edp_lock);
-	if (find_governor(gov->name)) {
+	if (edp_find_governor_unlocked(gov->name)) {
 		r = -EEXIST;
 	} else {
 		gov->refcnt = 1;
@@ -558,7 +559,7 @@ struct edp_governor *edp_get_governor(const char *name)
 	struct edp_governor *g;
 
 	mutex_lock(&edp_lock);
-	g = find_governor(name);
+	g = edp_find_governor_unlocked(name);
 	mutex_unlock(&edp_lock);
 
 	return g;
@@ -570,7 +571,7 @@ int edp_set_governor(struct edp_manager *mgr, struct edp_governor *gov)
 	int r;
 
 	mutex_lock(&edp_lock);
-	r = set_governor(mgr, gov);
+	r = edp_set_governor_unlocked(mgr, gov);
 	mutex_unlock(&edp_lock);
 
 	return r;
