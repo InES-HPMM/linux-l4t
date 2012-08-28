@@ -21,11 +21,9 @@
 #ifndef _MACH_TEGRA_TEGRA11_EMC_H
 #define _MACH_TEGRA_TEGRA11_EMC_H
 
-#include <linux/platform_data/tegra_emc.h>
-
 struct clk;
 
-void tegra_init_emc(const struct tegra11_emc_table *table, int table_size);
+int tegra11_emc_init(void);
 
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);

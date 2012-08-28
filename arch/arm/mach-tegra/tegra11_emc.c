@@ -24,6 +24,8 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include <asm/cputime.h>
 
@@ -338,7 +340,7 @@ static void adjust_emc_dvfs_table(const struct tegra11_emc_table *table,
 	}
 }
 
-void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
+static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 {
 	int i, mv;
 	u32 reg;
@@ -356,18 +358,18 @@ void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 
 	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
-		return;
+		return -ENODATA;
 	}
 
 	if (emc->parent != tegra_get_clock_by_name("pll_m")) {
 		pr_err("tegra: boot parent %s is not supported by EMC DFS\n",
 			emc->parent->name);
-		return;
+		return -ENODATA;
 	}
 
 	if (!table || !table_size) {
 		pr_err("tegra: EMC DFS table is empty\n");
-		return;
+		return -ENODATA;
 	}
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
@@ -378,7 +380,7 @@ void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 	default:
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
 			table[0].rev);
-		return;
+		return -ENODATA;
 	}
 
 	/* Match EMC source/divider settings with table entries */
@@ -407,7 +409,7 @@ void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 	if (!max_entry) {
 		pr_err("tegra: invalid EMC DFS table: entry for max rate"
 		       " %lu kHz is not found\n", max_rate);
-		return;
+		return -ENODATA;
 	}
 
 	tegra_emc_table = table;
@@ -420,7 +422,7 @@ void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 			pr_err("tegra: invalid EMC DFS table: maximum rate %lu"
 			       " kHz does not match nominal voltage %d\n",
 			       max_rate, emc->dvfs->max_millivolts);
-			return;
+			return -ENODATA;
 		}
 	}
 
@@ -431,6 +433,40 @@ void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 	reg |= ((dram_type == DRAM_TYPE_LPDDR2) ? EMC_CFG_2_PD_MODE :
 		EMC_CFG_2_SREF_MODE) << EMC_CFG_2_MODE_SHIFT;
 	emc_writel(reg, EMC_CFG_2);
+	return 0;
+}
+
+static int __devinit tegra11_emc_probe(struct platform_device *pdev)
+{
+	struct tegra11_emc_pdata *pdata;
+	struct resource *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "missing register base\n");
+		return -ENOMEM;
+	}
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "missing platform data\n");
+		return -ENODATA;
+	}
+
+	return init_emc_table(pdata->tables, pdata->num_tables);
+}
+
+static struct platform_driver tegra11_emc_driver = {
+	.driver         = {
+		.name   = "tegra-emc",
+		.owner  = THIS_MODULE,
+	},
+	.probe          = tegra11_emc_probe,
+};
+
+int __init tegra11_emc_init(void)
+{
+	return platform_driver_register(&tegra11_emc_driver);
 }
 
 void tegra_emc_timing_invalidate(void)

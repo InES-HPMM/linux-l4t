@@ -58,4 +58,10 @@ struct tegra11_emc_table {
 	u32 emc_dsr;
 };
 
+struct tegra11_emc_pdata {
+	const char *description;
+	int num_tables;
+	struct tegra11_emc_table *tables;
+};
+
 #endif
