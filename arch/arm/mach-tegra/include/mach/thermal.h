@@ -98,16 +98,12 @@ static inline struct thermal_cooling_device *balanced_throttle_register(
 #ifdef CONFIG_TEGRA_THERMAL
 int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds);
 int tegra_thermal_device_register(struct tegra_thermal_device *device);
-struct tegra_thermal_device *tegra_thermal_get_device(enum thermal_device_id id);
 int tegra_thermal_exit(void);
 #else
 static inline int tegra_thermal_init(struct tegra_thermal_bind *thermal_binds)
 { return 0; }
 static inline int tegra_thermal_device_register(struct tegra_thermal_device *device)
 { return 0; }
-static inline struct tegra_thermal_device *tegra_thermal_get_device(
-	enum thermal_device_id id)
-{ return NULL; }
 static inline int tegra_thermal_exit(void)
 { return 0; }
 #endif

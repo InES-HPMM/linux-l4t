@@ -193,14 +193,6 @@ static void tegra_thermal_alert(void *data)
 		device->set_limits(device->data, low_temp, high_temp);
 }
 
-struct tegra_thermal_device *tegra_thermal_get_device(enum thermal_device_id id)
-{
-	if (id < 0 || id >= THERMAL_DEVICE_MAX)
-		return NULL;
-
-	return devices[id];
-}
-
 static int passive_get_trip_temp(void *data, long trip)
 {
 	struct tegra_thermal_bind *bind = data;
