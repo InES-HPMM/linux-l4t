@@ -185,6 +185,8 @@ static struct mfd_cell max77663_cells[] = {
 		.num_resources	= ARRAY_SIZE(gpio_resources),
 		.resources	= &gpio_resources[0],
 	}, {
+		.name = "max77663-pmic",
+	}, {
 		.name = "max77663-rtc",
 		.num_resources	= ARRAY_SIZE(rtc_resources),
 		.resources	= &rtc_resources[0],

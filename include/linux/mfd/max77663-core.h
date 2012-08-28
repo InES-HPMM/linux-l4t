@@ -136,6 +136,9 @@ struct max77663_platform_data {
 	int num_subdevs;
 	struct mfd_cell *sub_devices;
 
+	struct max77663_regulator_platform_data **regulator_pdata;
+	int num_regulator_pdata;
+
 	unsigned int flags;
 
 	unsigned char rtc_i2c_addr;
