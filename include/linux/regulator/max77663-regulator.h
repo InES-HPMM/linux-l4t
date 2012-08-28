@@ -115,6 +115,7 @@ struct max77663_regulator_fps_cfg {
 
 struct max77663_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
+	int id;
 	bool init_apply;
 	bool init_enable;
 	int init_uV;

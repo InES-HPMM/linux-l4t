@@ -857,54 +857,94 @@ static struct max77663_regulator_info max77663_regs_info[MAX77663_REGULATOR_ID_N
 
 static int max77663_regulator_probe(struct platform_device *pdev)
 {
+	struct max77663_platform_data *pdata =
+					dev_get_platdata(pdev->dev.parent);
 	struct regulator_desc *rdesc;
 	struct max77663_regulator *reg;
+	struct max77663_regulator *max_regs;
+	struct max77663_regulator_platform_data *reg_pdata;
 	int ret = 0;
+	int id;
+	int reg_id;
+	int reg_count;
 
-	if ((pdev->id < 0) || (pdev->id >= MAX77663_REGULATOR_ID_NR)) {
-		dev_err(&pdev->dev, "Invalid device id %d\n", pdev->id);
+	if (!pdata) {
+		dev_err(&pdev->dev, "No Platform data\n");
 		return -ENODEV;
 	}
 
-	reg = devm_kzalloc(&pdev->dev, sizeof(*reg), GFP_KERNEL);
-	if (!reg) {
+	reg_count = pdata->num_regulator_pdata;
+	max_regs = devm_kzalloc(&pdev->dev,
+			reg_count * sizeof(*max_regs), GFP_KERNEL);
+	if (!max_regs) {
 		dev_err(&pdev->dev, "mem alloc for reg failed\n");
 		return -ENOMEM;
 	}
 
-	rdesc = &max77663_regs_info[pdev->id].desc;
-	reg->rinfo = &max77663_regs_info[pdev->id];
-	reg->dev = &pdev->dev;
-	reg->pdata = dev_get_platdata(&pdev->dev);
-	reg->regulator_mode = REGULATOR_MODE_NORMAL;
-	reg->power_mode = POWER_MODE_NORMAL;
+	for (id = 0; id < reg_count; ++id) {
+		reg_pdata = pdata->regulator_pdata[id];
+		if (!reg_pdata) {
+			dev_err(&pdev->dev,
+				"Regulator pltform data not there\n");
+			goto clean_exit;
+		}
 
-	dev_dbg(&pdev->dev, "probe: name=%s\n", rdesc->name);
+		reg_id = reg_pdata->id;
+		reg  = &max_regs[id];
+		rdesc = &max77663_regs_info[reg_id].desc;
+		reg->rinfo = &max77663_regs_info[reg_id];
+		reg->dev = &pdev->dev;
+		reg->pdata = reg_pdata;
+		reg->regulator_mode = REGULATOR_MODE_NORMAL;
+		reg->power_mode = POWER_MODE_NORMAL;
 
-	ret = max77663_regulator_preinit(reg);
-	if (ret) {
-		dev_err(&pdev->dev, "probe: Failed to preinit regulator %s\n",
+		dev_dbg(&pdev->dev, "probe: name=%s\n", rdesc->name);
+
+		ret = max77663_regulator_preinit(reg);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to preinit regulator %s\n",
+				rdesc->name);
+			goto clean_exit;
+		}
+
+		reg->rdev = regulator_register(rdesc, &pdev->dev,
+					reg->pdata->reg_init_data, reg, NULL);
+		if (IS_ERR(reg->rdev)) {
+			dev_err(&pdev->dev, "Failed to register regulator %s\n",
 			rdesc->name);
-		return ret;
+			ret = PTR_ERR(reg->rdev);
+			goto clean_exit;
+		}
 	}
-
-	reg->rdev = regulator_register(rdesc, &pdev->dev,
-				       reg->pdata->reg_init_data, reg, NULL);
-	if (IS_ERR(reg->rdev)) {
-		dev_err(&pdev->dev, "probe: Failed to register regulator %s\n",
-			rdesc->name);
-		return PTR_ERR(reg->rdev);
-	}
-	platform_set_drvdata(pdev, reg);
+	platform_set_drvdata(pdev, max_regs);
 
 	return 0;
+
+clean_exit:
+	while (--id >= 0) {
+		reg  = &max_regs[id];
+		regulator_unregister(reg->rdev);
+	}
+	return ret;
 }
 
 static int max77663_regulator_remove(struct platform_device *pdev)
 {
-	struct regulator_dev *rdev = platform_get_drvdata(pdev);
+	struct max77663_regulator *max_regs = platform_get_drvdata(pdev);
+	struct max77663_regulator *reg;
+	struct max77663_platform_data *pdata =
+					dev_get_platdata(pdev->dev.parent);
+	int reg_count;
 
-	regulator_unregister(rdev);
+	if (!pdata)
+		return 0;
+
+	reg_count = pdata->num_regulator_pdata;
+	while (--reg_count >= 0) {
+		reg  = &max_regs[reg_count];
+		regulator_unregister(reg->rdev);
+	}
+
 	return 0;
 }
 
@@ -912,7 +952,7 @@ static struct platform_driver max77663_regulator_driver = {
 	.probe = max77663_regulator_probe,
 	.remove = max77663_regulator_remove,
 	.driver = {
-		.name = "max77663-regulator",
+		.name = "max77663-pmic",
 		.owner = THIS_MODULE,
 	},
 };
