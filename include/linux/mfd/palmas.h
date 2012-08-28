@@ -38,6 +38,8 @@ struct palmas_resource;
 struct palmas_usb;
 struct palmas_rtc;
 
+#define palmas_rails(_name) "palmas_"#_name
+
 struct palmas {
 	struct device *dev;
 
@@ -231,6 +233,7 @@ struct palmas_clk_platform_data {
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
+	int irq_base;
 
 	/* bit value to be loaded to the POWER_CTRL register */
 	u8 power_ctrl;

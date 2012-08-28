@@ -383,8 +383,8 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	regmap_write(palmas->regmap[slave], addr, reg);
 
 	ret = regmap_add_irq_chip(palmas->regmap[slave], palmas->irq,
-			IRQF_ONESHOT | pdata->irq_flags, 0, &palmas_irq_chip,
-			&palmas->irq_data);
+			IRQF_ONESHOT | pdata->irq_flags, pdata->irq_base,
+			&palmas_irq_chip, &palmas->irq_data);
 	if (ret < 0)
 		goto err;
 
