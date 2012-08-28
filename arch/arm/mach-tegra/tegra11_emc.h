@@ -21,31 +21,11 @@
 #ifndef _MACH_TEGRA_TEGRA11_EMC_H
 #define _MACH_TEGRA_TEGRA11_EMC_H
 
-/* !!!FIXME!!! Need actual Tegra11x values */
-#define TEGRA_EMC_MAX_NUM_REGS		110
-
-struct tegra_emc_table {
-	u8 rev;
-	unsigned long rate;
-	int emc_min_mv;
-	const char *src_name;
-
-	/* unconditionally updated in one burst shot */
-	u32 burst_regs[TEGRA_EMC_MAX_NUM_REGS];
-
-	/* updated separately under some conditions */
-	u32 emc_zcal_cnt_long;
-	u32 emc_acal_interval;
-	u32 emc_periodic_qrst;
-	u32 emc_mode_reset;
-	u32 emc_mode_1;
-	u32 emc_mode_2;
-	u32 emc_dsr;
-};
+#include <linux/platform_data/tegra_emc.h>
 
 struct clk;
 
-void tegra_init_emc(const struct tegra_emc_table *table, int table_size);
+void tegra_init_emc(const struct tegra11_emc_table *table, int table_size);
 
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);

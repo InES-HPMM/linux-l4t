@@ -80,7 +80,7 @@ struct emc_sel {
 };
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 
-static const struct tegra_emc_table *tegra_emc_table;
+static const struct tegra11_emc_table *tegra_emc_table;
 static int tegra_emc_table_size;
 
 static u32 dram_dev_num;
@@ -244,7 +244,7 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	return false;
 }
 
-static int find_matching_input(const struct tegra_emc_table *table,
+static int find_matching_input(const struct tegra11_emc_table *table,
 			struct clk *pll_c, struct emc_sel *emc_clk_sel)
 {
 	u32 div_value = 0;
@@ -312,7 +312,7 @@ static int find_matching_input(const struct tegra_emc_table *table,
 	return 0;
 }
 
-static void adjust_emc_dvfs_table(const struct tegra_emc_table *table,
+static void adjust_emc_dvfs_table(const struct tegra11_emc_table *table,
 				  int table_size)
 {
 	int i, j;
@@ -338,7 +338,7 @@ static void adjust_emc_dvfs_table(const struct tegra_emc_table *table,
 	}
 }
 
-void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
+void tegra_init_emc(const struct tegra11_emc_table *table, int table_size)
 {
 	int i, mv;
 	u32 reg;

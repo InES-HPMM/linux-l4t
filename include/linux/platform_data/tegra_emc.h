@@ -36,4 +36,26 @@ struct tegra_emc_pdata {
 	struct tegra_emc_table *tables;
 };
 
+/* !!!FIXME!!! Need actual Tegra11x values */
+#define TEGRA11_EMC_MAX_NUM_REGS	110
+
+struct tegra11_emc_table {
+	u8 rev;
+	unsigned long rate;
+	int emc_min_mv;
+	const char *src_name;
+
+	/* unconditionally updated in one burst shot */
+	u32 burst_regs[TEGRA11_EMC_MAX_NUM_REGS];
+
+	/* updated separately under some conditions */
+	u32 emc_zcal_cnt_long;
+	u32 emc_acal_interval;
+	u32 emc_periodic_qrst;
+	u32 emc_mode_reset;
+	u32 emc_mode_1;
+	u32 emc_mode_2;
+	u32 emc_dsr;
+};
+
 #endif
