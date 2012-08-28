@@ -1213,11 +1213,13 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 	unsigned long val = 0;
 
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
+	if (phy->phy_clk_on) {
+		DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+		DBG("USB_USBSTS[0x%x] USB_PORTSC[0x%x]\n",
 			readl(base + USB_USBSTS), readl(base + USB_PORTSC));
-	DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
+		DBG("USB_USBMODE[0x%x] USB_USBCMD[0x%x]\n",
 			readl(base + USB_USBMODE), readl(base + USB_USBCMD));
+	}
 
 	/* check if there is any remote wake event */
 	if (utmi_phy_remotewake_detected(phy))
@@ -1236,6 +1238,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			val = readl(base + USB_PORTSC);
 			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
 			writel(val , (base + USB_PORTSC));
+		} else if (!phy->phy_clk_on) {
+			return IRQ_NONE;
 		}
 	}
 
