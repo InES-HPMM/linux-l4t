@@ -597,6 +597,7 @@ static void __init tegra_curacao_init(void)
 	curacao_sdhci_init();
 	curacao_i2c_init();
 	curacao_regulator_init();
+	curacao_emc_init();
 	curacao_suspend_init();
 	curacao_touch_init();
 	curacao_usb_init();
