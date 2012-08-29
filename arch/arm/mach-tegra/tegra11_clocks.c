@@ -6140,7 +6140,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2c5", "dfll_cpu", "i2c"),
 	CLK_DUPLICATE("i2c5-fast", "dfll_cpu", "i2c_fast"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
-
+	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
 };
 
 struct clk *tegra_ptr_clks[] = {
