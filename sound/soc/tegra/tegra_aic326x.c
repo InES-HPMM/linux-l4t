@@ -1284,7 +1284,7 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	if (machine_is_tegra_enterprise()) {
 		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name = "tlv320aic3262-codec";
 		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name = "tlv320aic3262-codec";
-		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name = "aic326x-asi1";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name = "aic326x-asi2";
 	}
 
 	ret = snd_soc_register_card(card);
