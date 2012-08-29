@@ -2,11 +2,11 @@
  * tegra_vcm.c - Tegra machine ASoC driver for P852/P1852/P1853 Boards.
  *
  * Author: Nitin Pai <npai@nvidia.com>
- * Copyright (C) 2010-2012 - NVIDIA, Corporation. All rights reserved.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
- * Copyright (c) 2009-2012, NVIDIA Corporation. All rights reserved.
  * Stephen Warren <swarren@nvidia.com>
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,7 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
-#include <mach/tegra_p1852_pdata.h>
+#include <mach/tegra_asoc_vcm_pdata.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -45,16 +45,19 @@
 #define DRV_NAME "tegra-snd-p1852"
 #endif
 #ifdef CONFIG_MACH_E1853
-#define DRV_NAME "tegra-snd-e1853"
+#define DRV_NAME "tegra-snd-p1853"
 #endif
 #ifdef CONFIG_MACH_P852
 #define DRV_NAME "tegra-snd-p852"
+#endif
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#include "tegra20_das.h"
 #endif
 
 
 struct tegra_vcm {
 	struct tegra_asoc_utils_data util_data;
-	struct tegra_p1852_platform_data *pdata;
+	struct tegra_asoc_vcm_platform_data *pdata;
 };
 
 static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
@@ -70,8 +73,11 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 	int srate, mclk;
 	int i2s_daifmt = 0;
 	int err;
-	struct tegra_p1852_platform_data *pdata;
-
+	struct tegra_asoc_vcm_platform_data *pdata;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	int dac_id;
+	int dap_id;
+#endif
 	pdata = machine->pdata;
 
 	srate = params_rate(params);
@@ -85,9 +91,6 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 		mclk = 256 * srate;
 		break;
 	}
-
-	/* audio hub needs to be driven at 2x */
-	mclk *= 2;
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
@@ -139,7 +142,7 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 
 	if (pdata->codec_info[codec_id].i2s_format ==
 			format_tdm) {
-		err = snd_soc_dai_set_tdm_slot(cpu_dai,
+			err = snd_soc_dai_set_tdm_slot(cpu_dai,
 					pdata->codec_info[codec_id].rx_mask,
 					pdata->codec_info[codec_id].tx_mask,
 					pdata->codec_info[codec_id].num_slots,
@@ -147,6 +150,24 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 		if (err < 0)
 			dev_err(card->dev, "cpu_dai tdm mode setting not done\n");
 	}
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	dac_id = TEGRA20_DAS_DAP_SEL_DAC1 + pdata->dac_info[codec_id].dac_id;
+	dap_id = TEGRA20_DAS_DAP_ID_1 + pdata->dac_info[codec_id].dap_id;
+	err = tegra20_das_connect_dac_to_dap(dac_id, dap_id);
+	if (err < 0) {
+		dev_err(card->dev, "failed to set dap-dac path\n");
+		return err;
+	}
+
+	tegra20_das_set_tristate(dap_id, 0);
+
+	err = tegra20_das_connect_dap_to_dac(dap_id, dac_id);
+	if (err < 0) {
+		dev_err(card->dev, "failed to set dac-dap path\n");
+		return err;
+	}
+#endif
 
 	return 0;
 }
@@ -211,7 +232,7 @@ static int tegra_vcm_driver_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_tegra_vcm;
 	struct tegra_vcm *machine;
-	struct tegra_p1852_platform_data *pdata;
+	struct tegra_asoc_vcm_platform_data *pdata;
 	int ret;
 	int i;
 
