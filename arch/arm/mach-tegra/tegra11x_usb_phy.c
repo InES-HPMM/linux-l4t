@@ -2128,8 +2128,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UHSIC_MISC_CFG0);
 	val |= UHSIC_SUSPEND_EXIT_ON_EDGE;
-	/* Disable generic bus reset, to allow AP30 specific bus reset*/
-	val |= UHSIC_DISABLE_BUSRESET;
 	writel(val, base + UHSIC_MISC_CFG0);
 
 	val = readl(base + UHSIC_MISC_CFG1);
@@ -2262,15 +2260,6 @@ static int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	val |= UHSIC_DETECT_SHORT_CONNECT;
 	writel(val, base + UHSIC_MISC_CFG0);
 	udelay(1);
-
-	val = readl(base + UHSIC_MISC_CFG0);
-	val |= UHSIC_FORCE_XCVR_MODE;
-	writel(val, base + UHSIC_MISC_CFG0);
-
-	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~UHSIC_RPD_STROBE;
-	writel(val, base + UHSIC_PADS_CFG1);
-
 	if (phy->pdata->ops && phy->pdata->ops->port_power)
 		phy->pdata->ops->port_power();
 
