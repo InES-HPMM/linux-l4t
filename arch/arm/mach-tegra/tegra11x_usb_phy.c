@@ -1976,21 +1976,6 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 	}
 }
 
-
-static void usb_phy_fence_read(struct tegra_usb_phy *phy)
-{
-	/* Fence read for coherency of AHB master intiated writes */
-	if (phy->inst == 0)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-	else if (phy->inst == 1)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB2_PREFETCH_ID));
-	else if (phy->inst == 2)
-		readb(IO_ADDRESS(IO_PPCS_PHYS + USB3_PREFETCH_ID));
-
-	return;
-}
-
-
 static int uhsic_rail_enable(struct tegra_usb_phy *phy)
 {
 	int ret;
@@ -2076,7 +2061,6 @@ static void uhsic_phy_close(struct tegra_usb_phy *phy)
 
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
 {
-	usb_phy_fence_read(phy);
 	/* check if there is any remote wake event */
 	if (uhsic_phy_remotewake_detected(phy))
 		pr_info("%s: uhsic remote wake detected\n", __func__);
@@ -2263,22 +2247,9 @@ static int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	if (phy->pdata->ops && phy->pdata->ops->port_power)
 		phy->pdata->ops->port_power();
 
-	if (usb_phy_reg_status_wait(base + UHSIC_STAT_CFG0,
-			UHSIC_CONNECT_DETECT, UHSIC_CONNECT_DETECT, 25000)) {
-		pr_err("%s: timeout waiting for UHSIC_CONNECT_DETECT\n",
-								__func__);
-		return -ETIMEDOUT;
-	}
-
 	return 0;
 }
 
-static int uhsic_phy_resume(struct tegra_usb_phy *phy)
-{
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	return 0;
-}
 static void ulpi_set_trimmer(struct tegra_usb_phy *phy)
 {
 	struct tegra_ulpi_config *config = &phy->pdata->u_cfg.ulpi;
@@ -2951,7 +2922,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.power_on	= uhsic_phy_power_on,
 	.power_off	= uhsic_phy_power_off,
 	.pre_resume = uhsic_phy_pre_resume,
-	.resume = uhsic_phy_resume,
 	.post_resume = uhsic_phy_post_resume,
 	.port_power = uhsic_phy_bus_port_power,
 };
