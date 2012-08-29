@@ -28,6 +28,7 @@
 #include <linux/platform_data/tegra_emc.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/hrtimer.h>
 
 #include <asm/cputime.h>
 
@@ -88,6 +89,9 @@ struct emc_sel {
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
 static struct tegra11_emc_table start_timing;
 static const struct tegra11_emc_table *emc_timing;
+
+static ktime_t clkchange_time;
+static int clkchange_delay = 100;
 
 static const struct tegra11_emc_table *tegra_emc_table;
 static int tegra_emc_table_size;
@@ -190,6 +194,7 @@ int tegra_emc_set_rate(unsigned long rate)
 	u32 clk_setting;
 	const struct tegra11_emc_table *last_timing;
 	unsigned long flags;
+	s64 last_change_delay;
 
 	if (!tegra_emc_table)
 		return -EINVAL;
@@ -219,8 +224,13 @@ int tegra_emc_set_rate(unsigned long rate)
 
 	clk_setting = tegra_emc_clk_sel[i].value;
 
+	last_change_delay = ktime_us_delta(ktime_get(), clkchange_time);
+	if ((last_change_delay >= 0) && (last_change_delay < clkchange_delay))
+		udelay(clkchange_delay - (int)last_change_delay);
+
 	spin_lock_irqsave(&emc_access_lock, flags);
 	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
+	clkchange_time = ktime_get();
 	emc_timing = &tegra_emc_table[i];
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
@@ -642,6 +652,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file(
 		"stats", S_IRUGO, emc_debugfs_root, NULL, &emc_stats_fops))
+		goto err_out;
+
+	if (!debugfs_create_u32("clkchange_delay", S_IRUGO | S_IWUSR,
+		emc_debugfs_root, (u32 *)&clkchange_delay))
 		goto err_out;
 
 	return 0;
