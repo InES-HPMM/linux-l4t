@@ -48,7 +48,7 @@ MODULE_DESCRIPTION("Input event CPU frequency booster");
 MODULE_LICENSE("GPL v2");
 
 
-static struct pm_qos_request qos_req;
+static struct pm_qos_request freq_req, core_req;
 static struct work_struct boost;
 static struct delayed_work unboost;
 static unsigned int boost_freq; /* kHz */
@@ -60,13 +60,15 @@ static struct workqueue_struct *cfb_wq;
 static void cfb_boost(struct work_struct *w)
 {
 	cancel_delayed_work_sync(&unboost);
-	pm_qos_update_request(&qos_req, boost_freq);
+	pm_qos_update_request(&core_req, 1);
+	pm_qos_update_request(&freq_req, boost_freq);
 	queue_delayed_work(cfb_wq, &unboost, msecs_to_jiffies(boost_time));
 }
 
 static void cfb_unboost(struct work_struct *w)
 {
-	pm_qos_update_request(&qos_req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request(&freq_req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request(&core_req, PM_QOS_DEFAULT_VALUE);
 }
 
 static void cfb_input_event(struct input_handle *handle, unsigned int type,
@@ -153,7 +155,9 @@ static int __init cfboost_init(void)
 		destroy_workqueue(cfb_wq);
 		return ret;
 	}
-	pm_qos_add_request(&qos_req, PM_QOS_CPU_FREQ_MIN,
+	pm_qos_add_request(&core_req, PM_QOS_CPU_FREQ_MIN,
+			   PM_QOS_DEFAULT_VALUE);
+	pm_qos_add_request(&freq_req, PM_QOS_CPU_FREQ_MIN,
 			   PM_QOS_DEFAULT_VALUE);
 	return 0;
 }
@@ -167,7 +171,8 @@ static void __exit cfboost_exit(void)
 	cancel_delayed_work_sync(&unboost);
 	/* clean up */
 	destroy_workqueue(cfb_wq);
-	pm_qos_remove_request(&qos_req);
+	pm_qos_remove_request(&freq_req);
+	pm_qos_remove_request(&core_req);
 }
 
 module_init(cfboost_init);
