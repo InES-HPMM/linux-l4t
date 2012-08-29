@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/i2c-tegra.h>
 #include <linux/of_device.h>
@@ -851,9 +852,11 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	i2c_dev->msgs = msgs;
 	i2c_dev->msgs_num = num;
 
+	pm_runtime_get_sync(&adap->dev);
 	ret = tegra_i2c_clock_enable(i2c_dev);
 	if (ret < 0) {
 		dev_err(i2c_dev->dev, "Clock enable failed %d\n", ret);
+		pm_runtime_put(&adap->dev);
 		return ret;
 	}
 
@@ -871,6 +874,7 @@ static int tegra_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	}
 
 	tegra_i2c_clock_disable(i2c_dev);
+	pm_runtime_put(&adap->dev);
 
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
@@ -1075,6 +1079,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	pm_runtime_enable(&pdev->dev);
+
 	i2c_dev->scl_gpio = pdata->scl_gpio;
 	i2c_dev->sda_gpio = pdata->sda_gpio;
 	i2c_set_adapdata(&i2c_dev->adapter, i2c_dev);
@@ -1102,6 +1108,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	}
 
 	of_i2c_register_devices(&i2c_dev->adapter);
+	pm_runtime_enable(&i2c_dev->adapter.dev);
 
 	return 0;
 }
@@ -1110,10 +1117,12 @@ static int tegra_i2c_remove(struct platform_device *pdev)
 {
 	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 	i2c_del_adapter(&i2c_dev->adapter);
+	pm_runtime_disable(&i2c_dev->adapter.dev);
 
 	if (i2c_dev->is_clkon_always)
 		tegra_i2c_clock_disable(i2c_dev);
 
+	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
 
