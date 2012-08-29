@@ -521,7 +521,6 @@ void __init tegra11x_init_early(void)
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra11x_clk_init_table);
 	tegra11x_clk_init_la();
-	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra_init_power();
