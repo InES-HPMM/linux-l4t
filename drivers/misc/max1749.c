@@ -3,7 +3,7 @@
  *
  * Driver for MAX1749, vibrator motor driver.
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012 NVIDIA Corporation, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,23 +28,50 @@
 #include <linux/hrtimer.h>
 #include <linux/delay.h>
 
+#include <linux/slab.h>
+
 #include "../staging/android/timed_output.h"
 
-static struct regulator *regulator;
-static int timeout;
+static struct vibrator_data {
+	struct timed_output_dev dev;
+	struct hrtimer timer;
+	struct regulator *regulator;
+	struct work_struct work;
+	bool vibrator_on;
+};
+
+static struct vibrator_data *data;
+
 
 static void vibrator_start(void)
 {
-	regulator_enable(regulator);
+	if (!data->vibrator_on) {
+		regulator_enable(data->regulator);
+		data->vibrator_on = true;
+	}
 }
 
 static void vibrator_stop(void)
 {
 	int ret;
+	if (data->vibrator_on) {
+		ret = regulator_is_enabled(data->regulator);
+		if (ret > 0) {
+			regulator_disable(data->regulator);
+			data->vibrator_on = false;
+		}
+	}
+}
 
-	ret = regulator_is_enabled(regulator);
-	if (ret > 0)
-		regulator_disable(regulator);
+static void vibrator_work_func(unsigned long data)
+{
+	vibrator_stop();
+}
+
+static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
+{
+	schedule_work(&data->work);
+	return HRTIMER_NORESTART;
 }
 
 /*
@@ -54,27 +81,25 @@ static void vibrator_stop(void)
  */
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
-	timeout = value;
-	if (!regulator)
-		return;
-
-	if (value) {
+	hrtimer_cancel(&data->timer);
+	if (value > 0) {
 		vibrator_start();
-		msleep(value);
+		hrtimer_start(&data->timer,
+			  ktime_set(value / 1000, (value % 1000) * 1000000),
+			  HRTIMER_MODE_REL);
+	} else
 		vibrator_stop();
-	} else {
-		vibrator_stop();
-	}
+	return;
 }
 
-/*
- * Timeout value can be read from sysfs entry
- * created by timed_output_dev.
- * cat /sys/class/timed_output/vibrator/enable
- */
 static int vibrator_get_time(struct timed_output_dev *dev)
 {
-	return timeout;
+	if (hrtimer_active(&data->timer)) {
+		ktime_t r = hrtimer_get_remaining(&data->timer);
+		struct timeval t = ktime_to_timeval(r);
+		return t.tv_sec * 1000 + t.tv_usec / 1000;
+	} else
+		return 0;
 }
 
 static struct timed_output_dev vibrator_dev = {
@@ -83,33 +108,66 @@ static struct timed_output_dev vibrator_dev = {
 	.enable		= vibrator_enable,
 };
 
+static int vibrator_probe(void)
+{
+	int ret;
+	data = kzalloc(sizeof(struct vibrator_data), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+
+	data->regulator = regulator_get(NULL, "vdd_vbrtr");
+	if (IS_ERR_OR_NULL(data->regulator)) {
+		pr_err("vibrator_init:Couldn't get regulator vdd_vbrtr\n");
+		data->regulator = NULL;
+		ret = PTR_ERR(data->regulator);
+		goto err;
+	}
+	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	/* Intialize the work queue */
+	INIT_WORK(&data->work, vibrator_work_func);
+	data->timer.function = vibrator_timer_func;
+	data->dev = vibrator_dev;
+	data->vibrator_on = false;
+
+	ret = timed_output_dev_register(&data->dev);
+	if (ret)
+		goto err2;
+
+	return 0;
+
+err2:
+	regulator_put(data->regulator);
+err:
+	kfree(data);
+	return ret;
+}
+
+static int vibrator_remove(void)
+{
+	timed_output_dev_unregister(&data->dev);
+	regulator_put(data->regulator);
+	kfree(data);
+
+	return 0;
+}
+
+static struct platform_driver vibrator_driver = {
+	.probe = vibrator_probe,
+	.remove = vibrator_remove,
+	.driver = {
+		.name = "tegra-vibrator",
+		.owner = THIS_MODULE,
+	},
+};
+
 static int __init vibrator_init(void)
 {
-	int status;
-
-	regulator = regulator_get(NULL, "vdd_vbrtr");
-	if (IS_ERR_OR_NULL(regulator)) {
-		pr_err("vibrator_init:Couldn't get regulator vdd_vbrtr\n");
-		regulator = NULL;
-		return PTR_ERR(regulator);
-	}
-
-	status = timed_output_dev_register(&vibrator_dev);
-
-	if (status) {
-		regulator_put(regulator);
-		regulator = NULL;
-	}
-	return status;
+	return platform_driver_register(&vibrator_driver);
 }
 
 static void __exit vibrator_exit(void)
 {
-	if (regulator) {
-		timed_output_dev_unregister(&vibrator_dev);
-		regulator_put(regulator);
-		regulator = NULL;
-	}
+	platform_driver_unregister(&vibrator_driver);
 }
 
 MODULE_DESCRIPTION("timed output vibrator device");
