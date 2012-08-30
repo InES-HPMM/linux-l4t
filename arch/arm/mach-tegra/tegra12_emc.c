@@ -73,6 +73,12 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 	return NULL;
 }
 
+bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
+		unsigned long *parent_rate, unsigned long *backup_rate)
+{
+	return true;  /* !!!FIXME!!! t124 needs major MC updates */
+}
+
 void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 {
 	/* FIXME: This is just a stub */
