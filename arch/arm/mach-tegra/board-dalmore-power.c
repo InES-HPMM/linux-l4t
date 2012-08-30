@@ -187,20 +187,27 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_cam", "tegrra_camera"),
+	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
 	REGULATOR_SUPPLY("vdd_emmc", NULL),
 	REGULATOR_SUPPLY("vddio_audio", NULL),
+	REGULATOR_SUPPLY("pwrdet_audio", NULL),
 	REGULATOR_SUPPLY("avdd_audio_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_audio_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_modem", NULL),
 	REGULATOR_SUPPLY("vddio_modem_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_bb", NULL),
+	REGULATOR_SUPPLY("pwrdet_bb", NULL),
 	REGULATOR_SUPPLY("vddio_bb_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_uart", NULL),
+	REGULATOR_SUPPLY("pwrdet_uart", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
+	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 	REGULATOR_SUPPLY("vdd_sensor_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_mic_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_nfc_1v8", NULL),
@@ -255,11 +262,13 @@ static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 	REGULATOR_SUPPLY("vddio_bb_hsic", NULL),
 };
 
 static struct regulator_consumer_supply max77663_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc3", NULL),
 };
 
 /* FIXME!! Put the device address of camera */
