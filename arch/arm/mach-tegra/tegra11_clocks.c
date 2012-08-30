@@ -3346,10 +3346,12 @@ static void tegra11_periph_clk_init(struct clk *c)
 		c->mul = 1;
 	}
 
-	c->state = ON;
-
-	if (c->flags & PERIPH_NO_ENB)
+	if (c->flags & PERIPH_NO_ENB) {
+		c->state = c->parent->state;
 		return;
+	}
+
+	c->state = ON;
 
 	if (!(clk_readl(PERIPH_CLK_TO_ENB_REG(c)) & PERIPH_CLK_TO_BIT(c)))
 		c->state = OFF;
