@@ -894,26 +894,21 @@ const char *tegra_powergate_get_name(int id)
 
 #ifdef CONFIG_DEBUG_FS
 
-static const char * const powergate_name[] = {
-	[TEGRA_POWERGATE_CPU]   = "cpu",
-	[TEGRA_POWERGATE_3D]    = "3d",
-	[TEGRA_POWERGATE_VENC]  = "venc",
-	[TEGRA_POWERGATE_VDEC]  = "vdec",
-	[TEGRA_POWERGATE_PCIE]  = "pcie",
-	[TEGRA_POWERGATE_L2]    = "l2",
-	[TEGRA_POWERGATE_MPE]   = "mpe",
-};
-
 static int powergate_show(struct seq_file *s, void *data)
 {
 	int i;
+	const char *name;
 
 	seq_printf(s, " powergate powered\n");
 	seq_printf(s, "------------------\n");
 
-	for (i = 0; i < tegra_num_powerdomains; i++)
-		seq_printf(s, " %9s %7s\n", powergate_name[i],
-			tegra_powergate_is_powered(i) ? "yes" : "no");
+	for (i = 0; i < tegra_num_powerdomains; i++) {
+		name = tegra_powergate_get_name(i);
+		if (name)
+			seq_printf(s, " %9s %7s\n", name,
+				tegra_powergate_is_powered(i) ? "yes" : "no");
+	}
+
 	return 0;
 }
 
