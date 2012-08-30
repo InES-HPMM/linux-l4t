@@ -25,8 +25,11 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>
+
+#include <asm/mach-types.h>
 
 #include "pm.h"
 #include "board.h"
@@ -343,4 +346,179 @@ int __init pluto_suspend_init(void)
 	tegra_init_suspend(&pluto_suspend_data);
 	return 0;
 }
+
+/* Fixed regulators */
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
+	REGULATOR_SUPPLY("vddio_cam_mb", NULL),
+	REGULATOR_SUPPLY("vdd_1v8_cam12", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v2_cam_supply[] = {
+	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_ldousb3_supply[] = {
+	REGULATOR_SUPPLY("avdd_usb3_pll", NULL),
+	REGULATOR_SUPPLY("avddio_usb3", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_mmc_sdmmc3_supply[] = {
+	REGULATOR_SUPPLY("vdd_sdmmc3", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_lcd_supply[] = {
+	REGULATOR_SUPPLY("vdd_1v8_lcd_s", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_mmc_lcd_supply[] = {
+	REGULATOR_SUPPLY("vdd_mmc_lcd_s_f", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_mic_supply[] = {
+	REGULATOR_SUPPLY("unused_fixed_reg_en_vdd_1v8_mic", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_5v0_hdmi_supply[] = {
+	REGULATOR_SUPPLY("vddio_hdmi", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_fuse_supply[] = {
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
+	REGULATOR_SUPPLY("v_efuse", NULL),
+};
+
+/* Macro for defining fixed regulator sub device data */
+#define FIXED_SUPPLY(_name) "fixed_reg_en"#_name
+#define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
+	_gpio_nr, _active_high, _boot_state, _millivolts)	\
+	static struct regulator_init_data ri_data_##_var =		\
+	{								\
+		.supply_regulator = _in_supply,				\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(fixed_reg_en_##_name##_supply),		\
+		.consumer_supplies = fixed_reg_en_##_name##_supply,	\
+		.constraints = {					\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+			.always_on = _always_on,			\
+			.boot_on = _boot_on,				\
+		},							\
+	};								\
+	static struct fixed_voltage_config fixed_reg_en_##_var##_pdata =	\
+	{								\
+		.supply_name = FIXED_SUPPLY(_name),			\
+		.microvolts = _millivolts * 1000,			\
+		.gpio = _gpio_nr,					\
+		.enable_high = _active_high,				\
+		.enabled_at_boot = _boot_state,				\
+		.init_data = &ri_data_##_var,				\
+	};								\
+	static struct platform_device fixed_reg_en_##_var##_dev = {	\
+		.name = "reg-fixed-voltage",				\
+		.id = _id,						\
+		.dev = {						\
+			.platform_data = &fixed_reg_en_##_var##_pdata,	\
+		},							\
+	}
+
+FIXED_REG(1,	vdd_1v8_cam,	vdd_1v8_cam,
+	palmas_rails(smps8),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	true,	0,	1800);
+FIXED_REG(2,	vdd_1v2_cam,	vdd_1v2_cam,
+	palmas_rails(smps7),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,	true,	0,	1200);
+FIXED_REG(3,	vdd_1v8_ldousb3,	vdd_1v8_ldousb3,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PK5,	true,	0,	1050);
+FIXED_REG(4,	vdd_mmc_sdmmc3,	vdd_mmc_sdmmc3,
+	palmas_rails(smps9),	0,	0,
+	TEGRA_GPIO_PK1,	true,	0,	3300);
+FIXED_REG(5,	vdd_1v8_lcd,	vdd_1v8_lcd,
+	palmas_rails(smps8),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	true,	0,	1800);
+FIXED_REG(6,	vdd_mmc_lcd,	vdd_mmc_lcd,
+	palmas_rails(smps9),	0,	0,
+	TEGRA_GPIO_PI4,	true,	0,	1800);
+FIXED_REG(7,	vdd_1v8_mic,	vdd_1v8_mic,
+	palmas_rails(smps8),	0,	0,
+	-1,	true,	0,	1800);
+FIXED_REG(8,	vdd_5v0_hdmi,	vdd_5v0_hdmi,
+	palmas_rails(smps10),	0,	0,
+	TEGRA_GPIO_PK6,	true,	0,	5000);
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+FIXED_REG(9,	vdd_1v8_fuse,	vdd_1v8_fuse,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PX4,	true,	0,	1800);
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+FIXED_REG(9,	vdd_1v8_fuse,	vdd_1v8_fuse,
+	palmas_rails(smps8),	0,	0,
+	TEGRA_GPIO_PX0,	true,	0,	1800);
+#endif
+
+/*
+ * Creating the fixed regulator device tables
+ */
+#define ADD_FIXED_REG(_name)    (&fixed_reg_en_##_name##_dev)
+
+#define E1580_COMMON_FIXED_REG			\
+	ADD_FIXED_REG(vdd_1v8_cam),		\
+	ADD_FIXED_REG(vdd_1v2_cam),	\
+	ADD_FIXED_REG(vdd_1v8_ldousb3),		\
+	ADD_FIXED_REG(vdd_mmc_sdmmc3),			\
+	ADD_FIXED_REG(vdd_1v8_lcd),		\
+	ADD_FIXED_REG(vdd_mmc_lcd),		\
+	ADD_FIXED_REG(vdd_1v8_mic),	\
+	ADD_FIXED_REG(vdd_5v0_hdmi),
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define E1580_T114_FIXED_REG			\
+	ADD_FIXED_REG(vdd_1v8_fuse),
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define E1580_T30_FIXED_REG			\
+	ADD_FIXED_REG(vdd_1v8_fuse),
+#endif
+
+/* Gpio switch regulator platform data for Pluto E1580 */
+static struct platform_device *pfixed_reg_devs[] = {
+	E1580_COMMON_FIXED_REG
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	E1580_T114_FIXED_REG
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	E1580_T30_FIXED_REG
+#endif
+};
+
+static int __init pluto_fixed_regulator_init(void)
+{
+	int i;
+	struct board_info board_info;
+	struct platform_device **fixed_reg_devs;
+	int nfixreg_devs;
+
+	tegra_get_board_info(&board_info);
+	fixed_reg_devs = pfixed_reg_devs;
+	nfixreg_devs = ARRAY_SIZE(pfixed_reg_devs);
+
+	if (!machine_is_tegra_pluto())
+		return 0;
+
+	for (i = 0; i < nfixreg_devs; ++i) {
+		int gpio_nr;
+		struct fixed_voltage_config *fixed_reg_pdata =
+			fixed_reg_devs[i]->dev.platform_data;
+		gpio_nr = fixed_reg_pdata->gpio;
+
+	}
+
+	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
+}
+subsys_initcall_sync(pluto_fixed_regulator_init);
 

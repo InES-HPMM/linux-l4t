@@ -20,14 +20,14 @@
 #ifndef _MACH_TEGRA_BOARD_PLUTO_H
 #define _MACH_TEGRA_BOARD_PLUTO_H
 
-#include <mach/gpio.h>
+#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <linux/mfd/palmas.h>
 #include "gpio-names.h"
 
 /* External peripheral act as gpio */
 /* PALMAS GPIO */
-#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_IRQS
+#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
 
 /* Audio-related GPIOs */
 #define TEGRA_GPIO_CDC_IRQ		TEGRA_GPIO_PW3
