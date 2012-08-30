@@ -254,6 +254,7 @@ static const struct tegra11_emc_table *emc_timing;
 static ktime_t clkchange_time;
 static int clkchange_delay = 100;
 
+static const u32 *dram_to_soc_bit_map;
 static const struct tegra11_emc_table *tegra_emc_table;
 static int tegra_emc_table_size;
 
@@ -1066,6 +1067,72 @@ int tegra_emc_get_dram_type(void)
 	return dram_type;
 }
 
+static u32 soc_to_dram_bit_swap(u32 soc_val, u32 dram_mask, u32 dram_shift)
+{
+	int bit;
+	u32 dram_val = 0;
+
+	/* tegra clocks definitions use shifted mask always */
+	if (!dram_to_soc_bit_map)
+		return soc_val & dram_mask;
+
+	for (bit = dram_shift; bit < 32; bit++) {
+		u32 dram_bit_mask = 0x1 << bit;
+		u32 soc_bit_mask = dram_to_soc_bit_map[bit];
+
+		if (!(dram_bit_mask & dram_mask))
+			break;
+
+		if (soc_bit_mask & soc_val)
+			dram_val |= dram_bit_mask;
+	}
+
+	return dram_val;
+}
+
+static int emc_read_mrr(int dev, int addr)
+{
+	int ret;
+	u32 val;
+
+	if (dram_type != DRAM_TYPE_LPDDR2)
+		return -ENODEV;
+
+	ret = wait_for_update(EMC_STATUS, EMC_STATUS_MRR_DIVLD, false);
+	if (ret)
+		return ret;
+
+	val = dev ? DRAM_DEV_SEL_1 : DRAM_DEV_SEL_0;
+	val |= (addr << EMC_MRR_MA_SHIFT) & EMC_MRR_MA_MASK;
+	emc_writel(val, EMC_MRR);
+
+	ret = wait_for_update(EMC_STATUS, EMC_STATUS_MRR_DIVLD, true);
+	if (ret)
+		return ret;
+
+	val = emc_readl(EMC_MRR) & EMC_MRR_DATA_MASK;
+	return val;
+}
+
+int tegra_emc_get_dram_temperature(void)
+{
+	int mr4;
+	unsigned long flags;
+
+	spin_lock_irqsave(&emc_access_lock, flags);
+
+	mr4 = emc_read_mrr(0, 4);
+	if (IS_ERR_VALUE(mr4)) {
+		spin_unlock_irqrestore(&emc_access_lock, flags);
+		return mr4;
+	}
+	spin_unlock_irqrestore(&emc_access_lock, flags);
+
+	mr4 = soc_to_dram_bit_swap(
+		mr4, LPDDR2_MR4_TEMP_MASK, LPDDR2_MR4_TEMP_SHIFT);
+	return mr4;
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static struct dentry *emc_debugfs_root;
@@ -1104,6 +1171,14 @@ static const struct file_operations emc_stats_fops = {
 	.release	= single_release,
 };
 
+static int dram_temperature_get(void *data, u64 *val)
+{
+	*val = tegra_emc_get_dram_temperature();
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(dram_temperature_fops, dram_temperature_get,
+			NULL, "%lld\n");
+
 static int efficiency_get(void *data, u64 *val)
 {
 	*val = tegra_emc_bw_efficiency;
@@ -1135,6 +1210,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_u32("clkchange_delay", S_IRUGO | S_IWUSR,
 		emc_debugfs_root, (u32 *)&clkchange_delay))
+		goto err_out;
+
+	if (!debugfs_create_file("dram_temperature", S_IRUGO, emc_debugfs_root,
+				 NULL, &dram_temperature_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,

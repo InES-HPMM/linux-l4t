@@ -30,6 +30,7 @@ extern u8 tegra_emc_bw_efficiency;
 
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
+int tegra_emc_get_dram_temperature(void);
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_mc_timing_restore(void);
