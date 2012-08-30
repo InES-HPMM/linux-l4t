@@ -1626,11 +1626,17 @@ static void aic3262_hs_jack_report(struct snd_soc_codec *codec,
 
 	/* Sync status */
 	status = snd_soc_read(codec, AIC3262_DAC_FLAG);
-	/* We will check only stereo MIC and headphone */
-	if (status & AIC3262_JACK_WITH_STEREO_HS)
+
+	switch (status & AIC3262_JACK_TYPE_MASK) {
+	case AIC3262_JACK_WITH_MIC:
+		state |= SND_JACK_HEADSET;
+		break;
+	case AIC3262_JACK_WITHOUT_MIC:
 		state |= SND_JACK_HEADPHONE;
-	if (status & AIC3262_JACK_WITH_MIC)
-		state |= SND_JACK_MICROPHONE;
+		break;
+	default:
+		break;
+	}
 
 	mutex_unlock(&aic3262->mutex);
 
