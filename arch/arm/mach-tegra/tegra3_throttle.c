@@ -28,7 +28,6 @@
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
 #include <linux/module.h>
-#include <mach/thermal.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
@@ -37,6 +36,7 @@
 static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
+static int num_throt;
 
 static unsigned int clip_to_table(unsigned int cpu_freq)
 {
@@ -252,17 +252,8 @@ struct thermal_cooling_device *balanced_throttle_register(
 #ifdef CONFIG_DEBUG_FS
 	char name[32];
 #endif
-	struct balanced_throttle *dev;
-
 	mutex_lock(&bthrot_list_lock);
-	list_for_each_entry(dev, &bthrot_list, node) {
-		if (dev->tegra_cdev.id == bthrot->tegra_cdev.id) {
-			mutex_unlock(&bthrot_list_lock);
-			return ERR_PTR(-EINVAL);
-		}
-	}
-
-
+	num_throt++;
 	list_add(&bthrot->node, &bthrot_list);
 	mutex_unlock(&bthrot_list_lock);
 
@@ -277,7 +268,7 @@ struct thermal_cooling_device *balanced_throttle_register(
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	sprintf(name, "throttle_table%d", bthrot->tegra_cdev.id);
+	sprintf(name, "throttle_table%d", num_throt);
 	debugfs_create_file(name,0644, throttle_debugfs_root,
 				bthrot, &table_fops);
 #endif

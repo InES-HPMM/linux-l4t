@@ -23,9 +23,9 @@
 #include <mach/tsensor.h>
 #include <mach/tegra_fuse.h>
 #include <mach/iomap.h>
-#include <mach/thermal.h>
 #include <mach/tsensor.h>
 
+#include "cpu-tegra.h"
 #include "devices.h"
 #include "tegra3_tsensor.h"
 
@@ -56,57 +56,32 @@
 #define PMU_16BIT_SUPPORT_MASK			0x1
 
 #define TSENSOR_OFFSET	(4000 + 5000)
+#define TDIODE_OFFSET	(9000 + 1000)
 
-static int tsensor_get_temp(void *vdata, long *milli_temp)
-{
-	struct tegra_tsensor_data *data = vdata;
-	return tsensor_thermal_get_temp(data, milli_temp);
-}
-
-static int tsensor_set_limits(void *vdata,
-			long lo_limit_milli,
-			long hi_limit_milli)
-{
-	struct tegra_tsensor_data *data = vdata;
-	return tsensor_thermal_set_limits(data,
-					lo_limit_milli,
-					hi_limit_milli);
-}
-
-static int tsensor_set_alert(void *vdata,
-			void (*alert_func)(void *),
-			void *alert_data)
-{
-	struct tegra_tsensor_data *data = vdata;
-	return tsensor_thermal_set_alert(data, alert_func, alert_data);
-}
-
-static void tegra3_tsensor_probe_callback(struct tegra_tsensor_data *data)
-{
-	struct tegra_thermal_device *thermal_device;
-
-	thermal_device = kzalloc(sizeof(struct tegra_thermal_device),
-					GFP_KERNEL);
-
-	if (!thermal_device) {
-		pr_err("unable to allocate thermal device\n");
-		return;
-	}
-
-	thermal_device->name = "tsensor";
-	thermal_device->data = data;
-	thermal_device->id = THERMAL_DEVICE_ID_TSENSOR;
-	thermal_device->get_temp = tsensor_get_temp;
-	thermal_device->set_limits = tsensor_set_limits;
-	thermal_device->set_alert = tsensor_set_alert;
-
-	/* This should not fail */
-	if (tegra_thermal_device_register(thermal_device))
-		BUG();
-}
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
+};
 
 static struct tegra_tsensor_platform_data tsensor_data = {
-	.probe_callback = tegra3_tsensor_probe_callback,
+	.shutdown_temp = 90 + TDIODE_OFFSET - TSENSOR_OFFSET,
+	.passive = {
+		.trip_temp = 85 + TDIODE_OFFSET - TSENSOR_OFFSET,
+		.tc1 = 0,
+		.tc1 = 1,
+		.passive_delay = 2000,
+	}
 };
 
 void __init tegra3_tsensor_init(struct tegra_tsensor_pmu_data *data)
@@ -164,7 +139,11 @@ void __init tegra3_tsensor_init(struct tegra_tsensor_pmu_data *data)
 	val |= (checksum << CHECKSUM_OFFSET);
 	writel(val, pMem + 4);
 
+
 labelSkipPowerOff:
+	/* Thermal throttling */
+	tsensor_data.passive.cdev = balanced_throttle_register(&tj_throttle);
+
 	/* set platform data for device before register */
 	tegra_tsensor_device.dev.platform_data = &tsensor_data;
 	platform_device_register(&tegra_tsensor_device);

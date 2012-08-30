@@ -3,7 +3,7 @@
  *
  * Tegra tsensor header file
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -20,29 +20,24 @@
 #define __MACH_TEGRA_TSENSOR_H
 
 #include <linux/types.h>
+#include <linux/thermal.h>
 
-#include <mach/edp.h>
-
-#define MAX_ZONES	16
-
-struct tegra_tsensor_data;
-
-struct tegra_tsensor_platform_data {
-	void (*probe_callback)(struct tegra_tsensor_data *);
+struct tegra_tsensor_cdev {
+	struct thermal_cooling_device *cdev;
+	long trip_temp;
+	enum thermal_trip_type type;
+	int tc1;
+	int tc2;
+	int passive_delay;
 };
 
-int tsensor_thermal_get_temp(struct tegra_tsensor_data *data,
-				long *milli_temp);
-int tsensor_thermal_get_temp_low(struct tegra_tsensor_data *data,
-					long *milli_temp);
-int tsensor_thermal_set_limits(struct tegra_tsensor_data *data,
-				long lo_limit_milli,
-				long hi_limit_milli);
-int tsensor_thermal_set_alert(struct tegra_tsensor_data *data,
-				void (*alert_func)(void *),
-				void *alert_data);
-int tsensor_thermal_set_shutdown_temp(struct tegra_tsensor_data *data,
-				long shutdown_temp_milli);
+#define TSENSOR_MAX_ACTIVE (16)
+
+struct tegra_tsensor_platform_data {
+	long shutdown_temp;
+	struct tegra_tsensor_cdev passive;
+	struct tegra_tsensor_cdev active[TSENSOR_MAX_ACTIVE + 1];
+};
 
 #endif /* __MACH_TEGRA_TSENSOR_H */
 
