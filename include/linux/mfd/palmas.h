@@ -2804,6 +2804,22 @@ enum usb_irq_events {
 #define PALMAS_GPADC_TRIM15					0xE
 #define PALMAS_GPADC_TRIM16					0xF
 
+/*
+ *PALMAS GPIOs
+ */
+enum {
+	PALMAS_GPIO0,
+	PALMAS_GPIO1,
+	PALMAS_GPIO2,
+	PALMAS_GPIO3,
+	PALMAS_GPIO4,
+	PALMAS_GPIO5,
+	PALMAS_GPIO6,
+	PALMAS_GPIO7,
+
+	PALMAS_GPIO_NR,
+};
+
 static inline int palmas_read(struct palmas *palmas, unsigned int base,
 		unsigned int reg, unsigned int *val)
 {
