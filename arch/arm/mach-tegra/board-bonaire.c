@@ -375,7 +375,6 @@ static struct platform_device *bonaire_devices[] __initdata = {
 	&tegra_smmu_device,
 #endif
 	&bonaire_keys_device,
-	&tegra_wdt_device,
 #if defined(CONFIG_SND_HDA_TEGRA)
 	&tegra_hda_device,
 #endif
@@ -387,14 +386,6 @@ static struct platform_device *bonaire_devices[] __initdata = {
 	&tegra_sim_smc91x_device,
 #endif
 };
-
-static void bonaire_keys_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(bonaire_keys); i++)
-		tegra_gpio_enable(bonaire_keys[i].gpio);
-}
 
 static int __init bonaire_touch_init(void)
 {
@@ -548,7 +539,6 @@ static void __init tegra_bonaire_init(void)
 	bonaire_regulator_init();
 	bonaire_suspend_init();
 	bonaire_touch_init();
-	bonaire_keys_init();
 	bonaire_usb_init();
 	bonaire_panel_init();
 	bonaire_bt_rfkill();
