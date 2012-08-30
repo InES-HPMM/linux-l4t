@@ -1,7 +1,7 @@
 /*
  * NVIDIA Tegra SOC - temperature sensor driver
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -173,6 +173,7 @@ enum tsensor_thresholds {
  * The structure is dynamically allocated.
  */
 struct tegra_tsensor_data {
+	struct tegra_tsensor_platform_data plat_data;
 	struct delayed_work work;
 	struct workqueue_struct *workqueue;
 	struct mutex mutex;
@@ -212,9 +213,7 @@ struct tegra_tsensor_data {
 	long current_lo_limit;
 
 	bool is_edp_supported;
-
-	void (*alert_func)(void *);
-	void *alert_data;
+	struct thermal_zone_device *thz;
 };
 
 enum {
@@ -651,14 +650,6 @@ static struct sensor_device_attribute tsensor_nodes[] = {
 	SENSOR_ATTR(tsensor_limits, S_IRUGO | S_IWUSR,
 		tsensor_show_limits, NULL, TSENSOR_LIMITS),
 };
-
-int tsensor_thermal_get_temp_low(struct tegra_tsensor_data *data,
-					long *milli_temp)
-{
-	/* temp to counter below 20C seems to be inaccurate */
-	*milli_temp = 0;
-	return 0;
-}
 
 int tsensor_thermal_get_temp(struct tegra_tsensor_data *data,
 				long *milli_temp)
@@ -1573,7 +1564,15 @@ static void tsensor_set_limits(
 	tsensor_writel(data, config, ((data->instance << 16) | offset));
 }
 
-int tsensor_thermal_set_limits(struct tegra_tsensor_data *data,
+static int tsensor_within_limits(struct tegra_tsensor_data *data)
+{
+	int ts_state = get_ts_state(data);
+
+	return (ts_state == TS_LEVEL1);
+}
+
+#ifdef CONFIG_THERMAL
+static int tsensor_thermal_set_limits(struct tegra_tsensor_data *data,
 					long lo_limit_milli,
 					long hi_limit_milli)
 {
@@ -1616,46 +1615,45 @@ done:
 	return 0;
 }
 
-int tsensor_thermal_set_alert(struct tegra_tsensor_data *data,
-				void (*alert_func)(void *),
-				void *alert_data)
+static void tsensor_update(struct tegra_tsensor_data *data)
 {
-	mutex_lock(&data->mutex);
+	struct thermal_zone_device *thz = data->thz;
+	long temp, trip_temp, low_temp = 0, high_temp = 120000;
+	int count;
 
-	data->alert_data = alert_data;
-	data->alert_func = alert_func;
+	if (!thz)
+		return;
 
-	mutex_unlock(&data->mutex);
+	if (!thz->passive)
+		thermal_zone_device_update(thz);
 
-	return 0;
+	thz->ops->get_temp(thz, &temp);
+
+	for (count = 0; count < thz->trips; count++) {
+		thz->ops->get_trip_temp(thz, count, &trip_temp);
+
+		if ((trip_temp >= temp) && (trip_temp < high_temp))
+			high_temp = trip_temp;
+
+		if ((trip_temp < temp) && (trip_temp > low_temp))
+			low_temp = trip_temp;
+	}
+
+	tsensor_thermal_set_limits(data, low_temp, high_temp);
 }
-
-int tsensor_thermal_set_shutdown_temp(struct tegra_tsensor_data *data,
-					long shutdown_temp_milli)
+#else
+static void tsensor_update(struct tegra_tsensor_data *data)
 {
-	long shutdown_temp = MILLICELSIUS_TO_CELSIUS(shutdown_temp_milli);
-	tsensor_set_limits(data, shutdown_temp, TSENSOR_TH3);
-
-	return 0;
 }
-
-static int tsensor_within_limits(struct tegra_tsensor_data *data)
-{
-	int ts_state = get_ts_state(data);
-
-	return (ts_state == TS_LEVEL1);
-}
+#endif
 
 static void tsensor_work_func(struct work_struct *work)
 {
 	struct tegra_tsensor_data *data = container_of(to_delayed_work(work),
 		struct tegra_tsensor_data, work);
 
-	if (!data->alert_func)
-		return;
-
 	if (!tsensor_within_limits(data)) {
-		data->alert_func(data->alert_data);
+		tsensor_update(data);
 
 		if (!tsensor_within_limits(data))
 			dev_dbg(data->hwmon_dev,
@@ -1790,6 +1788,77 @@ fail:
 	return err;
 }
 
+#ifdef CONFIG_THERMAL
+static int tsensor_get_temp(struct thermal_zone_device *thz,
+					unsigned long *temp)
+{
+	struct tegra_tsensor_data *data = thz->devdata;
+	return tsensor_thermal_get_temp(data, temp);
+}
+
+static int tsensor_bind(struct thermal_zone_device *thz,
+				struct thermal_cooling_device *cdev)
+{
+	int i;
+	struct tegra_tsensor_data *data = thz->devdata;
+
+	if (cdev == data->plat_data.passive.cdev)
+		return thermal_zone_bind_cooling_device(thz, 0, cdev);
+
+	for (i = 0; data->plat_data.active[i].cdev; i++)
+		if (cdev == data->plat_data.active[i].cdev)
+			return thermal_zone_bind_cooling_device(thz, i+1, cdev);
+
+	return 0;
+}
+
+static int tsensor_unbind(struct thermal_zone_device *thz,
+				struct thermal_cooling_device *cdev)
+{
+	int i;
+	struct tegra_tsensor_data *data = thz->devdata;
+
+	if (cdev == data->plat_data.passive.cdev)
+		return thermal_zone_unbind_cooling_device(thz, 0, cdev);
+
+	for (i = 0; data->plat_data.active[i].cdev; i++)
+		if (cdev == data->plat_data.active[i].cdev)
+			return thermal_zone_unbind_cooling_device(thz, i+1,
+									cdev);
+
+	return 0;
+}
+
+static int tsensor_get_trip_temp(struct thermal_zone_device *thz,
+					int trip,
+					unsigned long *temp)
+{
+	struct tegra_tsensor_data *data = thz->devdata;
+	if (trip == 0)
+		*temp = data->plat_data.passive.trip_temp;
+	else
+		*temp = data->plat_data.active[trip-1].trip_temp;
+	return 0;
+}
+
+static int tsensor_get_trip_type(struct thermal_zone_device *thz,
+					int trip,
+					enum thermal_trip_type *type)
+{
+	*type = (trip == 0) ? THERMAL_TRIP_PASSIVE : THERMAL_TRIP_ACTIVE;
+	return 0;
+}
+
+
+static struct thermal_zone_device_ops tsensor_ops = {
+	.get_temp = tsensor_get_temp,
+	.bind = tsensor_bind,
+	.unbind = tsensor_unbind,
+	.get_trip_type = tsensor_get_trip_type,
+	.get_trip_temp = tsensor_get_trip_temp,
+};
+#endif
+
 static int tegra_tsensor_probe(struct platform_device *pdev)
 {
 	struct tegra_tsensor_data *data;
@@ -1798,6 +1867,9 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 	unsigned int reg;
 	u8 i;
 	struct tegra_tsensor_platform_data *tsensor_data;
+#ifdef CONFIG_THERMAL
+	int num_trips = 0;
+#endif
 
 	data = kzalloc(sizeof(struct tegra_tsensor_data), GFP_KERNEL);
 	if (!data) {
@@ -1908,8 +1980,32 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "end tegra_tsensor_probe\n");
 
 	tsensor_data = pdev->dev.platform_data;
-	if (tsensor_data->probe_callback)
-		tsensor_data->probe_callback(data);
+
+	memcpy(&data->plat_data, tsensor_data,
+		sizeof(struct tegra_tsensor_platform_data));
+
+	tsensor_set_limits(data, tsensor_data->shutdown_temp, TSENSOR_TH3);
+
+#ifdef CONFIG_THERMAL
+	if (tsensor_data->passive.cdev)
+		num_trips++;
+
+	for (i = 0; tsensor_data->active[i].cdev; i++)
+		num_trips++;
+
+	data->thz = thermal_zone_device_register("tsensor",
+					num_trips,
+					data,
+					&tsensor_ops,
+					tsensor_data->passive.tc1,
+					tsensor_data->passive.tc2,
+					tsensor_data->passive.passive_delay,
+					0);
+	if (IS_ERR_OR_NULL(data->thz))
+		goto err6;
+
+	tsensor_update(data);
+#endif
 
 	return 0;
 err6:
