@@ -45,7 +45,7 @@
 #define DRV_NAME "tegra-snd-p1852"
 #endif
 #ifdef CONFIG_MACH_E1853
-#define DRV_NAME "tegra-snd-p1853"
+#define DRV_NAME "tegra-snd-e1853"
 #endif
 #ifdef CONFIG_MACH_P852
 #define DRV_NAME "tegra-snd-p852"
