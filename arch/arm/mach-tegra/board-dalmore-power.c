@@ -666,30 +666,13 @@ static int __init dalmore_max77663_regulator_init(void)
 
 static int __init dalmore_fixed_regulator_init(void)
 {
-	int i;
-	struct board_info board_info;
-	struct platform_device **fixed_reg_devs;
-	int nfixreg_devs;
-
-	tegra_get_board_info(&board_info);
-	fixed_reg_devs = fixed_reg_devs_a00;
-	nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_a00);
-
 	if (!machine_is_dalmore())
 		return 0;
 
-	for (i = 0; i < nfixreg_devs; ++i) {
-		int gpio_nr;
-		struct fixed_voltage_config *fixed_reg_pdata =
-			fixed_reg_devs[i]->dev.platform_data;
-		gpio_nr = fixed_reg_pdata->gpio;
-
-	}
-
-	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
+	return platform_add_devices(fixed_reg_devs_a00,
+				ARRAY_SIZE(fixed_reg_devs_a00));
 }
 subsys_initcall_sync(dalmore_fixed_regulator_init);
-
 
 int __init dalmore_regulator_init(void)
 {
