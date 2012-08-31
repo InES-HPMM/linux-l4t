@@ -131,11 +131,11 @@ static inline void curacao_bt_rfkill(void) { }
 
 static __initdata struct tegra_clk_init_table curacao_clk_init_table[] = {
 	/* name		parent		rate		enabled */
-	{ "uarta",	"clk_m",	13000000,	true},
-	{ "uartb",	"clk_m",	13000000,	true},
-	{ "uartc",	"clk_m",	13000000,	true},
-	{ "uartd",	"clk_m",	13000000,	true},
-	{ "uarte",	"clk_m",	13000000,	true},
+	{ "uarta_dbg",	"clk_m",	13000000,	true},
+	{ "uartb_dbg",	"clk_m",	13000000,	true},
+	{ "uartc_dbg",	"clk_m",	13000000,	true},
+	{ "uartd_dbg",	"clk_m",	13000000,	true},
+	{ "uarte_dbg",	"clk_m",	13000000,	true},
 	{ "sdmmc1",	"clk_m",	13000000,	false},
 	{ "sdmmc3",	"clk_m",	13000000,	false},
 	{ "sdmmc4",	"clk_m",	13000000,	false},
