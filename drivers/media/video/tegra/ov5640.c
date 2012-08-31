@@ -315,6 +315,34 @@ static int ov5640_set_power(struct ov5640_info *info, u32 level)
 	return 0;
 }
 
+static int ov5640_set_wb(struct ov5640_info *info, u8 val)
+{
+	int err = 0;
+
+	switch (val) {
+	case OV5640_WB_AUTO:
+		err = ov5640_write_table(info, wb_table[OV5640_WB_AUTO], NULL, 0);
+		break;
+	case OV5640_WB_INCANDESCENT:
+		err = ov5640_write_table(info, wb_table[OV5640_WB_INCANDESCENT], NULL, 0);
+		break;
+	case OV5640_WB_DAYLIGHT:
+		err = ov5640_write_table(info, wb_table[OV5640_WB_DAYLIGHT], NULL, 0);
+		break;
+	case OV5640_WB_FLUORESCENT:
+		err = ov5640_write_table(info, wb_table[OV5640_WB_FLUORESCENT], NULL, 0);
+		break;
+	case OV5640_WB_CLOUDY:
+		err = ov5640_write_table(info, wb_table[OV5640_WB_CLOUDY], NULL, 0);
+		break;
+	default:
+		dev_err(info->dev, "this wb setting not supported!\n");
+		return -EINVAL;
+	}
+
+	return err;
+}
+
 static long ov5640_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
@@ -384,6 +412,8 @@ static long ov5640_ioctl(struct file *file,
 		}
 		return 0;
 	}
+	case OV5640_IOCTL_SET_WB:
+		return ov5640_set_wb(info, (u8)arg);
 	default:
 		return -EINVAL;
 	}
