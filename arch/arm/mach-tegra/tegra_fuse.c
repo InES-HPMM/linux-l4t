@@ -37,6 +37,9 @@
 
 #define FUSE_SKU_INFO		0x110
 #define FUSE_VP8_ENABLE_0	0x1c4
+#define FUSE_SKU_DIRECT_CONFIG_0	    0x1f4
+#define FUSE_SKU_GPU_1_PIXEL_PIPE	    0x200
+#define FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE   0x400
 
 #define TEGRA20_FUSE_SPARE_BIT		0x200
 #define TEGRA30_FUSE_SPARE_BIT		0x244
@@ -411,6 +414,16 @@ void tegra_gpu_get_info(struct gpu_info *pInfo)
 	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) {
 		pInfo->num_pixel_pipes = 4;
 		pInfo->num_alus_per_pixel_pipe = 3;
+	} else if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14) {
+		u32 reg = readl(IO_TO_VIRT(TEGRA_CLK_RESET_BASE +
+			FUSE_SKU_DIRECT_CONFIG_0));
+		pInfo->num_pixel_pipes = 2;
+		pInfo->num_alus_per_pixel_pipe = 6;
+		if (reg & FUSE_SKU_GPU_1_PIXEL_PIPE)
+			pInfo->num_pixel_pipes = 1;
+
+		if (reg & FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE)
+			pInfo->num_alus_per_pixel_pipe = 1;
 	} else {
 		pInfo->num_pixel_pipes = 1;
 		pInfo->num_alus_per_pixel_pipe = 1;
