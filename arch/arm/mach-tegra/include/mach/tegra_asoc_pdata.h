@@ -44,7 +44,5 @@ struct tegra_asoc_platform_data {
 	int gpio_ext_mic_en;
 	int gpio_ldo1_en;
 	unsigned int debounce_time_hp;
-	const char *cdc_regulator_id;
-	const char *spk_regulator_id;
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
 };

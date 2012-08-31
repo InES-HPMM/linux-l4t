@@ -334,7 +334,6 @@ static struct tegra_asoc_platform_data dalmore_audio_pdata = {
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
 	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
-	.spk_regulator_id	= "vdd_spk",
 	.i2s_param[HIFI_CODEC]	= {
 		.audio_port_id	= 1,
 		.is_i2s_master	= 1,

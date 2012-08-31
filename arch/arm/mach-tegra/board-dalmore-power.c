@@ -46,7 +46,7 @@
 
 /*TPS65090 consumer rails */
 static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
-	REGULATOR_SUPPLY("vdd_spk", NULL),
+	REGULATOR_SUPPLY("vdd_spk", "tegra-snd-rt5640.0"),
 	REGULATOR_SUPPLY("vdd_5v0_sys_modem", NULL),
 };
 

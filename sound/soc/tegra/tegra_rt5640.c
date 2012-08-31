@@ -742,25 +742,21 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_machine;
 
-	if (pdata->cdc_regulator_id) {
-		machine->cdc_en = regulator_get(NULL, pdata->cdc_regulator_id);
-		if (WARN_ON(IS_ERR(machine->cdc_en))) {
-			dev_err(&pdev->dev,
-				"Failed regulator_get cdc_en: %ld\n",
-				PTR_ERR(machine->cdc_en));
+	if (!gpio_is_valid(pdata->gpio_ldo1_en)) {
+		machine->cdc_en = regulator_get(&pdev->dev, "ldo1_en");
+		if (IS_ERR(machine->cdc_en)) {
+			dev_err(&pdev->dev, "ldo1_en regulator not found %ld\n",
+					PTR_ERR(machine->cdc_en));
 			machine->cdc_en = 0;
 		} else {
 			regulator_enable(machine->cdc_en);
 		}
 	}
 
-	if (pdata->spk_regulator_id) {
-		machine->spk_reg = regulator_get(&pdev->dev,
-						 pdata->spk_regulator_id);
-		if (IS_ERR(machine->spk_reg)) {
-			dev_info(&pdev->dev, "No speaker regulator found\n");
-			machine->spk_reg = 0;
-		}
+	machine->spk_reg = regulator_get(&pdev->dev, "vdd_spk");
+	if (IS_ERR(machine->spk_reg)) {
+		dev_info(&pdev->dev, "No speaker regulator found\n");
+		machine->spk_reg = 0;
 	}
 
 #ifdef CONFIG_SWITCH
@@ -841,6 +837,11 @@ static int tegra_rt5640_driver_remove(struct platform_device *pdev)
 	if (machine->cdc_en) {
 		regulator_disable(machine->cdc_en);
 		regulator_put(machine->cdc_en);
+	}
+
+	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
+		gpio_set_value(pdata->gpio_ldo1_en, 0);
+		gpio_free(pdata->gpio_ldo1_en);
 	}
 
 	snd_soc_unregister_card(card);
