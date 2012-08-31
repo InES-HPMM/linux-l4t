@@ -5347,7 +5347,7 @@ static struct clk_mux_sel *mux_extern_out_list[] = {
 	mux_clkm_clkm2_clkm4_extern3,
 };
 
-#define CLK_OUT_CLK(_id)					\
+#define CLK_OUT_CLK(_id, _max_rate)					\
 	{							\
 		.name      = "clk_out_" #_id,			\
 		.lookup    = {					\
@@ -5358,15 +5358,15 @@ static struct clk_mux_sel *mux_extern_out_list[] = {
 		.reg       = 0x1a8,				\
 		.inputs    = mux_clkm_clkm2_clkm4_extern##_id,	\
 		.flags     = MUX_CLK_OUT,			\
-		.max_rate  = 216000000,				\
+		.max_rate  = _max_rate,				\
 		.u.periph = {					\
 			.clk_num   = (_id - 1) * 8 + 2,		\
 		},						\
 	}
 static struct clk tegra_clk_out_list[] = {
-	CLK_OUT_CLK(1),
-	CLK_OUT_CLK(2),
-	CLK_OUT_CLK(3),
+	CLK_OUT_CLK(1, 12288000),
+	CLK_OUT_CLK(2, 25500000),
+	CLK_OUT_CLK(3, 12288000),
 };
 
 /* called after peripheral external clocks are initialized */
