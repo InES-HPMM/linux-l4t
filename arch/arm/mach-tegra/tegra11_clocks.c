@@ -3315,6 +3315,12 @@ static void tegra11_periph_clk_init(struct clk *c)
 
 		c->parent = mux->input;
 	} else {
+		if (c->flags & PLLU) {
+			/* for xusb_hs clock enforce PLLU source during init */
+			val &= periph_clk_source_mask(c);
+			val |= c->inputs[0].value << periph_clk_source_shift(c);
+			clk_writel_delay(val, c->reg);
+		}
 		c->parent = c->inputs[0].input;
 	}
 
@@ -5709,6 +5715,13 @@ static struct clk_mux_sel mux_clk_32k[] = {
 	{ 0, 0},
 };
 
+/* xusb_hs has an alternative source, that is not used - therefore, xusb_hs
+   is modeled as a single source mux */
+static struct clk_mux_sel mux_pllu_60M[] = {
+	{ .input = &tegra_pll_u_60M, .value = 1},
+	{ 0, 0},
+};
+
 static struct raw_notifier_head emc_rate_change_nh;
 
 static struct clk tegra_clk_emc = {
@@ -6056,13 +6069,29 @@ static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_fs_src",	XUSB_ID, "fs_src",	143,	0x608,	 48000000, mux_clkm_48M_pllp_480M,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_ss_src",	XUSB_ID, "ss_src",	143,	0x610,	120000000, mux_clkm_pllre_clk32_480M_pllc_ref,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("xusb_dev_src",	XUSB_ID, "dev_src",	95,	0x60c,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
+	{
+		.name      = "xusb_hs_src",
+		.lookup    = {
+			.dev_id    = XUSB_ID,
+			.con_id	   = "hs_src",
+		},
+		.ops       = &tegra_periph_clk_ops,
+		.reg       = 0x610,
+		.inputs    = mux_pllu_60M,
+		.flags     = PLLU | PERIPH_NO_ENB,
+		.max_rate  = 60000000,
+		.u.periph = {
+			.src_mask  = 0x1,
+			.src_shift = 25,
+		},
+	},
 };
 
 static struct clk_mux_sel mux_xusb_host[] = {
 	{ .input = &tegra_xusb_source_clks[0], .value = 0},
 	{ .input = &tegra_xusb_source_clks[1], .value = 1},
 	{ .input = &tegra_xusb_source_clks[2], .value = 2},
-	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ .input = &tegra_xusb_source_clks[5], .value = 5},
 	{ 0, 0},
 };
 
