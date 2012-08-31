@@ -63,5 +63,6 @@ int pluto_pinmux_init(void);
 int pluto_sensors_init(void);
 int pluto_emc_init(void);
 int pluto_panel_init(void);
+int pluto_kbc_init(void);
 
 #endif
