@@ -22,6 +22,8 @@
 #include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
 
@@ -32,21 +34,27 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#include "tegra3_host1x_devices.h"
+#else
 #include "tegra11_host1x_devices.h"
+#endif
 
-#define TEGRA_PANEL_ENABLE 0
+#define TEGRA_PANEL_ENABLE	0
 
 #if TEGRA_PANEL_ENABLE
 
-#define TEGRA_DSI_GANGED_MODE 0
-#define IS_EXTERNAL_PWM	0
+#define TEGRA_DSI_GANGED_MODE	0
+#define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
-#define PANEL_10_1_PANASONIC_1920_1200 1
-#define PANEL_11_6_AUO_1920_1080 0
-#define PANEL_10_1_SHARP_2560_1600 0
+#define PANEL_10_1_PANASONIC_1920_1200	1
+#define PANEL_11_6_AUO_1920_1080	0
+#define PANEL_10_1_SHARP_2560_1600	0
 
-#define DSI_PANEL_RESET	1
+#define DSI_PANEL_RESET		1
+#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
+
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
@@ -159,6 +167,15 @@ static struct tegra_dsi_out dalmore_dsi = {
 static int dalmore_dsi_panel_enable(void)
 {
 	int err = 0;
+
+#if DSI_PANEL_RESET
+	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	msleep(20);
+#endif
 
 #if PANEL_10_1_PANASONIC_1920_1200 || \
 	PANEL_11_6_AUO_1920_1080 || \
@@ -469,6 +486,19 @@ static int dalmore_dsi_regulator_get(void)
 	return err;
 }
 
+static int dalmore_dsi_gpio_get(void)
+{
+	int err = 0;
+
+	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	if (err < 0) {
+		pr_err("panel reset gpio request failed\n");
+		return err;
+	}
+
+	return err;
+}
+
 int __init dalmore_panel_init(void)
 {
 	int err = 0;
@@ -488,7 +518,11 @@ int __init dalmore_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	err = tegra3_register_host1x_devices();
+#else
 	err = tegra11_register_host1x_devices();
+#endif
 	if (err) {
 		pr_err("host1x devices registration failed\n");
 		return err;
@@ -528,6 +562,12 @@ int __init dalmore_panel_init(void)
 	err = dalmore_dsi_regulator_get();
 	if (err < 0) {
 		pr_err("regulator get failed\n");
+		return err;
+	}
+
+	err = dalmore_dsi_gpio_get();
+	if (err < 0) {
+		pr_err("panel gpio get failed\n");
 		return err;
 	}
 #endif

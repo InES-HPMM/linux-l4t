@@ -22,6 +22,7 @@
 #include <linux/nvmap.h>
 #include <linux/nvhost.h>
 #include <linux/init.h>
+#include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
@@ -33,18 +34,24 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#include "tegra3_host1x_devices.h"
+#else
 #include "tegra11_host1x_devices.h"
+#endif
 
-#define TEGRA_PANEL_ENABLE 0
+#define TEGRA_PANEL_ENABLE	0
 
 #if TEGRA_PANEL_ENABLE
 
-#define IS_EXTERNAL_PWM	0
+#define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
-#define PANEL_5_LG_720_1280 1
+#define PANEL_5_LG_720_1280	0
 
-#define DSI_PANEL_RESET	1
+#define DSI_PANEL_RESET		1
+#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH5
+
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
@@ -55,7 +62,6 @@ static struct regulator *avdd_lcd_2v8;
 static struct regulator *vdd_lcd_1v8;
 #define EN_VDD_LCD_1V8	PMU_TPS65913_GPIO_PORT04
 #endif
-
 
 static struct resource pluto_disp1_resources[] __initdata = {
 	{
@@ -111,6 +117,7 @@ static struct resource pluto_disp2_resources[] __initdata = {
 	},
 };
 
+#if PANEL_5_LG_720_1280
 static u8 panel_dsi_config[] = {0xe0, 0x43, 0x0, 0x80, 0x0, 0x0};
 static u8 panel_disp_ctrl1[] = {0xb5, 0x34, 0x20, 0x40, 0x0, 0x20};
 static u8 panel_disp_ctrl2[] = {0xb6, 0x04, 0x74, 0x0f, 0x16, 0x13};
@@ -143,6 +150,7 @@ static u8 panel_ce10[] =
 static u8 panel_ce11[] = {0x7a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 static u8 panel_ce12[] = {0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 static u8 panel_ce13[] = {0x7c, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+#endif
 
 static struct tegra_dsi_cmd dsi_init_cmd[] = {
 #if PANEL_5_LG_720_1280
@@ -226,6 +234,15 @@ static struct tegra_dsi_out pluto_dsi = {
 static int pluto_dsi_panel_enable(void)
 {
 	int err = 0;
+
+#if DSI_PANEL_RESET
+	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	msleep(20);
+#endif
 
 #if PANEL_5_LG_720_1280
 	if (avdd_lcd_2v8) {
@@ -501,6 +518,12 @@ static int pluto_dsi_gpio_get(void)
 {
 	int err = 0;
 
+	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	if (err < 0) {
+		pr_err("panel reset gpio request failed\n");
+		return err;
+	}
+
 #if PANEL_5_LG_720_1280
 	err = gpio_request(EN_VDD_LCD_1V8, "panel regulator enable");
 	if (err < 0) {
@@ -530,7 +553,11 @@ int __init pluto_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	err = tegra3_register_host1x_devices();
+#else
 	err = tegra11_register_host1x_devices();
+#endif
 	if (err) {
 		pr_err("host1x devices registration failed\n");
 		return err;
