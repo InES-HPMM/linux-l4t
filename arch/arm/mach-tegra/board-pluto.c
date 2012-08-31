@@ -36,6 +36,7 @@
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
+#include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
 #include <linux/regulator/consumer.h>
@@ -71,6 +72,64 @@
 #include "pm.h"
 #include "common.h"
 
+static struct rfkill_gpio_platform_data pluto_bt_rfkill_pdata = {
+	.name           = "bt_rfkill",
+	.shutdown_gpio  = TEGRA_GPIO_PQ7,
+	.type           = RFKILL_TYPE_BLUETOOTH,
+};
+
+static struct platform_device pluto_bt_rfkill_device = {
+	.name = "rfkill_gpio",
+	.id             = -1,
+	.dev = {
+		.platform_data = &pluto_bt_rfkill_pdata,
+	},
+};
+
+static noinline void __init pluto_setup_bt_rfkill(void)
+{
+	if ((tegra_get_commchip_id() == COMMCHIP_BROADCOM_BCM43241) ||
+				(tegra_get_commchip_id() == COMMCHIP_DEFAULT))
+		pluto_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
+	else
+		pluto_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PU6;
+	platform_device_register(&pluto_bt_rfkill_device);
+}
+
+static struct resource pluto_bluesleep_resources[] = {
+	[0] = {
+		.name = "gpio_host_wake",
+			.start  = TEGRA_GPIO_PU6,
+			.end    = TEGRA_GPIO_PU6,
+			.flags  = IORESOURCE_IO,
+	},
+	[1] = {
+		.name = "gpio_ext_wake",
+			.start  = TEGRA_GPIO_PEE1,
+			.end    = TEGRA_GPIO_PEE1,
+			.flags  = IORESOURCE_IO,
+	},
+	[2] = {
+		.name = "host_wake",
+			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+	},
+};
+
+static struct platform_device pluto_bluesleep_device = {
+	.name           = "bluesleep",
+	.id             = -1,
+	.num_resources  = ARRAY_SIZE(pluto_bluesleep_resources),
+	.resource       = pluto_bluesleep_resources,
+};
+
+static noinline void __init pluto_setup_bluesleep(void)
+{
+	pluto_bluesleep_resources[2].start =
+		pluto_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
+	platform_device_register(&pluto_bluesleep_device);
+	return;
+}
 static __initdata struct tegra_clk_init_table pluto_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -505,6 +564,8 @@ static void __init tegra_pluto_init(void)
 	pluto_emc_init();
 	pluto_panel_init();
 	pluto_kbc_init();
+	pluto_setup_bluesleep();
+	pluto_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
 	pluto_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
