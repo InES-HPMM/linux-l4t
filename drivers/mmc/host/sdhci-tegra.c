@@ -85,7 +85,7 @@ static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int
 static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
 
@@ -272,7 +272,7 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 }
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 {
 	u16 misc_ctrl;
