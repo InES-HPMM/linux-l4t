@@ -34,16 +34,20 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #include "tegra3_host1x_devices.h"
 #else
 #include "tegra11_host1x_devices.h"
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA_PANEL_ENABLE	1
+#else
 #define TEGRA_PANEL_ENABLE	0
+#endif
 
 #if TEGRA_PANEL_ENABLE
-
 #define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
@@ -61,6 +65,14 @@ static atomic_t sd_brightness = ATOMIC_INIT(255);
 static struct regulator *avdd_lcd_2v8;
 static struct regulator *vdd_lcd_1v8;
 #define EN_VDD_LCD_1V8	PMU_TPS65913_GPIO_PORT04
+#endif
+
+/* hdmi pins for hotplug */
+#define pluto_hdmi_hpd			TEGRA_GPIO_PN7
+
+/* hdmi related regulators */
+#ifdef CONFIG_TEGRA_DC
+static struct regulator *pluto_hdmi_vddio;
 #endif
 
 static struct resource pluto_disp1_resources[] __initdata = {
@@ -215,7 +227,11 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 };
 
 static struct tegra_dsi_out pluto_dsi = {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.n_data_lanes = 2,
+#else
 	.n_data_lanes = 4,
+#endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
@@ -281,7 +297,7 @@ static int pluto_dsi_panel_disable(void)
 static int pluto_dsi_panel_postsuspend(void)
 {
 	/* TODO */
-	return -EPERM;
+	return 0;
 }
 
 static struct tegra_dc_mode pluto_dsi_modes[] = {
@@ -323,25 +339,45 @@ static struct tegra_dc_out pluto_disp1_out = {
 static int pluto_hdmi_enable(void)
 {
 	/* TODO */
-	return -EPERM;
+	return 0;
 }
 
 static int pluto_hdmi_disable(void)
 {
 	/* TODO */
-	return -EPERM;
+	return 0;
 }
 
 static int pluto_hdmi_postsuspend(void)
 {
-	/* TODO */
-	return -EPERM;
+	if (pluto_hdmi_vddio) {
+		regulator_disable(pluto_hdmi_vddio);
+		regulator_put(pluto_hdmi_vddio);
+		pluto_hdmi_vddio = NULL;
+	}
+	return 0;
 }
 
 static int pluto_hdmi_hotplug_init(void)
 {
-	/* TODO */
-	return -EPERM;
+	int ret = 0;
+	if (!pluto_hdmi_vddio) {
+		pluto_hdmi_vddio = regulator_get(NULL, "vddio_hdmi");
+		if (IS_ERR_OR_NULL(pluto_hdmi_vddio)) {
+			ret = PTR_ERR(pluto_hdmi_vddio);
+			pr_err("hdmi: couldn't get regulator vddio_hdmi\n");
+			pluto_hdmi_vddio = NULL;
+			return ret;
+		}
+	}
+	ret = regulator_enable(pluto_hdmi_vddio);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator vddio_hdmi\n");
+		regulator_put(pluto_hdmi_vddio);
+		pluto_hdmi_vddio = NULL;
+		return ret;
+	}
+	return ret;
 }
 
 static struct tegra_dc_out pluto_disp2_out = {
@@ -350,6 +386,7 @@ static struct tegra_dc_out pluto_disp2_out = {
 	.parent_clk	= "pll_d2_out0",
 
 	.dcc_bus	= 3,
+	.hotplug_gpio	= pluto_hdmi_hpd,
 
 	.max_pixclock	= KHZ2PICOS(148500),
 
@@ -367,6 +404,10 @@ static struct tegra_fb_data pluto_disp1_fb_data = {
 	.xres		= 720,
 	.yres		= 1280,
 #endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.xres		= 1024,
+	.yres		= 600,
+#endif
 };
 
 static struct tegra_dc_platform_data pluto_disp1_pdata = {
@@ -378,6 +419,8 @@ static struct tegra_dc_platform_data pluto_disp1_pdata = {
 
 static struct tegra_fb_data pluto_disp2_fb_data = {
 	.win		= 0,
+	.xres		= 1024,
+	.yres		= 600,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -551,6 +594,8 @@ int __init pluto_panel_init(void)
 		return err;
 	}
 #endif
+	gpio_request(pluto_hdmi_hpd, "hdmi_hpd");
+	gpio_direction_input(pluto_hdmi_hpd);
 
 #ifdef CONFIG_TEGRA_GRHOST
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
