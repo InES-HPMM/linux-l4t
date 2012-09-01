@@ -71,7 +71,7 @@
 #define CLK_OUT_ENB_CLR_X		0x288
 #define CLK_OUT_ENB_NUM			6
 
-#define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1)
+#define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1) /* Reserved on Tegra11 */
 #define CLK_OUT_ENB_V_CLK_ENB_CPULP_EN	(0x1 << 1)
 
 #define PERIPH_CLK_TO_BIT(c)		(1 << (c->u.periph.clk_num % 32))
@@ -128,10 +128,11 @@
 #define PERIPH_CLK_SOURCE_NUM3 \
 	((AUDIO_SYNC_CLK_SPDIF - AUDIO_DLY_CLK) / 4 + 1)
 
-#define PERIPH_CLK_SOURCE_XUSB		0x4cc
-#define PERIPH_CLK_SOURCE_DDS_UART	0x4f8
+#define SPARE_REG			0x55c
+#define PERIPH_CLK_SOURCE_XUSB_HOST	0x600
+#define PERIPH_CLK_SOURCE_SOC_THERM	0x644
 #define PERIPH_CLK_SOURCE_NUM4 \
-	((PERIPH_CLK_SOURCE_XUSB - PERIPH_CLK_SOURCE_DDS_UART) / 4 + 1)
+	((PERIPH_CLK_SOURCE_SOC_THERM - PERIPH_CLK_SOURCE_XUSB_HOST) / 4 + 1)
 
 #define PERIPH_CLK_SOURCE_NUM		(PERIPH_CLK_SOURCE_NUM1 + \
 					 PERIPH_CLK_SOURCE_NUM2 + \
@@ -139,6 +140,8 @@
 					 PERIPH_CLK_SOURCE_NUM4)
 
 #define CPU_SOFTRST_CTRL		0x380
+#define CPU_SOFTRST_CTRL1		0x384
+#define CPU_SOFTRST_CTRL2		0x388
 
 #define PERIPH_CLK_SOURCE_DIVU71_MASK	0xFF
 #define PERIPH_CLK_SOURCE_DIVU16_MASK	0xFFFF
@@ -2010,8 +2013,6 @@ static inline void pll_do_iddq(struct clk *c, u32 offs, u32 iddq_bit, bool set)
 }
 
 
-/* FIXME: pllcx suspend/resume */
-
 static u8 pllcx_p[PLLCX_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3, 4, 5,  6,  7 */
 /* p: */ 1, 2, 3, 4, 6, 8, 12, 16 };
@@ -2277,8 +2278,6 @@ static struct clk_ops tegra_pllcx_ops = {
 	.set_rate		= tegra11_pllcx_clk_set_rate,
 };
 
-
-/* FIXME: pllxc suspend/resume */
 
 /* non-monotonic mapping below is not a typo */
 static u8 pllxc_p[PLLXC_PDIV_MAX + 1] = {
@@ -6677,7 +6676,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 22];
+			   PERIPH_CLK_SOURCE_NUM + 25];
 
 void tegra_clk_suspend(void)
 {
@@ -6686,8 +6685,12 @@ void tegra_clk_suspend(void)
 
 	*ctx++ = clk_readl(OSC_CTRL) & OSC_CTRL_MASK;
 	*ctx++ = clk_readl(CPU_SOFTRST_CTRL);
-	*ctx++ = clk_readl(tegra_pll_c.reg + PLL_BASE);
-	*ctx++ = clk_readl(tegra_pll_c.reg + PLL_MISC(&tegra_pll_c));
+	*ctx++ = clk_readl(CPU_SOFTRST_CTRL1);
+	*ctx++ = clk_readl(CPU_SOFTRST_CTRL2);
+
+	*ctx++ = clk_readl(tegra_pll_p_out1.reg);
+	*ctx++ = clk_readl(tegra_pll_p_out3.reg);
+
 	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_BASE);
 	*ctx++ = clk_readl(tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
 	*ctx++ = clk_readl(tegra_pll_d.reg + PLL_BASE);
@@ -6721,23 +6724,25 @@ void tegra_clk_suspend(void)
 	for (off = AUDIO_DLY_CLK; off <= AUDIO_SYNC_CLK_SPDIF; off+=4) {
 		*ctx++ = clk_readl(off);
 	}
-	for (off = PERIPH_CLK_SOURCE_XUSB; off <= PERIPH_CLK_SOURCE_DDS_UART;
-	      off += 4) {
+	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
+		off <= PERIPH_CLK_SOURCE_SOC_THERM; off += 4)
 		*ctx++ = clk_readl(off);
-	}
 
 	*ctx++ = clk_readl(RST_DEVICES_L);
 	*ctx++ = clk_readl(RST_DEVICES_H);
 	*ctx++ = clk_readl(RST_DEVICES_U);
 	*ctx++ = clk_readl(RST_DEVICES_V);
 	*ctx++ = clk_readl(RST_DEVICES_W);
+	*ctx++ = clk_readl(RST_DEVICES_X);
 
 	*ctx++ = clk_readl(CLK_OUT_ENB_L);
 	*ctx++ = clk_readl(CLK_OUT_ENB_H);
 	*ctx++ = clk_readl(CLK_OUT_ENB_U);
 	*ctx++ = clk_readl(CLK_OUT_ENB_V);
 	*ctx++ = clk_readl(CLK_OUT_ENB_W);
+	*ctx++ = clk_readl(CLK_OUT_ENB_X);
 
+	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
 	*ctx++ = clk_readl(CLK_MASK_ARM);
 }
@@ -6747,23 +6752,38 @@ void tegra_clk_resume(void)
 	unsigned long off;
 	const u32 *ctx = clk_rst_suspend;
 	u32 val;
-	u32 pllc_base;
 	u32 plla_base;
 	u32 plld_base;
 	u32 plld2_base;
+	u32 pll_p_out12, pll_p_out34;
+	u32 pll_a_out0, pll_m_out1, pll_c_out1;
 	struct clk *p;
 
+	/* FIXME: OSC_CTRL already restored by warm boot code? */
 	val = clk_readl(OSC_CTRL) & ~OSC_CTRL_MASK;
 	val |= *ctx++;
 	clk_writel(val, OSC_CTRL);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL);
+	clk_writel(*ctx++, CPU_SOFTRST_CTRL1);
+	clk_writel(*ctx++, CPU_SOFTRST_CTRL2);
 
-	/* Since we are going to reset devices in this function, pllc/a is
-	 * required to be enabled. The actual value will be restore back later.
+
+	/* FIXME: PLLX and DFLL? */
+	/* Since we are going to reset devices and switch clock sources in this
+	 * function, plls and secondary dividers is required to be enabled. The
+	 * actual value will be restored back later. Note that boot plls: pllm,
+	 * pllp, and pllu are already configured and enabled
 	 */
-	pllc_base = *ctx++;
-	clk_writel(pllc_base | PLL_BASE_ENABLE, tegra_pll_c.reg + PLL_BASE);
-	clk_writel(*ctx++, tegra_pll_c.reg + PLL_MISC(&tegra_pll_c));
+	val = PLL_OUT_CLKEN | PLL_OUT_RESET_DISABLE;
+	val |= val << 16;
+	pll_p_out12 = *ctx++;
+	clk_writel(pll_p_out12 | val, tegra_pll_p_out1.reg);
+	pll_p_out34 = *ctx++;
+	clk_writel(pll_p_out34 | val, tegra_pll_p_out3.reg);
+
+	tegra11_pllcx_clk_resume_enable(&tegra_pll_c2);
+	tegra11_pllcx_clk_resume_enable(&tegra_pll_c3);
+	tegra11_pllxc_clk_resume_enable(&tegra_pll_c);
 
 	plla_base = *ctx++;
 	clk_writel(plla_base | PLL_BASE_ENABLE, tegra_pll_a.reg + PLL_BASE);
@@ -6779,9 +6799,13 @@ void tegra_clk_resume(void)
 
 	udelay(1000);
 
-	clk_writel(*ctx++, tegra_pll_m_out1.reg);
-	clk_writel(*ctx++, tegra_pll_a_out0.reg);
-	clk_writel(*ctx++, tegra_pll_c_out1.reg);
+	val = PLL_OUT_CLKEN | PLL_OUT_RESET_DISABLE;
+	pll_m_out1 = *ctx++;
+	clk_writel(pll_m_out1 | val, tegra_pll_m_out1.reg);
+	pll_a_out0 = *ctx++;
+	clk_writel(pll_a_out0 | val, tegra_pll_a_out0.reg);
+	pll_c_out1 = *ctx++;
+	clk_writel(pll_c_out1 | val, tegra_pll_c_out1.reg);
 
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
@@ -6794,10 +6818,10 @@ void tegra_clk_resume(void)
 
 	/* enable all clocks before configuring clock sources */
 	clk_writel(0xfdfffff1ul, CLK_OUT_ENB_L);
-	clk_writel(0xfefff7f7ul, CLK_OUT_ENB_H);
-	clk_writel(0x75f79bfful, CLK_OUT_ENB_U);
+	clk_writel(0xffddfff7ul, CLK_OUT_ENB_H);
+	clk_writel(0xfbfffbfeul, CLK_OUT_ENB_U);
 	clk_writel(0xfffffffful, CLK_OUT_ENB_V);
-	clk_writel(0x00003ffful, CLK_OUT_ENB_W);
+	clk_writel(0xff7ffffful, CLK_OUT_ENB_W);
 	wmb();
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_OSC;
@@ -6813,20 +6837,16 @@ void tegra_clk_resume(void)
 	for (off = AUDIO_DLY_CLK; off <= AUDIO_SYNC_CLK_SPDIF; off+=4) {
 		clk_writel(*ctx++, off);
 	}
-	for (off = PERIPH_CLK_SOURCE_XUSB; off <= PERIPH_CLK_SOURCE_DDS_UART;
-			off += 4) {
+	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
+		off <= PERIPH_CLK_SOURCE_SOC_THERM; off += 4)
 		clk_writel(*ctx++, off);
-	}
+
 	clk_writel(*ctx++, RST_DEVICES_L);
 	clk_writel(*ctx++, RST_DEVICES_H);
 	clk_writel(*ctx++, RST_DEVICES_U);
-
-	/* For LP0 resume, don't reset lpcpu, since we are running from it */
-	val = *ctx++;
-	val &= ~RST_DEVICES_V_SWR_CPULP_RST_DIS;
-	clk_writel(val, RST_DEVICES_V);
-
+	clk_writel(*ctx++, RST_DEVICES_V);
 	clk_writel(*ctx++, RST_DEVICES_W);
+	clk_writel(*ctx++, RST_DEVICES_X);
 	wmb();
 
 	clk_writel(*ctx++, CLK_OUT_ENB_L);
@@ -6834,23 +6854,40 @@ void tegra_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_U);
 
 	/* For LP0 resume, clk to lpcpu is required to be on */
+	/* FIXME: should be saved as on? */
 	val = *ctx++;
 	val |= CLK_OUT_ENB_V_CLK_ENB_CPULP_EN;
 	clk_writel(val, CLK_OUT_ENB_V);
 
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
+	clk_writel(*ctx++, CLK_OUT_ENB_X);
 	wmb();
 
+	clk_writel(*ctx++, SPARE_REG);
 	clk_writel(*ctx++, MISC_CLK_ENB);
 	clk_writel(*ctx++, CLK_MASK_ARM);
 
-	/* Restore back the actual pllc/a value */
-	/* FIXME: need to root cause why pllc is required to be on
-	 * clk_writel(pllc_base, tegra_pll_c.reg + PLL_BASE);
-	 */
+	/* Restore back the actual pll and secondary divider values */
+	clk_writel(pll_p_out12, tegra_pll_p_out1.reg);
+	clk_writel(pll_p_out34, tegra_pll_p_out3.reg);
+
+	p = &tegra_pll_c2;
+	if (p->state == OFF)
+		tegra11_pllcx_clk_disable(p);
+	p = &tegra_pll_c3;
+	if (p->state == OFF)
+		tegra11_pllcx_clk_disable(p);
+	p = &tegra_pll_c;
+	if (p->state == OFF)
+		tegra11_pllxc_clk_disable(p);
+
 	clk_writel(plla_base, tegra_pll_a.reg + PLL_BASE);
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
 	clk_writel(plld2_base, tegra_pll_d2.reg + PLL_BASE);
+
+	clk_writel(pll_m_out1, tegra_pll_m_out1.reg);
+	clk_writel(pll_a_out0, tegra_pll_a_out0.reg);
+	clk_writel(pll_c_out1, tegra_pll_c_out1.reg);
 
 	/* Since EMC clock is not restored, and may not preserve parent across
 	   suspend, update current state, and mark EMC DFS as out of sync */
@@ -6859,7 +6896,7 @@ void tegra_clk_resume(void)
 
 	if (p != tegra_clk_emc.parent) {
 		/* FIXME: old parent is left enabled here even if EMC was its
-		   only child before suspend (never happens on tegra11x) */
+		   only child before suspend (may happen on Tegra11 !!) */
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
 			p->name, p->refcnt, tegra_clk_emc.parent->name,
 			tegra_clk_emc.parent->refcnt);
