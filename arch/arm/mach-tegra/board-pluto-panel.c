@@ -55,6 +55,7 @@
 
 #define DSI_PANEL_RESET		1
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH5
+#define DSI_PANEL_BL_EN_GPIO	TEGRA_GPIO_PH2
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
@@ -259,6 +260,8 @@ static int pluto_dsi_panel_enable(void)
 	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
 	msleep(20);
 #endif
+
+	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
 
 #if PANEL_5_LG_720_1280
 	if (avdd_lcd_2v8) {
@@ -514,7 +517,7 @@ static int pluto_disp1_check_fb(struct device *dev, struct fb_info *info)
 static struct platform_tegra_pwm_backlight_data pluto_disp1_bl_data = {
 	.which_dc		= 0,
 	.which_pwm		= TEGRA_PWM_PM1,
-	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
+	.gpio_conf_to_sfio	= TEGRA_GPIO_PH1,
 	.max_brightness		= 255,
 	.dft_brightness		= 224,
 	.notify			= pluto_disp1_bl_notify,
@@ -564,6 +567,12 @@ static int pluto_dsi_gpio_get(void)
 	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
+		return err;
+	}
+
+	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
+	if (err < 0) {
+		pr_err("panel backlight gpio request failed\n");
 		return err;
 	}
 
