@@ -108,8 +108,14 @@ static u32 tmp_fuse_pgm_data[NFUSES / 2];
 
 DEFINE_MUTEX(fuse_lock);
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define TEGRA_FUSE_SUPPLY	"vdd_fuse"
+#else
+#define TEGRA_FUSE_SUPPLY	"vpp_fuse"
+#endif
+
 static struct fuse_data fuse_info;
-struct regulator *vdd_fuse;
+struct regulator *fuse_regulator;
 struct clk *clk_fuse;
 
 #define FUSE_NAME_LEN	30
@@ -686,7 +692,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	if (IS_ERR_OR_NULL(clk_fuse) ||
-	   (!tegra_fuse_regulator_en && IS_ERR_OR_NULL(vdd_fuse))) {
+	   (!tegra_fuse_regulator_en && IS_ERR_OR_NULL(fuse_regulator))) {
 		pr_err("fuse write disabled");
 		return -ENODEV;
 	}
@@ -728,7 +734,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	if (tegra_fuse_regulator_en)
 		ret = tegra_fuse_regulator_en(1);
 	else
-		ret = regulator_enable(vdd_fuse);
+		ret = regulator_enable(fuse_regulator);
 
 	if (ret)
 		BUG_ON("regulator enable fail\n");
@@ -752,7 +758,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	if (tegra_fuse_regulator_en)
 		tegra_fuse_regulator_en(0);
 	else
-		regulator_disable(vdd_fuse);
+		regulator_disable(fuse_regulator);
 #endif
 
 	mutex_unlock(&fuse_lock);
@@ -920,21 +926,23 @@ static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr, char
 	return strlen(buf);
 }
 
+
 static int __init tegra_fuse_program_init(void)
 {
 	if (!tegra_fuse_regulator_en) {
-		/* get vdd_fuse regulator */
-		vdd_fuse = regulator_get(NULL, "vdd_fuse");
-		if (IS_ERR_OR_NULL(vdd_fuse))
-			pr_err("%s: no vdd_fuse. fuse write disabled\n", __func__);
+		/* get fuse_regulator regulator */
+		fuse_regulator = regulator_get(NULL, TEGRA_FUSE_SUPPLY);
+		if (IS_ERR_OR_NULL(fuse_regulator))
+			pr_err("%s: no fuse_regulator. fuse write disabled\n",
+				__func__);
 	}
 
 	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
 	if (IS_ERR_OR_NULL(clk_fuse)) {
 		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
-		if (!IS_ERR_OR_NULL(vdd_fuse)) {
-			regulator_put(vdd_fuse);
-			vdd_fuse = NULL;
+		if (!IS_ERR_OR_NULL(fuse_regulator)) {
+			regulator_put(fuse_regulator);
+			fuse_regulator = NULL;
 		}
 		return -ENODEV;
 	}
@@ -942,7 +950,7 @@ static int __init tegra_fuse_program_init(void)
 	fuse_kobj = kobject_create_and_add("fuse", firmware_kobj);
 	if (!fuse_kobj) {
 		pr_err("%s: fuse_kobj create fail\n", __func__);
-		regulator_put(vdd_fuse);
+		regulator_put(fuse_regulator);
 		clk_put(clk_fuse);
 		return -ENODEV;
 	}
@@ -981,8 +989,8 @@ static void __exit tegra_fuse_program_exit(void)
 
 	fuse_power_disable();
 
-	if (!IS_ERR_OR_NULL(vdd_fuse))
-		regulator_put(vdd_fuse);
+	if (!IS_ERR_OR_NULL(fuse_regulator))
+		regulator_put(fuse_regulator);
 
 	if (!IS_ERR_OR_NULL(clk_fuse))
 		clk_put(clk_fuse);
