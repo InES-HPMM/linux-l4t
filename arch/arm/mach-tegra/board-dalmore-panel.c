@@ -40,7 +40,7 @@
 #include "tegra11_host1x_devices.h"
 #endif
 
-#define TEGRA_PANEL_ENABLE	0
+#define TEGRA_PANEL_ENABLE	1
 
 #if TEGRA_PANEL_ENABLE
 
@@ -48,7 +48,7 @@
 #define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
-#define PANEL_10_1_PANASONIC_1920_1200	1
+#define PANEL_10_1_PANASONIC_1920_1200	0
 #define PANEL_11_6_AUO_1920_1080	0
 #define PANEL_10_1_SHARP_2560_1600	0
 
