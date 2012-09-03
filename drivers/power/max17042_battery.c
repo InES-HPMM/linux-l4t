@@ -845,6 +845,11 @@ static const struct i2c_device_id max17042_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, max17042_id);
 
+static const struct dev_pm_ops max17042_pm_ops = {
+	.suspend		= max17042_suspend,
+	.resume			= max17042_resume,
+};
+
 static struct i2c_driver max17042_i2c_driver = {
 	.driver	= {
 		.name	= "max17042",
