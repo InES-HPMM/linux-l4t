@@ -286,6 +286,7 @@ struct mxt_data {
 	u8 is_stopped;
 	u8 max_reportid;
 	u32 config_crc;
+	u32 info_block_crc;
 	u8 num_touchids;
 	u8 *msg_buf;
 	u8 last_message_count;
@@ -1271,6 +1272,23 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	return 0;
 }
 
+static int mxt_read_info_block_crc(struct mxt_data *data)
+{
+	int ret;
+	u16 offset;
+	u8 buf[3];
+
+	offset = MXT_OBJECT_START + MXT_OBJECT_SIZE * data->info.object_num;
+
+	ret = mxt_read_reg(data->client, offset, sizeof(buf), buf);
+	if (ret)
+		return ret;
+
+	data->info_block_crc = (buf[2] << 16) | (buf[1] << 8) | buf[0];
+
+	return 0;
+}
+
 static int mxt_get_object_table(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -1478,6 +1496,12 @@ static int mxt_initialize(struct mxt_data *data)
 	if (error) {
 		dev_err(&client->dev, "Error %d reading object table\n", error);
 		return error;
+	}
+
+	/* Read information block CRC */
+	error = mxt_read_info_block_crc(data);
+	if (error) {
+		dev_err(&client->dev, "Error %d reading info block CRC\n", error);
 	}
 
 	error = mxt_probe_power_cfg(data);
