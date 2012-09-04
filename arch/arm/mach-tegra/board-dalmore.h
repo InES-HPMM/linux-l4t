@@ -67,5 +67,6 @@ int dalmore_pinmux_init(void);
 int dalmore_sensors_init(void);
 int dalmore_emc_init(void);
 int dalmore_panel_init(void);
+int dalmore_kbc_init(void);
 
 #endif
