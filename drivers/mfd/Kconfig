@@ -589,6 +589,13 @@ config AB3100_OTP
 	  programmable memory) support. This exposes a sysfs file to read
 	  out OTP values.
 
+config MFD_MAX8831
+	bool "Support Maxim LED MAX8831 with I2C"
+	depends on I2C=y
+	select REGMAP_I2C
+	help
+	  Say yes here to support for Maxim LED MAX8831 with I2C.
+
 config AB8500_CORE
 	bool "ST-Ericsson AB8500 Mixed Signal Power Management chip"
 	depends on GENERIC_HARDIRQS && ABX500_CORE && MFD_DB8500_PRCMU
