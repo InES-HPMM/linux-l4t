@@ -106,6 +106,14 @@
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 	}
 
+/* We are disabling this code for now. */
+#define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
+	{					\
+		.gpio_nr	= _gpio,	\
+		.is_input	= _is_input,	\
+		.value		= _value,	\
+	}
+
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 
 static __initdata struct tegra_drive_pingroup_config pluto_drive_pinmux[] = {
@@ -120,137 +128,7 @@ static __initdata struct tegra_drive_pingroup_config pluto_drive_pinmux[] = {
 	SET_DRIVE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST),
 };
 
-static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
-	DEFAULT_PINMUX(ULPI_CLK,        UARTD,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(ULPI_DIR,        UARTD,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(ULPI_NXT,        UARTD,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(ULPI_STP,        UARTD,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP3_FS,         I2S2,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP3_DIN,        I2S2,            PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(DAP3_DOUT,       I2S2,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP3_SCLK,       I2S2,            PULL_DOWN,    NORMAL,     OUTPUT),
-	/* SDMMC1 pinmux */
-	DEFAULT_PINMUX(SDMMC1_CLK,      SDMMC1,          NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC1_CMD,      SDMMC1,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC1_DAT3,     SDMMC1,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC1_DAT2,     SDMMC1,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC1_DAT1,     SDMMC1,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC1_DAT0,     SDMMC1,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(CLK2_OUT,        EXTPERIPH2,      PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(DDC_SCL,         I2C4,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(DDC_SDA,         I2C4,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(UART2_RXD,       IRDA,            PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(UART2_TXD,       IRDA,            PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(UART2_RTS_N,     USB,             PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(UART2_CTS_N,     USB,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(UART3_TXD,       UARTC,           PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(UART3_RXD,       UARTC,           PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(UART3_CTS_N,     UARTC,           PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(UART3_RTS_N,     UARTC,           PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GEN1_I2C_SDA,    I2C1,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GEN1_I2C_SCL,    I2C1,            NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP4_FS,         I2S3,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP4_DIN,        I2S3,            PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(DAP4_DOUT,       I2S3,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP4_SCLK,       I2S3,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CLK3_OUT,        EXTPERIPH3,      NORMAL,       NORMAL,     OUTPUT),
-
-	DEFAULT_PINMUX(GPIO_PU0,        UARTA,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU1,        UARTA,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GPIO_PU2,        UARTA,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GPIO_PU3,        UARTA,           NORMAL,       NORMAL,     OUTPUT),
-
-	DEFAULT_PINMUX(GMI_WAIT,        DTV,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_CS1_N,       SOC,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_CS6_N,       SPI4,            PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_AD5,         SPI4,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_AD6,         SPI4,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_AD7,         SPI4,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_AD8,         DTV,             PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_AD9,         PWM1,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_AD11,        PWM3,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_A16,         UARTD,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_A17,         UARTD,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_A18,         UARTD,           NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(GMI_A19,         UARTD,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_WR_N,        SPI4,            PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_OE_N,        SOC,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(GEN2_I2C_SCL,    I2C2,            NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GEN2_I2C_SDA,    I2C2,            NORMAL,       NORMAL,     INPUT),
-	/* SDMMC4 pinmux */
-	DEFAULT_PINMUX(SDMMC4_CLK,      SDMMC4,          NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_CMD,      SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT0,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT1,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT2,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT3,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT4,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT5,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT6,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC4_DAT7,     SDMMC4,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(CAM_MCLK,        VI,              NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CAM_I2C_SCL,     I2C3,            NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CAM_I2C_SDA,     I2C3,            NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(PWR_I2C_SCL,     I2CPWR,          NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(PWR_I2C_SDA,     I2CPWR,          NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_ROW0,         KBC,             PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_ROW1,         KBC,             PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_ROW2,         KBC,             PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_ROW9,         UARTA,           PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(KB_ROW10,        KBC,             PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_COL0,         KBC,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_COL1,         KBC,             PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(KB_COL2,         KBC,             PULL_UP,      NORMAL,     INPUT),
-	/* SDMMC3 WP */
-	DEFAULT_PINMUX(KB_COL4,         SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(CLK_32K_OUT,     SOC,             PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(SYS_CLK_REQ,     SYSCLK,          NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP1_FS,         I2S0,            NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP1_DIN,        I2S0,            PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(DAP1_DOUT,       I2S0,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP1_SCLK,       I2S0,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CLK1_OUT,        EXTPERIPH1,      PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP2_FS,         I2S1,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP2_DIN,        I2S1,            PULL_DOWN,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(DAP2_DOUT,       I2S1,            PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DAP2_SCLK,       I2S1,            PULL_DOWN,    NORMAL,     OUTPUT),
-	/* SDMMC3 pinmux */
-	DEFAULT_PINMUX(SDMMC3_CLK,      SDMMC3,          NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_CMD,      SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_DAT0,     SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_DAT1,     SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_DAT2,     SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(SDMMC3_DAT3,     SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(HDMI_CEC,        CEC,             NORMAL,       NORMAL,     INPUT),
-	/* SDMMC3 CD */
-	DEFAULT_PINMUX(SDMMC3_CD_N,     SDMMC3,          PULL_UP,      NORMAL,     INPUT),
-	DEFAULT_PINMUX(OWR,             OWR,             NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(DVFS_PWM,        CLDVFS,          PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(DVFS_CLK,        CLDVFS,          PULL_UP,      NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PBB0,       VI_ALT1,         NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(SDMMC3_CLK_LB_OUT, SDMMC3,         NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(SDMMC3_CLK_LB_IN, SDMMC3,          PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CPU_PWR_REQ,     CPU,             NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CORE_PWR_REQ,    PWRON,           NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(PWR_INT_N,       PMI,             NORMAL,       NORMAL,     INPUT),
-	DEFAULT_PINMUX(RESET_OUT_N,     RESET_OUT_N,     NORMAL,       NORMAL,     OUTPUT),
-	/* BT RST, EN, WAKEUP and IRQ pinmux */
-	DEFAULT_PINMUX(KB_COL6,         KBC,             PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(KB_COL7,         KBC,             PULL_DOWN,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(CLK3_REQ,        DEV3,            NORMAL,       NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU6,        RSVD1,           NORMAL,       NORMAL,     INPUT),
-};
-
-#define GPIO_INIT_PIN_MODE(_name, _gpio, _is_input, _val)	\
-	{					\
-		.gpio_nr	= TEGRA_GPIO_##_gpio,	\
-		.is_input	= _is_input,		\
-		.value		= _val,		\
-	}
-
-static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
-	/* FIX ME */
-};
+#include "board-pluto-pinmux-t11x.h"
 
 #else
 
@@ -610,14 +488,6 @@ static void __init pluto_pinmux_audio_init(void)
 	gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
 
 }
-
-/* We are disabling this code for now. */
-#define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
-	{					\
-		.gpio_nr	= _gpio,	\
-		.is_input	= _is_input,	\
-		.value		= _value,	\
-	}
 
 static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PDD7, false, 0),
