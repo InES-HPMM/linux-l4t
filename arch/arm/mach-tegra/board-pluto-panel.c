@@ -335,7 +335,8 @@ static struct tegra_dc_out pluto_disp1_out = {
 	.postsuspend	= pluto_dsi_panel_postsuspend,
 
 #if PANEL_5_LG_720_1280
-	/* TODO: active area width and height in mm */
+	.width		= 62,
+	.height		= 110,
 #endif
 };
 
