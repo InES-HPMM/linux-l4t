@@ -141,7 +141,7 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	/* no init command required */
 #endif
 #if PANEL_11_6_AUO_1920_1080
-	/* TODO */
+	/* no init command required */
 #endif
 #if PANEL_10_1_SHARP_2560_1600
 	/* TODO */
@@ -239,7 +239,19 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 	},
 #endif
 #if PANEL_11_6_AUO_1920_1080
-	/* TODO */
+	{
+		.pclk = 10000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 28,
+		.v_sync_width = 5,
+		.h_back_porch = 148,
+		.v_back_porch = 23,
+		.h_active = 1920,
+		.v_active = 1080,
+		.h_front_porch = 66,
+		.v_front_porch = 4,
+	},
 #endif
 #if PANEL_10_1_SHARP_2560_1600
 	{
