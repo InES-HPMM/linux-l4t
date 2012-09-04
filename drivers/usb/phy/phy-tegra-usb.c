@@ -84,8 +84,6 @@ static void print_usb_plat_data_info(struct tegra_usb_phy *phy)
 				? "enabled" : "disabled");
 	} else {
 		pr_info("vbus_gpio: %d\n", pdata->u_data.host.vbus_gpio);
-		pr_info("vbus_reg: %s\n", pdata->u_data.host.vbus_reg ?
-				pdata->u_data.host.vbus_reg : "NULL");
 		pr_info("hot_plug: %s\n", pdata->u_data.host.hot_plug ?
 				"enabled" : "disabled");
 		pr_info("remote_wakeup: %s\n", pdata->u_data.host.remote_wakeup_supported
@@ -695,15 +693,14 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 			clk_enable(phy->ctrlr_clk);
 		}
 	} else {
-		if (phy->pdata->u_data.host.vbus_reg) {
-			phy->vbus_reg = regulator_get(NULL,
-					phy->pdata->u_data.host.vbus_reg);
+		if ((phy->pdata->has_hostpc) &&
+			(phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI)) {
+			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
 			if (WARN_ON(IS_ERR_OR_NULL(phy->vbus_reg))) {
-				ERR("failed to get regulator vdd_vbus_usb: %ld,\
-				 instance : %d\n", PTR_ERR(phy->vbus_reg),
-								phy->inst);
-				err = PTR_ERR(phy->vbus_reg);
-				goto fail_init;
+				ERR("failed to get regulator vdd_vbus_usb:" \
+				"%ld,instance : %d\n", PTR_ERR(phy->vbus_reg),
+				phy->inst);
+				phy->vbus_reg = NULL;
 			}
 		} else {
 			int gpio = phy->pdata->u_data.host.vbus_gpio;

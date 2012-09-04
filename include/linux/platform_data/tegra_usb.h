@@ -98,7 +98,6 @@ struct tegra_usb_dev_mode_data {
  */
 struct tegra_usb_host_mode_data {
 	int vbus_gpio;
-	const char *vbus_reg;
 	bool hot_plug;
 	bool remote_wakeup_supported;
 	bool power_off_on_suspend;
