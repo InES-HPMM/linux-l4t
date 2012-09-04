@@ -6102,9 +6102,17 @@ static struct clk_mux_sel mux_xusb_ss[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_xusb_dev[] = {
+	{ .input = &tegra_xusb_source_clks[4], .value = 4},
+	{ .input = &tegra_xusb_source_clks[2], .value = 2},
+	{ .input = &tegra_xusb_source_clks[3], .value = 3},
+	{ 0, 0},
+};
+
 static struct clk tegra_xusb_coupled_clks[] = {
 	PERIPH_CLK_EX("xusb_host", XUSB_ID, "host", 89,	0, 350000000, mux_xusb_host, 0,	&tegra_clk_coupled_gate_ops),
 	PERIPH_CLK_EX("xusb_ss",   XUSB_ID, "ss",  156,	0, 350000000, mux_xusb_ss,   0,	&tegra_clk_coupled_gate_ops),
+	PERIPH_CLK_EX("xusb_dev",  XUSB_ID, "dev",  95, 0, 120000000, mux_xusb_dev,  0,	&tegra_clk_coupled_gate_ops),
 };
 
 
