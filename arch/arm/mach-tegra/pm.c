@@ -315,13 +315,23 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
 static void restore_cpu_complex(u32 mode)
 {
 	int cpu = smp_processor_id();
-	unsigned int reg, policy;
+	unsigned int reg;
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	unsigned int policy;
+#endif
 
 	BUG_ON(cpu != 0);
 
 #ifdef CONFIG_SMP
 	cpu = cpu_logical_map(cpu);
 #endif
+
+/*
+ * On Tegra11x PLLX and CPU burst policy is either preserved across LP2,
+ * or restored by common clock suspend/resume procedures. Hence, we don't
+ * need it here.
+ */
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* Is CPU complex already running on PLLX? */
 	reg = readl(clk_rst + CLK_RESET_CCLK_BURST);
 	policy = (reg >> CLK_RESET_CCLK_BURST_POLICY_SHIFT) & 0xF;
@@ -365,7 +375,7 @@ static void restore_cpu_complex(u32 mode)
 		writel(tegra_sctx.cpu_burst, clk_rst +
 		       CLK_RESET_CCLK_BURST);
 	}
-
+#endif
 	writel(tegra_sctx.clk_csite_src, clk_rst + CLK_RESET_SOURCE_CSITE);
 
 	/* Do not power-gate CPU 0 when flow controlled */

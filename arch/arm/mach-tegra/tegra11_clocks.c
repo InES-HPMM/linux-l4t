@@ -847,6 +847,49 @@ static int tegra11_super_clk_set_rate(struct clk *c, unsigned long rate)
 	return clk_set_rate(c->parent, rate);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static void tegra11_super_clk_resume(struct clk *c, struct clk *backup,
+				     u32 setting)
+{
+	u32 val;
+	const struct clk_mux_sel *sel;
+	int shift;
+
+	/* For sclk and cclk_g super clock just restore saved value */
+	if (!(c->flags & DIV_2)) {
+		clk_writel_delay(setting, c->reg);
+		return;
+	}
+
+	/*
+	 * For cclk_lp supper clock: switch to backup (= not PLLX) source,
+	 * safely restore PLLX DIV2 bypass, and only then restore full
+	 * setting
+	 */
+	val = clk_readl(c->reg);
+	BUG_ON(((val & SUPER_STATE_MASK) != SUPER_STATE_RUN) &&
+		((val & SUPER_STATE_MASK) != SUPER_STATE_IDLE));
+	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
+		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
+	for (sel = c->inputs; sel->input != NULL; sel++) {
+		if (sel->input == backup) {
+			val &= ~(SUPER_SOURCE_MASK << shift);
+			val |= (sel->value & SUPER_SOURCE_MASK) << shift;
+
+			BUG_ON(backup->flags & PLLX);
+			clk_writel_delay(val, c->reg);
+
+			val &= ~SUPER_LP_DIV2_BYPASS;
+			val |= (setting & SUPER_LP_DIV2_BYPASS);
+			clk_writel_delay(val, c->reg);
+			clk_writel_delay(setting, c->reg);
+			return;
+		}
+	}
+	BUG();
+}
+#endif
+
 static struct clk_ops tegra_super_ops = {
 	.init			= tegra11_super_clk_init,
 	.enable			= tegra11_super_clk_enable,
@@ -6767,8 +6810,7 @@ void tegra_clk_resume(void)
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL1);
 	clk_writel(*ctx++, CPU_SOFTRST_CTRL2);
 
-
-	/* FIXME: PLLX and DFLL? */
+	/* FIXME: DFLL? */
 	/* Since we are going to reset devices and switch clock sources in this
 	 * function, plls and secondary dividers is required to be enabled. The
 	 * actual value will be restored back later. Note that boot plls: pllm,
@@ -6784,6 +6826,7 @@ void tegra_clk_resume(void)
 	tegra11_pllcx_clk_resume_enable(&tegra_pll_c2);
 	tegra11_pllcx_clk_resume_enable(&tegra_pll_c3);
 	tegra11_pllxc_clk_resume_enable(&tegra_pll_c);
+	tegra11_pllxc_clk_resume_enable(&tegra_pll_x);
 
 	plla_base = *ctx++;
 	clk_writel(*ctx++, tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
@@ -6809,7 +6852,10 @@ void tegra_clk_resume(void)
 
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
 	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
-	clk_writel(*ctx++, tegra_clk_cclk_lp.reg);
+
+	val = *ctx++;
+	tegra11_super_clk_resume(&tegra_clk_cclk_lp,
+		tegra_clk_virtual_cpu_lp.u.cpu.backup, val);
 	clk_writel(*ctx++, tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
 	clk_writel(*ctx++, tegra_clk_sclk.reg);
@@ -6878,6 +6924,9 @@ void tegra_clk_resume(void)
 	if (p->state == OFF)
 		tegra11_pllcx_clk_disable(p);
 	p = &tegra_pll_c;
+	if (p->state == OFF)
+		tegra11_pllxc_clk_disable(p);
+	p = &tegra_pll_x;
 	if (p->state == OFF)
 		tegra11_pllxc_clk_disable(p);
 
