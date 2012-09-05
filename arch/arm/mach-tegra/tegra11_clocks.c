@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/clkdev.h>
 
@@ -6507,53 +6508,6 @@ void __init tegra11x_clk_init_la(void)
 	}
 }
 
-void __init tegra11x_init_clocks(void)
-{
-	int i;
-	struct clk *c;
-
-	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
-		tegra11_init_one_clock(tegra_ptr_clks[i]);
-
-	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
-		tegra11_init_one_clock(&tegra_list_clks[i]);
-
-	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
-		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
-		if (!c) {
-			pr_err("%s: Unknown duplicate clock %s\n", __func__,
-				tegra_clk_duplicates[i].name);
-			continue;
-		}
-
-		tegra_clk_duplicates[i].lookup.clk = c;
-		clkdev_add(&tegra_clk_duplicates[i].lookup);
-	}
-
-	for (i = 0; i < ARRAY_SIZE(tegra_sync_source_list); i++)
-		tegra11_init_one_clock(&tegra_sync_source_list[i]);
-	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_list); i++)
-		tegra11_init_one_clock(&tegra_clk_audio_list[i]);
-	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_2x_list); i++)
-		tegra11_init_one_clock(&tegra_clk_audio_2x_list[i]);
-
-	init_clk_out_mux();
-	for (i = 0; i < ARRAY_SIZE(tegra_clk_out_list); i++)
-		tegra11_init_one_clock(&tegra_clk_out_list[i]);
-
-	for (i = 0; i < ARRAY_SIZE(tegra_xusb_source_clks); i++)
-		tegra11_init_one_clock(&tegra_xusb_source_clks[i]);
-
-	for (i = 0; i < ARRAY_SIZE(tegra_xusb_coupled_clks); i++)
-		tegra11_init_one_clock(&tegra_xusb_coupled_clks[i]);
-
-	/* Initialize to default */
-	tegra_init_cpu_edp_limits(0);
-
-	/* To be ready for DFLL late init */
-	tegra_dfll_cpu.ops->init = tegra11_dfll_cpu_late_init;
-}
-
 #ifdef CONFIG_CPU_FREQ
 
 /*
@@ -6721,7 +6675,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
 			   PERIPH_CLK_SOURCE_NUM + 25];
 
-void tegra_clk_suspend(void)
+static int tegra11_clk_suspend(void)
 {
 	unsigned long off;
 	u32 *ctx = clk_rst_suspend;
@@ -6788,9 +6742,11 @@ void tegra_clk_suspend(void)
 	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
 	*ctx++ = clk_readl(CLK_MASK_ARM);
+
+	return 0;
 }
 
-void tegra_clk_resume(void)
+static void tegra11_clk_resume(void)
 {
 	unsigned long off;
 	const u32 *ctx = clk_rst_suspend;
@@ -6964,4 +6920,60 @@ void tegra_clk_resume(void)
 	tegra11_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
 	tegra11_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
 }
+
+static struct syscore_ops tegra_clk_syscore_ops = {
+	.suspend = tegra11_clk_suspend,
+	.resume = tegra11_clk_resume,
+};
 #endif
+
+void __init tegra11x_init_clocks(void)
+{
+	int i;
+	struct clk *c;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
+		tegra11_init_one_clock(tegra_ptr_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
+		tegra11_init_one_clock(&tegra_list_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_duplicates); i++) {
+		c = tegra_get_clock_by_name(tegra_clk_duplicates[i].name);
+		if (!c) {
+			pr_err("%s: Unknown duplicate clock %s\n", __func__,
+				tegra_clk_duplicates[i].name);
+			continue;
+		}
+
+		tegra_clk_duplicates[i].lookup.clk = c;
+		clkdev_add(&tegra_clk_duplicates[i].lookup);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tegra_sync_source_list); i++)
+		tegra11_init_one_clock(&tegra_sync_source_list[i]);
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_list); i++)
+		tegra11_init_one_clock(&tegra_clk_audio_list[i]);
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_2x_list); i++)
+		tegra11_init_one_clock(&tegra_clk_audio_2x_list[i]);
+
+	init_clk_out_mux();
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_out_list); i++)
+		tegra11_init_one_clock(&tegra_clk_out_list[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_xusb_source_clks); i++)
+		tegra11_init_one_clock(&tegra_xusb_source_clks[i]);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_xusb_coupled_clks); i++)
+		tegra11_init_one_clock(&tegra_xusb_coupled_clks[i]);
+
+	/* Initialize to default */
+	tegra_init_cpu_edp_limits(0);
+
+	/* To be ready for DFLL late init */
+	tegra_dfll_cpu.ops->init = tegra11_dfll_cpu_late_init;
+
+#ifdef CONFIG_PM_SLEEP
+	register_syscore_ops(&tegra_clk_syscore_ops);
+#endif
+}
