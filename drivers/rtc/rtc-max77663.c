@@ -431,9 +431,9 @@ static int max77663_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		alrm->time.tm_wday);
 
 	if (rtc->irq_mask & RTC_IRQ_ALARM1_MASK)
-		alrm->enabled = 1;
-	else
 		alrm->enabled = 0;
+	else
+		alrm->enabled = 1;
 
 	return 0;
 }
