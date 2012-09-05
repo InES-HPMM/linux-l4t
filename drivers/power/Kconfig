@@ -36,6 +36,15 @@ config GENERIC_ADC_BATTERY
 	  Say Y here to enable support for the generic battery driver
 	  which uses IIO framework to read adc.
 
+config CHARGER_MAX77665
+	tristate "MAX77665 battery charger support"
+	depends on MFD_MAX77665 && EXTCON
+	help
+	 MAX77665 is a companion pmic for smartphones and tablets
+	 which supports battery charging feature.
+	 Say Y here to enable battery charging driver support for
+	 maxim MAX77665 chipset.
+
 config MAX8925_POWER
 	tristate "MAX8925 battery charger support"
 	depends on MFD_MAX8925

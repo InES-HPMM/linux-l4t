@@ -33,6 +33,7 @@ obj-$(CONFIG_CHARGER_TPS8003X)	+= tps80031-charger.o
 obj-$(CONFIG_BATTERY_GAUGE_TPS8003X) += tps80031_battery_gauge.o
 obj-$(CONFIG_CHARGER_SMB349)	+= smb349-charger.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
+obj-$(CONFIG_CHARGER_MAX77665)	+= max77665-charger.o
 obj-$(CONFIG_BATTERY_DA9030)	+= da9030_battery.o
 obj-$(CONFIG_BATTERY_DA9052)	+= da9052-battery.o
 obj-$(CONFIG_BATTERY_MAX17040)	+= max17040_battery.o
