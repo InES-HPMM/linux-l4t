@@ -1109,27 +1109,85 @@ int __init dalmore_edp_init(void)
 
 static struct soctherm_platform_data dalmore_soctherm_data = {
 	.therm_trip = 90,
-
 	.hw_backstop = 60,
 	.dividend = 1,
 	.divisor = 2,
 	.duration = 1,
 	.step = 1,
 
-	.sensor = {
-		.therm_a = 60,
-		.therm_b = 0,
-		.tall = 16300,
-		.tiddq = 1,
-		.ten_count = 1,
-		.tsample = 163
-	},
-
-	.passive = {
-		.trip_temp = 85000,
-		.tc1 = 0,
-		.tc2 = 1,
-		.passive_delay = 2000,
+	.sensor_data = {
+		[TSENSE_CPU0] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163,
+		},
+		[TSENSE_CPU1] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163,
+		},
+		[TSENSE_CPU2] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
+		[TSENSE_CPU3] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
+		[TSENSE_MEM0] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
+		[TSENSE_MEM1] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
+		[TSENSE_GPU] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
+		[TSENSE_PLLX] = {
+			.enable = true,
+			.therm_a = 570,
+			.therm_b = -744,
+			.tall = 16300,
+			.tiddq = 1,
+			.ten_count = 1,
+			.tsample = 163
+		},
 	},
 };
 

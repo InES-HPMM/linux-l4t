@@ -29,13 +29,34 @@ struct soctherm_cdev {
 	int passive_delay;
 };
 
+struct soctherm_skipper_data {
+	bool enable;
+	int dividend;
+	int divisor;
+	int duration;
+	int step;
+};
+
+enum soctherm_sense {
+	TSENSE_CPU0 = 0,
+	TSENSE_CPU1 = 1,
+	TSENSE_CPU2 = 2,
+	TSENSE_CPU3 = 3,
+	TSENSE_MEM0 = 4,
+	TSENSE_MEM1 = 5,
+	TSENSE_GPU  = 6,
+	TSENSE_PLLX = 7,
+	TSENSE_SIZE = 8,
+};
+
 struct soctherm_sensor {
+	bool enable;
 	int tall;
 	int tiddq;
 	int ten_count;
 	int tsample;
-	int therm_a;
-	int therm_b;
+	s16 therm_a;
+	s16 therm_b;
 };
 
 struct soctherm_platform_data {
@@ -47,8 +68,11 @@ struct soctherm_platform_data {
 	int duration;
 	int step;
 
-	struct soctherm_sensor sensor;
-	struct soctherm_cdev passive;
+	struct soctherm_sensor sensor_data[TSENSE_SIZE];
+	struct soctherm_cdev passive[TSENSE_SIZE];
+
+	int edp_weights[12];
+	int edp_threshold;
 };
 
 #ifdef CONFIG_TEGRA_SOCTHERM
