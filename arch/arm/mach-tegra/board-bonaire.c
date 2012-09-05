@@ -38,6 +38,9 @@
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
+
+#include <mach/io_dpd.h>
+
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
@@ -533,6 +536,7 @@ static void __init tegra_bonaire_init(void)
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	bonaire_power_off_init();
 #endif
+	tegra_io_dpd_init();
 
 	bonaire_sdhci_init();
 	bonaire_i2c_init();
