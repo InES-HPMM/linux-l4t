@@ -24,6 +24,13 @@ config LEDS_CLASS
 
 comment "LED drivers"
 
+config LEDS_MAX8831
+	tristate "LED Support for Maxim MAX8831"
+	depends on LEDS_CLASS
+	help
+	  This option enables the led support for Maxim LED
+	  controller MAX8831.
+
 config LEDS_88PM860X
 	tristate "LED Support for Marvell 88PM860x PMIC"
 	depends on LEDS_CLASS
