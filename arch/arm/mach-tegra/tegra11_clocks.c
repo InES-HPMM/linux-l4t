@@ -731,8 +731,20 @@ static void tegra11_super_clk_init(struct clk *c)
 	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	source = (val >> shift) & SUPER_SOURCE_MASK;
+
+	/*
+	 * Enforce PLLX DIV2 bypass setting as early as possible. It is always
+	 * safe to do for both cclk_lp and cclk_g when booting on G CPU. (In
+	 * case of booting on LP CPU, cclk_lp will be updated during the cpu
+	 * rate change after boot, and cclk_g after the cluster switch.)
+	 */
+	if ((c->flags & DIV_U71) && (!is_lp_cluster())) {
+		val |= SUPER_LP_DIV2_BYPASS;
+		clk_writel_delay(val, c->reg);
+	}
 	if (c->flags & DIV_2)
 		source |= val & SUPER_LP_DIV2_BYPASS;
+
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->value == source)
 			break;
