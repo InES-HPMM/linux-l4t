@@ -317,6 +317,7 @@ static void tegra_l2x0_disable(void)
 }
 #endif	/* CONFIG_TRUSTED_FOUNDATIONS  */
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
@@ -393,6 +394,11 @@ void tegra_init_cache(bool init)
 	l2x0_enable();
 #endif
 }
+#else
+void tegra_init_cache(bool init)
+{
+}
+#endif
 #endif
 
 static void __init tegra_init_power(void)

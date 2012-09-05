@@ -143,9 +143,11 @@ static struct tegra_i2c_platform_data dalmore_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
+#endif
 
 static void dalmore_i2c_init(void)
 {
@@ -548,7 +550,11 @@ MACHINE_START(DALMORE, "dalmore")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_dalmore_reserve,
-	.init_early	= tegra30_init_early,
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.init_early     = tegra30_init_early,
+#else
+	.init_early	= tegra11x_init_early,
+#endif
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
