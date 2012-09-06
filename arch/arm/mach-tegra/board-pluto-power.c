@@ -35,26 +35,16 @@
 #include "board.h"
 #include "board-pluto.h"
 
+#define PMC_CTRL		0x0
+#define PMC_CTRL_INTR_LOW	(1 << 17)
 
 /************************ Pluto based regulator ****************/
-static struct regulator_consumer_supply palmas_smps12_supply[] = {
-	REGULATOR_SUPPLY("unused_smps12", NULL),
-};
-
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
 };
 
-static struct regulator_consumer_supply palmas_smps3_supply[] = {
-	REGULATOR_SUPPLY("unused_smps3", NULL),
-};
-
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
-};
-
-static struct regulator_consumer_supply palmas_smps457_supply[] = {
-	REGULATOR_SUPPLY("unused_smps457", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps6_supply[] = {
@@ -62,44 +52,66 @@ static struct regulator_consumer_supply palmas_smps6_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_smps7_supply[] = {
-	REGULATOR_SUPPLY("vdd_ddr", NULL),
+	REGULATOR_SUPPLY("vddio_ddr", NULL),
+	REGULATOR_SUPPLY("vddio_lpddr3", NULL),
+	REGULATOR_SUPPLY("vcore2_lpddr3", NULL),
+	REGULATOR_SUPPLY("vcore_audio_1v2", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps8_supply[] = {
-
-	REGULATOR_SUPPLY("avdd_usb_pll", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_bb", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("vdd_emmc", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("vddio_audio", NULL),
 	REGULATOR_SUPPLY("vddio_uart", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
-	REGULATOR_SUPPLY("vddio_cam", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_gps", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_nfc", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_snsr", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_dtv", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_bb", NULL),
+	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
+	REGULATOR_SUPPLY("vdd_gps", NULL),
+	REGULATOR_SUPPLY("vdd_nfc", NULL),
+	REGULATOR_SUPPLY("vdd_sensor", NULL),
+	REGULATOR_SUPPLY("vdd_dtv", NULL),
+	REGULATOR_SUPPLY("vdd_bb", NULL),
+	REGULATOR_SUPPLY("vcore1_lpddr", NULL),
 	REGULATOR_SUPPLY("vcore_lpddr", NULL),
 	REGULATOR_SUPPLY("vddio_lpddr", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_rf", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_mdm2", NULL),
-	REGULATOR_SUPPLY("vdd_1v8_dbg", NULL),
+	REGULATOR_SUPPLY("vdd_rf", NULL),
+	REGULATOR_SUPPLY("vdd_modem2", NULL),
+	REGULATOR_SUPPLY("vdd_dbg", NULL),
+	REGULATOR_SUPPLY("vdd_sim_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_sim1a_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_sim1b_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd_audio", NULL),
+	REGULATOR_SUPPLY("avdd_audio", NULL),
+	REGULATOR_SUPPLY("vdd_mic", NULL),
+	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
+	REGULATOR_SUPPLY("avdd_pll_bb", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
-	REGULATOR_SUPPLY("vdd_emmc_core", NULL),
+	REGULATOR_SUPPLY("vcore_emmc", NULL),
+	REGULATOR_SUPPLY("vdd_sim_mmc", NULL),
+	REGULATOR_SUPPLY("vdd_sim1a_mmc", NULL),
+	REGULATOR_SUPPLY("vdd_sim1b_mmc", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps10_supply[] = {
 	REGULATOR_SUPPLY("unused_smps10", NULL),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
+	REGULATOR_SUPPLY("vdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo1_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi_pll", NULL),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", NULL),
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegra_camera"),
 	REGULATOR_SUPPLY("avdd_pllm", NULL),
 	REGULATOR_SUPPLY("avdd_pllu", NULL),
 	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
@@ -113,8 +125,13 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
-	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
-	REGULATOR_SUPPLY("vddio_hsic", NULL),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("vddio_hsic_bb", NULL),
+	REGULATOR_SUPPLY("vddio_hsic_modem2", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
@@ -126,13 +143,14 @@ static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
-	REGULATOR_SUPPLY("vdd_3v0_temp", NULL),
-	REGULATOR_SUPPLY("vdd_3v0_mb", NULL),
-	REGULATOR_SUPPLY("avdd_ts", NULL),
-	REGULATOR_SUPPLY("vdd_3v0_nfc", NULL),
-	REGULATOR_SUPPLY("vdd_3v0_irled", NULL),
-	REGULATOR_SUPPLY("vdd_3v0_snsr", NULL),
+	REGULATOR_SUPPLY("vdd_temp", NULL),
+	REGULATOR_SUPPLY("vdd_mb", NULL),
+	REGULATOR_SUPPLY("avdd_ts_3v0", NULL),
+	REGULATOR_SUPPLY("vdd_nfc_3v0", NULL),
+	REGULATOR_SUPPLY("vdd_irled", NULL),
+	REGULATOR_SUPPLY("vdd_sensor_3v0", NULL),
 	REGULATOR_SUPPLY("vdd_3v0_pm", NULL),
+	REGULATOR_SUPPLY("vaux_3v3", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
@@ -149,76 +167,65 @@ static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb", NULL),
-	REGULATOR_SUPPLY("hvdd_usb3", NULL),
-	REGULATOR_SUPPLY("avdd_hdmi", NULL),
-	REGULATOR_SUPPLY("vddio_hv", NULL),
-	REGULATOR_SUPPLY("vdd_3v3_dtv", NULL),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("vdd_dtv_3v3", NULL),
 
 };
 
-#define PALMAS_PDATA_INIT(_name, _minmv, _maxmv, _supply_reg, _always_on,	\
-	_boot_on, _apply_uv)			\
+#define PALMAS_PDATA_INIT(_name, _minmv, _maxmv, _supply_reg, _always_on, \
+	_boot_on, _apply_uv)						\
 	static struct regulator_init_data reg_idata_##_name = {		\
-		.constraints = {							\
-			.name = palmas_rails(_name),					\
-			.min_uV = (_minmv)*1000,					\
-			.max_uV = (_maxmv)*1000,					\
-			.valid_modes_mask = (REGULATOR_MODE_NORMAL |			\
-					REGULATOR_MODE_STANDBY),			\
-			.valid_ops_mask = (REGULATOR_CHANGE_MODE |			\
-					REGULATOR_CHANGE_STATUS |			\
-					REGULATOR_CHANGE_VOLTAGE),			\
-			.always_on = _always_on,					\
-			.boot_on = _boot_on,						\
-			.apply_uV = _apply_uv,						\
-		},									\
-		.num_consumer_supplies =						\
-			ARRAY_SIZE(palmas_##_name##_supply),			\
-		.consumer_supplies = palmas_##_name##_supply,			\
-		.supply_regulator = _supply_reg,	\
+		.constraints = {					\
+			.name = palmas_rails(_name),			\
+			.min_uV = (_minmv)*1000,			\
+			.max_uV = (_maxmv)*1000,			\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+			.always_on = _always_on,			\
+			.boot_on = _boot_on,				\
+			.apply_uV = _apply_uv,				\
+		},							\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(palmas_##_name##_supply),		\
+		.consumer_supplies = palmas_##_name##_supply,		\
+		.supply_regulator = _supply_reg,			\
 	}
 
-PALMAS_PDATA_INIT(smps12, 500,  1650, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps123, 500,  1650, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps3, 500,  1650, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps45, 500,  1650, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps457, 500,  1650, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(smps123, 900,  1300, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps6, 1000,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps7, 1000,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps8, 1000,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps9, 1000,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps10, 3600,  5050, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo1, 900,  3300, palmas_rails(smps7), 0, 0, 0);
-PALMAS_PDATA_INIT(ldo2, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo3, 900,  3300, palmas_rails(smps8), 0, 0, 0);
+PALMAS_PDATA_INIT(smps7, 1200,  1200, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(smps8, 1800,  1800, NULL, 0, 1, 1);
+PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(ldo1, 1050,  1050, palmas_rails(smps7), 0, 0, 1);
+PALMAS_PDATA_INIT(ldo2, 2800,  2800, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps8), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo4, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo5, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo6, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo7, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo8, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo9, 900,  3300, palmas_rails(smps9), 0, 0, 0);
-PALMAS_PDATA_INIT(ldoln, 900,  3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldousb, 900,  3300, NULL, 0, 0, 0);
-
-static struct palmas_platform_data palmas_pdata;
-
-static struct palmas_pmic_platform_data pmic_platform;
-static struct i2c_board_info pluto_regulators[] = {
-	{
-		I2C_BOARD_INFO("tps65913", 0x58),
-		.irq		= INT_EXTERNAL_PMU,
-		.platform_data	= &palmas_pdata,
-	},
-};
+PALMAS_PDATA_INIT(ldo5, 2700,  2700, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldo6, 3000,  3000, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldo7, 2800,  2800, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldo8, 1150,  1150, NULL, 1, 1, 1);
+PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
+PALMAS_PDATA_INIT(ldoln, 2700, 2700, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldousb, 3300,  3300, NULL, 0, 0, 1);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
+
 static struct regulator_init_data *pluto_reg_data[] = {
-	PALMAS_REG_PDATA(smps12),
+	NULL,
 	PALMAS_REG_PDATA(smps123),
-	PALMAS_REG_PDATA(smps3),
+	NULL,
 	PALMAS_REG_PDATA(smps45),
-	PALMAS_REG_PDATA(smps457),
+	NULL,
 	PALMAS_REG_PDATA(smps6),
 	PALMAS_REG_PDATA(smps7),
 	PALMAS_REG_PDATA(smps8),
@@ -237,7 +244,8 @@ static struct regulator_init_data *pluto_reg_data[] = {
 	PALMAS_REG_PDATA(ldousb),
 };
 
-#define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep, _tstep, _vsel)		\
+#define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep,	\
+		_tstep, _vsel)						\
 	static struct palmas_reg_init reg_init_data_##_name = {		\
 		.warm_reset = _warm_reset,				\
 		.roof_floor =	_roof_floor,				\
@@ -318,36 +326,11 @@ static struct platform_device pluto_pda_power_device = {
 	},
 };
 
-static struct tegra_suspend_platform_data pluto_suspend_data = {
-	.cpu_timer	= 2000,
-	.cpu_off_timer	= 0,
-	.suspend_mode	= TEGRA_SUSPEND_NONE,
-	.core_timer	= 0x7e7e,
-	.core_off_timer = 0,
-	.corereq_high	= false,
-	.sysclkreq_high	= true,
+/* Always ON /Battery regulator */
+static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
+		REGULATOR_SUPPLY("vdd_sys_cam", NULL),
 };
 
-int __init pluto_regulator_init(void)
-{
-	pmic_platform.reg_data = pluto_reg_data;
-	pmic_platform.reg_init = pluto_reg_init;
-	palmas_pdata.pmic_pdata = &pmic_platform;
-	palmas_pdata.gpio_base = PALMAS_TEGRA_GPIO_BASE;
-	palmas_pdata.irq_base = PALMAS_TEGRA_IRQ_BASE;
-	platform_device_register(&pluto_pda_power_device);
-	i2c_register_board_info(4, pluto_regulators,
-			ARRAY_SIZE(pluto_regulators));
-	return 0;
-}
-
-int __init pluto_suspend_init(void)
-{
-	tegra_init_suspend(&pluto_suspend_data);
-	return 0;
-}
-
-/* Fixed regulators */
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vddio_cam_mb", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam12", NULL),
@@ -357,32 +340,32 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_1v2_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_ldousb3_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb3_pll", NULL),
-	REGULATOR_SUPPLY("avddio_usb3", NULL),
+static struct regulator_consumer_supply fixed_reg_en_avdd_usb3_1v05_supply[] = {
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_mmc_sdmmc3_supply[] = {
-	REGULATOR_SUPPLY("vdd_sdmmc3", NULL),
+	REGULATOR_SUPPLY("vdd_sd_slot", "sdhci-tegra.2"),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_lcd_supply[] = {
-	REGULATOR_SUPPLY("vdd_1v8_lcd_s", NULL),
+static struct regulator_consumer_supply fixed_reg_en_vdd_lcd_1v8_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_1v8_s", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_mmc_lcd_supply[] = {
-	REGULATOR_SUPPLY("vdd_mmc_lcd_s_f", NULL),
+static struct regulator_consumer_supply fixed_reg_en_vdd_lcd_mmc_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_mmc_s_f", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_mic_supply[] = {
 	REGULATOR_SUPPLY("unused_fixed_reg_en_vdd_1v8_mic", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_5v0_hdmi_supply[] = {
-	REGULATOR_SUPPLY("vddio_hdmi", NULL),
+static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
+	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_fuse_supply[] = {
+static struct regulator_consumer_supply fixed_reg_en_vpp_fuse_supply[] = {
 	REGULATOR_SUPPLY("vpp_fuse", NULL),
 	REGULATOR_SUPPLY("v_efuse", NULL),
 };
@@ -390,12 +373,12 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_fuse_supply[] = {
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
-	_gpio_nr, _active_high, _boot_state, _millivolts)	\
+	_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts)	\
 	static struct regulator_init_data ri_data_##_var =		\
 	{								\
 		.supply_regulator = _in_supply,				\
 		.num_consumer_supplies =				\
-			ARRAY_SIZE(fixed_reg_en_##_name##_supply),		\
+			ARRAY_SIZE(fixed_reg_en_##_name##_supply),	\
 		.consumer_supplies = fixed_reg_en_##_name##_supply,	\
 		.constraints = {					\
 			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
@@ -407,11 +390,12 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_fuse_supply[] = {
 			.boot_on = _boot_on,				\
 		},							\
 	};								\
-	static struct fixed_voltage_config fixed_reg_en_##_var##_pdata =	\
+	static struct fixed_voltage_config fixed_reg_en_##_var##_pdata = \
 	{								\
 		.supply_name = FIXED_SUPPLY(_name),			\
 		.microvolts = _millivolts * 1000,			\
 		.gpio = _gpio_nr,					\
+		.gpio_is_open_drain = _open_drain,			\
 		.enable_high = _active_high,				\
 		.enabled_at_boot = _boot_state,				\
 		.init_data = &ri_data_##_var,				\
@@ -424,40 +408,50 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_fuse_supply[] = {
 		},							\
 	}
 
+FIXED_REG(0,	battery,	battery,
+	NULL,	0,	0,
+	-1,	false, true,	0,	3300);
+
 FIXED_REG(1,	vdd_1v8_cam,	vdd_1v8_cam,
 	palmas_rails(smps8),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	true,	0,	1800);
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	false, true,	0,	1800);
+
 FIXED_REG(2,	vdd_1v2_cam,	vdd_1v2_cam,
 	palmas_rails(smps7),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,	true,	0,	1200);
-FIXED_REG(3,	vdd_1v8_ldousb3,	vdd_1v8_ldousb3,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,	false, true,	0,	1200);
+
+FIXED_REG(3,	avdd_usb3_1v05,	avdd_usb3_1v05,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PK5,	true,	0,	1050);
+	TEGRA_GPIO_PK5,	false,	true,	0,	1050);
+
 FIXED_REG(4,	vdd_mmc_sdmmc3,	vdd_mmc_sdmmc3,
 	palmas_rails(smps9),	0,	0,
-	TEGRA_GPIO_PK1,	true,	0,	3300);
-FIXED_REG(5,	vdd_1v8_lcd,	vdd_1v8_lcd,
+	TEGRA_GPIO_PK1,	false,	true,	0,	3300);
+
+FIXED_REG(5,	vdd_lcd_1v8,	vdd_lcd_1v8,
 	palmas_rails(smps8),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	true,	0,	1800);
-FIXED_REG(6,	vdd_mmc_lcd,	vdd_mmc_lcd,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	0,	1800);
+
+FIXED_REG(6,	vdd_lcd_mmc,	vdd_lcd_mmc,
 	palmas_rails(smps9),	0,	0,
-	TEGRA_GPIO_PI4,	true,	0,	1800);
+	TEGRA_GPIO_PI4,	false,	true,	0,	1800);
+
 FIXED_REG(7,	vdd_1v8_mic,	vdd_1v8_mic,
 	palmas_rails(smps8),	0,	0,
-	-1,	true,	0,	1800);
-FIXED_REG(8,	vdd_5v0_hdmi,	vdd_5v0_hdmi,
+	-1,	false,	true,	0,	1800);
+
+FIXED_REG(8,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	palmas_rails(smps10),	0,	0,
-	TEGRA_GPIO_PK6,	true,	0,	5000);
+	TEGRA_GPIO_PK6,	true,	true,	0,	5000);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-FIXED_REG(9,	vdd_1v8_fuse,	vdd_1v8_fuse,
+FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PX4,	true,	0,	1800);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-FIXED_REG(9,	vdd_1v8_fuse,	vdd_1v8_fuse,
+	TEGRA_GPIO_PX4,	false,	true,	0,	1800);
+#else
+FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PX0,	true,	0,	1800);
+	TEGRA_GPIO_PX0,	false,	true,	0,	1800);
 #endif
 
 /*
@@ -466,23 +460,24 @@ FIXED_REG(9,	vdd_1v8_fuse,	vdd_1v8_fuse,
 #define ADD_FIXED_REG(_name)    (&fixed_reg_en_##_name##_dev)
 
 #define E1580_COMMON_FIXED_REG			\
+	ADD_FIXED_REG(battery),			\
 	ADD_FIXED_REG(vdd_1v8_cam),		\
-	ADD_FIXED_REG(vdd_1v2_cam),	\
-	ADD_FIXED_REG(vdd_1v8_ldousb3),		\
-	ADD_FIXED_REG(vdd_mmc_sdmmc3),			\
-	ADD_FIXED_REG(vdd_1v8_lcd),		\
-	ADD_FIXED_REG(vdd_mmc_lcd),		\
-	ADD_FIXED_REG(vdd_1v8_mic),	\
-	ADD_FIXED_REG(vdd_5v0_hdmi),
+	ADD_FIXED_REG(vdd_1v2_cam),		\
+	ADD_FIXED_REG(avdd_usb3_1v05),		\
+	ADD_FIXED_REG(vdd_mmc_sdmmc3),		\
+	ADD_FIXED_REG(vdd_lcd_1v8),		\
+	ADD_FIXED_REG(vdd_lcd_mmc),		\
+	ADD_FIXED_REG(vdd_1v8_mic),		\
+	ADD_FIXED_REG(vdd_hdmi_5v0),
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define E1580_T114_FIXED_REG			\
-	ADD_FIXED_REG(vdd_1v8_fuse),
+	ADD_FIXED_REG(vpp_fuse),
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #define E1580_T30_FIXED_REG			\
-	ADD_FIXED_REG(vdd_1v8_fuse),
+	ADD_FIXED_REG(vpp_fuse),
 #endif
 
 /* Gpio switch regulator platform data for Pluto E1580 */
@@ -496,29 +491,69 @@ static struct platform_device *pfixed_reg_devs[] = {
 #endif
 };
 
+static struct palmas_pmic_platform_data pmic_platform = {
+	.reg_data = pluto_reg_data,
+	.reg_init = pluto_reg_init,
+};
+
+static struct palmas_platform_data palmas_pdata = {
+	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
+	.irq_base = PALMAS_TEGRA_IRQ_BASE,
+	.pmic_pdata = &pmic_platform,
+	.mux_from_pdata = true,
+	.pad1 = 0,
+	.pad2 = 0,
+};
+
+static struct i2c_board_info palma_device[] = {
+	{
+		I2C_BOARD_INFO("tps65913", 0x58),
+		.irq		= INT_EXTERNAL_PMU,
+		.platform_data	= &palmas_pdata,
+	},
+};
+
+int __init pluto_regulator_init(void)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 pmc_ctrl;
+
+	/* TPS65913: Normal state of INT request line is LOW.
+	 * configure the power management controller to trigger PMU
+	 * interrupts when HIGH.
+	 */
+	pmc_ctrl = readl(pmc + PMC_CTRL);
+	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	platform_device_register(&pluto_pda_power_device);
+	i2c_register_board_info(4, palma_device,
+			ARRAY_SIZE(palma_device));
+	return 0;
+}
+
 static int __init pluto_fixed_regulator_init(void)
 {
-	int i;
-	struct board_info board_info;
-	struct platform_device **fixed_reg_devs;
-	int nfixreg_devs;
-
-	tegra_get_board_info(&board_info);
-	fixed_reg_devs = pfixed_reg_devs;
-	nfixreg_devs = ARRAY_SIZE(pfixed_reg_devs);
-
 	if (!machine_is_tegra_pluto())
 		return 0;
 
-	for (i = 0; i < nfixreg_devs; ++i) {
-		int gpio_nr;
-		struct fixed_voltage_config *fixed_reg_pdata =
-			fixed_reg_devs[i]->dev.platform_data;
-		gpio_nr = fixed_reg_pdata->gpio;
-
-	}
-
-	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
+	return platform_add_devices(pfixed_reg_devs,
+			ARRAY_SIZE(pfixed_reg_devs));
 }
 subsys_initcall_sync(pluto_fixed_regulator_init);
+
+static struct tegra_suspend_platform_data pluto_suspend_data = {
+	.cpu_timer	= 2000,
+	.cpu_off_timer	= 0,
+	.suspend_mode	= TEGRA_SUSPEND_NONE,
+	.core_timer	= 0x7e7e,
+	.core_off_timer = 0,
+	.corereq_high	= false,
+	.sysclkreq_high	= true,
+};
+
+int __init pluto_suspend_init(void)
+{
+	tegra_init_suspend(&pluto_suspend_data);
+	return 0;
+}
 
