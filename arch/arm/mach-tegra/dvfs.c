@@ -43,6 +43,9 @@
 #define DVFS_RAIL_STATS_RANGE   ((DVFS_RAIL_STATS_TOP_BIN - 1) * \
 				 DVFS_RAIL_STATS_BIN / DVFS_RAIL_STATS_SCALE)
 
+struct dvfs_rail *tegra_cpu_rail;
+struct dvfs_rail *tegra_core_rail;
+
 static LIST_HEAD(dvfs_rail_list);
 static DEFINE_MUTEX(dvfs_lock);
 static DEFINE_MUTEX(rail_disable_lock);
@@ -81,6 +84,11 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 			rails[i]->step = rails[i]->max_millivolts;
 
 		list_add_tail(&rails[i]->node, &dvfs_rail_list);
+
+		if (!strcmp("vdd_cpu", rails[i]->reg_id))
+			tegra_cpu_rail = rails[i];
+		else if (!strcmp("vdd_core", rails[i]->reg_id))
+			tegra_core_rail = rails[i];
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -272,6 +280,15 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	/* Find the maximum voltage requested by any clock */
 	list_for_each_entry(d, &rail->dvfs, reg_node)
 		millivolts = max(d->cur_millivolts, millivolts);
+
+	/* Apply offset if any clock is requesting voltage */
+	if (millivolts) {
+		millivolts += rail->offs_millivolts;
+		if (millivolts > rail->max_millivolts)
+			millivolts = rail->max_millivolts;
+		else if (millivolts < rail->min_millivolts)
+			millivolts = rail->min_millivolts;
+	}
 
 	/* retry update if limited by from-relationship to account for
 	   circular dependencies */
@@ -751,6 +768,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
+		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
 
 		list_sort(NULL, &rail->dvfs, dvfs_tree_sort_cmp);
 
@@ -824,6 +842,50 @@ static const struct file_operations rail_stats_fops = {
 	.release	= single_release,
 };
 
+static int cpu_offs_get(void *data, u64 *val)
+{
+	if (tegra_cpu_rail) {
+		*val = (u64)tegra_cpu_rail->offs_millivolts;
+		return 0;
+	}
+	*val = 0;
+	return -ENOENT;
+}
+static int cpu_offs_set(void *data, u64 val)
+{
+	if (tegra_cpu_rail) {
+		mutex_lock(&dvfs_lock);
+		tegra_cpu_rail->offs_millivolts = (int)val;
+		dvfs_rail_update(tegra_cpu_rail);
+		mutex_unlock(&dvfs_lock);
+		return 0;
+	}
+	return -ENOENT;
+}
+DEFINE_SIMPLE_ATTRIBUTE(cpu_offs_fops, cpu_offs_get, cpu_offs_set, "%lld\n");
+
+static int core_offs_get(void *data, u64 *val)
+{
+	if (tegra_core_rail) {
+		*val = (u64)tegra_core_rail->offs_millivolts;
+		return 0;
+	}
+	*val = 0;
+	return -ENOENT;
+}
+static int core_offs_set(void *data, u64 val)
+{
+	if (tegra_core_rail) {
+		mutex_lock(&dvfs_lock);
+		tegra_core_rail->offs_millivolts = (int)val;
+		dvfs_rail_update(tegra_core_rail);
+		mutex_unlock(&dvfs_lock);
+		return 0;
+	}
+	return -ENOENT;
+}
+DEFINE_SIMPLE_ATTRIBUTE(core_offs_fops, core_offs_get, core_offs_set, "%lld\n");
+
 int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 {
 	struct dentry *d;
@@ -835,6 +897,16 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("rails", S_IRUGO, clk_debugfs_root, NULL,
 		&rail_stats_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_cpu_offs", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &cpu_offs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_core_offs", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &core_offs_fops);
 	if (!d)
 		return -ENOMEM;
 

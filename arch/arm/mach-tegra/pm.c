@@ -183,8 +183,6 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
 
-struct dvfs_rail *tegra_cpu_rail;
-static struct dvfs_rail *tegra_core_rail;
 static struct clk *tegra_pclk;
 static const struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
@@ -1066,8 +1064,6 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	u32 reg;
 	u32 mode;
 
-	tegra_cpu_rail = tegra_dvfs_get_rail_by_name("vdd_cpu");
-	tegra_core_rail = tegra_dvfs_get_rail_by_name("vdd_core");
 	tegra_pclk = clk_get_sys(NULL, "pclk");
 	BUG_ON(IS_ERR(tegra_pclk));
 	pdata = plat;
