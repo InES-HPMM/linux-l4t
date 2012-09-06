@@ -58,6 +58,9 @@
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
+/* HDMI Hotplug detection pin */
+#define dalmore_hdmi_hpd	TEGRA_GPIO_PN7
+
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 /* regulators */
 #if PANEL_10_1_PANASONIC_1920_1200 || \
@@ -65,6 +68,11 @@ static atomic_t sd_brightness = ATOMIC_INIT(255);
 	PANEL_10_1_SHARP_2560_1600
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_12v;
+#endif
+#ifdef CONFIG_TEGRA_DC
+static struct regulator *dalmore_hdmi_reg;
+static struct regulator *dalmore_hdmi_pll;
+static struct regulator *dalmore_hdmi_vddio;
 #endif
 
 static struct resource dalmore_disp1_resources[] __initdata = {
@@ -149,7 +157,11 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 };
 
 static struct tegra_dsi_out dalmore_dsi = {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.n_data_lanes = 2,
+#else
 	.n_data_lanes = 4,
+#endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
@@ -219,7 +231,7 @@ static int dalmore_dsi_panel_disable(void)
 static int dalmore_dsi_panel_postsuspend(void)
 {
 	/* TODO */
-	return -EPERM;
+	return 0;
 }
 
 static struct tegra_dc_mode dalmore_dsi_modes[] = {
@@ -299,26 +311,74 @@ static struct tegra_dc_out dalmore_disp1_out = {
 
 static int dalmore_hdmi_enable(void)
 {
-	/* TODO */
-	return -EPERM;
+	int ret;
+	if (!dalmore_hdmi_reg) {
+			dalmore_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+			if (IS_ERR_OR_NULL(dalmore_hdmi_reg)) {
+				pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
+				dalmore_hdmi_reg = NULL;
+				return PTR_ERR(dalmore_hdmi_reg);
+			}
+	}
+	ret = regulator_enable(dalmore_hdmi_reg);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi\n");
+		return ret;
+	}
+	if (!dalmore_hdmi_pll) {
+		dalmore_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		if (IS_ERR_OR_NULL(dalmore_hdmi_pll)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
+			dalmore_hdmi_pll = NULL;
+			regulator_put(dalmore_hdmi_reg);
+			dalmore_hdmi_reg = NULL;
+			return PTR_ERR(dalmore_hdmi_pll);
+		}
+	}
+	ret = regulator_enable(dalmore_hdmi_pll);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi_pll\n");
+		return ret;
+	}
+	return 0;
 }
 
 static int dalmore_hdmi_disable(void)
 {
-	/* TODO */
-	return -EPERM;
+	regulator_disable(dalmore_hdmi_reg);
+	regulator_put(dalmore_hdmi_reg);
+	dalmore_hdmi_reg = NULL;
+
+	regulator_disable(dalmore_hdmi_pll);
+	regulator_put(dalmore_hdmi_pll);
+	dalmore_hdmi_pll = NULL;
+	return 0;
 }
 
 static int dalmore_hdmi_postsuspend(void)
 {
-	/* TODO */
-	return -EPERM;
+	if (dalmore_hdmi_vddio) {
+		regulator_disable(dalmore_hdmi_vddio);
+		regulator_put(dalmore_hdmi_vddio);
+		dalmore_hdmi_vddio = NULL;
+	}
+	return 0;
 }
 
 static int dalmore_hdmi_hotplug_init(void)
 {
-	/* TODO */
-	return -EPERM;
+	if (!dalmore_hdmi_vddio) {
+		dalmore_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_5v0");
+		if (WARN_ON(IS_ERR(dalmore_hdmi_vddio))) {
+			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
+				__func__, PTR_ERR(dalmore_hdmi_vddio));
+				dalmore_hdmi_vddio = NULL;
+		} else {
+			regulator_enable(dalmore_hdmi_vddio);
+		}
+	}
+
+	return 0;
 }
 
 static struct tegra_dc_out dalmore_disp2_out = {
@@ -327,8 +387,12 @@ static struct tegra_dc_out dalmore_disp2_out = {
 	.parent_clk	= "pll_d2_out0",
 
 	.dcc_bus	= 3,
+	.hotplug_gpio	= dalmore_hdmi_hpd,
 
 	.max_pixclock	= KHZ2PICOS(148500),
+
+	.align		= TEGRA_DC_ALIGN_MSB,
+	.order		= TEGRA_DC_ORDER_RED_BLUE,
 
 	.enable		= dalmore_hdmi_enable,
 	.disable	= dalmore_hdmi_disable,
@@ -352,6 +416,10 @@ static struct tegra_fb_data dalmore_disp1_fb_data = {
 	.xres		= 2560,
 	.yres		= 1600,
 #endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	.xres		= 1280,
+	.yres		= 720,
+#endif
 };
 
 static struct tegra_dc_platform_data dalmore_disp1_pdata = {
@@ -363,6 +431,8 @@ static struct tegra_dc_platform_data dalmore_disp1_pdata = {
 
 static struct tegra_fb_data dalmore_disp2_fb_data = {
 	.win		= 0,
+	.xres		= 1024,
+	.yres		= 600,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -537,6 +607,9 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 #endif
+
+	gpio_request(dalmore_hdmi_hpd, "hdmi_hpd");
+	gpio_direction_input(dalmore_hdmi_hpd);
 
 #ifdef CONFIG_TEGRA_GRHOST
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
