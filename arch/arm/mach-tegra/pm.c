@@ -127,6 +127,7 @@ struct suspend_context tegra_sctx;
 #define TEGRA_POWER_EFFECT_LP0		(1 << 14)  /* enter LP0 when CPU pwr gated */
 #define TEGRA_POWER_CPU_PWRREQ_POLARITY (1 << 15)  /* CPU power request polarity */
 #define TEGRA_POWER_CPU_PWRREQ_OE	(1 << 16)  /* CPU power request enable */
+#define TEGRA_POWER_CPUPWRGOOD_EN	(1 << 19)  /* CPU power good enable */
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_LATCH_WAKEUPS	(1 << 5)
@@ -750,6 +751,11 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		writel(0x800fffff, pmc + PMC_IO_DPD_REQ_0);
 		writel(0x80001fff, pmc + PMC_IO_DPD2_REQ_0);
 #endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+		/* this is needed only for T11x, not for other chips */
+		reg &= ~TEGRA_POWER_CPUPWRGOOD_EN;
+#endif
+
 		/* Set warmboot flag */
 		boot_flag = readl(pmc + PMC_SCRATCH0);
 		pmc_32kwritel(boot_flag | 1, PMC_SCRATCH0);
@@ -849,6 +855,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {
 	int err = 0;
 	u32 scratch37 = 0xDEADBEEF;
+	u32 reg;
 
 	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
 		mode >= TEGRA_MAX_SUSPEND_MODE)) {
@@ -857,8 +864,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	}
 
 	if (tegra_is_voice_call_active()) {
-		u32 reg;
-
 		/* backup the current value of scratch37 */
 		scratch37 = readl(pmc + PMC_SCRATCH37);
 
@@ -888,7 +893,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
-		u32 reg = readl(pmc + PMC_SCRATCH4);
+		reg = readl(pmc + PMC_SCRATCH4);
 		if (is_lp_cluster())
 			reg |= PMC_SCRATCH4_WAKE_CLUSTER_MASK;
 		else
@@ -917,6 +922,11 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	tegra_init_cache(true);
 
 	if (mode == TEGRA_SUSPEND_LP0) {
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+		reg = readl(pmc+PMC_CTRL);
+		reg |= TEGRA_POWER_CPUPWRGOOD_EN;
+		pmc_32kwritel(reg, PMC_CTRL);
+#endif
 		tegra_tsc_resume();
 		tegra_cpu_reset_handler_restore();
 		tegra_lp0_resume_mc();
@@ -935,7 +945,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	 * of LP0 state by temporarily enabling both requests
 	 */
 	if (mode == TEGRA_SUSPEND_LP0 && pdata->combined_req) {
-		u32 reg;
 		reg = readl(pmc + PMC_CTRL);
 		reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 		pmc_32kwritel(reg, PMC_CTRL);
