@@ -109,6 +109,12 @@ config MAX77665_FLASH
         ---help---
           This is a driver for the MAX77665 flash/torch camera device
 
+config TORCH_AS364X
+        tristate "AS364X flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the AS364X flash/torch camera device
+
 config VIDEO_SH532U
         tristate "SH532U focuser support"
         depends on I2C && ARCH_TEGRA
