@@ -1247,15 +1247,26 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			val &= ~USB_PHY_CLK_VALID_INT_ENB |
 					USB_PHY_CLK_VALID_INT_STS;
 			writel(val , (base + USB_SUSP_CTRL));
-			pr_info("%s: usb device plugged-in\n", __func__);
-			val = readl(base + USB_USBSTS);
-			if (!(val  & USB_USBSTS_PCI)) {
-				irq_status = IRQ_NONE;
-				goto exit;
+
+			/* In case of remote wakeup PHY clock will not up
+			   immediately, so should not access any controller
+			   register but normal plug-in/plug-out should be
+			   executed */
+			if (!remote_wakeup) {
+				val = readl(base + USB_USBSTS);
+				if (!(val  & USB_USBSTS_PCI)) {
+					irq_status = IRQ_NONE;
+					goto exit;
+				}
+
+				val = readl(base + USB_PORTSC);
+				if (val & USB_PORTSC_CCS)
+					val &= ~USB_PORTSC_WKCN;
+				else
+					val &= ~USB_PORTSC_WKDS;
+				val &= ~USB_PORTSC_RWC_BITS;
+				writel(val , (base + USB_PORTSC));
 			}
-			val = readl(base + USB_PORTSC);
-			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
-			writel(val , (base + USB_PORTSC));
 		} else if (!phy->phy_clk_on) {
 			if (remote_wakeup)
 				irq_status = IRQ_HANDLED;
@@ -1488,8 +1499,12 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			enable_hotplug = (val & USB_ID_STATUS) ? false : true;
 		}
 		if (enable_hotplug) {
+			/* Enable wakeup event of device plug-in/plug-out */
 			val = readl(base + USB_PORTSC);
-			val |= USB_PORTSC_WKCN;
+			if (val & USB_PORTSC_CCS)
+				val |= USB_PORTSC_WKDS;
+			else
+				val |= USB_PORTSC_WKCN;
 			writel(val, base + USB_PORTSC);
 
 			val = readl(base + USB_SUSP_CTRL);
@@ -1503,6 +1518,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
+	/* Disable PHY clock */
 	val = readl(base + HOSTPC1_DEVLC);
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
@@ -1691,7 +1707,8 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 			val = readl(base + USB_PORTSC);
 			udelay(1);
 			if (wait_time_us == 0) {
-				PHY_DBG("%s PMC REMOTE WAKEUP FPR timeout val = 0x%x instance = %d\n", __func__, val, phy->inst);
+				PHY_DBG("%s PMC FPR timeout val = 0x%lx ",
+							__func__, val);
 				utmip_phy_disable_pmc_bus_ctrl(phy);
 				utmi_phy_post_resume(phy);
 				return;

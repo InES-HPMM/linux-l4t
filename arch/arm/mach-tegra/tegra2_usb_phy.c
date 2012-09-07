@@ -616,13 +616,19 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			val &= ~USB_PHY_CLK_VALID_INT_ENB |
 					USB_PHY_CLK_VALID_INT_STS;
 			writel(val , (base + USB_SUSP_CTRL));
-			pr_info("%s: usb device plugged-in\n", __func__);
+
 			val = readl(base + USB_USBSTS);
 			if (!(val  & USB_USBSTS_PCI))
 				return IRQ_NONE;
+
 			val = readl(base + USB_PORTSC);
-			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
+			if (val & USB_PORTSC_CCS)
+				val &= ~USB_PORTSC_WKCN;
+			else
+				val &= ~USB_PORTSC_WKDS;
+			val &= ~USB_PORTSC_RWC_BITS;
 			writel(val , (base + USB_PORTSC));
+
 		} else if (!phy->phy_clk_on) {
 			return IRQ_NONE;
 		}
@@ -721,8 +727,12 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			enable_hotplug = (val & USB_ID_STATUS) ? false : true;
 		}
 		if (enable_hotplug) {
+			/* Enable wakeup event of device plug-in/plug-out */
 			val = readl(base + USB_PORTSC);
-			val |= USB_PORTSC_WKCN;
+			if (val & USB_PORTSC_CCS)
+				val |= USB_PORTSC_WKDS;
+			else
+				val |= USB_PORTSC_WKCN;
 			writel(val, base + USB_PORTSC);
 
 			val = readl(base + USB_SUSP_CTRL);
@@ -737,6 +747,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
+	/* Disable PHY clock */
 	if (phy->inst == 2) {
 		val = readl(base + USB_PORTSC);
 		val |= USB_PORTSC_PHCD;
