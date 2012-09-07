@@ -30,11 +30,8 @@
 #include <mach/io.h>
 #include <mach/latency_allowance.h>
 #include "la_priv_common.h"
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #include "tegra3_la_priv.h"
-#else
-#include "tegra11_la_priv.h"
-#endif
+#include "tegra11x_la_priv.h"
 
 #define ENABLE_LA_DEBUG		0
 #define TEST_LA_CODE		0

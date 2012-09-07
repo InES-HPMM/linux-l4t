@@ -59,6 +59,7 @@ enum tegra_la_id {
 	TEGRA_LA_FDCDRD,
 	TEGRA_LA_IDXSRD,
 	TEGRA_LA_TEXSRD,
+	TEGRA_LA_TEXL2SRD = TEGRA_LA_TEXSRD,	/* T11x specific */
 	TEGRA_LA_FDCDWR,
 	TEGRA_LA_FDCDRD2,
 	TEGRA_LA_IDXSRD2,			/* T30 specific */
@@ -84,6 +85,21 @@ enum tegra_la_id {
 	TEGRA_LA_VI_WU,
 	TEGRA_LA_VI_WV,
 	TEGRA_LA_VI_WY,
+
+	TEGRA_LA_MSENCSRD,			/* T11x specific */
+	TEGRA_LA_MSENCSWR,			/* T11x specific */
+	TEGRA_LA_XUSB_HOSTR,			/* T11x specific */
+	TEGRA_LA_XUSB_HOSTW,			/* T11x specific */
+	TEGRA_LA_XUSB_DEVR,			/* T11x specific */
+	TEGRA_LA_XUSB_DEVW,			/* T11x specific */
+	TEGRA_LA_FDCDRD3,			/* T11x specific */
+	TEGRA_LA_FDCDRD4,			/* T11x specific */
+	TEGRA_LA_FDCDWR3,			/* T11x specific */
+	TEGRA_LA_FDCDWR4,			/* T11x specific */
+	TEGRA_LA_EMUCIFR,			/* T11x specific */
+	TEGRA_LA_EMUCIFW,			/* T11x specific */
+	TEGRA_LA_TSECSRD,			/* T11x specific */
+	TEGRA_LA_TSECSWR,			/* T11x specific */
 
 	TEGRA_LA_MAX_ID
 };
