@@ -590,6 +590,12 @@ static int dalmore_dsi_gpio_get(void)
 	return err;
 }
 
+#if PANEL_11_6_AUO_1920_1080
+static struct i2c_board_info dalmore_tc358770_dsi2edp_board_info __initdata = {
+		I2C_BOARD_INFO("tc358770_dsi2edp", 0x68),
+};
+#endif
+
 int __init dalmore_panel_init(void)
 {
 	int err = 0;
@@ -664,6 +670,11 @@ int __init dalmore_panel_init(void)
 		pr_err("panel gpio get failed\n");
 		return err;
 	}
+	/* TODO: get bus number */
+#if PANEL_11_6_AUO_1920_1080
+	i2c_register_board_info(2, &dalmore_tc358770_dsi2edp_board_info, 1);
+#endif
+
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
