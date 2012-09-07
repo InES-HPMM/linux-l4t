@@ -62,6 +62,11 @@ enum {
 	POWER_CPU_CLUSTER_DONE,
 };
 
+enum {
+	POWER_CPU_POWERGATE_ENTRY,
+	POWER_CPU_POWERGATE_EXIT,
+};
+
 #endif
 
 TRACE_EVENT(cpu_suspend,
@@ -141,6 +146,27 @@ TRACE_EVENT(cpu_cluster,
 	),
 
 	TP_printk("state=%lu",
+		  (unsigned long)__entry->state)
+);
+
+TRACE_EVENT(cpu_powergate,
+
+	TP_PROTO(unsigned int counter, int state),
+
+	TP_ARGS(counter, state),
+
+	TP_STRUCT__entry(
+		__field(u32, counter)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->counter = counter;
+		__entry->state = state;
+	),
+
+	TP_printk("counter=%lu, state=%lu",
+		  (unsigned long)__entry->counter,
 		  (unsigned long)__entry->state)
 );
 
