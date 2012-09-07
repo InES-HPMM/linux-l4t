@@ -440,6 +440,9 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	DEFAULT_PINMUX(GPIO_PU5,        PWM2,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PU6,        RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(KB_ROW14,        KBC,             NORMAL,    TRISTATE,   OUTPUT),
+	DEFAULT_PINMUX(KB_COL6,         KBC,             NORMAL,    NORMAL,     OUTPUT),
+	DEFAULT_PINMUX(KB_COL7,         KBC,             NORMAL,    NORMAL,     OUTPUT),
+	DEFAULT_PINMUX(CLK3_REQ,        DEV3,            NORMAL,    NORMAL,     OUTPUT),
 
 	/* LCD GPIO */
 	DEFAULT_PINMUX(GMI_AD0,         RSVD1,           NORMAL,    NORMAL,     OUTPUT),
@@ -541,9 +544,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(HDMI_CEC,        CEC,           NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(KB_COL4,         KBC,           NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(KB_COL5,         KBC,           NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(KB_COL6,         KBC,           NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(KB_COL7,         KBC,           NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(CLK3_REQ,        DEV3,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_D0,           VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_D1,           VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_D10,          VI,            NORMAL,    TRISTATE,   OUTPUT),

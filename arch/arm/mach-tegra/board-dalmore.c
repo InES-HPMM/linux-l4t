@@ -37,6 +37,7 @@
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
+#include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
 #include <linux/regulator/consumer.h>
@@ -76,6 +77,64 @@
 #include "pm.h"
 #include "common.h"
 
+static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
+		.name           = "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PQ7,
+		.type           = RFKILL_TYPE_BLUETOOTH,
+};
+
+static struct platform_device dalmore_bt_rfkill_device = {
+	.name = "rfkill_gpio",
+	.id             = -1,
+	.dev = {
+		.platform_data = &dalmore_bt_rfkill_pdata,
+	},
+};
+
+static struct resource dalmore_bluesleep_resources[] = {
+	[0] = {
+		.name = "gpio_host_wake",
+			.start  = TEGRA_GPIO_PU6,
+			.end    = TEGRA_GPIO_PU6,
+			.flags  = IORESOURCE_IO,
+	},
+	[1] = {
+		.name = "gpio_ext_wake",
+			.start  = TEGRA_GPIO_PEE1,
+			.end    = TEGRA_GPIO_PEE1,
+			.flags  = IORESOURCE_IO,
+	},
+	[2] = {
+		.name = "host_wake",
+			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+	},
+};
+
+static struct platform_device dalmore_bluesleep_device = {
+	.name           = "bluesleep",
+	.id             = -1,
+	.num_resources  = ARRAY_SIZE(dalmore_bluesleep_resources),
+	.resource       = dalmore_bluesleep_resources,
+};
+
+static noinline void __init dalmore_setup_bt_rfkill(void)
+{
+	if ((tegra_get_commchip_id() == COMMCHIP_BROADCOM_BCM43241) ||
+		(tegra_get_commchip_id() == COMMCHIP_DEFAULT))
+		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
+	else
+		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PQ6;
+	platform_device_register(&dalmore_bt_rfkill_device);
+}
+
+static noinline void __init dalmore_setup_bluesleep(void)
+{
+	dalmore_bluesleep_resources[2].start =
+		dalmore_bluesleep_resources[2].end =
+			gpio_to_irq(TEGRA_GPIO_PU6);
+	platform_device_register(&dalmore_bluesleep_device);
+	return;
+}
 static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -608,6 +667,8 @@ static void __init tegra_dalmore_init(void)
 	dalmore_panel_init();
 	dalmore_kbc_init();
 	dalmore_pmon_init();
+	dalmore_setup_bluesleep();
+	dalmore_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
 	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
