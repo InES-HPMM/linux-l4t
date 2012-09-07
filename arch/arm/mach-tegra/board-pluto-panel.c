@@ -41,17 +41,14 @@
 #include "tegra11_host1x_devices.h"
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #define TEGRA_PANEL_ENABLE	1
-#else
-#define TEGRA_PANEL_ENABLE	0
-#endif
 
 #if TEGRA_PANEL_ENABLE
 #define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
 #define PANEL_5_LG_720_1280	0
+#define PANEL_4_7_JDI_720_1280	0
 
 #define DSI_PANEL_RESET		1
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH5
@@ -62,14 +59,14 @@
 static atomic_t sd_brightness = ATOMIC_INIT(255);
 
 /* regulators */
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 static struct regulator *avdd_lcd_2v8;
 static struct regulator *vdd_lcd_1v8;
 #define EN_VDD_LCD_1V8	PMU_TPS65913_GPIO_PORT04
 #endif
 
 /* hdmi pins for hotplug */
-#define pluto_hdmi_hpd			TEGRA_GPIO_PN7
+#define pluto_hdmi_hpd		TEGRA_GPIO_PN7
 
 /* hdmi related regulators */
 #ifdef CONFIG_TEGRA_DC
@@ -225,13 +222,22 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x0),
 #endif
+#if PANEL_4_7_JDI_720_1280
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x00),
+	DSI_DLY_MS(15),
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x00),
+#endif
 };
 
 static struct tegra_dsi_out pluto_dsi = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.n_data_lanes = 2,
 #else
+#if PANEL_4_7_JDI_720_1280
+	.n_data_lanes = 3,
+#else
 	.n_data_lanes = 4,
+#endif
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
@@ -263,7 +269,7 @@ static int pluto_dsi_panel_enable(void)
 
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
 
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 	if (avdd_lcd_2v8) {
 		err = regulator_enable(avdd_lcd_2v8);
 		if (err < 0) {
@@ -287,7 +293,7 @@ static int pluto_dsi_panel_enable(void)
 
 static int pluto_dsi_panel_disable(void)
 {
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 	if (vdd_lcd_1v8)
 		regulator_disable(vdd_lcd_1v8);
 
@@ -319,6 +325,21 @@ static struct tegra_dc_mode pluto_dsi_modes[] = {
 		.v_front_porch = 20,
 	},
 #endif
+#if PANEL_4_7_JDI_720_1280
+	{
+		.pclk = 10000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 16,
+		.v_sync_width = 4,
+		.h_back_porch = 32,
+		.v_back_porch = 4,
+		.h_active = 720,
+		.v_active = 1280,
+		.h_front_porch = 48,
+		.v_front_porch = 4,
+	},
+#endif
 };
 
 static struct tegra_dc_out pluto_disp1_out = {
@@ -337,6 +358,10 @@ static struct tegra_dc_out pluto_disp1_out = {
 #if PANEL_5_LG_720_1280
 	.width		= 62,
 	.height		= 110,
+#endif
+#if PANEL_4_7_JDI_720_1280
+	.width = 58,
+	.height = 103,
 #endif
 };
 
@@ -404,7 +429,7 @@ static struct tegra_fb_data pluto_disp1_fb_data = {
 	.win		= 0,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 	.xres		= 720,
 	.yres		= 1280,
 #endif
@@ -541,7 +566,7 @@ static int pluto_dsi_regulator_get(void)
 {
 	int err = 0;
 
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 	avdd_lcd_2v8 = regulator_get(NULL, "avdd_lcd_ld02");
 	if (IS_ERR_OR_NULL(avdd_lcd_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
@@ -577,7 +602,7 @@ static int pluto_dsi_gpio_get(void)
 		return err;
 	}
 
-#if PANEL_5_LG_720_1280
+#if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
 	err = gpio_request(EN_VDD_LCD_1V8, "panel regulator enable");
 	if (err < 0) {
 		pr_err("panel regulator enable gpio request failed\n");
