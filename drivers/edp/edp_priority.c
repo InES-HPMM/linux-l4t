@@ -55,23 +55,6 @@ static unsigned int approvable_req(struct edp_client *client)
 	return i;
 }
 
-static unsigned int throttling_point(struct edp_client *c,
-		unsigned int deficit)
-{
-	unsigned int lim;
-	unsigned int i;
-
-	if (cur_level(c) - e0_level(c) <= deficit)
-		return c->e0_index;
-
-	lim = cur_level(c) - deficit;
-	i = cur_index(c);
-	while (i < c->e0_index && c->states[i] > lim)
-		i++;
-
-	return i;
-}
-
 static void throttle(struct edp_client *client)
 {
 	unsigned int ar;
@@ -97,7 +80,7 @@ static void throttle(struct edp_client *client)
 		if (p == client || cur_level(p) <= e0_level(p))
 			continue;
 
-		p->gwt = throttling_point(p, deficit - pledged);
+		p->gwt = edp_throttling_point(p, deficit - pledged);
 		pledged += cur_level(p) - p->states[p->gwt];
 		if (pledged >= deficit)
 			break;
@@ -138,63 +121,33 @@ ret:
 static void prio_update_request(struct edp_client *client,
 		const unsigned int *req)
 {
-	struct edp_manager *m = client->manager;
-	unsigned int old = cur_level(client);
-	unsigned int new = req ? *req : 0;
-	bool was_denied = client->cur != client->req;
-
-	client->req = req;
-
-	if (new < old) {
-		client->cur = req;
-		m->remaining += old - new;
-	} else if (new - old <= m->remaining) {
-		client->cur = req;
-		m->remaining -= new - old;
-	} else {
-		throttle(client);
-	}
-
-	if (was_denied && client->cur == client->req)
-		m->num_denied--;
-	else if (!was_denied && client->cur != client->req)
-		m->num_denied++;
-}
-
-static void prio_update_loans(struct edp_client *lender)
-{
-	unsigned int size = *lender->cur <= lender->ithreshold ? 0 :
-		*lender->cur - lender->ithreshold;
-	struct loan_client *p;
-
-	list_for_each_entry(p, &lender->borrowers, link) {
-		if (!size)
-			return;
-
-		if (size != p->size) {
-			p->size = p->client->notify_loan_update(size, lender);
-			WARN_ON(p->size > size);
-			size -= min(p->size, size);
-		}
-	}
+	edp_default_update_request(client, req, throttle);
 }
 
 static void prio_promote(struct edp_manager *mgr)
 {
 	struct edp_client *p;
 	unsigned int delta;
+	unsigned int pp;
 
 	list_for_each_entry(p, &mgr->clients, link) {
-		if (!mgr->num_denied || !mgr->remaining)
-			return;
+		if (req_level(p) <= cur_level(p) || !p->notify_promotion)
+			continue;
 
 		delta = req_level(p) - cur_level(p);
-		if (delta && delta <= mgr->remaining && p->notify_promotion) {
-			p->cur = p->req;
+		if (delta > mgr->remaining)
+			delta = mgr->remaining;
+
+		pp = edp_promotion_point(p, delta);
+		mgr->remaining -= p->states[pp] - cur_level(p);
+		p->cur = p->states + pp;
+
+		if (p->cur == p->req)
 			mgr->num_denied--;
-			mgr->remaining -= delta;
-			p->notify_promotion(cur_index(p));
-		}
+
+		p->notify_promotion(pp);
+		if (!mgr->remaining || !mgr->num_denied)
+			return;
 	}
 }
 
@@ -202,7 +155,7 @@ static struct edp_governor prio_governor = {
 	.name = "priority",
 	.owner = THIS_MODULE,
 	.update_request = prio_update_request,
-	.update_loans = prio_update_loans,
+	.update_loans = edp_default_update_loans,
 	.promote = prio_promote
 };
 
