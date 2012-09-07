@@ -1,0 +1,38 @@
+
+EDP GOVERNORS
+
+1. Introduction
+
+EDP governors implements the policy for current budget allocation amoung
+clients. In general, the governor decides budget allocation in the
+following situations:
+
+	[*] When a client makes an E-state request. If the request can
+	    not be met with the remaining current, other clients may be
+	    throttled to recover extra current which can then be granted
+	    to the requester. If the request is unfarely high, a reduced
+	    E-state has to be decided according to the policy.
+
+	[*] When there is an increase in the manager's remaining cap,
+	    the governor will try to distribute the surplus amoung
+	    clients whose requests were previously rejected or who were
+	    throttled during the above step.
+
+	[] When a client has more than one borrower, the loan has to be
+	   distributed.
+
+Following sections provides a short description about available
+governors.
+
+2. Priority
+
+As the name indicates, this governor implements a priority based
+allocation in which higher priority clients are given preference. When a
+budget recovery takes place, lower priority clients are throttled before
+the higher priority ones. Similarly, during a promotion cycle or during
+a loan update, higher priority clients are served first.
+
+If the request can not be satisfied by throttling lower priority
+clients, the requested E-state may be lowered at most to E0. This
+ensures that higher priority clients are throttled only to provide
+minimum guarantee E-state.
