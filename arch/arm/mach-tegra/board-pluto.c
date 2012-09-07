@@ -568,6 +568,7 @@ static void __init tegra_pluto_init(void)
 	pluto_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
 	pluto_modem_init();
+	pluto_sensors_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
