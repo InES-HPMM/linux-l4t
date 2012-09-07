@@ -60,6 +60,14 @@
 #define TEGRA_GPIO_I2C5_SCL             TEGRA_GPIO_PZ6
 #define TEGRA_GPIO_I2C5_SDA             TEGRA_GPIO_PZ7
 
+/* Camera related GPIOs */
+#define CAM_RSTN			TEGRA_GPIO_PBB3
+#define CAM1_POWER_DWN_GPIO		TEGRA_GPIO_PBB5
+#define CAM2_POWER_DWN_GPIO		TEGRA_GPIO_PBB6
+#define CAM_AF_PWDN			TEGRA_GPIO_PBB7
+#define CAM_GPIO1			TEGRA_GPIO_PCC1
+#define CAM_GPIO2			TEGRA_GPIO_PCC2
+
 int dalmore_regulator_init(void);
 int dalmore_suspend_init(void);
 int dalmore_sdhci_init(void);
