@@ -278,7 +278,7 @@ static int __init pluto_wifi_init(void)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 
 	wifi_resource[0].start = wifi_resource[0].end =
-		gpio_to_irq(TEGRA_GPIO_PO4);
+		gpio_to_irq(PLUTO_WLAN_WOW);
 
 	platform_device_register(&pluto_wifi_device);
 	return 0;
