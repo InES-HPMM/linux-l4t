@@ -330,6 +330,7 @@ static struct platform_device pluto_pda_power_device = {
 /* Always ON /Battery regulator */
 static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_cam", NULL),
+		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
