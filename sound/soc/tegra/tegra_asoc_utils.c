@@ -156,9 +156,6 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 			  struct device *dev, struct snd_soc_card *card)
 {
 	int ret;
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !TEGRA30_I2S_MASTER_PLAYBACK
-	int rate;
-#endif
 
 	data->dev = dev;
 	data->card = card;
