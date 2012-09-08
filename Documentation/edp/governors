@@ -36,3 +36,11 @@ If the request can not be satisfied by throttling lower priority
 clients, the requested E-state may be lowered at most to E0. This
 ensures that higher priority clients are throttled only to provide
 minimum guarantee E-state.
+
+3. Overage
+
+Overage governor uses a propotional allocation based on the difference
+between the current E-state level and E0 (named the 'overage'). This
+causes all clients to increase or decrease in their E-state some what
+simultaneously. Hence this is fare allocation policy and ensures that no
+client is throttled too much.
