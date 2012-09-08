@@ -25,6 +25,8 @@
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
+extern u8 tegra_emc_bw_efficiency;
+
 enum {
 	DRAM_OVER_TEMP_NONE = 0,
 	DRAM_OVER_TEMP_REFRESH,
