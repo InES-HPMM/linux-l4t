@@ -766,15 +766,15 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 	void __iomem *regs;
 	int ret;
 
-	/* See d4a2eca781bfd7323bfd98dbc7fd63c7d613fef2,
-	 * unfortunately, we've got some patches that require the id still */
-	BUG_ON(pdev->id < 0);
+	if ((pdev->id < 0) ||
+		(pdev->id >= ARRAY_SIZE(tegra30_i2s_dai))) {
+		dev_err(&pdev->dev, "ID %d out of range\n", pdev->id);
+		return -EINVAL;
+	}
 
 	i2s = &i2scont[pdev->id];
 	dev_set_drvdata(&pdev->dev, i2s);
-
-	i2s->dai = tegra30_i2s_dai_template;
-	i2s->dai.name = dev_name(&pdev->dev);
+	i2s->id = pdev->id;
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 					 "nvidia,ahub-cif-ids", cif_ids,
@@ -851,7 +851,7 @@ static int tegra30_i2s_platform_probe(struct platform_device *pdev)
 			goto err_pm_disable;
 	}
 
-	ret = snd_soc_register_dai(&pdev->dev, &i2s->dai);
+	ret = snd_soc_register_dai(&pdev->dev, &tegra30_i2s_dai[pdev->id]);
 	if (ret) {
 		dev_err(&pdev->dev, "Could not register DAI: %d\n", ret);
 		ret = -ENOMEM;
