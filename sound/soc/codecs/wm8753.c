@@ -1463,9 +1463,21 @@ static int wm8753_suspend(struct snd_soc_codec *codec)
 
 static int wm8753_resume(struct snd_soc_codec *codec)
 {
+	u16 *reg_cache = codec->reg_cache;
 	struct wm8753_priv *wm8753 = snd_soc_codec_get_drvdata(codec);
+	int i;
 
-	regcache_sync(wm8753->regmap);
+	/* Sync reg_cache with the hardware */
+	for (i = 1; i < ARRAY_SIZE(wm8753_reg_defaults); i++) {
+		if (i == WM8753_RESET)
+			continue;
+
+		/* No point in writing hardware default values back */
+		if (reg_cache[i] == wm8753_reg_defaults[i].def)
+			continue;
+
+		snd_soc_write(codec, i, reg_cache[i]);
+	}
 
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
