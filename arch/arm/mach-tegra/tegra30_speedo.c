@@ -383,10 +383,6 @@ void tegra30_init_speedo_data(void)
 		tegra_cpu_speedo_id = 1;
 	} else {
 		if (threshold_index == 12) {
-			if (tegra_cpu_process_id <= 2)
-				tegra_cpu_speedo_id = 9;
-			else if (tegra_cpu_process_id >= 3 && tegra_cpu_process_id < 6)
-				tegra_cpu_speedo_id = 10;
 			if (tegra_cpu_process_id <= 2) {
 				switch(fuse_sku) {
 				case 0xb0:

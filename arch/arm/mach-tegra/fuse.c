@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA Corp.
+ * Copyright (C) 2010-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -28,6 +28,7 @@
 #include <linux/moduleparam.h>
 
 #include <mach/tegra_fuse.h>
+#include <mach/hardware.h>
 
 #include "fuse.h"
 #include "iomap.h"
@@ -66,26 +67,26 @@
 
 #endif
 
+struct tegra_id {
+	enum tegra_chipid chipid;
+	unsigned int major, minor, netlist, patch;
+	enum tegra_revision revision;
+	char *priv;
+};
+
+static struct tegra_id tegra_id;
+
 int tegra_sku_id;
 int tegra_cpu_process_id;
 int tegra_core_process_id;
 int tegra_chip_id;
-int tegra_chip_rev;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
 int tegra_package_id;
 enum tegra_revision tegra_revision;
-static unsigned int tegra_chip_major;
-static unsigned int tegra_chip_minor;
-static unsigned int tegra_chip_netlist;
-static unsigned int tegra_chip_patch;
-static char *tegra_chip_priv;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
-
-int tegra_cpu_speedo_mv = 1000;
-int tegra_core_speedo_mv = 1200;
 
 /* The BCT to use at boot is specified by board straps that can be read
  * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
@@ -113,51 +114,14 @@ u32 tegra_fuse_readl(unsigned long offset)
 	return tegra_apb_readl(TEGRA_FUSE_BASE + offset);
 }
 
-void tegra_fuse_writel(u32 value, unsigned long offset)
+void tegra_fuse_writel(u32 val, unsigned long offset)
 {
-	tegra_apb_writel(value, TEGRA_FUSE_BASE + offset);
+	tegra_apb_writel(val, TEGRA_FUSE_BASE + offset);
 }
 
 bool tegra_spare_fuse(int bit)
 {
 	return tegra_fuse_readl(tegra_fuse_spare_bit + bit * 4);
-}
-
-static enum tegra_revision tegra_get_revision()
-{
-#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	switch (tegra_chip_minor) {
-	case 1:
-		BUG_ON(tegra_chip_id == TEGRA20);
-		return TEGRA_REVISION_A01;
-	case 2:
-		return TEGRA_REVISION_A02;
-	case 3:
-		if (tegra_chip_id == TEGRA20 &&
-			tegra_chip_priv != NULL &&
-			(*tegra_chip_priv) == 'p')
-			return TEGRA_REVISION_A03p;
-		else
-			return TEGRA_REVISION_A03;
-	case 4:
-		if (tegra_chip_id == TEGRA20 &&
-			tegra_chip_priv != NULL &&
-			(*tegra_chip_priv) == 'p')
-			return TEGRA_REVISION_A04p;
-		return TEGRA_REVISION_A04;
-	default:
-		return TEGRA_REVISION_UNKNOWN;
-	}
-#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	if (tegra_chip_id == TEGRA11) {
-		if ((tegra_chip_major == 0) && (tegra_chip_minor == 1))
-			return TEGRA_REVISION_A01;
-	}
-#elif defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
-	if (tegra_chip_id == TEGRA11)
-		return TEGRA_REVISION_A01;
-#endif
-	return TEGRA_REVISION_UNKNOWN;
 }
 
 static void tegra_get_process_id(void)
@@ -173,58 +137,6 @@ static void tegra_get_process_id(void)
 u32 tegra_read_chipid(void)
 {
 	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
-}
-
-void tegra_init_fuse(void)
-{
-	u32 id, netlist;
-
-	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-	reg |= 1 << 28;
-	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-
-	reg = tegra_fuse_readl(FUSE_SKU_INFO);
-	tegra_sku_id = reg & 0xFF;
-
-	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
-	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
-
-	id = tegra_read_chipid();
-	netlist = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860);
-	tegra_chip_id = (id >> 8) & 0xff;
-	tegra_chip_major = (id >> 4) & 0xf;
-	tegra_chip_minor = (id >> 16) & 0xf;
-	tegra_chip_netlist = (netlist >> 0) & 0xffff;
-	tegra_chip_patch = (netlist >> 16) & 0xffff;
-
-	if (tegra_chip_id == TEGRA20 &&
-	    (tegra_spare_fuse(18) || tegra_spare_fuse(19)))
-		tegra_chip_priv = "p";
-
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra20_init_speedo_data;
-		break;
-	case TEGRA30:
-		tegra_fuse_spare_bit = TEGRA30_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra30_init_speedo_data;
-		break;
-	default:
-		pr_warn("Tegra: unknown chip id %d\n", tegra_chip_id);
-		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra_get_process_id;
-	}
-
-	tegra_revision = tegra_get_revision();
-	tegra_chip_rev = (int)tegra_revision;
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	tegra_init_speedo_data();
-#endif
-
-	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n"
-		tegra_revision_name[tegra_revision], tegra_sku_id,
-		tegra_cpu_process_id, tegra_core_process_id);
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -332,11 +244,11 @@ unsigned long long tegra_chip_uid(void)
 	*/
 
 	/* Get the chip id and encode each chip variant as a unique value. */
-	reg = readl(IO_TO_VIRT(TEGRA_APB_MISC_BASE + 0x804));
+	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + 0x804));
 	reg = (reg & 0xFF00) >> 8;
 
 	switch (reg) {
-	case TEGRA30:
+	case TEGRA_CHIPID_TEGRA3:
 		cid = 0;
 		break;
 
@@ -379,28 +291,184 @@ unsigned long long tegra_chip_uid(void)
 	return uid;
 #endif
 }
-EXPORT_SYMBOL(tegra_chip_uid);
 
 int tegra_gpu_register_sets(void)
 {
-	u32 reg;
-
-	if (tegra_chip_id == TEGRA20)
-		return 1;
 #ifdef CONFIG_ARCH_TEGRA_HAS_DUAL_3D
-	else {
-		u32 reg = readl(IO_TO_VIRT(TEGRA_CLK_RESET_BASE + FUSE_GPU_INFO));
-		if (reg & FUSE_GPU_INFO_MASK)
-			return 1;
-		else
-			return 2;
-	}
+	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + FUSE_GPU_INFO));
+	if (reg & FUSE_GPU_INFO_MASK)
+		return 1;
+	else
+		return 2;
 #else
 	return 1;
 #endif
-
-	BUG();
 }
 
-module_param(tegra_chip_id, int, 0444);
-module_param(tegra_chip_rev, int, 0444);
+struct chip_revision {
+	enum tegra_chipid	chipid;
+	unsigned int		major;
+	unsigned int		minor;
+	char			prime;
+	enum tegra_revision	revision;
+};
+
+#define CHIP_REVISION(id, m, n, p, rev) {	\
+	.chipid = TEGRA_CHIPID_##id,		\
+	.major = m,				\
+	.minor = n,				\
+	.prime = p,				\
+	.revision = TEGRA_REVISION_##rev }
+
+static struct chip_revision tegra_chip_revisions[] = {
+	CHIP_REVISION(TEGRA2, 1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA2, 1, 3, 0,   A03),
+	CHIP_REVISION(TEGRA2, 1, 3, 'p', A03p),
+	CHIP_REVISION(TEGRA2, 1, 4, 0,   A04),
+	CHIP_REVISION(TEGRA2, 1, 4, 'p', A04p),
+	CHIP_REVISION(TEGRA3, 1, 1, 0,   A01),
+	CHIP_REVISION(TEGRA3, 1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA3, 1, 3, 0,   A03),
+};
+
+static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
+{
+	enum tegra_revision revision = TEGRA_REVISION_UNKNOWN;
+
+#if defined(CONFIG_TEGRA_SILICON_PLATFORM)
+	int i ;
+	char prime;
+
+	if (id->priv == NULL)
+		prime = 0;
+	else
+		prime = *(id->priv);
+
+	for (i = 0; i < ARRAY_SIZE(tegra_chip_revisions); i++) {
+		if ((id->chipid != tegra_chip_revisions[i].chipid) ||
+		    (id->minor != tegra_chip_revisions[i].minor) ||
+		    (id->major != tegra_chip_revisions[i].major) ||
+		    (prime != tegra_chip_revisions[i].prime))
+			continue;
+
+		revision = tegra_chip_revisions[i].revision;
+		break;
+	}
+#endif
+
+	return revision;
+}
+
+static void tegra_set_tegraid(u32 chipid,
+					u32 major, u32 minor,
+					u32 nlist, u32 patch, const char *priv)
+{
+	tegra_id.chipid  = (enum tegra_chipid) chipid;
+	tegra_id.major   = major;
+	tegra_id.minor   = minor;
+	tegra_id.netlist = nlist;
+	tegra_id.patch   = patch;
+	tegra_id.priv    = (char *)priv;
+	tegra_id.revision = tegra_decode_revision(&tegra_id);
+}
+
+static void tegra_get_tegraid_from_hw(void)
+{
+	void __iomem *netlist = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x860;
+	u32 cid = tegra_read_chipid();
+	u32 nlist = readl(netlist);
+	char *priv = NULL;
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	if (get_spare_fuse(18) || get_spare_fuse(19))
+		priv = "p";
+#endif
+	tegra_set_tegraid((cid >> 8) & 0xff,
+			  (cid >> 4) & 0xf,
+			  (cid >> 16) & 0xf,
+			  (nlist >> 0) & 0xffff,
+			  (nlist >> 16) & 0xffff,
+			  priv);
+}
+
+enum tegra_chipid tegra_get_chipid(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+
+	return tegra_id.chipid;
+}
+
+enum tegra_revision tegra_get_revision(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+
+	return tegra_id.revision;
+}
+
+static int get_chip_id(char *val, const struct kernel_param *kp)
+{
+	return param_get_uint(val, kp);
+}
+
+static int get_revision(char *val, const struct kernel_param *kp)
+{
+	return param_get_uint(val, kp);
+}
+
+static struct kernel_param_ops tegra_chip_id_ops = {
+	.get = get_chip_id,
+};
+
+static struct kernel_param_ops tegra_revision_ops = {
+	.get = get_revision,
+};
+
+module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_id.chipid, 0444);
+module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_id.revision, 0444);
+
+void tegra_init_fuse(void)
+{
+	u32 id;
+
+	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+	reg |= 1 << 28;
+	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
+
+	reg = tegra_fuse_readl(FUSE_SKU_INFO);
+	tegra_sku_id = reg & 0xFF;
+
+	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
+	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
+
+	id = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
+	tegra_chip_id = (id >> 8) & 0xff;
+
+	switch (tegra_chip_id) {
+	case TEGRA20:
+		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
+		tegra_init_speedo_data = &tegra20_init_speedo_data;
+		break;
+	case TEGRA30:
+		tegra_fuse_spare_bit = TEGRA30_FUSE_SPARE_BIT;
+		tegra_init_speedo_data = &tegra30_init_speedo_data;
+		break;
+	default:
+		pr_warn("Tegra: unknown chip id %d\n", tegra_chip_id);
+		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
+		tegra_init_speedo_data = &tegra_get_process_id;
+	}
+
+	tegra_revision = tegra_get_revision();
+
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	tegra_init_speedo_data();
+#endif
+
+	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
+		tegra_revision_name[tegra_revision],
+		tegra_sku_id, tegra_cpu_process_id(),
+		tegra_core_process_id());
+}
+

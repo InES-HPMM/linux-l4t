@@ -1,4 +1,6 @@
 /*
+ * arch/arm/mach-tegra/fuse.h
+ *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2010-2011 NVIDIA Corp.
  *
@@ -19,8 +21,6 @@
 #ifndef __MACH_TEGRA_FUSE_H
 #define __MACH_TEGRA_FUSE_H
 
-#include <mach/hardware.h>
-
 #define SKU_ID_T20	8
 #define SKU_ID_T25SE	20
 #define SKU_ID_AP25	23
@@ -28,24 +28,17 @@
 #define SKU_ID_AP25E	27
 #define SKU_ID_T25E	28
 
+#define TEGRA20		0x20
+#define TEGRA30		0x30
+
 extern int tegra_sku_id;
-extern int tegra_sku_override;
-extern int tegra_cpu_process_id;
-extern int tegra_core_process_id;
-extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
-extern int tegra_soc_speedo_id;
-extern int tegra_cpu_speedo_mv;
-extern int tegra_core_speedo_mv;
-extern int tegra_package_id;
+extern int tegra_chip_id;
 
 extern int tegra_bct_strapping;
 
 unsigned long long tegra_chip_uid(void);
 void tegra_init_fuse(void);
-u32 tegra_fuse_readl(unsigned long offset);
-void tegra_fuse_writel(u32 value, unsigned long offset);
 bool tegra_spare_fuse(int bit);
-u32 tegra_fuse_readl(unsigned long offset);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void tegra20_init_speedo_data(void);
@@ -59,4 +52,39 @@ void tegra30_init_speedo_data(void);
 static inline void tegra30_init_speedo_data(void) {}
 #endif
 
-#endif
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+
+int tegra_soc_speedo_id(void);
+int tegra_cpu_process_id(void);
+int tegra_core_process_id(void);
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+int tegra_package_id(void);
+int tegra_cpu_speedo_id(void);
+int tegra_cpu_speedo_mv(void);
+int tegra_core_speedo_mv(void);
+int tegra_get_sku_override(void);
+#else
+static inline int tegra_package_id(void) { return -1; }
+static inline int tegra_cpu_speedo_id(void) { return 0; }
+static inline int tegra_cpu_speedo_mv(void) { return 1000; }
+static inline int tegra_core_speedo_mv(void) { return 1200; }
+#endif /* CONFIG_ARCH_TEGRA_2x_SOC */
+
+#else
+
+static inline int tegra_cpu_process_id(void) { return 0; }
+static inline int tegra_core_process_id(void) { return 0; }
+static inline int tegra_cpu_speedo_id(void) { return 0; }
+static inline int tegra_soc_speedo_id(void) { return 0; }
+static inline int tegra_package_id(void) { return -1; }
+static inline int tegra_cpu_speedo_mv(void) { return 1000; }
+static inline int tegra_core_speedo_mv(void) { return 1200; }
+static inline void tegra_init_speedo_data(void) { }
+
+#endif /* CONFIG_TEGRA_SILICON_PLATFORM */
+
+u32 tegra_fuse_readl(unsigned long offset);
+void tegra_fuse_writel(u32 val, unsigned long offset);
+
+#endif /* MACH_TEGRA_FUSE_H */
