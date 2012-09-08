@@ -98,7 +98,7 @@ static int dalmore_imx091_power_on(void)
 
 reg_alloc_fail:
 
-	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (dalmore_cam_reg[i]) {
 			regulator_put(dalmore_cam_reg[i]);
 			dalmore_cam_reg[i] = NULL;
@@ -113,11 +113,10 @@ static int dalmore_imx091_power_off(void)
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
 
-	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (dalmore_cam_reg[i]) {
 			regulator_disable(dalmore_cam_reg[i]);
 			regulator_put(dalmore_cam_reg[i]);
-			dalmore_cam_reg[i] = NULL;
 		}
 	}
 
@@ -153,7 +152,7 @@ static int dalmore_ov9772_power_on(void)
 
 reg_alloc_fail:
 
-	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (dalmore_cam_reg[i]) {
 			regulator_put(dalmore_cam_reg[i]);
 			dalmore_cam_reg[i] = NULL;
@@ -168,11 +167,10 @@ static int dalmore_ov9772_power_off(void)
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
 
-	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (dalmore_cam_reg[i]) {
 			regulator_disable(dalmore_cam_reg[i]);
 			regulator_put(dalmore_cam_reg[i]);
-			dalmore_cam_reg[i] = NULL;
 		}
 	}
 
@@ -255,11 +253,69 @@ fail_free_gpio:
 }
 
 
+/* MPU board file definition	*/
+static struct mpu_platform_data mpu9150_gyro_data = {
+	.int_config	= 0x10,
+	.level_shifter	= 0,
+	.orientation	= MPU_GYRO_ORIENTATION,	/* Located in board_[platformname].h	*/
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
+	.sec_slave_id	= COMPASS_ID_AK8975,
+	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
+	.secondary_read_reg	= 0x06,
+	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
+	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
+			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
+};
+
+#define TEGRA_CAMERA_GPIO(_gpio, _label, _value)		\
+	{							\
+		.gpio = _gpio,					\
+		.label = _label,				\
+		.value = _value,				\
+	}
+
+static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
+        {
+                I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
+                .platform_data = &mpu9150_gyro_data,
+        },
+};
+
+static void mpuirq_init(void)
+{
+        int ret = 0;
+        unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
+        unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
+        char *gyro_name = MPU_GYRO_NAME;
+
+        pr_info("*** MPU START *** mpuirq_init...\n");
+
+        ret = gpio_request(gyro_irq_gpio, gyro_name);
+
+        if (ret < 0) {
+                pr_err("%s: gpio_request failed %d\n", __func__, ret);
+                return;
+        }
+
+        ret = gpio_direction_input(gyro_irq_gpio);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input failed %d\n", __func__, ret);
+                gpio_free(gyro_irq_gpio);
+                return;
+        }
+        pr_info("*** MPU END *** mpuirq_init...\n");
+
+        inv_mpu9150_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+        i2c_register_board_info(gyro_bus_num, inv_mpu9150_i2c2_board_info,
+                ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
+}
+
 int __init dalmore_sensors_init(void)
 {
 	tegra_get_board_info(&board_info);
 
 	dalmore_camera_init();
+	mpuirq_init();
 
 	return 0;
 }
