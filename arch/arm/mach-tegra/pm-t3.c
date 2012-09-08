@@ -22,12 +22,12 @@
 #include <linux/smp.h>
 #include <linux/interrupt.h>
 #include <linux/clk.h>
-#include <linux/cpu_pm.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/clockchips.h>
+#include <linux/cpu_pm.h>
 
 #include <mach/gpio.h>
 #include <mach/irqs.h>
@@ -38,7 +38,6 @@
 
 #include "clock.h"
 #include "cpuidle.h"
-#include "flowctrl.h"
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"
@@ -200,13 +199,13 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 	/* Read the flow controler CSR register and clear the CPU switch
 	   and immediate flags. If an actual CPU switch is to be performed,
 	   re-write the CSR register with the desired values. */
-	reg = flowctrl_read_cpu_csr(0);
-	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
-		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
+	reg = readl(FLOW_CTRL_CPU_CSR(0));
+	reg &= ~(FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE |
+		 FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER);
 
 	/* Program flow controller for immediate wake if requested */
 	if (flags & TEGRA_POWER_CLUSTER_IMMEDIATE)
-		reg |= FLOW_CTRL_CSR_IMMEDIATE_WAKE;
+		reg |= FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE;
 
 	/* Do nothing if no switch actions requested */
 	if (!target_cluster)
@@ -222,12 +221,12 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 			}
 
 			/* Set up the flow controller to switch CPUs. */
-			reg |= FLOW_CTRL_CSR_SWITCH_CLUSTER;
+			reg |= FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER;
 		}
 	}
 
 done:
-	flowctrl_write_cpu_csr(0, reg);
+	writel(reg, FLOW_CTRL_CPU_CSR(0));
 }
 
 
@@ -294,10 +293,10 @@ void tegra_cluster_switch_epilog(unsigned int flags)
 	/* Make sure the switch and immediate flags are cleared in
 	   the flow controller to prevent undesirable side-effects
 	   for future users of the flow controller. */
-	reg = flowctrl_read_cpu_csr(0);
-	reg &= ~(FLOW_CTRL_CSR_IMMEDIATE_WAKE |
-		 FLOW_CTRL_CSR_SWITCH_CLUSTER);
-	flowctrl_write_cpu_csr(0, reg);
+	reg = readl(FLOW_CTRL_CPU_CSR(0));
+	reg &= ~(FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE |
+		 FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER);
+	writel(reg, FLOW_CTRL_CPU_CSR(0));
 
 	/* Perform post-switch LP=>G clean-up */
 	if (!is_lp_cluster()) {

@@ -689,7 +689,8 @@ static void l2x0_resume(void)
 {
 	if (!(readl_relaxed(l2x0_base + L2X0_CTRL) & L2X0_CTRL_EN)) {
 		/* restore aux ctrl and enable l2 */
-		l2x0_unlock(readl_relaxed(l2x0_base + L2X0_CACHE_ID));
+		l2x0_unlock(readl_relaxed(l2x0_base + L2X0_CACHE_ID) &
+			L2X0_CACHE_ID_PART_MASK);
 
 		writel_relaxed(l2x0_saved_regs.aux_ctrl, l2x0_base +
 			L2X0_AUX_CTRL);

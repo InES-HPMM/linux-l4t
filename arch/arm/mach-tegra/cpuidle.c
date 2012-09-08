@@ -22,7 +22,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/module.h>
 #include <linux/cpu.h>
 #include <linux/cpuidle.h>
 #include <linux/debugfs.h>
@@ -37,6 +36,9 @@
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
+#include <linux/cpu_pm.h>
+#include <linux/module.h>
+#include <linux/hrtimer.h>
 
 #include <asm/proc-fns.h>
 
@@ -48,42 +50,19 @@
 #include "pm.h"
 #include "sleep.h"
 
-static int tegra_idle_enter_lp3(struct cpuidle_device *dev, int index);
-#ifdef CONFIG_PM_SLEEP
-static int tegra_idle_enter_lp2(struct cpuidle_device *dev, int index);
-#endif
-
 int tegra_lp2_exit_latency;
 static int tegra_lp2_power_off_time;
 static unsigned int tegra_lp2_min_residency;
+
+static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
+				int index);
 
 struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
 };
 
-static struct cpuidle_state tegra_cpuidle_states[] = {
-	[0] = {
-		.enter			= tegra_idle_enter_lp3,
-		.exit_latency		= 10,
-		.target_residency	= 10,
-		.power_usage		= 600,
-		.flags			= CPUIDLE_FLAG_TIME_VALID,
-		.name			= "LP3",
-		.desc			= "CPU flow-controlled",
-	},
-#ifdef CONFIG_PM_SLEEP
-	[1] = {
-		.enter			= tegra_idle_enter_lp2,
-		.power_usage		= 0,
-		.flags			= CPUIDLE_FLAG_TIME_VALID,
-		.name			= "LP2",
-		.desc			= "CPU power-gate",
-	},
-#endif
-};
-
-static DEFINE_PER_CPU(struct cpuidle_device, tegra_idle_device);
+static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
 
 static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	int index)
@@ -107,7 +86,6 @@ static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
 	local_irq_enable();
 
 	dev->last_residency = us;
-
 	return index;
 }
 
@@ -173,11 +151,58 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	}
 	tegra_cpu_idle_stats_lp2_time(dev->cpu, us);
 
-	dev->last_residency = us;
-
-	return index;
+	dev->last_residency = (int)us;
+	return (entered_lp2) ? index : 0;
 }
 #endif
+
+static int tegra_cpuidle_register_device(unsigned int cpu)
+{
+	struct cpuidle_device *dev;
+	struct cpuidle_state *state;
+
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
+
+	dev->state_count = 0;
+	dev->cpu = cpu;
+
+	state = &dev->states[0];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "LP3");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU flow-controlled");
+	state->exit_latency = 10;
+	state->target_residency = 10;
+	state->power_usage = 600;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
+	state->enter = tegra_idle_enter_lp3;
+	dev->safe_state_index = 0;
+	dev->state_count++;
+
+#ifdef CONFIG_PM_SLEEP
+	state = &dev->states[1];
+	snprintf(state->name, CPUIDLE_NAME_LEN, "LP2");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU power-gate");
+	state->exit_latency = tegra_cpu_power_good_time();
+	state->target_residency = tegra_cpu_power_off_time() +
+		tegra_cpu_power_good_time();
+	if (state->target_residency < tegra_lp2_min_residency)
+		state->target_residency = tegra_lp2_min_residency;
+	state->power_usage = 0;
+	state->flags = CPUIDLE_FLAG_TIME_VALID;
+	state->enter = tegra_idle_enter_lp2;
+	dev->power_specified = 1;
+	dev->state_count++;
+#endif
+
+	if (cpuidle_register_device(dev)) {
+		pr_err("CPU%u: failed to register idle device\n", cpu);
+		kfree(dev);
+		return -EIO;
+	}
+	per_cpu(tegra_idle_device, cpu) = dev;
+	return 0;
+}
 
 static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
 	unsigned long event, void *dummy)
@@ -198,10 +223,14 @@ static struct notifier_block tegra_cpuidle_pm_notifier = {
 
 static int __init tegra_cpuidle_init(void)
 {
-	int ret;
 	unsigned int cpu;
-	struct cpuidle_device *dev;
-	struct cpuidle_driver *drv = &tegra_idle_driver;
+	int ret;
+
+	ret = cpuidle_register_driver(&tegra_idle_driver);
+	if (ret) {
+		pr_err("CPUidle driver registration failed\n");
+		return ret;
+	}
 
 #ifdef CONFIG_PM_SLEEP
 	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
@@ -211,43 +240,28 @@ static int __init tegra_cpuidle_init(void)
 	ret = tegra_cpudile_init_soc();
 	if (ret)
 		return ret;
-
-	tegra_cpuidle_states[1].exit_latency = tegra_cpu_power_good_time();
-	tegra_cpuidle_states[1].target_residency = tegra_cpu_power_off_time() +
-		tegra_cpu_power_good_time();
-	if (tegra_cpuidle_states[1].target_residency < tegra_lp2_min_residency)
-		tegra_cpuidle_states[1].target_residency = tegra_lp2_min_residency;
 #endif
-	
-	ret = cpuidle_register_driver(&tegra_idle_driver);
-	if (ret) {
-		pr_err("CPUidle driver registration failed\n");
-		return ret;
-	}
 
 	for_each_possible_cpu(cpu) {
-		dev = &per_cpu(tegra_idle_device, cpu);
-		dev->cpu = cpu;
-
-		memcpy(&dev->states, tegra_cpuidle_states,
-			ARRAY_SIZE(tegra_cpuidle_states) *
-			   sizeof(*tegra_cpuidle_states));
-
-		dev->state_count = ARRAY_SIZE(tegra_cpuidle_states);
-		dev->safe_state_index = 0;
-		dev->power_specified = 1;
-		ret = cpuidle_register_device(dev);
+		ret = tegra_cpuidle_register_device(cpu);
 		if (ret) {
 			pr_err("CPU%u: CPUidle device registration failed\n",
 				cpu);
 			return ret;
 		}
 	}
-	register_pm_notifier(&tegra_cpuidle_pm_notifier);
 
+	register_pm_notifier(&tegra_cpuidle_pm_notifier);
 	return 0;
 }
 device_initcall(tegra_cpuidle_init);
+
+static void __exit tegra_cpuidle_exit(void)
+{
+	unregister_pm_notifier(&tegra_cpuidle_pm_notifier);
+	cpuidle_unregister_driver(&tegra_idle_driver);
+}
+module_exit(tegra_cpuidle_exit);
 
 static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
 {

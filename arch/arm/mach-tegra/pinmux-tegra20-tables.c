@@ -27,6 +27,7 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/syscore_ops.h>
+#include <linux/bug.h>
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra20.h>

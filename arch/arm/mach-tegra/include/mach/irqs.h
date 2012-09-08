@@ -328,10 +328,9 @@
 
 #define INT_GIC_NR			(INT_QUINT_BASE + 32)
 
-/* Tegra30 has 5 banks of 32 IRQs */
-#define INT_MAIN_NR			(32 * 5)
+#define INT_MAIN_NR			(INT_GIC_NR - INT_PRI_BASE)
 
-#define INT_SYNCPT_THRESH_BASE		(INT_PRI_BASE + INT_MAIN_NR)
+#define INT_SYNCPT_THRESH_BASE		(INT_QUINT_BASE + 32)
 #define INT_SYNCPT_THRESH_NR		32
 
 #define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
@@ -342,7 +341,7 @@
 
 #define INT_PCI_MSI_BASE		(INT_GPIO_BASE + \
 					 INT_GPIO_NR)
-#define INT_PCI_MSI_NR			(0)
+#define INT_PCI_MSI_NR			(32 * 8)
 
 #define FIQ_START			INT_GIC_BASE
 

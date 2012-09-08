@@ -409,12 +409,6 @@ static int ak8975_probe(struct i2c_client *client,
 	}
 	data = iio_priv(indio_dev);
 	i2c_set_clientdata(client, indio_dev);
-	/* Perform some basic start-of-day setup of the device. */
-	err = ak8975_setup(client);
-	if (err < 0) {
-		dev_err(&client->dev, "AK8975 initialization fails\n");
-		goto exit_free_iio;
-	}
 
 	data->client = client;
 	mutex_init(&data->lock);
@@ -424,6 +418,13 @@ static int ak8975_probe(struct i2c_client *client,
 	indio_dev->num_channels = ARRAY_SIZE(ak8975_channels);
 	indio_dev->info = &ak8975_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
+
+	/* Perform some basic start-of-day setup of the device. */
+	err = ak8975_setup(client);
+	if (err < 0) {
+		dev_err(&client->dev, "AK8975 initialization fails\n");
+		goto exit_free_iio;
+	}
 
 	err = iio_device_register(indio_dev);
 	if (err < 0)

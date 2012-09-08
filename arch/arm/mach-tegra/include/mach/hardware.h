@@ -19,6 +19,21 @@
 #ifndef MACH_TEGRA_HARDWARE_H
 #define MACH_TEGRA_HARDWARE_H
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#define pcibios_assign_all_busses()		1
+
+#else
+
+#define pcibios_assign_all_busses()		0
+#endif
+
+enum tegra_chipid {
+	TEGRA_CHIPID_UNKNOWN = 0,
+	TEGRA_CHIPID_TEGRA2 = 0x20,
+	TEGRA_CHIPID_TEGRA3 = 0x30,
+	TEGRA_CHIPID_TEGRA11 = 0x35,
+};
+
 enum tegra_revision {
 	TEGRA_REVISION_UNKNOWN = 0,
 	TEGRA_REVISION_A01,
@@ -31,12 +46,8 @@ enum tegra_revision {
 	TEGRA_REVISION_MAX,
 };
 
-#define TEGRA20		0x20
-#define TEGRA30		0x30
-#define TEGRA11		0x35
-
-extern int tegra_chip_id;
 extern enum tegra_revision tegra_revision;
+enum tegra_chipid tegra_get_chipid(void);
 
 #ifndef CONFIG_TEGRA_SILICON_PLATFORM
 void tegra_get_netlist_revision(u32 *netlist, u32* patchid);

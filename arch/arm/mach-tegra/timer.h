@@ -17,24 +17,28 @@
 #ifndef _MACH_TEGRA_TIMER_H_
 #define _MACH_TEGRA_TIMER_H_
 
-#include <linux/io.h>
-
 #define RTC_SECONDS		0x08
 #define RTC_SHADOW_SECONDS	0x0c
 #define RTC_MILLISECONDS	0x10
-
-#define TIMER_PTV		0x0
-#define TIMER_PCR		0x4
 
 #define TIMERUS_CNTR_1US	0x10
 #define TIMERUS_USEC_CFG	0x14
 #define TIMERUS_CNTR_FREEZE	0x4c
 
+#define TIMER1_BASE		0x0
+#define TIMER2_BASE		0x8
+#define TIMER3_BASE		0x50
+#define TIMER4_BASE		0x58
+
+#define TIMER_PTV		0x0
+#define TIMER_PCR		0x4
+
+void __init tegra_init_timer(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-void __init tegra2_init_timer(u32 *offset, int *irq, unsigned long rate);
+void __init tegra20_init_timer(void);
 #else
-void __init tegra3_init_timer(u32 *offset, int *irq, unsigned long rate);
+void __init tegra30_init_timer(void);
 #endif
 
 struct tegra_twd_context {
@@ -44,7 +48,6 @@ struct tegra_twd_context {
 };
 
 #ifdef CONFIG_HAVE_ARM_TWD
-static void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 int tegra_twd_get_state(struct tegra_twd_context *context);
 void tegra_twd_suspend(struct tegra_twd_context *context);
 void tegra_twd_resume(struct tegra_twd_context *context);

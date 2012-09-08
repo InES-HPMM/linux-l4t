@@ -22,9 +22,6 @@
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
-
-#include <asm/system_info.h>
-
 #include "board.h"
 
 /* skuinfo is 18 character long xxx-xxxxx-xxxx-xxx
@@ -38,6 +35,9 @@
 #define PRODINFO_BUF_SIZE 19
 /* prodver is 2 character long XX so buffer size is set to 2+1 */
 #define PRODVER_BUF_SIZE 3
+
+extern unsigned int system_serial_low;
+extern unsigned int system_serial_high;
 
 static unsigned int board_serial_low;
 static unsigned int board_serial_high;

@@ -31,7 +31,7 @@
  *  CHANGES:
  *
  *  2004.12.01	Major rewrite by tiwai, merged the work of pshou
- * 
+ *
  */
 
 #include <linux/delay.h>
@@ -1262,7 +1262,7 @@ static int azx_reset(struct azx *chip, int full_reset)
 
 /*
  * Lowlevel interface
- */  
+ */
 
 /* enable interrupts */
 static void azx_int_enable(struct azx *chip)
@@ -1552,7 +1552,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 		spin_unlock(&chip->reg_lock);
 		return IRQ_NONE;
 	}
-	
+
 	for (i = 0; i < chip->num_streams; i++) {
 		azx_dev = &chip->azx_dev[i];
 		if (status & azx_dev->sd_int_sta_mask) {
@@ -1594,7 +1594,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 		azx_writeb(chip, STATESTS, 0x04);
 #endif
 	spin_unlock(&chip->reg_lock);
-	
+
 	return IRQ_HANDLED;
 }
 

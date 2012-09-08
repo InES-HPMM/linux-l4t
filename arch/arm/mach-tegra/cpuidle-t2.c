@@ -46,7 +46,6 @@
 #include <mach/irqs.h>
 
 #include "cpuidle.h"
-#include "flowctrl.h"
 #include "gic.h"
 #include "pm.h"
 #include "sleep.h"
@@ -121,7 +120,7 @@ static void tegra2_wake_reset_cpu(int cpu)
 	       CLK_RST_CONTROLLER_RST_CPU_CMPLX_CLR);
 
 	/* unhalt the cpu */
-	flowctrl_write_cpu_halt(1, 0);
+	flowctrl_writel(0, FLOW_CTRL_HALT_CPU(1));
 
 	tegra_pen_unlock();
 }

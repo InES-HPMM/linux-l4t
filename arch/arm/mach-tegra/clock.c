@@ -657,28 +657,6 @@ void tegra_periph_reset_assert(struct clk *c)
 }
 EXPORT_SYMBOL(tegra_periph_reset_assert);
 
-/* Several extended clock configuration bits (e.g., clock routing, clock
- * phase control) are included in PLL and peripheral clock source
- * registers. */
-int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
-{
-	int ret = 0;
-	unsigned long flags;
-
-	spin_lock_irqsave(&c->spinlock, flags);
-
-	if (!c->ops || !c->ops->clk_cfg_ex) {
-		ret = -ENOSYS;
-		goto out;
-	}
-	ret = c->ops->clk_cfg_ex(c, p, setting);
-
-out:
-	spin_unlock_irqrestore(&c->spinlock, flags);
-
-	return ret;
-}
-
 int tegra_is_clk_enabled(struct clk *c)
 {
 	return c->refcnt;
@@ -801,6 +779,27 @@ static int __init tegra_init_disable_boot_clocks(void)
 	return 0;
 }
 late_initcall(tegra_init_disable_boot_clocks);
+
+/* Several extended clock configuration bits (e.g., clock routing, clock
+ * phase control) are included in PLL and peripheral clock source
+ * registers. */
+int tegra_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&c->spinlock, flags);
+
+	if (!c->ops || !c->ops->clk_cfg_ex) {
+		ret = -ENOSYS;
+		goto out;
+	}
+	ret = c->ops->clk_cfg_ex(c, p, setting);
+
+out:
+	spin_unlock_irqrestore(&c->spinlock, flags);
+	return ret;
+}
 
 int tegra_register_clk_rate_notifier(struct clk *c, struct notifier_block *nb)
 {

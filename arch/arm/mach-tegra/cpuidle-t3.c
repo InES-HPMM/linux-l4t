@@ -37,9 +37,9 @@
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
-#include <linux/cpu_pm.h>
 #include <linux/clk.h>
-#include <linux/moduleparam.h>
+#include <linux/cpu_pm.h>
+#include <linux/module.h>
 
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
@@ -49,6 +49,7 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/hardware.h>
 
 #include <trace/events/power.h>
 
@@ -61,6 +62,7 @@
 #include "reset.h"
 #include "sleep.h"
 #include "timer.h"
+#include "fuse.h"
 
 #define CLK_RST_CONTROLLER_CPU_CMPLX_STATUS \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
@@ -346,6 +348,7 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 	struct tegra_twd_context twd_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
 	if (!tegra_twd_get_state(&twd_context)) {
 		unsigned long twd_rate = clk_get_rate(twd_clk);

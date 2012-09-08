@@ -50,24 +50,9 @@ static void flowctrl_update(u8 offset, u32 value)
 	readl_relaxed(addr);
 }
 
-static u32 flowctrl_readl(u8 offset)
-{
-	return readl(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset);
-}
-
-u32 flowctrl_read_cpu_csr(unsigned int cpuid)
-{
-	return flowctrl_readl(flowctrl_offset_cpu_csr[cpuid]);
-}
-
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value)
 {
 	return flowctrl_update(flowctrl_offset_cpu_csr[cpuid], value);
-}
-
-u32 flowctrl_read_cpu_halt(unsigned int cpuid)
-{
-	return flowctrl_readl(flowctrl_offset_halt_cpu[cpuid]);
 }
 
 void flowctrl_write_cpu_halt(unsigned int cpuid, u32 value)

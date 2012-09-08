@@ -7,7 +7,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (C) 2010-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,7 +33,6 @@
 
 #include <asm/mach/time.h>
 #include <asm/delay.h>
-#include <asm/localtimer.h>
 #include <asm/smp_twd.h>
 #include <asm/sched_clock.h>
 
@@ -53,7 +52,11 @@ static u32 usec_config;
 static u32 usec_offset;
 static bool usec_suspended;
 
-static u32 system_timer;
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+static u32 system_timer = (TEGRA_TMR3_BASE - TEGRA_TMR1_BASE);
+#else
+static u32 system_timer = 0;
+#endif
 
 #define timer_writel(value, reg) \
 	__raw_writel(value, timer_reg_base + (reg))
@@ -162,6 +165,11 @@ static struct irqaction tegra_timer_irq = {
 	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_HIGH,
 	.handler	= tegra_timer_interrupt,
 	.dev_id		= &tegra_clockevent,
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	.irq		= INT_TMR3,
+#else
+	.irq		= INT_TMR1,
+#endif
 };
 
 static int tegra_timer_suspend(void)
@@ -191,6 +199,7 @@ static struct syscore_ops tegra_timer_syscore_ops = {
 static DEFINE_TWD_LOCAL_TIMER(twd_local_timer,
 			      TEGRA_ARM_PERIF_BASE + 0x600,
 			      IRQ_LOCALTIMER);
+static void __iomem *tegra_twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 
 static void __init tegra_twd_init(void)
 {
@@ -201,17 +210,17 @@ static void __init tegra_twd_init(void)
 
 int tegra_twd_get_state(struct tegra_twd_context *context)
 {
-	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
-	context->twd_load = readl(twd_base + TWD_TIMER_LOAD);
-	context->twd_cnt = readl(twd_base + TWD_TIMER_COUNTER);
+	context->twd_ctrl = readl(tegra_twd_base + TWD_TIMER_CONTROL);
+	context->twd_load = readl(tegra_twd_base + TWD_TIMER_LOAD);
+	context->twd_cnt = readl(tegra_twd_base + TWD_TIMER_COUNTER);
 
 	return 0;
 }
 
 void tegra_twd_suspend(struct tegra_twd_context *context)
 {
-	context->twd_ctrl = readl(twd_base + TWD_TIMER_CONTROL);
-	context->twd_load = readl(twd_base + TWD_TIMER_LOAD);
+	context->twd_ctrl = readl(tegra_twd_base + TWD_TIMER_CONTROL);
+	context->twd_load = readl(tegra_twd_base + TWD_TIMER_LOAD);
 	if ((context->twd_load == 0) &&
 	    (context->twd_ctrl & TWD_TIMER_CONTROL_PERIODIC) &&
 	    (context->twd_ctrl & (TWD_TIMER_CONTROL_ENABLE |
@@ -219,7 +228,7 @@ void tegra_twd_suspend(struct tegra_twd_context *context)
 		WARN("%s: TWD enabled but counter was 0\n", __func__);
 		context->twd_load = 1;
 	}
-	__raw_writel(0, twd_base + TWD_TIMER_CONTROL);
+	__raw_writel(0, tegra_twd_base + TWD_TIMER_CONTROL);
 }
 
 void tegra_twd_resume(struct tegra_twd_context *context)
@@ -228,11 +237,14 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 	       (context->twd_ctrl & TWD_TIMER_CONTROL_PERIODIC) &&
 	       (context->twd_ctrl & (TWD_TIMER_CONTROL_ENABLE |
 				     TWD_TIMER_CONTROL_IT_ENABLE)));
-	writel(context->twd_load, twd_base + TWD_TIMER_LOAD);
-	writel(context->twd_ctrl, twd_base + TWD_TIMER_CONTROL);
+	writel(context->twd_load, tegra_twd_base + TWD_TIMER_LOAD);
+	writel(context->twd_ctrl, tegra_twd_base + TWD_TIMER_CONTROL);
 }
 #else
 #define tegra_twd_init()	do {} while(0)
+#define tegra_twd_get_state	do {} while(0)
+#define tegra_twd_suspend	do {} while(0)
+#define tegra_twd_resume	do {} while(0)
 #endif
 
 extern void __tegra_delay(unsigned long cycles);
@@ -264,10 +276,38 @@ void __init tegra_init_timer(void)
 	else
 		clk_prepare_enable(clk);
 
+	switch (rate) {
+	case 12000000:
+		timer_writel(0x000b, TIMERUS_USEC_CFG);
+		break;
+	case 13000000:
+		timer_writel(0x000c, TIMERUS_USEC_CFG);
+		break;
+	case 19200000:
+		timer_writel(0x045f, TIMERUS_USEC_CFG);
+		break;
+	case 26000000:
+		timer_writel(0x0019, TIMERUS_USEC_CFG);
+		break;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	case 16800000:
+		timer_writel(0x0453, TIMERUS_USEC_CFG);
+		break;
+	case 38400000:
+		timer_writel(0x04BF, TIMERUS_USEC_CFG);
+		break;
+	case 48000000:
+		timer_writel(0x002F, TIMERUS_USEC_CFG);
+		break;
+#endif
+	default:
+		WARN(1, "Unknown clock rate");
+	}
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_init_timer(&system_timer, &tegra_timer_irq.irq, rate);
+	tegra20_init_timer();
 #else
-	tegra3_init_timer(&system_timer, &tegra_timer_irq.irq, rate);
+	tegra30_init_timer();
 #endif
 
 	setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
@@ -293,8 +333,8 @@ void __init tegra_init_timer(void)
 	tegra_clockevent.irq = tegra_timer_irq.irq;
 	clockevents_register_device(&tegra_clockevent);
 
-	tegra_twd_init();
 	register_syscore_ops(&tegra_timer_syscore_ops);
+	tegra_twd_init();
 
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
 

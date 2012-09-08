@@ -84,6 +84,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
 #define FLOW_CTRL_CLUSTER_CONTROL \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x2c)
+#define FLOW_CTRL_CPU_CSR_IMMEDIATE_WAKE	(1<<3)
+#define FLOW_CTRL_CPU_CSR_SWITCH_CLUSTER	(1<<2)
 
 #define FUSE_SKU_DIRECT_CONFIG \
 	(IO_ADDRESS(TEGRA_FUSE_BASE) + 0x1F4)

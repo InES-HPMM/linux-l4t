@@ -21,101 +21,27 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 
+#include <asm/assembler.h>
 #include <asm/cache.h>
 #include <asm/page.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
-#include "reset.h"
 #include "sleep.h"
-
-#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
+#include "reset.h"
 
 #define APB_MISC_GP_HIDREV	0x804
 #define PMC_SCRATCH41	0x140
+
+#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
 
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
         .section ".text.head", "ax"
 	__CPUINIT
 
-/*
- *	__invalidate_cpu_state
- *
- *	  Invalidates volatile CPU state (SCU tags, caches, branch address
- *	  arrays, exclusive monitor, etc.) so that they can be safely enabled
- *	  instruction caching and branch predicition enabled
- */
-__invalidate_cpu_state:
-	clrex
-	mov	r0, #0
-	mcr	p15, 0, r0, c1, c0, 1	@ disable SMP, prefetch, broadcast
-	isb
-	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
-	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
-	mcr	p15, 0, r0, c8, c7, 0	@ invalidate unified TLB
-	dsb
-	isb
-
-	cpu_id	r0
-	cmp	r0, #0
-	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
-	movne	r0, r0, lsl #2
-	movne	r2, #0xf
-	movne	r2, r2, lsl r0
-	strne	r2, [r1]		@ invalidate SCU tags for CPU
-
-	dsb
-	mov	r0, #0x1800
-	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
-	isb
-	/* fall through */
-
-/*
- *   The secondary kernel init calls v7_flush_dcache_all before it enables
- *   the L1; however, the L1 comes out of reset in an undefined state, so
- *   the clean + invalidate performed by v7_flush_dcache_all causes a bunch
- *   of cache lines with uninitialized data and uninitialized tags to get
- *   written out to memory, which does really unpleasant things to the main
- *   processor.  We fix this by performing an invalidate, rather than a
- *   clean + invalidate, before jumping into the kernel.
- */
-ENTRY(v7_invalidate_l1)
-        mov     r0, #0
-        mcr     p15, 2, r0, c0, c0, 0
-        mrc     p15, 1, r0, c0, c0, 0
-
-        ldr     r1, =0x7fff
-        and     r2, r1, r0, lsr #13
-
-        ldr     r1, =0x3ff
-
-        and     r3, r1, r0, lsr #3  @ NumWays - 1
-        add     r2, r2, #1          @ NumSets
-
-        and     r0, r0, #0x7
-        add     r0, r0, #4          @ SetShift
-
-        clz     r1, r3              @ WayShift
-        add     r4, r3, #1          @ NumWays
-1:      sub     r2, r2, #1          @ NumSets--
-        mov     r3, r4              @ Temp = NumWays
-2:      subs    r3, r3, #1          @ Temp--
-        mov     r5, r3, lsl r1
-        mov     r6, r2, lsl r0
-        orr     r5, r5, r6          @ Reg = (Temp<<WayShift)|(NumSets<<SetShift)
-        mcr     p15, 0, r5, c7, c6, 2
-        bgt     2b
-        cmp     r2, #0
-        bgt     1b
-        dsb
-        isb
-        mov     pc, lr
-ENDPROC(v7_invalidate_l1)
-
-
 #ifdef CONFIG_SMP
-/* 
+/*
  *	tegra_secondary_startup
  *
  *	 Initial secondary processor boot vector; jumps to kernel's
@@ -125,7 +51,7 @@ ENDPROC(v7_invalidate_l1)
 	__CPUINIT
 ENTRY(tegra_secondary_startup)
 	bl	__invalidate_cpu_state
-        b       secondary_startup
+	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
 	.previous
 #endif
@@ -175,6 +101,84 @@ ENTRY(tegra_resume)
 ENDPROC(tegra_resume)
 #endif
 
+/*
+ *	__invalidate_cpu_state
+ *
+ *	  Invalidates volatile CPU state (SCU tags, caches, branch address
+ *	  arrays, exclusive monitor, etc.) so that they can be safely enabled
+ *	  instruction caching and branch predicition enabled
+ */
+__invalidate_cpu_state:
+	clrex
+	mov	r0, #0
+	mcr	p15, 0, r0, c1, c0, 1	@ disable SMP, prefetch, broadcast
+	isb
+	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
+	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
+	mcr	p15, 0, r0, c8, c7, 0	@ invalidate unified TLB
+	dsb
+	isb
+
+	cpu_id	r0
+	cmp	r0, #0
+	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
+	movne	r0, r0, lsl #2
+	movne	r2, #0xf
+	movne	r2, r2, lsl r0
+	strne	r2, [r1]		@ invalidate SCU tags for CPU
+
+	dsb
+	mov	r0, #0x1800
+	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
+	isb
+	/* fall through */
+
+/*
+ *	tegra_invalidate_l1
+ *
+ *	  Invalidates the L1 data cache (no clean) during initial boot of a cpu
+ *
+ *	  Corrupted registers: r0-r6
+ */
+tegra_invalidate_l1:
+	mov	r0, #0
+	mcr	p15, 2, r0, c0, c0, 0
+	mrc	p15, 1, r0, c0, c0, 0
+
+	movw	r1, #0x7fff
+	and	r2, r1, r0, lsr #13
+
+	movw	r1, #0x3ff
+
+	and	r3, r1, r0, lsr #3	@ NumWays - 1
+	add	r2, r2, #1	@ NumSets
+
+	and	r0, r0, #0x7
+	add	r0, r0, #4	@ SetShift
+
+	clz	r1, r3		@ WayShift
+	add	r4, r3, #1	@ NumWays
+1:	sub	r2, r2, #1	@ NumSets--
+	mov	r3, r4		@ Temp = NumWays
+2:	subs	r3, r3, #1	@ Temp--
+	mov	r5, r3, lsl r1
+	mov	r6, r2, lsl r0
+	orr	r5, r5, r6	@ Reg = (Temp<<WayShift)|(NumSets<<SetShift)
+	mcr	p15, 0, r5, c7, c6, 2
+	bgt	2b
+	cmp	r2, #0
+	bgt	1b
+	dsb
+	isb
+	mov	pc, lr
+
+/*
+ * __tegra_cpu_reset_handler_halt_failed:
+ *
+ * Alternate entry point for reset handler for cases where the
+ * WFI halt failed to take effect.
+ *
+ */
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_start)
 
@@ -233,18 +237,11 @@ ENTRY(__tegra_cpu_reset_handler)
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Are we on Tegra20? */
-	mov32	r6, TEGRA_APB_MISC_BASE
-	ldr	r0, [r6, #APB_MISC_GP_HIDREV]
-	and	r0, r0, #0xff00
-	cmp	r0, #(0x20 << 8)
-	bne	1f
-	/* If not CPU0, don't let CPU0 reset CPU1 now that CPU1 is coming up. */
+	/* If CPU1, don't let CPU0 reset CPU1 now that CPU1 is coming up. */
 	mov32	r6, TEGRA_PMC_BASE
 	mov	r0, #0
 	cmp	r10, #0
 	strne	r0, [r6, #PMC_SCRATCH41]
-1:
 #endif
 
 #ifdef CONFIG_PM_SLEEP
@@ -271,11 +268,10 @@ __is_not_lp1:
 	bx	lr
 
 __is_not_lp2:
+
 #ifdef CONFIG_SMP
-	/*
-	 * Can only be secondary boot (initial or hotplug) but CPU 0
-	 * cannot be here.
-	 */
+	/* Can only be secondary boot (initial or hotplug) but CPU 0
+	   cannot be here. */
 	cmp	r10, #0
 	bleq	__die				@ CPU0 cannot be here
 	ldr	lr, [r12, #RESET_DATA(STARTUP_SECONDARY)]
@@ -352,6 +348,6 @@ __tegra_cpu_reset_handler_data:
 	.rept	TEGRA_RESET_DATA_SIZE
 	.long	0
 	.endr
+	.size	__tegra_cpu_reset_handler_data, . - __tegra_cpu_reset_handler_data
 	.align L1_CACHE_SHIFT
-
 ENTRY(__tegra_cpu_reset_handler_end)

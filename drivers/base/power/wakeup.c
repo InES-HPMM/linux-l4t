@@ -696,14 +696,22 @@ bool pm_wakeup_pending(void)
 {
 	unsigned long flags;
 	bool ret = false;
+	unsigned int cnt, inpr;
 
+	/**
+	 * HACK: return true if event is in progress even though
+	 * check is not enabled. This causes suspend to abort
+	 * if wake_lock is acquired before starting suspend
+	 * process and user has not enabled check. This HACK is for
+	 * android wake locks to work.
+	 */
 	spin_lock_irqsave(&events_lock, flags);
+	split_counters(&cnt, &inpr);
 	if (events_check_enabled) {
-		unsigned int cnt, inpr;
-
-		split_counters(&cnt, &inpr);
 		ret = (cnt != saved_count || inpr > 0);
 		events_check_enabled = !ret;
+	} else if (inpr > 0) {
+		ret = true;
 	}
 	spin_unlock_irqrestore(&events_lock, flags);
 

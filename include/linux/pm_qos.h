@@ -21,6 +21,7 @@ enum {
 	PM_QOS_CPU_FREQ_MAX,
 
 	/* insert new class ID */
+
 	PM_QOS_NUM_CLASSES,
 };
 

@@ -133,7 +133,7 @@ ENDPROC(cpu_v7_dcache_clean_area)
 .equ	cpu_v7_suspend_size, (4 * 9) + cpu_v7_debug_suspend_size
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
-	stmfd	sp!, {r4 - r10, lr}
+	stmfd	sp!, {r3 - r10, lr}
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c13, c0, 3	@ User r/o thread ID
 	mrc	p15, 0, r6, c15, c0, 1	@ diag
@@ -169,7 +169,7 @@ ENTRY(cpu_v7_do_suspend)
 
 	mrc	p14, 0, r8, c0, c0, 0   @ read IDR
 	mov	r3, r8, lsr #24
-	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	and	r3, r3, #0xf            @ r3 has the number of brkpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of brkpt) ;
@@ -196,7 +196,7 @@ ENTRY(cpu_v7_do_suspend)
 	save_brkpt	c1
 	save_brkpt	c0
 
-	mov	r3, r8, lsr #28		@ r3 has the number of wpt
+	mov	r3, r8, lsr #28         @ r3 has the number of wpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of wpt) ;
@@ -223,7 +223,7 @@ ENTRY(cpu_v7_do_suspend)
 	save_wpt	c1
 	save_wpt	c0
 #endif
-	ldmfd	sp!, {r4 - r10, pc}
+	ldmfd	sp!, {r3 - r10, pc}
 ENDPROC(cpu_v7_do_suspend)
 
 ENTRY(cpu_v7_do_resume)
@@ -258,6 +258,7 @@ ENTRY(cpu_v7_do_resume)
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
 	/* Restore CP14 debug controller context */
+
 	ldmia	r0!, {r2 - r5}
 	mcr	p14, 0, r3, c0, c6, 0	@ DBGWFAR
 	mcr	p14, 0, r4, c0, c7, 0	@ DBGVCR
@@ -275,15 +276,14 @@ ENTRY(cpu_v7_do_resume)
 	ldrne	r4, [r0], #4
 	mcrne	p14, 0, r4, c0, c0, 2	@ DBGDTRRXext
 
-	mrc	p14, 0, r6, c0, c0, 0	@ read IDR
-	mov	r3, r6, lsr #24
-	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	mrc	p14, 0, r5, c0, c0, 0   @ read IDR
+	mov	r3, r5, lsr #24
+	and	r3, r3, #0xf            @ r3 has the number of brkpt
 	rsb	r3, r3, #0xf
 
-	/*
-	 * r3 = (15 - # of wpt) ;
-	 * switch offset = r3*12 - 4 = (r3*3 - 1)<<2
-	 */
+	/* r3 = (15 - #of wpt) ;
+	   switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	*/
 	add     r3, r3, r3, lsl #1
 	sub	r3, r3, #1
 	add	pc, pc, r3, lsl #2
@@ -305,7 +305,7 @@ ENTRY(cpu_v7_do_resume)
 	restore_brkpt	c1
 	restore_brkpt	c0
 
-	mov	r3, r6, lsr #28		@ r3 has the number of wpt
+	mov	r3, r5, lsr #28         @ r3 has the number of wpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of wpt) ;

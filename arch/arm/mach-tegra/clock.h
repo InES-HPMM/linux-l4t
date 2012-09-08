@@ -23,6 +23,20 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
+#ifndef __ASSEMBLY__
+
+#include <linux/clk-provider.h>
+#include <linux/clkdev.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
+#include <linux/spinlock.h>
+#include <linux/clk/tegra.h>
+#include <asm/cputime.h>
+
+#define MAX_SAME_LIMIT_SKU_IDS	16
+
+struct clk;
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
 #else
@@ -30,8 +44,6 @@
 #define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
 #define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
 #endif
-
-#include <linux/clk/tegra.h>
 
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
@@ -48,31 +60,18 @@
 #define PERIPH_MANUAL_RESET	(1 << 12)
 #define PLL_ALT_MISC_REG	(1 << 13)
 #define PLLU			(1 << 14)
-#define PLLX                    (1 << 15)
-#define MUX_PWM                 (1 << 16)
-#define MUX8                    (1 << 17)
-#define DIV_U151_UART           (1 << 18)
-#define MUX_CLK_OUT             (1 << 19)
-#define PLLM                    (1 << 20)
-#define DIV_U71_INT             (1 << 21)
-#define DIV_U71_IDLE            (1 << 22)
+#define PLLX			(1 << 15)
+#define MUX_PWM			(1 << 16)
+#define MUX8			(1 << 17)
+#define DIV_U151_UART		(1 << 18)
+#define MUX_CLK_OUT		(1 << 19)
+#define PLLM			(1 << 20)
+#define DIV_U71_INT		(1 << 21)
+#define DIV_U71_IDLE		(1 << 22)
 #define DIV_U151		(1 << 23)
 #define ENABLE_ON_INIT		(1 << 28)
-#define PERIPH_ON_APB           (1 << 29)
+#define PERIPH_ON_APB		(1 << 29)
 #define PERIPH_ON_CBUS		(1 << 30)
-
-#ifndef __ASSEMBLY__
-
-#include <linux/clk-provider.h>
-#include <linux/clkdev.h>
-#include <linux/list.h>
-#include <linux/mutex.h>
-#include <linux/spinlock.h>
-#include <asm/cputime.h>
-
-#define MAX_SAME_LIMIT_SKU_IDS	16
-
-struct clk;
 
 #ifdef CONFIG_COMMON_CLK
 struct clk_tegra;
@@ -108,9 +107,9 @@ struct clk_ops {
 	int		(*set_rate)(struct clk *, unsigned long);
 	long		(*round_rate)(struct clk *, unsigned long);
 	void		(*reset)(struct clk *, bool);
+	int		(*shared_bus_update)(struct clk *);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
-	int		(*shared_bus_update)(struct clk *);
 };
 
 struct clk_stats {

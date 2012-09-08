@@ -24,6 +24,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c-tegra.h>
+#include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
 #include <linux/clk.h>
@@ -40,6 +41,21 @@
 #define TEGRA_DMA_REQ_SEL_I2S2_1		7
 #define TEGRA_DMA_REQ_SEL_SPI			11
 #define TEGRA_DMA_REQ_SEL_DTV			TEGRA_DMA_REQ_SEL_SPI
+
+static struct resource emc_resource[] = {
+	[0] = {
+		.start	= TEGRA_EMC_BASE,
+		.end	= TEGRA_EMC_BASE + TEGRA_EMC_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	}
+};
+
+struct platform_device tegra_emc_device = {
+	.name		= "tegra-emc",
+	.id		= -1,
+	.resource	= emc_resource,
+	.num_resources	= ARRAY_SIZE(emc_resource),
+};
 
 static struct resource gpio_resource[] = {
 	[0] = {
@@ -1725,28 +1741,6 @@ struct nvhost_device tegra_disp1_device = {
 struct platform_device tegra_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
-};
-
-static struct resource tegra30_emc_resources[] = {
-	{
-		.name	= "emcregs",
-		.start	= TEGRA_EMC_BASE,
-		.end	= TEGRA_EMC_BASE + TEGRA_EMC_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name	= "mcregs",
-		.start	= TEGRA_MC_BASE,
-		.end	= TEGRA_MC_BASE + TEGRA_MC_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-struct platform_device tegra30_emc_device = {
-	.name		= "tegra30-emc",
-	.id		= -1,
-	.resource	= tegra30_emc_resources,
-	.num_resources	= ARRAY_SIZE(tegra30_emc_resources),
 };
 
 void __init tegra_init_debug_uart_rate(void)

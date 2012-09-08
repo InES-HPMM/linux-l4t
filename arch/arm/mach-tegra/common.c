@@ -19,6 +19,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/console.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -31,22 +32,24 @@
 #include <linux/sched.h>
 
 #include <asm/hardware/cache-l2x0.h>
-#include <asm/system_info.h>
+#include <asm/system.h>
 
+#include <mach/hardware.h>
 #include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
+#include <mach/gpio-tegra.h>
 
+#include "apbio.h"
 #include "board.h"
 #include "common.h"
 #include "dvfs.h"
 #include "fuse.h"
 #include "iomap.h"
 #include "pm.h"
-#include "pmc.h"
-#include "apbio.h"
 #include "sleep.h"
 #include "reset.h"
 #include "devices.h"
+#include "pmc.h"
 
 #define MC_SECURITY_CFG2	0x7c
 
@@ -167,7 +170,7 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 #endif
 }
 static int modem_id;
-int tegra_sku_override;
+static int sku_override;
 static int debug_uart_port_id;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
@@ -248,10 +251,13 @@ static void tegra_l2x0_disable(void)
 void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
-	u32 aux_ctrl, cache_type;
+	u32 aux_ctrl;
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+	u32 cache_type;
 	u32 tag_latency, data_latency;
 	u32 speedo;
 	u32 tmp;
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* issue the SMC to enable the L2 */
@@ -274,8 +280,10 @@ void tegra_init_cache(bool init)
 		tag_latency = 0x221;
 		data_latency = 0x221;
 	} else {
+		u32 speedo;
+
 		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
-		speedo = tegra_cpu_speedo_id;
+		speedo = tegra_cpu_speedo_id();
 		if (speedo == 4 || speedo == 5 || speedo == 6 ||
 		    speedo == 12 || speedo == 13) {
 			tag_latency = 0x442;
@@ -297,7 +305,7 @@ void tegra_init_cache(bool init)
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	writel(7, p + L2X0_PREFETCH_CTRL);
 	writel(2, p + L2X0_POWER_CTRL);
-#endif	
+#endif
 #endif
 
 	writel(0x3, p + L2X0_POWER_CTRL);
@@ -307,6 +315,8 @@ void tegra_init_cache(bool init)
 	if (init) {
 		l2x0_init(p, aux_ctrl, 0x8200c3fe);
 	} else {
+		u32 tmp;
+
 		tmp = aux_ctrl;
 		aux_ctrl = readl(p + L2X0_AUX_CTRL);
 		aux_ctrl &= 0x8200c3fe;
@@ -401,6 +411,7 @@ void __init tegra20_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
@@ -421,6 +432,7 @@ void __init tegra30_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
+	tegra_gpio_resume_init();
 }
 #endif
 
@@ -455,15 +467,20 @@ static int __init tegra_bootloader_fb_arg(char *options)
 }
 early_param("tegra_fbmem", tegra_bootloader_fb_arg);
 
-static int __init tegra_init_sku_override(char *id)
+static int __init tegra_sku_override(char *id)
 {
 	char *p = id;
 
-	tegra_sku_override = memparse(p, &p);
+	sku_override = memparse(p, &p);
 
 	return 0;
 }
-early_param("sku_override", tegra_init_sku_override);
+early_param("sku_override", tegra_sku_override);
+
+int tegra_get_sku_override(void)
+{
+	return sku_override;
+}
 
 static int __init tegra_vpr_arg(char *options)
 {

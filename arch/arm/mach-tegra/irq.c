@@ -47,6 +47,12 @@
 #define ICTLR_COP_IER_CLR	0x38
 #define ICTLR_COP_IEP_CLASS	0x3c
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define NUM_ICTLRS 4
+#else
+#define NUM_ICTLRS 5
+#endif
+
 #define FIRST_LEGACY_IRQ 32
 
 static int num_ictlrs;
@@ -56,13 +62,15 @@ static void __iomem *ictlr_reg_base[] = {
 	IO_ADDRESS(TEGRA_SECONDARY_ICTLR_BASE),
 	IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE),
 	IO_ADDRESS(TEGRA_QUATERNARY_ICTLR_BASE),
+#if (NUM_ICTLRS > 4)
 	IO_ADDRESS(TEGRA_QUINARY_ICTLR_BASE),
+#endif
 };
 
 #ifdef CONFIG_PM_SLEEP
-static u32 cop_ier[ARRAY_SIZE(ictlr_reg_base)];
-static u32 cpu_ier[ARRAY_SIZE(ictlr_reg_base)];
-static u32 cpu_iep[ARRAY_SIZE(ictlr_reg_base)];
+static u32 cop_ier[NUM_ICTLRS];
+static u32 cpu_ier[NUM_ICTLRS];
+static u32 cpu_iep[NUM_ICTLRS];
 #endif
 
 static inline void tegra_irq_write_mask(unsigned int irq, unsigned long reg)
@@ -143,7 +151,7 @@ static int tegra_legacy_irq_suspend(void)
 	int i;
 
 	local_irq_save(flags);
-	for (i = 0; i < num_ictlrs; i++) {
+	for (i = 0; i < NUM_ICTLRS; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		cpu_ier[i] = readl(ictlr + ICTLR_CPU_IER);
 		cpu_iep[i] = readl(ictlr + ICTLR_CPU_IEP_CLASS);
@@ -161,7 +169,7 @@ static void tegra_legacy_irq_resume(void)
 	int i;
 
 	local_irq_save(flags);
-	for (i = 0; i < num_ictlrs; i++) {
+	for (i = 0; i < NUM_ICTLRS; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(cpu_iep[i], ictlr + ICTLR_CPU_IEP_CLASS);
 		writel(~0ul, ictlr + ICTLR_CPU_IER_CLR);
@@ -224,14 +232,15 @@ void __init tegra_init_irq(void)
 	 * initialized elsewhere under DT.
 	 */
 	if (!of_have_populated_dt())
-		tegra_gic_init();
+		gic_init(0, 29, distbase,
+			IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100));
 }
 
 void tegra_init_legacy_irq_cop(void)
 {
 	int i;
 
-	for (i = 0; i < num_ictlrs; i++) {
+	for (i = 0; i < NUM_ICTLRS; i++) {
 		void __iomem *ictlr = ictlr_reg_base[i];
 		writel(~0, ictlr + ICTLR_COP_IER_CLR);
 		writel(0, ictlr + ICTLR_COP_IEP_CLASS);

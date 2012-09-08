@@ -322,7 +322,7 @@ static struct tegra_edp_limits edp_default_limits[] = {
  */
 void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 {
-	int cpu_speedo_id = tegra_cpu_speedo_id;
+	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int i, j;
 	struct tegra_edp_limits *e;
 	struct tegra_edp_entry *t = (struct tegra_edp_entry *)tegra_edp_map;
@@ -377,7 +377,7 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 
 void __init tegra_init_system_edp_limits(unsigned int power_limit_mW)
 {
-	int cpu_speedo_id = tegra_cpu_speedo_id;
+	int cpu_speedo_id = tegra_cpu_speedo_id();
 	int i;
 	unsigned int *e;
 	struct system_edp_entry *t =

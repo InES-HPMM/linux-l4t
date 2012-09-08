@@ -24,10 +24,11 @@
 #include <linux/err.h>
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
-#include <linux/moduleparam.h>
+#include <linux/module.h>
 
 #include <mach/iomap.h>
 
+#include "board.h"
 #include "fuse.h"
 
 #define PMC_PWR_IO_DISABLE	0x44
@@ -299,7 +300,7 @@ int __init tegra_pwr_detect_cell_init(void)
 	unsigned long flags;
 	bool rails_found = true;
 
-	i = tegra_package_id;
+	i = tegra_package_id();
 	if ((i != -1) && (i & (~0x1F))) {
 		pr_err("tegra: not supported package id %d - io power detection"
 		       " is left always on\n", i);

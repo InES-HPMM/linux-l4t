@@ -229,6 +229,11 @@ struct ehci_hcd {			/* one per controller */
 	struct dentry		*debug_dir;
 #endif
 
+	/*
+	 * OTG controllers and transceivers need software interaction
+	 */
+	struct usb_phy	*transceiver;
+
 	/* platform-specific data -- must come last */
 	unsigned long		priv[0] __aligned(sizeof(s64));
 };

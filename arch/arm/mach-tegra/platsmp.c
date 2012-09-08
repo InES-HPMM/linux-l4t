@@ -14,13 +14,11 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/errno.h>
-#include <linux/delay.h>
-#include <linux/device.h>
-#include <linux/jiffies.h>
-#include <linux/smp.h>
 #include <linux/io.h>
+#include <linux/smp.h>
+#include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/clk/tegra.h>
 #include <linux/cpumask.h>
@@ -34,6 +32,7 @@
 #include "reset.h"
 #include "pm.h"
 #include "clock.h"
+#include "sleep.h"
 
 #include "common.h"
 #include "iomap.h"
@@ -94,6 +93,14 @@ static int is_g_cluster_available(unsigned int cpu)
 #endif
 }
 
+static bool is_cpu_powered(unsigned int cpu)
+{
+	if (is_lp_cluster())
+		return true;
+	else
+		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
+}
+
 static void __cpuinit tegra_secondary_init(unsigned int cpu)
 {
 	cpumask_set_cpu(cpu, to_cpumask(tegra_cpu_init_bits));
@@ -104,7 +111,6 @@ static void __cpuinit tegra_secondary_init(unsigned int cpu)
 
 static int tegra20_power_up_cpu(unsigned int cpu)
 {
-	int status;
 
 	/* Enable the CPU clock. */
 	tegra_enable_cpu_clock(cpu);
@@ -117,14 +123,11 @@ static int tegra20_power_up_cpu(unsigned int cpu)
 
 static int tegra30_power_up_cpu(unsigned int cpu)
 {
-	int ret, pwrgateid;
+	int ret;
 	unsigned long timeout;
 
+	BUG_ON(cpu == smp_processor_id());
 	BUG_ON(is_lp_cluster());
-
-	pwrgateid = tegra_cpu_powergate_id(cpu);
-	if (pwrgateid < 0)
-		return pwrgateid;
 
 	/* If this cpu has booted this function is entered after
 	 * CPU has been already un-gated by flow controller. Wait
@@ -134,25 +137,29 @@ static int tegra30_power_up_cpu(unsigned int cpu)
 	if (cpu_isset(cpu, tegra_cpu_init_map)) {
 		timeout = jiffies + 5;
 		do {
-			if (tegra_powergate_is_powered(pwrgateid))
+			if (is_cpu_powered(cpu))
 				goto remove_clamps;
 			udelay(10);
 		} while (time_before(jiffies, timeout));
 	}
 
-	/* If this is the first boot, toggle powergates directly. */
-	if (!tegra_powergate_is_powered(pwrgateid)) {
-		ret = tegra_unpowergate_partition(pwrgateid);
+	/* First boot or Flow controller did not work as expected. Try to
+	   directly toggle power gates. Error if direct power on also fails. */
+	if (!is_cpu_powered(cpu)) {
+		ret = tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
 		if (ret)
-			return ret;
+			goto fail;
 
 		/* Wait for the power to come up. */
 		timeout = jiffies + 10*HZ;
-		while (tegra_powergate_is_powered(pwrgateid)) {
-			if (time_after(jiffies, timeout))
-				return -ETIMEDOUT;
+
+		do {
+			if (is_cpu_powered(cpu))
+				goto remove_clamps;
 			udelay(10);
-		}
+		} while (time_before(jiffies, timeout));
+		ret = -ETIMEDOUT;
+		goto fail;
 	}
 
 remove_clamps:
@@ -161,11 +168,12 @@ remove_clamps:
 	udelay(10);
 
 	/* Remove I/O clamps. */
-	ret = tegra_powergate_remove_clamping(pwrgateid);
+	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
 	if (ret)
 		return ret;
 
 	udelay(10);
+fail:
 
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
@@ -177,13 +185,35 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 {
 	int status;
 
-	BUG_ON(cpu == smp_processor_id());
-
 	/* Avoid timer calibration on slave cpus. Use the value calibrated
 	 * on master cpu. This reduces the bringup time for each slave cpu
 	 * by around 260ms.
 	 */
 	preset_lpj = loops_per_jiffy;
+	if (is_lp_cluster()) {
+		struct clk *cpu_clk, *cpu_g_clk;
+
+		/* The G CPU may not be available for a variety of reasons. */
+		status = is_g_cluster_available(cpu);
+		if (status)
+			goto done;
+
+		cpu_clk = tegra_get_clock_by_name("cpu");
+		cpu_g_clk = tegra_get_clock_by_name("cpu_g");
+
+		/* Switch to G CPU before continuing. */
+		if (!cpu_clk || !cpu_g_clk) {
+			/* Early boot, clock infrastructure is not initialized
+			   - CPU mode switch is not allowed */
+			status = -EINVAL;
+		} else
+			status = clk_set_parent(cpu_clk, cpu_g_clk);
+
+		if (status)
+			goto done;
+	}
+
+	smp_wmb();
 
 	/*
 	 * Force the CPU into reset. The CPU must remain in reset when the
@@ -254,7 +284,6 @@ static void __init tegra_smp_init_cpus(void)
 
 static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 {
-
 	/* Always mark the boot CPU as initialized. */
 	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
 

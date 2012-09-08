@@ -30,7 +30,6 @@
 #include <asm/cp15.h>
 
 #include "sleep.h"
-#include "flowctrl.h"
 #include "clock.h"
 
 #define EMC_CFG				0xc

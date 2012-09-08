@@ -94,9 +94,8 @@
 
 #define MLX4_EN_WATCHDOG_TIMEOUT	(15 * HZ)
 
-/* Use the maximum between 16384 and a single page */
-#define MLX4_EN_ALLOC_SIZE	PAGE_ALIGN(16384)
-#define MLX4_EN_ALLOC_ORDER	get_order(MLX4_EN_ALLOC_SIZE)
+#define MLX4_EN_ALLOC_ORDER	2
+#define MLX4_EN_ALLOC_SIZE	(PAGE_SIZE << MLX4_EN_ALLOC_ORDER)
 
 /* Receive fragment sizes; we use at most 4 fragments (for 9600 byte MTU
  * and 4K allocations) */

@@ -26,20 +26,14 @@ struct tegra_emc_table {
 	u32 regs[TEGRA_EMC_NUM_REGS];
 };
 
-struct tegra_emc_chip {
+struct tegra_emc_pdata {
 	const char *description;
 	int mem_manufacturer_id; /* LPDDR2 MR5 or -1 to ignore */
 	int mem_revision_id1;    /* LPDDR2 MR6 or -1 to ignore */
 	int mem_revision_id2;    /* LPDDR2 MR7 or -1 to ignore */
 	int mem_pid;             /* LPDDR2 MR8 or -1 to ignore */
-
 	int num_tables;
 	struct tegra_emc_table *tables;
-};
-
-struct tegra_emc_pdata {
-	int num_chips;
-	struct tegra_emc_chip *chips;
 };
 
 #endif

@@ -58,11 +58,11 @@
 
 #include <mach/irqs.h>
 #include <mach/powergate.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "clock.h"
 #include "cpuidle.h"
-#include "flowctrl.h"
 #include "fuse.h"
 #include "gic.h"
 #include "iomap.h"
@@ -361,13 +361,13 @@ static void restore_cpu_complex(u32 mode)
 	writel(tegra_sctx.clk_csite_src, clk_rst + CLK_RESET_SOURCE_CSITE);
 
 	/* Do not power-gate CPU 0 when flow controlled */
-	reg = flowctrl_read_cpu_csr(cpu);
+	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
 	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
 	reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
 	reg &= ~FLOW_CTRL_CSR_ENABLE;		/* clear enable */
 	reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr */
 	reg |= FLOW_CTRL_CSR_EVENT_FLAG;	/* clear event */
-	flowctrl_write_cpu_csr(cpu, reg);
+	flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(cpu));
 
 	/* If an immedidate cluster switch is being perfomed, restore the
 	   local timer registers. For calls resulting from CPU LP2 in
@@ -411,7 +411,7 @@ static void suspend_cpu_complex(u32 mode)
 
 	tegra_twd_suspend(&tegra_sctx.twd);
 
-	reg = flowctrl_read_cpu_csr(cpu);
+	reg = readl(FLOW_CTRL_CPU_CSR(cpu));
 	reg &= ~FLOW_CTRL_CSR_WFE_BITMAP;	/* clear wfe bitmap */
 	reg &= ~FLOW_CTRL_CSR_WFI_BITMAP;	/* clear wfi bitmap */
 	reg |= FLOW_CTRL_CSR_INTR_FLAG;		/* clear intr flag */
@@ -422,15 +422,15 @@ static void suspend_cpu_complex(u32 mode)
 	reg |= FLOW_CTRL_CSR_WFI_CPU0 << cpu;	/* enable power gating on wfi */
 #endif
 	reg |= FLOW_CTRL_CSR_ENABLE;		/* enable power gating */
-	flowctrl_write_cpu_csr(cpu, reg);
+	flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(cpu));
 
 	for (i = 0; i < num_possible_cpus(); i++) {
 		if (i == cpu)
 			continue;
-		reg = flowctrl_read_cpu_csr(i);
+		reg = readl(FLOW_CTRL_CPU_CSR(i));
 		reg |= FLOW_CTRL_CSR_EVENT_FLAG;
 		reg |= FLOW_CTRL_CSR_INTR_FLAG;
-		flowctrl_write_cpu_csr(i, reg);
+		flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(i));
 	}
 
 	tegra_gic_cpu_disable();
@@ -783,10 +783,11 @@ static void tegra_suspend_check_pwr_stats(void)
 
 	int partid;
 
-	for_each_set_bit(partid, &pwrgate_partid_mask, BITS_PER_LONG)
-		if (tegra_powergate_is_powered(partid) == 1)
-			pr_warning("partition %s is left on before suspend\n",
-				tegra_powergate_get_name(partid));
+	for (partid = 0; partid < TEGRA_NUM_POWERGATE; partid++)
+		if ((1 << partid) & pwrgate_partid_mask)
+			if (tegra_powergate_is_powered(partid))
+				pr_warning("partition %s is left on before suspend\n",
+					tegra_powergate_get_name(partid));
 
 	return;
 }
@@ -1042,7 +1043,7 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 		goto fail;
 	}
 
-	if ((tegra_chip_id == TEGRA30) &&
+	if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
 	    (tegra_revision == TEGRA_REVISION_A01) &&
 	    (plat->suspend_mode == TEGRA_SUSPEND_LP0)) {
 		/* Tegra 3 A01 supports only LP1 */

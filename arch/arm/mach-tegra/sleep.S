@@ -28,7 +28,6 @@
 
 #include <asm/assembler.h>
 #include <asm/cache.h>
-#include <asm/cp15.h>
 #include <asm/domain.h>
 #include <asm/memory.h>
 #include <asm/page.h>
@@ -36,17 +35,20 @@
 #include <asm/asm-offsets.h>
 #include <asm/glue-cache.h>
 #include <asm/glue-proc.h>
-#include <asm/barrier.h>
+#include <asm/cp15.h>
 
 #include "iomap.h"
 
-#include "flowctrl.h"
 #include "sleep.h"
+#include "flowctrl.h"
 
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24
 
 #define TEGRA_PMC_VIRT		(TEGRA_PMC_BASE - IO_APB_PHYS + IO_APB_VIRT)
+
+#define TEGRA_FLOW_CTRL_VIRT (TEGRA_FLOW_CTRL_BASE - IO_PPSB_PHYS \
+					+ IO_PPSB_VIRT)
 
 /*
  * tegra_pen_lock
@@ -101,6 +103,7 @@ ENTRY(tegra_pen_unlock)
 	str	r12, [r2]
 	mov	pc, lr
 ENDPROC(tegra_pen_unlock)
+
 
 /*
  * tegra_cpu_exit_coherency

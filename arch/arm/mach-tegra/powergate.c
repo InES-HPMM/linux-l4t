@@ -44,19 +44,6 @@
 
 #define PWRGATE_STATUS		0x38
 
-static int tegra_num_powerdomains;
-static int tegra_num_cpu_domains;
-static u8 *tegra_cpu_domains;
-static u8 tegra20_cpu_domains[] = {
-	TEGRA_POWERGATE_CPU,
-};
-static u8 tegra30_cpu_domains[] = {
-	TEGRA_POWERGATE_CPU0,
-	TEGRA_POWERGATE_CPU1,
-	TEGRA_POWERGATE_CPU2,
-	TEGRA_POWERGATE_CPU3,
-};
-
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 enum mc_client {
 	MC_CLIENT_AFI		= 0,
@@ -103,6 +90,16 @@ enum mc_client {
 
 #define MAX_CLK_EN_NUM			4
 
+static int tegra_num_powerdomains;
+static int tegra_num_cpu_domains;
+static u8 *tegra_cpu_domains;
+static u8 tegra30_cpu_domains[] = {
+	TEGRA_POWERGATE_CPU0,
+	TEGRA_POWERGATE_CPU1,
+	TEGRA_POWERGATE_CPU2,
+	TEGRA_POWERGATE_CPU3,
+};
+
 static DEFINE_SPINLOCK(tegra_powergate_lock);
 
 #define MAX_HOTRESET_CLIENT_NUM		4
@@ -126,7 +123,7 @@ struct powergate_partition {
 	struct partition_clk_info clk_info[MAX_CLK_EN_NUM];
 };
 
-static struct powergate_partition powergate_partition_info[] = {
+static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] = {
 	[TEGRA_POWERGATE_CPU]	= { "cpu0",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_L2]	= { "l2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_3D]	= { "3d0",
@@ -156,6 +153,7 @@ static struct powergate_partition powergate_partition_info[] = {
 						{{"isp", CLK_AND_RST},
 						{"vi", CLK_AND_RST},
 						{"csi", CLK_AND_RST} }, },
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	[TEGRA_POWERGATE_CPU1]	= { "cpu1",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CPU2]	= { "cpu2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_CPU3]	= { "cpu3",	{MC_CLIENT_LAST}, },
@@ -176,6 +174,7 @@ static struct powergate_partition powergate_partition_info[] = {
 						{"epp", CLK_AND_RST},
 						{"host1x", CLK_AND_RST},
 						{"3d", RST_ONLY} }, },
+#endif
 };
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -213,7 +212,7 @@ static void mc_flush(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_HOTRESET_CLIENT_NUM; idx++) {
 		mcClientBit = powergate_partition_info[id].hot_reset_clients[idx];
@@ -240,7 +239,7 @@ static void mc_flush_done(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_HOTRESET_CLIENT_NUM; idx++) {
 		mcClientBit = powergate_partition_info[id].hot_reset_clients[idx];
@@ -261,7 +260,7 @@ static void mc_flush_done(int id)
 
 int tegra_powergate_mc_flush(int id)
 {
-	if (id < 0 || id >= tegra_num_powerdomains)
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
 		return -EINVAL;
 	mc_flush(id);
 	return 0;
@@ -269,7 +268,7 @@ int tegra_powergate_mc_flush(int id)
 
 int tegra_powergate_mc_flush_done(int id)
 {
-	if (id < 0 || id >= tegra_num_powerdomains)
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
 		return -EINVAL;
 	mc_flush_done(id);
 	return 0;
@@ -297,7 +296,7 @@ int tegra_powergate_mc_disable(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	if (id < 0 || id >= tegra_num_powerdomains) {
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -334,7 +333,7 @@ int tegra_powergate_mc_flush(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	if (id < 0 || id >= tegra_num_powerdomains) {
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -366,7 +365,7 @@ int tegra_powergate_mc_flush_done(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	if (id < 0 || id >= tegra_num_powerdomains) {
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -398,7 +397,7 @@ int tegra_powergate_mc_enable(int id)
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
-	if (id < 0 || id >= tegra_num_powerdomains) {
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE) {
 		WARN_ON(1);
 		return -EINVAL;
 	}
@@ -428,17 +427,6 @@ static void mc_flush(int id) {}
 static void mc_flush_done(int id) {}
 #endif
 
-static bool tegra_is_cpu_powergate_id(int id)
-{
-	int i;
-
-	for (i = 0; i < tegra_num_cpu_domains; i++)
-		if (tegra_cpu_domains[i] == id)
-			return true;
-
-	return false;
-}
-
 static int tegra_powergate_set(int id, bool new_state)
 {
 	bool status;
@@ -458,7 +446,7 @@ static int tegra_powergate_set(int id, bool new_state)
 		return 0;
 	}
 
-	if (tegra_is_cpu_powergate_id(id)) {
+	if (TEGRA_IS_CPU_POWERGATE_ID(id)) {
 		/* CPU ungated in s/w only during boot/resume with outer
 		   waiting loop and no contention from other CPUs */
 		pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
@@ -507,7 +495,7 @@ static int powergate_module(int id)
 	return tegra_powergate_set(id, false);
 }
 
-int tegra_powergate_is_powered(int id)
+bool tegra_powergate_is_powered(int id)
 {
 	u32 status;
 
@@ -522,6 +510,7 @@ EXPORT_SYMBOL(tegra_powergate_is_powered);
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
+
 	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
 
@@ -562,7 +551,7 @@ static int partition_clk_enable(int id)
 	struct clk *clk;
 	struct partition_clk_info *clk_info;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
@@ -597,7 +586,7 @@ static int is_partition_clk_disabled(int id)
 	struct partition_clk_info *clk_info;
 	int ret = 0;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
@@ -622,7 +611,7 @@ static void partition_clk_disable(int id)
 	struct clk *clk;
 	struct partition_clk_info *clk_info;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
@@ -641,7 +630,7 @@ static void powergate_partition_assert_reset(int id)
 	struct clk *clk_ptr;
 	struct partition_clk_info *clk_info;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
@@ -659,7 +648,7 @@ static void powergate_partition_deassert_reset(int id)
 	struct clk *clk_ptr;
 	struct partition_clk_info *clk_info;
 
-	BUG_ON(id < 0 || id >= tegra_num_powerdomains);
+	BUG_ON(id < 0 || id >= TEGRA_NUM_POWERGATE);
 
 	for (idx = 0; idx < MAX_CLK_EN_NUM; idx++) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
@@ -743,6 +732,34 @@ err_clk_on:
 err_power:
 	WARN(1, "Could not Un-Powergate %d", id);
 	return ret;
+}
+
+int tegra_cpu_powergate_id(int cpuid)
+{
+	if (cpuid > 0 && cpuid < tegra_num_cpu_domains)
+		return tegra_cpu_domains[cpuid];
+
+	return -EINVAL;
+}
+
+int __init tegra_powergate_init(void)
+{
+	switch (tegra_chip_id) {
+	case TEGRA20:
+		tegra_num_powerdomains = 7;
+		break;
+	case TEGRA30:
+		tegra_num_powerdomains = 14;
+		tegra_num_cpu_domains = 4;
+		tegra_cpu_domains = tegra30_cpu_domains;
+		break;
+	default:
+		/* Unknown Tegra variant. Disable powergating */
+		tegra_num_powerdomains = 0;
+		break;
+	}
+
+	return 0;
 }
 
 /*
@@ -842,45 +859,25 @@ err_powergating:
 	return ret;
 }
 
-int tegra_cpu_powergate_id(int cpuid)
-{
-	if (cpuid > 0 && cpuid < tegra_num_cpu_domains)
-		return tegra_cpu_domains[cpuid];
-
-	return -EINVAL;
-}
-
-int __init tegra_powergate_init(void)
-{
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		tegra_num_powerdomains = 7;
-		tegra_num_cpu_domains = 1;
-		tegra_cpu_domains = tegra20_cpu_domains;
-		break;
-	case TEGRA30:
-		tegra_num_powerdomains = 14;
-		tegra_num_cpu_domains = 4;
-		tegra_cpu_domains = tegra30_cpu_domains;
-		break;
-	default:
-		/* Unknown Tegra variant. Disable powergating */
-		tegra_num_powerdomains = 0;
-		break;
-	}
-
-	return 0;
-}
-
 const char *tegra_powergate_get_name(int id)
 {
-	if (id < 0 || id >= tegra_num_powerdomains)
+	if (id < 0 || id >= TEGRA_NUM_POWERGATE)
 		return "invalid";
 
 	return powergate_partition_info[id].name;
 }
 
 #ifdef CONFIG_DEBUG_FS
+
+static const char * const powergate_name[] = {
+	[TEGRA_POWERGATE_CPU]   = "cpu",
+	[TEGRA_POWERGATE_3D]    = "3d",
+	[TEGRA_POWERGATE_VENC]  = "venc",
+	[TEGRA_POWERGATE_VDEC]  = "vdec",
+	[TEGRA_POWERGATE_PCIE]  = "pcie",
+	[TEGRA_POWERGATE_L2]    = "l2",
+	[TEGRA_POWERGATE_MPE]   = "mpe",
+};
 
 static int powergate_show(struct seq_file *s, void *data)
 {
@@ -890,7 +887,7 @@ static int powergate_show(struct seq_file *s, void *data)
 	seq_printf(s, "------------------\n");
 
 	for (i = 0; i < tegra_num_powerdomains; i++)
-		seq_printf(s, " %9s %7s\n", powergate_partition_info[i].name,
+		seq_printf(s, " %9s %7s\n", powergate_name[i],
 			tegra_powergate_is_powered(i) ? "yes" : "no");
 	return 0;
 }

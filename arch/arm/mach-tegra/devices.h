@@ -23,7 +23,9 @@
 
 #include <linux/platform_device.h>
 #include <linux/nvhost.h>
+#include <linux/platform_data/tegra_usb.h>
 
+extern struct platform_device tegra_emc_device;
 extern struct platform_device tegra_gpio_device;
 extern struct platform_device tegra_pinmux_device;
 extern struct platform_device tegra_sdhci_device1;
@@ -125,7 +127,6 @@ extern struct platform_device debug_uarte_device;
 
 extern struct nvhost_device tegra_disp1_device;
 extern struct platform_device tegra_nvmap_device;
-extern struct platform_device tegra30_emc_device;
 
 void __init tegra_init_debug_uart_rate(void);
 

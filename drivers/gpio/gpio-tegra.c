@@ -6,6 +6,8 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
+ * Copyright (c) 2011 NVIDIA Corporation.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -79,6 +81,7 @@ struct tegra_gpio_bank {
 
 static struct irq_domain *irq_domain;
 static void __iomem *regs;
+
 static u32 tegra_gpio_bank_count;
 static u32 tegra_gpio_bank_stride;
 static u32 tegra_gpio_upper_offset;
@@ -587,6 +590,7 @@ static int dbg_gpio_show(struct seq_file *s, void *unused)
 	int i;
 	int j;
 
+	seq_printf(s, "Bank:Port CNF OE OUT IN INT_STA INT_ENB INT_LVL\n");
 	for (i = 0; i < tegra_gpio_bank_count; i++) {
 		for (j = 0; j < 4; j++) {
 			int gpio = tegra_gpio_compose(i, j, 0);

@@ -101,6 +101,15 @@ static inline void flush(void)
 {
 }
 
+static inline void konk_delay(int delay)
+{
+	int i;
+
+	for (i = 0; i < (1000 * delay); i++) {
+		barrier();
+	}
+}
+
 static const struct {
 	u32 base;
 	u32 reset_reg;
@@ -184,9 +193,8 @@ int auto_odmdata(void)
 static inline void arch_decomp_setup(void)
 {
 	int uart_id;
-	volatile u32 *apb_misc = (volatile u32 *)TEGRA_APB_MISC_BASE;
 	volatile u32 *addr;
-	u32 div = DEBUG_UART_DLL_216;
+	u32 uart_dll = DEBUG_UART_DLL_216;
 	u32 val;
 
 #if defined(CONFIG_TEGRA_DEBUG_UART_AUTO_ODMDATA)
@@ -212,6 +220,22 @@ static inline void arch_decomp_setup(void)
 	if (uart == NULL)
 		return;
 
+	/* Debug UART clock source is PLLP_OUT0. */
+	addr = (volatile u32 *)DEBUG_UART_CLK_SRC;
+	*addr = 0;
+
+	/* Enable clock to debug UART. */
+	addr = (volatile u32 *)DEBUG_UART_CLK_ENB_SET_REG;
+	*addr = DEBUG_UART_CLK_ENB_SET_BIT;
+
+	konk_delay(5);
+
+	/* Deassert reset to debug UART. */
+	addr = (volatile u32 *)DEBUG_UART_RST_CLR_REG;
+	*addr = DEBUG_UART_RST_CLR_BIT;
+
+	konk_delay(5);
+
 	/*
 	 * On Tegra2 platforms PLLP always run at 216MHz
 	 * On Tegra3 platforms PLLP can run at 216MHz, 204MHz, or 408MHz
@@ -227,11 +251,11 @@ static inline void arch_decomp_setup(void)
 		switch (val) {
 		case 170:
 		case 204:
-			div = DEBUG_UART_DLL_204;
+			uart_dll = DEBUG_UART_DLL_204;
 			break;
 		case 340:
 		case 408:
-			div = DEBUG_UART_DLL_408;
+			uart_dll = DEBUG_UART_DLL_408;
 			break;
 		case 180:
 		case 216:
@@ -240,9 +264,10 @@ static inline void arch_decomp_setup(void)
 		}
 	}
 
+	/* Set up debug UART. */
 	uart[UART_LCR << DEBUG_UART_SHIFT] |= UART_LCR_DLAB;
-	uart[UART_DLL << DEBUG_UART_SHIFT] = div & 0xff;
-	uart[UART_DLM << DEBUG_UART_SHIFT] = div >> 8;
+	uart[UART_DLL << DEBUG_UART_SHIFT] = uart_dll;
+	uart[UART_DLM << DEBUG_UART_SHIFT] = 0x0;
 	uart[UART_LCR << DEBUG_UART_SHIFT] = 3;
 }
 

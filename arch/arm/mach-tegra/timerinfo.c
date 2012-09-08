@@ -24,7 +24,9 @@
 #include <linux/mm.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
+#include <linux/export.h>
 #include <linux/module.h>
+
 #include <mach/iomap.h>
 
 #include "timer.h"
