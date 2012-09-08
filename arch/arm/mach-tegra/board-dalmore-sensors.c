@@ -35,6 +35,7 @@
 #include "board.h"
 #include <mach/gpio.h>
 #include <media/imx091.h>
+#include <media/ov9772.h>
 #include "board-dalmore.h"
 #include "cpu-tegra.h"
 
@@ -55,144 +56,37 @@
 #include <linux/mpu.h>
 #include "board-dalmore.h"
 
-static struct regulator *dalmore_avdd_cam1;
-static struct regulator *dalmore_dvdd_cam;
-static struct regulator *dalmore_vddio_cam;
-static struct regulator *dalmore_vdd_sensor;
-
-static struct regulator *dalmore_avdd_cam2;
-static struct regulator *dalmore_vdd_ldo3;
-static struct regulator *dalmore_vdd_csidsi;
-/*static struct regulator *dalmore_vdd_2v8_cam1;*/
-
 static struct board_info board_info;
 
-static int dalmore_camera_init(void)
-{
-	int ret;
+static char *dalmore_cam_reg_name[] = {
+	"vdd_sensor_2v85",	/* 2.85V */
+	"avddio_usb",		/* VDDIO USB CAM */
+	"dvdd_cam",		/* DVDD CAM */
+	"vddio_cam",		/* Tegra CAM_I2C, CAM_MCLK, VDD 1.8V */
+	"avdd_cam1",		/* Analog VDD 2.7V */
+	"avdd_cam2",		/* Analog VDD 2.7V */
+};
 
-	ret = gpio_request(CAM1_POWER_DWN_GPIO, "camera_power_en");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM1_POWER_DWN_GPIO");
-		goto Exit;
-	}
-
-	ret = gpio_request(CAM2_POWER_DWN_GPIO, "camera2_power_en");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM2_POWER_DWN_GPIO");
-		goto Exit;
-	}
-
-	ret = gpio_request(CAM_GPIO1, "camera_gpio1");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM_GPIO1");
-		goto Exit;
-	}
-
-	ret = gpio_request(CAM_GPIO2, "camera_gpio2");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM_GPIO2");
-		goto Exit;
-	}
-
-	ret = gpio_request(CAM_RSTN, "camera_rstn");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM_RSTN");
-		goto Exit;
-	}
-
-	ret = gpio_request(CAM_AF_PWDN, "camera_af_pwdn");
-	if (ret < 0) {
-		pr_err("%s: gpio_request failed for gpio %s\n",
-			__func__, "CAM_AF_PWDN");
-		goto Exit;
-	}
-
-Exit:
-	return ret;
-
-}
+static struct regulator *dalmore_cam_reg[ARRAY_SIZE(dalmore_cam_reg_name)];
 
 static int dalmore_imx091_power_on(void)
 {
-	if (dalmore_vdd_sensor == NULL)
-		dalmore_vdd_sensor = regulator_get(NULL, "vdd_sensor_2v85");
-	if (WARN_ON(IS_ERR(dalmore_vdd_sensor))) {
-		pr_err("%s: couldn't get regulator dvdd_cam: %ld\n",
-			__func__, PTR_ERR(dalmore_vdd_sensor));
-		goto reg_alloc_fail;
-	}
-	regulator_enable(dalmore_vdd_sensor);
 
-	if (dalmore_vdd_ldo3 == NULL)
-		dalmore_vdd_ldo3 = regulator_get(NULL, "avddio_usb");
-	if (WARN_ON(IS_ERR(dalmore_vdd_ldo3))) {
-		pr_err("%s: couldn't get regulator dvdd_cam: %ld\n",
-			__func__, PTR_ERR(dalmore_vdd_ldo3));
-		goto reg_alloc_fail;
-	}
-	regulator_enable(dalmore_vdd_ldo3);
+	int i;
 
-	if (dalmore_vdd_csidsi == NULL)
-		dalmore_vdd_csidsi = regulator_get(NULL, "avdd_dsi_csi");
-	if (WARN_ON(IS_ERR(dalmore_vdd_csidsi))) {
-		pr_err("%s: couldn't get regulator dvdd_cam: %ld\n",
-			__func__, PTR_ERR(dalmore_vdd_csidsi));
-		goto reg_alloc_fail;
-	}
-	regulator_enable(dalmore_vdd_csidsi);
-
-	if (dalmore_dvdd_cam == NULL) {
-		dalmore_dvdd_cam = regulator_get(NULL, "dvdd_cam");
-		if (WARN_ON(IS_ERR(dalmore_dvdd_cam))) {
-			pr_err("%s: couldn't get regulator dvdd_cam: %ld\n",
-				__func__, PTR_ERR(dalmore_dvdd_cam));
-			goto reg_alloc_fail;
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (!dalmore_cam_reg[i]) {
+			dalmore_cam_reg[i] = regulator_get(NULL,
+					dalmore_cam_reg_name[i]);
+			if (WARN_ON(IS_ERR(dalmore_cam_reg[i]))) {
+				pr_err("%s: didn't get regulator #%d: %ld\n",
+				__func__, i, PTR_ERR(dalmore_cam_reg[i]));
+				goto reg_alloc_fail;
+			}
 		}
+		regulator_enable(dalmore_cam_reg[i]);
 	}
 
-	regulator_enable(dalmore_dvdd_cam);
-
-	if (dalmore_vddio_cam == NULL) {
-		dalmore_vddio_cam = regulator_get(NULL, "vddio_cam");
-		if (WARN_ON(IS_ERR(dalmore_vddio_cam))) {
-			pr_err("%s: couldn't get regulator vddio_cam: %ld\n",
-				__func__, PTR_ERR(dalmore_vddio_cam));
-			goto reg_alloc_fail;
-		}
-	}
-
-	regulator_enable(dalmore_vddio_cam);
-
-	/* Enable avdd_cam1 */
-	if (dalmore_avdd_cam1 == NULL) {
-		dalmore_avdd_cam1 = regulator_get(NULL, "avdd_cam1");
-		if (WARN_ON(IS_ERR(dalmore_avdd_cam1))) {
-			pr_err("%s: couldn't get regulator avdd_cam1: %ld\n",
-				__func__, PTR_ERR(dalmore_avdd_cam1));
-			goto reg_alloc_fail;
-		}
-	}
-	regulator_enable(dalmore_avdd_cam1);
-
-	/* Enable avdd_cam2 */
-	if (dalmore_avdd_cam2 == NULL) {
-		dalmore_avdd_cam2 = regulator_get(NULL, "avdd_cam2");
-		if (WARN_ON(IS_ERR(dalmore_avdd_cam2))) {
-			pr_err("%s: couldn't get regulator avdd_cam2: %ld\n",
-				__func__, PTR_ERR(dalmore_avdd_cam2));
-			goto reg_alloc_fail;
-		}
-	}
-	regulator_enable(dalmore_avdd_cam2);
-
-	/* Enable dvdd_cam */
-	mdelay(5);
 	gpio_direction_output(CAM_RSTN, 0);
 	mdelay(10);
 	gpio_direction_output(CAM_AF_PWDN, 1);
@@ -204,69 +98,81 @@ static int dalmore_imx091_power_on(void)
 
 reg_alloc_fail:
 
-	if (dalmore_vdd_sensor) {
-		regulator_put(dalmore_vdd_sensor);
-		dalmore_vdd_sensor = NULL;
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (dalmore_cam_reg[i]) {
+			regulator_put(dalmore_cam_reg[i]);
+			dalmore_cam_reg[i] = NULL;
+		}
 	}
-
-	if (dalmore_vdd_ldo3) {
-		regulator_put(dalmore_vdd_ldo3);
-		dalmore_vdd_ldo3 = NULL;
-	}
-
-	if (dalmore_vdd_csidsi) {
-		regulator_put(dalmore_vdd_csidsi);
-		dalmore_vdd_csidsi = NULL;
-	}
-
-	if (dalmore_dvdd_cam) {
-		regulator_put(dalmore_dvdd_cam);
-		dalmore_dvdd_cam = NULL;
-	}
-
-	if (dalmore_vddio_cam) {
-		regulator_put(dalmore_vddio_cam);
-		dalmore_vddio_cam = NULL;
-	}
-
-	if (dalmore_avdd_cam1) {
-		regulator_put(dalmore_avdd_cam1);
-		dalmore_avdd_cam1 = NULL;
-	}
-
-	if (dalmore_avdd_cam2) {
-		regulator_put(dalmore_avdd_cam2);
-		dalmore_avdd_cam2 = NULL;
-	}
-
 
 	return -ENODEV;
 }
 
 static int dalmore_imx091_power_off(void)
 {
+	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
 
-	if (dalmore_vdd_sensor)
-		regulator_disable(dalmore_vdd_sensor);
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (dalmore_cam_reg[i]) {
+			regulator_disable(dalmore_cam_reg[i]);
+			regulator_put(dalmore_cam_reg[i]);
+		}
+	}
 
-	if (dalmore_vdd_ldo3)
-		regulator_disable(dalmore_vdd_ldo3);
+	return 0;
+}
 
-	if (dalmore_vdd_csidsi)
-		regulator_disable(dalmore_vdd_csidsi);
+static int dalmore_ov9772_power_on(void)
+{
 
-	if (dalmore_dvdd_cam)
-		regulator_disable(dalmore_dvdd_cam);
+	int i;
 
-	if (dalmore_vddio_cam)
-		regulator_disable(dalmore_vddio_cam);
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (!dalmore_cam_reg[i]) {
+			dalmore_cam_reg[i] = regulator_get(NULL,
+					dalmore_cam_reg_name[i]);
+			if (WARN_ON(IS_ERR(dalmore_cam_reg[i]))) {
+				pr_err("%s: didn't get regulator #%d: %ld\n",
+				__func__, i, PTR_ERR(dalmore_cam_reg[i]));
+				goto reg_alloc_fail;
+			}
+		}
+		regulator_enable(dalmore_cam_reg[i]);
+	}
 
-	if (dalmore_avdd_cam1)
-		regulator_disable(dalmore_avdd_cam1);
+	gpio_direction_output(CAM_RSTN, 0);
+	mdelay(10);
+	gpio_direction_output(CAM_AF_PWDN, 1);
+	gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
+	gpio_direction_output(CAM1_POWER_DWN_GPIO, 1);
+	gpio_direction_output(CAM_RSTN, 1);
 
-	if (dalmore_avdd_cam2)
-		regulator_disable(dalmore_avdd_cam2);
+	return 0;
+
+reg_alloc_fail:
+
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (dalmore_cam_reg[i]) {
+			regulator_put(dalmore_cam_reg[i]);
+			dalmore_cam_reg[i] = NULL;
+		}
+	}
+
+	return -ENODEV;
+}
+
+static int dalmore_ov9772_power_off(void)
+{
+	int i;
+	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
+
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+		if (dalmore_cam_reg[i]) {
+			regulator_disable(dalmore_cam_reg[i]);
+			regulator_put(dalmore_cam_reg[i]);
+		}
+	}
 
 	return 0;
 }
@@ -276,12 +182,75 @@ struct imx091_platform_data dalmore_imx091_data = {
 	.power_off = dalmore_imx091_power_off,
 };
 
+struct ov9772_platform_data dalmore_ov9772_data = {
+	.power_on = dalmore_ov9772_power_on,
+	.power_off = dalmore_ov9772_power_off,
+};
+
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x36),
 		.platform_data = &dalmore_imx091_data,
 	},
+	{
+		I2C_BOARD_INFO("ov9772", 0x10),
+		.platform_data = &dalmore_ov9772_data,
+	},
 };
+
+struct dalmore_cam_gpio {
+	int gpio;
+	const char *label;
+	int value;
+};
+
+#define TEGRA_CAMERA_GPIO(_gpio, _label, _value)		\
+	{							\
+		.gpio = _gpio,					\
+		.label = _label,				\
+		.value = _value,				\
+	}
+
+static struct dalmore_cam_gpio dalmore_cam_gpio_data[] = {
+	[0] = TEGRA_CAMERA_GPIO(CAM1_POWER_DWN_GPIO, "camera_power_en", 0),
+	[1] = TEGRA_CAMERA_GPIO(CAM2_POWER_DWN_GPIO, "camera2_power_en", 0),
+	[2] = TEGRA_CAMERA_GPIO(CAM_GPIO1, "camera_gpio1", 0),
+	[3] = TEGRA_CAMERA_GPIO(CAM_GPIO2, "camera_gpio2", 0),
+	[4] = TEGRA_CAMERA_GPIO(CAM_RSTN, "camera_rstn", 1),
+	[5] = TEGRA_CAMERA_GPIO(CAM_AF_PWDN, "camera_af_pwdn", 1),
+};
+
+static int dalmore_camera_init(void)
+{
+
+	int ret;
+	int i;
+
+	pr_debug("%s: ++\n", __func__);
+
+	for (i = 0; i < ARRAY_SIZE(dalmore_cam_gpio_data); i++) {
+		ret = gpio_request(dalmore_cam_gpio_data[i].gpio,
+				dalmore_cam_gpio_data[i].label);
+		if (ret < 0) {
+			pr_err("%s: gpio_request failed for gpio #%d\n",
+				__func__, i);
+			goto fail_free_gpio;
+		}
+		gpio_direction_output(dalmore_cam_gpio_data[i].gpio,
+					dalmore_cam_gpio_data[i].value);
+		gpio_export(dalmore_cam_gpio_data[i].gpio, false);
+	}
+
+	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
+		ARRAY_SIZE(dalmore_i2c_board_info_e1625));
+
+fail_free_gpio:
+
+	while (i--)
+		gpio_free(dalmore_cam_gpio_data[i].gpio);
+	return ret;
+
+}
 
 
 int __init dalmore_sensors_init(void)
@@ -289,9 +258,6 @@ int __init dalmore_sensors_init(void)
 	tegra_get_board_info(&board_info);
 
 	dalmore_camera_init();
-
-	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
-		ARRAY_SIZE(dalmore_i2c_board_info_e1625));
 
 	return 0;
 }
