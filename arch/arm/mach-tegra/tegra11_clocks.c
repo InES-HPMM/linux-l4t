@@ -6166,8 +6166,8 @@ struct clk tegra_list_clks[] = {
 };
 
 
-/* FIXME: XUSB driver device id */
-#define XUSB_ID "tegra_xusb"
+/* XUSB clocks */
+#define XUSB_ID "tegra_xhci"
 
 static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
@@ -6191,6 +6191,7 @@ static struct clk tegra_xusb_source_clks[] = {
 			.src_shift = 25,
 		},
 	},
+	SHARED_CLK("xusb.emc",	"XUSB_ID",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
 };
 
 static struct clk_mux_sel mux_xusb_host[] = {
