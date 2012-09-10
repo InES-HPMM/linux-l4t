@@ -163,7 +163,7 @@ config DEBUG_KERNEL
 	  identify kernel problems.
 
 config LESS_GCC_OPT
-	bool "Compile with -O1 for debugging
+	bool "Compile with -O1 for debugging"
 	depends on DEBUG_KERNEL
 	default y if TEGRA_SIMULATION_PLATFORM
 	default n if !TEGRA_SIMULATION_PLATFORM
