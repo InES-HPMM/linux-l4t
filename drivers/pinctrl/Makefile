@@ -1,4 +1,5 @@
 # generic pinmux support
+GCOV_PROFILE := y
 
 ccflags-$(CONFIG_DEBUG_PINCTRL)	+= -DDEBUG
 
