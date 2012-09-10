@@ -23,6 +23,7 @@
 #define __MACH_TEGRA_BOARD_H
 
 #include <linux/types.h>
+#include <linux/errno.h>
 #include <linux/power_supply.h>
 #include <linux/memory.h>
 
