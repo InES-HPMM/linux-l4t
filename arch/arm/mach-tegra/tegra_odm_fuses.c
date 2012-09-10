@@ -818,13 +818,16 @@ static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 	int ret, i = 0;
 	int orig_count = count;
 	struct fuse_data data = {0};
-	u32 *raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
-	u8 *raw_byte_data = (u8 *)raw_data;
+	u32 *raw_data;
+	u8 *raw_byte_data;
 
 	if ((param == -1) || (param == -ENODATA)) {
 		pr_err("%s: invalid fuse\n", __func__);
 		return -EINVAL;
 	}
+
+	raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
+	raw_byte_data = (u8 *)raw_data;
 
 	if (fuse_odm_prod_mode()) {
 		pr_err("%s: device locked. odm fuse already blown\n", __func__);
