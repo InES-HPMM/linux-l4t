@@ -25,6 +25,7 @@
 #include <asm/div64.h>
 #include <sound/max98088.h>
 #include <sound/jack.h>
+#include <linux/gpio.h>
 #include "max98088.h"
 
 enum max98088_type {
@@ -2125,7 +2126,7 @@ static int max98088_probe(struct snd_soc_codec *codec)
 
        if (max98088->irq) {
                /* register an audio interrupt */
-               ret = request_threaded_irq(max98088->irq, NULL,
+		ret = request_threaded_irq(gpio_to_irq(max98088->irq), NULL,
                        max98088_jack_handler,
                        IRQF_TRIGGER_FALLING,
                        "max98088", codec);
