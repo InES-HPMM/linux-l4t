@@ -58,9 +58,11 @@
 #define TPS6591X_EN1_SMPS_ADD		0x46
 #define TPS6591X_EN2_LDO_ADD		0x47
 #define TPS6591X_EN2_SMPS_ADD		0x48
+#define TPS6591X_DCDCCTRL_ADD		0x3E
 #define TPS6591X_INVALID_ADD		0xFF
 
 #define EN1_EN2_OFFSET			2
+#define LDO4_TRACK_VAL			0x40
 
 struct tps6591x_register_info {
 	unsigned char addr;
@@ -718,6 +720,18 @@ static inline int tps6591x_regulator_preinit(struct device *parent,
 	if (!tps6591x_pdata->init_apply)
 		return 0;
 
+	if (ri->desc.id == TPS6591X_ID_LDO_4 &&
+		(tps6591x_pdata->flags & LDO4_TRACKING_EN)) {
+		ret = tps6591x_read(parent, TPS6591X_DCDCCTRL_ADD,
+						&reg_val);
+		if (ret < 0)
+			pr_err("Not able to configure tracking mode for"
+			" %d err %d\n", ri->desc.id, ret);
+		else
+			tps6591x_write(parent, TPS6591X_DCDCCTRL_ADD,
+					reg_val|LDO4_TRACK_VAL);
+	}
+
 	if (tps6591x_pdata->init_uV >= 0) {
 		switch (ri->desc.id) {
 		case TPS6591X_ID_VIO:
@@ -817,7 +831,7 @@ static int tps6591x_regulator_probe(struct platform_device *pdev)
 	int id = pdev->id;
 	int err;
 
-	dev_dbg(&pdev->dev, "Probing reulator %d\n", id);
+	dev_dbg(&pdev->dev, "Probing regulator %d\n", id);
 
 	ri = find_regulator_info(id);
 	if (ri == NULL) {

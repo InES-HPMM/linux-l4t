@@ -52,6 +52,7 @@ enum tps6591x_ext_control {
 
 enum tps6591x_config_flags {
 	LDO_LOW_POWER_ON_SUSPEND = 0x1,
+	LDO4_TRACKING_EN = 0x2,
 };
 
 /*
