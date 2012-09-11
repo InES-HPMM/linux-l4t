@@ -366,36 +366,6 @@ static int __init tegra_rtc_probe(struct platform_device *pdev)
 
 	dev_notice(&pdev->dev, "Tegra internal Real Time Clock\n");
 
-#ifndef CONFIG_TEGRA_SILICON_PLATFORM
-	{
-		struct rtc_time tm;
-
-		/* Get the current time from the RTC. */
-		ret = tegra_rtc_read_time(&pdev->dev, &tm);
-		if (ret) {
-			/* Report but ignore this error. */
-			dev_err(&pdev->dev,
-				"Failed to get FPGA internal RTC time (err=%d)\n",
-				ret);
-		} else if (tm.tm_year < 2010) {
-			/* The RTC's default reset time is soooo last century. */
-			tm.tm_year = 2010-1900;
-			tm.tm_mon  = 0;
-			tm.tm_mday = 1;
-			tm.tm_hour = 0;
-			tm.tm_min  = 0;
-			tm.tm_sec  = 0;
-			ret = tegra_rtc_set_time(&pdev->dev, &tm);
-			if (ret) {
-				/* Report but ignore this error. */
-				dev_err(&pdev->dev,
-					"Failed to set FPGA internal RTC time (err=%d)\n",
-					ret);
-			}
-		}
-	}
-#endif
-
 	return 0;
 }
 
