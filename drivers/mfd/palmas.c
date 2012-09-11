@@ -257,6 +257,61 @@ static struct regmap_irq_chip palmas_irq_chip = {
 			PALMAS_INT1_MASK),
 };
 
+static u8 palmas_clk32k_control_reg[] = {
+	PALMAS_CLK32KG_CTRL,
+	PALMAS_CLK32KGAUDIO_CTRL,
+};
+
+static int palmas_resource_read(struct palmas *palmas, unsigned int reg,
+	unsigned int *dest)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(PALMAS_RESOURCE_BASE, reg);
+
+	return regmap_read(palmas->regmap[0], addr, dest);
+}
+
+static int palmas_resource_write(struct palmas *palmas, unsigned int reg,
+	unsigned int value)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(PALMAS_RESOURCE_BASE, reg);
+
+	return regmap_write(palmas->regmap[0], addr, value);
+}
+
+
+static void palmas_clk32k_init(struct palmas *palmas,
+	struct palmas_platform_data *pdata)
+{
+	int ret;
+	struct palmas_clk32k_init_data *clk32_idata = pdata->clk32k_init_data;
+	int data_size = pdata->clk32k_init_data_size;
+	unsigned int reg;
+	unsigned int regval;
+	int i;
+
+	if (!clk32_idata || !data_size)
+		return;
+
+	for (i = 0; i < data_size; ++i) {
+		struct palmas_clk32k_init_data *clk32_pd =  &clk32_idata[i];
+		reg = palmas_clk32k_control_reg[clk32_pd->clk32k_id];
+		ret = palmas_resource_read(palmas, reg, &regval);
+		if (ret < 0) {
+			dev_err(palmas->dev, "Error in reading clk reg\n");
+			return;
+		}
+		if (clk32_pd->enable)
+			regval |=  PALMAS_CLK32KG_CTRL_MODE_ACTIVE;
+		else
+			regval &=  ~PALMAS_CLK32KG_CTRL_MODE_ACTIVE;
+		ret = palmas_resource_write(palmas, reg, regval);
+		if (ret < 0) {
+			dev_err(palmas->dev, "Error in writing clk reg\n");
+			return;
+		}
+	}
+}
+
 static int palmas_set_pdata_irq_flag(struct i2c_client *i2c,
 		struct palmas_platform_data *pdata)
 {
@@ -471,6 +526,9 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 		else
 			return ret;
 	}
+
+
+	palmas_clk32k_init(palmas, pdata);
 
 	children = kmemdup(palmas_children, sizeof(palmas_children),
 			   GFP_KERNEL);

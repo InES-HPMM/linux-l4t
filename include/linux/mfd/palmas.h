@@ -165,6 +165,19 @@ enum palmas_regulators {
 	PALMAS_NUM_REGS,
 };
 
+enum PALMAS_CLOCK32K {
+	PALMAS_CLOCK32KG,
+	PALMAS_CLOCK32KG_AUDIO,
+
+	/* Last entry */
+	PALMAS_CLOCK32K_NR,
+};
+
+struct palmas_clk32k_init_data {
+	int clk32k_id;
+	bool enable;
+};
+
 struct palmas_pmic_platform_data {
 	/* An array of pointers to regulator init data indexed by regulator
 	 * ID
@@ -250,6 +263,9 @@ struct palmas_platform_data {
 	struct palmas_usb_platform_data *usb_pdata;
 	struct palmas_resource_platform_data *resource_pdata;
 	struct palmas_clk_platform_data *clk_pdata;
+
+	struct palmas_clk32k_init_data  *clk32k_init_data;
+	int clk32k_init_data_size;
 };
 
 struct palmas_gpadc_calibration {
