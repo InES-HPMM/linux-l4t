@@ -40,7 +40,7 @@ static bool tegra_dvfs_core_disabled;
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1350,
+	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
@@ -48,7 +48,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
+	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 };
@@ -65,7 +65,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 0,
 		.max_mv = 1250,
 		.min_mv = 850,
-		.margin = 103,
+		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 100,
@@ -85,8 +85,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1428,  39880, 14152, -570},
 			{1530,  43023, 14271, -570},
 			{1632,  46226, 14391, -570},
-			{1734,  49489, 14511, -570},
-			{1836,  52812, 14630, -570},
 			{   0,      0,     0,    0},
 		},
 	}
@@ -106,9 +104,9 @@ static struct dvfs cpu_dvfs = {
 
 static struct tegra_cl_dvfs_dfll_data cpu_dfll_data = {
 		.dfll_clk_name	= "dfll_cpu",
-		.tune0		= 0x030201,
-		.tune1		= 0x000BB0AA,
-		.droop_rate_min = 640000000,
+		.tune0		= 0x000B0380,
+		.tune1		= 0x000005e0,
+		.droop_rate_min = 1000000,
 };
 
 /* Core DVFS tables */
