@@ -87,7 +87,6 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vdd_sim1b_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd_audio", NULL),
 	REGULATOR_SUPPLY("avdd_audio", NULL),
-	REGULATOR_SUPPLY("vdd_mic", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
 	REGULATOR_SUPPLY("avdd_pll_bb", NULL),
@@ -178,6 +177,14 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 
 };
 
+static struct regulator_consumer_supply palmas_regen1_supply[] = {
+	REGULATOR_SUPPLY("mic_ventral", NULL),
+};
+
+static struct regulator_consumer_supply palmas_regen2_supply[] = {
+	REGULATOR_SUPPLY("vdd_mic", NULL),
+};
+
 #define PALMAS_PDATA_INIT(_name, _minmv, _maxmv, _supply_reg, _always_on, \
 	_boot_on, _apply_uv)						\
 	static struct regulator_init_data reg_idata_##_name = {		\
@@ -218,6 +225,8 @@ PALMAS_PDATA_INIT(ldo8, 1150,  1150, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
 PALMAS_PDATA_INIT(ldoln, 2700, 2700, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldousb, 3300,  3300, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(regen1, 4300,  4300, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(regen2, 4300,  4300, palmas_rails(smps8), 0, 0, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 
@@ -243,8 +252,8 @@ static struct regulator_init_data *pluto_reg_data[] = {
 	PALMAS_REG_PDATA(ldo9),
 	PALMAS_REG_PDATA(ldoln),
 	PALMAS_REG_PDATA(ldousb),
-	NULL,
-	NULL,
+	PALMAS_REG_PDATA(regen1),
+	PALMAS_REG_PDATA(regen2),
 	NULL,
 	NULL,
 	NULL,
