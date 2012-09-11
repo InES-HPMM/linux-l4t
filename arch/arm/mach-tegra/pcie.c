@@ -1260,7 +1260,7 @@ static int tegra_pcie_init(void)
 	}
 
 	if (tegra_pcie.plat_data->use_dock_detect) {
-		unsigned int irq;
+		int irq;
 
 		pr_info("acquiring dock_detect = %d\n",
 				tegra_pcie.plat_data->gpio);
@@ -1271,7 +1271,7 @@ static int tegra_pcie_init(void)
 			pr_err("Unable to get irq number for dock_detect\n");
 			goto err_irq;
 		}
-		err = request_irq(irq,
+		err = request_irq((unsigned int)irq,
 				gpio_pcie_detect_isr,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				"pcie_dock_detect",
