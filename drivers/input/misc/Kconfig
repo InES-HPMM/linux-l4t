@@ -690,4 +690,7 @@ config INPUT_CAPELLA_CM3218
 	help
 	  Say Y here to enable the CM3218 Ambient Light Sensor.
 
+source	"drivers/input/misc/compass/Kconfig"
+source	"drivers/input/misc/mpu/Kconfig"
+
 endif
