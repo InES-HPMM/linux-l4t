@@ -512,13 +512,26 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	.reg_init = pluto_reg_init,
 };
 
+struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
+	{
+		.clk32k_id = PALMAS_CLOCK32KG,
+		.enable = true,
+	}, {
+		.clk32k_id = PALMAS_CLOCK32KG_AUDIO,
+		.enable = true,
+	},
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
 	.mux_from_pdata = true,
 	.pad1 = 0,
-	.pad2 = 0,
+	.pad2 = (PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK &
+			(1 << PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_SHIFT)),
+	.clk32k_init_data =  palmas_clk32k_idata,
+	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 };
 
 static struct i2c_board_info palma_device[] = {
