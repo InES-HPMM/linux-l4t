@@ -24,6 +24,10 @@
 #include <linux/io.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
+#include <linux/stat.h>
+#include <linux/sched.h>
+#include <linux/moduleparam.h>
+#include <linux/spinlock_types.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -59,6 +63,42 @@ struct mc_client {
 
 static void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
 
+#define MMA_HISTORY_SAMPLES 20
+struct arb_emem_intr_info {
+	int arb_intr_mma;
+	u64 time;
+	spinlock_t lock;
+};
+
+static struct arb_emem_intr_info arb_intr_info = {
+	.lock = __SPIN_LOCK_UNLOCKED(arb_intr_info.lock),
+};
+
+static int arb_intr_count;
+static int arb_intr_mma_set(const char *arg, const struct kernel_param *kp)
+{
+	int ret;
+	unsigned long flags;
+
+	spin_lock_irqsave(&arb_intr_info.lock, flags);
+	ret = param_set_int(arg, kp);
+	spin_unlock_irqrestore(&arb_intr_info.lock, flags);
+	return ret;
+}
+
+static int arb_intr_mma_get(char *buff, const struct kernel_param *kp)
+{
+	return param_get_int(buff, kp);
+}
+
+static struct kernel_param_ops arb_intr_mma_ops = {
+	.get = arb_intr_mma_get,
+	.set = arb_intr_mma_set,
+};
+
+module_param_cb(arb_intr_mma_in_ms, &arb_intr_mma_ops,\
+	&arb_intr_info.arb_intr_mma, S_IRUGO | S_IWUSR);
+module_param(arb_intr_count, int, S_IRUGO | S_IWUSR);
 
 #ifdef CONFIG_PM_SLEEP
 static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
@@ -193,11 +233,27 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	u32 is_write;
 	u32 is_secure;
 	u32 client_id;
+	u64 time;
+	u32 time_diff_ms;
+	unsigned long flags;
 
 	stat = readl(mc + MC_INT_STATUS);
 	stat &= (MC_INT_DECERR_EMEM |
 		 MC_INT_SECURITY_VIOLATION |
+		 MC_INT_ARBITRATION_EMEM |
 		 MC_INT_INVALID_SMMU_PAGE);
+
+	if (stat & MC_INT_ARBITRATION_EMEM) {
+		spin_lock_irqsave(&arb_intr_info.lock, flags);
+		arb_intr_count++;
+		time = sched_clock();
+		time_diff_ms = (time - arb_intr_info.time) >> 20;
+		arb_intr_info.time = time;
+		arb_intr_info.arb_intr_mma =
+		    ((MMA_HISTORY_SAMPLES - 1) * time_diff_ms +
+		     arb_intr_info.arb_intr_mma) / MMA_HISTORY_SAMPLES;
+		spin_unlock_irqrestore(&arb_intr_info.lock, flags);
+	}
 
 	__cancel_delayed_work(&unthrottle_prints_work);
 
@@ -270,7 +326,7 @@ static int __init tegra30_mc_init(void)
 		ret = -ENXIO;
 	} else {
 		reg = MC_INT_DECERR_EMEM | MC_INT_SECURITY_VIOLATION |
-				MC_INT_INVALID_SMMU_PAGE;
+			MC_INT_ARBITRATION_EMEM | MC_INT_INVALID_SMMU_PAGE;
 		writel(reg, mc + MC_INT_MASK);
 	}
 	tegra_mc_timing_save();
