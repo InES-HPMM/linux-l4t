@@ -187,6 +187,13 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 			return -EINVAL;
 	}
 
+	/* DFLL adjusts rail voltage automatically - only update stats */
+	if (rail->dfll_mode) {
+		rail->millivolts = rail->new_millivolts;
+		dvfs_rail_stats_update(rail, rail->millivolts, ktime_get());
+		return 0;
+	}
+
 	if (rail->disabled)
 		return 0;
 
@@ -348,14 +355,22 @@ static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
 	return d->alt_freqs ? : &d->freqs[0];
 }
 
+static inline const int *dvfs_get_millivolts(struct dvfs *d)
+{
+	if (d->dvfs_rail && d->dvfs_rail->dfll_mode)
+		return d->dfll_millivolts;
+	return d->millivolts;
+}
+
 static int
 __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 {
 	int i = 0;
 	int ret;
 	unsigned long *freqs = dvfs_get_freqs(d);
+	const int *millivolts = dvfs_get_millivolts(d);
 
-	if (freqs == NULL || d->millivolts == NULL)
+	if (freqs == NULL || millivolts == NULL)
 		return -ENODEV;
 
 	if (rate > freqs[d->num_freqs - 1]) {
@@ -371,12 +386,12 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 			i++;
 
 		if ((d->max_millivolts) &&
-		    (d->millivolts[i] > d->max_millivolts)) {
+		    (millivolts[i] > d->max_millivolts)) {
 			pr_warn("tegra_dvfs: voltage %d too high for dvfs on"
-				" %s\n", d->millivolts[i], d->clk_name);
+				" %s\n", millivolts[i], d->clk_name);
 			return -EINVAL;
 		}
-		d->cur_millivolts = d->millivolts[i];
+		d->cur_millivolts = millivolts[i];
 	}
 
 	d->cur_rate = rate;
@@ -407,11 +422,13 @@ int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 {
 	int i;
+	const int *millivolts;
 
 	if (!rate || !c->dvfs)
 		return 0;
 
-	if (!c->dvfs->millivolts)
+	millivolts = dvfs_get_millivolts(c->dvfs);
+	if (!millivolts)
 		return -ENODEV;
 
 	/*
@@ -430,7 +447,7 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 	if (i == c->dvfs->num_freqs)
 		return -EINVAL;
 
-	return c->dvfs->millivolts[i];
+	return millivolts[i];
 }
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
@@ -608,6 +625,10 @@ static struct notifier_block tegra_dvfs_reboot_nb = {
 static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 {
 	int ret;
+
+	/* don't set voltage in DFLL mode - won't work, but break stats */
+	if (rail->dfll_mode)
+		return;
 
 	ret = dvfs_rail_set_voltage(rail, rail->nominal_millivolts);
 	if (ret)
