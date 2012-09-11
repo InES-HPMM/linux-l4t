@@ -248,6 +248,7 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 #endif
 
 #ifdef CONFIG_CACHE_L2X0
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 static void tegra_cache_smc(bool enable, u32 arg)
 {
@@ -319,7 +320,6 @@ static void tegra_l2x0_disable(void)
 }
 #endif	/* CONFIG_TRUSTED_FOUNDATIONS  */
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;

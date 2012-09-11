@@ -598,7 +598,11 @@ MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_pluto_reserve,
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.init_early	= tegra30_init_early,
+#else
+	.init_early     = tegra11x_init_early,
+#endif
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,

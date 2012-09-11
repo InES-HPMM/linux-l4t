@@ -106,6 +106,18 @@
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 	}
 
+#define CEC_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _od)   \
+	{							\
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,	\
+		.func       = TEGRA_MUX_##_mux,			\
+		.pupd       = TEGRA_PUPD_##_pupd,		\
+		.tristate   = TEGRA_TRI_##_tri,			\
+		.io         = TEGRA_PIN_##_io,			\
+		.lock       = TEGRA_PIN_LOCK_##_lock,		\
+		.od         = TEGRA_PIN_OD_##_od,		\
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,	\
+	}
+
 /* We are disabling this code for now. */
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
 	{					\
@@ -525,6 +537,9 @@ int __init pluto_pinmux_init(void)
 	tegra_pinmux_config_table(pluto_pinmux_common, ARRAY_SIZE(pluto_pinmux_common));
 	tegra_drive_pinmux_config_table(pluto_drive_pinmux,
 					ARRAY_SIZE(pluto_drive_pinmux));
+	tegra_pinmux_config_table(unused_pins_lowpower,
+		ARRAY_SIZE(unused_pins_lowpower));
+
 #else
 	tegra30_default_pinmux();
 
