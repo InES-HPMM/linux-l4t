@@ -22,9 +22,6 @@
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvevent.h>
 
@@ -285,11 +282,6 @@ struct mxt_info {
 	u8 object_num;
 };
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void mxt_early_suspend(struct early_suspend *es);
-static void mxt_late_resume(struct early_suspend *es);
-#endif
-
 struct mxt_object {
 	u8 type;
 	u16 start_address;
@@ -340,9 +332,6 @@ struct mxt_data {
 	u8 num_stylusids;
 	u8 *msg_buf;
 	u8 last_message_count;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
 
 	/* Slowscan parameters	*/
 	int slowscan_enabled;
@@ -2512,13 +2501,6 @@ static int mxt_probe(struct i2c_client *client,
 		goto err_free_input_device;
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	data->early_suspend.suspend = mxt_early_suspend;
-	data->early_suspend.resume = mxt_late_resume;
-	register_early_suspend(&data->early_suspend);
-#endif
-
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error) {
 		dev_err(&client->dev, "Failure %d creating sysfs group\n",
@@ -2564,9 +2546,6 @@ static int mxt_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	free_irq(data->irq, data);
 	input_unregister_device(data->input_dev);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	unregister_early_suspend(&data->early_suspend);
-#endif
 	kfree(data->msg_buf);
 	data->msg_buf = NULL;
 	kfree(data->object_table);
@@ -2609,26 +2588,6 @@ static int mxt_resume(struct device *dev)
 
 	return 0;
 }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void mxt_early_suspend(struct early_suspend *es)
-{
-	struct mxt_data *mxt;
-	mxt = container_of(es, struct mxt_data, early_suspend);
-
-	if (mxt_suspend(&mxt->client->dev) != 0)
-		dev_err(&mxt->client->dev, "%s: failed\n", __func__);
-}
-
-static void mxt_late_resume(struct early_suspend *es)
-{
-	struct mxt_data *mxt;
-	mxt = container_of(es, struct mxt_data, early_suspend);
-
-	if (mxt_resume(&mxt->client->dev) != 0)
-		dev_err(&mxt->client->dev, "%s: failed\n", __func__);
-}
-#endif
 
 #endif
 
