@@ -243,6 +243,11 @@ static struct regulator_init_data *pluto_reg_data[] = {
 	PALMAS_REG_PDATA(ldo9),
 	PALMAS_REG_PDATA(ldoln),
 	PALMAS_REG_PDATA(ldousb),
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
 
 #define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep,	\
