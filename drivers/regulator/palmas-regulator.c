@@ -33,6 +33,7 @@ struct regs_info {
 	u8	vsel_addr;
 	u8	ctrl_addr;
 	u8	tstep_addr;
+	int	sleep_id;
 };
 
 static const struct regs_info palmas_regs_info[] = {
@@ -42,6 +43,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS12_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS12_CTRL,
 		.tstep_addr	= PALMAS_SMPS12_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS12,
 	},
 	{
 		.name		= "SMPS123",
@@ -49,12 +51,14 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS12_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS12_CTRL,
 		.tstep_addr	= PALMAS_SMPS12_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS12,
 	},
 	{
 		.name		= "SMPS3",
 		.sname		= "smps3-in",
 		.vsel_addr	= PALMAS_SMPS3_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS3_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS3,
 	},
 	{
 		.name		= "SMPS45",
@@ -62,6 +66,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS45_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS45_CTRL,
 		.tstep_addr	= PALMAS_SMPS45_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS45,
 	},
 	{
 		.name		= "SMPS457",
@@ -69,6 +74,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS45_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS45_CTRL,
 		.tstep_addr	= PALMAS_SMPS45_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS45,
 	},
 	{
 		.name		= "SMPS6",
@@ -76,12 +82,14 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS6_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS6_CTRL,
 		.tstep_addr	= PALMAS_SMPS6_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS6,
 	},
 	{
 		.name		= "SMPS7",
 		.sname		= "smps7-in",
 		.vsel_addr	= PALMAS_SMPS7_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS7_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS7,
 	},
 	{
 		.name		= "SMPS8",
@@ -89,103 +97,122 @@ static const struct regs_info palmas_regs_info[] = {
 		.vsel_addr	= PALMAS_SMPS8_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS8_CTRL,
 		.tstep_addr	= PALMAS_SMPS8_TSTEP,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS8,
 	},
 	{
 		.name		= "SMPS9",
 		.sname		= "smps9-in",
 		.vsel_addr	= PALMAS_SMPS9_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS9_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS9,
 	},
 	{
 		.name		= "SMPS10",
 		.sname		= "smps10-in",
 		.ctrl_addr	= PALMAS_SMPS10_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS10,
 	},
 	{
 		.name		= "LDO1",
 		.sname		= "ldo1-in",
 		.vsel_addr	= PALMAS_LDO1_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO1_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO1,
 	},
 	{
 		.name		= "LDO2",
 		.sname		= "ldo2-in",
 		.vsel_addr	= PALMAS_LDO2_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO2_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO2,
 	},
 	{
 		.name		= "LDO3",
 		.sname		= "ldo3-in",
 		.vsel_addr	= PALMAS_LDO3_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO3_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO3,
 	},
 	{
 		.name		= "LDO4",
 		.sname		= "ldo4-in",
 		.vsel_addr	= PALMAS_LDO4_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO4_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO4,
 	},
 	{
 		.name		= "LDO5",
 		.sname		= "ldo5-in",
 		.vsel_addr	= PALMAS_LDO5_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO5_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO5,
 	},
 	{
 		.name		= "LDO6",
 		.sname		= "ldo6-in",
 		.vsel_addr	= PALMAS_LDO6_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO6_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO6,
 	},
 	{
 		.name		= "LDO7",
 		.sname		= "ldo7-in",
 		.vsel_addr	= PALMAS_LDO7_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO7_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO7,
 	},
 	{
 		.name		= "LDO8",
 		.sname		= "ldo8-in",
 		.vsel_addr	= PALMAS_LDO8_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO8_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO8,
 	},
 	{
 		.name		= "LDO9",
 		.sname		= "ldo9-in",
 		.vsel_addr	= PALMAS_LDO9_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDO9_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO9,
 	},
 	{
 		.name		= "LDOLN",
 		.sname		= "ldoln-in",
 		.vsel_addr	= PALMAS_LDOLN_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDOLN_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDOLN,
 	},
 	{
 		.name		= "LDOUSB",
 		.sname		= "ldousb-in",
 		.vsel_addr	= PALMAS_LDOUSB_VOLTAGE,
 		.ctrl_addr	= PALMAS_LDOUSB_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDOUSB,
 	},
 	{
 		.name		= "REGEN1",
 		.ctrl_addr	= PALMAS_REGEN1_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN1,
 	},
 	{
 		.name		= "REGEN2",
 		.ctrl_addr	= PALMAS_REGEN2_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN2,
 	},
 	{
 		.name		= "REGEN3",
 		.ctrl_addr	= PALMAS_REGEN3_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN3,
 	},
 	{
 		.name		= "SYSEN1",
 		.ctrl_addr	= PALMAS_SYSEN1_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SYSEN1,
 	},
 	{
 		.name		= "SYSEN2",
 		.ctrl_addr	= PALMAS_SYSEN2_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SYSEN2,
 	},
 };
 
@@ -565,6 +592,17 @@ static int palmas_smps_init(struct palmas *palmas, int id,
 	if (ret)
 		return ret;
 
+	if ((id != PALMAS_REG_SMPS10) && reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+					reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
+	}
+
 	if (palmas_regs_info[id].vsel_addr && reg_init->vsel) {
 		addr = palmas_regs_info[id].vsel_addr;
 
@@ -606,6 +644,18 @@ static int palmas_ldo_init(struct palmas *palmas, int id,
 	if (ret)
 		return ret;
 
+	if (reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+			reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -627,6 +677,18 @@ static int palmas_extreg_init(struct palmas *palmas, int id,
 		dev_err(palmas->dev, "Resource reg 0x%02x update failed %d\n",
 			addr, ret);
 		return ret;
+	}
+
+	if (reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+			reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
 	}
 	return 0;
 }
