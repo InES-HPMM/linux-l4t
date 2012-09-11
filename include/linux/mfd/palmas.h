@@ -176,6 +176,7 @@ enum PALMAS_CLOCK32K {
 struct palmas_clk32k_init_data {
 	int clk32k_id;
 	bool enable;
+	int sleep_control;
 };
 
 struct palmas_pmic_platform_data {

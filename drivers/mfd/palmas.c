@@ -303,18 +303,20 @@ static struct palmas_sleep_requestor_info sleep_reqt_info[] = {
 	SLEEP_REQUESTOR(LDOUSB, 3, 2),
 };
 
-static u8 palmas_clk32k_control_reg[] = {
-	PALMAS_CLK32KG_CTRL,
-	PALMAS_CLK32KGAUDIO_CTRL,
+struct palmas_clk32k_info {
+	unsigned int control_reg;
+	unsigned int sleep_reqstr_id;
 };
 
-static int palmas_resource_read(struct palmas *palmas, unsigned int reg,
-	unsigned int *dest)
-{
-	unsigned int addr = PALMAS_BASE_TO_REG(PALMAS_RESOURCE_BASE, reg);
-
-	return regmap_read(palmas->regmap[0], addr, dest);
-}
+static struct palmas_clk32k_info palmas_clk32k_info[] = {
+	{
+		.control_reg = PALMAS_CLK32KG_CTRL,
+		.sleep_reqstr_id = PALMAS_SLEEP_REQSTR_ID_CLK32KG,
+	}, {
+		.control_reg = PALMAS_CLK32KGAUDIO_CTRL,
+		.sleep_reqstr_id = PALMAS_SLEEP_REQSTR_ID_CLK32KGAUDIO,
+	},
+};
 
 static int palmas_resource_write(struct palmas *palmas, unsigned int reg,
 	unsigned int value)
@@ -419,26 +421,55 @@ static void palmas_clk32k_init(struct palmas *palmas,
 	unsigned int reg;
 	unsigned int regval;
 	int i;
+	int id;
 
 	if (!clk32_idata || !data_size)
 		return;
 
 	for (i = 0; i < data_size; ++i) {
 		struct palmas_clk32k_init_data *clk32_pd =  &clk32_idata[i];
-		reg = palmas_clk32k_control_reg[clk32_pd->clk32k_id];
-		ret = palmas_resource_read(palmas, reg, &regval);
+
+		reg = palmas_clk32k_info[clk32_pd->clk32k_id].control_reg;
+		if (clk32_pd->enable)
+			ret = palmas_resource_update(palmas, reg,
+					PALMAS_CLK32KG_CTRL_MODE_ACTIVE,
+					PALMAS_CLK32KG_CTRL_MODE_ACTIVE);
+		else
+			ret = palmas_resource_update(palmas, reg,
+					PALMAS_CLK32KG_CTRL_MODE_ACTIVE, 0);
 		if (ret < 0) {
-			dev_err(palmas->dev, "Error in reading clk reg\n");
+			dev_err(palmas->dev, "Error in updating clk reg\n");
 			return;
 		}
-		if (clk32_pd->enable)
-			regval |=  PALMAS_CLK32KG_CTRL_MODE_ACTIVE;
-		else
-			regval &=  ~PALMAS_CLK32KG_CTRL_MODE_ACTIVE;
-		ret = palmas_resource_write(palmas, reg, regval);
-		if (ret < 0) {
-			dev_err(palmas->dev, "Error in writing clk reg\n");
-			return;
+
+		/* Sleep control */
+		id = palmas_clk32k_info[clk32_pd->clk32k_id].sleep_reqstr_id;
+		if (clk32_pd->sleep_control) {
+			ret = palmas_ext_power_req_config(palmas, id,
+					clk32_pd->sleep_control, true);
+			if (ret < 0) {
+				dev_err(palmas->dev,
+					"Error in ext power control reg\n");
+				return;
+			}
+
+			ret = palmas_resource_update(palmas, reg,
+					PALMAS_CLK32KG_CTRL_MODE_SLEEP,
+					PALMAS_CLK32KG_CTRL_MODE_SLEEP);
+			if (ret < 0) {
+				dev_err(palmas->dev,
+					"Error in updating clk reg\n");
+				return;
+			}
+		} else {
+
+			ret = palmas_resource_update(palmas, reg,
+					PALMAS_CLK32KG_CTRL_MODE_SLEEP, 0);
+			if (ret < 0) {
+				dev_err(palmas->dev,
+					"Error in updating clk reg\n");
+				return;
+			}
 		}
 	}
 }
