@@ -87,7 +87,9 @@ static struct pwr_detect_cell pwr_detect_cells[] = {
 	POWER_CELL("pwrdet_vi",			  0, (0x1 <<  4), 0x00000002),
 #endif
 	POWER_CELL("pwrdet_audio",	(0x1 <<  5), (0x1 <<  5), 0xFFFFFFFF),
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	POWER_CELL("pwrdet_lcd",	(0x1 <<  6), (0x1 <<  6), 0xFFFFFFFF),
+#endif
 #ifdef	CONFIG_ARCH_TEGRA_2x_SOC
 	POWER_CELL("pwrdet_sd",			  0, (0x1 <<  8), 0xFFFFFFFF),
 #endif
