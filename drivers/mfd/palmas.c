@@ -25,6 +25,10 @@
 #include <linux/mfd/palmas.h>
 #include <linux/of_platform.h>
 
+#define EXT_PWR_REQ (PALMAS_EXT_CONTROL_ENABLE1 |	\
+			PALMAS_EXT_CONTROL_ENABLE2 |	\
+			PALMAS_EXT_CONTROL_NSLEEP)
+
 enum palmas_ids {
 	PALMAS_PMIC_ID,
 	PALMAS_GPIO_ID,
@@ -257,6 +261,48 @@ static struct regmap_irq_chip palmas_irq_chip = {
 			PALMAS_INT1_MASK),
 };
 
+struct palmas_sleep_requestor_info {
+	int id;
+	int reg_offset;
+	int bit_pos;
+};
+
+#define SLEEP_REQUESTOR(_id, _offset, _pos)		\
+	[PALMAS_SLEEP_REQSTR_ID_##_id] = {		\
+		.id = PALMAS_SLEEP_REQSTR_ID_##_id,	\
+		.reg_offset = _offset,			\
+		.bit_pos = _pos,			\
+	}
+
+static struct palmas_sleep_requestor_info sleep_reqt_info[] = {
+	SLEEP_REQUESTOR(REGEN1, 0, 0),
+	SLEEP_REQUESTOR(REGEN2, 0, 1),
+	SLEEP_REQUESTOR(SYSEN1, 0, 2),
+	SLEEP_REQUESTOR(SYSEN2, 0, 3),
+	SLEEP_REQUESTOR(CLK32KG, 0, 4),
+	SLEEP_REQUESTOR(CLK32KGAUDIO, 0, 5),
+	SLEEP_REQUESTOR(REGEN3, 0, 6),
+	SLEEP_REQUESTOR(SMPS12, 1, 0),
+	SLEEP_REQUESTOR(SMPS3, 1, 1),
+	SLEEP_REQUESTOR(SMPS45, 1, 2),
+	SLEEP_REQUESTOR(SMPS6, 1, 3),
+	SLEEP_REQUESTOR(SMPS7, 1, 4),
+	SLEEP_REQUESTOR(SMPS8, 1, 5),
+	SLEEP_REQUESTOR(SMPS9, 1, 6),
+	SLEEP_REQUESTOR(SMPS10, 1, 7),
+	SLEEP_REQUESTOR(LDO1, 2, 0),
+	SLEEP_REQUESTOR(LDO2, 2, 1),
+	SLEEP_REQUESTOR(LDO3, 2, 2),
+	SLEEP_REQUESTOR(LDO4, 2, 3),
+	SLEEP_REQUESTOR(LDO5, 2, 4),
+	SLEEP_REQUESTOR(LDO6, 2, 5),
+	SLEEP_REQUESTOR(LDO7, 2, 6),
+	SLEEP_REQUESTOR(LDO8, 2, 7),
+	SLEEP_REQUESTOR(LDO9, 3, 0),
+	SLEEP_REQUESTOR(LDOLN, 3, 1),
+	SLEEP_REQUESTOR(LDOUSB, 3, 2),
+};
+
 static u8 palmas_clk32k_control_reg[] = {
 	PALMAS_CLK32KG_CTRL,
 	PALMAS_CLK32KGAUDIO_CTRL,
@@ -278,6 +324,91 @@ static int palmas_resource_write(struct palmas *palmas, unsigned int reg,
 	return regmap_write(palmas->regmap[0], addr, value);
 }
 
+static int palmas_resource_update(struct palmas *palmas, unsigned int reg,
+	unsigned int mask, unsigned int value)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(PALMAS_RESOURCE_BASE, reg);
+
+	return regmap_update_bits(palmas->regmap[0], addr, mask, value);
+}
+
+static int palmas_control_update(struct palmas *palmas, unsigned int reg,
+	unsigned int mask, unsigned int value)
+{
+	unsigned int addr = PALMAS_BASE_TO_REG(PALMAS_PMU_CONTROL_BASE, reg);
+
+	return regmap_update_bits(palmas->regmap[0], addr, mask, value);
+}
+
+int palmas_ext_power_req_config(struct palmas *palmas,
+		int id, int ext_pwr_ctrl, bool enable)
+{
+	int preq_mask_bit = 0;
+	int ret;
+	int base_reg = 0;
+	int bit_pos;
+
+	if (!(ext_pwr_ctrl & EXT_PWR_REQ))
+		return 0;
+
+	if (id >= PALMAS_SLEEP_REQSTR_ID_MAX)
+		return 0;
+
+	if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_NSLEEP) {
+		base_reg = PALMAS_NSLEEP_RES_ASSIGN;
+		preq_mask_bit = 0;
+	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE1) {
+		base_reg = PALMAS_ENABLE1_RES_ASSIGN;
+		preq_mask_bit = 1;
+	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE2) {
+		base_reg = PALMAS_ENABLE2_RES_ASSIGN;
+		preq_mask_bit = 2;
+	}
+
+	bit_pos = sleep_reqt_info[id].bit_pos;
+	base_reg += sleep_reqt_info[id].reg_offset;
+	if (enable)
+		ret = palmas_resource_update(palmas, base_reg,
+				BIT(bit_pos), BIT(bit_pos));
+	else
+		ret = palmas_resource_update(palmas, base_reg,
+				BIT(bit_pos), 0);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Update on resource reg failed\n");
+		return ret;
+	}
+
+	/* Unmask the PREQ */
+	ret = palmas_control_update(palmas, PALMAS_POWER_CTRL,
+				BIT(preq_mask_bit), 0);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Power control register update fails\n");
+		return ret;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(palmas_ext_power_req_config);
+
+static void palmas_init_ext_control(struct palmas *palmas)
+{
+	int ret;
+	int i;
+
+	/* Clear all external control for this rail */
+	for (i = 0; i < 12; ++i) {
+		ret = palmas_resource_write(palmas,
+				PALMAS_NSLEEP_RES_ASSIGN + i, 0);
+		if (ret < 0)
+			dev_err(palmas->dev,
+				"Error in clearing res assign register\n");
+	}
+
+	/* Mask the PREQ */
+	ret = palmas_control_update(palmas, PALMAS_POWER_CTRL, 0x7, 0x7);
+	if (ret < 0)
+		dev_err(palmas->dev, "Power control reg write failed\n");
+}
 
 static void palmas_clk32k_init(struct palmas *palmas,
 	struct palmas_platform_data *pdata)
@@ -527,6 +658,8 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			return ret;
 	}
 
+
+	palmas_init_ext_control(palmas);
 
 	palmas_clk32k_init(palmas, pdata);
 
