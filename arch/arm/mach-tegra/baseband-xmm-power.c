@@ -317,8 +317,7 @@ static int xmm_power_on(struct platform_device *device)
 
 static int xmm_power_off(struct platform_device *device)
 {
-	struct baseband_power_platform_data *pdata =
-			device->dev.platform_data;
+	struct baseband_power_platform_data *pdata;
 	struct xmm_power_data *data = &xmm_power_drv_data;
 	int ret;
 	unsigned long flags;
@@ -333,6 +332,9 @@ static int xmm_power_off(struct platform_device *device)
 		pr_err("%s: !device\n", __func__);
 		return -EINVAL;
 	}
+
+	pdata = device->dev.platform_data;
+
 	if (!pdata) {
 		pr_err("%s: !pdata\n", __func__);
 		return -EINVAL;
@@ -740,9 +742,14 @@ static void xmm_power_work_func(struct work_struct *work)
 {
 	struct xmm_power_data *data =
 			container_of(work, struct xmm_power_data, work);
-	struct baseband_power_platform_data *pdata = data->pdata;
+	struct baseband_power_platform_data *pdata;
 
 	pr_debug("%s\n", __func__);
+
+	if (!data || !data->pdata)
+		return;
+
+	pdata = data->pdata;
 
 	switch (data->state) {
 	case BBXMM_WORK_UNINIT:

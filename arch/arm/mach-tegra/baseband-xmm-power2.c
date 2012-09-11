@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/baseband-xmm-power2.c
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2012, NVIDIA Corporation. All Rights Reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -132,10 +132,6 @@ static void xmm_power2_step2(struct work_struct *work)
 
 	pr_info("%s {\n", __func__);
 
-	/* check for platform data */
-	if (!data || !pdata)
-		return;
-
 	/* wait Y ms */
 	msleep(Y);
 
@@ -168,10 +164,6 @@ static void xmm_power2_step3(struct work_struct *work)
 	struct file *filp;
 
 	pr_info("%s {\n", __func__);
-
-	/* check for platform data */
-	if (!data || !pdata)
-		return;
 
 	/* wait 1 sec */
 	msleep(1000);
@@ -262,8 +254,12 @@ static void xmm_power2_work_func(struct work_struct *work)
 {
 	struct xmm_power_data *data =
 			container_of(work, struct xmm_power_data, work);
-	struct baseband_power_platform_data *pdata = data->pdata;
+	struct baseband_power_platform_data *pdata;
 	int err;
+
+	if (!data || !data->pdata)
+		return;
+	pdata = data->pdata;
 
 	pr_debug("%s pdata->state=%d\n", __func__, data->state);
 
