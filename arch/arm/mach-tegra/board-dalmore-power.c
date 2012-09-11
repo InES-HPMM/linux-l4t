@@ -96,7 +96,7 @@ static struct regulator_consumer_supply tps65090_fet5_supply[] = {
 };
 
 static struct regulator_consumer_supply tps65090_fet6_supply[] = {
-	REGULATOR_SUPPLY("vdd_sd_slot", "sdhci-tegra.2"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {

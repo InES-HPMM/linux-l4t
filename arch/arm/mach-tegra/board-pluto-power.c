@@ -364,7 +364,7 @@ static struct regulator_consumer_supply fixed_reg_en_avdd_usb3_1v05_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_mmc_sdmmc3_supply[] = {
-	REGULATOR_SUPPLY("vdd_sd_slot", "sdhci-tegra.2"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_lcd_1v8_supply[] = {
