@@ -28,6 +28,7 @@
 /* External peripheral act as gpio */
 /* MAX77663 GPIO */
 #define MAX77663_GPIO_BASE      TEGRA_NR_GPIOS
+#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
 #define MAX77663_GPIO_END       (MAX77663_GPIO_BASE + MAX77663_GPIO_NR)
 
 /* Audio-related GPIOs */
@@ -44,6 +45,7 @@
 
 /* External peripheral act as interrupt controller */
 /* MAX77663 IRQs */
+#define PALMAS_TEGRA_IRQ_BASE   TEGRA_NR_IRQS
 #define MAX77663_IRQ_BASE	TEGRA_NR_IRQS
 #define MAX77663_IRQ_END	(MAX77663_IRQ_BASE + MAX77663_IRQ_NR)
 #define MAX77663_IRQ_ACOK_RISING MAX77663_IRQ_ONOFF_ACOK_RISING
