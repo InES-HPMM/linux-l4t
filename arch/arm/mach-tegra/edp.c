@@ -854,22 +854,53 @@ static const struct file_operations edp_reg_override_debugfs_fops = {
 
 static int __init tegra_edp_debugfs_init(void)
 {
-	struct dentry *d;
+	struct dentry *d_edp;
+	struct dentry *d_edp_limit;
+	struct dentry *d_edp_reg_override;
+	struct dentry *edp_dir;
+	struct dentry *vdd_cpu_dir;
 
-	d = debugfs_create_file("edp", S_IRUGO, NULL, NULL,
+	edp_dir = debugfs_create_dir("edp", NULL);
+
+	if (!edp_dir)
+		goto edp_dir_err;
+
+	vdd_cpu_dir = debugfs_create_dir("vdd_cpu", edp_dir);
+
+	if (!vdd_cpu_dir)
+		goto vdd_cpu_dir_err;
+
+	d_edp = debugfs_create_file("edp", S_IRUGO, vdd_cpu_dir, NULL,
 				&edp_debugfs_fops);
-	if (!d)
-		return -ENOMEM;
 
-	d = debugfs_create_file("edp_limit", S_IRUGO, NULL, NULL,
-				&edp_limit_debugfs_fops);
+	if (!d_edp)
+		goto edp_err;
 
-	d = debugfs_create_file("edp_reg_override", S_IRUGO | S_IWUSR, NULL, NULL,
+	d_edp_limit = debugfs_create_file("edp_limit", S_IRUGO, vdd_cpu_dir,
+				NULL, &edp_limit_debugfs_fops);
+
+	if (!d_edp_limit)
+		goto edp_limit_err;
+
+	d_edp_reg_override = debugfs_create_file("edp_reg_override",
+				S_IRUGO | S_IWUSR, vdd_cpu_dir, NULL,
 				&edp_reg_override_debugfs_fops);
-	if (!d)
-		return -ENOMEM;
+
+	if (!d_edp_reg_override)
+		goto edp_reg_override_err;
 
 	return 0;
+
+edp_reg_override_err:
+	debugfs_remove(d_edp_limit);
+edp_limit_err:
+	debugfs_remove(d_edp);
+edp_err:
+	debugfs_remove(vdd_cpu_dir);
+vdd_cpu_dir_err:
+	debugfs_remove(edp_dir);
+edp_dir_err:
+	return -ENOMEM;
 }
 
 late_initcall(tegra_edp_debugfs_init);
