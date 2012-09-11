@@ -169,7 +169,7 @@ config MACH_DALMORE
 
 config MACH_TEGRA_PLUTO
        bool "Pluto board"
-       depends on ARCH_TEGRA_3x_SOC
+       depends on !ARCH_TEGRA_2x_SOC
        help
          Support for NVIDIA PLUTO development platform
 
