@@ -494,13 +494,18 @@ static int dalmore_hdmi_enable(void)
 
 static int dalmore_hdmi_disable(void)
 {
-	regulator_disable(dalmore_hdmi_reg);
-	regulator_put(dalmore_hdmi_reg);
-	dalmore_hdmi_reg = NULL;
+	if (dalmore_hdmi_reg) {
+		regulator_disable(dalmore_hdmi_reg);
+		regulator_put(dalmore_hdmi_reg);
+		dalmore_hdmi_reg = NULL;
+	}
 
-	regulator_disable(dalmore_hdmi_pll);
-	regulator_put(dalmore_hdmi_pll);
-	dalmore_hdmi_pll = NULL;
+	if (dalmore_hdmi_pll) {
+		regulator_disable(dalmore_hdmi_pll);
+		regulator_put(dalmore_hdmi_pll);
+		dalmore_hdmi_pll = NULL;
+	}
+
 	return 0;
 }
 
