@@ -102,6 +102,13 @@ config TORCH_TPS61050
         ---help---
           This is a driver for the TPS61050 flash/torch camera device
 
+config MAX77665_FLASH
+        tristate "MAX77665 flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        select MFD_MAX77665
+        ---help---
+          This is a driver for the MAX77665 flash/torch camera device
+
 config VIDEO_SH532U
         tristate "SH532U focuser support"
         depends on I2C && ARCH_TEGRA
