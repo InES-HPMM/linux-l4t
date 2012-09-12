@@ -237,9 +237,13 @@
 #define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ + PCIE_EXT_CFG_SZ)
 
 #define MEM_BASE_0		(TEGRA_PCIE_BASE + SZ_256M)
-#define MEM_SIZE		SZ_256M
-#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE)
-#define PREFETCH_MEM_SIZE	SZ_512M
+#define MEM_SIZE_0		SZ_128M
+#define MEM_BASE_1		(MEM_BASE_0 + MEM_SIZE_0)
+#define MEM_SIZE_1		SZ_128M
+#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_0	SZ_128M
+#define PREFETCH_MEM_BASE_1	(PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_1	SZ_128M
 
 #else
 
@@ -281,9 +285,13 @@
 #define MMIO_BASE				(TEGRA_PCIE_BASE + SZ_32M + SZ_16M)
 #define MMIO_SIZE							SZ_1M
 #define MEM_BASE_0				(TEGRA_PCIE_BASE + SZ_256M)
-#define MEM_SIZE							SZ_256M
-#define PREFETCH_MEM_BASE_0			(MEM_BASE_0 + MEM_SIZE)
-#define PREFETCH_MEM_SIZE						SZ_512M
+#define MEM_SIZE_0		SZ_128M
+#define MEM_BASE_1		(MEM_BASE_0 + MEM_SIZE_0)
+#define MEM_SIZE_1		SZ_128M
+#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_0	SZ_128M
+#define PREFETCH_MEM_BASE_1	(PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_1	SZ_128M
 #endif
 
 #define  PCIE_CONF_BUS(b)					((b) << 16)
@@ -325,12 +333,12 @@ struct tegra_pcie_info {
 	struct tegra_pci_platform_data *plat_data;
 };
 
+static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
 #define pmc_writel(value, reg) \
 	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
 	__raw_readl(reg_pmc_base + (reg))
-
-static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 static struct tegra_pcie_info tegra_pcie;
 
@@ -529,15 +537,15 @@ static void tegra_pcie_preinit(void)
 {
 	pcie_mem_space.name = "PCIe MEM Space";
 	pcie_mem_space.start = MEM_BASE_0;
-	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE - 1;
+	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE_0 + MEM_SIZE_1 - 1;
 	pcie_mem_space.flags = IORESOURCE_MEM;
 	if (request_resource(&iomem_resource, &pcie_mem_space))
 		panic("can't allocate PCIe MEM space");
 
 	pcie_prefetch_mem_space.name = "PCIe PREFETCH MEM Space";
 	pcie_prefetch_mem_space.start = PREFETCH_MEM_BASE_0;
-	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE
-					- 1;
+	pcie_prefetch_mem_space.end = PREFETCH_MEM_BASE_0 + PREFETCH_MEM_SIZE_0
+					+ PREFETCH_MEM_SIZE_0 - 1;
 	pcie_prefetch_mem_space.flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
 	if (request_resource(&iomem_resource, &pcie_prefetch_mem_space))
 		panic("can't allocate PCIe PREFETCH MEM space");
@@ -555,10 +563,44 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 	pp->root_bus_nr = sys->busnr;
 
 	pci_ioremap_io(nr * MMIO_SIZE, MMIO_BASE);
-	pci_add_resource_offset(&sys->resources, &pcie_mem_space,
-		sys->mem_offset);
-	pci_add_resource_offset(&sys->resources, &pcie_prefetch_mem_space,
-		sys->mem_offset);
+
+	/*
+	 * IORESOURCE_MEM
+	 */
+	snprintf(pp->mem_space_name, sizeof(pp->mem_space_name),
+		 "PCIe %d MEM", pp->index);
+	pp->mem_space_name[sizeof(pp->mem_space_name) - 1] = 0;
+	pp->res[1].name = pp->mem_space_name;
+	if (pp->index == 0) {
+		pp->res[1].start = MEM_BASE_0;
+		pp->res[1].end = pp->res[1].start + MEM_SIZE_0 - 1;
+	} else {
+		pp->res[1].start = MEM_BASE_1;
+		pp->res[1].end = pp->res[1].start + MEM_SIZE_1 - 1;
+	}
+	pp->res[1].flags = IORESOURCE_MEM;
+	if (request_resource(&iomem_resource, &pp->res[1]))
+		panic("Request PCIe Memory resource failed\n");
+	pci_add_resource_offset(&sys->resources, &pp->res[1], sys->mem_offset);
+
+	/*
+	 * IORESOURCE_MEM | IORESOURCE_PREFETCH
+	 */
+	snprintf(pp->prefetch_space_name, sizeof(pp->prefetch_space_name),
+		 "PCIe %d PREFETCH MEM", pp->index);
+	pp->prefetch_space_name[sizeof(pp->prefetch_space_name) - 1] = 0;
+	pp->res[2].name = pp->prefetch_space_name;
+	if (pp->index == 0) {
+		pp->res[2].start = PREFETCH_MEM_BASE_0;
+		pp->res[2].end = pp->res[2].start + PREFETCH_MEM_SIZE_0 - 1;
+	} else {
+		pp->res[2].start = PREFETCH_MEM_BASE_1;
+		pp->res[2].end = pp->res[2].start + PREFETCH_MEM_SIZE_1 - 1;
+	}
+	pp->res[2].flags = IORESOURCE_MEM | IORESOURCE_PREFETCH;
+	if (request_resource(&iomem_resource, &pp->res[2]))
+		panic("Request PCIe Prefetch Memory resource failed\n");
+	pci_add_resource_offset(&sys->resources, &pp->res[2], sys->mem_offset);
 
 	return 1;
 }
@@ -667,7 +709,7 @@ static void tegra_pcie_setup_translations(void)
 
 	/* Bar 3: prefetchable memory BAR */
 	fpci_bar = (((PREFETCH_MEM_BASE_0 >> 12) & 0x0fffffff) << 4) | 0x1;
-	size =  PREFETCH_MEM_SIZE;
+	size =  PREFETCH_MEM_SIZE_0 + PREFETCH_MEM_SIZE_1;
 	axi_address = PREFETCH_MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR3_START);
 	afi_writel(size >> 12, AFI_AXI_BAR3_SZ);
@@ -675,7 +717,7 @@ static void tegra_pcie_setup_translations(void)
 
 	/* Bar 4: non prefetchable memory BAR */
 	fpci_bar = (((MEM_BASE_0 >> 12)	& 0x0FFFFFFF) << 4) | 0x1;
-	size = MEM_SIZE;
+	size = MEM_SIZE_0 + MEM_SIZE_1;
 	axi_address = MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR4_START);
 	afi_writel(size >> 12, AFI_AXI_BAR4_SZ);
@@ -706,10 +748,7 @@ static int tegra_pcie_enable_controller(void)
 {
 	u32 val, reg;
 	int i, timeout;
-	void __iomem *reg_apb_misc_base;
-	void __iomem *reg_mselect_base;
-	reg_apb_misc_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
-	reg_mselect_base = IO_ADDRESS(TEGRA_MSELECT_BASE);
+	void __iomem *reg_mselect_base = IO_ADDRESS(TEGRA_MSELECT_BASE);
 
 	/* select the PCIE APERTURE in MSELECT config */
 	reg = readl(reg_mselect_base);
@@ -1126,7 +1165,6 @@ static int tegra_pcie_init(void)
 	pcibios_min_mem = 0x03000000ul;
 	pcibios_min_io = 0x10000000ul;
 #endif
-
 	err = tegra_pcie_get_resources();
 	if (err)
 		return err;
