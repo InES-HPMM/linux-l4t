@@ -37,6 +37,14 @@ enum {
 	MAX77665_I2C_SLAVE_MAX,
 };
 
+enum {
+	MAX77665_CELL_CHARGER,
+	MAX77665_CELL_FLASH,
+	MAX77665_CELL_MUIC,
+	MAX77665_CELL_HAPTIC,
+	MAX77665_CELL_MAX,
+};
+
 struct max77665 {
 	struct device		*dev;
 	struct i2c_client	*client[MAX77665_I2C_SLAVE_MAX];
@@ -46,8 +54,17 @@ struct max77665 {
 	int			irq_base;
 };
 
+struct max77665_cell_data {
+	void *pdata;
+	size_t size;
+};
+
 struct max77665_platform_data {
 	int irq_base;
+	struct max77665_cell_data charger_platform_data;
+	struct max77665_cell_data flash_platform_data;
+	struct max77665_cell_data muic_platform_data;
+	struct max77665_cell_data haptic_platform_data;
 };
 
 static inline int max77665_write(struct device *dev, int slv_id,

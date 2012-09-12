@@ -57,10 +57,10 @@ static const struct max77665_irq_data max77665_irqs[] = {
 };
 
 static struct mfd_cell max77665s[] = {
-	{.name = "max77665-charger",},
-	{.name = "max77665-flash",},
-	{.name = "max77665-muic",},
-	{.name = "max77665-haptic",},
+	[MAX77665_CELL_CHARGER]	= {.name = "max77665-charger",},
+	[MAX77665_CELL_FLASH]	= {.name = "max77665-flash",},
+	[MAX77665_CELL_MUIC]	= {.name = "max77665-muic",},
+	[MAX77665_CELL_HAPTIC]	= {.name = "max77665-haptic",},
 };
 
 static void max77665_irq_lock(struct irq_data *data)
@@ -271,7 +271,6 @@ static int max77665_i2c_probe(struct i2c_client *client,
 	max77665->dev = &client->dev;
 
 	for (i = 0; i < MAX77665_I2C_SLAVE_MAX; ++i) {
-		slv_client = max77665->client[i];
 		if (i == 0)
 			slv_client = client;
 		else
@@ -282,6 +281,7 @@ static int max77665_i2c_probe(struct i2c_client *client,
 			ret = -ENOMEM;
 			goto err_exit;
 		}
+		max77665->client[i] = slv_client;
 		i2c_set_clientdata(slv_client, max77665);
 
 		max77665->regmap[i] = devm_regmap_init_i2c(slv_client,
@@ -296,6 +296,26 @@ static int max77665_i2c_probe(struct i2c_client *client,
 
 	if (client->irq > 0)
 		max77665_irq_init(max77665, client->irq, pdata->irq_base);
+
+	max77665s[MAX77665_CELL_CHARGER].platform_data =
+					pdata->charger_platform_data.pdata;
+	max77665s[MAX77665_CELL_CHARGER].pdata_size =
+					pdata->charger_platform_data.size;
+
+	max77665s[MAX77665_CELL_FLASH].platform_data =
+					pdata->flash_platform_data.pdata;
+	max77665s[MAX77665_CELL_FLASH].pdata_size =
+					pdata->flash_platform_data.size;
+
+	max77665s[MAX77665_CELL_MUIC].platform_data =
+					pdata->muic_platform_data.pdata;
+	max77665s[MAX77665_CELL_MUIC].pdata_size =
+					pdata->muic_platform_data.size;
+
+	max77665s[MAX77665_CELL_HAPTIC].platform_data =
+					pdata->haptic_platform_data.pdata;
+	max77665s[MAX77665_CELL_HAPTIC].pdata_size =
+					pdata->haptic_platform_data.size;
 
 	ret = mfd_add_devices(max77665->dev, -1, max77665s,
 		ARRAY_SIZE(max77665s), NULL, 0, NULL);
