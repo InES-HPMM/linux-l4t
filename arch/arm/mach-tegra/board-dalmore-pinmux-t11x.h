@@ -197,8 +197,8 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	I2C_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, DEFAULT),
 
 	/* USB pinmux */
-	DEFAULT_PINMUX(SPDIF_IN,      USB,         NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(USB_VBUS_EN0,  USB,         NORMAL,    NORMAL,   INPUT),
+	USB_PINMUX(SPDIF_IN, USB, PULL_UP, NORMAL, INPUT, DISABLE, ENABLE),
+	USB_PINMUX(USB_VBUS_EN0, USB, PULL_UP, NORMAL, INPUT, DISABLE, ENABLE),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
