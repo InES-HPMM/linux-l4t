@@ -36,7 +36,6 @@ static bool tegra_dvfs_core_disabled;
 
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
-#define CVB_ALIGN_STEP_UV		12500
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -57,6 +56,12 @@ static struct dvfs_rail *tegra11_dvfs_rails[] = {
 	&tegra11_dvfs_rail_vdd_cpu,
 	&tegra11_dvfs_rail_vdd_core,
 };
+
+/* default cvb alignment on Tegra11 - 10mV */
+int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
+{
+	return 10000;
+}
 
 /* CPU DVFS tables */
 /* FIXME: real data */
@@ -361,8 +366,10 @@ static inline int get_cvb_voltage(int speedo, int s_scale,
 static inline int round_cvb_voltage(int mv, int v_scale)
 {
 	/* combined: apply voltage scale and round to cvb alignment step */
-	return DIV_ROUND_UP(mv * 1000, v_scale * CVB_ALIGN_STEP_UV) *
-		CVB_ALIGN_STEP_UV / 1000;
+	int cvb_align_step_uv = tegra_get_cvb_alignment_uV();
+
+	return DIV_ROUND_UP(mv * 1000, v_scale * cvb_align_step_uv) *
+		cvb_align_step_uv / 1000;
 }
 
 static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,

@@ -188,5 +188,6 @@ enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_cpu_current_supported(void);
 void tegra_enable_pinmux(void);
 enum image_type get_tegra_image_type(void);
+int tegra_get_cvb_alignment_uV(void);
 
 #endif

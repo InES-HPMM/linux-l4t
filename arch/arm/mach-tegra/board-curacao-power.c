@@ -467,6 +467,11 @@ int __init curacao_regulator_init(void)
 			ARRAY_SIZE(gpio_regs_devices));
 }
 
+int __init tegra_get_cvb_alignment_uV(void)
+{
+	return 12500;
+}
+
 int __init curacao_suspend_init(void)
 {
 	tegra_init_suspend(&curacao_suspend_data);
