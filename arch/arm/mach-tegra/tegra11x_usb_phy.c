@@ -962,56 +962,6 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
 }
 
 
-#ifdef KERNEL_WARNING
-static void usb_phy_power_down_pmc(void)
-{
-	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-
-	/* power down all 3 UTMIP interfaces */
-	val = readl(pmc_base + PMC_UTMIP_MASTER_CONFIG);
-	val |= UTMIP_PWR(0) | UTMIP_PWR(1) | UTMIP_PWR(2);
-	writel(val, pmc_base + PMC_UTMIP_MASTER_CONFIG);
-
-	/* turn on pad detectors */
-	writel(PMC_POWER_DOWN_MASK, pmc_base + PMC_USB_AO);
-
-	/* setup sleep walk fl all 3 usb controllers */
-	val = UTMIP_USBOP_RPD_A | UTMIP_USBON_RPD_A | UTMIP_HIGHZ_A |
-		UTMIP_USBOP_RPD_B | UTMIP_USBON_RPD_B | UTMIP_HIGHZ_B |
-		UTMIP_USBOP_RPD_C | UTMIP_USBON_RPD_C | UTMIP_HIGHZ_C |
-		UTMIP_USBOP_RPD_D | UTMIP_USBON_RPD_D | UTMIP_HIGHZ_D;
-	writel(val, pmc_base + PMC_SLEEPWALK_REG(0));
-	writel(val, pmc_base + PMC_SLEEPWALK_REG(1));
-	writel(val, pmc_base + PMC_SLEEPWALK_REG(2));
-
-	/* enable pull downs on HSIC PMC */
-	val = UHSIC_STROBE_RPD_A | UHSIC_DATA_RPD_A | UHSIC_STROBE_RPD_B |
-		UHSIC_DATA_RPD_B | UHSIC_STROBE_RPD_C | UHSIC_DATA_RPD_C |
-		UHSIC_STROBE_RPD_D | UHSIC_DATA_RPD_D;
-	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
-
-	/* Turn over pad configuration to PMC */
-	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~UTMIP_WAKE_VAL(0, ~0);
-	val &= ~UTMIP_WAKE_VAL(1, ~0);
-	val &= ~UTMIP_WAKE_VAL(2, ~0);
-	val &= ~UHSIC_WAKE_VAL_P0(~0);
-	val |= UTMIP_WAKE_VAL(0, WAKE_VAL_NONE) |
-	UHSIC_WAKE_VAL_P0(WAKE_VAL_NONE) |
-	UTMIP_WAKE_VAL(1, WAKE_VAL_NONE) | UTMIP_WAKE_VAL(2, WAKE_VAL_NONE) |
-	UTMIP_RCTRL_USE_PMC(0) | UTMIP_RCTRL_USE_PMC(1) |
-	UTMIP_RCTRL_USE_PMC(2) |
-	UTMIP_TCTRL_USE_PMC(0) | UTMIP_TCTRL_USE_PMC(1) |
-	UTMIP_TCTRL_USE_PMC(2) |
-	UTMIP_FSLS_USE_PMC(0) | UTMIP_FSLS_USE_PMC(1) |
-	UTMIP_FSLS_USE_PMC(2) |
-	UTMIP_MASTER_ENABLE(0) | UTMIP_MASTER_ENABLE(1) |
-	UTMIP_MASTER_ENABLE(2) |
-	UHSIC_MASTER_ENABLE_P0;
-	writel(val, pmc_base + PMC_SLEEP_CFG);
-}
-#endif
 
 static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 {
@@ -1445,7 +1395,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 
 	utmi_phy_pad_power_off(phy);
 
-	if (phy->hot_plug) {
+	if (phy->pdata->u_data.host.hot_plug) {
 		bool enable_hotplug = true;
 		/* if it is OTG port then make sure to enable hot-plug feature
 		   only if host adaptor is connected, i.e id is low */
@@ -1488,10 +1438,6 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		val |= UTMIP_RESET;
 		writel(val, base + USB_SUSP_CTRL);
 	}
-
-	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
-		USB_PHY_CLK_VALID, 0, 2500))
-		pr_warn("%s: timeout waiting for phy to disable\n", __func__);
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
