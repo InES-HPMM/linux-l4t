@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/sched.h>
+#include <linux/module.h>
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -521,6 +522,33 @@ static const struct file_operations hp_stats_fops = {
 };
 
 
+struct pm_qos_request min_cpu_req;
+struct pm_qos_request max_cpu_req;
+
+static int min_cpus_get(void *data, u64 *val)
+{
+	*val = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
+	return 0;
+}
+static int min_cpus_set(void *data, u64 val)
+{
+	pm_qos_update_request(&min_cpu_req, (s32)val);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(min_cpus_fops, min_cpus_get, min_cpus_set, "%llu\n");
+
+static int max_cpus_get(void *data, u64 *val)
+{
+	*val = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS);
+	return 0;
+}
+static int max_cpus_set(void *data, u64 val)
+{
+	pm_qos_update_request(&max_cpu_req, (s32)val);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(max_cpus_fops, max_cpus_get, max_cpus_set, "%llu\n");
+
 static int __init tegra_cpuquiet_debug_init(void)
 {
 	if (!tegra3_cpu_lock)
@@ -530,6 +558,19 @@ static int __init tegra_cpuquiet_debug_init(void)
 	if (!hp_debugfs_root)
 		return -ENOMEM;
 
+	pm_qos_add_request(&min_cpu_req, PM_QOS_MIN_ONLINE_CPUS,
+			   PM_QOS_DEFAULT_VALUE);
+	pm_qos_add_request(&max_cpu_req, PM_QOS_MAX_ONLINE_CPUS,
+			   PM_QOS_DEFAULT_VALUE);
+
+	if (!debugfs_create_file(
+		"min_cpus", S_IRUGO, hp_debugfs_root, NULL, &min_cpus_fops))
+		goto err_out;
+
+	if (!debugfs_create_file(
+		"max_cpus", S_IRUGO, hp_debugfs_root, NULL, &max_cpus_fops))
+		goto err_out;
+
 	if (!debugfs_create_file(
 		"stats", S_IRUGO, hp_debugfs_root, NULL, &hp_stats_fops))
 		goto err_out;
@@ -538,6 +579,8 @@ static int __init tegra_cpuquiet_debug_init(void)
 
 err_out:
 	debugfs_remove_recursive(hp_debugfs_root);
+	pm_qos_remove_request(&min_cpu_req);
+	pm_qos_remove_request(&max_cpu_req);
 	return -ENOMEM;
 }
 
@@ -615,5 +658,7 @@ void tegra_auto_hotplug_exit(void)
 
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(hp_debugfs_root);
+	pm_qos_remove_request(&min_cpu_req);
+	pm_qos_remove_request(&max_cpu_req);
 #endif
 }
