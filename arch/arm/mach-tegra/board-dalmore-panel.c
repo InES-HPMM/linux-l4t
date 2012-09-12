@@ -48,7 +48,7 @@
 #define IS_EXTERNAL_PWM		0
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
-#define PANEL_10_1_PANASONIC_1920_1200	0
+#define PANEL_10_1_PANASONIC_1920_1200	1
 #define PANEL_11_6_AUO_1920_1080	0
 #define PANEL_10_1_SHARP_2560_1600	0
 
@@ -62,13 +62,24 @@
 #define dalmore_hdmi_hpd	TEGRA_GPIO_PN7
 
 static atomic_t sd_brightness = ATOMIC_INIT(255);
-/* regulators */
-#if PANEL_10_1_PANASONIC_1920_1200 || \
-	PANEL_11_6_AUO_1920_1080 || \
-	PANEL_10_1_SHARP_2560_1600
+
+static bool reg_requested;
+static bool gpio_requested;
+
+/* for PANEL_10_1_PANASONIC_1920_1200, PANEL_11_6_AUO_1920_1080
+ * and PANEL_10_1_SHARP_2560_1600
+ */
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl_12v;
-#endif
+
+/* for PANEL_11_6_AUO_1920_1080 and PANEL_10_1_SHARP_2560_1600 */
+static struct regulator *dvdd_lcd_1v8;
+
+/* for PANEL_11_6_AUO_1920_1080 */
+static struct regulator *vdd_ds_1v8;
+#define en_vdd_bl	TEGRA_GPIO_PG0
+#define lvds_en		TEGRA_GPIO_PG3
+
 #ifdef CONFIG_TEGRA_DC
 static struct regulator *dalmore_hdmi_reg;
 static struct regulator *dalmore_hdmi_pll;
@@ -159,27 +170,136 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 static struct tegra_dsi_out dalmore_dsi = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.n_data_lanes = 2,
+	.controller_vs = DSI_VS_0,
 #else
 	.n_data_lanes = 4,
+	.controller_vs = DSI_VS_1,
+#endif
+#if PANEL_11_6_AUO_1920_1080
+	.dsi2edp_bridge_enable = true,
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 
-	.dsi_instance = 0,
-	.controller_vs = DSI_VS_1,
+	.dsi_instance = DSI_INSTANCE_0,
 
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-
+#else
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
+	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END,
+#endif
 	.dsi_init_cmd = dsi_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
+static int dalmore_dsi_regulator_get(void)
+{
+	int err = 0;
+
+	if (reg_requested)
+		return 0;
+
+#if PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
+	dvdd_lcd_1v8 = regulator_get(NULL, "dvdd_lcd");
+	if (IS_ERR_OR_NULL(dvdd_lcd_1v8)) {
+		pr_err("dvdd_lcd regulator get failed\n");
+		err = PTR_ERR(dvdd_lcd_1v8);
+		dvdd_lcd_1v8 = NULL;
+		goto fail;
+	}
+#endif
+#if PANEL_11_6_AUO_1920_1080
+	vdd_ds_1v8 = regulator_get(NULL, "vdd_ds_1v8");
+	if (IS_ERR_OR_NULL(vdd_ds_1v8)) {
+		pr_err("vdd_ds_1v8 regulator get failed\n");
+		err = PTR_ERR(vdd_ds_1v8);
+		vdd_ds_1v8 = NULL;
+		goto fail;
+	}
+#endif
+#if PANEL_10_1_PANASONIC_1920_1200 || \
+	PANEL_11_6_AUO_1920_1080 || \
+	PANEL_10_1_SHARP_2560_1600
+	avdd_lcd_3v3 = regulator_get(NULL, "avdd_lcd");
+	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
+		pr_err("avdd_lcd regulator get failed\n");
+		err = PTR_ERR(avdd_lcd_3v3);
+		avdd_lcd_3v3 = NULL;
+		goto fail;
+	}
+
+	vdd_lcd_bl_12v = regulator_get(NULL, "vdd_lcd_bl");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_12v)) {
+		pr_err("vdd_lcd_bl regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_12v);
+		vdd_lcd_bl_12v = NULL;
+		goto fail;
+	}
+#endif
+	reg_requested = true;
+	return 0;
+fail:
+	return err;
+}
+
+static int dalmore_dsi_gpio_get(void)
+{
+	int err = 0;
+
+	if (gpio_requested)
+		return 0;
+
+	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	if (err < 0) {
+		pr_err("panel reset gpio request failed\n");
+		goto fail;
+	}
+
+	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
+	if (err < 0) {
+		pr_err("panel backlight gpio request failed\n");
+		goto fail;
+	}
+
+#if PANEL_11_6_AUO_1920_1080
+	err = gpio_request(en_vdd_bl, "edp bridge 1v2 enable");
+	if (err < 0) {
+		pr_err("edp bridge 1v2 enable gpio request failed\n");
+		goto fail;
+	}
+
+	err = gpio_request(lvds_en, "edp bridge 1v8 enable");
+	if (err < 0) {
+		pr_err("edp bridge 1v8 enable gpio request failed\n");
+		goto fail;
+	}
+#endif
+	gpio_requested = true;
+	return 0;
+fail:
+	return err;
+}
+
 static int dalmore_dsi_panel_enable(void)
 {
 	int err = 0;
+
+	err = dalmore_dsi_regulator_get();
+	if (err < 0) {
+		pr_err("dsi regulator get failed\n");
+		goto fail;
+	}
+	err = dalmore_dsi_gpio_get();
+	if (err < 0) {
+		pr_err("dsi gpio request failed\n");
+		goto fail;
+	}
 
 #if DSI_PANEL_RESET
 	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
@@ -192,14 +312,27 @@ static int dalmore_dsi_panel_enable(void)
 
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
 
-#if PANEL_10_1_PANASONIC_1920_1200 || \
-	PANEL_11_6_AUO_1920_1080 || \
-	PANEL_10_1_SHARP_2560_1600
+	if (vdd_ds_1v8) {
+		err = regulator_enable(vdd_ds_1v8);
+		if (err < 0) {
+			pr_err("vdd_ds_1v8 regulator enable failed\n");
+			goto fail;
+		}
+	}
+
+	if (dvdd_lcd_1v8) {
+		err = regulator_enable(dvdd_lcd_1v8);
+		if (err < 0) {
+			pr_err("dvdd_lcd regulator enable failed\n");
+			goto fail;
+		}
+	}
+
 	if (avdd_lcd_3v3) {
 		err = regulator_enable(avdd_lcd_3v3);
 		if (err < 0) {
 			pr_err("avdd_lcd regulator enable failed\n");
-			return err;
+			goto fail;
 		}
 	}
 
@@ -207,30 +340,46 @@ static int dalmore_dsi_panel_enable(void)
 		err = regulator_enable(vdd_lcd_bl_12v);
 		if (err < 0) {
 			pr_err("vdd_lcd_bl regulator enable failed\n");
-			return err;
+			goto fail;
 		}
 	}
+
+#if PANEL_11_6_AUO_1920_1080
+	gpio_direction_output(en_vdd_bl, 1);
+	msleep(100);
+	gpio_direction_output(lvds_en, 1);
 #endif
+	return 0;
+fail:
 	return err;
 }
 
 static int dalmore_dsi_panel_disable(void)
 {
-#if PANEL_10_1_PANASONIC_1920_1200 || \
-	PANEL_11_6_AUO_1920_1080 || \
-	PANEL_10_1_SHARP_2560_1600
+	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
+
+#if PANEL_11_6_AUO_1920_1080
+	gpio_set_value(lvds_en, 0);
+	msleep(100);
+	gpio_set_value(en_vdd_bl, 0);
+#endif
 	if (vdd_lcd_bl_12v)
 		regulator_disable(vdd_lcd_bl_12v);
 
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
-#endif
+
+	if (dvdd_lcd_1v8)
+		regulator_disable(dvdd_lcd_1v8);
+
+	if (vdd_ds_1v8)
+		regulator_disable(vdd_ds_1v8);
+
 	return 0;
 }
 
 static int dalmore_dsi_panel_postsuspend(void)
 {
-	/* TODO */
 	return 0;
 }
 
@@ -416,10 +565,6 @@ static struct tegra_fb_data dalmore_disp1_fb_data = {
 	.xres		= 2560,
 	.yres		= 1600,
 #endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.xres		= 1280,
-	.yres		= 720,
-#endif
 };
 
 static struct tegra_dc_platform_data dalmore_disp1_pdata = {
@@ -545,51 +690,6 @@ static struct platform_device dalmore_disp1_bl_device __initdata = {
 	},
 };
 
-static int dalmore_dsi_regulator_get(void)
-{
-	int err = 0;
-
-#if PANEL_10_1_PANASONIC_1920_1200 || \
-	PANEL_11_6_AUO_1920_1080 || \
-	PANEL_10_1_SHARP_2560_1600
-	avdd_lcd_3v3 = regulator_get(NULL, "avdd_lcd");
-	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
-		pr_err("avdd_lcd regulator get failed\n");
-		err = PTR_ERR(avdd_lcd_3v3);
-		avdd_lcd_3v3 = NULL;
-		return err;
-	}
-
-	vdd_lcd_bl_12v = regulator_get(NULL, "vdd_lcd_bl");
-	if (IS_ERR_OR_NULL(vdd_lcd_bl_12v)) {
-		pr_err("vdd_lcd_bl regulator get failed\n");
-		err = PTR_ERR(vdd_lcd_bl_12v);
-		vdd_lcd_bl_12v = NULL;
-		return err;
-	}
-#endif
-	return err;
-}
-
-static int dalmore_dsi_gpio_get(void)
-{
-	int err = 0;
-
-	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
-	if (err < 0) {
-		pr_err("panel reset gpio request failed\n");
-		return err;
-	}
-
-	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
-	if (err < 0) {
-		pr_err("panel backlight gpio request failed\n");
-		return err;
-	}
-
-	return err;
-}
-
 #if PANEL_11_6_AUO_1920_1080
 static struct i2c_board_info dalmore_tc358770_dsi2edp_board_info __initdata = {
 		I2C_BOARD_INFO("tc358770_dsi2edp", 0x68),
@@ -658,23 +758,9 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 #endif
-
-	err = dalmore_dsi_regulator_get();
-	if (err < 0) {
-		pr_err("regulator get failed\n");
-		return err;
-	}
-
-	err = dalmore_dsi_gpio_get();
-	if (err < 0) {
-		pr_err("panel gpio get failed\n");
-		return err;
-	}
-	/* TODO: get bus number */
 #if PANEL_11_6_AUO_1920_1080
-	i2c_register_board_info(2, &dalmore_tc358770_dsi2edp_board_info, 1);
+	i2c_register_board_info(0, &dalmore_tc358770_dsi2edp_board_info, 1);
 #endif
-
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
