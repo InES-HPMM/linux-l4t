@@ -2331,11 +2331,18 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 
+	val = readl(base + USB_SUSP_CTRL);
+	val |= UHSIC_RESET;
+	writel(val, base + USB_SUSP_CTRL);
+
 	/* Remove power downs for HSIC from PADS CFG1 register */
 	val = readl(base + UHSIC_PADS_CFG1);
 	val |= (UHSIC_PD_BG |UHSIC_PD_TRK | UHSIC_PD_RX |
 			UHSIC_PD_ZI | UHSIC_PD_TX);
 	writel(val, base + UHSIC_PADS_CFG1);
+
+	DBG("%s(%d) inst:[%d] End\n", __func__, __LINE__, phy->inst);
+
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
 
