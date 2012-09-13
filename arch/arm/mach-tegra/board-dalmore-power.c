@@ -44,6 +44,7 @@
 #include "board.h"
 #include "gpio-names.h"
 #include "board-dalmore.h"
+#include "tegra_cl_dvfs.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -980,6 +981,46 @@ static struct tegra_suspend_platform_data dalmore_suspend_data = {
 	.sysclkreq_high	= true,
 };
 
+/* board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param dalmore_cl_dvfs_param = {
+	.sample_rate = 12500,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* TPS51632: fixed 10mV steps from 600mV to 1400mV, with offset 0x23 */
+#define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
+static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
+static inline void fill_reg_map(void)
+{
+	int i;
+	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
+		pmu_cpu_vdd_map[i].reg_value = i + 0x23;
+		pmu_cpu_vdd_map[i].reg_uV = 600000 + 10000 * i;
+	}
+}
+
+static struct tegra_cl_dvfs_platform_data dalmore_dfll_cpu_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
+	.u.pmu_i2c = {
+		.fs_rate = 400000,
+		.slave_addr = 0x86,
+		.reg = 0x00,
+	},
+	.vdd_map = pmu_cpu_vdd_map,
+	.vdd_map_size = PMU_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &dalmore_cl_dvfs_param,
+};
+
 static int __init dalmore_max77663_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -1024,6 +1065,9 @@ int __init dalmore_regulator_init(void)
 		dalmore_palmas_regulator_init();
 	else
 		dalmore_max77663_regulator_init();
+
+	fill_reg_map();
+	tegra_cl_dvfs_set_plarform_data(&dalmore_dfll_cpu_data);
 
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	platform_device_register(&dalmore_pda_power_device);
