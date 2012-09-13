@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (C) 2012 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -20,6 +21,7 @@
 #define __TEGRA_EMC_H_
 
 #define TEGRA_EMC_NUM_REGS 46
+#define TEGRA30_EMC_NUM_REGS 110
 
 struct tegra_emc_table {
 	unsigned long rate;
@@ -34,6 +36,30 @@ struct tegra_emc_pdata {
 	int mem_pid;             /* LPDDR2 MR8 or -1 to ignore */
 	int num_tables;
 	struct tegra_emc_table *tables;
+};
+
+struct tegra30_emc_table {
+	u8 rev;
+	unsigned long rate;
+
+	/* unconditionally updated in one burst shot */
+	u32 burst_regs[TEGRA30_EMC_NUM_REGS];
+
+	/* updated separately under some conditions */
+	u32 emc_zcal_cnt_long;
+	u32 emc_acal_interval;
+	u32 emc_periodic_qrst;
+	u32 emc_mode_reset;
+	u32 emc_mode_1;
+	u32 emc_mode_2;
+	u32 emc_dsr;
+	int emc_min_mv;
+};
+
+struct tegra30_emc_pdata {
+	const char *description;
+	int num_tables;
+	struct tegra30_emc_table *tables;
 };
 
 /* !!!FIXME!!! Need actual Tegra11x values */

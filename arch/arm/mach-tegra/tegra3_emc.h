@@ -22,31 +22,11 @@
 #ifndef _MACH_TEGRA_TEGRA3_EMC_H
 #define _MACH_TEGRA_TEGRA3_EMC_H
 
-#define TEGRA_EMC_NUM_REGS	110
-
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
 extern u8 tegra_emc_bw_efficiency;
 extern u8 tegra_emc_bw_efficiency_boost;
-
-struct tegra_emc_table {
-	u8 rev;
-	unsigned long rate;
-
-	/* unconditionally updated in one burst shot */
-	u32 burst_regs[TEGRA_EMC_NUM_REGS];
-
-	/* updated separately under some conditions */
-	u32 emc_zcal_cnt_long;
-	u32 emc_acal_interval;
-	u32 emc_periodic_qrst;
-	u32 emc_mode_reset;
-	u32 emc_mode_1;
-	u32 emc_mode_2;
-	u32 emc_dsr;
-	int emc_min_mv;
-};
 
 enum {
 	DRAM_OVER_TEMP_NONE = 0,
@@ -55,7 +35,7 @@ enum {
 
 struct clk;
 
-void tegra_init_emc(const struct tegra_emc_table *table, int table_size);
+int tegra30_init_emc(void);
 
 void tegra_init_dram_bit_map(const u32 *bit_map, int map_size);
 void tegra_emc_dram_type_init(struct clk *c);

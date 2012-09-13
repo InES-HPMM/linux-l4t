@@ -28,6 +28,9 @@
 #include <linux/suspend.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include <asm/cputime.h>
 #include <asm/cacheflush.h>
@@ -38,6 +41,7 @@
 #include "clock.h"
 #include "dvfs.h"
 #include "tegra3_emc.h"
+#include "fuse.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
@@ -51,7 +55,7 @@ u8 tegra_emc_bw_efficiency_boost = 45;
 
 #define EMC_MIN_RATE_DDR3		25500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
-#define TEGRA_EMC_TABLE_MAX_SIZE 	16
+#define TEGRA_EMC_TABLE_MAX_SIZE	16
 
 enum {
 	DLL_CHANGE_NONE = 0,
@@ -178,7 +182,7 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_RSV),
 
 #define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
-static const void __iomem *burst_reg_addr[TEGRA_EMC_NUM_REGS] = {
+static const void __iomem *burst_reg_addr[TEGRA30_EMC_NUM_REGS] = {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
@@ -198,12 +202,12 @@ struct emc_sel {
 };
 
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
-static struct tegra_emc_table start_timing;
-static const struct tegra_emc_table *emc_timing;
+static struct tegra30_emc_table start_timing;
+static const struct tegra30_emc_table *emc_timing;
 static unsigned long dram_over_temp_state = DRAM_OVER_TEMP_NONE;
 
 static const u32 *dram_to_soc_bit_map;
-static const struct tegra_emc_table *tegra_emc_table;
+static const struct tegra30_emc_table *tegra_emc_table;
 static int tegra_emc_table_size;
 
 static u32 dram_dev_num;
@@ -305,7 +309,7 @@ static inline void auto_cal_disable(void)
 }
 
 static inline void set_over_temp_timing(
-	const struct tegra_emc_table *next_timing, unsigned long state)
+	const struct tegra30_emc_table *next_timing, unsigned long state)
 {
 #define REFRESH_SPEEDUP(val)						      \
 	do {								      \
@@ -366,8 +370,8 @@ static inline void enable_early_ack(u32 mc_override)
 			MC_EMEM_ARB_OVERRIDE);
 }
 
-static inline bool dqs_preset(const struct tegra_emc_table *next_timing,
-			      const struct tegra_emc_table *last_timing)
+static inline bool dqs_preset(const struct tegra30_emc_table *next_timing,
+			      const struct tegra30_emc_table *last_timing)
 {
 	bool ret = false;
 
@@ -391,7 +395,7 @@ static inline bool dqs_preset(const struct tegra_emc_table *next_timing,
 }
 
 static inline void overwrite_mrs_wait_cnt(
-	const struct tegra_emc_table *next_timing,
+	const struct tegra30_emc_table *next_timing,
 	bool zcal_long)
 {
 	u32 reg;
@@ -418,8 +422,8 @@ static inline void overwrite_mrs_wait_cnt(
 	emc_writel(reg, EMC_MRS_WAIT_CNT);
 }
 
-static inline bool need_qrst(const struct tegra_emc_table *next_timing,
-			     const struct tegra_emc_table *last_timing,
+static inline bool need_qrst(const struct tegra30_emc_table *next_timing,
+			     const struct tegra30_emc_table *last_timing,
 			     u32 emc_dpd_reg)
 {
 	u32 last_mode = (last_timing->burst_regs[EMC_FBIO_CFG5_INDEX] &
@@ -453,8 +457,8 @@ static inline void periodic_qrst_enable(u32 emc_cfg_reg, u32 emc_dbg_reg)
 	emc_writel(emc_dbg_reg, EMC_DBG);
 }
 
-static inline int get_dll_change(const struct tegra_emc_table *next_timing,
-				 const struct tegra_emc_table *last_timing)
+static inline int get_dll_change(const struct tegra30_emc_table *next_timing,
+				 const struct tegra30_emc_table *last_timing)
 {
 	bool next_dll_enabled = !(next_timing->emc_mode_1 & 0x1);
 	bool last_dll_enabled = !(last_timing->emc_mode_1 & 0x1);
@@ -467,8 +471,8 @@ static inline int get_dll_change(const struct tegra_emc_table *next_timing,
 		return DLL_CHANGE_OFF;
 }
 
-static inline void set_dram_mode(const struct tegra_emc_table *next_timing,
-				 const struct tegra_emc_table *last_timing,
+static inline void set_dram_mode(const struct tegra30_emc_table *next_timing,
+				 const struct tegra30_emc_table *last_timing,
 				 int dll_change)
 {
 	if (dram_type == DRAM_TYPE_DDR3) {
@@ -515,8 +519,8 @@ static inline void do_clock_change(u32 clk_setting)
 	}
 }
 
-static noinline void emc_set_clock(const struct tegra_emc_table *next_timing,
-				   const struct tegra_emc_table *last_timing,
+static noinline void emc_set_clock(const struct tegra30_emc_table *next_timing,
+				   const struct tegra30_emc_table *last_timing,
 				   u32 clk_setting)
 {
 	int i, dll_change, pre_wait;
@@ -676,7 +680,7 @@ static noinline void emc_set_clock(const struct tegra_emc_table *next_timing,
 	mc_writel(mc_override, MC_EMEM_ARB_OVERRIDE);
 }
 
-static inline void emc_get_timing(struct tegra_emc_table *timing)
+static inline void emc_get_timing(struct tegra30_emc_table *timing)
 {
 	int i;
 
@@ -723,7 +727,7 @@ static int emc_set_rate(unsigned long rate, bool use_backup)
 {
 	int i;
 	u32 clk_setting;
-	const struct tegra_emc_table *last_timing;
+	const struct tegra30_emc_table *last_timing;
 	unsigned long flags;
 
 	if (!tegra_emc_table)
@@ -921,7 +925,7 @@ int find_matching_input(unsigned long table_rate, bool mc_same_freq,
 	return -EINVAL;
 }
 
-static void adjust_emc_dvfs_table(const struct tegra_emc_table *table,
+static void adjust_emc_dvfs_table(const struct tegra30_emc_table *table,
 				  int table_size)
 {
 	int i, j;
@@ -1044,7 +1048,134 @@ static int tegra_emc_get_table_ns_per_tick(unsigned int emc_rate,
 	return ns_per_tick;
 }
 
-void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
+#ifdef CONFIG_OF
+static struct device_node *tegra_emc_ramcode_devnode(struct device_node *np)
+{
+	struct device_node *iter;
+	u32 reg;
+
+	for_each_child_of_node(np, iter) {
+		if (of_property_read_u32(np, "nvidia,ram-code", &reg))
+			continue;
+		if (reg == tegra_bct_strapping)
+			return of_node_get(iter);
+	}
+
+	return NULL;
+}
+
+static struct tegra30_emc_pdata *tegra_emc_dt_parse_pdata(
+		struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *tnp, *iter;
+	struct tegra30_emc_pdata *pdata;
+	int ret, i, num_tables;
+
+	if (!np)
+		return NULL;
+
+	if (of_find_property(np, "nvidia,use-ram-code", NULL)) {
+		tnp = tegra_emc_ramcode_devnode(np);
+		if (!tnp)
+			dev_warn(&pdev->dev,
+				"can't find emc table for ram-code 0x%02x\n",
+					tegra_bct_strapping);
+	} else
+		tnp = of_node_get(np);
+
+	if (!tnp)
+		return NULL;
+
+	num_tables = 0;
+	for_each_child_of_node(tnp, iter)
+		if (of_device_is_compatible(iter, "nvidia,tegra30-emc-table"))
+			num_tables++;
+
+	if (!num_tables) {
+		pdata = NULL;
+		goto out;
+	}
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	pdata->tables = devm_kzalloc(&pdev->dev,
+				sizeof(*pdata->tables) * num_tables,
+					GFP_KERNEL);
+
+	i = 0;
+	for_each_child_of_node(tnp, iter) {
+		u32 u;
+		int num_burst_regs;
+		struct property *prop;
+
+		ret = of_property_read_u32(iter, "nvidia,revision", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no revision in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].rev = u;
+
+		ret = of_property_read_u32(iter, "clock-frequency", &u);
+		if (ret) {
+			dev_err(&pdev->dev, "no clock-frequency in %s\n",
+				iter->full_name);
+			continue;
+		}
+		pdata->tables[i].rate = u;
+
+		prop = of_find_property(iter, "nvidia,emc-registers", NULL);
+		if (!prop)
+			continue;
+
+		num_burst_regs = prop->length / sizeof(u);
+
+		ret = of_property_read_u32_array(iter, "nvidia,emc-registers",
+						pdata->tables[i].burst_regs,
+							num_burst_regs);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"malformed emc-registers property in %s\n",
+				iter->full_name);
+			continue;
+		}
+
+		of_property_read_u32(iter, "nvidia,emc-zcal-cnt-long",
+					&pdata->tables[i].emc_zcal_cnt_long);
+		of_property_read_u32(iter, "nvidia,emc-acal-interval",
+					&pdata->tables[i].emc_acal_interval);
+		of_property_read_u32(iter, "nvidia,emc-periodic-qrst",
+					&pdata->tables[i].emc_periodic_qrst);
+		of_property_read_u32(iter, "nvidia,emc-mode-reset",
+					&pdata->tables[i].emc_mode_reset);
+		of_property_read_u32(iter, "nvidia,emc-mode-1",
+					&pdata->tables[i].emc_mode_1);
+		of_property_read_u32(iter, "nvidia,emc-mode-2",
+					&pdata->tables[i].emc_mode_2);
+		of_property_read_u32(iter, "nvidia,emc-dsr",
+					&pdata->tables[i].emc_dsr);
+
+		ret = of_property_read_u32(iter, "nvidia,emc-min-mv", &u);
+		if (!ret)
+			pdata->tables[i].emc_min_mv = u;
+
+		i++;
+	}
+	pdata->num_tables = i;
+
+out:
+	of_node_put(tnp);
+	return pdata;
+}
+#else
+static struct tegra_emc_pdata *tegra_emc_dt_parse_pdata(
+					struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
+static int __devinit tegra30_emc_probe(struct platform_device *pdev)
 {
 	int i, mv;
 	u32 reg;
@@ -1053,6 +1184,24 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 	struct clk *cbus = tegra_get_clock_by_name("cbus");
 	unsigned int ns_per_tick = 0;
 	unsigned int cur_ns_per_tick = 0;
+	struct tegra30_emc_pdata *pdata;
+	struct resource *res;
+
+	if (tegra_emc_table)
+		return -EINVAL;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "missing register base\n");
+		return -ENOMEM;
+	}
+
+	pdata = pdev->dev.platform_data;
+
+	if (!pdata)
+		pdata = tegra_emc_dt_parse_pdata(pdev);
+
+	pdev->dev.platform_data = pdata;
 
 	emc_stats.clkchange_count = 0;
 	spin_lock_init(&emc_stats.spinlock);
@@ -1064,22 +1213,22 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 
 	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
-		return;
+		return -ENODATA;
 	}
 
 	if (emc->parent != tegra_get_clock_by_name("pll_m")) {
 		pr_err("tegra: boot parent %s is not supported by EMC DFS\n",
 			emc->parent->name);
-		return;
+		return -ENODATA;
 	}
 
-	if (!table || !table_size) {
+	if (!pdata || !pdata->tables || !pdata->num_tables) {
 		pr_err("tegra: EMC DFS table is empty\n");
-		return;
+		return -ENODATA;
 	}
 
-	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
-	switch (table[0].rev) {
+	tegra_emc_table_size = min(pdata->num_tables, TEGRA_EMC_TABLE_MAX_SIZE);
+	switch (pdata->tables[0].rev) {
 	case 0x30:
 		emc_num_burst_regs = 105;
 		break;
@@ -1090,19 +1239,19 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 		break;
 	default:
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
-			table[0].rev);
-		return;
+			pdata->tables[0].rev);
+		return -ENODATA;
 	}
 
 	/* Match EMC source/divider settings with table entries */
 	for (i = 0; i < tegra_emc_table_size; i++) {
 		bool mc_same_freq = MC_EMEM_ARB_MISC0_EMC_SAME_FREQ &
-			table[i].burst_regs[MC_EMEM_ARB_MISC0_INDEX];
-		unsigned long table_rate = table[i].rate;
+			pdata->tables[i].burst_regs[MC_EMEM_ARB_MISC0_INDEX];
+		unsigned long table_rate = pdata->tables[i].rate;
 		if (!table_rate)
 			continue;
 
-		BUG_ON(table[i].rev != table[0].rev);
+		BUG_ON(pdata->tables[i].rev != pdata->tables[0].rev);
 
 		if (find_matching_input(table_rate, mc_same_freq,
 					&tegra_emc_clk_sel[i], cbus))
@@ -1115,7 +1264,7 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 			max_entry = true;
 
 		cur_ns_per_tick = tegra_emc_get_table_ns_per_tick(table_rate,
-				table[i].burst_regs[MC_EMEM_ARB_CFG_INDEX]);
+			pdata->tables[i].burst_regs[MC_EMEM_ARB_CFG_INDEX]);
 
 		if (ns_per_tick == 0) {
 			ns_per_tick = cur_ns_per_tick;
@@ -1124,7 +1273,7 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 				"mismatched DFS tick lengths "
 				"within table!\n");
 			ns_per_tick = 0;
-			return;
+			return -EINVAL;
 		}
 	}
 
@@ -1132,12 +1281,12 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 	if (!max_entry) {
 		pr_err("tegra: invalid EMC DFS table: entry for max rate"
 		       " %lu kHz is not found\n", max_rate);
-		return;
+		return -EINVAL;
 	}
 
 	tegra_latency_allowance_update_tick_length(ns_per_tick);
 
-	tegra_emc_table = table;
+	tegra_emc_table = pdata->tables;
 
 	adjust_emc_dvfs_table(tegra_emc_table, tegra_emc_table_size);
 	mv = tegra_dvfs_predict_millivolts(emc, max_rate * 1000);
@@ -1145,14 +1294,14 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 		tegra_emc_table = NULL;
 		pr_err("tegra: invalid EMC DFS table: maximum rate %lu kHz does"
 		       " not match nominal voltage %d\n",
-		       max_rate, emc->dvfs->max_millivolts);
-		return;
+				max_rate, emc->dvfs->max_millivolts);
+		return -ENODATA;
 	}
 
 	if (!is_emc_bridge()) {
 		tegra_emc_table = NULL;
 		pr_err("tegra: invalid EMC DFS table: emc bridge not found");
-		return;
+		return -ENODATA;
 	}
 	pr_info("tegra: validated EMC DFS table\n");
 
@@ -1164,6 +1313,27 @@ void tegra_init_emc(const struct tegra_emc_table *table, int table_size)
 
 	register_pm_notifier(&tegra_emc_suspend_nb);
 	register_pm_notifier(&tegra_emc_resume_nb);
+
+	return 0;
+}
+
+static struct of_device_id tegra30_emc_of_match[] __devinitdata = {
+	{ .compatible = "nvidia,tegra30-emc", },
+	{ },
+};
+
+static struct platform_driver tegra30_emc_driver = {
+	.driver = {
+		.name = "tegra-emc",
+		.owner = THIS_MODULE,
+		.of_match_table = tegra30_emc_of_match,
+	},
+	.probe = tegra30_emc_probe,
+};
+
+int __init tegra30_init_emc(void)
+{
+	return platform_driver_register(&tegra30_emc_driver);
 }
 
 void tegra_emc_timing_invalidate(void)
