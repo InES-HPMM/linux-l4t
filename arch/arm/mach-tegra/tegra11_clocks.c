@@ -4493,6 +4493,7 @@ static unsigned long tegra11_clk_shared_bus_update(
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
 	unsigned long ceiling = bus->max_rate;
+	u8 emc_bw_efficiency = tegra_emc_bw_efficiency;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
@@ -4536,6 +4537,13 @@ static unsigned long tegra11_clk_shared_bus_update(
 				slow = c;
 		}
 	}
+
+	if ((bus->flags & PERIPH_EMC_ENB) && bw && (emc_bw_efficiency < 100)) {
+		bw = emc_bw_efficiency ?
+			(bw / emc_bw_efficiency) : bus->max_rate;
+		bw = (bw < bus->max_rate / 100) ? (bw * 100) : bus->max_rate;
+	}
+
 	rate = min(max(rate, bw), ceiling);
 
 	if (bus_top)

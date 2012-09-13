@@ -25,6 +25,9 @@ struct clk;
 
 int tegra11_emc_init(void);
 
+/* FIXME: can be common declaration on all tegra arch */
+extern u8 tegra_emc_bw_efficiency;
+
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 

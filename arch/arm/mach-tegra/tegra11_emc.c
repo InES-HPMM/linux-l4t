@@ -45,6 +45,8 @@ static bool emc_enable;
 #endif
 module_param(emc_enable, bool, 0644);
 
+u8 tegra_emc_bw_efficiency = 100;
+
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
@@ -641,6 +643,22 @@ static const struct file_operations emc_stats_fops = {
 	.release	= single_release,
 };
 
+static int efficiency_get(void *data, u64 *val)
+{
+	*val = tegra_emc_bw_efficiency;
+	return 0;
+}
+static int efficiency_set(void *data, u64 val)
+{
+	tegra_emc_bw_efficiency = (val > 100) ? 100 : val;
+	if (emc)
+		tegra_clk_shared_bus_update(emc);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
+			efficiency_set, "%llu\n");
+
 static int __init tegra_emc_debug_init(void)
 {
 	if (!tegra_emc_table)
@@ -656,6 +674,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_u32("clkchange_delay", S_IRUGO | S_IWUSR,
 		emc_debugfs_root, (u32 *)&clkchange_delay))
+		goto err_out;
+
+	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &efficiency_fops))
 		goto err_out;
 
 	return 0;
