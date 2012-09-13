@@ -375,7 +375,13 @@ static struct kobj_type ktype_edp = {
 
 static int __init edp_sysfs_init(void)
 {
-	return kobject_init_and_add(&edp_kobj, &ktype_edp, power_kobj, "edp");
+	struct kobject *parent = NULL;
+
+#ifdef CONFIG_PM
+	parent = power_kobj;
+#endif
+
+	return kobject_init_and_add(&edp_kobj, &ktype_edp, parent, "edp");
 }
 
 MODULE_LICENSE("GPL");
