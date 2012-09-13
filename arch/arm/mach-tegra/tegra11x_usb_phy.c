@@ -459,10 +459,10 @@
 #define   USBOP_VAL_P1			(1 << 4)
 #define   USBOP_VAL_P0			(1 << 0)
 
-#define PMC_UTMIP_BIAS_MASTER_CNTRL 0x30c
+#define PMC_UTMIP_BIAS_MASTER_CNTRL 0x270
 #define   BIAS_MASTER_PROG_VAL		(1 << 1)
 
-#define PMC_UTMIP_MASTER_CONFIG		0x310
+#define PMC_UTMIP_MASTER_CONFIG		0x274
 #define   UTMIP_PWR(inst)		(1 << (inst))
 
 #define FUSE_USB_CALIB_0		0x1F0
