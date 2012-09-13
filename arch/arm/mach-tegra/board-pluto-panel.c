@@ -514,17 +514,17 @@ static int pluto_hdmi_hotplug_init(void)
 {
 	int ret = 0;
 	if (!pluto_hdmi_vddio) {
-		pluto_hdmi_vddio = regulator_get(NULL, "vddio_hdmi");
+		pluto_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_5v0");
 		if (IS_ERR_OR_NULL(pluto_hdmi_vddio)) {
 			ret = PTR_ERR(pluto_hdmi_vddio);
-			pr_err("hdmi: couldn't get regulator vddio_hdmi\n");
+			pr_err("hdmi: couldn't get regulator vdd_hdmi_5v0\n");
 			pluto_hdmi_vddio = NULL;
 			return ret;
 		}
 	}
 	ret = regulator_enable(pluto_hdmi_vddio);
 	if (ret < 0) {
-		pr_err("hdmi: couldn't enable regulator vddio_hdmi\n");
+		pr_err("hdmi: couldn't enable regulator vdd_hdmi_5v0\n");
 		regulator_put(pluto_hdmi_vddio);
 		pluto_hdmi_vddio = NULL;
 		return ret;
