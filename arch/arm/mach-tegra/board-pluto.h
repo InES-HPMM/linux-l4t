@@ -77,6 +77,12 @@
 #define MPU_COMPASS_BUS_NUM	0
 #define MPU_COMPASS_ORIENTATION	{ 0, 1, 0, -1, 0, 0, 0, 0, 1 }
 
+/* Modem1 related GPIOs */
+#define MDM_RST				TEGRA_GPIO_PR3
+#define MDM_COLDBOOT			TEGRA_GPIO_PO5
+#define MDM_REQ				TEGRA_GPIO_PO4
+#define MDM_ACK				TEGRA_GPIO_PO1
+
 /* Modem2 related GPIOs */
 #define MDM2_PWR_ON			TEGRA_GPIO_PX1
 #define MDM2_RST			TEGRA_GPIO_PR5
