@@ -32,9 +32,11 @@
 #include <linux/sched.h>
 #include <linux/of.h>
 #include <linux/pstore_ram.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
+#include <asm/dma-mapping.h>
 
 #include <mach/hardware.h>
 #include <mach/powergate.h>
@@ -512,6 +514,8 @@ void __init tegra30_init_early(void)
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
 	tegra_ram_console_debug_reserve(SZ_1M);
+
+	init_dma_coherent_pool_size(SZ_1M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -535,6 +539,8 @@ void __init tegra11x_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+
+	init_dma_coherent_pool_size(SZ_1M);
 }
 #endif
 static int __init tegra_lp0_vec_arg(char *options)
