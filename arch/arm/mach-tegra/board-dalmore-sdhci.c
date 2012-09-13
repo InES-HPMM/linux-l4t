@@ -22,6 +22,7 @@
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/regulator/consumer.h>
 #include <linux/mmc/host.h>
 #include <linux/wl12xx.h>
 
@@ -35,6 +36,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
+
 
 #define DALMORE_WLAN_PWR	TEGRA_GPIO_PCC5
 #define DALMORE_WLAN_RST	TEGRA_GPIO_PX7
@@ -121,8 +123,8 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 		.high_speed     = 1,
 	},
 	.cis  = {
-		.vendor         = 0x02d0,
-		.device         = 0x4329,
+		.vendor	 = 0x02d0,
+		.device	 = 0x4329,
 	},
 };
 #endif
@@ -217,11 +219,97 @@ static int dalmore_wifi_set_carddetect(int val)
 	return 0;
 }
 
+static struct regulator *dalmore_vdd_com_3v3;
+static struct regulator *dalmore_vddio_com_1v8;
+#define DALMORE_VDD_WIFI_3V3 "vdd_wifi_3v3"
+#define DALMORE_VDD_WIFI_1V8 "vddio_wifi_1v8"
+
+
+static int dalmore_wifi_regulator_enable(void)
+{
+	int ret = 0;
+
+	/* Enable COM's vdd_com_3v3 regulator*/
+	if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
+		dalmore_vdd_com_3v3 = regulator_get(NULL, DALMORE_VDD_WIFI_3V3);
+		if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
+			pr_err("Couldn't get regulator "
+				DALMORE_VDD_WIFI_3V3 "\n");
+			return PTR_ERR(dalmore_vdd_com_3v3);
+		}
+
+		ret = regulator_enable(dalmore_vdd_com_3v3);
+		if (ret < 0) {
+			pr_err("Couldn't enable regulator "
+				DALMORE_VDD_WIFI_3V3 "\n");
+			regulator_put(dalmore_vdd_com_3v3);
+			dalmore_vdd_com_3v3 = NULL;
+			return ret;
+		}
+	}
+
+	/* Enable COM's vddio_com_1v8 regulator*/
+	if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
+		dalmore_vddio_com_1v8 = regulator_get(NULL,
+			DALMORE_VDD_WIFI_1V8);
+		if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
+			pr_err("Couldn't get regulator "
+				DALMORE_VDD_WIFI_1V8 "\n");
+			regulator_disable(dalmore_vdd_com_3v3);
+
+			regulator_put(dalmore_vdd_com_3v3);
+			dalmore_vdd_com_3v3 = NULL;
+			return PTR_ERR(dalmore_vddio_com_1v8);
+		}
+
+		ret = regulator_enable(dalmore_vddio_com_1v8);
+		if (ret < 0) {
+			pr_err("Couldn't enable regulator "
+				DALMORE_VDD_WIFI_1V8 "\n");
+			regulator_put(dalmore_vddio_com_1v8);
+			dalmore_vddio_com_1v8 = NULL;
+
+			regulator_disable(dalmore_vdd_com_3v3);
+			regulator_put(dalmore_vdd_com_3v3);
+			dalmore_vdd_com_3v3 = NULL;
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static void dalmore_wifi_regulator_disable(void)
+{
+	/* Disable COM's vdd_com_3v3 regulator*/
+	if (!IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
+		regulator_disable(dalmore_vdd_com_3v3);
+		regulator_put(dalmore_vdd_com_3v3);
+		dalmore_vdd_com_3v3 = NULL;
+	}
+
+	/* Disable COM's vddio_com_1v8 regulator*/
+	if (!IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
+		regulator_disable(dalmore_vddio_com_1v8);
+		regulator_put(dalmore_vddio_com_1v8);
+		dalmore_vddio_com_1v8 = NULL;
+	}
+}
+
 static int dalmore_wifi_power(int on)
 {
 	struct tegra_io_dpd *sd_dpd;
+	int ret = 0;
 
 	pr_debug("%s: %d\n", __func__, on);
+	/* Enable COM's regulators on wi-fi poer on*/
+	if (on == 1) {
+		ret = dalmore_wifi_regulator_enable();
+		if (ret < 0) {
+			pr_err("Failed to enable COM regulators\n");
+			return ret;
+		}
+	}
 
 	/*
 	 * FIXME : we need to revisit IO DPD code
@@ -245,7 +333,13 @@ static int dalmore_wifi_power(int on)
 		mutex_unlock(&sd_dpd->delay_lock);
 	}
 
-	return 0;
+	/* Disable COM's regulators on wi-fi poer off*/
+	if (on != 1) {
+		pr_debug("Disabling COM regulators\n");
+		dalmore_wifi_regulator_disable();
+	}
+
+	return ret;
 }
 
 static int dalmore_wifi_reset(int on)
@@ -279,7 +373,7 @@ static int __init dalmore_wifi_init(void)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
 
 	wifi_resource[0].start = wifi_resource[0].end =
-		gpio_to_irq(TEGRA_GPIO_PO4);
+		gpio_to_irq(DALMORE_WLAN_WOW);
 
 	platform_device_register(&dalmore_wifi_device);
 	return 0;

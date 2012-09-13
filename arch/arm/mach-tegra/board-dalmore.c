@@ -557,8 +557,9 @@ static void __init tegra_dalmore_init(void)
 	platform_add_devices(dalmore_devices, ARRAY_SIZE(dalmore_devices));
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
-	dalmore_sdhci_init();
 	dalmore_regulator_init();
+	dalmore_sensors_init();
+	dalmore_sdhci_init();
 	dalmore_suspend_init();
 	dalmore_emc_init();
 	dalmore_panel_init();

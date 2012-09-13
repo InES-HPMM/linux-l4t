@@ -107,7 +107,7 @@ static struct regulator_consumer_supply tps65090_fet6_supply[] = {
 };
 
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {
-	REGULATOR_SUPPLY("vdd_com_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_wifi_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_bt_3v3", NULL),
 };
@@ -219,7 +219,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_spi_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_com_1v8", NULL),
+	REGULATOR_SUPPLY("vddio_wifi_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
