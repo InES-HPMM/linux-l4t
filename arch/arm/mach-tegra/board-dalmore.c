@@ -62,6 +62,7 @@
 #include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
+#include <mach/edp.h>
 
 #include "board.h"
 #include "clock.h"
@@ -541,6 +542,7 @@ static void dalmore_audio_init(void)
 
 static void __init tegra_dalmore_init(void)
 {
+	tegra_battery_edp_init(2500);
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_enable_pinmux();
 	dalmore_pinmux_init();

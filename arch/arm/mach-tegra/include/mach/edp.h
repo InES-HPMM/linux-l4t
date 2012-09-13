@@ -22,6 +22,7 @@
 #define __MACH_EDP_H
 
 #include <linux/debugfs.h>
+#include <linux/edp.h>
 
 struct tegra_edp_entry {
 	char speedo_id;
@@ -76,6 +77,12 @@ static inline void tegra_edp_throttle_cpu_now(u8 factor)
 {}
 #else
 void tegra_edp_throttle_cpu_now(u8 factor);
+#endif
+
+#if defined(CONFIG_TEGRA_EDP_LIMITS) && defined(CONFIG_EDP_FRAMEWORK)
+void __init tegra_battery_edp_init(unsigned int cap);
+#else
+static inline void tegra_battery_edp_init(unsigned int cap) {}
 #endif
 
 #endif	/* __MACH_EDP_H */
