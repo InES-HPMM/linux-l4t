@@ -964,6 +964,9 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 	int pin_nid;
 	int pin_idx;
 	struct hda_jack_tbl *jack;
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	struct hdmi_eld *eld = &spec->pins[pin_idx].sink_eld;
+#endif
 
 	jack = snd_hda_jack_tbl_get_from_tag(codec, tag);
 	if (!jack)
@@ -981,6 +984,19 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 		return;
 
 	hdmi_present_sense(get_pin(spec, pin_idx), 1);
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	if (codec->preset->id == 0x10de0020) {
+		/*
+		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
+		 * in console or for audio devices. Assume the highest speakers
+		 * configuration, to _not_ prohibit multi-channel audio playback
+		 */
+		if (!eld->spk_alloc)
+			eld->spk_alloc = 0xffff;
+	}
+#endif
+
 	snd_hda_jack_report_sync(codec);
 }
 
@@ -1305,11 +1321,27 @@ static void hdmi_repoll_eld(struct work_struct *work)
 {
 	struct hdmi_spec_per_pin *per_pin =
 	container_of(to_delayed_work(work), struct hdmi_spec_per_pin, work);
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	struct hda_codec *codec = per_pin->codec;
+	struct hdmi_eld *eld = &per_pin->sink_eld;
+#endif
 
 	if (per_pin->repoll_count++ > 6)
 		per_pin->repoll_count = 0;
 
 	hdmi_present_sense(per_pin, per_pin->repoll_count);
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	if (codec->preset->id == 0x10de0020) {
+		/*
+		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
+		 * in console or for audio devices. Assume the highest speakers
+		 * configuration, to _not_ prohibit multi-channel audio playback
+		 */
+		if (!eld->spk_alloc)
+			eld->spk_alloc = 0xffff;
+	}
+#endif
 }
 
 static void intel_haswell_fixup_connect_list(struct hda_codec *codec,
