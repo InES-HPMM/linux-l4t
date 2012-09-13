@@ -314,7 +314,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(SPI1_MISO,       SPI1,            NORMAL,    NORMAL,     INPUT),
 
 	/* SPIDIF */
-	DEFAULT_PINMUX(SPDIF_IN,        SPDIF,           NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(SPDIF_IN,        SPDIF,           PULL_UP,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPDIF_OUT,       SPDIF,           NORMAL,    NORMAL,     OUTPUT),
 
 	/* FIXED FUNCTION AND CONFIGURATION */
