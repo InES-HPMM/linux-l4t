@@ -183,11 +183,11 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	int err = 0;
 
 	phy->pllu_reg = regulator_get(&phy->pdev->dev, "avdd_usb_pll");
-	if (IS_ERR_OR_NULL(phy->vdd_reg)) {
+	if (IS_ERR_OR_NULL(phy->pllu_reg)) {
 		ERR("Couldn't get regulator avdd_usb_pll: %ld\n",
-			PTR_ERR(phy->vdd_reg));
+			PTR_ERR(phy->pllu_reg));
 		phy->pllu_reg = NULL;
-		return PTR_ERR(phy->vdd_reg);
+		return PTR_ERR(phy->pllu_reg);
 	}
 	regulator_enable(phy->pllu_reg);
 
