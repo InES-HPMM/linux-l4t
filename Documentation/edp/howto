@@ -147,10 +147,13 @@ examples show how the usual operations are performed.
 
 	Example 2:
 
+	static unsigned int modem_states[] = { ... }
+
 	/* modem client */
 	struct edp_client modem_edp_client = {
 		.name = "modem",
-		.states = { 2500, 1500, 1000, 500, 0 },
+		.states = modem_states,
+		.num_states = ARRAY_SIZE(num_states),
 		.e0_index = MODEM_EDP_E0,
 		.priority = EDP_MAX_PRIO - 3,
 		.max_borrowers = 1,

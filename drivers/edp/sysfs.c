@@ -221,7 +221,8 @@ static ssize_t current_show(struct edp_client *c, char *s)
 
 static ssize_t threshold_show(struct edp_client *c, char *s)
 {
-	return scnprintf(s, PAGE_SIZE, "%u\n", c->ithreshold);
+	return scnprintf(s, PAGE_SIZE, "%u\n",
+			c->num_loans ? c->ithreshold : 0);
 }
 
 static ssize_t borrowers_show(struct edp_client *c, char *s)
@@ -240,10 +241,13 @@ struct client_attr attr_e0 = __ATTR_RO(e0);
 struct client_attr attr_max_borrowers = __ATTR_RO(max_borrowers);
 struct client_attr attr_priority = __ATTR_RO(priority);
 struct client_attr attr_request = __ATTR_RO(request);
-struct client_attr attr_current = __ATTR_RO(current);
 struct client_attr attr_threshold = __ATTR_RO(threshold);
 struct client_attr attr_borrowers = __ATTR_RO(borrowers);
 struct client_attr attr_loans = __ATTR_RO(loans);
+struct client_attr attr_current = {
+	.attr = { .name = "current", .mode = 0444 },
+	.show = current_show
+};
 
 static struct attribute *client_attrs[] = {
 	&attr_states.attr,
@@ -383,6 +387,4 @@ static int __init edp_sysfs_init(void)
 
 	return kobject_init_and_add(&edp_kobj, &ktype_edp, parent, "edp");
 }
-
-MODULE_LICENSE("GPL");
-module_init(edp_sysfs_init);
+postcore_initcall(edp_sysfs_init);

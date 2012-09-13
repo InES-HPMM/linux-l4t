@@ -19,6 +19,7 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/workqueue.h>
 
 #define EDP_NAME_LEN	16
 #define EDP_MIN_PRIO	0

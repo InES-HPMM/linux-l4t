@@ -163,13 +163,4 @@ static int __init prio_init(void)
 {
 	return edp_register_governor(&prio_governor);
 }
-
-static void __exit prio_exit(void)
-{
-	int r = edp_unregister_governor(&prio_governor);
-	WARN_ON(r);
-}
-
-MODULE_LICENSE("GPL");
-module_init(prio_init);
-module_exit(prio_exit);
+postcore_initcall(prio_init);

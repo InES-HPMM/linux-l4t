@@ -239,6 +239,4 @@ static int __init overage_init(void)
 {
 	return edp_register_governor(&overage_governor);
 }
-
-MODULE_LICENSE("GPL");
-module_init(overage_init);
+postcore_initcall(overage_init);
