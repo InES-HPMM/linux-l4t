@@ -175,14 +175,23 @@ static int dalmore_ov9772_power_off(struct device *dev)
 	return 0;
 }
 
+static struct nvc_gpio_pdata ov9772_gpio_pdata[] = {
+	{ OV9772_GPIO_TYPE_SHTDN, TEGRA_GPIO_PBB5, true, 0, },
+	{ OV9772_GPIO_TYPE_PWRDN, TEGRA_GPIO_PBB3, true, 0, },
+};
+
+static struct ov9772_platform_data ov9772_pdata = {
+	.num		= 1,
+	.dev_name	= "camera",
+	.gpio_count	= ARRAY_SIZE(ov9772_gpio_pdata),
+	.gpio		= ov9772_gpio_pdata,
+	.power_on	= dalmore_ov9772_power_on,
+	.power_off	= dalmore_ov9772_power_off,
+};
+
 struct imx091_platform_data dalmore_imx091_data = {
 	.power_on = dalmore_imx091_power_on,
 	.power_off = dalmore_imx091_power_off,
-};
-
-struct ov9772_platform_data dalmore_ov9772_data = {
-	.power_on = dalmore_ov9772_power_on,
-	.power_off = dalmore_ov9772_power_off,
 };
 
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
@@ -192,7 +201,7 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 	},
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
-		.platform_data = &dalmore_ov9772_data,
+		.platform_data = &ov9772_pdata,
 	},
 };
 
