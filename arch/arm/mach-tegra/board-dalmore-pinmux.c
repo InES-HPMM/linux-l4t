@@ -138,6 +138,72 @@ static __initdata struct tegra_drive_pingroup_config dalmore_drive_pinmux[] = {
 	SET_DRIVE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST),
 };
 
+/* Initially setting all used GPIO's to non-TRISTATE */
+static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] = {
+	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_X5_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_X6_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_X7_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_W2_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_W3_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_X1_AUD,     RSVD,   PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_X3_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(DAP3_FS,         I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(DAP3_DIN,        I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(DAP3_DOUT,       I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(DAP3_SCLK,       I2S2,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PV0,        RSVD,   NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PV1,        RSVD,   NORMAL,       NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(GPIO_PBB3,       RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PBB4,       RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PBB5,       RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PBB6,       RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PBB7,       RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PCC1,       RSVD,   PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PCC2,       RSVD,   PULL_DOWN,    NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(GMI_AD0,         GMI,    NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD1,         GMI,    NORMAL,       NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD10,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD11,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD12,        GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_AD13,        GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD2,         GMI,    NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_AD3,         GMI,    NORMAL,       NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_AD8,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_ADV_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CLK,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS0_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS2_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS3_N,       GMI,    PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS4_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS7_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_DQS_P,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_IORDY,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_WP_N,        GMI,    PULL_UP,      NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(SDMMC1_WP_N,     RSVD,   PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(CLK2_REQ,        RSVD,   NORMAL,       NORMAL,    OUTPUT),
+
+	DEFAULT_PINMUX(KB_COL3,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(KB_COL5,         KBC,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(KB_COL6,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(KB_COL7,         KBC,    PULL_UP,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(KB_ROW3,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(KB_ROW4,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(KB_ROW6,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(KB_ROW8,         KBC,    PULL_DOWN,    NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(CLK3_REQ,        RSVD,   NORMAL,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU4,        RSVD,   NORMAL,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU5,        RSVD,   NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU6,        RSVD,   NORMAL,      NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
+};
+
 #include "board-dalmore-pinmux-t11x.h"
 
 #else
@@ -531,6 +597,8 @@ int __init dalmore_pinmux_init(void)
 	/*BUG_ON(board_info.board_id != BOARD_E1565);*/
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	tegra_pinmux_config_table(dalmore_pinmux_set_nontristate,
+					ARRAY_SIZE(dalmore_pinmux_set_nontristate));
 	dalmore_gpio_init_configure();
 
 	tegra_pinmux_config_table(dalmore_pinmux_common, ARRAY_SIZE(dalmore_pinmux_common));
