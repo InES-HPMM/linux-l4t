@@ -469,7 +469,7 @@ FIXED_REG(7,	vdd_1v8_mic,	vdd_1v8_mic,
 	-1,	false,	true,	0,	1800);
 
 FIXED_REG(8,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
-	palmas_rails(smps10),	0,	0,
+	NULL,	0,	0,
 	TEGRA_GPIO_PK6,	true,	true,	0,	5000);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
