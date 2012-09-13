@@ -91,6 +91,8 @@ int sdio_enable_func(struct sdio_func *func)
 	}
 
 	pr_debug("SDIO: Enabled device %s\n", sdio_func_id(func));
+	pr_info("SDIO Vendor ID:%04x and SDIO Device ID: %04x\n",
+		func->vendor, func->device);
 
 	return 0;
 
