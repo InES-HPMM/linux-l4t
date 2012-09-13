@@ -487,7 +487,8 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 
 /* EMC activity monitor: frequency sampling device:
  * activity counter is incremented every 256 memory transactions, and
- * each transaction takes 2 EMC clocks; count_weight = 512.
+ * each transaction takes 2 EMC clocks; count_weight = 512 on Tegra3.
+ * On Tegra11 there is only 1 clock per transaction, hence weight = 256.
  */
 static struct actmon_dev actmon_dev_emc = {
 	.reg	= 0x1c0,
@@ -507,7 +508,11 @@ static struct actmon_dev actmon_dev_emc = {
 	.up_wmark_window	= 1,
 	.down_wmark_window	= 3,
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	.count_weight		= 0x200,
+#else
+	.count_weight		= 0x100,
+#endif
 
 	.type			= ACTMON_FREQ_SAMPLER,
 	.state			= ACTMON_UNINITIALIZED,
