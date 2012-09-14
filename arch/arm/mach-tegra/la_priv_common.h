@@ -32,8 +32,18 @@
 #define ID(id) \
 	TEGRA_LA_##id
 
-#define LA_INFO(f, e, a, r, id, ss) \
-{f, e, RA(a), MASK(r), SHIFT(r), ID(id), __stringify(id), ss}
+#define LA_INFO(f, e, a, r, i, ss, la) \
+{ \
+	.fifo_size_in_atoms = f, \
+	.expiration_in_ns = e, \
+	.reg_addr = RA(a), \
+	.mask = MASK(r), \
+	.shift = SHIFT(r), \
+	.id = ID(i), \
+	.name = __stringify(i), \
+	.scaling_supported = ss, \
+	.init_la = la, \
+}
 
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
@@ -44,6 +54,7 @@ struct la_client_info {
 	enum tegra_la_id id;
 	char *name;
 	bool scaling_supported;
+	unsigned int init_la;		/* initial la to set for client */
 };
 
 struct la_scaling_info {

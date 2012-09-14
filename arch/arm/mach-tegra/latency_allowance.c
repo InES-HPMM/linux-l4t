@@ -71,6 +71,24 @@ static int la_scaling_enable_count;
 			return -EINVAL; \
 	} while (0)
 
+
+static void set_la(struct la_client_info *ci, int la)
+{
+	unsigned long reg_read;
+	unsigned long reg_write;
+	int idx = id_to_index[ci->id];
+
+	spin_lock(&safety_lock);
+	reg_read = readl(ci->reg_addr);
+	reg_write = (reg_read & ~ci->mask) |
+			(la << ci->shift);
+	writel(reg_write, ci->reg_addr);
+	scaling_info[idx].la_set = la;
+	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
+		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+	spin_unlock(&safety_lock);
+}
+
 /* Sets latency allowance based on clients memory bandwitdh requirement.
  * Bandwidth passed is in mega bytes per second.
  */
@@ -79,8 +97,6 @@ int tegra_set_latency_allowance(enum tegra_la_id id,
 {
 	int ideal_la;
 	int la_to_set;
-	unsigned long reg_read;
-	unsigned long reg_write;
 	unsigned int fifo_size_in_atoms;
 	int bytes_per_atom = normal_atom_size;
 	const int fifo_scale = 4;		/* 25% of the FIFO */
@@ -111,18 +127,10 @@ int tegra_set_latency_allowance(enum tegra_la_id id,
 	la_debug("\n%s:id=%d,idx=%d, bw=%dmbps, la_to_set=%d",
 		__func__, id, idx, bandwidth_in_mbps, la_to_set);
 	la_to_set = (la_to_set < 0) ? 0 : la_to_set;
-	la_to_set = (la_to_set > MC_LA_MAX_VALUE) ? MC_LA_MAX_VALUE : la_to_set;
 	scaling_info[idx].actual_la_to_set = la_to_set;
+	la_to_set = (la_to_set > MC_LA_MAX_VALUE) ? MC_LA_MAX_VALUE : la_to_set;
 
-	spin_lock(&safety_lock);
-	reg_read = readl(ci->reg_addr);
-	reg_write = (reg_read & ~ci->mask) |
-			(la_to_set << ci->shift);
-	writel(reg_write, ci->reg_addr);
-	scaling_info[idx].la_set = la_to_set;
-	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
-		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
-	spin_unlock(&safety_lock);
+	set_la(ci, la_to_set);
 	return 0;
 }
 
@@ -283,11 +291,13 @@ void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick)
 		}
 		spin_unlock(&safety_lock);
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		/* Re-scale G2PR, G2SR, G2DR, G2DW with updated ns_per_tick */
 		tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
 		tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
 		tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
 		tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
+#endif
 	}
 }
 
@@ -343,10 +353,16 @@ static int __init tegra_latency_allowance_init(void)
 	for (i = 0; i < ARRAY_SIZE(la_info_array); i++)
 		id_to_index[la_info_array[i].id] = i;
 
+	for (i = 0; i < ARRAY_SIZE(la_info_array); i++) {
+		if (la_info_array[i].init_la)
+			set_la(&la_info_array[i], la_info_array[i].init_la);
+	}
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
 	tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
 	tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
 	tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
+#endif
 	return 0;
 }
 
