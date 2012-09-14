@@ -96,6 +96,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("dvdd_audio", NULL),
 	REGULATOR_SUPPLY("avdd_audio", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_bt_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
 	REGULATOR_SUPPLY("avdd_pll_bb", NULL),
 };
@@ -356,6 +357,9 @@ static struct platform_device pluto_pda_power_device = {
 static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_cam", NULL),
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
+		REGULATOR_SUPPLY("vdd_sys_com", NULL),
+		REGULATOR_SUPPLY("vdd_sys_gps", NULL),
+		REGULATOR_SUPPLY("vdd_sys_bt", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
