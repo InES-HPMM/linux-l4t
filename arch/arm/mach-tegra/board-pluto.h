@@ -37,10 +37,6 @@
 #define TEGRA_GPIO_INT_MIC_EN		-1
 #define TEGRA_GPIO_EXT_MIC_EN		-1
 
-#define TEGRA_GPIO_W_DISABLE		TEGRA_GPIO_PDD7
-#define TEGRA_GPIO_MODEM_RSVD1		TEGRA_GPIO_PV0
-#define TEGRA_GPIO_MODEM_RSVD2		TEGRA_GPIO_PH7
-
 /* External peripheral act as interrupt controller */
 /* PLUTO IRQs */
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
@@ -81,6 +77,15 @@
 #define MPU_COMPASS_BUS_NUM	0
 #define MPU_COMPASS_ORIENTATION	{ 0, 1, 0, -1, 0, 0, 0, 0, 1 }
 
+/* Modem2 related GPIOs */
+#define MDM2_PWR_ON			TEGRA_GPIO_PX1
+#define MDM2_RST			TEGRA_GPIO_PR5
+#define MDM2_COLDBOOT			TEGRA_GPIO_PR4
+#define MDM2_REQ1			TEGRA_GPIO_PV0
+#define MDM2_ACK1			TEGRA_GPIO_PO2
+#define MDM2_REQ2			TEGRA_GPIO_PV1
+#define MDM2_ACK2			TEGRA_GPIO_PO3
+
 int pluto_regulator_init(void);
 int pluto_suspend_init(void);
 int pluto_sdhci_init(void);
@@ -90,5 +95,14 @@ int pluto_emc_init(void);
 int pluto_edp_init(void);
 int pluto_panel_init(void);
 int pluto_kbc_init(void);
+int pluto_baseband_init(void);
 
+/* Baseband IDs */
+enum tegra_bb_type {
+	TEGRA_BB_I500 = 1,
+	TEGRA_BB_I500SWD,
+	TEGRA_BB_OEM_R,
+	TEGRA_BB_OEM_I,
+	TEGRA_BB_OEM_S,
+};
 #endif

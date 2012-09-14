@@ -67,6 +67,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/edp.h>
+#include <mach/tegra_usb_modem_power.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -449,7 +450,6 @@ static struct platform_device *pluto_devices[] __initdata = {
 #endif
 };
 
-#ifdef CONFIG_USB_SUPPORT
 static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -518,46 +518,159 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
+static struct gpio modem2_gpios[] = {
+	{MDM2_PWR_ON, GPIOF_OUT_INIT_LOW, "MODEM2 PWR ON"},
+	{MDM2_RST, GPIOF_DIR_OUT, "MODEM2 RESET"},
+	{MDM2_ACK2, GPIOF_OUT_INIT_HIGH, "MODEM2 ACK2"},
+	{MDM2_ACK1, GPIOF_OUT_INIT_LOW, "MODEM2 ACK1"},
+};
+
+static void baseband2_post_phy_on(void);
+static void baseband2_pre_phy_off(void);
+
+static struct tegra_usb_phy_platform_ops baseband2_plat_ops = {
+	.pre_phy_off = baseband2_pre_phy_off,
+	.post_phy_on = baseband2_post_phy_on,
+};
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+static struct tegra_usb_platform_data tegra_ehci3_hsic_baseband2_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+	},
+	.ops = &baseband2_plat_ops,
+};
+#else
+static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband2_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+	},
+	.ops = &baseband2_plat_ops,
+};
+#endif
+
+static void baseband2_post_phy_on(void)
+{
+	/* set MDM2_ACK2 low */
+	gpio_set_value(MDM2_ACK2, 0);
+}
+
+static void baseband2_pre_phy_off(void)
+{
+	/* set MDM2_ACK2 high */
+	gpio_set_value(MDM2_ACK2, 1);
+}
+
+static void baseband2_start(void)
+{
+	/*
+	 *  Leave baseband powered OFF.
+	 *  User-space daemons will take care of powering it up.
+	 */
+	pr_info("%s\n", __func__);
+	gpio_set_value(MDM2_PWR_ON, 0);
+}
+
+static void baseband2_reset(void)
+{
+	/* Initiate power cycle on baseband sub system */
+	pr_info("%s\n", __func__);
+	gpio_set_value(MDM2_PWR_ON, 0);
+	mdelay(200);
+	gpio_set_value(MDM2_PWR_ON, 1);
+}
+
+static int baseband2_init(void)
+{
+	int ret;
+
+	ret = gpio_request_array(modem2_gpios, ARRAY_SIZE(modem2_gpios));
+	if (ret)
+		return ret;
+
+	/* enable pull-up for MDM2_REQ2 */
+	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GPIO_PV1,
+				    TEGRA_PUPD_PULL_UP);
+
+	/* export GPIO for user space access through sysfs */
+	gpio_export(MDM2_PWR_ON, false);
+
+	return 0;
+}
+
+static const struct tegra_modem_operations baseband2_operations = {
+	.init = baseband2_init,
+	.start = baseband2_start,
+	.reset = baseband2_reset,
+};
+
+static struct tegra_usb_modem_power_platform_data baseband2_pdata = {
+	.ops = &baseband2_operations,
+	.wake_gpio = MDM2_REQ2,
+	.wake_irq_flags = IRQF_TRIGGER_FALLING,
+	.boot_gpio = MDM2_COLDBOOT,
+	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.autosuspend_delay = 2000,
+	.short_autosuspend_delay = 50,
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	.tegra_ehci_device = &tegra_ehci3_device,
+	.tegra_ehci_pdata = &tegra_ehci3_hsic_baseband2_pdata,
+#else
+	.tegra_ehci_device = &tegra_ehci2_device,
+	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband2_pdata,
+#endif
+};
+
+static struct platform_device icera_baseband2_device = {
+	.name = "tegra_usb_modem_power",
+	.id = -1,
+	.dev = {
+		.platform_data = &baseband2_pdata,
+	},
+};
+
+#if CONFIG_USB_SUPPORT
 static void pluto_usb_init(void)
 {
+	int modem_id = tegra_get_modem_id();
+
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
 
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-	tegra_ehci3_device.dev.platform_data =
-		&tegra_ehci3_hsic_smsc_hub_pdata;
-	platform_device_register(&tegra_ehci3_device);
+	if (!modem_id) {
+		tegra_ehci3_device.dev.platform_data =
+			&tegra_ehci3_hsic_smsc_hub_pdata;
+		platform_device_register(&tegra_ehci3_device);
+	}
 }
 
 static void pluto_modem_init(void)
 {
-	int ret;
+	int modem_id = tegra_get_modem_id();
 
-	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_W_DISABLE);
-	else
-		gpio_direction_output(TEGRA_GPIO_W_DISABLE, 1);
-
-
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD1, "Port_V_PIN_0");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD1);
-	else
-		gpio_direction_input(TEGRA_GPIO_MODEM_RSVD1);
-
-
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD2, "Port_H_PIN_7");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD2);
-	else
-		gpio_direction_output(TEGRA_GPIO_MODEM_RSVD2, 1);
-
+	switch (modem_id) {
+	case TEGRA_BB_I500SWD: /* i500 SWD HSIC */
+		platform_device_register(&icera_baseband2_device);
+		break;
+	}
 }
 
 #else

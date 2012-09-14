@@ -75,7 +75,8 @@ static const struct tegra_usb_platform_data *hc_pdata;
 /* supported modems */
 static const struct usb_device_id modem_list[] = {
 	{USB_DEVICE(0x1983, 0x0310),	/* Icera 450 rev1 */
-	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	/* FIXME: temporarily reusing for i500 SWD */
+	/* .driver_info = TEGRA_MODEM_AUTOSUSPEND, */
 	 },
 	{USB_DEVICE(0x1983, 0x0321),	/* Icera 450 rev2 */
 	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
@@ -327,7 +328,7 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 }
 
 /* load USB host controller */
-static struct platform_device *tegra_usb_null_ulpi_host_register(void)
+static struct platform_device *tegra_usb_host_register(void)
 {
 	struct platform_device *pdev;
 	int val;
@@ -362,7 +363,7 @@ error:
 }
 
 /* unload USB host controller */
-static void tegra_usb_null_ulpi_host_unregister(struct platform_device *pdev)
+static void tegra_usb_host_unregister(struct platform_device *pdev)
 {
 	platform_device_unregister(pdev);
 }
@@ -387,10 +388,10 @@ static ssize_t load_unload_usb_host(struct device *dev,
 	mutex_lock(&hc_lock);
 	if (host) {
 		if (!hc)
-			hc = tegra_usb_null_ulpi_host_register();
+			hc = tegra_usb_host_register();
 	} else {
 		if (hc) {
-			tegra_usb_null_ulpi_host_unregister(hc);
+			tegra_usb_host_unregister(hc);
 			hc = NULL;
 		}
 	}
