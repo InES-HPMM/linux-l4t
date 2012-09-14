@@ -746,8 +746,6 @@ static void tegra11_super_clk_init(struct clk *c)
 		val |= SUPER_LP_DIV2_BYPASS;
 		clk_writel_delay(val, c->reg);
 	}
-	if (c->flags & DIV_2)
-		source |= val & SUPER_LP_DIV2_BYPASS;
 
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->value == source)
@@ -755,6 +753,11 @@ static void tegra11_super_clk_init(struct clk *c)
 	}
 	BUG_ON(sel->input == NULL);
 	c->parent = sel->input;
+
+	/* Update parent in case when LP CPU PLLX DIV2 bypassed */
+	if ((c->flags & DIV_2) && (c->parent->flags & PLLX) &&
+	    (val & SUPER_LP_DIV2_BYPASS))
+		c->parent = c->parent->parent;
 
 	if (c->flags & DIV_U71) {
 		c->mul = 2;
