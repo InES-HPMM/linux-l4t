@@ -562,6 +562,52 @@ TRACE_EVENT(nvhost_syncpt_wait_check,
 		__entry->min)
 );
 
+TRACE_EVENT(nvhost_module_set_devfreq_rate,
+	TP_PROTO(const char *devname, const char *clockname,
+		unsigned long rate),
+
+	TP_ARGS(devname, clockname, rate),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(const char *, clockname)
+		__field(unsigned long, rate)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->clockname = clockname;
+		__entry->rate = rate;
+	),
+
+	TP_printk("dev=%s, clock=%s, rate=%ld",
+		__entry->devname, __entry->clockname,
+		__entry->rate)
+);
+
+TRACE_EVENT(nvhost_module_update_rate,
+	TP_PROTO(const char *devname, const char *clockname,
+		unsigned long rate),
+
+	TP_ARGS(devname, clockname, rate),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(const char *, clockname)
+		__field(unsigned long, rate)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->clockname = clockname;
+		__entry->rate = rate;
+	),
+
+	TP_printk("dev=%s, clock=%s, rate=%ld",
+		__entry->devname, __entry->clockname,
+		__entry->rate)
+);
+
 #endif /*  _TRACE_NVHOST_H */
 
 /* This part must be outside protection */
