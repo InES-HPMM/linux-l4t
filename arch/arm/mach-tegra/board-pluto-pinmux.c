@@ -386,6 +386,11 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(SPDIF_IN,        SPDIF,           PULL_UP,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPDIF_OUT,       SPDIF,           NORMAL,    NORMAL,     OUTPUT),
 
+	/* Audience a2220 codec */
+	DEFAULT_PINMUX(ULPI_DATA5,      SPI2,            PULL_UP,   NORMAL,     INPUT),
+	DEFAULT_PINMUX(GMI_AD12,        GMI,             NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(KB_ROW3,         KBC,             PULL_DOWN, NORMAL,     INPUT),
+
 	/* FIXED FUNCTION AND CONFIGURATION */
 	DEFAULT_PINMUX(CLK_32K_OUT,     BLINK,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(SYS_CLK_REQ,     SYSCLK,          NORMAL,    NORMAL,     OUTPUT),
@@ -470,7 +475,6 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_CS3_N,       RSVD1,           NORMAL,    NORMAL,     INPUT),
 
 	/* OTHERS */
-	DEFAULT_PINMUX(KB_ROW3,         KBC,             NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(GMI_DQS,         RSVD1,           NORMAL,    NORMAL,     INPUT),
 
 	DEFAULT_PINMUX(GMI_AD15,        RSVD1,           PULL_UP,   NORMAL,     OUTPUT),
@@ -508,7 +512,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(ULPI_DATA2,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(ULPI_DATA3,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(ULPI_DATA4,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(ULPI_DATA5,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(ULPI_DATA6,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(ULPI_DATA7,      ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(ULPI_DIR,        ULPI,          NORMAL,    TRISTATE,   OUTPUT),
@@ -516,7 +519,7 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(ULPI_STP,        ULPI,          NORMAL,    TRISTATE,   OUTPUT),
 
 	DEFAULT_PINMUX(GMI_AD10,        PWM2,          NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(GMI_AD12,        RSVD1,         NORMAL,    TRISTATE,   INPUT),
+
 	DEFAULT_PINMUX(GMI_AD13,        RSVD1,         NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(CLK1_REQ,        DAP,           NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(GMI_ADV_N,       RSVD1,         NORMAL,    TRISTATE,   OUTPUT),
