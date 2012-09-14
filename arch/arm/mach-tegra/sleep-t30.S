@@ -262,18 +262,20 @@ ENTRY(tegra3_sleep_cpu_secondary_finish)
 	mov	r6, lr
 
 	dsb
-#ifdef MULTI_CACHE
-#ifdef CONFIG_HAVE_ARM_SCU
-	mov32	r10, cpu_cache
-	mov	lr, pc
-	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
-#else
+
 	/* Disable the data cache */
 	mrc	p15, 0, r2, c1, c0, 0
 	bic	r2, r2, #CR_C
 	dsb
 	mcr	p15, 0, r2, c1, c0, 0
 	isb
+
+#ifdef MULTI_CACHE
+#ifdef CONFIG_HAVE_ARM_SCU
+	mov32	r10, cpu_cache
+	mov	lr, pc
+	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+#else
 
 	cpu_id	r2
 	cpu_to_csr_reg	r1,	r2
