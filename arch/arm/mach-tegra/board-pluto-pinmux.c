@@ -491,6 +491,9 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_CS2_N,       RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GMI_CS3_N,       RSVD1,           NORMAL,    NORMAL,     INPUT),
 
+	/* nct */
+	DEFAULT_PINMUX(SPI2_CS0_N,      SPI6,            PULL_UP,   TRISTATE,   INPUT),
+
 	/* OTHERS */
 	DEFAULT_PINMUX(GMI_DQS,         RSVD1,           NORMAL,    NORMAL,     INPUT),
 

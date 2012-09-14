@@ -25,6 +25,8 @@
 #define BOARD_E1611   0x064B
 #define BOARD_E1612   0x064C
 #define BOARD_E1613   0x064D
+#define BOARD_E1614   0x064E
+#define BOARD_E1641   0x0669
 #define BOARD_E1580   0x062C
 
 /* Board Fab version */

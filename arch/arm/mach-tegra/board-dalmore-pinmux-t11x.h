@@ -210,6 +210,9 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	/* USB pinmux */
 	USB_PINMUX(SPDIF_IN, USB, PULL_UP, NORMAL, INPUT, DISABLE, ENABLE),
 	USB_PINMUX(USB_VBUS_EN0, USB, PULL_UP, NORMAL, INPUT, DISABLE, ENABLE),
+
+	/* nct */
+	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {

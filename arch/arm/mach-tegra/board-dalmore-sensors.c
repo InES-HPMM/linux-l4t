@@ -38,6 +38,8 @@
 #include <media/ov9772.h>
 #include "board-dalmore.h"
 #include "cpu-tegra.h"
+#include <generated/mach-types.h>
+#include <linux/mpu.h>
 
 #include <linux/i2c.h>
 #include <linux/delay.h>
@@ -46,15 +48,19 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/nct1008.h>
 #include <linux/gpio.h>
+#include <linux/therm_est.h>
 
-#include <mach/gpio-tegra.h>
 #include <mach/fb.h>
+#include <mach/edp.h>
+#include <mach/gpio.h>
+#include <mach/gpio-tegra.h>
 
-#include <media/imx091.h>
-#include <generated/mach-types.h>
-
-#include <linux/mpu.h>
+#include "gpio-names.h"
+#include "board.h"
 #include "board-dalmore.h"
+#include "cpu-tegra.h"
+#include "devices.h"
+#include "tegra-board-id.h"
 
 static struct board_info board_info;
 
@@ -68,6 +74,50 @@ static char *dalmore_cam_reg_name[] = {
 };
 
 static struct regulator *dalmore_cam_reg[ARRAY_SIZE(dalmore_cam_reg_name)];
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
+};
+
+static struct nct1008_platform_data dalmore_nct1008_pdata = {
+	.supported_hwrev = true,
+	.ext_range = true,
+	.conv_rate = 0x08,
+	.offset = 80, /* 4 * 20C. Bug 844025 - 1C for device accuracies */
+	.shutdown_ext_limit = 90, /* C */
+	.shutdown_local_limit = 120, /* C */
+
+	/* Thermal Throttling */
+	.passive = {
+		.create_cdev = (struct thermal_cooling_device *(*)(void *))
+				balanced_throttle_register,
+		.cdev_data = &tj_throttle,
+		.trip_temp = 80000,
+		.tc1 = 0,
+		.tc1 = 1,
+		.passive_delay = 2000,
+	}
+};
+
+static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
+	{
+		I2C_BOARD_INFO("nct1008", 0x4C),
+		.platform_data = &dalmore_nct1008_pdata,
+		.irq = -1,
+	}
+};
 
 static int dalmore_imx091_power_on(struct device *dev)
 {
@@ -323,9 +373,162 @@ static void mpuirq_init(void)
                 ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
 }
 
+static int dalmore_nct1008_init(void)
+{
+	int nct1008_port = -1;
+	int ret = 0;
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	if ((board_info.board_id == BOARD_E1611) ||
+	    (board_info.board_id == BOARD_E1612) ||
+	    (board_info.board_id == BOARD_E1641) ||
+	    (board_info.board_id == BOARD_E1613))
+	{
+		/* per email from Matt 9/10/2012 */
+		nct1008_port = TEGRA_GPIO_PX6;
+	} else {
+		nct1008_port = TEGRA_GPIO_PX6;
+		pr_err("Warning: nct alert_port assumed TEGRA_GPIO_PX6"
+		       " for unknown dalmore board id E%d\n",
+		       board_info.board_id);
+	}
+#else
+	/* dalmore + AP30 interposer has SPI2_CS0 gpio */
+	nct1008_port = TEGRA_GPIO_PX3;
+#endif
+
+	if (nct1008_port >= 0) {
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+		const struct tegra_edp_limits *cpu_edp_limits;
+		int cpu_edp_limits_size;
+		int i;
+
+		/* edp capping */
+		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+
+		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+			BUG();
+
+		for (i = 0; i < cpu_edp_limits_size-1; i++) {
+			dalmore_nct1008_pdata.active[i].create_cdev =
+				(struct thermal_cooling_device *(*)(void *))
+					edp_cooling_device_create;
+			dalmore_nct1008_pdata.active[i].cdev_data = (void *)i;
+			dalmore_nct1008_pdata.active[i].trip_temp =
+				cpu_edp_limits[i].temperature * 1000;
+		}
+		dalmore_nct1008_pdata.active[i].create_cdev = NULL;
+#endif
+
+		dalmore_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
+		pr_info("%s: dalmore nct1008 irq %d", __func__, dalmore_i2c4_nct1008_board_info[0].irq);
+
+		ret = gpio_request(nct1008_port, "temp_alert");
+		if (ret < 0)
+			return ret;
+
+		ret = gpio_direction_input(nct1008_port);
+		if (ret < 0) {
+			pr_info("%s: calling gpio_free(nct1008_port)", __func__);
+			gpio_free(nct1008_port);
+		}
+	}
+
+	/* dalmore has thermal sensor on GEN1-I2C i.e. instance 1 */
+	i2c_register_board_info(1, dalmore_i2c4_nct1008_board_info,
+		ARRAY_SIZE(dalmore_i2c4_nct1008_board_info));
+
+	return ret;
+}
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
+{
+	return strcmp((char *)data, thz->type) == 0;
+}
+
+static int tegra_skin_get_temp(void *data, long *temp)
+{
+	struct thermal_zone_device *thz;
+
+	thz = thermal_zone_device_find(data, tegra_skin_match);
+
+	if (!thz || thz->ops->get_temp(thz, temp))
+		*temp = 25000;
+
+	return 0;
+}
+
+static struct therm_est_data skin_data = {
+	.toffset = 9793,
+	.polling_period = 1100,
+	.ndevs = 2,
+	.devs = {
+			{
+				.dev_data = "nct_ext",
+				.get_temp = tegra_skin_get_temp,
+				.coeffs = {
+					2, 1, 1, 1,
+					1, 1, 1, 1,
+					1, 1, 1, 0,
+					1, 1, 0, 0,
+					0, 0, -1, -7
+				},
+			},
+			{
+				.dev_data = "nct_int",
+				.get_temp = tegra_skin_get_temp,
+				.coeffs = {
+					-11, -7, -5, -3,
+					-3, -2, -1, 0,
+					0, 0, 1, 1,
+					1, 2, 2, 3,
+					4, 6, 11, 18
+				},
+			},
+	},
+	.trip_temp = 43000,
+	.tc1 = 1,
+	.tc2 = 15,
+	.passive_delay = 15000,
+};
+
+static struct balanced_throttle skin_throttle = {
+	.throt_tab_size = 6,
+	.throt_tab = {
+		{ 640000, 1200 },
+		{ 640000, 1200 },
+		{ 760000, 1200 },
+		{ 760000, 1200 },
+		{1000000, 1200 },
+		{1000000, 1200 },
+	},
+};
+
+static int __init dalmore_skin_init(void)
+{
+	struct thermal_cooling_device *skin_cdev;
+
+	skin_cdev = balanced_throttle_register(&skin_throttle);
+
+	skin_data.cdev = skin_cdev;
+	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+	platform_device_register(&tegra_skin_therm_est_device);
+
+	return 0;
+}
+late_initcall(dalmore_skin_init);
+#endif
+
 int __init dalmore_sensors_init(void)
 {
+	int err;
+
 	tegra_get_board_info(&board_info);
+
+	err = dalmore_nct1008_init();
+	if (err)
+		return err;
 
 	dalmore_camera_init();
 	mpuirq_init();
