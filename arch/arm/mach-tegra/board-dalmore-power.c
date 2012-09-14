@@ -32,6 +32,7 @@
 #include <linux/regulator/tps65090-regulator.h>
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/gpio.h>
+#include <linux/regulator/userspace-consumer.h>
 
 #include <asm/mach-types.h>
 
@@ -108,6 +109,7 @@ static struct regulator_consumer_supply tps65090_fet6_supply[] = {
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {
 	REGULATOR_SUPPLY("vdd_com_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_bt_3v3", NULL),
 };
 
 #define TPS65090_PDATA_INIT(_id, _name, _supply_reg,			\
@@ -219,6 +221,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_com_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
+	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
 };
 
@@ -547,6 +550,7 @@ static struct regulator_consumer_supply palmas_smps3_supply[] = {
 	REGULATOR_SUPPLY("vddio_bb_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_com_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
+	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_modem", NULL),
 	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
@@ -1047,6 +1051,28 @@ static int __init dalmore_max77663_regulator_init(void)
 	return 0;
 }
 
+static struct regulator_bulk_data dalmore_bt_regulator_supply[] = {
+	[0] = {
+		.supply	= "vdd_bt_3v3",
+	},
+	[1] = {
+		.supply	= "vddio_bt_1v8",
+	},
+};
+
+static struct regulator_userspace_consumer_data dalmore_bt_regulator_pdata = {
+	.num_supplies	= ARRAY_SIZE(dalmore_bt_regulator_supply),
+	.supplies	= dalmore_bt_regulator_supply,
+};
+
+static struct platform_device dalmore_bt_regulator_device = {
+	.name	= "reg-userspace-consumer",
+	.id	= 1,
+	.dev	= {
+			.platform_data = &dalmore_bt_regulator_pdata,
+	},
+};
+
 static int __init dalmore_fixed_regulator_init(void)
 {
 	struct board_info board_info;
@@ -1082,6 +1108,7 @@ int __init dalmore_regulator_init(void)
 
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	platform_device_register(&dalmore_pda_power_device);
+	platform_device_register(&dalmore_bt_regulator_device);
 	return 0;
 }
 
