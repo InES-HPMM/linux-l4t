@@ -287,7 +287,9 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 		mc_err = "unknown";
 
 	mc_err_info = "";
-	if (type == 3) {
+	if (type == 2) {
+		mc_err_info = "DECERR_EMEM";
+	} else if (type == 3) {
 		mc_err_info = "SECURITY_TRUSTZONE";
 	} else if (type == 4) {
 		mc_err_info = "SECURITY_CARVEOUT";
