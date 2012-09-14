@@ -342,7 +342,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW8,         KBC,             NORMAL,    NORMAL,     OUTPUT),
 
 	/* CAMERA */
-	DEFAULT_PINMUX(CAM_MCLK,        VI_ALT2,         PULL_UP,   NORMAL,     INPUT),
+	DEFAULT_PINMUX(CAM_MCLK,        VI_ALT2,         NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PCC1,       RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PBB0,       RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GPIO_PBB3,       VGP3,            NORMAL,    NORMAL,     INPUT),
@@ -482,7 +482,7 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(VI_D8,           VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_D9,           VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_HSYNC,        VI,            NORMAL,    TRISTATE,   OUTPUT),
-	DEFAULT_PINMUX(VI_MCLK,         VI,            NORMAL,    TRISTATE,   OUTPUT),
+	DEFAULT_PINMUX(VI_MCLK,         VI,            PULL_UP,    NORMAL,    INPUT),
 	DEFAULT_PINMUX(VI_PCLK,         VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(VI_VSYNC,        VI,            NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(DAP3_DIN,        I2S2,          NORMAL,    TRISTATE,   OUTPUT),

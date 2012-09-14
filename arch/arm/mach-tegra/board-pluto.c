@@ -150,7 +150,7 @@ static __initdata struct tegra_clk_init_table pluto_clk_init_table[] = {
 	{ "dam2",	"clk_m",	12000000,	false},
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
-	{ "vi_sensor",	"pll_p",	150000000,	false},
+	{ "vi_sensor",	"pll_p",	150000000,	true},
 	{ "i2c1",	"pll_p",	3200000,	false},
 	{ "i2c2",	"pll_p",	3200000,	false},
 	{ "i2c3",	"pll_p",	3200000,	false},
@@ -452,6 +452,10 @@ static struct platform_device pluto_audio_device = {
 	},
 };
 
+static struct platform_device tegra_camera = {
+	.name = "tegra_camera",
+	.id = -1,
+};
 
 static struct platform_device *pluto_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -463,6 +467,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+	&tegra_camera,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra_se_device,
 #endif
@@ -627,10 +632,10 @@ static void __init tegra_pluto_init(void)
 	pluto_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
 	pluto_modem_init();
-	pluto_sensors_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
+	pluto_sensors_init();
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
