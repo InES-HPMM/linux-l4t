@@ -178,7 +178,7 @@ struct imx132_platform_data pluto_imx132_data = {
 
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
-		I2C_BOARD_INFO("imx091", 0x36),
+		I2C_BOARD_INFO("imx091", 0x10),
 		.platform_data = &pluto_imx091_data,
 	},
 	{
