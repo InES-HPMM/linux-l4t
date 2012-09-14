@@ -127,7 +127,7 @@ struct tegra_cl_dvfs {
 };
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data);
+void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data);
 void tegra_cl_dvfs_set_dfll_data(struct tegra_cl_dvfs_dfll_data *data);
 int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld);
 
@@ -138,7 +138,7 @@ int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld);
 int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate);
 unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld);
 #else
-static inline void tegra_cl_dvfs_set_plarform_data(
+static inline void tegra_cl_dvfs_set_platform_data(
 		struct tegra_cl_dvfs_platform_data *data)
 {}
 static inline void tegra_cl_dvfs_set_dfll_data(

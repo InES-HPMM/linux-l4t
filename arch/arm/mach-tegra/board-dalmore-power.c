@@ -1067,7 +1067,7 @@ int __init dalmore_regulator_init(void)
 		dalmore_max77663_regulator_init();
 
 	fill_reg_map();
-	tegra_cl_dvfs_set_plarform_data(&dalmore_dfll_cpu_data);
+	tegra_cl_dvfs_set_platform_data(&dalmore_dfll_cpu_data);
 
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	platform_device_register(&dalmore_pda_power_device);

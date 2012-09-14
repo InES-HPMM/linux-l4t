@@ -475,7 +475,7 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	return 0;
 }
 
-void tegra_cl_dvfs_set_plarform_data(struct tegra_cl_dvfs_platform_data *data)
+void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data)
 {
 	struct clk *c = tegra_get_clock_by_name(data->dfll_clk_name);
 	if (c && c->u.dfll.cl_dvfs)

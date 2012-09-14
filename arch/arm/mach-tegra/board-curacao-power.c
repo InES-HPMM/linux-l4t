@@ -461,7 +461,7 @@ int __init curacao_regulator_init(void)
 		return ret;
 
 	fill_reg_map();
-	tegra_cl_dvfs_set_plarform_data(&curacao_cl_dvfs_data);
+	tegra_cl_dvfs_set_platform_data(&curacao_cl_dvfs_data);
 
 	return platform_add_devices(gpio_regs_devices,
 			ARRAY_SIZE(gpio_regs_devices));
