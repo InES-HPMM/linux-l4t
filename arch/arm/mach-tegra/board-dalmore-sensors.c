@@ -272,6 +272,12 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 		.value = _value,				\
 	}
 
+static struct i2c_board_info dalmore_i2c_board_info_cm3218[] = {
+	{
+		I2C_BOARD_INFO("cm3218", 0x48),
+	},
+};
+
 static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
         {
                 I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
@@ -314,6 +320,9 @@ int __init dalmore_sensors_init(void)
 
 	dalmore_camera_init();
 	mpuirq_init();
+
+	i2c_register_board_info(0, dalmore_i2c_board_info_cm3218,
+		ARRAY_SIZE(dalmore_i2c_board_info_cm3218));
 
 	return 0;
 }
