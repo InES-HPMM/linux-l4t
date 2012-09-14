@@ -164,8 +164,10 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 	if (nlog)
 		pr_debug("%s cleanup %d log channels\n", __func__, nlog);
 
-	if (nnet)
+	if (nnet) {
 		pr_debug("%s cleanup %d net channels\n", __func__, nnet);
+		nvshm_net_cleanup();
+	}
 
 	return 0;
 }

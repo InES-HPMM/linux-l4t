@@ -412,7 +412,15 @@ int nvshm_net_init(struct nvshm_handle *handle)
 			netdev.line[netdev.nlines]->net = dev;
 			priv->nvshm_chan = chan;
 			spin_lock_init(&priv->lock);
+
 			ret = register_netdev(dev);
+			if (ret) {
+				pr_err("Error %i registering %s%d device\n",
+					ret,
+					NVSHM_NETIF_PREFIX,
+					netdev.nlines);
+				goto err_exit;
+			}
 
 			netdev.nlines++;
 		}
@@ -429,11 +437,14 @@ void nvshm_net_cleanup(void)
 {
 	int chan;
 
-	pr_debug("%s()", __func__);
+	pr_debug("%s()\n", __func__);
 
 	for (chan = 0; chan < netdev.nlines; chan++) {
 		if (netdev.line[chan]->net) {
-			pr_debug("%s free %d\n", __func__, chan);
+			pr_debug("%s free %s%d\n",
+				__func__,
+				NVSHM_NETIF_PREFIX,
+				chan);
 			unregister_netdev(netdev.line[chan]->net);
 			free_netdev(netdev.line[chan]->net);
 		}

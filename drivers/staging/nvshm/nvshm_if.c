@@ -44,9 +44,14 @@ void nvshm_close_channel(struct nvshm_channel *handle)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 
-	pr_debug("%s\n", __func__);
+	/* we cannot flush the work queue here as the call to
+	   nvshm_close_channel() is made from cleanup_interfaces(),
+	   which executes from the context of the work queue
 
-	flush_workqueue(priv->nvshm_wq);
+	   additionally, flushing the work queue is unnecessary here
+	   as the main work queue handler always checks the state of
+	   the IPC */
+
 	spin_lock(&priv->lock);
 	priv->chan[handle->index].ops = NULL;
 	priv->chan[handle->index].data = NULL;
