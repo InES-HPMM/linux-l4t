@@ -27,7 +27,7 @@ struct nvshm_channel *nvshm_open_channel(int chan,
 {
 	struct nvshm_handle *handle = nvshm_get_handle();
 
-	pr_debug("%s\n", __func__);
+	pr_debug("%s(%d)\n", __func__, chan);
 	spin_lock(&handle->lock);
 	if (handle->chan[chan].ops) {
 		pr_err("%s: already registered on chan %d\n", __func__, chan);

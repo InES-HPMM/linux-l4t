@@ -70,4 +70,7 @@ extern inline struct nvshm_handle *nvshm_get_handle(void);
 extern int nvshm_tty_init(struct nvshm_handle *handle);
 extern void nvshm_tty_cleanup(void);
 
+extern int nvshm_net_init(struct nvshm_handle *handle);
+extern void nvshm_net_cleanup(void);
+
 #endif /* _NVSHM_PRIV_H */

@@ -127,8 +127,10 @@ static int init_interfaces(struct nvshm_handle *handle)
 	if (nlog)
 		pr_debug("%s init %d log channels\n", __func__, nlog);
 
-	if (nnet)
+	if (nnet) {
 		pr_debug("%s init %d net channels\n", __func__, nnet);
+		nvshm_net_init(handle);
+	}
 
 	return 0;
 }
