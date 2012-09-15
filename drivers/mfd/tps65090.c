@@ -176,6 +176,7 @@ static int tps65090_i2c_probe(struct i2c_client *client,
 	int irq_base = 0;
 	struct tps65090 *tps65090;
 	int ret;
+	int i2c_retry = 4;
 
 	if (!pdata && !client->dev.of_node) {
 		dev_err(&client->dev,
@@ -185,6 +186,24 @@ static int tps65090_i2c_probe(struct i2c_client *client,
 
 	if (pdata)
 		irq_base = pdata->irq_base;
+
+	/*
+	 * Sometime during boot, TPS65090 does not respond to the i2c
+	 * communciation and in this case, it need to be retry.
+	 */
+	while (--i2c_retry) {
+		dev_info(&client->dev,
+			"Checking i2c communication with tps65090\n");
+		ret = i2c_smbus_read_byte_data(client, 0x0C);
+		if (ret >= 0)
+			break;
+	}
+
+	if (!i2c_retry) {
+		dev_err(&client->dev,
+			"tps65090 is not reposponding through i2c\n");
+		return -EIO;
+	}
 
 	tps65090 = devm_kzalloc(&client->dev, sizeof(*tps65090), GFP_KERNEL);
 	if (!tps65090) {
