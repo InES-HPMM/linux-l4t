@@ -295,6 +295,7 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	palmas->rtc = palmas_rtc;
 	/* Clear pending interrupts */
 	ret = palmas_rtc_read(palmas, PALMAS_RTC_STATUS_REG,
 		&rtc_reg);
