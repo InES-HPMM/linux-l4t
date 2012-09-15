@@ -880,9 +880,15 @@ FIXED_REG(4,	vpp_fuse,	vpp_fuse,
 	max77663_rails(sd2),	0,	0,
 	TEGRA_GPIO_PX4,	false,	true,	0,	3300);
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 FIXED_REG(5,	usb1_vbus,	usb1_vbus,
 	tps65090_rails(DCDC1),	0,	0,
 	TEGRA_GPIO_PN4,	true,	true,	0,	5000);
+#else
+FIXED_REG(5,	usb1_vbus,	usb1_vbus,
+	tps65090_rails(DCDC1),	0,	0,
+	TEGRA_GPIO_PR3,	true,	true,	0,	5000);
+#endif
 
 FIXED_REG(6,	usb3_vbus,	usb3_vbus,
 	tps65090_rails(DCDC1),	0,	0,
