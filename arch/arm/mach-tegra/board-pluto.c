@@ -59,7 +59,7 @@
 #include <mach/io.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
-#include <mach/tegra_rt5640_pdata.h>
+#include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
@@ -260,7 +260,6 @@ static struct i2c_board_info pluto_i2c_led_info = {
 	.platform_data	= &pluto_max8831,
 };
 
-
 static void pluto_i2c_init(void)
 {
 	struct board_info board_info;
@@ -425,17 +424,23 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-static struct tegra_rt5640_platform_data pluto_audio_pdata = {
+static struct tegra_asoc_platform_data pluto_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
+	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 1,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+	},
 };
 
 static struct platform_device pluto_audio_device = {
-	.name	= "tegra-snd-rt5640",
-	.id	= 0,
+	.name	= "tegra-snd-cs42l73",
+	.id	= 2,
 	.dev	= {
 		.platform_data = &pluto_audio_pdata,
 	},
@@ -461,6 +466,12 @@ static struct platform_device *pluto_devices[] __initdata = {
 	&tegra_se_device,
 #endif
 	&tegra_ahub_device,
+	&tegra_dam_device0,
+	&tegra_dam_device1,
+	&tegra_dam_device2,
+	&tegra_i2s_device1,
+	&tegra_i2s_device3,
+	&tegra_i2s_device4,
 	&pluto_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
@@ -594,8 +605,8 @@ static void pluto_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	pluto_audio_pdata.codec_name = "rt5640.4-001c";
-	pluto_audio_pdata.codec_dai_name = "rt5640-aif1";
+	pluto_audio_pdata.codec_name = "cs42l73.0-004a";
+	pluto_audio_pdata.codec_dai_name = "cs42l73-vsp";
 }
 
 static void __init tegra_pluto_init(void)
