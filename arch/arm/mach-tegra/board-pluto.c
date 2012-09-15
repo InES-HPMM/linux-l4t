@@ -45,6 +45,7 @@
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
 #include <linux/mfd/max8831.h>
+#include <linux/of_platform.h>
 
 #include <asm/hardware/gic.h>
 
@@ -636,6 +637,14 @@ static void __init pluto_ramconsole_reserve(unsigned long size)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static void __init tegra_pluto_dt_init(void)
+{
+	tegra_pluto_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_pluto_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -646,6 +655,11 @@ static void __init tegra_pluto_reserve(void)
 #endif
 	pluto_ramconsole_reserve(SZ_1M);
 }
+
+static const char * const pluto_dt_board_compat[] = {
+	"nvidia,pluto",
+	NULL
+};
 
 MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.atag_offset	= 0x100,
@@ -660,6 +674,7 @@ MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
-	.init_machine	= tegra_pluto_init,
+	.init_machine	= tegra_pluto_dt_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= pluto_dt_board_compat,
 MACHINE_END

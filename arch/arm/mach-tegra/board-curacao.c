@@ -35,6 +35,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/of_platform.h>
 
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
@@ -606,6 +607,14 @@ static void __init tegra_curacao_init(void)
 	curacao_soctherm_init();
 }
 
+static void __init tegra_curacao_dt_init(void)
+{
+	tegra_curacao_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_curacao_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -614,6 +623,11 @@ static void __init tegra_curacao_reserve(void)
 	tegra_reserve(SZ_32M, SZ_4M, 0);
 #endif
 }
+
+static const char * const curacao_dt_board_compat[] = {
+	"nvidia,curacao",
+	NULL
+};
 
 MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.atag_offset    = 0x80000100,
@@ -624,5 +638,6 @@ MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.init_irq       = tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer          = &tegra_timer,
-	.init_machine   = tegra_curacao_init,
+	.init_machine   = tegra_curacao_dt_init,
+	.dt_compat	= curacao_dt_board_compat,
 MACHINE_END

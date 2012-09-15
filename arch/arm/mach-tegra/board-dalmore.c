@@ -43,6 +43,7 @@
 #include <linux/max17048_battery.h>
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
+#include <linux/of_platform.h>
 
 #include <asm/hardware/gic.h>
 
@@ -570,6 +571,14 @@ static void __init dalmore_ramconsole_reserve(unsigned long size)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+static void __init tegra_dalmore_dt_init(void)
+{
+	tegra_dalmore_init();
+
+	of_platform_populate(NULL,
+		of_default_bus_match_table, NULL, NULL);
+}
+
 static void __init tegra_dalmore_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -580,6 +589,11 @@ static void __init tegra_dalmore_reserve(void)
 #endif
 	dalmore_ramconsole_reserve(SZ_1M);
 }
+
+static const char * const dalmore_dt_board_compat[] = {
+	"nvidia,dalmore",
+	NULL
+};
 
 MACHINE_START(DALMORE, "dalmore")
 	.atag_offset	= 0x100,
@@ -594,6 +608,7 @@ MACHINE_START(DALMORE, "dalmore")
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
-	.init_machine	= tegra_dalmore_init,
+	.init_machine	= tegra_dalmore_dt_init,
 	.restart	= tegra_assert_system_reset,
+	.dt_compat	= dalmore_dt_board_compat,
 MACHINE_END
