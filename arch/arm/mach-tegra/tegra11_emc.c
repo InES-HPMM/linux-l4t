@@ -242,6 +242,13 @@ enum {
 };
 #undef DEFINE_REG
 
+#define DEFINE_REG(base, reg)	reg##_TRIM_INDEX
+enum {
+	EMC_TRIMMERS_REG_LIST
+};
+#undef DEFINE_REG
+
+
 struct emc_sel {
 	struct clk	*input;
 	u32		value;
@@ -282,6 +289,14 @@ static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static inline void emc_writel(u32 val, unsigned long addr)
 {
 	writel(val, (u32)emc_base + addr);
+}
+static inline void emc0_writel(u32 val, unsigned long addr)
+{
+	writel(val, emc0_base + addr);
+}
+static inline void emc1_writel(u32 val, unsigned long addr)
+{
+	writel(val, emc1_base + addr);
 }
 static inline u32 emc_readl(unsigned long addr)
 {
@@ -363,7 +378,6 @@ static inline void auto_cal_disable(void)
 static inline bool dqs_preset(const struct tegra11_emc_table *next_timing,
 			      const struct tegra11_emc_table *last_timing)
 {
-#ifdef TEGRA_EMC_DQS_PRESET
 	bool ret = false;
 
 #define DQS_SET(reg, bit)						      \
@@ -378,13 +392,24 @@ static inline bool dqs_preset(const struct tegra11_emc_table *next_timing,
 		}							      \
 	} while (0)
 
+
+#define DQS_SET_TRIM(reg, bit, ch)					       \
+	do {								       \
+		if ((next_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX]    \
+		     & EMC_##reg##_##bit##_ENABLE) &&			       \
+		    (!(last_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX]  \
+		       & EMC_##reg##_##bit##_ENABLE)))   {		       \
+			emc##ch##_writel(last_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX] \
+				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg);   \
+			ret = true;					       \
+		}							       \
+	} while (0)
+
 	DQS_SET(XM2DQSPADCTRL2, VREF);
-	DQS_SET(XM2DQSPADCTRL3, VREF);
+	DQS_SET_TRIM(XM2DQSPADCTRL3, VREF, 0);
+	DQS_SET_TRIM(XM2DQSPADCTRL3, VREF, 1);
 
 	return ret;
-#else
-	return true;
-#endif
 }
 
 static inline void overwrite_mrs_wait_cnt(
@@ -626,13 +651,19 @@ static inline void emc_get_timing(struct tegra11_emc_table *timing)
 {
 	int i;
 
-	/* burst array update depends on previous state; burst_up_down
-	   and trimmers are stateless */
+	/* burst and trimmers updates depends on previous state; burst_up_down
+	   are stateless */
 	for (i = 0; i < timing->burst_regs_num; i++) {
 		if (burst_reg_addr[i])
 			timing->burst_regs[i] = __raw_readl(burst_reg_addr[i]);
 		else
 			timing->burst_regs[i] = 0;
+	}
+	for (i = 0; i < timing->emc_trimmers_num; i++) {
+		timing->emc_trimmers_0[i] =
+			__raw_readl(emc0_base + emc_trimmer_offs[i]);
+		timing->emc_trimmers_1[i] =
+			__raw_readl(emc1_base + emc_trimmer_offs[i]);
 	}
 	timing->emc_acal_interval = 0;
 	timing->emc_zcal_cnt_long = 0;
@@ -954,6 +985,7 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	switch (table[0].rev) {
 	case 0x40:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
+		start_timing.emc_trimmers_num = table[0].emc_trimmers_num;
 		break;
 	default:
 		pr_err("tegra: invalid EMC DFS table: unknown rev 0x%x\n",
