@@ -178,6 +178,7 @@ static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
+	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),

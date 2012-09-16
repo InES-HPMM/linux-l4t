@@ -787,6 +787,7 @@ static struct i2c_board_info palma_device[] = {
 /* EN_AVDD_USB_HDMI From PMU GP1 */
 static struct regulator_consumer_supply fixed_reg_avdd_usb_hdmi_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
