@@ -497,6 +497,15 @@ config USB_CDC_PHONET
 	  cellular modem, as found on most Nokia handsets with the
 	  "PC suite" USB profile.
 
+config USB_CDC_MHI
+	tristate "CDC MHI support"
+	depends on MHI
+	help
+	  This option is for Renesas wireless modem.
+	  Choose this option to support MHI over USB interface to
+	  Renesas Wireless Modem. Tristate by default. Automatically selected based
+	  on CONFIG_MHI.
+
 config USB_IPHETH
 	tristate "Apple iPhone USB Ethernet driver"
 	default n
