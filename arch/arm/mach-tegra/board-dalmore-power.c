@@ -75,6 +75,7 @@ static struct regulator_consumer_supply tps65090_dcdc2_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_dtv_3v3", NULL),
 	REGULATOR_SUPPLY("vcc", "0-007c"),
 	REGULATOR_SUPPLY("vcc", "0-0030"),
+	REGULATOR_SUPPLY("vin", "2-0030"),
 };
 
 static struct regulator_consumer_supply tps65090_dcdc3_supply[] = {
@@ -760,12 +761,14 @@ static struct regulator_consumer_supply fixed_reg_avdd_usb_hdmi_supply[] = {
 static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
+	REGULATOR_SUPPLY("vi2c", "2-0030"),
 };
 
 /* EN_CAM_1v8 on e1611 From PMU GP6 */
 static struct regulator_consumer_supply fixed_reg_en_1v8_cam_e1611_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
+	REGULATOR_SUPPLY("vi2c", "2-0030"),
 };
 
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {

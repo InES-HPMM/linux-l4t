@@ -30,30 +30,17 @@
 
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#include <mach/gpio.h>
-#include "gpio-names.h"
-#include "board.h"
-#include <mach/gpio.h>
-#include <media/imx091.h>
-#include <media/ov9772.h>
-#include "board-dalmore.h"
-#include "cpu-tegra.h"
-#include <generated/mach-types.h>
 #include <linux/mpu.h>
-
-#include <linux/i2c.h>
-#include <linux/delay.h>
 #include <linux/regulator/consumer.h>
-#include <linux/i2c/pca954x.h>
-#include <linux/i2c/pca953x.h>
-#include <linux/nct1008.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
-
-#include <mach/fb.h>
+#include <linux/nct1008.h>
 #include <mach/edp.h>
-#include <mach/gpio.h>
 #include <mach/gpio-tegra.h>
+#include <media/imx091.h>
+#include <media/ov9772.h>
+#include <media/as364x.h>
+#include <generated/mach-types.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -119,6 +106,8 @@ static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
 	}
 };
 
+static struct regulator *dalmore_vcmvdd;
+
 static int dalmore_imx091_power_on(struct device *dev)
 {
 	int i;
@@ -171,6 +160,11 @@ static int dalmore_imx091_power_off(struct device *dev)
 
 	return 0;
 }
+
+struct imx091_platform_data dalmore_imx091_data = {
+	.power_on = dalmore_imx091_power_on,
+	.power_off = dalmore_imx091_power_off,
+};
 
 static int dalmore_ov9772_power_on(struct device *dev)
 {
@@ -230,7 +224,7 @@ static struct nvc_gpio_pdata ov9772_gpio_pdata[] = {
 	{ OV9772_GPIO_TYPE_PWRDN, TEGRA_GPIO_PBB3, true, 0, },
 };
 
-static struct ov9772_platform_data ov9772_pdata = {
+static struct ov9772_platform_data dalmore_ov9772_pdata = {
 	.num		= 1,
 	.dev_name	= "camera",
 	.gpio_count	= ARRAY_SIZE(ov9772_gpio_pdata),
@@ -239,9 +233,46 @@ static struct ov9772_platform_data ov9772_pdata = {
 	.power_off	= dalmore_ov9772_power_off,
 };
 
-struct imx091_platform_data dalmore_imx091_data = {
-	.power_on = dalmore_imx091_power_on,
-	.power_off = dalmore_imx091_power_off,
+static int dalmore_as3648_power_on(struct as364x_power_rail *pw)
+{
+	if (!dalmore_vcmvdd) {
+		dalmore_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
+		if (unlikely(WARN_ON(IS_ERR(dalmore_vcmvdd)))) {
+			pr_err("%s: can't get regulator vdd_af_cam1: %ld\n",
+			       __func__, PTR_ERR(dalmore_vcmvdd));
+			dalmore_vcmvdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return regulator_enable(dalmore_vcmvdd);
+}
+
+static int dalmore_as3648_power_off(struct as364x_power_rail *pw)
+{
+	if (!dalmore_vcmvdd)
+		return -ENODEV;
+
+	return regulator_disable(dalmore_vcmvdd);
+}
+
+static struct as364x_platform_data dalmore_as3648_pdata = {
+	.config		= {
+		.max_total_current_mA = 1000,
+		.max_peak_current_mA = 600,
+		.strobe_type = 1,
+		},
+	.pinstate	= {
+		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
+		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
+		},
+	.dev_name	= "torch",
+	.type		= AS3648,
+	.gpio_strobe	= CAM_FLASH_STROBE,
+	.led_mask	= 3,
+
+	.power_on_callback = dalmore_as3648_power_on,
+	.power_off_callback = dalmore_as3648_power_off,
 };
 
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
@@ -251,7 +282,11 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 	},
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
-		.platform_data = &ov9772_pdata,
+		.platform_data = &dalmore_ov9772_pdata,
+	},
+	{
+		I2C_BOARD_INFO("as3648", 0x30),
+		.platform_data = &dalmore_as3648_pdata,
 	},
 };
 
@@ -300,7 +335,7 @@ static int dalmore_camera_init(void)
 
 	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
 		ARRAY_SIZE(dalmore_i2c_board_info_e1625));
-
+	return 0;
 fail_free_gpio:
 
 	while (i--)
@@ -314,7 +349,8 @@ fail_free_gpio:
 static struct mpu_platform_data mpu9150_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
-	.orientation	= MPU_GYRO_ORIENTATION,	/* Located in board_[platformname].h	*/
+	/* Located in board_[platformname].h */
+	.orientation	= MPU_GYRO_ORIENTATION,
 	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
 	.sec_slave_id	= COMPASS_ID_AK8975,
 	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
@@ -338,39 +374,39 @@ static struct i2c_board_info dalmore_i2c_board_info_cm3218[] = {
 };
 
 static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
-        {
-                I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-                .platform_data = &mpu9150_gyro_data,
-        },
+	{
+		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
+		.platform_data = &mpu9150_gyro_data,
+	},
 };
 
 static void mpuirq_init(void)
 {
-        int ret = 0;
-        unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
-        unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
-        char *gyro_name = MPU_GYRO_NAME;
+	int ret = 0;
+	unsigned gyro_irq_gpio = MPU_GYRO_IRQ_GPIO;
+	unsigned gyro_bus_num = MPU_GYRO_BUS_NUM;
+	char *gyro_name = MPU_GYRO_NAME;
 
-        pr_info("*** MPU START *** mpuirq_init...\n");
+	pr_info("*** MPU START *** mpuirq_init...\n");
 
-        ret = gpio_request(gyro_irq_gpio, gyro_name);
+	ret = gpio_request(gyro_irq_gpio, gyro_name);
 
-        if (ret < 0) {
-                pr_err("%s: gpio_request failed %d\n", __func__, ret);
-                return;
-        }
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, ret);
+		return;
+	}
 
-        ret = gpio_direction_input(gyro_irq_gpio);
-        if (ret < 0) {
-                pr_err("%s: gpio_direction_input failed %d\n", __func__, ret);
-                gpio_free(gyro_irq_gpio);
-                return;
-        }
-        pr_info("*** MPU END *** mpuirq_init...\n");
+	ret = gpio_direction_input(gyro_irq_gpio);
+	if (ret < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n", __func__, ret);
+		gpio_free(gyro_irq_gpio);
+		return;
+	}
+	pr_info("*** MPU END *** mpuirq_init...\n");
 
-        inv_mpu9150_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-        i2c_register_board_info(gyro_bus_num, inv_mpu9150_i2c2_board_info,
-                ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
+	inv_mpu9150_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+	i2c_register_board_info(gyro_bus_num, inv_mpu9150_i2c2_board_info,
+		ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
 }
 
 static int dalmore_nct1008_init(void)

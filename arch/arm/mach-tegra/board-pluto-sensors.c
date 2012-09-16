@@ -2,38 +2,35 @@
  * arch/arm/mach-tegra/board-pluto-sensors.c
  *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
-#include <mach/edp.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
 #include <linux/max77665-charger.h>
 #include <linux/mfd/max77665.h>
 #include <linux/power/max17042_battery.h>
-#include <mach/gpio.h>
+#include <linux/nct1008.h>
+#include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 #include <media/max77665-flash.h>
 #include <media/imx091.h>
 #include <media/imx132.h>
 #include <media/ad5816.h>
 
-#include <linux/nct1008.h>
 #include "gpio-names.h"
 #include "board.h"
 #include "board-pluto.h"
@@ -41,11 +38,9 @@
 #include "devices.h"
 #include "tegra-board-id.h"
 
-#define CAMERA_FLASH_SYNC_GPIO	TEGRA_GPIO_PBB4
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
 
-static struct max77665_muic_platform_data max77665_muic;
 static struct board_info board_info;
 static struct max17042_config_data conf_data = {
 	.valrt_thresh = 0xff00,
@@ -114,27 +109,16 @@ static struct i2c_board_info max17042_device[] = {
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
 		.led_mask		= 3,
-		.flash_on_torch		= true,
+		.flash_on_torch         = true,
 		.max_total_current_mA	= 1000,
 		.max_peak_current_mA	= 600,
 		},
 	.pinstate	= {
-		.mask	= 1 << (CAMERA_FLASH_SYNC_GPIO - TEGRA_GPIO_PBB0),
-		.values	= 1 << (CAMERA_FLASH_SYNC_GPIO - TEGRA_GPIO_PBB0)
+		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
+		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
 		},
 	.dev_name	= "torch",
-	.gpio_strobe	= CAMERA_FLASH_SYNC_GPIO,
-};
-
-static struct max77665_platform_data pluto_max77665_pdata = {
-	.irq_base = 0,
-};
-
-static const struct i2c_board_info pluto_i2c_board_info_max77665[] = {
-	{
-		I2C_BOARD_INFO("max77665", 0x66),
-		.platform_data = &pluto_max77665_pdata,
-	},
+	.gpio_strobe	= CAM_FLASH_STROBE,
 };
 
 static struct max77665_charger_cable maxim_cable[] = {
@@ -164,6 +148,33 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.curr_lim = 1500, /* input current limit */
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
+};
+
+static struct max77665_muic_platform_data max77665_muic = {
+	.irq_base = 0,
+};
+
+static struct max77665_platform_data pluto_max77665_pdata = {
+	.irq_base = 0,
+	.muic_platform_data = {
+		.pdata = &max77665_muic,
+		.size =	sizeof(max77665_muic),
+		},
+	.charger_platform_data = {
+		.pdata = &max77665_charger,
+		.size =	sizeof(max77665_charger),
+		},
+	.flash_platform_data = {
+		.pdata = &pluto_max77665_flash_pdata,
+		.size =	sizeof(pluto_max77665_flash_pdata),
+		},
+};
+
+static const struct i2c_board_info pluto_i2c_board_info_max77665[] = {
+	{
+		I2C_BOARD_INFO("max77665", 0x66),
+		.platform_data = &pluto_max77665_pdata,
+	},
 };
 
 /* isl29029 support is provided by isl29028*/
@@ -617,8 +628,6 @@ late_initcall(pluto_skin_init);
 
 int __init pluto_sensors_init(void)
 {
-	struct platform_device *pd;
-	struct platform_device *charger_pd, *muic_pd;
 	int err;
 
 	tegra_get_board_info(&board_info);
@@ -630,48 +639,23 @@ int __init pluto_sensors_init(void)
 	if (err)
 		return err;
 
-	i2c_register_board_info(0, pluto_i2c1_isl_board_info,
+	err = i2c_register_board_info(0, pluto_i2c1_isl_board_info,
 				ARRAY_SIZE(pluto_i2c1_isl_board_info));
+	if (err)
+		pr_err("%s: isl board register failed.\n", __func__);
+
 	mpuirq_init();
-
-	max77665_muic.irq_base = 0;
-	muic_pd = kmemdup(&max77665_muic, sizeof(max77665_muic), GFP_KERNEL);
-	if (muic_pd == NULL) {
-		pr_err("%s failed to allocate memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	pluto_max77665_pdata.muic_platform_data.pdata = muic_pd;
-	pluto_max77665_pdata.muic_platform_data.size = sizeof(*muic_pd);
-
-	charger_pd = kmemdup(&max77665_charger, sizeof(max77665_charger),
-			GFP_KERNEL);
-	if (charger_pd == NULL) {
-		pr_err("%s failed to allocate memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	pluto_max77665_pdata.charger_platform_data.pdata = charger_pd;
-	pluto_max77665_pdata.charger_platform_data.size = sizeof(*charger_pd);
-
-	pd = kmemdup(&pluto_max77665_flash_pdata,
-			sizeof(pluto_max77665_flash_pdata), GFP_KERNEL);
-	if (pd == NULL) {
-		pr_err("%s failed to allocate memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	pluto_max77665_pdata.flash_platform_data.pdata = pd;
-	pluto_max77665_pdata.flash_platform_data.size = sizeof(*pd);
 
 	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
 		ARRAY_SIZE(pluto_i2c_board_info_max77665));
-
 	if (err)
-		pr_err("%s: platform device register failed.\n", __func__);
+		pr_err("%s: max77665 device register failed.\n", __func__);
 
-	i2c_register_board_info(0, max17042_device,
+	err = i2c_register_board_info(0, max17042_device,
 				ARRAY_SIZE(max17042_device));
+	if (err)
+		pr_err("%s: max17042 device register failed.\n", __func__);
+
 
 	return 0;
 }

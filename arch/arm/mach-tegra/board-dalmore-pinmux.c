@@ -172,7 +172,6 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 	DEFAULT_PINMUX(GPIO_PV1,        RSVD,   NORMAL,       NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(GPIO_PBB3,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PBB4,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PBB5,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PBB6,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PBB7,       RSVD3,  PULL_DOWN,    NORMAL,    OUTPUT),
