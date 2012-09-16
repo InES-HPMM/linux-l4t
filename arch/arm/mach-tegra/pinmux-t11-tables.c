@@ -20,10 +20,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/* FIX ME */
-/* Revisit pins: SDMMC3_CLK_LB_OUT/IN, NAND_GMI_CLK_LB, JTAG_# */
-
-
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/spinlock.h>
@@ -317,6 +313,8 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(GPIO_W3_AUD,	  PW3,		AUDIO,      SPI6,	SPI1,	    SPI2,	I2C1,	     RSVD,	INPUT,	0x33f0),\
 	PINGROUP(USB_VBUS_EN0,	  PN4,		LCD,        USB,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x33f4),\
 	PINGROUP(USB_VBUS_EN1,	  PN5,		LCD,        USB,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x33f8),\
+	PINGROUP(SDMMC3_CLK_LB_OUT,	  PEE4,		SDMMC3,        SDMMC3,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x33fc),\
+	PINGROUP(SDMMC3_CLK_LB_IN,	  PEE5,		SDMMC3,        SDMMC3,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3400),\
 	PINGROUP(RESET_OUT_N,	  INVALID,	SYS,        RSVD0,	RSVD1,	    RSVD2,	RESET_OUT_N, RSVD,	OUTPUT,	0x3408),
 
 const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
