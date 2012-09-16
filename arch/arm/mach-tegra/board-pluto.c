@@ -463,7 +463,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 #endif
 	&tegra_camera,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
-	&tegra_se_device,
+	&tegra11_se_device,
 #endif
 	&tegra_ahub_device,
 	&tegra_dam_device0,
