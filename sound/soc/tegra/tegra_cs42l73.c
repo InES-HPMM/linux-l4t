@@ -397,6 +397,13 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 		machine->spk_reg = 0;
 	}
 
+	machine->dmic_reg = regulator_get(&pdev->dev, "vdd_mic");
+	if (IS_ERR(machine->dmic_reg)) {
+		dev_info(&pdev->dev, "No digital mic regulator found\n");
+		machine->dmic_reg = 0;
+	} else
+		regulator_enable(machine->dmic_reg);
+
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
