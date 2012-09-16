@@ -73,3 +73,4 @@ obj-$(CONFIG_USB_NET_RAW_IP)    += usb/
 
 obj-$(CONFIG_HYPERV_NET) += hyperv/
 obj-$(CONFIG_NTB_NETDEV) += ntb_netdev.o
+obj-$(CONFIG_MHI_NETDEV) += mhi/

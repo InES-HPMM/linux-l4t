@@ -356,4 +356,10 @@ config VMXNET3
 
 source "drivers/net/hyperv/Kconfig"
 
+config MHI_NETDEV
+           bool "MHI net device"
+           depends on MHI
+           help
+            This is the net device manadatory used by MHI stack
+
 endif # NETDEVICES
