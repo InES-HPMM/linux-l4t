@@ -235,3 +235,14 @@ config USB_HSIC_USB3503
        depends on I2C
        help
          This option enables support for SMSC USB3503 HSIC to USB 2.0 Driver.
+
+config USB_RENESAS_MODEM
+        tristate "USB VENDOR SPECIFIC CLASS driver support"
+        depends on USB
+        help
+          This driver load the vendor specific class for Renesas Modem
+          for modem boot code.
+          This driver supports read/write for user space interface
+
+          To compile this driver as a module, choose M here: the
+          module will be called renesas modem.
