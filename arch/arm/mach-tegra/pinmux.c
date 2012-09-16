@@ -1037,6 +1037,9 @@ static int dbg_pinmux_show(struct seq_file *s, void *unused)
 		unsigned long mux;
 		unsigned long pupd;
 
+		if (!pingroups[i].name)
+			continue;
+
 		seq_printf(s, "\t{TEGRA_PINGROUP_%s", pingroups[i].name);
 		len = strlen(pingroups[i].name);
 		dbg_pad_field(s, 15 - len);
