@@ -39,8 +39,13 @@ minimum guarantee E-state.
 
 3. Overage
 
-Overage governor uses a propotional allocation based on the difference
+Overage governor uses a proportional allocation based on the difference
 between the current E-state level and E0 (named the 'overage'). This
 causes all clients to increase or decrease in their E-state some what
 simultaneously. Hence this is fare allocation policy and ensures that no
 client is throttled too much.
+
+4. Fair
+
+Fair governor policy is similar to overage policy, but the proportion is
+based on E0-state level of clients.
