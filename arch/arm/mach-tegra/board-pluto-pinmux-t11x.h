@@ -148,7 +148,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(SYS_CLK_REQ,   SYSCLK,      NORMAL,    NORMAL,   OUTPUT),
 
 	/* RTCK pinmux */
-	DEFAULT_PINMUX(JTAG_RTCK,     RTCK,        NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(JTAG_RTCK,     RTCK,        NORMAL,    NORMAL,	INPUT),
 
 	/* CLK pinmux */
 	DEFAULT_PINMUX(CLK_32K_IN,    CLK,         NORMAL,    TRISTATE, INPUT),
