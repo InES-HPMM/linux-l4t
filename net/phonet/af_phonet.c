@@ -68,8 +68,10 @@ static int pn_socket_create(struct net *net, struct socket *sock, int protocol,
 	struct phonet_protocol *pnp;
 	int err;
 
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
+/*PATCH
+ *	if (!capable(CAP_SYS_ADMIN))
+ *	return -EPERM;
+ */
 
 	if (protocol == 0) {
 		/* Default protocol selection */
@@ -112,6 +114,8 @@ static int pn_socket_create(struct net *net, struct socket *sock, int protocol,
 	pn->sobject = 0;
 	pn->dobject = 0;
 	pn->resource = 0;
+/*!*/	pn->resource_type = 0;
+/*!*/	pn->resource_subtype = 0;
 	sk->sk_prot->init(sk);
 	err = 0;
 
@@ -210,6 +214,7 @@ static int pn_send(struct sk_buff *skb, struct net_device *dev,
 
 	return err;
 drop:
+	printk(KERN_DEBUG "pn_send DROP\n");
 	kfree_skb(skb);
 	return err;
 }
@@ -287,6 +292,7 @@ int pn_skb_send(struct sock *sk, struct sk_buff *skb,
 	return err;
 
 drop:
+	printk(KERN_DEBUG "pn_skb_send DROP\n");
 	kfree_skb(skb);
 	if (dev)
 		dev_put(dev);
@@ -393,6 +399,12 @@ static int phonet_rcv(struct sk_buff *skb, struct net_device *dev,
 
 	pn_skb_get_dst_sockaddr(skb, &sa);
 
+	/* check if this is multicasted */
+	if (pn_sockaddr_get_object(&sa) == PNOBJECT_MULTICAST) {
+		pn_deliver_sock_broadcast(net, skb);
+		goto out;
+	}
+
 	/* check if this is broadcasted */
 	if (pn_sockaddr_get_addr(&sa) == PNADDR_BROADCAST) {
 		pn_deliver_sock_broadcast(net, skb);
@@ -402,14 +414,17 @@ static int phonet_rcv(struct sk_buff *skb, struct net_device *dev,
 	/* resource routing */
 	if (pn_sockaddr_get_object(&sa) == 0) {
 		struct sock *sk = pn_find_sock_by_res(net, sa.spn_resource);
-		if (sk)
+		if (sk) {
+			printk(KERN_DEBUG "phonet new resource routing!\n");
 			return sk_receive_skb(sk, skb, 0);
+		}
 	}
 
 	/* check if we are the destination */
 	if (phonet_address_lookup(net, pn_sockaddr_get_addr(&sa)) == 0) {
 		/* Phonet packet input */
-		struct sock *sk = pn_find_sock_by_sa(net, &sa);
+/*!*/		struct sock *sk = pn_find_sock_by_sa_and_skb(net, &sa, skb);
+		/*struct sock *sk = pn_find_sock_by_sa(net, &sa);*/
 
 		if (sk)
 			return sk_receive_skb(sk, skb, 0);
@@ -454,6 +469,7 @@ out_dev:
 
 out:
 	kfree_skb(skb);
+	printk(KERN_DEBUG "phonet_rcv Drop message!\n");
 	return NET_RX_DROP;
 }
 
