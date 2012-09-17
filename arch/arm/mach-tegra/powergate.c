@@ -1021,7 +1021,7 @@ static int tegra_powergate_reset_module(int id)
 /*
  * FIXME: sw war for mipi-cal calibration when unpowergating DISA partition
  */
-static void tegra11x_mipical_calibrate(void)
+static void tegra11x_mipical_calibrate(int id)
 {
 	struct reg_offset_val {
 		u32 offset;
@@ -1054,6 +1054,8 @@ static void tegra11x_mipical_calibrate(void)
 	};
 	int i;
 
+	if (id != TEGRA_POWERGATE_DISA)
+		return;
 	spin_lock_irqsave(&tegra_powergate_lock, flags);
 	/* mipi cal por restore */
 	for (i = 0; i < ARRAY_SIZE(mipi_cal_por_values); i++) {
@@ -1113,7 +1115,7 @@ int tegra_unpowergate_partition(int id)
 	udelay(10);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra11x_mipical_calibrate();
+	tegra11x_mipical_calibrate(id);
 #endif
 	powergate_partition_deassert_reset(id);
 
