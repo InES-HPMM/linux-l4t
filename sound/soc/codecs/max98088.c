@@ -1337,6 +1337,16 @@ static int max98088_dai1_hw_params(struct snd_pcm_substream *substream,
                snd_soc_update_bits(codec, M98088_REG_18_DAI1_FILTERS,
                        M98088_DAI_DHF, M98088_DAI_DHF);
 
+		if (rate > 24000)
+			snd_soc_update_bits(codec, M98088_REG_18_DAI1_FILTERS,
+				M98088_DAI_MODE, M98088_DAI_MODE);
+		else
+			snd_soc_update_bits(codec, M98088_REG_18_DAI1_FILTERS,
+				M98088_DAI_MODE, 0);
+
+		snd_soc_update_bits(codec, M98088_REG_18_DAI1_FILTERS,
+			M98088_DAI_AVFLT_MASK, 5<<M98088_DAI_AVFLT_SHIFT);
+
        snd_soc_update_bits(codec, M98088_REG_51_PWR_SYS, M98088_SHDNRUN,
                M98088_SHDNRUN);
 
@@ -1729,15 +1739,15 @@ static const char *eq_mode_name[] = {"EQ1 Mode", "EQ2 Mode"};
 
 static int max98088_get_channel(struct snd_soc_codec *codec, const char *name)
 {
-	int i;
+    int i;
 
-	for (i = 0; i < ARRAY_SIZE(eq_mode_name); i++)
-		if (strcmp(name, eq_mode_name[i]) == 0)
-			return i;
+    for (i = 0; i < ARRAY_SIZE(eq_mode_name); i++)
+        if (strcmp(name, eq_mode_name[i]) == 0)
+            return i;
 
-	/* Shouldn't happen */
-	dev_err(codec->dev, "Bad EQ channel name '%s'\n", name);
-	return -EINVAL;
+    /* Shouldn't happen */
+    dev_err(codec->dev, "Bad EQ channel name '%s'\n", name);
+    return -EINVAL;
 }
 
 static void max98088_setup_eq1(struct snd_soc_codec *codec)
@@ -1846,7 +1856,7 @@ static int max98088_put_eq_enum(struct snd_kcontrol *kcontrol,
        int sel = ucontrol->value.integer.value[0];
 
        if (channel < 0)
-	       return channel;
+           return channel;
 
        cdata = &max98088->dai[channel];
 
@@ -1876,7 +1886,7 @@ static int max98088_get_eq_enum(struct snd_kcontrol *kcontrol,
        struct max98088_cdata *cdata;
 
        if (channel < 0)
-	       return channel;
+           return channel;
 
        cdata = &max98088->dai[channel];
        ucontrol->value.enumerated.item[0] = cdata->eq_sel;
@@ -2178,23 +2188,23 @@ static int max98088_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int max98088_suspend(struct snd_soc_codec *codec)
 {
-	struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
+    struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
 
-	disable_irq(max98088->irq);
-	max98088_set_bias_level(codec, SND_SOC_BIAS_OFF);
+    disable_irq(max98088->irq);
+    max98088_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
-	return 0;
+    return 0;
 }
 
 static int max98088_resume(struct snd_soc_codec *codec)
 {
-	struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
+    struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
 
-	max98088_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	max98088_report_jack(codec);
-	enable_irq(max98088->irq);
+    max98088_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+    max98088_report_jack(codec);
+    enable_irq(max98088->irq);
 
-	return 0;
+    return 0;
 }
 #else
 #define max98088_suspend NULL
@@ -2211,10 +2221,10 @@ static struct snd_soc_codec_driver soc_codec_dev_max98088 = {
        .reg_word_size = sizeof(u8),
        .reg_cache_default = max98088_reg,
        .volatile_register = max98088_volatile_register,
-	.dapm_widgets = max98088_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(max98088_dapm_widgets),
-	.dapm_routes = max98088_audio_map,
-	.num_dapm_routes = ARRAY_SIZE(max98088_audio_map),
+    .dapm_widgets = max98088_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(max98088_dapm_widgets),
+    .dapm_routes = max98088_audio_map,
+    .num_dapm_routes = ARRAY_SIZE(max98088_audio_map),
 };
 
 static int max98088_i2c_probe(struct i2c_client *i2c,
@@ -2224,7 +2234,7 @@ static int max98088_i2c_probe(struct i2c_client *i2c,
        int ret;
 
        max98088 = devm_kzalloc(&i2c->dev, sizeof(struct max98088_priv),
-			       GFP_KERNEL);
+                   GFP_KERNEL);
        if (max98088 == NULL)
                return -ENOMEM;
 
