@@ -509,10 +509,12 @@ void tegra_lp0_cpu_mode(bool enter)
 #define PMC_DPD_SAMPLE			0x20
 
 struct tegra_io_dpd tegra_list_io_dpd[] = {
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* sd dpd bits in dpd2 register */
 	IO_DPD_INFO("sdhci-tegra.0",	1,	1), /* SDMMC1 */
 	IO_DPD_INFO("sdhci-tegra.2",	1,	2), /* SDMMC3 */
 	IO_DPD_INFO("sdhci-tegra.3",	1,	3), /* SDMMC4 */
+#endif
 };
 
 /* we want to cleanup bootloader io dpd setting in kernel */
