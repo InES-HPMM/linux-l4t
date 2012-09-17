@@ -47,6 +47,8 @@ static char *pluto_cam_reg_name[] = {
 	"avdd_cam2",		/* Analog VDD 2.7V */
 	"vdd_1v2_cam",		/* Digital VDD 1.2V */
 	"vdd_1v8_cam12",	/* Digital VDDIO 1.8V */
+	"vddio_cam_mb",		/* CAM_I2C PULL-UP VDD 1.8V */
+	"vdd_af_cam1",		/* AF VDD */
 };
 
 static struct regulator *pluto_cam_reg[ARRAY_SIZE(pluto_cam_reg_name)];
