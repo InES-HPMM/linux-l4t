@@ -16,27 +16,17 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-#include <linux/i2c.h>
-#include <linux/delay.h>
-#include <mach/gpio.h>
-#include "gpio-names.h"
-#include "board.h"
-#include <mach/gpio.h>
-#include <media/imx091.h>
-#include "board-pluto.h"
-#include "cpu-tegra.h"
+#include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
-#include <mach/gpio-tegra.h>
-#include <mach/fb.h>
+#include <linux/mpu.h>
 #include <media/imx091.h>
 #include <media/imx132.h>
-#include <generated/mach-types.h>
-#include <linux/mpu.h>
 
-static struct board_info board_info;
+#include "gpio-names.h"
+#include "board-pluto.h"
 
 /* isl29029 support is provided by isl29028*/
 static struct i2c_board_info pluto_i2c1_isl_board_info[] = {
@@ -56,7 +46,6 @@ static char *pluto_cam_reg_name[] = {
 	"avdd_cam2",		/* Analog VDD 2.7V */
 	"vdd_1v2_cam",		/* Digital VDD 1.2V */
 	"vdd_1v8_cam12",	/* Digital VDDIO 1.8V */
-	"vddio_cam",		/* Tegra CAM_I2C, CAM_MCLK, VDD 1.8V */
 	"vddio_cam_mb",		/* CAM_I2C PULL-UP VDD 1.8V */
 	"vdd_af_cam1",		/* AF VDD */
 };
@@ -90,12 +79,13 @@ static int pluto_imx091_power_on(void)
 
 reg_alloc_fail:
 
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
 		if (pluto_cam_reg[i]) {
 			regulator_put(pluto_cam_reg[i]);
 			pluto_cam_reg[i] = NULL;
 		}
 	}
+	pr_info("%s fail\n", __func__);
 
 	return -ENODEV;
 }
@@ -104,10 +94,11 @@ static int pluto_imx091_power_off(void)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
 		if (pluto_cam_reg[i]) {
 			regulator_disable(pluto_cam_reg[i]);
 			regulator_put(pluto_cam_reg[i]);
+			pluto_cam_reg[i] = NULL;
 		}
 	}
 
@@ -140,8 +131,7 @@ static int pluto_imx132_power_on(void)
 	return 0;
 
 reg_alloc_fail:
-
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
 		if (pluto_cam_reg[i]) {
 			regulator_put(pluto_cam_reg[i]);
 			pluto_cam_reg[i] = NULL;
@@ -156,10 +146,11 @@ static int pluto_imx132_power_off(void)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
 		if (pluto_cam_reg[i]) {
 			regulator_disable(pluto_cam_reg[i]);
 			regulator_put(pluto_cam_reg[i]);
+			pluto_cam_reg[i] = NULL;
 		}
 	}
 
@@ -236,7 +227,6 @@ fail_free_gpio:
 int __init pluto_sensors_init(void)
 {
 	pr_debug("%s: ++\n", __func__);
-	tegra_get_board_info(&board_info);
 	pluto_camera_init();
 
 	i2c_register_board_info(0, pluto_i2c1_isl_board_info,
