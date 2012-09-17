@@ -96,7 +96,9 @@
 #define CL_DVFS_OUTPUT_FORCE		0x24
 #define CL_DVFS_MONITOR_CTRL		0x28
 #define CL_DVFS_MONITOR_CTRL_DISABLE	0
+#define CL_DVFS_MONITOR_CTRL_FREQ	6
 #define CL_DVFS_MONITOR_DATA		0x2c
+#define CL_DVFS_MONITOR_DATA_MASK	0xFFFF
 
 #define CL_DVFS_I2C_CFG			0x40
 #define CL_DVFS_I2C_CFG_ARB_ENABLE	(0x1 << 20)
@@ -388,8 +390,8 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, CL_DVFS_FREQ_REQ_SCALE_MASK, CL_DVFS_FREQ_REQ);
 	cl_dvfs_writel(cld, param->scale_out_ramp, CL_DVFS_SCALE_RAMP);
 
-	/* disable monitoring */
-	cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_DISABLE, CL_DVFS_MONITOR_CTRL);
+	/* select frequency for monitoring */
+	cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_FREQ, CL_DVFS_MONITOR_CTRL);
 	cl_dvfs_wmb(cld);
 }
 
@@ -687,7 +689,8 @@ DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
 static int monitor_get(void *data, u64 *val)
 {
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
-	*val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
+	*val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+		CL_DVFS_MONITOR_DATA_MASK;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
