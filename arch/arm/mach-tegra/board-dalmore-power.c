@@ -60,6 +60,7 @@ static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
 static struct regulator_consumer_supply tps65090_dcdc2_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_3v3", NULL),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 	REGULATOR_SUPPLY("vdd_sys_ds_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_sys_nfc_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_hv_nfc_3v3", NULL),

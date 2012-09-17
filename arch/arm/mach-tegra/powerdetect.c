@@ -104,7 +104,6 @@ static struct pwr_detect_cell pwr_detect_cells[] = {
 	POWER_CELL("pwrdet_sdmmc4",		  0, (0x1 << 14), 0xFFFFFFFF),
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	POWER_CELL("pwrdet_hv",		(0x1 << 15), (0x1 << 15), 0xFFFFFFFF),
-	POWER_CELL("pwrdet_mem_comp",		  0, (0x1 << 16), 0xFFFFFFFF),
 #endif
 #endif
 };
