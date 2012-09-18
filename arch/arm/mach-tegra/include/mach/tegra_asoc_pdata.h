@@ -33,6 +33,7 @@ struct i2s_config {
 	int sample_size;
 	int rate;
 	int channels;
+	int bit_clk;
 };
 
 struct tegra_asoc_platform_data {
