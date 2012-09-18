@@ -33,34 +33,6 @@ ENTRY(v7_flush_icache_all)
 	mov	pc, lr
 ENDPROC(v7_flush_icache_all)
 
- /*
- *     v7_flush_dcache_louis()
- *
- *     Flush the D-cache up to the Level of Unification Inner Shareable
- *
- *     Corrupted registers: r0-r7, r9-r11 (r6 only in Thumb mode)
- */
-
-ENTRY(v7_flush_dcache_louis)
-	dmb					@ ensure ordering with previous memory accesses
-	mrc	p15, 1, r0, c0, c0, 1		@ read clidr, r0 = clidr
-	ALT_SMP(ands	r3, r0, #(7 << 21))	@ extract LoUIS from clidr
-	ALT_UP(ands	r3, r0, #(7 << 27))	@ extract LoUU from clidr
-#ifdef CONFIG_ARM_ERRATA_643719
-	ALT_SMP(mrceq	p15, 0, r2, c0, c0, 0)	@ read main ID register
-	ALT_UP(moveq	pc, lr)			@ LoUU is zero, so nothing to do
-	ldreq	r1, =0x410fc090                 @ ID of ARM Cortex A9 r0p?
-	biceq	r2, r2, #0x0000000f             @ clear minor revision number
-	teqeq	r2, r1                          @ test for errata affected core and if so...
-	orreqs	r3, #(1 << 21)			@   fix LoUIS value (and set flags state to 'ne')
-#endif
-	ALT_SMP(mov	r3, r3, lsr #20)	@ r3 = LoUIS * 2
-	ALT_UP(mov	r3, r3, lsr #26)	@ r3 = LoUU * 2
-	moveq	pc, lr				@ return if level == 0
-	mov	r10, #0				@ r10 (starting level) = 0
-	b	flush_levels			@ start flushing cache levels
-ENDPROC(v7_flush_dcache_louis)
-
 /*
  *	v7_op_dcache_all op
  *
@@ -133,6 +105,35 @@ ENDPROC(v7_flush_dcache_all)
 ENTRY(v7_clean_dcache_all)
 	v7_op_dcache_all c10
 ENDPROC(v7_clean_dcache_all)
+
+ /*
+ *     v7_flush_dcache_louis()
+ *
+ *     Flush the D-cache up to the Level of Unification Inner Shareable
+ *
+ *     Corrupted registers: r0-r7, r9-r11 (r6 only in Thumb mode)
+ */
+
+ENTRY(v7_flush_dcache_louis)
+	dmb					@ ensure ordering with previous memory accesses
+	mrc	p15, 1, r0, c0, c0, 1		@ read clidr, r0 = clidr
+	ALT_SMP(ands	r3, r0, #(7 << 21))	@ extract LoUIS from clidr
+	ALT_UP(ands	r3, r0, #(7 << 27))	@ extract LoUU from clidr
+#ifdef CONFIG_ARM_ERRATA_643719
+	ALT_SMP(mrceq	p15, 0, r2, c0, c0, 0)	@ read main ID register
+	ALT_UP(moveq	pc, lr)			@ LoUU is zero, so nothing to do
+	ldreq	r1, =0x410fc090                 @ ID of ARM Cortex A9 r0p?
+	biceq	r2, r2, #0x0000000f             @ clear minor revision number
+	teqeq	r2, r1                          @ test for errata affected core and if so...
+	orreqs	r3, #(1 << 21)			@   fix LoUIS value (and set flags state to 'ne')
+#endif
+	ALT_SMP(mov	r3, r3, lsr #20)	@ r3 = LoUIS * 2
+	ALT_UP(mov	r3, r3, lsr #26)	@ r3 = LoUU * 2
+	moveq	pc, lr				@ return if level == 0
+	mov	r10, #0				@ r10 (starting level) = 0
+	b	1001f				@ start flushing cache levels
+	v7_op_dcache_all c14
+ENDPROC(v7_flush_dcache_louis)
 
 /*
  *	v7_flush_cache_all()
