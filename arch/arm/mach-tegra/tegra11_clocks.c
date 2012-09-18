@@ -5156,7 +5156,7 @@ static struct clk tegra_pll_d = {
 		.vco_max   = 1000000000,
 		.freq_table = tegra_pll_d_freq_table,
 		.lock_delay = 1000,
-		.cpcon_default = 12,
+		.cpcon_default = 8,
 	},
 };
 
