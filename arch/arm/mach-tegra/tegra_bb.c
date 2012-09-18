@@ -573,8 +573,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* Private is uncached */
 	bb->priv_virt =  ioremap_nocache(bb->priv_phy,
 					bb->priv_size);
-	/* IPC memory is cached */
-	bb->ipc_virt =  ioremap_cached(bb->ipc_phy,
+	/* IPC memory is uncached */
+	bb->ipc_virt =  ioremap_nocache(bb->ipc_phy,
 					   bb->ipc_size);
 
 	/* clear the first 4K of IPC memory */
