@@ -712,33 +712,29 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 			clk_enable(phy->ctrlr_clk);
 		}
 	} else {
-		if ((phy->pdata->has_hostpc) &&
-			(phy->pdata->phy_intf == TEGRA_USB_PHY_INTF_UTMI)) {
+		int gpio = phy->pdata->u_data.host.vbus_gpio;
+		if (gpio != -1) {
+			if (gpio_request(gpio, "usb_host_vbus") < 0) {
+				ERR("inst:[%d] host vbus gpio req failed\n",
+								phy->inst);
+				goto fail_init;
+			}
+			if (gpio_direction_output(gpio, 1) < 0) {
+				ERR("inst:[%d] host vbus gpio dir failed\n",
+								phy->inst);
+				goto fail_init;
+			}
+		} else {
 			phy->vbus_reg = regulator_get(&pdev->dev, "usb_vbus");
-			if (WARN_ON(IS_ERR_OR_NULL(phy->vbus_reg))) {
+			if (IS_ERR_OR_NULL(phy->vbus_reg)) {
 				ERR("failed to get regulator vdd_vbus_usb:" \
 				"%ld,instance : %d\n", PTR_ERR(phy->vbus_reg),
 				phy->inst);
 				phy->vbus_reg = NULL;
 			}
-		} else {
-			int gpio = phy->pdata->u_data.host.vbus_gpio;
-			if (gpio != -1) {
-				if (gpio_request(gpio, "usb_host_vbus") < 0) {
-					ERR("inst:[%d] host vbus gpio \
-						 req failed\n", phy->inst);
-					goto fail_init;
-				}
-				if (gpio_direction_output(gpio, 1) < 0) {
-					ERR("inst:[%d] host vbus gpio \
-						 dir failed\n", phy->inst);
-					goto fail_init;
-				}
-			}
 		}
 		usb_host_vbus_enable(phy, true);
 	}
-
 	err = tegra_usb_phy_init_ops(phy);
 	if (err) {
 		ERR("inst:[%d] Failed to init ops\n", phy->inst);
