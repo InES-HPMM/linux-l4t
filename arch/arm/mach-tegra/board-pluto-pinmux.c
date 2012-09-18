@@ -133,6 +133,9 @@ static __initdata struct tegra_drive_pingroup_config pluto_drive_pinmux[] = {
 	/* SDMMC1 */
 	SET_DRIVE(SDIO1, DISABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
 
+	/* SDMMC3 */
+	SET_DRIVE(SDIO3, DISABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
+
 	/* SDMMC4 */
 	SET_DRIVE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST),
 };
