@@ -323,6 +323,7 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 		}
 
 		iob->length = to_send;
+		iob->chan = tty_dev.line[idx].pchan->index;
 		remain -= to_send;
 		memcpy(NVSHM_B2A(tty_dev.handle,
 				 iob->npduData +
@@ -339,6 +340,7 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 		}
 	}
 	if (nvshm_write(tty_dev.line[idx].pchan, list)) {
+		pr_err("%s: nvshm_write return error\n", __func__);
 		nvshm_iobuf_free_cluster(tty_dev.line[idx].pchan, list);
 		return -EAGAIN;
 	}

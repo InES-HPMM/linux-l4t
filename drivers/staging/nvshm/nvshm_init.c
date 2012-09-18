@@ -47,8 +47,6 @@ static int nvshm_probe(struct platform_device *pdev)
 
 	spin_lock_init(&handle->lock);
 
-	hrtimer_init(&handle->queue_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-
 	handle->ipc_base_virt = pdata->ipc_base_virt;
 	handle->ipc_size = pdata->ipc_size;
 

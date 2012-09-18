@@ -16,7 +16,7 @@
 #define _NVSHM_IOBUF_H
 
 /* Baseband base address in BB memory space - this is a constant */
-#define NVSHM_IPC_BB_BASE (0x89000000)
+#define NVSHM_IPC_BB_BASE (0x8C000000)
 
 /**
  * NVSHM_B2A convert from Baseband address space
@@ -137,4 +137,5 @@ int nvshm_iobuf_check(struct nvshm_channel *chan, struct nvshm_iobuf *iob);
  * @return 0 if ok negative otherwise
  */
 int nvshm_iobuf_init(struct nvshm_handle *handle);
+
 #endif /* _NVSHM_IOBUF_H */

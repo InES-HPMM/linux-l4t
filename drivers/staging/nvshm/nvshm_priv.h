@@ -59,7 +59,6 @@ struct nvshm_handle {
 	struct workqueue_struct *nvshm_wq;
 	char wq_name[16];
 	struct device *dev;
-	struct hrtimer queue_timer;
 	void *ipc_data;
 	void (*generate_ipc)(void *ipc_data);
 	struct platform_device *tegra_bb;

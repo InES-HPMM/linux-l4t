@@ -19,6 +19,8 @@
 #include "nvshm_queue.h"
 #include "nvshm_iobuf.h"
 
+#include <asm/cacheflush.h>
+
 struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 {
 	struct nvshm_iobuf *dummy, *ret;
@@ -27,6 +29,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		pr_err("%s: Queue not init!\n", __func__);
 		return NULL;
 	}
+
 	dummy = handle->shared_queue_head;
 	ret = NVSHM_B2A(handle, handle->shared_queue_head->qnext);
 
@@ -35,7 +38,21 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 
 	dummy->qnext = NULL;
 	handle->shared_queue_head = ret;
+
+	/* Update queue_bb_offset for debug purpose */
+	handle->conf->queue_bb_offset = (int)ret
+		- (int)handle->ipc_base_virt;
+
+	if ((handle->conf->queue_bb_offset < 0) ||
+	    (handle->conf->queue_bb_offset > handle->conf->shmem_size))
+		pr_err("%s: out of bound descriptor offset %d addr 0x%x/0x%x\n",
+		       __func__,
+		       handle->conf->queue_bb_offset,
+		       ret,
+		       NVSHM_A2B(handle, ret));
+
 	nvshm_iobuf_free_cluster(&handle->chan[dummy->chan], dummy);
+
 	return ret;
 }
 
@@ -45,14 +62,24 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 		pr_err("%s: Queue not init!\n", __func__);
 		return -EINVAL;
 	}
+
+	if (!iob) {
+		pr_err("%s: Queueing null pointer!\n", __func__);
+		return -EINVAL;
+	}
+
 	/* Sanity check */
 	if (handle->shared_queue_tail->qnext) {
 		pr_err("%s: illegal queue pointer detected!\n", __func__);
 		return -EINVAL;
 	}
+
 	/* Take a reference on queued iobufs (all of them!) */
 	nvshm_iobuf_ref_cluster(iob);
+	mb();
 	handle->shared_queue_tail->qnext = NVSHM_A2B(handle, iob);
+	mb();
+
 	handle->shared_queue_tail = iob;
 	return 0;
 }
@@ -61,7 +88,6 @@ int nvshm_init_queue(struct nvshm_handle *handle)
 {
 
 	pr_debug("%s instance %d\n", __func__, handle->instance);
-
 	/* Catch config issues */
 	if ((!handle->ipc_base_virt) || (!handle->desc_base_virt)) {
 		pr_err("%s IPC or DESC base not defined!", __func__);
@@ -85,8 +111,8 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	spin_lock_bh(&handle->lock);
 	iob = nvshm_queue_get(handle);
 	while (iob) {
-		if (iob->pool_id >= NVSHM_AP_POOL_ID) {
-			chan = iob->chan;
+		chan = iob->chan;
+		if (iob->pool_id < NVSHM_AP_POOL_ID) {
 			if (handle->chan[chan].ops) {
 				spin_unlock_bh(&handle->lock);
 				handle->chan[chan].ops->rx_event(

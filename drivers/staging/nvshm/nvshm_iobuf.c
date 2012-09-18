@@ -122,7 +122,10 @@ void nvshm_iobuf_free(struct nvshm_channel *chan, struct nvshm_iobuf *desc)
 			desc->length = 0;
 			desc->dataOffset = 0;
 			desc->qnext = NULL;
+			spin_unlock(&alloc.lock);
 			nvshm_queue_put(priv, desc);
+			nvshm_generate_ipc(priv);
+			return;
 		}
 	}
 	spin_unlock(&alloc.lock);
@@ -456,4 +459,3 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 #endif
 	return 0;
 }
-

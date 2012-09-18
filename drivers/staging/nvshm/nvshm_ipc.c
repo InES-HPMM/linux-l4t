@@ -26,6 +26,13 @@
 
 #define NVSHM_QUEUE_TIMEOUT_US (1000)
 
+#define FLUSH_CPU_DCACHE(va, size)	\
+	do {	\
+		unsigned long _pa_ = virt_to_phys(va);			\
+		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
+		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
+	} while (0)
+
 static int ipc_readconfig(struct nvshm_handle *handle)
 {
 	struct nvshm_config *conf;
@@ -65,26 +72,26 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
-				     + conf->region_bb_desc_offset
 				     + conf->queue_bb_offset);
-	pr_debug("%s shared_queue_head=0x%x\n",
+	pr_debug("%s shared_queue_head offset=0x%x\n",
 		__func__,
-		(unsigned int)handle->shared_queue_head);
+		(unsigned int)handle->shared_queue_head-
+		(unsigned int)handle->ipc_base_virt);
 #else
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
-				      + conf->region_ap_desc_offset
 				      + conf->queue_ap_offset);
-	pr_debug("%s shared_queue_head=0x%x\n",
+	pr_debug("%s shared_queue_head offset=0x%x\n",
 		__func__,
-		(unsigned int)handle->shared_queue_head);
+		(unsigned int)handle->shared_queue_head -
+		(unsigned int)handle->ipc_base_virt);
 #endif
 	handle->shared_queue_tail =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
-				     + conf->region_ap_desc_offset
 				     + conf->queue_ap_offset);
-	pr_debug("%s shared_queue_tail=0x%x\n",
-		__func__, (unsigned int)handle->shared_queue_tail);
+	pr_debug("%s shared_queue_tail offset=0x%x\n",
+		__func__, (unsigned int)handle->shared_queue_tail -
+		(unsigned int)handle->ipc_base_virt);
 
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		handle->chan[chan].index = chan;
@@ -231,23 +238,10 @@ static void ipc_work(struct work_struct *work)
 	handle->old_status = cmd;
 }
 
-static  enum hrtimer_restart _ipc_timeout(struct hrtimer *timer)
-{
-	struct nvshm_handle *handle = nvshm_get_handle();
-	/* Flush all relevant pages */
-	flush_kernel_vmap_range(handle->data_base_virt, handle->data_size);
-	flush_kernel_vmap_range(handle->desc_base_virt, handle->desc_size);
-
-	/* Update mailbox */
-	*(int *)handle->mb_base_virt = NVSHM_IPC_MESSAGE(NVSHM_IPC_READY);
-	/* generate ipc */
-	tegra_bb_generate_ipc(handle->tegra_bb);
-	return HRTIMER_NORESTART;
-}
-
 static void nvshm_ipc_handler(void *data)
 {
 	struct nvshm_handle *handle = (struct nvshm_handle *)data;
+	pr_debug("%s\n", __func__);
 	queue_work(handle->nvshm_wq, &handle->nvshm_work);
 }
 
@@ -257,15 +251,12 @@ int nvshm_register_ipc(struct nvshm_handle *handle)
 	snprintf(handle->wq_name, 15, "nvshm_queue%d", handle->instance);
 	handle->nvshm_wq = create_singlethread_workqueue(handle->wq_name);
 	INIT_WORK(&handle->nvshm_work, ipc_work);
-	handle->queue_timer.function = _ipc_timeout;
 	tegra_bb_register_ipc(handle->tegra_bb, nvshm_ipc_handler, handle);
 	return 0;
 }
 
 int nvshm_unregister_ipc(struct nvshm_handle *handle)
 {
-	pr_debug("%s cancel timer\n", __func__);
-	hrtimer_cancel(&handle->queue_timer);
 	pr_debug("%s flush workqueue\n", __func__);
 	flush_workqueue(handle->nvshm_wq);
 	pr_debug("%s destroy workqueue\n", __func__);
@@ -277,24 +268,12 @@ int nvshm_unregister_ipc(struct nvshm_handle *handle)
 
 int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
-	/* If timer is running; doing nothing */
-	if (!hrtimer_active(&handle->queue_timer)) {
-		/* Flush all relevant pages */
-		flush_kernel_vmap_range(handle->data_base_virt,
-					handle->data_size);
-		flush_kernel_vmap_range(handle->desc_base_virt,
-					handle->desc_size);
-		/* Update mailbox */
-		*(int *)handle->mb_base_virt =
-			NVSHM_IPC_MESSAGE(NVSHM_IPC_READY);
-
-		/* fire timer */
-		hrtimer_start(&handle->queue_timer,
-			      ktime_set(0, NVSHM_QUEUE_TIMEOUT_US * 1000),
-			      HRTIMER_MODE_REL);
-		/* generate ipc */
-		tegra_bb_generate_ipc(handle->tegra_bb);
-	}
+	/* Update mailbox */
+	*(int *)handle->mb_base_virt =
+		NVSHM_IPC_MESSAGE(NVSHM_IPC_READY);
+	mb();
+	/* generate ipc */
+	tegra_bb_generate_ipc(handle->tegra_bb);
 	return 0;
 }
 

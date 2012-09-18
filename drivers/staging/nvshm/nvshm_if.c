@@ -63,6 +63,7 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 	struct nvshm_handle *priv = nvshm_get_handle();
 	spin_lock_bh(&priv->lock);
 	if (!priv->chan[handle->index].ops) {
+		pr_err("%s: channel not mapped\n", __func__);
 		spin_unlock_bh(&priv->lock);
 		return -EINVAL;
 	}
@@ -71,8 +72,8 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 	/* TBD: update alloc/BW limit counter */
 	iob->qnext = NULL;
 	nvshm_queue_put(priv, iob);
-	spin_unlock_bh(&priv->lock);
 	nvshm_generate_ipc(priv);
+	spin_unlock_bh(&priv->lock);
 	return 0;
 }
 
