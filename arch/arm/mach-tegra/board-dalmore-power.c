@@ -710,7 +710,7 @@ static struct regulator_init_data *dalmore_e1611_reg_data[] = {
 PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps45, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
@@ -767,6 +767,7 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[] = {
 static struct palmas_pmic_platform_data pmic_platform = {
 	.reg_data = dalmore_e1611_reg_data,
 	.reg_init = dalmore_e1611_reg_init,
+	.enable_ldo8_tracking = true,
 };
 
 static struct palmas_platform_data palmas_pdata = {
