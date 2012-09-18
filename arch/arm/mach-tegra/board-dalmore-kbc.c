@@ -27,6 +27,7 @@
 #include <mach/kbc.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
+#include <linux/mfd/palmas.h>
 
 #include "tegra-board-id.h"
 #include "board.h"
@@ -92,9 +93,20 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 				MAX77663_IRQ_ONOFF_EN0_1SEC, 0, 3000),
 };
 
+static struct gpio_keys_button dalmore_e1611_int_keys[] = {
+	[0] = GPIO_IKEY(KEY_POWER, PALMAS_TEGRA_IRQ_BASE +
+				PALMAS_PWRON_IRQ, 1, 100),
+};
+
+
 static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 	.buttons	= dalmore_int_keys,
 	.nbuttons	= ARRAY_SIZE(dalmore_int_keys),
+};
+
+static struct gpio_keys_platform_data dalmore_e1611_int_keys_pdata = {
+	.buttons	= dalmore_e1611_int_keys,
+	.nbuttons	= ARRAY_SIZE(dalmore_e1611_int_keys),
 };
 
 static struct platform_device dalmore_int_keys_device = {
@@ -102,6 +114,14 @@ static struct platform_device dalmore_int_keys_device = {
 	.id	= 0,
 	.dev	= {
 		.platform_data  = &dalmore_int_keys_pdata,
+	},
+};
+
+static struct platform_device dalmore_e1611_int_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
+		.platform_data  = &dalmore_e1611_int_keys_pdata,
 	},
 };
 
@@ -130,6 +150,8 @@ int __init dalmore_kbc_init(void)
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id != BOARD_E1611)
 		platform_device_register(&dalmore_int_keys_device);
+	else if (board_info.board_id == BOARD_E1611)
+		platform_device_register(&dalmore_e1611_int_keys_device);
 
 	return 0;
 }
