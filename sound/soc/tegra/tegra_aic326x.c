@@ -1253,11 +1253,11 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 			pdata->i2s_param[i].rate;
 		machine->codec_info[i].channels =
 			pdata->i2s_param[i].channels;
-		if ((pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_A) ||
-			(pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_B))
-			machine->codec_info[i].is_format_dsp = 1;
-		else
-			machine->codec_info[i].is_format_dsp = 0;
+		machine->codec_info[i].i2s_mode =
+			pdata->i2s_param[i].i2s_mode;
+		machine->codec_info[i].bit_clk =
+			pdata->i2s_param[i].bit_clk;
+
 	}
 
 	tegra_aic326x_dai[DAI_LINK_HIFI].cpu_dai_name =

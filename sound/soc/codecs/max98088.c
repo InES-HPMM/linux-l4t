@@ -1721,6 +1721,7 @@ static struct snd_soc_dai_driver max98088_dai[] = {
                .formats = MAX98088_FORMATS,
        },
         .ops = &max98088_dai1_ops,
+		.symmetric_rates = 1,
 },
 {
        .name = "Aux",

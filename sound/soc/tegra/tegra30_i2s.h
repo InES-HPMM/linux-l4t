@@ -286,7 +286,8 @@ struct codec_config {
 	int channels;
 	int bitsize;
 	int is_i2smaster;
-	int is_format_dsp;
+	int i2s_mode;
+	int bit_clk;
 };
 
 int tegra30_make_voice_call_connections(struct codec_config *codec_info,

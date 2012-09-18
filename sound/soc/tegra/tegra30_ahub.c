@@ -192,6 +192,29 @@ int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
 	return val;
 }
 
+
+int tegra30_ahub_rx_fifo_is_empty(int i2s_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_RX_FIFO_EMPTY << (i2s_id*2));
+	val &= mask;
+	return val;
+}
+
+int tegra30_ahub_tx_fifo_is_empty(int i2s_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
+	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_TX_FIFO_EMPTY << (i2s_id*2));
+	val &= mask;
+
+	return val;
+}
+
+
 int tegra30_ahub_dam_ch0_is_enabled(int dam_id)
 {
 	int val, mask;
@@ -227,6 +250,44 @@ int tegra30_ahub_dam_tx_is_enabled(int dam_id)
 
 	return val;
 }
+
+
+int tegra30_ahub_dam_ch0_is_empty(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX0FIFO_EMPTY;
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_dam_ch1_is_empty(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX1FIFO_EMPTY;
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_dam_tx_is_empty(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_TXFIFO_EMPTY;
+	val &= mask;
+
+	return val;
+}
+
 
 int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
 							unsigned int pack_mode)
@@ -714,7 +775,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	}
 	clkm_rate = clk_get_rate(clk_get_parent(ahub->clk_d_audio));
 
-	while (clkm_rate > 12000000)
+	while (clkm_rate > 13000000)
 		clkm_rate >>= 1;
 
 	clk_set_rate(ahub->clk_d_audio,clkm_rate);

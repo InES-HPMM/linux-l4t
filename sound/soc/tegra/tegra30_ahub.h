@@ -496,9 +496,15 @@ extern int tegra30_ahub_unset_rx_cif_source(enum tegra30_ahub_rxcif rxcif);
 
 extern int tegra30_ahub_rx_fifo_is_enabled(int i2s_id);
 extern int tegra30_ahub_tx_fifo_is_enabled(int i2s_id);
+extern int tegra30_ahub_rx_fifo_is_empty(int i2s_id);
+extern int tegra30_ahub_tx_fifo_is_empty(int i2s_id);
 extern int tegra30_ahub_dam_ch0_is_enabled(int dam_id);
 extern int tegra30_ahub_dam_ch1_is_enabled(int dam_id);
 extern int tegra30_ahub_dam_tx_is_enabled(int dam_id);
+extern int tegra30_ahub_dam_ch0_is_empty(int dam_id);
+extern int tegra30_ahub_dam_ch1_is_empty(int dam_id);
+extern int tegra30_ahub_dam_tx_is_empty(int dam_id);
+
 
 #ifdef CONFIG_PM
 extern int tegra30_ahub_apbif_resume(void);
