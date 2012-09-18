@@ -127,12 +127,12 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(SDMMC4_DAT7,   SDMMC4,      PULL_UP,   NORMAL,   INPUT),
 
 	/* KBC pinmux */
-	DEFAULT_PINMUX(KB_COL0,       KBC,         PULL_UP,   TRISTATE, INPUT),
-	DEFAULT_PINMUX(KB_COL1,       KBC,         PULL_UP,   TRISTATE, INPUT),
-	DEFAULT_PINMUX(KB_COL2,       KBC,         PULL_UP,   TRISTATE, INPUT),
-	DEFAULT_PINMUX(KB_ROW0,       KBC,         NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(KB_ROW1,       KBC,         NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(KB_ROW2,       KBC,         NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(KB_COL0,       KBC,         PULL_UP,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_COL1,       KBC,         PULL_UP,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_COL2,       KBC,         PULL_UP,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW0,       KBC,         PULL_UP,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW1,       KBC,         PULL_UP,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW2,       KBC,         PULL_UP,    NORMAL,   INPUT),
 
 	/* UARTA pinmux */
 	DEFAULT_PINMUX(KB_ROW10,      UARTA,       NORMAL,    TRISTATE, INPUT),
