@@ -78,7 +78,7 @@ EXPORT_SYMBOL(sysctl_mhdp_concat_nb_pkt);
 
 /*** Type definitions ***/
 
-#define MAX_MHDPHDR_SIZE 12
+#define MAX_MHDPHDR_SIZE 10
 
 struct mhdp_tunnel {
 	struct mhdp_tunnel	*next;
