@@ -479,8 +479,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 #endif
 };
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
+static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = true,
@@ -493,7 +492,6 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
 		.power_off_on_suspend = true,
 	},
 };
-#endif
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
@@ -558,11 +556,9 @@ static void pluto_usb_init(void)
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	tegra_ehci2_device.dev.platform_data =
-		&tegra_ehci2_hsic_smsc_hub_pdata;
-	platform_device_register(&tegra_ehci2_device);
-#endif
+	tegra_ehci3_device.dev.platform_data =
+		&tegra_ehci3_hsic_smsc_hub_pdata;
+	platform_device_register(&tegra_ehci3_device);
 }
 
 static void pluto_modem_init(void)
