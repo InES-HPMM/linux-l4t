@@ -2085,8 +2085,9 @@ static int uhsic_rail_enable(struct tegra_usb_phy *phy)
 		phy->hsic_reg = regulator_get(&phy->pdev->dev, "vddio_hsic");
 		if (IS_ERR_OR_NULL(phy->hsic_reg)) {
 			pr_err("UHSIC: Could not get regulator vddio_hsic\n");
+			ret = PTR_ERR(phy->hsic_reg);
 			phy->hsic_reg = NULL;
-			return PTR_ERR(phy->hsic_reg);
+			return ret;
 		}
 	}
 

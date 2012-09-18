@@ -261,8 +261,8 @@ static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
-	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 	REGULATOR_SUPPLY("vddio_bb_hsic", NULL),
 };
@@ -589,8 +589,8 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
-	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_hsic_bb", NULL),
 	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.1"),
