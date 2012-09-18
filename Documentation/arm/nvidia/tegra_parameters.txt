@@ -28,65 +28,78 @@ Contains power gating state of different tegra blocks.
 
 # cat /sys/kernel/debug/powergate
 
-/sys/module/cpu_tegra3/parameters/auto_hotplug
-----------------------------------------------
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable
+------------------------------------------------------
 
-Used to control auto hotplug governor
-# echo 0 >/sys/module/cpu_tegra3/parameters/auto_hotplug
-# echo 1 >/sys/module/cpu_tegra3/parameters/auto_hotplug
-# cat /sys/module/cpu_tegra3/parameters/auto_hotplug
-0: disabled
-1: idle
-2: down
-3: up
+Control hotplugging of cores.
+# echo 0 > /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable
+# echo 1 > /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable
 
-/sys/module/cpu_tegra3/parameters/no_lp
----------------------------------------
+Cpuquiet supports the implementation of multiple policies in the form of
+governors. The balanced governor implements the exact same policy previously
+implemented as "auto hotplug". The behavior with regards to cores coming
+online/offline and switching between the LP and G cluster remain the same.
 
-Used to enable/disable shadow cluster.
-# echo 0 >/sys/module/cpu_tegra3/parameters/no_lp
-# echo 1 >/sys/module/cpu_tegra3/parameters/no_lp
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/no_lp
+-----------------------------------------------------
 
-/sys/module/cpu_tegra3/parameters/idle_bottom_freq
---------------------------------------------------
+Enable/disable shadow cluster.
+# echo 0 > /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/no_lp
+# echo 1 > /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/no_lp
 
-Shadow cluster maximum frequency.
+/sys/devices/system/cpu/cpuquiet/available_governors
+----------------------------------------------------
 
-/sys/module/cpu_tegra3/parameters/idle_top_freq
------------------------------------------------
+List available governors.
+# cat /sys/devices/system/cpu/cpuquiet/available_governors
+
+/sys/devices/system/cpu/cpuquiet/current_governor
+-------------------------------------------------
+
+Set the current active cpuquiet governor.
+# echo [governor name] > /sys/devices/system/cpu/cpuquiet/current_governor
+
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/idle_bottom_freq
+----------------------------------------------------------------
 
 Main cluster minimum frequency.
 
-/sys/module/cpu_tegra3/parameters/down_delay
----------------------------------------------
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/idle_top_freq
+-------------------------------------------------------------
 
-Auto hotplug delay (in jiffies) for reducing cores.
+Main cluster maximum frequency.
 
-/sys/module/cpu_tegra3/parameters/up2g0_delay
----------------------------------------------
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/down_delay
+----------------------------------------------------------
 
-Delay (in jiffies) for swithing to main cluster.
+Delay (in jiffies) for switching to shadow cluster.
 
-/sys/module/cpu_tegra3/parameters/up2gn_delay
----------------------------------------------
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/up_delay
+--------------------------------------------------------
 
-Delay (in jiffies) for bringing additional cores online in main
-cluster.
+Delay for switching to main cluster.
 
-/sys/module/cpu_tegra3/parameters/balance_level
------------------------------------------------
-
-Percentage of max speed considered to be in balance. Half of balanced
-speed is considered skewed. Speed balance states:
-* balanced: freq targets for all CPUs are above 50% of highest speed
-* biased: freq target for at least one CPU is below 50% threshold
-* skewed: freq targets for at least 2 CPUs are below 25% threshold
-Speed balance state and hotplug state dictates auto hotlug behavior.
-
-/sys/module/cpu_tegra3/parameters/mp_overhead
----------------------------------------------
+/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/mp_overhead
+-----------------------------------------------------------
 
 Multi-core overhead percentage for EDP limit calculation.
+
+/sys/devices/system/cpu/cpuquiet/balanced/balance_level
+-------------------------------------------------------
+
+Percentage of max speed considered to be in balance. Half of balanced
+speed is considered skewed. Requires balanced governor to be set active.
+
+/sys/devices/system/cpu/cpuquiet/balanced/down_delay
+----------------------------------------------------
+
+Delay for reducing cores. Requires balanced governor to be set active.
+
+/sys/devices/system/cpu/cpuquiet/balanced/up_delay
+--------------------------------------------------
+
+Delay for bringing additional cores online in main cluster. Requires
+balanced governor to be set active.
 
 /sys/kernel/debug/tegra_hotplug/stats
 -------------------------------------
@@ -110,7 +123,7 @@ Active cluster can be set or toggled:
 # echo "LP" > /sys/kernel/cluster/active
 # echo "toggle" > /sys/kernel/cluster/active
 
-/sys/module/tegra3_clocks/parameters/detach_shared_bus
+/sys/module/tegra30_clocks/parameters/detach_shared_bus
 ------------------------------------------------------
 
 Enable/disable shared bus clock update.
