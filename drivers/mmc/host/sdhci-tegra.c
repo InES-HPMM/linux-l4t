@@ -118,9 +118,10 @@ static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
 };
 #endif
 
-#define NVQUIRK_FORCE_SDHCI_SPEC_200	BIT(0)
-#define NVQUIRK_ENABLE_BLOCK_GAP_DET	BIT(1)
-#define NVQUIRK_ENABLE_SDHCI_SPEC_300	BIT(2)
+#define NVQUIRK_FORCE_SDHCI_SPEC_200		BIT(0)
+#define NVQUIRK_ENABLE_BLOCK_GAP_DET		BIT(1)
+#define NVQUIRK_ENABLE_SDHCI_SPEC_300		BIT(2)
+#define NVQUIRK_DISABLE_AUTO_CALIBRATION	BIT(3)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -664,6 +665,7 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	unsigned int min_uV = SDHOST_HIGH_VOLT_MIN;
 	unsigned int max_uV = SDHOST_HIGH_VOLT_MAX;
 	unsigned int rc = 0;
@@ -716,6 +718,13 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	/* Wait for 1 msec after enabling clock */
 	mdelay(1);
 
+	/*
+	 * Do not enable auto calibration if the platform doesn't
+	 * support it.
+	 */
+	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
+		return rc;
+
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
 		/* Do Auto Calibration for 1.8V signal voltage */
 		val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
@@ -735,7 +744,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		val |= 0x7;
 		sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
 	}
-
 	return rc;
 out:
 	/* Enable the card clock */
@@ -1072,6 +1080,9 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.pdata = &sdhci_tegra20_pdata,
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
+#endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
 
