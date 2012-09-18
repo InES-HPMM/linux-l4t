@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/string.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -817,7 +818,7 @@ static bool tegra11x_pug_clk_n_rst_skip(int id, u32 idx)
 {
 	switch (id) {
 	case TEGRA_POWERGATE_VENC:
-		if ((!powergate_partition_info[id].clk_info[idx].clk_name) &&
+		if ((powergate_partition_info[id].clk_info[idx].clk_name) &&
 			(!(strncmp("csi",
 			powergate_partition_info[id].clk_info[idx].clk_name,
 			3)))) {
@@ -828,7 +829,7 @@ static bool tegra11x_pug_clk_n_rst_skip(int id, u32 idx)
 		}
 		break;
 	case TEGRA_POWERGATE_DISA:
-		if ((!powergate_partition_info[id].clk_info[idx].clk_name) &&
+		if ((powergate_partition_info[id].clk_info[idx].clk_name) &&
 			(!(strncmp("csi",
 			powergate_partition_info[id].clk_info[idx].clk_name,
 			3)))) {
