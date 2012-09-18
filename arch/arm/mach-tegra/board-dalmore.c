@@ -150,7 +150,7 @@ static struct tegra_i2c_platform_data dalmore_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
@@ -167,9 +167,6 @@ static void dalmore_i2c_init(void)
 	tegra_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
 	tegra_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
 	tegra_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
-
-	i2c_register_board_info(0, &rt5640_board_info, 1);
-
 	platform_device_register(&tegra_i2c_device5);
 	platform_device_register(&tegra_i2c_device4);
 	platform_device_register(&tegra_i2c_device3);
@@ -181,13 +178,14 @@ static void dalmore_i2c_init(void)
 	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
 	tegra11_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
 	tegra11_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
-
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
 	platform_device_register(&tegra11_i2c_device3);
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 #endif
+
+	i2c_register_board_info(0, &rt5640_board_info, 1);
 }
 
 static struct platform_device *dalmore_uart_devices[] __initdata = {
@@ -341,6 +339,9 @@ static struct tegra_asoc_platform_data dalmore_audio_pdata = {
 	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
 	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
 	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
+	.gpio_codec1 = TEGRA_GPIO_CODEC1_EN,
+	.gpio_codec2 = TEGRA_GPIO_CODEC2_EN,
+	.gpio_codec3 = TEGRA_GPIO_CODEC3_EN,
 	.i2s_param[HIFI_CODEC]	= {
 		.audio_port_id	= 1,
 		.is_i2s_master	= 1,

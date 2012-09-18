@@ -712,9 +712,9 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No platform data supplied\n");
 		return -EINVAL;
 	}
-
 	if (pdata->codec_name)
 		card->dai_link->codec_name = pdata->codec_name;
+
 	if (pdata->codec_dai_name)
 		card->dai_link->codec_dai_name = pdata->codec_dai_name;
 
@@ -729,10 +729,47 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_err(&pdev->dev, "Fail gpio_request AUDIO_LDO1\n");
 		}
+
 		ret = gpio_direction_output(pdata->gpio_ldo1_en, 1);
-		if (ret) {
+		if (ret)
 			dev_err(&pdev->dev, "Fail gpio_direction AUDIO_LDO1\n");
-		}
+
+		msleep(200);
+	}
+
+	if (gpio_is_valid(pdata->gpio_codec1)) {
+		ret = gpio_request(pdata->gpio_codec1, "rt5640");
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC1\n");
+
+		ret = gpio_direction_output(pdata->gpio_codec1, 1);
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC1\n");
+
+		msleep(200);
+	}
+
+	if (gpio_is_valid(pdata->gpio_codec2)) {
+		ret = gpio_request(pdata->gpio_codec2, "rt5640");
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC2\n");
+
+		ret = gpio_direction_output(pdata->gpio_codec2, 1);
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC2\n");
+
+		msleep(200);
+	}
+
+	if (gpio_is_valid(pdata->gpio_codec3)) {
+		ret = gpio_request(pdata->gpio_codec3, "rt5640");
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC3\n");
+
+		ret = gpio_direction_output(pdata->gpio_codec3, 1);
+		if (ret)
+			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC3\n");
+
 		msleep(200);
 	}
 
