@@ -204,7 +204,7 @@ static int find_safe_output(
 
 	for (i = 0; i < n; i++) {
 		if (freqs[i] >= rate) {
-			*safe_output = cld->clk_dvfs_map[i];
+			*safe_output = cld->clk_dvfs_map[i] ? : 1;
 			return 0;
 		}
 	}
