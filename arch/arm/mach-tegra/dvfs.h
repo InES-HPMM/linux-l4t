@@ -78,6 +78,13 @@ struct dvfs_rail {
 	struct rail_stats stats;
 };
 
+struct dvfs_dfll_data {
+	u32		tune0;
+	u32		tune1;
+	unsigned long	droop_rate_min;
+	unsigned long	out_rate_min;
+};
+
 struct dvfs {
 	/* Used only by tegra2_clock.c */
 	const char *clk_name;
@@ -96,6 +103,8 @@ struct dvfs {
 	/* Filled in by tegra_dvfs_init */
 	int max_millivolts;
 	int num_freqs;
+	int min_millivolts;
+	struct dvfs_dfll_data dfll_data;
 
 	int cur_millivolts;
 	unsigned long cur_rate;

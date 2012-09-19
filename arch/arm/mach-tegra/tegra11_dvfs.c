@@ -105,13 +105,11 @@ static struct dvfs cpu_dvfs = {
 	.dfll_millivolts = cpu_dfll_millivolts,
 	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra11_dvfs_rail_vdd_cpu,
-};
-
-static struct tegra_cl_dvfs_dfll_data cpu_dfll_data = {
-		.dfll_clk_name	= "dfll_cpu",
+	.dfll_data	= {
 		.tune0		= 0x000B0380,
 		.tune1		= 0x000005e0,
 		.droop_rate_min = 1000000,
+	},
 };
 
 /* Core DVFS tables */
@@ -373,7 +371,7 @@ static inline int round_cvb_voltage(int mv, int v_scale)
 }
 
 static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
-	struct tegra_cl_dvfs_dfll_data *dfll_data, int *max_freq_index)
+				    int *max_freq_index)
 {
 	int i, j, mv, dfll_mv;
 	unsigned long fmax_at_vmin = 0;
@@ -448,8 +446,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		min(cpu_millivolts[j - 1], d->max_mv);
 	*max_freq_index = j - 1;
 
-	dfll_data->out_rate_min = fmax_at_vmin * d->freqs_mult;
-	dfll_data->millivolts_min = d->min_mv;
+	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
+	cpu_dvfs->min_millivolts = d->min_mv;
 	return 0;
 }
 
@@ -524,8 +522,7 @@ void __init tegra11x_init_dvfs(void)
 	 * voltage limit is not violated). Error when cpu dvfs table can not
 	 * be constructed must never happen.
 	 */
-	if (set_cpu_dvfs_data(cpu_speedo_id, &cpu_dvfs,
-			      &cpu_dfll_data, &cpu_max_freq_index))
+	if (set_cpu_dvfs_data(cpu_speedo_id, &cpu_dvfs, &cpu_max_freq_index))
 		BUG();
 
 	/* Init rail structures and dependencies */
@@ -544,9 +541,6 @@ void __init tegra11x_init_dvfs(void)
 	/* Initialize matching cpu dvfs entry already found when nominal
 	   voltage was determined */
 	init_dvfs_one(&cpu_dvfs, cpu_max_freq_index);
-
-	/* CL DVFS characterization data */
-	tegra_cl_dvfs_set_dfll_data(&cpu_dfll_data);
 
 	/* Finally disable dvfs on rails if necessary */
 	if (tegra_dvfs_core_disabled)

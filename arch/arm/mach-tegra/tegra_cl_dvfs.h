@@ -84,15 +84,6 @@ struct tegra_cl_dvfs_platform_data {
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
 };
 
-struct tegra_cl_dvfs_dfll_data {
-	const char	*dfll_clk_name;
-	u32		tune0;
-	u32		tune1;
-	unsigned long	droop_rate_min;
-	unsigned long	out_rate_min;
-	int		millivolts_min;
-};
-
 struct dfll_rate_req {
 	u8	freq;
 	u8	scale;
@@ -101,7 +92,6 @@ struct dfll_rate_req {
 
 struct tegra_cl_dvfs {
 	u32					cl_base;
-	struct tegra_cl_dvfs_dfll_data		*dfll_data;
 	struct tegra_cl_dvfs_platform_data	*p_data;
 
 	struct dvfs			*safe_dvfs;
@@ -128,7 +118,6 @@ struct tegra_cl_dvfs {
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data);
-void tegra_cl_dvfs_set_dfll_data(struct tegra_cl_dvfs_dfll_data *data);
 int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld);
 
 void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld);
@@ -140,9 +129,6 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld);
 #else
 static inline void tegra_cl_dvfs_set_platform_data(
 		struct tegra_cl_dvfs_platform_data *data)
-{}
-static inline void tegra_cl_dvfs_set_dfll_data(
-		struct tegra_cl_dvfs_dfll_data *data)
 {}
 static inline int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 { return -ENOSYS; }
