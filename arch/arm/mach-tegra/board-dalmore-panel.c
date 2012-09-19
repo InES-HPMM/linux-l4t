@@ -179,7 +179,7 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.dsi2edp_bridge_enable = true,
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 60,
+	.refresh_rate = 59,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 
 	.dsi_instance = DSI_INSTANCE_0,
