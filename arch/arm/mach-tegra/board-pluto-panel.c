@@ -44,7 +44,7 @@
 #define TEGRA_PANEL_ENABLE	1
 
 #if TEGRA_PANEL_ENABLE
-#define IS_EXTERNAL_PWM		0
+#define IS_EXTERNAL_PWM		1
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
 #define PANEL_5_LG_720_1280	1
@@ -363,6 +363,7 @@ static int pluto_dsi_panel_enable(void)
 #endif
 
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	gpio_direction_output(TEGRA_GPIO_PH1, 1);
 
 	if (avdd_lcd_3v0_2v8) {
 		err = regulator_enable(avdd_lcd_3v0_2v8);
@@ -438,10 +439,10 @@ static struct tegra_dc_mode pluto_dsi_modes[] = {
 		.pclk = 10000000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
-		.h_sync_width = 2,
+		.h_sync_width = 4,
 		.v_sync_width = 4,
-		.h_back_porch = 88,
-		.v_back_porch = 8,
+		.h_back_porch = 82,
+		.v_back_porch = 7,
 		.h_active = 720,
 		.v_active = 1280,
 		.h_front_porch = 4,
@@ -673,7 +674,7 @@ static struct platform_tegra_pwm_backlight_data pluto_disp1_bl_data = {
 	.check_fb		= pluto_disp1_check_fb,
 };
 
-static struct platform_device pluto_disp1_bl_device __initdata = {
+static struct platform_device __maybe_unused pluto_disp1_bl_device __initdata = {
 	.name	= "tegra-pwm-bl",
 	.id	= -1,
 	.dev	= {
