@@ -98,7 +98,7 @@ static int dalmore_imx091_power_on(void)
 
 reg_alloc_fail:
 
-	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
 		if (dalmore_cam_reg[i]) {
 			regulator_put(dalmore_cam_reg[i]);
 			dalmore_cam_reg[i] = NULL;
@@ -113,10 +113,11 @@ static int dalmore_imx091_power_off(void)
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
 
-	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
 		if (dalmore_cam_reg[i]) {
 			regulator_disable(dalmore_cam_reg[i]);
 			regulator_put(dalmore_cam_reg[i]);
+			dalmore_cam_reg[i] = NULL;
 		}
 	}
 
@@ -152,7 +153,7 @@ static int dalmore_ov9772_power_on(void)
 
 reg_alloc_fail:
 
-	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
 		if (dalmore_cam_reg[i]) {
 			regulator_put(dalmore_cam_reg[i]);
 			dalmore_cam_reg[i] = NULL;
@@ -167,10 +168,11 @@ static int dalmore_ov9772_power_off(void)
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
 
-	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
+	for (i = ARRAY_SIZE(dalmore_cam_reg_name) - 1; i >= 0; i--) {
 		if (dalmore_cam_reg[i]) {
 			regulator_disable(dalmore_cam_reg[i]);
 			regulator_put(dalmore_cam_reg[i]);
+			dalmore_cam_reg[i] = NULL;
 		}
 	}
 
