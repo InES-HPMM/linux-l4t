@@ -435,8 +435,8 @@ static int dalmore_nct1008_init(void)
 		}
 	}
 
-	/* dalmore has thermal sensor on GEN1-I2C i.e. instance 1 */
-	i2c_register_board_info(1, dalmore_i2c4_nct1008_board_info,
+	/* dalmore has thermal sensor on GEN1-I2C i.e. instance 0 */
+	i2c_register_board_info(0, dalmore_i2c4_nct1008_board_info,
 		ARRAY_SIZE(dalmore_i2c4_nct1008_board_info));
 
 	return ret;
