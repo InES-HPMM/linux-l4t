@@ -34,6 +34,7 @@
 #include <linux/seq_file.h>
 #include <linux/tegra-ahb.h>
 #include <linux/of_iommu.h>
+#include <linux/tegra-ahb.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
