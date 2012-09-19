@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/cpuquiet.c
  *
- * Cpuquiet driver for Tegra3 CPUs
+ * Cpuquiet driver for Tegra CPUs
  *
  * Copyright (c) 2012 NVIDIA CORPORATION.  All rights reserved.
  *
@@ -43,10 +43,11 @@
 #define UP_DELAY_MS		70
 #define DOWN_DELAY_MS		2000
 
-static struct mutex *tegra3_cpu_lock;
+static struct mutex *tegra_cpu_lock;
+static DEFINE_MUTEX(tegra_cpq_lock_stats);
+
 static struct workqueue_struct *cpuquiet_wq;
 static struct delayed_work cpuquiet_work;
-static struct work_struct minmax_work;
 
 static struct kobject *tegra_auto_sysfs_kobject;
 
@@ -63,16 +64,28 @@ static struct clk *cpu_g_clk;
 static struct clk *cpu_lp_clk;
 
 static struct cpumask cr_online_requests;
+static struct cpumask cr_offline_requests;
+
+enum {
+	TEGRA_CPQ_DISABLE,
+	TEGRA_CPQ_ENABLE,
+};
 
 enum {
 	TEGRA_CPQ_DISABLED = 0,
+	TEGRA_CPQ_ENABLED,
 	TEGRA_CPQ_IDLE,
-	TEGRA_CPQ_SWITCH_TO_LP,
-	TEGRA_CPQ_SWITCH_TO_G,
 };
 
-static int cpq_state;
+enum {
+	TEGRA_CPQ_G = 0,
+	TEGRA_CPQ_LP,
+};
 
+static int cpq_target_state;
+static int cpq_target_cluster_state;
+
+static int cpq_state;
 
 static struct {
 	cputime64_t time_up_total;
@@ -84,6 +97,8 @@ static void hp_init_stats(void)
 {
 	int i;
 	u64 cur_jiffies = get_jiffies_64();
+
+	mutex_lock(&tegra_cpq_lock_stats);
 
 	for (i = 0; i <= CONFIG_NR_CPUS; i++) {
 		hp_stats[i].time_up_total = 0;
@@ -99,12 +114,16 @@ static void hp_init_stats(void)
 		}
 	}
 
+	mutex_unlock(&tegra_cpq_lock_stats);
 }
 
-static void hp_stats_update(unsigned int cpu, bool up)
+/* must be called with tegra_cpq_lock_stats held */
+static void __hp_stats_update(unsigned int cpu, bool up)
 {
 	u64 cur_jiffies = get_jiffies_64();
-	bool was_up = hp_stats[cpu].up_down_count & 0x1;
+	bool was_up;
+
+	was_up = hp_stats[cpu].up_down_count & 0x1;
 
 	if (was_up)
 		hp_stats[cpu].time_up_total =
@@ -124,36 +143,43 @@ static void hp_stats_update(unsigned int cpu, bool up)
 	hp_stats[cpu].last_update = cur_jiffies;
 }
 
+static void hp_stats_update(unsigned int cpu, bool up)
+{
+	mutex_lock(&tegra_cpq_lock_stats);
 
+	__hp_stats_update(cpu, up);
 
+	mutex_unlock(&tegra_cpq_lock_stats);
+}
 
 static int update_core_config(unsigned int cpunumber, bool up)
 {
 	int ret = -EINVAL;
 	unsigned int nr_cpus = num_online_cpus();
-	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
-	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
 
 	if (cpq_state == TEGRA_CPQ_DISABLED || cpunumber >= nr_cpu_ids)
 		return ret;
 
+	mutex_lock(tegra_cpu_lock);
+
 	if (up) {
-		if(is_lp_cluster()) {
-			cpumask_set_cpu(cpunumber, &cr_online_requests);
+		cpumask_set_cpu(cpunumber, &cr_online_requests);
+		cpumask_clear_cpu(cpunumber, &cr_offline_requests);
+		if (is_lp_cluster())
 			ret = -EBUSY;
-		} else if (tegra_cpu_edp_favor_up(nr_cpus, mp_overhead) &&
-			   nr_cpus < max_cpus) {
-			hp_stats_update(cpunumber, true);
-			ret = cpu_up(cpunumber);
-		}
+		else if (tegra_cpu_edp_favor_up(nr_cpus, mp_overhead))
+			queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
 	} else {
 		if (is_lp_cluster()) {
 			ret = -EBUSY;
-		} else if (nr_cpus > min_cpus) {
-			hp_stats_update(cpunumber, false);
-			ret = cpu_down(cpunumber);
+		} else {
+			cpumask_set_cpu(cpunumber, &cr_offline_requests);
+			cpumask_clear_cpu(cpunumber, &cr_online_requests);
+			queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
 		}
 	}
+
+	mutex_unlock(tegra_cpu_lock);
 
 	return ret;
 }
@@ -174,198 +200,206 @@ static struct cpuquiet_driver tegra_cpuquiet_driver = {
         .wake_cpu               = tegra_wake_cpu,
 };
 
-static void apply_core_config(void)
+/* must be called from worker function */
+static int __apply_cluster_config(int state, int target_state)
 {
+	int new_state = state;
+
+	if (state == TEGRA_CPQ_LP) {
+		if (target_state == TEGRA_CPQ_G) {
+			unsigned long speed;
+			/* make sure cpu rate is within g-mode range before
+			   switching */
+			speed = max((unsigned long)tegra_getspeed(0),
+					clk_get_min_rate(cpu_g_clk) / 1000);
+			tegra_update_cpu_speed(speed);
+
+			if (!clk_set_parent(cpu_clk, cpu_g_clk)) {
+				hp_stats_update(CONFIG_NR_CPUS, false);
+				hp_stats_update(0, true);
+				new_state = TEGRA_CPQ_G;
+			}
+		}
+	} else if (target_state == TEGRA_CPQ_LP && !no_lp &&
+			num_online_cpus() == 1) {
+		if (!clk_set_parent(cpu_clk, cpu_lp_clk)) {
+			hp_stats_update(CONFIG_NR_CPUS, true);
+			hp_stats_update(0, false);
+			new_state = TEGRA_CPQ_LP;
+		}
+	}
+
+	return new_state;
+}
+
+/* must be called from worker function */
+static void __cpuinit __apply_core_config(void)
+{
+	int count = -1;
 	unsigned int cpu;
+	int nr_cpus;
+	struct cpumask online, offline, cpu_online;
+	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? :
+				num_present_cpus();
+	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
 
-	if (is_lp_cluster() || cpq_state == TEGRA_CPQ_DISABLED)
-		return;
+	mutex_lock(tegra_cpu_lock);
 
-	for_each_cpu_mask(cpu, cr_online_requests) {
-		if (cpu < nr_cpu_ids && !cpu_online(cpu))
-			if (!tegra_wake_cpu(cpu))
-				cpumask_clear_cpu(cpu, &cr_online_requests);
+	online = cr_online_requests;
+	offline = cr_offline_requests;
+
+	mutex_unlock(tegra_cpu_lock);
+
+	/* always keep CPU0 online */
+	cpumask_set_cpu(0, &online);
+	cpu_online = *cpu_online_mask;
+
+	if (max_cpus < min_cpus)
+		max_cpus = min_cpus;
+
+	nr_cpus = cpumask_weight(&online);
+	if (nr_cpus < min_cpus) {
+		cpu = 0;
+		count = min_cpus - nr_cpus;
+		for (; count > 0; count--) {
+			cpu = cpumask_next_zero(cpu, &online);
+			cpumask_set_cpu(cpu, &online);
+			cpumask_clear_cpu(cpu, &offline);
+		}
+	} else if (nr_cpus > max_cpus) {
+		count = nr_cpus - max_cpus;
+		cpu = 1;
+		for (; count > 0; count--) {
+			/* CPU0 should always be online */
+			cpu = cpumask_next(cpu, &online);
+			cpumask_set_cpu(cpu, &offline);
+			cpumask_clear_cpu(cpu, &online);
+		}
+	}
+
+	cpumask_andnot(&online, &online, &cpu_online);
+	for_each_cpu(cpu, &online) {
+		cpu_up(cpu);
+		hp_stats_update(cpu, true);
+	}
+
+	cpumask_and(&offline, &offline, &cpu_online);
+	for_each_cpu(cpu, &offline) {
+		cpu_down(cpu);
+		hp_stats_update(cpu, false);
 	}
 }
 
 static void tegra_cpuquiet_work_func(struct work_struct *work)
 {
-	int device_busy = -1;
+	int new_cluster, current_cluster = is_lp_cluster(), action;
 
-	mutex_lock(tegra3_cpu_lock);
+	mutex_lock(tegra_cpu_lock);
 
-	switch(cpq_state) {
-		case TEGRA_CPQ_DISABLED:
-		case TEGRA_CPQ_IDLE:
-			break;
-		case TEGRA_CPQ_SWITCH_TO_G:
-			if (is_lp_cluster()) {
-				if(!clk_set_parent(cpu_clk, cpu_g_clk)) {
-					hp_stats_update(CONFIG_NR_CPUS, false);
-					hp_stats_update(0, true);
-					/*catch-up with governor target speed */
-					tegra_cpu_set_speed_cap(NULL);
-					/* process pending core requests*/
-					device_busy = 0;
-				}
-			}
-			break;
-		case TEGRA_CPQ_SWITCH_TO_LP:
-			if (!is_lp_cluster() && !no_lp &&
-					num_online_cpus() == 1) {
-				if (!clk_set_parent(cpu_clk, cpu_lp_clk)) {
-					hp_stats_update(CONFIG_NR_CPUS, true);
-					hp_stats_update(0, false);
-					/*catch-up with governor target speed*/
-					tegra_cpu_set_speed_cap(NULL);
-					device_busy = 1;
-				}
-			}
-			break;
-		default:
-			pr_err("%s: invalid tegra hotplug state %d\n",
-		       __func__, cpq_state);
-	}
+	action = cpq_target_state;
+	new_cluster = cpq_target_cluster_state;
 
-	mutex_unlock(tegra3_cpu_lock);
+	mutex_unlock(tegra_cpu_lock);
 
-	if (device_busy == 1) {
-		cpuquiet_device_busy();
-	} else if (!device_busy) {
-		apply_core_config();
+	if (action == TEGRA_CPQ_ENABLED) {
+		hp_init_stats();
 		cpuquiet_device_free();
+		pr_info("Tegra cpuquiet clusterswitch enabled\n");
+		cpq_state = TEGRA_CPQ_ENABLED;
+		cpq_target_state = TEGRA_CPQ_IDLE;
 	}
-}
-
-static void min_max_constraints_workfunc(struct work_struct *work)
-{
-	int count = -1;
-	bool up = false;
-	unsigned int cpu;
-
-	int nr_cpus = num_online_cpus();
-	int max_cpus = pm_qos_request(PM_QOS_MAX_ONLINE_CPUS) ? : 4;
-	int min_cpus = pm_qos_request(PM_QOS_MIN_ONLINE_CPUS);
 
 	if (cpq_state == TEGRA_CPQ_DISABLED)
 		return;
 
-	if (is_lp_cluster())
+	if (action == TEGRA_CPQ_DISABLE) {
+		cpq_state = TEGRA_CPQ_DISABLED;
+		cpuquiet_device_busy();
+		pr_info("Tegra cpuquiet clusterswitch disabled\n");
 		return;
-
-	if (nr_cpus < min_cpus) {
-		up = true;
-		count = min_cpus - nr_cpus;
-	} else if (nr_cpus > max_cpus && max_cpus >= min_cpus) {
-		count = nr_cpus - max_cpus;
 	}
 
-	for (;count > 0; count--) {
-		if (up) {
-			cpu = cpumask_next_zero(0, cpu_online_mask);
-			if (cpu < nr_cpu_ids) {
-				hp_stats_update(cpu, true);
-				cpu_up(cpu);
-			} else {
-				break;
-			}
-		} else {
-			cpu = cpumask_next(0, cpu_online_mask);
-			if (cpu < nr_cpu_ids) {
-				hp_stats_update(cpu, false);
-				cpu_down(cpu);
-			} else {
-				break;
-			}
-		}
+	if (current_cluster != new_cluster) {
+		current_cluster = __apply_cluster_config(current_cluster,
+					new_cluster);
+
+		if (current_cluster == TEGRA_CPQ_LP)
+			cpuquiet_device_busy();
+		else
+			cpuquiet_device_free();
+
+		tegra_cpu_set_speed_cap(NULL);
 	}
+
+	if (current_cluster == TEGRA_CPQ_G)
+		__apply_core_config();
 }
 
 static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
-	bool g_cluster = false;
+	mutex_lock(tegra_cpu_lock);
 
-	if (cpq_state == TEGRA_CPQ_DISABLED)
+	if (cpq_state == TEGRA_CPQ_DISABLED) {
+		mutex_unlock(tegra_cpu_lock);
 		return NOTIFY_OK;
-
-	mutex_lock(tegra3_cpu_lock);
-
-	if ((n >= 1) && is_lp_cluster()) {
-		/* make sure cpu rate is within g-mode range before switching */
-		unsigned long speed = max((unsigned long)tegra_getspeed(0),
-					clk_get_min_rate(cpu_g_clk) / 1000);
-		tegra_update_cpu_speed(speed);
-
-		if (!clk_set_parent(cpu_clk, cpu_g_clk)) {
-			hp_stats_update(CONFIG_NR_CPUS, false);
-			hp_stats_update(0, true);
-			g_cluster = true;
-		}
 	}
 
-	tegra_cpu_set_speed_cap(NULL);
-	mutex_unlock(tegra3_cpu_lock);
+	if (n >= 1)
+		cpq_target_cluster_state = TEGRA_CPQ_G;
 
-	schedule_work(&minmax_work);
+	queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
 
-	if (g_cluster)
-		cpuquiet_device_free();
+	mutex_unlock(tegra_cpu_lock);
 
 	return NOTIFY_OK;
 }
 
 static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 {
-	if (cpq_state == TEGRA_CPQ_DISABLED)
-		return NOTIFY_OK;
+	mutex_lock(tegra_cpu_lock);
 
-	if (n < num_online_cpus())
-		schedule_work(&minmax_work);
+	if (cpq_state != TEGRA_CPQ_DISABLED)
+		queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
+
+	mutex_unlock(tegra_cpu_lock);
 
 	return NOTIFY_OK;
 }
 
+/* must be called with tegra_cpu_lock held */
 void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 {
 	if (!is_g_cluster_present())
 		return;
 
-	if (cpq_state == TEGRA_CPQ_DISABLED)
-		return;
+	if (cpq_state != TEGRA_CPQ_DISABLED) {
+		if (suspend) {
+			/* Switch to G-mode if suspend rate is high enough */
+			if (cpu_freq >= idle_bottom_freq)
+				cpq_target_cluster_state = TEGRA_CPQ_G;
 
-	if (suspend) {
-		cpq_state = TEGRA_CPQ_IDLE;
+		} else if (is_lp_cluster() &&
+			pm_qos_request(PM_QOS_MIN_ONLINE_CPUS) >= 2) {
 
-		/* Switch to G-mode if suspend rate is high enough */
-		if (is_lp_cluster() && (cpu_freq >= idle_bottom_freq)) {
-			if (!clk_set_parent(cpu_clk, cpu_g_clk)) {
-				hp_stats_update(CONFIG_NR_CPUS, false);
-				hp_stats_update(0, true);
-				cpuquiet_device_free();
-			}
-		}
-		return;
-	}
-
-	if (is_lp_cluster() && pm_qos_request(PM_QOS_MIN_ONLINE_CPUS) >= 2) {
-		if (cpq_state != TEGRA_CPQ_SWITCH_TO_G) {
 			/* Force switch */
-			cpq_state = TEGRA_CPQ_SWITCH_TO_G;
+			cpq_target_cluster_state = TEGRA_CPQ_G;
 			queue_delayed_work(
 				cpuquiet_wq, &cpuquiet_work, up_delay);
-		}
-		return;
-	}
 
-	if (is_lp_cluster() && (cpu_freq >= idle_top_freq || no_lp)) {
-		cpq_state = TEGRA_CPQ_SWITCH_TO_G;
-		queue_delayed_work(cpuquiet_wq, &cpuquiet_work, up_delay);
-	} else if (!is_lp_cluster() && !no_lp &&
-		   cpu_freq <= idle_bottom_freq) {
-		cpq_state = TEGRA_CPQ_SWITCH_TO_LP;
-		queue_delayed_work(cpuquiet_wq, &cpuquiet_work, down_delay);
-	} else {
-		cpq_state = TEGRA_CPQ_IDLE;
+		} else if (is_lp_cluster() &&
+				(cpu_freq >= idle_top_freq || no_lp)) {
+
+			cpq_target_cluster_state = TEGRA_CPQ_G;
+			queue_delayed_work(cpuquiet_wq, &cpuquiet_work,
+						up_delay);
+
+		} else if (!is_lp_cluster() && !no_lp &&
+				cpu_freq <= idle_bottom_freq) {
+
+			cpq_target_cluster_state = TEGRA_CPQ_LP;
+			queue_delayed_work(cpuquiet_wq, &cpuquiet_work,
+						down_delay);
+		}
 	}
 }
 
@@ -389,39 +423,37 @@ static void delay_callback(struct cpuquiet_attribute *attr)
 
 static void enable_callback(struct cpuquiet_attribute *attr)
 {
-	int disabled = -1;
-
-	mutex_lock(tegra3_cpu_lock);
+	mutex_lock(tegra_cpu_lock);
 
 	if (!enable && cpq_state != TEGRA_CPQ_DISABLED) {
-		disabled = 1;
-		cpq_state = TEGRA_CPQ_DISABLED;
-	} else if (enable && cpq_state == TEGRA_CPQ_DISABLED) {
-		disabled = 0;
-		cpq_state = TEGRA_CPQ_IDLE;
-		tegra_cpu_set_speed_cap(NULL);
-		hp_init_stats();
+		cpq_target_state = TEGRA_CPQ_DISABLED;
+	} else if (cpq_state == TEGRA_CPQ_DISABLED) {
+		cpq_target_state = TEGRA_CPQ_ENABLED;
 	}
 
-	mutex_unlock(tegra3_cpu_lock);
+	queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
 
-	if (disabled == -1)
-		return;
-
-	if (disabled == 1) {
-		cancel_delayed_work_sync(&cpuquiet_work);
-		pr_info("Tegra cpuquiet clusterswitch disabled\n");
-		cpuquiet_device_busy();
-	} else if (!disabled) {
-		pr_info("Tegra cpuquiet clusterswitch enabled\n");
-		cpuquiet_device_free();
-	}
+	mutex_unlock(tegra_cpu_lock);
 }
 
-CPQ_BASIC_ATTRIBUTE(no_lp, 0644, bool);
+static void no_lp_callback(struct cpuquiet_attribute *attr)
+{
+	mutex_lock(tegra_cpu_lock);
+
+	if (no_lp && is_lp_cluster()) {
+		/* Force switch */
+		cpq_target_cluster_state = TEGRA_CPQ_G;
+		queue_delayed_work(
+			cpuquiet_wq, &cpuquiet_work, 0);
+	}
+
+	mutex_unlock(tegra_cpu_lock);
+}
+
 CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(idle_bottom_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(mp_overhead, 0644, int);
+CPQ_ATTRIBUTE(no_lp, 0644, bool, no_lp_callback);
 CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(enable, 0644, bool, enable_callback);
@@ -475,14 +507,19 @@ static int hp_stats_show(struct seq_file *s, void *data)
 	int i;
 	u64 cur_jiffies = get_jiffies_64();
 
-	mutex_lock(tegra3_cpu_lock);
+	mutex_lock(tegra_cpu_lock);
+
+	mutex_lock(&tegra_cpq_lock_stats);
+
 	if (cpq_state != TEGRA_CPQ_DISABLED) {
 		for (i = 0; i <= CONFIG_NR_CPUS; i++) {
 			bool was_up = (hp_stats[i].up_down_count & 0x1);
-			hp_stats_update(i, was_up);
+			__hp_stats_update(i, was_up);
 		}
 	}
-	mutex_unlock(tegra3_cpu_lock);
+	mutex_unlock(&tegra_cpq_lock_stats);
+
+	mutex_unlock(tegra_cpu_lock);
 
 	seq_printf(s, "%-15s ", "cpu:");
 	for (i = 0; i < CONFIG_NR_CPUS; i++)
@@ -524,8 +561,6 @@ static const struct file_operations hp_stats_fops = {
 
 static int __init tegra_cpuquiet_debug_init(void)
 {
-	if (!tegra3_cpu_lock)
-		return -ENOENT;
 
 	hp_debugfs_root = debugfs_create_dir("tegra_hotplug", NULL);
 	if (!hp_debugfs_root)
@@ -547,7 +582,7 @@ late_initcall(tegra_cpuquiet_debug_init);
 #endif /* CONFIG_DEBUG_FS */
 
 
-int tegra_auto_hotplug_init(struct mutex *cpu_lock)
+int tegra_auto_hotplug_init(struct mutex *cpulock)
 {
 	int err;
 
@@ -558,18 +593,19 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 	if (IS_ERR(cpu_clk) || IS_ERR(cpu_g_clk) || IS_ERR(cpu_lp_clk))
 		return -ENOENT;
 
+	tegra_cpu_lock = cpulock;
+
 	/*
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
 	 * task, single-threaded, freezable.
 	 */
 	cpuquiet_wq = alloc_workqueue(
-		"cpuquiet", WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
+		"cpuquiet", WQ_NON_REENTRANT | WQ_RESCUER | WQ_FREEZABLE, 1);
 
 	if (!cpuquiet_wq)
 		return -ENOMEM;
 
 	INIT_DELAYED_WORK(&cpuquiet_work, tegra_cpuquiet_work_func);
-	INIT_WORK(&minmax_work, min_max_constraints_workfunc);
 
 	idle_top_freq = clk_get_max_rate(cpu_lp_clk) / 1000;
 	idle_bottom_freq = clk_get_min_rate(cpu_g_clk) / 1000;
@@ -577,7 +613,7 @@ int tegra_auto_hotplug_init(struct mutex *cpu_lock)
 	up_delay = msecs_to_jiffies(UP_DELAY_MS);
 	down_delay = msecs_to_jiffies(DOWN_DELAY_MS);
 	cpumask_clear(&cr_online_requests);
-	tegra3_cpu_lock = cpu_lock;
+	cpumask_clear(&cr_offline_requests);
 
 	cpq_state = INITIAL_STATE;
 	enable = cpq_state == TEGRA_CPQ_DISABLED ? false : true;

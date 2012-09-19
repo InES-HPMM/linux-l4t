@@ -71,7 +71,7 @@ static inline unsigned int tegra_throttle_governor_speed(
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
 #if defined(CONFIG_TEGRA_AUTO_HOTPLUG) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-int tegra_auto_hotplug_init(struct mutex *cpu_lock);
+int tegra_auto_hotplug_init(struct mutex *cpulock);
 void tegra_auto_hotplug_exit(void);
 void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);
 #else
