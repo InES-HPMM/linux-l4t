@@ -117,6 +117,30 @@ ENTRY(tegra_cpu_exit_coherency)
 ENDPROC(tegra_cpu_exit_coherency)
 
 /*
+ * tegra_flush_cache
+ *
+ * clean & invalidate inner cache
+ *
+ * Disable is needed before flush to prevent allocations during flush
+ * When cache is disabled, we cannot push to stack.
+ */
+ENTRY(tegra_flush_cache)
+	stmfd	sp!, {r4-r5, r7, r9-r11, lr}
+	dmb					@ ensure ordering
+
+	/* Disable the data cache */
+	mrc	p15, 0, r2, c1, c0, 0
+	bic	r2, r2, #CR_C
+	dsb
+	mcr	p15, 0, r2, c1, c0, 0
+
+	bl	v7_flush_dcache_all
+
+	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}
+	mov	pc, lr
+ENDPROC(tegra_flush_cache)
+
+/*
  * tegra_flush_l1_cache
  *
  * clean & invalidate the L1 cache
@@ -125,11 +149,21 @@ ENDPROC(tegra_cpu_exit_coherency)
  * may not be desired if all we need is to flush L1 only. Therefore this
  * function is implemented to flush the L1 cache only.
  *
+ * Disable is needed before flush to prevent allocations during flush
+ * When cache is disabled, we cannot push to stack.
+ *
  * Corrupted registers: r0-r7, r9-r11
  */
 ENTRY(tegra_flush_l1_cache)
 	stmfd	sp!, {r4-r5, r7, r9-r11, lr}
 	dmb					@ ensure ordering with previous memory accesses
+
+	/* Disable the data cache */
+	mrc	p15, 0, r2, c1, c0, 0
+	bic	r2, r2, #CR_C
+	dsb
+	mcr	p15, 0, r2, c1, c0, 0
+
 	mov	r10, #0
 #ifdef CONFIG_PREEMPT
 	save_and_disable_irqs_notrace r9

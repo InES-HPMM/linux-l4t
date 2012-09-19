@@ -42,24 +42,8 @@ void tegra_cpu_die(unsigned int cpu)
 	cpu = cpu_logical_map(cpu);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	unsigned int r = 0;
-#endif
-
 	/* Disable GIC CPU interface for this CPU. */
 	tegra_gic_cpu_disable(false);
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/* disable cache */
-	asm volatile(
-	"	mrc p15, 0, %0, c1, c0, 0\n"
-	"	bic %0, %0, #0x4         \n"
-	"	mcr p15, 0, %0, c1, c0, 0\n"
-	: "=r" (r)
-	: "r" (r)
-	: "cc"
-	);
-#endif
 #endif
 
 	/* Flush the L1 data cache. */

@@ -261,20 +261,8 @@ ENDPROC(tegra3_sleep_core_finish)
 ENTRY(tegra3_sleep_cpu_secondary_finish)
 	mov	r6, lr
 
-	dsb
-
-	/* Disable the data cache */
-	mrc	p15, 0, r2, c1, c0, 0
-	bic	r2, r2, #CR_C
-	dsb
-	mcr	p15, 0, r2, c1, c0, 0
-	isb
-
-#ifdef MULTI_CACHE
 #ifdef CONFIG_HAVE_ARM_SCU
-	mov32	r10, cpu_cache
-	mov	lr, pc
-	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+	bl	tegra_flush_l1_cache
 #else
 
 	cpu_id	r2
@@ -283,15 +271,10 @@ ENTRY(tegra3_sleep_cpu_secondary_finish)
 	ldr	r10, [r10, r1]
 	tst	r10, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
 	beq	flush_l1
-	mov32	r10, cpu_cache
-	mov	lr, pc
-	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
+	bl	tegra_flush_cache
 	b	no_l2_sync
 flush_l1:
 	bl	tegra_flush_l1_cache
-#endif
-#else
-	bl	__cpuc_flush_kern_all
 #endif
 
 no_l2_sync:
