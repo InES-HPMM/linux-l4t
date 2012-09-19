@@ -80,6 +80,7 @@ struct edp_client {
 
 	/* governor internal */
 	unsigned int gwt;
+	struct list_head glnk;
 };
 
 struct edp_governor {

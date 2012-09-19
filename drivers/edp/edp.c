@@ -333,6 +333,7 @@ unsigned int edp_promotion_point(struct edp_client *c, unsigned int step)
 	while (i < ci && c->states[i] > limit)
 		i++;
 
+	WARN_ON(i >= c->num_states);
 	return i;
 }
 

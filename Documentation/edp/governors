@@ -49,3 +49,14 @@ client is throttled too much.
 
 Fair governor policy is similar to overage policy, but the proportion is
 based on E0-state level of clients.
+
+5. Best Fit
+
+This policy searches for a best-fit solution where the number of
+throttles and remaining current is minimum. If the optimal solution
+includes an E-state which is less than what is requested, then that will
+be approved (subject to the general EDP rules).
+
+Since the perfect solution would involve several passes across all
+clients, a trade-off is made to approximate the optimum so that the
+algorithm complexity remains linear.
