@@ -645,7 +645,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		int force_val = req.output - cld->safe_ouput;
-		int coef = cld->p_data->cfg_param->cg_scale ? 128 : 16;
+		int coef = 128; /* FIXME: cld->p_data->cfg_param->cg_scale? */;
 		force_val = force_val * coef / cld->p_data->cfg_param->cg;
 		force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
 		val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
