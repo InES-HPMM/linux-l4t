@@ -42,6 +42,7 @@ static const int gpu_millivolts[MAX_DVFS_FREQS] = {
 
 /* FIXME: need tegra12 step */
 #define VDD_SAFE_STEP			100
+#define CVB_ALIGN_STEP_UV		12500
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -77,37 +78,34 @@ static struct dvfs_rail *tegra12_dvfs_rails[] = {
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
+		.max_mv = 1250,
 		.min_mv = 850,
 		.margin = 103,
+		.freqs_mult = MHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 100,
 		.cvb_table = {
-			/*f      c0,   c1,   c2 */
-			{ 306,  800,    0,    0},
-			{ 408,  812,    0,    0},
-			{ 510,  825,    0,    0},
-			{ 612,  850,    0,    0},
-			{ 714,  850,    0,    0},
-			{ 816,  858,    0,    0},
-			{ 918,  900,    0,    0},
-			{1020,  912,    0,    0},
-			{1122,  937,    0,    0},
-			{1224,  937,    0,    0},
-			{1326,  975,    0,    0},
-			{1428, 1000,    0,    0},
-			{1530, 1000,    0,    0},
-			{1632, 1100,    0,    0},
-			{1734, 1150,    0,    0},
-			{1836, 1200,    0,    0},
-			{   0,    0,    0,    0},
+			/*f      c0,    c1,    c2 */
+			{ 306,  9251,  12837, -570},
+			{ 408,  11737, 12957, -570},
+			{ 510,  14282, 13076, -570},
+			{ 612,  16887, 13196, -570},
+			{ 714,  19552, 13315, -570},
+			{ 816,  22277, 13435, -570},
+			{ 918,  25061, 13554, -570},
+			{1020,  27905, 13674, -570},
+			{1122,  30809, 13793, -570},
+			{1224,  33773, 13913, -570},
+			{1326,  36797, 14032, -570},
+			{1428,  39880, 14152, -570},
+			{1530,  43023, 14271, -570},
+			{1632,  46226, 14391, -570},
+			{1734,  49489, 14511, -570},
+			{1836,  52812, 14630, -570},
+			{   0,      0,     0,    0},
 		},
 	}
 };
-
-/* FIXME: remove */
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-#define CPU_AUTO true
-#else
-#define CPU_AUTO false
-#endif
 
 static int cpu_millivolts[MAX_DVFS_FREQS];
 static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
@@ -115,10 +113,9 @@ static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
 static struct dvfs cpu_dvfs = {
 	.clk_name	= "cpu_g",
 	.process_id	= -1,
-	.freqs_mult	= MHZ,
 	.millivolts	= cpu_millivolts,
 	.dfll_millivolts = cpu_dfll_millivolts,
-	.auto_dvfs	= CPU_AUTO,
+	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra12_dvfs_rail_vdd_cpu,
 };
 
@@ -357,7 +354,7 @@ static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 	return true;
 }
 
-static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
+static void __init init_dvfs_one(struct dvfs *d, int max_freq_index)
 {
 	int ret;
 	struct clk *c = tegra_get_clock_by_name(d->clk_name);
@@ -370,9 +367,9 @@ static void __init init_dvfs_one(struct dvfs *d, int nominal_mv_index)
 
 	/* Update max rate for auto-dvfs clocks, with shared bus exceptions */
 	if (can_update_max_rate(c, d)) {
-		BUG_ON(!d->freqs[nominal_mv_index]);
+		BUG_ON(!d->freqs[max_freq_index]);
 		tegra_init_max_rate(
-			c, d->freqs[nominal_mv_index] * d->freqs_mult);
+			c, d->freqs[max_freq_index] * d->freqs_mult);
 	}
 	d->max_millivolts = d->dvfs_rail->nominal_millivolts;
 
@@ -393,28 +390,33 @@ static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
 	return true;
 }
 
-static inline int round_cvb_voltage(int mv)
-{
-	/* round to 12.5mV */
-	return DIV_ROUND_UP(mv * 2, 25) * 25 / 2;
-}
 
-static inline int get_cvb_voltage(int speedo,
+/* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
+static inline int get_cvb_voltage(int speedo, int s_scale,
 				  struct cpu_cvb_dvfs_parameters *cvb)
 {
-	/* FIXME: normalize */
-	int mv = cvb->c0 + cvb->c1 * speedo + cvb->c2 * speedo * speedo;
+	/* apply only speedo scale: output mv = cvb_mv * v_scale */
+	int mv;
+	mv = DIV_ROUND_CLOSEST(cvb->c2 * speedo, s_scale);
+	mv = DIV_ROUND_CLOSEST((mv + cvb->c1) * speedo, s_scale) + cvb->c0;
 	return mv;
 }
 
-static int __init get_cpu_nominal_mv_index(int speedo_id,
-	struct dvfs *cpu_dvfs, struct tegra_cl_dvfs_dfll_data *dfll_data)
+static inline int round_cvb_voltage(int mv, int v_scale)
+{
+	/* combined: apply voltage scale and round to cvb alignment step */
+	return DIV_ROUND_UP(mv * 1000, v_scale * CVB_ALIGN_STEP_UV) *
+		CVB_ALIGN_STEP_UV / 1000;
+}
+
+static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
+	struct tegra_cl_dvfs_dfll_data *dfll_data, int *max_freq_index)
 {
 	int i, j, mv, dfll_mv;
 	unsigned long fmax_at_vmin = 0;
 	struct cpu_cvb_dvfs *d = NULL;
 	struct cpu_cvb_dvfs_parameters *cvb = NULL;
-	int speedo = 0; /* FIXME: tegra_cpu_speedo_val(); */
+	int speedo = tegra_cpu_speedo_value();
 
 	/* Find matching cvb dvfs entry */
 	for (i = 0; i < ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
@@ -438,12 +440,14 @@ static int __init get_cpu_nominal_mv_index(int speedo_id,
 	 */
 	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
 		cvb = &d->cvb_table[i];
-		if (!cvb->freq_mhz)
+		if (!cvb->freq)
 			break;
 
-		mv = get_cvb_voltage(speedo, cvb);
-		dfll_mv = round_cvb_voltage(mv);
+		mv = get_cvb_voltage(speedo, d->speedo_scale, cvb);
+		dfll_mv = round_cvb_voltage(mv, d->voltage_scale);
 		dfll_mv = max(dfll_mv, d->min_mv);
+		if (dfll_mv > d->max_mv)
+			break;
 
 		/* Check maximum frequency at minimum voltage */
 		if (dfll_mv > d->min_mv) {
@@ -455,13 +459,14 @@ static int __init get_cpu_nominal_mv_index(int speedo_id,
 
 		/* dvfs tables with maximum frequency at any distinct voltage */
 		if (!j || (dfll_mv > cpu_dfll_millivolts[j - 1])) {
-			cpu_dvfs->freqs[j] = cvb->freq_mhz;
+			cpu_dvfs->freqs[j] = cvb->freq;
 			cpu_dfll_millivolts[j] = dfll_mv;
-			mv = round_cvb_voltage(mv * d->margin / 100);
+			mv = mv * d->margin / 100;
+			mv = round_cvb_voltage(mv, d->voltage_scale);
 			cpu_millivolts[j] = max(mv, d->min_mv);
 			j++;
 		} else {
-			cpu_dvfs->freqs[j - 1] = cvb->freq_mhz;
+			cpu_dvfs->freqs[j - 1] = cvb->freq;
 		}
 
 	}
@@ -473,20 +478,22 @@ static int __init get_cpu_nominal_mv_index(int speedo_id,
 		return -ENOENT;
 	}
 
+	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = speedo_id;
-	dfll_data->out_rate_min = fmax_at_vmin * MHZ;
+	cpu_dvfs->freqs_mult = d->freqs_mult;
+	cpu_dvfs->dvfs_rail->nominal_millivolts =
+		min(cpu_millivolts[j - 1], d->max_mv);
+	*max_freq_index = j - 1;
+
+	dfll_data->out_rate_min = fmax_at_vmin * d->freqs_mult;
 	dfll_data->millivolts_min = d->min_mv;
-	return j - 1;
+	return 0;
 }
 
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	int mv = 1100; /* FIXME: tegra_core_speedo_mv(); */
-#else
-	int mv = 1100;
-#endif
+	int mv = tegra_core_speedo_mv();
 	int core_edp_limit = get_core_edp();
 
 	/*
@@ -583,7 +590,7 @@ void __init tegra12x_init_dvfs(void)
 
 	int i;
 	int core_nominal_mv_index;
-	int cpu_nominal_mv_index;
+	int cpu_max_freq_index;
 	int gpu_nominal_mv_index;
 
 #ifndef CONFIG_TEGRA_CORE_DVFS
@@ -598,8 +605,10 @@ void __init tegra12x_init_dvfs(void)
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
-	 * init. Nominal voltage index in the scaling ladder will also be
-	 * used to determine max dvfs frequency for the respective domains.
+	 * init. Nominal voltage index in core scaling ladder can also be
+	 * used to determine max dvfs frequencies for all core clocks. In
+	 * case of error disable core scaling and set index to 0, so that
+	 * core clocks would not exceed rates allowed at minimum voltage.
 	 */
 	core_nominal_mv_index = get_core_nominal_mv_index(soc_speedo_id);
 	if (core_nominal_mv_index < 0) {
@@ -610,11 +619,19 @@ void __init tegra12x_init_dvfs(void)
 	tegra12_dvfs_rail_vdd_core.nominal_millivolts =
 		core_millivolts[core_nominal_mv_index];
 
-	cpu_nominal_mv_index = get_cpu_nominal_mv_index(
-		cpu_speedo_id, &cpu_dvfs, &cpu_dfll_data);
-	BUG_ON(cpu_nominal_mv_index < 0);
-	tegra12_dvfs_rail_vdd_cpu.nominal_millivolts =
-		cpu_millivolts[cpu_nominal_mv_index];
+	/*
+	 * Setup cpu dvfs and dfll tables from cvb data, determine nominal
+	 * voltage for cpu rail, and cpu maximum frequency. Note that entire
+	 * frequency range is guaranteed only when dfll is used as cpu clock
+	 * source. Reaching maximum frequency with pll as cpu clock source
+	 * may not be possible within nominal voltage range (dvfs mechanism
+	 * would automatically fail frequency request in this case, so that
+	 * voltage limit is not violated). Error when cpu dvfs table can not
+	 * be constructed must never happen.
+	 */
+	if (set_cpu_dvfs_data(cpu_speedo_id, &cpu_dvfs,
+			      &cpu_dfll_data, &cpu_max_freq_index))
+		BUG();
 
 	gpu_nominal_mv_index = get_gpu_nominal_mv_index(
 		gpu_speedo_id, gpu_process_id, &gpu_dvfs);
@@ -637,7 +654,7 @@ void __init tegra12x_init_dvfs(void)
 
 	/* Initialize matching cpu dvfs entry already found when nominal
 	   voltage was determined */
-	init_dvfs_one(&cpu_dvfs, cpu_nominal_mv_index);
+	init_dvfs_one(&cpu_dvfs, cpu_max_freq_index);
 
 	/* CL DVFS characterization data */
 	tegra_cl_dvfs_set_dfll_data(&cpu_dfll_data);
