@@ -144,6 +144,7 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 		break;
 	case TEGRA_CAMERA_VI_SENSOR_CLK:
 		clk = dev->vi_sensor_clk;
+		info->rate = 24000000;
 		break;
 	case TEGRA_CAMERA_EMC_CLK:
 		clk = dev->emc_clk;
