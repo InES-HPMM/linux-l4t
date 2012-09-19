@@ -441,6 +441,12 @@ static int dalmore_nct1008_init(void)
 	return ret;
 }
 
+static struct i2c_board_info __initdata bq20z45_pdata[] = {
+	{
+		I2C_BOARD_INFO("sbs-battery", 0x0B),
+	},
+};
+
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
 {
@@ -535,6 +541,9 @@ int __init dalmore_sensors_init(void)
 
 	i2c_register_board_info(0, dalmore_i2c_board_info_cm3218,
 		ARRAY_SIZE(dalmore_i2c_board_info_cm3218));
+
+	i2c_register_board_info(0, bq20z45_pdata,
+		ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }
