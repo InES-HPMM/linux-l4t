@@ -290,7 +290,11 @@ struct inv_gyro_state_s {
 	struct early_suspend early_suspend;
 	atomic_t early_suspend_enable;
 #endif
+#if DEBUG_SYSFS_INTERFACE
+	unsigned char dbg_reg;
+#endif	/* DEBUG_SYSFS_INTERFACE	*/
 };
+
 /* produces an unique identifier for each device based on the
    combination of product version and product revision */
 struct prod_rev_map_t {

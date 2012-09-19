@@ -1678,6 +1678,7 @@ static ssize_t inv_early_suspend_en_show(struct device *dev,
 }
 #endif
 
+
 /**
  *  inv_reg_dump_show() - Register dump for testing.
  *  TODO: Only for testing.
@@ -1701,6 +1702,66 @@ static ssize_t inv_reg_dump_show(struct device *dev,
 	}
 	return bytes_printed;
 }
+
+#if DEBUG_SYSFS_INTERFACE	/* Enable SYSFS debug interface	*/
+static ssize_t inv_dbg_reg_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	ssize_t bytes_printed = 0;
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
+
+	bytes_printed += sprintf(buf + bytes_printed, "%#2x\n", st->dbg_reg);
+	return bytes_printed;
+}
+
+static ssize_t inv_dbg_reg_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	unsigned long dbg_reg;
+	struct inv_gyro_state_s *st;
+
+	st = dev_get_drvdata(dev);
+	if (kstrtoul(buf, 16, &dbg_reg))
+		return -EINVAL;
+
+	st->dbg_reg = (unsigned char)dbg_reg;
+	return count;
+}
+
+static ssize_t inv_dbg_dat_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	char data;
+	ssize_t bytes_printed = 0;
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
+
+	inv_i2c_read(st, st->dbg_reg, 1, &data);
+	bytes_printed += sprintf(buf + bytes_printed, "%#2x: %#2x\n",
+				 st->dbg_reg, data);
+	return bytes_printed;
+}
+
+static ssize_t inv_dbg_dat_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	int err;
+	unsigned long dbg_dat;
+	struct inv_gyro_state_s *st;
+
+	st = dev_get_drvdata(dev);
+	if (kstrtoul(buf, 16, &dbg_dat)) {
+		pr_err("%s FAILURE data=%x\n", __func__, dbg_dat);
+		return -EINVAL;
+	}
+
+	err = inv_i2c_single_write(st, st->dbg_reg, (unsigned char)dbg_dat);
+	pr_info("%s reg=%x data=%x err=%d\n", __func__,
+		st->dbg_reg, dbg_dat, err);
+	return count;
+}
+#endif	/* DEBUG_SYSFS_INTERFACE	*/
 
 /**
  * inv_self_test_show() - self test result. 0 for fail; 1 for success.
@@ -2271,6 +2332,10 @@ static DEVICE_ATTR(compass_scale, S_IRUGO | S_IWUSR, inv_compass_scale_show,
 static DEVICE_ATTR(temp_scale, S_IRUGO, inv_temp_scale_show, NULL);
 static DEVICE_ATTR(temp_offset, S_IRUGO, inv_temp_offset_show, NULL);
 static DEVICE_ATTR(reg_dump, S_IRUGO, inv_reg_dump_show, NULL);
+#if DEBUG_SYSFS_INTERFACE
+static DEVICE_ATTR(dbg_reg, S_IRUGO, inv_dbg_reg_show, inv_dbg_reg_store);
+static DEVICE_ATTR(dbg_dat, S_IRUGO, inv_dbg_dat_show, inv_dbg_dat_store);
+#endif /* DEBUG_SYSFS_INTERFACE */
 static DEVICE_ATTR(self_test, S_IRUGO, inv_self_test_show, NULL);
 static DEVICE_ATTR(key, S_IRUGO | S_IWUSR, inv_key_show, inv_key_store);
 static DEVICE_ATTR(gyro_matrix, S_IRUGO, inv_gyro_matrix_show, NULL);
@@ -2311,6 +2376,10 @@ static struct device_attribute *inv_attributes[] = {
 	&dev_attr_temp_scale,
 	&dev_attr_temp_offset,
 	&dev_attr_reg_dump,
+#if DEBUG_SYSFS_INTERFACE
+	&dev_attr_dbg_reg,
+	&dev_attr_dbg_dat,
+#endif /* DEBUG_SYSFS_INTERFACE */
 	&dev_attr_self_test,
 	&dev_attr_key,
 	&dev_attr_gyro_matrix,
