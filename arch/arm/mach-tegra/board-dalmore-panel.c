@@ -35,15 +35,23 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#include "tegra3_host1x_devices.h"
-#else
 #include "tegra11_host1x_devices.h"
+
+int __init dalmore_host1x_init(void)
+{
+	int err = -EINVAL;
+
+#ifdef CONFIG_TEGRA_GRHOST
+	err = tegra11_register_host1x_devices();
+	if (err) {
+		pr_err("host1x devices registration failed\n");
+		return err;
+	}
 #endif
+	return err;
+}
 
-#define TEGRA_PANEL_ENABLE	1
-
-#if TEGRA_PANEL_ENABLE
+#ifdef CONFIG_TEGRA_DC
 
 #define TEGRA_DSI_GANGED_MODE	0
 #define IS_EXTERNAL_PWM		1
@@ -81,11 +89,9 @@ static struct regulator *vdd_ds_1v8;
 #define en_vdd_bl	TEGRA_GPIO_PG0
 #define lvds_en		TEGRA_GPIO_PG3
 
-#ifdef CONFIG_TEGRA_DC
 static struct regulator *dalmore_hdmi_reg;
 static struct regulator *dalmore_hdmi_pll;
 static struct regulator *dalmore_hdmi_vddio;
-#endif
 
 static struct resource dalmore_disp1_resources[] = {
 	{
@@ -920,21 +926,13 @@ int __init dalmore_panel_init(void)
 	}
 #endif
 
+	err = dalmore_host1x_init();
+	if (err)
+		return err;
+
 	gpio_request(dalmore_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(dalmore_hdmi_hpd);
 
-#ifdef CONFIG_TEGRA_GRHOST
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	err = tegra3_register_host1x_devices();
-#else
-	err = tegra11_register_host1x_devices();
-#endif
-	if (err) {
-		pr_err("host1x devices registration failed\n");
-		return err;
-	}
-
-#ifdef CONFIG_TEGRA_DC
 	res = nvhost_get_resource_byname(&dalmore_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
@@ -972,7 +970,6 @@ int __init dalmore_panel_init(void)
 #if PANEL_11_6_AUO_1920_1080
 	i2c_register_board_info(0, &dalmore_tc358770_dsi2edp_board_info, 1);
 #endif
-#endif
 
 #ifdef CONFIG_TEGRA_NVAVP
 	err = nvhost_device_register(&nvavp_device);
@@ -981,12 +978,11 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 #endif
-#endif
 	return err;
 }
 #else
 int __init dalmore_panel_init(void)
 {
-	return -ENODEV;
+	return dalmore_host1x_init();
 }
 #endif
