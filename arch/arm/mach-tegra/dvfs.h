@@ -83,6 +83,7 @@ struct dvfs_dfll_data {
 	u32		tune1;
 	unsigned long	droop_rate_min;
 	unsigned long	out_rate_min;
+	unsigned long	max_rate_boost;
 };
 
 struct dvfs {

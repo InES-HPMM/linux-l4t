@@ -1140,11 +1140,27 @@ static int tegra11_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	return tegra11_cpu_clk_set_plls(c, rate, old_rate);
 }
 
+static long tegra11_cpu_clk_round_rate(struct clk *c, unsigned long rate)
+{
+	unsigned long max_rate = c->max_rate;
+
+	/* Remove dfll boost to maximum rate when running on PLL */
+	if (c->parent->parent != c->u.cpu.dynamic)
+		max_rate -= c->dvfs->dfll_data.max_rate_boost;
+
+	if (rate > max_rate)
+		rate = max_rate;
+	else if (rate < c->min_rate)
+		rate = c->min_rate;
+	return rate;
+}
+
 static struct clk_ops tegra_cpu_ops = {
 	.init     = tegra11_cpu_clk_init,
 	.enable   = tegra11_cpu_clk_enable,
 	.disable  = tegra11_cpu_clk_disable,
 	.set_rate = tegra11_cpu_clk_set_rate,
+	.round_rate = tegra11_cpu_clk_round_rate,
 };
 
 
@@ -1330,11 +1346,7 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 static long tegra11_cpu_cmplx_round_rate(struct clk *c,
 	unsigned long rate)
 {
-	if (rate > c->parent->max_rate)
-		rate = c->parent->max_rate;
-	else if (rate < c->parent->min_rate)
-		rate = c->parent->min_rate;
-	return rate;
+	return clk_round_rate(c->parent, rate);
 }
 
 static struct clk_ops tegra_cpu_cmplx_ops = {
