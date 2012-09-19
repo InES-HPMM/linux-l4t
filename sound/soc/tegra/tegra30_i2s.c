@@ -436,19 +436,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		/* Additional "* 4" is needed for FSYNC mode */
 		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 			i2sclock *= 4;
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			i2sclock = 13000000;
-			__raw_writel(((0x3 << 30) | (0x1 << 28) | 0x0),
-				IO_ADDRESS(TEGRA_CLK_RESET_BASE)+0x1d8);
-		} else {
-			i2sclock = 13000000/2;
-			__raw_writel(((0x3 << 30) | (0x1 << 28) | 0x1),
-				IO_ADDRESS(TEGRA_CLK_RESET_BASE)+0x1d8);
-		}
-#else
-		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
+	ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
 		if (ret) {
 			dev_err(dev, "Can't set parent of I2S clock\n");
 			return ret;
@@ -459,7 +447,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			dev_err(dev, "Can't set I2S clock rate: %d\n", ret);
 			return ret;
 		}
-#endif
+
 		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
 			bitcnt = (i2sclock / srate) - 1;
 			sym_bitclk = !(i2sclock % srate);

@@ -377,7 +377,7 @@ static ssize_t a2220_bootup_init(struct a2220img *pImg)
 	while (retry--) {
 		/* Reset A2220 chip */
 		// gpio_set_value(pdata->gpio_a2220_reset, 0);
-		gpio_set_value(VP_RESET, 0);
+		gpio_set_value(VP_RESET, 1);
 
 		/* Enable A2220 clock */
 		if (control_a2220_clk)
@@ -386,7 +386,7 @@ static ssize_t a2220_bootup_init(struct a2220img *pImg)
 
 		/* Take out of reset */
 		//gpio_set_value(pdata->gpio_a2220_reset, 1);
-		gpio_set_value(VP_RESET, 1);
+		gpio_set_value(VP_RESET, 0);
 
 		msleep(300); /* Delay before send I2C command */
 
@@ -13870,11 +13870,11 @@ static int a2220_probe(
 	//gpio_tlmm_config(GPIO_CFG(GPIO_SELECT_I2S_AUDIENCE_QTR,0,GPIO_CFG_OUTPUT,GPIO_CFG_NO_PULL,GPIO_CFG_2MA),GPIO_CFG_ENABLE); //Audeince Chip Sel
 	//VP  reset 
 	gpio_set_value(VP_RESET, 1);
-	gpio_set_value(AUDIO_LD0_EN, 1);
+	gpio_set_value(AUDIO_LD0_EN, 0);
 
 	this_client = client;
 
-	gpio_set_value(VP_RESET, 1);
+	gpio_set_value(VP_RESET, 0);
 	
 	if ( pdata->gpio_a2220_clk)
 	{
