@@ -120,8 +120,8 @@ int __init dalmore_kbc_init(void)
 		data->pin_cfg[i].type = PIN_CFG_ROW;
 	}
 	for (i = 0; i < DALMORE_COL_COUNT; i++) {
-		data->pin_cfg[i + KBC_PIN_GPIO_16].num = i;
-		data->pin_cfg[i + KBC_PIN_GPIO_16].type = PIN_CFG_COL;
+		data->pin_cfg[i + KBC_PIN_GPIO_11].num = i;
+		data->pin_cfg[i + KBC_PIN_GPIO_11].type = PIN_CFG_COL;
 	}
 
 	platform_device_register(&tegra_kbc_device);
