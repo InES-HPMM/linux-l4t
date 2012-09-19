@@ -45,7 +45,7 @@
 #if TEGRA_PANEL_ENABLE
 
 #define TEGRA_DSI_GANGED_MODE	0
-#define IS_EXTERNAL_PWM		0
+#define IS_EXTERNAL_PWM		1
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
 #define PANEL_10_1_PANASONIC_1920_1200	1
@@ -190,7 +190,7 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 #else
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
-	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END,
 #endif
 	.dsi_init_cmd = dsi_init_cmd,
@@ -301,17 +301,6 @@ static int dalmore_dsi_panel_enable(void)
 		goto fail;
 	}
 
-#if DSI_PANEL_RESET
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
-	msleep(20);
-#endif
-
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-
 	if (vdd_ds_1v8) {
 		err = regulator_enable(vdd_ds_1v8);
 		if (err < 0) {
@@ -343,6 +332,19 @@ static int dalmore_dsi_panel_enable(void)
 			goto fail;
 		}
 	}
+
+	msleep(100);
+#if DSI_PANEL_RESET
+	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	msleep(150);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	msleep(1500);
+#endif
+
+	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	gpio_direction_output(57, 1);
 
 #if PANEL_11_6_AUO_1920_1080
 	gpio_direction_output(en_vdd_bl, 1);
@@ -395,7 +397,7 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 		.v_back_porch = 16,
 		.h_active = 1920,
 		.v_active = 1200,
-		.h_front_porch = 112,
+		.h_front_porch = 120,
 		.v_front_porch = 17,
 	},
 #endif
@@ -687,7 +689,8 @@ static struct platform_tegra_pwm_backlight_data dalmore_disp1_bl_data = {
 	.check_fb		= dalmore_disp1_check_fb,
 };
 
-static struct platform_device dalmore_disp1_bl_device __initdata = {
+static struct platform_device __maybe_unused
+		dalmore_disp1_bl_device __initdata = {
 	.name	= "tegra-pwm-bl",
 	.id	= -1,
 	.dev	= {
