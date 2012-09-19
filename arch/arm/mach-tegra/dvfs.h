@@ -170,6 +170,8 @@ void tegra_dvfs_core_cap_level_set(int level);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
 int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event);
+int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
+int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);

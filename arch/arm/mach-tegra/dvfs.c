@@ -627,14 +627,18 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 	int ret;
 
 	/* don't set voltage in DFLL mode - won't work, but break stats */
-	if (rail->dfll_mode)
+	if (rail->dfll_mode) {
+		rail->disabled = true;
 		return;
+	}
 
 	ret = dvfs_rail_set_voltage(rail, rail->nominal_millivolts);
-	if (ret)
+	if (ret) {
 		pr_info("dvfs: failed to set regulator %s to disable "
 			"voltage %d\n", rail->reg_id,
 			rail->nominal_millivolts);
+		return;
+	}
 	rail->disabled = true;
 }
 
@@ -735,6 +739,33 @@ int __init of_tegra_dvfs_init(const struct of_device_id *matches)
 	return 0;
 }
 #endif
+int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate)
+{
+	mutex_lock(&dvfs_lock);
+	if (!d->dvfs_rail->dfll_mode) {
+		d->dvfs_rail->dfll_mode = true;
+		__tegra_dvfs_set_rate(d, rate);
+	}
+	mutex_unlock(&dvfs_lock);
+	return 0;
+}
+
+int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
+{
+	int ret = 0;
+
+	mutex_lock(&dvfs_lock);
+	if (d->dvfs_rail->dfll_mode) {
+		d->dvfs_rail->dfll_mode = false;
+		if (d->dvfs_rail->disabled) {
+			d->dvfs_rail->disabled = false;
+			__tegra_dvfs_rail_disable(d->dvfs_rail);
+		}
+		ret = __tegra_dvfs_set_rate(d, rate);
+	}
+	mutex_unlock(&dvfs_lock);
+	return ret;
+}
 
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported
@@ -801,8 +832,9 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
-		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
-			rail->millivolts, rail->disabled ? " disabled" : "");
+		seq_printf(s, "%s %d mV%s:\n", rail->reg_id, rail->millivolts,
+			   rail->dfll_mode ? " dfll mode" :
+				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
 			seq_printf(s, "   %-10s %-7d mV %-4d mV\n",
 				rel->from->reg_id,
