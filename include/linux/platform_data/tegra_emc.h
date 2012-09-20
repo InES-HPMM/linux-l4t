@@ -73,18 +73,18 @@ struct tegra11_emc_table {
 	u32 src_sel_reg;
 
 	int burst_regs_num;
-	int burst_up_down_regs_num;
 	int emc_trimmers_num;
+	int burst_up_down_regs_num;
 
 	/* unconditionally updated in one burst shot */
 	u32 burst_regs[TEGRA11_EMC_MAX_NUM_REGS];
 
-	/* one burst shot, but update time depends on rate change direction */
-	u32 burst_up_down_regs[TEGRA11_EMC_MAX_NUM_REGS];
-
 	/* unconditionally updated in one burst shot to particular channel */
 	u32 emc_trimmers_0[TEGRA11_EMC_MAX_NUM_REGS];
 	u32 emc_trimmers_1[TEGRA11_EMC_MAX_NUM_REGS];
+
+	/* one burst shot, but update time depends on rate change direction */
+	u32 burst_up_down_regs[TEGRA11_EMC_MAX_NUM_REGS];
 
 	/* updated separately under some conditions */
 	u32 emc_zcal_cnt_long;
