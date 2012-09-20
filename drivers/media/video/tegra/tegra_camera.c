@@ -50,6 +50,9 @@ struct tegra_camera_dev {
 	struct clk *emc_clk;
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	struct clk *pll_d2_clk;
+	struct clk *cilab_clk;
+	struct clk *cilcd_clk;
+	struct clk *cile_clk;
 #endif
 	struct regulator *reg;
 	struct tegra_camera_clk_info info;
@@ -83,6 +86,12 @@ static int tegra_camera_enable_clk(struct tegra_camera_dev *dev)
 	tegra_periph_reset_assert(dev->csi_clk);
 	udelay(2);
 	tegra_periph_reset_deassert(dev->csi_clk);
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	clk_enable(dev->cilab_clk);
+	clk_enable(dev->cilcd_clk);
+	clk_enable(dev->cile_clk);
+#endif
 	return 0;
 }
 
@@ -96,6 +105,11 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 	clk_disable(dev->vi_sensor_clk);
 	clk_disable(dev->vi_clk);
 	tegra_periph_reset_assert(dev->vi_clk);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	clk_disable(dev->cilab_clk);
+	clk_disable(dev->cilcd_clk);
+	clk_disable(dev->cile_clk);
+#endif
 
 	return 0;
 }
@@ -223,7 +237,6 @@ set_rate_end:
 static int tegra_camera_power_on(struct tegra_camera_dev *dev)
 {
 	int ret = 0;
-
 	dev_dbg(dev->dev, "%s++\n", __func__);
 
 	/* Enable external power */
@@ -492,8 +505,16 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	err = tegra_camera_clk_get(pdev, "emc", &dev->emc_clk);
 	if (err)
 		goto emc_clk_get_err;
-
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	err = tegra_camera_clk_get(pdev, "cilab", &dev->cilab_clk);
+	if (err)
+		goto cilab_clk_get_err;
+	err = tegra_camera_clk_get(pdev, "cilcd", &dev->cilcd_clk);
+	if (err)
+		goto cilcd_clk_get_err;
+	err = tegra_camera_clk_get(pdev, "cile", &dev->cile_clk);
+	if (err)
+		goto cile_clk_get_err;
 	err = tegra_camera_clk_get(pdev, "pll_d2", &dev->pll_d2_clk);
 	if (err)
 		goto pll_d2_clk_get_err;
@@ -507,6 +528,12 @@ static int tegra_camera_probe(struct platform_device *pdev)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 pll_d2_clk_get_err:
 	clk_put(dev->pll_d2_clk);
+cile_clk_get_err:
+	clk_put(dev->cile_clk);
+cilcd_clk_get_err:
+	clk_put(dev->cilcd_clk);
+cilab_clk_get_err:
+	clk_put(dev->cilab_clk);
 #endif
 emc_clk_get_err:
 	clk_put(dev->emc_clk);
@@ -533,6 +560,11 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	clk_put(dev->vi_sensor_clk);
 	clk_put(dev->csus_clk);
 	clk_put(dev->csi_clk);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	clk_put(dev->cilab_clk);
+	clk_put(dev->cilcd_clk);
+	clk_put(dev->cile_clk);
+#endif
 
 	misc_deregister(&dev->misc_dev);
 	regulator_put(dev->reg);
