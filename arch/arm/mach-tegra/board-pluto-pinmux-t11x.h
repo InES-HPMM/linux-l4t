@@ -79,8 +79,8 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 
 	/* SPI4 pinmux */
 	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_AD6,       SPI4,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_AD7,       SPI4,        NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_AD7,       SPI4,        PULL_UP,   NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   INPUT),
 
