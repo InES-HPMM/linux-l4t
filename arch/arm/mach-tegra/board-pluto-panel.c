@@ -187,7 +187,7 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_positive_gamma_blue),
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_negetive_gamma_blue),
 
-	DSI_CMD_SHORT(DSI_DCS_WRITE_1_PARAM, DSI_DCS_SET_ADDR_MODE, 0x0b),
+	DSI_CMD_SHORT(DSI_DCS_WRITE_1_PARAM, DSI_DCS_SET_ADDR_MODE, 0x08),
 
 	/* panel OTP 2 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x0),
@@ -353,15 +353,6 @@ static int pluto_dsi_panel_enable(void)
 		goto fail;
 	}
 
-#if DSI_PANEL_RESET
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
-	msleep(20);
-#endif
-
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
 	gpio_direction_output(TEGRA_GPIO_PH1, 1);
 
@@ -403,6 +394,14 @@ static int pluto_dsi_panel_enable(void)
 		}
 	}
 
+#if DSI_PANEL_RESET
+	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	usleep_range(1000, 5000);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	msleep(20);
+#endif
 	return 0;
 fail:
 	return err;
