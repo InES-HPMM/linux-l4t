@@ -235,8 +235,13 @@ void tegra_cluster_switch_prolog(unsigned int flags)
 
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 	reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
-	if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
+	if ((flags & TEGRA_POWER_CLUSTER_PART_CRAIL) &&
+	    ((flags & TEGRA_POWER_CLUSTER_PART_NONCPU) == 0) &&
+	    (current_cluster == TEGRA_POWER_CLUSTER_LP))
+		reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
+	else if (flags & TEGRA_POWER_CLUSTER_PART_CRAIL)
 		reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+
 	if (flags & TEGRA_POWER_CLUSTER_PART_NONCPU)
 		reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
 #endif
