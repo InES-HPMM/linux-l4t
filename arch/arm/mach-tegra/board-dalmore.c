@@ -218,6 +218,17 @@ static struct i2c_board_info __initdata rt5640_board_info = {
 };
 #endif
 
+static struct pn544_i2c_platform_data nfc_pdata = {
+	.irq_gpio = TEGRA_GPIO_PW2,
+	.ven_gpio = TEGRA_GPIO_PQ3,
+	.firm_gpio = TEGRA_GPIO_PH0,
+};
+
+static struct i2c_board_info __initdata nfc_board_info = {
+	I2C_BOARD_INFO("pn544", 0x28),
+	.platform_data = &nfc_pdata,
+};
+
 static void dalmore_i2c_init(void)
 {
 	struct board_info board_info;
@@ -240,6 +251,10 @@ static void dalmore_i2c_init(void)
 	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
 	tegra11_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
 	tegra11_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
+
+	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PW2);
+	i2c_register_board_info(0, &nfc_board_info, 1);
+
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
 	platform_device_register(&tegra11_i2c_device3);
