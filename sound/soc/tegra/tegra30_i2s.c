@@ -899,6 +899,9 @@ static int configure_dam(struct tegra30_i2s  *i2s, int out_channel,
 	if (!i2s->dam_ch_refcount)
 		i2s->dam_ifc = tegra30_dam_allocate_controller();
 
+	if (i2s->dam_ifc < 0)
+		return -ENOENT;
+
 	tegra30_dam_allocate_channel(i2s->dam_ifc, TEGRA30_DAM_CHIN0_SRC);
 	i2s->dam_ch_refcount++;
 	tegra30_dam_enable_clock(i2s->dam_ifc);
