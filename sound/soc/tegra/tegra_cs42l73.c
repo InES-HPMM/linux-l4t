@@ -178,7 +178,6 @@ static int tegra_cs42l73_event_headset_mic(struct snd_soc_dapm_widget *w,
 	/* Unmask MIC2_SDET interrupt */
 	snd_soc_update_bits(codec, CS42L73_IM1, MIC2_SDET, 1);
 
-	printk(KERN_ERR"[VIJAY] %s +\n", __func__);
 	return 0;
 }
 
@@ -244,14 +243,13 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 
 	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
 		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
-		if (ret) {
+		if (ret)
 			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
-			return ret;
+		else {
+			machine->gpio_requested |= GPIO_EXT_MIC_EN;
+			/* Disable ext mic; enable signal is active-low */
+			gpio_direction_output(pdata->gpio_ext_mic_en, 1);
 		}
-		machine->gpio_requested |= GPIO_EXT_MIC_EN;
-
-		/* Disable ext mic; enable signal is active-low */
-		gpio_direction_output(pdata->gpio_ext_mic_en, 1);
 	}
 
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
@@ -430,7 +428,6 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 		goto err_unregister_card;
 	}
 
-printk(KERN_ERR"%s Checkpoint ... (10)\n", __func__);
 	return 0;
 
 err_unregister_card:
