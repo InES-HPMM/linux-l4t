@@ -261,23 +261,7 @@ ENDPROC(tegra3_sleep_core_finish)
 ENTRY(tegra3_sleep_cpu_secondary_finish)
 	mov	r6, lr
 
-#ifdef CONFIG_HAVE_ARM_SCU
 	bl	tegra_flush_l1_cache
-#else
-
-	cpu_id	r2
-	cpu_to_csr_reg	r1,	r2
-	mov32	r10, TEGRA_FLOW_CTRL_VIRT
-	ldr	r10, [r10, r1]
-	tst	r10, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
-	beq	flush_l1
-	bl	tegra_flush_cache
-	b	no_l2_sync
-flush_l1:
-	bl	tegra_flush_l1_cache
-#endif
-
-no_l2_sync:
 	bl	tegra_cpu_exit_coherency
 
 	/* Powergate this CPU. */

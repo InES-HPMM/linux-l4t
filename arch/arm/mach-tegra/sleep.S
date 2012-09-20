@@ -206,6 +206,9 @@ ENDPROC(tegra_flush_l1_cache)
  * tegra?_tear_down_cpu
  */
 ENTRY(tegra_sleep_cpu_finish)
+	mov	r4, r0
+	bl	tegra_flush_cache
+	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
