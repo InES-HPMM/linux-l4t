@@ -18,23 +18,37 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "board.h"
 #include "board-dalmore.h"
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#include "tegra3_emc.h"
-#endif
-
+#include "tegra-board-id.h"
+#include "tegra11_emc.h"
 #include "fuse.h"
 #include "devices.h"
 
-int dalmore_emc_init(void)
-{
-	platform_device_register(&tegra_emc_device);
+static struct tegra11_emc_pdata e1613_h9ccnnn8jtmlar_ntm_pdata = {
+	.description = "e1613_h9ccnnn8jtmlar_ntm",
+};
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	tegra30_init_emc();
-#endif
+static struct tegra11_emc_pdata *dalmore_get_emc_data(void)
+{
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
+	if (board_info.board_id == BOARD_E1611)
+		return NULL;
+
+	return &e1613_h9ccnnn8jtmlar_ntm_pdata;
+}
+
+int __init dalmore_emc_init(void)
+{
+	tegra_emc_device.dev.platform_data = dalmore_get_emc_data();
+	platform_device_register(&tegra_emc_device);
+	tegra11_emc_init();
+
 	return 0;
 }
