@@ -2114,7 +2114,8 @@ static int uhsic_rail_disable(struct tegra_usb_phy *phy)
 		pr_err("HSIC regulator vddio_hsic cannot be disabled\n");
 		return ret;
 	}
-
+	regulator_put(phy->hsic_reg);
+	phy->hsic_reg = NULL;
 	return 0;
 }
 
