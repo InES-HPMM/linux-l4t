@@ -986,7 +986,8 @@ static void hdmi_intrinsic_event(struct hda_codec *codec, unsigned int res)
 	hdmi_present_sense(get_pin(spec, pin_idx), 1);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	if (codec->preset->id == 0x10de0020) {
+	if (((codec->preset->id == 0x10de0020) ||
+		(codec->preset->id == 0x10de0022))) {
 		/*
 		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
 		 * in console or for audio devices. Assume the highest speakers
@@ -1144,8 +1145,9 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 	eld = &per_pin->sink_eld;
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	if ((codec->preset->id == 0x10de0020) &&
-	    (!eld->monitor_present || !eld->info.lpcm_sad_ready)) {
+	if ((((codec->preset->id == 0x10de0020) &&
+		(codec->preset->id == 0x10de0022))) &&
+		(!eld->monitor_present || !eld->info.lpcm_sad_ready)) {
 		if (!eld->monitor_present) {
 			if (tegra_hdmi_setup_hda_presence() < 0) {
 				snd_printk(KERN_WARNING
@@ -1332,7 +1334,8 @@ static void hdmi_repoll_eld(struct work_struct *work)
 	hdmi_present_sense(per_pin, per_pin->repoll_count);
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	if (codec->preset->id == 0x10de0020) {
+	if ((codec->preset->id == 0x10de0020) ||
+		(codec->preset->id == 0x10de0022)) {
 		/*
 		 * HDMI sink's ELD info cannot always be retrieved for now, e.g.
 		 * in console or for audio devices. Assume the highest speakers
@@ -1461,7 +1464,8 @@ static int hdmi_parse_codec(struct hda_codec *codec)
 	 * HDA link is powered off at hot plug or hw initialization time.
 	 */
 	else if ((!(snd_hda_param_read(codec, codec->afg, AC_PAR_POWER_STATE) &
-	      AC_PWRST_EPSS)) && (codec->preset->id != 0x10de0020))
+	      AC_PWRST_EPSS)) && ((codec->preset->id != 0x10de0020) &&
+	      (codec->preset->id != 0x10de0022)))
 		codec->bus->power_keep_link_on = 1;
 #endif
 
@@ -1502,7 +1506,8 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	non_pcm = check_non_pcm_per_cvt(codec, cvt_nid);
 
 #if defined(CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA) && defined(CONFIG_TEGRA_DC)
-	if (codec->preset->id == 0x10de0020) {
+	if ((codec->preset->id == 0x10de0020) ||
+		(codec->preset->id == 0x10de0022)) {
 		int err = 0;
 
 		if (substream->runtime->channels == 2)
@@ -1814,6 +1819,7 @@ static int generic_hdmi_init_per_pins(struct hda_codec *codec)
 
 	switch (codec->preset->id) {
 	case 0x10de0020:
+	case 0x10de0022:
 		snd_hda_codec_write(codec, 4, 0,
 				    AC_VERB_SET_DIGI_CONVERT_1, 0x11);
 	default:
@@ -2612,6 +2618,7 @@ static const struct hda_codec_preset snd_hda_preset_hdmi[] = {
 { .id = 0x10de001b, .name = "GPU 1b HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de001c, .name = "GPU 1c HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de0020, .name = "Tegra30 HDMI",	.patch = patch_generic_hdmi },
+{ .id = 0x10de0022, .name = "Tegra35 HDMI",	.patch = patch_generic_hdmi },
 { .id = 0x10de0040, .name = "GPU 40 HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de0041, .name = "GPU 41 HDMI/DP",	.patch = patch_generic_hdmi },
 { .id = 0x10de0042, .name = "GPU 42 HDMI/DP",	.patch = patch_generic_hdmi },
@@ -2666,6 +2673,7 @@ MODULE_ALIAS("snd-hda-codec-id:10de001a");
 MODULE_ALIAS("snd-hda-codec-id:10de001b");
 MODULE_ALIAS("snd-hda-codec-id:10de001c");
 MODULE_ALIAS("snd-hda-codec-id:10de0020");
+MODULE_ALIAS("snd-hda-codec-id:10de0022");
 MODULE_ALIAS("snd-hda-codec-id:10de0040");
 MODULE_ALIAS("snd-hda-codec-id:10de0041");
 MODULE_ALIAS("snd-hda-codec-id:10de0042");
