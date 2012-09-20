@@ -100,6 +100,7 @@ struct tegra_usb_phy {
 	bool pmc_sleepwalk;
 	bool bus_reseting;
 	bool linkphy_init;
+	bool hot_plug;
 };
 
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,

@@ -670,6 +670,9 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	phy->pdev = pdev;
 	phy->inst = pdev->id;
 
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		phy->hot_plug = phy->pdata->u_data.host.hot_plug;
+
 	print_usb_plat_data_info(phy);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

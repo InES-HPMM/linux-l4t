@@ -1157,7 +1157,7 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 	DBG("%s inst:[%d]\n", __func__, phy->inst);
 
 	/* Disable PHY clock valid interrupts while going into suspend*/
-	if (phy->pdata->u_data.host.hot_plug) {
+	if (phy->hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
 		val &= ~USB_PHY_CLK_VALID_INT_ENB;
 		writel(val, base + USB_SUSP_CTRL);
@@ -1241,7 +1241,7 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 		remote_wakeup = true;
 	}
 
-	if (phy->pdata->u_data.host.hot_plug) {
+	if (phy->hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
 		if ((val  & USB_PHY_CLK_VALID_INT_STS)) {
 			val &= ~USB_PHY_CLK_VALID_INT_ENB |
@@ -1472,7 +1472,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		utmip_setup_pmc_wake_detect(phy);
 	}
 
-	if (!phy->pdata->u_data.host.hot_plug) {
+	if (!phy->hot_plug) {
 		val = readl(base + UTMIP_XCVR_CFG0);
 		val |= (UTMIP_FORCE_PD_POWERDOWN | UTMIP_FORCE_PD2_POWERDOWN |
 			 UTMIP_FORCE_PDZI_POWERDOWN);
@@ -1490,7 +1490,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 
 	utmi_phy_pad_power_off(phy);
 
-	if (phy->pdata->u_data.host.hot_plug) {
+	if (phy->hot_plug) {
 		bool enable_hotplug = true;
 		/* if it is OTG port then make sure to enable hot-plug feature
 		   only if host adaptor is connected, i.e id is low */
@@ -1523,7 +1523,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 
-	if (!phy->pdata->u_data.host.hot_plug) {
+	if (!phy->hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
 		val |= UTMIP_RESET;
 		writel(val, base + USB_SUSP_CTRL);

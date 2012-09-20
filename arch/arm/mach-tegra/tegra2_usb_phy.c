@@ -610,7 +610,7 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	usb_phy_fence_read(phy);
-	if (phy->pdata->u_data.host.hot_plug) {
+	if (phy->hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
 		if ((val  & USB_PHY_CLK_VALID_INT_STS)) {
 			val &= ~USB_PHY_CLK_VALID_INT_ENB |
@@ -697,7 +697,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	}
 
-	if (!phy->pdata->u_data.host.hot_plug) {
+	if (!phy->hot_plug) {
 		val = readl(base + UTMIP_XCVR_UHSIC_HSRX_CFG0);
 		val |= (UTMIP_FORCE_PD_POWERDOWN | UTMIP_FORCE_PD2_POWERDOWN |
 			 UTMIP_FORCE_PDZI_POWERDOWN);
@@ -718,7 +718,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	phy->port_speed = (readl(base + USB_PORTSC) >> 26) &
 			USB_PORTSC_PSPD_MASK;
 
-	if (phy->pdata->u_data.host.hot_plug) {
+	if (phy->hot_plug) {
 		bool enable_hotplug = true;
 		/* if it is OTG port then make sure to enable hot-plug feature
 		   only if host adaptor is connected, i.e id is low */
