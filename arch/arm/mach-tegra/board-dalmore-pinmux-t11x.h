@@ -73,12 +73,12 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_A19,       UARTD,       NORMAL,    NORMAL,   OUTPUT),
 
 	/* SPI4 pinmux */
-	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_AD6,       SPI4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_AD6,       SPI4,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_AD7,       SPI4,        NORMAL,    TRISTATE, INPUT),
 	DEFAULT_PINMUX(GMI_AD12,      RSVD1,       NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   INPUT),
 
 	/* PWM1 pinmux */
 	DEFAULT_PINMUX(GMI_AD9,       PWM1,        NORMAL,    NORMAL,   OUTPUT),

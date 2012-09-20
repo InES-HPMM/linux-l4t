@@ -148,7 +148,7 @@ TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
+TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 1, 1, 0, false, -1); /* always_on and boot_on */
 TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
