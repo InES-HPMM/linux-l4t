@@ -612,7 +612,10 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	 * are in LP2 state and irqs are disabled
 	 */
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
-		trace_cpu_cluster_rcuidle(POWER_CPU_CLUSTER_START);
+		if (is_idle_task(current))
+			trace_cpu_cluster_rcuidle(POWER_CPU_CLUSTER_START);
+		else
+			trace_cpu_cluster(POWER_CPU_CLUSTER_START);
 		set_power_timers(pdata->cpu_timer, 0,
 			clk_get_rate_all_locked(tegra_pclk));
 		if (flags & TEGRA_POWER_CLUSTER_G) {
@@ -680,7 +683,10 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
 		tegra_cluster_switch_epilog(flags);
-		trace_cpu_cluster_rcuidle(POWER_CPU_CLUSTER_DONE);
+		if (is_idle_task(current))
+			trace_cpu_cluster_rcuidle(POWER_CPU_CLUSTER_DONE);
+		else
+			trace_cpu_cluster(POWER_CPU_CLUSTER_DONE);
 	}
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_epilog);
 
