@@ -955,6 +955,18 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	suspend_cpu_complex(flags);
 
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+	/* In case of LP0, program external power gating accordinly */
+	if (mode == TEGRA_SUSPEND_LP0) {
+		reg = readl(FLOW_CTRL_CPU_CSR(0));
+		if (is_lp_cluster())
+			reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU; /* Non CPU */
+		else
+			reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;  /* CRAIL */
+		flowctrl_writel(reg, FLOW_CTRL_CPU_CSR(0));
+	}
+#endif
+
 	flush_cache_all();
 	outer_flush_all();
 	outer_disable();
