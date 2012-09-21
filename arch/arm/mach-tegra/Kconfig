@@ -153,7 +153,6 @@ config ARCH_TEGRA_12x_SOC
 	select ARM_CPU_SUSPEND if PM
 	select ARM_GIC
 	select ARCH_REQUIRE_GPIOLIB
-	select TEGRA_GK20A
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_EHCI_TEGRA if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
@@ -378,8 +377,9 @@ config TEGRA_CORE_DVFS
 	default y
 
 config TEGRA_GK20A
-        bool "Enable the GK20A graphics engine"
-        depends on ARCH_TEGRA_12x_SOC
+	bool "Enable the GK20A graphics engine"
+	depends on ARCH_TEGRA_12x_SOC
+	default y
 	help
 	  Enable support for the GK20A graphics engine
 
