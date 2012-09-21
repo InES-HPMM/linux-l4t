@@ -80,7 +80,20 @@ static int tegra_cs42l73_hw_params(struct snd_pcm_substream *substream,
 	int err, rate;
 
 	srate = params_rate(params);
-	mclk = 256 * srate;
+
+	switch (srate) {
+	case 8000:
+	case 16000:
+	case 32000:
+		mclk = 12288000;
+		break;
+	case 11025:
+		mclk = 512 * srate;
+		break;
+	default:
+		mclk = 256 * srate;
+		break;
+	}
 
 	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
 	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
