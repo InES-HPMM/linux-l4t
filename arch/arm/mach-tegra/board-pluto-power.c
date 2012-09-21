@@ -405,7 +405,8 @@ static struct regulator_consumer_supply fixed_reg_en_vpp_fuse_supply[] = {
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_en"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
-	_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts)	\
+	_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts,	\
+	_sdelay)							\
 	static struct regulator_init_data ri_data_##_var =		\
 	{								\
 		.supply_regulator = _in_supply,				\
@@ -431,6 +432,7 @@ static struct regulator_consumer_supply fixed_reg_en_vpp_fuse_supply[] = {
 		.enable_high = _active_high,				\
 		.enabled_at_boot = _boot_state,				\
 		.init_data = &ri_data_##_var,				\
+		.startup_delay = _sdelay				\
 	};								\
 	static struct platform_device fixed_reg_en_##_var##_dev = {	\
 		.name = "reg-fixed-voltage",				\
@@ -442,48 +444,51 @@ static struct regulator_consumer_supply fixed_reg_en_vpp_fuse_supply[] = {
 
 FIXED_REG(0,	battery,	battery,
 	NULL,	0,	0,
-	-1,	false, true,	0,	3300);
+	-1,	false, true,	0,	3300,	0);
 
 FIXED_REG(1,	vdd_1v8_cam,	vdd_1v8_cam,
 	palmas_rails(smps8),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	false, true,	0,	1800);
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	false, true,	0,	1800,
+	0);
 
 FIXED_REG(2,	vdd_1v2_cam,	vdd_1v2_cam,
 	palmas_rails(smps7),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,	false, true,	0,	1200);
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,	false, true,	0,	1200,
+	0);
 
 FIXED_REG(3,	avdd_usb3_1v05,	avdd_usb3_1v05,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PK5,	false,	true,	0,	1050);
+	TEGRA_GPIO_PK5,	false,	true,	0,	1050,	0);
 
 FIXED_REG(4,	vdd_mmc_sdmmc3,	vdd_mmc_sdmmc3,
 	palmas_rails(smps9),	0,	0,
-	TEGRA_GPIO_PK1,	false,	true,	0,	3300);
+	TEGRA_GPIO_PK1,	false,	true,	0,	3300,	0);
 
 FIXED_REG(5,	vdd_lcd_1v8,	vdd_lcd_1v8,
 	palmas_rails(smps8),	0,	0,
-	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	0,	1800);
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false,	true,	0,	1800,
+	0);
 
 FIXED_REG(6,	vdd_lcd_mmc,	vdd_lcd_mmc,
 	palmas_rails(smps9),	0,	0,
-	TEGRA_GPIO_PI4,	false,	true,	0,	1800);
+	TEGRA_GPIO_PI4,	false,	true,	0,	1800,	0);
 
 FIXED_REG(7,	vdd_1v8_mic,	vdd_1v8_mic,
 	palmas_rails(smps8),	0,	0,
-	-1,	false,	true,	0,	1800);
+	-1,	false,	true,	0,	1800,	0);
 
 FIXED_REG(8,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
-	TEGRA_GPIO_PK6,	true,	true,	0,	5000);
+	TEGRA_GPIO_PK6,	true,	true,	0,	5000,	5000);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PX4,	false,	true,	0,	1800);
+	TEGRA_GPIO_PX4,	false,	true,	0,	1800,	0);
 #else
 FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PX0,	false,	true,	0,	1800);
+	TEGRA_GPIO_PX0,	false,	true,	0,	1800,	0);
 #endif
 
 /*
