@@ -27,6 +27,8 @@
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pwm_backlight.h>
+#include <linux/mfd/max8831.h>
+#include <linux/max8831_backlight.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -248,22 +250,38 @@ static tegra_dc_bl_output pluto_bl_output_measured = {
 };
 #elif PANEL_5_LG_720_1280
 static tegra_dc_bl_output pluto_bl_output_measured = {
-	0, 1, 3, 5, 7, 9, 11, 12,
-	14, 15, 16, 18, 19, 21, 22, 24,
-	25, 26, 27, 28, 29, 30, 31, 32,
-	33, 34, 35, 36, 38, 39, 40, 41,
-	42, 43, 44, 45, 46, 47, 48, 49,
-	50, 51, 51, 52, 52, 53, 54, 55,
-	56, 56, 57, 58, 59, 60, 61, 62,
-	63, 64, 65, 66, 67, 68, 69, 70,
-	71, 72, 73, 74, 75, 76, 76, 77,
-	78, 79, 80, 81, 81, 82, 83, 83,
-	84, 85, 85, 86, 87, 88, 89, 90,
-	91, 92, 93, 94, 95, 96, 96, 97,
-	98, 99, 100, 101, 102, 103, 103, 104,
-	104, 105, 106, 107, 108, 109, 110, 111,
-	112, 113, 114, 115, 116, 117, 118, 119,
-	120, 121, 122, 123, 124, 124, 125, 127
+	0, 1, 3, 5, 7, 9, 11, 13,
+	15, 17, 19, 21, 22, 23, 25, 26,
+	28, 29, 30, 32, 33, 34, 36, 37,
+	39, 40, 42, 43, 45, 46, 48, 49,
+	50, 51, 52, 53, 54, 55, 56, 57,
+	58, 59, 60, 61, 62, 63, 64, 65,
+	66, 67, 68, 70, 71, 72, 73, 74,
+	75, 77, 78, 79, 80, 81, 82, 83,
+	84, 85, 86, 87, 88, 89, 90, 91,
+	92, 93, 94, 95, 96, 97, 98, 99,
+	100, 101, 101, 102, 102, 103, 103, 104,
+	105, 105, 106, 107, 108, 108, 109, 110,
+	111, 112, 113, 114, 115, 116, 117, 118,
+	119, 120, 121, 121, 122, 123, 124, 125,
+	126, 127, 128, 129, 130, 131, 132, 133,
+	134, 135, 135, 136, 137, 138, 139, 140,
+	141, 142, 143, 144, 145, 146, 147, 148,
+	149, 150, 151, 152, 153, 154, 155, 156,
+	156, 157, 158, 159, 160, 161, 162, 162,
+	163, 163, 164, 164, 165, 165, 166, 167,
+	167, 168, 169, 170, 171, 172, 173, 173,
+	174, 175, 176, 177, 178, 179, 180, 181,
+	182, 183, 184, 185, 186, 187, 188, 188,
+	189, 190, 191, 192, 193, 194, 194, 195,
+	196, 197, 198, 199, 200, 201, 202, 203,
+	204, 204, 205, 206, 206, 207, 207, 208,
+	209, 209, 210, 211, 212, 213, 214, 215,
+	216, 217, 218, 219, 220, 221, 222, 223,
+	223, 224, 225, 226, 227, 228, 229, 230,
+	231, 232, 233, 234, 235, 236, 237, 238,
+	239, 240, 241, 242, 243, 244, 245, 246,
+	247, 247, 248, 250, 251, 252, 253, 255
 };
 #elif PANEL_5_SHARP_1080p
 static tegra_dc_bl_output pluto_bl_output_measured = {
@@ -891,6 +909,61 @@ static struct platform_device pluto_disp1_bl_device = {
 		.platform_data = &pluto_disp1_bl_data,
 	},
 };
+#elif PANEL_5_LG_720_1280
+static struct led_info pluto_max8831_leds[] = {
+	[MAX8831_ID_LED3] = {
+		.name = "max8831:red:pluto",
+	},
+	[MAX8831_ID_LED4] = {
+		.name = "max8831:green:pluto",
+	},
+	[MAX8831_ID_LED5] = {
+		.name = "max8831:blue:pluto",
+	},
+};
+
+static struct platform_max8831_backlight_data pluto_max8831_bl_data = {
+	.id	= -1,
+	.name	= "pluto_display_bl",
+	.max_brightness	= MAX8831_BL_LEDS_MAX_CURR,
+	.dft_brightness	= 100,
+	.notify	= pluto_disp1_bl_notify,
+};
+
+static struct max8831_subdev_info pluto_max8831_subdevs[] = {
+	{
+		.id = MAX8831_ID_LED3,
+		.name = "max8831_led_bl",
+		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED3],
+		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED3]),
+	}, {
+		.id = MAX8831_ID_LED4,
+		.name = "max8831_led_bl",
+		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED4],
+		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED4]),
+	}, {
+		.id = MAX8831_ID_LED5,
+		.name = "max8831_led_bl",
+		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED5],
+		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED5]),
+	}, {
+		.id = MAX8831_BL_LEDS,
+		.name = "max8831_display_bl",
+		.platform_data = &pluto_max8831_bl_data,
+		.pdata_size = sizeof(pluto_max8831_bl_data),
+	},
+};
+
+static struct max8831_platform_data pluto_max8831 = {
+	.num_subdevs = ARRAY_SIZE(pluto_max8831_subdevs),
+	.subdevs = pluto_max8831_subdevs,
+};
+
+static struct i2c_board_info pluto_i2c_led_info = {
+	.type		= "max8831",
+	.addr		= 0x4d,
+	.platform_data	= &pluto_max8831,
+};
 #endif
 
 static struct tegra_dc_sd_settings pluto_sd_settings = {
@@ -940,7 +1013,11 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
+#if PANEL_4_7_JDI_720_1280
 	.bl_device_name = "pwm-backlight",
+#elif PANEL_5_LG_720_1280
+	.bl_device_name = "max8831_display_bl",
+#endif
 };
 
 int __init pluto_panel_init(void)
@@ -1014,6 +1091,8 @@ int __init pluto_panel_init(void)
 		return err;
 	}
 	gpio_free(DSI_PANEL_BL_PWM);
+#elif PANEL_5_LG_720_1280
+	i2c_register_board_info(1, &pluto_i2c_led_info, 1);
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP

@@ -216,56 +216,6 @@ static struct tegra_i2c_platform_data pluto_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct led_info pluto_max8831_leds[] = {
-	[MAX8831_ID_LED3] = {
-		.name = "max8831:red:pluto",
-	},
-	[MAX8831_ID_LED4] = {
-		.name = "max8831:green:pluto",
-	},
-	[MAX8831_ID_LED5] = {
-		.name = "max8831:blue:pluto",
-	},
-	[MAX8831_BL_LEDS] = {
-		.name = "pluto_display_bl",
-	},
-};
-
-static struct max8831_subdev_info pluto_max8831_subdevs[] = {
-	{
-		.id = MAX8831_ID_LED3,
-		.name = "max8831_led_bl",
-		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED3],
-		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED3]),
-	}, {
-		.id = MAX8831_ID_LED4,
-		.name = "max8831_led_bl",
-		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED4],
-		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED4]),
-	}, {
-		.id = MAX8831_ID_LED5,
-		.name = "max8831_led_bl",
-		.platform_data = &pluto_max8831_leds[MAX8831_ID_LED5],
-		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_ID_LED5]),
-	}, {
-		.id = MAX8831_BL_LEDS,
-		.name = "max8831_display_bl",
-		.platform_data = &pluto_max8831_leds[MAX8831_BL_LEDS],
-		.pdata_size = sizeof(pluto_max8831_leds[MAX8831_BL_LEDS]),
-	},
-};
-
-static struct max8831_platform_data pluto_max8831 = {
-	.num_subdevs = ARRAY_SIZE(pluto_max8831_subdevs),
-	.subdevs = pluto_max8831_subdevs,
-};
-
-static struct i2c_board_info pluto_i2c_led_info = {
-	.type		= "max8831",
-	.addr		= 0x4d,
-	.platform_data	= &pluto_max8831,
-};
-
 static struct i2c_board_info __initdata cs42l73_board_info = {
 	I2C_BOARD_INFO("cs42l73", 0x4a),
 };
@@ -301,8 +251,6 @@ static void pluto_i2c_init(void)
 	tegra11_i2c_device3.dev.platform_data = &pluto_i2c3_platform_data;
 	tegra11_i2c_device4.dev.platform_data = &pluto_i2c4_platform_data;
 	tegra11_i2c_device5.dev.platform_data = &pluto_i2c5_platform_data;
-
-	i2c_register_board_info(1, &pluto_i2c_led_info, 1);
 
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
