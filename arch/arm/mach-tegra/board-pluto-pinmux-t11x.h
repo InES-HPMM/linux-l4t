@@ -212,8 +212,8 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
-	DEFAULT_PINMUX(CLK1_REQ,      RSVD,        PULL_DOWN, TRISTATE, OUTPUT),
-	DEFAULT_PINMUX(USB_VBUS_EN1,  RSVD,        PULL_DOWN, TRISTATE, OUTPUT),
+	DEFAULT_PINMUX(CLK1_REQ,      RSVD3,       PULL_DOWN, TRISTATE, OUTPUT),
+	DEFAULT_PINMUX(USB_VBUS_EN1,  RSVD3,       PULL_DOWN, TRISTATE, OUTPUT),
 };
 
 static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
