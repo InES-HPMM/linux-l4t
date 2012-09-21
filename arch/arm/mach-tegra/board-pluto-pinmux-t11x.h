@@ -135,8 +135,8 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW2,       KBC,         PULL_UP,    NORMAL,   INPUT),
 
 	/* UARTA pinmux */
-	DEFAULT_PINMUX(KB_ROW10,      UARTA,       NORMAL,    TRISTATE, INPUT),
-	DEFAULT_PINMUX(KB_ROW9,       UARTA,       NORMAL,    NORMAL,   OUTPUT),
+	DEFAULT_PINMUX(KB_ROW10,      RSVD1,       NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(KB_ROW9,       RSVD1,       NORMAL,    NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(GPIO_PU0,      UARTA,       NORMAL,    NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(GPIO_PU1,      UARTA,       NORMAL,    TRISTATE, INPUT),
 	DEFAULT_PINMUX(GPIO_PU2,      UARTA,       NORMAL,    TRISTATE, INPUT),
