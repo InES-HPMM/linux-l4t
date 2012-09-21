@@ -66,7 +66,6 @@
 #define NUM_TSENSOR_SPARE_BITS	28
 /* tsensor calibration register */
 #define FUSE_TSENSOR_CALIB_0	0x198
-#define FUSE_IDDQ_CALIB_0	0x118
 
 #endif
 
@@ -217,13 +216,6 @@ int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
 	return 0;
 }
 EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
-
-int tegra_fuse_get_cpu_iddq_mA(u32 *iddq)
-{
-	*iddq = tegra_fuse_readl(FUSE_IDDQ_CALIB_0);
-	*iddq = ((*iddq >> 5) & 0x3ff) * 8;
-	return 0;
-}
 #endif
 
 #define TEGRA_READ_AGE_BIT(n, bit, age) {\
