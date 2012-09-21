@@ -531,6 +531,10 @@ static void __init tegra_bonaire_init(void)
 	tegra_enable_pinmux();
 	bonaire_pinmux_init();
 
+	if (tegra_revision == TEGRA_REVISION_QT)
+		debug_uart_platform_data[0].uartclk =
+						tegra_clk_measure_input_freq();
+
 	platform_add_devices(bonaire_devices, ARRAY_SIZE(bonaire_devices));
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
