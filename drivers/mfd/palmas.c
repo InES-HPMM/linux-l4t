@@ -519,6 +519,15 @@ static void palmas_dt_to_pdata(struct i2c_client *i2c,
 		palmas_set_pdata_irq_flag(i2c, pdata);
 }
 
+static struct palmas *palmas_dev;
+static void palmas_power_off(void)
+{
+	if (!palmas_dev)
+		return;
+
+	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
+}
+
 static int palmas_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
@@ -726,6 +735,10 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		goto err_devices;
 
+	if (pdata->use_power_off && !pm_power_off)
+		pm_power_off = palmas_power_off;
+
+	palmas_dev = palmas;
 	return ret;
 
 err_devices:
