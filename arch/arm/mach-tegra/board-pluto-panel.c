@@ -363,10 +363,10 @@ static int pluto_dsi_panel_enable(void)
 			goto fail;
 		}
 #if PANEL_5_LG_720_1280
-		regulator_set_voltage(avdd_lcd_3v0_2v8, 2800, 2800);
+		regulator_set_voltage(avdd_lcd_3v0_2v8, 2800000, 2800000);
 #endif
 #if PANEL_4_7_JDI_720_1280
-		regulator_set_voltage(avdd_lcd_3v0_2v8, 3000, 3000);
+		regulator_set_voltage(avdd_lcd_3v0_2v8, 3000000, 3000000);
 #endif
 	}
 
