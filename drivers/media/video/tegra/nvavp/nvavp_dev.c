@@ -86,6 +86,9 @@
 
 #define IS_VIDEO_CHANNEL_ID(channel_id)	(channel_id == NVAVP_VIDEO_CHANNEL ? 1: 0)
 
+#define SCLK_BOOST_RATE		40000000
+
+static bool boost_sclk;
 
 struct nvavp_channel {
 	struct mutex			pushbuffer_lock;
@@ -1473,6 +1476,34 @@ static const struct file_operations tegra_audio_nvavp_fops = {
 };
 #endif
 
+static ssize_t boost_sclk_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", boost_sclk);
+}
+
+static ssize_t boost_sclk_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct nvavp_info *nvavp = nvhost_get_drvdata(ndev);
+	unsigned long val = 0;
+
+	if (kstrtoul(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	if (val)
+		clk_set_rate(nvavp->sclk, SCLK_BOOST_RATE);
+	else if (!val)
+		clk_set_rate(nvavp->sclk, 0);
+
+	boost_sclk = val;
+
+	return count;
+}
+
+DEVICE_ATTR(boost_sclk, S_IRUGO|S_IWUSR, boost_sclk_show, boost_sclk_store);
+
 static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	struct nvhost_device_id *id_table)
 {
@@ -1682,6 +1713,8 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev,
 	nvhost_set_drvdata(ndev, nvavp);
 	nvavp->nvhost_dev = ndev;
 
+	device_create_file(&ndev->dev, &dev_attr_boost_sclk);
+
 	return 0;
 
 err_req_irq_pend:
@@ -1740,6 +1773,8 @@ static int tegra_nvavp_remove(struct nvhost_device *ndev)
 
 	nvavp_unload_ucode(nvavp);
 	nvavp_unload_os(nvavp);
+
+	device_remove_file(&ndev->dev, &dev_attr_boost_sclk);
 
 	misc_deregister(&nvavp->video_misc_dev);
 
