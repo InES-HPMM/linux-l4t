@@ -73,6 +73,7 @@ struct ad5816_pdata_info {
 #define MODE			0x06
 #define VCM_FREQ		0x07
 #define VCM_THRESHOLD	0x08
+#define SCL_LOW_DETECTION	0xC0
 
 
 #endif

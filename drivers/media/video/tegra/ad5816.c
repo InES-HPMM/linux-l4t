@@ -102,7 +102,7 @@
 #define AD5816_SETTLETIME		50
 #define AD5816_FOCUS_MACRO		810
 #define AD5816_FOCUS_INFINITY	50 /* Exact value needs to be decided */
-#define AD5816_POS_LOW_DEFAULT	0
+#define AD5816_POS_LOW_DEFAULT	16
 #define AD5816_POS_HIGH_DEFAULT	1023
 #define AD5816_POS_CLAMP		0x03ff
 /* Need to decide exact value of VCM_THRESHOLD and its use */
@@ -473,6 +473,13 @@ void ad5816_set_power_down(struct ad5816_info *info)
 void ad5816_set_arc_mode(struct ad5816_info *info)
 {
 	int err;
+
+	/* disable SCL low detection */
+	err = ad5816_i2c_wr8(info, SCL_LOW_DETECTION, 0xB6);
+	if (err)
+		dev_err(&info->i2c_client->dev, "%s: Low detect write failed\n",
+			__func__);
+
 	/* set ARC enable */
 	err = ad5816_i2c_wr8(info, CONTROL, 0x02);
 	if (err)
@@ -522,6 +529,7 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 		err = ad5816_vreg_en_all(info);
 		ad5816_gpio_able(info, 1);
 		ad5816_gpio_reset(info, 1);
+		ad5816_set_arc_mode(info);
 		break;
 	default:
 		err = -EINVAL;
@@ -598,6 +606,7 @@ static int ad5816_reset(struct ad5816_info *info, u32 level)
 	if (level == NVC_RESET_SOFT) {
 		err = ad5816_pm_wr(info, NVC_PWR_COMM);
 		err |= ad5816_i2c_wr8(info, CONTROL, 0x01); /* SW reset */
+		ad5816_set_arc_mode(info);
 	} else {
 		err = ad5816_pm_wr(info, NVC_PWR_OFF_FORCE);
 	}
@@ -663,9 +672,7 @@ static int ad5816_position_wr(struct ad5816_info *info, s32 position)
 {
 	s16 data;
 
-	ad5816_set_arc_mode(info);
-
-	if (position > info->config.pos_high)
+	if (position < info->config.pos_low || position > info->config.pos_high)
 		return -EINVAL;
 
 	data = position & AD5816_POS_CLAMP;
