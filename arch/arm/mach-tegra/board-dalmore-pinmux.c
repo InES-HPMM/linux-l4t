@@ -94,6 +94,18 @@
 		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,	\
 	}
 
+#define DDC_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _rcv_sel) \
+	{							\
+		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
+		.func		= TEGRA_MUX_##_mux,		\
+		.pupd		= TEGRA_PUPD_##_pupd,		\
+		.tristate	= TEGRA_TRI_##_tri,		\
+		.io		= TEGRA_PIN_##_io,		\
+		.lock		= TEGRA_PIN_LOCK_##_lock,	\
+		.rcv_sel	= TEGRA_PIN_RCV_SEL_##_rcv_sel,		\
+		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,	\
+	}
+
 #define VI_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _ioreset) \
 	{							\
 		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
