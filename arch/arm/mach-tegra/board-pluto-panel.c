@@ -353,9 +353,6 @@ static int pluto_dsi_panel_enable(void)
 		goto fail;
 	}
 
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-	gpio_direction_output(TEGRA_GPIO_PH1, 1);
-
 	if (avdd_lcd_3v0_2v8) {
 		err = regulator_enable(avdd_lcd_3v0_2v8);
 		if (err < 0) {
@@ -402,6 +399,9 @@ static int pluto_dsi_panel_enable(void)
 	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
 	msleep(20);
 #endif
+	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	gpio_direction_output(TEGRA_GPIO_PH1, 1);
+
 	return 0;
 fail:
 	return err;
