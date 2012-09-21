@@ -725,7 +725,7 @@ static void __init tps6591x_debuginit(struct tps6591x *tpsi)
 }
 #endif
 
-static int __init tps6591x_sleepinit(struct tps6591x *tpsi,
+static int __devinit tps6591x_sleepinit(struct tps6591x *tpsi,
 					struct tps6591x_platform_data *pdata)
 {
 	struct device *dev = NULL;
