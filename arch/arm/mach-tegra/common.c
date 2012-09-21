@@ -33,6 +33,7 @@
 #include <linux/of.h>
 #include <linux/pstore_ram.h>
 #include <linux/dma-mapping.h>
+#include <linux/sys_soc.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/system.h>
@@ -1107,6 +1108,82 @@ static struct platform_device *pinmux_devices[] = {
 void tegra_enable_pinmux(void)
 {
 	platform_add_devices(pinmux_devices, ARRAY_SIZE(pinmux_devices));
+}
+
+static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
+	[TEGRA_REVISION_UNKNOWN] = "unknown",
+	[TEGRA_REVISION_A01]     = "A01",
+	[TEGRA_REVISION_A02]     = "A02",
+	[TEGRA_REVISION_A03]     = "A03",
+	[TEGRA_REVISION_A03p]    = "A03 prime",
+	[TEGRA_REVISION_A04]     = "A04",
+	[TEGRA_REVISION_A04p]    = "A04 prime",
+	[TEGRA_REVISION_QT]      = "QT",
+};
+
+static const char * __init tegra_get_revision(void)
+{
+	return kasprintf(GFP_KERNEL, "%s", tegra_revision_name[tegra_revision]);
+}
+
+static const char * __init tegra_get_family(void)
+{
+	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
+	u32 cid = readl(chip_id);
+	cid = (cid >> 8) & 0xFF;
+
+	switch (cid) {
+	case TEGRA_CHIPID_TEGRA2:
+		cid = 2;
+		break;
+	case TEGRA_CHIPID_TEGRA3:
+		cid = 3;
+		break;
+	case TEGRA_CHIPID_TEGRA11:
+		cid = 11;
+		break;
+
+	case TEGRA_CHIPID_UNKNOWN:
+	default:
+		cid = 0;
+	}
+	return kasprintf(GFP_KERNEL, "Tegra%d", cid);
+}
+
+static const char * __init tegra_get_soc_id(void)
+{
+	int package_id = tegra_package_id();
+	return kasprintf(GFP_KERNEL, "REV=%s:SKU=0x%x:PID=0x%x",
+		tegra_revision_name[tegra_revision], tegra_sku_id, package_id);
+}
+
+static void __init tegra_soc_info_populate(struct soc_device_attribute
+	*soc_dev_attr, const char *machine)
+{
+	soc_dev_attr->soc_id = tegra_get_soc_id();
+	soc_dev_attr->machine  = machine;
+	soc_dev_attr->family   = tegra_get_family();
+	soc_dev_attr->revision = tegra_get_revision();
+}
+
+int __init tegra_soc_device_init(const char *machine)
+{
+	struct soc_device *soc_dev;
+	struct soc_device_attribute *soc_dev_attr;
+
+	soc_dev_attr = kzalloc(sizeof(*soc_dev_attr), GFP_KERNEL);
+	if (!soc_dev_attr)
+		return -ENOMEM;
+
+	tegra_soc_info_populate(soc_dev_attr, machine);
+
+	soc_dev = soc_device_register(soc_dev_attr);
+	if (IS_ERR_OR_NULL(soc_dev)) {
+		kfree(soc_dev_attr);
+		return -1;
+	}
+
+	return 0;
 }
 
 void __init tegra_init_late(void)

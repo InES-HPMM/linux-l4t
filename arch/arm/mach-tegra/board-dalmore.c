@@ -547,6 +547,7 @@ static void __init tegra_dalmore_init(void)
 {
 	tegra_battery_edp_init(2500);
 	tegra_clk_init_from_table(dalmore_clk_init_table);
+	tegra_soc_device_init("dalmore");
 	tegra_enable_pinmux();
 	dalmore_pinmux_init();
 	dalmore_i2c_init();

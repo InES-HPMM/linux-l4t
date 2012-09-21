@@ -585,6 +585,7 @@ static void __init tegra_curacao_init(void)
 	tegra_clk_init_from_table(curacao_clk_init_table);
 	tegra_enable_pinmux();
 	curacao_pinmux_init();
+	tegra_soc_device_init("curacao");
 
 	if (tegra_revision == TEGRA_REVISION_QT)
 		debug_uart_platform_data[0].uartclk = tegra_clk_measure_input_freq();
