@@ -594,6 +594,7 @@ static void __init tegra_dalmore_init(void)
 	dalmore_i2c_init();
 	dalmore_spi_init();
 	dalmore_usb_init();
+	dalmore_edp_init();
 	dalmore_uart_init();
 	dalmore_audio_init();
 	platform_add_devices(dalmore_devices, ARRAY_SIZE(dalmore_devices));

@@ -6657,6 +6657,12 @@ static void tegra11_init_one_clock(struct clk *c)
 	clkdev_add(&c->lookup);
 }
 
+void tegra_edp_throttle_cpu_now(u8 factor)
+{
+	/* empty definition for tegra11 */
+	return;
+}
+
 bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 {
 	/*

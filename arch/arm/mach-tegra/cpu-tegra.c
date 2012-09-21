@@ -188,8 +188,10 @@ static int edp_thermal_index;
 static cpumask_t edp_cpumask;
 static unsigned int edp_limit;
 
-unsigned int tegra_get_edp_limit(void)
+unsigned int tegra_get_edp_limit(int *get_edp_thermal_index)
 {
+	if (get_edp_thermal_index)
+		*get_edp_thermal_index = edp_thermal_index;
 	return edp_limit;
 }
 

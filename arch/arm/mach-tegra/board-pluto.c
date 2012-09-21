@@ -675,6 +675,7 @@ static void __init tegra_pluto_init(void)
 	pluto_i2c_init();
 	pluto_spi_init();
 	pluto_usb_init();
+	pluto_edp_init();
 	pluto_uart_init();
 	pluto_audio_init();
 	platform_add_devices(pluto_devices, ARRAY_SIZE(pluto_devices));

@@ -20,6 +20,7 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <mach/edp.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
 #include <media/imx091.h>

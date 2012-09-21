@@ -38,6 +38,7 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 
 #include "pm.h"
@@ -1089,3 +1090,18 @@ int __init dalmore_suspend_init(void)
 	return 0;
 }
 
+int __init dalmore_edp_init(void)
+{
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+	unsigned int regulator_mA;
+
+	regulator_mA = get_maximum_cpu_current_supported();
+	if (!regulator_mA)
+		regulator_mA = 15000;
+
+	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
+
+	tegra_init_cpu_edp_limits(regulator_mA);
+#endif
+	return 0;
+}
