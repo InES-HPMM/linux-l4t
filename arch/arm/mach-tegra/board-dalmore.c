@@ -92,7 +92,10 @@ static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	{ "audio3",	"i2s3_sync",	0,		false},
 	/* Setting vi_sensor-clk to true for validation purpose, will imapact
 	 * power, later set to be false.*/
-	{ "vi_sensor",	"pll_p",	150000000,	true},
+	{ "vi_sensor",	"pll_p",	150000000,	false},
+	{ "cilab",	"pll_p",	150000000,	false},
+	{ "cilcd",	"pll_p",	150000000,	false},
+	{ "cile",	"pll_p",	150000000,	false},
 	{ "i2c1",	"pll_p",	3200000,	false},
 	{ "i2c2",	"pll_p",	3200000,	false},
 	{ "i2c3",	"pll_p",	3200000,	false},
