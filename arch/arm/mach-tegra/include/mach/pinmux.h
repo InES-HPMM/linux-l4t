@@ -195,6 +195,12 @@ enum tegra_pin_ioreset {
 	TEGRA_PIN_IO_RESET_ENABLE,
 };
 
+enum tegra_pin_rcv_sel {
+	TEGRA_PIN_RCV_SEL_DEFAULT = 0,
+	TEGRA_PIN_RCV_SEL_NORMAL,
+	TEGRA_PIN_RCV_SEL_HIGH,
+};
+
 enum tegra_vddio {
 	TEGRA_VDDIO_BB = 0,
 	TEGRA_VDDIO_LCD,
@@ -222,6 +228,7 @@ struct tegra_pingroup_config {
 	enum tegra_pin_lock	lock;
 	enum tegra_pin_od	od;
 	enum tegra_pin_ioreset	ioreset;
+	enum tegra_pin_rcv_sel	rcv_sel;
 };
 
 enum tegra_slew {
@@ -356,6 +363,7 @@ struct tegra_pingroup_desc {
 	s8 lock_bit;	/* offset of the LOCK bit into mux register bit */
 	s8 od_bit;	/* offset of the OD bit into mux register bit */
 	s8 ioreset_bit;	/* offset of the IO_RESET bit into mux register bit */
+	s8 rcv_sel_bit;	/* offset of the RCV_SEL bit into mux register bit */
 	int gpionr;
 };
 

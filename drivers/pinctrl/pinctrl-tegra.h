@@ -51,6 +51,9 @@ struct tegra_function {
  * @ioreset_reg:	IO reset register offset. -1 if unsupported.
  * @ioreset_bank:	IO reset register bank. 0 if unsupported.
  * @ioreset_bit:	IO reset register bit. 0 if unsupported.
+ * @rcv_sel_reg:	Receiver select offset. -1 if unsupported.
+ * @rcv_sel_bank:	Receiver select bank. 0 if unsupported.
+ * @rcv_sel_bit:	Receiver select bit. 0 if unsupported.
  * @drv_reg:		Drive fields register offset. -1 if unsupported.
  *			This register contains the hsm, schmitt, lpmd, drvdn,
  *			drvup, slwr, and slwf parameters.
@@ -87,6 +90,7 @@ struct tegra_pingroup {
 	s16 odrain_reg;
 	s16 lock_reg;
 	s16 ioreset_reg;
+	s16 rcv_sel_reg;
 	s16 drv_reg;
 	u32 mux_bank:2;
 	u32 pupd_bank:2;
@@ -94,6 +98,7 @@ struct tegra_pingroup {
 	u32 einput_bank:2;
 	u32 odrain_bank:2;
 	u32 ioreset_bank:2;
+	u32 rcv_sel_bank:2;
 	u32 lock_bank:2;
 	u32 drv_bank:2;
 	u32 mux_bit:5;
@@ -103,6 +108,7 @@ struct tegra_pingroup {
 	u32 odrain_bit:5;
 	u32 lock_bit:5;
 	u32 ioreset_bit:5;
+	u32 rcv_sel_bit:5;
 	u32 hsm_bit:5;
 	u32 schmitt_bit:5;
 	u32 lpmd_bit:5;

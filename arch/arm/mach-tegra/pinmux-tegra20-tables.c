@@ -136,6 +136,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 		.lock_bit = -1,					\
 		.od_bit = -1,					\
 		.ioreset_bit = -1,				\
+		.rcv_sel_bit = -1,				\
 		.io_default = -1,				\
 	}
 
