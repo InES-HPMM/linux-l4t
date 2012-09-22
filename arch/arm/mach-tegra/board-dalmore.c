@@ -617,7 +617,7 @@ struct spi_board_info rm31080a_dalmore_spi_board[1] = {
 	 .modalias = "rm_ts_spidev",
 	 .bus_num = 3,
 	 .chip_select = 2,
-	 .max_speed_hz = 18 * 1000 * 1000,
+	 .max_speed_hz = 12 * 1000 * 1000,
 	 .mode = SPI_MODE_0,
 	 .platform_data = &rm31080ts_dalmore_data,
 	 },
