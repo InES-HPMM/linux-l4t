@@ -42,8 +42,9 @@ int __init touch_init_raydium(int irq_gpio, int reset_gpio, struct rm_spi_ts_pla
 	gpio_set_value(reset_gpio, 1);
 	msleep(5);
 
-	if(!err)
-		spi_register_board_info(rm31080a_spi_board, asize);
+	spi_register_board_info(rm31080a_spi_board, asize);
+	pr_info("Raydium touch platform_id:  %d\n",
+				rm31080ts_data->platform_id);
 
 	return err;
 }
