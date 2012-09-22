@@ -9,7 +9,7 @@ config TEGRA_GRHOST
 
 config TEGRA_GRHOST_USE_NVMAP
 	bool "Use nvmap as graphics memory manager"
-	default y
+	default y if TEGRA_NVMAP
 	help
 	  Use nvmap as the graphics memory manager. This is the only
 	  choice at the moment.
