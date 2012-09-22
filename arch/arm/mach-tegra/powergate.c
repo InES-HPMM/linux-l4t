@@ -1075,6 +1075,74 @@ static void tegra11x_mipical_calibrate(int id)
 }
 #endif
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+static bool skip_pg_check(int id, bool is_unpowergate)
+{
+	/*
+	 * FIXME: need to stress test partition power gating before
+	 * enabling power gating for T11x
+	 * List of T11x partition id which skip power gating
+	 */
+	static int skip_pg_t11x_list[] = {
+		0,
+		1,
+		2,
+		3,
+		4,
+		5,
+		6,
+		7,
+		8,
+		9,
+		10,
+		11,
+		12,
+		13,
+		14,
+		15,
+		16,
+		17,
+		18,
+		19,
+		20,
+		21,
+		22,
+	};
+	int i;
+
+	if ((tegra_powergate_is_powered(id) &&
+		is_unpowergate) ||
+		(!(tegra_powergate_is_powered(id)) &&
+		(!is_unpowergate))) {
+		pr_err("Partition %s already powered-%s and %spowergate skipped\n",
+			tegra_powergate_get_name(id),
+			(tegra_powergate_is_powered(id)) ?
+			"on" : "off",
+			(is_unpowergate) ? "un" : "");
+		return true;
+	}
+	/* unpowergate is needed initially for cpus */
+	if (!tegra_powergate_is_powered(id) &&
+		is_unpowergate) {
+		pr_err("Partition %s already powered-%s unpowergating\n",
+			tegra_powergate_get_name(id),
+			(tegra_powergate_is_powered(id)) ?
+			"on" : "off");
+		return false;
+	}
+	for (i = 0; i < tegra_num_powerdomains; i++) {
+		if (id == skip_pg_t11x_list[i]) {
+			pr_err("Partition %s %spowergate skipped\n",
+				tegra_powergate_get_name(id),
+				(is_unpowergate) ? "un" : "");
+			return true;
+		}
+	}
+
+	return false;
+}
+#endif
+
 /*
  * Must be called with clk disabled, and returns with clk disabled
  * Drivers should enable clks for partition. Unpowergates only the
@@ -1083,8 +1151,12 @@ static void tegra11x_mipical_calibrate(int id)
 int tegra_unpowergate_partition(int id)
 {
 	int ret;
-
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	bool is_pg_skip;
+
+	is_pg_skip = skip_pg_check(id, true);
+	if (is_pg_skip)
+		return 0;
 	ret = tegra11x_check_partition_pug_seq(id);
 	if (ret)
 		return ret;
@@ -1188,7 +1260,13 @@ int __init tegra_powergate_init(void)
 int tegra_unpowergate_partition_with_clk_on(int id)
 {
 	int ret = 0;
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	bool is_pg_skip;
 
+	is_pg_skip = skip_pg_check(id, true);
+	if (is_pg_skip)
+		return 0;
+#endif
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* Restrict this functions use to few partitions */
 	BUG_ON(id != TEGRA_POWERGATE_SATA && id != TEGRA_POWERGATE_PCIE);
@@ -1298,8 +1376,13 @@ static int tegra11x_check_partition_pug_seq(int id)
 int tegra_powergate_partition(int id)
 {
 	int ret;
-
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	bool is_pg_skip;
+
+	is_pg_skip = skip_pg_check(id, false);
+	if (is_pg_skip)
+		return 0;
+
 	ret = tegra11x_check_partition_pg_seq(id);
 	if (ret)
 		return ret;
@@ -1330,7 +1413,13 @@ err_clk_off:
 int tegra_powergate_partition_with_clk_off(int id)
 {
 	int ret = 0;
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	bool is_pg_skip;
 
+	is_pg_skip = skip_pg_check(id, false);
+	if (is_pg_skip)
+		return 0;
+#endif
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* Restrict functions use to selected partitions */
 	BUG_ON(id != TEGRA_POWERGATE_PCIE && id != TEGRA_POWERGATE_SATA);
