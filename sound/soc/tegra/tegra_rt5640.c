@@ -545,24 +545,24 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		ret = gpio_request(pdata->gpio_int_mic_en, "int_mic_en");
 		if (ret) {
 			dev_err(card->dev, "cannot get int_mic_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_INT_MIC_EN;
+		} else {
+			machine->gpio_requested |= GPIO_INT_MIC_EN;
 
-		/* Disable int mic; enable signal is active-high */
-		gpio_direction_output(pdata->gpio_int_mic_en, 0);
+			/* Disable int mic; enable signal is active-high */
+			gpio_direction_output(pdata->gpio_int_mic_en, 0);
+		}
 	}
 
 	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
 		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
 		if (ret) {
 			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_EXT_MIC_EN;
+		} else {
+			machine->gpio_requested |= GPIO_EXT_MIC_EN;
 
-		/* Disable ext mic; enable signal is active-low */
-		gpio_direction_output(pdata->gpio_ext_mic_en, 1);
+			/* Disable ext mic; enable signal is active-low */
+			gpio_direction_output(pdata->gpio_ext_mic_en, 1);
+		}
 	}
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
