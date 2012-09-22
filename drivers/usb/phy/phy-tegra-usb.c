@@ -737,6 +737,10 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 			}
 		}
 		usb_host_vbus_enable(phy, true);
+		/* Fixme: Need delay to stablize the vbus on USB1
+		   this must be fixed properly */
+		if (phy->inst == 0)
+			msleep(1000);
 	}
 	err = tegra_usb_phy_init_ops(phy);
 	if (err) {

@@ -1314,7 +1314,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 
 	if (phy->hot_plug) {
 		val = readl(base + USB_SUSP_CTRL);
-		if ((val  & USB_PHY_CLK_VALID_INT_STS)) {
+		if ((val  & USB_PHY_CLK_VALID_INT_STS) &&
+			(val  & USB_PHY_CLK_VALID_INT_ENB)) {
 			val &= ~USB_PHY_CLK_VALID_INT_ENB |
 					USB_PHY_CLK_VALID_INT_STS;
 			writel(val , (base + USB_SUSP_CTRL));
@@ -1407,6 +1408,22 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		val |= UTMIP_PD_CHRG;
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	} else {
+		phy->port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
+				HOSTPC1_DEVLC_PSPD_MASK;
+
+		/* Disable interrupts */
+		writel(0, base + USB_USBINTR);
+
+		/* Clear the run bit to stop SOFs when USB is suspended */
+		val = readl(base + USB_USBCMD);
+		val &= ~USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+
+		if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_HCH,
+						 USB_USBSTS_HCH, 2000)) {
+			pr_err("%s: timeout waiting for USB_USBSTS_HCH\n"
+							, __func__);
+		}
 		utmip_setup_pmc_wake_detect(phy);
 	}
 
@@ -1445,8 +1462,13 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 				val |= USB_PORTSC_WKCN;
 			writel(val, base + USB_PORTSC);
 
-			val = readl(base + USB_SUSP_CTRL);
-			val |= USB_PHY_CLK_VALID_INT_ENB;
+			if (val & USB_PORTSC_CCS) {
+				val = readl(base + USB_SUSP_CTRL);
+				val &= ~USB_PHY_CLK_VALID_INT_ENB;
+			} else {
+				val = readl(base + USB_SUSP_CTRL);
+				val |= USB_PHY_CLK_VALID_INT_ENB;
+			}
 			writel(val, base + USB_SUSP_CTRL);
 		} else {
 			/* Disable PHY clock valid interrupts while going into suspend*/
@@ -1466,6 +1488,10 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		val |= UTMIP_RESET;
 		writel(val, base + USB_SUSP_CTRL);
 	}
+
+	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
+		USB_PHY_CLK_VALID, 0, 2500))
+		pr_warn("%s: timeout waiting for phy to disable\n", __func__);
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -1495,6 +1521,14 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val = readl(base + UTMIP_TX_CFG0);
 	val |= UTMIP_FS_PREABMLE_J;
 	writel(val, base + UTMIP_TX_CFG0);
+
+	val = readl(base + USB_USBMODE);
+	val &= ~USB_USBMODE_MASK;
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		val |= USB_USBMODE_HOST;
+	else
+		val |= USB_USBMODE_DEVICE;
+	writel(val, base + USB_USBMODE);
 
 	val = readl(base + UTMIP_HSRX_CFG0);
 	val &= ~(UTMIP_IDLE_WAIT(~0) | UTMIP_ELASTIC_LIMIT(~0));
