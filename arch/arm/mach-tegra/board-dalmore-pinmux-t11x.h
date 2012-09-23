@@ -146,6 +146,7 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	DEFAULT_PINMUX(DAP3_DIN,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
 	DEFAULT_PINMUX(DAP3_SCLK,     RSVD,   NORMAL,    TRISTATE,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PV0,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
+	DEFAULT_PINMUX(KB_ROW7,       RSVD,   PULL_UP,   NORMAL,      INPUT),
 
 	/* UARTA pinmux */
 	DEFAULT_PINMUX(KB_ROW10,      UARTA,       NORMAL,    TRISTATE, INPUT),
