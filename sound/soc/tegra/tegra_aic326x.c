@@ -2,13 +2,8 @@
  * tegra_aic326x.c - Tegra machine ASoC driver for boards using TI 3262 codec.
  *
  * Author: Vinod G. <vinodg@nvidia.com>
- * Copyright (C) 2011 - NVIDIA, Inc.
  *
- * Based on code copyright/by:
- *
- * (c) 2010, 2011 Nvidia Graphics Pvt. Ltd.
- *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -564,6 +559,10 @@ static int tegra_aic326x_startup(struct snd_pcm_substream *substream)
 		/* allocate a dam for voice call recording */
 
 		i2s->call_record_dam_ifc = tegra30_dam_allocate_controller();
+
+		if (i2s->call_record_dam_ifc < 0)
+			return i2s->call_record_dam_ifc;
+
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
 			TEGRA30_DAM_CHIN0_SRC);
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
