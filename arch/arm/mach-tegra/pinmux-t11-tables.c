@@ -382,21 +382,8 @@ static int tegra11x_pinmux_suspend(void)
 
 static void tegra11x_pinmux_resume(void)
 {
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
-	u32 *tmp = pinmux_reg;
-	u32 reg_value;
-
-	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
-		reg_value = *tmp++;
-		reg_value |= BIT(4); /* tristate */
-		pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
-			tegra_soc_pingroups[i].mux_reg);
-	}
-
-	writel(0x400fffff, pmc_base + PMC_IO_DPD_REQ);
-	writel(0x40001fff, pmc_base + PMC_IO_DPD2_REQ);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
