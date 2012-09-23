@@ -34,6 +34,7 @@
 #include "pm.h"
 #include "board.h"
 #include "board-pluto.h"
+#include "tegra_cl_dvfs.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -528,6 +529,46 @@ static struct platform_device *pfixed_reg_devs[] = {
 #endif
 };
 
+/* board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param pluto_cl_dvfs_param = {
+	.sample_rate = 12500,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* palmas: fixed 10mV steps from 600mV to 1400mV, with offset 0x10 */
+#define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
+static struct voltage_reg_map pmu_cpu_vdd_map[PMU_CPU_VDD_MAP_SIZE];
+static inline void fill_reg_map(void)
+{
+	int i;
+	for (i = 0; i < PMU_CPU_VDD_MAP_SIZE; i++) {
+		pmu_cpu_vdd_map[i].reg_value = i + 0x10;
+		pmu_cpu_vdd_map[i].reg_uV = 600000 + 10000 * i;
+	}
+}
+
+static struct tegra_cl_dvfs_platform_data pluto_dfll_cpu_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
+	.u.pmu_i2c = {
+		.fs_rate = 400000,
+		.slave_addr = 0xb0,
+		.reg = 0x23,
+	},
+	.vdd_map = pmu_cpu_vdd_map,
+	.vdd_map_size = PMU_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &pluto_cl_dvfs_param,
+};
+
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 };
@@ -567,6 +608,9 @@ int __init pluto_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
+
+	fill_reg_map();
+	tegra_cl_dvfs_set_platform_data(&pluto_dfll_cpu_data);
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
