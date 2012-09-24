@@ -65,6 +65,22 @@ enum {
 	TPS6591X_GPIO_NR,
 };
 
+enum tps6591x_pup_flags {
+	TPS6591X_PUP_NRESPWRON2P,
+	TPS6591X_PUP_HDRSTP,
+	TPS6591X_PUP_PWRHOLDP,
+	TPS6591X_PUP_SLEEPP,
+	TPS6591X_PUP_PWRONP,
+	TPS6591X_PUP_I2CSRP,
+	TPS6591X_PUP_I2CCTLP,
+};
+
+enum tps6591x_pup_val {
+	TPS6591X_PUP_DIS,
+	TPS6591X_PUP_EN,
+	TPS6591X_PUP_DEFAULT,
+};
+
 struct tps6591x_subdev_info {
 	int		id;
 	const char	*name;
@@ -92,6 +108,11 @@ struct tps6591x_gpio_init_data {
 	unsigned init_apply:1;	/* Apply init data on configuring gpios*/
 };
 
+struct tps6591x_pup_init_data {
+	unsigned pin_id;
+	unsigned pup_val;
+};
+
 struct tps6591x_platform_data {
 	int gpio_base;
 	int irq_base;
@@ -106,6 +127,9 @@ struct tps6591x_platform_data {
 	int num_gpioinit_data;
 
 	bool use_power_off;
+
+	struct tps6591x_pup_init_data *pup_data;
+	int num_pins;
 };
 
 /*

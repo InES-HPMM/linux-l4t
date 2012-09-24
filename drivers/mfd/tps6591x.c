@@ -67,6 +67,11 @@
 #define TPS6591X_GPIO_PDEN	3
 #define TPS6591X_GPIO_DIR	2
 
+/* pullup register address */
+#define TPS6591X_PUADEN_REG_ADDR	0x1C
+
+#define TPS6591X_PIN_MAP(_pin_id, _bit_num)	[_pin_id] = _bit_num
+
 enum irq_type {
 	EVENT,
 	GPIO,
@@ -104,6 +109,16 @@ static const struct tps6591x_irq_data tps6591x_irqs[] = {
 	[TPS6591X_INT_VMBCH2_H]		= TPS6591X_IRQ(2, 5, EVENT),
 	[TPS6591X_INT_VMBCH2_L]		= TPS6591X_IRQ(2, 6, EVENT),
 	[TPS6591X_INT_PWRDN]		= TPS6591X_IRQ(2, 7, EVENT),
+};
+
+static u8 tps6591x_pin_map[] = {
+	TPS6591X_PIN_MAP(TPS6591X_PUP_NRESPWRON2P, 0),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_HDRSTP, 1),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_PWRHOLDP, 2),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_SLEEPP, 3),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_PWRONP, 4),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_I2CSRP, 5),
+	TPS6591X_PIN_MAP(TPS6591X_PUP_I2CCTLP, 6),
 };
 
 struct tps6591x {
@@ -797,6 +812,36 @@ err_sleep_init:
 	return ret;
 }
 
+static int tps6591x_pup_init(struct i2c_client *client,
+				struct tps6591x_platform_data *pdata)
+{
+	int i, ret, pin_id;
+	u8 reg_val;
+
+	ret = __tps6591x_read(client, TPS6591X_PUADEN_REG_ADDR, &reg_val);
+	if (ret < 0) {
+		dev_err(&client->dev, "unable to read pull up register\n");
+		return ret;
+	}
+
+	for (i = 0; i < pdata->num_pins; i++) {
+		pin_id = pdata->pup_data[i].pin_id;
+		if (pdata->pup_data[i].pup_val == TPS6591X_PUP_DEFAULT)
+			continue;
+		else if (pdata->pup_data[i].pup_val == TPS6591X_PUP_EN)
+			reg_val |= (1 << tps6591x_pin_map[pin_id]);
+		else if (pdata->pup_data[i].pup_val == TPS6591X_PUP_DIS)
+			reg_val &= ~(1 << tps6591x_pin_map[pin_id]);
+	}
+
+	ret = __tps6591x_write(client, TPS6591X_PUADEN_REG_ADDR, reg_val);
+	if (ret < 0) {
+		dev_err(&client->dev, "unable to write to pull up register\n");
+		return ret;
+	}
+	return 0;
+}
+
 static int tps6591x_i2c_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -848,6 +893,8 @@ static int tps6591x_i2c_probe(struct i2c_client *client,
 	tps6591x_debuginit(tps6591x);
 
 	tps6591x_sleepinit(tps6591x, pdata);
+
+	tps6591x_pup_init(client, pdata);
 
 	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = tps6591x_power_off;
