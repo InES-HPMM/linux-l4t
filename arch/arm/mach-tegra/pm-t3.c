@@ -312,8 +312,7 @@ static void cluster_switch_epilog_gic(void)
 			struct cpumask mask;
 			struct irq_desc *desc = irq_to_desc(irq);
 
-			if (desc && desc->affinity_hint &&
-			    desc->irq_data.affinity) {
+			if (desc && desc->affinity_hint) {
 				if (cpumask_and(&mask, desc->affinity_hint,
 						desc->irq_data.affinity))
 					val |= (*cpumask_bits(&mask) & 0xff) <<
