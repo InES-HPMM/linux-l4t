@@ -689,7 +689,10 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		tspi->is_hw_based_cs = false;
 		if (!tspi->is_hw_based_cs) {
 			command1 |= SPI_CS_SW_HW;
-			command1 &= ~SPI_CS_SS_VAL;
+			if (spi->mode & SPI_CS_HIGH)
+				command1 |= SPI_CS_SS_VAL;
+			else
+				command1 &= ~SPI_CS_SS_VAL;
 		} else {
 			command1 &= ~SPI_CS_SW_HW;
 			command1 &= ~SPI_CS_SS_VAL;
@@ -781,9 +784,9 @@ static int spi_tegra_setup(struct spi_device *spi)
 	spin_lock_irqsave(&tspi->lock, flags);
 	val = tspi->def_command1_reg;
 	if (spi->mode & SPI_CS_HIGH)
-		val |= cs_bit;
-	else
 		val &= ~cs_bit;
+	else
+		val |= cs_bit;
 	tspi->def_command1_reg = val;
 	spi_tegra_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	spin_unlock_irqrestore(&tspi->lock, flags);
