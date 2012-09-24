@@ -1084,32 +1084,35 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 	 * List of T11x partition id which skip power gating
 	 */
 	static int skip_pg_t11x_list[] = {
-		0,
-		1,
-		2,
-		3,
-		4,
-		5,
-		6,
-		7,
-		8,
-		9,
-		10,
-		11,
-		12,
-		13,
-		14,
-		15,
-		16,
-		17,
-		18,
-		19,
-		20,
-		21,
-		22,
+		/*
+		 * CPU power gate enable/disable done
+		 * from cpu power management code
+		 */
+		TEGRA_POWERGATE_CRAIL,
+		TEGRA_POWERGATE_3D,
+		TEGRA_POWERGATE_VENC,
+		TEGRA_POWERGATE_PCIE,
+		TEGRA_POWERGATE_VDEC,
+		TEGRA_POWERGATE_L2,
+		TEGRA_POWERGATE_MPE,
+		TEGRA_POWERGATE_HEG,
+		TEGRA_POWERGATE_SATA,
+		TEGRA_POWERGATE_CELP,
+		TEGRA_POWERGATE_3D1,
+		TEGRA_POWERGATE_C0NC,
+		TEGRA_POWERGATE_C1NC,
+		TEGRA_POWERGATE_DISA,
+		TEGRA_POWERGATE_DISB,
+		TEGRA_POWERGATE_XUSBA,
+		TEGRA_POWERGATE_XUSBB,
+		TEGRA_POWERGATE_XUSBC,
 	};
 	int i;
 
+	/*
+	 * skip unnecessary multiple calls e.g. powergate call when
+	 * partition is already powered-off or vice-versa
+	 */
 	if ((tegra_powergate_is_powered(id) &&
 		is_unpowergate) ||
 		(!(tegra_powergate_is_powered(id)) &&
@@ -1121,7 +1124,7 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 			(is_unpowergate) ? "un" : "");
 		return true;
 	}
-	/* unpowergate is needed initially for cpus */
+	/* unpowergate is allowed for all partitions */
 	if (!tegra_powergate_is_powered(id) &&
 		is_unpowergate) {
 		pr_err("Partition %s already powered-%s unpowergating\n",
