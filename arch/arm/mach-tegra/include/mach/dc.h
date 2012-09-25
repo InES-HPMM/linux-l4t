@@ -441,8 +441,6 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_ONE_SHOT_MODE		(1 << 3)
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
 #define TEGRA_DC_OUT_ONE_SHOT_LP_MODE		(1 << 5)
-#define TEGRA_DC_OUT_CMU_DISABLE		(0 << 5)
-#define TEGRA_DC_OUT_CMU_ENABLE			(1 << 5)
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1
@@ -587,9 +585,16 @@ struct tegra_dc_platform_data {
 	unsigned long		emc_clk_rate;
 	struct tegra_dc_out	*default_out;
 	struct tegra_fb_data	*fb;
+
+#ifdef CONFIG_TEGRA_DC_CMU
+	bool			cmu_enable;
+	struct tegra_dc_cmu	*cmu;
+#endif
 };
 
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
+#define TEGRA_DC_FLAG_CMU_DISABLE	(0 << 1)
+#define TEGRA_DC_FLAG_CMU_ENABLE	(1 << 1)
 
 int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win);
 struct tegra_dc *tegra_dc_get_dc(unsigned idx);
