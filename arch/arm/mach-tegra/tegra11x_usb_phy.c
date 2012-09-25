@@ -2235,6 +2235,15 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~(UHSIC_PD_TX);
 	writel(val, base + UHSIC_PADS_CFG1);
 
+	/*SUSP_CTRL has to be toggled to enable host PHY clock */
+	val = readl(base + USB_SUSP_CTRL);
+	val |= USB_SUSP_CLR;
+	writel(val, base + USB_SUSP_CTRL);
+
+	val = readl(base + USB_SUSP_CTRL);
+	val &= ~USB_SUSP_CLR;
+	writel(val, base + USB_SUSP_CTRL);
+
 	val = readl(base + USB_USBMODE);
 	val |= USB_USBMODE_HOST;
 	writel(val, base + USB_USBMODE);
