@@ -31,22 +31,40 @@
 
 #include "fuse.h"
 
+#define FUSE_CPU_SPEEDO_0 0x114
+#define FUSE_CPU_SPEEDO_1 0x12c
+#define FUSE_CPU_IDDQ 0x118
+#define FUSE_CORE_SPEEDO_0 0x134
+#define FUSE_CORE_SPEEDO_1 0x138
+#define FUSE_CORE_IDDQ 0x140
+#define FUSE_FT_REV 0x128
 
 static int cpu_process_id;
 static int core_process_id;
 static int cpu_speedo_id;
 static int cpu_speedo_value;
 static int soc_speedo_id;
+static int soc_speedo_value;
 static int package_id;
 
 static int enable_app_profiles;
 
 void tegra_init_speedo_data(void)
 {
-	cpu_speedo_value = 1777;
+	u32 ft_rev, ft_rev_minor, ft_rev_major;
+	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
+	soc_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
 
-	pr_info("Tegra11: CPU Speedo ID %d, Soc Speedo ID %d",
-		 cpu_speedo_id, soc_speedo_id);
+	pr_info("Tegra11: CPU Speedo ID %d, Soc Speedo ID %d\n",
+		cpu_speedo_id, soc_speedo_id);
+	pr_info("Tegra11: CPU Speedo Value %d, Soc Speedo Value %d\n",
+		cpu_speedo_value, soc_speedo_value);
+
+	ft_rev = tegra_fuse_readl(FUSE_FT_REV);
+	ft_rev_minor = ft_rev & 0x1f;
+	ft_rev_major = (ft_rev >> 5) & 0x3f;
+	if ((ft_rev_minor < 5) && (ft_rev_major == 0))
+		pr_warn("Tegra11: CPU IDDQ and speedo may be bogus\n");
 }
 
 int tegra_cpu_process_id(void)
