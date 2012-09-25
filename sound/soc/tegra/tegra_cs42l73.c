@@ -87,6 +87,8 @@ static int tegra_cs42l73_hw_params(struct snd_pcm_substream *substream,
 
 	switch (srate) {
 	case 8000:
+		mclk = 6144000;
+		break;
 	case 16000:
 	case 32000:
 		mclk = 12288000;
