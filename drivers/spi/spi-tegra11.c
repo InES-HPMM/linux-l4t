@@ -545,7 +545,7 @@ static int spi_tegra_start_dma_based_transfer(
 
 	/* Make sure that Rx and Tx fifo are empty */
 	test_val = spi_tegra_readl(tspi, SPI_FIFO_STATUS);
-	if (((test_val >> 16) & 0x3FFF) != 0x7F)
+	if (((test_val >> 16) & 0x3FFF) != 0x40)
 		dev_err(&tspi->pdev->dev,
 			"The Rx and Tx fifo are not empty status 0x%08lx\n",
 				test_val);
@@ -586,11 +586,6 @@ static int spi_tegra_start_dma_based_transfer(
 				"Error in starting tx dma error = %d\n", ret);
 			return ret;
 		}
-
-		/* Wait for tx fifo to be fill before starting SPI */
-		test_val = spi_tegra_readl(tspi, SPI_FIFO_STATUS);
-		while (!(test_val & SPI_TX_FIFO_FULL))
-			test_val = spi_tegra_readl(tspi, SPI_FIFO_STATUS);
 	}
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
@@ -639,6 +634,7 @@ static int spi_tegra_start_cpu_based_transfer(
 	spi_tegra_writel(tspi, val, SPI_DMA_CTL);
 	tspi->dma_control_reg = val;
 
+	tspi->is_curr_dma_xfer = false;
 	val = tspi->command1_reg;
 	val |= SPI_PIO;
 	spi_tegra_writel(tspi, val, SPI_COMMAND1);
