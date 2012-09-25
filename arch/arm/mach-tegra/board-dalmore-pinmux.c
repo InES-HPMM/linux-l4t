@@ -205,6 +205,8 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 	DEFAULT_PINMUX(GPIO_PU6,        RSVD3,  NORMAL,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
+
+	DEFAULT_PINMUX(GMI_AD9,         PWM1,   NORMAL,    NORMAL,     OUTPUT),
 };
 
 #include "board-dalmore-pinmux-t11x.h"

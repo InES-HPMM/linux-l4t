@@ -26,6 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pwm_backlight.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -290,7 +291,7 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.dsi2edp_bridge_enable = true,
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 59,
+	.refresh_rate = 58,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 
 	.dsi_instance = DSI_INSTANCE_0,
@@ -455,7 +456,6 @@ static int dalmore_dsi_panel_enable(struct device *dev)
 #endif
 
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-	gpio_direction_output(57, 1);
 
 #if PANEL_11_6_AUO_1920_1080
 	gpio_direction_output(en_vdd_bl, 1);
@@ -787,23 +787,19 @@ static int dalmore_disp1_check_fb(struct device *dev, struct fb_info *info)
 	return info->device == &dalmore_disp1_device.dev;
 }
 
-static struct platform_tegra_pwm_backlight_data dalmore_disp1_bl_data = {
-	.which_dc		= 0,
-	.which_pwm		= TEGRA_PWM_PM1,
-	.gpio_conf_to_sfio	= TEGRA_GPIO_PH1,
-	.max_brightness		= 255,
-	.dft_brightness		= 224,
-	.notify			= dalmore_disp1_bl_notify,
-	.period			= 0x3F,
-	.clk_div		= 0x3FF,
-	.clk_select		= 0,
+static struct platform_pwm_backlight_data dalmore_disp1_bl_data = {
+	.pwm_id		= 1,
+	.max_brightness	= 255,
+	.dft_brightness	= 224,
+	.pwm_period_ns	= 1000000,
+	.notify		= dalmore_disp1_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
-	.check_fb		= dalmore_disp1_check_fb,
+	.check_fb	= dalmore_disp1_check_fb,
 };
 
 static struct platform_device __maybe_unused
 		dalmore_disp1_bl_device __initdata = {
-	.name	= "tegra-pwm-bl",
+	.name	= "pwm-backlight",
 	.id	= -1,
 	.dev	= {
 		.platform_data = &dalmore_disp1_bl_data,
@@ -815,6 +811,12 @@ static struct i2c_board_info dalmore_tc358770_dsi2edp_board_info __initdata = {
 		I2C_BOARD_INFO("tc358770_dsi2edp", 0x68),
 };
 #endif
+
+static struct platform_device __maybe_unused
+			*dalmore_bl_device[] __initdata = {
+	&tegra_pwfm1_device,
+	&dalmore_disp1_bl_device,
+};
 
 int __init dalmore_panel_init(void)
 {
@@ -871,8 +873,9 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 
-#if !IS_EXTERNAL_PWM
-	err = platform_device_register(&dalmore_disp1_bl_device);
+#if IS_EXTERNAL_PWM
+	err = platform_add_devices(dalmore_bl_device,
+				ARRAY_SIZE(dalmore_bl_device));
 	if (err) {
 		pr_err("disp1 bl device registration failed");
 		return err;
