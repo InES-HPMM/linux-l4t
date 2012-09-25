@@ -49,7 +49,7 @@ struct tegra_camera_dev {
 	struct clk *csus_clk;
 	struct clk *csi_clk;
 	struct clk *emc_clk;
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	struct clk *pll_d2_clk;
 	struct clk *cilab_clk;
 	struct clk *cilcd_clk;
@@ -208,7 +208,7 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 #endif
 
 		if (info->flag == TEGRA_CAMERA_ENABLE_PD2VI_CLK) {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 			tegra_clk_cfg_ex(dev->pll_d2_clk,
 						TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
 #else
@@ -219,7 +219,7 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 			tegra_clk_cfg_ex(clk, TEGRA_CLK_VI_INP_SEL, 2);
 #endif
 		}
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 		else {
 			tegra_clk_cfg_ex(dev->pll_d2_clk,
 						TEGRA_CLK_PLLD_CSI_OUT_ENB, 0);
@@ -506,7 +506,8 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	err = tegra_camera_clk_get(pdev, "emc", &dev->emc_clk);
 	if (err)
 		goto emc_clk_get_err;
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	err = tegra_camera_clk_get(pdev, "cilab", &dev->cilab_clk);
 	if (err)
 		goto cilab_clk_get_err;
@@ -526,7 +527,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	return 0;
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 pll_d2_clk_get_err:
 	clk_put(dev->pll_d2_clk);
 cile_clk_get_err:
