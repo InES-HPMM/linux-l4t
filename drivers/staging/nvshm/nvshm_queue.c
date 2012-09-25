@@ -21,6 +21,70 @@
 
 #include <asm/cacheflush.h>
 
+/* Flush cache lines associated with iobuf list */
+static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
+{
+	struct nvshm_iobuf *phy_list, *leaf;
+
+	phy_list = iob;
+	while (phy_list) {
+		leaf = phy_list;
+		while (leaf) {
+			/* Flush iobuf */
+			FLUSH_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
+			/* Flush associated data */
+			if (leaf->length) {
+				FLUSH_CPU_DCACHE(NVSHM_B2A(handle,
+							   (int)leaf->npduData
+							   + leaf->dataOffset),
+						 leaf->length);
+			}
+			if (leaf->sg_next) {
+				leaf = NVSHM_B2A(handle,
+						 leaf->sg_next);
+			} else {
+				leaf = NULL;
+			}
+		}
+		if (phy_list->next)
+			phy_list = NVSHM_B2A(handle, phy_list->next);
+		else
+			phy_list = NULL;
+	}
+}
+
+/* Flush cache lines associated with iobuf list */
+static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
+{
+	struct nvshm_iobuf *phy_list, *leaf;
+
+	phy_list = iob;
+	while (phy_list) {
+		leaf = phy_list;
+		while (leaf) {
+			/* Flush iobuf */
+			INV_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
+			/* Flush associated data */
+			if (leaf->length) {
+				INV_CPU_DCACHE(NVSHM_B2A(handle,
+							   (int)leaf->npduData
+							   + leaf->dataOffset),
+						 leaf->length);
+			}
+			if (leaf->sg_next) {
+				leaf = NVSHM_B2A(handle,
+						 leaf->sg_next);
+			} else {
+				leaf = NULL;
+			}
+		}
+		if (phy_list->next)
+			phy_list = NVSHM_B2A(handle, phy_list->next);
+		else
+			phy_list = NULL;
+	}
+}
+
 struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 {
 	struct nvshm_iobuf *dummy, *ret;
@@ -30,12 +94,16 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		return NULL;
 	}
 
+	INV_CPU_DCACHE(handle->shared_queue_head, sizeof(struct nvshm_iobuf));
+
 	dummy = handle->shared_queue_head;
 	ret = NVSHM_B2A(handle, handle->shared_queue_head->qnext);
 
 	if (dummy->qnext == NULL)
 		return NULL;
 
+	/* Flush cache to invalidate data */
+	inv_iob_list(handle, ret);
 	dummy->qnext = NULL;
 	handle->shared_queue_head = ret;
 
@@ -50,7 +118,6 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		       handle->conf->queue_bb_offset,
 		       ret,
 		       NVSHM_A2B(handle, ret));
-
 	nvshm_iobuf_free_cluster(&handle->chan[dummy->chan], dummy);
 
 	return ret;
@@ -76,11 +143,15 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 
 	/* Take a reference on queued iobufs (all of them!) */
 	nvshm_iobuf_ref_cluster(iob);
-	mb();
+	/* Flush iobuf(s) in cache */
+	flush_iob_list(handle, iob);
+	dsb();
 	handle->shared_queue_tail->qnext = NVSHM_A2B(handle, iob);
-	mb();
-
+	/* Flush guard element from cache */
+	FLUSH_CPU_DCACHE(handle->shared_queue_tail, sizeof(struct nvshm_iobuf));
+	dsb();
 	handle->shared_queue_tail = iob;
+
 	return 0;
 }
 

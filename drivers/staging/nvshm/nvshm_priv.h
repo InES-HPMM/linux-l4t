@@ -38,6 +38,20 @@
 #define NVSHM_DESC_XOFF  (0x10)  /* OOB channel Tx off */
 #define NVSHM_DESC_XON   (0x20)  /* OOB channel Tx on */
 
+#define FLUSH_CPU_DCACHE(va, size)	\
+	do {	\
+		unsigned long _pa_ = virt_to_phys(va); \
+		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
+		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
+	} while (0)
+
+#define INV_CPU_DCACHE(va, size)	\
+	do {	\
+		unsigned long _pa_ = virt_to_phys(va); \
+		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
+		outer_clean_range(_pa_, _pa_+(size_t)(size));		\
+	} while (0)
+
 struct nvshm_handle {
 	spinlock_t lock;
 	int instance;

@@ -26,13 +26,6 @@
 
 #define NVSHM_QUEUE_TIMEOUT_US (1000)
 
-#define FLUSH_CPU_DCACHE(va, size)	\
-	do {	\
-		unsigned long _pa_ = virt_to_phys(va);			\
-		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
-		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
-	} while (0)
-
 static int ipc_readconfig(struct nvshm_handle *handle)
 {
 	struct nvshm_config *conf;
@@ -268,9 +261,6 @@ int nvshm_unregister_ipc(struct nvshm_handle *handle)
 
 int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
-	/* Update mailbox */
-	*(int *)handle->mb_base_virt =
-		NVSHM_IPC_MESSAGE(NVSHM_IPC_READY);
 	mb();
 	/* generate ipc */
 	tegra_bb_generate_ipc(handle->tegra_bb);
