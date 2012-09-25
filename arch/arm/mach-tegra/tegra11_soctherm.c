@@ -515,6 +515,58 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	soctherm_writel(r, TS_CPU0_CONFIG2 + offset);
 }
 
+static int soctherm_clk_enable(bool enable)
+{
+	struct clk *soctherm_clk;
+	struct clk *pllp_clk;
+	struct clk *ts_clk;
+	struct clk *clk_m;
+	unsigned long soctherm_clk_rate, ts_clk_rate;
+
+	soctherm_clk = clk_get_sys("soc_therm", NULL);
+	if (IS_ERR(soctherm_clk))
+		return -1;
+
+	ts_clk = clk_get_sys("tegra-tsensor", NULL);
+	if (IS_ERR(ts_clk))
+		return -1;
+
+	if (enable) {
+		pllp_clk = clk_get_sys(NULL, "pll_p");
+		if (IS_ERR(pllp_clk))
+			return -1;
+
+		clk_m = clk_get_sys(NULL, "clk_m");
+		if (IS_ERR(clk_m))
+			return -1;
+
+		clk_enable(soctherm_clk);
+		soctherm_clk_rate = plat_data.soctherm_clk_rate;
+		if (clk_get_parent(soctherm_clk) != pllp_clk)
+			if (clk_set_parent(soctherm_clk, pllp_clk))
+				return -1;
+		if (clk_get_rate(pllp_clk) != soctherm_clk_rate)
+			if (clk_set_rate(soctherm_clk, soctherm_clk_rate))
+				return -1;
+
+		clk_enable(ts_clk);
+		ts_clk_rate = plat_data.tsensor_clk_rate;
+		if (clk_get_parent(ts_clk) != clk_m)
+			if (clk_set_parent(ts_clk, clk_m))
+				return -1;
+		if (clk_get_rate(clk_m) != ts_clk_rate)
+			if (clk_set_rate(ts_clk, ts_clk_rate))
+				return -1;
+	} else {
+		clk_disable(soctherm_clk);
+		clk_disable(ts_clk);
+		clk_put(soctherm_clk);
+		clk_put(ts_clk);
+	}
+
+	return 0;
+}
+
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int err, i;
@@ -531,6 +583,8 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	if (therm[THERM_GPU].thermtrip && therm[THERM_MEM].thermtrip)
 		return -EINVAL;
 
+	if (soctherm_clk_enable(true) < 0)
+		BUG();
 
 	/* Thermal Sensing programming */
 	for (i = 0; i < TSENSE_SIZE; i++) {

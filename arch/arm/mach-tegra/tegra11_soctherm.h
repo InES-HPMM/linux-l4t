@@ -89,6 +89,9 @@ struct soctherm_throttle {
 };
 
 struct soctherm_platform_data {
+	unsigned long soctherm_clk_rate;
+	unsigned long tsensor_clk_rate;
+
 	struct soctherm_sensor sensor_data[TSENSE_SIZE];
 	struct soctherm_therm therm[THERM_SIZE];
 	struct soctherm_throttle throttle[THROTTLE_SIZE];

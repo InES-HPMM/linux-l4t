@@ -695,6 +695,8 @@ int __init pluto_edp_init(void)
 }
 
 static struct soctherm_platform_data pluto_soctherm_data = {
+	.soctherm_clk_rate = 136000000,
+	.tsensor_clk_rate = 500000,
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
