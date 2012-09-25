@@ -24,7 +24,7 @@
 #include "gpio-names.h"
 
 static int tegra_gpio_wakes[] = {
-	-EINVAL,				/* wake0 */
+	TEGRA_GPIO_PO5,				/* wake0 */
 	TEGRA_GPIO_PV1,				/* wake1 */
 	-EINVAL,				/* wake2 */
 	-EINVAL,				/* wake3 */
@@ -56,7 +56,7 @@ static int tegra_gpio_wakes[] = {
 	-EINVAL,				/* wake29 */
 	-EINVAL,				/* wake30 */
 	-EINVAL,				/* wake31 */
-	-EINVAL,				/* wake32 */
+	TEGRA_GPIO_PO4,				/* wake32 */
 	TEGRA_GPIO_PJ0,				/* wake33 */
 	TEGRA_GPIO_PK2,				/* wake34 */
 	TEGRA_GPIO_PI6,				/* wake35 */
