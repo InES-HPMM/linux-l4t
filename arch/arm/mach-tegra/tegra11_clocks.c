@@ -254,7 +254,7 @@
 					(0x2 << PLLCX_MISC_FILT_DIV_SHIFT) | \
 					PLLCX_MISC_RESET)
 #define PLLCX_MISC1_DEFAULT_VALUE	0x000d2308
-#define PLLCX_MISC2_DEFAULT_VALUE	0x11111200
+#define PLLCX_MISC2_DEFAULT_VALUE	0x31211200
 #define PLLCX_MISC3_DEFAULT_VALUE	0x0
 
 /* PLLX and PLLC (PLLXC)*/
@@ -2100,6 +2100,10 @@ static u32 pllcx_round_p_to_pdiv(u32 p, u32 *pdiv)
 
 	if (p) {
 		for (i = 0; i <= PLLCX_PDIV_MAX; i++) {
+			/* Do not use DIV3 p values - mapped to even PDIV */
+			if (i && ((i & 0x1) == 0))
+				continue;
+
 			if (p <= pllcx_p[i]) {
 				if (pdiv)
 					*pdiv = i;
@@ -4953,7 +4957,7 @@ static struct clk tegra_pll_c2 = {
 		.input_max = 48000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,
-		.vco_min   = 739000000,
+		.vco_min   = 600000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
@@ -4974,7 +4978,7 @@ static struct clk tegra_pll_c3 = {
 		.input_max = 48000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,
-		.vco_min   = 739000000,
+		.vco_min   = 600000000,
 		.vco_max   = 1200000000,
 		.freq_table = tegra_pll_cx_freq_table,
 		.lock_delay = 300,
