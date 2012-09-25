@@ -47,8 +47,6 @@ const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits
 #define tegra_cpu_init_map	(*(cpumask_t *)tegra_cpu_init_mask)
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-#define CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR \
-	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x34c)
 #define CAR_BOND_OUT_V \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x390)
 #define CAR_BOND_OUT_V_CPU_G	(1<<0)
@@ -214,6 +212,64 @@ fail:
 	return 0;
 }
 
+static int tegra11x_power_up_cpu(unsigned int cpu)
+{
+	u32 reg;
+	int ret = 0;
+	unsigned long timeout;
+
+	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(is_lp_cluster());
+
+	cpu = cpu_logical_map(cpu);
+
+	timeout = jiffies + 5;
+	do {
+		if (is_cpu_powered(cpu))
+			goto enable_cpu_clock;
+		udelay(10);
+	} while (time_before(jiffies, timeout));
+
+	/*
+	 * flow controller sequence didn't work, so directly toggle PMC
+	 * to power it up
+	 */
+	if (!is_cpu_powered(cpu)) {
+		ret = tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
+		if (ret)
+			goto fail;
+
+		/* Wait for the power to come up. */
+		timeout = jiffies + 10*HZ;
+
+		do {
+			if (is_cpu_powered(cpu))
+				goto remove_clamps;
+			udelay(10);
+		} while (time_before(jiffies, timeout));
+		ret = -ETIMEDOUT;
+		goto fail;
+	}
+
+remove_clamps:
+
+	/* Remove I/O clamps. */
+	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
+	udelay(10);
+
+enable_cpu_clock:
+
+	/* Enable the CPU clock */
+	writel(CPU_CLOCK(cpu), CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+	reg = readl(CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+
+fail:
+	/* Clear flow controller CSR. */
+	flowctrl_write_cpu_csr(cpu, 0);
+
+	return ret;
+}
+
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
@@ -267,21 +323,33 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 	 */
 	tegra_put_cpu_in_reset(cpu);
 
-	/*
-	 * Unhalt the CPU. If the flow controller was used to power-gate the
-	 * CPU this will cause the flow controller to stop driving reset.
-	 * The CPU will remain in reset because the clock and reset block
-	 * is now driving reset.
-	 */
-	flowctrl_write_cpu_halt(cpu, 0);
 
 	switch (tegra_chip_id) {
 	case TEGRA20:
+		/*
+		 * Unhalt the CPU. If the flow controller was used to power-gate
+		 * the CPU this will cause the flow controller to stop driving
+		 * reset. The CPU will remain in reset because the clock and
+		 * reset block is now driving reset.
+		 */
+		flowctrl_write_cpu_halt(cpu, 0);
 		status = tegra20_power_up_cpu(cpu);
 		break;
 	case TEGRA30:
-	case TEGRA11X:
+		/*
+		 * Unhalt the CPU. If the flow controller was used to power-gate
+		 * the CPU this will cause the flow controller to stop driving
+		 * reset. The CPU will remain in reset because the clock and
+		 * reset block is now driving reset.
+		 */
+		flowctrl_write_cpu_halt(cpu, 0);
 		status = tegra30_power_up_cpu(cpu);
+		break;
+	case TEGRA11X:
+		/* set SCLK as event trigger for flow conroller */
+		flowctrl_write_cpu_csr(cpu, 0x1);
+		flowctrl_write_cpu_halt(cpu, 0x48000000);
+		status = tegra11x_power_up_cpu(cpu);
 		break;
 	default:
 		status = -EINVAL;
