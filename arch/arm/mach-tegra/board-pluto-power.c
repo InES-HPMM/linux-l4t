@@ -104,7 +104,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
-	REGULATOR_SUPPLY("vcore_emmc", NULL),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("vdd_sim_mmc", NULL),
 	REGULATOR_SUPPLY("vdd_sim1a_mmc", NULL),
 	REGULATOR_SUPPLY("vdd_sim1b_mmc", NULL),
