@@ -171,6 +171,7 @@
 #define TX_FIFO_EMPTY_COUNT_MAX		SPI_TX_FIFO_EMPTY_COUNT(0x20)
 #define RX_FIFO_FULL_COUNT_ZERO		SPI_RX_FIFO_FULL_COUNT(0)
 #define MAX_HOLD_CYCLES			16
+#define SPI_DEFAULT_SPEED		25000000
 
 static const unsigned long spi_tegra_req_sels[] = {
 	TEGRA_DMA_REQ_SEL_SL2B1,
@@ -660,9 +661,11 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 					spi->bits_per_word;
 
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
+	if (!speed)
+		speed = tspi->max_rate;
+	if (!speed)
+		speed = SPI_DEFAULT_SPEED;
 	if (speed != tspi->cur_speed) {
-		/* FIXME!! Hardcoding speed to 12M */
-		speed = 12000000;
 		clk_set_rate(tspi->clk, speed);
 		tspi->cur_speed = speed;
 	}
@@ -1290,7 +1293,7 @@ static int spi_tegra_probe(struct platform_device *pdev)
 		tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
 		tspi->parent_clk_count = 0;
 		tspi->parent_clk_list = NULL;
-		tspi->max_rate = 0;
+		tspi->max_rate = SPI_DEFAULT_SPEED;
 	}
 
 	tspi->max_parent_rate = 0;
