@@ -502,4 +502,12 @@ config TEGRA_IO_DPD
 	  Allow devices listed in tegra_list_io_dpd[] to go into
 	  Deep Power Down (DPD) state. This is a temporary config
 	  option until a proper way is implemented to resolve this issue.
+
+config TEGRA_USE_DFLL
+	bool "Use DFLL as CPU clock source by default"
+	depends on ARCH_TEGRA_HAS_CL_DVFS
+	default n
+        help
+	  Enables dynamic frequency lock loop (DFLL) as CPU clock
+	  source.
 endif
