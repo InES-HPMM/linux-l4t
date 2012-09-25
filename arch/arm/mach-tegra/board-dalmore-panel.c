@@ -690,6 +690,8 @@ static struct tegra_dc_platform_data dalmore_disp1_pdata = {
 	.default_out	= &dalmore_disp1_out,
 	.fb		= &dalmore_disp1_fb_data,
 	.emc_clk_rate	= 204000000,
+
+	.cmu_enable	= 1,
 };
 
 static struct tegra_fb_data dalmore_disp2_fb_data = {

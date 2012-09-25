@@ -565,6 +565,8 @@ static struct tegra_dc_platform_data pluto_disp1_pdata = {
 	.default_out	= &pluto_disp1_out,
 	.fb		= &pluto_disp1_fb_data,
 	.emc_clk_rate	= 204000000,
+
+	.cmu_enable	= 1,
 };
 
 static struct tegra_fb_data pluto_disp2_fb_data = {
