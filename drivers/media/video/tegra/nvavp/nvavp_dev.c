@@ -969,9 +969,9 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 		BUG();
 	}
 	dev_info(&nvavp->nvhost_dev->dev,
-		"using nvmem= carveout at %lx to load AVP os\n",
+		"using nvmem= carveout at %x to load AVP os\n",
 		nvavp->os_info.phys);
-	sprintf(fw_os_file, "nvavp_os_%08lx.bin", nvavp->os_info.phys);
+	sprintf(fw_os_file, "nvavp_os_%08x.bin", nvavp->os_info.phys);
 	nvavp->os_info.reset_addr = nvavp->os_info.phys;
 	nvavp->os_info.data = ioremap(nvavp->os_info.phys, SZ_1M);
 #endif
