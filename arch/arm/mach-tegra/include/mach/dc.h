@@ -80,6 +80,7 @@ enum {
 enum {
 	TEGRA_DSI_PACKET_CMD,
 	TEGRA_DSI_DELAY_MS,
+	TEGRA_DSI_GPIO_SET,
 };
 
 struct tegra_dsi_cmd {
@@ -88,6 +89,7 @@ struct tegra_dsi_cmd {
 	union {
 		u16 data_len;
 		u16 delay_ms;
+		unsigned gpio;
 		struct {
 			u8 data0;
 			u8 data1;
@@ -119,6 +121,12 @@ struct tegra_dsi_cmd {
 			.cmd_type = TEGRA_DSI_DELAY_MS, \
 			.sp_len_dly.delay_ms = ms, \
 			}
+
+#define DSI_GPIO_SET(rst_gpio, on)	{ \
+					.cmd_type = TEGRA_DSI_GPIO_SET, \
+					.data_id = on, \
+					.sp_len_dly.gpio = rst_gpio, \
+					}
 
 #define DSI_CMD_LONG(di, ptr)	{ \
 				.cmd_type = TEGRA_DSI_PACKET_CMD, \
