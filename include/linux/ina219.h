@@ -1,7 +1,7 @@
 /*
  * linux/include/linux/ina219.h
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,13 @@
 
 #include <linux/types.h>
 
+#define INA219_RAIL_NAME_SIZE	32
+
 struct ina219_platform_data {
 	u8 divisor; /*divisor needed to get current value */
 	u32 calibration_data;
 	u32 power_lsb;
-	char rail_name[20];
+	char rail_name[INA219_RAIL_NAME_SIZE];
 };
 
 #endif /* _LINUX_INA219_H */
