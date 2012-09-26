@@ -401,7 +401,7 @@ static unsigned int spi_tegra_read_rx_fifo_to_client_rxbuf(
 	u8 *rx_buf = (u8 *)t->rx_buf + tspi->cur_rx_pos;
 	unsigned i, count;
 	unsigned long x;
-	unsigned int read_words;
+	unsigned int read_words = 0;
 	unsigned len;
 
 	fifo_status = spi_tegra_readl(tspi, SPI_FIFO_STATUS);
@@ -639,7 +639,7 @@ static int spi_tegra_data_settings(struct spi_device *spi,
 {
 	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
 	unsigned long val;
-	u32 bits_per_word;
+	u32 bits_per_word = 0;
 
 	if (t->bits_per_word || spi->bits_per_word)
 		bits_per_word = t->bits_per_word ? t->bits_per_word :
