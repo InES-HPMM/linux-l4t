@@ -144,6 +144,52 @@ struct dsi_phy_timing_ns {
 };
 
 enum {
+	CMD_VS		= 0x01,
+	CMD_VE		= 0x11,
+
+	CMD_HS		= 0x21,
+	CMD_HE		= 0x31,
+
+	CMD_EOT		= 0x08,
+	CMD_NULL	= 0x09,
+	CMD_SHORTW	= 0x15,
+	CMD_BLNK	= 0x19,
+	CMD_LONGW	= 0x39,
+
+	CMD_RGB		= 0x00,
+	CMD_RGB_16BPP	= 0x0E,
+	CMD_RGB_18BPP	= 0x1E,
+	CMD_RGB_18BPPNP = 0x2E,
+	CMD_RGB_24BPP	= 0x3E,
+};
+
+enum {
+	TEGRA_DSI_DISABLE,
+	TEGRA_DSI_ENABLE,
+};
+
+#define PKT_ID0(id)	((((id) & 0x3f) << 3) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 9))
+#define PKT_LEN0(len)	(((len) & 0x7) << 0)
+#define PKT_ID1(id)	((((id) & 0x3f) << 13) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 19))
+#define PKT_LEN1(len)	(((len) & 0x7) << 10)
+#define PKT_ID2(id)	((((id) & 0x3f) << 23) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 29))
+#define PKT_LEN2(len)	(((len) & 0x7) << 20)
+#define PKT_ID3(id)	((((id) & 0x3f) << 3) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 9))
+#define PKT_LEN3(len)	(((len) & 0x7) << 0)
+#define PKT_ID4(id)	((((id) & 0x3f) << 13) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 19))
+#define PKT_LEN4(len)	(((len) & 0x7) << 10)
+#define PKT_ID5(id)	((((id) & 0x3f) << 23) | \
+			(((TEGRA_DSI_ENABLE) & 0x1) << 29))
+#define PKT_LEN5(len)	(((len) & 0x7) << 20)
+#define PKT_LP		(((TEGRA_DSI_ENABLE) & 0x1) << 30)
+#define NUMOF_PKT_SEQ	12
+
+enum {
 	DSI_VS_0 = 0x0,
 	DSI_VS_1 = 0x1,
 };
@@ -214,6 +260,8 @@ struct tegra_dsi_out {
 	u32		hs_clk_in_lp_cmd_mode_freq_khz;
 	u32		burst_mode_freq_khz;
 	u32		fpga_freq_khz;
+
+	const u32		*pkt_seq;
 
 	struct dsi_phy_timing_ns phy_timing;
 };
