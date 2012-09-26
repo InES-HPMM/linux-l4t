@@ -917,6 +917,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 		return;
 	}
 
+#ifdef CONFIG_HAS_NS_SUPER_IO_CHIP
 	/*
 	 * Check for a National Semiconductor SuperIO chip.
 	 * Attempt to switch to bank 2, read the value of the LOOP bit
@@ -956,6 +957,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 			return;
 		}
 	}
+#endif
 
 	/*
 	 * No EFR.  Try to detect a TI16750, which only sets bit 5 of
