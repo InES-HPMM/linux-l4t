@@ -146,10 +146,34 @@ static unsigned int user_cap_speed(unsigned int requested_speed)
 
 static ssize_t show_throttle(struct cpufreq_policy *policy, char *buf)
 {
-	return sprintf(buf, "%u\n", tegra_is_throttling());
+	return sprintf(buf, "%u\n", tegra_is_throttling(NULL));
 }
 
 cpufreq_freq_attr_ro(throttle);
+
+static ssize_t show_throttle_count(struct cpufreq_policy *policy, char *buf)
+{
+	int count;
+
+	tegra_is_throttling(&count);
+	return sprintf(buf, "%u\n", count);
+}
+
+static struct freq_attr _attr_throttle_count = {
+	.attr = {.name = "throttle_count", .mode = 0444, },
+	.show = show_throttle_count,
+};
+
+static struct attribute *new_attrs[] = {
+	&_attr_throttle_count.attr,
+	NULL
+};
+
+static struct attribute_group stats_attr_grp = {
+	.attrs = new_attrs,
+	.name = "stats"
+};
+
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
@@ -743,6 +767,7 @@ static int tegra_cpu_exit(struct cpufreq_policy *policy)
 static int tegra_cpufreq_policy_notifier(
 	struct notifier_block *nb, unsigned long event, void *data)
 {
+	static int once = 1;
 	int i, ret;
 	struct cpufreq_policy *policy = data;
 
@@ -751,6 +776,12 @@ static int tegra_cpufreq_policy_notifier(
 			policy->max, CPUFREQ_RELATION_H, &i);
 		policy_max_speed[policy->cpu] =
 			ret ? policy->max : freq_table[i].frequency;
+
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+		if (once && policy->cpu == 0 &&
+		    sysfs_merge_group(&policy->kobj, &stats_attr_grp) == 0)
+			once = 0;
+#endif
 	}
 	return NOTIFY_OK;
 }

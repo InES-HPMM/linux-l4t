@@ -96,20 +96,22 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 	return throttle_speed;
 }
 
-bool tegra_is_throttling(void)
+bool tegra_is_throttling(int *count)
 {
 	struct balanced_throttle *bthrot;
 	bool is_throttling = false;
+	int lcount = 0;
 
 	mutex_lock(&bthrot_list_lock);
 	list_for_each_entry(bthrot, &bthrot_list, node) {
-		if (bthrot->is_throttling) {
+		if (bthrot->is_throttling)
 			is_throttling = true;
-			break;
-		}
+		lcount += bthrot->throttle_count;
 	}
 	mutex_unlock(&bthrot_list_lock);
 
+	if (count)
+		*count = lcount;
 	return is_throttling;
 }
 
@@ -160,6 +162,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 		if (!bthrot->is_throttling) {
 			tegra_dvfs_core_cap_enable(true);
 			bthrot->is_throttling = true;
+			bthrot->throttle_count++;
 		}
 
 		bthrot->throttle_index = bthrot->throt_tab_size - cur_state;
