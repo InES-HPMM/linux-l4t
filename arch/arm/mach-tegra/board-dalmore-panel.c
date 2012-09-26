@@ -279,6 +279,29 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 #endif
 };
 
+const u32 __maybe_unused panasonic_1920_1200_vnb_syne[NUMOF_PKT_SEQ] = {
+	PKT_ID0(CMD_VS) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0) | PKT_LP,
+	0,
+	PKT_ID0(CMD_VE) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0) | PKT_LP,
+	0,
+	PKT_ID0(CMD_HS) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0) | PKT_LP,
+	0,
+	PKT_ID0(CMD_HS) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0),
+	PKT_ID3(CMD_BLNK) | PKT_LEN3(2) | PKT_ID4(CMD_RGB_24BPP) | PKT_LEN4(3) |
+	PKT_ID5(CMD_BLNK) | PKT_LEN5(4),
+	PKT_ID0(CMD_HS) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0) | PKT_LP,
+	0,
+	PKT_ID0(CMD_HS) | PKT_LEN0(0) | PKT_ID1(CMD_BLNK) | PKT_LEN1(1) |
+	PKT_ID2(CMD_HE) | PKT_LEN2(0),
+	PKT_ID3(CMD_BLNK) | PKT_LEN3(2) | PKT_ID4(CMD_RGB_24BPP) | PKT_LEN4(3) |
+	PKT_ID5(CMD_BLNK) | PKT_LEN5(4),
+};
+
 static struct tegra_dsi_out dalmore_dsi = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	.n_data_lanes = 2,
@@ -291,7 +314,7 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.dsi2edp_bridge_enable = true,
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 58,
+	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 
 	.dsi_instance = DSI_INSTANCE_0,
@@ -307,6 +330,9 @@ static struct tegra_dsi_out dalmore_dsi = {
 #endif
 	.dsi_init_cmd = dsi_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
+#if PANEL_10_1_PANASONIC_1920_1200
+	.pkt_seq = panasonic_1920_1200_vnb_syne,
+#endif
 };
 
 static int dalmore_dsi_regulator_get(struct device *dev)
