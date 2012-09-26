@@ -3479,8 +3479,14 @@ void brcmf_sdbrcm_isr(void *arg)
 	if (!bus->intr)
 		brcmf_err("isr w/o interrupt configured!\n");
 
+#ifndef CONFIG_BRCMFMAC_SDIO_OOB
+#error TODO - make brcmf_sdbrcm_dpc return bool
+	while (brcmf_sdbrcm_dpc(bus))
+		;
+#else
 	brcmf_sdbrcm_adddpctsk(bus);
 	queue_work(bus->brcmf_wq, &bus->datawork);
+#endif
 }
 
 static bool brcmf_sdbrcm_bus_watchdog(struct brcmf_sdio *bus)
