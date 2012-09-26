@@ -652,8 +652,8 @@ struct spi_clk_parent spi_parent_clk_pluto[] = {
 };
 
 static struct tegra_spi_platform_data pluto_spi_pdata = {
-	.is_dma_based           = false,
-	.max_dma_buffer         = 256,
+	.is_dma_based           = true,
+	.max_dma_buffer         = 16 * 1024,
         .is_clkon_always        = false,
         .max_rate               = 25000000,
 };
