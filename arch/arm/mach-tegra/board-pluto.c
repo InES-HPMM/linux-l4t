@@ -478,7 +478,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
+	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -516,7 +516,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
-	.unaligned_dma_buf_supported = true,
+	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -575,9 +575,7 @@ static struct tegra_usb_phy_platform_ops baseband2_plat_ops = {
 static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	.unaligned_dma_buf_supported = true,
-#endif
+	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
@@ -596,9 +594,7 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband2_pdata = {
 #endif
 	.port_otg = false,
 	.has_hostpc = true,
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	.unaligned_dma_buf_supported = true,
-#endif
+	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
