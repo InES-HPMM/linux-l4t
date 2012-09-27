@@ -259,6 +259,7 @@ static struct regmap_irq_chip palmas_irq_chip = {
 			PALMAS_INT1_STATUS),
 	.mask_base = PALMAS_BASE_TO_REG(PALMAS_INTERRUPT_BASE,
 			PALMAS_INT1_MASK),
+	.wake_base = 1,
 };
 
 struct palmas_sleep_requestor_info {
