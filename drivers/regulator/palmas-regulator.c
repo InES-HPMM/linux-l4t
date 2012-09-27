@@ -601,6 +601,17 @@ static int palmas_smps_init(struct palmas *palmas, int id,
 				"Error in configuring external control\n");
 			return ret;
 		}
+
+		if (id == PALMAS_REG_SMPS123) {
+			ret = palmas_ext_power_req_config(palmas,
+					PALMAS_SLEEP_REQSTR_ID_SMPS3,
+					reg_init->roof_floor, true);
+			if (ret < 0) {
+				dev_err(palmas->dev,
+					"Error in configuring ext control\n");
+				return ret;
+			}
+		}
 	}
 
 	if (palmas_regs_info[id].vsel_addr && reg_init->vsel) {
