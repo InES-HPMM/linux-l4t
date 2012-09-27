@@ -1196,6 +1196,11 @@ static int cs42l73_pcm_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_write(codec, CS42L73_SPC(id), priv->config[id].spc);
 	snd_soc_write(codec, CS42L73_MMCC(id), priv->config[id].mmcc);
 
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		snd_soc_update_bits(codec, CS42L73_VSPAIPAA, 0xff, 0);
+		snd_soc_update_bits(codec, CS42L73_VSPBIPBA, 0xff, 0);
+	}
+
 	cs42l73_update_asrc(codec, id, srate);
 
 	return 0;

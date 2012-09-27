@@ -275,6 +275,7 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_cs42l73_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+	SND_SOC_DAPM_INPUT("Int D-Mic"),
 };
 
 /* cs42l73 Audio Map */
@@ -284,6 +285,10 @@ static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	/* Headphone (L+R)->  HPOUTA, HPOUTB */
 	{"Headphone", NULL, "HPOUTA"},
 	{"Headphone", NULL, "HPOUTB"},
+	/* DMIC -> DMIC Left/Right and VSPIN */
+	{"DMIC Left", NULL, "Int D-Mic"},
+	{"DMIC Right", NULL, "Int D-Mic"},
+	{"VSPIN", NULL, "Int D-Mic"},
 };
 
 static const struct snd_kcontrol_new tegra_cs42l73_controls[] = {
