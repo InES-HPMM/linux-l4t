@@ -673,6 +673,23 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_7_MASK))
 		palmas->gpio_muxed |= PALMAS_GPIO_7_MUXED;
 
+	addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
+			PALMAS_PRIMARY_SECONDARY_PAD3);
+
+	if (pdata->mux_from_pdata) {
+		reg = pdata->pad3;
+		ret = regmap_write(palmas->regmap[slave], addr, reg);
+		if (ret)
+			goto err;
+	} else {
+		ret = regmap_read(palmas->regmap[slave], addr, &reg);
+		if (ret)
+			goto err;
+	}
+
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2))
+		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
+
 	dev_info(palmas->dev, "Muxing GPIO %x, PWM %x, LED %x\n",
 			palmas->gpio_muxed, palmas->pwm_muxed,
 			palmas->led_muxed);
