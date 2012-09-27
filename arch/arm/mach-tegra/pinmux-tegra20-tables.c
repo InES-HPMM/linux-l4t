@@ -289,18 +289,15 @@ static int tegra20_pinmux_suspend(void)
 	u32 *ctx = pinmux_reg;
 
 	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++) {
-		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
-				tegra_soc_pingroups[i].mux_reg);
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank, i*4);
 	}
 
 	for (i = 0; i < PULLUPDOWN_REG_NUM; i++) {
-		*ctx++ = pg_readl(tegra_soc_pingroups[i].pupd_bank,
-				tegra_soc_pingroups[i].pupd_reg);
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].pupd_bank, i*4);
 	}
 
 	for (i = 0; i < TRISTATE_REG_NUM; i++) {
-		*ctx++ = pg_readl(tegra_soc_pingroups[i].tri_bank,
-				tegra_soc_pingroups[i].tri_reg);
+		*ctx++ = pg_readl(tegra_soc_pingroups[i].tri_bank, i*4);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
@@ -317,18 +314,15 @@ static void tegra20_pinmux_resume(void)
 	u32 *ctx = pinmux_reg;
 
 	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++) {
-		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
-				tegra_soc_pingroups[i].mux_reg);
+		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank, i*4);
 	}
 
 	for (i = 0; i < PULLUPDOWN_REG_NUM; i++) {
-		pg_writel(*ctx++, tegra_soc_pingroups[i].pupd_bank,
-				tegra_soc_pingroups[i].pupd_reg);
+		pg_writel(*ctx++, tegra_soc_pingroups[i].pupd_bank, i*4);
 	}
 
 	for (i = 0; i < TRISTATE_REG_NUM; i++) {
-		pg_writel(*ctx++, tegra_soc_pingroups[i].tri_bank,
-				tegra_soc_pingroups[i].tri_reg);
+		pg_writel(*ctx++, tegra_soc_pingroups[i].tri_bank, i*4);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++) {
