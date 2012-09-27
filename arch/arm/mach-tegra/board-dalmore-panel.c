@@ -86,7 +86,7 @@ static struct regulator *dalmore_hdmi_pll;
 static struct regulator *dalmore_hdmi_vddio;
 #endif
 
-static struct resource dalmore_disp1_resources[] __initdata = {
+static struct resource dalmore_disp1_resources[] = {
 	{
 		.name	= "irq",
 		.start	= INT_DISPLAY_GENERAL,
@@ -128,7 +128,7 @@ static struct resource dalmore_disp1_resources[] __initdata = {
 #endif
 };
 
-static struct resource dalmore_disp2_resources[] __initdata = {
+static struct resource dalmore_disp2_resources[] = {
 	{
 		.name	= "irq",
 		.start	= INT_DISPLAY_B_GENERAL,
@@ -596,7 +596,7 @@ static struct tegra_dc_platform_data dalmore_disp2_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
-static struct nvhost_device dalmore_disp2_device __initdata = {
+static struct nvhost_device dalmore_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= dalmore_disp2_resources,
@@ -606,7 +606,7 @@ static struct nvhost_device dalmore_disp2_device __initdata = {
 	},
 };
 
-static struct nvhost_device dalmore_disp1_device __initdata = {
+static struct nvhost_device dalmore_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= dalmore_disp1_resources,
