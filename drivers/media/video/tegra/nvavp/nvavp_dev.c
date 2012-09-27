@@ -68,6 +68,7 @@
 
 /* AVP behavior params */
 #define NVAVP_OS_IDLE_TIMEOUT		100 /* milli-seconds */
+#define NVAVP_OUTBOX_WRITE_TIMEOUT	1000 /* milli-seconds */
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 /* Two control channels: Audio and Video channels */
@@ -185,6 +186,21 @@ static int nvavp_get_video_init_status(struct nvavp_info *nvavp)
 static struct nvavp_channel *nvavp_get_channel_info(struct nvavp_info *nvavp, int channel_id)
 {
 	return &nvavp->channel_info[channel_id];
+}
+
+static int nvavp_outbox_write(unsigned int val)
+{
+	unsigned int wait_ms = 0;
+
+	while (readl(NVAVP_OS_OUTBOX)) {
+		usleep_range(1000, 2000);
+		if (++wait_ms > NVAVP_OUTBOX_WRITE_TIMEOUT) {
+			pr_err("No update from AVP in %d ms\n", wait_ms);
+			return -ETIMEDOUT;
+		}
+	}
+	writel(val, NVAVP_OS_OUTBOX);
+	return 0;
 }
 
 static void nvavp_set_channel_control_area(struct nvavp_info *nvavp, int channel_id)
@@ -561,6 +577,7 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 	u32 gather_cmd, setucode_cmd, sync = 0;
 	u32 wordcount = 0;
 	u32 index, value = -1;
+	int ret = 0;
 
 	channel_info = nvavp_get_channel_info(nvavp, channel_id);
 
@@ -642,13 +659,17 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 
 	if (IS_VIDEO_CHANNEL_ID(channel_id)) {
 		pr_debug("Wake up Video Channel\n");
-		writel(0xA0000001, NVAVP_OS_OUTBOX);
+		ret = nvavp_outbox_write(0xA0000001);
+		if (ret < 0)
+			goto err_exit;
 	}
 	else {
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 		if (IS_AUDIO_CHANNEL_ID(channel_id)) {
 			pr_debug("Wake up Audio Channel\n");
-			writel(0xA0000002, NVAVP_OS_OUTBOX);
+			ret = nvavp_outbox_write(0xA0000002);
+			if (ret < 0)
+				goto err_exit;
 		}
 #endif
 	}
@@ -658,6 +679,7 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 		syncpt->value = value;
 	}
 
+err_exit:
 	mutex_unlock(&channel_info->pushbuffer_lock);
 
 	return 0;
@@ -1237,8 +1259,7 @@ static int nvavp_wake_avp_ioctl(struct file *filp, unsigned int cmd,
 {
 	wmb();
 	/* wake up avp */
-	writel(0xA0000001, NVAVP_OS_OUTBOX);
-	return 0;
+	return nvavp_outbox_write(0xA0000001);
 }
 
 static int nvavp_force_clock_stay_on_ioctl(struct file *filp, unsigned int cmd,
