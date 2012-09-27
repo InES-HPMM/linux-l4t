@@ -169,7 +169,7 @@ config MACH_CURACAO
 
 config MACH_DALMORE
        bool "Dalmore board"
-       depends on !ARCH_TEGRA_2x_SOC
+       depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
        help
@@ -177,7 +177,7 @@ config MACH_DALMORE
 
 config MACH_TEGRA_PLUTO
        bool "Pluto board"
-       depends on !ARCH_TEGRA_2x_SOC
+       depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_CS42L73 if SND_SOC
        help
          Support for NVIDIA PLUTO development platform
