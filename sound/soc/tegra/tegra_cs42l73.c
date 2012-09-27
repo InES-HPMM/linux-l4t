@@ -62,11 +62,12 @@ struct tegra_cs42l73 {
 	bool init_done;
 	int is_call_mode;
 	int is_device_bt;
-	struct regulator *spk_reg;
 	struct regulator *dmic_reg;
-	struct regulator *cdc_en;
 	enum snd_soc_bias_level bias_level;
 	struct snd_soc_card *pcard;
+#ifdef CONFIG_SWITCH
+	int jack_status;
+#endif
 	int clock_enabled;
 };
 
@@ -180,6 +181,66 @@ static struct snd_soc_ops tegra_cs42l73_ops = {
 /* Headset jack */
 struct snd_soc_jack tegra_cs42l73_hp_jack;
 
+
+#ifdef CONFIG_SWITCH
+/* These values are copied from Android WiredAccessoryObserver */
+enum headset_state {
+	BIT_NO_HEADSET = 0,
+	BIT_HEADSET = (1 << 0),
+	BIT_HEADSET_NO_MIC = (1 << 1),
+};
+
+static struct switch_dev tegra_cs42l73_headset_switch = {
+	.name = "h2w",
+};
+
+/* Headset jack detection gpios */
+static struct snd_soc_jack_gpio tegra_cs42l73_hp_jack_gpio = {
+	.name = "headphone detect",
+	.report = SND_JACK_HEADPHONE,
+	.debounce_time = 150,
+	.invert = 1,
+};
+
+static int tegra_cs42l73_jack_notifier(struct notifier_block *self,
+			      unsigned long action, void *dev)
+{
+	struct snd_soc_jack *jack = dev;
+	struct snd_soc_codec *codec = jack->codec;
+	struct snd_soc_card *card = codec->card;
+	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
+	enum headset_state state = BIT_NO_HEADSET;
+
+	if (jack == &tegra_cs42l73_hp_jack) {
+		machine->jack_status &= ~SND_JACK_HEADPHONE;
+		machine->jack_status |= (action & SND_JACK_HEADPHONE);
+	} else {
+		machine->jack_status &= ~SND_JACK_MICROPHONE;
+		machine->jack_status |= (action & SND_JACK_MICROPHONE);
+	}
+
+	switch (machine->jack_status) {
+	case SND_JACK_HEADPHONE:
+		state = BIT_HEADSET_NO_MIC;
+		break;
+	case SND_JACK_HEADSET:
+		state = BIT_HEADSET;
+		break;
+	case SND_JACK_MICROPHONE:
+		/* mic: would not report */
+	default:
+		state = BIT_NO_HEADSET;
+	}
+
+	switch_set_state(&tegra_cs42l73_headset_switch, state);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block tegra_cs42l73_jack_detect_nb = {
+	.notifier_call = tegra_cs42l73_jack_notifier,
+};
+#else
 /* Headset jack detection DAPM pins */
 static struct snd_soc_jack_pin tegra_cs42l73_hs_jack_pins[] = {
 	{
@@ -191,147 +252,6 @@ static struct snd_soc_jack_pin tegra_cs42l73_hs_jack_pins[] = {
 		.mask = SND_JACK_HEADPHONE,
 	},
 };
-
-#ifdef CONFIG_SWITCH
-/* Headset jack detection gpios */
-static struct snd_soc_jack_gpio tegra_cs42l73_hp_jack_gpio = {
-	.name = "hsdet-gpio",
-	.report = SND_JACK_HEADSET, /* SND_JACK_HEADSET */
-	.debounce_time = 400,
-	.invert = 1,
-};
-
-enum headset_state {
-	BIT_NO_HEADSET = 0,
-	BIT_HEADSET = (1 << 0),
-	BIT_HEADSET_NO_MIC = (1 << 1),
-};
-
-static struct switch_dev tegra_cs42l73_headset_switch = {
-	.name = "h2w",
-};
-
-static int cs42l73_report_jack(struct snd_soc_codec *codec, int jack_report)
-{
-	enum headset_state state = BIT_NO_HEADSET;
-	unsigned int  mic_status, mic_ref , mic_intr_status;
-
-	if (jack_report > 0) {
-		/* Read the MIC Status Register*/
-		mic_intr_status = snd_soc_read(codec, CS42L73_IS1);
-		mic_ref = snd_soc_read(codec, CS42L73_OLMBMSDC);
-		mic_status = (snd_soc_read(codec, CS42L73_IS1))
-			& (MIC2_SDET);
-
-		if (mic_status > 0)
-			state = BIT_HEADSET_NO_MIC; /* FIX ME BIT_HEADSET */
-		else
-			state = BIT_HEADSET_NO_MIC;
-	}
-
-	switch_set_state(&tegra_cs42l73_headset_switch, state);
-	return 0;
-}
-
-
-static void cs42l73_soc_jack_gpio_detect(struct snd_soc_jack_gpio *gpio)
-{
-
-	int jack_report;
-	struct snd_soc_jack *jack = gpio->jack;
-	struct snd_soc_codec *codec = jack->codec;
-
-	jack_report = gpio_get_value(gpio->gpio);
-
-	if (gpio->debounce_time > 0)
-		mdelay(gpio->debounce_time);
-
-	if (gpio->invert)
-		jack_report = !jack_report;
-
-	cs42l73_report_jack(codec, jack_report);
-}
-
-/* irq handler for gpio pin */
-static irqreturn_t cs42l73_gpio_handler(int irq, void *data)
-{
-		struct snd_soc_jack_gpio *gpio = data;
-
-		schedule_delayed_work(&gpio->work,
-					msecs_to_jiffies(gpio->debounce_time));
-
-		return IRQ_HANDLED;
-}
-
-/* gpio work */
-static void cs42l73_gpio_work(struct work_struct *work)
-{
-	struct snd_soc_jack_gpio *gpio;
-
-	gpio = container_of(work, struct snd_soc_jack_gpio, work.work);
-	cs42l73_soc_jack_gpio_detect(gpio);
-}
-
-/*
-	Add the INTn_CS42L73 -> GPIOxxx
-	INTn_CS42L73 is the L73's interrupt and requires
-	a different type of handling.
-*/
-int cs42l73_soc_jack_add_gpio(struct snd_soc_jack *jack,
-				struct snd_soc_jack_gpio *gpio)
-{
-	int ret;
-	struct snd_soc_codec *codec = jack->codec;
-
-	if (!gpio->name) {
-		pr_err("No name for gpio %d\n", gpio->gpio);
-		ret = -EINVAL;
-		goto undo;
-	}
-
-	ret = gpio_request(gpio->gpio, gpio->name);
-	if (ret)
-		goto undo;
-
-	ret = gpio_direction_input(gpio->gpio);
-	if (ret)
-		goto err;
-
-	INIT_DELAYED_WORK(&gpio->work, cs42l73_gpio_work);
-		gpio->jack = jack;
-
-	ret = request_threaded_irq(gpio_to_irq(gpio->gpio),  NULL,
-			cs42l73_gpio_handler,
-			IRQF_TRIGGER_RISING |
-			IRQF_TRIGGER_FALLING,
-			codec->name,
-			gpio);
-
-	if (ret)
-		goto err;
-
-	snd_soc_update_bits(codec, CS42L73_DMMCC, MCLKDIS, 0);
-	snd_soc_update_bits(codec, CS42L73_PWRCTL1, PDN, 0);
-	snd_soc_update_bits(codec, CS42L73_PWRCTL2, PDN_MIC2_BIAS, 0);
-
-	/* Unmask MIC2_SDET interrupt */
-	snd_soc_update_bits(codec, CS42L73_IM1, MIC2_SDET, 1);
-
-#ifdef CONFIG_GPIO_SYSFS
-	/* Expose GPIO value over sysfs for diagnostic purposes */
-	gpio_export(gpio->gpio, false);
-#endif
-	/* Update initial jack status */
-	cs42l73_soc_jack_gpio_detect(gpio);
-	return 0;
-
-err:
-	gpio_free(gpio->gpio);
-undo:
-	snd_soc_jack_free_gpios(jack, 1, gpio);
-	return ret;
-
-}
 #endif
 
 static int tegra_cs42l73_event_int_spk(struct snd_soc_dapm_widget *w,
@@ -389,52 +309,7 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 	machine->pcard = card;
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
-
-	if (gpio_is_valid(pdata->gpio_spkr_en)) {
-		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get spkr_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_SPKR_EN;
-
-		gpio_direction_output(pdata->gpio_spkr_en, 0);
-	}
 */
-
-	if (gpio_is_valid(pdata->gpio_hp_mute)) {
-		ret = gpio_request(pdata->gpio_hp_mute, "hp_mute");
-		if (ret) {
-			dev_err(card->dev, "cannot get hp_mute gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_HP_MUTE;
-
-		gpio_direction_output(pdata->gpio_hp_mute, 0);
-	}
-
-	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
-		ret = gpio_request(pdata->gpio_int_mic_en, "int_mic_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get int_mic_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_INT_MIC_EN;
-
-		/* Disable int mic; enable signal is active-high */
-		gpio_direction_output(pdata->gpio_int_mic_en, 0);
-	}
-
-	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
-		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
-		if (ret)
-			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
-		else {
-			machine->gpio_requested |= GPIO_EXT_MIC_EN;
-			/* Disable ext mic; enable signal is active-low */
-			gpio_direction_output(pdata->gpio_ext_mic_en, 1);
-		}
-	}
 
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
@@ -459,41 +334,29 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_dapm_sync(dapm);
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
-		/* Headset and button jack detection */
+		/* Headphone detection */
 		tegra_cs42l73_hp_jack_gpio.gpio = pdata->gpio_hp_det;
-		ret = snd_soc_jack_new(codec, "CS42L73 Audio Jack",
+		snd_soc_jack_new(codec, "Headphone Jack",
 				SND_JACK_HEADSET, &tegra_cs42l73_hp_jack);
-		if (ret) {
-			pr_err("jack creation failed\n");
-			return ret;
-		}
 
-		ret = snd_soc_jack_add_pins(&tegra_cs42l73_hp_jack,
+#ifndef CONFIG_SWITCH
+		snd_soc_jack_add_pins(&tegra_cs42l73_hp_jack,
 				ARRAY_SIZE(tegra_cs42l73_hs_jack_pins),
 				tegra_cs42l73_hs_jack_pins);
-		if (ret) {
-			pr_err("adding jack pins failed\n");
-			return ret;
-		}
-
-		ret = cs42l73_soc_jack_add_gpio(&tegra_cs42l73_hp_jack,
-						&tegra_cs42l73_hp_jack_gpio);
-		if (ret) {
-			pr_err("adding jack GPIO failed\n");
-			return ret;
-		}
+#else
+		snd_soc_jack_notifier_register(&tegra_cs42l73_hp_jack,
+					&tegra_cs42l73_jack_detect_nb);
+#endif
+		snd_soc_jack_add_gpios(&tegra_cs42l73_hp_jack,
+					1,
+					&tegra_cs42l73_hp_jack_gpio);
+		/* FIX ME  Add Mic Jack notifier */
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
-
-	/* FIXME: Calculate automatically based on DAPM routes? */
-	/*snd_soc_dapm_nc_pin(dapm, "LOUTL");
-	snd_soc_dapm_nc_pin(dapm, "LOUTR"); */
-
-	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }
@@ -511,7 +374,17 @@ static struct snd_soc_dai_link tegra_cs42l73_dai[] = {
 	},
 };
 
-/*static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
+static int tegra_cs42l73_suspend_post(struct snd_soc_card *card)
+{
+	struct snd_soc_jack_gpio *gpio = &tegra_cs42l73_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio))
+		disable_irq(gpio_to_irq(gpio->gpio));
+
+	return 0;
+}
+
+static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
 {
 	int val;
 	struct snd_soc_jack_gpio *gpio = &tegra_cs42l73_hp_jack_gpio;
@@ -520,10 +393,11 @@ static struct snd_soc_dai_link tegra_cs42l73_dai[] = {
 		val = gpio_get_value(gpio->gpio);
 		val = gpio->invert ? !val : val;
 		snd_soc_jack_report(gpio->jack, val, gpio->report);
+		enable_irq(gpio_to_irq(gpio->gpio));
 	}
 
 	return 0;
-} */
+}
 
 static int tegra_cs42l73_set_bias_level(struct snd_soc_card *card,
 	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
@@ -561,7 +435,8 @@ static struct snd_soc_card snd_soc_tegra_cs42l73 = {
 	.owner = THIS_MODULE,
 	.dai_link = tegra_cs42l73_dai,
 	.num_links = ARRAY_SIZE(tegra_cs42l73_dai),
-/*	.resume_pre = tegra_cs42l73_resume_pre, */
+	.suspend_post = tegra_cs42l73_suspend_post,
+	.resume_pre = tegra_cs42l73_resume_pre,
 	.set_bias_level = tegra_cs42l73_set_bias_level,
 	.set_bias_level_post = tegra_cs42l73_set_bias_level_post,
 };
@@ -607,12 +482,6 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
-
-	machine->spk_reg = regulator_get(&pdev->dev, "vdd_spk");
-	if (IS_ERR(machine->spk_reg)) {
-		dev_info(&pdev->dev, "No speaker regulator found\n");
-		machine->spk_reg = 0;
-	}
 
 	machine->dmic_reg = regulator_get(&pdev->dev, "vdd_mic");
 	if (IS_ERR(machine->dmic_reg)) {
@@ -679,25 +548,11 @@ static int __devexit tegra_cs42l73_driver_remove(struct platform_device *pdev)
 		snd_soc_jack_free_gpios(&tegra_cs42l73_hp_jack,
 					1,
 					&tegra_cs42l73_hp_jack_gpio);
-	if (machine->gpio_requested & GPIO_EXT_MIC_EN)
-		gpio_free(pdata->gpio_ext_mic_en);
-	if (machine->gpio_requested & GPIO_INT_MIC_EN)
-		gpio_free(pdata->gpio_int_mic_en);
-	if (machine->gpio_requested & GPIO_HP_MUTE)
-		gpio_free(pdata->gpio_hp_mute);
-	if (machine->gpio_requested & GPIO_SPKR_EN)
-		gpio_free(pdata->gpio_spkr_en);
+
 	machine->gpio_requested = 0;
 
-	if (machine->spk_reg)
-		regulator_put(machine->spk_reg);
 	if (machine->dmic_reg)
 		regulator_put(machine->dmic_reg);
-
-	if (machine->cdc_en) {
-		regulator_disable(machine->cdc_en);
-		regulator_put(machine->cdc_en);
-	}
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);
