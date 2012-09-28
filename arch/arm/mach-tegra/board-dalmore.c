@@ -594,12 +594,6 @@ static void __init dalmore_spi_init(void)
                                 ARRAY_SIZE(dalmore_spi_devices));
 }
 
-static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "sbc4",       "pll_p",        52000000,       true},
-	{ NULL,         NULL,           0,              0},
-};
-
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
 	{ "extern2",    "pll_p",        41000000,       true},
@@ -625,7 +619,6 @@ struct spi_board_info rm31080a_dalmore_spi_board[1] = {
 
 static int __init dalmore_touch_init(void)
 {
-	tegra_clk_init_from_table(spi_clk_init_table);
 	tegra_clk_init_from_table(touch_clk_init_table);
 	clk_enable(tegra_get_clock_by_name("clk_out_2"));
 	rm31080ts_dalmore_data.platform_id = RM_PLATFORM_D010;
