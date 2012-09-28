@@ -88,6 +88,14 @@ static inline int max77665_read(struct device *dev, int slv_id,
 	return ret;
 }
 
+static inline int max77665_bulk_read(struct device *dev, int slv_id,
+		int reg, int count, void *val)
+{
+	struct max77665 *maxim = dev_get_drvdata(dev);
+
+	return regmap_bulk_read(maxim->regmap[slv_id], reg, val, count);
+}
+
 static inline int max77665_set_bits(struct device *dev, int slv_id,
 		int reg, uint8_t bit_num)
 {
