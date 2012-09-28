@@ -62,6 +62,18 @@ struct tegra_audio_test_params {
 	unsigned int read_size;
 };
 
+struct dmic_params_t {
+	unsigned int over_sampling_ratio;
+	unsigned int sample_rate;
+	unsigned int save_data_bits;
+	unsigned int capture_data_bits;
+	unsigned int save_data_channels;
+	unsigned int capture_data_channels;
+	unsigned int bypass_mode;
+	unsigned int apbif_channels;
+	unsigned int captured_data_size;
+};
+
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
 			const struct tegra_audio_in_config *)
 #define TEGRA_AUDIO_IN_GET_CONFIG	_IOR(TEGRA_AUDIO_MAGIC, 3, \
@@ -117,6 +129,10 @@ struct tegra_audio_test_params {
 #define AMX_ADX_I2S_CLOSE		_IOW(TEGRA_AUDIO_MAGIC, 43, void *)
 #define AMX_ADX_AUDIO_START		_IOW(TEGRA_AUDIO_MAGIC, 44, void *)
 #define AMX_ADX_AUDIO_STOP		_IOW(TEGRA_AUDIO_MAGIC, 45, void *)
+
+#define DMIC_CAPTURE_START		_IOW(TEGRA_AUDIO_MAGIC, 51, \
+			struct dmic_params_t *)
+#define DMIC_CAPTURE_STOP		_IO(TEGRA_AUDIO_MAGIC, 52)
 
 #define TEGRA_AUDIO_TEST_START			_IO(TEGRA_AUDIO_MAGIC, 61)
 #define TEGRA_AUDIO_TEST_SET_PARAMS		_IO(TEGRA_AUDIO_MAGIC, 62)
