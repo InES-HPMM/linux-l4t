@@ -190,6 +190,7 @@ struct spi_tegra_data {
 	char			port_name[32];
 
 	struct clk		*clk;
+	struct clk		*sclk;
 	void __iomem		*base;
 	phys_addr_t		phys;
 	unsigned		irq;
@@ -297,6 +298,7 @@ static int tegra_spi_clk_disable(struct spi_tegra_data *tspi)
 	tspi->clk_state--;
 	spin_unlock_irqrestore(&tspi->reg_lock, flags);
 	clk_disable(tspi->clk);
+	clk_disable(tspi->sclk);
 	return 0;
 }
 
@@ -304,6 +306,7 @@ static int tegra_spi_clk_enable(struct spi_tegra_data *tspi)
 {
 	unsigned long flags;
 
+	clk_enable(tspi->sclk);
 	clk_enable(tspi->clk);
 	spin_lock_irqsave(&tspi->reg_lock, flags);
 	tspi->clk_state++;
@@ -1270,6 +1273,13 @@ static int spi_tegra_probe(struct platform_device *pdev)
 	if (IS_ERR(tspi->clk)) {
 		dev_err(&pdev->dev, "can not get clock\n");
 		ret = PTR_ERR(tspi->clk);
+		goto exit_free_master;
+	}
+
+	tspi->sclk = devm_clk_get(&pdev->dev, "sclk");
+	if (IS_ERR(tspi->sclk)) {
+		dev_err(&pdev->dev, "can not get sclock\n");
+		ret = PTR_ERR(tspi->sclk);
 		goto exit_free_master;
 	}
 
