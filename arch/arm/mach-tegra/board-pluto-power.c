@@ -32,6 +32,7 @@
 
 #include <asm/mach-types.h>
 
+#include "cpu-tegra.h"
 #include "pm.h"
 #include "board.h"
 #include "board-pluto.h"
@@ -694,13 +695,6 @@ int __init pluto_edp_init(void)
 }
 
 static struct soctherm_platform_data pluto_soctherm_data = {
-	.thermtrip = {
-		[THERM_CPU] = 90,
-		[THERM_GPU] = 0, /* Not enabled */
-		[THERM_MEM] = 0, /* Not enabled */
-		[THERM_PLL] = 0, /* Not enabled */
-	},
-
 	.hw_backstop = 60,
 	.dividend = 1,
 	.divisor = 2,
@@ -788,10 +782,44 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 			.pdiv = 10,
 		},
 	},
+
+	.thermtrip = {
+		[THERM_CPU] = 90,
+		[THERM_GPU] = 0, /* Not enabled */
+		[THERM_MEM] = 0, /* Not enabled */
+		[THERM_PLL] = 0, /* Not enabled */
+	},
+	.passive = {
+		[THERM_CPU] = {
+			.trip_temp = 38000,
+			.tc1 = 0,
+			.tc2 = 1,
+			.passive_delay = 2000,
+		}
+	},
+};
+
+static struct balanced_throttle tj_throttle = {
+	.throt_tab_size = 10,
+	.throt_tab = {
+		{      0, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 640000, 1000 },
+		{ 760000, 1000 },
+		{ 760000, 1050 },
+		{1000000, 1050 },
+		{1000000, 1100 },
+	},
 };
 
 static int __init pluto_soctherm_init(void)
 {
+	pluto_soctherm_data.passive[THERM_CPU].cdev =
+			balanced_throttle_register(&tj_throttle);
+
 	return tegra11_soctherm_init(&pluto_soctherm_data);
 }
 module_init(pluto_soctherm_init);

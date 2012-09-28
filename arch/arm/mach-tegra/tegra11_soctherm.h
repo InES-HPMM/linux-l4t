@@ -78,7 +78,7 @@ struct soctherm_platform_data {
 	int step;
 
 	struct soctherm_sensor sensor_data[TSENSE_SIZE];
-	struct soctherm_cdev passive[TSENSE_SIZE];
+	struct soctherm_cdev passive[THERM_SIZE];
 
 	int edp_weights[12];
 	int edp_threshold;
