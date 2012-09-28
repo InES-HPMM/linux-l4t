@@ -65,10 +65,11 @@ struct soctherm_sensor {
 	int tsample;
 	s16 therm_a;
 	s16 therm_b;
+	u8 pdiv;
 };
 
 struct soctherm_platform_data {
-	int therm_trip; /* in celcius */
+	s8 thermtrip[THERM_SIZE];
 
 	int hw_backstop; /* in celcius */
 	int dividend;

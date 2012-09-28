@@ -54,14 +54,21 @@
 
 #define THERMTRIP			0x80
 #define THERMTRIP_ANY_EN_SHIFT		28
-
-#define THERMTRIP			0x80
-#define THERMTRIP_ANY_EN_SHIFT		28
 #define THERMTRIP_ANY_EN_MASK		0x1
+#define THERMTRIP_MEM_EN_SHIFT		27
+#define THERMTRIP_MEM_EN_MASK		0x1
+#define THERMTRIP_GPU_EN_SHIFT		26
+#define THERMTRIP_GPU_EN_MASK		0x1
 #define THERMTRIP_CPU_EN_SHIFT		25
 #define THERMTRIP_CPU_EN_MASK		0x1
+#define THERMTRIP_TSENSE_EN_SHIFT	24
+#define THERMTRIP_TSENSE_EN_MASK	0x1
+#define THERMTRIP_GPUMEM_THRESH_SHIFT	16
+#define THERMTRIP_GPUMEM_THRESH_MASK	0xff
 #define THERMTRIP_CPU_THRESH_SHIFT	8
 #define THERMTRIP_CPU_THRESH_MASK	0xff
+#define THERMTRIP_TSENSE_THRESH_SHIFT	0
+#define THERMTRIP_TSENSE_THRESH_MASK	0xff
 
 #define TS_CPU0_CONFIG0				0xc0
 #define TS_CPU0_CONFIG0_TALL_SHIFT		8
@@ -208,6 +215,10 @@
 	(((r)&(_name##_MASK<<_name##_SHIFT))>>_name##_SHIFT)
 
 static void __iomem *reg_soctherm_base = IO_ADDRESS(TEGRA_SOCTHERM_BASE);
+static void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+#define pmc_writel(value, reg) __raw_writel(value, pmc_base + (reg))
+#define pmc_readl(reg) __raw_readl(pmc_base + (reg))
 
 #define soctherm_writel(value, reg) \
 	__raw_writel(value, reg_soctherm_base + (reg))
@@ -243,6 +254,7 @@ static inline long temp_translate(int readback)
 	return (abs * 1000 + lsb * 500) * (sign * -2 + 1);
 }
 
+#if 0
 static int soctherm_set_limits(void *data,
 	long lo_limit_milli,
 	long hi_limit_milli)
@@ -257,6 +269,7 @@ static int soctherm_set_limits(void *data,
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_THERMAL
 static int soctherm_bind(struct thermal_zone_device *thz,
@@ -351,6 +364,12 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int err, i;
 	u32 r;
+	char name[64];
+
+	/* Can only thermtrip with either GPU or MEM but not both */
+	if (data->thermtrip[THERM_GPU] && data->thermtrip[THERM_MEM])
+		return -EINVAL;
+
 
 	memcpy(&plat_data, data, sizeof(struct soctherm_platform_data));
 
@@ -358,10 +377,11 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].enable) {
 			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
+			sprintf(name, "%s-tsensor", sensor_names[i]);
 #ifdef CONFIG_THERMAL
 			/* Create a thermal zone device for each sensor */
 			thermal_zone_device_register(
-					sensor_names[i],
+					name,
 					0,
 					0,
 					(void *)i,
@@ -373,6 +393,15 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 #endif
 		}
 	}
+
+	/* Pdiv */
+	r = soctherm_readl(TS_PDIV);
+	r = REG_SET(r, TS_PDIV_CPU, data->sensor_data[TSENSE_CPU0].pdiv);
+	r = REG_SET(r, TS_PDIV_GPU, data->sensor_data[TSENSE_GPU].pdiv);
+	r = REG_SET(r, TS_PDIV_CPU, data->sensor_data[TSENSE_MEM0].pdiv);
+	r = REG_SET(r, TS_PDIV_CPU, data->sensor_data[TSENSE_PLLX].pdiv);
+	soctherm_writel(r, TS_PDIV);
+
 
 	/* Enable Level 0 */
 	r = soctherm_readl(CTL_LVL0_CPU0);
@@ -390,25 +419,24 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 #endif
 
 	/* Thermtrip */
-	r = soctherm_readl(THERMTRIP);
-	r = REG_SET(r, THERMTRIP_CPU_THRESH, data->therm_trip);
-	r = REG_SET(r, THERMTRIP_CPU_EN, 1);
+	r = REG_SET(0, THERMTRIP_CPU_EN, !!data->thermtrip[THERM_CPU]);
+	r = REG_SET(r, THERMTRIP_GPU_EN, !!data->thermtrip[THERM_GPU]);
+	r = REG_SET(r, THERMTRIP_MEM_EN, !!data->thermtrip[THERM_MEM]);
+	r = REG_SET(r, THERMTRIP_TSENSE_EN, !!data->thermtrip[THERM_PLL]);
+	r = REG_SET(r, THERMTRIP_CPU_THRESH, data->thermtrip[THERM_CPU]);
+	r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, data->thermtrip[THERM_GPU] |
+						data->thermtrip[THERM_MEM]);
+	r = REG_SET(r, THERMTRIP_TSENSE_THRESH, data->thermtrip[THERM_PLL]);
 	soctherm_writel(r, THERMTRIP);
 
-	/* Pdiv */
-	r = soctherm_readl(TS_PDIV);
-	r = REG_SET(r, TS_PDIV_CPU, 10);
-	r = REG_SET(r, TS_PDIV_GPU, 10);
-	r = REG_SET(r, TS_PDIV_MEM, 10);
-	r = REG_SET(r, TS_PDIV_PLLX, 10);
-	soctherm_writel(r, TS_PDIV);
+	/* Enable PMC to shutdown */
+	r = pmc_readl(0x1b0);
+	r |= 0x2;
+	pmc_writel(r, 0x1b0);
 
-	err = request_irq(INT_THERMAL, soctherm_isr,
-				0, "soctherm", NULL);
+	err = request_irq(INT_THERMAL, soctherm_isr, 0, "soctherm", NULL);
 	if (err < 0)
 		return -1;
-
-	soctherm_set_limits(NULL, 20000, 38000);
 
 	return 0;
 }
@@ -526,6 +554,13 @@ static int regs_show(struct seq_file *s, void *data)
 
 	r = soctherm_readl(PSKIP_STATUS);
 	seq_printf(s, "PSKIP: 0x%x\n", r);
+
+	r = soctherm_readl(THERMTRIP);
+	seq_printf(s, "THERMTRIP: 0x%x\n", r);
+	state = REG_GET(r, THERMTRIP_CPU_THRESH);
+	seq_printf(s, "THERMTRIP_CPU_THRESH: %d ", state);
+	state = REG_GET(r, THERMTRIP_CPU_EN);
+	seq_printf(s, "%d\n", state);
 
 	return 0;
 }

@@ -1108,13 +1108,18 @@ int __init dalmore_edp_init(void)
 }
 
 static struct soctherm_platform_data dalmore_soctherm_data = {
-	.therm_trip = 90,
+	.thermtrip = {
+		[THERM_CPU] = 90,
+		[THERM_GPU] = 0, /* Not enabled */
+		[THERM_MEM] = 0, /* Not enabled */
+		[THERM_PLL] = 0, /* Not enabled */
+	},
+
 	.hw_backstop = 60,
 	.dividend = 1,
 	.divisor = 2,
 	.duration = 1,
 	.step = 1,
-
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
@@ -1124,6 +1129,7 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_CPU1] = {
 			.enable = true,
@@ -1133,6 +1139,7 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tiddq = 1,
 			.ten_count = 1,
 			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_CPU2] = {
 			.enable = true,
@@ -1141,7 +1148,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_CPU3] = {
 			.enable = true,
@@ -1150,7 +1158,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_MEM0] = {
 			.enable = true,
@@ -1159,7 +1168,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_MEM1] = {
 			.enable = true,
@@ -1168,7 +1178,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_GPU] = {
 			.enable = true,
@@ -1177,7 +1188,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 		[TSENSE_PLLX] = {
 			.enable = true,
@@ -1186,7 +1198,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
-			.tsample = 163
+			.tsample = 163,
+			.pdiv = 10,
 		},
 	},
 };
