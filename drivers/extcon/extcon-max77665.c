@@ -25,6 +25,7 @@
 #include <linux/kobject.h>
 #include <linux/extcon.h>
 #include <linux/mfd/max77665.h>
+#include <linux/max77665-charger.h>
 
 #define	DEV_NAME	"max77665-muic"
 
@@ -85,13 +86,9 @@ enum max77665_muic_charger_type {
 	MAX77665_CHARGER_TYPE_1A,
 };
 
-struct max77665_muic_platform_data {
-	int irq_base;
-};
-
 struct max77665_muic {
 	struct device *dev;
-	struct max77665_muic_platform_data *muic_pdata;
+	struct max77665_muic_platform_data *pdata;
 
 	int irq;
 	struct work_struct irq_work;
@@ -123,19 +120,6 @@ static int max77665_read_reg(struct max77665_muic *muic,
 	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_MUIC, reg, value);
 	if (ret < 0)
 		return ret;
-	return 0;
-}
-
-static int max77665_bulk_read(struct max77665_muic *muic,
-		uint8_t reg, int count, uint8_t *buf)
-{
-	int ret;
-	struct device *dev = muic->dev;
-
-	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_MUIC, reg, buf);
-	if (ret < 0)
-		return ret;
-
 	return 0;
 }
 
@@ -258,7 +242,7 @@ static int max77665_muic_handle_charger_type(struct max77665_muic *muic,
 				enum max77665_muic_charger_type charger_type)
 {
 	uint8_t adc;
-	int ret;
+	int ret = 0;
 
 	ret = max77665_read_reg(muic, MAX77665_MUIC_REG_STATUS1, &adc);
 	if (ret) {
@@ -309,7 +293,8 @@ static void max77665_muic_irq_work(struct work_struct *work)
 
 	mutex_lock(&muic->mutex);
 
-	ret = max77665_bulk_read(muic, MAX77665_MUIC_REG_STATUS1,
+	ret = max77665_bulk_read(muic->dev->parent, MAX77665_I2C_SLAVE_MUIC,
+				MAX77665_MUIC_REG_STATUS1,
 				2, status);
 	if (ret) {
 		dev_err(muic->dev, "failed to read muic register\n");
@@ -326,7 +311,6 @@ static void max77665_muic_irq_work(struct work_struct *work)
 	chg_type = status[1] & STATUS2_CHGTYP_MASK;
 	chg_type >>= STATUS2_CHGTYP_SHIFT;
 
-	max77665_muic_handle_adc(muic, adc);
 	max77665_muic_handle_charger_type(muic, chg_type);
 
 	mutex_unlock(&muic->mutex);
@@ -351,7 +335,8 @@ static void max77665_muic_detect_dev(struct max77665_muic *muic)
 	int ret;
 	uint8_t status[2], adc, chg_type;
 
-	ret = max77665_bulk_read(muic, MAX77665_MUIC_REG_STATUS1,
+	ret = max77665_bulk_read(muic->dev->parent, MAX77665_I2C_SLAVE_MUIC,
+				MAX77665_MUIC_REG_STATUS1,
 				2, status);
 	if (ret) {
 		dev_err(muic->dev, "failed to read muic register\n");
@@ -367,21 +352,13 @@ static void max77665_muic_detect_dev(struct max77665_muic *muic)
 	chg_type = status[1] & STATUS2_CHGTYP_MASK;
 	chg_type >>= STATUS2_CHGTYP_SHIFT;
 
-	max77665_muic_handle_adc(muic, adc);
 	max77665_muic_handle_charger_type(muic, chg_type);
 }
 
 static int __devinit max77665_muic_probe(struct platform_device *pdev)
 {
+	int ret = 0;
 	struct max77665_muic *muic;
-	struct max77665_muic_platform_data *pdata;
-	int ret;
-
-	pdata = dev_get_platdata(pdev->dev.parent);
-	if (!pdata) {
-		dev_err(&pdev->dev, "no platform data available\n");
-		return -ENODEV;
-	}
 
 	muic = devm_kzalloc(&pdev->dev, sizeof(struct max77665_muic),
 			GFP_KERNEL);
@@ -391,39 +368,52 @@ static int __devinit max77665_muic_probe(struct platform_device *pdev)
 	}
 
 	muic->dev = &pdev->dev;
+	muic->pdata = pdev->dev.platform_data;
+	if (!muic->pdata) {
+		dev_err(&pdev->dev, "no platform data available\n");
+		return -ENODEV;
+	}
 
-	platform_set_drvdata(pdev, muic);
+	dev_set_drvdata(&pdev->dev, muic);
 	mutex_init(&muic->mutex);
 	INIT_WORK(&muic->irq_work, max77665_muic_irq_work);
 
-	ret = request_threaded_irq(pdata->irq_base, NULL,
-				max77665_muic_irq_handler,
-				0, "muic_irq",
-				muic);
-	if (ret) {
-		dev_err(&pdev->dev,
-			"failed: irq request error :%d)\n", ret);
-		return ret;
+	if (muic->pdata->irq_base) {
+		ret = request_threaded_irq(muic->pdata->irq_base +
+					MAX77665_IRQ_MUIC, NULL,
+					max77665_muic_irq_handler,
+					0, "muic_irq",
+					muic);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"failed: irq request error :%d)\n", ret);
+			return ret;
+		}
 	}
-
 	/* External connector */
-	muic->edev = devm_kzalloc(&pdev->dev, sizeof(struct extcon_dev),
+	muic->edev = kzalloc(sizeof(struct extcon_dev),
 			GFP_KERNEL);
 	if (!muic->edev) {
 		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto error;
 	}
 	muic->edev->name = DEV_NAME;
 	muic->edev->supported_cable = max77665_extcon_cable;
 	ret = extcon_dev_register(muic->edev, NULL);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register extcon device\n");
-		return ret;
+		goto error1;
 	}
 	/* Initial device detection */
 	max77665_muic_detect_dev(muic);
 
 	return 0;
+error1:
+	kfree(muic->edev);
+error:
+	free_irq(muic->pdata->irq_base + MAX77665_IRQ_MUIC, muic);
+	return ret;
 }
 
 static int __devexit max77665_muic_remove(struct platform_device *pdev)

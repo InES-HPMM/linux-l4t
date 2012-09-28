@@ -26,6 +26,10 @@
 #include <linux/power_supply.h>
 #include <linux/mfd/max77665.h>
 #include <linux/max77665-charger.h>
+#include <linux/power/max17042_battery.h>
+
+#define MAX_TEMP 70
+#define MIN_TEMP -70
 
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
@@ -68,22 +72,11 @@ struct max77665_charger {
 	struct extcon_dev *edev;
 };
 
-struct max77665_charger_cable {
-	const char *extcon_name;
-	const char *name;
-	struct notifier_block nb;
-	struct max77665_charger *charger;
-	struct extcon_specific_cable_nb *extcon_dev;
-};
-
-
 static enum power_supply_property max77665_ac_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_ONLINE,
 };
 
 static enum power_supply_property max77665_usb_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_ONLINE,
 };
 
@@ -242,10 +235,18 @@ static int max77665_charger_enable(struct max77665_charger *charger,
 static int max77665_charger_init(struct max77665_charger *charger)
 {
 	int ret = 0;
+	uint8_t read_val;
 
 	ret = max77665_enable_write(charger, true);
 	if (ret < 0) {
 		dev_err(charger->dev, "failed to enable write acess\n");
+		goto error;
+	}
+
+	ret = max77665_update_reg(charger, MAX77665_CHG_CNFG_01, 0xa4);
+	if (ret < 0) {
+		dev_err(charger->dev, "Failed in writing to register 0x%x\n",
+			MAX77665_CHG_CNFG_01);
 		goto error;
 	}
 
@@ -269,9 +270,10 @@ static int max77665_charger_init(struct max77665_charger *charger)
 		if (ret < 0)
 			goto error;
 
-		ret = max77665_update_reg(charger, MAX77665_CHG_CNFG_04, ret+1);
+		ret = max77665_update_reg(charger,
+				MAX77665_CHG_CNFG_04, ret+1);
 		if (ret < 0) {
-			dev_err(charger->dev, "Failed in writing to register 0x%x\n",
+			dev_err(charger->dev, "Failed writing to reg:0x%x\n",
 				MAX77665_CHG_CNFG_04);
 			goto error;
 		}
@@ -283,9 +285,10 @@ static int max77665_charger_init(struct max77665_charger *charger)
 		if (ret < 0)
 			goto error;
 
-		ret = max77665_update_reg(charger, MAX77665_CHG_CNFG_09, ret+5);
+		ret = max77665_update_reg(charger,
+				MAX77665_CHG_CNFG_09, (ret-1)*5);
 		if (ret < 0) {
-			dev_err(charger->dev, "Failed in writing to register 0x%x\n",
+			dev_err(charger->dev, "Failed writing to reg:0x%x\n",
 				MAX77665_CHG_CNFG_09);
 			goto error;
 		}
@@ -299,61 +302,43 @@ error:
 	return ret;
 }
 
-static int charger_extcon_notifier(struct notifier_block *self,
-		unsigned long event, void *ptr)
-{
-	int ret;
-	struct max77665_charger_cable *cable =
-		container_of(self, struct max77665_charger_cable, nb);
-
-	cable->charger->ac_online = 0;
-	cable->charger->usb_online = 0;
-
-	if (extcon_get_cable_state(cable->charger->edev, "0")) {
-		ret = max77665_charger_enable(cable->charger, CHARGER);
-		if (ret < 0)
-			goto error;
-
-		cable->charger->usb_online = 1;
-		power_supply_changed(&cable->charger->usb);
-	}
-
-	if (extcon_get_cable_state(cable->charger->edev, "1")) {
-		ret = max77665_charger_enable(cable->charger, OTG);
-		if (ret < 0)
-			goto error;
-	}
-
-	if (extcon_get_cable_state(cable->charger->edev, "2")) {
-		ret = max77665_charger_enable(cable->charger, CHARGER);
-		if (ret < 0)
-			goto error;
-
-		cable->charger->ac_online = 1;
-		power_supply_changed(&cable->charger->ac);
-	}
-
-error:
-	return NOTIFY_DONE;
-}
-
-static int max77665_extcon_init(struct max77665_charger *charger,
-		struct max77665_charger_cable *cable)
+static int max77665_enable_charger(struct max77665_charger *charger)
 {
 	int ret = 0;
 
-	cable->nb.notifier_call = charger_extcon_notifier;
+	if (extcon_get_cable_state(charger->edev, "USB")) {
 
-	ret = extcon_register_interest(cable->extcon_dev,
-		cable->extcon_name, cable->name, &cable->nb);
-	if (ret < 0) {
-		dev_err(charger->dev, "Cannot register for %s(cable: %s).\n",
-			cable->extcon_name, cable->name);
+		ret = max77665_charger_enable(charger, CHARGER);
+		if (ret < 0)
+			goto error;
 
-		ret = -EINVAL;
+		charger->usb_online = 1;
+		power_supply_changed(&charger->usb);
 	}
 
+	if (extcon_get_cable_state(charger->edev, "USB-Host")) {
+		ret = max77665_charger_enable(charger, OTG);
+		if (ret < 0)
+			goto error;
+	}
+
+	if (extcon_get_cable_state(charger->edev, "TA")) {
+		ret = max77665_charger_enable(charger, CHARGER);
+		if (ret < 0)
+			goto error;
+
+		charger->ac_online = 1;
+		power_supply_changed(&charger->ac);
+	}
+	return 0;
+error:
 	return ret;
+}
+
+static int charger_extcon_notifier(struct notifier_block *self,
+		unsigned long event, void *ptr)
+{
+	return NOTIFY_DONE;
 }
 
 static __devinit int max77665_battery_probe(struct platform_device *pdev)
@@ -362,13 +347,6 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	uint8_t j;
 	uint32_t read_val;
 	struct max77665_charger *charger;
-	struct max77665_charger_plat_data *pdata;
-
-	pdata = dev_get_platdata(pdev->dev.parent);
-	if (!pdata) {
-		dev_err(&pdev->dev, "no platform data available\n");
-		return -ENODEV;
-	}
 
 	charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
 	if (!charger) {
@@ -376,9 +354,10 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	dev_set_drvdata(&pdev->dev, charger);
-
 	charger->dev = &pdev->dev;
+
+	charger->plat_data = pdev->dev.platform_data;
+	dev_set_drvdata(&pdev->dev, charger);
 
 	/* check for battery presence */
 	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
@@ -391,9 +370,15 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	charger->plat_data->fast_chg_cc = pdata->fast_chg_cc;
-	charger->plat_data->term_volt = pdata->term_volt;
-	charger->plat_data->curr_lim = pdata->curr_lim;
+	/* differentiate between E1236 and E1587*/
+	ret = maxim_get_temp();
+	if (ret == 0xff) {
+		dev_err(&pdev->dev, "failed in reading temperaure\n");
+		return -ENODEV;
+	} else if ((ret < MIN_TEMP) || (ret > MAX_TEMP)) {
+			dev_err(&pdev->dev, "E1236 detected exiting driver....\n");
+			return -ENODEV;
+	}
 
 	charger->ac.name		= "ac";
 	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
@@ -419,14 +404,18 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto pwr_sply_error;
 	}
 
-	for (j = 0 ; j < charger->num_cables ; j++) {
+	for (j = 0 ; j < charger->plat_data->num_cables; j++) {
 		struct max77665_charger_cable *cable =
 				&charger->plat_data->cables[j];
 
-		ret = max77665_extcon_init(charger, cable);
-			if (ret < 0) {
-				dev_err(&pdev->dev, "Cannot initialize extcon");
-			goto chrg_error;
+		cable->nb.notifier_call = charger_extcon_notifier;
+		ret = extcon_register_interest(&cable->extcon_dev,
+				"max77665-muic", cable->name, &cable->nb);
+
+		if (ret < 0) {
+			dev_err(charger->dev, "Cannot register for cable: %s\n",
+				cable->name);
+			ret = -EINVAL;
 		}
 	}
 
@@ -434,6 +423,23 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(charger->dev, "failed to initialize charger\n");
 		goto chrg_error;
+	}
+
+	charger->edev = extcon_get_extcon_dev("max77665-muic");
+	if (!charger->edev)
+		return -ENODEV;
+
+	ret = max77665_enable_charger(charger);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to initialize charger\n");
+		goto chrg_error;
+	}
+
+	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "error in reading register 0x%x\n",
+				MAX77665_CHG_DTLS_01);
+		return -ENODEV;
 	}
 
 	return 0;
@@ -456,21 +462,28 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_device_id max77665_battery_id[] = {
-	{ "max77665-battery", 0 },
-};
-
 static struct platform_driver max77665_battery_driver = {
 	.driver = {
-		.name = "max77665-battery",
+		.name = "max77665-charger",
 		.owner = THIS_MODULE,
 	},
 	.probe = max77665_battery_probe,
 	.remove = __devexit_p(max77665_battery_remove),
-	.id_table = max77665_battery_id,
+
 };
 
-module_platform_driver(max77665_battery_driver);
+static int __init max77665_battery_init(void)
+{
+	return platform_driver_register(&max77665_battery_driver);
+}
+
+static void __exit max77665_battery_exit(void)
+{
+	platform_driver_unregister(&max77665_battery_driver);
+}
+
+late_initcall(max77665_battery_init);
+module_exit(max77665_battery_exit);
 
 MODULE_DESCRIPTION("MAXIM MAX77665 battery charging driver");
 MODULE_AUTHOR("Syed Rafiuddin <srafiuddin@nvidia.com>");

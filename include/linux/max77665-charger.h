@@ -49,17 +49,30 @@
 #define MAX77665_CHG_CNFG_14    0xc5
 #define MAX77665_SAFEOUTCTRL    0xc6
 
-#define MAX_CABLES	3
+#define MAX_CABLES	6
 
 enum max77665_mode {
 	CHARGER,
 	OTG,
 };
 
+struct max77665_muic_platform_data {
+	int irq_base;
+};
+
+struct max77665_charger_cable {
+	const char *extcon_name;
+	const char *name;
+	struct notifier_block nb;
+	struct max77665_charger *charger;
+	struct extcon_specific_cable_nb *extcon_dev;
+};
+
 struct max77665_charger_plat_data {
-	uint8_t fast_chg_cc; /* fast charger current*/
-	uint8_t term_volt; /* charger termination voltage */
-	uint8_t curr_lim; /* input current limit */
+	uint32_t fast_chg_cc; /* fast charger current*/
+	uint32_t term_volt; /* charger termination voltage */
+	uint32_t curr_lim; /* input current limit */
+	uint8_t num_cables;
 	struct max77665_charger_cable *cables;
 };
 #endif
