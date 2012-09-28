@@ -1496,6 +1496,7 @@ static int tegra11x_check_partition_pg_seq(int id)
 
 		break;
 	case TEGRA_POWERGATE_3D:
+	case TEGRA_POWERGATE_MPE:
 		ret = tegra11x_powergate_3d(id);
 		if (ret < 0)
 			return ret;
@@ -1516,7 +1517,8 @@ static int tegra11x_check_partition_pug_seq(int id)
 
 		break;
 	case TEGRA_POWERGATE_3D:
-		ret = tegra11x_unpowergate_3d(TEGRA_POWERGATE_3D);
+	case TEGRA_POWERGATE_MPE:
+		ret = tegra11x_unpowergate_3d(id);
 		if (ret < 0)
 			return ret;
 	}
