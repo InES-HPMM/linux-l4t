@@ -95,6 +95,7 @@ struct tegra_cpu_car_ops *tegra_cpu_car_ops;
 
 static DEFINE_MUTEX(clock_list_lock);
 static LIST_HEAD(clocks);
+static unsigned long osc_freq;
 
 #ifndef CONFIG_COMMON_CLK
 struct clk *tegra_get_clock_by_name(const char *name)
@@ -936,39 +937,43 @@ unsigned long tegra_clk_measure_input_freq(void)
 	u32 clock_autodetect;
 	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
+	if (osc_freq)
+		return osc_freq;
+
 	writel(OSC_FREQ_DET_TRIG | 1, clk_base + OSC_FREQ_DET);
 	do {} while (readl(clk_base + OSC_FREQ_DET_STATUS) & OSC_FREQ_DET_BUSY);
 
 	clock_autodetect = readl(clk_base + OSC_FREQ_DET_STATUS);
 	if (clock_autodetect >= 732 - 3 && clock_autodetect <= 732 + 3) {
-		return 12000000;
+		osc_freq = 12000000;
 	} else if (clock_autodetect >= 794 - 3 && clock_autodetect <= 794 + 3) {
-		return 13000000;
+		osc_freq = 13000000;
 	} else if (clock_autodetect >= 1172 - 3 && clock_autodetect <= 1172 + 3) {
-		return 19200000;
+		osc_freq = 19200000;
 	} else if (clock_autodetect >= 1587 - 3 && clock_autodetect <= 1587 + 3) {
-		return 26000000;
+		osc_freq = 26000000;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	} else if (clock_autodetect >= 1025 - 3 && clock_autodetect <= 1025 + 3) {
-		return 16800000;
+		osc_freq = 16800000;
 	} else if (clock_autodetect >= 2344 - 3 && clock_autodetect <= 2344 + 3) {
-		return 38400000;
+		osc_freq = 38400000;
 	} else if (clock_autodetect >= 2928 - 3 && clock_autodetect <= 2928 + 3) {
-		return 48000000;
+		osc_freq = 48000000;
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	} else if (tegra_revision == TEGRA_REVISION_QT) {
 		if (clock_autodetect >= 2 && clock_autodetect <= 9)
-			return 115200;
+			osc_freq = 115200;
 		else if (clock_autodetect >= 13 && clock_autodetect <= 15)
-			return 230400;
+			osc_freq = 230400;
 #endif
 #endif
 	} else {
 		pr_err("%s: Unexpected clock autodetect value %d", __func__, clock_autodetect);
 	}
 
-	BUG();
-	return 0;
+	BUG_ON(osc_freq == 0);
+
+	return osc_freq;
 }
 
 #ifdef CONFIG_DEBUG_FS
