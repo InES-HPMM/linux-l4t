@@ -63,6 +63,7 @@ struct tegra_cs42l73 {
 	int is_call_mode;
 	int is_device_bt;
 	struct regulator *dmic_reg;
+	struct regulator *dmic_1v8_reg;
 	enum snd_soc_bias_level bias_level;
 	struct snd_soc_card *pcard;
 #ifdef CONFIG_SWITCH
@@ -254,6 +255,33 @@ static struct snd_soc_jack_pin tegra_cs42l73_hs_jack_pins[] = {
 };
 #endif
 
+static int tegra_cs42l73_event_int_mic(struct snd_soc_dapm_widget *w,
+					struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (machine->dmic_reg && machine->dmic_1v8_reg) {
+		if (SND_SOC_DAPM_EVENT_ON(event)) {
+			regulator_enable(machine->dmic_reg);
+			regulator_enable(machine->dmic_1v8_reg);
+		} else {
+			regulator_disable(machine->dmic_reg);
+			regulator_disable(machine->dmic_1v8_reg);
+		}
+	}
+
+	if (!(machine->gpio_requested & GPIO_INT_MIC_EN))
+		return 0;
+
+	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
+				SND_SOC_DAPM_EVENT_ON(event));
+
+	return 0;
+}
+
 static int tegra_cs42l73_event_int_spk(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -275,7 +303,7 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_cs42l73_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
-	SND_SOC_DAPM_INPUT("Int D-Mic"),
+	SND_SOC_DAPM_MIC("Int D-Mic", tegra_cs42l73_event_int_mic),
 };
 
 /* cs42l73 Audio Map */
@@ -293,6 +321,7 @@ static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 
 static const struct snd_kcontrol_new tegra_cs42l73_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
+	SOC_DAPM_PIN_SWITCH("Int D-Mic"),
 };
 
 static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
@@ -494,6 +523,12 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 		machine->dmic_reg = 0;
 	}
 
+	machine->dmic_1v8_reg = regulator_get(&pdev->dev, "vdd_1v8_mic");
+	if (IS_ERR(machine->dmic_1v8_reg)) {
+		dev_info(&pdev->dev, "No digital mic regulator found\n");
+		machine->dmic_1v8_reg = 0;
+	}
+
 #ifdef CONFIG_SWITCH
 	/* Addd h2w swith class support */
 	ret = switch_dev_register(&tegra_cs42l73_headset_switch);
@@ -558,6 +593,8 @@ static int __devexit tegra_cs42l73_driver_remove(struct platform_device *pdev)
 
 	if (machine->dmic_reg)
 		regulator_put(machine->dmic_reg);
+	if (machine->dmic_1v8_reg)
+		regulator_put(machine->dmic_1v8_reg);
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);

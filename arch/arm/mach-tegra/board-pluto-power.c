@@ -392,7 +392,7 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_lcd_mmc_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_mic_supply[] = {
-	REGULATOR_SUPPLY("unused_fixed_reg_en_vdd_1v8_mic", NULL),
+	REGULATOR_SUPPLY("vdd_1v8_mic", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
