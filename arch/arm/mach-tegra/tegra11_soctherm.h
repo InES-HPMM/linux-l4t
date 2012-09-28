@@ -49,6 +49,14 @@ enum soctherm_sense {
 	TSENSE_SIZE = 8,
 };
 
+enum soctherm_therm {
+	THERM_CPU = 0,
+	THERM_MEM = 1,
+	THERM_GPU = 2,
+	THERM_PLL = 3,
+	THERM_SIZE = 4,
+};
+
 struct soctherm_sensor {
 	bool enable;
 	int tall;

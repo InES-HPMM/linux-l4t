@@ -38,7 +38,7 @@
 
 #include "tegra11_soctherm.h"
 
-#define CTL_LVL0_CPU0			0x8
+#define CTL_LVL0_CPU0			0x0
 #define CTL_LVL0_CPU0_UP_THRESH_SHIFT	17
 #define CTL_LVL0_CPU0_UP_THRESH_MASK	0xff
 #define CTL_LVL0_CPU0_DN_THRESH_SHIFT	9
@@ -51,8 +51,6 @@
 #define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
 #define CTL_LVL0_CPU0_STATUS_MASK	0x3
-
-#define CTL_LVL1_MEM0			0x28
 
 #define THERMTRIP			0x80
 #define THERMTRIP_ANY_EN_SHIFT		28
@@ -158,7 +156,7 @@
 #define TS_TEMP1_GPU_TEMP_SHIFT		0
 #define TS_TEMP1_GPU_TEMP_MASK		0xffff
 
-#define TS_TEMP2			0x1c8
+#define TS_TEMP2			0x1cc
 #define TS_TEMP2_MEM_TEMP_SHIFT		16
 #define TS_TEMP2_MEM_TEMP_MASK		0xffff
 #define TS_TEMP2_PLLX_TEMP_SHIFT	0
@@ -218,6 +216,13 @@ static void __iomem *reg_soctherm_base = IO_ADDRESS(TEGRA_SOCTHERM_BASE);
 
 static struct soctherm_platform_data plat_data;
 
+static char *therm_names[] = {
+	[THERM_CPU] = "CPU",
+	[THERM_MEM] = "MEM",
+	[THERM_GPU] = "GPU",
+	[THERM_PLL] = "PLL",
+};
+
 static char *sensor_names[] = {
 	[TSENSE_CPU0] = "cpu0",
 	[TSENSE_CPU1] = "cpu1",
@@ -242,15 +247,13 @@ static int soctherm_set_limits(void *data,
 	long lo_limit_milli,
 	long hi_limit_milli)
 {
-#if 0
-	u32 r = soctherm_readl(CTL_LVL0_MEM0);
-	r = REG_SET(r, CTL_LVL0_MEM0_DN_THRESH, lo_limit_milli/1000);
-	r = REG_SET(r, CTL_LVL0_MEM0_UP_THRESH, hi_limit_milli/1000);
-	soctherm_writel(r, CTL_LVL0_MEM0);
+	u32 r = soctherm_readl(CTL_LVL0_CPU0);
+	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_limit_milli/1000);
+	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_limit_milli/1000);
+	soctherm_writel(r, CTL_LVL0_CPU0);
 
-	soctherm_writel(1<<INTR_EN_MU0_SHIFT, INTR_EN);
-	soctherm_writel(1<<INTR_EN_MD0_SHIFT, INTR_EN);
-#endif
+	soctherm_writel(1<<INTR_EN_CU0_SHIFT, INTR_EN);
+	soctherm_writel(1<<INTR_EN_CD0_SHIFT, INTR_EN);
 
 	return 0;
 }
@@ -372,11 +375,11 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	}
 
 	/* Enable Level 0 */
-#if 0
-	r = soctherm_readl(CTL_LVL0_MEM0);
-	r = REG_SET(r, CTL_LVL0_MEM0_EN, 1);
-	soctherm_writel(r, CTL_LVL0_MEM0);
+	r = soctherm_readl(CTL_LVL0_CPU0);
+	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	soctherm_writel(r, CTL_LVL0_CPU0);
 
+#if 0
 	/* Enable Level 1 Hw throttling */
 	r = soctherm_readl(CTL_LVL1_MEM0);
 	r = REG_SET(r, CTL_LVL0_MEM0_UP_THRESH, 60);
@@ -405,7 +408,7 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	if (err < 0)
 		return -1;
 
-	soctherm_set_limits(NULL, 20000, 40000);
+	soctherm_set_limits(NULL, 20000, 38000);
 
 	return 0;
 }
@@ -434,21 +437,6 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, "-----TSENSE-----\n");
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		seq_printf(s, "%s: ", sensor_names[i]);
-
-		r = soctherm_readl(CTL_LVL0_CPU0 +
-					i * TS_CONFIG_STATUS_OFFSET);
-		state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
-		seq_printf(s, "Up/Dn(%d/", state);
-		state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
-		seq_printf(s, "%d) ", state);
-		state = REG_GET(r, CTL_LVL0_CPU0_EN);
-		seq_printf(s, "En(%d) ", state);
-		state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
-		seq_printf(s, "Status(%s) ", state == 0 ? "below" :
-					state == 1 ? "in" :
-					state == 2 ? "res" :
-						"above");
-
 
 		r = soctherm_readl(TS_CPU0_STATUS0 +
 					i * TS_CONFIG_STATUS_OFFSET);
@@ -512,6 +500,23 @@ static int regs_show(struct seq_file *s, void *data)
 	seq_printf(s, " MEM(%ld) ", temp_translate(state));
 	state = REG_GET(r, TS_TEMP2_PLLX_TEMP);
 	seq_printf(s, " PLLX(%ld)\n", temp_translate(state));
+
+	for (i = 0; i < THERM_SIZE; i++) {
+		seq_printf(s, "%s: ", therm_names[i]);
+
+		r = soctherm_readl(CTL_LVL0_CPU0 + i * 4);
+		state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
+		seq_printf(s, "Up/Dn(%d/", state);
+		state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
+		seq_printf(s, "%d) ", state);
+		state = REG_GET(r, CTL_LVL0_CPU0_EN);
+		seq_printf(s, "En(%d) ", state);
+		state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
+		seq_printf(s, "Status(%s)\n", state == 0 ? "below" :
+					state == 1 ? "in" :
+					state == 2 ? "res" :
+						"above");
+	}
 
 	r = soctherm_readl(INTR_STATUS);
 	state = REG_GET(r, INTR_STATUS_MD0);
