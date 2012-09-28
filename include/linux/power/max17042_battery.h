@@ -210,4 +210,5 @@ struct max17042_platform_data {
 	unsigned int r_sns;
 };
 
+extern int maxim_get_temp(void);
 #endif /* __MAX17042_BATTERY_H_ */

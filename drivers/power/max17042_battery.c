@@ -64,15 +64,18 @@
 
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
+#define MAX17047_DELAY		1000
 
 struct max17042_chip {
 	struct i2c_client *client;
 	struct power_supply battery;
 	enum max170xx_chip_type chip_type;
 	struct max17042_platform_data *pdata;
-	struct work_struct work;
+	struct delayed_work work;
 	int    init_complete;
 };
+
+struct i2c_client *temp_client;
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 {
@@ -118,6 +121,27 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
 };
+
+int maxim_get_temp()
+{
+	int ret = 0xff;
+	if (temp_client != NULL) {
+		ret = max17042_read_reg(temp_client, MAX17042_TEMP);
+		if (ret < 0)
+			return ret;
+
+		/* The value is signed. */
+		if (ret & 0x8000) {
+			ret = (0x7fff & ~ret) + 1;
+			ret *= -1;
+		}
+		/* The value is converted into deci-centigrade scale */
+		/* Units of LSB = 1 / 256 degree Celsius */
+		ret = ret * 10 / 256;
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(maxim_get_temp);
 
 static int max17042_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
@@ -635,17 +659,10 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 static void max17042_init_worker(struct work_struct *work)
 {
 	struct max17042_chip *chip = container_of(work,
-				struct max17042_chip, work);
+				struct max17042_chip, work.work);
 	int ret;
-
-	/* Initialize registers according to values from the platform data */
-	if (chip->pdata->enable_por_init && chip->pdata->config_data) {
-		ret = max17042_init_chip(chip);
-		if (ret)
-			return;
-	}
-
-	chip->init_complete = 1;
+	power_supply_changed(&chip->battery);
+	schedule_delayed_work(&chip->work, MAX17047_DELAY);
 }
 
 #ifdef CONFIG_OF
@@ -698,6 +715,7 @@ static int max17042_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	chip->client = client;
+	temp_client = client;
 	chip->pdata = max17042_get_pdata(&client->dev);
 	if (!chip->pdata) {
 		dev_err(&client->dev, "no platform data provided\n");
@@ -767,11 +785,17 @@ static int max17042_probe(struct i2c_client *client,
 
 	reg = max17042_read_reg(chip->client, MAX17042_STATUS);
 	if (reg & STATUS_POR_BIT) {
-		INIT_WORK(&chip->work, max17042_init_worker);
-		schedule_work(&chip->work);
+		if (chip->pdata->enable_por_init && chip->pdata->config_data) {
+			ret = max17042_init_chip(chip);
+			if (ret)
+				return ret;
+		}
 	} else {
 		chip->init_complete = 1;
 	}
+
+	INIT_DEFERRABLE_WORK(&chip->work, max17042_init_worker);
+	schedule_work(&chip->work);
 
 	return 0;
 }
