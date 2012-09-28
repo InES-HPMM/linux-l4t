@@ -666,7 +666,7 @@ PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps3), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo4, 1800,  1800, tps65090_rails(DCDC2), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo6, 2850,  2850, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo7, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo8, 1100,  1100, tps65090_rails(DCDC3), 1, 1, 1);
+PALMAS_PDATA_INIT(ldo8, 900,  900, tps65090_rails(DCDC3), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
 PALMAS_PDATA_INIT(ldoln, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1);
 PALMAS_PDATA_INIT(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1);
@@ -771,6 +771,7 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[PALMAS_NUM_REGS] = {
 
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
+	.disabe_ldo8_tracking_suspend = true,
 };
 
 static struct palmas_platform_data palmas_pdata = {

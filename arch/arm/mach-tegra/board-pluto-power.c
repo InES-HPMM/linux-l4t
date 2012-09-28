@@ -236,7 +236,7 @@ PALMAS_PDATA_INIT(ldo4, 900,  3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo5, 2700,  2700, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldo6, 3000,  3000, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldo7, 2800,  2800, NULL, 0, 0, 1);
-PALMAS_PDATA_INIT(ldo8, 1150,  1150, NULL, 1, 1, 1);
+PALMAS_PDATA_INIT(ldo8, 900,  900, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
 PALMAS_PDATA_INIT(ldoln, 2700, 2700, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldousb, 3300,  3300, NULL, 0, 0, 1);
@@ -585,6 +585,7 @@ static int __init pluto_cl_dvfs_init(void)
 
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
+	.disabe_ldo8_tracking_suspend = true,
 };
 
 struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
