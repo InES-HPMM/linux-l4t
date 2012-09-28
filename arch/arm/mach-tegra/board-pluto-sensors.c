@@ -23,6 +23,11 @@
 #include <mach/edp.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
+#include <linux/mfd/max77665.h>
+#include <linux/power/max17042_battery.h>
+#include <mach/gpio.h>
+#include <mach/gpio-tegra.h>
+#include <media/max77665-flash.h>
 #include <media/imx091.h>
 #include <media/imx132.h>
 #include <media/ad5816.h>
@@ -31,12 +36,78 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-pluto.h"
-#include <mach/gpio.h>
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "tegra-board-id.h"
 
+#define CAMERA_FLASH_SYNC_GPIO	TEGRA_GPIO_PBB4
+#define NTC_10K_TGAIN   0xE6A2
+#define NTC_10K_TOFF    0x2694
+
 static struct board_info board_info;
+static struct max17042_config_data conf_data = {
+	.valrt_thresh = 0xff00,
+	.talrt_thresh = 0xff00,
+	.soc_alrt_thresh = 0xff00,
+	.shdntimer = 0xe000,
+	.design_cap = 0x07d0,
+	.at_rate = 0x0000,
+	.tgain = NTC_10K_TGAIN,
+	.toff = NTC_10K_TOFF,
+	.vempty = 0xACDA,
+	.qrtbl00 = 0x5C80,
+	.qrtbl10 = 0x438C,
+	.qrtbl20 = 0x1198,
+	.qrtbl30 = 0x0E19,
+	.full_soc_thresh = 0x5A00,
+	.rcomp0 = 0x0077,
+	.tcompc0 = 0x1F2A,
+	.ichgt_term = 0x0320,
+	.temp_nom = 0x1400,
+	.temp_lim = 0x2305,
+	.filter_cfg = 0x87A4,
+	.config = 0x2210,
+	.learn_cfg = 0x2606,
+	.misc_cfg = 0x0810,
+	.fullcap =  0x07d0,
+	.fullcapnom = 0x07d0,
+	.lavg_empty = 0x1000,
+	.dqacc = 0x01f4,
+	.dpacc = 0x3200,
+	.fctc = 0x05e0,
+	.kempty0 = 0x0600,
+	.cell_technology = POWER_SUPPLY_TECHNOLOGY_LION,
+	.cell_char_tbl = {
+		/* Data to be written from 0x80h */
+		0x9180, 0xA4C0, 0xB6A0, 0xB760, 0xB980, 0xBB30,
+		0xBBC0, 0xBC50, 0xBD50, 0xBE50, 0xBF80, 0xC290,
+		0xC470, 0xC7D0, 0xCC40, 0xCFB0,
+		/* Data to be written from 0x90h */
+		0x00C0, 0x0200, 0x1C10, 0x0B00, 0x0900, 0x1F00,
+		0x1F00, 0x23C0, 0x1990, 0x19F0, 0x09A0, 0x0CE0,
+		0x0BE0, 0x07D0, 0x0990, 0x0990,
+		/* Data to be written from 0xA0h */
+		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
+		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
+		0x0100, 0x0100, 0x0100, 0x0100,
+	},
+};
+
+static struct max17042_platform_data max17042_pdata = {
+	.config_data = &conf_data,
+	.init_data  = NULL,
+	.num_init_data = 0,
+	.enable_por_init = 1, /* Use POR init from Maxim appnote */
+	.enable_current_sense = 1,
+	.r_sns = 0,
+};
+
+static struct i2c_board_info max17042_device[] = {
+	{
+		I2C_BOARD_INFO("max17042", 0x36),
+		.platform_data = &max17042_pdata,
+	},
+};
 
 /* isl29029 support is provided by isl29028*/
 static struct i2c_board_info pluto_i2c1_isl_board_info[] = {
@@ -502,6 +573,9 @@ int __init pluto_sensors_init(void)
 
 	i2c_register_board_info(0, pluto_i2c1_isl_board_info,
 				ARRAY_SIZE(pluto_i2c1_isl_board_info));
+
+	i2c_register_board_info(0, max17042_device,
+				ARRAY_SIZE(max17042_device));
 
 	return 0;
 }
