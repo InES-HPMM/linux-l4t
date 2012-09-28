@@ -35,9 +35,7 @@ int aic3262_ops_reg_write(void  *p, unsigned int reg, unsigned char mval)
 	mreg.aic326x_register.book = c->book;
 	mreg.aic326x_register.reserved = 0;
 	mval = c->data;
-	DBG("reg_write:page %d book %d offset %d mval : %#x\n",
-		mreg.aic326x_register.page, mreg.aic326x_register.book,
-		mreg.aic326x_register.offset, mval);
+
 	return aic3262_reg_write(ps->codec->control_data,
 				mreg.aic326x_register_int, mval);
 }
@@ -53,9 +51,6 @@ int aic3262_ops_set_bits(void *p, unsigned int reg,
 	mreg.aic326x_register.page = c->page;
 	mreg.aic326x_register.book = c->book;
 	mreg.aic326x_register.reserved = 0;
-	DBG("set_bits:page %d book %d offset %d mask %#x val %#x\n",
-	    mreg.aic326x_register.page, mreg.aic326x_register.book,
-	    mreg.aic326x_register.offset, mask, val);
 
 	return aic3262_set_bits(ps->codec->control_data,
 				mreg.aic326x_register_int, mask, val);
@@ -87,9 +82,6 @@ int aic3262_ops_bulk_write(void *p, unsigned int reg, int count, const u8 *buf)
 	mreg.aic326x_register.page = c->page;
 	mreg.aic326x_register.book = c->book;
 	mreg.aic326x_register.reserved = 0;
-	DBG("bulk_write: ncmd %d page %d book %d offset %d data[0] %d\n",
-	    count, mreg.aic326x_register.page, mreg.aic326x_register.book,
-	    mreg.aic326x_register.offset, buf[0]);
 
 	return aic3262_bulk_write(ps->codec->control_data,
 				  mreg.aic326x_register_int, count, buf);
