@@ -38,6 +38,9 @@ struct edp_manager {
 	struct work_struct work;
 	unsigned int num_denied;
 	struct kobject *kobj;
+
+	/* governor internal */
+	void *gov_data;
 };
 
 /*

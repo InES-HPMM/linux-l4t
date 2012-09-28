@@ -65,6 +65,7 @@ int edp_register_manager(struct edp_manager *mgr)
 		mgr->registered = true;
 		mgr->remaining = mgr->imax;
 		mgr->gov = NULL;
+		mgr->gov_data = NULL;
 		INIT_LIST_HEAD(&mgr->clients);
 		INIT_WORK(&mgr->work, promote);
 		mgr->kobj = NULL;

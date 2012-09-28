@@ -60,3 +60,17 @@ be approved (subject to the general EDP rules).
 Since the perfect solution would involve several passes across all
 clients, a trade-off is made to approximate the optimum so that the
 algorithm complexity remains linear.
+
+6. Least Recently Requested (LRR)
+
+An arrival-queue based policy where the least recently requested client
+is throttled first.
+
+7. Most Recently Requested (MRR)
+
+Another arrival-queue based policy where the most recently requested
+client is throttled first.
+
+8. Round Robin (RR)
+
+In this policy, clients are throttled in a round-robin fashion.
