@@ -318,6 +318,14 @@ struct rte_console {
 #define BRCMF_SDIO_NV_NAME	"brcm/brcmfmac-sdio.txt"
 MODULE_FIRMWARE(BRCMF_SDIO_FW_NAME);
 MODULE_FIRMWARE(BRCMF_SDIO_NV_NAME);
+#define BRCMF_SDIO_4329_FW_NAME	"brcm/brcmfmac-sdio-4329.bin"
+#define BRCMF_SDIO_4330_FW_NAME	"brcm/brcmfmac-sdio-4330.bin"
+#define BRCMF_SDIO_4329_NV_NAME	"brcm/brcmfmac-sdio-4329.txt"
+#define BRCMF_SDIO_4330_NV_NAME	"brcm/brcmfmac-sdio-4330.txt"
+MODULE_FIRMWARE(BRCMF_SDIO_4329_FW_NAME);
+MODULE_FIRMWARE(BRCMF_SDIO_4330_FW_NAME);
+MODULE_FIRMWARE(BRCMF_SDIO_4329_NV_NAME);
+MODULE_FIRMWARE(BRCMF_SDIO_4330_NV_NAME);
 
 #define BRCMF_IDLE_IMMEDIATE	(-1)	/* Enter idle immediately */
 #define BRCMF_IDLE_ACTIVE	0	/* Do not request any SD clock change
@@ -3030,13 +3038,22 @@ static int brcmf_sdbrcm_download_code_file(struct brcmf_sdio *bus)
 	int offset;
 	uint len;
 	u8 *memblock = NULL, *memptr;
-	int ret;
+	int ret = -1;
 	u8 idx;
+	u16 chipid = (u16) bus->ci->chip;
 
 	brcmf_dbg(INFO, "Enter\n");
 
-	ret = request_firmware(&bus->firmware, BRCMF_SDIO_FW_NAME,
+	if (chipid == BCM4329_CHIP_ID)
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_4329_FW_NAME,
 			       &bus->sdiodev->func[2]->dev);
+	else if (chipid == BCM4330_CHIP_ID)
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_4330_FW_NAME,
+			       &bus->sdiodev->func[2]->dev);
+	else
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_FW_NAME,
+			       &bus->sdiodev->func[2]->dev);
+
 	if (ret) {
 		brcmf_err("Fail to request firmware %d\n", ret);
 		return ret;
@@ -3155,10 +3172,21 @@ err:
 
 static int brcmf_sdbrcm_download_nvram(struct brcmf_sdio *bus)
 {
-	int ret;
+	int ret = -1;
+	u16 chipid = (u16) bus->ci->chip;
 
-	ret = request_firmware(&bus->firmware, BRCMF_SDIO_NV_NAME,
+	brcmf_dbg(INFO, "Enter\n");
+
+	if (chipid == BCM4329_CHIP_ID)
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_4329_NV_NAME,
 			       &bus->sdiodev->func[2]->dev);
+	else if (chipid == BCM4330_CHIP_ID)
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_4330_NV_NAME,
+			       &bus->sdiodev->func[2]->dev);
+	else
+		ret = request_firmware(&bus->firmware, BRCMF_SDIO_NV_NAME,
+			       &bus->sdiodev->func[2]->dev);
+
 	if (ret) {
 		brcmf_err("Fail to request nvram %d\n", ret);
 		return ret;
