@@ -136,6 +136,9 @@ static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
 	struct snd_pcm_substream *substream;
 	struct tegra_runtime_data *prtd;
 
+	if (data->avp_device_id < 0)
+		return 0;
+
 	data->avp_dma_addr = ucontrol->value.integer.value[0];
 
 	rtd = &card->rtd[data->avp_device_id];
