@@ -63,7 +63,7 @@ static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 struct arch_timer_context {
-	u32 cntp_tval;
+	s32 cntp_tval;
 	u32 cntp_ctl;
 	u32 cntfrq;
 };

@@ -277,7 +277,7 @@ static void __init tegra_init_late_timer(void)
 #ifdef CONFIG_ARM_ARCH_TIMER
 int arch_timer_get_state(struct arch_timer_context *context)
 {
-	u32 val;
+	s32 val;
 
 	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
 	context->cntp_tval = val;
@@ -290,7 +290,7 @@ int arch_timer_get_state(struct arch_timer_context *context)
 
 void arch_timer_suspend(struct arch_timer_context *context)
 {
-	u32 val;
+	s32 val;
 
 	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
 	context->cntp_tval = val;
@@ -300,7 +300,7 @@ void arch_timer_suspend(struct arch_timer_context *context)
 
 void arch_timer_resume(struct arch_timer_context *context)
 {
-	u32 val;
+	s32 val;
 
 	val = context->cntp_tval;
 	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(val));
@@ -424,7 +424,6 @@ static int arch_timer_cpu_pm_notify(struct notifier_block *self,
 	switch (action) {
 	case CPU_PM_EXIT:
 		tegra_arch_timer_per_cpu_init();
-		break;
 		break;
 	}
 

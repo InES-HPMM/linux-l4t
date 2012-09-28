@@ -394,6 +394,10 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 	if (!arch_timer_get_state(&timer_context)) {
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
 		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
+			if (timer_context.cntp_tval <= 0) {
+				tegra_cpu_wfi();
+				return false;
+			}
 			request = div_u64((u64)timer_context.cntp_tval *
 					1000000, timer_context.cntfrq);
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
@@ -463,7 +467,7 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 #endif
 #ifdef CONFIG_ARM_ARCH_TIMER
 	if (!arch_timer_get_state(&timer_context))
-		sleep_completed = (timer_context.cntp_tval == 0);
+		sleep_completed = (timer_context.cntp_tval <= 0);
 #endif
 #else
 	sleep_completed = !tegra_lp2_timer_remain();
