@@ -105,9 +105,9 @@ static int tegra_wake_event_irq[] = {
 	INT_RTC,				/* wake16 */
 	INT_KBC,				/* wake17 */
 	INT_EXTERNAL_PMU,			/* wake18 */
-	INT_USB,				/* wake19 */
+	-EINVAL,				/* wake19 */
 	-EINVAL,				/* wake20 */
-	INT_USB,				/* wake21 */
+	-EINVAL,				/* wake21 */
 	-EINVAL,				/* wake22 */
 	-EAGAIN,				/* wake23 */
 	-EAGAIN,				/* wake24 */
