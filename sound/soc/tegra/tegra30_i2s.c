@@ -1148,6 +1148,7 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
 		codec_i2s->reg_ctrl);
+
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
