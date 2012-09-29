@@ -980,11 +980,16 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	tegra_init_cache(true);
 
 	if (mode == TEGRA_SUSPEND_LP0) {
+
+		/* CPUPWRGOOD_EN is not enabled in HW so disabling this, *
+		* Otherwise it is creating issue in cluster switch after LP0 *
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		reg = readl(pmc+PMC_CTRL);
 		reg |= TEGRA_POWER_CPUPWRGOOD_EN;
 		pmc_32kwritel(reg, PMC_CTRL);
 #endif
+		*/
+
 		tegra_tsc_resume();
 		tegra_cpu_reset_handler_restore();
 		tegra_lp0_resume_mc();
