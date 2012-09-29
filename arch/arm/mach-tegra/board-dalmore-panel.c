@@ -576,11 +576,14 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 #endif
 };
 
+static struct tegra_dc_sd_settings sd_settings;
+
 static struct tegra_dc_out dalmore_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 	.dsi		= &dalmore_dsi,
 
 	.flags		= DC_CTRL_MODE,
+	.sd_settings	= &sd_settings,
 
 	.modes		= dalmore_dsi_modes,
 	.n_modes	= ARRAY_SIZE(dalmore_dsi_modes),
@@ -838,6 +841,54 @@ static struct platform_device __maybe_unused
 	},
 };
 
+static struct tegra_dc_sd_settings dalmore_sd_settings = {
+	.enable = 1, /* enabled by default. */
+	.use_auto_pwm = false,
+	.hw_update_delay = 0,
+	.bin_width = -1,
+	.aggressiveness = 5,
+	.use_vid_luma = false,
+	.k_limit_enable = true,
+	.k_limit = 200,
+	.sd_window_enable = false,
+	.soft_clipping_enable = true,
+	/* Low soft clipping threshold to compensate for aggressive k_limit */
+	.soft_clipping_threshold = 128,
+	.smooth_k_enable = true,
+	.smooth_k_incr = 64,
+	/* Default video coefficients */
+	.coeff = {5, 9, 2},
+	.fc = {0, 0},
+	/* Immediate backlight changes */
+	.blp = {1024, 255},
+	/* Gammas: R: 2.2 G: 2.2 B: 2.2 */
+	/* Default BL TF */
+	.bltf = {
+			{
+				{57, 65, 73, 82},
+				{92, 103, 114, 125},
+				{138, 150, 164, 178},
+				{193, 208, 224, 241},
+			},
+		},
+	/* Default LUT */
+	.lut = {
+			{
+				{255, 255, 255},
+				{199, 199, 199},
+				{153, 153, 153},
+				{116, 116, 116},
+				{85, 85, 85},
+				{59, 59, 59},
+				{36, 36, 36},
+				{17, 17, 17},
+				{0, 0, 0},
+			},
+		},
+	.sd_brightness = &sd_brightness,
+	.bl_device = &dalmore_disp1_bl_device,
+};
+
 #if PANEL_11_6_AUO_1920_1080
 static struct i2c_board_info dalmore_tc358770_dsi2edp_board_info __initdata = {
 		I2C_BOARD_INFO("tc358770_dsi2edp", 0x68),
@@ -855,6 +906,7 @@ int __init dalmore_panel_init(void)
 	int err = 0;
 	struct resource __maybe_unused *res;
 
+	sd_settings = dalmore_sd_settings;
 #ifdef CONFIG_TEGRA_NVMAP
 	dalmore_carveouts[1].base = tegra_carveout_start;
 	dalmore_carveouts[1].size = tegra_carveout_size;
