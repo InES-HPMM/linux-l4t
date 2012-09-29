@@ -968,8 +968,10 @@ static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 			if (dramp)
 				goto out;
 		} else if (old_rate > vco_min) {
+#if PLLXC_USE_DYN_RAMP
 			pr_warn("No dynamic ramp down: %s: %lu to %lu\n",
 				c->u.cpu.main->name, old_rate, vco_min);
+#endif
 		}
 	}
 
@@ -1003,9 +1005,11 @@ static int tegra11_cpu_clk_set_plls(struct clk *c, unsigned long rate,
 	if (rate > vco_min) {
 		if (tegra11_is_dyn_ramp(c->u.cpu.main, rate, true))
 			main_rate = vco_min;
+#if PLLXC_USE_DYN_RAMP
 		else
 			pr_warn("No dynamic ramp up: %s: %lu to %lu\n",
 				c->u.cpu.main->name, vco_min, rate);
+#endif
 	}
 
 	ret = clk_set_rate(c->u.cpu.main, main_rate);
