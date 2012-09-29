@@ -183,4 +183,9 @@ static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 { return 0; }
 #endif
 
+static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
+{
+	return rail->dfll_mode;
+}
+
 #endif
