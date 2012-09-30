@@ -598,6 +598,9 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 			ccfifo_writel(EMC_ZQ_CAL_LONG_CMD_DEV1, EMC_ZQ_CAL);
 	}
 
+	/* 10.1 dummy write to RO register to remove stall after change */
+	ccfifo_writel(0, EMC_CCFIFO_STATUS);
+
 	/* 11.5 program burst_up_down registers if emc rate is going down */
 	if (next_timing->rate < last_timing->rate) {
 		for (i = 0; i < next_timing->burst_up_down_regs_num; i++)
