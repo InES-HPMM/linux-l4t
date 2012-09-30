@@ -274,6 +274,7 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 		tegra_gic_dist_enable();
 	}
 #endif
+	cpu_pm_enter();
 
 	sleep_time = request -
 		lp2_exit_latencies[cpu_number(dev->cpu)];
@@ -336,6 +337,8 @@ static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
 			ktime_to_us(ktime_sub(exit_time, entry_time)),
 			offset, bin);
 	}
+
+	cpu_pm_exit();
 
 	return true;
 }
@@ -425,6 +428,8 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 		return false;
 	}
 
+	cpu_pm_enter();
+
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 #ifdef CONFIG_HAVE_ARM_TWD
 	sleep_time = request - state->exit_latency;
@@ -495,6 +500,7 @@ static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
 		smp_wmb();
 	}
 #endif
+	cpu_pm_exit();
 
 	return true;
 }
@@ -506,8 +512,6 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
 	bool entered_lp2;
 	bool cpu_gating_only = false;
-
-	cpu_pm_enter();
 
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 	cpu_gating_only = get_power_gating_partition() ? false : true;
@@ -529,7 +533,6 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 	} else
 		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
 
-	cpu_pm_exit();
 	tegra_clear_cpu_in_lp2(dev->cpu);
 
 	return entered_lp2;
