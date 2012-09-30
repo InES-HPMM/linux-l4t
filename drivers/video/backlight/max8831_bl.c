@@ -27,11 +27,13 @@
 #include <linux/i2c.h>
 #include <linux/err.h>
 #include <linux/mfd/max8831.h>
+#include <linux/regulator/consumer.h>
 
 struct max8831_backlight_data {
 	struct device		*max8831_dev;
 	int			id;
 	int			current_brightness;
+	struct regulator	*regulator;
 };
 
 static int max8831_backlight_set(struct backlight_device *bl, int brightness)
@@ -99,6 +101,15 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	data->max8831_dev = pdev->dev.parent;
 	data->current_brightness = 0;
 	data->id = pdev->id;
+	data->regulator = regulator_get(data->max8831_dev,
+			"avdd_backlight_3v0");
+	if (IS_ERR(data->regulator)) {
+		dev_err(&pdev->dev, "%s: Unable to get the backlight regulator\n",
+		       __func__);
+		data->regulator = NULL;
+	} else {
+		regulator_enable(data->regulator);
+	}
 
 	props.type = BACKLIGHT_RAW;
 	props.max_brightness = 255;
@@ -119,7 +130,14 @@ static int max8831_bl_probe(struct platform_device *pdev)
 static int max8831_bl_remove(struct platform_device *pdev)
 {
 	struct backlight_device *bl = platform_get_drvdata(pdev);
+	struct max8831_backlight_data *data = bl_get_data(bl);
+
+	if (data->regulator != NULL)
+		regulator_put(data->regulator);
+
 	backlight_device_unregister(bl);
+
+	kfree(data);
 	return 0;
 }
 #ifdef CONFIG_PM
@@ -127,13 +145,23 @@ static int max8831_bl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct backlight_device *bl = platform_get_drvdata(pdev);
-	return max8831_backlight_set(bl, 0);
+	struct max8831_backlight_data *data = bl_get_data(bl);
+	int ret;
+
+	ret = max8831_backlight_set(bl, 0);
+	if (data->regulator)
+		regulator_disable(data->regulator);
+	return ret;
 }
 
 static int max8831_bl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct backlight_device *bl = platform_get_drvdata(pdev);
+	struct max8831_backlight_data *data = bl_get_data(bl);
+
+	if (data->regulator)
+		regulator_enable(data->regulator);
 	backlight_update_status(bl);
 	return 0;
 }
