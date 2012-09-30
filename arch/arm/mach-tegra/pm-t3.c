@@ -483,20 +483,31 @@ void tegra_lp0_resume_mc(void)
 
 void tegra_lp0_cpu_mode(bool enter)
 {
+	static struct clk *cclk_lp;
 	static bool entered_on_g = false;
 	unsigned int flags;
+
+	if (!cclk_lp)
+		cclk_lp = tegra_get_clock_by_name("cclk_lp");
 
 	if (enter)
 		entered_on_g = !is_lp_cluster();
 
 	if (entered_on_g) {
+		if (enter)
+			clk_enable(cclk_lp);
+
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
 		flags |= TEGRA_POWER_CLUSTER_PART_DEFAULT;
 #endif
-		tegra_cluster_control(0, flags);
-		pr_info("Tegra: switched to %s cluster\n", enter ? "LP" : "G");
+		if (!tegra_cluster_control(0, flags)) {
+			if (!enter)
+				clk_disable(cclk_lp);
+			pr_info("Tegra: switched to %s cluster\n",
+				enter ? "LP" : "G");
+		}
 	}
 }
 

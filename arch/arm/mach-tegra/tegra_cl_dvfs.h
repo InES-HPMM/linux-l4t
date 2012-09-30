@@ -119,6 +119,7 @@ struct tegra_cl_dvfs {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data);
 int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld);
+void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld);
 
 void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld);
 int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld);
@@ -132,6 +133,8 @@ static inline void tegra_cl_dvfs_set_platform_data(
 {}
 static inline int tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 { return -ENOSYS; }
+static inline void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
+{}
 
 static inline void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 {}

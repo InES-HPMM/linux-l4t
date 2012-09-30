@@ -473,6 +473,28 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	return 0;
 }
 
+void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
+{
+	enum tegra_cl_dvfs_ctrl_mode mode = cld->mode;
+	struct dfll_rate_req req = cld->last_req;
+
+	cl_dvfs_enable_clocks(cld);
+
+	/* Setup PMU interface, and configure controls in disabled mode */
+	cl_dvfs_init_out_if(cld);
+	cl_dvfs_init_cntrl_logic(cld);
+
+	cl_dvfs_disable_clocks(cld);
+
+	/* Restore last request and mode */
+	cld->last_req = req;
+	if (mode != TEGRA_CL_DVFS_DISABLED) {
+		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
+		WARN(mode > TEGRA_CL_DVFS_OPEN_LOOP,
+		     "DFLL was left locked in suspend\n");
+	}
+}
+
 void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data)
 {
 	struct clk *c = tegra_get_clock_by_name(data->dfll_clk_name);

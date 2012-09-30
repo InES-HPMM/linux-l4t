@@ -444,6 +444,10 @@
 #define USB_PLLS_USE_LOCKDET			(1<<6)
 #define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
 
+/* DFLL */
+#define DFLL_BASE				0x2f4
+#define DFLL_BASE_RESET				(1<<0)
+
 #define	LVL2_CLK_GATE_OVRE			0x554
 
 #define ROUND_DIVIDER_UP	0
@@ -3241,7 +3245,7 @@ static int tegra11_dfll_clk_set_rate(struct clk *c, unsigned long rate)
 
 static void tegra11_dfll_clk_reset(struct clk *c, bool assert)
 {
-	u32 val = assert ? 1 : 0;
+	u32 val = assert ? DFLL_BASE_RESET : 0;
 	clk_writel_delay(val, c->reg);
 }
 
@@ -3253,6 +3257,17 @@ tegra11_dfll_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 				 tegra_cl_dvfs_unlock(c->u.dfll.cl_dvfs);
 	return -EINVAL;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static void tegra11_dfll_clk_resume(struct clk *c)
+{
+	if (!(clk_readl(c->reg) & DFLL_BASE_RESET))
+		return;		/* already resumed */
+
+	tegra_periph_reset_deassert(c);
+	tegra_cl_dvfs_resume(c->u.dfll.cl_dvfs);
+}
+#endif
 
 static struct clk_ops tegra_dfll_ops = {
 	.enable			= tegra11_dfll_clk_enable,
@@ -6850,8 +6865,6 @@ static int tegra11_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_pll_a_out0.reg);
 	*ctx++ = clk_readl(tegra_pll_c_out1.reg);
 
-	*ctx++ = clk_readl(tegra_clk_cclk_g.reg);
-	*ctx++ = clk_readl(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg);
 	*ctx++ = clk_readl(tegra_clk_cclk_lp.reg + SUPER_CLK_DIVIDER);
 
@@ -6889,6 +6902,9 @@ static int tegra11_clk_suspend(void)
 	*ctx++ = clk_readl(CLK_OUT_ENB_V);
 	*ctx++ = clk_readl(CLK_OUT_ENB_W);
 	*ctx++ = clk_readl(CLK_OUT_ENB_X);
+
+	*ctx++ = clk_readl(tegra_clk_cclk_g.reg);
+	*ctx++ = clk_readl(tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 
 	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
@@ -6957,9 +6973,6 @@ static void tegra11_clk_resume(void)
 	pll_c_out1 = *ctx++;
 	clk_writel(pll_c_out1 | val, tegra_pll_c_out1.reg);
 
-	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
-	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
-
 	val = *ctx++;
 	tegra11_super_clk_resume(&tegra_clk_cclk_lp,
 		tegra_clk_virtual_cpu_lp.u.cpu.backup, val);
@@ -7015,6 +7028,13 @@ static void tegra11_clk_resume(void)
 	clk_writel(*ctx++, CLK_OUT_ENB_W);
 	clk_writel(*ctx++, CLK_OUT_ENB_X);
 	wmb();
+
+	/* DFLL resume after cl_dvfs and i2c5 clocks are resumed */
+	tegra11_dfll_clk_resume(&tegra_dfll_cpu);
+
+	/* CPU G clock restored after DFLL and PLLs */
+	clk_writel(*ctx++, tegra_clk_cclk_g.reg);
+	clk_writel(*ctx++, tegra_clk_cclk_g.reg + SUPER_CLK_DIVIDER);
 
 	clk_writel(*ctx++, SPARE_REG);
 	clk_writel(*ctx++, MISC_CLK_ENB);
