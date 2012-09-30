@@ -32,8 +32,10 @@ struct max77665_f_power_rail {
 
 struct max77665_f_config {
 	u32 led_mask;		/* led(s) enabled, 1/2/3 - left/right/both */
-	bool torch_on_flash_en; /* true=high level on the flash_en pin will
+	bool torch_on_flash;	/* true=high level on the flash_en pin will
 				   turn on torch */
+	bool flash_on_torch;	/* true=high level on the torch_en pin will
+				   turn on flash */
 	u16 flash_mode;		/* 1=one_shot_mode, flash is triggerred on the
 				   rising edge of FLASHEN/TORCHEN/I2C_bit, and
 				   terminated based on the flash safety timer
