@@ -597,6 +597,8 @@ static void tegra_pcie_hotplug_init(void)
 		sys->busnr   = nr;
 		sys->swizzle = tegra_pcie_hw.swizzle;
 		sys->map_irq = tegra_pcie_hw.map_irq;
+		INIT_LIST_HEAD(&sys->resources);
+
 		ret = tegra_pcie_setup(nr, sys);
 		if (ret > 0) {
 			if (list_empty(&sys->resources)) {
