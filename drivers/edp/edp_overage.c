@@ -111,7 +111,8 @@ static void throttle_recover(struct edp_client *client, struct edp_client *tp,
 	unsigned int recovered = m->remaining;
 
 	list_for_each_entry_from(tp, &m->clients, link) {
-		if (tp == client || cur_level(tp) <= e0_level(tp))
+		if (tp == client || cur_level(tp) <= e0_level(tp) ||
+				tp->gwt == cur_index(tp))
 			continue;
 
 		WARN_ON(!tp->throttle);
@@ -216,6 +217,9 @@ static void overage_promote(struct edp_manager *mgr)
 			step = mgr->remaining;
 
 		pp = overage_promotion_point(c, step, mgr->remaining);
+		if (pp == cur_index(c))
+			continue;
+
 		mgr->remaining -= c->states[pp] - cur_level(c);
 		c->cur = c->states + pp;
 

@@ -99,7 +99,8 @@ static void throttle(struct edp_client *client)
 	 * and promoted back immediately.
 	 */
 	list_for_each_entry_from(p, &m->clients, link) {
-		if (p == client || cur_level(p) <= e0_level(p))
+		if (p == client || cur_level(p) <= e0_level(p) ||
+				p->gwt == cur_index(p))
 			continue;
 
 		WARN_ON(!p->throttle);
@@ -139,6 +140,9 @@ static void prio_promote(struct edp_manager *mgr)
 			delta = mgr->remaining;
 
 		pp = edp_promotion_point(p, delta);
+		if (pp == cur_index(p))
+			continue;
+
 		mgr->remaining -= p->states[pp] - cur_level(p);
 		p->cur = p->states + pp;
 
