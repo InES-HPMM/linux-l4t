@@ -606,6 +606,11 @@ struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
 	.config = 0,
 };
 
+static struct tegra_spi_device_controller_data dev_cdata = {
+	.rx_clk_tap_delay = 0,
+	.tx_clk_tap_delay = 0,
+};
+
 struct spi_board_info rm31080a_dalmore_spi_board[1] = {
 	{
 	 .modalias = "rm_ts_spidev",
@@ -613,6 +618,7 @@ struct spi_board_info rm31080a_dalmore_spi_board[1] = {
 	 .chip_select = 2,
 	 .max_speed_hz = 12 * 1000 * 1000,
 	 .mode = SPI_MODE_0,
+	 .controller_data = &dev_cdata,
 	 .platform_data = &rm31080ts_dalmore_data,
 	 },
 };
