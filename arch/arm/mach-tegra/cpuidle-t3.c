@@ -201,7 +201,7 @@ static inline void tegra3_lp2_restore_affinity(void)
 #endif
 }
 
-static bool tegra3_idle_enter_lp2_cpu_0(struct cpuidle_device *dev,
+static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 	ktime_t entry_time;
@@ -353,7 +353,7 @@ static void restore_cpu_arch_register(void)
 }
 #endif
 
-static bool tegra3_idle_enter_lp2_cpu_n(struct cpuidle_device *dev,
+static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
 #ifdef CONFIG_SMP
@@ -514,20 +514,22 @@ bool tegra3_idle_lp2(struct cpuidle_device *dev,
 #endif
 
 	if (cpu_gating_only)
-		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+		entered_lp2 = tegra_cpu_core_power_down(dev, state, request);
 	else if (dev->cpu == 0) {
 		if (last_cpu) {
-			entered_lp2 = tegra3_idle_enter_lp2_cpu_0(dev, state, request);
+			entered_lp2 =
+				tegra_cpu_cluster_power_down(dev, state, request);
 		} else {
 #if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-			entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+			entered_lp2 =
+				tegra_cpu_core_power_down(dev, state, request);
 #else
 			tegra_cpu_wfi();
 			entered_lp2 = false;
 #endif
 		}
 	} else
-		entered_lp2 = tegra3_idle_enter_lp2_cpu_n(dev, state, request);
+		entered_lp2 = tegra_cpu_core_power_down(dev, state, request);
 
 	tegra_clear_cpu_in_lp2(dev->cpu);
 
