@@ -750,20 +750,6 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	unsigned int addr;
 	int ret;
 
-	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
-
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret) {
-		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
-		return;
-	}
-
-	reg &= ~PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
-	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Error in enabling tracking mode\n");
-		return;
-	}
 	/*
 	 * When SMPS4&5 is set to off and LDO8 tracking is enabled, the LDO8
 	 * output is defined by the LDO8_VOLTAGE.VSEL register divided by two,
@@ -778,8 +764,22 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 
 	reg = (reg >> 1) & PALMAS_LDO8_VOLTAGE_VSEL_MASK;
 	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(palmas->dev, "Error in setting ldo8 voltage reg\n");
+		return;
+	}
+
+	/* Disable the tracking mode */
+	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading ldo8 control reg\n");
+		return;
+	}
+	reg &= ~PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0)
+		dev_err(palmas->dev, "Error in disabling tracking mode\n");
 
 	return;
 }
