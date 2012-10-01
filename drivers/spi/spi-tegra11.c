@@ -79,8 +79,8 @@
 #define SPI_PIO				(1 << 31)
 
 #define SPI_COMMAND2			0x004
-#define SPI_TX_TAP_DELAY(x)		(((x) & 0x3F) << 0)
-#define SPI_RX_TAP_DELAY(x)		(((x) & 0x3F) << 6)
+#define SPI_TX_TAP_DELAY(x)		(((x) & 0x3F) << 6)
+#define SPI_RX_TAP_DELAY(x)		(((x) & 0x3F) << 0)
 
 #define SPI_CS_TIM1			0x008
 #define SPI_CS_HOLD_TIME_0(x)		(((x) & 0xF) << 0)
@@ -244,7 +244,6 @@ struct spi_tegra_data {
 	bool			is_packed;
 
 	u32			command1_reg;
-	u32			command2_reg;
 	u32			dma_control_reg;
 	u32			def_command1_reg;
 	u32			def_command2_reg;
@@ -713,6 +712,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	int ret;
 	unsigned long command1;
 	int req_mode;
+	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 
 	bits_per_word = t->bits_per_word ? t->bits_per_word :
 					spi->bits_per_word;
@@ -757,6 +757,20 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		} else {
 			command1 &= ~SPI_CS_SW_HW;
 			command1 &= ~SPI_CS_SS_VAL;
+		}
+
+		if (cdata) {
+			u32 command2_reg;
+			u32 rx_tap_delay;
+			u32 tx_tap_delay;
+
+			rx_tap_delay = min(cdata->rx_clk_tap_delay, 63);
+			tx_tap_delay = min(cdata->tx_clk_tap_delay, 63);
+			command2_reg = SPI_TX_TAP_DELAY(tx_tap_delay) |
+					SPI_RX_TAP_DELAY(tx_tap_delay);
+			spi_tegra_writel(tspi, command2_reg, SPI_COMMAND2);
+		} else {
+			spi_tegra_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
 		}
 
 		command1 &= ~SPI_CONTROL_MODE_MASK;
@@ -1402,6 +1416,7 @@ skip_dma_alloc:
 					SPI_CS_POL_INACTIVE_3 | SPI_CS_SS_VAL | SPI_LSBYTE_FE;
 	tegra_spi_clk_enable(tspi);
 	spi_tegra_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
+	tspi->def_command2_reg = spi_tegra_readl(tspi, SPI_COMMAND2);
 	tegra_spi_clk_disable(tspi);
 
 	pm_runtime_enable(&pdev->dev);
@@ -1546,6 +1561,7 @@ static int spi_tegra_resume(struct device *dev)
 	pm_runtime_get_sync(dev);
 	tegra_spi_clk_enable(tspi);
 	spi_tegra_writel(tspi, tspi->command1_reg, SPI_COMMAND1);
+	spi_tegra_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
 	tegra_spi_clk_disable(tspi);
 	pm_runtime_put_sync(dev);
 
