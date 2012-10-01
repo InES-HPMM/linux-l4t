@@ -82,23 +82,12 @@
 #define SPI_TX_TAP_DELAY(x)		(((x) & 0x3F) << 6)
 #define SPI_RX_TAP_DELAY(x)		(((x) & 0x3F) << 0)
 
-#define SPI_CS_TIM1			0x008
-#define SPI_CS_HOLD_TIME_0(x)		(((x) & 0xF) << 0)
-#define SPI_CS_SETUP_TIME_0(x)		(((x) & 0xF) << 4)
-#define SPI_CS_HOLD_TIME_1(x)		(((x) & 0xF) << 8)
-#define SPI_CS_SETUP_TIME_1(x)		(((x) & 0xF) << 12)
-#define SPI_CS_HOLD_TIME_2(x)		(((x) & 0xF) << 16)
-#define SPI_CS_SETUP_TIME_2(x)		(((x) & 0xF) << 20)
-#define SPI_CS_HOLD_TIME_3(x)		(((x) & 0xF) << 24)
-#define SPI_CS_SETUP_TIME_3(x)		(((x) & 0xF) << 28)
-#define SPI_SET_CS_SETUP_TIME(reg, cs, val)		\
-			(reg = ((val & 0xF) << (cs*8 + 4)) |	\
-			 (reg & ~(0xF << (cs*8 + 4))))
-#define SPI_SET_CS_HOLD_TIME(reg, cs, val)		\
-			(reg = ((val & 0xF) << (cs*8)) |	\
-			(reg & ~(0xF << (cs*8))))
+#define SPI_CS_TIMING1			0x008
+#define SPI_SETUP_HOLD(setup, hold)	((setup << 4) | hold)
+#define SPI_CS_SETUP_HOLD(reg, cs, val) (((val & 0xFFu) << (cs * 8)) |	\
+					(reg & ~(0xFFu << (cs * 8))))
 
-#define SPI_CS_TIM2			0x00C
+#define SPI_CS_TIMING2			0x00C
 #define   CYCLES_BETWEEN_PACKETS_0(x)	(((x) & 0x1F) << 0)
 #define   CS_ACTIVE_BETWEEN_PACKETS_0   (1 << 5)
 #define   CYCLES_BETWEEN_PACKETS_1(x)	(((x) & 0x1F) << 8)
@@ -247,6 +236,7 @@ struct spi_tegra_data {
 	u32			dma_control_reg;
 	u32			def_command1_reg;
 	u32			def_command2_reg;
+	u32			spi_cs_timing;
 
 	struct spi_clk_parent	*parent_clk_list;
 	int			parent_clk_count;
@@ -748,6 +738,34 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 
 		/* possibly use the hw based chip select */
 		tspi->is_hw_based_cs = false;
+		if (cdata && cdata->is_hw_based_cs && is_single_xfer) {
+			if ((tspi->curr_dma_words * tspi->bytes_per_word) ==
+						(t->len - tspi->cur_pos)) {
+				u32 set_count;
+				u32 hold_count;
+				u32 spi_cs_timing;
+				u32 spi_cs_setup;
+
+				set_count = min(cdata->cs_setup_clk_count, 16);
+				if (set_count)
+					set_count--;
+
+				hold_count = min(cdata->cs_hold_clk_count, 16);
+				if (hold_count)
+					hold_count--;
+
+				spi_cs_setup = SPI_SETUP_HOLD(set_count,
+						hold_count);
+				spi_cs_timing = tspi->spi_cs_timing;
+				spi_cs_timing = SPI_CS_SETUP_HOLD(spi_cs_timing,
+							spi->chip_select,
+							spi_cs_setup);
+				tspi->spi_cs_timing = spi_cs_timing;
+				spi_tegra_writel(tspi, spi_cs_timing,
+							SPI_CS_TIMING1);
+				tspi->is_hw_based_cs = true;
+			}
+		}
 		if (!tspi->is_hw_based_cs) {
 			command1 |= SPI_CS_SW_HW;
 			if (spi->mode & SPI_CS_HIGH)
