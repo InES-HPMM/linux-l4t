@@ -894,6 +894,44 @@ static struct resource tegra_usb3_resources[] = {
 	},
 };
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static struct resource tegra_xusb_resources[] = {
+	[0] = {
+		.start  = TEGRA_XUSB_HOST_BASE,
+		.end    = TEGRA_XUSB_HOST_BASE + TEGRA_XUSB_HOST_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start  = INT_USB3_HOST_INT,
+		.end    = INT_USB3_HOST_INT,
+		.flags  = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start  = INT_USB3_NOT_SMI,
+		.end    = INT_USB3_NOT_SMI,
+		.flags  = IORESOURCE_IRQ,
+	},
+	[3] = {
+		.start  = INT_XUSB_PADCTL,
+		.end    = INT_XUSB_PADCTL,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static u64 tegra_xusb_dmamask = DMA_BIT_MASK(64);
+
+struct platform_device tegra_xhci_device = {
+	.name = "tegra-xhci",
+	.id = -1,
+	.dev = {
+		.dma_mask = &tegra_xusb_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(64),
+	},
+	.resource = tegra_xusb_resources,
+	.num_resources = ARRAY_SIZE(tegra_xusb_resources),
+};
+#endif
+
 static u64 tegra_ehci_dmamask = DMA_BIT_MASK(32);
 
 struct platform_device tegra_ehci1_device = {
