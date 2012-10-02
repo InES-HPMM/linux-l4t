@@ -691,9 +691,17 @@ DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
 
 static int monitor_get(void *data, u64 *val)
 {
+	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
-	*val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+
+	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
 		CL_DVFS_MONITOR_DATA_MASK;
+
+	if (cl_dvfs_readl(cld, CL_DVFS_MONITOR_CTRL) ==
+	    CL_DVFS_MONITOR_CTRL_FREQ)
+		v = GET_MONITORED_RATE(v, cld->ref_rate);
+
+	*val = v;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
@@ -706,7 +714,7 @@ static int cl_register_show(struct seq_file *s, void *data)
 	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
 
 	seq_printf(s, "CONTROL REGISTERS:\n");
-	for (offs = 0; offs <= CL_DVFS_MONITOR_CTRL; offs += 4)
+	for (offs = 0; offs <= CL_DVFS_MONITOR_DATA; offs += 4)
 		seq_printf(s, "[0x%02x] = 0x%08x\n",
 			   offs, cl_dvfs_readl(cld, offs));
 
