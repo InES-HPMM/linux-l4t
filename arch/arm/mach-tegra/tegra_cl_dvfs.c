@@ -393,10 +393,9 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 
 static int cl_dvfs_enable_clocks(struct tegra_cl_dvfs *cld)
 {
-	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
+	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
 		clk_enable(cld->i2c_clk);
-		clk_enable(cld->i2c_fast);
-	}
+
 	clk_enable(cld->ref_clk);
 	clk_enable(cld->soc_clk);
 	return 0;
@@ -404,10 +403,9 @@ static int cl_dvfs_enable_clocks(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_disable_clocks(struct tegra_cl_dvfs *cld)
 {
-	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
+	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
 		clk_disable(cld->i2c_clk);
-		clk_disable(cld->i2c_fast);
-	}
+
 	clk_disable(cld->ref_clk);
 	clk_disable(cld->soc_clk);
 }
@@ -427,12 +425,6 @@ int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
 	}
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
 		ret = clk_enable(cld->i2c_clk);
-		if (ret) {
-			pr_err("%s: Failed to enable %s\n",
-			       __func__, cld->i2c_clk->name);
-			return ret;
-		}
-		ret = clk_enable(cld->i2c_fast);
 		if (ret) {
 			pr_err("%s: Failed to enable %s\n",
 			       __func__, cld->i2c_clk->name);

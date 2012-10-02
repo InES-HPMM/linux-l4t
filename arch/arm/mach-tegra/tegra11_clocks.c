@@ -3204,9 +3204,8 @@ static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 	cld->ref_clk = clk_get_sys("dfll_cpu", "ref");
 	cld->soc_clk = clk_get_sys("dfll_cpu", "soc");
 	cld->i2c_clk = clk_get_sys("dfll_cpu", "i2c");
-	cld->i2c_fast = clk_get_sys("dfll_cpu", "i2c_fast");
 	if (IS_ERR_OR_NULL(cld->ref_clk) || IS_ERR_OR_NULL(cld->soc_clk) ||
-	       IS_ERR_OR_NULL(cld->i2c_clk) || IS_ERR_OR_NULL(cld->i2c_fast))
+	       IS_ERR_OR_NULL(cld->i2c_clk))
 	{
 		WARN(1, "%s: could not find CPU DFLL control clocks\n",
 		     __func__);
@@ -6449,7 +6448,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("avp.emc", "nvavp", "emc"),
 	CLK_DUPLICATE("vde.cbus", "nvavp", "vde"),
 	CLK_DUPLICATE("i2c5", "dfll_cpu", "i2c"),
-	CLK_DUPLICATE("i2c5-fast", "dfll_cpu", "i2c_fast"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
 };

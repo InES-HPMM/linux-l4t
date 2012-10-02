@@ -98,7 +98,6 @@ struct tegra_cl_dvfs {
 	struct clk			*soc_clk;
 	struct clk			*ref_clk;
 	struct clk			*i2c_clk;
-	struct clk			*i2c_fast;
 	unsigned long			ref_rate;
 	unsigned long			i2c_rate;
 
