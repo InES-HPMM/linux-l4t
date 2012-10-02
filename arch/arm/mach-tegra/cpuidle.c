@@ -301,7 +301,7 @@ static int __init tegra_cpuidle_init(void)
 	tegra_lp2_exit_latency = tegra_cpu_power_good_time();
 	tegra_lp2_power_off_time = tegra_cpu_power_off_time();
 
-	ret = tegra_cpudile_init_soc();
+	ret = tegra_cpuidle_init_soc();
 	if (ret)
 		return ret;
 #endif

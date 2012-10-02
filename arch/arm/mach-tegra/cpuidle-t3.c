@@ -570,7 +570,7 @@ bool tegra11x_idle_lp2(struct cpuidle_device *dev,
 	return entered_lp2;
 }
 
-int tegra3_cpudile_init_soc(void)
+int tegra3_cpuidle_init_soc(void)
 {
 	int i;
 
