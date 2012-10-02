@@ -21,22 +21,6 @@
 
 #include <linux/thermal.h>
 
-struct soctherm_cdev {
-	struct thermal_cooling_device *cdev;
-	int trip_temp;
-	int tc1;
-	int tc2;
-	int passive_delay;
-};
-
-struct soctherm_skipper_data {
-	bool enable;
-	int dividend;
-	int divisor;
-	int duration;
-	int step;
-};
-
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
 	TSENSE_CPU1 = 1,
@@ -49,7 +33,7 @@ enum soctherm_sense {
 	TSENSE_SIZE = 8,
 };
 
-enum soctherm_therm {
+enum soctherm_therm_id {
 	THERM_CPU = 0,
 	THERM_MEM = 1,
 	THERM_GPU = 2,
@@ -68,17 +52,46 @@ struct soctherm_sensor {
 	u8 pdiv;
 };
 
+struct soctherm_therm {
+	s8 thermtrip;
+	s8 hw_backstop;
+
+	struct thermal_cooling_device *cdev;
+	int trip_temp;
+	int tc1;
+	int tc2;
+	int passive_delay;
+};
+
+enum soctherm_throttle_id {
+	THROTTLE_LITE = 0,
+	THROTTLE_HEAVY = 1,
+	THROTTLE_SIZE = 2,
+};
+
+enum soctherm_throttle_dev_id {
+	THROTTLE_DEV_CPU = 0,
+	THROTTLE_DEV_GPU = 1,
+	THROTTLE_DEV_SIZE = 2,
+};
+
+struct soctherm_throttle_dev {
+	bool enable;
+	u8 dividend;
+	u8 divisor;
+	u16 duration;
+	u8 step;
+};
+
+struct soctherm_throttle {
+	u8 priority;
+	struct soctherm_throttle_dev devs[THROTTLE_DEV_SIZE];
+};
+
 struct soctherm_platform_data {
-	s8 thermtrip[THERM_SIZE];
-
-	int hw_backstop; /* in celcius */
-	int dividend;
-	int divisor;
-	int duration;
-	int step;
-
 	struct soctherm_sensor sensor_data[TSENSE_SIZE];
-	struct soctherm_cdev passive[THERM_SIZE];
+	struct soctherm_therm therm[THERM_SIZE];
+	struct soctherm_throttle throttle[THROTTLE_SIZE];
 
 	int edp_weights[12];
 	int edp_threshold;

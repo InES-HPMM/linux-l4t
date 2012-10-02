@@ -695,11 +695,6 @@ int __init pluto_edp_init(void)
 }
 
 static struct soctherm_platform_data pluto_soctherm_data = {
-	.hw_backstop = 60,
-	.dividend = 1,
-	.divisor = 2,
-	.duration = 1,
-	.step = 1,
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
@@ -783,19 +778,31 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 		},
 	},
 
-	.thermtrip = {
-		[THERM_CPU] = 90,
-		[THERM_GPU] = 0, /* Not enabled */
-		[THERM_MEM] = 0, /* Not enabled */
-		[THERM_PLL] = 0, /* Not enabled */
-	},
-	.passive = {
+	.therm = {
 		[THERM_CPU] = {
-			.trip_temp = 38000,
+			.thermtrip = 90, /* in C */
+			.hw_backstop = 37, /* in C */
+
+			.trip_temp = 68000, /* in mC */
 			.tc1 = 0,
 			.tc2 = 1,
 			.passive_delay = 2000,
-		}
+		},
+	},
+
+	.throttle = {
+		[THROTTLE_HEAVY] = {
+			.priority = 1,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.dividend = 1,
+					.divisor = 255,
+					.step = 0,
+					.duration = 65535,
+				},
+			},
+		},
 	},
 };
 
@@ -817,7 +824,7 @@ static struct balanced_throttle tj_throttle = {
 
 static int __init pluto_soctherm_init(void)
 {
-	pluto_soctherm_data.passive[THERM_CPU].cdev =
+	pluto_soctherm_data.therm[THERM_CPU].cdev =
 			balanced_throttle_register(&tj_throttle);
 
 	return tegra11_soctherm_init(&pluto_soctherm_data);
