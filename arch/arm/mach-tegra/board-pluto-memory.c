@@ -33,7 +33,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 		0x40,       /* Rev 4.0 */
 		12750,      /* SDRAM frequency */
 		1100,       /* min voltage */
-		"pll_m",    /* clock source id */
+		"pll_p",    /* clock source id */
 		0x0000001e, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
 		30,         /* number of trim_regs (each channel) */
@@ -228,7 +228,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 		0x40,       /* Rev 4.0 */
 		25500,      /* SDRAM frequency */
 		1100,       /* min voltage */
-		"pll_m",    /* clock source id */
+		"pll_p",    /* clock source id */
 		0x0000000e, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
 		30,         /* number of trim_regs (each channel) */
@@ -423,7 +423,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 		0x40,       /* Rev 4.0 */
 		51000,      /* SDRAM frequency */
 		1100,       /* min voltage */
-		"pll_m",    /* clock source id */
+		"pll_p",    /* clock source id */
 		0x00000006, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
 		30,         /* number of trim_regs (each channel) */
@@ -618,7 +618,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 		0x40,       /* Rev 4.0 */
 		102000,     /* SDRAM frequency */
 		1100,       /* min voltage */
-		"pll_m",    /* clock source id */
+		"pll_p",    /* clock source id */
 		0x00000002, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
 		30,         /* number of trim_regs (each channel) */
@@ -813,7 +813,7 @@ static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 		0x40,       /* Rev 4.0 */
 		204000,     /* SDRAM frequency */
 		1100,       /* min voltage */
-		"pll_m",    /* clock source id */
+		"pll_p",    /* clock source id */
 		0x80000000, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
 		30,         /* number of trim_regs (each channel) */
