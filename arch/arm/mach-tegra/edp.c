@@ -31,7 +31,7 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 
-#define FREQ_STEP 10000000
+#define FREQ_STEP 12750000
 #define OVERRIDE_DEFAULT 6000
 
 static struct tegra_edp_limits *edp_limits;
@@ -523,7 +523,7 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 	unsigned int i, j, freq;
 	int voltage_mV;
 
-	for (i = 0, j = 0, freq = clk_get_min_rate(clk_cpu_g);
+	for (i = 0, j = 0, freq = 0;
 		 i < freq_voltage_lut_size;
 		 i++, freq += FREQ_STEP) {
 
@@ -581,7 +581,7 @@ int init_cpu_edp_limits_calculated(int cpu_speedo_id)
 				GFP_KERNEL);
 	BUG_ON(!edp_calculated_limits);
 
-	cpu_g_minf = clk_get_min_rate(clk_cpu_g);
+	cpu_g_minf = 0;
 	cpu_g_maxf = clk_get_max_rate(clk_cpu_g);
 	freq_voltage_lut_size = (cpu_g_maxf - cpu_g_minf) / FREQ_STEP + 1;
 	freq_voltage_lut =
