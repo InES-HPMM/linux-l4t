@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_aic326x_pdata.h
  *
- * Copyright 2011 NVIDIA, Inc.
+ * Copyright 2011-2012 NVIDIA, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,7 +19,8 @@
 #define	HIFI_CODEC		0
 #define	BASEBAND		1
 #define	BT_SCO			2
-#define	NUM_I2S_DEVICES		3
+#define	VOICE_CODEC		3
+#define	NUM_I2S_DEVICES		4
 
 struct baseband_config {
 	int rate;

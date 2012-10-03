@@ -17,7 +17,9 @@
 #define	HIFI_CODEC		0
 #define	BASEBAND		1
 #define	BT_SCO			2
+#ifndef	NUM_I2S_DEVICES
 #define	NUM_I2S_DEVICES		3
+#endif
 
 #define	TEGRA_DAIFMT_DSP_A		0
 #define	TEGRA_DAIFMT_DSP_B		1
