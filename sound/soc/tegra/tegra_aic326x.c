@@ -31,7 +31,7 @@
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
-
+#include <mach/tegra_aic326x_pdata.h>
 #include <mach/tegra_asoc_pdata.h>
 
 #include <sound/core.h>
@@ -146,7 +146,7 @@ static int tegra_aic326x_call_mode_put(struct snd_kcontrol *kcontrol,
 	if (machine->is_device_bt)
 		codec_index = BT_SCO;
 	else
-		codec_index = HIFI_CODEC;
+		codec_index = VOICE_CODEC;
 #endif
 
 	if (is_call_mode_new) {
@@ -551,7 +551,7 @@ static int tegra_aic326x_startup(struct snd_pcm_substream *substream)
 		if (machine->is_device_bt)
 			codec_index = BT_SCO;
 		else
-			codec_index = HIFI_CODEC;
+			codec_index = VOICE_CODEC;
 
 		codec_info = &machine->codec_info[codec_index];
 		bb_info = &machine->codec_info[BASEBAND];
@@ -677,7 +677,7 @@ static int tegra_aic326x_voice_call_hw_params(
 	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, rate, i2s_daifmt;
-	int err, pcmdiv, vxclkdiv;;
+	int err, pcmdiv, vxclkdiv;
 
 	srate = params_rate(params);
 	mclk = tegra_aic326x_get_mclk(srate);
@@ -685,33 +685,30 @@ static int tegra_aic326x_voice_call_hw_params(
 		return mclk;
 
 	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
-	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
-			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
 
-	if (machine_is_tegra_enterprise()) {
-		switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
-			case TEGRA_DAIFMT_I2S :
-				i2s_daifmt |= SND_SOC_DAIFMT_I2S;
-				break;
-			case TEGRA_DAIFMT_DSP_A :
-				i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
-				break;
-			case TEGRA_DAIFMT_DSP_B :
-				i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
-				break;
-			case TEGRA_DAIFMT_LEFT_J :
-				i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
-				break;
-			case TEGRA_DAIFMT_RIGHT_J :
-				i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
-				break;
-			default :
-				dev_err(card->dev,
-				"Can't configure i2s format\n");
-				return -EINVAL;
-		}
-	} else {
+	i2s_daifmt |= pdata->i2s_param[VOICE_CODEC].is_i2s_master ?
+		SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
+
+	switch (pdata->i2s_param[VOICE_CODEC].i2s_mode) {
+	case TEGRA_DAIFMT_I2S:
+		i2s_daifmt |= SND_SOC_DAIFMT_I2S;
+		break;
+	case TEGRA_DAIFMT_DSP_A:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+		break;
+	case TEGRA_DAIFMT_DSP_B:
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+		break;
+	case TEGRA_DAIFMT_LEFT_J:
+		i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
+		break;
+	case TEGRA_DAIFMT_RIGHT_J:
+		i2s_daifmt |= SND_SOC_DAIFMT_RIGHT_J;
+		break;
+	default:
+		dev_err(card->dev,
+		"Can't configure i2s format\n");
+		return -EINVAL;
 	}
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
@@ -769,8 +766,8 @@ static int tegra_aic326x_voice_call_hw_params(
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* codec configuration */
-	machine->codec_info[HIFI_CODEC].rate = params_rate(params);
-	machine->codec_info[HIFI_CODEC].channels = params_channels(params);
+	machine->codec_info[VOICE_CODEC].rate = params_rate(params);
+	machine->codec_info[VOICE_CODEC].channels = params_channels(params);
 #endif
 
 	machine->is_device_bt = 0;
@@ -786,8 +783,8 @@ static void tegra_aic326x_voice_call_shutdown(
 			snd_soc_card_get_drvdata(rtd->codec->card);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	machine->codec_info[HIFI_CODEC].rate = 0;
-	machine->codec_info[HIFI_CODEC].channels = 0;
+	machine->codec_info[VOICE_CODEC].rate = 0;
+	machine->codec_info[VOICE_CODEC].channels = 0;
 #endif
 
 	machine->is_device_bt = 0;
@@ -1024,6 +1021,10 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 	if (machine->codec_info[BASEBAND].i2s_id != -1)
 		i2s->is_dam_used = true;
 #endif
+
+	if ((i2s->id == machine->codec_info[HIFI_CODEC].i2s_id) &&
+		(i2s->id != machine->codec_info[VOICE_CODEC].i2s_id))
+		i2s->is_dam_used = false;
 
 	if (machine->init_done)
 		return 0;
@@ -1281,9 +1282,12 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 #endif
 
 	if (machine_is_tegra_enterprise()) {
-		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name = "tlv320aic3262-codec";
-		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name = "tlv320aic3262-codec";
-		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name = "aic326x-asi2";
+		tegra_aic326x_dai[DAI_LINK_HIFI].codec_name =
+						"tlv320aic3262-codec";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_name =
+						"tlv320aic3262-codec";
+		tegra_aic326x_dai[DAI_LINK_VOICE_CALL].codec_dai_name =
+						"aic326x-asi1";
 	}
 
 	ret = snd_soc_register_card(card);
