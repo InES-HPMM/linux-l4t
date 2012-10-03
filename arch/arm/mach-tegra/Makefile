@@ -35,7 +35,11 @@ else
 obj-y					+= wakeups-t11x.o
 endif
 ifeq ($(CONFIG_CPU_IDLE),y)
+ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
+else
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t11x.o
+endif
 endif
 endif
 

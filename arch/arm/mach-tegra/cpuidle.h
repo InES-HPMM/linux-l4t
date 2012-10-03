@@ -42,11 +42,15 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 			   struct cpuidle_state *state);
 int tegra3_cpuidle_init_soc(void);
 
+int tegra11x_cpuidle_init_soc(void);
+void tegra11x_cpu_idle_stats_lp2_ready(unsigned int cpu);
+void tegra11x_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us);
 bool tegra11x_idle_lp2(struct cpuidle_device *dev, struct cpuidle_state *state);
 bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
 			   struct cpuidle_state *state);
 #ifdef CONFIG_DEBUG_FS
 int tegra3_lp2_debug_show(struct seq_file *s, void *data);
+int tegra11x_lp2_debug_show(struct seq_file *s, void *data);
 #endif
 #endif
 
@@ -54,8 +58,10 @@ static inline int tegra_cpuidle_init_soc(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return 0;
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	return tegra3_cpuidle_init_soc();
+#else
+	return tegra11x_cpuidle_init_soc();
 #endif
 }
 
@@ -63,8 +69,10 @@ static inline void tegra_cpu_idle_stats_lp2_ready(unsigned int cpu)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_cpu_idle_stats_lp2_ready(cpu);
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra3_cpu_idle_stats_lp2_ready(cpu);
+#else
+	tegra11x_cpu_idle_stats_lp2_ready(cpu);
 #endif
 }
 
@@ -72,8 +80,10 @@ static inline void tegra_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_cpu_idle_stats_lp2_time(cpu, us);
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra3_cpu_idle_stats_lp2_time(cpu, us);
+#else
+	tegra11x_cpu_idle_stats_lp2_time(cpu, us);
 #endif
 }
 
@@ -116,8 +126,10 @@ static inline int tegra_lp2_debug_show(struct seq_file *s, void *data)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_lp2_debug_show(s, data);
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	return tegra3_lp2_debug_show(s, data);
+#else
+	return tegra11x_lp2_debug_show(s, data);
 #endif
 }
 #endif
