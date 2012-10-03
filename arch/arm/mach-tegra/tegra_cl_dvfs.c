@@ -550,11 +550,16 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 			return -EINVAL;
 		}
 
-		/* update control logic setting with last rate request;
-		   use request safe output to set safe volatge */
+		/*
+		 * Update control logic setting with last rate request;
+		 * use request safe output to set safe volatge as well as
+		 * maximum voltage limit
+		 */
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-		val &= ~CL_DVFS_OUTPUT_CFG_SAFE_MASK;
+		val &= ~(CL_DVFS_OUTPUT_CFG_SAFE_MASK |
+			 CL_DVFS_OUTPUT_CFG_MAX_MASK);
 		val |= req->output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
+		val |= req->output << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 		cld->safe_ouput = req->output;
 
@@ -602,7 +607,7 @@ int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
  */
 int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
-	u32 val;
+	u32 val, outp;
 	struct dfll_rate_req req;
 
 	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
@@ -641,9 +646,11 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		return -EINVAL;
 	}
 
-	/* Save validated request, and in CLOSED_LOOP mode actually update
-	   control logic settings; use request safe output to set forced
-	   voltage */
+	/*
+	 * Save validated request, and in CLOSED_LOOP mode actually update
+	 * control logic settings; use request safe output to set forced
+	 * voltage as well as maximum voltage limit
+	 */
 	cld->last_req = req;
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
@@ -657,6 +664,12 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		val |= req.scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
 		val |= CL_DVFS_FREQ_REQ_FREQ_VALID |
 			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+
+		outp = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+		outp &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
+		outp |= req.output << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+		cl_dvfs_writel(cld, outp, CL_DVFS_OUTPUT_CFG);
+
 		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 		cl_dvfs_wmb(cld);
 	}
