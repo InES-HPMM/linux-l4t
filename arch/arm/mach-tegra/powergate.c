@@ -198,27 +198,16 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 						{{"vde", CLK_AND_RST} }, },
 	[TEGRA_POWERGATE_MPE]	= { "mpe",
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-					{
-						MC_CLIENT_MPE,
-						MC_CLIENT_LAST
-					},
+						{MC_CLIENT_MPE, MC_CLIENT_LAST},
+						{{"mpe.cbus", CLK_AND_RST}, },
 #elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
 						{MC_CLIENT_MPEA, MC_CLIENT_MPEB,
 						 MC_CLIENT_MPEC, MC_CLIENT_LAST},
+						{{"mpe", CLK_AND_RST}, },
 #else
-					{
-						MC_CLIENT_MSENC,
-						MC_CLIENT_LAST
-					},
-#endif
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
-					{
-						{"mpe", CLK_AND_RST}
-					},
-#else
-					{
-						{"msenc.cbus", CLK_AND_RST}
-					},
+						{MC_CLIENT_MSENC,
+						 MC_CLIENT_LAST},
+						{{"msenc.cbus", CLK_AND_RST}, },
 #endif
 				},
 	[TEGRA_POWERGATE_VENC]	= { "ve",
@@ -262,11 +251,17 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 						MC_CLIENT_LAST
 					},
 					{
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 						{"2d", CLK_AND_RST},
 						{"epp", CLK_AND_RST},
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 						{"host1x", CLK_AND_RST},
-						{"3d", RST_ONLY}
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+						{"2d.cbus", CLK_AND_RST},
+						{"epp.cbus", CLK_AND_RST},
+						{"host1x.cbus", CLK_AND_RST},
+#else
+						{"2d.cbus", CLK_AND_RST},
+						{"epp.cbus", CLK_AND_RST},
 #endif
 					},
 				},
@@ -889,7 +884,7 @@ static int partition_clk_enable(int id)
 	return 0;
 
 err_clk_en:
-	WARN(1, "Could not enable clk %s", clk->name);
+	WARN(1, "Could not enable clk %s, error %d", clk->name, ret);
 	while (idx--) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
 		if (clk_info->clk_type != RST_ONLY)
