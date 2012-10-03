@@ -165,8 +165,12 @@ config DEBUG_KERNEL
 config LESS_GCC_OPT
 	bool "Compile with -O1 for debugging"
 	depends on DEBUG_KERNEL
-	default y if TEGRA_SIMULATION_PLATFORM
-	default n if !TEGRA_SIMULATION_PLATFORM
+	default n
+	help
+	  Enable this if you are using a source level debugger and
+	  experience poor correlation between the program counter
+	  and the source display.  This will reduce kernel peformance
+	  and is only used when debugging.
 
 config DEBUG_SHIRQ
 	bool "Debug shared IRQ handlers"
