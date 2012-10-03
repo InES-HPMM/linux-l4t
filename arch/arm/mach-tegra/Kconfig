@@ -206,6 +206,7 @@ config TEGRA_SILICON_PLATFORM
 
 config TEGRA_SIMULATION_PLATFORM
         bool "Simulation"
+	select LESS_GCC_OPT if DEBUG_KERNEL
         help
           This enables support for a Tegra simulation platform.
           Select this only if you are an NVIDIA developer working
