@@ -470,30 +470,11 @@ void tegra_init_cache(bool init)
 #else
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (is_lp_cluster()) {
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-		tag_latency = 0x110;
-		data_latency = 0x331;
-#else
-		tag_latency = 0x221;
-		data_latency = 0x221;
-#endif
+		tag_latency = tegra_cpu_c1_l2_tag_latency;
+		data_latency = tegra_cpu_c1_l2_data_latency;
 	} else {
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-		tag_latency = 0x111;
-		data_latency = 0x441;
-#else
-		u32 speedo;
-		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
-		speedo = tegra_cpu_speedo_id();
-		if (speedo == 4 || speedo == 5 || speedo == 6 ||
-		    speedo == 12 || speedo == 13) {
-			tag_latency = 0x442;
-			data_latency = 0x552;
-		} else {
-			tag_latency = 0x441;
-			data_latency = 0x551;
-		}
-#endif
+		tag_latency = tegra_cpu_c0_l2_tag_latency;
+		data_latency = tegra_cpu_c0_l2_data_latency;
 	}
 #else
 	tag_latency = 0x770;
@@ -712,6 +693,9 @@ void __init tegra20_init_early(void)
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 void __init tegra30_init_early(void)
 {
+	u32 speedo;
+	u32 tag_latency, data_latency;
+
 #ifndef CONFIG_SMP
 	/* For SMP system, initializing the reset handler here is too
 	   late. For non-SMP systems, the function that calls the reset
@@ -721,6 +705,27 @@ void __init tegra30_init_early(void)
 	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();
+	/*
+	 * Store G/LP cluster L2 latencies to IRAM and DRAM
+	 */
+	tegra_cpu_c1_l2_tag_latency = 0x221;
+	tegra_cpu_c1_l2_data_latency = 0x221;
+	writel_relaxed(0x221, tegra_cpu_c1_l2_tag_latency_iram);
+	writel_relaxed(0x221, tegra_cpu_c1_l2_data_latency_iram);
+	/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
+	speedo = tegra_cpu_speedo_id();
+	if (speedo == 4 || speedo == 5 || speedo == 6 ||
+	    speedo == 12 || speedo == 13) {
+		tag_latency = 0x442;
+		data_latency = 0x552;
+	} else {
+		tag_latency = 0x441;
+		data_latency = 0x551;
+	}
+	tegra_cpu_c0_l2_tag_latency = tag_latency;
+	tegra_cpu_c0_l2_data_latency = data_latency;
+	writel_relaxed(tag_latency, tegra_cpu_c0_l2_tag_latency_iram);
+	writel_relaxed(data_latency, tegra_cpu_c0_l2_data_latency_iram);
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
@@ -780,6 +785,14 @@ void __init tegra14x_init_early(void)
 	tegra14x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra14x_clk_init_table);
+	tegra_cpu_c1_l2_tag_latency = 0x110;
+	tegra_cpu_c1_l2_data_latency = 0x331;
+	writel_relaxed(0x110, tegra_cpu_c1_l2_tag_latency_iram);
+	writel_relaxed(0x331, tegra_cpu_c1_l2_data_latency_iram);
+	tegra_cpu_c0_l2_tag_latency = 0x111;
+	tegra_cpu_c0_l2_data_latency = 0x441;
+	writel_relaxed(0x111, tegra_cpu_c0_l2_tag_latency_iram);
+	writel_relaxed(0x441, tegra_cpu_c0_l2_data_latency_iram);
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();

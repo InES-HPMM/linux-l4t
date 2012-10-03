@@ -24,6 +24,7 @@
 #include <asm/assembler.h>
 #include <asm/cache.h>
 #include <asm/page.h>
+#include <asm/hardware/cache-l2x0.h>
 
 #include "flowctrl.h"
 #include "iomap.h"
@@ -34,6 +35,9 @@
 #define PMC_SCRATCH41	0x140
 
 #define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
+
+#define RESET_DATA_PHYS (TEGRA_RESET_HANDLER_BASE \
+	+ __tegra_cpu_reset_handler_data - __tegra_cpu_reset_handler_start)
 
 #define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
@@ -100,7 +104,7 @@ ENTRY(tegra_resume)
 	movw	r0, #0x3FFD	@ enable, enable_ext, cluster_switch, immed, & bitmaps
 	bic	r1, r1, r0
 	str	r1, [r2]
-#endif
+#endif /* !CONFIG_ARCH_TEGRA_2x_SOC */
 
 #if defined(CONFIG_HAVE_ARM_SCU)
 	/* enable SCU */
@@ -108,7 +112,7 @@ ENTRY(tegra_resume)
 	ldr	r1, [r0]
 	orr	r1, r1, #1
 	str	r1, [r0]
-#endif
+#endif /* CONFIG_HAVE_ARM_SCU */
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
@@ -117,15 +121,73 @@ ENTRY(tegra_resume)
 	adr	r1, tegra_resume_smc_entry_time
 	str	r0, [r1]
 
-	/* wake up (should have specified args?) */
+	/* wake up */
+	mov	r0, #0x00000003
 	bl	tegra_generic_smc
 
 	mov32	r1, TEGRA_TMRUS_BASE
 	ldr	r0, [r1]
 	adr	r1, tegra_resume_smc_exit_time
 	str	r0, [r1]
+#endif /* !CONFIG_ARCH_TEGRA_11x_SOC */
+#endif /* CONFIG_TRUSTED_FOUNDATIONS */
+
+#ifdef CONFIG_CACHE_L2X0
+#if !defined(CONFIG_TRUSTED_FOUNDATIONS) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	adr	r0, tegra_resume_l2_init
+	ldr	r1, [r0]
+	tst	r1, #1
+	beq	no_l2_init
+	/* Enable L2 */
+	bic	r1, #1
+	str	r1, [r0]
+	mov32	r3, TEGRA_ARM_PL310_BASE
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	mov32	r0, 0x331			/* tag latency */
+	mov32	r1, 0x441			/* data latency */
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	mov32	r0, TEGRA_FLOW_CTRL_BASE + 0x2c	/* FLOW_CTRL_CLUSTER_CONTROL */
+	mov32	r2, RESET_DATA_PHYS
+	ldr	r1, [r0]
+	tst	r1, #1				/* 0 == G, 1 == LP */
+	ldrne	r0, [r2, #RESET_DATA(C1_L2_TAG_LATENCY)]
+	ldrne	r1, [r2, #RESET_DATA(C1_L2_DATA_LATENCY)]
+	ldreq	r0, [r2, #RESET_DATA(C0_L2_TAG_LATENCY)]
+	ldreq	r1, [r2, #RESET_DATA(C0_L2_DATA_LATENCY)]
+#else /* !CONFIG_TEGRA_SILICON_PLATFORM */
+	mov32	r0, #0x770			/* tag latency */
+	mov32	r1, #0x770			/* data latency */
+#endif /* ?CONFIG_TEGRA_SILICON_PLATFORM */
+#endif /* CONFIG_ARCH_TEGRA_3x_SOC || CONFIG_ARCH_TEGRA_14x_SOC */
+	str	r0, [r3, #L2X0_TAG_LATENCY_CTRL]
+	str	r1, [r3, #L2X0_DATA_LATENCY_CTRL]
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	mov32	r0, 0x40000007	/* Enable double line fill */
+#else
+	mov	r0, #7
 #endif
-#endif
+	str	r0, [r3, #L2X0_PREFETCH_CTRL]
+#endif /* !CONFIG_TEGRA_FPGA_PLATFORM */
+	mov	r0, #3
+	str	r0, [r3, #L2X0_POWER_CTRL]
+	/* figure out aux ctrl */
+	ldr	r2, [r3, #L2X0_CACHE_TYPE]
+	and	r2, r2, #0x700
+	lsl	r2, r2, #(17-8)
+	mov32	r4, 0x7C400001
+	orr	r2, r2, r4
+	ldr	r4, [r3, #L2X0_AUX_CTRL]
+	mov32	r5, 0x8200c3fe
+	and	r4, r4, r5
+	orr	r2, r2, r4
+	str	r2, [r3, #L2X0_AUX_CTRL]
+	mov	r2, #1
+	str	r2, [r3, #L2X0_CTRL]
+#endif /* ?CONFIG_TRUSTED_FOUNDATIONS */
+#endif /* CONFIG_CACHE_L2X0 */
+no_l2_init:
 	b	cpu_resume
 ENDPROC(tegra_resume)
 
@@ -134,7 +196,7 @@ ENDPROC(tegra_resume)
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	.globl tegra_resume_smc_entry_time
 	.globl tegra_resume_smc_exit_time
-#endif
+#endif /* !CONFIG_ARCH_TEGRA_11x_SOC */
 	.globl tegra_resume_entry_time
 	.globl tegra_resume_timestamps_end
 tegra_resume_timestamps_start:
@@ -143,13 +205,17 @@ tegra_resume_smc_entry_time:
 	.long	0
 tegra_resume_smc_exit_time:
 	.long	0
-#endif
+#endif /* !CONFIG_ARCH_TEGRA_11x_SOC */
 tegra_resume_entry_time:
 	.long	0
 tegra_resume_timestamps_end:
-ENTRY(__tegra_resume_timestamps_end)
-#endif
-#endif
+#endif /* CONFIG_TRUSTED_FOUNDATIONS */
+#ifdef CONFIG_CACHE_L2X0
+	.globl tegra_resume_l2_init
+tegra_resume_l2_init:
+	.long 0
+#endif /* CONFIG_CACHE_L2X0 */
+#endif /* CONFIG_PM_SLEEP */
 
 /*
  *	__invalidate_cpu_state
@@ -448,6 +514,11 @@ __tegra_cpu_reset_handler_data:
 	.rept	TEGRA_RESET_DATA_SIZE
 	.long	0
 	.endr
-	.size	__tegra_cpu_reset_handler_data, . - __tegra_cpu_reset_handler_data
+	.size	__tegra_cpu_reset_handler_data, \
+	. - __tegra_cpu_reset_handler_data
 	.align L1_CACHE_SHIFT
 ENTRY(__tegra_cpu_reset_handler_end)
+
+	.globl	__tegra_cpu_reset_handler_data_offset
+	.equ	__tegra_cpu_reset_handler_data_offset, \
+	__tegra_cpu_reset_handler_data - __tegra_cpu_reset_handler_start

@@ -328,6 +328,9 @@ extern unsigned long tegra_resume_smc_exit_time;
 #endif
 extern unsigned long tegra_resume_entry_time;
 #endif
+#if defined(CONFIG_CACHE_L2X0) && defined(CONFIG_PM_SLEEP)
+extern unsigned long tegra_resume_l2_init;
+#endif
 
 static inline void *tegra_iram_start(void)
 {

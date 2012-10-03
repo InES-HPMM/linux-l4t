@@ -36,11 +36,13 @@
 #include <asm/glue-cache.h>
 #include <asm/glue-proc.h>
 #include <asm/cp15.h>
+#include <asm/hardware/cache-l2x0.h>
 
 #include "iomap.h"
 
 #include "sleep.h"
 #include "flowctrl.h"
+#include "reset.h"
 
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24
@@ -230,6 +232,7 @@ ENTRY(tegra_sleep_cpu_finish)
 	mov32	r1, tegra3_tear_down_cpu
 #endif
 	add	r1, r1, r0
+	mov	r11, #1
 	b	tegra_turn_off_mmu
 ENDPROC(tegra_sleep_cpu_finish)
 
@@ -238,6 +241,7 @@ ENDPROC(tegra_sleep_cpu_finish)
  *
  * r0 = v2p
  * r1 = physical address to jump to with mmu off
+ * r11 = L2 disable/flush
  */
 ENTRY(tegra_turn_off_mmu)
 	/*
@@ -275,6 +279,7 @@ tegra_pgd_phys_address:
  * tegra_shut_off_mmu
  *
  * r0 = physical address to jump to with mmu off
+ * r11 = L2 disable/flush
  *
  * called with VA=PA mapping
  * turns off MMU, icache, dcache and branch prediction
@@ -287,7 +292,26 @@ tegra_shut_off_mmu:
 	dsb
 	mcr	p15, 0, r3, c1, c0, 0
 	isb
-	mov	pc, r0
+#if defined(CONFIG_CACHE_L2X0) && !defined(CONFIG_TRUSTED_FOUNDATIONS)
+	tst	r11, #1
+	beq	2f
+	mov32	r1, TEGRA_ARM_PL310_BASE
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	/* need to flush the L2 */
+	ldr	r2, [r1, #L2X0_AUX_CTRL]
+	mov	r2, #0xff
+	tst	r2, #(1 << 16)			@ associativity
+	orrne	r2, #0xff00
+	str	r2, [r1, #L2X0_CLEAN_INV_WAY]
+1:	ldr	r3, [r1, #L2X0_CLEAN_INV_WAY]
+	tst	r3, r2
+	bne	1b
+#endif /* CONFIG_ARCH_TEGRA_14x_SOC */
+	/* Disable L2 */
+	mov	r2, #0
+	str	r2, [r1, #L2X0_CTRL]
+#endif /* CONFIG_CACHE_L2X0 && !CONFIG_TRUSTED_FOUNDATIONS */
+2:	mov	pc, r0
 
 /*
  * tegra_cpu_clk32k

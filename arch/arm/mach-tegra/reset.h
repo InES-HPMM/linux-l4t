@@ -25,7 +25,11 @@
 #define TEGRA_RESET_STARTUP_SECONDARY	3
 #define TEGRA_RESET_STARTUP_LP2		4
 #define TEGRA_RESET_STARTUP_LP1		5
-#define TEGRA_RESET_DATA_SIZE		6
+#define TEGRA_RESET_C0_L2_TAG_LATENCY	6
+#define TEGRA_RESET_C0_L2_DATA_LATENCY	7
+#define TEGRA_RESET_C1_L2_TAG_LATENCY	8
+#define TEGRA_RESET_C1_L2_DATA_LATENCY	9
+#define TEGRA_RESET_DATA_SIZE		10
 
 #ifndef __ASSEMBLY__
 
@@ -51,6 +55,38 @@ void tegra_secondary_startup(void);
 		((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_LP2] - \
 		 (u32)__tegra_cpu_reset_handler_start))))
 #endif
+
+#define tegra_cpu_c0_l2_tag_latency \
+	__tegra_cpu_reset_handler_data[TEGRA_RESET_C0_L2_TAG_LATENCY]
+
+#define tegra_cpu_c0_l2_tag_latency_iram \
+	((u32 *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE +			\
+	((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_C0_L2_TAG_LATENCY] \
+	 - (u32)__tegra_cpu_reset_handler_start))))
+
+#define tegra_cpu_c0_l2_data_latency \
+	__tegra_cpu_reset_handler_data[TEGRA_RESET_C0_L2_DATA_LATENCY]
+
+#define tegra_cpu_c0_l2_data_latency_iram \
+	((u32 *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE +			\
+	((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_C0_L2_DATA_LATENCY] \
+	 - (u32)__tegra_cpu_reset_handler_start))))
+
+#define tegra_cpu_c1_l2_tag_latency \
+	__tegra_cpu_reset_handler_data[TEGRA_RESET_C1_L2_TAG_LATENCY]
+
+#define tegra_cpu_c1_l2_tag_latency_iram \
+	((u32 *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE +			\
+	((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_C1_L2_TAG_LATENCY] \
+	 - (u32)__tegra_cpu_reset_handler_start))))
+
+#define tegra_cpu_c1_l2_data_latency \
+	__tegra_cpu_reset_handler_data[TEGRA_RESET_C1_L2_DATA_LATENCY]
+
+#define tegra_cpu_c1_l2_data_latency_iram \
+	((u32 *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE +			\
+	((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_C1_L2_DATA_LATENCY] \
+	 - (u32)__tegra_cpu_reset_handler_start))))
 
 #define tegra_cpu_reset_handler_offset \
 		((u32)__tegra_cpu_reset_handler - \

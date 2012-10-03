@@ -266,6 +266,7 @@ ENTRY(tegra3_sleep_core_finish)
 	sub	r1, r1, r2
 	mov32	r2, TEGRA_IRAM_CODE_AREA
 	add	r1, r1, r2
+	mov	r11, #0
 	b	tegra_turn_off_mmu
 ENDPROC(tegra3_sleep_core_finish)
 

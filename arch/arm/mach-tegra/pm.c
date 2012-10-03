@@ -599,9 +599,6 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 {
 	u32 reg;
 	unsigned int remain;
-#if defined(CONFIG_CACHE_L2X0) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	pgd_t *pgd;
-#endif
 
 	/* Only the last cpu down does the final suspend steps */
 	reg = readl(pmc + PMC_CTRL);
@@ -673,27 +670,23 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
-#ifdef CONFIG_CACHE_L2X0
+#if defined(CONFIG_CACHE_L2X0)
+#if defined(CONFIG_TRUSTED_FOUNDATIONS)
 	flush_cache_all();
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	outer_flush_all();
-#else
-	/*
-	 * No need to flush complete L2. Cleaning kernel and IO mappings
-	 * is enough for the LP code sequence that has L2 disabled but
-	 * MMU on.
-	 */
-	pgd = cpu_get_pgd();
-	outer_clean_range(__pa(pgd + USER_PTRS_PER_PGD),
-			  __pa(pgd + PTRS_PER_PGD));
-#endif
 	outer_disable();
+#elif !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_resume_l2_init = 1;
+	__cpuc_flush_dcache_area(&tegra_resume_l2_init, sizeof(unsigned long));
+	outer_flush_range(__pa(&tegra_resume_l2_init),
+			  __pa(&tegra_resume_l2_init) + sizeof(unsigned long));
 #endif
+#endif
+
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_init_cache(true);
-#else
+#elif defined(CONFIG_TRUSTED_FOUNDATIONS)
 	tegra_init_cache(false);
 #endif
 
@@ -1048,7 +1041,6 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 #endif
 
 	flush_cache_all();
-	outer_flush_all();
 	outer_disable();
 
 	if (mode == TEGRA_SUSPEND_LP2)
