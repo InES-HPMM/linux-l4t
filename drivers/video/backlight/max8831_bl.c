@@ -39,7 +39,12 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 	struct max8831_backlight_data *data = bl_get_data(bl);
 	struct device *dev = data->max8831_dev;
 
+	/* ranges from 0-255 */
+	data->current_brightness = brightness;
+
 	if (data->id == MAX8831_BL_LEDS) {
+		/* map 0-255 brightness to max8831 range */
+		brightness = brightness * MAX8831_BL_LEDS_MAX_CURR / 255;
 
 		if (brightness == 0) {
 			max8831_update_bits(dev, MAX8831_CTRL,
@@ -55,7 +60,6 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 								brightness);
 		}
 	}
-	data->current_brightness = brightness;
 	return 0;
 }
 static int max8831_backlight_update_status(struct backlight_device *bl)
@@ -97,7 +101,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	data->id = pdev->id;
 
 	props.type = BACKLIGHT_RAW;
-	props.max_brightness = MAX8831_BL_LEDS_MAX_CURR;
+	props.max_brightness = 255;
 	bl = backlight_device_register(pdev->name, data->max8831_dev, data,
 				       &max8831_backlight_ops, &props);
 	if (IS_ERR(bl)) {
