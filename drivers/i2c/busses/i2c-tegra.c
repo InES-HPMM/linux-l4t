@@ -579,12 +579,12 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 	}
 
 	if (unlikely(status & status_err)) {
-		dev_warn(i2c_dev->dev, "I2c error status 0x%08x\n", status);
+		dev_dbg(i2c_dev->dev, "I2c error status 0x%08x\n", status);
 		if (status & I2C_INT_NO_ACK) {
 			i2c_dev->msg_err |= I2C_ERR_NO_ACK;
 			dev_warn(i2c_dev->dev, "no acknowledge from address"
 					" 0x%x\n", i2c_dev->msg_add);
-			dev_warn(i2c_dev->dev, "Packet status 0x%08x\n",
+			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
 		}
 
@@ -592,7 +592,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 			i2c_dev->msg_err |= I2C_ERR_ARBITRATION_LOST;
 			dev_warn(i2c_dev->dev, "arbitration lost during "
 				" communicate to add 0x%x\n", i2c_dev->msg_add);
-			dev_warn(i2c_dev->dev, "Packet status 0x%08x\n",
+			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
 		}
 
@@ -600,7 +600,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 			i2c_dev->msg_err |= I2C_INT_TX_FIFO_OVERFLOW;
 			dev_warn(i2c_dev->dev, "Tx fifo overflow during "
 				" communicate to add 0x%x\n", i2c_dev->msg_add);
-			dev_warn(i2c_dev->dev, "Packet status 0x%08x\n",
+			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
 		}
 		goto err;
