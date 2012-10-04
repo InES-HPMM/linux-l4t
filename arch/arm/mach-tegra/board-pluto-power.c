@@ -87,7 +87,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("vdd_gps", NULL),
 	REGULATOR_SUPPLY("vdd_nfc", NULL),
-	REGULATOR_SUPPLY("vdd_sensor", NULL),
+	REGULATOR_SUPPLY("vlogic", "0-0069"),
 	REGULATOR_SUPPLY("vdd_dtv", NULL),
 	REGULATOR_SUPPLY("vdd_bb", NULL),
 	REGULATOR_SUPPLY("vcore1_lpddr", NULL),
@@ -170,6 +170,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0044"),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
 	REGULATOR_SUPPLY("avdd", "spi3.2"),
+	REGULATOR_SUPPLY("vdd", "0-0069"),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
