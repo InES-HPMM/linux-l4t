@@ -124,6 +124,7 @@ struct tegra_nor_info {
 	u32 init_config;
 	u32 timing0_default, timing1_default;
 	u32 timing0_read, timing1_read;
+	u32 suspend_config;
 };
 
 static inline unsigned long snor_tegra_readl(struct tegra_nor_info *tnor,
@@ -514,9 +515,32 @@ static int tegra_nor_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int tegra_nor_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct tegra_nor_info *info = platform_get_drvdata(pdev);
+	info->suspend_config = snor_tegra_readl(info, TEGRA_SNOR_CONFIG_REG);
+	return 0;
+}
+
+static int tegra_nor_resume(struct platform_device *pdev)
+{
+	struct tegra_nor_info *info = platform_get_drvdata(pdev);
+
+	snor_tegra_writel(info, info->suspend_config, TEGRA_SNOR_CONFIG_REG);
+	snor_tegra_writel(info, info->timing1_default, TEGRA_SNOR_TIMING1_REG);
+	snor_tegra_writel(info, info->timing0_default, TEGRA_SNOR_TIMING0_REG);
+	return 0;
+}
+#endif
+
 static struct platform_driver __refdata tegra_nor_driver = {
 	.probe = tegra_nor_probe,
 	.remove = tegra_nor_remove,
+#ifdef CONFIG_PM
+	.suspend = tegra_nor_suspend,
+	.resume = tegra_nor_resume,
+#endif
 	.driver = {
 		   .name = DRV_NAME,
 		   .owner = THIS_MODULE,
