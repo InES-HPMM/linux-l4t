@@ -84,6 +84,7 @@ struct dvfs_dfll_data {
 	unsigned long	droop_rate_min;
 	unsigned long	out_rate_min;
 	unsigned long	max_rate_boost;
+	int min_millivolts;
 };
 
 struct dvfs {
@@ -104,7 +105,6 @@ struct dvfs {
 	/* Filled in by tegra_dvfs_init */
 	int max_millivolts;
 	int num_freqs;
-	int min_millivolts;
 	struct dvfs_dfll_data dfll_data;
 
 	int cur_millivolts;
@@ -124,7 +124,7 @@ struct cpu_cvb_dvfs_parameters {
 struct cpu_cvb_dvfs {
 	int speedo_id;
 	int max_mv;
-	int min_mv;
+	int min_dfll_mv;
 	int margin;
 	int freqs_mult;
 	int speedo_scale;

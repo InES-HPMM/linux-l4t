@@ -304,7 +304,7 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	millivolts = cld->safe_dvfs->dfll_millivolts;
 	v_max = millivolts[n - 1];
 
-	v = cld->safe_dvfs->min_millivolts;
+	v = cld->safe_dvfs->dfll_data.min_millivolts;
 	BUG_ON(v > millivolts[0]);
 
 	cld->out_map[0] = find_vdd_map_entry(cld, v, true);
