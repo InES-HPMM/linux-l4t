@@ -279,6 +279,10 @@ static int tegra_ehci_hub_control(
 			return retval;
 		}
 		break;
+	case SetPortFeature:
+		if (wValue == USB_PORT_FEAT_SUSPEND)
+			tegra_usb_phy_pre_suspend(tegra->phy);
+		break;
 	}
 
 	/* handle ehci hub control request */
