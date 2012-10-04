@@ -242,12 +242,11 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ "c2bus",	"pll_c2",	300000000,	false },
-	{ "c3bus",	"pll_c3",	300000000,	false },
-	{ "floor.c2bus", NULL,		0,		true},
+	{ "c2bus",	"pll_c2",	250000000,	false },
+	{ "c3bus",	"pll_c3",	250000000,	false },
 #else
-	{ "cbus",	"pll_c",	416000000,	false },
-	{ "pll_c_out1",	"pll_c",	208000000,	false },
+	{ "cbus",	"pll_c",	250000000,	false },
+	{ "pll_c_out1",	"pll_c",	150000000,	false },
 #endif
 	{ NULL,		NULL,		0,		0},
 };
