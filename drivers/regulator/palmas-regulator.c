@@ -709,6 +709,7 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 	unsigned int reg;
 	unsigned int addr;
 	int ret;
+	int i;
 
 	addr = palmas_regs_info[PALMAS_REG_LDO8].ctrl_addr;
 
@@ -738,8 +739,27 @@ static void palmas_enable_ldo8_track(struct palmas *palmas)
 
 	reg = (reg << 1) & PALMAS_LDO8_VOLTAGE_VSEL_MASK;
 	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(palmas->dev, "Error in setting ldo8 voltage reg\n");
+		return;
+	}
+
+	/*
+	 * When Tracking is enbled, it need to disable Pull-Down for LDO8 and
+	 * when tracking is disabled, SW has to enabe Pull-Down.
+	 */
+	addr = PALMAS_LDO_PD_CTRL1;
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in reading pulldown control reg\n");
+		return;
+	}
+	reg &= ~PALMAS_LDO_PD_CTRL1_LDO8;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in setting pulldown control reg\n");
+		return;
+	}
 
 	return;
 }
@@ -778,8 +798,27 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	}
 	reg &= ~PALMAS_LDO8_CTRL_LDO_TRACKING_EN;
 	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(palmas->dev, "Error in disabling tracking mode\n");
+		return;
+	}
+
+	/*
+	 * When Tracking is enbled, it need to disable Pull-Down for LDO8 and
+	 * when tracking is disabled, SW has to enabe Pull-Down.
+	 */
+	addr = PALMAS_LDO_PD_CTRL1;
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in reading pulldown control reg\n");
+		return;
+	}
+	reg |= PALMAS_LDO_PD_CTRL1_LDO8;
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in setting pulldown control reg\n");
+		return;
+	}
 
 	return;
 }
