@@ -24,7 +24,7 @@ config TEGRA_GRHOST_DEFAULT_TIMEOUT
 	depends on TEGRA_GRHOST
 	int "Default timeout for submits"
 	default 0 if TEGRA_SIMULATION_PLATFORM
-	default 30000
+	default 10000
 	help
 	  Default timeout for jobs in milliseconds. Set to zero for no timeout.
 
