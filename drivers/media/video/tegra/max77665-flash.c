@@ -123,9 +123,9 @@
 
 /* TO DO: Need to confirm with maxim these trigger settings */
 #define TRIG_MODE_OFF			0x00
-#define TRIG_MODE_I2C			0x01
-#define TRIG_MODE_FLASHEN		0x02
-#define TRIG_MODE_TORCHEN		0x03
+#define TRIG_MODE_FLASHEN		0x01
+#define TRIG_MODE_TORCHEN		0x02
+#define TRIG_MODE_I2C			0x03
 
 #define TORCH_TRIG_BY_FLASHEN	\
 			(FIELD(TRIG_MODE_FLASHEN, LED2_TORCH_MODE_SHIFT) | \
@@ -351,9 +351,9 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 		err = max77665_f_reg_wr(info,
 				MAX77665_F_RW_TORCH_FLEDCURR, t_curr,
 				info->regs.regs_stale,
-				info->regs.led_tcurr != val);
+				info->regs.led_tcurr != t_curr);
 		if (!err)
-			info->regs.led_tcurr = val;
+			info->regs.led_tcurr = t_curr;
 		else
 			goto set_led_end;
 
@@ -1324,6 +1324,7 @@ static int max77665_f_status_show(struct seq_file *s, void *data)
 	dev_info(info->dev, "%s\n", __func__);
 
 	seq_printf(s, "max77665_f status:\n"
+		"    Power State      = %01x\n"
 		"    Led Mask         = %01x\n"
 		"    Led1 Current     = 0x%02x\n"
 		"    Led2 Current     = 0x%02x\n"
@@ -1334,6 +1335,7 @@ static int max77665_f_status_show(struct seq_file *s, void *data)
 		"    PinState Values  = 0x%04x\n"
 		"    Max_Peak_Current = %dmA\n"
 		,
+		info->pwr_dev,
 		info->config.led_mask,
 		info->regs.led1_curr,
 		info->regs.led2_curr,
@@ -1417,8 +1419,8 @@ set_attr:
 		max77665_f_configure(info, true);
 		break;
 	case 'g':
-		info->pdata->gpio_strobe = val;
-		max77665_f_strobe(info, 1);
+		info->pdata->gpio_strobe = val & 0xffff;
+		max77665_f_strobe(info, (val >> 16) & 1);
 		break;
 	}
 
