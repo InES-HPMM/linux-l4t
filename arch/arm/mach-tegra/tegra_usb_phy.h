@@ -17,6 +17,8 @@
 #ifndef __MACH_TEGRA_USB_PHY_H
 #define __MACH_TEGRA_USB_PHY_H
 
+#include <linux/usb/otg.h>
+
 /**
  * defines USB port speeds supported in USB2.0
  */
@@ -71,6 +73,8 @@ struct tegra_usb_phy_ops {
  * defines usb phy data structure
  */
 struct tegra_usb_phy {
+	/* Don't move below variable 'phy', from first place*/
+	struct usb_phy phy;
 	struct platform_device *pdev;
 	struct tegra_usb_platform_data *pdata;
 	struct clk *pllu_clk;
