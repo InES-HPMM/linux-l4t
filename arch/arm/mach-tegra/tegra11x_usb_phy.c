@@ -606,6 +606,19 @@ static int _usb_phy_init(struct tegra_usb_phy *phy)
 
 	return 0;
 }
+
+static void usb_phy_fence_read(struct tegra_usb_phy *phy)
+{
+	/* Fence read for coherency of AHB master intiated writes */
+	if (phy->inst == 0)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+	else if (phy->inst == 1)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB2_PREFETCH_ID));
+	else if (phy->inst == 2)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB3_PREFETCH_ID));
+	return;
+}
+
 static int usb_phy_reset(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
@@ -1224,6 +1237,7 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			readl(base + USB_USBMODE), readl(base + USB_USBCMD));
 	}
 
+	usb_phy_fence_read(phy);
 	/* check if there is any remote wake event */
 	if (utmi_phy_remotewake_detected(phy)) {
 		pr_info("%s: utmip remote wake detected\n", __func__);
@@ -2123,6 +2137,7 @@ static void uhsic_phy_close(struct tegra_usb_phy *phy)
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
 {
 	/* check if there is any remote wake event */
+	usb_phy_fence_read(phy);
 	if (uhsic_phy_remotewake_detected(phy))
 		pr_info("%s: uhsic remote wake detected\n", __func__);
 	return IRQ_HANDLED;
