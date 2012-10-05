@@ -67,6 +67,11 @@ struct dma_align_buffer {
 	u8 data[0];
 };
 
+static struct usb_phy *get_usb_phy(struct tegra_usb_phy *x)
+{
+	return (struct usb_phy *)x;
+}
+
 static void free_align_buffer(struct urb *urb, struct usb_hcd *hcd)
 {
 	struct dma_align_buffer *temp;
@@ -376,7 +381,7 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	if (err)
 		tegra->bus_suspended_fail = true;
 	else
-		tegra_usb_phy_suspend(tegra->phy);
+		usb_phy_set_suspend(get_usb_phy(tegra->phy), 1);
 	mutex_unlock(&tegra->sync_lock);
 	EHCI_DBG("%s() END\n", __func__);
 
@@ -390,7 +395,7 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	EHCI_DBG("%s() BEGIN\n", __func__);
 
 	mutex_lock(&tegra->sync_lock);
-	tegra_usb_phy_resume(tegra->phy);
+	usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
 	err = ehci_bus_resume(hcd);
 	mutex_unlock(&tegra->sync_lock);
 	EHCI_DBG("%s() END\n", __func__);
@@ -560,7 +565,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail_phy;
 	}
 
-	err = tegra_usb_phy_init(tegra->phy);
+	err = usb_phy_init(get_usb_phy(tegra->phy));
 	if (err) {
 		dev_err(&pdev->dev, "failed to init the phy\n");
 		goto fail_phy;
@@ -592,7 +597,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	return err;
 
 fail_phy:
-	usb_phy_shutdown(&tegra->phy->u_phy);
+	usb_phy_shutdown(get_usb_phy(tegra->phy));
 fail_io:
 	usb_put_hcd(hcd);
 
@@ -638,7 +643,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);
-	usb_phy_shutdown(&tegra->phy->u_phy);
+	usb_phy_shutdown(get_usb_phy(tegra->phy));
 
 	return 0;
 }
