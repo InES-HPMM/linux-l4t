@@ -1216,6 +1216,12 @@ static struct usb_ep_ops tegra_ep_ops = {
 	.fifo_flush = tegra_ep_fifo_flush,	/* flush fifo */
 };
 
+
+static struct usb_phy *get_usb_phy(struct tegra_usb_phy *x)
+{
+	return (struct usb_phy *)x;
+}
+
 /* Get the current frame number (from DR frame_index Reg ) */
 static int tegra_get_frame(struct usb_gadget *gadget)
 {
@@ -1439,7 +1445,7 @@ static void tegra_udc_release(struct device *dev)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 
 	complete(udc->done);
-	tegra_usb_phy_close(udc->phy);
+	usb_phy_shutdown(get_usb_phy(udc->phy));
 	kfree(udc);
 }
 
@@ -2658,7 +2664,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_phy;
 	}
 
-	err = tegra_usb_phy_init(udc->phy);
+	err = usb_phy_init(get_usb_phy(udc->phy));
 	if (err) {
 		dev_err(&pdev->dev, "failed to init the phy\n");
 		goto err_phy;
@@ -2764,7 +2770,7 @@ err_unregister:
 	device_unregister(&udc->gadget.dev);
 
 err_phy:
-	tegra_usb_phy_close(udc->phy);
+	usb_phy_shutdown(get_usb_phy(udc->phy));
 
 err_irq:
 	free_irq(udc->irq, udc);
