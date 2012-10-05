@@ -51,6 +51,14 @@
 #include "fuse.h"
 #include "iomap.h"
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#include "tegra2_fuse_offsets.h"
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#include "tegra3_fuse_offsets.h"
+#else
+#include "tegra11x_fuse_offsets.h"
+#endif
+
 #define NFUSES	64
 #define STATE_IDLE	(0x4 << 16)
 #define SENSE_DONE	(0x1 << 30)
@@ -129,113 +137,6 @@ struct param_info {
 	int data_offset;
 	char sysfs_name[FUSE_NAME_LEN];
 };
-
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-
-/* private_key4 */
-#define DEVKEY_START_OFFSET 0x12
-#define DEVKEY_START_BIT    8
-
-/* arm_debug_dis */
-#define JTAG_START_OFFSET 0x0
-#define JTAG_START_BIT    24
-
-/* security_mode */
-#define ODM_PROD_START_OFFSET 0x0
-#define ODM_PROD_START_BIT    23
-
-/* boot_device_info */
-#define SB_DEVCFG_START_OFFSET 0x14
-#define SB_DEVCFG_START_BIT    8
-
-/* reserved_sw[2:0] */
-#define SB_DEVSEL_START_OFFSET 0x14
-#define SB_DEVSEL_START_BIT    24
-
-/* private_key0 -> private_key3 */
-#define SBK_START_OFFSET 0x0A
-#define SBK_START_BIT    8
-
-/* reserved_sw[7:4] */
-#define SW_RESERVED_START_OFFSET 0x14
-#define SW_RESERVED_START_BIT    28
-
-/* reserved_sw[3] */
-#define IGNORE_DEVSEL_START_OFFSET 0x14
-#define IGNORE_DEVSEL_START_BIT    27
-
-/* reserved_odm0 -> reserved_odm7 */
-#define ODM_RESERVED_DEVSEL_START_OFFSET 0x16
-#define ODM_RESERVED_START_BIT           4
-
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-
-/* private_key4 */
-#define DEVKEY_START_OFFSET 0x16
-#define DEVKEY_START_BIT    22
-
-/* arm_debug_dis */
-#define JTAG_START_OFFSET 0x0
-#define JTAG_START_BIT    24
-
-/* security_mode */
-#define ODM_PROD_START_OFFSET 0x0
-#define ODM_PROD_START_BIT    23
-
-/* boot_device_info */
-#define SB_DEVCFG_START_OFFSET 0x18
-#define SB_DEVCFG_START_BIT    22
-
-/* reserved_sw[2:0] */
-#define SB_DEVSEL_START_OFFSET 0x1A
-#define SB_DEVSEL_START_BIT    6
-
-/* private_key0 -> private_key3 */
-#define SBK_START_OFFSET 0x0E
-#define SBK_START_BIT    22
-
-/* reserved_sw[7:4] */
-#define SW_RESERVED_START_OFFSET 0x1A
-#define SW_RESERVED_START_BIT    10
-
-/* reserved_sw[3] */
-#define IGNORE_DEVSEL_START_OFFSET 0x1A
-#define IGNORE_DEVSEL_START_BIT    9
-
-/* reserved_odm0 -> reserved_odm7 */
-#define ODM_RESERVED_DEVSEL_START_OFFSET 0x1A
-#define ODM_RESERVED_START_BIT    14
-
-#else
-
-#define DEVKEY_START_OFFSET 0x2C
-#define DEVKEY_START_BIT    0x07
-
-#define JTAG_START_OFFSET 0x0
-#define JTAG_START_BIT    0x3
-
-#define ODM_PROD_START_OFFSET 0x0
-#define ODM_PROD_START_BIT    0x4
-
-#define SB_DEVCFG_START_OFFSET 0x2E
-#define SB_DEVCFG_START_BIT    0x07
-
-#define SB_DEVSEL_START_OFFSET 0x2E
-#define SB_DEVSEL_START_BIT    0x23
-
-#define SBK_START_OFFSET 0x24
-#define SBK_START_BIT    0x07
-
-#define SW_RESERVED_START_OFFSET 0x2E
-#define SW_RESERVED_START_BIT    0x07
-
-#define IGNORE_DEVSEL_START_OFFSET 0x2E
-#define IGNORE_DEVSEL_START_BIT    0x26
-
-#define ODM_RESERVED_DEVSEL_START_OFFSET 0X30
-#define ODM_RESERVED_START_BIT    0X0
-
-#endif
 
 static struct param_info fuse_info_tbl[] = {
 	[DEVKEY] = {
