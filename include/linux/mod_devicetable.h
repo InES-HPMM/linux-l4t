@@ -421,6 +421,17 @@ struct i2c_device_id {
 	kernel_ulong_t driver_data;	/* Data private to the driver */
 };
 
+/* mipi_bif */
+
+#define MIPI_BIF_NAME_SIZE	20
+#define MIPI_BIF_MODULE_PREFIX "mipi_bif:"
+
+struct mipi_bif_device_id {
+	char name[MIPI_BIF_NAME_SIZE];
+	kernel_ulong_t driver_data	/* Data private to the driver */
+			__attribute__((aligned(sizeof(kernel_ulong_t))));
+};
+
 /* spi */
 
 #define SPI_NAME_SIZE	32
