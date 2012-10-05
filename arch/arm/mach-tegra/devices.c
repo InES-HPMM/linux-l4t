@@ -24,6 +24,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c-tegra.h>
+#include <linux/mipi-bif-tegra.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_avp.h>
 #include <linux/nvhost.h>
@@ -374,6 +375,39 @@ struct platform_device tegra11_i2c_device5 = {
 		.platform_data = 0,
 	},
 };
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+
+static struct tegra_mipi_bif_platform_data mipi_bif_pdata = {
+	.adapter_nr	= -1,
+	.tauBIF		= 2,
+	.bus_clk_rate	= 13,
+};
+
+static struct resource mipi_bif_resource[] = {
+	[0] = {
+		.start	= INT_MIPI_BIF,
+		.end	= INT_MIPI_BIF,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_MIPI_BIF_BASE,
+		.end	= TEGRA_MIPI_BIF_BASE + TEGRA_MIPI_BIF_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device tegra_mipi_bif_device = {
+	.name		= "tegra-mipi-bif",
+	.id		= -1,
+	.resource	= mipi_bif_resource,
+	.num_resources	= ARRAY_SIZE(mipi_bif_resource),
+	.dev = {
+		.platform_data = &mipi_bif_pdata,
+	},
+};
+
 #endif
 
 static struct resource spi_resource1[] = {

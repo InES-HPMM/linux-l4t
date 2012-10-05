@@ -164,6 +164,10 @@ extern struct platform_device tegra_cl_dvfs_device;
 #endif
 extern struct platform_device tegra_fuse_device;
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+extern struct platform_device tegra_mipi_bif_device;
+#endif
+
 void __init tegra_init_debug_uart_rate(void);
 
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
