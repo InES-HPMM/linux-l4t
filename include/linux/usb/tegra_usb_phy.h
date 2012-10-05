@@ -31,7 +31,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev);
  * Handles interrupts specific to the phy interface
  * Note: udc or ehci driver will handle the controller interrupts
  */
-int tegra_usb_phy_irq(struct tegra_usb_phy *phy);
+irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy);
 
 /**
  * Handles phy interface specific functionality after driver reset
