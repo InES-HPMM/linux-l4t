@@ -148,7 +148,8 @@ int __init dalmore_kbc_init(void)
 	pr_info("Registering successful tegra-kbc\n");
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id != BOARD_E1611)
+	if (board_info.board_id != BOARD_E1611 &&
+		board_info.board_id != BOARD_P2454)
 		platform_device_register(&dalmore_int_keys_device);
 	else if (board_info.board_id == BOARD_E1611)
 		platform_device_register(&dalmore_e1611_int_keys_device);

@@ -1091,7 +1091,8 @@ static int __init dalmore_fixed_regulator_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_E1611)
+	if (board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454)
 		return platform_add_devices(fixed_reg_devs_e1611_a00,
 				ARRAY_SIZE(fixed_reg_devs_e1611_a00));
 	else
@@ -1109,7 +1110,8 @@ int __init dalmore_regulator_init(void)
 	dalmore_cl_dvfs_init();
 #endif
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1611)
+	if (board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454)
 		dalmore_palmas_regulator_init();
 	else
 		dalmore_max77663_regulator_init();

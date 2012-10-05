@@ -440,7 +440,8 @@ static int dalmore_nct1008_init(void)
 	if ((board_info.board_id == BOARD_E1611) ||
 	    (board_info.board_id == BOARD_E1612) ||
 	    (board_info.board_id == BOARD_E1641) ||
-	    (board_info.board_id == BOARD_E1613))
+	    (board_info.board_id == BOARD_E1613) ||
+	    (board_info.board_id == BOARD_P2454))
 	{
 		/* per email from Matt 9/10/2012 */
 		nct1008_port = TEGRA_GPIO_PX6;

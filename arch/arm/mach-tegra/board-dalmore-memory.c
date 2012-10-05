@@ -438,7 +438,8 @@ static struct tegra11_emc_pdata *dalmore_get_emc_data(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id == BOARD_E1611)
+	if (board_info.board_id == BOARD_E1611 ||
+		board_info.board_id == BOARD_P2454)
 		return &e1611_h5tc4g63mfr_pba_pdata;
 
 	return &e1613_h9ccnnn8jtmlar_ntm_pdata;
