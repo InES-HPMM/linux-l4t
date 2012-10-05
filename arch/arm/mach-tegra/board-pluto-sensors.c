@@ -382,6 +382,7 @@ static int pluto_nct1008_init(void)
 			pluto_nct1008_pdata.active[i].cdev_data = (void *)i;
 			pluto_nct1008_pdata.active[i].trip_temp =
 				cpu_edp_limits[i].temperature * 1000;
+			pluto_nct1008_pdata.active[i].hysteresis = 1000;
 		}
 		pluto_nct1008_pdata.active[i].create_cdev = NULL;
 #endif

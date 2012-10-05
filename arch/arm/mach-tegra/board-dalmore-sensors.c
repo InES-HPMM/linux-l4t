@@ -416,6 +416,7 @@ static int dalmore_nct1008_init(void)
 			dalmore_nct1008_pdata.active[i].cdev_data = (void *)i;
 			dalmore_nct1008_pdata.active[i].trip_temp =
 				cpu_edp_limits[i].temperature * 1000;
+			dalmore_nct1008_pdata.active[i].hysteresis = 1000;
 		}
 		dalmore_nct1008_pdata.active[i].create_cdev = NULL;
 #endif
