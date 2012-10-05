@@ -541,4 +541,11 @@ config USB_NET_RAW_IP
 	  To compile this driver as a module, choose M here: the
 	  module will be called rmnet.
 
+config USB_NET_SMSC95XX_VOH_MODE
+	bool "VOH mode for SMSC95XX"
+	depends on USB_NET_SMSC95XX
+	default n
+	help
+	  This option enables VOH mode which is required for SMSC compliance.
+
 endmenu

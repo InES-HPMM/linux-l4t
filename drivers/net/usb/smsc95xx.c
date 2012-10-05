@@ -1,7 +1,7 @@
  /***************************************************************************
  *
  * Copyright (C) 2007-2008 SMSC
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -558,6 +558,56 @@ static int smsc95xx_phy_update_flowcontrol(struct usbnet *dev, u8 duplex,
 	return smsc95xx_write_reg(dev, AFC_CFG, afc_cfg);
 }
 
+#ifdef CONFIG_USB_NET_SMSC95XX_VOH_MODE
+static int smsc95xx_set_voh_mode(struct net_device *netdev, int phy_id)
+{
+	int val;
+	unsigned long start_time;
+
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0400);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x0400);
+	smsc95xx_mdio_write(netdev, phy_id, 0x17, 0x85e8);
+
+	start_time = jiffies;
+
+	do {
+		val = smsc95xx_mdio_read(netdev, phy_id, 0x14);
+		if (!(val & 0x4000))
+			break;
+		netdev_dbg(netdev, "mii reg 14 = %x\n", val);
+	} while (!time_after(jiffies, start_time + HZ));
+
+	if (val & 0x4000)
+		netdev_dbg(netdev, "timeout reading mii!\n");
+
+
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x4416);
+	smsc95xx_mdio_write(netdev, phy_id, 0x14, 0x86c0);
+
+	start_time = jiffies;
+
+	do {
+		val = smsc95xx_mdio_read(netdev, phy_id, 0x14);
+		if (!(val & 0x8000))
+			break;
+	} while (!time_after(jiffies, start_time + HZ));
+
+	if (val & 0x8000)
+		netdev_dbg(netdev, "timeout reading mii!\n");
+
+	val = smsc95xx_mdio_read(netdev, phy_id, 0x15);
+
+	if (val & 0x0300) {
+		netdev_info(netdev, "smsc9500: VOH mode enabled\n");
+		return 0;
+	} else {
+		netdev_warn(netdev, "smsc9500: problem enabling VOH mode\n");
+		return -1;
+	}
+}
+#endif
+
 static int smsc95xx_link_reset(struct usbnet *dev)
 {
 	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
@@ -575,6 +625,10 @@ static int smsc95xx_link_reset(struct usbnet *dev)
 	ret = smsc95xx_write_reg(dev, INT_STS, INT_STS_CLEAR_ALL_);
 	if (ret < 0)
 		return ret;
+
+#ifdef CONFIG_USB_NET_SMSC95XX_VOH_MODE
+	smsc95xx_set_voh_mode(dev->net, mii->phy_id);
+#endif
 
 	mii_check_media(mii, 1, 1);
 	mii_ethtool_gset(&dev->mii, &ecmd);
