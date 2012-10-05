@@ -252,8 +252,8 @@ fail_pll:
 
 void tegra_usb_phy_close(struct usb_phy *x)
 {
-+	struct tegra_usb_phy *phy = get_tegra_phy(x);
-	
+	struct tegra_usb_phy *phy = get_tegra_phy(x);
+
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->ops && phy->ops->close)
@@ -322,7 +322,6 @@ int tegra_usb_phy_init(struct usb_phy *x)
 
 	return status;
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_init);
 
 int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 {
@@ -458,13 +457,11 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 	if (phy->ops && phy->ops->suspend)
 		err = phy->ops->suspend(phy);
 
-	if (!err && phy->pdata->u_data.host.power_off_on_suspend) {
+	if (!err && phy->pdata->u_data.host.power_off_on_suspend)
 		tegra_usb_phy_power_off(phy);
-	}
 
 	return err;
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_suspend);
 
 int tegra_usb_phy_post_suspend(struct tegra_usb_phy *phy)
 {
@@ -514,7 +511,6 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	return err;
 
 }
-EXPORT_SYMBOL_GPL(tegra_usb_phy_resume);
 
 int tegra_usb_phy_post_resume(struct tegra_usb_phy *phy)
 {
@@ -650,20 +646,22 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "inst:[%d] Platform data missing\n",
 								pdev->id);
-		return ERR_PTR(-EINVAL);
+		err = -EINVAL;
+		goto fail_inval;
 	}
 
 	phy = devm_kzalloc(&pdev->dev, sizeof(struct tegra_usb_phy), GFP_KERNEL);
 	if (!phy) {
 		ERR("inst:[%d] malloc usb phy failed\n", pdev->id);
-		return ERR_PTR(-ENOMEM);
+		err = -ENOMEM;
+		goto fail_nomem;
 	}
 
 	phy->pdata = devm_kzalloc(&pdev->dev, plat_data_size, GFP_KERNEL);
 	if (!phy->pdata) {
 		ERR("inst:[%d] malloc usb phy pdata failed\n", pdev->id);
-		kfree(phy);
-		return ERR_PTR(-ENOMEM);
+		err = -ENOMEM;
+		goto fail_nomem;
 	}
 
 	memcpy(phy->pdata, pdata, plat_data_size);
@@ -678,13 +676,15 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		ERR("inst:[%d] failed to get I/O memory\n", phy->inst);
-		return ERR_PTR(-ENXIO);
+		err = -ENXIO;
+		goto fail_io;
 	}
 
 	phy->regs = ioremap(res->start, resource_size(res));
 	if (!phy->regs) {
 		ERR("inst:[%d] Failed to remap I/O memory\n", phy->inst);
-		return ERR_PTR(-ENOMEM);
+		err = -ENOMEM;
+		goto fail_io;
 	}
 
 	phy->vdd_reg = regulator_get(&pdev->dev, "avdd_usb");
@@ -789,7 +789,9 @@ fail_init:
 fail_clk:
 	regulator_put(phy->vdd_reg);
 	iounmap(phy->regs);
+
+fail_nomem:
+fail_inval:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
-
