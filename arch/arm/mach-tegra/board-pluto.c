@@ -789,8 +789,8 @@ static void __init pluto_spi_init(void)
 
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       true},
-	{ "clk_out_2",  "extern2",      40800000,       true},
+	{ "extern2",    "pll_p",        41000000,       false},
+	{ "clk_out_2",  "extern2",      40800000,       false},
 	{ NULL,         NULL,           0,              0},
 };
 
