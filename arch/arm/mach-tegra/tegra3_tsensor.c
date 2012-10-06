@@ -79,7 +79,7 @@ static struct tegra_tsensor_platform_data tsensor_data = {
 	.passive = {
 		.trip_temp = 85 + TDIODE_OFFSET - TSENSOR_OFFSET,
 		.tc1 = 0,
-		.tc1 = 1,
+		.tc2 = 1,
 		.passive_delay = 2000,
 	}
 };
