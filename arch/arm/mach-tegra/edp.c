@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/edp.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (C) 2011-2012, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -472,7 +472,8 @@ unsigned int edp_calculate_maxf(unsigned int a_temp,
 static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 				unsigned int cpu_speedo_idx)
 {
-	unsigned int i, j, freq, voltage_mV, a_voltage_lut_size;
+	unsigned int i, j, freq, a_voltage_lut_size;
+	int voltage_mV;
 	struct a_voltage_lut_t *a_voltage_lut;
 
 	a_voltage_lut = edp_constants_lut[cpu_speedo_idx].a_voltage_lut;
