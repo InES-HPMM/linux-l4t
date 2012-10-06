@@ -39,6 +39,15 @@ config USB_XHCI_HCD_DEBUGGING
 
 	  If unsure, say N.
 
+config TEGRA_XUSB_PLATFORM
+	bool "Enable NVIDIA's Tegra XHCI host controller"
+	---help---
+	  Say 'Y' to turn on support for NVIDIA xHCI Host controller
+	  driver.
+
+	  This will enable USB3.0 functionality on the USB3.0 ports.
+	  If unsure, say N.
+
 endif # USB_XHCI_HCD
 
 config USB_EHCI_HCD

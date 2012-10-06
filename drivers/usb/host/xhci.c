@@ -4736,6 +4736,11 @@ error:
 	return retval;
 }
 
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+#include "xhci-tegra.c"
+#define PLATFORM_DRIVER	tegra_xhci_driver
+#endif
+
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_LICENSE("GPL");
@@ -4754,6 +4759,15 @@ static int __init xhci_hcd_init(void)
 		printk(KERN_DEBUG "Problem registering platform driver.");
 		goto unreg_pci;
 	}
+
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+	retval = tegra_xhci_register_plat();
+	if (retval < 0) {
+		printk(KERN_DEBUG "Problem registering platform driver.");
+		goto unreg_pci;
+	}
+#endif
+
 	/*
 	 * Check the compiler generated sizes of structures that must be laid
 	 * out in specific ways for hardware access.
@@ -4782,5 +4796,8 @@ static void __exit xhci_hcd_cleanup(void)
 {
 	xhci_unregister_pci();
 	xhci_unregister_plat();
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
+	tegra_xhci_unregister_plat();
+#endif
 }
 module_exit(xhci_hcd_cleanup);
