@@ -46,6 +46,7 @@
 #include "gpio-names.h"
 #include "board-dalmore.h"
 #include "tegra_cl_dvfs.h"
+#include "devices.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -1025,7 +1026,7 @@ static inline void fill_reg_map(void)
 	}
 }
 
-static struct tegra_cl_dvfs_platform_data dalmore_dfll_cpu_data = {
+static struct tegra_cl_dvfs_platform_data dalmore_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
 	.u.pmu_i2c = {
@@ -1038,6 +1039,15 @@ static struct tegra_cl_dvfs_platform_data dalmore_dfll_cpu_data = {
 
 	.cfg_param = &dalmore_cl_dvfs_param,
 };
+
+static int __init dalmore_cl_dvfs_init(void)
+{
+	fill_reg_map();
+	tegra_cl_dvfs_device.dev.platform_data = &dalmore_cl_dvfs_data;
+	platform_device_register(&tegra_cl_dvfs_device);
+
+	return 0;
+}
 
 static int __init dalmore_max77663_regulator_init(void)
 {
@@ -1101,8 +1111,7 @@ int __init dalmore_regulator_init(void)
 	i2c_register_board_info(4, tps65090_regulators,
 			ARRAY_SIZE(tps65090_regulators));
 
-	fill_reg_map();
-	tegra_cl_dvfs_set_platform_data(&dalmore_dfll_cpu_data);
+	dalmore_cl_dvfs_init();
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1611)

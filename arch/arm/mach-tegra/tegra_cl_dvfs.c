@@ -28,6 +28,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -410,7 +411,7 @@ static void cl_dvfs_disable_clocks(struct tegra_cl_dvfs *cld)
 	clk_disable(cld->soc_clk);
 }
 
-int __init tegra_init_cl_dvfs(struct tegra_cl_dvfs *cld)
+static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 {
 	int ret;
 
@@ -487,11 +488,45 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 	}
 }
 
-void tegra_cl_dvfs_set_platform_data(struct tegra_cl_dvfs_platform_data *data)
+static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
-	struct clk *c = tegra_get_clock_by_name(data->dfll_clk_name);
-	if (c && c->u.dfll.cl_dvfs)
-		c->u.dfll.cl_dvfs->p_data = data;
+	struct tegra_cl_dvfs_platform_data *p_data;
+	struct resource *res;
+	struct clk *c;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&pdev->dev, "missing register base\n");
+		return -ENOMEM;
+	}
+
+	p_data = pdev->dev.platform_data;
+	if (!p_data) {
+		dev_err(&pdev->dev, "missing platform data\n");
+		return -ENODATA;
+	}
+	c = tegra_get_clock_by_name(p_data->dfll_clk_name);
+	if (!c || !c->u.dfll.cl_dvfs) {
+		dev_err(&pdev->dev, "missing target dfll\n");
+		return -ENODATA;
+	}
+
+	c->u.dfll.cl_dvfs->cl_base = IO_ADDRESS(res->start);
+	c->u.dfll.cl_dvfs->p_data = p_data;
+	return cl_dvfs_init(c->u.dfll.cl_dvfs);
+}
+
+static struct platform_driver tegra_cl_dvfs_driver = {
+	.driver         = {
+		.name   = "tegra_cl_dvfs",
+		.owner  = THIS_MODULE,
+	},
+};
+
+int __init tegra_init_cl_dvfs(void)
+{
+	return platform_driver_probe(&tegra_cl_dvfs_driver,
+				     tegra_cl_dvfs_probe);
 }
 
 /*

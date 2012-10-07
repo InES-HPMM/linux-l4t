@@ -35,6 +35,7 @@
 #include "board.h"
 #include "board-pluto.h"
 #include "tegra_cl_dvfs.h"
+#include "devices.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -555,7 +556,7 @@ static inline void fill_reg_map(void)
 	}
 }
 
-static struct tegra_cl_dvfs_platform_data pluto_dfll_cpu_data = {
+static struct tegra_cl_dvfs_platform_data pluto_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
 	.u.pmu_i2c = {
@@ -568,6 +569,15 @@ static struct tegra_cl_dvfs_platform_data pluto_dfll_cpu_data = {
 
 	.cfg_param = &pluto_cl_dvfs_param,
 };
+
+static int __init pluto_cl_dvfs_init(void)
+{
+	fill_reg_map();
+	tegra_cl_dvfs_device.dev.platform_data = &pluto_cl_dvfs_data;
+	platform_device_register(&tegra_cl_dvfs_device);
+
+	return 0;
+}
 
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
@@ -609,8 +619,7 @@ int __init pluto_regulator_init(void)
 	u32 pmc_ctrl;
 	int i;
 
-	fill_reg_map();
-	tegra_cl_dvfs_set_platform_data(&pluto_dfll_cpu_data);
+	pluto_cl_dvfs_init();
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU

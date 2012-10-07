@@ -2083,6 +2083,23 @@ struct platform_device tegra_cec_device = {
 };
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+static struct resource cl_dvfs_resource[] = {
+	[0] = {
+		.start	= TEGRA_CL_DVFS_BASE,
+		.end	= TEGRA_CL_DVFS_BASE + TEGRA_CL_DVFS_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	}
+};
+
+struct platform_device tegra_cl_dvfs_device = {
+	.name		= "tegra_cl_dvfs",
+	.id		= 0,
+	.resource	= cl_dvfs_resource,
+	.num_resources	= ARRAY_SIZE(cl_dvfs_resource),
+};
+#endif
+
 void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;

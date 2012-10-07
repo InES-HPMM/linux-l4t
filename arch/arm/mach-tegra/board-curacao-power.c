@@ -39,6 +39,7 @@
 #include "tegra_cl_dvfs.h"
 #include "gpio-names.h"
 #include "tegra11_soctherm.h"
+#include "devices.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -451,6 +452,15 @@ static struct tegra_cl_dvfs_platform_data curacao_cl_dvfs_data = {
 	.cfg_param = &curacao_cl_dvfs_param,
 };
 
+static int __init curacao_cl_dvfs_init(void)
+{
+	fill_reg_map();
+	tegra_cl_dvfs_device.dev.platform_data = &curacao_cl_dvfs_data;
+	platform_device_register(&tegra_cl_dvfs_device);
+
+	return 0;
+}
+
 int __init curacao_regulator_init(void)
 {
 	int ret;
@@ -460,8 +470,7 @@ int __init curacao_regulator_init(void)
 	if (ret < 0)
 		return ret;
 
-	fill_reg_map();
-	tegra_cl_dvfs_set_platform_data(&curacao_cl_dvfs_data);
+	curacao_cl_dvfs_init();
 
 	return platform_add_devices(gpio_regs_devices,
 			ARRAY_SIZE(gpio_regs_devices));
