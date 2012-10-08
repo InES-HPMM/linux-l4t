@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -171,7 +171,8 @@ int tegra_wake_to_irq(int wake)
 	if (wake < 0)
 		return -EINVAL;
 
-	if (wake >= ARRAY_SIZE(tegra_wake_event_irq))
+	if ((wake >= ARRAY_SIZE(tegra_wake_event_irq)) ||
+		(wake >= ARRAY_SIZE(tegra_gpio_wakes)))
 		return -EINVAL;
 
 	ret = tegra_wake_event_irq[wake];
