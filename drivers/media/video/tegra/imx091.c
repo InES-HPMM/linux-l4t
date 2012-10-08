@@ -17,6 +17,7 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/regulator/consumer.h>
 #include <media/imx091.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
@@ -27,16 +28,17 @@ struct imx091_reg {
 };
 
 struct imx091_info {
-	int                         mode;
-	struct imx091_sensordata    sensor_data;
-	struct i2c_client           *i2c_client;
-	struct imx091_platform_data *pdata;
-	atomic_t                    in_use;
+	struct miscdevice		miscdev_info;
+	int				mode;
+	struct imx091_power_rail	power;
+	struct imx091_sensordata	sensor_data;
+	struct i2c_client		*i2c_client;
+	struct imx091_platform_data	*pdata;
+	atomic_t			in_use;
 };
 
 #define IMX091_TABLE_WAIT_MS 0
 #define IMX091_TABLE_END 1
-#define IMX091_MAX_RETRIES 3
 
 #define IMX091_WAIT_MS 3
 
@@ -901,7 +903,6 @@ imx091_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	int err;
 	struct i2c_msg msg;
 	unsigned char data[3];
-	int retry = 0;
 
 	if (!client->adapter)
 		return -ENODEV;
@@ -915,15 +916,12 @@ imx091_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	msg.len = 3;
 	msg.buf = data;
 
-	do {
-		err = i2c_transfer(client->adapter, &msg, 1);
-		if (err == 1)
-			return 0;
-		retry++;
-		pr_err("[IMX091]:%s:i2c transfer failed, retrying %x %x\n",
-		       __func__, addr, val);
-		msleep_range(3);
-	} while (retry <= IMX091_MAX_RETRIES);
+	err = i2c_transfer(client->adapter, &msg, 1);
+	if (err == 1)
+		return 0;
+
+	pr_err("%s:i2c write failed, %x = %x\n",
+	       __func__, addr, val);
 
 	return err;
 }
@@ -960,7 +958,7 @@ imx091_write_table(struct i2c_client *client,
 
 		err = imx091_write_reg(client, next->addr, val);
 		if (err) {
-			pr_err("[IMX091]:%s:imx091_write_table:%d", __func__, err);
+			pr_err("%s:imx091_write_table:%d", __func__, err);
 			return err;
 		}
 	}
@@ -974,7 +972,7 @@ imx091_set_mode(struct imx091_info *info, struct imx091_mode *mode)
 	int err;
 	struct imx091_reg reg_list[5];
 
-	pr_info("[IMX091]:%s: xres %u yres %u framelength %u coarsetime %u gain %u\n",
+	pr_info("%s: xres %u yres %u framelength %u coarsetime %u gain %u\n",
 			 __func__, mode->xres, mode->yres, mode->frame_length,
 			 mode->coarse_time, mode->gain);
 
@@ -993,7 +991,7 @@ imx091_set_mode(struct imx091_info *info, struct imx091_mode *mode)
 	else if (mode->xres == 1280 && mode->yres == 720)
 		sensor_mode = IMX091_MODE_1308X736;
 	else {
-		pr_err("[IMX091]:%s: invalid resolution supplied to set mode %d %d\n",
+		pr_err("%s: invalid resolution supplied to set mode %d %d\n",
 			 __func__, mode->xres, mode->yres);
 		return -EINVAL;
 	}
@@ -1187,10 +1185,9 @@ imx091_ioctl(struct file *file,
 	case IMX091_IOCTL_SET_MODE:
 	{
 		struct imx091_mode mode;
-		if (copy_from_user(&mode,
-			 (const void __user *)arg,
-			 sizeof(struct imx091_mode))) {
-			pr_err("[IMX091]:%s:Failed to get mode from user.\n", __func__);
+		if (copy_from_user(&mode, (const void __user *)arg,
+			sizeof(struct imx091_mode))) {
+			pr_err("%s:Failed to get mode from user.\n", __func__);
 			return -EFAULT;
 		}
 		return imx091_set_mode(info, &mode);
@@ -1209,7 +1206,7 @@ imx091_ioctl(struct file *file,
 		if (err)
 			return err;
 		if (copy_to_user((void __user *)arg, &status, 1)) {
-			pr_err("[IMX091]:%s:Failed to copy status to user.\n", __func__);
+			pr_err("%s:Failed to copy status to user\n", __func__);
 			return -EFAULT;
 			}
 		return 0;
@@ -1219,14 +1216,13 @@ imx091_ioctl(struct file *file,
 		err = imx091_get_sensor_id(info);
 
 		if (err) {
-			pr_err("[IMX091]:%s:Failed to get fuse id info.\n", __func__);
+			pr_err("%s:Failed to get fuse id info.\n", __func__);
 			return err;
 		}
-		if (copy_to_user((void __user *)arg,
-						 &info->sensor_data,
-						 sizeof(struct imx091_sensordata))) {
-			pr_info("[IMX091]:%s:Failed to copy fuse id to user space\n",
-					__func__);
+		if (copy_to_user((void __user *)arg, &info->sensor_data,
+				sizeof(struct imx091_sensordata))) {
+			pr_info("%s:Failed to copy fuse id to user space\n",
+				__func__);
 			return -EFAULT;
 		}
 		return 0;
@@ -1236,35 +1232,37 @@ imx091_ioctl(struct file *file,
 	  struct imx091_ae ae;
 	  if (copy_from_user(&ae, (const void __user *)arg,
 			sizeof(struct imx091_ae))) {
-		pr_info("[IMX091]:%s:fail group hold\n", __func__);
+		pr_info("%s:fail group hold\n", __func__);
 		return -EFAULT;
 	  }
 	  return imx091_set_group_hold(info, &ae);
 	}
 	default:
-	  pr_err("[IMX091]:%s:unknown cmd.\n", __func__);
+	  pr_err("%s:unknown cmd.\n", __func__);
 	  return -EINVAL;
 	}
 	return 0;
 }
 
-static struct imx091_info *info;
-
 static int
 imx091_open(struct inode *inode, struct file *file)
 {
+	struct miscdevice	*miscdev = file->private_data;
+	struct imx091_info *info;
+
+	info = container_of(miscdev, struct imx091_info, miscdev_info);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
-		pr_info("[IMX091]:%s:BUSY!\n", __func__);
+		pr_info("%s:BUSY!\n", __func__);
 		return -EBUSY;
 	}
 
 	file->private_data = info;
 
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->i2c_client->dev);
+		info->pdata->power_on(&info->power);
 	else{
-		pr_err("[IMX091]:%s:no valid power_on function.\n", __func__);
+		pr_err("%s:no valid power_on function.\n", __func__);
 		return -EEXIST;
 	}
 
@@ -1274,8 +1272,10 @@ imx091_open(struct inode *inode, struct file *file)
 static int
 imx091_release(struct inode *inode, struct file *file)
 {
+	struct imx091_info *info = file->private_data;
+
 	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->i2c_client->dev);
+		info->pdata->power_off(&info->power);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -1283,6 +1283,57 @@ imx091_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static int imx091_power_put(struct imx091_power_rail *pw)
+{
+	if (unlikely(!pw))
+		return -EFAULT;
+
+	if (likely(pw->avdd))
+		regulator_put(pw->avdd);
+
+	if (likely(pw->iovdd))
+		regulator_put(pw->iovdd);
+
+	if (likely(pw->dvdd))
+		regulator_put(pw->dvdd);
+
+	pw->avdd = NULL;
+	pw->iovdd = NULL;
+	pw->dvdd = NULL;
+
+	return 0;
+}
+
+static int imx091_regulator_get(struct imx091_info *info,
+	struct regulator **vreg, char vreg_name[])
+{
+	struct regulator *reg = NULL;
+	int err = 0;
+
+	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	if (unlikely(IS_ERR(reg))) {
+		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			__func__, vreg_name, (int)reg);
+		err = PTR_ERR(reg);
+		reg = NULL;
+	} else
+		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
+			__func__, vreg_name);
+
+	*vreg = reg;
+	return err;
+}
+
+static int imx091_power_get(struct imx091_info *info)
+{
+	struct imx091_power_rail *pw = &info->power;
+
+	imx091_regulator_get(info, &pw->avdd, "vana"); /* ananlog 2.7v */
+	imx091_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
+	imx091_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
+
+	return 0;
+}
 
 static const struct file_operations imx091_fileops = {
 	.owner = THIS_MODULE,
@@ -1301,21 +1352,16 @@ static int
 imx091_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
+	struct imx091_info *info;
 	int err;
 
 	pr_info("[IMX091]: probing sensor.\n");
 
-	info = kzalloc(sizeof(struct imx091_info), GFP_KERNEL);
+	info = devm_kzalloc(&client->dev,
+			sizeof(struct imx091_info), GFP_KERNEL);
 	if (!info) {
-		pr_err("[IMX091]:%s:Unable to allocate memory!\n", __func__);
+		pr_err("%s:Unable to allocate memory!\n", __func__);
 		return -ENOMEM;
-	}
-
-	err = misc_register(&imx091_device);
-	if (err) {
-		pr_err("[IMX091]:%s:Unable to register misc device!\n", __func__);
-		kfree(info);
-		return err;
 	}
 
 	info->pdata = client->dev.platform_data;
@@ -1323,8 +1369,25 @@ imx091_probe(struct i2c_client *client,
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;
 
+	imx091_power_get(info);
+
+	memcpy(&info->miscdev_info,
+		&imx091_device,
+		sizeof(struct miscdevice));
+
+	err = misc_register(&info->miscdev_info);
+	if (err) {
+		pr_err("%s:Unable to register misc device!\n", __func__);
+		goto imx091_probe_fail;
+	}
+
 	i2c_set_clientdata(client, info);
 	return 0;
+
+imx091_probe_fail:
+	imx091_power_put(&info->power);
+
+	return err;
 }
 
 static int
@@ -1333,7 +1396,9 @@ imx091_remove(struct i2c_client *client)
 	struct imx091_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&imx091_device);
-	kfree(info);
+
+	imx091_power_put(&info->power);
+
 	return 0;
 }
 

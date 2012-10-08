@@ -27,6 +27,12 @@ enum ov9772_gpio_type {
 	OV9772_GPIO_TYPE_GP3,
 };
 
+struct ov9772_power_rail {
+	struct regulator *dvdd;
+	struct regulator *avdd;
+	struct regulator *dovdd;
+};
+
 struct ov9772_platform_data {
 	unsigned cfg;
 	unsigned num;
@@ -41,7 +47,7 @@ struct ov9772_platform_data {
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
 	int (*probe_clock)(unsigned long);
-	int (*power_on)(struct device *);
-	int (*power_off)(struct device *);
+	int (*power_on)(struct ov9772_power_rail *);
+	int (*power_off)(struct ov9772_power_rail *);
 };
 #endif  /* __OV9772_H__ */

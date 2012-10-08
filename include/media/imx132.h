@@ -55,9 +55,15 @@ struct imx132_sensordata {
 };
 
 #ifdef __KERNEL__
+struct imx132_power_rail {
+	struct regulator *dvdd;
+	struct regulator *avdd;
+	struct regulator *iovdd;
+};
+
 struct imx132_platform_data {
-	int (*power_on)(struct device *);
-	int (*power_off)(struct device *);
+	int (*power_on)(struct imx132_power_rail *pw);
+	int (*power_off)(struct imx132_power_rail *pw);
 };
 #endif /* __KERNEL__ */
 

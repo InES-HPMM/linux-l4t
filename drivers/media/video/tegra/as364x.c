@@ -253,7 +253,8 @@ static int as364x_set_leds(struct as364x_info *info,
 		val &= ~0x08;
 	else
 		val |= 0x08;
-	pr_info("%s %x %x %x val = %x\n", __func__, mask, curr1, curr2, val);
+	dev_dbg(&info->i2c_client->dev, "%s %x %x %x val = %x\n",
+			__func__, mask, curr1, curr2, val);
 	err |= as364x_reg_wr(info, AS364X_REG_CONTROL, val);
 
 set_led_end:
@@ -674,7 +675,8 @@ static int as364x_get_dev_id(struct as364x_info *info)
 	if ((info->regs.dev_id & 0xb0) == 0xb0)
 		return 0;
 
-	if (NVC_PWR_OFF == info->pwr_state)
+	if (NVC_PWR_OFF == info->pwr_state ||
+		NVC_PWR_OFF_FORCE == info->pwr_state)
 		as364x_power_on(info);
 	err = as364x_reg_rd(info, AS364X_REG_CHIPID, &info->regs.dev_id);
 	if (err)
@@ -686,6 +688,7 @@ static int as364x_get_dev_id(struct as364x_info *info)
 read_devid_exit:
 	if (NVC_PWR_OFF == info->pwr_state)
 		as364x_power_off(info);
+
 	return err;
 }
 
@@ -780,7 +783,7 @@ static int as364x_set_param(struct as364x_info *info,
 
 	switch (params->param) {
 	case NVC_PARAM_FLASH_LEVEL:
-		dev_info(&info->i2c_client->dev, "%s FLASH_LEVEL: %d\n",
+		dev_dbg(&info->i2c_client->dev, "%s FLASH_LEVEL: %d\n",
 				__func__, val);
 		info->regs.ftime =
 			info->flash_cap->levels[val].rechargefactor;
@@ -791,13 +794,13 @@ static int as364x_set_param(struct as364x_info *info,
 			info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST;
 		return err;
 	case NVC_PARAM_TORCH_LEVEL:
-		dev_info(&info->i2c_client->dev, "%s TORCH_LEVEL: %d\n",
+		dev_dbg(&info->i2c_client->dev, "%s TORCH_LEVEL: %d\n",
 				__func__, val);
 		info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST;
 		err = as364x_set_leds(info, info->led_mask, val, val);
 		return err;
 	case NVC_PARAM_FLASH_PIN_STATE:
-		dev_info(&info->i2c_client->dev, "%s FLASH_PIN_STATE: %d\n",
+		dev_dbg(&info->i2c_client->dev, "%s FLASH_PIN_STATE: %d\n",
 				__func__, val);
 		return as364x_strobe(info, val);
 	default:
@@ -1087,6 +1090,7 @@ static int as364x_power_get(struct as364x_info *info)
 
 	as364x_regulator_get(info, &pw->v_in, "vin"); /* 3.7v */
 	as364x_regulator_get(info, &pw->v_i2c, "vi2c"); /* 1.8v */
+	info->pwr_state = NVC_PWR_OFF;
 
 	return 0;
 }

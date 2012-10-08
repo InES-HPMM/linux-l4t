@@ -15,10 +15,11 @@
 
 #define IMX091_IOCTL_SET_MODE			_IOW('o', 1, struct imx091_mode)
 #define IMX091_IOCTL_GET_STATUS			_IOR('o', 2, __u8)
-#define IMX091_IOCTL_SET_FRAME_LENGTH	_IOW('o', 3, __u32)
-#define IMX091_IOCTL_SET_COARSE_TIME	_IOW('o', 4, __u32)
+#define IMX091_IOCTL_SET_FRAME_LENGTH		_IOW('o', 3, __u32)
+#define IMX091_IOCTL_SET_COARSE_TIME		_IOW('o', 4, __u32)
 #define IMX091_IOCTL_SET_GAIN			_IOW('o', 5, __u16)
-#define IMX091_IOCTL_GET_SENSORDATA		_IOR('o', 6, struct imx091_sensordata)
+#define IMX091_IOCTL_GET_SENSORDATA		_IOR('o', 6, \
+						struct imx091_sensordata)
 #define IMX091_IOCTL_SET_GROUP_HOLD		_IOW('o', 7, struct imx091_ae)
 
 struct imx091_mode {
@@ -44,9 +45,15 @@ struct imx091_sensordata {
 };
 
 #ifdef __KERNEL__
+struct imx091_power_rail {
+	struct regulator *dvdd;
+	struct regulator *avdd;
+	struct regulator *iovdd;
+};
+
 struct imx091_platform_data {
-	int (*power_on)(struct device *);
-	int (*power_off)(struct device *);
+	int (*power_on)(struct imx091_power_rail *pw);
+	int (*power_off)(struct imx091_power_rail *pw);
 };
 #endif /* __KERNEL__ */
 

@@ -18,6 +18,7 @@
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/regulator/consumer.h>
 #include <media/imx132.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
@@ -29,16 +30,17 @@ struct imx132_reg {
 };
 
 struct imx132_info {
-	int                         mode;
-	struct imx132_sensordata    sensor_data;
-	struct i2c_client           *i2c_client;
-	struct imx132_platform_data *pdata;
-	atomic_t                    in_use;
+	struct miscdevice		miscdev_info;
+	int				mode;
+	struct imx132_power_rail	power;
+	struct imx132_sensordata	sensor_data;
+	struct i2c_client		*i2c_client;
+	struct imx132_platform_data	*pdata;
+	atomic_t			in_use;
 };
 
 #define IMX132_TABLE_WAIT_MS 0
 #define IMX132_TABLE_END 1
-#define IMX132_MAX_RETRIES 3
 
 #define IMX132_WAIT_MS 5
 
@@ -232,7 +234,6 @@ imx132_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	int err;
 	struct i2c_msg msg;
 	unsigned char data[3];
-	int retry = 0;
 
 	if (!client->adapter)
 		return -ENODEV;
@@ -246,15 +247,12 @@ imx132_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	msg.len = 3;
 	msg.buf = data;
 
-	do {
-		err = i2c_transfer(client->adapter, &msg, 1);
-		if (err == 1)
-			return 0;
-		retry++;
-		pr_err("[imx132]:%s:i2c transfer failed, retrying %x %x\n",
-				__func__, addr, val);
-		msleep_range(3);
-	} while (retry <= IMX132_MAX_RETRIES);
+	err = i2c_transfer(client->adapter, &msg, 1);
+	if (err == 1)
+		return 0;
+
+	dev_err(&client->dev, "%s:i2c write failed, %x = %x\n",
+			__func__, addr, val);
 
 	return err;
 }
@@ -293,7 +291,7 @@ imx132_write_table(struct i2c_client *client,
 
 		err = imx132_write_reg(client, next->addr, val);
 		if (err) {
-			pr_err("[imx132]:%s:imx132_write_table:%d",
+			dev_err(&client->dev, "%s:imx132_write_table:%d",
 				__func__, err);
 			return err;
 		}
@@ -304,18 +302,19 @@ imx132_write_table(struct i2c_client *client,
 static int
 imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 {
+	struct device *dev = &info->i2c_client->dev;
 	int sensor_mode;
 	int err;
 	struct imx132_reg reg_list[5];
 
-	pr_info("[imx132]:%s: res [%ux%u] framelen %u coarsetime %u gain %u\n",
+	dev_info(dev, "%s: res [%ux%u] framelen %u coarsetime %u gain %u\n",
 		__func__, mode->xres, mode->yres,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
 	if (mode->xres == 1920 && mode->yres == 1080)
 		sensor_mode = IMX132_MODE_1920X1080;
 	else {
-		pr_err("[imx132]:%s: invalid resolution to set mode %d %d\n",
+		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
 		return -EINVAL;
 	}
@@ -334,7 +333,7 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		return err;
 
 	info->mode = sensor_mode;
-	pr_info("[imx132]: stream on.\n");
+	dev_info(dev, "[imx132]: stream on.\n");
 	return 0;
 }
 
@@ -517,6 +516,7 @@ imx132_ioctl(struct file *file,
 {
 	int err;
 	struct imx132_info *info = file->private_data;
+	struct device *dev = &info->i2c_client->dev;
 
 	switch (cmd) {
 	case IMX132_IOCTL_SET_MODE:
@@ -525,7 +525,7 @@ imx132_ioctl(struct file *file,
 		if (copy_from_user(&mode,
 			(const void __user *)arg,
 			sizeof(struct imx132_mode))) {
-			pr_err("[imx132]:%s:Failed to get mode from user.\n",
+			dev_err(dev, "%s:Failed to get mode from user.\n",
 			__func__);
 			return -EFAULT;
 		}
@@ -545,7 +545,7 @@ imx132_ioctl(struct file *file,
 		if (err)
 			return err;
 		if (copy_to_user((void __user *)arg, &status, 1)) {
-			pr_err("[imx132]:%s:Failed to copy status to user.\n",
+			dev_err(dev, "%s:Failed to copy status to user.\n",
 			__func__);
 			return -EFAULT;
 		}
@@ -556,14 +556,14 @@ imx132_ioctl(struct file *file,
 		err = imx132_get_sensor_id(info);
 
 		if (err) {
-			pr_err("[imx132]:%s:Failed to get fuse id info.\n",
+			dev_err(dev, "%s:Failed to get fuse id info.\n",
 			__func__);
 			return err;
 		}
 		if (copy_to_user((void __user *)arg,
 				&info->sensor_data,
 				sizeof(struct imx132_sensordata))) {
-			pr_info("[imx132]:%s:Fail copy fuse id to user space\n",
+			dev_info(dev, "%s:Fail copy fuse id to user space\n",
 				__func__);
 			return -EFAULT;
 		}
@@ -574,35 +574,38 @@ imx132_ioctl(struct file *file,
 		struct imx132_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
 				sizeof(struct imx132_ae))) {
-			pr_info("[imx132]:%s:fail group hold\n", __func__);
+			dev_info(dev, "%s:fail group hold\n", __func__);
 			return -EFAULT;
 		}
 		return imx132_set_group_hold(info, &ae);
 	}
 	default:
-		pr_err("[imx132]:%s:unknown cmd.\n", __func__);
+		dev_err(dev, "%s:unknown cmd.\n", __func__);
 		return -EINVAL;
 	}
 	return 0;
 }
 
-static struct imx132_info *info;
-
 static int
 imx132_open(struct inode *inode, struct file *file)
 {
+	struct miscdevice	*miscdev = file->private_data;
+	struct imx132_info	*info;
+
+	info = container_of(miscdev, struct imx132_info, miscdev_info);
 	/* check if the device is in use */
 	if (atomic_xchg(&info->in_use, 1)) {
-		pr_info("[imx132]:%s:BUSY!\n", __func__);
+		dev_info(&info->i2c_client->dev, "%s:BUSY!\n", __func__);
 		return -EBUSY;
 	}
 
 	file->private_data = info;
 
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->i2c_client->dev);
+		info->pdata->power_on(&info->power);
 	else {
-		pr_err("[imx132]:%s:no valid power_on function.\n", __func__);
+		dev_err(&info->i2c_client->dev,
+			"%s:no valid power_on function.\n", __func__);
 		return -EEXIST;
 	}
 
@@ -612,8 +615,10 @@ imx132_open(struct inode *inode, struct file *file)
 static int
 imx132_release(struct inode *inode, struct file *file)
 {
+	struct imx132_info *info = file->private_data;
+
 	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->i2c_client->dev);
+		info->pdata->power_off(&info->power);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -621,6 +626,54 @@ imx132_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static int imx132_power_put(struct imx132_power_rail *pw)
+{
+	if (likely(pw->dvdd))
+		regulator_put(pw->dvdd);
+
+	if (likely(pw->avdd))
+		regulator_put(pw->avdd);
+
+	if (likely(pw->iovdd))
+		regulator_put(pw->iovdd);
+
+	pw->dvdd = NULL;
+	pw->avdd = NULL;
+	pw->iovdd = NULL;
+
+	return 0;
+}
+
+static int imx132_regulator_get(struct imx132_info *info,
+	struct regulator **vreg, char vreg_name[])
+{
+	struct regulator *reg = NULL;
+	int err = 0;
+
+	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	if (unlikely(IS_ERR(reg))) {
+		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			__func__, vreg_name, (int)reg);
+		err = PTR_ERR(reg);
+		reg = NULL;
+	} else
+		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
+			__func__, vreg_name);
+
+	*vreg = reg;
+	return err;
+}
+
+static int imx132_power_get(struct imx132_info *info)
+{
+	struct imx132_power_rail *pw = &info->power;
+
+	imx132_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
+	imx132_regulator_get(info, &pw->avdd, "vana"); /* analog 2.7v */
+	imx132_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
+
+	return 0;
+}
 
 static const struct file_operations imx132_fileops = {
 	.owner = THIS_MODULE,
@@ -639,22 +692,16 @@ static int
 imx132_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int err;
+	struct imx132_info *info;
+	int err = 0;
 
 	pr_info("[imx132]: probing sensor.\n");
 
-	info = kzalloc(sizeof(struct imx132_info), GFP_KERNEL);
+	info = devm_kzalloc(&client->dev,
+		sizeof(struct imx132_info), GFP_KERNEL);
 	if (!info) {
 		pr_err("[imx132]:%s:Unable to allocate memory!\n", __func__);
 		return -ENOMEM;
-	}
-
-	err = misc_register(&imx132_device);
-	if (err) {
-		pr_err("[imx132]:%s:Unable to register misc device!\n",
-		__func__);
-		kfree(info);
-		return err;
 	}
 
 	info->pdata = client->dev.platform_data;
@@ -663,16 +710,30 @@ imx132_probe(struct i2c_client *client,
 	info->mode = -1;
 
 	i2c_set_clientdata(client, info);
-	return 0;
+
+	imx132_power_get(info);
+
+	memcpy(&info->miscdev_info,
+		&imx132_device,
+		sizeof(struct miscdevice));
+
+	err = misc_register(&info->miscdev_info);
+	if (err) {
+		imx132_power_put(&info->power);
+		pr_err("[imx132]:%s:Unable to register misc device!\n",
+		__func__);
+	}
+
+	return err;
 }
 
 static int
 imx132_remove(struct i2c_client *client)
 {
-	struct imx132_info *info;
-	info = i2c_get_clientdata(client);
+	struct imx132_info *info = i2c_get_clientdata(client);
+
+	imx132_power_put(&info->power);
 	misc_deregister(&imx132_device);
-	kfree(info);
 	return 0;
 }
 
