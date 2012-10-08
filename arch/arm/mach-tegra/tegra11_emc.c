@@ -51,6 +51,11 @@ u8 tegra_emc_bw_efficiency = 100;
 #define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
 
+enum {
+	DLL_CHANGE_NONE = 0,
+	DLL_CHANGE_ON,
+	DLL_CHANGE_OFF,
+};
 
 #define EMC_CLK_DIV_SHIFT		0
 #define EMC_CLK_DIV_MAX_VALUE		0xFF
@@ -66,6 +71,17 @@ u8 tegra_emc_bw_efficiency = 100;
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RFC),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RAS),			\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RP),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_FBIO_CFG5),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2CMDPADCTRL),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2DQSPADCTRL2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2DQPADCTRL2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2COMPPADCTRL),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2VTTGENPADCTRL),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2VTTGENPADCTRL2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2DQSPADCTRL3),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_ZCAL_INTERVAL),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_ZCAL_WAIT_CNT),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_MRS_WAIT_CNT),		\
 								\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_MISC0),
 
@@ -115,6 +131,7 @@ static DEFINE_SPINLOCK(emc_access_lock);
 
 static void __iomem *emc_base = IO_ADDRESS(TEGRA_EMC_BASE);
 static void __iomem *mc_base = IO_ADDRESS(TEGRA_MC_BASE);
+static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 static inline void emc_writel(u32 val, unsigned long addr)
 {
@@ -131,6 +148,12 @@ static inline void mc_writel(u32 val, unsigned long addr)
 static inline u32 mc_readl(unsigned long addr)
 {
 	return readl((u32)mc_base + addr);
+}
+
+static inline void ccfifo_writel(u32 val, unsigned long addr)
+{
+	writel(val, emc_base + EMC_CCFIFO_DATA);
+	writel(addr, emc_base + EMC_CCFIFO_ADDR);
 }
 
 static void emc_last_stats_update(int last_sel)
@@ -154,13 +177,277 @@ static void emc_last_stats_update(int last_sel)
 	spin_unlock_irqrestore(&emc_stats.spinlock, flags);
 }
 
+static int wait_for_update(u32 status_reg, u32 bit_mask, bool updated_state)
+{
+	int i;
+	for (i = 0; i < EMC_STATUS_UPDATE_TIMEOUT; i++) {
+		if (!!(emc_readl(status_reg) & bit_mask) == updated_state)
+			return 0;
+		udelay(1);
+	}
+	return -ETIMEDOUT;
+}
+
+static inline void emc_timing_update(void)
+{
+	int err;
+
+	emc_writel(0x1, EMC_TIMING_CONTROL);
+	err = wait_for_update(EMC_STATUS,
+			      EMC_STATUS_TIMING_UPDATE_STALLED, false);
+	if (err) {
+		pr_err("%s: timing update error: %d", __func__, err);
+		BUG();
+	}
+}
+
+static inline void auto_cal_disable(void)
+{
+	int err;
+
+	emc_writel(0, EMC_AUTO_CAL_INTERVAL);
+	err = wait_for_update(EMC_AUTO_CAL_STATUS,
+			      EMC_AUTO_CAL_STATUS_ACTIVE, false);
+	if (err) {
+		pr_err("%s: disable auto-cal error: %d", __func__, err);
+		BUG();
+	}
+}
+
+static inline bool dqs_preset(const struct tegra11_emc_table *next_timing,
+			      const struct tegra11_emc_table *last_timing)
+{
+	bool ret = false;
+
+#define DQS_SET(reg, bit)						      \
+	do {								      \
+		if ((next_timing->burst_regs[EMC_##reg##_INDEX] &	      \
+		     EMC_##reg##_##bit##_ENABLE) &&			      \
+		    (!(last_timing->burst_regs[EMC_##reg##_INDEX] &	      \
+		       EMC_##reg##_##bit##_ENABLE)))   {		      \
+			emc_writel(last_timing->burst_regs[EMC_##reg##_INDEX] \
+				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg);  \
+			ret = true;					      \
+		}							      \
+	} while (0)
+
+	DQS_SET(XM2DQSPADCTRL2, VREF);
+	DQS_SET(XM2DQSPADCTRL3, VREF);
+
+	return ret;
+}
+
+static inline void overwrite_mrs_wait_cnt(
+	const struct tegra11_emc_table *next_timing,
+	bool zcal_long)
+{
+	u32 reg;
+	u32 cnt = 512;
+
+	/* For ddr3 when DLL is re-started: overwrite EMC DFS table settings
+	   for MRS_WAIT_LONG with maximum of MRS_WAIT_SHORT settings and
+	   expected operation length. Reduce the latter by the overlapping
+	   zq-calibration, if any */
+	if (zcal_long)
+		cnt -= dram_dev_num * 256;
+
+	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
+		EMC_MRS_WAIT_CNT_SHORT_WAIT_MASK) >>
+		EMC_MRS_WAIT_CNT_SHORT_WAIT_SHIFT;
+	if (cnt < reg)
+		cnt = reg;
+
+	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
+		(~EMC_MRS_WAIT_CNT_LONG_WAIT_MASK));
+	reg |= (cnt << EMC_MRS_WAIT_CNT_LONG_WAIT_SHIFT) &
+		EMC_MRS_WAIT_CNT_LONG_WAIT_MASK;
+
+	emc_writel(reg, EMC_MRS_WAIT_CNT);
+}
+
+static inline int get_dll_change(const struct tegra11_emc_table *next_timing,
+				 const struct tegra11_emc_table *last_timing)
+{
+	bool next_dll_enabled = !(next_timing->emc_mode_1 & 0x1);
+	bool last_dll_enabled = !(last_timing->emc_mode_1 & 0x1);
+
+	if (next_dll_enabled == last_dll_enabled)
+		return DLL_CHANGE_NONE;
+	else if (next_dll_enabled)
+		return DLL_CHANGE_ON;
+	else
+		return DLL_CHANGE_OFF;
+}
+
+static inline void set_dram_mode(const struct tegra11_emc_table *next_timing,
+				 const struct tegra11_emc_table *last_timing,
+				 int dll_change)
+{
+	if (dram_type == DRAM_TYPE_DDR3) {
+		/* first mode_1, then mode_2, then mode_reset*/
+		if (next_timing->emc_mode_1 != last_timing->emc_mode_1)
+			ccfifo_writel(next_timing->emc_mode_1, EMC_EMRS);
+		if (next_timing->emc_mode_2 != last_timing->emc_mode_2)
+			ccfifo_writel(next_timing->emc_mode_2, EMC_EMRS2);
+
+		if ((next_timing->emc_mode_reset !=
+		     last_timing->emc_mode_reset) ||
+		    (dll_change == DLL_CHANGE_ON)) {
+			u32 reg = next_timing->emc_mode_reset &
+				(~EMC_MODE_SET_DLL_RESET);
+			if (dll_change == DLL_CHANGE_ON) {
+				reg |= EMC_MODE_SET_DLL_RESET;
+				reg |= EMC_MODE_SET_LONG_CNT;
+			}
+			ccfifo_writel(reg, EMC_MRS);
+		}
+	} else {
+		/* first mode_2, then mode_1; mode_reset is not applicable */
+		if (next_timing->emc_mode_2 != last_timing->emc_mode_2)
+			ccfifo_writel(next_timing->emc_mode_2, EMC_MRW2);
+		if (next_timing->emc_mode_1 != last_timing->emc_mode_1)
+			ccfifo_writel(next_timing->emc_mode_1, EMC_MRW);
+		if (next_timing->emc_mode_4 != last_timing->emc_mode_4)
+			ccfifo_writel(next_timing->emc_mode_4, EMC_MRW4);
+	}
+}
+
+static inline void do_clock_change(u32 clk_setting)
+{
+	int err;
+
+	mc_readl(MC_EMEM_ADR_CFG);	/* completes prev writes */
+	writel(clk_setting, clk_base + emc->reg);
+	readl(clk_base + emc->reg);/* completes prev write */
+
+	err = wait_for_update(EMC_INTSTATUS,
+			      EMC_INTSTATUS_CLKCHANGE_COMPLETE, true);
+	if (err) {
+		pr_err("%s: clock change completion error: %d", __func__, err);
+		BUG();
+	}
+}
+
 static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 				   const struct tegra11_emc_table *last_timing,
 				   u32 clk_setting)
 {
+#if 1
+	int i, dll_change, pre_wait;
+	bool dyn_sref_enabled, vref_cal_toggle, zcal_long;
+
+	u32 emc_cfg_reg = emc_readl(EMC_CFG);
+
+	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
+	dll_change = get_dll_change(next_timing, last_timing);
+	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0) &&
+		(last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
+
+	/* FIXME: remove steps enumeration below? */
+
+	/* 1. clear clkchange_complete interrupts */
+	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
+
+	/* 2. disable dynamic self-refresh and preset dqs vref, then wait for
+	   possible self-refresh entry/exit and/or dqs vref settled - waiting
+	   before the clock change decreases worst case change stall time */
+	pre_wait = 0;
+	if (dyn_sref_enabled) {
+		emc_cfg_reg &= ~EMC_CFG_DYN_SREF_ENABLE;
+		emc_writel(emc_cfg_reg, EMC_CFG);
+		pre_wait = 5;		/* 5us+ for self-refresh entry/exit */
+	}
+
+	/* 2.5 check dq/dqs vref delay */
+	if (dqs_preset(next_timing, last_timing)) {
+		if (pre_wait < 3)
+			pre_wait = 3;	/* 3us+ for dqs vref settled */
+	}
+	if (pre_wait) {
+		emc_timing_update();
+		udelay(pre_wait);
+	}
+
+	/* 3. disable auto-cal if vref mode is switching */
+	vref_cal_toggle = (next_timing->emc_acal_interval != 0) &&
+		((next_timing->burst_regs[EMC_XM2COMPPADCTRL_INDEX] ^
+		  last_timing->burst_regs[EMC_XM2COMPPADCTRL_INDEX]) &
+		 EMC_XM2COMPPADCTRL_VREF_CAL_ENABLE);
+	if (vref_cal_toggle)
+		auto_cal_disable();
+
+	/* 4. program burst shadow registers */
+	for (i = 0; i < emc_num_burst_regs; i++) {
+		if (!burst_reg_addr[i])
+			continue;
+		__raw_writel(next_timing->burst_regs[i], burst_reg_addr[i]);
+	}
+	wmb();
+	barrier();
+
+	/* 4.1 On ddr3 when DLL is re-started predict MRS long wait count and
+	   overwrite DFS table setting */
+	if ((dram_type == DRAM_TYPE_DDR3) && (dll_change == DLL_CHANGE_ON))
+		overwrite_mrs_wait_cnt(next_timing, zcal_long);
+
+	/* 5.2 disable auto-refresh to save time after clock change */
+	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+
+	/* 6. turn Off dll and enter self-refresh on DDR3 */
+	if (dram_type == DRAM_TYPE_DDR3) {
+		if (dll_change == DLL_CHANGE_OFF)
+			ccfifo_writel(next_timing->emc_mode_1, EMC_EMRS);
+		ccfifo_writel(DRAM_BROADCAST(dram_dev_num) |
+			      EMC_SELF_REF_CMD_ENABLED, EMC_SELF_REF);
+	}
+
+	/* 7. flow control marker 2 */
+	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
+
+	/* 8. exit self-refresh on DDR3 */
+	if (dram_type == DRAM_TYPE_DDR3)
+		ccfifo_writel(DRAM_BROADCAST(dram_dev_num), EMC_SELF_REF);
+
+	/* 9. set dram mode registers */
+	set_dram_mode(next_timing, last_timing, dll_change);
+
+	/* 10. issue zcal command if turning zcal On */
+	if (zcal_long) {
+		ccfifo_writel(EMC_ZQ_CAL_LONG_CMD_DEV0, EMC_ZQ_CAL);
+		if (dram_dev_num > 1)
+			ccfifo_writel(EMC_ZQ_CAL_LONG_CMD_DEV1, EMC_ZQ_CAL);
+	}
+
+	/* 12-14. read any MC register to ensure the programming is done
+	   change EMC clock source register wait for clk change completion */
+	do_clock_change(clk_setting);
+
+	/* 14.1 re-enable auto-refresh */
+	emc_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
+
+	/* 15. restore auto-cal */
+	if (vref_cal_toggle)
+		emc_writel(next_timing->emc_acal_interval,
+			   EMC_AUTO_CAL_INTERVAL);
+
+	/* 16. restore dynamic self-refresh */
+	if (next_timing->emc_dsr) {
+		emc_cfg_reg |= EMC_CFG_DYN_SREF_ENABLE;
+		emc_writel(emc_cfg_reg, EMC_CFG);
+	}
+
+	/* 17. set zcal wait count */
+	if (zcal_long)
+		emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
+
+	/* 18. update restored timing */
+	udelay(2);
+	emc_timing_update();
+#else
 	/* FIXME: implement */
 	pr_info("tegra11_emc: Configuring EMC rate %lu (setting: 0x%x)\n",
 		next_timing->rate, clk_setting);
+#endif
 }
 
 static inline void emc_get_timing(struct tegra11_emc_table *timing)
@@ -178,6 +465,7 @@ static inline void emc_get_timing(struct tegra11_emc_table *timing)
 	timing->emc_mode_reset = 0;
 	timing->emc_mode_1 = 0;
 	timing->emc_mode_2 = 0;
+	timing->emc_mode_4 = 0;
 	timing->emc_periodic_qrst = (emc_readl(EMC_CFG) &
 				     EMC_CFG_PERIODIC_QRST) ? 1 : 0;
 	timing->rate = clk_get_rate_locked(emc);

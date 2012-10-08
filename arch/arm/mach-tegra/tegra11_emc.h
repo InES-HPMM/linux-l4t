@@ -38,6 +38,14 @@ static inline void tegra_mc_timing_restore(void)
 { }
 #endif
 
+enum {
+	DRAM_DEV_SEL_ALL = 0,
+	DRAM_DEV_SEL_0	 = (2 << 30),
+	DRAM_DEV_SEL_1   = (1 << 30),
+};
+#define DRAM_BROADCAST(num)			\
+	(((num) > 1) ? DRAM_DEV_SEL_ALL : DRAM_DEV_SEL_0)
+
 #define EMC_INTSTATUS				0x0
 #define EMC_INTSTATUS_CLKCHANGE_COMPLETE	(0x1 << 4)
 
@@ -50,8 +58,17 @@ static inline void tegra_mc_timing_restore(void)
 #define EMC_CFG_PWR_MASK			(0xF << 28)
 
 #define EMC_REFCTRL				0x20
-#define EMC_TIMING_CONTROL			0x28
+#define EMC_REFCTRL_DEV_SEL_SHIFT		0
+#define EMC_REFCTRL_DEV_SEL_MASK		\
+	(0x3 << EMC_REFCTRL_DEV_SEL_SHIFT)
+#define EMC_REFCTRL_ENABLE			(0x1 << 31)
+#define EMC_REFCTRL_ENABLE_ALL(num)		\
+	(((((num) > 1) ? 0 : 2) << EMC_REFCTRL_DEV_SEL_SHIFT) \
+	 | EMC_REFCTRL_ENABLE)
+#define EMC_REFCTRL_DISABLE_ALL(num)		\
+	((((num) > 1) ? 0 : 2) << EMC_REFCTRL_DEV_SEL_SHIFT)
 
+#define EMC_TIMING_CONTROL			0x28
 #define EMC_RC					0x2c
 #define EMC_RFC					0x30
 #define EMC_RAS					0x34
@@ -91,19 +108,47 @@ static inline void tegra_mc_timing_restore(void)
 #define EMC_CTT					0xbc
 #define EMC_RFC_SLR				0xc0
 #define EMC_MRS_WAIT_CNT2			0xc4
+
 #define EMC_MRS_WAIT_CNT			0xc8
+#define EMC_MRS_WAIT_CNT			0xc8
+#define EMC_MRS_WAIT_CNT_SHORT_WAIT_SHIFT	0
+#define EMC_MRS_WAIT_CNT_SHORT_WAIT_MASK	\
+	(0x3FF << EMC_MRS_WAIT_CNT_SHORT_WAIT_SHIFT)
+#define EMC_MRS_WAIT_CNT_LONG_WAIT_SHIFT	16
+#define EMC_MRS_WAIT_CNT_LONG_WAIT_MASK		\
+	(0x3FF << EMC_MRS_WAIT_CNT_LONG_WAIT_SHIFT)
+
 #define EMC_MRS					0xcc
+#define EMC_MODE_SET_DLL_RESET			(0x1 << 8)
+#define EMC_MODE_SET_LONG_CNT			(0x1 << 26)
 #define EMC_EMRS				0xd0
 #define EMC_REF					0xd4
 #define EMC_PRE					0xd8
 #define EMC_NOP					0xdc
+
 #define EMC_SELF_REF				0xe0
+#define EMC_SELF_REF_CMD_ENABLED		(0x1 << 0)
+#define EMC_SELF_REF_DEV_SEL_SHIFT		30
+#define EMC_SELF_REF_DEV_SEL_MASK		\
+	(0x3 << EMC_SELF_REF_DEV_SEL_SHIFT)
+
 #define EMC_DPD					0xe4
 #define EMC_MRW					0xe8
+
 #define EMC_MRR					0xec
+#define EMC_MRR_DEV_SEL_SHIFT			30
+#define EMC_MRR_DEV_SEL_MASK			\
+	(0x3 << EMC_SELF_REF_DEV_SEL_SHIFT)
+#define EMC_MRR_MA_SHIFT			16
+#define EMC_MRR_MA_MASK				(0xFF << EMC_MRR_MA_SHIFT)
+#define EMC_MRR_DATA_MASK			((0x1 << EMC_MRR_MA_SHIFT) - 1)
+#define LPDDR2_MR4_TEMP_SHIFT			0
+#define LPDDR2_MR4_TEMP_MASK			(0x7 << LPDDR2_MR4_TEMP_SHIFT)
+
 #define EMC_CMDQ				0xf0
 #define EMC_MC2EMCQ				0xf4
 #define EMC_XM2DQSPADCTRL3			0xf8
+#define EMC_XM2DQSPADCTRL3_VREF_ENABLE		(0x1 << 5)
 #define EMC_FBIO_SPARE				0x100
 
 #define EMC_FBIO_CFG5				0x104
@@ -113,16 +158,36 @@ enum {
 	DRAM_TYPE_DDR3   = 0,
 	DRAM_TYPE_LPDDR2 = 2,
 };
+#define EMC_CFG5_QUSE_MODE_SHIFT		13
+#define EMC_CFG5_QUSE_MODE_MASK			\
+	(0x7 << EMC_CFG5_QUSE_MODE_SHIFT)
+enum {
+	EMC_CFG5_QUSE_MODE_NORMAL = 0,
+	EMC_CFG5_QUSE_MODE_ALWAYS_ON,
+	EMC_CFG5_QUSE_MODE_INTERNAL_LPBK,
+	EMC_CFG5_QUSE_MODE_PULSE_INTERN,
+	EMC_CFG5_QUSE_MODE_PULSE_EXTERN,
+	EMC_CFG5_QUSE_MODE_DIRECT_QUSE,
+};
 
 #define EMC_FBIO_WRPTR_EQ_2			0x108
 #define EMC_FBIO_CFG6				0x114
 #define EMC_CFG_RSV				0x120
+#define EMC_ACPD_CONTROL			0x124
+#define EMC_EMRS2				0x12c
+#define EMC_EMRS3				0x130
+#define EMC_MRW2				0x134
+#define EMC_MRW3				0x138
+#define EMC_MRW4				0x13c
 
 #define EMC_AUTO_CAL_CONFIG			0x2a4
 #define EMC_AUTO_CAL_INTERVAL			0x2a8
 #define EMC_AUTO_CAL_STATUS			0x2ac
+#define EMC_AUTO_CAL_STATUS_ACTIVE		(0x1 << 31)
 #define EMC_REQ_CTRL				0x2b0
-#define EMC_EMC_STATUS				0x2b4
+#define EMC_STATUS				0x2b4
+#define EMC_STATUS_TIMING_UPDATE_STALLED	(0x1 << 23)
+#define EMC_STATUS_MRR_DIVLD			(0x1 << 20)
 
 #define EMC_CFG_2				0x2b8
 #define EMC_CFG_2_MODE_SHIFT			0
@@ -140,15 +205,28 @@ enum {
 #define EMC_ZCAL_INTERVAL			0x2e0
 #define EMC_ZCAL_WAIT_CNT			0x2e4
 #define EMC_ZCAL_MRW_CMD			0x2e8
+
 #define EMC_ZQ_CAL				0x2ec
+#define EMC_ZQ_CAL_DEV_SEL_SHIFT		30
+#define EMC_ZQ_CAL_DEV_SEL_MASK			\
+	(0x3 << EMC_SELF_REF_DEV_SEL_SHIFT)
+#define EMC_ZQ_CAL_CMD				(0x1 << 0)
+#define EMC_ZQ_CAL_LONG				(0x1 << 4)
+#define EMC_ZQ_CAL_LONG_CMD_DEV0		\
+	(DRAM_DEV_SEL_0 | EMC_ZQ_CAL_LONG | EMC_ZQ_CAL_CMD)
+#define EMC_ZQ_CAL_LONG_CMD_DEV1		\
+	(DRAM_DEV_SEL_1 | EMC_ZQ_CAL_LONG | EMC_ZQ_CAL_CMD)
+
 #define EMC_XM2CMDPADCTRL			0x2f0
 #define EMC_XM2CMDPADCTRL2			0x2f4
 #define EMC_XM2DQSPADCTRL			0x2f8
 #define EMC_XM2DQSPADCTRL2			0x2fc
+#define EMC_XM2DQSPADCTRL2_VREF_ENABLE		(0x1 << 5)
 #define EMC_XM2DQPADCTRL			0x300
 #define EMC_XM2DQPADCTRL2			0x304
 #define EMC_XM2CLKPADCTRL			0x308
 #define EMC_XM2COMPPADCTRL			0x30c
+#define EMC_XM2COMPPADCTRL_VREF_CAL_ENABLE	(0x1 << 10)
 #define EMC_XM2VTTGENPADCTRL			0x310
 #define EMC_XM2VTTGENPADCTRL2			0x314
 #define EMC_EMCPADEN				0x31c
@@ -197,6 +275,7 @@ enum {
 #define EMC_STALL_THEN_EXE_AFTER_CLKCHANGE	0x3cc
 #define EMC_AUTO_CAL_CLK_STATUS			0x3d4
 #define EMC_SEL_DPD_CTRL			0x3d8
+#define EMC_SEL_DPD_CTRL_QUSE_DPD_ENABLE	(0x1 << 9)
 #define EMC_PRE_REFRESH_REQ_CNT			0x3dc
 #define EMC_DYN_SELF_REF_CONTROL		0x3e0
 #define EMC_TXSRDLL				0x3e4
