@@ -204,6 +204,7 @@
 #define PLL_FIXED_MDIV(c, ref)		((ref) > (c)->u.pll.cf_max ? 2 : 1)
 
 /* PLLU */
+#define PLLU_BASE_OVERRIDE		(1<<24)
 #define PLLU_BASE_POST_DIV		(1<<20)
 
 /* PLLD */
@@ -1780,7 +1781,13 @@ static void tegra11_pll_clk_init(struct clk *c)
 	}
 
 	if (c->flags & PLLU) {
+		/* Configure UTMI PLL power management, and put PLLU under
+		   h/w control */
 		tegra11_utmi_param_configure(c);
+		usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
+		val = clk_readl(c->reg + PLL_BASE);
+		val &= ~PLLU_BASE_OVERRIDE;
+		clk_writel(val, c->reg + PLL_BASE);
 	}
 }
 

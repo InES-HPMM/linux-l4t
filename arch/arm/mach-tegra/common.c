@@ -228,10 +228,6 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "csite",      NULL,           0,              true },
 #endif
 	{ "pll_u",	NULL,		480000000,	true },
-	{ "pll_u_12M",	NULL,		0,		true },
-	{ "pll_u_48M",	NULL,		0,		true },
-	{ "pll_u_60M",	NULL,		0,		true },
-	{ "pll_u_480M",	NULL,		0,		true },
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	true},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
