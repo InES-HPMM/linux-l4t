@@ -1616,12 +1616,16 @@ int arch_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 	if (map_entry == NULL)
 		goto exit;
 
-	irq_alloc_desc(map_entry->irq);
+	retval = irq_alloc_desc(map_entry->irq);
+	if (retval < 0)
+		goto exit;
 	irq_set_chip_and_handler(map_entry->irq,
 				&tegra_irq_chip_msi_pcie,
 				handle_simple_irq);
 
-	irq_set_msi_desc(map_entry->irq, desc);
+	retval = irq_set_msi_desc(map_entry->irq, desc);
+	if (retval < 0)
+		goto exit;
 	set_irq_flags(map_entry->irq, IRQF_VALID);
 
 	msg.address_lo = afi_readl(AFI_MSI_AXI_BAR_ST);
@@ -1634,8 +1638,10 @@ int arch_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 	retval = 0;
 exit:
 	if (retval != 0) {
-		if (map_entry)
+		if (map_entry) {
+			irq_free_desc(map_entry->irq);
 			msi_map_release(map_entry);
+		}
 	}
 
 	return retval;
