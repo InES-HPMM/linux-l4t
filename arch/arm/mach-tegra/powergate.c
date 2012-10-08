@@ -216,7 +216,7 @@ static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] 
 					},
 #else
 					{
-						{"msenc", CLK_AND_RST}
+						{"msenc.cbus", CLK_AND_RST}
 					},
 #endif
 				},
