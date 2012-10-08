@@ -1131,13 +1131,8 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 	}
 	/* unpowergate is allowed for all partitions */
 	if (!tegra_powergate_is_powered(id) &&
-		is_unpowergate) {
-		pr_err("Partition %s already powered-%s unpowergating\n",
-			tegra_powergate_get_name(id),
-			(tegra_powergate_is_powered(id)) ?
-			"on" : "off");
+		is_unpowergate)
 		return false;
-	}
 	for (i = 0; i < tegra_num_powerdomains; i++) {
 		if (id == skip_pg_t11x_list[i]) {
 			pr_err("Partition %s %spowergate skipped\n",
