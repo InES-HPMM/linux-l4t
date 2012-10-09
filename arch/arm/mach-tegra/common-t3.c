@@ -259,6 +259,8 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 		    ((MMA_HISTORY_SAMPLES - 1) * time_diff_ms +
 		     arb_intr_info.arb_intr_mma) / MMA_HISTORY_SAMPLES;
 		spin_unlock_irqrestore(&arb_intr_info.lock, flags);
+		if (stat == MC_INT_ARBITRATION_EMEM)
+			goto out;
 	}
 
 	__cancel_delayed_work(&unthrottle_prints_work);
