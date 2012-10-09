@@ -35,6 +35,10 @@
 
 int g_is_call_mode;
 
+#ifdef CONFIG_SWITCH
+static bool is_switch_registered;
+#endif
+
 bool tegra_is_voice_call_active(void)
 {
 	if (g_is_call_mode)
@@ -482,6 +486,35 @@ void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 		clk_put(data->clk_pll_p_out1);
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_fini);
+
+#ifdef CONFIG_SWITCH
+int tegra_asoc_switch_register(struct switch_dev *sdev)
+{
+	int ret;
+
+	if (is_switch_registered)
+		return -EBUSY;
+
+	ret = switch_dev_register(sdev);
+
+	if (ret >= 0)
+		is_switch_registered = true;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_switch_register);
+
+void tegra_asoc_switch_unregister(struct switch_dev *sdev)
+{
+	if (!is_switch_registered)
+		return;
+
+	switch_dev_unregister(sdev);
+	is_switch_registered = false;
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_switch_unregister);
+#endif
+
 
 MODULE_AUTHOR("Stephen Warren <swarren@nvidia.com>");
 MODULE_DESCRIPTION("Tegra ASoC utility code");

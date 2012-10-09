@@ -1208,7 +1208,7 @@ static int tegra_max98088_driver_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_SWITCH
 	/* Add h2w switch class support */
-	ret = switch_dev_register(&wired_switch_dev);
+	ret = tegra_asoc_switch_register(&wired_switch_dev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "not able to register switch device\n");
 		goto err_fini_utils;
@@ -1270,7 +1270,7 @@ err_unregister_card:
 	snd_soc_unregister_card(card);
 err_switch_unregister:
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&wired_switch_dev);
+	tegra_asoc_switch_unregister(&wired_switch_dev);
 #endif
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
@@ -1288,7 +1288,7 @@ static int tegra_max98088_driver_remove(struct platform_device *pdev)
 	snd_soc_unregister_card(card);
 
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&wired_switch_dev);
+	tegra_asoc_switch_unregister(&wired_switch_dev);
 #endif
 
 	tegra_asoc_utils_fini(&machine->util_data);

@@ -23,6 +23,10 @@
 #ifndef __TEGRA_ASOC_UTILS_H__
 #define __TEGRA_ASOC_UTILS_H_
 
+#ifdef CONFIG_SWITCH
+#include <linux/switch.h>
+#endif
+
 
 #define TEGRA_ALSA_MAX_DEVICES 6
 #define TEGRA_DMA_MAX_CHANNELS 32
@@ -64,5 +68,9 @@ void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_enable(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_register_ctls(struct tegra_asoc_utils_data *data);
+#ifdef CONFIG_SWITCH
+int tegra_asoc_switch_register(struct switch_dev *sdev);
+void tegra_asoc_switch_unregister(struct switch_dev *sdev);
+#endif
 
 #endif

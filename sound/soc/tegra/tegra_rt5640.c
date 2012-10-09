@@ -798,7 +798,7 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_SWITCH
 	/* Addd h2w swith class support */
-	ret = switch_dev_register(&tegra_rt5640_headset_switch);
+	ret = tegra_asoc_switch_register(&tegra_rt5640_headset_switch);
 	if (ret < 0)
 		goto err_fini_utils;
 #endif
@@ -837,7 +837,7 @@ err_unregister_card:
 	snd_soc_unregister_card(card);
 err_unregister_switch:
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&tegra_rt5640_headset_switch);
+	tegra_asoc_switch_unregister(&tegra_rt5640_headset_switch);
 err_fini_utils:
 #endif
 	tegra_asoc_utils_fini(&machine->util_data);
@@ -886,7 +886,7 @@ static int tegra_rt5640_driver_remove(struct platform_device *pdev)
 	tegra_asoc_utils_fini(&machine->util_data);
 
 #ifdef CONFIG_SWITCH
-	switch_dev_unregister(&tegra_rt5640_headset_switch);
+	tegra_asoc_switch_unregister(&tegra_rt5640_headset_switch);
 #endif
 	kfree(machine);
 
