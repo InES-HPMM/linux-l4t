@@ -26,6 +26,8 @@
 #include <linux/nct1008.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
+#include <mach/pinmux-t11.h>
+#include <mach/pinmux.h>
 #include <media/max77665-flash.h>
 #include <media/imx091.h>
 #include <media/imx132.h>
@@ -184,23 +186,6 @@ static struct i2c_board_info pluto_i2c1_isl_board_info[] = {
 	}
 };
 
-struct pluto_cam_gpio {
-	int gpio;
-	const char *label;
-	int value;
-};
-
-static char *pluto_cam_reg_name[] = {
-	"avdd_cam1",		/* Analog VDD 2.7V */
-	"avdd_cam2",		/* Analog VDD 2.7V */
-	"vdd_1v2_cam",		/* Digital VDD 1.2V */
-	"vdd_1v8_cam12",	/* Digital VDDIO 1.8V */
-	"vddio_cam_mb",		/* CAM_I2C PULL-UP VDD 1.8V */
-	"vdd_af_cam1",		/* AF VDD */
-};
-
-static struct regulator *pluto_cam_reg[ARRAY_SIZE(pluto_cam_reg_name)];
-
 static struct balanced_throttle tj_throttle = {
 	.throt_tab_size = 10,
 	.throt_tab = {
@@ -245,107 +230,141 @@ static struct i2c_board_info pluto_i2c4_nct1008_board_info[] = {
 	}
 };
 
-static int pluto_imx091_power_on(struct device *dev)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
-		if (!pluto_cam_reg[i]) {
-			pluto_cam_reg[i] = regulator_get(dev,
-					pluto_cam_reg_name[i]);
-			if (WARN_ON(IS_ERR(pluto_cam_reg[i]))) {
-				pr_err("%s: didn't get regulator #%d: %ld\n",
-				__func__, i, PTR_ERR(pluto_cam_reg[i]));
-				goto reg_alloc_fail;
-			}
-		}
-		regulator_enable(pluto_cam_reg[i]);
+#define VI_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _ioreset) \
+	{							\
+		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
+		.func		= TEGRA_MUX_##_mux,		\
+		.pupd		= TEGRA_PUPD_##_pupd,		\
+		.tristate	= TEGRA_TRI_##_tri,		\
+		.io		= TEGRA_PIN_##_io,		\
+		.lock		= TEGRA_PIN_LOCK_##_lock,	\
+		.od		= TEGRA_PIN_OD_DEFAULT,		\
+		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 	}
 
-	gpio_direction_output(CAM_RSTN, 0);
-	gpio_direction_output(CAM_GPIO1, 1);
-	gpio_direction_output(CAM_RSTN, 1);
+static struct tegra_pingroup_config mclk_disable =
+	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
-	mdelay(1);
+static struct tegra_pingroup_config mclk_enable =
+	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+
+static struct tegra_pingroup_config pbb0_disable =
+	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+
+static struct tegra_pingroup_config pbb0_enable =
+	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+
+/*
+ * more regulators need to be allocated to activate the sensor devices.
+ * pluto_vcmvdd: this is a workaround due to the focuser device(AD5816) will
+ *               hook up the i2c bus if it is not powered up.
+ * pluto_i2cvdd: by default, the power supply on the i2c bus is OFF. So it
+ *               should be turned on every time any sensor device is activated.
+*/
+static struct regulator *pluto_vcmvdd;
+static struct regulator *pluto_i2cvdd;
+
+static int pluto_get_extra_regulators(void)
+{
+	if (!pluto_vcmvdd) {
+		pluto_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
+		if (WARN_ON(IS_ERR(pluto_vcmvdd))) {
+			pr_err("%s: can't get regulator vdd_af_cam1: %ld\n",
+				__func__, PTR_ERR(pluto_vcmvdd));
+			pluto_vcmvdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	if (!pluto_i2cvdd) {
+		pluto_i2cvdd = regulator_get(NULL, "vddio_cam_mb");
+		if (unlikely(WARN_ON(IS_ERR(pluto_i2cvdd)))) {
+			pr_err("%s: can't get regulator vddio_cam_mb: %ld\n",
+				__func__, PTR_ERR(pluto_i2cvdd));
+			pluto_i2cvdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+static int pluto_imx091_power_on(struct imx091_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->dvdd || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	if (pluto_get_extra_regulators())
+		goto imx091_poweron_fail;
+
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto imx091_avdd_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto imx091_dvdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto imx091_iovdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
+
+	tegra_pinmux_config_table(&mclk_enable, 1);
+	err = regulator_enable(pluto_i2cvdd);
+	if (unlikely(err))
+		goto imx091_i2c_fail;
+
+	err = regulator_enable(pluto_vcmvdd);
+	if (unlikely(err))
+		goto imx091_vcm_fail;
+	usleep_range(300, 310);
 
 	return 0;
 
-reg_alloc_fail:
+imx091_vcm_fail:
+	regulator_disable(pluto_i2cvdd);
 
-	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
-		if (pluto_cam_reg[i]) {
-			regulator_put(pluto_cam_reg[i]);
-			pluto_cam_reg[i] = NULL;
-		}
-	}
-	pr_info("%s fail\n", __func__);
+imx091_i2c_fail:
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	regulator_disable(pw->iovdd);
 
+imx091_iovdd_fail:
+	regulator_disable(pw->dvdd);
+
+imx091_dvdd_fail:
+	regulator_disable(pw->avdd);
+
+imx091_avdd_fail:
+imx091_poweron_fail:
+	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
 
-static int pluto_imx091_power_off(struct device *dev)
+static int pluto_imx091_power_off(struct imx091_power_rail *pw)
 {
-	int i;
+	if (unlikely(WARN_ON(!pw || !pluto_i2cvdd || !pluto_vcmvdd ||
+			!pw->dvdd || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
 
-	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
-		if (pluto_cam_reg[i]) {
-			regulator_disable(pluto_cam_reg[i]);
-			regulator_put(pluto_cam_reg[i]);
-			pluto_cam_reg[i] = NULL;
-		}
-	}
+	usleep_range(1, 2);
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
+	usleep_range(1, 2);
 
-	return 0;
-}
-
-static int pluto_imx132_power_on(struct device *dev)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
-		if (!pluto_cam_reg[i]) {
-			pluto_cam_reg[i] = regulator_get(dev,
-					pluto_cam_reg_name[i]);
-			if (WARN_ON(IS_ERR(pluto_cam_reg[i]))) {
-				pr_err("%s: didn't get regulator #%d: %ld\n",
-				__func__, i, PTR_ERR(pluto_cam_reg[i]));
-				goto reg_alloc_fail;
-			}
-		}
-		regulator_enable(pluto_cam_reg[i]);
-	}
-
-	gpio_direction_output(CAM_RSTN, 0);
-	gpio_direction_output(CAM_GPIO2, 1);
-	gpio_direction_output(CAM_RSTN, 1);
-
-	mdelay(1);
-
-	return 0;
-
-reg_alloc_fail:
-	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
-		if (pluto_cam_reg[i]) {
-			regulator_put(pluto_cam_reg[i]);
-			pluto_cam_reg[i] = NULL;
-		}
-	}
-
-	return -ENODEV;
-}
-
-
-static int pluto_imx132_power_off(struct device *dev)
-{
-	int i;
-
-	for (i = ARRAY_SIZE(pluto_cam_reg_name) - 1; i >= 0; i--) {
-		if (pluto_cam_reg[i]) {
-			regulator_disable(pluto_cam_reg[i]);
-			regulator_put(pluto_cam_reg[i]);
-			pluto_cam_reg[i] = NULL;
-		}
-	}
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->avdd);
+	regulator_disable(pluto_i2cvdd);
+	regulator_disable(pluto_vcmvdd);
 
 	return 0;
 }
@@ -354,6 +373,88 @@ struct imx091_platform_data pluto_imx091_data = {
 	.power_on = pluto_imx091_power_on,
 	.power_off = pluto_imx091_power_off,
 };
+
+static int pluto_imx132_power_on(struct imx132_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+		return -EFAULT;
+
+	if (pluto_get_extra_regulators())
+		goto pluto_imx132_poweron_fail;
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+
+	tegra_pinmux_config_table(&pbb0_enable, 1);
+
+	err = regulator_enable(pluto_i2cvdd);
+	if (unlikely(err))
+		goto imx132_i2c_fail;
+
+	err = regulator_enable(pluto_vcmvdd);
+	if (unlikely(err))
+		goto imx132_vcm_fail;
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto imx132_avdd_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto imx132_dvdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto imx132_iovdd_fail;
+
+	usleep_range(1, 2);
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
+
+	return 0;
+
+imx132_iovdd_fail:
+	regulator_disable(pw->dvdd);
+
+imx132_dvdd_fail:
+	regulator_disable(pw->avdd);
+
+imx132_avdd_fail:
+	regulator_disable(pluto_vcmvdd);
+
+imx132_vcm_fail:
+	regulator_disable(pluto_i2cvdd);
+
+imx132_i2c_fail:
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+
+pluto_imx132_poweron_fail:
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int pluto_imx132_power_off(struct imx132_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd ||
+			!pluto_i2cvdd || !pluto_vcmvdd)))
+		return -EFAULT;
+
+	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
+
+	usleep_range(1, 2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->avdd);
+
+	tegra_pinmux_config_table(&pbb0_disable, 1);
+
+	regulator_disable(pluto_vcmvdd);
+	regulator_disable(pluto_i2cvdd);
+
+	return 0;
+}
 
 struct imx132_platform_data pluto_imx132_data = {
 	.power_on = pluto_imx132_power_on,
@@ -382,50 +483,17 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	},
 };
 
-#define TEGRA_CAMERA_GPIO(_gpio, _label, _value)		\
-	{							\
-		.gpio = _gpio,					\
-		.label = _label,				\
-		.value = _value,				\
-	}
-static struct pluto_cam_gpio pluto_cam_gpio_data[] = {
-	[0] = TEGRA_CAMERA_GPIO(CAM1_POWER_DWN_GPIO, "camera_power_en", 1),
-	[1] = TEGRA_CAMERA_GPIO(CAM2_POWER_DWN_GPIO, "camera2_power_en", 1),
-	[2] = TEGRA_CAMERA_GPIO(CAM_GPIO1, "camera_gpio1", 0),
-	[3] = TEGRA_CAMERA_GPIO(CAM_GPIO2, "camera_gpio2", 0),
-	[4] = TEGRA_CAMERA_GPIO(CAM_RSTN, "camera_rstn", 1),
-	[5] = TEGRA_CAMERA_GPIO(CAM_AF_PWDN, "camera_af_pwdn", 1),
-};
-
 static int pluto_camera_init(void)
 {
-	int ret;
-	int i;
-
 	pr_debug("%s: ++\n", __func__);
 
-	for (i = 0; i < ARRAY_SIZE(pluto_cam_gpio_data); i++) {
-		ret = gpio_request(pluto_cam_gpio_data[i].gpio,
-				pluto_cam_gpio_data[i].label);
-		if (ret < 0) {
-			pr_err("%s: gpio_request failed for gpio #%d\n",
-				__func__, i);
-			goto fail_free_gpio;
-		}
-		gpio_direction_output(pluto_cam_gpio_data[i].gpio,
-					pluto_cam_gpio_data[i].value);
-		gpio_export(pluto_cam_gpio_data[i].gpio, false);
-	}
+	tegra_pinmux_config_table(&mclk_disable, 1);
+	tegra_pinmux_config_table(&pbb0_disable, 1);
 
 	i2c_register_board_info(2, pluto_i2c_board_info_e1625,
 		ARRAY_SIZE(pluto_i2c_board_info_e1625));
 
 	return 0;
-
-fail_free_gpio:
-	while (i--)
-		gpio_free(pluto_cam_gpio_data[i].gpio);
-	return ret;
 }
 
 /* MPU board file definition */

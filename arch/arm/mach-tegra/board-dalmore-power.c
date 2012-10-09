@@ -284,11 +284,13 @@ static struct regulator_consumer_supply max77663_ldo6_supply[] = {
 static struct regulator_consumer_supply max77663_ldo7_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam1", NULL),
 	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
 };
 
 /* FIXME!! Put the device address of camera */
 static struct regulator_consumer_supply max77663_ldo8_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
 };
 
 static struct max77663_regulator_fps_cfg max77663_fps_cfgs[] = {
@@ -571,6 +573,7 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
 
 #define palmas_ldo8_supply max77663_ldo4_supply
@@ -762,6 +765,9 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 /* EN_CAM_1v8 on e1611 From PMU GP6 */
@@ -769,6 +775,9 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_e1611_supply[] = {
 	REGULATOR_SUPPLY("dvdd_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
