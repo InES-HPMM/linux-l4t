@@ -2094,7 +2094,7 @@ static struct resource cl_dvfs_resource[] = {
 
 struct platform_device tegra_cl_dvfs_device = {
 	.name		= "tegra_cl_dvfs",
-	.id		= 0,
+	.id		= -1,
 	.resource	= cl_dvfs_resource,
 	.num_resources	= ARRAY_SIZE(cl_dvfs_resource),
 };

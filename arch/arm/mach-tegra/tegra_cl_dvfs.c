@@ -492,7 +492,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	struct tegra_cl_dvfs_platform_data *p_data;
 	struct resource *res;
-	struct clk *c;
+	struct clk *c, *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -505,6 +505,20 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
 	}
+
+	ref_clk = clk_get(&pdev->dev, "ref");
+	soc_clk = clk_get(&pdev->dev, "soc");
+	i2c_clk = clk_get(&pdev->dev, "i2c");
+	safe_dvfs_clk = clk_get(&pdev->dev, "safe_dvfs");
+	if (IS_ERR(ref_clk) || IS_ERR(soc_clk) || IS_ERR(i2c_clk)) {
+		dev_err(&pdev->dev, "missing control clock\n");
+		return -ENODEV;
+	}
+	if (IS_ERR(safe_dvfs_clk)) {
+		dev_err(&pdev->dev, "missing safe dvfs source clock\n");
+		return PTR_ERR(safe_dvfs_clk);
+	}
+
 	c = tegra_get_clock_by_name(p_data->dfll_clk_name);
 	if (!c || !c->u.dfll.cl_dvfs) {
 		dev_err(&pdev->dev, "missing target dfll\n");
@@ -513,6 +527,10 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 
 	c->u.dfll.cl_dvfs->cl_base = IO_ADDRESS(res->start);
 	c->u.dfll.cl_dvfs->p_data = p_data;
+	c->u.dfll.cl_dvfs->ref_clk = ref_clk;
+	c->u.dfll.cl_dvfs->soc_clk = soc_clk;
+	c->u.dfll.cl_dvfs->i2c_clk = i2c_clk;
+	c->u.dfll.cl_dvfs->safe_dvfs = safe_dvfs_clk->dvfs;
 	return cl_dvfs_init(c->u.dfll.cl_dvfs);
 }
 
