@@ -1145,6 +1145,27 @@ static int tegra30_soc_set_bias_level_post(struct snd_soc_card *card,
 	return 0 ;
 }
 
+static int tegra_max98088_suspend_post(struct snd_soc_card *card)
+{
+	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->clock_enabled)
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+
+	return 0;
+
+}
+
+static int tegra_max98088_resume_pre(struct snd_soc_card *card)
+{
+	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
+
+	if (!machine->clock_enabled)
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+
+	return 0;
+}
+
 static struct snd_soc_card snd_soc_tegra_max98088 = {
 	.name = "tegra-max98088",
 	.owner = THIS_MODULE,
@@ -1152,6 +1173,8 @@ static struct snd_soc_card snd_soc_tegra_max98088 = {
 	.num_links = ARRAY_SIZE(tegra_max98088_dai),
 	.set_bias_level = tegra30_soc_set_bias_level,
 	.set_bias_level_post = tegra30_soc_set_bias_level_post,
+	.suspend_post = tegra_max98088_suspend_post,
+	.resume_pre = tegra_max98088_resume_pre,
 };
 
 static int tegra_max98088_driver_probe(struct platform_device *pdev)
