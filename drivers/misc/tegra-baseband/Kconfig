@@ -17,16 +17,25 @@ config TEGRA_BB_POWER
 
 	 This driver should work with at least the following devices:
 
-            * STE M7400
+            * OEM #1
             * ...
 
 	 Disabled by default. Choose Y here if you want to build the driver.
 
-config TEGRA_BB_M7400
-	bool "Enable driver for M7400 modem"
+config TEGRA_BB_OEM1
+	bool "Enable driver for oem modem #1"
 	---help---
-	 Enables driver for M7400 modem.
+	 Enables driver for oem modem #1.
+	 Needs TEGRA_BB_SUPPORT to be enabled.
+	 Disabled by default.
+	 Choose Y here if you want to build the driver.
 
-	 Disabled by default. Choose Y here if you want to build the driver.
+config TEGRA_BB_OEM2
+	bool "Enable driver for oem modem #2"
+	---help---
+	 Enables driver for oem modem #2.
+	 Needs TEGRA_BB_SUPPORT to be enabled.
+	 Disabled by default.
+	 Choose Y here if you want to build the driver.
 
 endif # TEGRA_BB_SUPPORT

@@ -1,7 +1,7 @@
 /*
- * drivers/misc/tegra-baseband/bb-m7400.c
+ * drivers/misc/tegra-baseband/bb-oem2.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-baseband/bb-power.c
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,20 +26,21 @@
 #include <linux/fs.h>
 #include <linux/usb.h>
 #include <linux/uaccess.h>
+#include <linux/suspend.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <mach/usb_phy.h>
-#include <mach/tegra-bb-power.h>
 #include <mach/gpio-tegra.h>
+#include <mach/tegra-bb-power.h>
 #include "bb-power.h"
 
 static struct tegra_bb_callback *callback;
-static int attr_load_val;
+static int attr_load;
+static int attr_dlevel;
 static struct tegra_bb_power_mdata *mdata;
 static bb_get_cblist get_cblist[] = {
 	NULL,
 	NULL,
-	NULL,
-	M7400_CB,
+	OEM1_CB,
 };
 
 static int tegra_bb_power_gpio_init(struct tegra_bb_power_gdata *gdata)
@@ -79,10 +80,10 @@ static int tegra_bb_power_gpio_init(struct tegra_bb_power_gdata *gdata)
 
 	gpioirq = gdata->gpioirq;
 	for (; gpioirq->id != GPIO_INVALID; ++gpioirq) {
+		irq = gpio_to_irq(gpioirq->id);
 
 		/* Create interrupt handler, if requested */
 		if (gpioirq->handler != NULL) {
-			irq = gpio_to_irq(gpioirq->id);
 			ret = request_threaded_irq(irq, NULL, gpioirq->handler,
 				gpioirq->flags, gpioirq->name, gpioirq->cookie);
 			if (ret < 0) {
@@ -90,14 +91,15 @@ static int tegra_bb_power_gpio_init(struct tegra_bb_power_gdata *gdata)
 								, __func__);
 				return ret;
 			}
+		}
 
-			if (gpioirq->wake_capable) {
-				ret = enable_irq_wake(irq);
-				if (ret) {
-					pr_err("%s: Error: irqwake req fail.\n",
+		/* Enable wake, if requested */
+		if (gpioirq->wake_capable) {
+			ret = enable_irq_wake(irq);
+			if (ret) {
+				pr_err("%s: Error: irqwake req fail.\n",
 								__func__);
-					return ret;
-				}
+				return ret;
 			}
 		}
 	}
@@ -125,7 +127,7 @@ static int tegra_bb_power_gpio_deinit(struct tegra_bb_power_gdata *gdata)
 	return 0;
 }
 
-static ssize_t tegra_bb_attr_write(struct device *dev,
+static ssize_t tegra_bb_load_write(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
@@ -134,21 +136,46 @@ static ssize_t tegra_bb_attr_write(struct device *dev,
 	if (sscanf(buf, "%d", &val) != 1)
 		return -EINVAL;
 
-	if (callback && callback->attrib) {
-		if (!callback->attrib(dev, val))
-			attr_load_val = val;
+	if (callback && callback->load) {
+		if (!callback->load(dev, val))
+			attr_load = val;
 	}
 	return count;
 }
 
-static ssize_t tegra_bb_attr_read(struct device *dev,
+static ssize_t tegra_bb_load_read(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d", attr_load_val);
+	return sprintf(buf, "%d", attr_load);
 }
 
-static DEVICE_ATTR(load, S_IRUSR | S_IWUSR | S_IRGRP,
-		tegra_bb_attr_read, tegra_bb_attr_write);
+static ssize_t tegra_bb_dlevel_write(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	int val;
+
+	if (sscanf(buf, "%x", &val) != 1)
+		return -EINVAL;
+
+	if ((val >= DLEVEL_INIT) && (val < DLEVEL_MAX)) {
+		attr_dlevel = val;
+		if (callback && callback->dlevel)
+			callback->dlevel(dev, val);
+	}
+	return count;
+}
+
+static ssize_t tegra_bb_dlevel_read(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d", attr_dlevel);
+}
+
+static DEVICE_ATTR(load, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
+		tegra_bb_load_read, tegra_bb_load_write);
+static DEVICE_ATTR(dlevel, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
+		tegra_bb_dlevel_read, tegra_bb_dlevel_write);
 
 static void tegra_usbdevice_added(struct usb_device *udev)
 {
@@ -158,12 +185,12 @@ static void tegra_usbdevice_added(struct usb_device *udev)
 	    desc->idProduct == mdata->pid) {
 		pr_debug("%s: Device %s added.\n", udev->product, __func__);
 
+		if (callback && callback->usbnotify)
+			callback->usbnotify(udev, true);
 		if (mdata->wake_capable)
 			device_set_wakeup_enable(&udev->dev, true);
 		if (mdata->autosuspend_ready)
 			usb_enable_autosuspend(udev);
-		if (mdata->reg_cb)
-			mdata->reg_cb(udev);
 	}
 }
 
@@ -174,6 +201,8 @@ static void tegra_usbdevice_removed(struct usb_device *udev)
 	if (desc->idVendor == mdata->vid &&
 	    desc->idProduct == mdata->pid) {
 		pr_debug("%s: Device %s removed.\n", udev->product, __func__);
+		if (callback && callback->usbnotify)
+			callback->usbnotify(udev, false);
 	}
 }
 
@@ -195,6 +224,21 @@ static struct notifier_block tegra_usb_nb = {
 	.notifier_call = tegra_usb_notify,
 };
 
+#ifdef CONFIG_PM_SLEEP
+static int pm_event(struct notifier_block *this, unsigned long event,
+							 void *ptr) {
+	int retval = NOTIFY_DONE;
+
+	if (callback && callback->pmnotify)
+		retval = callback->pmnotify(event);
+	return retval;
+};
+
+static struct notifier_block tegra_pm_notifier = {
+	.notifier_call = pm_event,
+};
+#endif
+
 static int tegra_bb_power_probe(struct platform_device *device)
 {
 	struct device *dev = &device->dev;
@@ -211,7 +255,7 @@ static int tegra_bb_power_probe(struct platform_device *device)
 	}
 
 	/* Obtain BB specific callback list */
-	bb_id = pdata->bb_id;
+	bb_id = (pdata->bb_id)-1;
 	if (get_cblist[bb_id] != NULL) {
 		callback = (struct tegra_bb_callback *) get_cblist[bb_id]();
 		if (callback && callback->init) {
@@ -248,8 +292,20 @@ static int tegra_bb_power_probe(struct platform_device *device)
 		pr_err("%s - Error: device_create_file failed.\n", __func__);
 		return -ENODEV;
 	}
-	attr_load_val = 0;
+	attr_load = 0;
 
+	/* Create debug level sysfs node */
+	err = device_create_file(dev, &dev_attr_dlevel);
+	if (err < 0) {
+		pr_err("%s - Error: device_create_file failed.\n", __func__);
+		return -ENODEV;
+	}
+	attr_dlevel = DLEVEL_INIT;
+
+#ifdef CONFIG_PM_SLEEP
+	/* Register for PM notifications */
+	register_pm_notifier(&tegra_pm_notifier);
+#endif
 	return 0;
 }
 
@@ -275,44 +331,70 @@ static int tegra_bb_power_remove(struct platform_device *device)
 
 		mdata = data->modem_data;
 		if (mdata && mdata->vid && mdata->pid)
-			/* Register to notifications from usb core */
+			/* Unregister notifications from usb core */
 			usb_unregister_notify(&tegra_usb_nb);
 	}
 
-	/* Remove the control sysfs node */
+#ifdef CONFIG_PM_SLEEP
+	/* Unregister PM notifications */
+	unregister_pm_notifier(&tegra_pm_notifier);
+#endif
+	/* Remove sysfs nodes */
 	device_remove_file(dev, &dev_attr_load);
+	device_remove_file(dev, &dev_attr_dlevel);
 
 	return 0;
 }
 
 #ifdef CONFIG_PM
-static int tegra_bb_power_suspend(struct platform_device *device,
-	pm_message_t state)
+static int tegra_bb_driver_suspend(struct device *dev)
 {
 	/* BB specific callback */
 	if (callback && callback->power)
-		callback->power(PWRSTATE_L2L3);
+		return callback->power(PWRSTATE_L2L3);
 	return 0;
 }
 
-static int tegra_bb_power_resume(struct platform_device *device)
+static int tegra_bb_driver_resume(struct device *dev)
 {
 	/* BB specific callback */
 	if (callback && callback->power)
-		callback->power(PWRSTATE_L3L0);
+		return callback->power(PWRSTATE_L3L0);
 	return 0;
 }
+
+static int tegra_bb_suspend_noirq(struct device *dev)
+{
+	/* BB specific callback */
+	if (callback && callback->power)
+		return callback->power(PWRSTATE_L2L3_NOIRQ);
+	return 0;
+}
+
+static int tegra_bb_resume_noirq(struct device *dev)
+{
+	/* BB specific callback */
+	if (callback && callback->power)
+		return callback->power(PWRSTATE_L3L0_NOIRQ);
+	return 0;
+}
+
+static const struct dev_pm_ops tegra_bb_pm_ops = {
+	.suspend_noirq = tegra_bb_suspend_noirq,
+	.resume_noirq = tegra_bb_resume_noirq,
+	.suspend = tegra_bb_driver_suspend,
+	.resume = tegra_bb_driver_resume,
+};
 #endif
 
 static struct platform_driver tegra_bb_power_driver = {
 	.probe = tegra_bb_power_probe,
 	.remove = tegra_bb_power_remove,
-#ifdef CONFIG_PM
-	.suspend = tegra_bb_power_suspend,
-	.resume = tegra_bb_power_resume,
-#endif
 	.driver = {
 		.name = "tegra_baseband_power",
+#ifdef CONFIG_PM
+		.pm   = &tegra_bb_pm_ops,
+#endif
 	},
 };
 

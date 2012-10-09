@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-baseband/bb-power.h
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2012 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -15,21 +15,42 @@
  */
 
 enum tegra_bb_state {
-	BBSTATE_UNKNOWN,
 	/* Baseband state L0 - Running */
-	BBSTATE_L0,
+	BBSTATE_L0 = 0,
+	/* Baseband state L02L2 - Running->Suspend */
+	BBSTATE_L02L2 = 1,
 	/* Baseband state L2 - Suspended */
-	BBSTATE_L2,
+	BBSTATE_L2 = 2,
 	/* Baseband state L3 - Suspended and detached */
-	BBSTATE_L3,
+	BBSTATE_L3 = 3,
+	/* Invalid baseband state */
+	BBSTATE_UNKNOWN = 0xFF,
 };
 
 enum tegra_bb_pwrstate {
 	/* System power state - Entering suspend */
 	PWRSTATE_L2L3,
+	/* System power state - Entering suspend, no irq */
+	PWRSTATE_L2L3_NOIRQ,
 	/* System power state - Resuming from suspend */
 	PWRSTATE_L3L0,
+	/* System power state - Resuming from suspend, no irq */
+	PWRSTATE_L3L0_NOIRQ,
+	/* Invalid system power state */
 	PWRSTATE_INVALID,
+};
+
+enum tegra_bb_dlevel {
+	/* Debug level - Initialization */
+	DLEVEL_INIT = 0,
+	/* Debug level - Sysfs callbacks */
+	DLEVEL_SYS_CB = 1U << 0,
+	/* Debug level - PM */
+	DLEVEL_PM = 1U << 1,
+	/* Debug level - Misc */
+	DLEVEL_MISC = 1U << 2,
+	/* Debug level - Max */
+	DLEVEL_MAX = 1U << 3,
 };
 
 struct tegra_bb_gpio_data {
@@ -54,11 +75,12 @@ struct tegra_bb_gpio_irqdata {
 };
 
 typedef void* (*bb_get_cblist)(void);
-typedef void* (*bb_init_cb)(void *pdata);
-typedef void* (*bb_deinit_cb)(void);
-typedef int (*bb_power_cb)(int code);
-typedef int (*bb_attrib_cb)(struct device *dev, int value);
-typedef int (*modem_register_cb)(struct usb_device *udev);
+typedef void* (*cb_init)(void *pdata);
+typedef void* (*cb_deinit)(void);
+typedef int (*cb_power)(int code);
+typedef int (*cb_attrib_access)(struct device *dev, int value);
+typedef int (*cb_usbnotify)(struct usb_device *udev, bool registered);
+typedef int (*cb_pmnotify)(unsigned long event);
 
 struct tegra_bb_power_gdata {
 	struct tegra_bb_gpio_data *gpio;
@@ -74,8 +96,6 @@ struct tegra_bb_power_mdata {
 	bool wake_capable;
 	/* Baseband capability - Can it be auto/runtime suspended ? */
 	bool autosuspend_ready;
-	/* Baseband callback after a successful registration */
-	modem_register_cb reg_cb;
 };
 
 struct tegra_bb_power_data {
@@ -84,16 +104,26 @@ struct tegra_bb_power_data {
 };
 
 struct tegra_bb_callback {
-	bb_init_cb init;
-	bb_deinit_cb deinit;
-	bb_power_cb power;
-	bb_attrib_cb attrib;
+	/* Init callback */
+	cb_init init;
+	/* Deinit callback */
+	cb_deinit deinit;
+	/* Powerstate transitions callback */
+	cb_power power;
+	/* Sysfs "load" callback */
+	cb_attrib_access load;
+	/* Sysfs "dlevel" callback */
+	cb_attrib_access dlevel;
+	/* USB notifier callback */
+	cb_usbnotify usbnotify;
+	/* PM notifier callback */
+	cb_pmnotify pmnotify;
 	bool valid;
 };
 
-#ifdef CONFIG_TEGRA_BB_M7400
-extern void *m7400_get_cblist(void);
-#define M7400_CB m7400_get_cblist
+#ifdef CONFIG_TEGRA_BB_OEM1
+extern void *bb_oem1_get_cblist(void);
+#define OEM1_CB bb_oem1_get_cblist
 #else
-#define M7400_CB NULL
+#define OEM1_CB NULL
 #endif

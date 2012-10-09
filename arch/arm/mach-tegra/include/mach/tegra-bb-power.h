@@ -28,34 +28,32 @@ union tegra_bb_gpio_id {
 		int rsvd2;
 	} generic;
 	struct {
-		int bb_rst;
-		int bb_on;
-		int ipc_bb_wake;
-		int ipc_ap_wake;
-		int ipc_hsic_active;
-		int ipc_hsic_sus_req;
+		int reset;
+		int pwron;
+		int awr;
+		int cwr;
+		int spare;
+		int wdi;
 		int rsvd1;
 		int rsvd2;
-	} xmm;
-	struct {
-		int pwr_status;
-		int pwr_on;
-		int uart_awr;
-		int uart_cwr;
-		int usb_awr;
-		int usb_cwr;
-		int service;
-		int resout2;
-	} m7400;
+	} oem1;
 };
 
-typedef struct platform_device* (*ehci_register_cb)(void);
+typedef struct platform_device* (*ehci_register_cb)(struct platform_device *);
 typedef void (*ehci_unregister_cb)(struct platform_device **);
 
 struct tegra_bb_pdata {
+	/* List of platform gpios for modem */
 	union tegra_bb_gpio_id *id;
+	/* Ehci device pointer */
 	struct platform_device *device;
+	/* Ehci register callback */
 	ehci_register_cb ehci_register;
+	/* Ehci unregister callback */
 	ehci_unregister_cb ehci_unregister;
+	/* Baseband ID */
 	int bb_id;
+	/* HSIC rail regulator name. Provide a name if --
+	rail is shared and the co-owner will turn it off when done */
+	char *regulator;
 };
