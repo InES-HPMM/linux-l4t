@@ -53,15 +53,15 @@ static int enable_app_profiles;
 
 void tegra_init_speedo_data(void)
 {
-	u32 ft_rev, ft_rev_major, ft_rev_minor, iddq_value;
+	u32 ft_rev, ft_rev_major, ft_rev_minor;
 
 	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
 
 	cpu_speedo_id = -1; /* hard-code hack because EDP table needs it */
 
-	iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
-	iddq_value &= 0x3ff;
+	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
+	cpu_iddq_value &= 0x3ff;
 
 	pr_info("Tegra11: CPU Speedo ID %d, Soc Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id);
@@ -73,7 +73,12 @@ void tegra_init_speedo_data(void)
 	ft_rev_major = (ft_rev >> 5) & 0x3f;
 
 	if ((ft_rev_minor < 5) && (ft_rev_major == 0)) {
-		cpu_iddq_value = 2000;
+		/* Implement: cpu_iddq = max(1.3*fused_cpu_iddq, 2 Amps) */
+		cpu_iddq_value *= 130;
+		cpu_iddq_value = cpu_iddq_value > 200000 ?
+			cpu_iddq_value : 200000;
+		cpu_iddq_value /= 100;
+
 		pr_warn("Tegra11: CPU IDDQ and speedo may be bogus");
 	}
 }
