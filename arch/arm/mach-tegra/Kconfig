@@ -102,6 +102,7 @@ config ARCH_TEGRA_11x_SOC
 	select ARM_CPU_SUSPEND if PM
 	select ARM_GIC
 	select ARM_L1_CACHE_SHIFT_6
+	select CPA
 	select CPU_V7
 	select EDP_FRAMEWORK
 	select REPORT_PRESENT_CPUS if TEGRA_AUTO_HOTPLUG
