@@ -36,6 +36,7 @@
 
 #include "tegra_cl_dvfs.h"
 #include "clock.h"
+#include "dvfs.h"
 
 #define OUT_MASK			0x3f
 
@@ -130,6 +131,44 @@
 #define CL_DVFS_OUTPUT_LUT		0x200
 
 #define CL_DVFS_OUTPUT_PENDING_TIMEOUT	1000
+
+enum tegra_cl_dvfs_ctrl_mode {
+	TEGRA_CL_DVFS_UNINITIALIZED = 0,
+	TEGRA_CL_DVFS_DISABLED = 1,
+	TEGRA_CL_DVFS_OPEN_LOOP = 2,
+	TEGRA_CL_DVFS_CLOSED_LOOP = 3,
+};
+
+struct dfll_rate_req {
+	u8	freq;
+	u8	scale;
+	u8	output;
+};
+
+struct tegra_cl_dvfs {
+	void					*cl_base;
+	struct tegra_cl_dvfs_platform_data	*p_data;
+
+	struct dvfs			*safe_dvfs;
+	struct clk			*soc_clk;
+	struct clk			*ref_clk;
+	struct clk			*i2c_clk;
+	unsigned long			ref_rate;
+	unsigned long			i2c_rate;
+
+	/* output voltage mapping:
+	 * legacy dvfs table index -to- cl_dvfs output LUT index
+	 * cl_dvfs output LUT index -to- PMU value/voltage pair ptr
+	 */
+	u8				clk_dvfs_map[MAX_DVFS_FREQS];
+	struct voltage_reg_map		*out_map[MAX_CL_DVFS_VOLTAGES];
+	u8				num_voltages;
+	u8				safe_ouput;
+
+	struct dfll_rate_req		last_req;
+	unsigned long			dfll_rate_min;
+	enum tegra_cl_dvfs_ctrl_mode	mode;
+};
 
 /* Conversion macros (different scales for frequency request, and monitored
    rate is not a typo)*/
@@ -490,10 +529,13 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
+	int ret;
 	struct tegra_cl_dvfs_platform_data *p_data;
 	struct resource *res;
-	struct clk *c, *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk;
+	struct tegra_cl_dvfs *cld;
+	struct clk *ref_clk, *soc_clk, *i2c_clk, *safe_dvfs_clk;
 
+	/* Get resources */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_err(&pdev->dev, "missing register base\n");
@@ -519,19 +561,30 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		return PTR_ERR(safe_dvfs_clk);
 	}
 
-	c = tegra_get_clock_by_name(p_data->dfll_clk_name);
-	if (!c || !c->u.dfll.cl_dvfs) {
-		dev_err(&pdev->dev, "missing target dfll\n");
-		return -ENODATA;
+
+	/* Allocate cl_dvfs object and populate resource accessors */
+	cld = kzalloc(sizeof(*cld), GFP_KERNEL);
+	if (!cld) {
+		dev_err(&pdev->dev, "failed to allocate cl_dvfs object\n");
+		return -ENOMEM;
 	}
 
-	c->u.dfll.cl_dvfs->cl_base = IO_ADDRESS(res->start);
-	c->u.dfll.cl_dvfs->p_data = p_data;
-	c->u.dfll.cl_dvfs->ref_clk = ref_clk;
-	c->u.dfll.cl_dvfs->soc_clk = soc_clk;
-	c->u.dfll.cl_dvfs->i2c_clk = i2c_clk;
-	c->u.dfll.cl_dvfs->safe_dvfs = safe_dvfs_clk->dvfs;
-	return cl_dvfs_init(c->u.dfll.cl_dvfs);
+	cld->cl_base = IO_ADDRESS(res->start);
+	cld->p_data = p_data;
+	cld->ref_clk = ref_clk;
+	cld->soc_clk = soc_clk;
+	cld->i2c_clk = i2c_clk;
+	cld->safe_dvfs = safe_dvfs_clk->dvfs;
+
+	/* Initialize cl_dvfs */
+	ret = cl_dvfs_init(cld);
+	if (ret) {
+		kfree(cld);
+		return ret;
+	}
+
+	platform_set_drvdata(pdev, cld);
+	return 0;
 }
 
 static struct platform_driver tegra_cl_dvfs_driver = {
@@ -744,8 +797,8 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 
 static int lock_get(void *data, u64 *val)
 {
-	struct clk *c = (struct clk *)data;
-	*val = c->u.dfll.cl_dvfs->mode == TEGRA_CL_DVFS_CLOSED_LOOP;
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	*val = cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP;
 	return 0;
 }
 static int lock_set(void *data, u64 val)

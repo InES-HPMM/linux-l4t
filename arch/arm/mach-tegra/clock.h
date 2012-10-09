@@ -114,8 +114,6 @@ enum clk_state {
 };
 
 #ifndef CONFIG_COMMON_CLK
-struct tegra_cl_dvfs;
-
 struct clk_ops {
 	void		(*init)(struct clk *);
 	int		(*enable)(struct clk *);
@@ -201,7 +199,7 @@ struct clk {
 			u32	(*round_p_to_pdiv)(u32 p, u32 *pdiv);
 		} pll;
 		struct {
-			struct tegra_cl_dvfs		*cl_dvfs;
+			void				*cl_dvfs;
 		} dfll;
 		struct {
 			unsigned long			default_rate;

@@ -19,16 +19,9 @@
 #ifndef _TEGRA_CL_DVFS_H_
 #define _TEGRA_CL_DVFS_H_
 
-#include "dvfs.h"
+struct tegra_cl_dvfs;
 
 #define MAX_CL_DVFS_VOLTAGES		33
-
-enum tegra_cl_dvfs_ctrl_mode {
-	TEGRA_CL_DVFS_UNINITIALIZED = 0,
-	TEGRA_CL_DVFS_DISABLED = 1,
-	TEGRA_CL_DVFS_OPEN_LOOP = 2,
-	TEGRA_CL_DVFS_CLOSED_LOOP = 3,
-};
 
 enum tegra_cl_dvfs_force_mode {
 	TEGRA_CL_DVFS_FORCE_NONE = 0,
@@ -82,37 +75,6 @@ struct tegra_cl_dvfs_platform_data {
 	int			vdd_map_size;
 
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
-};
-
-struct dfll_rate_req {
-	u8	freq;
-	u8	scale;
-	u8	output;
-};
-
-struct tegra_cl_dvfs {
-	u32					cl_base;
-	struct tegra_cl_dvfs_platform_data	*p_data;
-
-	struct dvfs			*safe_dvfs;
-	struct clk			*soc_clk;
-	struct clk			*ref_clk;
-	struct clk			*i2c_clk;
-	unsigned long			ref_rate;
-	unsigned long			i2c_rate;
-
-	/* output voltage mapping:
-	 * legacy dvfs table index -to- cl_dvfs output LUT index
-	 * cl_dvfs output LUT index -to- PMU value/voltage pair ptr
-	 */
-	u8				clk_dvfs_map[MAX_DVFS_FREQS];
-	struct voltage_reg_map		*out_map[MAX_CL_DVFS_VOLTAGES];
-	u8				num_voltages;
-	u8				safe_ouput;
-
-	struct dfll_rate_req		last_req;
-	unsigned long			dfll_rate_min;
-	enum tegra_cl_dvfs_ctrl_mode	mode;
 };
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
