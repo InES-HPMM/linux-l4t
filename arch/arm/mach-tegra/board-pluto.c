@@ -66,6 +66,7 @@
 #include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
+#include <mach/tegra-bb-power.h>
 #include <mach/edp.h>
 #include <mach/tegra_usb_modem_power.h>
 
@@ -388,6 +389,13 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
+#ifdef CONFIG_MHI_NETDEV
+struct platform_device mhi_netdevice0 = {
+	.name = "mhi_net_device",
+	.id = 0,
+};
+#endif /* CONFIG_MHI_NETDEV */
+
 static struct platform_device *pluto_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -420,6 +428,9 @@ static struct platform_device *pluto_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
+#ifdef CONFIG_MHI_NETDEV
+	&mhi_netdevice0,  /* MHI netdevice */
+#endif /* CONFIG_MHI_NETDEV */
 };
 
 #ifdef CONFIG_USB_SUPPORT
@@ -553,6 +564,97 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband2_pdata = {
 	},
 	.ops = &baseband2_plat_ops,
 };
+
+#ifdef CONFIG_TEGRA_BB_OEM1
+static struct tegra_usb_platform_data tegra_hsic_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
+
+static struct platform_device *
+tegra_usb_hsic_host_register(struct platform_device *ehci_dev)
+{
+	struct platform_device *pdev;
+	int val;
+
+	pdev = platform_device_alloc(ehci_dev->name, ehci_dev->id);
+	if (!pdev)
+		return NULL;
+
+	val = platform_device_add_resources(pdev, ehci_dev->resource,
+						ehci_dev->num_resources);
+	if (val)
+		goto error;
+
+	pdev->dev.dma_mask =  ehci_dev->dev.dma_mask;
+	pdev->dev.coherent_dma_mask = ehci_dev->dev.coherent_dma_mask;
+
+	val = platform_device_add_data(pdev, &tegra_hsic_pdata,
+			sizeof(struct tegra_usb_platform_data));
+	if (val)
+		goto error;
+
+	val = platform_device_add(pdev);
+	if (val)
+		goto error;
+
+	return pdev;
+
+error:
+	pr_err("%s: failed to add the host contoller device\n", __func__);
+	platform_device_put(pdev);
+	return NULL;
+}
+
+static void tegra_usb_hsic_host_unregister(struct platform_device **platdev)
+{
+	struct platform_device *pdev = *platdev;
+
+	if (pdev && &pdev->dev) {
+		platform_device_unregister(pdev);
+		*platdev = NULL;
+	} else
+		pr_err("%s: no platform device\n", __func__);
+}
+
+static struct tegra_usb_phy_platform_ops oem1_hsic_pops;
+
+static union tegra_bb_gpio_id bb_gpio_oem1 = {
+	.oem1 = {
+		.reset = BB_OEM1_GPIO_RST,
+		.pwron = BB_OEM1_GPIO_ON,
+		.awr = BB_OEM1_GPIO_AWR,
+		.cwr = BB_OEM1_GPIO_CWR,
+		.spare = BB_OEM1_GPIO_SPARE,
+		.wdi = BB_OEM1_GPIO_WDI,
+	},
+};
+
+static struct tegra_bb_pdata bb_pdata_oem1 = {
+	.id = &bb_gpio_oem1,
+	.device = &tegra_ehci3_device,
+	.ehci_register = tegra_usb_hsic_host_register,
+	.ehci_unregister = tegra_usb_hsic_host_unregister,
+	.bb_id = TEGRA_BB_OEM1,
+};
+
+static struct platform_device tegra_bb_oem1 = {
+	.name = "tegra_baseband_power",
+	.id = -1,
+	.dev = {
+		.platform_data = &bb_pdata_oem1,
+	},
+};
+#endif
 
 static void baseband_post_phy_on(void)
 {
@@ -724,6 +826,14 @@ static void pluto_modem_init(void)
 	case TEGRA_BB_I500SWD: /* i500 SWD HSIC */
 		platform_device_register(&icera_baseband2_device);
 		break;
+#ifdef CONFIG_TEGRA_BB_OEM1
+	case TEGRA_BB_OEM1:	/* OEM1 HSIC */
+		tegra_hsic_pdata.ops = &oem1_hsic_pops;
+		tegra_ehci3_device.dev.platform_data
+			= &tegra_hsic_pdata;
+		platform_device_register(&tegra_bb_oem1);
+		break;
+#endif
 	default:
 		return;
 	}

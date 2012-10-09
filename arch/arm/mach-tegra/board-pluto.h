@@ -93,6 +93,13 @@
 #define MDM2_REQ2			TEGRA_GPIO_PV1
 #define MDM2_ACK2			TEGRA_GPIO_PO3
 
+#define BB_OEM1_GPIO_RST		TEGRA_GPIO_PR5
+#define BB_OEM1_GPIO_ON			TEGRA_GPIO_PR6
+#define BB_OEM1_GPIO_AWR		TEGRA_GPIO_PG2
+#define BB_OEM1_GPIO_CWR		TEGRA_GPIO_PV1
+#define BB_OEM1_GPIO_SPARE		TEGRA_GPIO_PO2
+#define BB_OEM1_GPIO_WDI		TEGRA_GPIO_PV0
+
 int pluto_regulator_init(void);
 int pluto_suspend_init(void);
 int pluto_sdhci_init(void);
@@ -117,8 +124,9 @@ int pluto_soctherm_init(void);
 enum tegra_bb_type {
 	TEGRA_BB_I500 = 1,
 	TEGRA_BB_I500SWD,
-	TEGRA_BB_OEM_R,
-	TEGRA_BB_OEM_I,
-	TEGRA_BB_OEM_S,
+	TEGRA_BB_OEM1,
+	TEGRA_BB_OEM2,
+	TEGRA_BB_OEM3,
+	TEGRA_BB_HSIC_HUB,
 };
 #endif
