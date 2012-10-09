@@ -688,11 +688,20 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 	}
 	regulator_cur = regulator_mA + OVERRIDE_DEFAULT;
 
-	if (init_cpu_edp_limits_lookup(cpu_speedo_id) == 0)
-		return;
-
-	if (init_cpu_edp_limits_calculated(cpu_speedo_id) == 0)
-		return;
+	switch (tegra_chip_id) {
+	case TEGRA30:
+		if (init_cpu_edp_limits_lookup(cpu_speedo_id) == 0)
+			return;
+		break;
+	case TEGRA11X:
+		if (init_cpu_edp_limits_calculated(cpu_speedo_id) == 0)
+			return;
+		break;
+	case TEGRA20:
+	default:
+		BUG();
+		break;
+	}
 
 	edp_limits = edp_default_limits;
 	edp_limits_size = ARRAY_SIZE(edp_default_limits);
