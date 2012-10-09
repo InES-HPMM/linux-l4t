@@ -142,6 +142,7 @@ static int cluster_switch_prolog_clock(unsigned int flags)
 			writel(SuperCclkDivier, CAR_SUPER_CCLKG_DIVIDER);
 		}
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		/* Hold G CPUs 1-3 in reset after the switch */
 		reg = CPU_RESET(1) | CPU_RESET(2) | CPU_RESET(3);
 		writel(reg, CAR_RST_CPUG_CMPLX_SET);
@@ -161,6 +162,7 @@ static int cluster_switch_prolog_clock(unsigned int flags)
 		/* Enable the G CPU complex clock after the switch */
 		reg = CAR_CLK_ENB_V_CPU_G;
 		writel(reg, CAR_CLK_ENB_V_SET);
+#endif
 	}
 	/* Switching to LP? */
 	else if (flags & TEGRA_POWER_CLUSTER_LP) {
@@ -180,6 +182,7 @@ static int cluster_switch_prolog_clock(unsigned int flags)
 			writel(SuperCclkDivier, CAR_SUPER_CCLKLP_DIVIDER);
 		}
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		/* Take the LP CPU ut of reset after the switch */
 		reg = CPU_RESET(0);
 		writel(reg, CAR_RST_CPULP_CMPLX_CLR);
@@ -191,6 +194,7 @@ static int cluster_switch_prolog_clock(unsigned int flags)
 		/* Enable the LP CPU complex clock after the switch */
 		reg = CAR_CLK_ENB_V_CPU_LP;
 		writel(reg, CAR_CLK_ENB_V_SET);
+#endif
 	}
 
 	return 0;

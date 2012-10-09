@@ -46,17 +46,31 @@ static DECLARE_BITMAP(tegra_cpu_init_bits, CONFIG_NR_CPUS) __read_mostly;
 const struct cpumask *const tegra_cpu_init_mask = to_cpumask(tegra_cpu_init_bits);
 #define tegra_cpu_init_map	(*(cpumask_t *)tegra_cpu_init_mask)
 
+static DECLARE_BITMAP(tegra_cpu_power_up_by_fc, CONFIG_NR_CPUS) __read_mostly;
+struct cpumask *tegra_cpu_power_mask =
+				to_cpumask(tegra_cpu_power_up_by_fc);
+#define tegra_cpu_power_map	(*(cpumask_t *)tegra_cpu_power_mask)
+
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 #define CAR_BOND_OUT_V \
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x390)
 #define CAR_BOND_OUT_V_CPU_G	(1<<0)
 #endif
 
+#define CLAMP_STATUS	0x2c
+#define PWRGATE_TOGGLE	0x30
+
+#define PMC_TOGGLE_START	0x100
+
 #ifdef CONFIG_HAVE_ARM_SCU
 static void __iomem *scu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE);
 #endif
 
 static unsigned int number_of_cores;
+
+static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+#define pmc_writel(value, reg)	writel(value, pmc + (reg))
+#define pmc_readl(reg)		readl(pmc + (reg))
 
 static void __init setup_core_count(void)
 {
@@ -124,6 +138,15 @@ static bool is_cpu_powered(unsigned int cpu)
 		return true;
 	else
 		return tegra_powergate_is_powered(TEGRA_CPU_POWERGATE_ID(cpu));
+}
+
+static bool is_clamp_removed(unsigned int cpu)
+{
+	u32 reg;
+
+	reg = pmc_readl(CLAMP_STATUS);
+
+	return !((reg >> TEGRA_CPU_POWERGATE_ID(cpu)) & 1);
 }
 
 static void __cpuinit tegra_secondary_init(unsigned int cpu)
@@ -214,8 +237,7 @@ fail:
 
 static int tegra11x_power_up_cpu(unsigned int cpu)
 {
-	u32 reg;
-	int ret = 0;
+	int ret;
 	unsigned long timeout;
 
 	BUG_ON(cpu == smp_processor_id());
@@ -223,47 +245,33 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 
 	cpu = cpu_logical_map(cpu);
 
-	timeout = jiffies + 5;
+	if (cpu_isset(cpu, tegra_cpu_power_map)) {
+
+		/* set SCLK as event trigger for flow conroller */
+		flowctrl_write_cpu_csr(cpu, 0x1);
+		flowctrl_write_cpu_halt(cpu, 0x48000000);
+
+	} else {
+		u32 reg;
+
+		reg = PMC_TOGGLE_START | TEGRA_CPU_POWERGATE_ID(cpu);
+		pmc_writel(reg, PWRGATE_TOGGLE);
+	}
+
+	ret = -ETIMEDOUT;
+
+	/* Wait for the power to come up. */
+	timeout = jiffies + 10;
 	do {
-		if (is_cpu_powered(cpu))
-			goto enable_cpu_clock;
+		if (is_cpu_powered(cpu) && is_clamp_removed(cpu)) {
+			cpumask_set_cpu(cpu, tegra_cpu_power_mask);
+			wmb();
+			ret = 0;
+			break;
+		}
 		udelay(10);
 	} while (time_before(jiffies, timeout));
 
-	/*
-	 * flow controller sequence didn't work, so directly toggle PMC
-	 * to power it up
-	 */
-	if (!is_cpu_powered(cpu)) {
-		ret = tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
-		if (ret)
-			goto fail;
-
-		/* Wait for the power to come up. */
-		timeout = jiffies + 10*HZ;
-
-		do {
-			if (is_cpu_powered(cpu))
-				goto remove_clamps;
-			udelay(10);
-		} while (time_before(jiffies, timeout));
-		ret = -ETIMEDOUT;
-		goto fail;
-	}
-
-remove_clamps:
-
-	/* Remove I/O clamps. */
-	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
-	udelay(10);
-
-enable_cpu_clock:
-
-	/* Enable the CPU clock */
-	writel(CPU_CLOCK(cpu), CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
-	reg = readl(CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
-
-fail:
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
 
@@ -314,6 +322,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 
 	smp_wmb();
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/*
 	 * Force the CPU into reset. The CPU must remain in reset when the
 	 * flow controller state is cleared (which will cause the flow
@@ -322,7 +331,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 	 * of the CPU since it should already be in reset.
 	 */
 	tegra_put_cpu_in_reset(cpu);
-
+#endif
 
 	switch (tegra_chip_id) {
 	case TEGRA20:
@@ -346,9 +355,6 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		status = tegra30_power_up_cpu(cpu);
 		break;
 	case TEGRA11X:
-		/* set SCLK as event trigger for flow conroller */
-		flowctrl_write_cpu_csr(cpu, 0x1);
-		flowctrl_write_cpu_halt(cpu, 0x48000000);
 		status = tegra11x_power_up_cpu(cpu);
 		break;
 	default:
@@ -356,11 +362,13 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		break;
 	}
 
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	if (status)
 		goto done;
 
 	/* Take the CPU out of reset. */
 	tegra_cpu_out_of_reset(cpu);
+#endif
 done:
 	return status;
 }
@@ -403,6 +411,9 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 	/* Always mark the boot CPU as initialized. */
 	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
 
+	/* Always mark the boot CPU as initially powered up */
+	cpumask_set_cpu(0, tegra_cpu_power_mask);
+
 	if (max_cpus == 1)
 		tegra_all_cpus_booted = true;
 
@@ -415,6 +426,14 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 	scu_enable(scu_base);
 #endif
 }
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+void tegra_smp_clear_power_mask()
+{
+	cpumask_clear(tegra_cpu_power_mask);
+	cpumask_set_cpu(0, tegra_cpu_power_mask);
+}
+#endif
 
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_init_cpus		= tegra_smp_init_cpus,

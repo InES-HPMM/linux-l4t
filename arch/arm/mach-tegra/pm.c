@@ -936,6 +936,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_lp0_suspend_mc();
 		tegra_cpu_reset_handler_save();
 		tegra_tsc_wait_for_suspend();
+		tegra_smp_clear_power_mask();
 	}
 	else if (mode == TEGRA_SUSPEND_LP1)
 		*iram_cpu_lp1_mask = 1;

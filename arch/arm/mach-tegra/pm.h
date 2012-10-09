@@ -231,6 +231,12 @@ extern bool tegra_all_cpus_booted __read_mostly;
 #define tegra_all_cpus_booted (true)
 #endif
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+void tegra_smp_clear_power_mask(void);
+#else
+static inline void tegra_smp_clear_power_mask(void){}
+#endif
+
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 void tegra_generic_smc(u32 type, u32 subtype, u32 arg);
 #endif

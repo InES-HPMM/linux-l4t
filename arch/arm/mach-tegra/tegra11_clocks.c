@@ -461,6 +461,9 @@
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 
+#define CPU_CLOCK(cpu)	(0x1 << (8 + cpu))
+#define CPU_RESET(cpu)	(0x111001ul << (cpu))
+
 /* PLLP default fixed rate in h/w controlled mode */
 #define PLLP_DEFAULT_FIXED_RATE		216000000
 
@@ -7111,6 +7114,10 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 	.resume = tegra11_clk_resume,
 };
 #endif
+
+static void tegra11_disable_cpu_clock(u32 cpu)
+{
+}
 
 void __init tegra11x_init_clocks(void)
 {
