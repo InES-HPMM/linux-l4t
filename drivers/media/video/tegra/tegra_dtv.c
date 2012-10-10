@@ -2,8 +2,8 @@
  * tegra_dtv.c - Tegra DTV interface driver
  *
  * Author: Adam Jiang <chaoj@nvidia.com>
- * Copyright (c) 2011, NVIDIA Corporation.
- * Copyright (c) 2012, NVIDIA Corporation.
+ *
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -695,8 +695,8 @@ static int dtv_reg_show(struct seq_file *s, void *unused)
 		   tegra_dtv_readl(dtv_ctx, DTV_MODE));
 	seq_printf(s, "DTV_CONTROL:       0x%08x\n",
 		   tegra_dtv_readl(dtv_ctx, DTV_CTRL));
-	seq_printf(s, "DTV_FIFO:          0x%08x\n",
-		   tegra_dtv_readl(dtv_ctx, DTV_RX_FIFO));
+	seq_printf(s, "DTV_STATUS:        0x%08x\n",
+		   tegra_dtv_readl(dtv_ctx, DTV_STATUS));
 
 	return 0;
 
