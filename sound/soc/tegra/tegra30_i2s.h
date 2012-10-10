@@ -45,6 +45,9 @@
 #define TEGRA30_I2S_LCOEF_2_4_0				0x4c
 #define TEGRA30_I2S_LCOEF_2_4_1				0x50
 #define TEGRA30_I2S_LCOEF_2_4_2				0x54
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_I2S_SLOT_CTRL2				0x64
+#endif
 
 /* Fields in TEGRA30_I2S_CTRL */
 
@@ -182,6 +185,11 @@
 #define TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT	0
 #define TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK	(0xff << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT)
 
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+#define TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT	0
+#define TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT	16
+#endif
+
 /* Fields in TEGRA30_I2S_CIF_RX_CTRL */
 /* Uses field from TEGRA30_AUDIOCIF_CTRL_* in tegra30_ahub.h */
 
@@ -256,9 +264,14 @@ struct tegra30_i2s {
 	int dam_ifc;
 	int dam_ch_refcount;
 	int  playback_ref_count;
+	int daifmt;
 	bool is_dam_used;
 #ifdef CONFIG_PM
-	u32  reg_cache[(TEGRA30_I2S_CIF_TX_CTRL >> 2) + 1];
+	#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+		u32  reg_cache[(TEGRA30_I2S_CIF_TX_CTRL >> 2) + 1];
+	#else
+		u32  reg_cache[(TEGRA30_I2S_SLOT_CTRL2 >> 2) + 1];
+	#endif
 #endif
 	int call_record_dam_ifc;
 	int is_call_mode_rec;

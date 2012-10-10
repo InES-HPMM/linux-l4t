@@ -163,7 +163,8 @@ static int tegra30_i2s_set_fmt(struct snd_soc_dai *dai,
 	mask |= TEGRA30_I2S_CTRL_FRAME_FORMAT_MASK |
 		TEGRA30_I2S_CTRL_LRCK_MASK;
 	i2s->reg_ch_ctrl &= ~TEGRA30_I2S_CH_CTRL_EGDE_CTRL_MASK;
-	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+	i2s->daifmt = fmt & SND_SOC_DAIFMT_FORMAT_MASK;
+	switch (i2s->daifmt) {
 	case SND_SOC_DAIFMT_DSP_A:
 		val |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		val |= TEGRA30_I2S_CTRL_LRCK_L_LOW;
@@ -407,7 +408,7 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 {
 	struct device *dev = dai->dev;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
-	unsigned int mask, val, reg;
+	unsigned int mask, val, reg, i;
 	int ret, sample_size, srate, i2sclock, bitcnt, sym_bitclk;
 	int i2s_client_ch;
 
@@ -423,6 +424,9 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL, mask, val);
 
+	bitcnt = sample_size;
+	i = 0;
+
 	/* TDM mode */
 	if ((i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) &&
 		(i2s->dsp_config.slot_width > 2))
@@ -431,12 +435,13 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	srate = params_rate(params);
 
 	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_MASTER_ENABLE) {
-		i2sclock = srate * params_channels(params) * sample_size;
+		i2sclock = srate * 2 * sample_size;
 
 		/* Additional "* 4" is needed for FSYNC mode */
 		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 			i2sclock *= 4;
-	ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
+
+		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_pll_a_out0);
 		if (ret) {
 			dev_err(dev, "Can't set parent of I2S clock\n");
 			return ret;
@@ -448,9 +453,25 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			return ret;
 		}
 
+		tegra30_i2s_enable_clocks(i2s);
+
 		if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) {
 			bitcnt = (i2sclock / srate) - 1;
 			sym_bitclk = !(i2sclock % srate);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+			i2s->reg_ch_ctrl |= (1 <<
+				TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
+			val = 0;
+			for (i = 0; i < params_channels(params); i++)
+				val |= (1 << i);
+			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+				val = val <<
+				  TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
+			else
+				val = val <<
+				  TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
+			tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL2, val);
+#endif
 		} else {
 			bitcnt = (i2sclock / (2 * srate)) - 1;
 			sym_bitclk = !(i2sclock % (2 * srate));
@@ -460,8 +481,6 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 		if (!sym_bitclk)
 			val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
-
-		tegra30_i2s_enable_clocks(i2s);
 
 		regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
 	} else {
@@ -528,12 +547,31 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	regmap_write(i2s->regmap, reg, val);
 
-	val = (1 << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
-	      (1 << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
+	switch (i2s->daifmt) {
+	case SND_SOC_DAIFMT_RIGHT_J:
+		val = 0;
+		if ((bitcnt - sample_size) > 0)
+			val = bitcnt - sample_size;
+		break;
+	case SND_SOC_DAIFMT_DSP_B:
+	case SND_SOC_DAIFMT_LEFT_J:
+		val = 0;
+		break;
+	case SND_SOC_DAIFMT_I2S:
+	case SND_SOC_DAIFMT_DSP_A: /* fall through */
+		val = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	val = (val << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
+		  (val << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
 	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
 
 	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		val &= ~TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
@@ -542,6 +580,12 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		val &= ~TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
 		val |= (1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 	}
+#else
+	val = 0;
+	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		val = params_channels(params) - 1;
+#endif
+
 	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
 
 	return 0;
