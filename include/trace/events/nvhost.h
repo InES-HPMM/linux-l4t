@@ -428,6 +428,27 @@ TRACE_EVENT(nvhost_ioctl_ctrl_syncpt_wait,
 	  __entry->value, __entry->err)
 );
 
+TRACE_EVENT(nvhost_ioctl_channel_module_regrdwr,
+	TP_PROTO(u32 id, u32 num_offsets, bool write),
+
+	TP_ARGS(id, num_offsets, write),
+
+	TP_STRUCT__entry(
+		__field(u32, id)
+		__field(u32, num_offsets)
+		__field(bool, write)
+	),
+
+	TP_fast_assign(
+		__entry->id = id;
+		__entry->num_offsets = num_offsets;
+		__entry->write = write;
+	),
+
+	TP_printk("id=%u, num_offsets=%u, write=%d",
+	  __entry->id, __entry->num_offsets, __entry->write)
+);
+
 TRACE_EVENT(nvhost_ioctl_ctrl_module_regrdwr,
 	TP_PROTO(u32 id, u32 num_offsets, bool write),
 
