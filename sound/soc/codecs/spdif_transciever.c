@@ -29,8 +29,6 @@
 #define STUB_RATES	SNDRV_PCM_RATE_8000_96000
 #define STUB_FORMATS	SNDRV_PCM_FMTBIT_S16_LE
 
-static struct snd_soc_codec_driver soc_codec_spdif_dit;
-
 static int spdif_probe(struct snd_soc_codec *codec) {
 	codec->dapm.idle_bias_off = 1;
 	return 0;
@@ -49,7 +47,7 @@ static int spdif_read(struct snd_soc_codec * codec, unsigned int reg){
 	return 0;
 }
 
-static struct snd_soc_codec_driver soc_codec_spdif_dit1 = {
+static struct snd_soc_codec_driver soc_codec_spdif_dit = {
 	.probe = spdif_probe,
 	.dapm_widgets = spdif_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(spdif_dapm_widgets),
@@ -77,14 +75,9 @@ static struct snd_soc_dai_driver dit_stub_dai = {
 
 static int spdif_dit_probe(struct platform_device *pdev)
 {
-	if (machine_is_kai() ||
-	    machine_is_tegra_enterprise() ||
-	    machine_is_tai())
-		return snd_soc_register_codec(&pdev->dev,
-			&soc_codec_spdif_dit1, &dit_stub_dai, 1);
-	else
-		return snd_soc_register_codec(&pdev->dev,
-			 &soc_codec_spdif_dit, &dit_stub_dai, 1);
+	return snd_soc_register_codec(&pdev->dev,
+		&soc_codec_spdif_dit, &dit_stub_dai, 1);
+
 }
 
 static int spdif_dit_remove(struct platform_device *pdev)
