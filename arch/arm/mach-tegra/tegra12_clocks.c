@@ -397,6 +397,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define UTMIP_PLL_CFG1					0x484
 #define UTMIP_PLL_CFG1_ENABLE_DLY_COUNT(x)		(((x) & 0x1f) << 27)
 #define UTMIP_PLL_CFG1_XTAL_FREQ_COUNT(x)		(((x) & 0xfff) << 0)
+#define UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP	(1 << 15)
 #define UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN	(1 << 14)
 #define UTMIP_PLL_CFG1_FORCE_PLL_ACTIVE_POWERDOWN	(1 << 12)
 #define UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN		(1 << 16)
@@ -450,9 +451,13 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define XUSBIO_PLL_CFG0_PADPLL_RESET_SWCTL	(1<<0)
 
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
+#define UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE	(1<<25)
 #define UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE	(1<<24)
 #define UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET	(1<<6)
+#define UTMIPLL_HW_PWRDN_CFG0_SEQ_RESET_INPUT_VALUE	(1<<5)
+#define UTMIPLL_HW_PWRDN_CFG0_SEQ_IN_SWCTL	(1<<4)
 #define UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
 #define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
 
 #define PLLU_HW_PWRDN_CFG0			0x530
@@ -1795,6 +1800,23 @@ static void tegra12_utmi_param_configure(struct clk *c)
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN;
 
 	clk_writel(reg, UTMIP_PLL_CFG1);
+
+	/* Setup HW control of UTMIPLL */
+	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
+	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
+	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
+	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
+
+	udelay(1);
+
+	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
+	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_RESET_INPUT_VALUE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_IN_SWCTL;
+	reg &= ~UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE;
+	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
 static void tegra12_pll_clk_init(struct clk *c)
