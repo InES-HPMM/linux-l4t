@@ -23,6 +23,7 @@
 #include <mach/edp.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
+#include <linux/max77665-charger.h>
 #include <linux/mfd/max77665.h>
 #include <linux/power/max17042_battery.h>
 #include <mach/gpio.h>
@@ -44,6 +45,7 @@
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
 
+static struct max77665_muic_platform_data max77665_muic;
 static struct board_info board_info;
 static struct max17042_config_data conf_data = {
 	.valrt_thresh = 0xff00,
@@ -107,6 +109,61 @@ static struct i2c_board_info max17042_device[] = {
 		I2C_BOARD_INFO("max17042", 0x36),
 		.platform_data = &max17042_pdata,
 	},
+};
+
+static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
+	.config		= {
+		.led_mask		= 3,
+		.flash_on_torch		= true,
+		.max_total_current_mA	= 1000,
+		.max_peak_current_mA	= 600,
+		},
+	.pinstate	= {
+		.mask	= 1 << (CAMERA_FLASH_SYNC_GPIO - TEGRA_GPIO_PBB0),
+		.values	= 1 << (CAMERA_FLASH_SYNC_GPIO - TEGRA_GPIO_PBB0)
+		},
+	.dev_name	= "torch",
+	.gpio_strobe	= CAMERA_FLASH_SYNC_GPIO,
+};
+
+static struct max77665_platform_data pluto_max77665_pdata = {
+	.irq_base = 0,
+};
+
+static const struct i2c_board_info pluto_i2c_board_info_max77665[] = {
+	{
+		I2C_BOARD_INFO("max77665", 0x66),
+		.platform_data = &pluto_max77665_pdata,
+	},
+};
+
+static struct max77665_charger_cable maxim_cable[] = {
+	{
+		.name           = "USB",
+	},
+	{
+		.name           = "USB-Host",
+	},
+	{
+		.name           = "TA",
+	},
+	{
+		.name           = "Fast-charger",
+	},
+	{
+		.name           = "Slow-charger",
+	},
+	{
+		.name           = "Charge-downstream",
+	},
+};
+
+static struct max77665_charger_plat_data max77665_charger = {
+	.fast_chg_cc = 1500, /* fast charger current*/
+	.term_volt = 3700, /* charger termination voltage */
+	.curr_lim = 1500, /* input current limit */
+	.num_cables = MAX_CABLES,
+	.cables = maxim_cable,
 };
 
 /* isl29029 support is provided by isl29028*/
@@ -560,6 +617,8 @@ late_initcall(pluto_skin_init);
 
 int __init pluto_sensors_init(void)
 {
+	struct platform_device *pd;
+	struct platform_device *charger_pd, *muic_pd;
 	int err;
 
 	tegra_get_board_info(&board_info);
@@ -573,6 +632,43 @@ int __init pluto_sensors_init(void)
 
 	i2c_register_board_info(0, pluto_i2c1_isl_board_info,
 				ARRAY_SIZE(pluto_i2c1_isl_board_info));
+	mpuirq_init();
+
+	max77665_muic.irq_base = 0;
+	muic_pd = kmemdup(&max77665_muic, sizeof(max77665_muic), GFP_KERNEL);
+	if (muic_pd == NULL) {
+		pr_err("%s failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	pluto_max77665_pdata.muic_platform_data.pdata = muic_pd;
+	pluto_max77665_pdata.muic_platform_data.size = sizeof(*muic_pd);
+
+	charger_pd = kmemdup(&max77665_charger, sizeof(max77665_charger),
+			GFP_KERNEL);
+	if (charger_pd == NULL) {
+		pr_err("%s failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	pluto_max77665_pdata.charger_platform_data.pdata = charger_pd;
+	pluto_max77665_pdata.charger_platform_data.size = sizeof(*charger_pd);
+
+	pd = kmemdup(&pluto_max77665_flash_pdata,
+			sizeof(pluto_max77665_flash_pdata), GFP_KERNEL);
+	if (pd == NULL) {
+		pr_err("%s failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	pluto_max77665_pdata.flash_platform_data.pdata = pd;
+	pluto_max77665_pdata.flash_platform_data.size = sizeof(*pd);
+
+	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
+		ARRAY_SIZE(pluto_i2c_board_info_max77665));
+
+	if (err)
+		pr_err("%s: platform device register failed.\n", __func__);
 
 	i2c_register_board_info(0, max17042_device,
 				ARRAY_SIZE(max17042_device));
