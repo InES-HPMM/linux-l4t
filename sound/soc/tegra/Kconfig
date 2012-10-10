@@ -67,9 +67,9 @@ config SND_SOC_TEGRA_WM8753
 	tristate "SoC Audio support for Tegra boards using a WM8753 codec"
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA20_SPDIF if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_WM8753
 	select SND_SOC_SPDIF
 	help
@@ -82,7 +82,7 @@ config SND_SOC_TEGRA_WM8903
 	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA20_SPDIF if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_WM8903
 	select SND_SOC_SPDIF
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
@@ -113,10 +113,10 @@ config SND_SOC_TEGRA_P1852
 	tristate "SoC Audio support for P1852 SKUs"
 	depends on SND_SOC_TEGRA
 	depends on MACH_P1852
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on the
 	  TEGRA P1852 SKUs. These are plug-n-play boards and and the codecs
@@ -135,11 +135,11 @@ config SND_SOC_TEGRA_MAX98088
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_MAX98088
 	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_MAX98088
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the MAX98088 codec. Currently, only supported board is
@@ -157,11 +157,11 @@ config SND_SOC_TEGRA_TLV320AIC326X
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X
 	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TLV320AIC326X
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the TI AIC326X codec.
@@ -178,11 +178,11 @@ config SND_SOC_TEGRA_RT5639
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_RT5639
 	depends on SND_SOC_TEGRA_RT5640
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_RT5639
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the ALC5639 codec. Currently, the supported board
@@ -200,7 +200,7 @@ config SND_SOC_TEGRA_RT5640
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_RT5640
 	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_RT5640
 	select SND_SOC_SPDIF
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
@@ -221,11 +221,11 @@ config SND_SOC_TEGRA_MAX98095
 	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
 	depends on MACH_HAS_SND_SOC_TEGRA_MAX98095
 	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
-	select SND_SOC_TEGRA30_I2S if ARCH_TEGRA_3x_SOC
-	select SND_SOC_TEGRA30_SPDIF if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_MAX98095
 	select SND_SOC_SPDIF
-	select SND_SOC_TEGRA30_DAM if ARCH_TEGRA_3x_SOC
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the MAX98095 codec. Currently, only supported board is
@@ -245,6 +245,7 @@ config SND_SOC_TEGRA_CS42L73
 	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_CS42L73
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the CS42L73 codec. Currently, only supported board is

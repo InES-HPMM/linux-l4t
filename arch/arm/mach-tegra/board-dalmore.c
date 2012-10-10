@@ -288,6 +288,11 @@ static struct tegra_asoc_platform_data dalmore_audio_pdata = {
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+	},
 };
 
 static struct platform_device dalmore_audio_device = {
@@ -324,6 +329,9 @@ static struct platform_device *dalmore_devices[] __initdata = {
 	&tegra_i2s_device1,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
+	&tegra_spdif_device,
+	&spdif_dit_device,
+	&bluetooth_dit_device,
 	&dalmore_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)

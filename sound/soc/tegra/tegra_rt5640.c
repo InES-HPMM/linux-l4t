@@ -690,11 +690,7 @@ static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
 	.owner = THIS_MODULE,
 	.dai_link = tegra_rt5640_dai,
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	.num_links = 1,
-#else
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
-#endif
 	.resume_pre = tegra_rt5640_resume_pre,
 	.set_bias_level = tegra_rt5640_set_bias_level,
 	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
