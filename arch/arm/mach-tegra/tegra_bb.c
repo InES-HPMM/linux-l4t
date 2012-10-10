@@ -84,6 +84,7 @@ struct tegra_bb {
 	struct miscdevice dev_priv;
 	struct miscdevice dev_ipc;
 	struct device *dev;
+	struct sysfs_dirent *sd;
 	struct nvshm_platform_data nvshm_pdata;
 	struct platform_device nvshm_device;
 };
@@ -520,8 +521,8 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 
 	if ((bb->status != TEGRA_BB_IPC_READY) ||
 	    (bb->status != sts)) {
-		pr_debug("%s: notify sysfs\n", __func__);
-		sysfs_notify(&bb->dev->kobj, NULL, "status");
+		pr_debug("%s: notify sysfs status %d\n", __func__, sts);
+		sysfs_notify_dirent(bb->sd);
 	}
 	bb->status = sts;
 
@@ -626,6 +627,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_priv_size);
 	ret = device_create_file(&pdev->dev, &dev_attr_ipc_size);
 	ret = device_create_file(&pdev->dev, &dev_attr_reset);
+
+	bb->sd = sysfs_get_dirent(pdev->dev.kobj.sd, NULL, "status");
 
 	bb->nvshm_pdata.ipc_base_virt = bb->ipc_virt;
 	bb->nvshm_pdata.ipc_size = bb->ipc_size;
