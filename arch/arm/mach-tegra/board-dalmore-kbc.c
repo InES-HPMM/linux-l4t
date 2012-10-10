@@ -96,8 +96,17 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 static struct gpio_keys_button dalmore_e1611_int_keys[] = {
 	[0] = GPIO_IKEY(KEY_POWER, PALMAS_TEGRA_IRQ_BASE +
 				PALMAS_PWRON_IRQ, 1, 100),
+	[1] = {
+		.code = SW_LID,
+		.gpio = TEGRA_GPIO_HALL,
+		.irq = -1,
+		.type = EV_SW,
+		.desc = "Hall Effect Sensor",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 100,
+	},
 };
-
 
 static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 	.buttons	= dalmore_int_keys,
