@@ -141,7 +141,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	.tap_delay = 0x0F,
+	.tap_delay = 0x2,
+	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 };
 
@@ -149,7 +150,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	.tap_delay = 0x0F,
+	.tap_delay = 0x3,
+	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 };
 
@@ -158,7 +160,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 1,
-	.tap_delay = 0x0F,
+	.tap_delay = 0x5,
+	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
