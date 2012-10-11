@@ -5614,21 +5614,25 @@ static struct clk tegra_pciex_clk = {
 };
 
 /* Audio sync clocks */
-#define SYNC_SOURCE(_id)				\
+#define SYNC_SOURCE(_id, _dev)				\
 	{						\
 		.name      = #_id "_sync",		\
+		.lookup    = {				\
+			.dev_id    = #_dev ,		\
+			.con_id    = "ext_audio_sync",	\
+		},					\
 		.rate      = 24000000,			\
 		.max_rate  = 24000000,			\
 		.ops       = &tegra_sync_source_ops	\
 	}
 static struct clk tegra_sync_source_list[] = {
-	SYNC_SOURCE(spdif_in),
-	SYNC_SOURCE(i2s0),
-	SYNC_SOURCE(i2s1),
-	SYNC_SOURCE(i2s2),
-	SYNC_SOURCE(i2s3),
-	SYNC_SOURCE(i2s4),
-	SYNC_SOURCE(vimclk),
+	SYNC_SOURCE(spdif_in, tegra30-spdif),
+	SYNC_SOURCE(i2s0, tegra30-i2s.0),
+	SYNC_SOURCE(i2s1, tegra30-i2s.1),
+	SYNC_SOURCE(i2s2, tegra30-i2s.2),
+	SYNC_SOURCE(i2s3, tegra30-i2s.3),
+	SYNC_SOURCE(i2s4, tegra30-i2s.4),
+	SYNC_SOURCE(vimclk, vimclk),
 };
 
 static struct clk_mux_sel mux_d_audio_clk[] = {
@@ -5659,26 +5663,34 @@ static struct clk_mux_sel mux_audio_sync_clk[] =
 	{ 0, 0 }
 };
 
-#define AUDIO_SYNC_CLK(_id, _index)			\
+#define AUDIO_SYNC_CLK(_id, _dev, _index)			\
 	{						\
 		.name      = #_id,			\
+		.lookup    = {				\
+			.dev_id    = #_dev,		\
+			.con_id    = "audio_sync",	\
+		},					\
 		.inputs    = mux_audio_sync_clk,	\
 		.reg       = 0x4A0 + (_index) * 4,	\
 		.max_rate  = 24000000,			\
 		.ops       = &tegra_audio_sync_clk_ops	\
 	}
 static struct clk tegra_clk_audio_list[] = {
-	AUDIO_SYNC_CLK(audio0, 0),
-	AUDIO_SYNC_CLK(audio1, 1),
-	AUDIO_SYNC_CLK(audio2, 2),
-	AUDIO_SYNC_CLK(audio3, 3),
-	AUDIO_SYNC_CLK(audio4, 4),
-	AUDIO_SYNC_CLK(audio, 5),	/* SPDIF */
+	AUDIO_SYNC_CLK(audio0, tegra30-i2s.0, 0),
+	AUDIO_SYNC_CLK(audio1, tegra30-i2s.1, 1),
+	AUDIO_SYNC_CLK(audio2, tegra30-i2s.2, 2),
+	AUDIO_SYNC_CLK(audio3, tegra30-i2s.3, 3),
+	AUDIO_SYNC_CLK(audio4, tegra30-i2s.4, 4),
+	AUDIO_SYNC_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
 };
 
-#define AUDIO_SYNC_2X_CLK(_id, _index)				\
+#define AUDIO_SYNC_2X_CLK(_id, _dev, _index)				\
 	{							\
 		.name      = #_id "_2x",			\
+		.lookup    = {					\
+			.dev_id    = #_dev,			\
+			.con_id    = "audio_sync_2x"		\
+		},						\
 		.flags     = PERIPH_NO_RESET,			\
 		.max_rate  = 48000000,				\
 		.ops       = &tegra_clk_double_ops,		\
@@ -5690,12 +5702,12 @@ static struct clk tegra_clk_audio_list[] = {
 		},						\
 	}
 static struct clk tegra_clk_audio_2x_list[] = {
-	AUDIO_SYNC_2X_CLK(audio0, 0),
-	AUDIO_SYNC_2X_CLK(audio1, 1),
-	AUDIO_SYNC_2X_CLK(audio2, 2),
-	AUDIO_SYNC_2X_CLK(audio3, 3),
-	AUDIO_SYNC_2X_CLK(audio4, 4),
-	AUDIO_SYNC_2X_CLK(audio, 5),	/* SPDIF */
+	AUDIO_SYNC_2X_CLK(audio0, tegra30-i2s.0, 0),
+	AUDIO_SYNC_2X_CLK(audio1, tegra30-i2s.1, 1),
+	AUDIO_SYNC_2X_CLK(audio2, tegra30-i2s.2, 2),
+	AUDIO_SYNC_2X_CLK(audio3, tegra30-i2s.3, 3),
+	AUDIO_SYNC_2X_CLK(audio4, tegra30-i2s.4, 4),
+	AUDIO_SYNC_2X_CLK(audio, tegra30-spdif, 5),	/* SPDIF */
 };
 
 #define MUX_I2S_SPDIF(_id, _index)					\
