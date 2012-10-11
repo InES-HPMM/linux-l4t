@@ -267,7 +267,7 @@ static struct tegra_dsi_out pluto_dsi = {
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
-static int pluto_dsi_regulator_get(void)
+static int pluto_dsi_regulator_get(struct device *dev)
 {
 	int err = 0;
 
@@ -275,7 +275,7 @@ static int pluto_dsi_regulator_get(void)
 		return 0;
 
 #if PANEL_5_LG_720_1280
-	avdd_ts_3v0 = regulator_get(NULL, "avdd_ts_3v0");
+	avdd_ts_3v0 = regulator_get(dev, "avdd_ts_3v0");
 	if (IS_ERR_OR_NULL(avdd_ts_3v0)) {
 		pr_err("avdd_ts_3v0 regulator get failed\n");
 		err = PTR_ERR(avdd_ts_3v0);
@@ -284,7 +284,7 @@ static int pluto_dsi_regulator_get(void)
 	}
 #endif
 #if PANEL_5_LG_720_1280 || PANEL_4_7_JDI_720_1280
-	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd");
+	avdd_lcd_3v0_2v8 = regulator_get(dev, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v0_2v8);
@@ -292,7 +292,7 @@ static int pluto_dsi_regulator_get(void)
 		goto fail;
 	}
 
-	vdd_lcd_s_1v8 = regulator_get(NULL, "vdd_lcd_1v8_s");
+	vdd_lcd_s_1v8 = regulator_get(dev, "vdd_lcd_1v8_s");
 	if (IS_ERR_OR_NULL(vdd_lcd_s_1v8)) {
 		pr_err("vdd_lcd_1v8_s regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_s_1v8);
@@ -300,7 +300,7 @@ static int pluto_dsi_regulator_get(void)
 		goto fail;
 	}
 
-	vdd_sys_bl_3v7 = regulator_get(NULL, "vdd_sys_bl");
+	vdd_sys_bl_3v7 = regulator_get(dev, "vdd_sys_bl");
 	if (IS_ERR_OR_NULL(vdd_sys_bl_3v7)) {
 		pr_err("vdd_sys_bl regulator get failed\n");
 		err = PTR_ERR(vdd_sys_bl_3v7);
@@ -339,11 +339,11 @@ fail:
 	return err;
 }
 
-static int pluto_dsi_panel_enable(void)
+static int pluto_dsi_panel_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = pluto_dsi_regulator_get();
+	err = pluto_dsi_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
@@ -490,7 +490,7 @@ static struct tegra_dc_out pluto_disp1_out = {
 #endif
 };
 
-static int pluto_hdmi_enable(void)
+static int pluto_hdmi_enable(struct device *dev)
 {
 	/* TODO */
 	return 0;
@@ -512,11 +512,11 @@ static int pluto_hdmi_postsuspend(void)
 	return 0;
 }
 
-static int pluto_hdmi_hotplug_init(void)
+static int pluto_hdmi_hotplug_init(struct device *dev)
 {
 	int ret = 0;
 	if (!pluto_hdmi_vddio) {
-		pluto_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_5v0");
+		pluto_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (IS_ERR_OR_NULL(pluto_hdmi_vddio)) {
 			ret = PTR_ERR(pluto_hdmi_vddio);
 			pr_err("hdmi: couldn't get regulator vdd_hdmi_5v0\n");

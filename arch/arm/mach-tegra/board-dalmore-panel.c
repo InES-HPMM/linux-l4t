@@ -197,7 +197,7 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
-static int dalmore_dsi_regulator_get(void)
+static int dalmore_dsi_regulator_get(struct device *dev)
 {
 	int err = 0;
 
@@ -206,7 +206,7 @@ static int dalmore_dsi_regulator_get(void)
 
 #if PANEL_11_6_AUO_1920_1080 || \
 	PANEL_10_1_SHARP_2560_1600
-	dvdd_lcd_1v8 = regulator_get(NULL, "dvdd_lcd");
+	dvdd_lcd_1v8 = regulator_get(dev, "dvdd_lcd");
 	if (IS_ERR_OR_NULL(dvdd_lcd_1v8)) {
 		pr_err("dvdd_lcd regulator get failed\n");
 		err = PTR_ERR(dvdd_lcd_1v8);
@@ -215,7 +215,7 @@ static int dalmore_dsi_regulator_get(void)
 	}
 #endif
 #if PANEL_11_6_AUO_1920_1080
-	vdd_ds_1v8 = regulator_get(NULL, "vdd_ds_1v8");
+	vdd_ds_1v8 = regulator_get(dev, "vdd_ds_1v8");
 	if (IS_ERR_OR_NULL(vdd_ds_1v8)) {
 		pr_err("vdd_ds_1v8 regulator get failed\n");
 		err = PTR_ERR(vdd_ds_1v8);
@@ -226,7 +226,7 @@ static int dalmore_dsi_regulator_get(void)
 #if PANEL_10_1_PANASONIC_1920_1200 || \
 	PANEL_11_6_AUO_1920_1080 || \
 	PANEL_10_1_SHARP_2560_1600
-	avdd_lcd_3v3 = regulator_get(NULL, "avdd_lcd");
+	avdd_lcd_3v3 = regulator_get(dev, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v3)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v3);
@@ -234,7 +234,7 @@ static int dalmore_dsi_regulator_get(void)
 		goto fail;
 	}
 
-	vdd_lcd_bl_12v = regulator_get(NULL, "vdd_lcd_bl");
+	vdd_lcd_bl_12v = regulator_get(dev, "vdd_lcd_bl");
 	if (IS_ERR_OR_NULL(vdd_lcd_bl_12v)) {
 		pr_err("vdd_lcd_bl regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_bl_12v);
@@ -286,11 +286,11 @@ fail:
 	return err;
 }
 
-static int dalmore_dsi_panel_enable(void)
+static int dalmore_dsi_panel_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = dalmore_dsi_regulator_get();
+	err = dalmore_dsi_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
@@ -460,11 +460,11 @@ static struct tegra_dc_out dalmore_disp1_out = {
 #endif
 };
 
-static int dalmore_hdmi_enable(void)
+static int dalmore_hdmi_enable(struct device *dev)
 {
 	int ret;
 	if (!dalmore_hdmi_reg) {
-			dalmore_hdmi_reg = regulator_get(NULL, "avdd_hdmi");
+			dalmore_hdmi_reg = regulator_get(dev, "avdd_hdmi");
 			if (IS_ERR_OR_NULL(dalmore_hdmi_reg)) {
 				pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
 				dalmore_hdmi_reg = NULL;
@@ -477,7 +477,7 @@ static int dalmore_hdmi_enable(void)
 		return ret;
 	}
 	if (!dalmore_hdmi_pll) {
-		dalmore_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll");
+		dalmore_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
 		if (IS_ERR_OR_NULL(dalmore_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			dalmore_hdmi_pll = NULL;
@@ -521,10 +521,10 @@ static int dalmore_hdmi_postsuspend(void)
 	return 0;
 }
 
-static int dalmore_hdmi_hotplug_init(void)
+static int dalmore_hdmi_hotplug_init(struct device *dev)
 {
 	if (!dalmore_hdmi_vddio) {
-		dalmore_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_5v0");
+		dalmore_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(dalmore_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
 				__func__, PTR_ERR(dalmore_hdmi_vddio));

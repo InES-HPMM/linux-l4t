@@ -99,7 +99,7 @@ static struct platform_device curacao_backlight_device = {
 };
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-static int curacao_panel_enable(void)
+static int curacao_panel_enable(struct device *dev)
 {
 #if DSI_PANEL_218
 	/* TODO: DSI panel enable */
