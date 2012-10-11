@@ -58,6 +58,8 @@
 #define	DRIVER_VERSION	"Apr 30, 2012"
 #define USB1_PREFETCH_ID	6
 
+#define AHB_PREFETCH_BUFFER	SZ_128
+
 #define get_ep_by_pipe(udc, pipe)	((pipe == 1) ? &udc->eps[0] : \
 						&udc->eps[pipe])
 #define get_pipe_by_windex(windex)	((windex & USB_ENDPOINT_NUMBER_MASK) \
@@ -168,11 +170,17 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 	}
 
 	if (req->mapped) {
-		dma_unmap_single(ep->udc->gadget.dev.parent,
-			req->req.dma, req->req.length,
-			ep_is_in(ep)
-				? DMA_TO_DEVICE
-				: DMA_FROM_DEVICE);
+		DEFINE_DMA_ATTRS(attrs);
+		struct device *dev = ep->udc->gadget.dev.parent;
+		size_t orig = req->req.length;
+		size_t ext = orig + AHB_PREFETCH_BUFFER;
+		enum dma_data_direction dir =
+			ep_is_in(ep) ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
+
+		dma_sync_single_for_cpu(dev, req->req.dma, orig, dir);
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		dma_unmap_single_attrs(dev, req->req.dma, ext, dir, &attrs);
+
 		req->req.dma = DMA_ADDR_INVALID;
 		req->mapped = 0;
 	} else
@@ -937,8 +945,16 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 
 	/* map virtual address to hardware */
 	if (req->req.dma == DMA_ADDR_INVALID) {
-		req->req.dma = dma_map_single(udc->gadget.dev.parent,
-					req->req.buf, req->req.length, dir);
+		DEFINE_DMA_ATTRS(attrs);
+		struct device *dev = udc->gadget.dev.parent;
+		size_t orig = req->req.length;
+		size_t ext = orig + AHB_PREFETCH_BUFFER;
+
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		req->req.dma = dma_map_single_attrs(dev, req->req.buf, ext, dir,
+						    &attrs);
+		dma_sync_single_for_device(dev, req->req.dma, orig, dir);
+
 		req->mapped = 1;
 	} else {
 		dma_sync_single_for_device(udc->gadget.dev.parent,
@@ -980,8 +996,15 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 
 err_unmap:
 	if (req->mapped) {
-		dma_unmap_single(udc->gadget.dev.parent,
-			req->req.dma, req->req.length, dir);
+		DEFINE_DMA_ATTRS(attrs);
+		struct device *dev = udc->gadget.dev.parent;
+		size_t orig = req->req.length;
+		size_t ext = orig + AHB_PREFETCH_BUFFER;
+
+		dma_sync_single_for_cpu(dev, req->req.dma, orig, dir);
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		dma_unmap_single_attrs(dev, req->req.dma, ext, dir, &attrs);
+
 		req->req.dma = DMA_ADDR_INVALID;
 		req->mapped = 0;
 	}
@@ -1599,11 +1622,18 @@ static void ch9getstatus(struct tegra_udc *udc, u8 request_type, u16 value,
 
 	/* map virtual address to hardware */
 	if (req->req.dma == DMA_ADDR_INVALID) {
-		req->req.dma = dma_map_single(ep->udc->gadget.dev.parent,
-					req->req.buf,
-					req->req.length, ep_is_in(ep)
-						? DMA_TO_DEVICE
-						: DMA_FROM_DEVICE);
+		DEFINE_DMA_ATTRS(attrs);
+		struct device *dev = ep->udc->gadget.dev.parent;
+		size_t orig = req->req.length;
+		size_t ext = orig + AHB_PREFETCH_BUFFER;
+		enum dma_data_direction dir =
+			ep_is_in(ep) ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
+
+		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+		req->req.dma = dma_map_single_attrs(dev, req->req.buf, ext, dir,
+						    &attrs);
+		dma_sync_single_for_device(dev, req->req.dma, orig, dir);
+
 		req->mapped = 1;
 	} else {
 		dma_sync_single_for_device(ep->udc->gadget.dev.parent,
