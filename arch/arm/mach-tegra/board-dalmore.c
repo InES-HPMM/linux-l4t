@@ -554,6 +554,7 @@ static void dalmore_modem_init(void)
 
 #else
 static void dalmore_usb_init(void) { }
+static void dalmore_xusb_init(void) { }
 static void dalmore_modem_init(void) { }
 #endif
 

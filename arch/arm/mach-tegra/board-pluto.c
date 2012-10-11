@@ -784,6 +784,7 @@ static void pluto_modem_init(void)
 
 #else
 static void pluto_usb_init(void) { }
+static void pluto_xusb_init(void) { }
 static void pluto_modem_init(void) { }
 #endif
 
