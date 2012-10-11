@@ -503,6 +503,9 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 	long new_rate;
 	bool disable = false;
 
+	if (!c->ops || !c->ops->set_rate)
+		return -ENOSYS;
+
 	old_rate = clk_get_rate_locked(c);
 
 	max_rate = clk_get_max_rate(c);
