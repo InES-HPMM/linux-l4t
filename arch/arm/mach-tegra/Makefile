@@ -127,6 +127,16 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
 obj-y					+= board-common.o
 
+# MC error reporting.
+ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),)
+obj-y                                   += mcerr.o
+ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
+obj-y                                   += mcerr-t3.o
+else
+obj-y                                   += mcerr-t11.o
+endif
+endif
+
 obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
