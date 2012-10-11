@@ -41,8 +41,8 @@ struct imx091_info {
 #define IMX091_WAIT_MS 3
 
 static struct imx091_reg mode_4208x3120[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -151,8 +151,8 @@ static struct imx091_reg mode_4208x3120[] = {
 };
 
 static struct imx091_reg mode_2104x1560[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -261,8 +261,8 @@ static struct imx091_reg mode_2104x1560[] = {
 };
 
 static struct imx091_reg mode_1052x778[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -372,8 +372,8 @@ static struct imx091_reg mode_1052x778[] = {
 
 
 static struct imx091_reg mode_524x390[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -482,8 +482,8 @@ static struct imx091_reg mode_524x390[] = {
 };
 
 static struct imx091_reg mode_348x260[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -592,8 +592,8 @@ static struct imx091_reg mode_348x260[] = {
 };
 
 static struct imx091_reg mode_1948x1096[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
@@ -702,8 +702,8 @@ static struct imx091_reg mode_1948x1096[] = {
 };
 
 static struct imx091_reg mode_1308x736[] = {
-	/* Stand by */
-	{0x0100, 0x00},
+	/* Software reset */
+	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
 	/* global settings */
