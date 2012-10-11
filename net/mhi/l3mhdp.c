@@ -38,6 +38,14 @@
 #include <linux/etherdevice.h>
 #include <linux/pkt_sched.h>
 
+#ifdef CONFIG_MHDP_BONDING_SUPPORT
+#define MHDP_BONDING_SUPPORT
+#endif
+
+#ifdef MHDP_BONDING_SUPPORT
+#include <linux/etherdevice.h>
+#endif /* MHDP_BONDING_SUPPORT */
+
 #include <net/netns/generic.h>
 #include <net/mhi/mhdp.h>
 
@@ -263,9 +271,6 @@ mhdp_add_tunnel(struct net *net, struct mhdp_tunnel_parm *parms)
 	dev_hold(mhdp_dev);
 
 	mhdp_tunnel_init(mhdp_dev, parms, master_dev);
-
-	mhdp_dev->flags    |= IFF_SLAVE;
-	master_dev->flags  |= IFF_MASTER;
 
 	dev_put(master_dev);
 
@@ -733,6 +738,25 @@ mhdp_netdev_event(struct notifier_block *this, unsigned long event, void *ptr)
 	return NOTIFY_DONE;
 }
 
+#ifdef MHDP_BONDING_SUPPORT
+static void
+cdma_netdev_uninit(struct net_device *dev)
+{
+	dev_put(dev);
+}
+
+static void mhdp_ethtool_get_drvinfo(struct net_device *dev,
+				struct ethtool_drvinfo *drvinfo)
+{
+	strncpy(drvinfo->driver, dev->name, 32);
+}
+
+static const struct ethtool_ops mhdp_ethtool_ops = {
+	.get_drvinfo		= mhdp_ethtool_get_drvinfo,
+	.get_link		= ethtool_op_get_link,
+};
+#endif /* MHDP_BONDING_SUPPORT */
+
 static const struct net_device_ops mhdp_netdev_ops = {
 	.ndo_uninit	= mhdp_netdev_uninit,
 	.ndo_start_xmit	= mhdp_netdev_xmit,
@@ -743,8 +767,18 @@ static const struct net_device_ops mhdp_netdev_ops = {
 static void mhdp_netdev_setup(struct net_device *dev)
 {
 	dev->netdev_ops		= &mhdp_netdev_ops;
+#ifdef MHDP_BONDING_SUPPORT
+	dev->ethtool_ops = &mhdp_ethtool_ops;
+#endif /* MHDP_BONDING_SUPPORT */
+
 	dev->destructor		= free_netdev;
 
+#ifdef truc /* MHDP_BONDING_SUPPORT */
+	ether_setup(dev);
+	dev->flags		|= IFF_NOARP;
+	dev->iflink		= 0;
+	dev->features	|= (NETIF_F_NETNS_LOCAL | NETIF_F_FRAGLIST);
+#else
 	dev->type		= ARPHRD_TUNNEL;
 	dev->hard_header_len	= L2MUX_HDR_SIZE + sizeof(struct mhdp_hdr);
 	dev->mtu		= ETH_DATA_LEN;
@@ -752,6 +786,7 @@ static void mhdp_netdev_setup(struct net_device *dev)
 	dev->iflink		= 0;
 	dev->addr_len		= 4;
 	dev->features	       |= (NETIF_F_NETNS_LOCAL | NETIF_F_FRAGLIST);
+#endif /* MHDP_BONDING_SUPPORT */
 }
 
 static int __net_init mhdp_init_net(struct net *net)

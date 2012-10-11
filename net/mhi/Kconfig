@@ -84,6 +84,8 @@ config MHI_DUMP_FRAMES
 
 	  If unsure, say N.
 
-
+config MHDP_BONDING_SUPPORT
+	bool "use mhdp as a bonding slave"
+	default n
 endif
 
