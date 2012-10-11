@@ -86,6 +86,7 @@ struct mhdp_tunnel {
 	struct net_device	*master_dev;
 	struct sk_buff		*skb;
 	int pdn_id;
+	int			free_pdn;
 	struct timer_list tx_timer;
 	struct sk_buff *skb_to_free[MAX_MHDPHDR_SIZE];
 	spinlock_t timer_lock;
@@ -194,6 +195,7 @@ mhdp_tunnel_init(struct net_device *dev,
 	tunnel->master_dev  = master_dev;
 	tunnel->skb         = NULL;
 	tunnel->pdn_id      = parms->pdn_id;
+	tunnel->free_pdn    = 0;
 
 	init_timer(&tunnel->tx_timer);
 	spin_lock_init(&tunnel->timer_lock);
@@ -299,10 +301,12 @@ mhdp_netdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 			return -EFAULT;
 		}
 
-		DPRINTK("pdn_id:%d master_device:%s", k_parms.pdn_id,
-							k_parms.master);
+		DPRINTK("pdn_id:%d master_device:%s",
+				k_parms.pdn_id,
+				k_parms.master);
+		tunnel = mhdp_locate_tunnel(mhdpn, k_parms.pdn_id);
 
-		if (!mhdp_locate_tunnel(mhdpn, k_parms.pdn_id)) {
+		if (NULL == tunnel) {
 			if (mhdp_add_tunnel(net, &k_parms)) {
 				if (copy_to_user(u_parms, &k_parms,
 					 sizeof(struct mhdp_tunnel_parm)))
@@ -310,6 +314,15 @@ mhdp_netdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 			} else {
 				err = -EINVAL;
 			}
+		} else if (1 == tunnel->free_pdn) {
+
+			tunnel->free_pdn = 0;
+
+			strcpy(&k_parms.name, tunnel->dev->name);
+
+			if (copy_to_user(u_parms, &k_parms,
+					sizeof(struct mhdp_tunnel_parm)))
+					err = -EINVAL;
 		} else {
 			err = -EBUSY;
 		}
@@ -328,14 +341,8 @@ mhdp_netdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		for (tunnel = mhdpn->tunnels, pre_dev = NULL;
 			tunnel;
 			pre_dev = tunnel, tunnel = tunnel->next) {
-			if (tunnel->pdn_id == k_parms.pdn_id) {
-				if (!pre_dev)
-					mhdpn->tunnels = mhdpn->tunnels->next;
-				else
-					pre_dev->next = tunnel->next;
-
-				mhdp_tunnel_destroy(tunnel->dev);
-			}
+			if (tunnel->pdn_id == k_parms.pdn_id)
+				tunnel->free_pdn = 1;
 		}
 		break;
 
@@ -544,6 +551,8 @@ mhdp_netdev_rx(struct sk_buff *skb, struct net_device *dev)
 		}
 	}
 	rcu_read_unlock();
+
+	return err;
 
 error:
 	if (mhdp_header_len > skb_headlen(skb))
