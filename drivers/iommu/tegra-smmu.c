@@ -1,5 +1,5 @@
 /*
- * IOMMU API for SMMU in Tegra30
+ * IOMMU driver for SMMU on Tegra 3 series SoCs and later.
  *
  * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -38,6 +38,7 @@
 #include <asm/page.h>
 #include <asm/cacheflush.h>
 
+#include <mach/hardware.h>
 #include <mach/tegra_smmu.h>
 
 enum smmu_hwgrp {
@@ -57,28 +58,17 @@ enum smmu_hwgrp {
 	HWGRP_SATA,
 	HWGRP_VDE,
 	HWGRP_VI,
+	HWGRP_MSENC,
+	HWGRP_TSEC,
+	HWGRP_PPCS1,
+	HWGRP_XUSB_HOST,
+	HWGRP_XUSB_DEV,
 
 	HWGRP_COUNT,
 
 	HWGRP_END = ~0,
 };
-
-#define HWG_AFI		(1 << HWGRP_AFI)
 #define HWG_AVPC	(1 << HWGRP_AVPC)
-#define HWG_DC		(1 << HWGRP_DC)
-#define HWG_DCB		(1 << HWGRP_DCB)
-#define HWG_EPP		(1 << HWGRP_EPP)
-#define HWG_G2		(1 << HWGRP_G2)
-#define HWG_HC		(1 << HWGRP_HC)
-#define HWG_HDA		(1 << HWGRP_HDA)
-#define HWG_ISP		(1 << HWGRP_ISP)
-#define HWG_MPE		(1 << HWGRP_MPE)
-#define HWG_NV		(1 << HWGRP_NV)
-#define HWG_NV2		(1 << HWGRP_NV2)
-#define HWG_PPCS	(1 << HWGRP_PPCS)
-#define HWG_SATA	(1 << HWGRP_SATA)
-#define HWG_VDE		(1 << HWGRP_VDE)
-#define HWG_VI		(1 << HWGRP_VI)
 
 /* REVISIT: With new configurations for t114/124/148 passed from DT */
 #define SKIP_SWGRP_CHECK
@@ -89,11 +79,6 @@ enum smmu_hwgrp {
 #define SMMU_CONFIG				0x10
 #define SMMU_CONFIG_DISABLE			0
 #define SMMU_CONFIG_ENABLE			1
-
-/* REVISIT: To support multiple MCs */
-enum {
-	_MC = 0,
-};
 
 enum {
 	_TLB = 0,
@@ -161,12 +146,18 @@ enum {
 #define SMMU_HDA_ASID	0x254   /* High-def audio */
 #define SMMU_ISP_ASID	0x258   /* Image signal processor */
 #define SMMU_MPE_ASID	0x264   /* MPEG encoder */
+#define SMMU_MSENC_ASID 0x264	/* MPEG encoder */
 #define SMMU_NV_ASID	0x268   /* (3D) */
 #define SMMU_NV2_ASID	0x26c   /* (3D) */
 #define SMMU_PPCS_ASID	0x270   /* AHB */
 #define SMMU_SATA_ASID	0x278   /* SATA */
 #define SMMU_VDE_ASID	0x27c   /* Video decoder */
 #define SMMU_VI_ASID	0x280   /* Video input */
+#define SMMU_XUSB_HOST_ASID	0x288   /* USB host */
+#define SMMU_XUSB_DEV_ASID	0x28c   /* USB dev */
+#define SMMU_TSEC_ASID	0x294   /* TSEC */
+#define SMMU_PPCS1_ASID	0x298   /* AHB secondary */
+
 
 #define SMMU_PDE_NEXT_SHIFT		28
 
@@ -247,7 +238,9 @@ enum {
 
 #define HWGRP_INIT(client) [HWGRP_##client] = SMMU_##client##_ASID
 
-static const u32 smmu_hwgrp_asid_reg[] = {
+static const u32 *smmu_hwgrp_asid_reg;
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+static const u32 tegra3x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
 	HWGRP_INIT(AFI),
 	HWGRP_INIT(AVPC),
 	HWGRP_INIT(DC),
@@ -265,6 +258,29 @@ static const u32 smmu_hwgrp_asid_reg[] = {
 	HWGRP_INIT(VDE),
 	HWGRP_INIT(VI),
 };
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static const u32 tegra11x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
+	HWGRP_INIT(AVPC),
+	HWGRP_INIT(DC),
+	HWGRP_INIT(DCB),
+	HWGRP_INIT(EPP),
+	HWGRP_INIT(G2),
+	HWGRP_INIT(HC),
+	HWGRP_INIT(HDA),
+	HWGRP_INIT(ISP),
+	HWGRP_INIT(MSENC),
+	HWGRP_INIT(NV),
+	HWGRP_INIT(PPCS),
+	HWGRP_INIT(PPCS1),
+	HWGRP_INIT(TSEC),
+	HWGRP_INIT(VDE),
+	HWGRP_INIT(VI),
+	HWGRP_INIT(XUSB_DEV),
+	HWGRP_INIT(XUSB_HOST),
+};
+#endif
+
 #define HWGRP_ASID_REG(x) (smmu_hwgrp_asid_reg[x])
 
 /*
@@ -686,9 +702,10 @@ static int alloc_pdir(struct smmu_as *as)
 err_out:
 	spin_unlock_irqrestore(&as->lock, flags);
 
-	devm_kfree(smmu->dev, cnt);
 	if (page)
 		__free_page(page);
+	if (cnt)
+		devm_kfree(smmu->dev, cnt);
 	return err;
 }
 
@@ -1210,6 +1227,23 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	if (smmu_handle)
 		return -EIO;
+
+	switch (tegra_get_chipid()) {
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	case TEGRA_CHIPID_TEGRA3:
+		smmu_hwgrp_asid_reg = tegra3x_smmu_hwgrp_asid_reg;
+		break;
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	case TEGRA_CHIPID_TEGRA11:
+		smmu_hwgrp_asid_reg = tegra11x_smmu_hwgrp_asid_reg;
+		break;
+#endif
+	default:
+		dev_err(dev, "No SMMU support\n");
+		return -ENODEV;
+		break;
+	}
 
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 
