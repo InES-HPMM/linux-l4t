@@ -202,29 +202,48 @@ static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
 	cl_dvfs_readl(cld, CL_DVFS_CTRL);
 }
 
-static inline void output_enable(struct tegra_cl_dvfs *cld, bool enable)
+static inline int output_enable(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 
 	/* FIXME: PWM output control */
-	if (enable)
-		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-	else
-		val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-
+	val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
+	return  0;
+}
 
-	if (!enable) {
-		int i;
-		for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT; i++) {
-			udelay(1);
-			val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
-			if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
-				return;
+static inline int output_disable(struct tegra_cl_dvfs *cld)
+{
+	int i;
+	u32 sts;
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+
+	/* FIXME: PWM output control */
+	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT; i++) {
+		sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING)) {
+			val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+			wmb();
+			sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+			if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
+				return 0; /* clean disable: no pending rqst */
+
+			/* Re-enable, continue wait */
+			val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+			wmb();
 		}
-		pr_err("%s: I2C pending transaction timeout\n", __func__);
+		udelay(1);
 	}
+
+	/* I2C request is still pending - disable, anyway, but report error */
+	val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_wmb(cld);
+	pr_err("cl_dvfs output disable: I2C pending timeout\n");
+	return -ETIMEDOUT;
 }
 
 static inline void set_mode(struct tegra_cl_dvfs *cld,
@@ -618,7 +637,7 @@ void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 	    (cld->mode == TEGRA_CL_DVFS_DISABLED))
 		return;
 
-	output_enable(cld, false);
+	output_disable(cld);
 	set_mode(cld, TEGRA_CL_DVFS_DISABLED);
 	cl_dvfs_disable_clocks(cld);
 }
@@ -675,7 +694,7 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
 		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 
-		output_enable(cld, true);
+		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		return 0;
 
@@ -690,11 +709,13 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 /* Switch from CLOSED_LOOP state to OPEN_LOOP state */
 int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 {
+	int ret;
+
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
-		output_enable(cld, false);
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
-		return 0;
+		ret = output_disable(cld);
+		return ret;
 
 	case TEGRA_CL_DVFS_OPEN_LOOP:
 		return 0;
