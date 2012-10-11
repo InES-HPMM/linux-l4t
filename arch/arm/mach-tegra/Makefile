@@ -121,6 +121,8 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-harmony-pcie.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
 
+obj-y					+= board-common.o
+
 obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-pinmux.o
