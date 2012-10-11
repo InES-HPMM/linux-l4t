@@ -501,11 +501,13 @@ static int pluto_dsi_gpio_get(void)
 		goto fail;
 	}
 
+#if PANEL_5_LG_720_1280
 	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
 	if (err < 0) {
 		pr_err("panel backlight pwm gpio request failed\n");
 		goto fail;
 	}
+#endif
 
 	dsi_gpio_requested = true;
 	return 0;
@@ -1005,6 +1007,13 @@ int __init pluto_panel_init(void)
 		pr_err("disp1 bl device registration failed");
 		return err;
 	}
+
+	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
+	if (err < 0) {
+		pr_err("panel backlight pwm gpio request failed\n");
+		return err;
+	}
+	gpio_free(DSI_PANEL_BL_PWM);
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
