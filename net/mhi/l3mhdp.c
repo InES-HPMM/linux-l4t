@@ -557,6 +557,11 @@ mhdp_netdev_rx(struct sk_buff *skb, struct net_device *dev)
 	}
 	rcu_read_unlock();
 
+	if (mhdp_header_len > skb_headlen(skb))
+		kfree(mhdpHdr);
+
+	dev_kfree_skb(skb);
+
 	return err;
 
 error:
