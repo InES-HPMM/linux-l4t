@@ -49,6 +49,7 @@
 #define SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE	0x4
 #define SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT	8
 #define SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT	16
+#define SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT	24
 #define SDHCI_VENDOR_CLOCK_CNTRL_SDR50_TUNING		0x20
 
 #define SDHCI_VENDOR_MISC_CNTRL		0x120
@@ -298,6 +299,14 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
 		vendor_ctrl |= (plat->tap_delay <<
 			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
+	}
+
+	/* Set trim delay */
+	if (plat->trim_delay) {
+		vendor_ctrl &= ~(0x1F <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
+		vendor_ctrl |= (plat->trim_delay <<
+			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
 	}
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
 
