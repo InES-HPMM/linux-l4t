@@ -30,6 +30,7 @@
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
+#include <linux/a2220.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
@@ -127,6 +128,10 @@ static int tegra_cs42l73_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "Can't configure i2s format\n");
 		return -EINVAL;
 	}
+
+	a2220_port_path_change(pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
+						   A100_msg_PortC_A_PASS :
+						   A100_msg_PortA_C_PASS);
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {

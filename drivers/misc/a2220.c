@@ -13779,6 +13779,20 @@ int a2220_ioctl2(unsigned int cmd , unsigned long arg)
 EXPORT_SYMBOL(a2220_ioctl2);
 //lsj -
 
+int a2220_port_path_change(unsigned int msg)
+{
+	switch (msg) {
+	case A100_msg_PortC_A_PASS:
+	case A100_msg_PortA_C_PASS:
+		break;
+	default:
+		printk(KERN_ERR "Not support [0x%X] for port change\n", msg);
+		return -EINVAL;
+	}
+	return execute_cmdmsg(msg);
+}
+EXPORT_SYMBOL(a2220_port_path_change);
+
 static const struct file_operations a2220_fops = {
 	.owner = THIS_MODULE,
 	.open = a2220_open,

@@ -18,8 +18,8 @@
 
 #include <linux/ioctl.h>
 
-#ifdef CONFIG_USA_OPERATOR_TMO //BYPASS audience for Herculus hw0.0 board
-#define AUDIENCE_BYPASS 1 //(+)dragonball Multimedia bypass
+#ifdef CONFIG_USA_OPERATOR_TMO
+#define AUDIENCE_BYPASS 1
 #endif
 
 
@@ -27,7 +27,7 @@
 
 
 #define CONFIG_VP_A2220
-#define CONFIG_USA_MODEL_SGH_I717  1 //
+#define CONFIG_USA_MODEL_SGH_I717  1
 #ifdef CONFIG_USA_MODEL_SGH_I717
 #define AUDIENCE_BYPASS 1
 #endif
@@ -38,6 +38,7 @@ extern unsigned int get_hw_rev(void);
 #endif
 
 int a2220_ioctl2(unsigned int cmd , unsigned long arg);
+extern int a2220_port_path_change(unsigned int msg);
 
 extern bool dualmic_enabled;
 
@@ -49,8 +50,8 @@ struct a2220img {
 
 enum A2220_PathID {
 	A2220_PATH_SUSPEND,
-	A2220_PATH_INCALL_RECEIVER_NSON, //NS ON
-	A2220_PATH_INCALL_RECEIVER_NSOFF, //NS OFF
+	A2220_PATH_INCALL_RECEIVER_NSON,
+	A2220_PATH_INCALL_RECEIVER_NSOFF,
 	A2220_PATH_INCALL_HEADSET,
 	A2220_PATH_INCALL_SPEAKER,
 	A2220_PATH_INCALL_BT,
@@ -67,9 +68,9 @@ enum A2220_PathID {
 	A2220_PATH_RECORD_SPEAKER,
 	A2220_PATH_RECORD_BT,
 	A2220_PATH_CAMCORDER,
-	A2220_PATH_INCALL_TTY
-#ifdef AUDIENCE_BYPASS //(+)dragonball Multimedia bypass
-		,A2220_PATH_BYPASS_MULTIMEDIA
+	A2220_PATH_INCALL_TTY,
+#ifdef AUDIENCE_BYPASS
+	A2220_PATH_BYPASS_MULTIMEDIA
 #endif
 };
 
@@ -112,7 +113,9 @@ enum A2220_NS_states {
 
 #define A100_msg_ReadPortA	0x800B0A07
 
-#define A100_msg_PortC_A_PASS	 0x805200E2
+/* add the port path if needed */
+#define A100_msg_PortC_A_PASS   0x805200E2
+#define A100_msg_PortA_C_PASS   0x805200C8
 
 #define A100_msg_Reset		0x8002
 #define RESET_IMMEDIATE		0x0000
@@ -259,9 +262,7 @@ struct a2220_platform_data {
 	uint32_t gpio_a2220_reset;
 	uint32_t gpio_a2220_int;
 	uint32_t gpio_a2220_clk;
-	//Kuldeep (+)
 	uint32_t  gpio_a2220_audience_chip_sel;
-	//Kuldeep (-)
 };
 
 

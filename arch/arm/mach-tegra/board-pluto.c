@@ -404,7 +404,7 @@ static struct tegra_asoc_platform_data pluto_audio_pdata = {
 	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
 	.i2s_param[HIFI_CODEC]	= {
 		.audio_port_id	= 1,
-		.is_i2s_master	= 1,
+		.is_i2s_master	= 0,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 	},
 };
