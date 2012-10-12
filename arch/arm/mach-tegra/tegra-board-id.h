@@ -30,6 +30,7 @@
 #define BOARD_E1580   0x062C
 #define BOARD_E1575   0x0627
 #define BOARD_P2454   0x0996
+#define BOARD_E1582   0x062E
 
 /* Board Fab version */
 #define BOARD_FAB_A00			0x0
