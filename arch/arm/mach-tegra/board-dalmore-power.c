@@ -672,7 +672,7 @@ PALMAS_PDATA_INIT(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 
-static struct regulator_init_data *dalmore_e1611_reg_data[] = {
+static struct regulator_init_data *dalmore_e1611_reg_data[PALMAS_NUM_REGS] = {
 	PALMAS_REG_PDATA(smps12),
 	NULL,
 	PALMAS_REG_PDATA(smps3),
@@ -739,7 +739,7 @@ PALMAS_REG_INIT(sysen1, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(sysen2, 0, 0, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
-static struct palmas_reg_init *dalmore_e1611_reg_init[] = {
+static struct palmas_reg_init *dalmore_e1611_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps12),
 	PALMAS_REG_INIT_DATA(smps123),
 	PALMAS_REG_INIT_DATA(smps3),
@@ -769,8 +769,6 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.reg_data = dalmore_e1611_reg_data,
-	.reg_init = dalmore_e1611_reg_init,
 	.enable_ldo8_tracking = true,
 };
 
@@ -939,6 +937,7 @@ int __init dalmore_palmas_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
+	int i;
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	int ret;
 
@@ -955,6 +954,11 @@ int __init dalmore_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
+		pmic_platform.reg_data[i] = dalmore_e1611_reg_data[i];
+		pmic_platform.reg_init[i] = dalmore_e1611_reg_init[i];
+	}
+
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	return 0;

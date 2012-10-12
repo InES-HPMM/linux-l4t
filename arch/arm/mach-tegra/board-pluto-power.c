@@ -243,7 +243,7 @@ PALMAS_PDATA_INIT(regen2, 4300,  4300, palmas_rails(smps8), 0, 0, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 
-static struct regulator_init_data *pluto_reg_data[] = {
+static struct regulator_init_data *pluto_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_PDATA(smps123),
 	NULL,
@@ -305,7 +305,7 @@ PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
-static struct palmas_reg_init *pluto_reg_init[] = {
+static struct palmas_reg_init *pluto_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps12),
 	PALMAS_REG_INIT_DATA(smps123),
 	PALMAS_REG_INIT_DATA(smps3),
@@ -529,8 +529,6 @@ static struct platform_device *pfixed_reg_devs[] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.reg_data = pluto_reg_data,
-	.reg_init = pluto_reg_init,
 	.enable_ldo8_tracking = true,
 };
 
@@ -568,6 +566,7 @@ int __init pluto_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
+	int i;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -575,6 +574,11 @@ int __init pluto_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
+		pmic_platform.reg_data[i] = pluto_reg_data[i];
+		pmic_platform.reg_init[i] = pluto_reg_init[i];
+	}
 
 	platform_device_register(&pluto_pda_power_device);
 	i2c_register_board_info(4, palma_device,
