@@ -730,6 +730,32 @@ static int tegra_drive_pinmux_set_slew_falling(int pg,
 	return 0;
 }
 
+static int tegra_drive_pinmux_set_drive_type(int pg,
+	enum tegra_drive_type drive_type)
+{
+	unsigned long flags;
+	u32 reg;
+	if (pg < 0 || pg >=  drive_max)
+		return -ERANGE;
+
+	if (drive_type < 0 || drive_type >= TEGRA_MAX_DRIVE_TYPE)
+		return -EINVAL;
+
+	spin_lock_irqsave(&mux_lock, flags);
+
+	if (drive_pingroups[pg].drvtype_valid) {
+		reg = pg_readl(drive_pingroups[pg].reg_bank, drive_pingroups[pg].reg);
+		reg &= ~(drive_pingroups[pg].drvtype_mask <<
+			drive_pingroups[pg].drvtype_offset);
+		reg |= drive_type << drive_pingroups[pg].drvtype_offset;
+		pg_writel(reg, drive_pingroups[pg].reg_bank, drive_pingroups[pg].reg);
+	}
+
+	spin_unlock_irqrestore(&mux_lock, flags);
+
+	return 0;
+}
+
 static void tegra_drive_pinmux_config_pingroup(int pingroup,
 					  enum tegra_hsm hsm,
 					  enum tegra_schmitt schmitt,
@@ -737,7 +763,8 @@ static void tegra_drive_pinmux_config_pingroup(int pingroup,
 					  enum tegra_pull_strength pull_down,
 					  enum tegra_pull_strength pull_up,
 					  enum tegra_slew slew_rising,
-					  enum tegra_slew slew_falling)
+					  enum tegra_slew slew_falling,
+					  enum tegra_drive_type drive_type)
 {
 	int err;
 
@@ -782,6 +809,12 @@ static void tegra_drive_pinmux_config_pingroup(int pingroup,
 		pr_err("pinmux: can't set pingroup %s falling slew to %s: %d\n",
 			drive_pinmux_name(pingroup),
 			slew_name(slew_falling), err);
+
+	err = tegra_drive_pinmux_set_drive_type(pingroup, drive_type);
+	if (err < 0)
+		pr_err("pinmux: can't set pingroup %s driver type to %d: %d\n",
+			drive_pinmux_name(pingroup),
+			drive_type, err);
 }
 
 void tegra_drive_pinmux_config_table(struct tegra_drive_pingroup_config *config,
@@ -797,7 +830,8 @@ void tegra_drive_pinmux_config_table(struct tegra_drive_pingroup_config *config,
 						     config[i].pull_down,
 						     config[i].pull_up,
 						     config[i].slew_rising,
-						     config[i].slew_falling);
+						     config[i].slew_falling,
+						     config[i].drive_type);
 }
 
 void tegra_pinmux_set_safe_pinmux_table(const struct tegra_pingroup_config *config,

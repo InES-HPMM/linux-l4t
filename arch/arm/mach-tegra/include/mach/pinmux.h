@@ -291,6 +291,14 @@ enum tegra_drive {
 	TEGRA_MAX_DRIVE,
 };
 
+enum tegra_drive_type {
+	TEGRA_DRIVE_TYPE_0 = 0,
+	TEGRA_DRIVE_TYPE_1,
+	TEGRA_DRIVE_TYPE_2,
+	TEGRA_DRIVE_TYPE_3,
+	TEGRA_MAX_DRIVE_TYPE,
+};
+
 enum tegra_hsm {
 	TEGRA_HSM_DISABLE = 0,
 	TEGRA_HSM_ENABLE,
@@ -310,6 +318,7 @@ struct tegra_drive_pingroup_config {
 	enum tegra_pull_strength pull_up;
 	enum tegra_slew slew_rising;
 	enum tegra_slew slew_falling;
+	enum tegra_drive_type drive_type;
 };
 
 struct tegra_drive_pingroup_desc {
@@ -324,6 +333,9 @@ struct tegra_drive_pingroup_desc {
 	u16 slewrise_mask;
 	u8 slewfall_offset;
 	u16 slewfall_mask;
+	u8 drvtype_valid;
+	u8 drvtype_offset;
+	u8 drvtype_mask;
 };
 
 struct tegra_pingroup_desc {
