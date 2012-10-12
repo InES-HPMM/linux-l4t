@@ -190,7 +190,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("vddio_cam", "tegrra_camera"),
+	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
@@ -248,7 +248,7 @@ static struct regulator_consumer_supply max77663_ldo1_supply[] = {
 static struct regulator_consumer_supply max77663_ldo2_supply[] = {
 	REGULATOR_SUPPLY("vdd_sensor_2v85", NULL),
 	REGULATOR_SUPPLY("vdd_als", NULL),
-	REGULATOR_SUPPLY("vdd", "1-004c"),
+	REGULATOR_SUPPLY("vdd", "0-004c"),
 };
 
 static struct regulator_consumer_supply max77663_ldo3_supply[] = {
@@ -532,38 +532,8 @@ static struct regulator_consumer_supply palmas_smps12_supply[] = {
 	REGULATOR_SUPPLY("vref2_ddr3l", NULL),
 };
 
-static struct regulator_consumer_supply palmas_smps3_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("vdd_emmc", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("avdd_osc", NULL),
-	REGULATOR_SUPPLY("vddio_sys", NULL),
-	REGULATOR_SUPPLY("vddio_audio", NULL),
-	REGULATOR_SUPPLY("avdd_audio_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_audio_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_uart", NULL),
-	REGULATOR_SUPPLY("vddio_gmi", NULL),
-	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
-	REGULATOR_SUPPLY("vddio_bb", NULL),
-	REGULATOR_SUPPLY("vddio_bb_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_wifi_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_modem", NULL),
-	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_spi_1v8", NULL),
-	REGULATOR_SUPPLY("dvdd_lcd", NULL),
-
-};
-
-static struct regulator_consumer_supply palmas_smps45_supply[] = {
-	REGULATOR_SUPPLY("vdd_core", NULL),
-};
+#define palmas_smps3_supply max77663_sd2_supply
+#define palmas_smps45_supply max77663_sd0_supply
 
 static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
@@ -585,41 +555,22 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 };
 
-static struct regulator_consumer_supply palmas_ldo1_supply[] = {
-	REGULATOR_SUPPLY("avdd_cam1", NULL),
-};
-
-static struct regulator_consumer_supply palmas_ldo2_supply[] = {
-	REGULATOR_SUPPLY("avdd_cam2", NULL),
-};
-
-static struct regulator_consumer_supply palmas_ldo3_supply[] = {
-	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("vddio_hsic_bb", NULL),
-	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.0"),
-	REGULATOR_SUPPLY("avdd_csi_dsi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi", "tegra_camera"),
-};
+#define palmas_ldo1_supply max77663_ldo7_supply
+#define palmas_ldo2_supply max77663_ldo8_supply
+#define palmas_ldo3_supply max77663_ldo5_supply
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 	REGULATOR_SUPPLY("vpp_fuse", NULL),
 };
 
-static struct regulator_consumer_supply palmas_ldo6_supply[] = {
-	REGULATOR_SUPPLY("vdd_temp", NULL),
-	REGULATOR_SUPPLY("vdd_sensor", NULL),
-};
+#define palmas_ldo6_supply max77663_ldo2_supply
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
 };
-static struct regulator_consumer_supply palmas_ldo8_supply[] = {
-	REGULATOR_SUPPLY("vdd_rtc", NULL),
-};
-static struct regulator_consumer_supply palmas_ldo9_supply[] = {
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
-};
+
+#define palmas_ldo8_supply max77663_ldo4_supply
+#define palmas_ldo9_supply max77663_ldo6_supply
 
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
