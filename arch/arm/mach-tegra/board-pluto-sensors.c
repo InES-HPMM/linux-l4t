@@ -612,27 +612,21 @@ static int pluto_camera_init(void)
 
 /* MPU board file definition */
 static struct mpu_platform_data mpu_gyro_data = {
-	.int_config	= 0x10,
+	.int_config	= 0x00,
 	.level_shifter	= 0,
 	.orientation	= MPU_GYRO_ORIENTATION,
-	.sec_slave_type	= SECONDARY_SLAVE_TYPE_NONE,
+	.sec_slave_type	= SECONDARY_SLAVE_TYPE_COMPASS,
+	.sec_slave_id	= COMPASS_ID_AK8963,
+	.secondary_i2c_addr	= MPU_COMPASS_ADDR,
+	.secondary_orientation	= MPU_COMPASS_ORIENTATION,
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
-};
-
-static struct mpu_platform_data mpu_compass_data = {
-	.orientation    = MPU_COMPASS_ORIENTATION,
-	.sec_slave_type = SECONDARY_SLAVE_TYPE_NONE,
 };
 
 static struct i2c_board_info __initdata inv_mpu_i2c0_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
 		.platform_data = &mpu_gyro_data,
-	},
-	{
-		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
-		.platform_data = &mpu_compass_data,
 	},
 };
 
