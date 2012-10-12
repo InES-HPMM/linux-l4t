@@ -64,8 +64,8 @@ enum {
 
 #ifdef __KERNEL__
 struct ov5640_platform_data {
-	int (*power_on)(void);
-	int (*power_off)(void);
+	int (*power_on)(struct device *);
+	int (*power_off)(struct device *);
 
 };
 #endif /* __KERNEL__ */

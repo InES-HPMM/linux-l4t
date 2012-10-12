@@ -299,13 +299,13 @@ static int ov5640_set_power(struct ov5640_info *info, u32 level)
 	case OV5640_POWER_LEVEL_OFF:
 	case OV5640_POWER_LEVEL_SUS:
 		if (info->pdata && info->pdata->power_off)
-			info->pdata->power_off();
+			info->pdata->power_off(&info->i2c_client->dev);
 		info->af_fw_loaded = 0;
 		info->mode = 0;
 		break;
 	case OV5640_POWER_LEVEL_ON:
 		if (info->pdata && info->pdata->power_on)
-			info->pdata->power_on();
+			info->pdata->power_on(&info->i2c_client->dev);
 		break;
 	default:
 		dev_err(info->dev, "unknown power level %d.\n", level);

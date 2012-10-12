@@ -90,8 +90,8 @@ struct ar0832_stereo_region {
 
 #ifdef __KERNEL__
 struct ar0832_platform_data {
-	int (*power_on)(int is_stereo);
-	int (*power_off)(int is_stereo);
+	int (*power_on)(struct device *, int is_stereo);
+	int (*power_off)(struct device *, int is_stereo);
 	char *id;
 };
 #endif /* __KERNEL__ */

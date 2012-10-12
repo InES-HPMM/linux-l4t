@@ -49,8 +49,8 @@ struct soc380_status {
 
 #ifdef __KERNEL__
 struct soc380_platform_data {
-	int (*power_on)(void);
-	int (*power_off)(void);
+	int (*power_on)(struct device *);
+	int (*power_off)(struct device *);
 
 };
 #endif /* __KERNEL__ */

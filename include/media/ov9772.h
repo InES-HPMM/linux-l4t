@@ -53,8 +53,8 @@ struct ov9772_sensordata {
 #define OV9772_REG_GAIN_LO			0x205
 
 struct ov9772_platform_data {
-	int	(*power_on)(void);
-	int	(*power_off)(void);
+	int	(*power_on)(struct device *);
+	int	(*power_off)(struct device *);
 };
 #endif /* __KERNEL__ */
 

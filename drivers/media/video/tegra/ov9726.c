@@ -337,7 +337,7 @@ ov9726_power(struct ov9726_devinfo *dev, bool pwr_on)
 		msleep_range(20);
 
 		/* Board specific power-on sequence */
-		dev->pdata->power_on();
+		dev->pdata->power_on(&i2c_client->dev);
 	} else {
 		/* pull low the RST pin of ov9726 */
 		gpio_set_value(dev->pdata->gpio_rst, rst_active_state);
@@ -351,7 +351,7 @@ ov9726_power(struct ov9726_devinfo *dev, bool pwr_on)
 		regulator_disable(dev->power_rail.sen_1v8_reg);
 
 		/* Board specific power-down sequence */
-		dev->pdata->power_off();
+		dev->pdata->power_off(&i2c_client->dev);
 	}
 
 	return 0;

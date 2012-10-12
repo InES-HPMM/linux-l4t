@@ -59,8 +59,8 @@ struct ov9726_reg {
 #define OV9726_TABLE_END		1
 
 struct ov9726_platform_data {
-	int	(*power_on)(void);
-	int	(*power_off)(void);
+	int	(*power_on)(struct device *);
+	int	(*power_off)(struct device *);
 	unsigned    gpio_rst;
 	bool        rst_low_active;
 	unsigned    gpio_pwdn;

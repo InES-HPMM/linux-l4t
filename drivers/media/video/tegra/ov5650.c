@@ -1254,18 +1254,18 @@ static int ov5650_test_pattern(struct ov5650_info *info,
 }
 
 static int set_power_helper(struct ov5650_platform_data *pdata,
-				int powerLevel, int *ref_cnt)
+			struct device *dev, int powerLevel, int *ref_cnt)
 {
 	if (pdata) {
 		if (powerLevel && pdata->power_on) {
 			if (*ref_cnt == 0)
-				pdata->power_on();
+				pdata->power_on(dev);
 			*ref_cnt = *ref_cnt + 1;
 		}
 		else if (pdata->power_off) {
 			*ref_cnt = *ref_cnt - 1;
 			if (*ref_cnt <= 0)
-				pdata->power_off();
+				pdata->power_off(dev);
 		}
 	}
 	return 0;
@@ -1278,15 +1278,15 @@ static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 
 	if (StereoCameraMode_Left & info->camera_mode) {
 		mutex_lock(&info->mutex_le);
-		set_power_helper(info->left.pdata, powerLevel,
-			&info->power_refcnt_le);
+		set_power_helper(info->left.pdata, &info->left.i2c_client->dev,
+			powerLevel, &info->power_refcnt_le);
 		mutex_unlock(&info->mutex_le);
 	}
 
 	if (StereoCameraMode_Right & info->camera_mode) {
 		mutex_lock(&info->mutex_ri);
-		set_power_helper(info->right.pdata, powerLevel,
-			&info->power_refcnt_ri);
+		set_power_helper(info->right.pdata, &info->right.i2c_client->dev,
+			powerLevel, &info->power_refcnt_ri);
 		mutex_unlock(&info->mutex_ri);
 	}
 

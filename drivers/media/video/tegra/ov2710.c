@@ -680,7 +680,7 @@ static int ov2710_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on();
+		info->pdata->power_on(&info->i2c_client->dev);
 	ov2710_get_status(info, &status);
 	return 0;
 }
@@ -688,7 +688,7 @@ static int ov2710_open(struct inode *inode, struct file *file)
 int ov2710_release(struct inode *inode, struct file *file)
 {
 	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off();
+		info->pdata->power_off(&info->i2c_client->dev);
 	file->private_data = NULL;
 	return 0;
 }

@@ -1884,7 +1884,7 @@ static int ar0832_power_on(struct ar0832_dev *dev)
 				goto fail_regulator_2v8_reg;
 			}
 		}
-		dev->pdata->power_on(dev->is_stereo);
+		dev->pdata->power_on(&i2c_client->dev, dev->is_stereo);
 	}
 	dev->brd_power_cnt++;
 
@@ -1923,7 +1923,7 @@ static void ar0832_power_off(struct ar0832_dev *dev)
 			regulator_disable(dev->power_rail.sen_2v8_reg);
 		if (dev->power_rail.sen_1v8_reg)
 			regulator_disable(dev->power_rail.sen_1v8_reg);
-		dev->pdata->power_off(dev->is_stereo);
+		dev->pdata->power_off(&i2c_client->dev, dev->is_stereo);
 	}
 
 ar0832_pwdn_exit:

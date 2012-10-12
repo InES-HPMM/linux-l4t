@@ -45,8 +45,8 @@ struct imx091_sensordata {
 
 #ifdef __KERNEL__
 struct imx091_platform_data {
-	int (*power_on)(void);
-	int (*power_off)(void);
+	int (*power_on)(struct device *);
+	int (*power_off)(struct device *);
 };
 #endif /* __KERNEL__ */
 

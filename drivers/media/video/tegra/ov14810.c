@@ -1078,11 +1078,11 @@ static int ov14810_set_power(int powerLevel)
 
 	if (info->sensor.pdata) {
 		if (powerLevel && info->sensor.pdata->power_on) {
-			info->sensor.pdata->power_on();
+			info->sensor.pdata->power_on(&info->sensor.i2c_client->dev);
 			msleep(1000);
 		}
 		else if (info->sensor.pdata->power_off) {
-			info->sensor.pdata->power_off();
+			info->sensor.pdata->power_off(&info->sensor.i2c_client->dev);
 		}
 	}
 

@@ -565,7 +565,7 @@ static int ov9772_open(struct inode *inode, struct file *file)
 	file->private_data = info;
 
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on();
+		info->pdata->power_on(&info->i2c_client->dev);
 	else{
 		pr_err("[ov9772]:%s:no valid power_on function.\n",
 		       __func__);
@@ -578,7 +578,7 @@ static int ov9772_open(struct inode *inode, struct file *file)
 static int ov9772_release(struct inode *inode, struct file *file)
 {
 	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off();
+		info->pdata->power_off(&info->i2c_client->dev);
 	file->private_data = NULL;
 
 	/* warn if device is already released */

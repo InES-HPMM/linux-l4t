@@ -378,7 +378,7 @@ static int soc380_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on();
+		info->pdata->power_on(&info->i2c_client->dev);
 
 	dev_status.data = 0;
 	dev_status.status = 0;
@@ -389,7 +389,7 @@ static int soc380_open(struct inode *inode, struct file *file)
 int soc380_release(struct inode *inode, struct file *file)
 {
 	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off();
+		info->pdata->power_off(&info->i2c_client->dev);
 	file->private_data = NULL;
 	return 0;
 }
