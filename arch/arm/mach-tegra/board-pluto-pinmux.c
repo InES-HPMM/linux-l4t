@@ -70,6 +70,39 @@
 		.slew_falling = TEGRA_SLEW_##_pullup_slew,	\
 	}
 
+/* Setting the drive strength of pins
+ * hsm: Enable High speed mode (ENABLE/DISABLE)
+ * Schimit: Enable/disable schimit (ENABLE/DISABLE)
+ * drive: low power mode (DIV_1, DIV_2, DIV_4, DIV_8)
+ * pulldn_drive - drive down (falling edge) - Driver Output Pull-Down drive
+ *                strength code. Value from 0 to 31.
+ * pullup_drive - drive up (rising edge)  - Driver Output Pull-Up drive
+ *                strength code. Value from 0 to 31.
+ * pulldn_slew -  Driver Output Pull-Up slew control code  - 2bit code
+ *                code 11 is least slewing of signal. code 00 is highest
+ *                slewing of the signal.
+ *                Value - FASTEST, FAST, SLOW, SLOWEST
+ * pullup_slew -  Driver Output Pull-Down slew control code -
+ *                code 11 is least slewing of signal. code 00 is highest
+ *                slewing of the signal.
+ *                Value - FASTEST, FAST, SLOW, SLOWEST
+ * drive_type - Drive type to be used depending on the resistors.
+ */
+
+#define SET_DRIVE_WITH_TYPE(_name, _hsm, _schmitt, _drive, _pulldn_drive,\
+		_pullup_drive, _pulldn_slew, _pullup_slew, _drive_type)	\
+	{								\
+		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,		\
+		.hsm = TEGRA_HSM_##_hsm,				\
+		.schmitt = TEGRA_SCHMITT_##_schmitt,			\
+		.drive = TEGRA_DRIVE_##_drive,				\
+		.pull_down = TEGRA_PULL_##_pulldn_drive,		\
+		.pull_up = TEGRA_PULL_##_pullup_drive,			\
+		.slew_rising = TEGRA_SLEW_##_pulldn_slew,		\
+		.slew_falling = TEGRA_SLEW_##_pullup_slew,		\
+		.drive_type = TEGRA_DRIVE_TYPE_##_drive_type,		\
+	}
+
 #define DEFAULT_PINMUX(_pingroup, _mux, _pupd, _tri, _io)	\
 	{							\
 		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
@@ -139,7 +172,7 @@ static __initdata struct tegra_drive_pingroup_config pluto_drive_pinmux[] = {
 	SET_DRIVE(SDIO3, DISABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
 
 	/* SDMMC4 */
-	SET_DRIVE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST),
+	SET_DRIVE_WITH_TYPE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST, 1),
 };
 
 /* Initially setting all used GPIO's to non-TRISTATE */
