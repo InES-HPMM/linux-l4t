@@ -69,14 +69,12 @@ static char *dalmore_cam_reg_name[] = {
 
 static struct regulator *dalmore_cam_reg[ARRAY_SIZE(dalmore_cam_reg_name)];
 
-static int dalmore_imx091_power_on(void)
+static int dalmore_imx091_power_on(struct device *dev)
 {
-
 	int i;
-
 	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (!dalmore_cam_reg[i]) {
-			dalmore_cam_reg[i] = regulator_get(NULL,
+			dalmore_cam_reg[i] = regulator_get(dev,
 					dalmore_cam_reg_name[i]);
 			if (WARN_ON(IS_ERR(dalmore_cam_reg[i]))) {
 				pr_err("%s: didn't get regulator #%d: %ld\n",
@@ -108,7 +106,7 @@ reg_alloc_fail:
 	return -ENODEV;
 }
 
-static int dalmore_imx091_power_off(void)
+static int dalmore_imx091_power_off(struct device *dev)
 {
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
@@ -124,14 +122,12 @@ static int dalmore_imx091_power_off(void)
 	return 0;
 }
 
-static int dalmore_ov9772_power_on(void)
+static int dalmore_ov9772_power_on(struct device *dev)
 {
-
 	int i;
-
 	for (i = 0; i < ARRAY_SIZE(dalmore_cam_reg_name); i++) {
 		if (!dalmore_cam_reg[i]) {
-			dalmore_cam_reg[i] = regulator_get(NULL,
+			dalmore_cam_reg[i] = regulator_get(dev,
 					dalmore_cam_reg_name[i]);
 			if (WARN_ON(IS_ERR(dalmore_cam_reg[i]))) {
 				pr_err("%s: didn't get regulator #%d: %ld\n",
@@ -163,7 +159,7 @@ reg_alloc_fail:
 	return -ENODEV;
 }
 
-static int dalmore_ov9772_power_off(void)
+static int dalmore_ov9772_power_off(struct device *dev)
 {
 	int i;
 	gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);

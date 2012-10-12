@@ -52,12 +52,12 @@ static int curacao_camera_init(void)
 	return 0;
 }
 
-static int curacao_left_ov5650_power_on(void)
+static int curacao_left_ov5650_power_on(struct device *dev)
 {
 	return 0;
 }
 
-static int curacao_left_ov5650_power_off(void)
+static int curacao_left_ov5650_power_off(struct device *dev)
 {
 	return 0;
 }
@@ -68,12 +68,12 @@ struct ov5650_platform_data curacao_ov5650_data = {
 };
 
 #ifdef CONFIG_VIDEO_OV14810
-static int curacao_ov14810_power_on(void)
+static int curacao_ov14810_power_on(struct device *dev)
 {
 	return 0;
 }
 
-static int curacao_ov14810_power_off(void)
+static int curacao_ov14810_power_off(struct device *dev)
 {
 	return 0;
 }
@@ -109,12 +109,12 @@ static struct i2c_board_info curacao_i2c_board_info_e1214[] = {
 };
 #endif
 
-static int curacao_right_ov5650_power_on(void)
+static int curacao_right_ov5650_power_on(struct device *dev)
 {
 	return 0;
 }
 
-static int curacao_right_ov5650_power_off(void)
+static int curacao_right_ov5650_power_off(struct device *dev)
 {
 	return 0;
 }
@@ -130,12 +130,12 @@ struct ov5650_platform_data curacao_right_ov5650_data = {
 	.synchronize_sensors = curacao_ov5650_synchronize_sensors,
 };
 
-static int curacao_ov2710_power_on(void)
+static int curacao_ov2710_power_on(struct device *dev)
 {
 	return 0;
 }
 
-static int curacao_ov2710_power_off(void)
+static int curacao_ov2710_power_off(struct device *dev)
 {
 	return 0;
 }

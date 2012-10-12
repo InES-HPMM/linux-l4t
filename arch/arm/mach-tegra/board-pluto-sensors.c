@@ -52,13 +52,13 @@ static char *pluto_cam_reg_name[] = {
 
 static struct regulator *pluto_cam_reg[ARRAY_SIZE(pluto_cam_reg_name)];
 
-static int pluto_imx091_power_on(void)
+static int pluto_imx091_power_on(struct device *dev)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
 		if (!pluto_cam_reg[i]) {
-			pluto_cam_reg[i] = regulator_get(NULL,
+			pluto_cam_reg[i] = regulator_get(dev,
 					pluto_cam_reg_name[i]);
 			if (WARN_ON(IS_ERR(pluto_cam_reg[i]))) {
 				pr_err("%s: didn't get regulator #%d: %ld\n",
@@ -90,7 +90,7 @@ reg_alloc_fail:
 	return -ENODEV;
 }
 
-static int pluto_imx091_power_off(void)
+static int pluto_imx091_power_off(struct device *dev)
 {
 	int i;
 
@@ -105,13 +105,13 @@ static int pluto_imx091_power_off(void)
 	return 0;
 }
 
-static int pluto_imx132_power_on(void)
+static int pluto_imx132_power_on(struct device *dev)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(pluto_cam_reg_name); i++) {
 		if (!pluto_cam_reg[i]) {
-			pluto_cam_reg[i] = regulator_get(NULL,
+			pluto_cam_reg[i] = regulator_get(dev,
 					pluto_cam_reg_name[i]);
 			if (WARN_ON(IS_ERR(pluto_cam_reg[i]))) {
 				pr_err("%s: didn't get regulator #%d: %ld\n",
@@ -142,7 +142,7 @@ reg_alloc_fail:
 }
 
 
-static int pluto_imx132_power_off(void)
+static int pluto_imx132_power_off(struct device *dev)
 {
 	int i;
 
