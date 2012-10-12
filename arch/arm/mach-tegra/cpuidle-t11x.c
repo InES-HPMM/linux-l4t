@@ -77,11 +77,8 @@ static s64 tegra_cpu_wake_by_time[4] = {
 	LLONG_MAX, LLONG_MAX, LLONG_MAX, LLONG_MAX };
 #endif
 
-static bool lp2_0_in_idle = true;
-module_param(lp2_0_in_idle, bool, 0644);
-
-static bool lp2_n_in_idle = true;
-module_param(lp2_n_in_idle, bool, 0644);
+static ulong cpu_power_gating_in_idle __read_mostly = 0x1f;
+module_param(cpu_power_gating_in_idle, ulong, 0644);
 
 static bool slow_cluster_power_gating_noncpu __read_mostly;
 module_param(slow_cluster_power_gating_noncpu, bool, 0644);
@@ -150,7 +147,8 @@ bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
 {
 	s64 request;
 
-	if ((!lp2_0_in_idle && !dev->cpu) || (!lp2_n_in_idle && dev->cpu))
+	if (!cpumask_test_cpu(cpu_number(dev->cpu),
+				to_cpumask(&cpu_power_gating_in_idle)))
 		return false;
 
 	request = ktime_to_us(tick_nohz_get_sleep_length());
