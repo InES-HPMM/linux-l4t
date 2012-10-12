@@ -110,6 +110,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_DYNAMIC_CBUS
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
+	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_EHCI_TEGRA if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
@@ -446,6 +447,14 @@ config TEGRA_LATENCY_ALLOWANCE_SCALING
 	  Enables latency allowance scaling, which enables scaling
 	  programmed latency allowance values based on fifo threshold levels
 	  set for for display and vi hardware.
+
+config TEGRA_MC_PTSA
+	bool "Enable MC PTSA programming"
+	depends on TEGRA_LATENCY_ALLOWANCE
+	help
+	  Enables Priority Tier Snap Arbiter programming in
+	  Memory Controller. PTSA is a Memory Controller feature that
+	  allows specifying the bandwidth necessary for ISO clients.
 
 config TEGRA_ISOMGR
 	bool "Isochronous Bandwidth Manager "

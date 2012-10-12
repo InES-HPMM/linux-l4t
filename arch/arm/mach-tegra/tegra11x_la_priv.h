@@ -61,6 +61,43 @@
 #define MC_LA_EMUCIF_0		0x38c
 #define MC_LA_TSEC_0		0x390
 
+#define MC_DIS_PTSA_RATE_0		0x41c
+#define MC_DIS_PTSA_MIN_0		0x420
+#define MC_DIS_PTSA_MAX_0		0x424
+#define MC_DISB_PTSA_RATE_0		0x428
+#define MC_DISB_PTSA_MIN_0		0x42c
+#define MC_DISB_PTSA_MAX_0		0x430
+#define MC_VE_PTSA_RATE_0		0x434
+#define MC_VE_PTSA_MIN_0		0x438
+#define MC_VE_PTSA_MAX_0		0x43c
+#define MC_RING2_PTSA_RATE_0		0x440
+#define MC_RING2_PTSA_MIN_0		0x444
+#define MC_RING2_PTSA_MAX_0		0x448
+#define MC_MLL_MPCORER_PTSA_RATE_0	0x44c
+#define MC_MLL_MPCORER_PTSA_MIN_0	0x450
+#define MC_MLL_MPCORER_PTSA_MAX_0	0x454
+#define MC_SMMU_SMMU_PTSA_RATE_0	0x458
+#define MC_SMMU_SMMU_PTSA_MIN_0		0x45c
+#define MC_SMMU_SMMU_PTSA_MAX_0		0x460
+#define MC_R0_DIS_PTSA_RATE_0		0x464
+#define MC_R0_DIS_PTSA_MIN_0		0x468
+#define MC_R0_DIS_PTSA_MAX_0		0x46c
+#define MC_R0_DISB_PTSA_RATE_0		0x470
+#define MC_R0_DISB_PTSA_MIN_0		0x474
+#define MC_R0_DISB_PTSA_MAX_0		0x478
+#define MC_RING1_PTSA_RATE_0		0x47c
+#define MC_RING1_PTSA_MIN_0		0x480
+#define MC_RING1_PTSA_MAX_0		0x484
+
+#define MC_DIS_EXTRA_SNAP_LEVELS_0	0x2ac
+#define MC_HEG_EXTRA_SNAP_LEVELS_0	0x2b0
+#define MC_EMEM_ARB_MISC0_0		0x0d8
+#define MC_PTSA_GRANT_DECREMENT_0	0x960
+
+#define BASE_EMC_FREQ_MHZ		500
+#define MAX_CAMERA_BW_MHZ		528
+
+
 /*
  * The rule for getting the fifo_size_in_atoms is:
  * 1.If REORDER_DEPTH exists, use it(default is overridden).

@@ -46,49 +46,7 @@
 /* Bug 995270 */
 #define HACK_LA_FIFO 1
 
-/* Hack program PTSA */
-#if defined (CONFIG_ARCH_TEGRA_11x_SOC)
-#define HACK_PROGRAM_PTSA 1
-#else
-#define HACK_PROGRAM_PTSA 0
-#endif
-
-#if HACK_PROGRAM_PTSA
-#define MC_DIS_PTSA_RATE_0		0x41c
-#define MC_DIS_PTSA_MIN_0		0x420
-#define MC_DIS_PTSA_MAX_0		0x424
-#define MC_DISB_PTSA_RATE_0		0x428
-#define MC_DISB_PTSA_MIN_0		0x42c
-#define MC_DISB_PTSA_MAX_0		0x430
-#define MC_VE_PTSA_RATE_0		0x434
-#define MC_VE_PTSA_MIN_0		0x438
-#define MC_VE_PTSA_MAX_0		0x43c
-#define MC_RING2_PTSA_RATE_0		0x440
-#define MC_RING2_PTSA_MIN_0		0x444
-#define MC_RING2_PTSA_MAX_0		0x448
-#define MC_MLL_MPCORER_PTSA_RATE_0	0x44c
-#define MC_MLL_MPCORER_PTSA_MIN_0	0x450
-#define MC_MLL_MPCORER_PTSA_MAX_0	0x454
-#define MC_SMMU_SMMU_PTSA_RATE_0	0x458
-#define MC_SMMU_SMMU_PTSA_MIN_0		0x45c
-#define MC_SMMU_SMMU_PTSA_MAX_0		0x460
-#define MC_R0_DIS_PTSA_RATE_0		0x464
-#define MC_R0_DIS_PTSA_MIN_0		0x468
-#define MC_R0_DIS_PTSA_MAX_0		0x46c
-#define MC_R0_DISB_PTSA_RATE_0		0x470
-#define MC_R0_DISB_PTSA_MIN_0		0x474
-#define MC_R0_DISB_PTSA_MAX_0		0x478
-#define MC_RING1_PTSA_RATE_0		0x47c
-#define MC_RING1_PTSA_MIN_0		0x480
-#define MC_RING1_PTSA_MAX_0		0x484
-
-#define MC_DIS_EXTRA_SNAP_LEVELS_0	0x2ac
-#define MC_HEG_EXTRA_SNAP_LEVELS_0	0x2b0
-#define MC_EMEM_ARB_MISC0_0		0x0d8
-#define MC_PTSA_GRANT_DECREMENT_0	0x960
-
-#define BASE_EMC_FREQ_MHZ		500
-#define MAX_CAMERA_BW_MHZ		528
+#ifdef CONFIG_TEGRA_MC_PTSA
 
 static unsigned int get_ptsa_rate(unsigned int bw)
 {
@@ -210,7 +168,7 @@ int tegra_set_latency_allowance(enum tegra_la_id id,
 	ci = &la_info_array[idx];
 	fifo_size_in_atoms = ci->fifo_size_in_atoms;
 
-#if HACK_PROGRAM_PTSA
+#ifdef CONFIG_TEGRA_MC_PTSA
 	if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAY_HCB) {
 		disp_bw_array[id - TEGRA_LA_DISPLAY_0A] = bandwidth_in_mbps;
 		update_display_ptsa_rate();
@@ -476,7 +434,7 @@ static int __init tegra_latency_allowance_init(void)
 	tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
 #endif
 
-#if HACK_PROGRAM_PTSA
+#ifdef CONFIG_TEGRA_MC_PTSA
 	emc_clk = clk_get(NULL, "emc");
 	la_debug("**** emc clk_rate=%luMHz", clk_get_rate(emc_clk)/1000000);
 
