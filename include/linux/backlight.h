@@ -11,6 +11,7 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/notifier.h>
+#include <linux/list.h>
 
 /* Notes on locking:
  *
@@ -101,6 +102,7 @@ struct backlight_device {
 	struct notifier_block fb_notif;
 
 	struct device dev;
+	struct list_head devices_list;
 };
 
 static inline void backlight_update_status(struct backlight_device *bd)
@@ -110,6 +112,7 @@ static inline void backlight_update_status(struct backlight_device *bd)
 		bd->ops->update_status(bd);
 	mutex_unlock(&bd->update_lock);
 }
+extern struct backlight_device *get_backlight_device_by_name(char *name);
 
 extern struct backlight_device *backlight_device_register(const char *name,
 	struct device *dev, void *devdata, const struct backlight_ops *ops,

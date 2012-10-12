@@ -27,6 +27,21 @@ static const char *const backlight_types[] = {
 	[BACKLIGHT_FIRMWARE] = "firmware",
 };
 
+struct list_head backlight_devices;
+
+struct backlight_device *get_backlight_device_by_name(char *name)
+{
+	struct list_head *ptr;
+	struct backlight_device *entry = NULL;
+	list_for_each(ptr, &backlight_devices) {
+		entry = list_entry(ptr, struct backlight_device, devices_list);
+		if (strcmp(dev_name(&entry->dev), name) == 0)
+			return entry;
+	}
+	return entry;
+}
+EXPORT_SYMBOL(get_backlight_device_by_name);
+
 #if defined(CONFIG_FB) || (defined(CONFIG_FB_MODULE) && \
 			   defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE))
 /* This callback gets called when something important happens inside a
@@ -333,6 +348,7 @@ struct backlight_device *backlight_device_register(const char *name,
 
 	new_bd->ops = ops;
 
+	list_add_tail(&new_bd->devices_list, &backlight_devices);
 #ifdef CONFIG_PMAC_BACKLIGHT
 	mutex_lock(&pmac_backlight_mutex);
 	if (!pmac_backlight)
@@ -416,6 +432,8 @@ static int __init backlight_class_init(void)
 	backlight_class->dev_attrs = bl_device_attributes;
 	backlight_class->suspend = backlight_suspend;
 	backlight_class->resume = backlight_resume;
+
+	INIT_LIST_HEAD(&backlight_devices);
 	return 0;
 }
 
