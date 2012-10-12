@@ -664,8 +664,8 @@ static int __init pluto_fixed_regulator_init(void)
 subsys_initcall_sync(pluto_fixed_regulator_init);
 
 static struct tegra_suspend_platform_data pluto_suspend_data = {
-	.cpu_timer	= 200,
-	.cpu_off_timer	= 200,
+	.cpu_timer	= 300,
+	.cpu_off_timer	= 300,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 0x157e,
 	.core_off_timer = 2000,
