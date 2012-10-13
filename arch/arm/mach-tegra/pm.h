@@ -101,6 +101,9 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x38)
 #define FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE	1
 
+#define FLOW_CTRL_MPID \
+	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x3c)
+
 #define FLOW_CTRL_RAM_REPAIR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x40)
 #define FLOW_CTRL_RAM_REPAIR_BYPASS_EN	(1<<2)

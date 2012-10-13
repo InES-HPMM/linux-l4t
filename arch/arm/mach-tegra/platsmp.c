@@ -435,6 +435,13 @@ void tegra_smp_clear_power_mask()
 }
 #endif
 
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+static int tegra_cpu_disable(unsigned int cpu)
+{
+	return 0;
+}
+#endif
+
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_init_cpus		= tegra_smp_init_cpus,
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
@@ -443,5 +450,8 @@ struct smp_operations tegra_smp_ops __initdata = {
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_kill		= tegra_cpu_kill,
 	.cpu_die		= tegra_cpu_die,
+#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
+	.cpu_disable		= tegra_cpu_disable,
+#endif
 #endif
 };

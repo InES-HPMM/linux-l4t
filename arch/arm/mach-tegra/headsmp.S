@@ -65,13 +65,16 @@ ENTRY(tegra_resume)
 	bl	__invalidate_cpu_state
 
 	cpu_id	r0
+#ifndef CONFIG_TEGRA_VIRTUAL_CPUID
 	cmp	r0, #0				@ CPU0?
 	bne	cpu_resume			@ no
+#endif
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	@ Clear the flow controller flags for this CPU.
-	mov32	r2, TEGRA_FLOW_CTRL_BASE+8	@ CPU0 CSR
-	ldr	r1, [r2]
+	cpu_to_csr_reg	r1, r0
+	mov32	r2, TEGRA_FLOW_CTRL_BASE
+	ldr	r1, [r2, r1]
 	orr	r1, r1, #(1 << 15) | (1 << 14)	@ write to clear event & intr
 	movw	r0, #0x3FFD	@ enable, enable_ext, cluster_switch, immed, & bitmaps
 	bic	r1, r1, r0
@@ -312,10 +315,12 @@ __is_not_lp1:
 __is_not_lp2:
 
 #ifdef CONFIG_SMP
+#ifndef CONFIG_TEGRA_VIRTUAL_CPUID
 	/* Can only be secondary boot (initial or hotplug) but CPU 0
 	   cannot be here. */
 	cmp	r10, #0
 	bleq	__die				@ CPU0 cannot be here
+#endif
 	ldr	lr, [r12, #RESET_DATA(STARTUP_SECONDARY)]
 	cmp	lr, #0
 	bleq	__die				@ no secondary startup handler

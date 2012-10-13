@@ -348,16 +348,10 @@ static void set_power_timers(unsigned long us_on, unsigned long us_off,
  */
 static void restore_cpu_complex(u32 mode)
 {
-	int cpu = smp_processor_id();
+	int cpu = cpu_logical_map(smp_processor_id());
 	unsigned int reg;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	unsigned int policy;
-#endif
-
-	BUG_ON(cpu != 0);
-
-#ifdef CONFIG_SMP
-	cpu = cpu_logical_map(cpu);
 #endif
 
 /*
@@ -453,15 +447,12 @@ static void restore_cpu_complex(u32 mode)
  */
 static void suspend_cpu_complex(u32 mode)
 {
-	int cpu = smp_processor_id();
+	int cpu = cpu_logical_map(smp_processor_id());
 	unsigned int reg;
 	int i;
 
 	BUG_ON(cpu != 0);
 
-#ifdef CONFIG_SMP
-	cpu = cpu_logical_map(cpu);
-#endif
 	/* switch coresite to clk_m, save off original source */
 	tegra_sctx.clk_csite_src = readl(clk_rst + CLK_RESET_SOURCE_CSITE);
 	writel(3<<30, clk_rst + CLK_RESET_SOURCE_CSITE);

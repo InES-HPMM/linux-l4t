@@ -750,10 +750,6 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 
 	cpumask_copy(policy->cpus, cpu_possible_mask);
 
-	if (policy->cpu == 0) {
-		register_pm_notifier(&tegra_cpu_pm_notifier);
-	}
-
 	return 0;
 }
 
@@ -782,7 +778,7 @@ static int tegra_cpufreq_policy_notifier(
 			ret ? policy->max : freq_table[i].frequency;
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-		if (once && policy->cpu == 0 &&
+		if (once &&
 		    sysfs_merge_group(&policy->kobj, &stats_attr_grp) == 0)
 			once = 0;
 #endif
@@ -834,8 +830,14 @@ static int __init tegra_cpufreq_init(void)
 	freq_table = table_data->freq_table;
 	tegra_cpu_edp_init(false);
 
+	ret = register_pm_notifier(&tegra_cpu_pm_notifier);
+
+	if (ret)
+		return ret;
+
 	ret = cpufreq_register_notifier(
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
+
 	if (ret)
 		return ret;
 

@@ -192,8 +192,12 @@ static void tegra3_suspend_wake_timer(unsigned int cpu)
 {
 	cpumask_clear_cpu(cpu, &wake_timer_ready);
 #ifdef CONFIG_SMP
-	/* Reassign the affinity of the wake IRQ to CPU 0. */
-	(void)irq_set_affinity(tegra_lp2wake_irq[cpu].irq, cpumask_of(0));
+	/* Reassign the affinity of the wake IRQ to any ready CPU. */
+	for_each_cpu_not(cpu, &wake_timer_ready)
+	{
+		(void)irq_set_affinity(tegra_lp2wake_irq[cpu].irq,
+			cpumask_of(cpumask_any(&wake_timer_ready)));
+	}
 #endif
 }
 

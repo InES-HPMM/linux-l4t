@@ -516,4 +516,11 @@ config TEGRA_SOCTHERM
         help
 	  Enables use of soctherm for thermal management.
 
+config TEGRA_VIRTUAL_CPUID
+	bool "virtualized CPUID"
+	depends on !TRUSTED_FOUNDATIONS
+	depends on ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+	default n
+	help
+	  Enables virtualized CPUID.
 endif
