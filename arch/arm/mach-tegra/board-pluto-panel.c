@@ -523,6 +523,8 @@ static int pluto_dsi_panel_enable(struct device *dev)
 		goto fail;
 	}
 
+	gpio_direction_output(DSI_PANEL_RST_GPIO, 0);
+
 	if (avdd_lcd_3v0_2v8) {
 		err = regulator_enable(avdd_lcd_3v0_2v8);
 		if (err < 0) {
@@ -566,11 +568,13 @@ static int pluto_dsi_panel_enable(struct device *dev)
 	usleep_range(3000, 5000);
 
 #if DSI_PANEL_RESET
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
+	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+#if !PANEL_5_SHARP_1080p
 	usleep_range(1000, 5000);
 	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
 	usleep_range(1000, 5000);
 	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+#endif
 	msleep(20);
 #endif
 
