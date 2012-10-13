@@ -892,7 +892,7 @@ static struct tegra_dc_sd_settings dalmore_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &dalmore_disp1_bl_device,
+	.bl_device_name = "pwm-backlight",
 };
 
 #if PANEL_11_6_AUO_1920_1080

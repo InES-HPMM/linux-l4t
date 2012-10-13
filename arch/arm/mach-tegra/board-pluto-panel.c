@@ -889,10 +889,6 @@ static struct platform_device pluto_disp1_bl_device = {
 		.platform_data = &pluto_disp1_bl_data,
 	},
 };
-#else
-/* TODO: Need backlight platform_device for other backlight drivers */
-static struct platform_device pluto_disp1_bl_device = {
-};
 #endif
 
 static struct tegra_dc_sd_settings pluto_sd_settings = {
@@ -942,7 +938,7 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 			},
 		},
 	.sd_brightness = &sd_brightness,
-	.bl_device = &pluto_disp1_bl_device,
+	.bl_device_name = "pwm-backlight",
 };
 
 int __init pluto_panel_init(void)
