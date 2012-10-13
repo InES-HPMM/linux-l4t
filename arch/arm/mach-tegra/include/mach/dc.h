@@ -409,7 +409,8 @@ struct tegra_dc_sd_settings {
 	struct tegra_dc_sd_rgb lut[4][9];
 
 	atomic_t *sd_brightness;
-	struct platform_device *bl_device;
+	char *bl_device_name;
+	struct backlight_device *bl_device;
 };
 
 enum {
