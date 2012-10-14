@@ -1558,7 +1558,7 @@ static void udc_reset_ep_queue(struct tegra_udc *udc, u8 pipe)
 {
 	struct tegra_ep *ep = get_ep_by_pipe(udc, pipe);
 
-	if (ep->name)
+	if (ep->name[0])
 		nuke(ep, -ESHUTDOWN);
 }
 
@@ -2052,7 +2052,7 @@ static void dtd_complete_irq(struct tegra_udc *udc)
 		curr_ep = get_ep_by_pipe(udc, i);
 
 		/* If the ep is configured */
-		if (curr_ep->name == NULL) {
+		if (curr_ep->name[0] == '\0') {
 			WARNING("Invalid EP?");
 			continue;
 		}
