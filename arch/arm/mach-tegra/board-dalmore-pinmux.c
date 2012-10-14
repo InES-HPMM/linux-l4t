@@ -564,8 +564,17 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 
 static void __init dalmore_pinmux_audio_init(void)
 {
-	gpio_request(TEGRA_GPIO_CDC_IRQ, "rt5640");
-	gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	int ret = gpio_request(TEGRA_GPIO_CDC_IRQ, "rt5640");
+	if (ret < 0) {
+		pr_err("%s() Error in gpio_request() for gpio %d\n",
+				 __func__, ret);
+	}
+	ret = gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
+	if (ret < 0) {
+		pr_err("%s() Error in setting gpio %d to in/out\n",
+				__func__, ret);
+		gpio_free(TEGRA_GPIO_CDC_IRQ);
+	}
 
 }
 
