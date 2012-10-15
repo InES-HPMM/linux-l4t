@@ -70,6 +70,7 @@
 #define SDHOST_1V8_OCR_MASK	0x8
 #define SDHOST_HIGH_VOLT_MIN	2700000
 #define SDHOST_HIGH_VOLT_MAX	3600000
+#define SDHOST_HIGH_VOLT_2V8	2800000
 #define SDHOST_LOW_VOLT_MIN	1800000
 #define SDHOST_LOW_VOLT_MAX	1800000
 
@@ -675,8 +676,8 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
-	unsigned int min_uV = SDHOST_HIGH_VOLT_MIN;
-	unsigned int max_uV = SDHOST_HIGH_VOLT_MAX;
+	unsigned int min_uV = tegra_host->vddio_min_uv;
+	unsigned int max_uV = tegra_host->vddio_max_uv;
 	unsigned int rc = 0;
 	u16 clk, ctrl;
 	unsigned int val;
@@ -1266,6 +1267,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
 			tegra_host->vddio_min_uv = SDHOST_LOW_VOLT_MIN;
 			tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
+		} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
+			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
+			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
 		} else {
 			/*
 			 * Set the minV and maxV to default
