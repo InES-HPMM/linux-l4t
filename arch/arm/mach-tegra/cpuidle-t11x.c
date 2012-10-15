@@ -83,6 +83,9 @@ module_param(cpu_power_gating_in_idle, ulong, 0644);
 static bool slow_cluster_power_gating_noncpu __read_mostly;
 module_param(slow_cluster_power_gating_noncpu, bool, 0644);
 
+static uint fast_cluster_power_down_mode __read_mostly;
+module_param(fast_cluster_power_down_mode, uint, 0644);
+
 static struct clk *cpu_clk_for_dvfs;
 
 static int lp2_exit_latencies[5];
@@ -267,7 +270,9 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		flag = TEGRA_POWER_CLUSTER_PART_NONCPU;
 	} else {
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
-		flag = get_power_gating_partition();
+		flag = (fast_cluster_power_down_mode
+			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
+			&& TEGRA_POWER_CLUSTER_PART_MASK;
 	}
 
 	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
@@ -416,7 +421,9 @@ bool tegra11x_idle_lp2(struct cpuidle_device *dev,
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 
 	tegra_set_cpu_in_lp2(dev->cpu);
-	cpu_gating_only = get_power_gating_partition() ? false : true;
+	cpu_gating_only = (((fast_cluster_power_down_mode
+			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
+			&& TEGRA_POWER_CLUSTER_PART_MASK) == 0);
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu)

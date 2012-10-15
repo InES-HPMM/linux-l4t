@@ -38,6 +38,7 @@
 #else
 #define TEGRA_POWER_CLUSTER_PART_DEFAULT 0
 #endif
+#define TEGRA_POWER_CLUSTER_PART_SHIFT	24
 
 #define TEGRA_POWER_SDRAM_SELFREFRESH	(1 << 26) /* SDRAM is in self-refresh */
 #define TEGRA_POWER_HOTPLUG_SHUTDOWN	(1 << 27) /* Hotplug shutdown */
