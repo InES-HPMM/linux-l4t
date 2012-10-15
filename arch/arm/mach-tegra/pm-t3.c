@@ -538,9 +538,9 @@ static struct tegra_io_dpd tegra_list_io_dpd[] = {
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) && defined(CONFIG_TEGRA_IO_DPD)
 	/* sd dpd bits in dpd2 register */
 	IO_DPD_INFO("sdhci-tegra.0",	1,	1), /* SDMMC1 */
+#endif
 	IO_DPD_INFO("sdhci-tegra.2",	1,	2), /* SDMMC3 */
 	IO_DPD_INFO("sdhci-tegra.3",	1,	3), /* SDMMC4 */
-#endif
 };
 #endif
 
