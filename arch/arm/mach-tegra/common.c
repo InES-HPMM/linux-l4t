@@ -198,7 +198,7 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "sclk",	NULL,		0,		true },
 	{ "pll_p",	NULL,		0,		true },
 	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out3",	"pll_p",	0,		true },
+	{ "pll_p_out3",	"pll_p",	0,		false },
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	{ "pll_m_out1",	"pll_m",	275000000,	false },
 	{ "pll_p_out2",	 "pll_p",	102000000,	false },
