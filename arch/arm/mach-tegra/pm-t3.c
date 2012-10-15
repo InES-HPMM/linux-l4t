@@ -527,7 +527,11 @@ void tegra_lp0_cpu_mode(bool enter)
 #define APBDEV_PMC_IO_DPD_STATUS_0	0x1bc
 #define APBDEV_PMC_SEL_DPD_TIM_0	0x1c8
 #define APBDEV_DPD_ENABLE_LSB		30
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define APBDEV_DPD2_ENABLE_LSB		5
+#else
+#define APBDEV_DPD2_ENABLE_LSB		30
+#endif
 #define PMC_DPD_SAMPLE			0x20
 
 static struct tegra_io_dpd tegra_list_io_dpd[] = {
