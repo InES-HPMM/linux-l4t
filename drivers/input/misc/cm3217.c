@@ -810,6 +810,31 @@ static ssize_t ls_fLevel_store(struct device *dev,
 
 static DEVICE_ATTR(ls_flevel, 0664, ls_fLevel_show, ls_fLevel_store);
 
+static int cm3217_disable(struct input_dev *dev)
+{
+	struct cm3217_info *lpi = lp_info;
+
+	D("[LS][CM3217] %s\n", __func__);
+
+	lpi->als_enabled_before_suspend = lpi->als_enable;
+	if (lpi->als_enable)
+		lightsensor_disable(lpi);
+
+	return 0;
+}
+
+static int cm3217_enable(struct input_dev *dev)
+{
+	struct cm3217_info *lpi = lp_info;
+
+	D("[LS][CM3217] %s\n", __func__);
+
+	if (lpi->als_enabled_before_suspend)
+		lightsensor_enable(lpi);
+
+	return 0;
+}
+
 static int lightsensor_setup(struct cm3217_info *lpi)
 {
 	int ret;
@@ -821,6 +846,9 @@ static int lightsensor_setup(struct cm3217_info *lpi)
 		return -ENOMEM;
 	}
 	lpi->ls_input_dev->name = "cm3217-ls";
+	lpi->ls_input_dev->enable = cm3217_enable;
+	lpi->ls_input_dev->disable = cm3217_disable;
+	lpi->ls_input_dev->enabled = lpi->als_enable;
 	set_bit(EV_ABS, lpi->ls_input_dev->evbit);
 	input_set_abs_params(lpi->ls_input_dev, ABS_MISC, 0, 9, 0, 0);
 
