@@ -1057,6 +1057,7 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 #elif PANEL_5_LG_720_1280 || PANEL_5_SHARP_1080p
 	.bl_device_name = "max8831_display_bl",
 #endif
+	.use_vpulse2 = true,
 };
 
 int __init pluto_panel_init(void)
