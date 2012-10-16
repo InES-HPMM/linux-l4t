@@ -115,21 +115,25 @@ struct dvfs {
 };
 
 struct cpu_cvb_dvfs_parameters {
-	unsigned long freq;
 	int	c0;
 	int	c1;
 	int	c2;
+};
+
+struct cpu_cvb_dvfs_table {
+	unsigned long freq;
+	struct cpu_cvb_dvfs_parameters cvb_dfll_param;
+	struct cpu_cvb_dvfs_parameters cvb_pll_param;
 };
 
 struct cpu_cvb_dvfs {
 	int speedo_id;
 	int max_mv;
 	int min_dfll_mv;
-	int margin;
 	int freqs_mult;
 	int speedo_scale;
 	int voltage_scale;
-	struct cpu_cvb_dvfs_parameters cvb_table[MAX_DVFS_FREQS];
+	struct cpu_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;
