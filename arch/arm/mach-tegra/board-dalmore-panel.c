@@ -64,6 +64,7 @@ int __init dalmore_host1x_init(void)
 #define DSI_PANEL_RESET		1
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
 #define DSI_PANEL_BL_EN_GPIO	TEGRA_GPIO_PH2
+#define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
@@ -416,6 +417,14 @@ static int dalmore_dsi_gpio_get(void)
 		pr_err("panel backlight gpio request failed\n");
 		goto fail;
 	}
+
+	/* free pwm GPIO */
+	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
+	if (err < 0) {
+		pr_err("panel pwm gpio request failed\n");
+		goto fail;
+	}
+	gpio_free(DSI_PANEL_BL_PWM);
 
 #if PANEL_11_6_AUO_1920_1080
 	err = gpio_request(en_vdd_bl, "edp bridge 1v2 enable");
