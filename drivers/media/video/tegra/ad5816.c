@@ -95,7 +95,7 @@
 #include <media/ad5816.h>
 
 #define AD5816_ID				0x04
-#define AD5816_FOCAL_LENGTH	 (4.570f)
+#define AD5816_FOCAL_LENGTH		(4.570f)
 #define AD5816_FNUMBER			(2.8f)
 #define AD5816_SLEW_RATE		1
 #define AD5816_ACTUATOR_RANGE	1023
@@ -118,12 +118,15 @@ static struct nvc_gpio_init ad5816_gpios[] = {
 	{ AD5816_GPIO_GP1, 0, "gp1", 0, false},
 	{ AD5816_GPIO_GP2, 0, "gp2", 0, false},
 	{ AD5816_GPIO_GP3, 0, "gp3", 0, false},
+	{ AD5816_GPIO_CAM_AF_PWDN, 0, "cam_af_pwdn", 0, false},
 };
 
 static struct nvc_regulator_init ad5816_vregs[] = {
 	{ AD5816_VREG_VDD, "vdd"},
 	{ AD5816_VREG_VDD_AF, "vdd_af"},
 	{ AD5816_VREG_VDD_I2C, "vdd_i2c"},
+	{ AD5816_VREG_VDD_CAM_MB, "vddio_cam_mb"},
+	{ AD5816_VREG_VDD_CAM_AF, "vdd_af_cam1"},
 };
 
 struct ad5816_info {
