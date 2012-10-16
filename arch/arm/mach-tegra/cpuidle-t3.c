@@ -209,7 +209,6 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	bool sleep_completed = false;
 	bool multi_cpu_entry = false;
 	int bin;
-	unsigned int flag = 0;
 	s64 sleep_time;
 
 	/* LP2 entry time */
@@ -287,10 +286,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	if (!is_lp_cluster())
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
 
-#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-	flag = get_power_gating_partition();
-#endif
-	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
+	if (tegra_idle_lp2_last(sleep_time, 0) == 0)
 		sleep_completed = true;
 	else {
 		int irq = tegra_gic_pending_interrupt();

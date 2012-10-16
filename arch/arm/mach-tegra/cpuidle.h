@@ -141,8 +141,4 @@ void tegra_lp2_in_idle(bool enable);
 static inline void tegra_lp2_in_idle(bool enable) {}
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
-int get_power_gating_partition(void);
-#endif
-
 #endif
