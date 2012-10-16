@@ -62,6 +62,7 @@
 #define AHB_ARBITRATION_PRIORITY_CTRL		0x4
 #define   AHB_PRIORITY_WEIGHT(x)	(((x) & 0x7) << 29)
 #define   PRIORITY_SELECT_USB	BIT(6)
+#define PRIORITY_SELECT_SDMMC4	BIT(12)
 #define   PRIORITY_SELECT_USB2	BIT(18)
 #define   PRIORITY_SELECT_USB3	BIT(17)
 
@@ -74,10 +75,12 @@
 #define   FORCED_RECOVERY_MODE	BIT(1)
 
 #define AHB_GIZMO_USB		0x1c
+#define AHB_GIZMO_SDMMC4	0x44
 #define AHB_GIZMO_USB2		0x78
 #define AHB_GIZMO_USB3		0x7c
 #define   IMMEDIATE	BIT(18)
 
+#define AHB_MEM_PREFETCH_CFG5	0xc4
 #define AHB_MEM_PREFETCH_CFG3	0xe0
 #define AHB_MEM_PREFETCH_CFG4	0xe4
 #define AHB_MEM_PREFETCH_CFG1	0xec
@@ -86,6 +89,7 @@
 #define   MST_ID(x)	(((x) & 0x1f) << 26)
 #define   AHBDMA_MST_ID	MST_ID(5)
 #define   USB_MST_ID	MST_ID(6)
+#define SDMMC4_MST_ID	MST_ID(12)
 #define   USB2_MST_ID	MST_ID(18)
 #define   USB3_MST_ID	MST_ID(17)
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
@@ -446,9 +450,18 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_USB3);
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val = gizmo_readl(AHB_GIZMO_SDMMC4);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_SDMMC4);
+#endif
+
 	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 				| AHB_PRIORITY_WEIGHT(7);
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val |= PRIORITY_SELECT_SDMMC4;
+#endif
 	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
@@ -474,6 +487,14 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
+
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
+#endif
 }
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
