@@ -1098,7 +1098,6 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 		 * is managed by respective modules
 		 */
 		TEGRA_POWERGATE_VENC,
-		TEGRA_POWERGATE_VDEC,
 		TEGRA_POWERGATE_MPE,
 		TEGRA_POWERGATE_DISA,
 		TEGRA_POWERGATE_DISB,
