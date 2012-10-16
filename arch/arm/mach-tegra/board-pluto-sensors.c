@@ -24,6 +24,7 @@
 #include <linux/mpu.h>
 #include <media/imx091.h>
 #include <media/imx132.h>
+#include <media/ad5816.h>
 
 #include "gpio-names.h"
 #include "board-pluto.h"
@@ -46,8 +47,6 @@ static char *pluto_cam_reg_name[] = {
 	"avdd_cam2",		/* Analog VDD 2.7V */
 	"vdd_1v2_cam",		/* Digital VDD 1.2V */
 	"vdd_1v8_cam12",	/* Digital VDDIO 1.8V */
-	"vddio_cam_mb",		/* CAM_I2C PULL-UP VDD 1.8V */
-	"vdd_af_cam1",		/* AF VDD */
 };
 
 static struct regulator *pluto_cam_reg[ARRAY_SIZE(pluto_cam_reg_name)];
@@ -167,6 +166,13 @@ struct imx132_platform_data pluto_imx132_data = {
 	.power_off = pluto_imx132_power_off,
 };
 
+static struct ad5816_platform_data pluto_ad5816_pdata = {
+	.cfg		= 0,
+	.num		= 0,
+	.sync		= 0,
+	.dev_name	= "focuser",
+};
+
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x10),
@@ -175,6 +181,10 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx132", 0x36),
 		.platform_data = &pluto_imx132_data,
+	},
+	{
+		I2C_BOARD_INFO("ad5816", 0x0E),
+		.platform_data = &pluto_ad5816_pdata,
 	},
 };
 
