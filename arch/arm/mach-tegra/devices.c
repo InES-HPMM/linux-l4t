@@ -162,11 +162,11 @@ static struct resource pinmux_resource[] = {
 
 struct platform_device tegra_pinmux_device = {
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.name		= "tegra30-pinmux",
+	.name		= "tegra30-pinmux-ctlr",
 #elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	.name		= "tegra20-pinctrl",
+	.name		= "tegra20-pinmux-ctlr",
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	.name		= "tegra11x-pinmux",
+	.name		= "tegra11x-pinmux-ctlr",
 #endif
 	.id		= -1,
 	.resource	= pinmux_resource,
