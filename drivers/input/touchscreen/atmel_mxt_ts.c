@@ -1606,8 +1606,14 @@ static int mxt_get_object_table(struct mxt_data *data)
 			data->T6_reportid = object->max_reportid;
 			break;
 		case MXT_GEN_MESSAGE_T5:
-			/* CRC not enabled, therefore don't read last byte */
-			data->T5_msg_size = object->size - 1;
+			if (data->info.family_id == 0x80) {
+				/* On mXT224 must read and discard CRC byte
+				 * otherwise DMA reads are misaligned */
+				data->T5_msg_size = object->size;
+			} else {
+				/* CRC not enabled, therefore don't read last byte */
+				data->T5_msg_size = object->size - 1;
+			}
 			data->T5_address = object->start_address;
 			break;
 		case MXT_GEN_POWER_T7:
