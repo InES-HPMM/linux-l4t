@@ -1021,10 +1021,6 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 
 	machine->init_done = true;
 
-	machine->pcard = card;
-	machine->bias_level = SND_SOC_BIAS_STANDBY;
-	machine->clock_enabled = 1;
-
 	ret = snd_soc_add_card_controls(card, tegra_cs42l73_controls,
 			ARRAY_SIZE(tegra_cs42l73_controls));
 	if (ret < 0)
@@ -1041,8 +1037,6 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm,
 		tegra_cs42l73_audio_map,
 		ARRAY_SIZE(tegra_cs42l73_audio_map));
-
-		snd_soc_dapm_sync(dapm);
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		/* Headphone detection */
@@ -1084,6 +1078,8 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
+
+	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }
@@ -1140,9 +1136,13 @@ static struct snd_soc_dai_link tegra_cs42l73_dai[NUM_DAI_LINKS] = {
 static int tegra_cs42l73_suspend_post(struct snd_soc_card *card)
 {
 	struct snd_soc_jack_gpio *gpio = &tegra_cs42l73_hp_jack_gpio;
+	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
 
 	if (gpio_is_valid(gpio->gpio))
 		disable_irq(gpio_to_irq(gpio->gpio));
+
+	if (machine->clock_enabled)
+		tegra_asoc_utils_clk_disable(&machine->util_data);
 
 	return 0;
 }
@@ -1151,6 +1151,7 @@ static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
 {
 	int val;
 	struct snd_soc_jack_gpio *gpio = &tegra_cs42l73_hp_jack_gpio;
+	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
 
 	if (gpio_is_valid(gpio->gpio)) {
 		val = gpio_get_value(gpio->gpio);
@@ -1158,6 +1159,9 @@ static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
 		snd_soc_jack_report(gpio->jack, val, gpio->report);
 		enable_irq(gpio_to_irq(gpio->gpio));
 	}
+
+	if (!machine->clock_enabled)
+		tegra_asoc_utils_clk_enable(&machine->util_data);
 
 	return 0;
 }
@@ -1242,6 +1246,9 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 	}
 
 	machine->pdata = pdata;
+	machine->pcard = card;
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
@@ -1275,8 +1282,6 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
-
-
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	for (i = 0; i < NUM_I2S_DEVICES ; i++) {
