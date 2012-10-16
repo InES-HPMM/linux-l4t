@@ -19,6 +19,7 @@
 
 #include <linux/gpio.h>
 #include <linux/regmap.h>
+#include <linux/rtc.h>
 
 /* TPS chip id list */
 #define TPS65910			0
@@ -883,6 +884,7 @@ struct tps65910_board {
 	bool en_gpio_sleep[TPS6591X_MAX_NUM_GPIO];
 	unsigned long regulator_ext_sleep_control[TPS65910_NUM_REGS];
 	struct regulator_init_data *tps65910_pmic_init_data[TPS65910_NUM_REGS];
+	struct rtc_time time;
 };
 
 /**
