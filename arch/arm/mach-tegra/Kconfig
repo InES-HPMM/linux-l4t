@@ -493,4 +493,13 @@ config TEGRA_ISOMGR_DEBUG
 	  user space tests that exercise isomgr in ways that drivers
 	  couldn't easily accommodate.
 
+config TEGRA_IO_DPD
+	bool "Allow IO DPD"
+	depends on ARCH_TEGRA_3x_SOC
+	depends on PM_SLEEP
+	default y
+	help
+	  Allow devices listed in tegra_list_io_dpd[] to go into
+	  Deep Power Down (DPD) state. This is a temporary config
+	  option until a proper way is implemented to resolve this issue.
 endif
