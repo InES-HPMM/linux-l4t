@@ -490,7 +490,8 @@ static int pluto_nct1008_init(void)
 	int ret = 0;
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if (board_info.board_id == BOARD_E1580) {
+	if (board_info.board_id == BOARD_E1580 ||
+	    board_info.board_id == BOARD_E1575) {
 		nct1008_port = TEGRA_GPIO_PX6;
 	} else {
 		nct1008_port = TEGRA_GPIO_PX6;

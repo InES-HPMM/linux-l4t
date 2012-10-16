@@ -433,10 +433,11 @@ static struct tegra11_emc_pdata *pluto_get_emc_data(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (board_info.board_id != BOARD_E1580)
-		return NULL;
+	if (board_info.board_id == BOARD_E1580 ||
+	    board_info.board_id == BOARD_E1575)
+		return &e1580_no_dram_pdata;
 
-	return &e1580_no_dram_pdata;
+	return NULL;
 }
 
 int __init pluto_emc_init(void)
