@@ -75,6 +75,17 @@ static struct tegra_kbc_platform_data dalmore_kbc_platform_data = {
 #endif
 };
 
+#define GPIO_KEY(_id, _gpio, _iswake)           \
+	{                                       \
+		.code = _id,                    \
+		.gpio = TEGRA_GPIO_##_gpio,     \
+		.active_low = 1,                \
+		.desc = #_id,                   \
+		.type = EV_KEY,                 \
+		.wakeup = _iswake,              \
+		.debounce_interval = 10,        \
+	}
+
 #define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
 	{					\
 		.code = _id,			\
@@ -93,8 +104,25 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 				MAX77663_IRQ_ONOFF_EN0_1SEC, 0, 3000),
 };
 
-static struct gpio_keys_button dalmore_e1611_int_keys[] = {
+static struct gpio_keys_button dalmore_e1611_1000_keys[] = {
 	[0] = {
+		.code = SW_LID,
+		.gpio = TEGRA_GPIO_HALL,
+		.irq = -1,
+		.type = EV_SW,
+		.desc = "Hall Effect Sensor",
+		.active_low = 1,
+		.wakeup = 1,
+		.debounce_interval = 100,
+	},
+};
+
+static struct gpio_keys_button dalmore_e1611_1001_keys[] = {
+	[0] = GPIO_IKEY(KEY_POWER, PALMAS_TEGRA_IRQ_BASE +
+			PALMAS_PWRON_IRQ, 1, 100),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
+	[3] = {
 		.code = SW_LID,
 		.gpio = TEGRA_GPIO_HALL,
 		.irq = -1,
@@ -111,9 +139,14 @@ static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 	.nbuttons	= ARRAY_SIZE(dalmore_int_keys),
 };
 
-static struct gpio_keys_platform_data dalmore_e1611_int_keys_pdata = {
-	.buttons	= dalmore_e1611_int_keys,
-	.nbuttons	= ARRAY_SIZE(dalmore_e1611_int_keys),
+static struct gpio_keys_platform_data dalmore_e1611_1000_keys_pdata = {
+	.buttons	= dalmore_e1611_1000_keys,
+	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1000_keys),
+};
+
+static struct gpio_keys_platform_data dalmore_e1611_1001_keys_pdata = {
+	.buttons	= dalmore_e1611_1001_keys,
+	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1001_keys),
 };
 
 static struct platform_device dalmore_int_keys_device = {
@@ -124,19 +157,26 @@ static struct platform_device dalmore_int_keys_device = {
 	},
 };
 
-static struct platform_device dalmore_e1611_int_keys_device = {
+static struct platform_device dalmore_e1611_1000_keys_device = {
 	.name	= "gpio-keys",
 	.id	= 0,
 	.dev	= {
-		.platform_data  = &dalmore_e1611_int_keys_pdata,
+		.platform_data  = &dalmore_e1611_1000_keys_pdata,
 	},
 };
 
-int __init dalmore_kbc_init(void)
+static struct platform_device dalmore_e1611_1001_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
+		.platform_data  = &dalmore_e1611_1001_keys_pdata,
+	},
+};
+
+static void __init dalmore_register_kbc(void)
 {
 	struct tegra_kbc_platform_data *data = &dalmore_kbc_platform_data;
 	int i;
-	struct board_info board_info;
 
 	tegra_kbc_device.dev.platform_data = &dalmore_kbc_platform_data;
 	pr_info("Registering tegra-kbc\n");
@@ -153,13 +193,27 @@ int __init dalmore_kbc_init(void)
 
 	platform_device_register(&tegra_kbc_device);
 	pr_info("Registering successful tegra-kbc\n");
+}
+
+int __init dalmore_kbc_init(void)
+{
+	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id != BOARD_E1611 &&
-		board_info.board_id != BOARD_P2454)
+		board_info.board_id != BOARD_P2454) {
+		dalmore_register_kbc();
 		platform_device_register(&dalmore_int_keys_device);
-	else if (board_info.board_id == BOARD_E1611)
-		platform_device_register(&dalmore_e1611_int_keys_device);
+	} else if (board_info.board_id == BOARD_E1611) {
+		if (board_info.sku != 1001) {
+			dalmore_register_kbc();
+			platform_device_register(
+				&dalmore_e1611_1000_keys_device);
+		} else {
+			platform_device_register(
+				&dalmore_e1611_1001_keys_device);
+		}
+	}
 
 	return 0;
 }
