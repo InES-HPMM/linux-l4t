@@ -39,8 +39,10 @@
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
 
-#define SET_DRIVE_PINGROUP(pg_name, r, drv_down_offset, drv_down_mask, drv_up_offset, drv_up_mask,	\
-	slew_rise_offset, slew_rise_mask, slew_fall_offset, slew_fall_mask, drv_type_valid, drv_type_offset, drv_type_mask)	\
+#define SET_DRIVE_PINGROUP(pg_name, r, drv_down_offset, drv_down_mask,	\
+	drv_up_offset, drv_up_mask, slew_rise_offset, slew_rise_mask,	\
+	slew_fall_offset, slew_fall_mask, drv_type_valid,		\
+	drv_type_offset, drv_type_mask, _dev_id)			\
 	[TEGRA_DRIVE_PINGROUP_ ## pg_name] = {			\
 		.name = #pg_name,				\
 		.reg_bank = 0,					\
@@ -55,7 +57,8 @@
 		.slewfall_mask = slew_fall_mask,		\
 		.drvtype_valid = drv_type_valid,		\
 		.drvtype_offset = drv_type_offset,		\
-		.drvtype_mask = drv_type_mask,		\
+		.drvtype_mask = drv_type_mask,			\
+		.dev_id = _dev_id,				\
 	}
 
 #define DEFAULT_DRIVE_PINGROUP(pg_name, r)		\
@@ -73,7 +76,8 @@
 		.slewfall_mask = 0x3,			\
 		.drvtype_valid = 0,			\
 		.drvtype_offset = 6,			\
-		.drvtype_mask = 0x3,		\
+		.drvtype_mask = 0x3,			\
+		.dev_id = NULL				\
 	}
 
 const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE_PINGROUP] = {
@@ -93,18 +97,21 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	DEFAULT_DRIVE_PINGROUP(DAP4,		0x89c),
 	DEFAULT_DRIVE_PINGROUP(DBG,		0x8a0),
 	SET_DRIVE_PINGROUP(SDIO3,		0x8b0,	12,	0x7F,	20,
-		0x7F,	28,	0x3,	30,	0x3,	0,	0,	0),
+		0x7F,	28,	0x3,	30,	0x3,	0,	0,	0,
+		"sdhci-tegra.2"),
 	DEFAULT_DRIVE_PINGROUP(SPI,		0x8b4),
 	DEFAULT_DRIVE_PINGROUP(UAA,		0x8b8),
 	DEFAULT_DRIVE_PINGROUP(UAB,		0x8bc),
 	DEFAULT_DRIVE_PINGROUP(UART2,		0x8c0),
 	DEFAULT_DRIVE_PINGROUP(UART3,		0x8c4),
 	SET_DRIVE_PINGROUP(SDIO1,		0x8ec,	12,	0x7F,	20,
-		0x7F,	28,	0x3,	30,	0x3,	0,	0,	0),
+		0x7F,	28,	0x3,	30,	0x3,	0,	0,	0,
+		"sdhci-tegra.0"),
 	DEFAULT_DRIVE_PINGROUP(CRT,		0x8f8),
 	DEFAULT_DRIVE_PINGROUP(DDC,		0x8fc),
 	SET_DRIVE_PINGROUP(GMA,			0x900,	14,	0x1F,	20,
-		0x1F,	28,	0x3,	30,	0x3,	1,	6,	0x3),
+		0x1F,	28,	0x3,	30,	0x3,	1,	6,	0x3,
+		"sdhci-tegra.3"),
 	DEFAULT_DRIVE_PINGROUP(GME,		0x910),
 	DEFAULT_DRIVE_PINGROUP(GMF,		0x914),
 	DEFAULT_DRIVE_PINGROUP(GMG,		0x918),

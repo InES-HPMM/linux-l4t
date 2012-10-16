@@ -287,6 +287,87 @@ enum tegra_pull_strength {
 	TEGRA_PULL_44,
 	TEGRA_PULL_45,
 	TEGRA_PULL_46,
+	TEGRA_PULL_47,
+	TEGRA_PULL_48,
+	TEGRA_PULL_49,
+	TEGRA_PULL_50,
+	TEGRA_PULL_51,
+	TEGRA_PULL_52,
+	TEGRA_PULL_53,
+	TEGRA_PULL_54,
+	TEGRA_PULL_55,
+	TEGRA_PULL_56,
+	TEGRA_PULL_57,
+	TEGRA_PULL_58,
+	TEGRA_PULL_59,
+	TEGRA_PULL_60,
+	TEGRA_PULL_61,
+	TEGRA_PULL_62,
+	TEGRA_PULL_63,
+	TEGRA_PULL_64,
+	TEGRA_PULL_65,
+	TEGRA_PULL_66,
+	TEGRA_PULL_67,
+	TEGRA_PULL_68,
+	TEGRA_PULL_69,
+	TEGRA_PULL_70,
+	TEGRA_PULL_71,
+	TEGRA_PULL_72,
+	TEGRA_PULL_73,
+	TEGRA_PULL_74,
+	TEGRA_PULL_75,
+	TEGRA_PULL_76,
+	TEGRA_PULL_77,
+	TEGRA_PULL_78,
+	TEGRA_PULL_79,
+	TEGRA_PULL_80,
+	TEGRA_PULL_81,
+	TEGRA_PULL_82,
+	TEGRA_PULL_83,
+	TEGRA_PULL_84,
+	TEGRA_PULL_85,
+	TEGRA_PULL_86,
+	TEGRA_PULL_87,
+	TEGRA_PULL_88,
+	TEGRA_PULL_89,
+	TEGRA_PULL_90,
+	TEGRA_PULL_91,
+	TEGRA_PULL_92,
+	TEGRA_PULL_93,
+	TEGRA_PULL_94,
+	TEGRA_PULL_95,
+	TEGRA_PULL_96,
+	TEGRA_PULL_97,
+	TEGRA_PULL_98,
+	TEGRA_PULL_99,
+	TEGRA_PULL_100,
+	TEGRA_PULL_101,
+	TEGRA_PULL_102,
+	TEGRA_PULL_103,
+	TEGRA_PULL_104,
+	TEGRA_PULL_105,
+	TEGRA_PULL_106,
+	TEGRA_PULL_107,
+	TEGRA_PULL_108,
+	TEGRA_PULL_109,
+	TEGRA_PULL_110,
+	TEGRA_PULL_111,
+	TEGRA_PULL_112,
+	TEGRA_PULL_113,
+	TEGRA_PULL_114,
+	TEGRA_PULL_115,
+	TEGRA_PULL_116,
+	TEGRA_PULL_117,
+	TEGRA_PULL_118,
+	TEGRA_PULL_119,
+	TEGRA_PULL_120,
+	TEGRA_PULL_121,
+	TEGRA_PULL_122,
+	TEGRA_PULL_123,
+	TEGRA_PULL_124,
+	TEGRA_PULL_125,
+	TEGRA_PULL_126,
+	TEGRA_PULL_127,
 	TEGRA_MAX_PULL,
 };
 
@@ -343,6 +424,7 @@ struct tegra_drive_pingroup_desc {
 	u8 drvtype_valid;
 	u8 drvtype_offset;
 	u8 drvtype_mask;
+	const char *dev_id;
 };
 
 struct tegra_pingroup_desc {
@@ -397,6 +479,15 @@ void tegra_pinmux_config_table(const struct tegra_pingroup_config *config,
 
 void tegra_drive_pinmux_config_table(struct tegra_drive_pingroup_config *config,
 	int len);
+
+int tegra_drive_pinmux_set_pull_down(int pg,
+	enum tegra_pull_strength pull_down);
+
+int tegra_drive_pinmux_set_pull_up(int pg, enum tegra_pull_strength pull_up);
+
+struct device;
+int tegra_drive_get_pingroup(struct device *dev);
+
 void tegra_pinmux_set_safe_pinmux_table(const struct tegra_pingroup_config *config,
 	int len);
 void tegra_pinmux_config_pinmux_table(const struct tegra_pingroup_config *config,

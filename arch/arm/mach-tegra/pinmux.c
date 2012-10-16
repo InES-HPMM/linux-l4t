@@ -667,7 +667,7 @@ static int tegra_drive_pinmux_set_drive(int pg, enum tegra_drive drive)
 	return 0;
 }
 
-static int tegra_drive_pinmux_set_pull_down(int pg,
+int tegra_drive_pinmux_set_pull_down(int pg,
 	enum tegra_pull_strength pull_down)
 {
 	unsigned long flags;
@@ -692,7 +692,7 @@ static int tegra_drive_pinmux_set_pull_down(int pg,
 	return 0;
 }
 
-static int tegra_drive_pinmux_set_pull_up(int pg,
+int tegra_drive_pinmux_set_pull_up(int pg,
 	enum tegra_pull_strength pull_up)
 {
 	unsigned long flags;
@@ -867,6 +867,28 @@ void tegra_drive_pinmux_config_table(struct tegra_drive_pingroup_config *config,
 						     config[i].slew_rising,
 						     config[i].slew_falling,
 						     config[i].drive_type);
+}
+
+int tegra_drive_get_pingroup(struct device *dev)
+{
+	unsigned long flags;
+	int pg = -1;
+	const char *dev_id;
+
+	if (!dev)
+		return -EINVAL;
+
+	spin_lock_irqsave(&mux_lock, flags);
+
+	dev_id = dev_name(dev);
+	for (pg = 0; pg < drive_max; pg++)
+		if (drive_pingroups[pg].dev_id &&
+			!(strcmp(drive_pingroups[pg].dev_id, dev_id)))
+			break;
+
+	spin_unlock_irqrestore(&mux_lock, flags);
+
+	return pg;
 }
 
 void tegra_pinmux_set_safe_pinmux_table(const struct tegra_pingroup_config *config,
