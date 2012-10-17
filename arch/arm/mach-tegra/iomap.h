@@ -681,6 +681,21 @@
 #endif
 #define IO_PCIE_SIZE	(SZ_16M * 3)
 
+#ifdef CONFIG_MTD_NOR_TEGRA
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define IO_NOR_PHYS	0xD0000000
+#define IO_NOR_SIZE	(SZ_64M)
+#else
+#define IO_NOR_PHYS	0x48000000
+#define IO_NOR_SIZE	(SZ_64M)
+#endif
+#else
+#define IO_NOR_PHYS	0x0
+#define IO_NOR_SIZE	0
+#endif
+
+
+
 /* Virtual aperture limits are packed into the I/O space from the higest
    address to lowest with each aperture base address adjusted as necessary
    for proper section mapping boundary (2 MB) rounding. */
@@ -695,8 +710,9 @@
 #define IO_IRAM_VIRT		IOMEM((IO_CPU_VIRT - IO_VIRT_ROUND_UP(IO_IRAM_SIZE)))
 #define IO_PPCS_VIRT		IOMEM((IO_IRAM_VIRT - IO_VIRT_ROUND_UP(IO_PPCS_SIZE)))
 #define IO_PCIE_VIRT		IOMEM((IO_PPCS_VIRT - IO_VIRT_ROUND_UP(IO_PCIE_SIZE)))
+#define IO_NOR_VIRT		IOMEM((IO_PCIE_VIRT - IO_VIRT_ROUND_UP(IO_NOR_SIZE)))
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-#define IO_SIM_ESCAPE_VIRT	IOMEM((IO_PCIE_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE)))
+#define IO_SIM_ESCAPE_VIRT	IOMEM((IO_NOR_VIRT - IO_VIRT_ROUND_UP(IO_SIM_ESCAPE_SIZE)))
 #define IO_SMC_VIRT		IOMEM((IO_SIM_ESCAPE_VIRT - IO_VIRT_ROUND_UP(IO_SMC_SIZE)))
 #endif
 
@@ -736,6 +752,8 @@
 		IO_TO_VIRT_XLATE((n), IO_PCIE_PHYS, IO_PCIE_VIRT) :	\
 	IO_TO_VIRT_SMC((n))		\
 	IO_TO_VIRT_SIM_ESCAPE((n))	\
+	IO_TO_VIRT_BETWEEN((n), IO_NOR_PHYS, IO_NOR_SIZE) ?		\
+		IO_TO_VIRT_XLATE((n), IO_NOR_PHYS, IO_NOR_VIRT) :	\
 	NULL)
 
 #define IO_ADDRESS(n) (IO_TO_VIRT(n))
