@@ -414,9 +414,21 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	mask = TEGRA30_I2S_CTRL_BIT_SIZE_MASK;
 	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S8:
+		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_8;
+		sample_size = 8;
+		break;
 	case SNDRV_PCM_FORMAT_S16_LE:
 		val = TEGRA30_I2S_CTRL_BIT_SIZE_16;
 		sample_size = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_24;
+		sample_size = 24;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_32;
+		sample_size = 32;
 		break;
 	default:
 		return -EINVAL;
@@ -521,13 +533,52 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 	i2s_client_ch = (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC) ?
 			params_channels(params) : 2;
 
-	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
+	switch (sample_size) {
+	case 8:
+		val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
+	      ((params_channels(params) - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((i2s_client_ch - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_8 |
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_8;
+		break;
+
+	case 16:
+		val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
 	      ((params_channels(params) - 1) <<
 			TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
 	      ((i2s_client_ch - 1) <<
 			TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
 	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_16 |
 	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_16;
+		break;
+
+	case 24:
+		val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
+	      ((params_channels(params) - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((i2s_client_ch - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_24 |
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_24;
+		break;
+
+	case 32:
+		val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
+	      ((params_channels(params) - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
+	      ((i2s_client_ch - 1) <<
+			TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT) |
+	      TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_32 |
+	      TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_32;
+		break;
+
+	default:
+		pr_err("Error in sample size\n");
+		val = 0;
+		break;
+	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_RX;
@@ -536,6 +587,38 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		tegra30_ahub_set_tx_cif_channels(i2s->txcif,
 						 params_channels(params),
 						 params_channels(params));
+
+		switch (sample_size) {
+		case 8:
+			tegra30_ahub_set_tx_cif_bits(i2s->txcif,
+			  TEGRA30_AUDIOCIF_BITS_8, TEGRA30_AUDIOCIF_BITS_8);
+			tegra30_ahub_set_tx_fifo_pack_mode(i2s->txcif,
+			  TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_8_4);
+			break;
+
+		case 16:
+			tegra30_ahub_set_tx_cif_bits(i2s->txcif,
+			  TEGRA30_AUDIOCIF_BITS_16, TEGRA30_AUDIOCIF_BITS_16);
+			tegra30_ahub_set_tx_fifo_pack_mode(i2s->txcif,
+			  TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_16);
+			break;
+
+		case 24:
+			tegra30_ahub_set_tx_cif_bits(i2s->txcif,
+			  TEGRA30_AUDIOCIF_BITS_24, TEGRA30_AUDIOCIF_BITS_24);
+			tegra30_ahub_set_tx_fifo_pack_mode(i2s->txcif, 0);
+			break;
+
+		case 32:
+			tegra30_ahub_set_tx_cif_bits(i2s->txcif,
+			  TEGRA30_AUDIOCIF_BITS_32, TEGRA30_AUDIOCIF_BITS_32);
+			tegra30_ahub_set_tx_fifo_pack_mode(i2s->txcif, 0);
+			break;
+
+		default:
+			pr_err("Error in sample_size\n");
+			break;
+		}
 	} else {
 		val |= TEGRA30_AUDIOCIF_CTRL_DIRECTION_TX;
 		reg = TEGRA30_I2S_CIF_TX_CTRL;
@@ -543,6 +626,38 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 		tegra30_ahub_set_rx_cif_channels(i2s->rxcif,
 						 params_channels(params),
 						 params_channels(params));
+
+		switch (sample_size) {
+		case 8:
+			tegra30_ahub_set_rx_cif_bits(i2s->rxcif,
+			  TEGRA30_AUDIOCIF_BITS_8, TEGRA30_AUDIOCIF_BITS_8);
+			tegra30_ahub_set_rx_fifo_pack_mode(i2s->rxcif,
+			  TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_8_4);
+			break;
+
+		case 16:
+			tegra30_ahub_set_rx_cif_bits(i2s->rxcif,
+			  TEGRA30_AUDIOCIF_BITS_16, TEGRA30_AUDIOCIF_BITS_16);
+			tegra30_ahub_set_rx_fifo_pack_mode(i2s->rxcif,
+			  TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_16);
+			break;
+
+		case 24:
+			tegra30_ahub_set_rx_cif_bits(i2s->rxcif,
+			  TEGRA30_AUDIOCIF_BITS_24, TEGRA30_AUDIOCIF_BITS_24);
+			tegra30_ahub_set_rx_fifo_pack_mode(i2s->rxcif, 0);
+			break;
+
+		case 32:
+			tegra30_ahub_set_rx_cif_bits(i2s->rxcif,
+			  TEGRA30_AUDIOCIF_BITS_32, TEGRA30_AUDIOCIF_BITS_32);
+			tegra30_ahub_set_rx_fifo_pack_mode(i2s->rxcif, 0);
+			break;
+
+		default:
+			pr_err("Error in sample_size\n");
+			break;
+		}
 	}
 
 	regmap_write(i2s->regmap, reg, val);
@@ -746,14 +861,20 @@ static const struct snd_soc_dai_driver tegra30_i2s_dai_template = {
 		.channels_min = 1,
 		.channels_max = 16,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = SNDRV_PCM_FMTBIT_S8 |
+			   SNDRV_PCM_FMTBIT_S16_LE |
+			   SNDRV_PCM_FMTBIT_S24_LE |
+			   SNDRV_PCM_FMTBIT_S32_LE,
 	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 16,
 		.rates = SNDRV_PCM_RATE_8000_96000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.formats = SNDRV_PCM_FMTBIT_S8 |
+			   SNDRV_PCM_FMTBIT_S16_LE |
+			   SNDRV_PCM_FMTBIT_S24_LE |
+			   SNDRV_PCM_FMTBIT_S32_LE,
 	},
 	.ops = &tegra30_i2s_dai_ops,
 	.symmetric_rates = 1,
