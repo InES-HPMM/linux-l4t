@@ -6190,6 +6190,10 @@ static struct clk tegra_clk_emc = {
 };
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
+
+static struct raw_notifier_head c2bus_rate_change_nh;
+static struct raw_notifier_head c3bus_rate_change_nh;
+
 static struct clk tegra_clk_c2bus = {
 	.name      = "c2bus",
 	.parent    = &tegra_pll_c2,
@@ -6200,7 +6204,8 @@ static struct clk tegra_clk_c2bus = {
 	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
-       }
+	},
+	.rate_change_nh = &c2bus_rate_change_nh,
 };
 static struct clk tegra_clk_c3bus = {
 	.name      = "c3bus",
@@ -6212,7 +6217,8 @@ static struct clk tegra_clk_c3bus = {
 	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
-       }
+	},
+	.rate_change_nh = &c3bus_rate_change_nh,
 };
 
 static DEFINE_MUTEX(cbus_mutex);
@@ -6243,6 +6249,9 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 	}
 
 #else
+
+static struct raw_notifier_head cbus_rate_change_nh;
+
 static struct clk tegra_clk_cbus = {
 	.name	   = "cbus",
 	.parent    = &tegra_pll_c,
@@ -6253,7 +6262,8 @@ static struct clk tegra_clk_cbus = {
 	.flags     = PERIPH_ON_CBUS,
 	.shared_bus_backup = {
 		.input = &tegra_pll_p,
-	}
+	},
+	.rate_change_nh = &cbus_rate_change_nh,
 };
 #endif
 
