@@ -906,14 +906,14 @@ static int __maybe_unused pluto_disp1_bl_notify(struct device *unused,
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 
-	/* SD brightness is a percentage */
-	brightness = (brightness * cur_sd_brightness) / 255;
-
 	/* Apply any backlight response curve */
 	if (brightness > 255)
 		pr_info("Error: Brightness > 255!\n");
 	else
 		brightness = bl_output[brightness];
+
+	/* SD brightness is a percentage */
+	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
