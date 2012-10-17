@@ -156,7 +156,7 @@ static struct i2c_board_info __initdata bonaire_i2c_bus1_board_info[] = {
 static struct tegra_i2c_platform_data bonaire_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
-	.bus_clk_rate	= 100000,
+	.bus_clk_rate	= { 100000, 0 },
 };
 
 #if 0	/* !!!FIXME!!! THESE ARE VENTANA SETTINGS */
@@ -446,7 +446,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = "vdd_vbus_micro_usb",
+		/*.vbus_reg = "vdd_vbus_micro_usb",*/
 		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
@@ -495,7 +495,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.op_mode	 = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = "vdd_vbus_typea_usb",
+		/*.vbus_reg = "vdd_vbus_typea_usb",*/
 		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
@@ -530,6 +530,7 @@ static void __init tegra_bonaire_init(void)
 	tegra_clk_init_from_table(bonaire_clk_init_table);
 	tegra_enable_pinmux();
 	bonaire_pinmux_init();
+	tegra_soc_device_init("bonaire");
 
 	if (tegra_revision == TEGRA_REVISION_QT)
 		debug_uart_platform_data[0].uartclk =
