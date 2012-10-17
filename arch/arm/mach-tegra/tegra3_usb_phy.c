@@ -2152,7 +2152,7 @@ static int hsic_rail_enable(struct tegra_usb_phy *phy)
 	int ret;
 
 	if (phy->hsic_reg == NULL) {
-		phy->hsic_reg = regulator_get(NULL, "avdd_hsic");
+		phy->hsic_reg = regulator_get(&phy->pdev->dev, "avdd_hsic");
 		if (IS_ERR_OR_NULL(phy->hsic_reg)) {
 			pr_err("HSIC: Could not get regulator avdd_hsic\n");
 			ret = PTR_ERR(phy->hsic_reg);
