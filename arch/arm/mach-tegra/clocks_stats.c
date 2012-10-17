@@ -245,13 +245,24 @@ static int __init tegra_clocks_debug_init(void)
 	if (0 != ret)
 		goto err_out;
 
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	ret = track_clock("c2bus");
+	if (0 != ret)
+		goto err_out;
+
+	ret = track_clock("c3bus");
+	if (0 != ret)
+		goto err_out;
+#else
 	ret = track_clock("cbus");
 	if (0 != ret)
 		goto err_out;
+#endif
 
 	return 0;
 
 err_out:
+	pr_err("*** clock_stats: cannot get clock\n");
 	return ret;
 
 }
