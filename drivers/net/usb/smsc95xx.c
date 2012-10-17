@@ -70,6 +70,7 @@ struct smsc95xx_priv {
 	spinlock_t mac_cr_lock;
 	u8 features;
 	u8 suspend_flags;
+	bool mac_set;
 };
 
 static bool turbo_mode = true;
@@ -826,6 +827,8 @@ static int smsc95xx_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 
 static void smsc95xx_init_mac_address(struct usbnet *dev)
 {
+	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
+
 	/* try reading mac address from EEPROM */
 	if (smsc95xx_read_eeprom(dev, EEPROM_MAC_OFFSET, ETH_ALEN,
 			dev->net->dev_addr) == 0) {
@@ -840,6 +843,7 @@ static void smsc95xx_init_mac_address(struct usbnet *dev)
 	if (is_valid_ether_addr(mac_addr) && !smsc_mac_addr_set) {
 		memcpy(dev->net->dev_addr, mac_addr, sizeof(mac_addr));
 		smsc_mac_addr_set = true;
+		pdata->mac_set = true;
 		netif_dbg(dev, ifup, dev->net,
 				"MAC address read from command line");
 		return;
@@ -1192,6 +1196,8 @@ static int smsc95xx_bind(struct usbnet *dev, struct usb_interface *intf)
 
 	spin_lock_init(&pdata->mac_cr_lock);
 
+	pdata->mac_set = false;
+
 	if (DEFAULT_TX_CSUM_ENABLE)
 		dev->net->features |= NETIF_F_HW_CSUM;
 	if (DEFAULT_RX_CSUM_ENABLE)
@@ -1230,6 +1236,8 @@ static void smsc95xx_unbind(struct usbnet *dev, struct usb_interface *intf)
 {
 	struct smsc95xx_priv *pdata = (struct smsc95xx_priv *)(dev->data[0]);
 	if (pdata) {
+		if (pdata->mac_set)
+			smsc_mac_addr_set = false;
 		netif_dbg(dev, ifdown, dev->net, "free pdata\n");
 		kfree(pdata);
 		pdata = NULL;
