@@ -23,5 +23,6 @@
 
 extern struct platform_device *uart_console_debug_device;
 int  uart_console_debug_init(int defaul_debug_port);
+int tegra_vibrator_init(void);
 
 #endif

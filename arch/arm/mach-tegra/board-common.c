@@ -34,6 +34,16 @@ extern struct clk *debug_uart_clk;
 
 struct platform_device *uart_console_debug_device = NULL;
 
+struct platform_device vibrator_device = {
+	.name = "tegra-vibrator",
+	.id = -1,
+};
+
+int tegra_vibrator_init(void)
+{
+	return platform_device_register(&vibrator_device);
+}
+
 int uart_console_debug_init(int default_debug_port)
 {
 	int debug_port_id;
