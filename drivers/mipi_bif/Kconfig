@@ -1,0 +1,7 @@
+menuconfig MIPI_BIF
+	tristate "MIPI_BIF support"
+	depends on HAS_IOMEM
+	select RT_MUTEXES
+	---help---
+	 Say y here if you want MIPI_BIF support to be
+	 enabled.
