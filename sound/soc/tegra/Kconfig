@@ -34,7 +34,7 @@ config SND_SOC_TEGRA20_SPDIF
 
 config SND_SOC_TEGRA30_SPDIF
 	tristate
-	depends on SND_SOC_TEGRA && ARCH_TEGRA_3x_SOC && TEGRA_DC
+	depends on SND_SOC_TEGRA && !ARCH_TEGRA_2x_SOC && TEGRA_DC
 	select SND_SOC_TEGRA30_AHUB
 	help
 	  Say Y or M if you want to add support for the TEGRA30 SPDIF interface.
