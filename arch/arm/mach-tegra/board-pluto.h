@@ -103,6 +103,14 @@ int pluto_edp_init(void);
 int pluto_panel_init(void);
 int pluto_kbc_init(void);
 int pluto_baseband_init(void);
+int pluto_pmon_init(void);
+
+/* PCA954x I2C bus expander bus addresses */
+#define PCA954x_I2C_BUS_BASE	5
+#define PCA954x_I2C_BUS0	(PCA954x_I2C_BUS_BASE + 0)
+#define PCA954x_I2C_BUS1	(PCA954x_I2C_BUS_BASE + 1)
+#define PCA954x_I2C_BUS2	(PCA954x_I2C_BUS_BASE + 2)
+#define PCA954x_I2C_BUS3	(PCA954x_I2C_BUS_BASE + 3)
 
 /* Baseband IDs */
 enum tegra_bb_type {

@@ -852,6 +852,7 @@ static void __init tegra_pluto_init(void)
 	pluto_touch_init();
 	pluto_emc_init();
 	pluto_panel_init();
+	pluto_pmon_init();
 	pluto_kbc_init();
 	pluto_setup_bluesleep();
 	pluto_setup_bt_rfkill();
