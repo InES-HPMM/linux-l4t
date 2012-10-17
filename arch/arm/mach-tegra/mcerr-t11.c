@@ -22,7 +22,7 @@
 
 #include "mcerr.h"
 
-#define dummy_client	client("dummy/unknown (BUG?)")
+#define dummy_client	client("dummy")
 
 static char unknown_buf[30];
 
@@ -95,8 +95,24 @@ static const char *mcerr_t11x_info(u32 stat)
 		return "MC_DECERR_SEC";
 
 	/* Otherwise we have an unknown type... */
-	snprintf(unknown_buf, 30, "unknown - 0x%02x", stat);
+	snprintf(unknown_buf, 30, "unknown - 0x%04x", stat);
 	return unknown_buf;
+}
+
+static void mcerr_t11x_info_update(struct mc_client *c, u32 stat)
+{
+	if (stat & MC_INT_DECERR_EMEM)
+		c->intr_counts[0]++;
+	else if (stat & MC_INT_SECURITY_VIOLATION)
+		c->intr_counts[1]++;
+	else if (stat & MC_INT_INVALID_SMMU_PAGE)
+		c->intr_counts[2]++;
+	else if (stat & MC_INT_DECERR_VPR)
+		c->intr_counts[3]++;
+	else if (stat & MC_INT_SECERR_SEC)
+		c->intr_counts[4]++;
+	else
+		c->intr_counts[5]++;
 }
 
 /*
@@ -107,20 +123,56 @@ static void mcerr_t11x_print(const char *mc_type, u32 err, u32 addr,
 			     const struct mc_client *client, int is_secure,
 			     int is_write, const char *mc_err_info)
 {
-	pr_err("%s (0x%08X): [0x%p -> 0x%p] %s (%s %s %s)\n", mc_type,
-	       err, (void *)(addr & ~0x1f), (void *)(addr | 0x1f),
+	pr_err("%s [0x%p -> 0x%p] %s (%s %s %s)\n", mc_type,
+	       (void *)(addr & ~0x1f), (void *)(addr | 0x1f),
 	       (client) ? client->name : "unknown",
 	       (is_secure) ? "secure" : "non-secure",
 	       (is_write) ? "write" : "read",
 	       mc_err_info);
 }
 
+static int mcerr_t11x_debugfs_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	int do_print;
+
+	seq_printf(s, "%-18s %-9s %-9s %-9s %-10s %-10s %-9s\n",
+		   "client", "decerr", "secerr", "smmuerr",
+		   "decerr-VPR", "secerr-SEC", "unknown");
+	for (i = 0; i < ARRAY_SIZE(mc_clients); i++) {
+		do_print = 0;
+		if (strcmp(mc_clients[i].name, "dummy") == 0)
+			continue;
+		/* Only print clients who actually have errors. */
+		for (j = 0; j < INTR_COUNT; j++) {
+			if (mc_clients[i].intr_counts[j]) {
+				do_print = 1;
+				break;
+			}
+		}
+		if (do_print)
+			seq_printf(s, "%-18s %-9u %-9u %-9u %-10u %-10u %-9u\n",
+				   mc_clients[i].name,
+				   mc_clients[i].intr_counts[0],
+				   mc_clients[i].intr_counts[1],
+				   mc_clients[i].intr_counts[2],
+				   mc_clients[i].intr_counts[3],
+				   mc_clients[i].intr_counts[4],
+				   mc_clients[i].intr_counts[5]);
+	}
+	return 0;
+}
+
 /*
- * Specify special functions for dealing with the T11x mcerr handling.
+ * Set up chip specific functions and data for handling this particular chip's
+ * error decoding and logging.
  */
 void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec)
 {
 	spec->mcerr_info = mcerr_t11x_info;
 	spec->mcerr_print = mcerr_t11x_print;
+	spec->mcerr_info_update = mcerr_t11x_info_update;
+	spec->mcerr_debugfs_show = mcerr_t11x_debugfs_show;
+	spec->nr_clients = ARRAY_SIZE(mc_clients);
 	return;
 }

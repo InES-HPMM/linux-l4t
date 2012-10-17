@@ -26,6 +26,8 @@
 #include <linux/spinlock.h>
 #include <linux/stat.h>
 #include <linux/sched.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 #include <linux/moduleparam.h>
 #include <linux/spinlock_types.h>
 
@@ -80,6 +82,8 @@ static unsigned long error_count;
 
 static DECLARE_DELAYED_WORK(unthrottle_prints_work, unthrottle_prints);
 
+static struct dentry *mcerr_debugfs_dir;
+
 /*
  * Chip specific functions.
  */
@@ -133,7 +137,7 @@ static void unthrottle_prints(struct work_struct *work)
 static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 {
 	void __iomem *err_mc = mc;
-	const struct mc_client *client = NULL;
+	struct mc_client *client = NULL;
 	const char *mc_type;
 	const char *mc_info;
 	unsigned long count;
@@ -177,13 +181,6 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	count = ++error_count;
 	spin_unlock(&mc_lock);
 
-	if (count >= MAX_PRINTS) {
-		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
-		if (count == MAX_PRINTS)
-			pr_err("Too many MC errors; throttling prints\n");
-		goto out;
-	}
-
 	err = readl(err_mc + MC_ERROR_STATUS);
 	addr = readl(err_mc + MC_ERROR_ADDRESS);
 	is_write = err & (1 << 16);
@@ -193,6 +190,15 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 
 	mc_type = chip_specific.mcerr_type(err);
 	mc_info = chip_specific.mcerr_info(stat);
+	chip_specific.mcerr_info_update(client, stat);
+
+	if (count >= MAX_PRINTS) {
+		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
+		if (count == MAX_PRINTS)
+			pr_err("Too many MC errors; throttling prints\n");
+		goto out;
+	}
+
 	chip_specific.mcerr_print(mc_type, err, addr, client,
 				  is_secure, is_write, mc_info);
 out:
@@ -239,6 +245,18 @@ static const char *mcerr_default_info(u32 stat)
 		return "unknown";
 }
 
+static void mcerr_default_info_update(struct mc_client *c, u32 stat)
+{
+	if (stat & MC_INT_DECERR_EMEM)
+		c->intr_counts[0]++;
+	else if (stat & MC_INT_SECURITY_VIOLATION)
+		c->intr_counts[1]++;
+	else if (stat & MC_INT_INVALID_SMMU_PAGE)
+		c->intr_counts[2]++;
+	else
+		c->intr_counts[3]++;
+}
+
 static void mcerr_default_print(const char *mc_err, u32 err, u32 addr,
 				const struct mc_client *client, int is_secure,
 				int is_write, const char *mc_err_info)
@@ -249,6 +267,50 @@ static void mcerr_default_print(const char *mc_err, u32 err, u32 addr,
 	       (is_write) ? "write" : "read",
 	       mc_err_info);
 }
+
+/*
+ * Print the MC err stats for each client.
+ */
+static int mcerr_default_debugfs_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	int do_print;
+
+	seq_printf(s, "%-24s %-9s %-9s %-9s %-9s\n", "client", "decerr",
+		   "secerr", "smmuerr", "unknown");
+	for (i = 0; i < chip_specific.nr_clients; i++) {
+		do_print = 0;
+
+		/* Only print clients who actually have errors. */
+		for (j = 0; j < INTR_COUNT; j++) {
+			if (mc_clients[i].intr_counts[j]) {
+				do_print = 1;
+				break;
+			}
+		}
+
+		if (do_print)
+			seq_printf(s, "%-24s %-9u %-9u %-9u %-9u\n",
+				   mc_clients[i].name,
+				   mc_clients[i].intr_counts[0],
+				   mc_clients[i].intr_counts[1],
+				   mc_clients[i].intr_counts[2],
+				   mc_clients[i].intr_counts[3]);
+	}
+	return 0;
+}
+
+static int mcerr_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, chip_specific.mcerr_debugfs_show, NULL);
+}
+
+static const struct file_operations mcerr_debugfs_fops = {
+	.open           = mcerr_debugfs_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
 
 static int __init tegra_mcerr_init(void)
 {
@@ -273,9 +335,12 @@ static int __init tegra_mcerr_init(void)
 		writel(reg, mc + MC_INT_MASK);
 	}
 
-	chip_specific.mcerr_type  = mcerr_default_type;
-	chip_specific.mcerr_info  = mcerr_default_info;
-	chip_specific.mcerr_print = mcerr_default_print;
+	chip_specific.mcerr_type         = mcerr_default_type;
+	chip_specific.mcerr_info         = mcerr_default_info;
+	chip_specific.mcerr_info_update  = mcerr_default_info_update;
+	chip_specific.mcerr_print        = mcerr_default_print;
+	chip_specific.mcerr_debugfs_show = mcerr_default_debugfs_show;
+	chip_specific.nr_clients = 0;
 
 	/*
 	 * mcerr_chip_specific_setup() can override any of the default
@@ -283,6 +348,20 @@ static int __init tegra_mcerr_init(void)
 	 */
 	mcerr_chip_specific_setup(&chip_specific);
 
+	/*
+	 * Init the debugfs node for reporting errors from the MC. If this
+	 * fails thats a shame, but not a big enough deal to warrent failing
+	 * the init of the MC itself.
+	 */
+	mcerr_debugfs_dir = debugfs_create_dir("mc", NULL);
+	if (mcerr_debugfs_dir == NULL) {
+		pr_err("Failed to make debugfs node: %ld\n",
+		       PTR_ERR(mcerr_debugfs_dir));
+		goto done;
+	}
+	debugfs_create_file("mcerr", 0644, mcerr_debugfs_dir, NULL,
+			    &mcerr_debugfs_fops);
+done:
 	return ret;
 }
 arch_initcall(tegra_mcerr_init);

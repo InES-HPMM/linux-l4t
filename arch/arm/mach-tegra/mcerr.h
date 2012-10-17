@@ -25,6 +25,7 @@
 #define __MCERR_H
 
 #include <linux/kernel.h>
+#include <linux/debugfs.h>
 #include <linux/spinlock.h>
 
 /* Pull in chip specific EMC header. */
@@ -51,6 +52,15 @@
 #define MC_INT_DECERR_VPR		(1<<12)
 #define MC_INT_SECERR_SEC		(1<<13)
 
+/*
+ * Number of unique interrupts we have for this chip.
+ */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define INTR_COUNT	6
+#else
+#define INTR_COUNT	4
+#endif
+
 #define MC_ERR_DECERR_EMEM		(2)
 #define MC_ERR_SECURITY_TRUSTZONE	(3)
 #define MC_ERR_SECURITY_CARVEOUT	(4)
@@ -76,17 +86,22 @@ extern void __iomem *mc;
 
 struct mc_client {
 	const char *name;
+	unsigned int intr_counts[INTR_COUNT];
 };
 
 struct mcerr_chip_specific {
 
 	const char	*(*mcerr_info)(u32 status);
+	void		 (*mcerr_info_update)(struct mc_client *c, u32 status);
 	const char	*(*mcerr_type)(u32 err);
 	void		 (*mcerr_print)(const char *mc_err, u32 err, u32 addr,
 					const struct mc_client *client,
 					int is_secure, int is_write,
 					const char *mc_err_info);
+	int		 (*mcerr_debugfs_show)(struct seq_file *s, void *v);
 
+	/* Numeric fields that must be set by the different architectures. */
+	unsigned int	 nr_clients;
 };
 
 #define client(_name) { .name = _name }
