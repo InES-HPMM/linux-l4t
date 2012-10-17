@@ -30,10 +30,9 @@
 #include <linux/input.h>
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
+#include <linux/regulator/consumer.h>
 #include "dmpKey.h"
+
 /**
  *  struct inv_reg_map_s - Notable slave registers.
  *  @who_am_i:		Upper 6 bits of the device's slave address.
@@ -223,6 +222,14 @@ struct inv_tap_s {
 	short time;
 };
 
+/**
+ * struct inv_regulator_s structure to store regulator
+ */
+struct inv_regulator_s {
+	struct regulator *regulator_vlogic;
+	struct regulator *regulator_vdd;
+};
+
 struct inv_mpu_slave;
 /**
  *  struct inv_gyro_state_s - Driver state variables.
@@ -254,6 +261,7 @@ struct inv_mpu_slave;
  *  @last_isr_time:	last isr time.
  *  @early_suspend:     struct for early suspend.
  *  @early_suspend_enable: sysfs interface to store current early_suspend.
+ *  @inv_regulator_s:	Regulator sturcture to store regulator.
  */
 struct inv_gyro_state_s {
 	struct inv_chip_config_s chip_config;
@@ -286,13 +294,7 @@ struct inv_gyro_state_s {
 	void *sl_handle;
 	unsigned int irq_dur_us;
 	long long last_isr_time;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-	atomic_t early_suspend_enable;
-#endif
-#if DEBUG_SYSFS_INTERFACE
-	unsigned char dbg_reg;
-#endif	/* DEBUG_SYSFS_INTERFACE	*/
+	struct inv_regulator_s inv_regulator;
 };
 
 /* produces an unique identifier for each device based on the

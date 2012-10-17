@@ -35,12 +35,10 @@
 #include <linux/interrupt.h>
 #include <linux/kfifo.h>
 #include <linux/byteorder/generic.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/poll.h>
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
+
 #include "inv_gyro.h"
 
 static struct inv_reg_map_s chip_reg = {
@@ -1426,28 +1424,6 @@ static ssize_t inv_key_store(struct device *dev,
 	return count;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/**
- *  inv_early_suspend_on_store() - set early_suspend_enable value
- */
-static ssize_t inv_early_suspend_en_store(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count)
-{
-	struct inv_gyro_state_s *st;
-	unsigned long data;
-	int result;
-
-	st = dev_get_drvdata(dev);
-	result = kstrtoul(buf, 10, &data);
-	if (result)
-		return result;
-
-	atomic_set(&(st->early_suspend_enable), !!data);
-	return count;
-}
-#endif
-
 /**
  *  inv_gyro_fs_show() - Get the current gyro full-scale range.
  */
@@ -1663,22 +1639,6 @@ static ssize_t inv_compass_scale_show(struct device *dev,
 	return sprintf(buf, "%ld\n", scale);
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/**
- *  inv_early_suspend_en_show() - show the current status of
- *  early_suspend_enable
- */
-static ssize_t inv_early_suspend_en_show(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", atomic_read(&st->early_suspend_enable));
-}
-#endif
-
-
 /**
  *  inv_reg_dump_show() - Register dump for testing.
  *  TODO: Only for testing.
@@ -1702,66 +1662,6 @@ static ssize_t inv_reg_dump_show(struct device *dev,
 	}
 	return bytes_printed;
 }
-
-#if DEBUG_SYSFS_INTERFACE	/* Enable SYSFS debug interface	*/
-static ssize_t inv_dbg_reg_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	ssize_t bytes_printed = 0;
-	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
-
-	bytes_printed += sprintf(buf + bytes_printed, "%#2x\n", st->dbg_reg);
-	return bytes_printed;
-}
-
-static ssize_t inv_dbg_reg_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf, size_t count)
-{
-	unsigned long dbg_reg;
-	struct inv_gyro_state_s *st;
-
-	st = dev_get_drvdata(dev);
-	if (kstrtoul(buf, 16, &dbg_reg))
-		return -EINVAL;
-
-	st->dbg_reg = (unsigned char)dbg_reg;
-	return count;
-}
-
-static ssize_t inv_dbg_dat_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	char data;
-	ssize_t bytes_printed = 0;
-	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
-
-	inv_i2c_read(st, st->dbg_reg, 1, &data);
-	bytes_printed += sprintf(buf + bytes_printed, "%#2x: %#2x\n",
-				 st->dbg_reg, data);
-	return bytes_printed;
-}
-
-static ssize_t inv_dbg_dat_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf, size_t count)
-{
-	int err;
-	unsigned long dbg_dat;
-	struct inv_gyro_state_s *st;
-
-	st = dev_get_drvdata(dev);
-	if (kstrtoul(buf, 16, &dbg_dat)) {
-		pr_err("%s FAILURE data=%x\n", __func__, dbg_dat);
-		return -EINVAL;
-	}
-
-	err = inv_i2c_single_write(st, st->dbg_reg, (unsigned char)dbg_dat);
-	pr_info("%s reg=%x data=%x err=%d\n", __func__,
-		st->dbg_reg, dbg_dat, err);
-	return count;
-}
-#endif	/* DEBUG_SYSFS_INTERFACE	*/
 
 /**
  * inv_self_test_show() - self test result. 0 for fail; 1 for success.
@@ -2271,30 +2171,51 @@ static irqreturn_t inv_irq_handler(int irq, void *dev_id)
 	return IRQ_WAKE_THREAD;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/**
- * inv_early_suspend - callback function for early_suspend
- */
-static void inv_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_PM
+static int inv_suspend(struct device *dev)
 {
-	struct inv_gyro_state_s *st =
-		       container_of(h, struct inv_gyro_state_s, early_suspend);
+	int result;
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
 
-	if (atomic_read(&st->early_suspend_enable) == 1)
-		inv_set_power_state(st, 0);
+	if (inv_set_power_state(st, 0))
+		dev_err(dev, "inv_set_power_state in inv_suspend failed\n");
+	/* vdd is used to gate the vlogic. Disable vlogic first. */
+	if (st->inv_regulator.regulator_vdd &&
+		st->inv_regulator.regulator_vlogic) {
+		result = regulator_disable(st->inv_regulator.regulator_vlogic);
+		if (result < 0)
+			dev_err(dev, "regulator_disable for vlogic failed\n");
+		result = regulator_disable(st->inv_regulator.regulator_vdd);
+		if (result < 0)
+			dev_err(dev, "regulator_disable for vdd failed\n");
+	}
+	return 0;
 }
 
-/**
- * inv_late_resume - callback function for late_resume
- */
-static void inv_late_resume(struct early_suspend *h)
+static int inv_resume(struct device *dev)
 {
-	struct inv_gyro_state_s *st =
-		       container_of(h, struct inv_gyro_state_s, early_suspend);
+	int result;
+	struct inv_gyro_state_s *st = dev_get_drvdata(dev);
 
-	if (atomic_read(&st->early_suspend_enable) == 1)
-		inv_set_power_state(st, 1);
+	/* vdd is used to gate the vlogic. Enable vdd first. */
+	if (st->inv_regulator.regulator_vdd &&
+		st->inv_regulator.regulator_vlogic) {
+		result = regulator_enable(st->inv_regulator.regulator_vdd);
+		if (result < 0)
+			dev_err(dev, "regulator_enable for vdd failed\n");
+		result = regulator_enable(st->inv_regulator.regulator_vlogic);
+		if (result < 0)
+			dev_err(dev, "regulator_enable for vlogic failed\n");
+	}
+	if (inv_set_power_state(st, 1))
+		dev_err(dev, "inv_set_power_state in inv_resume failed\n");
+	return 0;
 }
+
+static const struct dev_pm_ops inv_pm_ops = {
+	.suspend = inv_suspend,
+	.resume = inv_resume,
+};
 #endif
 
 static DEVICE_ATTR(raw_gyro, S_IRUGO, inv_raw_gyro_show, NULL);
@@ -2332,10 +2253,6 @@ static DEVICE_ATTR(compass_scale, S_IRUGO | S_IWUSR, inv_compass_scale_show,
 static DEVICE_ATTR(temp_scale, S_IRUGO, inv_temp_scale_show, NULL);
 static DEVICE_ATTR(temp_offset, S_IRUGO, inv_temp_offset_show, NULL);
 static DEVICE_ATTR(reg_dump, S_IRUGO, inv_reg_dump_show, NULL);
-#if DEBUG_SYSFS_INTERFACE
-static DEVICE_ATTR(dbg_reg, S_IRUGO, inv_dbg_reg_show, inv_dbg_reg_store);
-static DEVICE_ATTR(dbg_dat, S_IRUGO, inv_dbg_dat_show, inv_dbg_dat_store);
-#endif /* DEBUG_SYSFS_INTERFACE */
 static DEVICE_ATTR(self_test, S_IRUGO, inv_self_test_show, NULL);
 static DEVICE_ATTR(key, S_IRUGO | S_IWUSR, inv_key_show, inv_key_store);
 static DEVICE_ATTR(gyro_matrix, S_IRUGO, inv_gyro_matrix_show, NULL);
@@ -2359,12 +2276,6 @@ static DEVICE_ATTR(pedometer_time, S_IRUGO | S_IWUSR, inv_pedometer_time_show,
 static DEVICE_ATTR(pedometer_steps, S_IRUGO | S_IWUSR,
 		   inv_pedometer_steps_show, inv_pedometer_steps_store);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static DEVICE_ATTR(early_suspend_enable, S_IRUGO | S_IWUSR,
-	inv_early_suspend_en_show,
-	inv_early_suspend_en_store);
-#endif
-
 static struct device_attribute *inv_attributes[] = {
 	&dev_attr_raw_gyro,
 	&dev_attr_temperature,
@@ -2376,16 +2287,9 @@ static struct device_attribute *inv_attributes[] = {
 	&dev_attr_temp_scale,
 	&dev_attr_temp_offset,
 	&dev_attr_reg_dump,
-#if DEBUG_SYSFS_INTERFACE
-	&dev_attr_dbg_reg,
-	&dev_attr_dbg_dat,
-#endif /* DEBUG_SYSFS_INTERFACE */
 	&dev_attr_self_test,
 	&dev_attr_key,
 	&dev_attr_gyro_matrix,
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	&dev_attr_early_suspend_enable,
-#endif
 	NULL
 };
 
@@ -2418,6 +2322,61 @@ static struct device_attribute *inv_compass_attributes[] = {
 	&dev_attr_compass_matrix,
 	NULL
 };
+
+static void inv_init_regulator(struct inv_gyro_state_s *st)
+{
+	int result;
+	struct i2c_client *client;
+
+	client = st->i2c;
+	/* Power regulator registration*/
+	st->inv_regulator.regulator_vlogic = NULL;
+	st->inv_regulator.regulator_vdd =
+			regulator_get(&client->dev, "vdd");
+	if (IS_ERR(st->inv_regulator.regulator_vdd)) {
+		dev_info(&client->adapter->dev,
+			"regulator_get for vdd failed: %s\n",
+			dev_name(&client->dev));
+		dev_info(&client->adapter->dev,
+			"Error code for vdd: %d",
+				PTR_ERR(st->inv_regulator.regulator_vdd));
+		st->inv_regulator.regulator_vdd = NULL;
+		return;
+	}
+
+	st->inv_regulator.regulator_vlogic =
+			regulator_get(&client->dev, "vlogic");
+	if (IS_ERR(st->inv_regulator.regulator_vlogic)) {
+		dev_info(&client->adapter->dev,
+			"regulator_get for vlogic failed: %s\n",
+			dev_name(&client->dev));
+		dev_info(&client->adapter->dev,
+			"Error code for vlogic: %d\n",
+				PTR_ERR(st->inv_regulator.regulator_vlogic));
+		regulator_put(st->inv_regulator.regulator_vdd);
+		st->inv_regulator.regulator_vdd = NULL;
+		st->inv_regulator.regulator_vlogic = NULL;
+		return;
+	}
+
+	dev_info(&client->adapter->dev,
+		"regulator_get for vdd and vlogic succeeded: %s\n",
+		dev_name(&client->dev));
+	result = regulator_enable(st->inv_regulator.regulator_vdd);
+	if (result < 0) {
+		dev_err(&client->adapter->dev,
+			"regulator_enable for vdd failed\n");
+		dev_err(&client->adapter->dev,
+			"Error code: %d\n", result);
+	}
+	result = regulator_enable(st->inv_regulator.regulator_vlogic);
+	if (result < 0) {
+		dev_err(&client->adapter->dev,
+			"regulator_enable for vlogic failed\n");
+		dev_err(&client->adapter->dev,
+			"Error code: %d\n", result);
+	}
+}
 
 static int inv_setup_compass(struct inv_gyro_state_s *st)
 {
@@ -2787,6 +2746,8 @@ static int inv_mod_probe(struct i2c_client *client,
 	st->i2c_addr = client->addr;
 	st->plat_data =
 		*(struct mpu_platform_data *)dev_get_platdata(&client->dev);
+
+	inv_init_regulator(st);
 	/* power is turned on inside check chip type*/
 	result = inv_check_chip_type(st, id);
 	if (result)
@@ -2845,20 +2806,8 @@ static int inv_mod_probe(struct i2c_client *client,
 		goto out_close_sysfs;
 
 	spin_lock_init(&st->time_stamp_lock);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	atomic_set(&st->early_suspend_enable, 1);
-	st->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	st->early_suspend.suspend = inv_early_suspend;
-	st->early_suspend.resume = inv_late_resume;
-	register_early_suspend(&st->early_suspend);
-#endif
-
 	result = inv_create_input(st, client);
 	if (result) {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-		unregister_early_suspend(&st->early_suspend);
-#endif
 		free_irq(client->irq, st);
 		goto out_close_sysfs;
 	}
@@ -2897,9 +2846,14 @@ static int inv_mod_remove(struct i2c_client *client)
 		input_unregister_device(st->idev_dmp);
 	if (st->has_compass)
 		input_unregister_device(st->idev_compass);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	unregister_early_suspend(&st->early_suspend);
-#endif
+	if (st->inv_regulator.regulator_vlogic) {
+		regulator_disable(st->inv_regulator.regulator_vlogic);
+		regulator_put(st->inv_regulator.regulator_vlogic);
+	}
+	if (st->inv_regulator.regulator_vdd) {
+		regulator_disable(st->inv_regulator.regulator_vdd);
+		regulator_put(st->inv_regulator.regulator_vdd);
+	}
 	kfree(st);
 	dev_info(&client->adapter->dev, "Gyro module removed.\n");
 	return 0;
@@ -2928,6 +2882,9 @@ static struct i2c_driver inv_mod_driver = {
 	.driver = {
 		.owner	=	THIS_MODULE,
 		.name	=	"inv_dev",
+#ifdef CONFIG_PM
+		.pm	=	&inv_pm_ops,
+#endif
 	},
 	.address_list = normal_i2c,
 };
