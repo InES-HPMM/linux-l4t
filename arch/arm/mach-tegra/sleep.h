@@ -30,8 +30,13 @@
 #define TEGRA_POWER_LP1_AUDIO		(1 << 25) /* do not turn off pll-p in LP1 */
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-#define TEGRA_POWER_CLUSTER_PART_CRAIL	(1 << 24) /* Power gate CRAIL partition */
-#define TEGRA_POWER_CLUSTER_PART_NONCPU	(1 << 25) /* Power gate CxNC partition */
+
+/* Power gate CRAIL partition */
+#define TEGRA_POWER_CLUSTER_PART_CRAIL	(1 << 25)
+
+/* Power gate CxNC partition */
+#define TEGRA_POWER_CLUSTER_PART_NONCPU	(1 << 24)
+
 #define TEGRA_POWER_CLUSTER_PART_MASK	(TEGRA_POWER_CLUSTER_PART_CRAIL | \
 						TEGRA_POWER_CLUSTER_PART_NONCPU)
 #define TEGRA_POWER_CLUSTER_PART_DEFAULT TEGRA_POWER_CLUSTER_PART_CRAIL

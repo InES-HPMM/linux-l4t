@@ -272,7 +272,10 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
 		flag = (fast_cluster_power_down_mode
 			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
-			&& TEGRA_POWER_CLUSTER_PART_MASK;
+			& TEGRA_POWER_CLUSTER_PART_MASK;
+		if ((request < tegra_min_residency_crail()) &&
+			(flag != TEGRA_POWER_CLUSTER_PART_MASK))
+			flag = TEGRA_POWER_CLUSTER_PART_NONCPU;
 	}
 
 	if (tegra_idle_lp2_last(sleep_time, flag) == 0)
@@ -423,18 +426,19 @@ bool tegra11x_idle_lp2(struct cpuidle_device *dev,
 	tegra_set_cpu_in_lp2(dev->cpu);
 	cpu_gating_only = (((fast_cluster_power_down_mode
 			<< TEGRA_POWER_CLUSTER_PART_SHIFT)
-			&& TEGRA_POWER_CLUSTER_PART_MASK) == 0);
+			& TEGRA_POWER_CLUSTER_PART_MASK) == 0);
 
 	if (is_lp_cluster()) {
-		if (slow_cluster_power_gating_noncpu)
-			power_gating_cpu_only = false;
+		if (slow_cluster_power_gating_noncpu &&
+			(request > tegra_min_residency_noncpu()))
+				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
 	} else if (!cpu_gating_only &&
-		(dev->cpu == 0) &&
 		(num_online_cpus() == 1) &&
-		tegra_rail_off_is_allowed())
-		power_gating_cpu_only = false;
+		tegra_rail_off_is_allowed() &&
+		(request > tegra_min_residency_noncpu()))
+			power_gating_cpu_only = false;
 	else
 		power_gating_cpu_only = true;
 

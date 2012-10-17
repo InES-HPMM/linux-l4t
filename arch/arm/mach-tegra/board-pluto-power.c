@@ -664,6 +664,8 @@ static struct tegra_suspend_platform_data pluto_suspend_data = {
 	.core_off_timer = 2000,
 	.corereq_high	= false,
 	.sysclkreq_high	= true,
+	.min_residency_noncpu = 600,
+	.min_residency_crail = 1000,
 };
 
 int __init pluto_suspend_init(void)
