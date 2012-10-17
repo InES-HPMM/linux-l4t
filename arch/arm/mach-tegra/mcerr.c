@@ -31,6 +31,7 @@
 #include <linux/moduleparam.h>
 #include <linux/spinlock_types.h>
 
+#include <mach/hardware.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 
@@ -323,6 +324,10 @@ static int __init tegra_mcerr_init(void)
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
 	reg |= 3;
+#if defined(CONFIG_TEGRA_ERRATA_1157520)
+	if (tegra_revision == TEGRA_REVISION_A01)
+		reg &= ~2;
+#endif
 	writel(reg, mc + MC_EMEM_ARB_OVERRIDE);
 #endif
 
