@@ -996,7 +996,7 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 		}
 		/* prevent legacy dvfs voltage scaling */
 		if (c->dvfs && c->dvfs->dvfs_rail)
-			c->dvfs->dvfs_rail->auto_control = true;
+			c->dvfs->dvfs_rail->dfll_mode = true;
 	}
 	return 0;
 }
@@ -1017,7 +1017,7 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 
 	/* restore legacy dvfs operations and set appropriate voltage */
 	if (c->dvfs && c->dvfs->dvfs_rail)
-		c->dvfs->dvfs_rail->auto_control = false;
+		c->dvfs->dvfs_rail->dfll_mode = false;
 
 	rate = max(rate, old_rate);
 	ret = tegra_dvfs_set_rate(c, rate);
