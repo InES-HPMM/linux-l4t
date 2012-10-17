@@ -410,8 +410,8 @@ int edp_unregister_client(struct edp_client *client)
 }
 EXPORT_SYMBOL(edp_unregister_client);
 
-static int update_client_request(struct edp_client *client, unsigned int req,
-		int *approved)
+int edp_update_client_request_unlocked(struct edp_client *client,
+		unsigned int req, int *approved)
 {
 	int r;
 
@@ -434,7 +434,7 @@ int edp_update_client_request(struct edp_client *client, unsigned int req,
 	int r;
 
 	mutex_lock(&edp_lock);
-	r = update_client_request(client, req, approved);
+	r = edp_update_client_request_unlocked(client, req, approved);
 	mutex_unlock(&edp_lock);
 
 	return r;
@@ -568,18 +568,23 @@ int edp_unregister_loan(struct edp_client *lender, struct edp_client *borrower)
 }
 EXPORT_SYMBOL(edp_unregister_loan);
 
+int edp_update_loan_threshold_unlocked(struct edp_client *client,
+		unsigned int threshold)
+{
+	if (!registered_client(client))
+		return -EINVAL;
+
+	client->ithreshold = threshold;
+	update_loans(client);
+	return 0;
+}
+
 int edp_update_loan_threshold(struct edp_client *client, unsigned int threshold)
 {
-	int r = -EINVAL;
+	int r;
 
 	mutex_lock(&edp_lock);
-
-	if (registered_client(client)) {
-		client->ithreshold = threshold;
-		update_loans(client);
-		r = 0;
-	}
-
+	r = edp_update_loan_threshold_unlocked(client, threshold);
 	mutex_unlock(&edp_lock);
 
 	return r;

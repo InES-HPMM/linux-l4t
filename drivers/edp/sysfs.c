@@ -174,6 +174,7 @@ struct client_entry {
 struct client_attr {
 	struct attribute attr;
 	ssize_t (*show)(struct edp_client *, char *);
+	ssize_t (*store)(struct edp_client *, const char *);
 };
 
 static ssize_t states_show(struct edp_client *c, char *s)
@@ -214,6 +215,23 @@ static ssize_t request_show(struct edp_client *c, char *s)
 	return scnprintf(s, PAGE_SIZE, "%u\n", req_level(c));
 }
 
+/* Allow only updates that are guaranteed to succeed */
+static ssize_t request_store(struct edp_client *c, const char *s)
+{
+	unsigned int id;
+
+	if (sscanf(s, "%u", &id) != 1)
+		return -EINVAL;
+
+	if (id >= c->num_states)
+		return -EINVAL;
+
+	if (id < c->e0_index && id < req_index(c))
+		return -EPERM;
+
+	return edp_update_client_request_unlocked(c, id, NULL);
+}
+
 static ssize_t current_show(struct edp_client *c, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", cur_level(c));
@@ -221,8 +239,17 @@ static ssize_t current_show(struct edp_client *c, char *s)
 
 static ssize_t threshold_show(struct edp_client *c, char *s)
 {
-	return scnprintf(s, PAGE_SIZE, "%u\n",
-			c->num_loans ? c->ithreshold : 0);
+	return scnprintf(s, PAGE_SIZE, "%u\n", c->ithreshold);
+}
+
+static ssize_t threshold_store(struct edp_client *c, const char *s)
+{
+	unsigned int tv;
+
+	if (sscanf(s, "%u", &tv) != 1)
+		return -EINVAL;
+
+	return edp_update_loan_threshold_unlocked(c, tv);
 }
 
 static ssize_t borrowers_show(struct edp_client *c, char *s)
@@ -240,8 +267,10 @@ struct client_attr attr_num_states = __ATTR_RO(num_states);
 struct client_attr attr_e0 = __ATTR_RO(e0);
 struct client_attr attr_max_borrowers = __ATTR_RO(max_borrowers);
 struct client_attr attr_priority = __ATTR_RO(priority);
-struct client_attr attr_request = __ATTR_RO(request);
-struct client_attr attr_threshold = __ATTR_RO(threshold);
+struct client_attr attr_request = __ATTR(request, 0644, request_show,
+		request_store);
+struct client_attr attr_threshold = __ATTR(threshold, 0644, threshold_show,
+		threshold_store);
 struct client_attr attr_borrowers = __ATTR_RO(borrowers);
 struct client_attr attr_loans = __ATTR_RO(loans);
 struct client_attr attr_current = {
@@ -286,8 +315,30 @@ static ssize_t client_state_show(struct kobject *kobj,
 	return r;
 }
 
+static ssize_t client_state_store(struct kobject *kobj,
+		struct attribute *attr, const char *buf, size_t count)
+{
+	ssize_t r = -EINVAL;
+	struct edp_client *c;
+	struct client_attr *cattr;
+
+	mutex_lock(&edp_lock);
+
+	c = to_client(kobj);
+	cattr = container_of(attr, struct client_attr, attr);
+	if (c && cattr) {
+		if (cattr->store)
+			r = cattr->store(c, buf);
+	}
+
+	mutex_unlock(&edp_lock);
+
+	return r ?: count;
+}
+
 static const struct sysfs_ops client_sysfs_ops = {
-	.show = client_state_show
+	.show = client_state_show,
+	.store = client_state_store
 };
 
 static struct kobj_type ktype_client = {
