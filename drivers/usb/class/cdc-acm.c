@@ -554,7 +554,7 @@ static int acm_port_activate(struct tty_port *port, struct tty_struct *tty)
 	 * memory is really nasty...
 	 */
 	set_bit(TTY_NO_WRITE_SPLIT, &tty->flags);
-	acm->control->needs_remote_wakeup = 0;
+	acm->control->needs_remote_wakeup = 1;
 
 	if (acm_submit_read_urbs(acm, GFP_KERNEL))
 		goto error_submit_urb;
