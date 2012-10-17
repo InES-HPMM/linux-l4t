@@ -58,6 +58,7 @@ struct dvfs_rail {
 	const char *reg_id;
 	int min_millivolts;
 	int max_millivolts;
+	int reg_max_millivolts;
 	int nominal_millivolts;
 	int step;
 	bool jmp_to_zero;

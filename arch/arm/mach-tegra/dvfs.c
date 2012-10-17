@@ -187,10 +187,15 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 			return -EINVAL;
 	}
 
-	/* DFLL adjusts rail voltage automatically - only update stats */
+	/*
+	 * DFLL adjusts rail voltage automatically, but not exactly to the
+	 * expected level - update stats, anyway, and made sure that recorded
+	 * level will not match any target that can be requested when/if we
+	 * switch back from DFLL to s/w control
+	 */
 	if (rail->dfll_mode) {
-		rail->millivolts = rail->new_millivolts;
-		dvfs_rail_stats_update(rail, rail->millivolts, ktime_get());
+		rail->millivolts = rail->new_millivolts = millivolts - 1;
+		dvfs_rail_stats_update(rail, millivolts, ktime_get());
 		return 0;
 	}
 
@@ -224,9 +229,12 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 
 		if (!rail->disabled) {
 			rail->updating = true;
+			rail->reg_max_millivolts = rail->reg_max_millivolts ==
+				rail->max_millivolts ?
+				rail->max_millivolts + 1 : rail->max_millivolts;
 			ret = regulator_set_voltage(rail->reg,
 				rail->new_millivolts * 1000,
-				rail->max_millivolts * 1000);
+				rail->reg_max_millivolts * 1000);
 			rail->updating = false;
 		}
 		if (ret) {
