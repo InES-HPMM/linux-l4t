@@ -454,7 +454,7 @@ unsigned int edp_calculate_maxf(struct edp_constants_lut_t  *edp_constants,
 				int n_cores_idx)
 {
 	unsigned int voltage_mV, freq_MHz;
-	unsigned int regulator_cur_effective = regulator_cur - edp_reg_override_mA;
+	unsigned int regulator_cur_effective;
 	int f_v_pair, i, j, k, leakage_const_n, dyn_const_n;
 	int *leakage_consts_ijk;
 	s64 leakage_mA, dyn_mA, leakage_calc_step;
@@ -463,6 +463,7 @@ unsigned int edp_calculate_maxf(struct edp_constants_lut_t  *edp_constants,
 	leakage_consts_ijk = edp_constants->leakage_consts_ijk;
 	dyn_const_n = edp_constants->dyn_consts_n[n_cores_idx];
 	leakage_const_n = edp_constants->leakage_consts_n[n_cores_idx];
+	regulator_cur_effective = regulator_cur - edp_reg_override_mA;
 
 	for (f_v_pair = freq_voltage_lut_size - 1; f_v_pair  >= 0; f_v_pair--) {
 		freq_MHz = freq_voltage_lut[f_v_pair].freq / 1000000;
@@ -530,7 +531,7 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 		/* Predict voltages */
 		voltage_mV = tegra_dvfs_predict_millivolts(clk_cpu_g, freq);
 		if (voltage_mV < 0) {
-			pr_err("%s: couldn't predict voltage for freq %u, err %d",
+			pr_err("%s: couldn't predict voltage: freq %u; err %d",
 			       __func__, freq, voltage_mV);
 			return -EINVAL;
 		}
@@ -600,7 +601,8 @@ int init_cpu_edp_limits_calculated(int cpu_speedo_id)
 
 	/* Calculate EDP table */
 	for (temp_idx = 0; temp_idx < ARRAY_SIZE(temps_lut); temp_idx++) {
-		edp_calculated_limits[temp_idx].temperature = temps_lut[temp_idx];
+		edp_calculated_limits[temp_idx].temperature =
+			temps_lut[temp_idx];
 
 		for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++)
 			edp_calculated_limits[temp_idx].
@@ -845,7 +847,7 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 
 static int edp_reg_override_show(struct seq_file *s, void *data)
 {
-	seq_printf(s, "Regulator limit override: %u mA. Effective regulator limit: %u mA\n",
+	seq_printf(s, "Limit override: %u mA. Effective limit: %u mA\n",
 		   edp_reg_override_mA, regulator_cur - edp_reg_override_mA);
 	return 0;
 }
@@ -876,16 +878,19 @@ static int edp_reg_override_write(struct file *file,
 	if (edp_reg_override_mA_temp >= regulator_cur)
 		goto override_err;
 
+	if (edp_reg_override_mA == edp_reg_override_mA_temp)
+		return count;
+
 	edp_reg_override_mA = edp_reg_override_mA_temp;
 	cpu_speedo_id = tegra_cpu_speedo_id();
-	if(init_cpu_edp_limits_calculated(cpu_speedo_id)) {
+	if (init_cpu_edp_limits_calculated(cpu_speedo_id)) {
 		/* Revert to previous override value if new value fails */
 		edp_reg_override_mA = edp_reg_override_mA_prev;
 		goto override_err;
 	}
 
 	if (tegra_cpu_set_speed_cap(NULL)) {
-		pr_err("Failed to apply CPU freq cap using new VDD_CPU EDP table.\n");
+		pr_err("FAILED: Set CPU freq cap with new VDD_CPU EDP table\n");
 		goto override_out;
 	}
 
@@ -895,11 +900,10 @@ static int edp_reg_override_write(struct file *file,
 	return count;
 
 override_err:
-	pr_err("Failed to reinitialized VDD_CPU EDP table with override \"%s\"",
+	pr_err("FAILED: Reinitialize VDD_CPU EDP table with override \"%s\"",
 	       buf);
 override_out:
 	return -EINVAL;
-
 }
 
 static int edp_debugfs_open(struct inode *inode, struct file *file)
