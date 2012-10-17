@@ -457,7 +457,7 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5640_PWR_MB_PU | RT5640_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5640_DUMMY1,
 			0x1, 0x1);
-		msleep(100);
+		msleep(150);
 		if (snd_soc_read(codec, RT5640_IRQ_CTRL2) & 0x8)
 			jack_type = RT5640_HEADPHO_DET;
 		else
