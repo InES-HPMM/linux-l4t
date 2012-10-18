@@ -107,15 +107,31 @@ static int cm3218_power(int on)
 		ret = cm3218_write();
 		if (ret < 0)
 			return ret;
+		chip_info->inp_dev->enabled = true;
 		queue_work(chip_info->wq, &report_work);
 	} else if (!on && IS_ALS_POWER_ON) {
 		ALS_POWER_DISABLE;
 		ret = cm3218_write();
 		if (ret < 0)
 			return ret;
+		chip_info->inp_dev->enabled = false;
 		cancel_delayed_work(&report_work);
 		regulator_disable(chip_info->vdd_sensor);
 	}
+	return 0;
+}
+
+static int cm3218_enable(struct input_dev *dev)
+{
+	pr_debug("[LS][CM3218] %s\n", __func__);
+	cm3218_power(true);
+	return 0;
+}
+
+static int cm3218_disable(struct input_dev *dev)
+{
+	pr_debug("[LS][CM3218] %s\n", __func__);
+	cm3218_power(false);
 	return 0;
 }
 
@@ -220,6 +236,10 @@ static int cm3218_probe(struct i2c_client *client,
 	}
 
 	chip_info->inp_dev->name = "cm3218-ls";
+	chip_info->inp_dev->enable = cm3218_enable;
+	chip_info->inp_dev->disable = cm3218_disable;
+	chip_info->inp_dev->enabled = false;
+
 	set_bit(EV_ABS, chip_info->inp_dev->evbit);
 	input_set_abs_params(chip_info->inp_dev, ABS_MISC, 0, 9, 0, 0);
 
