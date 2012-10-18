@@ -377,6 +377,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	int i, j, mv, dfll_mv;
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
+	unsigned long fmin_use_dfll = 0;
 	struct cpu_cvb_dvfs *d = NULL;
 	struct cpu_cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
@@ -436,6 +437,10 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 				fmax_pll_mode = cpu_dvfs->freqs[j - 1];
 		}
 
+		/* Minimum rate with pll source voltage above dfll Vmin */
+		if ((mv >= d->min_dfll_mv) && (!fmin_use_dfll))
+			fmin_use_dfll = table->freq;
+
 		/* fill in dvfs tables */
 		cpu_dvfs->freqs[j] = table->freq;
 		cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
@@ -459,6 +464,14 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		return -ENOENT;
 	}
 
+	/* In the dfll operating range dfll voltage at any rate should be
+	   better (below) than pll voltage */
+	if (!fmin_use_dfll || (fmin_use_dfll > fmax_at_vmin)) {
+		WARN(1, "tegra11_dvfs: pll voltage is below dfll in the dfll"
+			" operating range\n");
+		fmin_use_dfll = fmax_at_vmin;
+	}
+
 	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = speedo_id;
 	cpu_dvfs->freqs_mult = d->freqs_mult;
@@ -469,6 +482,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	cpu_dvfs->dfll_data.max_rate_boost = fmax_pll_mode ?
 		(cpu_dvfs->freqs[j - 1] - fmax_pll_mode) * d->freqs_mult : 0;
 	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
+	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = d->min_dfll_mv;
 	return 0;
 }
