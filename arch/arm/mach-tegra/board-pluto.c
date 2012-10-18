@@ -776,10 +776,10 @@ static void __init tegra_pluto_dt_init(void)
 static void __init tegra_pluto_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	/* support 1920X1200 with 24bpp */
-	tegra_reserve(0, SZ_8M + SZ_1M, SZ_8M + SZ_1M);
+	/* for PANEL_5_SHARP_1080p: 1920*1080*4*2 = 16588800 bytes */
+	tegra_reserve(0, SZ_16M, SZ_4M);
 #else
-	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
+	tegra_reserve(SZ_128M, SZ_16M, SZ_4M);
 #endif
 	pluto_ramconsole_reserve(SZ_1M);
 }
