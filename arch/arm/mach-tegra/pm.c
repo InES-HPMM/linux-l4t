@@ -604,9 +604,16 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 			 * transition. Before the transition, enable
 			 * the vdd_cpu rail.
 			 */
-			if (is_lp_cluster())
+			if (is_lp_cluster()) {
+#if defined(CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE)
+				reg = readl(FLOW_CTRL_CPU_PWR_CSR);
+				reg |= FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE;
+				writel(reg, FLOW_CTRL_CPU_PWR_CSR);
+#else
 				writel(UN_PWRGATE_CPU,
 				       pmc + PMC_PWRGATE_TOGGLE);
+#endif
+			}
 		}
 		tegra_cluster_switch_prolog(flags);
 	} else {
