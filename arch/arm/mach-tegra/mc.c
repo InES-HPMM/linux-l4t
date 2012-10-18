@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/mc.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2012 NVIDIA Corporation
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -72,3 +72,41 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 		return 1;
 }
 #endif
+
+/* API to get EMC freq to be requested, for Bandwidth.
+ * bw_kbps: BandWidth passed is in KBps.
+ * returns freq in KHz
+ */
+unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps)
+{
+	unsigned int freq;
+	/* Emc Bus width is assumed to be 32 bit
+	 * for bw to clock freq conversions.
+	 * clock framework internal takes care of
+	 * adjusting clock freq based on real Emc Bus width.
+	 * 32(bus_width)/8 * 2(ddr) = 8;
+	 */
+	unsigned int bytes_per_emc_clk = 8;
+
+	freq = (bw_kbps + bytes_per_emc_clk - 1) / bytes_per_emc_clk;
+	return freq;
+}
+
+/* API to get EMC bandwidth, for freq that can be requested.
+ * freq_khz: Frequency passed is in KHz.
+ * returns bandwidth in KBps
+ */
+unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_khz)
+{
+	unsigned int bw;
+	/* Emc Bus width is assumed to be 32 bit
+	 * for bw to clock freq conversions.
+	 * clock framework internal takes care of
+	 * adjusting clock freq based on real Emc Bus width.
+	 * 32(bus_width)/8 * 2(ddr) = 8;
+	 */
+	unsigned int bytes_per_emc_clk = 8;
+
+	bw = freq_khz * bytes_per_emc_clk;
+	return bw;
+}

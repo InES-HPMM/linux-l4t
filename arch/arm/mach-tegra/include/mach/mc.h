@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/mc.h
  *
- * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2010-2012 Google, Inc.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -116,6 +116,22 @@ static inline int tegra_mc_get_effective_bytes_width(void)
 #else
 	return 4;
 #endif
+}
+
+unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps);
+
+unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_kbps);
+
+/* API to get freqency switch latency at given MC freq.
+ * freq_khz: Frequncy in KHz.
+ * retruns latency in microseconds.
+ */
+static inline unsigned tegra_emc_dvfs_latency(unsigned int freq_khz)
+{
+	/* The latency data is not available based on freq.
+	 * H/W expects it to be around 3 to 4us.
+	 */
+	return 4;
 }
 
 #endif
