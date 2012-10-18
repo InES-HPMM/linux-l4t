@@ -1179,7 +1179,7 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 #endif
 	if (has_dfll) {
 		use_dfll_now = use_dfll ? (use_pll_cpu_low ?
-			(rate >= c->dvfs->dfll_data.out_rate_min) : 1) : 0;
+			(rate >= c->dvfs->dfll_data.use_dfll_rate_min) : 1) : 0;
 
 		if (use_dfll_now)
 			return tegra12_cpu_clk_dfll_on(c, rate, old_rate);
