@@ -285,8 +285,8 @@ static int max77665_charger_init(struct max77665_charger *charger)
 		if (ret < 0)
 			goto error;
 
-		ret = max77665_update_reg(charger,
-				MAX77665_CHG_CNFG_09, (ret-1)*5);
+		ret = max77665_write_reg(charger,
+				MAX77665_CHG_CNFG_09, ret*5);
 		if (ret < 0) {
 			dev_err(charger->dev, "Failed writing to reg:0x%x\n",
 				MAX77665_CHG_CNFG_09);
@@ -314,6 +314,7 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 
 		charger->usb_online = 1;
 		power_supply_changed(&charger->usb);
+		charger->plat_data->curr_lim = 500;
 	}
 
 	if (extcon_get_cable_state(charger->edev, "USB-Host")) {
@@ -330,6 +331,13 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 		charger->ac_online = 1;
 		power_supply_changed(&charger->ac);
 	}
+
+	ret = max77665_charger_init(charger);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to initialize charger\n");
+		goto error;
+	}
+
 	return 0;
 error:
 	return ret;
@@ -358,6 +366,14 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	charger->plat_data = pdev->dev.platform_data;
 	dev_set_drvdata(&pdev->dev, charger);
+
+	/* modify OTP setting of input current limit to 100ma */
+	ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_09, 0x05);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
+				MAX77665_CHG_CNFG_09);
+		goto error;
+	}
 
 	/* check for battery presence */
 	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
@@ -419,12 +435,6 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = max77665_charger_init(charger);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to initialize charger\n");
-		goto chrg_error;
-	}
-
 	charger->edev = extcon_get_extcon_dev("max77665-muic");
 	if (!charger->edev)
 		return -ENODEV;
@@ -433,13 +443,6 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(charger->dev, "failed to initialize charger\n");
 		goto chrg_error;
-	}
-
-	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "error in reading register 0x%x\n",
-				MAX77665_CHG_DTLS_01);
-		return -ENODEV;
 	}
 
 	return 0;
