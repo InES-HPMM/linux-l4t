@@ -370,9 +370,10 @@ ENTRY(tegra3_lp1_reset)
 
 	ldr	r4, [r5, #0x1C]
 	str	r4, [r0, #CLK_RESET_SCLK_BURST]
-
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	mov32	r4, ((1<<28) | (8))	@ burst policy is PLLX
 	str	r4, [r0, #CLK_RESET_CCLK_BURST]
+#endif
 
 #ifdef CONFIG_TEGRA_LP1_950
 lp1_voltset:
@@ -486,8 +487,10 @@ emc_wait_audo_cal_onetime:
 	mov	r1, #0
 	str	r1, [r0, #EMC_SELF_REF]	@ take DRAM out of self refresh
 	mov	r1, #1
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	str	r1, [r0, #EMC_NOP]
 	str	r1, [r0, #EMC_NOP]
+#endif
 	str	r1, [r0, #EMC_REFRESH]
 
 	emc_device_mask r1, r0
