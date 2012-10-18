@@ -349,6 +349,7 @@ struct tegra_dc_sd_settings {
 	u16 smooth_k_incr;
 
 	bool sd_proc_control;
+	bool soft_clipping_correction;
 
 	struct tegra_dc_sd_fc fc;
 	struct tegra_dc_sd_blp blp;
