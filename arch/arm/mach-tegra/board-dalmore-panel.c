@@ -53,13 +53,18 @@ struct platform_device * __init dalmore_host1x_init(void)
 
 #ifdef CONFIG_TEGRA_DC
 
-#define TEGRA_DSI_GANGED_MODE	0
 #define IS_EXTERNAL_PWM		1
 
 /* PANEL_<diagonal length in inches>_<vendor name>_<resolution> */
 #define PANEL_10_1_PANASONIC_1920_1200	1
 #define PANEL_11_6_AUO_1920_1080	0
 #define PANEL_10_1_SHARP_2560_1600	0
+
+#if PANEL_10_1_SHARP_2560_1600
+#define TEGRA_DSI_GANGED_MODE	1
+#else
+#define TEGRA_DSI_GANGED_MODE	0
+#endif
 
 #define DSI_PANEL_RESET		1
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
@@ -288,7 +293,10 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	/* no init command required */
 #endif
 #if PANEL_10_1_SHARP_2560_1600
-	/* TODO */
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x0),
+	DSI_DLY_MS(2000),
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x0),
+	DSI_DLY_MS(100),
 #endif
 };
 
@@ -320,11 +328,18 @@ static struct tegra_dsi_out dalmore_dsi = {
 	.n_data_lanes = 2,
 	.controller_vs = DSI_VS_0,
 #else
-	.n_data_lanes = 4,
 	.controller_vs = DSI_VS_1,
 #endif
 #if PANEL_11_6_AUO_1920_1080
 	.dsi2edp_bridge_enable = true,
+#endif
+#if PANEL_10_1_SHARP_2560_1600
+	.n_data_lanes = 8,
+	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
+	.ganged_type = TEGRA_DSI_GANGED_SYMMETRIC_EVEN_ODD,
+#else
+	.n_data_lanes = 4,
+	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END,
 #endif
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
 	.refresh_rate = 60,
@@ -339,7 +354,6 @@ static struct tegra_dsi_out dalmore_dsi = {
 #else
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
-	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END,
 #endif
 	.dsi_init_cmd = dsi_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
