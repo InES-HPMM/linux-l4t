@@ -2756,9 +2756,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	/* Create a delayed work for detecting the USB charger */
 	INIT_DELAYED_WORK(&udc->work, tegra_udc_charger_detect_work);
 	INIT_WORK(&udc->charger_work, tegra_udc_set_current_limit_work);
-
 	/* Get the regulator for drawing the vbus current in udc driver */
-	udc->vbus_reg = regulator_get(NULL, "usb_bat_chg");
+	udc->vbus_reg = regulator_get(&pdev->dev, "usb_bat_chg");
 	if (IS_ERR(udc->vbus_reg)) {
 		dev_info(&pdev->dev,
 			"usb_bat_chg regulator not registered:"
