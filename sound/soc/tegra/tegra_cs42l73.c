@@ -1141,8 +1141,10 @@ static int tegra_cs42l73_suspend_post(struct snd_soc_card *card)
 	if (gpio_is_valid(gpio->gpio))
 		disable_irq(gpio_to_irq(gpio->gpio));
 
-	if (machine->clock_enabled)
+	if (machine->clock_enabled) {
+		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
 
 	return 0;
 }
@@ -1160,8 +1162,10 @@ static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
 		enable_irq(gpio_to_irq(gpio->gpio));
 	}
 
-	if (!machine->clock_enabled)
+	if (!machine->clock_enabled) {
+		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
+	}
 
 	return 0;
 }
