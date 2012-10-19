@@ -261,6 +261,7 @@ static struct ov9772_platform_data ov9772_dflt_pdata = {
 static struct nvc_imager_static_nvc ov9772_dflt_sdata = {
 	.api_version		= NVC_IMAGER_API_STATIC_VER,
 	.sensor_type		= OV9772_SENSOR_TYPE,
+	.bits_per_pixel		= 10,
 	.sensor_id		= OV9772_ID,
 	.sensor_id_minor	= 0,
 	.focal_len		= OV9772_LENS_FOCAL_LENGTH,
@@ -437,8 +438,8 @@ static struct ov9772_mode_data ov9772_1284x724 = {
 		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
 		.support_bin_control	= 0,
 		.support_fast_mode	= 0,
-		.pll_mult		= 0x003C,
-		.pll_div		= 0x0028,
+		.pll_mult		= 60,
+		.pll_div		= 4,
 	},
 	.p_mode_i2c			= ov9772_1284x724_i2c,
 };
