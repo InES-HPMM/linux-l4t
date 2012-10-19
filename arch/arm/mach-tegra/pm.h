@@ -242,7 +242,8 @@ extern bool tegra_all_cpus_booted __read_mostly;
 #define tegra_all_cpus_booted (true)
 #endif
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC) \
+	&& defined(CONFIG_SMP)
 void tegra_smp_clear_power_mask(void);
 #else
 static inline void tegra_smp_clear_power_mask(void){}
