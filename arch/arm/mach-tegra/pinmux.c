@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tegra/pinmux.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -917,13 +917,13 @@ void tegra_pinmux_config_pullupdown_table(const struct tegra_pingroup_config *co
 
 static struct of_device_id tegra_pinmux_of_match[] = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	{ .compatible = "nvidia,tegra20-pinmux-ctlr", tegra20_pinmux_init },
+	{ .compatible = "nvidia,tegra20-pinmux-ctl", tegra20_pinmux_init },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	{ .compatible = "nvidia,tegra30-pinmux-ctlr", tegra30_pinmux_init },
+	{ .compatible = "nvidia,tegra30-pinmux-ctl", tegra30_pinmux_init },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	{ .compatible = "nvidia,tegra11x-pinmux", tegra11x_pinmux_init },
+	{ .compatible = "nvidia,tegra11x-pinmux-ctl", tegra11x_pinmux_init },
 #endif
 	{ },
 };
@@ -1017,15 +1017,15 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 
 static struct platform_device_id __devinitdata tegra_pinmux_id[] = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	{ .name = "tegra20-pinmux-ctlr",
+	{ .name = "tegra20-pinmux-ctl",
 	  .driver_data = (kernel_ulong_t)tegra20_pinmux_init, },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	{ .name = "tegra30-pinmux-ctlr",
+	{ .name = "tegra30-pinmux-ctl",
 	  .driver_data = (kernel_ulong_t)tegra30_pinmux_init, },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	{ .name = "tegra11x-pinmux",
+	{ .name = "tegra11x-pinmux-ctl",
 	  .driver_data = (kernel_ulong_t)tegra11x_pinmux_init, },
 #endif
 	{},
@@ -1033,7 +1033,7 @@ static struct platform_device_id __devinitdata tegra_pinmux_id[] = {
 
 static struct platform_driver tegra_pinmux_driver = {
 	.driver		= {
-		.name	= "tegra-pinmux-ctlr",
+		.name	= "tegra-pinmux-ctl",
 		.owner	= THIS_MODULE,
 		.of_match_table = tegra_pinmux_of_match,
 	},
