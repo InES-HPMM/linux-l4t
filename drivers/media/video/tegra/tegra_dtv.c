@@ -254,7 +254,7 @@ static void tegra_dtv_rx_dma_complete(struct tegra_dma_req *req)
 	complete(&s->comp[req_num]);
 
 	if (!are_xfers_pending(s))
-		pr_debug("%s: overflow.\n", __func__);
+		pr_warn("%s: overflow.\n", __func__);
 
 	spin_unlock_irqrestore(&s->dma_req_lock, flags);
 }
