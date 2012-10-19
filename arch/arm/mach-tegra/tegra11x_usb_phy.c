@@ -1286,22 +1286,6 @@ exit:
 	return irq_status;
 }
 
-static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned  int inst = phy->inst;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
-	/* if PMC is not disabled by now then disable it */
-	if (val & UTMIP_MASTER_ENABLE(inst)) {
-		utmip_phy_disable_pmc_bus_ctrl(phy);
-	}
-
-	return 0;
-}
-
 static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
 	unsigned long val;
@@ -1586,10 +1570,6 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 	   utmi_phy_irq(). */
 	if (UTMIP_WALK_PTR_VAL(inst) & val) {
 		phy->remote_wakeup = true;
-	} else if (!phy->remote_wakeup) {
-		val = readl(pmc_base + PMC_SLEEP_CFG);
-		if (val & UTMIP_MASTER_ENABLE(inst))
-			utmip_phy_disable_pmc_bus_ctrl(phy);
 	}
 }
 
@@ -1611,7 +1591,7 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 				PHY_DBG("%s PMC FPR" \
 				"timeout val = 0x%x instance = %d\n", \
 				__func__, val, phy->inst);
-				utmi_phy_post_resume(phy);
+				utmip_phy_disable_pmc_bus_ctrl(phy);
 				return;
 			}
 			wait_time_us--;
@@ -1622,6 +1602,16 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 		/* disable PMC master control */
 		utmip_phy_disable_pmc_bus_ctrl(phy);
 
+		val = readl(base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+
+		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
+							 USB_USBCMD_RS, 2000)) {
+			pr_err("%s: timeout waiting for USB_USBCMD_RS\n",\
+			__func__);
+		}
+
 		/* Clear PCI and SRI bits to avoid an interrupt upon resume */
 		val = readl(base + USB_USBSTS);
 		writel(val, base + USB_USBSTS);
@@ -1630,7 +1620,8 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 			USB_USBSTS_SRI, USB_USBSTS_SRI, 2500) < 0) {
 			pr_err("%s: timeout waiting for SOF\n", __func__);
 		}
-		utmi_phy_post_resume(phy);
+	} else {
+		utmip_phy_disable_pmc_bus_ctrl(phy);
 	}
 }
 
@@ -3013,7 +3004,6 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.power_off	= utmi_phy_power_off,
 	.pre_resume = utmi_phy_pre_resume,
 	.resume	= utmi_phy_resume,
-	.post_resume	= utmi_phy_post_resume,
 	.charger_detect = utmi_phy_charger_detect,
 };
 
