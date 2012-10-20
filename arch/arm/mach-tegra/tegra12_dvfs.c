@@ -627,6 +627,9 @@ void __init tegra12x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_GPU_DVFS
 	tegra_dvfs_gpu_disabled = true;
 #endif
+	/* Setup rail bins */
+	tegra12_dvfs_rail_vdd_cpu.stats.bin_uV = tegra_get_cvb_alignment_uV();
+	tegra12_dvfs_rail_vdd_core.stats.bin_uV = tegra_get_cvb_alignment_uV();
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
