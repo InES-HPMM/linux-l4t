@@ -512,7 +512,8 @@ config TEGRA_USE_DFLL
 
 config TEGRA_SOCTHERM
 	bool "Enable soctherm"
-	default n
+	depends on ARCH_TEGRA_11x_SOC
+	default y
         help
 	  Enables use of soctherm for thermal management.
 
