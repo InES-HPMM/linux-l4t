@@ -6915,6 +6915,7 @@ static struct tegra_cpufreq_table_data freq_table_data;
 struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 {
 	int i, j;
+	bool g_vmin_done = false;
 	unsigned int freq, lp_backup_freq, g_vmin_freq, g_start_freq, max_freq;
 	struct clk *cpu_clk_g = tegra_get_clock_by_name("cpu_g");
 	struct clk *cpu_clk_lp = tegra_get_clock_by_name("cpu_lp");
@@ -6973,10 +6974,10 @@ struct tegra_cpufreq_table_data *tegra_cpufreq_table_get(void)
 		if (freq <= lp_backup_freq)
 			continue;
 
-		if (freq >= g_vmin_freq) {
-			freq_table[i++].frequency = g_vmin_freq;
-			if (freq == g_vmin_freq)
-				continue;
+		if (!g_vmin_done && (freq >= g_vmin_freq)) {
+			g_vmin_done = true;
+			if (freq > g_vmin_freq)
+				freq_table[i++].frequency = g_vmin_freq;
 		}
 		freq_table[i++].frequency = freq;
 
