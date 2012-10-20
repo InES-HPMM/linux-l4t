@@ -67,6 +67,10 @@
 /* tsensor calibration register */
 #define FUSE_TSENSOR_CALIB_0	0x198
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#define FUSE_VSENSOR_CALIB_0	0x18c
+#endif
+
 #endif
 
 #define TEGRA_AGE_0_6 0x2cc /*Spare bit 34*/
@@ -180,6 +184,33 @@ int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
 EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
 
 #else
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+int tegra_fuse_get_vsensor_calib(u32 *calib)
+{
+	*calib = tegra_fuse_readl(FUSE_VSENSOR_CALIB_0);
+	return 0;
+}
+
+static int tsensor_calib_offset[] = {
+	[0] = 0x198,
+	[1] = 0x184,
+	[2] = 0x188,
+	[3] = 0x22c,
+	[4] = 0x254,
+	[5] = 0x258,
+	[6] = 0x25c,
+	[7] = 0x260,
+};
+
+int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
+{
+	if (index < 0 || index > 7)
+		return -EINVAL;
+	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
+	return 0;
+}
+#endif
 
 int tegra_fuse_get_revision(u32 *rev)
 {

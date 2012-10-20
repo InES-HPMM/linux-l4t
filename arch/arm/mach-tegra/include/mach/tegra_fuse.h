@@ -22,6 +22,10 @@
 int tegra_fuse_get_revision(u32 *rev);
 int tegra_fuse_get_tsensor_calibration_data(u32 *calib);
 int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits);
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+int tegra_fuse_get_vsensor_calib(u32 *calib);
+int tegra_fuse_get_tsensor_calib(int index, u32 *calib);
+#endif
 
 #endif /* _MACH_TEGRA_PUBLIC_FUSE_H_*/
 

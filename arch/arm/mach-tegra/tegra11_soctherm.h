@@ -47,8 +47,6 @@ struct soctherm_sensor {
 	int tiddq;
 	int ten_count;
 	int tsample;
-	s16 therm_a;
-	s16 therm_b;
 	u8 pdiv;
 };
 

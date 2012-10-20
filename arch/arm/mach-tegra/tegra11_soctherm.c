@@ -35,6 +35,7 @@
 #include <linux/slab.h>
 #include <linux/suspend.h>
 
+#include <mach/tegra_fuse.h>
 #include <mach/iomap.h>
 
 #include "tegra11_soctherm.h"
@@ -234,6 +235,20 @@
 
 #define THROT_OFFSET				0x30
 
+#define FUSE_BASE_CP_SHIFT	0
+#define FUSE_BASE_CP_MASK	0x3ff
+#define FUSE_BASE_FT_SHIFT	16
+#define FUSE_BASE_FT_MASK	0x7ff
+#define FUSE_SHIFT_CP_SHIFT	10
+#define FUSE_SHIFT_CP_MASK	0x3f
+#define FUSE_SHIFT_FT_SHIFT	27
+#define FUSE_SHIFT_FT_MASK	0x1f
+
+#define FUSE_TSENSOR_CALIB_FT_SHIFT	13
+#define FUSE_TSENSOR_CALIB_FT_MASK	0x1fff
+#define FUSE_TSENSOR_CALIB_CP_SHIFT	0
+#define FUSE_TSENSOR_CALIB_CP_MASK	0x1fff
+
 #define THROT_PSKIP_CTRL(throt, dev)		(THROT_PSKIP_CTRL_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
 						(8 * dev))
@@ -286,6 +301,17 @@ static char *sensor_names[] = {
 	[TSENSE_MEM1] = "mem1",
 	[TSENSE_GPU]  = "gpu0",
 	[TSENSE_PLLX] = "pllx",
+};
+
+static int sensor2tsensorcalib[] = {
+	[TSENSE_CPU0] = 0,
+	[TSENSE_CPU1] = 1,
+	[TSENSE_CPU2] = 2,
+	[TSENSE_CPU3] = 3,
+	[TSENSE_MEM0] = 5,
+	[TSENSE_MEM1] = 6,
+	[TSENSE_GPU] = 4,
+	[TSENSE_PLLX] = 7,
 };
 
 static inline long temp_translate(int readback)
@@ -551,10 +577,6 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
 	soctherm_writel(r, TS_CPU0_CONFIG1 + offset);
-
-	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, data->therm_a);
-	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, data->therm_b);
-	soctherm_writel(r, TS_CPU0_CONFIG2 + offset);
 }
 
 static int soctherm_clk_enable(bool enable)
@@ -609,6 +631,80 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
+static int __init soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
+{
+	u32 calib;
+	u32 fuse_base_cp;
+	u32 fuse_base_ft;
+	s32 fuse_shift_cp;
+	s32 fuse_shift_ft;
+	s32 actual_cp;
+	s32 actual_ft;
+	s32 delta_T;
+
+	s32 fuse_tsensor_ft;
+	s32 fuse_tsensor_cp;
+	s32 actual_tsensor_ft;
+	s32 actual_tsensor_cp;
+	s32 delta_count;
+	s16 therm_a;
+	s16 therm_b;
+
+	u8 pdiv;
+	int tsample;
+
+	u32 r;
+
+	tegra_fuse_get_vsensor_calib(&calib);
+	fuse_base_cp = REG_GET(calib, FUSE_BASE_CP);
+	fuse_base_ft = REG_GET(calib, FUSE_BASE_FT);
+	fuse_shift_cp = REG_GET(calib, FUSE_SHIFT_CP);
+	fuse_shift_ft = REG_GET(calib, FUSE_SHIFT_FT);
+
+	/* Make signed */
+	fuse_shift_cp <<= 26;
+	fuse_shift_cp >>= 26;
+	fuse_shift_ft <<= 27;
+	fuse_shift_ft >>= 27;
+
+	actual_cp = 25000 + (fuse_shift_cp * 500);
+	actual_ft = 90000 + (fuse_shift_ft * 500);
+	actual_cp /= 500;
+	actual_ft /= 500;
+	delta_T = actual_ft - actual_cp;
+
+	tegra_fuse_get_tsensor_calib(sensor2tsensorcalib[sensor], &calib);
+	fuse_tsensor_ft = REG_GET(calib, FUSE_TSENSOR_CALIB_FT);
+	fuse_tsensor_cp = REG_GET(calib, FUSE_TSENSOR_CALIB_CP);
+
+	/* Make signed */
+	fuse_tsensor_ft <<= 19;
+	fuse_tsensor_ft >>= 19;
+	fuse_tsensor_cp <<= 19;
+	fuse_tsensor_cp >>= 19;
+
+	actual_tsensor_ft = fuse_base_ft * 32 + fuse_tsensor_ft;
+	actual_tsensor_cp = fuse_base_cp * 64 + fuse_tsensor_cp;
+
+	pdiv = plat_data.sensor_data[sensor].pdiv;
+	tsample = plat_data.sensor_data[sensor].tsample;
+
+	actual_tsensor_ft = actual_tsensor_ft / pdiv * 10 / 5 * tsample / 131;
+	actual_tsensor_cp = actual_tsensor_cp / pdiv * 10 / 5 * tsample / 131;
+
+	delta_count = actual_tsensor_ft - actual_tsensor_cp;
+
+	therm_a = ((delta_T << 8) / delta_count) << 5;
+	therm_b = (actual_tsensor_ft / delta_count * actual_cp) -
+			(actual_tsensor_cp / delta_count * actual_ft);
+
+	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, therm_a);
+	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, therm_b);
+	soctherm_writel(r, TS_CPU0_CONFIG2 + sensor * TS_CONFIG_STATUS_OFFSET);
+
+	return 0;
+}
+
 static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
@@ -622,18 +718,24 @@ static int soctherm_init_platform_data(void)
 	if (therm[THERM_GPU].thermtrip && therm[THERM_MEM].thermtrip)
 		return -EINVAL;
 
-	/* Thermal Sensing programming */
-	for (i = 0; i < TSENSE_SIZE; i++)
-		if (plat_data.sensor_data[i].enable)
-			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
+	if (soctherm_clk_enable(true) < 0)
+		BUG();
 
 	/* Pdiv */
 	r = soctherm_readl(TS_PDIV);
 	r = REG_SET(r, TS_PDIV_CPU, plat_data.sensor_data[TSENSE_CPU0].pdiv);
 	r = REG_SET(r, TS_PDIV_GPU, plat_data.sensor_data[TSENSE_GPU].pdiv);
-	r = REG_SET(r, TS_PDIV_CPU, plat_data.sensor_data[TSENSE_MEM0].pdiv);
-	r = REG_SET(r, TS_PDIV_CPU, plat_data.sensor_data[TSENSE_PLLX].pdiv);
+	r = REG_SET(r, TS_PDIV_MEM, plat_data.sensor_data[TSENSE_MEM0].pdiv);
+	r = REG_SET(r, TS_PDIV_PLLX, plat_data.sensor_data[TSENSE_PLLX].pdiv);
 	soctherm_writel(r, TS_PDIV);
+
+	/* Thermal Sensing programming */
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		if (plat_data.sensor_data[i].enable) {
+			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
+			soctherm_fuse_read_tsensor(i);
+		}
+	}
 
 	for (i = 0; i < THERM_SIZE; i++) {
 		if (plat_data.therm[i].hw_backstop) {
@@ -750,14 +852,14 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 #ifdef CONFIG_DEBUG_FS
 static int cpu0_show(struct seq_file *s, void *data)
 {
-	u32 r, state;
-	r = soctherm_readl(TS_CPU0_STATUS0);
-	state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
-	seq_printf(s, "%d,", state);
+	u32 r;
+	int offset = TSENSE_PLLX * TS_CONFIG_STATUS_OFFSET;
 
-	r = soctherm_readl(TS_CPU0_STATUS1);
-	state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
-	seq_printf(s, "%ld\n", temp_translate(state));
+	r = soctherm_readl(TS_CPU0_CONFIG0 + offset);
+	r = REG_SET(r, TS_CPU0_CONFIG0_TCALC_OVER, 1);
+	r = REG_SET(r, TS_CPU0_CONFIG0_OVER, 1);
+	r = REG_SET(r, TS_CPU0_CONFIG0_CPTR_OVER, 1);
+	soctherm_writel(r, TS_CPU0_CONFIG0 + offset);
 
 	return 0;
 }
