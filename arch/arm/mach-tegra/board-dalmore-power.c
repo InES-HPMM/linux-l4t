@@ -1230,33 +1230,6 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.pdiv = 10,
 		},
 	},
-
-	.therm = {
-		[THERM_CPU] = {
-			.thermtrip = 90, /* in C */
-			.hw_backstop = 37, /* in C */
-
-			.trip_temp = 68000, /* in mC */
-			.tc1 = 0,
-			.tc2 = 1,
-			.passive_delay = 2000,
-		},
-	},
-
-	.throttle = {
-		[THROTTLE_HEAVY] = {
-			.priority = 1,
-			.devs = {
-				[THROTTLE_DEV_CPU] = {
-					.enable = true,
-					.dividend = 1,
-					.divisor = 255,
-					.step = 0,
-					.duration = 65535,
-				},
-			},
-		},
-	},
 };
 
 static struct balanced_throttle tj_throttle = {

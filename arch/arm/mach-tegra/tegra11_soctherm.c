@@ -645,7 +645,7 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	/* Enable Level 0 */
 	r = soctherm_readl(CTL_LVL0_CPU0);
-	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	r = REG_SET(r, CTL_LVL0_CPU0_EN, !!therm[THERM_CPU].trip_temp);
 	soctherm_writel(r, CTL_LVL0_CPU0);
 
 	/* Thermtrip */
