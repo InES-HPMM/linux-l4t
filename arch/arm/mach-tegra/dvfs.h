@@ -25,7 +25,7 @@
 
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
-#define DVFS_RAIL_STATS_TOP_BIN	42
+#define DVFS_RAIL_STATS_TOP_BIN	50
 
 struct clk;
 struct dvfs_rail;
@@ -52,6 +52,7 @@ struct rail_stats {
 	ktime_t last_update;
 	int last_index;
 	bool off;
+	int bin_uV;
 };
 
 struct dvfs_rail {

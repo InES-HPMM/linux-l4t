@@ -540,6 +540,9 @@ void __init tegra11x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_CPU_DVFS
 	tegra_dvfs_cpu_disabled = true;
 #endif
+	/* Setup rail bins */
+	tegra11_dvfs_rail_vdd_cpu.stats.bin_uV = tegra_get_cvb_alignment_uV();
+	tegra11_dvfs_rail_vdd_core.stats.bin_uV = tegra_get_cvb_alignment_uV();
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
