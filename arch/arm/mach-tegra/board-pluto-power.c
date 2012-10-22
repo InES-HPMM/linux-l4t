@@ -29,6 +29,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>
+#include <linux/irq.h>
 
 #include <asm/mach-types.h>
 
@@ -612,6 +613,7 @@ static struct palmas_platform_data palmas_pdata = {
 			(1 << PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_SHIFT)),
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
+	.irq_type = IRQ_TYPE_LEVEL_HIGH,
 };
 
 static struct i2c_board_info palma_device[] = {
