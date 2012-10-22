@@ -3837,6 +3837,7 @@ static struct clk_ops tegra_periph_clk_ops = {
 };
 
 
+#if !defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 /* msenc clock propagation WAR for bug 1005168 */
 static int tegra11_msenc_clk_enable(struct clk *c)
 {
@@ -3860,7 +3861,7 @@ static struct clk_ops tegra_msenc_clk_ops = {
 	.round_rate		= &tegra11_periph_clk_round_rate,
 	.reset			= &tegra11_periph_clk_reset,
 };
-
+#endif
 /* Periph extended clock configuration ops */
 static int
 tegra11_vi_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
