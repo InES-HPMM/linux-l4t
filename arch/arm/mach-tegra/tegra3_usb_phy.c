@@ -1988,7 +1988,64 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val |= EVENT_INT_ENB;
 	writel(val, base + UHSIC_PMC_WAKEUP0);
 
-	DBG("%s:PMC enabled for HSIC remote wakeup\n", __func__);
+	PHY_DBG("%s ENABLE_PMC\n", __func__);
+}
+
+static void uhsic_phy_pmc_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
+{
+	unsigned long val;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+	void __iomem *base = phy->regs;
+	bool port_connected;
+
+	DBG("%s:%d\n", __func__, __LINE__);
+
+	/* check for port connect status */
+	val = readl(base + USB_PORTSC);
+	port_connected = val & USB_PORTSC_CCS;
+
+	if (!port_connected)
+		return;
+
+	/* Make sure wake value for line is none */
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
+	val |= UHSIC_WAKE_VAL(WAKE_VAL_NONE);
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+
+
+	/* turn on pad detectors */
+	val = readl(pmc_base + PMC_USB_AO);
+	val &= ~(STROBE_VAL_PD_P0 | DATA_VAL_PD_P0);
+	writel(val, pmc_base + PMC_USB_AO);
+
+	/* Add small delay before usb detectors provide stable line values */
+	udelay(1);
+
+	/* If it is during remote wakeup, set resume state on the BUS.
+	   If it is during AP resume, set suspend state on the BUS. */
+	val = readl(pmc_base + PMC_SLEEPWALK_UHSIC);
+
+	if (remote_wakeup) {
+		/* Switching PMC from SUSPEND to resume.*/
+		val &= ~UHSIC_DATA_RPD_A;
+		val |=  UHSIC_DATA_RPU_A;
+		val &= ~UHSIC_STROBE_RPU_A;
+		val |=  UHSIC_STROBE_RPD_A;
+	} else {
+		val &= ~UHSIC_DATA_RPU_A;
+		val |=  UHSIC_DATA_RPD_A;
+		val &= ~UHSIC_STROBE_RPD_A;
+		val |=  UHSIC_STROBE_RPU_A;
+	}
+
+	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
+
+	/* Turn over pad configuration to PMC  for line wake events*/
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val |= UHSIC_MASTER_ENABLE;
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+
 }
 
 static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
@@ -2056,11 +2113,48 @@ static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 
 static int uhsic_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
+	void __iomem *base = phy->regs;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+	unsigned long val;
+
 	DBG("%s(%d)\n", __func__, __LINE__);
 
-	if (!remote_wakeup)
-		usb_phy_wait_for_sof(phy);
+	/* Clear the run bit to stop SOFs - 2LS WAR */
+	val = readl(base + USB_USBCMD);
+	val &= ~USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
 
+	if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_HCH,
+						 USB_USBSTS_HCH, 2000)) {
+		pr_err("%s: timeout waiting for USB_USBSTS_HCH\n", __func__);
+	}
+
+	/* disable USB interrupts */
+	writel(0, base + USB_USBINTR);
+
+	/* If PMC is not enabled, enable it. */
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	if (!(val & UHSIC_MASTER_ENABLE_P0)) {
+		/** set PMC lines in suspend and enable the master */
+		uhsic_phy_pmc_resume(phy, remote_wakeup);
+	} else {
+		val = readl(pmc_base + PMC_SLEEP_CFG);
+		val &= ~UHSIC_WAKE_VAL(WAKE_VAL_ANY);
+		val |= UHSIC_WAKE_VAL(WAKE_VAL_NONE);
+		writel(val, pmc_base + PMC_SLEEP_CFG);
+	}
+
+	val = readl(base + UHSIC_PADS_CFG1);
+	val |= UHSIC_PD_TX;
+	writel(val, base + UHSIC_PADS_CFG1);
+
+	/* Driving Resume using PMC */
+	val = readl(pmc_base + PMC_SLEEPWALK_UHSIC);
+	val &= ~UHSIC_DATA_RPD_A;
+	val |=  UHSIC_DATA_RPU_A;
+	val &= ~UHSIC_STROBE_RPU_A;
+	val |=  UHSIC_STROBE_RPD_A;
+	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
 	return 0;
 }
 
@@ -2068,14 +2162,43 @@ static int uhsic_phy_post_resume(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+	unsigned long flags;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	local_irq_save(flags);
+	val = readl(pmc_base + PMC_SLEEPWALK_UHSIC);
+	val &= ~(UHSIC_DATA_RPU_A | UHSIC_STROBE_RPD_A);
+	val |= (UHSIC_DATA_RPD_A | UHSIC_STROBE_RPU_A);
+	writel(val, pmc_base + PMC_SLEEPWALK_UHSIC);
+
+	udelay(3);
+
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~UHSIC_PD_TX;
+	writel(val, base + UHSIC_PADS_CFG1);
+
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	val &= ~(UHSIC_MASTER_ENABLE);
+	writel(val, pmc_base + PMC_SLEEP_CFG);
+
+	/* clear pending SRI, PCI interrupts. ehci will enable interrupts */
+	val = readl(base + USB_USBSTS);
+	writel(val, base + USB_USBSTS);
+
+	val = readl(base + USB_USBCMD);
+	val |= USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
+	local_irq_restore(flags);
+
+	uhsic_phy_disable_pmc_bus_ctrl(phy);
+
 	val = readl(base + USB_TXFILLTUNING);
 	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
 		val = USB_FIFO_TXFILL_THRES(0x10);
 		writel(val, base + USB_TXFILLTUNING);
 	}
-
 	return 0;
 }
 
@@ -2121,9 +2244,6 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 			wait_time_us--;
 		} while (val & (USB_PORTSC_RESUME | USB_PORTSC_SUSP));
 
-		/* disable PMC master control */
-		uhsic_phy_disable_pmc_bus_ctrl(phy);
-
 		/* Clear PCI and SRI bits to avoid an interrupt upon resume */
 		val = readl(base + USB_USBSTS);
 		writel(val, base + USB_USBSTS);
@@ -2133,18 +2253,6 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 			pr_warn("%s: timeout waiting for SOF\n", __func__);
 		}
 		uhsic_phy_post_resume(phy);
-
-		/* Set RUN bit */
-		val = readl(base + USB_USBCMD);
-		val |= USB_USBCMD_RS;
-		writel(val, base + USB_USBCMD);
-		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
-							 USB_USBCMD_RS, 2000)) {
-			pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
-			return;
-		}
-	} else {
-		uhsic_phy_disable_pmc_bus_ctrl(phy);
 	}
 }
 
@@ -2367,9 +2475,6 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 					__func__, __LINE__, phy->inst);
 		return 0;
 	}
-
-	phy->port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
-			HOSTPC1_DEVLC_PSPD_MASK;
 
 	/* Disable interrupts */
 	writel(0, base + USB_USBINTR);
