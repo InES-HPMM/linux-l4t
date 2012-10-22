@@ -46,3 +46,13 @@ config USB_TMC
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called usbtmc.
+
+config USB_KPI
+	tristate "USB KPI Measurement"
+	depends on USB
+	help
+	  Say Y here if you want to measure the usb write and read
+	  throughput.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called nv-usb.
