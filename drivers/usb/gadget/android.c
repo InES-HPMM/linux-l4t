@@ -30,6 +30,7 @@
 
 #include "gadget_chips.h"
 
+#include "f_nvusb.c"
 #include "f_fs.c"
 #include "f_audio_source.c"
 #include "f_mass_storage.c"
@@ -936,6 +937,31 @@ static struct android_usb_function audio_source_function = {
 	.attributes	= audio_source_function_attributes,
 };
 
+static int
+nvusb_function_init(struct android_usb_function *f,
+		struct usb_composite_dev *cdev)
+{
+	return 0;
+}
+
+static void nvusb_function_cleanup(struct android_usb_function *f)
+{
+}
+
+static int
+nvusb_function_bind_config(struct android_usb_function *f,
+		struct usb_configuration *c)
+{
+	return nvusb_bind_config(c);
+}
+
+static struct android_usb_function nvusb_function = {
+	.name		= "nvusb",
+	.init		= nvusb_function_init,
+	.cleanup	= nvusb_function_cleanup,
+	.bind_config	= nvusb_function_bind_config,
+};
+
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
 	&acm_function,
@@ -945,6 +971,7 @@ static struct android_usb_function *supported_functions[] = {
 	&mass_storage_function,
 	&accessory_function,
 	&audio_source_function,
+	&nvusb_function,
 	NULL
 };
 
