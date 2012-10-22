@@ -17,14 +17,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-enum {
-	ISOMGR_CLIENT_DISP_0,
-	ISOMGR_CLIENT_DISP_1,
-	ISOMGR_CLIENT_VI_0,
-	ISOMGR_CLIENT_VI_1,
-	ISOMGR_CLIENT_ISP_0,
-	ISOMGR_CLIENT_ISP_1,
-	ISOMGR_CLIENT_COUNT
+#include "mach/latency_allowance.h"
+
+enum tegra_iso_client {
+	TEGRA_ISO_CLIENT_DISP_0,
+	TEGRA_ISO_CLIENT_DISP_1,
+	TEGRA_ISO_CLIENT_VI_0,
+	TEGRA_ISO_CLIENT_COUNT
 };
 
 /* handle to identify registered client */
@@ -34,7 +33,7 @@ enum {
 typedef void (*tegra_isomgr_renegotiate)(void *priv);
 
 /* register an ISO BW client */
-tegra_isomgr_handle tegra_isomgr_register(int client,
+tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 					  u32 dedicated_bw,	/* KB/sec */
 					  tegra_isomgr_renegotiate renegotiate,
 					  void *priv);
@@ -44,8 +43,8 @@ void tegra_isomgr_unregister(tegra_isomgr_handle handle);
 
 /* reserve ISO BW on behalf of client - don't apply, rval is dvfs thresh usec */
 u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
-			  u32 bw,	/* KB/sec */
-			  u32 lt);	/* usec */
+			 u32 bw,	/* KB/sec */
+			 u32 lt);	/* usec */
 
 /* realize client reservation - apply settings, rval is dvfs thresh usec */
 u32 tegra_isomgr_realize(tegra_isomgr_handle handle);
