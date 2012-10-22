@@ -530,6 +530,7 @@ static struct platform_device *pfixed_reg_devs[] = {
 #endif
 };
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param pluto_cl_dvfs_param = {
 	.sample_rate = 12500,
@@ -543,6 +544,7 @@ static struct tegra_cl_dvfs_cfg_param pluto_cl_dvfs_param = {
 	.droop_restore_ramp = 0x0,
 	.scale_out_ramp = 0x0,
 };
+#endif
 
 /* palmas: fixed 10mV steps from 600mV to 1400mV, with offset 0x10 */
 #define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
@@ -556,6 +558,7 @@ static inline void fill_reg_map(void)
 	}
 }
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct tegra_cl_dvfs_platform_data pluto_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
@@ -578,6 +581,7 @@ static int __init pluto_cl_dvfs_init(void)
 
 	return 0;
 }
+#endif
 
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
@@ -619,7 +623,9 @@ int __init pluto_regulator_init(void)
 	u32 pmc_ctrl;
 	int i;
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	pluto_cl_dvfs_init();
+#endif
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU

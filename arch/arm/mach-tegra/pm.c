@@ -184,7 +184,9 @@ struct suspend_context tegra_sctx;
 #define MC_SECURITY_SIZE	0x70
 #define MC_SECURITY_CFG2	0x7c
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct clk *tegra_dfll;
+#endif
 static struct clk *tegra_pclk;
 static const struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
@@ -251,18 +253,22 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 
 static void suspend_cpu_dfll_mode(void)
 {
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	/* If DFLL is used as CPU clock source go to open loop mode */
 	if (!is_lp_cluster() && tegra_dfll &&
 	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 0);
+#endif
 }
 
 static void resume_cpu_dfll_mode(void)
 {
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	/* If DFLL is used as CPU clock source restore closed loop mode */
 	if (!is_lp_cluster() && tegra_dfll &&
 	    tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
 		tegra_clk_cfg_ex(tegra_dfll, TEGRA_CLK_DFLL_LOCK, 1);
+#endif
 }
 
 /*

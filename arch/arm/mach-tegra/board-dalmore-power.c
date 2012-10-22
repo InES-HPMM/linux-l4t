@@ -999,7 +999,7 @@ static struct tegra_suspend_platform_data dalmore_suspend_data = {
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
 };
-
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
 static struct tegra_cl_dvfs_cfg_param dalmore_cl_dvfs_param = {
 	.sample_rate = 12500,
@@ -1013,6 +1013,7 @@ static struct tegra_cl_dvfs_cfg_param dalmore_cl_dvfs_param = {
 	.droop_restore_ramp = 0x0,
 	.scale_out_ramp = 0x0,
 };
+#endif
 
 /* TPS51632: fixed 10mV steps from 600mV to 1400mV, with offset 0x23 */
 #define PMU_CPU_VDD_MAP_SIZE ((1400000 - 600000) / 10000 + 1)
@@ -1026,6 +1027,7 @@ static inline void fill_reg_map(void)
 	}
 }
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static struct tegra_cl_dvfs_platform_data dalmore_cl_dvfs_data = {
 	.dfll_clk_name = "dfll_cpu",
 	.pmu_if = TEGRA_CL_DVFS_PMU_I2C,
@@ -1048,6 +1050,7 @@ static int __init dalmore_cl_dvfs_init(void)
 
 	return 0;
 }
+#endif
 
 static int __init dalmore_max77663_regulator_init(void)
 {
@@ -1110,9 +1113,9 @@ int __init dalmore_regulator_init(void)
 	struct board_info board_info;
 	i2c_register_board_info(4, tps65090_regulators,
 			ARRAY_SIZE(tps65090_regulators));
-
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	dalmore_cl_dvfs_init();
-
+#endif
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1611)
 		dalmore_palmas_regulator_init();
