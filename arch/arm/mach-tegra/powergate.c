@@ -877,7 +877,7 @@ static int partition_clk_enable(int id)
 			break;
 
 		if (clk_info->clk_type != RST_ONLY) {
-			ret = clk_prepare_enable(clk);
+			ret = tegra_clk_prepare_enable(clk);
 			if (ret)
 				goto err_clk_en;
 		}
@@ -890,7 +890,7 @@ err_clk_en:
 	while (idx--) {
 		clk_info = &powergate_partition_info[id].clk_info[idx];
 		if (clk_info->clk_type != RST_ONLY)
-			clk_disable_unprepare(clk_info->clk_ptr);
+			tegra_clk_disable_unprepare(clk_info->clk_ptr);
 	}
 
 	return ret;
@@ -947,7 +947,7 @@ static void partition_clk_disable(int id)
 			break;
 
 		if (clk_info->clk_type != RST_ONLY)
-			clk_disable_unprepare(clk);
+			tegra_clk_disable_unprepare(clk);
 	}
 }
 
