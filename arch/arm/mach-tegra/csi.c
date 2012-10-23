@@ -37,7 +37,7 @@ int tegra_vi_csi_writel(u32 val, u32 offset)
 			return -EINVAL;
 		}
 	}
-	clk_enable(vi_clk);
+	tegra_clk_prepare_enable(vi_clk);
 
 	if (csi_clk == NULL) {
 		csi_clk = tegra_get_clock_by_name("csi");
@@ -46,12 +46,12 @@ int tegra_vi_csi_writel(u32 val, u32 offset)
 			return -EINVAL;
 		}
 	}
-	clk_enable(csi_clk);
+	tegra_clk_prepare_enable(csi_clk);
 
 	writel(val, IO_TO_VIRT(TEGRA_VI_BASE) + offset * 4);
 
-	clk_disable(csi_clk);
-	clk_disable(vi_clk);
+	tegra_clk_disable_unprepare(csi_clk);
+	tegra_clk_disable_unprepare(vi_clk);
 	return 0;
 }
 
@@ -64,7 +64,7 @@ int tegra_vi_csi_readl(u32 offset, u32 *val)
 			return -EINVAL;
 		}
 	}
-	clk_enable(vi_clk);
+	tegra_clk_prepare_enable(vi_clk);
 
 	if (csi_clk == NULL) {
 		csi_clk = tegra_get_clock_by_name("csi");
@@ -73,12 +73,12 @@ int tegra_vi_csi_readl(u32 offset, u32 *val)
 			return -EINVAL;
 		}
 	}
-	clk_enable(csi_clk);
+	tegra_clk_prepare_enable(csi_clk);
 
 	*val = readl(IO_TO_VIRT(TEGRA_VI_BASE) + offset * 4);
 
-	clk_disable(csi_clk);
-	clk_disable(vi_clk);
+	tegra_clk_disable_unprepare(csi_clk);
+	tegra_clk_disable_unprepare(vi_clk);
 
 	return 0;
 }
