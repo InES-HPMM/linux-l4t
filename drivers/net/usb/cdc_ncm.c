@@ -1252,6 +1252,22 @@ static const struct usb_device_id cdc_devs[] = {
 	  .driver_info = (unsigned long)&wwan_noarp_info,
 	},
 
+	/* Icera USB_PROFILE_IAD_5AN */
+	{
+		.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
+			| USB_DEVICE_ID_MATCH_DEVICE,
+		USB_DEVICE(0x1983, 0x0427),
+		.driver_info = (unsigned long)&wwan_info,
+	},
+
+	/* Icera USB_PROFILE_IAD_5AN (BSD) */
+	{
+		.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
+			| USB_DEVICE_ID_MATCH_DEVICE,
+		USB_DEVICE(0x1983, 0x1005),
+		.driver_info = (unsigned long)&wwan_info,
+	},
+
 	/* Generic CDC-NCM devices */
 	{ USB_INTERFACE_INFO(USB_CLASS_COMM,
 		USB_CDC_SUBCLASS_NCM, USB_CDC_PROTO_NONE),
