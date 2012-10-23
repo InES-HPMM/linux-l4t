@@ -3,7 +3,7 @@
  *
  * Nvhost event logging to ftrace.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,6 +82,38 @@ TRACE_EVENT(podgov_enabled,
 	),
 
 	TP_printk("scaling_enabled=%d", __entry->enable)
+);
+
+TRACE_EVENT(podgov_set_user_ctl,
+	TP_PROTO(int user_ctl),
+
+	TP_ARGS(user_ctl),
+
+	TP_STRUCT__entry(
+		__field(int, user_ctl)
+	),
+
+	TP_fast_assign(
+		__entry->user_ctl = user_ctl;
+	),
+
+	TP_printk("userspace control=%d", __entry->user_ctl)
+);
+
+TRACE_EVENT(podgov_set_freq_request,
+	TP_PROTO(int freq_request),
+
+	TP_ARGS(freq_request),
+
+	TP_STRUCT__entry(
+		__field(int, freq_request)
+	),
+
+	TP_fast_assign(
+		__entry->freq_request = freq_request;
+	),
+
+	TP_printk("freq_request=%d", __entry->freq_request)
 );
 
 TRACE_EVENT(podgov_busy,
