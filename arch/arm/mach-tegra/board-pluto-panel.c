@@ -137,6 +137,12 @@ static struct resource pluto_disp1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 #endif
+	{
+		.name	= "mipi_cal",
+		.start	= TEGRA_MIPI_CAL_BASE,
+		.end	= TEGRA_MIPI_CAL_BASE + TEGRA_MIPI_CAL_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
 };
 
 static struct resource pluto_disp2_resources[] = {

@@ -127,6 +127,12 @@ static struct resource dalmore_disp1_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 #endif
+	{
+		.name	= "mipi_cal",
+		.start	= TEGRA_MIPI_CAL_BASE,
+		.end	= TEGRA_MIPI_CAL_BASE + TEGRA_MIPI_CAL_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
 };
 
 static struct resource dalmore_disp2_resources[] = {
