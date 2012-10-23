@@ -171,8 +171,8 @@ struct powergate_partition {
 
 static struct powergate_partition powergate_partition_info[TEGRA_NUM_POWERGATE] = {
 	[TEGRA_POWERGATE_CPU]	= { "cpu0",	{MC_CLIENT_LAST}, },
-	[TEGRA_POWERGATE_L2]	= { "l2",	{MC_CLIENT_LAST}, },
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	[TEGRA_POWERGATE_L2]	= { "l2",	{MC_CLIENT_LAST}, },
 	[TEGRA_POWERGATE_3D]	= { "3d0",
 #else
 	[TEGRA_POWERGATE_3D]	= { "3d",
@@ -1094,18 +1094,12 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 	 */
 	static int skip_pg_t11x_list[] = {
 		/*
-		 * CPU power gate enable/disable done
-		 * from cpu power management code
+		 * CPU and 3D partitions enable/disable
+		 * is managed by respective modules
 		 */
-		TEGRA_POWERGATE_CRAIL,
 		TEGRA_POWERGATE_VENC,
-		TEGRA_POWERGATE_PCIE,
 		TEGRA_POWERGATE_VDEC,
-		TEGRA_POWERGATE_L2,
-		TEGRA_POWERGATE_SATA,
-		TEGRA_POWERGATE_CELP,
-		TEGRA_POWERGATE_C0NC,
-		TEGRA_POWERGATE_C1NC,
+		TEGRA_POWERGATE_MPE,
 		TEGRA_POWERGATE_DISA,
 		TEGRA_POWERGATE_DISB,
 		TEGRA_POWERGATE_XUSBA,
