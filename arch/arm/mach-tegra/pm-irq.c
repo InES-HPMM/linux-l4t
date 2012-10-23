@@ -120,6 +120,11 @@ static inline u64 read_pmc_wake_status(void)
 	return reg;
 }
 
+u64 tegra_read_pmc_wake_status(void)
+{
+	return read_pmc_wake_status();
+}
+
 static inline u64 read_pmc_sw_wake_status(void)
 {
 	u64 reg;
