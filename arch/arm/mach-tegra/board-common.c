@@ -124,7 +124,7 @@ int uart_console_debug_init(int default_debug_port)
 		else
 			clk_set_parent(debug_uart_clk, c);
 
-		clk_enable(debug_uart_clk);
+		tegra_clk_prepare_enable(debug_uart_clk);
 		clk_set_rate(debug_uart_clk, clk_get_rate(c));
 	} else {
 		pr_err("Not getting the clock for debug consolei %d\n",
