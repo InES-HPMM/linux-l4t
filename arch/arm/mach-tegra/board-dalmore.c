@@ -592,7 +592,6 @@ static void __init tegra_dalmore_init(void)
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	dalmore_regulator_init();
-	dalmore_sensors_init();
 	dalmore_sdhci_init();
 	dalmore_suspend_init();
 	dalmore_touch_init();
