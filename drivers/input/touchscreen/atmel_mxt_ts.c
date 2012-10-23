@@ -22,6 +22,8 @@
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
+#include <linux/regulator/consumer.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvevent.h>
 
@@ -312,6 +314,8 @@ struct mxt_data {
 	const struct mxt_platform_data *pdata;
 	enum mxt_device_state state;
 	struct mxt_object *object_table;
+	struct regulator *regulator_vdd;
+	struct regulator *regulator_avdd;
 	u16 mem_size;
 	struct mxt_info info;
 	unsigned int irq;
@@ -1808,6 +1812,54 @@ static int mxt_read_resolution(struct mxt_data *data)
 	return 0;
 }
 
+static void mxt_initialize_regulator(struct mxt_data *data)
+{
+	int ret;
+	struct i2c_client *client = data->client;
+
+	/*
+		Vdd and AVdd can be powered up in any order
+		XVdd must not be powered up until after Vdd
+		and must obey the rate-of-rise specification
+	*/
+
+	data->regulator_vdd = devm_regulator_get(&client->dev, "vdd");
+	if (IS_ERR(data->regulator_vdd)) {
+		dev_info(&client->dev,
+			"Atmel regulator_get for vdd failed: %ld\n",
+						PTR_ERR(data->regulator_vdd));
+		goto err_null_regulator;
+	}
+
+	data->regulator_avdd = devm_regulator_get(&client->dev, "avdd");
+	if (IS_ERR(data->regulator_avdd)) {
+		dev_info(&client->dev,
+			"Atmel regulator_get for avdd failed: %ld\n",
+						PTR_ERR(data->regulator_avdd));
+		goto err_put_regulator;
+	}
+
+	dev_info(&client->dev,
+		"Atmel regulator_get for vdd and avdd succeeded\n");
+
+	ret = regulator_enable(data->regulator_vdd);
+	if (ret < 0)
+		dev_err(&client->dev,
+		"Atmel regulator_enable for vdd failed; Error code:%d\n", ret);
+
+	ret = regulator_enable(data->regulator_avdd);
+	if (ret < 0)
+		dev_err(&client->dev,
+		"Atmel regulator_enable for avdd failed; Error code:%d\n", ret);
+	return;
+
+err_put_regulator:
+	devm_regulator_put(data->regulator_vdd);
+err_null_regulator:
+	data->regulator_avdd = NULL;
+	data->regulator_vdd = NULL;
+}
+
 static int mxt_initialize(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -2485,10 +2537,12 @@ static int mxt_probe(struct i2c_client *client,
 	data->pdata = pdata;
 	data->irq = client->irq;
 
+	mxt_initialize_regulator(data);
+
 	/* Initialize i2c device */
 	error = mxt_initialize(data);
 	if (error)
-		goto err_free_data;
+		goto err_disable_regulator;
 
 	error = mxt_initialize_input_device(data);
 	if (error)
@@ -2533,6 +2587,9 @@ err_free_input_device:
 err_free_object:
 	kfree(data->msg_buf);
 	kfree(data->object_table);
+err_disable_regulator:
+	regulator_disable(data->regulator_avdd);
+	regulator_disable(data->regulator_vdd);
 err_free_data:
 	kfree(data);
 	return error;
@@ -2550,6 +2607,8 @@ static int mxt_remove(struct i2c_client *client)
 	data->msg_buf = NULL;
 	kfree(data->object_table);
 	data->object_table = NULL;
+	regulator_disable(data->regulator_avdd);
+	regulator_disable(data->regulator_vdd);
 	kfree(data);
 	data = NULL;
 
@@ -2559,6 +2618,7 @@ static int mxt_remove(struct i2c_client *client)
 #ifdef CONFIG_PM_SLEEP
 static int mxt_suspend(struct device *dev)
 {
+	int ret;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
@@ -2570,14 +2630,41 @@ static int mxt_suspend(struct device *dev)
 
 	mutex_unlock(&input_dev->mutex);
 
+	if (data->regulator_vdd && data->regulator_avdd) {
+		ret = regulator_disable(data->regulator_avdd);
+		if (ret < 0) {
+			dev_err(dev,
+			"Atmel regulator disable for avdd failed: %d\n", ret);
+		}
+		ret = regulator_disable(data->regulator_vdd);
+		if (ret < 0) {
+			dev_err(dev,
+			"Atmel regulator disable for vdd failed: %d\n", ret);
+		}
+	}
+
 	return 0;
 }
 
 static int mxt_resume(struct device *dev)
 {
+	int ret;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
+
+	if (data->regulator_vdd && data->regulator_avdd) {
+		ret = regulator_enable(data->regulator_vdd);
+		if (ret < 0) {
+			dev_err(dev,
+			"Atmel regulator enable for vdd failed: %d\n", ret);
+		}
+		ret = regulator_enable(data->regulator_avdd);
+		if (ret < 0) {
+			dev_err(dev,
+			"Atmel regulator enable for avdd failed: %d\n", ret);
+		}
+	}
 
 	mutex_lock(&input_dev->mutex);
 
