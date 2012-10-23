@@ -263,8 +263,8 @@ static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
 	if (nvavp->clk_enabled++ == 0) {
 		nvhost_module_busy_ext(nvhost_get_parent(nvavp->nvhost_dev));
-		clk_enable(nvavp->bsev_clk);
-		clk_enable(nvavp->vde_clk);
+		clk_prepare_enable(nvavp->bsev_clk);
+		clk_prepare_enable(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
 		clk_set_rate(nvavp->sclk, nvavp->sclk_rate);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: setting sclk to %lu\n",
@@ -277,8 +277,8 @@ static void nvavp_clks_enable(struct nvavp_info *nvavp)
 static void nvavp_clks_disable(struct nvavp_info *nvavp)
 {
 	if (--nvavp->clk_enabled == 0) {
-		clk_disable(nvavp->bsev_clk);
-		clk_disable(nvavp->vde_clk);
+		clk_disable_unprepare(nvavp->bsev_clk);
+		clk_disable_unprepare(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
 		nvhost_module_idle_ext(nvhost_get_parent(nvavp->nvhost_dev));
@@ -412,8 +412,8 @@ static int nvavp_reset_avp(struct nvavp_info *nvavp, unsigned long reset_addr)
 
 	writel(reset_addr, TEGRA_NVAVP_RESET_VECTOR_ADDR);
 
-	clk_enable(nvavp->sclk);
-	clk_enable(nvavp->emc_clk);
+	clk_prepare_enable(nvavp->sclk);
+	clk_prepare_enable(nvavp->emc_clk);
 
 	/* If sclk_rate and emc_clk is not set by user space,
 	 * max clock in dvfs table will be used to get best performance.
@@ -1034,8 +1034,8 @@ static void nvavp_uninit(struct nvavp_info *nvavp)
 	if (video_initialized == audio_initialized) {
 		pr_debug("nvavp_uninit both channels unitialized\n");
 
-		clk_disable(nvavp->sclk);
-		clk_disable(nvavp->emc_clk);
+		clk_disable_unprepare(nvavp->sclk);
+		clk_disable_unprepare(nvavp->emc_clk);
 		disable_irq(nvavp->mbox_from_avp_pend_irq);
 		nvavp_pushbuffer_deinit(nvavp);
 		nvavp_halt_avp(nvavp);
@@ -1065,11 +1065,11 @@ static int nvavp_set_clock_ioctl(struct file *filp, unsigned int cmd,
 	if (IS_ERR_OR_NULL(c))
 		return -EINVAL;
 
-	clk_enable(c);
+	clk_prepare_enable(c);
 	clk_set_rate(c, config.rate);
 
 	config.rate = clk_get_rate(c);
-	clk_disable(c);
+	clk_disable_unprepare(c);
 	if (copy_to_user((void __user *)arg, &config, sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
 
@@ -1091,9 +1091,9 @@ static int nvavp_get_clock_ioctl(struct file *filp, unsigned int cmd,
 	if (IS_ERR_OR_NULL(c))
 		return -EINVAL;
 
-	clk_enable(c);
+	clk_prepare_enable(c);
 	config.rate = clk_get_rate(c);
-	clk_disable(c);
+	clk_disable_unprepare(c);
 
 	if (copy_to_user((void __user *)arg, &config, sizeof(struct nvavp_clock_args)))
 		return -EFAULT;
@@ -1310,9 +1310,9 @@ static int nvavp_enable_audio_clocks(struct file *filp, unsigned int cmd,
 			__func__, config.id);
 
 	if (config.id == NVAVP_MODULE_ID_VCP)
-		clk_enable(nvavp->vcp_clk);
+		clk_prepare_enable(nvavp->vcp_clk);
 	else if	(config.id == NVAVP_MODULE_ID_BSEA)
-		clk_enable(nvavp->bsea_clk);
+		clk_prepare_enable(nvavp->bsea_clk);
 
 	return 0;
 }
@@ -1331,9 +1331,9 @@ static int nvavp_disable_audio_clocks(struct file *filp, unsigned int cmd,
 			__func__, config.id);
 
 	if (config.id == NVAVP_MODULE_ID_VCP)
-		clk_disable(nvavp->vcp_clk);
+		clk_disable_unprepare(nvavp->vcp_clk);
 	else if	(config.id == NVAVP_MODULE_ID_BSEA)
-		clk_disable(nvavp->bsea_clk);
+		clk_disable_unprepare(nvavp->bsea_clk);
 
 	return 0;
 }
