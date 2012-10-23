@@ -992,7 +992,7 @@ static int tegra_emc_suspend_notify(struct notifier_block *nb,
 		return NOTIFY_OK;
 
 	if (dram_type == DRAM_TYPE_DDR3) {
-		if (clk_enable(bridge)) {
+		if (clk_prepare_enable(bridge)) {
 			pr_info("Tegra emc suspend:"
 				" failed to enable bridge.emc\n");
 			return NOTIFY_STOP;
@@ -1013,7 +1013,7 @@ static int tegra_emc_resume_notify(struct notifier_block *nb,
 		return NOTIFY_OK;
 
 	if (dram_type == DRAM_TYPE_DDR3) {
-		clk_disable(bridge);
+		clk_disable_unprepare(bridge);
 		pr_info("Tegra emc resume: disabled bridge.emc\n");
 	}
 	return NOTIFY_OK;
