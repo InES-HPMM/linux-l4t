@@ -33,6 +33,7 @@
 #include "tegra_usb_phy.h"
 #include "gpio-names.h"
 #include "fuse.h"
+#include "clock.h"
 
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
@@ -793,7 +794,7 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 	if (init_done)
 		return;
 
-	clk_enable(phy->utmi_pad_clk);
+	tegra_clk_prepare_enable(phy->utmi_pad_clk);
 	/* Bias pad MASTER_ENABLE=1 */
 	val = readl(pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
 	val |= BIAS_MASTER_PROG_VAL;
@@ -844,7 +845,7 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
 	val = PMC_TCTRL_VAL(utmip_tctrl_val) | PMC_RCTRL_VAL(utmip_rctrl_val);
 	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
-	clk_disable(phy->utmi_pad_clk);
+	tegra_clk_disable_unprepare(phy->utmi_pad_clk);
 	init_done = true;
 }
 
@@ -1173,7 +1174,7 @@ static int utmi_phy_pad_power_on(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-	clk_enable(phy->utmi_pad_clk);
+	tegra_clk_prepare_enable(phy->utmi_pad_clk);
 
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 	utmip_pad_count++;
@@ -1186,7 +1187,7 @@ static int utmi_phy_pad_power_on(struct tegra_usb_phy *phy)
 
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 
-	clk_disable(phy->utmi_pad_clk);
+	tegra_clk_disable_unprepare(phy->utmi_pad_clk);
 
 	return 0;
 }
@@ -1198,7 +1199,7 @@ static int utmi_phy_pad_power_off(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-	clk_enable(phy->utmi_pad_clk);
+	tegra_clk_prepare_enable(phy->utmi_pad_clk);
 	spin_lock_irqsave(&utmip_pad_lock, flags);
 
 	if (!utmip_pad_count) {
@@ -1214,7 +1215,7 @@ static int utmi_phy_pad_power_off(struct tegra_usb_phy *phy)
 	}
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
-	clk_disable(phy->utmi_pad_clk);
+	tegra_clk_disable_unprepare(phy->utmi_pad_clk);
 
 	return 0;
 }
