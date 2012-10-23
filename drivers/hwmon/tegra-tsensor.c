@@ -1779,11 +1779,15 @@ static int tsensor_bind(struct thermal_zone_device *thz,
 	struct tegra_tsensor_data *data = thz->devdata;
 
 	if (cdev == data->plat_data.passive.cdev)
-		return thermal_zone_bind_cooling_device(thz, 0, cdev);
+		return thermal_zone_bind_cooling_device(thz, 0, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	for (i = 0; data->plat_data.active[i].cdev; i++)
 		if (cdev == data->plat_data.active[i].cdev)
-			return thermal_zone_bind_cooling_device(thz, i+1, cdev);
+			return thermal_zone_bind_cooling_device(thz, i+1, cdev,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	return 0;
 }
