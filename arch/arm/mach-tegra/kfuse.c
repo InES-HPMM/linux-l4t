@@ -84,7 +84,7 @@ int tegra_kfuse_read(void *dest, size_t len)
 		}
 	}
 
-	err = clk_enable(kfuse_clk);
+	err = clk_prepare_enable(kfuse_clk);
 	if (err)
 		return err;
 
@@ -93,13 +93,13 @@ int tegra_kfuse_read(void *dest, size_t len)
 	err = wait_for_done();
 	if (err) {
 		pr_err("kfuse: read timeout\n");
-		clk_disable(kfuse_clk);
+		clk_disable_unprepare(kfuse_clk);
 		return err;
 	}
 
 	if ((tegra_kfuse_readl(KFUSE_STATE) & KFUSE_STATE_CRCPASS) == 0) {
 		pr_err("kfuse: crc failed\n");
-		clk_disable(kfuse_clk);
+		clk_disable_unprepare(kfuse_clk);
 		return -EIO;
 	}
 
@@ -108,7 +108,7 @@ int tegra_kfuse_read(void *dest, size_t len)
 		memcpy(dest + cnt, &v, sizeof v);
 	}
 
-	clk_disable(kfuse_clk);
+	clk_disable_unprepare(kfuse_clk);
 
 	return 0;
 }
