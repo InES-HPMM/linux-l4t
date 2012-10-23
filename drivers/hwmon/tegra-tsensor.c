@@ -1978,8 +1978,6 @@ static int tegra_tsensor_probe(struct platform_device *pdev)
 					0x0,
 					data,
 					&tsensor_ops,
-					tsensor_data->passive.tc1,
-					tsensor_data->passive.tc2,
 					tsensor_data->passive.passive_delay,
 					0);
 	if (IS_ERR_OR_NULL(data->thz))
