@@ -151,7 +151,7 @@
 #define SPI_TX_FIFO			0x108
 #define SPI_RX_FIFO			0x188
 #define MAX_CHIP_SELECT			4
-#define SPI_FIFO_DEPTH			32
+#define SPI_FIFO_DEPTH			64
 #define DATA_DIR_TX			(1 << 0)
 #define DATA_DIR_RX			(1 << 1)
 
