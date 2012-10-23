@@ -40,6 +40,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
+#include <linux/clk.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
@@ -1041,7 +1042,7 @@ static int tegra_pcie_power_off(void)
 	}
 	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pll_e)
-		clk_disable(tegra_pcie.pll_e);
+		clk_disable_unprepare(tegra_pcie.pll_e);
 
 	err = tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 	if (err)
