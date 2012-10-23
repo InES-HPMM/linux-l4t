@@ -1380,13 +1380,13 @@ EXPORT_SYMBOL(debug_uart_clk);
 void tegra_console_uart_suspend(void)
 {
 	if (console_suspend_enabled && debug_uart_clk)
-		clk_disable(debug_uart_clk);
+		tegra_clk_disable_unprepare(debug_uart_clk);
 }
 
 void tegra_console_uart_resume(void)
 {
 	if (console_suspend_enabled && debug_uart_clk)
-		clk_enable(debug_uart_clk);
+		tegra_clk_prepare_enable(debug_uart_clk);
 }
 
 static int tegra_debug_uart_syscore_init(void)
