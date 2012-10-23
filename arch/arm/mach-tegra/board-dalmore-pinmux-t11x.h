@@ -286,5 +286,5 @@ static struct gpio_init_pin_info init_gpio_mode_dalmore_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN7, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5, true, 1),
 };
