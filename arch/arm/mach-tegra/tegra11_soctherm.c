@@ -626,8 +626,6 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 					data->therm[i].cdev ? 0x1 : 0,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
-					data->therm[i].tc1,
-					data->therm[i].tc2,
 					data->therm[i].passive_delay,
 					0);
 #endif
