@@ -347,7 +347,9 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 		return 0;
 
 	if (plat_data.therm[index].cdev == cdevice)
-		return thermal_zone_bind_cooling_device(thz, 0, cdevice);
+		return thermal_zone_bind_cooling_device(thz, 0, cdevice,
+							THERMAL_NO_LIMIT,
+							THERMAL_NO_LIMIT);
 
 	return 0;
 }
