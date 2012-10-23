@@ -338,7 +338,7 @@ int tegra_fuse_read(enum fuse_io_param io_param, u32 *data, int size)
 
 	mutex_lock(&fuse_lock);
 
-	clk_enable(clk_fuse);
+	clk_prepare_enable(clk_fuse);
 	fuse_cmd_sense();
 
 	if (io_param == SBK_DEVKEY_STATUS) {
@@ -355,7 +355,7 @@ int tegra_fuse_read(enum fuse_io_param io_param, u32 *data, int size)
 		get_fuse(io_param, data);
 	}
 
-	clk_disable(clk_fuse);
+	clk_disable_unprepare(clk_fuse);
 	mutex_unlock(&fuse_lock);
 
 	return 0;
@@ -365,9 +365,9 @@ static bool fuse_odm_prod_mode(void)
 {
 	u32 odm_prod_mode = 0;
 
-	clk_enable(clk_fuse);
+	clk_prepare_enable(clk_fuse);
 	get_fuse(ODM_PROD_MODE, &odm_prod_mode);
-	clk_disable(clk_fuse);
+	clk_disable_unprepare(clk_fuse);
 	return (odm_prod_mode ? true : false);
 }
 
@@ -609,7 +609,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		return -EPERM;
 	}
 
-	clk_enable(clk_fuse);
+	clk_prepare_enable(clk_fuse);
 
 	/* check that fuse options write access hasn't been disabled */
 	mutex_lock(&fuse_lock);
@@ -617,7 +617,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	mutex_unlock(&fuse_lock);
 	if (reg) {
 		pr_err("fuse programming disabled");
-		clk_disable(clk_fuse);
+		clk_disable_unprepare(clk_fuse);
 		return -EACCES;
 	}
 
@@ -679,7 +679,7 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		reg &= (FUSE_SENSE_DONE_BIT | STATE_IDLE);
 	} while ((reg != (FUSE_SENSE_DONE_BIT | STATE_IDLE)) && (--delay > 0));
 
-	clk_disable(clk_fuse);
+	clk_disable_unprepare(clk_fuse);
 
 	return ((delay > 0) ? 0 : -ETIMEDOUT);
 }
