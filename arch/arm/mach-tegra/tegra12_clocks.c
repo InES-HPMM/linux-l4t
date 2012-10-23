@@ -1085,6 +1085,7 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 {
 	int ret;
 	struct clk *dfll = c->u.cpu.dynamic;
+	unsigned long dfll_rate_min = c->dvfs->dfll_data.use_dfll_rate_min;
 
 	/* dfll rate request */
 	ret = clk_set_rate(dfll, rate);
@@ -1096,6 +1097,17 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 
 	/* 1st time - switch to dfll */
 	if (c->parent->parent != dfll) {
+		if (max(old_rate, rate) < dfll_rate_min) {
+			/* set interim cpu dvfs rate at dfll_rate_min to
+			   prevent voltage drop below dfll Vmin */
+			ret = tegra_dvfs_set_rate(c, dfll_rate_min);
+			if (ret) {
+				pr_err("Failed to set cpu dvfs rate %lu\n",
+				       dfll_rate_min);
+				return ret;
+			}
+		}
+
 		ret = clk_set_parent(c->parent, dfll);
 		if (ret) {
 			pr_err("Failed to switch cpu to %s\n", dfll->name);
@@ -1105,8 +1117,7 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 		WARN(ret, "Failed to lock %s at rate %lu\n", dfll->name, rate);
 
 		/* prevent legacy dvfs voltage scaling */
-		if (c->dvfs && c->dvfs->dvfs_rail)
-			tegra_dvfs_dfll_mode_set(c->dvfs, rate);
+		tegra_dvfs_dfll_mode_set(c->dvfs, rate);
 	}
 	return 0;
 }
@@ -1117,6 +1128,7 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	int ret;
 	struct clk *pll;
 	struct clk *dfll = c->u.cpu.dynamic;
+	unsigned long dfll_rate_min = c->dvfs->dfll_data.use_dfll_rate_min;
 
 	rate = min(rate, c->max_rate - c->dvfs->dfll_data.max_rate_boost);
 	pll = (rate <= c->u.cpu.backup_rate) ? c->u.cpu.backup : c->u.cpu.main;
@@ -1128,12 +1140,10 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	}
 
 	/* restore legacy dvfs operations and set appropriate voltage */
-	if (c->dvfs && c->dvfs->dvfs_rail) {
-		ret = tegra_dvfs_dfll_mode_clear(c->dvfs, rate);
-		if (ret) {
-			pr_err("Failed to set cpu rail for rate %lu\n", rate);
-			goto back_to_dfll;
-		}
+	ret = tegra_dvfs_dfll_mode_clear(c->dvfs, max(rate, dfll_rate_min));
+	if (ret) {
+		pr_err("Failed to set cpu rail for rate %lu\n", rate);
+		goto back_to_dfll;
 	}
 
 	/* set pll to target rate and return to pll source */
@@ -1148,6 +1158,12 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 		pr_err("Failed to switch cpu to %s\n", pll->name);
 		goto back_to_dfll;
 	}
+
+	/* If going up, adjust voltage here (down path is taken care of by the
+	   framework after set rate exit) */
+	if (old_rate <= rate)
+		tegra_dvfs_set_rate(c, rate);
+
 	return 0;
 
 back_to_dfll:
@@ -1177,7 +1193,7 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 		}
 	}
 #endif
-	if (has_dfll) {
+	if (has_dfll && c->dvfs && c->dvfs->dvfs_rail) {
 		use_dfll_now = use_dfll ? (use_pll_cpu_low ?
 			(rate >= c->dvfs->dfll_data.use_dfll_rate_min) : 1) : 0;
 
