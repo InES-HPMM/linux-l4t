@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/fuse.c
+ * arch/arm/mach-tegra/tegra_fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2010-2012 NVIDIA Corp.
