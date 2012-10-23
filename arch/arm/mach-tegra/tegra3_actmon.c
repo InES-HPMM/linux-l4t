@@ -481,7 +481,7 @@ static int __init actmon_dev_init(struct actmon_dev *dev)
 
 	dev->state = ACTMON_OFF;
 	actmon_dev_enable(dev);
-	clk_enable(dev->clk);
+	tegra_clk_prepare_enable(dev->clk);
 	return 0;
 }
 
@@ -843,7 +843,7 @@ static int __init tegra_actmon_init(void)
 		return 0;
 	}
 	actmon_clk_freq = clk_get_rate(c) / 1000;
-	ret = clk_enable(c);
+	ret = tegra_clk_prepare_enable(c);
 	if (ret) {
 		pr_err("%s: Failed to enable actmon clock\n", __func__);
 		return 0;
