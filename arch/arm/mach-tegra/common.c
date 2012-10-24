@@ -1659,7 +1659,7 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 #if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
 	!defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 & up with SMMU */
 	/* Reserve hardcoded AVP kernel load area starting at 0xXe000000*/
-	tegra_avp_kernel_size = SZ_1M;
+	tegra_avp_kernel_size = SECTION_SIZE;
 	tegra_avp_kernel_start = memblock_end_of_DRAM() - avp_kernel_reserve;
 	if (memblock_remove(tegra_avp_kernel_start, avp_kernel_reserve)) {
 		pr_err("Failed to remove AVP kernel load area %08lx@%08lx "
