@@ -55,7 +55,7 @@ int tegra_lp2_exit_latency;
 static int tegra_lp2_power_off_time;
 static unsigned int tegra_lp2_min_residency;
 
-static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
+static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 				int index);
 
 struct cpuidle_driver tegra_idle_driver = {
@@ -65,7 +65,7 @@ struct cpuidle_driver tegra_idle_driver = {
 
 static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
 
-static int tegra_idle_enter_lp3(struct cpuidle_device *dev,
+static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 	int index)
 {
 	ktime_t enter, exit;
@@ -154,7 +154,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	smp_rmb();
 
-	/* Update LP2 latency provided no fall back to LP3 */
+	/* Update LP2 latency provided no fall back to clock gating */
 	if (entered_lp2) {
 		tegra_lp2_set_global_latency(state);
 		tegra_lp2_update_target_residency(state);
@@ -180,20 +180,20 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	dev->power_specified = 1;
 
 	state = &dev->states[0];
-	snprintf(state->name, CPUIDLE_NAME_LEN, "LP3");
-	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU flow-controlled");
+	snprintf(state->name, CPUIDLE_NAME_LEN, "clock-gated");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU clock gated");
 	state->exit_latency = 10;
 	state->target_residency = 10;
 	state->power_usage = 600;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->enter = tegra_idle_enter_lp3;
+	state->enter = tegra_idle_enter_clock_gating;
 	dev->safe_state_index = 0;
 	dev->state_count++;
 
 #ifdef CONFIG_PM_SLEEP
 	state = &dev->states[1];
-	snprintf(state->name, CPUIDLE_NAME_LEN, "LP2");
-	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU power-gate");
+	snprintf(state->name, CPUIDLE_NAME_LEN, "powered-down");
+	snprintf(state->desc, CPUIDLE_DESC_LEN, "CPU power gated");
 	state->exit_latency = tegra_cpu_power_good_time();
 	state->target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();

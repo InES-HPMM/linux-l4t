@@ -217,7 +217,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		/* Did an interrupt come in for another CPU before we
 		   could disable the distributor? */
 		if (!tegra_rail_off_is_allowed()) {
-			/* Yes, re-enable the distributor and LP3. */
+			/* Yes, re-enable the distributor and clock gating. */
 			tegra_gic_dist_enable();
 			tegra_cpu_wfi();
 			return false;
