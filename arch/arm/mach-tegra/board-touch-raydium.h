@@ -19,6 +19,13 @@
 #ifndef _MACH_TEGRA_BOARD_TOUCH_RAYDIUM_H
 #define _MACH_TEGRA_BOARD_TOUCH_RAYDIUM_H
 
-int __init touch_init_raydium(int irq_gpio, int reset_gpio, struct rm_spi_ts_platform_data *rm31080ts_data, struct spi_board_info *rm31080a_spi_board, int size);
+
+int __init touch_init_raydium_new(int irq_gpio, int reset_gpio,
+				struct rm_spi_ts_platform_data *rm31080ts_data,
+				struct spi_board_info *rm31080a_spi_board,
+				int size);
+
+
+#define touch_init_raydium(a, b, c, d, e) touch_init_raydium_new(a, b, c, d, e)
 
 #endif

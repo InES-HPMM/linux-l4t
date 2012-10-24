@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-touch-raydium_spi.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2011, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,45 +25,61 @@
 #include <linux/gpio.h>
 #include <linux/spi/rm31080a_ts.h>
 
-#include <mach/gpio-tegra.h>
+/*#include <mach/gpio-tegra.h>*/
 
-int __init touch_init_raydium(int irq_gpio, int reset_gpio, struct rm_spi_ts_platform_data *rm31080ts_data, struct spi_board_info *rm31080a_spi_board, int asize)
+int __init touch_init_raydium_new(int irq_gpio, int reset_gpio,
+				struct rm_spi_ts_platform_data *rm31080ts_data,
+				struct spi_board_info *rm31080a_spi_board,
+				int asize)
 {
 	int err = 0;
-	err = gpio_request(irq_gpio, "raydium-irq");
-	if (err < 0) {
-		pr_err("%s: gpio_request failed %d\n", __func__, err);
-		return err;
-	}
-	err = gpio_direction_input(irq_gpio);
-	if (err < 0) {
-		pr_err("%s: gpio_direction_input failed %d\n",
-			__func__, err);
-		gpio_free(irq_gpio);
-		return err;
-	}
-	err = gpio_request(reset_gpio, "raydium-reset");
-	if (err < 0) {
-		pr_err("%s: gpio_request failed %d\n", __func__, err);
-		return err;
-	}
-	err = gpio_direction_output(reset_gpio, 0);
-	if (err < 0) {
-		pr_err("%s: gpio_direction_output failed %d\n",
-			__func__, err);
-		gpio_free(reset_gpio);
-		return err;
-	}
+	gpio_request(irq_gpio, "raydium-irq");
+	gpio_direction_input(irq_gpio);
+
+	gpio_request(reset_gpio, "raydium-reset");
+	gpio_direction_output(reset_gpio, 0);
 
 	rm31080ts_data->gpio_reset = reset_gpio;
 
-	msleep(5);
+	usleep_range(5000, 6000);/*msleep(5); */
 	gpio_set_value(reset_gpio, 1);
-	msleep(5);
+	usleep_range(5000, 6000);/*msleep(5); */
+
+	rm31080a_spi_board->irq = gpio_to_irq(irq_gpio);
 
 	spi_register_board_info(rm31080a_spi_board, asize);
 	pr_info("Raydium touch platform_id:  %d\n",
-				rm31080ts_data->platform_id);
+			rm31080ts_data->platform_id);
 
 	return err;
 }
+
+struct rm_spi_ts_platform_data rm31080ts_default_data = {
+	.gpio_reset = 0,
+	.config = 0,
+	.name_of_clock = NULL,
+	.name_of_3v3 = NULL,
+	.name_of_1v8 = NULL,
+};
+
+struct spi_board_info rm31080a_default_spi_board[1] = {
+	{
+	 .modalias = "rm_ts_spidev",
+	 .bus_num = 0,
+	 .chip_select = 0,
+	 .max_speed_hz = 18 * 1000 * 1000,
+	 .mode = SPI_MODE_0,
+	 .platform_data = &rm31080ts_default_data,
+	 },
+};
+
+int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform)
+{
+	rm31080ts_default_data.platform_id = platform;
+	return touch_init_raydium_new(irq_gpio,
+					reset_gpio,
+					&rm31080ts_default_data,
+					&rm31080a_default_spi_board[0],
+					ARRAY_SIZE(rm31080a_default_spi_board));
+}
+
