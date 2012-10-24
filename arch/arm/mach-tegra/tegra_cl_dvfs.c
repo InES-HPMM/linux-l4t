@@ -263,7 +263,7 @@ static int find_safe_output(
 
 	for (i = 0; i < n; i++) {
 		if (freqs[i] >= rate) {
-			*safe_output = cld->clk_dvfs_map[i] ? : 1;
+			*safe_output = cld->clk_dvfs_map[i];
 			return 0;
 		}
 	}
@@ -683,10 +683,13 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 		val &= ~(CL_DVFS_OUTPUT_CFG_SAFE_MASK |
 			 CL_DVFS_OUTPUT_CFG_MAX_MASK);
-		val |= req->output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
-		val |= req->output << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+
+		/* make sure we have at least one LUT step above and
+		   one below new safe value */
+		cld->safe_ouput = (req->output >= 2) ? (req->output - 1) : 1;
+		val |= (cld->safe_ouput + 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+		val |= cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-		cld->safe_ouput = req->output;
 
 		val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
 		val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
