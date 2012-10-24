@@ -1,7 +1,7 @@
 /*
  * drivers/misc/bcm4329_rfkill.c
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 	 * check if BT gpio_shutdown line status and current request are same.
 	 * If same, then return, else perform requested operation.
 	 */
-	if (gpio_get_value(bcm4329_rfkill->gpio_shutdown) && !blocked)
+	if (gpio_get_value_cansleep(bcm4329_rfkill->gpio_shutdown) && !blocked)
 		return 0;
 
 	if (blocked) {
