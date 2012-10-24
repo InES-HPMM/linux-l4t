@@ -36,6 +36,7 @@
 #include "tf_conn.h"
 
 #ifdef CONFIG_TF_ZEBRA
+#include "tf_zebra.h"
 #include "tf_crypto.h"
 #endif
 
@@ -132,6 +133,22 @@ int tf_map_shmem(
 					connection,
 					(void *) buffer,
 					flags);
+
+	/*
+	 * Added temporary to avoid kernel stack buffer
+	 */
+	if (!in_user_space) {
+		if (object_is_on_stack((void *)buffer) != 0) {
+			dprintk(KERN_ERR
+				"tf_map_shmem: "
+				"kernel stack buffers "
+				"(addr=0x%08X) "
+				"are not supported",
+				buffer);
+			error = -ENOSYS;
+			goto error;
+		}
+	}
 
 	mutex_lock(&(connection->shmem_mutex));
 
@@ -1234,7 +1251,6 @@ error:
 
 }
 
-
 /*
  * Invokes a client command to the Secure World
  */
@@ -1246,6 +1262,9 @@ int tf_invoke_client_command(
 	int error = 0;
 	struct tf_shmem_desc *shmem_desc[4] = {NULL};
 	int i;
+#ifdef CONFIG_TF_ION
+	struct ion_handle *new_handle = NULL;
+#endif /* CONFIG_TF_ION */
 
 	dprintk(KERN_INFO "tf_invoke_client_command(%p)\n", connection);
 
@@ -1265,8 +1284,9 @@ int tf_invoke_client_command(
 	for (i = 0; i < 4; i++) {
 		int param_type = TF_GET_PARAM_TYPE(
 			command->invoke_client_command.param_types, i);
+
 		if ((param_type & (TF_PARAM_TYPE_MEMREF_FLAG |
-				   TF_PARAM_TYPE_REGISTERED_MEMREF_FLAG))
+					TF_PARAM_TYPE_REGISTERED_MEMREF_FLAG))
 				== TF_PARAM_TYPE_MEMREF_FLAG) {
 			/* A temporary memref: map it */
 			error = tf_map_temp_shmem(connection,
@@ -1281,6 +1301,78 @@ int tf_invoke_client_command(
 				goto error;
 			}
 		}
+#ifdef CONFIG_TF_ION
+		else if (param_type == TF_PARAM_TYPE_MEMREF_ION_HANDLE) {
+			struct tf_command_invoke_client_command *invoke;
+			ion_phys_addr_t ion_addr;
+			size_t ion_len;
+			struct ion_buffer *buffer;
+
+			if (connection->ion_client == NULL) {
+				connection->ion_client = ion_client_create(
+					zebra_ion_device,
+					(1 << ION_HEAP_TYPE_CARVEOUT),
+					"tf");
+			}
+			if (connection->ion_client == NULL) {
+				dprintk(KERN_ERR "%s(%p): "
+					"unable to create ion client\n",
+					__func__, connection);
+				error = -EFAULT;
+				goto error;
+			}
+
+			invoke = &command->invoke_client_command;
+
+			dprintk(KERN_INFO "ion_handle %x",
+				invoke->params[i].value.a);
+			buffer = ion_share(connection->ion_client,
+				(struct ion_handle *)invoke->params[i].value.a);
+			if (buffer == NULL) {
+				dprintk(KERN_ERR "%s(%p): "
+					"unable to share ion handle\n",
+					__func__, connection);
+				error = -EFAULT;
+				goto error;
+			}
+
+			dprintk(KERN_INFO "ion_buffer %p", buffer);
+			new_handle = ion_import(connection->ion_client, buffer);
+			if (new_handle == NULL) {
+				dprintk(KERN_ERR "%s(%p): "
+					"unable to import ion buffer\n",
+					__func__, connection);
+				error = -EFAULT;
+				goto error;
+			}
+
+			dprintk(KERN_INFO "new_handle %x", new_handle);
+			error = ion_phys(connection->ion_client,
+					new_handle,
+					&ion_addr,
+					&ion_len);
+			if (error) {
+				dprintk(KERN_ERR
+				"%s: unable to convert ion handle "
+				"0x%08X (error code 0x%08X)\n",
+				__func__,
+				new_handle,
+				error);
+				error = -EINVAL;
+				goto error;
+			}
+			dprintk(KERN_INFO
+			"%s: handle=0x%08x phys_add=0x%08x length=0x%08x\n",
+			__func__, invoke->params[i].value.a, ion_addr, ion_len);
+
+			invoke->params[i].value.a = (u32) ion_addr;
+			invoke->params[i].value.b = (u32) ion_len;
+
+			invoke->param_types &= ~((0xF) << (4*i));
+			invoke->param_types |=
+				TF_PARAM_TYPE_VALUE_INPUT << (4*i);
+		}
+#endif /* CONFIG_TF_ION */
 	}
 
 	command->invoke_client_command.device_context =
@@ -1290,11 +1382,16 @@ int tf_invoke_client_command(
 		answer, connection, true);
 
 error:
+#ifdef CONFIG_TF_ION
+	if (new_handle != NULL)
+		ion_free(connection->ion_client, new_handle);
+#endif /* CONFIG_TF_ION */
 	/* Unmap de temp mem refs */
 	for (i = 0; i < 4; i++) {
 		if (shmem_desc[i] != NULL) {
 			dprintk(KERN_INFO "tf_invoke_client_command: "
 				"UnMatemp_memref %d\n ", i);
+
 			tf_unmap_shmem(connection, shmem_desc[i], 0);
 		}
 	}

@@ -38,7 +38,7 @@
 /*
  * This version number must be updated for each new release
  */
-#define S_VERSION_MAIN  "01.16"
+#define S_VERSION_MAIN  "02.02"
 
 /*
 * If this is a patch or engineering version use the following

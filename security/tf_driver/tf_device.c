@@ -393,7 +393,7 @@ static int __init tf_device_register(void)
 	}
 
 #ifdef CONFIG_TF_DRIVER_CRYPTO_FIPS
-	error = tf_self_test_post_init(&(dev_stats->kobj));
+	error = tf_self_test_post_init(&(g_tf_dev.kobj));
 	/* N.B. error > 0 indicates a POST failure, which will not
 	   prevent the module from loading. */
 	if (error < 0) {
@@ -581,6 +581,78 @@ static long tf_device_ioctl(struct file *file, unsigned int ioctl_num,
 		/* ioctl is asking for the driver interface version */
 		result = TF_DRIVER_INTERFACE_VERSION;
 		goto exit;
+
+#ifdef CONFIG_TF_ION
+	case IOCTL_TF_ION_REGISTER: {
+		int ion_register;
+		/* ioctl is asking to register an ion handle */
+		if (copy_from_user(&ion_register,
+				(int *) ioctl_param,
+				sizeof(int))) {
+			dprintk(KERN_ERR "tf_device_ioctl(%p): "
+				"copy_from_user failed\n",
+				file);
+			result = -EFAULT;
+			goto exit;
+		}
+
+		connection = tf_conn_from_file(file);
+		BUG_ON(connection == NULL);
+
+		/* Initialize ION connection */
+		if (connection->ion_client == NULL) {
+			connection->ion_client = ion_client_create(
+						zebra_ion_device,
+						(1 << ION_HEAP_TYPE_CARVEOUT),
+						"tf");
+		}
+
+		if (connection->ion_client == NULL) {
+			dprintk(KERN_ERR "tf_device_ioctl(%p): "
+				"unable to create ion client\n",
+				file);
+			result = -EFAULT;
+			goto exit;
+		}
+
+		/*
+		 * TODO: We should use a reference count on this handle in order
+		 * to not unregistered it while using it.
+		 */
+	       return (long)ion_import_fd(connection->ion_client, ion_register);
+	}
+
+	case IOCTL_TF_ION_UNREGISTER: {
+		int ion_register;
+		/* ioctl is asking to unregister an ion handle */
+
+		if (copy_from_user(&ion_register,
+				(int *) ioctl_param,
+				sizeof(int))) {
+			dprintk(KERN_ERR "tf_device_ioctl(%p): "
+				"copy_from_user failed\n",
+				file);
+			result = -EFAULT;
+			goto exit;
+		}
+
+		connection = tf_conn_from_file(file);
+		BUG_ON(connection == NULL);
+
+		if (connection->ion_client == NULL) {
+			dprintk(KERN_ERR "tf_device_ioctl(%p): "
+				"ion client does not exist\n",
+				file);
+			result = -EFAULT;
+			goto exit;
+		}
+
+		ion_free(connection->ion_client,
+			(struct ion_handle *) ion_register);
+
+		return S_SUCCESS;
+	}
+#endif
 
 	case IOCTL_TF_EXCHANGE:
 		/*
