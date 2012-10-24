@@ -27,7 +27,7 @@
 
 /*#include <mach/gpio-tegra.h>*/
 
-int __init touch_init_raydium_new(int irq_gpio, int reset_gpio,
+int __init touch_init_raydium(int irq_gpio, int reset_gpio,
 				struct rm_spi_ts_platform_data *rm31080ts_data,
 				struct spi_board_info *rm31080a_spi_board,
 				int asize)
@@ -53,33 +53,3 @@ int __init touch_init_raydium_new(int irq_gpio, int reset_gpio,
 
 	return err;
 }
-
-struct rm_spi_ts_platform_data rm31080ts_default_data = {
-	.gpio_reset = 0,
-	.config = 0,
-	.name_of_clock = NULL,
-	.name_of_3v3 = NULL,
-	.name_of_1v8 = NULL,
-};
-
-struct spi_board_info rm31080a_default_spi_board[1] = {
-	{
-	 .modalias = "rm_ts_spidev",
-	 .bus_num = 0,
-	 .chip_select = 0,
-	 .max_speed_hz = 18 * 1000 * 1000,
-	 .mode = SPI_MODE_0,
-	 .platform_data = &rm31080ts_default_data,
-	 },
-};
-
-int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform)
-{
-	rm31080ts_default_data.platform_id = platform;
-	return touch_init_raydium_new(irq_gpio,
-					reset_gpio,
-					&rm31080ts_default_data,
-					&rm31080a_default_spi_board[0],
-					ARRAY_SIZE(rm31080a_default_spi_board));
-}
-
