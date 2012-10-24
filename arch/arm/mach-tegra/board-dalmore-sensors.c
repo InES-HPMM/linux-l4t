@@ -553,25 +553,26 @@ static int dalmore_nct1008_init(void)
 	if (nct1008_port >= 0) {
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 		const struct tegra_edp_limits *cpu_edp_limits;
+		struct nct1008_cdev *active_cdev;
 		int cpu_edp_limits_size;
 		int i;
 
 		/* edp capping */
 		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		if ((cpu_edp_limits_size > MAX_THROT_TABLE_SIZE) ||
+			(cpu_edp_limits_size > MAX_ACTIVE_TEMP_STATE))
 			BUG();
 
+		active_cdev = &dalmore_nct1008_pdata.active;
+		active_cdev->create_cdev = edp_cooling_device_create;
+		active_cdev->hysteresis = 1000;
+
 		for (i = 0; i < cpu_edp_limits_size-1; i++) {
-			dalmore_nct1008_pdata.active[i].create_cdev =
-				(struct thermal_cooling_device *(*)(void *))
-					edp_cooling_device_create;
-			dalmore_nct1008_pdata.active[i].cdev_data = (void *)i;
-			dalmore_nct1008_pdata.active[i].trip_temp =
+			active_cdev->states[i].trip_temp =
 				cpu_edp_limits[i].temperature * 1000;
-			dalmore_nct1008_pdata.active[i].hysteresis = 1000;
+			active_cdev->states[i].state = i + 1;
 		}
-		dalmore_nct1008_pdata.active[i].create_cdev = NULL;
 #endif
 
 		dalmore_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);

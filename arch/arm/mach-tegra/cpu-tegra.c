@@ -239,42 +239,22 @@ static unsigned int edp_governor_speed(unsigned int requested_speed)
 int tegra_edp_get_max_state(struct thermal_cooling_device *cdev,
 				unsigned long *max_state)
 {
-	*max_state = 1;
+	*max_state = cpu_edp_limits_size - 1;
 	return 0;
 }
-
-/* Bitmask for which edp trip points have been breached */
-static int edp_state_mask;
 
 int tegra_edp_get_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long *cur_state)
 {
-	int index = (int)cdev->devdata;
-	*cur_state = !!((1 << (index)) & edp_state_mask);
+	*cur_state = edp_thermal_index;
 	return 0;
 }
 
 int tegra_edp_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
-	int index = (int)cdev->devdata;
-	int i;
-
-	if (!cpu_edp_limits)
-		return -EINVAL;
-
 	mutex_lock(&tegra_cpu_lock);
-
-	if (cur_state)
-		edp_state_mask |= 1 << index;
-	else
-		edp_state_mask &= ~(1 << index);
-
-	for (i=31; i>=0; i--)
-		if (edp_state_mask & (1 << i))
-			break;
-
-	edp_thermal_index = i + 1;
+	edp_thermal_index = cur_state;
 
 	/* Update cpu rate if cpufreq (at least on cpu0) is already started;
 	   alter cpu dvfs table for this thermal zone if necessary */
@@ -295,14 +275,11 @@ static struct thermal_cooling_device_ops tegra_edp_cooling_ops = {
 	.set_cur_state = tegra_edp_set_cur_state,
 };
 
-struct thermal_cooling_device *edp_cooling_device_create(int index)
+struct thermal_cooling_device *edp_cooling_device_create(void *v)
 {
-	if (index >= cpu_edp_limits_size)
-		return ERR_PTR(-EINVAL);
-
 	return thermal_cooling_device_register(
 				"edp",
-				(void *)index,
+				NULL,
 				&tegra_edp_cooling_ops);
 }
 
