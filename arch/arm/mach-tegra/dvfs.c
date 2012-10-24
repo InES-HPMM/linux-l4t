@@ -363,10 +363,11 @@ static inline unsigned long *dvfs_get_freqs(struct dvfs *d)
 	return d->alt_freqs ? : &d->freqs[0];
 }
 
-static inline const int *dvfs_get_millivolts(struct dvfs *d)
+static inline const int *dvfs_get_millivolts(struct dvfs *d, unsigned long rate)
 {
-	if (d->dvfs_rail && d->dvfs_rail->dfll_mode)
+	if (tegra_dvfs_is_dfll_scale(d, rate))
 		return d->dfll_millivolts;
+
 	return d->millivolts;
 }
 
@@ -376,7 +377,7 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 	int i = 0;
 	int ret;
 	unsigned long *freqs = dvfs_get_freqs(d);
-	const int *millivolts = dvfs_get_millivolts(d);
+	const int *millivolts = dvfs_get_millivolts(d, rate);
 
 	if (freqs == NULL || millivolts == NULL)
 		return -ENODEV;
@@ -435,7 +436,7 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 	if (!rate || !c->dvfs)
 		return 0;
 
-	millivolts = dvfs_get_millivolts(c->dvfs);
+	millivolts = dvfs_get_millivolts(c->dvfs, rate);
 	if (!millivolts)
 		return -ENODEV;
 

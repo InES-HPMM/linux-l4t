@@ -79,6 +79,12 @@ struct dvfs_rail {
 	struct rail_stats stats;
 };
 
+enum dfll_range {
+	DFLL_RANGE_NONE = 0,
+	DFLL_RANGE_ALL_RATES,
+	DFLL_RANGE_HIGH_RATES,
+};
+
 struct dvfs_dfll_data {
 	u32		tune0;
 	u32		tune1;
@@ -87,6 +93,7 @@ struct dvfs_dfll_data {
 	unsigned long	out_rate_min;
 	unsigned long	max_rate_boost;
 	int min_millivolts;
+	enum dfll_range	range;
 };
 
 struct dvfs {
@@ -192,6 +199,27 @@ static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {
 	return rail->dfll_mode;
+}
+static inline bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
+{
+	return  d->dvfs_rail && (d->dvfs_rail->dfll_mode ||
+		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
+		 (rate >= d->dfll_data.use_dfll_rate_min) &&
+		 (d->cur_rate < d->dfll_data.use_dfll_rate_min)));
+}
+static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
+{
+	return (d->dfll_data.range == DFLL_RANGE_ALL_RATES) ||
+		((d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
+		(rate >= d->dfll_data.use_dfll_rate_min));
+}
+static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
+{
+	if ((range < DFLL_RANGE_NONE) || (range > DFLL_RANGE_HIGH_RATES))
+		return -EINVAL;
+
+	d->dfll_data.range = range;
+	return 0;
 }
 
 #endif
