@@ -491,14 +491,7 @@ static unsigned long tegra12_clk_shared_bus_update(
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
 
-static bool use_pll_cpu_low;
-module_param(use_pll_cpu_low, bool, 0644);
-
-#ifdef CONFIG_TEGRA_USE_DFLL
-static bool use_dfll = 1;
-#else
-static bool use_dfll;
-#endif
+static int use_dfll;
 
 /**
 * Structure defining the fields for USB UTMI clocks Parameters.
@@ -1178,7 +1171,6 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	bool has_dfll = c->u.cpu.dynamic &&
 		(c->u.cpu.dynamic->state != UNINITIALIZED);
 	bool is_dfll = c->parent->parent == c->u.cpu.dynamic;
-	bool use_dfll_now;
 
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
@@ -1194,10 +1186,7 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	}
 #endif
 	if (has_dfll && c->dvfs && c->dvfs->dvfs_rail) {
-		use_dfll_now = use_dfll ? (use_pll_cpu_low ?
-			(rate >= c->dvfs->dfll_data.use_dfll_rate_min) : 1) : 0;
-
-		if (use_dfll_now)
+		if (tegra_dvfs_is_dfll_range(c->dvfs, rate))
 			return tegra12_cpu_clk_dfll_on(c, rate, old_rate);
 		else if (is_dfll)
 			return tegra12_cpu_clk_dfll_off(c, rate, old_rate);
@@ -1210,7 +1199,7 @@ static long tegra12_cpu_clk_round_rate(struct clk *c, unsigned long rate)
 	unsigned long max_rate = c->max_rate;
 
 	/* Remove dfll boost to maximum rate when running on PLL */
-	if (c->parent->parent != c->u.cpu.dynamic)
+	if (!c->dvfs || !tegra_dvfs_is_dfll_scale(c->dvfs, rate))
 		max_rate -= c->dvfs->dfll_data.max_rate_boost;
 
 	if (rate > max_rate)
@@ -3308,6 +3297,7 @@ static struct clk_ops tegra_plle_ops = {
 static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 {
 	int ret;
+	struct clk *cpu = tegra_get_clock_by_name("cpu");
 
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
@@ -3317,6 +3307,11 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 		c->state = OFF;
 		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
 		pr_info("Tegra CPU DFLL is initialized\n");
+
+#ifdef CONFIG_TEGRA_USE_DFLL
+		use_dfll = DFLL_RANGE_ALL_RATES;
+#endif
+		tegra_dvfs_set_dfll_range(cpu->parent->dvfs, use_dfll);
 	}
 }
 #endif
@@ -3376,69 +3371,49 @@ static struct clk_ops tegra_dfll_ops = {
 };
 
 /* DFLL sysfs interface */
-static int tegra12_use_dfll_set(struct clk *clk_cpu)
+static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 {
 	int ret = 0;
-	unsigned long flags;
+	unsigned long c_flags, p_flags;
+	unsigned int old_use_dfll;
+	struct clk *c = tegra_get_clock_by_name("cpu");
 
-	clk_lock_save(clk_cpu, &flags);
-	if (clk_cpu->parent->u.cpu.mode == MODE_G) {
-		unsigned long f;
-		clk_lock_save(clk_cpu->parent, &f);
-		if (!use_dfll) {
-			use_dfll = true;
-			ret = clk_set_rate_locked(clk_cpu->parent,
-				clk_get_rate_locked(clk_cpu->parent));
-		}
-		clk_unlock_restore(clk_cpu->parent, &f);
-	} else {
-		ret = -ENOSYS;
+	if (!c->parent || !c->parent->dvfs)
+		return -ENOSYS;
+
+	clk_lock_save(c, &c_flags);
+	if (c->parent->u.cpu.mode == MODE_LP) {
 		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
+		clk_unlock_restore(c, &c_flags);
+		return -ENOSYS;
 	}
-	clk_unlock_restore(clk_cpu, &flags);
-	return ret;
-}
 
-static int tegra12_use_dfll_clear(struct clk *clk_cpu)
-{
-	int ret = 0;
-	unsigned long flags;
+	clk_lock_save(c->parent, &p_flags);
+	old_use_dfll = use_dfll;
+	param_set_int(arg, kp);
 
-	clk_lock_save(clk_cpu, &flags);
-	if (clk_cpu->parent->u.cpu.mode == MODE_G) {
-		unsigned long f;
-		clk_lock_save(clk_cpu->parent, &f);
-		if (use_dfll) {
-			use_dfll = false;
-			ret = clk_set_rate_locked(clk_cpu->parent,
-				clk_get_rate_locked(clk_cpu->parent));
+	if (use_dfll != old_use_dfll) {
+		ret = tegra_dvfs_set_dfll_range(c->parent->dvfs, use_dfll);
+		if (ret) {
+			use_dfll = old_use_dfll;
+		} else {
+			ret = clk_set_rate_locked(c->parent,
+				clk_get_rate_locked(c->parent));
+			if (ret) {
+				use_dfll = old_use_dfll;
+				tegra_dvfs_set_dfll_range(
+					c->parent->dvfs, use_dfll);
+			}
 		}
-		clk_unlock_restore(clk_cpu->parent, &f);
-	} else {
-		ret = -ENOSYS;
-		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
 	}
-	clk_unlock_restore(clk_cpu, &flags);
+	clk_unlock_restore(c->parent, &p_flags);
+	clk_unlock_restore(c, &c_flags);
 	return ret;
-}
-
-int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
-{
-	bool val;
-	struct clk *clk_cpu = tegra_get_clock_by_name("cpu");
-
-	if (arg && !strtobool(arg, &val) && clk_cpu) {
-		if (val)
-			return tegra12_use_dfll_set(clk_cpu);
-		else
-			return tegra12_use_dfll_clear(clk_cpu);
-	}
-	return -EINVAL;
 }
 
 static struct kernel_param_ops tegra12_use_dfll_ops = {
 	.set = tegra12_use_dfll_cb,
-	.get = param_get_bool,
+	.get = param_get_int,
 };
 module_param_cb(use_dfll, &tegra12_use_dfll_ops, &use_dfll, 0644);
 
