@@ -128,7 +128,7 @@ static struct dvfs cpu_dvfs = {
 /* Core DVFS tables */
 /* FIXME: real data */
 static const int core_millivolts[MAX_DVFS_FREQS] = {
-	837,  900,  950, 1000, 1050, 1100, 1125};
+	1000, 1050, 1100, 1120};
 
 #define CORE_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
 	{							\
@@ -221,15 +221,15 @@ static struct dvfs core_dvfs_table[] = {
 	 * to the display block.  Disable auto-dvfs on the display clocks,
 	 * and let the display driver call tegra_dvfs_set_rate manually
 	 */
-	CORE_DVFS("disp1", -1, 0, KHZ,         1, 108000, 120000, 144000, 192000,  240000,  240000),
-	CORE_DVFS("disp2", -1, 0, KHZ,         1, 108000, 120000, 144000, 192000,  240000,  240000),
+	CORE_DVFS("disp1", -1, 0, KHZ,         144000, 192000,  240000,  240000),
+	CORE_DVFS("disp2", -1, 0, KHZ,         144000, 192000,  240000,  240000),
 
-	CORE_DVFS("xusb_falcon_src", -1, 1, KHZ, 1, 204000, 204000, 204000, 336000,  336000,  336000),
-	CORE_DVFS("xusb_host_src",   -1, 1, KHZ, 1,  58300,  58300,  58300, 112000,  112000,  112000),
-	CORE_DVFS("xusb_dev_src",    -1, 1, KHZ, 1,  58300,  58300,  58300, 112000,  112000,  112000),
-	CORE_DVFS("xusb_ss_src",     -1, 1, KHZ, 1,  60000,  60000,  60000, 120000,  120000,  120000),
-	CORE_DVFS("xusb_fs_src",     -1, 1, KHZ, 1,      1,  48000,  48000,  48000,   48000,   48000),
-	CORE_DVFS("xusb_hs_src",     -1, 1, KHZ, 1,      1,  60000,  60000,  60000,   60000,   60000),
+	CORE_DVFS("xusb_falcon_src", -1, 1, KHZ, 204000, 336000,  336000,  336000),
+	CORE_DVFS("xusb_host_src",   -1, 1, KHZ,  58300, 112000,  112000,  112000),
+	CORE_DVFS("xusb_dev_src",    -1, 1, KHZ,  58300, 112000,  112000,  112000),
+	CORE_DVFS("xusb_ss_src",     -1, 1, KHZ,  60000, 120000,  120000,  120000),
+	CORE_DVFS("xusb_fs_src",     -1, 1, KHZ,  48000,  48000,   48000,   48000),
+	CORE_DVFS("xusb_hs_src",     -1, 1, KHZ,  60000,  60000,   60000,   60000),
 #endif
 };
 
