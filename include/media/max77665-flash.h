@@ -1,19 +1,17 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __MAX77665_H__
@@ -32,8 +30,6 @@ struct max77665_f_power_rail {
 
 struct max77665_f_config {
 	u32 led_mask;		/* led(s) enabled, 1/2/3 - left/right/both */
-	bool torch_on_flash;	/* true=high level on the flash_en pin will
-				   turn on torch */
 	bool flash_on_torch;	/* true=high level on the torch_en pin will
 				   turn on flash */
 	u16 flash_mode;		/* 1=one_shot_mode, flash is triggerred on the
@@ -45,14 +41,19 @@ struct max77665_f_config {
 				   and terminated based on the falling edge of
 				   FLASHEN/TORCHEN/I2C_bit and flash safety
 				   timer value, whichever comes first.*/
-	u16 torch_mode;		/* 0, 1=torch safety timer disabled, torch is
+	u16 torch_trigger_mode;	/* 0, 3=torch is triggered via i2c interface.
+				   1=high level on the flash_en pin will turn
+				   the torch on.
+				   2=high level on the torch_en pin will turn
+				   the torch on. */
+	u16 torch_mode;		/* 1=torch safety timer disabled, torch is
 				   controlled solely by the FLASHEN/TORCHEN/I2C.
 				   2=one_shot_mode, torch is triggerred on the
 				   rising edge of FLASHEN/TORCHEN/I2C_bit, and
 				   terminated based on the torch safety timer
 				   setting.
-				   3=run for MAX timer, torch is triggerred on
-				   he rising edge of FLASHEN/TORCHEN/I2C_bit,
+				   0, 3=run MAX timer, torch is triggerred on
+				   the rising edge of FLASHEN/TORCHEN/I2C_bit,
 				   and terminated based on the falling edge of
 				   FLASHEN/TORCHEN/ I2C_bit and torch safety
 				   timer setting, whichever comes first.*/
@@ -90,8 +91,6 @@ struct max77665_f_platform_data {
 	struct nvc_torch_pin_state pinstate; /* see notes in driver */
 	unsigned gpio_strobe; /* GPIO connected to the ACT signal */
 
-	int (*power_get)(struct max77665_f_power_rail *pw);
-	int (*power_put)(struct max77665_f_power_rail *pw);
 	int (*poweron_callback)(struct max77665_f_power_rail *pw);
 	int (*poweroff_callback)(struct max77665_f_power_rail *pw);
 };
