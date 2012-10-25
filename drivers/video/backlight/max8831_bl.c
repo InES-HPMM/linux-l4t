@@ -37,6 +37,7 @@ struct max8831_backlight_data {
 	struct regulator	*regulator;
 
 	int (*notify)(struct device *dev, int brightness);
+	bool (*is_powered)(void);
 };
 
 static int max8831_backlight_set(struct backlight_device *bl, int brightness)
@@ -46,6 +47,10 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 
 	/* ranges from 0-255 */
 	data->current_brightness = brightness;
+
+	if (data->is_powered)
+		if (!data->is_powered())
+			return 0;
 
 	if (data->id == MAX8831_BL_LEDS) {
 		/* map 0-255 brightness to max8831 range */
@@ -112,6 +117,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	data->current_brightness = 0;
 	data->id = pdev->id;
 	data->notify = pData->notify;
+	data->is_powered = pData->is_powered;
 	data->regulator = regulator_get(data->max8831_dev,
 			"avdd_backlight_3v0");
 	if (IS_ERR(data->regulator)) {
