@@ -1071,33 +1071,6 @@ static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static void usb_phy_wait_for_sof(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	val = readl(base + USB_USBSTS);
-	writel(val, base + USB_USBSTS);
-	udelay(20);
-	/* wait for two SOFs */
-	if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_SRI,
-		USB_USBSTS_SRI, 2500))
-		pr_err("%s: timeout waiting for SOF\n", __func__);
-
-	val = readl(base + USB_USBSTS);
-	writel(val, base + USB_USBSTS);
-	if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_SRI, 0, 2500))
-		pr_err("%s: timeout waiting for SOF\n", __func__);
-
-	if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_SRI,
-			USB_USBSTS_SRI, 2500))
-		pr_err("%s: timeout waiting for SOF\n", __func__);
-
-	udelay(20);
-}
-
 static unsigned int utmi_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
 {
 	struct tegra_utmi_config *cfg = &phy->pdata->u_cfg.utmi;
@@ -1974,16 +1947,6 @@ static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
 	phy->remote_wakeup = true;
 	DBG("%s:PMC remote wakeup detected for HSIC\n", __func__);
 	return true;
-}
-
-static int uhsic_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
-{
-	DBG("%s(%d)\n", __func__, __LINE__);
-
-	if (!remote_wakeup)
-		usb_phy_wait_for_sof(phy);
-
-	return 0;
 }
 
 static int uhsic_phy_post_resume(struct tegra_usb_phy *phy)
@@ -3040,7 +3003,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.irq		= uhsic_phy_irq,
 	.power_on	= uhsic_phy_power_on,
 	.power_off	= uhsic_phy_power_off,
-	.pre_resume = uhsic_phy_pre_resume,
 	.post_resume = uhsic_phy_post_resume,
 	.port_power = uhsic_phy_bus_port_power,
 };
