@@ -1261,54 +1261,55 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (!gpio_is_valid(plat->cd_gpio))
 		tegra_host->card_present = 1;
 
-	if (!plat->mmc_data.built_in) {
-		if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
-			tegra_host->vddio_min_uv = SDHOST_LOW_VOLT_MIN;
-			tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
-		} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
+	if (plat->mmc_data.ocr_mask & SDHOST_1V8_OCR_MASK) {
+		tegra_host->vddio_min_uv = SDHOST_LOW_VOLT_MIN;
+		tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
+	} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
 			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
 			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-		} else {
-			/*
-			 * Set the minV and maxV to default
-			 * voltage range of 2.7V - 3.6V
-			 */
-			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_MIN;
-			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
-		}
-		tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc), "vddio_sdmmc");
-		if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {
-			dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
-				"Assuming vddio_sdmmc is not required.\n",
-					"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
+	} else {
+		/*
+		 * Set the minV and maxV to default
+		 * voltage range of 2.7V - 3.6V
+		 */
+		tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_MIN;
+		tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	}
+
+	tegra_host->vdd_io_reg = regulator_get(mmc_dev(host->mmc),
+							"vddio_sdmmc");
+	if (IS_ERR_OR_NULL(tegra_host->vdd_io_reg)) {
+		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
+			"Assuming vddio_sdmmc is not required.\n",
+			"vddio_sdmmc", PTR_ERR(tegra_host->vdd_io_reg));
+		tegra_host->vdd_io_reg = NULL;
+	} else {
+		rc = regulator_set_voltage(tegra_host->vdd_io_reg,
+			tegra_host->vddio_min_uv,
+			tegra_host->vddio_max_uv);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
+				"vddio_sdmmc", rc);
+			regulator_put(tegra_host->vdd_io_reg);
 			tegra_host->vdd_io_reg = NULL;
-		} else {
-			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
-				tegra_host->vddio_min_uv,
-				tegra_host->vddio_max_uv);
-			if (rc) {
-				dev_err(mmc_dev(host->mmc), "%s regulator_set_voltage failed: %d",
-					"vddio_sdmmc", rc);
-				regulator_put(tegra_host->vdd_io_reg);
-				tegra_host->vdd_io_reg = NULL;
-			}
 		}
+	}
 
-		tegra_host->vdd_slot_reg = regulator_get(mmc_dev(host->mmc), "vddio_sd_slot");
-		if (IS_ERR_OR_NULL(tegra_host->vdd_slot_reg)) {
-			dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
-				" Assuming vddio_sd_slot is not required.\n",
-					"vddio_sd_slot", PTR_ERR(tegra_host->vdd_slot_reg));
-			tegra_host->vdd_slot_reg = NULL;
-		}
+	tegra_host->vdd_slot_reg = regulator_get(mmc_dev(host->mmc),
+							"vddio_sd_slot");
+	if (IS_ERR_OR_NULL(tegra_host->vdd_slot_reg)) {
+		dev_info(mmc_dev(host->mmc), "%s regulator not found: %ld."
+			" Assuming vddio_sd_slot is not required.\n",
+			"vddio_sd_slot", PTR_ERR(tegra_host->vdd_slot_reg));
+		tegra_host->vdd_slot_reg = NULL;
+	}
 
-		if (tegra_host->card_present) {
-			if (tegra_host->vdd_slot_reg)
-				regulator_enable(tegra_host->vdd_slot_reg);
-			if (tegra_host->vdd_io_reg)
-				regulator_enable(tegra_host->vdd_io_reg);
-			tegra_host->is_rail_enabled = 1;
-		}
+	if (tegra_host->card_present) {
+		if (tegra_host->vdd_slot_reg)
+			regulator_enable(tegra_host->vdd_slot_reg);
+		if (tegra_host->vdd_io_reg)
+			regulator_enable(tegra_host->vdd_io_reg);
+		tegra_host->is_rail_enabled = 1;
 	}
 
 	pm_runtime_enable(&pdev->dev);
