@@ -140,9 +140,6 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	u32 addr, err, stat;
 	u32 is_write, is_secure;
 	u32 client_id;
-#ifdef MC_DUAL_CHANNEL
-	u32 channel = 0;
-#endif
 
 	stat = readl(mc + MC_INT_STATUS) & MC_INT_EN_MASK;
 
@@ -156,11 +153,6 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	if (stat & MC_INT_EXT_INTR_IN) {
 		err_mc = mc1;
 		stat = readl(err_mc + MC_INT_STATUS);
-
-		/* Clear this interrupt on both MCs. */
-		writel(MC_INT_EXT_INTR_IN, mc + MC_INT_STATUS);
-		writel(MC_INT_EXT_INTR_IN, mc1 + MC_INT_STATUS);
-		channel = 1;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		/*
@@ -205,6 +197,10 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 				  is_secure, is_write, mc_info);
 out:
 	writel(stat, err_mc + MC_INT_STATUS);
+	if (err_mc != mc) {
+		readl(err_mc + MC_INT_STATUS);
+		writel(MC_INT_EXT_INTR_IN, mc + MC_INT_STATUS);
+	}
 	return IRQ_HANDLED;
 }
 
