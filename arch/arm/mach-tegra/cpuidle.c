@@ -96,6 +96,7 @@ static bool lp2_in_idle __read_mostly = false;
 #ifdef CONFIG_PM_SLEEP
 static bool lp2_in_idle_modifiable __read_mostly = true;
 static bool lp2_disabled_by_suspend;
+static struct tegra_cpuidle_ops tegra_idle_ops;
 
 void tegra_lp2_in_idle(bool enable)
 {
@@ -125,7 +126,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	bool entered_lp2;
 
 	if (!lp2_in_idle || lp2_disabled_by_suspend ||
-	    !tegra_lp2_is_allowed(dev, state)) {
+	    !tegra_idle_ops.lp2_is_allowed(dev, state)) {
 		return dev->states[dev->safe_state_index].enter(dev,
 					dev->safe_state_index);
 	}
@@ -138,8 +139,8 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	enter = ktime_get();
 
-	tegra_cpu_idle_stats_lp2_ready(dev->cpu);
-	entered_lp2 = tegra_idle_lp2(dev, state);
+	tegra_idle_ops.cpu_idle_stats_lp2_ready(dev->cpu);
+	entered_lp2 = tegra_idle_ops.tegra_idle_lp2(dev, state);
 
 	trace_cpu_powergate_rcuidle((unsigned long)readl(
 					    IO_ADDRESS(TEGRA_TMR1_BASE)
@@ -159,7 +160,7 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 		tegra_lp2_set_global_latency(state);
 		tegra_lp2_update_target_residency(state);
 	}
-	tegra_cpu_idle_stats_lp2_time(dev->cpu, us);
+	tegra_idle_ops.cpu_idle_stats_lp2_time(dev->cpu, us);
 
 	dev->last_residency = (int)us;
 	return (entered_lp2) ? index : 0;
@@ -247,11 +248,8 @@ static int __init tegra_cpuidle_init(void)
 	tegra_lp2_exit_latency = tegra_cpu_power_good_time();
 	tegra_lp2_power_off_time = tegra_cpu_power_off_time();
 
-	ret = tegra_cpuidle_init_soc();
-	if (ret)
-		return ret;
+	tegra_cpuidle_init_soc(&tegra_idle_ops);
 #endif
-
 	for_each_possible_cpu(cpu) {
 		ret = tegra_cpuidle_register_device(cpu);
 		if (ret) {
@@ -301,7 +299,8 @@ module_param_cb(lp2_in_idle, &lp2_in_idle_ops, &lp2_in_idle, 0644);
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_PM_SLEEP)
 static int tegra_lp2_debug_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, tegra_lp2_debug_show, inode->i_private);
+	return single_open(file, tegra_idle_ops.lp2_debug_show,
+				inode->i_private);
 }
 
 static const struct file_operations tegra_lp2_debug_ops = {

@@ -25,89 +25,32 @@
 
 extern int tegra_lp2_exit_latency;
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-bool tegra2_idle_lp2(struct cpuidle_device *dev, struct cpuidle_state *state);
-void tegra2_cpu_idle_stats_lp2_ready(unsigned int cpu);
-void tegra2_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us);
-bool tegra2_lp2_is_allowed(struct cpuidle_device *dev,
-			struct cpuidle_state *state);
+struct tegra_cpuidle_ops {
+	bool (*tegra_idle_lp2)(struct cpuidle_device *dev,
+				struct cpuidle_state *state);
+	void (*cpu_idle_stats_lp2_ready)(unsigned int cpu);
+	void (*cpu_idle_stats_lp2_time)(unsigned int cpu, s64 us);
+	bool (*lp2_is_allowed)(struct cpuidle_device *dev,
+				struct cpuidle_state *state);
 #ifdef CONFIG_DEBUG_FS
-int tegra2_lp2_debug_show(struct seq_file *s, void *data);
+	int (*lp2_debug_show)(struct seq_file *s, void *data);
 #endif
-#else
-bool tegra3_idle_lp2(struct cpuidle_device *dev, struct cpuidle_state *state);
-void tegra3_cpu_idle_stats_lp2_ready(unsigned int cpu);
-void tegra3_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us);
-bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
-			   struct cpuidle_state *state);
-int tegra3_cpuidle_init_soc(void);
+};
 
-int tegra11x_cpuidle_init_soc(void);
-void tegra11x_cpu_idle_stats_lp2_ready(unsigned int cpu);
-void tegra11x_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us);
-bool tegra11x_idle_lp2(struct cpuidle_device *dev, struct cpuidle_state *state);
-bool tegra11x_lp2_is_allowed(struct cpuidle_device *dev,
-			   struct cpuidle_state *state);
-#ifdef CONFIG_DEBUG_FS
-int tegra3_lp2_debug_show(struct seq_file *s, void *data);
-int tegra11x_lp2_debug_show(struct seq_file *s, void *data);
-#endif
-#endif
+int tegra2_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
+int tegra3_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
+int tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *ops);
 
-static inline int tegra_cpuidle_init_soc(void)
+static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	return 0;
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	return tegra3_cpuidle_init_soc();
-#else
-	return tegra11x_cpuidle_init_soc();
+	return tegra2_cpuidle_init_soc(ops);
 #endif
-}
-
-static inline void tegra_cpu_idle_stats_lp2_ready(unsigned int cpu)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_cpu_idle_stats_lp2_ready(cpu);
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra3_cpu_idle_stats_lp2_ready(cpu);
-#else
-	tegra11x_cpu_idle_stats_lp2_ready(cpu);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	return tegra3_cpuidle_init_soc(ops);
 #endif
-}
-
-static inline void tegra_cpu_idle_stats_lp2_time(unsigned int cpu, s64 us)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	tegra2_cpu_idle_stats_lp2_time(cpu, us);
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra3_cpu_idle_stats_lp2_time(cpu, us);
-#else
-	tegra11x_cpu_idle_stats_lp2_time(cpu, us);
-#endif
-}
-
-static inline bool tegra_idle_lp2(struct cpuidle_device *dev,
-			struct cpuidle_state *state)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	return tegra2_idle_lp2(dev, state);
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	return tegra3_idle_lp2(dev, state);
-#else
-	return tegra11x_idle_lp2(dev, state);
-#endif
-}
-
-static inline bool tegra_lp2_is_allowed(struct cpuidle_device *dev,
-			struct cpuidle_state *state)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	return tegra2_lp2_is_allowed(dev, state);
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	return tegra3_lp2_is_allowed(dev, state);
-#else
-	return tegra11x_lp2_is_allowed(dev, state);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	return tegra11x_cpuidle_init_soc(ops);
 #endif
 }
 
@@ -121,18 +64,6 @@ static inline void tegra_lp2_set_global_latency(struct cpuidle_state *state)
 
 void tegra_lp2_update_target_residency(struct cpuidle_state *state);
 
-#ifdef CONFIG_DEBUG_FS
-static inline int tegra_lp2_debug_show(struct seq_file *s, void *data)
-{
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	return tegra2_lp2_debug_show(s, data);
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	return tegra3_lp2_debug_show(s, data);
-#else
-	return tegra11x_lp2_debug_show(s, data);
-#endif
-}
-#endif
 #endif /* CONFIG_PM_SLEEP */
 
 #if defined(CONFIG_CPU_IDLE) && defined(CONFIG_PM_SLEEP)

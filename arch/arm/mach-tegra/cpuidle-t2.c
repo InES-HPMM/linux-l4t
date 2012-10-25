@@ -414,3 +414,20 @@ int tegra2_lp2_debug_show(struct seq_file *s, void *data)
 	return 0;
 }
 #endif
+
+int __init tegra2_cpuidle_init_soc(struct tegra_cpuidle_ops *idle_ops)
+{
+	struct tegra_cpuidle_ops ops = {
+		tegra2_idle_lp2,
+		tegra2_cpu_idle_stats_lp2_ready,
+		tegra2_cpu_idle_stats_lp2_time,
+		tegra2_lp2_is_allowed,
+#ifdef CONFIG_DEBUG_FS
+		tegra2_lp2_debug_show
+#endif
+	};
+
+	*idle_ops = ops;
+
+	return 0;
+}

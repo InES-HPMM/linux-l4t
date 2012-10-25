@@ -452,18 +452,6 @@ bool tegra11x_idle_lp2(struct cpuidle_device *dev,
 	return entered_lp2;
 }
 
-int tegra11x_cpuidle_init_soc(void)
-{
-	int i;
-
-	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
-
-	for (i = 0; i < ARRAY_SIZE(lp2_exit_latencies); i++)
-		lp2_exit_latencies[i] = tegra_lp2_exit_latency;
-
-	return 0;
-}
-
 #ifdef CONFIG_DEBUG_FS
 int tegra11x_lp2_debug_show(struct seq_file *s, void *data)
 {
@@ -553,3 +541,25 @@ int tegra11x_lp2_debug_show(struct seq_file *s, void *data)
 	return 0;
 }
 #endif
+
+int __init tegra11x_cpuidle_init_soc(struct tegra_cpuidle_ops *idle_ops)
+{
+	int i;
+	struct tegra_cpuidle_ops ops = {
+		tegra11x_idle_lp2,
+		tegra11x_cpu_idle_stats_lp2_ready,
+		tegra11x_cpu_idle_stats_lp2_time,
+		tegra11x_lp2_is_allowed,
+#ifdef CONFIG_DEBUG_FS
+		tegra11x_lp2_debug_show
+#endif
+	};
+
+	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
+
+	for (i = 0; i < ARRAY_SIZE(lp2_exit_latencies); i++)
+		lp2_exit_latencies[i] = tegra_lp2_exit_latency;
+
+	*idle_ops = ops;
+	return 0;
+}
