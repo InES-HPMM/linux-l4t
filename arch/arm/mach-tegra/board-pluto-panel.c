@@ -82,6 +82,7 @@ static atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
 
 static bool dsi_reg_requested;
 static bool dsi_gpio_requested;
+static bool is_bl_powered;
 
 /*
  * for PANEL_5_LG_720_1280, PANEL_4_7_JDI_720_1280
@@ -635,6 +636,7 @@ static int pluto_dsi_panel_enable(struct device *dev)
 #endif
 
 	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	is_bl_powered = true;
 
 	return 0;
 fail:
@@ -644,6 +646,7 @@ fail:
 static int pluto_dsi_panel_disable(void)
 {
 	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
+	is_bl_powered = false;
 
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
@@ -921,6 +924,11 @@ static int __maybe_unused pluto_disp1_check_fb(struct device *dev,
 	return info->device == &pluto_disp1_device.dev;
 }
 
+static bool __maybe_unused pluto_disp1_check_bl_power(void)
+{
+	return is_bl_powered;
+}
+
 #if PANEL_4_7_JDI_720_1280
 static struct platform_pwm_backlight_data pluto_disp1_bl_data = {
 	.pwm_id         = 1,
@@ -958,6 +966,7 @@ static struct platform_max8831_backlight_data pluto_max8831_bl_data = {
 	.max_brightness	= MAX8831_BL_LEDS_MAX_CURR,
 	.dft_brightness	= 100,
 	.notify	= pluto_disp1_bl_notify,
+	.is_powered = pluto_disp1_check_bl_power,
 };
 
 static struct max8831_subdev_info pluto_max8831_subdevs[] = {
