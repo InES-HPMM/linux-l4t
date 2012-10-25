@@ -29,6 +29,7 @@ struct ina219_platform_data {
 	u8 divisor; /*divisor needed to get current value */
 	u32 calibration_data;
 	u32 power_lsb;
+	u32 precision_multiplier;
 	char rail_name[INA219_RAIL_NAME_SIZE];
 };
 

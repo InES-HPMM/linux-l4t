@@ -219,6 +219,8 @@ static s32 show_power(struct device *dev,
 		INA219_POWER));
 	DEBUG_INA219(("Ina219 power Reg: 0x%x\n", power_mW));
 	power_mW *= data->pInfo->power_lsb;
+	if (data->pInfo->precision_multiplier)
+		power_mW /= data->pInfo->precision_multiplier;
 	DEBUG_INA219(("Ina219 power Val: %d\n", power_mW));
 	if (power_mW < 0)
 		goto error;
@@ -295,6 +297,8 @@ static s32 show_current(struct device *dev,
 		goto error;
 	current_mA =
 		(current_mA * data->pInfo->power_lsb) / data->pInfo->divisor;
+	if (data->pInfo->precision_multiplier)
+		current_mA /= data->pInfo->precision_multiplier;
 	DEBUG_INA219(("Ina219 current Value: %d\n", current_mA));
 
 	/* set ina219 to power down mode */
