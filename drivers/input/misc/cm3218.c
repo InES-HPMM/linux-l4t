@@ -215,7 +215,7 @@ static int cm3218_probe(struct i2c_client *client,
 
 	if (!chip_info)
 		return -ENOMEM;
-	chip_info->vdd_sensor = regulator_get(NULL, "vdd_sensor");
+	chip_info->vdd_sensor = regulator_get(NULL, "vdd_sensor_2v85");
 
 	if (IS_ERR_OR_NULL(chip_info->vdd_sensor)) {
 		pr_err("[CM3218 error]%s: regulator_get failed\n",
