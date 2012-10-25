@@ -3287,6 +3287,7 @@ static struct clk_ops tegra_plle_ops = {
  * basically cl-dvfs wrappers.
  */
 
+#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* DFLL operations */
 static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 {
@@ -3302,6 +3303,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 		pr_info("Tegra CPU DFLL is initialized\n");
 	}
 }
+#endif
 
 static int tegra12_dfll_clk_enable(struct clk *c)
 {
@@ -7366,8 +7368,10 @@ void __init tegra12x_init_clocks(void)
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
 
+#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	/* To be ready for DFLL late init */
 	tegra_dfll_cpu.ops->init = tegra12_dfll_cpu_late_init;
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
