@@ -138,9 +138,9 @@ static struct dvfs core_dvfs_table[] = {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	CORE_DVFS("cpu_lp", -1, 1, KHZ,       384000, 504000,  624000,  660000),
 	CORE_DVFS("emc",   -1, 1, KHZ,        384000, 528000,  800000,  800000),
-	CORE_DVFS("sbus",  -1, 1, KHZ,        136000, 204000,  204000,  204000),
+	CORE_DVFS("sbus",  -1, 1, KHZ,        216000, 264000,  312000,  324000),
 
-	CORE_DVFS("vi",    -1, 1, KHZ,        144000, 192000,  240000,  240000),
+	CORE_DVFS("vi",    -1, 1, KHZ,        228000, 300000,  360000,  396000),
 
 	CORE_DVFS("2d",    -1, 1, KHZ,        276000, 372000,  456000,  480000),
 	CORE_DVFS("3d",    -1, 1, KHZ,        276000, 372000,  456000,  480000),
@@ -151,7 +151,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("tsec",  -1, 1, KHZ,        228000, 288000,  360000,  384000),
 	CORE_DVFS("vde",   -1, 1, KHZ,        228000, 288000,  360000,  384000),
 
-	CORE_DVFS("host1x", -1, 1, KHZ,       136000, 163200,  204000,  204000),
+	CORE_DVFS("host1x", -1, 1, KHZ,       228000, 264000,  312000,  324000),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	CORE_DVFS("c2bus", -1, 1, KHZ,        276000, 372000,  456000,  480000),
