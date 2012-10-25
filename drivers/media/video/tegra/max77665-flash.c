@@ -297,8 +297,6 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 		goto update_led_en_reg;
 
 	if (mask & 1) {
-		fled_en |= (info->fled_settings & LED1_TORCH_TRIG_MASK);
-
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
 			if (curr1 > f_levels)
 				curr1 = f_levels;
@@ -318,12 +316,11 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 				curr1 = t_levels;
 
 			t_curr = curr1;
+			fled_en |= (info->fled_settings & LED1_TORCH_TRIG_MASK);
 		}
 	}
 
 	if (mask & 2) {
-		fled_en |= (info->fled_settings & LED2_TORCH_TRIG_MASK);
-
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
 			if (curr2 > f_levels)
 				curr2 = f_levels;
@@ -343,6 +340,7 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 				curr2 = t_levels;
 
 			t_curr |= curr2 << 4;
+			fled_en |= (info->fled_settings & LED2_TORCH_TRIG_MASK);
 		}
 	}
 
@@ -372,9 +370,7 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 		val = (info->regs.t_timer & TORCH_TIMER_CTL_MASK) |
 			(info->new_ttimer & 0x0f);
 		err = max77665_f_reg_wr(info, MAX77665_F_RW_TORCH_TIMER, val,
-				info->regs.regs_stale,
-				(info->regs.t_timer & 0x0f) !=
-				info->new_ttimer);
+				false, true);
 		if (err)
 			goto set_led_end;
 		info->regs.t_timer = val;
@@ -518,7 +514,7 @@ update_end:
 
 	switch (pcfg->torch_mode) {
 	case 1:
-		info->regs.t_timer = FIELD(TIMER_ONESHOT, 7) |
+		info->regs.t_timer = FIELD(TIMER_MAX, 7) |
 					FIELD(TORCH_TIMER_SAFETY_DIS, 6);
 		break;
 	case 2:
@@ -1442,6 +1438,7 @@ static int max77665_f_status_show(struct seq_file *s, void *data)
 		"    Output Mode      = %s\n"
 		"    Led Settings     = 0x%02x\n"
 		"    Flash TimeOut    = 0x%02x\n"
+		"    Torch TimeOut    = 0x%02x\n"
 		"    PinState Mask    = 0x%04x\n"
 		"    PinState Values  = 0x%04x\n"
 		"    Max_Peak_Current = %dmA\n"
@@ -1454,6 +1451,7 @@ static int max77665_f_status_show(struct seq_file *s, void *data)
 		info->op_mode == MAXFLASH_MODE_TORCH ? "TORCH" : "NONE",
 		info->fled_settings,
 		info->regs.f_timer,
+		info->regs.t_timer,
 		info->pdata->pinstate.mask,
 		info->pdata->pinstate.values,
 		info->config.max_peak_current_mA
