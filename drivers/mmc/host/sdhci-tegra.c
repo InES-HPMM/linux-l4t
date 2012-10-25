@@ -62,10 +62,14 @@
 #define SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK	0xF
 
 #define SDMMC_AUTO_CAL_CONFIG	0x1E4
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START	0x80000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE	0x20000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT	0x8
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x70
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x62
+
+#define SDMMC_AUTO_CAL_STATUS	0x1EC
+#define SDMMC_AUTO_CAL_STATUS_AUTO_CAL_ACTIVE	0x80000000
 
 #define SDHOST_1V8_OCR_MASK	0x8
 #define SDHOST_HIGH_VOLT_MIN	2700000
@@ -124,6 +128,7 @@ static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
 #define NVQUIRK_ENABLE_BLOCK_GAP_DET		BIT(1)
 #define NVQUIRK_ENABLE_SDHCI_SPEC_300		BIT(2)
 #define NVQUIRK_DISABLE_AUTO_CALIBRATION	BIT(3)
+#define NVQUIRK_SET_CALIBRATION_OFFSETS	BIT(4)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -669,18 +674,71 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		}
 	}
 }
+static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
+{
+	unsigned int val;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+	unsigned int timeout = 10;
+
+	/*
+	 * Do not enable auto calibration if the platform doesn't
+	 * support it.
+	 */
+	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
+		return;
+
+	val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
+	val &= ~SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK;
+	val |= 0x7;
+	sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
+
+	/* Enable Auto Calibration*/
+	val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
+	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
+	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
+	if (unlikely(soc_data->nvquirks & NVQUIRK_SET_CALIBRATION_OFFSETS)) {
+		/* Program Auto cal PD offset(bits 8:14) */
+		val &= ~(0x7F <<
+			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT);
+		val |= (SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET <<
+			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT);
+		/* Program Auto cal PU offset(bits 0:6) */
+		val &= ~0x7F;
+		val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET;
+	}
+	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
+
+	/* Wait until the calibration is done */
+	do {
+		if (!(sdhci_readl(sdhci, SDMMC_AUTO_CAL_STATUS) &
+			SDMMC_AUTO_CAL_STATUS_AUTO_CAL_ACTIVE))
+			break;
+
+		mdelay(1);
+		timeout--;
+	} while (timeout);
+
+	if (!timeout)
+		dev_err(mmc_dev(sdhci->mmc), "Auto calibration failed\n");
+
+	/* Disable Auto calibration */
+	val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
+	val &= ~SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
+	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
+}
 
 static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	unsigned int signal_voltage)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	unsigned int min_uV = tegra_host->vddio_min_uv;
 	unsigned int max_uV = tegra_host->vddio_max_uv;
 	unsigned int rc = 0;
 	u16 clk, ctrl;
-	unsigned int val;
+
 
 	ctrl = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
@@ -714,7 +772,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 			regulator_set_voltage(tegra_host->vdd_io_reg,
 				SDHOST_HIGH_VOLT_MIN,
 				SDHOST_HIGH_VOLT_MAX);
-			goto out;
 		}
 	}
 
@@ -726,41 +783,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
 
 	/* Wait for 1 msec after enabling clock */
-	mdelay(1);
-
-	/*
-	 * Do not enable auto calibration if the platform doesn't
-	 * support it.
-	 */
-	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
-		return rc;
-
-	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
-		/* Do Auto Calibration for 1.8V signal voltage */
-		val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
-		val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
-		/* Program Auto cal PD offset(bits 8:14) */
-		val &= ~(0x7F <<
-			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT);
-		val |= (SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET <<
-			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT);
-		/* Program Auto cal PU offset(bits 0:6) */
-		val &= ~0x7F;
-		val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET;
-		sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
-
-		val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
-		val &= ~SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK;
-		val |= 0x7;
-		sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
-	}
-	return rc;
-out:
-	/* Enable the card clock */
-	clk |= SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
-	/* Wait for 1 msec for the clock to stabilize */
 	mdelay(1);
 
 	return rc;
@@ -1064,6 +1086,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.platform_reset_exit	= tegra_sdhci_reset_exit,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
+	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
 };
 
@@ -1088,8 +1111,10 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.pdata = &sdhci_tegra20_pdata,
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 #endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
