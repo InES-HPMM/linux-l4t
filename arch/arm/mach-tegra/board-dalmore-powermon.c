@@ -24,6 +24,8 @@
 #include "board.h"
 #include "board-dalmore.h"
 
+#define PRECISION_MULTIPLIER_DALMORE 1000
+
 enum {
 	VDD_12V_DCIN_RS,
 	VDD_AC_BAT_VIN1,
@@ -46,114 +48,130 @@ enum {
 static struct ina219_platform_data power_mon_info[] = {
 	[VDD_12V_DCIN_RS] = {
 		.calibration_data  = 0xaec0,
-		.power_lsb = 1.8311874106,
+		.power_lsb = 1.8311874106 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_12V_DCIN_RS",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_AC_BAT_VIN1] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AC_BAT_VIN1",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_5V0_SYS] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 2.5000762963,
+		.power_lsb = 2.5000762963 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_5V0_SYS",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_3V3_SYS] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 2.5000762963,
+		.power_lsb = 2.5000762963 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_3V3_SYS",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_3V3_SYS_VIN4_5_7] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_3V3_SYS_VIN4_5_7",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[AVDD_USB_HDMI] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "AVDD_USB_HDMI",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_AC_BAT_D1] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 12.5003814814,
+		.power_lsb = 12.50038148 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AC_BAT_D1",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_AO_SMPS12_IN] = {
 		.calibration_data  = 0xaec0,
-		.power_lsb = 1.8311874106,
+		.power_lsb = 1.8311874106 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AO_SMPS12_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_3V3_SYS_SMPS45_IN] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_3V3_SYS_SMPS45_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_AO_SMPS2_IN] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AO_SMPS2_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDDIO_HV_AP] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDDIO_HV_AP",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_1V8_LDO3_IN] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_1V8_LDO3_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_3V3_SYS_LDO4_IN] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_3V3_SYS_LDO4_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_AO_LDO8_IN] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AO_LDO8_IN",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_1V8_AP] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_1V8_AP",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 
 	[VDD_1V8_DSM] = {
 		.calibration_data  = 0xfffe,
-		.power_lsb = 1.2500381481,
+		.power_lsb = 1.2500381481 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_1V8_DSM",
 		.divisor = 20,
+		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
 	},
 };
 
