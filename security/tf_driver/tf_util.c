@@ -2,6 +2,8 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -19,6 +21,19 @@
 
 #include <linux/mman.h>
 #include "tf_util.h"
+
+/*----------------------------------------------------------------------------
+ * Tegra-specific routines
+ *----------------------------------------------------------------------------*/
+
+u32 notrace tegra_read_cycle(void)
+{
+	u32 cycle_count;
+
+	asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(cycle_count));
+
+	return cycle_count;
+}
 
 /*----------------------------------------------------------------------------
  * Debug printing routines
@@ -1139,5 +1154,3 @@ void internal_page_cache_release(struct page *page)
 
 	page_cache_release(page);
 }
-
-

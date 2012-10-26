@@ -2,6 +2,8 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -33,6 +35,12 @@
 
 #include "tf_protocol.h"
 #include "tf_defs.h"
+
+/*----------------------------------------------------------------------------
+ * Tegra-specific routines
+ *----------------------------------------------------------------------------*/
+
+u32 notrace tegra_read_cycle(void);
 
 /*----------------------------------------------------------------------------
  * Debug printing routines
@@ -119,4 +127,3 @@ int internal_get_user_pages(
 void internal_get_page(struct page *page);
 void internal_page_cache_release(struct page *page);
 #endif  /* __TF_UTIL_H__ */
-

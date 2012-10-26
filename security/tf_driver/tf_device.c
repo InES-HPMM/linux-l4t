@@ -2,6 +2,8 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -45,6 +47,9 @@
 #endif
 
 #include "s_version.h"
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/nvsecurity.h>
 
 /*----------------------------------------------------------------------------
  * Forward Declarations
@@ -733,8 +738,10 @@ static long tf_device_ioctl(struct file *file, unsigned int ioctl_num,
 			break;
 
 		case TF_MESSAGE_TYPE_INVOKE_CLIENT_COMMAND:
+			trace_invoke_client_command(NVSEC_INVOKE_CMD_START);
 			result = tf_invoke_client_command(connection,
 				&command, &answer);
+			trace_invoke_client_command(NVSEC_INVOKE_CMD_DONE);
 			break;
 
 		case TF_MESSAGE_TYPE_CANCEL_CLIENT_COMMAND:

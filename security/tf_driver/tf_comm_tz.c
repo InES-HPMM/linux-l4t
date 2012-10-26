@@ -2,6 +2,8 @@
  * Copyright (c) 2011 Trusted Logic S.A.
  * All Rights Reserved.
  *
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -26,6 +28,8 @@
 #include <linux/pagemap.h>
 #include <linux/vmalloc.h>
 #include <linux/jiffies.h>
+
+#include <trace/events/nvsecurity.h>
 
 #include "tf_defs.h"
 #include "tf_comm.h"
@@ -63,6 +67,8 @@ static inline void tf_smc_generic_call(
 		dprintk(KERN_ERR "sched_setaffinity #1 -> 0x%lX", ret);
 #endif
 
+	trace_smc_generic_call(NVSEC_SMC_START);
+
 	__asm__ volatile(
 		"mov r0, %2\n"
 		"mov r1, %3\n"
@@ -77,6 +83,8 @@ static inline void tf_smc_generic_call(
 		  "r" (generic_smc->reg2), "r" (generic_smc->reg3),
 		  "r" (generic_smc->reg4)
 		: "r0", "r1", "r2", "r3", "r4");
+
+	trace_smc_generic_call(NVSEC_SMC_DONE);
 
 #ifdef CONFIG_SMP
 		ret = sched_setaffinity(0, &saved_cpu_mask);
