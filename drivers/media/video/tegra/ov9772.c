@@ -1303,7 +1303,7 @@ static int ov9772_param_rd(struct ov9772_info *info, unsigned long arg)
 		if (!info->sdata.sensor_id_minor)
 			ov9772_dev_id(info);
 		data_ptr = &info->sdata.sensor_id;
-		data_size = sizeof(info->sdata.sensor_id * 2);
+		data_size = sizeof(info->sdata.sensor_id) * 2;
 		dev_dbg(&info->i2c_client->dev, "%s DEV_ID: %x-%x\n",
 			__func__, info->sdata.sensor_id,
 			info->sdata.sensor_id_minor);
