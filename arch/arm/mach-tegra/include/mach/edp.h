@@ -25,7 +25,7 @@
 #include <linux/edp.h>
 #include <linux/thermal.h>
 
-struct tegra_edp_entry {
+struct tegra_edp_vdd_cpu_entry {
 	char speedo_id;
 	char regulator_100mA;
 	char temperature;
@@ -37,10 +37,23 @@ struct tegra_edp_limits {
 	unsigned int freq_limits[4];
 };
 
-struct system_edp_entry {
+struct tegra_system_edp_entry {
 	char speedo_id;
 	char power_limit_100mW;
 	char freq_limits[4];
+};
+
+struct tegra_edp_cpu_leakage_params {
+	int cpu_speedo_id;
+	/* All constants are pre-multiplied by 1,000,000 */
+	int dyn_consts_n[NR_CPUS];
+	int leakage_consts_n[NR_CPUS];
+	int leakage_consts_ijk[4][4][4];
+};
+
+struct tegra_edp_freq_voltage_table {
+	unsigned int freq;
+	int voltage_mV;
 };
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
