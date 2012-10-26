@@ -315,8 +315,10 @@ void arch_timer_resume(struct arch_timer_context *context)
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
 /* Time Stamp Counter (TSC) base address */
 static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
+#endif
 static bool arch_timer_initialized;
 
 #define TSC_CNTCR		0		/* TSC control registers */
@@ -347,6 +349,9 @@ static int local_timer_is_architected(void)
 
 void __init tegra_cpu_timer_init(void)
 {
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	return;
+#else
 	u32 tsc_ref_freq;
 	u32 reg;
 
@@ -379,10 +384,14 @@ void __init tegra_cpu_timer_init(void)
 	reg = tsc_readl(TSC_CNTCR);
 	reg |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
 	tsc_writel(reg, TSC_CNTCR);
+#endif
 }
 
 static void tegra_arch_timer_per_cpu_init(void)
 {
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	return;
+#else
 	if (arch_timer_initialized) {
 		u32 tsc_ref_freq = tegra_clk_measure_input_freq();
 
@@ -397,6 +406,7 @@ static void tegra_arch_timer_per_cpu_init(void)
 		   NOTE: this is a write once (per CPU reset) register. */
 		__asm__("mcr p15, 0, %0, c14, c0, 0\n" : : "r" (tsc_ref_freq));
 	}
+#endif
 }
 
 static int arch_timer_cpu_notify(struct notifier_block *self,
