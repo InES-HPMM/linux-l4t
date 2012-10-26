@@ -156,6 +156,7 @@ extern struct platform_device debug_uarte_device;
 extern struct platform_device tegra_disp1_device;
 extern struct platform_device tegra_disp2_device;
 extern struct platform_device tegra_nvmap_device;
+extern struct platform_device tegra_xhci_device;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 extern struct platform_device tegra_cec_device;
 #endif
