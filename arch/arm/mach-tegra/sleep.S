@@ -104,7 +104,6 @@ ENTRY(tegra_pen_unlock)
 	mov	pc, lr
 ENDPROC(tegra_pen_unlock)
 
-
 /*
  * tegra_cpu_exit_coherency
  *

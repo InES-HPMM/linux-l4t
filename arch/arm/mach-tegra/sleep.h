@@ -240,7 +240,6 @@ static inline void flowctrl_writel(unsigned long val, void __iomem *addr)
 
 void tegra_pen_lock(void);
 void tegra_pen_unlock(void);
-void tegra_cpu_wfi(void);
 int tegra_sleep_cpu_finish(unsigned long v2p);
 void tegra_resume(void);
 void tegra_flush_l1_cache(void);

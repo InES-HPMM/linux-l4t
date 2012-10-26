@@ -198,7 +198,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 
 	if (request < state->target_residency) {
 		/* Not enough time left to enter LP2 */
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return false;
 	}
 
@@ -219,7 +219,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		if (!tegra_rail_off_is_allowed()) {
 			/* Yes, re-enable the distributor and clock gating. */
 			tegra_gic_dist_enable();
-			tegra_cpu_wfi();
+			cpu_do_idle();
 			return false;
 		}
 
@@ -239,7 +239,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		if (request < state->target_residency) {
 			/* Not enough time left to enter LP2 */
 			tegra_gic_dist_enable();
-			tegra_cpu_wfi();
+			cpu_do_idle();
 			return false;
 		}
 
@@ -337,7 +337,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
 		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
 			if (timer_context.cntp_tval <= 0) {
-				tegra_cpu_wfi();
+				cpu_do_idle();
 				return false;
 			}
 			request = div_u64((u64)timer_context.cntp_tval *
@@ -361,7 +361,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		/*
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return false;
 	}
 

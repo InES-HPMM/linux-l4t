@@ -194,7 +194,7 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 	idle_stats.both_idle_count++;
 
 	if (request < state->target_residency) {
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return -EBUSY;
 	}
 
@@ -274,7 +274,7 @@ static bool tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
 
 	if (request < tegra_lp2_exit_latency) {
 		tegra2_cpu_clear_resettable();
-		tegra_cpu_wfi();
+		cpu_do_idle();
 		return false;
 	}
 
@@ -321,7 +321,7 @@ bool tegra2_idle_lp2(struct cpuidle_device *dev,
 			} else
 				entered_lp2 = true;
 		} else {
-			tegra_cpu_wfi();
+			cpu_do_idle();
 		}
 	} else {
 		BUG_ON(last_cpu);
