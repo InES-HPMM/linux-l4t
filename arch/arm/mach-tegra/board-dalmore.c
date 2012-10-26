@@ -31,6 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/platform_data/tegra_xusb.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/tegra_uart.h>
@@ -544,6 +545,53 @@ static void dalmore_usb_init(void)
 	}
 }
 
+static struct tegra_xusb_pad_data xusb_padctl_data = {
+	.pad_mux = 0x4,
+	.port_cap = 0x10,
+	.snps_oc_map = 0x1fc,
+	.usb2_oc_map = 0x2f,
+	.ss_port_map = 0x1,
+	.oc_det = 0xb000,
+	.rx_wander = 0xf0,
+	.rx_eq = 0x307000,
+	.cdr_cntl = 0x26000000,
+	.dfe_cntl = 0x002008EE,
+	.otg_pad0_ctl0 = 0xffffffff,
+	.hs_slew = 0x30,
+	.otg_pad0_ctl1 = 0x0,
+	.otg_pad1_ctl0 = 0xffc7ffff,
+	.otg_pad1_ctl1 = 0x7,
+	.bias_pad_ctl0 = 0,
+	.hsic_pad0_ctl0 = 0xffff00ff,
+	.hsic_pad0_ctl1 = 0xffff00ff,
+	.pmc_value = 0xfff0ffff,
+};
+
+static void dalmore_xusb_init(void)
+{
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	if (usb_port_owner_info & UTMI2_PORT_OWNER_XUSB) {
+		u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
+
+		/*
+		 * read from usb_calib0 and pass to driver
+		 * set HS_CURR_LEVEL = usb_calib0[5:0]
+		 * set TERM_RANGE_ADJ = usb_calib0[10:7]
+		 * set HS_IREF_CAP = usb_calib0[14:13]
+		 * set HS_SQUELCH_LEVEL = usb_calib0[12:11]
+		 */
+
+		xusb_padctl_data.hs_curr_level = (usb_calib0 >> 0) & 0x3f;
+		xusb_padctl_data.hs_iref_cap = (usb_calib0 >> 13) & 0x3;
+		xusb_padctl_data.hs_term_range_adj = (usb_calib0 >> 7) & 0xf;
+		xusb_padctl_data.hs_squelch_level = (usb_calib0 >> 11) & 0x3;
+
+		tegra_xhci_device.dev.platform_data = &xusb_padctl_data;
+		platform_device_register(&tegra_xhci_device);
+	}
+}
+
 static struct gpio modem_gpios[] = { /* Nemo modem */
 	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
 	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
@@ -621,6 +669,7 @@ static void dalmore_modem_init(void)
 #else
 static void dalmore_usb_init(void) { }
 static void dalmore_modem_init(void) { }
+static void dalmore_xusb_init(void) { }
 #endif
 
 static void dalmore_audio_init(void)
@@ -788,6 +837,7 @@ static void __init tegra_dalmore_late_init(void)
 	dalmore_i2c_init();
 	dalmore_spi_init();
 	dalmore_usb_init();
+	dalmore_xusb_init();
 	dalmore_uart_init();
 	dalmore_audio_init();
 	platform_add_devices(dalmore_devices, ARRAY_SIZE(dalmore_devices));

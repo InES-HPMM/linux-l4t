@@ -282,6 +282,7 @@ static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 	REGULATOR_SUPPLY("vddio_bb_hsic", NULL),
 };
@@ -567,7 +568,8 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
-
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -594,6 +596,7 @@ static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
@@ -818,6 +821,7 @@ static struct regulator_consumer_supply fixed_reg_vpp_fuse_supply[] = {
 /* EN_USB3_VBUS From TEGRA GPIO PM5 */
 static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
 };
 
 /* EN_1V8_TS From TEGRA_GPIO_PH5 */

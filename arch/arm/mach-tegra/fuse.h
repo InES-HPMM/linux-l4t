@@ -30,6 +30,7 @@
 
 #define FUSE_SKU_INFO		0x110
 #define FUSE_VP8_ENABLE_0	0x1c4
+#define FUSE_SKU_USB_CALIB_0	0x1f0
 #define FUSE_SKU_DIRECT_CONFIG_0            0x1f4
 #define FUSE_SKU_GPU_1_PIXEL_PIPE           0x200
 #define FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE   0x400
