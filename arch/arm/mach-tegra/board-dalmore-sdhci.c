@@ -228,14 +228,14 @@ static struct regulator *dalmore_vddio_com_1v8;
 #define DALMORE_VDD_WIFI_3V3 "vdd_wifi_3v3"
 #define DALMORE_VDD_WIFI_1V8 "vddio_wifi_1v8"
 
-
 static int dalmore_wifi_regulator_enable(void)
 {
 	int ret = 0;
 
 	/* Enable COM's vdd_com_3v3 regulator*/
 	if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
-		dalmore_vdd_com_3v3 = regulator_get(NULL, DALMORE_VDD_WIFI_3V3);
+		dalmore_vdd_com_3v3 = regulator_get(&dalmore_wifi_device.dev,
+							DALMORE_VDD_WIFI_3V3);
 		if (IS_ERR_OR_NULL(dalmore_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				DALMORE_VDD_WIFI_3V3 "\n");
@@ -254,7 +254,7 @@ static int dalmore_wifi_regulator_enable(void)
 
 	/* Enable COM's vddio_com_1v8 regulator*/
 	if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
-		dalmore_vddio_com_1v8 = regulator_get(NULL,
+		dalmore_vddio_com_1v8 = regulator_get(&dalmore_wifi_device.dev,
 			DALMORE_VDD_WIFI_1V8);
 		if (IS_ERR_OR_NULL(dalmore_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
