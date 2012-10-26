@@ -22,7 +22,7 @@
 
 #include <linux/fb.h>
 
-struct nvhost_device;
+struct platform_device;
 struct tegra_dc;
 struct tegra_fb_data;
 struct tegra_fb_info;
@@ -32,7 +32,7 @@ int tegra_fb_get_mode(struct tegra_dc *dc);
 int tegra_fb_set_mode(struct tegra_dc *dc, int fps);
 
 #ifdef CONFIG_FB_TEGRA
-struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
+struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 					struct tegra_dc *dc,
 					struct tegra_fb_data *fb_data,
 					struct resource *fb_mem);
@@ -42,10 +42,9 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			      bool (*mode_filter)(const struct tegra_dc *dc,
 						  struct fb_videomode *mode));
 #else
-static inline struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
-						      struct tegra_dc *dc,
-						      struct tegra_fb_data *fb_data,
-						      struct resource *fb_mem)
+static inline struct tegra_fb_info *tegra_fb_register(
+	struct platform_device *ndev, struct tegra_dc *dc,
+	struct tegra_fb_data *fb_data, struct resource *fb_mem)
 {
 	return NULL;
 }

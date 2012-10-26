@@ -27,7 +27,7 @@ struct tegra_dc_ext;
 int __init tegra_dc_ext_module_init(void);
 void __exit tegra_dc_ext_module_exit(void);
 
-struct tegra_dc_ext *tegra_dc_ext_register(struct nvhost_device *ndev,
+struct tegra_dc_ext *tegra_dc_ext_register(struct platform_device *ndev,
 					   struct tegra_dc *dc);
 void tegra_dc_ext_unregister(struct tegra_dc_ext *dc_ext);
 
@@ -50,7 +50,7 @@ void tegra_dc_ext_module_exit(void)
 }
 
 static inline
-struct tegra_dc_ext *tegra_dc_ext_register(struct nvhost_device *ndev,
+struct tegra_dc_ext *tegra_dc_ext_register(struct platform_device *ndev,
 					   struct tegra_dc *dc)
 {
 	return NULL;
