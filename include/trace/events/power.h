@@ -71,19 +71,21 @@ enum {
 
 TRACE_EVENT(cpu_suspend,
 
-	TP_PROTO(unsigned int state),
+	TP_PROTO(unsigned int state, unsigned int ts),
 
-	TP_ARGS(state),
+	TP_ARGS(state, ts),
 
 	TP_STRUCT__entry(
 		__field(u32, state)
+		__field(u32, ts)
 	),
 
 	TP_fast_assign(
 		__entry->state = state;
+		__entry->ts = ts;
 	),
 
-	TP_printk("state=%lu", (unsigned long)__entry->state)
+	TP_printk("state %u, time %u", __entry->state, __entry->ts)
 );
 
 TRACE_EVENT(cpu_hotplug,

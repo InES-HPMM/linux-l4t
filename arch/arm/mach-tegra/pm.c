@@ -926,7 +926,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_disable();
 
-	trace_cpu_suspend(CPU_SUSPEND_START);
+	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 #ifdef CONFIG_TEGRA_CLUSTER_CONTROL
@@ -1010,7 +1010,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	if (pdata && pdata->board_resume)
 		pdata->board_resume(mode, TEGRA_RESUME_AFTER_CPU);
 
-	trace_cpu_suspend(CPU_SUSPEND_DONE);
+	trace_cpu_suspend(CPU_SUSPEND_DONE, tegra_rtc_read_ms());
 
 	local_fiq_enable();
 

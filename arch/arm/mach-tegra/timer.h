@@ -85,4 +85,6 @@ static inline void tegra_tsc_wait_for_suspend(void) {};
 static inline void tegra_tsc_wait_for_resume(void) {};
 #endif
 
+u64 tegra_rtc_read_ms(void);
+
 #endif /* _MACH_TEGRA_TIMER_H_ */
