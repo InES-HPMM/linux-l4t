@@ -21,6 +21,7 @@
 #include <linux/ktime.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/debugfs.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/throughput_ioctl.h>
@@ -36,6 +37,12 @@ static ktime_t last_flip;
 static unsigned int multiple_app_disable;
 static spinlock_t lock;
 
+#define EMA_PERIOD 16
+#define EMA_SHIFT   4
+
+static int frame_time_sum_init = 1;
+static long frame_time_sum; /* used for fps EMA */
+
 static struct work_struct work;
 static int throughput_hint;
 
@@ -45,7 +52,7 @@ static void set_throughput_hint(struct work_struct *work)
 	nvhost_scale3d_set_throughput_hint(throughput_hint);
 }
 
-static int throughput_flip_callback(void)
+static void throughput_flip_callback(void)
 {
 	long timediff;
 	ktime_t now;
@@ -55,8 +62,10 @@ static int throughput_flip_callback(void)
 		return NOTIFY_DONE;
 
 	now = ktime_get();
+
 	if (last_flip.tv64 != 0) {
 		timediff = (long) ktime_us_delta(now, last_flip);
+
 		if (timediff > (long) USHRT_MAX)
 			last_frame_time = USHRT_MAX;
 		else
@@ -73,7 +82,16 @@ static int throughput_flip_callback(void)
 
 		if (!work_pending(&work))
 			schedule_work(&work);
+
+		if (frame_time_sum_init) {
+			frame_time_sum = last_frame_time * EMA_PERIOD;
+			frame_time_sum_init = 0;
+		} else {
+			int t = frame_time_sum * (EMA_PERIOD - 1);
+			frame_time_sum = (t >> EMA_SHIFT) + last_frame_time;
+		}
 	}
+
 	last_flip = now;
 
 	return NOTIFY_OK;
@@ -109,8 +127,11 @@ static int throughput_open(struct inode *inode, struct file *file)
 	}
 
 	throughput_active_app_count++;
-	if (throughput_active_app_count > 1)
+	if (throughput_active_app_count > 1) {
 		multiple_app_disable = 1;
+		frame_time_sum_init = 1;
+		frame_time_sum = 0;
+	}
 
 	spin_unlock(&lock);
 
@@ -129,6 +150,8 @@ static int throughput_release(struct inode *inode, struct file *file)
 		reset_target_frame_time();
 		multiple_app_disable = 0;
 		callback_initialized = 0;
+		frame_time_sum_init = 1;
+		frame_time_sum = 0;
 		tegra_dc_unset_flip_callback();
 	}
 
@@ -168,9 +191,7 @@ static int throughput_set_target_fps(unsigned long arg)
 }
 
 static long
-throughput_ioctl(struct file *file,
-			  unsigned int cmd,
-			  unsigned long arg)
+throughput_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 
@@ -203,10 +224,30 @@ static const struct file_operations throughput_user_fops = {
 #define TEGRA_THROUGHPUT_MINOR 1
 
 static struct miscdevice throughput_miscdev = {
-	.minor  = TEGRA_THROUGHPUT_MINOR,
-	.name   = "tegra-throughput",
-	.fops   = &throughput_user_fops,
-	.mode   = 0666,
+	.minor = TEGRA_THROUGHPUT_MINOR,
+	.name  = "tegra-throughput",
+	.fops  = &throughput_user_fops,
+	.mode  = 0666,
+};
+
+static int fps_show(struct seq_file *s, void *unused)
+{
+	int frame_time_avg = frame_time_sum >> EMA_SHIFT;
+	int fps = frame_time_avg > 0 ? 1000000 / frame_time_avg : 0;
+	seq_printf(s, "%d\n", fps);
+	return 0;
+}
+
+static int fps_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fps_show, inode->i_private);
+}
+
+static const struct file_operations fps_fops = {
+	.open		= fps_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
 int __init throughput_init_miscdev(void)
@@ -224,6 +265,8 @@ int __init throughput_init_miscdev(void)
 		       " (minor %d err %d)\n", TEGRA_THROUGHPUT_MINOR, ret);
 		return ret;
 	}
+
+	debugfs_create_file("fps", 0444, NULL, NULL, &fps_fops);
 
 	return 0;
 }
