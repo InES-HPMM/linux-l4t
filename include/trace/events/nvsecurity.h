@@ -74,18 +74,40 @@ DEFINE_EVENT(usec_profiling, smc_init_cache,
 	TP_ARGS(state)
 );
 
-DEFINE_EVENT(usec_profiling, smc_wake,
+DECLARE_EVENT_CLASS(cntr_profiling,
 
-	TP_PROTO(unsigned long state),
+	TP_PROTO(unsigned long counter, unsigned long state),
 
-	TP_ARGS(state)
+	TP_ARGS(counter, state),
+
+	TP_STRUCT__entry(
+		__field(u32, counter)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->counter = counter;
+		__entry->state = state;
+	),
+
+	TP_printk("counter=%lu, state=%lu",
+		(unsigned long)__entry->counter,
+		(unsigned long)__entry->state
+	)
 );
 
-DEFINE_EVENT(usec_profiling, secureos_init,
+DEFINE_EVENT(cntr_profiling, smc_wake,
 
-	TP_PROTO(unsigned long state),
+	TP_PROTO(unsigned long counter, unsigned long state),
 
-	TP_ARGS(state)
+	TP_ARGS(counter, state)
+);
+
+DEFINE_EVENT(cntr_profiling, secureos_init,
+
+	TP_PROTO(unsigned long counter, unsigned long state),
+
+	TP_ARGS(counter, state)
 );
 
 extern u32 notrace tegra_read_cycle(void);

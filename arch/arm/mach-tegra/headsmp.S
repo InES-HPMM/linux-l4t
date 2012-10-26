@@ -73,6 +73,13 @@ ENDPROC(tegra_secondary_startup)
  *	  re-enabling sdram.
  */
 ENTRY(tegra_resume)
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	mov32	r1, TEGRA_TMRUS_BASE
+	ldr	r0, [r1]
+	adr	r1, tegra_resume_entry_time
+	str	r0, [r1]
+#endif
+
 	bl	__invalidate_cpu_state
 
 	cpu_id	r0
@@ -101,12 +108,39 @@ ENTRY(tegra_resume)
 #endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+	mov32	r1, TEGRA_TMRUS_BASE
+	ldr	r0, [r1]
+	adr	r1, tegra_resume_smc_entry_time
+	str	r0, [r1]
+
 	/* wake up (should have specified args?) */
 	bl	tegra_generic_smc
+
+	mov32	r1, TEGRA_TMRUS_BASE
+	ldr	r0, [r1]
+	adr	r1, tegra_resume_smc_exit_time
+	str	r0, [r1]
 #endif
 
 	b	cpu_resume
 ENDPROC(tegra_resume)
+
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	.globl tegra_resume_timestamps_start
+	.globl tegra_resume_smc_entry_time
+	.globl tegra_resume_smc_exit_time
+	.globl tegra_resume_entry_time
+	.globl tegra_resume_timestamps_end
+tegra_resume_timestamps_start:
+tegra_resume_smc_entry_time:
+	.long	0
+tegra_resume_smc_exit_time:
+	.long	0
+tegra_resume_entry_time:
+	.long	0
+tegra_resume_timestamps_end:
+ENTRY(__tegra_resume_timestamps_end)
+#endif
 #endif
 
 /*

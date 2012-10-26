@@ -46,6 +46,9 @@
 #include <linux/console.h>
 #include <linux/tegra_audio.h>
 
+#include <trace/events/power.h>
+#include <trace/events/nvsecurity.h>
+
 #include <asm/cacheflush.h>
 #include <asm/idmap.h>
 #include <asm/localtimer.h>
@@ -74,7 +77,6 @@
 #include "dvfs.h"
 #include "cpu-tegra.h"
 
-#include <trace/events/nvpower.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvpower.h>
 
@@ -546,14 +548,23 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+	outer_flush_range(__pa(&tegra_resume_timestamps_start),
+			  __pa(&tegra_resume_timestamps_end));
+
 	if (mode == TEGRA_SUSPEND_LP0) {
+		trace_smc_sleep_core(NVSEC_SMC_START);
+
 		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE3,
 				  virt_to_phys(tegra_resume));
 	} else {
+		trace_smc_sleep_core(NVSEC_SMC_START);
+
 		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
 				  (TEGRA_RESET_HANDLER_BASE +
 				   tegra_cpu_reset_handler_offset));
 	}
+
+	trace_smc_sleep_core(NVSEC_SMC_DONE);
 #endif
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	cpu_suspend(v2p, tegra2_sleep_core_finish);
@@ -565,9 +576,15 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+	outer_flush_range(__pa(&tegra_resume_timestamps_start),
+			  __pa(&tegra_resume_timestamps_end));
+	trace_smc_sleep_cpu(NVSEC_SMC_START);
+
 	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
+
+	trace_smc_sleep_cpu(NVSEC_SMC_DONE);
 #endif
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
@@ -666,6 +683,12 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
 	tegra_init_cache(false);
+
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
+	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);
+#endif
+
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
 	restore_cpu_complex(flags);
 	cpu_cluster_pm_exit();
@@ -972,6 +995,16 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
 	tegra_init_cache(true);
+
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
+	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);
+
+	if (mode == TEGRA_SUSPEND_LP0) {
+		trace_secureos_init(tegra_resume_entry_time,
+			NVSEC_SUSPEND_EXIT_DONE);
+	}
+#endif
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 
