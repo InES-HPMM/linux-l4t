@@ -40,18 +40,17 @@
 
 #include "tegra11_host1x_devices.h"
 
-int __init pluto_host1x_init(void)
+struct platform_device * __init pluto_host1x_init(void)
 {
-	int err = -EINVAL;
-
+	struct platform_device *pdev = NULL;
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra11_register_host1x_devices();
-	if (err) {
+	pdev = tegra11_register_host1x_devices();
+	if (!pdev) {
 		pr_err("host1x devices registration failed\n");
-		return err;
+		return NULL;
 	}
 #endif
-	return err;
+	return pdev;
 }
 
 #ifdef CONFIG_TEGRA_DC
@@ -842,7 +841,7 @@ static struct tegra_dc_platform_data pluto_disp2_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
-static struct nvhost_device pluto_disp2_device = {
+static struct platform_device pluto_disp2_device = {
 	.name		= "tegradc",
 	.id		= 1,
 	.resource	= pluto_disp2_resources,
@@ -852,7 +851,7 @@ static struct nvhost_device pluto_disp2_device = {
 	},
 };
 
-static struct nvhost_device pluto_disp1_device = {
+static struct platform_device pluto_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= pluto_disp1_resources,
@@ -1055,6 +1054,7 @@ int __init pluto_panel_init(void)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
 
 	sd_settings = pluto_sd_settings;
 
@@ -1073,12 +1073,12 @@ int __init pluto_panel_init(void)
 	gpio_request(pluto_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(pluto_hdmi_hpd);
 
-	err = pluto_host1x_init();
+	phost1x = pluto_host1x_init();
 	if (err)
 		return err;
 
-	res = nvhost_get_resource_byname(&pluto_disp1_device,
-					 IORESOURCE_MEM, "fbmem");
+	res = platform_get_resource_byname(&pluto_disp1_device,
+		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
@@ -1086,18 +1086,20 @@ int __init pluto_panel_init(void)
 	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
-	res = nvhost_get_resource_byname(&pluto_disp2_device,
-					 IORESOURCE_MEM, "fbmem");
+	res = platform_get_resource_byname(&pluto_disp2_device,
+		IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
-	err = nvhost_device_register(&pluto_disp1_device);
+	pluto_disp1_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&pluto_disp1_device);
 	if (err) {
 		pr_err("disp1 device registration failed\n");
 		return err;
 	}
 
-	err = nvhost_device_register(&pluto_disp2_device);
+	pluto_disp2_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&pluto_disp2_device);
 	if (err) {
 		pr_err("disp2 device registration failed\n");
 		return err;
@@ -1127,7 +1129,8 @@ int __init pluto_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
-	err = nvhost_device_register(&nvavp_device);
+	nvavp_device.dev.parent = &phost1x->dev;
+	err = platform_device_register(&nvavp_device);
 	if (err) {
 		pr_err("nvavp device registration failed\n");
 		return err;
@@ -1136,7 +1139,7 @@ int __init pluto_panel_init(void)
 	return err;
 }
 #else
-int __init pluto_panel_init(void)
+struct platform_device * __init pluto_panel_init(void)
 {
 	return pluto_host1x_init();
 }

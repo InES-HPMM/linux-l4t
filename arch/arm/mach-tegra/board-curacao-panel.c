@@ -394,7 +394,7 @@ static struct tegra_dc_platform_data curacao_disp1_pdata = {
 	.fb		= &curacao_fb_data,
 };
 
-static struct nvhost_device curacao_disp1_device = {
+static struct platform_device curacao_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= curacao_disp1_resources,
@@ -476,7 +476,7 @@ static struct tegra_dc_platform_data curacao_disp2_pdata = {
 	.fb		= &curacao_fb_data,
 };
 
-static struct nvhost_device curacao_disp2_device = {
+static struct platform_device curacao_disp2_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= curacao_disp2_resources,
@@ -536,46 +536,54 @@ int __init curacao_panel_init(void)
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
 	struct resource *res;
 #endif
-
+#if defined(CONFIG_TEGRA_GRHOST)
+	struct platform_device *phost1x;
+#endif
 	curacao_carveouts[1].base = tegra_carveout_start;
 	curacao_carveouts[1].size = tegra_carveout_size;
 	curacao_carveouts[2].base = tegra_vpr_start;
 	curacao_carveouts[2].size = tegra_vpr_size;
 
 	err = platform_add_devices(curacao_gfx_devices,
-				   ARRAY_SIZE(curacao_gfx_devices));
+		ARRAY_SIZE(curacao_gfx_devices));
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra11_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra11_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
 #if TEGRA_DSI_GANGED_MODE
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&curacao_disp1_device,
+	res = platform_get_resource_byname(&curacao_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	if (!err)
-		err = nvhost_device_register(&curacao_disp1_device);
+	if (!err) {
+		curacao_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&curacao_disp1_device);
+	}
 #endif
 #else
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&curacao_disp2_device,
+	res = platform_get_resource_byname(&curacao_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	if (!err)
-		err = nvhost_device_register(&curacao_disp2_device);
+	if (!err) {
+		curacao_disp2_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&curacao_disp2_device);
+	}
 #endif
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
-	if (!err)
-		err = nvhost_device_register(&nvavp_device);
+	if (!err) {
+		nvavp_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&nvavp_device);
+	}
 #endif
 	return err;
 }
