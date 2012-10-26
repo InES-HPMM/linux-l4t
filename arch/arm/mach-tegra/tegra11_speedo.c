@@ -58,7 +58,7 @@ void tegra_init_speedo_data(void)
 	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
 
-	cpu_speedo_id = -1; /* hard-code hack because EDP table needs it */
+	cpu_speedo_id = 0; /* start with one SKU */
 
 	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 	cpu_iddq_value &= 0x3ff;
