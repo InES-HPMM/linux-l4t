@@ -724,6 +724,9 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
+	int idx, ret;
+	unsigned int freq;
+
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
 
@@ -742,7 +745,17 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
-	policy->cur = tegra_getspeed(policy->cpu);
+
+	/* clip boot frequency to table entry */
+	freq = tegra_getspeed(policy->cpu);
+	ret = cpufreq_frequency_table_target(policy, freq_table, freq,
+		CPUFREQ_RELATION_H, &idx);
+	if (!ret && (freq != freq_table[idx].frequency)) {
+		ret = tegra_update_cpu_speed(freq_table[idx].frequency);
+		if (!ret)
+			freq = freq_table[idx].frequency;
+	}
+	policy->cur = freq;
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
