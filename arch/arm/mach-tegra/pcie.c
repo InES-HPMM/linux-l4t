@@ -314,6 +314,7 @@ struct tegra_pcie_info {
 	struct regulator	*regulator_avdd_plle;
 	struct clk		*pcie_xclk;
 	struct clk		*pll_e;
+	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
 }tegra_pcie;
 
@@ -895,7 +896,7 @@ static int tegra_pcie_enable_regulators(void)
 		printk(KERN_INFO "PCIE.C: %s : regulator hvdd_pex\n",
 					__func__);
 		tegra_pcie.regulator_hvdd =
-			regulator_get(NULL, "hvdd_pex");
+			regulator_get(tegra_pcie.dev, "hvdd_pex");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_hvdd)) {
 			pr_err("%s: unable to get hvdd_pex regulator\n",
 					__func__);
@@ -906,7 +907,7 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_pexio == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator pexio\n", __func__);
 		tegra_pcie.regulator_pexio =
-			regulator_get(NULL, "vdd_pexb");
+			regulator_get(tegra_pcie.dev, "vdd_pexb");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_pexio)) {
 			pr_err("%s: unable to get pexio regulator\n", __func__);
 			tegra_pcie.regulator_pexio = 0;
@@ -920,7 +921,7 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_avdd_plle == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator avdd_plle\n",
 				__func__);
-		tegra_pcie.regulator_avdd_plle = regulator_get(NULL,
+		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
 						"avdd_plle");
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_avdd_plle)) {
 			pr_err("%s: unable to get avdd_plle regulator\n",
@@ -1301,6 +1302,7 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	tegra_pcie.dev = &pdev->dev;
 	tegra_pcie.plat_data = pdev->dev.platform_data;
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[0] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[0]);
