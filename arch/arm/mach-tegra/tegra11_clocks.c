@@ -3268,6 +3268,7 @@ static struct clk_ops tegra_plle_ops = {
 /* DFLL operations */
 static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 {
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	int ret;
 	struct clk *cpu = tegra_get_clock_by_name("cpu");
 
@@ -3287,13 +3288,12 @@ static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 	if (!ret) {
 		c->state = OFF;
 		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
-		pr_info("Tegra CPU DFLL is initialized\n");
 
-#ifdef CONFIG_TEGRA_USE_DFLL
-		use_dfll = DFLL_RANGE_ALL_RATES;
-#endif
+		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 		tegra_dvfs_set_dfll_range(cpu->parent->dvfs, use_dfll);
+		pr_info("Tegra CPU DFLL is initialized\n");
 	}
+#endif
 }
 
 static int tegra11_dfll_clk_enable(struct clk *c)
