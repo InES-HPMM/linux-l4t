@@ -641,6 +641,18 @@ static int clk_div16_get_divider(unsigned long parent_rate, unsigned long rate)
 	return divider_u16 - 1;
 }
 
+static inline bool bus_user_is_slower(struct clk *a, struct clk *b)
+{
+	return a->u.shared_bus_user.client->max_rate * a->div <
+		b->u.shared_bus_user.client->max_rate * b->div;
+}
+
+static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
+{
+	return a->u.shared_bus_user.rate * a->div <
+		b->u.shared_bus_user.rate * b->div;
+}
+
 /* clk_m functions */
 static unsigned long tegra12_clk_m_autodetect_rate(struct clk *c)
 {
@@ -4574,18 +4586,6 @@ out:
 	return ret;
 }
 
-static inline bool cbus_user_is_slower(struct clk *a, struct clk *b)
-{
-	return a->u.shared_bus_user.client->max_rate * a->div <
-		b->u.shared_bus_user.client->max_rate * b->div;
-}
-
-static inline bool cbus_user_request_is_lower(struct clk *a, struct clk *b)
-{
-	return a->u.shared_bus_user.rate * a->div <
-		b->u.shared_bus_user.rate * b->div;
-}
-
 static inline void cbus_move_enabled_user(
 	struct clk *user, struct clk *dst, struct clk *src)
 {
@@ -4690,27 +4690,27 @@ static int tegra12_clk_cbus_migrate_users(struct clk *user)
 
 	/* Make sure top user on the source bus is requesting highest rate */
 	if (!src_bus->u.cbus.top_user || (dst_bus->u.cbus.top_user &&
-		cbus_user_request_is_lower(src_bus->u.cbus.top_user,
+		bus_user_request_is_lower(src_bus->u.cbus.top_user,
 					   dst_bus->u.cbus.top_user)))
 		swap(src_bus, dst_bus);
 
 	/* If top user is the slow one on its own (source) bus, do nothing */
 	top_user = src_bus->u.cbus.top_user;
 	BUG_ON(!top_user->u.shared_bus_user.client);
-	if (!cbus_user_is_slower(src_bus->u.cbus.slow_user, top_user))
+	if (!bus_user_is_slower(src_bus->u.cbus.slow_user, top_user))
 		return 0;
 
 	/* If source bus top user is slower than all users on destination bus,
 	   move top user; otherwise move all users slower than the top one */
 	if (!dst_bus->u.cbus.slow_user ||
-	    !cbus_user_is_slower(dst_bus->u.cbus.slow_user, top_user)) {
+	    !bus_user_is_slower(dst_bus->u.cbus.slow_user, top_user)) {
 		cbus_move_enabled_user(top_user, dst_bus, src_bus);
 	} else {
 		list_for_each_safe(pos, n, &src_bus->shared_bus_list) {
 			c = list_entry(pos, struct clk, u.shared_bus_user.node);
 			if (c->u.shared_bus_user.enabled &&
 			    c->u.shared_bus_user.client &&
-			    cbus_user_is_slower(c, top_user))
+			    bus_user_is_slower(c, top_user))
 				cbus_move_enabled_user(c, dst_bus, src_bus);
 		}
 	}
@@ -4785,13 +4785,13 @@ static unsigned long tegra12_clk_shared_bus_update(
 						top_rate = request_rate;
 						top = c;
 					} else if ((top_rate == request_rate) &&
-						cbus_user_is_slower(c, top)) {
+						bus_user_is_slower(c, top)) {
 						top = c;
 					}
 				}
 			}
 			if (c->u.shared_bus_user.client &&
-				(!slow || cbus_user_is_slower(c, slow)))
+				(!slow || bus_user_is_slower(c, slow)))
 				slow = c;
 		}
 	}
