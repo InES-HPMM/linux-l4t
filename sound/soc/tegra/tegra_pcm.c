@@ -192,7 +192,7 @@ static int tegra_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 	size_t size = tegra_pcm_hardware.buffer_bytes_max;
 
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	unsigned char *vaddr;
 	phys_addr_t paddr;
 	struct tegra_smmu_data *ptsd;
@@ -228,7 +228,7 @@ static void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_dma_buffer *buf;
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	struct tegra_smmu_data *ptsd;
 #endif
 
@@ -240,7 +240,7 @@ static void tegra_pcm_deallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	if (!buf->area)
 		return;
 
-#ifdef TEGRA30_USE_SMMU
+#if TEGRA30_USE_SMMU
 	if (!buf->private_data)
 		return;
 	ptsd = (struct tegra_smmu_data *)buf->private_data;
