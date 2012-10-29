@@ -769,7 +769,9 @@ static int tegra_cpu_exit(struct cpufreq_policy *policy)
 static int tegra_cpufreq_policy_notifier(
 	struct notifier_block *nb, unsigned long event, void *data)
 {
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	static int once = 1;
+#endif
 	int i, ret;
 	struct cpufreq_policy *policy = data;
 
