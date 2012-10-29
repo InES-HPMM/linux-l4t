@@ -25,6 +25,8 @@
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/kbc.h>
+#include <linux/gpio.h>
+#include <linux/gpio_keys.h>
 
 #include "board.h"
 #include "board-pluto.h"
@@ -73,10 +75,37 @@ static struct tegra_kbc_platform_data pluto_kbc_platform_data = {
 #endif
 };
 
+static struct gpio_keys_button pluto_keys[] = {
+	[0] = {
+		.code = KEY_MUTE,
+		.gpio = TEGRA_GPIO_PI5,
+		.irq = -1,
+		.type = EV_KEY,
+		.desc = "RINGER",
+		.active_low = 0,
+		.wakeup = 0,
+		.debounce_interval = 100,
+	},
+};
+
+static struct gpio_keys_platform_data pluto_keys_pdata = {
+	.buttons	= pluto_keys,
+	.nbuttons	= ARRAY_SIZE(pluto_keys),
+};
+
+static struct platform_device pluto_keys_device = {
+	.name	= "gpio-keys",
+	.id	= 0,
+	.dev	= {
+		.platform_data  = &pluto_keys_pdata,
+	},
+};
+
 int __init pluto_kbc_init(void)
 {
 	struct tegra_kbc_platform_data *data = &pluto_kbc_platform_data;
 	int i;
+
 	tegra_kbc_device.dev.platform_data = &pluto_kbc_platform_data;
 	pr_info("Registering tegra-kbc\n");
 
@@ -92,6 +121,10 @@ int __init pluto_kbc_init(void)
 
 	platform_device_register(&tegra_kbc_device);
 	pr_info("Registering successful tegra-kbc\n");
+
+	platform_device_register(&pluto_keys_device);
+	pr_info("Registering successful gpio-keys\n");
+
 	return 0;
 }
 
