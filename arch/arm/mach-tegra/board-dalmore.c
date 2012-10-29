@@ -619,14 +619,16 @@ static void __init dalmore_spi_init(void)
 
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       true},
-	{ "clk_out_2",  "extern2",      40800000,       true},
+	{ "extern2",    "pll_p",        41000000,       false},
+	{ "clk_out_2",  "extern2",      40800000,       false},
 	{ NULL,         NULL,           0,              0},
 };
 
 struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
 	.gpio_reset = 0,
 	.config = 0,
+	.platform_id = RM_PLATFORM_D010,
+	.name_of_clock = "clk_out_2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
@@ -657,6 +659,7 @@ static int __init dalmore_touch_init(void)
 		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_P005;
 	else
 		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_D010;
+	mdelay(20);
 	rm31080a_dalmore_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,

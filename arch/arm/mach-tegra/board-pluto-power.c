@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-power.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -103,7 +103,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_audio", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_bt_1v8", NULL),
-	REGULATOR_SUPPLY("vdd_ts_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 	REGULATOR_SUPPLY("avdd_pll_bb", NULL),
 };
 
@@ -170,6 +170,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vaux_3v3", NULL),
 	REGULATOR_SUPPLY("vdd", "0-0044"),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
+	REGULATOR_SUPPLY("avdd", "spi3.2"),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
