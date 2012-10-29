@@ -56,6 +56,7 @@ struct cm3218_info {
 	int polling_delay;
 	u16 als_set_reg;
 	struct mutex lock;
+	bool is_als_on_before_suspend;
 };
 
 static struct cm3218_info *chip_info;
@@ -124,14 +125,17 @@ static int cm3218_power(int on)
 static int cm3218_enable(struct input_dev *dev)
 {
 	pr_debug("[LS][CM3218] %s\n", __func__);
-	cm3218_power(true);
+	if (chip_info->is_als_on_before_suspend)
+		cm3218_power(true);
 	return 0;
 }
 
 static int cm3218_disable(struct input_dev *dev)
 {
 	pr_debug("[LS][CM3218] %s\n", __func__);
-	cm3218_power(false);
+	chip_info->is_als_on_before_suspend = IS_ALS_POWER_ON;
+	if (IS_ALS_POWER_ON)
+		cm3218_power(false);
 	return 0;
 }
 
