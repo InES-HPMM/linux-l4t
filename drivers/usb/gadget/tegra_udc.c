@@ -1660,7 +1660,7 @@ stall:
 
 static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 {
-	struct tegra_req *req;
+	struct tegra_req *req = NULL;
 	struct tegra_ep *ep;
 	u32 portsc, bitmask;
 	unsigned long timeout;
@@ -1760,6 +1760,8 @@ static void udc_test_mode(struct tegra_udc *udc, u32 test_mode)
 	return;
 stall:
 	ep0stall(udc);
+	kfree(req->req.buf);
+	tegra_free_request(NULL, &req->req);
 }
 
 static void setup_received_irq(struct tegra_udc *udc,
