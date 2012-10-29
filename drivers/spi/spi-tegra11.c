@@ -465,7 +465,8 @@ static void spi_tegra_copy_client_txbuf_to_spi_txbuf(
 
 	if (tspi->is_packed) {
 		len = tspi->curr_dma_words * tspi->bytes_per_word;
-		memcpy(tspi->tx_buf, t->tx_buf + tspi->cur_pos, len);
+		if (t->tx_buf)
+			memcpy(tspi->tx_buf, t->tx_buf + tspi->cur_pos, len);
 	} else {
 		unsigned int i;
 		unsigned int count;
@@ -992,7 +993,8 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 
 	m->actual_length += cur_xfer_size;
 
-	if (!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
+	if (tspi->cur &&
+		!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
 		tspi->cur = list_first_entry(&tspi->cur->transfer_list,
 			struct spi_transfer, transfer_list);
 		spin_unlock_irqrestore(&tspi->lock, *irq_flags);
