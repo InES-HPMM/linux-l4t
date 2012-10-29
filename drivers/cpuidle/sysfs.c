@@ -272,6 +272,7 @@ static ssize_t show_state_##_name(struct cpuidle_state *state, \
 
 define_show_state_function(exit_latency)
 define_show_state_function(power_usage)
+define_show_state_function(target_residency)
 define_show_state_ull_function(usage)
 define_show_state_ull_function(time)
 define_show_state_str_function(name)
@@ -283,6 +284,7 @@ define_one_state_ro(name, show_state_name);
 define_one_state_ro(desc, show_state_desc);
 define_one_state_ro(latency, show_state_exit_latency);
 define_one_state_ro(power, show_state_power_usage);
+define_one_state_ro(residency, show_state_target_residency);
 define_one_state_ro(usage, show_state_usage);
 define_one_state_ro(time, show_state_time);
 define_one_state_rw(disable, show_state_disable, store_state_disable);
@@ -292,6 +294,7 @@ static struct attribute *cpuidle_state_default_attrs[] = {
 	&attr_desc.attr,
 	&attr_latency.attr,
 	&attr_power.attr,
+	&attr_residency.attr,
 	&attr_usage.attr,
 	&attr_time.attr,
 	&attr_disable.attr,
