@@ -4806,7 +4806,7 @@ static int tegra_clk_shared_bus_migrate_users(struct clk *user)
 	return -ENOSYS;
 }
 
-static void tegra_clk_shared_bus_init(struct clk *c)
+static void tegra_clk_shared_bus_user_init(struct clk *c)
 {
 	c->max_rate = c->parent->max_rate;
 
@@ -4847,7 +4847,7 @@ static void tegra_clk_shared_bus_init(struct clk *c)
  * individual user and bus locks. For now limit bus switch support to cansleep
  * users with cross-clock mutex only.
  */
-static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
+static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 {
 	const struct clk_mux_sel *sel;
 
@@ -4882,7 +4882,7 @@ static int tegra_clk_shared_bus_set_parent(struct clk *c, struct clk *p)
 	return 0;
 }
 
-static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
+static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 {
 	c->u.shared_bus_user.rate = rate;
 	tegra_clk_shared_bus_update(c->parent);
@@ -4893,7 +4893,8 @@ static int tegra_clk_shared_bus_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
-static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
+static long tegra_clk_shared_bus_user_round_rate(
+	struct clk *c, unsigned long rate)
 {
 	/* Defer rounding requests until aggregated. BW users must not be
 	   rounded at all, others just clipped to bus range (some clients
@@ -4917,7 +4918,7 @@ static long tegra_clk_shared_bus_round_rate(struct clk *c, unsigned long rate)
 	return rate;
 }
 
-static int tegra_clk_shared_bus_enable(struct clk *c)
+static int tegra_clk_shared_bus_user_enable(struct clk *c)
 {
 	int ret = 0;
 
@@ -4932,7 +4933,7 @@ static int tegra_clk_shared_bus_enable(struct clk *c)
 	return ret;
 }
 
-static void tegra_clk_shared_bus_disable(struct clk *c)
+static void tegra_clk_shared_bus_user_disable(struct clk *c)
 {
 	if (c->u.shared_bus_user.client)
 		clk_disable(c->u.shared_bus_user.client);
@@ -4943,7 +4944,7 @@ static void tegra_clk_shared_bus_disable(struct clk *c)
 		tegra_clk_shared_bus_migrate_users(c);
 }
 
-static void tegra_clk_shared_bus_reset(struct clk *c, bool assert)
+static void tegra_clk_shared_bus_user_reset(struct clk *c, bool assert)
 {
 	if (c->u.shared_bus_user.client) {
 		if (c->u.shared_bus_user.client->ops &&
@@ -4953,14 +4954,14 @@ static void tegra_clk_shared_bus_reset(struct clk *c, bool assert)
 	}
 }
 
-static struct clk_ops tegra_clk_shared_bus_ops = {
-	.init = tegra_clk_shared_bus_init,
-	.enable = tegra_clk_shared_bus_enable,
-	.disable = tegra_clk_shared_bus_disable,
-	.set_parent = tegra_clk_shared_bus_set_parent,
-	.set_rate = tegra_clk_shared_bus_set_rate,
-	.round_rate = tegra_clk_shared_bus_round_rate,
-	.reset = tegra_clk_shared_bus_reset,
+static struct clk_ops tegra_clk_shared_bus_user_ops = {
+	.init = tegra_clk_shared_bus_user_init,
+	.enable = tegra_clk_shared_bus_user_enable,
+	.disable = tegra_clk_shared_bus_user_disable,
+	.set_parent = tegra_clk_shared_bus_user_set_parent,
+	.set_rate = tegra_clk_shared_bus_user_set_rate,
+	.round_rate = tegra_clk_shared_bus_user_round_rate,
+	.reset = tegra_clk_shared_bus_user_reset,
 };
 
 /* coupled gate ops */
@@ -6220,7 +6221,7 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 			.dev_id    = _dev,		\
 			.con_id    = _con,		\
 		},					\
-		.ops       = &tegra_clk_shared_bus_ops,	\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
 		.parent = _parent,			\
 		.inputs = mux_clk_cbus,			\
 		.flags = MUX,				\
@@ -6330,7 +6331,7 @@ static struct clk tegra_clk_gpu = {
 			.dev_id    = _dev,		\
 			.con_id    = _con,		\
 		},					\
-		.ops       = &tegra_clk_shared_bus_ops,	\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
 		.parent = _parent,			\
 		.u.shared_bus_user = {			\
 			.client_id = _id,		\
