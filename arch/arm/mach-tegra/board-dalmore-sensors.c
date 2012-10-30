@@ -36,6 +36,7 @@
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
 #include <mach/edp.h>
+
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
@@ -114,7 +115,44 @@ static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
 		.lock		= TEGRA_PIN_LOCK_##_lock,	\
 		.od		= TEGRA_PIN_OD_DEFAULT,		\
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
-	}
+}
+
+static int dalmore_focuser_power_on(struct ad5816_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	err = regulator_enable(pw->vdd_i2c);
+	if (unlikely(err))
+		goto ad5816_vdd_i2c_fail;
+
+	err = regulator_enable(pw->vdd);
+	if (unlikely(err))
+		goto ad5816_vdd_fail;
+
+	return 0;
+
+ad5816_vdd_fail:
+	regulator_disable(pw->vdd_i2c);
+
+ad5816_vdd_i2c_fail:
+	pr_err("%s FAILED\n", __func__);
+
+	return -ENODEV;
+}
+
+static int dalmore_focuser_power_off(struct ad5816_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	regulator_disable(pw->vdd);
+	regulator_disable(pw->vdd_i2c);
+
+	return 0;
+}
 
 static struct tegra_pingroup_config mclk_disable =
 	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
@@ -376,11 +414,13 @@ static struct as364x_platform_data dalmore_as3648_pdata = {
 	.power_off_callback = dalmore_as3648_power_off,
 };
 
-static struct ad5816_platform_data pluto_ad5816_pdata = {
-	.cfg		= 0,
-	.num		= 0,
-	.sync		= 0,
-	.dev_name	= "focuser",
+static struct ad5816_platform_data dalmore_ad5816_pdata = {
+	.cfg = 0,
+	.num = 0,
+	.sync = 0,
+	.dev_name = "focuser",
+	.power_on = dalmore_focuser_power_on,
+	.power_off = dalmore_focuser_power_off,
 };
 
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
@@ -398,7 +438,7 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 	},
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
-		.platform_data = &pluto_ad5816_pdata,
+		.platform_data = &dalmore_ad5816_pdata,
 	},
 };
 
