@@ -51,9 +51,9 @@
 #include "sleep.h"
 #include "timer.h"
 
-int tegra_lp2_exit_latency;
-static int tegra_lp2_power_off_time;
-static unsigned int tegra_lp2_min_residency;
+int tegra_pg_exit_latency;
+static int tegra_pd_power_off_time;
+static unsigned int tegra_pd_min_residency;
 
 static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 				int index);
@@ -91,42 +91,45 @@ static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 	return index;
 }
 
-static bool lp2_in_idle __read_mostly = false;
+static bool power_down_in_idle __read_mostly;
 
 #ifdef CONFIG_PM_SLEEP
-static bool lp2_in_idle_modifiable __read_mostly = true;
-static bool lp2_disabled_by_suspend;
+static bool pd_in_idle_modifiable __read_mostly = true;
+static bool pd_disabled_by_suspend;
 static struct tegra_cpuidle_ops tegra_idle_ops;
 
-void tegra_lp2_in_idle(bool enable)
+void tegra_pd_in_idle(bool enable)
 {
-	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
-	if (lp2_in_idle_modifiable) {
-		lp2_in_idle = enable;
-		lp2_in_idle_modifiable = enable;
+	/*
+	 * If power down in idle is permanently disabled it can't be
+	 * re-enabled.
+	 */
+	if (pd_in_idle_modifiable) {
+		power_down_in_idle = enable;
+		pd_in_idle_modifiable = enable;
 		if (!enable)
 			pr_warn("LP2 in idle disabled\n");
 	}
 }
 
-void tegra_lp2_update_target_residency(struct cpuidle_state *state)
+void tegra_pd_update_target_residency(struct cpuidle_state *state)
 {
 	state->target_residency = state->exit_latency +
-		tegra_lp2_power_off_time;
-	if (state->target_residency < tegra_lp2_min_residency)
-		state->target_residency = tegra_lp2_min_residency;
+		tegra_pd_power_off_time;
+	if (state->target_residency < tegra_pd_min_residency)
+		state->target_residency = tegra_pd_min_residency;
 }
 
-static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
+static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 	int index)
 {
 	ktime_t enter, exit;
 	s64 us;
 	struct cpuidle_state *state = &dev->states[index];
-	bool entered_lp2;
+	bool powered_down;
 
-	if (!lp2_in_idle || lp2_disabled_by_suspend ||
-	    !tegra_idle_ops.lp2_is_allowed(dev, state)) {
+	if (!power_down_in_idle || pd_disabled_by_suspend ||
+	    !tegra_idle_ops.pd_is_allowed(dev, state)) {
 		return dev->states[dev->safe_state_index].enter(dev,
 					dev->safe_state_index);
 	}
@@ -139,8 +142,8 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 
 	enter = ktime_get();
 
-	tegra_idle_ops.cpu_idle_stats_lp2_ready(dev->cpu);
-	entered_lp2 = tegra_idle_ops.tegra_idle_lp2(dev, state);
+	tegra_idle_ops.cpu_idle_stats_pd_ready(dev->cpu);
+	powered_down = tegra_idle_ops.tegra_idle_pd(dev, state);
 
 	trace_cpu_powergate_rcuidle((unsigned long)readl(
 					    IO_ADDRESS(TEGRA_TMR1_BASE)
@@ -156,14 +159,14 @@ static int tegra_idle_enter_lp2(struct cpuidle_device *dev,
 	smp_rmb();
 
 	/* Update LP2 latency provided no fall back to clock gating */
-	if (entered_lp2) {
-		tegra_lp2_set_global_latency(state);
-		tegra_lp2_update_target_residency(state);
+	if (powered_down) {
+		tegra_pd_set_global_latency(state);
+		tegra_pd_update_target_residency(state);
 	}
-	tegra_idle_ops.cpu_idle_stats_lp2_time(dev->cpu, us);
+	tegra_idle_ops.cpu_idle_stats_pd_time(dev->cpu, us);
 
 	dev->last_residency = (int)us;
-	return (entered_lp2) ? index : 0;
+	return (powered_down) ? index : 0;
 }
 #endif
 
@@ -198,11 +201,11 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 	state->exit_latency = tegra_cpu_power_good_time();
 	state->target_residency = tegra_cpu_power_off_time() +
 		tegra_cpu_power_good_time();
-	if (state->target_residency < tegra_lp2_min_residency)
-		state->target_residency = tegra_lp2_min_residency;
+	if (state->target_residency < tegra_pd_min_residency)
+		state->target_residency = tegra_pd_min_residency;
 	state->power_usage = 0;
 	state->flags = CPUIDLE_FLAG_TIME_VALID;
-	state->enter = tegra_idle_enter_lp2;
+	state->enter = tegra_idle_enter_pd;
 	dev->state_count++;
 #endif
 
@@ -220,9 +223,9 @@ static int tegra_cpuidle_pm_notify(struct notifier_block *nb,
 {
 #ifdef CONFIG_PM_SLEEP
 	if (event == PM_SUSPEND_PREPARE)
-		lp2_disabled_by_suspend = true;
+		pd_disabled_by_suspend = true;
 	else if (event == PM_POST_SUSPEND)
-		lp2_disabled_by_suspend = false;
+		pd_disabled_by_suspend = false;
 #endif
 
 	return NOTIFY_OK;
@@ -244,9 +247,9 @@ static int __init tegra_cpuidle_init(void)
 	}
 
 #ifdef CONFIG_PM_SLEEP
-	tegra_lp2_min_residency = tegra_cpu_lp2_min_residency();
-	tegra_lp2_exit_latency = tegra_cpu_power_good_time();
-	tegra_lp2_power_off_time = tegra_cpu_power_off_time();
+	tegra_pd_min_residency = tegra_cpu_lp2_min_residency();
+	tegra_pg_exit_latency = tegra_cpu_power_good_time();
+	tegra_pd_power_off_time = tegra_cpu_power_off_time();
 
 	tegra_cpuidle_init_soc(&tegra_idle_ops);
 #endif
@@ -271,13 +274,16 @@ static void __exit tegra_cpuidle_exit(void)
 }
 module_exit(tegra_cpuidle_exit);
 
-static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
+static int pd_in_idle_set(const char *arg, const struct kernel_param *kp)
 {
 #ifdef CONFIG_PM_SLEEP
 	int ret;
 
-	/* If LP2 in idle is permanently disabled it can't be re-enabled. */
-	if (lp2_in_idle_modifiable) {
+	/*
+	 * If power down in idle is permanently disabled it can't be
+	 * re-enabled.
+	 */
+	if (pd_in_idle_modifiable) {
 		ret = param_set_bool(arg, kp);
 		return ret;
 	}
@@ -285,26 +291,26 @@ static int lp2_in_idle_set(const char *arg, const struct kernel_param *kp)
 	return -ENODEV;
 }
 
-static int lp2_in_idle_get(char *buffer, const struct kernel_param *kp)
+static int pd_in_idle_get(char *buffer, const struct kernel_param *kp)
 {
 	return param_get_bool(buffer, kp);
 }
 
-static struct kernel_param_ops lp2_in_idle_ops = {
-	.set = lp2_in_idle_set,
-	.get = lp2_in_idle_get,
+static struct kernel_param_ops pd_in_idle_ops = {
+	.set = pd_in_idle_set,
+	.get = pd_in_idle_get,
 };
-module_param_cb(lp2_in_idle, &lp2_in_idle_ops, &lp2_in_idle, 0644);
+module_param_cb(power_down_in_idle, &pd_in_idle_ops, &power_down_in_idle, 0644);
 
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_PM_SLEEP)
-static int tegra_lp2_debug_open(struct inode *inode, struct file *file)
+static int tegra_pd_debug_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, tegra_idle_ops.lp2_debug_show,
+	return single_open(file, tegra_idle_ops.pd_debug_show,
 				inode->i_private);
 }
 
-static const struct file_operations tegra_lp2_debug_ops = {
-	.open		= tegra_lp2_debug_open,
+static const struct file_operations tegra_pd_debug_ops = {
+	.open		= tegra_pd_debug_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
@@ -319,8 +325,8 @@ static int __init tegra_cpuidle_debug_init(void)
 	if (!dir)
 		return -ENOMEM;
 
-	d = debugfs_create_file("lp2", S_IRUGO, dir, NULL,
-		&tegra_lp2_debug_ops);
+	d = debugfs_create_file("power_down_stats", S_IRUGO, dir, NULL,
+		&tegra_pd_debug_ops);
 	if (!d)
 		return -ENOMEM;
 

@@ -453,30 +453,30 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 
 	if (flags & TEGRA_POWER_SDRAM_SELFREFRESH) {
 		if (us)
-			tegra_lp2_set_trigger(us);
+			tegra_pd_set_trigger(us);
 
 		tegra_cluster_switch_prolog(flags);
 		tegra_suspend_dram(TEGRA_SUSPEND_LP1, flags);
 		tegra_cluster_switch_epilog(flags);
 
 		if (us)
-			tegra_lp2_set_trigger(0);
+			tegra_pd_set_trigger(0);
 	} else {
 		int cpu;
 
 		cpu = cpu_logical_map(smp_processor_id());
 
-		tegra_set_cpu_in_lp2(cpu);
+		tegra_set_cpu_in_pd(cpu);
 		cpu_pm_enter();
 		if (!timekeeping_suspended)
 			clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER,
 					   &cpu);
-		tegra_idle_lp2_last(0, flags);
+		tegra_idle_power_down_last(0, flags);
 		if (!timekeeping_suspended)
 			clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT,
 					   &cpu);
 		cpu_pm_exit();
-		tegra_clear_cpu_in_lp2(cpu);
+		tegra_clear_cpu_in_pd(cpu);
 	}
 	local_irq_restore(irq_flags);
 

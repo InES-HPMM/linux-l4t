@@ -184,7 +184,7 @@ static void tegra3_register_wake_timer(unsigned int cpu)
 	test_lp2_wake_timer(cpu);
 	return;
 fail:
-	tegra_lp2_in_idle(false);
+	tegra_pd_in_idle(false);
 }
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
@@ -234,7 +234,7 @@ unsigned long tegra3_lp2_timer_remain(void)
 	return timer_readl(lp2_wake_timers[cpu] + TIMER_PCR) & 0x1ffffffful;
 }
 
-int tegra3_is_lp2_timer_ready(unsigned int cpu)
+int tegra3_is_cpu_wake_timer_ready(unsigned int cpu)
 {
 	return cpumask_test_cpu(cpu, &wake_timer_ready);
 }

@@ -217,7 +217,7 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 	tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
 
 	if (request > state->target_residency) {
-		s64 sleep_time = request - tegra_lp2_exit_latency;
+		s64 sleep_time = request - tegra_pg_exit_latency;
 
 		bin = time_to_bin((u32)request / 1000);
 		idle_stats.lp2_count++;
@@ -225,7 +225,7 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 
-		if (tegra_idle_lp2_last(sleep_time, 0) == 0)
+		if (tegra_idle_power_down_last(sleep_time, 0) == 0)
 			sleep_completed = true;
 		else {
 			int irq = tegra_gic_pending_interrupt();
@@ -250,9 +250,9 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 		 */
 		s64 actual_time = ktime_to_us(ktime_sub(exit_time, entry_time));
 		long offset = (long)(actual_time - request);
-		int latency = tegra_lp2_exit_latency + offset / 16;
+		int latency = tegra_pg_exit_latency + offset / 16;
 		latency = clamp(latency, 0, 10000);
-		tegra_lp2_exit_latency = latency;
+		tegra_pg_exit_latency = latency;
 		smp_wmb();
 
 		idle_stats.lp2_completed_count++;
@@ -272,7 +272,7 @@ static bool tegra2_idle_lp2_cpu_1(struct cpuidle_device *dev,
 #ifdef CONFIG_SMP
 	struct tegra_twd_context twd_context;
 
-	if (request < tegra_lp2_exit_latency) {
+	if (request < tegra_pg_exit_latency) {
 		tegra2_cpu_clear_resettable();
 		cpu_do_idle();
 		return false;
@@ -305,7 +305,7 @@ bool tegra2_idle_lp2(struct cpuidle_device *dev,
 			struct cpuidle_state *state)
 {
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
-	bool last_cpu = tegra_set_cpu_in_lp2(dev->cpu);
+	bool last_cpu = tegra_set_cpu_in_pd(dev->cpu);
 	bool entered_lp2 = false;
 
 	cpu_pm_enter();
@@ -329,7 +329,7 @@ bool tegra2_idle_lp2(struct cpuidle_device *dev,
 	}
 
 	cpu_pm_exit();
-	tegra_clear_cpu_in_lp2(dev->cpu);
+	tegra_clear_cpu_in_pd(dev->cpu);
 
 	return entered_lp2;
 }

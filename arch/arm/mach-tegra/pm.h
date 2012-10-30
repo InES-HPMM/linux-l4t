@@ -89,8 +89,8 @@ unsigned long tegra_cpu_lp2_min_residency(void);
 unsigned long tegra_min_residency_noncpu(void);
 unsigned long tegra_min_residency_crail(void);
 #endif
-void tegra_clear_cpu_in_lp2(int cpu);
-bool tegra_set_cpu_in_lp2(int cpu);
+void tegra_clear_cpu_in_pd(int cpu);
+bool tegra_set_cpu_in_pd(int cpu);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
@@ -122,7 +122,7 @@ u64 tegra_rtc_read_ms(void);
  */
 extern void (*tegra_deep_sleep)(int);
 
-unsigned int tegra_idle_lp2_last(unsigned int us, unsigned int flags);
+unsigned int tegra_idle_power_down_last(unsigned int us, unsigned int flags);
 
 #if defined(CONFIG_PM_SLEEP) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 void tegra_lp0_suspend_mc(void);
@@ -177,7 +177,7 @@ unsigned long tegra2_lp2_timer_remain(void);
 #else
 void tegra3_lp2_set_trigger(unsigned long cycles);
 unsigned long tegra3_lp2_timer_remain(void);
-int tegra3_is_lp2_timer_ready(unsigned int cpu);
+int tegra3_is_cpu_wake_timer_ready(unsigned int cpu);
 void tegra3_lp2_timer_cancel_secondary(void);
 #endif
 
@@ -188,7 +188,7 @@ static inline void tegra_lp0_suspend_init(void)
 #endif
 }
 
-static inline void tegra_lp2_set_trigger(unsigned long cycles)
+static inline void tegra_pd_set_trigger(unsigned long cycles)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra2_lp2_set_trigger(cycles);
@@ -197,7 +197,7 @@ static inline void tegra_lp2_set_trigger(unsigned long cycles)
 #endif
 }
 
-static inline unsigned long tegra_lp2_timer_remain(void)
+static inline unsigned long tegra_pd_timer_remain(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	return tegra2_lp2_timer_remain();
@@ -206,16 +206,16 @@ static inline unsigned long tegra_lp2_timer_remain(void)
 #endif
 }
 
-static inline int tegra_is_lp2_timer_ready(unsigned int cpu)
+static inline int tegra_is_cpu_wake_timer_ready(unsigned int cpu)
 {
 #if defined(CONFIG_TEGRA_LP2_CPU_TIMER) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	return 1;
 #else
-	return tegra3_is_lp2_timer_ready(cpu);
+	return tegra3_is_cpu_wake_timer_ready(cpu);
 #endif
 }
 
-static inline void tegra_lp2_timer_cancel_secondary(void)
+static inline void tegra_pd_timer_cancel_secondary(void)
 {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	tegra3_lp2_timer_cancel_secondary();

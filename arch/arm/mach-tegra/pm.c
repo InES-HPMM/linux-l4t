@@ -498,7 +498,7 @@ static void suspend_cpu_complex(u32 mode)
 	tegra_gic_cpu_disable(true);
 }
 
-void tegra_clear_cpu_in_lp2(int cpu)
+void tegra_clear_cpu_in_pd(int cpu)
 {
 	spin_lock(&tegra_lp2_lock);
 	BUG_ON(!cpumask_test_cpu(cpu, &tegra_in_lp2));
@@ -514,7 +514,7 @@ void tegra_clear_cpu_in_lp2(int cpu)
 	spin_unlock(&tegra_lp2_lock);
 }
 
-bool tegra_set_cpu_in_lp2(int cpu)
+bool tegra_set_cpu_in_pd(int cpu)
 {
 	bool last_cpu = false;
 
@@ -570,7 +570,8 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
-unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
+unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
+					unsigned int flags)
 {
 	u32 reg;
 	unsigned int remain;
@@ -643,7 +644,7 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	}
 
 	if (sleep_time)
-		tegra_lp2_set_trigger(sleep_time);
+		tegra_pd_set_trigger(sleep_time);
 
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
@@ -667,9 +668,9 @@ unsigned int tegra_idle_lp2_last(unsigned int sleep_time, unsigned int flags)
 	restore_cpu_complex(flags);
 	cpu_cluster_pm_exit();
 
-	remain = tegra_lp2_timer_remain();
+	remain = tegra_pd_timer_remain();
 	if (sleep_time)
-		tegra_lp2_set_trigger(0);
+		tegra_pd_set_trigger(0);
 
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
 		tegra_cluster_switch_epilog(flags);
@@ -1299,7 +1300,7 @@ out:
 fail:
 #endif
 	if (plat->suspend_mode == TEGRA_SUSPEND_NONE)
-		tegra_lp2_in_idle(false);
+		tegra_pd_in_idle(false);
 
 	current_suspend_mode = plat->suspend_mode;
 }
