@@ -724,6 +724,11 @@
 
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define TEGRA_MIPI_BIF_BASE		0x70120000
+#define TEGRA_MIPI_BIF_SIZE		SZ_1K
+#endif
+
 /* On TEGRA, many peripherals are very closely packed in
  * two 256 MB io windows (that actually only use about 64 KB
  * at the start of each).
