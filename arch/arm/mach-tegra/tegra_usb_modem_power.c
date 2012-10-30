@@ -74,10 +74,8 @@ static const struct tegra_usb_platform_data *hc_pdata;
 
 /* supported modems */
 static const struct usb_device_id modem_list[] = {
-	/*FIXME: add i500 USB_DEVICE macro*/
 	{USB_DEVICE(0x1983, 0x0310),	/* Icera 450 rev1 */
-	/* FIXME: temporarily reusing for i500 SWD */
-	/* .driver_info = TEGRA_MODEM_AUTOSUSPEND, */
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
 	 },
 	{USB_DEVICE(0x1983, 0x0321),	/* Icera 450 rev2 */
 	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
