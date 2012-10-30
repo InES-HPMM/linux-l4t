@@ -115,7 +115,6 @@ static void throttle_recover(struct edp_client *client, struct edp_client *tp,
 				tp->gwt == cur_index(tp))
 			continue;
 
-		WARN_ON(!tp->throttle);
 		tp->throttle(tp->gwt);
 		recovered += cur_level(tp) - tp->states[tp->gwt];
 		if (tp->cur == tp->req)

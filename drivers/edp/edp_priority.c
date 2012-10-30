@@ -103,7 +103,6 @@ static void throttle(struct edp_client *client)
 				p->gwt == cur_index(p))
 			continue;
 
-		WARN_ON(!p->throttle);
 		p->throttle(p->gwt);
 		recovered += cur_level(p) - p->states[p->gwt];
 		if (p->cur == p->req)

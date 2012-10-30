@@ -220,7 +220,8 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 		return -EEXIST;
 
 	if (!states_ok(client) || client->priority < EDP_MIN_PRIO ||
-			client->priority > EDP_MAX_PRIO)
+			client->priority > EDP_MAX_PRIO ||
+			(client->e0_index && !client->throttle))
 		return -EINVAL;
 
 	/* make sure that we can satisfy E0 for all registered clients */
