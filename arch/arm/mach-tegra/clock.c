@@ -769,14 +769,17 @@ void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 	if (c->max_rate <= max_rate)
 		return;
 
-	pr_warning("Lowering %s maximum rate from %lu to %lu\n",
-		c->name, c->max_rate, max_rate);
+	/* skip message if shared bus user */
+	if (!c->parent || !c->parent->ops || !c->parent->ops->shared_bus_update)
+		pr_warning("Lowering %s maximum rate from %lu to %lu\n",
+			c->name, c->max_rate, max_rate);
 
 	c->max_rate = max_rate;
 	list_for_each_entry(shared_bus_user,
 			    &c->shared_bus_list, u.shared_bus_user.node) {
-		shared_bus_user->u.shared_bus_user.rate = max_rate;
-		shared_bus_user->max_rate = max_rate;
+		if (shared_bus_user->u.shared_bus_user.rate > max_rate)
+			shared_bus_user->u.shared_bus_user.rate = max_rate;
+		tegra_init_max_rate(shared_bus_user, max_rate);
 	}
 }
 
