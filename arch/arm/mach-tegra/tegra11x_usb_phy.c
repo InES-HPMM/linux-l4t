@@ -598,11 +598,13 @@ static int _usb_phy_init(struct tegra_usb_phy *phy)
 	val |= USB_PORT_SUSPEND_EN;
 	writel(val, base + USB_IF_SPARE);
 
+	val =  readl(base + TEGRA_STREAM_DISABLE);
 #if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
-        val =  readl(base + TEGRA_STREAM_DISABLE);
-        val |= TEGRA_STREAM_DISABLE_OFFSET;
-        writel(val , base + TEGRA_STREAM_DISABLE);
+	val |= TEGRA_STREAM_DISABLE_OFFSET;
+#else
+	val &= ~TEGRA_STREAM_DISABLE_OFFSET;
 #endif
+	writel(val , base + TEGRA_STREAM_DISABLE);
 
 	return 0;
 }
