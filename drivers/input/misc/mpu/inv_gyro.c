@@ -2323,16 +2323,14 @@ static struct device_attribute *inv_compass_attributes[] = {
 	NULL
 };
 
-static void inv_init_regulator(struct inv_gyro_state_s *st)
+static void inv_init_regulator(struct inv_gyro_state_s *st,
+					struct i2c_client *client)
 {
 	int result;
-	struct i2c_client *client;
 
-	client = st->i2c;
 	/* Power regulator registration*/
-	st->inv_regulator.regulator_vlogic = NULL;
 	st->inv_regulator.regulator_vdd =
-			regulator_get(&client->dev, "vdd");
+			devm_regulator_get(&client->dev, "vdd");
 	if (IS_ERR(st->inv_regulator.regulator_vdd)) {
 		dev_info(&client->adapter->dev,
 			"regulator_get for vdd failed: %s\n",
@@ -2340,12 +2338,11 @@ static void inv_init_regulator(struct inv_gyro_state_s *st)
 		dev_info(&client->adapter->dev,
 			"Error code for vdd: %d",
 				PTR_ERR(st->inv_regulator.regulator_vdd));
-		st->inv_regulator.regulator_vdd = NULL;
-		return;
+		goto err_null_regulator;
 	}
 
 	st->inv_regulator.regulator_vlogic =
-			regulator_get(&client->dev, "vlogic");
+			devm_regulator_get(&client->dev, "vlogic");
 	if (IS_ERR(st->inv_regulator.regulator_vlogic)) {
 		dev_info(&client->adapter->dev,
 			"regulator_get for vlogic failed: %s\n",
@@ -2353,29 +2350,30 @@ static void inv_init_regulator(struct inv_gyro_state_s *st)
 		dev_info(&client->adapter->dev,
 			"Error code for vlogic: %d\n",
 				PTR_ERR(st->inv_regulator.regulator_vlogic));
-		regulator_put(st->inv_regulator.regulator_vdd);
-		st->inv_regulator.regulator_vdd = NULL;
-		st->inv_regulator.regulator_vlogic = NULL;
-		return;
+		goto err_put_regulator;
 	}
 
 	dev_info(&client->adapter->dev,
 		"regulator_get for vdd and vlogic succeeded: %s\n",
 		dev_name(&client->dev));
+
 	result = regulator_enable(st->inv_regulator.regulator_vdd);
-	if (result < 0) {
+	if (result < 0)
 		dev_err(&client->adapter->dev,
-			"regulator_enable for vdd failed\n");
-		dev_err(&client->adapter->dev,
-			"Error code: %d\n", result);
-	}
+			"regulator_enable for vdd failed: %d\n", result);
+
 	result = regulator_enable(st->inv_regulator.regulator_vlogic);
-	if (result < 0) {
+	if (result < 0)
 		dev_err(&client->adapter->dev,
-			"regulator_enable for vlogic failed\n");
-		dev_err(&client->adapter->dev,
-			"Error code: %d\n", result);
-	}
+			"regulator_enable for vlogic failed: %d\n", result);
+
+	return;
+
+err_put_regulator:
+	devm_regulator_put(st->inv_regulator.regulator_vdd);
+err_null_regulator:
+	st->inv_regulator.regulator_vdd = NULL;
+	st->inv_regulator.regulator_vlogic = NULL;
 }
 
 static int inv_setup_compass(struct inv_gyro_state_s *st)
@@ -2737,6 +2735,8 @@ static int inv_mod_probe(struct i2c_client *client,
 		goto out_no_free;
 	}
 
+	inv_init_regulator(st, client);
+
 	/* Make state variables available to all _show and _store functions. */
 	i2c_set_clientdata(client, st);
 	st->i2c = client;
@@ -2747,7 +2747,6 @@ static int inv_mod_probe(struct i2c_client *client,
 	st->plat_data =
 		*(struct mpu_platform_data *)dev_get_platdata(&client->dev);
 
-	inv_init_regulator(st);
 	/* power is turned on inside check chip type*/
 	result = inv_check_chip_type(st, id);
 	if (result)
@@ -2822,6 +2821,11 @@ out_free_kfifo:
 	kfifo_free(&st->trigger.timestamps);
 out_free:
 	result = inv_i2c_single_write(st, st->reg->pwr_mgmt_1, BIT_RESET);
+	if (st->inv_regulator.regulator_vlogic &&
+			st->inv_regulator.regulator_vdd) {
+		regulator_disable(st->inv_regulator.regulator_vlogic);
+		regulator_disable(st->inv_regulator.regulator_vdd);
+	}
 	kfree(st);
 out_no_free:
 	dev_err(&client->adapter->dev, "%s failed %d\n", __func__, result);
@@ -2846,13 +2850,10 @@ static int inv_mod_remove(struct i2c_client *client)
 		input_unregister_device(st->idev_dmp);
 	if (st->has_compass)
 		input_unregister_device(st->idev_compass);
-	if (st->inv_regulator.regulator_vlogic) {
+	if (st->inv_regulator.regulator_vlogic &&
+			st->inv_regulator.regulator_vdd) {
 		regulator_disable(st->inv_regulator.regulator_vlogic);
-		regulator_put(st->inv_regulator.regulator_vlogic);
-	}
-	if (st->inv_regulator.regulator_vdd) {
 		regulator_disable(st->inv_regulator.regulator_vdd);
-		regulator_put(st->inv_regulator.regulator_vdd);
 	}
 	kfree(st);
 	dev_info(&client->adapter->dev, "Gyro module removed.\n");
