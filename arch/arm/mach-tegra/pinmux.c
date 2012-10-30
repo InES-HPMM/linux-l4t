@@ -435,6 +435,34 @@ static int tegra_pinmux_set_ioreset(int pg, enum tegra_pin_ioreset ioreset)
 
 	return 0;
 }
+
+static int tegra_pinmux_set_rcv_sel(int pg, enum tegra_pin_rcv_sel rcv_sel)
+{
+	unsigned long reg;
+	unsigned long flags;
+
+	if (pg < 0 || pg >=  pingroup_max)
+		return -ERANGE;
+
+	if (pingroups[pg].mux_reg < 0)
+		return -EINVAL;
+
+	if ((rcv_sel == TEGRA_PIN_RCV_SEL_DEFAULT) || (pingroups[pg].rcv_sel_bit < 0))
+		return 0;
+
+	spin_lock_irqsave(&mux_lock, flags);
+
+	reg = pg_readl(pingroups[pg].mux_bank, pingroups[pg].mux_reg);
+	reg &= ~(0x1 << pingroups[pg].rcv_sel_bit);
+	if (rcv_sel == TEGRA_PIN_RCV_SEL_HIGH)
+		reg |= 1 << pingroups[pg].rcv_sel_bit;
+
+	pg_writel(reg, pingroups[pg].mux_bank, pingroups[pg].mux_reg);
+
+	spin_unlock_irqrestore(&mux_lock, flags);
+
+	return 0;
+}
 #endif
 
 int tegra_pinmux_set_pullupdown(int pg, enum tegra_pullupdown pupd)
@@ -476,6 +504,7 @@ static void tegra_pinmux_config_pingroup(const struct tegra_pingroup_config *con
 	enum tegra_pin_lock lock     = config->lock;
 	enum tegra_pin_od od         = config->od;
 	enum tegra_pin_ioreset ioreset = config->ioreset;
+	enum tegra_pin_rcv_sel rcv_sel = config->rcv_sel;
 #endif
 	int err;
 
@@ -520,6 +549,12 @@ static void tegra_pinmux_config_pingroup(const struct tegra_pingroup_config *con
 		if (err < 0)
 			pr_err("pinmux: can't set pingroup %s ioreset to %s: %d\n",
 			       pingroup_name(pingroup), ioreset_name(func), err);
+	}
+	if (pingroups[pingroup].mux_reg >= 0) {
+		err = tegra_pinmux_set_rcv_sel(pingroup, rcv_sel);
+		if (err < 0)
+			pr_err("pinmux: can't set pingroup %s rcv_sel to %s: %d\n",
+			       pingroup_name(pingroup), tri_name(func), err);
 	}
 #endif
 }
