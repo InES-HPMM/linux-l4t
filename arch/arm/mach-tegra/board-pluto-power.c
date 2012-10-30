@@ -623,6 +623,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_type = IRQ_TYPE_LEVEL_HIGH,
+	.use_power_off = true,
 };
 
 static struct i2c_board_info palma_device[] = {
