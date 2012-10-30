@@ -296,10 +296,12 @@ int __init roth_sensors_init(void)
 	if (err)
 		return err;
 
-	mpuirq_init();
+	if (0)
+		mpuirq_init();
 
-	i2c_register_board_info(0, bq20z45_pdata,
-		ARRAY_SIZE(bq20z45_pdata));
+	if (0)
+		i2c_register_board_info(0, bq20z45_pdata,
+			ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }
