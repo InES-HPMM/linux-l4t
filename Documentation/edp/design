@@ -78,22 +78,30 @@ that throttling is done only to those clients that are running at a
 negative E-state. The EDP manager blocks until the client finishes
 transitioning to the lower E-state.
 
-8. E-state callback
+8. Callbacks
 
-A function pointer provided during EDP client registration to the EDP
-manager by each EDP client which supports negative E-states.  The EDP
-manager maintains a record of each driver's most recently requested
-E-state (including rejected requests).  When any EDP client requests a
-lowering of its E-state, the EDP manager may call one or more of the
-E-state callbacks to accept a previously rejected request.
+An EDP client may provide the following callbacks which are invoked by
+the manager at various stages.
 
-Additionally, the EDP manager will invoke the callback whenever a
-client is being throttled.
+	[*] throttle: invoked when the client is being throttled;
+	    mandatory for those clients that support negative E-states
+	[*] promotion notification (optional): to inform the client
+	    that a previously rejected request is granted now.
+	[*] loan update notification: to inform the client that a loan
+	    amount is changed; mandatory for clients that are engaged
+	    in a loan agreement.
+	[*] loan closure: to inform the client that a loan is now
+	    closed; mandatory for clients that are engaged in a loan
+	    agreement.
 
-Since the callbacks are synchronous, the total time for an E-state
-request that involve throttling is affected by the callback processing.
-Therefore, it is important to reschedule any non-critical time-consuming
-processing on a different context.
+All callbacks are synchronous which means that the total time for an
+operation is affected by client processing. Therefore, it is important
+to reschedule any non-critical time consuming steps on a different
+context.
+
+IMPORTANT: Callbacks are invoked by the EDP manager while holding its
+lock.  Thefore, clients should never call into the EDP framework from
+the callback path. Not doing so shall result in a deadlock.
 
 9. EDP lender
 
