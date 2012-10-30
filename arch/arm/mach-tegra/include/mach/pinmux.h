@@ -137,7 +137,8 @@
 	TEGRA_MUX(DMIC0) \
 	TEGRA_MUX(DMIC1) \
 	TEGRA_MUX(DDR0) \
-	/* End of Tegra114 MUX selectors */
+	/* End of Tegra114 MUX selectors */\
+	TEGRA_MUX(BCL)	\
 
 enum tegra_mux_func {
 #define TEGRA_MUX(mux) TEGRA_MUX_##mux,

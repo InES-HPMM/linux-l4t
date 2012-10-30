@@ -263,7 +263,8 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(GPIO_PO4,	  PO4,		UART,       RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3504),\
 	PINGROUP(GPIO_PO5,	  PO5,		UART,       RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3508),\
 	PINGROUP(GPIO_PO6,	  PO6,		UART,       RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x350c),\
-	PINGROUP(PG_OC,		  INVALID,	SYS,	    RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3510),
+	PINGROUP(PG_OC,		  INVALID,	SYS,	    RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3510),\
+	PINGROUP(BCL,		  PU7,		SYS,	    BCL,	OWR,	    RSVD2,	RSVD3,	     BCL,	INPUT,	0x3514),
 
 const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
 	PINGROUPS
