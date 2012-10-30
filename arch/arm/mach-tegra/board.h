@@ -191,5 +191,5 @@ void tegra_enable_pinmux(void);
 enum image_type get_tegra_image_type(void);
 int tegra_get_cvb_alignment_uV(void);
 int tegra_soc_device_init(const char *machine);
-
+int get_pwr_i2c_clk_rate(void);
 #endif

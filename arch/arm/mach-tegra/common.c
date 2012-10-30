@@ -121,7 +121,7 @@ static struct board_info camera_board_info;
 static int pmu_core_edp = 1200;	/* default 1.2V EDP limit */
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
-
+static int pwr_i2c_clk = 400;
 /*
  * Storage for debug-macro.S's state.
  *
@@ -765,6 +765,19 @@ enum audio_codec_type get_audio_codec_type(void)
 }
 __setup("audio_codec=", tegra_audio_codec_type);
 
+static int tegra_get_pwr_i2c_clk_rate(char *options)
+{
+	int clk = simple_strtol(options, NULL, 16);
+	if (clk != 0)
+		pwr_i2c_clk = clk;
+	return 0;
+}
+
+int get_pwr_i2c_clk_rate(void)
+{
+	return pwr_i2c_clk;
+}
+__setup("pwr_i2c=", tegra_get_pwr_i2c_clk_rate);
 
 void tegra_get_board_info(struct board_info *bi)
 {
