@@ -18,6 +18,7 @@
  *
  */
 
+#include <linux/export.h>
 #include <linux/io.h>
 #include <linux/spinlock.h>
 
@@ -80,17 +81,14 @@ int tegra_mc_get_tiled_memory_bandwidth_multiplier(void)
 unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps)
 {
 	unsigned int freq;
-	/* Emc Bus width is assumed to be 32 bit
-	 * for bw to clock freq conversions.
-	 * clock framework internal takes care of
-	 * adjusting clock freq based on real Emc Bus width.
-	 * 32(bus_width)/8 * 2(ddr) = 8;
-	 */
-	unsigned int bytes_per_emc_clk = 8;
+	unsigned int bytes_per_emc_clk;
 
-	freq = (bw_kbps + bytes_per_emc_clk - 1) / bytes_per_emc_clk;
+	bytes_per_emc_clk = tegra_mc_get_effective_bytes_width() * 2;
+	freq = (bw_kbps + bytes_per_emc_clk - 1) / bytes_per_emc_clk *
+		CONFIG_TEGRA_EMC_TO_DDR_CLOCK;
 	return freq;
 }
+EXPORT_SYMBOL_GPL(tegra_emc_bw_to_freq_req);
 
 /* API to get EMC bandwidth, for freq that can be requested.
  * freq_khz: Frequency passed is in KHz.
@@ -99,14 +97,10 @@ unsigned int tegra_emc_bw_to_freq_req(unsigned int bw_kbps)
 unsigned int tegra_emc_freq_req_to_bw(unsigned int freq_khz)
 {
 	unsigned int bw;
-	/* Emc Bus width is assumed to be 32 bit
-	 * for bw to clock freq conversions.
-	 * clock framework internal takes care of
-	 * adjusting clock freq based on real Emc Bus width.
-	 * 32(bus_width)/8 * 2(ddr) = 8;
-	 */
-	unsigned int bytes_per_emc_clk = 8;
+	unsigned int bytes_per_emc_clk;
 
-	bw = freq_khz * bytes_per_emc_clk;
+	bytes_per_emc_clk = tegra_mc_get_effective_bytes_width() * 2;
+	bw = freq_khz * bytes_per_emc_clk / CONFIG_TEGRA_EMC_TO_DDR_CLOCK;
 	return bw;
 }
+EXPORT_SYMBOL_GPL(tegra_emc_freq_req_to_bw);
