@@ -22,23 +22,10 @@
 #include <media/nvc_focus.h>
 #include <media/nvc.h>
 
-typedef enum {
-	AD5816_VREG_VDD = 0,
-	AD5816_VREG_VDD_AF,
-	AD5816_VREG_VDD_I2C,
-	AD5816_VREG_VDD_CAM_MB,
-	AD5816_VREG_VDD_CAM_AF
-} ad5816_vreg;
-
-typedef enum {
-	AD5816_GPIO_RESET = 0,
-	AD5816_GPIO_I2CMUX,
-	AD5816_GPIO_GP1,
-	AD5816_GPIO_GP2,
-	AD5816_GPIO_GP3,
-	AD5816_GPIO_CAM_AF_PWDN
-} ad5816_gpio_types;
-
+struct ad5816_power_rail {
+	struct regulator *vdd;
+	struct regulator *vdd_i2c;
+};
 
 struct ad5816_platform_data {
 	int cfg;
@@ -50,6 +37,8 @@ struct ad5816_platform_data {
 	struct ad5816_pdata_info (*info);
 	int gpio_count;
 	struct nvc_gpio_pdata *gpio;
+	int (*power_on)(struct ad5816_power_rail *pw);
+	int (*power_off)(struct ad5816_power_rail *pw);
 };
 
 struct ad5816_pdata_info {
@@ -66,16 +55,15 @@ struct ad5816_pdata_info {
 };
 
 // Register Definitions
-
 #define IC_INFO			0x00
 #define IC_VERSION		0x01
 #define CONTROL			0x02
-#define VCM_CODE_MSB	0x03
-#define VCM_CODE_LSB	0x04
+#define VCM_CODE_MSB		0x03
+#define VCM_CODE_LSB		0x04
 #define STATUS			0x05
 #define MODE			0x06
 #define VCM_FREQ		0x07
-#define VCM_THRESHOLD	0x08
+#define VCM_THRESHOLD		0x08
 #define SCL_LOW_DETECTION	0xC0
 
 
