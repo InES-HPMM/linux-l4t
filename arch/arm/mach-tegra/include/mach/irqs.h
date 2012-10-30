@@ -401,7 +401,9 @@
 #define INT_SDMMC3			(INT_PRI_BASE + 19)
 #define INT_USB				(INT_PRI_BASE + 20)
 #define INT_USB2			(INT_PRI_BASE + 21)
-/* unused				(INT_PRI_BASE + 22) */
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INT_MIPI_BIF			(INT_PRI_BASE + 22)
+#endif
 #define INT_SATA_CTL			(INT_PRI_BASE + 23)
 #define INT_NANDFLASH			(INT_PRI_BASE + 24)
 #define INT_VCP				(INT_PRI_BASE + 25)
