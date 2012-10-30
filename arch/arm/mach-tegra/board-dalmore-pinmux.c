@@ -177,13 +177,14 @@
 static __initdata struct tegra_drive_pingroup_config dalmore_drive_pinmux[] = {
 	/* DEFAULT_DRIVE(<pin_group>), */
 	/* SDMMC1 */
-	SET_DRIVE(SDIO1, DISABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
+	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
 
 	/* SDMMC3 */
-	SET_DRIVE(SDIO3, DISABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
+	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
 
 	/* SDMMC4 */
-	SET_DRIVE_WITH_TYPE(GMA, DISABLE, DISABLE, DIV_1, 2, 1, FASTEST, FASTEST, 1),
+	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
+								FASTEST, 1),
 };
 
 /* Initially setting all used GPIO's to non-TRISTATE */
