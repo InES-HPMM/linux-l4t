@@ -26,10 +26,13 @@
 #define INA219_RAIL_NAME_SIZE	32
 
 struct ina219_platform_data {
-	u8 divisor; /*divisor needed to get current value */
+	u16 divisor; /*divisor needed to get current value */
 	u32 calibration_data;
 	u32 power_lsb;
 	u32 precision_multiplier;
+	u16 trig_conf;
+	u16 cont_conf;
+	u32 shunt_resistor; /*mOhms*/
 	char rail_name[INA219_RAIL_NAME_SIZE];
 };
 
