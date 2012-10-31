@@ -81,6 +81,7 @@
 static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
 		.shutdown_gpio  = TEGRA_GPIO_PQ7,
+		.reset_gpio	= TEGRA_GPIO_PQ6,
 		.type           = RFKILL_TYPE_BLUETOOTH,
 };
 
@@ -120,11 +121,6 @@ static struct platform_device dalmore_bluesleep_device = {
 
 static noinline void __init dalmore_setup_bt_rfkill(void)
 {
-	if ((tegra_get_commchip_id() == COMMCHIP_BROADCOM_BCM43241) ||
-		(tegra_get_commchip_id() == COMMCHIP_DEFAULT))
-		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
-	else
-		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PQ6;
 	platform_device_register(&dalmore_bt_rfkill_device);
 }
 
