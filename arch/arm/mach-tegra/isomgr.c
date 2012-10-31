@@ -30,10 +30,64 @@
 #include <linux/sysfs.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
+#include <mach/hardware.h>
 #include <mach/isomgr.h>
 #include <mach/mc.h>
 
 #define ISOMGR_SYSFS_VERSION 0	/* increment on change */
+
+struct isoclient_info {
+	enum tegra_iso_client client;
+	char *name;
+};
+
+static struct isoclient_info *isoclient_info;
+static bool client_valid[TEGRA_ISO_CLIENT_COUNT];
+
+static struct isoclient_info tegra_null_isoclients[] = {
+	/* This must be last entry*/
+	{
+		.client = TEGRA_ISO_CLIENT_COUNT,
+		.name = NULL,
+	},
+};
+
+static struct isoclient_info tegra11x_isoclients[] = {
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_0,
+		.name = "disp_0",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_1,
+		.name = "disp_1",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+	},
+	/* This must be last entry*/
+	{
+		.client = TEGRA_ISO_CLIENT_COUNT,
+		.name = NULL,
+	},
+};
+
+static struct isoclient_info *get_iso_client_info(void)
+{
+	enum tegra_chipid cid;
+	struct isoclient_info *cinfo;
+
+	cid = tegra_get_chipid();
+	switch (cid) {
+	case TEGRA_CHIPID_TEGRA11:
+		cinfo = tegra11x_isoclients;
+		break;
+	default:
+		cinfo = tegra_null_isoclients;
+		break;
+	}
+	return cinfo;
+}
 
 static struct isomgr_client {
 	bool busy;		/* already registered */
@@ -103,7 +157,6 @@ static struct {
 	.max_iso_bw = CONFIG_TEGRA_ISOMGR_POOL_KB_PER_SEC,
 	.avail_bw = CONFIG_TEGRA_ISOMGR_POOL_KB_PER_SEC,
 };
-
 
 /* get minimum MC frequency for client that can support this BW and LT */
 static inline u32 mc_min_freq(u32 ubw, u32 ult) /* in KB/sec and usec */
@@ -181,23 +234,23 @@ tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 	s32 dedi_bw = udedi_bw;
 	int err;
 
-	if (unlikely((client < 0) || (client >= TEGRA_ISO_CLIENT_COUNT))) {
+	if (unlikely(client < 0 || client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client])) {
 		pr_err("invalid client (%d)\n", client);
 		return 0;
 	}
 	cp = &isomgr_clients[client];
 
 	isomgr_lock();
-	if (unlikely(udedi_bw > (isomgr.max_iso_bw - isomgr.dedi_bw))) {
-		pr_err("invalid bandwidth (%u)\n",
-			udedi_bw);
+	if (unlikely(udedi_bw > isomgr.max_iso_bw - isomgr.dedi_bw)) {
+		pr_err("invalid bandwidth (%u), client (%d)\n",
+			udedi_bw, client);
 		isomgr_unlock();
 		return 0;
 	}
 
 	if (unlikely(cp->busy)) {
-		pr_err("client (%d) already registered",
-		       client);
+		pr_err("client (%d) already registered", client);
 		isomgr_unlock();
 		return 0;
 	}
@@ -246,8 +299,9 @@ void tegra_isomgr_unregister(tegra_isomgr_handle handle)
 	struct isomgr_client *cp = (struct isomgr_client *)handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (unlikely((client < 0) || (client >= TEGRA_ISO_CLIENT_COUNT) ||
-		     !cp->busy)) {
+	if (unlikely(!handle || client < 0 ||
+		     client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client] || !cp->busy)) {
 		pr_err("bad handle (%p)\n", handle);
 		return;
 	}
@@ -291,21 +345,23 @@ u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 	int err;
 	int client = cp - &isomgr_clients[0];
 
-	if (unlikely((client < 0) || (client >= TEGRA_ISO_CLIENT_COUNT) ||
-		     !cp->busy)) {
+	if (unlikely(!handle || client < 0 ||
+		     client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client] || !cp->busy)) {
 		pr_err("bad handle (%p)\n", handle);
 		return dvfs_latency;
 	}
 
-	if (unlikely(ubw > (isomgr.max_iso_bw - isomgr.dedi_bw))) {
-		pr_err("invalid BW (%u Kb/sec)\n", ubw);
+	if (unlikely(ubw >
+		     (isomgr.max_iso_bw - isomgr.dedi_bw + cp->dedi_bw))) {
+		pr_err("invalid BW (%u Kb/sec), client=%d\n", ubw, client);
 		return dvfs_latency;
 	}
 
 	/* Look up MC's min freq that could satisfy requested BW and LT */
 	mf = mc_min_freq(ubw, ult);
 	if (unlikely(!mf)) {
-		pr_err("invalid LT (%u usec)\n", ult);
+		pr_err("invalid LT (%u usec), client=%d\n", ult, client);
 		return dvfs_latency;
 	}
 	/* Look up MC's dvfs latency at min freq */
@@ -371,8 +427,9 @@ u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
 	int i;
 	u32 rval = 0;
 
-	if (unlikely((client < 0) || (client >= TEGRA_ISO_CLIENT_COUNT) ||
-		     !cp->busy)) {
+	if (unlikely(!handle || client < 0 ||
+		     client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client] || !cp->busy)) {
 		pr_err("bad handle (%p)\n", handle);
 		return rval;
 	}
@@ -416,8 +473,6 @@ EXPORT_SYMBOL(tegra_isomgr_realize);
 static ssize_t isomgr_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf);
 
-static const struct kobj_attribute seqid_attr =
-	__ATTR(seqid, 0444, isomgr_show, 0);
 static const struct kobj_attribute bw_mf_attr =
 	__ATTR(bw_mf, 0444, isomgr_show, 0);
 static const struct kobj_attribute lt_mf_attr =
@@ -430,17 +485,22 @@ static const struct kobj_attribute avail_bw_attr =
 	__ATTR(avail_bw, 0444, isomgr_show, 0);
 static const struct kobj_attribute sleep_bw_attr =
 	__ATTR(sleep_bw, 0444, isomgr_show, 0);
+static const struct kobj_attribute max_iso_bw_attr =
+	__ATTR(max_iso_bw, 0444, isomgr_show, 0);
+static const struct kobj_attribute seqid_attr =
+	__ATTR(seqid, 0444, isomgr_show, 0);
 static const struct kobj_attribute version_attr =
 	__ATTR(version, 0444, isomgr_show, 0);
 
 static const struct attribute *isomgr_attrs[] = {
-	&seqid_attr.attr,
 	&bw_mf_attr.attr,
 	&lt_mf_attr.attr,
 	&iso_mf_attr.attr,
 	&alloc_bw_attr.attr,
 	&avail_bw_attr.attr,
 	&sleep_bw_attr.attr,
+	&max_iso_bw_attr.attr,
+	&seqid_attr.attr,
 	&version_attr.attr,
 	NULL
 };
@@ -450,20 +510,22 @@ static ssize_t isomgr_show(struct kobject *kobj,
 {
 	ssize_t rval = 0;
 
-	if (attr == &seqid_attr)
-		rval = sprintf(buf, "%d\n", isomgr.seqid);
-	else if (attr == &bw_mf_attr)
-		rval = sprintf(buf, "%d\n", isomgr.bw_mf);
+	if (attr == &bw_mf_attr)
+		rval = sprintf(buf, "%dKHz\n", isomgr.bw_mf);
 	else if (attr == &lt_mf_attr)
-		rval = sprintf(buf, "%d\n", isomgr.lt_mf);
+		rval = sprintf(buf, "%dKHz\n", isomgr.lt_mf);
 	else if (attr == &iso_mf_attr)
-		rval = sprintf(buf, "%d\n", isomgr.iso_mf);
+		rval = sprintf(buf, "%dKHz\n", isomgr.iso_mf);
 	else if (attr == &alloc_bw_attr)
-		rval = sprintf(buf, "%d\n", isomgr.alloc_bw);
+		rval = sprintf(buf, "%dKB\n", isomgr.alloc_bw);
 	else if (attr == &avail_bw_attr)
-		rval = sprintf(buf, "%d\n", isomgr.avail_bw);
+		rval = sprintf(buf, "%dKB\n", isomgr.avail_bw);
 	else if (attr == &sleep_bw_attr)
-		rval = sprintf(buf, "%d\n", isomgr.sleep_bw);
+		rval = sprintf(buf, "%dKB\n", isomgr.sleep_bw);
+	else if (attr == &max_iso_bw_attr)
+		rval = sprintf(buf, "%dKB\n", isomgr.max_iso_bw);
+	else if (attr == &seqid_attr)
+		rval = sprintf(buf, "%d\n", isomgr.seqid);
 	else if (attr == &version_attr)
 		rval = sprintf(buf, "%d\n", ISOMGR_SYSFS_VERSION);
 	return rval;
@@ -604,21 +666,21 @@ static ssize_t isomgr_client_show(struct kobject *kobj,
 	if (attr == &cp->client_attrs.busy)
 		rval = sprintf(buf, "%d\n", cp->busy ? 1 : 0);
 	else if (attr == &cp->client_attrs.dedi_bw)
-		rval = sprintf(buf, "%d\n", cp->dedi_bw);
+		rval = sprintf(buf, "%dKB\n", cp->dedi_bw);
 	else if (attr == &cp->client_attrs.rsvd_bw)
-		rval = sprintf(buf, "%d\n", cp->rsvd_bw);
+		rval = sprintf(buf, "%dKB\n", cp->rsvd_bw);
 	else if (attr == &cp->client_attrs.real_bw)
-		rval = sprintf(buf, "%d\n", cp->real_bw);
+		rval = sprintf(buf, "%dKB\n", cp->real_bw);
 	else if (attr == &cp->client_attrs.need_bw)
-		rval = sprintf(buf, "%d\n", cp->avail_delta);
+		rval = sprintf(buf, "%dKB\n", cp->avail_delta);
 	else if (attr == &cp->client_attrs.lti)
-		rval = sprintf(buf, "%d\n", cp->lti);
+		rval = sprintf(buf, "%dus\n", cp->lti);
 	else if (attr == &cp->client_attrs.lto)
-		rval = sprintf(buf, "%d\n", cp->lto);
+		rval = sprintf(buf, "%dus\n", cp->lto);
 	else if (attr == &cp->client_attrs.rsvd_mf)
-		rval = sprintf(buf, "%d\n", cp->rsvd_mf);
+		rval = sprintf(buf, "%dKHz\n", cp->rsvd_mf);
 	else if (attr == &cp->client_attrs.real_mf)
-		rval = sprintf(buf, "%d\n", cp->real_mf);
+		rval = sprintf(buf, "%dKHz\n", cp->real_mf);
 	return rval;
 }
 
@@ -679,6 +741,8 @@ static void isomgr_create_client(int client, const char *name)
 
 static void isomgr_create_sysfs(void)
 {
+	int i;
+
 	BUG_ON(isomgr.kobj);
 	isomgr.kobj = kobject_create_and_add("isomgr", kernel_kobj);
 	if (!isomgr.kobj) {
@@ -691,9 +755,12 @@ static void isomgr_create_sysfs(void)
 		isomgr.kobj = 0;
 		return;
 	}
-	isomgr_create_client(TEGRA_ISO_CLIENT_DISP_0, "disp_0");
-	isomgr_create_client(TEGRA_ISO_CLIENT_DISP_1, "disp_1");
-	isomgr_create_client(TEGRA_ISO_CLIENT_VI_0,   "vi_0");
+
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
+		if (client_valid[i])
+			isomgr_create_client(isoclient_info[i].client,
+					     isoclient_info[i].name);
+	}
 }
 #else
 static inline void isomgr_create_sysfs(void) {};
@@ -706,10 +773,18 @@ static int __init isomgr_init(void)
 	unsigned int max_emc_bw;
 
 	mutex_init(&isomgr.lock);
+	isoclient_info = get_iso_client_info();
+
+	for (i = 0; ; i++) {
+		if (isoclient_info[i].name)
+			client_valid[isoclient_info[i].client] = true;
+		else
+			break;
+	}
+
 	isomgr.emc_clk = clk_get_sys("iso", "emc");
 	if (!isomgr.max_iso_bw) {
-		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000 *
-			      tegra_mc_get_effective_bytes_width() / 4;
+		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
 		pr_info("iso emc max clk=%dKHz", max_emc_clk);
 		max_emc_bw = tegra_emc_freq_req_to_bw(max_emc_clk);
 		/* ISO clients can use 35% of max emc bw. */

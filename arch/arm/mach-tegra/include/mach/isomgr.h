@@ -17,8 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include "mach/latency_allowance.h"
-
 enum tegra_iso_client {
 	TEGRA_ISO_CLIENT_DISP_0,
 	TEGRA_ISO_CLIENT_DISP_1,
