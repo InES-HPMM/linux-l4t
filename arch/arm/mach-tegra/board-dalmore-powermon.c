@@ -52,6 +52,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_12V_DCIN_RS",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_AC_BAT_VIN1] = {
@@ -60,6 +63,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_AC_BAT_VIN1",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_5V0_SYS] = {
@@ -68,6 +74,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_5V0_SYS",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 5,
 	},
 
 	[VDD_3V3_SYS] = {
@@ -76,6 +85,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_3V3_SYS",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 5,
 	},
 
 	[VDD_3V3_SYS_VIN4_5_7] = {
@@ -84,6 +96,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_3V3_SYS_VIN4_5_7",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[AVDD_USB_HDMI] = {
@@ -92,14 +107,20 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "AVDD_USB_HDMI",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_AC_BAT_D1] = {
-		.calibration_data  = 0xfffe,
-		.power_lsb = 12.50038148 * PRECISION_MULTIPLIER_DALMORE,
+		.calibration_data  = 0x7CD2,
+		.power_lsb = 2.563685298 * PRECISION_MULTIPLIER_DALMORE,
 		.rail_name = "VDD_AC_BAT_D1",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_AO_SMPS12_IN] = {
@@ -108,6 +129,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_AO_SMPS12_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_3V3_SYS_SMPS45_IN] = {
@@ -116,6 +140,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_3V3_SYS_SMPS45_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_AO_SMPS2_IN] = {
@@ -124,6 +151,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_AO_SMPS2_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDDIO_HV_AP] = {
@@ -132,6 +162,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDDIO_HV_AP",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_1V8_LDO3_IN] = {
@@ -140,6 +173,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_1V8_LDO3_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_3V3_SYS_LDO4_IN] = {
@@ -148,6 +184,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_3V3_SYS_LDO4_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_AO_LDO8_IN] = {
@@ -156,6 +195,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_AO_LDO8_IN",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_1V8_AP] = {
@@ -164,6 +206,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_1V8_AP",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 
 	[VDD_1V8_DSM] = {
@@ -172,6 +217,9 @@ static struct ina219_platform_data power_mon_info[] = {
 		.rail_name = "VDD_1V8_DSM",
 		.divisor = 20,
 		.precision_multiplier = PRECISION_MULTIPLIER_DALMORE,
+		.cont_conf = 0x3FFF,
+		.trig_conf = 0x1DB,
+		.shunt_resistor = 10,
 	},
 };
 
