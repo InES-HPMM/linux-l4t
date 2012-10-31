@@ -110,5 +110,6 @@ int dalmore_edp_init(void);
 int dalmore_panel_init(void);
 int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
+int dalmore_soctherm_init(void);
 
 #endif

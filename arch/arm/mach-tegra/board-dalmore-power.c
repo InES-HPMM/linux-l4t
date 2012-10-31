@@ -1233,27 +1233,7 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 	},
 };
 
-static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
-};
-
-static int __init dalmore_soctherm_init(void)
+int __init dalmore_soctherm_init(void)
 {
-	dalmore_soctherm_data.therm[THERM_CPU].cdev =
-			balanced_throttle_register(&tj_throttle);
-
 	return tegra11_soctherm_init(&dalmore_soctherm_data);
 }
-module_init(dalmore_soctherm_init);

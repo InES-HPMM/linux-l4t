@@ -104,6 +104,7 @@ int pluto_panel_init(void);
 int pluto_kbc_init(void);
 int pluto_baseband_init(void);
 int pluto_pmon_init(void);
+int pluto_soctherm_init(void);
 
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE	5

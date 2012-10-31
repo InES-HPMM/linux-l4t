@@ -708,6 +708,7 @@ static void __init tegra_dalmore_init(void)
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	dalmore_sensors_init();
+	dalmore_soctherm_init();
 }
 
 static void __init dalmore_ramconsole_reserve(unsigned long size)

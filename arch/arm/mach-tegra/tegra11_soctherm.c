@@ -442,6 +442,45 @@ static struct thermal_zone_device_ops soctherm_ops = {
 	.get_trip_temp = soctherm_get_trip_temp,
 	.set_trip_temp = soctherm_set_trip_temp,
 };
+
+static int __init soctherm_thermal_init(void)
+{
+	char name[64];
+	int i;
+
+#if 0
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		if (plat_data.sensor_data[i].enable) {
+			/* Let's avoid this for now */
+			sprintf(name, "%s-tsensor", sensor_names[i]);
+			/* Create a thermal zone device for each sensor */
+			thermal_zone_device_register(
+					name,
+					0,
+					0,
+					(void *)i,
+					&soctherm_ops,
+					0, 0, 0, 0);
+		}
+	}
+#endif
+
+	for (i = 0; i < THERM_SIZE; i++) {
+		sprintf(name, "%s-therm", therm_names[i]);
+		thz[i] = thermal_zone_device_register(
+					name,
+					plat_data.therm[i].cdev ? 1 : 0,
+					plat_data.therm[i].cdev ? 0x1 : 0,
+					(void *)TSENSE_SIZE + i,
+					&soctherm_ops,
+					plat_data.therm[i].passive_delay,
+					0);
+	}
+
+	return 0;
+}
+module_init(soctherm_thermal_init);
+
 #else
 static void soctherm_update(void)
 {
@@ -574,7 +613,6 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	int err, i;
 	u32 r;
 	u32 reg_off;
-	char name[64];
 	struct soctherm_therm *therm;
 
 	memcpy(&plat_data, data, sizeof(struct soctherm_platform_data));
@@ -589,25 +627,9 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 		BUG();
 
 	/* Thermal Sensing programming */
-	for (i = 0; i < TSENSE_SIZE; i++) {
-		if (plat_data.sensor_data[i].enable) {
+	for (i = 0; i < TSENSE_SIZE; i++)
+		if (plat_data.sensor_data[i].enable)
 			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
-			sprintf(name, "%s-tsensor", sensor_names[i]);
-#ifdef CONFIG_THERMAL
-/* Let's avoid this for now */
-#if 0
-			/* Create a thermal zone device for each sensor */
-			thermal_zone_device_register(
-					name,
-					0,
-					0,
-					(void *)i,
-					&soctherm_ops,
-					0, 0, 0, 0);
-#endif
-#endif
-		}
-	}
 
 	/* Pdiv */
 	r = soctherm_readl(TS_PDIV);
@@ -618,17 +640,6 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	soctherm_writel(r, TS_PDIV);
 
 	for (i = 0; i < THERM_SIZE; i++) {
-#ifdef CONFIG_THERMAL
-		sprintf(name, "%s-therm", therm_names[i]);
-		thz[i] = thermal_zone_device_register(
-					name,
-					data->therm[i].cdev ? 1 : 0,
-					data->therm[i].cdev ? 0x1 : 0,
-					(void *)TSENSE_SIZE + i,
-					&soctherm_ops,
-					data->therm[i].passive_delay,
-					0);
-#endif
 		if (data->therm[i].hw_backstop) {
 			reg_off = CTL_LVL_CPU0(1) + i * 4;
 			r = soctherm_readl(reg_off);
@@ -684,6 +695,7 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	return 0;
 }
+
 
 #ifdef CONFIG_DEBUG_FS
 static int cpu0_show(struct seq_file *s, void *data)
