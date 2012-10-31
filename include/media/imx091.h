@@ -1,60 +1,50 @@
-/**
- * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
- *
- * NVIDIA Corporation and its licensors retain all intellectual property
- * and proprietary rights in and to this software and related documentation
- * and any modifications thereto.  Any use, reproduction, disclosure or
- * distribution of this software and related documentation without an express
- * license agreement from NVIDIA Corporation is strictly prohibited.
- */
+/*
+* imx091.h
+*
+* Copyright (c) 2012, NVIDIA, All Rights Reserved.
+*
+* This file is licensed under the terms of the GNU General Public License
+* version 2. This program is licensed "as is" without any warranty of any
+* kind, whether express or implied.
+*/
 
 #ifndef __IMX091_H__
 #define __IMX091_H__
 
-#include <linux/ioctl.h>  /* For IOCTL macros */
+#include <media/nvc.h>
+#include <media/nvc_image.h>
 
-#define IMX091_IOCTL_SET_MODE			_IOW('o', 1, struct imx091_mode)
-#define IMX091_IOCTL_GET_STATUS			_IOR('o', 2, __u8)
-#define IMX091_IOCTL_SET_FRAME_LENGTH		_IOW('o', 3, __u32)
-#define IMX091_IOCTL_SET_COARSE_TIME		_IOW('o', 4, __u32)
-#define IMX091_IOCTL_SET_GAIN			_IOW('o', 5, __u16)
-#define IMX091_IOCTL_GET_SENSORDATA		_IOR('o', 6, \
-						struct imx091_sensordata)
-#define IMX091_IOCTL_SET_GROUP_HOLD		_IOW('o', 7, struct imx091_ae)
-
-struct imx091_mode {
-	int xres;
-	int yres;
-	__u32 frame_length;
-	__u32 coarse_time;
-	__u16 gain;
+/* See notes in the nvc.h file on the GPIO usage */
+enum imx091_gpio {
+	IMX091_GPIO_RESET = 0,
+	IMX091_GPIO_PWDN,
+	IMX091_GPIO_GP1,
 };
 
-struct imx091_ae {
-	__u32 frame_length;
-	__u8  frame_length_enable;
-	__u32 coarse_time;
-	__u8  coarse_time_enable;
-	__s32 gain;
-	__u8  gain_enable;
-};
-
-struct imx091_sensordata {
-	__u32 fuse_id_size;
-	__u8  fuse_id[16];
-};
-
-#ifdef __KERNEL__
-struct imx091_power_rail {
-	struct regulator *dvdd;
-	struct regulator *avdd;
-	struct regulator *iovdd;
+/* The enumeration must be in the order the regulators are to be enabled */
+/* See Power Requirements note in the driver */
+enum imx091_vreg {
+	IMX091_VREG_DVDD = 0,
+	IMX091_VREG_AVDD,
+	IMX091_VREG_IOVDD,
 };
 
 struct imx091_platform_data {
-	int (*power_on)(struct imx091_power_rail *pw);
-	int (*power_off)(struct imx091_power_rail *pw);
+	unsigned cfg;
+	unsigned num;
+	unsigned sync;
+	const char *dev_name;
+	unsigned gpio_count; /* see nvc.h GPIO notes */
+	struct nvc_gpio_pdata *gpio; /* see nvc.h GPIO notes */
+	struct nvc_imager_cap *cap;
+	unsigned lens_focal_length; /* / _INT2FLOAT_DIVISOR */
+	unsigned lens_max_aperture; /* / _INT2FLOAT_DIVISOR */
+	unsigned lens_fnumber; /* / _INT2FLOAT_DIVISOR */
+	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
+	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
+	int (*probe_clock)(unsigned long);
+	int (*power_on)(struct nvc_regulator *);
+	int (*power_off)(struct nvc_regulator *);
 };
-#endif /* __KERNEL__ */
 
 #endif  /* __IMX091_H__ */
