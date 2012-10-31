@@ -275,13 +275,15 @@ static struct thermal_cooling_device_ops tegra_edp_cooling_ops = {
 	.set_cur_state = tegra_edp_set_cur_state,
 };
 
-struct thermal_cooling_device *edp_cooling_device_create(void *v)
+static int __init edp_init(void)
 {
-	return thermal_cooling_device_register(
+	thermal_cooling_device_register(
 				"edp",
 				NULL,
 				&tegra_edp_cooling_ops);
+	return 0;
 }
+module_init(edp_init);
 
 int tegra_system_edp_alarm(bool alarm)
 {
