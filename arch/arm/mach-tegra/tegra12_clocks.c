@@ -400,6 +400,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP	(1 << 15)
 #define UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN	(1 << 14)
 #define UTMIP_PLL_CFG1_FORCE_PLL_ACTIVE_POWERDOWN	(1 << 12)
+#define UTMIP_PLL_CFG1_FORCE_PLLU_POWERUP		(1 << 17)
 #define UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN		(1 << 16)
 
 /* PLLE */
@@ -466,6 +467,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
 #define PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL	(1<<0)
 
+#define USB_PLLS_SEQ_START_STATE		(1<<25)
 #define USB_PLLS_SEQ_ENABLE			(1<<24)
 #define USB_PLLS_USE_LOCKDET			(1<<6)
 #define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
@@ -1744,6 +1746,7 @@ static void usb_plls_hw_control_enable(u32 reg)
 	u32 val = clk_readl(reg);
 	val |= USB_PLLS_USE_LOCKDET;
 	val &= ~USB_PLLS_ENABLE_SWCTL;
+	val |= USB_PLLS_SEQ_START_STATE;
 	pll_writel_delay(val, reg);
 
 	val |= USB_PLLS_SEQ_ENABLE;
@@ -1802,25 +1805,36 @@ static void tegra12_utmi_param_configure(struct clk *c)
 	/* Remove power downs from UTMIP PLL control bits */
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ACTIVE_POWERDOWN;
+	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERUP;
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN;
-
 	clk_writel(reg, UTMIP_PLL_CFG1);
 
 	/* Setup HW control of UTMIPLL */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
 	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
 	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE;
+	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
+
+	reg = clk_readl(UTMIP_PLL_CFG1);
+	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
+	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
+	clk_writel(reg, UTMIP_PLL_CFG1);
+
+	udelay(1);
+
+	/* Setup SW override of UTMIPLL assuming USB2.0
+	   ports are assigned to USB2 */
+	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
+	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
+	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	udelay(1);
 
+	/* Enable HW control UTMIPLL */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_RESET_INPUT_VALUE;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_IN_SWCTL;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE;
 	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
@@ -1863,10 +1877,12 @@ static void tegra12_pll_clk_init(struct clk *c)
 	}
 
 	if (c->flags & PLLU) {
-		/* Configure UTMI PLL power management, and put PLLU under
-		   h/w control */
+		/* Configure UTMI PLL power management */
 		tegra12_utmi_param_configure(c);
+
+		/* Put PLLU under h/w control */
 		usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
+
 		val = clk_readl(c->reg + PLL_BASE);
 		val &= ~PLLU_BASE_OVERRIDE;
 		clk_writel(val, c->reg + PLL_BASE);
