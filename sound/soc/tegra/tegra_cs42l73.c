@@ -1021,23 +1021,6 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 
 	machine->init_done = true;
 
-	ret = snd_soc_add_card_controls(card, tegra_cs42l73_controls,
-			ARRAY_SIZE(tegra_cs42l73_controls));
-	if (ret < 0)
-		return ret;
-
-	/* Add cs42l73 specific widgets */
-	ret = snd_soc_dapm_new_controls(dapm,
-			tegra_cs42l73_dapm_widgets,
-			ARRAY_SIZE(tegra_cs42l73_dapm_widgets));
-	if (ret)
-		return ret;
-
-	/* Set up cs42l73 specific audio path audio_map */
-	snd_soc_dapm_add_routes(dapm,
-		tegra_cs42l73_audio_map,
-		ARRAY_SIZE(tegra_cs42l73_audio_map));
-
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		/* Headphone detection */
 		tegra_cs42l73_hp_jack_gpio.gpio = pdata->gpio_hp_det;
@@ -1210,6 +1193,14 @@ static struct snd_soc_card snd_soc_tegra_cs42l73 = {
 	.resume_pre = tegra_cs42l73_resume_pre,
 	.set_bias_level = tegra_cs42l73_set_bias_level,
 	.set_bias_level_post = tegra_cs42l73_set_bias_level_post,
+
+	.controls = tegra_cs42l73_controls,
+	.num_controls = ARRAY_SIZE(tegra_cs42l73_controls),
+	.dapm_widgets = tegra_cs42l73_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(tegra_cs42l73_dapm_widgets),
+	.dapm_routes = tegra_cs42l73_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(tegra_cs42l73_audio_map),
+	.fully_routed = true,
 };
 
 static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
