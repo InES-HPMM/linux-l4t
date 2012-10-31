@@ -263,6 +263,11 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
+static struct thermal_cooling_device *pluto_create_cdev(void *data)
+{
+	return balanced_throttle_register(&tj_throttle, "pluto-nct");
+}
+
 static struct nct1008_platform_data pluto_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
@@ -273,9 +278,7 @@ static struct nct1008_platform_data pluto_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = (struct thermal_cooling_device *(*)(void *))
-				balanced_throttle_register,
-		.cdev_data = &tj_throttle,
+		.create_cdev = pluto_create_cdev,
 		.trip_temp = 80000,
 		.tc1 = 0,
 		.tc2 = 1,
@@ -822,7 +825,7 @@ static int __init pluto_skin_init(void)
 {
 	struct thermal_cooling_device *skin_cdev;
 
-	skin_cdev = balanced_throttle_register(&skin_throttle);
+	skin_cdev = balanced_throttle_register(&skin_throttle, "pluto-skin");
 
 	skin_data.cdev = skin_cdev;
 	tegra_skin_therm_est_device.dev.platform_data = &skin_data;

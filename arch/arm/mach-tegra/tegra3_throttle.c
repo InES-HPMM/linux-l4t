@@ -250,7 +250,8 @@ static struct dentry *throttle_debugfs_root;
 
 
 struct thermal_cooling_device *balanced_throttle_register(
-	struct balanced_throttle *bthrot)
+		struct balanced_throttle *bthrot,
+		char *type)
 {
 #ifdef CONFIG_DEBUG_FS
 	char name[32];
@@ -261,7 +262,7 @@ struct thermal_cooling_device *balanced_throttle_register(
 	mutex_unlock(&bthrot_list_lock);
 
 	bthrot->cdev = thermal_cooling_device_register(
-						"balanced",
+						type,
 						bthrot,
 						&tegra_throttle_cooling_ops);
 

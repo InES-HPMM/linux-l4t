@@ -51,7 +51,8 @@ struct balanced_throttle {
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 int tegra_throttle_init(struct mutex *cpu_lock);
 struct thermal_cooling_device *balanced_throttle_register(
-	struct balanced_throttle *bthrot);
+		struct balanced_throttle *bthrot,
+		char *type);
 void tegra_throttle_exit(void);
 bool tegra_is_throttling(int *count);
 unsigned int tegra_throttle_governor_speed(unsigned int requested_speed);
@@ -59,8 +60,9 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed);
 static inline int tegra_throttle_init(struct mutex *cpu_lock)
 { return 0; }
 static inline struct thermal_cooling_device *balanced_throttle_register(
-	struct balanced_throttle *bthrot)
-{ return ERR_PTR(-EINVAL); }
+		struct balanced_throttle *bthrot,
+		char *type)
+{ return ERR_PTR(-ENODEV); }
 static inline void tegra_throttle_exit(void)
 {}
 static inline bool tegra_is_throttling(int *count)

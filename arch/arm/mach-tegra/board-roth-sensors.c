@@ -74,6 +74,11 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
+static struct thermal_cooling_device *roth_create_cdev(void *data)
+{
+	return balanced_throttle_register(&tj_throttle, "roth-nct");
+}
+
 static struct nct1008_platform_data roth_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
@@ -84,9 +89,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 
 	/* Thermal Throttling */
 	.passive = {
-		.create_cdev = (struct thermal_cooling_device *(*)(void *))
-				balanced_throttle_register,
-		.cdev_data = &tj_throttle,
+		.create_cdev = roth_create_cdev,
 		.trip_temp = 80000,
 		.tc1 = 0,
 		.tc2 = 1,
@@ -309,7 +312,7 @@ static int __init roth_skin_init(void)
 {
 	struct thermal_cooling_device *skin_cdev;
 
-	skin_cdev = balanced_throttle_register(&skin_throttle);
+	skin_cdev = balanced_throttle_register(&skin_throttle, "roth-skin");
 
 	skin_data.cdev = skin_cdev;
 	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
