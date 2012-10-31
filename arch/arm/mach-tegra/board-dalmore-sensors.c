@@ -52,6 +52,12 @@
 #include "devices.h"
 #include "tegra-board-id.h"
 
+static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
+	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
+	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
+	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
+};
+
 static struct board_info board_info;
 
 static struct balanced_throttle tj_throttle = {
@@ -143,11 +149,11 @@ static int dalmore_get_vcmvdd(void)
 	return 0;
 }
 
-static int dalmore_imx091_power_on(struct imx091_power_rail *pw)
+static int dalmore_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
 
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
+	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
 	if (dalmore_get_vcmvdd())
@@ -156,11 +162,11 @@ static int dalmore_imx091_power_on(struct imx091_power_rail *pw)
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(10, 20);
 
-	err = regulator_enable(pw->avdd);
+	err = regulator_enable(vreg[IMX091_VREG_AVDD].vreg);
 	if (err)
 		goto imx091_avdd_fail;
 
-	err = regulator_enable(pw->iovdd);
+	err = regulator_enable(vreg[IMX091_VREG_IOVDD].vreg);
 	if (err)
 		goto imx091_iovdd_fail;
 
@@ -177,10 +183,10 @@ static int dalmore_imx091_power_on(struct imx091_power_rail *pw)
 	return 1;
 
 imx091_vcmvdd_fail:
-	regulator_disable(pw->iovdd);
+	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 
 imx091_iovdd_fail:
-	regulator_disable(pw->avdd);
+	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
 imx091_avdd_fail:
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
@@ -190,9 +196,9 @@ imx091_poweron_fail:
 	return -ENODEV;
 }
 
-static int dalmore_imx091_power_off(struct imx091_power_rail *pw)
+static int dalmore_imx091_power_off(struct nvc_regulator *vreg)
 {
-	if (unlikely(!pw || !dalmore_vcmvdd || !pw->avdd || !pw->iovdd))
+	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
 	usleep_range(1, 2);
@@ -201,15 +207,54 @@ static int dalmore_imx091_power_off(struct imx091_power_rail *pw)
 	usleep_range(1, 2);
 
 	regulator_disable(dalmore_vcmvdd);
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->avdd);
+	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
+	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
 	return 1;
 }
 
-struct imx091_platform_data dalmore_imx091_data = {
-	.power_on = dalmore_imx091_power_on,
-	.power_off = dalmore_imx091_power_off,
+static struct nvc_imager_cap imx091_cap = {
+	.identifier		= "IMX091",
+	.sensor_nvc_interface	= 3,
+	.pixel_types[0]		= 0x100,
+	.orientation		= 0,
+	.direction		= 0,
+	.initial_clock_rate_khz	= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 10416667, /* value / 1,000,000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge		= 0,
+	.v_sync_edge		= 0,
+	.mclk_on_vgp0		= 0,
+	.csi_port		= 0,
+	.data_lanes		= 4,
+	.virtual_channel_id	= 0,
+	.discontinuous_clk_mode	= 1,
+	.cil_threshold_settle	= 0x0,
+	.min_blank_time_width	= 16,
+	.min_blank_time_height	= 16,
+	.preferred_mode_index	= 0,
+	.focuser_guid		= NVC_FOCUS_GUID(0),
+	.torch_guid		= NVC_TORCH_GUID(0),
+	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+};
+
+
+
+static struct imx091_platform_data imx091_pdata = {
+	.num			= 0,
+	.sync			= 0,
+	.dev_name		= "camera",
+	.gpio_count		= ARRAY_SIZE(imx091_gpio_pdata),
+	.gpio			= imx091_gpio_pdata,
+	.cap			= &imx091_cap,
+	.power_on		= dalmore_imx091_power_on,
+	.power_off		= dalmore_imx091_power_off,
 };
 
 static int dalmore_ov9772_power_on(struct ov9772_power_rail *pw)
@@ -341,7 +386,7 @@ static struct ad5816_platform_data pluto_ad5816_pdata = {
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x36),
-		.platform_data = &dalmore_imx091_data,
+		.platform_data = &imx091_pdata,
 	},
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),

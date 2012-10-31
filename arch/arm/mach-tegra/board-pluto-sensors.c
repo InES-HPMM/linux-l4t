@@ -44,6 +44,12 @@
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
 
+static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
+	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
+	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
+	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
+};
+
 static struct board_info board_info;
 static struct max17042_config_data conf_data = {
 	.valrt_thresh = 0xff00,
@@ -311,11 +317,11 @@ static int pluto_get_extra_regulators(void)
 	return 0;
 }
 
-static int pluto_imx091_power_on(struct imx091_power_rail *pw)
+static int pluto_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
 
-	if (unlikely(WARN_ON(!pw || !pw->dvdd || !pw->iovdd || !pw->avdd)))
+	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
 	if (pluto_get_extra_regulators())
@@ -324,15 +330,15 @@ static int pluto_imx091_power_on(struct imx091_power_rail *pw)
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(10, 20);
 
-	err = regulator_enable(pw->avdd);
+	err = regulator_enable(vreg[IMX091_VREG_AVDD].vreg);
 	if (unlikely(err))
 		goto imx091_avdd_fail;
 
-	err = regulator_enable(pw->dvdd);
+	err = regulator_enable(vreg[IMX091_VREG_DVDD].vreg);
 	if (unlikely(err))
 		goto imx091_dvdd_fail;
 
-	err = regulator_enable(pw->iovdd);
+	err = regulator_enable(vreg[IMX091_VREG_IOVDD].vreg);
 	if (unlikely(err))
 		goto imx091_iovdd_fail;
 
@@ -357,13 +363,13 @@ imx091_vcm_fail:
 imx091_i2c_fail:
 	tegra_pinmux_config_table(&mclk_disable, 1);
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
-	regulator_disable(pw->iovdd);
+	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 
 imx091_iovdd_fail:
-	regulator_disable(pw->dvdd);
+	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
 
 imx091_dvdd_fail:
-	regulator_disable(pw->avdd);
+	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
 imx091_avdd_fail:
 imx091_poweron_fail:
@@ -371,10 +377,9 @@ imx091_poweron_fail:
 	return -ENODEV;
 }
 
-static int pluto_imx091_power_off(struct imx091_power_rail *pw)
+static int pluto_imx091_power_off(struct nvc_regulator *vreg)
 {
-	if (unlikely(WARN_ON(!pw || !pluto_i2cvdd || !pluto_vcmvdd ||
-			!pw->dvdd || !pw->iovdd || !pw->avdd)))
+	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
 	usleep_range(1, 2);
@@ -382,18 +387,57 @@ static int pluto_imx091_power_off(struct imx091_power_rail *pw)
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(1, 2);
 
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->dvdd);
-	regulator_disable(pw->avdd);
+	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
+	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
+	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 	regulator_disable(pluto_i2cvdd);
 	regulator_disable(pluto_vcmvdd);
 
 	return 0;
 }
 
-struct imx091_platform_data pluto_imx091_data = {
-	.power_on = pluto_imx091_power_on,
-	.power_off = pluto_imx091_power_off,
+static struct nvc_imager_cap imx091_cap = {
+	.identifier		= "IMX091",
+	.sensor_nvc_interface	= 3,
+	.pixel_types[0]		= 0x100,
+	.orientation		= 0,
+	.direction		= 0,
+	.initial_clock_rate_khz	= 6000,
+	.clock_profiles[0] = {
+		.external_clock_khz	= 24000,
+		.clock_multiplier	= 10416667, /* value / 1,000,000 */
+	},
+	.clock_profiles[1] = {
+		.external_clock_khz	= 0,
+		.clock_multiplier	= 0,
+	},
+	.h_sync_edge		= 0,
+	.v_sync_edge		= 0,
+	.mclk_on_vgp0		= 0,
+	.csi_port		= 0,
+	.data_lanes		= 4,
+	.virtual_channel_id	= 0,
+	.discontinuous_clk_mode	= 1,
+	.cil_threshold_settle	= 0x0,
+	.min_blank_time_width	= 16,
+	.min_blank_time_height	= 16,
+	.preferred_mode_index	= 0,
+	.focuser_guid		= NVC_FOCUS_GUID(0),
+	.torch_guid		= NVC_TORCH_GUID(0),
+	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+};
+
+
+
+static struct imx091_platform_data imx091_pdata = {
+	.num			= 0,
+	.sync			= 0,
+	.dev_name		= "camera",
+	.gpio_count		= ARRAY_SIZE(imx091_gpio_pdata),
+	.gpio			= imx091_gpio_pdata,
+	.cap			= &imx091_cap,
+	.power_on		= pluto_imx091_power_on,
+	.power_off		= pluto_imx091_power_off,
 };
 
 static int pluto_imx132_power_on(struct imx132_power_rail *pw)
@@ -493,7 +537,7 @@ static struct ad5816_platform_data pluto_ad5816_pdata = {
 static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x10),
-		.platform_data = &pluto_imx091_data,
+		.platform_data = &imx091_pdata,
 	},
 	{
 		I2C_BOARD_INFO("imx132", 0x36),
