@@ -23,6 +23,8 @@
 #ifndef __MAX17042_BATTERY_H_
 #define __MAX17042_BATTERY_H_
 
+#include <linux/edp.h>
+
 #define MAX17042_STATUS_BattAbsent	(1 << 3)
 #define MAX17042_BATTERY_FULL	(100)
 #define MAX17042_DEFAULT_SNS_RESISTOR	(10000)
@@ -211,6 +213,8 @@ struct max17042_platform_data {
 	 * the datasheet although it can be changed by board designers.
 	 */
 	unsigned int r_sns;
+
+	struct edp_client *edp_client;
 };
 
 extern int maxim_get_temp(void);

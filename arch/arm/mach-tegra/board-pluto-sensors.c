@@ -27,6 +27,7 @@
 #include <linux/nct1008.h>
 #include <linux/interrupt.h>
 #include <mach/edp.h>
+#include <linux/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
@@ -101,6 +102,17 @@ static struct max17042_config_data conf_data = {
 	},
 };
 
+static unsigned int bat_depl_states[] = {
+	900, 800, 700, 600, 500, 400, 300, 200, 100, 0
+};
+
+static struct edp_client bat_depl_client = {
+	.states = bat_depl_states,
+	.num_states = ARRAY_SIZE(bat_depl_states),
+	.e0_index = 0,
+	.priority = EDP_MAX_PRIO
+};
+
 static struct max17042_platform_data max17042_pdata = {
 	.config_data = &conf_data,
 	.init_data  = NULL,
@@ -108,6 +120,7 @@ static struct max17042_platform_data max17042_pdata = {
 	.enable_por_init = 1, /* Use POR init from Maxim appnote */
 	.enable_current_sense = 1,
 	.r_sns = 0,
+	.edp_client = &bat_depl_client
 };
 
 static struct i2c_board_info max17042_device[] = {
