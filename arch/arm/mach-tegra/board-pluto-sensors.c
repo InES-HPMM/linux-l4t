@@ -22,6 +22,7 @@
 #include <linux/mpu.h>
 #include <linux/max77665-charger.h>
 #include <linux/mfd/max77665.h>
+#include <linux/input/max77665-haptic.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/nct1008.h>
 #include <mach/edp.h>
@@ -123,6 +124,22 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.gpio_strobe	= CAM_FLASH_STROBE,
 };
 
+static struct max77665_haptic_platform_data max77665_haptic_pdata = {
+	.pwm_channel_id = 2,
+	.pwm_period = 50,
+	.type = MAX77665_HAPTIC_LRA,
+	.mode = MAX77665_INTERNAL_MODE,
+	.internal_mode_pattern = 0,
+	.pattern_cycle = 10,
+	.pattern_signal_period = 0xD0,
+	.pwm_divisor = MAX77665_PWM_DIVISOR_128,
+	.feedback_duty_cycle = 12,
+	.invert = MAX77665_INVERT_OFF,
+	.cont_mode = MAX77665_CONT_MODE,
+	.motor_startup_val = 0,
+	.scf_val = 2,
+};
+
 static struct max77665_charger_cable maxim_cable[] = {
 	{
 		.name           = "USB",
@@ -169,6 +186,10 @@ static struct max77665_platform_data pluto_max77665_pdata = {
 	.flash_platform_data = {
 		.pdata = &pluto_max77665_flash_pdata,
 		.size =	sizeof(pluto_max77665_flash_pdata),
+		},
+	.haptic_platform_data = {
+		.pdata = &max77665_haptic_pdata,
+		.size = sizeof(max77665_haptic_pdata),
 		},
 };
 
