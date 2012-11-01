@@ -923,7 +923,7 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 		goto fail_no_clk;
 	}
 	dtv_ctx->clk = clk;
-	ret = clk_enable(clk);
+	ret = clk_prepare_enable(clk);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "cannot enable clk for tegra_dtv.\n");
 		goto fail_clk_enable;
@@ -1038,7 +1038,7 @@ static int tegra_dtv_suspend(struct platform_device *pdev, pm_message_t state)
 	wakeup_suspend(&dtv_ctx->stream);
 	mutex_unlock(&dtv_ctx->stream.mtx);
 
-	clk_disable(dtv_ctx->clk);
+	clk_disable_unprepare(dtv_ctx->clk);
 
 	return 0;
 }
@@ -1050,7 +1050,7 @@ static int tegra_dtv_resume(struct platform_device *pdev)
 	pr_info("%s: resume dtv.\n", __func__);
 
 	dtv_ctx = platform_get_drvdata(pdev);
-	clk_enable(dtv_ctx->clk);
+	clk_prepare_enable(dtv_ctx->clk);
 
 	return 0;
 }
