@@ -104,7 +104,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	unsigned long val;
 
 	pm_runtime_get_sync(tegra->phy.dev);
-	clk_enable(tegra->clk);
+	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
 		if (tegra->builtin_host)
@@ -117,7 +117,7 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	/* Add delay to make sure register is updated */
 	udelay(1);
-	clk_disable(tegra->clk);
+	clk_disable_unprepare(tegra->clk);
 	pm_runtime_put_sync(tegra->phy.dev);
 
 	return val;
@@ -332,13 +332,13 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	otg->host = host;
 
 	pm_runtime_get_sync(tegra->phy.dev);
-	clk_enable(tegra->clk);
+	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
 	if (tegra->builtin_host)
 		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
-	clk_disable(tegra->clk);
+	clk_disable_unprepare(tegra->clk);
 	pm_runtime_put_sync(tegra->phy.dev);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
@@ -533,11 +533,11 @@ static int tegra_otg_suspend(struct device *dev)
 				tegra_state_name(phy->otg->phy->state));
 
 	pm_runtime_get_sync(dev);
-	clk_enable(tegra->clk);
+	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_ID_INT_EN | USB_VBUS_INT_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
-	clk_disable(tegra->clk);
+	clk_disable_unprepare(tegra->clk);
 	pm_runtime_put_sync(dev);
 
 	/* suspend peripheral mode, host mode is taken care by host driver */
@@ -569,11 +569,11 @@ static void tegra_otg_resume(struct device *dev)
 
 	/* Clear pending interrupts */
 	pm_runtime_get_sync(dev);
-	clk_enable(tegra->clk);
+	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
-	clk_disable(tegra->clk);
+	clk_disable_unprepare(tegra->clk);
 	pm_runtime_put_sync(dev);
 
 	/* Enable interrupt and call work to set to appropriate state */
