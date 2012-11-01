@@ -69,32 +69,32 @@ struct tegra_camera_block {
 
 static int tegra_camera_enable_clk(struct tegra_camera_dev *dev)
 {
-	clk_enable(dev->vi_clk);
-	clk_enable(dev->vi_sensor_clk);
-	clk_enable(dev->csus_clk);
-	clk_enable(dev->isp_clk);
-	clk_enable(dev->csi_clk);
+	clk_prepare_enable(dev->vi_clk);
+	clk_prepare_enable(dev->vi_sensor_clk);
+	clk_prepare_enable(dev->csus_clk);
+	clk_prepare_enable(dev->isp_clk);
+	clk_prepare_enable(dev->csi_clk);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	clk_enable(dev->cilab_clk);
-	clk_enable(dev->cilcd_clk);
-	clk_enable(dev->cile_clk);
+	clk_prepare_enable(dev->cilab_clk);
+	clk_prepare_enable(dev->cilcd_clk);
+	clk_prepare_enable(dev->cile_clk);
 #endif
 	return 0;
 }
 
 static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 {
-	clk_disable(dev->csi_clk);
-	clk_disable(dev->isp_clk);
-	clk_disable(dev->csus_clk);
-	clk_disable(dev->vi_sensor_clk);
-	clk_disable(dev->vi_clk);
+	clk_disable_unprepare(dev->csi_clk);
+	clk_disable_unprepare(dev->isp_clk);
+	clk_disable_unprepare(dev->csus_clk);
+	clk_disable_unprepare(dev->vi_sensor_clk);
+	clk_disable_unprepare(dev->vi_clk);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	clk_disable(dev->cilab_clk);
-	clk_disable(dev->cilcd_clk);
-	clk_disable(dev->cile_clk);
+	clk_disable_unprepare(dev->cilab_clk);
+	clk_disable_unprepare(dev->cilcd_clk);
+	clk_disable_unprepare(dev->cile_clk);
 #endif
 
 	return 0;
@@ -103,7 +103,7 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 static int tegra_camera_enable_emc(struct tegra_camera_dev *dev)
 {
 	int ret = tegra_emc_disable_eack();
-	clk_enable(dev->emc_clk);
+	clk_prepare_enable(dev->emc_clk);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	clk_set_rate(dev->emc_clk, 300000000);
 #endif
@@ -112,7 +112,7 @@ static int tegra_camera_enable_emc(struct tegra_camera_dev *dev)
 
 static int tegra_camera_disable_emc(struct tegra_camera_dev *dev)
 {
-	clk_disable(dev->emc_clk);
+	clk_disable_unprepare(dev->emc_clk);
 	return tegra_emc_enable_eack();
 }
 
