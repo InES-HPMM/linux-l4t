@@ -107,7 +107,6 @@ static void cpu_freq_boost(struct work_struct *ws)
 			      msecs_to_jiffies(BOOST_CPU_FREQ_TIMEOUT));
 }
 
-#if 0
 static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 {
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
@@ -163,7 +162,6 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-#endif
 
 static void tegra_usb_modem_recovery(struct work_struct *ws)
 {
@@ -300,7 +298,6 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 	return NOTIFY_DONE;
 }
 
-#if 0
 static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 				    irq_handler_t thread_fn,
 				    unsigned int irq_gpio,
@@ -330,7 +327,6 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 
 	return ret;
 }
-#endif
 
 /* load USB host controller */
 static struct platform_device *tegra_usb_host_register(void)
@@ -457,7 +453,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	pm_qos_add_request(&modem->cpu_boost_req, PM_QOS_CPU_FREQ_MIN,
 			   PM_QOS_DEFAULT_VALUE);
 
-#if 0
 	/* request remote wakeup irq from platform data */
 	ret = mdm_request_wakeable_irq(modem,
 				       tegra_usb_modem_wake_thread,
@@ -479,7 +474,6 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 		dev_err(&pdev->dev, "request boot irq error\n");
 		goto error;
 	}
-#endif
 
 	modem->pm_notifier.notifier_call = mdm_pm_notifier;
 	modem->usb_notifier.notifier_call = mdm_usb_notifier;
