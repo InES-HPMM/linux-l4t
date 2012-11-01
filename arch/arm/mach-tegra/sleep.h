@@ -58,15 +58,58 @@
 
 #define TEGRA_IRAM_CODE_AREA		(TEGRA_IRAM_BASE + SZ_4K)
 
+#define PMC_SCRATCH1_ECO		0x264
+
+/* PMC_SCRATCH0 is used to store the Warmboot flag for LP0 */
+#define PMC_SCRATCH0			0x50
+
+/* Wake masks to determine wake events for BB related LP states */
+#define PMC_WAKE2_MASK			0x160
+#define PMC_WAKE2_LEVEL			0x164
+#define PMC_WAKE2_BB_MEM_REQ		(1 << 29)
+
+#define PMC_SCRATCH1_ECO		0x264
+
+/* PMC registers to query occurence of BB paging event */
+#define PMC_IPC_STS			0x500
+#define PMC_IPC_STS_MEM_REQ_SOON	(1 << 4)
+#define PMC_IPC_STS_MEM_REQ		(1 << 3)
+
+#define PMC_IPC_SET			0x504
+#define PMC_IPC_SET_MEM_STS		(1 << 5)
+
+#define PMC_IPC_CLR			0x508
+#define PMC_IPC_CLR_MEM_STS		(1 << 5)
+
+/* PMC register to program mem_req->0 interrupt for LP1BB */
+#define PMC_WAKE2_MASK			0x160
+#define PMC_WAKE2_LEVEL			0x164
+#define PMC_WAKE2_BB_MEM_REQ		(1 << 29)
+
+/* Additional PMC Control register */
+#define PMC_CTRL2			0x440
+#define PMC_CTRL2_WAKE_DET_EN		(1 << 9)
+
+/* PMC register for sampling of PMC_WAKE_LVL values */
+#define PMC_AUTO_WAKE_LVL		0xd8
+
 /* PMC_SCRATCH2 is used for PLLM boot state if PLLM auto-restart is enabled */
 #define PMC_SCRATCH2			0x58
-/* PMC_SCRATCH37-39 and 41 are used for tegra_pen_lock in Tegra2 idle */
+/* PMC_SCRATCH37-39 and 41 are used for tegra_pen_lock in Tegra2 idle
+ * PMC_SCRATCH37[25] is used to query Audio HUB */
 #define PMC_SCRATCH37                   0x130
+
 #define PMC_SCRATCH38                   0x134
 /* PMC_SCRATCH39 stores the reset vector of the AVP (always 0) after LP0 */
 #define PMC_SCRATCH39                   0x138
 /* PMC_SCRATCH41 stores the reset vector of the CPU after LP0 and LP1 */
 #define PMC_SCRATCH41                   0x140
+
+/* Legacy Interrupt Controller register to allow PMC Wake events
+ * to be propagated to LIC as interrupts.
+ */
+#define TRI_ICTLR_CPU_IER_SET		0x24
+#define TRI_ICTLR_PMC_WAKE_INT		(1 << 12)
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define CPU_RESETTABLE			2
