@@ -1463,7 +1463,7 @@ static int tsensor_clk_enable(
 	struct clk *clk_m;
 
 	if (enable) {
-		clk_enable(data->dev_clk);
+		clk_prepare_enable(data->dev_clk);
 		rate = clk_get_rate(data->dev_clk);
 		clk_m = clk_get_sys(NULL, "clk_m");
 		if (clk_get_parent(data->dev_clk) != clk_m) {
@@ -1478,7 +1478,7 @@ static int tsensor_clk_enable(
 				goto fail;
 		}
 	} else {
-		clk_disable(data->dev_clk);
+		clk_disable_unprepare(data->dev_clk);
 		clk_put(data->dev_clk);
 	}
 fail:
