@@ -120,4 +120,27 @@ void phonet_sysctl_exit(void);
 int isi_register(void);
 void isi_unregister(void);
 
+#ifdef CONFIG_PHONET_DEBUG
+#define ACTIVATE_PHONET_DEBUG
+#else
+#undef ACTIVATE_PHONET_DEBUG
+#endif
+
+#ifdef ACTIVATE_PHONET_DEBUG
+extern enum phonet_debug_state {
+	OFF = 0,
+	ON,
+	DATA,
+} phonet_dbg_state;
+
+#define PN_PRINTK(...) \
+	do { if (OFF != phonet_dbg_state) \
+		printk(KERN_DEBUG "PHONET: " __VA_ARGS__); } while (0)
+#define PN_DATA_PRINTK(...) \
+	do { if (DATA == phonet_dbg_state) printk(__VA_ARGS__); } while (0)
+#else
+#define PN_PRINTK(...)
+#define PN_DATA_PRINTK(...)
+#endif
+
 #endif
