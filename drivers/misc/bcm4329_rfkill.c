@@ -57,10 +57,10 @@ static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 		if (bcm4329_rfkill->gpio_reset)
 			gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
 		if (bcm4329_rfkill->bt_32k_clk)
-			clk_disable(bcm4329_rfkill->bt_32k_clk);
+			clk_disable_unprepare(bcm4329_rfkill->bt_32k_clk);
 	} else {
 		if (bcm4329_rfkill->bt_32k_clk)
-			clk_enable(bcm4329_rfkill->bt_32k_clk);
+			clk_prepare_enable(bcm4329_rfkill->bt_32k_clk);
 		if (bcm4329_rfkill->gpio_shutdown)
 		{
 			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
@@ -134,7 +134,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		goto free_bcm_res;
 
 	if (bcm4329_rfkill->bt_32k_clk && enable)
-		clk_enable(bcm4329_rfkill->bt_32k_clk);
+		clk_prepare_enable(bcm4329_rfkill->bt_32k_clk);
 	if (bcm4329_rfkill->gpio_shutdown)
 		gpio_direction_output(bcm4329_rfkill->gpio_shutdown, enable);
 	if (bcm4329_rfkill->gpio_reset)
@@ -165,7 +165,7 @@ free_bcm_res:
 	if (bcm4329_rfkill->gpio_reset)
 		gpio_free(bcm4329_rfkill->gpio_reset);
 	if (bcm4329_rfkill->bt_32k_clk && enable)
-		clk_disable(bcm4329_rfkill->bt_32k_clk);
+		clk_disable_unprepare(bcm4329_rfkill->bt_32k_clk);
 	if (bcm4329_rfkill->bt_32k_clk)
 		clk_put(bcm4329_rfkill->bt_32k_clk);
 	kfree(bcm4329_rfkill);
