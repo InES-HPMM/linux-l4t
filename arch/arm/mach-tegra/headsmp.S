@@ -131,18 +131,17 @@ __invalidate_cpu_state:
 	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
 	ldr	r0, [r0]
 	tst	r0, #1
-	bne	enable_icache_bp
+	movne	pc, lr
 	mrc	p15, 0x1, r0, c9, c0, 2
 	and	r1, r0, #7
 	cmp	r1, #2
-	beq	enable_icache_bp
-	bic r0, r0, #7
-	orr r0, r0, #2
-	mcr p15, 0x1, r0, c9, c0, 2
-
+	moveq	pc, lr
+	bic	r0, r0, #7
+	orr	r0, r0, #2
+	mcr	p15, 0x1, r0, c9, c0, 2
+	mov	pc, lr
 #endif
 
-enable_icache_bp:
 	dsb
 	mov	r0, #0x1800
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
@@ -152,26 +151,12 @@ enable_icache_bp:
 /*
  *	tegra_invalidate_cache
  *
- *	  Invalidates the L1 or L2 data cache (no clean) during initial boot of
- *	  a cpu. For architecture with external L2, invalidate L1 only. For
- *	  architecture with integrated L2 and SCU, invalidate L2 if current CPU
- *	  boots up with a power gated NC partition initially or power rail was
- *	  initially off, invalidates L1 in other cases
+ *	  Invalidates the L1 data cache (no clean) during initial boot of a cpu
  *
  *	  Corrupted registers: r0-r6
  */
 tegra_invalidate_cache:
-#if defined(CONFIG_HAVE_ARM_SCU)
 	mov	r0, #0
-#else
-	cpu_id	r0
-	cpu_to_csr_reg	r1, r0
-	mov32	r0, TEGRA_FLOW_CTRL_BASE
-	ldr	r0, [r0, r1]
-	tst	r0, #FLOW_CTRL_CSR_ENABLE_EXT_MASK
-	movne	r0, #2
-	moveq	r0, #0
-#endif
 	mcr	p15, 2, r0, c0, c0, 0
 	mrc	p15, 1, r0, c0, c0, 0
 
@@ -198,10 +183,6 @@ tegra_invalidate_cache:
 	bgt	2b
 	cmp	r2, #0
 	bgt	1b
-#if !defined(CONFIG_HAVE_ARM_SCU)
-	mov	r0, #0
-	mcr	p15, 2, r0, c0, c0, 0
-#endif
 	dsb
 	isb
 	mov	pc, lr
