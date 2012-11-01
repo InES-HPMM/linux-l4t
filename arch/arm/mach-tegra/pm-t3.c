@@ -514,7 +514,7 @@ void tegra_lp0_cpu_mode(bool enter)
 
 	if (entered_on_g) {
 		if (enter)
-			clk_enable(cclk_lp);
+			tegra_clk_prepare_enable(cclk_lp);
 
 		flags = enter ? TEGRA_POWER_CLUSTER_LP : TEGRA_POWER_CLUSTER_G;
 		flags |= TEGRA_POWER_CLUSTER_IMMEDIATE;
@@ -523,7 +523,7 @@ void tegra_lp0_cpu_mode(bool enter)
 #endif
 		if (!tegra_cluster_control(0, flags)) {
 			if (!enter)
-				clk_disable(cclk_lp);
+				tegra_clk_disable_unprepare(cclk_lp);
 			pr_info("Tegra: switched to %s cluster\n",
 				enter ? "LP" : "G");
 		}
