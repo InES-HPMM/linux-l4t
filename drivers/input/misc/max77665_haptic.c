@@ -287,6 +287,99 @@ static int max77665_haptic_play_effect(struct input_dev *dev, void *data,
 	return 0;
 }
 
+static ssize_t max77665_haptic_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct max77665_haptic *chip = dev_get_drvdata(dev);
+	int var = 0;
+
+	if (strcmp(attr->attr.name, "pattern_cycle") == 0)
+		var = chip->pattern_cycle;
+	else if (strcmp(attr->attr.name, "pattern_signal_period") == 0)
+		var = chip->pattern_signal_period;
+	else if (strcmp(attr->attr.name, "feedback_duty_cycle") == 0)
+		var = chip->feedback_duty_cycle;
+	else if (strcmp(attr->attr.name, "scf_val") == 0)
+		var = chip->scf_val;
+	else if (strcmp(attr->attr.name, "pwm_divisor") == 0)
+		var = chip->pwm_divisor;
+
+	return sprintf(buf, "%d\n", var);
+}
+
+static ssize_t max77665_haptic_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct max77665_haptic *chip = dev_get_drvdata(dev);
+	int var;
+
+	sscanf(buf, "%d", &var);
+	if (strcmp(attr->attr.name, "pattern_cycle") == 0) {
+		if (var >= 0 && var <= 15)
+			chip->pattern_cycle = var;
+	} else if (strcmp(attr->attr.name, "pattern_signal_period") == 0) {
+		if (var >= 0 && var <= 0xFF)
+			chip->pattern_signal_period = var;
+	} else if (strcmp(attr->attr.name, "feedback_duty_cycle") == 0) {
+		if (var >= 0 && var <= 15)
+			chip->feedback_duty_cycle = var;
+	} else if (strcmp(attr->attr.name, "scf_val") == 0) {
+		if (var >= 0 && var <= 7)
+			chip->scf_val = var;
+	} else if (strcmp(attr->attr.name, "pwm_divisor") == 0) {
+		if (var >= 0 && var <= 3)
+			chip->pwm_divisor = var;
+	}
+
+	return count;
+}
+
+
+static ssize_t max77665_haptic_vibrator_ctrl(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct max77665_haptic *chip = dev_get_drvdata(dev);
+	int var;
+
+	sscanf(buf, "%d", &var);
+	if (var == 0) {			/* stop vibrator */
+		chip->level = 0;
+		schedule_work(&chip->work);
+	} else if (var == 1) {
+		chip->level = 100;
+		schedule_work(&chip->work);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(pattern_cycle, 0666, max77665_haptic_show,
+					max77665_haptic_store);
+static DEVICE_ATTR(pattern_signal_period, 0666, max77665_haptic_show,
+					max77665_haptic_store);
+static DEVICE_ATTR(feedback_duty_cycle, 0666, max77665_haptic_show,
+					max77665_haptic_store);
+static DEVICE_ATTR(scf_val, 0666, max77665_haptic_show,
+					max77665_haptic_store);
+static DEVICE_ATTR(pwm_divisor, 0666, max77665_haptic_show,
+					max77665_haptic_store);
+static DEVICE_ATTR(vibrator_enable, 0644, NULL,
+					max77665_haptic_vibrator_ctrl);
+
+static struct attribute *max77665_haptics_attr[] = {
+	&dev_attr_pattern_cycle.attr,
+	&dev_attr_pattern_signal_period.attr,
+	&dev_attr_feedback_duty_cycle.attr,
+	&dev_attr_scf_val.attr,
+	&dev_attr_pwm_divisor.attr,
+	&dev_attr_vibrator_enable.attr,
+	NULL,
+};
+
+static const struct attribute_group max77665_haptics_attr_group = {
+	.attrs = max77665_haptics_attr,
+};
+
 static int max77665_haptic_probe(struct platform_device *pdev)
 {
 	struct max77665_haptic_platform_data *haptic_pdata =
@@ -423,6 +516,12 @@ register_input:
 		goto err_input_register;
 	}
 
+	ret = sysfs_create_group(&pdev->dev.kobj, &max77665_haptics_attr_group);
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"unable to create sysfs %d\n", ret);
+	}
+
 	return 0;
 
 err_input_register:
@@ -447,6 +546,7 @@ static int max77665_haptic_remove(struct platform_device *pdev)
 
 	destroy_work_on_stack(&chip->work);
 	input_unregister_device(chip->input_dev);
+	sysfs_remove_group(&pdev->dev.kobj, &max77665_haptics_attr_group);
 	regulator_put(chip->regulator);
 
 	if (chip->mode == MAX77665_EXTERNAL_MODE)
