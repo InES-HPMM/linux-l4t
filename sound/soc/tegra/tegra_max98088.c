@@ -142,13 +142,13 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 
 		tegra30_make_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND]);
+			&machine->codec_info[BASEBAND], 0);
 #endif
 	} else {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND]);
+			&machine->codec_info[BASEBAND], 0);
 
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 0;

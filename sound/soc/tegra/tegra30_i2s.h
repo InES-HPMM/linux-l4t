@@ -264,6 +264,7 @@ struct tegra30_i2s {
 	int dam_ifc;
 	int dam_ch_refcount;
 	int  playback_ref_count;
+	int  capture_ref_count;
 	int daifmt;
 	bool is_dam_used;
 #ifdef CONFIG_PM
@@ -289,9 +290,11 @@ struct codec_config {
 };
 
 int tegra30_make_voice_call_connections(struct codec_config *codec_info,
-			struct codec_config *bb_info);
+			struct codec_config *bb_info,
+			int uses_voice_codec);
 
 int tegra30_break_voice_call_connections(struct codec_config *codec_info,
-			struct codec_config *bb_info);
+			struct codec_config *bb_info,
+			int uses_voice_codec);
 
 #endif
