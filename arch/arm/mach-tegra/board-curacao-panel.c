@@ -538,13 +538,13 @@ int __init curacao_panel_init(void)
 				   ARRAY_SIZE(curacao_gfx_devices));
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&curacao_disp2_device,
+	res = nvhost_get_resource_byname(&curacao_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 	if (!err)
-		err = nvhost_device_register(&curacao_disp2_device);
+		err = nvhost_device_register(&curacao_disp1_device);
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
