@@ -33,6 +33,7 @@
 #include <linux/mfd/max77665.h>
 #include <linux/input/max77665-haptic.h>
 #include <linux/regulator/consumer.h>
+#include <linux/edp.h>
 
 struct max77665_haptic {
 	struct device *dev;
@@ -60,7 +61,11 @@ struct max77665_haptic {
 	int feedback_duty_cycle;
 	int motor_startup_val;
 	int scf_val;
+
+	struct edp_client *haptic_edp_client;
 };
+
+static struct max77665_haptic *max77665_haptic_chip;
 
 static int max77665_read_reg(struct max77665_haptic *chip, u8 reg, u8 *val)
 {
@@ -78,7 +83,7 @@ static int max77665_write_reg(struct max77665_haptic *chip, u8 reg, u8 value)
 
 	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_HAPTIC,
 							reg, value);
-	if (ret < 0)
+	if (ret)
 		return ret;
 	return 0;
 }
@@ -224,10 +229,16 @@ static void max77665_haptic_enable(struct max77665_haptic *chip, bool enable)
 	}
 }
 
+static void max77665_haptic_throttle(unsigned int new_state)
+{
+	max77665_haptic_enable(max77665_haptic_chip, false);
+}
+
 static void max77665_haptic_play_effect_work(struct work_struct *work)
 {
 	struct max77665_haptic *chip =
 		container_of(work, struct max77665_haptic, work);
+	unsigned int approved;
 	int ret;
 
 	if (chip->level) {
@@ -236,9 +247,29 @@ static void max77665_haptic_play_effect_work(struct work_struct *work)
 			dev_err(chip->dev, "set_pwm_cycle failed\n");
 			return;
 		}
+
+		if (chip->haptic_edp_client) {
+			ret = edp_update_client_request(chip->haptic_edp_client,
+					MAX77665_HAPTIC_EDP_HIGH, &approved);
+			if (ret || approved != MAX77665_HAPTIC_EDP_HIGH) {
+				dev_err(chip->dev,
+					"E state transition failed\n");
+				return;
+			}
+		}
 		max77665_haptic_enable(chip, true);
-	} else
+	} else {
+		if (chip->haptic_edp_client) {
+			ret = edp_update_client_request(chip->haptic_edp_client,
+					MAX77665_HAPTIC_EDP_LOW, NULL);
+			if (ret) {
+				dev_err(chip->dev,
+					"E state transition failed\n");
+				return;
+			}
+		}
 		max77665_haptic_enable(chip, false);
+	}
 }
 
 
@@ -261,6 +292,7 @@ static int max77665_haptic_probe(struct platform_device *pdev)
 	struct max77665_haptic_platform_data *haptic_pdata =
 					pdev->dev.platform_data;
 	struct max77665_haptic *chip;
+	struct edp_manager *battery_manager = NULL;
 	struct input_dev *input_dev;
 	int ret;
 
@@ -323,8 +355,51 @@ static int max77665_haptic_probe(struct platform_device *pdev)
 		goto err_regulator;
 	}
 
-	dev_set_drvdata(&pdev->dev, chip);
+	if (haptic_pdata->edp_states == NULL)
+		goto register_input;
 
+	chip->haptic_edp_client = devm_kzalloc(&pdev->dev,
+				sizeof(struct edp_client), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(chip->haptic_edp_client)) {
+		dev_err(&pdev->dev, "could not allocate edp client\n");
+		goto register_input;
+	}
+
+	chip->haptic_edp_client->name[EDP_NAME_LEN - 1] = '\0';
+	strncpy(chip->haptic_edp_client->name, "vibrator", EDP_NAME_LEN - 1);
+	chip->haptic_edp_client->states = haptic_pdata->edp_states;
+	chip->haptic_edp_client->num_states = MAX77665_HAPTIC_EDP_NUM_STATES;
+	chip->haptic_edp_client->e0_index = MAX77665_HAPTIC_EDP_LOW;
+	chip->haptic_edp_client->priority = EDP_MAX_PRIO - 2;
+	chip->haptic_edp_client->throttle = max77665_haptic_throttle;
+
+	battery_manager = edp_get_manager("battery");
+	if (!battery_manager) {
+		dev_err(&pdev->dev, "unable to get edp manager\n");
+	} else {
+		ret = edp_register_client(battery_manager,
+					chip->haptic_edp_client);
+		if (ret) {
+			dev_err(&pdev->dev, "unable to register edp client\n");
+		} else {
+			ret = edp_update_client_request(chip->haptic_edp_client,
+				MAX77665_HAPTIC_EDP_LOW, NULL);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"unable to set E0 EDP state\n");
+				edp_unregister_client(chip->haptic_edp_client);
+			} else {
+				goto register_input;
+			}
+		}
+	}
+
+	devm_kfree(&pdev->dev, chip->haptic_edp_client);
+	chip->haptic_edp_client = NULL;
+
+register_input:
+	dev_set_drvdata(&pdev->dev, chip);
+	max77665_haptic_chip = chip;
 	input_dev->name = "max77665-haptic";
 	input_dev->id.version = 1;
 	input_dev->dev.parent = &pdev->dev;
@@ -386,12 +461,18 @@ static int max77665_haptic_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct max77665_haptic *chip = platform_get_drvdata(pdev);
-	struct input_dev *input_dev = chip->input_dev;
-	unsigned long flags;
+	int ret;
 
-	spin_lock_irqsave(&input_dev->event_lock, flags);
+	if (chip->haptic_edp_client) {
+		ret = edp_update_client_request(chip->haptic_edp_client,
+				MAX77665_HAPTIC_EDP_LOW, NULL);
+		if (ret) {
+			dev_err(chip->dev,
+				"E state transition failed\n");
+			return ret;
+		}
+	}
 	max77665_haptic_enable(chip, false);
-	spin_unlock_irqrestore(&input_dev->event_lock, flags);
 
 	return 0;
 }
