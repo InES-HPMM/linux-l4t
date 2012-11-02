@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/pm_qos.h>
+#include <linux/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_usb_modem_power.h>
 
@@ -40,6 +41,8 @@
 
 #define WAKELOCK_TIMEOUT_FOR_USB_ENUM		(HZ * 10)
 #define WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE	(HZ)
+
+#define MAX_MODEM_EDP_STATES 10
 
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
@@ -67,6 +70,18 @@ struct tegra_usb_modem {
 	struct notifier_block usb_notifier;	/* usb event notifier */
 	int sysfs_file_created;
 	int short_autosuspend_enabled;
+	struct edp_client *modem_boot_edp_client;
+	struct edp_client modem_edp_client;
+	unsigned int modem_edp_states[MAX_MODEM_EDP_STATES];
+	int edp_client_registered;
+	int edp_boot_client_registered;
+	int edp_initialized;
+	char *edp_manager_name;
+	unsigned int i_breach_ppm; /* percent time current exceeds i_thresh */
+	unsigned int i_thresh_3g_adjperiod; /* 3g i_thresh adj period */
+	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
+	struct work_struct edp_work;
+	struct mutex edp_lock;
 };
 
 static struct platform_device *hc = NULL;	/* USB host controller */
@@ -120,6 +135,56 @@ static void cpu_freq_boost(struct work_struct *ws)
 			      msecs_to_jiffies(BOOST_CPU_FREQ_TIMEOUT));
 }
 
+static void edp_work(struct work_struct *ws)
+{
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     edp_work);
+	struct edp_manager *mgr;
+	int ret;
+
+	mutex_lock(&modem->edp_lock);
+	if (!modem->edp_client_registered &&
+	    modem->edp_boot_client_registered) {
+		pr_err("modem boot client already registered\n");
+		goto done;
+	}
+
+	/* unregister modem client */
+	ret = edp_unregister_client(&modem->modem_edp_client);
+	if (ret) {
+		pr_err("edp unregistration failed\n");
+		goto done;
+	}
+
+	modem->edp_client_registered = 0;
+
+	/* register modem boot client */
+	mgr = edp_get_manager(modem->edp_manager_name);
+	if (!mgr) {
+		pr_err("can't get edp manager\n");
+		goto done;
+	}
+
+	ret = edp_register_client(mgr, modem->modem_boot_edp_client);
+	if (ret) {
+		pr_err("unable to register modem boot edp client\n");
+		goto done;
+	}
+
+	/* request E0 */
+	ret = edp_update_client_request(modem->modem_boot_edp_client,
+					0, NULL);
+	if (ret) {
+		pr_err("unable to set E0 state\n");
+		goto done;
+	}
+
+	modem->edp_boot_client_registered = 1;
+
+done:
+	mutex_unlock(&modem->edp_lock);
+}
+
 static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 {
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
@@ -170,6 +235,9 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 	/* boost CPU freq */
 	if (!work_pending(&modem->cpu_boost_work))
 		queue_work(modem->wq, &modem->cpu_boost_work);
+
+	if (!v)
+		queue_work(modem->wq, &modem->edp_work);
 
 	/* USB disconnect maybe on going... */
 	mutex_lock(&modem->lock);
@@ -440,17 +508,197 @@ static ssize_t load_unload_usb_host(struct device *dev,
 static DEVICE_ATTR(load_host, S_IRUSR | S_IWUSR, show_usb_host,
 		   load_unload_usb_host);
 
+#define EDP_INT_ATTR(field)						\
+static ssize_t								\
+field ## _show(struct device *pdev, struct device_attribute *attr,      \
+	       char *buf)						\
+{									\
+	struct tegra_usb_modem *modem = dev_get_drvdata(pdev);		\
+									\
+	if (!modem)							\
+		return -EAGAIN;						\
+									\
+	return sprintf(buf, "%d\n", modem->field);			\
+}									\
+static DEVICE_ATTR(field, S_IRUSR, field ## _show, NULL);
+
+EDP_INT_ATTR(i_breach_ppm);
+EDP_INT_ATTR(i_thresh_3g_adjperiod);
+EDP_INT_ATTR(i_thresh_lte_adjperiod);
+
+static ssize_t i_max_show(struct device *pdev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct tegra_usb_modem *modem = dev_get_drvdata(pdev);
+	int i = 0;
+	int count = 0;
+
+	mutex_lock(&modem->edp_lock);
+	for (i = 0; i < MAX_MODEM_EDP_STATES; i++) {
+		if (modem->modem_edp_states[i] <= 0)
+			break;
+
+		count += sprintf(&buf[count], "%d ",
+				 modem->modem_edp_states[i]);
+	}
+	mutex_unlock(&modem->edp_lock);
+
+	count += sprintf(&buf[count], "\n");
+
+	return count;
+}
+
+static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
+			   const char *buff, size_t size)
+{
+	struct tegra_usb_modem *modem;
+	char *s, *state_i_max, buf[50];
+	unsigned int num_states = 0;
+	struct edp_manager *mgr;
+	int ret;
+
+	modem = (struct tegra_usb_modem *)dev_get_drvdata(pdev);
+
+	mutex_lock(&modem->edp_lock);
+
+	/* client should only be registered once per modem boot */
+	if (modem->edp_client_registered) {
+		pr_err("modem edp client already registered\n");
+		ret = -EBUSY;
+		goto done;
+	}
+
+	memset(modem->modem_edp_states, 0, sizeof(modem->modem_edp_states));
+	memset(&modem->modem_edp_client, 0, sizeof(modem->modem_edp_client));
+
+	/* retrieve max current for supported states */
+	strlcpy(buf, buff, sizeof(buf));
+	s = strim(buf);
+	while (s && (num_states < MAX_MODEM_EDP_STATES)) {
+		state_i_max = strsep(&s, ",");
+		ret = kstrtoul(state_i_max, 10,
+			(unsigned long *)&modem->modem_edp_states[num_states]);
+		if (ret) {
+			pr_err("invalid modem state-current setting\n");
+			goto done;
+		}
+		num_states++;
+	}
+
+	if (s && (num_states == MAX_MODEM_EDP_STATES)) {
+		pr_err("number of modem EDP states exceeded max\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	strncpy(modem->modem_edp_client.name, "modem", EDP_NAME_LEN);
+	modem->modem_edp_client.name[EDP_NAME_LEN - 1] = '\0';
+	modem->modem_edp_client.states = modem->modem_edp_states;
+	modem->modem_edp_client.num_states = num_states;
+	modem->modem_edp_client.e0_index = 0;
+	modem->modem_edp_client.priority = EDP_MAX_PRIO;
+
+	mgr = edp_get_manager(modem->edp_manager_name);
+	if (!mgr) {
+		dev_err(pdev, "can't get edp manager\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	/* register modem client */
+	ret = edp_register_client(mgr, &modem->modem_edp_client);
+	if (ret) {
+		dev_err(pdev, "unable to register modem edp client\n");
+		goto done;
+	}
+	modem->edp_client_registered = 1;
+
+	/* unregister modem_boot_client */
+	ret = edp_unregister_client(modem->modem_boot_edp_client);
+	if (ret) {
+		dev_err(pdev, "unable to register modem boot edp client\n");
+		goto done;
+	}
+
+	modem->edp_boot_client_registered = 0;
+	ret = size;
+
+done:
+	mutex_unlock(&modem->edp_lock);
+	return ret;
+}
+static DEVICE_ATTR(i_max, S_IRUSR | S_IWUSR, i_max_show, i_max_store);
+
+static struct device_attribute *edp_attributes[] = {
+	&dev_attr_i_breach_ppm,
+	&dev_attr_i_thresh_3g_adjperiod,
+	&dev_attr_i_thresh_lte_adjperiod,
+	&dev_attr_i_max,
+	NULL
+};
+
 static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 {
 	struct tegra_usb_modem_power_platform_data *pdata =
 	    pdev->dev.platform_data;
 	int ret = 0;
+	struct edp_manager *mgr;
+	struct device_attribute **edp_attrs;
+	struct device_attribute *attr;
 
 	modem->pdata = pdata;
 
 	hc_device = pdata->tegra_ehci_device;
 	hc_pdata = pdata->tegra_ehci_pdata;
 	mutex_init(&hc_lock);
+
+	if (pdata->modem_boot_edp_client && pdata->edp_manager_name) {
+		mutex_init(&modem->edp_lock);
+
+		/* register modem boot client */
+		modem->edp_manager_name = pdata->edp_manager_name;
+		mgr = edp_get_manager(pdata->edp_manager_name);
+		if (!mgr) {
+			dev_err(&pdev->dev, "can't get edp manager\n");
+			goto error;
+		}
+
+		modem->modem_boot_edp_client = pdata->modem_boot_edp_client;
+		ret = edp_register_client(mgr, modem->modem_boot_edp_client);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"unable to register modem boot edp client\n");
+			goto error;
+		}
+
+		/* request E0 */
+		ret = edp_update_client_request(modem->modem_boot_edp_client,
+						0, NULL);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"unable to set e0 state\n");
+			goto error;
+		}
+
+		modem->edp_boot_client_registered = 1;
+
+		modem->i_breach_ppm = pdata->i_breach_ppm;
+		modem->i_thresh_3g_adjperiod = pdata->i_thresh_3g_adjperiod;
+		modem->i_thresh_lte_adjperiod = pdata->i_thresh_lte_adjperiod;
+
+		edp_attrs = edp_attributes;
+		while ((attr = *edp_attrs++)) {
+			ret = device_create_file(&pdev->dev, attr);
+			if (ret) {
+				dev_err(&pdev->dev, "can't create sysfs file\n");
+				goto error;
+			}
+		}
+
+		INIT_WORK(&modem->edp_work, edp_work);
+
+		modem->edp_initialized = 1;
+	}
 
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
@@ -541,6 +789,15 @@ error:
 		free_irq(modem->boot_irq, modem);
 	}
 
+	if (modem->edp_initialized) {
+		edp_attrs = edp_attributes;
+		while ((attr = *edp_attrs++))
+			device_remove_file(&pdev->dev, attr);
+	}
+
+	if (modem->edp_boot_client_registered)
+		edp_unregister_client(modem->modem_boot_edp_client);
+
 	return ret;
 }
 
@@ -576,6 +833,8 @@ static int tegra_usb_modem_probe(struct platform_device *pdev)
 static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 {
 	struct tegra_usb_modem *modem = platform_get_drvdata(pdev);
+	struct device_attribute **edp_attrs;
+	struct device_attribute *attr;
 
 	unregister_pm_notifier(&modem->pm_notifier);
 	usb_unregister_notify(&modem->usb_notifier);
@@ -592,6 +851,20 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
+
+	if (modem->edp_initialized) {
+		cancel_work_sync(&modem->edp_work);
+
+		edp_attrs = edp_attributes;
+		while ((attr = *edp_attrs++))
+			device_remove_file(&pdev->dev, attr);
+	}
+
+	if (modem->edp_boot_client_registered)
+		edp_unregister_client(modem->modem_boot_edp_client);
+
+	if (modem->edp_client_registered)
+		edp_unregister_client(&modem->modem_edp_client);
 
 	cancel_delayed_work_sync(&modem->recovery_work);
 	cancel_work_sync(&modem->host_load_work);
