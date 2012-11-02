@@ -600,7 +600,6 @@ static void __init tegra_curacao_init(void)
 	curacao_panel_init();
 	curacao_hs_uart_init();
 	curacao_bt_rfkill();
-	curacao_sensors_init();
 }
 
 static void __init tegra_curacao_reserve(void)
