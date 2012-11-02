@@ -291,7 +291,7 @@ static int __init pluto_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init pluto_wifi_prepower(void)
 {
-	if (!machine_is_pluto())
+	if (!machine_is_tegra_pluto())
 		return 0;
 
 	pluto_wifi_power(1);
