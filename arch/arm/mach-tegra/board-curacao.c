@@ -62,8 +62,6 @@
 #include "gpio-names.h"
 
 #define ENABLE_OTG 0
-/* uncomment for host only functionality (for FPGA) */
-/* #define USB_HOST_ONLY */
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
@@ -379,9 +377,7 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&debug_uart,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
-#if !defined(USB_HOST_ONLY)
 	&tegra_udc_device,
-#endif
 #if defined(CONFIG_TEGRA_IOVMM_SMMU)
 	&tegra_smmu_device,
 #endif
