@@ -153,7 +153,7 @@ TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1);
 TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 1, 1, 0, false, -1); /* always_on and boot_on */
+TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
 TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
@@ -220,7 +220,6 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_mic_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_nfc_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
-	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 	REGULATOR_SUPPLY("vdd_spi_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
@@ -800,6 +799,11 @@ static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
+/* EN_1V8_TS From TEGRA_GPIO_PH5 */
+static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -872,6 +876,9 @@ FIXED_REG(7,	en_1v8_cam_e1611,	en_1v8_cam_e1611,
 	palmas_rails(smps3),	0,	0,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	1800);
 
+FIXED_REG(8,	dvdd_ts,	dvdd_ts,
+	palmas_rails(smps3),	0,	0,
+	TEGRA_GPIO_PH5,	false,	false,	1,	1800);
 /*
  * Creating the fixed regulator device tables
  */
@@ -889,7 +896,8 @@ FIXED_REG(7,	en_1v8_cam_e1611,	en_1v8_cam_e1611,
 	ADD_FIXED_REG(vpp_fuse),		\
 
 #define E1611_FIXED_REG				\
-	ADD_FIXED_REG(en_1v8_cam_e1611),
+	ADD_FIXED_REG(en_1v8_cam_e1611), \
+	ADD_FIXED_REG(dvdd_ts),
 
 /* Gpio switch regulator platform data for Dalmore E1611 */
 static struct platform_device *fixed_reg_devs_e1611_a00[] = {
