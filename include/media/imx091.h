@@ -29,6 +29,13 @@ enum imx091_vreg {
 	IMX091_VREG_IOVDD,
 };
 
+struct imx091_flash_config {
+	u8 xvs_trigger_enabled;
+	u8 sdo_trigger_enabled;
+	u8 adjustable_flash_timing;
+	u16 pulse_width_uS;
+};
+
 struct imx091_platform_data {
 	unsigned cfg;
 	unsigned num;
@@ -36,6 +43,7 @@ struct imx091_platform_data {
 	const char *dev_name;
 	unsigned gpio_count; /* see nvc.h GPIO notes */
 	struct nvc_gpio_pdata *gpio; /* see nvc.h GPIO notes */
+	struct imx091_flash_config flash_cap;
 	struct nvc_imager_cap *cap;
 	unsigned lens_focal_length; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_max_aperture; /* / _INT2FLOAT_DIVISOR */

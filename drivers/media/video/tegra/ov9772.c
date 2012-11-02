@@ -243,7 +243,7 @@ static struct nvc_imager_cap ov9772_dflt_cap = {
 	.preferred_mode_index	= 0,
 	.focuser_guid		= 0,
 	.torch_guid		= 0,
-	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
 static struct ov9772_platform_data ov9772_dflt_pdata = {

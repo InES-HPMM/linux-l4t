@@ -120,7 +120,7 @@ static struct nvc_imager_cap imx091_dflt_cap = {
 	.preferred_mode_index	= 1,
 	.focuser_guid		= NVC_FOCUS_GUID(0),
 	.torch_guid		= NVC_TORCH_GUID(0),
-	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
 static struct imx091_platform_data imx091_dflt_pdata = {
@@ -1240,6 +1240,79 @@ static int imx091_test_pattern_wr(struct imx091_info *info, unsigned pattern)
 	return imx091_i2c_wr_table(info, test_patterns[pattern]);
 }
 
+static int imx091_set_flash_output(struct imx091_info *info)
+{
+	struct imx091_flash_config *fcfg;
+	u8 val = 0;
+	int ret = 0;
+
+	if (!info->pdata)
+		return 0;
+
+	fcfg = &info->pdata->flash_cap;
+	if (fcfg->xvs_trigger_enabled)
+		val |= 0x0c;
+	if (fcfg->sdo_trigger_enabled)
+		val |= 0x02;
+	dev_dbg(&info->i2c_client->dev, "%s: %02x\n", __func__, val);
+	ret = imx091_i2c_wr8(info, 0x3240, val);
+	/* set the control pulse width settings - Gain + Step
+	 * Pulse width(sec) = 64 * 2^(Gain) * (Step + 1) / Logic Clk
+	 * Logic Clk = ExtClk * PLL Multipiler / Pre_Div / Post_Div
+	 * / Logic Clk Division Ratio
+	 * Logic Clk Division Ratio = 5 @4lane, 10 @2lane, 20 @1lane
+	 */
+	ret |= imx091_i2c_wr8(info, 0x307C, 0x07);
+	ret |= imx091_i2c_wr8(info, 0x307D, 0x3F);
+	return ret;
+}
+
+static void imx091_get_flash_cap(struct imx091_info *info)
+{
+	struct nvc_imager_cap *fcap = info->cap;
+	struct imx091_flash_config *fcfg;
+
+	if (!info->pdata)
+		return;
+
+	fcfg = &info->pdata->flash_cap;
+	fcap->flash_control_enabled =
+		fcfg->xvs_trigger_enabled | fcfg->sdo_trigger_enabled;
+	fcap->adjustable_flash_timing = fcfg->adjustable_flash_timing;
+}
+
+static int imx091_flash_control(
+	struct imx091_info *info, union nvc_imager_flash_control *fm)
+{
+	int ret;
+	u8 f_cntl;
+	u8 f_tim;
+
+	if (!info->pdata)
+		return -EFAULT;
+
+	ret = imx091_i2c_wr8(info, 0x304a, 0);
+	f_tim = 0;
+	f_cntl = 0;
+	if (fm->settings.enable) {
+		if (fm->settings.edge_trig_en) {
+			f_cntl |= 0x10;
+			if (fm->settings.start_edge)
+				f_tim |= 0x08;
+			if (fm->settings.repeat)
+				f_tim |= 0x04;
+			f_tim |= fm->settings.delay_frm & 0x03;
+		} else
+			f_cntl |= 0x20;
+	}
+	ret |= imx091_i2c_wr8(info, 0x307B, f_tim);
+	ret |= imx091_i2c_wr8(info, 0x304A, f_cntl);
+
+	dev_dbg(&info->i2c_client->dev,
+		"%s: %04x %02x %02x\n", __func__, fm->mode, f_tim, f_cntl);
+	return ret;
+}
+
 static int imx091_gpio_rd(struct imx091_info *info,
 			  enum imx091_gpio i)
 {
@@ -1706,7 +1779,9 @@ static int imx091_mode_wr(struct imx091_info *info,
 		goto imx091_mode_wr_err;
 	}
 
-	err = imx091_mode_able(info, true);
+	err = imx091_set_flash_output(info);
+
+	err |= imx091_mode_able(info, true);
 	if (err < 0)
 		goto imx091_mode_wr_err;
 
@@ -1868,7 +1943,6 @@ static int imx091_param_rd(struct imx091_info *info, unsigned long arg)
 		}
 		kfree(p_i2c_table);
 		return err;
-
 	default:
 		dev_dbg(&info->i2c_client->dev,
 			"%s unsupported parameter: %d\n",
@@ -1977,6 +2051,17 @@ static int imx091_param_wr_s(struct imx091_info *info,
 		err = imx091_i2c_wr_table(info, p_i2c_table);
 		kfree(p_i2c_table);
 		return err;
+
+	case NVC_PARAM_SET_SENSOR_FLASH_MODE:
+	{
+		union nvc_imager_flash_control fm;
+		if (copy_from_user(&fm,
+			(const void __user *)params->p_value, sizeof(fm))) {
+			pr_info("%s:fail set flash mode.\n", __func__);
+			return -EFAULT;
+		}
+		return imx091_flash_control(info, &fm);
+	}
 
 	default:
 		dev_dbg(&info->i2c_client->dev,
@@ -2499,6 +2584,7 @@ static int imx091_probe(
 	spin_unlock(&imx091_spinlock);
 	imx091_pm_init(info);
 	imx091_sdata_init(info);
+	imx091_get_flash_cap(info);
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		if (info->pdata->probe_clock) {
 			if (info->cap->initial_clock_rate_khz)

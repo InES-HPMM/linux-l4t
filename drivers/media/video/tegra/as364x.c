@@ -60,7 +60,10 @@
 #define AS364X_MAX_FLASH_LEVEL	256
 #define AS364X_MAX_TORCH_LEVEL	128
 
-#define SUSTAINTIME_DEF		820
+#define SUSTAINTIME_DEF		558
+#define DEFAULT_FLASHTIME	((SUSTAINTIME_DEF > 256) ? \
+				((SUSTAINTIME_DEF - 249) / 8 + 128) : \
+				((SUSTAINTIME_DEF - 1) / 2))
 #define RECHARGEFACTOR_DEF	197
 
 #define as364x_max_flash_cap_size	(sizeof(u32) \
@@ -192,28 +195,36 @@ static int as364x_reg_rd(struct as364x_info *info, u8 reg, u8 *val)
 	return 0;
 }
 
-static int as364x_reg_wr(struct as364x_info *info, u8 reg, u8 val)
+static int as364x_reg_raw_wr(struct as364x_info *info, u8 *buf, u8 num)
 {
 	struct i2c_msg msg;
-	u8 buf[2];
 
-	buf[0] = reg;
-	buf[1] = val;
 	msg.addr = info->i2c_client->addr;
 	msg.flags = 0;
-	msg.len = 2;
-	msg.buf = &buf[0];
+	msg.len = num;
+	msg.buf = buf;
 	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
 		return -EIO;
 
+	dev_dbg(&info->i2c_client->dev, "%s %x %x\n", __func__, buf[0], buf[1]);
 	return 0;
+}
+
+static int as364x_reg_wr(struct as364x_info *info, u8 reg, u8 val)
+{
+	u8 buf[2];
+
+	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	buf[0] = reg;
+	buf[1] = val;
+	return as364x_reg_raw_wr(info, buf, sizeof(buf));
 }
 
 static int as364x_set_leds(struct as364x_info *info,
 			u8 mask, u8 curr1, u8 curr2)
 {
 	int err = 0;
-	u8 val = 0;
+	u8 regs[7];
 
 	if (mask & 1) {
 		if (info->flash_mode == AS364X_REG_CONTROL_MODE_FLASH) {
@@ -223,13 +234,8 @@ static int as364x_set_leds(struct as364x_info *info,
 			if (curr1 >= info->torch_cap->numberoflevels)
 				curr1 = info->torch_cap->numberoflevels - 1;
 		}
-
-		err = as364x_reg_wr(info, AS364X_REG_LED1_SET_CURR, curr1);
-		if (!err)
-			info->regs.led1_curr = curr1;
-		else
-			goto set_led_end;
-	}
+	} else
+		curr1 = 0;
 
 	if (mask & 2 && info->caps.led2_support) {
 		if (info->flash_mode == AS364X_REG_CONTROL_MODE_FLASH) {
@@ -239,25 +245,28 @@ static int as364x_set_leds(struct as364x_info *info,
 			if (curr2 >= info->torch_cap->numberoflevels)
 				curr2 = info->torch_cap->numberoflevels - 1;
 		}
+	} else
+		curr2 = 0;
 
-		err = as364x_reg_wr(info, AS364X_REG_LED2_SET_CURR, curr2);
-		if (!err)
-			info->regs.led2_curr = curr2;
-		else
-			goto set_led_end;
+	regs[0] = AS364X_REG_LED1_SET_CURR;
+	regs[1] = curr1;
+	regs[2] = curr2;
+	regs[3] = info->regs.txmask;
+	regs[4] = info->regs.vlow;
+	regs[5] = info->regs.ftime;
+	if (mask == 0 || (curr1 == 0 && curr2 == 0))
+		regs[6] = info->flash_mode & (~0x08);
+	else
+		regs[6] = info->flash_mode | 0x08;
+	err = as364x_reg_raw_wr(info, regs, sizeof(regs));
+	if (!err) {
+		info->regs.led1_curr = curr1;
+		info->regs.led2_curr = curr2;
 	}
 
-	err = as364x_reg_wr(info, AS364X_REG_FLASHTIMER, info->regs.ftime);
-	val = info->flash_mode;
-	if (mask == 0 || (curr1 == 0 && curr2 == 0))
-		val &= ~0x08;
-	else
-		val |= 0x08;
-	dev_dbg(&info->i2c_client->dev, "%s %x %x %x val = %x\n",
-			__func__, mask, curr1, curr2, val);
-	err |= as364x_reg_wr(info, AS364X_REG_CONTROL, val);
-
-set_led_end:
+	dev_dbg(&info->i2c_client->dev, "%s %x %x %x %x control = %x\n",
+			__func__, mask, curr1, curr2,
+			info->regs.ftime, regs[6]);
 	return err;
 }
 
@@ -309,7 +318,7 @@ static int as364x_get_vin_index(u16 mV)
 	return vin;
 }
 
-static void as364x_update_config(struct as364x_info *info)
+static void as364x_config_init(struct as364x_info *info)
 {
 	struct as364x_config *pcfg = &info->config;
 	struct as364x_config *pcfg_cust = &info->pdata->config;
@@ -388,6 +397,8 @@ static int as364x_update_settings(struct as364x_info *info)
 	err |= as364x_set_leds(info,
 		info->led_mask, info->regs.led1_curr, info->regs.led2_curr);
 
+	dev_dbg(&info->i2c_client->dev, "UP: strobe: %x pwm_ind: %x vlow: %x\n",
+		info->regs.strobe, info->regs.pwm_ind, info->regs.vlow);
 	return err;
 }
 
@@ -418,8 +429,10 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	if (pcfg->load_balance_on)
 		info->regs.pwm_ind |= 0x20;
 
-	info->regs.strobe = pcfg->strobe_type ? 0xc0 : 0x80;
+	info->regs.strobe = pcfg->strobe_type == 2 ? 0xc0 : 0x80;
 	info->led_mask = info->pdata->led_mask;
+
+	info->regs.ftime = DEFAULT_FLASHTIME;
 
 	if (pcfg->max_peak_current_mA > pcap->max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
@@ -789,8 +802,6 @@ static int as364x_set_param(struct as364x_info *info,
 	case NVC_PARAM_FLASH_LEVEL:
 		dev_dbg(&info->i2c_client->dev, "%s FLASH_LEVEL: %d\n",
 				__func__, val);
-		info->regs.ftime =
-			info->flash_cap->levels[val].rechargefactor;
 
 		info->flash_mode = AS364X_REG_CONTROL_MODE_FLASH;
 		err = as364x_set_leds(info, info->led_mask, val, val);
@@ -1160,7 +1171,7 @@ static int as364x_probe(
 	memcpy(&info->caps, &as364x_caps[info->pdata->type],
 		sizeof(info->caps));
 
-	as364x_update_config(info);
+	as364x_config_init(info);
 
 	info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST; /* torch mode */
 
@@ -1211,6 +1222,7 @@ static int as364x_probe(
 static int as364x_status_show(struct seq_file *s, void *data)
 {
 	struct as364x_info *k_info = s->private;
+	struct as364x_config *pcfg = &k_info->config;
 
 	pr_info("%s\n", __func__);
 
@@ -1221,6 +1233,7 @@ static int as364x_status_show(struct seq_file *s, void *data)
 		"    Led2 Current     = 0x%02x\n"
 		"    Flash Mode       = 0x%02x\n"
 		"    Flash TimeOut    = 0x%02x\n"
+		"    Flash Strobe     = 0x%02x\n"
 		"    Max_Peak_Current = 0x%04dmA\n"
 		"    Use_TxMask       = 0x%02x\n"
 		"    TxMask_Current   = 0x%04dmA\n"
@@ -1238,13 +1251,14 @@ static int as364x_status_show(struct seq_file *s, void *data)
 		k_info->regs.led1_curr,
 		k_info->regs.led2_curr,
 		k_info->flash_mode, k_info->regs.ftime,
-		k_info->config.max_peak_current_mA,
-		k_info->config.use_tx_mask,
-		k_info->config.txmasked_current_mA,
-		k_info->config.freq_switch_on ? "TRUE" : "FALSE",
-		k_info->config.vin_low_v_run_mV,
-		k_info->config.vin_low_v_mV,
-		k_info->config.led_off_when_vin_low ? "TRUE" : "FALSE",
+		pcfg->strobe_type,
+		pcfg->max_peak_current_mA,
+		pcfg->use_tx_mask,
+		pcfg->txmasked_current_mA,
+		pcfg->freq_switch_on ? "TRUE" : "FALSE",
+		pcfg->vin_low_v_run_mV,
+		pcfg->vin_low_v_mV,
+		pcfg->led_off_when_vin_low ? "TRUE" : "FALSE",
 		k_info->pdata->pinstate.mask,
 		k_info->pdata->pinstate.values
 	);
@@ -1331,9 +1345,9 @@ set_attr:
 		break;
 	case 'x':
 		if (val & 0xf)
-			k_info->flash_mode = (val & 0xf);
+			k_info->flash_mode = (val & 0xf) - 1;
 		if (val & 0xf0)
-			k_info->config.strobe_type = (val & 0xf0) >> 4;
+			k_info->config.strobe_type = ((val & 0xf0) >> 4) - 1;
 		if (val & 0xf00)
 			k_info->config.freq_switch_on =
 				((val & 0xf00) == 0x200);
