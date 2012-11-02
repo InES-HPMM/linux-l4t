@@ -45,10 +45,9 @@ struct tegra_system_edp_entry {
 
 struct tegra_edp_cpu_leakage_params {
 	int cpu_speedo_id;
-	/* All constants are pre-multiplied by 1,000,000 */
-	int dyn_consts_n[NR_CPUS];
-	int leakage_consts_n[NR_CPUS];
-	int leakage_consts_ijk[4][4][4];
+	int dyn_consts_n[NR_CPUS];	 /* pre-multiplied by 1,000,000 */
+	int leakage_consts_n[NR_CPUS];	 /* pre-multiplied by 1,000,000 */
+	int leakage_consts_ijk[4][4][4]; /* pre-multiplied by 100,000 */
 };
 
 struct tegra_edp_freq_voltage_table {
