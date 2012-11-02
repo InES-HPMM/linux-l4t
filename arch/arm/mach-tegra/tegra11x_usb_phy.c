@@ -235,6 +235,9 @@
 #define   UTMIP_RCTRL_VAL(x)		(((x) & 0xffff) << 0)
 #define   UTMIP_TCTRL_VAL(x)		(((x) & (0xffff << 16)) >> 16)
 
+#define UTMIPLL_HW_PWRDN_CFG0			0x52c
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
+
 #define UHSIC_INST(inst, x, y)	((inst == 1) ? x : y)
 
 #define UHSIC_PLL_CFG1				0xc04
@@ -1175,8 +1178,13 @@ static int utmi_phy_pad_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
 
 	clk_enable(phy->utmi_pad_clk);
 
@@ -1200,6 +1208,7 @@ static int utmi_phy_pad_power_off(struct tegra_usb_phy *phy)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -1216,6 +1225,10 @@ static int utmi_phy_pad_power_off(struct tegra_usb_phy *phy)
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
+
+		val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
 	}
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
@@ -1361,8 +1374,6 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	val |= UTMIP_BIAS_PDTRK_COUNT(0x5);
 	writel(val, base + UTMIP_BIAS_CFG1);
 
-	utmi_phy_pad_power_off(phy);
-
 	if (phy->hot_plug) {
 		bool enable_hotplug = true;
 		/* if it is OTG port then make sure to enable hot-plug feature
@@ -1395,6 +1406,8 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			writel(val, base + USB_SUSP_CTRL);
 		}
 	}
+
+	utmi_phy_pad_power_off(phy);
 
 	/* Disable PHY clock */
 	val = readl(base + HOSTPC1_DEVLC);
