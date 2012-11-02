@@ -289,6 +289,9 @@ static const struct nla_policy nl80211_policy[NL80211_ATTR_MAX+1] = {
 	[NL80211_ATTR_MGMT_SUBTYPE] = { .type = NLA_U8 },
 	[NL80211_ATTR_IE] = { .type = NLA_BINARY,
 			      .len = IEEE80211_MAX_DATA_LEN },
+#ifdef CONFIG_MAC80211_SCAN_ABORT
+	[NL80211_ATTR_SCAN_FLAGS] = { .type = NLA_U32 },
+#endif
 	[NL80211_ATTR_SCAN_FREQUENCIES] = { .type = NLA_NESTED },
 	[NL80211_ATTR_SCAN_SSIDS] = { .type = NLA_NESTED },
 
@@ -5240,6 +5243,12 @@ static int nl80211_trigger_scan(struct sk_buff *skb, struct genl_info *info)
 
 	request->no_cck =
 		nla_get_flag(info->attrs[NL80211_ATTR_TX_NO_CCK_RATE]);
+
+#ifdef CONFIG_MAC80211_SCAN_ABORT
+	if (info->attrs[NL80211_ATTR_SCAN_FLAGS])
+		request->flags = nla_get_u32(
+		    info->attrs[NL80211_ATTR_SCAN_FLAGS]);
+#endif
 
 	request->wdev = wdev;
 	request->wiphy = &rdev->wiphy;
