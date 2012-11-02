@@ -455,11 +455,13 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-	if (phy->ops && phy->ops->suspend)
-		err = phy->ops->suspend(phy);
+	if (phy->pdata->u_data.host.power_off_on_suspend) {
+		if (phy->ops && phy->ops->suspend)
+			err = phy->ops->suspend(phy);
 
-	if (!err && phy->pdata->u_data.host.power_off_on_suspend)
-		tegra_usb_phy_power_off(phy);
+		if (!err)
+			tegra_usb_phy_power_off(phy);
+	}
 
 	return err;
 }
@@ -503,11 +505,10 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->u_data.host.power_off_on_suspend) {
-		tegra_usb_phy_power_on(phy);
+		err = tegra_usb_phy_power_on(phy);
+		if (!err && phy->ops && phy->ops->resume)
+			err = phy->ops->resume(phy);
 	}
-
-	if (!err && phy->ops && phy->ops->resume)
-		err = phy->ops->resume(phy);
 
 	return err;
 
