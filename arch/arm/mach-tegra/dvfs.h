@@ -179,6 +179,8 @@ void tegra_dvfs_rail_on(struct dvfs_rail *rail, ktime_t now);
 void tegra_dvfs_rail_pause(struct dvfs_rail *rail, ktime_t delta, bool on);
 struct dvfs_rail *tegra_dvfs_get_rail_by_name(const char *reg_id);
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
+int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate);
+int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate);
 void tegra_dvfs_core_cap_enable(bool enable);
 void tegra_dvfs_core_cap_level_set(int level);
 int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs);
@@ -216,6 +218,9 @@ static inline bool tegra_dvfs_is_dfll_range(struct dvfs *d, unsigned long rate)
 }
 static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 {
+	if (!d->dfll_millivolts)
+		return -ENOSYS;
+
 	if ((range < DFLL_RANGE_NONE) || (range > DFLL_RANGE_HIGH_RATES))
 		return -EINVAL;
 

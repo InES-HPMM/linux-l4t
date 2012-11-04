@@ -431,18 +431,13 @@ int tegra_dvfs_alt_freqs_set(struct dvfs *d, unsigned long *alt_freqs)
 	return ret;
 }
 
-int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
+static int predict_millivolts(struct clk *c, const int *millivolts,
+			      unsigned long rate)
 {
 	int i;
-	const int *millivolts;
 
-	if (!rate || !c->dvfs)
-		return 0;
-
-	millivolts = dvfs_get_millivolts(c->dvfs, rate);
 	if (!millivolts)
 		return -ENODEV;
-
 	/*
 	 * Predicted voltage can not be used across the switch to alternative
 	 * frequency limits. For now, just fail the call for clock that has
@@ -460,6 +455,39 @@ int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
 		return -EINVAL;
 
 	return millivolts[i];
+}
+
+int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate)
+{
+	const int *millivolts;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	millivolts = dvfs_get_millivolts(c->dvfs, rate);
+	return predict_millivolts(c, millivolts, rate);
+}
+
+int tegra_dvfs_predict_millivolts_pll(struct clk *c, unsigned long rate)
+{
+	const int *millivolts;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	millivolts = c->dvfs->millivolts;
+	return predict_millivolts(c, millivolts, rate);
+}
+
+int tegra_dvfs_predict_millivolts_dfll(struct clk *c, unsigned long rate)
+{
+	const int *millivolts;
+
+	if (!rate || !c->dvfs)
+		return 0;
+
+	millivolts = c->dvfs->dfll_millivolts;
+	return predict_millivolts(c, millivolts, rate);
 }
 
 int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
