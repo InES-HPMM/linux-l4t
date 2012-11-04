@@ -749,8 +749,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dfll_rate_min) {
-		req.scale = rate / 1000 * SCALE_MAX /
-			(cld->dfll_rate_min / 1000);
+		req.scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
+			(cld->dfll_rate_min / 1000));
 		if (!req.scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
@@ -811,7 +811,7 @@ unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 	struct dfll_rate_req *req = &cld->last_req;
 	u32 rate = GET_REQUEST_RATE(req->freq, cld->ref_rate);
 	if ((req->scale + 1) < SCALE_MAX) {
-		rate = DIV_ROUND_UP(rate / 1000 * (req->scale + 1), SCALE_MAX);
+		rate = (rate / 1000 * (req->scale + 1)) / SCALE_MAX;
 		rate *= 1000;
 	}
 	return rate;
