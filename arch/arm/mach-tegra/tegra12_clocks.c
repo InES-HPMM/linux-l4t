@@ -1321,9 +1321,9 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	spin_unlock(&parameters_lock);
 
 	if (flags) {
-		/* over-clocking after the switch - allow, but lower rate */
-		if (rate > p->max_rate) {
-			rate = p->max_rate;
+		/* over/under-clocking after switch - allow, but update rate */
+		if ((rate > p->max_rate) || (rate < p->min_rate)) {
+			rate = rate > p->max_rate ? p->max_rate : p->min_rate;
 			ret = clk_set_rate(c->parent, rate);
 			if (ret) {
 				pr_err("%s: Failed to set rate %lu for %s\n",
