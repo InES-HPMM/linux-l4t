@@ -28,6 +28,7 @@
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/syscore_ops.h>
+#include <linux/platform_device.h>
 
 #include <asm/clkdev.h>
 
@@ -42,6 +43,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #include "iomap.h"
 #include "pm.h"
 #include "sleep.h"
+#include "devices.h"
 #include "tegra12_emc.h"
 #include "tegra_cl_dvfs.h"
 
@@ -3238,6 +3240,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	ret = tegra_init_cl_dvfs();
 	if (!ret) {
 		c->state = OFF;
+		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
 		pr_info("Tegra CPU DFLL is initialized\n");
 	}
 }
@@ -5474,17 +5477,12 @@ static struct clk tegra_pll_x_out0 = {
 /* FIXME: remove; for now, should be always checked-in as "0" */
 #define USE_LP_CPU_TO_TEST_DFLL		0
 
-static struct tegra_cl_dvfs cpu_cl_dvfs;
-
 static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
 	.flags     = DFLL,
 	.ops       = &tegra_dfll_ops,
 	.reg	   = 0x2f4,
 	.max_rate  = 2000000000,
-	.u.dfll = {
-		.cl_dvfs = &cpu_cl_dvfs,
-	},
 };
 
 static struct clk tegra_pll_re_vco = {
