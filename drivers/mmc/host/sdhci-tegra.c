@@ -1045,7 +1045,11 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev;
+	struct tegra_sdhci_platform_data *plat;
 
+	pdev = to_platform_device(mmc_dev(sdhci->mmc));
+	plat = pdev->dev.platform_data;
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
@@ -1053,7 +1057,13 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 				regulator_enable(tegra_host->vdd_slot_reg);
 			if (tegra_host->vdd_io_reg) {
 				regulator_enable(tegra_host->vdd_io_reg);
-				tegra_sdhci_signal_voltage_switch(sdhci, MMC_SIGNAL_VOLTAGE_330);
+				if (plat->mmc_data.ocr_mask &
+							SDHOST_1V8_OCR_MASK)
+					tegra_sdhci_signal_voltage_switch(sdhci,
+							MMC_SIGNAL_VOLTAGE_180);
+				else
+					tegra_sdhci_signal_voltage_switch(sdhci,
+							MMC_SIGNAL_VOLTAGE_330);
 			}
 			tegra_host->is_rail_enabled = 1;
 		}
