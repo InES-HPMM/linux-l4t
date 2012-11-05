@@ -467,8 +467,6 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		mv = get_cvb_voltage(speedo, d->speedo_scale, cvb);
 		dfll_mv = round_cvb_voltage(mv, d->voltage_scale);
 		dfll_mv = max(dfll_mv, d->min_mv);
-		if (dfll_mv > d->max_mv)
-			break;
 
 		/* Check maximum frequency at minimum voltage for dfll source */
 		if (dfll_mv > d->min_mv) {
@@ -491,12 +489,21 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		/* dvfs tables with maximum frequency at any distinct voltage */
 		if (!j || (dfll_mv > cpu_dfll_millivolts[j - 1])) {
 			cpu_dvfs->freqs[j] = cvb->freq;
-			cpu_dfll_millivolts[j] = dfll_mv;
+			cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
 			j++;
 		} else {
 			cpu_dvfs->freqs[j - 1] = cvb->freq;
 		}
 		cpu_millivolts[j - 1] = max(mv, d->min_mv);
+
+		/*
+		 * "Round-up" frequency list cut-off (keep first entry that
+		 *  exceeds max voltage - the voltage limit will be enforced
+		 *  anyway, so when requested this frequency dfll will settle
+		 *  at whatever high frequency it can on the particular chip)
+		 */
+		if (dfll_mv > d->max_mv)
+			break;
 	}
 	/* Table must not be empty and must have and at least one entry below,
 	   and one entry above Vmin */
