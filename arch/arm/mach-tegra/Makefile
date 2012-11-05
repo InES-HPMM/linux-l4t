@@ -39,7 +39,11 @@ ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
 else
+ifeq ($(CONFIG_ARCH_TEGRA_11x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t11x.o
+else
+obj-$(CONFIG_PM_SLEEP)                  += cpuidle-t3.o
+endif
 endif
 endif
 endif
