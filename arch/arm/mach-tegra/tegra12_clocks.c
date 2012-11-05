@@ -2102,8 +2102,6 @@ static int pll_dyn_ramp_find_cfg(struct clk *c, struct clk_pll_freq_table *cfg,
 		if (sel->input_rate == input_rate && sel->output_rate == rate) {
 			u32 p = c->u.pll.round_p_to_pdiv(sel->p, pdiv);
 			BUG_ON(IS_ERR_VALUE(p));
-			if (rate >= c->u.pll.vco_min)
-				BUG_ON(sel->p != 1);
 			BUG_ON(sel->m != PLL_FIXED_MDIV(c, input_rate));
 			*cfg = *sel;
 			return 0;
