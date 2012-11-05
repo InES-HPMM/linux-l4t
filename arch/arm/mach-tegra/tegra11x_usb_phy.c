@@ -1090,13 +1090,9 @@ static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 		if ((val & USB_PORTSC_PP) && (val & USB_PORTSC_PE)) {
 			val |= USB_PORTSC_SUSP;
 			writel(val, base + USB_PORTSC);
-			/* Need a 4ms delay
-			 * before the controller goes to suspend */
-			mdelay(4);
-
 			/* Wait until port suspend completes */
 			if (usb_phy_reg_status_wait(base + USB_PORTSC,
-				USB_PORTSC_SUSP, USB_PORTSC_SUSP, 1000)) {
+				USB_PORTSC_SUSP, USB_PORTSC_SUSP, 4000)) {
 				pr_err("%s: timeout waiting for PORT_SUSPEND\n",
 					__func__);
 			}
