@@ -42,11 +42,10 @@ static const int gpu_millivolts[MAX_DVFS_FREQS] = {
 
 /* FIXME: need tegra12 step */
 #define VDD_SAFE_STEP			100
-#define CVB_ALIGN_STEP_UV		12500
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1250,
+	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
@@ -54,7 +53,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.reg_id = "vdd_core",
-	.max_millivolts = 1350,
+	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 };
@@ -73,6 +72,12 @@ static struct dvfs_rail *tegra12_dvfs_rails[] = {
 	&tegra12_dvfs_rail_vdd_gpu,
 };
 
+/* default cvb alignment on Tegra11 - 10mV */
+int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
+{
+	return 10000;
+}
+
 /* CPU DVFS tables */
 /* FIXME: real data */
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
@@ -80,7 +85,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 0,
 		.max_mv = 1250,
 		.min_mv = 850,
-		.margin = 103,
+		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 100,
@@ -100,8 +105,6 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1428,  39880, 14152, -570},
 			{1530,  43023, 14271, -570},
 			{1632,  46226, 14391, -570},
-			{1734,  49489, 14511, -570},
-			{1836,  52812, 14630, -570},
 			{   0,      0,     0,    0},
 		},
 	}
@@ -121,9 +124,9 @@ static struct dvfs cpu_dvfs = {
 
 static struct tegra_cl_dvfs_dfll_data cpu_dfll_data = {
 		.dfll_clk_name	= "dfll_cpu",
-		.tune0		= 0x030201,
-		.tune1		= 0x000BB0AA,
-		.droop_rate_min = 640000000,
+		.tune0		= 0x000B0380,
+		.tune1		= 0x000005e0,
+		.droop_rate_min = 1000000,
 };
 
 /* Core DVFS tables */
@@ -162,7 +165,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("tsec",  -1, 1, KHZ,        1, 120000, 144000, 168000, 216000,  276000,  276000),
 	CORE_DVFS("vde",   -1, 1, KHZ,        1, 120000, 144000, 168000, 216000,  276000,  276000),
 
-	CORE_DVFS("host1x", -1, 1, KHZ,       1,  81600, 102000, 136000, 163000,  204000,  204000),
+	CORE_DVFS("host1x", -1, 1, KHZ,       1,  81600, 102000, 136000, 163200,  204000,  204000),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	CORE_DVFS("c2bus", -1, 1, KHZ,        1, 132000, 180000, 204000, 264000,  336000,  336000),
@@ -193,10 +196,18 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("sbc5", -1, 1, KHZ,         1,  24000,  24000,  48000,  48000,   48000,   48000),
 	CORE_DVFS("sbc6", -1, 1, KHZ,         1,  24000,  24000,  48000,  48000,   48000,   48000),
 
-	CORE_DVFS("sdmmc1", -1, 1, KHZ,       1, 102000, 102000, 163000, 163000,  163000,  163000),
-	CORE_DVFS("sdmmc2", -1, 1, KHZ,       1, 102000, 102000, 163000, 163000,  163000,  163000),
-	CORE_DVFS("sdmmc3", -1, 1, KHZ,       1, 102000, 102000, 163000, 163000,  163000,  163000),
-	CORE_DVFS("sdmmc4", -1, 1, KHZ,       1, 102000, 102000, 163000, 163000,  163000,  163000),
+	/* FIXME: re-enable after UART hs driver is updated */
+#if 0
+	CORE_DVFS("uarta", -1, 1, KHZ,        1,  58300,  58300, 102000, 102000,  102000,  102000),
+	CORE_DVFS("uartb", -1, 1, KHZ,        1,  58300,  58300, 102000, 102000,  102000,  102000),
+	CORE_DVFS("uartc", -1, 1, KHZ,        1,  58300,  58300, 102000, 102000,  102000,  102000),
+	CORE_DVFS("uartd", -1, 1, KHZ,        1,  58300,  58300, 102000, 102000,  102000,  102000),
+	CORE_DVFS("uarte", -1, 1, KHZ,        1,  58300,  58300, 102000, 102000,  102000,  102000),
+#endif
+	CORE_DVFS("sdmmc1", -1, 1, KHZ,       1, 102000, 102000, 163200, 163200,  163200,  163200),
+	CORE_DVFS("sdmmc2", -1, 1, KHZ,       1, 102000, 102000, 163200, 163200,  163200,  163200),
+	CORE_DVFS("sdmmc3", -1, 1, KHZ,       1, 102000, 102000, 163200, 163200,  163200,  163200),
+	CORE_DVFS("sdmmc4", -1, 1, KHZ,       1, 102000, 102000, 163200, 163200,  163200,  163200),
 
 	CORE_DVFS("pwm",  -1, 1, KHZ,         1,  40800,  48000,  48000,  48000,   48000,   48000),
 
@@ -215,6 +226,13 @@ static struct dvfs core_dvfs_table[] = {
 	 */
 	CORE_DVFS("disp1", -1, 0, KHZ,         1, 108000, 120000, 144000, 192000,  240000,  240000),
 	CORE_DVFS("disp2", -1, 0, KHZ,         1, 108000, 120000, 144000, 192000,  240000,  240000),
+
+	CORE_DVFS("xusb_falcon_src", -1, 1, KHZ, 1, 204000, 204000, 204000, 336000,  336000,  336000),
+	CORE_DVFS("xusb_host_src",   -1, 1, KHZ, 1,  51000,  51000,  51000, 112000,  112000,  112000),
+	CORE_DVFS("xusb_dev_src",    -1, 1, KHZ, 1,  51000,  51000,  51000, 112000,  112000,  112000),
+	CORE_DVFS("xusb_ss_src",     -1, 1, KHZ, 1,  60000,  60000,  60000, 120000,  120000,  120000),
+	CORE_DVFS("xusb_fs_src",     -1, 1, KHZ, 1,      1,  48000,  48000,  48000,   48000,   48000),
+	CORE_DVFS("xusb_hs_src",     -1, 1, KHZ, 1,      1,  60000,  60000,  60000,   60000,   60000),
 #endif
 };
 
@@ -405,8 +423,10 @@ static inline int get_cvb_voltage(int speedo, int s_scale,
 static inline int round_cvb_voltage(int mv, int v_scale)
 {
 	/* combined: apply voltage scale and round to cvb alignment step */
-	return DIV_ROUND_UP(mv * 1000, v_scale * CVB_ALIGN_STEP_UV) *
-		CVB_ALIGN_STEP_UV / 1000;
+	int cvb_align_step_uv = tegra_get_cvb_alignment_uV();
+
+	return DIV_ROUND_UP(mv * 1000, v_scale * cvb_align_step_uv) *
+		cvb_align_step_uv / 1000;
 }
 
 static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
@@ -688,3 +708,251 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 	return 0;
 }
 
+/*
+ * sysfs and dvfs interfaces to cap tegra core domains frequencies
+ */
+static DEFINE_MUTEX(core_cap_lock);
+
+struct core_cap {
+	int refcnt;
+	int level;
+};
+static struct core_cap core_buses_cap;
+static struct core_cap kdvfs_core_cap;
+static struct core_cap user_core_cap;
+
+static struct kobject *cap_kobj;
+
+/* Arranged in order required for enabling/lowering the cap */
+static struct {
+	const char *cap_name;
+	struct clk *cap_clk;
+	unsigned long freqs[MAX_DVFS_FREQS];
+} core_cap_table[] = {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ .cap_name = "cap.c2bus" },
+	{ .cap_name = "cap.c3bus" },
+#else
+	{ .cap_name = "cap.cbus" },
+#endif
+	{ .cap_name = "cap.sclk" },
+	{ .cap_name = "cap.emc" },
+};
+
+
+static void core_cap_level_set(int level)
+{
+	int i, j;
+
+	for (j = 0; j < ARRAY_SIZE(core_millivolts); j++) {
+		int v = core_millivolts[j];
+		if ((v == 0) || (level < v))
+			break;
+	}
+	j = (j == 0) ? 0 : j - 1;
+	level = core_millivolts[j];
+
+	if (level < core_buses_cap.level) {
+		for (i = 0; i < ARRAY_SIZE(core_cap_table); i++)
+			if (core_cap_table[i].cap_clk)
+				clk_set_rate(core_cap_table[i].cap_clk,
+					     core_cap_table[i].freqs[j]);
+	} else if (level > core_buses_cap.level) {
+		for (i = ARRAY_SIZE(core_cap_table) - 1; i >= 0; i--)
+			if (core_cap_table[i].cap_clk)
+				clk_set_rate(core_cap_table[i].cap_clk,
+					     core_cap_table[i].freqs[j]);
+	}
+	core_buses_cap.level = level;
+}
+
+static void core_cap_update(void)
+{
+	int new_level = tegra12_dvfs_rail_vdd_core.max_millivolts;
+
+	if (kdvfs_core_cap.refcnt)
+		new_level = min(new_level, kdvfs_core_cap.level);
+	if (user_core_cap.refcnt)
+		new_level = min(new_level, user_core_cap.level);
+
+	if (core_buses_cap.level != new_level)
+		core_cap_level_set(new_level);
+}
+
+static void core_cap_enable(bool enable)
+{
+	if (enable)
+		core_buses_cap.refcnt++;
+	else if (core_buses_cap.refcnt)
+		core_buses_cap.refcnt--;
+
+	core_cap_update();
+}
+
+static ssize_t
+core_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	return sprintf(buf, "%d (%d)\n", core_buses_cap.refcnt ? 1 : 0,
+			user_core_cap.refcnt ? 1 : 0);
+}
+static ssize_t
+core_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int state;
+
+	if (sscanf(buf, "%d", &state) != 1)
+		return -1;
+
+	mutex_lock(&core_cap_lock);
+
+	if (state) {
+		user_core_cap.refcnt++;
+		if (user_core_cap.refcnt == 1)
+			core_cap_enable(true);
+	} else if (user_core_cap.refcnt) {
+		user_core_cap.refcnt--;
+		if (user_core_cap.refcnt == 0)
+			core_cap_enable(false);
+	}
+
+	mutex_unlock(&core_cap_lock);
+	return count;
+}
+
+static ssize_t
+core_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	return sprintf(buf, "%d (%d)\n", core_buses_cap.level,
+			user_core_cap.level);
+}
+static ssize_t
+core_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int level;
+
+	if (sscanf(buf, "%d", &level) != 1)
+		return -1;
+
+	mutex_lock(&core_cap_lock);
+	user_core_cap.level = level;
+	core_cap_update();
+	mutex_unlock(&core_cap_lock);
+	return count;
+}
+
+static struct kobj_attribute cap_state_attribute =
+	__ATTR(core_cap_state, 0644, core_cap_state_show, core_cap_state_store);
+static struct kobj_attribute cap_level_attribute =
+	__ATTR(core_cap_level, 0644, core_cap_level_show, core_cap_level_store);
+
+const struct attribute *cap_attributes[] = {
+	&cap_state_attribute.attr,
+	&cap_level_attribute.attr,
+	NULL,
+};
+
+void tegra_dvfs_core_cap_enable(bool enable)
+{
+	mutex_lock(&core_cap_lock);
+
+	if (enable) {
+		kdvfs_core_cap.refcnt++;
+		if (kdvfs_core_cap.refcnt == 1)
+			core_cap_enable(true);
+	} else if (kdvfs_core_cap.refcnt) {
+		kdvfs_core_cap.refcnt--;
+		if (kdvfs_core_cap.refcnt == 0)
+			core_cap_enable(false);
+	}
+	mutex_unlock(&core_cap_lock);
+}
+
+void tegra_dvfs_core_cap_level_set(int level)
+{
+	mutex_lock(&core_cap_lock);
+	kdvfs_core_cap.level = level;
+	core_cap_update();
+	mutex_unlock(&core_cap_lock);
+}
+
+static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
+{
+	int i, v, next_v = 0;
+	unsigned long rate, next_rate = 0;
+
+	for (i = 0; i < ARRAY_SIZE(core_millivolts); i++) {
+		v = core_millivolts[i];
+		if (v == 0)
+			break;
+
+		for (;;) {
+			rate = next_rate;
+			next_rate = clk_round_rate(c->parent, rate + 1000);
+			if (IS_ERR_VALUE(next_rate)) {
+				pr_debug("tegra12_dvfs: failed to round %s rate %lu\n",
+					 c->name, rate);
+				return -EINVAL;
+			}
+			if (rate == next_rate)
+				break;
+
+			next_v = tegra_dvfs_predict_millivolts(
+				c->parent, next_rate);
+			if (IS_ERR_VALUE(next_v)) {
+				pr_debug("tegra12_dvfs: failed to predict %s mV for rate %lu\n",
+					 c->name, next_rate);
+				return -EINVAL;
+			}
+			if (next_v > v)
+				break;
+		}
+
+		if (rate == 0) {
+			rate = next_rate;
+			pr_warn("tegra12_dvfs: minimum %s rate %lu requires %d mV\n",
+				c->name, rate, next_v);
+		}
+		freqs[i] = rate;
+		next_rate = rate;
+	}
+	return 0;
+}
+
+static int __init tegra_dvfs_init_core_cap(void)
+{
+	int i;
+	struct clk *c = NULL;
+
+	core_buses_cap.level = kdvfs_core_cap.level = user_core_cap.level =
+		tegra12_dvfs_rail_vdd_core.max_millivolts;
+
+	for (i = 0; i < ARRAY_SIZE(core_cap_table); i++) {
+		c = tegra_get_clock_by_name(core_cap_table[i].cap_name);
+		if (!c || !c->parent ||
+		    init_core_cap_one(c, core_cap_table[i].freqs)) {
+			pr_err("tegra12_dvfs: failed to initialize %s table\n",
+			       core_cap_table[i].cap_name);
+			continue;
+		}
+		core_cap_table[i].cap_clk = c;
+	}
+
+	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
+	if (!cap_kobj) {
+		pr_err("tegra12_dvfs: failed to create sysfs cap object\n");
+		return 0;
+	}
+
+	if (sysfs_create_files(cap_kobj, cap_attributes)) {
+		pr_err("tegra12_dvfs: failed to create sysfs cap interface\n");
+		return 0;
+	}
+	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
+
+	return 0;
+}
+late_initcall(tegra_dvfs_init_core_cap);
