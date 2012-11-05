@@ -255,7 +255,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 					(0x2 << PLLCX_MISC_FILT_DIV_SHIFT) | \
 					PLLCX_MISC_RESET)
 #define PLLCX_MISC1_DEFAULT_VALUE	0x000d2308
-#define PLLCX_MISC2_DEFAULT_VALUE	0x31211200
+#define PLLCX_MISC2_DEFAULT_VALUE	0x21211200
 #define PLLCX_MISC3_DEFAULT_VALUE	0x0
 
 /* PLLX and PLLC (PLLXC)*/
