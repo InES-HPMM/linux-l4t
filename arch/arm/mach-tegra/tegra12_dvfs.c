@@ -84,7 +84,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
 		.max_mv = 1230,
-		.min_mv = 1000,
+		.min_dfll_mv = 1000,
 		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
@@ -451,7 +451,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		       speedo_id);
 		return -ENOENT;
 	}
-	BUG_ON(d->min_mv < tegra12_dvfs_rail_vdd_cpu.min_millivolts);
+	BUG_ON(d->min_dfll_mv < tegra12_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
 	 * Use CVB table to fill in CPU dvfs frequencies and voltages. Each
@@ -466,10 +466,10 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 
 		mv = get_cvb_voltage(speedo, d->speedo_scale, cvb);
 		dfll_mv = round_cvb_voltage(mv, d->voltage_scale);
-		dfll_mv = max(dfll_mv, d->min_mv);
+		dfll_mv = max(dfll_mv, d->min_dfll_mv);
 
 		/* Check maximum frequency at minimum voltage for dfll source */
-		if (dfll_mv > d->min_mv) {
+		if (dfll_mv > d->min_dfll_mv) {
 			if (!j)
 				break;	/* 1st entry already above Vmin */
 			if (!fmax_at_vmin)
@@ -494,7 +494,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		} else {
 			cpu_dvfs->freqs[j - 1] = cvb->freq;
 		}
-		cpu_millivolts[j - 1] = max(mv, d->min_mv);
+		cpu_millivolts[j - 1] = max(mv, d->min_dfll_mv);
 
 		/*
 		 * "Round-up" frequency list cut-off (keep first entry that
@@ -525,7 +525,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 
 
 	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
-	cpu_dvfs->min_millivolts = d->min_mv;
+	cpu_dvfs->dfll_data.min_millivolts = d->min_dfll_mv;
 	return 0;
 }
 
