@@ -1076,7 +1076,7 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 		}
 		/* prevent legacy dvfs voltage scaling */
 		if (c->dvfs && c->dvfs->dvfs_rail)
-			c->dvfs->dvfs_rail->dfll_mode = true;
+			tegra_dvfs_dfll_mode_set(c->dvfs, rate);
 	}
 	return 0;
 }
@@ -1085,9 +1085,11 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 				    unsigned long old_rate)
 {
 	int ret;
+	struct clk *pll;
 	struct clk *dfll = c->u.cpu.dynamic;
-	struct clk *pll = (old_rate <= c->u.cpu.backup_rate) ?
-		c->u.cpu.backup : c->u.cpu.main;
+
+	rate = min(rate, c->max_rate - c->dvfs->dfll_data.max_rate_boost);
+	pll = (rate <= c->u.cpu.backup_rate) ? c->u.cpu.backup : c->u.cpu.main;
 
 	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	if (ret) {
@@ -1096,21 +1098,19 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	}
 
 	/* restore legacy dvfs operations and set appropriate voltage */
-	if (c->dvfs && c->dvfs->dvfs_rail)
-		c->dvfs->dvfs_rail->dfll_mode = false;
-
-	rate = max(rate, old_rate);
-	ret = tegra_dvfs_set_rate(c, rate);
-	if (ret) {
-		pr_err("Failed to set cpu rail for rate %lu\n", rate);
-		return ret;
+	if (c->dvfs && c->dvfs->dvfs_rail) {
+		ret = tegra_dvfs_dfll_mode_clear(c->dvfs, rate);
+		if (ret) {
+			pr_err("Failed to set cpu rail for rate %lu\n", rate);
+			return ret;
+		}
 	}
 
-	/* set pll rate same as dfll old rate, and return to pll source */
-	ret = clk_set_rate(pll, old_rate);
+	/* set pll to target rate and return to pll source */
+	ret = clk_set_rate(pll, rate);
 	if (ret) {
 		pr_err("Failed to set cpu rate %lu on source"
-		       " %s\n", old_rate, pll->name);
+		       " %s\n", rate, pll->name);
 		return ret;
 	}
 	ret = clk_set_parent(c->parent, pll);
@@ -1144,11 +1144,8 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	if (has_dfll) {
 		if (use_dfll)
 			return tegra12_cpu_clk_dfll_on(c, rate, old_rate);
-		else if (is_dfll) {
-			int ret = tegra12_cpu_clk_dfll_off(c, rate, old_rate);
-			if (ret)
-				return ret;
-		}
+		else if (is_dfll)
+			return tegra12_cpu_clk_dfll_off(c, rate, old_rate);
 	}
 	return tegra12_cpu_clk_set_plls(c, rate, old_rate);
 }
