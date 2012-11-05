@@ -6782,7 +6782,7 @@ void __init tegra12x_clk_init_la(void)
  * Frequency table index must be sequential starting at 0 and frequencies
  * must be ascending.
  */
-#define CPU_FREQ_STEP 100000 /* 100MHz */
+#define CPU_FREQ_STEP 102000 /* 102MHz cpu_g table step */
 #define CPU_FREQ_TABLE_MAX_SIZE (2 * MAX_DVFS_FREQS + 1)
 
 static struct cpufreq_frequency_table freq_table[CPU_FREQ_TABLE_MAX_SIZE];
