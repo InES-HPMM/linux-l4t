@@ -3166,6 +3166,7 @@ static int tegra12_plle_clk_enable(struct clk *c)
 #if USE_PLLE_SS
 	/* FIXME: enable SS if necessary */
 #endif
+#if !USE_PLLE_SWCTL
 	/* switch pll under h/w control */
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val &= ~PLLE_MISC_IDDQ_SW_CTRL;
@@ -3177,7 +3178,7 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	pll_writel_delay(val, PLLE_AUX);
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
-
+#endif
 	/* enable hw control of xusb brick pll */
 	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
 
