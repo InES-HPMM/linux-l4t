@@ -734,14 +734,18 @@ static void tegra12_super_clk_init(struct clk *c)
 	shift = ((val & SUPER_STATE_MASK) == SUPER_STATE_IDLE) ?
 		SUPER_IDLE_SOURCE_SHIFT : SUPER_RUN_SOURCE_SHIFT;
 	source = (val >> shift) & SUPER_SOURCE_MASK;
-	if (c->flags & DIV_2)
-		source |= val & SUPER_LP_DIV2_BYPASS;
+
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->value == source)
 			break;
 	}
 	BUG_ON(sel->input == NULL);
 	c->parent = sel->input;
+
+	/* Update parent in case when LP CPU PLLX DIV2 bypassed */
+	if ((c->flags & DIV_2) && (c->parent->flags & PLLX) &&
+	    (val & SUPER_LP_DIV2_BYPASS))
+		c->parent = c->parent->parent;
 
 	if (c->flags & DIV_U71) {
 		c->mul = 2;
