@@ -586,17 +586,6 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
 
-	ret = snd_soc_add_card_controls(card, cardhu_controls,
-			ARRAY_SIZE(cardhu_controls));
-	if (ret < 0)
-		return ret;
-
-	snd_soc_dapm_new_controls(dapm, cardhu_dapm_widgets,
-			ARRAY_SIZE(cardhu_dapm_widgets));
-
-	snd_soc_dapm_add_routes(dapm, cardhu_audio_map,
-				ARRAY_SIZE(cardhu_audio_map));
-
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
@@ -694,6 +683,13 @@ static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.resume_pre = tegra_rt5640_resume_pre,
 	.set_bias_level = tegra_rt5640_set_bias_level,
 	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
+	.controls = cardhu_controls,
+	.num_controls = ARRAY_SIZE(cardhu_controls),
+	.dapm_widgets = cardhu_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(cardhu_dapm_widgets),
+	.dapm_routes = cardhu_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(cardhu_audio_map),
+	.fully_routed = true,
 };
 
 static int tegra_rt5640_driver_probe(struct platform_device *pdev)
