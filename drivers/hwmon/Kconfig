@@ -1560,6 +1560,12 @@ config SENSORS_INA230
 	  Support for the TI INA230 power monitor sensor.
 	  (also works for TI INA226)
 
+config SENSORS_INA3221
+	tristate "Texas Instruments INA3221 POWER MONITOR SENSOR DRIVER"
+	depends on I2C
+	default n
+	help
+	  Support for the TI INA3221 power monitor sensor.
 
 if ACPI
 
