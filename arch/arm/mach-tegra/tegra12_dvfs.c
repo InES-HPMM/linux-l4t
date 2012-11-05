@@ -85,29 +85,28 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 		.speedo_id = 0,
 		.max_mv = 1230,
 		.min_dfll_mv = 1000,
-		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 100,
 		.cvb_table = {
-			/*f      c0,    c1,    c2 */
-			{ 306,  9251,  12837, -570},
-			{ 408,  11737, 12957, -570},
-			{ 510,  14282, 13076, -570},
-			{ 612,  16887, 13196, -570},
-			{ 714,  19552, 13315, -570},
-			{ 816,  22277, 13435, -570},
-			{ 918,  25061, 13554, -570},
-			{1020,  27905, 13674, -570},
-			{1122,  30809, 13793, -570},
-			{1224,  33773, 13913, -570},
-			{1326,  36797, 14032, -570},
-			{1428,  39880, 14152, -570},
-			{1530,  43023, 14271, -570},
-			{1632,  46226, 14391, -570},
-			{1734,  49489, 14511, -570},
-			{1836,  52812, 14630, -570},
-			{   0,      0,     0,    0},
+			/*f   dfll: c0,    c1,   c2  pll:  c0,     c1,   c2 */
+			{ 306, { 9251,  12837, -570}, {  90000,     0,    0} },
+			{ 408, { 11737, 12957, -570}, {  90000,     0,    0} },
+			{ 510, { 14282, 13076, -570}, {  95000,     0,    0} },
+			{ 612, { 16887, 13196, -570}, {  95000,     0,    0} },
+			{ 714, { 19552, 13315, -570}, {  98000,     0,    0} },
+			{ 816, { 22277, 13435, -570}, {  98000,     0,    0} },
+			{ 918, { 25061, 13554, -570}, { 102500,     0,    0} },
+			{1020, { 27905, 13674, -570}, { 110000,     0,    0} },
+			{1122, { 30809, 13793, -570}, { 110000,     0,    0} },
+			{1224, { 33773, 13913, -570}, { 123000,     0,    0} },
+			{1326, { 36797, 14032, -570}, { 123000,     0,    0} },
+			{1428, { 39880, 14152, -570}, { 140000,     0,    0} },
+			{1530, { 43023, 14271, -570}, { 140000,     0,    0} },
+			{1632, { 46226, 14391, -570}, { 140000,     0,    0} },
+			{1734, { 49489, 14511, -570}, { 140000,     0,    0} },
+			{1836, { 52812, 14630, -570}, { 140000,     0,    0} },
+			{   0, {     0,     0,    0}, {    0,       0,    0} },
 		},
 	}
 };
@@ -436,7 +435,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	struct cpu_cvb_dvfs *d = NULL;
-	struct cpu_cvb_dvfs_parameters *cvb = NULL;
+	struct cpu_cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
 	/* Find matching cvb dvfs entry */
@@ -456,19 +455,29 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	/*
 	 * Use CVB table to fill in CPU dvfs frequencies and voltages. Each
 	 * CVB entry specifies CPU frequency and CVB coefficients to calculate
-	 * the respective voltage when DFLL is used as CPU clock source. Common
-	 * margin is applied to determine voltage requirements for PLL source.
+	 * the respective voltage when either DFLL or PLL is used as CPU clock
+	 * source.
+	 *
+	 * Minimum voltage limit is applied only to DFLL source. For PLL source
+	 * voltage can go as low as table specifies. Maximum voltage limit is
+	 * applied to both sources, but differently: directly clip voltage for
+	 * DFLL, and limit maximum frequency for PLL.
 	 */
 	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
-		cvb = &d->cvb_table[i];
-		if (!cvb->freq)
+		table = &d->cvb_table[i];
+		if (!table->freq)
 			break;
 
-		mv = get_cvb_voltage(speedo, d->speedo_scale, cvb);
-		dfll_mv = round_cvb_voltage(mv, d->voltage_scale);
-		dfll_mv = max(dfll_mv, d->min_dfll_mv);
+		dfll_mv = get_cvb_voltage(
+			speedo, d->speedo_scale, &table->cvb_dfll_param);
+		dfll_mv = round_cvb_voltage(dfll_mv, d->voltage_scale);
+
+		mv = get_cvb_voltage(
+			speedo, d->speedo_scale, &table->cvb_pll_param);
+		mv = round_cvb_voltage(mv, d->voltage_scale);
 
 		/* Check maximum frequency at minimum voltage for dfll source */
+		dfll_mv = max(dfll_mv, d->min_dfll_mv);
 		if (dfll_mv > d->min_dfll_mv) {
 			if (!j)
 				break;	/* 1st entry already above Vmin */
@@ -477,8 +486,6 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		}
 
 		/* Clip maximum frequency at maximum voltage for pll source */
-		mv = mv * d->margin / 100;
-		mv = round_cvb_voltage(mv, d->voltage_scale);
 		if (mv > d->max_mv) {
 			if (!j)
 				break;	/* 1st entry already above Vmax */
@@ -487,7 +494,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		}
 
 		/* fill in dvfs tables */
-		cpu_dvfs->freqs[j] = cvb->freq;
+		cpu_dvfs->freqs[j] = table->freq;
 		cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
 		cpu_millivolts[j] = mv;
 		j++;
@@ -512,8 +519,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	/* dvfs tables are successfully populated - fill in the rest */
 	cpu_dvfs->speedo_id = speedo_id;
 	cpu_dvfs->freqs_mult = d->freqs_mult;
-	cpu_dvfs->dvfs_rail->nominal_millivolts =
-		min(cpu_millivolts[j - 1], d->max_mv);
+	cpu_dvfs->dvfs_rail->nominal_millivolts = min(d->max_mv,
+		max(cpu_millivolts[j - 1], cpu_dfll_millivolts[j - 1]));
 	*max_freq_index = j - 1;
 
 	cpu_dvfs->dfll_data.max_rate_boost = fmax_pll_mode ?
