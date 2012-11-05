@@ -83,8 +83,8 @@ int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
-		.max_mv = 1250,
-		.min_mv = 950,
+		.max_mv = 1230,
+		.min_mv = 1000,
 		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
@@ -105,6 +105,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1428,  39880, 14152, -570},
 			{1530,  43023, 14271, -570},
 			{1632,  46226, 14391, -570},
+			{1734,  49489, 14511, -570},
+			{1836,  52812, 14630, -570},
 			{   0,      0,     0,    0},
 		},
 	}
