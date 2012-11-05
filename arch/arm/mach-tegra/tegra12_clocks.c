@@ -3238,7 +3238,7 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
 	tegra_periph_reset_deassert(c);
-	ret = tegra_init_cl_dvfs(cld);
+	ret = tegra_init_cl_dvfs();
 	if (!ret) {
 		c->state = OFF;
 		pr_info("Tegra CPU DFLL is initialized\n");
@@ -5477,9 +5477,7 @@ static struct clk tegra_pll_x_out0 = {
 /* FIXME: remove; for now, should be always checked-in as "0" */
 #define USE_LP_CPU_TO_TEST_DFLL		0
 
-static struct tegra_cl_dvfs cpu_cl_dvfs = {
-	.cl_base = (u32)IO_ADDRESS(TEGRA_CL_DVFS_BASE),
-};
+static struct tegra_cl_dvfs cpu_cl_dvfs;
 
 static struct clk tegra_dfll_cpu = {
 	.name      = "dfll_cpu",
