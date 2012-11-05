@@ -486,15 +486,11 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 				fmax_pll_mode = cpu_dvfs->freqs[j - 1];
 		}
 
-		/* dvfs tables with maximum frequency at any distinct voltage */
-		if (!j || (dfll_mv > cpu_dfll_millivolts[j - 1])) {
-			cpu_dvfs->freqs[j] = cvb->freq;
-			cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
-			j++;
-		} else {
-			cpu_dvfs->freqs[j - 1] = cvb->freq;
-		}
-		cpu_millivolts[j - 1] = max(mv, d->min_dfll_mv);
+		/* fill in dvfs tables */
+		cpu_dvfs->freqs[j] = cvb->freq;
+		cpu_dfll_millivolts[j] = min(dfll_mv, d->max_mv);
+		cpu_millivolts[j] = mv;
+		j++;
 
 		/*
 		 * "Round-up" frequency list cut-off (keep first entry that
