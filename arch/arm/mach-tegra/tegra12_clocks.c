@@ -477,6 +477,9 @@ static unsigned long tegra12_clk_shared_bus_update(
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
 
+static bool use_pll_cpu_low;
+module_param(use_pll_cpu_low, bool, 0644);
+
 #ifdef CONFIG_TEGRA_USE_DFLL
 static bool use_dfll = 1;
 #else
@@ -1145,6 +1148,7 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	bool has_dfll = c->u.cpu.dynamic &&
 		(c->u.cpu.dynamic->state != UNINITIALIZED);
 	bool is_dfll = c->parent->parent == c->u.cpu.dynamic;
+	bool use_dfll_now;
 
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
@@ -1160,7 +1164,10 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	}
 #endif
 	if (has_dfll) {
-		if (use_dfll)
+		use_dfll_now = use_dfll ? (use_pll_cpu_low ?
+			(rate >= c->dvfs->dfll_data.out_rate_min) : 1) : 0;
+
+		if (use_dfll_now)
 			return tegra12_cpu_clk_dfll_on(c, rate, old_rate);
 		else if (is_dfll)
 			return tegra12_cpu_clk_dfll_off(c, rate, old_rate);
