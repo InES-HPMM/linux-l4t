@@ -434,6 +434,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 {
 	int i, j, mv, dfll_mv;
 	unsigned long fmax_at_vmin = 0;
+	unsigned long fmax_pll_mode = 0;
 	struct cpu_cvb_dvfs *d = NULL;
 	struct cpu_cvb_dvfs_parameters *cvb = NULL;
 	int speedo = tegra_cpu_speedo_value();
@@ -469,7 +470,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		if (dfll_mv > d->max_mv)
 			break;
 
-		/* Check maximum frequency at minimum voltage */
+		/* Check maximum frequency at minimum voltage for dfll source */
 		if (dfll_mv > d->min_mv) {
 			if (!j)
 				break;	/* 1st entry already above Vmin */
@@ -477,18 +478,25 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 				fmax_at_vmin = cpu_dvfs->freqs[j - 1];
 		}
 
+		/* Clip maximum frequency at maximum voltage for pll source */
+		mv = mv * d->margin / 100;
+		mv = round_cvb_voltage(mv, d->voltage_scale);
+		if (mv > d->max_mv) {
+			if (!j)
+				break;	/* 1st entry already above Vmax */
+			if (!fmax_pll_mode)
+				fmax_pll_mode = cpu_dvfs->freqs[j - 1];
+		}
+
 		/* dvfs tables with maximum frequency at any distinct voltage */
 		if (!j || (dfll_mv > cpu_dfll_millivolts[j - 1])) {
 			cpu_dvfs->freqs[j] = cvb->freq;
 			cpu_dfll_millivolts[j] = dfll_mv;
-			mv = mv * d->margin / 100;
-			mv = round_cvb_voltage(mv, d->voltage_scale);
-			cpu_millivolts[j] = max(mv, d->min_mv);
 			j++;
 		} else {
 			cpu_dvfs->freqs[j - 1] = cvb->freq;
 		}
-
+		cpu_millivolts[j - 1] = max(mv, d->min_mv);
 	}
 	/* Table must not be empty and must have and at least one entry below,
 	   and one entry above Vmin */
@@ -504,6 +512,10 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	cpu_dvfs->dvfs_rail->nominal_millivolts =
 		min(cpu_millivolts[j - 1], d->max_mv);
 	*max_freq_index = j - 1;
+
+	cpu_dvfs->dfll_data.max_rate_boost = fmax_pll_mode ?
+		(cpu_dvfs->freqs[j - 1] - fmax_pll_mode) * d->freqs_mult : 0;
+
 
 	dfll_data->out_rate_min = fmax_at_vmin * d->freqs_mult;
 	dfll_data->millivolts_min = d->min_mv;
