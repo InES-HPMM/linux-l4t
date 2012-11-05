@@ -4732,7 +4732,8 @@ static unsigned long tegra12_clk_shared_bus_update(
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
 	unsigned long ceiling = bus->max_rate;
-	u8 emc_bw_efficiency = tegra_emc_bw_efficiency;
+	/* HACK set efficiency to 100 until EMC is fixed */
+	u8 emc_bw_efficiency = 100;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
