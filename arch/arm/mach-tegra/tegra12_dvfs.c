@@ -84,7 +84,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
 		.max_mv = 1250,
-		.min_mv = 850,
+		.min_mv = 950,
 		.margin = 112,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
