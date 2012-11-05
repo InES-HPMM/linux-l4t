@@ -389,57 +389,64 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define UTMIP_PLL_CFG1_FORCE_PLL_ACTIVE_POWERDOWN	(1 << 12)
 #define UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN		(1 << 16)
 
-#define PLLE_BASE_CML_ENABLE		(1<<31)
-#define PLLE_BASE_ENABLE		(1<<30)
+/* PLLE */
+#define PLLE_BASE_LOCK_OVERRIDE		(0x1 << 29)
 #define PLLE_BASE_DIVCML_SHIFT		24
 #define PLLE_BASE_DIVCML_MASK		(0xf<<PLLE_BASE_DIVCML_SHIFT)
-#define PLLE_BASE_DIVP_SHIFT		16
-#define PLLE_BASE_DIVP_MASK		(0x3f<<PLLE_BASE_DIVP_SHIFT)
-#define PLLE_BASE_DIVN_SHIFT		8
-#define PLLE_BASE_DIVN_MASK		(0xFF<<PLLE_BASE_DIVN_SHIFT)
-#define PLLE_BASE_DIVM_SHIFT		0
-#define PLLE_BASE_DIVM_MASK		(0xFF<<PLLE_BASE_DIVM_SHIFT)
-#define PLLE_BASE_DIV_MASK		\
-	(PLLE_BASE_DIVCML_MASK | PLLE_BASE_DIVP_MASK | \
-	 PLLE_BASE_DIVN_MASK | PLLE_BASE_DIVM_MASK)
-#define PLLE_BASE_DIV(m, n, p, cml)		\
-	 (((cml)<<PLLE_BASE_DIVCML_SHIFT) | ((p)<<PLLE_BASE_DIVP_SHIFT) | \
-	  ((n)<<PLLE_BASE_DIVN_SHIFT) | ((m)<<PLLE_BASE_DIVM_SHIFT))
 
-#define PLLE_MISC_SETUP_BASE_SHIFT	16
-#define PLLE_MISC_SETUP_BASE_MASK	(0xFFFF<<PLLE_MISC_SETUP_BASE_SHIFT)
+#define PLLE_BASE_DIVN_MASK		(0xFF<<PLL_BASE_DIVN_SHIFT)
+#define PLLE_BASE_DIVM_MASK		(0xFF<<PLL_BASE_DIVM_SHIFT)
+
+/* PLLE has 4-bit CMLDIV, but entry 15 is not allowed in h/w */
+#define PLLE_CMLDIV_MAX			14
 #define PLLE_MISC_READY			(1<<15)
+#define PLLE_MISC_IDDQ_SW_CTRL		(1<<14)
+#define PLLE_MISC_IDDQ_SW_VALUE		(1<<13)
 #define PLLE_MISC_LOCK			(1<<11)
 #define PLLE_MISC_LOCK_ENABLE		(1<<9)
-#define PLLE_MISC_SETUP_EX_SHIFT	2
-#define PLLE_MISC_SETUP_EX_MASK		(0x3<<PLLE_MISC_SETUP_EX_SHIFT)
-#define PLLE_MISC_SETUP_MASK		\
-	  (PLLE_MISC_SETUP_BASE_MASK | PLLE_MISC_SETUP_EX_MASK)
-#define PLLE_MISC_SETUP_VALUE		\
-	  ((0x7<<PLLE_MISC_SETUP_BASE_SHIFT) | (0x0<<PLLE_MISC_SETUP_EX_SHIFT))
 
 #define PLLE_SS_CTRL			0x68
-#define	PLLE_SS_INCINTRV_SHIFT		24
-#define	PLLE_SS_INCINTRV_MASK		(0x3f<<PLLE_SS_INCINTRV_SHIFT)
-#define	PLLE_SS_INC_SHIFT		16
-#define	PLLE_SS_INC_MASK		(0xff<<PLLE_SS_INC_SHIFT)
-#define	PLLE_SS_MAX_SHIFT		0
-#define	PLLE_SS_MAX_MASK		(0x1ff<<PLLE_SS_MAX_SHIFT)
-#define PLLE_SS_COEFFICIENTS_MASK	\
-	(PLLE_SS_INCINTRV_MASK | PLLE_SS_INC_MASK | PLLE_SS_MAX_MASK)
-#define PLLE_SS_COEFFICIENTS_12MHZ	\
-	((0x18<<PLLE_SS_INCINTRV_SHIFT) | (0x1<<PLLE_SS_INC_SHIFT) | \
-	 (0x24<<PLLE_SS_MAX_SHIFT))
-#define PLLE_SS_DISABLE			((1<<12) | (1<<11) | (1<<10))
+#define	PLLE_SS_CNTL_SSC_BYP		(0x1 << 12)
+#define	PLLE_SS_CNTL_INTERP_RESET	(0x1 << 11)
+#define	PLLE_SS_CNTL_BYPASS_SS		(0x1 << 10)
+#define PLLE_SS_DISABLE			(PLLE_SS_CNTL_SSC_BYP |\
+	PLLE_SS_CNTL_INTERP_RESET | PLLE_SS_CNTL_BYPASS_SS)
+#define PLLE_SS_COEFFICIENTS_MASK       (~PLLE_SS_DISABLE)
 
 #define PLLE_AUX			0x48c
+#define PLLE_AUX_PLLRE_SEL		(1<<28)
+#define PLLE_AUX_SEQ_STATE_SHIFT	26
+#define PLLE_AUX_SEQ_STATE_MASK		(0x3<<PLLE_AUX_SEQ_STATE_SHIFT)
+#define PLLE_AUX_SEQ_ENABLE		(1<<24)
+#define PLLE_AUX_ENABLE_SWCTL		(1<<4)
+#define PLLE_AUX_USE_LOCKDET		(1<<3)
 #define PLLE_AUX_PLLP_SEL		(1<<2)
+
 #define PLLE_AUX_CML_SATA_ENABLE	(1<<1)
 #define PLLE_AUX_CML_PCIE_ENABLE	(1<<0)
 
-#define	PMC_SATA_PWRGT			0x1ac
-#define PMC_SATA_PWRGT_PLLE_IDDQ_VALUE	(1<<5)
-#define PMC_SATA_PWRGT_PLLE_IDDQ_SWCTL	(1<<4)
+/* USB PLLs PD HW controls */
+#define XUSBIO_PLL_CFG0				0x51c
+#define XUSBIO_PLL_CFG0_SEQ_ENABLE		(1<<24)
+#define XUSBIO_PLL_CFG0_PADPLL_USE_LOCKDET	(1<<6)
+#define XUSBIO_PLL_CFG0_CLK_ENABLE_SWCTL	(1<<2)
+#define XUSBIO_PLL_CFG0_PADPLL_RESET_SWCTL	(1<<0)
+
+#define UTMIPLL_HW_PWRDN_CFG0			0x52c
+#define UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE	(1<<24)
+#define UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET	(1<<6)
+#define UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
+#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
+
+#define PLLU_HW_PWRDN_CFG0			0x530
+#define PLLU_HW_PWRDN_CFG0_SEQ_ENABLE		(1<<24)
+#define PLLU_HW_PWRDN_CFG0_USE_LOCKDET		(1<<6)
+#define PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
+#define PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL	(1<<0)
+
+#define USB_PLLS_SEQ_ENABLE			(1<<24)
+#define USB_PLLS_USE_LOCKDET			(1<<6)
+#define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
 
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
@@ -1658,6 +1665,16 @@ static int tegra12_pll_clk_wait_for_lock(
 	return 0;
 }
 
+static void usb_plls_hw_control_enable(u32 reg)
+{
+	u32 val = clk_readl(reg);
+	val |= USB_PLLS_USE_LOCKDET;
+	val &= ~USB_PLLS_ENABLE_SWCTL;
+	pll_writel_delay(val, reg);
+
+	val |= USB_PLLS_SEQ_ENABLE;
+	pll_writel_delay(val, reg);
+}
 
 static void tegra12_utmi_param_configure(struct clk *c)
 {
@@ -3012,21 +3029,39 @@ static struct clk_ops tegra_pllre_out_ops = {
 	.set_rate		= tegra12_pllre_out_clk_set_rate,
 };
 
+/* FIXME: plle suspend/resume */
+/* non-monotonic mapping below is not a typo */
+static u8 plle_p[PLLE_CMLDIV_MAX + 1] = {
+/* CMLDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
+/* p: */   1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
 
 static void tegra12_plle_clk_init(struct clk *c)
 {
-	u32 val;
-
-	val = clk_readl(PLLE_AUX);
-	c->parent = (val & PLLE_AUX_PLLP_SEL) ?
-		tegra_get_clock_by_name("pll_p") :
-		tegra_get_clock_by_name("pll_ref");
+	u32 val, p;
+	struct clk *ref = tegra_get_clock_by_name("pll_re_vco");
 
 	val = clk_readl(c->reg + PLL_BASE);
-	c->state = (val & PLLE_BASE_ENABLE) ? ON : OFF;
-	c->mul = (val & PLLE_BASE_DIVN_MASK) >> PLLE_BASE_DIVN_SHIFT;
-	c->div = (val & PLLE_BASE_DIVM_MASK) >> PLLE_BASE_DIVM_SHIFT;
-	c->div *= (val & PLLE_BASE_DIVP_MASK) >> PLLE_BASE_DIVP_SHIFT;
+	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
+	c->mul = (val & PLLE_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
+	c->div = (val & PLLE_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
+	p = (val & PLLE_BASE_DIVCML_MASK) >> PLLE_BASE_DIVCML_SHIFT;
+	c->div *= plle_p[p];
+
+	val = clk_readl(PLLE_AUX);
+	c->parent = (val & PLLE_AUX_PLLRE_SEL) ? ref :
+			(val & PLLE_AUX_PLLP_SEL) ?
+				tegra_get_clock_by_name("pll_p") :
+				tegra_get_clock_by_name("pll_ref");
+	if (c->parent != ref) {
+		if (c->state == ON) {
+			WARN(1, "%s: pll_e is left enabled with %s input\n",
+			     __func__, c->parent->name);
+		} else {
+			c->parent = ref;
+			val |= PLLE_AUX_PLLRE_SEL;
+			clk_writel(val, PLLE_AUX);
+		}
+	}
 }
 
 static void tegra12_plle_clk_disable(struct clk *c)
@@ -3034,105 +3069,97 @@ static void tegra12_plle_clk_disable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	/* FIXME: do we need to restore other s/w controls ? */
 	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~(PLLE_BASE_CML_ENABLE | PLLE_BASE_ENABLE);
+	val &= ~PLL_BASE_ENABLE;
 	clk_writel(val, c->reg + PLL_BASE);
+
+	val = clk_readl(c->reg + PLL_MISC(c));
+	val |= PLLE_MISC_IDDQ_SW_CTRL | PLLE_MISC_IDDQ_SW_VALUE;
+	pll_writel_delay(val, c->reg + PLL_MISC(c));
 }
 
-static void tegra12_plle_training(struct clk *c)
-{
-	u32 val;
-
-	/* PLLE is already disabled, and setup cleared;
-	 * create falling edge on PLLE IDDQ input */
-	val = pmc_readl(PMC_SATA_PWRGT);
-	val |= PMC_SATA_PWRGT_PLLE_IDDQ_VALUE;
-	pmc_writel(val, PMC_SATA_PWRGT);
-
-	val = pmc_readl(PMC_SATA_PWRGT);
-	val |= PMC_SATA_PWRGT_PLLE_IDDQ_SWCTL;
-	pmc_writel(val, PMC_SATA_PWRGT);
-
-	val = pmc_readl(PMC_SATA_PWRGT);
-	val &= ~PMC_SATA_PWRGT_PLLE_IDDQ_VALUE;
-	pmc_writel(val, PMC_SATA_PWRGT);
-
-	do {
-		val = clk_readl(c->reg + PLL_MISC(c));
-	} while (!(val & PLLE_MISC_READY));
-}
-
-static int tegra12_plle_configure(struct clk *c, bool force_training)
+static int tegra12_plle_clk_enable(struct clk *c)
 {
 	u32 val;
 	const struct clk_pll_freq_table *sel;
 	unsigned long rate = c->u.pll.fixed_rate;
 	unsigned long input_rate = clk_get_rate(c->parent);
 
+	if (c->state == ON) {
+		/* BL left plle enabled - don't change configuartion */
+		pr_warn("%s: pll_e is already enabled\n", __func__);
+		return 0;
+	}
+
 	for (sel = c->u.pll.freq_table; sel->input_rate != 0; sel++) {
 		if (sel->input_rate == input_rate && sel->output_rate == rate)
 			break;
 	}
 
-	if (sel->input_rate == 0)
-		return -ENOSYS;
+	if (sel->input_rate == 0) {
+		pr_err("%s: %s input rate %lu is out-of-table\n",
+		       __func__, c->name, input_rate);
+		return -EINVAL;
+	}
 
-	/* disable PLLE, clear setup fiels */
-	tegra12_plle_clk_disable(c);
-
-	val = clk_readl(c->reg + PLL_MISC(c));
-	val &= ~(PLLE_MISC_LOCK_ENABLE | PLLE_MISC_SETUP_MASK);
-	clk_writel(val, c->reg + PLL_MISC(c));
-
-	/* training */
-	val = clk_readl(c->reg + PLL_MISC(c));
-	if (force_training || (!(val & PLLE_MISC_READY)))
-		tegra12_plle_training(c);
-
-	/* configure dividers, setup, disable SS */
+	/* setup locking configuration, s/w control of IDDQ and enable modes,
+	   take pll out of IDDQ via s/w control */
 	val = clk_readl(c->reg + PLL_BASE);
-	val &= ~PLLE_BASE_DIV_MASK;
-	val |= PLLE_BASE_DIV(sel->m, sel->n, sel->p, sel->cpcon);
+	val &= ~PLLE_BASE_LOCK_OVERRIDE;
 	clk_writel(val, c->reg + PLL_BASE);
-	c->mul = sel->n;
-	c->div = sel->m * sel->p;
+
+	val = clk_readl(PLLE_AUX);
+	val |= PLLE_AUX_ENABLE_SWCTL;
+	val &= ~PLLE_AUX_SEQ_ENABLE;
+	pll_writel_delay(val, PLLE_AUX);
 
 	val = clk_readl(c->reg + PLL_MISC(c));
-	val |= PLLE_MISC_SETUP_VALUE;
 	val |= PLLE_MISC_LOCK_ENABLE;
+	val |= PLLE_MISC_IDDQ_SW_CTRL;
+	val &= ~PLLE_MISC_IDDQ_SW_VALUE;
 	clk_writel(val, c->reg + PLL_MISC(c));
+	udelay(5);
 
+	/* configure dividers, disable SS */
 	val = clk_readl(PLLE_SS_CTRL);
 	val |= PLLE_SS_DISABLE;
 	clk_writel(val, PLLE_SS_CTRL);
 
-	/* enable and lock PLLE*/
 	val = clk_readl(c->reg + PLL_BASE);
-	val |= (PLLE_BASE_CML_ENABLE | PLLE_BASE_ENABLE);
+	val &= ~(PLLE_BASE_DIVM_MASK | PLLE_BASE_DIVN_MASK |
+		 PLLE_BASE_DIVCML_MASK);
+	val |= (sel->m << PLL_BASE_DIVM_SHIFT) |
+		(sel->n << PLL_BASE_DIVN_SHIFT) |
+		(sel->cpcon << PLLE_BASE_DIVCML_SHIFT);
+	pll_writel_delay(val, c->reg + PLL_BASE);
+	c->mul = sel->n;
+	c->div = sel->m * sel->p;
+
+	/* enable and lock pll */
+	val |= PLL_BASE_ENABLE;
 	clk_writel(val, c->reg + PLL_BASE);
-
-	tegra12_pll_clk_wait_for_lock(c, c->reg + PLL_MISC(c), PLLE_MISC_LOCK);
-
+	tegra12_pll_clk_wait_for_lock(
+		c, c->reg + PLL_MISC(c), PLLE_MISC_LOCK);
 #if USE_PLLE_SS
-	/* configure spread spectrum coefficients */
-	/* FIXME: coefficients for 216MHZ input? */
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	if (input_rate == 12000000)
+	/* FIXME: enable SS if necessary */
 #endif
-	{
-		val = clk_readl(PLLE_SS_CTRL);
-		val &= ~(PLLE_SS_COEFFICIENTS_MASK | PLLE_SS_DISABLE);
-		val |= PLLE_SS_COEFFICIENTS_12MHZ;
-		clk_writel(val, PLLE_SS_CTRL);
-	}
-#endif
-	return 0;
-}
+	/* switch pll under h/w control */
+	val = clk_readl(c->reg + PLL_MISC(c));
+	val &= ~PLLE_MISC_IDDQ_SW_CTRL;
+	clk_writel(val, c->reg + PLL_MISC(c));
 
-static int tegra12_plle_clk_enable(struct clk *c)
-{
-	pr_debug("%s on clock %s\n", __func__, c->name);
-	return tegra12_plle_configure(c, !c->set);
+	val = clk_readl(PLLE_AUX);
+	val |= PLLE_AUX_USE_LOCKDET;
+	val &= ~PLLE_AUX_ENABLE_SWCTL;
+	pll_writel_delay(val, PLLE_AUX);
+	val |= PLLE_AUX_SEQ_ENABLE;
+	pll_writel_delay(val, PLLE_AUX);
+
+	/* enable hw control of xusb brick pll */
+	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
+
+	return 0;
 }
 
 static struct clk_ops tegra_plle_ops = {
@@ -5365,11 +5392,8 @@ static struct clk tegra_pll_re_out = {
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
-	{ 12000000,  100000000, 150, 1,  18, 11},
-	{ 216000000, 100000000, 200, 18, 24, 13},
-#ifndef CONFIG_TEGRA_SILICON_PLATFORM
-	{ 13000000,  100000000, 200, 1,  26, 13},
-#endif
+	{ 336000000, 100000000, 100, 21,  16, 11},
+	{ 312000000, 100000000, 200, 26,  24, 13},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -5381,10 +5405,10 @@ static struct clk tegra_pll_e = {
 	.max_rate  = 100000000,
 	.u.pll = {
 		.input_min = 12000000,
-		.input_max = 216000000,
+		.input_max = 1000000000,
 		.cf_min    = 12000000,
-		.cf_max    = 12000000,
-		.vco_min   = 1200000000,
+		.cf_max    = 75000000,
+		.vco_min   = 1600000000,
 		.vco_max   = 2400000000U,
 		.freq_table = tegra_pll_e_freq_table,
 		.lock_delay = 300,
