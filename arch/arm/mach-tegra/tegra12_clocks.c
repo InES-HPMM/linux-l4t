@@ -1289,9 +1289,6 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	} else
 #endif
 	{
-		if (p == c->parent)		/* already switched - exit*/
-			return 0;
-
 		if (rate > p->max_rate) {	/* over-clocking - no switch */
 			pr_warn("%s: No %s mode switch to %s at rate %lu\n",
 				 __func__, c->name, p->name, rate);
@@ -1303,6 +1300,18 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	}
 	flags |= (p->u.cpu.mode == MODE_LP) ? TEGRA_POWER_CLUSTER_LP :
 		TEGRA_POWER_CLUSTER_G;
+
+	if (p == c->parent) {
+		if (flags & TEGRA_POWER_CLUSTER_FORCE) {
+			/* Allow parameterized switch to the same mode */
+			ret = tegra_cluster_control(delay, flags);
+			if (ret)
+				pr_err("%s: Failed to force %s mode to %s\n",
+				       __func__, c->name, p->name);
+			return ret;
+		}
+		return 0;	/* already switched - exit */
+	}
 
 	if (c->parent->parent->parent == dfll) {
 		/* G (DFLL selected as clock source) => LP switch:
