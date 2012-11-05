@@ -737,6 +737,19 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		command1 = tspi->def_command1_reg;
 		command1 |= SPI_BIT_LENGTH(bits_per_word - 1);
 
+		command1 &= ~SPI_CONTROL_MODE_MASK;
+		req_mode = spi->mode & 0x3;
+		if (req_mode == SPI_MODE_0)
+			command1 |= SPI_CONTROL_MODE_0;
+		else if (req_mode == SPI_MODE_1)
+			command1 |= SPI_CONTROL_MODE_1;
+		else if (req_mode == SPI_MODE_2)
+			command1 |= SPI_CONTROL_MODE_2;
+		else if (req_mode == SPI_MODE_3)
+			command1 |= SPI_CONTROL_MODE_3;
+
+		spi_tegra_writel(tspi, command1, SPI_COMMAND1);
+
 		/* possibly use the hw based chip select */
 		tspi->is_hw_based_cs = false;
 		if (cdata && cdata->is_hw_based_cs && is_single_xfer) {
@@ -792,16 +805,6 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 			spi_tegra_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
 		}
 
-		command1 &= ~SPI_CONTROL_MODE_MASK;
-		req_mode = spi->mode & 0x3;
-		if (req_mode == SPI_MODE_0)
-			command1 |= SPI_CONTROL_MODE_0;
-		else if (req_mode == SPI_MODE_1)
-			command1 |= SPI_CONTROL_MODE_1;
-		else if (req_mode == SPI_MODE_2)
-			command1 |= SPI_CONTROL_MODE_2;
-		else if (req_mode == SPI_MODE_3)
-			command1 |= SPI_CONTROL_MODE_3;
 	} else {
 		command1 = tspi->command1_reg;
 		command1 &= ~SPI_BIT_LENGTH(~0);
