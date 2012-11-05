@@ -2877,7 +2877,7 @@ static void tegra11_periph_clk_init(struct clk *c)
 		c->mul = 2;
 	} else if (c->flags & DIV_U151) {
 		u32 divu151 = val & PERIPH_CLK_SOURCE_DIVU16_MASK;
-		if ((c->flags & DIV_U71_UART) &&
+		if ((c->flags & DIV_U151_UART) &&
 		    (!(val & PERIPH_CLK_UART_DIV_ENB))) {
 			divu151 = 0;
 		}
@@ -3039,7 +3039,7 @@ static int tegra11_periph_clk_set_rate(struct clk *c, unsigned long rate)
 			val = clk_readl(c->reg);
 			val &= ~PERIPH_CLK_SOURCE_DIVU16_MASK;
 			val |= divider;
-			if (c->flags & DIV_U71_UART) {
+			if (c->flags & DIV_U151_UART) {
 				if (divider)
 					val |= PERIPH_CLK_UART_DIV_ENB;
 				else
@@ -5274,16 +5274,16 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c3-fast",	"tegra11-i2c.2",	"i2c-fast",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c4-fast",	"tegra11-i2c.3",	"i2c-fast",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c5-fast",	"tegra11-i2c.4",	"i2c-fast",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
-	PERIPH_CLK("uarta",	"tegra_uart.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartb",	"tegra_uart.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartc",	"tegra_uart.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartd",	"tegra_uart.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uarte",	"tegra_uart.4",		NULL,	66,	0x1c4,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uarta_dbg",	"serial8250.0",		"uarta",6,	0x178,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartb_dbg",	"serial8250.0",		"uartb",7,	0x17c,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartc_dbg",	"serial8250.0",		"uartc",55,	0x1a0,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd",65,	0x1c0,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
-	PERIPH_CLK("uarte_dbg",	"serial8250.0",		"uarte",66,	0x1c4,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U71_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uarta",	"tegra_uart.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartb",	"tegra_uart.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartc",	"tegra_uart.2",		NULL,	55,	0x1a0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartd",	"tegra_uart.3",		NULL,	65,	0x1c0,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uarte",	"tegra_uart.4",		NULL,	66,	0x1c4,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uarta_dbg",	"serial8250.0",		"uarta",6,	0x178,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartb_dbg",	"serial8250.0",		"uartb",7,	0x17c,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartc_dbg",	"serial8250.0",		"uartc",55,	0x1a0,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd",65,	0x1c0,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
+	PERIPH_CLK("uarte_dbg",	"serial8250.0",		"uarte",66,	0x1c4,	800000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
 	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT,	&tegra_vi_clk_ops),
