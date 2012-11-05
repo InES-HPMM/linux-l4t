@@ -465,8 +465,11 @@ static unsigned long tegra12_clk_shared_bus_update(
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
 
+#ifdef CONFIG_TEGRA_USE_DFLL
+static bool use_dfll = 1;
+#else
 static bool use_dfll;
-module_param(use_dfll, bool, 0644);
+#endif
 
 /**
 * Structure defining the fields for USB UTMI clocks Parameters.
@@ -3280,6 +3283,74 @@ static struct clk_ops tegra_dfll_ops = {
 	.reset			= tegra12_dfll_clk_reset,
 	.clk_cfg_ex		= tegra12_dfll_clk_cfg_ex,
 };
+
+/* DFLL sysfs interface */
+static int tegra12_use_dfll_set(struct clk *clk_cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	clk_lock_save(clk_cpu, &flags);
+	if (clk_cpu->parent->u.cpu.mode == MODE_G) {
+		unsigned long f;
+		clk_lock_save(clk_cpu->parent, &f);
+		if (!use_dfll) {
+			use_dfll = true;
+			ret = clk_set_rate_locked(clk_cpu->parent,
+				clk_get_rate_locked(clk_cpu->parent));
+		}
+		clk_unlock_restore(clk_cpu->parent, &f);
+	} else {
+		ret = -ENOSYS;
+		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
+	}
+	clk_unlock_restore(clk_cpu, &flags);
+	return ret;
+}
+
+static int tegra12_use_dfll_clear(struct clk *clk_cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	clk_lock_save(clk_cpu, &flags);
+	if (clk_cpu->parent->u.cpu.mode == MODE_G) {
+		unsigned long f;
+		clk_lock_save(clk_cpu->parent, &f);
+		if (use_dfll) {
+			use_dfll = false;
+			ret = clk_set_rate_locked(clk_cpu->parent,
+				clk_get_rate_locked(clk_cpu->parent));
+		}
+		clk_unlock_restore(clk_cpu->parent, &f);
+	} else {
+		ret = -ENOSYS;
+		pr_err("%s: DFLL is not used on LP CPU\n", __func__);
+	}
+	clk_unlock_restore(clk_cpu, &flags);
+	return ret;
+}
+
+int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
+{
+	bool val;
+	struct clk *clk_cpu = tegra_get_clock_by_name("cpu");
+
+	if (arg && !strtobool(arg, &val) && clk_cpu) {
+		if (val)
+			return tegra12_use_dfll_set(clk_cpu);
+		else
+			return tegra12_use_dfll_clear(clk_cpu);
+	}
+	return -EINVAL;
+}
+
+static struct kernel_param_ops tegra12_use_dfll_ops = {
+	.set = tegra12_use_dfll_cb,
+	.get = param_get_bool,
+};
+module_param_cb(use_dfll, &tegra12_use_dfll_ops, &use_dfll, 0644);
+
 
 /* Clock divider ops (non-atomic shared register access) */
 static DEFINE_SPINLOCK(pll_div_lock);
