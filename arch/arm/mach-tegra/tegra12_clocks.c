@@ -3178,7 +3178,7 @@ static struct clk_ops tegra_plle_ops = {
  */
 
 /* DFLL operations */
-static void tegra12_dfll_cpu_late_init(struct clk *c)
+static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 {
 	int ret;
 	struct clk *cpu_clk;
