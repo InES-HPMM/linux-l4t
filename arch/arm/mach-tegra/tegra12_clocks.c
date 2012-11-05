@@ -1085,10 +1085,8 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 			return ret;
 		}
 		ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
-		if (ret) {
-			pr_err("Failed to lock %s\n", dfll->name);
-			return ret;
-		}
+		WARN(ret, "Failed to lock %s at rate %lu\n", dfll->name, rate);
+
 		/* prevent legacy dvfs voltage scaling */
 		if (c->dvfs && c->dvfs->dvfs_rail)
 			tegra_dvfs_dfll_mode_set(c->dvfs, rate);
@@ -1109,7 +1107,7 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	if (ret) {
 		pr_err("Failed to unlock %s\n", dfll->name);
-		return ret;
+		goto back_to_dfll;
 	}
 
 	/* restore legacy dvfs operations and set appropriate voltage */
@@ -1117,7 +1115,7 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 		ret = tegra_dvfs_dfll_mode_clear(c->dvfs, rate);
 		if (ret) {
 			pr_err("Failed to set cpu rail for rate %lu\n", rate);
-			return ret;
+			goto back_to_dfll;
 		}
 	}
 
@@ -1126,14 +1124,19 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	if (ret) {
 		pr_err("Failed to set cpu rate %lu on source"
 		       " %s\n", rate, pll->name);
-		return ret;
+		goto back_to_dfll;
 	}
 	ret = clk_set_parent(c->parent, pll);
 	if (ret) {
 		pr_err("Failed to switch cpu to %s\n", pll->name);
-		return ret;
+		goto back_to_dfll;
 	}
 	return 0;
+
+back_to_dfll:
+	tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	tegra_dvfs_dfll_mode_set(c->dvfs, old_rate);
+	return ret;
 }
 
 static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
@@ -1308,13 +1311,13 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		 */
 		ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 		if (ret)
-			return ret;
+			goto abort;
 
 		p_source = rate <= p->u.cpu.backup_rate ?
 			p->u.cpu.backup : p->u.cpu.main;
 		ret = clk_set_rate(p_source, rate);
 		if (ret)
-			return ret;
+			goto abort;
 	} else if (p->parent->parent == dfll) {
 		/* LP => G (DFLL selected as clock source) switch:
 		 * set DFLL rate ready (DFLL is still disabled)
@@ -1323,7 +1326,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		p_source = dfll;
 		ret = clk_set_rate(p_source, rate);
 		if (ret)
-			return ret;
+			goto abort;
 	} else
 		/* DFLL is not selcted on either side of the switch:
 		 * set target p_source equal to current clock source
@@ -1336,7 +1339,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		if (ret) {
 			pr_err("%s: Failed to set parent %s for %s\n",
 			       __func__, p_source->name, p->name);
-			return ret;
+			goto abort;
 		}
 	}
 
@@ -1352,7 +1355,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 			clk_disable(p);
 		pr_err("%s: Failed to switch %s mode to %s\n",
 		       __func__, c->name, p->name);
-		return ret;
+		goto abort;
 	}
 
 	/* Disabling old parent scales old mode voltage rail */
@@ -1366,6 +1369,12 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
 
 	return 0;
+
+abort:
+	/* Re-lock DFLL if necessary after aborted switch */
+	if (c->parent->parent->parent == dfll)
+		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	return ret;
 }
 
 static long tegra12_cpu_cmplx_round_rate(struct clk *c,
