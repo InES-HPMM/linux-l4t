@@ -405,6 +405,11 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define PLLE_MISC_IDDQ_SW_VALUE		(1<<13)
 #define PLLE_MISC_LOCK			(1<<11)
 #define PLLE_MISC_LOCK_ENABLE		(1<<9)
+#define PLLE_MISC_PLLE_PTS		(1<<8)
+#define PLLE_MISC_VREG_BG_CTRL_SHIFT	4
+#define PLLE_MISC_VREG_BG_CTRL_MASK	(0x3<<PLLE_MISC_VREG_BG_CTRL_SHIFT)
+#define PLLE_MISC_VREG_CTRL_SHIFT	2
+#define PLLE_MISC_VREG_CTRL_MASK	(0x3<<PLLE_MISC_VREG_CTRL_SHIFT)
 
 #define PLLE_SS_CTRL			0x68
 #define	PLLE_SS_CNTL_SSC_BYP		(0x1 << 12)
@@ -3137,7 +3142,7 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	}
 
 	/* setup locking configuration, s/w control of IDDQ and enable modes,
-	   take pll out of IDDQ via s/w control */
+	   take pll out of IDDQ via s/w control, setup VREG */
 	val = clk_readl(c->reg + PLL_BASE);
 	val &= ~PLLE_BASE_LOCK_OVERRIDE;
 	clk_writel(val, c->reg + PLL_BASE);
@@ -3151,6 +3156,8 @@ static int tegra12_plle_clk_enable(struct clk *c)
 	val |= PLLE_MISC_LOCK_ENABLE;
 	val |= PLLE_MISC_IDDQ_SW_CTRL;
 	val &= ~PLLE_MISC_IDDQ_SW_VALUE;
+	val |= PLLE_MISC_PLLE_PTS;
+	val |= PLLE_MISC_VREG_BG_CTRL_MASK | PLLE_MISC_VREG_CTRL_MASK;
 	clk_writel(val, c->reg + PLL_MISC(c));
 	udelay(5);
 
