@@ -5820,7 +5820,7 @@ static struct clk tegra_clk_sclk = {
 	.reg	= 0x28,
 	.ops	= &tegra_super_ops,
 	.max_rate = 334000000,
-	.min_rate = 40000000,
+	.min_rate = 12000000,
 };
 
 static struct clk tegra_clk_virtual_cpu_g = {
@@ -5879,7 +5879,7 @@ static struct clk tegra_clk_hclk = {
 	.reg_shift	= 4,
 	.ops		= &tegra_bus_ops,
 	.max_rate       = 334000000,
-	.min_rate       = 40000000,
+	.min_rate       = 12000000,
 };
 
 static struct clk tegra_clk_pclk = {
@@ -5890,7 +5890,7 @@ static struct clk tegra_clk_pclk = {
 	.reg_shift	= 0,
 	.ops		= &tegra_bus_ops,
 	.max_rate       = 167000000,
-	.min_rate       = 40000000,
+	.min_rate       = 12000000,
 };
 
 static struct raw_notifier_head sbus_rate_change_nh;
