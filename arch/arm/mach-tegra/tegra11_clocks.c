@@ -2955,7 +2955,6 @@ static struct clk_ops tegra_pllm_ops = {
 };
 
 
-/* FIXME: pllre suspend/resume */
 /* non-monotonic mapping below is not a typo */
 static u8 pllre_p[PLLRE_PDIV_MAX + 1] = {
 /* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
@@ -3161,7 +3160,39 @@ static struct clk_ops tegra_pllre_out_ops = {
 	.set_rate		= tegra11_pllre_out_clk_set_rate,
 };
 
-/* FIXME: plle suspend/resume */
+#ifdef CONFIG_PM_SLEEP
+/* Resume both pllre_vco and pllre_out */
+static void tegra11_pllre_clk_resume_enable(struct clk *c)
+{
+	u32 pdiv;
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	unsigned long rate = clk_get_rate_all_locked(c->parent->parent);
+	enum clk_state state = c->parent->state;
+
+	if (val & PLL_BASE_ENABLE)
+		return;		/* already resumed */
+
+	/* temporarily sync h/w and s/w states, final sync happens
+	   in tegra_clk_resume later */
+	c->parent->state = OFF;
+	pllre_set_defaults(c->parent, rate);
+
+	/* restore PLLRE VCO feedback loop (m, n) */
+	rate = clk_get_rate_all_locked(c->parent) + 1;
+	tegra11_pllre_clk_set_rate(c->parent, rate);
+
+	/* restore PLLRE post-divider */
+	c->parent->u.pll.round_p_to_pdiv(c->div, &pdiv);
+	val = clk_readl(c->reg);
+	val &= ~PLLRE_BASE_DIVP_MASK;
+	val |= pdiv << PLLRE_BASE_DIVP_SHIFT;
+	clk_writel(val, c->reg);
+
+	tegra11_pllre_clk_enable(c->parent);
+	c->parent->state = state;
+}
+#endif
+
 /* non-monotonic mapping below is not a typo */
 static u8 plle_p[PLLE_CMLDIV_MAX + 1] = {
 /* CMLDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
@@ -3291,6 +3322,20 @@ static int tegra11_plle_clk_enable(struct clk *c)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static void tegra11_plle_clk_resume(struct clk *c)
+{
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	if (val & PLL_BASE_ENABLE)
+		return;		/* already resumed */
+
+	/* Restore pll_re_vco as parent */
+	val = clk_readl(PLLE_AUX);
+	val |= PLLE_AUX_PLLRE_SEL;
+	clk_writel(val, PLLE_AUX);
+}
+#endif
 
 static struct clk_ops tegra_plle_ops = {
 	.init			= tegra11_plle_clk_init,
@@ -7102,6 +7147,7 @@ static void tegra11_clk_resume(void)
 	tegra11_pllcx_clk_resume_enable(&tegra_pll_c3);
 	tegra11_pllxc_clk_resume_enable(&tegra_pll_c);
 	tegra11_pllxc_clk_resume_enable(&tegra_pll_x);
+	tegra11_pllre_clk_resume_enable(&tegra_pll_re_out);
 
 	plla_base = *ctx++;
 	clk_writel(*ctx++, tegra_pll_a.reg + PLL_MISC(&tegra_pll_a));
@@ -7208,6 +7254,9 @@ static void tegra11_clk_resume(void)
 	p = &tegra_pll_x;
 	if (p->state == OFF)
 		tegra11_pllxc_clk_disable(p);
+	p = &tegra_pll_re_vco;
+	if (p->state == OFF)
+		tegra11_pllre_clk_disable(p);
 
 	clk_writel(plla_base, tegra_pll_a.reg + PLL_BASE);
 	clk_writel(plld_base, tegra_pll_d.reg + PLL_BASE);
@@ -7241,6 +7290,7 @@ static void tegra11_clk_resume(void)
 	tegra_emc_timing_invalidate();
 
 	tegra11_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
+	tegra11_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 	tegra11_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
 }
 
