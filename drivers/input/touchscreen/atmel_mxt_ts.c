@@ -2467,7 +2467,18 @@ static struct i2c_driver mxt_driver = {
 	.id_table	= mxt_id,
 };
 
-module_i2c_driver(mxt_driver);
+static int __init mxt_init(void)
+{
+	return i2c_add_driver(&mxt_driver);
+}
+
+static void __exit mxt_exit(void)
+{
+	i2c_del_driver(&mxt_driver);
+}
+
+module_init(mxt_init);
+module_exit(mxt_exit);
 
 /* Module information */
 MODULE_AUTHOR("Joonyoung Shim <jy0922.shim@samsung.com>");
