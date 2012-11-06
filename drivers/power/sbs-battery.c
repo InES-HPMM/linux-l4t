@@ -74,6 +74,8 @@ enum sbs_battery_mode {
 	.min_value = _min_value, \
 	.max_value = _max_value, \
 }
+struct i2c_client *tclient = NULL;
+int battery_detect = 1;
 
 static const struct chip_data {
 	enum power_supply_property psp;
@@ -673,6 +675,16 @@ static struct sbs_platform_data *sbs_of_populate_pdata(
 }
 #endif
 
+int sbs_battery_detect(void)
+{
+	if (tclient != NULL && battery_detect)
+		return sbs_read_word_data(tclient,
+			sbs_data[REG_SERIAL_NUMBER].addr);
+	return -EINVAL;
+
+}
+EXPORT_SYMBOL_GPL(sbs_battery_detect);
+
 static int sbs_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
@@ -695,6 +707,7 @@ static int sbs_probe(struct i2c_client *client,
 	}
 
 	chip->client = client;
+	tclient = client;
 	chip->enable_detection = false;
 	chip->gpio_detect = false;
 	chip->power_supply.name = name;
@@ -761,10 +774,11 @@ skip_gpio:
 	 * Before we register, we need to make sure we can actually talk
 	 * to the battery.
 	 */
-	rc = sbs_read_word_data(client, sbs_data[REG_STATUS].addr);
+	rc = sbs_battery_detect();
 	if (rc < 0) {
 		dev_err(&client->dev, "%s: Failed to get device status\n",
 			__func__);
+		battery_detect = 0;
 		goto exit_psupply;
 	}
 

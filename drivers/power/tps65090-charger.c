@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/power/sbs-battery.h>
 #include <linux/mfd/tps65090.h>
 
 #define TPS65090_INTR_STS	0x00
@@ -103,13 +104,6 @@ static int tps65090_config_charger(struct tps65090_charger *charger)
 		return ret;
 	}
 
-	/* Disable charging if any */
-	ret = tps65090_enable_charging(charger, 0);
-	if (ret < 0) {
-		dev_err(charger->dev, "error enabling charger\n");
-		return ret;
-	}
-
 	return 0;
 }
 
@@ -181,26 +175,21 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 	charger_data->dev = &pdev->dev;
 
 	/* Check for battery presence */
-	ret = tps65090_read(charger_data->dev->parent, TPS65090_CG_STATUS1,
-			&retval);
+	ret = sbs_battery_detect();
 	if (ret < 0) {
-		dev_err(charger_data->dev, "%s(): Error in reading reg 0x%x",
-			__func__, TPS65090_CG_STATUS1);
-		return -ENODEV;
-	}
-
-	if (!(retval & 0x04)) {
 		dev_err(charger_data->dev, "No battery. Exiting driver\n");
 		return -ENODEV;
 	}
 
-	ret = request_threaded_irq(charger_data->irq_base,
-			NULL, tps65090_charger_isr, 0, "tps65090-charger",
-			charger_data);
-	if (ret) {
-		dev_err(charger_data->dev, "Unable to register irq %d err %d\n",
-				charger_data->irq_base, ret);
-		return ret;
+	if (charger_data->irq_base) {
+		ret = request_threaded_irq(charger_data->irq_base,
+				NULL, tps65090_charger_isr, 0, "tps65090-charger",
+				charger_data);
+		if (ret) {
+			dev_err(charger_data->dev, "Unable to register irq %d err %d\n",
+					charger_data->irq_base, ret);
+			return ret;
+		}
 	}
 
 	charger_data->ac.name		= "tps65090-ac";
@@ -219,6 +208,25 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "charger config failed, err %d\n", ret);
 		goto fail_config;
+	}
+
+	/* Check for charger presence */
+	ret = tps65090_read(charger_data->dev->parent, TPS65090_CG_STATUS1,
+			&retval);
+	if (ret < 0) {
+		dev_err(charger_data->dev, "%s(): Error in reading reg 0x%x",
+			__func__, TPS65090_CG_STATUS1);
+		goto fail_config;
+	}
+
+	if (retval != 0) {
+		ret = tps65090_enable_charging(charger_data, 1);
+		if (ret < 0) {
+			dev_err(charger_data->dev, "error enabling charger\n");
+			return ret;
+		}
+		charger_data->ac_online = 1;
+		power_supply_changed(&charger_data->ac);
 	}
 
 	return 0;
