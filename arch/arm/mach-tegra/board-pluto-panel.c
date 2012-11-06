@@ -647,6 +647,9 @@ static int pluto_dsi_panel_disable(void)
 {
 	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
 	is_bl_powered = false;
+#if PANEL_5_LG_720_1280 || PANEL_5_SHARP_1080p
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+#endif
 
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
