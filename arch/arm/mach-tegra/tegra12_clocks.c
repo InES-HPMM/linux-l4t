@@ -3443,6 +3443,7 @@ static int tegra12_use_dfll_cb(const char *arg, const struct kernel_param *kp)
 	}
 	clk_unlock_restore(c->parent, &p_flags);
 	clk_unlock_restore(c, &c_flags);
+	tegra_recalculate_cpu_edp_limits();
 	return ret;
 }
 
