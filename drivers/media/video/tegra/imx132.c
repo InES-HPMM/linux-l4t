@@ -45,7 +45,7 @@ struct imx132_info {
 #define IMX132_WAIT_MS 5
 
 
-static struct imx132_reg mode_1920x1080[] = {
+static struct imx132_reg mode_1976x1200[] = {
 	/* Stand by */
 	{0x0100, 0x00},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
@@ -72,21 +72,21 @@ static struct imx132_reg mode_1920x1080[] = {
 
 	/* Mode Setting */
 	{0x0340, 0x04},
-	{0x0341, 0x92},
+	{0x0341, 0xCA},
 	{0x0342, 0x08},
 	{0x0343, 0xC8},
 	{0x0344, 0x00},
 	{0x0345, 0x00},
 	{0x0346, 0x00},
-	{0x0347, 0x1C},
+	{0x0347, 0x00},
 	{0x0348, 0x07},
 	{0x0349, 0xB7},
 	{0x034A, 0x04},
-	{0x034B, 0x93},
+	{0x034B, 0xAF},
 	{0x034C, 0x07},
 	{0x034D, 0xB8},
 	{0x034E, 0x04},
-	{0x034F, 0x78},
+	{0x034F, 0xB0},
 	{0x0381, 0x01},
 	{0x0383, 0x01},
 	{0x0385, 0x01},
@@ -156,11 +156,11 @@ static struct imx132_reg mode_1920x1080[] = {
 };
 
 enum {
-	IMX132_MODE_1920X1080,
+	IMX132_MODE_1976X1200,
 };
 
 static struct imx132_reg *mode_table[] = {
-	[IMX132_MODE_1920X1080] = mode_1920x1080,
+	[IMX132_MODE_1976X1200] = mode_1976x1200,
 };
 
 static inline void
@@ -311,8 +311,8 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		__func__, mode->xres, mode->yres,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
-	if (mode->xres == 1920 && mode->yres == 1080)
-		sensor_mode = IMX132_MODE_1920X1080;
+	if (mode->xres == 1976 && mode->yres == 1200)
+		sensor_mode = IMX132_MODE_1976X1200;
 	else {
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
 			__func__, mode->xres, mode->yres);
