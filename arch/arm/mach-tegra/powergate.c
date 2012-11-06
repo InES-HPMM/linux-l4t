@@ -1093,10 +1093,7 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 		 * is managed by respective modules
 		 */
 		TEGRA_POWERGATE_DISA,
-		TEGRA_POWERGATE_DISB,
-		TEGRA_POWERGATE_XUSBA,
-		TEGRA_POWERGATE_XUSBB,
-		TEGRA_POWERGATE_XUSBC,
+		TEGRA_POWERGATE_DISB
 	};
 	int i;
 
@@ -1119,7 +1116,7 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 	if (!tegra_powergate_is_powered(id) &&
 		is_unpowergate)
 		return false;
-	for (i = 0; i < tegra_num_powerdomains; i++) {
+	for (i = 0; i < ARRAY_SIZE(skip_pg_t11x_list); i++) {
 		if (id == skip_pg_t11x_list[i]) {
 			pr_err("Partition %s %spowergate skipped\n",
 				tegra_powergate_get_name(id),

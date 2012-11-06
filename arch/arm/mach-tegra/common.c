@@ -421,6 +421,12 @@ static void __init tegra_init_power(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 #endif
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* some partitions need to be powergated by default for t11x */
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBB);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBC);
+#endif
 }
 
 static inline unsigned long gizmo_readl(unsigned long offset)
