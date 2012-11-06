@@ -58,6 +58,7 @@ struct tegra_edp_freq_voltage_table {
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
+void tegra_recalculate_cpu_edp_limits(void);
 void tegra_init_system_edp_limits(unsigned int power_limit_mW);
 void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size);
 unsigned int tegra_get_edp_limit(int *get_edp_thermal_index);
@@ -69,6 +70,8 @@ static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
 { return NULL; }
 static inline void tegra_init_cpu_edp_limits(int regulator_mA)
+{}
+static inline void tegra_recalculate_cpu_edp_limits(void)
 {}
 static inline void tegra_init_system_edp_limits(int power_limit_mW)
 {}
