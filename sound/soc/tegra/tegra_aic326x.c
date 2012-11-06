@@ -31,7 +31,6 @@
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
-#include <mach/tegra_aic326x_pdata.h>
 #include <mach/tegra_asoc_pdata.h>
 
 #include <sound/core.h>
