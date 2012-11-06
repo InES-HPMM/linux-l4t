@@ -91,6 +91,9 @@ static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 	struct la_client_info *ci;
 	int idx = cs.id_to_index[id];
 
+	if (!tegra_platform_is_silicon())
+		return 0;
+
 	VALIDATE_ID(id, &cs);
 	VALIDATE_BW(bw_mbps);
 
