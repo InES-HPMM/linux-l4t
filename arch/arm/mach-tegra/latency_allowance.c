@@ -34,6 +34,7 @@
 #include "la_priv_common.h"
 #include "tegra3_la_priv.h"
 #include "tegra11x_la_priv.h"
+#include "tegra14x_la_priv.h"
 
 #define ENABLE_LA_DEBUG		0
 #define TEST_LA_CODE		0
