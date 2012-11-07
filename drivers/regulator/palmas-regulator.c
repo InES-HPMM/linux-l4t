@@ -707,6 +707,48 @@ static int palmas_extreg_init(struct palmas *palmas, int id,
 	return 0;
 }
 
+static void palmas_disable_smps10_boost(struct palmas *palmas)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+	int i;
+
+	addr = palmas_regs_info[PALMAS_REG_SMPS10].ctrl_addr;
+
+	ret = palmas_smps_write(palmas, addr, 0x00);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in disabling smps10 boost\n");
+		return;
+	}
+
+}
+
+static void palmas_enable_smps10_boost(struct palmas *palmas)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+	int i;
+
+	addr = palmas_regs_info[PALMAS_REG_SMPS10].ctrl_addr;
+
+	ret = palmas_smps_read(palmas, addr, &reg);
+	if (ret) {
+		dev_err(palmas->dev, "Error in reading smps10 control reg\n");
+		return;
+	}
+
+	reg |= PALMA_SMPS10_VSEL;
+	reg |= PALMA_SMPS10_BOOST_EN;
+
+	ret = palmas_smps_write(palmas, addr, reg);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Error in disabling smps10 boost\n");
+		return;
+	}
+}
+
 static void palmas_enable_ldo8_track(struct palmas *palmas)
 {
 	unsigned int reg;
@@ -1288,6 +1330,7 @@ static int palmas_suspend(struct device *dev)
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_disable_ldo8_track(palmas);
 
+	palmas_disable_smps10_boost(palmas);
 	return 0;
 }
 
@@ -1300,6 +1343,7 @@ static int palmas_resume(struct device *dev)
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_enable_ldo8_track(palmas);
 
+	palmas_enable_smps10_boost(palmas);
 	return 0;
 }
 #endif
