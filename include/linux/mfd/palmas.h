@@ -179,6 +179,15 @@ struct palmas_clk32k_init_data {
 	int sleep_control;
 };
 
+struct palmas_dvfs_init_data {
+	bool 	en_pwm;
+	int	ext_ctrl;
+	int	reg_id;
+	bool	step_20mV;
+	int	base_voltage_uV;
+	int 	max_voltage_uV;
+};
+
 struct palmas_pmic_platform_data {
 	/* An array of pointers to regulator init data indexed by regulator
 	 * ID
@@ -189,6 +198,10 @@ struct palmas_pmic_platform_data {
 	 * configuration for regulators indexed by ID
 	 */
 	struct palmas_reg_init *reg_init[PALMAS_NUM_REGS];
+
+	/* CL DVFS init data */
+	struct palmas_dvfs_init_data *dvfs_init_data;
+	int dvfs_init_data_size;
 
 	/* use LDO6 for vibrator control */
 	int ldo6_vibrator;
@@ -1235,6 +1248,19 @@ enum usb_irq_events {
 #define PALMAS_LDO_SHORT_STATUS2_LDOLN_SHIFT			1
 #define PALMAS_LDO_SHORT_STATUS2_LDO9				0x01
 #define PALMAS_LDO_SHORT_STATUS2_LDO9_SHIFT			0
+
+/* Registers for function DVFS Func */
+#define PALMAS_SMPS_DVFS1_CTRL					0x0
+#define PALMAS_SMPS_DVFS1_ENABLE_SHIFT				0
+#define PALMAS_SMPS_DVFS1_OFFSET_STEP_SHIFT			1
+#define PALMAS_SMPS_DVFS1_ENABLE_RST_SHIFT			2
+#define PALMAS_SMPS_DVFS1_RESTORE_VALUE_SHIFT			3
+#define PALMAS_SMPS_DVFS1_VOLTAGE_MAX				0x1
+#define PALMAS_SMPS_DVFS1_STATUS				0x2
+
+#define DVFS_BASE_VOLTAGE_UV					500000
+#define DVFS_MAX_VOLTAGE_UV					1650000
+#define DVFS_VOLTAGE_STEP_UV					10000
 
 /* Registers for function PMU_CONTROL */
 #define PALMAS_DEV_CTRL						0x0
