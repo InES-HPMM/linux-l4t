@@ -234,7 +234,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 
 PALMAS_PDATA_INIT(smps123, 900,  1300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps6, 1100,  1100, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(smps6, 850,  850, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps7, 1200,  1200, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps8, 1800,  1800, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 1);
@@ -299,7 +299,7 @@ PALMAS_REG_INIT(smps123, 0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps6, 0, PALMAS_EXT_CONTROL_ENABLE2, 0, 0, 0);
+PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps9, 0, 0, 0, 0, 0);
@@ -598,9 +598,24 @@ static int __init pluto_cl_dvfs_init(void)
 }
 #endif
 
+static struct palmas_dvfs_init_data palmas_dvfs_idata[] = {
+	{
+		.en_pwm = false,
+	}, {
+		.en_pwm = true,
+		.ext_ctrl = PALMAS_EXT_CONTROL_ENABLE2,
+		.reg_id = PALMAS_REG_SMPS6,
+		.step_20mV = true,
+		.base_voltage_uV = 500000,
+		.max_voltage_uV = 1100000,
+	},
+};
+
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 	.disabe_ldo8_tracking_suspend = true,
+	.dvfs_init_data = palmas_dvfs_idata,
+	.dvfs_init_data_size = ARRAY_SIZE(palmas_dvfs_idata),
 };
 
 struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
@@ -621,6 +636,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pad1 = 0,
 	.pad2 = (PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK &
 			(1 << PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_SHIFT)),
+	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_type = IRQ_TYPE_LEVEL_HIGH,
