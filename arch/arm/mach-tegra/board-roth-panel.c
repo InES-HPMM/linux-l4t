@@ -74,7 +74,6 @@ static bool gpio_requested;
 static struct regulator *vdd_lcd_s_1v8;
 static struct regulator *vdd_sys_bl_3v7;
 static struct regulator *avdd_lcd_3v0_2v8;
-static struct regulator *avdd_ts_3v0;
 
 static struct regulator *roth_hdmi_vddio;
 
@@ -258,13 +257,6 @@ static int roth_dsi_regulator_get(void)
 	if (reg_requested)
 		return 0;
 
-	avdd_ts_3v0 = regulator_get(NULL, "vdd_ts_3v3");
-	if (IS_ERR_OR_NULL(avdd_ts_3v0)) {
-		pr_err("avdd_ts_3v0 regulator get failed\n");
-		err = PTR_ERR(avdd_ts_3v0);
-		avdd_ts_3v0 = NULL;
-		goto fail;
-	}
 	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
@@ -350,15 +342,6 @@ static int roth_dsi_panel_enable(struct device *dev)
 	}
 	usleep_range(3000, 5000);
 
-	if (avdd_ts_3v0) {
-		err = regulator_enable(avdd_ts_3v0);
-		if (err < 0) {
-			pr_err("avdd_ts_3v0 regulator enable failed\n");
-			goto fail;
-		}
-	}
-	usleep_range(3000, 5000);
-
 	if (vdd_lcd_s_1v8) {
 		err = regulator_enable(vdd_lcd_s_1v8);
 		if (err < 0) {
@@ -401,9 +384,6 @@ static int roth_dsi_panel_disable(void)
 
 	if (vdd_lcd_s_1v8)
 		regulator_disable(vdd_lcd_s_1v8);
-
-	if (avdd_ts_3v0)
-		regulator_disable(avdd_ts_3v0);
 
 	if (avdd_lcd_3v0_2v8)
 		regulator_disable(avdd_lcd_3v0_2v8);
