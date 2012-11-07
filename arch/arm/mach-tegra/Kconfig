@@ -553,4 +553,22 @@ config TEGRA_VIRTUAL_CPUID
 	default n
 	help
 	  Enables virtualized CPUID.
+
+config TEGRA_NVDUMPER
+	bool "Enable NvDumper for post-mortem debugging"
+	default n
+	help
+	  The nvdumper is a tool that saves a copy of RAM following a crash.
+	  nvdumper kernel module tracks whether the system has been rebooted
+	  cleanly. It does this by writing 'dirty' to a fixed physical memory
+	  address when the kernel starts.
+	  Then, on a planned reboot, we write 'clean' to this location.
+	  The bootloader can then examine this location and see if the reboot
+	  was dirty or clean.
+	  It will dump the contents of memory after a dirty reboot.
+	  This tool would be helpful for debugging kernel crash.
+	  In order to use this feature, you should enable debug feature in
+	  bootloader compiling option also (-DENABLE_NVDUMPER).
+	  You can dump RAM with nvflash tool in dirty boot status.
+	  usage: nvflash --dumpram [phy. RAM offset] [length] <filename>
 endif
