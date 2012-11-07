@@ -983,7 +983,7 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 /* cs42l73 Audio Map */
 static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	{"Int Spk", NULL, "SPKOUT"},
-	{"MIC1", NULL, "Headset Mic"},
+	{"MIC2", NULL, "Headset Mic"},
 	/* Headphone (L+R)->  HPOUTA, HPOUTB */
 	{"Headphone", NULL, "HPOUTA"},
 	{"Headphone", NULL, "HPOUTB"},
