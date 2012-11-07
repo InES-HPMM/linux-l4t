@@ -201,6 +201,7 @@ static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 static int max_core_current;
+static int usb_port_owner_info;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
@@ -979,6 +980,21 @@ int tegra_get_modem_id(void)
 }
 
 __setup("modem_id=", tegra_modem_id);
+
+static int __init tegra_usb_port_owner_info(char *id)
+{
+	char *p = id;
+
+	usb_port_owner_info = memparse(p, &p);
+	return 1;
+}
+
+int tegra_get_usb_port_owner_info(void)
+{
+	return usb_port_owner_info;
+}
+
+__setup("usb_port_owner_info=", tegra_usb_port_owner_info);
 
 static int __init tegra_commchip_id(char *id)
 {

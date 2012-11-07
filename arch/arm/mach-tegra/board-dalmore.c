@@ -542,14 +542,18 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 
 static void dalmore_usb_init(void)
 {
-	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-	platform_device_register(&tegra_otg_device);
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
+		/* Setup the udc platform data */
+		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	}
 
-	/* Setup the udc platform data */
-	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
-	platform_device_register(&tegra_ehci3_device);
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
+		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+		platform_device_register(&tegra_ehci3_device);
+	}
 }
 
 static struct gpio modem_gpios[] = { /* Nemo modem */
@@ -616,7 +620,9 @@ static struct platform_device icera_nemo_device = {
 
 static void dalmore_modem_init(void)
 {
-	platform_device_register(&icera_nemo_device);
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+	if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+		platform_device_register(&icera_nemo_device);
 }
 
 #else

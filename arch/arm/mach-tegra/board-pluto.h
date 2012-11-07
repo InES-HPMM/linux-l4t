@@ -129,4 +129,9 @@ enum tegra_bb_type {
 	TEGRA_BB_OEM3,
 	TEGRA_BB_HSIC_HUB,
 };
+
+#define UTMI1_PORT_OWNER_XUSB	0x1
+#define HSIC1_PORT_OWNER_XUSB	0x4
+#define HSIC2_PORT_OWNER_XUSB	0x8
+
 #endif

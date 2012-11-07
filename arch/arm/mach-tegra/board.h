@@ -190,6 +190,7 @@ int tegra_get_board_panel_id(void);
 
 int get_core_edp(void);
 enum panel_type get_panel_type(void);
+int tegra_get_usb_port_owner_info(void);
 int tegra_get_modem_id(void);
 int tegra_get_commchip_id(void);
 enum power_supply_type get_power_supply_type(void);

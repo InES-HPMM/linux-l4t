@@ -834,18 +834,14 @@ static struct platform_device icera_baseband2_device = {
 
 static void pluto_usb_init(void)
 {
-	int modem_id = tegra_get_modem_id();
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-	platform_device_register(&tegra_otg_device);
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
 
-	/* Setup the udc platform data */
-	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-
-	if (!modem_id) {
-		tegra_ehci3_device.dev.platform_data =
-			&tegra_ehci3_hsic_smsc_hub_pdata;
-		platform_device_register(&tegra_ehci3_device);
+		/* Setup the udc platform data */
+		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	}
 }
 
@@ -853,16 +849,19 @@ static void pluto_modem_init(void)
 {
 	int modem_id = tegra_get_modem_id();
 	struct board_info board_info;
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	tegra_get_board_info(&board_info);
 	pr_info("%s: modem_id = %d\n", __func__, modem_id);
 
 	switch (modem_id) {
 	case TEGRA_BB_I500: /* on board i500 HSIC */
-		platform_device_register(&icera_baseband_device);
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+			platform_device_register(&icera_baseband_device);
 		break;
 	case TEGRA_BB_I500SWD: /* i500 SWD HSIC */
-		platform_device_register(&icera_baseband2_device);
+		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB))
+			platform_device_register(&icera_baseband2_device);
 		break;
 #ifdef CONFIG_TEGRA_BB_OEM1
 	case TEGRA_BB_OEM1:	/* OEM1 HSIC */
@@ -873,12 +872,22 @@ static void pluto_modem_init(void)
 							TEGRA_TRI_NORMAL);
 			bb_gpio_oem1.oem1.pwron = BB_OEM1_GPIO_ON_V;
 		}
-		tegra_hsic_pdata.ops = &oem1_hsic_pops;
-		tegra_ehci3_device.dev.platform_data
-			= &tegra_hsic_pdata;
-		platform_device_register(&tegra_bb_oem1);
+		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)) {
+			tegra_hsic_pdata.ops = &oem1_hsic_pops;
+			tegra_ehci3_device.dev.platform_data
+				= &tegra_hsic_pdata;
+			platform_device_register(&tegra_bb_oem1);
+		}
 		break;
 #endif
+	case TEGRA_BB_HSIC_HUB: /* i500 SWD HSIC */
+		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)) {
+			tegra_ehci3_device.dev.platform_data =
+				&tegra_ehci3_hsic_smsc_hub_pdata;
+			platform_device_register(&tegra_ehci3_device);
+		}
+		break;
+
 	default:
 		return;
 	}
