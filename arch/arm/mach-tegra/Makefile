@@ -172,6 +172,9 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-panel.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-kbc.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-sensors.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-powermon.o
+obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-l-720p-5.o
+obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-j-720p-4-7.o
+obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-s-1080p-5.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
