@@ -22,11 +22,18 @@
 
 #include <linux/types.h>
 
+#define INA3221_RAIL_NAME_SIZE	32
+
 struct ina230_platform_data {
-	const char *rail_name;
+	const char rail_name[INA3221_RAIL_NAME_SIZE];
 	s32 current_threshold;
 	s32 resistor;
 	s32 min_cores_online;
+	u32 calibration_data;
+	u32 power_lsb;
+	u16 divisor;
+	u32 shunt_resistor;
+	u32 precision_multiplier;
 };
 
 #endif /* _INA230_H */

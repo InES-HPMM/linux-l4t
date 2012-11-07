@@ -48,7 +48,7 @@
 
 
 #define DRIVER_NAME "ina230"
-#define MEASURE_BUS_VOLT 0
+#define MEASURE_BUS_VOLT 1
 
 /* ina230 (/ ina226)register offsets */
 #define INA230_CONFIG	0
@@ -388,7 +388,6 @@ static s32 show_current(struct device *dev,
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct ina230_data *data = i2c_get_clientdata(client);
-	s32 voltage_uV;
 	s32 current_mA;
 	int retval;
 
@@ -399,19 +398,79 @@ static s32 show_current(struct device *dev,
 		return retval;
 	}
 
-	voltage_uV =
-		(s16)be16_to_cpu(i2c_smbus_read_word_data(client,
-							  INA230_SHUNT));
+	/* fill calib data */
+	retval = i2c_smbus_write_word_data(client, INA230_CAL,
+		__constant_cpu_to_be16(data->pdata->calibration_data));
+	if (retval < 0) {
+		dev_err(dev, "calibration data write failed sts: 0x%x\n",
+			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	/* getting current readings in milli amps*/
+	current_mA = be16_to_cpu(i2c_smbus_read_word_data(client,
+		INA230_CURRENT));
+	if (current_mA < 0) {
+		mutex_unlock(&data->mutex);
+		return -EINVAL;
+	}
 
 	ensure_enabled_end(client);
 	mutex_unlock(&data->mutex);
 
-	voltage_uV = shuntv_register_to_uv(voltage_uV);
-	current_mA = voltage_uV / data->pdata->resistor;
+	current_mA =
+		(current_mA * data->pdata->power_lsb) / data->pdata->divisor;
+	if (data->pdata->precision_multiplier)
+		current_mA /= data->pdata->precision_multiplier;
 
 	return sprintf(buf, "%d mA\n", current_mA);
 }
 
+static s32 show_power(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina230_data *data = i2c_get_clientdata(client);
+	s32 power_mW;
+	int retval;
+
+	mutex_lock(&data->mutex);
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	/* fill calib data */
+	retval = i2c_smbus_write_word_data(client, INA230_CAL,
+		__constant_cpu_to_be16(data->pdata->calibration_data));
+	if (retval < 0) {
+		dev_err(dev, "calibration data write failed sts: 0x%x\n",
+			retval);
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	/* getting power readings in milli watts*/
+	power_mW = be16_to_cpu(i2c_smbus_read_word_data(client,
+		INA230_POWER));
+	if (power_mW < 0) {
+		mutex_unlock(&data->mutex);
+		return -EINVAL;
+	}
+
+	ensure_enabled_end(client);
+	mutex_unlock(&data->mutex);
+
+	power_mW =
+		power_mW * data->pdata->power_lsb;
+	if (data->pdata->precision_multiplier)
+		power_mW /= data->pdata->precision_multiplier;
+
+	return sprintf(buf, "%d mW\n", power_mW);
+}
 
 static int ina230_hotplug_notify(struct notifier_block *nb, unsigned long event,
 				void *hcpu)
@@ -433,10 +492,11 @@ static struct sensor_device_attribute ina230[] = {
 	SENSOR_ATTR(current_threshold, S_IWUSR | S_IRUGO,
 		    show_current_threshold, set_current_threshold, 0),
 	SENSOR_ATTR(shuntvolt1_input, S_IRUGO, show_shunt_voltage, NULL, 0),
-	SENSOR_ATTR(current1_input, S_IRUGO, show_current, NULL, 0),
+	SENSOR_ATTR(curr1_input, S_IRUGO, show_current, NULL, 0),
 #if MEASURE_BUS_VOLT
-	SENSOR_ATTR(busvolt1_input, S_IRUGO, show_bus_voltage, NULL, 0),
+	SENSOR_ATTR(in1_input, S_IRUGO, show_bus_voltage, NULL, 0),
 #endif
+	SENSOR_ATTR(power1_input, S_IRUGO, show_power, NULL, 0),
 };
 
 
