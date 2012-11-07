@@ -29,6 +29,7 @@
 
 #include <linux/usb/tegra_usb_phy.h>
 
+#include <mach/hardware.h>
 #include <mach/pm_domains.h>
 #include <linux/pm_qos.h>
 
@@ -358,11 +359,12 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	ehci->controller_remote_wakeup = false;
 	tegra_usb_phy_reset(tegra->phy);
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && \
-				!defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	val =  readl(hcd->regs + TEGRA_STREAM_DISABLE);
-	val |= TEGRA_STREAM_DISABLE_OFFSET;
-	writel(val , hcd->regs + TEGRA_STREAM_DISABLE);
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+	if (tegra_platform_is_fpga()) {
+		val =  readl(hcd->regs + TEGRA_STREAM_DISABLE);
+		val |= TEGRA_STREAM_DISABLE_OFFSET;
+		writel(val , hcd->regs + TEGRA_STREAM_DISABLE);
+	}
 #endif
 
 	return 0;
