@@ -67,8 +67,28 @@ static int enable_app_profiles;
 
 void tegra_init_speedo_data(void)
 {
-	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 
+	if (!tegra_platform_is_silicon()) {
+		cpu_process_id  =  0;
+		core_process_id =  0;
+		gpu_process_id  = 0;
+		cpu_speedo_id   = 0;
+		soc_speedo_id   = 0;
+		gpu_speedo_id   = 0;
+		package_id = -1;
+		cpu_speedo_value = 1777;
+		cpu_speedo_0_value = 0;
+		cpu_speedo_1_value = 0;
+		cpu_speedo_2_value = 0;
+		soc_speedo_0_value = 0;
+		soc_speedo_1_value = 0;
+		soc_speedo_2_value = 0;
+		soc_iddq_value = 0;
+		gpu_iddq_value = 0;
+		return;
+	}
+
+	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
