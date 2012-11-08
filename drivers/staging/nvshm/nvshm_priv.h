@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,7 +18,6 @@
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
 #include <linux/hrtimer.h>
-#include <linux/semaphore.h>
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <asm/memory.h>
@@ -53,7 +52,7 @@
 #define INV_CPU_DCACHE(va, size)		\
 	do {	\
 		unsigned long _pa_ = page_to_phys(vmalloc_to_page((va))) \
-			+ ((unsigned long)va & ~PAGE_MASK);		\
+			+ ((unsigned long)va & ~PAGE_MASK);              \
 		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
 		outer_inv_range(_pa_, _pa_+(size_t)(size));		\
 		dsb(); \
@@ -61,9 +60,11 @@
 
 struct nvshm_handle {
 	spinlock_t lock;
+	spinlock_t qlock;
 	int instance;
 	int old_status;
 	int configured;
+	int bb_irq;
 	struct nvshm_config *conf;
 	void *ipc_base_virt;
 	void *mb_base_virt;
@@ -79,6 +80,7 @@ struct nvshm_handle {
 	struct nvshm_channel chan[NVSHM_MAX_CHANNELS];
 	struct work_struct nvshm_work;
 	struct workqueue_struct *nvshm_wq;
+	struct hrtimer wake_timer;
 	char wq_name[16];
 	struct device *dev;
 	void *ipc_data;

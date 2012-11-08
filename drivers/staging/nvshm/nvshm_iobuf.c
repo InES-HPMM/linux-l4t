@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -96,6 +96,8 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 		return;
 	}
 	spin_lock(&alloc.lock);
+	pr_debug("%s: free 0x%x ref %d pool %x\n", __func__,
+		 (unsigned long)desc, desc->ref, desc->pool_id);
 	desc->ref--;
 	if (desc->ref == 0) {
 		if (desc->pool_id >= NVSHM_AP_POOL_ID) {

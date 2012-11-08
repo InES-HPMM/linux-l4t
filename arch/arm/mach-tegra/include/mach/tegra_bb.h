@@ -39,4 +39,18 @@ void tegra_bb_register_ipc(struct platform_device *dev,
  * @return none
  */
 void tegra_bb_generate_ipc(struct platform_device *dev);
+
+/*
+ * tegra_bb_clear_ipc: clear IPC irq status
+ * @param struct tegra_bb device pointer
+ * @return none
+ */
+void tegra_bb_clear_ipc(struct platform_device *dev);
+
+/*
+ * tegra_bb_check_ipc: check if IRQ is cleared by BB
+ * @param struct tegra_bb device pointer
+ * @return 1 if IRQ is cleared - 0 otherwise
+ */
+int tegra_bb_check_ipc(struct platform_device *dev);
 #endif

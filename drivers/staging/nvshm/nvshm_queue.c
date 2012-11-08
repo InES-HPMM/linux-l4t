@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,6 +19,8 @@
 #include "nvshm_queue.h"
 #include "nvshm_iobuf.h"
 
+#include <mach/tegra_bb.h>
+#include <linux/pm_wakeup.h>
 
 /* Flush cache lines associated with iobuf list */
 static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
@@ -102,9 +104,6 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 	pr_debug("%s (%x)->%x\n", __func__,
 		 (unsigned int)dummy, (unsigned int)dummy->qnext);
 
-	/* Flush cache to invalidate data */
-	pr_debug("%s inv 0x%x->0x%x\n", __func__, ret, ret->next);
-
 	inv_iob_list(handle, ret);
 	dummy->qnext = NULL;
 	handle->shared_queue_head = ret;
@@ -186,11 +185,14 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	int chan;
 
 	spin_lock_bh(&handle->lock);
+	pr_debug("%s: awake\n", __func__);
+	pm_stay_awake(handle->dev);
 	iob = nvshm_queue_get(handle);
 	while (iob) {
-		pr_debug("%s %x/%d/%d->0x%x\n", __func__,
-			 (unsigned int)iob, iob->chan, iob->length,
-			 (unsigned int)iob->next);
+		pr_debug("%s %x/%d/%d/%d->0x%x\n", __func__,
+			(unsigned int)iob, iob->chan, iob->length, iob->ref,
+			(unsigned int)iob->next);
+		tegra_bb_clear_ipc(handle->tegra_bb);
 		chan = iob->chan;
 		if (iob->pool_id < NVSHM_AP_POOL_ID) {
 			ops = handle->chan[chan].ops;
@@ -207,6 +209,8 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 		}
 		iob = nvshm_queue_get(handle);
 	}
+	pm_relax(handle->dev);
+	pr_debug("%s: relax\n", __func__);
 	spin_unlock_bh(&handle->lock);
 }
 

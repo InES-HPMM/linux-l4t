@@ -20,6 +20,8 @@
 #include "nvshm_ipc.h"
 #include "nvshm_queue.h"
 
+#include <linux/interrupt.h>
+#include <linux/pm_wakeup.h>
 #include <asm/mach/map.h>
 #include <mach/tegra_bb.h>
 #include <asm/cacheflush.h>
@@ -190,6 +192,7 @@ static void ipc_work(struct work_struct *work)
 			nvshm_abort_queue(handle);
 			cleanup_interfaces(handle);
 		}
+		enable_irq(handle->bb_irq);
 		return;
 	}
 	switch (cmd) {
@@ -205,6 +208,7 @@ static void ipc_work(struct work_struct *work)
 			init_interfaces(handle);
 		}
 		handle->old_status = cmd;
+		enable_irq(handle->bb_irq);
 		return;
 	case NVSHM_IPC_BOOT_FW_REQ:
 	case NVSHM_IPC_BOOT_RESTART_FW_REQ:
@@ -236,13 +240,29 @@ static void ipc_work(struct work_struct *work)
 		break;
 	}
 	handle->old_status = cmd;
+	enable_irq(handle->bb_irq);
 }
 
 static void nvshm_ipc_handler(void *data)
 {
 	struct nvshm_handle *handle = (struct nvshm_handle *)data;
+	int ret;
 	pr_debug("%s\n", __func__);
-	queue_work(handle->nvshm_wq, &handle->nvshm_work);
+	ret = queue_work(handle->nvshm_wq, &handle->nvshm_work);
+}
+
+static enum hrtimer_restart nvshm_ipc_timer_func(struct hrtimer *timer)
+{
+	struct nvshm_handle *handle =
+		container_of(timer, struct nvshm_handle, wake_timer);
+
+	if (tegra_bb_check_ipc(handle->tegra_bb) == 1) {
+		pr_debug("%s is cleared\n", __func__);
+		pm_relax(&handle->dev);
+		return HRTIMER_NORESTART;
+	}
+	pr_debug("%s is still set\n", __func__);
+	return HRTIMER_RESTART;
 }
 
 int nvshm_register_ipc(struct nvshm_handle *handle)
@@ -251,6 +271,10 @@ int nvshm_register_ipc(struct nvshm_handle *handle)
 	snprintf(handle->wq_name, 15, "nvshm_queue%d", handle->instance);
 	handle->nvshm_wq = create_singlethread_workqueue(handle->wq_name);
 	INIT_WORK(&handle->nvshm_work, ipc_work);
+
+	hrtimer_init(&handle->wake_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	handle->wake_timer.function = nvshm_ipc_timer_func;
+
 	tegra_bb_register_ipc(handle->tegra_bb, nvshm_ipc_handler, handle);
 	return 0;
 }
@@ -259,15 +283,27 @@ int nvshm_unregister_ipc(struct nvshm_handle *handle)
 {
 	pr_debug("%s flush workqueue\n", __func__);
 	flush_workqueue(handle->nvshm_wq);
+
 	pr_debug("%s destroy workqueue\n", __func__);
 	destroy_workqueue(handle->nvshm_wq);
+
 	pr_debug("%s unregister tegra_bb\n", __func__);
 	tegra_bb_register_ipc(handle->tegra_bb, NULL, NULL);
+
+	hrtimer_cancel(&handle->wake_timer);
 	return 0;
 }
 
 int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
+	int ret;
+	/* take wake lock until BB ack our irq */
+	pm_stay_awake(&handle->dev);
+	if (!hrtimer_active(&handle->wake_timer)) {
+		ret = hrtimer_start(&handle->wake_timer,
+				    ktime_set(0, 50000000), HRTIMER_MODE_REL);
+		pr_debug("%s awake ret %d\n", __func__, ret);
+	}
 	mb();
 	/* generate ipc */
 	tegra_bb_generate_ipc(handle->tegra_bb);

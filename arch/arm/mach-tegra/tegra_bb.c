@@ -54,6 +54,7 @@
 #define APBDEV_PMC_IPC_PMC_IPC_CLEAR_0_AP2BB_RESET_SHIFT (1)
 
 #define FLOW_CTLR_IPC_FLOW_IPC_STS_0 (0x500)
+#define FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_INT0_STS_SHIFT (0)
 #define FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT (2)
 
 #define FLOW_CTLR_IPC_FLOW_IPC_SET_0 (0x504)
@@ -197,6 +198,32 @@ void tegra_bb_generate_ipc(struct platform_device *pdev)
 #endif
 }
 EXPORT_SYMBOL_GPL(tegra_bb_generate_ipc);
+
+void tegra_bb_clear_ipc(struct platform_device *dev)
+{
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+	int sts;
+
+	/* read/clear INT status */
+	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT)) {
+		writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
+		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+	}
+}
+EXPORT_SYMBOL_GPL(tegra_bb_clear_ipc);
+
+int tegra_bb_check_ipc(struct platform_device *dev)
+{
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+	int sts;
+
+	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_INT0_STS_SHIFT))
+		return 0;
+	return 1;
+}
+EXPORT_SYMBOL_GPL(tegra_bb_check_ipc);
 
 static int tegra_bb_open(struct inode *inode, struct file *filp)
 {
@@ -517,6 +544,8 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 	unsigned long irq_flags;
 	int sts;
 
+	disable_irq_nosync(irq);
+
 	spin_lock_irqsave(&bb->lock, irq_flags);
 	/* read/clear INT status */
 	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
@@ -525,7 +554,6 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
 	}
 	spin_unlock_irqrestore(&bb->lock, irq_flags);
-
 	/* wake IPC mechanism */
 	if (bb->ipc_cb)
 		bb->ipc_cb(bb->ipc_cb_data);
@@ -539,7 +567,6 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 		sysfs_notify_dirent(bb->sd);
 	}
 	bb->status = sts;
-
 	return IRQ_HANDLED;
 }
 
@@ -725,7 +752,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->nvshm_pdata.ipc_size = bb->ipc_size;
 	bb->nvshm_pdata.mb_base_virt = bb->mb_virt;
 	bb->nvshm_pdata.mb_size = 4*SZ_1K;
-
+	bb->nvshm_pdata.bb_irq = bb->irq;
 	bb->nvshm_pdata.tegra_bb = pdev;
 	bb->nvshm_device.name = "nvshm";
 	bb->nvshm_device.id = bb->instance;
@@ -749,7 +776,17 @@ static int tegra_bb_probe(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int tegra_bb_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+	int sts;
+
 	dev_dbg(&pdev->dev, "%s\n", __func__);
+	/* Be sure to ack any pending irq from BB */
+
+	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT)) {
+		writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
+		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+	}
 	return 0;
 }
 

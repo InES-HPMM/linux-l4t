@@ -1,7 +1,7 @@
 /*
  * include/linux/platform_data/nvshm.h
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -23,6 +23,7 @@ struct nvshm_platform_data {
 	size_t ipc_size;
 	void *mb_base_virt;
 	size_t mb_size;
+	int bb_irq;
 	struct platform_device *tegra_bb;
 };
 

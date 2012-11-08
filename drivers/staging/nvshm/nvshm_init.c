@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -28,6 +28,7 @@ static struct nvshm_handle *_nvshm_instance;
 static int nvshm_probe(struct platform_device *pdev)
 {
 	struct nvshm_handle *handle = NULL;
+	struct tegra_bb_platform_data *bb_pdata;
 	struct nvshm_platform_data *pdata =
 		pdev->dev.platform_data;
 
@@ -57,6 +58,9 @@ static int nvshm_probe(struct platform_device *pdev)
 	handle->instance = pdev->id;
 
 	handle->tegra_bb = pdata->tegra_bb;
+	bb_pdata = handle->tegra_bb->dev.platform_data;
+
+	handle->bb_irq = pdata->bb_irq;
 	platform_set_drvdata(pdev, handle);
 	nvshm_register_ipc(handle);
 	return 0;
