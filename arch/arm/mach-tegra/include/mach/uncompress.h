@@ -83,10 +83,13 @@ volatile u8 *uart;
 #define PLLP_BASE_DIVN_SHIFT		8
 #define PLLP_BASE_DIVN_MASK		(0x3FF << 8)
 
+#define DEBUG_UART_CLK_CLKM		0x6
+#define DEBUG_UART_CLK_SHIFT		29
+
 #define DEBUG_UART_DLL_216		0x75
 #define DEBUG_UART_DLL_408		0xdd
 #define DEBUG_UART_DLL_204		0x6f
-
+#define DEBUG_UART_DLL_13		0x7
 static void putc(int c)
 {
 	if (uart == NULL)
@@ -220,9 +223,15 @@ static inline void arch_decomp_setup(void)
 	if (uart == NULL)
 		return;
 
-	/* Debug UART clock source is PLLP_OUT0. */
+
 	addr = (volatile u32 *)DEBUG_UART_CLK_SRC;
+#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
+/* Debug UART clock source is clk_m on FGPA Platforms. */
+	*addr = DEBUG_UART_CLK_CLKM << DEBUG_UART_CLK_SHIFT;
+#else
+/* Debug UART clock source is PLLP_OUT0. */
 	*addr = 0;
+#endif
 
 	/* Enable clock to debug UART. */
 	addr = (volatile u32 *)DEBUG_UART_CLK_ENB_SET_REG;
@@ -242,7 +251,12 @@ static inline void arch_decomp_setup(void)
 	 * Discrimantion algorithm below assumes that PLLP is configured
 	 * according to h/w recomendations with update rate 1MHz or 1.2MHz
 	 * depending on oscillator frequency
+	 * clk_m runs at 13 Mhz
 	 */
+#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
+	(void) val;
+	uart_dll = DEBUG_UART_DLL_13;
+#else
 	addr = (volatile u32 *)PLLP_BASE;
 	val = *addr;
 	if (val & PLLP_BASE_OVERRIDE) {
@@ -263,6 +277,7 @@ static inline void arch_decomp_setup(void)
 			break;
 		}
 	}
+#endif
 
 	/* Set up debug UART. */
 	uart[UART_LCR << DEBUG_UART_SHIFT] |= UART_LCR_DLAB;
