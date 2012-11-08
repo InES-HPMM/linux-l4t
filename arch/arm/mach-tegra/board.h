@@ -117,6 +117,7 @@ static inline void tegra_clear_framebuffer(unsigned long to, unsigned long size)
 }
 bool is_tegra_debug_uartport_hs(void);
 int get_tegra_uart_debug_port_id(void);
+int __init tegra_register_fuse(void);
 
 #ifdef CONFIG_PSTORE_RAM
 void __init tegra_ram_console_debug_reserve(unsigned long ram_console_size);
