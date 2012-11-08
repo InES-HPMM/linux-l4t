@@ -632,7 +632,7 @@ struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
 
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
-	.tx_clk_tap_delay = 13,
+	.tx_clk_tap_delay = 16,
 };
 
 struct spi_board_info rm31080a_dalmore_spi_board[1] = {
