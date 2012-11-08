@@ -41,6 +41,7 @@ struct  cs42l73_private {
 	u8 mclksel;
 	u32 mclk;
 	int shutdwn_delay;
+	int pwr_up_delay;
 };
 
 static const struct reg_default cs42l73_reg_defaults[] = {
