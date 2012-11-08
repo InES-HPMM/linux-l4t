@@ -19,13 +19,8 @@
 
 #include "mm.h"
 
-#ifdef CONFIG_ARM_LPAE
-#define __pgd_alloc()	kmalloc(PTRS_PER_PGD * sizeof(pgd_t), GFP_KERNEL)
-#define __pgd_free(pgd)	kfree(pgd)
-#else
 #define __pgd_alloc()	(pgd_t *)__get_free_pages(GFP_KERNEL, 2)
 #define __pgd_free(pgd)	free_pages((unsigned long)pgd, 2)
-#endif
 
 DEFINE_SPINLOCK(pgd_lock);
 LIST_HEAD(pgd_list);
