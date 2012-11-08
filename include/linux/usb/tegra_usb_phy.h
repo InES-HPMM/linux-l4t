@@ -95,10 +95,10 @@ bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy);
 bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy);
 
 /**
- * Indicates whether phy resumed due to the remote wake event or not
- * returns true if remote wake is detected.
+ * Indicates whether phy resumed due to the pmc remote/hotplug wake event
+ *  or not, returns true if remote/hotplug wake is detected.
  */
-bool tegra_usb_phy_remote_wakeup(struct tegra_usb_phy *phy);
+bool tegra_usb_phy_pmc_wakeup(struct tegra_usb_phy *phy);
 
 /**
  * Indicates controller has HOST PC register set or not
