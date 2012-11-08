@@ -255,18 +255,20 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 
 #define PLLCX_MISC_KOEF_LOW_RANGE	\
 	((0x14 << PLLCX_MISC_KA_SHIFT) | (0x38 << PLLCX_MISC_KB_SHIFT))
-#define PLLCX_MISC_KOEF_HIGH_RANGE	\
-	((0x10 << PLLCX_MISC_KA_SHIFT) | (0xA0 << PLLCX_MISC_KB_SHIFT))
+
+#define PLLCX_MISC_DIV_LOW_RANGE	\
+	((0x2 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x2 << PLLCX_MISC_FILT_DIV_SHIFT))
+#define PLLCX_MISC_DIV_HIGH_RANGE	\
+	((0x1 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x1 << PLLCX_MISC_FILT_DIV_SHIFT))
 
 #define PLLCX_MISC_DEFAULT_VALUE	((0x0 << PLLCX_MISC_VCO_GAIN_SHIFT) | \
 					PLLCX_MISC_KOEF_LOW_RANGE | \
 					(0x19 << PLLCX_MISC_ALPHA_SHIFT) | \
-					(0x2 << PLLCX_MISC_SDM_DIV_SHIFT) | \
-					(0x2 << PLLCX_MISC_FILT_DIV_SHIFT) | \
+					PLLCX_MISC_DIV_LOW_RANGE | \
 					PLLCX_MISC_RESET)
 #define PLLCX_MISC1_DEFAULT_VALUE	0x000d2308
-#define PLLCX_MISC2_DEFAULT_VALUE	0x31211200
-#define PLLCX_MISC3_DEFAULT_VALUE	0x0
+#define PLLCX_MISC2_DEFAULT_VALUE	0x30211200
+#define PLLCX_MISC3_DEFAULT_VALUE	0x200
 
 #define PLLCX_MISC1_IDDQ		(0x1 << 27)
 
@@ -2253,7 +2255,7 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 
 	switch (input_rate) {
 	case 12000000:
-		n_threshold = 77;
+		n_threshold = 70;
 		break;
 	case 13000000:
 	case 26000000:
@@ -2273,9 +2275,9 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 	}
 
 	val = clk_readl(c->reg + PLL_MISC(c));
-	val &= ~(PLLCX_MISC_KA_MASK | PLLCX_MISC_KB_MASK);
+	val &= ~(PLLCX_MISC_SDM_DIV_MASK | PLLCX_MISC_FILT_DIV_MASK);
 	val |= n <= n_threshold ?
-		PLLCX_MISC_KOEF_LOW_RANGE : PLLCX_MISC_KOEF_HIGH_RANGE;
+		PLLCX_MISC_DIV_LOW_RANGE : PLLCX_MISC_DIV_HIGH_RANGE;
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
 
