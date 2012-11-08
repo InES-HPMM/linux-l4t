@@ -31,6 +31,7 @@ config TEGRA_GRHOST_DEFAULT_TIMEOUT
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
+	select BACKLIGHT_CLASS_DEVICE
 	select FB_MODE_HELPERS
 	select I2C
 	help
