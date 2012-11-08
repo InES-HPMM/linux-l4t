@@ -83,6 +83,12 @@ static const struct usb_device_id modem_list[] = {
 	{USB_DEVICE(0x1983, 0x0327),	/* Icera 450 5AE */
 	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
 	 },
+	{USB_DEVICE(0x1983, 0x0427),	/* Icera 500 5AN */
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 },
+	{USB_DEVICE(0x1983, 0x1005),	/* Icera 500 5AN (BSD) */
+	 .driver_info = TEGRA_MODEM_AUTOSUSPEND,
+	 },
 	{}
 };
 
