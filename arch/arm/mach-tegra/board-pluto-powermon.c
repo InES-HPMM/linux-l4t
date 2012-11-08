@@ -20,252 +20,284 @@
 
 #include <linux/i2c.h>
 #include <linux/ina219.h>
+#include <linux/platform_data/ina230.h>
 #include <linux/i2c/pca954x.h>
 
 #include "board.h"
 #include "board-pluto.h"
 
-enum {
-	VDD_AC_BAT,
-	VDD_DRAM_IN,
-	VDD_BACKLIGHT_IN,
-	VDD_CPU_IN,
-	VDD_CORE_IN,
-	VDD_DISPLAY_IN,
-	VDD_3V3_TEGRA,
-	VDD_OTHER_PMU_IN,
-	VDD_1V8_TEGRA,
-	VDD_1V8_OTHER,
-	UNUSED_RAIL,
-};
-
-static struct ina219_platform_data power_mon_info[] = {
-	[VDD_AC_BAT] = {
-		.calibration_data  = 0xa000,
-		.power_lsb = 2,
-		.rail_name = "VDD_AC_BAT",
-		.divisor = 20,
-	},
-
-	[VDD_DRAM_IN] = {
-		.calibration_data  = 0xa000,
-		.power_lsb = 2,
-		.rail_name = "VDD_DRAM_IN",
-		.divisor = 20,
-	},
-
-	[VDD_BACKLIGHT_IN] = {
-		.calibration_data  = 0x6aaa,
-		.power_lsb = 1,
-		.rail_name = "VDD_BACKLIGHT_IN",
-		.divisor = 20,
-	},
-
-	[VDD_CPU_IN] = {
-		.calibration_data  = 0xa000,
-		.power_lsb = 1,
-		.rail_name = "VDD_CPU_IN",
-		.divisor = 20,
-	},
-
-	[VDD_CORE_IN] = {
-		.calibration_data  = 0x6aaa,
-		.power_lsb = 1,
-		.rail_name = "VDD_CORE_IN",
-		.divisor = 20,
-	},
-
-	[VDD_DISPLAY_IN] = {
-		.calibration_data  = 0x4000,
-		.power_lsb = 1,
-		.rail_name = "VDD_DISPLAY_IN",
-		.divisor = 20,
-	},
-
-	[VDD_3V3_TEGRA] = {
-		.calibration_data  = 0x6aaa,
-		.power_lsb = 1,
-		.rail_name = "VDD_3V3_TEGRA",
-		.divisor = 20,
-	},
-
-	[VDD_OTHER_PMU_IN] = {
-		.calibration_data  = 0xa000,
-		.power_lsb = 1,
-		.rail_name = "VDD_OTHER_PMU_IN",
-		.divisor = 20,
-	},
-
-	[VDD_1V8_TEGRA] = {
-		.calibration_data  = 0x4000,
-		.power_lsb = 1,
-		.rail_name = "VDD_1V8_TEGRA",
-		.divisor = 20,
-	},
-
-	[VDD_1V8_OTHER] = {
-		.calibration_data  = 0xa000,
-		.power_lsb = 1,
-		.rail_name = "VDD_1V8_OTHER",
-		.divisor = 20,
-	},
-
-	/* All unused INA219 devices use below data*/
-	[UNUSED_RAIL] = {
-		.calibration_data  = 0x4000,
-		.power_lsb = 1,
-		.rail_name = "unused_rail",
-		.divisor = 20,
-	},
-};
+#define PRECISION_MULTIPLIER_PLUTO	1000
 
 enum {
-	INA_I2C_ADDR_40,
-	INA_I2C_ADDR_41,
-	INA_I2C_ADDR_42,
-	INA_I2C_ADDR_43,
-	INA_I2C_ADDR_44,
-	INA_I2C_ADDR_45,
-	INA_I2C_ADDR_46,
-	INA_I2C_ADDR_47,
-	INA_I2C_ADDR_48,
-	INA_I2C_ADDR_49,
-	INA_I2C_ADDR_4B,
-	INA_I2C_ADDR_4C,
-	INA_I2C_ADDR_4E,
-	INA_I2C_ADDR_4F,
+	VDD_SYS_SUM,
+	VDD_SYS_SMPS123,
+	VDD_SYS_SMPS45,
+	VDD_SYS_SMPS6,
+	VDD_SYS_SMPS7,
+	VDD_SYS_SMPS8,
+	VDD_SYS_BL,
+	VDD_SYS_LDO8,
+	VDD_MMC_LDO9,
+	VDD_5V0_LDOUSB,
+	VDD_1V8_AP,
+	VDD_MMC_LCD,
+	VDDIO_HSIC_BB,
+	AVDD_PLL_BB,
+	AVDD_1V05_LDO1,
+	VDDIO_1V8_BB,
+};
+
+static struct ina230_platform_data power_mon_info_1[] = {
+	[VDD_SYS_SUM] = {
+		.calibration_data  = 0x369c,
+		.power_lsb = 3.051979018 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SUM",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_SMPS123] = {
+		.calibration_data  = 0x2bb0,
+		.power_lsb = 2.288984263 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SMPS123",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_SMPS45] = {
+		.calibration_data  = 0x4188,
+		.power_lsb = 1.525989509 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SMPS45",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_SMPS6] = {
+		.calibration_data  = 0x2bb0,
+		.power_lsb = 0.381497377 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SMPS6",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_SMPS7] = {
+		.calibration_data  = 0x2bb0,
+		.power_lsb = 0.228898426  * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SMPS7",
+		.resistor = 50,
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_SMPS8] = {
+		.calibration_data  = 0x2bb0,
+		.power_lsb = 0.228898426 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_SMPS8",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_BL] = {
+		.calibration_data  = 0x4188,
+		.power_lsb = 0.152598951 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_BL",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_SYS_LDO8] = {
+		.calibration_data  = 0x2d82,
+		.power_lsb = 0.054935622 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_SYS_LDO8",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_MMC_LDO9] = {
+		.calibration_data  = 0x51ea,
+		.power_lsb = 0.03051979 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_MMC_LDO9",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_5V0_LDOUSB] = {
+		.calibration_data  = 0x2f7d,
+		.power_lsb = 0.052644567 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_5V0_LDOUSB",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_1V8_AP] = {
+		.calibration_data  = 0x4feb,
+		.power_lsb = 0.125128305 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_1V8_AP",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDD_MMC_LCD] = {
+		.calibration_data  = 0x346d,
+		.power_lsb = 0.047686462 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDD_MMC_LCD",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDDIO_HSIC_BB] = {
+		.calibration_data  = 0x6d39,
+		.power_lsb = 0.00915561 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDDIO_HSIC_BB",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[AVDD_PLL_BB] = {
+		.calibration_data  = 0x7fff,
+		.power_lsb = 0.007812738 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "AVDD_PLL_BB",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+};
+
+static struct ina230_platform_data power_mon_info_2[] = {
+	[AVDD_1V05_LDO1] = {
+		.calibration_data  = 0x7fff,
+		.power_lsb = 0.195318461 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "AVDD_1V05_LDO1",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
+
+	[VDDIO_1V8_BB] = {
+		.calibration_data  = 0x7fff,
+		.power_lsb = 0.078127384 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "VDDIO_1V8_BB",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
 };
 
 enum {
-	HPA_I2C_ADDR_40,
-	HPA_I2C_ADDR_41,
-	HPA_I2C_ADDR_42,
-	HPA_I2C_ADDR_43,
+	INA_I2C_2_1_ADDR_40,
+	INA_I2C_2_1_ADDR_41,
+	INA_I2C_2_1_ADDR_42,
+	INA_I2C_2_1_ADDR_43,
+	INA_I2C_2_1_ADDR_44,
+	INA_I2C_2_1_ADDR_45,
+	INA_I2C_2_1_ADDR_46,
+	INA_I2C_2_1_ADDR_47,
+	INA_I2C_2_1_ADDR_48,
+	INA_I2C_2_1_ADDR_49,
+	INA_I2C_2_1_ADDR_4B,
+	INA_I2C_2_1_ADDR_4C,
+	INA_I2C_2_1_ADDR_4E,
+	INA_I2C_2_1_ADDR_4F,
 };
 
-static struct i2c_board_info pluto_i2c0_ina219_board_info[] = {
-	[INA_I2C_ADDR_40] = {
-		I2C_BOARD_INFO("ina219", 0x40),
-		.platform_data = &power_mon_info[VDD_AC_BAT],
+enum {
+	INA_I2C_2_2_ADDR_49,
+	INA_I2C_2_2_ADDR_4C,
+};
+
+static struct i2c_board_info pluto_i2c2_1_ina230_board_info[] = {
+	[INA_I2C_2_1_ADDR_40] = {
+		I2C_BOARD_INFO("ina230", 0x40),
+		.platform_data = &power_mon_info_1[VDD_SYS_SUM],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_41] = {
-		I2C_BOARD_INFO("ina219", 0x41),
-		.platform_data = &power_mon_info[VDD_DRAM_IN],
+	[INA_I2C_2_1_ADDR_41] = {
+		I2C_BOARD_INFO("ina230", 0x41),
+		.platform_data = &power_mon_info_1[VDD_SYS_SMPS123],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_42] = {
-		I2C_BOARD_INFO("ina219", 0x42),
-		.platform_data = &power_mon_info[VDD_BACKLIGHT_IN],
+	[INA_I2C_2_1_ADDR_42] = {
+		I2C_BOARD_INFO("ina230", 0x42),
+		.platform_data = &power_mon_info_1[VDD_SYS_SMPS45],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_43] = {
-		I2C_BOARD_INFO("ina219", 0x43),
-		.platform_data = &power_mon_info[VDD_CPU_IN],
+	[INA_I2C_2_1_ADDR_43] = {
+		I2C_BOARD_INFO("ina230", 0x43),
+		.platform_data = &power_mon_info_1[VDD_SYS_SMPS6],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_44] = {
-		I2C_BOARD_INFO("ina219", 0x44),
-		.platform_data = &power_mon_info[VDD_CORE_IN],
+	[INA_I2C_2_1_ADDR_44] = {
+		I2C_BOARD_INFO("ina230", 0x44),
+		.platform_data = &power_mon_info_1[VDD_SYS_SMPS7],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_45] = {
-		I2C_BOARD_INFO("ina219", 0x45),
-		.platform_data = &power_mon_info[VDD_DISPLAY_IN],
+	[INA_I2C_2_1_ADDR_45] = {
+		I2C_BOARD_INFO("ina230", 0x45),
+		.platform_data = &power_mon_info_1[VDD_SYS_SMPS8],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_46] = {
-		I2C_BOARD_INFO("ina219", 0x46),
-		.platform_data = &power_mon_info[VDD_3V3_TEGRA],
+	[INA_I2C_2_1_ADDR_46] = {
+		I2C_BOARD_INFO("ina230", 0x46),
+		.platform_data = &power_mon_info_1[VDD_SYS_BL],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_47] = {
-		I2C_BOARD_INFO("ina219", 0x47),
-		.platform_data = &power_mon_info[VDD_OTHER_PMU_IN],
+	[INA_I2C_2_1_ADDR_47] = {
+		I2C_BOARD_INFO("ina230", 0x47),
+		.platform_data = &power_mon_info_1[VDD_SYS_LDO8],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_48] = {
-		I2C_BOARD_INFO("ina219", 0x48),
-		.platform_data = &power_mon_info[VDD_1V8_TEGRA],
+	[INA_I2C_2_1_ADDR_48] = {
+		I2C_BOARD_INFO("ina230", 0x48),
+		.platform_data = &power_mon_info_1[VDD_MMC_LDO9],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_49] = {
-		I2C_BOARD_INFO("ina219", 0x49),
-		.platform_data = &power_mon_info[VDD_1V8_OTHER],
+	[INA_I2C_2_1_ADDR_49] = {
+		I2C_BOARD_INFO("ina230", 0x49),
+		.platform_data = &power_mon_info_1[VDD_5V0_LDOUSB],
 		.irq = -1,
 	},
 
-
-	[INA_I2C_ADDR_4B] = {
-		I2C_BOARD_INFO("ina219", 0x4B),
-		.platform_data = &power_mon_info[UNUSED_RAIL],
+	[INA_I2C_2_1_ADDR_4B] = {
+		I2C_BOARD_INFO("ina230", 0x4B),
+		.platform_data = &power_mon_info_1[VDD_1V8_AP],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_4C] = {
-		I2C_BOARD_INFO("ina219", 0x4C),
-		.platform_data = &power_mon_info[UNUSED_RAIL],
+	[INA_I2C_2_1_ADDR_4C] = {
+		I2C_BOARD_INFO("ina230", 0x4C),
+		.platform_data = &power_mon_info_1[VDD_MMC_LCD],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_4E] = {
-		I2C_BOARD_INFO("ina219", 0x4E),
-		.platform_data = &power_mon_info[UNUSED_RAIL],
+	[INA_I2C_2_1_ADDR_4E] = {
+		I2C_BOARD_INFO("ina230", 0x4E),
+		.platform_data = &power_mon_info_1[VDDIO_HSIC_BB],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_4F] = {
-		I2C_BOARD_INFO("ina219", 0x4F),
-		.platform_data = &power_mon_info[UNUSED_RAIL],
+	[INA_I2C_2_1_ADDR_4F] = {
+		I2C_BOARD_INFO("ina230", 0x4F),
+		.platform_data = &power_mon_info_1[AVDD_PLL_BB],
 		.irq = -1,
 	},
 };
 
-static struct i2c_board_info pluto_i2c0_ina2191_board_info[] = {
-	[INA_I2C_ADDR_40] = {
-		I2C_BOARD_INFO("ina219", 0x49),
-		.platform_data = &power_mon_info[VDD_AC_BAT],
+static struct i2c_board_info pluto_i2c2_2_ina230_board_info[] = {
+	[INA_I2C_2_2_ADDR_49] = {
+		I2C_BOARD_INFO("ina230", 0x49),
+		.platform_data = &power_mon_info_2[AVDD_1V05_LDO1],
 		.irq = -1,
 	},
 
-	[INA_I2C_ADDR_41] = {
-		I2C_BOARD_INFO("ina219", 0x4C),
-		.platform_data = &power_mon_info[VDD_DRAM_IN],
-		.irq = -1,
-	},
-};
-
-static struct i2c_board_info pluto_i2c0_hpa219_board_info[] = {
-	[HPA_I2C_ADDR_40] = {
-		I2C_BOARD_INFO("ina219", 0x40),
-		.platform_data = &power_mon_info[VDD_AC_BAT],
-		.irq = -1,
-	},
-
-	[HPA_I2C_ADDR_41] = {
-		I2C_BOARD_INFO("ina219", 0x41),
-		.platform_data = &power_mon_info[VDD_DRAM_IN],
-		.irq = -1,
-	},
-
-	[HPA_I2C_ADDR_42] = {
-		I2C_BOARD_INFO("ina219", 0x42),
-		.platform_data = &power_mon_info[VDD_BACKLIGHT_IN],
-		.irq = -1,
-	},
-
-	[HPA_I2C_ADDR_43] = {
-		I2C_BOARD_INFO("ina219", 0x43),
-		.platform_data = &power_mon_info[VDD_CPU_IN],
+	[INA_I2C_2_2_ADDR_4C] = {
+		I2C_BOARD_INFO("ina230", 0x4C),
+		.platform_data = &power_mon_info_2[VDDIO_1V8_BB],
 		.irq = -1,
 	},
 };
@@ -294,14 +326,13 @@ int __init pluto_pmon_init(void)
 	i2c_register_board_info(1, pluto_i2c2_board_info,
 		ARRAY_SIZE(pluto_i2c2_board_info));
 
-	i2c_register_board_info(PCA954x_I2C_BUS1, pluto_i2c0_ina219_board_info,
-			ARRAY_SIZE(pluto_i2c0_ina219_board_info));
+	i2c_register_board_info(PCA954x_I2C_BUS1,
+			pluto_i2c2_1_ina230_board_info,
+			ARRAY_SIZE(pluto_i2c2_1_ina230_board_info));
 
-	i2c_register_board_info(PCA954x_I2C_BUS0, pluto_i2c0_hpa219_board_info,
-			ARRAY_SIZE(pluto_i2c0_hpa219_board_info));
-
-	i2c_register_board_info(PCA954x_I2C_BUS2, pluto_i2c0_ina2191_board_info,
-			ARRAY_SIZE(pluto_i2c0_ina2191_board_info));
+	i2c_register_board_info(PCA954x_I2C_BUS2,
+			pluto_i2c2_2_ina230_board_info,
+			ARRAY_SIZE(pluto_i2c2_2_ina230_board_info));
 	return 0;
 }
 
