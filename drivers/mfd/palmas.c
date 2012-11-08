@@ -420,7 +420,6 @@ static void palmas_clk32k_init(struct palmas *palmas,
 	struct palmas_clk32k_init_data *clk32_idata = pdata->clk32k_init_data;
 	int data_size = pdata->clk32k_init_data_size;
 	unsigned int reg;
-	unsigned int regval;
 	int i;
 	int id;
 
@@ -776,6 +775,25 @@ static int palmas_i2c_remove(struct i2c_client *i2c)
 
 	return 0;
 }
+#ifdef CONFIG_PM_SLEEP
+static int palmas_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+
+	if (client->irq)
+		disable_irq(client->irq);
+	return 0;
+}
+
+static int palmas_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+
+	if (client->irq)
+		enable_irq(client->irq);
+	return 0;
+}
+#endif
 
 static const struct i2c_device_id palmas_i2c_id[] = {
 	{ "palmas", },
@@ -791,11 +809,16 @@ static struct of_device_id of_palmas_match_tbl[] = {
 	{ /* end */ }
 };
 
+static const struct dev_pm_ops palmas_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(palmas_suspend, palmas_resume)
+};
+
 static struct i2c_driver palmas_i2c_driver = {
 	.driver = {
 		   .name = "palmas",
 		   .of_match_table = of_palmas_match_tbl,
 		   .owner = THIS_MODULE,
+		   .pm = &palmas_pm_ops,
 	},
 	.probe = palmas_i2c_probe,
 	.remove = palmas_i2c_remove,
