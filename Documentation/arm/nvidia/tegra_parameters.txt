@@ -8,18 +8,18 @@ Used to select the LP1 or LP0 power state during system suspend.
 # echo lp0 > /sys/kernel/debug/suspend_mode
 # echo lp1 > /sys/kernel/debug/suspend_mode
 
-/sys/module/cpuidle/parameters/lp2_in_idle
+/sys/module/cpuidle/parameters/power_down_in_idle
 ------------------------------------------
 
-Used to enable/disable LP2 in idle.
-# echo 1 > /sys/module/cpuidle/parameters/lp2_in_idle
-# echo 0 > /sys/module/cpuidle/parameters/lp2_in_idle
+Used to enable/disable CPU power down in idle.
+# echo 1 > /sys/module/cpuidle/parameters/power_down_in_idle
+# echo 0 > /sys/module/cpuidle/parameters/power_down_in_idle
 
-/sys/kernel/debug/cpuidle/lp2
+/sys/kernel/debug/cpuidle/power_down_stats
 -----------------------------
 
-Contains LP2 statistics.
-# cat /sys/kernel/debug/cpuidle/lp2
+Contains CPU power down statistics.
+# cat /sys/kernel/debug/cpuidle/power_down_stats
 
 /sys/kernel/debug/powergate
 ---------------------------
