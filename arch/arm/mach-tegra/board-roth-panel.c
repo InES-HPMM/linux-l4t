@@ -751,7 +751,7 @@ int __init roth_panel_init(void)
 	return err;
 }
 #else
-int __init roth_panel_init(void)
+struct platform_device * __init roth_panel_init(void)
 {
 	return roth_host1x_init();
 }
