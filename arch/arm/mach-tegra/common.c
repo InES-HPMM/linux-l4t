@@ -215,12 +215,13 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 
 void tegra_assert_system_reset(char mode, const char *cmd)
 {
-#if defined(CONFIG_TEGRA_FPGA_PLATFORM) || NEVER_RESET
-	pr_info("tegra_assert_system_reset() ignored.....");
-	do { } while (1);
-#else
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
+
+	if (tegra_platform_is_fpga() || NEVER_RESET) {
+		pr_info("tegra_assert_system_reset() ignored.....");
+		do { } while (1);
+	}
 
 	reg = readl_relaxed(reset + PMC_SCRATCH0);
 	/* Writing recovery kernel or Bootloader mode in SCRATCH0 31:30:1 */
@@ -242,7 +243,6 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	reg = readl_relaxed(reset);
 	reg |= 0x10;
 	writel_relaxed(reg, reset);
-#endif
 }
 static int modem_id;
 static int commchip_id;
@@ -610,32 +610,30 @@ void tegra_init_cache(bool init)
 	tag_latency = 0x331;
 	data_latency = 0x441;
 #else
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	if (is_lp_cluster()) {
+	if (!tegra_platform_is_silicon()) {
+		tag_latency = 0x770;
+		data_latency = 0x770;
+	} else if (is_lp_cluster()) {
 		tag_latency = tegra_cpu_c1_l2_tag_latency;
 		data_latency = tegra_cpu_c1_l2_data_latency;
 	} else {
 		tag_latency = tegra_cpu_c0_l2_tag_latency;
 		data_latency = tegra_cpu_c0_l2_data_latency;
 	}
-#else
-	tag_latency = 0x770;
-	data_latency = 0x770;
-#endif
 #endif
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
 	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+	if (!tegra_platform_is_fpga()) {
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	/* Enable double line fill */
-	writel(0x40000007, p + L2X0_PREFETCH_CTRL);
+		/* Enable double line fill */
+		writel(0x40000007, p + L2X0_PREFETCH_CTRL);
 #else
-	writel(0x7, p + L2X0_PREFETCH_CTRL);
+		writel(0x7, p + L2X0_PREFETCH_CTRL);
 #endif
-	writel(0x3, p + L2X0_POWER_CTRL);
-#endif
+		writel(0x3, p + L2X0_POWER_CTRL);
+	}
 #endif
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
