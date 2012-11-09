@@ -169,6 +169,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	}
 };
 
