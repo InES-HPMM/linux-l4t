@@ -29,6 +29,9 @@
 
 #define MAX17042_CHARACTERIZATION_DATA_SIZE 48
 
+#define MAX_TEMP 70
+#define MIN_TEMP -70
+
 enum max17042_register {
 	MAX17042_STATUS		= 0x00,
 	MAX17042_VALRT_Th	= 0x01,

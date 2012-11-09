@@ -28,9 +28,6 @@
 #include <linux/max77665-charger.h>
 #include <linux/power/max17042_battery.h>
 
-#define MAX_TEMP 70
-#define MIN_TEMP -70
-
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
 	0, 33, 66, 99, 133, 166, 199, 233, 266, 299,
