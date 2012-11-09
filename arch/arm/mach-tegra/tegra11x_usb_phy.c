@@ -2183,16 +2183,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 			UHSIC_PD_ZI | UHSIC_RPD_DATA | UHSIC_RPD_STROBE);
 	writel(val, base + UHSIC_PADS_CFG1);
 
-	/* HSIC pad tracking circuit power down sequence */
-	val &= ~(UHSIC_PD_TX);
-	writel(val, base + UHSIC_PADS_CFG1);
-	val &= ~(UHSIC_PD_TRK);
-	writel(val, base + UHSIC_PADS_CFG1);
-	/* Wait for 25usec */
-	udelay(25);
-	val |= UHSIC_PD_TRK;
-	writel(val, base + UHSIC_PADS_CFG1);
-
 	val |= (UHSIC_RX_SEL | UHSIC_PD_TX);
 	writel(val, base + UHSIC_PADS_CFG1);
 
@@ -2240,6 +2230,15 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 
 	val = readl(base + UHSIC_PADS_CFG1);
 	val &= ~(UHSIC_PD_TX);
+	writel(val, base + UHSIC_PADS_CFG1);
+
+	/* HSIC pad tracking circuit power down sequence */
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~(UHSIC_PD_TRK);
+	writel(val, base + UHSIC_PADS_CFG1);
+	/* Wait for 25usec */
+	udelay(25);
+	val |= UHSIC_PD_TRK;
 	writel(val, base + UHSIC_PADS_CFG1);
 
 	/*SUSP_CTRL has to be toggled to enable host PHY clock */
