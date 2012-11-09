@@ -261,7 +261,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 	ret = -ETIMEDOUT;
 
 	/* Wait for the power to come up. */
-	timeout = jiffies + msecs_to_jiffies(100);
+	timeout = jiffies + msecs_to_jiffies(2000);
 	do {
 		if (is_cpu_powered(cpu) && is_clamp_removed(cpu)) {
 			cpumask_set_cpu(cpu, tegra_cpu_power_mask);
