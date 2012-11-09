@@ -33,6 +33,7 @@
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 #include <mach/edp.h>
+#include <mach/hardware.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cputype.h>
@@ -658,10 +659,10 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	dpd_status = readl(pmc + (APBDEV_PMC_IO_DPD_STATUS_0 +
 					hnd->io_dpd_reg_index * 8));
 	if (!(dpd_status & (1 << hnd->io_dpd_bit))) {
-#if !defined(CONFIG_TEGRA_FPGA_PLATFORM)
-		pr_info("Error: dpd%d enable failed, status=%#x\n",
-		(hnd->io_dpd_reg_index + 1), dpd_status);
-#endif
+		if (!tegra_platform_is_fpga()) {
+			pr_info("Error: dpd%d enable failed, status=%#x\n",
+			(hnd->io_dpd_reg_index + 1), dpd_status);
+		}
 	}
 	/* Sample register must be reset before next sample operation */
 	writel(0x0, pmc + PMC_DPD_SAMPLE);
@@ -687,10 +688,10 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	dpd_status = readl(pmc + (APBDEV_PMC_IO_DPD_STATUS_0 +
 					hnd->io_dpd_reg_index * 8));
 	if (dpd_status & (1 << hnd->io_dpd_bit)) {
-#if !defined(CONFIG_TEGRA_FPGA_PLATFORM)
-		pr_info("Error: dpd%d disable failed, status=%#x\n",
-		(hnd->io_dpd_reg_index + 1), dpd_status);
-#endif
+		if (!tegra_platform_is_fpga()) {
+			pr_info("Error: dpd%d disable failed, status=%#x\n",
+			(hnd->io_dpd_reg_index + 1), dpd_status);
+		}
 	}
 	spin_unlock(&tegra_io_dpd_lock);
 	return;

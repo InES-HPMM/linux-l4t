@@ -43,7 +43,6 @@
 
 static struct powergate_ops *pg_ops;
 
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 static spinlock_t *tegra_get_powergate_lock(void)
 {
 	if (pg_ops && pg_ops->get_powergate_lock)
@@ -53,15 +52,17 @@ static spinlock_t *tegra_get_powergate_lock(void)
 
 	return NULL;
 }
-#endif
 
 int tegra_powergate_set(int id, bool new_state)
 {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	bool status;
 	unsigned long flags;
-	spinlock_t *lock = tegra_get_powergate_lock();
+	spinlock_t *lock;
 
+	if (tegra_cpu_is_asim())
+		return 0;
+
+	lock = tegra_get_powergate_lock();
 	/* 10us timeout for toggle operation if it takes affect*/
 	int toggle_timeout = 10;
 
@@ -107,7 +108,6 @@ int tegra_powergate_set(int id, bool new_state)
 
 	trace_power_domain_target(tegra_powergate_get_name(id), new_state,
 			raw_smp_processor_id());
-#endif
 
 	return 0;
 }

@@ -1293,8 +1293,7 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 
 	/* On SILICON allow CPU rate change only if cpu regulator is connected.
 	   Ignore regulator connection on FPGA and SIMULATION platforms. */
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	if (c->dvfs) {
+	if (c->dvfs && tegra_platform_is_silicon()) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
 		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate < rate)) {
@@ -1303,7 +1302,6 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 			return -ENOSYS;
 		}
 	}
-#endif
 	if (has_dfll && c->dvfs && c->dvfs->dvfs_rail) {
 		if (tegra_dvfs_is_dfll_range(c->dvfs, rate))
 			return tegra12_cpu_clk_dfll_on(c, rate, old_rate);
@@ -1879,7 +1877,6 @@ static struct clk_ops tegra_blink_clk_ops = {
 static int tegra12_pll_clk_wait_for_lock(
 	struct clk *c, u32 lock_reg, u32 lock_bits)
 {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 #if USE_PLL_LOCK_BITS
 	int i;
 	u32 val = 0;
@@ -1912,7 +1909,6 @@ static int tegra12_pll_clk_wait_for_lock(
 	}
 #endif
 	udelay(c->u.pll.lock_delay);
-#endif
 	return 0;
 }
 
@@ -2470,13 +2466,10 @@ static void pllcx_strobe(struct clk *c)
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
 {
 	u32 misc1val = PLLCX_MISC1_DEFAULT_VALUE;
-	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-		BUG();
-#endif
-	} else {
+	if (c->state == ON)
+		BUG_ON(!tegra_platform_is_linsim());
+	else
 		misc1val |= PLLCX_MISC1_IDDQ;
-	}
 
 	clk_writel(PLLCX_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
 	clk_writel(misc1val, c->reg + PLL_MISCN(c, 1));
@@ -2505,9 +2498,7 @@ static void tegra12_pllcx_clk_init(struct clk *c)
 	 * and no enabled module clocks should use it as a source during clock
 	 * init.
 	 */
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-	BUG_ON(c->state == ON);
-#endif
+	BUG_ON(c->state == ON && !tegra_platform_is_linsim());
 	/*
 	 * Most of PLLCX register fields are shadowed, and can not be read
 	 * directly from PLL h/w. Hence, actual PLLCX boot state is unknown.
@@ -2730,9 +2721,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 
 	/* Only s/w dyn ramp control is supported */
 	val = clk_readl(PLLX_HW_CTRL_CFG);
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-	BUG_ON(!(val & PLLX_HW_CTRL_CFG_SWCTRL));
-#endif
+	BUG_ON(!(val & PLLX_HW_CTRL_CFG_SWCTRL) && !tegra_platform_is_linsim());
 
 	pllxc_get_dyn_steps(c, input_rate, &step_a, &step_b);
 	val = step_a << PLLX_MISC2_DYNRAMP_STEPA_SHIFT;
@@ -2751,9 +2740,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	/* Check/set IDDQ */
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
 	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-		BUG_ON(val & PLLX_MISC3_IDDQ);
-#endif
+		BUG_ON(val & PLLX_MISC3_IDDQ && !tegra_platform_is_linsim());
 	} else {
 		val |= PLLX_MISC3_IDDQ;
 		clk_writel(val, c->reg + PLL_MISCN(c, 3));
@@ -2785,9 +2772,7 @@ static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 	clk_writel(val, c->reg + PLL_MISC(c));
 
 	if (c->state == ON) {
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-		BUG_ON(val & PLLC_MISC_IDDQ);
-#endif
+		BUG_ON(val & PLLC_MISC_IDDQ && !tegra_platform_is_linsim());
 	} else {
 		val |= PLLC_MISC_IDDQ;
 		clk_writel(val, c->reg + PLL_MISC(c));
@@ -3003,10 +2988,8 @@ static void pllm_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state != ON)
 		val |= PLLM_MISC_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
-		BUG_ON(val & PLLM_MISC_IDDQ);
-#endif
+		BUG_ON(val & PLLM_MISC_IDDQ && !tegra_platform_is_linsim());
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
@@ -3037,9 +3020,8 @@ static void tegra12_pllm_clk_init(struct clk *c)
 	}
 
 	m = (val & PLLM_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate));
-#endif
+	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate)
+			 && tegra_platform_is_silicon());
 	c->div = m * p;
 	c->mul = (val & PLLM_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
 
@@ -3178,10 +3160,8 @@ static void pllss_set_defaults(struct clk *c, unsigned long input_rate)
 	val = clk_readl(c->reg + PLL_BASE);
 	if (c->state != ON)
 		val |= PLLSS_BASE_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
-		BUG_ON(val & PLLSS_BASE_IDDQ);
-#endif
+		BUG_ON(val & PLLSS_BASE_IDDQ && !tegra_platform_is_linsim());
 	val &= ~PLLSS_BASE_LOCK_OVERRIDE;
 	clk_writel(val, c->reg + PLL_BASE);
 }
@@ -3383,10 +3363,8 @@ static void pllre_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state != ON)
 		val |= PLLRE_MISC_IDDQ;
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	else
-		BUG_ON(val & PLLRE_MISC_IDDQ);
-#endif
+		BUG_ON(val & PLLRE_MISC_IDDQ && !tegra_platform_is_linsim());
 
 	clk_writel(val, c->reg + PLL_MISC(c));
 }
@@ -4387,7 +4365,6 @@ static struct clk_ops tegra_periph_clk_ops = {
 };
 
 
-#if !defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 /* msenc clock propagation WAR for bug 1005168 */
 static int tegra12_msenc_clk_enable(struct clk *c)
 {
@@ -4411,7 +4388,6 @@ static struct clk_ops tegra_msenc_clk_ops = {
 	.round_rate		= &tegra12_periph_clk_round_rate,
 	.reset			= &tegra12_periph_clk_reset,
 };
-#endif
 /* Periph extended clock configuration ops */
 static int
 tegra12_vi_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
@@ -7036,11 +7012,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	 NULL,			"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", NULL,			"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
-#else
 	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
-#endif
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
@@ -8050,6 +8022,17 @@ void __init tegra12x_init_clocks(void)
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra12_init_one_clock(tegra_ptr_clks[i]);
+
+	/* Fix bug in simulator clock routing */
+	if (tegra_platform_is_linsim()) {
+		for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++) {
+			if (!strcmp("msenc", tegra_list_clks[i].name)) {
+				tegra_list_clks[i].u.periph.clk_num = 60;
+				tegra_list_clks[i].reg = 0x170;
+				tegra_list_clks[i].flags &= ~MUX8;
+			}
+		}
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_list_clks); i++)
 		tegra12_init_one_clock(&tegra_list_clks[i]);
