@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-dalmore.c
+ * arch/arm/mach-tegra/board-roth.c
  *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -70,7 +70,8 @@
 #include "board.h"
 #include "board-common.h"
 #include "clock.h"
-#include "board-dalmore.h"
+#include "board-roth.h"
+#include "board-roth.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -78,21 +79,21 @@
 #include "common.h"
 #include "tegra-board-id.h"
 
-static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
+static struct rfkill_gpio_platform_data roth_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
 		.shutdown_gpio  = TEGRA_GPIO_PQ7,
 		.type           = RFKILL_TYPE_BLUETOOTH,
 };
 
-static struct platform_device dalmore_bt_rfkill_device = {
+static struct platform_device roth_bt_rfkill_device = {
 	.name = "rfkill_gpio",
 	.id             = -1,
 	.dev = {
-		.platform_data = &dalmore_bt_rfkill_pdata,
+		.platform_data = &roth_bt_rfkill_pdata,
 	},
 };
 
-static struct resource dalmore_bluesleep_resources[] = {
+static struct resource roth_bluesleep_resources[] = {
 	[0] = {
 		.name = "gpio_host_wake",
 			.start  = TEGRA_GPIO_PU6,
@@ -111,32 +112,32 @@ static struct resource dalmore_bluesleep_resources[] = {
 	},
 };
 
-static struct platform_device dalmore_bluesleep_device = {
+static struct platform_device roth_bluesleep_device = {
 	.name           = "bluesleep",
 	.id             = -1,
-	.num_resources  = ARRAY_SIZE(dalmore_bluesleep_resources),
-	.resource       = dalmore_bluesleep_resources,
+	.num_resources  = ARRAY_SIZE(roth_bluesleep_resources),
+	.resource       = roth_bluesleep_resources,
 };
 
-static noinline void __init dalmore_setup_bt_rfkill(void)
+static noinline void __init roth_setup_bt_rfkill(void)
 {
 	if ((tegra_get_commchip_id() == COMMCHIP_BROADCOM_BCM43241) ||
 		(tegra_get_commchip_id() == COMMCHIP_DEFAULT))
-		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
+		roth_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
 	else
-		dalmore_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PQ6;
-	platform_device_register(&dalmore_bt_rfkill_device);
+		roth_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PQ6;
+	platform_device_register(&roth_bt_rfkill_device);
 }
 
-static noinline void __init dalmore_setup_bluesleep(void)
+static noinline void __init roth_setup_bluesleep(void)
 {
-	dalmore_bluesleep_resources[2].start =
-		dalmore_bluesleep_resources[2].end =
+	roth_bluesleep_resources[2].start =
+		roth_bluesleep_resources[2].end =
 			gpio_to_irq(TEGRA_GPIO_PU6);
-	platform_device_register(&dalmore_bluesleep_device);
+	platform_device_register(&roth_bluesleep_device);
 	return;
 }
-static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
+static __initdata struct tegra_clk_init_table roth_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
 	{ "hda",	"pll_p",	108000000,	false},
@@ -167,7 +168,7 @@ static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static struct tegra_i2c_platform_data dalmore_i2c1_platform_data = {
+static struct tegra_i2c_platform_data roth_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
@@ -176,7 +177,7 @@ static struct tegra_i2c_platform_data dalmore_i2c1_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct tegra_i2c_platform_data dalmore_i2c2_platform_data = {
+static struct tegra_i2c_platform_data roth_i2c2_platform_data = {
 	.adapter_nr	= 1,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
@@ -186,7 +187,7 @@ static struct tegra_i2c_platform_data dalmore_i2c2_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct tegra_i2c_platform_data dalmore_i2c3_platform_data = {
+static struct tegra_i2c_platform_data roth_i2c3_platform_data = {
 	.adapter_nr	= 2,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
@@ -195,7 +196,7 @@ static struct tegra_i2c_platform_data dalmore_i2c3_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct tegra_i2c_platform_data dalmore_i2c4_platform_data = {
+static struct tegra_i2c_platform_data roth_i2c4_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 10000, 0 },
@@ -204,7 +205,7 @@ static struct tegra_i2c_platform_data dalmore_i2c4_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-static struct tegra_i2c_platform_data dalmore_i2c5_platform_data = {
+static struct tegra_i2c_platform_data roth_i2c5_platform_data = {
 	.adapter_nr	= 4,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
@@ -230,28 +231,13 @@ static struct i2c_board_info __initdata nfc_board_info = {
 	.platform_data = &nfc_pdata,
 };
 
-static void dalmore_i2c_init(void)
+static void roth_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
-	tegra_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
-	tegra_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
-	tegra_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
-	tegra_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
-	tegra_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
-	platform_device_register(&tegra_i2c_device5);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device3);
-	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device1);
-#else
-	tegra11_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
-	tegra11_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
-	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
-	tegra11_i2c_device4.dev.platform_data = &dalmore_i2c4_platform_data;
-	tegra11_i2c_device5.dev.platform_data = &dalmore_i2c5_platform_data;
+	tegra11_i2c_device1.dev.platform_data = &roth_i2c1_platform_data;
+	tegra11_i2c_device2.dev.platform_data = &roth_i2c2_platform_data;
+	tegra11_i2c_device3.dev.platform_data = &roth_i2c3_platform_data;
+	tegra11_i2c_device4.dev.platform_data = &roth_i2c4_platform_data;
+	tegra11_i2c_device5.dev.platform_data = &roth_i2c5_platform_data;
 
 	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PW2);
 	i2c_register_board_info(0, &nfc_board_info, 1);
@@ -261,12 +247,11 @@ static void dalmore_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device3);
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
-#endif
 
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 }
 
-static struct platform_device *dalmore_uart_devices[] __initdata = {
+static struct platform_device *roth_uart_devices[] __initdata = {
 	&tegra_uarta_device,
 	&tegra_uartb_device,
 	&tegra_uartc_device,
@@ -280,8 +265,8 @@ static struct uart_clk_parent uart_parent_clk[] = {
 #endif
 };
 
-static struct tegra_uart_platform_data dalmore_uart_pdata;
-static struct tegra_uart_platform_data dalmore_loopback_uart_pdata;
+static struct tegra_uart_platform_data roth_uart_pdata;
+static struct tegra_uart_platform_data roth_loopback_uart_pdata;
 
 static void __init uart_debug_init(void)
 {
@@ -291,10 +276,10 @@ static void __init uart_debug_init(void)
 	if (debug_port_id < 0)
 		return;
 
-	dalmore_uart_devices[debug_port_id] = uart_console_debug_device;
+	roth_uart_devices[debug_port_id] = uart_console_debug_device;
 }
 
-static void __init dalmore_uart_init(void)
+static void __init roth_uart_init(void)
 {
 	struct clk *c;
 	int i;
@@ -309,23 +294,23 @@ static void __init dalmore_uart_init(void)
 		uart_parent_clk[i].parent_clk = c;
 		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
 	}
-	dalmore_uart_pdata.parent_clk_list = uart_parent_clk;
-	dalmore_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	dalmore_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
-	dalmore_loopback_uart_pdata.parent_clk_count =
+	roth_uart_pdata.parent_clk_list = uart_parent_clk;
+	roth_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	roth_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
+	roth_loopback_uart_pdata.parent_clk_count =
 						ARRAY_SIZE(uart_parent_clk);
-	dalmore_loopback_uart_pdata.is_loopback = true;
-	tegra_uarta_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartb_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartc_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartd_device.dev.platform_data = &dalmore_uart_pdata;
+	roth_loopback_uart_pdata.is_loopback = true;
+	tegra_uarta_device.dev.platform_data = &roth_uart_pdata;
+	tegra_uartb_device.dev.platform_data = &roth_uart_pdata;
+	tegra_uartc_device.dev.platform_data = &roth_uart_pdata;
+	tegra_uartd_device.dev.platform_data = &roth_uart_pdata;
 
 	/* Register low speed only if it is selected */
 	if (!is_tegra_debug_uartport_hs())
 		uart_debug_init();
 
-	platform_add_devices(dalmore_uart_devices,
-				ARRAY_SIZE(dalmore_uart_devices));
+	platform_add_devices(roth_uart_devices,
+				ARRAY_SIZE(roth_uart_devices));
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -348,7 +333,7 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
-static struct tegra_asoc_platform_data dalmore_audio_pdata = {
+static struct tegra_asoc_platform_data roth_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
 	.gpio_hp_mute		= -1,
@@ -370,11 +355,11 @@ static struct tegra_asoc_platform_data dalmore_audio_pdata = {
 	},
 };
 
-static struct platform_device dalmore_audio_device = {
+static struct platform_device roth_audio_device = {
 	.name	= "tegra-snd-rt5640",
 	.id	= 0,
 	.dev	= {
-		.platform_data = &dalmore_audio_pdata,
+		.platform_data = &roth_audio_pdata,
 	},
 };
 
@@ -383,7 +368,7 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
-static struct platform_device *dalmore_devices[] __initdata = {
+static struct platform_device *roth_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
@@ -407,7 +392,7 @@ static struct platform_device *dalmore_devices[] __initdata = {
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
-	&dalmore_audio_device,
+	&roth_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
@@ -415,20 +400,6 @@ static struct platform_device *dalmore_devices[] __initdata = {
 };
 
 #ifdef CONFIG_USB_SUPPORT
-static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = false,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -508,7 +479,7 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
-static void dalmore_usb_init(void)
+static void roth_usb_init(void)
 {
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
@@ -516,64 +487,30 @@ static void dalmore_usb_init(void)
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-	tegra_ehci2_device.dev.platform_data =
-		&tegra_ehci2_hsic_smsc_hub_pdata;
-	platform_device_register(&tegra_ehci2_device);
-
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 }
 
-static void dalmore_modem_init(void)
-{
-	int ret;
-
-	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_W_DISABLE);
-	else
-		gpio_direction_output(TEGRA_GPIO_W_DISABLE, 1);
-
-
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD1, "Port_V_PIN_0");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD1);
-	else
-		gpio_direction_input(TEGRA_GPIO_MODEM_RSVD1);
-
-
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD2, "Port_H_PIN_7");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD2);
-	else
-		gpio_direction_output(TEGRA_GPIO_MODEM_RSVD2, 1);
-
-}
-
 #else
-static void dalmore_usb_init(void) { }
-static void dalmore_modem_init(void) { }
+static void roth_usb_init(void) { }
 #endif
 
-static void dalmore_audio_init(void)
+static void roth_audio_init(void)
 {
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
 
-	dalmore_audio_pdata.codec_name = "rt5640.0-001c";
-	dalmore_audio_pdata.codec_dai_name = "rt5640-aif1";
+	roth_audio_pdata.codec_name = "rt5640.0-001c";
+	roth_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
 
 
-static struct platform_device *dalmore_spi_devices[] __initdata = {
+static struct platform_device *roth_spi_devices[] __initdata = {
         &tegra11_spi_device4,
 };
 
-struct spi_clk_parent spi_parent_clk_dalmore[] = {
+struct spi_clk_parent spi_parent_clk_roth[] = {
         [0] = {.name = "pll_p"},
 #ifndef CONFIG_TEGRA_PLLM_RESTRICTED
         [1] = {.name = "pll_m"},
@@ -583,14 +520,14 @@ struct spi_clk_parent spi_parent_clk_dalmore[] = {
 #endif
 };
 
-static struct tegra_spi_platform_data dalmore_spi_pdata = {
+static struct tegra_spi_platform_data roth_spi_pdata = {
 	.is_dma_based           = false,
 	.max_dma_buffer         = 16 * 1024,
         .is_clkon_always        = false,
         .max_rate               = 25000000,
 };
 
-static void __init dalmore_spi_init(void)
+static void __init roth_spi_init(void)
 {
         int i;
         struct clk *c;
@@ -599,55 +536,53 @@ static void __init dalmore_spi_init(void)
         tegra_get_board_info(&board_info);
         tegra_get_display_board_info(&display_board_info);
 
-        for (i = 0; i < ARRAY_SIZE(spi_parent_clk_dalmore); ++i) {
-                c = tegra_get_clock_by_name(spi_parent_clk_dalmore[i].name);
+        for (i = 0; i < ARRAY_SIZE(spi_parent_clk_roth); ++i) {
+                c = tegra_get_clock_by_name(spi_parent_clk_roth[i].name);
                 if (IS_ERR_OR_NULL(c)) {
                         pr_err("Not able to get the clock for %s\n",
-                                                spi_parent_clk_dalmore[i].name);
+                                                spi_parent_clk_roth[i].name);
                         continue;
                 }
-                spi_parent_clk_dalmore[i].parent_clk = c;
-                spi_parent_clk_dalmore[i].fixed_clk_rate = clk_get_rate(c);
+                spi_parent_clk_roth[i].parent_clk = c;
+                spi_parent_clk_roth[i].fixed_clk_rate = clk_get_rate(c);
         }
-        dalmore_spi_pdata.parent_clk_list = spi_parent_clk_dalmore;
-        dalmore_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_dalmore);
-	tegra11_spi_device4.dev.platform_data = &dalmore_spi_pdata;
-        platform_add_devices(dalmore_spi_devices,
-                                ARRAY_SIZE(dalmore_spi_devices));
+        roth_spi_pdata.parent_clk_list = spi_parent_clk_roth;
+        roth_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_roth);
+	tegra11_spi_device4.dev.platform_data = &roth_spi_pdata;
+        platform_add_devices(roth_spi_devices,
+                                ARRAY_SIZE(roth_spi_devices));
 }
 
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       false},
-	{ "clk_out_2",  "extern2",      40800000,       false},
+	{ "extern2",    "pll_p",        41000000,       true},
+	{ "clk_out_2",  "extern2",      40800000,       true},
 	{ NULL,         NULL,           0,              0},
 };
 
-struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
+struct rm_spi_ts_platform_data rm31080ts_roth_data = {
 	.gpio_reset = 0,
 	.config = 0,
-	.platform_id = RM_PLATFORM_D010,
-	.name_of_clock = "clk_out_2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
 	.rx_clk_tap_delay = 0,
-	.tx_clk_tap_delay = 13,
+	.tx_clk_tap_delay = 0,
 };
 
-struct spi_board_info rm31080a_dalmore_spi_board[1] = {
+struct spi_board_info rm31080a_roth_spi_board[1] = {
 	{
 	 .modalias = "rm_ts_spidev",
 	 .bus_num = 3,
 	 .chip_select = 2,
-	 .max_speed_hz = 18 * 1000 * 1000,
+	 .max_speed_hz = 12 * 1000 * 1000,
 	 .mode = SPI_MODE_0,
 	 .controller_data = &dev_cdata,
-	 .platform_data = &rm31080ts_dalmore_data,
+	 .platform_data = &rm31080ts_roth_data,
 	 },
 };
 
-static int __init dalmore_touch_init(void)
+static int __init roth_touch_init(void)
 {
 	struct board_info board_info;
 
@@ -655,69 +590,66 @@ static int __init dalmore_touch_init(void)
 	tegra_clk_init_from_table(touch_clk_init_table);
 	clk_enable(tegra_get_clock_by_name("clk_out_2"));
 	if (board_info.board_id == BOARD_E1582)
-		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_P005;
+		rm31080ts_roth_data.platform_id = RM_PLATFORM_P005;
 	else
-		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_D010;
-	mdelay(20);
-	rm31080a_dalmore_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+		rm31080ts_roth_data.platform_id = RM_PLATFORM_D010;
+	rm31080a_roth_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,
-				&rm31080ts_dalmore_data,
-				&rm31080a_dalmore_spi_board[0],
-				ARRAY_SIZE(rm31080a_dalmore_spi_board));
+				&rm31080ts_roth_data,
+				&rm31080a_roth_spi_board[0],
+				ARRAY_SIZE(rm31080a_roth_spi_board));
 	return 0;
 }
 
-static void __init tegra_dalmore_init(void)
+static void __init tegra_roth_init(void)
 {
+
 	tegra_battery_edp_init(2500);
-	tegra_clk_init_from_table(dalmore_clk_init_table);
-	tegra_soc_device_init("dalmore");
+	tegra_clk_init_from_table(roth_clk_init_table);
+	tegra_soc_device_init("roth");
 	tegra_enable_pinmux();
-	dalmore_pinmux_init();
-	dalmore_i2c_init();
-	dalmore_spi_init();
-	dalmore_usb_init();
-	dalmore_edp_init();
-	dalmore_uart_init();
-	dalmore_audio_init();
-	platform_add_devices(dalmore_devices, ARRAY_SIZE(dalmore_devices));
+	roth_pinmux_init();
+	roth_i2c_init();
+	roth_spi_init();
+	roth_usb_init();
+	roth_edp_init();
+	roth_uart_init();
+	roth_audio_init();
+	platform_add_devices(roth_devices, ARRAY_SIZE(roth_devices));
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
-	dalmore_regulator_init();
-	dalmore_sdhci_init();
-	dalmore_suspend_init();
-	dalmore_emc_init();
-	dalmore_touch_init();
-	dalmore_panel_init();
-	dalmore_kbc_init();
-	dalmore_pmon_init();
-	dalmore_setup_bluesleep();
-	dalmore_setup_bt_rfkill();
+	roth_regulator_init();
+	roth_sdhci_init();
+	roth_suspend_init();
+	roth_emc_init();
+	roth_touch_init();
+	roth_panel_init();
+	roth_pmon_init();
+	roth_setup_bluesleep();
+	roth_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
-	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
-	dalmore_sensors_init();
-	dalmore_soctherm_init();
+	roth_sensors_init();
 }
 
-static void __init dalmore_ramconsole_reserve(unsigned long size)
+static void __init roth_ramconsole_reserve(unsigned long size)
 {
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
-static void __init tegra_dalmore_dt_init(void)
+static void __init tegra_roth_dt_init(void)
 {
-	tegra_dalmore_init();
+	tegra_roth_init();
 
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
 }
 
-static void __init tegra_dalmore_reserve(void)
+static void __init tegra_roth_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
 	/* 1920*1200*4*2 = 18432000 bytes */
@@ -725,28 +657,24 @@ static void __init tegra_dalmore_reserve(void)
 #else
 	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
 #endif
-	dalmore_ramconsole_reserve(SZ_1M);
+	roth_ramconsole_reserve(SZ_1M);
 }
 
-static const char * const dalmore_dt_board_compat[] = {
-	"nvidia,dalmore",
+static const char * const roth_dt_board_compat[] = {
+	"nvidia,roth",
 	NULL
 };
 
-MACHINE_START(DALMORE, "dalmore")
+MACHINE_START(ROTH, "roth")
 	.atag_offset	= 0x100,
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
-	.reserve	= tegra_dalmore_reserve,
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.init_early     = tegra30_init_early,
-#else
+	.reserve	= tegra_roth_reserve,
 	.init_early	= tegra11x_init_early,
-#endif
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,
-	.init_machine	= tegra_dalmore_dt_init,
+	.init_machine	= tegra_roth_dt_init,
 	.restart	= tegra_assert_system_reset,
-	.dt_compat	= dalmore_dt_board_compat,
+	.dt_compat	= roth_dt_board_compat,
 MACHINE_END
