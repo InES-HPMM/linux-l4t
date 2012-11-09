@@ -6110,7 +6110,7 @@ static struct clk_mux_sel mux_clkm_pllp_pllc_pllre[] = {
 	{ .input = &tegra_clk_m,  .value = 0},
 	{ .input = &tegra_pll_p,  .value = 1},
 	{ .input = &tegra_pll_c,  .value = 3},
-	{ .input = &tegra_pll_re_out,  .value = 5},
+	{ .input = &tegra_pll_re_vco,  .value = 5},
 	{ 0, 0},
 };
 
@@ -6124,7 +6124,7 @@ static struct clk_mux_sel mux_clkm_48M_pllp_480M[] = {
 
 static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
 	{ .input = &tegra_clk_m,      .value = 0},
-	{ .input = &tegra_pll_re_out, .value = 1},
+	{ .input = &tegra_pll_re_vco, .value = 1},
 	{ .input = &tegra_clk_32k,    .value = 2},
 	{ .input = &tegra_pll_u_480M, .value = 3},
 	{ .input = &tegra_pll_c,      .value = 4},
