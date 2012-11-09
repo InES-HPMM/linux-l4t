@@ -67,7 +67,7 @@ Main cluster minimum frequency.
 /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/idle_top_freq
 -------------------------------------------------------------
 
-Main cluster maximum frequency.
+Shadow cluster maximum frequency.
 
 /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/down_delay
 ----------------------------------------------------------
