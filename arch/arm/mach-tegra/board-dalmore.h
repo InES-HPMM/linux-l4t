@@ -23,6 +23,7 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
+#include <linux/mfd/tps65090.h>
 #include "gpio-names.h"
 
 /* External peripheral act as gpio */
@@ -50,10 +51,13 @@
 #define TEGRA_GPIO_MODEM_RSVD1		TEGRA_GPIO_PV0
 #define TEGRA_GPIO_MODEM_RSVD2		TEGRA_GPIO_PH7
 
+#define TPS65090_TEGRA_IRQ_BASE TEGRA_NR_IRQS
+#define TPS65090_TEGRA_IRQ_END	(TPS65090_TEGRA_IRQ_BASE + TPS65090_NUM_IRQ)
 /* External peripheral act as interrupt controller */
 /* MAX77663 IRQs */
-#define PALMAS_TEGRA_IRQ_BASE   TEGRA_NR_IRQS
-#define MAX77663_IRQ_BASE	TEGRA_NR_IRQS
+#define PALMAS_TEGRA_IRQ_BASE   TPS65090_TEGRA_IRQ_END
+#define PALMAS_TEGRA_IRQ_END	(PALMAS_TEGRA_IRQ_BASE + PALMAS_NUM_IRQ)
+#define MAX77663_IRQ_BASE	TPS65090_TEGRA_IRQ_END
 #define MAX77663_IRQ_END	(MAX77663_IRQ_BASE + MAX77663_IRQ_NR)
 #define MAX77663_IRQ_ACOK_RISING MAX77663_IRQ_ONOFF_ACOK_RISING
 

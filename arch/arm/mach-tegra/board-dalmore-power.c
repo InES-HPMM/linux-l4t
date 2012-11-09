@@ -32,6 +32,7 @@
 #include <linux/regulator/tps65090-regulator.h>
 #include <linux/regulator/tps51632-regulator.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
 
 #include <asm/mach-types.h>
@@ -53,7 +54,7 @@
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
-
+#define TPS65090_CHARGER_INT	TEGRA_GPIO_PJ0
 /*TPS65090 consumer rails */
 static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_5v0", NULL),
@@ -174,7 +175,8 @@ static struct tps65090_regulator_platform_data *tps65090_reg_pdata[] = {
 };
 
 static struct tps65090_platform_data tps65090_pdata = {
-	.irq_base = -1,
+	.irq_base = TPS65090_TEGRA_IRQ_BASE,
+	.irq_flag = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 	.num_reg_pdata =  ARRAY_SIZE(tps65090_reg_pdata),
 	.reg_pdata = tps65090_reg_pdata
 };
@@ -1114,11 +1116,34 @@ static int __init dalmore_fixed_regulator_init(void)
 }
 subsys_initcall_sync(dalmore_fixed_regulator_init);
 
+static void dalmore_tps65090_init(void)
+{
+	int err;
+
+	err = gpio_request(TPS65090_CHARGER_INT, "CHARGER_INT");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, err);
+		goto fail_init_irq;
+	}
+
+	err = gpio_direction_input(TPS65090_CHARGER_INT);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n", __func__, err);
+		goto fail_init_irq;
+	}
+
+	tps65090_regulators[0].irq = gpio_to_irq(TPS65090_CHARGER_INT);
+fail_init_irq:
+	i2c_register_board_info(4, tps65090_regulators,
+			ARRAY_SIZE(tps65090_regulators));
+	return;
+}
+
 int __init dalmore_regulator_init(void)
 {
 	struct board_info board_info;
-	i2c_register_board_info(4, tps65090_regulators,
-			ARRAY_SIZE(tps65090_regulators));
+
+	dalmore_tps65090_init();
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	dalmore_cl_dvfs_init();
 #endif
