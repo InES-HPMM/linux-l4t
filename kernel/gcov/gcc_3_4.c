@@ -349,7 +349,7 @@ int gcov_iter_next(struct gcov_iterator *iter)
 		/* fall through */
 	case RECORD_COUNT_LEN:
 		if (iter->count < get_func(iter)->n_ctrs[iter->type]) {
-			iter->record = 12;
+			iter->record = RECORD_COUNT;
 			break;
 		}
 		/* Advance to next counter type */
@@ -359,7 +359,7 @@ int gcov_iter_next(struct gcov_iterator *iter)
 		/* fall through */
 	case RECORD_FUNCTION_NAME:
 		if (iter->type < iter->num_types) {
-			iter->record = 10;
+			iter->record = RECORD_COUNT_TAG;
 			break;
 		}
 		/* Advance to next function */
@@ -368,7 +368,7 @@ int gcov_iter_next(struct gcov_iterator *iter)
 		/* fall through */
 	case RECORD_TIME_STAMP:
 		if (iter->function < iter->info->n_functions)
-			iter->record = 3;
+			iter->record = RECORD_FUNCTION_TAG;
 		else
 			iter->record = -1;
 		break;
@@ -423,6 +423,9 @@ static int seq_write_gcov_u64(struct seq_file *seq, u64 v)
  * first.
  */
 static int seq_write_gcov_str(struct seq_file *seq, const char *str)
+	__attribute__ ((unused));
+
+static int seq_write_gcov_str(struct seq_file *seq, const char *str)
 {
 	if (str) {
 		size_t len;
@@ -450,7 +453,7 @@ static int seq_write_gcov_str(struct seq_file *seq, const char *str)
  */
 int gcov_iter_write(struct gcov_iterator *iter, struct seq_file *seq)
 {
-	int rc = -EINVAL;
+	int rc = 0;
 
 	switch (iter->record) {
 	case RECORD_FILE_MAGIC:
@@ -477,24 +480,26 @@ int gcov_iter_write(struct gcov_iterator *iter, struct seq_file *seq)
 		rc = seq_write_gcov_u32(seq, get_func(iter)->ident);
 		break;
 	case RECORD_FUNCTION_CHECK_LINE:
+#ifdef CONFIG_GCOV_TOOLCHAIN_IS_ANDROID
 		rc = seq_write_gcov_u32(seq, get_func(iter)->lineno_checksum);
+#else
+		rc = seq_write_gcov_u32(seq, get_func(iter)->checksum);
+#endif
 		break;
 	case RECORD_FUNCTION_CHECK_CFG:
+#ifdef CONFIG_GCOV_TOOLCHAIN_IS_ANDROID
 		rc = seq_write_gcov_u32(seq, get_func(iter)->cfg_checksum);
+#endif
 		break;
 	case RECORD_FUNCTION_NAME_LEN:
 #ifdef GCOV_FN_INFO_HAS_NAME_FIELD
 		rc = seq_write_gcov_u32(seq,
 			(sizeof_str(get_func(iter)->name) - 1));
-#else
-		rc = 0;
 #endif
 		break;
 	case RECORD_FUNCTION_NAME:
 #ifdef GCOV_FN_INFO_HAS_NAME_FIELD
 		rc = seq_write_gcov_str(seq, get_func(iter)->name);
-#else
-		rc = 0;
 #endif
 		break;
 	case RECORD_COUNT_TAG:
@@ -510,6 +515,8 @@ int gcov_iter_write(struct gcov_iterator *iter, struct seq_file *seq)
 			iter->info->counts[iter->type].
 				values[iter->count + get_type(iter)->offset]);
 		break;
+	default:
+		rc = -EINVAL;
 	}
 	return rc;
 }
