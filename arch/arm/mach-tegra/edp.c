@@ -760,6 +760,9 @@ static int __init tegra_edp_debugfs_init(void)
 	struct dentry *edp_dir;
 	struct dentry *vdd_cpu_dir;
 
+	if (!tegra_platform_is_silicon())
+		return -ENOSYS;
+
 	edp_dir = tegra_edp_debugfs_dir();
 
 	if (!edp_dir)
