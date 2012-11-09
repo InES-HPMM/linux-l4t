@@ -30,6 +30,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
+#include <mach/hardware.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
 #include <mach/hardware.h>
@@ -370,13 +371,8 @@ static struct tegra_dc_mode bonaire_panel_modes[] = {
 		.v_sync_width = 6,
 		.h_back_porch = 64,
 		.v_back_porch = 4,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-		.h_active = 120,
-		.v_active = 160,
-#else
 		.h_active = 1366,
 		.v_active = 768,
-#endif
 		.h_front_porch = 16,
 		.v_front_porch = 2,
 	},
@@ -400,19 +396,20 @@ static struct tegra_dc_mode bonaire_lvds_panel_modes[] = {
 };
 #endif
 
+static struct tegra_fb_data bonaire_fb_data_linsim = {
+	.win            = 0,
+	.xres           = 120,
+	.yres           = 160,
+	.bits_per_pixel = 16,
+	.flags          = 0,
+};
+
 static struct tegra_fb_data bonaire_fb_data = {
 	.win		= 0,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.xres		= 120,
-	.yres		= 160,
-	.bits_per_pixel	= 16,
-	.flags		= 0,
-#else
 	.xres		= 1366,
 	.yres		= 768,
 	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
-#endif
 };
 
 static int bonaire_dsi_panel_enable(void)
@@ -576,11 +573,7 @@ static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
 
 struct tegra_dsi_out bonaire_dsi = {
 	.n_data_lanes = 2,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_16BIT_P,
-#else
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-#endif
 	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 
@@ -598,11 +591,7 @@ struct tegra_dsi_out bonaire_dsi = {
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 	.dsi_suspend_cmd = dsi_suspend_cmd,
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
-#else
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-#endif
 	.lp_cmd_mode_freq_khz = 430000,
 };
 
@@ -632,13 +621,8 @@ static struct tegra_dc_mode bonaire_dsi_modes[] = {
 		.v_sync_width = 4,
 		.h_back_porch = 16,
 		.v_back_porch = 4,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-		.h_active = 320,
-		.v_active = 240,
-#else
 		.h_active = 864,
 		.v_active = 480,
-#endif
 		.h_front_porch = 16,
 		.v_front_porch = 4,
 	},
@@ -656,15 +640,9 @@ static struct tegra_fb_data bonaire_dsi_fb_data = {
 
 #if DSI_PANEL_218
 	.win		= 0,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.xres		= 320,
-	.yres		= 240,
-	.bits_per_pixel	= 16,
-#else
 	.xres		= 864,
 	.yres		= 480,
 	.bits_per_pixel	= 32,
-#endif
 #endif
 };
 
@@ -749,11 +727,7 @@ static struct nvmap_platform_carveout bonaire_carveouts[] = {
 		.name		= "iram",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
 		.base		= TEGRA_IRAM_BASE,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-		.size		= 0, /* DMA won't work in ASIM IRAM */
-#else
 		.size		= TEGRA_IRAM_SIZE,
-#endif
 		.buddy_size	= 0, /* no buddy allocation for IRAM */
 	},
 	[1] = {
@@ -797,6 +771,24 @@ int __init bonaire_panel_init(void)
 	struct resource *res;
 #if defined(CONFIG_TEGRA_GRHOST)
 	struct platform_device *phost1x;
+#endif
+
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (tegra_platform_is_linsim()) {
+		bonaire_panel_modes[0].h_active = 120;
+		bonaire_panel_modes[0].v_active = 160;
+		bonaire_fb_data = bonaire_fb_data_linsim;
+		bonaire_dsi.pixel_format = TEGRA_DSI_PIXEL_FORMAT_16BIT_P;
+		bonaire_dsi.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE;
+#if DSI_PANEL_218
+		bonaire_dsi_modes[0].h_active = 320;
+		bonaire_dsi_modes[0].v_active = 240;
+		bonaire_dsi_fb_data.xres = 320;
+		bonaire_dsi_fb_data.yres = 240;
+		bonaire_dsi_fb_data.bits_per_pixel = 16;
+#endif
+		bonaire_carveouts[0].size = 0;
+	}
 #endif
 
 	bonaire_carveouts[1].base = tegra_carveout_start;
