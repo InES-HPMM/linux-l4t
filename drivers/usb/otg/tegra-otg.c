@@ -45,7 +45,7 @@
 #define  USB_INT_EN		(USB_VBUS_INT_EN | USB_ID_INT_EN | \
 						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
 
-#ifdef DEBUG
+#ifdef OTG_DEBUG
 #define DBG(stuff...)	pr_info("tegra-otg: " stuff)
 #else
 #define DBG(stuff...)	do {} while (0)
@@ -335,7 +335,8 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
-	val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
+	if (tegra->builtin_host)
+		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
 	pm_runtime_put_sync(tegra->phy.dev);
@@ -482,10 +483,12 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_clk;
 	}
 
-	err = device_create_file(&pdev->dev, &dev_attr_enable_host);
-	if (err) {
-		dev_warn(&pdev->dev, "Can't register sysfs attribute\n");
-		goto err_irq;
+	if (!tegra->builtin_host) {
+		err = device_create_file(&pdev->dev, &dev_attr_enable_host);
+		if (err) {
+			dev_warn(&pdev->dev, "Can't register sysfs attribute\n");
+			goto err_irq;
+		}
 	}
 
 	pm_runtime_enable(tegra->phy.dev);
