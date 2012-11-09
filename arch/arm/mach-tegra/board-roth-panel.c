@@ -75,6 +75,8 @@ static struct regulator *vdd_lcd_s_1v8;
 static struct regulator *vdd_sys_bl_3v7;
 static struct regulator *avdd_lcd_3v0_2v8;
 
+static struct regulator *roth_hdmi_reg;
+static struct regulator *roth_hdmi_pll;
 static struct regulator *roth_hdmi_vddio;
 
 static struct resource roth_disp1_resources[] = {
@@ -250,21 +252,21 @@ static struct tegra_dsi_out roth_dsi = {
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 };
 
-static int roth_dsi_regulator_get(void)
+static int roth_dsi_regulator_get(struct device *dev)
 {
 	int err = 0;
 
 	if (reg_requested)
 		return 0;
 
-	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd");
+	avdd_lcd_3v0_2v8 = regulator_get(dev, "avdd_lcd");
 	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v0_2v8);
 		avdd_lcd_3v0_2v8 = NULL;
 		goto fail;
 	}
-	vdd_lcd_s_1v8 = regulator_get(NULL, "dvdd_lcd");
+	vdd_lcd_s_1v8 = regulator_get(dev, "dvdd_lcd");
 	if (IS_ERR_OR_NULL(vdd_lcd_s_1v8)) {
 		pr_err("vdd_lcd_1v8_s regulator get failed\n");
 		err = PTR_ERR(vdd_lcd_s_1v8);
@@ -272,7 +274,7 @@ static int roth_dsi_regulator_get(void)
 		goto fail;
 	}
 
-	vdd_sys_bl_3v7 = regulator_get(NULL, "vdd_lcd_bl");
+	vdd_sys_bl_3v7 = regulator_get(dev, "vdd_lcd_bl");
 	if (IS_ERR_OR_NULL(vdd_sys_bl_3v7)) {
 		pr_err("vdd_sys_bl regulator get failed\n");
 		err = PTR_ERR(vdd_sys_bl_3v7);
@@ -305,12 +307,6 @@ static int roth_dsi_gpio_get(void)
 		goto fail;
 	}
 
-/*	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
-	if (err < 0) {
-		pr_err("panel backlight pwm gpio request failed\n");
-		goto fail;
-	}
-*/
 	gpio_requested = true;
 	return 0;
 fail:
@@ -321,7 +317,7 @@ static int roth_dsi_panel_enable(struct device *dev)
 {
 	int err = 0;
 
-	err = roth_dsi_regulator_get();
+	err = roth_dsi_regulator_get(dev);
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");
 		goto fail;
@@ -434,11 +430,52 @@ static struct tegra_dc_out roth_disp1_out = {
 
 static int roth_hdmi_enable(struct device *dev)
 {
+	int ret;
+	if (!roth_hdmi_reg) {
+		roth_hdmi_reg = regulator_get(dev, "avdd_hdmi");
+		if (IS_ERR_OR_NULL(roth_hdmi_reg)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
+			roth_hdmi_reg = NULL;
+			return PTR_ERR(roth_hdmi_reg);
+		}
+	}
+	ret = regulator_enable(roth_hdmi_reg);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi\n");
+		return ret;
+	}
+	if (!roth_hdmi_pll) {
+		roth_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
+		if (IS_ERR_OR_NULL(roth_hdmi_pll)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
+			roth_hdmi_pll = NULL;
+			regulator_put(roth_hdmi_reg);
+			roth_hdmi_reg = NULL;
+			return PTR_ERR(roth_hdmi_pll);
+		}
+	}
+	ret = regulator_enable(roth_hdmi_pll);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi_pll\n");
+		return ret;
+	}
 	return 0;
 }
 
 static int roth_hdmi_disable(void)
 {
+	if (roth_hdmi_reg) {
+		regulator_disable(roth_hdmi_reg);
+		regulator_put(roth_hdmi_reg);
+		roth_hdmi_reg = NULL;
+	}
+
+	if (roth_hdmi_pll) {
+		regulator_disable(roth_hdmi_pll);
+		regulator_put(roth_hdmi_pll);
+		roth_hdmi_pll = NULL;
+	}
+
 	return 0;
 }
 
@@ -455,7 +492,7 @@ static int roth_hdmi_postsuspend(void)
 static int roth_hdmi_hotplug_init(struct device *dev)
 {
 	if (!roth_hdmi_vddio) {
-		roth_hdmi_vddio = regulator_get(NULL, "vdd_hdmi_5v0");
+		roth_hdmi_vddio = regulator_get(dev, "vdd_hdmi_5v0");
 		if (WARN_ON(IS_ERR(roth_hdmi_vddio))) {
 			pr_err("%s: couldn't get regulator vdd_hdmi_5v0: %ld\n",
 					__func__, PTR_ERR(roth_hdmi_vddio));
