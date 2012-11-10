@@ -1092,8 +1092,6 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 		 * CPU and 3D partitions enable/disable
 		 * is managed by respective modules
 		 */
-		TEGRA_POWERGATE_DISA,
-		TEGRA_POWERGATE_DISB
 	};
 	int i;
 
