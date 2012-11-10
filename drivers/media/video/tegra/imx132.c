@@ -1,15 +1,19 @@
 /*
  * imx132.c - imx132 sensor driver
  *
- * Copyright (c) 2012, NVIDIA, All Rights Reserved.
- *
- * Contributors:
- *      Krupal Divvela <kdivvela@nvidia.com>
- *
- *
- * This file is licensed under the terms of the GNU General Public License
- * version 2. This program is licensed "as is" without any warranty of any
- * kind, whether express or implied.
+ * Copyright (c) 2012 - 2013, NVIDIA CORPORATION.  All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/delay.h>
@@ -739,6 +743,7 @@ imx132_remove(struct i2c_client *client)
 
 static const struct i2c_device_id imx132_id[] = {
 	{ "imx132", 0 },
+	{ }
 };
 
 MODULE_DEVICE_TABLE(i2c, imx132_id);
