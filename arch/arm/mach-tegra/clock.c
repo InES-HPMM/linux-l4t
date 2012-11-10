@@ -671,12 +671,35 @@ static int tegra_clk_clip_rate_for_parent(struct clk *c, struct clk *p)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+static int tegra_clk_platform_mask(void)
+{
+	int mask;
+
+	mask = tegra_platform_is_silicon() ?  TEGRA_CLK_INIT_PLATFORM_SI : 0;
+	mask |= tegra_platform_is_qt() ? TEGRA_CLK_INIT_PLATFORM_QT : 0;
+	mask |= tegra_platform_is_fpga() ?  TEGRA_CLK_INIT_PLATFORM_FPGA : 0;
+	mask |= tegra_platform_is_linsim() ? TEGRA_CLK_INIT_PLATFORM_LINSIM : 0;
+	mask |= tegra_cpu_is_asim() ? TEGRA_CLK_INIT_CPU_ASIM : 0;
+
+	return mask;
+}
+#endif
+
 static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 {
 	struct clk *c;
 	struct clk *p;
 
 	int ret = 0;
+
+	/* Skip if clock not enabled for this platform */
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (table->platform != TEGRA_CLK_INIT_PLATFORM_ALL) {
+		if ((table->platform & tegra_clk_platform_mask()) == 0)
+			return 0;
+	}
+#endif
 
 	c = tegra_get_clock_by_name(table->name);
 

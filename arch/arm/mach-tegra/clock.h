@@ -336,7 +336,16 @@ struct tegra_clk_init_table {
 	const char *parent;
 	unsigned long rate;
 	bool enabled;
+	unsigned long platform;
 };
+
+#define TEGRA_CLK_INIT_PLATFORM_ALL	0
+#define TEGRA_CLK_INIT_PLATFORM_SI	BIT(0)
+#define TEGRA_CLK_INIT_PLATFORM_QT	BIT(1)
+#define TEGRA_CLK_INIT_PLATFORM_FPGA	BIT(2)
+#define TEGRA_CLK_INIT_PLATFORM_LINSIM	BIT(3)
+#define TEGRA_CLK_INIT_CPU_ASIM		BIT(4)
+#define TEGRA_CLK_INIT_PLATFORM_NON_SI	(BIT(1) | BIT(2) | BIT(3))
 
 #ifndef CONFIG_COMMON_CLK
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
