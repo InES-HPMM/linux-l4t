@@ -40,6 +40,7 @@
 /* External peripheral act as interrupt controller */
 /* PLUTO IRQs */
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
+#define MAX77665_TEGRA_IRQ_BASE	(PALMAS_TEGRA_IRQ_BASE + PALMAS_NUM_IRQ)
 
 /* I2C related GPIOs */
 #define TEGRA_GPIO_I2C1_SCL		TEGRA_GPIO_PC4

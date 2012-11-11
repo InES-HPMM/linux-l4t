@@ -25,6 +25,7 @@
 #include <linux/input/max77665-haptic.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/nct1008.h>
+#include <linux/interrupt.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
@@ -43,6 +44,7 @@
 
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
+#define MAX77665_CHARGER_INT	TEGRA_GPIO_PJ2
 
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
@@ -177,11 +179,12 @@ static struct max77665_charger_plat_data max77665_charger = {
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
-	.irq_base = 0,
+	.irq_base = MAX77665_TEGRA_IRQ_BASE,
 };
 
 static struct max77665_platform_data pluto_max77665_pdata = {
-	.irq_base = 0,
+	.irq_base = MAX77665_TEGRA_IRQ_BASE,
+	.irq_flag = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 	.muic_platform_data = {
 		.pdata = &max77665_muic,
 		.size =	sizeof(max77665_muic),
@@ -200,7 +203,7 @@ static struct max77665_platform_data pluto_max77665_pdata = {
 		},
 };
 
-static const struct i2c_board_info pluto_i2c_board_info_max77665[] = {
+static struct i2c_board_info pluto_i2c_board_info_max77665[] = {
 	{
 		I2C_BOARD_INFO("max77665", 0x66),
 		.platform_data = &pluto_max77665_pdata,
@@ -804,6 +807,33 @@ static int __init pluto_skin_init(void)
 late_initcall(pluto_skin_init);
 #endif
 
+void max77665_init(void)
+{
+	int err;
+
+	err = gpio_request(MAX77665_CHARGER_INT, "CHARGER_INT");
+	if (err < 0) {
+		pr_err("%s: gpio_request failed %d\n", __func__, err);
+		goto fail_init_irq;
+	}
+
+	err = gpio_direction_input(MAX77665_CHARGER_INT);
+	if (err < 0) {
+		pr_err("%s: gpio_direction_input failed %d\n", __func__, err);
+		goto fail_init_irq;
+	}
+
+	pluto_i2c_board_info_max77665[0].irq =
+				gpio_to_irq(MAX77665_CHARGER_INT);
+fail_init_irq:
+	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
+		ARRAY_SIZE(pluto_i2c_board_info_max77665));
+	if (err)
+		pr_err("%s: max77665 device register failed.\n", __func__);
+
+	return;
+}
+
 int __init pluto_sensors_init(void)
 {
 	int err;
@@ -823,11 +853,8 @@ int __init pluto_sensors_init(void)
 		pr_err("%s: isl board register failed.\n", __func__);
 
 	mpuirq_init();
-
-	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
-		ARRAY_SIZE(pluto_i2c_board_info_max77665));
-	if (err)
-		pr_err("%s: max77665 device register failed.\n", __func__);
+	max77665_init();
+	pluto_i2c_board_info_max77665[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 
 	err = i2c_register_board_info(0, max17042_device,
 				ARRAY_SIZE(max17042_device));
