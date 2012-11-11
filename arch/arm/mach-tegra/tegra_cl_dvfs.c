@@ -254,6 +254,24 @@ static inline void set_mode(struct tegra_cl_dvfs *cld,
 	cl_dvfs_wmb(cld);
 }
 
+static u32 get_req_setting(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
+{
+	u32 val;
+	int force_val = req->output - cld->safe_ouput;
+	int coef = 128; /* FIXME: cld->p_data->cfg_param->cg_scale? */;
+
+	force_val = force_val * coef / cld->p_data->cfg_param->cg;
+	force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
+
+	val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
+	val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+	val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
+		CL_DVFS_FREQ_REQ_FORCE_MASK;
+	val |= CL_DVFS_FREQ_REQ_FREQ_VALID | CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+
+	return val;
+}
+
 static int find_safe_output(
 	struct tegra_cl_dvfs *cld, unsigned long rate, u8 *safe_output)
 {
@@ -378,10 +396,10 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	int i;
 	u32 val;
 
-	/* disable output, and set output limits, use medium volatge
-	   level as safe; disable and clear limit interrupts */
-	cld->safe_ouput = cld->num_voltages / 2;
-	val = ((cld->num_voltages / 2) << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
+	/* disable output, and set output limits; use one step above minimum
+	   voltage level as safe value; disable and clear limit interrupts */
+	cld->safe_ouput = 1;
+	val = (cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		((cld->num_voltages - 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
@@ -677,24 +695,18 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 
 		/*
 		 * Update control logic setting with last rate request;
-		 * use request safe output to set safe volatge as well as
-		 * maximum voltage limit
+		 * use request safe output to set maximum voltage limit.
+		 * Make sure we have at least one LUT step above and one
+		 * below safe value.
 		 */
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-		val &= ~(CL_DVFS_OUTPUT_CFG_SAFE_MASK |
-			 CL_DVFS_OUTPUT_CFG_MAX_MASK);
-
-		/* make sure we have at least one LUT step above and
-		   one below new safe value */
-		cld->safe_ouput = (req->output >= 2) ? (req->output - 1) : 1;
-		val |= (cld->safe_ouput + 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
-		val |= cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT;
+		val &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
+		BUG_ON(!cld->safe_ouput);
+		val |= max(req->output, (u8)(cld->safe_ouput + 1)) <<
+			CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 
-		val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
-		val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
-		val |= CL_DVFS_FREQ_REQ_FREQ_VALID |
-			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+		val = get_req_setting(cld, req);
 		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 
 		output_enable(cld);
@@ -713,9 +725,15 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 {
 	int ret;
+	u32 val;
 
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
+		/* 1:1 scaling in open loop */
+		val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+		val |= (SCALE_MAX - 1) << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
+
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
 		ret = output_disable(cld);
 		return ret;
@@ -778,26 +796,18 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 
 	/*
 	 * Save validated request, and in CLOSED_LOOP mode actually update
-	 * control logic settings; use request safe output to set forced
-	 * voltage as well as maximum voltage limit
+	 * control logic settings; use request output to set maximum voltage
+	 * limit, but keep one LUT step room above safe voltage
 	 */
 	cld->last_req = req;
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
-		int force_val = req.output - cld->safe_ouput;
-		int coef = 128; /* FIXME: cld->p_data->cfg_param->cg_scale? */;
-		force_val = force_val * coef / cld->p_data->cfg_param->cg;
-		force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
-		val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
-					CL_DVFS_FREQ_REQ_FORCE_MASK;
-
-		val |= req.scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
-		val |= CL_DVFS_FREQ_REQ_FREQ_VALID |
-			CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+		val = get_req_setting(cld, &req);
 
 		outp = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 		outp &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
-		outp |= req.output << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+		outp |= max(req.output, (u8)(cld->safe_ouput + 1)) <<
+			CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
 		cl_dvfs_writel(cld, outp, CL_DVFS_OUTPUT_CFG);
 
 		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
