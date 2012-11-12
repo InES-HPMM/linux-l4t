@@ -108,6 +108,7 @@ int dalmore_sensors_init(void);
 int dalmore_emc_init(void);
 int dalmore_edp_init(void);
 int dalmore_panel_init(void);
+int roth_panel_init(void);
 int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
 int dalmore_soctherm_init(void);
