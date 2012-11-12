@@ -583,9 +583,6 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
-	machine->bias_level = SND_SOC_BIAS_STANDBY;
-	machine->clock_enabled = 1;
-
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
@@ -770,6 +767,9 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
+
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	if (!gpio_is_valid(pdata->gpio_ldo1_en)) {
 		machine->cdc_en = regulator_get(&pdev->dev, "ldo1_en");
