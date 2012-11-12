@@ -248,6 +248,45 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 	return 0;
 }
 
+static int tegra14x_power_up_cpu(unsigned int cpu)
+{
+	u32 reg;
+	int ret;
+	unsigned long timeout;
+
+	BUG_ON(cpu == smp_processor_id());
+	BUG_ON(is_lp_cluster());
+
+	cpu = cpu_logical_map(cpu);
+
+	if (!cpu_isset(cpu, tegra_cpu_init_map)) {
+		ret = tegra_unpowergate_partition(TEGRA_CPU_POWERGATE_ID(cpu));
+		if (ret)
+			goto fail;
+	}
+
+	/* Wait for the power to come up. */
+	timeout = jiffies + msecs_to_jiffies(2000);
+
+	do {
+		if (is_cpu_powered(cpu))
+			goto remove_clamps;
+		udelay(10);
+	} while (time_before(jiffies, timeout));
+	ret = -ETIMEDOUT;
+	goto fail;
+
+remove_clamps:
+	/* Remove I/O clamps. */
+	ret = tegra_powergate_remove_clamping(TEGRA_CPU_POWERGATE_ID(cpu));
+fail:
+
+	/* Clear flow controller CSR. */
+	flowctrl_write_cpu_csr(cpu, 0);
+
+	return ret;
+}
+
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	int status;
@@ -325,11 +364,16 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		status = tegra30_power_up_cpu(cpu);
 		break;
 	case TEGRA11X:
-	case TEGRA14X:
 		/* set SCLK as event trigger for flow conroller */
 		flowctrl_write_cpu_csr(cpu, 0x1);
 		flowctrl_write_cpu_halt(cpu, 0x48000000);
 		status = tegra11x_power_up_cpu(cpu);
+		break;
+	case TEGRA14X:
+		/* set SCLK as event trigger for flow conroller */
+		flowctrl_write_cpu_csr(cpu, 0x1);
+		flowctrl_write_cpu_halt(cpu, 0x48000000);
+		status = tegra14x_power_up_cpu(cpu);
 		break;
 	default:
 		status = -EINVAL;
