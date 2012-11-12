@@ -750,6 +750,7 @@ static struct tegra_fb_data dalmore_disp1_fb_data = {
 };
 
 #ifdef CONFIG_TEGRA_DC_CMU
+#if PANEL_10_1_PANASONIC_1920_1200
 static struct tegra_dc_cmu dalmore_panasonic_cmu = {
 	/* lut1 maps sRGB to linear space. */
 	{
@@ -916,6 +917,7 @@ static struct tegra_dc_cmu dalmore_panasonic_cmu = {
 		253,  253,  254,  254,  254,  254,  255,  255,
 	},
 };
+#endif
 #endif
 
 static struct tegra_dc_platform_data dalmore_disp1_pdata = {

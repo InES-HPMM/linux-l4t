@@ -799,6 +799,7 @@ static struct tegra_fb_data pluto_disp1_fb_data = {
 };
 
 #ifdef CONFIG_TEGRA_DC_CMU
+#if PANEL_5_LG_720_1280
 static struct tegra_dc_cmu pluto_lg_cmu = {
 	/* lut1 maps sRGB to linear space. */
 	{
@@ -965,6 +966,7 @@ static struct tegra_dc_cmu pluto_lg_cmu = {
 		253,  253,  254,  254,  254,  254,  255,  255,
 	},
 };
+#endif
 #endif
 
 static struct tegra_dc_platform_data pluto_disp1_pdata = {
