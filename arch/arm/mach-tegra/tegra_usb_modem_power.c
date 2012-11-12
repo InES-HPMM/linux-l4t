@@ -457,25 +457,33 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	pm_qos_add_request(&modem->cpu_boost_req, PM_QOS_CPU_FREQ_MIN,
 			   PM_QOS_DEFAULT_VALUE);
 
-	/* request remote wakeup irq from platform data */
-	ret = mdm_request_wakeable_irq(modem,
-				       tegra_usb_modem_wake_thread,
-				       pdata->wake_gpio,
-				       pdata->wake_irq_flags,
-				       "mdm_wake", &modem->wake_irq);
-	if (ret) {
-		dev_err(&pdev->dev, "request wake irq error\n");
-		goto error;
+	/* if wake gpio is not specified we rely on native usb remote wake */
+	if (gpio_is_valid(pdata->wake_gpio)) {
+		/* request remote wakeup irq from platform data */
+		ret = mdm_request_wakeable_irq(modem,
+					       tegra_usb_modem_wake_thread,
+					       pdata->wake_gpio,
+					       pdata->wake_irq_flags,
+					       "mdm_wake", &modem->wake_irq);
+		if (ret) {
+			dev_err(&pdev->dev, "request wake irq error\n");
+			goto error;
+		}
 	}
 
-	/* request boot irq from platform data */
-	ret = mdm_request_wakeable_irq(modem,
-				       tegra_usb_modem_boot_thread,
-				       pdata->boot_gpio,
-				       pdata->boot_irq_flags,
-				       "mdm_boot", &modem->boot_irq);
-	if (ret) {
-		dev_err(&pdev->dev, "request boot irq error\n");
+	if (gpio_is_valid(pdata->boot_gpio)) {
+		/* request boot irq from platform data */
+		ret = mdm_request_wakeable_irq(modem,
+					       tegra_usb_modem_boot_thread,
+					       pdata->boot_gpio,
+					       pdata->boot_irq_flags,
+					       "mdm_boot", &modem->boot_irq);
+		if (ret) {
+			dev_err(&pdev->dev, "request boot irq error\n");
+			goto error;
+		}
+	} else {
+		dev_err(&pdev->dev, "boot irq not specified\n");
 		goto error;
 	}
 

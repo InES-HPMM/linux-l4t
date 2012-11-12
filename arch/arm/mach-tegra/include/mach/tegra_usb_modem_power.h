@@ -40,9 +40,9 @@ struct tegra_modem_operations {
 /* tegra usb modem power platform data */
 struct tegra_usb_modem_power_platform_data {
 	const struct tegra_modem_operations *ops;
-	unsigned int wake_gpio;		/* remote wakeup gpio */
+	int wake_gpio;			/* remote wakeup gpio */
 	unsigned long wake_irq_flags;	/* remote wakeup irq flags */
-	unsigned int boot_gpio;		/* modem boot gpio */
+	int boot_gpio;			/* modem boot gpio */
 	unsigned long boot_irq_flags;	/* modem boot irq flags */
 	int autosuspend_delay;		/* autosuspend delay in milliseconds */
 	int short_autosuspend_delay;	/* short autosuspend delay in ms */
