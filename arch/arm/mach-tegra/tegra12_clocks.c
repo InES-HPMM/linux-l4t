@@ -75,6 +75,13 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define CLK_OUT_ENB_CLR_X		0x288
 #define CLK_OUT_ENB_NUM			6
 
+#define CLK_OUT_ENB_L_RESET_MASK	0xfcd7dff1
+#define CLK_OUT_ENB_H_RESET_MASK	0xefddfff7
+#define CLK_OUT_ENB_U_RESET_MASK	0xfbfefbfa
+#define CLK_OUT_ENB_V_RESET_MASK	0xffc1fffb
+#define CLK_OUT_ENB_W_RESET_MASK	0x3f7fbfff
+#define CLK_OUT_ENB_X_RESET_MASK	0x00170979
+
 #define RST_DEVICES_V_SWR_CPULP_RST_DIS	(0x1 << 1) /* Reserved on Tegra11 */
 #define CLK_OUT_ENB_V_CLK_ENB_CPULP_EN	(0x1 << 1)
 
@@ -7145,11 +7152,12 @@ static void tegra12_clk_resume(void)
 	clk_writel(*ctx++, tegra_clk_pclk.reg);
 
 	/* enable all clocks before configuring clock sources */
-	clk_writel(0xfdfffff1ul, CLK_OUT_ENB_L);
-	clk_writel(0xffddfff7ul, CLK_OUT_ENB_H);
-	clk_writel(0xfbfffbfeul, CLK_OUT_ENB_U);
-	clk_writel(0xfffffffful, CLK_OUT_ENB_V);
-	clk_writel(0xff7ffffful, CLK_OUT_ENB_W);
+	clk_writel(CLK_OUT_ENB_L_RESET_MASK, CLK_OUT_ENB_L);
+	clk_writel(CLK_OUT_ENB_H_RESET_MASK, CLK_OUT_ENB_H);
+	clk_writel(CLK_OUT_ENB_U_RESET_MASK, CLK_OUT_ENB_U);
+	clk_writel(CLK_OUT_ENB_V_RESET_MASK, CLK_OUT_ENB_V);
+	clk_writel(CLK_OUT_ENB_W_RESET_MASK, CLK_OUT_ENB_W);
+	clk_writel(CLK_OUT_ENB_X_RESET_MASK, CLK_OUT_ENB_X);
 	wmb();
 
 	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_OSC;
