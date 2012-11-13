@@ -532,9 +532,11 @@ static void __init tegra_bonaire_init(void)
 	bonaire_pinmux_init();
 	tegra_soc_device_init("bonaire");
 
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	if (tegra_revision == TEGRA_REVISION_QT)
 		debug_uart_platform_data[0].uartclk =
 						tegra_clk_measure_input_freq();
+#endif
 
 	platform_add_devices(bonaire_devices, ARRAY_SIZE(bonaire_devices));
 
