@@ -525,7 +525,6 @@ static int ina219_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, data);
 	data->pInfo = client->dev.platform_data;
 	mutex_init(&data->mutex);
-	power_down_INA219(client);
 	data->state = STOPPED;
 	/* reset ina219 */
 	err = i2c_smbus_write_word_data(client, INA219_CONFIG,
@@ -547,6 +546,13 @@ static int ina219_probe(struct i2c_client *client,
 	data->hwmon_dev = hwmon_device_register(&client->dev);
 	if (IS_ERR(data->hwmon_dev)) {
 		err = PTR_ERR(data->hwmon_dev);
+		goto exit_remove;
+	}
+
+	err = power_down_INA219(client);
+	if (err < 0) {
+		dev_err(&client->dev, "ina219 power-down failure status: 0x%x\n",
+			err);
 		goto exit_remove;
 	}
 
