@@ -740,7 +740,7 @@ void __init tegra14x_init_early(void)
 #endif
 	tegra_init_fuse();
 	tegra11x_init_clocks(); /* using Tegra11x for now */
-	tegra11x_init_dvfs(); /* using Tegra11x for now */
+	tegra14x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra14x_clk_init_table);
 	tegra_init_cache(true);
