@@ -123,6 +123,11 @@ ENDPROC(tegra_resume)
  *	  Invalidates volatile CPU state (SCU tags, caches, branch address
  *	  arrays, exclusive monitor, etc.) so that they can be safely enabled
  *	  instruction caching and branch predicition enabled
+ *
+ *	  For tegra chips with CONFIG_HAVE_ARM_SCU undefined, it means there is
+ *	  an integrated SCU in L2 memory system, this is true for Cortex-A15
+ *	  MP processors. In this case, we only need to set the correct L2 cache
+ *	  data RAM latency and enable i-cache/branch prediction
  */
 __invalidate_cpu_state:
 	clrex
@@ -145,27 +150,31 @@ __invalidate_cpu_state:
 	movne	r2, #0xf
 	movne	r2, r2, lsl r0
 	strne	r2, [r1]		@ invalidate SCU tags for CPU
-#else
-	/*	This is only needed for cluster 0 with integrated L2 cache */
-	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
-	ldr	r0, [r0]
-	tst	r0, #1
-	movne	pc, lr
-	mrc	p15, 0x1, r0, c9, c0, 2
-	and	r1, r0, #7
-	cmp	r1, #2
-	moveq	pc, lr
-	bic	r0, r0, #7
-	orr	r0, r0, #2
-	mcr	p15, 0x1, r0, c9, c0, 2
-	mov	pc, lr
-#endif
 
 	dsb
 	mov	r0, #0x1800
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
 	isb
 	/* fall through */
+#else
+	/*	This is only needed for cluster 0 with integrated L2 cache */
+	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
+	ldr	r0, [r0]
+	tst	r0, #1
+	bne	__enable_i_cache_branch_pred
+	mrc	p15, 0x1, r0, c9, c0, 2
+	and	r1, r0, #7
+	cmp	r1, #2
+	beq	__enable_i_cache_branch_pred
+	bic	r0, r0, #7
+	orr	r0, r0, #2
+	mcr	p15, 0x1, r0, c9, c0, 2
+__enable_i_cache_branch_pred:
+	mov	r0, #0x1800
+	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
+	mov	pc, lr
+	/* no fall through, just return to the caller */
+#endif
 
 /*
  *	tegra_invalidate_cache
