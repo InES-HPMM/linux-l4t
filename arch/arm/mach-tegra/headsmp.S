@@ -126,6 +126,7 @@ __invalidate_cpu_state:
 	mov	r0, #0
 	mcr	p15, 0, r0, c1, c0, 1	@ disable SMP, prefetch, broadcast
 	isb
+#if defined(CONFIG_HAVE_ARM_SCU)
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate BTAC, i-cache
 	mcr	p15, 0, r0, c7, c5, 6	@ invalidate branch pred array
 	mcr	p15, 0, r0, c8, c5, 0	@ invalidate instruction TLB
@@ -134,7 +135,6 @@ __invalidate_cpu_state:
 	dsb
 	isb
 
-#if defined(CONFIG_HAVE_ARM_SCU)
 	cpu_id	r0
 	cmp	r0, #0
 	mov32	r1, (TEGRA_ARM_PERIF_BASE + 0xC)
