@@ -524,8 +524,8 @@ static struct ov9772_reg ov9772_960x720_i2c[] = {
 #ifdef OV9772_ENABLE_1284x724
 static struct ov9772_mode_data ov9772_1284x724 = {
 	.sensor_mode = {
-		.res_x			= 1284,
-		.res_y			= 724,
+		.res_x			= 1280,
+		.res_y			= 720,
 		.active_start_x		= 0,
 		.active_stary_y		= 0,
 		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
