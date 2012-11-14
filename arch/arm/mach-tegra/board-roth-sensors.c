@@ -31,7 +31,6 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/mpu.h>
-#include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
@@ -39,10 +38,6 @@
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
-#include <media/imx091.h>
-#include <media/ov9772.h>
-#include <media/as364x.h>
-#include <media/ad5816.h>
 #include <generated/mach-types.h>
 
 #include "gpio-names.h"
@@ -110,263 +105,6 @@ static struct i2c_board_info roth_i2c4_nct1008_board_info[] = {
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 	}
 
-static struct tegra_pingroup_config mclk_disable =
-	VI_PINMUX(CAM_MCLK, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-
-static struct tegra_pingroup_config mclk_enable =
-	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-
-static struct tegra_pingroup_config pbb0_disable =
-	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-
-static struct tegra_pingroup_config pbb0_enable =
-	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-
-/*
- * As a workaround, roth_vcmvdd need to be allocated to activate the
- * sensor devices. This is due to the focuser device(AD5816) will hook up
- * the i2c bus if it is not powered up.
-*/
-static struct regulator *roth_vcmvdd;
-
-static int roth_get_vcmvdd(void)
-{
-	if (!roth_vcmvdd) {
-		roth_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
-		if (unlikely(WARN_ON(IS_ERR(roth_vcmvdd)))) {
-			pr_err("%s: can't get regulator vcmvdd: %ld\n",
-				__func__, PTR_ERR(roth_vcmvdd));
-			roth_vcmvdd = NULL;
-			return -ENODEV;
-		}
-	}
-	return 0;
-}
-
-static int roth_imx091_power_on(struct imx091_power_rail *pw)
-{
-	int err;
-
-	if (unlikely(!pw || !pw->avdd || !pw->iovdd))
-		return -EFAULT;
-
-	if (roth_get_vcmvdd())
-		goto imx091_poweron_fail;
-
-	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
-	usleep_range(10, 20);
-
-	err = regulator_enable(pw->avdd);
-	if (err)
-		goto imx091_avdd_fail;
-
-	err = regulator_enable(pw->iovdd);
-	if (err)
-		goto imx091_iovdd_fail;
-
-	usleep_range(1, 2);
-	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
-
-	err = regulator_enable(roth_vcmvdd);
-	if (unlikely(err))
-		goto imx091_vcmvdd_fail;
-
-	tegra_pinmux_config_table(&mclk_enable, 1);
-	usleep_range(300, 310);
-
-	return 1;
-
-imx091_vcmvdd_fail:
-	regulator_disable(pw->iovdd);
-
-imx091_iovdd_fail:
-	regulator_disable(pw->avdd);
-
-imx091_avdd_fail:
-	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
-
-imx091_poweron_fail:
-	pr_err("%s FAILED\n", __func__);
-	return -ENODEV;
-}
-
-static int roth_imx091_power_off(struct imx091_power_rail *pw)
-{
-	if (unlikely(!pw || !roth_vcmvdd || !pw->avdd || !pw->iovdd))
-		return -EFAULT;
-
-	usleep_range(1, 2);
-	tegra_pinmux_config_table(&mclk_disable, 1);
-	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
-	usleep_range(1, 2);
-
-	regulator_disable(roth_vcmvdd);
-	regulator_disable(pw->iovdd);
-	regulator_disable(pw->avdd);
-
-	return 1;
-}
-
-struct imx091_platform_data roth_imx091_data = {
-	.power_on = roth_imx091_power_on,
-	.power_off = roth_imx091_power_off,
-};
-
-static int roth_ov9772_power_on(struct ov9772_power_rail *pw)
-{
-	int err;
-
-	if (unlikely(!pw || !pw->avdd || !pw->dovdd))
-		return -EFAULT;
-
-	if (roth_get_vcmvdd())
-		goto ov9772_get_vcmvdd_fail;
-
-	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
-	gpio_set_value(CAM_RSTN, 0);
-
-	err = regulator_enable(pw->avdd);
-	if (unlikely(err))
-		goto ov9772_avdd_fail;
-
-	err = regulator_enable(pw->dovdd);
-	if (unlikely(err))
-		goto ov9772_dovdd_fail;
-
-	gpio_set_value(CAM_RSTN, 1);
-	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
-
-	err = regulator_enable(roth_vcmvdd);
-	if (unlikely(err))
-		goto ov9772_vcmvdd_fail;
-
-	tegra_pinmux_config_table(&pbb0_enable, 1);
-	usleep_range(340, 380);
-
-	/* return 1 to skip the in-driver power_on sequence */
-	return 1;
-
-ov9772_vcmvdd_fail:
-	regulator_disable(pw->dovdd);
-
-ov9772_dovdd_fail:
-	regulator_disable(pw->avdd);
-
-ov9772_avdd_fail:
-	gpio_set_value(CAM_RSTN, 0);
-	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
-
-ov9772_get_vcmvdd_fail:
-	pr_err("%s FAILED\n", __func__);
-	return -ENODEV;
-}
-
-static int roth_ov9772_power_off(struct ov9772_power_rail *pw)
-{
-	if (unlikely(!pw || !roth_vcmvdd || !pw->avdd || !pw->dovdd))
-		return -EFAULT;
-
-	usleep_range(21, 25);
-	tegra_pinmux_config_table(&pbb0_disable, 1);
-
-	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
-	gpio_set_value(CAM_RSTN, 0);
-
-	regulator_disable(roth_vcmvdd);
-	regulator_disable(pw->dovdd);
-	regulator_disable(pw->avdd);
-
-	/* return 1 to skip the in-driver power_off sequence */
-	return 1;
-}
-
-static struct nvc_gpio_pdata ov9772_gpio_pdata[] = {
-	{ OV9772_GPIO_TYPE_SHTDN, CAM2_POWER_DWN_GPIO, true, 0, },
-	{ OV9772_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
-};
-
-static struct ov9772_platform_data roth_ov9772_pdata = {
-	.num		= 1,
-	.dev_name	= "camera",
-	.gpio_count	= ARRAY_SIZE(ov9772_gpio_pdata),
-	.gpio		= ov9772_gpio_pdata,
-	.power_on	= roth_ov9772_power_on,
-	.power_off	= roth_ov9772_power_off,
-};
-
-static int roth_as3648_power_on(struct as364x_power_rail *pw)
-{
-	int err = roth_get_vcmvdd();
-
-	if (err)
-		return err;
-
-	return regulator_enable(roth_vcmvdd);
-}
-
-static int roth_as3648_power_off(struct as364x_power_rail *pw)
-{
-	if (!roth_vcmvdd)
-		return -ENODEV;
-
-	return regulator_disable(roth_vcmvdd);
-}
-
-static struct as364x_platform_data roth_as3648_pdata = {
-	.config		= {
-		.max_total_current_mA = 1000,
-		.max_peak_current_mA = 600,
-		.strobe_type = 1,
-		},
-	.pinstate	= {
-		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
-		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
-		},
-	.dev_name	= "torch",
-	.type		= AS3648,
-	.gpio_strobe	= CAM_FLASH_STROBE,
-	.led_mask	= 3,
-
-	.power_on_callback = roth_as3648_power_on,
-	.power_off_callback = roth_as3648_power_off,
-};
-
-static struct ad5816_platform_data pluto_ad5816_pdata = {
-	.cfg		= 0,
-	.num		= 0,
-	.sync		= 0,
-	.dev_name	= "focuser",
-};
-
-static struct i2c_board_info roth_i2c_board_info_e1625[] = {
-	{
-		I2C_BOARD_INFO("imx091", 0x36),
-		.platform_data = &roth_imx091_data,
-	},
-	{
-		I2C_BOARD_INFO("ov9772", 0x10),
-		.platform_data = &roth_ov9772_pdata,
-	},
-	{
-		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &roth_as3648_pdata,
-	},
-	{
-		I2C_BOARD_INFO("ad5816", 0x0E),
-		.platform_data = &pluto_ad5816_pdata,
-	},
-};
-
-static int roth_camera_init(void)
-{
-	tegra_pinmux_config_table(&mclk_disable, 1);
-	tegra_pinmux_config_table(&pbb0_disable, 1);
-
-	i2c_register_board_info(2, roth_i2c_board_info_e1625,
-		ARRAY_SIZE(roth_i2c_board_info_e1625));
-	return 0;
-}
-
 /* MPU board file definition	*/
 static struct mpu_platform_data mpu9150_gyro_data = {
 	.int_config	= 0x10,
@@ -381,13 +119,6 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 	.key		= {0x4E, 0xCC, 0x7E, 0xEB, 0xF6, 0x1E, 0x35, 0x22,
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
-
-#define TEGRA_CAMERA_GPIO(_gpio, _label, _value)		\
-	{							\
-		.gpio = _gpio,					\
-		.label = _label,				\
-		.value = _value,				\
-	}
 
 static struct i2c_board_info roth_i2c_board_info_cm3218[] = {
 	{
@@ -596,7 +327,6 @@ int __init roth_sensors_init(void)
 	if (err)
 		return err;
 
-	roth_camera_init();
 	mpuirq_init();
 
 	i2c_register_board_info(0, roth_i2c_board_info_cm3218,

@@ -69,15 +69,6 @@
 #define TEGRA_GPIO_I2C5_SCL             TEGRA_GPIO_PZ6
 #define TEGRA_GPIO_I2C5_SDA             TEGRA_GPIO_PZ7
 
-/* Camera related GPIOs */
-#define CAM_RSTN			TEGRA_GPIO_PBB3
-#define CAM_FLASH_STROBE		TEGRA_GPIO_PBB4
-#define CAM1_POWER_DWN_GPIO		TEGRA_GPIO_PBB5
-#define CAM2_POWER_DWN_GPIO		TEGRA_GPIO_PBB6
-#define CAM_AF_PWDN			TEGRA_GPIO_PBB7
-#define CAM_GPIO1			TEGRA_GPIO_PCC1
-#define CAM_GPIO2			TEGRA_GPIO_PCC2
-
 /* Touchscreen definitions */
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PK4
@@ -108,7 +99,6 @@ int roth_sensors_init(void);
 int roth_emc_init(void);
 int roth_edp_init(void);
 int roth_panel_init(void);
-int roth_kbc_init(void);
 int roth_pmon_init(void);
 
 #endif
