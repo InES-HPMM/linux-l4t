@@ -119,6 +119,11 @@ static u32 notrace tegra_read_usec(void)
 	return cyc;
 }
 
+u32 notrace tegra_read_usec_raw(void)
+{
+	return timer_readl(TIMERUS_CNTR_1US);
+}
+
 static u32 notrace tegra_read_sched_clock(void)
 {
 	return tegra_read_usec();

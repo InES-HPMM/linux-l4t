@@ -44,7 +44,7 @@
 
 #include <mach/irqs.h>
 
-#include <trace/events/power.h>
+#include <trace/events/nvpower.h>
 
 #include "cpuidle.h"
 #include "pm.h"
@@ -135,20 +135,14 @@ static int tegra_idle_enter_pd(struct cpuidle_device *dev,
 	}
 
 	/* cpu_idle calls us with IRQs disabled */
-	trace_cpu_powergate_rcuidle((unsigned long)readl(
-					    IO_ADDRESS(TEGRA_TMR1_BASE)
-					    + TIMERUS_CNTR_1US),
-				    POWER_CPU_POWERGATE_ENTRY);
+	trace_nvcpu_powergate_rcuidle(NVPOWER_CPU_POWERGATE_ENTRY);
 
 	enter = ktime_get();
 
 	tegra_idle_ops.cpu_idle_stats_pd_ready(dev->cpu);
 	powered_down = tegra_idle_ops.tegra_idle_pd(dev, state);
 
-	trace_cpu_powergate_rcuidle((unsigned long)readl(
-					    IO_ADDRESS(TEGRA_TMR1_BASE)
-					    + TIMERUS_CNTR_1US),
-				    POWER_CPU_POWERGATE_EXIT);
+	trace_nvcpu_powergate_rcuidle(NVPOWER_CPU_POWERGATE_EXIT);
 
 	exit = ktime_sub(ktime_get(), enter);
 	us = ktime_to_us(exit);
