@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/powerdetect.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011 - 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
+
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "fuse.h"
@@ -311,6 +313,9 @@ int __init tegra_pwr_detect_cell_init(void)
 	u32 package_mask;
 	unsigned long flags;
 	bool rails_found = true;
+
+	if (!tegra_platform_is_silicon())
+		return -ENOSYS;
 
 	i = tegra_package_id();
 	if ((i != -1) && (i & (~0x1F))) {

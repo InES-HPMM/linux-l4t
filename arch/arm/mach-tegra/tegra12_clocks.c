@@ -578,6 +578,12 @@ static unsigned long tegra12_clk_cap_shared_bus(struct clk *bus,
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
 
+/* Defines default range for dynamic frequency lock loop (DFLL)
+   to be used as CPU clock source:
+   "0" - DFLL is not used,
+   "1" - DFLL is used as a source for all CPU rates
+   "2" - DFLL is used only for high rates above crossover with PLL dvfs curve
+*/
 static int use_dfll;
 
 /**
@@ -3821,11 +3827,11 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 	if (!ret) {
 		c->state = OFF;
 		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
-
-		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
+		if (tegra_platform_is_silicon())
+			use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
 		tegra_cl_dvfs_debug_init(c);
-		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d \n", use_dfll);
+		pr_info("Tegra CPU DFLL is initialized with use_dfll = %d\n", use_dfll);
 	}
 #endif
 }

@@ -457,7 +457,6 @@ config TEGRA_ARB_SEMAPHORE
 
 config TEGRA_THERMAL_THROTTLE
 	bool "Enable throttling of CPU speed on overtemp"
-	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
 	depends on THERMAL
 	default y
@@ -557,7 +556,6 @@ config TEGRA_ERRATA_977223
 
 config TEGRA_EDP_LIMITS
 	bool "Enforce electrical design limits on CPU rail"
-	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
 	depends on THERMAL
 	default y if ARCH_TEGRA_3x_SOC
@@ -610,7 +608,6 @@ config TEGRA_EHCI_BOOST_CPU_FREQ
 
 config TEGRA_DYNAMIC_PWRDET
 	bool "Enable dynamic activation of IO level auto-detection"
-	depends on TEGRA_SILICON_PLATFORM
 	default n
 	help
 	  This option allows turning off tegra IO level auto-detection
@@ -831,8 +828,7 @@ config TEGRA_USE_DFLL_RANGE
 	depends on ARCH_TEGRA_HAS_CL_DVFS
 	range 0 2
 	default "2" if TEGRA_SILICON_PLATFORM && ARCH_TEGRA_11x_SOC
-	default "1" if TEGRA_SILICON_PLATFORM
-	default "0"
+	default "1"
 	help
 	  Defines default range for dynamic frequency lock loop (DFLL)
 	  to be used as CPU clock source:
@@ -851,7 +847,7 @@ config REGULATOR_TEGRA_DFLL_BYPASS
 
 config TEGRA_TIMER_HZ
 	int "Kernel HZ (jiffies per second)"
-	default "100" if TEGRA_FPGA_PLATFORM
+	default "100" if TEGRA_PRE_SILICON_SUPPORT
 	default "1000"
 
 config TEGRA_SOCTHERM
