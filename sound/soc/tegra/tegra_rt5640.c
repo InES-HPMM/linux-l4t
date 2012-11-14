@@ -48,12 +48,14 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
-
 #include "../codecs/rt5639.h"
 #include "../codecs/rt5640.h"
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
+#include <linux/tfa9887.h>
+#include "tegra30_ahub.h"
+#include "tegra30_i2s.h"
 
 #define DRV_NAME "tegra-snd-rt5640"
 
@@ -87,8 +89,11 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *card = codec->card;
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
 	int srate, mclk, i2s_daifmt;
 	int err, rate;
+	static unsigned initTfa = 0;
+	int dcnt = 10;
 
 	srate = params_rate(params);
 	mclk = 256 * srate;
@@ -149,7 +154,32 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
 	}
+	if(machine_is_roth()) {
+		if(initTfa == 1) {
+			tegra30_ahub_enable_clocks();
+			clk_enable(i2s->clk_i2s);
+			tegra30_ahub_enable_tx_fifo(i2s->txcif);
+			i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
+			#ifdef CONFIG_PM
+			i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
+			#endif
+			__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
+			pr_info("INIT TFA\n");
+			Tfa9887_Init();
+			i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
+			#ifdef CONFIG_PM
+			i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
+			#endif
+			__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
+			while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
+				udelay(100);
+			clk_disable(i2s->clk_i2s);
+			tegra30_ahub_disable_clocks();
+			tegra30_ahub_disable_tx_fifo(i2s->txcif);
 
+		}
+		initTfa++;
+	}
 	return 0;
 }
 
@@ -409,12 +439,21 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
 	if (machine->spk_reg) {
-		if (SND_SOC_DAPM_EVENT_ON(event))
+		if (SND_SOC_DAPM_EVENT_ON(event)) {
 			regulator_enable(machine->spk_reg);
-		else
+		}
+		else {
 			regulator_disable(machine->spk_reg);
+		}
 	}
-
+	if(machine_is_roth()) {
+		if (SND_SOC_DAPM_EVENT_ON(event)) {
+			Tfa9887_Powerdown(0);
+		}
+		else {
+			Tfa9887_Powerdown(1);
+		}
+	}
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
 		return 0;
 
