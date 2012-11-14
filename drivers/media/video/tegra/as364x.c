@@ -610,23 +610,27 @@ static int as364x_power(struct as364x_info *info, int pwr)
 {
 	int err = 0;
 
+	dev_dbg(&info->i2c_client->dev, "%s %d %d\n",
+		__func__, pwr, info->pwr_state);
 	if (pwr == info->pwr_state) /* power state no change */
 		return 0;
 
 	switch (pwr) {
 	case NVC_PWR_OFF:
+		err = as364x_set_leds(info, 3, 0, 0);
 		if ((info->pdata->cfg & NVC_CFG_OFF2STDBY) ||
 			     (info->pdata->cfg & NVC_CFG_BOOT_INIT))
 			pwr = NVC_PWR_STDBY;
 		else
-			err = as364x_power_off(info);
+			err |= as364x_power_off(info);
 		break;
 	case NVC_PWR_STDBY_OFF:
+		err = as364x_set_leds(info, 3, 0, 0);
 		if ((info->pdata->cfg & NVC_CFG_OFF2STDBY) ||
 			     (info->pdata->cfg & NVC_CFG_BOOT_INIT))
 			pwr = NVC_PWR_STDBY;
 		else
-			err = as364x_power_on(info);
+			err |= as364x_power_on(info);
 		break;
 	case NVC_PWR_STDBY:
 		err = as364x_power_on(info);

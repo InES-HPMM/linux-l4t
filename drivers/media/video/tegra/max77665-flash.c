@@ -276,7 +276,7 @@ static LIST_HEAD(max77665_f_info_list);
 static DEFINE_SPINLOCK(max77665_f_spinlock);
 
 static inline int max77665_f_reg_wr(struct max77665_f_info *info,
-		u8 reg, u8 val, bool stale_chk, bool refresh)
+		u8 reg, u8 val, bool refresh)
 {
 	if (likely(info->regs.regs_stale || refresh))
 		return regmap_write(info->regmap, reg, val);
@@ -303,7 +303,6 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 
 			err = max77665_f_reg_wr(info,
 				MAX77665_F_RW_FLASH_FLED1CURR, curr1,
-				info->regs.regs_stale,
 				info->regs.led1_curr != curr1);
 			if (!err)
 				info->regs.led1_curr = curr1;
@@ -327,7 +326,6 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 
 			err = max77665_f_reg_wr(info,
 				MAX77665_F_RW_FLASH_FLED2CURR, curr2,
-				info->regs.regs_stale,
 				info->regs.led2_curr != curr2);
 			if (!err)
 				info->regs.led2_curr = curr2;
@@ -349,7 +347,7 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 		val = (info->regs.f_timer & FIELD(TIMER_MAX, 7)) |
 			info->new_ftimer;
 		err = max77665_f_reg_wr(info,
-			MAX77665_F_RW_FLASH_TIMER, val, info->regs.regs_stale,
+			MAX77665_F_RW_FLASH_TIMER, val,
 			(info->regs.f_timer & 0x0f) != info->new_ftimer);
 		if (err)
 			goto set_led_end;
@@ -360,7 +358,6 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 	if (fled_en & (LED1_TORCH_TRIG_MASK | LED2_TORCH_TRIG_MASK)) {
 		err = max77665_f_reg_wr(info,
 				MAX77665_F_RW_TORCH_FLEDCURR, t_curr,
-				info->regs.regs_stale,
 				info->regs.led_tcurr != t_curr);
 		if (!err)
 			info->regs.led_tcurr = t_curr;
@@ -369,8 +366,8 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 
 		val = (info->regs.t_timer & TORCH_TIMER_CTL_MASK) |
 			(info->new_ttimer & 0x0f);
-		err = max77665_f_reg_wr(info, MAX77665_F_RW_TORCH_TIMER, val,
-				false, true);
+		err = max77665_f_reg_wr(info, MAX77665_F_RW_TORCH_TIMER,
+				val, true);
 		if (err)
 			goto set_led_end;
 		info->regs.t_timer = val;
@@ -379,8 +376,7 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 update_led_en_reg:
 	err = max77665_f_reg_wr(info,
 		MAX77665_F_RW_FLED_ENABLE, fled_en,
-				info->regs.regs_stale,
-				info->regs.leds_en != fled_en);
+		info->regs.leds_en != fled_en);
 	if (err)
 		goto set_led_end;
 	info->regs.leds_en = fled_en;
@@ -566,16 +562,16 @@ static int max77665_f_update_settings(struct max77665_f_info *info)
 
 	info->regs.regs_stale = true;
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_BOOST_MODE,
-				info->regs.boost_control, true, false);
+				info->regs.boost_control, false);
 
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_BOOST_VOLT,
-				info->regs.boost_vout_flash, true, false);
+				info->regs.boost_vout_flash, false);
 
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_MAXFLASH_VOLT,
-				info->regs.m_flash, true, false);
+				info->regs.m_flash, false);
 
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_MAXFLASH_TIMER,
-				info->regs.m_timing, true, false);
+				info->regs.m_timing, false);
 
 	err |= max77665_f_set_leds(info, info->config.led_mask,
 				info->regs.led1_curr, info->regs.led2_curr);
@@ -666,6 +662,22 @@ static int max77665_f_strobe(struct max77665_f_info *info, int t_on)
 	return gpio_direction_output(gpio, lact ^ (t_on & 1));
 }
 
+static int max77665_f_enter_offmode(struct max77665_f_info *info, bool op_off)
+{
+	int err;
+
+	mutex_lock(&info->mutex);
+	if (op_off) {
+		info->op_mode = MAXFLASH_MODE_NONE;
+		err = max77665_f_set_leds(info, 3, 0, 0);
+	} else {
+		err = max77665_f_reg_wr(
+			info, MAX77665_F_RW_FLED_ENABLE, 0, true);
+	}
+	mutex_unlock(&info->mutex);
+	return err;
+}
+
 #ifdef CONFIG_PM
 static int max77665_f_suspend(struct platform_device *pdev, pm_message_t msg)
 {
@@ -693,9 +705,7 @@ static void max77665_f_shutdown(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "Shutting down\n");
 
-	mutex_lock(&info->mutex);
-	max77665_f_set_leds(info, 3, 0, 0);
-	mutex_unlock(&info->mutex);
+	max77665_f_enter_offmode(info, true);
 	info->regs.regs_stale = true;
 }
 #endif
@@ -808,6 +818,7 @@ static int max77665_f_power(struct max77665_f_info *info, int pwr)
 
 	switch (pwr) {
 	case NVC_PWR_OFF:
+		max77665_f_enter_offmode(info, true);
 		if ((info->pdata->cfg & NVC_CFG_OFF2STDBY) ||
 			     (info->pdata->cfg & NVC_CFG_BOOT_INIT))
 			pwr = NVC_PWR_STDBY;
@@ -823,7 +834,7 @@ static int max77665_f_power(struct max77665_f_info *info, int pwr)
 		break;
 	case NVC_PWR_STDBY:
 		err = max77665_f_power_on(info);
-		err |= max77665_f_set_leds(info, 3, 0, 0);
+		err |= max77665_f_enter_offmode(info, false);
 		break;
 
 	case NVC_PWR_COMM:
