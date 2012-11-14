@@ -391,7 +391,8 @@ try_preserve_large_page(pte_t *kpte, unsigned long address,
 {
 	unsigned long nextpage_addr, numpages, pmask, psize, flags, addr, pfn;
 	pte_t old_pte, *tmp;
-	pgprot_t old_prot, new_prot, ext_prot, req_prot;
+	pgprot_t old_prot, new_prot, req_prot;
+	unsigned long ext_prot;
 	int i, do_split = 1;
 	unsigned int level;
 
@@ -507,7 +508,8 @@ static int split_large_page(pte_t *kpte, unsigned long address)
 	unsigned long flags, pfn, pfninc = 1;
 	unsigned int i, level;
 	pte_t *pbase, *tmp;
-	pgprot_t ref_prot = 0, ext_prot = 0;
+	pgprot_t ref_prot = 0;
+	unsigned long ext_prot = 0;
 	int ret = 0;
 
 	BUG_ON((address & PMD_MASK) < __pa(_end));
