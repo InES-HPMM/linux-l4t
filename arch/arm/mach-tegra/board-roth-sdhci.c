@@ -224,8 +224,8 @@ static int roth_wifi_set_carddetect(int val)
 
 static struct regulator *roth_vdd_com_3v3;
 static struct regulator *roth_vddio_com_1v8;
-#define ROTH_VDD_WIFI_3V3 "vdd_wifi_3v3"
-#define ROTH_VDD_WIFI_1V8 "vddio_wifi_1v8"
+#define ROTH_VDD_WIFI_3V3 "vdd_wl_pa"
+#define ROTH_VDD_WIFI_1V8 "vddio"
 
 
 static int roth_wifi_regulator_enable(void)
@@ -234,7 +234,8 @@ static int roth_wifi_regulator_enable(void)
 
 	/* Enable COM's vdd_com_3v3 regulator*/
 	if (IS_ERR_OR_NULL(roth_vdd_com_3v3)) {
-		roth_vdd_com_3v3 = regulator_get(NULL, ROTH_VDD_WIFI_3V3);
+		roth_vdd_com_3v3 = regulator_get(&roth_wifi_device.dev,
+					ROTH_VDD_WIFI_3V3);
 		if (IS_ERR_OR_NULL(roth_vdd_com_3v3)) {
 			pr_err("Couldn't get regulator "
 				ROTH_VDD_WIFI_3V3 "\n");
@@ -253,7 +254,7 @@ static int roth_wifi_regulator_enable(void)
 
 	/* Enable COM's vddio_com_1v8 regulator*/
 	if (IS_ERR_OR_NULL(roth_vddio_com_1v8)) {
-		roth_vddio_com_1v8 = regulator_get(NULL,
+		roth_vddio_com_1v8 = regulator_get(&roth_wifi_device.dev,
 			ROTH_VDD_WIFI_1V8);
 		if (IS_ERR_OR_NULL(roth_vddio_com_1v8)) {
 			pr_err("Couldn't get regulator "
