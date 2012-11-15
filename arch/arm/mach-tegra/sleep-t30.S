@@ -62,6 +62,7 @@
 
 #define PMC_IO_DPD_REQ			0x1b8
 #define PMC_IO_DPD_STATUS		0x1bc
+#define PMC_SCRATCH1_ECO       0x264
 
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24
@@ -633,6 +634,13 @@ tegra3_cpu_clk32k:
 	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 	ldr	r0, [r4, #PMC_SCRATCH2]
 	str	r0, [r4, #PMC_PLLM_WB0_OVERRIDE]
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	ldr r1, [r4, #PMC_SCRATCH1_ECO]
+	orr r1, r1, #0x3F
+	str r1, [r4, #PMC_SCRATCH1_ECO]
+#endif
+
 	mov	pc, lr
 
 lp1_clocks_prepare:
