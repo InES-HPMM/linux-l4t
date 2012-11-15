@@ -100,5 +100,6 @@ int roth_emc_init(void);
 int roth_edp_init(void);
 int roth_panel_init(void);
 int roth_pmon_init(void);
+int roth_soctherm_init(void);
 
 #endif

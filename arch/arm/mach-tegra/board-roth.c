@@ -71,7 +71,6 @@
 #include "board-common.h"
 #include "clock.h"
 #include "board-roth.h"
-#include "board-roth.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -634,6 +633,7 @@ static void __init tegra_roth_init(void)
 #endif
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	roth_sensors_init();
+	roth_soctherm_init();
 }
 
 static void __init roth_ramconsole_reserve(unsigned long size)
