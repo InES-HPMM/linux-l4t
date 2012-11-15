@@ -22,9 +22,7 @@
 #define AUDIENCE_BYPASS 1
 #endif
 
-
 #define CONFIG_USA_MODEL_SGH_I727 0
-
 
 #define CONFIG_VP_A2220
 #define CONFIG_USA_MODEL_SGH_I717  1
@@ -37,10 +35,14 @@
 extern unsigned int get_hw_rev(void);
 #endif
 
-int a2220_ioctl2(unsigned int cmd , unsigned long arg);
+int a2220_ioctl2(unsigned int cmd, unsigned long arg);
 extern int a2220_port_path_change(unsigned int msg);
 
 extern bool dualmic_enabled;
+
+#ifdef CONFIG_BATTERY_SEC
+extern unsigned int is_lpcharging_state(void);
+#endif
 
 #define A2220_MAX_FW_SIZE	(32*1024)
 struct a2220img {
@@ -103,19 +105,24 @@ enum A2220_NS_states {
 #ifdef __KERNEL__
 
 /* A2220 Command codes */
-#define CtrlMode_LAL		0x0001 /* Level Active Low  */
-#define CtrlMode_LAH		0x0002 /* Level Active High */
-#define CtrlMode_FE		0x0003 /* Falling Edge */
-#define CtrlMode_RE		0x0004 /* Rising  Edge */
+#define CtrlMode_LAL		0x0001	/* Level Active Low  */
+#define CtrlMode_LAH		0x0002	/* Level Active High */
+#define CtrlMode_FE		0x0003	/* Falling Edge */
+#define CtrlMode_RE		0x0004	/* Rising  Edge */
 #define A100_msg_Sync		0x80000000
 #define A100_msg_Sync_Ack	0x80000000
-
 
 #define A100_msg_ReadPortA	0x800B0A07
 
 /* add the port path if needed */
 #define A100_msg_PortC_A_PASS   0x805200E2
 #define A100_msg_PortA_C_PASS   0x805200C8
+
+#define A100_msg_PortC_D_PASS   0x805200EE
+#define A100_msg_PortD_C_PASS   0x805200FB
+
+#define A100_msg_PortB_A_PASS   0x805200D1
+#define A100_msg_PortA_B_PASS   0x805200C4
 
 #define A100_msg_Reset		0x8002
 #define RESET_IMMEDIATE		0x0000
@@ -144,14 +151,14 @@ enum A2220_NS_states {
 #define PCM1TristateEnable	0x0207
 
 /* Possible setting values for PCM I/F */
-#define PCMWordLength_16bit	0x10 /* Default */
+#define PCMWordLength_16bit	0x10	/* Default */
 #define PCMWordLength_24bit	0x18
 #define PCMWordLength_32bit	0x20
-#define PCMLatchEdge_Tx_F_Rx_R	0x00 /* Tx/Rx on falling/rising edge */
-#define PCMLatchEdge_Tx_R_Rx_F	0x03 /* Tx/Rx on falling/rising edge */
+#define PCMLatchEdge_Tx_F_Rx_R	0x00	/* Tx/Rx on falling/rising edge */
+#define PCMLatchEdge_Tx_R_Rx_F	0x03	/* Tx/Rx on falling/rising edge */
 #define PCMEndianness_Little	0x00
-#define PCMEndianness_Big	0x01 /* Default */
-#define PCMTristate_Disable	0x00 /* Default */
+#define PCMEndianness_Big	0x01	/* Default */
+#define PCMTristate_Disable	0x00	/* Default */
 #define PCMTristate_Enable	0x01
 
 /* Get/Set ADC Device Parameter ID List */
@@ -170,12 +177,12 @@ enum A2220_NS_states {
 #define ADC_Gain_6db			0x01
 #define ADC_Gain_12db			0x02
 #define ADC_Gain_18db			0x03
-#define ADC_Gain_24db			0x04 /* Default */
+#define ADC_Gain_24db			0x04	/* Default */
 #define ADC_Gain_30db			0x05
-#define ADC_Rate_8kHz			0x00 /* Default */
+#define ADC_Rate_8kHz			0x00	/* Default */
 #define ADC_Rate_16kHz			0x01
 #define ADC_CutoffFreq_NO_DC_Filter	0x00
-#define ADC_CutoffFreq_59p68Hz		0x01 /* Default */
+#define ADC_CutoffFreq_59p68Hz		0x01	/* Default */
 #define ADC_CutoffFreq_7p46Hz		0x02
 #define ADC_CutoffFreq_3p73Hz		0x03
 
@@ -223,7 +230,8 @@ enum A2220_NS_states {
 #define A100_msg_SetTxDigitalOutputGain 0x8015
 
 /* Bypass */
-#define A100_msg_Bypass		0x801C /* 0ff = 0x0000; on = 0x0001 (Default) */
+#define A100_msg_Bypass		0x801C /* 0ff = 0x0000;
+on = 0x0001 (Default) */
 #define A2220_msg_VP_ON		0x801C0001
 #define A2220_msg_VP_OFF	0x801C0000
 
@@ -242,7 +250,7 @@ enum A2220_NS_states {
 #define A2220_msg_BOOT_ACK	0x01
 
 /* general definitions */
-#define TIMEOUT			20 /* ms */
+#define TIMEOUT			20	/* ms */
 #define RETRY_CNT		5
 #define POLLING_RETRY_CNT	3
 #define A2220_ERROR_CODE	0xffff
@@ -262,9 +270,8 @@ struct a2220_platform_data {
 	uint32_t gpio_a2220_reset;
 	uint32_t gpio_a2220_int;
 	uint32_t gpio_a2220_clk;
-	uint32_t  gpio_a2220_audience_chip_sel;
+	uint32_t gpio_a2220_audience_chip_sel;
 };
 
-
-#endif /* __KERNEL__ */
-#endif /* __LINUX_A2220_H */
+#endif				/* __KERNEL__ */
+#endif				/* __LINUX_A2220_H */
