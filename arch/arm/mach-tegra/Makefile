@@ -187,4 +187,5 @@ obj-${CONFIG_MACH_ROTH}                 += board-roth-power.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-powermon.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sdhci.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-panel.o
+obj-${CONFIG_MACH_ROTH}                 += board-roth-kbc.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sensors.o
