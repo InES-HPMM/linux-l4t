@@ -36,12 +36,10 @@
 #include <linux/tegra_uart.h>
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
-#include <linux/nfc/pn544.h>
 #include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
 #include <linux/regulator/consumer.h>
-#include <linux/smb349-charger.h>
 #include <linux/max17048_battery.h>
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
@@ -213,22 +211,11 @@ static struct tegra_i2c_platform_data roth_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 static struct i2c_board_info __initdata rt5640_board_info = {
 	I2C_BOARD_INFO("rt5640", 0x1c),
 };
 #endif
-
-static struct pn544_i2c_platform_data nfc_pdata = {
-	.irq_gpio = TEGRA_GPIO_PW2,
-	.ven_gpio = TEGRA_GPIO_PQ3,
-	.firm_gpio = TEGRA_GPIO_PH0,
-};
-
-static struct i2c_board_info __initdata nfc_board_info = {
-	I2C_BOARD_INFO("pn544", 0x28),
-	.platform_data = &nfc_pdata,
-};
 
 static void roth_i2c_init(void)
 {
@@ -237,9 +224,6 @@ static void roth_i2c_init(void)
 	tegra11_i2c_device3.dev.platform_data = &roth_i2c3_platform_data;
 	tegra11_i2c_device4.dev.platform_data = &roth_i2c4_platform_data;
 	tegra11_i2c_device5.dev.platform_data = &roth_i2c5_platform_data;
-
-	nfc_board_info.irq = gpio_to_irq(TEGRA_GPIO_PW2);
-	i2c_register_board_info(0, &nfc_board_info, 1);
 
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
@@ -588,10 +572,7 @@ static int __init roth_touch_init(void)
 	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(touch_clk_init_table);
 	clk_enable(tegra_get_clock_by_name("clk_out_2"));
-	if (board_info.board_id == BOARD_E1582)
-		rm31080ts_roth_data.platform_id = RM_PLATFORM_P005;
-	else
-		rm31080ts_roth_data.platform_id = RM_PLATFORM_D010;
+	rm31080ts_roth_data.platform_id = RM_PLATFORM_P005;
 	rm31080a_roth_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,

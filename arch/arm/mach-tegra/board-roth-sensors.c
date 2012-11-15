@@ -106,7 +106,7 @@ static struct i2c_board_info roth_i2c4_nct1008_board_info[] = {
 	}
 
 /* MPU board file definition	*/
-static struct mpu_platform_data mpu9150_gyro_data = {
+static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
 	/* Located in board_[platformname].h */
@@ -116,10 +116,10 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 			   0x00, 0x34, 0x0D, 0x65, 0x32, 0xE9, 0x94, 0x89},
 };
 
-static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
+static struct i2c_board_info __initdata inv_mpu6050_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-		.platform_data = &mpu9150_gyro_data,
+		.platform_data = &mpu6050_gyro_data,
 	},
 };
 
@@ -147,72 +147,51 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
-	inv_mpu9150_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-	i2c_register_board_info(gyro_bus_num, inv_mpu9150_i2c2_board_info,
-		ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
+	inv_mpu6050_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c2_board_info,
+		ARRAY_SIZE(inv_mpu6050_i2c2_board_info));
 }
 
 static int roth_nct1008_init(void)
 {
-	int nct1008_port = -1;
+	int nct1008_port = TEGRA_GPIO_PX6;
 	int ret = 0;
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if ((board_info.board_id == BOARD_E1611) ||
-	    (board_info.board_id == BOARD_E1612) ||
-	    (board_info.board_id == BOARD_E1641) ||
-	    (board_info.board_id == BOARD_E1613) ||
-	    (board_info.board_id == BOARD_P2454))
-	{
-		/* per email from Matt 9/10/2012 */
-		nct1008_port = TEGRA_GPIO_PX6;
-	} else {
-		nct1008_port = TEGRA_GPIO_PX6;
-		pr_err("Warning: nct alert_port assumed TEGRA_GPIO_PX6"
-		       " for unknown roth board id E%d\n",
-		       board_info.board_id);
-	}
-#else
-	/* roth + AP30 interposer has SPI2_CS0 gpio */
-	nct1008_port = TEGRA_GPIO_PX3;
-#endif
-
-	if (nct1008_port >= 0) {
 #ifdef CONFIG_TEGRA_EDP_LIMITS
-		const struct tegra_edp_limits *cpu_edp_limits;
-		int cpu_edp_limits_size;
-		int i;
+	const struct tegra_edp_limits *cpu_edp_limits;
+	int cpu_edp_limits_size;
+	int i;
 
-		/* edp capping */
-		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+	/* edp capping */
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
 
-		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
-			BUG();
+	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		BUG();
 
-		for (i = 0; i < cpu_edp_limits_size-1; i++) {
-			roth_nct1008_pdata.active[i].create_cdev =
-				(struct thermal_cooling_device *(*)(void *))
-					edp_cooling_device_create;
-			roth_nct1008_pdata.active[i].cdev_data = (void *)i;
-			roth_nct1008_pdata.active[i].trip_temp =
-				cpu_edp_limits[i].temperature * 1000;
-			roth_nct1008_pdata.active[i].hysteresis = 1000;
-		}
-		roth_nct1008_pdata.active[i].create_cdev = NULL;
+	for (i = 0; i < cpu_edp_limits_size-1; i++) {
+		roth_nct1008_pdata.active[i].create_cdev =
+			(struct thermal_cooling_device *(*)(void *))
+				edp_cooling_device_create;
+		roth_nct1008_pdata.active[i].cdev_data = (void *)i;
+		roth_nct1008_pdata.active[i].trip_temp =
+			cpu_edp_limits[i].temperature * 1000;
+		roth_nct1008_pdata.active[i].hysteresis = 1000;
+	}
+	roth_nct1008_pdata.active[i].create_cdev = NULL;
 #endif
 
-		roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
-		pr_info("%s: roth nct1008 irq %d", __func__, roth_i2c4_nct1008_board_info[0].irq);
+	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
+	pr_info("%s: roth nct1008 irq %d", __func__, \
+				roth_i2c4_nct1008_board_info[0].irq);
 
-		ret = gpio_request(nct1008_port, "temp_alert");
-		if (ret < 0)
-			return ret;
+	ret = gpio_request(nct1008_port, "temp_alert");
+	if (ret < 0)
+		return ret;
 
-		ret = gpio_direction_input(nct1008_port);
-		if (ret < 0) {
-			pr_info("%s: calling gpio_free(nct1008_port)", __func__);
-			gpio_free(nct1008_port);
-		}
+	ret = gpio_direction_input(nct1008_port);
+	if (ret < 0) {
+		pr_info("%s: calling gpio_free(nct1008_port)", __func__);
+		gpio_free(nct1008_port);
 	}
 
 	/* roth has thermal sensor on GEN1-I2C i.e. instance 0 */

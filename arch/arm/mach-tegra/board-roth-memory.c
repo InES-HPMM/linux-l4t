@@ -28,8 +28,7 @@
 #include "fuse.h"
 #include "devices.h"
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static struct tegra11_emc_table e1611_h5tc4g63mfr_pba_table[] = {
+static struct tegra11_emc_table p2454_h5tc4g63afr_pba_table[] = {
 	{
 		0x40,       /* Rev 4.0 */
 		204000,     /* SDRAM frequency */
@@ -422,27 +421,15 @@ static struct tegra11_emc_table e1611_h5tc4g63mfr_pba_table[] = {
 	},
 };
 
-static struct tegra11_emc_pdata e1613_h9ccnnn8jtmlar_ntm_pdata = {
-	.description = "e1613_h9ccnnn8jtmlar_ntm",
-};
-
-static struct tegra11_emc_pdata e1611_h5tc4g63mfr_pba_pdata = {
-	.description = "e1611_h5tc4g63mfr_pba",
-	.tables = e1611_h5tc4g63mfr_pba_table,
-	.num_tables = ARRAY_SIZE(e1611_h5tc4g63mfr_pba_table),
+static struct tegra11_emc_pdata p2454_h5tc4g63afr_pba_pdata = {
+	.description = "p2454_h5tc4g63afr_pba",
+	.tables = p2454_h5tc4g63afr_pba_table,
+	.num_tables = ARRAY_SIZE(p2454_h5tc4g63afr_pba_table),
 };
 
 static struct tegra11_emc_pdata *roth_get_emc_data(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
-	if (board_info.board_id == BOARD_E1611 ||
-		board_info.board_id == BOARD_P2454)
-		return &e1611_h5tc4g63mfr_pba_pdata;
-
-	return &e1613_h9ccnnn8jtmlar_ntm_pdata;
+	return &p2454_h5tc4g63afr_pba_pdata;
 }
 
 int __init roth_emc_init(void)
@@ -452,9 +439,3 @@ int __init roth_emc_init(void)
 	tegra11_emc_init();
 	return 0;
 }
-#else
-int __init roth_emc_init(void)
-{
-	return 0;
-}
-#endif /* CONFIG_ARCH_TEGRA_11x_SOC */

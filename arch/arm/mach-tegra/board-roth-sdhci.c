@@ -57,14 +57,14 @@ static struct wifi_platform_data roth_wifi_control = {
 
 static struct resource wifi_resource[] = {
 	[0] = {
-		.name	= "bcm4329_wlan_irq",
+		.name	= "bcm4324_wlan_irq",
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL
 				| IORESOURCE_IRQ_SHAREABLE,
 	},
 };
 
 static struct platform_device roth_wifi_device = {
-	.name		= "bcm4329_wlan",
+	.name		= "bcm4324_wlan",
 	.id		= 1,
 	.num_resources	= 1,
 	.resource	= wifi_resource,
@@ -124,7 +124,7 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 	},
 	.cis  = {
 		.vendor	 = 0x02d0,
-		.device	 = 0x4329,
+		.device	 = 0x4324,
 	},
 };
 #endif
