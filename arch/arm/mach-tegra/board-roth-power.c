@@ -419,15 +419,15 @@ static struct regulator_consumer_supply fixed_reg_sd_3v3_supply[] = {
 		},							\
 	}
 
-FIXED_REG(3,	fan_5v0,	fan_5v0,
+FIXED_REG(0,	fan_5v0,	fan_5v0,
 	palmas_rails(smps10),	0,	0,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	5000);
 
-FIXED_REG(3,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
+FIXED_REG(1,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	palmas_rails(smps10),	0,	0,
 	TEGRA_GPIO_PK1,	false,	true,	0,	5000);
 
-FIXED_REG(3,	lcd_bl,	lcd_bl,
+FIXED_REG(2,	lcd_bl,	lcd_bl,
 	NULL,	0,	0,
 	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
@@ -435,15 +435,15 @@ FIXED_REG(3,	ts_3v3,	ts_3v3,
 	palmas_rails(regen1),	0,	0,
 	TEGRA_GPIO_PH5,	false,	true,	0,	3300);
 
-FIXED_REG(3,	com_3v3,	com_3v3,
+FIXED_REG(4,	com_3v3,	com_3v3,
 	palmas_rails(regen1),	0,	0,
 	-1,	false,	true,	0,	3300);
 
-FIXED_REG(3,	sd_3v3,	sd_3v3,
+FIXED_REG(5,	sd_3v3,	sd_3v3,
 	palmas_rails(regen1),	0,	0,
 	TEGRA_GPIO_PH0,	false,	true,	0,	3300);
 
-FIXED_REG(3,	com_1v8,	com_1v8,
+FIXED_REG(6,	com_1v8,	com_1v8,
 	palmas_rails(smps3),	0,	0,
 	-1,	false,	true,	0,	1800);
 
