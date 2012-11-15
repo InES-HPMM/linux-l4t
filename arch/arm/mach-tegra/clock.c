@@ -774,7 +774,7 @@ void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 
 	/* skip message if shared bus user */
 	if (!c->parent || !c->parent->ops || !c->parent->ops->shared_bus_update)
-		pr_warning("Lowering %s maximum rate from %lu to %lu\n",
+		pr_info("Lowering %s maximum rate from %lu to %lu\n",
 			c->name, c->max_rate, max_rate);
 
 	c->max_rate = max_rate;
