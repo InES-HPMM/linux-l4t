@@ -382,7 +382,7 @@ static struct regulator_consumer_supply fixed_reg_com_1v8_supply[] = {
 
 /* vdd_3v3_sd PH0 */
 static struct regulator_consumer_supply fixed_reg_sd_3v3_supply[] = {
-	REGULATOR_SUPPLY("vdd_3v3_sd", NULL),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
 /* Macro for defining fixed regulator sub device data */
