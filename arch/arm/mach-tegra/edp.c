@@ -908,6 +908,9 @@ static int __init tegra_edp_debugfs_init(void)
 	if (!d_edp_reg_override)
 		goto edp_reg_override_err;
 
+	if (tegra_core_edp_debugfs_init(edp_dir))
+		goto edp_reg_override_err;
+
 	return 0;
 
 edp_reg_override_err:

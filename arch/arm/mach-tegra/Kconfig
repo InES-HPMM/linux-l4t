@@ -110,6 +110,7 @@ config ARCH_TEGRA_11x_SOC
 	select SOC_BUS
 	select TEGRA_DUAL_CBUS
 	select TEGRA_DYNAMIC_CBUS
+	#select TEGRA_CORE_EDP_LIMITS
 	select TEGRA_ERRATA_1157520
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
@@ -311,7 +312,7 @@ config TEGRA_ERRATA_1157520
 	  early ack scoreboard for T11x.
 
 config TEGRA_EDP_LIMITS
-	bool "Enforce electrical design limits"
+	bool "Enforce electrical design limits on CPU rail"
 	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
 	depends on THERMAL
@@ -579,4 +580,12 @@ config TEGRA_ARBITRATION_EMEM_INTR
 	  Enable this to allow the kernel to track arbitration conflicts
 	  in the memory controller.
 
+config TEGRA_CORE_EDP_LIMITS
+	bool "Enforce electrical design limits on core rail"
+	depends on TEGRA_SILICON_PLATFORM
+	depends on THERMAL
+	default n
+	help
+	  Limit maximum GPU and memory frequency to keep core rail current
+	  within power supply capabilities.
 endif

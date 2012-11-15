@@ -55,6 +55,25 @@ struct tegra_edp_freq_voltage_table {
 	int voltage_mV;
 };
 
+enum tegra_core_edp_profiles {
+	CORE_EDP_PROFILE_BALANCED = 0,
+	CORE_EDP_PROFILE_FAVOR_GPU,
+	CORE_EDP_PROFILE_FAVOR_EMC,
+
+	CORE_EDP_PROFILES_NUM,
+};
+
+struct tegra_core_edp_limits {
+	int sku;
+	struct clk **cap_clocks;
+	int cap_clocks_num;
+	int *temperatures;
+	int temperature_ranges;
+	int core_modules_states;
+	unsigned long *cap_rates_scpu_on;
+	unsigned long *cap_rates_scpu_off;
+};
+
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
@@ -98,5 +117,17 @@ void __init tegra_battery_edp_init(unsigned int cap);
 #else
 static inline void tegra_battery_edp_init(unsigned int cap) {}
 #endif
+
+#ifdef CONFIG_TEGRA_CORE_EDP_LIMITS
+void tegra_init_core_edp_limits(unsigned int regulator_mA);
+int tegra_core_edp_debugfs_init(struct dentry *edp_dir);
+#else
+static inline void tegra_init_core_edp_limits(unsigned int regulator_mA)
+{}
+static inline int tegra_core_edp_debugfs_init(struct dentry *edp_dir)
+{ return 0; }
+#endif
+int tegra11x_select_core_edp_table(unsigned int regulator_mA,
+				   struct tegra_core_edp_limits *limits);
 
 #endif	/* __MACH_EDP_H */
