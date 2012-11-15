@@ -237,7 +237,6 @@ fail:
 
 static int tegra11x_power_up_cpu(unsigned int cpu)
 {
-	int ret;
 	unsigned long timeout;
 
 	BUG_ON(cpu == smp_processor_id());
@@ -250,6 +249,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 		/* set SCLK as event trigger for flow conroller */
 		flowctrl_write_cpu_csr(cpu, 0x1);
 		flowctrl_write_cpu_halt(cpu, 0x48000000);
+		return 0;
 
 	} else {
 		u32 reg;
@@ -258,16 +258,14 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 		pmc_writel(reg, PWRGATE_TOGGLE);
 	}
 
-	ret = -ETIMEDOUT;
-
 	/* Wait for the power to come up. */
-	timeout = jiffies + msecs_to_jiffies(2000);
+	timeout = jiffies + msecs_to_jiffies(100);
 	do {
-		if (is_cpu_powered(cpu) && is_clamp_removed(cpu)) {
+		if ((is_cpu_powered(cpu) && is_clamp_removed(cpu)) ||
+			cpu_online(cpu)) {
 			cpumask_set_cpu(cpu, tegra_cpu_power_mask);
 			wmb();
-			ret = 0;
-			break;
+			return 0;
 		}
 		udelay(10);
 	} while (time_before(jiffies, timeout));
@@ -275,7 +273,7 @@ static int tegra11x_power_up_cpu(unsigned int cpu)
 	/* Clear flow controller CSR. */
 	flowctrl_write_cpu_csr(cpu, 0);
 
-	return ret;
+	return -ETIMEDOUT;
 }
 
 static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *idle)
