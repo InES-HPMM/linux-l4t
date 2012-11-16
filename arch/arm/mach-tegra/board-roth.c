@@ -114,10 +114,6 @@ static struct platform_device roth_bluesleep_device = {
 
 static noinline void __init roth_setup_bt_rfkill(void)
 {
-	if ((tegra_get_commchip_id() == COMMCHIP_BROADCOM_BCM43241) ||
-		(tegra_get_commchip_id() == COMMCHIP_DEFAULT))
-		roth_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_INVALID;
-	else
 		roth_bt_rfkill_pdata.reset_gpio = TEGRA_GPIO_PQ6;
 	platform_device_register(&roth_bt_rfkill_device);
 }

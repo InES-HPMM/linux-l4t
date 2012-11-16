@@ -39,7 +39,7 @@
 
 
 #define ROTH_WLAN_PWR	TEGRA_GPIO_PCC5
-#define ROTH_WLAN_RST	TEGRA_GPIO_PX7
+#define ROTH_WLAN_RST	TEGRA_GPIO_INVALID
 #define ROTH_WLAN_WOW	TEGRA_GPIO_PU5
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -57,14 +57,14 @@ static struct wifi_platform_data roth_wifi_control = {
 
 static struct resource wifi_resource[] = {
 	[0] = {
-		.name	= "bcm4324_wlan_irq",
+		.name	= "bcm4329_wlan_irq",
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL
 				| IORESOURCE_IRQ_SHAREABLE,
 	},
 };
 
 static struct platform_device roth_wifi_device = {
-	.name		= "bcm4324_wlan",
+	.name		= "bcm4329_wlan",
 	.id		= 1,
 	.num_resources	= 1,
 	.resource	= wifi_resource,
@@ -386,9 +386,6 @@ static int __init roth_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init roth_wifi_prepower(void)
 {
-	if (!machine_is_roth())
-		return 0;
-
 	roth_wifi_power(1);
 
 	return 0;

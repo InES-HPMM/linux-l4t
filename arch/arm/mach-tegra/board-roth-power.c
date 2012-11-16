@@ -444,7 +444,7 @@ FIXED_REG(3,	ts_3v3,	ts_3v3,
 
 FIXED_REG(4,	com_3v3,	com_3v3,
 	palmas_rails(regen1),	0,	0,
-	-1,	false,	true,	0,	3300);
+	TEGRA_GPIO_PX7,	false,	true,	0,	3300);
 
 FIXED_REG(5,	sd_3v3,	sd_3v3,
 	palmas_rails(regen1),	0,	0,
@@ -452,7 +452,7 @@ FIXED_REG(5,	sd_3v3,	sd_3v3,
 
 FIXED_REG(6,	com_1v8,	com_1v8,
 	palmas_rails(smps3),	0,	0,
-	-1,	false,	true,	0,	1800);
+	TEGRA_GPIO_PX1,	false,	true,	0,	1800);
 
 /*
  * Creating the fixed regulator device tables

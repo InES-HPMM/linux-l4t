@@ -214,6 +214,8 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 
 	/* nct */
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
+	DEFAULT_PINMUX(GPIO_X1_AUD,   RSVD1,        PULL_UP,   NORMAL, INPUT),
+	DEFAULT_PINMUX(GPIO_X7_AUD,   RSVD0,        PULL_UP,   NORMAL, INPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -225,10 +227,8 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX6, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW3, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX1, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PP1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PP2, false, 0),
