@@ -358,7 +358,7 @@ source "drivers/net/hyperv/Kconfig"
 
 config MHI_NETDEV
            bool "MHI net device"
-           depends on MHI
+           default y if MHI
            help
             This is the net device manadatory used by MHI stack
 
