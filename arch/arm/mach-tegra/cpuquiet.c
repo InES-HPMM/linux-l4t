@@ -290,7 +290,7 @@ static void __cpuinit __apply_core_config(void)
 	}
 }
 
-static void tegra_cpuquiet_work_func(struct work_struct *work)
+static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 {
 	int new_cluster, current_cluster = is_lp_cluster(), action;
 
@@ -582,7 +582,7 @@ late_initcall(tegra_cpuquiet_debug_init);
 #endif /* CONFIG_DEBUG_FS */
 
 
-int tegra_auto_hotplug_init(struct mutex *cpulock)
+int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 {
 	int err;
 
