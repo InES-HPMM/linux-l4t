@@ -118,6 +118,8 @@ static struct regulator_consumer_supply palmas_smps45_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
 };
 
+#define palmas_smps457_supply palmas_smps45_supply
+
 static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
 	REGULATOR_SUPPLY("avdd_pllx", NULL),
@@ -214,6 +216,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 PALMAS_PDATA_INIT(smps12, 1200,  1500, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps3, 1800,  1800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 1, 1, 0);
+PALMAS_PDATA_INIT(smps457, 900,  1400, NULL, 1, 1, 0);
 PALMAS_PDATA_INIT(smps8, 1050,  1050, NULL, 0, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0);
@@ -232,7 +235,7 @@ static struct regulator_init_data *roth_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_PDATA(smps3),
 	PALMAS_REG_PDATA(smps45),
-	NULL,
+	PALMAS_REG_PDATA(smps457),
 	NULL,
 	NULL,
 	PALMAS_REG_PDATA(smps8),
@@ -270,7 +273,7 @@ PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps457, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
