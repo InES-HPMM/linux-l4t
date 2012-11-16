@@ -294,6 +294,7 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 	case NVC_PWR_ON:
 		if (info->pdata && info->pdata->power_on)
 			info->pdata->power_on(&info->power);
+		usleep_range(1000, 1020);
 		ad5816_set_arc_mode(info);
 		break;
 	default:
