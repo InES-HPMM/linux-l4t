@@ -20,7 +20,7 @@
 struct sdhci_host {
 	/* Data set by hardware interface driver */
 	const char *hw_name;	/* Hardware bus name */
-
+	struct dentry           *debugfs_root;
 	u64 quirks;	/* Deviations from spec. */
 
 /* Controller doesn't honor resets unless we touch the clock register */

@@ -33,6 +33,8 @@
 #include <linux/delay.h>
 #include <linux/pm_runtime.h>
 #include <asm/gpio.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <mach/io_dpd.h>
@@ -139,6 +141,13 @@ struct sdhci_tegra_soc_data {
 	u32 nvquirks;
 };
 
+struct sdhci_tegra_sd_stats {
+	unsigned int data_crc_count;
+	unsigned int cmd_crc_count;
+	unsigned int data_to_count;
+	unsigned int cmd_to_count;
+};
+
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
@@ -162,6 +171,36 @@ struct sdhci_tegra {
 	bool is_rail_enabled;
 	struct clk *emc_clk;
 	unsigned int emc_max_clk;
+	struct sdhci_tegra_sd_stats *sd_stat_head;
+};
+
+static int show_register_dump(struct seq_file *s, void *data)
+{
+	struct sdhci_host *host = s->private;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct sdhci_tegra_sd_stats *head;
+
+	seq_printf(s, "ErrorStatistics:\n");
+	seq_printf(s, "DataCRC\tCmdCRC\tDataTimeout\tCmdTimeout\n");
+	head = tegra_host->sd_stat_head;
+	if (head != NULL)
+		seq_printf(s, "%d\t%d\t%d\t%d\n", head->data_crc_count,
+			head->cmd_crc_count, head->data_to_count,
+			head->cmd_to_count);
+	return 0;
+}
+
+static int sdhci_register_dump(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_register_dump, inode->i_private);
+}
+
+static const struct file_operations sdhci_host_fops = {
+	.open		= sdhci_register_dump,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
 };
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -256,6 +295,12 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
+	if (tegra_host->sd_stat_head != NULL) {
+		tegra_host->sd_stat_head->data_crc_count = 0;
+		tegra_host->sd_stat_head->cmd_crc_count = 0;
+		tegra_host->sd_stat_head->data_to_count = 0;
+		tegra_host->sd_stat_head->cmd_to_count = 0;
+	}
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
@@ -294,6 +339,12 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
 	struct tegra_sdhci_platform_data *plat;
 
+	if (tegra_host->sd_stat_head != NULL) {
+		tegra_host->sd_stat_head->data_crc_count = 0;
+		tegra_host->sd_stat_head->cmd_crc_count = 0;
+		tegra_host->sd_stat_head->data_to_count = 0;
+		tegra_host->sd_stat_head->cmd_to_count = 0;
+	}
 	plat = pdev->dev.platform_data;
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
@@ -960,6 +1011,32 @@ out:
 	return err;
 }
 
+static int sdhci_tegra_sd_error_stats(struct sdhci_host *host, u32 int_status)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+	struct sdhci_tegra_sd_stats *head;
+
+	if (tegra_host->sd_stat_head == NULL) {
+		tegra_host->sd_stat_head = devm_kzalloc(&pdev->dev, sizeof(
+						struct sdhci_tegra_sd_stats),
+						GFP_KERNEL);
+		if (tegra_host->sd_stat_head == NULL)
+			return -ENOMEM;
+		}
+	head = tegra_host->sd_stat_head;
+	if (int_status & SDHCI_INT_DATA_CRC)
+		head->data_crc_count = head->data_crc_count + 1;
+	if (int_status & SDHCI_INT_CRC)
+		head->cmd_crc_count = head->cmd_crc_count + 1;
+	if (int_status & SDHCI_INT_TIMEOUT)
+		head->cmd_to_count = head->cmd_to_count + 1;
+	if (int_status & SDHCI_INT_DATA_TIMEOUT)
+		head->data_to_count = head->data_to_count + 1;
+	return 0;
+}
+
 static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 {
 	int err;
@@ -1036,7 +1113,8 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 					break;
 			} while (tap_delay_status[i]);
 
-			if ((temp_pass_window > best_pass_window) && (temp_pass_window > 1)){
+			if ((temp_pass_window > best_pass_window) &&
+					(temp_pass_window > 1)) {
 				best_low_pass_tap = temp_low_pass_tap;
 				best_pass_window = temp_pass_window;
 			}
@@ -1132,6 +1210,34 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	return 0;
 }
 
+static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
+{
+	struct dentry *root;
+
+	root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
+	if (IS_ERR(root))
+		/* Don't complain -- debugfs just isn't enabled */
+		return;
+	if (!root)
+		/* Complain -- debugfs is enabled, but it failed to
+		 * create the directory. */
+		goto err_root;
+
+	host->debugfs_root = root;
+
+	if (!debugfs_create_file("error_stats", S_IRUSR, root, host,
+				&sdhci_host_fops))
+		goto err_node;
+	return;
+
+err_node:
+	debugfs_remove_recursive(root);
+	host->debugfs_root = NULL;
+err_root:
+	pr_err("%s: Failed to initialize debugfs functionality\n", __func__);
+	return;
+}
+
 static const struct sdhci_ops tegra_sdhci_ops = {
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	.get_ro     = tegra_sdhci_get_ro,
@@ -1149,6 +1255,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.switch_signal_voltage	= tegra_sdhci_signal_voltage_switch,
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
+	.sd_error_stats		= sdhci_tegra_sd_error_stats,
 };
 
 static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
@@ -1277,6 +1384,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 
 	tegra_host->plat = plat;
+	tegra_host->sd_stat_head = NULL;
 	tegra_host->soc_data = soc_data;
 
 	pltfm_host->priv = tegra_host;
@@ -1463,6 +1571,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 #endif
 	rc = sdhci_add_host(host);
+	sdhci_tegra_error_stats_debugfs(host);
 	if (rc)
 		goto err_add_host;
 
