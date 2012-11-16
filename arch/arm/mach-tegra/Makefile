@@ -59,7 +59,15 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
+
 obj-y                                   += powergate.o
+obj-y                                   += powergate-ops-txx.o
+obj-y                                   += powergate-ops-t1xx.o
+obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate-t20.o
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += powergate-t30.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += powergate-t11x.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += powergate-t14x.o
+
 obj-y                                   += apbio.o
 obj-y                                   += mc.o
 ifeq ($(CONFIG_USB_SUPPORT),y)
