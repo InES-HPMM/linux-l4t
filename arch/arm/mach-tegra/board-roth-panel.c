@@ -58,7 +58,6 @@ struct platform_device * __init roth_host1x_init(void)
 #define DSI_PANEL_RESET		1
 
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
-#define DSI_PANEL_BL_EN_GPIO	TEGRA_GPIO_PH2
 #define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
@@ -301,12 +300,6 @@ static int roth_dsi_gpio_get(void)
 		goto fail;
 	}
 
-	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
-	if (err < 0) {
-		pr_err("panel backlight gpio request failed\n");
-		goto fail;
-	}
-
 	gpio_requested = true;
 	return 0;
 fail:
@@ -364,8 +357,6 @@ static int roth_dsi_panel_enable(struct device *dev)
 	msleep(20);
 #endif
 
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-
 	return 0;
 fail:
 	return err;
@@ -373,8 +364,6 @@ fail:
 
 static int roth_dsi_panel_disable(void)
 {
-	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
-
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
 

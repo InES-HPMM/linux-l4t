@@ -112,6 +112,7 @@ static struct regulator_consumer_supply palmas_smps3_supply[] = {
 	REGULATOR_SUPPLY("vddio_uart", NULL),
 	REGULATOR_SUPPLY("pwrdet_uart", NULL),
 	REGULATOR_SUPPLY("dbvdd", NULL),
+	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
@@ -142,12 +143,11 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 static struct regulator_consumer_supply palmas_smps10_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
-	REGULATOR_SUPPLY("vdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_5v0", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
-	REGULATOR_SUPPLY("vdd_2v8_display", NULL),
+	REGULATOR_SUPPLY("avdd_lcd", NULL),
 	REGULATOR_SUPPLY("vci_2v8", NULL),
 };
 
