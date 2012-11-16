@@ -5240,7 +5240,7 @@ static struct clk tegra_pll_p_out5 = {
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
-	.reg       = 0x67c,
+	.reg       = 0x668,
 	.reg_shift = 16,
 	.max_rate  = 432000000,
 };
@@ -6314,7 +6314,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c3",	"tegra11-i2c.2",	"div-clk",	67,	0x1b8,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c4",	"tegra11-i2c.3",	"div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c5",	"tegra11-i2c.4",	"div-clk",	47,	0x128,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
-	PERIPH_CLK("i2c6",	"tegra11-i2c.5",	"div-clk",	166,	0x65c,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
+	PERIPH_CLK("i2c6",	"tegra11-i2c.5",	"div-clk",	166,	0x664,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c1-fast",	"tegra11-i2c.0",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c2-fast",	"tegra11-i2c.1",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c3-fast",	"tegra11-i2c.2",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
