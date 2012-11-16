@@ -288,9 +288,8 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 	.bin_width = -1,
 	.aggressiveness = 5,
 	.use_vid_luma = false,
-	.phase_in_adjustments = 1,
+	.phase_in_adjustments = 0,
 	.k_limit_enable = true,
-	/* Aggressive k_limit */
 	.k_limit = 180,
 	.sd_window_enable = false,
 	.soft_clipping_enable = true,

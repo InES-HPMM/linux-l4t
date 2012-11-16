@@ -332,13 +332,14 @@ static struct tegra_dc_sd_settings dalmore_sd_settings = {
 	.bin_width = -1,
 	.aggressiveness = 5,
 	.use_vid_luma = false,
+	.phase_in_adjustments = 0,
 	.k_limit_enable = true,
 	.k_limit = 200,
 	.sd_window_enable = false,
 	.soft_clipping_enable = true,
 	/* Low soft clipping threshold to compensate for aggressive k_limit */
 	.soft_clipping_threshold = 128,
-	.smooth_k_enable = true,
+	.smooth_k_enable = false,
 	.smooth_k_incr = 64,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
