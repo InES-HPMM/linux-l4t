@@ -65,6 +65,7 @@
 #define PRIORITY_SELECT_SDMMC4	BIT(12)
 #define   PRIORITY_SELECT_USB2	BIT(18)
 #define   PRIORITY_SELECT_USB3	BIT(17)
+#define   PRIORITY_SELECT_SE BIT(14)
 
 #define AHB_GIZMO_AHB_MEM		0xc
 #define   ENB_FAST_REARBITRATE	BIT(2)
@@ -78,6 +79,7 @@
 #define AHB_GIZMO_SDMMC4	0x44
 #define AHB_GIZMO_USB2		0x78
 #define AHB_GIZMO_USB3		0x7c
+#define AHB_GIZMO_SE		0x4c
 #define   IMMEDIATE	BIT(18)
 
 #define AHB_MEM_PREFETCH_CFG5	0xc4
@@ -85,6 +87,7 @@
 #define AHB_MEM_PREFETCH_CFG4	0xe4
 #define AHB_MEM_PREFETCH_CFG1	0xec
 #define AHB_MEM_PREFETCH_CFG2	0xf0
+#define AHB_MEM_PREFETCH_CFG6	0xcc
 #define   PREFETCH_ENB	BIT(31)
 #define   MST_ID(x)	(((x) & 0x1f) << 26)
 #define   AHBDMA_MST_ID	MST_ID(5)
@@ -92,6 +95,7 @@
 #define SDMMC4_MST_ID	MST_ID(12)
 #define   USB2_MST_ID	MST_ID(18)
 #define   USB3_MST_ID	MST_ID(17)
+#define   SE_MST_ID	MST_ID(14)
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
@@ -477,13 +481,17 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val = gizmo_readl(AHB_GIZMO_SDMMC4);
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_SDMMC4);
+
+	val = gizmo_readl(AHB_GIZMO_SE);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_SE);
 #endif
 
 	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 				| AHB_PRIORITY_WEIGHT(7);
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	val |= PRIORITY_SELECT_SDMMC4;
+	val |= PRIORITY_SELECT_SE | PRIORITY_SELECT_SDMMC4;
 #endif
 	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
 
@@ -517,6 +525,12 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
+
+	val = gizmo_readl(AHB_MEM_PREFETCH_CFG6);
+	val &= ~MST_ID(~0);
+	val |= PREFETCH_ENB | SE_MST_ID | ADDR_BNDRY(0xc) |
+		INACTIVITY_TIMEOUT(0x1000);
+	gizmo_writel(val, AHB_MEM_PREFETCH_CFG6);
 #endif
 }
 
