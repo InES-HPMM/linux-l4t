@@ -75,6 +75,7 @@
 #include "board-touch-raydium.h"
 #include "clock.h"
 #include "board-pluto.h"
+#include "tegra-board-id.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -791,7 +792,9 @@ static void pluto_usb_init(void)
 static void pluto_modem_init(void)
 {
 	int modem_id = tegra_get_modem_id();
+	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
 	pr_info("%s: modem_id = %d\n", __func__, modem_id);
 
 	switch (modem_id) {
@@ -803,6 +806,8 @@ static void pluto_modem_init(void)
 		break;
 #ifdef CONFIG_TEGRA_BB_OEM1
 	case TEGRA_BB_OEM1:	/* OEM1 HSIC */
+		if (board_info.board_id == BOARD_E1575)
+			bb_gpio_oem1.oem1.pwron = BB_OEM1_GPIO_ON_V;
 		tegra_hsic_pdata.ops = &oem1_hsic_pops;
 		tegra_ehci3_device.dev.platform_data
 			= &tegra_hsic_pdata;
