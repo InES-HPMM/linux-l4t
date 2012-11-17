@@ -103,6 +103,10 @@
 #define MPU_COMPASS_BUS_NUM     0
 #define MPU_COMPASS_ORIENTATION { 0, 1, 0, -1, 0, 0, 0, 0, 1 }
 
+/* Modem related GPIOs */
+#define MODEM_EN		TEGRA_GPIO_PP2
+#define MDM_RST			TEGRA_GPIO_PP0
+#define MDM_COLDBOOT		TEGRA_GPIO_PQ5
 
 int dalmore_regulator_init(void);
 int dalmore_suspend_init(void);

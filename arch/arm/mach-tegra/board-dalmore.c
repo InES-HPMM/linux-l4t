@@ -65,6 +65,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/edp.h>
+#include <mach/tegra_usb_modem_power.h>
 
 #include "board-touch-raydium.h"
 #include "board.h"
@@ -411,20 +412,6 @@ static struct platform_device *dalmore_devices[] __initdata = {
 };
 
 #ifdef CONFIG_USB_SUPPORT
-static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = false,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-};
-
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
@@ -512,41 +499,71 @@ static void dalmore_usb_init(void)
 	/* Setup the udc platform data */
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
-	tegra_ehci2_device.dev.platform_data =
-		&tegra_ehci2_hsic_smsc_hub_pdata;
-	platform_device_register(&tegra_ehci2_device);
-
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 }
 
-static void dalmore_modem_init(void)
+static struct gpio modem_gpios[] = { /* Nemo modem */
+	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
+	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
+};
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
+
+static int baseband_init(void)
 {
 	int ret;
 
-	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_W_DISABLE);
-	else
-		gpio_direction_output(TEGRA_GPIO_W_DISABLE, 1);
+	ret = gpio_request_array(modem_gpios, ARRAY_SIZE(modem_gpios));
+	if (ret) {
+		pr_warn("%s:gpio request failed\n", __func__);
+		return ret;
+	}
 
+	/* export GPIO for user space access through sysfs */
+	gpio_export(MDM_RST, false);
 
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD1, "Port_V_PIN_0");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD1);
-	else
-		gpio_direction_input(TEGRA_GPIO_MODEM_RSVD1);
+	return 0;
+}
 
+static const struct tegra_modem_operations baseband_operations = {
+	.init = baseband_init,
+};
 
-	ret = gpio_request(TEGRA_GPIO_MODEM_RSVD2, "Port_H_PIN_7");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-			__func__, TEGRA_GPIO_MODEM_RSVD2);
-	else
-		gpio_direction_output(TEGRA_GPIO_MODEM_RSVD2, 1);
+static struct tegra_usb_modem_power_platform_data baseband_pdata = {
+	.ops = &baseband_operations,
+	.wake_gpio = -1,
+	.boot_gpio = MDM_COLDBOOT,
+	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.autosuspend_delay = 2000,
+	.short_autosuspend_delay = 50,
+	.tegra_ehci_device = &tegra_ehci2_device,
+	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
+};
 
+static struct platform_device icera_nemo_device = {
+	.name = "tegra_usb_modem_power",
+	.id = -1,
+	.dev = {
+		.platform_data = &baseband_pdata,
+	},
+};
+
+static void dalmore_modem_init(void)
+{
+	platform_device_register(&icera_nemo_device);
 }
 
 #else
