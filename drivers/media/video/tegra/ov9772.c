@@ -149,6 +149,8 @@
 #define OV9772_SIZEOF_I2C_BUF		16
 #define OV9772_TABLE_WAIT_MS		0
 #define OV9772_TABLE_END		1
+#define OV9772_TABLE_RESET		2
+#define OV9772_TABLE_RESET_TIMEOUT	50
 #define OV9772_NUM_MODES		ARRAY_SIZE(ov9772_mode_table)
 #define OV9772_MODE_UNKNOWN		(OV9772_NUM_MODES + 1)
 #define OV9772_LENS_MAX_APERTURE	0 /* / _INT2FLOAT_DIVISOR */
@@ -307,8 +309,7 @@ static struct ov9772_reg *test_patterns[] = {
 };
 #ifdef OV9772_ENABLE_1284x724
 static struct ov9772_reg ov9772_1284x724_i2c[] = {
-	{0x0103, 0x01},
-	{OV9772_TABLE_WAIT_MS, 100},
+	{OV9772_TABLE_RESET, 0},
 	{0x0300, 0x00},
 	{0x0301, 0x0a},
 	{0x0302, 0x00},
@@ -393,14 +394,12 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x53c4, 0x03},
 	{0x0101, 0x01},
 	{0x0100, 0x01},
-	{OV9772_TABLE_WAIT_MS, 100},
 	{OV9772_TABLE_END, 0x0000}
 };
 #endif
 #ifdef OV9772_ENABLE_960x720
 static struct ov9772_reg ov9772_960x720_i2c[] = {
-	{0x0103, 0x01},
-	{OV9772_TABLE_WAIT_MS, 100},
+	{OV9772_TABLE_RESET, 0},
 	{0x3745, 0x00},
 	{0x3746, 0x18},
 	{0x3620, 0x36},
@@ -504,7 +503,6 @@ static struct ov9772_reg ov9772_960x720_i2c[] = {
 	{0x373c, 0x08},
 	{0x0345, 0xa1},
 	{0x0100, 0x01},
-	{OV9772_TABLE_WAIT_MS, 100},
 	{OV9772_TABLE_END, 0x0000}
 };
 #endif
@@ -747,10 +745,28 @@ static int ov9772_i2c_wr_table(struct ov9772_info *info,
 	const struct ov9772_reg *n_next;
 	u8 *b_ptr = info->i2c_buf;
 	u16 buf_count = 0;
+	u8 reset_status = 1;
+	u8 reset_tries_left = OV9772_TABLE_RESET_TIMEOUT;
 
 	for (next = table; next->addr != OV9772_TABLE_END; next++) {
 		if (next->addr == OV9772_TABLE_WAIT_MS) {
 			msleep(next->val);
+			continue;
+		} else if (next->addr == OV9772_TABLE_RESET) {
+			err = ov9772_i2c_wr8(info, 0x0103, 0x01);
+			if (err)
+				return err;
+			while (reset_status) {
+				usleep_range(200, 300);
+				if (reset_tries_left < 1)
+					return -EIO;
+				err = ov9772_i2c_rd8(info, 0x0103,
+							&reset_status);
+				if (err)
+					return err;
+				reset_status &= 0x01;
+				reset_tries_left -= 1;
+			}
 			continue;
 		}
 
@@ -766,6 +782,7 @@ static int ov9772_i2c_wr_table(struct ov9772_info *info,
 		if (n_next->addr == next->addr + 1 &&
 				n_next->addr != OV9772_TABLE_WAIT_MS &&
 				buf_count < OV9772_SIZEOF_I2C_BUF &&
+				n_next->addr != OV9772_TABLE_RESET &&
 				n_next->addr != OV9772_TABLE_END)
 			continue;
 
