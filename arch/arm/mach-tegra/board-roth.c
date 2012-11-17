@@ -504,7 +504,6 @@ static void __init tegra_roth_init(void)
 	roth_touch_init();
 	roth_panel_init();
 	roth_kbc_init();
-	roth_pmon_init();
 	roth_setup_bluesleep();
 	roth_setup_bt_rfkill();
 	tegra_release_bootloader_fb();
