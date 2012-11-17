@@ -193,6 +193,7 @@ static int debug_uart_port_id;
 static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
 static int max_cpu_current;
+static int max_core_current;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
@@ -734,6 +735,18 @@ static int __init tegra_max_cpu_current(char *options)
 	return 1;
 }
 __setup("max_cpu_cur_ma=", tegra_max_cpu_current);
+
+int get_maximum_core_current_supported(void)
+{
+	return max_core_current;
+}
+static int __init tegra_max_core_current(char *options)
+{
+	char *p = options;
+	max_core_current = memparse(p, &p);
+	return 1;
+}
+__setup("max_core_cur_ma=", tegra_max_core_current);
 
 static int __init tegra_debug_uartport(char *info)
 {
