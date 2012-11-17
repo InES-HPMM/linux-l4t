@@ -160,6 +160,7 @@ static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd_sensor_2v85", NULL),
+	REGULATOR_SUPPLY("vdd", "0-004c"),
 };
 
 static struct regulator_consumer_supply palmas_ldo8_supply[] = {
@@ -183,7 +184,6 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 static struct regulator_consumer_supply palmas_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd_3v3_sys", NULL),
 	REGULATOR_SUPPLY("vdd", "4-004c"),
-	REGULATOR_SUPPLY("vdd", "0-004c"),
 	REGULATOR_SUPPLY("vdd", "0-004d"),
 };
 
@@ -534,7 +534,7 @@ static struct platform_device roth_pda_power_device = {
 static struct tegra_suspend_platform_data roth_suspend_data = {
 	.cpu_timer	= 300,
 	.cpu_off_timer	= 300,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	.suspend_mode	= TEGRA_SUSPEND_NONE,
 	.core_timer	= 0x157e,
 	.core_off_timer = 2000,
 	.corereq_high	= true,
