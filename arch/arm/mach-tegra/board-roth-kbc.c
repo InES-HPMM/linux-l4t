@@ -49,8 +49,7 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PR0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
-/* TODO: Add Hall Sensor */
-/*	[3] = {
+	[3] = {
 		.code = SW_LID,
 		.gpio = TEGRA_GPIO_HALL,
 		.irq = -1,
@@ -59,7 +58,7 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 		.active_low = 1,
 		.wakeup = 1,
 		.debounce_interval = 100,
-	},*/
+	},
 };
 
 static struct gpio_keys_platform_data roth_p2454_keys_pdata = {
