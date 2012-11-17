@@ -26,6 +26,7 @@ obj-$(CONFIG_VIDEO_SH532U)	+= sh532u.o
 obj-$(CONFIG_VIDEO_AD5820)	+= ad5820.o
 obj-$(CONFIG_VIDEO_AD5816)	+= ad5816.o
 obj-$(CONFIG_VIDEO_IMX091)	+= imx091.o
+obj-$(CONFIG_VIDEO_IMX135)	+= imx135.o
 obj-$(CONFIG_VIDEO_IMX132)	+= imx132.o
 obj-$(CONFIG_DEBUG_FS)		+= nvc_debugfs.o
 obj-$(CONFIG_VIDEO_OV5693)	+= ov5693.o
