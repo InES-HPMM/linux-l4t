@@ -613,7 +613,6 @@ static void __init tegra_roth_init(void)
 	roth_i2c_init();
 	roth_spi_init();
 	roth_usb_init();
-	roth_edp_init();
 	roth_uart_init();
 	roth_audio_init();
 	platform_add_devices(roth_devices, ARRAY_SIZE(roth_devices));
@@ -623,6 +622,7 @@ static void __init tegra_roth_init(void)
 	roth_sdhci_init();
 	roth_suspend_init();
 	roth_emc_init();
+	roth_edp_init();
 	roth_touch_init();
 	roth_panel_init();
 	roth_pmon_init();
