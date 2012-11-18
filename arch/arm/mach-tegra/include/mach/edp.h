@@ -121,10 +121,13 @@ static inline void tegra_battery_edp_init(unsigned int cap) {}
 #ifdef CONFIG_TEGRA_CORE_EDP_LIMITS
 void tegra_init_core_edp_limits(unsigned int regulator_mA);
 int tegra_core_edp_debugfs_init(struct dentry *edp_dir);
+int tegra_core_edp_cpu_state_update(bool scpu_state);
 #else
 static inline void tegra_init_core_edp_limits(unsigned int regulator_mA)
 {}
 static inline int tegra_core_edp_debugfs_init(struct dentry *edp_dir)
+{ return 0; }
+static inline int tegra_core_edp_cpu_state_update(bool scpu_state)
 { return 0; }
 #endif
 int tegra11x_select_core_edp_table(unsigned int regulator_mA,

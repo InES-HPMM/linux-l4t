@@ -442,7 +442,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 	spin_unlock(&cluster_lock);
 
 	if (new_parent) {
-		e = clk_set_parent(cpu_clk, new_parent);
+		e = tegra_cluster_switch(cpu_clk, new_parent);
 		if (e) {
 			PRINT_CLUSTER(("cluster/active: request failed (%d)\n",
 				       e));

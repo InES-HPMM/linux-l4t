@@ -32,6 +32,7 @@
 #include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
+#include <mach/edp.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cputype.h>
@@ -538,6 +539,29 @@ int tegra_switch_to_g_cluster()
 	return e;
 }
 
+int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_cluster_clk)
+{
+	int ret;
+	bool is_target_lp = is_lp_cluster() ^
+		(clk_get_parent(cpu_clk) != new_cluster_clk);
+
+	/* Update core edp limits before switch to LP cluster; abort on error */
+	if (is_target_lp) {
+		ret = tegra_core_edp_cpu_state_update(is_target_lp);
+		if (ret)
+			return ret;
+	}
+
+	ret = clk_set_parent(cpu_clk, new_cluster_clk);
+	if (ret)
+		return ret;
+
+	/* Update core edp limits after switch to G cluster; ignore error */
+	if (!is_target_lp)
+		tegra_core_edp_cpu_state_update(is_target_lp);
+
+	return 0;
+}
 #endif
 
 #ifdef CONFIG_PM_SLEEP

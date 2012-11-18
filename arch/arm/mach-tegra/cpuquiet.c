@@ -214,7 +214,7 @@ static int __apply_cluster_config(int state, int target_state)
 					clk_get_min_rate(cpu_g_clk) / 1000);
 			tegra_update_cpu_speed(speed);
 
-			if (!clk_set_parent(cpu_clk, cpu_g_clk)) {
+			if (!tegra_cluster_switch(cpu_clk, cpu_g_clk)) {
 				hp_stats_update(CONFIG_NR_CPUS, false);
 				hp_stats_update(0, true);
 				new_state = TEGRA_CPQ_G;
@@ -222,7 +222,7 @@ static int __apply_cluster_config(int state, int target_state)
 		}
 	} else if (target_state == TEGRA_CPQ_LP && !no_lp &&
 			num_online_cpus() == 1) {
-		if (!clk_set_parent(cpu_clk, cpu_lp_clk)) {
+		if (!tegra_cluster_switch(cpu_clk, cpu_lp_clk)) {
 			hp_stats_update(CONFIG_NR_CPUS, true);
 			hp_stats_update(0, false);
 			new_state = TEGRA_CPQ_LP;

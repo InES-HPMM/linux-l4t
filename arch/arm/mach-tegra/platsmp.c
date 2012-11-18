@@ -283,7 +283,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 				clk_get_min_rate(cpu_g_clk) / 1000);
 			tegra_update_cpu_speed(speed);
 #endif
-			status = clk_set_parent(cpu_clk, cpu_g_clk);
+			status = tegra_cluster_switch(cpu_clk, cpu_g_clk);
 		}
 
 		if (status)

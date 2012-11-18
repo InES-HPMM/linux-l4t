@@ -78,7 +78,6 @@ static int set_cap_rates(unsigned long *new_rates)
 	return 0;
 }
 
-#if 0
 static int update_cap_rates(unsigned long *new_rates, unsigned long *old_rates)
 {
 	int i, ret;
@@ -112,7 +111,6 @@ static int update_cap_rates(unsigned long *new_rates, unsigned long *old_rates)
 	}
 	return 0;
 }
-#endif
 
 /* FIXME: resume sync ? */
 
@@ -168,6 +166,35 @@ void __init tegra_init_core_edp_limits(unsigned int regulator_mA)
 	for (i = 0; i < limits->cap_clocks_num; i++)
 		pr_info("    %10s: %lu\n",
 			limits->cap_clocks[i]->name, cap_rates[i]);
+}
+
+/* core edp cpu state update */
+int tegra_core_edp_cpu_state_update(bool scpu_state)
+{
+	int ret = 0;
+	unsigned long *old_cap_rates;
+	unsigned long *new_cap_rates;
+
+	if (!limits) {
+		core_edp_scpu_state = scpu_state;
+		return 0;
+	}
+
+	mutex_lock(&core_edp_lock);
+
+	if (core_edp_scpu_state != scpu_state) {
+		old_cap_rates = get_current_cap_rates();
+		new_cap_rates = get_cap_rates(scpu_state, core_edp_profile,
+				core_edp_modules_state, core_edp_thermal_idx);
+		ret = update_cap_rates(new_cap_rates, old_cap_rates);
+		if (ret)
+			update_cap_rates(old_cap_rates, new_cap_rates);
+		else
+			core_edp_scpu_state = scpu_state;
+	}
+	mutex_unlock(&core_edp_lock);
+
+	return ret;
 }
 
 #ifdef CONFIG_DEBUG_FS

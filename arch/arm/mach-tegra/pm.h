@@ -157,6 +157,7 @@ void tegra_cluster_switch_prolog(unsigned int flags);
 void tegra_cluster_switch_epilog(unsigned int flags);
 int tegra_switch_to_g_cluster(void);
 int tegra_switch_to_lp_cluster(void);
+int tegra_cluster_switch(struct clk *cpu_clk, struct clk *new_cluster_clk);
 #else
 #define INSTRUMENT_CLUSTER_SWITCH 0	/* Must be zero for ARCH_TEGRA_2x_SOC */
 #define DEBUG_CLUSTER_SWITCH 0		/* Must be zero for ARCH_TEGRA_2x_SOC */
@@ -175,6 +176,11 @@ static inline int tegra_switch_to_g_cluster(void)
 	return -EPERM;
 }
 static inline int tegra_switch_to_lp_cluster(void)
+{
+	return -EPERM;
+}
+static inline int tegra_cluster_switch(struct clk *cpu_clk,
+				       struct clk *new_cluster_clk)
 {
 	return -EPERM;
 }
