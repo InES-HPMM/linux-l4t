@@ -550,15 +550,17 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
 	int mv = tegra_core_speedo_mv();
-	int core_edp_limit = get_core_edp();
+	int core_edp_voltage = get_core_edp();
 
 	/*
 	 * Start with nominal level for the chips with this speedo_id. Then,
 	 * make sure core nominal voltage is below edp limit for the board
 	 * (if edp limit is set).
 	 */
-	if (core_edp_limit)
-		mv = min(mv, core_edp_limit);
+	if (!core_edp_voltage)
+		core_edp_voltage = 1100;	/* default 1.1V EDP limit */
+
+	mv = min(mv, core_edp_voltage);
 
 	/* Round nominal level down to the nearest core scaling step */
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
