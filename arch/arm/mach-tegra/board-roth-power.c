@@ -187,6 +187,7 @@ static struct regulator_consumer_supply palmas_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd_3v3_sys", NULL),
 	REGULATOR_SUPPLY("vdd", "4-004c"),
 	REGULATOR_SUPPLY("vdd", "0-004d"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply palmas_regen2_supply[] = {
