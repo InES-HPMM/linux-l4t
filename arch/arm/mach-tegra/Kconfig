@@ -128,6 +128,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_LATENCY_ALLOWANCE if !TEGRA_FPGA_PLATFORM
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
+	select TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
 	select USB_EHCI_TEGRA if USB_SUPPORT
 	select USB_ULPI if USB_SUPPORT
@@ -323,6 +324,16 @@ config TEGRA_THERMAL_THROTTLE
 	default y
 	help
 	  Also requires enabling a temperature sensor such as NCT1008.
+
+config TEGRA_THERMAL_THROTTLE_EXACT_FREQ
+	bool "Use exact cpu frequency capping when thermal throttling"
+	depends on TEGRA_THERMAL_THROTTLE
+	default n
+	help
+	  When this option is enabled, the cpu will run at the exact
+	  frequency specified in the thermal throttle table when thermal
+	  throttling; when disabled, the cpu frequency will clip to
+	  the next lower frequency from the cpu frequency table.
 
 config TEGRA_CLOCK_DEBUG_WRITE
 	bool "Enable debugfs write access to clock tree"

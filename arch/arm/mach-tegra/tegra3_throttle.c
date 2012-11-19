@@ -38,6 +38,7 @@ static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
 static int num_throt;
 
+#ifndef CONFIG_TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 static unsigned int clip_to_table(unsigned int cpu_freq)
 {
 	int i;
@@ -57,6 +58,12 @@ static unsigned int clip_to_table(unsigned int cpu_freq)
 	i = (i == 0) ? 0 : i-1;
 	return cpu_freq_table[i].frequency;
 }
+#else
+static unsigned int clip_to_table(unsigned int cpu_freq)
+{
+	return cpu_freq;
+}
+#endif /* CONFIG_TEGRA_THERMAL_THROTTLE_EXACT_FREQ */
 
 unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 {
