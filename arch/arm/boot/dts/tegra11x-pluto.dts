@@ -1,0 +1,8 @@
+/dts-v1/;
+
+/include/ "tegra11x.dtsi"
+
+/ {
+	model = "NVIDIA Tegra11x pluto evaluation board";
+	compatible = "nvidia,pluto", "nvidia,tegra11x";
+};
