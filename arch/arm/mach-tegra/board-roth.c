@@ -581,6 +581,7 @@ static void __init tegra_roth_init(void)
 	roth_sensors_init();
 	roth_soctherm_init();
 	roth_fan_init();
+	tegra_register_fuse();
 }
 
 static void __init roth_ramconsole_reserve(unsigned long size)
