@@ -788,7 +788,9 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 
 void __init tegra_common_init_clock(void)
 {
+#ifdef CONFIG_HAVE_ARM_TWD
 	tegra_cpu_timer_init();
+#endif
 }
 
 void __init tegra_clk_vefify_parents(void)
