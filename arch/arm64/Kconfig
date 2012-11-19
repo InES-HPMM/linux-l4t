@@ -97,6 +97,18 @@ config SWIOTLB
 config IOMMU_HELPER
 	def_bool SWIOTLB
 
+config MULTI_IRQ_HANDLER
+        bool
+        help
+	  Allow each machine to specify it's own IRQ handler at run time.
+
+config NEED_MACH_IO_H
+	bool
+	help
+	  Select this when mach/io.h is required to provide special
+	  definitions for this platform.  The need for mach/io.h should
+	  be avoided when possible. (HACK: copied from arch/arm)
+
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
@@ -112,6 +124,22 @@ config ARCH_VEXPRESS
 	help
 	  This enables support for the ARMv8 software model (Versatile
 	  Express).
+
+config ARCH_TEGRA
+	bool "NVIDIA Tegra"
+	select CLKDEV_LOOKUP
+	select CLKSRC_MMIO
+	select GENERIC_CLOCKEVENTS
+	select GENERIC_GPIO
+	select HAVE_CLK
+	select HAVE_SMP
+	select MIGHT_HAVE_CACHE_L2X0
+	select NEED_MACH_IO_H
+	help
+	  This enables support for NVIDIA Tegra based systems (Tegra APX,
+	  Tegra 6xx and Tegra 2 series).
+
+source "arch/arm64/mach-tegra/Kconfig"
 
 endmenu
 
@@ -253,6 +281,15 @@ config SYSVIPC_COMPAT
 endmenu
 
 menu "Power management options"
+
+source "kernel/power/Kconfig"
+
+config ARCH_SUSPEND_POSSIBLE
+        depends on ARM64
+        def_bool y
+
+config ARM_CPU_SUSPEND
+        def_bool PM_SLEEP
 
 source "drivers/cpuidle/Kconfig"
 

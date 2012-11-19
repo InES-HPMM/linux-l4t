@@ -24,6 +24,9 @@ KBUILD_CPPFLAGS	+= -mlittle-endian
 AS		+= -EL
 LD		+= -EL
 
+# For mach-xxx/mach/{io.h|irqs.h}
+KBUILD_CPPFLAGS += -Iarch/arm/mach-tegra/include
+
 comma = ,
 
 CHECKFLAGS	+= -D__aarch64__
@@ -37,6 +40,9 @@ TEXT_OFFSET := 0x00080000
 export	TEXT_OFFSET GZFLAGS
 
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
+
+core-y          += arch/arm64/mach-tegra/
+
 libs-y		:= arch/arm64/lib/ $(libs-y)
 libs-y		+= $(LIBGCC)
 
@@ -47,6 +53,10 @@ KBUILD_DTBS	:= dtbs
 all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
 
 boot := arch/arm64/boot
+
+# FIXME: copied from arch/arm/Makefile
+archprepare:
+	$(Q)$(MAKE) $(build)=arch/arm/tools include/generated/mach-types.h
 
 Image Image.gz: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
