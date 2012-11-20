@@ -67,7 +67,7 @@ static struct tegra_kbc_platform_data dalmore_kbc_platform_data = {
 	.scan_count = 30,
 	.wakeup = true,
 	.keymap_data = &keymap_data,
-	.wake_cnt = 2,
+	.wake_cnt = 1,
 	.wake_cfg = &dalmore_wake_cfg[0],
 	.wakeup_key = KEY_POWER,
 #ifdef CONFIG_ANDROID
