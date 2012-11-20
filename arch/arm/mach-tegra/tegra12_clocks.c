@@ -214,7 +214,7 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define PLLD_BASE_CSI_CLKENABLE		(1<<26)
 #define PLLD_BASE_DSI_MUX_SHIFT		25
 #define PLLD_BASE_DSI_MUX_MASK		(1<<PLLD_BASE_DSI_MUX_SHIFT)
-#define PLLD_BASE_CSI_CLKSOURCE		(1<<24)
+#define PLLD_BASE_CSI_CLKSOURCE		(1<<23)
 
 #define PLLD_MISC_DSI_CLKENABLE		(1<<30)
 #define PLLD_MISC_DIV_RST		(1<<23)
@@ -5920,13 +5920,47 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_plla[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllm_pllc_pllp_plla_v2[] = {
+	{ .input = &tegra_pll_m, .value = 0},
+	{ .input = &tegra_pll_c, .value = 1},
+	{ .input = &tegra_pll_p, .value = 2},
+	{ .input = &tegra_pll_a_out0, .value = 3},
+	/* Skip C2(4) */
+	/* Skip C2(5) */
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllm_pllc_pllp_plla_pllc2_c3_clkm[] = {
+	{ .input = &tegra_pll_m, .value = 0},
+	{ .input = &tegra_pll_c, .value = 1},
+	{ .input = &tegra_pll_p, .value = 2},
+	{ .input = &tegra_pll_a_out0, .value = 3},
+	{ .input = &tegra_pll_c2, .value = 4},
+	{ .input = &tegra_pll_c3, .value = 5},
+	{ .input = &tegra_clk_m, .value = 6},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pllm_pllc_pllp_plla_pllc4[] = {
+	{ .input = &tegra_pll_m, .value = 0},
+	/* Skip C2(1) */
+	{ .input = &tegra_pll_c, .value = 2},
+	/* Skip C2(3) */
+	{ .input = &tegra_pll_p, .value = 4},
+	{ .input = &tegra_pll_a_out0, .value = 6},
+	/* FIXME: add PLLC4_OUT0 after NET13
+	{ .input = &tegra_pll_c4_out0, .value = 7}, */
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllm_pllc_pllp_plla_clkm_pllc4[] = {
 	{ .input = &tegra_pll_m, .value = 0},
 	{ .input = &tegra_pll_c, .value = 1},
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_pll_a_out0, .value = 3},
+	/* Skip C2(4) & C3(5) */
 	{ .input = &tegra_clk_m, .value = 6},
-	/* FIXME: add PLLC4_OUT0
+	/* FIXME: add PLLC4_OUT0 after NET13
 	{ .input = &tegra_pll_c4_out0, .value = 7}, */
 	{ 0, 0},
 };
@@ -6074,6 +6108,12 @@ static struct clk_mux_sel mux_clk_32k[] = {
 	{ .input = &tegra_clk_32k, .value = 0},
 	{ 0, 0},
 };
+
+static struct clk_mux_sel mux_plld[] = {
+	{ .input = &tegra_pll_d_out0, .value = 1},
+	{ 0, 0},
+};
+
 
 /* xusb_hs has an alternative source, that is not used - therefore, xusb_hs
    is modeled as a single source mux */
@@ -6330,10 +6370,10 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc_dbg",	"serial8250.0",		"uartc", 55,	0x1a0,	408000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd", 65,	0x1c0,	408000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 #ifdef CONFIG_ARCH_TEGRA_VIC
-	PERIPH_CLK("vic03",     "vic03",                NULL,   84,     0x1f4,  350000000, mux_pllm_pllc_pllp_plla,     MUX | DIV_U71 | DIV_U71_INT),   /* DUMMY */
-	/* PERIPH_CLK("vic03",	"vic03",		NULL,	168,	0x650,	350000000, mux_pllm_pllc_pllp_plla,	MUX | MUX8 | DIV_U71), */
+	PERIPH_CLK("vic03",	"vic03",		NULL,	10,	0x650,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | MUX8 | DIV_U71),
+	//PERIPH_CLK("vic03",	"vic03",		NULL,	168,	0x650,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | MUX8 | DIV_U71),
 #endif
-	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71,	&tegra_vi_clk_ops),
+	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | MUX8 | DIV_U71,	&tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("vi_sensor2", "tegra_camera",	"vi_sensor2",	20,	0x660,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
@@ -6355,8 +6395,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("dsib",	"tegradc.1",		"dsib",	82,	0x4b8,	500000000, mux_plld_out0_plld2_out0,	MUX | PLLD,	&tegra_dsi_clk_ops),
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
-	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
+	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_plld,		PLLD),
 	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0x144,	150000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("isp_sapor",	"tegra_camera",		"isp_sapor", 163, 0x65c, 150000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),/* FIXME: Removed in NET13 */
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"tegra_camera",		"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cilcd",	"tegra_camera",		"cilcd", 145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
@@ -6376,7 +6417,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("mselect",	"mselect",		NULL,	99,	0x3b4,	108000000, mux_pllp_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cl_dvfs_ref", "tegra_cl_dvfs",	"ref",	155,	0x62c,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
 	PERIPH_CLK("cl_dvfs_soc", "tegra_cl_dvfs",	"soc",	155,	0x630,	54000000,  mux_pllp_clkm,		MUX | DIV_U71 | DIV_U71_INT | PERIPH_ON_APB),
-	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_pllm_pllc_pllp_plla,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("soc_therm",	"soc_therm",		NULL,   78,	0x644,	136000000, mux_pllm_pllc_pllp_plla_v2,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
 
 	PERIPH_CLK("dds",	"dds",			NULL,	150,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
@@ -6420,28 +6461,19 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("vic.emc",	"tegra_vic03",		"emc",  &tegra_clk_emc, NULL, 0, 0),
 #endif
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-#ifdef CONFIG_ARCH_TEGRA_VIC
-	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c2bus, "vic03", 0, 0),
-#endif
-	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c2bus,  "tsec", 0, 0),
+	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c2bus, "msenc", 0, 0),
+	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	 &tegra_clk_c2bus, "vde",   0, 0),
+	DUAL_CBUS_CLK("se.cbus",	"tegra12-se",		NULL,	 &tegra_clk_c2bus, "se",    0, 0),
 	SHARED_CLK("cap.c2bus",		"cap.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	 &tegra_clk_c2bus, NULL,    0, 0),
 
-	DUAL_CBUS_CLK("vi.cbus",	"tegra_vi",		"vi",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.1.cbus",	"tegra_vi.1",		"vi.1",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.isp.cbus",	"tegra_isp",		"isp",	 &tegra_clk_c3bus, "vi",    0, 0),
-	DUAL_CBUS_CLK("vi.isp.1.cbus",	"tegra_isp.1",		"isp.1", &tegra_clk_c3bus, "vi",    0, 0),
-
-	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc", &tegra_clk_c3bus, "msenc", 0, 0),
-	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	 &tegra_clk_c3bus, "vde",   0, 0),
-	DUAL_CBUS_CLK("se.cbus",	"tegra11-se",		NULL,	 &tegra_clk_c3bus, "se",    0, 0),
+#ifdef CONFIG_ARCH_TEGRA_VIC
+	DUAL_CBUS_CLK("vic03.cbus",	"tegra_vic03",		"vic03", &tegra_clk_c3bus, "vic03", 0, 0),
+#endif
+	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",  &tegra_clk_c3bus,  "tsec", 0, 0),
 	SHARED_CLK("cap.c3bus",		"cap.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, SHARED_CEILING),
 	SHARED_CLK("floor.c3bus",	"floor.c3bus",		NULL,	 &tegra_clk_c3bus, NULL,    0, 0),
 #else
-	SHARED_CLK("vi.cbus",	  "tegra_vi",		"vi",	&tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.1.cbus",	  "tegra_vi.1",		"vi.1", &tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.isp.cbus",	  "tegra_isp",		"isp",	&tegra_clk_cbus, "vi", 0, 0),
-	SHARED_CLK("vi.isp.1.cbus",	  "tegra_isp.1",	"isp.1",&tegra_clk_cbus, "vi", 0, 0),
 #ifdef CONFIG_ARCH_TEGRA_VIC
 	SHARED_CLK("vic03.cbus",  "tegra_vic03",	"vic03", &tegra_clk_cbus, "vic03", 0, 0),
 #endif
