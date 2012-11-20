@@ -59,14 +59,6 @@ ENTRY(tegra_secondary_startup)
 	mov	r0, #1
 	mcr	p15, 0, r0, c9, c14, 0
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	cpu_id	r0
-	cpu_to_csr_reg	r1, r0
-	mov32	r2, TEGRA_FLOW_CTRL_BASE
-	mov	r0, #0
-	str	r0, [r2, r1]
-#endif
-
 	b	secondary_startup
 ENDPROC(tegra_secondary_startup)
 #endif
