@@ -25,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/power/sbs-battery.h>
@@ -50,6 +51,7 @@ struct tps65090_charger {
 	int	ac_online;
 	int	prev_ac_online;
 	struct power_supply	ac;
+	struct tps65090_charger_data *chg_pdata;
 };
 
 static enum power_supply_property tps65090_ac_props[] = {
@@ -127,14 +129,24 @@ static irqreturn_t tps65090_charger_isr(int irq, void *dev_id)
 	struct tps65090_charger *charger = dev_id;
 	int ret;
 	uint8_t retval = 0;
+	uint8_t retval2 = 0;
 
-	ret = tps65090_read(charger->dev->parent, TPS65090_INTR_STS, &retval);
+	ret = tps65090_read(charger->dev->parent, TPS65090_CG_STATUS1, &retval);
+	if (ret < 0) {
+		dev_err(charger->dev, "%s(): Error in reading reg 0x%x\n",
+				__func__, TPS65090_CG_STATUS1);
+		goto error;
+	}
+	msleep(75);
+	ret = tps65090_read(charger->dev->parent, TPS65090_INTR_STS, &retval2);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Error in reading reg 0x%x\n",
 				__func__, TPS65090_INTR_STS);
 		goto error;
 	}
-	if (retval & TPS65090_VACG) {
+
+
+	if (retval2 & TPS65090_VACG) {
 		ret = tps65090_enable_charging(charger, 1);
 		if (ret < 0)
 			goto error;
@@ -143,8 +155,11 @@ static irqreturn_t tps65090_charger_isr(int irq, void *dev_id)
 		charger->ac_online = 0;
 	}
 
-	if (charger->prev_ac_online != charger->ac_online)
+	if (charger->prev_ac_online != charger->ac_online) {
+		if (charger->chg_pdata->update_status)
+			charger->chg_pdata->update_status();
 		power_supply_changed(&charger->ac);
+	}
 error:
 	return IRQ_HANDLED;
 }
@@ -170,6 +185,12 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	charger_data->chg_pdata = pdata->charger_pdata;
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s()No charger data,exiting\n", __func__);
+		return -ENODEV;
+	}
+
 	dev_set_drvdata(&pdev->dev, charger_data);
 
 	charger_data->dev = &pdev->dev;
@@ -181,10 +202,11 @@ static __devinit int tps65090_charger_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	if (charger_data->irq_base) {
-		ret = request_threaded_irq(charger_data->irq_base,
-				NULL, tps65090_charger_isr, 0, "tps65090-charger",
-				charger_data);
+	if (charger_data->chg_pdata->irq_base) {
+		ret = request_threaded_irq(charger_data->chg_pdata->irq_base
+			+ TPS65090_IRQ_VAC_STATUS_CHANGE,
+			NULL, tps65090_charger_isr, 0, "tps65090-charger",
+			charger_data);
 		if (ret) {
 			dev_err(charger_data->dev, "Unable to register irq %d err %d\n",
 					charger_data->irq_base, ret);
