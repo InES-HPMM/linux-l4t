@@ -95,8 +95,10 @@
 #include <media/ad5816.h>
 
 #define AD5816_ID			0x04
-#define AD5816_FOCAL_LENGTH		(4.570f)
-#define AD5816_FNUMBER			(2.8f)
+#define AD5816_FOCAL_LENGTH_FLOAT	(4.570f)
+#define AD5816_FNUMBER_FLOAT		(2.8f)
+#define AD5816_FOCAL_LENGTH			(0x40923D71) /* 4.570f */
+#define AD5816_FNUMBER				(0x40333333) /* 2.8f */
 #define AD5816_SLEW_RATE		1
 #define AD5816_ACTUATOR_RANGE		1023
 #define AD5816_SETTLETIME		30
@@ -788,8 +790,8 @@ static void ad5816_sdata_init(struct ad5816_info *info)
 	memcpy(&info->cap, &ad5816_default_cap, sizeof(info->cap));
 
 	info->config.settle_time = AD5816_SETTLETIME;
-	info->config.focal_length = AD5816_FOCAL_LENGTH;
-	info->config.fnumber = AD5816_FNUMBER;
+	info->config.focal_length = AD5816_FOCAL_LENGTH_FLOAT;
+	info->config.fnumber = AD5816_FNUMBER_FLOAT;
 	info->config.pos_low = AD5816_POS_LOW_DEFAULT;
 	info->config.pos_high = AD5816_POS_HIGH_DEFAULT;
 
