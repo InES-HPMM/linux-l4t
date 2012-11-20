@@ -871,9 +871,11 @@ static int tegra_cs42l73_jack_notifier(struct notifier_block *self,
 	case SND_JACK_HEADPHONE:
 		/*For now force headset mic mode*/
 		/*state = BIT_HEADSET_NO_MIC; */
+		snd_soc_update_bits(codec, CS42L73_PWRCTL2, PDN_MIC2_BIAS, 0);
 		state = BIT_HEADSET;
 		break;
 	case SND_JACK_HEADSET:
+		snd_soc_update_bits(codec, CS42L73_PWRCTL2, PDN_MIC2_BIAS, 0);
 		state = BIT_HEADSET;
 		break;
 	case SND_JACK_MICROPHONE:
@@ -984,13 +986,14 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	{"Int Spk", NULL, "SPKOUT"},
 	{"MIC2", NULL, "Headset Mic"},
+	{"ADC Left", NULL, "Headset Mic"},
+	{"ADC Right", NULL, "Headset Mic"},
 	/* Headphone (L+R)->  HPOUTA, HPOUTB */
 	{"Headphone", NULL, "HPOUTA"},
 	{"Headphone", NULL, "HPOUTB"},
-	/* DMIC -> DMIC Left/Right and VSPIN */
+	/* DMIC -> DMIC Left/Right */
 	{"DMIC Left", NULL, "Int D-Mic"},
 	{"DMIC Right", NULL, "Int D-Mic"},
-	{"VSPIN", NULL, "Int D-Mic"},
 };
 
 static const struct snd_kcontrol_new tegra_cs42l73_controls[] = {
