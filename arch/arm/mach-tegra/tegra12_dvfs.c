@@ -130,11 +130,11 @@ static struct dvfs cpu_dvfs = {
 static const int core_millivolts[MAX_DVFS_FREQS] = {
 	1000, 1050, 1100, 1120};
 
-#define CORE_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
+#define CORE_DVFS(_clk_name, _process_id, _auto, _mult, _freqs...)	\
 	{							\
 		.clk_name	= _clk_name,			\
-		.speedo_id	= _speedo_id,			\
-		.process_id	= -1,				\
+		.speedo_id	= -1,				\
+		.process_id	= _process_id,			\
 		.freqs		= {_freqs},			\
 		.freqs_mult	= _mult,			\
 		.millivolts	= core_millivolts,		\
