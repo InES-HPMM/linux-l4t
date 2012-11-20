@@ -5,6 +5,8 @@
  * Copyright (C) 2011 Samsung Electronics
  * MyungJoo Ham <myungjoo.ham@samsung.com>
  *
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -89,13 +91,20 @@ struct max17042_chip {
 	unsigned int rbat_lastgood;
 	unsigned int edp_req;
 	struct delayed_work depl_work;
+	int shutdown_complete;
 };
 
 struct i2c_client *temp_client;
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 {
-	int ret = i2c_smbus_write_word_data(client, reg, value);
+	int ret = 0;
+	struct max17042_chip *chip = i2c_get_clientdata(client);
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
+
+	ret = i2c_smbus_write_word_data(client, reg, value);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -105,7 +114,13 @@ static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 
 static int max17042_read_reg(struct i2c_client *client, u8 reg)
 {
-	int ret = i2c_smbus_read_word_data(client, reg);
+	int ret = 0;
+	struct max17042_chip *chip = i2c_get_clientdata(client);
+
+	if (chip && chip->shutdown_complete)
+		return -ENODEV;
+
+	ret = i2c_smbus_read_word_data(client, reg);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -315,7 +330,7 @@ static int max17042_write_verify_reg(struct i2c_client *client,
 	u16 read_value;
 
 	do {
-		ret = i2c_smbus_write_word_data(client, reg, value);
+		ret = max17042_write_reg(client, reg, value);
 		read_value =  max17042_read_reg(client, reg);
 		if (read_value != value) {
 			ret = -EIO;
@@ -979,6 +994,18 @@ static int max17042_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void max17042_shutdown(struct i2c_client *client)
+{
+	struct max17042_chip *chip = i2c_get_clientdata(client);
+
+	chip->shutdown_complete = 1;
+
+	if (client->irq)
+		disable_irq(client->irq);
+
+	cancel_delayed_work(&chip->work);
+}
+
 #ifdef CONFIG_PM
 static int max17042_suspend(struct device *dev)
 {
@@ -1051,6 +1078,7 @@ static struct i2c_driver max17042_i2c_driver = {
 	.probe		= max17042_probe,
 	.remove		= max17042_remove,
 	.id_table	= max17042_id,
+	.shutdown	= max17042_shutdown,
 };
 module_i2c_driver(max17042_i2c_driver);
 
