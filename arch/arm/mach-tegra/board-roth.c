@@ -501,7 +501,6 @@ static void __init tegra_roth_init(void)
 	roth_suspend_init();
 	roth_emc_init();
 	roth_edp_init();
-	roth_touch_init();
 	roth_panel_init();
 	roth_kbc_init();
 	roth_setup_bluesleep();
@@ -524,8 +523,10 @@ static void __init tegra_roth_dt_init(void)
 {
 	tegra_roth_init();
 
+#ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
+#endif
 }
 
 static void __init tegra_roth_reserve(void)

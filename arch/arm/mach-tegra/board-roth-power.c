@@ -695,8 +695,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 	.sensor_data = {
 		[TSENSE_CPU0] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -705,8 +703,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_CPU1] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -715,8 +711,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_CPU2] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -725,8 +719,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_CPU3] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -735,8 +727,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_MEM0] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -745,8 +735,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_MEM1] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -755,8 +743,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_GPU] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
@@ -765,8 +751,6 @@ static struct soctherm_platform_data roth_soctherm_data = {
 		},
 		[TSENSE_PLLX] = {
 			.enable = true,
-			.therm_a = 570,
-			.therm_b = -744,
 			.tall = 16300,
 			.tiddq = 1,
 			.ten_count = 1,
