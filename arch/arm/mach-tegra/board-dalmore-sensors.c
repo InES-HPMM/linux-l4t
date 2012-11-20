@@ -45,6 +45,7 @@
 #include <media/as364x.h>
 #include <media/ad5816.h>
 #include <generated/mach-types.h>
+#include <linux/power/sbs-battery.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -304,6 +305,11 @@ static struct imx091_platform_data imx091_pdata = {
 	.cap			= &imx091_cap,
 	.power_on		= dalmore_imx091_power_on,
 	.power_off		= dalmore_imx091_power_off,
+};
+
+struct sbs_platform_data sbs_pdata = {
+	.poll_retry_count = 100,
+	.i2c_retry_count = 2,
 };
 
 static int dalmore_ov9772_power_on(struct ov9772_power_rail *pw)
@@ -602,6 +608,7 @@ static int dalmore_nct1008_init(void)
 static struct i2c_board_info __initdata bq20z45_pdata[] = {
 	{
 		I2C_BOARD_INFO("sbs-battery", 0x0B),
+		.platform_data = &sbs_pdata,
 	},
 };
 
