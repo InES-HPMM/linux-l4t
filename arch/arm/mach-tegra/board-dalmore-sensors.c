@@ -288,10 +288,8 @@ static struct nvc_imager_cap imx091_cap = {
 	.preferred_mode_index	= 0,
 	.focuser_guid		= NVC_FOCUS_GUID(0),
 	.torch_guid		= NVC_TORCH_GUID(0),
-	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
-
-
 
 static struct imx091_platform_data imx091_pdata = {
 	.num			= 0,
@@ -299,6 +297,10 @@ static struct imx091_platform_data imx091_pdata = {
 	.dev_name		= "camera",
 	.gpio_count		= ARRAY_SIZE(imx091_gpio_pdata),
 	.gpio			= imx091_gpio_pdata,
+	.flash_cap		= {
+		.sdo_trigger_enabled = 1,
+		.adjustable_flash_timing = 1,
+	},
 	.cap			= &imx091_cap,
 	.power_on		= dalmore_imx091_power_on,
 	.power_off		= dalmore_imx091_power_off,
@@ -408,6 +410,7 @@ static struct as364x_platform_data dalmore_as3648_pdata = {
 	.config		= {
 		.max_total_current_mA = 1000,
 		.max_peak_current_mA = 600,
+		.vin_low_v_run_mV = 3070,
 		.strobe_type = 1,
 		},
 	.pinstate	= {
@@ -542,8 +545,8 @@ static int dalmore_nct1008_init(void)
 	} else {
 		nct1008_port = TEGRA_GPIO_PX6;
 		pr_err("Warning: nct alert_port assumed TEGRA_GPIO_PX6"
-		       " for unknown dalmore board id E%d\n",
-		       board_info.board_id);
+			" for unknown dalmore board id E%d\n",
+			board_info.board_id);
 	}
 #else
 	/* dalmore + AP30 interposer has SPI2_CS0 gpio */

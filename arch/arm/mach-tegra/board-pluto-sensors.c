@@ -120,7 +120,15 @@ static struct i2c_board_info max17042_device[] = {
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
 		.led_mask		= 3,
-		.flash_on_torch         = true,
+		/* set to true only when using the torch strobe input
+		 * to trigger the flash.
+		 */
+		.flash_on_torch         = false,
+		/* use ONE-SHOOT flash mode - flash triggered at the
+		 * raising edge of strobe or strobe signal.
+		 */
+		.flash_mode		= 1,
+		/* .flash_on_torch         = true, */
 		.max_total_current_mA	= 1000,
 		.max_peak_current_mA	= 600,
 		},
@@ -473,7 +481,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.preferred_mode_index	= 0,
 	.focuser_guid		= NVC_FOCUS_GUID(0),
 	.torch_guid		= NVC_TORCH_GUID(0),
-	.cap_end		= NVC_IMAGER_CAPABILITIES_END,
+	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
 
@@ -484,6 +492,10 @@ static struct imx091_platform_data imx091_pdata = {
 	.dev_name		= "camera",
 	.gpio_count		= ARRAY_SIZE(imx091_gpio_pdata),
 	.gpio			= imx091_gpio_pdata,
+	.flash_cap		= {
+		.sdo_trigger_enabled = 1,
+		.adjustable_flash_timing = 1,
+	},
 	.cap			= &imx091_cap,
 	.power_on		= pluto_imx091_power_on,
 	.power_off		= pluto_imx091_power_off,
@@ -707,7 +719,8 @@ static int pluto_nct1008_init(void)
 		}
 #endif
 
-		pluto_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
+		pluto_i2c4_nct1008_board_info[0].irq =
+				gpio_to_irq(nct1008_port);
 		pr_info("%s: pluto nct1008 irq %d", __func__, pluto_i2c4_nct1008_board_info[0].irq);
 
 		ret = gpio_request(nct1008_port, "temp_alert");
