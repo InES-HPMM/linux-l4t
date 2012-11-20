@@ -1530,7 +1530,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_LSFSLEW(config->xcvr_lsfslew);
 	val |= UTMIP_XCVR_LSRSLEW(config->xcvr_lsrslew);
 	if (!config->xcvr_use_lsb)
-		val |= UTMIP_XCVR_HSSLEW_MSB(0x8);
+		val |= UTMIP_XCVR_HSSLEW_MSB(0x3);
 	writel(val, base + UTMIP_XCVR_CFG0);
 
 	val = readl(base + UTMIP_XCVR_CFG1);
