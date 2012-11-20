@@ -28,6 +28,7 @@ enum {
 	MAX77665_IRQ_TOP_SYS,
 	MAX77665_IRQ_FLASH,
 	MAX77665_IRQ_MUIC,
+	MAX77665_NUM_IRQ,
 };
 
 enum {
@@ -61,6 +62,7 @@ struct max77665_cell_data {
 
 struct max77665_platform_data {
 	int irq_base;
+	unsigned long irq_flag;
 	struct max77665_cell_data charger_platform_data;
 	struct max77665_cell_data flash_platform_data;
 	struct max77665_cell_data muic_platform_data;

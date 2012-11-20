@@ -34,6 +34,8 @@
 #define MAX77665_MUIC		0x00 ... 0x0E
 #define MAX77665_HAPTIC		0x00 ... 0x10
 
+static u8 int_mask_reg = 0xff;
+
 static u8 max77665_i2c_slave_address[] = {
 	[MAX77665_I2C_SLAVE_PMIC] = 0x66,
 	[MAX77665_I2C_SLAVE_MUIC] = 0x25,
@@ -75,13 +77,8 @@ static void max77665_irq_mask(struct irq_data *irq_data)
 	struct max77665 *max77665 = irq_data_get_irq_chip_data(irq_data);
 	unsigned int __irq = irq_data->irq - max77665->irq_base;
 	const struct max77665_irq_data *data = &max77665_irqs[__irq];
-	int ret;
 
-	ret = max77665_set_bits(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
-				MAX77665_INT_MSK, data->bit);
-	if (ret < 0)
-		dev_err(max77665->dev,
-			"Clearing mask reg failed e = %d\n", ret);
+	int_mask_reg |= (1 << data->bit);
 }
 
 static void max77665_irq_unmask(struct irq_data *irq_data)
@@ -89,20 +86,22 @@ static void max77665_irq_unmask(struct irq_data *irq_data)
 	struct max77665 *max77665 = irq_data_get_irq_chip_data(irq_data);
 	unsigned int __irq = irq_data->irq - max77665->irq_base;
 	const struct max77665_irq_data *data = &max77665_irqs[__irq];
-	int ret;
 
-	ret = max77665_clr_bits(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
-				MAX77665_INT_MSK, data->bit);
-	if (ret < 0)
-		dev_err(max77665->dev,
-			"Setting mask reg failed e = %d\n", ret);
+	int_mask_reg &= ~(1 << data->bit);
 }
 
 static void max77665_irq_sync_unlock(struct irq_data *data)
 {
 	struct max77665 *max77665 = irq_data_get_irq_chip_data(data);
+	int ret;
 
 	mutex_unlock(&max77665->irq_lock);
+	ret = max77665_write(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_INT_MSK, int_mask_reg);
+	if (ret < 0) {
+		dev_err(max77665->dev,
+				"Int mask reg write failed, e %d\n", ret);
+	}
 }
 
 static irqreturn_t max77665_irq(int irq, void *data)
@@ -139,7 +138,7 @@ static int max77665_irq_set_wake(struct irq_data *data, unsigned int enable)
 #endif
 
 static int __devinit max77665_irq_init(struct max77665 *max77665, int irq,
-	int irq_base)
+	int irq_base, unsigned long irq_flag)
 {
 	int i, ret;
 
@@ -177,7 +176,7 @@ static int __devinit max77665_irq_init(struct max77665 *max77665, int irq,
 #endif
 	}
 
-	ret = request_threaded_irq(irq, NULL, max77665_irq, IRQF_ONESHOT,
+	ret = request_threaded_irq(irq, NULL, max77665_irq, irq_flag,
 				"max77665", max77665);
 	if (ret < 0) {
 		dev_err(max77665->dev, "Int registration failed, e %d\n", ret);
@@ -295,7 +294,8 @@ static int max77665_i2c_probe(struct i2c_client *client,
 	}
 
 	if (client->irq > 0)
-		max77665_irq_init(max77665, client->irq, pdata->irq_base);
+		max77665_irq_init(max77665, client->irq,
+				pdata->irq_base, pdata->irq_flag);
 
 	max77665s[MAX77665_CELL_CHARGER].platform_data =
 					pdata->charger_platform_data.pdata;
@@ -318,7 +318,7 @@ static int max77665_i2c_probe(struct i2c_client *client,
 					pdata->haptic_platform_data.size;
 
 	ret = mfd_add_devices(max77665->dev, -1, max77665s,
-		ARRAY_SIZE(max77665s), NULL, 0, NULL);
+		ARRAY_SIZE(max77665s), NULL, pdata->irq_base, NULL);
 	if (ret) {
 		dev_err(&client->dev, "add mfd devices failed with err: %d\n",
 			ret);
