@@ -258,6 +258,11 @@ struct palmas_clk_platform_data {
 	int clk32kgaudio_mode_sleep;
 };
 
+struct palmas_rtc_platform_data {
+	unsigned enable_charging:1;
+	unsigned charging_current_ua;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -278,6 +283,7 @@ struct palmas_platform_data {
 	struct palmas_usb_platform_data *usb_pdata;
 	struct palmas_resource_platform_data *resource_pdata;
 	struct palmas_clk_platform_data *clk_pdata;
+	struct palmas_rtc_platform_data *rtc_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;

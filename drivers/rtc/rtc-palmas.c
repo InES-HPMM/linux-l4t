@@ -283,6 +283,8 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = NULL;
 	struct palmas_rtc *palmas_rtc = NULL;
+	struct palmas_platform_data *palmas_pdata;
+	struct palmas_rtc_platform_data *rtc_pdata = NULL;
 	int ret;
 	u32 rtc_reg;
 
@@ -295,7 +297,43 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	palmas_pdata = dev_get_platdata(pdev->dev.parent);
+	if (palmas_pdata)
+		rtc_pdata = palmas_pdata->rtc_pdata;
+
 	palmas->rtc = palmas_rtc;
+	if (rtc_pdata && rtc_pdata->enable_charging) {
+		int slave;
+		unsigned int addr;
+		int reg = 0;
+
+		addr = PALMAS_BASE_TO_REG(PALMAS_PMU_CONTROL_BASE,
+				PALMAS_BACKUP_BATTERY_CTRL);
+		slave = PALMAS_BASE_TO_SLAVE(PALMAS_PMU_CONTROL_BASE);
+
+		if (rtc_pdata->charging_current_ua < 100)
+			reg = PALMAS_BACKUP_BATTERY_CTRL_BBS_BBC_LOW_ICHRG;
+
+		ret = regmap_update_bits(palmas->regmap[slave], addr,
+				PALMAS_BACKUP_BATTERY_CTRL_BBS_BBC_LOW_ICHRG,
+				reg);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Battery backup control failed, e %d\n", ret);
+			return ret;
+		};
+
+		ret = regmap_update_bits(palmas->regmap[slave], addr,
+				PALMAS_BACKUP_BATTERY_CTRL_BB_CHG_EN,
+				PALMAS_BACKUP_BATTERY_CTRL_BB_CHG_EN);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"Battery backup charging enable failed, e %d\n",
+				ret);
+			return ret;
+		}
+	}
+
 	/* Clear pending interrupts */
 	ret = palmas_rtc_read(palmas, PALMAS_RTC_STATUS_REG,
 		&rtc_reg);
