@@ -36,6 +36,7 @@
 #include <linux/regulator/userspace-consumer.h>
 
 #include <asm/mach-types.h>
+#include <linux/power/sbs-battery.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -174,11 +175,17 @@ static struct tps65090_regulator_platform_data *tps65090_reg_pdata[] = {
 	ADD_TPS65090_REG(fet7),
 };
 
+static struct tps65090_charger_data bcharger_pdata = {
+	.irq_base = TPS65090_TEGRA_IRQ_BASE,
+	.update_status = sbs_update,
+};
+
 static struct tps65090_platform_data tps65090_pdata = {
 	.irq_base = TPS65090_TEGRA_IRQ_BASE,
 	.irq_flag = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
 	.num_reg_pdata =  ARRAY_SIZE(tps65090_reg_pdata),
-	.reg_pdata = tps65090_reg_pdata
+	.reg_pdata = tps65090_reg_pdata,
+	.charger_pdata = &bcharger_pdata,
 };
 
 /* MAX77663 consumer rails */
