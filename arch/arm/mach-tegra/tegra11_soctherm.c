@@ -631,7 +631,7 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
-static int __init soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
+static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 {
 	u32 calib;
 	u32 fuse_base_cp;
