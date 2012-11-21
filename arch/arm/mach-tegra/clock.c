@@ -465,6 +465,8 @@ int clk_set_parent_locked(struct clk *c, struct clk *parent)
 	if (ret)
 		goto out;
 
+	trace_clock_set_parent(c->name, parent->name);
+
 	if (clk_is_auto_dvfs(c) && c->refcnt > 0 &&
 			new_rate < old_rate)
 		ret = tegra_dvfs_set_rate(c, new_rate);
