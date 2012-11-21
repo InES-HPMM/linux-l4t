@@ -345,7 +345,7 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x303c, 0x23},
 	{0x3103, 0x01},
 	{0x3104, 0x00},
-	{0x3503, 0x17},
+	{0x3503, 0x33},
 	{0x3602, 0xc0},
 	{0x3611, 0x10},
 	{0x3613, 0x83},
@@ -373,6 +373,7 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x3f0f, 0xf5},
 	{0x4000, 0x07},
 	{0x4001, 0x02},
+	{0x4002, 0x45},
 	{0x460e, 0xb1},
 	{0x4800, 0x44},
 	{0x4801, 0x0f},
@@ -392,6 +393,8 @@ static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{0x53bd, 0x41},
 	{0x53be, 0x00},
 	{0x53c4, 0x03},
+	{0x301c, 0xf0},
+	{0x404f, 0x8f},
 	{0x0101, 0x01},
 	{0x0100, 0x01},
 	{OV9772_TABLE_END, 0x0000}
@@ -487,7 +490,7 @@ static struct ov9772_reg ov9772_960x720_i2c[] = {
 	{0x5000, 0x06},
 	{0x5001, 0x31},
 	{0x5100, 0x00},
-	{0x3503, 0x17},
+	{0x3503, 0x33},
 	{0x5001, 0x31},
 	{0x4002, 0x45},
 	{0x0345, 0x01},
@@ -502,6 +505,8 @@ static struct ov9772_reg ov9772_960x720_i2c[] = {
 	{0x373b, 0x01},
 	{0x373c, 0x08},
 	{0x0345, 0xa1},
+	{0x301c, 0xf0},
+	{0x404f, 0x8f},
 	{0x0100, 0x01},
 	{OV9772_TABLE_END, 0x0000}
 };
@@ -542,8 +547,8 @@ static struct ov9772_mode_data ov9772_1284x724 = {
 		.init_intra_frame_skip	= 0,
 		.ss_intra_frame_skip	= 2,
 		.ss_frame_number	= 3,
-		.coarse_time		= 755,
-		.max_coarse_diff	= 5,
+		.coarse_time		= 754,
+		.max_coarse_diff	= 6,
 		.min_exposure_course	= 3,
 		.max_exposure_course	= 0xFFF7,
 		.diff_integration_time	= 230, /* / _INT2FLOAT_DIVISOR */
@@ -552,7 +557,7 @@ static struct ov9772_mode_data ov9772_1284x724 = {
 		.min_frame_length	= 760,
 		.max_frame_length	= 0xFFFC,
 		.min_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
-		.max_gain		= 31000, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 15500, /* / _INT2FLOAT_DIVISOR */
 		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
 		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
 		.support_bin_control	= 0,
@@ -587,8 +592,8 @@ static struct ov9772_mode_data ov9772_960x720 = {
 		.init_intra_frame_skip	= 0,
 		.ss_intra_frame_skip	= 2,
 		.ss_frame_number	= 3,
-		.coarse_time		= 755,
-		.max_coarse_diff	= 5,
+		.coarse_time		= 754,
+		.max_coarse_diff	= 6,
 		.min_exposure_course	= 3,
 		.max_exposure_course	= 0xFFF7,
 		.diff_integration_time	= 230, /* / _INT2FLOAT_DIVISOR */
@@ -597,7 +602,7 @@ static struct ov9772_mode_data ov9772_960x720 = {
 		.min_frame_length	= 760,
 		.max_frame_length	= 0xFFFC,
 		.min_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
-		.max_gain		= 31000, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 15500, /* / _INT2FLOAT_DIVISOR */
 		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
 		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
 		.support_bin_control	= 0,
@@ -678,25 +683,6 @@ static int ov9772_i2c_wr8(struct ov9772_info *info, u16 reg, u8 val)
 	msg.addr = info->i2c_client->addr;
 	msg.flags = 0;
 	msg.len = 3;
-	msg.buf = &buf[0];
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
-		return -EIO;
-
-	return 0;
-}
-
-static int ov9772_i2c_wr16(struct ov9772_info *info, u16 reg, u16 val)
-{
-	struct i2c_msg msg;
-	u8 buf[4];
-
-	buf[0] = (reg >> 8);
-	buf[1] = (reg & 0x00FF);
-	buf[2] = (val >> 8);
-	buf[3] = (val & 0x00FF);
-	msg.addr = info->i2c_client->addr;
-	msg.flags = 0;
-	msg.len = 4;
 	msg.buf = &buf[0];
 	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
 		return -EIO;
@@ -817,10 +803,8 @@ static inline void ov9772_coarse_time_reg(struct ov9772_reg *regs,
 
 static inline void ov9772_gain_reg(struct ov9772_reg *regs, u32 gain)
 {
-	regs->addr = 0x204;
-	regs->val = (gain >> 8) & 0xFF;
-	(regs + 1)->addr = 0x205;
-	(regs + 1)->val = gain & 0xFF;
+	(regs)->addr = 0x205;
+	(regs)->val = gain & 0x7F;
 }
 
 static int ov9772_bin_wr(struct ov9772_info *info, u8 enable)
@@ -864,8 +848,7 @@ static int ov9772_exposure_wr(struct ov9772_info *info,
 static int ov9772_gain_wr(struct ov9772_info *info, u32 gain)
 {
 	int err;
-
-	err = ov9772_i2c_wr16(info, 0x204, (u16)gain);
+	err = ov9772_i2c_wr8(info, 0x205, (u8)(gain & 0x7F));
 	return err;
 }
 
@@ -883,33 +866,40 @@ static int ov9772_group_hold_wr(struct ov9772_info *info,
 {
 	int err = 0;
 	bool groupHoldEnable;
-	struct ov9772_reg reg_list[7];
+	struct ov9772_reg reg_list[6];
 	int count = 0;
+	int offset = 0;
 
-	groupHoldEnable = ae->gain_enable |
-					ae->frame_length_enable |
-					ae->coarse_time_enable;
+	if (ae->gain_enable)
+		count += 1;
+	if (ae->coarse_time_enable)
+		count += 1;
+	if (ae->frame_length_enable)
+		count += 1;
+	groupHoldEnable = (count > 1) ? 1 : 0;
 
 	if (groupHoldEnable)
-		err |= ov9772_i2c_wr8(info, 0x104, 1);
+		err |= ov9772_i2c_wr8(info, 0x3208, 0x01);
 
 	if (ae->gain_enable) {
-		ov9772_gain_reg(reg_list, ae->gain);
-		count += 2;
-	}
-	if (ae->coarse_time_enable) {
-		ov9772_coarse_time_reg(reg_list + count, ae->coarse_time);
-		count += 2;
+		ov9772_gain_reg(reg_list + offset, ae->gain);
+		offset += 1;
 	}
 	if (ae->frame_length_enable) {
-		ov9772_frame_length_reg(reg_list + count, ae->frame_length);
-		count += 2;
+		ov9772_frame_length_reg(reg_list + offset, ae->frame_length);
+		offset += 2;
 	}
-	reg_list[count].addr = OV9772_TABLE_END;
+	if (ae->coarse_time_enable) {
+		ov9772_coarse_time_reg(reg_list + offset, ae->coarse_time);
+		offset += 2;
+	}
+	reg_list[offset].addr = OV9772_TABLE_END;
 	err |= ov9772_i2c_wr_table(info, reg_list);
 
-	if (groupHoldEnable)
-		err |= ov9772_i2c_wr8(info, 0x104, 0);
+	if (groupHoldEnable) {
+		err |= ov9772_i2c_wr8(info, 0x3208, 0x11);
+		err |= ov9772_i2c_wr8(info, 0x3208, 0xa1);
+	}
 
 	return err;
 }
