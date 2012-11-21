@@ -51,6 +51,9 @@ static struct delayed_work cpuquiet_work;
 
 static struct kobject *tegra_auto_sysfs_kobject;
 
+static wait_queue_head_t wait_no_lp;
+static wait_queue_head_t wait_enable;
+
 static bool no_lp;
 static bool enable;
 static unsigned long up_delay;
@@ -65,11 +68,6 @@ static struct clk *cpu_lp_clk;
 
 static struct cpumask cr_online_requests;
 static struct cpumask cr_offline_requests;
-
-enum {
-	TEGRA_CPQ_DISABLE,
-	TEGRA_CPQ_ENABLE,
-};
 
 enum {
 	TEGRA_CPQ_DISABLED = 0,
@@ -154,11 +152,11 @@ static void hp_stats_update(unsigned int cpu, bool up)
 
 static int update_core_config(unsigned int cpunumber, bool up)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 	unsigned int nr_cpus = num_online_cpus();
 
 	if (cpq_state == TEGRA_CPQ_DISABLED || cpunumber >= nr_cpu_ids)
-		return ret;
+		return -EINVAL;
 
 	mutex_lock(tegra_cpu_lock);
 
@@ -229,6 +227,8 @@ static int __apply_cluster_config(int state, int target_state)
 		}
 	}
 
+	wake_up_interruptible(&wait_no_lp);
+
 	return new_state;
 }
 
@@ -292,14 +292,13 @@ static void __cpuinit __apply_core_config(void)
 
 static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 {
-	int new_cluster, current_cluster = is_lp_cluster(), action;
+	int new_cluster, current_cluster, action;
 
 	mutex_lock(tegra_cpu_lock);
 
+	current_cluster = is_lp_cluster();
 	action = cpq_target_state;
 	new_cluster = cpq_target_cluster_state;
-
-	mutex_unlock(tegra_cpu_lock);
 
 	if (action == TEGRA_CPQ_ENABLED) {
 		hp_init_stats();
@@ -307,15 +306,20 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 		pr_info("Tegra cpuquiet clusterswitch enabled\n");
 		cpq_state = TEGRA_CPQ_ENABLED;
 		cpq_target_state = TEGRA_CPQ_IDLE;
+		wake_up_interruptible(&wait_enable);
 	}
 
-	if (cpq_state == TEGRA_CPQ_DISABLED)
+	if (cpq_state == TEGRA_CPQ_DISABLED) {
+		mutex_unlock(tegra_cpu_lock);
 		return;
+	}
 
-	if (action == TEGRA_CPQ_DISABLE) {
+	if (action == TEGRA_CPQ_DISABLED) {
+		mutex_unlock(tegra_cpu_lock);
 		cpq_state = TEGRA_CPQ_DISABLED;
 		cpuquiet_device_busy();
 		pr_info("Tegra cpuquiet clusterswitch disabled\n");
+		wake_up_interruptible(&wait_enable);
 		return;
 	}
 
@@ -323,13 +327,16 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 		current_cluster = __apply_cluster_config(current_cluster,
 					new_cluster);
 
+		mutex_unlock(tegra_cpu_lock);
+
 		if (current_cluster == TEGRA_CPQ_LP)
 			cpuquiet_device_busy();
 		else
 			cpuquiet_device_free();
 
 		tegra_cpu_set_speed_cap(NULL);
-	}
+	} else
+		mutex_unlock(tegra_cpu_lock);
 
 	if (current_cluster == TEGRA_CPQ_G)
 		__apply_core_config();
@@ -386,15 +393,13 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 			queue_delayed_work(
 				cpuquiet_wq, &cpuquiet_work, up_delay);
 
-		} else if (is_lp_cluster() &&
-				(cpu_freq >= idle_top_freq || no_lp)) {
+		} else if (cpu_freq >= idle_top_freq || no_lp) {
 
 			cpq_target_cluster_state = TEGRA_CPQ_G;
 			queue_delayed_work(cpuquiet_wq, &cpuquiet_work,
 						up_delay);
 
-		} else if (!is_lp_cluster() && !no_lp &&
-				cpu_freq <= idle_bottom_freq) {
+		} else if (!no_lp && cpu_freq <= idle_bottom_freq) {
 
 			cpq_target_cluster_state = TEGRA_CPQ_LP;
 			queue_delayed_work(cpuquiet_wq, &cpuquiet_work,
@@ -423,17 +428,18 @@ static void delay_callback(struct cpuquiet_attribute *attr)
 
 static void enable_callback(struct cpuquiet_attribute *attr)
 {
+	int target_state = enable ? TEGRA_CPQ_ENABLED : TEGRA_CPQ_DISABLED;
+
 	mutex_lock(tegra_cpu_lock);
 
-	if (!enable && cpq_state != TEGRA_CPQ_DISABLED) {
-		cpq_target_state = TEGRA_CPQ_DISABLED;
-	} else if (cpq_state == TEGRA_CPQ_DISABLED) {
-		cpq_target_state = TEGRA_CPQ_ENABLED;
+	if (cpq_state != target_state) {
+		cpq_target_state = target_state;
+		queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
 	}
 
-	queue_delayed_work(cpuquiet_wq, &cpuquiet_work, 0);
-
 	mutex_unlock(tegra_cpu_lock);
+
+	wait_event_interruptible(wait_enable, cpq_state == target_state);
 }
 
 static void no_lp_callback(struct cpuquiet_attribute *attr)
@@ -448,6 +454,8 @@ static void no_lp_callback(struct cpuquiet_attribute *attr)
 	}
 
 	mutex_unlock(tegra_cpu_lock);
+
+	wait_event_interruptible(wait_no_lp, no_lp ? !is_lp_cluster() : 1);
 }
 
 CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
@@ -594,6 +602,9 @@ int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 		return -ENOENT;
 
 	tegra_cpu_lock = cpulock;
+
+	init_waitqueue_head(&wait_no_lp);
+	init_waitqueue_head(&wait_enable);
 
 	/*
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
