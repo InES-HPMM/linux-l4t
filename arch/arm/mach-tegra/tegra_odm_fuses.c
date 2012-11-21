@@ -564,7 +564,11 @@ EXPORT_SYMBOL(tegra_fuse_regulator_en);
 #define PMC_OSC_OVERRIDE	BIT(0)
 #define PMC_OSC_FREQ_MASK	(BIT(2) | BIT(3))
 #define PMC_OSC_FREQ_SHIFT	2
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define CAR_OSC_FREQ_SHIFT	30
+#else
+#define CAR_OSC_FREQ_SHIFT	28
+#endif
 
 #define FUSE_SENSE_DONE_BIT	BIT(30)
 #define START_DATA		BIT(0)
