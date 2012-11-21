@@ -728,8 +728,10 @@ int __init roth_panel_init(void)
 #endif
 
 	phost1x = roth_host1x_init();
-	if (!phost1x)
+	if (!phost1x) {
+		pr_err("host1x devices registration failed\n");
 		return -EINVAL;
+	}
 
 	gpio_request(roth_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(roth_hdmi_hpd);
@@ -788,8 +790,11 @@ int __init roth_panel_init(void)
 	return err;
 }
 #else
-struct platform_device * __init roth_panel_init(void)
+int __init roth_panel_init(void)
 {
-	return roth_host1x_init();
+	if (roth_host1x_init())
+		return 0;
+	else
+		return -EINVAL;
 }
 #endif

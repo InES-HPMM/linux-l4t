@@ -1186,8 +1186,11 @@ int __init dalmore_panel_init(void)
 	return err;
 }
 #else
-struct platform_device * __init dalmore_panel_init(void)
+int __init dalmore_panel_init(void)
 {
-	return dalmore_host1x_init();
+	if (dalmore_host1x_init())
+		return 0;
+	else
+		return -EINVAL;
 }
 #endif

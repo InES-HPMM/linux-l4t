@@ -1253,8 +1253,10 @@ int __init pluto_panel_init(void)
 	gpio_direction_input(pluto_hdmi_hpd);
 
 	phost1x = pluto_host1x_init();
-	if (err)
-		return err;
+	if (!phost1x) {
+		pr_err("host1x devices registration failed\n");
+		return -EINVAL;
+	}
 
 	res = platform_get_resource_byname(&pluto_disp1_device,
 		IORESOURCE_MEM, "fbmem");
@@ -1318,8 +1320,11 @@ int __init pluto_panel_init(void)
 	return err;
 }
 #else
-struct platform_device * __init pluto_panel_init(void)
+int __init pluto_panel_init(void)
 {
-	return pluto_host1x_init();
+	if (pluto_host1x_init())
+		return 0;
+	else
+		return -EINVAL;
 }
 #endif
