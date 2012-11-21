@@ -71,7 +71,7 @@
 #define FUSE_REG_ADDR		0x004
 #define FUSE_REG_READ		0x008
 #define FUSE_REG_WRITE		0x00C
-#define FUSE_TIME_PGM		0x01C
+#define FUSE_TIME_PGM2		0x01C
 #define FUSE_PRIV2INTFC		0x020
 #define FUSE_DIS_PGM		0x02C
 #define FUSE_WRITE_ACCESS	0x030
@@ -467,7 +467,7 @@ static void fuse_program_array(int pgm_cycles)
 	 */
 	if (pgm_cycles > 0) {
 		reg = pgm_cycles;
-		tegra_fuse_writel(reg, FUSE_TIME_PGM);
+		tegra_fuse_writel(reg, FUSE_TIME_PGM2);
 	}
 	fuse_val[0] = (0x1 & ~fuse_val[0]);
 	fuse_val[1] = (0x1 & ~fuse_val[1]);
@@ -578,9 +578,12 @@ EXPORT_SYMBOL(tegra_fuse_regulator_en);
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 /* cycles corresponding to 13MHz, 19.2MHz, 12MHz, 26MHz */
 static int fuse_pgm_cycles[] = {130, 192, 120, 260};
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 /* cycles corresponding to 13MHz, 16.8MHz, 19.2MHz, 38.4MHz, 12MHz, 48MHz, 26MHz */
 static int fuse_pgm_cycles[] = {130, 168, 0, 0, 192, 384, 0, 0, 120, 480, 0, 0, 260};
+#else
+/* cycles corresponding to 13MHz, 16.8MHz, 19.2MHz, 38.4MHz, 12MHz, 48MHz, 26MHz */
+static int fuse_pgm_cycles[] = {143, 185, 0, 0, 212, 423, 0, 0, 132, 528, 0, 0, 286};
 #endif
 
 int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
