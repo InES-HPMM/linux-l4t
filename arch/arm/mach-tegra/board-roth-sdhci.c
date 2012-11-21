@@ -37,10 +37,11 @@
 #include "board.h"
 #include "board-roth.h"
 
-
 #define ROTH_WLAN_PWR	TEGRA_GPIO_PCC5
 #define ROTH_WLAN_RST	TEGRA_GPIO_INVALID
 #define ROTH_WLAN_WOW	TEGRA_GPIO_PU5
+#define ROTH_SD_CD		TEGRA_GPIO_PV2
+
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int roth_wifi_status_register(void (*callback)(int , void *), void *);
@@ -150,7 +151,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
-	.cd_gpio = -1,
+	.cd_gpio = ROTH_SD_CD,
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.tap_delay = 0x3,
