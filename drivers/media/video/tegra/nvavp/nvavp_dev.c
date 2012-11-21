@@ -1787,7 +1787,12 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	nvavp->nvhost_dev = ndev;
 	platform_set_drvdata(ndev, nvavp);
 
-	device_create_file(&ndev->dev, &dev_attr_boost_sclk);
+	ret = device_create_file(&ndev->dev, &dev_attr_boost_sclk);
+	if (ret) {
+		dev_err(&ndev->dev,
+			"%s: device_create_file failed\n", __func__);
+		goto err_req_irq_pend;
+	}
 
 	return 0;
 
