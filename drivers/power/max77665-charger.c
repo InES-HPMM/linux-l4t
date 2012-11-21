@@ -115,12 +115,12 @@ static int max77665_update_reg(struct max77665_charger *charger,
 
 	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_PMIC,
 			reg, &read_val);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_PMIC, reg,
 			read_val | value);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	return ret;
@@ -232,7 +232,6 @@ static int max77665_charger_enable(struct max77665_charger *charger,
 static int max77665_charger_init(struct max77665_charger *charger)
 {
 	int ret = 0;
-	uint8_t read_val;
 
 	ret = max77665_enable_write(charger, true);
 	if (ret < 0) {
@@ -374,7 +373,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	/* check for battery presence */
 	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
-	if (ret < 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "error in reading register 0x%x\n",
 				MAX77665_CHG_DTLS_01);
 		return -ENODEV;
@@ -422,7 +421,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 				&charger->plat_data->cables[j];
 
 		cable->nb.notifier_call = charger_extcon_notifier;
-		ret = extcon_register_interest(&cable->extcon_dev,
+		ret = extcon_register_interest(cable->extcon_dev,
 				"max77665-muic", cable->name, &cable->nb);
 
 		if (ret < 0) {
