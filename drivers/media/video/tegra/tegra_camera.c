@@ -385,7 +385,7 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 	if (ret)
 		goto release_exit;
 	/* turn off CSI regulator */
-	tegra_camera_power_off(dev);
+	ret = tegra_camera_power_off(dev);
 	if (ret)
 		goto release_exit;
 

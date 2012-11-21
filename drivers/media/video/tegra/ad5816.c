@@ -313,9 +313,6 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 	dev_dbg(&info->i2c_client->dev, "%s pwr_dev=%d\n", __func__,
 		info->pwr_dev);
 
-	if (err > 0)
-		return 0;
-
 	return err;
 }
 

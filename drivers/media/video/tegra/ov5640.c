@@ -500,7 +500,7 @@ static int ov5640_remove(struct i2c_client *client)
 {
 	struct ov5640_info *info;
 	info = i2c_get_clientdata(client);
-	misc_deregister(&ov5640_device);
+	misc_deregister(&(info->miscdev_info));
 	return 0;
 }
 
