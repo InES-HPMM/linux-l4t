@@ -484,6 +484,60 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 
 	return 0;
 }
+
+int tegra_switch_to_lp_cluster()
+{
+	struct clk *cpu_clk = tegra_get_clock_by_name("cpu");
+	struct clk *cpu_lp_clk = tegra_get_clock_by_name("cpu_lp");
+	int rate = clk_get_rate(cpu_clk);
+	int e;
+
+	if (is_lp_cluster())
+		return 0;
+
+	/* Change the Clock Rate to desired LP CPU's clock rate */
+
+	if (rate > cpu_lp_clk->max_rate) {
+		e = clk_set_rate(cpu_clk, cpu_lp_clk->max_rate);
+		if (e) {
+			pr_err("cluster_swtich: Failed to set clock %d", e);
+			return e;
+		}
+	}
+
+	e = clk_set_parent(cpu_clk, cpu_lp_clk);
+	if (e) {
+		pr_err("cluster switching request failed (%d)\n", e);
+		return e;
+	}
+	return e;
+}
+
+int tegra_switch_to_g_cluster()
+{
+	struct clk *cpu_clk = tegra_get_clock_by_name("cpu");
+	struct clk *cpu_g_clk = tegra_get_clock_by_name("cpu_g");
+	int e;
+
+	if (!is_lp_cluster())
+		return 0;
+
+	e = clk_set_parent(cpu_clk, cpu_g_clk);
+	if (e) {
+		pr_err("cluster switching request failed (%d)\n", e);
+		return e;
+	}
+
+	/* Switch back to G Cluster Cpu Max Clock rate */
+
+	e = clk_set_rate(cpu_clk, cpu_g_clk->max_rate);
+	if (e) {
+		pr_err("cluster_swtich: Failed to increase the clock %d\n", e);
+		return e;
+	}
+	return e;
+}
+
 #endif
 
 #ifdef CONFIG_PM_SLEEP
