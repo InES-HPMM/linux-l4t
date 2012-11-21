@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-sensors.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -239,10 +239,12 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.curr_lim = 1500, /* input current limit */
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
+	.irq_base = MAX77665_TEGRA_IRQ_BASE,
+	.update_status = max17042_update_status,
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
-	.irq_base = MAX77665_TEGRA_IRQ_BASE,
+	.irq_base = 0,
 };
 
 static struct max77665_platform_data pluto_max77665_pdata = {
