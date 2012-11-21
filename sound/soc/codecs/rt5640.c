@@ -32,6 +32,7 @@
 #define RT5640_DEMO 1
 #define RT5640_REG_RW 1
 #define RT5640_DET_EXT_MIC 0
+#define RT5639_RESET_ID 0x0008
 
 #ifdef RT5640_DEMO
 struct rt5640_init_reg {
@@ -2388,9 +2389,9 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 	}
 
 	val = snd_soc_read(codec, RT5640_RESET);
-	if (val != rt5640_reg[RT5640_RESET]) {
+	if ((val != rt5640_reg[RT5640_RESET]) && (val != RT5639_RESET_ID)) {
 		dev_err(codec->dev,
-			"Device with ID register %x is not a rt5640\n", val);
+			"Device with ID register %x is not rt5640/39\n", val);
 		return -ENODEV;
 	}
 
