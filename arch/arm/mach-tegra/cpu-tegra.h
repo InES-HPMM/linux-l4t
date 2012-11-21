@@ -31,7 +31,7 @@ unsigned int tegra_get_slowest_cpu_n(void);
 unsigned long tegra_cpu_lowest_speed(void);
 unsigned long tegra_cpu_highest_speed(void);
 
-#define MAX_THROT_TABLE_SIZE	(32)
+#define MAX_THROT_TABLE_SIZE	(64)
 
 struct throttle_table {
 	unsigned int cpu_freq;
