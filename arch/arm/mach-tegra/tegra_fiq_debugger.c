@@ -27,7 +27,6 @@
 #include <linux/stacktrace.h>
 #include <asm/fiq_debugger.h>
 #include <mach/tegra_fiq_debugger.h>
-#include <mach/system.h>
 #include <mach/fiq.h>
 
 #include <linux/uaccess.h>
