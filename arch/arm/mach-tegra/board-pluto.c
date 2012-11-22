@@ -55,7 +55,7 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
-#include <mach/pinmux-tegra30.h>
+#include <mach/pinmux-t11.h>
 #include <mach/iomap.h>
 #include <mach/io.h>
 #include <mach/io_dpd.h>
@@ -817,8 +817,13 @@ static void pluto_modem_init(void)
 		break;
 #ifdef CONFIG_TEGRA_BB_OEM1
 	case TEGRA_BB_OEM1:	/* OEM1 HSIC */
-		if (board_info.board_id == BOARD_E1575)
+		if ((board_info.board_id == BOARD_E1575) ||
+			((board_info.board_id == BOARD_E1580) &&
+				(board_info.fab >= BOARD_FAB_A03))) {
+			tegra_pinmux_set_tristate(TEGRA_PINGROUP_GPIO_X1_AUD,
+							TEGRA_TRI_NORMAL);
 			bb_gpio_oem1.oem1.pwron = BB_OEM1_GPIO_ON_V;
+		}
 		tegra_hsic_pdata.ops = &oem1_hsic_pops;
 		tegra_ehci3_device.dev.platform_data
 			= &tegra_hsic_pdata;
