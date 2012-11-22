@@ -32,6 +32,8 @@ static DEFINE_MUTEX(core_edp_lock);
 static struct tegra_core_edp_limits core_edp_limits;
 static const struct tegra_core_edp_limits *limits;
 
+static bool core_edp_disabled;
+
 static bool core_edp_scpu_state;
 static int core_edp_profile;
 static int core_edp_modules_state;
@@ -62,9 +64,31 @@ static unsigned long *get_current_cap_rates(void)
 			     core_edp_modules_state, core_edp_thermal_idx);
 }
 
+static int set_max_rates(void)
+{
+	int i, ret;
+
+	if (core_edp_disabled)
+		return 0;
+
+	for (i = 0; i < limits->cap_clocks_num; i++) {
+		struct clk *c = limits->cap_clocks[i];
+		ret = clk_set_rate(c, clk_get_max_rate(c));
+		if (ret) {
+			pr_err("%s: Failed to set %s max rate %lu\n",
+			       __func__, c->name, clk_get_max_rate(c));
+			return ret;
+		}
+	}
+	return 0;
+}
+
 static int set_cap_rates(unsigned long *new_rates)
 {
 	int i, ret;
+
+	if (core_edp_disabled)
+		return 0;
 
 	for (i = 0; i < limits->cap_clocks_num; i++) {
 		struct clk *c = limits->cap_clocks[i];
@@ -81,6 +105,9 @@ static int set_cap_rates(unsigned long *new_rates)
 static int update_cap_rates(unsigned long *new_rates, unsigned long *old_rates)
 {
 	int i, ret;
+
+	if (core_edp_disabled)
+		return 0;
 
 	/* 1st lower caps */
 	for (i = 0; i < limits->cap_clocks_num; i++) {
@@ -157,7 +184,7 @@ void __init tegra_init_core_edp_limits(unsigned int regulator_mA)
 	limits = &core_edp_limits;
 
 	if (start_core_edp()) {
-		limits = NULL;
+		WARN(1, "Core EDP failed to set initiali limits");
 		return;
 	}
 
@@ -196,6 +223,115 @@ int tegra_core_edp_cpu_state_update(bool scpu_state)
 
 	return ret;
 }
+
+/* core edp profiles update */
+static int profile_update(int profile)
+{
+	int ret = 0;
+	unsigned long *old_cap_rates;
+	unsigned long *new_cap_rates;
+
+	if (!limits) {
+		core_edp_profile = profile;
+		return 0;
+	}
+
+	mutex_lock(&core_edp_lock);
+
+	if (core_edp_profile != profile) {
+		old_cap_rates = get_current_cap_rates();
+		new_cap_rates = get_cap_rates(core_edp_scpu_state, profile,
+				core_edp_modules_state, core_edp_thermal_idx);
+		ret = update_cap_rates(new_cap_rates, old_cap_rates);
+		if (ret)
+			update_cap_rates(old_cap_rates, new_cap_rates);
+		else
+			core_edp_profile = profile;
+	}
+	mutex_unlock(&core_edp_lock);
+
+	return ret;
+}
+
+static ssize_t
+core_edp_profile_show(struct kobject *kobj, struct kobj_attribute *attr,
+		      char *buf)
+{
+	return sprintf(buf, "%s\n", profile_names[core_edp_profile]);
+}
+static ssize_t
+core_edp_profile_store(struct kobject *kobj, struct kobj_attribute *attr,
+		       const char *buf, size_t count)
+{
+	int i, ret;
+	size_t l;
+	const char *name;
+
+	for (i = 0; i < ARRAY_SIZE(profile_names); i++) {
+		name = profile_names[i];
+		l = strlen(name);
+		if ((l < count) && (strncmp(buf, name, l) == 0))
+			break;
+	}
+	if (i == ARRAY_SIZE(profile_names))
+		return -ENOENT;
+
+	ret = profile_update(i);
+	if (ret)
+		return ret;
+
+	return count;
+}
+
+static ssize_t
+available_profiles_show(struct kobject *kobj, struct kobj_attribute *attr,
+		      char *buf)
+{
+	int i;
+	ssize_t n = 0;
+	const char *name;
+
+	for (i = 0; i < ARRAY_SIZE(profile_names); i++) {
+		name = profile_names[i];
+		if ((n + strlen(name) + 2) > PAGE_SIZE)
+			break;
+		n += sprintf(&buf[n], "%s\n", name);
+	}
+
+	return n;
+}
+
+static struct kobj_attribute profile_attribute =
+	__ATTR(profile, 0644, core_edp_profile_show, core_edp_profile_store);
+static struct kobj_attribute available_profiles_attribute =
+	__ATTR_RO(available_profiles);
+
+const struct attribute *core_edp_attributes[] = {
+	&profile_attribute.attr,
+	&available_profiles_attribute.attr,
+	NULL,
+};
+
+static struct kobject *core_edp_kobj;
+
+static int __init tegra_core_edp_late_init(void)
+{
+	core_edp_kobj = kobject_create_and_add("tegra_core_edp", kernel_kobj);
+	if (!core_edp_kobj) {
+		pr_err("%s: failed to create edp sysfs object\n", __func__);
+		return 0;
+	}
+
+	if (sysfs_create_files(core_edp_kobj, core_edp_attributes)) {
+		pr_err("%s: failed to create edp profile sysfs interface\n",
+		       __func__);
+		return 0;
+	}
+	pr_info("Core EDP sysfs interface is initialized\n");
+
+	return 0;
+}
+late_initcall(tegra_core_edp_late_init);
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -316,6 +452,42 @@ static const struct file_operations rates_fops = {
 	.release	= single_release,
 };
 
+static int disable_edp_get(void *data, u64 *val)
+{
+	*val = core_edp_disabled;
+	return 0;
+}
+static int disable_edp_set(void *data, u64 val)
+{
+	int ret;
+	unsigned long *cap_rates;
+	bool disable = val ? true : false;
+
+	if (!limits) {
+		core_edp_disabled = disable;
+		return 0;
+	}
+
+	mutex_lock(&core_edp_lock);
+
+	if (core_edp_disabled != disable) {
+		if (disable) {
+			ret = set_max_rates();
+			core_edp_disabled = true;
+		} else {
+			core_edp_disabled = false;
+			cap_rates = get_current_cap_rates();
+			ret = set_cap_rates(cap_rates);
+		}
+		pr_info("Core EDP %s%s\n", disable ? "disabled" : "enabled",
+			ret ? " with incomplete limits" : "");
+	}
+	mutex_unlock(&core_edp_lock);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(disable_edp_fops,
+			disable_edp_get, disable_edp_set, "%llu\n");
+
 int __init tegra_core_edp_debugfs_init(struct dentry *edp_dir)
 {
 	struct dentry *dir, *d;
@@ -353,6 +525,10 @@ int __init tegra_core_edp_debugfs_init(struct dentry *edp_dir)
 	if (!d)
 		goto err_out;
 
+	d = debugfs_create_file("disable_edp", S_IRUGO | S_IWUSR, dir, NULL,
+				&disable_edp_fops);
+	if (!d)
+		goto err_out;
 	return 0;
 
 err_out:
