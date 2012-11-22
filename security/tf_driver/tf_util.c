@@ -858,7 +858,6 @@ int tf_get_current_process_hash(void *hash)
 	int result = 0;
 	void *buffer;
 	struct mm_struct *mm;
-	struct vm_area_struct *vma;
 
 	buffer = internal_kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (buffer == NULL) {
@@ -871,73 +870,69 @@ int tf_get_current_process_hash(void *hash)
 	mm = current->mm;
 
 	down_read(&(mm->mmap_sem));
-	for (vma = mm->mmap; vma != NULL; vma = vma->vm_next) {
-		if ((vma->vm_flags & VM_EXECUTABLE) != 0 && vma->vm_file
-				!= NULL) {
-			struct dentry *dentry;
-			unsigned long start;
-			unsigned long cur;
-			unsigned long end;
-			struct sha1_ctx sha1;
+	if (mm->exe_file) {
+		struct dentry *dentry;
+		unsigned long start;
+		unsigned long cur;
+		unsigned long end;
+		struct sha1_ctx sha1;
 
-			dentry = dget(vma->vm_file->f_dentry);
+		dentry = dget(mm->exe_file->f_dentry);
 
+		dprintk(
+			KERN_DEBUG "tf_get_current_process_hash: "
+				"Found executable VMA for inode %lu "
+				"(%lu bytes).\n",
+				dentry->d_inode->i_ino,
+				(unsigned long) (dentry->d_inode->
+					i_size));
+
+		start = do_mmap_pgoff(mm->exe_file, 0,
+			dentry->d_inode->i_size,
+			PROT_READ | PROT_WRITE | PROT_EXEC,
+			MAP_PRIVATE, 0);
+		if (start < 0) {
 			dprintk(
-				KERN_DEBUG "tf_get_current_process_hash: "
-					"Found executable VMA for inode %lu "
-					"(%lu bytes).\n",
-					dentry->d_inode->i_ino,
-					(unsigned long) (dentry->d_inode->
-						i_size));
-
-			start = do_mmap(vma->vm_file, 0,
-				dentry->d_inode->i_size,
-				PROT_READ | PROT_WRITE | PROT_EXEC,
-				MAP_PRIVATE, 0);
-			if (start < 0) {
-				dprintk(
-					KERN_ERR "tf_get_current_process_hash"
-					"Hash: do_mmap failed (error %d)!\n",
-					(int) start);
-				dput(dentry);
-				result = -EFAULT;
-				goto vma_out;
-			}
-
-			end = start + dentry->d_inode->i_size;
-
-			sha1_init(&sha1);
-			cur = start;
-			while (cur < end) {
-				unsigned long chunk;
-
-				chunk = end - cur;
-				if (chunk > PAGE_SIZE)
-					chunk = PAGE_SIZE;
-				if (copy_from_user(buffer, (const void *) cur,
-						chunk) != 0) {
-					dprintk(
-						KERN_ERR "tf_get_current_"
-						"process_hash: copy_from_user "
-						"failed!\n");
-					result = -EINVAL;
-					(void) do_munmap(mm, start,
-						dentry->d_inode->i_size);
-					dput(dentry);
-					goto vma_out;
-				}
-				sha1_update(&sha1, buffer, chunk);
-				cur += chunk;
-			}
-			sha1_final(&sha1, hash);
-			result = 0;
-
-			(void) do_munmap(mm, start, dentry->d_inode->i_size);
+				KERN_ERR "tf_get_current_process_hash"
+				"Hash: do_mmap failed (error %d)!\n",
+				(int) start);
 			dput(dentry);
-			break;
+			result = -EFAULT;
+			goto out;
 		}
+
+		end = start + dentry->d_inode->i_size;
+
+		sha1_init(&sha1);
+		cur = start;
+		while (cur < end) {
+			unsigned long chunk;
+
+			chunk = end - cur;
+			if (chunk > PAGE_SIZE)
+				chunk = PAGE_SIZE;
+			if (copy_from_user(buffer, (const void *) cur,
+					chunk) != 0) {
+				dprintk(
+					KERN_ERR "tf_get_current_"
+					"process_hash: copy_from_user "
+					"failed!\n");
+				result = -EINVAL;
+				(void) do_munmap(mm, start,
+					dentry->d_inode->i_size);
+				dput(dentry);
+				goto out;
+			}
+			sha1_update(&sha1, buffer, chunk);
+			cur += chunk;
+		}
+		sha1_final(&sha1, hash);
+		result = 0;
+
+		(void) do_munmap(mm, start, dentry->d_inode->i_size);
+		dput(dentry);
 	}
-vma_out:
+out:
 	up_read(&(mm->mmap_sem));
 
 	internal_kfree(buffer);
@@ -960,7 +955,6 @@ int tf_hash_application_path_and_data(char *buffer, void *data,
 	int result = -ENOENT;
 	char *tmp = NULL;
 	struct mm_struct *mm;
-	struct vm_area_struct *vma;
 
 	tmp = internal_kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (tmp == NULL) {
@@ -971,53 +965,48 @@ int tf_hash_application_path_and_data(char *buffer, void *data,
 	mm = current->mm;
 
 	down_read(&(mm->mmap_sem));
-	for (vma = mm->mmap; vma != NULL; vma = vma->vm_next) {
-		if ((vma->vm_flags & VM_EXECUTABLE) != 0
-				&& vma->vm_file != NULL) {
-			struct path *path;
-			char *endpath;
-			size_t pathlen;
-			struct sha1_ctx sha1;
-			u8 hash[SHA1_DIGEST_SIZE];
+	if (mm->exe_file) {
+		struct path *path;
+		char *endpath;
+		size_t pathlen;
+		struct sha1_ctx sha1;
+		u8 hash[SHA1_DIGEST_SIZE];
 
-			path = &vma->vm_file->f_path;
+		path = &mm->exe_file->f_path;
 
-			endpath = d_path(path, tmp, PAGE_SIZE);
-			if (IS_ERR(path)) {
-				result = PTR_ERR(endpath);
-				up_read(&(mm->mmap_sem));
-				goto end;
-			}
-			pathlen = (tmp + PAGE_SIZE) - endpath;
+		endpath = d_path(path, tmp, PAGE_SIZE);
+		if (IS_ERR(path)) {
+			result = PTR_ERR(endpath);
+			up_read(&(mm->mmap_sem));
+			goto end;
+		}
+		pathlen = (tmp + PAGE_SIZE) - endpath;
 
 #ifdef CONFIG_TF_DRIVER_DEBUG_SUPPORT
-			{
-				char *c;
-				dprintk(KERN_DEBUG "current process path = ");
-				for (c = endpath;
-				     c < tmp + PAGE_SIZE;
-				     c++)
-					dprintk("%c", *c);
+		{
+			char *c;
+			dprintk(KERN_DEBUG "current process path = ");
+			for (c = endpath;
+			     c < tmp + PAGE_SIZE;
+			     c++)
+				dprintk("%c", *c);
 
-				dprintk(", uid=%d, euid=%d\n", current_uid(),
-					current_euid());
-			}
+			dprintk(", uid=%d, euid=%d\n", current_uid(),
+				current_euid());
+		}
 #endif /* defined(CONFIG_TF_DRIVER_DEBUG_SUPPORT) */
 
-			sha1_init(&sha1);
-			sha1_update(&sha1, endpath, pathlen);
-			if (data != NULL) {
-				dprintk(KERN_INFO "current process path: "
-					"Hashing additional data\n");
-				sha1_update(&sha1, data, data_len);
-			}
-			sha1_final(&sha1, hash);
-			memcpy(buffer, hash, sizeof(hash));
-
-			result = 0;
-
-			break;
+		sha1_init(&sha1);
+		sha1_update(&sha1, endpath, pathlen);
+		if (data != NULL) {
+			dprintk(KERN_INFO "current process path: "
+				"Hashing additional data\n");
+			sha1_update(&sha1, data, data_len);
 		}
+		sha1_final(&sha1, hash);
+		memcpy(buffer, hash, sizeof(hash));
+
+		result = 0;
 	}
 	up_read(&(mm->mmap_sem));
 
