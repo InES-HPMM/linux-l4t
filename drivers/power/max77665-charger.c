@@ -27,6 +27,7 @@
 #include <linux/mfd/max77665.h>
 #include <linux/max77665-charger.h>
 #include <linux/power/max17042_battery.h>
+#include <linux/interrupt.h>
 
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
@@ -302,6 +303,9 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 {
 	int ret = 0;
 
+	if (charger->plat_data->update_status)
+			charger->plat_data->update_status(false);
+
 	if (extcon_get_cable_state(charger->edev, "USB")) {
 
 		ret = max77665_charger_enable(charger, CHARGER);
@@ -311,6 +315,8 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 		charger->usb_online = 1;
 		power_supply_changed(&charger->usb);
 		charger->plat_data->curr_lim = 500;
+		if (charger->plat_data->update_status)
+			charger->plat_data->update_status(true);
 	}
 
 	if (extcon_get_cable_state(charger->edev, "USB-Host")) {
@@ -326,6 +332,8 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 
 		charger->ac_online = 1;
 		power_supply_changed(&charger->ac);
+		if (charger->plat_data->update_status)
+			charger->plat_data->update_status(true);
 	}
 
 	ret = max77665_charger_init(charger);
@@ -343,6 +351,52 @@ static int charger_extcon_notifier(struct notifier_block *self,
 		unsigned long event, void *ptr)
 {
 	return NOTIFY_DONE;
+}
+
+static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
+{
+	struct max77665_charger *charger = data;
+	int ret;
+	uint8_t read_val;
+
+	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
+				MAX77665_CHG_INT_OK);
+		goto error;
+	}
+
+	if (read_val & 0x40) {
+		charger->usb_online = 1;
+		power_supply_changed(&charger->usb);
+		power_supply_changed(&charger->ac);
+		ret = max77665_enable_charger(charger);
+		if (ret < 0)
+			goto error;
+	} else {
+		charger->ac_online = 0;
+		charger->usb_online = 0;
+		if (charger->plat_data->update_status)
+			charger->plat_data->update_status(false);
+		power_supply_changed(&charger->usb);
+		power_supply_changed(&charger->ac);
+	}
+
+	ret = max77665_read_reg(charger, MAX77665_CHG_INT, &read_val);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed in reading register: 0x%x\n",
+				MAX77665_CHG_INT);
+		goto error;
+	}
+
+	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
+				MAX77665_CHG_INT_MASK);
+		goto error;
+	}
+error:
+	return IRQ_HANDLED;
 }
 
 static __devinit int max77665_battery_probe(struct platform_device *pdev)
@@ -392,6 +446,25 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 			return -ENODEV;
 	}
 
+	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
+				MAX77665_CHG_INT_MASK);
+		goto error;
+	}
+
+	if (charger->plat_data->irq_base) {
+		ret = request_threaded_irq(charger->plat_data->irq_base +
+				MAX77665_IRQ_CHARGER, NULL,
+				max77665_charger_irq_handler,
+				0, "charger_irq",
+					charger);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"failed: irq request error :%d)\n", ret);
+			goto chrg_error;
+		}
+	}
 	charger->ac.name		= "ac";
 	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
 	charger->ac.get_property	= max77665_ac_get_property;

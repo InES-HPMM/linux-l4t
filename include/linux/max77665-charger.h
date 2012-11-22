@@ -74,5 +74,7 @@ struct max77665_charger_plat_data {
 	uint32_t curr_lim; /* input current limit */
 	uint8_t num_cables;
 	struct max77665_charger_cable *cables;
+	int irq_base;
+	void (*update_status)(int);
 };
 #endif
