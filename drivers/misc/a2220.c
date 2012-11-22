@@ -377,11 +377,11 @@ static ssize_t a2220_bootup_init(struct a2220img *pImg)
 	if (rc < 0)
 		printk(KERN_ERR "%s: suspend error\n", __func__);
 
-	rc = execute_cmdmsg(A100_msg_PortA_C_PASS);
+	rc = execute_cmdmsg(A100_msg_PortD_C_PASS);
 	if (rc < 0)
 		printk(KERN_ERR "%s: suspend error\n", __func__);
 
-	rc = execute_cmdmsg(A100_msg_PortA_C_PASS);
+	rc = execute_cmdmsg(A100_msg_PortB_A_PASS);
 	if (rc < 0)
 		printk(KERN_ERR "%s: suspend error\n", __func__);
 
@@ -1051,6 +1051,10 @@ EXPORT_SYMBOL(a2220_ioctl2);
 int a2220_port_path_change(unsigned int msg)
 {
 	switch (msg) {
+	case A100_msg_PortC_D_PASS:
+	case A100_msg_PortD_C_PASS:
+	case A100_msg_PortB_A_PASS:
+	case A100_msg_PortA_B_PASS:
 	case A100_msg_PortC_A_PASS:
 	case A100_msg_PortA_C_PASS:
 		break;
@@ -1058,8 +1062,8 @@ int a2220_port_path_change(unsigned int msg)
 		printk(KERN_ERR "Not support [0x%X] for port change\n", msg);
 		return -EINVAL;
 	}
-	/*Default Set to Slave Mode configuration
-	(PORTA -> PORTC in pass through) */
+	/* Default set to PORTD -> PORTC and
+	   PORTB -> PORTA in pass through) */
 	/* return execute_cmdmsg(msg); */
 	return 0;
 }
