@@ -1,10 +1,34 @@
+/*
+ * MFD driver for aic3262
+ *
+ * Author:      Mukund Navada <navada@ti.com>
+ *              Mehar Bajwa <mehar.bajwa@ti.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ */
+
 #ifndef __MFD_AIC3262_CORE_H__
 #define __MFD_AIC3262_CORE_H__
 
 #include <linux/interrupt.h>
 #include <linux/mfd/core.h>
-enum aic3262_type {
+enum aic3xxx_type {
 	TLV320AIC3262 = 0,
+	TLV320AIC3266 = 1,
+	TLV320AIC3285 = 2,
 };
 
 #define AIC3262_IRQ_HEADSET_DETECT	0
@@ -20,15 +44,40 @@ enum aic3262_type {
 #define AIC3262_GPI1			9
 #define AIC3262_GPI2			10
 #define AIC3262_GPO1			11
+#define AIC3285_GPIO3			9
+#define AIC3285_GPIO4			10
+#define AIC3285_GPIO5			11
+#define AIC3285_GPIO6			12
+#define AIC3285_GPIO7			13
+#define AIC3285_GPIO8			14
+#define AIC3285_GPIO9			15
+#define AIC3285_GPIO10			16
+#define AIC3285_GPIO11			17
+#define AIC3285_GPIO12			18
+#define AIC3285_GPO1			19
 
-union aic326x_reg_union {
-	struct aic326x_reg {
+struct aic3262_codec_data {
+	u16 hs_left_step;
+	u16 hs_right_step;
+	u16 hf_left_step;
+	u16 hf_right_step;
+};
+
+struct aic3262_platform_data {
+	int audpwron_gpio;	/* audio power-on gpio */
+	unsigned int irq_base;
+
+	struct aic3262_codec_data *codec;
+};
+
+union aic3xxx_reg_union {
+	struct aic3xxx_reg {
 		u8 offset;
 		u8 page;
 		u8 book;
 		u8 reserved;
-	} aic326x_register;
-	unsigned int aic326x_register_int;
+	} aic3xxx_register;
+	unsigned int aic3xxx_register_int;
 };
 
 /****************************             ************************************/
@@ -59,6 +108,9 @@ enum {
 	AIC3262_GPIO1_FUNC_CLOCK_OUTPUT =	4,
 	AIC3262_GPIO1_FUNC_INT1_OUTPUT =	5,
 	AIC3262_GPIO1_FUNC_INT2_OUTPUT =	6,
+	AIC3285_GPIO_FUNC_DSD_CHAN1_OUTPUT =	7,
+	AIC3285_GPIO_FUNC_DSD_CHAN2_OUTPUT =	8,
+	AIC3285_GPIO_FUNC_DAC_MOD_CLK_OUTPUT =	9,
 	AIC3262_GPIO1_FUNC_ADC_MOD_CLK_OUTPUT =	10,
 	AIC3262_GPIO1_FUNC_SAR_ADC_INTERRUPT =	12,
 	AIC3262_GPIO1_FUNC_ASI1_DATA_OUTPUT =	15,
@@ -67,7 +119,9 @@ enum {
 	AIC3262_GPIO1_FUNC_ASI2_WCLK =		18,
 	AIC3262_GPIO1_FUNC_ASI2_BCLK =		19,
 	AIC3262_GPIO1_FUNC_ASI3_WCLK =		20,
-	AIC3262_GPIO1_FUNC_ASI3_BCLK =		21
+	AIC3262_GPIO1_FUNC_ASI3_BCLK =		21,
+	AIC3285_GPIO_I2C_MASTER_SCL =		30,
+	AIC3285_GPIO_I2C_MASTER_SDA =		30,
 };
 
 enum {
@@ -111,7 +165,7 @@ enum {
  *          value to set the AIC3262 register to initialize the AIC3262.
  *---------------------------------------------------------------------------
  */
-struct aic3262_configs {
+struct aic3xxx_configs {
 	u8 book_no;
 	u16 reg_offset;
 	u8 reg_val;
@@ -147,16 +201,12 @@ struct aic3262_configs {
  * @field   u32 | blck_N |
  *          value for block N
  */
-struct aic3262 {
+struct aic3xxx {
 	struct mutex io_lock;
 	struct mutex irq_lock;
-	enum aic3262_type type;
+	enum aic3xxx_type type;
 	struct device *dev;
-	int (*read_dev)(struct aic3262 *aic3262, unsigned int reg,
-			int bytes, void *dest);
-	int (*write_dev)(struct aic3262 *aic3262, unsigned int reg,
-			 int bytes, const void *src);
-
+	struct regmap *regmap;
 	void *control_data;
 	unsigned int irq;
 	unsigned int irq_base;
@@ -184,7 +234,7 @@ struct aic3262_gpio_setup {
 				/* is output, in_reg if its input */
 };
 
-struct aic3262_pdata {
+struct aic3xxx_pdata {
 	unsigned int audio_mclk1;
 	unsigned int audio_mclk2;
 	unsigned int gpio_irq;	/* whether AIC3262 interrupts the host AP on */
@@ -196,42 +246,44 @@ struct aic3262_pdata {
 	unsigned int irq_base;
 };
 
-static inline int aic3262_request_irq(struct aic3262 *aic3262, int irq,
+static inline int aic3xxx_request_irq(struct aic3xxx *aic3xxx, int irq,
 				      irq_handler_t handler,
 				      unsigned long irqflags, const char *name,
 				      void *data)
 {
-	if (!aic3262->irq_base)
+	if (!aic3xxx->irq_base)
 		return -EINVAL;
 
-	return request_threaded_irq(aic3262->irq_base + irq, NULL, handler,
+	return request_threaded_irq(aic3xxx->irq_base + irq, NULL, handler,
 				    irqflags, name, data);
 }
 
-static inline int aic3262_free_irq(struct aic3262 *aic3262, int irq, void *data)
+static inline int aic3xxx_free_irq(struct aic3xxx *aic3xxx, int irq, void *data)
 {
-	if (!aic3262->irq_base)
+	if (!aic3xxx->irq_base)
 		return -EINVAL;
 
-	free_irq(aic3262->irq_base + irq, data);
+	free_irq(aic3xxx->irq_base + irq, data);
 	return 0;
 }
 
 /* Device I/O API */
-int aic3262_reg_read(struct aic3262 *aic3262, unsigned int reg);
-int aic3262_reg_write(struct aic3262 *aic3262, unsigned int reg,
+int aic3xxx_reg_read(struct aic3xxx *aic3xxx, unsigned int reg);
+int aic3xxx_reg_write(struct aic3xxx *aic3xxx, unsigned int reg,
 		      unsigned char val);
-int aic3262_set_bits(struct aic3262 *aic3262, unsigned int reg,
+int aic3xxx_set_bits(struct aic3xxx *aic3xxx, unsigned int reg,
 		     unsigned char mask, unsigned char val);
-int aic3262_bulk_read(struct aic3262 *aic3262, unsigned int reg,
+int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 		      int count, u8 *buf);
-int aic3262_bulk_write(struct aic3262 *aic3262, unsigned int reg,
+int aic3xxx_bulk_write(struct aic3xxx *aic3xxx, unsigned int reg,
 		       int count, const u8 *buf);
-int aic3262_wait_bits(struct aic3262 *aic3262, unsigned int reg,
+int aic3xxx_wait_bits(struct aic3xxx *aic3xxx, unsigned int reg,
 		      unsigned char mask, unsigned char val, int delay,
 		      int counter);
 
-int aic3262_irq_init(struct aic3262 *aic3262);
-void aic3262_irq_exit(struct aic3262 *aic3262);
+int aic3xxx_irq_init(struct aic3xxx *aic3xxx);
+void aic3xxx_irq_exit(struct aic3xxx *aic3xxx);
+int aic3xxx_device_init(struct aic3xxx *aic3xxx, int irq);
+void aic3xxx_device_exit(struct aic3xxx *aic3xxx);
 
 #endif /* End of __MFD_AIC3262_CORE_H__ */

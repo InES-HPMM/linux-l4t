@@ -1,3 +1,25 @@
+/*
+ * tlv320aic3262-irq.c  --  Interrupt controller support for
+ *			 TI OMAP44XX TLV320AIC3262
+ *
+ * Author:      Mukund Navada <navada@ti.com>
+ *              Mehar Bajwa <mehar.bajwa@ti.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ *
+ */
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -6,10 +28,11 @@
 #include <linux/mfd/core.h>
 #include <linux/interrupt.h>
 
-#include <linux/mfd/tlv320aic3262-core.h>
+#include <linux/mfd/tlv320aic3xxx-core.h>
 #include <linux/mfd/tlv320aic3262-registers.h>
 
 #include <linux/delay.h>
+
 struct aic3262_irq_data {
 	int mask;
 	int status;
@@ -56,7 +79,7 @@ struct aic3262_gpio_data {
 
 };
 
-static inline struct aic3262_irq_data *irq_to_aic3262_irq(struct aic3262
+static inline struct aic3262_irq_data *irq_to_aic3262_irq(struct aic3xxx
 							  *aic3262, int irq)
 {
 	return &aic3262_irqs[irq - aic3262->irq_base];
@@ -64,19 +87,19 @@ static inline struct aic3262_irq_data *irq_to_aic3262_irq(struct aic3262
 
 static void aic3262_irq_lock(struct irq_data *data)
 {
-	struct aic3262 *aic3262 = irq_data_get_irq_chip_data(data);
+	struct aic3xxx *aic3262 = irq_data_get_irq_chip_data(data);
 
 	mutex_lock(&aic3262->irq_lock);
 }
 
 static void aic3262_irq_sync_unlock(struct irq_data *data)
 {
-	struct aic3262 *aic3262 = irq_data_get_irq_chip_data(data);
+	struct aic3xxx *aic3262 = irq_data_get_irq_chip_data(data);
 
 	/* write back to hardware any change in irq mask */
 	if (aic3262->irq_masks_cur != aic3262->irq_masks_cache) {
 		aic3262->irq_masks_cache = aic3262->irq_masks_cur;
-		aic3262_reg_write(aic3262, AIC3262_INT1_CNTL,
+		aic3xxx_reg_write(aic3262, AIC3262_INT1_CNTL,
 				  aic3262->irq_masks_cur);
 	}
 
@@ -85,7 +108,7 @@ static void aic3262_irq_sync_unlock(struct irq_data *data)
 
 static void aic3262_irq_unmask(struct irq_data *data)
 {
-	struct aic3262 *aic3262 = irq_data_get_irq_chip_data(data);
+	struct aic3xxx *aic3262 = irq_data_get_irq_chip_data(data);
 	struct aic3262_irq_data *irq_data =
 	    irq_to_aic3262_irq(aic3262, data->irq);
 
@@ -94,7 +117,7 @@ static void aic3262_irq_unmask(struct irq_data *data)
 
 static void aic3262_irq_mask(struct irq_data *data)
 {
-	struct aic3262 *aic3262 = irq_data_get_irq_chip_data(data);
+	struct aic3xxx *aic3262 = irq_data_get_irq_chip_data(data);
 	struct aic3262_irq_data *irq_data =
 	    irq_to_aic3262_irq(aic3262, data->irq);
 
@@ -111,17 +134,16 @@ static struct irq_chip aic3262_irq_chip = {
 
 static irqreturn_t aic3262_irq_thread(int irq, void *data)
 {
-	struct aic3262 *aic3262 = data;
+	struct aic3xxx *aic3262 = data;
 	u8 status[4];
-	int i = 0;
-	/* Reading the sticky bit registers acknowledges
-	the interrupt to the device */
-	aic3262_bulk_read(aic3262, AIC3262_INT_STICKY_FLAG1, 4, status);
+
+	/* Reading sticky bit registers acknowledges
+		the interrupt to the device */
+	aic3xxx_bulk_read(aic3262, AIC3262_INT_STICKY_FLAG1, 4, status);
 
 	/* report  */
 	if (status[2] & aic3262_irqs[AIC3262_IRQ_HEADSET_DETECT].status)
 		handle_nested_irq(aic3262->irq_base);
-
 	if (status[2] & aic3262_irqs[AIC3262_IRQ_BUTTON_PRESS].status)
 		handle_nested_irq(aic3262->irq_base + 1);
 	if (status[2] & aic3262_irqs[AIC3262_IRQ_DAC_DRC].status)
@@ -141,7 +163,7 @@ static irqreturn_t aic3262_irq_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-int aic3262_irq_init(struct aic3262 *aic3262)
+int aic3xxx_irq_init(struct aic3xxx *aic3262)
 {
 	int cur_irq, ret;
 
@@ -150,7 +172,7 @@ int aic3262_irq_init(struct aic3262 *aic3262)
 	/* mask the individual interrupt sources */
 	aic3262->irq_masks_cur = 0x0;
 	aic3262->irq_masks_cache = 0x0;
-	aic3262_reg_write(aic3262, AIC3262_INT1_CNTL, 0x0);
+	aic3xxx_reg_write(aic3262, AIC3262_INT1_CNTL, 0x0);
 
 	if (!aic3262->irq) {
 		dev_warn(aic3262->dev,
@@ -186,7 +208,7 @@ int aic3262_irq_init(struct aic3262 *aic3262)
 	ret = request_threaded_irq(aic3262->irq, NULL, aic3262_irq_thread,
 				   IRQF_TRIGGER_RISING,
 				   "tlv320aic3262", aic3262);
-	if (ret) {
+	if (ret < 0) {
 		dev_err(aic3262->dev, "failed to request IRQ %d: %d\n",
 			aic3262->irq, ret);
 		return ret;
@@ -194,11 +216,16 @@ int aic3262_irq_init(struct aic3262 *aic3262)
 
 	return 0;
 }
-EXPORT_SYMBOL(aic3262_irq_init);
+EXPORT_SYMBOL(aic3xxx_irq_init);
 
-void aic3262_irq_exit(struct aic3262 *aic3262)
+void aic3xxx_irq_exit(struct aic3xxx *aic3262)
 {
 	if (aic3262->irq)
 		free_irq(aic3262->irq, aic3262);
 }
-EXPORT_SYMBOL(aic3262_irq_exit);
+EXPORT_SYMBOL(aic3xxx_irq_exit);
+MODULE_AUTHOR("Mukund navada <navada@ti.com>");
+MODULE_AUTHOR("Mehar Bajwa <mehar.bajwa@ti.com>");
+MODULE_DESCRIPTION
+	("Interrupt controller support for TI OMAP44XX TLV320AIC3262");
+MODULE_LICENSE("GPL");
