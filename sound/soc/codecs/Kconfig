@@ -350,6 +350,7 @@ config SND_SOC_TLV320AIC32X4
 config SND_SOC_TLV320AIC3X
 	tristate
 
+# TI TLV320AIC3262 codec
 config SND_SOC_TLV320AIC326X
 	select AIC3262_CODEC
 	tristate "TI AIC326x Codec"

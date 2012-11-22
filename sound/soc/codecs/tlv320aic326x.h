@@ -28,21 +28,16 @@
 
 #ifndef _TLV320AIC3262_H
 #define _TLV320AIC3262_H
-#include "aic3xxx_cfw.h"
-#include "aic3xxx_cfw_ops.h"
-#include <linux/switch.h>
+#include "aic3xxx/aic3xxx_cfw.h"
+#include "aic3xxx/aic3xxx_cfw_ops.h"
 
 #define AUDIO_NAME "aic3262"
 #define AIC3262_VERSION "1.1"
 /* Macro to enable the inclusion of tiload kernel driver */
 #define AIC3262_TiLoad
 #undef AIC3262_SYNC_MODE
-
-/* #define AIC3262_ASI1_MASTER */
 #undef AIC3262_ASI1_MASTER
-/* #define AIC3262_ASI2_MASTER */
 #undef AIC3262_ASI2_MASTER
-/* #define AIC3262_ASI3_MASTER */
 #undef AIC3262_ASI3_MASTER
 /* Macro for McBsp master / slave configuration */
 #define AIC3262_MCBSP_SLAVE	/*3262 master */
@@ -63,7 +58,6 @@
 #define AIC3262_FREQ_19200000 19200000
 #define AIC3262_FREQ_24000000 24000000
 #define AIC3262_FREQ_38400000 38400000
-#define AIC3262_FREQ_12288000 12288000
 /* Audio data word length = 16-bits (default setting) */
 #define AIC3262_WORD_LEN_16BITS		0x00
 #define AIC3262_WORD_LEN_20BITS		0x01
@@ -103,19 +97,12 @@
 /* Updated from 256 to support Page 3 registers */
 #define	AIC3262_CACHEREGNUM				1024
 
-#define DSP_NON_SYNC_MODE(state) (!((state & 0x03) && (state & 0x30)))
-
-#define TIME_DELAY					5
-#define DELAY_COUNTER					100
-
-#ifdef AIC3262_TiLoad
-int aic3262_driver_init(struct snd_soc_codec *codec);
-#endif
+#define AIC326X_TIME_DELAY					5
+#define AIC326X_DELAY_COUNTER					100
 
 struct aic3262_jack_data {
 	struct snd_soc_jack *jack;
 	int report;
-	struct switch_dev sdev;
 };
 
 struct aic3262_priv {
@@ -139,60 +126,10 @@ struct aic3262_priv {
 	int isdefault_fw;
 };
 
-/*
- *----------------------------------------------------------------------------
- * @struct  aic3262_rate_divs |
- *          Setting up the values to get different freqencies
- *
- * @field   u32 | mclk |
- *          Master clock
- * @field   u32 | rate |
- *          sample rate
- * @field   u8 | p_val |
- *          value of p in PLL
- * @field   u32 | pll_j |
- *          value for pll_j
- * @field   u32 | pll_d |
- *          value for pll_d
- * @field   u32 | dosr |
- *          value to store dosr
- * @field   u32 | ndac |
- *          value for ndac
- * @field   u32 | mdac |
- *          value for mdac
- * @field   u32 | aosr |
- *          value for aosr
- * @field   u32 | nadc |
- *          value for nadc
- * @field   u32 | madc |
- *          value for madc
- * @field   u32 | blck_N |
- *          value for block N
- *----------------------------------------------------------------------------
- */
-struct aic3262_rate_divs {
-	u32 mclk;
-	u32 rate;
-	u8 p_val;
-	u8 pll_j;
-	u16 pll_d;
-	u16 dosr;
-	u8 ndac;
-	u8 mdac;
-	u8 aosr;
-	u8 nadc;
-	u8 madc;
-	u8 blck_N;
-};
-
 extern struct snd_soc_dai tlv320aic3262_dai;
-extern struct snd_soc_codec_device soc_codec_dev_aic3262;
-extern const struct aic3xxx_codec_ops aic3262_cfw_codec_ops;
 void aic3262_hs_jack_detect(struct snd_soc_codec *codec,
 				struct snd_soc_jack *jack, int report);
 
-unsigned int aic3262_read(struct snd_soc_codec *codec, unsigned int reg);
-int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
-				unsigned int value);
+
 #endif				/* _TLV320AIC3262_H */
 
