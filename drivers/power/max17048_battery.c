@@ -491,8 +491,11 @@ static int max17048_probe(struct i2c_client *client,
 	}
 
 	ret = register_callback(max17048_battery_status, chip);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(&client->dev,
+			"register_callback failed, err = %d\n", ret);
 		goto error2;
+	}
 
 	chip->battery.name		= "battery";
 	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY;
