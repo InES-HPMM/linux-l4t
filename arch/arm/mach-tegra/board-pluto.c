@@ -151,6 +151,7 @@ static __initdata struct tegra_clk_init_table pluto_clk_init_table[] = {
 	{ "dam0",	"clk_m",	12000000,	false},
 	{ "dam1",	"clk_m",	12000000,	false},
 	{ "dam2",	"clk_m",	12000000,	false},
+	{ "audio0",	"i2s0_sync",	0,		false},
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio2",	"i2s2_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
@@ -376,7 +377,7 @@ static struct tegra_asoc_platform_data pluto_audio_pdata = {
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.sample_size	= 16,
-		.rate		= 8000,
+		.rate		= 16000,
 		.channels	= 2,
 	},
 };
