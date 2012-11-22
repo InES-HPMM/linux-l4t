@@ -371,6 +371,14 @@ static struct tegra_asoc_platform_data pluto_audio_pdata = {
 		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
 		.sample_size	= 16,
 	},
+	.i2s_param[VOICE_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 8000,
+		.channels	= 2,
+	},
 };
 
 static struct platform_device pluto_audio_device = {
@@ -832,8 +840,6 @@ static void pluto_audio_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	pluto_audio_pdata.codec_name = "cs42l73.0-004a";
-	pluto_audio_pdata.codec_dai_name = "cs42l73-vsp";
 }
 
 static struct platform_device *pluto_spi_devices[] __initdata = {
