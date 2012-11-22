@@ -39,7 +39,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <linux/mfd/tlv320aic3262-registers.h>
-
+#include <linux/mfd/tlv320aic3xxx-core.h>
 #include "../codecs/tlv320aic326x.h"
 
 #include "tegra_pcm.h"
@@ -340,12 +340,6 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
-		return err;
-	}
-
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
 	}
 
@@ -731,11 +725,6 @@ static int tegra_aic326x_voice_call_hw_params(
 		return err;
 	}
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai clock not set\n");
-		return err;
-	}
 
 	err = snd_soc_dai_set_pll(codec_dai, 0, AIC3262_PLL_CLKIN_MCLK1 , rate,
 			params_rate(params));
@@ -973,26 +962,23 @@ static const struct snd_soc_dapm_widget tegra_aic326x_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route aic326x_audio_map[] = {
-	{"Int Spk", NULL, "SPKL"},
-	{"Int Spk", NULL, "SPKR"},
-	{"Earpiece", NULL, "RECP"},
-	{"Earpiece", NULL, "RECM"},
-	{"Headphone Jack", NULL, "HPL"},
-	{"Headphone Jack", NULL, "HPR"},
+	{"Int Spk", NULL, "SPK Left Playback"},
+	{"Int Spk", NULL, "SPK Right Playback"},
+	{"Earpiece", NULL, "RECP Playback"},
+	{"Earpiece", NULL, "RECM Playback"},
+	{"Headphone Jack", NULL, "HP Left Playback"},
+	{"Headphone Jack", NULL, "HP Right Playback"},
 	/* internal (IN2L/IN2R) mic is stero */
 	{"Mic Bias Int" ,NULL, "Int Mic"},
-	{"IN2L", NULL, "Mic Bias Int"},
+	{"IN2 Left Capture", NULL, "Mic Bias Int"},
 	{"Mic Bias Int" ,NULL, "Int Mic"},
-	{"IN2R", NULL, "Mic Bias Int"},
-	{"IN1L", NULL, "Mic Bias Ext"},
-	{"Mic Bias Ext" ,NULL, "Mic Jack"},
+	{"IN2 Right Capture", NULL, "Mic Bias Int"},
+	{"IN1 Left Capture", NULL, "Mic Bias Ext"},
+	{"Mic Bias Ext" , NULL, "Mic Jack"},
 	/* Connect LDMIC and RDMIC to DMIC widget*/
-	{"Left DMIC", NULL, "Mic Bias Int"},
-	{"Right DMIC", NULL, "Mic Bias Int"},
+	{"Left DMIC Capture", NULL, "Mic Bias Int"},
+	{"Right DMIC Capture", NULL, "Mic Bias Int"},
 	{"Mic Bias Int", NULL, "Int Mic"},
-/*	{"CM1L" ,NULL, "Mic Jack"}, */
-/*	{"IN1L", NULL, "Mic Bias Ext"}, */
-/*	{"IN1L", NULL, "CM1L"}, */
 };
 
 static const struct snd_kcontrol_new tegra_aic326x_controls[] = {
