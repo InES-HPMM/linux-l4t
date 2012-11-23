@@ -154,6 +154,7 @@ struct sbs_info {
 	struct delayed_work		work;
 	int				ignore_changes;
 };
+struct sbs_info *tchip;
 
 static int sbs_read_word_data(struct i2c_client *client, u8 address)
 {
@@ -566,43 +567,48 @@ static void sbs_external_power_changed(struct power_supply *psy)
 	chip->poll_time = chip->plat_data.poll_retry_count;
 }
 
+void sbs_update(void)
+{
+	int ret;
+
+	if (tchip != NULL) {
+		ret = sbs_read_word_data(tchip->client,
+				sbs_data[REG_STATUS].addr);
+		/* if the read failed, give up on this work */
+		if (ret < 0) {
+			tchip->poll_time = 0;
+			return;
+		}
+
+		if (ret & BATTERY_FULL_CHARGED)
+			ret = POWER_SUPPLY_STATUS_FULL;
+		else if (ret & BATTERY_FULL_DISCHARGED)
+			ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		else if (ret & BATTERY_DISCHARGING)
+			ret = POWER_SUPPLY_STATUS_DISCHARGING;
+		else
+			ret = POWER_SUPPLY_STATUS_CHARGING;
+
+		if (tchip->last_state != ret) {
+			tchip->poll_time = 0;
+			power_supply_changed(&tchip->power_supply);
+			return;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(sbs_update);
+
 static void sbs_delayed_work(struct work_struct *work)
 {
 	struct sbs_info *chip;
-	s32 ret;
 
 	chip = container_of(work, struct sbs_info, work.work);
 
-	ret = sbs_read_word_data(chip->client, sbs_data[REG_STATUS].addr);
-	/* if the read failed, give up on this work */
-	if (ret < 0) {
-		chip->poll_time = 0;
-		return;
-	}
-
-	if (ret & BATTERY_FULL_CHARGED)
-		ret = POWER_SUPPLY_STATUS_FULL;
-	else if (ret & BATTERY_FULL_DISCHARGED)
-		ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
-	else if (ret & BATTERY_DISCHARGING)
-		ret = POWER_SUPPLY_STATUS_DISCHARGING;
-	else
-		ret = POWER_SUPPLY_STATUS_CHARGING;
-
-	if (chip->last_state != ret) {
-		chip->poll_time = 0;
-		power_supply_changed(&chip->power_supply);
-		return;
-	}
-	if (chip->poll_time > 0) {
-		schedule_delayed_work(&chip->work, HZ);
-		chip->poll_time--;
-		return;
-	}
+	power_supply_changed(&tchip->power_supply);
+	schedule_delayed_work(&chip->work, HZ*2);
 }
 
 #if defined(CONFIG_OF)
-
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 
@@ -622,13 +628,14 @@ static struct sbs_platform_data *sbs_of_populate_pdata(
 	int rc;
 	u32 prop;
 
+	/* if platform data is set, honor it */
+	if (pdata)
+		return pdata;
+
 	/* verify this driver matches this device */
 	if (!of_node)
 		return NULL;
 
-	/* if platform data is set, honor it */
-	if (pdata)
-		return pdata;
 
 	/* first make sure at least one property is set, otherwise
 	 * it won't change behavior from running without pdata.
@@ -722,12 +729,14 @@ static int sbs_probe(struct i2c_client *client,
 	chip->last_state = POWER_SUPPLY_STATUS_UNKNOWN;
 	chip->power_supply.external_power_changed = sbs_external_power_changed;
 
-	pdata = sbs_of_populate_pdata(client);
+	tchip = chip;
 
+	pdata = sbs_of_populate_pdata(client);
 	if (pdata) {
 		chip->gpio_detect = gpio_is_valid(pdata->battery_detect);
 		memcpy(&chip->plat_data, pdata, sizeof(struct sbs_platform_data));
 	}
+	chip->poll_time = chip->plat_data.poll_retry_count;
 
 	i2c_set_clientdata(client, chip);
 
@@ -792,7 +801,8 @@ skip_gpio:
 	dev_info(&client->dev,
 		"%s: battery gas gauge device registered\n", client->name);
 
-	INIT_DELAYED_WORK(&chip->work, sbs_delayed_work);
+	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, sbs_delayed_work);
+	schedule_delayed_work(&chip->work, HZ);
 
 	chip->enable_detection = true;
 
