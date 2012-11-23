@@ -2017,20 +2017,6 @@ static int uhsic_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 
 	return 0;
 }
-static int uhsic_phy_post_resume(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(base + USB_TXFILLTUNING);
-	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
-		val = USB_FIFO_TXFILL_THRES(0x10);
-		writel(val, base + USB_TXFILLTUNING);
-	}
-
-	return 0;
-}
 
 static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 {
@@ -2044,7 +2030,7 @@ static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 	/* check whether we wake up from the remote resume */
 	if (UHSIC_WALK_PTR_VAL(inst) & val) {
 		phy->pmc_remote_wakeup = true;
-		pr_info("%s: uhsic remote wakeup detected\n", __func__);
+		DBG("%s: uhsic remote wakeup detected\n", __func__);
 	} else {
 		if (!((UHSIC_STROBE_VAL(inst) | UHSIC_DATA_VAL(inst)) & val)) {
 				uhsic_phy_disable_pmc_bus_ctrl(phy);
@@ -2074,28 +2060,13 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 			udelay(1);
 			if (wait_time_us == 0) {
 				uhsic_phy_disable_pmc_bus_ctrl(phy);
-				uhsic_phy_post_resume(phy);
 				return;
 			}
 			wait_time_us--;
 		} while (val & (USB_PORTSC_RESUME | USB_PORTSC_SUSP));
-		/* wait for 25 ms to port resume complete */
-		msleep(25);
-		/* disable PMC master control */
-		uhsic_phy_disable_pmc_bus_ctrl(phy);
-
-		/* Clear PCI and SRI bits to avoid an interrupt upon resume */
-		val = readl(base + USB_USBSTS);
-		writel(val, base + USB_USBSTS);
-		/* wait to avoid SOF if there is any */
-		if (usb_phy_reg_status_wait(base + USB_USBSTS,
-			USB_USBSTS_SRI, USB_USBSTS_SRI, 2500)) {
-			pr_warn("%s: timeout waiting for SOF\n", __func__);
-		}
-		uhsic_phy_post_resume(phy);
-	} else {
-		uhsic_phy_disable_pmc_bus_ctrl(phy);
 	}
+	/* disable PMC master control */
+	uhsic_phy_disable_pmc_bus_ctrl(phy);
 
 	/* Set RUN bit */
 	val = readl(base + USB_USBCMD);
@@ -3080,7 +3051,6 @@ static struct tegra_usb_phy_ops uhsic_phy_ops = {
 	.power_on	= uhsic_phy_power_on,
 	.power_off	= uhsic_phy_power_off,
 	.pre_resume	= uhsic_phy_pre_resume,
-	.post_resume = uhsic_phy_post_resume,
 	.port_power = uhsic_phy_bus_port_power,
 };
 
