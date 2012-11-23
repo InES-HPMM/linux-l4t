@@ -746,7 +746,7 @@ static int __init tegra_max_core_current(char *options)
 	max_core_current = memparse(p, &p);
 	return 1;
 }
-__setup("max_core_cur_ma=", tegra_max_core_current);
+__setup("core_edp_ma=", tegra_max_core_current);
 
 static int __init tegra_debug_uartport(char *info)
 {
