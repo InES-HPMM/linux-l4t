@@ -1572,7 +1572,7 @@ static int spi_tegra_resume(struct device *dev)
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct spi_tegra_data *tspi = spi_master_get_devdata(master);
 	struct spi_message *m;
-	struct spi_device *spi;
+	struct spi_device *spi = NULL;
 	struct spi_transfer *t = NULL;
 	int single_xfer = 0;
 	unsigned long flags;
