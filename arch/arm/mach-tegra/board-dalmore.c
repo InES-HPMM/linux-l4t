@@ -46,6 +46,7 @@
 #include <linux/leds.h>
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
+#include <linux/edp.h>
 
 #include <asm/hardware/gic.h>
 
@@ -64,7 +65,6 @@
 #include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
-#include <mach/edp.h>
 #include <mach/tegra_usb_modem_power.h>
 
 #include "board-touch-raydium.h"
@@ -734,12 +734,47 @@ static int __init dalmore_touch_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_EDP_FRAMEWORK
+static struct edp_manager battery_edp_manager = {
+	.name = "battery",
+	.imax = 2500
+};
+
+static void __init dalmore_battery_edp_init(void)
+{
+	struct edp_governor *g;
+	int r;
+
+	r = edp_register_manager(&battery_edp_manager);
+	if (r)
+		goto err_ret;
+
+	/* start with priority governor */
+	g = edp_get_governor("priority");
+	if (!g) {
+		r = -EFAULT;
+		goto err_ret;
+	}
+
+	r = edp_set_governor(&battery_edp_manager, g);
+	if (r)
+		goto err_ret;
+
+	return;
+
+err_ret:
+	pr_err("Battery EDP init failed with error %d\n", r);
+	WARN_ON(1);
+}
+#else
+static inline void dalmore_battery_edp_init(void) {}
+#endif
 static void __init tegra_dalmore_init(void)
 {
 	struct board_info board_info;
 
 	tegra_get_display_board_info(&board_info);
-	tegra_battery_edp_init(2500);
+	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_soc_device_init("dalmore");
 	tegra_enable_pinmux();

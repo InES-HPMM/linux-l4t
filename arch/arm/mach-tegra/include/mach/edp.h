@@ -112,12 +112,6 @@ static inline void tegra_edp_throttle_cpu_now(u8 factor)
 void tegra_edp_throttle_cpu_now(u8 factor);
 #endif
 
-#if defined(CONFIG_TEGRA_EDP_LIMITS) && defined(CONFIG_EDP_FRAMEWORK)
-void __init tegra_battery_edp_init(unsigned int cap);
-#else
-static inline void tegra_battery_edp_init(unsigned int cap) {}
-#endif
-
 #ifdef CONFIG_TEGRA_CORE_EDP_LIMITS
 void tegra_init_core_edp_limits(unsigned int regulator_mA);
 int tegra_core_edp_debugfs_init(struct dentry *edp_dir);

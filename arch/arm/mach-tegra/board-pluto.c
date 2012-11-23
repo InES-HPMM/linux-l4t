@@ -48,6 +48,7 @@
 #include <linux/mfd/max8831.h>
 #include <linux/of_platform.h>
 #include <linux/a2220.h>
+#include <linux/edp.h>
 
 #include <asm/hardware/gic.h>
 
@@ -67,7 +68,6 @@
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra-bb-power.h>
-#include <mach/edp.h>
 #include <mach/tegra_usb_modem_power.h>
 
 #include "board.h"
@@ -989,9 +989,45 @@ static int __init pluto_touch_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_EDP_FRAMEWORK
+static struct edp_manager battery_edp_manager = {
+	.name = "battery",
+	.imax = 3250
+};
+
+static void __init pluto_battery_edp_init(void)
+{
+	struct edp_governor *g;
+	int r;
+
+	r = edp_register_manager(&battery_edp_manager);
+	if (r)
+		goto err_ret;
+
+	/* start with priority governor */
+	g = edp_get_governor("priority");
+	if (!g) {
+		r = -EFAULT;
+		goto err_ret;
+	}
+
+	r = edp_set_governor(&battery_edp_manager, g);
+	if (r)
+		goto err_ret;
+
+	return;
+
+err_ret:
+	pr_err("Battery EDP init failed with error %d\n", r);
+	WARN_ON(1);
+}
+#else
+static inline void pluto_battery_edp_init(void) {}
+#endif
+
 static void __init tegra_pluto_init(void)
 {
-	tegra_battery_edp_init(3250);
+	pluto_battery_edp_init();
 	tegra_clk_init_from_table(pluto_clk_init_table);
 	tegra_soc_device_init("tegra_pluto");
 	tegra_enable_pinmux();

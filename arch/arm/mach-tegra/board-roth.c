@@ -534,8 +534,6 @@ static void roth_audio_init(void)
 
 static void __init tegra_roth_init(void)
 {
-
-	tegra_battery_edp_init(2500);
 	tegra_clk_init_from_table(roth_clk_init_table);
 	tegra_soc_device_init("roth");
 	tegra_enable_pinmux();
