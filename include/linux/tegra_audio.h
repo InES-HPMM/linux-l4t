@@ -26,6 +26,16 @@
 #define TEGRA_AUDIO_IN_START _IO(TEGRA_AUDIO_MAGIC, 0)
 #define TEGRA_AUDIO_IN_STOP  _IO(TEGRA_AUDIO_MAGIC, 1)
 
+enum tegra_audio_test_id {
+	TEGRA_AUDIO_TEST_NONE = 0,
+	TEGRA_AUDIO_TEST_AHUB_BBC1_DL,
+	TEGRA_AUDIO_TEST_AHUB_BBC1_UL,
+	TEGRA_AUDIO_TEST_AHUB_BBC1_UL_DL_LB,
+	TEGRA_AUDIO_TEST_APBIF_APBIF_LB,
+
+	TEGRA_AUDIO_TEST_TOTALS
+};
+
 struct tegra_audio_in_config {
 	int rate;
 	int stereo;
@@ -39,6 +49,17 @@ struct dam_srate {
 	unsigned int audio_channels;
 	unsigned int client_channels;
 	unsigned int apbif_chan;
+};
+
+struct tegra_audio_test_params {
+	unsigned int test_id;
+	unsigned int sample_rate;
+	unsigned int audio_bits;
+	unsigned int client_bits;
+	unsigned int audio_channels;
+	unsigned int client_channels;
+	unsigned int write_size;
+	unsigned int read_size;
 };
 
 #define TEGRA_AUDIO_IN_SET_CONFIG	_IOW(TEGRA_AUDIO_MAGIC, 2, \
@@ -96,6 +117,11 @@ struct dam_srate {
 #define AMX_ADX_I2S_CLOSE		_IOW(TEGRA_AUDIO_MAGIC, 43, void *)
 #define AMX_ADX_AUDIO_START		_IOW(TEGRA_AUDIO_MAGIC, 44, void *)
 #define AMX_ADX_AUDIO_STOP		_IOW(TEGRA_AUDIO_MAGIC, 45, void *)
+
+#define TEGRA_AUDIO_TEST_START			_IO(TEGRA_AUDIO_MAGIC, 61)
+#define TEGRA_AUDIO_TEST_SET_PARAMS		_IO(TEGRA_AUDIO_MAGIC, 62)
+#define TEGRA_AUDIO_TEST_GET_PARAMS		_IO(TEGRA_AUDIO_MAGIC, 63)
+#define TEGRA_AUDIO_TEST_STOP			_IO(TEGRA_AUDIO_MAGIC, 64)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
