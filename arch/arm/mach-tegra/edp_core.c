@@ -16,11 +16,11 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/string.h>
 #include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/kobject.h>
 #include <linux/err.h>
+#include <linux/suspend.h>
 
 #include <mach/edp.h>
 
@@ -38,6 +38,7 @@ static bool core_edp_scpu_state;
 static int core_edp_profile;
 static int core_edp_modules_state;
 static int core_edp_thermal_idx;
+static int core_edp_suspended_profile = CORE_EDP_PROFILES_NUM;
 
 static const char *profile_names[CORE_EDP_PROFILES_NUM] = {
 	[CORE_EDP_PROFILE_BALANCED]  = "profile_balanced",
@@ -139,8 +140,6 @@ static int update_cap_rates(unsigned long *new_rates, unsigned long *old_rates)
 	return 0;
 }
 
-/* FIXME: resume sync ? */
-
 static int __init start_core_edp(void)
 {
 	int ret;
@@ -225,18 +224,11 @@ int tegra_core_edp_cpu_state_update(bool scpu_state)
 }
 
 /* core edp profiles update */
-static int profile_update(int profile)
+static int  _profile_update(int profile)
 {
 	int ret = 0;
 	unsigned long *old_cap_rates;
 	unsigned long *new_cap_rates;
-
-	if (!limits) {
-		core_edp_profile = profile;
-		return 0;
-	}
-
-	mutex_lock(&core_edp_lock);
 
 	if (core_edp_profile != profile) {
 		old_cap_rates = get_current_cap_rates();
@@ -248,8 +240,23 @@ static int profile_update(int profile)
 		else
 			core_edp_profile = profile;
 	}
-	mutex_unlock(&core_edp_lock);
 
+	return ret;
+}
+
+static int profile_update(int profile)
+{
+	int ret = 0;
+
+	if (!limits) {
+		core_edp_profile = profile;
+		return 0;
+	}
+
+	mutex_lock(&core_edp_lock);
+	if (core_edp_suspended_profile == CORE_EDP_PROFILES_NUM)
+		ret = _profile_update(profile);
+	mutex_unlock(&core_edp_lock);
 	return ret;
 }
 
@@ -314,8 +321,60 @@ const struct attribute *core_edp_attributes[] = {
 
 static struct kobject *core_edp_kobj;
 
+/*
+ * Since EMC rate on suspend exit is set to boot configuration with no regards
+ * to EDP constraints, force profile_favor_emc on suspend entry, and restore
+ * suspended profile after resume. This guarantees that other clocks (GPU)
+ * are throttled enough to prevent regulator over-current.
+ */
+static int core_edp_pm_notify(struct notifier_block *nb, unsigned long event,
+	void *dummy)
+{
+	int ret = 0;
+	if (!limits)
+		return NOTIFY_OK;
+
+	mutex_lock(&core_edp_lock);
+	if (event == PM_SUSPEND_PREPARE) {
+		core_edp_suspended_profile = core_edp_profile;
+		ret = _profile_update(CORE_EDP_PROFILE_FAVOR_EMC);
+		if (ret)
+			pr_err("Core EDP suspend: failed to set %s\n",
+			       profile_names[CORE_EDP_PROFILE_FAVOR_EMC]);
+		else
+			pr_info("Core EDP suspend: set %s\n",
+				profile_names[CORE_EDP_PROFILE_FAVOR_EMC]);
+	} else if (event == PM_POST_SUSPEND) {
+		ret = _profile_update(core_edp_suspended_profile);
+		if (ret)
+			pr_err("Core EDP resume: failed to restore %s\n",
+			       profile_names[core_edp_suspended_profile]);
+		else
+			pr_info("Core EDP resume: restored %s\n",
+				profile_names[core_edp_suspended_profile]);
+		core_edp_suspended_profile = CORE_EDP_PROFILES_NUM;
+		ret = 0; /* don't stop resume */
+	}
+	mutex_unlock(&core_edp_lock);
+	return notifier_from_errno(ret);
+}
+
+static struct notifier_block core_edp_pm_notifier = {
+	.notifier_call = core_edp_pm_notify,
+};
+
+/* initialize update interfaces */
 static int __init tegra_core_edp_late_init(void)
 {
+	if (!limits)
+		return 0;
+
+	/* exit on error - prevent changing profile_favor_emc  */
+	if (register_pm_notifier(&core_edp_pm_notifier)) {
+		pr_err("%s: failed to register edp pm notifier\n", __func__);
+		return 0;
+	}
+
 	core_edp_kobj = kobject_create_and_add("tegra_core_edp", kernel_kobj);
 	if (!core_edp_kobj) {
 		pr_err("%s: failed to create edp sysfs object\n", __func__);
