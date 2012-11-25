@@ -130,7 +130,14 @@ static inline int tegra_core_edp_debugfs_init(struct dentry *edp_dir)
 static inline int tegra_core_edp_cpu_state_update(bool scpu_state)
 { return 0; }
 #endif
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 int tegra11x_select_core_edp_table(unsigned int regulator_mA,
 				   struct tegra_core_edp_limits *limits);
+#else
+static inline int tegra11x_select_core_edp_table(
+	unsigned int regulator_mA, struct tegra_core_edp_limits *limits)
+{ return -ENOSYS; }
+#endif
 
 #endif	/* __MACH_EDP_H */
