@@ -67,6 +67,9 @@ struct tegra_thermal_device {
 
 struct tegra_cooling_device {
 	enum cooling_device_id id;
+	char *cdev_type;
+	int *trip_temperatures;
+	int trip_temperatures_num;
 };
 
 #define MAX_THROT_TABLE_SIZE	(64)

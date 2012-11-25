@@ -116,6 +116,7 @@ void tegra_edp_throttle_cpu_now(u8 factor);
 void tegra_init_core_edp_limits(unsigned int regulator_mA);
 int tegra_core_edp_debugfs_init(struct dentry *edp_dir);
 int tegra_core_edp_cpu_state_update(bool scpu_state);
+struct tegra_cooling_device *tegra_core_edp_get_cdev(void);
 #else
 static inline void tegra_init_core_edp_limits(unsigned int regulator_mA)
 {}
@@ -123,6 +124,8 @@ static inline int tegra_core_edp_debugfs_init(struct dentry *edp_dir)
 { return 0; }
 static inline int tegra_core_edp_cpu_state_update(bool scpu_state)
 { return 0; }
+static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
+{ return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC

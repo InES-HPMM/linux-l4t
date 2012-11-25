@@ -132,3 +132,33 @@ int uart_console_debug_init(int default_debug_port)
 	}
 	return debug_port_id;
 }
+
+void nct1008_add_cdev_trips(struct nct1008_platform_data *nct1008_data,
+			    struct tegra_cooling_device *cdev_data)
+{
+	int i, trip;
+	struct nct_trip_temp *trip_state;
+
+	if (!nct1008_data || !cdev_data)
+		return;
+
+	if (nct1008_data->num_trips + cdev_data->trip_temperatures_num >
+	    NCT_MAX_TRIPS) {
+		WARN(1, "%s: cooling device %s has too many trips\n",
+		     __func__, cdev_data->cdev_type);
+		return;
+	}
+
+	for (i = 0; i < cdev_data->trip_temperatures_num; i++) {
+		trip = nct1008_data->num_trips;
+		trip_state = &nct1008_data->trips[trip];
+
+		trip_state->cdev_type = cdev_data->cdev_type;
+		trip_state->trip_temp = cdev_data->trip_temperatures[i] * 1000;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->state = i + 1;
+		trip_state->hysteresis = 1000;
+
+		nct1008_data->num_trips++;
+	}
+}

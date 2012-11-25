@@ -42,6 +42,7 @@
 
 #include "gpio-names.h"
 #include "board.h"
+#include "board-common.h"
 #include "board-roth.h"
 #include "cpu-tegra.h"
 #include "devices.h"
@@ -210,13 +211,13 @@ static int roth_nct1008_init(void)
 {
 	int nct1008_port = TEGRA_GPIO_PX6;
 	int ret = 0;
+	struct nct1008_platform_data *data = &roth_nct1008_pdata;
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 		const struct tegra_edp_limits *cpu_edp_limits;
 		int cpu_edp_limits_size;
 		int i;
 		int trip;
-		struct nct1008_platform_data *data = &roth_nct1008_pdata;
 		struct nct_trip_temp *trip_state;
 
 		/* edp capping */
@@ -242,6 +243,8 @@ static int roth_nct1008_init(void)
 				BUG();
 		}
 #endif
+
+	nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 	pr_info("%s: roth nct1008 irq %d", __func__, \

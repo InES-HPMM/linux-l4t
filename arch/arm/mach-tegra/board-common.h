@@ -21,8 +21,12 @@
 #ifndef __MACH_TEGRA_BOARD_COMMON_H
 #define __MACH_TEGRA_BOARD_COMMON_H
 
+#include <linux/nct1008.h>
+#include <mach/thermal.h>
+
 extern struct platform_device *uart_console_debug_device;
 int  uart_console_debug_init(int defaul_debug_port);
 int tegra_vibrator_init(void);
-
+void nct1008_add_cdev_trips(struct nct1008_platform_data *nct1008_data,
+			    struct tegra_cooling_device *cdev_data);
 #endif

@@ -23,6 +23,7 @@
 #include <linux/suspend.h>
 
 #include <mach/edp.h>
+#include <mach/thermal.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -321,6 +322,78 @@ const struct attribute *core_edp_attributes[] = {
 
 static struct kobject *core_edp_kobj;
 
+/* core edp temperature update */
+static int core_edp_get_cdev_max_state(struct thermal_cooling_device *cdev,
+				       unsigned long *max_state)
+{
+	*max_state = limits ? limits->temperature_ranges - 1 : 0;
+	return 0;
+}
+
+static int core_edp_get_cdev_cur_state(struct thermal_cooling_device *cdev,
+				       unsigned long *cur_state)
+{
+	*cur_state = core_edp_thermal_idx;
+	return 0;
+}
+
+static int core_edp_set_cdev_state(struct thermal_cooling_device *cdev,
+				   unsigned long cur_state)
+{
+	int ret = 0;
+	unsigned long *old_cap_rates;
+	unsigned long *new_cap_rates;
+
+	if (!limits) {
+		core_edp_thermal_idx = cur_state;
+		return 0;
+	}
+
+	mutex_lock(&core_edp_lock);
+
+	if (core_edp_thermal_idx != cur_state) {
+		old_cap_rates = get_current_cap_rates();
+		new_cap_rates = get_cap_rates(
+			core_edp_scpu_state, core_edp_profile,
+			core_edp_modules_state, cur_state);
+		ret = update_cap_rates(new_cap_rates, old_cap_rates);
+		/*
+		 * Unlike updating other state variables, temperature change
+		 * must be always "accepted" (it's already happened) - just
+		 * re-try one more time in case of error
+		 */
+		if (ret)
+			update_cap_rates(new_cap_rates, old_cap_rates);
+
+		core_edp_thermal_idx = cur_state;
+	}
+	mutex_unlock(&core_edp_lock);
+
+	return 0;
+}
+
+static struct thermal_cooling_device_ops core_edp_cooling_ops = {
+	.get_max_state = core_edp_get_cdev_max_state,
+	.get_cur_state = core_edp_get_cdev_cur_state,
+	.set_cur_state = core_edp_set_cdev_state,
+};
+
+static struct tegra_cooling_device core_edp_cdev;
+
+struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
+{
+	if (!limits)
+		return NULL;
+
+	if (!core_edp_cdev.cdev_type) {
+		core_edp_cdev.cdev_type = "core_edp";
+		core_edp_cdev.trip_temperatures = limits->temperatures;
+		core_edp_cdev.trip_temperatures_num =
+			limits->temperature_ranges-1;
+	}
+	return &core_edp_cdev;
+}
+
 /*
  * Since EMC rate on suspend exit is set to boot configuration with no regards
  * to EDP constraints, force profile_favor_emc on suspend entry, and restore
@@ -368,6 +441,11 @@ static int __init tegra_core_edp_late_init(void)
 {
 	if (!limits)
 		return 0;
+
+	/* continue on error - initialized at max temperature, anyway */
+	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
+		core_edp_cdev.cdev_type, NULL, &core_edp_cooling_ops)))
+		pr_err("%s: failed to register edp cooling device\n", __func__);
 
 	/* exit on error - prevent changing profile_favor_emc  */
 	if (register_pm_notifier(&core_edp_pm_notifier)) {
