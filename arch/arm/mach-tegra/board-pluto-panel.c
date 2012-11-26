@@ -655,11 +655,11 @@ static struct tegra_dc_mode pluto_dsi_modes[] = {
 		.v_ref_to_sync = 1,
 		.h_sync_width = 4,
 		.v_sync_width = 4,
-		.h_back_porch = 82,
+		.h_back_porch = 112,
 		.v_back_porch = 7,
 		.h_active = 720,
 		.v_active = 1280,
-		.h_front_porch = 4,
+		.h_front_porch = 12,
 		.v_front_porch = 20,
 	},
 #endif
