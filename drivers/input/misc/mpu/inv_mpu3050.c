@@ -222,7 +222,7 @@ int inv_mpu3050_remove_sysfs(struct inv_gyro_state_s *st)
 static void inv_report_data_3050(struct inv_gyro_state_s *st, s64 t,
 			int counter, unsigned char *data)
 {
-	short x, y, z = 0;
+	short x = 0, y = 0, z = 0;
 	int ind;
 	short out[3];
 	struct inv_chip_config_s *conf;
