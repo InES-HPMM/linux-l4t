@@ -744,10 +744,16 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	.disabe_ldo8_tracking_suspend = true,
 };
 
+static struct palmas_rtc_platform_data rtc_platform = {
+	.enable_charging = 1,
+	.charging_current_ua = 100,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
+	.rtc_pdata = &rtc_platform,
 	.mux_from_pdata = true,
 	.pad1 = 0,
 	.pad2 = 0,
