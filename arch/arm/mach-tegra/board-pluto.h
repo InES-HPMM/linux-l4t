@@ -23,6 +23,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include <linux/mfd/palmas.h>
+#include <linux/mfd/max77665.h>
 #include "gpio-names.h"
 
 /* External peripheral act as gpio */
@@ -41,6 +42,11 @@
 /* PLUTO IRQs */
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
 #define MAX77665_TEGRA_IRQ_BASE	(PALMAS_TEGRA_IRQ_BASE + PALMAS_NUM_IRQ)
+
+/* AIC326X IRQs */
+/* Assuming TPS is the PMIC on Ent */
+#define AIC3262_CODEC_IRQ_BASE (MAX77665_TEGRA_IRQ_BASE + MAX77665_NUM_IRQ)
+#define AIC3262_CODEC_IRQ_END  (AIC3262_CODEC_IRQ_BASE + 6)
 
 /* I2C related GPIOs */
 #define TEGRA_GPIO_I2C1_SCL		TEGRA_GPIO_PC4

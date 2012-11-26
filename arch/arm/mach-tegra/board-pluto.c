@@ -49,6 +49,8 @@
 #include <linux/of_platform.h>
 #include <linux/a2220.h>
 #include <linux/edp.h>
+#include <linux/mfd/tlv320aic3262-registers.h>
+#include <linux/mfd/tlv320aic3xxx-core.h>
 
 #include <asm/hardware/gic.h>
 
@@ -266,6 +268,45 @@ static struct tegra_i2c_platform_data pluto_i2c5_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
+static struct aic3262_gpio_setup aic3262_gpio[] = {
+	/* GPIO 1*/
+	{
+		.used = 1,
+		.in = 0,
+		.value = AIC3262_GPIO1_FUNC_INT1_OUTPUT ,
+	},
+	/* GPIO 2*/
+	{
+		.used = 1,
+		.in = 0,
+		.value = AIC3262_GPIO2_FUNC_ADC_MOD_CLK_OUTPUT,
+	},
+	/* GPIO 1 */
+	{
+		.used = 0,
+	},
+	/* GPI2 */
+	{
+		.used = 1,
+		.in = 1,
+		.in_reg = AIC3262_DMIC_INPUT_CNTL,
+		.in_reg_bitmask	= AIC3262_DMIC_CONFIGURE_MASK,
+		.in_reg_shift = AIC3262_DMIC_CONFIGURE_SHIFT,
+		.value = AIC3262_DMIC_GPI2_LEFT_GPI2_RIGHT,
+	},
+	/* GPO1 */
+	{
+		.used = 0,
+		.value = AIC3262_GPO1_FUNC_DISABLED,
+	},
+};
+static struct aic3xxx_pdata aic3262_codec_pdata = {
+	.gpio_irq	= 1,
+	.gpio		= aic3262_gpio,
+	.naudint_irq    = TEGRA_GPIO_HP_DET,
+	.irq_base       = AIC3262_CODEC_IRQ_BASE,
+};
+
 static struct i2c_board_info __initdata cs42l73_board_info = {
 	I2C_BOARD_INFO("cs42l73", 0x4a),
 };
@@ -274,6 +315,10 @@ static struct i2c_board_info __initdata pluto_codec_a2220_info = {
 	I2C_BOARD_INFO("audience_a2220", 0x3E),
 };
 
+static struct i2c_board_info __initdata pluto_codec_aic326x_info = {
+	I2C_BOARD_INFO("tlv320aic3262", 0x18),
+	.platform_data = &aic3262_codec_pdata,
+};
 
 static void pluto_i2c_init(void)
 {
@@ -291,6 +336,7 @@ static void pluto_i2c_init(void)
 
 	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
 	i2c_register_board_info(0, &cs42l73_board_info, 1);
+	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
 }
 
 static struct platform_device *pluto_uart_devices[] __initdata = {
@@ -430,11 +476,60 @@ static struct tegra_asoc_platform_data pluto_audio_pdata = {
 	},
 };
 
+static struct tegra_asoc_platform_data pluto_aic3262_pdata = {
+	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
+	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
+	.gpio_hp_mute		= -1,
+	.gpio_int_mic_en	= TEGRA_GPIO_INT_MIC_EN,
+	.gpio_ext_mic_en	= TEGRA_GPIO_EXT_MIC_EN,
+	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
+	.i2s_param[HIFI_CODEC]	= {
+		.audio_port_id	= 1,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.channels       = 2,
+	},
+	.i2s_param[BASEBAND]	= {
+		.audio_port_id	= 2,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 16000,
+		.channels	= 2,
+		.bit_clk	= 1024000,
+	},
+	.i2s_param[BT_SCO]	= {
+		.audio_port_id	= 3,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
+		.sample_size	= 16,
+		.channels	= 1,
+		.bit_clk	= 512000,
+	},
+	.i2s_param[VOICE_CODEC]	= {
+		.audio_port_id	= 0,
+		.is_i2s_master	= 1,
+		.i2s_mode	= TEGRA_DAIFMT_I2S,
+		.sample_size	= 16,
+		.rate		= 16000,
+		.channels	= 2,
+	},
+};
+
 static struct platform_device pluto_audio_device = {
 	.name	= "tegra-snd-cs42l73",
 	.id	= 2,
 	.dev	= {
 		.platform_data = &pluto_audio_pdata,
+	},
+};
+
+static struct platform_device pluto_audio_aic326x_device = {
+	.name	= "tegra-snd-aic326x",
+	.id	= 2,
+	.dev	= {
+		.platform_data  = &pluto_aic3262_pdata,
 	},
 };
 
@@ -478,6 +573,7 @@ static struct platform_device *pluto_devices[] __initdata = {
 	&pluto_tegra_wakeup_monitor_device,
 #endif
 	&pluto_audio_device,
+	&pluto_audio_aic326x_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
@@ -939,16 +1035,22 @@ static void pluto_modem_init(void)
 		platform_device_register(&tegra_baseband_xmm_power2_device);
 		/* override audio settings - use 8kHz */
 		pluto_audio_pdata.i2s_param[BASEBAND].audio_port_id
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].audio_port_id
 			= 2;
 		pluto_audio_pdata.i2s_param[BASEBAND].is_i2s_master
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].is_i2s_master
 			= 1;
 		pluto_audio_pdata.i2s_param[BASEBAND].i2s_mode
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].i2s_mode
 			= TEGRA_DAIFMT_I2S;
 		pluto_audio_pdata.i2s_param[BASEBAND].sample_size
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].sample_size
 			= 16;
 		pluto_audio_pdata.i2s_param[BASEBAND].rate
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].rate
 			= 8000;
 		pluto_audio_pdata.i2s_param[BASEBAND].channels
+			= pluto_aic3262_pdata.i2s_param[BASEBAND].channels
 			= 2;
 		break;
 	case TEGRA_BB_HSIC_HUB: /* i500 SWD HSIC */
