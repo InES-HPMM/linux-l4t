@@ -217,7 +217,6 @@ enum {
 #define DSI_HOST_SUSPEND_LV0		1
 #define DSI_HOST_SUSPEND_LV1		2
 #define DSI_HOST_SUSPEND_LV2		3
-#define DSI_SUSPEND_FULL		4
 
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
