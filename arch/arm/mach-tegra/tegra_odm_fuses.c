@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_odm_fuses.c
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -599,7 +599,8 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	if (fuse_odm_prod_mode() && (flags != FLAGS_ODMRSVD)) {
-		pr_err("reserved odm fuses aren't allowed in secure mode");
+		pr_err("Non ODM reserved fuses cannot be burnt after "
+			"ODM production mode/secure mode fuse is burnt");
 		return -EPERM;
 	}
 
@@ -730,8 +731,11 @@ static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 	raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
 	raw_byte_data = (u8 *)raw_data;
 
-	if (fuse_odm_prod_mode()) {
-		pr_err("%s: device locked. odm fuse already blown\n", __func__);
+	if (fuse_odm_prod_mode() && (param != ODM_RSVD)) {
+		pr_err("%s: Non ODM reserved fuses cannot be burnt "
+			"after ODM production mode/secure mode fuse is burnt\n"
+			, __func__);
+
 		return -EPERM;
 	}
 
@@ -789,7 +793,6 @@ static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 		CHK_ERR(sysfs_chmod_file(kobj, &sbk_attr.attr, 0440));
 		CHK_ERR(sysfs_chmod_file(kobj, &sw_rsvd_attr.attr, 0440));
 		CHK_ERR(sysfs_chmod_file(kobj, &ignore_dev_sel_straps_attr.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &odm_rsvd_attr.attr, 0440));
 	}
 
 done:
@@ -871,9 +874,9 @@ static int __init tegra_fuse_program_init(void)
 		sbk_attr.attr.mode = 0640;
 		sw_rsvd_attr.attr.mode = 0640;
 		ignore_dev_sel_straps_attr.attr.mode = 0640;
-		odm_rsvd_attr.attr.mode = 0640;
 		odm_prod_mode_attr.attr.mode = 0644;
 	}
+	odm_rsvd_attr.attr.mode = 0640;
 
 	CHK_ERR(sysfs_create_file(fuse_kobj, &odm_prod_mode_attr.attr));
 	CHK_ERR(sysfs_create_file(fuse_kobj, &devkey_attr.attr));
