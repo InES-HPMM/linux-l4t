@@ -5,7 +5,7 @@
  * Copyright (C) 2011 Samsung Electronics
  * MyungJoo Ham <myungjoo.ham@samsung.com>
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,8 +92,10 @@ struct max17042_chip {
 	unsigned int edp_req;
 	struct delayed_work depl_work;
 	int shutdown_complete;
+	int status;
+	int cap;
 };
-
+struct max17042_chip *tmp_chip;
 struct i2c_client *temp_client;
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
@@ -151,6 +153,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_STATUS,
 };
 
 int maxim_get_temp()
@@ -173,6 +176,14 @@ int maxim_get_temp()
 	return ret;
 }
 EXPORT_SYMBOL_GPL(maxim_get_temp);
+
+void max17042_update_status(int status)
+{
+	tmp_chip->status = status;
+	if (tmp_chip != NULL)
+		power_supply_changed(&tmp_chip->battery);
+}
+EXPORT_SYMBOL_GPL(max17042_update_status);
 
 static int max17042_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
@@ -249,6 +260,7 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 
 		val->intval = ret >> 8;
+		chip->cap = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
@@ -315,6 +327,15 @@ static int max17042_get_property(struct power_supply *psy,
 		} else {
 			return -EINVAL;
 		}
+		break;
+
+	case POWER_SUPPLY_PROP_STATUS:
+		if (chip->status)
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		else
+			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+		if (chip->cap >= 100)
+			val->intval = POWER_SUPPLY_STATUS_FULL;
 		break;
 	default:
 		return -EINVAL;
@@ -889,7 +910,7 @@ static int max17042_probe(struct i2c_client *client,
 		dev_err(&client->dev, "no platform data provided\n");
 		return -EINVAL;
 	}
-
+	tmp_chip = chip;
 	i2c_set_clientdata(client, chip);
 
 	ret = max17042_read_reg(chip->client, MAX17042_DevName);
