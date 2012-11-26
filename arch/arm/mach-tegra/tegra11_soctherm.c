@@ -489,6 +489,7 @@ static int __init soctherm_thermal_init(void)
 					0,
 					(void *)i,
 					&soctherm_ops,
+					NULL,
 					0, 0, 0, 0);
 		}
 	}
@@ -502,6 +503,7 @@ static int __init soctherm_thermal_init(void)
 					plat_data.therm[i].cdev ? 0x1 : 0,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
+					NULL,
 					plat_data.therm[i].passive_delay,
 					0);
 	}
