@@ -104,7 +104,7 @@
 #define AD5816_SETTLETIME		30
 #define AD5816_FOCUS_MACRO		620
 #define AD5816_FOCUS_INFINITY		70
-#define AD5816_POS_LOW_DEFAULT		16
+#define AD5816_POS_LOW_DEFAULT		0
 #define AD5816_POS_HIGH_DEFAULT		1023
 #define AD5816_POS_CLAMP		0x03ff
 /* Need to decide exact value of VCM_THRESHOLD and its use */
@@ -264,7 +264,7 @@ void ad5816_set_arc_mode(struct ad5816_info *info)
 		"%s: MODE reg write failed\n", __func__);
 
 	/* set the VCM_FREQ to 12.8mS */
-	err = ad5816_i2c_wr8(info, VCM_FREQ, 0xA5);
+	err = ad5816_i2c_wr8(info, VCM_FREQ, 0x4B);
 	if (err)
 		dev_err(&info->i2c_client->dev,
 		"%s: VCM_FREQ reg write failed\n", __func__);
