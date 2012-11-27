@@ -116,7 +116,7 @@ static struct regulator_consumer_supply tps65090_fet6_supply[] = {
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {
 	REGULATOR_SUPPLY("vdd_wifi_3v3", "bcm4329_wlan.1"),
 	REGULATOR_SUPPLY("vdd_gps_3v3", "reg-userspace-consumer.2"),
-	REGULATOR_SUPPLY("vdd_bt_3v3", "reg-userspace-consumer.1"),
+	REGULATOR_SUPPLY("vdd_bt_3v3", "bluedroid_pm.0"),
 };
 
 #define TPS65090_PDATA_INIT(_id, _name, _supply_reg,			\
@@ -234,7 +234,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("vddio_wifi_1v8", "bcm4329_wlan.1"),
 	REGULATOR_SUPPLY("vdd_gps_1v8", "reg-userspace-consumer.2"),
-	REGULATOR_SUPPLY("vddio_bt_1v8", "reg-userspace-consumer.1"),
+	REGULATOR_SUPPLY("vddio_bt_1v8", "bluedroid_pm.0"),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
 };
@@ -1097,28 +1097,6 @@ static struct platform_device dalmore_gps_regulator_device = {
 	},
 };
 
-static struct regulator_bulk_data dalmore_bt_regulator_supply[] = {
-	[0] = {
-		.supply	= "vdd_bt_3v3",
-	},
-	[1] = {
-		.supply	= "vddio_bt_1v8",
-	},
-};
-
-static struct regulator_userspace_consumer_data dalmore_bt_regulator_pdata = {
-	.num_supplies	= ARRAY_SIZE(dalmore_bt_regulator_supply),
-	.supplies	= dalmore_bt_regulator_supply,
-};
-
-static struct platform_device dalmore_bt_regulator_device = {
-	.name	= "reg-userspace-consumer",
-	.id	= 1,
-	.dev	= {
-			.platform_data = &dalmore_bt_regulator_pdata,
-	},
-};
-
 static int __init dalmore_fixed_regulator_init(void)
 {
 	struct board_info board_info;
@@ -1178,7 +1156,6 @@ int __init dalmore_regulator_init(void)
 
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	platform_device_register(&dalmore_pda_power_device);
-	platform_device_register(&dalmore_bt_regulator_device);
 	platform_device_register(&dalmore_gps_regulator_device);
 	return 0;
 }

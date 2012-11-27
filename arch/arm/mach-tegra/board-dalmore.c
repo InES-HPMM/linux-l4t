@@ -79,6 +79,7 @@
 #include "common.h"
 #include "tegra-board-id.h"
 
+#ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
 		.shutdown_gpio  = TEGRA_GPIO_PQ7,
@@ -133,6 +134,54 @@ static noinline void __init dalmore_setup_bluesleep(void)
 	platform_device_register(&dalmore_bluesleep_device);
 	return;
 }
+#elif defined CONFIG_BLUEDROID_PM
+static struct resource dalmore_bluedroid_pm_resources[] = {
+	[0] = {
+		.name   = "shutdown_gpio",
+		.start  = TEGRA_GPIO_PQ7,
+		.end    = TEGRA_GPIO_PQ7,
+		.flags  = IORESOURCE_IO,
+	},
+	[1] = {
+		.name = "host_wake",
+		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
+	},
+	[2] = {
+		.name = "gpio_ext_wake",
+		.start  = TEGRA_GPIO_PEE1,
+		.end    = TEGRA_GPIO_PEE1,
+		.flags  = IORESOURCE_IO,
+	},
+	[3] = {
+		.name = "gpio_host_wake",
+		.start  = TEGRA_GPIO_PU6,
+		.end    = TEGRA_GPIO_PU6,
+		.flags  = IORESOURCE_IO,
+	},
+	[4] = {
+		.name = "reset_gpio",
+		.start  = TEGRA_GPIO_PQ6,
+		.end    = TEGRA_GPIO_PQ6,
+		.flags  = IORESOURCE_IO,
+	},
+};
+
+static struct platform_device dalmore_bluedroid_pm_device = {
+	.name = "bluedroid_pm",
+	.id             = 0,
+	.num_resources  = ARRAY_SIZE(dalmore_bluedroid_pm_resources),
+	.resource       = dalmore_bluedroid_pm_resources,
+};
+
+static noinline void __init dalmore_setup_bluedroid_pm(void)
+{
+	dalmore_bluedroid_pm_resources[1].start =
+		dalmore_bluedroid_pm_resources[1].end =
+				gpio_to_irq(TEGRA_GPIO_PU6);
+	platform_device_register(&dalmore_bluedroid_pm_device);
+}
+#endif
+
 static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -715,8 +764,12 @@ static void __init tegra_dalmore_init(void)
 		dalmore_panel_init();
 	dalmore_kbc_init();
 	dalmore_pmon_init();
+#ifdef CONFIG_BT_BLUESLEEP
 	dalmore_setup_bluesleep();
 	dalmore_setup_bt_rfkill();
+#elif defined CONFIG_BLUEDROID_PM
+	dalmore_setup_bluedroid_pm();
+#endif
 	tegra_release_bootloader_fb();
 	dalmore_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
