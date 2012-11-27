@@ -501,6 +501,10 @@ static const struct snd_soc_dapm_route cardhu_audio_map[] = {
 	{"IN1N", NULL, "micbias1"},
 	{"micbias1", NULL, "Int Mic"},
 	{"IN2P", NULL, "micbias1"},
+	{"DMIC L1", NULL, "Int Mic"},
+	{"DMIC L2", NULL, "Int Mic"},
+	{"DMIC R1", NULL, "Int Mic"},
+	{"DMIC R2", NULL, "Int Mic"},
 };
 
 static const struct snd_kcontrol_new cardhu_controls[] = {
