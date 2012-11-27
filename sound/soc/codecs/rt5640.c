@@ -1231,6 +1231,56 @@ static int hp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int rt5640_set_dmic1_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	unsigned int val, mask;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		snd_soc_update_bits(codec, RT5640_GPIO_CTRL1,
+			RT5640_GP2_PIN_MASK | RT5640_GP3_PIN_MASK,
+			RT5640_GP2_PIN_DMIC1_SCL | RT5640_GP3_PIN_DMIC1_SDA);
+		snd_soc_update_bits(codec, RT5640_DMIC,
+			RT5640_DMIC_1L_LH_MASK | RT5640_DMIC_1R_LH_MASK |
+			RT5640_DMIC_1_DP_MASK,
+			RT5640_DMIC_1L_LH_FALLING | RT5640_DMIC_1R_LH_RISING |
+			RT5640_DMIC_1_DP_IN1P);
+		snd_soc_update_bits(codec, RT5640_DMIC,
+			RT5640_DMIC_1_EN_MASK, RT5640_DMIC_1_EN);
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5640_set_dmic2_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	unsigned int val, mask;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		snd_soc_update_bits(codec, RT5640_GPIO_CTRL1,
+			RT5640_GP2_PIN_MASK | RT5640_GP4_PIN_MASK,
+			RT5640_GP2_PIN_DMIC1_SCL | RT5640_GP4_PIN_DMIC2_SDA);
+		snd_soc_update_bits(codec, RT5640_DMIC,
+			RT5640_DMIC_2L_LH_MASK | RT5640_DMIC_2R_LH_MASK |
+			RT5640_DMIC_2_DP_MASK,
+			RT5640_DMIC_2L_LH_FALLING | RT5640_DMIC_2R_LH_RISING |
+			RT5640_DMIC_2_DP_IN1N);
+		snd_soc_update_bits(codec, RT5640_DMIC,
+			RT5640_DMIC_2_EN_MASK, RT5640_DMIC_2_EN);
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget rt5640_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("PLL1", RT5640_PWR_ANLG2,
 			RT5640_PWR_PLL_BIT, 0, NULL, 0),
@@ -1252,10 +1302,19 @@ static const struct snd_soc_dapm_widget rt5640_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("IN1N"),
 	SND_SOC_DAPM_INPUT("IN2P"),
 	SND_SOC_DAPM_INPUT("IN2N"),
+#if 0
 	SND_SOC_DAPM_INPUT("DMIC L1"),
 	SND_SOC_DAPM_INPUT("DMIC R1"),
 	SND_SOC_DAPM_INPUT("DMIC L2"),
 	SND_SOC_DAPM_INPUT("DMIC R2"),
+#else
+	SND_SOC_DAPM_PGA_E("DMIC L1", SND_SOC_NOPM, 0, 0, NULL, 0,
+		rt5640_set_dmic1_event, SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_PGA("DMIC R1", SND_SOC_NOPM, 0, 0, NULL, 0),
+	SND_SOC_DAPM_PGA_E("DMIC L2", SND_SOC_NOPM, 0, 0, NULL, 0,
+		rt5640_set_dmic2_event, SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_PGA("DMIC R2", SND_SOC_NOPM, 0, 0, NULL, 0),
+#endif
 	SND_SOC_DAPM_SUPPLY("DMIC CLK", SND_SOC_NOPM, 0, 0,
 		set_dmic_clk, SND_SOC_DAPM_PRE_PMU),
 	/* Boost */
