@@ -179,7 +179,7 @@ static struct platform_device bonaire_backlight_device = {
 	},
 };
 
-static int bonaire_panel_enable(void)
+static int bonaire_panel_enable(struct device *dev)
 {
 	static struct regulator *reg;
 
@@ -604,7 +604,7 @@ static struct tegra_dc_platform_data bonaire_disp1_pdata = {
 #endif
 };
 
-static struct nvhost_device bonaire_disp1_device = {
+static struct platform_device bonaire_disp1_device = {
 	.name		= "tegradc",
 	.id		= 0,
 	.resource	= bonaire_disp1_resources,
@@ -665,6 +665,9 @@ int __init bonaire_panel_init(void)
 {
 	int err;
 	struct resource *res;
+#if defined(CONFIG_TEGRA_GRHOST)
+	struct platform_device *phost1x;
+#endif
 
 	bonaire_carveouts[1].base = tegra_carveout_start;
 	bonaire_carveouts[1].size = tegra_carveout_size;
@@ -675,19 +678,21 @@ int __init bonaire_panel_init(void)
 				   ARRAY_SIZE(bonaire_gfx_devices));
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra12_register_host1x_devices();
-	if (err)
-		return err;
+	phost1x = tegra12_register_host1x_devices();
+	if (!phost1x)
+		return -EINVAL;
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = nvhost_get_resource_byname(&bonaire_disp1_device,
+	res = platform_get_resource_byname(&bonaire_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	if (!err)
-		err = nvhost_device_register(&bonaire_disp1_device);
+	if (!err) {
+		bonaire_disp1_device.dev.parent = &phost1x->dev;
+		err = platform_device_register(&bonaire_disp1_device);
+	}
 #endif
 	return err;
 }
