@@ -25,7 +25,7 @@
 #include <linux/wait.h>
 #include <linux/err.h>
 #include <linux/interrupt.h>
-
+#include <linux/dma-mapping.h>
 #include <linux/types.h>
 #include <linux/file.h>
 #include <linux/device.h>
@@ -277,14 +277,16 @@ static inline struct mtp_dev *func_to_mtp(struct usb_function *f)
 	return container_of(f, struct mtp_dev, function);
 }
 
-static struct usb_request *mtp_request_new(struct usb_ep *ep, int buffer_size)
+static struct usb_request *mtp_request_new(struct mtp_dev *dev,
+					struct usb_ep *ep, int buffer_size)
 {
 	struct usb_request *req = usb_ep_alloc_request(ep, GFP_KERNEL);
 	if (!req)
 		return NULL;
 
 	/* now allocate buffers for the requests */
-	req->buf = kmalloc(buffer_size, GFP_KERNEL);
+	req->buf = dma_alloc_coherent(dev->cdev->gadget->dev.parent,
+				 buffer_size, &req->dma, GFP_KERNEL);
 	if (!req->buf) {
 		usb_ep_free_request(ep, req);
 		return NULL;
@@ -293,10 +295,12 @@ static struct usb_request *mtp_request_new(struct usb_ep *ep, int buffer_size)
 	return req;
 }
 
-static void mtp_request_free(struct usb_request *req, struct usb_ep *ep)
+static void mtp_request_free(struct mtp_dev *dev, struct usb_request *req,
+					struct usb_ep *ep, int buffer_size)
 {
 	if (req) {
-		kfree(req->buf);
+		dma_free_coherent(dev->cdev->gadget->dev.parent, buffer_size,
+							req->buf, req->dma);
 		usb_ep_free_request(ep, req);
 	}
 }
@@ -386,7 +390,9 @@ static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
 				struct usb_endpoint_descriptor *intr_desc)
 {
 	struct usb_composite_dev *cdev = dev->cdev;
-	struct usb_request *req;
+	struct usb_request *req_in[TX_REQ_MAX] = {NULL},
+		*req_out[RX_REQ_MAX] = {NULL},
+		*req_intr[INTR_REQ_MAX] = {NULL};
 	struct usb_ep *ep;
 	int i;
 
@@ -430,30 +436,47 @@ static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
 
 	/* now allocate requests for our endpoints */
 	for (i = 0; i < TX_REQ_MAX; i++) {
-		req = mtp_request_new(dev->ep_in, MTP_BULK_BUFFER_SIZE);
-		if (!req)
-			goto fail;
-		req->complete = mtp_complete_in;
-		mtp_req_put(dev, &dev->tx_idle, req);
+		req_in[i] = mtp_request_new(dev, dev->ep_in,
+							 MTP_BULK_BUFFER_SIZE);
+		if (!req_in[i])
+			goto fail1;
+		req_in[i]->complete = mtp_complete_in;
+		mtp_req_put(dev, &dev->tx_idle, req_in[i]);
 	}
 	for (i = 0; i < RX_REQ_MAX; i++) {
-		req = mtp_request_new(dev->ep_out, MTP_BULK_BUFFER_SIZE);
-		if (!req)
-			goto fail;
-		req->complete = mtp_complete_out;
-		dev->rx_req[i] = req;
+		req_out[i] = mtp_request_new(dev, dev->ep_out,
+							 MTP_BULK_BUFFER_SIZE);
+		if (!req_out[i])
+			goto fail2;
+		req_out[i]->complete = mtp_complete_out;
+		dev->rx_req[i] = req_out[i];
 	}
 	for (i = 0; i < INTR_REQ_MAX; i++) {
-		req = mtp_request_new(dev->ep_intr, INTR_BUFFER_SIZE);
-		if (!req)
-			goto fail;
-		req->complete = mtp_complete_intr;
-		mtp_req_put(dev, &dev->intr_idle, req);
+		req_intr[i] = mtp_request_new(dev, dev->ep_intr,
+							 INTR_BUFFER_SIZE);
+		if (!req_intr[i])
+			goto fail3;
+		req_intr[i]->complete = mtp_complete_intr;
+		mtp_req_put(dev, &dev->intr_idle, req_intr[i]);
 	}
 
 	return 0;
 
-fail:
+fail3:
+	for (i = 0; i < INTR_REQ_MAX; i++)
+		if (req_intr[i])
+			mtp_request_free(dev, req_intr[i], dev->ep_intr,
+							MTP_BULK_BUFFER_SIZE);
+fail2:
+	for (i = 0; i < RX_REQ_MAX; i++)
+		if (req_out[i])
+			mtp_request_free(dev, req_out[i], dev->ep_out,
+							MTP_BULK_BUFFER_SIZE);
+fail1:
+	for (i = 0; i < TX_REQ_MAX; i++)
+		if (req_in[i])
+			mtp_request_free(dev, req_in[i], dev->ep_in,
+							INTR_BUFFER_SIZE);
 	printk(KERN_ERR "mtp_bind() could not allocate requests\n");
 	return -1;
 }
@@ -1123,11 +1146,12 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	int i;
 
 	while ((req = mtp_req_get(dev, &dev->tx_idle)))
-		mtp_request_free(req, dev->ep_in);
+		mtp_request_free(dev, req, dev->ep_in, MTP_BULK_BUFFER_SIZE);
 	for (i = 0; i < RX_REQ_MAX; i++)
-		mtp_request_free(dev->rx_req[i], dev->ep_out);
+		mtp_request_free(dev, dev->rx_req[i], dev->ep_out,
+							MTP_BULK_BUFFER_SIZE);
 	while ((req = mtp_req_get(dev, &dev->intr_idle)))
-		mtp_request_free(req, dev->ep_intr);
+		mtp_request_free(dev, req, dev->ep_intr, INTR_BUFFER_SIZE);
 	dev->state = STATE_OFFLINE;
 }
 
