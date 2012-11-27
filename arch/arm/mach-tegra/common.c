@@ -125,6 +125,7 @@ unsigned long tegra_grhost_aperture = ~0ul;
 static   bool is_tegra_debug_uart_hsport;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
+static int panel_id;
 static struct board_info camera_board_info;
 
 static int pmu_core_edp;
@@ -709,6 +710,18 @@ static int __init tegra_board_panel_type(char *options)
 	return 1;
 }
 __setup("panel=", tegra_board_panel_type);
+
+int tegra_get_board_panel_id(void)
+{
+	return panel_id;
+}
+static int __init tegra_board_panel_id(char *options)
+{
+	char *p = options;
+	panel_id = memparse(p, &p);
+	return panel_id;
+}
+__setup("display_panel=", tegra_board_panel_id);
 
 enum power_supply_type get_power_supply_type(void)
 {
