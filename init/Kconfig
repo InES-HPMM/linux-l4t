@@ -1486,6 +1486,20 @@ config PERF_EVENTS
 
 	  Say Y if unsure.
 
+config PERF_ANDROID_BACKTRACE
+	default n
+	bool "Backtracing support for the Perf tool on Android"
+	depends on PERF_EVENTS
+	help
+	  This config changes default function stack format that Perf
+	  profiler uses for backtracing. With this config enabled Perf
+	  profiler will use stack format of the Android OS for its
+	  operation.
+
+	  Say Y only if this kernel will be used with Android OS.
+
+	  Say N if unsure.
+
 config DEBUG_PERF_USE_VMALLOC
 	default n
 	bool "Debug: use vmalloc to back perf mmap() buffers"

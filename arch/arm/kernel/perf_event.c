@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2009 picoChip Designs, Ltd., Jamie Iles
  * Copyright (C) 2010 ARM Ltd., Will Deacon <will.deacon@arm.com>
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This code is based on the sparc64 perf event code, which is in turn based
  * on the x86 code. Callchain code is based on the ARM OProfile backtrace
@@ -533,11 +534,18 @@ int armpmu_register(struct arm_pmu *armpmu, int type)
  *
  * This code has been adapted from the ARM OProfile support.
  */
+#ifndef CONFIG_PERF_ANDROID_BACKTRACE
 struct frame_tail {
 	struct frame_tail __user *fp;
 	unsigned long sp;
 	unsigned long lr;
-} __attribute__((packed));
+} __packed;
+#else
+struct frame_tail {
+	unsigned long fp;
+	unsigned long lr;
+} __packed;
+#endif
 
 /*
  * Get the return address for a single stackframe and return a pointer to the
@@ -557,6 +565,7 @@ user_backtrace(struct frame_tail __user *tail,
 
 	perf_callchain_store(entry, buftail.lr);
 
+#ifndef CONFIG_PERF_ANDROID_BACKTRACE
 	/*
 	 * Frame pointers should strictly progress back up the stack
 	 * (towards higher addresses).
@@ -565,8 +574,233 @@ user_backtrace(struct frame_tail __user *tail,
 		return NULL;
 
 	return buftail.fp - 1;
+#else
+	/*
+	 * Frame pointers should strictly progress back up the stack
+	 * (towards higher addresses).
+	 */
+	if ((unsigned long *)(tail + 1) >= (unsigned long *)buftail.fp)
+		return NULL;
+
+	return  (struct frame_tail *)(buftail.fp - sizeof(unsigned long));
+#endif
 }
 
+
+#ifdef CONFIG_PERF_ANDROID_BACKTRACE
+
+#define AB_USER_SPACE_MIN_ADDR	0x8000
+#define PERF_CALLCHAIN_CHECK_PROLOG_EPILOG 1
+
+#ifdef PERF_CALLCHAIN_CHECK_PROLOG_EPILOG
+
+enum regs {
+#ifdef CONFIG_THUMB2_KERNEL
+	FP = 7,
+#else
+	FP = 11,
+#endif
+	SP = 13,
+	LR = 14,
+	PC = 15
+};
+
+#define INSTR_MASK_STR_FP	0xffff0000
+#define INSTR_STR_FP		0xe52d0000
+
+#define INSTR_MASK_STMDB	0xffff0000
+#define INSTR_STMDB_SP		0xe92d0000
+
+#define INSTR_MASK_LDMIA	0x0fff0000
+#define INSTR_LDMIA_SP		0x08bd0000
+
+#define INSTR_MASK_ADD_RN_RD	0xfffff000
+#define INSTR_ADD_FP_SP		0xe28db000
+
+#define INSTR_MASK_BRANCH	0x0f000000
+#define INSTR_BRANCH		0x0a000000
+
+#define INSTR_MASK_BRANCH_L	0x0f000000
+#define INSTR_BRANCH_L		0x0b000000
+
+#define INSTR_MASK_BRANCH_X	0x0ffffff0
+#define INSTR_BRANCH_X		0x012fff10
+
+#define INSTR_MASK_BRANCH_LX	0x0ffffff0
+#define INSTR_BRANCH_LX		0x012fff30
+
+#define check_in_register_list(val, reg) \
+	(((val) & 0xffff) & (1 << (reg)))
+
+static inline int is_instr_push_with_fp(unsigned long instr)
+{
+	if ((instr & INSTR_MASK_STMDB) == INSTR_STMDB_SP) {
+		if (check_in_register_list(instr, SP) ||
+			check_in_register_list(instr, PC)) {
+			return -1;
+		}
+		if (check_in_register_list(instr, FP))
+			return 1;
+	}
+
+	if ((instr & INSTR_MASK_STR_FP) == INSTR_STR_FP)
+		return 1;
+
+	return 0;
+}
+
+static inline int is_instr_push_with_fp_lr(unsigned long instr)
+{
+	if ((instr & INSTR_MASK_STMDB) == INSTR_STMDB_SP) {
+		if (check_in_register_list(instr, SP) ||
+			check_in_register_list(instr, PC)) {
+			return -1;
+		}
+		if (check_in_register_list(instr, FP) &&
+			check_in_register_list(instr, LR)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+#define is_instr_add_fp(instr) \
+	((((instr) & INSTR_MASK_ADD_RN_RD) == INSTR_ADD_FP_SP))
+
+#define is_instr_pop(instr) \
+	((((instr) & INSTR_MASK_LDMIA) == INSTR_LDMIA_SP))
+
+#define is_instr_pop_fp(instr) \
+	((((instr) & INSTR_MASK_LDMIA) == INSTR_LDMIA_SP) && \
+	check_in_register_list(instr, FP)) \
+
+#define is_instr_branch(instr) \
+	((((instr) & INSTR_MASK_BRANCH) == INSTR_BRANCH) || \
+	(((instr) & INSTR_MASK_BRANCH_L) == INSTR_BRANCH_L) || \
+	(((instr) & INSTR_MASK_BRANCH_X) == INSTR_BRANCH_X) || \
+	(((instr) & INSTR_MASK_BRANCH_LX) == INSTR_BRANCH_LX))
+
+enum {
+	INSTR_TYPE_PUSH_FP,
+	INSTR_TYPE_PUSH_FP_LR,
+	INSTR_TYPE_ADD_FP,
+	INSTR_TYPE_POP,
+	INSTR_TYPE_POP_FP,
+	INSTR_TYPE_BRANCH,
+	INSTR_TYPE_UNKNOWN,
+};
+
+#define MAX_CHECK_INSTR_LENGTH	5
+
+static unsigned long instr_before[MAX_CHECK_INSTR_LENGTH];
+static int instr_before_nr;
+
+static unsigned long instr_after[MAX_CHECK_INSTR_LENGTH];
+static int instr_after_nr;
+
+static int read_instructions(unsigned long *addr, int direction)
+{
+	int i, delta, type, nr_instr = 0;
+	unsigned long instr, *c_addr = addr;
+	unsigned long *instr_p;
+
+	if (direction) {
+		delta = 1;
+		instr_p = instr_after;
+	} else {
+		delta = -1;
+		instr_p = instr_before;
+	}
+
+	for (i = 0; i < MAX_CHECK_INSTR_LENGTH; i++) {
+		if (get_user(instr, c_addr))
+			return -1;
+
+		type = INSTR_TYPE_UNKNOWN;
+		if (is_instr_push_with_fp(instr))
+			type = INSTR_TYPE_PUSH_FP;
+		else if (is_instr_push_with_fp_lr(instr))
+			type = INSTR_TYPE_PUSH_FP_LR;
+		else if (is_instr_add_fp(instr))
+			type = INSTR_TYPE_ADD_FP;
+		else if (is_instr_pop_fp(instr))
+			type = INSTR_TYPE_POP_FP;
+		else if (is_instr_pop(instr))
+			type = INSTR_TYPE_POP;
+		else if (is_instr_branch(instr))
+			type = INSTR_TYPE_BRANCH;
+		else
+			type = INSTR_TYPE_UNKNOWN;
+
+		if (type != INSTR_TYPE_UNKNOWN)
+			instr_p[nr_instr++] = type;
+
+		c_addr += delta;
+	}
+
+	return nr_instr;
+}
+
+static int is_func_prologue_epilogue(unsigned long *addr)
+{
+	unsigned long instr_prev, instr_curr, instr_next;
+
+	instr_before_nr = 0;
+	instr_after_nr = 0;
+
+	if (get_user(instr_curr, addr))
+		return 1;
+
+	if (get_user(instr_prev, addr - 1))
+		return 1;
+
+	if (get_user(instr_next, addr + 1))
+		return 1;
+
+	if (is_instr_pop_fp(instr_curr))
+		return 0;
+
+	if (is_instr_push_with_fp(instr_curr) ||
+		is_instr_push_with_fp(instr_next) ||
+		is_instr_push_with_fp(instr_prev) ||
+		is_instr_add_fp(instr_curr) ||
+		is_instr_add_fp(instr_next) ||
+		is_instr_pop_fp(instr_prev)) {
+		return 1;
+	}
+
+	instr_before_nr = read_instructions(addr, 0);
+	if (instr_before_nr < 0)
+		return 1;
+
+	instr_after_nr = read_instructions(addr, 1);
+	if (instr_after_nr < 0)
+		return 1;
+
+	if (!instr_before_nr && !instr_after_nr)
+		return 0;
+
+	if (instr_before_nr) {
+		if (instr_before[0] == INSTR_TYPE_ADD_FP)
+			return 0;
+		else if (instr_before[0] == INSTR_TYPE_PUSH_FP)
+			return 1;
+	}
+
+	if (instr_after_nr) {
+		if (instr_after[0] == INSTR_TYPE_PUSH_FP)
+			return 1;
+		else if (instr_after[0] == INSTR_TYPE_ADD_FP)
+			return 1;
+	}
+
+	return 0;
+}
+#endif	/* PERF_CALLCHAIN_CHECK_PROLOG_EPILOG */
+
+#endif  /* CONFIG_PERF_ANDROID_BACKTRACE */
+
+#ifndef CONFIG_PERF_ANDROID_BACKTRACE
 void
 perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 {
@@ -584,6 +818,90 @@ perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 	       tail && !((unsigned long)tail & 0x3))
 		tail = user_backtrace(tail, entry);
 }
+#else	/* CONFIG_PERF_ANDROID_BACKTRACE */
+static inline int
+perf_check_frame_address(unsigned long addr, struct vm_area_struct *vma)
+{
+	unsigned long start, end;
+
+	if (vma) {
+		start = vma->vm_start;
+		end = vma->vm_end;
+		if (addr >= start && addr <= end - 2 * sizeof(unsigned long))
+			return 0;
+	}
+	return -EINVAL;
+}
+
+void
+perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
+{
+	struct frame_tail __user *tail;
+	unsigned long *fp, reg;
+	struct vm_area_struct *vma;
+	int pe_flag = 0;
+
+	if (thumb_mode(regs))
+		return;
+
+	fp = (unsigned long *)regs->ARM_fp;
+	if (!access_ok(VERIFY_READ, fp, sizeof(unsigned long)))
+		return;
+
+	vma = find_vma(current->mm, regs->ARM_sp);
+
+	if (fp < (unsigned long *)regs->ARM_sp)
+		return;
+
+	if (perf_check_frame_address((unsigned long)fp, vma))
+		return;
+
+	if (__copy_from_user_inatomic(&reg, fp, sizeof(unsigned long)))
+		return;
+
+#ifdef PERF_CALLCHAIN_CHECK_PROLOG_EPILOG
+	if (is_func_prologue_epilogue((unsigned long *)regs->ARM_pc))
+		pe_flag = 1;
+#endif
+
+	if (pe_flag) {
+		/* fp->prev frame tail (fp, lr) */
+		if (regs->ARM_lr < AB_USER_SPACE_MIN_ADDR)
+			return;
+		perf_callchain_store(entry, (unsigned long)regs->ARM_lr);
+		tail = (struct frame_tail *)(regs->ARM_fp
+			- sizeof(unsigned long));
+	} else {
+		if ((unsigned long *)reg > fp &&
+			!perf_check_frame_address(reg, vma)) {
+			/* fp->short frame tail (fp) */
+
+			if (regs->ARM_lr < AB_USER_SPACE_MIN_ADDR)
+				return;
+			perf_callchain_store(entry, regs->ARM_lr);
+			tail = (struct frame_tail *)(reg
+				- sizeof(unsigned long));
+		} else {
+			/* fp->current frame tail (fp, lr) */
+			tail = (struct frame_tail *)(regs->ARM_fp
+				- sizeof(unsigned long));
+		}
+	}
+
+	if ((unsigned long *)tail->fp <= fp ||
+		perf_check_frame_address(tail->fp, vma)) {
+		return;
+	}
+
+	while (tail && !((unsigned long)tail & 0x3)) {
+		if (perf_check_frame_address((unsigned long)tail, vma) ||
+			tail->lr < AB_USER_SPACE_MIN_ADDR) {
+			return;
+		}
+		tail = user_backtrace(tail, entry);
+	}
+}
+#endif	/* CONFIG_PERF_ANDROID_BACKTRACE */
 
 /*
  * Gets called by walk_stackframe() for every stackframe. This will be called
