@@ -28,7 +28,9 @@ void __cpu_suspend_save(u32 *ptr, u32 ptrsz, u32 sp, u32 *save_ptr)
 
 	cpu_do_suspend(ptr);
 
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	flush_cache_louis();
+#endif
 
 	/*
 	 * flush_cache_louis does not guarantee that
