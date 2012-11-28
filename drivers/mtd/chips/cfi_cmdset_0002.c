@@ -1490,7 +1490,7 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	int ret = -EIO;
 	unsigned long cmd_adr;
 	int z, words, prolog, epilog, buflen = len;
-	map_word datum, pdat, edat;
+	map_word datum, uninitialized_var(pdat), uninitialized_var(edat);
 
 	adr += chip->start;
 	cmd_adr = adr;
