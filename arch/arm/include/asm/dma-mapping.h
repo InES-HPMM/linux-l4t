@@ -215,13 +215,14 @@ static inline size_t dma_iova_get_free_max(struct device *dev)
 	return ops->iova_get_free_max(dev);
 }
 
-static inline dma_addr_t dma_map_linear_attrs(struct device *dev, void *va,
-				      size_t size, enum dma_data_direction dir,
-				      struct dma_attrs *attrs)
+static inline dma_addr_t
+dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
+		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
-	dma_addr_t da;
+	dma_addr_t da = pa;
+	void *va = phys_to_virt(pa);
 
-	da = dma_iova_alloc_at(dev, (dma_addr_t)va, size);
+	da = dma_iova_alloc_at(dev, da, size);
 	if (da == DMA_ERROR_CODE)
 		return DMA_ERROR_CODE;
 
