@@ -1240,8 +1240,11 @@ void __tegra_move_framebuffer(struct platform_device *pdev,
 		iounmap(from_io);
 	}
 
+	if (!pdev)
+		goto out;
+
 	for (i = 0; i < ARRAY_SIZE(addr); i++)
-		dma_map_linear_at(NULL, addr[i], size, DMA_TO_DEVICE);
+		dma_map_linear(&pdev->dev, addr[i], size, DMA_TO_DEVICE);
 out:
 	iounmap(to_io);
 }
