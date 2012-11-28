@@ -1412,6 +1412,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (rc)
 		goto err_add_host;
 
+	/* Enable async suspend/resume to reduce LP0 latency */
+	device_enable_async_suspend(&pdev->dev);
+
 	return 0;
 
 err_add_host:
