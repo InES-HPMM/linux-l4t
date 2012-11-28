@@ -653,6 +653,10 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	pr_debug("%s: use %d programming cycles\n", __func__, fuse_pgm_cycles[index]);
+
+	/* FIXME: Ideally, this delay should not be present */
+	mdelay(1);
+
 	fuse_program_array(fuse_pgm_cycles[index]);
 
 	memset(&fuse_info, 0, sizeof(fuse_info));
