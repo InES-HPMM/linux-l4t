@@ -19,6 +19,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
 #include <linux/list.h>
+#include <linux/edp.h>
 #include <media/imx091.h>
 
 #define IMX091_ID			0x0091
@@ -67,6 +68,8 @@ struct imx091_info {
 	struct list_head list;
 	struct nvc_gpio gpio[ARRAY_SIZE(imx091_gpios)];
 	struct nvc_regulator vreg[ARRAY_SIZE(imx091_vregs)];
+	struct edp_client *edpc;
+	unsigned edp_state;
 	int pwr_api;
 	int pwr_dev;
 	u8 s_mode;
@@ -1099,6 +1102,82 @@ static int imx091_i2c_wr_table(struct imx091_info *info,
 	return 0;
 }
 
+static void imx091_edp_lowest(struct imx091_info *info)
+{
+	if (!info->edpc)
+		return;
+
+	info->edp_state = info->edpc->num_states - 1;
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
+	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
+		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
+		dev_err(&info->i2c_client->dev,
+			"UNABLE TO SET LOWEST EDP STATE!\n");
+	}
+}
+
+static void imx091_edp_register(struct imx091_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states)
+		return;
+
+	strncpy(edpc->name, "imx091", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->private_data = info;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(&info->i2c_client->dev,
+			"unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(&info->i2c_client->dev,
+			"unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	imx091_edp_lowest(info);
+}
+
+static int imx091_edp_req(struct imx091_info *info, unsigned new_state)
+{
+	unsigned approved;
+	int ret = 0;
+
+	if (!info->edpc)
+		return 0;
+
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
+	ret = edp_update_client_request(info->edpc, new_state, &approved);
+	if (ret) {
+		dev_err(&info->i2c_client->dev, "E state transition failed\n");
+		return ret;
+	}
+
+	if (approved > new_state) {
+		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
+		return -ENODEV;
+	}
+
+	info->edp_state = approved;
+	return 0;
+}
 
 static inline void imx091_frame_length_reg(struct imx091_reg *regs,
 					   u32 frame_length)
@@ -1255,7 +1334,10 @@ static int imx091_set_flash_output(struct imx091_info *info)
 	if (fcfg->sdo_trigger_enabled)
 		val |= 0x02;
 	dev_dbg(&info->i2c_client->dev, "%s: %02x\n", __func__, val);
-	ret = imx091_i2c_wr8(info, 0x3240, val);
+	/* disable all flash pulse output */
+	ret = imx091_i2c_wr8(info, 0x304A, 0);
+	/* config XVS/SDO pin output mode */
+	ret |= imx091_i2c_wr8(info, 0x3240, val);
 	/* set the control pulse width settings - Gain + Step
 	 * Pulse width(sec) = 64 * 2^(Gain) * (Step + 1) / Logic Clk
 	 * Logic Clk = ExtClk * PLL Multipiler / Pre_Div / Post_Div
@@ -1291,7 +1373,7 @@ static int imx091_flash_control(
 	if (!info->pdata)
 		return -EFAULT;
 
-	ret = imx091_i2c_wr8(info, 0x304a, 0);
+	ret = imx091_i2c_wr8(info, 0x304A, 0);
 	f_tim = 0;
 	f_cntl = 0;
 	if (fm->settings.enable) {
@@ -1536,6 +1618,7 @@ static int imx091_pm_wr(struct imx091_info *info, int pwr)
 		imx091_gpio_reset(info, 0);
 		info->mode_valid = false;
 		info->bin_en = 0;
+		imx091_edp_lowest(info);
 		break;
 
 	case NVC_PWR_STDBY:
@@ -1734,6 +1817,15 @@ static int imx091_mode_wr_full(struct imx091_info *info, u32 mode_index)
 {
 	int err;
 
+	/* the state num is temporary assigned, should be updated later as
+	per-mode basis */
+	err = imx091_edp_req(info, info->edpc->e0_index);
+	if (err) {
+		dev_err(&info->i2c_client->dev,
+			"%s: ERROR cannot set edp state! %d\n",	__func__, err);
+		goto mode_wr_full_end;
+	}
+
 	imx091_pm_dev_wr(info, NVC_PWR_ON);
 	imx091_bin_wr(info, 0);
 	err = imx091_i2c_wr_table(info,
@@ -1744,6 +1836,8 @@ static int imx091_mode_wr_full(struct imx091_info *info, u32 mode_index)
 	} else {
 		info->mode_valid = false;
 	}
+
+mode_wr_full_end:
 	return err;
 }
 
@@ -2617,6 +2711,8 @@ static int imx091_probe(
 		if (info->pdata->probe_clock)
 			info->pdata->probe_clock(0);
 	}
+
+	imx091_edp_register(info);
 
 	if (info->pdata->dev_name != 0)
 		strcpy(dname, info->pdata->dev_name);

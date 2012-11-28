@@ -70,8 +70,9 @@
 #include <linux/gpio.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
-#include <media/nvc.h>
+#include <linux/edp.h>
 #include <linux/mfd/max77665.h>
+#include <media/nvc.h>
 #include <media/max77665-flash.h>
 
 #define MAX77665_F_RW_FLASH_FLED1CURR		0x00
@@ -164,6 +165,7 @@
 #define BOOST_VOLT_CEILING		5500 /* mV */
 #define BOOST_VOLT_STEP			25 /* mV */
 
+#define MAX77665_F_LED_NUM		2
 #define MAX77665_F_MAX_FLASH_LEVEL	((1 << 6) + 1)
 #define MAX77665_F_MAX_TORCH_LEVEL	((1 << 4) + 1)
 
@@ -187,6 +189,9 @@
 				* (MAX77665_F_MAX_FLASH_LEVEL)))
 #define max77665_f_max_torch_cap_size	(sizeof(u32) \
 				+ (sizeof(s32) * (MAX77665_F_MAX_TORCH_LEVEL)))
+
+#define GET_CURRENT_BY_INDEX(c)	((c) * 125 / 8)		/* mul 15.625 mA */
+#define GET_INDEX_BY_CURRENT(c)	((c) * 8 / 125)		/* div by 15.625 mA */
 
 struct max77665_f_caps_struct {
 	u32 curr_step_uA;
@@ -232,6 +237,8 @@ struct max77665_f_info {
 	struct max77665_f_reg_cache regs;
 	struct max77665_f_state_regs states;
 	struct regmap *regmap;
+	struct edp_client *edpc;
+	unsigned edp_state;
 	atomic_t in_use;
 	int flash_cap_size;
 	int torch_cap_size;
@@ -255,9 +262,45 @@ static const struct max77665_f_caps_struct max77665_f_caps = {
 	625 * 2
 };
 
+static struct nvc_torch_lumi_level_v1 max77665_f_def_flash_levels[] = {
+	{0, 15625 * 1},
+	{1, 15625 * 2},
+	{2, 15625 * 3},
+	{3, 15625 * 4},
+	{4, 15625 * 5},
+	{5, 15625 * 6},
+	{6, 15625 * 7},
+	{7, 15625 * 8},
+	{8, 15625 * 9},
+	{9, 15625 * 10},
+	{10, 15625 * 11},
+	{11, 15625 * 12},
+	{12, 15625 * 13},
+	{13, 15625 * 14},
+	{14, 15625 * 15},
+	{15, 15625 * 16},
+	{16, 15625 * 17},
+	{17, 15625 * 18},
+	{18, 15625 * 19},
+	{19, 15625 * 20},
+	{20, 15625 * 21},
+	{21, 15625 * 22},
+	{22, 15625 * 23},
+	{23, 15625 * 24},
+	{24, 15625 * 25},
+	{25, 15625 * 26},
+	{26, 15625 * 27},
+	{27, 15625 * 28},
+	{28, 15625 * 29},
+	{29, 15625 * 30},
+	{30, 15625 * 31},
+	{31, 15625 * 32},
+};
+
 static struct max77665_f_platform_data max77665_f_default_pdata = {
 	.config		= {
 			.led_mask = 3, /* both LEDs enabled */
+			.synchronized_led = false,
 			.torch_trigger_mode = 3,
 			.flash_on_torch = false,
 			.flash_mode = 2,
@@ -267,6 +310,20 @@ static struct max77665_f_platform_data max77665_f_default_pdata = {
 			.max_torch_current_mA = 250,
 			.max_peak_duration_ms = 0,
 			.max_flash_threshold_mV = 0,
+			.led_config[0] = {
+				.flash_torch_ratio = 10000,
+				.granularity = 1000,
+				.flash_levels =
+					ARRAY_SIZE(max77665_f_def_flash_levels),
+				.lumi_levels = max77665_f_def_flash_levels,
+				},
+			.led_config[1] = {
+				.flash_torch_ratio = 10000,
+				.granularity = 1000,
+				.flash_levels =
+					ARRAY_SIZE(max77665_f_def_flash_levels),
+				.lumi_levels = max77665_f_def_flash_levels,
+				},
 			},
 	.cfg		= 0,
 	.num		= 0,
@@ -277,6 +334,8 @@ static struct max77665_f_platform_data max77665_f_default_pdata = {
 
 static LIST_HEAD(max77665_f_info_list);
 static DEFINE_SPINLOCK(max77665_f_spinlock);
+
+static void max77665_f_throttle(unsigned int new_state, void *priv_data);
 
 static inline int max77665_f_reg_wr(struct max77665_f_info *info,
 		u8 reg, u8 val, bool refresh)
@@ -297,6 +356,103 @@ static inline int max77665_f_reg_raw_wr(struct max77665_f_info *info,
 	return regmap_raw_write(info->regmap, reg, val, num);
 }
 
+static void max77665_f_edp_lowest(struct max77665_f_info *info)
+{
+	if (!info->edpc)
+		return;
+
+	info->edp_state = info->edpc->num_states - 1;
+	dev_dbg(info->dev, "%s %d\n", __func__, info->edp_state);
+	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
+		dev_err(info->dev, "THIS IS NOT LIKELY HAPPEN!\n");
+		dev_err(info->dev, "UNABLE TO SET LOWEST EDP STATE!\n");
+	}
+}
+
+static void max77665_f_edp_register(struct max77665_f_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states)
+		return;
+	strncpy(edpc->name, "max77665f", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->throttle = max77665_f_throttle;
+	edpc->private_data = info;
+
+	dev_dbg(info->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(info->dev, "e%d = %d mA\n",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(info->dev, "unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(info->dev, "unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	max77665_f_edp_lowest(info);
+}
+
+static int max77665_f_edp_req(struct max77665_f_info *info,
+		u8 mask, u8 *curr1, u8 *curr2)
+{
+	unsigned *estates;
+	unsigned total_curr = 0;
+	unsigned curr_mA;
+	unsigned approved;
+	unsigned new_state;
+	int ret = 0;
+
+	if (!info->edpc)
+		return 0;
+
+	dev_dbg(info->dev, "%s: %d curr1 = %02x curr2 = %02x\n",
+		__func__, mask, *curr1, *curr2);
+	estates = info->edpc->states;
+	if (mask & 1)
+		total_curr += *curr1;
+	if (mask & 2)
+		total_curr += *curr2;
+	curr_mA = GET_CURRENT_BY_INDEX(total_curr);
+
+	for (new_state = info->edpc->num_states - 1; new_state > 0; new_state--)
+		if (estates[new_state] >= curr_mA)
+			break;
+
+	dev_dbg(info->dev, "edp req: %d curr = %d mA\n", new_state, curr_mA);
+	ret = edp_update_client_request(info->edpc, new_state, &approved);
+	if (ret) {
+		dev_err(info->dev, "E state transition failed\n");
+		return ret;
+	}
+
+	if (approved > new_state) { /* edp manager returned less current */
+		curr_mA = GET_INDEX_BY_CURRENT(estates[approved]);
+		if (mask & 1)
+			*curr1 = curr_mA * (*curr1) / total_curr;
+		*curr2 = curr_mA - (*curr1);
+		dev_dbg(info->dev, "new state: %d curr = %d mA (%d %d)\n",
+			approved, curr_mA, *curr1, *curr2);
+	}
+
+	info->edp_state = approved;
+
+	return 0;
+}
+
 static int max77665_f_set_leds(struct max77665_f_info *info,
 		u8 mask, u8 curr1, u8 curr2)
 {
@@ -309,11 +465,18 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 
 	memset(regs, 0, sizeof(regs));
 	if (info->op_mode == MAXFLASH_MODE_NONE) {
-		err |= max77665_f_reg_wr(
+		err = max77665_f_reg_wr(
 			info, MAX77665_F_RW_FLED_ENABLE, 0, true);
-		info->regs.leds_en = 0;
+		if (!err) {
+			info->regs.leds_en = 0;
+			max77665_f_edp_lowest(info);
+		}
 		goto set_leds_end;
 	}
+
+	err = max77665_f_edp_req(info, mask, &curr1, &curr2);
+	if (err)
+		goto set_leds_end;
 
 	if (mask & 1) {
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
@@ -380,10 +543,13 @@ static int max77665_f_set_leds(struct max77665_f_info *info,
 	}
 
 set_leds_end:
-	dev_dbg(info->dev,
-		"%s led %x flash: %02x %02x %02x, torch: %02x %02x, en = %x\n",
-		__func__, mask, curr1, curr2, info->regs.f_timer,
-		info->regs.led_tcurr, info->regs.t_timer, fled_en);
+	if (err)
+		dev_err(info->dev, "%s ERROR: %d\n", __func__, err);
+	else
+		dev_dbg(info->dev,
+			"%s led %x f: %02x %02x %02x, t: %02x %02x, en = %x\n",
+			__func__, mask, curr1, curr2, info->regs.f_timer,
+			info->regs.led_tcurr, info->regs.t_timer, fled_en);
 	return err;
 }
 
@@ -401,6 +567,7 @@ static void max77665_f_update_config(struct max77665_f_info *info)
 {
 	struct max77665_f_config *pcfg = &info->config;
 	struct max77665_f_config *pcfg_cust;
+	int i;
 
 	memcpy(pcfg, &max77665_f_default_pdata.config, sizeof(*pcfg));
 	if (!info->pdata) {
@@ -418,6 +585,9 @@ static void max77665_f_update_config(struct max77665_f_info *info)
 
 	if (pcfg_cust->led_mask)
 		pcfg->led_mask = pcfg_cust->led_mask;
+
+	if (pcfg_cust->synchronized_led)
+		pcfg->synchronized_led = pcfg_cust->synchronized_led;
 
 	if (pcfg_cust->flash_mode)
 		pcfg->flash_mode = pcfg_cust->flash_mode;
@@ -458,6 +628,18 @@ static void max77665_f_update_config(struct max77665_f_info *info)
 	if (pcfg_cust->max_flash_lbdly_r_uS)
 		pcfg->max_flash_lbdly_r_uS =
 				pcfg_cust->max_flash_lbdly_r_uS;
+
+	for (i = 0; i < MAX77665_F_LED_NUM; i++) {
+		if (pcfg_cust->led_config[i].flash_levels &&
+			pcfg_cust->led_config[i].flash_torch_ratio &&
+			pcfg_cust->led_config[i].granularity &&
+			pcfg_cust->led_config[i].lumi_levels)
+			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
+				sizeof(pcfg_cust->led_config[0]));
+		else
+			dev_warn(info->dev,
+				"%s: invalid led config[%d].\n", __func__, i);
+	}
 
 update_end:
 	/* FLED enable settings */
@@ -677,6 +859,16 @@ static int max77665_f_enter_offmode(struct max77665_f_info *info, bool op_off)
 	return err;
 }
 
+static void max77665_f_throttle(unsigned int new_state, void *priv_data)
+{
+	struct max77665_f_info *info = priv_data;
+
+	if (!info)
+		return;
+
+	max77665_f_enter_offmode(info, true);
+}
+
 #ifdef CONFIG_PM
 static int max77665_f_suspend(struct platform_device *pdev, pm_message_t msg)
 {
@@ -739,6 +931,7 @@ static int max77665_f_power_off(struct max77665_f_info *info)
 		regulator_disable(pw->vio);
 
 max77665_f_poweroff_done:
+	max77665_f_edp_lowest(info);
 	info->power_is_on = 0;
 	return err;
 }
@@ -794,6 +987,9 @@ max77665_f_poweron_sync:
 		max77665_f_power_off(info);
 		return err;
 	}
+
+	max77665_f_edp_lowest(info);
+
 	return 0;
 
 max77665_f_poweron_i2c_fail:
@@ -1404,6 +1600,8 @@ static int max77665_f_probe(struct platform_device *pdev)
 	info->op_mode = MAXFLASH_MODE_NONE;
 
 	max77665_f_configure(info, false);
+
+	max77665_f_edp_register(info);
 
 	dev_set_drvdata(info->dev, info);
 	mutex_init(&info->mutex);

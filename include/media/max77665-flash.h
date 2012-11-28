@@ -28,8 +28,18 @@ struct max77665_f_power_rail {
 	struct regulator *i2c;
 };
 
+struct max77665_f_led_config {
+	u16 color_setting;
+	u16 flash_torch_ratio;	/* max flash to max torch ratio, in 1/1000 */
+	u16 granularity;	/* 1, 10, 100, ... to carry float settings */
+	u16 flash_levels;	/* calibrated flash levels < 32 */
+	/* this table contains the calibrated flash level - luminance pair */
+	struct nvc_torch_lumi_level_v1 *lumi_levels;
+};
+
 struct max77665_f_config {
 	u32 led_mask;		/* led(s) enabled, 1/2/3 - left/right/both */
+	bool synchronized_led;  /* if both leds enabled, consider as one. */
 	bool flash_on_torch;	/* true=high level on the torch_en pin will
 				   turn on flash */
 	u16 flash_mode;		/* 1=one_shot_mode, flash is triggerred on the
@@ -80,6 +90,7 @@ struct max77665_f_config {
 	u16 max_flash_lbdly_r_uS; /* Low battery delay timer for raising edge
 					detection. Adjustable from 256uS to
 					2048uS in 256uS steps. */
+	struct max77665_f_led_config led_config[2];
 };
 
 struct max77665_f_platform_data {
@@ -90,6 +101,7 @@ struct max77665_f_platform_data {
 	const char *dev_name; /* see implementation notes in driver */
 	struct nvc_torch_pin_state pinstate; /* see notes in driver */
 	unsigned gpio_strobe; /* GPIO connected to the ACT signal */
+	struct edp_client edpc_config;
 
 	int (*poweron_callback)(struct max77665_f_power_rail *pw);
 	int (*poweroff_callback)(struct max77665_f_power_rail *pw);
