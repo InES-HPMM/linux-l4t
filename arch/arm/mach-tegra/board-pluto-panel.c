@@ -27,7 +27,7 @@
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pwm_backlight.h>
-
+#include <linux/i2c/pca953x.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
@@ -35,16 +35,11 @@
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "board-pluto.h"
 #include "board-panel.h"
 #include "common.h"
 
 #include "tegra11_host1x_devices.h"
-
-#define PANEL_L_720P_5     1
-#define PANEL_J_720P_4_7   0
-#define PANEL_S_1080P_5    0
-
-
 
 struct platform_device * __init pluto_host1x_init(void)
 {
@@ -58,6 +53,7 @@ struct platform_device * __init pluto_host1x_init(void)
 #endif
 	return pdev;
 }
+
 
 atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
@@ -335,21 +331,25 @@ static struct tegra_dc_sd_settings pluto_sd_settings = {
 	.use_vpulse2 = true,
 };
 
-int __init pluto_panel_init(void)
+static void pluto_panel_select(void)
 {
-	int err = 0;
-	struct resource __maybe_unused *res;
-	struct platform_device *phost1x;
 	struct tegra_panel *panel;
-	sd_settings = pluto_sd_settings;
+	struct board_info board;
 
-#if PANEL_L_720P_5
-	panel = &dsi_l_720p_5;
-#elif PANEL_J_720P_4_7
-	panel = &dsi_j_720p_4_7;
-#elif PANEL_S_1080P_5
-	panel = &dsi_s_1080p_5;
-#endif
+	tegra_get_display_board_info(&board);
+
+	switch (board.board_id) {
+	case BOARD_E1605:
+		panel = &dsi_j_720p_4_7;
+		break;
+	case BOARD_E1582:
+	default:
+		if (tegra_get_board_panel_id())
+			panel = &dsi_s_1080p_5;
+		else
+			panel = &dsi_l_720p_5;
+		break;
+	}
 
 	if (panel->init_sd_settings)
 		panel->init_sd_settings(&pluto_sd_settings);
@@ -372,6 +372,17 @@ int __init pluto_panel_init(void)
 
 	if (panel->register_bl_dev)
 		panel->register_bl_dev();
+
+}
+int __init pluto_panel_init(void)
+{
+	int err = 0;
+	struct resource __maybe_unused *res;
+	struct platform_device *phost1x;
+
+	sd_settings = pluto_sd_settings;
+
+	pluto_panel_select();
 
 #ifdef CONFIG_TEGRA_NVMAP
 	pluto_carveouts[1].base = tegra_carveout_start;
