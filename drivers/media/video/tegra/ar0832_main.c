@@ -1898,7 +1898,8 @@ static int ar0832_power_on(struct ar0832_dev *dev)
 fail_regulator_2v8_reg:
 	regulator_put(dev->power_rail.sen_2v8_reg);
 	dev->power_rail.sen_2v8_reg = NULL;
-	regulator_disable(dev->power_rail.sen_1v8_reg);
+	if (dev->power_rail.sen_1v8_reg)
+		regulator_disable(dev->power_rail.sen_1v8_reg);
 fail_regulator_1v8_reg:
 	regulator_put(dev->power_rail.sen_1v8_reg);
 	dev->power_rail.sen_1v8_reg = NULL;
@@ -2589,10 +2590,8 @@ static int ar0832_remove(struct i2c_client *client)
 		regulator_put(dev->power_rail.sen_2v8_reg);
 
 	misc_deregister(&dev->misc_dev);
-	if (dev) {
-		kfree(dev->sensor_info);
-		kfree(dev->focuser_info);
-	}
+	kfree(dev->sensor_info);
+	kfree(dev->focuser_info);
 
 	ar0832_remove_debugfs(dev);
 
