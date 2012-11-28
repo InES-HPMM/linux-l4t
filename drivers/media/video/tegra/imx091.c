@@ -15,6 +15,8 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/atomic.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
@@ -82,6 +84,10 @@ struct imx091_info {
 	struct nvc_imager_static_nvc sdata;
 	u8 i2c_buf[IMX091_SIZEOF_I2C_BUF];
 	u8 bin_en;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs_root;
+	u16	i2c_reg;
+#endif
 };
 
 struct imx091_reg {
@@ -2642,10 +2648,109 @@ static int imx091_remove(struct i2c_client *client)
 	struct imx091_info *info = i2c_get_clientdata(client);
 
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+#ifdef CONFIG_DEBUG_FS
+	if (info->debugfs_root)
+		debugfs_remove_recursive(info->debugfs_root);
+#endif
 	misc_deregister(&info->miscdev);
 	imx091_del(info);
 	return 0;
 }
+
+#ifdef CONFIG_DEBUG_FS
+static int i2ca_get(void *data, u64 *val)
+{
+	struct imx091_info *info = (struct imx091_info *)(data);
+	*val = (u64)info->i2c_reg;
+	return 0;
+}
+
+static int i2ca_set(void *data, u64 val)
+{
+	struct imx091_info *info = (struct imx091_info *)(data);
+
+	if (val > 0x36FF) {
+		dev_err(&info->i2c_client->dev, "ERR:%s out of range\n",
+				__func__);
+		return -EIO;
+	}
+
+	info->i2c_reg = (u16) val;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(i2ca_fops, i2ca_get, i2ca_set, "0x%02llx\n");
+
+static int i2cr_get(void *data, u64 *val)
+{
+	u8 temp = 0;
+	struct imx091_info *info = (struct imx091_info *)(data);
+
+	if (imx091_i2c_rd8(info, info->i2c_reg, &temp)) {
+		dev_err(&info->i2c_client->dev, "ERR:%s failed\n", __func__);
+		return -EIO;
+	}
+	*val = (u64)temp;
+	return 0;
+}
+
+static int i2cr_set(void *data, u64 val)
+{
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(i2cr_fops, i2cr_get, i2cr_set, "0x%02llx\n");
+
+static int i2cw_get(void *data, u64 *val)
+{
+	return 0;
+}
+
+static int i2cw_set(void *data, u64 val)
+{
+	struct imx091_info *info = (struct imx091_info *)(data);
+
+	val &= 0xFF;
+	if (imx091_i2c_wr8(info, info->i2c_reg, val)) {
+		dev_err(&info->i2c_client->dev, "ERR:%s failed\n", __func__);
+		return -EIO;
+	}
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(i2cw_fops, i2cw_get, i2cw_set, "0x%02llx\n");
+
+static int imx091_debug_init(struct imx091_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s", __func__);
+
+	info->i2c_reg = 0;
+	info->debugfs_root = debugfs_create_dir(info->miscdev.name, NULL);
+
+	if (!info->debugfs_root)
+		goto err_out;
+
+	if (!debugfs_create_file("i2ca", S_IRUGO | S_IWUSR,
+				info->debugfs_root, info, &i2ca_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("i2cr", S_IRUGO,
+				info->debugfs_root, info, &i2cr_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("i2cw", S_IWUSR,
+				info->debugfs_root, info, &i2cw_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	dev_err(&info->i2c_client->dev, "ERROR:%s failed", __func__);
+	if (info->debugfs_root)
+		debugfs_remove_recursive(info->debugfs_root);
+	return -ENOMEM;
+}
+#endif
 
 static int imx091_probe(
 	struct i2c_client *client,
@@ -2730,6 +2835,10 @@ static int imx091_probe(
 		imx091_del(info);
 		return -ENODEV;
 	}
+
+#ifdef CONFIG_DEBUG_FS
+	imx091_debug_init(info);
+#endif
 	dev_dbg(&client->dev, "%s -----\n", __func__);
 	return 0;
 }
