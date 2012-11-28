@@ -59,6 +59,8 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 #define TPS65090_CHARGER_INT	TEGRA_GPIO_PJ0
+#define POWER_CONFIG2	0x01
+
 /*TPS65090 consumer rails */
 static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_5v0", NULL),
@@ -575,16 +577,51 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 };
 
+static struct regulator_consumer_supply palmas_smps8_config2_supply[] = {
+	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
+	REGULATOR_SUPPLY("avdd_pllm", NULL),
+	REGULATOR_SUPPLY("avdd_pllu", NULL),
+	REGULATOR_SUPPLY("avdd_pllx", NULL),
+	REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
+	REGULATOR_SUPPLY("avdd_plle", NULL),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
+};
+
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 };
 
 #define palmas_ldo1_supply max77663_ldo7_supply
+
+/* FIXME!! Put the device address of camera */
+static struct regulator_consumer_supply palmas_ldo1_config2_supply[] = {
+	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+};
+
 #define palmas_ldo2_supply max77663_ldo8_supply
+
+/* FIXME!! Put the device address of camera */
+static struct regulator_consumer_supply palmas_ldo2_config2_supply[] = {
+	REGULATOR_SUPPLY("avdd_cam1", NULL),
+	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
+	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
+};
+
 #define palmas_ldo3_supply max77663_ldo5_supply
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 	REGULATOR_SUPPLY("vpp_fuse", NULL),
+};
+
+static struct regulator_consumer_supply palmas_ldo4_config2_supply[] = {
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 };
 
 #define palmas_ldo6_supply max77663_ldo2_supply
@@ -637,11 +674,15 @@ PALMAS_PDATA_INIT(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
 PALMAS_PDATA_INIT(smps457, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
 PALMAS_PDATA_INIT(smps8, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
+PALMAS_PDATA_INIT(smps8_config2, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0);
 PALMAS_PDATA_INIT(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
+PALMAS_PDATA_INIT(ldo1_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
+PALMAS_PDATA_INIT(ldo2_config2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps3), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo4, 1800,  1800, tps65090_rails(DCDC2), 0, 0, 0);
+PALMAS_PDATA_INIT(ldo4_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo6, 2850,  2850, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo7, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo8, 900,  900, tps65090_rails(DCDC3), 1, 1, 1);
@@ -832,6 +873,11 @@ static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 };
 
+/* EN_AVDD_HDMI_PLL From TEGRA_GPIO_PO1 */
+static struct regulator_consumer_supply fixed_reg_avdd_hdmi_pll_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -905,6 +951,10 @@ FIXED_REG(8,	dvdd_ts,	dvdd_ts,
 FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,
 	NULL,	0,	0,
 	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
+
+FIXED_REG(10,	avdd_hdmi_pll,	avdd_hdmi_pll,
+	palmas_rails(ldo3),	0,	0,
+	TEGRA_GPIO_PO1,	false,	false,	1,	1200);
 /*
  * Creating the fixed regulator device tables
  */
@@ -926,6 +976,9 @@ FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,
 	ADD_FIXED_REG(en_1v8_cam_e1611), \
 	ADD_FIXED_REG(dvdd_ts),
 
+#define DALMORE_POWER_CONFIG_2			\
+	ADD_FIXED_REG(avdd_hdmi_pll),
+
 /* Gpio switch regulator platform data for Dalmore E1611 */
 static struct platform_device *fixed_reg_devs_e1611_a00[] = {
 	DALMORE_COMMON_FIXED_REG
@@ -938,10 +991,28 @@ static struct platform_device *fixed_reg_devs_e1612_a00[] = {
 	E1612_FIXED_REG
 };
 
+static struct platform_device *fixed_reg_devs_dalmore_config2[] = {
+	DALMORE_POWER_CONFIG_2
+};
+
+static void set_dalmore_power_config2(void)
+{
+	dalmore_e1611_reg_data[PALMAS_REG_SMPS8] =
+				PALMAS_REG_PDATA(smps8_config2);
+	dalmore_e1611_reg_data[PALMAS_REG_LDO1] =
+				PALMAS_REG_PDATA(ldo1_config2);
+	dalmore_e1611_reg_data[PALMAS_REG_LDO2] =
+				PALMAS_REG_PDATA(ldo2_config2);
+	dalmore_e1611_reg_data[PALMAS_REG_LDO4] =
+				PALMAS_REG_PDATA(ldo4_config2);
+	return;
+}
+
 int __init dalmore_palmas_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
+	u8 power_config;
 	int i;
 
 	/* TPS65913: Normal state of INT request line is LOW.
@@ -950,6 +1021,11 @@ int __init dalmore_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	power_config = get_power_config();
+	if (power_config && POWER_CONFIG2)
+		set_dalmore_power_config2();
+
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = dalmore_e1611_reg_data[i];
 		pmic_platform.reg_init[i] = dalmore_e1611_reg_init[i];
@@ -1092,11 +1168,16 @@ static struct platform_device dalmore_gps_regulator_device = {
 static int __init dalmore_fixed_regulator_init(void)
 {
 	struct board_info board_info;
+	u8 power_config;
 
 	if (!machine_is_dalmore())
 		return 0;
-
+	power_config = get_power_config();
 	tegra_get_board_info(&board_info);
+
+	if (power_config && POWER_CONFIG2)
+		platform_add_devices(fixed_reg_devs_dalmore_config2,
+				ARRAY_SIZE(fixed_reg_devs_dalmore_config2));
 
 	if (board_info.board_id == BOARD_E1611 ||
 		board_info.board_id == BOARD_P2454)
