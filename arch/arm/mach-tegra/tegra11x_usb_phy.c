@@ -336,6 +336,7 @@
 
 #define PMC_USB_DEBOUNCE			0xec
 #define   UTMIP_LINE_DEB_CNT(x)			(((x) & 0xf) << 16)
+#define   PMC_USB_DEBOUNCE_VAL(x)		((x) & 0xffff)
 
 #define PMC_USB_AO				0xf0
 #define   HSIC_RESERVED(inst)			(3 << UHSIC_INST(inst, 14, 18))
@@ -682,6 +683,7 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 		val |= UTMIP_LINE_DEB_CNT(4);
 	else
 		val |= UTMIP_LINE_DEB_CNT(1);
+	val |= PMC_USB_DEBOUNCE_VAL(2);
 	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
 	/* Make sure nothing is happening on the line with respect to PMC */
@@ -1846,6 +1848,11 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val = readl(pmc_base + PMC_UHSIC_MASTER_CONFIG(inst));
 	val |= UHSIC_PWR(inst);
 	writel(val, pmc_base + PMC_UHSIC_MASTER_CONFIG(inst));
+
+	/* config debouncer */
+	val = readl(pmc_base + PMC_USB_DEBOUNCE);
+	val |= PMC_USB_DEBOUNCE_VAL(2);
+	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
 	/* Make sure nothing is happening on the line with respect to PMC */
 	val = readl(pmc_base + PMC_UHSIC_FAKE(inst));
