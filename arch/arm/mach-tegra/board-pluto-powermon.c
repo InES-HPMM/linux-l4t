@@ -1,17 +1,16 @@
 /*
- * arch/arm/mach-tegra/board-cardhu-powermon.c
+ * arch/arm/mach-tegra/board-pluto-powermon.c
  *
- * Copyright (c) 2011, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
@@ -29,6 +28,10 @@
 #define PRECISION_MULTIPLIER_PLUTO	1000
 
 enum {
+	UNUSED_RAIL,
+};
+
+enum {
 	VDD_SYS_SUM,
 	VDD_SYS_SMPS123,
 	VDD_SYS_SMPS45,
@@ -43,8 +46,22 @@ enum {
 	VDD_MMC_LCD,
 	VDDIO_HSIC_BB,
 	AVDD_PLL_BB,
+};
+
+enum {
 	AVDD_1V05_LDO1,
 	VDDIO_1V8_BB,
+};
+
+static struct ina219_platform_data power_mon_info_0[] = {
+	/* All unused INA219 devices use below data*/
+	[UNUSED_RAIL] = {
+		.calibration_data = 0x369c,
+		.power_lsb = 3.051979018 * PRECISION_MULTIPLIER_PLUTO,
+		.rail_name = "unused_rail",
+		.divisor = 25,
+		.precision_multiplier = PRECISION_MULTIPLIER_PLUTO,
+	},
 };
 
 static struct ina230_platform_data power_mon_info_1[] = {
@@ -181,6 +198,13 @@ static struct ina230_platform_data power_mon_info_2[] = {
 };
 
 enum {
+	INA_I2C_2_0_ADDR_40,
+	INA_I2C_2_0_ADDR_41,
+	INA_I2C_2_0_ADDR_42,
+	INA_I2C_2_0_ADDR_43,
+};
+
+enum {
 	INA_I2C_2_1_ADDR_40,
 	INA_I2C_2_1_ADDR_41,
 	INA_I2C_2_1_ADDR_42,
@@ -200,6 +224,32 @@ enum {
 enum {
 	INA_I2C_2_2_ADDR_49,
 	INA_I2C_2_2_ADDR_4C,
+};
+
+static struct i2c_board_info pluto_i2c2_0_ina219_board_info[] = {
+	[INA_I2C_2_0_ADDR_40] = {
+		I2C_BOARD_INFO("ina219", 0x40),
+		.platform_data = &power_mon_info_0[UNUSED_RAIL],
+		.irq = -1,
+	},
+
+	[INA_I2C_2_0_ADDR_41] = {
+		I2C_BOARD_INFO("ina219", 0x41),
+		.platform_data = &power_mon_info_0[UNUSED_RAIL],
+		.irq = -1,
+	},
+
+	[INA_I2C_2_0_ADDR_42] = {
+		I2C_BOARD_INFO("ina219", 0x42),
+		.platform_data = &power_mon_info_0[UNUSED_RAIL],
+		.irq = -1,
+	},
+
+	[INA_I2C_2_0_ADDR_43] = {
+		I2C_BOARD_INFO("ina219", 0x43),
+		.platform_data = &power_mon_info_0[UNUSED_RAIL],
+		.irq = -1,
+	},
 };
 
 static struct i2c_board_info pluto_i2c2_1_ina230_board_info[] = {
@@ -325,6 +375,10 @@ int __init pluto_pmon_init(void)
 {
 	i2c_register_board_info(1, pluto_i2c2_board_info,
 		ARRAY_SIZE(pluto_i2c2_board_info));
+
+	i2c_register_board_info(PCA954x_I2C_BUS0,
+			pluto_i2c2_0_ina219_board_info,
+			ARRAY_SIZE(pluto_i2c2_0_ina219_board_info));
 
 	i2c_register_board_info(PCA954x_I2C_BUS1,
 			pluto_i2c2_1_ina230_board_info,
