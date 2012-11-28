@@ -68,7 +68,6 @@ struct platform_device * __init dalmore_host1x_init(void)
 
 #define DSI_PANEL_RESET		1
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
-#define DSI_PANEL_BL_EN_GPIO	TEGRA_GPIO_PH2
 #define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
 
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
@@ -85,7 +84,8 @@ static bool gpio_requested;
  * and PANEL_10_1_SHARP_2560_1600
  */
 static struct regulator *avdd_lcd_3v3;
-static struct regulator *vdd_lcd_bl_12v;
+static struct regulator *vdd_lcd_bl;
+static struct regulator *vdd_lcd_bl_en;
 
 /* for PANEL_11_6_AUO_1920_1080 and PANEL_10_1_SHARP_2560_1600 */
 static struct regulator *dvdd_lcd_1v8;
@@ -399,11 +399,19 @@ static int dalmore_dsi_regulator_get(struct device *dev)
 		goto fail;
 	}
 
-	vdd_lcd_bl_12v = regulator_get(dev, "vdd_lcd_bl");
-	if (IS_ERR_OR_NULL(vdd_lcd_bl_12v)) {
+	vdd_lcd_bl = regulator_get(dev, "vdd_lcd_bl");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl)) {
 		pr_err("vdd_lcd_bl regulator get failed\n");
-		err = PTR_ERR(vdd_lcd_bl_12v);
-		vdd_lcd_bl_12v = NULL;
+		err = PTR_ERR(vdd_lcd_bl);
+		vdd_lcd_bl = NULL;
+		goto fail;
+	}
+
+	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_en)) {
+		pr_err("vdd_lcd_bl_en regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_en);
+		vdd_lcd_bl_en = NULL;
 		goto fail;
 	}
 #endif
@@ -423,12 +431,6 @@ static int dalmore_dsi_gpio_get(void)
 	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
-		goto fail;
-	}
-
-	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
-	if (err < 0) {
-		pr_err("panel backlight gpio request failed\n");
 		goto fail;
 	}
 
@@ -498,10 +500,18 @@ static int dalmore_dsi_panel_enable(struct device *dev)
 		}
 	}
 
-	if (vdd_lcd_bl_12v) {
-		err = regulator_enable(vdd_lcd_bl_12v);
+	if (vdd_lcd_bl) {
+		err = regulator_enable(vdd_lcd_bl);
 		if (err < 0) {
 			pr_err("vdd_lcd_bl regulator enable failed\n");
+			goto fail;
+		}
+	}
+
+	if (vdd_lcd_bl_en) {
+		err = regulator_enable(vdd_lcd_bl_en);
+		if (err < 0) {
+			pr_err("vdd_lcd_bl_en regulator enable failed\n");
 			goto fail;
 		}
 	}
@@ -516,8 +526,6 @@ static int dalmore_dsi_panel_enable(struct device *dev)
 	msleep(1500);
 #endif
 
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-
 #if PANEL_11_6_AUO_1920_1080
 	gpio_direction_output(en_vdd_bl, 1);
 	msleep(100);
@@ -530,15 +538,17 @@ fail:
 
 static int dalmore_dsi_panel_disable(void)
 {
-	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
 
 #if PANEL_11_6_AUO_1920_1080
 	gpio_set_value(lvds_en, 0);
 	msleep(100);
 	gpio_set_value(en_vdd_bl, 0);
 #endif
-	if (vdd_lcd_bl_12v)
-		regulator_disable(vdd_lcd_bl_12v);
+	if (vdd_lcd_bl)
+		regulator_disable(vdd_lcd_bl);
+
+	if (vdd_lcd_bl_en)
+		regulator_disable(vdd_lcd_bl_en);
 
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);

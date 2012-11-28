@@ -362,8 +362,8 @@ static struct regulator_consumer_supply fixed_reg_fan_5v0_supply[] = {
 };
 
 /* LCD_BL_EN GMI_AD10 */
-static struct regulator_consumer_supply fixed_reg_lcd_bl_supply[] = {
-	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
+static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
 /* Touch 3v3 GMI_AD13 */
@@ -437,7 +437,7 @@ FIXED_REG(1,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	palmas_rails(smps10),	0,	0,
 	TEGRA_GPIO_PK1,	false,	true,	0,	5000);
 
-FIXED_REG(2,	lcd_bl,	lcd_bl,
+FIXED_REG(2,	lcd_bl_en,	lcd_bl_en,
 	NULL,	0,	0,
 	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
@@ -480,7 +480,7 @@ FIXED_REG(6,	com_1v8,	com_1v8,
 static struct platform_device *fixed_reg_devs_roth[] = {
 	ADD_FIXED_REG(fan_5v0),
 	ADD_FIXED_REG(vdd_hdmi_5v0),
-	ADD_FIXED_REG(lcd_bl),
+	ADD_FIXED_REG(lcd_bl_en),
 	ADD_FIXED_REG(ts_3v3),
 	ADD_FIXED_REG(com_3v3),
 	ADD_FIXED_REG(sd_3v3),

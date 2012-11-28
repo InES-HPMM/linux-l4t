@@ -31,6 +31,7 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
+#include <asm/mach-types.h>
 
 #include "board.h"
 #include "devices.h"
@@ -71,7 +72,8 @@ static bool reg_requested;
 static bool gpio_requested;
 
 static struct regulator *vdd_lcd_s_1v8;
-static struct regulator *vdd_sys_bl_3v7;
+static struct regulator *vdd_lcd_bl;
+static struct regulator *vdd_lcd_bl_en;
 static struct regulator *avdd_lcd_3v0_2v8;
 
 static struct regulator *roth_hdmi_reg;
@@ -273,14 +275,23 @@ static int roth_dsi_regulator_get(struct device *dev)
 		goto fail;
 	}
 
-	vdd_sys_bl_3v7 = regulator_get(dev, "vdd_lcd_bl");
-	if (IS_ERR_OR_NULL(vdd_sys_bl_3v7)) {
-		pr_err("vdd_sys_bl regulator get failed\n");
-		err = PTR_ERR(vdd_sys_bl_3v7);
-		vdd_sys_bl_3v7 = NULL;
-		goto fail;
+	if (machine_is_dalmore()) {
+		vdd_lcd_bl = regulator_get(dev, "vdd_lcd_bl");
+		if (IS_ERR_OR_NULL(vdd_lcd_bl)) {
+			pr_err("vdd_lcd_bl regulator get failed\n");
+			err = PTR_ERR(vdd_lcd_bl);
+			vdd_lcd_bl = NULL;
+			goto fail;
+		}
 	}
 
+	vdd_lcd_bl_en = regulator_get(dev, "vdd_lcd_bl_en");
+	if (IS_ERR_OR_NULL(vdd_lcd_bl_en)) {
+		pr_err("vdd_lcd_bl_en regulator get failed\n");
+		err = PTR_ERR(vdd_lcd_bl_en);
+		vdd_lcd_bl_en = NULL;
+		goto fail;
+	}
 	reg_requested = true;
 	return 0;
 fail:
@@ -340,10 +351,18 @@ static int roth_dsi_panel_enable(struct device *dev)
 	}
 	usleep_range(3000, 5000);
 
-	if (vdd_sys_bl_3v7) {
-		err = regulator_enable(vdd_sys_bl_3v7);
+	if (vdd_lcd_bl) {
+		err = regulator_enable(vdd_lcd_bl);
 		if (err < 0) {
-			pr_err("vdd_sys_bl_3v7 regulator enable failed\n");
+			pr_err("vdd_lcd_bl regulator enable failed\n");
+			goto fail;
+		}
+	}
+
+	if (vdd_lcd_bl_en) {
+		err = regulator_enable(vdd_lcd_bl_en);
+		if (err < 0) {
+			pr_err("vdd_lcd_bl_en regulator enable failed\n");
 			goto fail;
 		}
 	}
@@ -364,8 +383,11 @@ fail:
 
 static int roth_dsi_panel_disable(void)
 {
-	if (vdd_sys_bl_3v7)
-		regulator_disable(vdd_sys_bl_3v7);
+	if (vdd_lcd_bl)
+		regulator_disable(vdd_lcd_bl);
+
+	if (vdd_lcd_bl_en)
+		regulator_disable(vdd_lcd_bl_en);
 
 	if (vdd_lcd_s_1v8)
 		regulator_disable(vdd_lcd_s_1v8);

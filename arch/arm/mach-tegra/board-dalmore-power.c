@@ -803,6 +803,10 @@ static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
 	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
+static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
+};
+
 /* EN_USB1_VBUS From TEGRA GPIO PN4 PR3(T30) */
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
@@ -898,6 +902,10 @@ FIXED_REG(7,	en_1v8_cam_e1611,	en_1v8_cam_e1611,
 FIXED_REG(8,	dvdd_ts,	dvdd_ts,
 	palmas_rails(smps3),	0,	0,
 	TEGRA_GPIO_PH5,	false,	false,	1,	1800);
+
+FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,
+	NULL,	0,	0,
+	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 /*
  * Creating the fixed regulator device tables
  */
@@ -907,7 +915,8 @@ FIXED_REG(8,	dvdd_ts,	dvdd_ts,
 #define DALMORE_COMMON_FIXED_REG		\
 	ADD_FIXED_REG(usb1_vbus),		\
 	ADD_FIXED_REG(usb3_vbus),		\
-	ADD_FIXED_REG(vdd_hdmi_5v0),
+	ADD_FIXED_REG(vdd_hdmi_5v0),		\
+	ADD_FIXED_REG(lcd_bl_en),
 
 #define E1612_FIXED_REG				\
 	ADD_FIXED_REG(avdd_usb_hdmi),		\
