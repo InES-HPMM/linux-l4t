@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -137,6 +137,7 @@ static int pmu_core_edp;
 static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
+static u8 power_config;
 /*
  * Storage for debug-macro.S's state.
  *
@@ -924,6 +925,18 @@ static int __init tegra_board_panel_id(char *options)
 	return panel_id;
 }
 __setup("display_panel=", tegra_board_panel_id);
+
+u8 get_power_config(void)
+{
+	return power_config;
+}
+static int __init tegra_board_power_config(char *options)
+{
+	char *p = options;
+	power_config = memparse(p, &p);
+	return 1;
+}
+__setup("power-config=", tegra_board_power_config);
 
 enum power_supply_type get_power_supply_type(void)
 {
