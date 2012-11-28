@@ -191,7 +191,7 @@ static unsigned int throttle_recover(struct edp_manager *m, unsigned int mn)
 			continue;
 
 		rsum += cur_level(c) - c->states[tp];
-		c->throttle(tp);
+		c->throttle(tp, c->private_data);
 		if (c->cur == c->req)
 			m->num_denied++;
 		c->cur = c->states + tp;
@@ -223,7 +223,7 @@ static void throttle(struct edp_client *client)
 	c = throttle_bestfit_hi(client, mn, &ai, &balance);
 
 	if (c) {
-		c->throttle(c->gwt);
+		c->throttle(c->gwt, c->private_data);
 		if (c->cur == c->req)
 			m->num_denied++;
 		m->remaining = balance;
@@ -307,7 +307,7 @@ static void bestfit_promote(struct edp_manager *mgr)
 		c->cur = c->states + c->gwt;
 		if (c->cur == c->req)
 			mgr->num_denied--;
-		c->notify_promotion(c->gwt);
+		c->notify_promotion(c->gwt, c->private_data);
 	}
 
 	while (balance && mgr->num_denied) {
@@ -327,7 +327,7 @@ static void bestfit_promote(struct edp_manager *mgr)
 		c->cur = c->states + c->gwt;
 		if (c->cur == c->req)
 			mgr->num_denied--;
-		c->notify_promotion(c->gwt);
+		c->notify_promotion(c->gwt, c->private_data);
 	}
 
 	mgr->remaining = balance;

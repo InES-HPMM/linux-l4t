@@ -133,7 +133,7 @@ static void temporal_promote(struct edp_manager *m)
 		if (c->cur == c->req)
 			m->num_denied--;
 
-		c->notify_promotion(i);
+		c->notify_promotion(i, c->private_data);
 		if (!m->remaining || !m->num_denied)
 			return;
 	}
@@ -187,7 +187,7 @@ static void throttle(struct edp_client *client)
 				c->gwt == cur_index(c))
 			continue;
 
-		c->throttle(c->gwt);
+		c->throttle(c->gwt, c->private_data);
 		bal += cur_level(c) - c->states[c->gwt];
 		if (c->cur == c->req)
 			m->num_denied++;

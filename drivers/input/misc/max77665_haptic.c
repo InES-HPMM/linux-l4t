@@ -65,8 +65,6 @@ struct max77665_haptic {
 	struct edp_client *haptic_edp_client;
 };
 
-static struct max77665_haptic *max77665_haptic_chip;
-
 static int max77665_read_reg(struct max77665_haptic *chip, u8 reg, u8 *val)
 {
 	int ret;
@@ -229,9 +227,14 @@ static void max77665_haptic_enable(struct max77665_haptic *chip, bool enable)
 	}
 }
 
-static void max77665_haptic_throttle(unsigned int new_state)
+static void max77665_haptic_throttle(unsigned int new_state, void *priv_data)
 {
-	max77665_haptic_enable(max77665_haptic_chip, false);
+	struct max77665_haptic *chip = priv_data;
+
+	if (!chip)
+		return;
+
+	max77665_haptic_enable(chip, false);
 }
 
 static void max77665_haptic_play_effect_work(struct work_struct *work)
@@ -465,6 +468,7 @@ static int max77665_haptic_probe(struct platform_device *pdev)
 	chip->haptic_edp_client->e0_index = MAX77665_HAPTIC_EDP_LOW;
 	chip->haptic_edp_client->priority = EDP_MAX_PRIO - 2;
 	chip->haptic_edp_client->throttle = max77665_haptic_throttle;
+	chip->haptic_edp_client->private_data = chip;
 
 	battery_manager = edp_get_manager("battery");
 	if (!battery_manager) {
@@ -492,7 +496,6 @@ static int max77665_haptic_probe(struct platform_device *pdev)
 
 register_input:
 	dev_set_drvdata(&pdev->dev, chip);
-	max77665_haptic_chip = chip;
 	input_dev->name = "max77665-haptic";
 	input_dev->id.version = 1;
 	input_dev->dev.parent = &pdev->dev;

@@ -63,12 +63,13 @@ struct edp_client {
 	unsigned int e0_index;
 	unsigned int max_borrowers;
 	int priority;
+	void *private_data;
 
-	void (*throttle)(unsigned int new_state);
-	void (*notify_promotion)(unsigned int new_state);
+	void (*throttle)(unsigned int new_state, void *priv_data);
+	void (*notify_promotion)(unsigned int new_state, void *priv_data);
 	unsigned int (*notify_loan_update)(unsigned int new_size,
-			struct edp_client *lender);
-	void (*notify_loan_close)(struct edp_client *lender);
+			struct edp_client *lender, void *priv_data);
+	void (*notify_loan_close)(struct edp_client *lender, void *priv_data);
 
 	/* internal */
 	struct list_head link;

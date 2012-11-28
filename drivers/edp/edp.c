@@ -300,7 +300,8 @@ void edp_default_update_loans(struct edp_client *lender)
 
 	list_for_each_entry(p, &lender->borrowers, link) {
 		if (size != p->size) {
-			p->size = p->client->notify_loan_update(size, lender);
+			p->size = p->client->notify_loan_update(
+				size, lender, p->client->private_data);
 			WARN_ON(p->size > size);
 		}
 
@@ -359,7 +360,7 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 
 static void del_borrower(struct edp_client *lender, struct loan_client *pcl)
 {
-	pcl->client->notify_loan_close(lender);
+	pcl->client->notify_loan_close(lender, pcl->client->private_data);
 	lender->num_borrowers--;
 	pcl->client->num_loans--;
 	list_del(&pcl->link);

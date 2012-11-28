@@ -103,7 +103,7 @@ static void throttle(struct edp_client *client)
 				p->gwt == cur_index(p))
 			continue;
 
-		p->throttle(p->gwt);
+		p->throttle(p->gwt, p->private_data);
 		recovered += cur_level(p) - p->states[p->gwt];
 		if (p->cur == p->req)
 			m->num_denied++;
@@ -148,7 +148,7 @@ static void prio_promote(struct edp_manager *mgr)
 		if (p->cur == p->req)
 			mgr->num_denied--;
 
-		p->notify_promotion(pp);
+		p->notify_promotion(pp, p->private_data);
 		if (!mgr->remaining || !mgr->num_denied)
 			return;
 	}
