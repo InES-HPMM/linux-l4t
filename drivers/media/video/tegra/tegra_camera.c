@@ -31,6 +31,7 @@
 #include <mach/iomap.h>
 #include <mach/clk.h>
 #include <mach/powergate.h>
+#include <mach/mc.h>
 
 #include <media/tegra_camera.h>
 
@@ -147,9 +148,23 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 	case TEGRA_CAMERA_EMC_CLK:
 		clk = dev->emc_clk;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-		dev_dbg(dev->dev, "%s: emc_clk rate=%lu\n",
-			__func__, info->rate);
-		clk_set_rate(dev->emc_clk, info->rate);
+		{
+			/*
+			 * User space assumes that HW emc controller is 4
+			 * byte-wide DDR controller.
+			 * Emc bandwidth needs to be calcaluated using input emc
+			 * freq first, and then real emc freq will
+			 * be calculated using tegra_emc API.
+			 * tegra_emc_bw_to_freq_req takes HW difference
+			 * into consideration.
+			 * bw param in tegra_emc_bw_to_freq_req() is in KHz.
+			 */
+			unsigned long bw = (info->rate * 8) >> 10;
+			dev_dbg(dev->dev, "%s: emc_clk rate=%lu\n",
+				__func__, info->rate);
+			clk_set_rate(dev->emc_clk,
+					tegra_emc_bw_to_freq_req(bw) << 10);
+		}
 #endif
 		goto set_rate_end;
 	default:
