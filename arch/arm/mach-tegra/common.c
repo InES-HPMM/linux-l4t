@@ -429,7 +429,7 @@ static void __init tegra_perf_init(void)
 
 	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(reg));
 	reg >>= 11;
-	reg &= 0x1f;
+	reg = (1 << (reg & 0x1f))-1;
 	reg |= 0x80000000;
 	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r"(reg));
 	reg = 1;

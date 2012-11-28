@@ -54,8 +54,11 @@ ENTRY(tegra_secondary_startup)
 	mrc	p15, 0, r0, c9, c12, 0
 	lsr	r0, #11
 	and	r0, r0, #0x1f
-	movt	r0, #0x8000
-	mcr	p15, 0, r0, c9, c14, 2
+	mov	r1, #1
+	lsl	r1, r1, r0
+	sub	r1, r1, #1
+	movt	r1, #0x8000
+	mcr	p15, 0, r1, c9, c14, 2
 	mov	r0, #1
 	mcr	p15, 0, r0, c9, c14, 0
 
