@@ -249,8 +249,8 @@
  *  0x0200_0000 to 0x02ff_ffff - Extended config space   16MB.
  *  0x0300_0000 to 0x03ff_ffff - Downstream IO space
  *   ... Will be filled with other BARS like MSI/upstream IO etc.
- *  0x1000_0000 to 0x1fff_ffff - non-prefetchable memory aperture
- *  0x2000_0000 to 0x3fff_ffff - Prefetchable memory aperture
+ *  0x0400_0000 to 0x0fff_ffff - non-prefetchable memory aperture
+ *  0x1000_0000 to 0x3fff_ffff - Prefetchable memory aperture
  *
  *  Config and Extended config sizes are choosen to support
  *  maximum of 256 devices,
@@ -270,11 +270,11 @@
 #define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ + PCIE_EXT_CFG_SZ)
 
 #define MMIO_BASE				(TEGRA_PCIE_BASE + PCIE_IOMAP_SZ)
-#define MMIO_SIZE							SZ_1M
-#define MEM_BASE_0				(TEGRA_PCIE_BASE + SZ_256M)
-#define MEM_SIZE_0		SZ_256M
-#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
-#define PREFETCH_MEM_SIZE_0	SZ_512M
+#define MMIO_SIZE				SZ_1M
+#define MEM_BASE_0				(TEGRA_PCIE_BASE + SZ_64M)
+#define MEM_SIZE_0				(SZ_128M + SZ_64M)
+#define PREFETCH_MEM_BASE_0			(TEGRA_PCIE_BASE + SZ_256M)
+#define PREFETCH_MEM_SIZE_0			(SZ_512M + SZ_256M)
 #endif
 
 #define  PCIE_CONF_BUS(b)					((b) << 16)
@@ -1227,6 +1227,9 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 
 	tegra_pcie.num_ports++;
 	pp->index = index;
+	/* don't initialize root bus in resume path but boot path only */
+	if (!msi_enable)
+		pp->root_bus_nr = -1;
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
@@ -1372,7 +1375,6 @@ static int tegra_pcie_resume(struct device *dev)
 	is_pcie_noirq_op = false;
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
-	msi_enable = false;
 
 	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
 		ctrl_offset += (port * 8);
@@ -1384,6 +1386,7 @@ static int tegra_pcie_resume(struct device *dev)
 		tegra_pcie_power_off();
 		goto exit;
 	}
+	msi_enable = false;
 
 	tegra_pcie_hotplug_init();
 	while ((bus = pci_find_next_bus(bus)) != NULL) {
