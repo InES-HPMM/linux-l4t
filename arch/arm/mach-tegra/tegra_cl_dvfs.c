@@ -254,7 +254,18 @@ static inline void set_mode(struct tegra_cl_dvfs *cld,
 	cl_dvfs_wmb(cld);
 }
 
-static u32 get_req_setting(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
+static void set_max_limit(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
+{
+	u32 val;
+
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	val &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
+	val |= max(req->output, (u8)(cld->safe_ouput + 1)) <<
+		CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+}
+
+static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
 	u32 val;
 	int force_val = req->output - cld->safe_ouput;
@@ -269,7 +280,7 @@ static u32 get_req_setting(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		CL_DVFS_FREQ_REQ_FORCE_MASK;
 	val |= CL_DVFS_FREQ_REQ_FREQ_VALID | CL_DVFS_FREQ_REQ_FORCE_ENABLE;
 
-	return val;
+	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 }
 
 static int find_safe_output(
@@ -680,7 +691,6 @@ int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld)
 /* Switch from OPEN_LOOP state to CLOSED_LOOP state */
 int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 {
-	u32 val;
 	struct dfll_rate_req *req = &cld->last_req;
 
 	switch (cld->mode) {
@@ -699,16 +709,9 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		 * Make sure we have at least one LUT step above and one
 		 * below safe value.
 		 */
-		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-		val &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
 		BUG_ON(!cld->safe_ouput);
-		val |= max(req->output, (u8)(cld->safe_ouput + 1)) <<
-			CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
-		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-
-		val = get_req_setting(cld, req);
-		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
-
+		set_max_limit(cld, req);
+		set_request(cld, req);
 		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		return 0;
@@ -755,7 +758,7 @@ int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
  */
 int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
-	u32 val, outp;
+	u32 val;
 	struct dfll_rate_req req;
 
 	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
@@ -802,15 +805,8 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	cld->last_req = req;
 
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
-		val = get_req_setting(cld, &req);
-
-		outp = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-		outp &= ~CL_DVFS_OUTPUT_CFG_MAX_MASK;
-		outp |= max(req.output, (u8)(cld->safe_ouput + 1)) <<
-			CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
-		cl_dvfs_writel(cld, outp, CL_DVFS_OUTPUT_CFG);
-
-		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
+		set_max_limit(cld, &req);
+		set_request(cld, &req);
 		cl_dvfs_wmb(cld);
 	}
 	return 0;
