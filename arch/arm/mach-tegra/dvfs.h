@@ -88,11 +88,13 @@ enum dfll_range {
 
 struct dvfs_dfll_data {
 	u32		tune0;
+	u32		tune0_high_mv;
 	u32		tune1;
 	unsigned long	droop_rate_min;
 	unsigned long	use_dfll_rate_min;
 	unsigned long	out_rate_min;
 	unsigned long	max_rate_boost;
+	int tune_high_min_millivolts;
 	int min_millivolts;
 	enum dfll_range	range;
 };
