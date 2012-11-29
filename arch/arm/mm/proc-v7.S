@@ -130,7 +130,7 @@ ENDPROC(cpu_v7_dcache_clean_area)
 #endif
 
 .globl	cpu_v7_suspend_size
-.equ	cpu_v7_suspend_size, (4 * 15) + cpu_v7_debug_suspend_size
+.equ	cpu_v7_suspend_size, (4 * 17) + cpu_v7_debug_suspend_size
 #ifdef CONFIG_ARM_CPU_SUSPEND
 ENTRY(cpu_v7_do_suspend)
 	stmfd	sp!, {r3 - r10, lr}
@@ -145,7 +145,9 @@ ENTRY(cpu_v7_do_suspend)
 	mrc	p15, 0, r7, c9, c13, 2	@ PMXEVCNTR, event counter
 	mrc	p15, 0, r8, c9, c13, 1	@ PMXEVTYPER or PMCCFILTR
 	mrc	p15, 0, r9, c9, c13, 0	@ PMCCNTR, cycle counter
-	stmia	r0!, {r4 - r9}
+	mrc	p15, 0, r10, c9, c12, 0	@ PMCR, control register
+	mrc	p15, 0, r11, c9, c12, 1	@ PMCNTENSET, counter enable set
+	stmia	r0!, {r4 - r11}
 
 	mrc	p15, 0, r6, c3, c0, 0	@ Domain ID
 	mrc	p15, 0, r7, c2, c0, 1	@ TTB 1
@@ -256,13 +258,15 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r6, c15, c0, 1	@ diag
 #endif
 
-	ldmia	r0!, {r4 - r9}
+	ldmia	r0!, {r4 - r11}
 	mcr	p15, 0, r4, c9, c14, 2	@ PMINTENCLR
 	mcr	p15, 0, r5, c9, c14, 0	@ PMUSEREN
 	mcr	p15, 0, r6, c9, c12, 5	@ PMSELR, event counter selection
 	mcr	p15, 0, r7, c9, c13, 2	@ PMXEVCNTR, event counter
 	mcr	p15, 0, r8, c9, c13, 1	@ PMXEVTYPER or PMCCFILTR
 	mcr	p15, 0, r9, c9, c13, 0	@ PMCCNTR, cycle counter
+	mcr	p15, 0, r10, c9, c12, 0	@ PMCR, control register
+	mcr	p15, 0, r11, c9, c12, 1	@ PMCNTENSET, counter enable set
 
 	ldmia	r0!, {r6 - r11}
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
