@@ -1037,7 +1037,8 @@ void __init tegra_protected_aperture_init(unsigned long aperture)
  * highmem, or outside the memory map) to a physical address that is outside
  * the memory map.
  */
-void tegra_move_framebuffer(unsigned long to, unsigned long from,
+void __tegra_move_framebuffer(struct platform_device *pdev,
+	unsigned long to, unsigned long from,
 	unsigned long size)
 {
 	struct page *page;

@@ -411,7 +411,8 @@ int __init pluto_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 	/* Copy the bootloader fb to the fb. */
-	tegra_move_framebuffer(tegra_fb_start, tegra_bootloader_fb_start,
+	__tegra_move_framebuffer(&pluto_nvmap_device,
+		tegra_fb_start, tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
 	res = platform_get_resource_byname(&pluto_disp2_device,
