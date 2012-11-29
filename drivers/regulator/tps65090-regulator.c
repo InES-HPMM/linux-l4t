@@ -50,7 +50,7 @@ static int tps65090_reg_enable(struct regulator_dev *rdev)
 	if (ri->wait_timeout_us > 0) {
 		int wait_timeout = ri->wait_timeout_us;
 		int ret;
-		u8 en_reg = ri->rinfo->desc.enable_reg;
+		u8 en_reg = ri->desc->enable_reg;
 
 		if (wait_timeout <= 200)
 			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x0);
@@ -300,7 +300,8 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 		ri = &pmic[num];
 		ri->dev = &pdev->dev;
 		ri->desc = &tps65090_regulator_desc[num];
-		ri->wait_timeout_us = tps_pdata->wait_timeout_us;
+		if (tps_pdata)
+			ri->wait_timeout_us = tps_pdata->wait_timeout_us;
 
 		/*
 		 * TPS5090 DCDC support the control from external digital input.
