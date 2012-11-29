@@ -2295,12 +2295,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~HOSTPC1_DEVLC_STS;
 	writel(val, base + HOSTPC1_DEVLC);
 
-	val = readl(base + USB_TXFILLTUNING);
-	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
-		val = USB_FIFO_TXFILL_THRES(0x10);
-		writel(val, base + USB_TXFILLTUNING);
-	}
-
 	val = readl(base + USB_PORTSC);
 	val &= ~(USB_PORTSC_WKOC | USB_PORTSC_WKDS | USB_PORTSC_WKCN);
 	writel(val, base + USB_PORTSC);
@@ -2328,6 +2322,12 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 		usb_phy_bringup_host_controller(phy);
 		uhsic_phy_restore_end(phy);
 		phy->pmc_sleepwalk = false;
+	}
+
+	val = readl(base + USB_TXFILLTUNING);
+	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
+		val = USB_FIFO_TXFILL_THRES(0x10);
+		writel(val, base + USB_TXFILLTUNING);
 	}
 
 	return 0;
