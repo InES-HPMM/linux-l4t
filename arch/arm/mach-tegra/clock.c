@@ -402,7 +402,7 @@ void clk_disable(struct clk *c)
 EXPORT_SYMBOL(clk_disable);
 #endif
 
-static int clk_rate_change_notify(struct clk *c, unsigned long rate)
+int clk_rate_change_notify(struct clk *c, unsigned long rate)
 {
 	if (!c->rate_change_nh)
 		return -ENOSYS;
