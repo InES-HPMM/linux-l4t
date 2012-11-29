@@ -32,12 +32,9 @@
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #include "tegra3_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #include "tegra11_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#include "tegra3_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
 #endif
 
 #define MAX_PRINTS			6
@@ -47,19 +44,23 @@
 #define MC_ERROR_STATUS			0x8
 #define MC_ERROR_ADDRESS		0xC
 
-#define MC_INT_EXT_INTR_IN		(1<<1)
-#define MC_INT_DECERR_EMEM		(1<<6)
-#define MC_INT_SECURITY_VIOLATION	(1<<8)
-#define MC_INT_ARBITRATION_EMEM		(1<<9)
-#define MC_INT_INVALID_SMMU_PAGE	(1<<10)
-#define MC_INT_DECERR_VPR		(1<<12)
-#define MC_INT_SECERR_SEC		(1<<13)
+#define MC_INT_EXT_INTR_IN			(1<<1)
+#define MC_INT_DECERR_EMEM			(1<<6)
+#define MC_INT_SECURITY_VIOLATION		(1<<8)
+#define MC_INT_ARBITRATION_EMEM			(1<<9)
+#define MC_INT_INVALID_SMMU_PAGE		(1<<10)
+#define MC_INT_DECERR_VPR			(1<<12)
+#define MC_INT_SECERR_SEC			(1<<13)
+#define MC_INT_BBC_PRIVATE_MEM_VIOLATION	(1<<14)
+#define MC_INT_DECERR_BBC			(1<<15)
 
 /*
  * Number of unique interrupts we have for this chip.
  */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define INTR_COUNT	6
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INTR_COUNT	8
 #else
 #define INTR_COUNT	4
 #endif
@@ -74,7 +75,6 @@
 			 MC_INT_SECURITY_VIOLATION |	\
 			 MC_INT_INVALID_SMMU_PAGE)
 
-
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define MC_DUAL_CHANNEL
 #define _MC_INT_EN_MASK	(MC_INT_EXT_INTR_IN |		\
@@ -84,10 +84,14 @@
 			 MC_INT_DECERR_VPR |		\
 			 MC_INT_SECERR_SEC)
 #elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |		\
-			 MC_INT_SECURITY_VIOLATION |	\
-			 MC_INT_ARBITRATION_EMEM |	\
-			 MC_INT_INVALID_SMMU_PAGE)
+#define _MC_INT_EN_MASK	(MC_INT_DECERR_EMEM |			\
+			 MC_INT_SECURITY_VIOLATION |		\
+			 MC_INT_ARBITRATION_EMEM |		\
+			 MC_INT_INVALID_SMMU_PAGE |		\
+			 MC_INT_DECERR_VPR |			\
+			 MC_INT_SECERR_SEC |			\
+			 MC_INT_BBC_PRIVATE_MEM_VIOLATION |	\
+			 MC_INT_DECERR_BBC)
 #endif
 
 #ifdef CONFIG_TEGRA_ARBITRATION_EMEM_INTR
