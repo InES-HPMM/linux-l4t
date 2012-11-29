@@ -908,7 +908,7 @@ static int ad5816_release(struct inode *inode, struct file *file)
 {
 	struct ad5816_info *info = file->private_data;
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
-	ad5816_pm_dev_wr(info, NVC_PWR_OFF);
+	ad5816_pm_wr(info, NVC_PWR_OFF);
 	file->private_data = NULL;
 	WARN_ON(!atomic_xchg(&info->in_use, 0));
 	if (info->s_info != NULL)
