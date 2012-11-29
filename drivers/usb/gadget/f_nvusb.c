@@ -191,7 +191,7 @@ void free_nvusbep_req(struct usb_ep *ep, struct usb_request *req)
 	usb_ep_free_request(ep, req);
 }
 
-static int __init
+static int
 nvusb_bind_func(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev *cdev = c->cdev;
@@ -650,7 +650,7 @@ static void nvusb_disable(struct usb_function *f)
 
 /*-------------------------------------------------------------------------*/
 
-static int __init nvusb_bind_config(struct usb_configuration *c)
+static int nvusb_bind_config(struct usb_configuration *c)
 {
 	struct f_nvusb	*nvusb;
 	int			status;
