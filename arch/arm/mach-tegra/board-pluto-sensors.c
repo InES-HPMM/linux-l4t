@@ -833,7 +833,7 @@ static int __init pluto_skin_init(void)
 late_initcall(pluto_skin_init);
 #endif
 
-void max77665_init(void)
+void __init max77665_init(void)
 {
 	int err;
 
