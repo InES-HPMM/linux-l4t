@@ -762,9 +762,6 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%08x\n", as->asid, iova, pa);
 
-	if (!pfn_valid(pfn))
-		return -ENOMEM;
-
 	spin_lock_irqsave(&as->lock, flags);
 	__smmu_iommu_map_pfn(as, iova, pfn);
 	spin_unlock_irqrestore(&as->lock, flags);
