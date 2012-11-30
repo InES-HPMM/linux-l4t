@@ -681,13 +681,13 @@
 #endif
 #define IO_PCIE_SIZE	(SZ_16M * 3)
 
-#ifdef CONFIG_MTD_NOR_TEGRA
+#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_M2601)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_NOR_PHYS	0xD0000000
 #define IO_NOR_SIZE	(SZ_64M)
 #else
 #define IO_NOR_PHYS	0x48000000
-#define IO_NOR_SIZE	(SZ_64M)
+#define IO_NOR_SIZE	(SZ_128M)
 #endif
 #else
 #define IO_NOR_PHYS	0x0
