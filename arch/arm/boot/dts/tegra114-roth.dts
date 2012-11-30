@@ -1,8 +1,8 @@
 /dts-v1/;
 
-/include/ "tegra11x.dtsi"
+/include/ "tegra114.dtsi"
 
 / {
 	model = "NVIDIA Tegra114 roth evaluation board";
-	compatible = "nvidia,roth", "nvidia,tegra11x";
+	compatible = "nvidia,roth", "nvidia,tegra114";
 };

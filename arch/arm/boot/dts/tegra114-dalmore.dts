@@ -1,8 +1,8 @@
 /dts-v1/;
 
-/include/ "tegra11x.dtsi"
+/include/ "tegra114.dtsi"
 
 / {
-	model = "NVIDIA Tegra11x dalmore evaluation board";
-	compatible = "nvidia,dalmore", "nvidia,tegra11x";
+	model = "NVIDIA Tegra114 dalmore evaluation board";
+	compatible = "nvidia,dalmore", "nvidia,tegra114";
 };
