@@ -22,6 +22,12 @@ config PDA_POWER
 	  one or two external power supplies (AC/USB) connected to main and
 	  backup batteries, and optional builtin charger.
 
+config CHARGER_BQ2419X
+	tristate "BQ2419X charger support"
+	depends on MFD_BQ2419X
+	help
+	  Say Y here to enable support for TI BQ2419X charger.
+
 config APM_POWER
 	tristate "APM emulation for class batteries"
 	depends on APM_EMULATION
