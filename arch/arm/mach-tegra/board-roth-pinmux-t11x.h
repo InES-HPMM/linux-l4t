@@ -95,6 +95,7 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	/* SOC pinmux */
 	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         NORMAL,    TRISTATE, INPUT),
 	DEFAULT_PINMUX(GMI_OE_N,      SOC,         NORMAL,    TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_RST_N,      GMI,         PULL_UP,    NORMAL, INPUT),
 
 	/* EXTPERIPH2 pinmux */
 	DEFAULT_PINMUX(CLK2_OUT,      EXTPERIPH2,  NORMAL,    NORMAL,   OUTPUT),
@@ -216,6 +217,11 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
 	DEFAULT_PINMUX(GPIO_X1_AUD,   RSVD1,        PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(GPIO_X7_AUD,   RSVD0,        PULL_UP,   NORMAL, INPUT),
+
+	/* Battery charging */
+	DEFAULT_PINMUX(GMI_ADV_N,   GMI,        NORMAL,   NORMAL, INPUT),
+	DEFAULT_PINMUX(GMI_CS0_N,   GMI,        PULL_UP,  NORMAL, INPUT),
+
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -254,16 +260,13 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH0, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK1, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI5, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PC7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC5, false, 0),
