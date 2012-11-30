@@ -31,6 +31,7 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 #include <linux/cpu_pm.h>
+#include <linux/of.h>
 
 #include <asm/mach/time.h>
 #include <asm/arch_timer.h>
@@ -267,7 +268,14 @@ void tegra_twd_resume(struct tegra_twd_context *context)
 
 static void __init tegra_init_late_timer(void)
 {
-	int err = twd_local_timer_register(&twd_local_timer);
+	int err;
+
+	if (of_have_populated_dt()) {
+		twd_local_timer_of_register();
+		return;
+	}
+
+	err = twd_local_timer_register(&twd_local_timer);
 	if (err)
 		pr_err("twd_timer_register failed %d\n", err);
 }
