@@ -55,6 +55,8 @@ struct tegra_usb_modem {
 	struct usb_interface *intf;	/* first modem usb interface */
 	struct workqueue_struct *wq;	/* modem workqueue */
 	struct delayed_work recovery_work;	/* modem recovery work */
+	struct work_struct host_load_work;	/* usb host load work */
+	struct work_struct host_unload_work;	/* usb host unload work */
 	struct pm_qos_request cpu_boost_req; /* min CPU freq request */
 	struct work_struct cpu_boost_work;	/* CPU freq boost work */
 	struct delayed_work cpu_unboost_work;	/* CPU freq unboost work */
@@ -89,8 +91,15 @@ static const struct usb_device_id modem_list[] = {
 	{USB_DEVICE(0x1983, 0x1005),	/* Icera 500 5AN (BSD) */
 	/* .driver_info = TEGRA_MODEM_AUTOSUSPEND, */
 	 },
+	{USB_DEVICE(0x1983, 0x1006),	/* Icera 500 Nemo */
+	 .driver_info = TEGRA_USB_HOST_RELOAD,
+	 },
 	{}
 };
+
+static ssize_t load_unload_usb_host(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count);
 
 static void cpu_freq_unboost(struct work_struct *ws)
 {
@@ -145,11 +154,15 @@ static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 {
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
+	int v = gpio_get_value(modem->pdata->boot_gpio);
 
-	if (gpio_get_value(modem->pdata->boot_gpio))
-		pr_info("BB_RST_OUT high\n");
-	else
-		pr_info("BB_RST_OUT low\n");
+	pr_info("MDM_COLDBOOT %s\n",  v ? "high" : "low");
+
+	if (modem->capability & TEGRA_USB_HOST_RELOAD)
+		if (!work_pending(&modem->host_load_work) &&
+		    !work_pending(&modem->host_unload_work))
+			queue_work(modem->wq, v ? &modem->host_load_work :
+				   &modem->host_unload_work);
 
 	/* hold wait lock to complete the enumeration */
 	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_USB_ENUM);
@@ -178,6 +191,16 @@ static void tegra_usb_modem_recovery(struct work_struct *ws)
 			modem->ops->reset();
 	}
 	mutex_unlock(&modem->lock);
+}
+
+static void tegra_usb_host_load(struct work_struct *ws)
+{
+	load_unload_usb_host(NULL, NULL, "1", 1);
+}
+
+static void tegra_usb_host_unload(struct work_struct *ws)
+{
+	load_unload_usb_host(NULL, NULL, "0", 1);
 }
 
 static void device_add_handler(struct tegra_usb_modem *modem,
@@ -450,7 +473,8 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	/* create work queue platform_driver_registe */
 	modem->wq = create_workqueue("tegra_usb_mdm_queue");
 	INIT_DELAYED_WORK(&modem->recovery_work, tegra_usb_modem_recovery);
-
+	INIT_WORK(&modem->host_load_work, tegra_usb_host_load);
+	INIT_WORK(&modem->host_unload_work, tegra_usb_host_unload);
 	INIT_WORK(&modem->cpu_boost_work, cpu_freq_boost);
 	INIT_DELAYED_WORK(&modem->cpu_unboost_work, cpu_freq_unboost);
 
@@ -560,6 +584,9 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
 
+	cancel_delayed_work_sync(&modem->recovery_work);
+	cancel_work_sync(&modem->host_load_work);
+	cancel_work_sync(&modem->host_unload_work);
 	cancel_work_sync(&modem->cpu_boost_work);
 	cancel_delayed_work_sync(&modem->cpu_unboost_work);
 	destroy_workqueue(modem->wq);
