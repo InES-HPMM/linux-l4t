@@ -6617,6 +6617,12 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("gpu", "tegra_gk20a", "PLLG_ref"),
+	CLK_DUPLICATE("isp", "tegra_isp", NULL),
+	CLK_DUPLICATE("isp", "tegra_isp.1", NULL),
+	CLK_DUPLICATE("vi", "tegra_vi", NULL),
+	CLK_DUPLICATE("vi", "tegra_vi.1", NULL),
+	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
+	CLK_DUPLICATE("csi", "tegra_vi.1", "csi"),
 };
 
 struct clk *tegra_ptr_clks[] = {
