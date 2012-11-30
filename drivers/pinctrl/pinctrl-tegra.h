@@ -1,7 +1,7 @@
 /*
  * Driver for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -69,6 +69,10 @@ struct tegra_function {
  * @slwr_width:		Slew Rising field width. 0 if unsupported.
  * @slwf_bit:		Slew Falling register bit. 0 if unsupported.
  * @slwf_width:		Slew Falling field width. 0 if unsupported.
+ * @drvtype_reg:	Drive type fields register offset. -1 if unsupported.
+ * @drvtype_bank:	Drive type fields register bank. 0 if unsupported.
+ * @drvtype_bit:	Drive type register bit. 0 if unsupported.
+ * @drvtype_width:	Drive type field width. 0 if unsupported.
  *
  * A representation of a group of pins (possibly just one pin) in the Tegra
  * pin controller. Each group allows some parameter or parameters to be
@@ -92,6 +96,7 @@ struct tegra_pingroup {
 	s16 ioreset_reg;
 	s16 rcv_sel_reg;
 	s16 drv_reg;
+	s16 drvtype_reg;
 	u32 mux_bank:2;
 	u32 pupd_bank:2;
 	u32 tri_bank:2;
@@ -101,6 +106,7 @@ struct tegra_pingroup {
 	u32 rcv_sel_bank:2;
 	u32 lock_bank:2;
 	u32 drv_bank:2;
+	u32 drvtype_bank:2;
 	u32 mux_bit:5;
 	u32 pupd_bit:5;
 	u32 tri_bit:5;
@@ -116,10 +122,12 @@ struct tegra_pingroup {
 	u32 drvup_bit:5;
 	u32 slwr_bit:5;
 	u32 slwf_bit:5;
+	u32 drvtype_bit:5;
 	u32 drvdn_width:6;
 	u32 drvup_width:6;
 	u32 slwr_width:6;
 	u32 slwf_width:6;
+	u32 drvtype_width:6;
 };
 
 /**

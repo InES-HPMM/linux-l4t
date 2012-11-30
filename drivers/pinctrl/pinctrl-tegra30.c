@@ -3386,6 +3386,7 @@ static const struct tegra_function tegra30_functions[] = {
 		.ioreset_bit = 8,				\
 		.rcv_sel_reg = -1,				\
 		.drv_reg = -1,					\
+		.drvtype_reg = -1,				\
 	}
 
 #define DRV_PINGROUP(pg_name, r, hsm_b, schmitt_b, lpmd_b,	\
@@ -3416,6 +3417,7 @@ static const struct tegra_function tegra30_functions[] = {
 		.slwr_width = slwr_w,				\
 		.slwf_bit = slwf_b,				\
 		.slwf_width = slwf_w,				\
+		.drvtype_reg = -1,				\
 	}
 
 static const struct tegra_pingroup tegra30_groups[] = {

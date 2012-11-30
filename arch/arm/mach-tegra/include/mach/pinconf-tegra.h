@@ -1,7 +1,7 @@
 /*
  * pinctrl configuration definitions for the NVIDIA Tegra pinmux
  *
- * Copyright (c) 2011, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -45,6 +45,8 @@ enum tegra_pinconf_param {
 	TEGRA_PINCONF_PARAM_SLEW_RATE_FALLING,
 	/* argument: Integer, range is HW-dependant */
 	TEGRA_PINCONF_PARAM_SLEW_RATE_RISING,
+	/* argument: Integer, range is HW-dependant */
+	TEGRA_PINCONF_PARAM_DRIVE_TYPE,
 };
 
 enum tegra_pinconf_pull {
