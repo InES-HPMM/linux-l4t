@@ -302,6 +302,15 @@ static int l3_suspend(void)
 
 static int l3_suspend_noirq(void)
 {
+	bool wakeup_detected = bb_get_cwr();
+	bool crashed = bb_crashed();
+
+	/* If modem is initiating a wakeup, or it had crashed
+	abort system suspend. */
+	if (wakeup_detected || crashed) {
+		pr_info("%s: Aborting suspend.\n", __func__);
+		return 1;
+	}
 	return 0;
 }
 
@@ -521,7 +530,7 @@ static struct tegra_bb_power_mdata bb_mdata = {
 	.vid = 0x045B,
 	.pid = 0x020F,
 	.wake_capable = true,
-	.autosuspend_ready = false,
+	.autosuspend_ready = true,
 };
 
 static struct tegra_bb_power_data bb_data = {
