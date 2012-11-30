@@ -43,7 +43,7 @@
 #define INA3221_DEBUG_PRINTS 0
 
 #if INA3221_DEBUG_PRINTS
-#define DEBUG_INA3221(x) printk(x)
+#define DEBUG_INA3221(x) (printk x)
 #else
 #define DEBUG_INA3221(x)
 #endif
@@ -224,7 +224,7 @@ static s32 show_current(struct device *dev,
 
 	/* shunt_resistor is received in mOhms */
 	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
-	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
+	current_mA = (voltage_uV * inverse_shunt_resistor) / 1000;
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
