@@ -358,6 +358,14 @@ config TEGRA_EDP_EXACT_FREQ
 	  specified in the EDP table when EDP capping is applied; when
 	  disabled the next lower cpufreq frequency will be used.
 
+config TEGRA_WAKEUP_MONITOR
+	bool "Enable tegra wakeup monitor"
+	depends on PM_SLEEP
+	help
+	  This option enables support for the monitor of tegra wakeups, it will
+	  send out wakeup source and uevents which indicate suspend_prepare and
+	  post_suspend.
+
 config TEGRA_USB_MODEM_POWER
 	bool "Enable tegra usb modem power management"
 	default n
