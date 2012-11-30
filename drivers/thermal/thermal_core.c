@@ -713,10 +713,14 @@ policy_store(struct device *dev, struct device_attribute *attr,
 	int ret = -EINVAL;
 	struct thermal_zone_device *tz = to_thermal_zone(dev);
 	struct thermal_governor *gov;
+	char name[THERMAL_NAME_LENGTH];
 
 	mutex_lock(&thermal_governor_lock);
 
-	gov = __find_governor(buf);
+	if ((strlen(buf) >= THERMAL_NAME_LENGTH) && !sscanf(buf, "%s\n", name))
+		goto exit;
+
+	gov = __find_governor((const char *)name);
 	if (!gov)
 		goto exit;
 
