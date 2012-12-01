@@ -33,6 +33,10 @@
 #include <mach/powergate.h>
 #include <mach/mc.h>
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#include <mach/isomgr.h>
+#endif
+
 #include <media/tegra_camera.h>
 
 /* Eventually this should handle all clock and reset calls for the isp, vi,
@@ -60,6 +64,9 @@ struct tegra_camera_dev {
 	struct mutex tegra_camera_lock;
 	atomic_t in_use;
 	int power_on;
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	tegra_isomgr_handle isomgr_handle;
+#endif
 };
 
 struct tegra_camera_block {
@@ -178,10 +185,31 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 			 * bw param in tegra_emc_bw_to_freq_req() is in KHz.
 			 */
 			unsigned long bw = (info->rate * 8) >> 10;
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+			int ret = 0;
+#endif
 			dev_dbg(dev->dev, "%s: emc_clk rate=%lu\n",
 				__func__, info->rate);
 			clk_set_rate(dev->emc_clk,
 					tegra_emc_bw_to_freq_req(bw) << 10);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+			/*
+			 * There is no way to figure out what latency
+			 * can be tolerated in VI without reading VI
+			 * registers for now. 3 usec is minimum time
+			 * to switch PLL source. Let's put 4 usec as
+			 * latency for now.
+			 */
+			ret = tegra_isomgr_reserve(dev->isomgr_handle,
+					bw,	/* KB/sec */
+					4);	/* usec */
+			if (!ret)
+				return -ENOMEM;
+
+			ret = tegra_isomgr_realize(dev->isomgr_handle);
+			if (!ret)
+				return -ENOMEM;
+#endif
 		}
 #endif
 		goto set_rate_end;
@@ -396,16 +424,25 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	/* turn on CSI regulator */
 	ret = tegra_camera_power_on(dev);
 	if (ret)
-		goto open_exit;
+		goto power_on_err;
 	/* set EMC request */
 	ret = tegra_camera_enable_emc(dev);
 	if (ret)
-		goto open_exit;
+		goto enable_emc_err;
 	/* enable camera HW clock */
 	ret = tegra_camera_enable_clk(dev);
 	if (ret)
-		goto open_exit;
-open_exit:
+		goto enable_clk_err;
+
+	mutex_unlock(&dev->tegra_camera_lock);
+
+	return 0;
+
+enable_clk_err:
+	tegra_camera_disable_emc(dev);
+enable_emc_err:
+	tegra_camera_power_off(dev);
+power_on_err:
 	mutex_unlock(&dev->tegra_camera_lock);
 	return ret;
 }
@@ -518,7 +555,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	err = tegra_camera_clk_get(pdev, "isp", &dev->isp_clk);
 	if (err)
-		goto misc_register_err;
+		goto isp_clk_get_err;
 	err = tegra_camera_clk_get(pdev, "vi", &dev->vi_clk);
 	if (err)
 		goto vi_clk_get_err;
@@ -550,23 +587,42 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto pll_d2_clk_get_err;
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	/*
+	 * Dedicated bw is what VI could ask for at most.
+	 * Assume that preview has 3M@30fps and video has 8M@30fps
+	 * Total = 3M * 30fps * 2Bpp + 8M * 30fps * 1.5Bpp
+	 *       = 540MBps
+	 * This number can be changed if VI requests more than this.
+	 *
+	 */
+	dev->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
+				540000,	/* dedicated bw, KBps*/
+				NULL,	/* tegra_isomgr_renegotiate */
+				NULL);	/* *priv */
+	if (!dev->isomgr_handle)
+		goto isomgr_reg_err;
+#endif
+
 	/* dev is set in order to restore in _remove */
 	platform_set_drvdata(pdev, dev);
 
 	return 0;
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
-pll_d2_clk_get_err:
+isomgr_reg_err:
 	clk_put(dev->pll_d2_clk);
-cile_clk_get_err:
+pll_d2_clk_get_err:
 	clk_put(dev->cile_clk);
-cilcd_clk_get_err:
+cile_clk_get_err:
 	clk_put(dev->cilcd_clk);
-cilab_clk_get_err:
+cilcd_clk_get_err:
 	clk_put(dev->cilab_clk);
+cilab_clk_get_err:
+	clk_put(dev->emc_clk);
 #endif
 emc_clk_get_err:
-	clk_put(dev->emc_clk);
+	clk_put(dev->csi_clk);
 csi_clk_get_err:
 	clk_put(dev->csus_clk);
 csus_clk_get_err:
@@ -575,6 +631,8 @@ vi_sensor_clk_get_err:
 	clk_put(dev->vi_clk);
 vi_clk_get_err:
 	clk_put(dev->isp_clk);
+isp_clk_get_err:
+	misc_deregister(&dev->misc_dev);
 misc_register_err:
 	regulator_put(dev->reg);
 alloc_err:
@@ -584,6 +642,7 @@ alloc_err:
 static int tegra_camera_remove(struct platform_device *pdev)
 {
 	struct tegra_camera_dev *dev = platform_get_drvdata(pdev);
+
 
 	clk_put(dev->isp_clk);
 	clk_put(dev->vi_clk);
@@ -595,6 +654,25 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	clk_put(dev->cilcd_clk);
 	clk_put(dev->cile_clk);
 	clk_put(dev->pll_d2_clk);
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	/*
+	 * Return memory bandwidth to isomgr.
+	 * If bandwidth is zero, then latency will be ignored
+	 * in tegra_isomgr_reserve().
+	 */
+	{
+		int ret = 0;
+		ret = tegra_isomgr_reserve(dev->isomgr_handle,
+					0,	/* KB/sec */
+					0);	/* usec */
+		if (!ret)
+			return -ENOMEM;
+
+		tegra_isomgr_unregister(dev->isomgr_handle);
+		dev->isomgr_handle = NULL;
+	}
 #endif
 
 	misc_deregister(&dev->misc_dev);
