@@ -1001,6 +1001,31 @@ static int monitor_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
 
+static int tune_high_mv_get(void *data, u64 *val)
+{
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	*val = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
+	return 0;
+}
+static int tune_high_mv_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+	clk_lock_save(c, &flags);
+
+	set_ol_config(cld);
+	cld->safe_dvfs->dfll_data.tune_high_min_millivolts = val;
+	cl_dvfs_init_tuning_thresholds(cld);
+	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP)
+		set_cl_config(cld, &cld->last_req);
+
+	clk_unlock_restore(c, &flags);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(tune_high_mv_fops, tune_high_mv_get, tune_high_mv_set,
+			"%llu\n");
 
 static int cl_register_show(struct seq_file *s, void *data)
 {
@@ -1093,6 +1118,10 @@ static int __init tegra_cl_dvfs_debug_init(void)
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
 		cpu_cl_dvfs_dentry, dfll_cpu, &monitor_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("tune_high_mv", S_IRUGO,
+		cpu_cl_dvfs_dentry, dfll_cpu, &tune_high_mv_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
