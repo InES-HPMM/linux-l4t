@@ -279,15 +279,18 @@ static int xmm_power_on(struct platform_device *device)
 				__func__);
 			modem_power_on = true;
 			if (pdata->hsic_register)
-				data->hsic_device = pdata->hsic_register();
+				data->hsic_device = pdata->hsic_register
+					(pdata->ehci_device);
 			else
 				pr_err("%s: hsic_register is missing\n",
 					__func__);
 			register_hsic_device = false;
+			baseband_modem_power_on(pdata);
 		} else {
 			/* register usb host controller */
 			if (pdata->hsic_register)
-				data->hsic_device = pdata->hsic_register();
+				data->hsic_device = pdata->hsic_register
+					(pdata->ehci_device);
 			/* turn on modem */
 			pr_debug("%s call baseband_modem_power_on_async\n",
 								__func__);
@@ -697,7 +700,8 @@ static void xmm_power_init2_work(struct work_struct *work)
 	/* register usb host controller only once */
 	if (register_hsic_device) {
 		if (pdata->hsic_register)
-			xmm_power_drv_data.hsic_device = pdata->hsic_register();
+			xmm_power_drv_data.hsic_device = pdata->hsic_register
+				(pdata->ehci_device);
 		else
 			pr_err("%s: hsic_register is missing\n", __func__);
 		register_hsic_device = false;
@@ -776,7 +780,8 @@ static void xmm_power_work_func(struct work_struct *work)
 		/* register usb host controller */
 		pr_debug("%s: register usb host controller\n", __func__);
 		if (pdata->hsic_register)
-			data->hsic_device = pdata->hsic_register();
+			data->hsic_device = pdata->hsic_register
+				(pdata->ehci_device);
 		else
 			pr_err("%s: hsic_register is missing\n", __func__);
 		break;

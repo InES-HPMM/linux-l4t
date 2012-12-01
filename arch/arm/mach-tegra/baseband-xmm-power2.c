@@ -137,7 +137,7 @@ static void xmm_power2_step2(struct work_struct *work)
 
 	/* register usb host controller */
 	if (pdata->hsic_register)
-		data->hsic_device = pdata->hsic_register();
+		data->hsic_device = pdata->hsic_register(pdata->ehci_device);
 	else
 		pr_err("%s: hsic_register is missing\n", __func__);
 

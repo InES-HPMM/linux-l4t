@@ -40,8 +40,9 @@ enum baseband_type {
 
 struct baseband_power_platform_data {
 	enum baseband_type baseband_type;
-	struct platform_device* (*hsic_register)(void);
+	struct platform_device* (*hsic_register)(struct platform_device *);
 	void (*hsic_unregister)(struct platform_device **);
+	struct platform_device *ehci_device;
 	union {
 		struct {
 			int mdm_reset;

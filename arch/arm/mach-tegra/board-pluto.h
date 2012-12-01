@@ -92,6 +92,12 @@
 #define MDM2_REQ2			TEGRA_GPIO_PV1
 #define MDM2_ACK2			TEGRA_GPIO_PO3
 
+/* Modem2 related GPIOs (for Pluto Rev A02 only) */
+#define MDM2_PWR_ON_FOR_PLUTO_A02	TEGRA_GPIO_PR6
+					/* If Pluto A03 or later, use PX1 */
+
+/* OEM1 Modem related GPIOs */
+
 #define BB_OEM1_GPIO_RST		TEGRA_GPIO_PR5
 #define BB_OEM1_GPIO_ON			TEGRA_GPIO_PR6
 #define BB_OEM1_GPIO_ON_V		TEGRA_GPIO_PX1
@@ -99,6 +105,21 @@
 #define BB_OEM1_GPIO_CWR		TEGRA_GPIO_PV1
 #define BB_OEM1_GPIO_SPARE		TEGRA_GPIO_PO2
 #define BB_OEM1_GPIO_WDI		TEGRA_GPIO_PV0
+
+/* OEM2 Modem related GPIOs */
+
+#define XMM_GPIO_BB_ON			MDM2_PWR_ON /* AP -> BB */
+				/* E1193 Rev B7: pin 55 = MDM_PWRON_AP2BB */
+#define XMM_GPIO_BB_RST			MDM2_RST /* AP -> BB */
+				/* E1193 Rev B7: pin 53 = RESET_AP2BB* */
+#define XMM_GPIO_IPC_HSIC_ACTIVE	MDM2_ACK2 /* AP -> BB */
+				/* E1193 Rev B7: pin 46 = HS2_AP2BB */
+#define XMM_GPIO_IPC_HSIC_SUS_REQ	MDM2_REQ2 /* BB -> AP */
+				/* E1193 Rev B7: pin 41 = HS2_BB2AP */
+#define XMM_GPIO_IPC_BB_WAKE		MDM2_ACK1 /* AP -> BB */
+				/* E1193 Rev B7: pin 45 = HS1_AP2BB */
+#define XMM_GPIO_IPC_AP_WAKE		MDM2_REQ1 /* BB -> AP */
+				/* E1193 Rev B7: pin 43 = HS1_BB2AP */
 
 int pluto_regulator_init(void);
 int pluto_suspend_init(void);
