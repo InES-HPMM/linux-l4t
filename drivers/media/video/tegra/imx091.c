@@ -1,12 +1,20 @@
 /*
-* imx091.c - imx091 sensor driver
-*
-* Copyright (c) 2012, NVIDIA, All Rights Reserved.
-*
-* This file is licensed under the terms of the GNU General Public License
-* version 2. This program is licensed "as is" without any warranty of any
-* kind, whether express or implied.
-*/
+ * imx091.c - imx091 sensor driver
+ *
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <linux/fs.h>
 #include <linux/i2c.h>
@@ -122,13 +130,23 @@ static struct nvc_imager_cap imx091_dflt_cap = {
 	.csi_port		= 0,
 	.data_lanes		= 4,
 	.virtual_channel_id	= 0,
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	.discontinuous_clk_mode	= 0,
+	.cil_threshold_settle	= 0xd,
+#else
 	.discontinuous_clk_mode	= 1,
 	.cil_threshold_settle	= 0x0,
+#endif
 	.min_blank_time_width	= 16,
 	.min_blank_time_height	= 16,
 	.preferred_mode_index	= 1,
-	.focuser_guid		= NVC_FOCUS_GUID(0),
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	.focuser_guid	= 0,
+	.torch_guid		= 0,
+#else
+	.focuser_guid	= NVC_FOCUS_GUID(0),
 	.torch_guid		= NVC_TORCH_GUID(0),
+#endif
 	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
@@ -185,6 +203,129 @@ static struct imx091_reg *test_patterns[] = {
 	tp_checker_seq,
 };
 
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+#define IMX091_WAIT_1000_MS 1000
+static struct imx091_reg imx091_FPGA_1052x1560_i2c[] = {
+	/* Stand by */
+	{0x0100, 0x00},
+	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
+
+	/* global settings */
+	{0x3087, 0x53},
+	{0x309D, 0x94},
+	{0x30A1, 0x08},
+	{0x30C7, 0x00},
+	{0x3115, 0x0E},
+	{0x3118, 0x42},
+	{0x311D, 0x34},
+	{0x3121, 0x0D},
+	{0x3212, 0xF2},
+	{0x3213, 0x0F},
+	{0x3215, 0x0F},
+	{0x3217, 0x0B},
+	{0x3219, 0x0B},
+	{0x321B, 0x0D},
+	{0x321D, 0x0D},
+
+	/* black level */
+	{0x3032, 0x00},
+
+	/*
+	 * PLL (MCLK) = 13MHz
+	 * Previously, this was calibrated for a 24MHz system, which has
+	 * PREPLLCLK_DIV of 2 (1/2), RGPLTD of 2 (1/1), and PLL_MPY of 47.
+	 * In the standard setting, this is set to 564MHz.
+	 * In the 13MHz (FPGA) setting, set for a PREPLLCLK_DIV of 1 (1/1),
+	 * a PLL_MPY of 43, and a RGPLTD of 2 (1/1), for an output PLL frequency
+	 * of 559MHz.
+	 */
+	{0x0305, 0x01}, /* PREPLLCLK_DIV */
+	{0x0307, 0x18}, /* PLL_MPY */
+	{0x30A4, 0x01}, /* RGPLTD */
+	{0x303C, 0x28}, /* PLSTATIM */
+
+	/* Mode Settings */
+	{0x0112, 0x0A}, /* RAW 10 */
+	{0x0113, 0x0A},
+	{0x0340, 0x07}, /* FrameLength 0x700 = 1792 */
+	{0x0341, 0x00},
+	{0x0342, 0x12}, /* LineLength = 0x120C = 4620 */
+	{0x0343, 0x0C},
+
+	/* Imaging Area Determination */
+	{0x0344, 0x00}, /* ReadOut start horizontal position = 8 */
+	{0x0345, 0x08},
+	{0x0346, 0x00}, /* ReadOut start vertical position = 0x30 = 48 */
+	{0x0347, 0x30},
+	{0x0348, 0x10}, /* ReadOut end horizontal position = 0x1077 */
+	{0x0349, 0x77},
+	{0x034A, 0x0C}, /* ReadOut end vertical position = 0xc5f */
+	{0x034B, 0x5F},
+	{0x034C, 0x04}, /* ReadOut size horizontal position = 0x041C = 1052 */
+	{0x034D, 0x1C},
+	{0x034E, 0x06}, /* ReadOut size vertical position = 0x0618 = 1560 */
+	{0x034F, 0x18},
+	{0x0381, 0x05},
+	{0x0383, 0x03},
+	{0x0385, 0x01},
+	{0x0387, 0x03},
+	{0x3033, 0x00}, /* HD mode off */
+	{0x303D, 0x10}, /* standby end immediate */
+	{0x303E, 0xD0},
+	{0x3040, 0x08}, /* OPB start and end address vert */
+	{0x3041, 0x97},
+	{0x3048, 0x01}, /* vertical addition enabled */
+	{0x304C, 0x7F}, /* readout pixels set to 0x04_78 */
+	{0x304D, 0x04},
+	{0x3064, 0x12},
+	{0x309B, 0x28},
+	{0x309E, 0x00},
+	{0x30D5, 0x09},
+	{0x30D6, 0x00},
+	{0x30D7, 0x00},
+	{0x30D8, 0x00},
+	{0x30D9, 0x00},
+	{0x30DA, 0x00},
+	{0x30DB, 0x00},
+	{0x30DC, 0x00},
+	{0x30DD, 0x00},
+	{0x30DE, 0x04},
+	{0x3102, 0x10},
+	{0x3103, 0x44},
+	{0x3104, 0x40},
+	{0x3105, 0x00},
+	{0x3106, 0x0D},
+	{0x3107, 0x01},
+	{0x310A, 0x0A},
+	{0x315C, 0x99},
+	{0x315D, 0x98},
+	{0x316E, 0x9A},
+	{0x316F, 0x99},
+	{0x3301, 0x03}, /* 4 Lane */
+	{0x3304, 0x05},
+	{0x3305, 0x04},
+	{0x3306, 0x12},
+	{0x3307, 0x03},
+	{0x3308, 0x0D},
+	{0x3309, 0x05},
+	{0x330A, 0x09},
+	{0x330B, 0x04},
+	{0x330C, 0x08},
+	{0x330D, 0x05},
+	{0x330E, 0x03},
+	{0x3318, 0x73},
+	{0x3322, 0x02},
+	{0x3342, 0x0F},
+	{0x3348, 0xE0},
+	{0x0600, 0x00}, /* colorbar fade-to-gray */
+	{0x0601, 0x00},
+	{0x0101, 0x03}, /* image orientation */
+	{0x0100, 0x01},
+
+	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
+	{IMX091_TABLE_END, 0x00}
+};
+#else
 static struct imx091_reg imx091_4208x3120_i2c[] = {
 	/* Reset */
 	{0x0103, 0x01},
@@ -714,6 +855,7 @@ static struct imx091_reg imx091_524X390_i2c[] = {
 
 	{IMX091_TABLE_END, 0x00}
 };
+#endif /* !CONFIG_TEGRA_FPGA_PLATFORM */
 
 /* Each resolution requires the below data table setup and the corresponding
  * I2C data table.
@@ -728,6 +870,50 @@ static struct imx091_reg imx091_524X390_i2c[] = {
  * 2. Add imx091_mode_data table
  * 3. Add entry to the imx091_mode_table
  */
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static struct imx091_mode_data imx091_FPGA_1052x1560 = {
+	.sensor_mode = {
+		.res_x			= 1032,
+		.res_y			= 1540,
+		.active_start_x		= 0,
+		.active_stary_y		= 0,
+		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
+		.pixel_aspect_ratio	= 1000,  /* / _INT2FLOAT_DIVISOR */
+		.pll_multiplier		= 5000,  /* / _INT2FLOAT_DIVISOR */
+		.crop_mode		= NVC_IMAGER_CROPMODE_NONE,
+	},
+	.sensor_dnvc = {
+		.api_version		= NVC_IMAGER_API_DYNAMIC_VER,
+		.region_start_x		= 0,
+		.region_start_y		= 0,
+		.x_scale		= 1,
+		.y_scale		= 1,
+		.bracket_caps		= 1,
+		.flush_count		= 2,
+		.init_intra_frame_skip	= 0,
+		.ss_intra_frame_skip	= 2,
+		.ss_frame_number	= 3,
+		.coarse_time		= 0x06FB,
+		.max_coarse_diff	= 5,
+		.min_exposure_course	= 2,
+		.max_exposure_course	= 0xFFFC,
+		.diff_integration_time	= 110, /* / _INT2FLOAT_DIVISOR */
+		.line_length		= 0x120C,
+		.frame_length		= 0x0700,
+		.min_frame_length	= 0x0700,
+		.max_frame_length	= 0xFFFF,
+		.min_gain		= 1, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 16000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.support_bin_control	= 0,
+		.support_fast_mode	= 0,
+		.pll_mult		= 0x20,
+		.pll_div		= 0x2,
+	},
+	.p_mode_i2c			= imx091_FPGA_1052x1560_i2c,
+};
+#else
 static struct imx091_mode_data imx091_4208x3120 = {
 	.sensor_mode = {
 		.res_x			= 4096,
@@ -942,13 +1128,18 @@ static struct imx091_mode_data imx091_524x390 = {
 	},
 	.p_mode_i2c			= imx091_524X390_i2c,
 };
+#endif /* CONFIG_TEGRA_FPGA_PLATFORM */
 
 static struct imx091_mode_data *imx091_mode_table[] = {
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	&imx091_FPGA_1052x1560,
+#else
 	&imx091_4208x3120,
 	&imx091_1948x1096,
 	&imx091_1308x736,
 	&imx091_1052x778,
 	&imx091_524x390,
+#endif
 };
 
 
