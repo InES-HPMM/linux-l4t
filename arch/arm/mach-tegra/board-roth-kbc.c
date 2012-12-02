@@ -45,6 +45,17 @@
 		.debounce_interval = 10,        \
 	}
 
+#define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
+	{					\
+		.code = _id,			\
+		.gpio = -1,			\
+		.irq = _irq,			\
+		.desc = #_id,			\
+		.type = EV_KEY,			\
+		.wakeup = _iswake,		\
+		.debounce_interval = _deb,	\
+	}
+
 static struct gpio_keys_button roth_p2454_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PR0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
@@ -59,6 +70,8 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 		.wakeup = 1,
 		.debounce_interval = 100,
 	},
+	[4] = GPIO_IKEY(KEY_POWER, PALMAS_TEGRA_IRQ_BASE +
+					PALMAS_PWRON_IRQ, 1, 100),
 };
 
 static struct gpio_keys_platform_data roth_p2454_keys_pdata = {
