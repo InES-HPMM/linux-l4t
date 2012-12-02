@@ -22,6 +22,7 @@
 #define __MACH_TEGRA_CPU_TEGRA_H
 
 #include <linux/fs.h>
+#include <mach/thermal.h>
 
 unsigned int tegra_getspeed(unsigned int cpu);
 int tegra_update_cpu_speed(unsigned long rate);
@@ -30,47 +31,6 @@ unsigned int tegra_count_slow_cpus(unsigned long speed_limit);
 unsigned int tegra_get_slowest_cpu_n(void);
 unsigned long tegra_cpu_lowest_speed(void);
 unsigned long tegra_cpu_highest_speed(void);
-
-#define MAX_THROT_TABLE_SIZE	(64)
-
-struct throttle_table {
-	unsigned int cpu_freq;
-	int core_cap_level;
-};
-
-struct balanced_throttle {
-	struct thermal_cooling_device *cdev;
-	struct list_head node;
-	int is_throttling;
-	int throttle_count;
-	int throttle_index;
-	int throt_tab_size;
-	struct throttle_table throt_tab[MAX_THROT_TABLE_SIZE + 1];
-};
-
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-int tegra_throttle_init(struct mutex *cpu_lock);
-struct thermal_cooling_device *balanced_throttle_register(
-		struct balanced_throttle *bthrot,
-		char *type);
-void tegra_throttle_exit(void);
-bool tegra_is_throttling(int *count);
-unsigned int tegra_throttle_governor_speed(unsigned int requested_speed);
-#else
-static inline int tegra_throttle_init(struct mutex *cpu_lock)
-{ return 0; }
-static inline struct thermal_cooling_device *balanced_throttle_register(
-		struct balanced_throttle *bthrot,
-		char *type)
-{ return ERR_PTR(-ENODEV); }
-static inline void tegra_throttle_exit(void)
-{}
-static inline bool tegra_is_throttling(int *count)
-{ return false; }
-static inline unsigned int tegra_throttle_governor_speed(
-	unsigned int requested_speed)
-{ return requested_speed; }
-#endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
 #if defined(CONFIG_TEGRA_AUTO_HOTPLUG) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 int tegra_auto_hotplug_init(struct mutex *cpulock);
