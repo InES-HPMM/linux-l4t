@@ -18,25 +18,25 @@ int Tfa9887_ReadRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, 
 
 int Tfa9887_Init(void);
 
-int Init(struct tfa9887_priv *tfa9887);
+int Init(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
 
 int Tfa9887_ReadRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, unsigned int *pValue);
 
 int Tfa9887_WriteRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, unsigned int value);
 
-int ProcessPatchFile(struct tfa9887_priv *tfa9887, int length, const unsigned char *bytes);
+int ProcessPatchFile(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int length, const unsigned char *bytes);
 
 int DspGetParam(struct tfa9887_priv *tfa9887, unsigned char module_id, unsigned char param_id, int num_bytes, const unsigned char *data);
 
-int DspSetParam(struct tfa9887_priv *tfa9887,unsigned char module_id, unsigned char param_id, int num_bytes, const unsigned char *data);
+int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned char module_id, unsigned char param_id, int num_bytes, const unsigned char *data);
 
 int DspWriteMem(struct tfa9887_priv *tfa9887, unsigned int address, int value);
 
-int DspReadMem(struct tfa9887_priv *tfa9887, unsigned short start_offset, int num_words, int *pValues);
+int DspReadMem(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned short start_offset, int num_words, int *pValues);
 
-int coldStarup(struct tfa9887_priv *tfa9887);
+int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
 
-int loadSettings(struct tfa9887_priv *tfa9887);
+int loadSettings(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
 
 int stereoRouting(struct tfa9887_priv *tfa9887);
 
