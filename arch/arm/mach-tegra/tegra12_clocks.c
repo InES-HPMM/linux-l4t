@@ -5768,8 +5768,8 @@ static struct clk_mux_sel mux_cclk_g[] = {
 	{ .input = &tegra_pll_p_out4,	.value = 5},
 	/* { .input = &tegra_pll_c2,	.value = 6}, - no use on tegra12x */
 	/* { .input = &tegra_clk_c3,	.value = 7}, - no use on tegra12x */
-	{ .input = &tegra_pll_x,	.value = 8},
-	{ .input = &tegra_dfll_cpu,	.value = 15},
+	{ .input = &tegra_pll_x,	.value = 14},
+	{ .input = &tegra_dfll_cpu,	.value = 9},
 	{ 0, 0},
 };
 
