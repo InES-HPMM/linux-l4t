@@ -131,6 +131,27 @@ static struct i2c_board_info max17042_device[] = {
 	},
 };
 
+static struct nvc_torch_lumi_level_v1 pluto_max77665_lumi_tbl[] = {
+	{0, 100000},
+	{1, 201690},
+	{2, 298080},
+	{3, 387700},
+	{4, 479050},
+	{5, 562000},
+	{6, 652560},
+	{7, 732150},
+	{8, 816050},
+	{9, 896710},
+	{10, 976890},
+	{11, 1070160},
+	{12, 1151000},
+	{13, 1227790},
+	{14, 1287690},
+	{15, 1375060},
+};
+
+static unsigned max77665_f_estates[] = {1000, 800, 600, 400, 200, 100, 0};
+
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
 		.led_mask		= 3,
@@ -145,6 +166,18 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		/* .flash_on_torch         = true, */
 		.max_total_current_mA	= 1000,
 		.max_peak_current_mA	= 600,
+		.led_config[0] = {
+			.flash_torch_ratio = 18100,
+			.granularity = 1000,
+			.flash_levels = ARRAY_SIZE(pluto_max77665_lumi_tbl),
+			.lumi_levels = pluto_max77665_lumi_tbl,
+			},
+		.led_config[1] = {
+			.flash_torch_ratio = 18100,
+			.granularity = 1000,
+			.flash_levels = ARRAY_SIZE(pluto_max77665_lumi_tbl),
+			.lumi_levels = pluto_max77665_lumi_tbl,
+			},
 		},
 	.pinstate	= {
 		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
@@ -152,6 +185,12 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		},
 	.dev_name	= "torch",
 	.gpio_strobe	= CAM_FLASH_STROBE,
+	.edpc_config	= {
+		.states = max77665_f_estates,
+		.num_states = ARRAY_SIZE(max77665_f_estates),
+		.e0_index = 3,
+		.priority = EDP_MAX_PRIO - 2,
+		},
 };
 
 static struct max77665_haptic_platform_data max77665_haptic_pdata = {
@@ -509,7 +548,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
-
+static unsigned imx091_estates[] = {200, 100, 2};
 
 static struct imx091_platform_data imx091_pdata = {
 	.num			= 0,
@@ -522,6 +561,12 @@ static struct imx091_platform_data imx091_pdata = {
 		.adjustable_flash_timing = 1,
 	},
 	.cap			= &imx091_cap,
+	.edpc_config	= {
+		.states = imx091_estates,
+		.num_states = ARRAY_SIZE(imx091_estates),
+		.e0_index = 0,
+		.priority = EDP_MAX_PRIO - 1,
+		},
 	.power_on		= pluto_imx091_power_on,
 	.power_off		= pluto_imx091_power_off,
 };
