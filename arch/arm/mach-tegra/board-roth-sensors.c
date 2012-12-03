@@ -321,8 +321,7 @@ int __init roth_sensors_init(void)
 	if (err)
 		return err;
 
-	if (0)
-		mpuirq_init();
+	mpuirq_init();
 
 	if (0)
 		i2c_register_board_info(0, bq20z45_pdata,
