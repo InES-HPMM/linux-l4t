@@ -1180,7 +1180,7 @@ static void smmu_debugfs_create(struct smmu_device *smmu)
 			info->cache = j;
 
 			cache = debugfs_create_file(smmu_debugfs_cache[j],
-						    S_IWUGO | S_IRUGO, mc,
+						    S_IWUSR | S_IRUSR, mc,
 						    (void *)info,
 						    &smmu_debugfs_stats_fops);
 			if (!cache)
