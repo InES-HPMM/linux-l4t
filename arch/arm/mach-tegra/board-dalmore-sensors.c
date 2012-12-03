@@ -540,14 +540,18 @@ static int dalmore_nct1008_init(void)
 	int ret = 0;
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-	if ((board_info.board_id == BOARD_E1611) ||
-	    (board_info.board_id == BOARD_E1612) ||
+	if ((board_info.board_id == BOARD_E1612) ||
 	    (board_info.board_id == BOARD_E1641) ||
 	    (board_info.board_id == BOARD_E1613) ||
 	    (board_info.board_id == BOARD_P2454))
 	{
 		/* per email from Matt 9/10/2012 */
 		nct1008_port = TEGRA_GPIO_PX6;
+	} else if (board_info.board_id == BOARD_E1611) {
+		if (board_info.fab == 0x04)
+			nct1008_port = TEGRA_GPIO_PO4;
+		else
+			nct1008_port = TEGRA_GPIO_PX6;
 	} else {
 		nct1008_port = TEGRA_GPIO_PX6;
 		pr_err("Warning: nct alert_port assumed TEGRA_GPIO_PX6"
