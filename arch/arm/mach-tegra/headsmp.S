@@ -203,6 +203,9 @@ __invalidate_cpu_state:
 	bic	r0, r0, #7
 	orr	r0, r0, #2
 	mcr	p15, 0x1, r0, c9, c0, 2
+	mrc	p15, 0x1, r0, c15, c0, 0
+	orr	r0, r0, #0x80
+	mcr	p15, 0x1, r0, c15, c0, 0
 __enable_i_cache_branch_pred:
 	mov	r0, #0x1800
 	mcr	p15, 0, r0, c1, c0, 0	@ enable branch prediction, i-cache
