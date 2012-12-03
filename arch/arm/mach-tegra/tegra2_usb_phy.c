@@ -950,6 +950,10 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
+		if (readl(base + USB_ASYNCLISTADDR) &&
+			!phy->pdata->u_data.host.power_off_on_suspend)
+			return 0;
+
 		if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) {
 			utmi_phy_restore_start(phy);
 			usb_phy_bringup_host_controller(phy);
