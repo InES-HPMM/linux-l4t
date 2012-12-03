@@ -102,7 +102,7 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			memcpy(dst, src, ap_iob->length);
 			dst += ap_iob->length;
 			bb_iob = ap_iob->sg_next;
-			nvshm_iobuf_free(priv->pchan, ap_iob);
+			nvshm_iobuf_free(ap_iob);
 			ap_iob = NVSHM_B2A(netdev.handle, bb_iob);
 		}
 		/* deliver skb to netif */
@@ -224,7 +224,7 @@ static int nvshm_netops_close(struct net_device *dev)
 		/* Cleanup if data are still present in io queue */
 		if (priv->q_head) {
 			pr_debug("%s: still some data in queue!\n", __func__);
-			nvshm_iobuf_free_cluster(priv->pchan,
+			nvshm_iobuf_free_cluster(
 				(struct nvshm_iobuf *)priv->q_head);
 			priv->q_head = priv->q_tail = NULL;
 		}
@@ -271,8 +271,7 @@ static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 			if (priv->errno) {
 				pr_debug("%s iobuf alloc failed\n", __func__);
 				if (list)
-					nvshm_iobuf_free_cluster(priv->pchan,
-								 list);
+					nvshm_iobuf_free_cluster(list);
 				return NETDEV_TX_BUSY; /* was return -ENOMEM; */
 			} else {
 				pr_debug("%s: Xoff condition\n", __func__);
@@ -299,7 +298,7 @@ static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 	}
 	if (nvshm_write(priv->pchan, list)) {
 		/* write failed */
-		nvshm_iobuf_free_cluster(priv->pchan, list);
+		nvshm_iobuf_free_cluster(list);
 		/* no more transmit possible - stop queue */
 		pr_debug("%s partial write: %d\n", __func__, len);
 		netif_stop_queue(dev);

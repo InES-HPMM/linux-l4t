@@ -85,7 +85,7 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 }
 
 /** Single iobuf free - do not follow iobuf links */
-void nvshm_iobuf_free(struct nvshm_channel *chan, struct nvshm_iobuf *desc)
+void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 
@@ -131,8 +131,7 @@ void nvshm_iobuf_free(struct nvshm_channel *chan, struct nvshm_iobuf *desc)
 	spin_unlock(&alloc.lock);
 }
 
-void nvshm_iobuf_free_cluster(struct nvshm_channel *chan,
-			      struct nvshm_iobuf *list)
+void nvshm_iobuf_free_cluster(struct nvshm_iobuf *list)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 	struct nvshm_iobuf *_phy_list, *_to_free, *leaf;
@@ -152,7 +151,7 @@ void nvshm_iobuf_free_cluster(struct nvshm_channel *chan,
 		}
 		list = NVSHM_B2A(priv, _phy_list);
 		n++;
-		nvshm_iobuf_free(chan, _to_free);
+		nvshm_iobuf_free(_to_free);
 	}
 }
 
@@ -305,12 +304,12 @@ static int iobuf_sanity_check(struct nvshm_handle *handle)
 	pr_debug("%s Alloc test. passed\n", __func__);
 
 	pr_debug("%s free test. Expect: success\n", __func__);
-	nvshm_iobuf_free(&handle->chan[0], iob);
+	nvshm_iobuf_free(iob);
 	pr_debug("%s free test. passed\n", __func__);
 
 	pr_debug("%s double free test. Expect: failure\n", __func__);
 	/* Test double free (harmless but error msg in dmesg */
-	nvshm_iobuf_free(&handle->chan[0], iob);
+	nvshm_iobuf_free(iob);
 	pr_debug("%s double free test. passed\n", __func__);
 
 	lastpass = 0;
@@ -348,7 +347,7 @@ static int iobuf_sanity_check(struct nvshm_handle *handle)
 
 		pr_debug("%s free cluster test #%d. Expect: success\n",
 			__func__, pass);
-		nvshm_iobuf_free_cluster(&handle->chan[0], list);
+		nvshm_iobuf_free_cluster(list);
 		pr_debug("%s free cluster test #%d. passed\n", __func__, pass);
 	}
 
@@ -387,7 +386,7 @@ static int iobuf_sanity_check(struct nvshm_handle *handle)
 
 		pr_debug("%s free cluster test (trans) #%d. Expect: success\n",
 			__func__, pass);
-		nvshm_iobuf_free_cluster(&handle->chan[0], list);
+		nvshm_iobuf_free_cluster(list);
 		pr_debug("%s free cluster test (trans) #%d. passed\n",
 			__func__, pass);
 	}

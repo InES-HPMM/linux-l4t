@@ -95,6 +95,7 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 		}
 	}
 	handle->conf = conf;
+	handle->configured = 1;
 	return 0;
 }
 
@@ -168,7 +169,7 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 		pr_debug("%s cleanup %d net channels\n", __func__, nnet);
 		nvshm_net_cleanup();
 	}
-
+	handle->configured = 0;
 	return 0;
 }
 
@@ -185,6 +186,10 @@ static void ipc_work(struct work_struct *work)
 	if (((~new_state >> 16) ^ (cmd)) & 0xFFFF) {
 		pr_err("%s IPC check failure msg=0x%x\n",
 		       __func__, new_state);
+		if (handle->configured) {
+			nvshm_abort_queue(handle);
+			cleanup_interfaces(handle);
+		}
 		return;
 	}
 	switch (cmd) {
@@ -203,8 +208,10 @@ static void ipc_work(struct work_struct *work)
 		return;
 	case NVSHM_IPC_BOOT_FW_REQ:
 	case NVSHM_IPC_BOOT_RESTART_FW_REQ:
-		nvshm_abort_queue(handle);
-		cleanup_interfaces(handle);
+		if (handle->configured) {
+			nvshm_abort_queue(handle);
+			cleanup_interfaces(handle);
+		}
 		break;
 	case NVSHM_IPC_BOOT_ERROR_BT2_HDR:
 	case NVSHM_IPC_BOOT_ERROR_BT2_SIGN:

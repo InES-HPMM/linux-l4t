@@ -56,6 +56,7 @@ struct nvshm_handle {
 	spinlock_t lock;
 	int instance;
 	int old_status;
+	int configured;
 	struct nvshm_config *conf;
 	void *ipc_base_virt;
 	void *mb_base_virt;

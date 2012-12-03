@@ -61,22 +61,19 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *handle, int size);
  * Free a nvshm_iobuf descriptor given in rx_event
  * pointers are not followed and cleared on free
  *
- * @param struct nvshm_channel handle
  * @param struct nvshm_iobuf descriptor to free
  *
  */
-void nvshm_iobuf_free(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
+void nvshm_iobuf_free(struct nvshm_iobuf *iob);
 
 /**
  * Free a nvshm_iobuf descriptor list given in rx_event
  * both ->next and ->sg_next are followed
  *
- * @param struct nvshm_channel handle
  * @param struct nvshm_iobuf list of descriptor to free
  *
  */
-void nvshm_iobuf_free_cluster(struct nvshm_channel *handle,
-			      struct nvshm_iobuf *list);
+void nvshm_iobuf_free_cluster(struct nvshm_iobuf *list);
 
 /**
  * clear/set nvshm_iobuf internal flags (unused/unspecified for now)

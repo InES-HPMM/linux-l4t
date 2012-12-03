@@ -118,7 +118,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		       handle->conf->queue_bb_offset,
 		       ret,
 		       NVSHM_A2B(handle, ret));
-	nvshm_iobuf_free_cluster(&handle->chan[dummy->chan], dummy);
+	nvshm_iobuf_free_cluster(dummy);
 
 	return ret;
 }
@@ -177,6 +177,7 @@ int nvshm_init_queue(struct nvshm_handle *handle)
 void nvshm_process_queue(struct nvshm_handle *handle)
 {
 	struct nvshm_iobuf *iob;
+	struct nvshm_if_operations *ops;
 	int chan;
 
 	spin_lock_bh(&handle->lock);
@@ -184,15 +185,15 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	while (iob) {
 		chan = iob->chan;
 		if (iob->pool_id < NVSHM_AP_POOL_ID) {
-			if (handle->chan[chan].ops) {
+			ops = handle->chan[chan].ops;
+			if (ops) {
 				spin_unlock_bh(&handle->lock);
-				handle->chan[chan].ops->rx_event(
+				ops->rx_event(
 					&handle->chan[chan],
 					iob);
 				spin_lock_bh(&handle->lock);
 			} else {
 				nvshm_iobuf_free_cluster(
-					&handle->chan[chan],
 					iob);
 			}
 		}

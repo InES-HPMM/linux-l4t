@@ -122,8 +122,7 @@ static void nvshm_tty_rx_rewrite_line(int l)
 			}
 		}
 		nbuff++;
-		nvshm_iobuf_free(tty_dev.line[l].pchan,
-				 (struct nvshm_iobuf *)list);
+		nvshm_iobuf_free((struct nvshm_iobuf *)list);
 	}
 	if (!tty_dev.line[l].io_queue_head)
 		tty_dev.line[l].throttled = 0;
@@ -153,6 +152,13 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 
 	idx = tty->index;
 	spin_lock(&tty_dev.line[idx].lock);
+
+	/* If it's on a closed channel - ignore and free iobuf */
+	if (tty_dev.line[idx].use == 0) {
+		nvshm_iobuf_free_cluster(iob);
+		return;
+	}
+
 	if (!tty_dev.line[idx].throttled) {
 		_phy_iob = iob;
 		while (_phy_iob) {
@@ -186,7 +192,7 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 				_phy_iob = iob->next;
 			}
 			iob = NVSHM_B2A(tty_dev.handle, _phy_iob);
-			nvshm_iobuf_free(tty_dev.line[idx].pchan, tmp);
+			nvshm_iobuf_free(tmp);
 		}
 		spin_unlock(&tty_dev.line[idx].lock);
 		return;
@@ -277,20 +283,22 @@ static void nvshm_tty_close(struct tty_struct *tty, struct file *f)
 
 	pr_debug("%s %d\n", __func__, use);
 	if (!use) {
-		/* Wait workqueue end */
-		flush_workqueue(tty_dev.tty_wq);
-		/* Cleanup if data are still present in io queue */
-		if (tty_dev.line[idx].io_queue_head) {
-			pr_debug("%s: still some data in queue!\n", __func__);
-			nvshm_iobuf_free_cluster(
-				tty_dev.line[idx].pchan,
-				tty_dev.line[idx].io_queue_head);
-			tty_dev.line[idx].io_queue_head =
-				tty_dev.line[idx].io_queue_tail = NULL;
-			tty_dev.line[idx].throttled = 0;
+		/* No workqueue mean cleanup has been called - nothing to do */
+		if (tty_dev.tty_wq) {
+			flush_workqueue(tty_dev.tty_wq);
+			/* Cleanup if data are still present in io queue */
+			if (tty_dev.line[idx].io_queue_head) {
+				pr_debug("%s: still some data in queue!\n",
+					 __func__);
+				nvshm_iobuf_free_cluster(
+					tty_dev.line[idx].io_queue_head);
+				tty_dev.line[idx].io_queue_head =
+					tty_dev.line[idx].io_queue_tail = NULL;
+				tty_dev.line[idx].throttled = 0;
+			}
+			nvshm_close_channel(tty_dev.line[idx].pchan);
+			tty_dev.line[idx].tty = NULL;
 		}
-		nvshm_close_channel(tty_dev.line[idx].pchan);
-		tty_dev.line[idx].tty = NULL;
 	}
 }
 
@@ -313,8 +321,7 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 			if (tty_dev.line[idx].errno) {
 				pr_debug("%s iobuf alloc failed\n", __func__);
 				if (list)
-					nvshm_iobuf_free_cluster(
-						tty_dev.line[idx].pchan, list);
+					nvshm_iobuf_free_cluster(list);
 				return -ENOMEM;
 			} else {
 				pr_debug("%s: Xoff condition\n", __func__);
@@ -341,7 +348,7 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 	}
 	if (nvshm_write(tty_dev.line[idx].pchan, list)) {
 		pr_err("%s: nvshm_write return error\n", __func__);
-		nvshm_iobuf_free_cluster(tty_dev.line[idx].pchan, list);
+		nvshm_iobuf_free_cluster(list);
 		return -EAGAIN;
 	}
 	return len;
@@ -429,8 +436,21 @@ void nvshm_tty_cleanup(void)
 	int chan;
 
 	pr_debug("%s\n", __func__);
-
-	for (chan = 0; chan < tty_dev.nlines; chan++)
+	if (tty_dev.tty_wq) {
+		/* Wait workqueue end */
+		destroy_workqueue(tty_dev.tty_wq);
+	}
+	for (chan = 0; chan < tty_dev.nlines; chan++) {
+		/* No need to cleanup data as iobufs are invalid now */
+		/* Next nvshm_tty_init will do it */
+		if (tty_dev.line[chan].use) {
+			pr_debug("%s hangup tty device %d\n", __func__);
+			tty_hangup(tty_dev.line[chan].tty);
+		}
+		pr_debug("%s unregister tty device %d\n", __func__);
 		tty_unregister_device(tty_dev.tty_driver, chan);
+	}
+	pr_debug("%s unregister tty driver\n", __func__);
 	tty_unregister_driver(tty_dev.tty_driver);
+	memset(&tty_dev, 0, sizeof(tty_dev));
 }
