@@ -25,6 +25,7 @@
 #include <linux/io.h>
 #include <linux/syscore_ops.h>
 
+#include "common.h"
 #include "iomap.h"
 
 #define AHB_ARBITRATION_DISABLE		0x00
@@ -149,12 +150,17 @@ void tegra_ahbgizmo_resume(void)
 	gizmo_writel(ahb_gizmo[19], AHB_GIZMO_SDMMC1);
 	gizmo_writel(ahb_gizmo[20], AHB_GIZMO_SDMMC2);
 	gizmo_writel(ahb_gizmo[21], AHB_GIZMO_SDMMC3);
-	gizmo_writel(ahb_gizmo[22], AHB_MEM_PREFETCH_CFG_X);
+	ahb_gizmo_writel(ahb_gizmo[22],
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG_X));
 	gizmo_writel(ahb_gizmo[23], AHB_ARBITRATION_XBAR_CTRL);
-	gizmo_writel(ahb_gizmo[24], AHB_MEM_PREFETCH_CFG3);
-	gizmo_writel(ahb_gizmo[25], AHB_MEM_PREFETCH_CFG4);
-	gizmo_writel(ahb_gizmo[26], AHB_MEM_PREFETCH_CFG1);
-	gizmo_writel(ahb_gizmo[27], AHB_MEM_PREFETCH_CFG2);
+	ahb_gizmo_writel(ahb_gizmo[24],
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG3));
+	ahb_gizmo_writel(ahb_gizmo[25],
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG4));
+	ahb_gizmo_writel(ahb_gizmo[26],
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG1));
+	ahb_gizmo_writel(ahb_gizmo[27],
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 	gizmo_writel(ahb_gizmo[28], AHB_ARBITRATION_AHB_MEM_WRQUE_MST_ID);
 }
 #else
@@ -195,22 +201,26 @@ static int __init tegra_init_ahb_gizmo_settings(void)
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | AHBDMA_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG1);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG1));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG2);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG3);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG3);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG3));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG4);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG4));
 
 	register_syscore_ops(&tegra_ahbgizmo_syscore_ops);
 

@@ -39,6 +39,7 @@
 #include "clock.h"
 #include "tegra_usb_phy.h"
 #include "fuse.h"
+#include "common.h"
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
@@ -603,10 +604,10 @@ void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 	if (phy->inst == 0 && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
 		val |= PREFETCH_ENB;
-		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
+		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 		val |= PREFETCH_ENB;
-		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
+		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
 
@@ -618,10 +619,10 @@ void tegra_usb_phy_memory_prefetch_off(struct tegra_usb_phy *phy)
 	if (phy->inst == 0 && phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
 		val &= ~(PREFETCH_ENB);
-		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
+		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG1);
 		val = readl(ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 		val &= ~(PREFETCH_ENB);
-		writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
+		ahb_gizmo_writel(val, ahb_gizmo + AHB_MEM_PREFETCH_CFG2);
 	}
 }
 

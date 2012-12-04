@@ -151,6 +151,24 @@ u32 tegra_uart_config[4] = {
 
 #define NEVER_RESET 0
 
+inline void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
+{
+	unsigned long check;
+	int retry = 10;
+
+	/* Read and check if write is successful,
+	 * if val doesn't match with read, retry write.
+	 */
+	do {
+		writel(val, reg);
+		check = readl(reg);
+		if (likely(check == val))
+			break;
+		else
+			pr_err("AHB register access fail for reg\n");
+	} while (--retry);
+}
+
 void tegra_assert_system_reset(char mode, const char *cmd)
 {
 #if defined(CONFIG_TEGRA_FPGA_PLATFORM) || NEVER_RESET
@@ -521,25 +539,29 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | AHBDMA_MST_ID |
 		ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG1);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG1));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG2);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG3);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG3);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG3));
 
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG4);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG4));
 
 	/*
 	 * SDMMC controller is removed from AHB interface in T124 and
@@ -551,7 +573,8 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG5));
 #endif
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
@@ -559,7 +582,8 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SE_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
-	gizmo_writel(val, AHB_MEM_PREFETCH_CFG6);
+	ahb_gizmo_writel(val,
+		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG6));
 #endif
 }
 
