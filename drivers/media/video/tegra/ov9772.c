@@ -831,17 +831,19 @@ static int ov9772_exposure_wr(struct ov9772_info *info,
 	struct ov9772_reg reg_list[9];
 	int err;
 
-	reg_list[0].addr = 0x0104;
+	reg_list[0].addr = 0x3208;
 	reg_list[0].val = 0x01;
 	ov9772_frame_length_reg(reg_list + 1, mode->frame_length);
 	ov9772_coarse_time_reg(reg_list + 3, mode->coarse_time);
 	ov9772_gain_reg(reg_list + 5, mode->gain);
-	reg_list[7].addr = 0x0104;
-	reg_list[7].val = 0x00;
+	reg_list[6].addr = 0x3208;
+	reg_list[6].val = 0x11;
+	reg_list[7].addr = 0x3208;
+	reg_list[7].val = 0xe1;
 	reg_list[8].addr = OV9772_TABLE_END;
 	err = ov9772_i2c_wr_table(info, reg_list);
 	if (!err)
-		err = ov9772_bin_wr(info, mode->bin_en);
+		err |= ov9772_bin_wr(info, mode->bin_en);
 	return err;
 }
 
@@ -898,7 +900,7 @@ static int ov9772_group_hold_wr(struct ov9772_info *info,
 
 	if (groupHoldEnable) {
 		err |= ov9772_i2c_wr8(info, 0x3208, 0x11);
-		err |= ov9772_i2c_wr8(info, 0x3208, 0xa1);
+		err |= ov9772_i2c_wr8(info, 0x3208, 0xe1);
 	}
 
 	return err;
@@ -1383,8 +1385,6 @@ static int ov9772_mode_wr(struct ov9772_info *info,
 	err = ov9772_mode_rd(info, mode->res_x, mode->res_y, &mode_index);
 	if (err < 0)
 		return err;
-
-	pr_info("ov9772: set mode: %dx%d\n", mode->res_x, mode->res_y);
 
 	if (!mode->res_x && !mode->res_y) {
 		if (mode->frame_length || mode->coarse_time || mode->gain) {
