@@ -1519,7 +1519,7 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
 
 /* This special sbus round function is implemented because:
  *
- * (a) fractional 1 : 1.5 divider can not be used to derive system bus clock
+ * (a) sbus complex clock source is selected automatically based on rate
  *
  * (b) since sbus is a shared bus, and its frequency is set to the highest
  * enabled shared_bus_user clock, the target rate should be rounded up divider
@@ -5165,7 +5165,7 @@ static struct clk tegra_pll_m = {
 static struct clk tegra_pll_m_out1 = {
 	.name      = "pll_m_out1",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71,
+	.flags     = DIV_U71 | DIV_U71_INT,
 	.parent    = &tegra_pll_m,
 	.reg       = 0x94,
 	.reg_shift = 0,
@@ -5213,7 +5213,7 @@ static struct clk tegra_pll_p_out1 = {
 static struct clk tegra_pll_p_out2 = {
 	.name      = "pll_p_out2",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71 | DIV_U71_FIXED,
+	.flags     = DIV_U71 | DIV_U71_FIXED | DIV_U71_INT,
 	.parent    = &tegra_pll_p,
 	.reg       = 0xa4,
 	.reg_shift = 16,
