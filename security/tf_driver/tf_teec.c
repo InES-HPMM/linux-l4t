@@ -378,7 +378,6 @@ void TEEC_ReleaseSharedMemory(TEEC_SharedMemory *sharedMem)
 	if (sharedMem->imp._allocated) {
 		if (sharedMem->buffer != TEEC_POINTER_TO_ZERO_SIZED_BUFFER)
 			internal_vfree(sharedMem->buffer);
-
 		sharedMem->buffer = NULL;
 		sharedMem->size = 0;
 	}

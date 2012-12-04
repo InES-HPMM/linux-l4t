@@ -1656,6 +1656,11 @@ void tf_close(struct tf_connection *connection)
 	 */
 	tf_cleanup_shared_memories(connection);
 
+#ifdef CONFIG_TF_ION
+	if (connection->ion_client != NULL)
+		ion_client_destroy(connection->ion_client);
+#endif
+
 	spin_lock(&(connection->dev->connection_list_lock));
 	list_del(&(connection->list));
 	spin_unlock(&(connection->dev->connection_list_lock));
@@ -1668,4 +1673,3 @@ error:
 	dprintk(KERN_DEBUG "tf_close(%p) failed with error code %d\n",
 		connection, error);
 }
-

@@ -373,6 +373,9 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	struct arch_timer_context timer_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	unsigned int cpu = cpu_number(dev->cpu);
+#endif
 
 	if (!arch_timer_get_state(&timer_context)) {
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
@@ -423,9 +426,11 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	smp_wmb();
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
-				   (TEGRA_RESET_HANDLER_BASE +
-				    tegra_cpu_reset_handler_offset));
+	if ((cpu == 0) || (cpu == 4)) {
+		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE7,
+				(TEGRA_RESET_HANDLER_BASE +
+				tegra_cpu_reset_handler_offset));
+	}
 #endif
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 

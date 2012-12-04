@@ -55,7 +55,7 @@ void address_cache_property(unsigned long va);
 #define dpr_info(args...) ((void)(tf_debug_level >= 3 ? pr_info(args) : 0))
 #define dpr_err(args...) ((void)(tf_debug_level >= 1 ? pr_err(args) : 0))
 #define INFO(fmt, args...) \
-	(void)dprintk(KERN_INFO "%s: " fmt "\n", __func__, ## args)
+	((void)dprintk(KERN_INFO "%s: " fmt "\n", __func__, ## args))
 #define WARNING(fmt, args...)  \
 	(tf_debug_level >= 3 ?						\
 	 printk(KERN_WARNING "%s: " fmt "\n", __func__, ## args) :	\
