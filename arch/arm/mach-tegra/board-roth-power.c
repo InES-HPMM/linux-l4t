@@ -646,28 +646,6 @@ static int __init roth_cl_dvfs_init(void)
 }
 #endif
 
-static struct regulator_bulk_data roth_bt_regulator_supply[] = {
-	[0] = {
-		.supply	= "vdd_bt_3v3",
-	},
-	[1] = {
-		.supply	= "vddio_bt_1v8",
-	},
-};
-
-static struct regulator_userspace_consumer_data roth_bt_regulator_pdata = {
-	.num_supplies	= ARRAY_SIZE(roth_bt_regulator_supply),
-	.supplies	= roth_bt_regulator_supply,
-};
-
-static struct platform_device roth_bt_regulator_device = {
-	.name	= "reg-userspace-consumer",
-	.id	= 1,
-	.dev	= {
-			.platform_data = &roth_bt_regulator_pdata,
-	},
-};
-
 static int __init roth_fixed_regulator_init(void)
 {
 	if (!machine_is_roth())
@@ -690,7 +668,6 @@ int __init roth_regulator_init(void)
 	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	i2c_register_board_info(0, bq2419x_boardinfo, 1);
 	platform_device_register(&roth_pda_power_device);
-	platform_device_register(&roth_bt_regulator_device);
 	return 0;
 }
 

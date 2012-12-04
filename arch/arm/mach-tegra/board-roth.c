@@ -130,8 +130,8 @@ static noinline void __init roth_setup_bluesleep(void)
 static struct resource roth_bluedroid_pm_resources[] = {
 	[0] = {
 		.name   = "shutdown_gpio",
-		.start  = TEGRA_GPIO_PU0,
-		.end    = TEGRA_GPIO_PU0,
+		.start  = TEGRA_GPIO_PQ7,
+		.end    = TEGRA_GPIO_PQ7,
 		.flags  = IORESOURCE_IO,
 	},
 	[1] = {
@@ -163,7 +163,7 @@ static noinline void __init roth_setup_bluedroid_pm(void)
 {
 	roth_bluedroid_pm_resources[1].start =
 		roth_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PQ6);
+				gpio_to_irq(TEGRA_GPIO_PU6);
 	platform_device_register(&roth_bluedroid_pm_device);
 }
 #endif
