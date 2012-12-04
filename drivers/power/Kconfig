@@ -422,6 +422,13 @@ config BATTERY_GOLDFISH
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
 
+config BATTERY_MAX77660
+	tristate "MAX77660 Fuel Gauge support"
+	depends on MFD_MAX77660
+	help
+	 MAX77660 PMIC has fuel-gauge system for lithium-ion (Li+) batteries
+	 in handheld and portable equipment.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
