@@ -1207,6 +1207,17 @@ config MFD_WM8994
 	  core support for the WM8994, in order to use the actual
 	  functionaltiy of the device other drivers must be enabled.
 
+config MFD_MAX77660
+	bool "Maxim Semiconductor MAX77660 PMIC Support"
+	select MFD_CORE
+	select REGMAP_I2C
+	depends on I2C=y
+	help
+	Say yes here to support for Maxim Semiconductor MAX77660. This is
+	a Power Management IC. This driver provies common support for
+	accessing the device, additional drivers must be enabled in order
+	to use the functionality of the device.
+
 endmenu
 endif
 
