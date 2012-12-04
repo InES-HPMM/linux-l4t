@@ -1247,6 +1247,15 @@ config RTC_DRV_RC5T583
 
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-rc5t583.
+config RTC_DRV_MAX77660
+	tristate "Maxim MAX77660"
+	depends on MFD_MAX77660
+	help
+	  If you say yes here you will get support for the
+	  RTC of Maxim MAX77660 PMIC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-max77660.
 
 config RTC_DRV_MXC
 	tristate "Freescale MXC Real Time Clock"
