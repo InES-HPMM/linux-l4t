@@ -601,7 +601,7 @@ void __init tegra11x_init_dvfs(void)
 
 	int i, ret;
 	int core_nominal_mv_index;
-	int cpu_max_freq_index;
+	int cpu_max_freq_index = 0;
 
 #ifndef CONFIG_TEGRA_CORE_DVFS
 	tegra_dvfs_core_disabled = true;
