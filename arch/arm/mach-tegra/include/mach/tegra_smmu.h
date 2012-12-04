@@ -17,3 +17,12 @@
 extern struct resource *tegra_smmu_window(int wnum);
 extern int tegra_smmu_window_count(void);
 #endif
+
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+extern struct dma_iommu_mapping *tegra_smmu_get_map(void);
+#else
+static inline struct dma_iommu_mapping *tegra_smmu_get_map(void)
+{
+	return NULL;
+}
+#endif

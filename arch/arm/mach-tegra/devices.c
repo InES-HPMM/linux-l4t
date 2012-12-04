@@ -1696,16 +1696,28 @@ int tegra_smmu_window_count(void)
 }
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+
+/* default global map if DT doesn't specify */
+static struct dma_iommu_mapping *smmu_default_map;
+
 static void tegra_smmu_map_init(struct platform_device *pdev)
 {
 	struct dma_iommu_mapping *map;
 
 	map = arm_iommu_create_mapping(&platform_bus_type,
 				       TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE, 0);
-	if (IS_ERR(map))
+	if (IS_ERR(map)) {
 		dev_err(&pdev->dev, "Failed create IOVA map %08x-%08x\n",
 			TEGRA_IOMMU_BASE,
 			TEGRA_IOMMU_BASE + TEGRA_IOMMU_SIZE - 1);
+		return;
+	}
+	smmu_default_map = map;
+}
+
+struct dma_iommu_mapping *tegra_smmu_get_map(void)
+{
+	return smmu_default_map;
 }
 #else
 static inline void tegra_smmu_map_init(struct platform_device *pdev)
