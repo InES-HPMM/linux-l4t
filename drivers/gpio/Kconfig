@@ -703,6 +703,13 @@ config GPIO_PALMAS
 	help
 	  Select this option to enable GPIO driver for the Palmas
 	  chip familly.
+	  
+config GPIO_MAX77660
+	bool "GPIO suport for PMIC MAX77660"
+	depends on MFD_MAX77660
+	help
+	  Say yes here to enable the max77660 to be used as gpio controller.
+	  It requires the driver to be built in the kernel.
 
 config GPIO_MSIC
 	bool "Intel MSIC mixed signal gpio support"
