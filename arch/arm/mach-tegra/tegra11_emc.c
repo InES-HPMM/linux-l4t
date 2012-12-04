@@ -508,7 +508,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 {
 #ifndef EMULATE_CLOCK_SWITCH
 	int i, dll_change, pre_wait;
-	bool dyn_sref_enabled, vref_cal_toggle, zcal_long;
+	bool dyn_sref_enabled, zcal_long;
 
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
 
@@ -542,13 +542,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 		udelay(pre_wait);
 	}
 
-	/* 3. disable auto-cal if vref mode is switching */
-	vref_cal_toggle = (next_timing->emc_acal_interval != 0) &&
-		((next_timing->burst_regs[EMC_XM2COMPPADCTRL_INDEX] ^
-		  last_timing->burst_regs[EMC_XM2COMPPADCTRL_INDEX]) &
-		 EMC_XM2COMPPADCTRL_VREF_CAL_ENABLE);
-	if (vref_cal_toggle)
-		auto_cal_disable();
+	/* 3. disable auto-cal if vref mode is switching - removed */
 
 	/* 4. program burst shadow registers */
 	for (i = 0; i < next_timing->burst_regs_num; i++) {
@@ -627,10 +621,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 		wmb();
 	}
 
-	/* 15. restore auto-cal */
-	if (vref_cal_toggle)
-		emc_writel(next_timing->emc_acal_interval,
-			   EMC_AUTO_CAL_INTERVAL);
+	/* 15. restore auto-cal - removed */
 
 	/* 16. restore dynamic self-refresh */
 	if (next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
