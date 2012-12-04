@@ -45,4 +45,5 @@ static inline int tegra_disable_wake_source(int wake)
 	return 0;
 }
 #endif
+void tegra_set_usb_wake_source(void);
 #endif

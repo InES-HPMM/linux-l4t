@@ -76,6 +76,7 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "pm.h"
+#include "pm-irq.h"
 #include "common.h"
 #include "tegra-board-id.h"
 
@@ -543,6 +544,10 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 static void dalmore_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	/* Set USB wake sources for dalmore */
+	tegra_set_usb_wake_source();
+
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 		platform_device_register(&tegra_otg_device);

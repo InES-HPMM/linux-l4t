@@ -20,7 +20,8 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
-
+#include "board.h"
+#include "tegra-board-id.h"
 #include "gpio-names.h"
 
 static int tegra_gpio_wakes[] = {
@@ -86,7 +87,7 @@ static int tegra_gpio_wakes[] = {
 };
 
 static int tegra_wake_event_irq[] = {
-	INT_USB2, /* ULPI DATA4 */		/* wake0 */
+	-EINVAL, /* ULPI DATA4 */		/* wake0 */
 	-EAGAIN,				/* wake1 */
 	-EAGAIN,				/* wake2 */
 	INT_SDMMC3, /* SDMMC3 DAT1 */		/* wake3 */
@@ -118,7 +119,7 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN,				/* wake29 */
 	INT_AUDIO_CLUSTER, /* I2S0 SDATA OUT */		/* wake30 */
 	-EINVAL,				/* wake31 */
-	INT_USB2, /* ULPI DATA3 */		/* wake32 */
+	-EINVAL, /* ULPI DATA3 */		/* wake32 */
 	-EAGAIN,				/* wake33 */
 	-EAGAIN,				/* wake34 */
 	-EAGAIN,				/* wake35 */
@@ -127,8 +128,8 @@ static int tegra_wake_event_irq[] = {
 	-EINVAL, /* TEGRA_USB3_ID, */		/* wake38 */
 	INT_USB, /* TEGRA_USB1_UTMIP, */	/* wake39 */
 	-EINVAL,				/* wake40 */
-	INT_USB3, /* TEGRA_USB3_UTMIP, */	/* wake41 */
-	INT_USB, /* USB1 UHSIC PHY */		/* wake42 */
+	-EINVAL,				/* wake41 */
+	INT_USB2, /* USB1 UHSIC PHY */		/* wake42 */
 	INT_USB3, /* USB3 UHSIC PHY */		/* wake43 */
 	INT_I2C, /* I2C1 DAT */		/* wake44 */
 	-EAGAIN,				/* wake45 */
@@ -162,6 +163,18 @@ int tegra_gpio_to_wake(int gpio)
 	}
 
 	return -EINVAL;
+}
+
+void tegra_set_usb_wake_source(void)
+{
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	/* For Dalmore */
+	if (board_info.board_id == BOARD_E1611) {
+		tegra_wake_event_irq[41] = INT_USB3;
+		tegra_wake_event_irq[43] = -EINVAL;
+	}
 }
 
 int tegra_irq_to_wake(int irq)
