@@ -419,6 +419,11 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 		map = smmu_client_hwgrp(c);
 
 	for_each_set_bit(i, &map, HWGRP_COUNT) {
+
+		/* FIXME: PCIe client hasn't been registered as IOMMU */
+		if (i == HWGRP_AFI)
+			continue;
+
 		offs = HWGRP_ASID_REG(i);
 		val = smmu_read(smmu, offs);
 		if (on) {
