@@ -4566,6 +4566,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	struct clk *slow = NULL;
 	struct clk *top = NULL;
 	unsigned long rate;
+	unsigned long old_rate;
 
 	if (detach_shared_bus)
 		return 0;
@@ -4603,9 +4604,12 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 		}
 	}
 
-	ret = bus->ops->set_rate(bus, rate);
-	if (ret)
-		return ret;
+	old_rate = clk_get_rate_locked(bus);
+	if (old_rate != rate) {
+		ret = bus->ops->set_rate(bus, rate);
+		if (ret)
+			return ret;
+	}
 
 	if (bus->dvfs) {
 		if (bus->refcnt && (mv <= 0)) {
