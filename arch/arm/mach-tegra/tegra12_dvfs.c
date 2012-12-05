@@ -31,11 +31,6 @@
 static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
 static bool tegra_dvfs_gpu_disabled;
-static struct dvfs *gpu_dvfs;
-
-/* TBD: fill in actual hw numbers */
-static const int gpu_millivolts[MAX_DVFS_FREQS] = {
-	850,  900,  950, 1000, 1050, 1100, 1150, 1200, 1250};
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -236,6 +231,10 @@ static struct dvfs core_dvfs_table[] = {
 #endif
 };
 
+/* TBD: fill in actual hw numbers */
+static const int gpu_millivolts[MAX_DVFS_FREQS] = {
+	850,  900,  950, 1000, 1050, 1100, 1125};
+
 #define GPU_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
 	{							\
 		.clk_name	= _clk_name,			\
@@ -250,9 +249,9 @@ static struct dvfs core_dvfs_table[] = {
 
 /* TBD: fill in actual hw numbers */
 static struct dvfs gpu_dvfs_table[] = {
-	/* Gpu voltages (mV):		    850,    900,    950,   1000,   1050,    1100,    1150,    1200,    1250 */
+	/* Gpu voltages (mV):		    837,    900,    950,   1000,   1050,    1100,    1125 */
 	/* Clock limits for internal blocks, PLLs */
-	GPU_DVFS("gpu",     -1, 1, KHZ,    624000, 650000, 676000, 702000, 728000,  754000,  780000,  806000),
+	GPU_DVFS("gpu",     -1, 1, KHZ,    403000, 650000,  676000, 702000, 728000, 806000,  810000),
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
@@ -561,65 +560,26 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
-static int __init get_gpu_nominal_mv_index(
-	int speedo_id, int process_id, struct dvfs **gpu_dvfs)
+static int __init get_gpu_nominal_mv_index(int speedo_id)
 {
-	int i, j, mv;
-	struct dvfs *d;
-	struct clk *c;
+	int i;
+	int mv = 1100; /* TBD: move to fuse */
 
 	/* TBD: do we have dependency between gpu and core ??
 	 * Find maximum gpu voltage that satisfies gpu_to_core dependency for
 	 * nominal core voltage ("solve from cpu to core at nominal"). Clip
 	 * result to the nominal cpu level for the chips with this speedo_id.
 	 */
-	mv = tegra12_dvfs_rail_vdd_core.nominal_millivolts;
 	for (i = 0; i < MAX_DVFS_FREQS; i++) {
-		if (gpu_millivolts[i] == 0)
+		if (gpu_millivolts[i] == 0 || mv < gpu_millivolts[i])
 			break;
 	}
-	BUG_ON(i == 0);
-	mv = gpu_millivolts[i - 1];
-	BUG_ON(mv < tegra12_dvfs_rail_vdd_gpu.min_millivolts);
-	mv = min(mv, 1250/* TBD: tegra_gpu_speedo_mv() */);
 
-	/*
-	 * Find matching gpu dvfs entry, and use it to determine index to the
-	 * final nominal voltage, that satisfies the following requirements:
-	 * - allows GPU to run at minimum of the maximum rates specified in
-	 *   the dvfs entry and clock tree
-	 * - does not violate gpu_to_core dependency as determined above
-	 */
-	for (i = 0, j = 0; j <  ARRAY_SIZE(gpu_dvfs_table); j++) {
-		d = &gpu_dvfs_table[j];
-		if (match_dvfs_one(d, speedo_id, process_id)) {
-			c = tegra_get_clock_by_name(d->clk_name);
-			BUG_ON(!c);
-
-			for (; i < MAX_DVFS_FREQS; i++) {
-				if ((d->freqs[i] == 0) ||
-				    (gpu_millivolts[i] == 0) ||
-				    (mv < gpu_millivolts[i]))
-					break;
-
-				if (c->max_rate <= d->freqs[i]*d->freqs_mult) {
-					i++;
-					break;
-				}
-			}
-			break;
-		}
+	if (i == 0) {
+		pr_err("tegra12_dvfs: unable to adjust gpu dvfs table to"
+		       " nominal voltage %d\n", mv);
+		return -ENOSYS;
 	}
-
-	BUG_ON(i == 0);
-	if (j == (ARRAY_SIZE(gpu_dvfs_table) - 1))
-		pr_err("tegra12_dvfs: WARNING!!!\n"
-		       "tegra12_dvfs: no gpu dvfs table found for chip speedo_id"
-		       " %d and process_id %d: set GPU rate limit at %lu\n"
-		       "tegra12_dvfs: WARNING!!!\n",
-		       speedo_id, process_id, d->freqs[i-1] * d->freqs_mult);
-
-	*gpu_dvfs = d;
 	return i - 1;
 }
 
@@ -629,7 +589,6 @@ void __init tegra12x_init_dvfs(void)
 	int soc_speedo_id = tegra_soc_speedo_id();
 	int gpu_speedo_id = -1; /* TBD: use gpu speedo */
 	int core_process_id = tegra_core_process_id();
-	int gpu_process_id = -1; /* TBD: use gpu process */
 
 	int i;
 	int core_nominal_mv_index;
@@ -663,6 +622,18 @@ void __init tegra12x_init_dvfs(void)
 		core_millivolts[core_nominal_mv_index];
 
 	/*
+	 * TBD: Find nomial voltages for gpu rail
+	 */
+	gpu_nominal_mv_index = get_gpu_nominal_mv_index(gpu_speedo_id);
+	if (gpu_nominal_mv_index < 0) {
+		tegra12_dvfs_rail_vdd_gpu.disabled = true;
+		tegra_dvfs_gpu_disabled = true;
+		gpu_nominal_mv_index = 0;
+	}
+	tegra12_dvfs_rail_vdd_gpu.nominal_millivolts =
+		gpu_millivolts[gpu_nominal_mv_index];
+
+	/*
 	 * Setup cpu dvfs and dfll tables from cvb data, determine nominal
 	 * voltage for cpu rail, and cpu maximum frequency. Note that entire
 	 * frequency range is guaranteed only when dfll is used as cpu clock
@@ -675,12 +646,6 @@ void __init tegra12x_init_dvfs(void)
 	if (set_cpu_dvfs_data(cpu_speedo_id, &cpu_dvfs, &cpu_max_freq_index))
 		BUG();
 
-	gpu_nominal_mv_index = get_gpu_nominal_mv_index(
-		gpu_speedo_id, gpu_process_id, &gpu_dvfs);
-	BUG_ON((gpu_nominal_mv_index < 0) || (!gpu_dvfs));
-	tegra12_dvfs_rail_vdd_gpu.nominal_millivolts =
-		gpu_millivolts[gpu_nominal_mv_index];
-
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra12_dvfs_rails,
 		ARRAY_SIZE(tegra12_dvfs_rails));
@@ -692,6 +657,15 @@ void __init tegra12x_init_dvfs(void)
 		if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
 			continue;
 		init_dvfs_one(d, core_nominal_mv_index);
+	}
+
+	/* Search gpu dvfs table for speedo/process matching entries and
+	   initialize dvfs-ed clocks */
+	for (i = 0; i <  ARRAY_SIZE(gpu_dvfs_table); i++) {
+		struct dvfs *d = &gpu_dvfs_table[i];
+		if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
+			continue;
+		init_dvfs_one(d, gpu_nominal_mv_index);
 	}
 
 	/* Initialize matching cpu dvfs entry already found when nominal
