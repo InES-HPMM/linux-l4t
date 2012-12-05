@@ -406,7 +406,7 @@ static int roth_dsi_panel_postsuspend(void)
 
 static struct tegra_dc_mode roth_dsi_modes[] = {
 	{
-		.pclk = 10000000,
+		.pclk = 66700000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 4,
