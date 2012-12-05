@@ -172,7 +172,7 @@ static __initdata struct tegra_clk_init_table roth_clk_init_table[] = {
 	{ "pll_m",	NULL,		0,		false},
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x", "pll_p",	48000000,	false},
-	{ "pwm",	"pll_p",	3187500,	false},
+	{ "pwm",	"pll_p",	37000000,	false},
 	{ "blink",	"clk_32k",	32768,		true},
 	{ "i2s1",	"pll_a_out0",	0,		false},
 	{ "i2s3",	"pll_a_out0",	0,		false},
@@ -566,6 +566,7 @@ static void __init tegra_roth_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	roth_sensors_init();
 	roth_soctherm_init();
+	roth_fan_init();
 }
 
 static void __init roth_ramconsole_reserve(unsigned long size)

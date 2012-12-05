@@ -222,6 +222,8 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_ADV_N,   GMI,        NORMAL,   NORMAL, INPUT),
 	DEFAULT_PINMUX(GMI_CS0_N,   GMI,        PULL_UP,  NORMAL, INPUT),
 
+	/*Fan PWM*/
+	DEFAULT_PINMUX(GPIO_PU3,   PWM0,        NORMAL,   NORMAL, OUTPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -285,7 +287,6 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU1, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU2, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, true, 0),
