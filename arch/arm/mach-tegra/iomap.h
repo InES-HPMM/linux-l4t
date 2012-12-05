@@ -63,6 +63,14 @@
 
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+
+#define TEGRA_ARM_PL310_BASE		0x50061000
+#define TEGRA_ARM_PL310_SIZE		SZ_4K
+
+#endif
+
+
 #define TEGRA_ARM_INT_DIST_BASE		0x50041000
 #define TEGRA_ARM_INT_DIST_SIZE		SZ_4K
 
