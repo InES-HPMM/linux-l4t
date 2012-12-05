@@ -68,8 +68,15 @@ int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
+		.process_id = -1,
+		.dfll_tune_data  = {
+			.tune0          = 0x00b0019d,
+			.tune0_high_mv  = 0x00b0019d,
+			.tune1          = 0x0000001f,
+			.droop_rate_min = 1000000,
+			.min_millivolts = 1000,
+		},
 		.max_mv = 1250,
-		.min_dfll_mv = 1000,
 		.freqs_mult = MHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 100,
@@ -103,16 +110,10 @@ static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
 
 static struct dvfs cpu_dvfs = {
 	.clk_name	= "cpu_g",
-	.process_id	= -1,
 	.millivolts	= cpu_millivolts,
 	.dfll_millivolts = cpu_dfll_millivolts,
 	.auto_dvfs	= true,
 	.dvfs_rail	= &tegra14_dvfs_rail_vdd_cpu,
-	.dfll_data	= {
-		.tune0		= 0x00b0019d,
-		.tune1		= 0x0000001f,
-		.droop_rate_min = 1000000,
-	},
 };
 
 /* Core DVFS tables */
@@ -292,6 +293,17 @@ static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
 	return true;
 }
 
+static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
+				     int speedo_id, int process_id)
+{
+	if ((d->process_id != -1 && d->process_id != process_id) ||
+	    (d->speedo_id != -1 && d->speedo_id != speedo_id)) {
+		pr_debug("tegra11_dvfs: rejected cpu cvb speedo %d,"
+			 " process %d\n", d->speedo_id, d->process_id);
+		return false;
+	}
+	return true;
+}
 
 /* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
 static inline int get_cvb_voltage(int speedo, int s_scale,
@@ -313,30 +325,18 @@ static inline int round_cvb_voltage(int mv, int v_scale)
 		cvb_align_step_uv / 1000;
 }
 
-static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
-				    int *max_freq_index)
+static int __init set_cpu_dvfs_data(
+	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
-	int i, j, mv, dfll_mv;
+	int i, j, mv, dfll_mv, min_dfll_mv;
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
-	struct cpu_cvb_dvfs *d = NULL;
 	struct cpu_cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
-	/* Find matching cvb dvfs entry */
-	for (i = 0; i < ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
-		d = &cpu_cvb_dvfs_table[i];
-		if (speedo_id == d->speedo_id)
-			break;
-	}
-
-	if (!d) {
-		pr_err("tegra14_dvfs: no cpu dvfs table for speedo_id %d\n",
-		       speedo_id);
-		return -ENOENT;
-	}
-	BUG_ON(d->min_dfll_mv < tegra14_dvfs_rail_vdd_cpu.min_millivolts);
+	min_dfll_mv = d->dfll_tune_data.min_millivolts;
+	BUG_ON(min_dfll_mv < tegra14_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
 	 * Use CVB table to fill in CPU dvfs frequencies and voltages. Each
@@ -363,8 +363,8 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		mv = round_cvb_voltage(mv, d->voltage_scale);
 
 		/* Check maximum frequency at minimum voltage for dfll source */
-		dfll_mv = max(dfll_mv, d->min_dfll_mv);
-		if (dfll_mv > d->min_dfll_mv) {
+		dfll_mv = max(dfll_mv, min_dfll_mv);
+		if (dfll_mv > min_dfll_mv) {
 			if (!j)
 				break;	/* 1st entry already above Vmin */
 			if (!fmax_at_vmin)
@@ -380,7 +380,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 		}
 
 		/* Minimum rate with pll source voltage above dfll Vmin */
-		if ((mv >= d->min_dfll_mv) && (!fmin_use_dfll))
+		if ((mv >= min_dfll_mv) && (!fmin_use_dfll))
 			fmin_use_dfll = table->freq;
 
 		/* fill in dvfs tables */
@@ -401,8 +401,7 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	/* Table must not be empty and must have and at least one entry below,
 	   and one entry above Vmin */
 	if (!i || !j || !fmax_at_vmin) {
-		pr_err("tegra14_dvfs: invalid cpu dvfs table for speedo_id %d\n",
-		       speedo_id);
+		pr_err("tegra14_dvfs: invalid cpu dvfs table\n");
 		return -ENOENT;
 	}
 
@@ -415,17 +414,19 @@ static int __init set_cpu_dvfs_data(int speedo_id, struct dvfs *cpu_dvfs,
 	}
 
 	/* dvfs tables are successfully populated - fill in the rest */
-	cpu_dvfs->speedo_id = speedo_id;
+	cpu_dvfs->speedo_id = d->speedo_id;
+	cpu_dvfs->process_id = d->process_id;
 	cpu_dvfs->freqs_mult = d->freqs_mult;
 	cpu_dvfs->dvfs_rail->nominal_millivolts = min(d->max_mv,
 		max(cpu_millivolts[j - 1], cpu_dfll_millivolts[j - 1]));
 	*max_freq_index = j - 1;
 
+	cpu_dvfs->dfll_data = d->dfll_tune_data;
 	cpu_dvfs->dfll_data.max_rate_boost = fmax_pll_mode ?
 		(cpu_dvfs->freqs[j - 1] - fmax_pll_mode) * d->freqs_mult : 0;
 	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
-	cpu_dvfs->dfll_data.min_millivolts = d->min_dfll_mv;
+	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
 	return 0;
 }
 
@@ -467,10 +468,11 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 void __init tegra14x_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_cpu_speedo_id();
+	int cpu_process_id = tegra_cpu_process_id();
 	int soc_speedo_id = tegra_soc_speedo_id();
 	int core_process_id = tegra_core_process_id();
 
-	int i;
+	int i, ret;
 	int core_nominal_mv_index;
 	int cpu_max_freq_index;
 
@@ -510,8 +512,15 @@ void __init tegra14x_init_dvfs(void)
 	 * voltage limit is not violated). Error when cpu dvfs table can not
 	 * be constructed must never happen.
 	 */
-	if (set_cpu_dvfs_data(cpu_speedo_id, &cpu_dvfs, &cpu_max_freq_index))
-		BUG();
+	for (ret = 0, i = 0; i <  ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
+		struct cpu_cvb_dvfs *d = &cpu_cvb_dvfs_table[i];
+		if (match_cpu_cvb_one(d, cpu_speedo_id, cpu_process_id)) {
+			ret = set_cpu_dvfs_data(
+				d, &cpu_dvfs, &cpu_max_freq_index);
+			break;
+		}
+	}
+	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra14_dvfs_rails,
