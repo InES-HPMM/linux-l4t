@@ -120,7 +120,7 @@ static struct regulator_consumer_supply tps65090_fet7_supply[] = {
 };
 
 #define TPS65090_PDATA_INIT(_id, _name, _supply_reg,			\
-		_always_on, _boot_on, _apply_uV, _en_ext_ctrl, _gpio)	\
+	_always_on, _boot_on, _apply_uV, _en_ext_ctrl, _gpio, _wait_to)	\
 static struct regulator_init_data ri_data_##_name =			\
 {									\
 	.supply_regulator = _supply_reg,				\
@@ -146,19 +146,20 @@ static struct tps65090_regulator_platform_data				\
 	.enable_ext_control = _en_ext_ctrl,				\
 	.gpio = _gpio,							\
 	.reg_init_data = &ri_data_##_name ,				\
+	.wait_timeout_us = _wait_to,					\
 }
 
-TPS65090_PDATA_INIT(DCDC1, dcdc1, NULL, 1, 1, 0, false, -1);
-TPS65090_PDATA_INIT(DCDC2, dcdc2, NULL, 1, 1, 0, false, -1);
-TPS65090_PDATA_INIT(DCDC3, dcdc3, NULL, 1, 1, 0, false, -1);
-TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1);
-TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1);
-TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
-TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1);
+TPS65090_PDATA_INIT(DCDC1, dcdc1, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(DCDC2, dcdc2, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(DCDC3, dcdc3, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1, 800);
+TPS65090_PDATA_INIT(FET3, fet3, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
+TPS65090_PDATA_INIT(FET4, fet4, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
+TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
+TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
+TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 
 #define ADD_TPS65090_REG(_name) (&tps65090_regulator_pdata_##_name)
 static struct tps65090_regulator_platform_data *tps65090_reg_pdata[] = {
