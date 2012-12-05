@@ -342,7 +342,7 @@ static int __init dsi_l_720p_5_register_bl_dev(void)
 
 struct tegra_dc_mode dsi_l_720p_5_modes[] = {
 	{
-		.pclk = 10000000,
+		.pclk = 66700000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 4,

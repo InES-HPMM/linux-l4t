@@ -171,7 +171,7 @@ static int __init dsi_s_1080p_5_register_bl_dev(void)
 struct tegra_dc_mode dsi_s_1080p_5_modes[] = {
 	/* 1080x1920@60Hz */
 	{
-		.pclk = 10000000,
+		.pclk = 143700000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 10,
@@ -185,7 +185,7 @@ struct tegra_dc_mode dsi_s_1080p_5_modes[] = {
 	},
 	/* 1080x1920@53Hz */
 	{
-		.pclk = 10000000,
+		.pclk = 143700000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 10,
