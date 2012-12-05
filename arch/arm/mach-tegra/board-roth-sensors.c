@@ -339,6 +339,69 @@ static int __init roth_skin_init(void)
 late_initcall(roth_skin_init);
 #endif
 
+static int roth_fan_est_match(struct thermal_zone_device *thz, void *data)
+{
+	return (strcmp((char *)data, thz->type) == 0);
+}
+
+static int roth_fan_est_get_temp(void *data, long *temp)
+{
+	struct thermal_zone_device *thz;
+
+	thz = thermal_zone_device_find(data, roth_fan_est_match);
+
+	if (!thz || thz->ops->get_temp(thz, temp))
+		*temp = 25000;
+
+	return 0;
+}
+
+static struct therm_fan_est_data fan_est_data = {
+	.toffset = 0,
+	.polling_period = 1100,
+	.ndevs = 2,
+	.devs = {
+			{
+				.dev_data = "nct_ext_soc",
+				.get_temp = roth_fan_est_get_temp,
+				.coeffs = {
+					100, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+			{
+				.dev_data = "nct_int_soc",
+				.get_temp = roth_fan_est_get_temp,
+				.coeffs = {
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+	},
+	.active_trip_temps = {57000, 58000, 59000, 60000, 61000, 62000, 63000,
+		64000, 65000, 68000},
+};
+
+static struct platform_device roth_fan_therm_est_device = {
+	.name   = "therm-fan-est",
+	.id     = -1,
+	.num_resources  = 0,
+	.dev = {
+		.platform_data = &fan_est_data,
+	},
+};
+
+static int __init roth_fan_est_init(void)
+{
+	platform_device_register(&roth_fan_therm_est_device);
+	return 0;
+}
 int __init roth_sensors_init(void)
 {
 	int err;
@@ -350,6 +413,8 @@ int __init roth_sensors_init(void)
 		return err;
 
 	mpuirq_init();
+
+	roth_fan_est_init();
 
 	if (0)
 		i2c_register_board_info(0, bq20z45_pdata,
