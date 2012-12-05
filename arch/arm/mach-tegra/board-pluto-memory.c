@@ -27,7 +27,6 @@
 #include "fuse.h"
 #include "devices.h"
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static struct tegra11_emc_table e1580_h9ccnnn8jtmlar_ntm_table[] = {
 	{
 		0x40,       /* Rev 4.0 */
@@ -447,9 +446,3 @@ int __init pluto_emc_init(void)
 	tegra11_emc_init();
 	return 0;
 }
-#else
-int __init pluto_emc_init(void)
-{
-	return 0;
-}
-#endif /* CONFIG_ARCH_TEGRA_11x_SOC */

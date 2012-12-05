@@ -275,25 +275,6 @@ static struct i2c_board_info __initdata pluto_codec_a2220_info = {
 
 static void pluto_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
-	tegra_i2c_device1.dev.platform_data = &pluto_i2c1_platform_data;
-	tegra_i2c_device2.dev.platform_data = &pluto_i2c2_platform_data;
-	tegra_i2c_device3.dev.platform_data = &pluto_i2c3_platform_data;
-	tegra_i2c_device4.dev.platform_data = &pluto_i2c4_platform_data;
-	tegra_i2c_device5.dev.platform_data = &pluto_i2c5_platform_data;
-
-	i2c_register_board_info(1, &pluto_i2c_led_info, 1);
-
-	platform_device_register(&tegra_i2c_device5);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device3);
-	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device1);
-
-#else
 	tegra11_i2c_device1.dev.platform_data = &pluto_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &pluto_i2c2_platform_data;
 	tegra11_i2c_device3.dev.platform_data = &pluto_i2c3_platform_data;
@@ -305,8 +286,6 @@ static void pluto_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device3);
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
-
-#endif
 
 	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
 	i2c_register_board_info(0, &cs42l73_board_info, 1);
@@ -593,11 +572,7 @@ static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
 	},
 };
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static struct tegra_usb_platform_data tegra_ehci3_hsic_baseband2_pdata = {
-#else
-static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband2_pdata = {
-#endif
 	.port_otg = false,
 	.has_hostpc = true,
 	.unaligned_dma_buf_supported = false,
@@ -815,13 +790,8 @@ static struct tegra_usb_modem_power_platform_data baseband2_pdata = {
 	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.autosuspend_delay = 2000,
 	.short_autosuspend_delay = 50,
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	.tegra_ehci_device = &tegra_ehci3_device,
 	.tegra_ehci_pdata = &tegra_ehci3_hsic_baseband2_pdata,
-#else
-	.tegra_ehci_device = &tegra_ehci2_device,
-	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband2_pdata,
-#endif
 };
 
 static struct platform_device icera_baseband2_device = {
@@ -1108,11 +1078,7 @@ MACHINE_START(TEGRA_PLUTO, "tegra_pluto")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_pluto_reserve,
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.init_early	= tegra30_init_early,
-#else
 	.init_early     = tegra11x_init_early,
-#endif
 	.init_irq	= tegra_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.timer		= &tegra_timer,

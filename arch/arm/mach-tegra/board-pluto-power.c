@@ -498,15 +498,9 @@ FIXED_REG(8,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
 	TEGRA_GPIO_PK6,	true,	true,	0,	5000,	5000);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	palmas_rails(smps8),	0,	0,
 	TEGRA_GPIO_PX4,	false,	true,	0,	1800,	0);
-#else
-FIXED_REG(9,	vpp_fuse,	vpp_fuse,
-	palmas_rails(smps8),	0,	0,
-	TEGRA_GPIO_PX0,	false,	true,	0,	1800,	0);
-#endif
 
 /*
  * Creating the fixed regulator device tables
@@ -524,25 +518,13 @@ FIXED_REG(9,	vpp_fuse,	vpp_fuse,
 	ADD_FIXED_REG(vdd_1v8_mic),		\
 	ADD_FIXED_REG(vdd_hdmi_5v0),
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define E1580_T114_FIXED_REG			\
 	ADD_FIXED_REG(vpp_fuse),
-#endif
-
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#define E1580_T30_FIXED_REG			\
-	ADD_FIXED_REG(vpp_fuse),
-#endif
 
 /* Gpio switch regulator platform data for Pluto E1580 */
 static struct platform_device *pfixed_reg_devs[] = {
 	E1580_COMMON_FIXED_REG
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	E1580_T114_FIXED_REG
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	E1580_T30_FIXED_REG
-#endif
 };
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
