@@ -246,16 +246,27 @@ static int tegra_aic326x_set_dam_cif(int dam_ifc, int srate,
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN1,
 		channels, bit_size, channels,
 				bit_size);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
+		channels, bit_size, channels,
+				32);
+#else
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
 		channels, bit_size, channels,
 				bit_size);
+#endif
 
 	if (src_on) {
 		tegra30_dam_set_gain(dam_ifc, TEGRA30_DAM_CHIN0_SRC, 0x1000);
 		tegra30_dam_set_samplerate(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 			src_srate);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
+			src_channels, src_bit_size, 1, 32);
+#else
 		tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 			src_channels, src_bit_size, 1, 16);
+#endif
 	}
 
 	return 0;

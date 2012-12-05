@@ -947,6 +947,9 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 {
 	u32 val;
 	int i2sclock, bitcnt, ret, is_formatdsp;
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	u32  i;
+#endif
 
 	is_formatdsp = (i2s_mode == TEGRA_DAIFMT_DSP_A) ||
 					(i2s_mode == TEGRA_DAIFMT_DSP_B);
@@ -955,7 +958,6 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		i2sclock = bit_clk;
 	} else {
 	    i2sclock = rate * channels * bitsize * 2;
-
 	    /* additional 8 for baseband */
 		if (is_formatdsp)
 			i2sclock *= 8;
@@ -1006,10 +1008,18 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 
 	if (i2s_mode == TEGRA_DAIFMT_DSP_A) {
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		i2s->reg_ch_ctrl |= (1 <<
+			TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
+#endif
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
 	} else if (i2s_mode == TEGRA_DAIFMT_DSP_B) {
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+		i2s->reg_ch_ctrl |= (1 <<
+			TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
+#endif
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
@@ -1021,12 +1031,30 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 
 	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
 
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	val = 0;
+	for (i = 0; i < channels; i++)
+		val |= (1 << i);
+
+	val |= val <<
+	  TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
+	val |= val <<
+	  TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
+	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL2, val);
+
+	val = 0;
+	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
+		val = channels  - 1;
+
+	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
+#else
 	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
 	val &= ~(TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK |
 		TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK);
 	val |= (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT |
 		1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
+#endif
 
 	val = (1 << TEGRA30_I2S_OFFSET_RX_DATA_OFFSET_SHIFT) |
 	      (1 << TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);

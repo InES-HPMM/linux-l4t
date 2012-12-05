@@ -126,14 +126,18 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 	int is_call_mode_new = ucontrol->value.integer.value[0];
 	int codec_index;
 	unsigned int i;
+	int uses_voice_codec;
 
 	if (machine->is_call_mode == is_call_mode_new)
 		return 0;
 
-	if (machine->is_device_bt)
+	if (machine->is_device_bt) {
 		codec_index = BT_SCO;
-	else
+		uses_voice_codec = 0;
+	} else {
 		codec_index = VOICE_CODEC;
+		uses_voice_codec = 1;
+	}
 
 	if (is_call_mode_new) {
 		if (machine->codec_info[codec_index].rate == 0 ||
@@ -145,11 +149,11 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 
 		tegra30_make_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 1);
+			&machine->codec_info[BASEBAND], uses_voice_codec);
 	} else {
 		tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 1);
+			&machine->codec_info[BASEBAND], uses_voice_codec);
 
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 0;
@@ -184,16 +188,27 @@ static int tegra_cs42l73_set_dam_cif(int dam_ifc, int srate,
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN1,
 		channels, bit_size, channels,
 				bit_size);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
+		channels, bit_size, channels,
+				32);
+#else
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
 		channels, bit_size, channels,
 				bit_size);
+#endif
 
 	tegra30_dam_set_gain(dam_ifc, TEGRA30_DAM_CHIN0_SRC, 0x1000);
 	if (src_on) {
 		tegra30_dam_set_samplerate(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 			src_srate);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
 		tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
 			src_channels, src_bit_size, 1, 32);
+#else
+		tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN0_SRC,
+			src_channels, src_bit_size, 1, 16);
+#endif
 	}
 
 	return 0;
@@ -307,11 +322,10 @@ static int tegra_cs42l73_hw_params(struct snd_pcm_substream *substream,
 	}
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		if (i2s->dam_ifc)
-			tegra_cs42l73_set_dam_cif(i2s->dam_ifc, srate,
-			  params_channels(params), sample_size, 0, 0, 0, 0);
-	}
+	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) &&
+		i2s->is_dam_used)
+		tegra_cs42l73_set_dam_cif(i2s->dam_ifc, srate,
+		params_channels(params), sample_size, 0, 0, 0, 0);
 #endif
 
 	return 0;
@@ -451,9 +465,9 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) &&
-	    i2s->dam_ifc)
+		i2s->is_dam_used)
 		tegra_cs42l73_set_dam_cif(i2s->dam_ifc, params_rate(params),
-		  params_channels(params), sample_size, 0, 0, 0, 0);
+		params_channels(params), sample_size, 0, 0, 0, 0);
 #endif
 
 	return 0;
@@ -1029,10 +1043,10 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 
-	if (machine->codec_info[BASEBAND].i2s_id != -1)
-		i2s->is_dam_used = true;
-
-	i2s->is_dam_used = false;
+	if (machine->codec_info[BASEBAND].i2s_id != -1) {
+		if (i2s->id == machine->codec_info[BT_SCO].i2s_id)
+			i2s->is_dam_used = true;
+	}
 #endif
 
 	if (machine->init_done)
