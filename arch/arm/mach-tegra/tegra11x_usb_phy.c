@@ -2364,7 +2364,7 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 
 	/* Remove power downs for HSIC from PADS CFG1 register */
 	val = readl(base + UHSIC_PADS_CFG1);
-	val |= (UHSIC_PD_BG |UHSIC_PD_TRK | UHSIC_PD_RX |
+	val |= (UHSIC_PD_BG | UHSIC_PD_TRK |
 			UHSIC_PD_ZI | UHSIC_PD_TX);
 	writel(val, base + UHSIC_PADS_CFG1);
 
