@@ -249,22 +249,25 @@ static inline int output_disable(struct tegra_cl_dvfs *cld)
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 
 	/* FIXME: PWM output control */
-	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT; i++) {
+	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT / 2; i++) {
 		sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		udelay(2);
 		if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING)) {
-			val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-			wmb();
 			sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
-			if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
-				return 0; /* clean disable: no pending rqst */
+			if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING)) {
+				val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+				wmb();
+				sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+				if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
+					return 0; /* no pending rqst */
 
-			/* Re-enable, continue wait */
-			val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
-			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-			wmb();
+				/* Re-enable, continue wait */
+				val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+				wmb();
+			}
 		}
-		udelay(1);
 	}
 
 	/* I2C request is still pending - disable, anyway, but report error */
