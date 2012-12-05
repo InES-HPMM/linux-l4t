@@ -344,11 +344,10 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 #endif
 
 #ifdef CONFIG_CACHE_L2X0
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 static void tegra_cache_smc(bool enable, u32 arg)
 {
-	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
+	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PL310_BASE);
 	bool need_affinity_switch;
 	bool can_switch_affinity;
 	bool l2x0_enabled;
@@ -401,7 +400,7 @@ static void tegra_l2x0_disable(void)
 	static u32 l2x0_way_mask;
 
 	if (!l2x0_way_mask) {
-		void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
+		void __iomem *p = IO_ADDRESS(TEGRA_ARM_PL310_BASE);
 		u32 aux_ctrl;
 		u32 ways;
 
@@ -418,7 +417,7 @@ static void tegra_l2x0_disable(void)
 
 void tegra_init_cache(bool init)
 {
-	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
+	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PL310_BASE);
 	u32 aux_ctrl;
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 	u32 cache_type;
@@ -442,7 +441,7 @@ void tegra_init_cache(bool init)
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tag_latency = 0x331;
 	data_latency = 0x441;
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#else
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (is_lp_cluster()) {
 		tag_latency = 0x221;
@@ -469,14 +468,12 @@ void tegra_init_cache(bool init)
 	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
 	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	writel(7, p + L2X0_PREFETCH_CTRL);
-	writel(2, p + L2X0_POWER_CTRL);
-#endif
-#endif
-
 	writel(0x3, p + L2X0_POWER_CTRL);
+#endif
+#endif
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
 	aux_ctrl |= 0x7C400001;
@@ -494,11 +491,6 @@ void tegra_init_cache(bool init)
 	l2x0_enable();
 #endif
 }
-#else
-void tegra_init_cache(bool init)
-{
-}
-#endif
 #endif
 
 static void __init tegra_perf_init(void)
@@ -534,7 +526,7 @@ static void __init tegra_init_power(void)
 #ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 #endif
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	/* some partitions need to be powergated by default for t11x */
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBB);
