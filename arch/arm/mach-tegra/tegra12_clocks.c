@@ -268,6 +268,8 @@ enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #define PLLCX_MISC2_DEFAULT_VALUE	0x31211200
 #define PLLCX_MISC3_DEFAULT_VALUE	0x0
 
+#define PLLCX_MISC1_IDDQ		(0x1 << 27)
+
 /* PLLX and PLLC (PLLXC)*/
 #define PLLXC_USE_DYN_RAMP		0
 #define PLLXC_BASE_DIVP_MASK		(0xF<<PLL_BASE_DIVP_SHIFT)
@@ -2231,8 +2233,17 @@ static void pllcx_strobe(struct clk *c)
 
 static void pllcx_set_defaults(struct clk *c, unsigned long input_rate, u32 n)
 {
+	u32 misc1val = PLLCX_MISC1_DEFAULT_VALUE;
+	if (c->state == ON) {
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
+		BUG();
+#endif
+	} else {
+		misc1val |= PLLCX_MISC1_IDDQ;
+	}
+
 	clk_writel(PLLCX_MISC_DEFAULT_VALUE, c->reg + PLL_MISC(c));
-	clk_writel(PLLCX_MISC1_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 1));
+	clk_writel(misc1val, c->reg + PLL_MISCN(c, 1));
 	clk_writel(PLLCX_MISC2_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 2));
 	clk_writel(PLLCX_MISC3_DEFAULT_VALUE, c->reg + PLL_MISCN(c, 3));
 
@@ -2287,6 +2298,8 @@ static int tegra12_pllcx_clk_enable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, false);
+
 	val = clk_readl(c->reg + PLL_BASE);
 	val &= ~PLL_BASE_BYPASS;
 	val |= PLL_BASE_ENABLE;
@@ -2314,6 +2327,8 @@ static void tegra12_pllcx_clk_disable(struct clk *c)
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLLCX_MISC_RESET;
 	pll_writel_delay(val, c->reg + PLL_MISC(c));
+
+	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, true);
 }
 
 static int tegra12_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
