@@ -561,7 +561,7 @@ static int dalmore_dsi_panel_postsuspend(void)
 static struct tegra_dc_mode dalmore_dsi_modes[] = {
 #if PANEL_10_1_PANASONIC_1920_1200
 	{
-		.pclk = 10000000,
+		.pclk = 154700000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
@@ -576,7 +576,7 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 #endif
 #if PANEL_11_6_AUO_1920_1080
 	{
-		.pclk = 10000000,
+		.pclk = 144250000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 28,
@@ -591,7 +591,7 @@ static struct tegra_dc_mode dalmore_dsi_modes[] = {
 #endif
 #if PANEL_10_1_SHARP_2560_1600
 	{
-		.pclk = 10000000,
+		.pclk = 268460000,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
