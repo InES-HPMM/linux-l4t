@@ -5791,7 +5791,7 @@ static struct clk tegra_clk_sclk = {
 	.reg	= 0x28,
 	.ops	= &tegra_super_ops,
 	.max_rate = 336000000,
-	.min_rate = 12000000,
+	.min_rate = 24000000,
 };
 
 static struct clk tegra_clk_virtual_cpu_g = {
@@ -5850,7 +5850,7 @@ static struct clk tegra_clk_hclk = {
 	.reg_shift	= 4,
 	.ops		= &tegra_bus_ops,
 	.max_rate       = 336000000,
-	.min_rate       = 12000000,
+	.min_rate       = 24000000,
 };
 
 static struct clk tegra_clk_pclk = {
@@ -6270,7 +6270,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("csite",	"csite",		NULL,	73,	0x1d4,	144000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("la",	"la",			NULL,	76,	0x1f8,	26000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("trace",	"trace",		NULL,	77,	0x634,	26000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("owr",	"tegra_w1",		NULL,	71,	0x1cc,	26000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("owr",	"tegra_w1",		NULL,	71,	0x1cc,	12000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("nor",	"tegra-nor",		NULL,	42,	0x1d0,	127000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("mipi",	"mipi",			NULL,	50,	0x174,	60000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c1",	"tegra11-i2c.0",	"div-clk",	12,	0x124,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
@@ -6321,7 +6321,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 
-	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	 12000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
 	PERIPH_CLK("extern1",	"extern1",		NULL,	120,	0x3ec,	216000000, mux_plla_clk32_pllp_clkm_plle,	MUX | MUX8 | DIV_U71),
 	PERIPH_CLK("extern2",	"extern2",		NULL,	121,	0x3f0,	216000000, mux_plla_clk32_pllp_clkm_plle,	MUX | MUX8 | DIV_U71),
