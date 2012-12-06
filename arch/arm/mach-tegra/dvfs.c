@@ -807,6 +807,13 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	return ret;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void)
+{
+	if (tegra_cpu_rail)
+		return tegra_cpu_rail->dfll_mode_cdev;
+	return NULL;
+}
+
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported
  * by the regulator api for each one.  Must be called in late init, after

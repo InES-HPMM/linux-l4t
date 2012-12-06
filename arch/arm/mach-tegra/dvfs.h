@@ -22,6 +22,7 @@
 #define _TEGRA_DVFS_H_
 
 #include <linux/of.h>
+#include <mach/thermal.h>
 
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
@@ -61,6 +62,8 @@ struct dvfs_rail {
 	int max_millivolts;
 	int reg_max_millivolts;
 	int nominal_millivolts;
+	int min_millivolts_cold;
+
 	int step;
 	bool jmp_to_zero;
 	bool disabled;
@@ -77,6 +80,8 @@ struct dvfs_rail {
 	int offs_millivolts;
 	bool suspended;
 	bool dfll_mode;
+	struct tegra_cooling_device *pll_mode_cdev;
+	struct tegra_cooling_device *dfll_mode_cdev;
 	struct rail_stats stats;
 };
 
@@ -192,6 +197,7 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event);
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
+struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 int tegra_dvfs_rail_disable_prepare(struct dvfs_rail *rail);

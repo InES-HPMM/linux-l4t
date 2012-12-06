@@ -37,12 +37,22 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
 
+static int dvfs_temperatures[] = { 20, };
+
+static struct tegra_cooling_device cpu_dfll_cdev = {
+	.cdev_type = "cpu_dfll",
+	.trip_temperatures = dvfs_temperatures,
+	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+};
+
 static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
+	.min_millivolts_cold = 1000,
+	.dfll_mode_cdev = &cpu_dfll_cdev,
 };
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {

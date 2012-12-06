@@ -44,6 +44,7 @@
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "tegra-board-id.h"
+#include "dvfs.h"
 
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
@@ -793,6 +794,7 @@ static int pluto_nct1008_init(void)
 		}
 #endif
 		nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
+		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_dfll_cdev());
 
 		pluto_i2c4_nct1008_board_info[0].irq =
 				gpio_to_irq(nct1008_port);

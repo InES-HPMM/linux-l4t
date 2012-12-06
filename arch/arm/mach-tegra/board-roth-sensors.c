@@ -47,6 +47,7 @@
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "tegra-board-id.h"
+#include "dvfs.h"
 
 static struct board_info board_info;
 
@@ -245,6 +246,7 @@ static int roth_nct1008_init(void)
 #endif
 
 	nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
+	nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_dfll_cdev());
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 	pr_info("%s: roth nct1008 irq %d", __func__, \
