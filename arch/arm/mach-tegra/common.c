@@ -437,6 +437,18 @@ static void __init tegra_perf_init(void)
 	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(reg));
 }
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+static void __init tegra_ramrepair_init(void)
+{
+	if (tegra_spare_fuse(10) & tegra_spare_fuse(11) & 1) {
+		u32 reg;
+		reg = readl(FLOW_CTRL_RAM_REPAIR);
+		reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
+		writel(reg, FLOW_CTRL_RAM_REPAIR);
+	}
+}
+#endif
+
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
@@ -598,6 +610,7 @@ void __init tegra11x_init_early(void)
 #endif
 	tegra_perf_init();
 	tegra_init_fuse();
+	tegra_ramrepair_init();
 	tegra11x_init_clocks();
 	tegra11x_init_dvfs();
 	tegra_common_init_clock();

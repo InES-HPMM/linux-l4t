@@ -420,26 +420,11 @@ int tegra_cluster_control(unsigned int us, unsigned int flags)
 		if (target_cluster == TEGRA_POWER_CLUSTER_G) {
 			s64 t = ktime_to_us(ktime_sub(now, last_g2lp));
 			s64 t_off = tegra_cpu_power_off_time();
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-			/* u32 reg; */
-#endif
+
 			if (t_off > t)
 				udelay((unsigned int)(t_off - t));
 
 			tegra_dvfs_rail_on(tegra_cpu_rail, now);
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-			/*
-			 * comment out RAM repair as this seems impacting
-			 * cluster switch
-			 */
-			/* enable RAM repair by flow controller */
-			/*
-			reg = readl(FLOW_CTRL_RAM_REPAIR);
-			reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
-			writel(reg, FLOW_CTRL_RAM_REPAIR);
-			*/
-#endif
-
 		} else {
 #ifdef CONFIG_TEGRA_VIRTUAL_CPUID
 			u32 cpu;
