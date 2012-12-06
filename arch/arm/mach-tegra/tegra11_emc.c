@@ -980,6 +980,7 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
 	case 0x40:
+	case 0x41:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		start_timing.emc_trimmers_num = table[0].emc_trimmers_num;
 		break;
