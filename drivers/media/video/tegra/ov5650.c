@@ -23,6 +23,7 @@
 
 #include <media/ov5650.h>
 #include <video/tegra_camera.h>
+#include <media/nvc.h>
 
 #define SIZEOF_I2C_TRANSBUF 32
 
@@ -41,7 +42,7 @@ struct ov5650_info {
 	enum StereoCameraMode camera_mode;
 	struct ov5650_sensor left;
 	struct ov5650_sensor right;
-	struct ov5650_sensordata sensor_data;
+	struct nvc_fuseid fuse_id;
 	struct mutex mutex_le;
 	struct mutex mutex_ri;
 	int power_refcnt_le;
@@ -54,6 +55,7 @@ static struct ov5650_info *stereo_ov5650_info;
 #define OV5650_TABLE_WAIT_MS 0
 #define OV5650_TABLE_END 1
 #define OV5650_MAX_RETRIES 3
+#define OV5650_FUSE_ID_SIZE 5
 
 static struct ov5650_reg tp_none_seq[] = {
 	{0x5046, 0x00},
@@ -1293,27 +1295,27 @@ static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 	return 0;
 }
 
-static int ov5650_get_sensor_id(struct ov5650_info *info)
+static int ov5650_get_fuseid(struct ov5650_info *info)
 {
 	int ret = 0;
 	int i;
 	u8  bak;
 
 	pr_info("%s\n", __func__);
-	if (info->sensor_data.fuse_id_size)
+	if (info->fuse_id.size)
 		return 0;
 
 	ov5650_set_power(info, 1);
 
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < OV5650_FUSE_ID_SIZE; i++) {
 		ret |= ov5650_write_reg_helper(info, 0x3d00, i);
 		ret |= ov5650_read_reg_helper(info, 0x3d04,
 				&bak);
-		info->sensor_data.fuse_id[i] = bak;
+		info->fuse_id.data[i] = bak;
 	}
 
 	if (!ret)
-		info->sensor_data.fuse_id_size = i;
+		info->fuse_id.size = i;
 
 	ov5650_set_power(info, 0);
 	return ret;
@@ -1393,17 +1395,18 @@ static long ov5650_ioctl(struct file *file,
 		}
 		return ov5650_set_group_hold(info, &ae);
 	}
-	case OV5650_IOCTL_GET_SENSORDATA:
+	case OV5650_IOCTL_GET_FUSEID:
 	{
-		err = ov5650_get_sensor_id(info);
+		err = ov5650_get_fuseid(info);
 		if (err) {
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
 			return err;
 		}
 		if (copy_to_user((void __user *)arg,
-				&info->sensor_data,
-				sizeof(struct ov5650_sensordata))) {
-			pr_info("%s %d\n", __func__, __LINE__);
+				&info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			pr_err("%s: %d: fail copy fuse id to user space\n",
+				__func__, __LINE__);
 			return -EFAULT;
 		}
 		return 0;

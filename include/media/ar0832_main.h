@@ -30,6 +30,8 @@
 #define AR0832_IOCTL_GET_SENSOR_ID		_IOR('o', 0x12, __u16)
 #define AR0832_FOCUSER_IOCTL_SET_CONFIG		_IOW('o', 0x13, struct nv_focuser_config)
 
+#define AR0832_IOCTL_GET_FUSEID		_IOR('o', 0x14, struct nvc_fuseid)
+
 #define AR0832_SENSOR_ID_8141			0x1006
 #define AR0832_SENSOR_ID_8140			0x3006
 
@@ -86,7 +88,6 @@ struct ar0832_stereo_region {
 	struct ar0832_point image_start;
 	struct ar0832_point image_end;
 };
-
 
 #ifdef __KERNEL__
 struct ar0832_platform_data {

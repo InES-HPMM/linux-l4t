@@ -18,7 +18,7 @@
 #define IMX132_IOCTL_SET_FRAME_LENGTH	_IOW('o', 3, __u32)
 #define IMX132_IOCTL_SET_COARSE_TIME	_IOW('o', 4, __u32)
 #define IMX132_IOCTL_SET_GAIN		_IOW('o', 5, __u16)
-#define IMX132_IOCTL_GET_SENSORDATA	_IOR('o', 6, struct imx132_sensordata)
+#define IMX132_IOCTL_GET_FUSEID		_IOR('o', 6, struct nvc_fuseid)
 #define IMX132_IOCTL_SET_GROUP_HOLD	_IOW('o', 7, struct imx132_ae)
 
 /* IMX132 registers */
@@ -31,7 +31,6 @@
 
 #define NUM_OF_FRAME_LEN_REG		2
 #define NUM_OF_COARSE_TIME_REG		2
-#define NUM_OF_SENSOR_ID_SPECIFIC_REG	8
 struct imx132_mode {
 	int xres;
 	int yres;
@@ -47,11 +46,6 @@ struct imx132_ae {
 	__u8  coarse_time_enable;
 	__s32 gain;
 	__u8  gain_enable;
-};
-
-struct imx132_sensordata {
-	__u32 fuse_id_size;
-	__u8  fuse_id[16];
 };
 
 #ifdef __KERNEL__

@@ -22,6 +22,7 @@
 #include <linux/module.h>
 
 #include <media/ov2710.h>
+#include <media/nvc.h>
 
 #define SIZEOF_I2C_TRANSBUF 32
 
@@ -35,7 +36,14 @@ struct ov2710_info {
 	struct i2c_client *i2c_client;
 	struct ov2710_platform_data *pdata;
 	u8 i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
+	struct nvc_fuseid fuse_id;
 };
+
+#define OV2710_FUSE_ID_SIZE 5
+
+#define OV2710_FUSE_ID_PROGRAM_ENABLE 0
+#define OV2710_FUSE_ID_PROGRAM_TARGET (0x3d00 + 0)
+#define OV2710_FUSE_ID_PROGRAM_VALUE  0x00
 
 #define OV2710_TABLE_WAIT_MS 0
 #define OV2710_TABLE_END 1
@@ -618,6 +626,55 @@ static int ov2710_get_status(struct ov2710_info *info, u8 *status)
 }
 
 
+static int ov2710_get_fuse_id(struct ov2710_info *info)
+{
+	int err, i;
+
+#if OV2710_FUSE_ID_PROGRAM_ENABLE
+/* Program the OTP fuse id memory on the sensor.
+ * NOTE: This cannot be reversed.
+ */
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x00);
+	for (i = 0; i < 16; i++)
+		err = ov2710_write_reg(info->i2c_client, 0x3d00 + i, 0x00);
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x01);
+	msleep(20);
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x00);
+	msleep(20);
+	for (i = 0; i < 16; i++)
+		ov2710_read_reg(info->i2c_client,
+			0x3d00 + i,
+			&(info->fuse_id.data[i]));
+	pr_info("ov2710: fuse id: program reg 0x%x to 0x%x\n",
+			OV2710_FUSE_ID_PROGRAM_TARGET,
+			OV2710_FUSE_ID_PROGRAM_VALUE);
+	err = ov2710_write_reg(info->i2c_client,
+			OV2710_FUSE_ID_PROGRAM_TARGET,
+			OV2710_FUSE_ID_PROGRAM_VALUE);
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x02);
+	msleep(20);
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x03);
+#endif
+
+	if (info->fuse_id.size)
+		return 0;
+
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x01);
+	err = ov2710_write_reg(info->i2c_client, 0x3d10, 0x00);
+
+	for (i = 0; i < OV2710_FUSE_ID_SIZE; i++) {
+		err |= ov2710_read_reg(info->i2c_client,
+				0x3d00 + i,
+				&(info->fuse_id.data[i]));
+	}
+
+	if (!err)
+		info->fuse_id.size = i;
+
+	return err;
+}
+
+
 static long ov2710_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
@@ -662,6 +719,22 @@ static long ov2710_ioctl(struct file *file,
 			return err;
 		if (copy_to_user((void __user *)arg, &status,
 				 2)) {
+			return -EFAULT;
+		}
+		return 0;
+	}
+	case OV2710_IOCTL_GET_FUSEID:
+	{
+		err = ov2710_get_fuse_id(info);
+		if (err) {
+			pr_err("%s %d %d\n", __func__, __LINE__, err);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			pr_err("%s: %d: fail copy fuse id to user space\n",
+				__func__, __LINE__);
 			return -EFAULT;
 		}
 		return 0;

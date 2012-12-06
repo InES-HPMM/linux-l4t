@@ -1,7 +1,7 @@
 /*
  * ov9726.c - ov9726 sensor driver
  *
- * Copyright (c) 2011, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011 - 2013, NVIDIA, All Rights Reserved.
  *
  * Contributors:
  *	  Charlie Huang <chahuang@nvidia.com>
@@ -25,6 +25,9 @@
 #include <linux/module.h>
 
 #include <media/ov9726.h>
+#include <media/nvc.h>
+
+#define OV9726_FUSE_ID_SIZE	5
 
 struct ov9726_power_rail {
 	struct regulator *sen_1v8_reg;
@@ -39,6 +42,7 @@ struct ov9726_devinfo {
 	atomic_t			in_use;
 	__u32				mode;
 	struct ov9726_reg		grphold_temp[10];
+	struct nvc_fuseid		fuse_id;
 };
 
 static struct ov9726_reg mode_1280x720[] = {
@@ -699,6 +703,34 @@ ov9726_set_mode_exit:
 	return err;
 }
 
+static int ov9726_get_fuse_id(struct ov9726_devinfo *dev)
+{
+	int ret, i;
+	__u8 bak;
+	struct i2c_client *i2c_client = dev->i2c_client;
+
+	if (dev->fuse_id.size)
+		return 0;
+
+	ret = ov9726_write_reg8(i2c_client, 0x3d21, 0x01);
+
+	bak = 0x80;
+	while (bak & 0x80)
+		ret |= ov9726_read_reg8(i2c_client, 0x3d21, &bak);
+
+	for (i = 0; i < OV9726_FUSE_ID_SIZE; i++) {
+		ret |= ov9726_read_reg8(i2c_client,
+				0x3d00 + i,
+				&dev->fuse_id.data[i]);
+	}
+	ret = ov9726_write_reg8(i2c_client, 0x3d21, 0x00);
+
+	if (!ret)
+		dev->fuse_id.size = i;
+
+	return ret;
+}
+
 static long
 ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -753,6 +785,22 @@ ov9726_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				err = -EFAULT;
 		}
 		break;
+	}
+	case OV9726_IOCTL_GET_FUSEID:
+	{
+		err = ov9726_get_fuse_id(dev);
+		if (err) {
+			pr_err("%s %d %d\n", __func__, __LINE__, err);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&dev->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			pr_err("%s: %d: fail copy fuse id to user space\n",
+				__func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
 	}
 	default:
 		err = -EINVAL;

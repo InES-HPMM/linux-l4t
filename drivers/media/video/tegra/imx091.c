@@ -59,6 +59,7 @@
 #define IMX091_LENS_VIEW_ANGLE_V	60400 /* / _INT2FLOAT_DIVISOR */
 #define IMX091_WAIT_MS 3
 #define IMX091_I2C_TABLE_MAX_ENTRIES	400
+#define IMX091_FUSE_ID_SIZE		8
 
 static u16 imx091_ids[] = {
 	0x0091,
@@ -104,6 +105,7 @@ struct imx091_info {
 #ifdef CONFIG_DEBUG_FS
 	struct nvc_debugfs_info debugfs_info;
 #endif
+	struct nvc_fuseid fuse_id;
 };
 
 struct imx091_reg {
@@ -2533,6 +2535,27 @@ static int imx091_param_wr(struct imx091_info *info, unsigned long arg)
 	}
 }
 
+static int imx091_get_fuse_id(struct imx091_info *info)
+{
+	int ret, i;
+
+	if (info->fuse_id.size)
+		return 0;
+
+	ret = imx091_i2c_wr8(info->i2c_client, 0x34C9, 0x10);
+
+	for (i = 0; i < IMX091_FUSE_ID_SIZE ; i++) {
+		ret |= imx091_i2c_rd8(info->i2c_client,
+				0x3580 + i,
+				&info->fuse_id.data[i]);
+	}
+
+	if (!ret)
+		info->fuse_id.size = i;
+
+	return ret;
+}
+
 static long imx091_ioctl(struct file *file,
 			 unsigned int cmd,
 			 unsigned long arg)
@@ -2549,6 +2572,22 @@ static long imx091_ioctl(struct file *file,
 	int err;
 
 	switch (cmd) {
+	case NVC_IOCTL_FUSE_ID:
+		err = imx091_get_fuse_id(info);
+
+		if (err) {
+			pr_err("%s %d %d\n", __func__, __LINE__, err);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			pr_err("%s: %d: fail copy fuse id to user space\n",
+				__func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
+
 	case NVC_IOCTL_PARAM_WR:
 		err = imx091_param_wr(info, arg);
 		return err;

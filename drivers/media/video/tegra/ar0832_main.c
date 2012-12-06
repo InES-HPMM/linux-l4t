@@ -1,7 +1,7 @@
 /*
 * ar0832_main.c - Aptina AR0832 8M Bayer type sensor driver
 *
-* Copyright (c) 2011, NVIDIA, All Rights Reserved.
+* Copyright (c) 2011 - 2013, NVIDIA, All Rights Reserved.
 *
 * This file is licensed under the terms of the GNU General Public License
 * version 2. This program is licensed "as is" without any warranty of any
@@ -24,13 +24,14 @@
 #include <linux/module.h>
 
 #include <media/ar0832_main.h>
-
+#include <media/nvc.h>
 
 #define POS_ACTUAL_LOW			0
 #define POS_ACTUAL_HIGH			255
-#define SETTLE_TIME				100
-#define AR0832_SLEW_RATE_DISABLED  0
-#define AR0832_SLEW_RATE_SLOWEST   7
+#define SETTLE_TIME			100
+#define AR0832_SLEW_RATE_DISABLED	0
+#define AR0832_SLEW_RATE_SLOWEST	7
+#define AR0832_FUSE_ID_SIZE		16
 
 
 struct ar0832_sensor_info {
@@ -63,6 +64,7 @@ struct ar0832_dev {
 	int is_stereo;
 	u16 sensor_id_data;
 	struct dentry *debugdir;
+	struct nvc_fuseid fuse_id;
 };
 
 #define UpperByte16to8(x) ((u8)((x & 0xFF00) >> 8))
@@ -2116,6 +2118,63 @@ static long ar0832_set_focuser_capabilities(struct ar0832_dev *dev,
 	return 0;
 }
 
+static int ar0832_get_fuseid(struct ar0832_dev *dev)
+{
+	int ret = 0;
+	int i, timeout;
+	__u16 bak;
+	struct i2c_client *i2c_client = dev->i2c_client;
+
+	if (dev->fuse_id.size)
+		return 0;
+
+	ret = ar0832_write_reg16(i2c_client, 0x3052, 0x2704);
+	ret |= ar0832_read_reg16(i2c_client, 0x3054, &bak);
+	ret |= ar0832_write_reg16(i2c_client, 0x3054, bak | 0x0100);
+	ret |= ar0832_read_reg16(i2c_client, 0x3050, &bak);
+	ret |= ar0832_write_reg16(i2c_client, 0x3050, bak & 0x00ff);
+	ret |= ar0832_write_reg16(i2c_client, 0x3054, 0x0008);
+	ret |= ar0832_read_reg16(i2c_client, 0x304a, &bak);
+	ret |= ar0832_write_reg16(i2c_client, 0x304a, bak | 0x0010);
+
+	timeout = 0;
+	while (!(bak & 0x0020)) {
+		ret |= ar0832_read_reg16(i2c_client, 0x304a, &bak);
+		timeout += 1;
+		if (timeout >= 100) {
+			pr_info("ar0832: fuse ID read timed out\n");
+			return -EFAULT;
+		}
+	}
+
+	if (bak & 0x0040)
+		pr_info("ar0832: fuse ID read successfully\n");
+	else {
+		pr_info("ar0832: fuse ID read failed\n");
+		return -EFAULT;
+	}
+
+	/* OTP memory on ar0832 is larger than we are checking - may
+	 * may want to change which bytes are read in the future
+	 */
+	dev->fuse_id.size = AR0832_FUSE_ID_SIZE;
+	for (i = 0; i < 8; i++) {
+		if (i * 2 < dev->fuse_id.size) {
+			ret |= ar0832_read_reg16(i2c_client, 0x3800 + i, &bak);
+			dev->fuse_id.data[i * 2] =
+					(__u8)((bak >> 8) & 0x00ff);
+			if (i * 2 + 1 < dev->fuse_id.size)
+				dev->fuse_id.data[i * 2 + 1] =
+						(__u8)(bak & 0x00ff);
+		}
+	}
+
+	if (ret)
+		dev->fuse_id.size = 0;
+
+	return ret;
+}
+
 static long ar0832_ioctl(struct file *file,
 	unsigned int cmd, unsigned long arg)
 {
@@ -2282,6 +2341,22 @@ static long ar0832_ioctl(struct file *file,
 			return -EFAULT;
 		}
 		return 0;
+
+	case AR0832_IOCTL_GET_FUSEID:
+	{
+		err = ar0832_get_fuseid(dev);
+		if (err) {
+			pr_err("%s %d %d\n", __func__, __LINE__, err);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&dev->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			pr_info("%s %d\n", __func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
+	}
 
 	default:
 		dev_err(&i2c_client->dev, "(error) %s NONE IOCTL\n",
