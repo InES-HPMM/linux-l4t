@@ -1308,6 +1308,7 @@ int xhci_urb_enqueue(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_flags)
 
 	urb_priv->length = size;
 	urb_priv->td_cnt = 0;
+	urb_priv->finishing_short_td = false;
 	urb->hcpriv = urb_priv;
 
 	if (usb_endpoint_xfer_control(&urb->ep->desc)) {
