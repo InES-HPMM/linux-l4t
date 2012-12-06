@@ -60,6 +60,7 @@
 #define GPIO_HP_MUTE    BIT(1)
 #define GPIO_INT_MIC_EN BIT(2)
 #define GPIO_EXT_MIC_EN BIT(3)
+#define GPIO_HP_DET     BIT(4)
 
 #define DAI_LINK_HIFI		0
 #define DAI_LINK_SPDIF		1
@@ -94,7 +95,9 @@ struct tegra_aic326x {
 	struct regulator *dmic_reg;
 	struct regulator *dmic_1v8_reg;
 	struct regulator *hmic_reg;
+	enum snd_soc_bias_level bias_level;
 #endif
+	int clock_enabled;
 };
 
 static int tegra_aic326x_call_mode_info(struct snd_kcontrol *kcontrol,
@@ -893,6 +896,14 @@ static struct switch_dev aic326x_wired_switch_dev = {
 	.name = "h2w",
 };
 
+/* Headset jack detection gpios */
+static struct snd_soc_jack_gpio tegra_aic326x_hp_jack_gpio = {
+	.name = "headphone detect",
+	.report = SND_JACK_HEADPHONE,
+	.debounce_time = 150,
+	.invert = 1,
+};
+
 /* These values are copied from WiredAccessoryObserver */
 enum headset_state {
 	BIT_NO_HEADSET = 0,
@@ -1144,14 +1155,26 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
-#ifdef CONFIG_SWITCH
-	snd_soc_jack_notifier_register(&tegra_aic326x_hp_jack,
-		&aic326x_headset_switch_nb);
-#else /*gpio based headset detection*/
+	if (gpio_is_valid(pdata->gpio_hp_det)) {
+		/* Headphone detection */
+		tegra_aic326x_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+		snd_soc_jack_new(codec, "Headphone Jack",
+				SND_JACK_HEADSET, &tegra_aic326x_hp_jack);
+
+#ifndef CONFIG_SWITCH
 	snd_soc_jack_add_pins(&tegra_aic326x_hp_jack,
 		ARRAY_SIZE(tegra_aic326x_hp_jack_pins),
 		tegra_aic326x_hp_jack_pins);
+#else
+		snd_soc_jack_notifier_register(&tegra_aic326x_hp_jack,
+					&aic326x_headset_switch_nb);
 #endif
+		snd_soc_jack_add_gpios(&tegra_aic326x_hp_jack,
+					1,
+					&tegra_aic326x_hp_jack_gpio);
+
+		machine->gpio_requested |= GPIO_HP_DET;
+	}
 
 	/* update jack status during boot */
 	aic3262_hs_jack_detect(codec, &tegra_aic326x_hp_jack,
@@ -1237,11 +1260,87 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 		},
 };
 
+static int tegra_aic326x_suspend_post(struct snd_soc_card *card)
+{
+	struct snd_soc_jack_gpio *gpio = &tegra_aic326x_hp_jack_gpio;
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+
+	if (gpio_is_valid(gpio->gpio))
+		disable_irq(gpio_to_irq(gpio->gpio));
+
+	if (machine->clock_enabled) {
+		machine->clock_enabled = 0;
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
+
+
+	return 0;
+}
+
+static int tegra_aic326x_resume_pre(struct snd_soc_card *card)
+{
+	int val;
+	struct snd_soc_jack_gpio *gpio = &tegra_aic326x_hp_jack_gpio;
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+
+	if (gpio_is_valid(gpio->gpio)) {
+		val = gpio_get_value(gpio->gpio);
+		val = gpio->invert ? !val : val;
+		snd_soc_jack_report(gpio->jack, val, gpio->report);
+		enable_irq(gpio_to_irq(gpio->gpio));
+	}
+
+	if (!machine->clock_enabled) {
+		machine->clock_enabled = 1;
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+	}
+
+	return 0;
+}
+
+
+static int tegra_aic326x_set_bias_level(struct snd_soc_card *card,
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
+{
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level == SND_SOC_BIAS_OFF &&
+		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
+		machine->clock_enabled = 1;
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+		machine->bias_level = level;
+	}
+
+	return 0;
+}
+
+static int tegra_aic326x_set_bias_level_post(struct snd_soc_card *card,
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
+{
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+
+	if (machine->bias_level != SND_SOC_BIAS_OFF &&
+		level == SND_SOC_BIAS_OFF && machine->clock_enabled) {
+		machine->clock_enabled = 0;
+		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
+
+	machine->bias_level = level;
+
+	return 0 ;
+}
+
+
+
 static struct snd_soc_card snd_soc_tegra_aic326x = {
 	.name = "tegra-aic326x",
 	.owner = THIS_MODULE,
 	.dai_link = tegra_aic326x_dai,
 	.num_links = ARRAY_SIZE(tegra_aic326x_dai),
+	.set_bias_level = tegra_aic326x_set_bias_level,
+	.set_bias_level_post = tegra_aic326x_set_bias_level_post,
+	.suspend_post = tegra_aic326x_suspend_post,
+	.resume_pre = tegra_aic326x_resume_pre,
 };
 
 static int tegra_aic326x_driver_probe(struct platform_device *pdev)
@@ -1380,6 +1479,11 @@ static int tegra_aic326x_driver_remove(struct platform_device *pdev)
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (machine->gpio_requested & GPIO_HP_DET)
+		snd_soc_jack_free_gpios(&tegra_aic326x_hp_jack,
+					1,
+					&tegra_aic326x_hp_jack_gpio);
 
 	snd_soc_unregister_card(card);
 
