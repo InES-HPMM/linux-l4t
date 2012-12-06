@@ -239,6 +239,12 @@ static void device_add_handler(struct tegra_usb_modem *modem,
 			pr_info("enable autosuspend for %s %s\n",
 				udev->manufacturer, udev->product);
 		}
+
+		/* allow the device to wake up the system */
+		if (udev->actconfig->desc.bmAttributes &
+		    USB_CONFIG_ATT_WAKEUP)
+			device_set_wakeup_enable(&udev->dev, true);
+
 #endif
 	}
 }
