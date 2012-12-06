@@ -5047,6 +5047,7 @@ static struct clk tegra_pll_ref = {
 };
 
 static struct clk_pll_freq_table tegra_pll_c_freq_table[] = {
+	{ 12000000, 624000000, 104, 1, 2},
 	{ 12000000, 600000000, 100, 1, 2},
 	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
 	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
