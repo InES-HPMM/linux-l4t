@@ -163,6 +163,9 @@ obj-${CONFIG_MACH_DALMORE}              += board-dalmore-panel.o
 obj-${CONFIG_MACH_DALMORE}              += board-roth-panel.o
 obj-${CONFIG_MACH_DALMORE}              += board-dalmore-kbc.o
 obj-${CONFIG_MACH_DALMORE}          	+= board-dalmore-sensors.o
+obj-${CONFIG_MACH_DALMORE}              += panel-a-1080p-11-6.o
+obj-${CONFIG_MACH_DALMORE}              += panel-p-wuxga-10-1.o
+obj-${CONFIG_MACH_DALMORE}              += panel-s-wqxga-10-1.o
 
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o

@@ -18,7 +18,11 @@
 
 #define    BOARD_E1582    0x062e
 #define    BOARD_E1605    0x0645
+
+#define    BOARD_E1627    0x065b
 #define    BOARD_E1639    0x0667
+#define    BOARD_E1631    0x065f
+
 
 struct tegra_panel {
 	void (*init_sd_settings)(struct tegra_dc_sd_settings *);
@@ -28,6 +32,7 @@ struct tegra_panel {
 	void (*set_disp_device)(struct platform_device *);
 	void (*init_resources)(struct resource *, int n_resources);
 	int (*register_bl_dev)(void);
+	int (*register_i2c_bridge)(void);
 
 };
 
@@ -35,3 +40,7 @@ extern atomic_t sd_brightness;
 extern struct tegra_panel dsi_l_720p_5;
 extern struct tegra_panel dsi_j_720p_4_7;
 extern struct tegra_panel dsi_s_1080p_5;
+extern struct tegra_panel dsi_p_wuxga_10_1;
+extern struct tegra_panel dsi_a_1080p_11_6;
+extern struct tegra_panel dsi_s_wqxga_10_1;
+
