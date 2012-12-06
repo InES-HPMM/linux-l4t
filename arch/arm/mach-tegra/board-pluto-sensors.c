@@ -276,8 +276,8 @@ static struct nct1008_platform_data pluto_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
-	.offset = 80, /* 4 * 20C. Bug 844025 - 1C for device accuracies */
-	.shutdown_ext_limit = 90, /* C */
+	.offset = 0,
+	.shutdown_ext_limit = 85, /* C */
 	.shutdown_local_limit = 120, /* C */
 
 	.passive_delay = 2000,
@@ -287,7 +287,7 @@ static struct nct1008_platform_data pluto_nct1008_pdata = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "pluto-nct",
-			.trip_temp = 80000,
+			.trip_temp = 75000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
