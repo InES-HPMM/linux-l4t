@@ -594,7 +594,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 {
 	u32 reg;
 	unsigned int remain;
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+#ifdef CONFIG_CACHE_L2X0
 	pgd_t *pgd;
 #endif
 
@@ -668,7 +668,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+#ifdef CONFIG_CACHE_L2X0
 	flush_cache_all();
 	/*
 	 * No need to flush complete L2. Cleaning kernel and IO mappings
