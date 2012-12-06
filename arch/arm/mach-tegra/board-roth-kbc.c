@@ -56,6 +56,7 @@
 		.debounce_interval = _deb,	\
 	}
 
+/* Make KEY_POWER to index 0 only */
 static struct gpio_keys_button roth_p2454_keys[] = {
 	[0] = GPIO_KEY(KEY_POWER, PR0, 1),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
@@ -89,6 +90,13 @@ static struct platform_device roth_p2454_keys_device = {
 
 int __init roth_kbc_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	/* Rev A01 and onward have the POWER key in the KBC-COL0 */
+	if (board_info.major_revision > BOARD_FAB_A00)
+		roth_p2454_keys[0].gpio = TEGRA_GPIO_PQ0;
+
 	platform_device_register(&roth_p2454_keys_device);
 
 	return 0;
