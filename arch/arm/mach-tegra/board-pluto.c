@@ -393,12 +393,15 @@ static struct tegra_asoc_platform_data pluto_audio_pdata = {
 		.sample_size	= 16,
 		.rate		= 16000,
 		.channels	= 2,
+		.bit_clk	= 1024000,
 	},
 	.i2s_param[BT_SCO]	= {
 		.audio_port_id	= 3,
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
 		.sample_size	= 16,
+		.channels	= 1,
+		.bit_clk	= 512000,
 	},
 	.i2s_param[VOICE_CODEC]	= {
 		.audio_port_id	= 0,
