@@ -280,11 +280,10 @@
 #define  PCIE_CONF_BUS(b)					((b) << 16)
 #define  PCIE_CONF_DEV(d)					((d) << 11)
 #define  PCIE_CONF_FUNC(f)					((f) << 8)
+/* bits 0:7 + bits 24:27 is used to address extended config space */
 #define  PCIE_CONF_REG(r)	\
-	(((r) & ~0x3) | (((r) < 256) ? PCIE_CFG_OFF : PCIE_EXT_CFG_OFF))
-
-#define PCIE_CTRL_REGS		7
-#define COMBINE_PCIE_PCIX_SPACE	2
+	(((((r) & 0xf00) << 16) | (((r) & 0xff) & ~3)) +	\
+		(((r) < 256) ? PCIE_CFG_OFF : PCIE_EXT_CFG_OFF))
 
 struct tegra_pcie_port {
 	int			index;
@@ -397,6 +396,9 @@ static int tegra_pcie_read_conf(struct pci_bus *bus, unsigned int devfn,
 
 		addr = pp->base + (where & ~0x3);
 	} else {
+		/* Extended config space access not supported */
+		if (where >= 0x100)
+			return PCIBIOS_BAD_REGISTER_NUMBER;
 		addr = tegra_pcie.regs + (PCIE_CONF_BUS(bus->number) +
 					  PCIE_CONF_DEV(PCI_SLOT(devfn)) +
 					  PCIE_CONF_FUNC(PCI_FUNC(devfn)) +
@@ -445,6 +447,9 @@ static int tegra_pcie_write_conf(struct pci_bus *bus, unsigned int devfn,
 
 		addr = pp->base + (where & ~0x3);
 	} else {
+		/* Extended config space access not supported */
+		if (where >= 0x100)
+			return PCIBIOS_BAD_REGISTER_NUMBER;
 		addr = tegra_pcie.regs + (PCIE_CONF_BUS(bus->number) +
 					  PCIE_CONF_DEV(PCI_SLOT(devfn)) +
 					  PCIE_CONF_FUNC(PCI_FUNC(devfn)) +
