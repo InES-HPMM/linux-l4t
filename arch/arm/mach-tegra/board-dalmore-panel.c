@@ -324,12 +324,7 @@ const u32 __maybe_unused panasonic_1920_1200_vnb_syne[NUMOF_PKT_SEQ] = {
 };
 
 static struct tegra_dsi_out dalmore_dsi = {
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.n_data_lanes = 2,
-	.controller_vs = DSI_VS_0,
-#else
 	.controller_vs = DSI_VS_1,
-#endif
 #if PANEL_11_6_AUO_1920_1080
 	.dsi2edp_bridge_enable = true,
 #endif
@@ -349,12 +344,8 @@ static struct tegra_dsi_out dalmore_dsi = {
 
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-#else
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
-#endif
 	.dsi_init_cmd = dsi_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
 #if PANEL_10_1_PANASONIC_1920_1200

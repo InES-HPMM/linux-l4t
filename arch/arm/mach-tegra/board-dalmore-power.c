@@ -882,15 +882,9 @@ FIXED_REG(4,	vpp_fuse,	vpp_fuse,
 	max77663_rails(sd2),	0,	0,
 	TEGRA_GPIO_PX4,	false,	true,	0,	3300);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 FIXED_REG(5,	usb1_vbus,	usb1_vbus,
 	tps65090_rails(DCDC1),	0,	0,
 	TEGRA_GPIO_PN4,	true,	true,	0,	5000);
-#else
-FIXED_REG(5,	usb1_vbus,	usb1_vbus,
-	tps65090_rails(DCDC1),	0,	0,
-	TEGRA_GPIO_PR3,	true,	true,	0,	5000);
-#endif
 
 FIXED_REG(6,	usb3_vbus,	usb3_vbus,
 	tps65090_rails(DCDC1),	0,	0,
@@ -945,16 +939,7 @@ int __init dalmore_palmas_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	int ret;
 
-	ret = gpio_request(TEGRA_GPIO_PCC3, "pmic_nreswarm");
-	if (ret < 0)
-		pr_err("%s: gpio_request failed for gpio %d\n",
-				__func__, TEGRA_GPIO_PCC3);
-	else
-		gpio_direction_output(TEGRA_GPIO_PCC3, 1);
-#endif
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
 	 * interrupts when HIGH.

@@ -550,7 +550,6 @@ static int dalmore_nct1008_init(void)
 	int nct1008_port = -1;
 	int ret = 0;
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	if ((board_info.board_id == BOARD_E1612) ||
 	    (board_info.board_id == BOARD_E1641) ||
 	    (board_info.board_id == BOARD_E1613) ||
@@ -569,10 +568,6 @@ static int dalmore_nct1008_init(void)
 			" for unknown dalmore board id E%d\n",
 			board_info.board_id);
 	}
-#else
-	/* dalmore + AP30 interposer has SPI2_CS0 gpio */
-	nct1008_port = TEGRA_GPIO_PX3;
-#endif
 
 	if (nct1008_port >= 0) {
 #ifdef CONFIG_TEGRA_EDP_LIMITS
