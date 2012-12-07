@@ -43,7 +43,7 @@ static void flowctrl_update(u8 offset, u32 value)
 {
 	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
 
-	writel(value, addr);
+	writel_relaxed(value, addr);
 
 	/* ensure the update has reached the flow controller */
 	wmb();

@@ -334,7 +334,7 @@ static u32 mipi_cal_read(unsigned long reg)
 
 static void mipi_cal_write(u32 val, unsigned long reg)
 {
-	writel(val, mipi_cal + reg);
+	writel_relaxed(val, mipi_cal + reg);
 }
 
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
@@ -352,7 +352,7 @@ static u32 pmc_read(unsigned long reg)
 
 static void pmc_write(u32 val, unsigned long reg)
 {
-	writel(val, pmc + reg);
+	writel_relaxed(val, pmc + reg);
 }
 
 static void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
@@ -364,7 +364,7 @@ static u32 mc_read(unsigned long reg)
 
 static void mc_write(u32 val, unsigned long reg)
 {
-	writel(val, mc + reg);
+	writel_relaxed(val, mc + reg);
 }
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && \
