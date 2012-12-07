@@ -58,10 +58,9 @@ enum {
 };
 
 #define EMC_CLK_DIV_SHIFT		0
-#define EMC_CLK_DIV_MAX_VALUE		0xFF
 #define EMC_CLK_DIV_MASK		(0xFF << EMC_CLK_DIV_SHIFT)
 #define EMC_CLK_SOURCE_SHIFT		29
-#define EMC_CLK_SOURCE_MAX_VALUE	3
+#define EMC_CLK_SOURCE_MASK		(0x7 << EMC_CLK_SOURCE_SHIFT)
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
 
@@ -850,71 +849,74 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	return false;
 }
 
-/* FIXME: take advantage of table->src_sel_reg */
-static int find_matching_input(const struct tegra11_emc_table *table,
-			struct clk *pll_c, struct emc_sel *emc_clk_sel)
+static inline const struct clk_mux_sel *get_emc_input(u32 val)
 {
-	u32 div_value = 0;
-	unsigned long input_rate = 0;
-	unsigned long table_rate = table->rate * 1000; /* table rate in kHz */
-	struct clk *src = tegra_get_clock_by_name(table->src_name);
 	const struct clk_mux_sel *sel;
 
 	for (sel = emc->inputs; sel->input != NULL; sel++) {
-		if (sel->input != src)
-			continue;
-		/*
-		 * PLLC is a scalable source. For rates below PLL_C_DIRECT_FLOOR
-		 * configure PLLC at double rate and set 1:2 divider, otherwise
-		 * configure PLLC at target rate with divider 1:1.
-		 */
-		if (src == pll_c) {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-			if (table_rate < PLL_C_DIRECT_FLOOR) {
-				input_rate = 2 * table_rate;
-				div_value = 2;
-			} else {
-				input_rate = table_rate;
-				div_value = 0;
-			}
+		if (sel->value == val)
 			break;
-#else
-			continue;	/* pll_c is used for cbus - skip */
-#endif
-		}
-
-		/*
-		 * All other clock sources are fixed rate sources, and must
-		 * run at rate that is an exact multiple of the target.
-		 */
-		input_rate = clk_get_rate(src);
-
-		if ((input_rate >= table_rate) &&
-		     (input_rate % table_rate == 0)) {
-			div_value = 2 * input_rate / table_rate - 2;
-			break;
-		}
 	}
+	return sel;
+}
 
-	if (!sel->input || (sel->value > EMC_CLK_SOURCE_MAX_VALUE) ||
-	    (div_value > EMC_CLK_DIV_MAX_VALUE)) {
+static int find_matching_input(const struct tegra11_emc_table *table,
+			struct clk *pll_c, struct emc_sel *emc_clk_sel)
+{
+	u32 div_value = (table->src_sel_reg & EMC_CLK_DIV_MASK) >>
+		EMC_CLK_DIV_SHIFT;
+	u32 src_value = (table->src_sel_reg & EMC_CLK_SOURCE_MASK) >>
+		EMC_CLK_SOURCE_SHIFT;
+	unsigned long input_rate = 0;
+	unsigned long table_rate = table->rate * 1000; /* table rate in kHz */
+	const struct clk_mux_sel *sel = get_emc_input(src_value);
+
+	if (div_value & 0x1) {
+		pr_warn("tegra: invalid odd divider for EMC rate %lu\n",
+			table_rate);
+		return -EINVAL;
+	}
+	if (!sel->input) {
 		pr_warn("tegra: no matching input found for EMC rate %lu\n",
 			table_rate);
 		return -EINVAL;
 	}
+	if (div_value && (table->src_sel_reg & EMC_CLK_LOW_JITTER_ENABLE)) {
+		pr_warn("tegra: invalid LJ path for EMC rate %lu\n",
+			table_rate);
+		return -EINVAL;
+	}
+	if (!(table->src_sel_reg & EMC_CLK_MC_SAME_FREQ) !=
+	    !(MC_EMEM_ARB_MISC0_EMC_SAME_FREQ &
+	      table->burst_regs[MC_EMEM_ARB_MISC0_INDEX])) {
+		pr_warn("tegra: ambiguous EMC to MC ratio for EMC rate %lu\n",
+			table_rate);
+		return -EINVAL;
+	}
 
-	emc_clk_sel->input = sel->input;
-	emc_clk_sel->input_rate = input_rate;
+	if (sel->input == pll_c) {
+		/* PLLC is a scalable source */
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+		input_rate = table_rate * (1 + div_value / 2);
+#else
+		pr_warn("tegra: %s cannot be used as EMC rate %lu source\n",
+			sel->input->name, table_rate);
+		return -EINVAL;
+#endif
+	} else {
+		/* all other sources are fixed, must exactly match the rate */
+		input_rate = clk_get_rate(sel->input);
+		if (input_rate != (table_rate * (1 + div_value / 2))) {
+			pr_warn("tegra: %s rate %lu does not match EMC rate %lu\n",
+				sel->input->name, input_rate, table_rate);
+			return -EINVAL;
+		}
+	}
 
 	/* Get ready emc clock selection settings for this table rate */
-	emc_clk_sel->value = sel->value << EMC_CLK_SOURCE_SHIFT;
-	emc_clk_sel->value |= (div_value << EMC_CLK_DIV_SHIFT);
-	if ((div_value == 0) && (emc_clk_sel->input == emc->parent))
-		emc_clk_sel->value |= EMC_CLK_LOW_JITTER_ENABLE;
-
-	if (MC_EMEM_ARB_MISC0_EMC_SAME_FREQ &
-	    table->burst_regs[MC_EMEM_ARB_MISC0_INDEX])
-		emc_clk_sel->value |= EMC_CLK_MC_SAME_FREQ;
+	emc_clk_sel->input = sel->input;
+	emc_clk_sel->input_rate = input_rate;
+	emc_clk_sel->value = table->src_sel_reg;
 
 	return 0;
 }
