@@ -616,6 +616,7 @@ struct rm_spi_ts_platform_data rm31080ts_roth_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_D010,
 	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {

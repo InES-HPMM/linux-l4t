@@ -1256,6 +1256,7 @@ struct rm_spi_ts_platform_data rm31080ts_pluto_data = {
 	.config = 0,
 	.platform_id = RM_PLATFORM_P005,
 	.name_of_clock = "clk_out_2",
+	.name_of_clock_con = "extern2",
 };
 
 static struct tegra_spi_device_controller_data dev_cdata = {
@@ -1278,8 +1279,6 @@ struct spi_board_info rm31080a_pluto_spi_board[1] = {
 static int __init pluto_touch_init(void)
 {
 	tegra_clk_init_from_table(touch_clk_init_table);
-	clk_enable(tegra_get_clock_by_name("clk_out_2"));
-	mdelay(20);
 	rm31080a_pluto_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
 				TOUCH_GPIO_RST_RAYDIUM_SPI,
