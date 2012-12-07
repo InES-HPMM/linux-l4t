@@ -282,6 +282,9 @@
 #define   UHSIC_RPU_DATA			(1 << 11)
 #define   UHSIC_RPU_STROBE			(1 << 12)
 
+#define UHSIC_SPARE_CFG0 			0xc2c
+#define   FORCE_BK_ON				(1 << 12)
+
 #define UHSIC_STAT_CFG0			0xc28
 #define   UHSIC_CONNECT_DETECT		(1 << 0)
 
@@ -2253,6 +2256,11 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UHSIC_PD_TRK;
 	writel(val, base + UHSIC_PADS_CFG1);
 
+	/* Enable bus keepers always */
+	val = readl(base + UHSIC_SPARE_CFG0);
+	val |= FORCE_BK_ON;
+	writel(val, base + UHSIC_SPARE_CFG0);
+
 	/*SUSP_CTRL has to be toggled to enable host PHY clock */
 	val = readl(base + USB_SUSP_CTRL);
 	val |= USB_SUSP_CLR;
@@ -2337,7 +2345,7 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 
-	/* Remove power downs for HSIC from PADS CFG1 register */
+	/* Enable power downs for HSIC from PADS CFG1 register */
 	val = readl(base + UHSIC_PADS_CFG1);
 	val |= (UHSIC_PD_BG | UHSIC_PD_TRK |
 			UHSIC_PD_ZI | UHSIC_PD_TX);
