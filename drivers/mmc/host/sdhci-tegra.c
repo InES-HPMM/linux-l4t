@@ -812,9 +812,12 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		if (rc) {
 			dev_err(mmc_dev(sdhci->mmc), "switching to 1.8V"
 			"failed . Switching back to 3.3V\n");
-			regulator_set_voltage(tegra_host->vdd_io_reg,
+			rc = regulator_set_voltage(tegra_host->vdd_io_reg,
 				SDHOST_HIGH_VOLT_MIN,
 				SDHOST_HIGH_VOLT_MAX);
+			if (rc)
+				dev_err(mmc_dev(sdhci->mmc),
+				"switching to 3.3V also failed\n");
 		}
 	}
 
