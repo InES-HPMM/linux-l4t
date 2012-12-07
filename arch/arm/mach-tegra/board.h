@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -97,10 +97,6 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);
-#if defined(CONFIG_TEGRA_BASEBAND)
-void __init tegra_reserve_shmem(unsigned long priv_size,
-				unsigned long ipc_size);
-#endif
 void __tegra_move_framebuffer(struct platform_device *pdev,
 			      unsigned long to, unsigned long from,
 			      unsigned long size);
@@ -138,8 +134,6 @@ extern unsigned long tegra_carveout_start;
 extern unsigned long tegra_carveout_size;
 extern unsigned long tegra_vpr_start;
 extern unsigned long tegra_vpr_size;
-extern unsigned long tegra_bb_ipc_start;
-extern unsigned long tegra_bb_priv_start;
 extern unsigned long tegra_lp0_vec_start;
 extern unsigned long tegra_lp0_vec_size;
 #ifdef CONFIG_TEGRA_NVDUMPER

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_bb.h
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -18,13 +18,7 @@
 #ifndef __MACH_TEGRA_BB_H
 #define __MACH_TEGRA_BB_H
 
-/* define to enable simulated shared memory on test platform */
-
 struct tegra_bb_platform_data {
-	phys_addr_t ipc_base;
-	size_t ipc_size;
-	phys_addr_t priv_base;
-	size_t priv_size;
 	/* Baseband->AP IRQ */
 	unsigned int bb_irq;
 	void *bb_handle;

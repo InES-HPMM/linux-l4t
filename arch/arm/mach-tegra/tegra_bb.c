@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_bb.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -62,6 +62,20 @@
 #define FLOW_CTLR_IPC_FLOW_IPC_CLR_0 (0x508)
 #define FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT (2)
 #define FLOW_CTLR_IPC_FLOW_IPC_CLR_0_AP2BB_INT0_STS_SHIFT (0)
+
+#define MC_BBC_MEM_REGIONS_0_OFFSET (0xF0)
+
+#define MC_BBC_MEM_REGIONS_0_PRIV_SIZE_MASK  (0x3)
+#define MC_BBC_MEM_REGIONS_0_PRIV_SIZE_SHIFT (0)
+
+#define MC_BBC_MEM_REGIONS_0_PRIV_BASE_MASK  (0x1FF)
+#define MC_BBC_MEM_REGIONS_0_PRIV_BASE_SHIFT (3)
+
+#define MC_BBC_MEM_REGIONS_0_IPC_SIZE_MASK   (0x3)
+#define MC_BBC_MEM_REGIONS_0_IPC_SIZE_SHIFT  (16)
+
+#define MC_BBC_MEM_REGIONS_0_IPC_BASE_MASK   (0x1FF)
+#define MC_BBC_MEM_REGIONS_0_IPC_BASE_SHIFT  (19)
 
 struct tegra_bb {
 	spinlock_t lock;
@@ -274,7 +288,7 @@ static ssize_t show_tegra_bb_retcode(struct device *dev,
 		return 0;
 	}
 
-	retcode = (int *)(bb->mb_virt + TEGRA_BB_REG_RETCODE);
+	retcode = *(int *)((unsigned long)bb->mb_virt + TEGRA_BB_REG_RETCODE);
 	dev_dbg(&pdev->dev, "%s retcode=%d\n", __func__, (int)retcode);
 	return sprintf(buf, "%d\n", (int)retcode);
 }
@@ -535,6 +549,9 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	int ret;
 	struct tegra_bb_platform_data *pdata =
 		pdev->dev.platform_data;
+	void __iomem *tegra_mc = IO_ADDRESS(TEGRA_MC_BASE);
+	unsigned int size, bbc_mem_regions_0;
+
 
 	if (!pdev) {
 		pr_err("%s platform device is NULL!\n", __func__);
@@ -558,14 +575,84 @@ static int tegra_bb_probe(struct platform_device *pdev)
 
 	spin_lock_init(&bb->lock);
 
+	/* Private region */
+	bbc_mem_regions_0 = readl(tegra_mc + MC_BBC_MEM_REGIONS_0_OFFSET);
+
+	pr_debug("%s MC_BBC_MEM_REGIONS_0=0x%x\n", __func__, bbc_mem_regions_0);
+
+	size = (bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_PRIV_SIZE_SHIFT) &
+		MC_BBC_MEM_REGIONS_0_PRIV_SIZE_MASK;
+
+	/* Private */
+	switch (size) {
+	case 0:
+		bb->priv_size = SZ_8M;
+		break;
+	case 1:
+		bb->priv_size = SZ_16M;
+		break;
+	case 2:
+		bb->priv_size = SZ_32M;
+		break;
+	case 3:
+		bb->priv_size = SZ_64M;
+		break;
+	case 7:
+		pr_err("%s no private memory mapped\n", __func__);
+		break;
+	default:
+		pr_err("%s invalid private memory size 0x%x\n", __func__, size);
+		break;
+	}
+
+	bb->priv_phy =
+		((bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_PRIV_BASE_SHIFT)
+		 & MC_BBC_MEM_REGIONS_0_PRIV_BASE_MASK) << 23;
+
+	/* IPC */
+	size = (bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_PRIV_SIZE_SHIFT) &
+		MC_BBC_MEM_REGIONS_0_PRIV_SIZE_MASK;
+	switch (size) {
+	case 0:
+		bb->ipc_size = SZ_8M;
+		break;
+	case 1:
+		bb->ipc_size = SZ_16M;
+		break;
+	case 2:
+		bb->ipc_size = SZ_32M;
+		break;
+	case 3:
+		bb->ipc_size = SZ_64M;
+		break;
+	case 7:
+		pr_err("%s no IPC memory mapped\n", __func__);
+		break;
+	default:
+		pr_err("%s invalid IPC  memory size 0x%x\n", __func__, size);
+		break;
+	}
+
+	bb->ipc_phy =
+		((bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_IPC_BASE_SHIFT)
+		 & MC_BBC_MEM_REGIONS_0_IPC_BASE_MASK) << 23;
+
+	pr_debug("%s  priv@0x%lx/0x%lx\n", __func__,
+		 (unsigned long)bb->priv_phy,
+		bb->priv_size);
+
+	pr_debug("%s  ipc@0x%lx/0x%lx\n", __func__,
+		 (unsigned long)bb->ipc_phy,
+		bb->ipc_size);
+
+	if (!(bb->ipc_size && bb->priv_size)) {
+		pr_err("%s: invalid tegra_bb regions\n", __func__);
+		BUG();
+	}
+
 	bb->irq = pdata->bb_irq;
 
 	pdata->bb_handle = bb;
-	bb->ipc_phy = pdata->ipc_base;
-	bb->ipc_size = pdata->ipc_size;
-
-	bb->priv_phy = pdata->priv_base;
-	bb->priv_size = pdata->priv_size;
 
 	/* Map mb_virt uncached (first 4K of IPC) */
 	bb->mb_virt = ioremap_nocache(bb->ipc_phy,
