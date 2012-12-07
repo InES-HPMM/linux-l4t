@@ -1208,6 +1208,7 @@ err_power:
 	return ret;
 #endif
 }
+EXPORT_SYMBOL(tegra_unpowergate_partition);
 
 int tegra_cpu_powergate_id(int cpuid)
 {
@@ -1570,6 +1571,7 @@ err_clk_off:
 	return ret;
 #endif
 }
+EXPORT_SYMBOL(tegra_powergate_partition);
 
 int tegra_powergate_partition_with_clk_off(int id)
 {

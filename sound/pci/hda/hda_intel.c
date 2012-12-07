@@ -67,6 +67,9 @@
 #ifdef CONFIG_SND_HDA_VPR
 #include <linux/nvmap.h>
 #endif
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+#include <mach/powergate.h>
+#endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;
@@ -1512,10 +1515,17 @@ static void azx_platform_enable_clocks(struct azx *chip)
 {
 	int i;
 
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
+#endif
+#endif
+
 	for (i = 0; i < chip->platform_clk_count; i++)
 		clk_enable(chip->platform_clks[i]);
 
 	chip->platform_clk_enable++;
+
 }
 
 static void azx_platform_disable_clocks(struct azx *chip)
@@ -1527,6 +1537,12 @@ static void azx_platform_disable_clocks(struct azx *chip)
 
 	for (i = 0; i < chip->platform_clk_count; i++)
 		clk_disable(chip->platform_clks[i]);
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
+#endif
+#endif
 
 	chip->platform_clk_enable--;
 }
