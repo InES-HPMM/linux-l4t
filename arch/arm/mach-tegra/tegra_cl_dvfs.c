@@ -161,6 +161,9 @@ struct tegra_cl_dvfs {
 	struct tegra_cl_dvfs_platform_data	*p_data;
 
 	struct dvfs			*safe_dvfs;
+	struct tegra_cooling_device	*cdev;
+	struct work_struct		init_cdev_work;
+
 	struct clk			*soc_clk;
 	struct clk			*ref_clk;
 	struct clk			*i2c_clk;
@@ -178,8 +181,10 @@ struct tegra_cl_dvfs {
 	u8				safe_ouput;
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
+	u8				cold_out_min;
 	unsigned long			dfll_rate_min;
 
+	int				thermal_idx;
 	struct dfll_rate_req		last_req;
 	enum tegra_cl_dvfs_tune_state	tune_state;
 	enum tegra_cl_dvfs_ctrl_mode	mode;
@@ -272,6 +277,17 @@ static inline void set_mode(struct tegra_cl_dvfs *cld,
 	cl_dvfs_wmb(cld);
 }
 
+static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
+{
+	u32 tune_min, thermal_min;
+
+	tune_min = cld->tune_state == TEGRA_CL_DVFS_TUNE_LOW ?
+		0 : cld->tune_high_out_min;
+	thermal_min = cld->thermal_idx ? 0 : cld->cold_out_min;
+
+	return max(tune_min, thermal_min);
+}
+
 #define set_tune_state(cld, state) \
 	do {								\
 		cld->tune_state = state;				\
@@ -290,6 +306,7 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 
 		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 		val &= ~CL_DVFS_OUTPUT_CFG_MIN_MASK;
+		val |= get_output_min(cld) << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	}
 }
@@ -306,7 +323,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	case TEGRA_CL_DVFS_TUNE_LOW:
 		if (req->output > cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
-			out_min = cld->tune_high_out_min;
+			out_min = get_output_min(cld);
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
 		}
 		break;
@@ -318,7 +335,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 			cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0,
 				       CL_DVFS_TUNE0);
 			cl_dvfs_wmb(cld);
-			out_min = 0;
+			out_min = get_output_min(cld);
 		}
 		break;
 	default:
@@ -470,6 +487,33 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	cld->num_voltages = j;
 }
 
+static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
+{
+	int mv;
+
+	/*
+	 * Convert high tuning voltage threshold into output LUT index, and
+	 * add necessary margin.  If voltage threshold is outside operating
+	 * range set it at maximum output level to effectively disable tuning
+	 * parameters adjustment.
+	 */
+	cld->tune_high_out_min = cld->num_voltages - 1;
+	cld->tune_high_out_start = cld->num_voltages - 1;
+	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
+	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
+		cld->tune_high_out_min = find_mv_out_cap(cld, mv);
+		cld->tune_high_out_start = find_mv_out_cap(
+			cld, mv + CL_DVFS_TUNE_HIGH_MARGIN);
+	}
+}
+
+static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
+{
+	/* Convert minimum voltage at low temperature into output LUT index */
+	cld->cold_out_min = find_mv_out_cap(
+		cld, cld->safe_dvfs->dvfs_rail->min_millivolts_cold);
+}
+
 static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
 {
 	/* FIXME: not supported */
@@ -510,26 +554,6 @@ static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
-{
-	int mv;
-
-	/*
-	 * Convert high tuning voltage threshold into output LUT index, and
-	 * add necessary margin.  If voltage threshold is outside operating
-	 * range set it at maximum output level to effectively disable tuning
-	 * parameters adjustment.
-	 */
-	cld->tune_high_out_min = cld->num_voltages - 1;
-	cld->tune_high_out_start = cld->num_voltages - 1;
-	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
-	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
-		cld->tune_high_out_min = find_mv_out_cap(cld, mv);
-		cld->tune_high_out_start = find_mv_out_cap(
-			cld, mv + CL_DVFS_TUNE_HIGH_MARGIN);
-	}
-}
-
 static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 {
 	int i;
@@ -537,9 +561,14 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 
 	/* disable output, and set output limits; use one step above minimum
 	   voltage level as safe value; disable and clear limit interrupts */
+	cld->tune_state = TEGRA_CL_DVFS_TUNE_LOW;
+	cld->thermal_idx = 0;
+	val = get_output_min(cld);
+
 	cld->safe_ouput = 1;
 	val = (cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
-		((cld->num_voltages - 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT);
+		((cld->num_voltages - 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
+		(val << CL_DVFS_OUTPUT_CFG_MIN_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
 
@@ -554,9 +583,6 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_LUT + i * 4);
 	}
 	cl_dvfs_wmb(cld);
-
-	/* setup output range thresholds for dynamic tuning */
-	cl_dvfs_init_tuning_thresholds(cld);
 
 	/* configure transport */
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
@@ -586,7 +612,6 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune1, CL_DVFS_TUNE1);
-	cld->tune_state = TEGRA_CL_DVFS_TUNE_LOW;
 
 	/* configure droop (skipper 1) and scale (skipper 2) */
 	val = GET_DROOP_FREQ(cld->safe_dvfs->dfll_data.droop_rate_min,
@@ -681,6 +706,12 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	/* Get ready ouput voltage mapping*/
 	cl_dvfs_init_maps(cld);
 
+	/* setup output range thresholds for dynamic tuning */
+	cl_dvfs_init_tuning_thresholds(cld);
+
+	/* setup minimum output limit at cold temperature */
+	cl_dvfs_init_cold_output_floor(cld);
+
 	/* Setup PMU interface */
 	cl_dvfs_init_out_if(cld);
 
@@ -711,6 +742,68 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 		WARN(mode > TEGRA_CL_DVFS_OPEN_LOOP,
 		     "DFLL was left locked in suspend\n");
 	}
+}
+
+/* cl_dvfs cooling device */
+static int tegra_cl_dvfs_get_cdev_max_state(struct thermal_cooling_device *cdev,
+					    unsigned long *max_state)
+{
+	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
+	*max_state = cld->cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_cl_dvfs_get_cdev_cur_state(struct thermal_cooling_device *cdev,
+					    unsigned long *cur_state)
+{
+	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
+	*cur_state = cld->thermal_idx;
+	return 0;
+}
+
+static int tegra_cl_dvfs_set_cdev_state(struct thermal_cooling_device *cdev,
+					unsigned long cur_state)
+{
+	u32 val;
+	unsigned long flags;
+	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
+
+	clk_lock_save(cld->dfll_clk, &flags);
+
+	if (cld->thermal_idx != cur_state) {
+		cld->thermal_idx = cur_state;
+		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+		val &= ~CL_DVFS_OUTPUT_CFG_MIN_MASK;
+		val |= get_output_min(cld) << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	}
+	clk_unlock_restore(cld->dfll_clk, &flags);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_cl_dvfs_cooling_ops = {
+	.get_max_state = tegra_cl_dvfs_get_cdev_max_state,
+	.get_cur_state = tegra_cl_dvfs_get_cdev_cur_state,
+	.set_cur_state = tegra_cl_dvfs_set_cdev_state,
+};
+
+static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
+{
+	struct tegra_cl_dvfs *cld = container_of(
+		work, struct tegra_cl_dvfs, init_cdev_work);
+
+	if (!cld->cdev)
+		return;
+
+	/* just report error - initialized at WC temperature, anyway */
+	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
+		cld->cdev->cdev_type, (void *)cld,
+		&tegra_cl_dvfs_cooling_ops))) {
+		pr_err("tegra cooling device %s failed to register\n",
+		       cld->cdev->cdev_type);
+		return;
+	}
+	pr_info("%s cooling device is registered\n", cld->cdev->cdev_type);
 }
 
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
@@ -767,6 +860,8 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	cld->i2c_clk = i2c_clk;
 	cld->dfll_clk = dfll_clk;
 	cld->safe_dvfs = safe_dvfs_clk->dvfs;
+	cld->cdev = cld->safe_dvfs->dvfs_rail->dfll_mode_cdev;
+	INIT_WORK(&cld->init_cdev_work, tegra_cl_dvfs_init_cdev);
 
 	/* Initialize cl_dvfs */
 	ret = cl_dvfs_init(cld);
@@ -776,6 +871,16 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, cld);
+
+	/*
+	 * Schedule cooling device registration as a separate work to address
+	 * the following race: when cl_dvfs is probed the DFLL child clock
+	 * (e.g., CPU) cannot be changed; on the other hand cooling device
+	 * registration will update the entire thermal zone, and may trigger
+	 * rate change of the target clock
+	 */
+	if (cld->cdev)
+		schedule_work(&cld->init_cdev_work);
 	return 0;
 }
 
