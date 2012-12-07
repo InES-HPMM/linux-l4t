@@ -1106,7 +1106,7 @@ static inline dma_addr_t __alloc_iova(struct dma_iommu_mapping *mapping,
 }
 
 static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
-				  dma_addr_t iova, size_t size)
+				  dma_addr_t *iova, size_t size)
 {
 	unsigned int count, start, orig;
 	unsigned long flags;
@@ -1116,22 +1116,31 @@ static dma_addr_t __alloc_iova_at(struct dma_iommu_mapping *mapping,
 
 	spin_lock_irqsave(&mapping->lock, flags);
 
-	orig = (iova - mapping->base) >> (mapping->order + PAGE_SHIFT);
+	if ((*iova < mapping->base) || (*iova >= mapping->end)) {
+		*iova = -ENXIO;
+		goto err_out;
+	}
+
+	orig = (*iova - mapping->base) >> (mapping->order + PAGE_SHIFT);
 	start = bitmap_find_next_zero_area(mapping->bitmap, mapping->bits,
 					   orig, count, 0);
 
 	if ((start > mapping->bits) || (orig != start)) {
-		spin_unlock_irqrestore(&mapping->lock, flags);
-		return DMA_ERROR_CODE;
+		*iova = -EINVAL;
+		goto err_out;
 	}
 
 	bitmap_set(mapping->bitmap, start, count);
 	spin_unlock_irqrestore(&mapping->lock, flags);
 
 	return mapping->base + (start << (mapping->order + PAGE_SHIFT));
+
+err_out:
+	spin_unlock_irqrestore(&mapping->lock, flags);
+	return DMA_ERROR_CODE;
 }
 
-static dma_addr_t arm_iommu_iova_alloc_at(struct device *dev, dma_addr_t iova,
+static dma_addr_t arm_iommu_iova_alloc_at(struct device *dev, dma_addr_t *iova,
 				size_t size)
 {
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
@@ -1963,6 +1972,7 @@ arm_iommu_create_mapping(struct bus_type *bus, dma_addr_t base, size_t size,
 		goto err2;
 
 	mapping->base = base;
+	mapping->end = base + size;
 	mapping->bits = BITS_PER_BYTE * bitmap_size;
 	mapping->order = order;
 	spin_lock_init(&mapping->lock);

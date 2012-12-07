@@ -190,7 +190,7 @@ static inline void dma_iova_free(struct device *dev, dma_addr_t addr,
 	ops->iova_free(dev, addr, size);
 }
 
-static inline dma_addr_t dma_iova_alloc_at(struct device *dev, dma_addr_t addr,
+static inline dma_addr_t dma_iova_alloc_at(struct device *dev, dma_addr_t *addr,
 					   size_t size)
 {
 	struct dma_map_ops *ops = get_dma_ops(dev);
@@ -222,7 +222,7 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 	dma_addr_t da = pa;
 	void *va = phys_to_virt(pa);
 
-	da = dma_iova_alloc_at(dev, da, size);
+	da = dma_iova_alloc_at(dev, &da, size);
 	if (da == DMA_ERROR_CODE)
 		return DMA_ERROR_CODE;
 
