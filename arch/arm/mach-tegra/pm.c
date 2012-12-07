@@ -685,8 +685,10 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	tegra_init_cache(false);
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
 	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);
+#endif
 #endif
 
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_switch);
@@ -997,8 +999,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	tegra_init_cache(true);
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
 	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);
+#endif
 
 	if (mode == TEGRA_SUSPEND_LP0) {
 		trace_secureos_init(tegra_resume_entry_time,

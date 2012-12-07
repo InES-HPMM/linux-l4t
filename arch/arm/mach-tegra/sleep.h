@@ -271,8 +271,10 @@ int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 extern unsigned long tegra_resume_timestamps_start;
 extern unsigned long tegra_resume_timestamps_end;
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 extern unsigned long tegra_resume_smc_entry_time;
 extern unsigned long tegra_resume_smc_exit_time;
+#endif
 extern unsigned long tegra_resume_entry_time;
 #endif
 
