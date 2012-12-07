@@ -376,10 +376,24 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *sdhci, u8 mask)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
 	if (mask & SDHCI_RESET_ALL) {
 		if (tegra_host->hw_ops->sdhost_init)
 			tegra_host->hw_ops->sdhost_init(sdhci);
+
+		/* Mask the support for any UHS modes if specified */
+		if (plat->uhs_mask & MMC_UHS_MASK_SDR104)
+			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR104;
+
+		if (plat->uhs_mask & MMC_UHS_MASK_DDR50)
+			sdhci->mmc->caps &= ~MMC_CAP_UHS_DDR50;
+
+		if (plat->uhs_mask & MMC_UHS_MASK_SDR50)
+			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR50;
+
+		if (plat->uhs_mask & MMC_UHS_MASK_SDR25)
+			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR25;
 	}
 }
 
