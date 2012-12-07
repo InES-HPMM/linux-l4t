@@ -108,6 +108,7 @@ config BT_HCIBCM203X
 
 config BT_BLUESLEEP
         tristate "Bluesleep driver support"
+        depends on SERIAL_TEGRA
         help
           Bluetooth Bluesleep Driver.
           This driver provides the dynamic active power saving mechanism for
