@@ -31,6 +31,9 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/rm31080a_ts.h>
+#include <linux/spi-tegra.h>
 #include <linux/tegra_uart.h>
 #include <linux/memblock.h>
 #include <linux/rfkill-gpio.h>
@@ -70,6 +73,7 @@
 #include "pm.h"
 #include "common.h"
 #include "tegra-board-id.h"
+#include "board-touch-raydium.h"
 
 #ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data roth_bt_rfkill_pdata = {
@@ -557,6 +561,96 @@ static void roth_audio_init(void)
 }
 
 
+static struct platform_device *roth_spi_devices[] __initdata = {
+	&tegra11_spi_device4,
+};
+
+struct spi_clk_parent spi_parent_clk_roth[] = {
+	[0] = {.name = "pll_p"},
+#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
+	[1] = {.name = "pll_m"},
+	[2] = {.name = "clk_m"},
+#else
+	[1] = {.name = "clk_m"},
+#endif
+};
+
+static struct tegra_spi_platform_data roth_spi_pdata = {
+	.is_dma_based           = false,
+	.max_dma_buffer         = 16 * 1024,
+	.is_clkon_always        = false,
+	.max_rate               = 25000000,
+};
+
+static void __init roth_spi_init(void)
+{
+	int i;
+	struct clk *c;
+
+	for (i = 0; i < ARRAY_SIZE(spi_parent_clk_roth); ++i) {
+		c = tegra_get_clock_by_name(spi_parent_clk_roth[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+				spi_parent_clk_roth[i].name);
+			continue;
+		}
+		spi_parent_clk_roth[i].parent_clk = c;
+		spi_parent_clk_roth[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	roth_spi_pdata.parent_clk_list = spi_parent_clk_roth;
+	roth_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_roth);
+	tegra11_spi_device4.dev.platform_data = &roth_spi_pdata;
+	platform_add_devices(roth_spi_devices,
+		ARRAY_SIZE(roth_spi_devices));
+}
+
+static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "extern2",    "pll_p",        41000000,       false},
+	{ "clk_out_2",  "extern2",      40800000,       false},
+	{ NULL,         NULL,           0,              0},
+};
+
+struct rm_spi_ts_platform_data rm31080ts_roth_data = {
+	.gpio_reset = 0,
+	.config = 0,
+	.platform_id = RM_PLATFORM_D010,
+	.name_of_clock = "clk_out_2",
+};
+
+static struct tegra_spi_device_controller_data dev_cdata = {
+	.rx_clk_tap_delay = 0,
+	.tx_clk_tap_delay = 16,
+};
+
+struct spi_board_info rm31080a_roth_spi_board[1] = {
+	{
+	 .modalias = "rm_ts_spidev",
+	 .bus_num = 3,
+	 .chip_select = 2,
+	 .max_speed_hz = 12 * 1000 * 1000,
+	 .mode = SPI_MODE_0,
+	 .controller_data = &dev_cdata,
+	 .platform_data = &rm31080ts_roth_data,
+	 },
+};
+
+static int __init roth_touch_init(void)
+{
+	tegra_clk_init_from_table(touch_clk_init_table);
+	clk_enable(tegra_get_clock_by_name("clk_out_2"));
+	rm31080ts_roth_data.platform_id = RM_PLATFORM_R005;
+	mdelay(20);
+	rm31080a_roth_spi_board[0].irq =
+		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+				TOUCH_GPIO_RST_RAYDIUM_SPI,
+				&rm31080ts_roth_data,
+				&rm31080a_roth_spi_board[0],
+				ARRAY_SIZE(rm31080a_roth_spi_board));
+	return 0;
+}
+
 static void __init tegra_roth_init(void)
 {
 	tegra_clk_init_from_table(roth_clk_init_table);
@@ -566,6 +660,7 @@ static void __init tegra_roth_init(void)
 	tegra_enable_pinmux();
 	roth_pinmux_init();
 	roth_i2c_init();
+	roth_spi_init();
 	roth_usb_init();
 	roth_uart_init();
 	roth_audio_init();
@@ -578,6 +673,7 @@ static void __init tegra_roth_init(void)
 	roth_emc_init();
 	roth_edp_init();
 	isomgr_init();
+	roth_touch_init();
 	roth_panel_init();
 	roth_kbc_init();
 	roth_pmon_init();
