@@ -610,4 +610,15 @@ config TEGRA_CORE_EDP_LIMITS
 	help
 	  Limit maximum GPU and memory frequency to keep core rail current
 	  within power supply capabilities.
+
+config TEGRA_PLLM_SCALED
+	bool "Enable memory PLLM run time scaling"
+	depends on TEGRA_DUAL_CBUS
+	select TEGRA_PLLM_RESTRICTED
+	default n
+	help
+	  When enabled, memory PLLM can be scaled at run time to reduce
+	  granularity of possible memory rate steps. In this case PLLC
+	  provides a backup memory clock while PLLM is re-locking to the
+	  new rate.
 endif

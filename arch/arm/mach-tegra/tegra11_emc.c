@@ -835,6 +835,20 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	if (!p)
 		return true;
 
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	/*
+	 * Table match found, but parent is not ready - check if backup entry
+	 * was found during initialization, and return the respective backup
+	 * rate
+	 */
+	if (emc->shared_bus_backup.input &&
+	    (emc->shared_bus_backup.input != p)) {
+		*parent = p;
+		*parent_rate = p_rate;
+		*backup_rate = emc->shared_bus_backup.bus_rate;
+		return false;
+	}
+#else
 	/*
 	 * Table match found, but parent is not ready - continue search
 	 * for backup rate: min rate above requested that has different
@@ -854,7 +868,7 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 			return false;
 		}
 	}
-
+#endif
 	/* Parent is not ready, and no backup found */
 	*backup_rate = -EINVAL;
 	return false;
@@ -882,6 +896,14 @@ static int find_matching_input(const struct tegra11_emc_table *table,
 	unsigned long table_rate = table->rate * 1000; /* table rate in kHz */
 	const struct clk_mux_sel *sel = get_emc_input(src_value);
 
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	struct clk *scalable_pll = emc->parent; /* pll_m is a boot parent */
+#else
+	struct clk *scalable_pll = pll_c;
+#endif
+	pr_info_once("tegra: %s is selected as scalable EMC clock source\n",
+		     scalable_pll->name);
+
 	if (div_value & 0x1) {
 		pr_warn("tegra: invalid odd divider for EMC rate %lu\n",
 			table_rate);
@@ -905,25 +927,34 @@ static int find_matching_input(const struct tegra11_emc_table *table,
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_TEGRA_DUAL_CBUS
 	if (sel->input == pll_c) {
-		/* PLLC is a scalable source */
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-		input_rate = table_rate * (1 + div_value / 2);
-#else
-		pr_warn("tegra: %s cannot be used as EMC rate %lu source\n",
+		pr_warn("tegra: %s is cbus source: no EMC rate %lu support\n",
 			sel->input->name, table_rate);
 		return -EINVAL;
+	}
 #endif
+
+	if (sel->input == scalable_pll) {
+		input_rate = table_rate * (1 + div_value / 2);
 	} else {
 		/* all other sources are fixed, must exactly match the rate */
 		input_rate = clk_get_rate(sel->input);
 		if (input_rate != (table_rate * (1 + div_value / 2))) {
-			pr_warn("tegra: %s rate %lu does not match EMC rate %lu\n",
-				sel->input->name, input_rate, table_rate);
+			pr_warn("tegra: EMC rate %lu does not match %s rate %lu\n",
+				table_rate, sel->input->name, input_rate);
 			return -EINVAL;
 		}
 	}
 
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		if (sel->input == pll_c) {
+			/* maybe overwritten in a loop - end up at max rate
+			   from pll_c */
+			emc->shared_bus_backup.input = pll_c;
+			emc->shared_bus_backup.bus_rate = table_rate;
+		}
+#endif
 	/* Get ready emc clock selection settings for this table rate */
 	emc_clk_sel->input = sel->input;
 	emc_clk_sel->input_rate = input_rate;
@@ -957,6 +988,38 @@ static void adjust_emc_dvfs_table(const struct tegra11_emc_table *table,
 		emc->dvfs->freqs[i] = rate * 1000;
 	}
 }
+
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+/* When pll_m is scaled, pll_c must provide backup rate;
+   if not - remove rates that require pll_m scaling */
+static void purge_emc_table(void)
+{
+	int i;
+
+	if (emc->shared_bus_backup.input)
+		return;
+
+	pr_warn("tegra: selected pll_m scaling option but no backup source:\n");
+	pr_warn("       removed not supported entries from the table:\n");
+
+	/* made all entries with non matching rate invalid */
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		struct emc_sel *sel = &tegra_emc_clk_sel[i];
+		if (sel->input) {
+			if (clk_get_rate(sel->input) != sel->input_rate) {
+				pr_warn("       EMC rate %lu\n",
+					tegra_emc_table[i].rate * 1000);
+				sel->input = NULL;
+				sel->input_rate = 0;
+				sel->value = 0;
+			}
+		}
+	}
+}
+#else
+/* When pll_m is fixed @ max EMC rate, it always provides backup for pll_c */
+#define purge_emc_table()
+#endif
 
 static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 {
@@ -1021,8 +1084,10 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 		if (table_rate == boot_rate)
 			emc_stats.last_sel = i;
 
-		if (table_rate == max_rate)
+		if (table_rate == max_rate) {
 			max_entry = true;
+			break;
+		}
 	}
 
 	/* Validate EMC rate and voltage limits */
@@ -1045,6 +1110,8 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 			return -ENODATA;
 		}
 	}
+
+	purge_emc_table();
 
 	pr_info("tegra: validated EMC DFS table\n");
 
