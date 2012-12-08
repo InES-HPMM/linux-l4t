@@ -201,7 +201,10 @@ static ssize_t a2220_hw_reset(struct a2220img *img)
 
 	while (retry--) {
 		/* Reset A2220 chip */
-		gpio_set_value(pdata->gpio_a2220_reset, 0);
+		if (pdata->gpio_a2220_reset)
+			gpio_set_value(pdata->gpio_a2220_reset, 0);
+		else
+			gpio_set_value(VP_RESET, 1);
 
 		/* Enable A2220 clock */
 		if (control_a2220_clk)
@@ -209,7 +212,10 @@ static ssize_t a2220_hw_reset(struct a2220img *img)
 		mdelay(1);
 
 		/* Take out of reset */
-		gpio_set_value(pdata->gpio_a2220_reset, 1);
+		if (pdata->gpio_a2220_reset)
+			gpio_set_value(pdata->gpio_a2220_reset, 1);
+		else
+			gpio_set_value(VP_RESET, 0);
 
 		msleep(50);	/* Delay before send I2C command */
 
@@ -1255,18 +1261,20 @@ static int a2220_probe(struct i2c_client *client,
 		}
 	}
 
-	rc = gpio_request(pdata->gpio_a2220_reset, "a2220");
-	if (rc < 0) {
-		printk(KERN_ERR "%s: gpio request reset pin failed\n",
+	if (pdata->gpio_a2220_reset) {
+		rc = gpio_request(pdata->gpio_a2220_reset, "a2220");
+		if (rc < 0) {
+			printk(KERN_ERR "%s: gpio request reset pin failed\n",
 			__func__);
-		goto err_free_gpio;
-	}
+			goto err_free_gpio;
+		}
 
-	rc = gpio_direction_output(pdata->gpio_a2220_reset, 1);
-	if (rc < 0) {
-		printk(KERN_ERR "%s: request reset gpio direction failed\n",
+		rc = gpio_direction_output(pdata->gpio_a2220_reset, 1);
+		if (rc < 0) {
+			printk(KERN_ERR "%s: request reset gpio direction failed\n",
 			__func__);
-		goto err_free_gpio_all;
+			goto err_free_gpio_all;
+		}
 	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -1299,7 +1307,8 @@ static int a2220_probe(struct i2c_client *client,
 #endif
 	}
 
-	gpio_set_value(pdata->gpio_a2220_reset, 1);
+	if (pdata->gpio_a2220_reset)
+		gpio_set_value(pdata->gpio_a2220_reset, 1);
 
 	if (pdata->gpio_a2220_audience_chip_sel)
 		gpio_set_value(pdata->gpio_a2220_audience_chip_sel, 1);
@@ -1316,7 +1325,8 @@ static int a2220_probe(struct i2c_client *client,
 	return 0;
 
  err_free_gpio_all:
-	gpio_free(pdata->gpio_a2220_reset);
+	if (pdata->gpio_a2220_reset)
+		gpio_free(pdata->gpio_a2220_reset);
  err_free_gpio:
 	if (pdata->gpio_a2220_wakeup) {
 #ifdef CONFIG_USA_MODEL_SGH_T989
