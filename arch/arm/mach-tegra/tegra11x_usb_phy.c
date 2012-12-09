@@ -1086,6 +1086,7 @@ static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 	val |= USB_USBSTS_PCI;
 	writel(val, base + USB_USBSTS);
 
+	phy->ctrlr_suspended = false;
 	if (!phy->pmc_remote_wakeup) {
 		/* Put controller in suspend mode by writing 1
 		 * to SUSP bit of PORTSC */
@@ -1093,6 +1094,7 @@ static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 		if ((val & USB_PORTSC_PP) && (val & USB_PORTSC_PE)) {
 			val |= USB_PORTSC_SUSP;
 			writel(val, base + USB_PORTSC);
+			phy->ctrlr_suspended = true;
 			/* Wait until port suspend completes */
 			if (usb_phy_reg_status_wait(base + USB_PORTSC,
 				USB_PORTSC_SUSP, USB_PORTSC_SUSP, 4000)) {
@@ -1961,6 +1963,21 @@ static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_phy *phy)
 	val &= ~EVENT_INT_ENB;
 	writel(val, base + UHSIC_PMC_WAKEUP0);
 
+	/*
+	 * If pmc wakeup is detected after putting controller in suspend
+	 * in usb_phy_bringup_host_cotroller, restart bringing up host
+	 * controller as in case of only pmc wakeup.
+	 */
+	if (phy->pmc_remote_wakeup && phy->ctrlr_suspended) {
+		usb_phy_bringup_host_controller(phy);
+		if (usb_phy_reg_status_wait(base + USB_PORTSC,
+			(USB_PORTSC_RESUME | USB_PORTSC_SUSP), 0,
+				FPR_WAIT_TIME_US) < 0)
+			pr_err("%s: timeout waiting for SUSPEND to clear\n",
+				__func__);
+		phy->ctrlr_suspended = false;
+	}
+
 	/* Disable PMC master mode by clearing MASTER_EN */
 	val = readl(pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
 	val &= ~(UHSIC_MASTER_ENABLE(inst));
@@ -2059,8 +2076,11 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d)\n", __func__, __LINE__);
 
-	/* check whether we wake up from the remote resume */
-	if (phy->pmc_remote_wakeup) {
+	/*
+	 * check whether we wake up from the remote wake detected before putting
+	 * controller in suspend in usb_phy_bringup_host_controller.
+	 */
+	if (!phy->ctrlr_suspended) {
 		/* wait until FPR bit is set automatically on remote resume */
 		do {
 			val = readl(base + USB_PORTSC);
@@ -2176,7 +2196,7 @@ static int uhsic_phy_irq(struct tegra_usb_phy *phy)
 	/* check if there is any remote wake event */
 	usb_phy_fence_read(phy);
 	if (uhsic_phy_remotewake_detected(phy))
-		pr_info("%s: uhsic remote wake detected\n", __func__);
+		DBG("%s: uhsic remote wake detected\n", __func__);
 	return IRQ_HANDLED;
 }
 
