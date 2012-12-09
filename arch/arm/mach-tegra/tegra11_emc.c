@@ -315,6 +315,14 @@ static inline void ccfifo_writel(u32 val, unsigned long addr)
 	writel(addr, emc_base + EMC_CCFIFO_ADDR);
 }
 
+static int last_round_idx;
+static inline int get_start_idx(unsigned long rate)
+{
+	if (tegra_emc_table[last_round_idx].rate == rate)
+		return last_round_idx;
+	return 0;
+}
+
 static void emc_last_stats_update(int last_sel)
 {
 	unsigned long flags;
@@ -689,7 +697,8 @@ int tegra_emc_set_rate(unsigned long rate)
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	i = get_start_idx(rate);
+	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
@@ -743,13 +752,15 @@ long tegra_emc_round_rate(unsigned long rate)
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	i = get_start_idx(rate);
+	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_clk_sel[i].input == NULL)
 			continue;	/* invalid entry */
 
 		if (tegra_emc_table[i].rate >= rate) {
 			pr_debug("%s: using %lu\n",
 				 __func__, tegra_emc_table[i].rate);
+			last_round_idx = i;
 			return tegra_emc_table[i].rate * 1000;
 		}
 	}
@@ -774,7 +785,8 @@ struct clk *tegra_emc_predict_parent(unsigned long rate, u32 *div_value)
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	i = get_start_idx(rate);
+	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_table[i].rate == rate) {
 			struct clk *p = tegra_emc_clk_sel[i].input;
 
@@ -805,7 +817,8 @@ bool tegra_emc_is_parent_ready(unsigned long rate, struct clk **parent,
 	/* Table entries specify rate in kHz */
 	rate = rate / 1000;
 
-	for (i = 0; i < tegra_emc_table_size; i++) {
+	i = get_start_idx(rate);
+	for (; i < tegra_emc_table_size; i++) {
 		if (tegra_emc_table[i].rate == rate) {
 			p = tegra_emc_clk_sel[i].input;
 			if (!p)
