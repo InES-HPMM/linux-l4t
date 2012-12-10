@@ -168,6 +168,9 @@ ENDPROC(tegra2_cpu_is_resettable_soon)
  * tegra2_tear_down_core in IRAM
  */
 ENTRY(tegra2_sleep_core_finish)
+	mov	r4, r0
+	bl	tegra_flush_cache
+	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
 	mov32	r1, tegra2_tear_down_core
 	mov32	r2, tegra2_iram_start
@@ -186,13 +189,7 @@ ENTRY(tegra2_finish_sleep_cpu_secondary)
 	mrc	p15, 0, r11, c1, c0, 1	@ save actlr before exiting coherency
 
 	dsb
-#ifdef MULTI_CACHE
-	mov32	r10, cpu_cache
-	mov	lr, pc
-	ldr	pc, [r10, #CACHE_FLUSH_KERN_ALL]
-#else
-	bl	__cpuc_flush_kern_all
-#endif
+	bl	tegra_flush_l1_cache
 
 	bl	tegra_cpu_exit_coherency
 

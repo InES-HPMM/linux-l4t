@@ -184,7 +184,7 @@ int __cpuinit __cpu_disable(void)
 	 */
 	percpu_timer_stop();
 
-#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+#ifndef CONFIG_ARCH_TEGRA
 	/*
 	 * Flush user cache and TLB mappings, and then remove this CPU
 	 * from the vm mask set of all processes.
