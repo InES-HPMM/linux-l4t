@@ -35,6 +35,7 @@
 #include <linux/types.h>
 #include <linux/vmalloc.h>
 #include <linux/workqueue.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/clk.h>
 #include <mach/hardware.h>
@@ -340,8 +341,11 @@ static int nvavp_service(struct nvavp_info *nvavp)
 		schedule_work(&nvavp->clock_disable_work);
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
-	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE)
+	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE) {
+		if (!pm_runtime_suspended(&nvavp->nvhost_dev->dev))
+			pm_runtime_put_sync(&nvavp->nvhost_dev->dev);
 		pr_debug("nvavp_service NVE276_OS_INTERRUPT_AUDIO_IDLE\n");
+	}
 #endif
 	if (inbox & NVE276_OS_INTERRUPT_DEBUG_STRING) {
 		/* Should only occur with debug AVP OS builds */
@@ -667,6 +671,8 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 		if (IS_AUDIO_CHANNEL_ID(channel_id)) {
 			pr_debug("Wake up Audio Channel\n");
+			if (pm_runtime_suspended(&nvavp->nvhost_dev->dev))
+				pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
 			ret = nvavp_outbox_write(0xA0000002);
 			if (ret < 0)
 				goto err_exit;
@@ -1750,6 +1756,8 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 
 	nvavp->nvhost_dev = ndev;
 	platform_set_drvdata(ndev, nvavp);
+
+	pm_runtime_enable(&ndev->dev);
 
 	ret = device_create_file(&ndev->dev, &dev_attr_boost_sclk);
 	if (ret) {
