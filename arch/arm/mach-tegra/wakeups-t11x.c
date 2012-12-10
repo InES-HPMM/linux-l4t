@@ -87,7 +87,7 @@ static int tegra_gpio_wakes[] = {
 };
 
 static int tegra_wake_event_irq[] = {
-	-EINVAL, /* ULPI DATA4 */		/* wake0 */
+	-EAGAIN, /* ULPI DATA4 */		/* wake0 */
 	-EAGAIN,				/* wake1 */
 	-EAGAIN,				/* wake2 */
 	INT_SDMMC3, /* SDMMC3 DAT1 */		/* wake3 */
