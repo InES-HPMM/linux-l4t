@@ -118,7 +118,8 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	/* Add delay to make sure register is updated */
 	udelay(1);
 	clk_disable_unprepare(tegra->clk);
-	pm_runtime_put_sync(tegra->phy.dev);
+	pm_runtime_mark_last_busy(tegra->phy.dev);
+	pm_runtime_put_autosuspend(tegra->phy.dev);
 
 	return val;
 }
@@ -209,6 +210,7 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 		pr_info("otg state changed: %s --> %s\n", tegra_state_name(from), tegra_state_name(to));
 
 		if (from == OTG_STATE_A_SUSPEND) {
+			pm_runtime_get_sync(tegra->phy.dev);
 			if (to == OTG_STATE_B_PERIPHERAL && otg->gadget) {
 				usb_gadget_vbus_connect(otg->gadget);
 				tegra_otg_notify_event(tegra, USB_EVENT_VBUS);
@@ -220,9 +222,13 @@ static void tegra_change_otg_state(struct tegra_otg_data *tegra,
 		} else if (from == OTG_STATE_A_HOST && to == OTG_STATE_A_SUSPEND) {
 			tegra_stop_host(tegra);
 			tegra_otg_notify_event(tegra, USB_EVENT_NONE);
+			pm_runtime_mark_last_busy(tegra->phy.dev);
+			pm_runtime_put_autosuspend(tegra->phy.dev);
 		} else if (from == OTG_STATE_B_PERIPHERAL && otg->gadget && to == OTG_STATE_A_SUSPEND) {
 			usb_gadget_vbus_disconnect(otg->gadget);
 			tegra_otg_notify_event(tegra, USB_EVENT_NONE);
+			pm_runtime_mark_last_busy(tegra->phy.dev);
+			pm_runtime_put_autosuspend(tegra->phy.dev);
 		}
 	}
 }
@@ -339,7 +345,8 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable_unprepare(tegra->clk);
-	pm_runtime_put_sync(tegra->phy.dev);
+	pm_runtime_mark_last_busy(tegra->phy.dev);
+	pm_runtime_put_autosuspend(tegra->phy.dev);
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
@@ -491,6 +498,8 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		}
 	}
 
+	pm_runtime_use_autosuspend(tegra->phy.dev);
+	pm_runtime_set_autosuspend_delay(tegra->phy.dev, 100);
 	pm_runtime_enable(tegra->phy.dev);
 
 	dev_info(&pdev->dev, "otg transceiver registered\n");
@@ -574,7 +583,8 @@ static void tegra_otg_resume(struct device *dev)
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
 	clk_disable_unprepare(tegra->clk);
-	pm_runtime_put_sync(dev);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	/* Enable interrupt and call work to set to appropriate state */
 	spin_lock_irqsave(&tegra->lock, flags);
