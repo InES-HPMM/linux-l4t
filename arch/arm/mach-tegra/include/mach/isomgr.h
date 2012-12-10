@@ -30,6 +30,7 @@ enum tegra_iso_client {
 /* callback to client to renegotiate ISO BW allocation */
 typedef void (*tegra_isomgr_renegotiate)(void *priv);
 
+#if defined(CONFIG_TEGRA_ISOMGR)
 /* register an ISO BW client */
 tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 					  u32 dedicated_bw,	/* KB/sec */
@@ -46,3 +47,26 @@ u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 
 /* realize client reservation - apply settings, rval is dvfs thresh usec */
 u32 tegra_isomgr_realize(tegra_isomgr_handle handle);
+#else
+static inline tegra_isomgr_handle tegra_isomgr_register(
+					  enum tegra_iso_client client,
+					  u32 dedicated_bw,
+					  tegra_isomgr_renegotiate renegotiate,
+					  void *priv)
+{
+	return NULL;
+}
+
+static inline void tegra_isomgr_unregister(tegra_isomgr_handle handle) {}
+
+static inline u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
+			 u32 bw, u32 lt)
+{
+	return 0;
+}
+
+static inline u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
+{
+	return 0;
+}
+#endif
