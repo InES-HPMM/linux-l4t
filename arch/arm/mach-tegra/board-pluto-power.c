@@ -378,6 +378,7 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_com", NULL),
 		REGULATOR_SUPPLY("vdd_sys_gps", NULL),
 		REGULATOR_SUPPLY("vdd_sys_bt", NULL),
+		REGULATOR_SUPPLY("vdd_sys_audio", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {

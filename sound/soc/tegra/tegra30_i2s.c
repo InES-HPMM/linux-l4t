@@ -1099,6 +1099,7 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 {
 	struct tegra30_i2s  *codec_i2s;
 	struct tegra30_i2s  *bb_i2s;
+	int reg;
 
 	codec_i2s = &i2scont[codec_info->i2s_id];
 	bb_i2s = &i2scont[bb_info->i2s_id];
@@ -1108,6 +1109,27 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 	bb_i2s->playback_ref_count++;
 	codec_i2s->capture_ref_count++;
 	bb_i2s->capture_ref_count++;
+
+	/* Make sure i2s is disabled during the configiration */
+	tegra30_i2s_enable_clocks(codec_i2s);
+	reg = codec_i2s->reg_ctrl;
+	reg &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
+	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
+	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
+		codec_i2s->reg_ctrl);
+	tegra30_i2s_disable_clocks(codec_i2s);
+
+	tegra30_i2s_enable_clocks(bb_i2s);
+	reg = bb_i2s->reg_ctrl;
+	reg &= ~TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
+	reg &= ~TEGRA30_I2S_CTRL_XFER_EN_RX;
+	tegra30_i2s_write(bb_i2s, TEGRA30_I2S_CTRL,
+		bb_i2s->reg_ctrl);
+	tegra30_i2s_disable_clocks(bb_i2s);
+
+	msleep(20);
 
 	/*Configure codec i2s*/
 	configure_baseband_i2s(codec_i2s, codec_info->is_i2smaster,
@@ -1130,6 +1152,16 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    codec_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
 			    bb_info->i2s_id);
+		if (!(codec_info->is_i2smaster && bb_info->is_i2smaster)) {
+			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_FLOWCTL,
+				TEGRA30_I2S_FILTER_QUAD);
+			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_FLOWCTL,
+				TEGRA30_I2S_FILTER_QUAD);
+			tegra30_i2s_write(codec_i2s, TEGRA30_I2S_TX_STEP, 4);
+			tegra30_i2s_write(bb_i2s, TEGRA30_I2S_TX_STEP, 4);
+			codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+			bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_TX_FLOWCTL_EN;
+		}
 	} else {
 
 		/*configure codec dam*/
@@ -1168,10 +1200,14 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 			TEGRA30_DAM_CHIN0_SRC);
 	}
 
+	msleep(20);
+
 	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
 	codec_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;
 	tegra30_i2s_write(codec_i2s, TEGRA30_I2S_CTRL,
 		codec_i2s->reg_ctrl);
+
+	msleep(20);
 
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
 	bb_i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_RX;

@@ -45,7 +45,6 @@ enum {
 	dam_ch_maxnum
 } tegra30_dam_chtype;
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 struct tegra30_dam_src_step_table  step_table[] = {
 	{ 8000, 44100, 80 },
 	{ 8000, 48000, 1 },
@@ -56,7 +55,6 @@ struct tegra30_dam_src_step_table  step_table[] = {
 	{ 44100, 16000, 441 },
 	{ 48000, 16000, 0 },
 };
-#endif
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
 int coefRam16To44[64] = {
@@ -317,11 +315,9 @@ static void tegra30_dam_set_output_samplerate(struct tegra30_dam_context *dam,
 		int fsout);
 static void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam,
 		int fsin);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 static int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 		int insample, int outsample);
 static void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step);
-#endif
 
 static inline void tegra30_dam_writel(struct tegra30_dam_context *dam,
 			u32 val, u32 reg)
@@ -549,9 +545,7 @@ void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
 	case dam_ch_in0:
 		tegra30_dam_set_input_samplerate(dam, samplerate);
 		dam->ch_insamplerate[dam_ch_in0] = samplerate;
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		tegra30_dam_set_step_reset(dam, samplerate, dam->outsamplerate);
-#endif
 		break;
 	case dam_ch_in1:
 		if (samplerate != dam->outsamplerate)
@@ -622,7 +616,6 @@ void tegra30_dam_set_input_samplerate(struct tegra30_dam_context *dam, int fsin)
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 int tegra30_dam_set_step_reset(struct tegra30_dam_context *dam,
 		int insample, int outsample)
 {
@@ -649,7 +642,6 @@ void tegra30_dam_ch0_set_step(struct tegra30_dam_context *dam, int step)
 	val |= step << TEGRA30_DAM_CH0_CTRL_STEP_SHIFT;
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
-#endif
 
 int tegra30_dam_set_gain(int ifc, int chid, int gain)
 {

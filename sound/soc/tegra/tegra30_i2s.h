@@ -270,7 +270,7 @@ struct tegra30_i2s {
 	bool is_dam_used;
 #ifdef CONFIG_PM
 	#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-		u32  reg_cache[(TEGRA30_I2S_CIF_TX_CTRL >> 2) + 1];
+		u32  reg_cache[(TEGRA30_I2S_LCOEF_2_4_2 >> 2) + 1];
 	#else
 		u32  reg_cache[(TEGRA30_I2S_SLOT_CTRL2 >> 2) + 1];
 	#endif

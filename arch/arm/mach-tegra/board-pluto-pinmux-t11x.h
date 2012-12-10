@@ -213,6 +213,9 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	I2C_PINMUX(DDC_SCL, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, DEFAULT),
 	I2C_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, DEFAULT),
 
+	/* USB pinmux */
+	DEFAULT_PINMUX(USB_VBUS_EN0,  RSVD3,       PULL_DOWN, NORMAL, OUTPUT),
+
 	/* nct */
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
 
@@ -287,5 +290,5 @@ static struct gpio_init_pin_info init_gpio_mode_pluto_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN4, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN4, false, 1),
 };

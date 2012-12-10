@@ -91,6 +91,7 @@ struct tegra_cs42l73 {
 	struct regulator *dmic_reg;
 	struct regulator *dmic_1v8_reg;
 	struct regulator *hmic_reg;
+	struct regulator *spkr_reg;
 	enum snd_soc_bias_level bias_level;
 	struct snd_soc_card *pcard;
 #ifdef CONFIG_SWITCH
@@ -953,12 +954,11 @@ static int tegra_cs42l73_event_int_mic(struct snd_soc_dapm_widget *w,
 			regulator_disable(machine->dmic_1v8_reg);
 		}
 	}
-
 	if (!(machine->gpio_requested & GPIO_INT_MIC_EN))
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -971,11 +971,18 @@ static int tegra_cs42l73_event_int_spk(struct snd_soc_dapm_widget *w,
 	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
+	if (machine->spkr_reg) {
+		if (SND_SOC_DAPM_EVENT_ON(event))
+			regulator_enable(machine->spkr_reg);
+		else
+			regulator_disable(machine->spkr_reg);
+	}
+
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_spkr_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -999,7 +1006,7 @@ static int tegra_cs42l73_event_ext_mic(struct snd_soc_dapm_widget *w,
 		return 0;
 
 	gpio_set_value_cansleep(pdata->gpio_ext_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
+				!!SND_SOC_DAPM_EVENT_ON(event));
 
 	return 0;
 }
@@ -1017,6 +1024,8 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	{"Int Spk", NULL, "SPKOUT"},
 	{"Earpiece", NULL, "EAROUT"},
+	{"Int Spk", NULL, "SPKLINEOUT"},
+	{"Int Spk", NULL, "EAROUT"},
 	{"MIC2", NULL, "Headset Mic"},
 	{"ADC Left", NULL, "Headset Mic"},
 	{"ADC Right", NULL, "Headset Mic"},
@@ -1091,7 +1100,6 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 
 		gpio_direction_output(pdata->gpio_spkr_en, 0);
 	}
-
 
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
@@ -1232,7 +1240,6 @@ static struct snd_soc_card snd_soc_tegra_cs42l73 = {
 	.resume_pre = tegra_cs42l73_resume_pre,
 	.set_bias_level = tegra_cs42l73_set_bias_level,
 	.set_bias_level_post = tegra_cs42l73_set_bias_level_post,
-
 	.controls = tegra_cs42l73_controls,
 	.num_controls = ARRAY_SIZE(tegra_cs42l73_controls),
 	.dapm_widgets = tegra_cs42l73_dapm_widgets,
@@ -1304,6 +1311,12 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 	if (IS_ERR(machine->hmic_reg)) {
 		dev_info(&pdev->dev, "No headset mic regulator found\n");
 		machine->hmic_reg = 0;
+	}
+
+	machine->spkr_reg = regulator_get(&pdev->dev, "vdd_sys_audio");
+	if (IS_ERR(machine->spkr_reg)) {
+		dev_info(&pdev->dev, "No speaker regulator found\n");
+		machine->spkr_reg = 0;
 	}
 
 #ifdef CONFIG_SWITCH
@@ -1402,6 +1415,8 @@ static int __devexit tegra_cs42l73_driver_remove(struct platform_device *pdev)
 		regulator_put(machine->dmic_1v8_reg);
 	if (machine->hmic_reg)
 		regulator_put(machine->hmic_reg);
+	if (machine->spkr_reg)
+		regulator_put(machine->spkr_reg);
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);
