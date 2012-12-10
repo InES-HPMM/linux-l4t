@@ -84,7 +84,7 @@
 #define AHB_GIZMO_SE		0x4c
 #define   IMMEDIATE	BIT(18)
 
-#define AHB_MEM_PREFETCH_CFG5	0xc4
+#define AHB_MEM_PREFETCH_CFG5	0xc8
 #define AHB_MEM_PREFETCH_CFG3	0xe0
 #define AHB_MEM_PREFETCH_CFG4	0xe4
 #define AHB_MEM_PREFETCH_CFG1	0xec
@@ -496,20 +496,31 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	gizmo_writel(val, AHB_GIZMO_USB3);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	val = gizmo_readl(AHB_GIZMO_SDMMC4);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_SDMMC4);
-
 	val = gizmo_readl(AHB_GIZMO_SE);
 	val |= IMMEDIATE;
 	gizmo_writel(val, AHB_GIZMO_SE);
+#endif
+
+	/*
+	 * SDMMC controller is removed from AHB interface in T124 and
+	 * later versions of Tegra. Configure AHB prefetcher for SDMMC4
+	 * in T11x and T14x SOCs.
+	 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	val = gizmo_readl(AHB_GIZMO_SDMMC4);
+	val |= IMMEDIATE;
+	gizmo_writel(val, AHB_GIZMO_SDMMC4);
 #endif
 
 	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
 	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
 				| AHB_PRIORITY_WEIGHT(7);
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	val |= PRIORITY_SELECT_SE | PRIORITY_SELECT_SDMMC4;
+	val |= PRIORITY_SELECT_SE;
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	val |= PRIORITY_SELECT_SDMMC4;
 #endif
 	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
 
@@ -537,13 +548,20 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG4);
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/*
+	 * SDMMC controller is removed from AHB interface in T124 and
+	 * later versions of Tegra. Configure AHB prefetcher for SDMMC4
+	 * in T11x and T14x SOCs.
+	 */
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
 	gizmo_writel(val, AHB_MEM_PREFETCH_CFG5);
+#endif
 
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	val = gizmo_readl(AHB_MEM_PREFETCH_CFG6);
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SE_MST_ID | ADDR_BNDRY(0xc) |
