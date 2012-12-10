@@ -120,6 +120,7 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_DUAL_CBUS
 	select TEGRA_DYNAMIC_CBUS
 	#select TEGRA_CORE_EDP_LIMITS
+	select TEGRA_ERRATA_977223
 	select TEGRA_ERRATA_1157520
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
@@ -363,6 +364,18 @@ config TEGRA_ERRATA_1157520
 	  SO and Non-Cached meory are randomly not observed in the
 	  order they are performed. Enabling this errata disables
 	  early ack scoreboard for T11x.
+
+config TEGRA_ERRATA_977223
+	bool "PTSA ring 1 to ring 0 does not account for forced coalescing"
+	depends on ARCH_TEGRA_11x_SOC
+	help
+	  The forced coalescing logic will "drop" the first request of the
+	  coalesced pair after the ring 1 snap arbiter.  This means that for
+	  forced coalescing clients, ring 0 only sees half the requests.
+	  Therefore the grant decrement for the ptsa would only happen 1/2 of
+	  the expected times resulting in ring 1 input always being
+	  high priority. A SW work around is to program the ring 1 input to
+	  ring 0 ptsa rate to be 1/2 of the value intended.
 
 config TEGRA_EDP_LIMITS
 	bool "Enforce electrical design limits on CPU rail"

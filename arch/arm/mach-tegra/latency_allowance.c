@@ -99,7 +99,10 @@ static void update_display_ptsa_rate(void)
 	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%lx",
 		readl(MC_RA(DIS_PTSA_RATE_0)), readl(MC_RA(DISB_PTSA_RATE_0)),
 		readl(MC_RA(VE_PTSA_RATE_0)), readl(MC_RA(RING2_PTSA_RATE_0)), ring1_rate);
-	writel(ring1_rate / 2, MC_RA(RING1_PTSA_RATE_0));
+#if defined(CONFIG_TEGRA_ERRATA_977223)
+	ring1_rate /= 2;
+#endif
+	writel(ring1_rate, MC_RA(RING1_PTSA_RATE_0));
 }
 
 #endif
@@ -484,7 +487,10 @@ static int __init tegra_latency_allowance_init(void)
 		     readl(MC_RA(DISB_PTSA_RATE_0)) +
 		     readl(MC_RA(VE_PTSA_RATE_0)) +
 		     readl(MC_RA(RING2_PTSA_RATE_0));
-	writel(ring1_rate / 2, MC_RA(RING1_PTSA_RATE_0));
+#if defined(CONFIG_TEGRA_ERRATA_977223)
+	ring1_rate /= 2;
+#endif
+	writel(ring1_rate, MC_RA(RING1_PTSA_RATE_0));
 	writel(0x36, MC_RA(RING1_PTSA_MIN_0));
 	writel(0x1f, MC_RA(RING1_PTSA_MAX_0));
 
