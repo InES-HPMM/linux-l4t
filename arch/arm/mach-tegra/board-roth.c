@@ -254,7 +254,7 @@ static struct i2c_board_info __initdata roth_codec_tfa9887R_info = {
 };
 
 static struct i2c_board_info __initdata roth_codec_tfa9887L_info = {
-	I2C_BOARD_INFO("tfa9887L", 0x36),
+	I2C_BOARD_INFO("tfa9887L", 0x34),
 };
 #endif
 
