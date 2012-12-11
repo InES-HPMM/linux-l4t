@@ -69,6 +69,7 @@
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/tegra_usb_modem_power.h>
+#include <mach/tegra_wakeup_monitor.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -372,6 +373,21 @@ static struct platform_device tegra_rtc_device = {
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
 
+#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
+static struct tegra_wakeup_monitor_platform_data
+			pluto_tegra_wakeup_monitor_pdata = {
+	.wifi_wakeup_source	= 6,
+};
+
+static struct platform_device pluto_tegra_wakeup_monitor_device = {
+	.name = "tegra_wakeup_monitor",
+	.id   = -1,
+	.dev  = {
+		.platform_data = &pluto_tegra_wakeup_monitor_pdata,
+	},
+};
+#endif
+
 static struct tegra_asoc_platform_data pluto_audio_pdata = {
 	.gpio_spkr_en		= TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det		= TEGRA_GPIO_HP_DET,
@@ -457,6 +473,9 @@ static struct platform_device *pluto_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
+#if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
+	&pluto_tegra_wakeup_monitor_device,
+#endif
 	&pluto_audio_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
