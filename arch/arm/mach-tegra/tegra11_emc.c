@@ -404,8 +404,6 @@ static inline bool dqs_preset(const struct tegra11_emc_table *next_timing,
 	} while (0)
 
 	DQS_SET(XM2DQSPADCTRL2, VREF);
-	DQS_SET_TRIM(XM2DQSPADCTRL3, VREF, 0);
-	DQS_SET_TRIM(XM2DQSPADCTRL3, VREF, 1);
 
 	return ret;
 }
