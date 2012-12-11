@@ -167,8 +167,18 @@ static int bq2419x_regulator_probe(struct platform_device *pdev)
 	}
 
 	bq->rdev = rdev;
+
+	ret = regmap_update_bits(bq->chip->regmap, BQ2419X_OTG,
+					BQ2419X_OTG_ENABLE_MASK, 0x10);
+	if (ret < 0) {
+		dev_err(bq->dev, "register %d update failed with err %d",
+			BQ2419X_OTG, ret);
+		goto err_reg_update;
+	}
 	return 0;
 
+err_reg_update:
+	regulator_unregister(bq->rdev);
 err_init:
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_free(bq->gpio_otg_iusb);
