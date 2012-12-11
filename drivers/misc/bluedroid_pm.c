@@ -114,7 +114,6 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 	bool enable = false;  /* off */
-	bool default_sw_block_state;
 
 	bluedroid_pm = kzalloc(sizeof(*bluedroid_pm), GFP_KERNEL);
 	if (!bluedroid_pm)
@@ -174,8 +173,8 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		if (unlikely(!rfkill))
 			goto free_res;
 
-		default_sw_block_state = !enable;
-		rfkill_set_states(rfkill, default_sw_block_state, false);
+		bluedroid_pm->is_blocked = !enable;
+		rfkill_set_states(rfkill, bluedroid_pm->is_blocked, false);
 
 		ret = rfkill_register(rfkill);
 
