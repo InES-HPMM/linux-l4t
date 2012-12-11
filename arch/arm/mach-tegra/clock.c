@@ -791,6 +791,22 @@ void __init tegra_common_init_clock(void)
 	tegra_cpu_timer_init();
 }
 
+void __init tegra_clk_vefify_parents(void)
+{
+	struct clk *c;
+	struct clk *p;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		p = clk_get_parent(c);
+		if (!tegra_clk_is_parent_allowed(c, p))
+			WARN(1, "tegra: parent %s is not allowed for %s\n",
+			     p->name, c->name);
+	}
+	mutex_unlock(&clock_list_lock);
+}
+
 static bool tegra_keep_boot_clocks = false;
 static int __init tegra_keep_boot_clocks_setup(char *__unused)
 {

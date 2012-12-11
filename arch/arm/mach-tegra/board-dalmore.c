@@ -769,6 +769,7 @@ static void __init tegra_dalmore_init(void)
 	tegra_get_display_board_info(&board_info);
 	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
+	tegra_clk_vefify_parents();
 	tegra_smmu_init();
 	tegra_soc_device_init("dalmore");
 	tegra_enable_pinmux();
