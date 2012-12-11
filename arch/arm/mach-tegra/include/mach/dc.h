@@ -318,10 +318,15 @@ struct tegra_dc_mode {
 	int	v_front_porch;
 	int	stereo_mode;
 	u32	flags;
+	u8	avi_m;
 };
 
 #define TEGRA_DC_MODE_FLAG_NEG_V_SYNC	(1 << 0)
 #define TEGRA_DC_MODE_FLAG_NEG_H_SYNC	(1 << 1)
+
+/* aspect ratio. 0 means unspecified or default. */
+#define TEGRA_DC_MODE_AVI_M_4_3		0x1
+#define TEGRA_DC_MODE_AVI_M_16_9	0x2
 
 enum {
 	TEGRA_DC_OUT_RGB,
