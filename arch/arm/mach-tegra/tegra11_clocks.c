@@ -5093,7 +5093,11 @@ static struct clk tegra_pll_c = {
 static struct clk tegra_pll_c_out1 = {
 	.name      = "pll_c_out1",
 	.ops       = &tegra_pll_div_ops,
-	.flags     = DIV_U71 | PERIPH_ON_CBUS,
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	.flags     = DIV_U71 | DIV_U71_INT,
+#else
+	.flags     = DIV_U71 | DIV_U71_INT | PERIPH_ON_CBUS,
+#endif
 	.parent    = &tegra_pll_c,
 	.reg       = 0x84,
 	.reg_shift = 0,
@@ -5889,7 +5893,11 @@ static struct clk tegra_clk_sbus_cmplx = {
 		.pclk = &tegra_clk_pclk,
 		.hclk = &tegra_clk_hclk,
 		.sclk_low = &tegra_pll_p_out2,
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		.sclk_high = &tegra_pll_c_out1,
+#else
 		.sclk_high = &tegra_pll_m_out1,
+#endif
 	},
 	.rate_change_nh = &sbus_rate_change_nh,
 };
