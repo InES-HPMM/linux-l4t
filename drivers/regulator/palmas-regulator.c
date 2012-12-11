@@ -1330,7 +1330,8 @@ static int palmas_suspend(struct device *dev)
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_disable_ldo8_track(palmas);
 
-	palmas_disable_smps10_boost(palmas);
+	if (pdata->disable_smps10_boost_suspend)
+		palmas_disable_smps10_boost(palmas);
 	return 0;
 }
 
@@ -1343,7 +1344,8 @@ static int palmas_resume(struct device *dev)
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_enable_ldo8_track(palmas);
 
-	palmas_enable_smps10_boost(palmas);
+	if (pdata->disable_smps10_boost_suspend)
+		palmas_enable_smps10_boost(palmas);
 	return 0;
 }
 #endif

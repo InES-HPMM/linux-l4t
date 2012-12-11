@@ -209,6 +209,7 @@ struct palmas_pmic_platform_data {
 	/* Enable tracking mode of LDO8 */
 	bool enable_ldo8_tracking;
 	bool disabe_ldo8_tracking_suspend;
+	bool disable_smps10_boost_suspend;
 };
 
 struct palmas_usb_platform_data {
