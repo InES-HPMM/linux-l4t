@@ -1129,8 +1129,11 @@ static void imx091_edp_register(struct imx091_info *info)
 	int ret;
 
 	info->edpc = NULL;
-	if (!edpc->num_states)
+	if (!edpc->num_states) {
+		dev_warn(&info->i2c_client->dev,
+			"%s: NO edp states defined.\n", __func__);
 		return;
+	}
 
 	strncpy(edpc->name, "imx091", EDP_NAME_LEN - 1);
 	edpc->name[EDP_NAME_LEN - 1] = 0;
@@ -1825,7 +1828,7 @@ static int imx091_mode_wr_full(struct imx091_info *info, u32 mode_index)
 
 	/* the state num is temporary assigned, should be updated later as
 	per-mode basis */
-	err = imx091_edp_req(info, info->edpc->e0_index);
+	err = imx091_edp_req(info, 0);
 	if (err) {
 		dev_err(&info->i2c_client->dev,
 			"%s: ERROR cannot set edp state! %d\n",	__func__, err);

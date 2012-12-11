@@ -376,8 +376,11 @@ static void max77665_f_edp_register(struct max77665_f_info *info)
 	int ret;
 
 	info->edpc = NULL;
-	if (!edpc->num_states)
+	if (!edpc->num_states) {
+		dev_warn(info->dev, "%s: NO edp states defined.\n", __func__);
 		return;
+	}
+
 	strncpy(edpc->name, "max77665f", EDP_NAME_LEN - 1);
 	edpc->name[EDP_NAME_LEN - 1] = 0;
 	edpc->throttle = max77665_f_throttle;
