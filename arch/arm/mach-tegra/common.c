@@ -251,6 +251,9 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	250000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	150000000,	false },
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	{ "vi",		"pll_p",	0,		false},
+#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
