@@ -126,7 +126,8 @@ static void mcerr_t11x_print(const char *mc_type, u32 err, u32 addr,
 			     const struct mc_client *client, int is_secure,
 			     int is_write, const char *mc_err_info)
 {
-	pr_err("%s [0x%p -> 0x%p] %s (%s %s %s)\n", mc_type,
+	pr_err("%s (0x%08lx) [0x%p -> 0x%p] %s (%s %s %s)\n", mc_type,
+	       (unsigned long) err,
 	       (void *)(addr & ~0x1f), (void *)(addr | 0x1f),
 	       (client) ? client->name : "unknown",
 	       (is_secure) ? "secure" : "non-secure",
