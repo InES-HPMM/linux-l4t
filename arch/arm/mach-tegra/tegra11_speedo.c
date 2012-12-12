@@ -95,7 +95,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	case 0x03: /* T40X */
 	case 0x04: /* T40T */
 		if (!a01)
-			cpu_speedo_id = 1;
+			cpu_speedo_id = 2;
 		soc_speedo_id = 1;
 		threshold_index = 1;
 		break;
