@@ -1008,6 +1008,7 @@ static int tegra_cs42l73_event_ext_mic(struct snd_soc_dapm_widget *w,
 static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_cs42l73_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone", NULL),
+	SND_SOC_DAPM_HP("Earpiece", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", tegra_cs42l73_event_ext_mic),
 	SND_SOC_DAPM_MIC("Int D-Mic", tegra_cs42l73_event_int_mic),
 };
@@ -1015,6 +1016,7 @@ static const struct snd_soc_dapm_widget tegra_cs42l73_dapm_widgets[] = {
 /* cs42l73 Audio Map */
 static const struct snd_soc_dapm_route tegra_cs42l73_audio_map[] = {
 	{"Int Spk", NULL, "SPKOUT"},
+	{"Earpiece", NULL, "EAROUT"},
 	{"MIC2", NULL, "Headset Mic"},
 	{"ADC Left", NULL, "Headset Mic"},
 	{"ADC Right", NULL, "Headset Mic"},
@@ -1030,6 +1032,7 @@ static const struct snd_kcontrol_new tegra_cs42l73_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
 	SOC_DAPM_PIN_SWITCH("Int D-Mic"),
 	SOC_DAPM_PIN_SWITCH("Headset Mic"),
+	SOC_DAPM_PIN_SWITCH("Earpiece"),
 };
 
 static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
