@@ -1368,6 +1368,17 @@ config ARM_ERRATA_752520
 	  and MMU are enabled, with the TLB descriptors marked as L1 cacheable,
 	  so that Page Table Walks are performed as cache linefills.
 
+config ARM_ERRATA_761320
+	bool "Full cache line writes to the same memory region from at least two processors might deadlock processor"
+	depends on CPU_V7 && SMP
+	help
+	  Under very rare circumstances, full cache line writes
+	  from (at least) 2 processors on cache lines in hazard with
+	  other requests may cause arbitration issues in the SCU,
+	  leading to processor deadlock. This erratum can be
+	  worked around by setting bit[21] of the undocumented
+	  Diagnostic Control Register to 1.
+
 config PL310_ERRATA_769419
 	bool "PL310 errata: no automatic Store Buffer drain"
 	depends on CACHE_L2X0

@@ -605,6 +605,12 @@ __v7_setup:
 	orreq	r10, r10, #1 << 20		@ set bit #20
 	mcreq	p15, 0, r10, c15, c0, 1		@ write diagnostic register
 #endif
+#ifdef CONFIG_ARM_ERRATA_761320
+	cmp	r6, #0x30			@ only present up to r3p0
+	mrcle	p15, 0, r10, c15, c0, 1		@ read diagnostic register
+	orrle	r10, r10, #1 << 21		@ set bit #21
+	mcrle	p15, 0, r10, c15, c0, 1		@ write diagnostic register
+#endif
 #endif
 
 3:	mov	r10, #0
