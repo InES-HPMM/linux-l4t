@@ -44,6 +44,6 @@ void tegra_gic_affinity_to_cpu0(void);
 #endif
 
 u32 tegra_gic_version(void);
-void __init tegra_gic_init(void);
+void __init tegra_gic_init(bool is_dt);
 
 #endif /* _MACH_TEGRA_GIC_H_ */

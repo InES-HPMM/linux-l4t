@@ -153,7 +153,7 @@ u32 tegra_gic_version(void)
 	return gic_version;
 }
 
-void __init tegra_gic_init(void)
+void __init tegra_gic_init(bool is_dt)
 {
 	u32 midr;
 
@@ -166,8 +166,9 @@ void __init tegra_gic_init(void)
 	else
 		tegra_gic_cpu_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x100);
 
-	gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
-		 tegra_gic_cpu_base);
+	if (!is_dt)
+		gic_init(0, 29, IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE),
+			tegra_gic_cpu_base);
 
 	gic_version = readl(IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE)+0xFE8);
 	gic_version = (gic_version & 0xF0) >> 4;

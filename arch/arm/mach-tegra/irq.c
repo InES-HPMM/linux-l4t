@@ -23,7 +23,9 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/irqchip.h>
 #include <linux/syscore_ops.h>
+#include <linux/clk/tegra.h>
 
 #include <mach/legacy_irq.h>
 
@@ -247,10 +249,13 @@ subsys_initcall(tegra_legacy_irq_syscore_init);
 #define tegra_set_wake NULL
 #endif
 
-void __init tegra_init_irq(void)
+void __init tegra_dt_init_irq(void)
 {
 	int i;
 	void __iomem *distbase;
+	bool is_dt = false;
+
+	tegra_clocks_init();
 
 	distbase = IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE);
 	num_ictlrs = readl_relaxed(distbase + GIC_DIST_CTR) & 0x1f;
@@ -277,7 +282,16 @@ void __init tegra_init_irq(void)
 	gic_arch_extn.irq_set_wake = tegra_set_wake;
 	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
-	tegra_gic_init();
+	/* check if DT is passed */
+	is_dt = of_have_populated_dt();
+
+	tegra_gic_init(is_dt);
+
+#ifdef CONFIG_OF
+	/* If DT is passed, init the irq via DT */
+	if (is_dt)
+		irqchip_init();
+#endif
 }
 
 void tegra_init_legacy_irq_cop(void)

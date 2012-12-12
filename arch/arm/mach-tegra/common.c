@@ -24,7 +24,6 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/irqchip.h>
 #include <linux/clk/tegra.h>
 #include <linux/highmem.h>
 #include <linux/memblock.h>
@@ -149,16 +148,6 @@ u32 tegra_uart_config[4] = {
 	/* Scratch space for debug macro */
 	0,
 };
-
-#ifdef CONFIG_OF
-void __init tegra_dt_init_irq(void)
-{
-	tegra_clocks_init();
-	tegra_pmc_init();
-	tegra_init_irq();
-	irqchip_init();
-}
-#endif
 
 #define NEVER_RESET 0
 
@@ -583,6 +572,7 @@ void __init tegra20_init_early(void)
 	tegra_perf_init();
 	tegra_init_fuse();
 	tegra_init_cache(true);
+	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 	tegra_init_power();
