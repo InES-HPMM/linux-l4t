@@ -419,9 +419,6 @@ static struct platform_device *dalmore_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
-	&tegra_smmu_device,
-#endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
@@ -772,6 +769,7 @@ static void __init tegra_dalmore_init(void)
 	tegra_get_display_board_info(&board_info);
 	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
+	tegra_smmu_init();
 	tegra_soc_device_init("dalmore");
 	tegra_enable_pinmux();
 	dalmore_pinmux_init();
