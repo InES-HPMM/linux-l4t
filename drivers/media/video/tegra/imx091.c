@@ -937,7 +937,7 @@ static struct imx091_mode_data imx091_524x390 = {
 		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
 		.support_bin_control	= 0,
 		.support_fast_mode	= 0,
-		.pll_mult		= 0x20,
+		.pll_mult		= 0x2F,
 		.pll_div		= 0x2,
 	},
 	.p_mode_i2c			= imx091_524X390_i2c,
