@@ -58,7 +58,10 @@ struct mc_client mc_clients[] = {
 	client("ahb_slave"), client("sata"),
 	client("vde_bsev"), client("vde_dbg"),
 	client("vde_mbe"), client("vde_tpm"),
+	client("unknown"),
 };
+
+int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 
 /*
  * Defaults work for T30.

@@ -79,7 +79,10 @@ struct mc_client mc_clients[] = {
 	client("gr3d_fdc3"),		client("gr3d_fdc3"),
 	client("emucif"),		client("emucif"),
 	client("tsec"),			client("tsec"),
+	client("unknown"),
 };
+
+int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
 
 static const char *mcerr_t11x_info(u32 stat)
 {

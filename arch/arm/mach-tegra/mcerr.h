@@ -96,6 +96,8 @@ struct mc_client {
 	unsigned int intr_counts[INTR_COUNT];
 };
 
+extern int mc_client_last;
+
 struct mcerr_chip_specific {
 
 	const char	*(*mcerr_info)(u32 status);

@@ -187,7 +187,8 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	is_write = err & (1 << 16);
 	is_secure = err & (1 << 17);
 	client_id = err & 0x7f;
-	client = &mc_clients[client_id];
+	client = &mc_clients[client_id <= mc_client_last
+			     ? client_id : mc_client_last];
 
 	mc_type = chip_specific.mcerr_type(err);
 	mc_info = chip_specific.mcerr_info(stat);
