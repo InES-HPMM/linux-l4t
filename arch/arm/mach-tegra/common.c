@@ -135,6 +135,11 @@ static struct board_info display_board_info;
 static int panel_id;
 static struct board_info camera_board_info;
 static int touch_id;
+static struct board_info io_board_info;
+static struct board_info button_board_info;
+static struct board_info joystick_board_info;
+static struct board_info rightspeaker_board_info;
+static struct board_info leftspeaker_board_info;
 
 static int pmu_core_edp;
 static int board_panel_type;
@@ -1241,6 +1246,96 @@ void tegra_get_camera_board_info(struct board_info *bi)
 }
 
 __setup("cameraboard=", tegra_camera_board_info);
+
+static int __init tegra_leftspeaker_board_info(char *info)
+{
+	char *p = info;
+	leftspeaker_board_info.board_id = memparse(p, &p);
+	leftspeaker_board_info.sku = memparse(p+1, &p);
+	leftspeaker_board_info.fab = memparse(p+1, &p);
+	leftspeaker_board_info.major_revision = memparse(p+1, &p);
+	leftspeaker_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_leftspeaker_board_info(struct board_info *bi)
+{
+	memcpy(bi, &leftspeaker_board_info, sizeof(struct board_info));
+}
+
+__setup("leftspeakerboard=", tegra_leftspeaker_board_info);
+
+static int __init tegra_rightspeaker_board_info(char *info)
+{
+	char *p = info;
+	rightspeaker_board_info.board_id = memparse(p, &p);
+	rightspeaker_board_info.sku = memparse(p+1, &p);
+	rightspeaker_board_info.fab = memparse(p+1, &p);
+	rightspeaker_board_info.major_revision = memparse(p+1, &p);
+	rightspeaker_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_rightspeaker_board_info(struct board_info *bi)
+{
+	memcpy(bi, &rightspeaker_board_info, sizeof(struct board_info));
+}
+
+__setup("rightspeakerboard=", tegra_rightspeaker_board_info);
+
+static int __init tegra_joystick_board_info(char *info)
+{
+	char *p = info;
+	joystick_board_info.board_id = memparse(p, &p);
+	joystick_board_info.sku = memparse(p+1, &p);
+	joystick_board_info.fab = memparse(p+1, &p);
+	joystick_board_info.major_revision = memparse(p+1, &p);
+	joystick_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_joystick_board_info(struct board_info *bi)
+{
+	memcpy(bi, &joystick_board_info, sizeof(struct board_info));
+}
+
+__setup("joystickboard=", tegra_joystick_board_info);
+
+static int __init tegra_button_board_info(char *info)
+{
+	char *p = info;
+	button_board_info.board_id = memparse(p, &p);
+	button_board_info.sku = memparse(p+1, &p);
+	button_board_info.fab = memparse(p+1, &p);
+	button_board_info.major_revision = memparse(p+1, &p);
+	button_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_button_board_info(struct board_info *bi)
+{
+	memcpy(bi, &button_board_info, sizeof(struct board_info));
+}
+
+__setup("buttonboard=", tegra_button_board_info);
+
+static int __init tegra_io_board_info(char *info)
+{
+	char *p = info;
+	io_board_info.board_id = memparse(p, &p);
+	io_board_info.sku = memparse(p+1, &p);
+	io_board_info.fab = memparse(p+1, &p);
+	io_board_info.major_revision = memparse(p+1, &p);
+	io_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+void tegra_get_io_board_info(struct board_info *bi)
+{
+	memcpy(bi, &io_board_info, sizeof(struct board_info));
+}
+
+__setup("ioboard=", tegra_io_board_info);
 
 static int __init tegra_modem_id(char *id)
 {

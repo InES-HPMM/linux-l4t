@@ -206,6 +206,11 @@ void tegra_get_board_info(struct board_info *);
 void tegra_get_pmu_board_info(struct board_info *bi);
 void tegra_get_display_board_info(struct board_info *bi);
 void tegra_get_camera_board_info(struct board_info *bi);
+void tegra_get_io_board_info(struct board_info *bi);
+void tegra_get_button_board_info(struct board_info *bi);
+void tegra_get_joystick_board_info(struct board_info *bi);
+void tegra_get_rightspeaker_board_info(struct board_info *bi);
+void tegra_get_leftspeaker_board_info(struct board_info *bi);
 int tegra_get_board_panel_id(void);
 int tegra_get_touch_id(void);
 
