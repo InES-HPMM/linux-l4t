@@ -1396,7 +1396,6 @@ static int tegra_nvavp_open(struct inode *inode, struct file *filp, int channel_
 	if (!ret)
 		nvavp->refcount++;
 
-	clientctx->nvmap = nvavp->nvmap;
 	clientctx->nvavp = nvavp;
 
 	filp->private_data = clientctx;
