@@ -805,4 +805,4 @@ static int __init isomgr_init(void)
 	isomgr_create_sysfs();
 	return 0;
 }
-late_initcall(isomgr_init);
+subsys_initcall(isomgr_init);
