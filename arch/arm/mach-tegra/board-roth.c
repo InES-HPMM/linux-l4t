@@ -256,10 +256,19 @@ static struct i2c_board_info __initdata roth_codec_tfa9887R_info = {
 static struct i2c_board_info __initdata roth_codec_tfa9887L_info = {
 	I2C_BOARD_INFO("tfa9887L", 0x34),
 };
+
+/* On A01, Left Speaker is moved to 0x34 */
+static struct i2c_board_info __initdata roth_codec_tfa9887L_info_a01 = {
+	I2C_BOARD_INFO("tfa9887L", 0x34),
+};
 #endif
 
 static void roth_i2c_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
 	tegra11_i2c_device1.dev.platform_data = &roth_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &roth_i2c2_platform_data;
 	tegra11_i2c_device3.dev.platform_data = &roth_i2c3_platform_data;
@@ -274,7 +283,11 @@ static void roth_i2c_init(void)
 
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 	i2c_register_board_info(0, &roth_codec_tfa9887R_info, 1);
-	i2c_register_board_info(0, &roth_codec_tfa9887L_info, 1);
+
+	if (board_info.fab >= BOARD_FAB_A01)
+		i2c_register_board_info(0, &roth_codec_tfa9887L_info_a01, 1);
+	else
+		i2c_register_board_info(0, &roth_codec_tfa9887L_info, 1);
 }
 
 static struct platform_device *roth_uart_devices[] __initdata = {

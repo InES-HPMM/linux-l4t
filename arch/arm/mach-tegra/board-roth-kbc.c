@@ -58,7 +58,7 @@
 
 /* Make KEY_POWER to index 0 only */
 static struct gpio_keys_button roth_p2454_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, PR0, 1),
+	[0] = GPIO_KEY(KEY_POWER, PR0, 0),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
 	[3] = {
@@ -74,6 +74,7 @@ static struct gpio_keys_button roth_p2454_keys[] = {
 	[4] = GPIO_IKEY(KEY_POWER, PALMAS_TEGRA_IRQ_BASE +
 					PALMAS_PWRON_IRQ, 1, 100),
 };
+
 
 static struct gpio_keys_platform_data roth_p2454_keys_pdata = {
 	.buttons	= roth_p2454_keys,
@@ -97,8 +98,12 @@ int __init roth_kbc_init(void)
 	if (board_info.major_revision > BOARD_FAB_A00)
 		roth_p2454_keys[0].gpio = TEGRA_GPIO_PQ0;
 
-	platform_device_register(&roth_p2454_keys_device);
+	if (board_info.major_revision >= BOARD_FAB_A02) {
+		roth_p2454_keys[1].code = KEY_BACK;
+		roth_p2454_keys[2].code = KEY_HOME;
+	}
 
+	platform_device_register(&roth_p2454_keys_device);
 	return 0;
 }
 
