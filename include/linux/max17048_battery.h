@@ -12,6 +12,8 @@
 #define __MAX17048_BATTERY_H_
 #include <linux/smb349-charger.h>
 
+#define MAX17048_DATA_SIZE 64
+
 struct max17048_battery_model {
 	uint8_t rcomp;
 	uint8_t soccheck_A;
@@ -25,11 +27,14 @@ struct max17048_battery_model {
 	uint16_t vreset;
 	uint16_t valert;
 	uint16_t ocvtest;
+	uint8_t data_tbl[MAX17048_DATA_SIZE];
 };
 
 struct max17048_platform_data {
-	int (*battery_online)(void);
-	int (*charging_status)(void);
-	int (*charger_online)(void);
+	int use_ac;
+	int use_usb;
+	struct max17048_battery_model *model_data;
 };
+
+void max17048_battery_status(int status, int chrg_type);
 #endif
