@@ -104,6 +104,8 @@ unsigned long tegra_avp_kernel_start;
 unsigned long tegra_avp_kernel_size;
 unsigned long tegra_bootloader_fb_start;
 unsigned long tegra_bootloader_fb_size;
+unsigned long tegra_bootloader_fb2_start;
+unsigned long tegra_bootloader_fb2_size;
 unsigned long tegra_fb_start;
 unsigned long tegra_fb_size;
 unsigned long tegra_fb2_start;
@@ -786,6 +788,21 @@ static int __init tegra_bootloader_fb_arg(char *options)
 }
 early_param("tegra_fbmem", tegra_bootloader_fb_arg);
 
+static int __init tegra_bootloader_fb2_arg(char *options)
+{
+	char *p = options;
+
+	tegra_bootloader_fb2_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_bootloader_fb2_start = memparse(p+1, &p);
+
+	pr_info("Found tegra_fbmem2: %08lx@%08lx\n",
+		tegra_bootloader_fb2_size, tegra_bootloader_fb2_start);
+
+	return 0;
+}
+early_param("tegra_fbmem2", tegra_bootloader_fb2_arg);
+
 static int __init tegra_sku_override(char *id)
 {
 	char *p = id;
@@ -1352,9 +1369,23 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		}
 	}
 
+	if (tegra_bootloader_fb2_size) {
+		tegra_bootloader_fb2_size =
+				PAGE_ALIGN(tegra_bootloader_fb2_size);
+		if (memblock_reserve(tegra_bootloader_fb2_start,
+				tegra_bootloader_fb2_size)) {
+			pr_err("Failed to reserve bootloader fb2 %08lx@%08lx\n",
+				tegra_bootloader_fb2_size,
+				tegra_bootloader_fb2_start);
+			tegra_bootloader_fb2_start = 0;
+			tegra_bootloader_fb2_size = 0;
+		}
+	}
+
 	pr_info("Tegra reserved memory:\n"
 		"LP0:                    %08lx - %08lx\n"
 		"Bootloader framebuffer: %08lx - %08lx\n"
+		"Bootloader framebuffer2: %08lx - %08lx\n"
 		"Framebuffer:            %08lx - %08lx\n"
 		"2nd Framebuffer:        %08lx - %08lx\n"
 		"Carveout:               %08lx - %08lx\n"
@@ -1367,8 +1398,10 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
 		tegra_bootloader_fb_start,
 		tegra_bootloader_fb_size ?
-			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1
-			: 0,
+		 tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
+		tegra_bootloader_fb2_start,
+		tegra_bootloader_fb2_size ?
+		 tegra_bootloader_fb2_start + tegra_bootloader_fb2_size - 1 : 0,
 		tegra_fb_start,
 		tegra_fb_size ?
 			tegra_fb_start + tegra_fb_size - 1 : 0,
@@ -1450,6 +1483,10 @@ void __init tegra_release_bootloader_fb(void)
 		if (memblock_free(tegra_bootloader_fb_start,
 						tegra_bootloader_fb_size))
 			pr_err("Failed to free bootloader fb.\n");
+	if (tegra_bootloader_fb2_size)
+		if (memblock_free(tegra_bootloader_fb2_start,
+						tegra_bootloader_fb2_size))
+			pr_err("Failed to free bootloader fb2.\n");
 }
 
 #if defined(CONFIG_TEGRA_BASEBAND)

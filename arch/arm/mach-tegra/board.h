@@ -127,6 +127,8 @@ static inline void __init tegra_ram_console_debug_reserve(unsigned long ram_cons
 
 extern unsigned long tegra_bootloader_fb_start;
 extern unsigned long tegra_bootloader_fb_size;
+extern unsigned long tegra_bootloader_fb2_start;
+extern unsigned long tegra_bootloader_fb2_size;
 extern unsigned long tegra_fb_start;
 extern unsigned long tegra_fb_size;
 extern unsigned long tegra_fb2_start;
