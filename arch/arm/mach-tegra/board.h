@@ -109,6 +109,12 @@ static inline void tegra_move_framebuffer(unsigned long to, unsigned long from,
 {
 	__tegra_move_framebuffer(NULL, to, from, size);
 }
+void __tegra_clear_framebuffer(struct platform_device *pdev,
+			       unsigned long to, unsigned long size);
+static inline void tegra_clear_framebuffer(unsigned long to, unsigned long size)
+{
+	__tegra_clear_framebuffer(NULL, to, size);
+}
 bool is_tegra_debug_uartport_hs(void);
 int get_tegra_uart_debug_port_id(void);
 

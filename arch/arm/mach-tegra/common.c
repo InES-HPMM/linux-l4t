@@ -1226,6 +1226,31 @@ out:
 	iounmap(to_io);
 }
 
+void __tegra_clear_framebuffer(struct platform_device *pdev,
+			       unsigned long to, unsigned long size)
+{
+	void __iomem *to_io;
+	unsigned long i;
+
+	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
+	BUG_ON(PAGE_ALIGN(size) != size);
+
+	to_io = ioremap(to, size);
+	if (!to_io) {
+		pr_err("%s: Failed to map target framebuffer\n", __func__);
+		return;
+	}
+
+	if (pfn_valid(page_to_pfn(phys_to_page(to)))) {
+		for (i = 0 ; i < size; i += PAGE_SIZE)
+			memset(to_io + i, 0, PAGE_SIZE);
+	} else {
+		for (i = 0; i < size; i += 4)
+			writel(0, to_io + i);
+	}
+	iounmap(to_io);
+}
+
 void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
