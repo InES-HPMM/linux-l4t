@@ -16,12 +16,12 @@
  * 51 franklin street, fifth floor, boston, ma  02110-1301, usa.
  */
 
-#include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
 
 #include "apbio.h"
 #include "fuse.h"
+#include "iomap.h"
 
 #ifndef __TEGRA11x_FUSE_OFFSETS_H
 #define __TEGRA11x_FUSE_OFFSETS_H
@@ -67,7 +67,7 @@
 #define FUSE_Y_COORDINATE_MASK	0x1ff
 #define FUSE_GPU_INFO		0x390
 #define FUSE_GPU_INFO_MASK	(1<<2)
-#define FUSE_SPARE_BIT		0x280
+#define FUSE_SPARE_BIT		0x2a0
 /* fuse registers used in public fuse data read API */
 #define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */

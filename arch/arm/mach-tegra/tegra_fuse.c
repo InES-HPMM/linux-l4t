@@ -1,11 +1,12 @@
 /*
- * arch/arm/mach-tegra/tegra_fuse.c
+ * arch/arm/mach-tegra/fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2010-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
+ *	Sumit Sharma <sumsharma@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,6 +20,8 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/err.h>
+#include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/export.h>
 #include <linux/tegra-soc.h>
@@ -26,6 +29,13 @@
 #include <linux/string.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <linux/sysfs.h>
+#include <linux/clk.h>
+#include <linux/regulator/consumer.h>
+#include <linux/ctype.h>
+#include <linux/wakelock.h>
 
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
@@ -35,63 +45,50 @@
 #include "iomap.h"
 #include "apbio.h"
 
-#define FUSE_SKU_INFO		0x110
-#define FUSE_VP8_ENABLE_0	0x1c4
-#define FUSE_SKU_DIRECT_CONFIG_0	    0x1f4
-#define FUSE_SKU_GPU_1_PIXEL_PIPE	    0x200
-#define FUSE_SKU_GPU_1_ALU_PER_PIXEL_PIPE   0x400
-
-#define TEGRA20_FUSE_SPARE_BIT		0x200
-#define TEGRA30_FUSE_SPARE_BIT		0x244
-#define TEGRA11_FUSE_SPARE_BIT		0x280
-#define TEGRA14_FUSE_SPARE_BIT		0x2a0
-
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-#define FUSE_UID_LOW		0x108
-#define FUSE_UID_HIGH		0x10c
+#include "tegra2_fuse_offsets.h"
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#include "tegra3_fuse_offsets.h"
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#include "tegra11x_fuse_offsets.h"
 #else
-#define FUSE_VENDOR_CODE	0x200
-#define FUSE_VENDOR_CODE_MASK	0xf
-#define FUSE_FAB_CODE		0x204
-#define FUSE_FAB_CODE_MASK	0x3f
-#define FUSE_LOT_CODE_0		0x208
-#define FUSE_LOT_CODE_1		0x20c
-#define FUSE_WAFER_ID		0x210
-#define FUSE_WAFER_ID_MASK	0x3f
-#define FUSE_X_COORDINATE	0x214
-#define FUSE_X_COORDINATE_MASK	0x1ff
-#define FUSE_Y_COORDINATE	0x218
-#define FUSE_Y_COORDINATE_MASK	0x1ff
-#define FUSE_GPU_INFO		0x390
-#define FUSE_GPU_INFO_MASK	(1<<2)
-/* fuse registers used in public fuse data read API */
-#define FUSE_TEST_PROGRAM_REVISION_0	0x128
-/* fuse spare bits are used to get Tj-ADT values */
-#define FUSE_SPARE_BIT_0_0	0x244
-#define NUM_TSENSOR_SPARE_BITS	28
-/* tsensor calibration register */
-#define FUSE_TSENSOR_CALIB_0	0x198
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-#define FUSE_VSENSOR_CALIB_0	0x18c
+#include "tegra14x_fuse_offsets.h"
 #endif
 
-#endif
 
-#define TEGRA_AGE_0_6 0x2cc /*Spare bit 34*/
-#define TEGRA_AGE_1_6 0x308 /*Spare bit 49*/
-#define TEGRA_AGE_0_5 0x2c8 /*Spare bit 33*/
-#define TEGRA_AGE_1_5 0x304 /*Spare bit 48*/
-#define TEGRA_AGE_0_4 0x2c4 /*Spare bit 32*/
-#define TEGRA_AGE_1_4 0x300 /*Spare bit 47*/
-#define TEGRA_AGE_0_3 0x2c0 /*Spare bit 31*/
-#define TEGRA_AGE_1_3 0x2fc /*Spare bit 46*/
-#define TEGRA_AGE_0_2 0x2bc /*Spare bit 30*/
-#define TEGRA_AGE_1_2 0x2f8 /*Spare bit 45*/
-#define TEGRA_AGE_0_1 0x2b8 /*Spare bit 29*/
-#define TEGRA_AGE_1_1 0x2f4 /*Spare bit 44*/
-#define TEGRA_AGE_0_0 0x2b4 /*Spare bit 28*/
-#define TEGRA_AGE_1_0 0x2f0 /*Spare bit 43*/
+static struct kobject *fuse_kobj;
+
+static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+								char *buf);
+static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+	const char *buf, size_t count);
+
+static struct kobj_attribute devkey_attr =
+	__ATTR(device_key, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute jtagdis_attr =
+	__ATTR(jtag_disable, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute odm_prod_mode_attr =
+	__ATTR(odm_production_mode, 0444, fuse_show, fuse_store);
+
+static struct kobj_attribute sec_boot_dev_cfg_attr =
+	__ATTR(sec_boot_dev_cfg, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute sec_boot_dev_sel_attr =
+	__ATTR(sec_boot_dev_sel, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute sbk_attr =
+	__ATTR(secure_boot_key, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute sw_rsvd_attr =
+	__ATTR(sw_reserved, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute ignore_dev_sel_straps_attr =
+	__ATTR(ignore_dev_sel_straps, 0440, fuse_show, fuse_store);
+
+static struct kobj_attribute odm_rsvd_attr =
+	__ATTR(odm_reserved, 0440, fuse_show, fuse_store);
 
 #define MINOR_QT		0
 #define MINOR_FPGA		1
@@ -108,19 +105,31 @@ struct tegra_id {
 static struct tegra_id tegra_id;
 
 int tegra_sku_id;
-int tegra_cpu_process_id;
-int tegra_core_process_id;
 int tegra_chip_id;
-int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
-int tegra_soc_speedo_id;
-int tegra_package_id;
 enum tegra_revision tegra_revision;
 static unsigned int tegra_fuse_vp8_enable;
 static int tegra_gpu_num_pixel_pipes;
 static int tegra_gpu_num_alus_per_pixel_pipe;
 
-static int tegra_fuse_spare_bit;
-static void (*tegra_init_speedo_data)(void);
+static u32 fuse_pgm_data[NFUSES / 2];
+static u32 fuse_pgm_mask[NFUSES / 2];
+static u32 tmp_fuse_pgm_data[NFUSES / 2];
+
+static struct fuse_data fuse_info;
+struct regulator *fuse_regulator;
+struct clk *clk_fuse;
+
+struct param_info {
+	u32 *addr;
+	int sz;
+	u32 start_off;
+	int start_bit;
+	int nbits;
+	int data_offset;
+	char sysfs_name[FUSE_NAME_LEN];
+};
+
+DEFINE_MUTEX(fuse_lock);
 
 /* The BCT to use at boot is specified by board straps that can be read
  * through a APB misc register and decoded. 2 bits, i.e. 4 possible BCTs.
@@ -128,8 +137,8 @@ static void (*tegra_init_speedo_data)(void);
 int tegra_bct_strapping;
 
 #define STRAP_OPT 0x008
-#define GMI_AD0 (1 << 4)
-#define GMI_AD1 (1 << 5)
+#define GMI_AD0 BIT(4)
+#define GMI_AD1 BIT(5)
 #define RAM_ID_MASK (GMI_AD0 | GMI_AD1)
 #define RAM_CODE_SHIFT 4
 
@@ -154,6 +163,93 @@ static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
 };
 #endif
 
+static struct param_info fuse_info_tbl[] = {
+	[DEVKEY] = {
+		.addr = &fuse_info.devkey,
+		.sz = sizeof(fuse_info.devkey),
+		.start_off = DEVKEY_START_OFFSET,
+		.start_bit = DEVKEY_START_BIT,
+		.nbits = 32,
+		.data_offset = 0,
+		.sysfs_name = "device_key",
+	},
+	[JTAG_DIS] = {
+		.addr = &fuse_info.jtag_dis,
+		.sz = sizeof(fuse_info.jtag_dis),
+		.start_off = JTAG_START_OFFSET,
+		.start_bit = JTAG_START_BIT,
+		.nbits = 1,
+		.data_offset = 1,
+		.sysfs_name = "jtag_disable",
+	},
+	[ODM_PROD_MODE] = {
+		.addr = &fuse_info.odm_prod_mode,
+		.sz = sizeof(fuse_info.odm_prod_mode),
+		.start_off = ODM_PROD_START_OFFSET,
+		.start_bit = ODM_PROD_START_BIT,
+		.nbits = 1,
+		.data_offset = 2,
+		.sysfs_name = "odm_production_mode",
+	},
+	[SEC_BOOT_DEV_CFG] = {
+		.addr = &fuse_info.bootdev_cfg,
+		.sz = sizeof(fuse_info.bootdev_cfg),
+		.start_off = SB_DEVCFG_START_OFFSET,
+		.start_bit = SB_DEVCFG_START_BIT,
+		.nbits = 16,
+		.data_offset = 3,
+		.sysfs_name = "sec_boot_dev_cfg",
+	},
+	[SEC_BOOT_DEV_SEL] = {
+		.addr = &fuse_info.bootdev_sel,
+		.sz = sizeof(fuse_info.bootdev_sel),
+		.start_off = SB_DEVSEL_START_OFFSET,
+		.start_bit = SB_DEVSEL_START_BIT,
+		.nbits = 3,
+		.data_offset = 4,
+		.sysfs_name = "sec_boot_dev_sel",
+	},
+	[SBK] = {
+		.addr = fuse_info.sbk,
+		.sz = sizeof(fuse_info.sbk),
+		.start_off = SBK_START_OFFSET,
+		.start_bit = SBK_START_BIT,
+		.nbits = 128,
+		.data_offset = 5,
+		.sysfs_name = "secure_boot_key",
+	},
+	[SW_RSVD] = {
+		.addr = &fuse_info.sw_rsvd,
+		.sz = sizeof(fuse_info.sw_rsvd),
+		.start_off = SW_RESERVED_START_OFFSET,
+		.start_bit = SW_RESERVED_START_BIT,
+		.nbits = 4,
+		.data_offset = 9,
+		.sysfs_name = "sw_reserved",
+	},
+	[IGNORE_DEV_SEL_STRAPS] = {
+		.addr = &fuse_info.ignore_devsel_straps,
+		.sz = sizeof(fuse_info.ignore_devsel_straps),
+		.start_off = IGNORE_DEVSEL_START_OFFSET,
+		.start_bit = IGNORE_DEVSEL_START_BIT,
+		.nbits = 1,
+		.data_offset = 10,
+		.sysfs_name = "ignore_dev_sel_straps",
+	},
+	[ODM_RSVD] = {
+		.addr = fuse_info.odm_rsvd,
+		.sz = sizeof(fuse_info.odm_rsvd),
+		.start_off = ODM_RESERVED_DEVSEL_START_OFFSET,
+		.start_bit = ODM_RESERVED_START_BIT,
+		.nbits = 256,
+		.data_offset = 11,
+		.sysfs_name = "odm_reserved",
+	},
+	[SBK_DEVKEY_STATUS] = {
+		.sz = SBK_DEVKEY_STATUS_SZ,
+	},
+};
+
 u32 tegra_fuse_readl(unsigned long offset)
 {
 	return tegra_apb_readl(TEGRA_FUSE_BASE + offset);
@@ -166,108 +262,8 @@ void tegra_fuse_writel(u32 val, unsigned long offset)
 
 bool tegra_spare_fuse(int bit)
 {
-	return tegra_fuse_readl(tegra_fuse_spare_bit + bit * 4);
+	return tegra_fuse_readl(FUSE_SPARE_BIT + bit * 4);
 }
-
-static void tegra_get_process_id(void)
-{
-	u32 reg;
-
-	reg = tegra_fuse_readl(tegra_fuse_spare_bit);
-	tegra_cpu_process_id = (reg >> 6) & 3;
-	reg = tegra_fuse_readl(tegra_fuse_spare_bit);
-	tegra_core_process_id = (reg >> 12) & 3;
-}
-
-u32 tegra_read_chipid(void)
-{
-	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
-}
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-int tegra_fuse_get_revision(u32 *rev)
-{
-	return -ENOENT;
-}
-EXPORT_SYMBOL(tegra_fuse_get_revision);
-
-int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
-{
-	return -ENOENT;
-}
-EXPORT_SYMBOL(tegra_fuse_get_tsensor_calibration_data);
-
-int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
-{
-	return -ENOENT;
-}
-EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
-
-#else
-
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
-int tegra_fuse_get_vsensor_calib(u32 *calib)
-{
-	*calib = tegra_fuse_readl(FUSE_VSENSOR_CALIB_0);
-	return 0;
-}
-
-static int tsensor_calib_offset[] = {
-	[0] = 0x198,
-	[1] = 0x184,
-	[2] = 0x188,
-	[3] = 0x22c,
-	[4] = 0x254,
-	[5] = 0x258,
-	[6] = 0x25c,
-	[7] = 0x260,
-};
-
-int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
-{
-	if (index < 0 || index > 7)
-		return -EINVAL;
-	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
-	return 0;
-}
-#endif
-
-int tegra_fuse_get_revision(u32 *rev)
-{
-	/* fuse revision */
-	*rev = tegra_fuse_readl(FUSE_TEST_PROGRAM_REVISION_0);
-	return 0;
-}
-EXPORT_SYMBOL(tegra_fuse_get_revision);
-
-int tegra_fuse_get_tsensor_calibration_data(u32 *calib)
-{
-	/* tsensor calibration fuse */
-	*calib = tegra_fuse_readl(FUSE_TSENSOR_CALIB_0);
-	return 0;
-}
-EXPORT_SYMBOL(tegra_fuse_get_tsensor_calibration_data);
-
-int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
-{
-	u32 value;
-	int i;
-
-	BUG_ON(NUM_TSENSOR_SPARE_BITS > (sizeof(u32) * 8));
-	if (!spare_bits)
-		return -ENOMEM;
-	*spare_bits = 0;
-	/* spare bits 0-27 */
-	for (i = 0; i < NUM_TSENSOR_SPARE_BITS; i++) {
-		value = tegra_fuse_readl(FUSE_SPARE_BIT_0_0 +
-			(i << 2));
-		if (value)
-			*spare_bits |= BIT(i);
-	}
-	return 0;
-}
-EXPORT_SYMBOL(tegra_fuse_get_tsensor_spare_bits);
-#endif
 
 #define TEGRA_READ_AGE_BIT(n, bit, age) {\
 	bit = tegra_fuse_readl(TEGRA_AGE_0_##n);\
@@ -296,105 +292,6 @@ int tegra_get_age(void)
 	pr_info("TEGRA: Linear age: %d\n", linear_age);
 
 	return linear_age;
-}
-
-unsigned long long tegra_chip_uid(void)
-{
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	unsigned long long lo, hi;
-
-	lo = tegra_fuse_readl(FUSE_UID_LOW);
-	hi = tegra_fuse_readl(FUSE_UID_HIGH);
-	return (hi << 32ull) | lo;
-#else
-	u64 uid = 0ull;
-	u32 reg;
-	u32 cid;
-	u32 vendor;
-	u32 fab;
-	u32 lot;
-	u32 wafer;
-	u32 x;
-	u32 y;
-	u32 i;
-
-	/* This used to be so much easier in prior chips. Unfortunately, there
-	   is no one-stop shopping for the unique id anymore. It must be
-	   constructed from various bits of information burned into the fuses
-	   during the manufacturing process. The 64-bit unique id is formed
-	   by concatenating several bit fields. The notation used for the
-	   various fields is <fieldname:size_in_bits> with the UID composed
-	   thusly:
-
-	   <CID:4><VENDOR:4><FAB:6><LOT:26><WAFER:6><X:9><Y:9>
-
-	   Where:
-
-		Field    Bits  Position Data
-		-------  ----  -------- ----------------------------------------
-		CID        4     60     Chip id
-		VENDOR     4     56     Vendor code
-		FAB        6     50     FAB code
-		LOT       26     24     Lot code (5-digit base-36-coded-decimal,
-					re-encoded to 26 bits binary)
-		WAFER      6     18     Wafer id
-		X          9      9     Wafer X-coordinate
-		Y          9      0     Wafer Y-coordinate
-		-------  ----
-		Total     64
-	*/
-
-	/* Get the chip id and encode each chip variant as a unique value. */
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + 0x804));
-	reg = (reg & 0xFF00) >> 8;
-
-	switch (reg) {
-	case TEGRA_CHIPID_TEGRA3:
-		cid = 0;
-		break;
-
-	case TEGRA_CHIPID_TEGRA11:
-		cid = 1;
-		break;
-
-	case TEGRA_CHIPID_TEGRA14:
-		cid = 3;
-		break;
-
-	default:
-		BUG();
-		break;
-	}
-
-	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
-	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
-
-	/* Lot code must be re-encoded from a 5 digit base-36 'BCD' number
-	   to a binary number. */
-	lot = 0;
-	reg = tegra_fuse_readl(FUSE_LOT_CODE_0) << 2;
-
-	for (i = 0; i < 5; ++i) {
-		u32 digit = (reg & 0xFC000000) >> 26;
-		BUG_ON(digit >= 36);
-		lot *= 36;
-		lot += digit;
-		reg <<= 6;
-	}
-
-	wafer = tegra_fuse_readl(FUSE_WAFER_ID) & FUSE_WAFER_ID_MASK;
-	x = tegra_fuse_readl(FUSE_X_COORDINATE) & FUSE_X_COORDINATE_MASK;
-	y = tegra_fuse_readl(FUSE_Y_COORDINATE) & FUSE_Y_COORDINATE_MASK;
-
-	uid = ((unsigned long long)cid  << 60ull)
-	    | ((unsigned long long)vendor << 56ull)
-	    | ((unsigned long long)fab << 50ull)
-	    | ((unsigned long long)lot << 24ull)
-	    | ((unsigned long long)wafer << 18ull)
-	    | ((unsigned long long)x << 9ull)
-	    | ((unsigned long long)y << 0ull);
-	return uid;
-#endif
 }
 
 int tegra_gpu_register_sets(void)
@@ -568,10 +465,7 @@ static void tegra_get_tegraid_from_hw(void)
 	u32 nlist = readl(netlist);
 	char *priv = NULL;
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	if (get_spare_fuse(18) || get_spare_fuse(19))
-		priv = "p";
-#endif
+	tegra_fuse_get_priv(priv);
 	tegra_set_tegraid((cid >> 8) & 0xff,
 			  (cid >> 4) & 0xf,
 			  (cid >> 16) & 0xf,
@@ -645,6 +539,17 @@ static int get_revision(char *val, const struct kernel_param *kp)
 	return param_get_uint(val, kp);
 }
 
+static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
+{
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA2 ||
+		 tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
+		tegra_fuse_vp8_enable = 0;
+	else
+		tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+
+	return param_get_uint(val, kp);
+}
+
 static struct kernel_param_ops tegra_chip_id_ops = {
 	.get = get_chip_id,
 };
@@ -656,12 +561,611 @@ static struct kernel_param_ops tegra_revision_ops = {
 module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_id.chipid, 0444);
 module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_id.revision, 0444);
 
+module_param_call(tegra_fuse_vp8_enable, NULL, get_fuse_vp8_enable,
+		&tegra_fuse_vp8_enable, 0444);
+__MODULE_PARM_TYPE(tegra_fuse_vp8_enable, "uint");
+
+static void wait_for_idle(void)
+{
+	u32 reg;
+
+	do {
+		udelay(1);
+		reg = tegra_fuse_readl(FUSE_CTRL);
+	} while ((reg & (0xF << 16)) != STATE_IDLE);
+}
+
+static u32 fuse_cmd_read(u32 addr)
+{
+	u32 reg;
+
+	wait_for_idle();
+	tegra_fuse_writel(addr, FUSE_REG_ADDR);
+	reg = tegra_fuse_readl(FUSE_CTRL);
+	reg &= ~FUSE_CMD_MASK;
+	reg |= FUSE_READ;
+	tegra_fuse_writel(reg, FUSE_CTRL);
+	wait_for_idle();
+
+	reg = tegra_fuse_readl(FUSE_REG_READ);
+	return reg;
+}
+
+static void fuse_cmd_write(u32 value, u32 addr)
+{
+	u32 reg;
+
+	wait_for_idle();
+	tegra_fuse_writel(addr, FUSE_REG_ADDR);
+	tegra_fuse_writel(value, FUSE_REG_WRITE);
+
+	reg = tegra_fuse_readl(FUSE_CTRL);
+	reg &= ~FUSE_CMD_MASK;
+	reg |= FUSE_WRITE;
+	tegra_fuse_writel(reg, FUSE_CTRL);
+	wait_for_idle();
+}
+
+static void fuse_cmd_sense(void)
+{
+	u32 reg;
+
+	wait_for_idle();
+	reg = tegra_fuse_readl(FUSE_CTRL);
+	reg &= ~FUSE_CMD_MASK;
+	reg |= FUSE_SENSE;
+	tegra_fuse_writel(reg, FUSE_CTRL);
+	wait_for_idle();
+}
+
+static void get_fuse(enum fuse_io_param io_param, u32 *out)
+{
+	int start_bit = fuse_info_tbl[io_param].start_bit;
+	int nbits = fuse_info_tbl[io_param].nbits;
+	int offset = fuse_info_tbl[io_param].start_off;
+	u32 *dst = fuse_info_tbl[io_param].addr;
+	int dst_bit = 0;
+	int i;
+	u32 val;
+	int loops;
+
+	if (out)
+		dst = out;
+
+	do {
+		val = fuse_cmd_read(offset);
+		loops = min(nbits, 32 - start_bit);
+		for (i = 0; i < loops; i++) {
+			if (val & (BIT(start_bit + i)))
+				*dst |= BIT(dst_bit);
+			else
+				*dst &= ~BIT(dst_bit);
+			dst_bit++;
+			if (dst_bit == 32) {
+				dst++;
+				dst_bit = 0;
+			}
+		}
+		nbits -= loops;
+		offset += 2;
+		start_bit = 0;
+	} while (nbits > 0);
+}
+
+int tegra_fuse_read(enum fuse_io_param io_param, u32 *data, int size)
+{
+	int nbits;
+	u32 sbk[4], devkey = 0;
+
+	if (IS_ERR_OR_NULL(clk_fuse)) {
+		pr_err("fuse read disabled");
+		return -ENODEV;
+	}
+
+	if (!data)
+		return -EINVAL;
+
+	if (size != fuse_info_tbl[io_param].sz) {
+		pr_err("%s: size mismatch(%d), %d vs %d\n", __func__,
+			(int)io_param, size, fuse_info_tbl[io_param].sz);
+		return -EINVAL;
+	}
+
+	mutex_lock(&fuse_lock);
+
+	clk_enable(clk_fuse);
+	fuse_cmd_sense();
+
+	if (io_param == SBK_DEVKEY_STATUS) {
+		*data = 0;
+
+		get_fuse(SBK, sbk);
+		get_fuse(DEVKEY, &devkey);
+		nbits = sizeof(sbk) * BITS_PER_BYTE;
+		if (find_first_bit((unsigned long *)sbk, nbits) != nbits)
+			*data = 1;
+		else if (devkey)
+			*data = 1;
+	} else {
+		get_fuse(io_param, data);
+	}
+
+	clk_disable(clk_fuse);
+	mutex_unlock(&fuse_lock);
+
+	return 0;
+}
+
+static bool fuse_odm_prod_mode(void)
+{
+	u32 odm_prod_mode = 0;
+
+	clk_enable(clk_fuse);
+	get_fuse(ODM_PROD_MODE, &odm_prod_mode);
+	clk_disable(clk_fuse);
+	return odm_prod_mode ? true : false;
+}
+
+static void set_fuse(enum fuse_io_param io_param, u32 *data)
+{
+	int i, start_bit = fuse_info_tbl[io_param].start_bit;
+	int nbits = fuse_info_tbl[io_param].nbits, loops;
+	int offset = fuse_info_tbl[io_param].start_off >> 1;
+	int src_bit = 0;
+	u32 val;
+
+	do {
+		val = *data;
+		loops = min(nbits, 32 - start_bit);
+		for (i = 0; i < loops; i++) {
+			fuse_pgm_mask[offset] |= BIT(start_bit + i);
+			if (val & BIT(src_bit))
+				fuse_pgm_data[offset] |= BIT(start_bit + i);
+			else
+				fuse_pgm_data[offset] &= ~BIT(start_bit + i);
+			src_bit++;
+			if (src_bit == 32) {
+				data++;
+				val = *data;
+				src_bit = 0;
+			}
+		}
+		nbits -= loops;
+		offset++;
+		start_bit = 0;
+	} while (nbits > 0);
+}
+
+static void populate_fuse_arrs(struct fuse_data *info, u32 flags)
+{
+	u32 *src = (u32 *)info;
+	int i;
+
+	memset(fuse_pgm_data, 0, sizeof(fuse_pgm_data));
+	memset(fuse_pgm_mask, 0, sizeof(fuse_pgm_mask));
+
+	if ((flags & FLAGS_ODMRSVD)) {
+		set_fuse(ODM_RSVD, info->odm_rsvd);
+		flags &= ~FLAGS_ODMRSVD;
+	}
+
+	/* do not burn any more if secure mode is set */
+	if (fuse_odm_prod_mode())
+		goto out;
+
+	for_each_set_bit(i, (unsigned long *)&flags, MAX_PARAMS)
+		set_fuse(i, src + fuse_info_tbl[i].data_offset);
+
+out:
+	pr_debug("ready to program");
+}
+
+static void fuse_power_enable(void)
+{
+	tegra_fuse_writel(0x1, FUSE_PWR_GOOD_SW);
+	udelay(1);
+}
+
+static void fuse_power_disable(void)
+{
+	tegra_fuse_writel(0, FUSE_PWR_GOOD_SW);
+	udelay(1);
+}
+
+static void fuse_program_array(int pgm_cycles)
+{
+	u32 reg, fuse_val[2];
+	u32 *data = tmp_fuse_pgm_data, addr = 0, *mask = fuse_pgm_mask;
+	int i = 0;
+
+	fuse_cmd_sense();
+
+	/* get the first 2 fuse bytes */
+	fuse_val[0] = fuse_cmd_read(0);
+	fuse_val[1] = fuse_cmd_read(1);
+
+	fuse_power_enable();
+
+	/*
+	 * The fuse macro is a high density macro. Fuses are
+	 * burned using an addressing mechanism, so no need to prepare
+	 * the full list, but more write to control registers are needed.
+	 * The only bit that can be written at first is bit 0, a special write
+	 * protection bit by assumptions all other bits are at 0
+	 *
+	 * The programming pulse must have a precise width of
+	 * [9000, 11000] ns.
+	 */
+	if (pgm_cycles > 0) {
+		reg = pgm_cycles;
+		tegra_fuse_writel(reg, FUSE_TIME_PGM);
+	}
+	fuse_val[0] = (0x1 & ~fuse_val[0]);
+	fuse_val[1] = (0x1 & ~fuse_val[1]);
+	fuse_cmd_write(fuse_val[0], 0);
+	fuse_cmd_write(fuse_val[1], 1);
+
+	fuse_power_disable();
+
+	/*
+	 * this will allow programming of other fuses
+	 * and the reading of the existing fuse values
+	 */
+	fuse_cmd_sense();
+
+	/* Clear out all bits that have already been burned or masked out */
+	memcpy(data, fuse_pgm_data, sizeof(fuse_pgm_data));
+
+	for (addr = 0; addr < NFUSES; addr += 2, data++, mask++) {
+		reg = fuse_cmd_read(addr);
+		pr_debug("%d: 0x%x 0x%x 0x%x\n", addr, (u32)(*data),
+			~reg, (u32)(*mask));
+		*data = (*data & ~reg) & *mask;
+	}
+
+	fuse_power_enable();
+
+	/*
+	 * Finally loop on all fuses, program the non zero ones.
+	 * Words 0 and 1 are written last and they contain control fuses. We
+	 * need to invalidate after writing to a control word (with the
+	 * exception of the master enable). This is also the reason we write
+	 * them last.
+	 */
+	for (i = ARRAY_SIZE(fuse_pgm_data) - 1; i >= 0; i--) {
+		if (tmp_fuse_pgm_data[i]) {
+			fuse_cmd_write(tmp_fuse_pgm_data[i], i * 2);
+			fuse_cmd_write(tmp_fuse_pgm_data[i], (i * 2) + 1);
+		}
+
+		if (i < 2) {
+			wait_for_idle();
+			fuse_power_disable();
+			fuse_cmd_sense();
+			fuse_power_enable();
+		}
+	}
+
+	fuse_power_disable();
+
+	/*
+	 * Wait until done (polling)
+	 * this one needs to use fuse_sense done, the FSM follows a periodic
+	 * sequence that includes idle
+	 */
+	do {
+		udelay(1);
+		reg = tegra_fuse_readl(FUSE_CTRL);
+	} while ((reg & BIT(30)) != SENSE_DONE);
+
+}
+
+static int fuse_set(enum fuse_io_param io_param, u32 *param, int size)
+{
+	int i, nwords = size / sizeof(u32);
+	u32 *data;
+
+	if (io_param > MAX_PARAMS)
+		return -EINVAL;
+
+	data = kzalloc(size, GFP_KERNEL);
+	if (!data) {
+		pr_err("failed to alloc %d bytes\n", size);
+		return -ENOMEM;
+	}
+
+	get_fuse(io_param, data);
+
+	/* set only new fuse bits */
+	for (i = 0; i < nwords; i++)
+		param[i] = (~data[i] & param[i]);
+
+	kfree(data);
+	return 0;
+}
+
+/*
+ * Function pointer to optional board specific function
+ */
+int (*tegra_fuse_regulator_en)(int);
+EXPORT_SYMBOL(tegra_fuse_regulator_en);
+
+
+int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
+{
+	u32 reg;
+	int i = 0;
+	int index;
+	int ret;
+	int delay = FUSE_PGM_TIMEOUT_MS;
+
+	if (!pgm_data || !flags) {
+		pr_err("invalid parameter");
+		return -EINVAL;
+	}
+
+	if (IS_ERR_OR_NULL(clk_fuse) ||
+	   (!tegra_fuse_regulator_en && IS_ERR_OR_NULL(fuse_regulator))) {
+		pr_err("fuse write disabled");
+		return -ENODEV;
+	}
+
+	if (fuse_odm_prod_mode() && (flags != FLAGS_ODMRSVD)) {
+		pr_err("reserved odm fuses aren't allowed in secure mode");
+		return -EPERM;
+	}
+
+	if ((flags & FLAGS_ODM_PROD_MODE) &&
+		(flags & (FLAGS_SBK | FLAGS_DEVKEY))) {
+		pr_err("odm production mode and sbk/devkey not allowed");
+		return -EPERM;
+	}
+
+	clk_enable(clk_fuse);
+
+	/* check that fuse options write access hasn't been disabled */
+	mutex_lock(&fuse_lock);
+	reg = tegra_fuse_readl(FUSE_DIS_PGM);
+	mutex_unlock(&fuse_lock);
+	if (reg) {
+		pr_err("fuse programming disabled");
+		clk_disable(clk_fuse);
+		return -EACCES;
+	}
+
+	/* enable software writes to the fuse registers */
+	tegra_fuse_writel(0, FUSE_WRITE_ACCESS);
+
+	mutex_lock(&fuse_lock);
+	memcpy(&fuse_info, pgm_data, sizeof(fuse_info));
+	for_each_set_bit(i, (unsigned long *)&flags, MAX_PARAMS) {
+		fuse_set((u32)i, fuse_info_tbl[i].addr,
+			fuse_info_tbl[i].sz);
+	}
+
+	if (tegra_fuse_regulator_en)
+		ret = tegra_fuse_regulator_en(1);
+	else
+		ret = regulator_enable(fuse_regulator);
+
+	if (ret)
+		BUG_ON("regulator enable fail\n");
+
+	populate_fuse_arrs(&fuse_info, flags);
+
+	/* calculate the number of program cycles from the oscillator freq */
+	reg = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_PLLP_OVERRIDE);
+	if (reg & PMC_OSC_OVERRIDE) {
+		index = (reg & PMC_OSC_FREQ_MASK) >> PMC_OSC_FREQ_SHIFT;
+	} else {
+		reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + CAR_OSC_CTRL);
+		index = reg >> CAR_OSC_FREQ_SHIFT;
+	}
+
+	pr_debug("%s: use %d programming cycles\n", __func__,
+						fuse_pgm_cycles[index]);
+
+	/* FIXME: Ideally, this delay should not be present */
+	mdelay(1);
+
+	fuse_program_array(fuse_pgm_cycles[index]);
+
+	memset(&fuse_info, 0, sizeof(fuse_info));
+
+	if (tegra_fuse_regulator_en)
+		tegra_fuse_regulator_en(0);
+	else
+		regulator_disable(fuse_regulator);
+
+	mutex_unlock(&fuse_lock);
+
+	/* disable software writes to the fuse registers */
+	tegra_fuse_writel(1, FUSE_WRITE_ACCESS);
+
+	/* apply the fuse values immediately instead of resetting the chip */
+	fuse_cmd_sense();
+
+	tegra_fuse_writel(START_DATA | SKIP_RAMREPAIR, FUSE_PRIV2INTFC);
+
+	/* check sense and shift done in addition to IDLE */
+	do {
+		mdelay(1);
+		reg = tegra_fuse_readl(FUSE_CTRL);
+		reg &= (FUSE_SENSE_DONE_BIT | STATE_IDLE);
+	} while ((reg != (FUSE_SENSE_DONE_BIT | STATE_IDLE)) && (--delay > 0));
+
+	clk_disable(clk_fuse);
+
+	return ((delay > 0) ? 0 : -ETIMEDOUT);
+}
+
+static int fuse_name_to_param(const char *str)
+{
+	int i;
+
+	for (i = DEVKEY; i < ARRAY_SIZE(fuse_info_tbl); i++) {
+		if (!strcmp(str, fuse_info_tbl[i].sysfs_name))
+			return i;
+	}
+
+	return -ENODATA;
+}
+
+static int char_to_xdigit(char c)
+{
+	return (c >= '0' && c <= '9') ? c - '0' :
+		(c >= 'a' && c <= 'f') ? c - 'a' + 10 :
+		(c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1;
+}
+
+#define CHK_ERR(x) \
+{ \
+	if (x) { \
+		pr_err("%s: sysfs_create_file fail(%d)!", __func__, x); \
+		return x; \
+	} \
+}
+
+static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+	const char *buf, size_t count)
+{
+	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
+	int ret, i = 0;
+	int orig_count = count;
+	struct fuse_data data = {0};
+	u32 *raw_data;
+	u8 *raw_byte_data;
+	struct wake_lock fuse_wk_lock;
+
+	if ((param == -1) || (param == -ENODATA)) {
+		pr_err("%s: invalid fuse\n", __func__);
+		return -EINVAL;
+	}
+
+	raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
+	raw_byte_data = (u8 *)raw_data;
+
+	if (fuse_odm_prod_mode()) {
+		pr_err("%s: device locked. odm fuse already blown\n", __func__);
+		return -EPERM;
+	}
+
+	count--;
+	if (DIV_ROUND_UP(count, 2) > fuse_info_tbl[param].sz) {
+		pr_err("%s: fuse parameter too long, should be %d character(s)\n",
+			__func__, fuse_info_tbl[param].sz * 2);
+		return -EINVAL;
+	}
+
+	/* see if the string has 0x/x at the start */
+	if (*buf == 'x') {
+		count -= 1;
+		buf++;
+	} else if (*(buf + 1) == 'x') {
+		count -= 2;
+		buf += 2;
+	}
+
+	/* wakelock to avoid device powering down while programming */
+	wake_lock_init(&fuse_wk_lock, WAKE_LOCK_SUSPEND, "fuse_wk_lock");
+	wake_lock(&fuse_wk_lock);
+
+	/* we need to fit each character into a single nibble */
+	raw_byte_data += DIV_ROUND_UP(count, 2) - 1;
+
+	/* in case of odd number of writes, write the first one here */
+	if (count & BIT(0)) {
+		*raw_byte_data = char_to_xdigit(*buf);
+		buf++;
+		raw_byte_data--;
+		count--;
+	}
+
+	for (i = 1; i <= count; i++, buf++) {
+		if (i & BIT(0)) {
+			*raw_byte_data = char_to_xdigit(*buf);
+		} else {
+			*raw_byte_data <<= 4;
+			*raw_byte_data |= char_to_xdigit(*buf);
+			raw_byte_data--;
+		}
+	}
+
+	ret = tegra_fuse_program(&data, BIT(param));
+	if (ret) {
+		pr_err("%s: fuse program fail(%d)\n", __func__, ret);
+		orig_count = ret;
+		goto done;
+	}
+
+	/* if odm prodn mode fuse is burnt, change file permissions to 0440 */
+	if (param == ODM_PROD_MODE) {
+		CHK_ERR(sysfs_chmod_file(kobj, &attr->attr, 0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &devkey_attr.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &jtagdis_attr.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &sec_boot_dev_cfg_attr.attr,
+								0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &sec_boot_dev_sel_attr.attr,
+								0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &sbk_attr.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &sw_rsvd_attr.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &ignore_dev_sel_straps_attr.attr,
+								0440));
+		CHK_ERR(sysfs_chmod_file(kobj, &odm_rsvd_attr.attr, 0440));
+	}
+
+done:
+	wake_unlock(&fuse_wk_lock);
+	wake_lock_destroy(&fuse_wk_lock);
+	return orig_count;
+}
+
+static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+								char *buf)
+{
+	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
+	u32 data[8];
+	char str[9]; /* extra byte for null character */
+	int ret, i;
+
+	if ((param == -1) || (param == -ENODATA)) {
+		pr_err("%s: invalid fuse\n", __func__);
+		return -EINVAL;
+	}
+
+	if ((param == SBK) && fuse_odm_prod_mode()) {
+		pr_err("device locked. sbk read not allowed\n");
+		return 0;
+	}
+
+	memset(data, 0, sizeof(data));
+	ret = tegra_fuse_read(param, data, fuse_info_tbl[param].sz);
+	if (ret) {
+		pr_err("%s: read fail(%d)\n", __func__, ret);
+		return ret;
+	}
+
+	strcpy(buf, "0x");
+	for (i = (fuse_info_tbl[param].sz/sizeof(u32)) - 1; i >= 0 ; i--) {
+		sprintf(str, "%08x", data[i]);
+		strcat(buf, str);
+	}
+
+	strcat(buf, "\n");
+	return strlen(buf);
+}
+
+u32 tegra_read_chipid(void)
+{
+	return readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
+}
+
 void tegra_init_fuse(void)
 {
 	u32 id;
 
 	u32 reg = readl(IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
-	reg |= 1 << 28;
+	reg |= BIT(28);
 	writel(reg, IO_ADDRESS(TEGRA_CLK_RESET_BASE + 0x48));
 
 	reg = tegra_fuse_readl(FUSE_SKU_INFO);
@@ -670,29 +1174,12 @@ void tegra_init_fuse(void)
 	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
 	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 
-	id = readl_relaxed(IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804);
+	id = tegra_read_chipid();
 	tegra_chip_id = (id >> 8) & 0xff;
-
-	switch (tegra_chip_id) {
-	case TEGRA20:
-		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra20_init_speedo_data;
-		break;
-	case TEGRA30:
-		tegra_fuse_spare_bit = TEGRA30_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra30_init_speedo_data;
-		break;
-	default:
-		pr_warn("Tegra: unknown chip id %d\n", tegra_chip_id);
-		tegra_fuse_spare_bit = TEGRA20_FUSE_SPARE_BIT;
-		tegra_init_speedo_data = &tegra_get_process_id;
-	}
 
 	tegra_revision = tegra_get_revision();
 
-#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	tegra_init_speedo_data();
-#endif
 
 	pr_info("Tegra Revision: %s SKU: 0x%x CPU Process: %d Core Process: %d\n",
 		tegra_revision_name[tegra_revision],
@@ -708,17 +1195,109 @@ void tegra_init_fuse(void)
 #endif
 }
 
-static unsigned int get_fuse_vp8_enable(char *val, struct kernel_param *kp)
+static int tegra_fuse_probe(struct platform_device *pdev)
 {
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA2 ||
-		 tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
-		tegra_fuse_vp8_enable = 0;
-	else
-		tegra_fuse_vp8_enable =  tegra_fuse_readl(FUSE_VP8_ENABLE_0);
+	if (!tegra_fuse_regulator_en) {
+		/* get fuse_regulator regulator */
+		fuse_regulator = regulator_get(&pdev->dev, TEGRA_FUSE_SUPPLY);
+		if (IS_ERR_OR_NULL(fuse_regulator))
+			pr_err("%s: no fuse_regulator. fuse write disabled\n",
+				__func__);
+	}
 
-	return param_get_uint(val, kp);
+	clk_fuse = clk_get_sys("fuse-tegra", "fuse_burn");
+	if (IS_ERR_OR_NULL(clk_fuse)) {
+		pr_err("%s: no clk_fuse. fuse read/write disabled\n", __func__);
+		if (!IS_ERR_OR_NULL(fuse_regulator)) {
+			regulator_put(fuse_regulator);
+			fuse_regulator = NULL;
+		}
+		return -ENODEV;
+	}
+	fuse_kobj = &pdev->dev.kobj;
+
+	mutex_init(&fuse_lock);
+
+	/* change fuse file permissions, if ODM production fuse is not blown */
+	if (!fuse_odm_prod_mode()) {
+		devkey_attr.attr.mode = 0640;
+		jtagdis_attr.attr.mode = 0640;
+		sec_boot_dev_cfg_attr.attr.mode = 0640;
+		sec_boot_dev_sel_attr.attr.mode = 0640;
+		sbk_attr.attr.mode = 0640;
+		sw_rsvd_attr.attr.mode = 0640;
+		ignore_dev_sel_straps_attr.attr.mode = 0640;
+		odm_rsvd_attr.attr.mode = 0640;
+		odm_prod_mode_attr.attr.mode = 0644;
+	}
+
+	CHK_ERR(sysfs_create_file(fuse_kobj, &odm_prod_mode_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &devkey_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &jtagdis_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &sec_boot_dev_cfg_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &sec_boot_dev_sel_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &sbk_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &sw_rsvd_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &ignore_dev_sel_straps_attr.attr));
+	CHK_ERR(sysfs_create_file(fuse_kobj, &odm_rsvd_attr.attr));
+	return 0;
 }
 
-module_param_call(tegra_fuse_vp8_enable, NULL, get_fuse_vp8_enable,
-		&tegra_fuse_vp8_enable, 0444);
-__MODULE_PARM_TYPE(tegra_fuse_vp8_enable, "uint");
+static int tegra_fuse_remove(struct platform_device *pdev)
+{
+	fuse_power_disable();
+
+	if (!IS_ERR_OR_NULL(fuse_regulator))
+		regulator_put(fuse_regulator);
+
+	if (!IS_ERR_OR_NULL(clk_fuse))
+		clk_put(clk_fuse);
+
+	sysfs_remove_file(fuse_kobj, &odm_prod_mode_attr.attr);
+	sysfs_remove_file(fuse_kobj, &devkey_attr.attr);
+	sysfs_remove_file(fuse_kobj, &jtagdis_attr.attr);
+	sysfs_remove_file(fuse_kobj, &sec_boot_dev_cfg_attr.attr);
+	sysfs_remove_file(fuse_kobj, &sec_boot_dev_sel_attr.attr);
+	sysfs_remove_file(fuse_kobj, &sbk_attr.attr);
+	sysfs_remove_file(fuse_kobj, &sw_rsvd_attr.attr);
+	sysfs_remove_file(fuse_kobj, &ignore_dev_sel_straps_attr.attr);
+	sysfs_remove_file(fuse_kobj, &odm_rsvd_attr.attr);
+	kobject_del(fuse_kobj);
+
+	return 0;
+}
+
+static int tegra_fuse_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+static int tegra_fuse_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static struct platform_driver fuse_driver = {
+	.probe = tegra_fuse_probe,
+	.remove = tegra_fuse_remove,
+	.suspend = tegra_fuse_suspend,
+	.resume = tegra_fuse_resume,
+	.driver = {
+			.name = "tegra-fuse",
+			.owner = THIS_MODULE,
+		},
+};
+
+static int __init tegra_fuse_init(void)
+{
+	return platform_driver_register(&fuse_driver);
+}
+fs_initcall_sync(tegra_fuse_init);
+
+static void __exit tegra_fuse_exit(void)
+{
+	platform_driver_unregister(&fuse_driver);
+}
+module_exit(tegra_fuse_exit);
+
+MODULE_DESCRIPTION("Fuse driver for tegra SOCs");

@@ -59,7 +59,6 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
-obj-y                                   += tegra_odm_fuses.o
 obj-y                                   += powergate.o
 obj-y                                   += apbio.o
 obj-y                                   += mc.o

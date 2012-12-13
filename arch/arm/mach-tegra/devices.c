@@ -2152,6 +2152,11 @@ struct platform_device tegra_cl_dvfs_device = {
 };
 #endif
 
+struct platform_device tegra_fuse_device = {
+	.name	= "tegra-fuse",
+	.id	= -1,
+};
+
 void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;

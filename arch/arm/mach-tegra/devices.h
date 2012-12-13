@@ -162,6 +162,7 @@ extern struct platform_device tegra_cec_device;
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 extern struct platform_device tegra_cl_dvfs_device;
 #endif
+extern struct platform_device tegra_fuse_device;
 
 void __init tegra_init_debug_uart_rate(void);
 
