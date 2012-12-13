@@ -224,9 +224,13 @@ dma_map_linear_attrs(struct device *dev, phys_addr_t pa, size_t size,
 
 	da = dma_iova_alloc_at(dev, &req, size);
 	if (da == DMA_ERROR_CODE) {
+		DEFINE_DMA_ATTRS(_attrs);
 		switch (req) {
 		case -ENXIO:
 			/* Allow to map outside of map */
+			if (!attrs)
+				attrs = &_attrs;
+			dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs);
 			da = (dma_addr_t)pa;
 			break;
 		case -EINVAL:
