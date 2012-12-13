@@ -121,6 +121,11 @@ int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
 int dalmore_soctherm_init(void);
 
+/* Baseband IDs */
+enum tegra_bb_type {
+	TEGRA_BB_NEMO = 1,
+};
+
 #define UTMI1_PORT_OWNER_XUSB	0x1
 #define UTMI2_PORT_OWNER_XUSB	0x2
 #define HSIC1_PORT_OWNER_XUSB	0x4

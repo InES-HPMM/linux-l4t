@@ -607,9 +607,14 @@ static struct platform_device icera_nemo_device = {
 
 static void dalmore_modem_init(void)
 {
+	int modem_id = tegra_get_modem_id();
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
-	if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
-		platform_device_register(&icera_nemo_device);
+	switch (modem_id) {
+	case TEGRA_BB_NEMO: /* on board i500 HSIC */
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+			platform_device_register(&icera_nemo_device);
+		break;
+	}
 }
 
 #else
