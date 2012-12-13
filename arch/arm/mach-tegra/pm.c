@@ -673,6 +673,9 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 #ifdef CONFIG_CACHE_L2X0
 	flush_cache_all();
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	outer_flush_all();
+#else
 	/*
 	 * No need to flush complete L2. Cleaning kernel and IO mappings
 	 * is enough for the LP code sequence that has L2 disabled but
@@ -681,11 +684,16 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	pgd = cpu_get_pgd();
 	outer_clean_range(__pa(pgd + USER_PTRS_PER_PGD),
 			  __pa(pgd + PTRS_PER_PGD));
+#endif
 	outer_disable();
 #endif
 	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	tegra_init_cache(true);
+#else
 	tegra_init_cache(false);
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
