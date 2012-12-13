@@ -158,6 +158,7 @@ struct cpu_cvb_dvfs {
 
 	struct dvfs_dfll_data dfll_tune_data;
 	int max_mv;
+	int min_dfll_mv;
 	int freqs_mult;
 	int speedo_scale;
 	int voltage_scale;
