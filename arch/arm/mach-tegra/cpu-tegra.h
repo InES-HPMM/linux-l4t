@@ -27,6 +27,7 @@
 unsigned int tegra_getspeed(unsigned int cpu);
 int tegra_update_cpu_speed(unsigned long rate);
 int tegra_cpu_set_speed_cap(unsigned int *speed_cap);
+void tegra_cpu_set_volt_cap(unsigned int cap);
 unsigned int tegra_count_slow_cpus(unsigned long speed_limit);
 unsigned int tegra_get_slowest_cpu_n(void);
 unsigned long tegra_cpu_lowest_speed(void);

@@ -52,6 +52,8 @@ static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
 static int suspend_index;
+static unsigned int volt_capped_speed;
+
 
 static bool force_policy_max;
 
@@ -608,6 +610,27 @@ unsigned long tegra_cpu_highest_speed(void) {
 	return rate;
 }
 
+void tegra_cpu_set_volt_cap(unsigned int cap)
+{
+	mutex_lock(&tegra_cpu_lock);
+	if (cap != volt_capped_speed) {
+		volt_capped_speed = cap;
+		tegra_cpu_set_speed_cap(NULL);
+	}
+	mutex_unlock(&tegra_cpu_lock);
+	if (cap)
+		pr_debug("tegra_cpu:volt limit to %u Khz\n", cap);
+	else
+		pr_debug("tegra_cpu:volt limit removed\n");
+}
+
+static unsigned int volt_cap_speed(unsigned int requested_speed)
+{
+	if (volt_capped_speed && requested_speed > volt_capped_speed)
+		return volt_capped_speed;
+	return requested_speed;
+}
+
 int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 {
 	int ret = 0;
@@ -623,6 +646,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 	new_speed = tegra_throttle_governor_speed(new_speed);
 	new_speed = edp_governor_speed(new_speed);
 	new_speed = user_cap_speed(new_speed);
+	new_speed = volt_cap_speed(new_speed);
 	if (speed_cap)
 		*speed_cap = new_speed;
 
