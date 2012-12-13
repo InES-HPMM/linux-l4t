@@ -356,17 +356,17 @@ static ssize_t max77665_haptic_vibrator_ctrl(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(pattern_cycle, 0666, max77665_haptic_show,
+static DEVICE_ATTR(pattern_cycle, 0640, max77665_haptic_show,
 					max77665_haptic_store);
-static DEVICE_ATTR(pattern_signal_period, 0666, max77665_haptic_show,
+static DEVICE_ATTR(pattern_signal_period, 0640, max77665_haptic_show,
 					max77665_haptic_store);
-static DEVICE_ATTR(feedback_duty_cycle, 0666, max77665_haptic_show,
+static DEVICE_ATTR(feedback_duty_cycle, 0640, max77665_haptic_show,
 					max77665_haptic_store);
-static DEVICE_ATTR(scf_val, 0666, max77665_haptic_show,
+static DEVICE_ATTR(scf_val, 0640, max77665_haptic_show,
 					max77665_haptic_store);
-static DEVICE_ATTR(pwm_divisor, 0666, max77665_haptic_show,
+static DEVICE_ATTR(pwm_divisor, 0640, max77665_haptic_show,
 					max77665_haptic_store);
-static DEVICE_ATTR(vibrator_enable, 0644, NULL,
+static DEVICE_ATTR(vibrator_enable, 0640, NULL,
 					max77665_haptic_vibrator_ctrl);
 
 static struct attribute *max77665_haptics_attr[] = {
