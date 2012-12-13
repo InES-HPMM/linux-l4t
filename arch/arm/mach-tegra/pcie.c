@@ -1270,8 +1270,18 @@ static int tegra_pcie_init(void)
 
 		pr_info("acquiring dock_detect = %d\n",
 				tegra_pcie.plat_data->gpio);
-		gpio_request(tegra_pcie.plat_data->gpio, "pcie_dock_detect");
-		gpio_direction_input(tegra_pcie.plat_data->gpio);
+		err = gpio_request(tegra_pcie.plat_data->gpio,
+				    "pcie_dock_detect");
+		if (err < 0) {
+			pr_err("%s: gpio_request failed %d\n", __func__, err);
+			return err;
+		}
+		err = gpio_direction_input(tegra_pcie.plat_data->gpio);
+		if (err < 0) {
+			pr_err("%s: gpio_direction_input failed %d\n",
+				__func__, err);
+			goto err_irq;
+		}
 		irq = gpio_to_irq(tegra_pcie.plat_data->gpio);
 		if (irq < 0) {
 			pr_err("Unable to get irq number for dock_detect\n");
@@ -1294,10 +1304,16 @@ static int tegra_pcie_init(void)
 		/* no dock is connected, hotplug will occur after boot */
 		err = tegra_pcie_power_off();
 		is_dock_conn_at_boot = false;
+		if (err < 0) {
+			pr_err("Unable to power off pcie\n");
+			return err;
+		}
 	}
 
-err_irq:
+	return 0;
 
+err_irq:
+	gpio_free(tegra_pcie.plat_data->gpio);
 	return err;
 }
 
