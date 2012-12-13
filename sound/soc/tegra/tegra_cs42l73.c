@@ -185,14 +185,17 @@ static int tegra_cs42l73_set_dam_cif(int dam_ifc, int srate,
 				srate);
 	tegra30_dam_set_samplerate(dam_ifc, TEGRA30_DAM_CHIN1,
 				srate);
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN1,
 		channels, bit_size, channels,
-				bit_size);
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
+				32);
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
 		channels, bit_size, channels,
 				32);
 #else
+	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHIN1,
+		channels, bit_size, channels,
+				bit_size);
 	tegra30_dam_set_acif(dam_ifc, TEGRA30_DAM_CHOUT,
 		channels, bit_size, channels,
 				bit_size);

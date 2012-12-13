@@ -682,9 +682,13 @@ int tegra30_dam_set_acif(int ifc, int chid, unsigned int audio_channels,
 		return -EINVAL;
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
-	/*ch0 takes input as mono/32bit always*/
+	/*ch0 takes input as mono always*/
 	if ((chid == dam_ch_in0) &&
-		((client_channels != 1) || (client_bits != 32)))
+		((client_channels != 1)))
+		return -EINVAL;
+	/*as per dam spec file chout is fixed to 32 bits*/
+	/*so accept ch0, ch1 and chout as 32bit always*/
+	if (client_bits != 32)
 		return -EINVAL;
 #else
 	/*ch0 takes input as mono/16bit always*/
