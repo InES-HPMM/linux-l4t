@@ -518,6 +518,7 @@ static struct regulator_init_data tps51632_init_data = {
 					REGULATOR_MODE_STANDBY),	\
 		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		\
 					REGULATOR_CHANGE_STATUS |	\
+					 REGULATOR_CHANGE_CONTROL |	\
 					REGULATOR_CHANGE_VOLTAGE),	\
 		.always_on = 1,						\
 		.boot_on =  1,						\
