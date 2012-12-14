@@ -208,7 +208,10 @@ static void device_add_handler(struct tegra_usb_modem *modem,
 {
 	const struct usb_device_descriptor *desc = &udev->descriptor;
 	struct usb_interface *intf = usb_ifnum_to_if(udev, 0);
-	const struct usb_device_id *id = usb_match_id(intf, modem_list);
+	const struct usb_device_id *id = NULL;
+
+	if (intf)
+		id = usb_match_id(intf, modem_list);
 
 	if (id) {
 		/* hold wakelock to ensure ril has enough time to restart */
