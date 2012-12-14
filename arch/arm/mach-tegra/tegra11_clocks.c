@@ -3631,7 +3631,7 @@ static void tegra11_periph_clk_init(struct clk *c)
 	} else {
 		if (c->flags & PLLU) {
 			/* for xusb_hs clock enforce PLLU source during init */
-			val &= periph_clk_source_mask(c);
+			val &= ~periph_clk_source_mask(c);
 			val |= c->inputs[0].value << periph_clk_source_shift(c);
 			clk_writel_delay(val, c->reg);
 		}
@@ -6438,7 +6438,7 @@ static struct clk tegra_xusb_source_clks[] = {
 		.flags     = PLLU | PERIPH_NO_ENB,
 		.max_rate  = 60000000,
 		.u.periph = {
-			.src_mask  = 0x1,
+			.src_mask  = 0x1 << 25,
 			.src_shift = 25,
 		},
 	},
