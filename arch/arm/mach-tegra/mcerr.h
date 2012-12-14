@@ -39,8 +39,8 @@
 #include "tegra14_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include "tegra3_emc.h"
-#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
+#include "tegra11_emc.h"
+#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #endif
 
 #define MAX_PRINTS			6
@@ -59,10 +59,17 @@
 #define MC_INT_SECURITY_VIOLATION		(1<<8)
 #define MC_INT_ARBITRATION_EMEM			(1<<9)
 #define MC_INT_INVALID_SMMU_PAGE		(1<<10)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MC_INT_INVALID_APB_ASID_UPDATE		(1<<11)
+#endif
 #define MC_INT_DECERR_VPR			(1<<12)
 #define MC_INT_SECERR_SEC			(1<<13)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define MC_INT_BBC_PRIVATE_MEM_VIOLATION	(1<<14)
 #define MC_INT_DECERR_BBC			(1<<15)
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MC_INT_DECERR_MTS		(1<<14)
+#endif
 
 /*
  * Number of unique interrupts we have for this chip.
@@ -71,6 +78,8 @@
 #define INTR_COUNT	6
 #elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define INTR_COUNT	8
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define INTR_COUNT  8
 #else
 #define INTR_COUNT	4
 #endif
@@ -105,8 +114,10 @@
 			 MC_INT_SECURITY_VIOLATION |	\
 			 MC_INT_ARBITRATION_EMEM |	\
 			 MC_INT_INVALID_SMMU_PAGE |	\
+			 MC_INT_INVALID_APB_ASID_UPDATE | \
 			 MC_INT_DECERR_VPR |		\
-			 MC_INT_SECERR_SEC)
+			 MC_INT_SECERR_SEC |		\
+			 MC_INT_DECERR_MTS)
 #endif
 
 #ifdef CONFIG_TEGRA_ARBITRATION_EMEM_INTR
@@ -153,7 +164,7 @@ struct arb_emem_intr_info {
 
 /*
  * Externs that get defined by the chip specific code. This way the generic
- * T3x/T11x can handle a much as possible.
+ * T3x/T11x/T12x can handle a much as possible.
  */
 extern struct mc_client mc_clients[];
 extern void mcerr_chip_specific_setup(struct mcerr_chip_specific *spec);

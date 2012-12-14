@@ -133,7 +133,7 @@ static void unthrottle_prints(struct work_struct *work)
 }
 
 /*
- * Common T3x/T11x MC error handling code.
+ * Common MC error handling code.
  */
 static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 {
