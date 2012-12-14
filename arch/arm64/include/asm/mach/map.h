@@ -21,8 +21,6 @@ struct map_desc {
 	unsigned int type;
 };
 
-#define MT_MEMORY_DMA_READY 15
-
 #ifdef CONFIG_MMU
 extern void iotable_init(struct map_desc *, int);
 #else
