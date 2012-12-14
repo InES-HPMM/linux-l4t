@@ -31,9 +31,9 @@
 #include <linux/seq_file.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
+#include <linux/uaccess.h>
 
 #include <mach/tegra_fuse.h>
 #include <mach/iomap.h>
@@ -41,10 +41,13 @@
 #include "tegra11_soctherm.h"
 
 /* Min temp granularity specified as X in 2^X.
- *  -1: Hi precision option: 2^-1 = 0.5C (default)
- *   0: Lo precision option: 2^0  = 1.0C (for use if therm_a overflows 16bits)
+ * -1: Hi precision option: 2^-1 = 0.5C (default)
+ *  0: Lo precision option: 2^0  = 1.0C (for use if therm_a/b overflows 16 bits)
  */
-#define SOC_THERM_PRECISION		-1
+static int soc_therm_precision = -1;
+
+#define TS_TSENSE_REGS_SIZE		0x20
+#define TS_TSENSE_REG_OFFSET(reg, ts)	((reg) + ((ts) * TS_TSENSE_REGS_SIZE))
 
 #define CTL_LVL0_CPU0			0x0
 #define CTL_LVL0_CPU0_UP_THRESH_SHIFT	17
@@ -59,9 +62,6 @@
 #define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
 #define CTL_LVL0_CPU0_STATUS_MASK	0x3
-
-#define CTL_LVL_OFFSET		0x20
-#define CTL_LVL_CPU0(lvl)	(CTL_LVL0_CPU0 + (lvl * CTL_LVL_OFFSET))
 
 #define THERMTRIP			0x80
 #define THERMTRIP_ANY_EN_SHIFT		28
@@ -122,41 +122,6 @@
 #define TS_CPU0_STATUS1_TEMP_MASK		0xffff
 
 #define TS_CPU0_STATUS2			0xd4
-
-#define TS_CONFIG_STATUS_OFFSET		0x20
-
-#define TS_MEM0_CONFIG0			0x140
-#define TS_MEM0_CONFIG0_TALL_SHIFT	8
-#define TS_MEM0_CONFIG0_TALL_MASK	0xfffff
-
-#define TS_MEM0_CONFIG1			0x144
-#define TS_MEM0_CONFIG1_EN_SHIFT	31
-#define TS_MEM0_CONFIG1_EN_MASK		0x1
-#define TS_MEM0_CONFIG1_TIDDQ_SHIFT	15
-#define TS_MEM0_CONFIG1_TIDDQ_MASK	0x3f
-#define TS_MEM0_CONFIG1_TEN_COUNT_SHIFT	24
-#define TS_MEM0_CONFIG1_TEN_COUNT_MASK	0x3f
-#define TS_MEM0_CONFIG1_TSAMPLE_SHIFT	0
-#define TS_MEM0_CONFIG1_TSAMPLE_MASK	0x3ff
-
-#define TS_MEM0_CONFIG2			0x148
-#define TS_MEM0_CONFIG2_THERM_A_SHIFT	16
-#define TS_MEM0_CONFIG2_THERM_A_MASK	0xffff
-#define TS_MEM0_CONFIG2_THERM_B_SHIFT	0
-#define TS_MEM0_CONFIG2_THERM_B_MASK	0xffff
-
-#define TS_MEM0_STATUS0			0x14c
-#define TS_MEM0_STATUS0_CAPTURE_SHIFT	0
-#define TS_MEM0_STATUS0_CAPTURE_MASK	0xffff
-
-#define TS_MEM0_STATUS1				0x150
-#define TS_MEM0_STATUS1_TEMP_VALID_SHIFT	31
-#define TS_MEM0_STATUS1_TEMP_VALID_MASK		0x1
-#define TS_MEM0_STATUS1_TEMP_SHIFT		0
-#define TS_MEM0_STATUS1_TEMP_MASK		0xffff
-
-
-#define TS_MEM0_STATUS2			0x154
 
 #define TS_PDIV				0x1c0
 #define TS_PDIV_CPU_SHIFT		12
@@ -292,6 +257,8 @@ static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #define soctherm_readl(reg) \
 	__raw_readl(reg_soctherm_base + (reg))
 
+#define max4(a, b, c, d)	max(max(a, b), max(c, d))
+
 static struct soctherm_platform_data plat_data;
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
@@ -350,11 +317,10 @@ static inline long temp_translate(int readback)
 	int lsb = (readback & 0x80) >> 7;
 	int sign = readback & 0x01 ? -1 : 1;
 
-#if (SOC_THERM_PRECISION == -1)
-	return (abs * 1000 + lsb * 500) * sign;
-#else
-	return (abs * 2000 + lsb * 1000) * sign;
-#endif
+	if (soc_therm_precision == -1)
+		return (abs * 1000 + lsb * 500) * sign;
+	else
+		return (abs * 2000 + lsb * 1000) * sign;
 }
 
 #ifdef CONFIG_THERMAL
@@ -436,8 +402,8 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 	u32 r;
 
 	if (index < TSENSE_SIZE) {
-		r = soctherm_readl(TS_CPU0_STATUS1 +
-					index * TS_CONFIG_STATUS_OFFSET);
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1,
+							index));
 		*temp = temp_translate(REG_GET(r, TS_CPU0_STATUS1_TEMP));
 	} else {
 		index -= TSENSE_SIZE;
@@ -509,7 +475,6 @@ static int __init soctherm_thermal_init(void)
 	char name[64];
 	int i;
 
-#if 0
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].enable) {
 			sprintf(name, "%s-tsensor", sensor_names[i]);
@@ -525,7 +490,7 @@ static int __init soctherm_thermal_init(void)
 					0);
 		}
 	}
-#else
+
 	for (i = 0; i < THERM_SIZE; i++) {
 		sprintf(name, "%s-therm", therm_names[i]);
 		thz[i] = thermal_zone_device_register(
@@ -538,7 +503,6 @@ static int __init soctherm_thermal_init(void)
 					plat_data.therm[i].passive_delay,
 					0);
 	}
-#endif
 
 	return 0;
 }
@@ -603,16 +567,15 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 						struct soctherm_sensor *data)
 {
 	u32 r;
-	int offset = sensor * TS_CONFIG_STATUS_OFFSET;
 
 	r = REG_SET(0, TS_CPU0_CONFIG0_TALL, data->tall);
-	soctherm_writel(r, TS_CPU0_CONFIG0 + offset);
+	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, sensor));
 
 	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
 	r = REG_SET(r, TS_CPU0_CONFIG1_EN, data->enable);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
-	soctherm_writel(r, TS_CPU0_CONFIG1 + offset);
+	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
 static int soctherm_clk_enable(bool enable)
@@ -685,17 +648,15 @@ static void soctherm_fuse_read_vsensor(void)
 	calib_ft = REG_GET(value, FUSE_SHIFT_FT);
 	calib_ft = MAKE_SIGNED32(calib_ft, FUSE_SHIFT_FT_BITS);
 
-#if (SOC_THERM_PRECISION == -1)
-	/* Hi precision: use fuse_temp_in_1/2_C */
+	/* default: HI precision: use fuse_temp in 0.5C */
 	actual_temp_cp = 2 * 25 + calib_cp;
 	actual_temp_ft = 2 * 90 + calib_ft;
-#elif (SOC_THERM_PRECISION == 0)
-	/* Lo precision: use fuse_temp_in_C */
-	actual_temp_cp = 25 + calib_cp / 2;
-	actual_temp_ft = 90 + calib_ft / 2;
-#else
-#error "Invalid SOC_THERM_OPTION"
-#endif
+
+	/* adjust: for LO precision: use fuse_temp in 1C */
+	if (soc_therm_precision != -1) {
+		actual_temp_cp /= 2;
+		actual_temp_ft /= 2;
+	}
 }
 
 static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
@@ -731,7 +692,7 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 
 	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, therm_a);
 	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, therm_b);
-	soctherm_writel(r, TS_CPU0_CONFIG2 + sensor * TS_CONFIG_STATUS_OFFSET);
+	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, sensor));
 }
 
 static int soctherm_init_platform_data(void)
@@ -769,7 +730,8 @@ static int soctherm_init_platform_data(void)
 
 	for (i = 0; i < THERM_SIZE; i++) {
 		if (plat_data.therm[i].hw_backstop) {
-			reg_off = CTL_LVL_CPU0(1) + i * 4;
+			reg_off = TS_TSENSE_REG_OFFSET(CTL_LVL0_CPU0, 1)
+				+ i * 4;
 			r = soctherm_readl(reg_off);
 			r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH,
 					plat_data.therm[i].hw_backstop);
@@ -880,48 +842,46 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 
 #ifdef CONFIG_DEBUG_FS
-static int cpu0_show(struct seq_file *s, void *data)
-{
-	u32 r;
-	int offset = TSENSE_PLLX * TS_CONFIG_STATUS_OFFSET;
-
-	r = soctherm_readl(TS_CPU0_CONFIG0 + offset);
-	r = REG_SET(r, TS_CPU0_CONFIG0_TCALC_OVER, 1);
-	r = REG_SET(r, TS_CPU0_CONFIG0_OVER, 1);
-	r = REG_SET(r, TS_CPU0_CONFIG0_CPTR_OVER, 1);
-	soctherm_writel(r, TS_CPU0_CONFIG0 + offset);
-
-	return 0;
-}
-
 static int regs_show(struct seq_file *s, void *data)
 {
 	u32 r;
 	u32 state;
+	long tcpu[TSENSE_SIZE];
 	int i, level;
 
-	seq_printf(s, "-----TSENSE-----\n");
+	seq_printf(s, "-----TSENSE (precision %s)-----\n",
+		   soc_therm_precision == -1 ? "Hi" : "Lo");
 	for (i = 0; i < TSENSE_SIZE; i++) {
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, i));
+		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
+		if (!state)
+			continue;
+
 		seq_printf(s, "%s: ", sensor_names[i]);
 
-		r = soctherm_readl(TS_CPU0_STATUS0 +
-					i * TS_CONFIG_STATUS_OFFSET);
+		seq_printf(s, "En(%d) ", state);
+		state = REG_GET(r, TS_CPU0_CONFIG1_TIDDQ);
+		seq_printf(s, "tiddq(%d) ", state);
+		state = REG_GET(r, TS_CPU0_CONFIG1_TEN_COUNT);
+		seq_printf(s, "ten_count(%d) ", state);
+		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
+		seq_printf(s, "tsample(%d) ", state);
+
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
 		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
 		seq_printf(s, "Capture(%d/", state);
 		state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
 		seq_printf(s, "%d) ", state);
 
 
-		r = soctherm_readl(TS_CPU0_STATUS1 +
-					i * TS_CONFIG_STATUS_OFFSET);
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1, i));
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);
 		seq_printf(s, "Temp(%d/", state);
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
-		seq_printf(s, "%ld) ", temp_translate(state));
+		seq_printf(s, "%ld) ", tcpu[i] = temp_translate(state));
 
 
-		r = soctherm_readl(TS_CPU0_CONFIG0 +
-					i * TS_CONFIG_STATUS_OFFSET);
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, i));
 		state = REG_GET(r, TS_CPU0_CONFIG0_TALL);
 		seq_printf(s, "Tall(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG0_TCALC_OVER);
@@ -931,19 +891,7 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG0_CPTR_OVER);
 		seq_printf(s, "%d) ", state);
 
-		r = soctherm_readl(TS_CPU0_CONFIG1 +
-					i * TS_CONFIG_STATUS_OFFSET);
-		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
-		seq_printf(s, "En(%d) ", state);
-		state = REG_GET(r, TS_CPU0_CONFIG1_TIDDQ);
-		seq_printf(s, "tiddq(%d) ", state);
-		state = REG_GET(r, TS_CPU0_CONFIG1_TEN_COUNT);
-		seq_printf(s, "ten_count(%d) ", state);
-		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
-		seq_printf(s, "tsample(%d) ", state);
-
-		r = soctherm_readl(TS_CPU0_CONFIG2 +
-					i * TS_CONFIG_STATUS_OFFSET);
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, i));
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_A);
 		seq_printf(s, "Therm_A/B(%d/", state);
 		state = REG_GET(r, TS_CPU0_CONFIG2_THERM_B);
@@ -958,7 +906,11 @@ static int regs_show(struct seq_file *s, void *data)
 
 	r = soctherm_readl(TS_TEMP1);
 	state = REG_GET(r, TS_TEMP1_CPU_TEMP);
-	seq_printf(s, "Temperature: CPU(%ld) ", temp_translate(state));
+	seq_printf(s, "Temperature: CPU(%ld) [Max(%ld)%c] ",
+		   temp_translate(state),
+		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]),
+		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]) ==
+		   temp_translate(state) ? '=' : '!');
 	state = REG_GET(r, TS_TEMP1_GPU_TEMP);
 	seq_printf(s, " GPU(%ld) ", temp_translate(state));
 	r = soctherm_readl(TS_TEMP2);
@@ -971,7 +923,8 @@ static int regs_show(struct seq_file *s, void *data)
 		seq_printf(s, "%s:\n", therm_names[i]);
 
 		for (level = 0; level < 4; level++) {
-			r = soctherm_readl(CTL_LVL_CPU0(level) + i * 4);
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET(CTL_LVL0_CPU0,
+								i) + level * 4);
 			state = REG_GET(r, CTL_LVL0_CPU0_UP_THRESH);
 			seq_printf(s, "    Up/Dn(%d/", state);
 			state = REG_GET(r, CTL_LVL0_CPU0_DN_THRESH);
@@ -979,10 +932,10 @@ static int regs_show(struct seq_file *s, void *data)
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
 			state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
-			seq_printf(s, "Status(%s)\n", state == 0 ? "below" :
-						state == 1 ? "in" :
-						state == 2 ? "res" :
-							"above");
+			seq_printf(s, "Status(%s)\n",
+				   state == 0 ? "LO" :
+				   state == 1 ? "in" :
+				   state == 2 ? "??" : "HI");
 		}
 	}
 
@@ -1049,18 +1002,6 @@ static const struct file_operations regs_fops = {
 	.release	= single_release,
 };
 
-static int cpu0_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cpu0_show, inode->i_private);
-}
-
-static const struct file_operations cpu0_fops = {
-	.open		= cpu0_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
-
 static int __init soctherm_debug_init(void)
 {
 	struct dentry *tegra_soctherm_root;
@@ -1068,9 +1009,6 @@ static int __init soctherm_debug_init(void)
 	tegra_soctherm_root = debugfs_create_dir("tegra_soctherm", 0);
 	debugfs_create_file("regs", 0644, tegra_soctherm_root,
 				NULL, &regs_fops);
-	debugfs_create_file("cpu0", 0644, tegra_soctherm_root,
-				NULL, &cpu0_fops);
-
 	return 0;
 }
 late_initcall(soctherm_debug_init);
