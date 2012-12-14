@@ -932,26 +932,19 @@ static struct resource tegra_usb3_resources[] = {
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static struct resource tegra_xusb_resources[] = {
-	[0] = {
-		.start  = TEGRA_XUSB_HOST_BASE,
-		.end    = TEGRA_XUSB_HOST_BASE + TEGRA_XUSB_HOST_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start  = INT_USB3_HOST_INT,
-		.end    = INT_USB3_HOST_INT,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[2] = {
-		.start  = INT_USB3_HOST_SMI,
-		.end    = INT_USB3_HOST_SMI,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[3] = {
-		.start  = INT_XUSB_PADCTL,
-		.end    = INT_XUSB_PADCTL,
-		.flags  = IORESOURCE_IRQ,
-	},
+	[0] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_HOST_BASE, TEGRA_XUSB_HOST_SIZE,
+			"host"),
+	[1] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_FPCI_BASE, TEGRA_XUSB_FPCI_SIZE,
+			"fpci"),
+	[2] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_IPFS_BASE, TEGRA_XUSB_IPFS_SIZE,
+			"ipfs"),
+	[3] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_PADCTL_BASE,
+			TEGRA_XUSB_PADCTL_SIZE, "padctl"),
+	[4] = DEFINE_RES_MEM_NAMED(TEGRA_PMC_BASE, TEGRA_PMC_SIZE, "pmc"),
+	[5] = DEFINE_RES_IRQ_NAMED(INT_USB3_HOST_INT, "host"),
+	[6] = DEFINE_RES_IRQ_NAMED(INT_USB3_HOST_SMI, "host-smi"),
+	[7] = DEFINE_RES_IRQ_NAMED(INT_XUSB_PADCTL, "padctl"),
+	[8] = DEFINE_RES_IRQ_NAMED(INT_USB3, "usb3"),
 };
 
 static u64 tegra_xusb_dmamask = DMA_BIT_MASK(64);
