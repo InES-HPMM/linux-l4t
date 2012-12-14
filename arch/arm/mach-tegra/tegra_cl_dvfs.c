@@ -1091,20 +1091,38 @@ DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
 
 static int monitor_get(void *data, u64 *val)
 {
-	u32 v;
+	u32 v, s;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 
 	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
 		CL_DVFS_MONITOR_DATA_MASK;
 
 	if (cl_dvfs_readl(cld, CL_DVFS_MONITOR_CTRL) ==
-	    CL_DVFS_MONITOR_CTRL_FREQ)
+	    CL_DVFS_MONITOR_CTRL_FREQ) {
 		v = GET_MONITORED_RATE(v, cld->ref_rate);
+		s = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+		s = (s & CL_DVFS_FREQ_REQ_SCALE_MASK) >>
+			CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+		*val = (u64)v * (s + 1) / 256;
+		return 0;
+	}
 
 	*val = v;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
+
+static int vmin_get(void *data, u64 *val)
+{
+	u32 v;
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+
+	v = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	v = (v & CL_DVFS_OUTPUT_CFG_MIN_MASK) >> CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+	*val = cld->out_map[v]->reg_uV / 1000;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(vmin_fops, vmin_get, NULL, "%llu\n");
 
 static int tune_high_mv_get(void *data, u64 *val)
 {
@@ -1223,6 +1241,10 @@ static int __init tegra_cl_dvfs_debug_init(void)
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
 		cpu_cl_dvfs_dentry, dfll_cpu, &monitor_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("vmin_mv", S_IRUGO,
+		cpu_cl_dvfs_dentry, dfll_cpu, &vmin_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("tune_high_mv", S_IRUGO,
