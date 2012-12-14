@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -110,4 +110,16 @@ void nvshm_close_channel(struct nvshm_channel *handle);
  */
 int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
 
+/**
+ * check nvshm status
+ *
+ * Use to check if interface is running and configure
+ * use it in rx_event to catch restart while receiving
+ *
+ * @param None
+ * @param struct nvshm_iobuf holding packet to write
+ *
+ * @return 1 if nvshm is configured and running
+ */
+int nvshm_interface_up();
 #endif /* _NVSHM_IF_H */

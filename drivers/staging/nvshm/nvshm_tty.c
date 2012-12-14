@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -63,10 +63,14 @@ static void nvshm_tty_rx_rewrite_line(int l)
 	struct tty_struct *tty = NULL;
 	int len, nbuff = 0;
 
+	if (!nvshm_interface_up())
+		return;
+
 	tty = tty_dev.line[l].tty;
 	if (!tty)
 		return;
 	spin_lock(&tty_dev.line[l].lock);
+
 	while (tty_dev.line[l].io_queue_head) {
 		list = tty_dev.line[l].io_queue_head;
 		spin_unlock(&tty_dev.line[l].lock);
@@ -80,6 +84,7 @@ static void nvshm_tty_rx_rewrite_line(int l)
 		if (len < list->length) {
 			list->dataOffset += len;
 			list->length -= len;
+			spin_unlock(&tty_dev.line[l].lock);
 			return;
 		}
 		if (list->sg_next) {
@@ -150,14 +155,13 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 	struct nvshm_iobuf *_phy_iob, *tmp;
 	int len, idx;
 
-	idx = tty->index;
-	spin_lock(&tty_dev.line[idx].lock);
-
-	/* If it's on a closed channel - ignore and free iobuf */
-	if (tty_dev.line[idx].use == 0) {
+	if (!nvshm_interface_up()) {
 		nvshm_iobuf_free_cluster(iob);
 		return;
 	}
+
+	idx = tty->index;
+	spin_lock(&tty_dev.line[idx].lock);
 
 	if (!tty_dev.line[idx].throttled) {
 		_phy_iob = iob;
@@ -248,6 +252,9 @@ static int nvshm_tty_open(struct tty_struct *tty, struct file *f)
 
 	pr_debug("%s\n", __func__);
 
+	if (!nvshm_interface_up())
+		return 0;
+
 	/* Set TTY flags */
 	set_bit(TTY_NO_WRITE_SPLIT, &tty->flags);
 	set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
@@ -274,36 +281,38 @@ static void nvshm_tty_close(struct tty_struct *tty, struct file *f)
 	int use = 0;
 	int idx = tty->index;
 
+	if (!nvshm_interface_up())
+		return;
+
 	spin_lock(&tty_dev.line[idx].lock);
 
 	if (tty_dev.line[idx].use > 0)
 		use = --tty_dev.line[idx].use;
 
-	spin_unlock(&tty_dev.line[idx].lock);
-
 	pr_debug("%s %d\n", __func__, use);
 	if (!use) {
-		/* No workqueue mean cleanup has been called - nothing to do */
-		if (tty_dev.tty_wq) {
-			flush_workqueue(tty_dev.tty_wq);
-			/* Cleanup if data are still present in io queue */
-			if (tty_dev.line[idx].io_queue_head) {
-				pr_debug("%s: still some data in queue!\n",
-					 __func__);
+		flush_workqueue(tty_dev.tty_wq);
+		/* Cleanup if data are still present in io queue */
+		if (tty_dev.line[idx].io_queue_head) {
+			pr_debug("%s: still some data in queue!\n",
+				 __func__);
 				nvshm_iobuf_free_cluster(
 					tty_dev.line[idx].io_queue_head);
 				tty_dev.line[idx].io_queue_head =
 					tty_dev.line[idx].io_queue_tail = NULL;
 				tty_dev.line[idx].throttled = 0;
-			}
-			nvshm_close_channel(tty_dev.line[idx].pchan);
-			tty_dev.line[idx].tty = NULL;
 		}
+		nvshm_close_channel(tty_dev.line[idx].pchan);
+		tty_dev.line[idx].tty = NULL;
 	}
+	spin_unlock(&tty_dev.line[idx].lock);
 }
 
 static int nvshm_tty_write_room(struct tty_struct *tty)
 {
+	if (!nvshm_interface_up())
+		return 0;
+
 	return MAX_OUTPUT_SIZE;
 }
 
@@ -312,6 +321,11 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 {
 	struct nvshm_iobuf *iob, *leaf, *list = NULL;
 	int to_send = 0, remain, idx = tty->index;
+
+	if (!nvshm_interface_up()) {
+		nvshm_iobuf_free_cluster(iob);
+		return 0;
+	}
 
 	remain = len;
 	while (remain) {
@@ -357,6 +371,9 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 static void nvshm_tty_unthrottle(struct tty_struct *tty)
 {
 	int idx = tty->index;
+
+	if (!nvshm_interface_up())
+		return;
 
 	spin_lock(&tty_dev.line[idx].lock);
 	if (tty_dev.line[idx].throttled) {
@@ -439,15 +456,23 @@ void nvshm_tty_cleanup(void)
 	if (tty_dev.tty_wq) {
 		/* Wait workqueue end */
 		destroy_workqueue(tty_dev.tty_wq);
+		tty_dev.tty_wq = NULL;
 	}
 	for (chan = 0; chan < tty_dev.nlines; chan++) {
 		/* No need to cleanup data as iobufs are invalid now */
 		/* Next nvshm_tty_init will do it */
+		spin_lock(&tty_dev.line[chan].lock);
 		if (tty_dev.line[chan].use) {
-			pr_debug("%s hangup tty device %d\n", __func__);
+			tty_dev.line[chan].use = 0;
+			spin_unlock(&tty_dev.line[chan].lock);
+			nvshm_close_channel(tty_dev.line[chan].pchan);
+			pr_debug("%s hangup tty device %d\n", __func__,
+				 tty_dev.line[chan].tty);
 			tty_hangup(tty_dev.line[chan].tty);
+		} else {
+			spin_unlock(&tty_dev.line[chan].lock);
 		}
-		pr_debug("%s unregister tty device %d\n", __func__);
+		pr_debug("%s unregister tty device %d\n", __func__, chan);
 		tty_unregister_device(tty_dev.tty_driver, chan);
 	}
 	pr_debug("%s unregister tty driver\n", __func__);

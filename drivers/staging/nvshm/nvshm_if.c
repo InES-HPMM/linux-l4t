@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -77,3 +77,9 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 	return 0;
 }
 
+int nvshm_interface_up()
+{
+	struct nvshm_handle *handle = nvshm_get_handle();
+
+	return handle->configured;
+}

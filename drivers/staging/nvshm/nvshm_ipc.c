@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -141,6 +141,11 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 	int nlog = 0, ntty = 0, nnet = 0;
 	int chan;
 
+	/* No need to protect this as configuration will arrive after cleanup
+	 * is propagated to userland
+	 */
+	handle->configured = 0;
+
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		switch (handle->chan[chan].map.type) {
 		case NVSHM_CHAN_TTY:
@@ -169,7 +174,6 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 		pr_debug("%s cleanup %d net channels\n", __func__, nnet);
 		nvshm_net_cleanup();
 	}
-	handle->configured = 0;
 	return 0;
 }
 
