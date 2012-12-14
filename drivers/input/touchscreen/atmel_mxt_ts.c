@@ -1108,7 +1108,6 @@ static irqreturn_t mxt_read_t9_messages(struct mxt_data *data)
 	int total_handled, num_handled;
 	u8 count = data->last_message_count;
 
-	trace_nvevent_irq_data_read_start_series("mxt_T9_interrupt");
 	if (count < 1 || count > data->max_reportid)
 		count = 1;
 
@@ -1123,7 +1122,6 @@ static irqreturn_t mxt_read_t9_messages(struct mxt_data *data)
 	/* read two at a time until an invalid message or else we reach
 	 * reportid limit */
 	do {
-		trace_nvevent_irq_data_read_start_single("mxt_T9_interrupt");
 		num_handled = mxt_read_count_messages(data, 2);
 		if (num_handled < 0)
 			return IRQ_NONE;
@@ -1132,11 +1130,9 @@ static irqreturn_t mxt_read_t9_messages(struct mxt_data *data)
 
 		if (num_handled < 2)
 			break;
-		trace_nvevent_irq_data_read_finish_single("mxt_T9_interrupt");
 	} while (total_handled < data->num_touchids);
 
 update_count:
-	trace_nvevent_irq_data_read_finish_series("mxt_T9_interrupt");
 	data->last_message_count = total_handled;
 	mxt_input_sync(data);
 	return IRQ_HANDLED;
@@ -1145,7 +1141,7 @@ update_count:
 static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 {
 	struct mxt_data *data = dev_id;
-
+	trace_nvevent_irq_data_read_start_series("Atmel_mxt_interrupt");
 	if (data->T44_address)
 		return mxt_read_messages_t44(data);
 	else
