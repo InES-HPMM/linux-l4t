@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/irqs.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -171,11 +171,7 @@
 
 #define INT_MAIN_NR			(INT_GIC_NR - INT_PRI_BASE)
 
-#define INT_SYNCPT_THRESH_BASE		(INT_QUAD_BASE + 32)
-#define INT_SYNCPT_THRESH_NR		48
-
-#define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
-					 INT_SYNCPT_THRESH_NR)
+#define INT_GPIO_BASE			(INT_QUAD_BASE + 32)
 #define INT_GPIO_NR			(28 * 8)
 
 #define INT_PCI_MSI_BASE		(INT_GPIO_BASE + \
@@ -364,11 +360,7 @@
 
 #define INT_MAIN_NR			(INT_GIC_NR - INT_PRI_BASE)
 
-#define INT_SYNCPT_THRESH_BASE		(INT_QUINT_BASE + 32)
-#define INT_SYNCPT_THRESH_NR		32
-
-#define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
-					 INT_SYNCPT_THRESH_NR)
+#define INT_GPIO_BASE			(INT_QUINT_BASE + 32)
 #define INT_GPIO_NR			(32 * 8)
 
 #define INT_PCI_MSI_BASE		(INT_GPIO_BASE + \
@@ -564,11 +556,7 @@
 
 #define INT_MAIN_NR			(INT_GIC_NR - INT_PRI_BASE)
 
-#define INT_SYNCPT_THRESH_BASE		(INT_QUINT_BASE + 32)
-#define INT_SYNCPT_THRESH_NR		32
-
-#define INT_GPIO_BASE			(INT_SYNCPT_THRESH_BASE + \
-					 INT_SYNCPT_THRESH_NR)
+#define INT_GPIO_BASE			(INT_QUINT_BASE + 32)
 #define INT_GPIO_NR			(32 * 8)
 
 #define INT_PCI_MSI_BASE		(INT_GPIO_BASE + \
