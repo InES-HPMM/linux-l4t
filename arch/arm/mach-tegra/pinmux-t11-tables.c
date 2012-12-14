@@ -36,8 +36,12 @@
 
 #include "gpio-names.h"
 
+#define TRISTATE	(1<<4)
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
+#define PMC_IO_DPD_REQ          0x1B8
+#define PMC_IO_DPD2_REQ         0x1C0
+
 
 #define SET_DRIVE_PINGROUP(pg_name, r, drv_down_offset, drv_down_mask,	\
 	drv_up_offset, drv_up_mask, slew_rise_offset, slew_rise_mask,	\
@@ -372,10 +376,19 @@ static int tegra11x_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
+	u32 reg_value;
 
-	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
 		*ctx++ = pg_readl(tegra_soc_pingroups[i].mux_bank,
 				tegra_soc_pingroups[i].mux_reg);
+		if (tegra_soc_pingroups[i].gpionr == TEGRA_GPIO_PI0) {
+			reg_value = pg_readl(tegra_soc_pingroups[i].mux_bank,
+				tegra_soc_pingroups[i].mux_reg);
+			reg_value |= TRISTATE;
+			pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
+				tegra_soc_pingroups[i].mux_reg);
+		}
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
 		*ctx++ = pg_readl(tegra_soc_drive_pingroups[i].reg_bank,
@@ -384,13 +397,24 @@ static int tegra11x_pinmux_suspend(void)
 	return 0;
 }
 
-#define PMC_IO_DPD_REQ		0x1B8
-#define PMC_IO_DPD2_REQ		0x1C0
 
 static void tegra11x_pinmux_resume(void)
 {
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
+	u32 *tmp = pinmux_reg;
+	u32 reg_value;
+
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+		reg_value = *tmp++;
+		reg_value |= BIT(4); /* tristate */
+		pg_writel(reg_value, tegra_soc_pingroups[i].mux_bank,
+			tegra_soc_pingroups[i].mux_reg);
+	}
+
+	writel(0x400fffff, pmc_base + PMC_IO_DPD_REQ);
+	writel(0x40001fff, pmc_base + PMC_IO_DPD2_REQ);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,

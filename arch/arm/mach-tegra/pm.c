@@ -140,6 +140,9 @@ struct suspend_context tegra_sctx;
 #define PMC_DPAD_ORIDE		0x1C
 #define PMC_WAKE_DELAY		0xe0
 #define PMC_DPD_SAMPLE		0x20
+#define PMC_IO_DPD_REQ          0x1B8
+#define PMC_IO_DPD2_REQ         0x1C0
+
 
 #define PMC_WAKE_STATUS		0x14
 #define PMC_SW_WAKE_STATUS	0x18
@@ -815,6 +818,11 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		/* Enable DPD sample to trigger sampling pads data and direction
 		 * in which pad will be driven during lp0 mode*/
 		writel(0x1, pmc + PMC_DPD_SAMPLE);
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+		writel(0x800fdfff, pmc + PMC_IO_DPD_REQ);
+		writel(0x80001fff, pmc + PMC_IO_DPD2_REQ);
+#endif
+
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		/* this is needed only for T11x, not for other chips */
 		reg &= ~TEGRA_POWER_CPUPWRGOOD_EN;
