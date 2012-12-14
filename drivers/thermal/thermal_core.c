@@ -2034,10 +2034,7 @@ int thermal_generate_netlink_event(struct thermal_zone_device *tz,
 		return result;
 	}
 
-	result = genlmsg_multicast(skb, 0, thermal_event_mcgrp.id, GFP_ATOMIC);
-	if (result)
-		dev_err(&tz->device, "Failed to send netlink event:%d", result);
-
+	genlmsg_multicast(skb, 0, thermal_event_mcgrp.id, GFP_ATOMIC);
 	return result;
 }
 EXPORT_SYMBOL_GPL(thermal_generate_netlink_event);
