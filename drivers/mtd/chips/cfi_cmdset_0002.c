@@ -49,6 +49,7 @@
 #define SST49LF040B	        0x0050
 #define SST49LF008A		0x005a
 #define AT49BV6416		0x00d6
+#define MSP14LV320		0x227E
 
 static int cfi_amdstd_read (struct mtd_info *, loff_t, size_t, size_t *, u_char *);
 static int cfi_amdstd_write_words(struct mtd_info *, loff_t, size_t, size_t *, const u_char *);
@@ -359,6 +360,17 @@ static void fixup_s29ns512p_sectors(struct mtd_info *mtd)
 	pr_warning("%s: Bad S29NS512P CFI data; adjust to 512 sectors\n", mtd->name);
 }
 
+static void fixup_msp14lv320(struct mtd_info *mtd)
+{
+	struct map_info *map = mtd->priv;
+	struct cfi_private *cfi = map->fldrv_priv;
+	cfi->cfiq->MaxBufWriteSize = 8;
+	cfi->cfiq->WordWriteTimeoutTyp = 9;
+	cfi->cfiq->BufWriteTimeoutTyp = 9;
+	cfi->cfiq->BlockEraseTimeoutTyp = 12;
+	mtd->_write = cfi_amdstd_write_buffers;
+}
+
 /* Used to fix CFI-Tables of chips without Extended Query Tables */
 static struct cfi_fixup cfi_nopri_fixup_table[] = {
 	{ CFI_MFR_SST, 0x234a, fixup_sst39vf }, /* SST39VF1602 */
@@ -403,6 +415,7 @@ static struct cfi_fixup jedec_fixup_table[] = {
 	{ CFI_MFR_SST, SST49LF004B, fixup_use_fwh_lock },
 	{ CFI_MFR_SST, SST49LF040B, fixup_use_fwh_lock },
 	{ CFI_MFR_SST, SST49LF008A, fixup_use_fwh_lock },
+	{ CFI_MFR_AMD, MSP14LV320, fixup_msp14lv320 }, /* MSP14LV320 */
 	{ 0, 0, NULL }
 };
 
