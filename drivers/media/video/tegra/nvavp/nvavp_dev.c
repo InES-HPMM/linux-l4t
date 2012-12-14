@@ -43,6 +43,7 @@
 #include <mach/iomap.h>
 #include <mach/legacy_irq.h>
 #include <linux/nvmap.h>
+#include <mach/powergate.h>
 
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
 #include "../avp/headavp.h"
@@ -260,12 +261,45 @@ static struct clk *nvavp_clk_get(struct nvavp_info *nvavp, int id)
 	return NULL;
 }
 
+static int nvavp_powergate_vde(struct nvavp_info *nvavp)
+{
+	int ret = 0;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s++\n", __func__);
+
+	/* Powergate VDE */
+	ret = tegra_powergate_partition(TEGRA_POWERGATE_VDEC);
+	if (ret)
+		dev_err(&nvavp->nvhost_dev->dev,
+				"%s: powergate failed\n",
+				__func__);
+
+	return ret;
+}
+
+static int nvavp_unpowergate_vde(struct nvavp_info *nvavp)
+{
+	int ret = 0;
+
+	dev_dbg(&nvavp->nvhost_dev->dev, "%s++\n", __func__);
+
+	/* UnPowergate VDE */
+	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_VDEC);
+	if (ret)
+		dev_err(&nvavp->nvhost_dev->dev,
+				"%s: unpowergate failed\n",
+				__func__);
+
+	return ret;
+}
+
 static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
 	if (nvavp->clk_enabled++ == 0) {
 		nvhost_module_busy_ext(nvavp->nvhost_dev);
 		clk_prepare_enable(nvavp->bsev_clk);
 		clk_prepare_enable(nvavp->vde_clk);
+		nvavp_unpowergate_vde(nvavp);
 		clk_set_rate(nvavp->emc_clk, nvavp->emc_clk_rate);
 		clk_set_rate(nvavp->sclk, nvavp->sclk_rate);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: setting sclk to %lu\n",
@@ -282,6 +316,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 		clk_disable_unprepare(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
 		clk_set_rate(nvavp->sclk, 0);
+		nvavp_powergate_vde(nvavp);
 		nvhost_module_idle_ext(nvavp->nvhost_dev);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
@@ -1870,6 +1905,11 @@ static int tegra_nvavp_suspend(struct platform_device *ndev, pm_message_t state)
 			ret = -EBUSY;
 		}
 	}
+
+	/* Partition vde has to be left on before suspend for the
+	 * device to wakeup on resume
+	 */
+	nvavp_unpowergate_vde(nvavp);
 
 	mutex_unlock(&nvavp->open_lock);
 	return ret;
