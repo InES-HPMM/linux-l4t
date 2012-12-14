@@ -105,12 +105,48 @@ static int tps51632_dcdc_set_ramp_delay(struct regulator_dev *rdev,
 	return ret;
 }
 
+static int tps51632_dcdc_set_control_mode(struct regulator_dev *rdev,
+		unsigned int mode)
+{
+	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
+	int ret;
+
+	if (mode == REGULATOR_CONTROL_MODE_I2C)
+	     ret = regmap_update_bits(tps->regmap,
+			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN, 0);
+	else if (mode == REGULATOR_CONTROL_MODE_PWM)
+	      ret = regmap_update_bits(tps->regmap,
+			TPS51632_DVFS_CONTROL_REG, TPS51632_DVFS_PWMEN,
+			TPS51632_DVFS_PWMEN);
+	else
+		return -EINVAL;
+
+	if (ret < 0) {
+		dev_err(tps->dev, "DVFS reg write failed, err %d\n", ret);
+		return ret;
+	}
+	tps->enable_pwm_dvfs = (mode == REGULATOR_CONTROL_MODE_PWM);
+	return ret;
+}
+
+static unsigned int tps51632_dcdc_get_control_mode(struct regulator_dev *rdev)
+{
+	struct tps51632_chip *tps = rdev_get_drvdata(rdev);
+
+	if (tps->enable_pwm_dvfs)
+		return REGULATOR_CONTROL_MODE_PWM;
+	return REGULATOR_CONTROL_MODE_I2C;
+}
+
+
 static struct regulator_ops tps51632_dcdc_ops = {
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= regulator_list_voltage_linear,
 	.set_voltage_time_sel	= regulator_set_voltage_time_sel,
 	.set_ramp_delay		= tps51632_dcdc_set_ramp_delay,
+	.set_control_mode	= tps51632_dcdc_set_control_mode,
+	.get_control_mode	= tps51632_dcdc_get_control_mode,
 };
 
 static int tps51632_init_dcdc(struct tps51632_chip *tps,
@@ -120,16 +156,18 @@ static int tps51632_init_dcdc(struct tps51632_chip *tps,
 	uint8_t	control = 0;
 	int vsel;
 
-	if (!pdata->enable_pwm_dvfs)
-		goto skip_pwm_config;
-
-	control |= TPS51632_DVFS_PWMEN;
 	vsel = TPS51632_VOLT_VSEL(pdata->base_voltage_uV);
 	ret = regmap_write(tps->regmap, TPS51632_VOLTAGE_BASE_REG, vsel);
 	if (ret < 0) {
 		dev_err(tps->dev, "BASE reg write failed, err %d\n", ret);
 		return ret;
 	}
+
+	if (!pdata->enable_pwm_dvfs)
+		goto skip_pwm_config;
+
+	control |= TPS51632_DVFS_PWMEN;
+	tps->enable_pwm_dvfs = pdata->enable_pwm_dvfs;
 
 	if (pdata->dvfs_step_20mV)
 		control |= TPS51632_DVFS_STEP_20;
