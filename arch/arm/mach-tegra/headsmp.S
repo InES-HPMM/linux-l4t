@@ -192,8 +192,8 @@ __invalidate_cpu_state:
 	/* fall through */
 #else
 	/*	This is only needed for cluster 0 with integrated L2 cache */
-	mov32	r0, TEGRA_FLOW_CTRL_BASE+0x2c	@ CLUSTER_CONTROL
-	ldr	r0, [r0]
+	mrc	p15, 0, r0, c0, c0, 5
+	ubfx	r0, r0, #8, #4
 	tst	r0, #1
 	bne	__enable_i_cache_branch_pred
 	mrc	p15, 0x1, r0, c9, c0, 2

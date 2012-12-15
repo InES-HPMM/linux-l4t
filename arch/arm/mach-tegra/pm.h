@@ -94,9 +94,6 @@ bool tegra_set_cpu_in_pd(int cpu);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
-#define FLOW_CTRL_CLUSTER_CONTROL \
-	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x2c)
-
 #define FLOW_CTRL_CPU_PWR_CSR \
 	(IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + 0x38)
 #define FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE	1
@@ -149,8 +146,12 @@ static inline bool is_g_cluster_present(void)
 static inline unsigned int is_lp_cluster(void)
 {
 	unsigned int reg;
-	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
-	return (reg & 1); /* 0 == G, 1 == LP*/
+	asm("mrc	p15, 0, %0, c0, c0, 5\n"
+	    "ubfx	%0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc");
+	return reg ; /* 0 == G, 1 == LP*/
 }
 int tegra_cluster_control(unsigned int us, unsigned int flags);
 void tegra_cluster_switch_prolog(unsigned int flags);
