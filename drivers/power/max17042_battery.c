@@ -998,12 +998,12 @@ static void max17042_shutdown(struct i2c_client *client)
 {
 	struct max17042_chip *chip = i2c_get_clientdata(client);
 
-	chip->shutdown_complete = 1;
-
 	if (client->irq)
 		disable_irq(client->irq);
 
-	cancel_delayed_work(&chip->work);
+	cancel_delayed_work_sync(&chip->work);
+
+	chip->shutdown_complete = 1;
 }
 
 #ifdef CONFIG_PM
