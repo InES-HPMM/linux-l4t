@@ -273,7 +273,9 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PC7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV3, false, 0),
+#ifndef CONFIG_LEDS_PWM
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ3, false, 0),
+#endif
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ7, false, 0),
