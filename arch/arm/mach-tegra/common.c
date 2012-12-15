@@ -190,6 +190,7 @@ static enum audio_codec_type audio_codec_name;
 static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 static int max_core_current;
+static int emc_max_dvfs;
 static int usb_port_owner_info;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -804,6 +805,18 @@ static int __init tegra_max_core_current(char *options)
 	return 1;
 }
 __setup("core_edp_ma=", tegra_max_core_current);
+
+int get_emc_max_dvfs(void)
+{
+	return emc_max_dvfs;
+}
+static int __init tegra_emc_max_dvfs(char *options)
+{
+	char *p = options;
+	emc_max_dvfs = memparse(p, &p);
+	return 1;
+}
+__setup("emc_max_dvfs", tegra_emc_max_dvfs);
 
 static int __init tegra_debug_uartport(char *info)
 {

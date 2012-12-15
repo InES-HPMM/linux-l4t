@@ -36,6 +36,7 @@
 
 #include "clock.h"
 #include "dvfs.h"
+#include "board.h"
 #include "tegra11_emc.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
@@ -1026,6 +1027,7 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	int i, mv;
 	u32 reg;
 	bool max_entry = false;
+	bool emc_max_dvfs_sel = get_emc_max_dvfs();
 	unsigned long boot_rate, max_rate;
 	struct clk *pll_c = tegra_get_clock_by_name("pll_c");
 
@@ -1033,9 +1035,6 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	spin_lock_init(&emc_stats.spinlock);
 	emc_stats.last_update = get_jiffies_64();
 	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
-
-	boot_rate = clk_get_rate(emc) / 1000;
-	max_rate = clk_get_max_rate(emc) / 1000;
 
 	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
@@ -1052,6 +1051,9 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 		pr_err("tegra: EMC DFS table is empty\n");
 		return -ENODATA;
 	}
+
+	boot_rate = clk_get_rate(emc) / 1000;
+	max_rate = clk_get_rate(emc->parent) / 1000;
 
 	tegra_emc_table_size = min(table_size, TEGRA_EMC_TABLE_MAX_SIZE);
 	switch (table[0].rev) {
@@ -1084,7 +1086,14 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 		if (table_rate == boot_rate)
 			emc_stats.last_sel = i;
 
-		if (table_rate == max_rate) {
+		if (emc_max_dvfs_sel) {
+			/* EMC max rate = max table entry above boot pll_m */
+			if (table_rate >= max_rate) {
+				max_rate = table_rate;
+				max_entry = true;
+			}
+		} else if (table_rate == max_rate) {
+			/* EMC max rate = boot pll_m rate */
 			max_entry = true;
 			break;
 		}
@@ -1096,6 +1105,7 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 		       " %lu kHz is not found\n", max_rate);
 		return -ENODATA;
 	}
+	tegra_init_max_rate(emc, max_rate * 1000);
 
 	tegra_emc_table = table;
 

@@ -765,7 +765,7 @@ int tegra_clk_shared_bus_update(struct clk *c)
 }
 
 /* dvfs initialization may lower default maximum rate */
-void __init tegra_init_max_rate(struct clk *c, unsigned long max_rate)
+void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 {
 	struct clk *shared_bus_user;
 
