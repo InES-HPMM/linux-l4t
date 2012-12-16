@@ -761,9 +761,9 @@ static void tegra_common_resume(void)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	/* trigger emc mode write */
 	writel(EMC_MRW_DEV_NONE, emc + EMC_MRW_0);
-#endif
 	/* clear scratch registers shared by suspend and the reset pen */
 	writel(0x0, pmc + PMC_SCRATCH39);
+#endif
 	writel(0x0, pmc + PMC_SCRATCH41);
 
 	/* restore IRAM */
@@ -808,12 +808,14 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 			reg &= ~TEGRA_POWER_CPU_PWRREQ_OE;
 		}
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		/*
 		 * LP0 boots through the AVP, which then resumes the AVP to
 		 * the address in scratch 39, and the cpu to the address in
 		 * scratch 41 to tegra_resume
 		 */
 		writel(0x0, pmc + PMC_SCRATCH39);
+#endif
 
 		/* Enable DPD sample to trigger sampling pads data and direction
 		 * in which pad will be driven during lp0 mode*/
@@ -1289,7 +1291,9 @@ out:
 	/* Initialize scratch registers used for CPU LP2 synchronization */
 	writel(0, pmc + PMC_SCRATCH37);
 	writel(0, pmc + PMC_SCRATCH38);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	writel(0, pmc + PMC_SCRATCH39);
+#endif
 	writel(0, pmc + PMC_SCRATCH41);
 
 	/* Always enable CPU power request; just normal polarity is supported */
