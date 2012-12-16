@@ -34,6 +34,7 @@
 #include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/uaccess.h>
+#include <linux/thermal.h>
 
 #include <mach/tegra_fuse.h>
 #include <mach/iomap.h>
@@ -153,6 +154,8 @@ static int soc_therm_precision = -1;
 #define INTR_STATUS_MD0_MASK		0x1
 #define INTR_STATUS_MU0_SHIFT		24
 #define INTR_STATUS_MU0_MASK		0x1
+#define INTR_STATUS_CD0_SHIFT		9
+#define INTR_STATUS_CU0_SHIFT		8
 
 #define INTR_EN			0x88
 #define INTR_EN_MU0_SHIFT	24
@@ -334,47 +337,47 @@ static int soctherm_set_limits(enum soctherm_therm_id therm,
 
 	soctherm_writel(1<<INTR_EN_CU0_SHIFT, INTR_EN);
 	soctherm_writel(1<<INTR_EN_CD0_SHIFT, INTR_EN);
-
 	return 0;
 }
 
 static void soctherm_update(void)
 {
-	struct thermal_zone_device *dev = thz[THERM_CPU];
 	long temp, trip_temp, low_temp = 0, high_temp = 128000;
-	int count;
+	int i, count;
 
-	if (!dev)
-		return;
+	for (i = 0; i < THERM_SIZE; i++) {
+		if (!thz[i])
+			continue;
 
-	if (!dev->passive)
-		thermal_zone_device_update(dev);
+		if (!thz[i]->passive)
+			thermal_zone_device_update(thz[i]);
 
-	dev->ops->get_temp(dev, &temp);
+		thz[i]->ops->get_temp(thz[i], &temp);
+		for (count = 0; count < thz[i]->trips; count++) {
+			thz[i]->ops->get_trip_temp(thz[i], count, &trip_temp);
 
-	for (count = 0; count < dev->trips; count++) {
-		dev->ops->get_trip_temp(dev, count, &trip_temp);
+			if ((trip_temp >= temp) && (trip_temp < high_temp))
+				high_temp = trip_temp;
 
-		if ((trip_temp >= temp) && (trip_temp < high_temp))
-			high_temp = trip_temp;
-
-		if ((trip_temp < temp) && (trip_temp > low_temp))
-			low_temp = trip_temp;
+			if ((trip_temp < temp) && (trip_temp > low_temp))
+				low_temp = trip_temp -
+					plat_data.therm[i].hysteresis;
+		}
 	}
 
 	soctherm_set_limits(THERM_CPU, low_temp/1000, high_temp/1000);
 }
 
 static int soctherm_bind(struct thermal_zone_device *thz,
-				struct thermal_cooling_device *cdevice)
+				struct thermal_cooling_device *cdev)
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 
-	if (index < 0)
+	if (index < 0 || !plat_data.therm[index].cdev_type)
 		return 0;
 
-	if (plat_data.therm[index].cdev == cdevice)
-		return thermal_zone_bind_cooling_device(thz, 0, cdevice,
+	if (!strcmp(plat_data.therm[index].cdev_type, cdev->type))
+		return thermal_zone_bind_cooling_device(thz, 0, cdev,
 							THERMAL_NO_LIMIT,
 							THERMAL_NO_LIMIT);
 
@@ -382,15 +385,15 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 }
 
 static int soctherm_unbind(struct thermal_zone_device *thz,
-				struct thermal_cooling_device *cdevice)
+				struct thermal_cooling_device *cdev)
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 
-	if (index < 0)
+	if (index < 0 || !plat_data.therm[index].cdev_type)
 		return 0;
 
-	if (plat_data.therm[index].cdev == cdevice)
-		return thermal_zone_unbind_cooling_device(thz, 0, cdevice);
+	if (!strcmp(plat_data.therm[index].cdev_type, cdev->type))
+		return thermal_zone_unbind_cooling_device(thz, 0, cdev);
 
 	return 0;
 }
@@ -417,6 +420,8 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 			*temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
 		else
 			*temp = temp_translate(REG_GET(r, TS_TEMP1_GPU_TEMP));
+
+		plat_data.therm[index].etemp = *temp;
 	}
 
 	return 0;
@@ -427,7 +432,7 @@ static int soctherm_get_trip_type(struct thermal_zone_device *thz,
 					enum thermal_trip_type *type) {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 
-	if (index < 0 || !plat_data.therm[index].cdev)
+	if (index < 0 || !plat_data.therm[index].cdev_type)
 		return -EINVAL;
 
 	*type = THERMAL_TRIP_PASSIVE;
@@ -439,7 +444,7 @@ static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
 					unsigned long *temp) {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 
-	if (index < 0 || !plat_data.therm[index].cdev)
+	if (index < 0 || !plat_data.therm[index].cdev_type)
 		return -EINVAL;
 
 	*temp = plat_data.therm[index].trip_temp;
@@ -451,12 +456,32 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 					unsigned long temp)
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
-	if (index < 0 || !plat_data.therm[index].cdev)
+
+	if (index < 0 || !plat_data.therm[index].cdev_type)
 		return -EINVAL;
 
 	plat_data.therm[index].trip_temp = temp;
-
 	soctherm_update();
+	return 0;
+}
+
+static int soctherm_get_trend(struct thermal_zone_device *thz,
+				int trip,
+				enum thermal_trend *trend)
+{
+	int index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct soctherm_therm *trip_state;
+
+	if (index < 0 || !plat_data.therm[index].cdev_type)
+		return -EINVAL;
+
+	trip_state = &plat_data.therm[index];
+
+	/* always THERMAL_TRIP_PASSIVE */
+	if (trip_state->etemp > trip_state->trip_temp)
+		*trend = THERMAL_TREND_RAISING;
+	else
+		*trend = THERMAL_TREND_DROPPING;
 
 	return 0;
 }
@@ -468,6 +493,7 @@ static struct thermal_zone_device_ops soctherm_ops = {
 	.get_trip_type = soctherm_get_trip_type,
 	.get_trip_temp = soctherm_get_trip_temp,
 	.set_trip_temp = soctherm_set_trip_temp,
+	.get_trend = soctherm_get_trend,
 };
 
 static int __init soctherm_thermal_init(void)
@@ -476,7 +502,7 @@ static int __init soctherm_thermal_init(void)
 	int i;
 
 	for (i = 0; i < TSENSE_SIZE; i++) {
-		if (plat_data.sensor_data[i].enable) {
+		if (plat_data.sensor_data[i].zone_enable) {
 			sprintf(name, "%s-tsensor", sensor_names[i]);
 			/* Create a thermal zone device for each sensor */
 			thermal_zone_device_register(
@@ -486,24 +512,27 @@ static int __init soctherm_thermal_init(void)
 					(void *)i,
 					&soctherm_ops,
 					NULL,
-					plat_data.therm[i].passive_delay,
+					0,
 					0);
 		}
 	}
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		sprintf(name, "%s-therm", therm_names[i]);
-		thz[i] = thermal_zone_device_register(
+		if (plat_data.therm[i].zone_enable) {
+			sprintf(name, "%s-therm", therm_names[i]);
+			thz[i] = thermal_zone_device_register(
 					name,
-					plat_data.therm[i].cdev ? 1 : 0,
-					plat_data.therm[i].cdev ? 0x1 : 0,
+					plat_data.therm[i].cdev_type ? 1 : 0,
+					plat_data.therm[i].cdev_type ? 0x1 : 0,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
 					NULL,
 					plat_data.therm[i].passive_delay,
 					0);
+		}
 	}
 
+	soctherm_update();
 	return 0;
 }
 module_init(soctherm_thermal_init);
@@ -516,6 +545,11 @@ static void soctherm_update(void)
 
 static void soctherm_work_func(struct work_struct *work)
 {
+	u32 status;
+
+	status = soctherm_readl(INTR_STATUS);
+	soctherm_writel(status, INTR_STATUS);
+
 	soctherm_update();
 }
 
@@ -526,7 +560,7 @@ static irqreturn_t soctherm_isr(int irq, void *arg_data)
 	queue_work(workqueue, &work);
 
 	r = soctherm_readl(INTR_STATUS);
-	soctherm_writel(r, INTR_STATUS);
+	soctherm_writel(r, INTR_DIS);
 
 	return IRQ_HANDLED;
 }
@@ -572,7 +606,7 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, sensor));
 
 	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
-	r = REG_SET(r, TS_CPU0_CONFIG1_EN, data->enable);
+	r = REG_SET(r, TS_CPU0_CONFIG1_EN, 1);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
@@ -722,7 +756,7 @@ static int soctherm_init_platform_data(void)
 	/* Thermal Sensing programming */
 	soctherm_fuse_read_vsensor();
 	for (i = 0; i < TSENSE_SIZE; i++) {
-		if (plat_data.sensor_data[i].enable) {
+		if (plat_data.sensor_data[i].sensor_enable) {
 			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
 			soctherm_fuse_read_tsensor(i);
 		}
@@ -778,6 +812,7 @@ static int soctherm_init_platform_data(void)
 
 static int soctherm_suspend(void)
 {
+	soctherm_writel((u32)-1, INTR_DIS);
 	soctherm_clk_enable(false);
 	disable_irq(INT_THERMAL);
 	cancel_work_sync(&work);
@@ -834,9 +869,6 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	err = request_irq(INT_THERMAL, soctherm_isr, 0, "soctherm", NULL);
 	if (err < 0)
 		return -1;
-
-	soctherm_update();
-
 	return 0;
 }
 

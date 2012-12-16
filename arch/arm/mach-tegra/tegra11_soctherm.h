@@ -1,48 +1,46 @@
 /*
- * arch/arm/mach-tegra/tegra3_tsensor.h
+ * arch/arm/mach-tegra/tegra11_soctherm.h
  *
- * Tegra tsensor header file
+ * Copyright (C) 2011-2012 NVIDIA Corporation
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
 
-#ifndef __MACH_TEGRA_TEGRA3_SOCTHERM_H
-#define __MACH_TEGRA_TEGRA3_SOCTHERM_H
-
-#include <linux/thermal.h>
-
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
-	TSENSE_CPU1 = 1,
-	TSENSE_CPU2 = 2,
-	TSENSE_CPU3 = 3,
-	TSENSE_MEM0 = 4,
-	TSENSE_MEM1 = 5,
-	TSENSE_GPU  = 6,
-	TSENSE_PLLX = 7,
-	TSENSE_SIZE = 8,
+	TSENSE_CPU1,
+	TSENSE_CPU2,
+	TSENSE_CPU3,
+	TSENSE_MEM0,
+	TSENSE_MEM1,
+	TSENSE_GPU,
+	TSENSE_PLLX,
+	TSENSE_SIZE,
 };
 
 enum soctherm_therm_id {
 	THERM_CPU = 0,
-	THERM_MEM = 1,
-	THERM_GPU = 2,
-	THERM_PLL = 3,
-	THERM_SIZE = 4,
+	THERM_MEM,
+	THERM_GPU,
+	THERM_PLL,
+	THERM_SIZE,
 };
 
 struct soctherm_sensor {
-	bool enable;
+	bool sensor_enable;
+	bool zone_enable;
 	int tall;
 	int tiddq;
 	int ten_count;
@@ -51,26 +49,27 @@ struct soctherm_sensor {
 };
 
 struct soctherm_therm {
+	bool zone_enable;
 	s8 thermtrip;
 	s8 hw_backstop;
 
-	struct thermal_cooling_device *cdev;
+	char *cdev_type;
 	int trip_temp;
-	int tc1;
-	int tc2;
 	int passive_delay;
+	int etemp;
+	int hysteresis;
 };
 
 enum soctherm_throttle_id {
 	THROTTLE_LITE = 0,
-	THROTTLE_HEAVY = 1,
-	THROTTLE_SIZE = 2,
+	THROTTLE_HEAVY,
+	THROTTLE_SIZE,
 };
 
 enum soctherm_throttle_dev_id {
 	THROTTLE_DEV_CPU = 0,
-	THROTTLE_DEV_GPU = 1,
-	THROTTLE_DEV_SIZE = 2,
+	THROTTLE_DEV_GPU,
+	THROTTLE_DEV_SIZE,
 };
 
 struct soctherm_throttle_dev {
@@ -105,6 +104,4 @@ static inline int tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	return 0;
 }
-#endif
-
 #endif

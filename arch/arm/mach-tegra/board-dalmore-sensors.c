@@ -94,7 +94,7 @@ static struct balanced_throttle tj_throttle = {
 static int __init dalmore_throttle_init(void)
 {
 	if (machine_is_dalmore())
-		balanced_throttle_register(&tj_throttle, "dalmore-nct");
+		balanced_throttle_register(&tj_throttle, "tegra-balanced");
 	return 0;
 }
 module_init(dalmore_throttle_init);
@@ -113,7 +113,7 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
-			.cdev_type = "dalmore-nct",
+			.cdev_type = "tegra-balanced",
 			.trip_temp = 75000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,
