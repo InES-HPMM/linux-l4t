@@ -227,7 +227,7 @@ static struct tegra_dc_out dalmore_disp2_out = {
 	.dcc_bus	= 3,
 	.hotplug_gpio	= dalmore_hdmi_hpd,
 
-	.max_pixclock	= KHZ2PICOS(148500),
+	.max_pixclock	= KHZ2PICOS(297000),
 
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
