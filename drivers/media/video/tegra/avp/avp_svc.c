@@ -376,20 +376,20 @@ static void do_svc_module_clock(struct avp_svc_info *avp_svc,
 	if (msg->enable) {
 		if (aclk->refcnt++ == 0) {
 			clk_set_rate(avp_svc->emcclk, emc_rate);
-			clk_enable(avp_svc->emcclk);
-			clk_enable(avp_svc->sclk);
-			clk_enable(aclk->clk);
+			clk_prepare_enable(avp_svc->emcclk);
+			clk_prepare_enable(avp_svc->sclk);
+			clk_prepare_enable(aclk->clk);
 		}
 	} else {
 		if (unlikely(aclk->refcnt == 0)) {
 			pr_err("avp_svc: unbalanced clock disable for '%s'\n",
 			       aclk->mod->name);
 		} else if (--aclk->refcnt == 0) {
-			clk_disable(aclk->clk);
+			clk_disable_unprepare(aclk->clk);
 			clk_set_rate(avp_svc->sclk, 0);
-			clk_disable(avp_svc->sclk);
+			clk_disable_unprepare(avp_svc->sclk);
 			clk_set_rate(avp_svc->emcclk, 0);
-			clk_disable(avp_svc->emcclk);
+			clk_disable_unprepare(avp_svc->emcclk);
 		}
 	}
 	mutex_unlock(&avp_svc->clk_lock);
@@ -781,12 +781,12 @@ void avp_svc_stop(struct avp_svc_info *avp_svc)
 		if (aclk->refcnt > 0) {
 			pr_info("%s: remote left clock '%s' on\n", __func__,
 				aclk->mod->name);
-			clk_disable(aclk->clk);
+			clk_disable_unprepare(aclk->clk);
 			/* sclk/emcclk was enabled once for every clock */
 			clk_set_rate(avp_svc->sclk, 0);
-			clk_disable(avp_svc->sclk);
+			clk_disable_unprepare(avp_svc->sclk);
 			clk_set_rate(avp_svc->emcclk, 0);
-			clk_disable(avp_svc->emcclk);
+			clk_disable_unprepare(avp_svc->emcclk);
 		}
 		aclk->refcnt = 0;
 	}
