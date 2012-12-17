@@ -434,7 +434,7 @@ static int tegra_nor_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	err = clk_enable(info->clk);
+	err = clk_prepare_enable(info->clk);
 	if (err != 0)
 		goto out_clk_put;
 
@@ -491,7 +491,7 @@ out_dma_free_coherent:
 	dma_free_coherent(dev, TEGRA_SNOR_DMA_LIMIT,
 				info->dma_virt_buffer, info->dma_phys_buffer);
 out_clk_disable:
-	clk_disable(info->clk);
+	clk_disable_unprepare(info->clk);
 out_clk_put:
 	clk_put(info->clk);
 fail:
@@ -509,7 +509,7 @@ static int tegra_nor_remove(struct platform_device *pdev)
 	dma_free_coherent(&pdev->dev, TEGRA_SNOR_DMA_LIMIT,
 				info->dma_virt_buffer, info->dma_phys_buffer);
 	map_destroy(info->mtd);
-	clk_disable(info->clk);
+	clk_disable_unprepare(info->clk);
 	clk_put(info->clk);
 
 	return 0;
