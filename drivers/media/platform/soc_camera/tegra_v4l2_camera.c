@@ -939,11 +939,11 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 	nvhost_module_busy_ext(pcdev->ndev);
 
 	/* Turn on relevant clocks. */
-	clk_enable(pcdev->clk_vi);
-	clk_enable(pcdev->clk_vi_sensor);
-	clk_enable(pcdev->clk_csi);
-	clk_enable(pcdev->clk_isp);
-	clk_enable(pcdev->clk_csus);
+	clk_prepare_enable(pcdev->clk_vi);
+	clk_prepare_enable(pcdev->clk_vi_sensor);
+	clk_prepare_enable(pcdev->clk_csi);
+	clk_prepare_enable(pcdev->clk_isp);
+	clk_prepare_enable(pcdev->clk_csus);
 
 	/* Save current syncpt values. */
 	tegra_camera_save_syncpts(pcdev);
@@ -963,11 +963,11 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 	mutex_unlock(&pcdev->work_mutex);
 
 	/* Turn off relevant clocks. */
-	clk_disable(pcdev->clk_vi);
-	clk_disable(pcdev->clk_vi_sensor);
-	clk_disable(pcdev->clk_csi);
-	clk_disable(pcdev->clk_isp);
-	clk_disable(pcdev->clk_csus);
+	clk_disable_unprepare(pcdev->clk_vi);
+	clk_disable_unprepare(pcdev->clk_vi_sensor);
+	clk_disable_unprepare(pcdev->clk_csi);
+	clk_disable_unprepare(pcdev->clk_isp);
+	clk_disable_unprepare(pcdev->clk_csus);
 
 	nvhost_module_idle_ext(pcdev->ndev);
 }
