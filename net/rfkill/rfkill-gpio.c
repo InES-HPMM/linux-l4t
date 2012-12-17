@@ -57,10 +57,10 @@ static int rfkill_gpio_set_power(void *data, bool blocked)
 		if (gpio_is_valid(rfkill->pdata->reset_gpio))
 			gpio_direction_output(rfkill->pdata->reset_gpio, 0);
 		if (rfkill->pwr_clk && PWR_CLK_ENABLED(rfkill))
-			clk_disable(rfkill->pwr_clk);
+			clk_disable_unprepare(rfkill->pwr_clk);
 	} else {
 		if (rfkill->pwr_clk && PWR_CLK_DISABLED(rfkill))
-			clk_enable(rfkill->pwr_clk);
+			clk_prepare_enable(rfkill->pwr_clk);
 		if (gpio_is_valid(rfkill->pdata->reset_gpio))
 			gpio_direction_output(rfkill->pdata->reset_gpio, 1);
 		if (gpio_is_valid(rfkill->pdata->shutdown_gpio))
@@ -204,7 +204,7 @@ static int rfkill_gpio_remove(struct platform_device *pdev)
 	if (gpio_is_valid(rfkill->pdata->reset_gpio))
 		gpio_free(rfkill->pdata->reset_gpio);
 	if (rfkill->pwr_clk && PWR_CLK_ENABLED(rfkill))
-		clk_disable(rfkill->pwr_clk);
+		clk_disable_unprepare(rfkill->pwr_clk);
 	if (rfkill->pwr_clk)
 		clk_put(rfkill->pwr_clk);
 	kfree(rfkill->shutdown_name);
