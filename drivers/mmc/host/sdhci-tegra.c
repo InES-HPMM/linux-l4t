@@ -923,6 +923,8 @@ static void tegra_sdhci_reset(struct sdhci_host *sdhci, u8 mask)
 		timeout--;
 		mdelay(1);
 	}
+
+	tegra_sdhci_reset_exit(sdhci, mask);
 }
 
 static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
