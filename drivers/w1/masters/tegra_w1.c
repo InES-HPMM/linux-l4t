@@ -347,7 +347,7 @@ static int tegra_w1_runtime_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_device *tegra_dev = platform_get_drvdata(pdev);
 
-	clk_disable(tegra_dev->clk);
+	clk_disable_unprepare(tegra_dev->clk);
 	return 0;
 }
 
@@ -356,7 +356,7 @@ static int tegra_w1_runtime_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_device *tegra_dev = platform_get_drvdata(pdev);
 
-	clk_enable(tegra_dev->clk);
+	clk_prepare_enable(tegra_dev->clk);
 	return 0;
 }
 
