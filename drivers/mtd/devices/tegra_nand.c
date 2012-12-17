@@ -1609,7 +1609,7 @@ static int tegra_nand_probe(struct platform_device *pdev)
 		err = PTR_ERR(info->clk);
 		goto out_free_ecc_buf;
 	}
-	err = clk_enable(info->clk);
+	err = clk_prepare_enable(info->clk);
 	if (err != 0)
 		goto out_free_ecc_buf;
 
