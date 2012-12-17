@@ -286,8 +286,8 @@ static int tegra_spi_clk_disable(struct spi_tegra_data *tspi)
 	spin_lock_irqsave(&tspi->reg_lock, flags);
 	tspi->clk_state--;
 	spin_unlock_irqrestore(&tspi->reg_lock, flags);
-	clk_disable(tspi->clk);
-	clk_disable(tspi->sclk);
+	clk_disable_unprepare(tspi->clk);
+	clk_disable_unprepare(tspi->sclk);
 	return 0;
 }
 
@@ -295,8 +295,8 @@ static int tegra_spi_clk_enable(struct spi_tegra_data *tspi)
 {
 	unsigned long flags;
 
-	clk_enable(tspi->sclk);
-	clk_enable(tspi->clk);
+	clk_prepare_enable(tspi->sclk);
+	clk_prepare_enable(tspi->clk);
 	spin_lock_irqsave(&tspi->reg_lock, flags);
 	tspi->clk_state++;
 	spin_unlock_irqrestore(&tspi->reg_lock, flags);
