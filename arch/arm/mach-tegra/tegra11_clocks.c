@@ -448,6 +448,11 @@
 #define XUSBIO_PLL_CFG0_CLK_ENABLE_SWCTL	(1<<2)
 #define XUSBIO_PLL_CFG0_PADPLL_RESET_SWCTL	(1<<0)
 
+/* XUSB PLL PAD controls */
+#define XUSB_PADCTL_IOPHY_PLL0_CTL1			0x30
+#define XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_PWR_OVRD	(1<<3)
+#define XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_IDDQ		(1<<0)
+
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
 #define UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE	(1<<25)
 #define UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE	(1<<24)
@@ -527,6 +532,7 @@ static const struct utmi_clk_param utmi_parameters[] =
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *reg_pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 static void __iomem *misc_gp_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
+static void __iomem *reg_xusb_padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 
 #define MISC_GP_HIDREV				0x804
 #define MISC_GP_TRANSACTOR_SCRATCH_0		0x864
@@ -552,6 +558,10 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 	__raw_readl((u32)reg_pmc_base + (reg))
 #define chipid_readl() \
 	__raw_readl((u32)misc_gp_base + MISC_GP_HIDREV)
+#define xusb_padctl_writel(value, reg) \
+	__raw_writel(value, reg_xusb_padctl_base + (reg))
+#define xusb_padctl_readl(reg) \
+	__raw_readl(reg_xusb_padctl_base + (reg))
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
@@ -1902,6 +1912,12 @@ static void tegra11_pll_clk_init(struct clk *c)
 		val = clk_readl(c->reg + PLL_BASE);
 		val &= ~PLLU_BASE_OVERRIDE;
 		clk_writel(val, c->reg + PLL_BASE);
+
+		/* Set XUSB PLL pad pwr override and iddq */
+		val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL0_CTL1);
+		val |= XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_PWR_OVRD;
+		val |= XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_IDDQ;
+		xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL0_CTL1);
 	}
 }
 
@@ -3327,6 +3343,12 @@ static int tegra11_plle_clk_enable(struct clk *c)
 	val |= PLLE_AUX_SEQ_ENABLE;
 	pll_writel_delay(val, PLLE_AUX);
 #endif
+	/* clear XUSB PLL pad pwr override and iddq */
+	val = xusb_padctl_readl(XUSB_PADCTL_IOPHY_PLL0_CTL1);
+	val &= ~XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_PWR_OVRD;
+	val &= ~XUSB_PADCTL_IOPHY_PLL0_CTL1_PLL_IDDQ;
+	xusb_padctl_writel(val, XUSB_PADCTL_IOPHY_PLL0_CTL1);
+
 	/* enable hw control of xusb brick pll */
 	usb_plls_hw_control_enable(XUSBIO_PLL_CFG0);
 
