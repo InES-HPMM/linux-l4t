@@ -49,6 +49,7 @@ struct tegra_utmi_config {
 	signed char xcvr_setup_offset;
 	u8 xcvr_use_lsb;
 	u8 xcvr_use_fuses;
+	u8 vbus_oc_map;
 };
 
 /**

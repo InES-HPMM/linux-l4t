@@ -481,6 +481,16 @@
 #define APB_MISC_GP_OBSCTRL_0	0x818
 #define APB_MISC_GP_OBSDATA_0	0x81c
 
+#define PADCTL_SNPS_OC_MAP	0xC
+#define   CONTROLLER_OC(inst, x)	(((x) & 0x7) << (3 * (inst)))
+#define   CONTROLLER_OC_P0(x)	(((x) & 0x7) << 0)
+#define   CONTROLLER_OC_P1(x)	(((x) & 0x7) << 3)
+#define   CONTROLLER_OC_P2(x)	(((x) & 0x7) << 6)
+
+#define PADCTL_OC_DET		0x18
+#define   ENABLE0_OC_MAP(x)	(((x) & 0x7) << 10)
+#define   ENABLE1_OC_MAP(x)	(((x) & 0x7) << 13)
+
 /* ULPI GPIO */
 #define ULPI_STP	TEGRA_GPIO_PY3
 #define ULPI_DIR	TEGRA_GPIO_PY1
@@ -1468,6 +1478,9 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+#endif
 	struct tegra_utmi_config *config = &phy->pdata->u_cfg.utmi;
 
 	PHY_DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
@@ -1595,6 +1608,20 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		utmip_powerup_pmc_wake_detect(phy);
 	phy->phy_clk_on = true;
 	phy->hw_accessible = true;
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	val = readl(padctl_base + PADCTL_SNPS_OC_MAP);
+	val |= CONTROLLER_OC(phy->inst, 0x4);
+	writel(val, padctl_base + PADCTL_SNPS_OC_MAP);
+
+	val = readl(padctl_base + PADCTL_OC_DET);
+	if (phy->inst == 0)
+		val |= ENABLE0_OC_MAP(config->vbus_oc_map);
+	if (phy->inst == 2)
+		val |= ENABLE1_OC_MAP(config->vbus_oc_map);
+	writel(val, padctl_base + PADCTL_OC_DET);
+#endif
+
 	PHY_DBG("%s(%d) End inst:[%d]\n", __func__, __LINE__, phy->inst);
 	return 0;
 }
@@ -2204,6 +2231,9 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -2337,6 +2367,12 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 		val = USB_FIFO_TXFILL_THRES(0x10);
 		writel(val, base + USB_TXFILLTUNING);
 	}
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	val = readl(padctl_base + PADCTL_SNPS_OC_MAP);
+	val |= CONTROLLER_OC(phy->inst, 0x7);
+	writel(val, padctl_base + PADCTL_SNPS_OC_MAP);
+#endif
 
 	return 0;
 }
