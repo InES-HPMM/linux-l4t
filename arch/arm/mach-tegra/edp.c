@@ -477,6 +477,8 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 };
 #endif
 
+static struct tegra_edp_freq_voltage_table *freq_voltage_lut_saved;
+static unsigned int freq_voltage_lut_size_saved;
 static struct tegra_edp_freq_voltage_table *freq_voltage_lut;
 static unsigned int freq_voltage_lut_size;
 
@@ -569,13 +571,15 @@ unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
 }
 
 static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
-				unsigned int cpu_speedo_idx)
+			unsigned int cpu_speedo_idx,
+			unsigned int freq_volt_lut_size,
+			struct tegra_edp_freq_voltage_table *freq_volt_lut)
 {
 	unsigned int i, j, freq;
 	int voltage_mV;
 
 	for (i = 0, j = 0, freq = 0;
-		 i < freq_voltage_lut_size;
+		 i < freq_volt_lut_size;
 		 i++, freq += FREQ_STEP) {
 
 		/* Predict voltages */
@@ -587,11 +591,23 @@ static int edp_relate_freq_voltage(struct clk *clk_cpu_g,
 		}
 
 		/* Cache frequency / voltage / voltage constant relationship */
-		freq_voltage_lut[i].freq = freq;
-		freq_voltage_lut[i].voltage_mV = voltage_mV;
+		freq_volt_lut[i].freq = freq;
+		freq_volt_lut[i].voltage_mV = voltage_mV;
 	}
 	return 0;
 }
+
+unsigned int tegra_edp_find_maxf(int volt)
+{
+	unsigned int i;
+
+	for (i = 0; i < freq_voltage_lut_size_saved; i++) {
+		if (freq_voltage_lut_saved[i].voltage_mV > volt)
+			break;
+	}
+	return freq_voltage_lut[i - 1].freq;
+}
+
 
 int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 {
@@ -650,13 +666,34 @@ static int init_cpu_edp_limits_calculated(void)
 		return -ENOMEM;
 	}
 
-	ret = edp_relate_freq_voltage(clk_cpu_g, cpu_speedo_idx);
+	ret = edp_relate_freq_voltage(clk_cpu_g, cpu_speedo_idx,
+				freq_voltage_lut_size, freq_voltage_lut);
 	if (ret) {
 		kfree(power_edp_calc_limits);
 		kfree(edp_calculated_limits);
 		kfree(freq_voltage_lut);
 		return ret;
 	}
+
+	if (freq_voltage_lut_size != freq_voltage_lut_size_saved) {
+		/* release previous table if present */
+		kfree(freq_voltage_lut_saved);
+		/* create table to save */
+		freq_voltage_lut_saved =
+			kmalloc(sizeof(struct tegra_edp_freq_voltage_table) *
+			freq_voltage_lut_size, GFP_KERNEL);
+		if (!freq_voltage_lut_saved) {
+			pr_err("%s: failed alloc mem for freq/voltage LUT\n",
+				__func__);
+			kfree(freq_voltage_lut);
+			return -ENOMEM;
+		}
+		freq_voltage_lut_size_saved = freq_voltage_lut_size;
+	}
+	memcpy(freq_voltage_lut_saved,
+		freq_voltage_lut,
+		sizeof(struct tegra_edp_freq_voltage_table) *
+			freq_voltage_lut_size);
 
 	/* Calculate EDP table */
 	for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++) {

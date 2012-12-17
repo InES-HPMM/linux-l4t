@@ -88,6 +88,7 @@ int tegra_system_edp_alarm(bool alarm);
 void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					int *num_trips, int margin);
 struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size);
+unsigned int tegra_edp_find_maxf(int volt);
 #else
 static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
@@ -112,6 +113,8 @@ static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
 {}
 static inline struct tegra_system_edp_entry
 		*tegra_get_system_edp_entries(int *size) { return NULL; }
+static inline unsigned int tegra_edp_find_maxf(int volt)
+{ return -1; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
