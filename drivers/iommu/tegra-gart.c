@@ -160,7 +160,7 @@ static int gart_iommu_attach_dev(struct iommu_domain *domain,
 	struct gart_client *client, *c;
 	int err = 0;
 
-	gart = gart_handle;
+	gart = dev_get_drvdata(dev->parent);
 	if (!gart)
 		return -EINVAL;
 	domain->priv = gart;

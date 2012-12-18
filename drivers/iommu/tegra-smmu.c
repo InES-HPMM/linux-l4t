@@ -40,6 +40,8 @@
 #include <asm/page.h>
 #include <asm/cacheflush.h>
 
+#include <mach/tegra_smmu.h>
+
 enum smmu_hwgrp {
 	HWGRP_AFI,
 	HWGRP_AVPC,
