@@ -142,8 +142,8 @@ void __init tegra3_tsensor_init(struct tegra_tsensor_pmu_data *data)
 
 labelSkipPowerOff:
 	/* Thermal throttling */
-	tsensor_data.passive.cdev = balanced_throttle_register(&tj_throttle,
-							       "tsensor");
+	tsensor_data.passive.cdev = balanced_throttle_register(
+					&tj_throttle, "tegra-balanced");
 
 	/* set platform data for device before register */
 	tegra_tsensor_device.dev.platform_data = &tsensor_data;

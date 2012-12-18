@@ -655,7 +655,7 @@ static int tegra_skin_get_temp(void *data, long *temp)
 }
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "dalmore-skin",
+	.cdev_type = "skin-balanced",
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -717,7 +717,7 @@ static struct balanced_throttle skin_throttle = {
 static int __init dalmore_skin_init(void)
 {
 	if (machine_is_dalmore()) {
-		balanced_throttle_register(&skin_throttle, "dalmore-skin");
+		balanced_throttle_register(&skin_throttle, "skin-balanced");
 		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
 		platform_device_register(&tegra_skin_therm_est_device);
 	}
