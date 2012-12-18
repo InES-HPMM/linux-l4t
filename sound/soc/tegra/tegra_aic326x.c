@@ -91,6 +91,9 @@ struct tegra_aic326x {
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct codec_config codec_info[NUM_I2S_DEVICES];
 	struct snd_soc_card *pcard;
+	struct regulator *dmic_reg;
+	struct regulator *dmic_1v8_reg;
+	struct regulator *hmic_reg;
 #endif
 };
 
@@ -964,6 +967,33 @@ static int tegra_aic326x_event_hp(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int tegra_aic326x_event_dmic(struct snd_soc_dapm_widget *w,
+					struct snd_kcontrol *k, int event)
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (machine->dmic_reg && machine->dmic_1v8_reg) {
+		if (SND_SOC_DAPM_EVENT_ON(event)) {
+			regulator_enable(machine->dmic_reg);
+			regulator_enable(machine->dmic_1v8_reg);
+		} else {
+			regulator_disable(machine->dmic_reg);
+			regulator_disable(machine->dmic_1v8_reg);
+		}
+	}
+
+	if (!(machine->gpio_requested & GPIO_INT_MIC_EN))
+		return 0;
+
+	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
+				SND_SOC_DAPM_EVENT_ON(event));
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget tegra_aic326x_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_aic326x_event_int_spk),
 	SND_SOC_DAPM_HP("Earpiece", NULL),
@@ -971,7 +1001,7 @@ static const struct snd_soc_dapm_widget tegra_aic326x_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_INPUT("Ext Mic"),
 	SND_SOC_DAPM_LINE("Linein", NULL),
-	SND_SOC_DAPM_MIC("Int Mic", NULL),
+	SND_SOC_DAPM_MIC("Int Mic", tegra_aic326x_event_dmic),
 	SND_SOC_DAPM_MIC("DMIC", NULL),
 };
 
@@ -1154,7 +1184,7 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		.cpu_dai_name = "tegra20-i2s.0",
 #else
-		.cpu_dai_name = "tegra30-i2s.0",
+		.cpu_dai_name = "tegra30-i2s.1",
 #endif
 		.codec_dai_name = "aic326x-asi1",
 		.init = tegra_aic326x_init,
@@ -1193,7 +1223,7 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 			.codec_name = "tlv320aic3262-codec",
 			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
-			.codec_dai_name = "aic326x-asi2",
+			.codec_dai_name = "aic326x-asi3",
 			.ops = &tegra_aic326x_voice_call_ops,
 		},
 	[DAI_LINK_BT_VOICE_CALL] = {
@@ -1240,6 +1270,24 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
+
+	machine->dmic_reg = regulator_get(&pdev->dev, "vdd_mic");
+	if (IS_ERR(machine->dmic_reg)) {
+		dev_info(&pdev->dev, "No digital mic regulator found\n");
+		machine->dmic_reg = 0;
+	}
+
+	machine->dmic_1v8_reg = regulator_get(&pdev->dev, "vdd_1v8_mic");
+	if (IS_ERR(machine->dmic_1v8_reg)) {
+		dev_info(&pdev->dev, "No digital mic regulator found\n");
+		machine->dmic_1v8_reg = 0;
+	}
+
+	machine->hmic_reg = regulator_get(&pdev->dev, "mic_ventral");
+	if (IS_ERR(machine->hmic_reg)) {
+		dev_info(&pdev->dev, "No headset mic regulator found\n");
+		machine->hmic_reg = 0;
+	}
 
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
