@@ -358,10 +358,9 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 		return NOTIFY_OK;
 	}
 
-	if (n >= 1)
+	if (n > 1)
 		cpq_target_cluster_state = TEGRA_CPQ_G;
 
-	cpq_target_cluster_state = is_lp_cluster();
 	queue_work(cpuquiet_wq, &cpuquiet_work);
 
 	mutex_unlock(tegra_cpu_lock);
@@ -381,6 +380,21 @@ static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 	return NOTIFY_OK;
 }
 
+static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
+					unsigned long action, void *hcpu)
+{
+	if (num_online_cpus() == 1 && tegra_getspeed(0) <= idle_bottom_freq) {
+		mutex_lock(tegra_cpu_lock);
+
+		cpq_target_cluster_state = TEGRA_CPQ_LP;
+		queue_work(cpuquiet_wq, &cpuquiet_work);
+
+		mutex_unlock(tegra_cpu_lock);
+	}
+
+	return NOTIFY_OK;
+}
+
 /* must be called with tegra_cpu_lock held */
 void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 {
@@ -388,7 +402,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		return;
 
 	if (cpq_state == TEGRA_CPQ_DISABLED)
-		return ;
+		return;
 
 	if (suspend) {
 		/* Switch to fast cluster if suspend rate is high enough */
@@ -401,13 +415,15 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		return;
 	}
 
-	if (is_lp_cluster()) {
-		if (pm_qos_request(PM_QOS_MIN_ONLINE_CPUS) >= 2) {
+	/*
+	 * If there is more then 1 CPU online, we must be on the fast cluster
+	 * and we can't switch.
+	 */
+	if (num_online_cpus() > 1)
+		return;
 
-			/* Force switch now */
-			cpq_target_cluster_state = TEGRA_CPQ_G;
-			queue_work(cpuquiet_wq, &cpuquiet_work);
-		} else if (cpu_freq >= idle_top_freq &&
+	if (is_lp_cluster()) {
+		if (cpu_freq >= idle_top_freq &&
 			cpq_target_cluster_state != TEGRA_CPQ_G) {
 
 			/* Switch to fast cluster after up_delay */
@@ -435,8 +451,7 @@ void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 
 			/*
 			 * CPU frequency raised again above idle_bottom_freq.
-			 * Stay on the fast cluster.  Don't cancel the work as
-			 * other actions might be pending.
+			 * Stay on the fast cluster.
 			 */
 			cpq_target_cluster_state = TEGRA_CPQ_G;
 			del_timer(&updown_timer);
@@ -450,6 +465,10 @@ static struct notifier_block min_cpus_notifier = {
 
 static struct notifier_block max_cpus_notifier = {
 	.notifier_call = max_cpus_notify,
+};
+
+static struct notifier_block __cpuinitdata cpu_online_notifier = {
+	.notifier_call = cpu_online_notify,
 };
 
 static void delay_callback(struct cpuquiet_attribute *attr)
@@ -677,6 +696,8 @@ int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 	if (pm_qos_add_notifier(PM_QOS_MAX_ONLINE_CPUS, &max_cpus_notifier))
 		pr_err("%s: Failed to register max cpus PM QoS notifier\n",
 			__func__);
+
+	register_hotcpu_notifier(&cpu_online_notifier);
 
 	err = cpuquiet_register_driver(&tegra_cpuquiet_driver);
 	if (err) {
