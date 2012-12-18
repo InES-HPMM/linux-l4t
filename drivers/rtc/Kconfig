@@ -498,6 +498,16 @@ config RTC_DRV_RV3029C2
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-rv3029c2.
 
+config RTC_DRV_AS3720
+	tristate "ams AS3720"
+	depends on MFD_AS3720
+	help
+	  If you say Y here you will get support for the RTC feature
+	  of the AS3720 PMIC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-as3720.
+
 endif # I2C
 
 comment "SPI RTC drivers"
