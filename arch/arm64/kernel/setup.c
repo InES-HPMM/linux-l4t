@@ -53,6 +53,7 @@
 #include <asm/traps.h>
 #include <asm/memblock.h>
 #include <asm/mmu_context.h>
+#include <asm/psci.h>
 
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
