@@ -304,8 +304,15 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-	vendor_ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
-		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+
+	if (plat->base_clk > 0)
+		vendor_ctrl |= (plat->base_clk / 1000000) <<
+			SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+	else
+		vendor_ctrl |=
+			(tegra3_sdhost_max_clk[tegra_host->instance] / 1000000)
+			<< SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+
 	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
 	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
 
@@ -349,8 +356,15 @@ static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
 	/* Set the base clock frequency */
 	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
 	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-	vendor_ctrl |= (tegra3_sdhost_max_clk[tegra_host->instance] / 1000000) <<
-		SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+
+	if (plat->base_clk > 0)
+		vendor_ctrl |= (plat->base_clk / 1000000) <<
+			SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+	else
+		vendor_ctrl |=
+			(tegra3_sdhost_max_clk[tegra_host->instance] / 1000000)
+			<< SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
+
 	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
 	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
 
