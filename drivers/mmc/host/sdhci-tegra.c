@@ -1334,6 +1334,7 @@ MODULE_DEVICE_TABLE(of, sdhci_dt_ids);
 static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 						struct platform_device *pdev)
 {
+	int val;
 	struct tegra_sdhci_platform_data *plat;
 	struct device_node *np = pdev->dev.of_node;
 	u32 bus_width;
@@ -1355,6 +1356,24 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	    bus_width == 8)
 		plat->is_8bit = 1;
 
+	of_property_read_u32(np, "tap-delay", &plat->tap_delay);
+	of_property_read_u32(np, "trim-delay", &plat->trim_delay);
+	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
+
+	if (of_property_read_u32(np, "base-clk", &plat->base_clk)) {
+		dev_err(&pdev->dev, "base-clk not set\n");
+		return NULL;
+	}
+
+	if (of_find_property(np, "built-in", NULL))
+		plat->mmc_data.built_in = 1;
+
+	if (!of_property_read_u32(np, "mmc-ocr-mask", &val)) {
+		if (val == 0)
+			plat->mmc_data.ocr_mask = MMC_OCR_1V8_MASK;
+		else if (val == 1)
+			plat->mmc_data.ocr_mask = MMC_OCR_2V8_MASK;
+	}
 	return plat;
 }
 
