@@ -97,7 +97,8 @@ static inline int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw)
 	return 0;
 }
 
-static inline int tegra_isomgr_get_imp_time(enum tegra_iso_client, u32 bw)
+static inline int tegra_isomgr_get_imp_time(enum tegra_iso_client client,
+	u32 bw)
 {
 	return 0;
 }
