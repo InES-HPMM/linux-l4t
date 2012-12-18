@@ -29,7 +29,6 @@
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
 #include <mach/gpio-tegra.h>
-#include <mach/io_dpd.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -223,31 +222,12 @@ static int pluto_wifi_set_carddetect(int val)
 
 static int pluto_wifi_power(int on)
 {
-	struct tegra_io_dpd *sd_dpd;
-
 	pr_debug("%s: %d\n", __func__, on);
 
-	/*
-	 * FIXME : we need to revisit IO DPD code
-	 * on how should multiple pins under DPD get controlled
-	 *
-	 * pluto GPIO WLAN enable is part of SDMMC3 pin group
-	 */
-	sd_dpd = tegra_io_dpd_get(&tegra_sdhci_device2.dev);
-	if (sd_dpd) {
-		mutex_lock(&sd_dpd->delay_lock);
-		tegra_io_dpd_disable(sd_dpd);
-		mutex_unlock(&sd_dpd->delay_lock);
-	}
 	gpio_set_value(PLUTO_WLAN_PWR, on);
 	mdelay(100);
 	gpio_set_value(PLUTO_WLAN_RST, on);
 	mdelay(200);
-	if (sd_dpd) {
-		mutex_lock(&sd_dpd->delay_lock);
-		tegra_io_dpd_enable(sd_dpd);
-		mutex_unlock(&sd_dpd->delay_lock);
-	}
 
 	return 0;
 }
