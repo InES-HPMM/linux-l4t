@@ -5622,9 +5622,15 @@ static struct clk tegra_sync_source_list[] = {
 };
 
 static struct clk_mux_sel mux_d_audio_clk[] = {
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	{ .input = &tegra_pll_a_out0,		.value = 0x0001},
+	{ .input = &tegra_pll_p,		.value = 0x8001},
+	{ .input = &tegra_clk_m,		.value = 0xc001},
+#else
 	{ .input = &tegra_pll_a_out0,		.value = 0},
 	{ .input = &tegra_pll_p,		.value = 0x8000},
 	{ .input = &tegra_clk_m,		.value = 0xc000},
+#endif
 	{ .input = &tegra_sync_source_list[0],	.value = 0xE000},
 	{ .input = &tegra_sync_source_list[1],	.value = 0xE001},
 	{ .input = &tegra_sync_source_list[2],	.value = 0xE002},
@@ -6289,12 +6295,10 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("spdif_out",	"tegra30-spdif",	"spdif_out",	10,	0x108,	 24576000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_in",	"tegra30-spdif",	"spdif_in",	10,	0x10c,	100000000, mux_pllp_pllc_pllm,		MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	48000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	D_AUDIO_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam0",	"tegra30-dam.0",	NULL,	108,	0x3d8,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam1",	"tegra30-dam.1",	NULL,	109,	0x3dc,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam2",	"tegra30-dam.2",	NULL,	110,	0x3e0,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
-#endif
 	PERIPH_CLK("adx",	"adx",			NULL,   154,	0x638,	19910000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("amx",	"amx",			NULL,   153,	0x63c,	19910000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",		125,	0x428,	48000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
