@@ -94,7 +94,8 @@ struct dam_srate {
 #define AMX_ADX_CLOSE			_IOW(TEGRA_AUDIO_MAGIC, 41, void *)
 #define AMX_ADX_I2S_SETUP		_IOW(TEGRA_AUDIO_MAGIC, 42, void *)
 #define AMX_ADX_I2S_CLOSE		_IOW(TEGRA_AUDIO_MAGIC, 43, void *)
-
+#define AMX_ADX_AUDIO_START		_IOW(TEGRA_AUDIO_MAGIC, 44, void *)
+#define AMX_ADX_AUDIO_STOP		_IOW(TEGRA_AUDIO_MAGIC, 45, void *)
 
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active(void);
