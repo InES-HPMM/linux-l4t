@@ -145,11 +145,9 @@ obj-$(CONFIG_TEGRA_WAKEUP_MONITOR)      += tegra_wakeup_monitor.o
 # MC error reporting.
 ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),)
 obj-y                                   += mcerr.o
-ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
-obj-y                                   += mcerr-t3.o
-else
-obj-y                                   += mcerr-t11.o
-endif
+obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += mcerr-t3.o
+obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += mcerr-t11.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += mcerr-t14.o
 endif
 
 obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
