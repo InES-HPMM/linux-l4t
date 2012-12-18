@@ -653,6 +653,7 @@ static int tegra_skin_get_temp(void *data, long *temp)
 }
 
 static struct therm_est_data skin_data = {
+	.cdev_type = "dalmore-skin",
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -681,32 +682,41 @@ static struct therm_est_data skin_data = {
 			},
 	},
 	.trip_temp = 43000,
-	.tc1 = 1,
-	.tc2 = 15,
-	.passive_delay = 15000,
+	.passive_delay = 5000,
 };
 
 static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = 6,
+	.throt_tab_size = 19,
 	.throt_tab = {
-		{ 640000, 1200 },
-		{ 640000, 1200 },
-		{ 760000, 1200 },
-		{ 760000, 1200 },
-		{1000000, 1200 },
-		{1000000, 1200 },
+		{      0, 1000 },
+		{  51000, 1000 },
+		{ 102000, 1000 },
+		{ 204000, 1000 },
+		{ 252000, 1000 },
+		{ 288000, 1000 },
+		{ 372000, 1000 },
+		{ 468000, 1000 },
+		{ 510000, 1000 },
+		{ 612000, 1000 },
+		{ 714000, 1050 },
+		{ 816000, 1050 },
+		{ 918000, 1050 },
+		{1020000, 1100 },
+		{1122000, 1100 },
+		{1224000, 1100 },
+		{1326000, 1100 },
+		{1428000, 1100 },
+		{1530000, 1100 },
 	},
 };
 
 static int __init dalmore_skin_init(void)
 {
-	struct thermal_cooling_device *skin_cdev;
-
-	skin_cdev = balanced_throttle_register(&skin_throttle, "dalmore-skin");
-
-	skin_data.cdev = skin_cdev;
-	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
-	platform_device_register(&tegra_skin_therm_est_device);
+	if (machine_is_dalmore()) {
+		balanced_throttle_register(&skin_throttle, "dalmore-skin");
+		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+		platform_device_register(&tegra_skin_therm_est_device);
+	}
 
 	return 0;
 }
