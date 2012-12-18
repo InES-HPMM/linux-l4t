@@ -1598,12 +1598,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
 
-	/*
-	 * tegra sd controller is not able to reset the command inhibit
-	 * bit for the mmc sleep/awake command
-	 */
-	host->mmc->caps2 |= MMC_CAP2_NO_SLEEP_CMD;
-
 	host->mmc->caps |= MMC_CAP_ERASE;
 	/* enable 1/8V DDR capable */
 	host->mmc->caps |= MMC_CAP_1_8V_DDR;
