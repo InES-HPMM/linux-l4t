@@ -300,6 +300,8 @@ struct sdhci_ops {
 	int	(*switch_signal_voltage)(struct sdhci_host *host,
 				unsigned int signal_voltage);
 	int	(*execute_freq_tuning)(struct sdhci_host *sdhci);
+	int	(*suspend)(struct sdhci_host *host);
+	int	(*resume)(struct sdhci_host *host);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

@@ -158,7 +158,6 @@ static int mmc_bus_resume(struct device *dev)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME
-
 static int mmc_runtime_suspend(struct device *dev)
 {
 	struct mmc_card *card = mmc_dev_to_card(dev);
@@ -177,8 +176,7 @@ static int mmc_runtime_idle(struct device *dev)
 {
 	return pm_runtime_suspend(dev);
 }
-
-#endif /* !CONFIG_PM_RUNTIME */
+#endif /* CONFIG_PM_RUNTIME */
 
 static const struct dev_pm_ops mmc_bus_pm_ops = {
 	SET_RUNTIME_PM_OPS(mmc_runtime_suspend, mmc_runtime_resume,
