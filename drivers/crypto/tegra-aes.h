@@ -46,7 +46,7 @@
 /* interrupt status reg masks and shifts */
 #define TEGRA_AES_ENGINE_BUSY_FIELD		BIT(0)
 #define TEGRA_AES_ICQ_EMPTY_FIELD		BIT(3)
-#define TEGRA_AES_DMA_BUSY_FIELD		BIT(23)
+#define TEGRA_AES_DMA_BUSY_FIELD		BIT(9)
 
 /* secure select reg masks and shifts */
 #define TEGRA_AES_SECURE_SEL0_KEYREAD_ENB0_FIELD	BIT(0)
