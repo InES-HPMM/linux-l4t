@@ -56,9 +56,9 @@ struct tegra_edp_freq_voltage_table {
 };
 
 enum tegra_core_edp_profiles {
-	CORE_EDP_PROFILE_BALANCED = 0,
+	CORE_EDP_PROFILE_FAVOR_EMC = 0,
+	CORE_EDP_PROFILE_BALANCED,
 	CORE_EDP_PROFILE_FAVOR_GPU,
-	CORE_EDP_PROFILE_FAVOR_EMC,
 
 	CORE_EDP_PROFILES_NUM,
 };

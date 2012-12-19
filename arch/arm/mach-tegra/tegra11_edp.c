@@ -28,7 +28,7 @@
 #include "fuse.h"
 
 #define CORE_MODULES_STATES 1
-#define TEMPERATURE_RANGES 3
+#define TEMPERATURE_RANGES 4
 #define CAP_CLKS_NUM 2
 #define	TOTAL_CAPS (CORE_EDP_PROFILES_NUM * CORE_MODULES_STATES *\
 			TEMPERATURE_RANGES * CAP_CLKS_NUM)
@@ -43,64 +43,70 @@ struct core_edp_entry {
 		CORE_MODULES_STATES][TEMPERATURE_RANGES][CAP_CLKS_NUM];
 };
 
-static int temperatures[] = { 50, 60, 120 };
+static int temperatures[] = { 50, 70, 90, 105 };
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-static char *cap_clks_names[] = { "edp.c2bus", "edp.emc" };
+static char *cap_clks_names[] = { "edp.emc", "edp.c2bus" };
 #else
-static char *cap_clks_names[] = { "edp.cbus", "edp.emc" };
+static char *cap_clks_names[] = { "edp.emc", "edp.cbus" };
 #endif
 static struct clk *cap_clks[CAP_CLKS_NUM];
 
 static struct core_edp_entry core_edp_table[] = {
 	{
-		.sku		= 0,		/* SKU = 0 */
-		.cap_mA		= 4000,		/* 4A cap */
+		.sku		= 0x4,		/* SKU = 4 - T40T */
+		.cap_mA		= 6000,		/* 6A cap */
 		.mult		= 1000000,	/* MHZ */
 		.cap_scpu_on	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 924, 672 },
+				 { 924, 600 },
+				 { 924, 564 },
+				 { 924, 492 },
+				},
+			},
 			/* balanced profile */
 			{	/* core modules power state 0 (all ON) */
-				{{ 520, 800 },
-				 { 456, 550 },
-				 { 370, 350 },
+				{{ 924, 672 },
+				 { 792, 600 },
+				 { 792, 600 },
+				 { 792, 564 },
 				},
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 520, 800 },
-				 { 520, 300 },
-				 { 520, 150 },
-				},
-			},
-			/* favor emc */
-			{	/* core modules power state 0 (all ON) */
-				{{ 520, 800 },
-				 { 372, 800 },
-				 { 100, 800 },
+				{{ 924, 672 },
+				 { 624, 672 },
+				 { 624, 672 },
+				 { 624, 672 },
 				}
 			},
 		},
 		.cap_scpu_off	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 924, 672 },
+				 { 924, 600 },
+				 { 924, 600 },
+				 { 924, 564 },
+				},
+			},
 			/* balanced profile */
 			{	/* core modules power state 0 (all ON) */
-				{{ 520, 800 },
-				 { 456, 600 },
-				 { 450, 400 },
+				{{ 924, 672 },
+				 { 792, 672 },
+				 { 792, 672 },
+				 { 792, 600 },
 				},
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 520, 800 },
-				 { 520, 400 },
-				 { 520, 200 },
-				},
-			},
-			/* favor emc */
-			{	/* core modules power state 0 (all ON)  */
-				{{ 520, 800 },
-				 { 450, 800 },
-				 { 380, 800 },
-				},
+				{{ 924, 672 },
+				 { 792, 672 },
+				 { 792, 672 },
+				 { 624, 672 },
+				}
 			},
 		},
 	},
@@ -173,7 +179,7 @@ int __init tegra11x_select_core_edp_table(unsigned int regulator_mA,
 
 	edp_entry = find_edp_entry(sku, regulator_mA);
 	if (!edp_entry) {
-		pr_err("%s: failed to find edp entry for sku %d cap mA %d\n",
+		pr_err("%s: failed to find edp entry for sku %d, %d mA\n",
 		       __func__, sku, regulator_mA);
 		return -ENODATA;
 	}
