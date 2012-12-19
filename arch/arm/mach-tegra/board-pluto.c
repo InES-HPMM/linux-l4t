@@ -1207,6 +1207,18 @@ err_ret:
 static inline void pluto_battery_edp_init(void) {}
 #endif
 
+#ifdef CONFIG_USE_OF
+struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000400, "sdhci-tegra.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000000, "sdhci-tegra.0",
+				&pluto_tegra_sdhci_platform_data0),
+	{}
+};
+#endif
+
 static void __init tegra_pluto_early_init(void)
 {
 	pluto_battery_edp_init();
@@ -1265,7 +1277,7 @@ static void __init tegra_pluto_dt_init(void)
 	tegra_pluto_early_init();
 
 	of_platform_populate(NULL,
-		of_default_bus_match_table, NULL, NULL);
+		of_default_bus_match_table, pluto_auxdata_lookup, NULL);
 
 	tegra_pluto_late_init();
 }

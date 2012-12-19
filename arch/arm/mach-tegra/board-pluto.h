@@ -140,6 +140,8 @@ int pluto_baseband_init(void);
 int pluto_pmon_init(void);
 int pluto_soctherm_init(void);
 
+extern struct tegra_sdhci_platform_data pluto_tegra_sdhci_platform_data0;
+
 /* PCA954x I2C bus expander bus addresses */
 #define PCA954x_I2C_BUS_BASE	5
 #define PCA954x_I2C_BUS0	(PCA954x_I2C_BUS_BASE + 0)
