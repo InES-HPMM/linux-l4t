@@ -37,6 +37,7 @@
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
+#include <linux/nfc/bcm2079x.h>
 #include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
@@ -223,6 +224,19 @@ static __initdata struct tegra_clk_init_table pluto_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
+static struct bcm2079x_platform_data nfc_pdata = {
+	.irq_gpio = TEGRA_GPIO_PW2,
+	.en_gpio = TEGRA_GPIO_PU4,
+	.wake_gpio = TEGRA_GPIO_PX7,
+	};
+
+static struct i2c_board_info __initdata pluto_i2c_bus3_board_info[] = {
+	{
+		I2C_BOARD_INFO("bcm2079x-i2c", 0x77),
+		.platform_data = &nfc_pdata,
+	},
+};
+
 static struct tegra_i2c_platform_data pluto_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -338,6 +352,8 @@ static void pluto_i2c_init(void)
 	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
 	i2c_register_board_info(0, &cs42l73_board_info, 1);
 	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
+	pluto_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PW2);
+	i2c_register_board_info(0, pluto_i2c_bus3_board_info, 1);
 }
 
 static struct platform_device *pluto_uart_devices[] __initdata = {
