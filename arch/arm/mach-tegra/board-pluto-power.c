@@ -691,7 +691,6 @@ int __init pluto_suspend_init(void)
 
 int __init pluto_edp_init(void)
 {
-#ifdef CONFIG_TEGRA_EDP_LIMITS
 	unsigned int regulator_mA;
 
 	regulator_mA = get_maximum_cpu_current_supported();
@@ -699,9 +698,15 @@ int __init pluto_edp_init(void)
 		regulator_mA = 9000;
 
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
-
 	tegra_init_cpu_edp_limits(regulator_mA);
-#endif
+
+	regulator_mA = get_maximum_core_current_supported();
+	if (!regulator_mA)
+		regulator_mA = 4000;
+
+	pr_info("%s: core regulator %d mA\n", __func__, regulator_mA);
+	tegra_init_core_edp_limits(regulator_mA);
+
 	return 0;
 }
 
