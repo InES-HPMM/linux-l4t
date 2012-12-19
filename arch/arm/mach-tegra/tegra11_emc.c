@@ -993,12 +993,13 @@ static void adjust_emc_dvfs_table(const struct tegra11_emc_table *table,
 #ifdef CONFIG_TEGRA_PLLM_SCALED
 /* When pll_m is scaled, pll_c must provide backup rate;
    if not - remove rates that require pll_m scaling */
-static void purge_emc_table(void)
+static int purge_emc_table(unsigned long max_rate)
 {
 	int i;
+	int ret = 0;
 
 	if (emc->shared_bus_backup.input)
-		return;
+		return ret;
 
 	pr_warn("tegra: selected pll_m scaling option but no backup source:\n");
 	pr_warn("       removed not supported entries from the table:\n");
@@ -1013,13 +1014,16 @@ static void purge_emc_table(void)
 				sel->input = NULL;
 				sel->input_rate = 0;
 				sel->value = 0;
+				if (max_rate == tegra_emc_table[i].rate)
+					ret = -EINVAL;
 			}
 		}
 	}
+	return ret;
 }
 #else
 /* When pll_m is fixed @ max EMC rate, it always provides backup for pll_c */
-#define purge_emc_table()
+#define purge_emc_table(max_rate) (0)
 #endif
 
 static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
@@ -1105,9 +1109,18 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 		       " %lu kHz is not found\n", max_rate);
 		return -ENODATA;
 	}
-	tegra_init_max_rate(emc, max_rate * 1000);
 
 	tegra_emc_table = table;
+
+	/*
+	 * Purge rates that cannot be reached because table does not specify
+	 * proper backup source. If maximum rate was purged, fall back on boot
+	 * pll_m rate as maximum limit. In any case propagate new maximum limit
+	 * down stream to shared users, and check it against nominal voltage.
+	 */
+	if (purge_emc_table(max_rate))
+		max_rate = clk_get_rate(emc->parent) / 1000;
+	tegra_init_max_rate(emc, max_rate * 1000);
 
 	if (emc->dvfs) {
 		adjust_emc_dvfs_table(tegra_emc_table, tegra_emc_table_size);
@@ -1120,8 +1133,6 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 			return -ENODATA;
 		}
 	}
-
-	purge_emc_table();
 
 	pr_info("tegra: validated EMC DFS table\n");
 
