@@ -121,6 +121,8 @@ int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
 int dalmore_soctherm_init(void);
 
+extern struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0;
+
 /* Baseband IDs */
 enum tegra_bb_type {
 	TEGRA_BB_NEMO = 1,

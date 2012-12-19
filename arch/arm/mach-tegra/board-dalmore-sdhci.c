@@ -73,6 +73,47 @@ static struct platform_device dalmore_wifi_device = {
 	},
 };
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static struct embedded_sdio_data embedded_sdio_data0 = {
+	.cccr   = {
+		.sdio_vsn       = 2,
+		.multi_block    = 1,
+		.low_speed      = 0,
+		.wide_bus       = 0,
+		.high_power     = 1,
+		.high_speed     = 1,
+	},
+	.cis  = {
+		.vendor	 = 0x02d0,
+		.device	 = 0x4329,
+	},
+};
+#endif
+
+struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0 = {
+	.mmc_data = {
+		.register_status_notify	= dalmore_wifi_status_register,
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		.embedded_sdio = &embedded_sdio_data0,
+#endif
+		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
+	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
+	.cd_gpio = -1,
+	.wp_gpio = -1,
+	.power_gpio = -1,
+	.tap_delay = 0x2,
+	.trim_delay = 0x2,
+	.ddr_clk_limit = 41000000,
+	.uhs_mask = MMC_UHS_MASK_SDR104 |
+		MMC_UHS_MASK_DDR50,
+	.base_clk = 208000000,
+};
+
+#ifndef CONFIG_USE_OF
 static struct resource sdhci_resource0[] = {
 	[0] = {
 		.start  = INT_SDMMC1,
@@ -112,45 +153,6 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-static struct embedded_sdio_data embedded_sdio_data0 = {
-	.cccr   = {
-		.sdio_vsn       = 2,
-		.multi_block    = 1,
-		.low_speed      = 0,
-		.wide_bus       = 0,
-		.high_power     = 1,
-		.high_speed     = 1,
-	},
-	.cis  = {
-		.vendor	 = 0x02d0,
-		.device	 = 0x4329,
-	},
-};
-#endif
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
-	.mmc_data = {
-		.register_status_notify	= dalmore_wifi_status_register,
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-		.embedded_sdio = &embedded_sdio_data0,
-#endif
-		.built_in = 0,
-		.ocr_mask = MMC_OCR_1V8_MASK,
-	},
-#ifndef CONFIG_MMC_EMBEDDED_SDIO
-	.pm_flags = MMC_PM_KEEP_POWER,
-#endif
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.tap_delay = 0x2,
-	.trim_delay = 0x2,
-	.ddr_clk_limit = 41000000,
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50,
-};
-
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = DALMORE_SD_CD,
 	.wp_gpio = -1,
@@ -180,7 +182,7 @@ static struct platform_device tegra_sdhci_device0 = {
 	.resource	= sdhci_resource0,
 	.num_resources	= ARRAY_SIZE(sdhci_resource0),
 	.dev = {
-		.platform_data = &tegra_sdhci_platform_data0,
+		.platform_data = &dalmore_tegra_sdhci_platform_data0,
 	},
 };
 
@@ -203,6 +205,7 @@ static struct platform_device tegra_sdhci_device3 = {
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
+#endif
 
 static int dalmore_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
@@ -383,9 +386,11 @@ subsys_initcall_sync(dalmore_wifi_prepower);
 
 int __init dalmore_sdhci_init(void)
 {
+#ifndef CONFIG_USE_OF
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
+#endif
 	dalmore_wifi_init();
 	return 0;
 }
