@@ -1721,8 +1721,7 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 			usb_phy_bringup_host_controller(phy);
 			utmi_phy_restore_end(phy);
 		} else {
-			if (phy->pmc_hotplug_wakeup)
-				utmip_phy_disable_pmc_bus_ctrl(phy);
+			utmip_phy_disable_pmc_bus_ctrl(phy);
 
 			/* bring up the controller from suspend*/
 			val = readl(base + USB_USBCMD);
