@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -87,7 +87,7 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.length = IO_PCIE_SIZE,
 		.type = MT_DEVICE,
 	},
-#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_M2601)
+#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_TEGRA_GMI)
 	{
 		.virtual = IO_NOR_VIRT,
 		.pfn = __phys_to_pfn(IO_NOR_PHYS),

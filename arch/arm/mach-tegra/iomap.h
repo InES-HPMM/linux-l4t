@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012, NVIDIA Corporation.
+ * Copyright (C) 2011-2013, NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -804,7 +804,7 @@
 #endif
 #define IO_PCIE_SIZE	(SZ_16M * 3)
 
-#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_M2601)
+#if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_TEGRA_GMI)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 #define IO_NOR_PHYS	0xD0000000
 #define IO_NOR_SIZE	(SZ_64M)
