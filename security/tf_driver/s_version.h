@@ -59,7 +59,7 @@
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define S_VERSION_OS "A"          /* "A" for all Android */
 #define S_VERSION_PLATFORM "C"
-#define S_VERSION_MAIN  "02.02"
+#define S_VERSION_MAIN  "02.03"
 #define S_VERSION_ENG 0
 #define S_VERSION_PATCH 0
 
