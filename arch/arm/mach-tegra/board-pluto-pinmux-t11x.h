@@ -218,6 +218,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 
 	/* SPDIF */
 	DEFAULT_PINMUX(SPDIF_IN,      SPDIF,       PULL_UP,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(SPDIF_OUT,     SPDIF,       NORMAL,    NORMAL,   OUTPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
