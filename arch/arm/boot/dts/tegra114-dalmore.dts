@@ -712,4 +712,26 @@
 			};
 		};
 	};
+
+	sdhci@78000600 {
+		tap-delay = <5>;
+		trim-delay = <3>;
+		ddr-clk-limit = <41000000>;
+		base-clk = <104000000>;
+		mmc-ocr-mask = <0>;
+		support-8bit;
+		built-in;
+		status = "okay";
+	};
+	sdhci@78000400 {
+		cd-gpios = <&gpio 170 0>; /* gpio PV2 */
+		tap-delay = <3>;
+		trim-delay = <3>;
+		ddr-clk-limit = <41000000>;
+		base-clk = <208000000>;
+		status = "okay";
+	};
+	sdhci@78000000 {
+		status = "okay";
+	};
 };
