@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012, NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2009-2013, NVIDIA Corporation.  All rights reserved.
  *
  * Author:
  *	Raghavendra VK <rvk@nvidia.com>
@@ -44,71 +44,7 @@
 #include <linux/clk.h>
 #include <linux/platform_data/tegra_nor.h>
 #include <asm/cacheflush.h>
-
-#define __BITMASK0(len)			(BIT(len) - 1)
-#define REG_FIELD(val, start, len)	(((val) & __BITMASK0(len)) << (start))
-#define REG_GET_FIELD(val, start, len)	(((val) >> (start)) & __BITMASK0(len))
-
-/* tegra gmi registers... */
-#define TEGRA_SNOR_CONFIG_REG			0x00
-#define TEGRA_SNOR_NOR_ADDR_PTR_REG		0x08
-#define TEGRA_SNOR_AHB_ADDR_PTR_REG		0x0C
-#define TEGRA_SNOR_TIMING0_REG			0x10
-#define TEGRA_SNOR_TIMING1_REG			0x14
-#define TEGRA_SNOR_DMA_CFG_REG			0x20
-
-/* config register */
-#define TEGRA_SNOR_CONFIG_GO			BIT(31)
-#define TEGRA_SNOR_CONFIG_WORDWIDE		BIT(30)
-#define TEGRA_SNOR_CONFIG_DEVICE_TYPE		BIT(29)
-#define TEGRA_SNOR_CONFIG_MUX_MODE		BIT(28)
-#define TEGRA_SNOR_CONFIG_BURST_LEN(val)	REG_FIELD((val), 26, 2)
-#define TEGRA_SNOR_CONFIG_RDY_ACTIVE		BIT(24)
-#define TEGRA_SNOR_CONFIG_RDY_POLARITY		BIT(23)
-#define TEGRA_SNOR_CONFIG_ADV_POLARITY		BIT(22)
-#define TEGRA_SNOR_CONFIG_OE_WE_POLARITY	BIT(21)
-#define TEGRA_SNOR_CONFIG_CS_POLARITY		BIT(20)
-#define TEGRA_SNOR_CONFIG_NOR_DPD		BIT(19)
-#define TEGRA_SNOR_CONFIG_WP			BIT(15)
-#define TEGRA_SNOR_CONFIG_PAGE_SZ(val)		REG_FIELD((val), 8, 2)
-#define TEGRA_SNOR_CONFIG_MST_ENB		BIT(7)
-#define TEGRA_SNOR_CONFIG_SNOR_CS(val)		REG_FIELD((val), 4, 2)
-#define TEGRA_SNOR_CONFIG_CE_LAST		REG_FIELD(3)
-#define TEGRA_SNOR_CONFIG_CE_FIRST		REG_FIELD(2)
-#define TEGRA_SNOR_CONFIG_DEVICE_MODE(val)	REG_FIELD((val), 0, 2)
-
-/* dma config register */
-#define TEGRA_SNOR_DMA_CFG_GO			BIT(31)
-#define TEGRA_SNOR_DMA_CFG_BSY			BIT(30)
-#define TEGRA_SNOR_DMA_CFG_DIR			BIT(29)
-#define TEGRA_SNOR_DMA_CFG_INT_ENB		BIT(28)
-#define TEGRA_SNOR_DMA_CFG_INT_STA		BIT(27)
-#define TEGRA_SNOR_DMA_CFG_BRST_SZ(val)		REG_FIELD((val), 24, 3)
-#define TEGRA_SNOR_DMA_CFG_WRD_CNT(val)		REG_FIELD((val), 2, 14)
-
-/* timing 0 register */
-#define TEGRA_SNOR_TIMING0_PG_RDY(val)		REG_FIELD((val), 28, 4)
-#define TEGRA_SNOR_TIMING0_PG_SEQ(val)		REG_FIELD((val), 20, 4)
-#define TEGRA_SNOR_TIMING0_MUX(val)		REG_FIELD((val), 12, 4)
-#define TEGRA_SNOR_TIMING0_HOLD(val)            REG_FIELD((val), 8, 4)
-#define TEGRA_SNOR_TIMING0_ADV(val)		REG_FIELD((val), 4, 4)
-#define TEGRA_SNOR_TIMING0_CE(val)		REG_FIELD((val), 0, 4)
-
-/* timing 1 register */
-#define TEGRA_SNOR_TIMING1_WE(val)		REG_FIELD((val), 16, 8)
-#define TEGRA_SNOR_TIMING1_OE(val)		REG_FIELD((val), 8, 8)
-#define TEGRA_SNOR_TIMING1_WAIT(val)		REG_FIELD((val), 0, 8)
-
-/* SNOR DMA supports 2^14 AHB (32-bit words)
- * Maximum data in one transfer = 2^16 bytes
- */
-#define TEGRA_SNOR_DMA_LIMIT           0x10000
-#define TEGRA_SNOR_DMA_LIMIT_WORDS     (TEGRA_SNOR_DMA_LIMIT >> 2)
-
-/* Even if BW is 1 MB/s, maximum time to
- * transfer SNOR_DMA_LIMIT bytes is 66 ms
- */
-#define TEGRA_SNOR_DMA_TIMEOUT_MS       67
+#include <linux/tegra_snor.h>
 
 struct tegra_nor_info {
 	struct tegra_nor_platform_data *plat;
@@ -177,51 +113,52 @@ static void tegra_flash_dma(struct map_info *map,
 		 * controller register only after all parameters are set.
 		 */
 		/* SNOR CONFIGURATION SETUP */
-		switch(chip_parm->ReadMode)
-		{
-			case NorReadMode_Async:
+		switch (chip_parm->ReadMode) {
+		case NorReadMode_Async:
+			snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(0);
+			break;
+
+		case NorReadMode_Page:
+			switch (chip_parm->PageLength) {
+			case NorPageLength_Unsupported:
 				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(0);
 				break;
 
-			case NorReadMode_Page:
-				switch(chip_parm->PageLength)
-				{
-					case NorPageLength_Unsupported :
-						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(0);
-						break;
-
-					case NorPageLength_4Word :
-						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
-						snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(1);
-						break;
-
-					case NorPageLength_8Word :
-						snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
-						snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(2);
-						break;
-				}
+			case NorPageLength_4Word:
+				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
+				snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(1);
 				break;
 
-			case NorReadMode_Burst:
-				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(2);
-				switch(chip_parm->BurstLength)
-				{
-					case NorBurstLength_CntBurst :
-						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(0);
-						break;
-					case NorBurstLength_8Word :
-						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(1);
-						break;
-
-					case NorBurstLength_16Word :
-						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(2);
-						break;
-
-					case NorBurstLength_32Word :
-						snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(3);
-						break;
-				}
+			case NorPageLength_8Word:
+				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
+				snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(2);
 				break;
+			case NorPageLength_16Word:
+				snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(1);
+				snor_config |= TEGRA_SNOR_CONFIG_PAGE_SZ(3);
+				break;
+			}
+			break;
+
+		case NorReadMode_Burst:
+			snor_config |= TEGRA_SNOR_CONFIG_DEVICE_MODE(2);
+			switch (chip_parm->BurstLength) {
+			case NorBurstLength_CntBurst:
+				snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(0);
+				break;
+			case NorBurstLength_8Word:
+				snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(1);
+				break;
+
+			case NorBurstLength_16Word:
+				snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(2);
+				break;
+
+			case NorBurstLength_32Word:
+				snor_config |= TEGRA_SNOR_CONFIG_BURST_LEN(3);
+				break;
+			}
+			break;
 		}
 		snor_config |= TEGRA_SNOR_CONFIG_MST_ENB;
 		/* SNOR DMA CONFIGURATION SETUP */
@@ -319,27 +256,25 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	default:
 		return -EINVAL;
 	}
-	switch (chip_parm->MuxMode)
-	{
-		case NorMuxMode_ADNonMux:
-			config &= ~TEGRA_SNOR_CONFIG_MUX_MODE;
-			break;
-		case NorMuxMode_ADMux:
-			config |= TEGRA_SNOR_CONFIG_MUX_MODE;
-			break;
-		default:
-			return -EINVAL;
+	switch (chip_parm->MuxMode) {
+	case NorMuxMode_ADNonMux:
+		config &= ~TEGRA_SNOR_CONFIG_MUX_MODE;
+		break;
+	case NorMuxMode_ADMux:
+		config |= TEGRA_SNOR_CONFIG_MUX_MODE;
+		break;
+	default:
+		return -EINVAL;
 	}
-	switch (chip_parm->ReadyActive)
-	{
-		case NorReadyActive_WithData:
-			config &= ~TEGRA_SNOR_CONFIG_RDY_ACTIVE;
-			break;
-		case NorReadyActive_BeforeData:
-			config |= TEGRA_SNOR_CONFIG_RDY_ACTIVE;
-			break;
-		default:
-			return -EINVAL;
+	switch (chip_parm->ReadyActive) {
+	case NorReadyActive_WithData:
+		config &= ~TEGRA_SNOR_CONFIG_RDY_ACTIVE;
+		break;
+	case NorReadyActive_BeforeData:
+		config |= TEGRA_SNOR_CONFIG_RDY_ACTIVE;
+		break;
+	default:
+		return -EINVAL;
 	}
 	snor_tegra_writel(info, config, TEGRA_SNOR_CONFIG_REG);
 	info->init_config = config;
@@ -504,8 +439,7 @@ static int tegra_nor_remove(struct platform_device *pdev)
 	struct tegra_nor_info *info = platform_get_drvdata(pdev);
 
 	mtd_device_unregister(info->mtd);
-	if (info->parts)
-		kfree(info->parts);
+	kfree(info->parts);
 	dma_free_coherent(&pdev->dev, TEGRA_SNOR_DMA_LIMIT,
 				info->dma_virt_buffer, info->dma_phys_buffer);
 	map_destroy(info->mtd);

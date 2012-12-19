@@ -431,4 +431,11 @@ config MTD_NOR_TEGRA
 	  This enables access routines for the flash chips on the NVIDIA Tegra
 	  based boards.
 
+config MTD_NOR_TEGRA_GMI
+	bool "NOR Flash mapping driver for NVIDIA Tegra based Embedded Entertainment boards"
+	depends on MTD_COMPLEX_MAPPINGS && ARCH_TEGRA && MTD_CFI_ADV_OPTIONS
+	help
+	  This enables access routines for the flash chips on the NVIDIA Tegra
+	  based embedded entertainment boards. Supports extended gpio &
+	  cs extension capability.
 endmenu
