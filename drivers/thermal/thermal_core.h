@@ -69,6 +69,14 @@ static inline int thermal_gov_fair_share_register(void) { return 0; }
 static inline void thermal_gov_fair_share_unregister(void) {}
 #endif /* CONFIG_THERMAL_GOV_FAIR_SHARE */
 
+#ifdef CONFIG_THERMAL_GOV_PID
+int pid_thermal_gov_register(void);
+void pid_thermal_gov_unregister(void);
+#else
+static inline int pid_thermal_gov_register(void) { return 0; }
+static inline void pid_thermal_gov_unregister(void) {}
+#endif /* CONFIG_THERMAL_GOV_PID */
+
 #ifdef CONFIG_THERMAL_GOV_USER_SPACE
 int thermal_gov_user_space_register(void);
 void thermal_gov_user_space_unregister(void);
