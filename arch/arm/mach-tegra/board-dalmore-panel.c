@@ -256,8 +256,8 @@ static struct tegra_dc_platform_data dalmore_disp1_pdata = {
 
 static struct tegra_fb_data dalmore_disp2_fb_data = {
 	.win		= 0,
-	.xres		= 1024,
-	.yres		= 600,
+	.xres		= 1280,
+	.yres		= 720,
 	.bits_per_pixel = 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
