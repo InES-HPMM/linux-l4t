@@ -33,6 +33,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/interrupt.h>
+#include <linux/wakelock.h>
 
 #define PROC_DIR	"bluetooth/sleep"
 struct bluedroid_pm_data {
@@ -45,6 +46,7 @@ struct bluedroid_pm_data {
 	struct regulator *vdd_3v3;
 	struct regulator *vdd_1v8;
 	struct rfkill *rfkill;
+	struct wake_lock wake_lock;
 };
 
 struct proc_dir_entry *proc_bt_dir, *bluetooth_sleep_dir;
@@ -78,6 +80,8 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 			regulator_disable(bluedroid_pm->vdd_3v3);
 		if (bluedroid_pm->vdd_1v8)
 			regulator_disable(bluedroid_pm->vdd_1v8);
+		if (bluedroid_pm->ext_wake)
+			wake_unlock(&bluedroid_pm->wake_lock);
 	} else {
 		if (bluedroid_pm->vdd_3v3)
 			regulator_enable(bluedroid_pm->vdd_3v3);
@@ -235,6 +239,9 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 			pr_err("%s: Failed to create proc interface", __func__);
 			goto free_res;
 		}
+		/* initialize wake lock */
+		wake_lock_init(&bluedroid_pm->wake_lock, WAKE_LOCK_SUSPEND,
+								"bluedroid_pm");
 	} else {
 		pr_debug("%s: gpio_ext_wake not registered\n", __func__);
 		bluedroid_pm->ext_wake = 0;
@@ -275,6 +282,7 @@ static int bluedroid_pm_remove(struct platform_device *pdev)
 	if (bluedroid_pm->host_wake_irq)
 		free_irq(bluedroid_pm->host_wake_irq, NULL);
 	if (bluedroid_pm->ext_wake) {
+		wake_lock_destroy(&bluedroid_pm->wake_lock);
 		gpio_free(bluedroid_pm->ext_wake);
 		remove_bt_proc_interface();
 	}
@@ -354,11 +362,13 @@ static int lpm_write_proc(struct file *file, const char *buffer,
 	}
 
 	if (!bluedroid_pm->is_blocked) {
-		if (buf[0] == '0')
+		if (buf[0] == '0') {
 			gpio_set_value(bluedroid_pm->ext_wake, 0);
-		else if (buf[0] == '1')
+			wake_unlock(&bluedroid_pm->wake_lock);
+		} else if (buf[0] == '1') {
 			gpio_set_value(bluedroid_pm->ext_wake, 1);
-		else {
+			wake_lock(&bluedroid_pm->wake_lock);
+		} else {
 			kfree(buf);
 			return -EINVAL;
 		}
