@@ -85,6 +85,17 @@ struct soctherm_throttle {
 	struct soctherm_throttle_dev devs[THROTTLE_DEV_SIZE];
 };
 
+struct soctherm_tsensor_pmu_data {
+	u8 poweroff_reg_data;
+	u8 poweroff_reg_addr;
+	u8 reset_tegra;
+	u8 controller_type;
+	u8 i2c_controller_id;
+	u8 pinmux;
+	u8 pmu_16bit_ops;
+	u8 pmu_i2c_addr;
+};
+
 struct soctherm_platform_data {
 	unsigned long soctherm_clk_rate;
 	unsigned long tsensor_clk_rate;
@@ -92,9 +103,7 @@ struct soctherm_platform_data {
 	struct soctherm_sensor sensor_data[TSENSE_SIZE];
 	struct soctherm_therm therm[THERM_SIZE];
 	struct soctherm_throttle throttle[THROTTLE_SIZE];
-
-	int edp_weights[12];
-	int edp_threshold;
+	struct tegra_tsensor_pmu_data *tshut_pmu_trip_data;
 };
 
 #ifdef CONFIG_TEGRA_SOCTHERM

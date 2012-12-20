@@ -40,6 +40,7 @@
 #include <mach/tegra_fuse.h>
 
 #include "iomap.h"
+#include "tegra3_tsensor.h"
 #include "tegra11_soctherm.h"
 
 /* Min temp granularity specified as X in 2^X.
@@ -246,6 +247,43 @@ static const int soc_therm_precision; /* default 0 -> low precision */
 #define FUSE_TSENSOR_CALIB_CP_SHIFT	0
 #define FUSE_TSENSOR_CALIB_CP_MASK	0x1fff
 #define FUSE_TSENSOR_CALIB_BITS		13
+
+/* car register offsets needed for enabling HW throttling */
+#define CAR_SUPER_CCLK_DIVIDER		0x24
+#define CDIV_USE_THERM_CONTROLS_SHIFT	30
+#define CDIV_USE_THERM_CONTROLS_MASK	0x1
+
+/* pmc register offsets needed for powering off PMU */
+#define PMC_SCRATCH_WRITE_SHIFT			2
+#define PMC_SCRATCH_WRITE_MASK			0x1
+#define PMC_ENABLE_RST_SHIFT			1
+#define PMC_ENABLE_RST_MASK			0x1
+#define PMC_SENSOR_CTRL				0x1B0
+#define PMC_SCRATCH54				0x258
+#define PMC_SCRATCH55				0x25C
+
+/* scratch54 register bit fields */
+#define PMU_OFF_DATA_SHIFT			8
+#define PMU_OFF_DATA_MASK			0xff
+#define PMU_OFF_ADDR_SHIFT			0
+#define PMU_OFF_ADDR_MASK			0xff
+
+/* scratch55 register bit fields */
+#define RESET_TEGRA_SHIFT			31
+#define RESET_TEGRA_MASK			0x1
+#define CONTROLLER_TYPE_SHIFT			30
+#define CONTROLLER_TYPE_MASK			0x1
+#define I2C_CONTROLLER_ID_SHIFT			27
+#define I2C_CONTROLLER_ID_MASK			0x7
+#define PINMUX_SHIFT				24
+#define PINMUX_MASK				0x7
+#define CHECKSUM_SHIFT				16
+#define CHECKSUM_MASK				0xff
+#define PMU_16BIT_SUPPORT_SHIFT			15
+#define PMU_16BIT_SUPPORT_MASK			0x1
+#define PMU_I2C_ADDRESS_SHIFT			0
+#define PMU_I2C_ADDRESS_MASK			0x7f
+
 
 #define PSKIP_CTRL_OC1_CPU			0x490
 
@@ -1089,6 +1127,42 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, sensor));
 }
 
+static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
+{
+	u32 val, checksum;
+
+	if (!data)
+		return;
+
+	val = pmc_readl(PMC_SENSOR_CTRL);
+	val = REG_SET(val, PMC_SCRATCH_WRITE, 1);
+	val = REG_SET(val, PMC_ENABLE_RST, 1);
+	pmc_writel(val, PMC_SENSOR_CTRL);
+
+	/* Fill scratch registers to shutdown device on therm TRIP */
+	val = REG_SET(0, PMU_OFF_DATA, data->poweroff_reg_data);
+	val = REG_SET(val, PMU_OFF_ADDR, data->poweroff_reg_addr);
+	pmc_writel(val, PMC_SCRATCH54);
+
+	val = REG_SET(0, RESET_TEGRA, 1);
+	val = REG_SET(val, CONTROLLER_TYPE, data->controller_type);
+	val = REG_SET(val, I2C_CONTROLLER_ID, data->i2c_controller_id);
+	val = REG_SET(val, PINMUX, data->pinmux);
+	val = REG_SET(val, PMU_16BIT_SUPPORT, data->pmu_16bit_ops);
+	val = REG_SET(val, PMU_I2C_ADDRESS, data->pmu_i2c_addr);
+
+	checksum = data->poweroff_reg_addr +
+		data->poweroff_reg_data +
+		(val & 0xFF) +
+		((val >> 8) & 0xFF) +
+		((val >> 24) & 0xFF);
+	checksum &= 0xFF;
+	checksum = 0x100 - checksum;
+
+	val = REG_SET(val, CHECKSUM, checksum);
+	pmc_writel(val, PMC_SCRATCH55);
+}
+
 static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
@@ -1183,6 +1257,13 @@ static int soctherm_init_platform_data(void)
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
 	soctherm_writel(r, CTL_LVL0_CPU0);
 
+	/* Enable PMC to shutdown */
+	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
+
+	r = clk_reset_readl(CAR_SUPER_CCLK_DIVIDER);
+	r = REG_SET(r, CDIV_USE_THERM_CONTROLS, 1);
+	clk_reset_writel(r, 0x24);
+
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
 		therm = &plat_data.therm[i];
@@ -1193,15 +1274,6 @@ static int soctherm_init_platform_data(void)
 			if (therm->trips[j].trip_type == THERMAL_TRIP_CRITICAL)
 				prog_hw_shutdown(&therm->trips[j], i);
 	}
-
-	/* Enable PMC to shutdown */
-	r = pmc_readl(0x1b0);
-	r |= 0x2;
-	pmc_writel(r, 0x1b0);
-
-	r = clk_reset_readl(0x24);
-	r |= (1 << 30);
-	clk_reset_writel(r, 0x24);
 
 	return 0;
 }
@@ -1404,6 +1476,16 @@ static int regs_show(struct seq_file *s, void *data)
 		   !soc_therm_precision ? state * 2 : state);
 	state = REG_GET(r, THERMTRIP_CPU_EN);
 	seq_printf(s, "%d\n", state);
+	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
+	seq_printf(s, "THERMTRIP_TSENSE_THRESH: %d ", state);
+	state = REG_GET(r, THERMTRIP_TSENSE_EN);
+	seq_printf(s, "%d\n", state);
+	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
+	seq_printf(s, "THERMTRIP_GPUMEM_THRESH: %d ", state);
+	state = REG_GET(r, THERMTRIP_GPU_EN);
+	seq_printf(s, "gpu=%d ", state);
+	state = REG_GET(r, THERMTRIP_MEM_EN);
+	seq_printf(s, "mem=%d\n", state);
 
 
 	seq_printf(s, "\n-----THROTTLE-----\n");

@@ -47,6 +47,7 @@
 #include "devices.h"
 #include "tegra11_soctherm.h"
 #include "iomap.h"
+#include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
@@ -699,12 +700,26 @@ int __init roth_edp_init(void)
 	return 0;
 }
 
+static struct tegra_tsensor_pmu_data tpdata_palmas = {
+	.reset_tegra = 1,
+	.pmu_16bit_ops = 0,
+	.controller_type = 0,
+	.pmu_i2c_addr = 0x58,
+	.i2c_controller_id = 4,
+	.poweroff_reg_addr = 0xa0,
+	.poweroff_reg_data = 0x0,
+};
+
 static struct soctherm_platform_data roth_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
-			.num_trips = 3,
+			.num_trips = 0, /* Disables the trips config below */
+			/*
+			 * Following .trips config retained for compatibility
+			 * with dalmore/pluto and later enablement when needed
+			 */
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",
@@ -745,6 +760,7 @@ static struct soctherm_platform_data roth_soctherm_data = {
 			},
 		},
 	},
+	.tshut_pmu_trip_data = &tpdata_palmas,
 };
 
 int __init roth_soctherm_init(void)

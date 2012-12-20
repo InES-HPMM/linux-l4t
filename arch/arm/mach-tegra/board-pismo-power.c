@@ -814,6 +814,18 @@ int __init pismo_edp_init(void)
 	return 0;
 }
 
+/* place holder for tpdata for as3720 regulator
+ * TODO: fill the correct i2c type, bus, reg_addr and data here:
+static struct tegra_tsensor_pmu_data tpdata_as3720 = {
+	.reset_tegra = ,
+	.pmu_16bit_ops = ,
+	.controller_type = ,
+	.pmu_i2c_addr = ,
+	.i2c_controller_id = ,
+	.poweroff_reg_addr = ,
+	.poweroff_reg_data = ,
+};
+*/
 
 static struct soctherm_platform_data pismo_soctherm_data = {
 	.therm = {
@@ -861,6 +873,8 @@ static struct soctherm_platform_data pismo_soctherm_data = {
 			},
 		},
 	},
+	/* ENABLE THIS AFTER correctly setting up tpdata_as3720
+	 * .tshut_pmu_trip_data = &tpdata_as3720, */
 };
 
 int __init pismo_soctherm_init(void)
