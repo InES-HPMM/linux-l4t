@@ -80,6 +80,8 @@
 #include "common.h"
 #include "tegra-board-id.h"
 
+static struct board_info board_info, display_board_info;
+
 #ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
@@ -277,9 +279,6 @@ static struct i2c_board_info __initdata nfc_board_info = {
 
 static void dalmore_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
 	tegra11_i2c_device1.dev.platform_data = &dalmore_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &dalmore_i2c2_platform_data;
 	tegra11_i2c_device3.dev.platform_data = &dalmore_i2c3_platform_data;
@@ -626,10 +625,6 @@ static void dalmore_modem_init(void) { }
 
 static void dalmore_audio_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
 	dalmore_audio_pdata.codec_name = "rt5640.0-001c";
 	dalmore_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
@@ -660,10 +655,6 @@ static void __init dalmore_spi_init(void)
 {
         int i;
         struct clk *c;
-        struct board_info board_info, display_board_info;
-
-        tegra_get_board_info(&board_info);
-        tegra_get_display_board_info(&display_board_info);
 
         for (i = 0; i < ARRAY_SIZE(spi_parent_clk_dalmore); ++i) {
                 c = tegra_get_clock_by_name(spi_parent_clk_dalmore[i].name);
@@ -715,12 +706,9 @@ struct spi_board_info rm31080a_dalmore_spi_board[1] = {
 
 static int __init dalmore_touch_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_display_board_info(&board_info);
 	tegra_clk_init_from_table(touch_clk_init_table);
 	clk_enable(tegra_get_clock_by_name("clk_out_2"));
-	if (board_info.board_id == BOARD_E1582)
+	if (display_board_info.board_id == BOARD_E1582)
 		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_P005;
 	else
 		rm31080ts_dalmore_data.platform_id = RM_PLATFORM_D010;
@@ -769,11 +757,12 @@ err_ret:
 #else
 static inline void dalmore_battery_edp_init(void) {}
 #endif
+
 static void __init tegra_dalmore_init(void)
 {
-	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	tegra_get_display_board_info(&display_board_info);
 
-	tegra_get_display_board_info(&board_info);
 	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_clk_vefify_parents();
