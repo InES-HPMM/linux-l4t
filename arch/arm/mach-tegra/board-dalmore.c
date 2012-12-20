@@ -758,17 +758,18 @@ err_ret:
 static inline void dalmore_battery_edp_init(void) {}
 #endif
 
-static void __init tegra_dalmore_init(void)
+static void __init tegra_dalmore_early_init(void)
 {
-	tegra_get_board_info(&board_info);
-	tegra_get_display_board_info(&display_board_info);
-
 	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_clk_vefify_parents();
 	tegra_smmu_init();
 	tegra_soc_device_init("dalmore");
-	tegra_enable_pinmux();
+}
+
+static void __init tegra_dalmore_late_init(void)
+{
+	platform_device_register(&tegra_pinmux_device);
 	dalmore_pinmux_init();
 	dalmore_i2c_init();
 	dalmore_spi_init();
@@ -813,10 +814,15 @@ static void __init dalmore_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_dalmore_dt_init(void)
 {
-	tegra_dalmore_init();
+	tegra_get_board_info(&board_info);
+	tegra_get_display_board_info(&display_board_info);
+
+	tegra_dalmore_early_init();
 
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
+
+	tegra_dalmore_late_init();
 }
 
 static void __init tegra_dalmore_reserve(void)
