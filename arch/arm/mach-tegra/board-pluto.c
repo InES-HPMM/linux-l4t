@@ -1104,14 +1104,18 @@ err_ret:
 static inline void pluto_battery_edp_init(void) {}
 #endif
 
-static void __init tegra_pluto_init(void)
+static void __init tegra_pluto_early_init(void)
 {
 	pluto_battery_edp_init();
 	tegra_clk_init_from_table(pluto_clk_init_table);
 	tegra_clk_vefify_parents();
 	tegra_smmu_init();
 	tegra_soc_device_init("tegra_pluto");
-	tegra_enable_pinmux();
+}
+
+static void __init tegra_pluto_late_init(void)
+{
+	platform_device_register(&tegra_pinmux_device);
 	pluto_pinmux_init();
 	pluto_i2c_init();
 	pluto_spi_init();
@@ -1153,10 +1157,12 @@ static void __init pluto_ramconsole_reserve(unsigned long size)
 
 static void __init tegra_pluto_dt_init(void)
 {
-	tegra_pluto_init();
+	tegra_pluto_early_init();
 
 	of_platform_populate(NULL,
 		of_default_bus_match_table, NULL, NULL);
+
+	tegra_pluto_late_init();
 }
 
 static void __init tegra_pluto_reserve(void)
