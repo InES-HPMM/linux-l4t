@@ -57,17 +57,24 @@ struct cm3218_info {
 	u16 als_set_reg;
 	struct mutex lock;
 	bool is_als_on_before_suspend;
+	int shutdown_complete;
 };
 
 static struct cm3218_info *chip_info;
 
 static inline int cm3218_read(void)
 {
+	if (chip_info && chip_info->shutdown_complete)
+		return -ENODEV;
+
 	return i2c_smbus_read_word_data(chip_info->client, ALS_CMD_DATA);
 }
 
 static inline int cm3218_write(void)
 {
+	if (chip_info && chip_info->shutdown_complete)
+		return -ENODEV;
+
 	return i2c_smbus_write_word_data(chip_info->client,
 			ALS_CMD_SET, chip_info->als_set_reg);
 }
@@ -281,7 +288,8 @@ static int cm3218_probe(struct i2c_client *client,
 	msleep(REGULATOR_LATENCY);
 	cm3218_write();
 	regulator_disable(chip_info->vdd_sensor);
-	printk(KERN_ALERT "[CM3218] probe success");
+	chip_info->shutdown_complete = 0;
+	pr_info("[CM3218] probe success");
 	return ret;
 
 
@@ -297,6 +305,12 @@ err_input_allocate:
 	return ret;
 }
 
+static void cm3218_shutdown(struct i2c_client *client)
+{
+	cancel_delayed_work_sync(chip_info->wq);
+	chip_info->shutdown_complete = 1;
+}
+
 static const struct i2c_device_id cm3218_id[] = {
 	{"cm3218", 0},
 	{}
@@ -309,6 +323,7 @@ static struct i2c_driver cm3218_driver = {
 		.name = "cm3218",
 		.owner = THIS_MODULE,
 	},
+	.shutdown = cm3218_shutdown,
 };
 
 static int __init cm3218_init(void)
