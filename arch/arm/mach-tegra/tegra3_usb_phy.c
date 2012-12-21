@@ -286,7 +286,6 @@
 #define   USBOP_VAL_PD_P2			(1 << 8)
 #define   USBOP_VAL_PD_P1			(1 << 4)
 #define   USBOP_VAL_PD_P0			(1 << 0)
-#define   PMC_USB_AO_PD_P2			(0xf << 8)
 #define   PMC_USB_AO_ID_PD_P0			(1 << 3)
 #define   PMC_USB_AO_VBUS_WAKEUP_PD_P0	(1 << 2)
 
@@ -1145,7 +1144,7 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 	/* Power-up the VBUS detector for UTMIP PHY */
 	val = readl(pmc_base + PMC_USB_AO);
 	val &= ~(PMC_USB_AO_VBUS_WAKEUP_PD_P0 | PMC_USB_AO_ID_PD_P0);
-	writel((val | PMC_USB_AO_PD_P2), (pmc_base + PMC_USB_AO));
+	writel(val, (pmc_base + PMC_USB_AO));
 
 	utmip_powerup_pmc_wake_detect(phy);
 
