@@ -80,6 +80,12 @@
 #define CLK_RESET_PLLP_MISC		0xac
 #define CLK_RESET_PLLA_MISC		0xbc
 #define CLK_RESET_PLLX_MISC		0xe4
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#define CLK_RESET_PLLX_MISC3		0x518
+#define CLK_RESET_PLLM_MISC_IDDQ	5
+#define CLK_RESET_PLLC_MISC_IDDQ	26
+#define CLK_RESET_PLLX_MISC3_IDDQ	3
+#endif
 
 #define CLK_RESET_PLLP_OUTA		0xa4
 #define CLK_RESET_PLLP_OUTB		0xa8
@@ -315,9 +321,15 @@ tegra3_iram_start:
 	orreq	\rd, \rd, #(1<<30)
 	streq	\rd, [\car, #\base]
 #if USE_PLL_LOCK_BITS
+	.if	\misc
+	ldr	\rd, [\car, #\misc]
+	bic	\rd, \rd, #(1<<18)
+	str	\rd, [\car, #\misc]
+	ldr	\rd, [\car, #\misc]
 	ldr	\rd, [\car, #\misc]
 	orr	\rd, \rd, #(1<<18)
 	str	\rd, [\car, #\misc]
+	.endif
 #endif
 .endm
 
@@ -328,6 +340,18 @@ tegra3_iram_start:
 	tst	\rd, #(1<<27)
 	beq	1b
 #endif
+.endm
+
+.macro pll_iddq_exit, rd, car, iddq, iddq_bit
+	ldr	\rd, [\car, #\iddq]
+	bic	\rd, \rd, #(1<<\iddq_bit)
+	str	\rd, [\car, #\iddq]
+.endm
+
+.macro pll_iddq_entry, rd, car, iddq, iddq_bit
+	ldr	\rd, [\car, #\iddq]
+	orr	\rd, \rd, #(1<<\iddq_bit)
+	str	\rd, [\car, #\iddq]
 .endm
 
 ENTRY(tegra3_lp1_reset)
@@ -344,6 +368,8 @@ ENTRY(tegra3_lp1_reset)
 	str	r1, [r0, #CLK_RESET_SCLK_DIVIDER]
 	str	r1, [r0, #CLK_RESET_CCLK_DIVIDER]
 #endif
+
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/* enable PLLM via PMC */
 	mov32	r2, TEGRA_PMC_BASE
 	ldr	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
@@ -351,9 +377,29 @@ ENTRY(tegra3_lp1_reset)
 	str	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
 
 	pll_enable r1, r0, CLK_RESET_PLLM_BASE, CLK_RESET_PLLM_MISC
-	pll_enable r1, r0, CLK_RESET_PLLP_BASE, CLK_RESET_PLLP_MISC
 	pll_enable r1, r0, CLK_RESET_PLLC_BASE, CLK_RESET_PLLC_MISC
 	pll_enable r1, r0, CLK_RESET_PLLX_BASE, CLK_RESET_PLLX_MISC
+#else
+	pll_iddq_exit r1, r0, CLK_RESET_PLLM_MISC, CLK_RESET_PLLM_MISC_IDDQ
+	pll_iddq_exit r1, r0, CLK_RESET_PLLC_MISC, CLK_RESET_PLLC_MISC_IDDQ
+	pll_iddq_exit r1, r0, CLK_RESET_PLLX_MISC3, CLK_RESET_PLLX_MISC3_IDDQ
+
+	mov32	r7, TEGRA_TMRUS_BASE
+	ldr	r1, [r7]
+	add	r1, r1, #2
+	wait_until r1, r7, r3
+
+	/* enable PLLM via PMC */
+	mov32	r2, TEGRA_PMC_BASE
+	ldr	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
+	orr	r1, r1, #(1<<12)
+	str	r1, [r2, #PMC_PLLP_WB0_OVERRIDE]
+
+	pll_enable r1, r0, CLK_RESET_PLLM_BASE, 0
+	pll_enable r1, r0, CLK_RESET_PLLC_BASE, 0
+	pll_enable r1, r0, CLK_RESET_PLLX_BASE, 0
+#endif
+	pll_enable r1, r0, CLK_RESET_PLLP_BASE, CLK_RESET_PLLP_MISC
 
 	pll_locked r1, r0, CLK_RESET_PLLM_BASE
 	pll_locked r1, r0, CLK_RESET_PLLP_BASE
@@ -751,7 +797,14 @@ powerdown_pll_cx:
 	ldr	r0, [r5, #CLK_RESET_PLLX_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLX_BASE]
-
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/*
+	 * FIXME: put PLLM into IDDQ (need additional testing)
+	 * pll_iddq_entry r1, r5, CLK_RESET_PLLM_MISC, CLK_RESET_PLLM_MISC_IDDQ
+	 */
+	pll_iddq_entry r1, r5, CLK_RESET_PLLC_MISC, CLK_RESET_PLLC_MISC_IDDQ
+	pll_iddq_entry r1, r5, CLK_RESET_PLLX_MISC3, CLK_RESET_PLLX_MISC3_IDDQ
+#endif
 	mov	pc, lr
 
 /*
