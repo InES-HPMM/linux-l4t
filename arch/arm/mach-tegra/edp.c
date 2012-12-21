@@ -449,13 +449,13 @@ unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
 				int iddq_mA,
 				int n_cores_idx)
 {
-	unsigned int voltage_mV, freq_MHz;
+	unsigned int voltage_mV, freq_KHz;
 	unsigned int cur_effective = regulator_cur - edp_reg_override_mA;
 	int f, i, j, k;
 	s64 leakage_mA, dyn_mA, leakage_calc_step;
 
 	for (f = freq_voltage_lut_size - 1; f >= 0; f--) {
-		freq_MHz = freq_voltage_lut[f].freq / 1000000;
+		freq_KHz = freq_voltage_lut[f].freq / 1000;
 		voltage_mV = freq_voltage_lut[f].voltage_mV;
 
 		/* Calculate leakage current */
@@ -491,7 +491,7 @@ unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
 		leakage_mA = div64_s64(leakage_mA, 1000000);
 
 		/* Calculate dynamic current */
-		dyn_mA = voltage_mV * freq_MHz;
+		dyn_mA = voltage_mV * freq_KHz / 1000;
 		/* Convert mV to V */
 		dyn_mA = div64_s64(dyn_mA, 1000);
 		dyn_mA *= params->dyn_consts_n[n_cores_idx];
@@ -499,7 +499,7 @@ unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
 		dyn_mA = div64_s64(dyn_mA, 1000000);
 
 		if ((leakage_mA + dyn_mA) <= cur_effective)
-			return freq_MHz * 1000;
+			return freq_KHz;
 	}
 	return 0;
 }
