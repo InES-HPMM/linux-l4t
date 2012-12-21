@@ -42,6 +42,10 @@ static struct kobject *tfa9887_kobj;
 
 static struct tfa9887_priv *tfa9887R, *tfa9887L, *tfa9887R_byte, *tfa9887L_byte;
 
+static int eq_mode, preset_mode;
+
+unsigned int volume_step[5] = {0,2,4,6,12};
+
 /* begin binary data: */
 unsigned char coldpatch_data[] = {/* 10 */
 0x08, 0x00, 0x70, 0x00, 0x07, 0x81, 0x00, 0x00, 0x00, 0x01
@@ -216,6 +220,59 @@ unsigned char preset_data[] = { /* 87 */
 };
 /* end binary data. size = 87 bytes */
 
+
+/* begin binary data: */
+char preset_data4[] = /* 87 */
+{0x00, 0x00, 0x07, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x40
+, 0x00, 0x00, 0x00, 0x00, 0x01, 0x2C, 0x01, 0x47, 0xAE, 0x00, 0x2B, 0xB1, 0x00, 0x00, 0x9D
+, 0x00, 0x0D, 0x1B, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00, 0x08, 0x00, 0x00
+, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x40, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x48, 0x00, 0x01, 0x48
+, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x00, 0x03};
+/* end binary data. size = 87 bytes */
+
+
+/* begin binary data: */
+char preset_data3[] = /* 87 */
+{0x00, 0x00, 0x07, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x40
+, 0x00, 0x00, 0x00, 0x00, 0x01, 0x2C, 0x01, 0x47, 0xAE, 0x00, 0x2B, 0xB1, 0x00, 0x00, 0x9D
+, 0x00, 0x0D, 0x1B, 0x01, 0x00, 0x00, 0x01, 0x80, 0x00, 0x04, 0x00, 0x00, 0x08, 0x00, 0x00
+, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x40, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x48, 0x00, 0x01, 0x48
+, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x00, 0x03};
+/* end binary data. size = 87 bytes */
+
+/* begin binary data: */
+char preset_data2[] = /* 87 */
+{0x00, 0x00, 0x07, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x40
+, 0x00, 0x00, 0x00, 0x00, 0x01, 0x2C, 0x01, 0x47, 0xAE, 0x00, 0x2B, 0xB1, 0x00, 0x00, 0x9D
+, 0x00, 0x0D, 0x1B, 0x01, 0x00, 0x00, 0x03, 0x00, 0x00, 0x06, 0x00, 0x00, 0x08, 0x00, 0x00
+, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x40, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x48, 0x00, 0x01, 0x48
+, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x00, 0x03};
+/* end binary data. size = 87 bytes */
+
+/* begin binary data: */
+char preset_data1[] = /* 87 */
+{0x00, 0x00, 0x07, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x40
+, 0x00, 0x00, 0x00, 0x00, 0x01, 0x2C, 0x01, 0x47, 0xAE, 0x00, 0x2B, 0xB1, 0x00, 0x00, 0x9D
+, 0x00, 0x0D, 0x1B, 0x01, 0x00, 0x00, 0x05, 0x00, 0x00, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00
+, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x40, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x48, 0x00, 0x01, 0x48
+, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x00, 0x03};
+/* end binary data. size = 87 bytes */
+
+/* begin binary data: */
+
+char preset_data0[] = /* 87 */
+{0x00, 0x00, 0x07, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x40
+, 0x00, 0x00, 0x00, 0x00, 0x01, 0x2C, 0x01, 0x47, 0xAE, 0x00, 0x2B, 0xB1, 0x00, 0x00, 0x9D
+, 0x00, 0x0D, 0x1B, 0x01, 0x00, 0x00, 0x07, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x08, 0x00, 0x00
+, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x40, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x48, 0x00, 0x01, 0x48
+, 0x08, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0C, 0xCD, 0x00, 0x00, 0x03};
+/* end binary data. size = 87 bytes */
+
 /* begin binary data: */
 unsigned char config_data[] = { /* 165 */
 0x09, 0xF3, 0x33, 0x01, 0x3E, 0x66, 0x00, 0x54, 0xCD, 0x00, 0x00, 0x14, 0x00, 0x00, 0x02
@@ -231,6 +288,8 @@ unsigned char config_data[] = { /* 165 */
 , 0xEC, 0x00, 0x00, 0x00, 0x03, 0xD7, 0x01, 0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x00, 0x00
 };
 /* end binary data. size = 165 bytes */
+
+/* begin binary data: */
 
 unsigned char speaker_data[] = { /*423*/
 0x00, 0x03, 0x42, 0x00, 0x02, 0x0F, 0x00, 0x03, 0xB1, 0x00, 0x03, 0x9E, 0x00, 0x03, 0x13
@@ -264,10 +323,26 @@ unsigned char speaker_data[] = { /*423*/
 , 0x00, 0x6F, 0x69
 };
 
-unsigned char eq_data[] = { /*180*/
+unsigned char eq_data_hand[] = { /*180*/
 0x00, 0x00, 0x01, 0xC2, 0x59, 0x70, 0x7D, 0x9B, 0x88, 0x3E, 0xD0, 0x84, 0x82, 0x5E, 0xF0
 , 0x3E, 0xD0, 0x84, 0x00, 0x00, 0x01, 0xC2, 0x59, 0x70, 0x7D, 0x9B, 0x88, 0x3E, 0xD0, 0x84
 , 0x82, 0x5E, 0xF0, 0x3E, 0xD0, 0x84, 0x00, 0x00, 0x01, 0xCA, 0xD0, 0xCC, 0x74, 0x2E, 0x8C
+, 0x34, 0x44, 0xB4, 0x8C, 0x06, 0x64, 0x41, 0x1F, 0x70, 0x00, 0x00, 0x01, 0xC4, 0x03, 0xE4
+, 0x7B, 0xDA, 0xCC, 0x3B, 0x9E, 0xA8, 0x84, 0x2C, 0x10, 0x40, 0x64, 0x50, 0x00, 0x00, 0x01
+, 0xF0, 0x9D, 0x28, 0x27, 0xB1, 0x6C, 0x17, 0x15, 0xDC, 0xBF, 0xBE, 0xA0, 0x50, 0xDC, 0xF4
+, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01
+, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00
+
+};
+
+unsigned char eq_data_desk[] = { /*180*/
+0x00, 0x00, 0x01, 0xD1, 0xD2, 0x90, 0x6A, 0x6C, 0x5C, 0x36, 0x26, 0x74, 0x93, 0xB3, 0x1C
+, 0x36, 0x26, 0x74, 0x00, 0x00, 0x01, 0xD1, 0xD2, 0x90, 0x6A, 0x6C, 0x5C, 0x36, 0x26, 0x74
+, 0x93, 0xB3, 0x1C, 0x36, 0x26, 0x74, 0x00, 0x00, 0x01, 0xCA, 0xD0, 0xCC, 0x74, 0x2E, 0x8C
 , 0x34, 0x44, 0xB4, 0x8C, 0x06, 0x64, 0x41, 0x1F, 0x70, 0x00, 0x00, 0x01, 0xC4, 0x03, 0xE4
 , 0x7B, 0xDA, 0xCC, 0x3B, 0x9E, 0xA8, 0x84, 0x2C, 0x10, 0x40, 0x64, 0x50, 0x00, 0x00, 0x01
 , 0xF0, 0x9D, 0x28, 0x27, 0xB1, 0x6C, 0x17, 0x15, 0xDC, 0xBF, 0xBE, 0xA0, 0x50, 0xDC, 0xF4
@@ -304,7 +379,6 @@ int ProcessPatchFile(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_
 	int error;
         int value = 0;
         unsigned int status;
-	int j = 0;
 	error = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &status);
 	if (error == Tfa9887_Error_Ok) {
 		if ( (status & 0x0043) != 0x0043) {
@@ -385,8 +459,8 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	unsigned int cf_mad = 0x0001; /* memory address to be accessed (0 : Status, 1 : ID, 2 : parameters) */
 	unsigned int cf_status; /* the contents of the CF_STATUS register */
 	unsigned char id[3];
+	unsigned char mem[3];
 	int tries = 0;
-	int j = 0;
 	error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS, cf_ctrl);
 	if (error == Tfa9887_Error_Ok) {
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
@@ -403,7 +477,6 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	if (error == Tfa9887_Error_Ok) {
 		cf_ctrl |= (1<<8) | (1<<4); /* set the cf_req1 and cf_int bit */
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS, cf_ctrl);
-		pr_info("Writing TFA9887_CF_MEM %d \n",error);
 
 		do {
 			error = Tfa9887_ReadRegister(tfa9887, TFA9887_CF_STATUS, &cf_status);
@@ -412,10 +485,28 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 
 		if (tries >= 10) {
 	 		/* something wrong with communication with DSP */
-	 		pr_info("Setparam something wrong\n");
+	 		pr_info("Setparam failed\n");
 	 		error = -1;
 		}
 	}
+	cf_ctrl = 0x0002;
+	cf_mad = 0x0000;
+	if (error == Tfa9887_Error_Ok) {
+		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS,cf_ctrl);
+        }
+        if (error == Tfa9887_Error_Ok) {
+                error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
+        }
+        if (error == Tfa9887_Error_Ok) {
+                    regmap_raw_read(tfa9887_byte->regmap, TFA9887_CF_MEM,&mem,3);
+                error = (mem[0] << 16) | (mem[1] << 8) | mem[2];
+
+        }
+        if (error != Tfa9887_Error_Ok) {
+                //pr_info("RPC error\n");
+
+        }
+
 	return error;
 }
 
@@ -432,19 +523,39 @@ int Tfa9887_ReadRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, 
 	 return error;
 }
 
-int Tfa9887_Init(void)
+int Tfa9887_Init(int sRate)
 {
 	int error = 0;
 	if((tfa9887R) && (tfa9887R->deviceInit))
-		error = Init(tfa9887R,tfa9887R_byte);
+		error = Init(tfa9887R,tfa9887R_byte, sRate);
 	if((tfa9887L) && (tfa9887L->deviceInit))
-		error = Init(tfa9887L,tfa9887L_byte);
-	if (error != 0)
+		error = Init(tfa9887L,tfa9887L_byte, sRate);
+        if (error != 0)
 		pr_info("Failed to Init tfa\n");
 	return error;
 }
 
-int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
+int Tfa9887_SetEq(void)
+{
+        int error = 0;
+       	if((tfa9887R) && (tfa9887R->deviceInit))
+			error = SetEq(tfa9887R,tfa9887R_byte);
+     	if((tfa9887L) && (tfa9887L->deviceInit))
+               	error = SetEq(tfa9887L,tfa9887L_byte);
+        return error;
+}
+
+int Tfa9887_SetPreset(void)
+{
+        int error = 0;
+        if((tfa9887R) && (tfa9887R->deviceInit))
+                error = SetPreset(tfa9887R,tfa9887R_byte);
+        if((tfa9887L) && (tfa9887L->deviceInit))
+                error = SetPreset(tfa9887L,tfa9887L_byte);
+        return error;
+}
+
+int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int sRate)
 {
 	int error,volume_value;
 	unsigned int value;
@@ -499,14 +610,44 @@ int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
         if (error == Tfa9887_Error_Ok) {
                 // clear the 4 bits first
                 value &= (~(0xF<<TFA9887_I2SCTRL_RATE_SHIFT));
-
-                value |= TFA9887_I2SCTRL_RATE_48000;
+                switch (sRate) {
+                case 48000:
+                        value |= TFA9887_I2SCTRL_RATE_48000;
+                        break;
+                case 44100:
+                        value |= TFA9887_I2SCTRL_RATE_44100;
+                        break;
+                case 32000:
+                        value |= TFA9887_I2SCTRL_RATE_32000;
+                        break;
+                case 24000:
+                        value |= TFA9887_I2SCTRL_RATE_24000;
+                        break;
+                case 22050:
+                        value |= TFA9887_I2SCTRL_RATE_22050;
+                        break;
+                case 16000:
+                        value |= TFA9887_I2SCTRL_RATE_16000;
+                        break;
+                case 12000:
+                        value |= TFA9887_I2SCTRL_RATE_12000;
+                        break;
+                case 11025:
+                        value |= TFA9887_I2SCTRL_RATE_11025;
+                        break;
+                case 8000:
+                        value |= TFA9887_I2SCTRL_RATE_08000;
+                        break;
+                default:
+			pr_info("unsupported samplerate\n");
+                        error = -1;
+			return error;
+                }
                 error = Tfa9887_WriteRegister(tfa9887, TFA9887_I2S_CONTROL, value);
         }
-	//0db Volume
+	volume_value = volume_step[PRESET_DEFAULT];
 	error = Tfa9887_ReadRegister(tfa9887, TFA9887_AUDIO_CONTROL, &value);
 	if(error == Tfa9887_Error_Ok) {
-		volume_value = 0;
 		value = (value&0x00FF) | (unsigned int)(volume_value<<8);
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_AUDIO_CONTROL, value);
 	}
@@ -534,12 +675,12 @@ int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
 	return error;
 }
 
-int Init(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
+int Init(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte, int sRate)
 {
 	int error;
 	unsigned int value;
 
-	error = coldStartup(tfa9887, tfa9887_byte);
+	error = coldStartup(tfa9887,tfa9887_byte, sRate);
         if(error != Tfa9887_Error_Ok) {
 		pr_info("ColdStartup Failed\n");
 	}
@@ -562,7 +703,9 @@ int Init(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
                 value |= TFA9887_SYSCTRL_CONFIGURED;
                 error = Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
         }
-         //PowerDown
+
+	SetMute(tfa9887, Tfa9887_Mute_Amplifier);
+	//PowerDown
         if(error == Tfa9887_Error_Ok)
         {
                 error = Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
@@ -572,15 +715,62 @@ int Init(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
         return error;
 }
 
+int SetEq(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
+{
+	int error = 0;
+	if (eq_mode == IN_HAND_MODE) {
+		pr_info("Setting hand mode\n");
+		error = DspSetParam(tfa9887,tfa9887_byte, MODULE_BIQUADFILTERBANK,0, 180, eq_data_hand);
+	} else if (eq_mode == ON_DESK_MODE) {
+		pr_info("setting deskmode\n");
+		error = DspSetParam(tfa9887,tfa9887_byte, MODULE_BIQUADFILTERBANK,0, 180, eq_data_desk);
+	}
+	return error;
+}
 
-int loadSettings(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte)
+int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
+{
+        int error = 0;
+	unsigned int value = 0;
+	unsigned int volume_value = 0;
+        switch(preset_mode) {
+                case 0:
+		        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data0);
+                        break;
+                case 1:
+			error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data1);
+                        break;
+                case 2:
+                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data2);
+                        break;
+                case 3:
+                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data3);
+                        break;
+                case 4:
+                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data4);
+                        break;
+                default:
+                return -1;
+        }
+	//volume_value = volume_step[preset_mode];
+	volume_value = volume_step[PRESET_DEFAULT];
+	pr_info("%u %u\n",preset_mode,volume_value);
+	error = Tfa9887_ReadRegister(tfa9887, TFA9887_AUDIO_CONTROL, &value);
+        if(error == Tfa9887_Error_Ok) {
+                value = (value&0x00FF) | (unsigned int)(volume_value<<8);
+                error = Tfa9887_WriteRegister(tfa9887, TFA9887_AUDIO_CONTROL, value);
+        }
+	return error;
+}
+
+int loadSettings(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
 {
 	int error;
         //Load settings
-        error = DspSetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_LSMODEL, 423, speaker_data);
-        error = DspSetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_CONFIG, 165, config_data);
-        error = DspSetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data);
-        error = DspSetParam(tfa9887, tfa9887_byte, MODULE_BIQUADFILTERBANK,0, 180, eq_data);
+        error = DspSetParam(tfa9887,tfa9887_byte,MODULE_SPEAKERBOOST, PARAM_SET_LSMODEL, 423, speaker_data);
+        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_CONFIG, 165, config_data);
+		SetPreset(tfa9887,tfa9887_byte);
+		SetEq(tfa9887,tfa9887_byte);
 	return error;
 }
 
@@ -653,15 +843,15 @@ int Tfa9887_Powerdown(int powerdown)
 {
 	int error = 0;
 	if((tfa9887R) && (tfa9887R->deviceInit))
-		error = Powerdown(tfa9887R, powerdown);
+		error = Powerdown(tfa9887R, tfa9887R_byte, powerdown);
 	if((tfa9887L) && (tfa9887L->deviceInit))
-		error = Powerdown(tfa9887L, powerdown);
+		error = Powerdown(tfa9887L, tfa9887L_byte, powerdown);
 	return error;
 }
 
 EXPORT_SYMBOL(Tfa9887_Powerdown);
 
-int Powerdown(struct tfa9887_priv *tfa9887, int powerdown)
+int Powerdown(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int powerdown)
 {
 	int error;
 	unsigned int value;
@@ -675,6 +865,7 @@ int Powerdown(struct tfa9887_priv *tfa9887, int powerdown)
 	switch(powerdown) {
 		case 1:
 			value |= TFA9887_SYSCTRL_POWERDOWN;
+			SetMute(tfa9887,Tfa9887_Mute_Amplifier);
 			break;
                 case 0:
 			value &= ~(TFA9887_SYSCTRL_POWERDOWN);
@@ -683,9 +874,67 @@ int Powerdown(struct tfa9887_priv *tfa9887, int powerdown)
                 return -1;
         }
         error = Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
+	if(!powerdown) {
+		SetMute(tfa9887,Tfa9887_Mute_Off);
+		SetPreset(tfa9887,tfa9887_byte);
+		SetEq(tfa9887,tfa9887_byte);
+	}
+
+
         return error;
 }
 
+int SetMute(struct tfa9887_priv *tfa9887, Tfa9887_Mute_t mute)
+{
+        int error;
+        unsigned int audioctrl_value;
+        unsigned int sysctrl_value;
+        error =
+            Tfa9887_ReadRegister(tfa9887, TFA9887_AUDIO_CONTROL,
+                                   &audioctrl_value);
+        if (error != Tfa9887_Error_Ok)
+                return error;
+        error =
+            Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL,
+                                   &sysctrl_value);
+        if (error != Tfa9887_Error_Ok)
+                return error;
+        switch (mute) {
+        case Tfa9887_Mute_Off:
+                /* previous state can be digital or amplifier mute,
+                 * clear the cf_mute and set the enbl_amplifier bits
+                 */
+                audioctrl_value &= ~(TFA9887_AUDIOCTRL_MUTE);
+                sysctrl_value |= TFA9887_SYSCTRL_ENBL_AMP;
+                break;
+        case Tfa9887_Mute_Digital:
+                /* expect the amplifier to run */
+                /* set the cf_mute bit */
+                audioctrl_value |= TFA9887_AUDIOCTRL_MUTE;
+                /* set the enbl_amplifier bit */
+                sysctrl_value |= TFA9887_SYSCTRL_ENBL_AMP;
+                break;
+        case Tfa9887_Mute_Amplifier:
+                /* clear the cf_mute bit */
+                audioctrl_value &= ~TFA9887_AUDIOCTRL_MUTE;
+                /* clear the enbl_amplifier bit */
+                sysctrl_value &= ~TFA9887_SYSCTRL_ENBL_AMP;
+                break;
+        default:
+                error = -1;
+        }
+        if (error != Tfa9887_Error_Ok)
+                return error;
+        error =
+            Tfa9887_WriteRegister(tfa9887, TFA9887_AUDIO_CONTROL,
+                                    audioctrl_value);
+        if (error != Tfa9887_Error_Ok)
+                return error;
+        error =
+            Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL,
+                                    sysctrl_value);
+        return error;
+}
 bool tfa9887_readable_register(struct device *dev, unsigned int reg)
 {
 	 return true;
@@ -731,7 +980,7 @@ static ssize_t tfa9887_cal_store(struct kobject *kobj,
 	}
 
 fail:
-	printk("-tfa9887_cal_store: %d\n", count);
+	//printk("-tfa9887_cal_store: %d\n", count);
 	return ret;
 }
 
@@ -754,9 +1003,17 @@ static ssize_t tfa9887_config_store(struct kobject *kobj,
 		ret = -EINVAL;
 		goto fail;
 	}
-
+	if (*buf == '2') {
+		pr_info("IN HAND MODE\n");
+		eq_mode = 2;
+	}
+	else if (*buf == '1'){
+		pr_info("IN DESK MODE\n");
+		eq_mode = 1;
+	}
+	Tfa9887_SetEq();
 fail:
-	printk("-tfa9887_config_store: %d\n", count);
+	//printk("-tfa9887_config_store: %d\n", count);
 	return ret;
 }
 
@@ -772,15 +1029,19 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 {
 	ssize_t ret = count;
 
-	printk("+tfa9887_vol_store: %p, %d\n", buf, count);
-
+	printk("+tfa9887_vol_store: %d, %d\n", *buf, count);
 	if (!buf || !count) {
 		ret = -EINVAL;
 		goto fail;
 	}
+	if (*buf >= DB_CUTOFF_INDEX)
+		preset_mode = MAX_DB_INDEX - *buf;
+	else
+		preset_mode = PRESET_DEFAULT;
 
+	Tfa9887_SetPreset();
 fail:
-	printk("-tfa9887_vol_store: %d\n", count);
+	//printk("-tfa9887_vol_store: %d\n", count);
 	return ret;
 }
 
@@ -838,6 +1099,8 @@ static __devinit int tfa9887R_i2c_probe(struct i2c_client *i2c,
 		goto err;
 	}
 	tfa9887R->deviceInit = true;
+	eq_mode = IN_HAND_MODE;
+	preset_mode = PRESET_DEFAULT;
 	return 0;
 err:
 	regmap_exit(tfa9887R->regmap);

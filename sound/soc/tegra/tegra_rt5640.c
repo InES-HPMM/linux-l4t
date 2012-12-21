@@ -65,6 +65,8 @@
 #define GPIO_EXT_MIC_EN BIT(3)
 #define GPIO_HP_DET     BIT(4)
 
+struct tegra30_i2s *i2s_tfa = NULL;
+
 struct tegra_rt5640 {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_asoc_platform_data *pdata;
@@ -78,6 +80,25 @@ struct tegra_rt5640 {
 	enum snd_soc_bias_level bias_level;
 	volatile int clock_enabled;
 };
+
+void enable_clks(struct tegra30_i2s *i2s)
+{
+	tegra30_ahub_enable_tx_fifo(i2s->playback_fifo_cif);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_XFER_EN_TX,
+		TEGRA30_I2S_CTRL_XFER_EN_TX);
+}
+
+void disable_clks(struct tegra30_i2s *i2s)
+{
+	int dcnt = 10;
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
+		TEGRA30_I2S_CTRL_XFER_EN_TX,
+		0);
+	while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
+		udelay(100);
+	tegra30_ahub_disable_tx_fifo(i2s->playback_fifo_cif);
+}
 
 static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
@@ -93,7 +114,6 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 	int srate, mclk, i2s_daifmt;
 	int err, rate;
 	static unsigned initTfa = 0;
-	int dcnt = 10;
 
 	srate = params_rate(params);
 	mclk = 256 * srate;
@@ -156,19 +176,11 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 	}
 	if(machine_is_roth()) {
 		if(initTfa == 1) {
-			tegra30_ahub_enable_tx_fifo(i2s->playback_fifo_cif);
-			regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-				TEGRA30_I2S_CTRL_XFER_EN_TX,
-				TEGRA30_I2S_CTRL_XFER_EN_TX);
+			i2s_tfa = i2s;
+			enable_clks(i2s);
 			pr_info("INIT TFA\n");
-			Tfa9887_Init();
-			regmap_update_bits(i2s->regmap, TEGRA30_I2S_CTRL,
-				TEGRA30_I2S_CTRL_XFER_EN_TX,
-				0);
-			while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
-				udelay(100);
-			tegra30_ahub_disable_tx_fifo(i2s->playback_fifo_cif);
-
+			Tfa9887_Init(srate);
+			disable_clks(i2s);
 		}
 		initTfa++;
 	}
@@ -440,12 +452,16 @@ static int tegra_rt5640_event_int_spk(struct snd_soc_dapm_widget *w,
 	}
 	if(machine_is_roth()) {
 		if (SND_SOC_DAPM_EVENT_ON(event)) {
-			Tfa9887_Powerdown(0);
+			if(i2s_tfa) {
+				enable_clks(i2s_tfa);
+				Tfa9887_Powerdown(0);
+				disable_clks(i2s_tfa);
+			}
 		}
 		else {
-			Tfa9887_Powerdown(1);
+				Tfa9887_Powerdown(1);
 		}
-	}
+	}	
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
 		return 0;
 

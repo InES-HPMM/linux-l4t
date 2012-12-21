@@ -2,23 +2,35 @@
 #ifndef __LINUX_TFA9887_H
 #define __LINUX_TFA9887_H
 
+#define IN_HAND_MODE 2
+#define ON_DESK_MODE 1
+#define DB_CUTOFF_INDEX 12
+#define MAX_DB_INDEX 15
+#define PRESET_DEFAULT 4
 struct tfa9887_priv {
         struct regmap *regmap;
         int irq;
         bool deviceInit;
 };
 
+typedef enum Tfa9887_Mute {
+        Tfa9887_Mute_Off,
+        Tfa9887_Mute_Digital,
+        Tfa9887_Mute_Amplifier
+} Tfa9887_Mute_t;
+
+
 int Tfa9887_Powerdown(int powerdown);
 
-int Powerdown(struct tfa9887_priv *tfa9887, int powerdown);
+int Powerdown(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int powerdown);
 
 int Tfa9887_WriteRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, unsigned int value);
 
 int Tfa9887_ReadRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, unsigned int *pValue);
 
-int Tfa9887_Init(void);
+int Tfa9887_Init(int sRate);
 
-int Init(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
+int Init(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte, int sRate);
 
 int Tfa9887_ReadRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress, unsigned int *pValue);
 
@@ -34,11 +46,25 @@ int DspWriteMem(struct tfa9887_priv *tfa9887, unsigned int address, int value);
 
 int DspReadMem(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned short start_offset, int num_words, int *pValues);
 
-int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
+int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int sRate);
 
 int loadSettings(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
 
 int stereoRouting(struct tfa9887_priv *tfa9887);
+
+int Tfa9887_SetEq(void);
+
+int SetEq(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte);
+
+int Tfa9887_SetPreset(void);
+
+int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte);
+
+int SetMute(struct tfa9887_priv *tfa9887, Tfa9887_Mute_t mute);
+
+int reconfigure(struct tfa9887_priv *tfa9887);
+
+void resetMtpEx(struct tfa9887_priv *tfa9887);
 
 typedef enum Tfa9887_AmpInputSel {
 	Tfa9887_AmpInputSel_I2SLeft,
@@ -96,11 +122,6 @@ typedef enum Tfa9887_Channel {
 	Tfa9887_Channel_Stereo
 } Tfa9887_Channel_t;
 
-typedef enum Tfa9887_Mute {
-	Tfa9887_Mute_Off,
-	Tfa9887_Mute_Digital,
-	Tfa9887_Mute_Amplifier
-} Tfa9887_Mute_t;
 
 
 typedef enum Tfa9887_SpeakerBoostStatusFlags
