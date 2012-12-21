@@ -13,6 +13,7 @@
 
 #include <media/nvc.h>
 #include <media/nvc_image.h>
+#include <linux/edp.h>
 
 /* See notes in the nvc.h file on the GPIO usage */
 enum imx091_gpio {
