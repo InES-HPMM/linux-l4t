@@ -1918,6 +1918,13 @@ struct rm31080_ts *rm31080_input_init(struct device *dev, unsigned int irq,
 		goto err_out;
 	}
 
+	err = rm31080_spi_checking(0);
+	/* succeed return: 1, failed: 0 */
+	if (err == 0) {
+		err = -ENODEV;
+		goto err_out;
+	}
+
 	ts = kzalloc(sizeof(*ts), GFP_KERNEL);
 
 	input_dev = input_allocate_device();
@@ -2301,8 +2308,6 @@ static int rm31080_spi_probe(struct spi_device *spi)
 
 	rm31080_init_ts_structure_part();
 
-	if (!rm31080_spi_checking(0))
-		goto err_unregister_notifier;
 
 	if (misc_register(&raydium_ts_miscdev) != 0) {
 		dev_err(&spi->dev, "Raydium TS: cannot register miscdev\n");
