@@ -277,6 +277,10 @@ static int cm3218_probe(struct i2c_client *client,
 
 	chip_info->polling_delay = msecs_to_jiffies(LS_POLLING_DELAY);
 	chip_info->als_set_reg = ALS_CMD_INIT_VALUE;
+	regulator_enable(chip_info->vdd_sensor);
+	msleep(REGULATOR_LATENCY);
+	cm3218_write();
+	regulator_disable(chip_info->vdd_sensor);
 	printk(KERN_ALERT "[CM3218] probe success");
 	return ret;
 
