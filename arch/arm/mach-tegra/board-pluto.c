@@ -301,9 +301,9 @@ static struct aic3262_gpio_setup aic3262_gpio[] = {
 	},
 };
 static struct aic3xxx_pdata aic3262_codec_pdata = {
-	.gpio_irq	= 1,
+	.gpio_irq	= 0,
 	.gpio		= aic3262_gpio,
-	.naudint_irq    = TEGRA_GPIO_HP_DET,
+	.naudint_irq    = 0,
 	.irq_base       = AIC3262_CODEC_IRQ_BASE,
 };
 
