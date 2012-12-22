@@ -28,7 +28,13 @@
 #include <drm/drm_fixed.h>
 
 #define TEGRA_MAX_DC		2
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define DC_N_WINDOWS		5
+#else
 #define DC_N_WINDOWS		3
+#endif
+
 #define DEFAULT_FPGA_FREQ_KHZ	160000
 
 
