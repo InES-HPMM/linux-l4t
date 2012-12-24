@@ -39,7 +39,7 @@ static struct pwm_fan_platform_data fan_data = {
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
-	.pwm_cap = 227,
+	.pwm_cap = 158,
 	.precision_multiplier = 1024,
 };
 
