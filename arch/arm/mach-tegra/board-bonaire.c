@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-bonaire.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
-
+#include <linux/tegra_uart.h>
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
@@ -367,10 +367,6 @@ static struct platform_device *bonaire_devices[] __initdata = {
 	&tegra_otg_device,
 #endif
 	&debug_uart,
-	&tegra_uartb_device,
-	&tegra_uartc_device,
-	&tegra_uartd_device,
-	&tegra_uarte_device,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
@@ -524,6 +520,44 @@ static void bonaire_usb_init(void)
 
 #endif
 }
+static struct platform_device *bonaire_hs_uart_devices[] __initdata = {
+	&tegra_uartd_device, &tegra_uartb_device, &tegra_uartc_device,
+};
+
+static struct uart_clk_parent uart_parent_clk[] = {
+	[0] = {.name = "clk_m"},
+};
+
+static struct tegra_uart_platform_data bonaire_uart_pdata;
+static struct tegra_uart_platform_data bonaire_loopback_uart_pdata;
+
+static void __init bonaire_hs_uart_init(void)
+{
+	struct clk *c;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
+		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+					uart_parent_clk[i].name);
+			continue;
+		}
+		uart_parent_clk[i].parent_clk = c;
+		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	bonaire_uart_pdata.parent_clk_list = uart_parent_clk;
+	bonaire_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
+	bonaire_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	bonaire_loopback_uart_pdata.parent_clk_count =
+		ARRAY_SIZE(uart_parent_clk);
+	bonaire_loopback_uart_pdata.is_loopback = true;
+	tegra_uartb_device.dev.platform_data = &bonaire_uart_pdata;
+	tegra_uartc_device.dev.platform_data = &bonaire_uart_pdata;
+	tegra_uartd_device.dev.platform_data = &bonaire_uart_pdata;
+	platform_add_devices(bonaire_hs_uart_devices,
+			ARRAY_SIZE(bonaire_hs_uart_devices));
+}
 
 static void __init tegra_bonaire_init(void)
 {
@@ -544,7 +578,7 @@ static void __init tegra_bonaire_init(void)
 	bonaire_power_off_init();
 #endif
 	tegra_io_dpd_init();
-
+	bonaire_hs_uart_init();
 	bonaire_sdhci_init();
 	bonaire_i2c_init();
 	bonaire_regulator_init();
