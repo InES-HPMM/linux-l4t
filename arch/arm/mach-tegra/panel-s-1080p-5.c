@@ -271,7 +271,6 @@ static int dsi_s_1080p_5_enable(struct device *dev)
 	}
 	gpio_direction_output(DSI_PANEL_RST_GPIO, 0);
 
-
 	if (vdd_lcd_s_1v8) {
 		err = regulator_enable(vdd_lcd_s_1v8);
 		if (err < 0) {
@@ -288,15 +287,14 @@ static int dsi_s_1080p_5_enable(struct device *dev)
 			goto fail;
 		}
 	}
+	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	is_bl_powered = true;
 	usleep_range(3000, 5000);
 
 #if DSI_PANEL_RESET
 	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
 	msleep(20);
 #endif
-
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
-	is_bl_powered = true;
 	return 0;
 fail:
 	return err;
@@ -316,6 +314,12 @@ static struct tegra_dsi_cmd dsi_s_1080p_5_init_cmd[] = {
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x0),
 };
 
+static struct tegra_dsi_cmd dsi_s_1080p_5_suspend_cmd[] = {
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_OFF, 0x0),
+	DSI_DLY_MS(50),
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_ENTER_SLEEP_MODE, 0x0),
+};
+
 static struct tegra_dsi_out dsi_s_1080p_5_pdata = {
 	.n_data_lanes = 4,
 
@@ -331,18 +335,27 @@ static struct tegra_dsi_out dsi_s_1080p_5_pdata = {
 
 	.panel_reset = DSI_PANEL_RESET,
 	.power_saving_suspend = true,
+
 	.dsi_init_cmd = dsi_s_1080p_5_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_s_1080p_5_init_cmd),
+
+	.dsi_suspend_cmd = dsi_s_1080p_5_suspend_cmd,
+	.n_suspend_cmd = ARRAY_SIZE(dsi_s_1080p_5_suspend_cmd),
 };
 
 static int dsi_s_1080p_5_disable(void)
 {
-	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
-	is_bl_powered = false;
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	/* delay between sleep in and reset low */
+	msleep(100);
 
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	usleep_range(3000, 5000);
+
+	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
+	is_bl_powered = false;
+	usleep_range(3000, 5000);
 
 	if (vdd_lcd_s_1v8)
 		regulator_disable(vdd_lcd_s_1v8);
