@@ -117,10 +117,22 @@ static struct balanced_throttle tj_throttle = {
 	.throt_tab = tj_throttle_table,
 };
 
+static struct throttle_table tj_hard_throttle_table[] = {
+	{ {  204000,  420000,  360000,  208000,  204000 } },
+};
+
+static struct balanced_throttle tj_hard_throttle = {
+	.throt_tab_size = ARRAY_SIZE(tj_hard_throttle_table),
+	.throt_tab = tj_hard_throttle_table,
+};
+
 static int __init roth_throttle_init(void)
 {
-	if (machine_is_roth())
+	if (machine_is_roth()) {
 		balanced_throttle_register(&tj_throttle, "tegra-balanced");
+		balanced_throttle_register(&tj_hard_throttle, "tegra-hard");
+	}
+
 	return 0;
 }
 module_init(roth_throttle_init);
@@ -130,7 +142,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 	.ext_range = true,
 	.conv_rate = 0x08,
 	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.shutdown_ext_limit = 91, /* C */
 	.shutdown_local_limit = 120, /* C */
 	.loc_name = "soc",
 
@@ -141,13 +153,21 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "tegra-balanced",
-			.trip_temp = 75000,
+			.trip_temp = 84000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = THERMAL_NO_LIMIT,
 			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 		[1] = {
+			.cdev_type = "tegra-hard",
+			.trip_temp = 89000, /* shutdown_ext_limit - 2C */
+			.trip_type = THERMAL_TRIP_PASSIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 6000,
+		},
+		[2] = {
 			.cdev_type = "suspend_soctherm",
 			.trip_temp = 50000,
 			.trip_type = THERMAL_TRIP_ACTIVE,
