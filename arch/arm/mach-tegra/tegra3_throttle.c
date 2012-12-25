@@ -96,6 +96,24 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 	return throttle_speed;
 }
 
+static void tegra_throttle_set_core_level(void)
+{
+	struct balanced_throttle *bthrot;
+	int core_level = INT_MAX;
+
+	mutex_lock(&bthrot_list_lock);
+	list_for_each_entry(bthrot, &bthrot_list, node) {
+		if (bthrot->is_throttling) {
+			int idx = bthrot->throttle_index;
+			core_level = min(core_level,
+					 bthrot->throt_tab[idx].core_cap_level);
+		}
+	}
+	mutex_unlock(&bthrot_list_lock);
+
+	tegra_dvfs_core_cap_level_set(core_level);
+}
+
 bool tegra_is_throttling(int *count)
 {
 	struct balanced_throttle *bthrot;
@@ -146,8 +164,6 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
 	struct balanced_throttle *bthrot = cdev->devdata;
-	int core_level;
-	int index;
 
 	mutex_lock(cpu_throttle_lock);
 	if (cur_state == 0) {
@@ -156,8 +172,6 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 			tegra_dvfs_core_cap_enable(false);
 			bthrot->is_throttling = false;
 		}
-
-		tegra_cpu_set_speed_cap(NULL);
 	} else {
 		if (!bthrot->is_throttling) {
 			tegra_dvfs_core_cap_enable(true);
@@ -166,12 +180,10 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 		}
 
 		bthrot->throttle_index = bthrot->throt_tab_size - cur_state;
-		index = bthrot->throttle_index;
-		core_level = bthrot->throt_tab[index].core_cap_level;
-		tegra_dvfs_core_cap_level_set(core_level);
-
-		tegra_cpu_set_speed_cap(NULL);
+		tegra_throttle_set_core_level();
 	}
+
+	tegra_cpu_set_speed_cap(NULL);
 
 	mutex_unlock(cpu_throttle_lock);
 
