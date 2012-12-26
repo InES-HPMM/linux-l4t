@@ -1151,21 +1151,26 @@ static int ricoh583_i2c_remove(struct i2c_client *i2c)
 }
 
 #ifdef CONFIG_PM
-static int ricoh583_i2c_suspend(struct i2c_client *i2c, pm_message_t state)
+static int ricoh583_i2c_suspend(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	if (i2c->irq)
 		disable_irq(i2c->irq);
 	return 0;
 }
 
 
-static int ricoh583_i2c_resume(struct i2c_client *i2c)
+static int ricoh583_i2c_resume(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	if (i2c->irq)
 		enable_irq(i2c->irq);
 	return 0;
 }
-
+static const struct dev_pm_ops ricoh583_pm_ops = {
+	.suspend = ricoh583_i2c_suspend,
+	.resume = ricoh583_i2c_resume,
+};
 #endif
 
 static const struct i2c_device_id ricoh583_i2c_id[] = {
@@ -1177,18 +1182,16 @@ MODULE_DEVICE_TABLE(i2c, ricoh583_i2c_id);
 
 static struct i2c_driver ricoh583_i2c_driver = {
 	.driver = {
-		   .name = "ricoh583",
-		   .owner = THIS_MODULE,
-		   },
+		.name = "ricoh583",
+		.owner = THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm = &ricoh583_pm_ops,
+#endif
+	},
 	.probe = ricoh583_i2c_probe,
 	.remove = ricoh583_i2c_remove,
-#ifdef CONFIG_PM
-	.suspend = ricoh583_i2c_suspend,
-	.resume = ricoh583_i2c_resume,
-#endif
 	.id_table = ricoh583_i2c_id,
 };
-
 
 static int __init ricoh583_i2c_init(void)
 {
