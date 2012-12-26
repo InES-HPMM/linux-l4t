@@ -29,6 +29,7 @@
 #include <linux/mfd/max8831.h>
 #include <linux/max8831_backlight.h>
 #include <linux/regulator/consumer.h>
+#include <linux/edp.h>
 
 struct max8831_backlight_data {
 	struct device		*max8831_dev;
@@ -38,6 +39,8 @@ struct max8831_backlight_data {
 
 	int (*notify)(struct device *dev, int brightness);
 	bool (*is_powered)(void);
+	struct edp_client *max8831_edp_client;
+	int *edp_brightness_states;
 };
 
 static int max8831_backlight_set(struct backlight_device *bl, int brightness)
@@ -72,6 +75,32 @@ static int max8831_backlight_set(struct backlight_device *bl, int brightness)
 	}
 	return 0;
 }
+
+static int max8831_backlight_set_with_edp(struct backlight_device *bl,
+	int brightness)
+{
+	struct max8831_backlight_data *data = bl_get_data(bl);
+	struct device *dev = data->max8831_dev;
+	int approved;
+	int ret;
+	int edp_state;
+	int i;
+	if (data->max8831_edp_client) {
+		for (i = 0; i < MAX8831_EDP_NUM_STATES; i++) {
+			if (brightness >= data->edp_brightness_states[i])
+				break;
+		}
+		edp_state = i;
+		ret = edp_update_client_request(data->max8831_edp_client,
+							edp_state, &approved);
+		if (ret || approved != edp_state)
+			dev_err(dev, "E state transition failed\n");
+	}
+
+	max8831_backlight_set(bl, brightness);
+	return 0;
+}
+
 static int max8831_backlight_update_status(struct backlight_device *bl)
 {
 	struct max8831_backlight_data *data = bl_get_data(bl);
@@ -88,7 +117,13 @@ static int max8831_backlight_update_status(struct backlight_device *bl)
 	if (data->notify)
 		brightness = data->notify(data->max8831_dev, brightness);
 
-	return max8831_backlight_set(bl, brightness);
+	return max8831_backlight_set_with_edp(bl, brightness);
+}
+
+static void max8831_backlight_throttle(unsigned int new_state, void *priv_data)
+{
+	struct backlight_device *bl_device = (struct backlight_device *) priv_data;
+	max8831_backlight_set(bl_device, 0);
 }
 
 static int max8831_backlight_get_brightness(struct backlight_device *bl)
@@ -108,6 +143,9 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	struct backlight_device *bl;
 	struct backlight_properties props;
 	struct platform_max8831_backlight_data *pData = pdev->dev.platform_data;
+	struct edp_manager *battery_manager = NULL;
+	int ret;
+
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (data == NULL)
@@ -118,6 +156,7 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	data->id = pdev->id;
 	data->notify = pData->notify;
 	data->is_powered = pData->is_powered;
+	data->edp_brightness_states = pData->edp_brightness;
 	data->regulator = regulator_get(data->max8831_dev,
 			"avdd_backlight_3v0");
 	if (IS_ERR(data->regulator)) {
@@ -136,6 +175,49 @@ static int max8831_bl_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register backlight\n");
 		return PTR_ERR(bl);
 	}
+
+	data->max8831_edp_client = devm_kzalloc(&pdev->dev,
+					sizeof(struct edp_client), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(data->max8831_edp_client)) {
+		dev_err(&pdev->dev, "could not allocate edp client\n");
+		return PTR_ERR(data->max8831_edp_client);
+	}
+
+	strncpy(data->max8831_edp_client->name, "backlight", EDP_NAME_LEN - 1);
+	data->max8831_edp_client->name[EDP_NAME_LEN - 1] = '\0';
+	data->max8831_edp_client->states = pData->edp_states;
+	data->max8831_edp_client->num_states = MAX8831_EDP_NUM_STATES;
+	data->max8831_edp_client->e0_index = MAX8831_EDP_ZERO;
+	data->max8831_edp_client->private_data = bl;
+	data->max8831_edp_client->priority = EDP_MAX_PRIO - 2;
+	data->max8831_edp_client->throttle = max8831_backlight_throttle;
+
+	battery_manager = edp_get_manager("battery");
+	if (!battery_manager) {
+		dev_err(&pdev->dev, "unable to get edp manager\n");
+	} else {
+		ret = edp_register_client(battery_manager,
+					data->max8831_edp_client);
+		if (ret) {
+			dev_err(&pdev->dev, "unable to register edp client\n");
+		} else {
+			ret = edp_update_client_request(
+					data->max8831_edp_client,
+						MAX8831_EDP_ZERO, NULL);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"unable to set E0 EDP state\n");
+				edp_unregister_client(data->max8831_edp_client);
+			} else {
+				goto edp_success;
+			}
+		}
+	}
+
+	devm_kfree(&pdev->dev, data->max8831_edp_client);
+	data->max8831_edp_client = NULL;
+
+edp_success:
 
 	bl->props.brightness = pData->dft_brightness;
 
@@ -165,10 +247,11 @@ static int max8831_bl_suspend(struct device *dev)
 	struct max8831_backlight_data *data = bl_get_data(bl);
 	int ret;
 
-	ret = max8831_backlight_set(bl, 0);
+	ret = max8831_backlight_set_with_edp(bl, 0);
 	if (data->regulator)
 		regulator_disable(data->regulator);
 	return ret;
+
 }
 
 static int max8831_bl_resume(struct device *dev)
