@@ -352,15 +352,19 @@ static const struct i2c_device_id max8907c_i2c_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, max8907c_i2c_id);
 
-static struct i2c_driver max8907c_i2c_driver = {
-	.driver = {
-		   .name = "max8907c",
-		   .owner = THIS_MODULE,
-		   },
-	.probe = max8907c_i2c_probe,
-	.remove = max8907c_i2c_remove,
+static const struct dev_pm_ops max8907c_pm_ops = {
 	.suspend = max8907c_suspend,
 	.resume = max8907c_resume,
+};
+
+static struct i2c_driver max8907c_i2c_driver = {
+	.driver = {
+		.name = "max8907c",
+		.owner = THIS_MODULE,
+		.pm = &max8907c_pm_ops,
+	},
+	.probe = max8907c_i2c_probe,
+	.remove = max8907c_i2c_remove,
 	.id_table = max8907c_i2c_id,
 };
 

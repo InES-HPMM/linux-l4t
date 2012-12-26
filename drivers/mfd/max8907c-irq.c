@@ -349,8 +349,9 @@ int max8907c_irq_init(struct max8907c *chip, int irq, int irq_base)
 	return ret;
 }
 
-int max8907c_suspend(struct i2c_client *i2c, pm_message_t state)
+int max8907c_suspend(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	struct max8907c *chip = i2c_get_clientdata(i2c);
 
 	struct max8907c_irq_data *irq_data;
@@ -399,8 +400,9 @@ int max8907c_suspend(struct i2c_client *i2c, pm_message_t state)
 	return 0;
 }
 
-int max8907c_resume(struct i2c_client *i2c)
+int max8907c_resume(struct device *dev)
 {
+	struct i2c_client *i2c = to_i2c_client(dev);
 	struct max8907c *chip = i2c_get_clientdata(i2c);
 
 	if (device_may_wakeup(chip->dev))

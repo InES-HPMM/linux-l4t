@@ -251,8 +251,8 @@ int max8907c_set_bits(struct i2c_client *i2c, u8 reg, u8 mask, u8 val);
 
 int max8907c_irq_init(struct max8907c *chip, int irq, int irq_base);
 void max8907c_irq_free(struct max8907c *chip);
-int max8907c_suspend(struct i2c_client *i2c, pm_message_t state);
-int max8907c_resume(struct i2c_client *i2c);
+int max8907c_suspend(struct device *dev);
+int max8907c_resume(struct device *dev);
 void max8907c_deep_sleep(int enter);
 int max8907c_pwr_en_config(void);
 int max8907c_pwr_en_attach(void);
