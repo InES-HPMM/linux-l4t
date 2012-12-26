@@ -1977,7 +1977,7 @@ static int imx091_mode_able(struct imx091_info *info, bool mode_enable)
 		dev_dbg(&info->i2c_client->dev, "%s streaming=%x\n",
 			__func__, info->mode_enable);
 		if (!mode_enable)
-			imx091_pm_dev_wr(info, NVC_PWR_STDBY);
+			imx091_pm_dev_wr(info, NVC_PWR_OFF);
 	}
 	msleep(IMX091_WAIT_MS);
 	return err;
