@@ -925,22 +925,28 @@ static int tps6591x_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 #ifdef CONFIG_PM
-static int tps6591x_i2c_suspend(struct i2c_client *client, pm_message_t state)
+static int tps6591x_i2c_suspend(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		disable_irq(client->irq);
 	return 0;
 }
 
-static int tps6591x_i2c_resume(struct i2c_client *client)
+static int tps6591x_i2c_resume(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	if (client->irq)
 		enable_irq(client->irq);
 	return 0;
 }
+
+static const struct dev_pm_ops tps6591x_pm_ops = {
+	.suspend = tps6591x_i2c_suspend,
+	.resume = tps6591x_i2c_resume,
+};
+
 #endif
-
-
 static const struct i2c_device_id tps6591x_id_table[] = {
 	{ "tps6591x", 0 },
 	{ },
@@ -951,13 +957,12 @@ static struct i2c_driver tps6591x_driver = {
 	.driver	= {
 		.name	= "tps6591x",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm 	= &tps6591x_pm_ops,
+#endif
 	},
 	.probe		= tps6591x_i2c_probe,
 	.remove		= tps6591x_i2c_remove,
-#ifdef CONFIG_PM
-	.suspend	= tps6591x_i2c_suspend,
-	.resume		= tps6591x_i2c_resume,
-#endif
 	.id_table	= tps6591x_id_table,
 };
 
