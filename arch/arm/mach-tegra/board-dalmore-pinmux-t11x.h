@@ -85,7 +85,6 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_AD5,       SPI4,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_AD7,       SPI4,        PULL_UP,   NORMAL,   INPUT),
-	DEFAULT_PINMUX(GMI_AD12,      RSVD1,       NORMAL,    NORMAL,   OUTPUT),
 	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   INPUT),
 
@@ -141,12 +140,6 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW0,       KBC,         PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(KB_ROW1,       KBC,         PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(KB_ROW2,       KBC,         PULL_UP,   NORMAL, INPUT),
-
-	/*Audio Codec*/
-	DEFAULT_PINMUX(DAP3_DIN,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
-	DEFAULT_PINMUX(DAP3_SCLK,     RSVD,   NORMAL,    TRISTATE,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PV0,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
-	DEFAULT_PINMUX(KB_ROW7,       RSVD,   PULL_UP,   NORMAL,      INPUT),
 
 	/* UARTA pinmux */
 	DEFAULT_PINMUX(KB_ROW10,      UARTA,       NORMAL,    TRISTATE, INPUT),
