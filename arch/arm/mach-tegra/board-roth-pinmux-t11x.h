@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-pinmux-t11x.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -254,10 +254,10 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH3, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH4, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH4, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH6, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH7, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG4, false, 0),
