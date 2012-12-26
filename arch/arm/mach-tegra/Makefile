@@ -175,6 +175,15 @@ obj-${CONFIG_MACH_DALMORE}              += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_DALMORE}              += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_DALMORE}              += panel-s-wqxga-10-1.o
 
+obj-${CONFIG_MACH_PISMO}                += board-pismo.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-memory.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-pinmux.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-power.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-powermon.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-sdhci.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-panel.o
+obj-${CONFIG_MACH_PISMO}                += board-pismo-sensors.o
+
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-pinmux.o

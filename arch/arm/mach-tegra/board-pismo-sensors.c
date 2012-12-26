@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-tegra/board-dalmore-sensors.c
+ * arch/arm/mach-tegra/board-pismo-sensors.c
  *
  * Copyright (c) 2012 NVIDIA CORPORATION, All rights reserved.
  *
@@ -50,7 +50,7 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-common.h"
-#include "board-dalmore.h"
+#include "board-pismo.h"
 #include "cpu-tegra.h"
 #include "devices.h"
 #include "tegra-board-id.h"
@@ -61,8 +61,6 @@ static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
 	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
 };
-
-static struct board_info board_info;
 
 static struct balanced_throttle tj_throttle = {
 	.throt_tab_size = 19,
@@ -89,15 +87,15 @@ static struct balanced_throttle tj_throttle = {
 	},
 };
 
-static int __init dalmore_throttle_init(void)
+static int __init pismo_throttle_init(void)
 {
-	if (machine_is_dalmore())
-		balanced_throttle_register(&tj_throttle, "dalmore-nct");
+	if (machine_is_pismo())
+		balanced_throttle_register(&tj_throttle, "pismo-nct");
 	return 0;
 }
-module_init(dalmore_throttle_init);
+module_init(pismo_throttle_init);
 
-static struct nct1008_platform_data dalmore_nct1008_pdata = {
+static struct nct1008_platform_data pismo_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
@@ -111,7 +109,7 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	.trips = {
 		/* Thermal Throttling */
 		[0] = {
-			.cdev_type = "dalmore-nct",
+			.cdev_type = "pismo-nct",
 			.trip_temp = 75000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.state = THERMAL_NO_LIMIT,
@@ -120,10 +118,10 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	},
 };
 
-static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
+static struct i2c_board_info pismo_i2c4_nct1008_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
-		.platform_data = &dalmore_nct1008_pdata,
+		.platform_data = &pismo_nct1008_pdata,
 		.irq = -1,
 	}
 };
@@ -140,7 +138,7 @@ static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 }
 
-static int dalmore_focuser_power_on(struct ad5816_power_rail *pw)
+static int pismo_focuser_power_on(struct ad5816_power_rail *pw)
 {
 	int err;
 
@@ -166,7 +164,7 @@ ad5816_vdd_i2c_fail:
 	return -ENODEV;
 }
 
-static int dalmore_focuser_power_off(struct ad5816_power_rail *pw)
+static int pismo_focuser_power_off(struct ad5816_power_rail *pw)
 {
 	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
 		return -EFAULT;
@@ -190,34 +188,34 @@ static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
 /*
- * As a workaround, dalmore_vcmvdd need to be allocated to activate the
+ * As a workaround, pismo_vcmvdd need to be allocated to activate the
  * sensor devices. This is due to the focuser device(AD5816) will hook up
  * the i2c bus if it is not powered up.
 */
-static struct regulator *dalmore_vcmvdd;
+static struct regulator *pismo_vcmvdd;
 
-static int dalmore_get_vcmvdd(void)
+static int pismo_get_vcmvdd(void)
 {
-	if (!dalmore_vcmvdd) {
-		dalmore_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
-		if (unlikely(WARN_ON(IS_ERR(dalmore_vcmvdd)))) {
+	if (!pismo_vcmvdd) {
+		pismo_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
+		if (unlikely(WARN_ON(IS_ERR(pismo_vcmvdd)))) {
 			pr_err("%s: can't get regulator vcmvdd: %ld\n",
-				__func__, PTR_ERR(dalmore_vcmvdd));
-			dalmore_vcmvdd = NULL;
+				__func__, PTR_ERR(pismo_vcmvdd));
+			pismo_vcmvdd = NULL;
 			return -ENODEV;
 		}
 	}
 	return 0;
 }
 
-static int dalmore_imx091_power_on(struct nvc_regulator *vreg)
+static int pismo_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
 
-	if (dalmore_get_vcmvdd())
+	if (pismo_get_vcmvdd())
 		goto imx091_poweron_fail;
 
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
@@ -234,7 +232,7 @@ static int dalmore_imx091_power_on(struct nvc_regulator *vreg)
 	usleep_range(1, 2);
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
 
-	err = regulator_enable(dalmore_vcmvdd);
+	err = regulator_enable(pismo_vcmvdd);
 	if (unlikely(err))
 		goto imx091_vcmvdd_fail;
 
@@ -257,7 +255,7 @@ imx091_poweron_fail:
 	return -ENODEV;
 }
 
-static int dalmore_imx091_power_off(struct nvc_regulator *vreg)
+static int pismo_imx091_power_off(struct nvc_regulator *vreg)
 {
 	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
@@ -267,7 +265,7 @@ static int dalmore_imx091_power_off(struct nvc_regulator *vreg)
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(1, 2);
 
-	regulator_disable(dalmore_vcmvdd);
+	regulator_disable(pismo_vcmvdd);
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
@@ -316,8 +314,8 @@ static struct imx091_platform_data imx091_pdata = {
 		.adjustable_flash_timing = 1,
 	},
 	.cap			= &imx091_cap,
-	.power_on		= dalmore_imx091_power_on,
-	.power_off		= dalmore_imx091_power_off,
+	.power_on		= pismo_imx091_power_on,
+	.power_off		= pismo_imx091_power_off,
 };
 
 static struct sbs_platform_data sbs_pdata = {
@@ -325,14 +323,14 @@ static struct sbs_platform_data sbs_pdata = {
 	.i2c_retry_count = 2,
 };
 
-static int dalmore_ov9772_power_on(struct ov9772_power_rail *pw)
+static int pismo_ov9772_power_on(struct ov9772_power_rail *pw)
 {
 	int err;
 
 	if (unlikely(!pw || !pw->avdd || !pw->dovdd))
 		return -EFAULT;
 
-	if (dalmore_get_vcmvdd())
+	if (pismo_get_vcmvdd())
 		goto ov9772_get_vcmvdd_fail;
 
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
@@ -349,7 +347,7 @@ static int dalmore_ov9772_power_on(struct ov9772_power_rail *pw)
 	gpio_set_value(CAM_RSTN, 1);
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
 
-	err = regulator_enable(dalmore_vcmvdd);
+	err = regulator_enable(pismo_vcmvdd);
 	if (unlikely(err))
 		goto ov9772_vcmvdd_fail;
 
@@ -374,9 +372,9 @@ ov9772_get_vcmvdd_fail:
 	return -ENODEV;
 }
 
-static int dalmore_ov9772_power_off(struct ov9772_power_rail *pw)
+static int pismo_ov9772_power_off(struct ov9772_power_rail *pw)
 {
-	if (unlikely(!pw || !dalmore_vcmvdd || !pw->avdd || !pw->dovdd))
+	if (unlikely(!pw || !pismo_vcmvdd || !pw->avdd || !pw->dovdd))
 		return -EFAULT;
 
 	usleep_range(21, 25);
@@ -385,7 +383,7 @@ static int dalmore_ov9772_power_off(struct ov9772_power_rail *pw)
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
 	gpio_set_value(CAM_RSTN, 0);
 
-	regulator_disable(dalmore_vcmvdd);
+	regulator_disable(pismo_vcmvdd);
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
@@ -398,34 +396,34 @@ static struct nvc_gpio_pdata ov9772_gpio_pdata[] = {
 	{ OV9772_GPIO_TYPE_PWRDN, CAM_RSTN, true, 0, },
 };
 
-static struct ov9772_platform_data dalmore_ov9772_pdata = {
+static struct ov9772_platform_data pismo_ov9772_pdata = {
 	.num		= 1,
 	.dev_name	= "camera",
 	.gpio_count	= ARRAY_SIZE(ov9772_gpio_pdata),
 	.gpio		= ov9772_gpio_pdata,
-	.power_on	= dalmore_ov9772_power_on,
-	.power_off	= dalmore_ov9772_power_off,
+	.power_on	= pismo_ov9772_power_on,
+	.power_off	= pismo_ov9772_power_off,
 };
 
-static int dalmore_as3648_power_on(struct as364x_power_rail *pw)
+static int pismo_as3648_power_on(struct as364x_power_rail *pw)
 {
-	int err = dalmore_get_vcmvdd();
+	int err = pismo_get_vcmvdd();
 
 	if (err)
 		return err;
 
-	return regulator_enable(dalmore_vcmvdd);
+	return regulator_enable(pismo_vcmvdd);
 }
 
-static int dalmore_as3648_power_off(struct as364x_power_rail *pw)
+static int pismo_as3648_power_off(struct as364x_power_rail *pw)
 {
-	if (!dalmore_vcmvdd)
+	if (!pismo_vcmvdd)
 		return -ENODEV;
 
-	return regulator_disable(dalmore_vcmvdd);
+	return regulator_disable(pismo_vcmvdd);
 }
 
-static struct as364x_platform_data dalmore_as3648_pdata = {
+static struct as364x_platform_data pismo_as3648_pdata = {
 	.config		= {
 		.max_total_current_mA = 1000,
 		.max_peak_current_mA = 600,
@@ -441,45 +439,45 @@ static struct as364x_platform_data dalmore_as3648_pdata = {
 	.gpio_strobe	= CAM_FLASH_STROBE,
 	.led_mask	= 3,
 
-	.power_on_callback = dalmore_as3648_power_on,
-	.power_off_callback = dalmore_as3648_power_off,
+	.power_on_callback = pismo_as3648_power_on,
+	.power_off_callback = pismo_as3648_power_off,
 };
 
-static struct ad5816_platform_data dalmore_ad5816_pdata = {
+static struct ad5816_platform_data pismo_ad5816_pdata = {
 	.cfg = 0,
 	.num = 0,
 	.sync = 0,
 	.dev_name = "focuser",
-	.power_on = dalmore_focuser_power_on,
-	.power_off = dalmore_focuser_power_off,
+	.power_on = pismo_focuser_power_on,
+	.power_off = pismo_focuser_power_off,
 };
 
-static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
+static struct i2c_board_info pismo_i2c_board_info_e1625[] = {
 	{
 		I2C_BOARD_INFO("imx091", 0x36),
 		.platform_data = &imx091_pdata,
 	},
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
-		.platform_data = &dalmore_ov9772_pdata,
+		.platform_data = &pismo_ov9772_pdata,
 	},
 	{
 		I2C_BOARD_INFO("as3648", 0x30),
-		.platform_data = &dalmore_as3648_pdata,
+		.platform_data = &pismo_as3648_pdata,
 	},
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
-		.platform_data = &dalmore_ad5816_pdata,
+		.platform_data = &pismo_ad5816_pdata,
 	},
 };
 
-static int dalmore_camera_init(void)
+static int pismo_camera_init(void)
 {
 	tegra_pinmux_config_table(&mclk_disable, 1);
 	tegra_pinmux_config_table(&pbb0_disable, 1);
 
-	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
-		ARRAY_SIZE(dalmore_i2c_board_info_e1625));
+	i2c_register_board_info(2, pismo_i2c_board_info_e1625,
+		ARRAY_SIZE(pismo_i2c_board_info_e1625));
 	return 0;
 }
 
@@ -505,7 +503,7 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 		.value = _value,				\
 	}
 
-static struct i2c_board_info dalmore_i2c_board_info_cm3218[] = {
+static struct i2c_board_info pismo_i2c_board_info_cm3218[] = {
 	{
 		I2C_BOARD_INFO("cm3218", 0x48),
 	},
@@ -547,32 +545,15 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
 }
 
-static int dalmore_nct1008_init(void)
+static int pismo_nct1008_init(void)
 {
 	int nct1008_port = -1;
 	int ret = 0;
 
-	if ((board_info.board_id == BOARD_E1612) ||
-	    (board_info.board_id == BOARD_E1641) ||
-	    (board_info.board_id == BOARD_E1613) ||
-	    (board_info.board_id == BOARD_P2454))
-	{
-		/* per email from Matt 9/10/2012 */
-		nct1008_port = TEGRA_GPIO_PX6;
-	} else if (board_info.board_id == BOARD_E1611) {
-		if (board_info.fab == 0x04)
-			nct1008_port = TEGRA_GPIO_PO4;
-		else
-			nct1008_port = TEGRA_GPIO_PX6;
-	} else {
-		nct1008_port = TEGRA_GPIO_PX6;
-		pr_err("Warning: nct alert_port assumed TEGRA_GPIO_PX6"
-			" for unknown dalmore board id E%d\n",
-			board_info.board_id);
-	}
+	nct1008_port = TEGRA_GPIO_PX6;
 
 	if (nct1008_port >= 0) {
-		struct nct1008_platform_data *data = &dalmore_nct1008_pdata;
+		struct nct1008_platform_data *data = &pismo_nct1008_pdata;
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 		const struct tegra_edp_limits *cpu_edp_limits;
 		int cpu_edp_limits_size;
@@ -599,15 +580,17 @@ static int dalmore_nct1008_init(void)
 
 			data->num_trips++;
 
-			if (data->num_trips >= NCT_MAX_TRIPS)
+			if (data->num_trips > NCT_MAX_TRIPS)
 				BUG();
 		}
 #endif
 		nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
 		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_dfll_cdev());
 
-		dalmore_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
-		pr_info("%s: dalmore nct1008 irq %d", __func__, dalmore_i2c4_nct1008_board_info[0].irq);
+		pismo_i2c4_nct1008_board_info[0].irq =
+				gpio_to_irq(nct1008_port);
+		pr_info("%s: pismo nct1008 irq %d", __func__,
+				pismo_i2c4_nct1008_board_info[0].irq);
 
 		ret = gpio_request(nct1008_port, "temp_alert");
 		if (ret < 0)
@@ -615,14 +598,15 @@ static int dalmore_nct1008_init(void)
 
 		ret = gpio_direction_input(nct1008_port);
 		if (ret < 0) {
-			pr_info("%s: calling gpio_free(nct1008_port)", __func__);
+			pr_info("%s: calling gpio_free(nct1008_port)",
+					__func__);
 			gpio_free(nct1008_port);
 		}
 	}
 
-	/* dalmore has thermal sensor on GEN1-I2C i.e. instance 0 */
-	i2c_register_board_info(0, dalmore_i2c4_nct1008_board_info,
-		ARRAY_SIZE(dalmore_i2c4_nct1008_board_info));
+	/* pismo has thermal sensor on GEN1-I2C i.e. instance 0 */
+	i2c_register_board_info(0, pismo_i2c4_nct1008_board_info,
+		ARRAY_SIZE(pismo_i2c4_nct1008_board_info));
 
 	return ret;
 }
@@ -653,7 +637,6 @@ static int tegra_skin_get_temp(void *data, long *temp)
 }
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "dalmore-skin",
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -682,62 +665,51 @@ static struct therm_est_data skin_data = {
 			},
 	},
 	.trip_temp = 43000,
-	.passive_delay = 5000,
+	.tc1 = 1,
+	.tc2 = 15,
+	.passive_delay = 15000,
 };
 
 static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = 19,
+	.throt_tab_size = 6,
 	.throt_tab = {
-		{      0, 1000 },
-		{  51000, 1000 },
-		{ 102000, 1000 },
-		{ 204000, 1000 },
-		{ 252000, 1000 },
-		{ 288000, 1000 },
-		{ 372000, 1000 },
-		{ 468000, 1000 },
-		{ 510000, 1000 },
-		{ 612000, 1000 },
-		{ 714000, 1050 },
-		{ 816000, 1050 },
-		{ 918000, 1050 },
-		{1020000, 1100 },
-		{1122000, 1100 },
-		{1224000, 1100 },
-		{1326000, 1100 },
-		{1428000, 1100 },
-		{1530000, 1100 },
+		{ 640000, 1200 },
+		{ 640000, 1200 },
+		{ 760000, 1200 },
+		{ 760000, 1200 },
+		{1000000, 1200 },
+		{1000000, 1200 },
 	},
 };
 
-static int __init dalmore_skin_init(void)
+static int __init pismo_skin_init(void)
 {
-	if (machine_is_dalmore()) {
-		balanced_throttle_register(&skin_throttle, "dalmore-skin");
-		tegra_skin_therm_est_device.dev.platform_data = &skin_data;
-		platform_device_register(&tegra_skin_therm_est_device);
-	}
+	struct thermal_cooling_device *skin_cdev;
+
+	skin_cdev = balanced_throttle_register(&skin_throttle, "pismo-skin");
+
+	skin_data.cdev = skin_cdev;
+	tegra_skin_therm_est_device.dev.platform_data = &skin_data;
+	platform_device_register(&tegra_skin_therm_est_device);
 
 	return 0;
 }
-late_initcall(dalmore_skin_init);
+late_initcall(pismo_skin_init);
 #endif
 
-int __init dalmore_sensors_init(void)
+int __init pismo_sensors_init(void)
 {
 	int err;
 
-	tegra_get_board_info(&board_info);
-
-	err = dalmore_nct1008_init();
+	err = pismo_nct1008_init();
 	if (err)
 		return err;
 
-	dalmore_camera_init();
+	pismo_camera_init();
 	mpuirq_init();
 
-	i2c_register_board_info(0, dalmore_i2c_board_info_cm3218,
-		ARRAY_SIZE(dalmore_i2c_board_info_cm3218));
+	i2c_register_board_info(0, pismo_i2c_board_info_cm3218,
+		ARRAY_SIZE(pismo_i2c_board_info_cm3218));
 
 	i2c_register_board_info(0, bq20z45_pdata,
 		ARRAY_SIZE(bq20z45_pdata));
