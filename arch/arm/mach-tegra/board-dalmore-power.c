@@ -783,8 +783,6 @@ static struct regulator_consumer_supply fixed_reg_avdd_usb_hdmi_supply[] = {
 
 /* EN_CAM_1v8 From PMU GP5 */
 static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
-	REGULATOR_SUPPLY("dvdd_cam", NULL),
-	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
@@ -793,8 +791,6 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 
 /* EN_CAM_1v8 on e1611 From PMU GP6 */
 static struct regulator_consumer_supply fixed_reg_en_1v8_cam_e1611_supply[] = {
-	REGULATOR_SUPPLY("dvdd_cam", NULL),
-	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
 	REGULATOR_SUPPLY("vi2c", "2-0030"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
 	REGULATOR_SUPPLY("dovdd", "2-0010"),
