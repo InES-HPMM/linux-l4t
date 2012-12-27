@@ -1349,8 +1349,10 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 		 * Status, host might initiate the RESET, then we see both
 		 * line status as 0 (SE0). This really should not happen as we
 		 * disabled the kernel preemption before reaching here.
+		 * Bug can be raised here but it is also safe to assume
+		 * as CDP.
 		 */
-		BUG();
+		udc->connect_type = CONNECT_TYPE_CDP;
 
 	spin_unlock_irqrestore(&udc->lock, flags);
 }
