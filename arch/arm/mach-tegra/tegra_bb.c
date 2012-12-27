@@ -45,6 +45,7 @@
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0 (0x500)
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT (1)
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK (1)
+#define APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT (3)
 
 #define APBDEV_PMC_IPC_PMC_IPC_SET_0 (0x504)
 #define APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_RESET_SHIFT (1)
@@ -539,6 +540,28 @@ static ssize_t show_tegra_bb_reset(struct device *dev,
 static DEVICE_ATTR(reset, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 		   show_tegra_bb_reset, store_tegra_bb_reset);
 
+static ssize_t show_tegra_bb_state(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
+{
+	unsigned int sts, mem_req;
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	struct platform_device *pdev = container_of(dev,
+						    struct platform_device,
+						    dev);
+	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
+	dev_dbg(&pdev->dev, "%s IPC_STS=0x%x\n", __func__,
+			 (unsigned int)sts);
+
+	mem_req = (sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT) & 1;
+
+	dev_dbg(&pdev->dev, "%s mem_req =%d\n", __func__,
+			(unsigned int)mem_req);
+	return sprintf(buf, "%d\n", (unsigned int)mem_req);
+}
+
+static DEVICE_ATTR(state, S_IRUSR | S_IRGRP, show_tegra_bb_state, NULL);
+
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 {
@@ -749,6 +772,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_priv_size);
 	ret = device_create_file(&pdev->dev, &dev_attr_ipc_size);
 	ret = device_create_file(&pdev->dev, &dev_attr_reset);
+	ret = device_create_file(&pdev->dev, &dev_attr_state);
 
 	bb->sd = sysfs_get_dirent(pdev->dev.kobj.sd, NULL, "status");
 
