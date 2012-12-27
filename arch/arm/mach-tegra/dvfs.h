@@ -80,6 +80,7 @@ struct dvfs_rail {
 	int offs_millivolts;
 	bool suspended;
 	bool dfll_mode;
+	int thermal_idx;
 	struct tegra_cooling_device *pll_mode_cdev;
 	struct tegra_cooling_device *dfll_mode_cdev;
 	struct rail_stats stats;

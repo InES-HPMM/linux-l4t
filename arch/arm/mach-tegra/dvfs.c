@@ -301,11 +301,16 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 
 	/* Apply offset if any clock is requesting voltage */
 	if (millivolts) {
+		int min_mv = rail->min_millivolts;
+		if (rail->pll_mode_cdev)
+			min_mv = max(min_mv, rail->thermal_idx ?
+				     0 : rail->min_millivolts_cold);
+
 		millivolts += rail->offs_millivolts;
 		if (millivolts > rail->max_millivolts)
 			millivolts = rail->max_millivolts;
-		else if (millivolts < rail->min_millivolts)
-			millivolts = rail->min_millivolts;
+		else if (millivolts < min_mv)
+			millivolts = min_mv;
 	}
 
 	/* retry update if limited by from-relationship to account for
@@ -821,6 +826,60 @@ struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void)
 	return NULL;
 }
 
+#ifdef CONFIG_THERMAL
+/* Cooling device limits minimum rail voltage at cold temperature in pll mode */
+static int tegra_dvfs_rail_get_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->pll_mode_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->thermal_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->thermal_idx != cur_state) {
+		rail->thermal_idx = cur_state;
+		dvfs_rail_update(rail);
+	}
+	mutex_unlock(&dvfs_lock);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_rail_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_cdev_state,
+};
+
+static void tegra_dvfs_rail_register_pll_mode_cdev(struct dvfs_rail *rail)
+{
+	if (!rail->pll_mode_cdev)
+		return;
+
+	/* just report error - initialized for cold temperature, anyway */
+	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
+		rail->pll_mode_cdev->cdev_type, (void *)rail,
+		&tegra_dvfs_rail_cooling_ops)))
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->pll_mode_cdev->cdev_type);
+}
+#else
+#define tegra_dvfs_rail_register_pll_mode_cdev(rail)
+#endif
+
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported
  * by the regulator api for each one.  Must be called in late init, after
@@ -851,6 +910,9 @@ int __init tegra_dvfs_late_init(void)
 #endif
 	register_pm_notifier(&tegra_dvfs_nb);
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
+
+	list_for_each_entry(rail, &dvfs_rail_list, node)
+		tegra_dvfs_rail_register_pll_mode_cdev(rail);
 
 	return 0;
 }
