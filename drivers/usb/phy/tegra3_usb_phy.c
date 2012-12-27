@@ -2924,6 +2924,7 @@ static int ulpi_null_phy_restore(struct tegra_usb_phy *phy)
 			pr_warn("phy restore timeout\n");
 			return 1;
 		}
+		mdelay(1);
 	}
 
 	return 0;
