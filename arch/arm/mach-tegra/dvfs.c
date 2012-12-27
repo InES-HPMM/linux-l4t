@@ -814,6 +814,13 @@ struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void)
+{
+	if (tegra_core_rail)
+		return tegra_core_rail->pll_mode_cdev;
+	return NULL;
+}
+
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported
  * by the regulator api for each one.  Must be called in late init, after
