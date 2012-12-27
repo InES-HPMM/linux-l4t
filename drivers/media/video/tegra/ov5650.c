@@ -22,7 +22,7 @@
 #include <linux/module.h>
 
 #include <media/ov5650.h>
-#include <media/tegra_camera.h>
+#include <video/tegra_camera.h>
 
 #define SIZEOF_I2C_TRANSBUF 32
 

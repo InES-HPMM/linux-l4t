@@ -402,22 +402,12 @@ static struct platform_device dalmore_audio_device = {
 	},
 };
 
-#ifndef CONFIG_USE_OF
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-#endif
-
 static struct platform_device *dalmore_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
-#endif
-#ifndef CONFIG_USE_OF
-	&tegra_camera,
 #endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra11_se_device,

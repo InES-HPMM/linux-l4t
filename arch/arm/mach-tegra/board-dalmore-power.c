@@ -206,7 +206,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
+	REGULATOR_SUPPLY("vddio_cam", "vi"),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
@@ -254,7 +254,7 @@ static struct regulator_consumer_supply max77663_ldo0_supply[] = {
 	REGULATOR_SUPPLY("avdd_pllu", NULL),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegra_camera"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
 };
 
 static struct regulator_consumer_supply max77663_ldo1_supply[] = {
@@ -281,7 +281,7 @@ static struct regulator_consumer_supply max77663_ldo4_supply[] = {
 static struct regulator_consumer_supply max77663_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
@@ -566,7 +566,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_plle", NULL),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegra_camera"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
