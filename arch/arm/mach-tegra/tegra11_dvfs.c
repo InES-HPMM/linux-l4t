@@ -45,6 +45,12 @@ static struct tegra_cooling_device cpu_dfll_cdev = {
 	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
+static struct tegra_cooling_device cpu_pll_cdev = {
+	.cdev_type = "cpu_pll",
+	.trip_temperatures = dvfs_temperatures,
+	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+};
+
 static struct tegra_cooling_device core_cdev = {
 	.cdev_type = "core",
 	.trip_temperatures = dvfs_temperatures,
@@ -59,6 +65,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.jmp_to_zero = true,
 	.min_millivolts_cold = 1000,
 	.dfll_mode_cdev = &cpu_dfll_cdev,
+	.pll_mode_cdev = &cpu_pll_cdev,
 };
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {

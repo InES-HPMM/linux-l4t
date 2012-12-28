@@ -819,6 +819,13 @@ struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void)
 	return NULL;
 }
 
+struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void)
+{
+	if (tegra_cpu_rail)
+		return tegra_cpu_rail->pll_mode_cdev;
+	return NULL;
+}
+
 struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void)
 {
 	if (tegra_core_rail)

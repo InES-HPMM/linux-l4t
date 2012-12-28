@@ -795,6 +795,7 @@ static int pluto_nct1008_init(void)
 #endif
 		nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
 		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_dfll_cdev());
+		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_pll_cdev());
 		nct1008_add_cdev_trips(data, tegra_dvfs_get_core_cdev());
 
 		pluto_i2c4_nct1008_board_info[0].irq =

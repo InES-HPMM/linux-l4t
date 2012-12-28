@@ -200,6 +200,7 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void);
+struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
