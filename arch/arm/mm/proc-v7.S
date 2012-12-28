@@ -25,6 +25,8 @@
 #include "proc-v7-2level.S"
 #endif
 
+#define TEGRA_CLK_RESET_BOND_OUT 0x60006070
+
 ENTRY(cpu_v7_proc_init)
 	mov	pc, lr
 ENDPROC(cpu_v7_proc_init)
@@ -277,6 +279,12 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r1, c2, c0, 0	@ TTB 0
 	mcr	p15, 0, r7, c2, c0, 1	@ TTB 1
 	mcr	p15, 0, r11, c2, c0, 2	@ TTB control register
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	ldr	r4, =TEGRA_CLK_RESET_BOND_OUT
+	ldr	r4, [r4]
+	tst	r4, #1
+	bne	.
+#endif
 	mrc	p15, 0, r4, c1, c0, 1	@ Read Auxiliary control register
 	teq	r4, r9			@ Is it already set?
 	mcrne	p15, 0, r9, c1, c0, 1	@ No, so write it
@@ -436,6 +444,19 @@ __v7_ca15mp_setup:
 	mrc	p15, 0, r0, c1, c0, 1
 	orr	r0, #(1<<24)			@ Enable NCSE in ACTLR
 	mcr	p15, 0, r0, c1, c0, 1
+
+	ldr	r0, =TEGRA_CLK_RESET_BOND_OUT
+	ldr	r0, [r0]
+	tst	r0, #1
+	bne	.
+
+	ALT_SMP(mrc	p15, 0, r0, c1, c0, 1)
+	ALT_UP(mov	r0, #(1 << 6))		@ fake it for UP
+	tst	r0, #(1 << 6)			@ SMP/nAMP mode enabled?
+	orreq	r0, r0, #(1 << 6)		@ Enable SMP/nAMP mode
+	mcreq	p15, 0, r0, c1, c0, 1
+
+	b	__v7_setup
 #endif
 __v7_ca7mp_setup:
 	mov	r10, #0
