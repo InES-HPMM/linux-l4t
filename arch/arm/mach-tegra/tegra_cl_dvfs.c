@@ -744,6 +744,7 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 	}
 }
 
+#ifdef CONFIG_THERMAL
 /* cl_dvfs cooling device */
 static int tegra_cl_dvfs_get_cdev_max_state(struct thermal_cooling_device *cdev,
 					    unsigned long *max_state)
@@ -805,6 +806,7 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 	}
 	pr_info("%s cooling device is registered\n", cld->cdev->cdev_type);
 }
+#endif
 
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
@@ -860,9 +862,10 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	cld->i2c_clk = i2c_clk;
 	cld->dfll_clk = dfll_clk;
 	cld->safe_dvfs = safe_dvfs_clk->dvfs;
+#ifdef CONFIG_THERMAL
 	cld->cdev = cld->safe_dvfs->dvfs_rail->dfll_mode_cdev;
 	INIT_WORK(&cld->init_cdev_work, tegra_cl_dvfs_init_cdev);
-
+#endif
 	/* Initialize cl_dvfs */
 	ret = cl_dvfs_init(cld);
 	if (ret) {
