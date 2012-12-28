@@ -1952,6 +1952,21 @@ static void tegra11_pll_clk_disable(struct clk *c)
 	clk_writel(val, c->reg);
 }
 
+static u8 get_pll_cpcon(struct clk *c, u16 n)
+{
+	if (c->flags & PLLD) {
+		if (n >= 600)
+			return 12;
+		else if (n >= 300)
+			return 8;
+		else if (n >= 50)
+			return 3;
+		else
+			return 2;
+	}
+	return c->u.pll.cpcon_default ? : OUT_OF_TABLE_CPCON;
+}
+
 static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, p_div, old_base;
@@ -2029,7 +2044,7 @@ static int tegra11_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		cfg.p = 0x1 << p_div;
 		cfg.m = input_rate / cfreq;
 		cfg.n = cfg.output_rate / cfreq;
-		cfg.cpcon = c->u.pll.cpcon_default ? : OUT_OF_TABLE_CPCON;
+		cfg.cpcon = get_pll_cpcon(c, cfg.n);
 
 		if ((cfg.m > (PLL_BASE_DIVM_MASK >> PLL_BASE_DIVM_SHIFT)) ||
 		    (cfg.n > (PLL_BASE_DIVN_MASK >> PLL_BASE_DIVN_SHIFT)) ||
@@ -5374,7 +5389,6 @@ static struct clk tegra_pll_d = {
 		.vco_max   = 1000000000,
 		.freq_table = tegra_pll_d_freq_table,
 		.lock_delay = 1000,
-		.cpcon_default = 8,
 	},
 };
 
@@ -5402,7 +5416,6 @@ static struct clk tegra_pll_d2 = {
 		.vco_max   = 1000000000,
 		.freq_table = tegra_pll_d_freq_table,
 		.lock_delay = 1000,
-		.cpcon_default = 12,
 	},
 };
 
