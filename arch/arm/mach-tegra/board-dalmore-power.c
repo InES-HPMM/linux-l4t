@@ -702,7 +702,7 @@ PALMAS_REG_INIT(ldo5, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo9, 1, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(regen1, 0, 0, 0, 0, 0);
