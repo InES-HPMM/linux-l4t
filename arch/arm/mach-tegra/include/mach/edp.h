@@ -48,6 +48,7 @@ struct tegra_edp_cpu_leakage_params {
 	int dyn_consts_n[NR_CPUS];	 /* pre-multiplied by 1,000,000 */
 	int leakage_consts_n[NR_CPUS];	 /* pre-multiplied by 1,000,000 */
 	int leakage_consts_ijk[4][4][4]; /* pre-multiplied by 100,000 */
+	unsigned int safety_cap[4];
 };
 
 struct tegra_edp_freq_voltage_table {

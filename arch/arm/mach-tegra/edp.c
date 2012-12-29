@@ -388,6 +388,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			   {   15618709,   -4576116,   158401,  -1538, },
 			 },
 		 },
+		.safety_cap = { 1810500, 1810500, 1606500, 1606500 },
 	},
 	{
 		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
@@ -419,6 +420,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			   {   15618709,   -4576116,   158401,  -1538, },
 			 },
 		 },
+		.safety_cap = { 1912500, 1912500, 1708500, 1708500 },
 	},
 };
 
@@ -588,13 +590,22 @@ static int init_cpu_edp_limits_calculated(void)
 	for (temp_idx = 0; temp_idx < ARRAY_SIZE(temperatures); temp_idx++) {
 		edp_calculated_limits[temp_idx].
 			temperature = temperatures[temp_idx];
-		for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++)
-			edp_calculated_limits[temp_idx].
-				freq_limits[n_cores_idx] =
+		for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++) {
+			unsigned int cap;
+			unsigned int limit =
 				edp_calculate_maxf(params,
 						   temperatures[temp_idx],
 						   iddq_mA,
 						   n_cores_idx);
+			/* apply safety cap if it is specified */
+			if (n_cores_idx < 4) {
+				cap = params->safety_cap[n_cores_idx];
+				if (cap && cap < limit)
+					limit = cap;
+			}
+			edp_calculated_limits[temp_idx].
+				freq_limits[n_cores_idx] = limit;
+		}
 	}
 
 	/*
