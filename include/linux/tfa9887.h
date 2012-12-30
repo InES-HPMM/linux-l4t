@@ -38,10 +38,9 @@ int Tfa9887_WriteRegister(struct tfa9887_priv *tfa9887, unsigned int subaddress,
 
 int ProcessPatchFile(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int length, const unsigned char *bytes);
 
-int DspGetParam(struct tfa9887_priv *tfa9887, unsigned char module_id, unsigned char param_id, int num_bytes, const unsigned char *data);
-
 int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned char module_id, unsigned char param_id, int num_bytes, const unsigned char *data);
 
+int DspGetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned char module_id, unsigned char param_id, int num_bytes, unsigned char *data);
 int DspWriteMem(struct tfa9887_priv *tfa9887, unsigned int address, int value);
 
 int DspReadMem(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, unsigned short start_offset, int num_words, int *pValues);
@@ -62,9 +61,13 @@ int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte);
 
 int SetMute(struct tfa9887_priv *tfa9887, Tfa9887_Mute_t mute);
 
+void calibrate (struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, char *calibdata);
+
 int reconfigure(struct tfa9887_priv *tfa9887);
 
 void resetMtpEx(struct tfa9887_priv *tfa9887);
+
+int checkMTPEX(struct tfa9887_priv *tfa9887);
 
 typedef enum Tfa9887_AmpInputSel {
 	Tfa9887_AmpInputSel_I2SLeft,
@@ -269,6 +272,7 @@ typedef enum {
 #define TFA9887_STATUS_CLKS       (1<<6) /* clocks stable */
 //
 //
+#define TFA9887_STATUS_MTPB	(1<<8) /*MTP busy operation*/
 #define TFA9887_STATUS_DCCS       (1<<9) /*  */
 
 #define TFA9887_STATUS_ACS        (1<<11) /* cold started */
