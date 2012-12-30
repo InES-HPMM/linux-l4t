@@ -938,7 +938,7 @@ static int __init tegra_emc_max_dvfs(char *options)
 	emc_max_dvfs = memparse(p, &p);
 	return 1;
 }
-__setup("emc_max_dvfs", tegra_emc_max_dvfs);
+__setup("emc_max_dvfs=", tegra_emc_max_dvfs);
 
 static int __init tegra_debug_uartport(char *info)
 {
