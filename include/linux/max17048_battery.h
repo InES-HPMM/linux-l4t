@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Samsung Electronics
- * Copyright (C) 2012 Nvidia Cooperation
+ * Copyright (C) 2012 Nvidia Corporation
  * Minkyu Kang <mk7.kang@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,4 +37,5 @@ struct max17048_platform_data {
 };
 
 void max17048_battery_status(int status, int chrg_type);
+int max17048_check_battery(void);
 #endif

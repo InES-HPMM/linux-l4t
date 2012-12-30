@@ -458,6 +458,21 @@ static int max17048_initialize(struct max17048_chip *chip)
 	return 0;
 }
 
+int max17048_check_battery()
+{
+	uint16_t version;
+
+	if (!max17048_data)
+		return -ENODEV;
+
+	version = max17048_get_version(max17048_data->client);
+	if (version != MAX17048_VERSION_NO)
+		return -ENODEV;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(max17048_check_battery);
+
 static int max17048_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -476,8 +491,8 @@ static int max17048_probe(struct i2c_client *client,
 	max17048_data = chip;
 	i2c_set_clientdata(client, chip);
 
-	version = max17048_get_version(client);
-	if (version != MAX17048_VERSION_NO) {
+	version = max17048_check_battery();
+	if (version < 0) {
 		ret = -ENODEV;
 		goto error2;
 	}
