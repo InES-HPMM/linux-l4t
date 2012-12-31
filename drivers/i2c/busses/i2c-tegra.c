@@ -115,6 +115,9 @@
 #define I2C_HEADER_SLAVE_ADDR_SHIFT		1
 
 #define I2C_BUS_CLEAR_CNFG				0x084
+#define I2C_BC_SCLK_THRESHOLD				(9<<16)
+#define I2C_BC_STOP_COND				(1<<2)
+#define I2C_BC_TERMINATE				(1<<1)
 #define I2C_BC_ENABLE					(1<<0)
 
 #define I2C_BUS_CLEAR_STATUS				0x088
@@ -900,7 +903,11 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	if (i2c_dev->msg_err == I2C_ERR_ARBITRATION_LOST) {
 		if (i2c_dev->chipdata->has_hw_arb_support) {
 			INIT_COMPLETION(i2c_dev->msg_complete);
-			i2c_writel(i2c_dev, I2C_BC_ENABLE, I2C_BUS_CLEAR_CNFG);
+			i2c_writel(i2c_dev, I2C_BC_ENABLE
+					| I2C_BC_SCLK_THRESHOLD
+					| I2C_BC_STOP_COND
+					| I2C_BC_TERMINATE
+					, I2C_BUS_CLEAR_CNFG);
 			tegra_i2c_unmask_irq(i2c_dev, I2C_INT_BUS_CLEAR_DONE);
 
 			wait_for_completion_timeout(&i2c_dev->msg_complete,
