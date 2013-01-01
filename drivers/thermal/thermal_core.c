@@ -741,7 +741,7 @@ policy_store(struct device *dev, struct device_attribute *attr,
 
 	mutex_lock(&thermal_governor_lock);
 
-	if ((strlen(buf) >= THERMAL_NAME_LENGTH) && !sscanf(buf, "%s\n", name))
+	if ((strlen(buf) >= THERMAL_NAME_LENGTH) || !sscanf(buf, "%s\n", name))
 		goto exit;
 
 	gov = __find_governor((const char *)name);
