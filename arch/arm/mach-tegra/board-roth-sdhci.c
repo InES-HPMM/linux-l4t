@@ -387,6 +387,9 @@ static int __init roth_wifi_init(void)
 #ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init roth_wifi_prepower(void)
 {
+	if (!machine_is_roth())
+		return 0;
+
 	roth_wifi_power(1);
 
 	return 0;
