@@ -1187,7 +1187,7 @@ static ssize_t tfa9887_cal_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	//printk("!tfa9887_cal_show\n");
-	if(calibration_need) {
+	if (calibration_need) {
 		memcpy(buf, calibdata, 16);
 		//pr_info("copying data\n");
 	}
@@ -1200,6 +1200,11 @@ static ssize_t tfa9887_cal_store(struct kobject *kobj,
 	ssize_t ret = count;
 	unsigned int value;
 	//printk("+tfa9887_cal_store: %p, %d\n", buf, count);
+	if (!tfa9887R || !tfa9887L ||
+		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
+		ret = -EINVAL;
+		goto fail;
+	}
 
 	if (!buf || !count) {
 		ret = -EINVAL;
@@ -1259,6 +1264,11 @@ static ssize_t tfa9887_config_store(struct kobject *kobj,
 	ssize_t ret = count;
 
 	//printk("+tfa9887_config_store: %p, %d\n", buf, count);
+	if (!tfa9887R || !tfa9887L ||
+		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
+		ret = -EINVAL;
+		goto fail;
+	}
 
 	if (!buf || !count) {
 		ret = -EINVAL;
