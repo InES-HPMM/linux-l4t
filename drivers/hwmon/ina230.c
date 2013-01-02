@@ -545,7 +545,21 @@ static int ina230_probe(struct i2c_client *client,
 
 	register_hotcpu_notifier(&(data->nb));
 
-	evaluate_state(client);
+	err = i2c_smbus_write_word_data(client, INA230_MASK, 0);
+	if (err < 0) {
+		dev_err(&client->dev, "mask write failure sts: 0x%x\n",
+			err);
+		goto exit_remove;
+	}
+
+	/* set ina230 to power down mode */
+	err = i2c_smbus_write_word_data(client, INA230_CONFIG,
+				     __constant_cpu_to_be16(INA230_POWER_DOWN));
+	if (err < 0) {
+		dev_err(&client->dev, "power down failure sts: 0x%x\n",
+			err);
+		goto exit_remove;
+	}
 
 	return 0;
 
