@@ -132,8 +132,14 @@ static int cm3218_power(int on)
 static int cm3218_enable(struct input_dev *dev)
 {
 	pr_debug("[LS][CM3218] %s\n", __func__);
-	if (chip_info->is_als_on_before_suspend)
+	if (chip_info->is_als_on_before_suspend) {
 		cm3218_power(true);
+	} else {
+		regulator_enable(chip_info->vdd_sensor);
+		msleep(REGULATOR_LATENCY);
+		cm3218_write();
+		regulator_disable(chip_info->vdd_sensor);
+	}
 	return 0;
 }
 
