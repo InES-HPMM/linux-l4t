@@ -2343,7 +2343,7 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	/* Clear RTUNEN, SLEWP & SLEWN bit fields */
 	val &= ~(UHSIC_TX_RTUNEN | UHSIC_TX_SLEWP | UHSIC_TX_SLEWN);
 	/* set Rtune impedance to 50 ohm */
-	val |= UHSIC_TX_RTUNE(8);
+	val |= UHSIC_TX_RTUNE(0xC);
 	writel(val, base + UHSIC_PADS_CFG0);
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
