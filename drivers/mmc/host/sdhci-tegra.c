@@ -82,6 +82,7 @@
 #define SDHOST_HIGH_VOLT_2V8	2800000
 #define SDHOST_LOW_VOLT_MIN	1800000
 #define SDHOST_LOW_VOLT_MAX	1800000
+#define SDHOST_HIGH_VOLT_3V2	3200000
 
 #define TEGRA_SDHOST_MIN_FREQ	50000000
 #define TEGRA2_SDHOST_STD_FREQ	50000000
@@ -1370,6 +1371,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 			plat->mmc_data.ocr_mask = MMC_OCR_1V8_MASK;
 		else if (val == 1)
 			plat->mmc_data.ocr_mask = MMC_OCR_2V8_MASK;
+		else if (val == 2)
+			plat->mmc_data.ocr_mask = MMC_OCR_3V2_MASK;
 	}
 	return plat;
 }
@@ -1502,6 +1505,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		tegra_host->vddio_max_uv = SDHOST_LOW_VOLT_MAX;
 	} else if (plat->mmc_data.ocr_mask & MMC_OCR_2V8_MASK) {
 			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_2V8;
+			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
+	} else if (plat->mmc_data.ocr_mask & MMC_OCR_3V2_MASK) {
+			tegra_host->vddio_min_uv = SDHOST_HIGH_VOLT_3V2;
 			tegra_host->vddio_max_uv = SDHOST_HIGH_VOLT_MAX;
 	} else {
 		/*

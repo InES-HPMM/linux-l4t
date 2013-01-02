@@ -2,6 +2,8 @@
  * Copyright (C) 2009 Palm, Inc.
  * Author: Yvonne Yip <y@palm.com>
  *
+ * Copyright (c) 2012-13, NVIDIA CORPORATION.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -26,6 +28,7 @@
  */
 #define MMC_OCR_1V8_MASK    0x00000008
 #define MMC_OCR_2V8_MASK    0x00010000
+#define MMC_OCR_3V2_MASK    0x00200000
 
 /* uhs mask can be used to mask any of the UHS modes support */
 #define MMC_UHS_MASK_SDR25	1
