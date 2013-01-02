@@ -1864,7 +1864,9 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	int n_ports, i, rc;
 	struct resource *res, *irq_res;
 	void __iomem *mmio;
+#ifdef CONFIG_PM
 	u32 save_size;
+#endif
 	irq_handler_t irq_handler = ahci_interrupt;
 
 	VPRINTK("ENTER\n");
