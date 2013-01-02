@@ -84,6 +84,8 @@ struct mc_client mc_clients[] = {
 	client("disp_t"), /* 90 */	client("disp_d"),
 };
 
+int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
+
 static const char *mcerr_t14x_info(u32 stat)
 {
 	if (stat & MC_INT_DECERR_EMEM)
