@@ -149,9 +149,9 @@ static struct tps65090_regulator_platform_data				\
 	.wait_timeout_us = _wait_to,					\
 }
 
-TPS65090_PDATA_INIT(DCDC1, dcdc1, NULL, 1, 1, 0, false, -1, -1);
-TPS65090_PDATA_INIT(DCDC2, dcdc2, NULL, 1, 1, 0, false, -1, -1);
-TPS65090_PDATA_INIT(DCDC3, dcdc3, NULL, 1, 1, 0, false, -1, -1);
+TPS65090_PDATA_INIT(DCDC1, dcdc1, NULL, 1, 1, 0, true, -1, -1);
+TPS65090_PDATA_INIT(DCDC2, dcdc2, NULL, 1, 1, 0, true, -1, -1);
+TPS65090_PDATA_INIT(DCDC3, dcdc3, NULL, 1, 1, 0, true, -1, -1);
 TPS65090_PDATA_INIT(LDO1, ldo1, NULL, 1, 1, 0, false, -1, -1);
 TPS65090_PDATA_INIT(LDO2, ldo2, NULL, 1, 1, 0, false, -1, -1);
 TPS65090_PDATA_INIT(FET1, fet1, NULL, 0, 0, 0, false, -1, 800);
