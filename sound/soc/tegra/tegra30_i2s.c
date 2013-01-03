@@ -460,8 +460,6 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			bitcnt = (i2sclock / srate) - 1;
 			sym_bitclk = !(i2sclock % srate);
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
-			i2s->reg_ch_ctrl |= (1 <<
-				TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
 			val = 0;
 			for (i = 0; i < params_channels(params); i++)
 				val |= (1 << i);
@@ -975,18 +973,10 @@ static int configure_baseband_i2s(struct tegra30_i2s  *i2s, int is_i2smaster,
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_MASTER_ENABLE;
 
 	if (i2s_mode == TEGRA_DAIFMT_DSP_A) {
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-		i2s->reg_ch_ctrl |= (1 <<
-			TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
-#endif
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_NEG_EDGE;
 	} else if (i2s_mode == TEGRA_DAIFMT_DSP_B) {
-#ifndef CONFIG_ARCH_TEGRA_3x_SOC
-		i2s->reg_ch_ctrl |= (1 <<
-			TEGRA30_I2S_CH_CTRL_FSYNC_WIDTH_SHIFT);
-#endif
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_LRCK_R_LOW;
 		i2s->reg_ch_ctrl |= TEGRA30_I2S_CH_CTRL_EGDE_CTRL_POS_EDGE;
