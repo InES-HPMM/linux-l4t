@@ -47,6 +47,12 @@ u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 
 /* realize client reservation - apply settings, rval is dvfs thresh usec */
 u32 tegra_isomgr_realize(tegra_isomgr_handle handle);
+
+/* Initialize isomgr.
+ * This api would be called by .init_machine during boot.
+ * isomgr clients, don't call this api.
+ */
+int __init isomgr_init(void);
 #else
 static inline tegra_isomgr_handle tegra_isomgr_register(
 					  enum tegra_iso_client client,
@@ -66,6 +72,10 @@ static inline u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 }
 
 static inline u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
+{
+	return 0;
+}
+static inline int isomgr_init(void)
 {
 	return 0;
 }

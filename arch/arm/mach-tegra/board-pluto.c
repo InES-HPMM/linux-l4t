@@ -63,6 +63,7 @@
 #include <mach/io.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
+#include <mach/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -1233,6 +1234,7 @@ static void __init tegra_pluto_late_init(void)
 	pluto_touch_init();
 	pluto_emc_init();
 	pluto_edp_init();
+	isomgr_init();
 	pluto_panel_init();
 	pluto_pmon_init();
 	pluto_kbc_init();

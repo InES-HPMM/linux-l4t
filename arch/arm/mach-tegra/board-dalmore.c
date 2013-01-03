@@ -59,6 +59,7 @@
 #include <mach/io.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
+#include <mach/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -784,6 +785,7 @@ static void __init tegra_dalmore_late_init(void)
 	dalmore_suspend_init();
 	dalmore_emc_init();
 	dalmore_edp_init();
+	isomgr_init();
 	dalmore_touch_init();
 	if (board_info.board_id == BOARD_E1582)
 		roth_panel_init();

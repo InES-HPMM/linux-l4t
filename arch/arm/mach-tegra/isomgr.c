@@ -774,7 +774,7 @@ static void isomgr_create_sysfs(void)
 static inline void isomgr_create_sysfs(void) {};
 #endif /* CONFIG_TEGRA_ISOMGR_SYSFS */
 
-static int __init isomgr_init(void)
+int __init isomgr_init(void)
 {
 	int i;
 	unsigned int max_emc_clk;
@@ -793,11 +793,11 @@ static int __init isomgr_init(void)
 	isomgr.emc_clk = clk_get_sys("iso", "emc");
 	if (!isomgr.max_iso_bw) {
 		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
-		pr_debug("iso emc max clk=%dKHz", max_emc_clk);
+		pr_info("iso emc max clk=%dKHz", max_emc_clk);
 		max_emc_bw = tegra_emc_freq_req_to_bw(max_emc_clk);
 		/* ISO clients can use 35% of max emc bw. */
 		isomgr.max_iso_bw = max_emc_bw * 35 / 100;
-		pr_debug("max_iso_bw=%dKB", isomgr.max_iso_bw);
+		pr_info("max_iso_bw=%dKB", isomgr.max_iso_bw);
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
 	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i)
@@ -805,4 +805,3 @@ static int __init isomgr_init(void)
 	isomgr_create_sysfs();
 	return 0;
 }
-subsys_initcall(isomgr_init);

@@ -52,6 +52,7 @@
 #include <mach/io.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
+#include <mach/isomgr.h>
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -564,6 +565,7 @@ static void __init tegra_roth_init(void)
 	roth_suspend_init();
 	roth_emc_init();
 	roth_edp_init();
+	isomgr_init();
 	roth_panel_init();
 	roth_kbc_init();
 	roth_pmon_init();
