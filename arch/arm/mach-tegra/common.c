@@ -1060,6 +1060,9 @@ void tegra_get_board_info(struct board_info *bi)
 			pr_err("failed to read /chosen/board_info/minor_revision\n");
 		else
 			bi->minor_revision = prop_val;
+		system_serial_high = (bi->board_id << 16) | bi->sku;
+		system_serial_low = (bi->fab << 24) |
+			(bi->major_revision << 16) | (bi->minor_revision << 8);
 	} else {
 #endif
 		bi->board_id = (system_serial_high >> 16) & 0xFFFF;
