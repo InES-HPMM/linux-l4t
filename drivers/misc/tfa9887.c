@@ -9,6 +9,9 @@
 #include <sound/initval.h>
 #include <linux/sysfs.h>
 #include <linux/miscdevice.h>
+#include <linux/delay.h>
+
+#define STATUS_OK 0
 
 void tegra_asoc_enable_clocks(void);
 void tegra_asoc_disable_clocks(void);
@@ -470,21 +473,43 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	unsigned int cf_ctrl = 0x0002; /* the value to be sent to the CF_CONTROLS register: cf_req=00000000, cf_int=0, cf_aif=0, cf_dmem=XMEM=01, cf_rst_dsp=0 */
 	unsigned int cf_mad = 0x0001; /* memory address to be accessed (0 : Status, 1 : ID, 2 : parameters) */
 	unsigned int cf_status; /* the contents of the CF_STATUS register */
-	unsigned char id[3];
 	unsigned char mem[3];
+	int rpcStatus = STATUS_OK;
 	int tries = 0;
+
+#if 1
+    {
+        /* minimize the number of I2C transactions by making use of the autoincrement in I2C */
+        unsigned char buffer[7];
+        /* first the data for CF_CONTROLS */
+        buffer[0] = (unsigned char)((cf_ctrl >> 8) & 0xFF);
+        buffer[1] = (unsigned char)(cf_ctrl & 0xFF);
+        /* write the contents of CF_MAD which is the subaddress following CF_CONTROLS */
+        buffer[2] = (unsigned char)((cf_mad >> 8) & 0xFF);
+        buffer[3] = (unsigned char)(cf_mad & 0xFF);
+        /* write the module and RPC id into CF_MEM, which follows CF_MAD */
+        buffer[4] = 0;
+        buffer[5] = module_id + 128;
+        buffer[6] = param_id;
+        error =
+            regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_CONTROLS,
+                             buffer, sizeof(buffer));
+    }
+#else
 	error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS, cf_ctrl);
 	if (error == Tfa9887_Error_Ok) {
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
 	}
 	if (error == Tfa9887_Error_Ok) {
+		unsigned char id[3];
 		id[0] = 0;
 		id[1] = module_id+128;
 		id[2] = param_id;
 		error = regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_MEM,&id, 3);
 	}
+#endif
 
-		error = regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_MEM, data, num_bytes);
+	error = regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_MEM, data, num_bytes);
 
 	if (error == Tfa9887_Error_Ok) {
 		cf_ctrl |= (1<<8) | (1<<4); /* set the cf_req1 and cf_int bit */
@@ -493,11 +518,12 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		do {
 			error = Tfa9887_ReadRegister(tfa9887, TFA9887_CF_STATUS, &cf_status);
 	 		tries++;
-		} while ( (error==Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 100) ); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
+			udelay(100);
+		} while ( (error==Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 10) ); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
 
 		if (tries >= 100) {
 	 		/* something wrong with communication with DSP */
-	 		//pr_info("Setparam failed\n");
+			//pr_info("Setparam failed\n");
 	 		error = -1;
 		}
 	}
@@ -505,20 +531,20 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	cf_mad = 0x0000;
 	if (error == Tfa9887_Error_Ok) {
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS,cf_ctrl);
-        }
-        if (error == Tfa9887_Error_Ok) {
-                error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
-        }
-        if (error == Tfa9887_Error_Ok) {
-                    regmap_raw_read(tfa9887_byte->regmap, TFA9887_CF_MEM,&mem,3);
-                error = (mem[0] << 16) | (mem[1] << 8) | mem[2];
-
-        }
-        if (error != Tfa9887_Error_Ok) {
-                //pr_info("RPC error\n");
-
-        }
-
+    }
+    if (error == Tfa9887_Error_Ok) {
+            error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
+    }
+    if (error == Tfa9887_Error_Ok) {
+		error = regmap_raw_read(tfa9887_byte->regmap, TFA9887_CF_MEM,&mem,3);
+		rpcStatus = (int)((mem[0] << 16) | (mem[1] << 8) | mem[2]);
+    }
+    if (error == Tfa9887_Error_Ok) {
+		if (rpcStatus != STATUS_OK) {
+			error = rpcStatus+100;
+			//pr_info("RPC rpcStatus =%d\n",error);
+		}
+    }
 	return error;
 }
 
@@ -746,6 +772,8 @@ int Tfa9887_SetEq(void)
 int Tfa9887_SetPreset(void)
 {
         int error = 0;
+        unsigned short status;
+
         if((tfa9887R) && (tfa9887R->deviceInit))
                 error = SetPreset(tfa9887R,tfa9887R_byte);
         if((tfa9887L) && (tfa9887L->deviceInit))
@@ -868,7 +896,7 @@ int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		error = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &value);
 		if(value & TFA9887_STATUS_ACS)
 			//pr_info("TFA COLD BOOTED\n");
-        error = ProcessPatchFile(tfa9887, tfa9887_byte, 2380, n1d2_data);
+        error = ProcessPatchFile(tfa9887, tfa9887_byte, sizeof(n1d2_data), n1d2_data);
 
 	return error;
 }
@@ -925,36 +953,36 @@ int SetEq(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
 
 int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
 {
-        int error = 0;
+	int error = 0;
 	unsigned int value = 0;
 	unsigned int volume_value = 0;
-        switch(preset_mode) {
-                case 0:
-		        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data0);
-                        break;
-                case 1:
-			error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data1);
-                        break;
-                case 2:
-                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data2);
-                        break;
-                case 3:
-                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data3);
-                        break;
-                case 4:
-                        error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data4);
-                        break;
-                default:
-                return -1;
-        }
-		volume_value = volume_step[preset_mode];
-		//volume_value = volume_step[PRESET_DEFAULT];
-		//pr_info("%u %u\n",preset_mode,volume_value);
+    switch(preset_mode) {
+            case 0:
+					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data0);
+                    break;
+            case 1:
+					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data1);
+                    break;
+            case 2:
+					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data2);
+                    break;
+            case 3:
+					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data3);
+                    break;
+            case 4:
+					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data4);
+                    break;
+            default:
+            return -1;
+    }
+	volume_value = volume_step[preset_mode];
+	//volume_value = volume_step[PRESET_DEFAULT];
+	//pr_info("%u %u\n",preset_mode,volume_value);
 	error = Tfa9887_ReadRegister(tfa9887, TFA9887_AUDIO_CONTROL, &value);
-        if(error == Tfa9887_Error_Ok) {
-                value = (value&0x00FF) | (unsigned int)(volume_value<<8);
-                error = Tfa9887_WriteRegister(tfa9887, TFA9887_AUDIO_CONTROL, value);
-        }
+    if(error == Tfa9887_Error_Ok) {
+            value = (value&0x00FF) | (unsigned int)(volume_value<<8);
+            error = Tfa9887_WriteRegister(tfa9887, TFA9887_AUDIO_CONTROL, value);
+    }
 	return error;
 }
 
@@ -1145,7 +1173,7 @@ static const struct regmap_config tfa9887_regmap = {
 	.val_bits = 16,
 	.volatile_reg = tfa9887_volatile_register,
 	.readable_reg = tfa9887_readable_register,
-	.cache_type = REGCACHE_RBTREE,
+	.cache_type = REGCACHE_NONE,
 };
 
 static const struct regmap_config tfa9887_regmap_byte = {
@@ -1153,7 +1181,7 @@ static const struct regmap_config tfa9887_regmap_byte = {
         .val_bits = 8,
         .volatile_reg = tfa9887_volatile_register,
         .readable_reg = tfa9887_readable_register,
-        .cache_type = REGCACHE_RBTREE,
+        .cache_type = REGCACHE_NONE,
 };
 static ssize_t tfa9887_cal_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
@@ -1213,7 +1241,16 @@ static ssize_t tfa9887_config_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	printk("!tfa9887_config_show\n");
-	return 0;
+
+	if (buf) {
+		if (eq_mode == 1)
+			memcpy(buf, '1', 1);
+		else if (eq_mode == 2)
+			memcpy(buf, '2', 1);
+		else
+			return -EINVAL;
+	}
+	return 1;
 }
 
 static ssize_t tfa9887_config_store(struct kobject *kobj,
@@ -1254,6 +1291,13 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 	ssize_t ret = count;
 
 	//printk("+tfa9887_vol_store: %d, %d\n", *buf, count);
+
+	if (!tfa9887R || !tfa9887L ||
+		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
+		ret = -EINVAL;
+		goto fail;
+	}
+
 	if (!buf || !count) {
 		ret = -EINVAL;
 		goto fail;
