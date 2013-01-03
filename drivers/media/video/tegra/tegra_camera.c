@@ -609,9 +609,11 @@ static int tegra_camera_probe(struct platform_device *pdev)
 
 	return 0;
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 isomgr_reg_err:
 	clk_put(dev->pll_d2_clk);
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 pll_d2_clk_get_err:
 	clk_put(dev->cile_clk);
 cile_clk_get_err:
