@@ -2092,6 +2092,8 @@ struct rt5640_priv {
 
 	int dmic_en;
 	int dsp_sw;
+	struct mutex lock;
+	int shutdown_complete;
 };
 
 

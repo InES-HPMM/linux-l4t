@@ -34,6 +34,10 @@
 #define RT5640_DET_EXT_MIC 0
 #define RT5639_RESET_ID 0x0008
 
+#define CHECK_I2C_SHUTDOWN(r, c) { if (r && r->shutdown_complete) { \
+dev_err(c->dev, "error: i2c state is 'shutdown'\n"); \
+mutex_unlock(&r->lock); return -ENODEV; } }
+
 #ifdef RT5640_DEMO
 struct rt5640_init_reg {
 	u8 reg;
@@ -436,6 +440,9 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
 	int sclk_src;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	if (jack_insert) {
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
@@ -475,6 +482,7 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		jack_type = RT5640_NO_JACK;
 	}
 
+	mutex_unlock(&rt5640->lock);
 	return jack_type;
 }
 EXPORT_SYMBOL(rt5640_headset_detect);
@@ -513,9 +521,13 @@ static int rt5640_dmic_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
-	if (rt5640->dmic_en == ucontrol->value.integer.value[0])
+	if (rt5640->dmic_en == ucontrol->value.integer.value[0]) {
+		mutex_unlock(&rt5640->lock);
 		return 0;
+	}
 
 	rt5640->dmic_en = ucontrol->value.integer.value[0];
 	switch (rt5640->dmic_en) {
@@ -560,9 +572,11 @@ static int rt5640_dmic_put(struct snd_kcontrol *kcontrol,
 		break;
 
 	default:
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -632,8 +646,13 @@ static int rt5640_regctl_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
+
 	ucontrol->value.integer.value[0] = regctl_addr;
 	ucontrol->value.integer.value[1] = snd_soc_read(codec, regctl_addr);
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -641,10 +660,15 @@ static int rt5640_regctl_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
+
 	regctl_addr = ucontrol->value.integer.value[0];
 	if (ucontrol->value.integer.value[1] <= REGVAL_MAX)
 		snd_soc_write(codec, regctl_addr,
 		ucontrol->value.integer.value[1]);
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 #endif
@@ -659,13 +683,18 @@ static int rt5640_vol_rescale_get(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	unsigned int val = snd_soc_read(codec, mc->reg);
+	unsigned int val;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
+	val = snd_soc_read(codec, mc->reg);
 
 	ucontrol->value.integer.value[0] = VOL_RESCALE_MAX_VOL -
 		((val & RT5640_L_VOL_MASK) >> mc->shift);
 	ucontrol->value.integer.value[1] = VOL_RESCALE_MAX_VOL -
 		(val & RT5640_R_VOL_MASK);
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -676,11 +705,17 @@ static int rt5640_vol_rescale_put(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	unsigned int val, val2;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	int ret;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	val = VOL_RESCALE_MAX_VOL - ucontrol->value.integer.value[0];
 	val2 = VOL_RESCALE_MAX_VOL - ucontrol->value.integer.value[1];
-	return snd_soc_update_bits_locked(codec, mc->reg, RT5640_L_VOL_MASK |
+	ret = snd_soc_update_bits_locked(codec, mc->reg, RT5640_L_VOL_MASK |
 			RT5640_R_VOL_MASK, val << mc->shift | val2);
+	mutex_unlock(&rt5640->lock);
+	return ret;
 }
 
 
@@ -774,6 +809,8 @@ static int set_dmic_clk(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = w->codec;
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	int div[] = {2, 3, 4, 6, 12}, idx = -EINVAL, i, rate, red, bound, temp;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	rate = rt5640->lrck[rt5640->aif_pu] << 8;
 	red = 3000000 * 12;
@@ -792,6 +829,7 @@ static int set_dmic_clk(struct snd_soc_dapm_widget *w,
 	else
 		snd_soc_update_bits(codec, RT5640_DMIC, RT5640_DMIC_CLK_MASK,
 					idx << RT5640_DMIC_CLK_SFT);
+	mutex_unlock(&rt5640->lock);
 	return idx;
 }
 
@@ -799,9 +837,13 @@ static int check_sysclk1_source(struct snd_soc_dapm_widget *source,
 			 struct snd_soc_dapm_widget *sink)
 {
 	unsigned int val;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(source->codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, source->codec)
 
 	val = snd_soc_read(source->codec, RT5640_GLB_CLK);
 	val &= RT5640_SCLK_SRC_MASK;
+	mutex_unlock(&rt5640->lock);
 	if (val == RT5640_SCLK_SRC_PLL1 || val == RT5640_SCLK_SRC_PLL1T)
 		return 1;
 	else
@@ -1192,6 +1234,9 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -1209,8 +1254,10 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	default:
+		mutex_unlock(&rt5640->lock);
 		return 0;
 	}
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -1237,6 +1284,9 @@ static int rt5640_set_dmic1_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = w->codec;
 	unsigned int val, mask;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1251,9 +1301,11 @@ static int rt5640_set_dmic1_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5640_DMIC,
 			RT5640_DMIC_1_EN_MASK, RT5640_DMIC_1_EN);
 	default:
+		mutex_unlock(&rt5640->lock);
 		return 0;
 	}
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -1262,6 +1314,9 @@ static int rt5640_set_dmic2_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = w->codec;
 	unsigned int val, mask;
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1276,9 +1331,11 @@ static int rt5640_set_dmic2_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5640_DMIC,
 			RT5640_DMIC_2_EN_MASK, RT5640_DMIC_2_EN);
 	default:
+		mutex_unlock(&rt5640->lock);
 		return 0;
 	}
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -1931,16 +1988,20 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	unsigned int val_len = 0, val_clk, mask_clk, dai_sel;
 	int pre_div, bclk_ms, frame_size;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	rt5640->lrck[dai->id] = params_rate(params);
 	pre_div = get_clk_info(rt5640->sysclk, rt5640->lrck[dai->id]);
 	if (pre_div < 0) {
 		dev_err(codec->dev, "Unsupported clock setting\n");
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 	frame_size = snd_soc_params_to_frame_size(params);
 	if (frame_size < 0) {
 		dev_err(codec->dev, "Unsupported frame size: %d\n", frame_size);
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 	bclk_ms = frame_size > 32 ? 1 : 0;
@@ -1964,12 +2025,14 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 		val_len |= RT5640_I2S_DL_8;
 		break;
 	default:
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
 	dai_sel = get_sdp_info(codec, dai->id);
 	if (dai_sel < 0) {
 		dev_err(codec->dev, "Failed to get sdp info: %d\n", dai_sel);
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 	if (dai_sel & RT5640_U_IF1) {
@@ -1999,6 +2062,7 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 		snd_soc_update_bits(codec, RT5640_ADDA_CLK1, mask_clk, val_clk);
 	}
 #endif
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -2018,6 +2082,8 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	unsigned int reg_val = 0, dai_sel;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:
@@ -2028,6 +2094,7 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		rt5640->master[dai->id] = 0;
 		break;
 	default:
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
@@ -2038,6 +2105,7 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		reg_val |= RT5640_I2S_BP_INV;
 		break;
 	default:
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
@@ -2054,12 +2122,14 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		reg_val  |= RT5640_I2S_DF_PCM_B;
 		break;
 	default:
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
 	dai_sel = get_sdp_info(codec, dai->id);
 	if (dai_sel < 0) {
 		dev_err(codec->dev, "Failed to get sdp info: %d\n", dai_sel);
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 	if (dai_sel & RT5640_U_IF1) {
@@ -2080,6 +2150,7 @@ static int rt5640_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 			RT5640_I2S_DF_MASK, reg_val);
 	}
 #endif
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -2089,9 +2160,13 @@ static int rt5640_set_dai_sysclk(struct snd_soc_dai *dai,
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	unsigned int reg_val = 0;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
-	if (freq == rt5640->sysclk && clk_id == rt5640->sysclk_src)
+	if (freq == rt5640->sysclk && clk_id == rt5640->sysclk_src) {
+		mutex_unlock(&rt5640->lock);
 		return 0;
+	}
 
 	switch (clk_id) {
 	case RT5640_SCLK_S_MCLK:
@@ -2108,6 +2183,7 @@ static int rt5640_set_dai_sysclk(struct snd_soc_dai *dai,
 		break;
 	default:
 		dev_err(codec->dev, "Invalid clock id (%d)\n", clk_id);
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 	snd_soc_update_bits(codec, RT5640_GLB_CLK,
@@ -2116,6 +2192,7 @@ static int rt5640_set_dai_sysclk(struct snd_soc_dai *dai,
 	rt5640->sysclk_src = clk_id;
 
 	dev_dbg(dai->dev, "Sysclk is %dHz and clock id is %d\n", freq, clk_id);
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -2179,10 +2256,14 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	struct rt5640_pll_code pll_code;
 	int ret, dai_sel;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	if (source == rt5640->pll_src && freq_in == rt5640->pll_in &&
-	    freq_out == rt5640->pll_out)
+	    freq_out == rt5640->pll_out) {
+		mutex_unlock(&rt5640->lock);
 		return 0;
+		}
 
 	if (!freq_in || !freq_out) {
 		dev_dbg(codec->dev, "PLL disabled\n");
@@ -2191,6 +2272,7 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		rt5640->pll_out = 0;
 		snd_soc_update_bits(codec, RT5640_GLB_CLK,
 			RT5640_SCLK_SRC_MASK, RT5640_SCLK_SRC_MCLK);
+		mutex_unlock(&rt5640->lock);
 		return 0;
 	}
 
@@ -2210,6 +2292,7 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		if (dai_sel < 0) {
 			dev_err(codec->dev,
 				"Failed to get sdp info: %d\n", dai_sel);
+			mutex_unlock(&rt5640->lock);
 			return -EINVAL;
 		}
 		if (dai_sel & RT5640_U_IF1) {
@@ -2227,12 +2310,14 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		break;
 	default:
 		dev_err(codec->dev, "Unknown PLL source %d\n", source);
+		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
 
 	ret = rt5640_pll_calc(freq_in, freq_out, &pll_code);
 	if (ret < 0) {
 		dev_err(codec->dev, "Unsupport input clock %d\n", freq_in);
+		mutex_unlock(&rt5640->lock);
 		return ret;
 	}
 
@@ -2249,6 +2334,7 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 	rt5640->pll_out = freq_out;
 	rt5640->pll_src = source;
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -2270,6 +2356,8 @@ static ssize_t rt5640_index_show(struct device *dev,
 	struct snd_soc_codec *codec = rt5640->codec;
 	unsigned int val;
 	int cnt = 0, i;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	cnt += sprintf(buf, "RT5640 index register\n");
 	for (i = 0; i < 0xb4; i++) {
@@ -2284,6 +2372,7 @@ static ssize_t rt5640_index_show(struct device *dev,
 	if (cnt >= PAGE_SIZE)
 		cnt = PAGE_SIZE - 1;
 
+	mutex_unlock(&rt5640->lock);
 	return cnt;
 }
 static DEVICE_ATTR(index_reg, 0444, rt5640_index_show, NULL);
@@ -2291,6 +2380,10 @@ static DEVICE_ATTR(index_reg, 0444, rt5640_index_show, NULL);
 static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
 {
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
+
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 #ifdef RT5640_DEMO
@@ -2371,6 +2464,7 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 	}
 	codec->dapm.bias_level = level;
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
@@ -2379,12 +2473,15 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	int ret;
 	u16 val;
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	codec->dapm.idle_bias_off = 1;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 16, SND_SOC_I2C);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
+		mutex_unlock(&rt5640->lock);
 		return ret;
 	}
 
@@ -2392,6 +2489,7 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 	if ((val != rt5640_reg[RT5640_RESET]) && (val != RT5639_RESET_ID)) {
 		dev_err(codec->dev,
 			"Device with ID register %x is not rt5640/39\n", val);
+		mutex_unlock(&rt5640->lock);
 		return -ENODEV;
 	}
 
@@ -2438,18 +2536,25 @@ static int rt5640_probe(struct snd_soc_codec *codec)
 	if (ret != 0) {
 		dev_err(codec->dev,
 			"Failed to create index_reg sysfs files: %d\n", ret);
+		mutex_unlock(&rt5640->lock);
 		return ret;
 	}
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 
 static int rt5640_remove(struct snd_soc_codec *codec)
 {
+	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
+
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	mutex_lock(&rt5640->lock);
+	CHECK_I2C_SHUTDOWN(rt5640, codec)
 	rt5640_reset(codec);
 	snd_soc_write(codec, RT5640_PWR_ANLG1, 0);
 
+	mutex_unlock(&rt5640->lock);
 	return 0;
 }
 #ifdef CONFIG_PM
@@ -2591,6 +2696,7 @@ static int rt5640_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	i2c_set_clientdata(i2c, rt5640);
+	mutex_init(&rt5640->lock);
 
 	ret = snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt5640,
 			rt5640_dai, ARRAY_SIZE(rt5640_dai));
@@ -2607,6 +2713,19 @@ static int rt5640_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void rt5640_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct rt5640_priv *rt5640 = i2c_get_clientdata(i2c);
+
+	mutex_lock(&rt5640->lock);
+
+	if (i2c->irq)
+		disable_irq(i2c->irq);
+	rt5640->shutdown_complete = 1;
+
+	mutex_unlock(&rt5640->lock);
+}
+
 struct i2c_driver rt5640_i2c_driver = {
 	.driver = {
 		.name = "rt5640",
@@ -2615,6 +2734,7 @@ struct i2c_driver rt5640_i2c_driver = {
 	.probe = rt5640_i2c_probe,
 	.remove   = rt5640_i2c_remove,
 	.id_table = rt5640_i2c_id,
+	.shutdown = rt5640_i2c_shutdown,
 };
 
 static int __init rt5640_modinit(void)
