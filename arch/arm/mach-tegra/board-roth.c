@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -605,14 +605,30 @@ static void __init roth_ramconsole_reserve(unsigned long size)
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
+#ifdef CONFIG_USE_OF
+struct of_dev_auxdata roth_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr3d", TEGRA_GR3D_BASE, "gr3d", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr2d", TEGRA_GR2D_BASE, "gr2d", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-msenc", TEGRA_MSENC_BASE, "msenc",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	{}
+};
+#endif
+
 static void __init tegra_roth_dt_init(void)
 {
-	tegra_roth_init();
-
 #ifdef CONFIG_USE_OF
 	of_platform_populate(NULL,
-		of_default_bus_match_table, NULL, NULL);
+		of_default_bus_match_table, roth_auxdata_lookup,
+		&platform_bus);
 #endif
+
+	tegra_roth_init();
 }
 
 static void __init tegra_roth_reserve(void)

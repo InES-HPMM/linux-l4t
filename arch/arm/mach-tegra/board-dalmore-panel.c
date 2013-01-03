@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-panel.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <linux/tegra_pwm_bl.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pwm_backlight.h>
+#include <linux/of.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -47,11 +48,11 @@ struct platform_device * __init dalmore_host1x_init(void)
 	struct platform_device *pdev = NULL;
 
 #ifdef CONFIG_TEGRA_GRHOST
-	pdev = tegra11_register_host1x_devices();
-	if (!pdev) {
-		pr_err("host1x devices registration failed\n");
-		return NULL;
-	}
+	if (!of_have_populated_dt())
+		pdev = tegra11_register_host1x_devices();
+	else
+		pdev = to_platform_device(bus_find_device_by_name(
+			&platform_bus_type, NULL, "host1x"));
 #endif
 	return pdev;
 }
@@ -441,7 +442,7 @@ int __init dalmore_panel_init(void)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
-	struct platform_device *phost1x;
+	struct platform_device *phost1x = NULL;
 
 	sd_settings = dalmore_sd_settings;
 

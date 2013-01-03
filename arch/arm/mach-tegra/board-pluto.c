@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1333,6 +1333,20 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				&pluto_tegra_sdhci_platform_data0),
 	OF_DEV_AUXDATA("nvidia,tegra114-camera", 0x0, "tegra_camera",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr3d", TEGRA_GR3D_BASE, "gr3d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr2d", TEGRA_GR2D_BASE, "gr2d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-msenc", TEGRA_MSENC_BASE, "msenc",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
+				NULL),
 	{}
 };
 #endif
@@ -1396,7 +1410,8 @@ static void __init tegra_pluto_dt_init(void)
 	tegra_pluto_early_init();
 
 	of_platform_populate(NULL,
-		of_default_bus_match_table, pluto_auxdata_lookup, NULL);
+		of_default_bus_match_table, pluto_auxdata_lookup,
+		&platform_bus);
 
 	tegra_pluto_late_init();
 }
