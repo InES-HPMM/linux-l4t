@@ -346,6 +346,9 @@ static void pluto_panel_select(void)
 		panel = &dsi_j_720p_4_7;
 		dsi_instance = DSI_INSTANCE_1;
 		break;
+	case BOARD_E1577:
+		panel = &dsi_s_1080p_5;
+		break;
 	case BOARD_E1582:
 	default:
 		if (tegra_get_board_panel_id()) {

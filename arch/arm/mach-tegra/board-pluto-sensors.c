@@ -753,7 +753,8 @@ static int pluto_nct1008_init(void)
 	int ret = 0;
 
 	if (board_info.board_id == BOARD_E1580 ||
-	    board_info.board_id == BOARD_E1575) {
+	    board_info.board_id == BOARD_E1575 ||
+	    board_info.board_id == BOARD_E1577) {
 		nct1008_port = TEGRA_GPIO_PX6;
 	} else {
 		nct1008_port = TEGRA_GPIO_PX6;
