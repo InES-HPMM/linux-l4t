@@ -939,7 +939,7 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 	}
 
 	spin_lock_irqsave(&host->lock, flags);
-	if (!tegra_hpriv->pg_state == SATA_ON) {
+	if (tegra_hpriv->pg_state == SATA_ON) {
 		dev_dbg(host->dev, "resume: SATA already powered on\n");
 	} else {
 		dev_dbg(host->dev, "resume: powering on SATA...\n");
