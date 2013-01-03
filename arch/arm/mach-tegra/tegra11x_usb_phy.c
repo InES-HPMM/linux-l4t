@@ -2098,9 +2098,10 @@ static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 {
 
-	unsigned long val;
+	unsigned long val, flags = 0;
 	void __iomem *base = phy->regs;
 	int wait_time_us = FPR_WAIT_TIME_US; /* FPR should be set by this time */
+	bool irq_disabled = false;
 
 	DBG("%s(%d)\n", __func__, __LINE__);
 
@@ -2119,6 +2120,10 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 			}
 			wait_time_us--;
 		} while (val & (USB_PORTSC_RESUME | USB_PORTSC_SUSP));
+		/* In case of remote wakeup, disable local irq to prevent
+		 * context switch b/t disable PMC and set RUN bit ops */
+		local_irq_save(flags);
+		irq_disabled = true;
 	}
 	/* disable PMC master control */
 	uhsic_phy_disable_pmc_bus_ctrl(phy);
@@ -2127,6 +2132,9 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 	val = readl(base + USB_USBCMD);
 	val |= USB_USBCMD_RS;
 	writel(val, base + USB_USBCMD);
+	/* Restore local irq if disabled before */
+	if (irq_disabled)
+		local_irq_restore(flags);
 	if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
 						 USB_USBCMD_RS, 2000)) {
 		pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
