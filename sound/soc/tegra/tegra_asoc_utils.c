@@ -37,6 +37,13 @@ int g_is_call_mode;
 
 #ifdef CONFIG_SWITCH
 static bool is_switch_registered;
+struct switch_dev *psdev;
+/* These values are copied from WiredAccessoryObserver */
+enum headset_state {
+	BIT_NO_HEADSET = 0,
+	BIT_HEADSET = (1 << 0),
+	BIT_HEADSET_NO_MIC = (1 << 1),
+};
 #endif
 
 bool tegra_is_voice_call_active(void)
@@ -196,6 +203,36 @@ struct snd_kcontrol_new tegra_avp_controls[] = {
 			0, tegra_get_dma_addr, tegra_set_dma_addr),
 };
 
+static int tegra_set_headset_plug_state(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct tegra_asoc_utils_data *data = snd_kcontrol_chip(kcontrol);
+	int switch_state;
+
+	data->headset_plug_state = ucontrol->value.integer.value[0];
+	switch_state = data->headset_plug_state == 1 ? BIT_HEADSET
+		: BIT_NO_HEADSET;
+	if (psdev)
+		switch_set_state(psdev, switch_state);
+
+	return 1;
+}
+
+static int tegra_get_headset_plug_state(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	struct  tegra_asoc_utils_data *data = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = data->headset_plug_state;
+
+	return 0;
+}
+
+struct snd_kcontrol_new tegra_switch_controls =
+	SOC_SINGLE_EXT("Headset Plug State", 0, 0, 1, \
+	0, tegra_get_headset_plug_state, tegra_set_headset_plug_state);
+
+
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 			      int mclk)
 {
@@ -324,6 +361,13 @@ int tegra_asoc_utils_register_ctls(struct tegra_asoc_utils_data *data)
 			dev_err(data->dev, "Can't add avp alsa controls");
 			return ret;
 		}
+	}
+
+	ret = snd_ctl_add(data->card->snd_card,
+			snd_ctl_new1(&tegra_switch_controls, data));
+	if (ret < 0) {
+		dev_err(data->dev, "Can't add switch alsa control");
+		return ret;
 	}
 
 	return ret;
@@ -497,8 +541,10 @@ int tegra_asoc_switch_register(struct switch_dev *sdev)
 
 	ret = switch_dev_register(sdev);
 
-	if (ret >= 0)
+	if (ret >= 0) {
+		psdev = sdev;
 		is_switch_registered = true;
+	}
 
 	return ret;
 }
@@ -511,6 +557,7 @@ void tegra_asoc_switch_unregister(struct switch_dev *sdev)
 
 	switch_dev_unregister(sdev);
 	is_switch_registered = false;
+	psdev = NULL;
 }
 EXPORT_SYMBOL_GPL(tegra_asoc_switch_unregister);
 #endif
