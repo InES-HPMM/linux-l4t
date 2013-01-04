@@ -64,7 +64,6 @@ unsigned char coldpatch_data[] = {/* 10 */
 
 /* begin binary data: */
 
-
 /* begin binary data: */
 char n1d2_data[] = {/* 2380 */
 0x03, 0x00, 0x70, 0x00, 0x01, 0xFB, 0x00, 0x71, 0x40
@@ -939,6 +938,7 @@ int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte)
 	int error = 0;
 	unsigned int value = 0;
 	unsigned int volume_value = 0;
+
     switch(preset_mode) {
             case 0:
 					error = DspSetParam(tfa9887,tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_SET_PRESET, 87, preset_data0);
@@ -1285,7 +1285,6 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 	unsigned int preset;
 
 	//printk("+tfa9887_vol_store: %d, %d\n", *buf, count);
-
 	if (!tfa9887R || !tfa9887L ||
 		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
 		ret = -EINVAL;
