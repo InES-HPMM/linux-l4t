@@ -383,6 +383,9 @@ static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 					unsigned long action, void *hcpu)
 {
+	if (action != CPU_POST_DEAD)
+		return NOTIFY_OK;
+
 	if (num_online_cpus() == 1 && tegra_getspeed(0) <= idle_bottom_freq) {
 		mutex_lock(tegra_cpu_lock);
 
