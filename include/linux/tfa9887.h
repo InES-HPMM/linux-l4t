@@ -55,7 +55,7 @@ int Tfa9887_SetEq(void);
 
 int SetEq(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte);
 
-int Tfa9887_SetPreset(void);
+int Tfa9887_SetPreset(unsigned int preset);
 
 int SetPreset(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte);
 

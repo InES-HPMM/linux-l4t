@@ -477,25 +477,6 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	int rpcStatus = STATUS_OK;
 	int tries = 0;
 
-#if 1
-    {
-        /* minimize the number of I2C transactions by making use of the autoincrement in I2C */
-        unsigned char buffer[7];
-        /* first the data for CF_CONTROLS */
-        buffer[0] = (unsigned char)((cf_ctrl >> 8) & 0xFF);
-        buffer[1] = (unsigned char)(cf_ctrl & 0xFF);
-        /* write the contents of CF_MAD which is the subaddress following CF_CONTROLS */
-        buffer[2] = (unsigned char)((cf_mad >> 8) & 0xFF);
-        buffer[3] = (unsigned char)(cf_mad & 0xFF);
-        /* write the module and RPC id into CF_MEM, which follows CF_MAD */
-        buffer[4] = 0;
-        buffer[5] = module_id + 128;
-        buffer[6] = param_id;
-        error =
-            regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_CONTROLS,
-                             buffer, sizeof(buffer));
-    }
-#else
 	error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS, cf_ctrl);
 	if (error == Tfa9887_Error_Ok) {
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
@@ -507,7 +488,6 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		id[2] = param_id;
 		error = regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_MEM,&id, 3);
 	}
-#endif
 
 	error = regmap_raw_write(tfa9887_byte->regmap, TFA9887_CF_MEM, data, num_bytes);
 
@@ -518,12 +498,12 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		do {
 			error = Tfa9887_ReadRegister(tfa9887, TFA9887_CF_STATUS, &cf_status);
 	 		tries++;
-			udelay(100);
+	 		usleep_range(100, 200);
 		} while ( (error==Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 10) ); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
 
 		if (tries >= 100) {
 	 		/* something wrong with communication with DSP */
-			//pr_info("Setparam failed\n");
+			pr_info("Setparam failed\n");
 	 		error = -1;
 		}
 	}
@@ -532,6 +512,7 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	if (error == Tfa9887_Error_Ok) {
 		error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_CONTROLS,cf_ctrl);
     }
+
     if (error == Tfa9887_Error_Ok) {
             error = Tfa9887_WriteRegister(tfa9887, TFA9887_CF_MAD, cf_mad);
     }
@@ -727,7 +708,7 @@ int Tfa9887_Init(int sRate)
 {
 	int error = 0;
 	srate = sRate;
-	if((tfa9887R) && (tfa9887R->deviceInit)) {
+	if ((tfa9887R) && (tfa9887R->deviceInit)) {
 		coldStartup(tfa9887R, tfa9887R_byte, srate);
                         //Tfa9887_WriteRegister(tfa9887R, 0x0B, 0x5A); /* unlock key2 */
                         //Tfa9887_WriteRegister(tfa9887R, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
@@ -741,7 +722,7 @@ int Tfa9887_Init(int sRate)
 
 		}
 	}
-	if((tfa9887L) && (tfa9887L->deviceInit)) {
+	if ((tfa9887L) && (tfa9887L->deviceInit)) {
 		coldStartup(tfa9887L, tfa9887L_byte, srate);
                         //Tfa9887_WriteRegister(tfa9887L, 0x0B, 0x5A); /* unlock key2 */
                         //Tfa9887_WriteRegister(tfa9887L, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
@@ -761,24 +742,26 @@ int Tfa9887_Init(int sRate)
 
 int Tfa9887_SetEq(void)
 {
-        int error = 0;
-	if((tfa9887R) && (tfa9887R->deviceInit))
-		error = SetEq(tfa9887R,tfa9887R_byte);
-	if((tfa9887L) && (tfa9887L->deviceInit))
-		error = SetEq(tfa9887L,tfa9887L_byte);
-        return error;
+	int error = 0;
+	if ((tfa9887R) && (tfa9887R->deviceInit))
+		error = SetEq(tfa9887R, tfa9887R_byte);
+	if ((tfa9887L) && (tfa9887L->deviceInit))
+		error = SetEq(tfa9887L, tfa9887L_byte);
+	return error;
 }
 
-int Tfa9887_SetPreset(void)
+int Tfa9887_SetPreset(unsigned int preset)
 {
-        int error = 0;
-        unsigned short status;
-
-        if((tfa9887R) && (tfa9887R->deviceInit))
-                error = SetPreset(tfa9887R,tfa9887R_byte);
-        if((tfa9887L) && (tfa9887L->deviceInit))
-                error = SetPreset(tfa9887L,tfa9887L_byte);
-        return error;
+	int error = 0;
+	unsigned short status;
+	if (preset != preset_mode) {
+		preset_mode = preset;
+		if ((tfa9887R) && (tfa9887R->deviceInit))
+			error = SetPreset(tfa9887R, tfa9887R_byte);
+		if ((tfa9887L) && (tfa9887L->deviceInit))
+			error = SetPreset(tfa9887L, tfa9887L_byte);
+	}
+	return error;
 }
 
 int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, int sRate)
@@ -1065,9 +1048,9 @@ int stereoRouting(struct tfa9887_priv *tfa9887)
 int Tfa9887_Powerdown(int powerdown)
 {
 	int error = 0;
-	if((tfa9887R) && (tfa9887R->deviceInit))
+	if ((tfa9887R) && (tfa9887R->deviceInit))
 		error = Powerdown(tfa9887R, tfa9887R_byte, powerdown);
-	if((tfa9887L) && (tfa9887L->deviceInit))
+	if ((tfa9887L) && (tfa9887L->deviceInit))
 		error = Powerdown(tfa9887L, tfa9887L_byte, powerdown);
 	return error;
 }
@@ -1299,6 +1282,7 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	ssize_t ret = count;
+	unsigned int preset;
 
 	//printk("+tfa9887_vol_store: %d, %d\n", *buf, count);
 
@@ -1313,11 +1297,11 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 		goto fail;
 	}
 	if (*buf >= DB_CUTOFF_INDEX)
-		preset_mode = MAX_DB_INDEX - *buf;
+		preset = MAX_DB_INDEX - *buf;
 	else
-		preset_mode = PRESET_DEFAULT;
+		preset = PRESET_DEFAULT;
 
-	Tfa9887_SetPreset();
+	Tfa9887_SetPreset(preset);
 fail:
 	//printk("-tfa9887_vol_store: %d\n", count);
 	return ret;
