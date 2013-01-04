@@ -2,7 +2,7 @@
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
  * Copyright (c) 2010 Google, Inc.
- * Copyright (c) 2009-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -145,21 +145,6 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 
 	ret = usb_hcd_map_urb_for_dma(hcd, urb, mem_flags);
 
-	/* Control packets over dma */
-	if (urb->setup_dma)
-		dma_sync_single_for_device(hcd->self.controller,
-			urb->setup_dma, sizeof(struct usb_ctrlrequest),
-			DMA_TO_DEVICE);
-
-	/* urb buffers over dma */
-	if (urb->transfer_dma) {
-		enum dma_data_direction dir;
-		dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
-
-		dma_sync_single_for_device(hcd->self.controller,
-			urb->transfer_dma, urb->transfer_buffer_length, dir);
-	}
-
 	if (ret)
 		free_align_buffer(urb, hcd);
 
@@ -169,16 +154,6 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd,
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	struct urb *urb)
 {
-
-	if (urb->transfer_dma) {
-		enum dma_data_direction dir;
-		dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
-		if (dir == DMA_FROM_DEVICE)
-			dma_sync_single_for_cpu(hcd->self.controller,
-				urb->transfer_dma, urb->transfer_buffer_length,
-									   DMA_FROM_DEVICE);
-	}
-
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
 	free_align_buffer(urb, hcd);
 }
