@@ -27,6 +27,8 @@
 #include <linux/delay.h>
 #include <linux/export.h>
 #include <linux/slab.h>
+#include <linux/module.h>
+#include <linux/of.h>
 
 #include <mach/iomap.h>
 #include <mach/clk.h>
@@ -497,6 +499,15 @@ static int tegra_camera_clk_get(struct platform_device *pdev, const char *name,
 	return 0;
 }
 
+static const struct of_device_id tegra_camera_of_match[] __devinitdata = {
+	{ .compatible = "nvidia,tegra20-camera", },
+	{ .compatible = "nvidia,tegra30-camera", },
+	{ .compatible = "nvidia,tegra114-camera", },
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, tegra_camera_of_match);
+
 static int tegra_camera_probe(struct platform_device *pdev)
 {
 	int err;
@@ -713,7 +724,10 @@ static struct platform_driver tegra_camera_driver = {
 	.remove = tegra_camera_remove,
 	.suspend = tegra_camera_suspend,
 	.resume = tegra_camera_resume,
-	.driver = { .name = TEGRA_CAMERA_NAME }
+	.driver = {
+		.name = TEGRA_CAMERA_NAME,
+		.of_match_table = tegra_camera_of_match,
+	}
 };
 
 static int __init tegra_camera_init(void)
