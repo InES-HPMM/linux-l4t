@@ -734,4 +734,8 @@
 	sdhci@78000000 {
 		status = "okay";
 	};
+
+	camera {
+		status = "okay";
+	};
 };
