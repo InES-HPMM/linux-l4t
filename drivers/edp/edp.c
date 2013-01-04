@@ -83,7 +83,7 @@ int edp_set_governor_unlocked(struct edp_manager *mgr,
 {
 	int r = 0;
 
-	if (mgr ? !mgr->registered : 0)
+	if (mgr ? !mgr->registered : 1)
 		return -EINVAL;
 
 	if (mgr->gov) {
