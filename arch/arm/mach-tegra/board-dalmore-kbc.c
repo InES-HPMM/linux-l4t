@@ -201,6 +201,7 @@ static void __init dalmore_register_kbc(void)
 {
 	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1611 && board_info.sku != 1001) {
 		struct tegra_kbc_platform_data *data = &dalmore_kbc_platform_data;
 		int i;
@@ -247,6 +248,8 @@ int __init dalmore_kbc_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
+	pr_info("Boardid:SKU = 0x%04x:0x%04x\n", board_info.board_id, board_info.sku);
+
 	if (board_info.board_id != BOARD_E1611 &&
 		board_info.board_id != BOARD_P2454) {
 		dalmore_register_kbc();
