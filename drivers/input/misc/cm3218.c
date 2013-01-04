@@ -313,8 +313,10 @@ err_input_allocate:
 
 static void cm3218_shutdown(struct i2c_client *client)
 {
-	cancel_delayed_work_sync(chip_info->wq);
-	chip_info->shutdown_complete = 1;
+	if (IS_ALS_POWER_ON) {
+		cancel_delayed_work_sync(chip_info->wq);
+		chip_info->shutdown_complete = 1;
+	}
 }
 
 static const struct i2c_device_id cm3218_id[] = {
