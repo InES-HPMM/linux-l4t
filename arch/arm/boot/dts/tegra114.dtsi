@@ -441,4 +441,9 @@
 		status = "disable";
 	};
 
+	camera {
+		compatible = "nvidia,tegra114-camera", "nvidia,tegra20-camera";
+		reg = <0x0 0x0>;
+		status = "disable";
+	};
 };
