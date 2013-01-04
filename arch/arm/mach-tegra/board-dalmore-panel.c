@@ -396,7 +396,7 @@ static void dalmore_panel_select(void)
 	}
 	if (panel) {
 		if (panel->init_sd_settings)
-			panel->init_sd_settings(&dalmore_sd_settings);
+			panel->init_sd_settings(&sd_settings);
 
 		if (panel->init_dc_out)
 			panel->init_dc_out(&dalmore_disp1_out);

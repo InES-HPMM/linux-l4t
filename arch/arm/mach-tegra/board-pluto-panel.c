@@ -351,7 +351,7 @@ static void pluto_panel_select(void)
 	}
 
 	if (panel->init_sd_settings)
-		panel->init_sd_settings(&pluto_sd_settings);
+		panel->init_sd_settings(&sd_settings);
 
 	if (panel->init_dc_out)
 		panel->init_dc_out(&pluto_disp1_out);
