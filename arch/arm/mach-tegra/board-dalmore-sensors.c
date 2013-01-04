@@ -658,6 +658,8 @@ static struct therm_est_data skin_data = {
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
+	.tc1 = 5,
+	.tc2 = 1,
 	.devs = {
 			{
 				.dev_data = "nct_ext",
