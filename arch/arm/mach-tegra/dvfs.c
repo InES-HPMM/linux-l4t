@@ -965,6 +965,45 @@ int __init tegra_dvfs_late_init(void)
 	return 0;
 }
 
+static int rail_stats_save_to_buf(char *buf, int len)
+{
+	int i;
+	struct dvfs_rail *rail;
+	char *str = buf;
+	char *end = buf + len;
+
+	str += scnprintf(str, end - str, "%-12s %-10s\n", "millivolts", "time");
+
+	mutex_lock(&dvfs_lock);
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		str += scnprintf(str, end - str, "%s (bin: %d.%dmV)\n",
+			   rail->reg_id,
+			   rail->stats.bin_uV / 1000,
+			   (rail->stats.bin_uV / 10) % 100);
+
+		dvfs_rail_stats_update(rail, -1, ktime_get());
+
+		str += scnprintf(str, end - str, "%-12d %-10llu\n", 0,
+			cputime64_to_clock_t(msecs_to_jiffies(
+				ktime_to_ms(rail->stats.time_at_mv[0]))));
+
+		for (i = 1; i <= DVFS_RAIL_STATS_TOP_BIN; i++) {
+			ktime_t ktime_zero = ktime_set(0, 0);
+			if (ktime_equal(rail->stats.time_at_mv[i], ktime_zero))
+				continue;
+			str += scnprintf(str, end - str, "%-12d %-10llu\n",
+				rail->min_millivolts +
+				(i - 1) * rail->stats.bin_uV / 1000,
+				cputime64_to_clock_t(msecs_to_jiffies(
+					ktime_to_ms(rail->stats.time_at_mv[i])))
+			);
+		}
+	}
+	mutex_unlock(&dvfs_lock);
+	return str - buf;
+}
+
 #ifdef CONFIG_DEBUG_FS
 static int dvfs_tree_sort_cmp(void *p, struct list_head *a, struct list_head *b)
 {
@@ -1033,36 +1072,15 @@ static const struct file_operations dvfs_tree_fops = {
 
 static int rail_stats_show(struct seq_file *s, void *data)
 {
-	int i;
-	struct dvfs_rail *rail;
+	char *buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	int size = 0;
 
-	seq_printf(s, "%-12s %-10s\n", "millivolts", "time");
+	if (!buf)
+		return -ENOMEM;
 
-	mutex_lock(&dvfs_lock);
-
-	list_for_each_entry(rail, &dvfs_rail_list, node) {
-		seq_printf(s, "%s (bin: %d.%dmV)\n", rail->reg_id,
-			   rail->stats.bin_uV / 1000,
-			   (rail->stats.bin_uV / 10) % 100);
-
-		dvfs_rail_stats_update(rail, -1, ktime_get());
-
-		seq_printf(s, "%-12d %-10llu\n", 0,
-			cputime64_to_clock_t(msecs_to_jiffies(
-				ktime_to_ms(rail->stats.time_at_mv[0]))));
-
-		for (i = 1; i <= DVFS_RAIL_STATS_TOP_BIN; i++) {
-			ktime_t ktime_zero = ktime_set(0, 0);
-			if (ktime_equal(rail->stats.time_at_mv[i], ktime_zero))
-				continue;
-			seq_printf(s, "%-12d %-10llu\n", rail->min_millivolts +
-				(i - 1) * rail->stats.bin_uV / 1000,
-				cputime64_to_clock_t(msecs_to_jiffies(
-					ktime_to_ms(rail->stats.time_at_mv[i])))
-			);
-		}
-	}
-	mutex_unlock(&dvfs_lock);
+	size = rail_stats_save_to_buf(buf, PAGE_SIZE);
+	seq_write(s, buf, size);
+	kfree(buf);
 	return 0;
 }
 
@@ -1149,4 +1167,24 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 	return 0;
 }
 
+#endif
+
+#ifdef CONFIG_PM
+static ssize_t tegra_rail_stats_show(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	return rail_stats_save_to_buf(buf, PAGE_SIZE);
+}
+
+static struct kobj_attribute rail_stats_attr =
+		__ATTR_RO(tegra_rail_stats);
+
+static int __init tegra_dvfs_sysfs_stats_init(void)
+{
+	int error;
+	error = sysfs_create_file(power_kobj, &rail_stats_attr.attr);
+	return 0;
+}
+late_initcall(tegra_dvfs_sysfs_stats_init);
 #endif
