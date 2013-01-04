@@ -545,10 +545,12 @@ static struct platform_device pluto_audio_aic326x_device = {
 	},
 };
 
+#ifndef CONFIG_USE_OF
 static struct platform_device tegra_camera = {
 	.name = "tegra_camera",
 	.id = -1,
 };
+#endif
 
 #ifdef CONFIG_MHI_NETDEV
 struct platform_device mhi_netdevice0 = {
@@ -564,7 +566,9 @@ static struct platform_device *pluto_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+#ifndef CONFIG_USE_OF
 	&tegra_camera,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra11_se_device,
 #endif
@@ -1226,6 +1230,8 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000000, "sdhci-tegra.0",
 				&pluto_tegra_sdhci_platform_data0),
+	OF_DEV_AUXDATA("nvidia,tegra114-camera", 0x0, "tegra_camera",
+				NULL),
 	{}
 };
 #endif
