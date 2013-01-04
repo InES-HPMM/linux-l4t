@@ -445,6 +445,11 @@ __v7_ca15mp_setup:
 	orr	r0, #(1<<24)			@ Enable NCSE in ACTLR
 	mcr	p15, 0, r0, c1, c0, 1
 
+	mrc	p15, 1, r0, c15, c0, 3		@ L2PCR
+	tst	r0, #0x1000
+	orreq	r0, r0, #0x1000			@ disable prefetch throttling
+	mcreq	p15, 1, r0, c15, c0, 3
+
 	ldr	r0, =TEGRA_CLK_RESET_BOND_OUT
 	ldr	r0, [r0]
 	tst	r0, #1

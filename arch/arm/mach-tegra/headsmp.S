@@ -191,6 +191,11 @@ __invalidate_cpu_state:
 	isb
 	/* fall through */
 #else
+	mrc	p15, 0x1, r0, c15, c0, 3	@ L2 prefetch control reg
+	tst	r0, #0x1000
+	orreq	r0, r0, #0x1000			@ disable throttling
+	mcreq	p15, 0x1, r0, c15, c0, 3
+
 	/*	This is only needed for cluster 0 with integrated L2 cache */
 	mrc	p15, 0, r0, c0, c0, 5
 	ubfx	r0, r0, #8, #4
@@ -203,8 +208,8 @@ __invalidate_cpu_state:
 	bic	r0, r0, #7
 	orr	r0, r0, #2
 	mcr	p15, 0x1, r0, c9, c0, 2
-	mrc	p15, 0x1, r0, c15, c0, 0
-	orr	r0, r0, #0x80
+	mrc	p15, 0x1, r0, c15, c0, 0	@ L2 ACTLR
+	orr	r0, r0, #0x80			@ hazard detection timeout
 	mcr	p15, 0x1, r0, c15, c0, 0
 __enable_i_cache_branch_pred:
 	mov	r0, #0x1800
