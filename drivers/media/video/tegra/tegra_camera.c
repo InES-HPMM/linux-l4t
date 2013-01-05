@@ -103,7 +103,8 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 	clk_disable_unprepare(dev->cilab_clk);
 	clk_disable_unprepare(dev->cilcd_clk);
 	clk_disable_unprepare(dev->cile_clk);
-	clk_disable_unprepare(dev->pll_d2_clk);
+	if (tegra_is_clk_enabled(dev->pll_d2_clk))
+		clk_disable_unprepare(dev->pll_d2_clk);
 #endif
 
 	return 0;
@@ -151,7 +152,8 @@ static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		if (info->flag == TEGRA_CAMERA_ENABLE_PD2VI_CLK) {
 			if (dev->pll_d2_clk) {
-				clk_prepare_enable(dev->pll_d2_clk);
+				if (!tegra_is_clk_enabled(dev->pll_d2_clk))
+					clk_prepare_enable(dev->pll_d2_clk);
 				clk = dev->pll_d2_clk;
 			} else {
 				/*
