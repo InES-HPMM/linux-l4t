@@ -121,9 +121,11 @@ static int tegra_bb_power_gpio_deinit(struct tegra_bb_power_gdata *gdata)
 	gpioirq = gdata->gpioirq;
 	for (; gpioirq->id != GPIO_INVALID; ++gpioirq) {
 
-		/* Free the irq */
-		free_irq(gpio_to_irq(gpioirq->id), gpioirq->cookie);
+		if (gpioirq->handler != NULL)
+			/* Free the irq */
+			free_irq(gpio_to_irq(gpioirq->id), gpioirq->cookie);
 	}
+
 	return 0;
 }
 
@@ -346,6 +348,11 @@ static int tegra_bb_power_remove(struct platform_device *device)
 	return 0;
 }
 
+static void tegra_bb_power_shutdown(struct platform_device *device)
+{
+	tegra_bb_power_remove(device);
+}
+
 #ifdef CONFIG_PM
 static int tegra_bb_driver_suspend(struct device *dev)
 {
@@ -390,6 +397,7 @@ static const struct dev_pm_ops tegra_bb_pm_ops = {
 static struct platform_driver tegra_bb_power_driver = {
 	.probe = tegra_bb_power_probe,
 	.remove = tegra_bb_power_remove,
+	.shutdown = tegra_bb_power_shutdown,
 	.driver = {
 		.name = "tegra_baseband_power",
 #ifdef CONFIG_PM

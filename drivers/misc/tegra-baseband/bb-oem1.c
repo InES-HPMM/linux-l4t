@@ -331,8 +331,6 @@ static irqreturn_t bb_wake_irq(int irq, void *dev_id)
 	int cwrlevel = bb_get_cwr();
 	bool pwrstate_l2 = false;
 
-	pr_info("%s. CWR = %d.\n", __func__, cwrlevel); /* for now */
-
 	bb_getdata(&data);
 	pwrstate_l2 = ((data.powerstate == BBSTATE_L02L2) ||
 				(data.powerstate == BBSTATE_L2));
@@ -609,7 +607,7 @@ static void *bb_deinit(void)
 	/* destroy wake lock */
 	wake_lock_destroy(&bb_locks.wlock);
 
-	return (void *) &bb_gdata;
+	return (void *) &bb_data;
 }
 
 static struct tegra_bb_callback bb_callbacks = {
