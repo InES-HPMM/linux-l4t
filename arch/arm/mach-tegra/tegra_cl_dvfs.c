@@ -298,6 +298,7 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 {
 	u32 val;
 
+	/* always tune low (safe) in open loop */
 	if (cld->tune_state != TEGRA_CL_DVFS_TUNE_LOW) {
 		set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 		cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0,
@@ -309,6 +310,11 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 		val |= get_output_min(cld) << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	}
+
+	/* 1:1 scaling in open loop */
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+	val |= (SCALE_MAX - 1) << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 }
 
 static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
@@ -926,14 +932,24 @@ int __init tegra_init_cl_dvfs(void)
 /* Switch from any other state to DISABLED state */
 void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 {
-	if ((cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) ||
-	    (cld->mode == TEGRA_CL_DVFS_DISABLED))
+	switch (cld->mode) {
+	case TEGRA_CL_DVFS_CLOSED_LOOP:
+		WARN(1, "DFLL is disabled directly from closed loop mode\n");
+		set_ol_config(cld);
+		set_mode(cld, TEGRA_CL_DVFS_DISABLED);
+		output_disable(cld);
+		cl_dvfs_disable_clocks(cld);
 		return;
 
-	set_ol_config(cld);
-	set_mode(cld, TEGRA_CL_DVFS_DISABLED);
-	output_disable(cld);
-	cl_dvfs_disable_clocks(cld);
+	case TEGRA_CL_DVFS_OPEN_LOOP:
+		set_mode(cld, TEGRA_CL_DVFS_DISABLED);
+		cl_dvfs_disable_clocks(cld);
+		return;
+
+	default:
+		BUG_ON(cld->mode > TEGRA_CL_DVFS_CLOSED_LOOP);
+		return;
+	}
 }
 
 /* Switch from DISABLE state to OPEN_LOOP state */
@@ -990,20 +1006,11 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 /* Switch from CLOSED_LOOP state to OPEN_LOOP state */
 int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 {
-	int ret;
-	u32 val;
-
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
-		/* 1:1 scaling in open loop */
-		val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
-		val |= (SCALE_MAX - 1) << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
-		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
-
 		set_ol_config(cld);
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
-		ret = output_disable(cld);
-		return ret;
+		return output_disable(cld);
 
 	case TEGRA_CL_DVFS_OPEN_LOOP:
 		return 0;
