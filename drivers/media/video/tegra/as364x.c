@@ -573,7 +573,8 @@ static int as364x_power_on(struct as364x_info *info)
 		if (err) {
 			dev_err(&info->i2c_client->dev, "%s v_i2c err\n",
 				__func__);
-			regulator_disable(power->v_in);
+			if (power->v_in)
+				regulator_disable(power->v_in);
 			return err;
 		}
 	}

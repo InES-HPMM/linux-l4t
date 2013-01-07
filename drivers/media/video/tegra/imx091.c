@@ -1682,7 +1682,7 @@ static void imx091_gpio_exit(struct imx091_info *info)
 {
 	unsigned i;
 
-	for (i = 0; i <= ARRAY_SIZE(imx091_gpios); i++) {
+	for (i = 0; i < ARRAY_SIZE(imx091_gpios); i++) {
 		if (info->gpio[i].flag && info->gpio[i].own) {
 			gpio_free(info->gpio[i].gpio);
 			info->gpio[i].own = false;
@@ -1704,7 +1704,7 @@ static void imx091_gpio_init(struct imx091_info *info)
 	if (!info->pdata->gpio_count || !info->pdata->gpio)
 		return;
 
-	for (i = 0; i <= ARRAY_SIZE(imx091_gpios); i++) {
+	for (i = 0; i < ARRAY_SIZE(imx091_gpios); i++) {
 		type = imx091_gpios[i].gpio_type;
 		for (j = 0; j < info->pdata->gpio_count; j++) {
 			if (type == info->pdata->gpio[j].gpio_type)
