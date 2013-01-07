@@ -1,3 +1,5 @@
+GCOV_PROFILE := y
+
 obj-$(CONFIG_REGMAP) += regmap.o regcache.o
 obj-$(CONFIG_REGMAP) += regcache-rbtree.o regcache-lzo.o regcache-flat.o
 obj-$(CONFIG_DEBUG_FS) += regmap-debugfs.o
