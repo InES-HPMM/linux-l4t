@@ -150,12 +150,10 @@ static int soc_therm_precision = -1;
 #define DN_STATS_L0		0x14
 
 #define INTR_STATUS			0x84
-#define INTR_STATUS_MD0_SHIFT		25
-#define INTR_STATUS_MD0_MASK		0x1
-#define INTR_STATUS_MU0_SHIFT		24
-#define INTR_STATUS_MU0_MASK		0x1
 #define INTR_STATUS_CD0_SHIFT		9
+#define INTR_STATUS_CD0_MASK		0x1
 #define INTR_STATUS_CU0_SHIFT		8
+#define INTR_STATUS_CU0_MASK		0x1
 
 #define INTR_EN			0x88
 #define INTR_EN_MU0_SHIFT	24
@@ -263,6 +261,17 @@ static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #define max4(a, b, c, d)	max(max(a, b), max(c, d))
 
 static struct soctherm_platform_data plat_data;
+
+/*
+ * Remove this flag once this "driver" is structured as a platform driver and
+ * the board files calls platform_device_register instead of directly calling
+ * tegra11_soctherm_init(). See nvbug 1206311.
+ */
+static bool soctherm_init_platform_done = false;
+
+static struct clk *soctherm_clk;
+static struct clk *tsensor_clk;
+
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
 #endif
@@ -344,6 +353,9 @@ static void soctherm_update(void)
 {
 	long temp, trip_temp, low_temp = 0, high_temp = 128000;
 	int i, count;
+
+	if (!soctherm_init_platform_done)
+		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
 		if (!thz[i])
@@ -501,6 +513,9 @@ static int __init soctherm_thermal_init(void)
 	char name[64];
 	int i;
 
+	if (!soctherm_init_platform_done)
+		return 0;
+
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].zone_enable) {
 			sprintf(name, "%s-tsensor", sensor_names[i]);
@@ -545,12 +560,24 @@ static void soctherm_update(void)
 
 static void soctherm_work_func(struct work_struct *work)
 {
-	u32 status;
+	u32 st;
 
-	status = soctherm_readl(INTR_STATUS);
-	soctherm_writel(status, INTR_STATUS);
+	st = soctherm_readl(INTR_STATUS);
 
-	soctherm_update();
+	/* deliberately clear each expected interrupt */
+	if (REG_GET(st, INTR_STATUS_CD0) || REG_GET(st, INTR_STATUS_CU0)) {
+		soctherm_writel(REG_SET(0, INTR_STATUS_CD0, 1), INTR_STATUS);
+		soctherm_writel(REG_SET(0, INTR_STATUS_CU0, 1), INTR_STATUS);
+		st = REG_SET(st, INTR_STATUS_CD0, 0);
+		st = REG_SET(st, INTR_STATUS_CU0, 0);
+		soctherm_update();
+	}
+
+	if (!st)
+		return;
+
+	/* Whine about any other unexpected INTR bits still set */
+	pr_err("soctherm: Ignored unexpected INTR status 0x%08x\n", st);
 }
 
 static irqreturn_t soctherm_isr(int irq, void *arg_data)
@@ -612,53 +639,40 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
+static int __init soctherm_clk_init(void)
+{
+	soctherm_clk = clk_get_sys("soc_therm", NULL);
+	tsensor_clk = clk_get_sys("tegra-tsensor", NULL);
+
+	if (IS_ERR(tsensor_clk) || IS_ERR(soctherm_clk)) {
+		clk_put(soctherm_clk);
+		clk_put(tsensor_clk);
+		soctherm_clk = tsensor_clk = NULL;
+		return -EINVAL;
+	}
+
+	if (clk_get_rate(soctherm_clk) != plat_data.soctherm_clk_rate)
+		if (clk_set_rate(soctherm_clk, plat_data.soctherm_clk_rate))
+			return -EINVAL;
+
+	if (clk_get_rate(tsensor_clk) != plat_data.tsensor_clk_rate)
+		if (clk_set_rate(tsensor_clk, plat_data.tsensor_clk_rate))
+			return -EINVAL;
+
+	return 0;
+}
+
 static int soctherm_clk_enable(bool enable)
 {
-	struct clk *soctherm_clk;
-	struct clk *pllp_clk;
-	struct clk *ts_clk;
-	struct clk *clk_m;
-	unsigned long soctherm_clk_rate, ts_clk_rate;
-
-	soctherm_clk = clk_get_sys("soc_therm", NULL);
-	if (IS_ERR(soctherm_clk))
-		return -1;
-
-	ts_clk = clk_get_sys("tegra-tsensor", NULL);
-	if (IS_ERR(ts_clk))
-		return -1;
+	if (soctherm_clk == NULL || tsensor_clk == NULL)
+		return -EINVAL;
 
 	if (enable) {
-		pllp_clk = clk_get_sys(NULL, "pll_p");
-		if (IS_ERR(pllp_clk))
-			return -1;
-
-		clk_m = clk_get_sys(NULL, "clk_m");
-		if (IS_ERR(clk_m))
-			return -1;
-
 		clk_enable(soctherm_clk);
-		soctherm_clk_rate = plat_data.soctherm_clk_rate;
-		if (clk_get_parent(soctherm_clk) != pllp_clk)
-			if (clk_set_parent(soctherm_clk, pllp_clk))
-				return -1;
-		if (clk_get_rate(pllp_clk) != soctherm_clk_rate)
-			if (clk_set_rate(soctherm_clk, soctherm_clk_rate))
-				return -1;
-
-		clk_enable(ts_clk);
-		ts_clk_rate = plat_data.tsensor_clk_rate;
-		if (clk_get_parent(ts_clk) != clk_m)
-			if (clk_set_parent(ts_clk, clk_m))
-				return -1;
-		if (clk_get_rate(clk_m) != ts_clk_rate)
-			if (clk_set_rate(ts_clk, ts_clk_rate))
-				return -1;
+		clk_enable(tsensor_clk);
 	} else {
 		clk_disable(soctherm_clk);
-		clk_disable(ts_clk);
-		clk_put(soctherm_clk);
-		clk_put(ts_clk);
+		clk_disable(tsensor_clk);
 	}
 
 	return 0;
@@ -739,11 +753,7 @@ static int soctherm_init_platform_data(void)
 	therm = plat_data.therm;
 
 	/* Can only thermtrip with either GPU or MEM but not both */
-	if (therm[THERM_GPU].thermtrip && therm[THERM_MEM].thermtrip)
-		return -EINVAL;
-
-	if (soctherm_clk_enable(true) < 0)
-		BUG();
+	BUG_ON(therm[THERM_GPU].thermtrip && therm[THERM_MEM].thermtrip);
 
 	/* Pdiv */
 	r = soctherm_readl(TS_PDIV);
@@ -772,6 +782,7 @@ static int soctherm_init_platform_data(void)
 			r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH,
 					plat_data.therm[i].hw_backstop - 2);
 			r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+
 			/* Heavy throttling */
 			r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT, 2);
 			soctherm_writel(r, reg_off);
@@ -855,12 +866,20 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	register_pm_notifier(&soctherm_nb);
 
-	memcpy(&plat_data, data, sizeof(struct soctherm_platform_data));
+	if (!data)
+		return -1;
+	plat_data = *data;
+
+	if (soctherm_clk_init() < 0)
+		return -1;
 
 	if (soctherm_clk_enable(true) < 0)
-		BUG();
+		return -1;
 
-	soctherm_init_platform_data();
+	if (soctherm_init_platform_data() < 0)
+		return -1;
+
+	soctherm_init_platform_done = true;
 
 	/* enable interrupts */
 	workqueue = create_singlethread_workqueue("soctherm");
@@ -972,10 +991,10 @@ static int regs_show(struct seq_file *s, void *data)
 	}
 
 	r = soctherm_readl(INTR_STATUS);
-	state = REG_GET(r, INTR_STATUS_MD0);
-	seq_printf(s, "MD0: %d\n", state);
-	state = REG_GET(r, INTR_STATUS_MU0);
-	seq_printf(s, "MU0: %d\n", state);
+	state = REG_GET(r, INTR_STATUS_CD0);
+	seq_printf(s, "CD0: %d\n", state);
+	state = REG_GET(r, INTR_STATUS_CU0);
+	seq_printf(s, "CU0: %d\n", state);
 
 	r = soctherm_readl(THERMTRIP);
 	state = REG_GET(r, THERMTRIP_CPU_THRESH);
