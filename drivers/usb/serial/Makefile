@@ -4,6 +4,8 @@
 
 # Object file lists.
 
+GCOV_PROFILE := y
+
 obj-$(CONFIG_USB_SERIAL)			+= usbserial.o
 
 usbserial-y := usb-serial.o generic.o bus.o
