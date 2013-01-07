@@ -1,28 +1,26 @@
 /*
- * arch/arm/mach-tegra/board-info.c
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * File to contain changes for sku id, serial id, chip id, etc.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * arch/arm/mach-tegra/board-info.c
+ * Parse kernel commandline (skuinfo, prodinfo and board_id info parsed here)
  */
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include "board.h"
+#include <mach/board_id.h>
 
 /* skuinfo is 18 character long xxx-xxxxx-xxxx-xxx
  *so buffer size is set to 18+1 */
@@ -36,6 +34,10 @@
 /* prodver is 2 character long XX so buffer size is set to 2+1 */
 #define PRODVER_BUF_SIZE 3
 
+/* board_id is 23 character long xxx-xxxxx-xxxx-xxx-XY.ZZ
+ * so buffer size is set to 24+1 */
+#define BOARD_ID_BUF_SIZE 25
+
 extern unsigned int system_serial_low;
 extern unsigned int system_serial_high;
 
@@ -45,6 +47,58 @@ static char prodinfo_buffer[PRODINFO_BUF_SIZE];
 static char prodver_buffer[PRODVER_BUF_SIZE];
 static char skuinfo_buffer[SKUINFO_BUF_SIZE];
 static char skuver_buffer[SKUVER_BUF_SIZE];
+
+static int board_id_iterator __initdata;
+static struct tegra_board_info board_info_array[TEGRA_MAX_BOARDS];
+
+static int __init board_id_setup(char *line)
+{
+	char board_id[BOARD_ID_BUF_SIZE] = {0};
+	char *traverser = board_id;
+	int delimiter_index;
+
+	if (board_id_iterator >= TEGRA_MAX_BOARDS) {
+		pr_warn("Number of Board Id's more than Max Boards defined\n");
+		return 0;
+	}
+
+	memset(&board_info_array[board_id_iterator], 0,
+		sizeof(board_info_array[board_id_iterator]));
+	strncpy(board_id, line, BOARD_ID_BUF_SIZE);
+	board_id[BOARD_ID_BUF_SIZE - 1] = '\0';
+
+	board_info_array[board_id_iterator].valid = 1;
+	delimiter_index = strcspn(traverser, "-");
+	memcpy(board_info_array[board_id_iterator].bom,
+			traverser, delimiter_index);
+	traverser += delimiter_index + 1;
+
+	delimiter_index = strcspn(traverser, "-");
+	memcpy(board_info_array[board_id_iterator].project,
+			traverser, delimiter_index);
+	traverser += delimiter_index + 1;
+
+	delimiter_index = strcspn(traverser, "-");
+	memcpy(board_info_array[board_id_iterator].sku,
+			traverser, delimiter_index);
+	traverser += delimiter_index + 1;
+
+	delimiter_index = strcspn(traverser, "-");
+	memcpy(board_info_array[board_id_iterator].revision,
+			traverser, delimiter_index);
+	traverser += delimiter_index + 1;
+
+	delimiter_index = strcspn(traverser, "-\0");
+	memcpy(board_info_array[board_id_iterator].bom_version,
+			traverser, delimiter_index);
+	traverser += delimiter_index + 1;
+
+	board_id_iterator++;
+	return 1;
+}
+
+__setup("board_id=", board_id_setup);
+
 
 static int __init sku_info_setup(char *line)
 {
@@ -202,3 +256,31 @@ int __init tegra_init_board_info(void)
 
 	return 0;
 }
+
+bool tegra_is_board(const char *bom, const char *project,
+		const char *sku, const char *revision,
+		const char *bom_version) {
+	int i = 0;
+	bool b = true;
+
+	while (i < TEGRA_MAX_BOARDS && board_info_array[i].valid != 0) {
+
+		b = (!bom || !strncmp(board_info_array[i].bom,
+				bom, MAX_BUFFER)) &&
+			(!project || !strncmp(board_info_array[i].project,
+				project, MAX_BUFFER)) &&
+			(!sku || !strncmp(board_info_array[i].sku,
+				sku, MAX_BUFFER)) &&
+			(!revision || !strncmp(board_info_array[i].revision,
+				revision, MAX_BUFFER)) &&
+			(!bom_version ||
+			 !strncmp(board_info_array[i].bom_version,
+				bom_version, MAX_BUFFER));
+
+		if (b)
+			return true;
+		i++;
+	}
+	return false;
+}
+EXPORT_SYMBOL(tegra_is_board);
