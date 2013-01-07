@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2011 Google, Inc.
  *
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ *
  * Author:
  *	Jay Cheng <jacheng@nvidia.com>
  *	James Wylder <james.wylder@motorola.com>
@@ -50,6 +52,7 @@
 #define AHB_GIZMO_NAND			0x3c
 #define AHB_GIZMO_SDMMC4		0x44
 #define AHB_GIZMO_XIO			0x48
+#define AHB_GIZMO_TZRAM			0x50
 #define AHB_GIZMO_BSEV			0x60
 #define AHB_GIZMO_BSEA			0x70
 #define AHB_GIZMO_NOR			0x74
@@ -90,7 +93,7 @@ static inline void gizmo_writel(unsigned long value, unsigned long offset)
 
 #ifdef CONFIG_PM
 
-static u32 ahb_gizmo[29];
+static u32 ahb_gizmo[30];
 
 int tegra_ahbgizmo_suspend(void)
 {
@@ -123,6 +126,7 @@ int tegra_ahbgizmo_suspend(void)
 	ahb_gizmo[26] = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
 	ahb_gizmo[27] = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
 	ahb_gizmo[28] = gizmo_readl(AHB_ARBITRATION_AHB_MEM_WRQUE_MST_ID);
+	ahb_gizmo[29] = gizmo_readl(AHB_GIZMO_TZRAM);
 	return 0;
 }
 
@@ -162,6 +166,7 @@ void tegra_ahbgizmo_resume(void)
 	ahb_gizmo_writel(ahb_gizmo[27],
 		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 	gizmo_writel(ahb_gizmo[28], AHB_ARBITRATION_AHB_MEM_WRQUE_MST_ID);
+	gizmo_writel(ahb_gizmo[29], AHB_GIZMO_TZRAM);
 }
 #else
 #define tegra_ahbgizmo_suspend NULL
