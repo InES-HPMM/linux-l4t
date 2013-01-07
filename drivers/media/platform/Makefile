@@ -2,6 +2,8 @@
 # Makefile for the video capture/playback device drivers.
 #
 
+GCOV_PROFILE := y
+
 omap2cam-objs	:=	omap24xxcam.o omap24xxcam-dma.o
 
 obj-$(CONFIG_VIDEO_VINO) += indycam.o
