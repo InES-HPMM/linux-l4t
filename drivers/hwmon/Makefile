@@ -2,6 +2,8 @@
 # Makefile for sensor chip drivers.
 #
 
+GCOV_PROFILE := y
+
 obj-$(CONFIG_HWMON)		+= hwmon.o
 obj-$(CONFIG_HWMON_VID)		+= hwmon-vid.o
 
