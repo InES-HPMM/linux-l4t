@@ -4,6 +4,8 @@
 
 # Each configuration option enables a list of files.
 
+GCOV_PROFILE := y
+
 obj-$(CONFIG_INPUT)		+= input-core.o
 input-core-y := input.o input-compat.o input-mt.o ff-core.o
 
