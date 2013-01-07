@@ -349,9 +349,14 @@ EXPORT_SYMBOL(max77660_write);
 int max77660_set_bits(struct device *dev, u8 addr, u8 mask, u8 value,
 		      enum max77660_i2c_slave slave)
 {
-	struct max77660_chip *chip = dev_get_drvdata(dev);
+	struct max77660_chip *chip;
+	struct regmap *regmap;
 	int ret;
-	struct regmap *regmap = chip->regmap_power;
+
+	if (slave == MAX77660_I2C_CORE)
+		chip = dev_get_drvdata(dev);
+	else
+		chip = dev_get_drvdata(dev->parent);
 
 	switch (slave) {
 	case MAX77660_I2C_CORE:
@@ -895,7 +900,7 @@ static bool rd_wr_reg_haptic(struct device *dev, unsigned int reg)
 static const struct regmap_config max77660_regmap_config_power = {
 	.reg_bits = 8,
 	.val_bits = 8,
-	.max_register = 0x60,
+	.max_register = 0x9F,
 	.writeable_reg = rd_wr_reg_power,
 	.readable_reg = rd_wr_reg_power,
 	.cache_type = REGCACHE_RBTREE,
