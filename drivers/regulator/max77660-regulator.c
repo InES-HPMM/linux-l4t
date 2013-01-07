@@ -321,8 +321,8 @@ max77660_regulator_set_fps_src(struct max77660_regulator *reg,
 	case FPS_SRC_4:
 	case FPS_SRC_5:
 	case FPS_SRC_6:
-	case FPS_SRC_NONE:
 		break;
+	case FPS_SRC_NONE:
 	case FPS_SRC_DEF:
 		return 0;
 	default:
@@ -444,7 +444,7 @@ max77660_regulator_set_fps_cfgs(struct max77660_regulator *reg,
 				struct max77660_regulator_fps_cfg *fps_cfgs,
 				int num_fps_cfgs)
 {
-	struct device *dev = reg->dev;
+	struct device *dev = reg->dev->parent;
 	int i, ret, num_fps_cfg_regs;
 
 	if (fps_cfg_init)
@@ -745,7 +745,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 {
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	struct max77660_regulator_info *rinfo = reg->rinfo;
-	struct device *dev = reg->dev;
+	struct device *dev = reg->dev->parent;
 	int i;
 	u8 idx;
 	u8 val, mask;
@@ -753,6 +753,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 
 	/* Update Power Mode register mask and offset */
 	if (rinfo->type == REGULATOR_TYPE_BUCK) {
+
 		idx = reg->rinfo->id - MAX77660_REGULATOR_ID_BUCK1;
 		/*  4 Bucks Pwr Mode in 1 register */
 		reg->rinfo->regs[PWR_MODE_REG].addr =
@@ -764,6 +765,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 
 	if ((rinfo->type == REGULATOR_TYPE_LDO_N) ||
 			(rinfo->type == REGULATOR_TYPE_LDO_P)) {
+
 		idx = reg->rinfo->id - MAX77660_REGULATOR_ID_LDO1;
 		/* 4 LDOs Pwr Mode in 1 register  */
 		reg->rinfo->regs[PWR_MODE_REG].addr =
@@ -774,7 +776,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 	}
 
 	/* Update registers */
-	for (i = 0; i <= FPS_REG; i++) {
+	for (i = 0; i <= PWR_MODE_REG; i++) {
 		ret = max77660_read(dev, rinfo->regs[i].addr,
 				    &reg->val[i], 1, 0);
 		if (ret < 0) {
@@ -854,7 +856,6 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		dev_err(reg->dev, "preinit: Failed to set FPS\n");
 		return ret;
 	}
-
 	if (rinfo->type == REGULATOR_TYPE_BUCK) {
 		val = 0;
 		mask = 0;
@@ -1051,6 +1052,8 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 		reg->regulator_mode = REGULATOR_MODE_NORMAL;
 		reg->power_mode = POWER_MODE_NORMAL;
 
+		platform_set_drvdata(pdev, max_regs);
+
 		dev_dbg(&pdev->dev, "probe: name=%s\n", rdesc->name);
 
 		ret = max77660_regulator_preinit(reg);
@@ -1069,7 +1072,6 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 			goto clean_exit;
 		}
 	}
-	platform_set_drvdata(pdev, max_regs);
 
 	return 0;
 
