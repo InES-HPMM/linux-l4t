@@ -507,7 +507,7 @@ static int max77660_rtc_preinit(struct max77660_rtc *rtc)
 	/* It should be disabled alarm wakeup to wakeup from sleep
 	 * by EN1 input signal */
 	ret = max77660_set_bits(dev, MAX77660_REG_GLOBAL_CFG2,
-				GLBLCNFG2_RTC_WKEN_MASK, 0, MAX77660_I2C_RTC);
+				GLBLCNFG2_RTC_WKEN_MASK, 0, MAX77660_I2C_PMIC);
 	if (ret < 0) {
 		dev_err(rtc->dev, "preinit: Failed to set onoff cfg2\n");
 		return ret;
