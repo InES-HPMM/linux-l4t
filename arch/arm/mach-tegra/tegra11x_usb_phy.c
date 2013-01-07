@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11x_usb_phy.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (C) 2012-2013 NVIDIA Corporation
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -2245,6 +2245,12 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 		return 0;
 	}
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	val = readl(padctl_base + PADCTL_SNPS_OC_MAP);
+	val |= CONTROLLER_OC(phy->inst, 0x7);
+	writel(val, padctl_base + PADCTL_SNPS_OC_MAP);
+#endif
+
 	val = readl(base + UHSIC_PADS_CFG1);
 	val &= ~(UHSIC_PD_BG | UHSIC_PD_RX |
 			UHSIC_PD_ZI | UHSIC_RPD_DATA | UHSIC_RPD_STROBE);
@@ -2369,12 +2375,6 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 		val = USB_FIFO_TXFILL_THRES(0x10);
 		writel(val, base + USB_TXFILLTUNING);
 	}
-
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	val = readl(padctl_base + PADCTL_SNPS_OC_MAP);
-	val |= CONTROLLER_OC(phy->inst, 0x7);
-	writel(val, padctl_base + PADCTL_SNPS_OC_MAP);
-#endif
 
 	return 0;
 }
