@@ -2,6 +2,8 @@
 # Makefile for the Linux network device drivers.
 #
 
+GCOV_PROFILE := y
+
 #
 # Networking Core Drivers
 #
