@@ -1,7 +1,7 @@
 /*
  * imx091.c - imx091 sensor driver
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -644,8 +644,8 @@ static struct imx091_reg imx091_1308x736_i2c[] = {
 	{IMX091_TABLE_END, 0x00}
 };
 
-static struct imx091_reg imx091_1052X778_i2c[] = {
-	/* Reset */
+static struct imx091_reg imx091_2104x1560_i2c[] = {
+	/* Software reset */
 	{0x0103, 0x01},
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 
@@ -671,61 +671,62 @@ static struct imx091_reg imx091_1052X778_i2c[] = {
 
 	/* PLL */
 	{0x0305, 0x02},
-	{0x0307, 0x20},
+	{0x0307, 0x2F},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
 
 	/* Mode Settings */
 	{0x0112, 0x0A},
 	{0x0113, 0x0A},
-	{0x0340, 0x08},
-	{0x0341, 0xA6},
-	{0x0342, 0x09},
-	{0x0343, 0x06},
+	{0x0340, 0x06},
+	{0x0341, 0x58},
+	{0x0342, 0x12},
+	{0x0343, 0x0C},
 	{0x0344, 0x00},
 	{0x0345, 0x08},
 	{0x0346, 0x00},
-	{0x0347, 0x34},
+	{0x0347, 0x30},
 	{0x0348, 0x10},
 	{0x0349, 0x77},
+
 	{0x034A, 0x0C},
-	{0x034B, 0x5B},
-	{0x034C, 0x04},
-	{0x034D, 0x1C},
-	{0x034E, 0x03},
-	{0x034F, 0x0A},
+	{0x034B, 0x5F},
+	{0x034C, 0x08},
+	{0x034D, 0x38},
+	{0x034E, 0x06},
+	{0x034F, 0x18},
 	{0x0381, 0x01},
 	{0x0383, 0x03},
-	{0x0385, 0x05},
+	{0x0385, 0x01},
 	{0x0387, 0x03},
-	{0x3033, 0x84},
+	{0x3033, 0x00},
 	{0x303D, 0x10},
 	{0x303E, 0xD0},
 	{0x3040, 0x08},
 	{0x3041, 0x97},
 	{0x3048, 0x01},
-	{0x304C, 0x3F},
-	{0x304D, 0x02},
+	{0x304C, 0x7F},
+	{0x304D, 0x04},
 	{0x3064, 0x12},
-	{0x309B, 0x48},
-	{0x309E, 0x04},
-	{0x30D5, 0x04},
-	{0x30D6, 0x85},
-	{0x30D7, 0x2A},
+	{0x309B, 0x28},
+	{0x309E, 0x00},
+	{0x30D5, 0x09},
+	{0x30D6, 0x01},
+	{0x30D7, 0x01},
 	{0x30D8, 0x64},
 	{0x30D9, 0x89},
-	{0x30DE, 0x00},
-	{0x3102, 0x09},
-	{0x3103, 0x23},
-	{0x3104, 0x24},
+	{0x30DE, 0x02},
+	{0x3102, 0x10},
+	{0x3103, 0x44},
+	{0x3104, 0x40},
 	{0x3105, 0x00},
-	{0x3106, 0x8B},
-	{0x3107, 0x00},
+	{0x3106, 0x0D},
+	{0x3107, 0x01},
 	{0x310A, 0x0A},
-	{0x315C, 0x4A},
-	{0x315D, 0x49},
-	{0x316E, 0x4B},
-	{0x316F, 0x4A},
+	{0x315C, 0x99},
+	{0x315D, 0x98},
+	{0x316E, 0x9A},
+	{0x316F, 0x99},
 	{0x3301, 0x03},
 	{0x3304, 0x05},
 	{0x3305, 0x04},
@@ -738,7 +739,7 @@ static struct imx091_reg imx091_1052X778_i2c[] = {
 	{0x330C, 0x08},
 	{0x330D, 0x05},
 	{0x330E, 0x03},
-	{0x3318, 0x75},
+	{0x3318, 0x73},
 	{0x3322, 0x02},
 	{0x3342, 0x0F},
 	{0x3348, 0xE0},
@@ -747,6 +748,7 @@ static struct imx091_reg imx091_1052X778_i2c[] = {
 	{0x0203, 0x00},
 	{0x0205, 0x00},
 
+	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 	{IMX091_TABLE_END, 0x00}
 };
 
@@ -1043,15 +1045,15 @@ static struct imx091_mode_data imx091_1308x736 = {
 	.p_mode_i2c			= imx091_1308x736_i2c,
 };
 
-static struct imx091_mode_data imx091_1052x778 = {
+static struct imx091_mode_data imx091_2104x1560 = {
 	.sensor_mode = {
-		.res_x			= 1024,
-		.res_y			= 768,
+		.res_x			= 2048,
+		.res_y			= 1536,
 		.active_start_x		= 0,
 		.active_stary_y		= 0,
 		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
 		.pixel_aspect_ratio	= 1000, /* / _INT2FLOAT_DIVISOR */
-		.pll_multiplier		= 5000, /* / _INT2FLOAT_DIVISOR */
+		.pll_multiplier		= 6000, /* / _INT2FLOAT_DIVISOR */
 		.crop_mode		= NVC_IMAGER_CROPMODE_NONE,
 	},
 	.sensor_dnvc = {
@@ -1065,14 +1067,14 @@ static struct imx091_mode_data imx091_1052x778 = {
 		.init_intra_frame_skip	= 0,
 		.ss_intra_frame_skip	= 2,
 		.ss_frame_number	= 3,
-		.coarse_time		= 0x08A1,
+		.coarse_time		= 0x0653,
 		.max_coarse_diff	= 5,
 		.min_exposure_course	= 2,
 		.max_exposure_course	= 0xFFFC,
 		.diff_integration_time	= 110, /* / _INT2FLOAT_DIVISOR */
-		.line_length		= 0x0906,
-		.frame_length		= 0x08A6,
-		.min_frame_length	= 0x08A6,
+		.line_length		= 0x120C,
+		.frame_length		= 0x0658,
+		.min_frame_length	= 0x0658,
 		.max_frame_length	= 0xFFFF,
 		.min_gain		= 1, /* / _INT2FLOAT_DIVISOR */
 		.max_gain		= 16000, /* / _INT2FLOAT_DIVISOR */
@@ -1080,10 +1082,10 @@ static struct imx091_mode_data imx091_1052x778 = {
 		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
 		.support_bin_control	= 0,
 		.support_fast_mode	= 0,
-		.pll_mult		= 0x20,
+		.pll_mult		= 0x2F,
 		.pll_div		= 0x2,
 	},
-	.p_mode_i2c			= imx091_1052X778_i2c,
+	.p_mode_i2c			= imx091_2104x1560_i2c,
 };
 
 static struct imx091_mode_data imx091_524x390 = {
@@ -1137,7 +1139,7 @@ static struct imx091_mode_data *imx091_mode_table[] = {
 	&imx091_4208x3120,
 	&imx091_1948x1096,
 	&imx091_1308x736,
-	&imx091_1052x778,
+	&imx091_2104x1560,
 	&imx091_524x390,
 #endif
 };
