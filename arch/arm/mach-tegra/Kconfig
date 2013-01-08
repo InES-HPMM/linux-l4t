@@ -109,6 +109,7 @@ config ARCH_TEGRA_11x_SOC
 	select ARM_CPU_SUSPEND if PM
 	select ARM_GIC
 	select ARM_L1_CACHE_SHIFT_6
+	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select CPA
 	select CPU_V7
 	select EDP_FRAMEWORK
