@@ -87,7 +87,6 @@ struct max17042_chip {
 	struct max17042_platform_data *pdata;
 	struct delayed_work work;
 	int    init_complete;
-	unsigned int ibat_safepeak;
 	unsigned int rbat_lastgood;
 	unsigned int edp_req;
 	struct delayed_work depl_work;
@@ -709,41 +708,61 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 }
 
 #ifdef CONFIG_EDP_FRAMEWORK
+struct temp_ibat_map {
+	unsigned int temp;
+	unsigned int ibat;
+};
+
+struct temp_ibat_map safe_ibat_lut[] = {
+	{  0, 5000 },
+	{ 25, 3700 },
+	{ 60, 1900 },
+	{ 70, 1600 }
+};
+
+unsigned int ibat_safepeak(int temp)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(safe_ibat_lut) - 1; i++)
+		if (temp <= safe_ibat_lut[i].temp)
+			break;
+
+	return safe_ibat_lut[i].ibat;
+}
+
 static unsigned int max17042_depletion(struct max17042_chip *chip)
 {
 	s64 avgcurrent;
 	s64 avgvcell;
 	s64 ocv;
 	s64 rbat_calc;
+	s64 temp;
 	unsigned int ibat;
 	unsigned int depl;
 	unsigned int deplmax;
+	unsigned int safe;
 	struct power_supply *psy;
 	union power_supply_propval pv;
 
 	deplmax = chip->pdata->edp_client->states[0];
 	psy = &chip->battery;
 
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_CURRENT_AVG, &pv)) {
-		WARN_ON(1);
-		return deplmax;
-	}
-
+	if (max17042_get_property(psy, POWER_SUPPLY_PROP_CURRENT_AVG, &pv))
+		goto err_ret;
 	avgcurrent = pv.intval;
 
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_AVG, &pv)) {
-		WARN_ON(1);
-		return deplmax;
-	}
-
+	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_AVG, &pv))
+		goto err_ret;
 	avgvcell = pv.intval;
 
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_OCV, &pv)) {
-		WARN_ON(1);
-		return deplmax;
-	}
-
+	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_OCV, &pv))
+		goto err_ret;
 	ocv = pv.intval;
+
+	if (max17042_get_property(psy, POWER_SUPPLY_PROP_TEMP, &pv))
+		goto err_ret;
+	temp = pv.intval;
 
 	if (avgcurrent <= -AVG_CURRENT_MIN) {
 		rbat_calc = div64_s64(1000000 * (ocv - avgvcell), -avgcurrent);
@@ -755,9 +774,13 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	ibat = (unsigned int)div64_s64(1000 * (ocv - VSYS_MIN),
 			rbat_calc + R_CONTACTS + R_BOARD + R_PASSFET);
 
-	depl = chip->ibat_safepeak - min(chip->ibat_safepeak, ibat);
-
+	safe = ibat_safepeak(temp);
+	depl = safe - min(safe, ibat);
 	return min(depl, deplmax);
+
+err_ret:
+	WARN_ON(1);
+	return deplmax;
 }
 
 static void max17042_update_depletion(struct work_struct *work)
@@ -800,7 +823,6 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 	}
 
 	c = chip->pdata->edp_client;
-	chip->ibat_safepeak = m->imax;
 	chip->rbat_lastgood = RBAT_INIT;
 	chip->edp_req = c->num_states;
 
