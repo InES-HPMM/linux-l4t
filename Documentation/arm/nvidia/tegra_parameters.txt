@@ -112,7 +112,7 @@ Contains hotplug statistics.
 Controls active CPU cluster: main (G) or shadow (LP).
 For manual control disable auto hotlug, enable immediate switch and
 possibly force switch to happen always:
-# echo 0 > /sys/module/cpu_tegra3/parameters/auto_hotplug
+# echo 0 > /sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable
 # echo 1 > /sys/kernel/cluster/immediate
 # echo 1 > /sys/kernel/cluster/force
 
@@ -123,30 +123,33 @@ Active cluster can be set or toggled:
 # echo "LP" > /sys/kernel/cluster/active
 # echo "toggle" > /sys/kernel/cluster/active
 
-/sys/module/tegra30_clocks/parameters/detach_shared_bus
+/sys/module/tegra*_clocks/parameters/detach_shared_bus
 ------------------------------------------------------
 
-Enable/disable shared bus clock update.
+Enable/disable shared bus clock update. Module name depends on Tegra
+chip version.
 
-/sys/module/tegra3_emc/parameters/emc_enable
+/sys/module/tegra*_emc/parameters/emc_enable
 --------------------------------------------
 
-Enable/disable EMC DFS.
+Enable/disable EMC DFS. Module name depends on Tegra chip version.
 
 /sys/kernel/debug/tegra_emc/stats
 ---------------------------------
 
 Contains EMC clock statistics.
 
-/sys/module/tegra3_dvfs/parameters/disable_cpu
+/sys/module/tegra*_dvfs/parameters/disable_cpu
 ----------------------------------------------
 
-Enable/disable DVFS for CPU domain.
+Enable/disable DVFS for CPU domain. Module name depends on Tegra chip
+version.
 
-/sys/module/tegra3_dvfs/parameters/disable_core
+/sys/module/tegra*_dvfs/parameters/disable_core
 -----------------------------------------------
 
-Enable/disable DVFS for CORE domain.
+Enable/disable DVFS for CORE domain. Module name depends on Tegra chip
+version.
 
 /sys/kernel/debug/clock/emc/rate
 --------------------------------
