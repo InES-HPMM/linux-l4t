@@ -2,11 +2,11 @@
  * tegra_vcm.c - Tegra machine ASoC driver for P852/P1852/P1853 Boards.
  *
  * Author: Nitin Pai <npai@nvidia.com>
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  * Stephen Warren <swarren@nvidia.com>
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -126,15 +126,19 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
-	if (err < 0)
-		dev_info(card->dev, "codec_dai fmt not set\n");
-
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
+
+	if (pdata->codec_info[codec_id].i2s_format == format_tdm)
+		i2s_daifmt |= SND_SOC_DAIFMT_NB_IF;
+
+	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+	if (err < 0)
+		dev_info(card->dev, "codec_dai fmt not set\n");
+
 	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
 					SND_SOC_CLOCK_IN);
 	if (err < 0)
@@ -149,6 +153,14 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 					pdata->codec_info[codec_id].slot_width);
 		if (err < 0)
 			dev_err(card->dev, "cpu_dai tdm mode setting not done\n");
+
+			err = snd_soc_dai_set_tdm_slot(codec_dai,
+					pdata->codec_info[codec_id].rx_mask,
+					pdata->codec_info[codec_id].tx_mask,
+					pdata->codec_info[codec_id].num_slots,
+					pdata->codec_info[codec_id].slot_width);
+		if (err < 0)
+			dev_err(card->dev, "codec_dai tdm mode setting not done\n");
 	}
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
