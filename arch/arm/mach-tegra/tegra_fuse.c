@@ -1,8 +1,6 @@
 /*
- * arch/arm/mach-tegra/fuse.c
- *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2012 NVIDIA Corp.
+ * Copyright (C) 2010-2013 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -55,40 +53,32 @@
 #include "tegra14x_fuse_offsets.h"
 #endif
 
-
-static struct kobject *fuse_kobj;
-
-static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
-								char *buf);
-static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
-	const char *buf, size_t count);
-
 static struct kobj_attribute devkey_attr =
-	__ATTR(device_key, 0440, fuse_show, fuse_store);
+	__ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute jtagdis_attr =
-	__ATTR(jtag_disable, 0440, fuse_show, fuse_store);
+	__ATTR(jtag_disable, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute odm_prod_mode_attr =
-	__ATTR(odm_production_mode, 0444, fuse_show, fuse_store);
+	__ATTR(odm_production_mode, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute sec_boot_dev_cfg_attr =
-	__ATTR(sec_boot_dev_cfg, 0440, fuse_show, fuse_store);
+	__ATTR(sec_boot_dev_cfg, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute sec_boot_dev_sel_attr =
-	__ATTR(sec_boot_dev_sel, 0440, fuse_show, fuse_store);
+	__ATTR(sec_boot_dev_sel, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute sbk_attr =
-	__ATTR(secure_boot_key, 0440, fuse_show, fuse_store);
+	__ATTR(secure_boot_key, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute sw_rsvd_attr =
-	__ATTR(sw_reserved, 0440, fuse_show, fuse_store);
+	__ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute ignore_dev_sel_straps_attr =
-	__ATTR(ignore_dev_sel_straps, 0440, fuse_show, fuse_store);
+	__ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show, tegra_fuse_store);
 
 static struct kobj_attribute odm_rsvd_attr =
-	__ATTR(odm_reserved, 0440, fuse_show, fuse_store);
+	__ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 
 #define MINOR_QT		0
 #define MINOR_FPGA		1
@@ -244,6 +234,42 @@ static struct param_info fuse_info_tbl[] = {
 		.nbits = 256,
 		.data_offset = 11,
 		.sysfs_name = "odm_reserved",
+	},
+	[PUBLIC_KEY] = {
+		.addr = fuse_info.public_key,
+		.sz = sizeof(fuse_info.public_key),
+		.start_off = PUBLIC_KEY_START_OFFSET,
+		.start_bit = PUBLIC_KEY_START_BIT,
+		.nbits = 256,
+		.data_offset = 12,
+		.sysfs_name = "public_key",
+	},
+	[PKC_DISABLE] = {
+		.addr = &fuse_info.pkc_disable,
+		.sz = sizeof(fuse_info.pkc_disable),
+		.start_off = PKC_DISABLE_START_OFFSET,
+		.start_bit = PKC_DISABLE_START_BIT,
+		.nbits = 1,
+		.data_offset = 13,
+		.sysfs_name = "pkc_disable",
+	},
+	[VP8_ENABLE] = {
+		.addr = &fuse_info.vp8_enable,
+		.sz = sizeof(fuse_info.vp8_enable),
+		.start_off = VP8_ENABLE_START_OFFSET,
+		.start_bit = VP8_ENABLE_START_BIT,
+		.nbits = 1,
+		.data_offset = 14,
+		.sysfs_name = "vp8_enable",
+	},
+	[ODM_LOCK] = {
+		.addr = &fuse_info.odm_lock,
+		.sz = sizeof(fuse_info.odm_lock),
+		.start_off = ODM_LOCK_START_OFFSET,
+		.start_bit = ODM_LOCK_START_BIT,
+		.nbits = 4,
+		.data_offset = 15,
+		.sysfs_name = "odm_lock",
 	},
 	[SBK_DEVKEY_STATUS] = {
 		.sz = SBK_DEVKEY_STATUS_SZ,
@@ -491,7 +517,7 @@ enum tegra_revision tegra_get_revision(void)
 }
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-void tegra_get_netlist_revision(u32 *netlist, u32* patchid)
+void tegra_get_netlist_revision(u32 *netlist, u32 *patchid)
 {
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
@@ -911,7 +937,8 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	}
 
 	if (fuse_odm_prod_mode() && (flags != FLAGS_ODMRSVD)) {
-		pr_err("reserved odm fuses aren't allowed in secure mode");
+		pr_err("Non ODM reserved fuses cannot be burnt after ODM"
+			"production mode/secure mode fuse is burnt");
 		return -EPERM;
 	}
 
@@ -1026,7 +1053,7 @@ static int char_to_xdigit(char c)
 	} \
 }
 
-static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 	const char *buf, size_t count)
 {
 	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
@@ -1045,8 +1072,9 @@ static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 	raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
 	raw_byte_data = (u8 *)raw_data;
 
-	if (fuse_odm_prod_mode()) {
-		pr_err("%s: device locked. odm fuse already blown\n", __func__);
+	if (fuse_odm_prod_mode() && (param != ODM_RSVD)) {
+		pr_err("%s: Non ODM reserved fuses cannot be burnt after"
+		"ODM production mode/secure mode fuse is burnt\n", __func__);
 		return -EPERM;
 	}
 
@@ -1111,7 +1139,7 @@ static ssize_t fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 		CHK_ERR(sysfs_chmod_file(kobj, &sw_rsvd_attr.attr, 0440));
 		CHK_ERR(sysfs_chmod_file(kobj, &ignore_dev_sel_straps_attr.attr,
 								0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &odm_rsvd_attr.attr, 0440));
+		tegra_fuse_ch_sysfs_perm(kobj);
 	}
 
 done:
@@ -1120,7 +1148,7 @@ done:
 	return orig_count;
 }
 
-static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
 								char *buf)
 {
 	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
@@ -1214,7 +1242,6 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 		}
 		return -ENODEV;
 	}
-	fuse_kobj = &pdev->dev.kobj;
 
 	mutex_init(&fuse_lock);
 
@@ -1227,19 +1254,23 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 		sbk_attr.attr.mode = 0640;
 		sw_rsvd_attr.attr.mode = 0640;
 		ignore_dev_sel_straps_attr.attr.mode = 0640;
-		odm_rsvd_attr.attr.mode = 0640;
 		odm_prod_mode_attr.attr.mode = 0644;
 	}
+	odm_rsvd_attr.attr.mode = 0640;
 
-	CHK_ERR(sysfs_create_file(fuse_kobj, &odm_prod_mode_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &devkey_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &jtagdis_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &sec_boot_dev_cfg_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &sec_boot_dev_sel_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &sbk_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &sw_rsvd_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &ignore_dev_sel_straps_attr.attr));
-	CHK_ERR(sysfs_create_file(fuse_kobj, &odm_rsvd_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_prod_mode_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &devkey_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &jtagdis_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&sec_boot_dev_cfg_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&sec_boot_dev_sel_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &sbk_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &sw_rsvd_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&ignore_dev_sel_straps_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_rsvd_attr.attr));
+	tegra_fuse_add_sysfs_variables(pdev, fuse_odm_prod_mode());
 	return 0;
 }
 
@@ -1253,17 +1284,16 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 	if (!IS_ERR_OR_NULL(clk_fuse))
 		clk_put(clk_fuse);
 
-	sysfs_remove_file(fuse_kobj, &odm_prod_mode_attr.attr);
-	sysfs_remove_file(fuse_kobj, &devkey_attr.attr);
-	sysfs_remove_file(fuse_kobj, &jtagdis_attr.attr);
-	sysfs_remove_file(fuse_kobj, &sec_boot_dev_cfg_attr.attr);
-	sysfs_remove_file(fuse_kobj, &sec_boot_dev_sel_attr.attr);
-	sysfs_remove_file(fuse_kobj, &sbk_attr.attr);
-	sysfs_remove_file(fuse_kobj, &sw_rsvd_attr.attr);
-	sysfs_remove_file(fuse_kobj, &ignore_dev_sel_straps_attr.attr);
-	sysfs_remove_file(fuse_kobj, &odm_rsvd_attr.attr);
-	kobject_del(fuse_kobj);
-
+	sysfs_remove_file(&pdev->dev.kobj, &odm_prod_mode_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &devkey_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &jtagdis_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &sec_boot_dev_cfg_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &sec_boot_dev_sel_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &sbk_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &sw_rsvd_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &ignore_dev_sel_straps_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &odm_rsvd_attr.attr);
+	tegra_fuse_rm_sysfs_variables(pdev);
 	return 0;
 }
 

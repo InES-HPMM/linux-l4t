@@ -1,5 +1,5 @@
 /*
- * copyright (c) 2012, nvidia corporation.
+ * Copyright (c) 2012-2013, nvidia corporation.
  *
  * this program is free software; you can redistribute it and/or modify
  * it under the terms of the gnu general public license as published by
@@ -26,32 +26,57 @@
 #ifndef __TEGRA11x_FUSE_OFFSETS_H
 #define __TEGRA11x_FUSE_OFFSETS_H
 
-#define DEVKEY_START_OFFSET 0x2C
-#define DEVKEY_START_BIT    0x07
+/* private_key4 */
+#define DEVKEY_START_OFFSET		0x2C
+#define DEVKEY_START_BIT		7
 
-#define JTAG_START_OFFSET 0x0
-#define JTAG_START_BIT    0x3
+/* arm_debug_dis */
+#define JTAG_START_OFFSET		0x0
+#define JTAG_START_BIT			3
 
-#define ODM_PROD_START_OFFSET 0x0
-#define ODM_PROD_START_BIT    0x4
+/* security_mode */
+#define ODM_PROD_START_OFFSET		0x0
+#define ODM_PROD_START_BIT		7
 
-#define SB_DEVCFG_START_OFFSET 0x2E
-#define SB_DEVCFG_START_BIT    0x07
+/* boot_device_info */
+#define SB_DEVCFG_START_OFFSET		0x2E
+#define SB_DEVCFG_START_BIT		7
 
-#define SB_DEVSEL_START_OFFSET 0x2E
-#define SB_DEVSEL_START_BIT    0x23
+/* reserved_sw[2:0] */
+#define SB_DEVSEL_START_OFFSET		0x2E
+#define SB_DEVSEL_START_BIT		23
 
-#define SBK_START_OFFSET 0x24
-#define SBK_START_BIT    0x07
+/* private_key0 -> private_key3 (SBK) */
+#define SBK_START_OFFSET		0x24
+#define SBK_START_BIT			7
 
-#define SW_RESERVED_START_OFFSET 0x2E
-#define SW_RESERVED_START_BIT    0x07
+/* reserved_sw[7:4] */
+#define SW_RESERVED_START_OFFSET	0x2E
+#define SW_RESERVED_START_BIT		27
 
-#define IGNORE_DEVSEL_START_OFFSET 0x2E
-#define IGNORE_DEVSEL_START_BIT    0x26
+/* reserved_sw[3] */
+#define IGNORE_DEVSEL_START_OFFSET	0x2E
+#define IGNORE_DEVSEL_START_BIT		26
 
-#define ODM_RESERVED_DEVSEL_START_OFFSET 0X30
-#define ODM_RESERVED_START_BIT    0X0
+/* public key */
+#define	PUBLIC_KEY_START_OFFSET		0x0A
+#define PUBLIC_KEY_START_BIT		25
+
+/* pkc_disable */
+#define PKC_DISABLE_START_OFFSET	0x5A
+#define PKC_DISABLE_START_BIT		22
+
+/* video vp8 enable */
+#define VP8_ENABLE_START_OFFSET		0x2E
+#define VP8_ENABLE_START_BIT		31
+
+/* odm lock */
+#define ODM_LOCK_START_OFFSET		0x02
+#define ODM_LOCK_START_BIT		0
+
+/* reserved_odm0 -> reserved_odm7 */
+#define ODM_RESERVED_DEVSEL_START_OFFSET	0x30
+#define ODM_RESERVED_START_BIT			0
 
 #define FUSE_VENDOR_CODE	0x200
 #define FUSE_VENDOR_CODE_MASK	0xf
@@ -71,7 +96,6 @@
 /* fuse registers used in public fuse data read API */
 #define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */
-#define FUSE_SPARE_BIT_0_0	0x244
 #define NUM_TSENSOR_SPARE_BITS	28
 /* tsensor calibration register */
 #define FUSE_TSENSOR_CALIB_0	0x198
@@ -80,6 +104,26 @@
 #define TEGRA_FUSE_SUPPLY	"vpp_fuse"
 
 int fuse_pgm_cycles[] = {130, 168, 0, 0, 192, 384, 0, 0, 120, 480, 0, 0, 260};
+
+#define CHK_ERR(x) \
+{ \
+	if (x) { \
+		pr_err("%s: sysfs_create_file fail(%d)!", __func__, x); \
+		return x; \
+	} \
+}
+
+static struct kobj_attribute public_key_attr =
+	__ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
+
+static struct kobj_attribute pkc_disable_attr =
+	__ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
+
+static struct kobj_attribute vp8_enable_attr =
+	__ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
+
+static struct kobj_attribute odm_lock_attr =
+	__ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
 int tegra_fuse_get_revision(u32 *rev)
 {
@@ -106,7 +150,7 @@ int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
 	*spare_bits = 0;
 	/* spare bits 0-27 */
 	for (i = 0; i < NUM_TSENSOR_SPARE_BITS; i++) {
-		value = tegra_fuse_readl(FUSE_SPARE_BIT_0_0 +
+		value = tegra_fuse_readl(FUSE_SPARE_BIT +
 			(i << 2));
 		if (value)
 			*spare_bits |= BIT(i);
@@ -154,23 +198,8 @@ unsigned long long tegra_chip_uid(void)
 		Total     64
 	*/
 
-	/* Get the chip id and encode each chip variant as a unique value. */
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + 0x804));
-	reg = (reg & 0xFF00) >> 8;
-
-	switch (reg) {
-	case TEGRA_CHIPID_TEGRA3:
-		cid = 0;
-		break;
-
-	case TEGRA_CHIPID_TEGRA11:
-		cid = 1;
-		break;
-
-	default:
-		BUG();
-		break;
-	}
+	/* chip id is 1 for tegra 11x */
+	cid = 1;
 
 	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
 	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
@@ -227,4 +256,43 @@ int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 	return 0;
 }
 
+int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
+					bool odm_security_mode)
+{
+	odm_lock_attr.attr.mode = 0640;
+	if (odm_security_mode) {
+		public_key_attr.attr.mode =  0440;
+		pkc_disable_attr.attr.mode = 0440;
+		vp8_enable_attr.attr.mode = 0440;
+	} else {
+		public_key_attr.attr.mode =  0640;
+		pkc_disable_attr.attr.mode = 0640;
+		vp8_enable_attr.attr.mode = 0640;
+	}
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &public_key_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &pkc_disable_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &vp8_enable_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_lock_attr.attr));
+
+	return 0;
+}
+
+int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
+{
+	sysfs_remove_file(&pdev->dev.kobj, &public_key_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &pkc_disable_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &vp8_enable_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &odm_lock_attr.attr);
+
+	return 0;
+}
+
+int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
+{
+	CHK_ERR(sysfs_chmod_file(kobj, &public_key_attr.attr, 0440));
+	CHK_ERR(sysfs_chmod_file(kobj, &pkc_disable_attr.attr, 0440));
+	CHK_ERR(sysfs_chmod_file(kobj, &vp8_enable_attr.attr, 0440));
+
+	return 0;
+}
 #endif /* __TEGRA11x_FUSE_OFFSETS_H */

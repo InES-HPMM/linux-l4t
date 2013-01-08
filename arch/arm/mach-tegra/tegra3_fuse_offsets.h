@@ -1,5 +1,5 @@
 /*
- * copyright (c) 2012, nvidia corporation.
+ * Copyright (c) 2012-2013, nvidia corporation.
  *
  * this program is free software; you can redistribute it and/or modify
  * it under the terms of the gnu general public license as published by
@@ -80,7 +80,6 @@
 /* fuse registers used in public fuse data read API */
 #define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */
-#define FUSE_SPARE_BIT_0_0	0x244
 #define NUM_TSENSOR_SPARE_BITS	28
 /* tsensor calibration register */
 #define FUSE_TSENSOR_CALIB_0	0x198
@@ -114,7 +113,7 @@ int tegra_fuse_get_tsensor_spare_bits(u32 *spare_bits)
 	*spare_bits = 0;
 	/* spare bits 0-27 */
 	for (i = 0; i < NUM_TSENSOR_SPARE_BITS; i++) {
-		value = tegra_fuse_readl(FUSE_SPARE_BIT_0_0 +
+		value = tegra_fuse_readl(FUSE_SPARE_BIT +
 			(i << 2));
 		if (value)
 			*spare_bits |= BIT(i);
@@ -162,23 +161,8 @@ unsigned long long tegra_chip_uid(void)
 		Total     64
 	*/
 
-	/* Get the chip id and encode each chip variant as a unique value. */
-	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + 0x804));
-	reg = (reg & 0xFF00) >> 8;
-
-	switch (reg) {
-	case TEGRA_CHIPID_TEGRA3:
-		cid = 0;
-		break;
-
-	case TEGRA_CHIPID_TEGRA11:
-		cid = 1;
-		break;
-
-	default:
-		BUG();
-		break;
-	}
+	/* chip id is 0 for tegra 3 */
+	cid = 0;
 
 	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
 	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
@@ -209,5 +193,4 @@ unsigned long long tegra_chip_uid(void)
 	    | ((unsigned long long)y << 0ull);
 	return uid;
 }
-
 #endif /* __TEGRA3_FUSE_OFFSETS_H */

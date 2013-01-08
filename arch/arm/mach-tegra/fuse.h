@@ -1,8 +1,6 @@
 /*
- * arch/arm/mach-tegra/fuse.h
- *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2012 NVIDIA Corp.
+ * Copyright (C) 2010-2013 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -22,6 +20,8 @@
 #include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
 
 #include "apbio.h"
 
@@ -116,6 +116,10 @@ enum fuse_io_param {
 	SW_RSVD, /* 4 bits long */
 	IGNORE_DEV_SEL_STRAPS, /* 1 bit long */
 	ODM_RSVD,
+	PUBLIC_KEY,
+	PKC_DISABLE, /* 1 bit long */
+	VP8_ENABLE, /* 1 bit long */
+	ODM_LOCK, /* 4 bits long */
 	SBK_DEVKEY_STATUS,
 	_PARAMS_U32 = 0x7FFFFFFF
 };
@@ -157,6 +161,10 @@ struct fuse_data {
 	u32 sw_rsvd;
 	u32 ignore_devsel_straps;
 	u32 odm_rsvd[8];
+	u32 public_key[8];
+	u32 pkc_disable;
+	u32 vp8_enable;
+	u32 odm_lock;
 };
 
 extern int tegra_sku_id;
@@ -165,6 +173,41 @@ extern int tegra_bct_strapping;
 
 u32 tegra_fuse_readl(unsigned long offset);
 void tegra_fuse_writel(u32 val, unsigned long offset);
+
+ssize_t tegra_fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+								char *buf);
+ssize_t tegra_fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+					const char *buf, size_t count);
+
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#define PUBLIC_KEY_START_OFFSET	0x0
+#define PUBLIC_KEY_START_BIT	0
+
+#define PKC_DISABLE_START_OFFSET	0x0
+#define PKC_DISABLE_START_BIT		0
+
+#define VP8_ENABLE_START_OFFSET	0x0
+#define VP8_ENABLE_START_BIT	0
+
+#define ODM_LOCK_START_OFFSET	0x0
+#define ODM_LOCK_START_BIT	0
+
+static inline int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
+					bool odm_prod_mode)
+{
+	return -ENOENT;
+}
+
+static inline int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
+{
+	return -ENOENT;
+}
+
+static inline int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
+{
+	return -ENOENT;
+}
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 static inline int tegra_fuse_get_revision(u32 *rev)
