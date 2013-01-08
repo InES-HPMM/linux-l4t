@@ -154,6 +154,7 @@ struct dfll_rate_req {
 	u8	freq;
 	u8	scale;
 	u8	output;
+	u8	cap;
 };
 
 struct tegra_cl_dvfs {
@@ -323,7 +324,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	switch (cld->tune_state) {
 	case TEGRA_CL_DVFS_TUNE_LOW:
-		if (req->output > cld->tune_high_out_start) {
+		if (req->cap > cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST);
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
 		}
@@ -331,7 +332,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	case TEGRA_CL_DVFS_TUNE_HIGH:
 	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST:
-		if (req->output <= cld->tune_high_out_start) {
+		if (req->cap <= cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 			cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0,
 				       CL_DVFS_TUNE0);
@@ -343,8 +344,13 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	}
 
 	out_min = get_output_min(cld);
-	out_max = max(req->output, (u8)(cld->safe_ouput + 1));
-	out_max = max(out_max, out_min);
+	if (req->cap > (out_min + 1))
+		req->output = req->cap - 1;
+	else
+		req->output = out_min + 1;
+	if (req->output == cld->safe_ouput)
+		req->output++;
+	out_max = max((req->output + 1), (cld->safe_ouput + 1));
 
 	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 	val &= ~(CL_DVFS_OUTPUT_CFG_MAX_MASK | CL_DVFS_OUTPUT_CFG_MIN_MASK);
@@ -647,6 +653,7 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cld->dfll_rate_min = cld->safe_dvfs->dfll_data.out_rate_min;
 	cld->dfll_rate_min = ROUND_MIN_RATE(cld->dfll_rate_min, cld->ref_rate);
 
+	cld->last_req.cap = 0;
 	cld->last_req.freq = 0;
 	cld->last_req.output = 0;
 	cld->last_req.scale = SCALE_MAX - 1;
@@ -1067,6 +1074,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 		       __func__, rate);
 		return -EINVAL;
 	}
+	req.cap = req.output;
 
 	/*
 	 * Save validated request, and in CLOSED_LOOP mode actually update
