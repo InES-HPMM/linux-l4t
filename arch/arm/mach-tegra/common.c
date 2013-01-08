@@ -158,7 +158,7 @@ static unsigned long tegra_bb_ipc_size;
 
 #define NEVER_RESET 0
 
-inline void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
+void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 {
 	unsigned long check;
 	int retry = 10;

@@ -13,4 +13,4 @@ extern void tegra_cpu_die(unsigned int cpu);
 extern int tegra_cpu_kill(unsigned int cpu);
 extern unsigned long tegra_avp_kernel_start;
 extern unsigned long tegra_avp_kernel_size;
-inline void ahb_gizmo_writel(unsigned long val, void __iomem *reg);
+void ahb_gizmo_writel(unsigned long val, void __iomem *reg);
