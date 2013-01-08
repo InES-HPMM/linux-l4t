@@ -1,8 +1,11 @@
 GCOV_PROFILE := y
 
 asflags-y				+= -march=armv7-a
-#Keep -Werror disabled until most of the options are enabled.
-#subdir-ccflags-y := -Werror
+#FIXME: Enabling -Werror all at once is too hard.
+#CONFIG_ARCH_TEGRA_11x_SOC in the next step.
+ifneq ($(CONFIG_ARCH_TEGRA_11x_SOC),y)
+subdir-ccflags-y := -Werror
+endif
 
 obj-y                                   += board-pinmux.o
 obj-y                                   += ahb.o

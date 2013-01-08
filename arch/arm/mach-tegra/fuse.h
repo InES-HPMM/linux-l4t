@@ -22,6 +22,7 @@
 #include <mach/hardware.h>
 #include <linux/sysfs.h>
 #include <linux/kobject.h>
+#include <linux/platform_device.h>
 
 #include "apbio.h"
 

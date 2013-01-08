@@ -23,11 +23,13 @@
 #include "powergate-ops-txx.h"
 #include "powergate-ops-t1xx.h"
 
+#if 0
 static struct powergate_ops tegra14x_powergate_ops = {
 	.soc_name = "tegra14x",
 
 	.num_powerdomains = TEGRA_NUM_POWERGATE,
 };
+#endif
 
 struct powergate_ops *tegra14x_powergate_init_chip_support(void)
 {

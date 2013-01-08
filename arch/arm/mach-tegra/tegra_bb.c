@@ -290,7 +290,7 @@ static ssize_t show_tegra_bb_retcode(struct device *dev,
 
 	retcode = *(int *)((unsigned long)bb->mb_virt + TEGRA_BB_REG_RETCODE);
 	dev_dbg(&pdev->dev, "%s retcode=%d\n", __func__, (int)retcode);
-	return sprintf(buf, "%d\n", (int)retcode);
+	return sprintf(buf, "%d\n", retcode);
 }
 static DEVICE_ATTR(retcode, S_IRUSR | S_IRGRP, show_tegra_bb_retcode, NULL);
 

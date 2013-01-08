@@ -19,6 +19,7 @@
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include <linux/export.h>
 #include "board.h"
 #include <mach/board_id.h>
 

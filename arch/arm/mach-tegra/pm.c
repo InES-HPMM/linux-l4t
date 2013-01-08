@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -600,7 +600,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 {
 	u32 reg;
 	unsigned int remain;
-#ifdef CONFIG_CACHE_L2X0
+#if defined(CONFIG_CACHE_L2X0) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	pgd_t *pgd;
 #endif
 

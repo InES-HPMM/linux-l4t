@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_dvfs.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -474,7 +474,7 @@ void __init tegra14x_init_dvfs(void)
 
 	int i, ret;
 	int core_nominal_mv_index;
-	int cpu_max_freq_index;
+	int cpu_max_freq_index = 0;
 
 #ifndef CONFIG_TEGRA_CORE_DVFS
 	tegra_dvfs_core_disabled = true;

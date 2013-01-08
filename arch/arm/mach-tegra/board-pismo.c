@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pismo.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -658,13 +658,6 @@ static void __init pismo_spi_init(void)
 	platform_add_devices(pismo_spi_devices,
 			ARRAY_SIZE(pismo_spi_devices));
 }
-
-static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "extern2",    "pll_p",        41000000,       false},
-	{ "clk_out_2",  "extern2",      40800000,       false},
-	{ NULL,         NULL,           0,              0},
-};
 
 struct rm_spi_ts_platform_data rm31080ts_pismo_data = {
 	.gpio_reset = 0,
