@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/common.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -733,7 +733,7 @@ void __init tegra14x_init_early(void)
 	tegra_cpu_reset_handler_init();
 #endif
 	tegra_init_fuse();
-	tegra11x_init_clocks(); /* using Tegra11x for now */
+	tegra14x_init_clocks();
 	tegra14x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra14x_clk_init_table);
@@ -1565,6 +1565,9 @@ static const char * __init tegra_get_family(void)
 		break;
 	case TEGRA_CHIPID_TEGRA11:
 		cid = 11;
+		break;
+	case TEGRA_CHIPID_TEGRA14:
+		cid = 14;
 		break;
 
 	case TEGRA_CHIPID_UNKNOWN:
