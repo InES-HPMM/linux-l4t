@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_wakeup_monitor.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,9 +22,10 @@
 /* Wakeup source */
 #define TEGRA_WAKEUP_SOURCE_OTHERS	0
 #define TEGRA_WAKEUP_SOURCE_WIFI	1
+#define TEGRA_WAKEUP_SOURCE_RTC		2
 
 /* Wow wakeup event*/
-#define TEGRA_WOW_WAKEUP_ENABLE	"TEGRA_WOW_WAKEUP_ENABLE=1"
+#define TEGRA_WOW_WAKEUP_ENABLE		"TEGRA_WOW_WAKEUP_ENABLE=1"
 #define TEGRA_WOW_WAKEUP_DISABLE	"TEGRA_WOW_WAKEUP_ENABLE=0"
 
 /* Suspend prepare uevent string */
@@ -36,11 +37,15 @@
 #define TEGRA_POST_SUSPEND_UEVENT	"PM_POST_SUSPEND"
 
 /* Timeout to get cmd from up-lever */
-#define TEGRA_WAKEUP_MONITOR_CMD_TIMEOUT_MS	100
+#define TEGRA_WAKEUP_MONITOR_CMD_TIMEOUT_MS	1000
 
 /* tegra wakeup monitor platform data */
 struct tegra_wakeup_monitor_platform_data {
 	int wifi_wakeup_source;
+	int rtc_wakeup_source;
 };
+
+extern uint32_t get_rtc_wakeup_src(void);
+extern void set_rtc_wakeup_src(uint32_t value);
 
 #endif /* __MACH_TEGRA_WAKEUP_MONITOR_H */
