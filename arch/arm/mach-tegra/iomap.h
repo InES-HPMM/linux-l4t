@@ -41,7 +41,11 @@
 #endif
 
 #define TEGRA_IRAM_BASE			0x40000000
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define TEGRA_IRAM_SIZE			(192 * SZ_1K)
+#else
 #define TEGRA_IRAM_SIZE			SZ_256K
+#endif
 
 /* First 1K of IRAM is reserved for cpu reset handler. */
 #define TEGRA_RESET_HANDLER_BASE	TEGRA_IRAM_BASE
