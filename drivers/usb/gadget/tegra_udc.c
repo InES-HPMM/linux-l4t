@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -1294,7 +1294,7 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 
 	switch (udc->connect_type) {
 	case CONNECT_TYPE_NONE:
-		pr_debug("detected USB charging is disabled");
+		pr_debug("cable/charger is not connected");
 		max_ua = 0;
 		break;
 	case CONNECT_TYPE_SDP:
@@ -1370,7 +1370,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 
 	if (udc->vbus_active && !is_active) {
 		/* If cable disconnected, cancel any delayed work */
-		cancel_delayed_work(&udc->work);
+		cancel_delayed_work(&udc->non_std_charger_work);
 		spin_lock_irqsave(&udc->lock, flags);
 		/* reset all internal Queues and inform client driver */
 		reset_queues(udc);
@@ -1403,8 +1403,9 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 			 * a non-standard charger if setup packet is not
 			 * received.
 			 */
-			schedule_delayed_work(&udc->work, msecs_to_jiffies(
-					USB_CHARGER_DETECTION_WAIT_TIME_MS));
+			schedule_delayed_work(&udc->non_std_charger_work,
+				msecs_to_jiffies(
+				USB_CHARGER_DETECTION_WAIT_TIME_MS));
 		}
 		/* start the controller */
 		dr_controller_run(udc);
@@ -1427,10 +1428,10 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 	struct tegra_udc *udc;
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
-	/* check udc regulator is available for drawing the vbus current */
-	if (udc->vbus_reg) {
+	/* Do not set current limits for CDP ports */
+	if (udc->connect_type != CONNECT_TYPE_CDP) {
 		udc->current_limit = mA;
-		schedule_work(&udc->charger_work);
+		schedule_work(&udc->current_work);
 	}
 
 	if (!IS_ERR_OR_NULL(udc->transceiver))
@@ -2209,7 +2210,7 @@ static void reset_irq(struct tegra_udc *udc)
 static void tegra_udc_set_current_limit_work(struct work_struct *work)
 {
 	struct tegra_udc *udc = container_of(work, struct tegra_udc,
-						charger_work);
+						current_work);
 	/* check udc regulator is available for drawing vbus current*/
 	if (udc->vbus_reg) {
 		/* set the current limit in uA */
@@ -2254,9 +2255,10 @@ static void tegra_udc_irq_work(struct work_struct *irq_work)
  * standard device; If we did not receive EP0 setup packet, we can assuming it
  * is a charger capable of 1.8A charging.
  */
-static void tegra_udc_charger_detect_work(struct work_struct *work)
+static void tegra_udc_non_std_charger_detect_work(struct work_struct *work)
 {
-	struct tegra_udc *udc = container_of(work, struct tegra_udc, work.work);
+	struct tegra_udc *udc = container_of(work, struct tegra_udc,
+					non_std_charger_work.work);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	udc->connect_type = CONNECT_TYPE_NON_STANDARD_CHARGER;
@@ -2343,7 +2345,7 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 				EP_SETUP_STATUS_EP0) {
 			/* Setup packet received, we are connected to host
 			 * and not to charger. Cancel any delayed work */
-			__cancel_delayed_work(&udc->work);
+			__cancel_delayed_work(&udc->non_std_charger_work);
 			tripwire_handler(udc, 0,
 					(u8 *) (&udc->local_setup_buff));
 			setup_received_irq(udc, &udc->local_setup_buff);
@@ -2750,9 +2752,9 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
-	/* Create a delayed work for detecting the USB charger */
-	INIT_DELAYED_WORK(&udc->work, tegra_udc_charger_detect_work);
-	INIT_WORK(&udc->charger_work, tegra_udc_set_current_limit_work);
+	INIT_DELAYED_WORK(&udc->non_std_charger_work,
+			tegra_udc_non_std_charger_detect_work);
+	INIT_WORK(&udc->current_work, tegra_udc_set_current_limit_work);
 	/* Get the regulator for drawing the vbus current in udc driver */
 	udc->vbus_reg = regulator_get(&pdev->dev, "usb_bat_chg");
 	if (IS_ERR(udc->vbus_reg)) {
@@ -2827,7 +2829,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	usb_del_gadget_udc(&udc->gadget);
 	udc->done = &done;
 
-	cancel_delayed_work(&udc->work);
+	cancel_delayed_work(&udc->non_std_charger_work);
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	cancel_work_sync(&udc->boost_cpufreq_work);
 #endif

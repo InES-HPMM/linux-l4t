@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -39,7 +39,7 @@
 
  /* Charger current limit=1800mA, as per the USB charger spec */
 #define USB_CHARGING_DCP_CURRENT_LIMIT_UA 1800000
-#define USB_CHARGING_CDP_CURRENT_LIMIT_UA 900000
+#define USB_CHARGING_CDP_CURRENT_LIMIT_UA 1500000
 #define USB_CHARGING_SDP_CURRENT_LIMIT_UA 100000
 #define USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA 1800000
 
@@ -424,10 +424,11 @@ struct tegra_udc {
 	struct ep_queue_head *ep_qh;	/* Endpoints Queue-Head */
 	struct tegra_req *status_req;	/* ep0 status request */
 	struct dma_pool *td_pool;	/* dma pool for DTD */
-	struct delayed_work work;       /* delayed work for charger detection */
 	struct regulator *vbus_reg;	/* regulator for drawing VBUS */
+	/* delayed work for non standard charger detection */
+	struct delayed_work non_std_charger_work;
 	/* work for setting regulator current limit */
-	struct work_struct charger_work;
+	struct work_struct current_work;
 	/* work for boosting cpu frequency */
 	struct work_struct boost_cpufreq_work;
 	/* irq work for controlling the usb power */
