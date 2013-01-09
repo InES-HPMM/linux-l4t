@@ -207,6 +207,16 @@ static inline int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
 {
 	return -ENOENT;
 }
+
+static inline int tegra_apply_fuse(void)
+{
+	return 0;
+}
+#else
+static inline int tegra_apply_fuse(void)
+{
+	return -ENOENT;
+}
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

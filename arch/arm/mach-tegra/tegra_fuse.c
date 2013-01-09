@@ -1009,17 +1009,19 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 	/* disable software writes to the fuse registers */
 	tegra_fuse_writel(1, FUSE_WRITE_ACCESS);
 
-	/* apply the fuse values immediately instead of resetting the chip */
-	fuse_cmd_sense();
+	if (!tegra_apply_fuse()) {
 
-	tegra_fuse_writel(START_DATA | SKIP_RAMREPAIR, FUSE_PRIV2INTFC);
+		fuse_cmd_sense();
+		tegra_fuse_writel(START_DATA | SKIP_RAMREPAIR, FUSE_PRIV2INTFC);
 
-	/* check sense and shift done in addition to IDLE */
-	do {
-		mdelay(1);
-		reg = tegra_fuse_readl(FUSE_CTRL);
-		reg &= (FUSE_SENSE_DONE_BIT | STATE_IDLE);
-	} while ((reg != (FUSE_SENSE_DONE_BIT | STATE_IDLE)) && (--delay > 0));
+		/* check sense and shift done in addition to IDLE */
+		do {
+			mdelay(1);
+			reg = tegra_fuse_readl(FUSE_CTRL);
+			reg &= (FUSE_SENSE_DONE_BIT | STATE_IDLE);
+		} while ((reg != (FUSE_SENSE_DONE_BIT | STATE_IDLE))
+						&& (--delay > 0));
+	}
 
 	clk_disable(clk_fuse);
 
