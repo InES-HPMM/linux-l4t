@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_clocks.c
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6383,8 +6383,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartc_dbg",	"serial8250.0",		"uartc", 55,	0x1a0,	408000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd", 65,	0x1c0,	408000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 #ifdef CONFIG_ARCH_TEGRA_VIC
-	PERIPH_CLK("vic03",	"vic03",		NULL,	10,	0x650,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | MUX8 | DIV_U71),
-	//PERIPH_CLK("vic03",	"vic03",		NULL,	180,	0x650,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | MUX8 | DIV_U71),
+	PERIPH_CLK("vic03",	"vic03",		NULL,	180,	0x678,	500000000, mux_pllm_pllc_pllp_plla_pllc2_c3_clkm,	MUX | MUX8 | DIV_U71),
 #endif
 	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | MUX8 | DIV_U71,	&tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
