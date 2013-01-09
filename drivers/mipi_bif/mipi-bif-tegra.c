@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/mipi-bif-tegra.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/clk.h>
 #define TEGRA_MIPIBIF_TIMEOUT 1000
@@ -479,6 +480,8 @@ tegra_mipi_bif_program_timings(struct tegra_mipi_bif_dev *mipi_bif_dev)
 static int tegra_mipi_bif_init(struct tegra_mipi_bif_dev *mipi_bif_dev)
 {
 	u32 fifo_control;
+
+	pm_runtime_get_sync(mipi_bif_dev->dev);
 	clk_prepare_enable(mipi_bif_dev->mipi_bif_clk);
 
 	tegra_periph_reset_assert(mipi_bif_dev->mipi_bif_clk);
@@ -497,6 +500,7 @@ static int tegra_mipi_bif_init(struct tegra_mipi_bif_dev *mipi_bif_dev)
 	tegra_mipi_bif_program_timings(mipi_bif_dev);
 
 	clk_disable_unprepare(mipi_bif_dev->mipi_bif_clk);
+	pm_runtime_put(mipi_bif_dev->dev);
 	return 0;
 }
 
@@ -613,7 +617,7 @@ tegra_mipi_bif_xfer(struct mipi_bif_adapter *adap, struct mipi_bif_msg *msg)
 	}
 
 	tegra_mipi_bif_init(mipi_bif_dev);
-
+	pm_runtime_get_sync(mipi_bif_dev->dev);
 	clk_prepare_enable(mipi_bif_dev->mipi_bif_clk);
 
 	tegra_mipi_bif_flush_fifos(mipi_bif_dev);
@@ -758,6 +762,7 @@ tegra_mipi_bif_xfer(struct mipi_bif_adapter *adap, struct mipi_bif_msg *msg)
 		ret = -EIO;
 
 	clk_disable_unprepare(mipi_bif_dev->mipi_bif_clk);
+	pm_runtime_put(mipi_bif_dev->dev);
 	rt_mutex_unlock(&mipi_bif_dev->dev_lock);
 	return ret;
 }
@@ -856,7 +861,7 @@ err:
 
 static int tegra_mipi_bif_remove(struct platform_device *pdev)
 {
-
+	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
 static int tegra_mipi_bif_probe(struct platform_device *pdev)
@@ -921,6 +926,8 @@ static int tegra_mipi_bif_probe(struct platform_device *pdev)
 							mipi_bif_dev->irq);
 		return ret;
 	}
+
+	pm_runtime_enable(&pdev->dev);
 
 	platform_set_drvdata(pdev, mipi_bif_dev);
 
