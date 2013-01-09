@@ -695,10 +695,7 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	/* config debouncer */
 	val = readl(pmc_base + PMC_USB_DEBOUNCE);
 	val &= ~UTMIP_LINE_DEB_CNT(~0);
-	if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN)
-		val |= UTMIP_LINE_DEB_CNT(4);
-	else
-		val |= UTMIP_LINE_DEB_CNT(1);
+	val |= UTMIP_LINE_DEB_CNT(1);
 	val |= PMC_USB_DEBOUNCE_VAL(2);
 	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
@@ -767,8 +764,10 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 			writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 		} else {
 			val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
-			val &= ~(UTMIP_AP_B | UTMIP_HIGHZ_B | UTMIP_AP_C |
-				UTMIP_HIGHZ_C | UTMIP_AP_D | UTMIP_HIGHZ_D);
+			val &= ~(UTMIP_AN_A | UTMIP_AP_B | UTMIP_HIGHZ_B |
+				 UTMIP_AP_C | UTMIP_HIGHZ_C | UTMIP_AP_D |
+				 UTMIP_HIGHZ_D);
+			val |= UTMIP_AP_A;
 			writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 		}
 		phy->pmc_remote_wakeup = false;
