@@ -333,12 +333,6 @@ static inline int regulator_list_voltage(struct regulator *regulator,
 	return 0;
 }
 
-static inline int regulator_is_supported_voltage(struct regulator *regulator,
-						 int min_uV, int max_uV)
-{
-	return 0;
-}
-
 static inline int regulator_set_voltage(struct regulator *regulator,
 					int min_uV, int max_uV)
 {
