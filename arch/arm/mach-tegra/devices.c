@@ -943,8 +943,8 @@ static struct resource tegra_xusb_resources[] = {
 		.flags  = IORESOURCE_IRQ,
 	},
 	[2] = {
-		.start  = INT_USB3_NOT_SMI,
-		.end    = INT_USB3_NOT_SMI,
+		.start  = INT_USB3_HOST_SMI,
+		.end    = INT_USB3_HOST_SMI,
 		.flags  = IORESOURCE_IRQ,
 	},
 	[3] = {
