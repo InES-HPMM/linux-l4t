@@ -49,6 +49,8 @@
 #include "tegra3_fuse_offsets.h"
 #elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #include "tegra11x_fuse_offsets.h"
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#include "tegra12x_fuse_offsets.h"
 #else
 #include "tegra14x_fuse_offsets.h"
 #endif
