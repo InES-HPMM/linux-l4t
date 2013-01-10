@@ -103,4 +103,40 @@ struct tegra11_emc_pdata {
 	struct tegra11_emc_table *tables;
 };
 
+/* !!!FIXME!!! Need actual Tegra14x values */
+#define TEGRA14_EMC_MAX_NUM_REGS	140
+
+struct tegra14_emc_table {
+	u8 rev;
+	unsigned long rate;
+	int emc_min_mv;
+	const char *src_name;
+	u32 src_sel_reg;
+
+	int burst_regs_num;
+	int burst_up_down_regs_num;
+
+	/* unconditionally updated in one burst shot */
+	u32 burst_regs[TEGRA14_EMC_MAX_NUM_REGS];
+
+	/* one burst shot, but update time depends on rate change direction */
+	u32 burst_up_down_regs[TEGRA14_EMC_MAX_NUM_REGS];
+
+	/* updated separately under some conditions */
+	u32 emc_zcal_cnt_long;
+	u32 emc_acal_interval;
+	u32 emc_cfg;
+	u32 emc_mode_reset;
+	u32 emc_mode_1;
+	u32 emc_mode_2;
+	u32 emc_mode_4;
+	u32 clock_change_latency;
+};
+
+struct tegra14_emc_pdata {
+	const char *description;
+	int num_tables;
+	struct tegra14_emc_table *tables;
+};
+
 #endif
