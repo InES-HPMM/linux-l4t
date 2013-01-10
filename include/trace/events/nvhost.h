@@ -3,7 +3,7 @@
  *
  * Nvhost event logging to ftrace.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -353,6 +353,54 @@ TRACE_EVENT(nvhost_channel_context_restore,
 	  __entry->name, __entry->ctx)
 );
 
+TRACE_EVENT(nvhost_ioctl_channel_set_ctxswitch,
+	TP_PROTO(const char *name, void *ctx,
+		u32 save_mem, u32 save_offset, u32 save_words,
+		u32 restore_mem, u32 restore_offset, u32 restore_words,
+		u32 syncpt_id, u32 waitbase, u32 save_incrs, u32 restore_incrs),
+
+	TP_ARGS(name, ctx,
+		save_mem, save_offset, save_words,
+		restore_mem, restore_offset, restore_words,
+		syncpt_id, waitbase, save_incrs, restore_incrs),
+
+	TP_STRUCT__entry(
+		__field(const char *, name)
+		__field(void *, ctx)
+		__field(u32, save_mem)
+		__field(u32, save_offset)
+		__field(u32, save_words)
+		__field(u32, restore_mem)
+		__field(u32, restore_offset)
+		__field(u32, restore_words)
+		__field(u32, syncpt_id)
+		__field(u32, waitbase)
+		__field(u32, save_incrs)
+		__field(u32, restore_incrs)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->ctx = ctx;
+		__entry->save_mem = save_mem;
+		__entry->save_offset = save_offset;
+		__entry->save_words = save_words;
+		__entry->restore_mem = restore_mem;
+		__entry->restore_offset = restore_offset;
+		__entry->restore_words = restore_words;
+		__entry->syncpt_id = syncpt_id;
+		__entry->waitbase = waitbase;
+		__entry->save_incrs = save_incrs;
+		__entry->restore_incrs = restore_incrs;
+	),
+
+	TP_printk("name=%s, ctx=%p, save_mem=%08x, save_offset=%d, save_words=%d, restore_mem=%08x, restore_offset=%d, restore_words=%d, syncpt_id=%d, waitbase=%d, save_incrs=%d, restore_incrs=%d",
+	  __entry->name, __entry->ctx,
+	  __entry->save_mem, __entry->save_offset, __entry->save_words,
+	  __entry->restore_mem, __entry->restore_offset, __entry->restore_words,
+	  __entry->syncpt_id, __entry->waitbase,
+	  __entry->save_incrs, __entry->restore_incrs)
+);
 TRACE_EVENT(nvhost_ctrlopen,
 	TP_PROTO(const char *name),
 	TP_ARGS(name),
