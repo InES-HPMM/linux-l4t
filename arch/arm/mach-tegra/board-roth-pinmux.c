@@ -217,7 +217,7 @@ static __initdata struct tegra_pingroup_config roth_pinmux_set_nontristate[] = {
 	DEFAULT_PINMUX(GMI_ADV_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_CLK,         GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_CS0_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GMI_CS2_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS2_N,       GMI,    PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_CS3_N,       GMI,    PULL_UP,      NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GMI_CS4_N,       GMI,    PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GMI_CS7_N,       GMI,    PULL_UP,      NORMAL,    INPUT),

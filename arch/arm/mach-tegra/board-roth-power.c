@@ -163,7 +163,6 @@ static struct regulator_consumer_supply palmas_smps3_supply[] = {
 	REGULATOR_SUPPLY("dbvdd", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0068"),
-	REGULATOR_SUPPLY("dvdd", "spi3.2"),
 };
 
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
@@ -441,6 +440,11 @@ static struct regulator_consumer_supply fixed_reg_avdd_ts_supply[] = {
 	REGULATOR_SUPPLY("avdd", "spi3.2"),
 };
 
+/* EN_1V8_TS From TEGRA_GPIO_PK3 */
+static struct regulator_consumer_supply fixed_reg_dvdd_ts_supply[] = {
+	REGULATOR_SUPPLY("dvdd", "spi3.2"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
@@ -495,15 +499,19 @@ FIXED_REG(3,	avdd_ts,	avdd_ts,
 	palmas_rails(regen1),	0,	0,
 	TEGRA_GPIO_PH5,	false,	true,	0,	3300);
 
-FIXED_REG(4,	com_3v3,	com_3v3,
+FIXED_REG(4,	dvdd_ts,	dvdd_ts,
+	palmas_rails(smps3),	0,	0,
+	TEGRA_GPIO_PK3,	false,	true,	0,	1800);
+
+FIXED_REG(5,	com_3v3,	com_3v3,
 	palmas_rails(regen1),	0,	0,
 	TEGRA_GPIO_PX7,	false,	true,	0,	3300);
 
-FIXED_REG(5,	sd_3v3,	sd_3v3,
+FIXED_REG(6,	sd_3v3,	sd_3v3,
 	palmas_rails(regen1),	0,	0,
 	TEGRA_GPIO_PH0,	false,	true,	0,	3300);
 
-FIXED_REG(6,	com_1v8,	com_1v8,
+FIXED_REG(7,	com_1v8,	com_1v8,
 	palmas_rails(smps3),	0,	0,
 	TEGRA_GPIO_PX1,	false,	true,	0,	1800);
 
@@ -532,6 +540,7 @@ static struct platform_device *fixed_reg_devs_roth[] = {
 	ADD_FIXED_REG(vdd_hdmi_5v0),
 	ADD_FIXED_REG(lcd_bl_en),
 	ADD_FIXED_REG(avdd_ts),
+	ADD_FIXED_REG(dvdd_ts),
 	ADD_FIXED_REG(com_3v3),
 	ADD_FIXED_REG(sd_3v3),
 	ADD_FIXED_REG(com_1v8),
