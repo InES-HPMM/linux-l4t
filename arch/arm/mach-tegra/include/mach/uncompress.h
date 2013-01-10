@@ -1,9 +1,8 @@
 /*
- * arch/arm/mach-tegra/include/mach/uncompress.h
+* arch/arm/mach-tegra/include/mach/uncompress.h
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2011 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA CORPORATION. All Rights Reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -11,7 +10,7 @@
  *	Doug Anderson <dianders@chromium.org>
  *	Stephen Warren <swarren@nvidia.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA CORPORATION. All Rights Reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -189,6 +188,19 @@ int auto_odmdata(void)
 }
 #endif
 
+
+static inline int tegra_platform_is_fpga(void)
+{
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	u32 chip_id = *(volatile u32 *)(TEGRA_APB_MISC_BASE + 0x804);
+	u32 minor = chip_id >> 16 & 0xf;
+
+	return (minor == 1);
+#else
+	return 0;
+#endif
+}
+
 /*
  * Setup before decompression.  This is where we do UART selection for
  * earlyprintk and init the uart_base register.
@@ -225,13 +237,12 @@ static inline void arch_decomp_setup(void)
 
 
 	addr = (volatile u32 *)DEBUG_UART_CLK_SRC;
-#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
-/* Debug UART clock source is clk_m on FGPA Platforms. */
-	*addr = DEBUG_UART_CLK_CLKM << DEBUG_UART_CLK_SHIFT;
-#else
-/* Debug UART clock source is PLLP_OUT0. */
-	*addr = 0;
-#endif
+	if (tegra_platform_is_fpga())
+		/* Debug UART clock source is clk_m on FGPA Platforms. */
+		*addr = DEBUG_UART_CLK_CLKM << DEBUG_UART_CLK_SHIFT;
+	else
+		/* Debug UART clock source is PLLP_OUT0. */
+		*addr = 0;
 
 	/* Enable clock to debug UART. */
 	addr = (volatile u32 *)DEBUG_UART_CLK_ENB_SET_REG;
@@ -253,36 +264,37 @@ static inline void arch_decomp_setup(void)
 	 * depending on oscillator frequency
 	 * clk_m runs at 13 Mhz
 	 */
-#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	(void) val;
-	uart_dll = DEBUG_UART_DLL_13;
-#else
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	uart_dll = DEBUG_UART_DLL_408;
-#else
-	addr = (volatile u32 *)PLLP_BASE;
-	val = *addr;
-	if (val & PLLP_BASE_OVERRIDE) {
-		u32 p = (val & PLLP_BASE_DIVP_MASK) >> PLLP_BASE_DIVP_SHIFT;
-		val = (val & PLLP_BASE_DIVN_MASK) >> (PLLP_BASE_DIVN_SHIFT + p);
-		switch (val) {
-		case 170:
-		case 204:
-			uart_dll = DEBUG_UART_DLL_204;
-			break;
-		case 340:
-		case 408:
+	if (tegra_platform_is_fpga()) {
+		(void) val;
+		uart_dll = DEBUG_UART_DLL_13;
+	} else {
+		#ifdef CONFIG_ARCH_TEGRA_14x_SOC
 			uart_dll = DEBUG_UART_DLL_408;
-			break;
-		case 180:
-		case 216:
-		default:
-			break;
+		#else
+		addr = (volatile u32 *)PLLP_BASE;
+		val = *addr;
+		if (val & PLLP_BASE_OVERRIDE) {
+			u32 p = (val & PLLP_BASE_DIVP_MASK)
+					 >> PLLP_BASE_DIVP_SHIFT;
+			val = (val & PLLP_BASE_DIVN_MASK)
+					 >> (PLLP_BASE_DIVN_SHIFT + p);
+			switch (val) {
+			case 170:
+			case 204:
+				uart_dll = DEBUG_UART_DLL_204;
+				break;
+			case 340:
+			case 408:
+				uart_dll = DEBUG_UART_DLL_408;
+				break;
+			case 180:
+			case 216:
+			default:
+				break;
+			}
 		}
+		#endif
 	}
-#endif
-#endif
-
 	/* Set up debug UART. */
 	uart[UART_LCR << DEBUG_UART_SHIFT] |= UART_LCR_DLAB;
 	uart[UART_DLL << DEBUG_UART_SHIFT] = uart_dll;
