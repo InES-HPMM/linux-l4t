@@ -613,5 +613,5 @@ MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
 	.init_irq	= tegra_dt_init_irq,
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= tegra_bonaire_init,
-	.timer		= &tegra_timer,
+	.timer		= &tegra_sys_timer,
 MACHINE_END
