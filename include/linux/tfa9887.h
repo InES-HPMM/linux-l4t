@@ -63,11 +63,13 @@ int SetMute(struct tfa9887_priv *tfa9887, Tfa9887_Mute_t mute);
 
 void calibrate (struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, char *calibdata);
 
-int reconfigure(struct tfa9887_priv *tfa9887);
+void recalibrate(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte);
 
 void resetMtpEx(struct tfa9887_priv *tfa9887);
 
 int checkMTPEX(struct tfa9887_priv *tfa9887);
+
+void setOtc(struct tfa9887_priv *tfa9887, unsigned short otcOn);
 
 typedef enum Tfa9887_AmpInputSel {
 	Tfa9887_AmpInputSel_I2SLeft,

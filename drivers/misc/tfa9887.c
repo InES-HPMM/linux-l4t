@@ -52,9 +52,11 @@ static int eq_mode, preset_mode, srate;
 
 static char calibdata[16];
 
-static int calibration_need = 0;
+static int calibration;
 
-unsigned int volume_step[5] = {0,2,4,6,12};
+static int recalibration;
+
+unsigned int volume_step[5] = {0, 2, 4, 6, 12};
 
 /* begin binary data: */
 unsigned char coldpatch_data[] = {/* 10 */
@@ -498,7 +500,7 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 			error = Tfa9887_ReadRegister(tfa9887, TFA9887_CF_STATUS, &cf_status);
 	 		tries++;
 	 		usleep_range(100, 200);
-		} while ( (error==Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 10) ); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
+		} while ((error == Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 100)); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
 
 		if (tries >= 100) {
 	 		/* something wrong with communication with DSP */
@@ -561,12 +563,13 @@ int DspGetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
                         error =
                             Tfa9887_ReadRegister(tfa9887, TFA9887_CF_STATUS,
                                                    &cf_status);
+			msleep(1);
                         tries++;
-                }
-                while ((error == 0) && ((cf_status & 0x0100) == 0) && (tries < 10));     /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
-                if (tries >= 10) {
+                } while (( error == 0) && ((cf_status & 0x0100) == 0)
+			&& (tries < 100));     /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
+                if (tries >= 100) {
                         /* something wrong with communication with DSP */
-			pr_info("something wrong with communication with DSP\n");
+			pr_info("GetParam failed\n");
                         return -1;
                 }
         }
@@ -623,10 +626,15 @@ void calibrate (struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	int data[2];
 	int tries = 0;
 
-	if(calibration_need) {
+	if (!recalibration) {
 		SetMute(tfa9887, Tfa9887_Mute_Digital);
 		pr_info("Inside calib\n");
-		error = DspReadMem(tfa9887, tfa9887_byte, 231, 1, &calibrateDone);
+	        while ((calibrateDone == 0) && (tries < 100)) {
+			error = DspReadMem(tfa9887, tfa9887_byte, 231, 1, &calibrateDone);
+			msleep(10);
+			tries++;
+	        }
+
 		if (calibrateDone)
 		{
 			DspGetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_GET_RE0, 3, bytes);
@@ -637,33 +645,52 @@ void calibrate (struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		speaker_data[422] = 0;
 		error = loadSettings(tfa9887, tfa9887_byte);
 	}
+	calibrateDone = 0;
+	tries = 0;
+	/*SetConfigured*/
+	error = Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
 
-         //SetConfigured
-        error = Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
+	if (error == Tfa9887_Error_Ok) {
 
-        if(error == Tfa9887_Error_Ok)
-        {
                 value |= TFA9887_SYSCTRL_CONFIGURED;
                 error = Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
-        }
+	}
+	calibrateDone = 0;
+	tries = 0;
+
 
 	error = DspReadMem(tfa9887, tfa9887_byte, 231, 1, &calibrateDone);
-	while ((calibrateDone == 0) && (tries < 1000)) {
+	while ((calibrateDone == 0) && (tries < 100)) {
 		error = DspReadMem(tfa9887, tfa9887_byte, 231, 1, &calibrateDone);
+		msleep(10);
 		tries++;
 	}
-        if(tries >= 1000)
-                pr_info("Calibrate failed1\n");
+	if(tries >= 100)
+		pr_info("Calibrate failed1\n");
 
+	calibrateDone = 0;
 	tries = 0;
+
 	do {
 		error = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &status);
+		msleep(10);
 		tries++;
 	} while ( ((status & TFA9887_STATUS_MTPB) == TFA9887_STATUS_MTPB) && (tries < 100));
-	if(tries >= 100)
-		pr_info("Calibrate failed\n");
-        DspGetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_GET_RE0, 3, bytes);
-        convertBytes2Data(3, bytes, &data[0]);
+	if (tries >= 100)
+		pr_info("Calibrate failed2\n");
+
+	calibrateDone = 0;
+	tries = 0;
+	while ((calibrateDone == 0) && (tries < 100)) {
+                error = DspReadMem(tfa9887, tfa9887_byte, 231, 1, &calibrateDone);
+		msleep(10);
+                tries++;
+	}
+	if (tries >= 100)
+		pr_info("Calibrate failed3\n");
+
+	DspGetParam(tfa9887, tfa9887_byte, MODULE_SPEAKERBOOST, PARAM_GET_RE0, 3, bytes);
+	convertBytes2Data(3, bytes, &data[0]);
 	DspReadMem(tfa9887, tfa9887_byte, 232, 1, &data[1]);
 	pr_info("%d %d\n",data[0], data[1]);
 	memcpy(calibdata, (char *)data, 8);
@@ -676,7 +703,7 @@ void resetMtpEx(struct tfa9887_priv *tfa9887)
 	int tries = 0;
 	err = Tfa9887_ReadRegister(tfa9887, TFA9887_MTP, &mtp);
 
-	pr_info("%d****************1",mtp);
+	pr_info("%d****************mtp",mtp);
 	/* all settings loaded, signal the DSP to start calibration, only needed once after cold boot */
 	/* reset MTPEX bit if needed */
 	err = Tfa9887_WriteRegister(tfa9887, 0x0B, 0x5A); /* unlock key2 */
@@ -686,6 +713,7 @@ void resetMtpEx(struct tfa9887_priv *tfa9887)
 
         do {
                 err = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &status);
+		msleep(10);
 		tries++;
         } while ( ((status & TFA9887_STATUS_MTPB) == TFA9887_STATUS_MTPB) && (tries < 100));
 
@@ -709,11 +737,12 @@ int Tfa9887_Init(int sRate)
 	srate = sRate;
 	if ((tfa9887R) && (tfa9887R->deviceInit)) {
 		coldStartup(tfa9887R, tfa9887R_byte, srate);
-                        //Tfa9887_WriteRegister(tfa9887R, 0x0B, 0x5A); /* unlock key2 */
-                        //Tfa9887_WriteRegister(tfa9887R, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+		//Tfa9887_WriteRegister(tfa9887R, 0x0B, 0x5A); /* unlock key2 */
+		//Tfa9887_WriteRegister(tfa9887R, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+		setOtc(tfa9887R,1);
 
 		if((checkMTPEX(tfa9887R) == 0)) {
-			calibration_need = 1;
+			calibration = 1;
                         calibrate(tfa9887R, tfa9887R_byte, &calibdata[0]);
 		}
 		else {
@@ -723,10 +752,12 @@ int Tfa9887_Init(int sRate)
 	}
 	if ((tfa9887L) && (tfa9887L->deviceInit)) {
 		coldStartup(tfa9887L, tfa9887L_byte, srate);
-                        //Tfa9887_WriteRegister(tfa9887L, 0x0B, 0x5A); /* unlock key2 */
-                        //Tfa9887_WriteRegister(tfa9887L, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+		//Tfa9887_WriteRegister(tfa9887L, 0x0B, 0x5A); /* unlock key2 */
+		//Tfa9887_WriteRegister(tfa9887L, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+		setOtc(tfa9887L,1);
+
 		if((checkMTPEX(tfa9887L) == 0)) {
-			calibration_need = 1;
+			calibration = 1;
 			calibrate(tfa9887L, tfa9887L_byte, &calibdata[8]);
 		}
 		else {
@@ -737,6 +768,42 @@ int Tfa9887_Init(int sRate)
         if (error != 0)
 		pr_info("Failed to Init tfa\n");
 	return error;
+}
+
+void setOtc(struct tfa9887_priv *tfa9887, unsigned short otcOn)
+{
+
+	int err;
+	unsigned int mtp;
+	unsigned int status;
+	int mtpChanged = 0;
+	int tries = 0;
+
+	err = Tfa9887_ReadRegister(tfa9887, TFA9887_MTP, &mtp);
+	/* set reset MTPEX bit if needed */
+	if ( (mtp & TFA9887_MTP_MTPOTC) != otcOn) {
+	/* need to change the OTC bit, set MTPEX=0 in any case */
+		err = Tfa9887_WriteRegister(tfa9887, 0x0B, 0x5A); /* unlock key2 */
+
+		err = Tfa9887_WriteRegister(tfa9887, TFA9887_MTP, otcOn); /* MTPOTC=otcOn, MTPEX=0 */
+
+		err = Tfa9887_WriteRegister(tfa9887, 0x62, 1<<11); /* CIMTP=1 */
+
+		mtpChanged =1;
+
+	}
+	//Sleep(13*16); /* need to wait until all parameters are copied into MTP */
+	do {
+		err = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &status);
+		msleep(10);
+		tries++;
+	} while ( ((status & TFA9887_STATUS_MTPB) == TFA9887_STATUS_MTPB) && (tries < 100));
+
+	if (mtpChanged) {
+		/* ensure the DSP restarts after this to read out the new value */
+		err = Tfa9887_WriteRegister(tfa9887, 0x70, 0x1); /* DSP reset */
+	}
+
 }
 
 int Tfa9887_SetEq(void)
@@ -752,7 +819,6 @@ int Tfa9887_SetEq(void)
 int Tfa9887_SetPreset(unsigned int preset)
 {
 	int error = 0;
-	unsigned short status;
 	if (preset != preset_mode) {
 		preset_mode = preset;
 		if ((tfa9887R) && (tfa9887R->deviceInit))
@@ -870,6 +936,7 @@ int coldStartup(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 		error = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &value);
 		do {
 			error = Tfa9887_ReadRegister(tfa9887, TFA9887_STATUS, &value);
+			msleep(1);
 			tries++;
 		} while ((error == Tfa9887_Error_Ok) && ((value & TFA9887_STATUS_PLLS) == 0) && (tries < 100));
 
@@ -906,7 +973,7 @@ int Init(struct tfa9887_priv *tfa9887,struct tfa9887_priv *tfa9887_byte, int sRa
                 value |= TFA9887_SYSCTRL_CONFIGURED;
                 error = Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
         }
-	if (!calibration_need) {
+	if (!calibration) {
 		SetMute(tfa9887, Tfa9887_Mute_Amplifier);
 		//PowerDown
 		if(error == Tfa9887_Error_Ok)
@@ -1170,18 +1237,19 @@ static ssize_t tfa9887_cal_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
 	//printk("!tfa9887_cal_show\n");
-	if (calibration_need) {
+	if (calibration) {
 		memcpy(buf, calibdata, 16);
+		return 16;
 		//pr_info("copying data\n");
 	}
-	return 16;
+	else
+	return -1;
 }
 
 static ssize_t tfa9887_cal_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	ssize_t ret = count;
-	unsigned int value;
 	//printk("+tfa9887_cal_store: %p, %d\n", buf, count);
 	if (!tfa9887R || !tfa9887L ||
 		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
@@ -1194,50 +1262,51 @@ static ssize_t tfa9887_cal_store(struct kobject *kobj,
 		goto fail;
 	}
 	if (count == 6) {
-		if(calibration_need) {
-			memcpy(&speaker_data[420],buf,3);
-			memcpy(&speaker_data[420],buf+3,3);
+		if (calibration) {
+			recalibration = 1;
 			tegra_asoc_enable_clocks();
-			resetMtpEx(tfa9887R);
-			resetMtpEx(tfa9887L);
-			SetMute(tfa9887R, Tfa9887_Mute_Amplifier);
-			SetMute(tfa9887L, Tfa9887_Mute_Amplifier);
-			coldStartup(tfa9887R, tfa9887R_byte, srate);
-			Init(tfa9887R,tfa9887R_byte, srate);
-			coldStartup(tfa9887L, tfa9887L_byte, srate);
-			Init(tfa9887L,tfa9887L_byte, srate);
-			calibration_need = 0;
-			calibrate(tfa9887R, tfa9887R_byte, &calibdata[0]);
-			calibrate(tfa9887L, tfa9887L_byte, &calibdata[0]);
-                        Tfa9887_ReadRegister(tfa9887R, TFA9887_SYSTEM_CONTROL, &value);
-                        value |= TFA9887_SYSCTRL_POWERDOWN;
-                        Tfa9887_WriteRegister(tfa9887R, TFA9887_SYSTEM_CONTROL, value);
-                        Tfa9887_ReadRegister(tfa9887L, TFA9887_SYSTEM_CONTROL, &value);
-                        value |= TFA9887_SYSCTRL_POWERDOWN;
-                        Tfa9887_WriteRegister(tfa9887L, TFA9887_SYSTEM_CONTROL, value);
+			memcpy(&speaker_data[420],buf,3);
+			recalibrate(tfa9887R, tfa9887R_byte);
+			memcpy(&speaker_data[420],buf+3,3);
+			recalibrate(tfa9887L, tfa9887L_byte);
+			recalibration = 0;
+			calibration = 0;
 			tegra_asoc_disable_clocks();
 		}
 	}
-
 fail:
 	//printk("-tfa9887_cal_store: %d\n", count);
 	return ret;
 }
 
+void recalibrate(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte) {
+
+	unsigned int value;
+	resetMtpEx(tfa9887);
+	SetMute(tfa9887, Tfa9887_Mute_Amplifier);
+	coldStartup(tfa9887, tfa9887_byte, srate);
+	Init(tfa9887,tfa9887_byte, srate);
+	calibrate(tfa9887, tfa9887_byte, &calibdata[0]);
+	Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
+	value |= TFA9887_SYSCTRL_POWERDOWN;
+	Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
+
+}
 
 static ssize_t tfa9887_config_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	printk("!tfa9887_config_show\n");
+	//printk("!tfa9887_config_show\n");
 
 	if (buf) {
 		if (eq_mode == 1)
-			memcpy(buf, '1', 1);
+			*buf = '1';
 		else if (eq_mode == 2)
-			memcpy(buf, '2', 1);
+			*buf = '2';
 		else
 			return -EINVAL;
 	}
+	printk("%c\n",*buf);
 	return 1;
 }
 
