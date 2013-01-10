@@ -423,12 +423,22 @@
 #define PLLE_MISC_VREG_CTRL_MASK	(0x3<<PLLE_MISC_VREG_CTRL_SHIFT)
 
 #define PLLE_SS_CTRL			0x68
+#define	PLLE_SS_INCINTRV_SHIFT		24
+#define	PLLE_SS_INCINTRV_MASK		(0x3f<<PLLE_SS_INCINTRV_SHIFT)
+#define	PLLE_SS_INC_SHIFT		16
+#define	PLLE_SS_INC_MASK		(0xff<<PLLE_SS_INC_SHIFT)
 #define	PLLE_SS_CNTL_SSC_BYP		(0x1 << 12)
 #define	PLLE_SS_CNTL_INTERP_RESET	(0x1 << 11)
 #define	PLLE_SS_CNTL_BYPASS_SS		(0x1 << 10)
+#define	PLLE_SS_MAX_SHIFT		0
+#define	PLLE_SS_MAX_MASK		(0x1ff<<PLLE_SS_MAX_SHIFT)
+#define PLLE_SS_COEFFICIENTS_MASK	\
+	(PLLE_SS_INCINTRV_MASK | PLLE_SS_INC_MASK | PLLE_SS_MAX_MASK)
+#define PLLE_SS_COEFFICIENTS_VAL	\
+	((0x20<<PLLE_SS_INCINTRV_SHIFT) | (0x1<<PLLE_SS_INC_SHIFT) | \
+	 (0x25<<PLLE_SS_MAX_SHIFT))
 #define PLLE_SS_DISABLE			(PLLE_SS_CNTL_SSC_BYP |\
 	PLLE_SS_CNTL_INTERP_RESET | PLLE_SS_CNTL_BYPASS_SS)
-#define PLLE_SS_COEFFICIENTS_MASK       (~PLLE_SS_DISABLE)
 
 #define PLLE_AUX			0x48c
 #define PLLE_AUX_PLLRE_SEL		(1<<28)
@@ -3336,7 +3346,14 @@ static int tegra11_plle_clk_enable(struct clk *c)
 	tegra11_pll_clk_wait_for_lock(
 		c, c->reg + PLL_MISC(c), PLLE_MISC_LOCK);
 #if USE_PLLE_SS
-	/* FIXME: enable SS if necessary */
+	val = clk_readl(PLLE_SS_CTRL);
+	val &= ~PLLE_SS_COEFFICIENTS_MASK;
+	val |= PLLE_SS_COEFFICIENTS_VAL;
+	clk_writel(val, PLLE_SS_CTRL);
+	val &= ~(PLLE_SS_CNTL_SSC_BYP | PLLE_SS_CNTL_BYPASS_SS);
+	pll_writel_delay(val, PLLE_SS_CTRL);
+	val &= ~PLLE_SS_CNTL_INTERP_RESET;
+	pll_writel_delay(val, PLLE_SS_CTRL);
 #endif
 #if !USE_PLLE_SWCTL
 	/* switch pll under h/w control */
@@ -5637,14 +5654,14 @@ static struct clk tegra_pll_re_vco = {
 	.ops       = &tegra_pllre_ops,
 	.reg       = 0x4c4,
 	.parent    = &tegra_pll_ref,
-	.max_rate  = 600000000,
+	.max_rate  = 672000000,
 	.u.pll = {
 		.input_min = 12000000,
 		.input_max = 1000000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
 		.vco_min   = 300000000,
-		.vco_max   = 600000000,
+		.vco_max   = 672000000,
 		.lock_delay = 300,
 		.round_p_to_pdiv = pllre_round_p_to_pdiv,
 	},
@@ -5655,13 +5672,14 @@ static struct clk tegra_pll_re_out = {
 	.ops       = &tegra_pllre_out_ops,
 	.parent    = &tegra_pll_re_vco,
 	.reg       = 0x4c4,
-	.max_rate  = 600000000,
+	.max_rate  = 672000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
 	{ 336000000, 100000000, 100, 21,  16, 11},
 	{ 312000000, 100000000, 200, 26,  24, 13},
+	{  12000000, 100000000, 200,  1,  24, 13},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
