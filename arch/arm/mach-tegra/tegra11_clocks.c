@@ -6581,6 +6581,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("uartc",	"serial8250.2", NULL),
 	CLK_DUPLICATE("uartd",	"serial8250.3", NULL),
 	CLK_DUPLICATE("uarte",	"serial8250.4", NULL),
+	CLK_DUPLICATE("usbd", XUSB_ID, "utmip-pad"),
 	CLK_DUPLICATE("usbd", "utmip-pad", NULL),
 	CLK_DUPLICATE("usbd", "tegra-ehci.0", NULL),
 	CLK_DUPLICATE("usbd", "tegra-otg", NULL),
