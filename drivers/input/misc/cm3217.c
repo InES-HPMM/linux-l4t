@@ -1,9 +1,4 @@
-/* drivers/input/misc/cm3217.c - cm3217 optical sensors driver
- *
- * Copyright (C) 2011 Capella Microsystems Inc.
- * Author: Frank Hsieh <pengyueh@gmail.com>
- *
- * Copyright (c) 2012, NVIDIA Corporation.
+/* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -13,1056 +8,797 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
  */
 
-#include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
-#include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/platform_device.h>
-#include <linux/workqueue.h>
-#include <linux/irq.h>
-#include <linux/errno.h>
-#include <linux/err.h>
-#include <linux/gpio.h>
 #include <linux/miscdevice.h>
-#include <linux/lightsensor.h>
 #include <linux/slab.h>
-#include <linux/uaccess.h>
-#include <linux/cm3217.h>
-#include <linux/wakelock.h>
-#include <linux/jiffies.h>
-#include <asm/mach-types.h>
-#include <asm/setup.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+#include <linux/regulator/consumer.h>
 
-#define D(x...)			pr_debug(x)
 
-#define I2C_RETRY_COUNT		10
+/* IT = Integration Time.  The amount of time the photons hit the sensor.
+ * STEP = the value from HW which is the photon count during IT.
+ * LUX = STEP * (CM3217_RESOLUTION_STEP / IT) / CM3217_RESOLUTION_DIVIDER
+ * The above LUX reported as LUX * CM3217_INPUT_LUX_DIVISOR.
+ * The final value is done in user space to get a float value of
+ * LUX / CM3217_INPUT_LUX_DIVISOR.
+ */
+#define CM3217_NAME			"cm3217"
+#define	CM3217_I2C_ADDR_CMD1_WR		(0x10)
+#define	CM3217_I2C_ADDR_CMD2_WR		(0x11)
+#define CM3217_I2C_ADDR_RD		(0x10)
+#define CM3217_HW_CMD1_DFLT		(0x22)
+#define CM3217_HW_CMD1_BIT_SD		(0)
+#define CM3217_HW_CMD1_BIT_IT_T		(2)
+#define CM3217_HW_CMD2_BIT_FD_IT	(5)
+#define CM3217_HW_DELAY			(10)
+#define CM3217_POWER_UA			(90)
+#define CM3217_RESOLUTION		(1)
+#define CM3217_RESOLUTION_STEP		(6000000L)
+#define CM3217_RESOLUTION_DIVIDER	(10000L)
+#define CM3217_POLL_DELAY_MS_DFLT	(1600)
+#define CM3217_POLL_DELAY_MS_MIN	(33 + CM3217_HW_DELAY)
+#define CM3217_INPUT_LUX_DIVISOR	(10)
+#define CM3217_INPUT_LUX_MIN		(0)
+#define CM3217_INPUT_LUX_MAX		(119156)
+#define CM3217_INPUT_LUX_FUZZ		(0)
+#define CM3217_INPUT_LUX_FLAT		(0)
 
-#define LS_POLLING_DELAY	1000 /* mSec */
 
-static void report_do_work(struct work_struct *w);
-static DECLARE_DELAYED_WORK(report_work, report_do_work);
-
-struct cm3217_info {
-	struct class *cm3217_class;
-	struct device *ls_dev;
-	struct input_dev *ls_input_dev;
-
-	struct i2c_client *i2c_client;
-	struct workqueue_struct *lp_wq;
-
-	int als_enable;
-	int als_enabled_before_suspend;
-	uint16_t *adc_table;
-	uint16_t cali_table[10];
-	int irq;
-	int ls_calibrate;
-	int (*power) (int, uint8_t);	/* power to the chip */
-
-	uint32_t als_kadc;
-	uint32_t als_gadc;
-	uint16_t golden_adc;
-
-	int lightsensor_opened;
-	int current_level;
-	uint16_t current_adc;
-	int polling_delay;
+/* regulator names in order of powering on */
+static char *cm3217_vregs[] = {
+	"vdd",
 };
 
-struct cm3217_info *lp_info;
+static char const *const cm3217_class_name = "sensors";
+static char const *const cm3217_device_name = "als";
+static dev_t const cm3217_dev_t = MKDEV(MISC_MAJOR, MISC_DYNAMIC_MINOR);
 
-int enable_log;
-int fLevel = -1;
 
-static struct mutex als_enable_mutex, als_disable_mutex, als_get_adc_mutex;
+struct cm3217_inf {
+	struct i2c_client *i2c;
+	struct mutex mutex;
+	struct input_dev *idev;
+	struct class *class;
+	struct device *dev;
+	struct workqueue_struct *wq;
+	struct delayed_work dw;
+	struct regulator_bulk_data vreg[ARRAY_SIZE(cm3217_vregs)];
+	s64 timestamp;			/* timestamp at last report */
+	unsigned int queue_delay;	/* workqueue delay time (ms) */
+	unsigned int poll_delay;	/* OS requested reporting delay (ms) */
+	unsigned long mult;		/* used to calc lux from HW values */
+	unsigned int index;		/* index into HW IT settings table */
+	unsigned int resolution;	/* report when new lux outside this */
+	int lux;			/* the final value that is reported */
+	bool enable;			/* global enable flag */
+	bool hw_change;			/* HW changed so drop first sample */
+	bool hw_sync;			/* queue time match HW sample time */
+	bool report;			/* used to report first valid sample */
+};
 
-static int lightsensor_enable(struct cm3217_info *lpi);
-static int lightsensor_disable(struct cm3217_info *lpi);
+struct cm3217_it {			/* integration time */
+	unsigned int ms;		/* time ms */
+	__u8 fd_it;			/* FD_IT HW */
+	__u8 it_t;			/* IT_T HW */
+};
 
-int32_t als_kadc;
+static struct cm3217_it cm3217_it_tbl[] = {
+	{3200, 0, 3},			/* 800ms * 4 */
+	{1600, 0, 2},			/* 800ms * 2 */
+	{1064, 2, 3},			/* 266ms * 4 */
+	{800, 0, 1},			/* 800ms * 1 */
+	{532, 2, 2},			/* 266ms * 2 */
+	{520, 4, 3},			/* 130ms * 4 */
+	{400, 1, 1},			/* 400ms * 1 */
+	{320, 6, 3},			/* 80ms * 4 */
+	{266, 2, 1},			/* 200ms * 1 */
+	{264, 7, 3},			/* 66ms * 4 */
+	{260, 4, 2},			/* 130ms * 2 */
+	{200, 3, 1},			/* 200ms * 1 */
+	{160, 6, 2},			/* 80ms * 2 */
+	{133, 2, 0},			/* 266ms / 2 */
+	{132, 7, 2},			/* 66ms * 2 */
+	{130, 4, 1},			/* 130ms * 1 */
+	{100, 5, 1},			/* 100ms * 1 */
+	{80, 6, 1},			/* 80ms * 1 */
+	{66, 7, 1},			/* 66ms * 1 */
+	{65, 4, 0},			/* 130ms / 2 */
+	{50, 5, 0},			/* 100ms / 2 */
+	{40, 6, 0},			/* 80ms / 2 */
+	{33, 7, 0}			/* 66ms / 2 */
+};
 
-static int I2C_RxData(uint16_t slaveAddr, uint8_t *rxData, int length)
+
+static int cm3217_i2c_rd(struct cm3217_inf *inf, __u16 *val)
 {
-	uint8_t loop_i;
+	struct i2c_msg msg[2];
+	__u8 buf[2];
 
-	struct i2c_msg msgs[] = {
-		{
-			.addr = slaveAddr,
-			.flags = I2C_M_RD,
-			.len = length,
-			.buf = rxData,
-		},
-	};
-
-	for (loop_i = 0; loop_i < I2C_RETRY_COUNT; loop_i++) {
-		if (i2c_transfer(lp_info->i2c_client->adapter, msgs, 1) > 0)
-			break;
-		msleep(10);
-	}
-
-	if (loop_i >= I2C_RETRY_COUNT) {
-		printk(KERN_ERR "[ERR][CM3217 error] %s retry over %d\n",
-		       __func__, I2C_RETRY_COUNT);
+	msg[0].addr = CM3217_I2C_ADDR_RD + 1;
+	msg[0].flags = I2C_M_RD;
+	msg[0].len = 1;
+	msg[0].buf = &buf[0];
+	msg[1].addr = CM3217_I2C_ADDR_RD;
+	msg[1].flags = I2C_M_RD;
+	msg[1].len = 1;
+	msg[1].buf = &buf[1];
+	if (i2c_transfer(inf->i2c->adapter, msg, 2) != 2)
 		return -EIO;
-	}
+
+	*val = (__u16)((buf[1] << 8) | buf[0]);
+	return 0;
+}
+
+static int cm3217_i2c_wr(struct cm3217_inf *inf, __u8 cmd1, __u8 cmd2)
+{
+	struct i2c_msg msg[2];
+	__u8 buf[2];
+
+	buf[0] = cmd1;
+	buf[1] = cmd2;
+	msg[0].addr = CM3217_I2C_ADDR_CMD1_WR;
+	msg[0].flags = 0;
+	msg[0].len = 1;
+	msg[0].buf = &buf[0];
+	msg[1].addr = CM3217_I2C_ADDR_CMD2_WR;
+	msg[1].flags = 0;
+	msg[1].len = 1;
+	msg[1].buf = &buf[1];
+	if (i2c_transfer(inf->i2c->adapter, msg, 2) != 2)
+		return -EIO;
 
 	return 0;
 }
 
-static int I2C_TxData(uint16_t slaveAddr, uint8_t *txData, int length)
+static int cm3217_cmd_wr(struct cm3217_inf *inf, __u8 it_t, __u8 fd_it)
 {
-	uint8_t loop_i;
+	__u8 cmd1;
+	__u8 cmd2;
+	int err;
 
-	struct i2c_msg msg[] = {
-		{
-			.addr = slaveAddr,
-			.flags = 0,
-			.len = length,
-			.buf = txData,
-		},
-	};
-
-	for (loop_i = 0; loop_i < I2C_RETRY_COUNT; loop_i++) {
-		if (i2c_transfer(lp_info->i2c_client->adapter, msg, 1) > 0)
-			break;
-		msleep(10);
-	}
-
-	if (loop_i >= I2C_RETRY_COUNT) {
-		printk(KERN_ERR "[ERR][CM3217 error] %s retry over %d\n",
-		       __func__, I2C_RETRY_COUNT);
-		return -EIO;
-	}
-
-	return 0;
+	cmd1 = (CM3217_HW_CMD1_DFLT);
+	if (!inf->enable)
+		cmd1 |= (1 << CM3217_HW_CMD1_BIT_SD);
+	cmd1 |= (it_t << CM3217_HW_CMD1_BIT_IT_T);
+	cmd2 = fd_it << CM3217_HW_CMD2_BIT_FD_IT;
+	err = cm3217_i2c_wr(inf, cmd1, cmd2);
+	return err;
 }
 
-static int _cm3217_I2C_Read_Byte(uint16_t slaveAddr, uint8_t *pdata)
+static int cm3217_vreg_dis(struct cm3217_inf *inf, unsigned int i)
 {
-	uint8_t buffer = 0;
-	int ret = 0;
+	int err = 0;
 
-	if (pdata == NULL)
-		return -EFAULT;
-
-	ret = I2C_RxData(slaveAddr, &buffer, 1);
-	if (ret < 0) {
-		pr_err("[ERR][CM3217 error]%s: I2C_RxData fail, slave addr: 0x%x\n",
-		       __func__, slaveAddr);
-		return ret;
+	if (inf->vreg[i].ret && (inf->vreg[i].consumer != NULL)) {
+		err = regulator_disable(inf->vreg[i].consumer);
+		if (!err)
+			dev_dbg(&inf->i2c->dev, "%s %s\n",
+				__func__, inf->vreg[i].supply);
+		else
+			dev_err(&inf->i2c->dev, "%s %s ERR\n",
+				__func__, inf->vreg[i].supply);
 	}
-
-	*pdata = buffer;
-
-#if 0
-	/* Debug use */
-	printk(KERN_DEBUG "[CM3217] %s: I2C_RxData[0x%x] = 0x%x\n",
-	       __func__, slaveAddr, buffer);
-#endif
-
-	return ret;
+	inf->vreg[i].ret = 0;
+	return err;
 }
 
-static int _cm3217_I2C_Write_Byte(uint16_t SlaveAddress, uint8_t data)
+static int cm3217_vreg_dis_all(struct cm3217_inf *inf)
 {
-	char buffer[2];
-	int ret = 0;
+	unsigned int i;
+	int err = 0;
 
-#if 0
-	/* Debug use */
-	printk(KERN_DEBUG
-	       "[CM3217] %s: _cm3217_I2C_Write_Byte[0x%x, 0x%x, 0x%x]\n",
-	       __func__, SlaveAddress, cmd, data);
-#endif
-
-	buffer[0] = data;
-
-	ret = I2C_TxData(SlaveAddress, buffer, 1);
-	if (ret < 0) {
-		pr_err("[ERR][CM3217 error]%s: I2C_TxData fail\n", __func__);
-		return -EIO;
-	}
-
-	return ret;
+	for (i = ARRAY_SIZE(cm3217_vregs); i > 0; i--)
+		err |= cm3217_vreg_dis(inf, (i - 1));
+	return err;
 }
 
-static int get_ls_adc_value(uint16_t *als_step, bool resume)
+static int cm3217_vreg_en(struct cm3217_inf *inf, unsigned int i)
 {
-	uint8_t lsb, msb;
-	int ret = 0;
-	struct cm3217_info *lpi = lp_info;
+	int err = 0;
 
-	if (als_step == NULL)
-		return -EFAULT;
-
-	/* Read ALS data: LSB */
-	ret = _cm3217_I2C_Read_Byte(ALS_R_LSB_addr, &lsb);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: _cm3217_I2C_Read_Byte LSB fail\n",
-		       __func__);
-		return -EIO;
-	}
-
-	/* Read ALS data: MSB */
-	ret = _cm3217_I2C_Read_Byte(ALS_R_MSB_addr, &msb);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: _cm3217_I2C_Read_Byte MSB fail\n",
-		       __func__);
-		return -EIO;
-	}
-
-	*als_step = (uint16_t) msb;
-	*als_step <<= 8;
-	*als_step |= (uint16_t) lsb;
-
-	D("[LS][CM3217] %s: raw adc = 0x%X\n", __func__, *als_step);
-
-	if (!lpi->ls_calibrate) {
-		*als_step = (*als_step) * lpi->als_gadc / lpi->als_kadc;
-		if (*als_step > 0xFFFF)
-			*als_step = 0xFFFF;
-	}
-
-	return ret;
-}
-
-static void report_lsensor_input_event(struct cm3217_info *lpi, bool resume)
-{
-	uint16_t adc_value = 0;
-	int level = 0, i, ret = 0;
-
-	mutex_lock(&als_get_adc_mutex);
-
-	ret = get_ls_adc_value(&adc_value, resume);
-
-	if (lpi->ls_calibrate) {
-		for (i = 0; i < 10; i++) {
-			if (adc_value <= (*(lpi->cali_table + i))) {
-				level = i;
-				if (*(lpi->cali_table + i))
-					break;
-			}
-			/* avoid i = 10, because 'cali_table' of size is 10 */
-			if (i == 9) {
-				level = i;
-				break;
-			}
-		}
-	} else {
-		for (i = 0; i < 10; i++) {
-			if (adc_value <= (*(lpi->adc_table + i))) {
-				level = i;
-				if (*(lpi->adc_table + i))
-					break;
-			}
-			/* avoid i = 10, because 'cali_table' of size is 10 */
-			if (i == 9) {
-				level = i;
-				break;
-			}
+	if (!inf->vreg[i].ret && (inf->vreg[i].consumer != NULL)) {
+		err = regulator_enable(inf->vreg[i].consumer);
+		if (!err) {
+			inf->vreg[i].ret = 1;
+			dev_dbg(&inf->i2c->dev, "%s %s\n",
+				__func__, inf->vreg[i].supply);
+			err = 1; /* flag regulator state change */
+		} else {
+			dev_err(&inf->i2c->dev, "%s %s ERR\n",
+				__func__, inf->vreg[i].supply);
 		}
 	}
-
-	if ((i == 0) || (adc_value == 0))
-		D("[LS][CM3217] %s: ADC=0x%03X, Level=%d, l_thd equal 0, "
-		  "h_thd = 0x%x\n", __func__, adc_value, level,
-		  *(lpi->cali_table + i));
-	else
-		D("[LS][CM3217] %s: ADC=0x%03X, Level=%d, l_thd = 0x%x, "
-		  "h_thd = 0x%x\n", __func__, adc_value, level,
-		  *(lpi->cali_table + (i - 1)) + 1, *(lpi->cali_table + i));
-
-	lpi->current_level = level;
-	lpi->current_adc = adc_value;
-
-	/*
-	D("[CM3217] %s: *(lpi->cali_table + (i - 1)) + 1 = 0x%X, "
-	  "*(lpi->cali_table + i) = 0x%x\n", __func__,
-	  *(lpi->cali_table + (i - 1)) + 1, *(lpi->cali_table + i));
-	*/
-
-	if (fLevel >= 0) {
-		D("[LS][CM3217] L-sensor force level enable level=%d "
-		  "fLevel=%d\n", level, fLevel);
-		level = fLevel;
-	}
-
-	input_report_abs(lpi->ls_input_dev, ABS_MISC, level);
-	input_sync(lpi->ls_input_dev);
-
-	mutex_unlock(&als_get_adc_mutex);
+	return err;
 }
 
-static void report_do_work(struct work_struct *work)
+static int cm3217_vreg_en_all(struct cm3217_inf *inf)
 {
-	struct cm3217_info *lpi = lp_info;
+	unsigned i;
+	int err = 0;
 
-	if (enable_log)
-		D("[CM3217] %s\n", __func__);
-
-	report_lsensor_input_event(lpi, 0);
-
-	queue_delayed_work(lpi->lp_wq, &report_work, lpi->polling_delay);
+	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++)
+		err |= cm3217_vreg_en(inf, i);
+	return err;
 }
 
-static int als_power(int enable)
+static void cm3217_vreg_exit(struct cm3217_inf *inf)
 {
-	struct cm3217_info *lpi = lp_info;
-
-	if (lpi->power)
-		lpi->power(LS_PWR_ON, 1);
-
-	return 0;
-}
-
-void lightsensor_set_kvalue(struct cm3217_info *lpi)
-{
-	if (!lpi) {
-		pr_err("[LS][CM3217 error]%s: ls_info is empty\n", __func__);
-		return;
-	}
-
-	D("[LS][CM3217] %s: ALS calibrated als_kadc=0x%x\n",
-	  __func__, als_kadc);
-
-	if (als_kadc >> 16 == ALS_CALIBRATED)
-		lpi->als_kadc = als_kadc & 0xFFFF;
-	else {
-		lpi->als_kadc = 0;
-		D("[LS][CM3217] %s: no ALS calibrated\n", __func__);
-	}
-
-	if (lpi->als_kadc && lpi->golden_adc > 0) {
-		lpi->als_kadc = (lpi->als_kadc > 0 && lpi->als_kadc < 0x1000) ?
-				lpi->als_kadc : lpi->golden_adc;
-		lpi->als_gadc = lpi->golden_adc;
-	} else {
-		lpi->als_kadc = 1;
-		lpi->als_gadc = 1;
-	}
-
-	D("[LS][CM3217] %s: als_kadc=0x%x, als_gadc=0x%x\n",
-	  __func__, lpi->als_kadc, lpi->als_gadc);
-}
-
-static int lightsensor_update_table(struct cm3217_info *lpi)
-{
-	uint32_t tmpData[10];
 	int i;
 
-	for (i = 0; i < 10; i++) {
-		tmpData[i] = (uint32_t) (*(lpi->adc_table + i))
-			     * lpi->als_kadc / lpi->als_gadc;
-		if (tmpData[i] <= 0xFFFF)
-			lpi->cali_table[i] = (uint16_t) tmpData[i];
-		else
-			lpi->cali_table[i] = 0xFFFF;
-		D("[LS][CM3217] %s: Calibrated adc_table: data[%d], %x\n",
-		  __func__, i, lpi->cali_table[i]);
+	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++) {
+		regulator_put(inf->vreg[i].consumer);
+		inf->vreg[i].consumer = NULL;
 	}
-
-	return 0;
 }
 
-static int lightsensor_enable(struct cm3217_info *lpi)
+static int cm3217_vreg_init(struct cm3217_inf *inf)
 {
-	int ret = 0;
-	uint8_t cmd = 0;
+	unsigned int i;
+	int err;
 
-	mutex_lock(&als_enable_mutex);
-
-	D("[LS][CM3217] %s\n", __func__);
-
-	cmd = (CM3217_ALS_IT_2_T | CM3217_ALS_BIT5_Default_1 |
-	       CM3217_ALS_WDM_DEFAULT_1);
-	ret = _cm3217_I2C_Write_Byte(ALS_W_CMD1_addr, cmd);
-	if (ret < 0)
-		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
-		       __func__);
-
-	queue_work(lpi->lp_wq, &report_work);
-	lpi->als_enable = 1;
-
-	mutex_unlock(&als_enable_mutex);
-
-	return ret;
-}
-
-static int lightsensor_disable(struct cm3217_info *lpi)
-{
-	int ret = 0;
-	char cmd = 0;
-
-	mutex_lock(&als_disable_mutex);
-
-	D("[LS][CM3217] %s\n", __func__);
-
-	cmd = (CM3217_ALS_IT_2_T | CM3217_ALS_BIT5_Default_1 |
-	       CM3217_ALS_WDM_DEFAULT_1 | CM3217_ALS_SD);
-	ret = _cm3217_I2C_Write_Byte(ALS_W_CMD1_addr, cmd);
-	if (ret < 0)
-		pr_err("[LS][CM3217 error]%s: disable auto light sensor fail\n",
-		       __func__);
-	else {
-		lpi->als_enable = 0;
-	}
-
-	cancel_delayed_work(&report_work);
-	lpi->als_enable = 0;
-
-	mutex_unlock(&als_disable_mutex);
-
-	return ret;
-}
-
-static int lightsensor_open(struct inode *inode, struct file *file)
-{
-	struct cm3217_info *lpi = lp_info;
-	int rc = 0;
-
-	D("[LS][CM3217] %s\n", __func__);
-	if (lpi->lightsensor_opened) {
-		pr_err("[LS][CM3217 error]%s: already opened\n", __func__);
-		rc = -EBUSY;
-	}
-	lpi->lightsensor_opened = 1;
-
-	return rc;
-}
-
-static int lightsensor_release(struct inode *inode, struct file *file)
-{
-	struct cm3217_info *lpi = lp_info;
-
-	D("[LS][CM3217] %s\n", __func__);
-	lpi->lightsensor_opened = 0;
-
-	return 0;
-}
-
-static long lightsensor_ioctl(struct file *file, unsigned int cmd,
-			      unsigned long arg)
-{
-	int rc = 0;
-	int val;
-	struct cm3217_info *lpi = lp_info;
-	unsigned long delay;
-
-	/* D("[CM3217] %s cmd %d\n", __func__, _IOC_NR(cmd)); */
-
-	switch (cmd) {
-	case LIGHTSENSOR_IOCTL_ENABLE:
-		if (get_user(val, (unsigned long __user *)arg)) {
-			rc = -EFAULT;
-			break;
+	for (i = 0; i < ARRAY_SIZE(cm3217_vregs); i++) {
+		inf->vreg[i].supply = cm3217_vregs[i];
+		inf->vreg[i].ret = 0;
+		inf->vreg[i].consumer = regulator_get(&inf->i2c->dev,
+						      inf->vreg[i].supply);
+		if (IS_ERR(inf->vreg[i].consumer)) {
+			err = PTR_ERR(inf->vreg[i].consumer);
+			dev_err(&inf->i2c->dev, "%s err %d for %s\n",
+				__func__, err, inf->vreg[i].supply);
+			inf->vreg[i].consumer = NULL;
 		}
-		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_ENABLE, value = %d\n",
-		  __func__, val);
-		rc = val ? lightsensor_enable(lpi) : lightsensor_disable(lpi);
-		break;
-
-	case LIGHTSENSOR_IOCTL_GET_ENABLED:
-		val = lpi->als_enable;
-		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_GET_ENABLED, enabled %d\n",
-		  __func__, val);
-		rc = put_user(val, (unsigned long __user *)arg);
-		break;
-
-	case LIGHTSENSOR_IOCTL_SET_DELAY:
-		if (get_user(delay, (unsigned long __user *)arg)) {
-			rc = -EFAULT;
-			break;
-		}
-		D("[LS][CM3217] %s LIGHTSENSOR_IOCTL_SET_DELAY, delay %ld\n",
-			__func__, delay);
-		delay = delay / 1000;
-		lpi->polling_delay = msecs_to_jiffies(delay);
-		break;
-
-	default:
-		pr_err("[LS][CM3217 error]%s: invalid cmd %d\n",
-		       __func__, _IOC_NR(cmd));
-		rc = -EINVAL;
 	}
-
-	return rc;
+	return err;
 }
 
-static const struct file_operations lightsensor_fops = {
-	.owner = THIS_MODULE,
-	.open = lightsensor_open,
-	.release = lightsensor_release,
-	.unlocked_ioctl = lightsensor_ioctl
-};
-
-static struct miscdevice lightsensor_misc = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "lightsensor",
-	.fops = &lightsensor_fops
-};
-
-static ssize_t ls_adc_show(struct device *dev,
-			   struct device_attribute *attr, char *buf)
+static int cm3217_pm(struct cm3217_inf *inf, bool en)
 {
-	int ret;
-	struct cm3217_info *lpi = lp_info;
+	int err = 0;
 
-	D("[LS][CM3217] %s: ADC = 0x%04X, Level = %d\n",
-	  __func__, lpi->current_adc, lpi->current_level);
-
-	ret = sprintf(buf, "ADC[0x%04X] => level %d\n",
-		      lpi->current_adc, lpi->current_level);
-
-	return ret;
+	mutex_lock(&inf->mutex);
+	if (inf->enable != en) {
+		inf->enable = en;
+		if (en) {
+			cm3217_vreg_en_all(inf);
+		} else {
+			err = cm3217_vreg_en_all(inf);
+			if (err)
+				mdelay(CM3217_HW_DELAY);
+			err = cm3217_cmd_wr(inf, 0, 0);
+			cm3217_vreg_dis_all(inf);
+		}
+	}
+	dev_dbg(&inf->i2c->dev, "%s enable=%x err=%d\n",
+		__func__, inf->enable, err);
+	mutex_unlock(&inf->mutex);
+	return err;
 }
 
-static DEVICE_ATTR(ls_adc, 0664, ls_adc_show, NULL);
-
-static ssize_t ls_enable_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static void pm_exit(struct cm3217_inf *inf)
 {
-	int ret = 0;
-	struct cm3217_info *lpi = lp_info;
-
-	ret = sprintf(buf, "Light sensor Auto Enable = %d\n", lpi->als_enable);
-
-	return ret;
+	cm3217_vreg_dis_all(inf);
+	cm3217_vreg_exit(inf);
 }
 
-static ssize_t ls_enable_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
+static int pm_init(struct cm3217_inf *inf)
 {
-	int ret = 0;
-	int ls_auto;
-	struct cm3217_info *lpi = lp_info;
+	int err;
 
-	ls_auto = -1;
-	sscanf(buf, "%d", &ls_auto);
+	cm3217_vreg_init(inf);
+	inf->enable = true;
+	err = cm3217_pm(inf, false);
+	return err;
+}
 
-	if (ls_auto != 0 && ls_auto != 1)
-		return -EINVAL;
+static s64 cm3217_timestamp_ns(void)
+{
+	struct timespec ts;
+	s64 ns;
 
-	if (ls_auto)
-		ret = lightsensor_enable(lpi);
+	ktime_get_ts(&ts);
+	ns = timespec_to_ns(&ts);
+	return ns;
+}
+
+static void cm3217_delay(struct cm3217_inf *inf, bool hw_sync)
+{
+	unsigned int ms;
+
+	if (inf->poll_delay < CM3217_POLL_DELAY_MS_MIN)
+		inf->poll_delay = CM3217_POLL_DELAY_MS_MIN;
+	if (hw_sync)
+		inf->hw_sync = true;
+	ms = cm3217_it_tbl[inf->index].ms;
+	ms += CM3217_HW_DELAY;
+	if ((ms < inf->poll_delay) && !hw_sync)
+		inf->queue_delay = inf->poll_delay;
 	else
-		ret = lightsensor_disable(lpi);
-
-	D("[LS][CM3217] %s: lpi->als_enable = %d, lpi->ls_calibrate = %d, "
-	  "ls_auto=%d\n", __func__, lpi->als_enable, lpi->ls_calibrate,
-	  ls_auto);
-
-	if (ret < 0)
-		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
-		       __func__);
-
-	return count;
+		/* we're either outside the HW integration time (IT) window and
+		 * want to get within the window as fast as HW allows us
+		 * (hw_sync = true)
+		 * OR
+		 * HW IT is not as fast as requested polling time
+		 */
+		inf->queue_delay = ms;
+	dev_dbg(&inf->i2c->dev, "%s queue delay=%ums\n",
+		__func__, inf->queue_delay);
 }
 
-static DEVICE_ATTR(ls_auto, 0664, ls_enable_show, ls_enable_store);
-
-static ssize_t ls_kadc_show(struct device *dev,
-			    struct device_attribute *attr, char *buf)
+static int cm3217_it_wr(struct cm3217_inf *inf, unsigned int ms)
 {
-	struct cm3217_info *lpi = lp_info;
-	int ret;
+	unsigned int i;
+	int err;
 
-	ret = sprintf(buf, "kadc = 0x%x", lpi->als_kadc);
-
-	return ret;
+	/* get the HW settings for integration time (IT) ms */
+	for (i = 0; i < ARRAY_SIZE(cm3217_it_tbl); i++) {
+		if (ms >= cm3217_it_tbl[i].ms)
+			break;
+	}
+	if (i >= ARRAY_SIZE(cm3217_it_tbl))
+		i = (ARRAY_SIZE(cm3217_it_tbl) - 1);
+	err = cm3217_cmd_wr(inf, cm3217_it_tbl[i].it_t,
+			    cm3217_it_tbl[i].fd_it);
+	if (!err) {
+		inf->hw_change = true;
+		inf->index = i;
+		ms = cm3217_it_tbl[i].ms;
+		inf->mult = CM3217_RESOLUTION_STEP / (long)ms;
+		inf->lux = 0;
+	}
+	dev_dbg(&inf->i2c->dev, "%s IT=%u err=%d\n",
+		__func__, cm3217_it_tbl[i].ms, err);
+	return err;
 }
 
-static ssize_t ls_kadc_store(struct device *dev,
-			     struct device_attribute *attr,
-			     const char *buf, size_t count)
+static int cm3217_rd(struct cm3217_inf *inf)
 {
-	struct cm3217_info *lpi = lp_info;
-	int kadc_temp = 0;
+	__u16 step;
+	s64 timestamp;
+	unsigned long calc;
+	unsigned int ms;
+	bool report;
+	int lux;
+	int limit_hi;
+	int limit_lo;
+	int err;
 
-	sscanf(buf, "%d", &kadc_temp);
-
-	/* if (kadc_temp <= 0 || lpi->golden_adc <= 0) {
-		printk(KERN_ERR "[LS][CM3217 error] %s: kadc_temp=0x%x, "
-		       "als_gadc=0x%x\n", __func__, kadc_temp,
-		       lpi->golden_adc);
-		return -EINVAL;
-	} */
-
-	mutex_lock(&als_get_adc_mutex);
-
-	if (kadc_temp != 0) {
-		lpi->als_kadc = kadc_temp;
-		if (lpi->als_gadc != 0) {
-			if (lightsensor_update_table(lpi) < 0)
-				printk(KERN_ERR
-				       "[LS][CM3217 error] %s: "
-				       "update ls table fail\n", __func__);
-		} else {
-			printk(KERN_INFO
-			       "[LS]%s: als_gadc =0x%x wait to be set\n",
-			       __func__, lpi->als_gadc);
-		}
-	} else {
-		printk(KERN_INFO "[LS]%s: als_kadc can't be set to zero\n",
-		       __func__);
+	if ((inf->hw_change) || !inf->enable) {
+		inf->hw_change = false;
+		/* drop first sample or !enable */
+		return 0;
 	}
 
-	mutex_unlock(&als_get_adc_mutex);
+	err = cm3217_i2c_rd(inf, &step);
+	if (err)
+		return err;
 
-	return count;
-}
-
-static DEVICE_ATTR(ls_kadc, 0664, ls_kadc_show, ls_kadc_store);
-
-static ssize_t ls_gadc_show(struct device *dev,
-			    struct device_attribute *attr, char *buf)
-{
-	struct cm3217_info *lpi = lp_info;
-	int ret;
-
-	ret = sprintf(buf, "gadc = 0x%x\n", lpi->als_gadc);
-
-	return ret;
-}
-
-static ssize_t ls_gadc_store(struct device *dev,
-			     struct device_attribute *attr,
-			     const char *buf, size_t count)
-{
-	struct cm3217_info *lpi = lp_info;
-	int gadc_temp = 0;
-
-	sscanf(buf, "%d", &gadc_temp);
-
-	/* if (gadc_temp <= 0 || lpi->golden_adc <= 0) {
-		printk(KERN_ERR "[LS][CM3217 error] %s: kadc_temp=0x%x, "
-		       "als_gadc=0x%x\n", __func__, kadc_temp,
-		       lpi->golden_adc);
-		return -EINVAL;
-	} */
-
-	mutex_lock(&als_get_adc_mutex);
-
-	if (gadc_temp != 0) {
-		lpi->als_gadc = gadc_temp;
-		if (lpi->als_kadc != 0) {
-			if (lightsensor_update_table(lpi) < 0)
-				printk(KERN_ERR
-				       "[LS][CM3217 error] %s: "
-				       "update ls table fail\n", __func__);
-		} else {
-			printk(KERN_INFO
-			       "[LS]%s: als_kadc =0x%x wait to be set\n",
-			       __func__, lpi->als_kadc);
-		}
-	} else {
-		printk(KERN_INFO "[LS]%s: als_gadc can't be set to zero\n",
-		       __func__);
+	calc = (unsigned long)step;
+	calc *= inf->mult;
+	calc /= CM3217_RESOLUTION_DIVIDER;
+	lux = (int)calc;
+	if ((step == 0xFFFF) && (inf->index <
+				 (ARRAY_SIZE(cm3217_it_tbl) - 1))) {
+		/* too many photons - need to decrease integration time */
+		ms = cm3217_it_tbl[inf->index + 1].ms;
+		err = cm3217_it_wr(inf, ms);
+		if (!err)
+			cm3217_delay(inf, true);
+	} else if ((lux <= CM3217_INPUT_LUX_DIVISOR) && (inf->index > 0)) {
+		/* not enough photons - need to increase integration time */
+		ms = cm3217_it_tbl[inf->index - 1].ms;
+		err = cm3217_it_wr(inf, ms);
+		if (!err)
+			cm3217_delay(inf, true);
+	} else if (inf->hw_sync) {
+		/* adjust queue time to max(polling delay, HW IT) */
+		inf->hw_sync = false;
+		cm3217_delay(inf, false);
 	}
+	timestamp = cm3217_timestamp_ns();
+	if (inf->report) {
+		ms = 0;
+	} else {
+		ms = (unsigned int)(timestamp - inf->timestamp);
+		ms /= 1000000;
+	}
+	/* Use of resolution:
+	 * - if resolution == 0 then report every polling delay.
+	 * - if resolution == 1 then report every polling delay
+	 *      only when lux changes.
+	 * - if resolution > 1 then report every polling delay
+	 *      only when lux is outside the resolution window.
+	 */
+	if (inf->resolution) {
+		limit_hi = inf->lux;
+		limit_lo = inf->lux;
+		limit_hi += (inf->resolution / 2);
+		limit_lo -= (inf->resolution / 2);
+		if (limit_lo < 0)
+			limit_lo = 0;
+		if ((lux > limit_hi) || (lux < limit_lo))
+			report = true;
+		else
+			report = false;
+	} else {
+		report = true;
+	}
+	/* report if:
+	 * - inf->report (usually used to report the first sample regardless)
+	 * - time since last report >= polling delay &&
+	 *    - lux outside resolution window from last reported lux
+	 *    OR
+	 *    - lux on every polling delay regardless of change
+	 */
+	if (inf->report || (report && (ms >= inf->poll_delay))) {
+		inf->lux = lux;
+		inf->timestamp = timestamp;
+		input_report_abs(inf->idev, ABS_MISC, lux);
+		input_sync(inf->idev);
+		inf->report = false;
+		dev_dbg(&inf->i2c->dev, "%s elapsed=%ums hw=%u lux=%d\n",
+			__func__, ms, step, lux);
+	}
+	return err;
+}
 
-	mutex_unlock(&als_get_adc_mutex);
+static void cm3217_work(struct work_struct *ws)
+{
+	struct cm3217_inf *inf;
+
+	inf = container_of(ws, struct cm3217_inf, dw.work);
+	cm3217_rd(inf);
+	if (inf->enable) {
+		queue_delayed_work(inf->wq, &inf->dw,
+				   msecs_to_jiffies(inf->queue_delay));
+	}
+}
+
+static int cm3217_enable(struct cm3217_inf *inf, bool en)
+{
+	int err;
+
+	if (en) {
+		cm3217_pm(inf, true);
+		inf->index = 0;
+		inf->report = true;
+		err = cm3217_it_wr(inf, inf->poll_delay);
+		cm3217_delay(inf, true);
+		queue_delayed_work(inf->wq, &inf->dw, CM3217_HW_DELAY);
+	} else {
+		cancel_delayed_work_sync(&inf->dw);
+		err = cm3217_pm(inf, false);
+		inf->poll_delay = CM3217_POLL_DELAY_MS_DFLT;
+	}
+	return err;
+}
+
+static ssize_t cm3217_enable_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+	unsigned int enable = 0;
+
+	inf = dev_get_drvdata(dev);
+	if (inf->enable)
+		enable = 1;
+	return sprintf(buf, "%u\n", enable);
+}
+
+static ssize_t cm3217_enable_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct cm3217_inf *inf;
+	unsigned long enable;
+	bool en;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	if (kstrtoul(buf, 10, &enable))
+		return -EINVAL;
+
+	if (enable)
+		en = true;
+	else
+		en = false;
+	if (en == inf->enable)
+		return count;
+
+	err = cm3217_enable(inf, en);
+	if (err)
+		return err;
 
 	return count;
 }
 
-static DEVICE_ATTR(ls_gadc, 0664, ls_gadc_show, ls_gadc_store);
-
-static ssize_t ls_adc_table_show(struct device *dev,
+static ssize_t cm3217_delay_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	unsigned length = 0;
-	int i;
+	struct cm3217_inf *inf;
 
-	for (i = 0; i < 10; i++) {
-		length += sprintf(buf + length,
-				  "[CM3217]Get adc_table[%d] =  0x%x ; %d, "
-				  "Get cali_table[%d] =  0x%x ; %d,\n",
-				  i, *(lp_info->adc_table + i),
-				  *(lp_info->adc_table + i),
-				  i, *(lp_info->cali_table + i),
-				  *(lp_info->cali_table + i));
-	}
-
-	return length;
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%u\n", (CM3217_POLL_DELAY_MS_MIN * 1000));
 }
 
-static ssize_t ls_adc_table_store(struct device *dev,
+static ssize_t cm3217_delay_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct cm3217_info *lpi = lp_info;
-	char *token[10];
-	unsigned long tempdata[10];
-	int i, r;
+	struct cm3217_inf *inf;
+	unsigned int delay;
 
-	printk(KERN_INFO "[LS][CM3217]%s\n", buf);
-	for (i = 0; i < 10; i++) {
-		token[i] = strsep((char **)&buf, " ");
-		r = kstrtoul(token[i], 16, &tempdata[i]);
-		if (tempdata[i] < 1 || tempdata[i] > 0xffff || r) {
-			printk(KERN_ERR
-			       "[LS][CM3217 error] adc_table[%d] = "
-			       "0x%lx Err\n", i, tempdata[i]);
-			return count;
+	inf = dev_get_drvdata(dev);
+	if (kstrtouint(buf, 10, &delay))
+		return -EINVAL;
+
+	/* us => ms */
+	delay /= 1000;
+	if (delay == inf->poll_delay)
+		return count;
+
+	inf->poll_delay = delay;
+	cm3217_delay(inf, false);
+	return count;
+}
+
+static ssize_t cm3217_resolution_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", CM3217_RESOLUTION);
+}
+
+static ssize_t cm3217_resolution_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct cm3217_inf *inf;
+	unsigned int resolution;
+
+	inf = dev_get_drvdata(dev);
+	if (kstrtouint(buf, 10, &resolution))
+		return -EINVAL;
+
+	inf->resolution = resolution;
+	return count;
+}
+
+static ssize_t cm3217_divisor_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", CM3217_INPUT_LUX_DIVISOR);
+}
+
+static ssize_t cm3217_max_range_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", (CM3217_INPUT_LUX_MAX *
+				     CM3217_INPUT_LUX_DIVISOR));
+}
+
+static ssize_t cm3217_microamp_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", CM3217_POWER_UA);
+}
+
+static ssize_t cm3217_lux_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct cm3217_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", inf->lux);
+}
+
+static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWOTH,
+		   cm3217_enable_show, cm3217_enable_store);
+static DEVICE_ATTR(delay, S_IRUGO | S_IWUSR | S_IWOTH,
+		   cm3217_delay_show, cm3217_delay_store);
+static DEVICE_ATTR(resolution, S_IRUGO | S_IWUSR | S_IWOTH,
+		   cm3217_resolution_show, cm3217_resolution_store);
+static DEVICE_ATTR(divisor, S_IRUGO,
+		   cm3217_divisor_show, NULL);
+static DEVICE_ATTR(max_range, S_IRUGO,
+		   cm3217_max_range_show, NULL);
+static DEVICE_ATTR(microamp, S_IRUGO,
+		   cm3217_microamp_show, NULL);
+static DEVICE_ATTR(lux, S_IRUGO,
+		   cm3217_lux_show, NULL);
+
+static struct device_attribute *cm3217_dev_attr[] = {
+	&dev_attr_enable,
+	&dev_attr_delay,
+	&dev_attr_resolution,
+	&dev_attr_divisor,
+	&dev_attr_max_range,
+	&dev_attr_microamp,
+	&dev_attr_lux,
+	NULL
+};
+
+static void cm3217_sysfs_remove(struct cm3217_inf *inf)
+{
+	unsigned int i;
+	struct device_attribute **attrs;
+
+	attrs = cm3217_dev_attr;
+	for (i = 0; attrs[i] != NULL; ++i)
+		device_remove_file(inf->dev, attrs[i]);
+	device_destroy(inf->class, cm3217_dev_t);
+	class_destroy(inf->class);
+	inf->dev = NULL;
+	inf->class = NULL;
+}
+
+static int cm3217_sysfs_create(struct cm3217_inf *inf)
+{
+	struct device_attribute **attrs;
+	int i;
+	int err = 0;
+
+	inf->class = class_create(THIS_MODULE, cm3217_class_name);
+	if (IS_ERR(inf->class)) {
+		err = PTR_ERR(inf->class);
+		goto err_class;
+	}
+
+	inf->dev = device_create(inf->class, &inf->i2c->dev, cm3217_dev_t,
+				 inf, cm3217_device_name);
+	if (IS_ERR(inf->dev)) {
+		err = PTR_ERR(inf->dev);
+		inf->dev = NULL;
+		goto err_dev;
+	}
+
+	attrs = cm3217_dev_attr;
+	for (i = 0; attrs[i] != NULL; i++) {
+		err = sysfs_create_file(&inf->dev->kobj, &attrs[i]->attr);
+		if (err) {
+			while (--i >= 0)
+				sysfs_remove_file(&inf->dev->kobj,
+						  &attrs[i]->attr);
+			goto err_attr;
 		}
 	}
 
-	mutex_lock(&als_get_adc_mutex);
+	return err;
 
-	for (i = 0; i < 10; i++) {
-		lpi->adc_table[i] = tempdata[i];
-		printk(KERN_INFO
-		       "[LS][CM3217]Set lpi->adc_table[%d] =  0x%x\n",
-		       i, *(lp_info->adc_table + i));
-	}
-	if (lightsensor_update_table(lpi) < 0)
-		printk(KERN_ERR "[LS][CM3217 error] %s: update ls table fail\n",
-		       __func__);
-
-	mutex_unlock(&als_get_adc_mutex);
-
-	D("[LS][CM3217] %s\n", __func__);
-
-	return count;
+err_attr:
+	device_destroy(inf->class, cm3217_dev_t);
+err_dev:
+	inf->dev = NULL;
+	class_destroy(inf->class);
+err_class:
+	inf->class = NULL;
+	return err;
 }
 
-static DEVICE_ATTR(ls_adc_table, 0664, ls_adc_table_show, ls_adc_table_store);
-
-static uint8_t ALS_CONF1;
-
-static ssize_t ls_conf1_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+static void cm3217_input_close(struct input_dev *idev)
 {
-	return sprintf(buf, "ALS_CONF1 = %x\n", ALS_CONF1);
+	struct cm3217_inf *inf;
+
+	inf = input_get_drvdata(idev);
+	cm3217_enable(inf, false);
 }
 
-static ssize_t ls_conf1_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t count)
+static int cm3217_input_create(struct cm3217_inf *inf)
 {
-	int value = 0;
+	int err;
 
-	sscanf(buf, "0x%x", &value);
-
-	ALS_CONF1 = value;
-	printk(KERN_INFO "[LS]set ALS_CONF1 = %x\n", ALS_CONF1);
-	_cm3217_I2C_Write_Byte(ALS_W_CMD1_addr, ALS_CONF1);
-
-	return count;
-}
-
-static DEVICE_ATTR(ls_conf1, 0664, ls_conf1_show, ls_conf1_store);
-
-static uint8_t ALS_CONF2;
-static ssize_t ls_conf2_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "ALS_CONF2 = %x\n", ALS_CONF2);
-}
-
-static ssize_t ls_conf2_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t count)
-{
-	int value = 0;
-
-	sscanf(buf, "0x%x", &value);
-
-	ALS_CONF2 = value;
-	printk(KERN_INFO "[LS]set ALS_CONF2 = %x\n", ALS_CONF2);
-	_cm3217_I2C_Write_Byte(ALS_W_CMD2_addr, ALS_CONF2);
-
-	return count;
-}
-
-static DEVICE_ATTR(ls_conf2, 0664, ls_conf2_show, ls_conf2_store);
-
-static ssize_t ls_fLevel_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "fLevel = %d\n", fLevel);
-}
-
-static ssize_t ls_fLevel_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	struct cm3217_info *lpi = lp_info;
-	int value = 0;
-
-	sscanf(buf, "%d", &value);
-	(value >= 0) ? (value = min(value, 10)) : (value = max(value, -1));
-	fLevel = value;
-
-	input_report_abs(lpi->ls_input_dev, ABS_MISC, fLevel);
-	input_sync(lpi->ls_input_dev);
-
-	printk(KERN_INFO "[LS]set fLevel = %d\n", fLevel);
-
-	msleep(1000);
-	fLevel = -1;
-
-	return count;
-}
-
-static DEVICE_ATTR(ls_flevel, 0664, ls_fLevel_show, ls_fLevel_store);
-
-static int cm3217_disable(struct input_dev *dev)
-{
-	struct cm3217_info *lpi = lp_info;
-
-	D("[LS][CM3217] %s\n", __func__);
-
-	lpi->als_enabled_before_suspend = lpi->als_enable;
-	if (lpi->als_enable)
-		lightsensor_disable(lpi);
-
-	return 0;
-}
-
-static int cm3217_enable(struct input_dev *dev)
-{
-	struct cm3217_info *lpi = lp_info;
-
-	D("[LS][CM3217] %s\n", __func__);
-
-	if (lpi->als_enabled_before_suspend)
-		lightsensor_enable(lpi);
-
-	return 0;
-}
-
-static int lightsensor_setup(struct cm3217_info *lpi)
-{
-	int ret;
-
-	lpi->ls_input_dev = input_allocate_device();
-	if (!lpi->ls_input_dev) {
-		pr_err("[LS][CM3217 error]%s: "
-		       "could not allocate ls input device\n", __func__);
+	inf->idev = input_allocate_device();
+	if (!inf->idev) {
+		dev_err(inf->dev, "%s ERR\n", __func__);
 		return -ENOMEM;
 	}
-	lpi->ls_input_dev->name = "cm3217-ls";
-	lpi->ls_input_dev->enable = cm3217_enable;
-	lpi->ls_input_dev->disable = cm3217_disable;
-	lpi->ls_input_dev->enabled = lpi->als_enable;
-	set_bit(EV_ABS, lpi->ls_input_dev->evbit);
-	input_set_abs_params(lpi->ls_input_dev, ABS_MISC, 0, 9, 0, 0);
 
-	ret = input_register_device(lpi->ls_input_dev);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: "
-		       "can not register ls input device\n", __func__);
-		goto err_free_ls_input_device;
-	}
-
-	ret = misc_register(&lightsensor_misc);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: "
-		       "can not register ls misc device\n", __func__);
-		goto err_unregister_ls_input_device;
-	}
-
-	return ret;
-
-err_unregister_ls_input_device:
-	input_unregister_device(lpi->ls_input_dev);
-err_free_ls_input_device:
-	input_free_device(lpi->ls_input_dev);
-	return ret;
+	inf->idev->name = CM3217_NAME;
+	inf->idev->dev.parent = &inf->i2c->dev;
+	inf->idev->close = cm3217_input_close;
+	input_set_drvdata(inf->idev, inf);
+	input_set_capability(inf->idev, EV_ABS, ABS_MISC);
+	input_set_abs_params(inf->idev, ABS_MISC,
+			     CM3217_INPUT_LUX_MIN, CM3217_INPUT_LUX_MAX,
+			     CM3217_INPUT_LUX_FUZZ, CM3217_INPUT_LUX_FLAT);
+	err = input_register_device(inf->idev);
+	if (err)
+		input_free_device(inf->idev);
+	return err;
 }
 
-static int cm3217_setup(struct cm3217_info *lpi)
+static int cm3217_remove(struct i2c_client *client)
 {
-	int ret = 0;
+	struct cm3217_inf *inf;
 
-	als_power(1);
-	msleep(5);
-
-	ret = _cm3217_I2C_Write_Byte(ALS_W_CMD2_addr,
-				     CM3217_ALS_WDM_DEFAULT_1
-				     | CM3217_ALS_IT_2_T
-				     | CM3217_ALS_BIT5_Default_1);
-	if (ret < 0)
-		return ret;
-
-	ret = _cm3217_I2C_Write_Byte(ALS_W_CMD2_addr, CM3217_ALS_IT_100ms);
-	msleep(10);
-
-	return ret;
+	inf = i2c_get_clientdata(client);
+	cm3217_sysfs_remove(inf);
+	input_unregister_device(inf->idev);
+	input_free_device(inf->idev);
+	destroy_workqueue(inf->wq);
+	pm_exit(inf);
+	mutex_destroy(&inf->mutex);
+	kfree(inf);
+	dev_dbg(&client->adapter->dev, "%s\n", __func__);
+	return 0;
 }
 
 static int cm3217_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int ret = 0;
-	struct cm3217_info *lpi;
-	struct cm3217_platform_data *pdata;
+	struct cm3217_inf *inf;
+	int err;
 
-	D("[CM3217] %s\n", __func__);
-
-	lpi = kzalloc(sizeof(struct cm3217_info), GFP_KERNEL);
-	if (!lpi)
+	inf = kzalloc(sizeof(*inf), GFP_KERNEL);
+	if (IS_ERR_OR_NULL(inf)) {
+		dev_err(&client->dev, "%s kzalloc err\n", __func__);
 		return -ENOMEM;
-
-	/* D("[CM3217] %s: client->irq = %d\n", __func__, client->irq); */
-
-	lpi->i2c_client = client;
-	pdata = client->dev.platform_data;
-	if (!pdata) {
-		pr_err("[CM3217 error]%s: Assign platform_data error!!\n",
-		       __func__);
-		ret = -EBUSY;
-		goto err_platform_data_null;
 	}
 
-	lpi->irq = client->irq;
+	inf->i2c = client;
+	i2c_set_clientdata(client, inf);
+	mutex_init(&inf->mutex);
+	err = cm3217_input_create(inf);
+	if (err)
+		goto err_mutex;
 
-	i2c_set_clientdata(client, lpi);
-	lpi->adc_table = pdata->levels;
-	lpi->golden_adc = pdata->golden_adc;
-	lpi->power = pdata->power;
-
-	lpi->polling_delay = msecs_to_jiffies(LS_POLLING_DELAY);
-
-	lp_info = lpi;
-
-	mutex_init(&als_enable_mutex);
-	mutex_init(&als_disable_mutex);
-	mutex_init(&als_get_adc_mutex);
-
-	ret = lightsensor_setup(lpi);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: lightsensor_setup error!!\n",
-		       __func__);
-		goto err_lightsensor_setup;
+	inf->wq = create_singlethread_workqueue(CM3217_NAME);
+	if (!inf->wq) {
+		dev_err(&client->dev, "%s workqueue err\n", __func__);
+		err = -ENOMEM;
+		goto err_wq;
 	}
 
-	/* SET LUX STEP FACTOR HERE
-	 * if adc raw value one step = 0.3 lux
-	 * the following will set the factor 0.3 = 3/10
-	 * and lpi->golden_adc = 3;
-	 * set als_kadc = (ALS_CALIBRATED <<16) | 10; */
+	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
+	pm_init(inf);
+	err = cm3217_sysfs_create(inf);
+	if (err)
+		goto err_pm;
 
-	als_kadc = (ALS_CALIBRATED << 16) | 10;
-	lpi->golden_adc = 3;
+	dev_dbg(&client->dev, "%s\n", __func__);
+	return 0;
 
-	/* ls calibrate always set to 1 */
-	lpi->ls_calibrate = 1;
-
-	lightsensor_set_kvalue(lpi);
-	ret = lightsensor_update_table(lpi);
-	if (ret < 0) {
-		pr_err("[LS][CM3217 error]%s: update ls table fail\n",
-		       __func__);
-		goto err_lightsensor_update_table;
-	}
-
-	lpi->lp_wq = create_singlethread_workqueue("cm3217_wq");
-	if (!lpi->lp_wq) {
-		pr_err("[CM3217 error]%s: can't create workqueue\n", __func__);
-		ret = -ENOMEM;
-		goto err_create_singlethread_workqueue;
-	}
-
-	ret = cm3217_setup(lpi);
-	if (ret < 0) {
-		pr_err("[ERR][CM3217 error]%s: cm3217_setup error!\n",
-		       __func__);
-		goto err_cm3217_setup;
-	}
-
-	lpi->cm3217_class = class_create(THIS_MODULE, "optical_sensors");
-	if (IS_ERR(lpi->cm3217_class)) {
-		ret = PTR_ERR(lpi->cm3217_class);
-		lpi->cm3217_class = NULL;
-		goto err_create_class;
-	}
-
-	lpi->ls_dev = device_create(lpi->cm3217_class,
-				    NULL, 0, "%s", "lightsensor");
-	if (unlikely(IS_ERR(lpi->ls_dev))) {
-		ret = PTR_ERR(lpi->ls_dev);
-		lpi->ls_dev = NULL;
-		goto err_create_ls_device;
-	}
-
-	/* register the attributes */
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_adc);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	/* register the attributes */
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_auto);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	/* register the attributes */
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_kadc);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_gadc);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_adc_table);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_conf1);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_conf2);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	ret = device_create_file(lpi->ls_dev, &dev_attr_ls_flevel);
-	if (ret)
-		goto err_create_ls_device_file;
-
-	lpi->als_enable = 0;
-	lpi->als_enabled_before_suspend = 0;
-	D("[CM3217] %s: Probe success!\n", __func__);
-
-	return ret;
-
-err_create_ls_device_file:
-	device_unregister(lpi->ls_dev);
-err_create_ls_device:
-	class_destroy(lpi->cm3217_class);
-err_create_class:
-err_cm3217_setup:
-	destroy_workqueue(lpi->lp_wq);
-	mutex_destroy(&als_enable_mutex);
-	mutex_destroy(&als_disable_mutex);
-	mutex_destroy(&als_get_adc_mutex);
-	input_unregister_device(lpi->ls_input_dev);
-	input_free_device(lpi->ls_input_dev);
-err_create_singlethread_workqueue:
-err_lightsensor_update_table:
-	misc_deregister(&lightsensor_misc);
-err_lightsensor_setup:
-err_platform_data_null:
-	kfree(lpi);
-	return ret;
+err_pm:
+	pm_exit(inf);
+err_wq:
+	destroy_workqueue(inf->wq);
+err_mutex:
+	mutex_destroy(&inf->mutex);
+	kfree(inf);
+	dev_err(&client->dev, "%s err=%d\n", __func__, err);
+	return err;
 }
 
-static const struct i2c_device_id cm3217_i2c_id[] = {
-	{CM3217_I2C_NAME, 0},
+static const struct i2c_device_id cm3217_i2c_device_id[] = {
+	{CM3217_NAME, 0},
 	{}
 };
 
+MODULE_DEVICE_TABLE(i2c, cm3217_i2c_device_id);
+
 static struct i2c_driver cm3217_driver = {
-	.id_table = cm3217_i2c_id,
-	.probe = cm3217_probe,
+	.class		= I2C_CLASS_HWMON,
+	.probe		= cm3217_probe,
+	.remove		= cm3217_remove,
+	.id_table	= cm3217_i2c_device_id,
 	.driver = {
-		.name = CM3217_I2C_NAME,
-		.owner = THIS_MODULE,
+		.name	= CM3217_NAME,
+		.owner	= THIS_MODULE,
 	},
 };
 
@@ -1080,5 +816,6 @@ module_init(cm3217_init);
 module_exit(cm3217_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("CM3217 Driver");
-MODULE_AUTHOR("Frank Hsieh <pengyueh@gmail.com>");
+MODULE_DESCRIPTION("CM3217 driver");
+MODULE_AUTHOR("NVIDIA Corp");
+
