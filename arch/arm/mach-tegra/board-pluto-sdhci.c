@@ -105,6 +105,8 @@ struct tegra_sdhci_platform_data pluto_tegra_sdhci_platform_data0 = {
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 	.base_clk = 208000000,
+	.uhs_mask = MMC_UHS_MASK_SDR104 |
+		MMC_UHS_MASK_DDR50,
 };
 
 #ifndef CONFIG_USE_OF
