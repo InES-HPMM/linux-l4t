@@ -256,14 +256,6 @@ int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 	return 0;
 }
 
-int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
-{
-	if (index < 0 || index > 7)
-		return -EINVAL;
-	*calib = tegra_fuse_readl(tsensor_calib_offset[index]);
-	return 0;
-}
-
 int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 					bool odm_security_mode)
 {
