@@ -212,7 +212,15 @@ ENDPROC(tegra_flush_l1_cache)
  */
 ENTRY(tegra_sleep_cpu_finish)
 	mov	r4, r0
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	ldr	r0, =0xFFFFFFFC
+	ldr	r1, =0xFFFFFFE4
+	ldr	r2, =TEGRA_RESET_HANDLER_BASE
+	bl	tegra_generic_smc
+#else
 	bl	tegra_flush_cache
+#endif
+
 	mov	r0, r4
 	bl	tegra_cpu_exit_coherency
 

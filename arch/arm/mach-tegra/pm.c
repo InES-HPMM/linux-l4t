@@ -567,17 +567,6 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 
 static inline void tegra_sleep_cpu(unsigned long v2p)
 {
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
-	outer_flush_range(__pa(&tegra_resume_timestamps_start),
-			  __pa(&tegra_resume_timestamps_end));
-	trace_smc_sleep_cpu(NVSEC_SMC_START);
-
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
-			  (TEGRA_RESET_HANDLER_BASE +
-			   tegra_cpu_reset_handler_offset));
-
-	trace_smc_sleep_cpu(NVSEC_SMC_DONE);
-#endif
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
