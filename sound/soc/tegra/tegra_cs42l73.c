@@ -1171,10 +1171,8 @@ static int tegra_cs42l73_suspend_post(struct snd_soc_card *card)
 	if (gpio_is_valid(gpio->gpio))
 		disable_irq(gpio_to_irq(gpio->gpio));
 
-	if (machine->clock_enabled) {
-		machine->clock_enabled = 0;
+	if (machine->clock_enabled && !machine->is_call_mode)
 		tegra_asoc_utils_clk_disable(&machine->util_data);
-	}
 
 	return 0;
 }
@@ -1185,16 +1183,14 @@ static int tegra_cs42l73_resume_pre(struct snd_soc_card *card)
 	struct snd_soc_jack_gpio *gpio = &tegra_cs42l73_hp_jack_gpio;
 	struct tegra_cs42l73 *machine = snd_soc_card_get_drvdata(card);
 
+	if (machine->clock_enabled && !machine->is_call_mode)
+		tegra_asoc_utils_clk_enable(&machine->util_data);
+
 	if (gpio_is_valid(gpio->gpio)) {
 		val = gpio_get_value(gpio->gpio);
 		val = gpio->invert ? !val : val;
 		snd_soc_jack_report(gpio->jack, val, gpio->report);
 		enable_irq(gpio_to_irq(gpio->gpio));
-	}
-
-	if (!machine->clock_enabled) {
-		machine->clock_enabled = 1;
-		tegra_asoc_utils_clk_enable(&machine->util_data);
 	}
 
 	return 0;
@@ -1224,9 +1220,9 @@ static int tegra_cs42l73_set_bias_level_post(struct snd_soc_card *card,
 		level == SND_SOC_BIAS_OFF && machine->clock_enabled) {
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
+		machine->bias_level = level;
 	}
 
-	machine->bias_level = level;
 
 	return 0 ;
 }
