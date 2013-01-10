@@ -39,6 +39,9 @@
 #include "iomap.h"
 #include "tegra11_host1x_devices.h"
 
+#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
+#define DSI_PANEL_BL_PWM_GPIO	TEGRA_GPIO_PH1
+
 struct platform_device * __init pismo_host1x_init(void)
 {
 	struct platform_device *pdev = NULL;
@@ -383,8 +386,14 @@ static void pismo_panel_select(void)
 		if (panel->init_sd_settings)
 			panel->init_sd_settings(&pismo_sd_settings);
 
-		if (panel->init_dc_out)
+		if (panel->init_dc_out) {
 			panel->init_dc_out(&pismo_disp1_out);
+			pismo_disp1_out.dsi->dsi_instance = DSI_INSTANCE_0;
+			pismo_disp1_out.dsi->dsi_panel_rst_gpio =
+				DSI_PANEL_RST_GPIO;
+			pismo_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
+				DSI_PANEL_BL_PWM_GPIO;
+		}
 
 		if (panel->init_fb_data)
 			panel->init_fb_data(&pismo_disp1_fb_data);
@@ -395,9 +404,9 @@ static void pismo_panel_select(void)
 		if (panel->set_disp_device)
 			panel->set_disp_device(&pismo_disp1_device);
 
-		if (panel->init_resources)
-			panel->init_resources(pismo_disp1_resources,
-				ARRAY_SIZE(pismo_disp1_resources));
+		tegra_dsi_resources_init(pismo_disp1_out.dsi->dsi_instance,
+			pismo_disp1_resources,
+			ARRAY_SIZE(pismo_disp1_resources));
 
 		if (panel->register_bl_dev)
 			panel->register_bl_dev();

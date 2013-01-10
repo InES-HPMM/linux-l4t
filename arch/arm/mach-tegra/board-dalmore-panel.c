@@ -39,6 +39,9 @@
 #include "common.h"
 #include "tegra11_host1x_devices.h"
 
+#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
+#define DSI_PANEL_BL_PWM_GPIO	TEGRA_GPIO_PH1
+
 struct platform_device * __init dalmore_host1x_init(void)
 {
 	struct platform_device *pdev = NULL;
@@ -378,28 +381,41 @@ static void dalmore_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
+	u8 dsi_instance;
 
 	tegra_get_display_board_info(&board);
 
 	switch (board.board_id) {
 	case BOARD_E1639:
 		panel = &dsi_s_wqxga_10_1;
+		/* FIXME: panel used ganged mode,need to check if
+		 * the dsi_instance is useful in this case
+		 */
+		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_E1631:
 		panel = &dsi_a_1080p_11_6;
+		dsi_instance = DSI_INSTANCE_0;
 		break;
 	case BOARD_E1627:
 	/* fall through */
 	default:
 		panel = &dsi_p_wuxga_10_1;
+		dsi_instance = DSI_INSTANCE_0;
 		break;
 	}
 	if (panel) {
 		if (panel->init_sd_settings)
 			panel->init_sd_settings(&sd_settings);
 
-		if (panel->init_dc_out)
+		if (panel->init_dc_out) {
 			panel->init_dc_out(&dalmore_disp1_out);
+			dalmore_disp1_out.dsi->dsi_instance = dsi_instance;
+			dalmore_disp1_out.dsi->dsi_panel_rst_gpio =
+				DSI_PANEL_RST_GPIO;
+			dalmore_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
+				DSI_PANEL_BL_PWM_GPIO;
+		}
 
 		if (panel->init_fb_data)
 			panel->init_fb_data(&dalmore_disp1_fb_data);
@@ -410,9 +426,8 @@ static void dalmore_panel_select(void)
 		if (panel->set_disp_device)
 			panel->set_disp_device(&dalmore_disp1_device);
 
-		if (panel->init_resources)
-			panel->init_resources(dalmore_disp1_resources,
-				ARRAY_SIZE(dalmore_disp1_resources));
+		tegra_dsi_resources_init(dsi_instance, dalmore_disp1_resources,
+			ARRAY_SIZE(dalmore_disp1_resources));
 
 		if (panel->register_bl_dev)
 			panel->register_bl_dev();

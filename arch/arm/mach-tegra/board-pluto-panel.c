@@ -41,6 +41,10 @@
 
 #include "tegra11_host1x_devices.h"
 
+#define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH5
+#define DSI_PANEL_BL_EN_GPIO	TEGRA_GPIO_PH2
+#define DSI_PANEL_BL_PWM_GPIO	TEGRA_GPIO_PH1
+
 struct platform_device * __init pluto_host1x_init(void)
 {
 	struct platform_device *pdev = NULL;
@@ -334,27 +338,41 @@ static void pluto_panel_select(void)
 {
 	struct tegra_panel *panel;
 	struct board_info board;
+	u8 dsi_instance = 0;
 
 	tegra_get_display_board_info(&board);
 
 	switch (board.board_id) {
 	case BOARD_E1605:
 		panel = &dsi_j_720p_4_7;
+		dsi_instance = DSI_INSTANCE_1;
 		break;
 	case BOARD_E1582:
 	default:
-		if (tegra_get_board_panel_id())
+		if (tegra_get_board_panel_id()) {
 			panel = &dsi_s_1080p_5;
-		else
+			dsi_instance = DSI_INSTANCE_1;
+		} else {
 			panel = &dsi_l_720p_5;
+			dsi_instance = DSI_INSTANCE_0;
+		}
 		break;
 	}
 
 	if (panel->init_sd_settings)
 		panel->init_sd_settings(&sd_settings);
 
-	if (panel->init_dc_out)
+	if (panel->init_dc_out) {
 		panel->init_dc_out(&pluto_disp1_out);
+		pluto_disp1_out.dsi->dsi_instance = dsi_instance;
+		pluto_disp1_out.dsi->dsi_panel_rst_gpio = DSI_PANEL_RST_GPIO;
+		pluto_disp1_out.dsi->dsi_panel_bl_en_gpio =
+			DSI_PANEL_BL_EN_GPIO;
+		pluto_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
+			DSI_PANEL_BL_PWM_GPIO;
+		/* update the init cmd if dependent on reset GPIO */
+		tegra_dsi_update_init_cmd_gpio_rst(&pluto_disp1_out);
+	}
 
 	if (panel->init_fb_data)
 		panel->init_fb_data(&pluto_disp1_fb_data);
@@ -365,9 +383,8 @@ static void pluto_panel_select(void)
 	if (panel->set_disp_device)
 		panel->set_disp_device(&pluto_disp1_device);
 
-	if (panel->init_resources)
-		panel->init_resources(pluto_disp1_resources,
-			ARRAY_SIZE(pluto_disp1_resources));
+	tegra_dsi_resources_init(dsi_instance, pluto_disp1_resources,
+		ARRAY_SIZE(pluto_disp1_resources));
 
 	if (panel->register_bl_dev)
 		panel->register_bl_dev();

@@ -31,9 +31,6 @@
 #include "board-panel.h"
 
 #define DSI_PANEL_RESET         1
-#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH5
-#define DSI_PANEL_BL_EN_GPIO    TEGRA_GPIO_PH2
-#define DSI_PANEL_BL_PWM        TEGRA_GPIO_PH1
 
 #define DC_CTRL_MODE            TEGRA_DC_OUT_CONTINUOUS_MODE
 
@@ -394,6 +391,7 @@ fail:
 	return err;
 }
 
+static struct tegra_dsi_out dsi_l_720p_5_pdata;
 static int dsi_l_720p_5_gpio_get(void)
 {
 	int err = 0;
@@ -401,19 +399,22 @@ static int dsi_l_720p_5_gpio_get(void)
 	if (dsi_l_720p_5_gpio_requested)
 		return 0;
 
-	err = gpio_request(DSI_PANEL_RST_GPIO, "panel rst");
+	err = gpio_request(dsi_l_720p_5_pdata.dsi_panel_rst_gpio,
+		"panel rst");
 	if (err < 0) {
 		pr_err("panel reset gpio request failed\n");
 		goto fail;
 	}
 
-	err = gpio_request(DSI_PANEL_BL_EN_GPIO, "panel backlight");
+	err = gpio_request(dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio,
+		"panel backlight");
 	if (err < 0) {
 		pr_err("panel backlight gpio request failed\n");
 		goto fail;
 	}
 
-	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
+	err = gpio_request(dsi_l_720p_5_pdata.dsi_panel_bl_pwm_gpio,
+		"panel pwm");
 	if (err < 0) {
 		pr_err("panel backlight pwm gpio request failed\n");
 		goto fail;
@@ -440,7 +441,7 @@ static int dsi_l_720p_5_enable(struct device *dev)
 		pr_err("dsi gpio request failed\n");
 		goto fail;
 	}
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 0);
+	gpio_direction_output(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
 
 	if (avdd_lcd_3v0_2v8) {
 		err = regulator_enable(avdd_lcd_3v0_2v8);
@@ -472,15 +473,15 @@ static int dsi_l_720p_5_enable(struct device *dev)
 	usleep_range(3000, 5000);
 
 #if DSI_PANEL_RESET
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
 	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
 	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
+	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
 	msleep(20);
 #endif
 
-	gpio_direction_output(DSI_PANEL_BL_EN_GPIO, 1);
+	gpio_direction_output(dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 1);
 	is_bl_powered = true;
 	return 0;
 fail:
@@ -585,8 +586,6 @@ static struct tegra_dsi_cmd dsi_l_720p_5_init_cmd[] = {
 static struct tegra_dsi_out dsi_l_720p_5_pdata = {
 	.n_data_lanes = 4,
 
-	.dsi_instance = DSI_INSTANCE_0,
-
 	.refresh_rate = 60,
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
@@ -604,9 +603,9 @@ static struct tegra_dsi_out dsi_l_720p_5_pdata = {
 
 static int dsi_l_720p_5_disable(void)
 {
-	gpio_set_value(DSI_PANEL_BL_EN_GPIO, 0);
+	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 0);
 	is_bl_powered = false;
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
 
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
@@ -618,20 +617,6 @@ static int dsi_l_720p_5_disable(void)
 		regulator_disable(avdd_lcd_3v0_2v8);
 
 	return 0;
-}
-
-static void dsi_l_720p_5_resources_init(struct resource *
-resources, int n_resources)
-{
-	int i;
-	for (i = 0; i < n_resources; i++) {
-		struct resource *r = &resources[i];
-		if (resource_type(r) == IORESOURCE_MEM &&
-			!strcmp(r->name, "dsi_regs")) {
-			r->start = TEGRA_DSI_BASE;
-			r->end = TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1;
-		}
-	}
 }
 
 static void dsi_l_720p_5_dc_out_init(struct tegra_dc_out *dc)
@@ -668,7 +653,6 @@ struct tegra_panel __initdata dsi_l_720p_5 = {
 	.init_sd_settings = dsi_l_720p_5_sd_settings_init,
 	.init_dc_out = dsi_l_720p_5_dc_out_init,
 	.init_fb_data = dsi_l_720p_5_fb_data_init,
-	.init_resources = dsi_l_720p_5_resources_init,
 	.register_bl_dev = dsi_l_720p_5_register_bl_dev,
 #ifdef CONFIG_TEGRA_DC_CMU
 	.init_cmu_data = dsi_l_720p_5_cmu_init,
