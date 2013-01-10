@@ -62,29 +62,31 @@ static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
 };
 
+static struct throttle_table tj_throttle_table[] = {
+	{      0, 1000 },
+	{  51000, 1000 },
+	{ 102000, 1000 },
+	{ 204000, 1000 },
+	{ 252000, 1000 },
+	{ 288000, 1000 },
+	{ 372000, 1000 },
+	{ 468000, 1000 },
+	{ 510000, 1000 },
+	{ 612000, 1000 },
+	{ 714000, 1050 },
+	{ 816000, 1050 },
+	{ 918000, 1050 },
+	{1020000, 1100 },
+	{1122000, 1100 },
+	{1224000, 1100 },
+	{1326000, 1100 },
+	{1428000, 1100 },
+	{1530000, 1100 },
+};
+
 static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 19,
-	.throt_tab = {
-		{      0, 1000 },
-		{  51000, 1000 },
-		{ 102000, 1000 },
-		{ 204000, 1000 },
-		{ 252000, 1000 },
-		{ 288000, 1000 },
-		{ 372000, 1000 },
-		{ 468000, 1000 },
-		{ 510000, 1000 },
-		{ 612000, 1000 },
-		{ 714000, 1050 },
-		{ 816000, 1050 },
-		{ 918000, 1050 },
-		{1020000, 1100 },
-		{1122000, 1100 },
-		{1224000, 1100 },
-		{1326000, 1100 },
-		{1428000, 1100 },
-		{1530000, 1100 },
-	},
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = &tj_throttle_table,
 };
 
 static int __init pismo_throttle_init(void)
@@ -670,16 +672,18 @@ static struct therm_est_data skin_data = {
 	.passive_delay = 15000,
 };
 
+static struct throttle_table skin_throttle_table[] = {
+	{ 640000, 1200 },
+	{ 640000, 1200 },
+	{ 760000, 1200 },
+	{ 760000, 1200 },
+	{1000000, 1200 },
+	{1000000, 1200 },
+};
+
 static struct balanced_throttle skin_throttle = {
-	.throt_tab_size = 6,
-	.throt_tab = {
-		{ 640000, 1200 },
-		{ 640000, 1200 },
-		{ 760000, 1200 },
-		{ 760000, 1200 },
-		{1000000, 1200 },
-		{1000000, 1200 },
-	},
+	.throt_tab_size = ARRAY_SIZE(skin_throttle_table),
+	.throt_tab = &skin_throttle_table,
 };
 
 static int __init pismo_skin_init(void)

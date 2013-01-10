@@ -86,7 +86,7 @@ struct balanced_throttle {
 	int throttle_count;
 	int throttle_index;
 	int throt_tab_size;
-	struct throttle_table throt_tab[MAX_THROT_TABLE_SIZE + 1];
+	struct throttle_table *throt_tab;
 };
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE

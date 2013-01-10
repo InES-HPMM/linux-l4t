@@ -58,20 +58,22 @@
 #define TSENSOR_OFFSET	(4000 + 5000)
 #define TDIODE_OFFSET	(9000 + 1000)
 
+static struct throttle_table tj_throttle_table[] = {
+	{      0, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 760000, 1000 },
+	{ 760000, 1050 },
+	{1000000, 1050 },
+	{1000000, 1100 },
+};
+
 static struct balanced_throttle tj_throttle = {
-	.throt_tab_size = 10,
-	.throt_tab = {
-		{      0, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 640000, 1000 },
-		{ 760000, 1000 },
-		{ 760000, 1050 },
-		{1000000, 1050 },
-		{1000000, 1100 },
-	},
+	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
+	.throt_tab = tj_throttle_table,
 };
 
 static struct tegra_tsensor_platform_data tsensor_data = {
