@@ -258,7 +258,9 @@
 #define USB3_PREFETCH_ID               17
 
 #define FUSE_USB_CALIB_0		0x1F0
-#define   XCVR_SETUP(x)	(((x) & 0x7F) << 0)
+#define   XCVR_SETUP_P0(x)	(((x) & 0x7F) << 0)
+#define   XCVR_SETUP_P1(x)	(((x) & (0x7F << 15)) >> 15)
+#define   XCVR_SETUP_P2(x)	(((x) & (0x7F << 22)) >> 22)
 #define   XCVR_SETUP_LSB_MASK	0xF
 #define   XCVR_SETUP_MSB_MASK	0x70
 #define   XCVR_SETUP_LSB_MAX_VAL	0xF
@@ -606,7 +608,13 @@ static unsigned int utmi_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (cfg->xcvr_use_fuses) {
-		val = XCVR_SETUP(tegra_fuse_readl(FUSE_USB_CALIB_0));
+		if (phy->inst == 0)
+			val = XCVR_SETUP_P0(tegra_fuse_readl(FUSE_USB_CALIB_0));
+		else if (phy->inst == 1)
+			val = XCVR_SETUP_P1(tegra_fuse_readl(FUSE_USB_CALIB_0));
+		else
+			val = XCVR_SETUP_P2(tegra_fuse_readl(FUSE_USB_CALIB_0));
+
 		if (cfg->xcvr_use_lsb) {
 			val = min((unsigned int) ((val & XCVR_SETUP_LSB_MASK)
 				+ cfg->xcvr_setup_offset),
