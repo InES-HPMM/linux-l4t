@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/latency_allowance.h
  *
- * Copyright (C) 2011-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -113,44 +113,16 @@ enum tegra_la_id {
 	TEGRA_LA_MAX_ID
 };
 
-#if !defined(CONFIG_TEGRA_LATENCY_ALLOWANCE)
-static inline int tegra_set_latency_allowance(enum tegra_la_id id,
-						unsigned int bandwidth_in_mbps)
-{
-	return 0;
-}
-
-static inline void tegra_latency_allowance_update_tick_length(
-						unsigned int new_ns_per_tick)
-{
-	return;
-}
-#else
 int tegra_set_latency_allowance(enum tegra_la_id id,
 				unsigned int bandwidth_in_mbps);
 
 void tegra_latency_allowance_update_tick_length(unsigned int new_ns_per_tick);
-#endif
 
-#if !defined(CONFIG_TEGRA_LATENCY_ALLOWANCE_SCALING)
-static inline int tegra_enable_latency_scaling(enum tegra_la_id id,
-						unsigned int threshold_low,
-						unsigned int threshold_mid,
-						unsigned int threshold_high)
-{
-	return 0;
-}
-
-static inline void tegra_disable_latency_scaling(enum tegra_la_id id)
-{
-}
-#else
 int tegra_enable_latency_scaling(enum tegra_la_id id,
 				    unsigned int threshold_low,
 				    unsigned int threshold_mid,
 				    unsigned int threshold_high);
 
 void tegra_disable_latency_scaling(enum tegra_la_id id);
-#endif
 
 #endif /* _MACH_TEGRA_LATENCY_ALLOWANCE_H_ */
