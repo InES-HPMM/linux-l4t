@@ -62,8 +62,10 @@ MODULE_PARM_DESC(modem_pm,
 	"baseband xmm power - modem power management (1 = pm, 0 = no pm)");
 
 static struct usb_device_id xmm_pm_ids[] = {
-	{ USB_DEVICE(VENDOR_ID, PRODUCT_ID),
-	.driver_info = 0 },
+	/* xmm modem variant 1 */
+	{ USB_DEVICE(0x1519, 0x0020), },
+	/* xmm modem variant 2 */
+	{ USB_DEVICE(0x1519, 0x0443), },
 	{}
 };
 MODULE_DEVICE_TABLE(usb, xmm_pm_ids);
