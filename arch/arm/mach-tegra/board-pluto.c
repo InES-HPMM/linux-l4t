@@ -601,6 +601,55 @@ static struct platform_device *pluto_devices[] __initdata = {
 };
 
 #ifdef CONFIG_USB_SUPPORT
+
+static void pluto_usb_hsic_postsupend(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L2);
+#endif
+}
+
+static void pluto_usb_hsic_preresume(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
+#endif
+}
+
+static void pluto_usb_hsic_post_resume(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L0);
+#endif
+}
+
+static void pluto_usb_hsic_phy_power(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L0);
+#endif
+}
+
+static void pluto_usb_hsic_post_phy_off(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L2);
+#endif
+}
+
+static struct tegra_usb_phy_platform_ops oem2_plat_ops = {
+	.post_suspend = pluto_usb_hsic_postsupend,
+	.pre_resume = pluto_usb_hsic_preresume,
+	.port_power = pluto_usb_hsic_phy_power,
+	.post_resume = pluto_usb_hsic_post_resume,
+	.post_phy_off = pluto_usb_hsic_post_phy_off,
+};
+
 static struct tegra_usb_platform_data tegra_ehci3_hsic_xmm_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -610,9 +659,10 @@ static struct tegra_usb_platform_data tegra_ehci3_hsic_xmm_pdata = {
 	.u_data.host = {
 		.vbus_gpio = -1,
 		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
 	},
+	.ops = &oem2_plat_ops,
 };
 
 static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
@@ -767,7 +817,7 @@ tegra_usb_hsic_host_register(struct platform_device *ehci_dev)
 	pdev->dev.dma_mask =  ehci_dev->dev.dma_mask;
 	pdev->dev.coherent_dma_mask = ehci_dev->dev.coherent_dma_mask;
 
-	val = platform_device_add_data(pdev, &tegra_hsic_pdata,
+	val = platform_device_add_data(pdev, &tegra_ehci3_hsic_xmm_pdata,
 			sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
