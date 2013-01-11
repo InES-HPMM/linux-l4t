@@ -205,7 +205,6 @@ static struct tegra_i2c_platform_data roth_i2c1_platform_data = {
 	.bus_clk_rate	= { 100000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_I2C1_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C1_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
 };
 
 static struct tegra_i2c_platform_data roth_i2c2_platform_data = {
@@ -215,7 +214,6 @@ static struct tegra_i2c_platform_data roth_i2c2_platform_data = {
 	.is_clkon_always = true,
 	.scl_gpio		= {TEGRA_GPIO_I2C2_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C2_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
 };
 
 static struct tegra_i2c_platform_data roth_i2c3_platform_data = {
@@ -224,7 +222,6 @@ static struct tegra_i2c_platform_data roth_i2c3_platform_data = {
 	.bus_clk_rate	= { 100000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_I2C3_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C3_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
 };
 
 static struct tegra_i2c_platform_data roth_i2c4_platform_data = {
@@ -233,7 +230,6 @@ static struct tegra_i2c_platform_data roth_i2c4_platform_data = {
 	.bus_clk_rate	= { 10000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_I2C4_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C4_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
 };
 
 static struct tegra_i2c_platform_data roth_i2c5_platform_data = {
@@ -242,7 +238,6 @@ static struct tegra_i2c_platform_data roth_i2c5_platform_data = {
 	.bus_clk_rate	= { 400000, 0 },
 	.scl_gpio		= {TEGRA_GPIO_I2C5_SCL, 0},
 	.sda_gpio		= {TEGRA_GPIO_I2C5_SDA, 0},
-	.arb_recovery = arb_lost_recovery,
 };
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
