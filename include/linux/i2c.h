@@ -548,4 +548,18 @@ extern void acpi_i2c_register_devices(struct i2c_adapter *adap);
 static inline void acpi_i2c_register_devices(struct i2c_adapter *adap) {}
 #endif
 
+/* Bus clear logic using the GPIO */
+#ifdef CONFIG_I2C_ALGO_BUSCLEAR
+int i2c_algo_busclear_gpio(struct device *dev, int scl_gpio,
+	int scl_gpio_flags, int sda_gpio, int sda_gpio_flags,
+	int max_retry_clock, int clock_speed_hz);
+#else
+static inline int i2c_algo_busclear_gpio(struct device *dev, int scl_gpio,
+	int scl_gpio_flags, int sda_gpio, int sda_gpio_flags,
+	int max_retry_clock, int clock_speed_hz)
+{
+	return -EINVAL;
+}
+#endif /* CONFIG_I2C_ALGO_BUSCLEAR */
+
 #endif /* _LINUX_I2C_H */
