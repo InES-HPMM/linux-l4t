@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.h
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
+
+#ifndef __MACH_TEGRA_11x_SOCTHERM_H
+#define __MACH_TEGRA_11x_SOCTHERM_H
 
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
@@ -52,12 +55,10 @@ struct soctherm_therm {
 	bool zone_enable;
 	s8 thermtrip;
 	s8 hw_backstop;
-
-	char *cdev_type;
-	int trip_temp;
 	int passive_delay;
 	int etemp;
-	int hysteresis;
+	int num_trips;
+	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 };
 
 enum soctherm_throttle_id {
@@ -105,3 +106,5 @@ static inline int tegra11_soctherm_init(struct soctherm_platform_data *data)
 	return 0;
 }
 #endif
+
+#endif /* __MACH_TEGRA_11x_SOCTHERM_H */
