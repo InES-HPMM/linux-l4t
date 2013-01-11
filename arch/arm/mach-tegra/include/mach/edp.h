@@ -24,6 +24,7 @@
 #include <linux/debugfs.h>
 #include <linux/edp.h>
 #include <linux/thermal.h>
+#include <linux/nct1008.h>
 
 struct tegra_edp_vdd_cpu_entry {
 	char speedo_id;
@@ -75,6 +76,8 @@ struct tegra_core_edp_limits {
 	unsigned long *cap_rates_scpu_off;
 };
 
+struct nct_trip_temp;
+
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 struct thermal_cooling_device *edp_cooling_device_create(void *v);
 void tegra_init_cpu_edp_limits(unsigned int regulator_mA);
@@ -84,7 +87,7 @@ void tegra_get_cpu_edp_limits(const struct tegra_edp_limits **limits, int *size)
 unsigned int tegra_get_edp_limit(int *get_edp_thermal_index);
 void tegra_get_system_edp_limits(const unsigned int **limits);
 int tegra_system_edp_alarm(bool alarm);
-
+void tegra_platform_edp_init(struct nct_trip_temp *trips, int *num_trips);
 #else
 static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
@@ -104,6 +107,9 @@ static inline void tegra_get_system_edp_limits(unsigned int **limits)
 {}
 static inline int tegra_system_edp_alarm(bool alarm)
 { return -1; }
+static inline void tegra_platform_edp_init(struct nct_trip_temp *trips,
+					   int *num_trips)
+{}
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

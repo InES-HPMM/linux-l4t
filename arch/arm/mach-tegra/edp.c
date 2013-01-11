@@ -771,6 +771,38 @@ void tegra_get_system_edp_limits(const unsigned int **limits)
 	*limits = system_edp_limits;
 }
 
+void tegra_platform_edp_init(struct nct_trip_temp *trips, int *num_trips)
+{
+	const struct tegra_edp_limits *cpu_edp_limits;
+	struct nct_trip_temp *trip_state;
+	int i, cpu_edp_limits_size;
+
+	if (!trips || !num_trips)
+		return;
+
+	/* edp capping */
+	tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+
+	if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
+		BUG();
+
+	for (i = 0; i < cpu_edp_limits_size-1; i++) {
+		trip_state = &trips[*num_trips];
+
+		trip_state->cdev_type = "edp";
+		trip_state->trip_temp =
+			cpu_edp_limits[i].temperature * 1000;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->state = i + 1;
+		trip_state->hysteresis = 1000;
+
+		(*num_trips)++;
+
+		if (*num_trips >= NCT_MAX_TRIPS)
+			BUG();
+	}
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static int edp_limit_debugfs_show(struct seq_file *s, void *data)

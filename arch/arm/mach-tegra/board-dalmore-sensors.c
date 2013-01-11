@@ -36,7 +36,7 @@
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
 #include <mach/edp.h>
-
+#include <linux/edp.h>
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
@@ -551,7 +551,7 @@ static void mpuirq_init(void)
 
 static int dalmore_nct1008_init(void)
 {
-	int nct1008_port = -1;
+	int nct1008_port;
 	int ret = 0;
 
 	if ((board_info.board_id == BOARD_E1612) ||
@@ -573,55 +573,23 @@ static int dalmore_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	if (nct1008_port >= 0) {
-		struct nct1008_platform_data *data = &dalmore_nct1008_pdata;
-#ifdef CONFIG_TEGRA_EDP_LIMITS
-		const struct tegra_edp_limits *cpu_edp_limits;
-		int cpu_edp_limits_size;
-		int i;
-		int trip;
-		struct nct_trip_temp *trip_state;
+	tegra_platform_edp_init(dalmore_nct1008_pdata.trips,
+				&dalmore_nct1008_pdata.num_trips);
+	tegra_add_cdev_trips(dalmore_nct1008_pdata.trips,
+				&dalmore_nct1008_pdata.num_trips);
 
-		/* edp capping */
-		tegra_get_cpu_edp_limits(&cpu_edp_limits, &cpu_edp_limits_size);
+	dalmore_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
+	pr_info("%s: dalmore nct1008 irq %d",
+			__func__, dalmore_i2c4_nct1008_board_info[0].irq);
 
-		if (cpu_edp_limits_size > MAX_THROT_TABLE_SIZE)
-			BUG();
+	ret = gpio_request(nct1008_port, "temp_alert");
+	if (ret < 0)
+		return ret;
 
-		for (i = 0; i < cpu_edp_limits_size-1; i++) {
-			trip = data->num_trips;
-			trip_state = &data->trips[trip];
-
-			trip_state->cdev_type = "edp";
-			trip_state->trip_temp =
-					cpu_edp_limits[i].temperature * 1000;
-			trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-			trip_state->state = i + 1;
-			trip_state->hysteresis = 1000;
-
-			data->num_trips++;
-
-			if (data->num_trips >= NCT_MAX_TRIPS)
-				BUG();
-		}
-#endif
-		nct1008_add_cdev_trips(data, tegra_core_edp_get_cdev());
-		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_dfll_cdev());
-		nct1008_add_cdev_trips(data, tegra_dvfs_get_cpu_pll_cdev());
-		nct1008_add_cdev_trips(data, tegra_dvfs_get_core_cdev());
-
-		dalmore_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
-		pr_info("%s: dalmore nct1008 irq %d", __func__, dalmore_i2c4_nct1008_board_info[0].irq);
-
-		ret = gpio_request(nct1008_port, "temp_alert");
-		if (ret < 0)
-			return ret;
-
-		ret = gpio_direction_input(nct1008_port);
-		if (ret < 0) {
-			pr_info("%s: calling gpio_free(nct1008_port)", __func__);
-			gpio_free(nct1008_port);
-		}
+	ret = gpio_direction_input(nct1008_port);
+	if (ret < 0) {
+		pr_info("%s: calling gpio_free(nct1008_port)", __func__);
+		gpio_free(nct1008_port);
 	}
 
 	/* dalmore has thermal sensor on GEN1-I2C i.e. instance 0 */
