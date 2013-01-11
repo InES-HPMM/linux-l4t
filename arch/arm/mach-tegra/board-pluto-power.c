@@ -164,7 +164,7 @@ static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd_temp", NULL),
 	REGULATOR_SUPPLY("vdd_mb", NULL),
-	REGULATOR_SUPPLY("avdd_backlight_3v0", "1-004d"),
+	REGULATOR_SUPPLY("vin", "1-004d"),
 	REGULATOR_SUPPLY("vdd_nfc_3v0", NULL),
 	REGULATOR_SUPPLY("vdd_irled", NULL),
 	REGULATOR_SUPPLY("vdd_sensor_3v0", NULL),
