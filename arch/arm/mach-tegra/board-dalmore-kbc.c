@@ -130,42 +130,14 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 				MAX77663_IRQ_ONOFF_EN0_1SEC, 0, 3000),
 };
 
-static struct gpio_keys_button dalmore_e1611_1000_keys[] = {
-	[0] = {
-		.code = SW_LID,
-		.gpio = TEGRA_GPIO_HALL,
-		.irq = -1,
-		.type = EV_SW,
-		.desc = "Hall Effect Sensor",
-		.active_low = 1,
-		.wakeup = 1,
-		.debounce_interval = 100,
-	},
-};
-
 static struct gpio_keys_button dalmore_e1611_1001_keys[] = {
 	[0] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
 	[1] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
-	[2] = {
-		.code = SW_LID,
-		.gpio = TEGRA_GPIO_HALL,
-		.irq = -1,
-		.type = EV_SW,
-		.desc = "Hall Effect Sensor",
-		.active_low = 1,
-		.wakeup = 1,
-		.debounce_interval = 100,
-	},
 };
 
 static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 	.buttons	= dalmore_int_keys,
 	.nbuttons	= ARRAY_SIZE(dalmore_int_keys),
-};
-
-static struct gpio_keys_platform_data dalmore_e1611_1000_keys_pdata = {
-	.buttons	= dalmore_e1611_1000_keys,
-	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1000_keys),
 };
 
 static struct gpio_keys_platform_data dalmore_e1611_1001_keys_pdata = {
@@ -178,14 +150,6 @@ static struct platform_device dalmore_int_keys_device = {
 	.id	= 0,
 	.dev	= {
 		.platform_data  = &dalmore_int_keys_pdata,
-	},
-};
-
-static struct platform_device dalmore_e1611_1000_keys_device = {
-	.name	= "gpio-keys",
-	.id	= 0,
-	.dev	= {
-		.platform_data  = &dalmore_e1611_1000_keys_pdata,
 	},
 };
 
@@ -257,8 +221,6 @@ int __init dalmore_kbc_init(void)
 	} else if (board_info.board_id == BOARD_E1611) {
 		if (board_info.sku != 1001) {
 			dalmore_register_kbc();
-			platform_device_register(
-				&dalmore_e1611_1000_keys_device);
 		} else {
 			dalmore_register_kbc();
 			platform_device_register(
