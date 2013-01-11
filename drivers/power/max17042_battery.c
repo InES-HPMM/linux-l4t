@@ -686,6 +686,7 @@ static int max17042_init_chip(struct max17042_chip *chip)
 	val = max17042_read_reg(chip->client, MAX17042_STATUS);
 	max17042_write_reg(chip->client, MAX17042_STATUS,
 			val & (~STATUS_POR_BIT));
+	chip->init_complete = 1;
 	return 0;
 }
 
