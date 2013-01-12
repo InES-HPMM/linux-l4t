@@ -606,7 +606,6 @@ static void __init tegra_bonaire_reserve(void)
 
 MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
 	.atag_offset    = 0x80000100,
-	.soc		= &tegra_soc_desc,
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_bonaire_reserve,
 	.init_early	= tegra12x_init_early,

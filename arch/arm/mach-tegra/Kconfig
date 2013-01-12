@@ -165,6 +165,7 @@ config ARCH_TEGRA_12x_SOC
 	select TEGRA_DUAL_CBUS
 	select ARCH_TEGRA_VIC
 	select SOC_BUS
+	select THERMAL
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
