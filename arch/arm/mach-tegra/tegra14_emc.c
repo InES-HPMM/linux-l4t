@@ -149,7 +149,37 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DYN_SELF_REF_CONTROL),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CA_TRAINING_TIMING_CNTL1),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CA_TRAINING_TIMING_CNTL2),	\
-									\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_CDB_CNTL_1),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_FBIO_CFG6),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_QUSE),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_EINPUT_DURATION),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS0),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_QSAFE),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE0),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_RDV),			\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2DQSPADCTRL4),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2DQSPADCTRL3),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQ0),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_AUTO_CAL_CONFIG),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_ADDR0),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_XM2CLKPADCTRL2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLI_TRIM_TXDQS0),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_ADDR1),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_ADDR2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS1),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS3),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQ1),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQ2),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQ3),		\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLI_TRIM_TXDQS1),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLI_TRIM_TXDQS2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLI_TRIM_TXDQS3),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE1),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE2),	\
+	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_QUSE3),	\
+								\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_CFG),		\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_OUTSTANDING_REQ),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_EMEM_ARB_TIMING_RCD),	\
@@ -182,39 +212,6 @@ enum {
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_EPP_0),	\
 	DEFINE_REG(TEGRA_MC_BASE, MC_LATENCY_ALLOWANCE_EPP_1),
 
-#define EMC_TRIMMERS_REG_LIST \
-	DEFINE_REG(0, EMC_CDB_CNTL_1),				\
-	DEFINE_REG(0, EMC_FBIO_CFG6),				\
-	DEFINE_REG(0, EMC_QUSE),				\
-	DEFINE_REG(0, EMC_EINPUT),				\
-	DEFINE_REG(0, EMC_EINPUT_DURATION),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQS0),			\
-	DEFINE_REG(0, EMC_QSAFE),				\
-	DEFINE_REG(0, EMC_DLL_XFORM_QUSE0),			\
-	DEFINE_REG(0, EMC_RDV),					\
-	DEFINE_REG(0, EMC_XM2DQSPADCTRL4),			\
-	DEFINE_REG(0, EMC_XM2DQSPADCTRL3),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQ0),			\
-	DEFINE_REG(0, EMC_AUTO_CAL_CONFIG),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_ADDR0),			\
-	DEFINE_REG(0, EMC_XM2CLKPADCTRL2),			\
-	DEFINE_REG(0, EMC_DLI_TRIM_TXDQS0),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_ADDR1),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_ADDR2),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQS1),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQS2),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQS3),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQ1),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQ2),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_DQ3),			\
-	DEFINE_REG(0, EMC_DLI_TRIM_TXDQS1),			\
-	DEFINE_REG(0, EMC_DLI_TRIM_TXDQS2),			\
-	DEFINE_REG(0, EMC_DLI_TRIM_TXDQS3),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_QUSE1),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_QUSE2),			\
-	DEFINE_REG(0, EMC_DLL_XFORM_QUSE3),
-
-
 #define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
 static void __iomem *burst_reg_addr[TEGRA14_EMC_MAX_NUM_REGS] = {
 	BURST_REG_LIST
@@ -226,28 +223,11 @@ static void __iomem *burst_up_down_reg_addr[TEGRA14_EMC_MAX_NUM_REGS] = {
 #endif
 #undef DEFINE_REG
 
-
-#define DEFINE_REG(base, reg) (reg)
-#ifndef EMULATE_CLOCK_SWITCH
-static const u32 emc_trimmer_offs[TEGRA14_EMC_MAX_NUM_REGS] = {
-	EMC_TRIMMERS_REG_LIST
-};
-#endif
-#undef DEFINE_REG
-
-
 #define DEFINE_REG(base, reg)	reg##_INDEX
 enum {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
-
-#define DEFINE_REG(base, reg)	reg##_TRIM_INDEX
-enum {
-	EMC_TRIMMERS_REG_LIST
-};
-#undef DEFINE_REG
-
 
 struct emc_sel {
 	struct clk	*input;
@@ -406,50 +386,9 @@ static inline bool dqs_preset(const struct tegra14_emc_table *next_timing,
 		}							      \
 	} while (0)
 
-
-#define DQS_SET_TRIM(reg, bit, ch)					       \
-	do {								       \
-		if ((next_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX]    \
-		     & EMC_##reg##_##bit##_ENABLE) &&			       \
-		    (!(last_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX]  \
-		       & EMC_##reg##_##bit##_ENABLE)))   {		       \
-			emc##ch##_writel(last_timing->emc_trimmers_##ch[EMC_##reg##_TRIM_INDEX] \
-				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg);   \
-			ret = true;					       \
-		}							       \
-	} while (0)
-
 	DQS_SET(XM2DQSPADCTRL2, VREF);
 
 	return ret;
-}
-
-static inline void overwrite_mrs_wait_cnt(
-	const struct tegra14_emc_table *next_timing,
-	bool zcal_long)
-{
-	u32 reg;
-	u32 cnt = 512;
-
-	/* For ddr3 when DLL is re-started: overwrite EMC DFS table settings
-	   for MRS_WAIT_LONG with maximum of MRS_WAIT_SHORT settings and
-	   expected operation length. Reduce the latter by the overlapping
-	   zq-calibration, if any */
-	if (zcal_long)
-		cnt -= dram_dev_num * 256;
-
-	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
-		EMC_MRS_WAIT_CNT_SHORT_WAIT_MASK) >>
-		EMC_MRS_WAIT_CNT_SHORT_WAIT_SHIFT;
-	if (cnt < reg)
-		cnt = reg;
-
-	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
-		(~EMC_MRS_WAIT_CNT_LONG_WAIT_MASK));
-	reg |= (cnt << EMC_MRS_WAIT_CNT_LONG_WAIT_SHIFT) &
-		EMC_MRS_WAIT_CNT_LONG_WAIT_MASK;
-
-	emc_writel(reg, EMC_MRS_WAIT_CNT);
 }
 
 static inline int get_dll_change(const struct tegra14_emc_table *next_timing,
@@ -470,33 +409,13 @@ static inline void set_dram_mode(const struct tegra14_emc_table *next_timing,
 				 const struct tegra14_emc_table *last_timing,
 				 int dll_change)
 {
-	if (dram_type == DRAM_TYPE_DDR3) {
-		/* first mode_1, then mode_2, then mode_reset*/
-		if (next_timing->emc_mode_1 != last_timing->emc_mode_1)
-			ccfifo_writel(next_timing->emc_mode_1, EMC_EMRS);
-		if (next_timing->emc_mode_2 != last_timing->emc_mode_2)
-			ccfifo_writel(next_timing->emc_mode_2, EMC_EMRS2);
-
-		if ((next_timing->emc_mode_reset !=
-		     last_timing->emc_mode_reset) ||
-		    (dll_change == DLL_CHANGE_ON)) {
-			u32 reg = next_timing->emc_mode_reset &
-				(~EMC_MODE_SET_DLL_RESET);
-			if (dll_change == DLL_CHANGE_ON) {
-				reg |= EMC_MODE_SET_DLL_RESET;
-				reg |= EMC_MODE_SET_LONG_CNT;
-			}
-			ccfifo_writel(reg, EMC_MRS);
-		}
-	} else {
-		/* first mode_2, then mode_1; mode_reset is not applicable */
-		if (next_timing->emc_mode_2 != last_timing->emc_mode_2)
-			ccfifo_writel(next_timing->emc_mode_2, EMC_MRW2);
-		if (next_timing->emc_mode_1 != last_timing->emc_mode_1)
-			ccfifo_writel(next_timing->emc_mode_1, EMC_MRW);
-		if (next_timing->emc_mode_4 != last_timing->emc_mode_4)
-			ccfifo_writel(next_timing->emc_mode_4, EMC_MRW4);
-	}
+	/* first mode_2, then mode_1; mode_reset is not applicable */
+	if (next_timing->emc_mode_2 != last_timing->emc_mode_2)
+		ccfifo_writel(next_timing->emc_mode_2, EMC_MRW2);
+	if (next_timing->emc_mode_1 != last_timing->emc_mode_1)
+		ccfifo_writel(next_timing->emc_mode_1, EMC_MRW);
+	if (next_timing->emc_mode_4 != last_timing->emc_mode_4)
+		ccfifo_writel(next_timing->emc_mode_4, EMC_MRW4);
 }
 
 static inline void do_clock_change(u32 clk_setting)
@@ -530,10 +449,11 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0) &&
 		(last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
 
-	/* FIXME: remove steps enumeration below? */
-
 	/* 1. clear clkchange_complete interrupts */
 	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
+
+	/* 1.5 On t148, prelock the DLL - assuming the DLL is enabled. */
+	/* TODO: implement. */
 
 	/* 2. disable dynamic self-refresh and preset dqs vref, then wait for
 	   possible self-refresh entry/exit and/or dqs vref settled - waiting
@@ -563,15 +483,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 			continue;
 		__raw_writel(next_timing->burst_regs[i], burst_reg_addr[i]);
 	}
-/* !!!FIXME!!! Need clean up for T148 */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	for (i = 0; i < next_timing->emc_trimmers_num; i++) {
-		__raw_writel(next_timing->emc_trimmers_0[i],
-			(u32)emc0_base + emc_trimmer_offs[i]);
-		__raw_writel(next_timing->emc_trimmers_1[i],
-			(u32)emc1_base + emc_trimmer_offs[i]);
-	}
-#endif
+
 	emc_cfg_reg &= ~EMC_CFG_UPDATE_MASK;
 	emc_cfg_reg |= next_timing->emc_cfg & EMC_CFG_UPDATE_MASK;
 	emc_writel(emc_cfg_reg, EMC_CFG);
@@ -579,27 +491,17 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	barrier();
 
 	/* 4.1 On ddr3 when DLL is re-started predict MRS long wait count and
-	   overwrite DFS table setting */
-	if ((dram_type == DRAM_TYPE_DDR3) && (dll_change == DLL_CHANGE_ON))
-		overwrite_mrs_wait_cnt(next_timing, zcal_long);
+	   overwrite DFS table setting - No DDR3 on t148. */
 
 	/* 5.2 disable auto-refresh to save time after clock change */
 	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
-	/* 6. turn Off dll and enter self-refresh on DDR3 */
-	if (dram_type == DRAM_TYPE_DDR3) {
-		if (dll_change == DLL_CHANGE_OFF)
-			ccfifo_writel(next_timing->emc_mode_1, EMC_EMRS);
-		ccfifo_writel(DRAM_BROADCAST(dram_dev_num) |
-			      EMC_SELF_REF_CMD_ENABLED, EMC_SELF_REF);
-	}
+	/* 6. turn Off dll and enter self-refresh on DDR3 - No DDR3. */
 
 	/* 7. flow control marker 2 */
 	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
 
-	/* 8. exit self-refresh on DDR3 */
-	if (dram_type == DRAM_TYPE_DDR3)
-		ccfifo_writel(DRAM_BROADCAST(dram_dev_num), EMC_SELF_REF);
+	/* 8. exit self-refresh on DDR3 - No DDR3 on t148. */
 
 	/* 9. set dram mode registers */
 	set_dram_mode(next_timing, last_timing, dll_change);
@@ -663,23 +565,14 @@ static inline void emc_get_timing(struct tegra14_emc_table *timing)
 {
 	int i;
 
-	/* burst and trimmers updates depends on previous state; burst_up_down
-	   are stateless */
+	/* Burst updates depends on previous state; burst_up_down are
+	 * stateless. */
 	for (i = 0; i < timing->burst_regs_num; i++) {
 		if (burst_reg_addr[i])
 			timing->burst_regs[i] = __raw_readl(burst_reg_addr[i]);
 		else
 			timing->burst_regs[i] = 0;
 	}
-/* !!!FIXME!!! Need clean up for T148 */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	for (i = 0; i < timing->emc_trimmers_num; i++) {
-		timing->emc_trimmers_0[i] =
-			__raw_readl((u32)emc0_base + emc_trimmer_offs[i]);
-		timing->emc_trimmers_1[i] =
-			__raw_readl((u32)emc1_base + emc_trimmer_offs[i]);
-	}
-#endif
 	timing->emc_acal_interval = 0;
 	timing->emc_zcal_cnt_long = 0;
 	timing->emc_mode_reset = 0;
@@ -1053,7 +946,7 @@ static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
 	emc_stats.last_update = get_jiffies_64();
 	emc_stats.last_sel = TEGRA_EMC_TABLE_MAX_SIZE;
 
-	if ((dram_type != DRAM_TYPE_DDR3) && (dram_type != DRAM_TYPE_LPDDR2)) {
+	if (dram_type != DRAM_TYPE_LPDDR2) {
 		pr_err("tegra: not supported DRAM type %u\n", dram_type);
 		return -ENODATA;
 	}
