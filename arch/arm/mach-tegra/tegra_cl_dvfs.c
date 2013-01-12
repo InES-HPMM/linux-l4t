@@ -181,7 +181,7 @@ struct tegra_cl_dvfs {
 	u8				clk_dvfs_map[MAX_DVFS_FREQS];
 	struct voltage_reg_map		*out_map[MAX_CL_DVFS_VOLTAGES];
 	u8				num_voltages;
-	u8				safe_ouput;
+	u8				safe_output;
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
 	u8				cold_out_min;
@@ -388,7 +388,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 		req->output = req->cap - 1;
 	else
 		req->output = out_min + 1;
-	if (req->output == cld->safe_ouput)
+	if (req->output == cld->safe_output)
 		req->output++;
 	out_max = max((u8)(req->output + 1), cld->minimax_output);
 
@@ -442,7 +442,7 @@ static void tune_timer_cb(unsigned long data)
 static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
 	u32 val;
-	int force_val = req->output - cld->safe_ouput;
+	int force_val = req->output - cld->safe_output;
 	int coef = 128; /* FIXME: cld->p_data->cfg_param->cg_scale? */;
 
 	force_val = force_val * coef / cld->p_data->cfg_param->cg;
@@ -596,9 +596,9 @@ static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_cold_output_floor(cld);
 
 	/* make sure safe output is safe at any temperature */
-	cld->safe_ouput = cld->cold_out_min ? : 1;
-	if (cld->minimax_output <= cld->safe_ouput)
-		cld->minimax_output = cld->safe_ouput + 1;
+	cld->safe_output = cld->cold_out_min ? : 1;
+	if (cld->minimax_output <= cld->safe_output)
+		cld->minimax_output = cld->safe_output + 1;
 }
 
 static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
@@ -667,7 +667,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	cld->lut_max = cld->num_voltages - 1;
 #endif
 
-	val = (cld->safe_ouput << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
+	val = (cld->safe_output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		((cld->num_voltages - 1) << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
 		(val << CL_DVFS_OUTPUT_CFG_MIN_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
