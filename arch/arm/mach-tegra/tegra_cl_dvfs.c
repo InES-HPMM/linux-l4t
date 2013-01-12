@@ -513,7 +513,6 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 	struct voltage_reg_map *m;
 
 	BUILD_BUG_ON(MAX_CL_DVFS_VOLTAGES > OUT_MASK + 1);
-	BUG_ON(!cld->safe_dvfs);
 
 	n = cld->safe_dvfs->num_freqs;
 	BUG_ON(n >= MAX_CL_DVFS_VOLTAGES);
@@ -758,15 +757,7 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 {
 	int ret;
 
-	/* Check platform and SoC data, get i2c clock */
-	if (!cld->safe_dvfs) {
-		pr_err("%s: Safe dvfs data is not available\n", __func__);
-		return -EINVAL;
-	}
-	if (!cld->p_data || !cld->p_data->cfg_param) {
-		pr_err("%s: Platform data is not available\n", __func__);
-		return -EINVAL;
-	}
+	/* Enable output inerface clock */
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C) {
 		ret = clk_enable(cld->i2c_clk);
 		if (ret) {
@@ -780,7 +771,7 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 		return -EINVAL;
 	}
 
-	/* Enable clocks, release control logic reset */
+	/* Enable module clocks, release control logic reset */
 	ret = clk_enable(cld->ref_clk);
 	if (ret) {
 		pr_err("%s: Failed to enable %s\n",
@@ -919,7 +910,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	}
 
 	p_data = pdev->dev.platform_data;
-	if (!p_data) {
+	if (!p_data || !p_data->cfg_param || !p_data->vdd_map) {
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
 	}
@@ -941,7 +932,10 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "missing target dfll clock\n");
 		return PTR_ERR(dfll_clk);
 	}
-
+	if (!safe_dvfs_clk->dvfs || !safe_dvfs_clk->dvfs->dvfs_rail) {
+		dev_err(&pdev->dev, "invalid safe dvfs source\n");
+		return -EINVAL;
+	}
 
 	/* Allocate cl_dvfs object and populate resource accessors */
 	cld = kzalloc(sizeof(*cld), GFP_KERNEL);
