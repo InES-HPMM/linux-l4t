@@ -1185,6 +1185,8 @@ static int monitor_get(void *data, u64 *val)
 	u32 v, s;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 
+	clk_enable(cld->soc_clk);
+
 	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
 		CL_DVFS_MONITOR_DATA_MASK;
 
@@ -1195,10 +1197,12 @@ static int monitor_get(void *data, u64 *val)
 		s = (s & CL_DVFS_FREQ_REQ_SCALE_MASK) >>
 			CL_DVFS_FREQ_REQ_SCALE_SHIFT;
 		*val = (u64)v * (s + 1) / 256;
+		clk_disable(cld->soc_clk);
 		return 0;
 	}
 
 	*val = v;
+	clk_disable(cld->soc_clk);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
@@ -1209,8 +1213,10 @@ static int vmin_get(void *data, u64 *val)
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
+	clk_enable(cld->soc_clk);
 	v = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 	v = (v & CL_DVFS_OUTPUT_CFG_MIN_MASK) >> CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+	clk_disable(cld->soc_clk);
 #else
 	v = cld->lut_min;
 #endif
@@ -1252,6 +1258,8 @@ static int cl_register_show(struct seq_file *s, void *data)
 	struct clk *c = s->private;
 	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
 
+	clk_enable(cld->soc_clk);
+
 	seq_printf(s, "CONTROL REGISTERS:\n");
 	for (offs = 0; offs <= CL_DVFS_MONITOR_DATA; offs += 4)
 		seq_printf(s, "[0x%02x] = 0x%08x\n",
@@ -1276,6 +1284,7 @@ static int cl_register_show(struct seq_file *s, void *data)
 		seq_printf(s, "[0x%02x] = 0x%08x\n",
 			   offs, cl_dvfs_readl(cld, offs));
 
+	clk_disable(cld->soc_clk);
 	return 0;
 }
 
@@ -1307,7 +1316,9 @@ static ssize_t cl_register_write(struct file *file,
 	if (sscanf(buf, "[0x%x] = 0x%x", &offs, &val) != 2)
 		return -1;
 
+	clk_enable(cld->soc_clk);
 	cl_dvfs_writel(cld, val, offs & (~0x3));
+	clk_disable(cld->soc_clk);
 	return count;
 }
 
