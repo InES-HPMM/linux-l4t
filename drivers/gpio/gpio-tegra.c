@@ -119,10 +119,6 @@ int tegra_gpio_get_bank_int_nr(int gpio)
 {
 	int bank;
 	int irq;
-	if (gpio >= TEGRA_NR_GPIOS) {
-		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
-		return -EINVAL;
-	}
 	bank = gpio >> 5;
 	irq = tegra_gpio_banks[bank].irq;
 	return irq;
