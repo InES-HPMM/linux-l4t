@@ -198,16 +198,6 @@ static int tegra_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 	return irq_find_mapping(irq_domain, offset);
 }
 
-static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
-{
-	return 0;
-}
-
-static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
-{
-	tegra_gpio_disable(offset);
-}
-
 static struct gpio_chip tegra_gpio_chip = {
 	.label			= "tegra-gpio",
 	.request		= tegra_gpio_request,
