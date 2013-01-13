@@ -551,6 +551,8 @@ static int smb349_probe(struct i2c_client *client,
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct smb349_charger_platform_data *pdata;
+	struct regulator_config config = { };
+	struct regulator_config config_otg = { };
 	int ret;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
@@ -603,8 +605,12 @@ static int smb349_probe(struct i2c_client *client,
 					REGULATOR_CHANGE_STATUS |
 					REGULATOR_CHANGE_CURRENT;
 
-	charger->rdev = regulator_register(&charger->reg_desc, charger->dev,
-					&charger->reg_init_data, charger, NULL);
+	config.dev = charger->dev;
+	config.init_data = &charger->reg_init_data;
+	config.driver_data = charger;
+	config.of_node = NULL;
+
+	charger->rdev = regulator_register(&charger->reg_desc, &config);
 
 	smb349_debugfs_init(client);
 
@@ -642,8 +648,12 @@ static int smb349_probe(struct i2c_client *client,
 					REGULATOR_CHANGE_STATUS |
 					REGULATOR_CHANGE_CURRENT;
 
-	charger->otg_rdev = regulator_register(&charger->otg_reg_desc, charger->dev,
-					&charger->otg_reg_init_data, charger, NULL);
+	config.dev = charger->dev;
+	config.init_data = &charger->otg_reg_init_data;
+	config.driver_data = charger;
+	config.of_node = NULL;
+
+	charger->otg_rdev = regulator_register(&charger->otg_reg_desc, &config);
 	if (IS_ERR(charger->otg_rdev)) {
 		dev_err(&client->dev, "failed to register %s\n",
 				charger->otg_reg_desc.name);
