@@ -736,7 +736,7 @@ static int ltr558_probe(struct i2c_client *client,
 	struct iio_dev *indio_dev;
 
 	/* data memory allocation */
-	indio_dev = iio_allocate_device(sizeof(*chip));
+	indio_dev = iio_device_alloc(sizeof(*chip));
 	if (indio_dev == NULL) {
 		dev_err(&client->dev, "iio allocation fails\n");
 		ret = -ENOMEM;
@@ -780,7 +780,7 @@ exit_irq:
 	if (chip->irq > 0)
 		free_irq(chip->irq, chip);
 exit_iio_free:
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 exit:
 	return ret;
 }
