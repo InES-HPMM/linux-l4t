@@ -57,7 +57,6 @@
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT	0x8
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT	0x10
 #define SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT	0x200
-#define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SD_3_0	0x20
 #define SDHCI_VENDOR_MISC_CNTRL_INFINITE_ERASE_TIMEOUT	0x1
 
 #define SDMMC_SDMEMCOMPPADCTRL	0x1E0
@@ -278,7 +277,7 @@ static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
 
 	/* Enable SDHOST v3.0 support */
 	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
-	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_SD_3_0 |
+	misc_ctrl |=
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
 		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
 	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
@@ -372,31 +371,6 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 	return 0;
 }
 
-static void tegra_sdhci_reset_exit(struct sdhci_host *sdhci, u8 mask)
-{
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
-
-	if (mask & SDHCI_RESET_ALL) {
-		if (tegra_host->hw_ops->sdhost_init)
-			tegra_host->hw_ops->sdhost_init(sdhci);
-
-		/* Mask the support for any UHS modes if specified */
-		if (plat->uhs_mask & MMC_UHS_MASK_SDR104)
-			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR104;
-
-		if (plat->uhs_mask & MMC_UHS_MASK_DDR50)
-			sdhci->mmc->caps &= ~MMC_CAP_UHS_DDR50;
-
-		if (plat->uhs_mask & MMC_UHS_MASK_SDR50)
-			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR50;
-
-		if (plat->uhs_mask & MMC_UHS_MASK_SDR25)
-			sdhci->mmc->caps &= ~MMC_CAP_UHS_SDR25;
-	}
-}
-
 static void sdhci_status_notify_cb(int card_present, void *dev_id)
 {
 	struct sdhci_host *sdhci = (struct sdhci_host *)dev_id;
@@ -466,9 +440,13 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
 
 	if (!(mask & SDHCI_RESET_ALL))
 		return;
+
+	if (tegra_host->hw_ops->sdhost_init)
+		tegra_host->hw_ops->sdhost_init(host);
 
 	/* Erratum: Enable SDHCI spec v3.00 support */
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDHCI_SPEC_300) {
@@ -478,6 +456,19 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		misc_ctrl |= SDHCI_MISC_CTRL_ENABLE_SDHCI_SPEC_300;
 		sdhci_writeb(host, misc_ctrl, SDHCI_TEGRA_VENDOR_MISC_CTRL);
 	}
+
+	/* Mask the support for any UHS modes if specified */
+	if (plat->uhs_mask & MMC_UHS_MASK_SDR104)
+		host->mmc->caps &= ~MMC_CAP_UHS_SDR104;
+
+	if (plat->uhs_mask & MMC_UHS_MASK_DDR50)
+		host->mmc->caps &= ~MMC_CAP_UHS_DDR50;
+
+	if (plat->uhs_mask & MMC_UHS_MASK_SDR50)
+		host->mmc->caps &= ~MMC_CAP_UHS_SDR50;
+
+	if (plat->uhs_mask & MMC_UHS_MASK_SDR25)
+		host->mmc->caps &= ~MMC_CAP_UHS_SDR25;
 }
 
 static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
@@ -1188,6 +1179,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
+		    NVQUIRK_ENABLE_SDHCI_SPEC_300 |
 #endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
