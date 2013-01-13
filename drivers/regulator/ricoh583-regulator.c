@@ -342,6 +342,7 @@ static int ricoh583_regulator_probe(struct platform_device *pdev)
 	struct ricoh583_regulator *ri = NULL;
 	struct regulator_dev *rdev;
 	struct ricoh583_regulator_platform_data *tps_pdata;
+	struct regulator_config config = { };
 	int id = pdev->id;
 	int err;
 
@@ -366,8 +367,12 @@ static int ricoh583_regulator_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Fail in pre-initialisation\n");
 		return err;
 	}
-	rdev = regulator_register(&ri->desc, &pdev->dev,
-				&tps_pdata->regulator, ri, NULL);
+
+	config.dev = &pdev->dev;
+	config.init_data = &tps_pdata->regulator;
+	config.driver_data = ri;
+
+	rdev = regulator_register(&ri->desc, &config);
 	if (IS_ERR_OR_NULL(rdev)) {
 		dev_err(&pdev->dev, "failed to register regulator %s\n",
 				ri->desc.name);
