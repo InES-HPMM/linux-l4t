@@ -182,6 +182,7 @@ ifeq ($(CONFIG_ARCH_TEGRA_2x_SOC),)
 obj-y                                   += mcerr.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += mcerr-t3.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += mcerr-t11.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mcerr-t3.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += mcerr-t14.o
 endif
 
