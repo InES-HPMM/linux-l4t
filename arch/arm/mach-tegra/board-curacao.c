@@ -156,55 +156,33 @@ static __initdata struct tegra_clk_init_table curacao_clk_init_table[] = {
 
 
 static struct tegra_i2c_platform_data curacao_i2c1_platform_data = {
-	.adapter_nr	= 0,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {-1, -1},
-	.sda_gpio		= {-1, -1},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= -1,
+	.sda_gpio	= -1,
 };
-
-#if 0	/* !!!FIXME!!! */
-static const struct tegra_pingroup_config i2c2_ddc = {
-	.pingroup	= TEGRA_PINGROUP_DDC,
-	.func		= TEGRA_MUX_I2C2,
-};
-
-static const struct tegra_pingroup_config i2c2_gen2 = {
-	.pingroup	= TEGRA_PINGROUP_PTA,
-	.func		= TEGRA_MUX_I2C2,
-};
-#endif
 
 static struct tegra_i2c_platform_data curacao_i2c2_platform_data = {
-	.adapter_nr	= 2,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {-1, -1},
-	.sda_gpio		= {-1, -1},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= -1,
+	.sda_gpio	= -1,
 };
 
 static struct tegra_i2c_platform_data curacao_i2c3_platform_data = {
-	.adapter_nr	= 3,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {-1, -1},
-	.sda_gpio		= {-1, -1},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= -1,
+	.sda_gpio	= -1,
 };
 
 static struct tegra_i2c_platform_data curacao_i2c4_platform_data = {
-	.adapter_nr	= 4,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {-1, -1},
-	.sda_gpio		= {-1, -1},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= -1,
+	.sda_gpio	= -1,
 };
 
 static struct tegra_i2c_platform_data curacao_i2c5_platform_data = {
-	.adapter_nr	= 5,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {-1, -1},
-	.sda_gpio		= {-1, -1},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= -1,
+	.sda_gpio	= -1,
 };
 
 static struct wm8903_platform_data curacao_wm8903_pdata = {

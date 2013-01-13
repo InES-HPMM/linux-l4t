@@ -239,44 +239,34 @@ static struct i2c_board_info __initdata pluto_i2c_bus3_board_info[] = {
 };
 
 static struct tegra_i2c_platform_data pluto_i2c1_platform_data = {
-	.adapter_nr	= 0,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {TEGRA_GPIO_I2C1_SCL, 0},
-	.sda_gpio		= {TEGRA_GPIO_I2C1_SDA, 0},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
+	.sda_gpio	= TEGRA_GPIO_I2C1_SDA,
 };
 
 static struct tegra_i2c_platform_data pluto_i2c2_platform_data = {
-	.adapter_nr	= 1,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 	.is_clkon_always = true,
-	.scl_gpio		= {TEGRA_GPIO_I2C2_SCL, 0},
-	.sda_gpio		= {TEGRA_GPIO_I2C2_SDA, 0},
+	.scl_gpio	= TEGRA_GPIO_I2C2_SCL,
+	.sda_gpio	= TEGRA_GPIO_I2C2_SDA,
 };
 
 static struct tegra_i2c_platform_data pluto_i2c3_platform_data = {
-	.adapter_nr	= 2,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
-	.scl_gpio		= {TEGRA_GPIO_I2C3_SCL, 0},
-	.sda_gpio		= {TEGRA_GPIO_I2C3_SDA, 0},
+	.bus_clk_rate	= 100000,
+	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
+	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
 };
 
 static struct tegra_i2c_platform_data pluto_i2c4_platform_data = {
-	.adapter_nr	= 3,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 10000, 0 },
-	.scl_gpio		= {TEGRA_GPIO_I2C4_SCL, 0},
-	.sda_gpio		= {TEGRA_GPIO_I2C4_SDA, 0},
+	.bus_clk_rate	= 10000,
+	.scl_gpio	= TEGRA_GPIO_I2C4_SCL,
+	.sda_gpio	= TEGRA_GPIO_I2C4_SDA,
 };
 
 static struct tegra_i2c_platform_data pluto_i2c5_platform_data = {
-	.adapter_nr	= 4,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 400000, 0 },
-	.scl_gpio		= {TEGRA_GPIO_I2C5_SCL, 0},
-	.sda_gpio		= {TEGRA_GPIO_I2C5_SDA, 0},
+	.bus_clk_rate	= 400000,
+	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
+	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
 };
 
 static struct aic3262_gpio_setup aic3262_gpio[] = {
