@@ -23,7 +23,6 @@
 #include <linux/slab.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
-#include <asm/gpio.h>
 #include <asm/uaccess.h>
 
 #include "ltr558als.h"
