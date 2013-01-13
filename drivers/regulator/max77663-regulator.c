@@ -835,6 +835,7 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 	struct max77663_regulator *reg;
 	struct max77663_regulator *max_regs;
 	struct max77663_regulator_platform_data *reg_pdata;
+	struct regulator_config config = { };
 	int ret = 0;
 	int id;
 	int reg_id;
@@ -879,8 +880,11 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 			goto clean_exit;
 		}
 
-		reg->rdev = regulator_register(rdesc, &pdev->dev,
-					reg->pdata->reg_init_data, reg, NULL);
+		config.dev = &pdev->dev;
+		config.init_data = reg->pdata->reg_init_data;
+		config.driver_data = reg;
+
+		reg->rdev = regulator_register(rdesc, &config);
 		if (IS_ERR(reg->rdev)) {
 			dev_err(&pdev->dev, "Failed to register regulator %s\n",
 			rdesc->name);
