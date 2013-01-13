@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (C) 2010-2013 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -31,6 +31,7 @@
 #include <linux/slab.h>
 #include <linux/i2c-tegra.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/of_i2c.h>
 #include <linux/module.h>
 #include <linux/clk/tegra.h>
@@ -1006,9 +1007,41 @@ static const struct i2c_algorithm tegra_i2c_algo = {
 	.functionality	= tegra_i2c_func,
 };
 
+static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
+	struct platform_device *pdev)
+{
+	struct tegra_i2c_platform_data *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	u32 prop;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return ERR_PTR(-ENOMEM);
+
+	if (!of_property_read_u32(np, "clock-frequency", &prop))
+		pdata->bus_clk_rate = prop;
+
+	if (of_find_property(np, "nvidia,clock-always-on", NULL))
+		pdata->is_clkon_always = true;
+
+	if (!of_property_read_u32(np, "nvidia,hs-master-code", &prop)) {
+		pdata->hs_master_code = prop;
+		pdata->is_high_speed_enable = true;
+	}
+
+	pdata->scl_gpio = of_get_named_gpio(np, "scl-gpio", 0);
+	pdata->sda_gpio = of_get_named_gpio(np, "sda-gpio", 0);
+	pdata->is_dvc = of_device_is_compatible(np, "nvidia,tegra20-i2c-dvc");
+
+	/* Default configuration for device tree initiated driver */
+	pdata->slave_addr = 0xFC;
+	return pdata;
+}
+
 static struct tegra_i2c_chipdata tegra20_i2c_chipdata = {
 	.timeout_irq_occurs_before_bus_inactive = true,
 	.has_xfer_complete_interrupt = false,
+	.has_continue_xfer_support = false,
 	.has_hw_arb_support = false,
 	.has_fast_clock = true,
 	.has_clk_divisor_std_fast_mode = false,
@@ -1017,9 +1050,22 @@ static struct tegra_i2c_chipdata tegra20_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 12,
 };
 
-static struct tegra_i2c_chipdata tegra11_i2c_chipdata = {
+static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
+	.timeout_irq_occurs_before_bus_inactive = true,
+	.has_xfer_complete_interrupt = false,
+	.has_continue_xfer_support = true,
+	.has_hw_arb_support = false,
+	.has_fast_clock = true,
+	.has_clk_divisor_std_fast_mode = false,
+	.clk_divisor_std_fast_mode = 0,
+	.clk_divisor_hs_mode = 3,
+	.clk_multiplier_hs_mode = 12,
+};
+
+static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.timeout_irq_occurs_before_bus_inactive = false,
 	.has_xfer_complete_interrupt = true,
+	.has_continue_xfer_support = true,
 	.has_hw_arb_support = true,
 	.has_fast_clock = false,
 	.has_clk_divisor_std_fast_mode = true,
@@ -1030,7 +1076,8 @@ static struct tegra_i2c_chipdata tegra11_i2c_chipdata = {
 
 /* Match table for of_platform binding */
 static const struct of_device_id tegra_i2c_of_match[] = {
-	{ .compatible = "nvidia,tegra11-i2c", .data = &tegra11_i2c_chipdata, },
+	{ .compatible = "nvidia,tegra114-i2c", .data = &tegra114_i2c_chipdata, },
+	{ .compatible = "nvidia,tegra30-i2c", .data = &tegra30_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra20-i2c", .data = &tegra20_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra20-i2c-dvc", .data = &tegra20_i2c_chipdata, },
 	{},
@@ -1040,12 +1087,20 @@ MODULE_DEVICE_TABLE(of, tegra_i2c_of_match);
 static struct platform_device_id tegra_i2c_devtype[] = {
 	{
 		.name = "tegra-i2c",
+		.driver_data = (unsigned long)&tegra30_i2c_chipdata,
+	},
+	{
+		.name = "tegra20-i2c",
 		.driver_data = (unsigned long)&tegra20_i2c_chipdata,
 	},
 	{
+		.name = "tegra30-i2c",
+		.driver_data = (unsigned long)&tegra30_i2c_chipdata,
+	},
+	{
 		.name = "tegra11-i2c",
-		.driver_data = (unsigned long)&tegra11_i2c_chipdata,
-	}
+		.driver_data = (unsigned long)&tegra114_i2c_chipdata,
+	},
 };
 
 static int tegra_i2c_probe(struct platform_device *pdev)
@@ -1055,27 +1110,34 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct clk *div_clk;
 	struct clk *fast_clk = NULL;
-	const unsigned int *prop;
 	void __iomem *base;
 	int irq;
 	int ret = 0;
 	struct tegra_i2c_chipdata *chip_data = NULL;
 	const struct of_device_id *match;
+	int bus_num;
 
-	match = of_match_device(of_match_ptr(tegra_i2c_of_match), &pdev->dev);
-	if (match)
+	if (pdev->dev.of_node) {
+		match = of_match_device(of_match_ptr(tegra_i2c_of_match), &pdev->dev);
+		if (!match) {
+			dev_err(&pdev->dev, "Device Not matching\n");
+			return -ENODEV;
+		}
 		chip_data = match->data;
-	else
+		if (!plat)
+			plat = parse_i2c_tegra_dt(pdev);
+		bus_num = of_alias_get_id(pdev->dev.of_node, "i2c");
+		if (bus_num < 0)
+			dev_warn(&pdev->dev, "No bus number specified from device-tree\n");
+	} else {
 		chip_data = (struct tegra_i2c_chipdata *)pdev->id_entry->driver_data;
-
-	if (!plat || !chip_data) {
-		dev_err(&pdev->dev, "no platform/chip data?\n");
-		return -ENODEV;
+		bus_num = pdev->id;
 	}
 
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	chip_data->has_continue_xfer_support = true;
-#endif
+	if (IS_ERR(plat) || !plat || !chip_data) {
+		dev_err(&pdev->dev, "no platform/chip data?\n");
+		return IS_ERR(plat) ? PTR_ERR(plat) : -ENODEV;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -1125,30 +1187,11 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->cont_id = pdev->id;
 	i2c_dev->dev = &pdev->dev;
 	i2c_dev->is_clkon_always = pdata->is_clkon_always;
-
-	i2c_dev->bus_clk_rate = 100000; /* default clock rate */
-	if (pdata) {
-		i2c_dev->bus_clk_rate = pdata->bus_clk_rate;
-
-	} else if (i2c_dev->dev->of_node) {    /* if there is a device tree node ... */
-		prop = of_get_property(i2c_dev->dev->of_node,
-				"clock-frequency", NULL);
-		if (prop)
-			i2c_dev->bus_clk_rate = be32_to_cpup(prop);
-
-		/* FIXME! Populate the Tegra30 and then support M_NOSTART */
-		i2c_dev->chipdata->has_continue_xfer_support = false;
-	}
-
+	i2c_dev->bus_clk_rate = pdata->bus_clk_rate ? pdata->bus_clk_rate: 100000;
 	i2c_dev->is_high_speed_enable = pdata->is_high_speed_enable;
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
-
-	if (pdev->dev.of_node)
-		i2c_dev->is_dvc = of_device_is_compatible(pdev->dev.of_node,
-						"nvidia,tegra20-i2c-dvc");
-	else if (pdev->id == 3)
-		i2c_dev->is_dvc = 1;
+	i2c_dev->is_dvc = pdata->is_dvc;
 	i2c_dev->slave_addr = pdata->slave_addr;
 	i2c_dev->hs_master_code = pdata->hs_master_code;
 	init_completion(&i2c_dev->msg_complete);
@@ -1185,7 +1228,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		sizeof(i2c_dev->adapter.name));
 	i2c_dev->adapter.algo = &tegra_i2c_algo;
 	i2c_dev->adapter.dev.parent = &pdev->dev;
-	i2c_dev->adapter.nr = pdev->id;
+	i2c_dev->adapter.nr = bus_num;
 	i2c_dev->adapter.dev.of_node = pdev->dev.of_node;
 
 	if (pdata->retries)

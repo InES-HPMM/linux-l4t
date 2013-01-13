@@ -22,6 +22,7 @@
 
 struct tegra_i2c_platform_data {
 	unsigned long bus_clk_rate;
+	bool is_dvc;
 	bool is_clkon_always;
 	int retries;
 	int timeout;	/* in jiffies */
