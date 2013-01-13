@@ -326,6 +326,7 @@ static int tps6238x0_probe(struct i2c_client *client,
 	struct tps6238x0_regulator_platform_data *pdata;
 	struct regulator_dev *rdev;
 	struct tps6238x0_chip *tps;
+	struct regulator_config config = { };
 	int ret;
 	int i;
 
@@ -397,9 +398,12 @@ static int tps6238x0_probe(struct i2c_client *client,
 		goto err_init;
 	}
 
+	config.dev = &client->dev;
+	config.init_data = pdata->init_data;
+	config.driver_data = tps;
+
 	/* Register the regulators */
-	rdev = regulator_register(&tps->desc, &client->dev,
-				pdata->init_data, tps, NULL);
+	rdev = regulator_register(&tps->desc, &config);
 	if (IS_ERR(rdev)) {
 		dev_err(tps->dev, "%s() Err: Failed to register %s\n",
 				__func__, id->name);
