@@ -384,6 +384,7 @@ static int tps80031_charger_probe(struct platform_device *pdev)
 	struct tps80031_charger *charger;
 	struct tps80031_platform_data *tps80031_pdata;
 	struct tps80031_charger_platform_data *pdata;
+	struct regulator_config config = { };
 
 	dev_info(dev, "%s()\n", __func__);
 
@@ -454,8 +455,12 @@ static int tps80031_charger_probe(struct platform_device *pdev)
 	charger->board_data = pdata->board_data;
 	charger->state = charging_state_idle;
 
-	charger->rdev = regulator_register(&charger->reg_desc, &pdev->dev,
-					&charger->reg_init_data, charger, NULL);
+	config.dev = &pdev->dev;
+	config.init_data = &charger->reg_init_data;
+	config.driver_data = charger;
+	config.of_node = NULL;
+
+	charger->rdev = regulator_register(&charger->reg_desc, &config);
 	if (IS_ERR(charger->rdev)) {
 		dev_err(&pdev->dev, "failed to register %s\n",
 						charger->reg_desc.name);
