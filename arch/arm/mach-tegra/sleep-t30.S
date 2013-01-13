@@ -333,7 +333,7 @@ tegra3_iram_start:
 ENTRY(tegra3_lp1_reset)
 	/* the CPU and system bus are running at 32KHz and executing from
 	 * IRAM when this code is executed; immediately switch to CLKM and
-	 * enable PLLP, PLLM, PLLC, PLLA and PLLX. */
+	 * enable PLLP, PLLM, PLLC, and PLLX. */
 	mov32	r0, TEGRA_CLK_RESET_BASE
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
@@ -352,13 +352,11 @@ ENTRY(tegra3_lp1_reset)
 
 	pll_enable r1, r0, CLK_RESET_PLLM_BASE, CLK_RESET_PLLM_MISC
 	pll_enable r1, r0, CLK_RESET_PLLP_BASE, CLK_RESET_PLLP_MISC
-	pll_enable r1, r0, CLK_RESET_PLLA_BASE, CLK_RESET_PLLA_MISC
 	pll_enable r1, r0, CLK_RESET_PLLC_BASE, CLK_RESET_PLLC_MISC
 	pll_enable r1, r0, CLK_RESET_PLLX_BASE, CLK_RESET_PLLX_MISC
 
 	pll_locked r1, r0, CLK_RESET_PLLM_BASE
 	pll_locked r1, r0, CLK_RESET_PLLP_BASE
-	pll_locked r1, r0, CLK_RESET_PLLA_BASE
 	pll_locked r1, r0, CLK_RESET_PLLC_BASE
 	pll_locked r1, r0, CLK_RESET_PLLX_BASE
 
