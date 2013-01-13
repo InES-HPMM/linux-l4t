@@ -238,7 +238,7 @@ static bool ltr558_set_als_low_threshold(struct i2c_client *client, u32 thresh)
 static ssize_t show_prox_enable(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -251,7 +251,7 @@ static ssize_t show_prox_enable(struct device *dev,
 static ssize_t store_prox_enable(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	int err = 0;
@@ -285,7 +285,7 @@ static ssize_t store_prox_enable(struct device *dev,
 static ssize_t show_proxim_low_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -295,7 +295,7 @@ static ssize_t show_proxim_low_threshold(struct device *dev,
 static ssize_t store_proxim_low_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
@@ -326,7 +326,7 @@ static ssize_t store_proxim_low_threshold(struct device *dev,
 static ssize_t show_proxim_high_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -336,7 +336,7 @@ static ssize_t show_proxim_high_threshold(struct device *dev,
 static ssize_t store_proxim_high_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
@@ -367,7 +367,7 @@ static ssize_t store_proxim_high_threshold(struct device *dev,
 static ssize_t show_als_enable(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -380,7 +380,7 @@ static ssize_t show_als_enable(struct device *dev,
 static ssize_t store_als_enable(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	int err = 0;
@@ -414,7 +414,7 @@ static ssize_t store_als_enable(struct device *dev,
 static ssize_t show_als_low_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -424,7 +424,7 @@ static ssize_t show_als_low_threshold(struct device *dev,
 static ssize_t store_als_low_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
@@ -454,7 +454,7 @@ static ssize_t store_als_low_threshold(struct device *dev,
 static ssize_t show_als_high_threshold(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -464,7 +464,7 @@ static ssize_t show_als_high_threshold(struct device *dev,
 static ssize_t store_als_high_threshold(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	struct i2c_client *client = chip->client;
 	bool st;
@@ -494,7 +494,7 @@ static ssize_t store_als_high_threshold(struct device *dev,
 static ssize_t show_proxim_persist(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -504,7 +504,7 @@ static ssize_t show_proxim_persist(struct device *dev,
 static ssize_t store_proxim_persist(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	unsigned long lval;
 
@@ -528,7 +528,7 @@ static ssize_t store_proxim_persist(struct device *dev,
 static ssize_t show_als_persist(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 
 	dev_vdbg(dev, "%s()\n", __func__);
@@ -538,7 +538,7 @@ static ssize_t show_als_persist(struct device *dev,
 static ssize_t store_als_persist(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	unsigned long lval;
 
@@ -562,7 +562,7 @@ static ssize_t store_als_persist(struct device *dev,
 static ssize_t show_proxim_data(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	int prox_data = 0;
 	ssize_t buf_count = 0;
@@ -585,7 +585,7 @@ static ssize_t show_proxim_data(struct device *dev,
 static ssize_t show_als_data(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	ssize_t buf_count = 0;
 	int als_data = 0;
@@ -609,7 +609,7 @@ static ssize_t show_als_data(struct device *dev,
 static ssize_t show_name(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct ltr558_chip *chip = iio_priv(indio_dev);
 	return sprintf(buf, "%s\n", chip->client->name);
 }
