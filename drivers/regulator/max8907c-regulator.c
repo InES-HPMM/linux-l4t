@@ -369,7 +369,8 @@ static int max8907c_regulator_probe(struct platform_device *pdev)
 	struct max8907c_regulator_info *info;
 	struct regulator_dev *rdev;
 	struct regulator_init_data *p = pdev->dev.platform_data;
-	struct max8907c_chip_regulator_data *chip_data = p->driver_data;;
+	struct max8907c_chip_regulator_data *chip_data = p->driver_data;
+	struct regulator_config config = { };
 	u8 version;
 
 	/* Backwards compatibility with max8907b, SD1 uses different voltages */
@@ -386,8 +387,11 @@ static int max8907c_regulator_probe(struct platform_device *pdev)
 	if (chip_data != NULL)
 		info->enable_time_us = chip_data->enable_time_us;
 
-	rdev = regulator_register(&info->desc, &pdev->dev,
-				pdev->dev.platform_data, info, NULL);
+	config.dev = &pdev->dev;
+	config.init_data = pdev->dev.platform_data;
+	config.driver_data = info;
+
+	rdev = regulator_register(&info->desc, &config);
 	if (IS_ERR(rdev)) {
 		dev_err(&pdev->dev, "Cannot register regulator \"%s\", %ld\n",
 			info->desc.name, PTR_ERR(rdev));
