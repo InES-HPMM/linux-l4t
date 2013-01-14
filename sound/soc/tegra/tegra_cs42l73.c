@@ -508,7 +508,7 @@ static int tegra_cs42l73_startup(struct snd_pcm_substream *substream)
 		tegra30_dam_enable_clock(i2s->dam_ifc);
 
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
-				(i2s->dam_ifc*2), i2s->txcif);
+				(i2s->dam_ifc*2), i2s->playback_fifo_cif);
 
 		/*
 		*make the dam tx to i2s rx connection if this is the only client
@@ -516,7 +516,7 @@ static int tegra_cs42l73_startup(struct snd_pcm_substream *substream)
 		*/
 		if (i2s->playback_ref_count == 1)
 			tegra30_ahub_set_rx_cif_source(
-				TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id,
+				i2s->playback_i2s_cif,
 				TEGRA30_AHUB_TXCIF_DAM0_TX0 + i2s->dam_ifc);
 
 		/* enable the dam*/
@@ -553,14 +553,14 @@ static int tegra_cs42l73_startup(struct snd_pcm_substream *substream)
 			bb_info->channels, bb_info->bitsize);
 
 		/* setup the connections for voice call record */
-		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + bb_info->i2s_id);
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + codec_info->i2s_id);
-		tegra30_ahub_set_rx_cif_source(i2s->rxcif,
+		tegra30_ahub_set_rx_cif_source(i2s->capture_fifo_cif,
 			TEGRA30_AHUB_TXCIF_DAM0_TX0 + i2s->call_record_dam_ifc);
 
 		/* enable the dam*/
@@ -611,7 +611,7 @@ static void tegra_cs42l73_shutdown(struct snd_pcm_substream *substream)
 			TEGRA30_DAM_DISABLE, TEGRA30_DAM_CHIN0_SRC);
 
 		/* disconnect the ahub connections*/
-		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+		tegra30_ahub_unset_rx_cif_source(i2s->capture_fifo_cif);
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
 			(i2s->call_record_dam_ifc*2));
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +

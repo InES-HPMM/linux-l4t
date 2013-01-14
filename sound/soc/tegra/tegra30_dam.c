@@ -378,7 +378,6 @@ void tegra30_dam_disable_clock(int ifc)
 
 	dam =  dams_cont_info[ifc];
 	clk_disable(dam->dam_clk);
-	tegra30_ahub_disable_clocks();
 }
 
 int tegra30_dam_enable_clock(int ifc)
@@ -389,7 +388,6 @@ int tegra30_dam_enable_clock(int ifc)
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
-	tegra30_ahub_enable_clocks();
 	clk_enable(dam->dam_clk);
 
 	return 0;

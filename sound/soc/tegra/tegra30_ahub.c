@@ -61,36 +61,6 @@ static int tegra30_ahub_runtime_suspend(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-int tegra30_ahub_apbif_resume()
-{
-	int i = 0;
-	int cache_idx_rsvd;
-
-	tegra30_ahub_enable_clocks();
-
-	/*restore ahub regs*/
-	for (i = 0; i < TEGRA30_AHUB_AUDIO_RX_COUNT; i++)
-		tegra30_audio_write(i<<2, ahub->ahub_reg_cache[i]);
-
-	/*restore apbif regs*/
-	cache_idx_rsvd = TEGRA30_APBIF_CACHE_REG_INDEX_RSVD;
-	for (i = 0; i < TEGRA30_APBIF_CACHE_REG_COUNT; i++) {
-		if (i == cache_idx_rsvd) {
-			cache_idx_rsvd +=
-				TEGRA30_APBIF_CACHE_REG_INDEX_RSVD_STRIDE;
-			continue;
-		}
-
-		tegra30_apbif_write(i<<2, ahub->apbif_reg_cache[i]);
-	}
-
-	tegra30_ahub_disable_clocks();
-
-	return 0;
-}
-#endif
-
 /*
  * clk_apbif isn't required for an I2S<->I2S configuration where no PCM data
  * is read from or sent to memory. However, that's not something the rest of
@@ -295,7 +265,6 @@ int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
-	tegra30_ahub_enable_clocks();
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -308,7 +277,6 @@ int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
 		val |= (TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN |
 						pack_mode);
 	tegra30_apbif_write(reg, val);
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -319,7 +287,6 @@ int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
-	tegra30_ahub_enable_clocks();
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -332,7 +299,6 @@ int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
 		val |= (TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN |
 						pack_mode);
 	tegra30_apbif_write(reg, val);
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -635,8 +601,6 @@ int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	unsigned int reg, val;
 
-	tegra30_ahub_enable_clocks();
-
 	reg = TEGRA30_AHUB_CIF_RX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -645,8 +609,6 @@ int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
 	val |= ((audio_ch - 1) << TEGRA30_AUDIOCIF_CTRL_AUDIO_CHANNELS_SHIFT) |
 	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -658,8 +620,6 @@ int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	unsigned int reg, val;
 
-	tegra30_ahub_enable_clocks();
-
 	reg = TEGRA30_AHUB_CIF_TX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -669,8 +629,6 @@ int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 	      ((client_ch - 1) << TEGRA30_AUDIOCIF_CTRL_CLIENT_CHANNELS_SHIFT);
 
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -682,8 +640,6 @@ int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	unsigned int reg, val;
 
-	tegra30_ahub_enable_clocks();
-
 	reg = TEGRA30_AHUB_CIF_RX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -692,8 +648,6 @@ int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
 	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
 	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -705,8 +659,6 @@ int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	unsigned int reg, val;
 
-	tegra30_ahub_enable_clocks();
-
 	reg = TEGRA30_AHUB_CIF_TX_CTRL +
 	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -716,8 +668,6 @@ int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
 	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
 
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -731,9 +681,6 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	u32 of_dma[2];
 	void __iomem *regs_apbif, *regs_ahub;
 	int ret = 0;
-#ifdef CONFIG_PM
-	int i = 0, cache_idx_rsvd;
-#endif
 	int clkm_rate;
 
 	if (ahub)
@@ -868,27 +815,6 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		if (ret)
 			goto err_pm_disable;
 	}
-
-#ifdef CONFIG_PM
-	/* cache the POR values of ahub/apbif regs*/
-	tegra30_ahub_enable_clocks();
-
-	for (i = 0; i < TEGRA30_AHUB_AUDIO_RX_COUNT; i++)
-		ahub->ahub_reg_cache[i] = tegra30_audio_read(i<<2);
-
-	cache_idx_rsvd = TEGRA30_APBIF_CACHE_REG_INDEX_RSVD;
-	for (i = 0; i < TEGRA30_APBIF_CACHE_REG_COUNT; i++) {
-		if (i == cache_idx_rsvd) {
-			cache_idx_rsvd +=
-				TEGRA30_APBIF_CACHE_REG_INDEX_RSVD_STRIDE;
-			continue;
-		}
-
-		ahub->apbif_reg_cache[i] = tegra30_apbif_read(i<<2);
-	}
-
-	tegra30_ahub_disable_clocks();
-#endif
 
 	of_platform_populate(pdev->dev.of_node, NULL, ahub_auxdata,
 			     &pdev->dev);

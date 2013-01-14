@@ -156,26 +156,16 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 	}
 	if(machine_is_roth()) {
 		if(initTfa == 1) {
-			tegra30_ahub_enable_clocks();
-			clk_enable(i2s->clk_i2s);
-			tegra30_ahub_enable_tx_fifo(i2s->txcif);
+			tegra30_ahub_enable_tx_fifo(i2s->playback_fifo_cif);
 			i2s->reg_ctrl |= TEGRA30_I2S_CTRL_XFER_EN_TX;
-			#ifdef CONFIG_PM
-			i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
-			#endif
-			__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
+			regmap_write(i2s->regmap, TEGRA30_I2S_CTRL, i2s->reg_ctrl);
 			pr_info("INIT TFA\n");
 			Tfa9887_Init();
 			i2s->reg_ctrl &= ~TEGRA30_I2S_CTRL_XFER_EN_TX;
-			#ifdef CONFIG_PM
-			i2s->reg_cache[TEGRA30_I2S_CTRL >> 2] = i2s->reg_ctrl;
-			#endif
-			__raw_writel(i2s->reg_ctrl, i2s->regs + TEGRA30_I2S_CTRL);
+			regmap_write(i2s->regmap, TEGRA30_I2S_CTRL, i2s->reg_ctrl);
 			while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
 				udelay(100);
-			clk_disable(i2s->clk_i2s);
-			tegra30_ahub_disable_clocks();
-			tegra30_ahub_disable_tx_fifo(i2s->txcif);
+			tegra30_ahub_disable_tx_fifo(i2s->playback_fifo_cif);
 
 		}
 		initTfa++;

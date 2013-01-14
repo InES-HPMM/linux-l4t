@@ -247,6 +247,7 @@ struct dsp_config_t {
 
 
 struct tegra30_i2s {
+	int id;
 	struct snd_soc_dai_driver dai;
 	int cif_id;
 	struct clk *clk_i2s;

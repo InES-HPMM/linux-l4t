@@ -61,12 +61,10 @@ static inline u32 tegra30_spdif_read(struct tegra30_spdif *spdif, u32 reg)
 static void tegra30_spdif_enable_clocks(struct tegra30_spdif *spdif)
 {
 	clk_enable(spdif->clk_spdif_out);
-	tegra30_ahub_enable_clocks();
 }
 
 static void tegra30_spdif_disable_clocks(struct tegra30_spdif *spdif)
 {
-	tegra30_ahub_disable_clocks();
 	clk_disable(spdif->clk_spdif_out);
 }
 
