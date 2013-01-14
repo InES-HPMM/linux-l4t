@@ -204,6 +204,18 @@ obj-${CONFIG_MACH_PISMO}                += board-pismo-sdhci.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-panel.o
 obj-${CONFIG_MACH_PISMO}                += board-pismo-sensors.o
 
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-memory.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-pinmux.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-power.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-powermon.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sdhci.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-panel.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-kbc.o
+obj-${CONFIG_MACH_MACALLAN}             += board-macallan-sensors.o
+obj-${CONFIG_MACH_MACALLAN}             += panel-p-wuxga-10-1.o
+
+
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-memory.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-pinmux.o

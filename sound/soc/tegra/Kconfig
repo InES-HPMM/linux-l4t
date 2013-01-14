@@ -215,7 +215,7 @@ config SND_SOC_TEGRA_RT5640
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the ALC5640 codec. Currently, the supported boards
-	  are Kai,Cardhu and Dalmore.
+	  are Kai,Cardhu,Dalmore and Macallan.
 
 config MACH_HAS_SND_SOC_TEGRA_MAX98095
 	bool

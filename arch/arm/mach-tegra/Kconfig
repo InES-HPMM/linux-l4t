@@ -236,6 +236,14 @@ config MACH_PISMO
        help
          Support for NVIDIA PISMO development platform
 
+config MACH_MACALLAN
+       bool "Macallan board"
+       depends on ARCH_TEGRA_11x_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
+       select MACH_HAS_SND_SOC_TEGRA_RT5640 if SND_SOC
+       help
+         Support for NVIDIA MACALLAN development platform
+
 config MACH_TEGRA_PLUTO
        bool "Pluto board"
        depends on ARCH_TEGRA_11x_SOC
