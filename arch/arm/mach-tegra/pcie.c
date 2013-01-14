@@ -595,7 +595,6 @@ static void tegra_pcie_hotplug_init(void)
 #ifdef CONFIG_PCI_DOMAINS
 		sys->domain  = tegra_pcie_hw.domain;
 #endif
-		sys->hw      = &tegra_pcie_hw;
 		sys->busnr   = nr;
 		sys->swizzle = tegra_pcie_hw.swizzle;
 		sys->map_irq = tegra_pcie_hw.map_irq;
