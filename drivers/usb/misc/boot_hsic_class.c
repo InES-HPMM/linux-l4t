@@ -123,7 +123,7 @@ static int modem_hsic_open(struct inode *inode, struct file *file)
 
 	interface = usb_find_interface(&boot_hsic_driver, subminor);
 	if (!interface) {
-		err("%s - error, can't find device for minor %d",
+		pr_err("%s - error, can't find device for minor %d",
 		     __func__, subminor);
 		retval = -ENODEV;
 		goto exit;
@@ -174,7 +174,7 @@ static int modem_hsic_release(struct inode *inode, struct file *file)
 	/* mutex_lock(&dev->io_mutex); */
 
 	if (dev->open_count != 1) {
-		err("%s - error, device not opened exactly once, %d",
+		dev_err(&dev->udev->dev, "%s - error, device not opened exactly once, %d",
 		     __func__, dev->open_count);
 		retval = -ENODEV;
 		goto unlock_exit;
@@ -213,7 +213,7 @@ static void modem_read_bulk_callback(struct urb *urb)
 		if (!(urb->status == -ENOENT ||
 		    urb->status == -ECONNRESET ||
 		    urb->status == -ESHUTDOWN))
-			err("%s - nonzero write bulk status received: %d",
+			dev_err(&dev->udev->dev, "%s - nonzero write bulk status received: %d",
 			    __func__, urb->status);
 
 		dev->errors = urb->status;
@@ -249,7 +249,7 @@ static int modem_do_read_io(struct boot_hsic *dev, size_t count)
 	/* do it */
 	rv = usb_submit_urb(dev->bulk_in_urb, GFP_KERNEL);
 	if (rv < 0) {
-		err("%s - failed submitting read urb, error %d",
+		dev_err(&dev->udev->dev, "%s - failed submitting read urb, error %d",
 			__func__, rv);
 		dev->bulk_in_filled = 0;
 		rv = (rv == -ENOMEM) ? rv : -EIO;
@@ -279,7 +279,7 @@ static ssize_t modem_hsic_read(struct file *file, char *buffer, size_t count,
 	/* verify that the device wasn't unplugged */
 	if (dev->udev == NULL) {
 		retval = -ENODEV;
-		err("%s : No device or device unplugged %d",
+		pr_err("%s : No device or device unplugged %d",
 						__func__, retval);
 		goto exit;
 	}
@@ -292,7 +292,7 @@ static ssize_t modem_hsic_read(struct file *file, char *buffer, size_t count,
 
 	if (!dev->interface) {		/* disconnect() was called */
 		retval = -ENODEV;
-		err("%s: disconnect %d", __func__, retval);
+		dev_err(&dev->udev->dev, "%s: disconnect %d", __func__, retval);
 		goto exit;
 	}
 
@@ -366,13 +366,13 @@ success:
 
 	dev->bulk_in_buffer = kmalloc(dev->bulk_in_size, GFP_KERNEL);
 	if (!dev->bulk_in_buffer) {
-		err("Could not allocate bulk_in_buffer");
+		dev_err(&dev->udev->dev, "Could not allocate bulk_in_buffer");
 		retval = -ENOMEM;
 		goto exit;
 	}
 	dev->bulk_in_urb = usb_alloc_urb(0, GFP_KERNEL);
 	if (!dev->bulk_in_urb) {
-		err("Could not allocate bulk_in_urb");
+		dev_err(&dev->udev->dev, "Could not allocate bulk_in_urb");
 		retval = -ENOMEM;
 		goto exit;
 	}
@@ -394,7 +394,7 @@ static void modem_write_bulk_callback(struct urb *urb)
 		if (!(urb->status == -ENOENT ||
 		    urb->status == -ECONNRESET ||
 		    urb->status == -ESHUTDOWN))
-			err("%s - nonzero write bulk status received: %d",
+			dev_err(&dev->udev->dev, "%s - nonzero write bulk status received: %d",
 			    __func__, urb->status);
 
 		spin_lock(&dev->err_lock);
@@ -427,7 +427,7 @@ static ssize_t modem_hsic_write(struct file *file,
 
 	/* verify that we actually have some data to write */
 	if (count == 0) {
-		err("modem_hsic_write: count == 0");
+		dev_err(&dev->udev->dev, "modem_hsic_write: count == 0");
 		goto exit;
 	}
 
@@ -437,7 +437,7 @@ static ssize_t modem_hsic_write(struct file *file,
 	 */
 	if (!(file->f_flags & O_NONBLOCK)) {
 		retval = -ERESTARTSYS;
-		err("modem_hsic_write: interruptible retval = %d", retval);
+		dev_err(&dev->udev->dev, "modem_hsic_write: interruptible retval = %d", retval);
 		goto exit;
 	} else {
 		if (down_trylock(&dev->limit_sem)) {
@@ -456,7 +456,7 @@ static ssize_t modem_hsic_write(struct file *file,
 	}
 	spin_unlock_irq(&dev->err_lock);
 	if (retval < 0) {
-		err("modem_hsic_write: misc error retval = %d",
+		dev_err(&dev->udev->dev, "modem_hsic_write: misc error retval = %d",
 						retval);
 		goto error;
 	}
@@ -466,7 +466,7 @@ static ssize_t modem_hsic_write(struct file *file,
 	urb = usb_alloc_urb(0, GFP_KERNEL);
 	if (!urb) {
 		retval = -ENOMEM;
-		err("modem_hsic_write: urb alloc retval = %d",
+		dev_err(&dev->udev->dev, "modem_hsic_write: urb alloc retval = %d",
 						retval);
 		goto error;
 	}
@@ -475,14 +475,14 @@ static ssize_t modem_hsic_write(struct file *file,
 				 &urb->transfer_dma);
 	if (!buf) {
 		retval = -ENOMEM;
-		err("modem_hsic_write: usb_alloc_coherent retval = %d",
+		dev_err(&dev->udev->dev, "modem_hsic_write: usb_alloc_coherent retval = %d",
 						retval);
 		goto error;
 	}
 
 	if (copy_from_user(buf, user_buffer, writesize)) {
 		retval = -EFAULT;
-		err("modem_hsic_write: copy_from_user retval = %d",
+		dev_err(&dev->udev->dev, "modem_hsic_write: copy_from_user retval = %d",
 						retval);
 		goto error;
 	}
@@ -491,7 +491,7 @@ static ssize_t modem_hsic_write(struct file *file,
 	mutex_lock(&dev->io_mutex);
 	if (!dev->interface) {		/* disconnect() was called */
 		mutex_unlock(&dev->io_mutex);
-		err("modem_hsic_write: interface retval = %d", retval);
+		dev_err(&dev->udev->dev, "modem_hsic_write: interface retval = %d", retval);
 		retval = -ENODEV;
 		goto error;
 	}
@@ -510,7 +510,7 @@ static ssize_t modem_hsic_write(struct file *file,
 	retval = usb_submit_urb(urb, GFP_KERNEL);
 	mutex_unlock(&dev->io_mutex);
 	if (retval) {
-		err("%s - failed submitting write urb, error %d", __func__,
+		dev_err(&dev->udev->dev, "%s - failed submitting write urb, error %d", __func__,
 		    retval);
 		goto error;
 	}
@@ -575,7 +575,7 @@ static int boot_hsic_probe(struct usb_interface *interface,
 	/* allocate memory for our device state and initialize it */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
-		err("Out of memory");
+		dev_err(&udev->dev, "Out of memory");
 		goto error;
 	}
 
@@ -601,12 +601,12 @@ static int boot_hsic_probe(struct usb_interface *interface,
 			dev->bulk_in_endpointAddr = endpoint->bEndpointAddress;
 			dev->bulk_in_buffer = kmalloc(buffer_size, GFP_KERNEL);
 			if (!dev->bulk_in_buffer) {
-				err("Could not allocate bulk_in_buffer");
+				dev_err(&udev->dev, "Could not allocate bulk_in_buffer");
 				goto error;
 			}
 			dev->bulk_in_urb = usb_alloc_urb(0, GFP_KERNEL);
 			if (!dev->bulk_in_urb) {
-				err("Could not allocate bulk_in_urb");
+				dev_err(&udev->dev, "Could not allocate bulk_in_urb");
 				goto error;
 			}
 		}
@@ -618,7 +618,7 @@ static int boot_hsic_probe(struct usb_interface *interface,
 		}
 	}
 	if (!(dev->bulk_in_endpointAddr && dev->bulk_out_endpointAddr)) {
-		err("Could not find both bulk-in and bulk-out endpoints");
+		dev_err(&udev->dev, "Could not find both bulk-in and bulk-out endpoints");
 		goto error;
 	}
 
@@ -629,7 +629,7 @@ static int boot_hsic_probe(struct usb_interface *interface,
 	retval = usb_register_dev(interface, &boot_hsic_class);
 	if (retval) {
 		/* something prevented us from registering this driver */
-		err("Not able to get a minor for this device.");
+		dev_err(&udev->dev, "Not able to get a minor for this device.");
 		usb_set_intfdata(interface, NULL);
 		goto error;
 	}
@@ -704,7 +704,7 @@ static int __init boot_hsic_init(void)
 	/* register this driver with the USB subsystem */
 	result = usb_register(&boot_hsic_driver);
 	if (result)
-		err("usb_register failed. Error number %d", result);
+		pr_err("usb_register failed. Error number %d", result);
 
 	return result;
 }
