@@ -64,7 +64,6 @@ static int bonaire_backlight_init(struct device *dev)
 	int ret;
 
 #ifndef CONFIG_TEGRA_BONAIRE_DSI
-	tegra_gpio_disable(bonaire_bl_pwm);
 
 	ret = gpio_request(bonaire_bl_enb, "backlight_enb");
 	if (ret < 0)
@@ -73,8 +72,6 @@ static int bonaire_backlight_init(struct device *dev)
 	ret = gpio_direction_output(bonaire_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(bonaire_bl_enb);
-	else
-		tegra_gpio_enable(bonaire_bl_enb);
 
 	return ret;
 #endif
@@ -89,8 +86,6 @@ static int bonaire_backlight_init(struct device *dev)
 	ret = gpio_direction_output(bonaire_dsia_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(bonaire_dsia_bl_enb);
-	else
-		tegra_gpio_enable(bonaire_dsia_bl_enb);
 
 	/* Enable back light for DSIb panel */
 	ret = gpio_request(bonaire_dsib_bl_enb, "dsib_bl_enable");
@@ -100,8 +95,7 @@ static int bonaire_backlight_init(struct device *dev)
 	ret = gpio_direction_output(bonaire_dsib_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(bonaire_dsib_bl_enb);
-	else
-		tegra_gpio_enable(bonaire_dsib_bl_enb);
+
 #endif
 
 	return ret;
@@ -112,19 +106,17 @@ static void bonaire_backlight_exit(struct device *dev)
 #ifndef CONFIG_TEGRA_BONAIRE_DSI
 	gpio_set_value(bonaire_bl_enb, 0);
 	gpio_free(bonaire_bl_enb);
-	tegra_gpio_disable(bonaire_bl_enb);
+
 	return;
 #endif
 #if DSI_PANEL_219 || DSI_PANEL_218
 	/* Disable back light for DSIa panel */
 	gpio_set_value(bonaire_dsia_bl_enb, 0);
 	gpio_free(bonaire_dsia_bl_enb);
-	tegra_gpio_disable(bonaire_dsia_bl_enb);
 
 	/* Disable back light for DSIb panel */
 	gpio_set_value(bonaire_dsib_bl_enb, 0);
 	gpio_free(bonaire_dsib_bl_enb);
-	tegra_gpio_disable(bonaire_dsib_bl_enb);
 
 	gpio_set_value(bonaire_lvds_shutdown, 1);
 	mdelay(20);
@@ -313,7 +305,7 @@ static int bonaire_dsi_panel_enable(void)
 		gpio_free(TEGRA_GPIO_PJ1);
 		return ret;
 	}
-	tegra_gpio_enable(TEGRA_GPIO_PJ1);
+
 
 #if DSI_PANEL_219
 
@@ -324,8 +316,7 @@ static int bonaire_dsi_panel_enable(void)
 	if (ret < 0) {
 		gpio_free(TEGRA_GPIO_PH0);
 		return ret;
-	} else
-		tegra_gpio_enable(TEGRA_GPIO_PH0);
+	}
 
 	ret = gpio_request(TEGRA_GPIO_PH2, "ph2");
 	if (ret < 0)
@@ -334,8 +325,7 @@ static int bonaire_dsi_panel_enable(void)
 	if (ret < 0) {
 		gpio_free(TEGRA_GPIO_PH2);
 		return ret;
-	} else
-		tegra_gpio_enable(TEGRA_GPIO_PH2);
+	}
 
 	ret = gpio_request(TEGRA_GPIO_PU2, "pu2");
 	if (ret < 0)
@@ -344,8 +334,7 @@ static int bonaire_dsi_panel_enable(void)
 	if (ret < 0) {
 		gpio_free(TEGRA_GPIO_PU2);
 		return ret;
-	} else
-		tegra_gpio_enable(TEGRA_GPIO_PU2);
+	}
 
 	gpio_set_value(bonaire_lvds_shutdown, 1);
 	mdelay(20);
@@ -370,8 +359,7 @@ static int bonaire_dsi_panel_enable(void)
 	ret = gpio_direction_output(AVDD_LCD, 1);
 	if (ret < 0)
 		gpio_free(AVDD_LCD);
-	else
-		tegra_gpio_enable(AVDD_LCD);
+
 
 #if DSI_PANEL_RESET
 	ret = gpio_request(TEGRA_GPIO_PD2, "pd2");
@@ -382,8 +370,7 @@ static int bonaire_dsi_panel_enable(void)
 	if (ret < 0) {
 		gpio_free(TEGRA_GPIO_PD2);
 		return ret;
-	} else
-		tegra_gpio_enable(TEGRA_GPIO_PD2);
+	}
 
 	gpio_set_value(TEGRA_GPIO_PD2, 1);
 	gpio_set_value(TEGRA_GPIO_PD2, 0);
@@ -404,18 +391,13 @@ static int bonaire_dsi_panel_disable(void)
 	printk(KERN_INFO "DSI panel disable\n");
 
 #if DSI_PANEL_219
-	tegra_gpio_disable(TEGRA_GPIO_PU2);
 	gpio_free(TEGRA_GPIO_PU2);
-	tegra_gpio_disable(TEGRA_GPIO_PH2);
 	gpio_free(TEGRA_GPIO_PH2);
-	tegra_gpio_disable(TEGRA_GPIO_PH0);
 	gpio_free(TEGRA_GPIO_PH0);
-	tegra_gpio_disable(TEGRA_GPIO_PL2);
 	gpio_free(TEGRA_GPIO_PL2);
 #endif
 
 #if DSI_PANEL_218
-	tegra_gpio_disable(TEGRA_GPIO_PD2);
 	gpio_free(TEGRA_GPIO_PD2);
 #endif
 
@@ -439,7 +421,6 @@ static int bonaire_dsi_panel_postsuspend(void)
 	}
 
 #if DSI_PANEL_218
-	tegra_gpio_disable(AVDD_LCD);
 	gpio_free(AVDD_LCD);
 #endif
 
