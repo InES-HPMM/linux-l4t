@@ -23,6 +23,8 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
+#include <linux/uaccess.h>
+#include <linux/string.h>
 
 #include <mach/pinmux.h>
 
@@ -1206,8 +1208,90 @@ static int dbg_pinmux_open(struct inode *inode, struct file *file)
 	return single_open(file, dbg_pinmux_show, &inode->i_private);
 }
 
+#define DELIMITER " \n"
+static ssize_t dbg_pinmux_write(struct file *file,
+	const char __user *userbuf, size_t count, loff_t *ppos)
+{
+	char buf[80];
+	char *pbuf = &buf[0];
+	char *token;
+	struct tegra_pingroup_config pg_config;
+	int i;
+
+	if (sizeof(buf) <= count)
+		return -EINVAL;
+	if (copy_from_user(buf, userbuf, count))
+		return -EFAULT;
+
+	pr_debug("%s buf: %s\n", __func__, buf);
+
+	/* ping group index by name */
+	token = strsep(&pbuf, DELIMITER);
+	for (i = 0; i < pingroup_max; i++)
+		if (!strcmp(token, pingroup_name(i)))
+			break;
+	if (i == pingroup_max) { /* no pingroup matched with name */
+		pr_err("no pingroup matched with name\n");
+		return -EINVAL;
+	}
+	pg_config.pingroup = i;
+
+	/* func index by name */
+	token = strsep(&pbuf, DELIMITER);
+	for (i = 0; i < TEGRA_MAX_MUX; i++)
+		if (!strcmp(token, tegra_mux_names[i]))
+			break;
+	if (i == TEGRA_MAX_MUX) { /* no func matched with name */
+		pr_err("no func matched with name\n");
+		return -EINVAL;
+	}
+	pg_config.func = i;
+
+	/* i/o by name */
+	token = strsep(&pbuf, DELIMITER);
+	i = !strcmp(token, "OUTPUT") ? 0 :
+		!strcmp(token, "INPUT") ? 1 : -1;
+	if (i == -1) { /* no IO matched with name */
+		pr_err("no IO matched with name\n");
+		return -EINVAL;
+	}
+	pg_config.io = i;
+
+	/* pull up/down by name */
+	token = strsep(&pbuf, DELIMITER);
+	i = !strcmp(token, "NORMAL") ? 0 :
+		!strcmp(token, "PULL_DOWN") ? 1 :
+		!strcmp(token, "PULL_UP") ? 2 : -1;
+	if (i == -1) { /* no PUPD matched with  name */
+		pr_err("no PUPD matched with  name\n");
+		return -EINVAL;
+	}
+	pg_config.pupd = i;
+
+	/* tristate by name */
+	token = strsep(&pbuf, DELIMITER);
+	i = !strcmp(token, "NORMAL") ? 0 :
+		!strcmp(token, "TRISTATE") ? 1 : -1;
+	if (i == -1) { /* no tristate matched with name */
+		pr_err("no tristate matched with name\n");
+		return -EINVAL;
+	}
+	pg_config.tristate = i;
+
+	pr_debug("pingroup=%d, func=%d, io=%d, pupd=%d, tristate=%d\n",
+			pg_config.pingroup, pg_config.func, pg_config.io,
+			pg_config.pupd, pg_config.tristate);
+	tegra_pinmux_set_func(&pg_config);
+	tegra_pinmux_set_pullupdown(pg_config.pingroup, pg_config.pupd);
+	tegra_pinmux_set_tristate(pg_config.pingroup, pg_config.tristate);
+
+	return count;
+}
+
+
 static const struct file_operations debug_fops = {
 	.open		= dbg_pinmux_open,
+	.write		= dbg_pinmux_write,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
