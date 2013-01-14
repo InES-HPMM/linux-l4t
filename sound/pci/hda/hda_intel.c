@@ -3818,11 +3818,10 @@ static int azx_first_init(struct azx *chip)
 		case AZX_DRIVER_NVIDIA_TEGRA:
 			chip->platform_clk_count = ARRAY_SIZE(tegra_clk_names);
 			for (i = 0; i < chip->platform_clk_count; i++) {
-				tegra_clks[i] = clk_get(&pdev->dev,
+				tegra_clks[i] = clk_get(&chip->pdev->dev,
 							tegra_clk_names[i]);
 				if (IS_ERR_OR_NULL(tegra_clks[i])) {
-					err = PTR_ERR(tegra_clks[i]);
-					goto errout;
+					return PTR_ERR(tegra_clks[i]);
 				}
 			}
 			chip->platform_clks = tegra_clks;
@@ -3834,19 +3833,17 @@ static int azx_first_init(struct azx *chip)
 
 		azx_platform_enable_clocks(chip);
 
-		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		res = platform_get_resource(chip->pdev, IORESOURCE_MEM, 0);
 		if (res == NULL) {
-			err = EINVAL;
-			goto errout;
+			return -EINVAL;
 		}
 
 		region = devm_request_mem_region(chip->dev, res->start,
 						 resource_size(res),
-						 pdev->name);
+						 chip->pdev->name);
 		if (!region) {
 			snd_printk(KERN_ERR SFX "Mem region already claimed\n");
-			err = -EINVAL;
-			goto errout;
+			return -EINVAL;
 		}
 
 		chip->addr = res->start;
@@ -3855,8 +3852,7 @@ static int azx_first_init(struct azx *chip)
 						resource_size(res));
 		if (chip->remap_addr == NULL) {
 			snd_printk(KERN_ERR SFX "ioremap error\n");
-			err = -ENXIO;
-			goto errout;
+			return -ENXIO;
 		}
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
