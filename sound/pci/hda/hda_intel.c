@@ -3161,8 +3161,7 @@ static int azx_resume(struct device *dev)
 		azx_init_platform(chip);
 #endif
 
-	if (snd_hda_codecs_inuse(chip->bus))
-		azx_init_chip(chip, 1);
+	azx_init_chip(chip, 1);
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
