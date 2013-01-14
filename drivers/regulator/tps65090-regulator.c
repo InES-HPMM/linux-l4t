@@ -32,13 +32,50 @@ struct tps65090_regulator {
 	struct device		*dev;
 	struct regulator_desc	*desc;
 	struct regulator_dev	*rdev;
+
+	int			wait_timeout_us;
 };
+
+static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
+{
+	return rdev_get_dev(rdev)->parent->parent;
+}
+
+static int tps65090_reg_enable(struct regulator_dev *rdev)
+{
+	struct tps65090_regulator *ri = rdev_get_drvdata(rdev);
+	struct device *parent = to_tps65090_dev(rdev);
+
+	/* Setup wait_time for current limited timeout, WTFET[1:0]@bits[3:2] */
+	if (ri->wait_timeout_us > 0) {
+		int wait_timeout = ri->wait_timeout_us;
+		int ret;
+		u8 en_reg = ri->rinfo->desc.enable_reg;
+
+		if (wait_timeout <= 200)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x0);
+		else if (wait_timeout <= 800)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x4);
+		else if (wait_timeout <= 1600)
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0x8);
+		else
+			ret = tps65090_update_bits(parent, en_reg, 0xc, 0xc);
+
+		if (ret < 0) {
+			dev_err(&rdev->dev, "Error updating reg 0x%x WTFET\n",
+				en_reg);
+			return ret;
+		}
+	}
+
+	return regulator_enable_regmap(rdev);
+}
 
 static struct regulator_ops tps65090_ext_control_ops = {
 };
 
 static struct regulator_ops tps65090_reg_contol_ops = {
-	.enable		= regulator_enable_regmap,
+	.enable		= tps65090_reg_enable,
 	.disable	= regulator_disable_regmap,
 	.is_enabled	= regulator_is_enabled_regmap,
 };
@@ -263,6 +300,7 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 		ri = &pmic[num];
 		ri->dev = &pdev->dev;
 		ri->desc = &tps65090_regulator_desc[num];
+		ri->wait_timeout_us = tps_pdata->wait_timeout_us;
 
 		/*
 		 * TPS5090 DCDC support the control from external digital input.
