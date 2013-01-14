@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-bonaire-panel.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
