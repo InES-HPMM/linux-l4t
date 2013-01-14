@@ -93,6 +93,7 @@ struct max17042_chip {
 	int shutdown_complete;
 	int status;
 	int cap;
+	int chgin_ilim;
 };
 struct max17042_chip *tmp_chip;
 struct i2c_client *temp_client;
@@ -178,9 +179,19 @@ EXPORT_SYMBOL_GPL(maxim_get_temp);
 
 void max17042_update_status(int status)
 {
+	if (!tmp_chip) {
+		WARN_ON(1);
+		return;
+	}
+
 	tmp_chip->status = status;
-	if (tmp_chip != NULL)
-		power_supply_changed(&tmp_chip->battery);
+	power_supply_changed(&tmp_chip->battery);
+	if (IS_ENABLED(CONFIG_EDP_FRAMEWORK) &&
+			tmp_chip->chgin_ilim != status) {
+		tmp_chip->chgin_ilim = status;
+		schedule_delayed_work(&tmp_chip->depl_work, 0);
+		flush_delayed_work(&tmp_chip->depl_work);
+	}
 }
 EXPORT_SYMBOL_GPL(max17042_update_status);
 
@@ -773,6 +784,7 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 
 	ibat = (unsigned int)div64_s64(1000 * (ocv - VSYS_MIN),
 			rbat_calc + R_CONTACTS + R_BOARD + R_PASSFET);
+	ibat += chip->chgin_ilim;
 
 	safe = ibat_safepeak(temp);
 	depl = safe - min(safe, ibat);
@@ -825,6 +837,7 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 	c = chip->pdata->edp_client;
 	chip->rbat_lastgood = RBAT_INIT;
 	chip->edp_req = c->num_states;
+	chip->chgin_ilim = 0;
 
 	strncpy(c->name, chip->battery.name, EDP_NAME_LEN - 1);
 	c->name[EDP_NAME_LEN - 1] = 0;
