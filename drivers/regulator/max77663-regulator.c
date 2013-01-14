@@ -882,7 +882,7 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 	}
 
 	reg->rdev = regulator_register(rdesc, &pdev->dev,
-				       &reg->pdata->init_data, reg, NULL);
+				       reg->pdata->reg_init_data, reg, NULL);
 	if (IS_ERR(reg->rdev)) {
 		dev_err(&pdev->dev, "probe: Failed to register regulator %s\n",
 			rdesc->name);
