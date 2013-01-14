@@ -302,6 +302,14 @@ error:
 static int max77665_enable_charger(struct max77665_charger *charger)
 {
 	int ret = 0;
+	uint32_t val = 0;
+	int ilim;
+
+	ret = max77665_read_reg(charger, MAX77665_CHG_CNFG_09, &val);
+	if (ret)
+		goto error;
+	val &= 0x7F;
+	ilim = max_t(int, 60, val * 20);
 
 	if (charger->plat_data->update_status)
 			charger->plat_data->update_status(false);
@@ -316,7 +324,7 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 		power_supply_changed(&charger->usb);
 		charger->plat_data->curr_lim = 500;
 		if (charger->plat_data->update_status)
-			charger->plat_data->update_status(true);
+			charger->plat_data->update_status(ilim);
 	}
 
 	if (extcon_get_cable_state(charger->edev, "USB-Host")) {
@@ -333,7 +341,7 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 		charger->ac_online = 1;
 		power_supply_changed(&charger->ac);
 		if (charger->plat_data->update_status)
-			charger->plat_data->update_status(true);
+			charger->plat_data->update_status(ilim);
 	}
 
 	ret = max77665_charger_init(charger);
