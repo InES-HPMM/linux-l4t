@@ -1,7 +1,7 @@
 /*
  * max77665-charger.c - Battery charger driver
  *
- *  Copyright (C) 2012 nVIDIA corporation
+ *  Copyright (C) 2012-2013 nVIDIA corporation
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -357,7 +357,7 @@ static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
 {
 	struct max77665_charger *charger = data;
 	int ret;
-	uint8_t read_val;
+	uint32_t read_val;
 
 	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
 	if (ret < 0) {
