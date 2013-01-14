@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012- 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,7 +29,7 @@ static struct powergate_ops tegra14x_powergate_ops = {
 	.num_powerdomains = TEGRA_NUM_POWERGATE,
 };
 
-struct powergate_ops *tegra11x_powergate_init_chip_support(void)
+struct powergate_ops *tegra14x_powergate_init_chip_support(void)
 {
 	return NULL;
 }
