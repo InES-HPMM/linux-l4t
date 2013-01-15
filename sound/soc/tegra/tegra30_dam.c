@@ -3,7 +3,7 @@
  *
  * Author: Nikesh Oswal <noswal@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
- * Copyright (C) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -417,6 +417,7 @@ static int tegra30_dam_show(struct seq_file *s, void *unused)
 	struct tegra30_dam_context *dam = s->private;
 	int i;
 
+	tegra30_ahub_enable_clocks();
 	clk_enable(dam->dam_clk);
 
 	for (i = 0; i < ARRAY_SIZE(regs); i++) {
@@ -425,6 +426,7 @@ static int tegra30_dam_show(struct seq_file *s, void *unused)
 	}
 
 	clk_disable(dam->dam_clk);
+	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
