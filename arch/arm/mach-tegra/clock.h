@@ -23,6 +23,20 @@
 #ifndef __MACH_TEGRA_CLOCK_H
 #define __MACH_TEGRA_CLOCK_H
 
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
+#else
+#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
+#define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
+#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
+#else
+#define USE_PLLE_SWCTL 0	/* Use s/w controls for PLLE */
+#define PLL_POST_LOCK_DELAY 10	/* Safety delay after lock is detected */
+#endif
+#endif
+
 #ifndef __ASSEMBLY__
 
 #include <linux/clk-provider.h>
@@ -38,20 +52,6 @@
 #define MAX_SAME_LIMIT_SKU_IDS	16
 
 struct clk;
-
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define USE_PLL_LOCK_BITS 0	/* Never use lock bits on Tegra2 */
-#else
-#define USE_PLL_LOCK_BITS 1	/* Use lock bits for PLL stabiliation */
-#define USE_PLLE_SS 1		/* Use spread spectrum coefficients for PLLE */
-#define PLL_PRE_LOCK_DELAY  2	/* Delay 1st lock bit read after pll enabled */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-#define PLL_POST_LOCK_DELAY 50	/* Safety delay after lock is detected */
-#else
-#define USE_PLLE_SWCTL 0	/* Use s/w controls for PLLE */
-#define PLL_POST_LOCK_DELAY 10	/* Safety delay after lock is detected */
-#endif
-#endif
 
 #define DIV_BUS			(1 << 0)
 #define DIV_U71			(1 << 1)
