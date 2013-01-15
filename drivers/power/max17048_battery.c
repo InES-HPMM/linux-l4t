@@ -632,7 +632,7 @@ static int __init max17048_init(void)
 {
 	return i2c_add_driver(&max17048_i2c_driver);
 }
-module_init(max17048_init);
+subsys_initcall(max17048_init);
 
 static void __exit max17048_exit(void)
 {
