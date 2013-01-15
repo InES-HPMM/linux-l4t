@@ -215,7 +215,7 @@ static inline void isomgr_lock(void)
 
 static inline void isomgr_unlock(void)
 {
-	BUG_ON(isomgr.task != current); /* detact mismatched calls */
+	BUG_ON(isomgr.task != current); /* detect mismatched calls */
 	isomgr.task = 0;
 	mutex_unlock(&isomgr.lock);
 }
@@ -459,7 +459,7 @@ EXPORT_SYMBOL(tegra_isomgr_reserve);
  * @handle	handle acquired during tegra_isomgr_register.
  *
  * returns dvfs latency thresh in usec.
- * return 0 indicates that reserve failed.
+ * return 0 indicates that realize failed.
  */
 u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
 {

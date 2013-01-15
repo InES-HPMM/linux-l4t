@@ -69,12 +69,12 @@ static inline void tegra_isomgr_unregister(tegra_isomgr_handle handle) {}
 static inline u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 			 u32 bw, u32 lt)
 {
-	return 0;
+	return 1;
 }
 
 static inline u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
 {
-	return 0;
+	return 1;
 }
 static inline int isomgr_init(void)
 {
