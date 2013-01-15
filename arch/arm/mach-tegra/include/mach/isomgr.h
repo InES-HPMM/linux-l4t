@@ -1,7 +1,7 @@
 /*
  * include/mach/isomgr.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,6 +21,7 @@ enum tegra_iso_client {
 	TEGRA_ISO_CLIENT_DISP_0,
 	TEGRA_ISO_CLIENT_DISP_1,
 	TEGRA_ISO_CLIENT_VI_0,
+	TEGRA_ISO_CLIENT_BBC_0,
 	TEGRA_ISO_CLIENT_COUNT
 };
 

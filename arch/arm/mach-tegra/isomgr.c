@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/isomgr.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -74,6 +74,30 @@ static struct isoclient_info tegra11x_isoclients[] = {
 	},
 };
 
+static struct isoclient_info tegra14x_isoclients[] = {
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_0,
+		.name = "disp_0",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_DISP_1,
+		.name = "disp_1",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_VI_0,
+		.name = "vi_0",
+	},
+	{
+		.client = TEGRA_ISO_CLIENT_BBC_0,
+		.name = "bbc_0",
+	},
+	/* This must be last entry*/
+	{
+		.client = TEGRA_ISO_CLIENT_COUNT,
+		.name = NULL,
+	},
+};
+
 static struct isoclient_info *get_iso_client_info(void)
 {
 	enum tegra_chipid cid;
@@ -83,6 +107,9 @@ static struct isoclient_info *get_iso_client_info(void)
 	switch (cid) {
 	case TEGRA_CHIPID_TEGRA11:
 		cinfo = tegra11x_isoclients;
+		break;
+	case TEGRA_CHIPID_TEGRA14:
+		cinfo = tegra14x_isoclients;
 		break;
 	default:
 		cinfo = tegra_null_isoclients;
