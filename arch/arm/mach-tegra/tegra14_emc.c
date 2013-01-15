@@ -72,6 +72,7 @@ enum {
 	DLL_CHANGE_OFF,
 };
 
+#define CLK_RST_CONTROLLER_CLK_SOURCE_EMC	0x19c
 #define EMC_CLK_DIV_SHIFT		0
 #define EMC_CLK_DIV_MASK		(0xFF << EMC_CLK_DIV_SHIFT)
 #define EMC_CLK_SOURCE_SHIFT		29
@@ -126,7 +127,6 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_ODT_WRITE),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_ODT_READ),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_FBIO_CFG5),		\
-	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_DIG_DLL),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_DIG_DLL_PERIOD),	\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS0),		\
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_DLL_XFORM_DQS1),		\
@@ -239,6 +239,14 @@ enum {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
+
+#define CLK_RST_CONTROLLER_CLK_OUT_ENB_X_SET	0x284
+#define CLK_RST_CONTROLLER_CLK_OUT_ENB_X_CLR	0x288
+#define CLK_ENB_EMC_DLL				(1 << 14)
+#define CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL	0x664
+#define EMC_DLL_DYN_MUX_CTRL			(1 << 16)
+
+#define FBIO_SPARE_CFG_SW_DLL_RST_CTRL_N	(1 << 27)
 
 struct emc_sel {
 	struct clk	*input;
@@ -450,6 +458,144 @@ static inline void do_clock_change(u32 clk_setting)
 	}
 }
 
+#ifndef EMULATE_CLOCK_SWITCH
+
+static u32 emc_prelock_dll(const struct tegra14_emc_table *last_timing,
+			   const struct tegra14_emc_table *next_timing)
+{
+	u32 dll_locked, dll_out;
+	u32 emc_cfg_dig_dll;
+	u32 emc_dll_clk_src;
+	u32 fbio_spare_old, fbio_spare_new;
+	u32 div_value = (next_timing->src_sel_reg & EMC_CLK_DIV_MASK);
+	u32 src_value = (next_timing->src_sel_reg & EMC_CLK_SOURCE_MASK);
+
+	/* WAR for missing PLLC_UD DLL clock source selector. */
+	if (src_value == (0x7 << EMC_CLK_SOURCE_SHIFT))
+		src_value = (0x1 << EMC_CLK_SOURCE_SHIFT);
+
+	/*
+	 * Step 1:
+	 *   If the DLL is disabled don't bother disabling it again.
+	 */
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+
+	if (last_timing->rate <= 408000)
+		goto skip_dll_disable;
+
+	emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+
+skip_dll_disable:
+	/*
+	 * Step 1.25:
+	 *   Force the DLL into override mode.
+	 */
+	dll_out = emc_readl(EMC_DIG_DLL_STATUS) & EMC_DIG_DLL_STATUS_OUT;
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll &= ~(EMC_CFG_DIG_DLL_OVERRIDE_VAL_MASK <<
+			     EMC_CFG_DIG_DLL_OVERRIDE_VAL_SHIFT);
+	emc_cfg_dig_dll |= ((dll_out & EMC_CFG_DIG_DLL_OVERRIDE_VAL_MASK) <<
+			    EMC_CFG_DIG_DLL_OVERRIDE_VAL_SHIFT);
+	emc_cfg_dig_dll |= EMC_CFG_DIG_DLL_OVERRIDE_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+
+	/*
+	 * Step 1.5:
+	 *   Force the DLL into one shot mode.
+	 */
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll &= ~(EMC_CFG_DIG_DLL_MODE_MASK <<
+			     EMC_CFG_DIG_DLL_MODE_SHIFT);
+	emc_cfg_dig_dll |= (EMC_CFG_DIG_DLL_MODE_RUN_TIL_LOCK <<
+			    EMC_CFG_DIG_DLL_MODE_SHIFT);
+	emc_cfg_dig_dll &= ~(EMC_CFG_DIG_DLL_UDSET_MASK <<
+			     EMC_CFG_DIG_DLL_UDSET_SHIFT);
+	emc_cfg_dig_dll |= (0x2 << EMC_CFG_DIG_DLL_UDSET_SHIFT);
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+
+	/*
+	 * Step 2:
+	 *   Set the DLL's prelocking input. We do this so that we can get an
+	 * override value for when we do the actual swap to this PLL later on.
+	 * Once we swap, we will want this override value.
+	 */
+	emc_dll_clk_src = (div_value | src_value);
+	writel(emc_dll_clk_src,
+	       clk_base + CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL);
+	writel(emc_dll_clk_src | EMC_DLL_DYN_MUX_CTRL,
+	       clk_base + CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL);
+
+	/*
+	 * Step 2.5:
+	 *   Enable CLK to DLL from CAR.
+	 */
+	writel(CLK_ENB_EMC_DLL,
+	       clk_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_X_SET);
+	udelay(1);
+
+	/*
+	 * Step 3:
+	 *   Reset the DLL and wait for it to lock against the target freq.
+	 */
+	fbio_spare_old = emc_readl(EMC_FBIO_SPARE);
+	fbio_spare_new = fbio_spare_old | FBIO_SPARE_CFG_SW_DLL_RST_CTRL_N;
+
+	emc_writel(fbio_spare_new, EMC_FBIO_SPARE);
+	emc_writel(fbio_spare_old, EMC_FBIO_SPARE);
+
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll |= (EMC_CFG_DIG_DLL_EN | EMC_CFG_DIG_DLL_RESET);
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+	udelay(1);
+
+	do {
+		dll_locked = emc_readl(EMC_DIG_DLL_STATUS) &
+			EMC_DIG_DLL_STATUS_LOCKED;
+	} while (!dll_locked);
+
+	if (WARN_ON((emc_readl(EMC_INTSTATUS) &
+		     EMC_INTSTATUS_DLL_LOCK_TIMEOUT_INT)))
+		emc_writel(EMC_INTSTATUS_DLL_LOCK_TIMEOUT_INT,
+			   EMC_INTSTATUS);
+
+	/*
+	 * Step 4:
+	 *   Disable CLK to DLL from CAR.
+	 */
+	writel(CLK_ENB_EMC_DLL,
+	       clk_base + CLK_RST_CONTROLLER_CLK_OUT_ENB_X_CLR);
+	udelay(1);
+
+	/*
+	 * Step 5:
+	 *   Now, reinvoke the state machine logic without the clock.
+	 */
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+
+	emc_cfg_dig_dll |= EMC_CFG_DIG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+	udelay(1);
+
+	dll_out = emc_readl(EMC_DIG_DLL_STATUS) & EMC_DIG_DLL_STATUS_OUT;
+
+	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
+	emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_EN;
+	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	emc_timing_update();
+
+	return dll_out;
+}
+#endif
+
 static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 				   const struct tegra14_emc_table *last_timing,
 				   u32 clk_setting)
@@ -458,7 +604,10 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	int i, dll_change, pre_wait;
 	bool dyn_sref_enabled, zcal_long;
 
+	u32 dll_override, emc_cfg_dig_dll;
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
+
+	u32 use_prelock = next_timing->emc_cfg_dig_dll & EMC_CFG_DIG_DLL_EN;
 
 	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
 	dll_change = get_dll_change(next_timing, last_timing);
@@ -466,10 +615,14 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 		(last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
 
 	/* 1. clear clkchange_complete interrupts */
-	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
+	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE |
+		   EMC_INTSTATUS_DLL_LOCK_TIMEOUT_INT, EMC_INTSTATUS);
 
 	/* 1.5 On t148, prelock the DLL - assuming the DLL is enabled. */
-	/* TODO: implement. */
+	if (use_prelock)
+		dll_override = emc_prelock_dll(last_timing, next_timing);
+	else
+		dll_override = 0;
 
 	/* 2. disable dynamic self-refresh and preset dqs vref, then wait for
 	   possible self-refresh entry/exit and/or dqs vref settled - waiting
@@ -499,6 +652,9 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 			continue;
 		__raw_writel(next_timing->burst_regs[i], burst_reg_addr[i]);
 	}
+	if (!use_prelock)
+		writel(next_timing->emc_cfg_dig_dll | EMC_CFG_DIG_DLL_RESET |
+		       EMC_CFG_DIG_DLL_OVERRIDE_EN, emc_base + EMC_CFG_DIG_DLL);
 
 	emc_cfg_reg &= ~EMC_CFG_UPDATE_MASK;
 	emc_cfg_reg |= next_timing->emc_cfg & EMC_CFG_UPDATE_MASK;
@@ -509,13 +665,30 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 4.1 On ddr3 when DLL is re-started predict MRS long wait count and
 	   overwrite DFS table setting - No DDR3 on t148. */
 
-	/* 5.2 disable auto-refresh to save time after clock change */
+	/* 5.2 disable auto-refresh to save time after clock change - might
+	   be removed. */
 	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
 	/* 6. turn Off dll and enter self-refresh on DDR3 - No DDR3. */
 
 	/* 7. flow control marker 2 */
 	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
+
+	/* 7.1 Use the new override value. */
+	if (use_prelock) {
+		emc_cfg_dig_dll = next_timing->emc_cfg_dig_dll &
+			~(EMC_CFG_DIG_DLL_OVERRIDE_VAL_MASK <<
+			  EMC_CFG_DIG_DLL_OVERRIDE_VAL_SHIFT);
+		emc_cfg_dig_dll |= (dll_override <<
+				    EMC_CFG_DIG_DLL_OVERRIDE_VAL_SHIFT);
+		emc_cfg_dig_dll |= EMC_CFG_DIG_DLL_OVERRIDE_EN;
+		emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_EN;
+		emc_cfg_dig_dll &= ~EMC_CFG_DIG_DLL_STALL_RW_UNTIL_LOCK;
+		ccfifo_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
+	}
+
+	/* 7.2 Force an emc timing update here. */
+	ccfifo_writel(1, EMC_TIMING_CONTROL);
 
 	/* 8. exit self-refresh on DDR3 - No DDR3 on t148. */
 
@@ -569,8 +742,8 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 		emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
 	/* 18. update restored timing */
-	udelay(2);
 	emc_timing_update();
+
 #else
 	/* FIXME: implement */
 	pr_info("tegra14_emc: Configuring EMC rate %lu (setting: 0x%x)\n",

@@ -127,6 +127,7 @@ struct tegra14_emc_table {
 	u32 emc_zcal_cnt_long;
 	u32 emc_acal_interval;
 	u32 emc_cfg;
+	u32 emc_cfg_dig_dll;
 	u32 emc_mode_reset;
 	u32 emc_mode_1;
 	u32 emc_mode_2;
