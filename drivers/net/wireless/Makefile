@@ -55,6 +55,8 @@ obj-$(CONFIG_WL_TI)	+= ti/
 
 obj-$(CONFIG_MWIFIEX)	+= mwifiex/
 
+obj-$(CONFIG_BCM4335)	+= bcm4335/
+
 obj-$(CONFIG_BRCMFMAC)	+= brcm80211/
 obj-$(CONFIG_BRCMSMAC)	+= brcm80211/
 obj-$(CONFIG_SD8797)	+= sd8797/

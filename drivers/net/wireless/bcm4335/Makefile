@@ -1,4 +1,4 @@
-# bcmdhd
+# BCM4335
 DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DLINUX -DBCMDRIVER             \
         -DBCMDONGLEHOST -DUNRELEASEDCHIP -DBCMDMA32 -DBCMFILEIMAGE            \
         -DDHDTHREAD -DBDC -DDHD_BCMEVENTS -DSHOW_EVENTS -DBCMDBG              \
@@ -6,7 +6,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DLINUX -DBCMDRIVER             \
         -DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT                                \
         -DKEEP_ALIVE -DCSCAN -DPKT_FILTER_SUPPORT                             \
 	-DEMBEDDED_PLATFORM -DPNO_SUPPORT                                     \
-	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
+	-Idrivers/net/wireless/bcm4335 -Idrivers/net/wireless/bcm4335/include
 
 #DHDCFLAGS += -DDHD_DEBUG -DBCMDBG
 
@@ -44,13 +44,13 @@ ifneq ($(CONFIG_DHD_USE_SCHED_SCAN),)
 DHDCFLAGS += -DWL_SCHED_SCAN
 endif
 
-ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
+ifeq ($(CONFIG_BCM4335_WIFI_CONTROL_FUNC),y)
 DHDCFLAGS += -DCONFIG_WIFI_CONTROL_FUNC
 else
 DHDCFLAGS += -DCUSTOM_OOB_GPIO_NUM=2
 endif
 
-ifeq ($(CONFIG_BCMDHD_HW_OOB),y)
+ifeq ($(CONFIG_BCM4335_HW_OOB),y)
 DHDCFLAGS += -DHW_OOB -DOOB_INTR_ONLY
 else
 DHDCFLAGS += -DSDIO_ISR_THREAD
@@ -62,9 +62,9 @@ DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o \
 	wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o dhd_cfg80211.o
 
-obj-$(CONFIG_BCMDHD) += bcmdhd.o
-bcmdhd-objs += $(DHDOFILES)
+obj-$(CONFIG_BCM4335) += bcm4335.o
+bcm4335-objs += $(DHDOFILES)
 EXTRA_CFLAGS = $(DHDCFLAGS)
-ifeq ($(CONFIG_BCMDHD),m)
+ifeq ($(CONFIG_BCM4335),m)
 EXTRA_LDFLAGS += --strip-debug
 endif
