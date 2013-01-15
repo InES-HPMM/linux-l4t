@@ -768,10 +768,6 @@ lp1_volt_skip:
 	add	r1, r1, #2
 	wait_until r1, r7, r9
 
-	/* switch to CLKS */
-	mov	r0, #0	/* burst policy = 32KHz */
-	str	r0, [r5, #CLK_RESET_SCLK_BURST]
-
 	/* disable PLLM via PMC in LP1 */
 	ldr	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 	bic	r0, r0, #(1 << 12)
@@ -805,6 +801,10 @@ powerdown_pll_cx:
 	pll_iddq_entry r1, r5, CLK_RESET_PLLC_MISC, CLK_RESET_PLLC_MISC_IDDQ
 	pll_iddq_entry r1, r5, CLK_RESET_PLLX_MISC3, CLK_RESET_PLLX_MISC3_IDDQ
 #endif
+
+	/* switch to CLKS */
+	mov	r0, #0	/* burst policy = 32KHz */
+	str	r0, [r5, #CLK_RESET_SCLK_BURST]
 	mov	pc, lr
 
 /*
