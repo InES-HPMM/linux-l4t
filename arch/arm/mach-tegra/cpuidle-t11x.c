@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra11x CPUs
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -470,6 +470,8 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	bool power_down;
 	bool cpu_gating_only = false;
 	bool power_gating_cpu_only = true;
+	int status = -1;
+	unsigned long rate = ULONG_MAX;
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 
 	tegra_set_cpu_in_pd(dev->cpu);
@@ -498,8 +500,16 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 
 	if (power_gating_cpu_only)
 		power_down = tegra_cpu_core_power_down(dev, state, request);
-	else
+	else {
+		if (is_lp_cluster())
+			status = tegra_cpu_backup_rate_exchange(&rate);
+
 		power_down = tegra_cpu_cluster_power_down(dev, state, request);
+
+		/* restore cpu clock after cluster power ungating */
+		if (status == 0)
+			tegra_cpu_backup_rate_exchange(&rate);
+	}
 
 	tegra_clear_cpu_in_pd(dev->cpu);
 
