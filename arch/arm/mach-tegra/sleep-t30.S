@@ -753,6 +753,11 @@ lp1_volt_skip:
 	 * to clks */
 	mov	r0, #(1 << 28)
 	str	r0, [r5, #CLK_RESET_SCLK_BURST]
+	/* 2 us delay between changing sclk and cclk */
+	wait_for_us r1, r7, r9
+	add	r1, r1, #2
+	wait_until r1, r7, r9
+	mov	r0, #(1 << 28)
 	str	r0, [r5, #CLK_RESET_CCLK_BURST]
 	mov	r0, #0
 	str	r0, [r5, #CLK_RESET_CCLK_DIVIDER]
