@@ -1853,7 +1853,7 @@ static void tegra11_utmi_param_configure(struct clk *c)
 	   ports are assigned to USB2 */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	udelay(1);
