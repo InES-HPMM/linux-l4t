@@ -295,6 +295,7 @@ struct inv_gyro_state_s {
 	unsigned int irq_dur_us;
 	long long last_isr_time;
 	struct inv_regulator_s inv_regulator;
+	bool i2c_shutdown;
 };
 
 /* produces an unique identifier for each device based on the

@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
+* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -96,6 +97,9 @@ int inv_i2c_read_base(struct inv_gyro_state_s *st, unsigned short i2c_addr,
 	if (!data)
 		return -EINVAL;
 
+	if (st->i2c_shutdown)
+		return -ENODEV;
+
 	msgs[0].addr = i2c_addr;
 	msgs[0].flags = 0;	/* write */
 	msgs[0].buf = &reg;
@@ -130,6 +134,9 @@ int inv_i2c_single_write_base(struct inv_gyro_state_s *st,
 	unsigned char tmp[2];
 	struct i2c_msg msg;
 	int res;
+
+	if (st->i2c_shutdown)
+		return -ENODEV;
 
 	tmp[0] = reg;
 	tmp[1] = data;
@@ -2860,6 +2867,17 @@ static int inv_mod_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void inv_i2c_shutdown(struct i2c_client *client)
+{
+	struct inv_gyro_state_s *st = i2c_get_clientdata(client);
+
+	if (client->irq)
+		disable_irq(client->irq);
+	set_inv_enable(st, 0);
+	inv_set_power_state(st, 0);
+	st->i2c_shutdown = true;
+}
+
 static unsigned short normal_i2c[] = { I2C_CLIENT_END };
 
 /* device id table is used to identify what device can be
@@ -2888,6 +2906,7 @@ static struct i2c_driver inv_mod_driver = {
 #endif
 	},
 	.address_list = normal_i2c,
+	.shutdown = inv_i2c_shutdown,
 };
 
 static int __init inv_mod_init(void)
