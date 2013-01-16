@@ -1,7 +1,7 @@
 /*
  * max77665-charger.c - Battery charger driver
  *
- *  Copyright (C) 2012-2013 nVIDIA corporation
+ *  Copyright (C) 2012-2013 NVIDIA corporation
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -461,18 +461,6 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto error;
 	}
 
-	if (charger->plat_data->irq_base) {
-		ret = request_threaded_irq(charger->plat_data->irq_base +
-				MAX77665_IRQ_CHARGER, NULL,
-				max77665_charger_irq_handler,
-				0, "charger_irq",
-					charger);
-		if (ret) {
-			dev_err(&pdev->dev,
-				"failed: irq request error :%d)\n", ret);
-			goto chrg_error;
-		}
-	}
 	charger->ac.name		= "ac";
 	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
 	charger->ac.get_property	= max77665_ac_get_property;
@@ -515,6 +503,19 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	charger->edev = extcon_get_extcon_dev("max77665-muic");
 	if (!charger->edev)
 		return -ENODEV;
+
+	if (charger->plat_data->irq_base) {
+		ret = request_threaded_irq(charger->plat_data->irq_base +
+				MAX77665_IRQ_CHARGER, NULL,
+				max77665_charger_irq_handler,
+				0, "charger_irq",
+					charger);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"failed: irq request error :%d)\n", ret);
+			goto chrg_error;
+		}
+	}
 
 	ret = max77665_enable_charger(charger);
 	if (ret < 0) {
