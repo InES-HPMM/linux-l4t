@@ -464,8 +464,6 @@
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
 
-#define	LVL2_CLK_GATE_OVRE			0x554
-
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 #define DIVIDER_1_5_ALLOWED	0
@@ -3927,32 +3925,6 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.reset			= &tegra14_periph_clk_reset,
 };
 
-
-#if !defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
-/* msenc clock propagation WAR for bug 1005168 */
-static int tegra14_msenc_clk_enable(struct clk *c)
-{
-	int ret = tegra14_periph_clk_enable(c);
-	if (ret)
-		return ret;
-
-	clk_writel(0, LVL2_CLK_GATE_OVRE);
-	clk_writel(0x00400000, LVL2_CLK_GATE_OVRE);
-	udelay(1);
-	clk_writel(0, LVL2_CLK_GATE_OVRE);
-	return 0;
-}
-
-static struct clk_ops tegra_msenc_clk_ops = {
-	.init			= &tegra14_periph_clk_init,
-	.enable			= &tegra14_msenc_clk_enable,
-	.disable		= &tegra14_periph_clk_disable,
-	.set_parent		= &tegra14_periph_clk_set_parent,
-	.set_rate		= &tegra14_periph_clk_set_rate,
-	.round_rate		= &tegra14_periph_clk_round_rate,
-	.reset			= &tegra14_periph_clk_reset,
-};
-#endif
 /* Periph extended clock configuration ops */
 static int
 tegra14_vi_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
@@ -6355,7 +6327,7 @@ struct clk tegra_list_clks[] = {
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 #else
-	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
+	PERIPH_CLK("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 #endif
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	384000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
