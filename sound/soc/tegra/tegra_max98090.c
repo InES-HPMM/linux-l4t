@@ -94,6 +94,8 @@ struct tegra_max98090 {
 #endif
 	struct regulator *dmic_reg;
 	struct regulator *dmic_1v8_reg;
+	struct regulator *avdd_aud_reg;
+	struct regulator *vdd_sw_1v8_reg;
 	enum snd_soc_bias_level bias_level;
 	struct snd_soc_card *pcard;
 #ifdef CONFIG_SWITCH
@@ -1198,6 +1200,10 @@ static int tegra_max98090_set_bias_level(struct snd_soc_card *card,
 
 	if (machine->bias_level == SND_SOC_BIAS_OFF &&
 		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
+		if (machine->avdd_aud_reg)
+			regulator_enable(machine->avdd_aud_reg);
+		if (machine->vdd_sw_1v8_reg)
+			regulator_enable(machine->vdd_sw_1v8_reg);
 		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
 		machine->bias_level = level;
@@ -1216,6 +1222,10 @@ static int tegra_max98090_set_bias_level_post(struct snd_soc_card *card,
 		level == SND_SOC_BIAS_OFF && (machine->clock_enabled)) {
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
+		if (machine->avdd_aud_reg)
+			regulator_disable(machine->avdd_aud_reg);
+		if (machine->vdd_sw_1v8_reg)
+			regulator_disable(machine->vdd_sw_1v8_reg);
 	}
 
 	machine->bias_level = level;
@@ -1276,16 +1286,16 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_machine;
 
-	machine->dmic_reg = regulator_get(&pdev->dev, "vdd_mic");
-	if (IS_ERR(machine->dmic_reg)) {
-		dev_info(&pdev->dev, "No digital mic regulator found\n");
-		machine->dmic_reg = 0;
+	machine->avdd_aud_reg = regulator_get(&pdev->dev, "avdd_aud");
+	if (IS_ERR(machine->avdd_aud_reg)) {
+		dev_info(&pdev->dev, "avdd_aud regulator not found\n");
+		machine->avdd_aud_reg = 0;
 	}
 
-	machine->dmic_1v8_reg = regulator_get(&pdev->dev, "vdd_1v8_mic");
-	if (IS_ERR(machine->dmic_1v8_reg)) {
-		dev_info(&pdev->dev, "No digital mic regulator found\n");
-		machine->dmic_1v8_reg = 0;
+	machine->vdd_sw_1v8_reg = regulator_get(&pdev->dev, "vdd_aud_dgtl");
+	if (IS_ERR(machine->vdd_sw_1v8_reg)) {
+		dev_info(&pdev->dev, "vdd_sw_1v8_reg regulator not found\n");
+		machine->vdd_sw_1v8_reg = 0;
 	}
 
 #ifdef CONFIG_SWITCH
@@ -1313,10 +1323,10 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 			pdata->i2s_param[i].rate;
 		machine->codec_info[i].channels =
 			pdata->i2s_param[i].channels;
-		if (pdata->i2s_param[i].i2s_mode == TEGRA_DAIFMT_DSP_A)
-			machine->codec_info[i].is_format_dsp = 1;
-		else
-			machine->codec_info[i].is_format_dsp = 0;
+		machine->codec_info[i].i2s_mode =
+			pdata->i2s_param[i].i2s_mode;
+		machine->codec_info[i].bit_clk =
+			pdata->i2s_param[i].bit_clk;
 	}
 
 	tegra_max98090_dai[DAI_LINK_HIFI].cpu_dai_name =
@@ -1388,10 +1398,16 @@ static int __devexit tegra_max98090_driver_remove(struct platform_device *pdev)
 
 	machine->gpio_requested = 0;
 
-	if (machine->dmic_reg)
-		regulator_put(machine->dmic_reg);
-	if (machine->dmic_1v8_reg)
-		regulator_put(machine->dmic_1v8_reg);
+	if (machine->avdd_aud_reg) {
+		regulator_put(machine->avdd_aud_reg);
+		regulator_disable(machine->avdd_aud_reg);
+		machine->avdd_aud_reg = 0;
+	}
+	if (machine->vdd_sw_1v8_reg) {
+		regulator_put(machine->vdd_sw_1v8_reg);
+		regulator_disable(machine->vdd_sw_1v8_reg);
+		machine->vdd_sw_1v8_reg = 0;
+	}
 
 	snd_soc_unregister_card(card);
 
