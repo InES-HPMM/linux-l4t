@@ -577,6 +577,9 @@ static void tegra_xhci_pmc_usb2_wakenotif_on(struct tegra_xhci_hcd *tegra,
 	val &= ~(USBOP_VAL_PD(port) | USBON_VAL_PD(port));
 	writel(val, pmc_base + PMC_USB_AO_0);
 
+	/* Add small delay before usb detectors provide stable line values */
+	usleep_range(100, 200);
+
 	/*
 	 * N. Turn over pad configuration to PMC and set the UTMIP_WAKE_VAL_P0
 	 * to reflect a high speed resume signaling by a device:
