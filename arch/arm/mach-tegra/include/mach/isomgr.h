@@ -61,7 +61,11 @@ static inline tegra_isomgr_handle tegra_isomgr_register(
 					  tegra_isomgr_renegotiate renegotiate,
 					  void *priv)
 {
-	return NULL;
+	static tegra_isomgr_handle h;
+	/* return a dummy handle to allow client function
+	 * as if isomgr were enabled.
+	 */
+	return h;
 }
 
 static inline void tegra_isomgr_unregister(tegra_isomgr_handle handle) {}
