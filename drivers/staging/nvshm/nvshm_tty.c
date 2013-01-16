@@ -402,7 +402,8 @@ int nvshm_tty_init(struct nvshm_handle *handle)
 	tty_dev.handle = handle;
 
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
-		if (handle->chan[chan].map.type == NVSHM_CHAN_TTY) {
+		if ((handle->chan[chan].map.type == NVSHM_CHAN_TTY)
+			|| (handle->chan[chan].map.type == NVSHM_CHAN_LOG)) {
 			tty_dev.line[tty_dev.nlines].nvshm_chan = chan;
 			spin_lock_init(&tty_dev.line[tty_dev.nlines].lock);
 			tty_dev.nlines++;

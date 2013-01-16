@@ -107,10 +107,8 @@ static int init_interfaces(struct nvshm_handle *handle)
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		switch (handle->chan[chan].map.type) {
 		case NVSHM_CHAN_TTY:
-			ntty++;
-			break;
 		case NVSHM_CHAN_LOG:
-			nlog++;
+			ntty++;
 			break;
 		case NVSHM_CHAN_NET:
 			nnet++;
@@ -149,10 +147,8 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		switch (handle->chan[chan].map.type) {
 		case NVSHM_CHAN_TTY:
-			ntty++;
-			break;
 		case NVSHM_CHAN_LOG:
-			nlog++;
+			ntty++;
 			break;
 		case NVSHM_CHAN_NET:
 			nnet++;
