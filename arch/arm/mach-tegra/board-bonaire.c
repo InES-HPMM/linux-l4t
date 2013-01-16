@@ -567,7 +567,7 @@ static void __init tegra_bonaire_init(void)
 	tegra_soc_device_init("bonaire");
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	if (tegra_revision == TEGRA_REVISION_QT)
+	if (tegra_platform_is_qt())
 		debug_uart_platform_data[0].uartclk =
 						tegra_clk_measure_input_freq();
 #endif

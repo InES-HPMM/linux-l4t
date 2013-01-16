@@ -283,7 +283,7 @@ void __init tegra30_init_timer(void)
 		timer_writel(0x002F, TIMERUS_USEC_CFG);
 		break;
 	default:
-		if (tegra_get_revision() == TEGRA_REVISION_QT) {
+		if (tegra_platform_is_qt()) {
 			timer_writel(0x000c, TIMERUS_USEC_CFG);
 			break;
 		}
