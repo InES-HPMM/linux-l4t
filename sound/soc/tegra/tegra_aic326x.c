@@ -130,6 +130,7 @@ static int tegra_aic326x_call_mode_put(struct snd_kcontrol *kcontrol,
 #else /*assumes tegra3*/
 	int codec_index;
 	unsigned int i;
+	int uses_voice_codec;
 #endif
 
 	if (machine->is_call_mode == is_call_mode_new)
@@ -148,10 +149,13 @@ static int tegra_aic326x_call_mode_put(struct snd_kcontrol *kcontrol,
 		codec_dap_sel = TEGRA20_DAS_DAP_SEL_DAP2;
 	}
 #else /*assumes tegra3*/
-	if (machine->is_device_bt)
+	if (machine->is_device_bt) {
 		codec_index = BT_SCO;
-	else
+		uses_voice_codec = 0;
+	} else {
 		codec_index = VOICE_CODEC;
+		uses_voice_codec = 1;
+	}
 #endif
 
 	if (is_call_mode_new) {
@@ -174,7 +178,7 @@ static int tegra_aic326x_call_mode_put(struct snd_kcontrol *kcontrol,
 
 		tegra30_make_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 0);
+			&machine->codec_info[BASEBAND], uses_voice_codec);
 #endif
 	} else {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -189,7 +193,7 @@ static int tegra_aic326x_call_mode_put(struct snd_kcontrol *kcontrol,
 #else /*assumes tegra3*/
 		tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 0);
+			&machine->codec_info[BASEBAND], uses_voice_codec);
 
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 0;
