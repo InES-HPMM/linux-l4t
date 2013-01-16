@@ -508,7 +508,7 @@ static struct actmon_dev actmon_dev_emc = {
 	.up_wmark_window	= 1,
 	.down_wmark_window	= 3,
 	.avg_window_log2	= ACTMON_DEFAULT_AVG_WINDOW_LOG2,
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.count_weight		= 0x200,
 #else
 	.count_weight		= 0x100,
