@@ -939,6 +939,19 @@ static const struct dev_pm_ops tegra_cl_dvfs_pm_ops = {
 };
 #endif
 
+/* Make sure cl_dvfs is in open loop mode during shutdown */
+static void tegra_cl_dvfs_shutdown(struct platform_device *pdev)
+{
+	unsigned long flags;
+	struct tegra_cl_dvfs *cld = platform_get_drvdata(pdev);
+
+	clk_lock_save(cld->dfll_clk, &flags);
+	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP)
+		tegra_cl_dvfs_unlock(cld);
+	cld->cl_suspended = true;
+	clk_unlock_restore(cld->dfll_clk, &flags);
+}
+
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1029,6 +1042,7 @@ static struct platform_driver tegra_cl_dvfs_driver = {
 		.pm = &tegra_cl_dvfs_pm_ops,
 #endif
 	},
+	.shutdown = tegra_cl_dvfs_shutdown,
 };
 
 int __init tegra_init_cl_dvfs(void)
