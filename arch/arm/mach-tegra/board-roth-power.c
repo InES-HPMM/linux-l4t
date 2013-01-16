@@ -504,7 +504,7 @@ FIXED_REG(1,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 
 FIXED_REG(2,	lcd_bl_en,	lcd_bl_en,
 	NULL,	0,	0,
-	TEGRA_GPIO_PH2,	false,	true,	0,	5000);
+	TEGRA_GPIO_PH2,	false,	true,	1,	5000);
 
 FIXED_REG(3,	avdd_ts,	avdd_ts,
 	palmas_rails(regen1),	0,	0,

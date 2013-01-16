@@ -658,6 +658,7 @@ static struct platform_pwm_backlight_data roth_disp1_bl_data = {
 	.max_brightness	= 255,
 	.dft_brightness	= 77,
 	.pwm_period_ns	= 40000,
+	.pwm_gpio	= DSI_PANEL_BL_PWM,
 	.notify		= roth_disp1_bl_notify,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= roth_disp1_check_fb,
@@ -796,13 +797,6 @@ int __init roth_panel_init(int board_id)
 		pr_err("disp1 bl device registration failed");
 		return err;
 	}
-
-	err = gpio_request(DSI_PANEL_BL_PWM, "panel pwm");
-	if (err < 0) {
-		pr_err("panel backlight pwm gpio request failed\n");
-		return err;
-	}
-	gpio_free(DSI_PANEL_BL_PWM);
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
