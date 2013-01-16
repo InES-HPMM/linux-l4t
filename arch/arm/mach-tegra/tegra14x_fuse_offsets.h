@@ -198,8 +198,8 @@ unsigned long long tegra_chip_uid(void)
 		Total     64
 	*/
 
-	/* chip id is 1 for tegra 14x */
-	cid = 1;
+	/* chip id is 2 for tegra 14x */
+	cid = 2;
 
 	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
 	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
