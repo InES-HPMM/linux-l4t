@@ -116,7 +116,8 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 			.cdev_type = "tegra-balanced",
 			.trip_temp = 75000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
-			.state = THERMAL_NO_LIMIT,
+			.upper = THERMAL_NO_LIMIT,
+			.lower = THERMAL_NO_LIMIT,
 			.hysteresis = 0,
 		},
 	},
@@ -683,7 +684,7 @@ static struct throttle_table skin_throttle_table[] = {
 
 static struct balanced_throttle skin_throttle = {
 	.throt_tab_size = ARRAY_SIZE(skin_throttle_table),
-	.throt_tab = &skin_throttle_table,
+	.throt_tab = skin_throttle_table,
 };
 
 static int __init dalmore_skin_init(void)
