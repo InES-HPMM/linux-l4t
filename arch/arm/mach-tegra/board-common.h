@@ -1,7 +1,7 @@
 /*
  * board-common.h: Common function API declaration for all board files.
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@
 #ifndef __MACH_TEGRA_BOARD_COMMON_H
 #define __MACH_TEGRA_BOARD_COMMON_H
 
-#include <linux/nct1008.h>
-#include <mach/thermal.h>
+#include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
 
 extern struct platform_device *uart_console_debug_device;
 int  uart_console_debug_init(int defaul_debug_port);
 int tegra_vibrator_init(void);
-void tegra_add_cdev_trips(struct nct_trip_temp *trips, int *num_trips);
+void tegra_add_cdev_trips(struct thermal_trip_info *trips, int *num_trips);
 #endif

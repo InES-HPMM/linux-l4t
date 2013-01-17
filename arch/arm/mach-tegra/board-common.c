@@ -2,7 +2,7 @@
  * board-common.c: Implement function which is common across
  * different boards.
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,16 +135,17 @@ int uart_console_debug_init(int default_debug_port)
 	return debug_port_id;
 }
 
-static void tegra_add_trip_points(struct nct_trip_temp *trips, int *num_trips,
+static void tegra_add_trip_points(struct thermal_trip_info *trips,
+				int *num_trips,
 				struct tegra_cooling_device *cdev_data)
 {
 	int i;
-	struct nct_trip_temp *trip_state;
+	struct thermal_trip_info *trip_state;
 
 	if (!trips || !num_trips || !cdev_data)
 		return;
 
-	if (*num_trips + cdev_data->trip_temperatures_num > NCT_MAX_TRIPS) {
+	if (*num_trips + cdev_data->trip_temperatures_num > THERMAL_MAX_TRIPS) {
 		WARN(1, "%s: cooling device %s has too many trips\n",
 		     __func__, cdev_data->cdev_type);
 		return;
@@ -156,14 +157,14 @@ static void tegra_add_trip_points(struct nct_trip_temp *trips, int *num_trips,
 		trip_state->cdev_type = cdev_data->cdev_type;
 		trip_state->trip_temp = cdev_data->trip_temperatures[i] * 1000;
 		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
-		trip_state->state = i + 1;
+		trip_state->upper = trip_state->lower = i + 1;
 		trip_state->hysteresis = 1000;
 
 		(*num_trips)++;
 	}
 }
 
-void tegra_add_cdev_trips(struct nct_trip_temp *trips, int *num_trips)
+void tegra_add_cdev_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_core_edp_get_cdev());
 	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_cpu_dfll_cdev());
