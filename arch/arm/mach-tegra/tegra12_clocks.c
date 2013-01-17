@@ -541,25 +541,25 @@ static DEFINE_SPINLOCK(periph_refcount_lock);
 static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #define clk_writel(value, reg) \
-	__raw_writel(value, (u32)reg_clk_base + (reg))
+	__raw_writel(value, (void *)((u32)reg_clk_base + (reg)))
 #define clk_readl(reg) \
-	__raw_readl((u32)reg_clk_base + (reg))
+	__raw_readl((void *)((u32)reg_clk_base + (reg)))
 #define pmc_writel(value, reg) \
-	__raw_writel(value, (u32)reg_pmc_base + (reg))
+	__raw_writel(value,(void *)((u32)reg_pmc_base + (reg)))
 #define pmc_readl(reg) \
-	__raw_readl((u32)reg_pmc_base + (reg))
+	__raw_readl((void *)((u32)reg_pmc_base + (reg)))
 #define chipid_readl() \
-	__raw_readl((u32)misc_gp_base + MISC_GP_HIDREV)
+	__raw_readl((void *)((u32)misc_gp_base + MISC_GP_HIDREV))
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
-		__raw_writel((value), (u32)reg_clk_base + (reg));	\
+		__raw_writel((value), (void *)((u32)reg_clk_base + (reg)));	\
 		udelay(2);						\
 	} while (0)
 
 #define pll_writel_delay(value, reg)					\
 	do {								\
-		__raw_writel((value), (u32)reg_clk_base + (reg));	\
+		__raw_writel((value), (void *)((u32)reg_clk_base + (reg)));	\
 		udelay(1);						\
 	} while (0)
 
@@ -3270,6 +3270,15 @@ static void __init tegra12_dfll_cpu_late_init(struct clk *c)
 {
 	int ret;
 
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	u32 netlist, patchid;
+	tegra_get_netlist_revision(&netlist, &patchid);
+	if (netlist < 12) {
+		pr_err("%s: CL-DVFS is not available on net %d\n",
+		       __func__, netlist);
+		return;
+	}
+#endif
 	/* release dfll clock source reset, init cl_dvfs control logic, and
 	   move dfll to initialized state, so it can be used as CPU source */
 	tegra_periph_reset_deassert(c);
@@ -5253,7 +5262,7 @@ static struct clk tegra_pll_p_out5 = {
 	.ops       = &tegra_pll_div_ops,
 	.flags     = DIV_U71 | DIV_U71_FIXED,
 	.parent    = &tegra_pll_p,
-	.reg       = 0x668,
+	.reg       = 0x67c,
 	.reg_shift = 16,
 	.max_rate  = 432000000,
 };
@@ -6367,7 +6376,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c3",	"tegra11-i2c.2",	"div-clk",	67,	0x1b8,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c4",	"tegra11-i2c.3",	"div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c5",	"tegra11-i2c.4",	"div-clk",	47,	0x128,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
-	PERIPH_CLK("i2c6",	"tegra11-i2c.5",	"div-clk",	166,	0x664,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
+	PERIPH_CLK("i2c6",	"tegra11-i2c.5",	"div-clk",	166,	0x65c,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c1-fast",	"tegra11-i2c.0",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c2-fast",	"tegra11-i2c.1",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("i2c3-fast",	"tegra11-i2c.2",	"fast-clk",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
@@ -6388,7 +6397,7 @@ struct clk tegra_list_clks[] = {
 #endif
 	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla_pllc4,	MUX | MUX8 | DIV_U71,	&tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("vi_sensor2", "tegra_camera",	"vi_sensor2",	20,	0x660,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("vi_sensor2", "tegra_camera",	"vi_sensor2",	20,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 #else
