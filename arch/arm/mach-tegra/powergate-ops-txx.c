@@ -118,7 +118,9 @@ int tegraxx_powergate_partition_with_clk_off(int id,
 err_powergate_clk:
 	WARN(1, "Could not Powergate Partition %d, all clks not disabled", id);
 err_powergating:
-	partition_clk_enable(pg_info);
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		return ret;
 	WARN(1, "Could not Powergate Partition %d", id);
 	return ret;
 }
