@@ -532,7 +532,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.initial_clock_rate_khz	= 6000,
 	.clock_profiles[0] = {
 		.external_clock_khz	= 24000,
-		.clock_multiplier	= 10416667, /* value / 1,000,000 */
+		.clock_multiplier	= 850000, /* value / 1,000,000 */
 	},
 	.clock_profiles[1] = {
 		.external_clock_khz	= 0,
