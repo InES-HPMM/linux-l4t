@@ -41,6 +41,18 @@ enum soctherm_therm_id {
 	THERM_SIZE,
 };
 
+enum soctherm_throttle_id {
+	THROTTLE_LIGHT = 0,
+	THROTTLE_HEAVY,
+	THROTTLE_SIZE,
+};
+
+enum soctherm_throttle_dev_id {
+	THROTTLE_DEV_CPU = 0,
+	THROTTLE_DEV_GPU,
+	THROTTLE_DEV_SIZE,
+};
+
 struct soctherm_sensor {
 	bool sensor_enable;
 	bool zone_enable;
@@ -53,24 +65,10 @@ struct soctherm_sensor {
 
 struct soctherm_therm {
 	bool zone_enable;
-	s8 thermtrip;
-	s8 hw_backstop;
 	int passive_delay;
 	int etemp;
 	int num_trips;
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
-};
-
-enum soctherm_throttle_id {
-	THROTTLE_LITE = 0,
-	THROTTLE_HEAVY,
-	THROTTLE_SIZE,
-};
-
-enum soctherm_throttle_dev_id {
-	THROTTLE_DEV_CPU = 0,
-	THROTTLE_DEV_GPU,
-	THROTTLE_DEV_SIZE,
 };
 
 struct soctherm_throttle_dev {
