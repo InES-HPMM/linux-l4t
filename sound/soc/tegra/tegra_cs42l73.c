@@ -506,7 +506,8 @@ static int tegra_cs42l73_startup(struct snd_pcm_substream *substream)
 		/*dam configuration*/
 		if (!i2s->dam_ch_refcount)
 			i2s->dam_ifc = tegra30_dam_allocate_controller();
-
+		if (i2s->dam_ifc < 0)
+			return i2s->dam_ifc;
 		tegra30_dam_allocate_channel(i2s->dam_ifc, TEGRA30_DAM_CHIN1);
 		i2s->dam_ch_refcount++;
 		tegra30_dam_enable_clock(i2s->dam_ifc);
@@ -544,6 +545,10 @@ static int tegra_cs42l73_startup(struct snd_pcm_substream *substream)
 		/* allocate a dam for voice call recording */
 
 		i2s->call_record_dam_ifc = tegra30_dam_allocate_controller();
+
+		if (i2s->call_record_dam_ifc < 0)
+			return i2s->call_record_dam_ifc;
+
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
 			TEGRA30_DAM_CHIN0_SRC);
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
@@ -751,7 +756,7 @@ static void tegra_voice_call_shutdown(struct snd_pcm_substream *substream)
 	machine->codec_info[VOICE_CODEC].rate = 0;
 	machine->codec_info[VOICE_CODEC].channels = 0;
 #endif
-
+	machine->is_device_bt = 0;
 	return;
 }
 
@@ -818,7 +823,7 @@ static void tegra_bt_voice_call_shutdown(struct snd_pcm_substream *substream)
 	machine->codec_info[BT_SCO].channels = 0;
 #endif
 
-	return;
+	machine->is_device_bt = 0;
 }
 
 static struct snd_soc_ops tegra_cs42l73_ops = {
@@ -1057,12 +1062,13 @@ static int tegra_cs42l73_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-
-	if (machine->codec_info[BASEBAND].i2s_id != -1) {
-		if (i2s->id == machine->codec_info[BT_SCO].i2s_id)
+	if (machine->codec_info[BASEBAND].i2s_id != -1)
 			i2s->is_dam_used = true;
-	}
 #endif
+
+	if ((i2s->id == machine->codec_info[HIFI_CODEC].i2s_id) &&
+		(i2s->id != machine->codec_info[VOICE_CODEC].i2s_id))
+		i2s->is_dam_used = false;
 
 	if (machine->init_done)
 		return 0;

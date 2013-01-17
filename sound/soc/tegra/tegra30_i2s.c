@@ -1142,9 +1142,10 @@ int tegra30_make_voice_call_connections(struct codec_config *codec_info,
 		bb_info->rate, bb_info->bitsize, bb_info->bit_clk);
 
 	if (uses_voice_codec) {
-		/* The following two lines are a hack */
-		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_APBIF_RX0);
-		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0+1);
+		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_APBIF_RX0 +
+			codec_info->i2s_id);
+		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_APBIF_RX0 +
+			bb_info->i2s_id);
 
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    bb_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
