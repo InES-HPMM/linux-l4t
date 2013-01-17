@@ -513,9 +513,10 @@ void tegra_get_netlist_revision(u32 *netlist, u32 *patchid)
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
 
-	if (!tegra_platform_is_fpga())
+	if (   !tegra_platform_is_fpga()
+	    && !tegra_platform_is_qt()
+	    && !tegra_platform_is_linsim())
 		BUG();
-
 	*netlist = tegra_id.netlist;
 	*patchid = tegra_id.patch & 0xF;
 }
