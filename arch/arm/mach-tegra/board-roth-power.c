@@ -185,7 +185,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegra_camera"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
@@ -208,7 +208,7 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_dsi_csi", "tegra_camera"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
