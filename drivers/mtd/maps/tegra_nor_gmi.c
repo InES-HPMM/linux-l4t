@@ -45,6 +45,7 @@
 struct map_info_list {
 	struct map_info *map;
 	int n_maps;
+	unsigned long long totalflashsize;
 };
 
 struct tegra_nor_info {
@@ -91,6 +92,7 @@ do {	\
 } while (0)
 
 
+static struct map_info_list nor_gmi_map_list;
 
 static inline unsigned long tegra_snor_readl(struct tegra_nor_info *tnor,
 					     unsigned long reg)
@@ -294,7 +296,7 @@ static void tegra_flash_dma(struct map_info *map,
 	tegra_snor_writel(c, c->timing1_default, TEGRA_SNOR_TIMING1_REG);
 }
 
-static void tegra_nor_copy_from(struct map_info *map,
+void tegra_nor_copy_from(struct map_info *map,
 			    void *to, unsigned long from, ssize_t len)
 {
 
@@ -442,15 +444,34 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_EFS
+struct map_info *get_map_info(unsigned int bank_index)
+{
+	struct map_info *map = &nor_gmi_map_list.map[bank_index];
+	return map;
+}
+int get_maps_no(void)
+{
+	int no_of_maps = nor_gmi_map_list.n_maps;
+	return no_of_maps;
+}
+unsigned long long getflashsize(void)
+{
+	int flash_size = nor_gmi_map_list.totalflashsize;
+	return flash_size;
+}
+#endif
+
 static int flash_probe(struct tegra_nor_info *info)
 {
 	struct mtd_info **mtd;
 	struct map_info *map_list = info->map;
 	struct map_info *map;
-	int err;
 	int i;
 	struct device *dev = info->dev;
 	int present_banks = 0;
+	unsigned long long size = 0;
+
 
 	mtd = devm_kzalloc(dev, sizeof(struct mtd_info *) *
 						info->n_maps, GFP_KERNEL);
@@ -463,11 +484,14 @@ static int flash_probe(struct tegra_nor_info *info)
 	for (i = 0; i < info->n_maps; i++) {
 		map = &map_list[i];
 		mtd[i] = do_map_probe(info->plat->flash.map_name, map);
-		present_banks++;
 		if (mtd[i] == NULL) {
 			dev_err(dev, "cannot probe flash\n");
 			return -EIO;
+		} else {
+			present_banks++;
+			size += map->size;
 		}
+
 	}
 
 	info->mtd = mtd;
@@ -484,6 +508,10 @@ static int flash_probe(struct tegra_nor_info *info)
 	}
 
 	info->concat_mtd->owner = THIS_MODULE;
+
+#ifdef CONFIG_TEGRA_EFS
+	nor_gmi_map_list.totalflashsize = size;
+#endif
 
 	return 0;
 }
@@ -603,7 +631,7 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	info->request_gmi_access = request_gmi_access;
 	info->release_gmi_access = release_gmi_access;
 #else
-	info->gmiLockHandle = NULL;
+	info->gmiLockHandle = 0;
 	info->request_gmi_access = NULL;
 	info->release_gmi_access = NULL;
 #endif
@@ -671,11 +699,15 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, info);
 	/* Parse partitions and register mtd */
 	err = mtd_device_parse_register(info->concat_mtd,
-					part_probes, NULL, info->parts, 0);
+			(const char **)part_probes, NULL, info->parts, 0);
 
 	if (err)
 		goto out_dma_free_coherent;
 
+#ifdef CONFIG_TEGRA_EFS
+	nor_gmi_map_list.map = info->map;
+	nor_gmi_map_list.n_maps = info->n_maps;
+#endif
 	return 0;
 
 out_dma_free_coherent:
@@ -684,7 +716,6 @@ out_dma_free_coherent:
 out_clk_disable:
 	clk_disable_unprepare(info->clk);
 
-fail:
 	pr_err("Tegra NOR probe failed\n");
 	return err;
 }

@@ -622,5 +622,12 @@ config TILE_SROM
 	  device appear much like a simple EEPROM, and knows
 	  how to partition a single ROM for multiple purposes.
 
+config TEGRA_EFS
+	bool "Character-device interface for efs file system"
+	depends on  ARCH_TEGRA
+	default n
+	help
+	Enable tegra efs helper driver for Nvidia's board.
+
 endmenu
 

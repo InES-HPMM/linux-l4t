@@ -90,3 +90,9 @@
 
 #define SNOR_CONFIG_MASK 0xFFFFFF8F
 #define SNOR_WINDOW_SIZE 0x07FFFFFF
+
+void tegra_nor_copy_from(struct map_info *map, void *to,
+		unsigned long from, ssize_t len);
+struct map_info *get_map_info(unsigned int bank_index);
+int get_maps_no(void);
+unsigned long long getflashsize(void);
