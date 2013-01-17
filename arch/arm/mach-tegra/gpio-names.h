@@ -20,6 +20,9 @@
 #ifndef __MACH_TEGRA_GPIO_NAMES_H
 #define __MACH_TEGRA_GPIO_NAMES_H
 
+#include <mach/gpio-tegra.h>
+
+#define TEGRA_GPIO_INVALID	-1
 #define TEGRA_GPIO_PA0		0
 #define TEGRA_GPIO_PA1		1
 #define TEGRA_GPIO_PA2		2
@@ -266,6 +269,5 @@
 #define TEGRA_GPIO_PEE3		243
 #define TEGRA_GPIO_PEE4		244
 #define TEGRA_GPIO_PEE5		245
-#define TEGRA_GPIO_INVALID	246
-#define TEGRA_MAX_GPIO		247
+#define TEGRA_MAX_GPIO		TEGRA_NR_GPIOS
 #endif
