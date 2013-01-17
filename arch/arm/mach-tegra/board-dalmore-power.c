@@ -1176,78 +1176,32 @@ int __init dalmore_edp_init(void)
 }
 
 static struct soctherm_platform_data dalmore_soctherm_data = {
-	.soctherm_clk_rate = 136000000,
-	.tsensor_clk_rate = 500000,
-	.sensor_data = {
-		[TSENSE_CPU0] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-		[TSENSE_CPU1] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-		[TSENSE_CPU2] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-		[TSENSE_CPU3] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-		[TSENSE_GPU] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-		[TSENSE_PLLX] = {
-			.sensor_enable = true,
-			.zone_enable = false,
-			.tall = 16300,
-			.tiddq = 1,
-			.ten_count = 1,
-			.tsample = 163,
-			.pdiv = 10,
-		},
-	},
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
-			.thermtrip = 115,
 			.passive_delay = 1000,
-			.num_trips = 1,
+			.num_trips = 3,
 			.trips = {
-				[0] = {
+				{
 					.cdev_type = "tegra-balanced",
 					.trip_temp = 85000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
-					.hysteresis = 3000,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 95000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 105000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
 				},
 			},
 		},
@@ -1256,6 +1210,15 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
+		},
+	},
+	.throttle = {
+		[THROTTLE_HEAVY] = {
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = 1,
+				},
+			},
 		},
 	},
 };
