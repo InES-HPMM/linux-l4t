@@ -41,6 +41,7 @@
 struct pn544_dev	{
 	wait_queue_head_t	read_wq;
 	struct mutex		read_mutex;
+	struct mutex		shutdown_mutex;
 	struct i2c_client	*client;
 	struct miscdevice	pn544_device;
 	unsigned int 		ven_gpio;
@@ -48,6 +49,7 @@ struct pn544_dev	{
 	unsigned int		irq_gpio;
 	bool			irq_enabled;
 	spinlock_t		irq_enabled_lock;
+	bool			shutdown_complete;
 };
 
 static void pn544_disable_irq(struct pn544_dev *pn544_dev)
@@ -88,6 +90,13 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 
 	mutex_lock(&pn544_dev->read_mutex);
 
+	if (pn544_dev && (pn544_dev->shutdown_complete == true)) {
+		pr_info(" %s : discarding read as " \
+		"NFC in shutdown state\n", __func__);
+		mutex_unlock(&pn544_dev->read_mutex);
+		return -ENODEV;
+	}
+
 	if (!gpio_get_value(pn544_dev->irq_gpio)) {
 		if (filp->f_flags & O_NONBLOCK) {
 			ret = -EAGAIN;
@@ -107,7 +116,9 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	}
 
 	/* Read data */
+	mutex_lock(&pn544_dev->shutdown_mutex);
 	ret = i2c_master_recv(pn544_dev->client, tmp, count);
+	mutex_unlock(&pn544_dev->shutdown_mutex);
 
 	mutex_unlock(&pn544_dev->read_mutex);
 
@@ -151,6 +162,13 @@ static ssize_t pn544_dev_write(struct file *filp, const char __user *buf,
 		pr_err("%s : failed to copy from user space\n", __func__);
 		return -EFAULT;
 	}
+	mutex_lock(&pn544_dev->shutdown_mutex);
+	if (pn544_dev && (pn544_dev->shutdown_complete == true)) {
+		pr_info("%s : discarding write " \
+		"as NFC in shutdown state\n", __func__);
+		mutex_unlock(&pn544_dev->shutdown_mutex);
+		return -ENODEV;
+	}
 
 	pr_debug("%s : writing %zu bytes.\n", __func__, count);
 	/* Write data */
@@ -159,6 +177,7 @@ static ssize_t pn544_dev_write(struct file *filp, const char __user *buf,
 		pr_err("%s : i2c_master_send returned %d\n", __func__, ret);
 		ret = -EIO;
 	}
+	mutex_unlock(&pn544_dev->shutdown_mutex);
 
 	/* pn544 seems to be slow in handling I2C write requests
 	 * so add 1ms delay after I2C send oparation */
@@ -302,6 +321,7 @@ static int pn544_probe(struct i2c_client *client,
 	/* init mutex and queues */
 	init_waitqueue_head(&pn544_dev->read_wq);
 	mutex_init(&pn544_dev->read_mutex);
+	mutex_init(&pn544_dev->shutdown_mutex);
 	spin_lock_init(&pn544_dev->irq_enabled_lock);
 
 	pn544_dev->pn544_device.minor = MISC_DYNAMIC_MINOR;
@@ -334,6 +354,7 @@ err_request_irq_failed:
 	misc_deregister(&pn544_dev->pn544_device);
 err_misc_register:
 	mutex_destroy(&pn544_dev->read_mutex);
+	mutex_destroy(&pn544_dev->shutdown_mutex);
 	kfree(pn544_dev);
 err_exit:
 	if (pn544_dev->firm_gpio)
@@ -353,6 +374,7 @@ static int pn544_remove(struct i2c_client *client)
 	free_irq(client->irq, pn544_dev);
 	misc_deregister(&pn544_dev->pn544_device);
 	mutex_destroy(&pn544_dev->read_mutex);
+	mutex_destroy(&pn544_dev->shutdown_mutex);
 	gpio_free(pn544_dev->irq_gpio);
 	gpio_free(pn544_dev->ven_gpio);
 	if (pn544_dev->firm_gpio)
@@ -360,6 +382,16 @@ static int pn544_remove(struct i2c_client *client)
 	kfree(pn544_dev);
 
 	return 0;
+}
+
+static void pn544_shutdown(struct i2c_client *client)
+{
+	struct pn544_dev *pn544_data = i2c_get_clientdata(client);
+	mutex_lock(&pn544_data->shutdown_mutex);
+	if (client->irq)
+		disable_irq(client->irq);
+	pn544_data->shutdown_complete = true;
+	mutex_unlock(&pn544_data->shutdown_mutex);
 }
 
 static const struct i2c_device_id pn544_id[] = {
@@ -371,6 +403,7 @@ static struct i2c_driver pn544_driver = {
 	.id_table	= pn544_id,
 	.probe		= pn544_probe,
 	.remove		= pn544_remove,
+	.shutdown	= pn544_shutdown,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "pn544",
