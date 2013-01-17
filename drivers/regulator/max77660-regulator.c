@@ -726,9 +726,15 @@ static int max77660_switch_is_enabled(struct regulator_dev *rdev)
 	return val & (1 << idx);
 }
 
+static int max77660_reg_enable_time(struct regulator_dev *dev)
+{
+	return 500;
+}
+
 static struct regulator_ops max77660_ldo_ops = {
 	.set_voltage = max77660_regulator_set_voltage,
 	.get_voltage = max77660_regulator_get_voltage,
+	.enable_time = max77660_reg_enable_time,
 	.enable = max77660_regulator_enable,
 	.disable = max77660_regulator_disable,
 	.is_enabled = max77660_regulator_is_enabled,
@@ -739,6 +745,7 @@ static struct regulator_ops max77660_ldo_ops = {
 static struct regulator_ops max77660_sw_ops = {
 	.enable = max77660_switch_enable,
 	.disable = max77660_switch_disable,
+	.enable_time = max77660_reg_enable_time,
 	.is_enabled = max77660_switch_is_enabled,
 };
 
