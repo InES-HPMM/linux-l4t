@@ -54,55 +54,55 @@ static struct clk *cap_clks[CAP_CLKS_NUM];
 
 static struct core_edp_entry core_edp_table[] = {
 	{
-		.sku		= 0x4,		/* SKU = 4 - T40T */
+		.sku		= 0x3,		/* SKU = 4 - T40X */
 		.cap_mA		= 6000,		/* 6A cap */
 		.mult		= 1000000,	/* MHZ */
 		.cap_scpu_on	= {
 			/* favor emc */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
-				 { 924, 600 },
+				{{ 924, 636 },
+				 { 924, 612 },
 				 { 924, 564 },
-				 { 924, 492 },
+				 { 924, 480 },
 				},
 			},
 			/* balanced profile */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
-				 { 792, 600 },
-				 { 792, 600 },
-				 { 792, 564 },
+				{{ 792, 636 },
+				 { 792, 636 },
+				 { 792, 636 },
+				 { 792, 552 },
 				},
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
+				{{ 624, 672 },
 				 { 624, 672 },
-				 { 624, 672 },
-				 { 624, 672 },
+				 { 528, 672 },
+				 { 408, 672 },
 				}
 			},
 		},
 		.cap_scpu_off	= {
 			/* favor emc */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
-				 { 924, 600 },
-				 { 924, 600 },
-				 { 924, 564 },
+				{{1066, 700 },
+				 { 924, 648 },
+				 { 924, 636 },
+				 { 924, 588 },
 				},
 			},
 			/* balanced profile */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
+				{{1066, 700 },
 				 { 792, 672 },
 				 { 792, 672 },
-				 { 792, 600 },
+				 { 792, 624 },
 				},
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 924, 672 },
+				{{1066, 700 },
 				 { 792, 672 },
 				 { 792, 672 },
 				 { 624, 672 },
