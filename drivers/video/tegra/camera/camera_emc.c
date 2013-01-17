@@ -21,9 +21,9 @@ int tegra_camera_enable_emc(struct tegra_camera *camera)
 	int ret = tegra_emc_disable_eack();
 
 	dev_dbg(camera->dev, "%s++\n", __func__);
-	clk_prepare_enable(camera->clk[CAMERA_EMC_CLK]);
+	clk_prepare_enable(camera->clock[CAMERA_EMC_CLK].clk);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	clk_set_rate(camera->clk[TEGRA_CAMERA_EMC_CLK], 300000000);
+	clk_set_rate(camera->clock[TEGRA_CAMERA_EMC_CLK].clk, 300000000);
 #endif
 	return ret;
 }
@@ -31,6 +31,6 @@ int tegra_camera_enable_emc(struct tegra_camera *camera)
 int tegra_camera_disable_emc(struct tegra_camera *camera)
 {
 	dev_dbg(camera->dev, "%s++\n", __func__);
-	clk_disable_unprepare(camera->clk[CAMERA_EMC_CLK]);
+	clk_disable_unprepare(camera->clock[CAMERA_EMC_CLK].clk);
 	return tegra_emc_enable_eack();
 }

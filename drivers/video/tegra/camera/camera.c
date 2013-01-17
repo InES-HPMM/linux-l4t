@@ -21,18 +21,18 @@
 
 #define TEGRA_CAMERA_NAME "tegra_camera"
 
-static struct camera_clk tegra_camera_clk[] = {
-	{ CAMERA_ISP_CLK, "isp"},
-	{ CAMERA_VI_CLK, "vi"},
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor"},
-	{ CAMERA_CSUS_CLK, "csus"},
-	{ CAMERA_CSI_CLK, "csi"},
-	{ CAMERA_EMC_CLK, "emc"},
+static struct clock_data clock_init[] = {
+	{ CAMERA_ISP_CLK, "isp", true},
+	{ CAMERA_VI_CLK, "vi", true},
+	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true},
+	{ CAMERA_CSUS_CLK, "csus", true},
+	{ CAMERA_CSI_CLK, "csi", true},
+	{ CAMERA_EMC_CLK, "emc", true},
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	{ CAMERA_CILAB_CLK, "cilab"},
-	{ CAMERA_CILCD_CLK, "cilcd"},
-	{ CAMERA_CILE_CLK, "cile"},
-	{ CAMERA_PLL_D2_CLK, "pll_d2"}
+	{ CAMERA_CILAB_CLK, "cilab", true},
+	{ CAMERA_CILCD_CLK, "cilcd", true},
+	{ CAMERA_CILE_CLK, "cile", true},
+	{ CAMERA_PLL_D2_CLK, "pll_d2", false}
 #endif
 };
 
@@ -120,6 +120,10 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	ret = tegra_camera_enable_emc(camera);
 	if (ret)
 		goto enable_emc_fail;
+
+	/* read initial clock info */
+	tegra_camera_init_clk(camera, clock_init);
+
 	/* enable camera HW clock */
 	ret = tegra_camera_enable_clk(camera);
 	if (ret)
@@ -245,8 +249,8 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	}
 
 	for (i = 0; i < CAMERA_CLK_MAX; i++) {
-		ret = tegra_camera_clk_get(ndev, tegra_camera_clk[i].name,
-				&camera->clk[tegra_camera_clk[i].index]);
+		ret = tegra_camera_clk_get(ndev, clock_init[i].name,
+				&camera->clock[clock_init[i].index].clk);
 		if (ret)
 			goto clk_get_fail;
 	}
@@ -275,7 +279,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 
 clk_get_fail:
 	for (; i > 0; i--)
-		clk_put(camera->clk[i-1]);
+		clk_put(camera->clock[clock_init[i].index].clk);
 	misc_deregister(&camera->misc_dev);
 misc_register_fail:
 	regulator_put(camera->reg);
@@ -287,7 +291,12 @@ regulator_fail:
 
 int tegra_camera_unregister(struct tegra_camera *camera)
 {
+	int i;
+
 	dev_info(camera->dev, "%s: ++\n", __func__);
+
+	for (i = 0; i < CAMERA_CLK_MAX; i++)
+		clk_put(camera->clock[i].clk);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	/*

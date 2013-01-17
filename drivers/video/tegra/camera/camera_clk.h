@@ -21,5 +21,7 @@
 int tegra_camera_enable_clk(struct tegra_camera *camera);
 int tegra_camera_disable_clk(struct tegra_camera *camera);
 int tegra_camera_clk_set_rate(struct tegra_camera *camera);
+int tegra_camera_init_clk(struct tegra_camera *camera,
+		struct clock_data *clock_init);
 
 #endif
