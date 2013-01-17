@@ -36,7 +36,6 @@
 #include <linux/spinlock.h>
 #include <linux/poll.h>
 #include <linux/version.h>
-
 #include <linux/nfc/bcm2079x.h>
 
 #define TRUE		1
@@ -70,7 +69,8 @@ struct bcm2079x_dev {
 	unsigned int error_read;
 	unsigned int count_read;
 	unsigned int count_irq;
-    int original_address;
+	int original_address;
+	bool shutdown_complete;
 };
 
 static void bcm2079x_init_stat(struct bcm2079x_dev *bcm2079x_dev)
@@ -156,8 +156,17 @@ static void change_client_addr(struct bcm2079x_dev *bcm2079x_dev, int addr)
 		 "%04x, addr_data[%d] = %02x\n",
 		 client->addr, client->flags, sizeof(addr_data) - 1,
 		 addr_data[sizeof(addr_data) - 1]);
+
+	mutex_lock(&bcm2079x_dev->read_mutex);
+	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
+		dev_info(&client->dev, "%s: discarding as " \
+		"NFC in shutdown state\n", __func__);
+		mutex_unlock(&bcm2079x_dev->read_mutex);
+	}
 	ret = i2c_master_send(client, addr_data+offset,
 		sizeof(addr_data)-offset);
+	mutex_unlock(&bcm2079x_dev->read_mutex);
+
 	client->addr = addr_data[5];
 	dev_info(&client->dev,
 		 "change_client_addr to (0x%04X) flag = %04x, ret = %d\n",
@@ -210,6 +219,14 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user *buf,
 		count = MAX_BUFFER_SIZE;
 
 	mutex_lock(&bcm2079x_dev->read_mutex);
+
+	/*Check for shutdown condition*/
+	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
+		dev_info(&bcm2079x_dev->client->dev, "%s: discarding read " \
+		"as NFC in shutdown state\n", __func__);
+		mutex_unlock(&bcm2079x_dev->read_mutex);
+		return -ENODEV;
+	}
 
 	/** Read the first 4 bytes to include the length of
 	the NCI or HCI packet.**/
@@ -284,6 +301,15 @@ static ssize_t bcm2079x_dev_write(struct file *filp, const char __user *buf,
 	}
 
 	mutex_lock(&bcm2079x_dev->read_mutex);
+
+	/*Check for shutdown condition*/
+	if (bcm2079x_dev && (bcm2079x_dev->shutdown_complete == true)) {
+		dev_info(&bcm2079x_dev->client->dev, "%s: discarding write " \
+			"as NFC in shutdown state\n", __func__);
+		mutex_unlock(&bcm2079x_dev->read_mutex);
+		return -ENODEV;
+	}
+
 	/* Write data */
 
 	ret = i2c_master_send(bcm2079x_dev->client, tmp, count);
@@ -499,6 +525,20 @@ static int bcm2079x_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void bcm2079x_shutdown(struct i2c_client *client)
+{
+	struct bcm2079x_dev *bcm2079x_data = i2c_get_clientdata(client);
+
+	mutex_lock(&bcm2079x_data->read_mutex);
+	if (client->irq)
+		disable_irq(client->irq);
+	bcm2079x_data->shutdown_complete = true;
+	mutex_unlock(&bcm2079x_data->read_mutex);
+
+	dev_info(&bcm2079x_data->client->dev,
+	"%s: NFC shutting down\n", __func__);
+}
+
 static const struct i2c_device_id bcm2079x_id[] = {
 	{"bcm2079x-i2c", 0},
 	{}
@@ -508,6 +548,7 @@ static struct i2c_driver bcm2079x_driver = {
 	.id_table = bcm2079x_id,
 	.probe = bcm2079x_probe,
 	.remove = bcm2079x_remove,
+	.shutdown = bcm2079x_shutdown,
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "bcm2079x-i2c",
