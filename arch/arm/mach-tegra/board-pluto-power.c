@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-power.c
  *
- * Copyright (C) 2012 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -778,11 +778,19 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
-			.cdev_type = "tegra-balanced",
 			.thermtrip = 115,
-			.trip_temp = 85000,
 			.passive_delay = 1000,
-			.hysteresis = 3000,
+			.num_trips = 1,
+			.trips = {
+				[0] = {
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 85000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+					.hysteresis = 3000,
+				},
+			},
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
