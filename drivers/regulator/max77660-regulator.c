@@ -370,6 +370,7 @@ static int max77660_regulator_set_fps(struct max77660_regulator *reg)
 		fps_mask |= FPS_SRC_MASK;
 	}
 
+	fps_val |= reg->val[FPS_REG];
 	if (fps_val || fps_mask)
 		ret = max77660_regulator_cache_write(reg,
 					rinfo->regs[FPS_REG].addr, fps_mask,
