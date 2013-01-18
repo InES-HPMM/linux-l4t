@@ -253,6 +253,7 @@ static enum image_type board_image_type = system_image;
 static int max_cpu_current;
 static int max_core_current;
 static int emc_max_dvfs;
+static unsigned int memory_type;
 static int usb_port_owner_info;
 static int lane_owner_info;
 
@@ -1253,6 +1254,18 @@ static int __init tegra_emc_max_dvfs(char *options)
 	return 1;
 }
 __setup("emc_max_dvfs=", tegra_emc_max_dvfs);
+
+int tegra_get_memory_type(void)
+{
+	return memory_type;
+}
+static int __init tegra_memory_type(char *options)
+{
+	char *p = options;
+	memory_type = memparse(p, &p);
+	return 1;
+}
+__setup("memtype=", tegra_memory_type);
 
 static int __init tegra_debug_uartport(char *info)
 {
