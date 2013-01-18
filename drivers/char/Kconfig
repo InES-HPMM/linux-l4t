@@ -629,5 +629,9 @@ config TEGRA_EFS
 	help
 	Enable tegra efs helper driver for Nvidia's board.
 
+config TEGRA_GMI_CHAR
+	bool "Character-device interface for tegra GMI bus"
+	depends on  ARCH_TEGRA
+	help
+	Enable tegra GMI char driver for Nvidia's board.
 endmenu
-
