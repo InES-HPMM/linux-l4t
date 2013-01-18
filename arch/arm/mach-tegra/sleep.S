@@ -113,7 +113,7 @@ ENDPROC(tegra_pen_unlock)
 ENTRY(tegra_cpu_exit_coherency)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	ldr	r4, =TEGRA_CLK_RESET_VIRT
-	ldr	r5, [r4, #70]	/* BOND_OUT_L */
+	ldr	r5, [r4, #0x70]	/* BOND_OUT_L */
 	tst	r5, #1
 	bne	.
 #endif
