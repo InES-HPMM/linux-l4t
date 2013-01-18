@@ -59,17 +59,13 @@
 #define MC_INT_SECURITY_VIOLATION		(1<<8)
 #define MC_INT_ARBITRATION_EMEM			(1<<9)
 #define MC_INT_INVALID_SMMU_PAGE		(1<<10)
-#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #define MC_INT_INVALID_APB_ASID_UPDATE		(1<<11)
-#endif
 #define MC_INT_DECERR_VPR			(1<<12)
 #define MC_INT_SECERR_SEC			(1<<13)
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define MC_INT_BBC_PRIVATE_MEM_VIOLATION	(1<<14)
 #define MC_INT_DECERR_BBC			(1<<15)
-#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#define MC_INT_DECERR_MTS		(1<<14)
-#endif
+#define MC_INT_DECERR_MTS		(1<<16)
+
 
 /*
  * Number of unique interrupts we have for this chip.
