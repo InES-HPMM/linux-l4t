@@ -140,6 +140,9 @@ struct suspend_context tegra_sctx;
 #define PMC_DPAD_ORIDE		0x1C
 #define PMC_WAKE_DELAY		0xe0
 #define PMC_DPD_SAMPLE		0x20
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#define PMC_DPD_ENABLE		0x24
+#endif
 #define PMC_IO_DPD_REQ          0x1B8
 #define PMC_IO_DPD2_REQ         0x1C0
 
@@ -762,6 +765,11 @@ static void tegra_common_resume(void)
 
 	/* Clear DPD sample */
 	writel(0x0, pmc + PMC_DPD_SAMPLE);
+
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	/* Clear DPD Enable */
+	writel(0x0, pmc + PMC_DPD_ENABLE);
+#endif
 
 	writel(tegra_sctx.mc[0], mc + MC_SECURITY_START);
 	writel(tegra_sctx.mc[1], mc + MC_SECURITY_SIZE);
