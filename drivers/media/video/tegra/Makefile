@@ -28,3 +28,5 @@ obj-$(CONFIG_VIDEO_AD5816)	+= ad5816.o
 obj-$(CONFIG_VIDEO_IMX091)	+= imx091.o
 obj-$(CONFIG_VIDEO_IMX132)	+= imx132.o
 obj-$(CONFIG_DEBUG_FS)		+= nvc_debugfs.o
+obj-$(CONFIG_VIDEO_OV5693)	+= ov5693.o
+obj-$(CONFIG_VIDEO_AD5823)	+= ad5823.o

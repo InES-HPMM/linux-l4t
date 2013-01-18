@@ -1,0 +1,241 @@
+/*
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <linux/delay.h>
+#include <linux/fs.h>
+#include <linux/i2c.h>
+#include <linux/miscdevice.h>
+#include <linux/regulator/consumer.h>
+#include <linux/slab.h>
+#include <linux/uaccess.h>
+#include <linux/module.h>
+#include <linux/regmap.h>
+#include <media/ad5823.h>
+
+#define POS_LOW		(32)
+#define POS_HIGH	(850)
+#define SETTLETIME_MS	(70)
+#define FOCAL_LENGTH	(4.507f)
+#define FNUMBER		(2.8f)
+
+#define AD5823_MAX_RETRIES (3)
+
+struct ad5823_info {
+	struct i2c_client *i2c_client;
+	struct regulator *regulator;
+	struct ad5823_config config;
+	struct ad5823_platform_data *pdata;
+	struct miscdevice miscdev;
+	struct regmap *regmap;
+};
+
+static int ad5823_set_position(struct ad5823_info *info, u32 position)
+{
+	int ret = 0;
+
+	if (position < info->config.pos_low ||
+		position > info->config.pos_high) {
+		dev_err(&info->i2c_client->dev,
+			"%s: position(%d) out of bound([%d, %d])\n",
+			__func__, position, info->config.pos_low,
+			info->config.pos_high);
+		if (position < info->config.pos_low)
+			position = info->config.pos_low;
+		else
+			position = info->config.pos_high;
+	}
+
+	ret |= regmap_write(info->regmap, AD5823_MODE, 0);
+	ret |= regmap_write(info->regmap, AD5823_VCM_CODE_MSB,
+		((position >> 8) & 0x3) | (1 << 2));
+	ret |= regmap_write(info->regmap, AD5823_VCM_CODE_LSB,
+		position & 0xFF);
+
+	return ret;
+}
+
+static long ad5823_ioctl(struct file *file,
+			unsigned int cmd, unsigned long arg)
+{
+	struct ad5823_info *info = file->private_data;
+
+	switch (cmd) {
+	case AD5823_IOCTL_GET_CONFIG:
+	{
+		if (copy_to_user((void __user *) arg,
+				 &info->config,
+				 sizeof(info->config))) {
+			dev_err(&info->i2c_client->dev, "%s: 0x%x\n",
+				__func__, __LINE__);
+			return -EFAULT;
+		}
+
+		break;
+	}
+	case AD5823_IOCTL_SET_POSITION:
+		return ad5823_set_position(info, (u32) arg);
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ad5823_open(struct inode *inode, struct file *file)
+{
+	int err = 0;
+	struct miscdevice *miscdev = file->private_data;
+	struct ad5823_info *info = dev_get_drvdata(miscdev->parent);
+
+	if (info->regulator)
+		err = regulator_enable(info->regulator);
+
+	if (info->pdata->power_on)
+		err = info->pdata->power_on(info->pdata);
+
+	file->private_data = info;
+	msleep(100);
+	return err;
+}
+
+int ad5823_release(struct inode *inode, struct file *file)
+{
+	struct ad5823_info *info = file->private_data;
+
+	if (info->regulator)
+		regulator_disable(info->regulator);
+	file->private_data = NULL;
+
+	if (info->pdata->power_off)
+		info->pdata->power_off(info->pdata);
+
+	return 0;
+}
+
+
+static const struct file_operations ad5823_fileops = {
+	.owner = THIS_MODULE,
+	.open = ad5823_open,
+	.unlocked_ioctl = ad5823_ioctl,
+	.release = ad5823_release,
+};
+
+static struct miscdevice ad5823_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "focuser",
+	.fops = &ad5823_fileops,
+};
+
+static int ad5823_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
+{
+	int err;
+	struct ad5823_info *info;
+	static struct regmap_config ad5823_regmap_config = {
+		.reg_bits = 8,
+		.val_bits = 8,
+	};
+
+
+	dev_dbg(&client->dev, "ad5823: probing sensor.\n");
+
+	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
+	if (!info) {
+		dev_err(&client->dev, "ad5823: Unable to allocate memory!\n");
+		return -ENOMEM;
+	}
+
+	ad5823_device.parent = &client->dev;
+	err = misc_register(&ad5823_device);
+	if (err) {
+		dev_err(&client->dev, "ad5823: Unable to register misc device!\n");
+		goto ERROR_RET;
+	}
+
+	if (client->dev.platform_data) {
+		info->pdata = client->dev.platform_data;
+	} else {
+		info->pdata = NULL;
+		dev_err(&client->dev, "ad5823: Platform data missing.");
+		err = EINVAL;
+		goto ERROR_RET;
+	}
+
+	info->regulator = devm_regulator_get(&client->dev, "vdd");
+	if (IS_ERR_OR_NULL(info->regulator)) {
+		dev_err(&client->dev, "unable to get regulator %s\n",
+			dev_name(&client->dev));
+		info->regulator = NULL;
+	} else {
+		regulator_enable(info->regulator);
+	}
+
+	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		err = PTR_ERR(info->regmap);
+		dev_err(&client->dev,
+			"Failed to allocate register map: %d\n", err);
+		goto ERROR_RET;
+	}
+
+
+	info->i2c_client		= client;
+	info->config.settle_time	= SETTLETIME_MS;
+	info->config.focal_length	= FOCAL_LENGTH;
+	info->config.fnumber		= FNUMBER;
+	info->config.pos_low		= POS_LOW;
+	info->config.pos_high		= POS_HIGH;
+	info->miscdev			= ad5823_device;
+
+	i2c_set_clientdata(client, info);
+
+	return 0;
+
+ERROR_RET:
+	if (info->regulator)
+		regulator_disable(info->regulator);
+
+	misc_deregister(&ad5823_device);
+	return err;
+}
+
+static int ad5823_remove(struct i2c_client *client)
+{
+	struct ad5823_info *info;
+	info = i2c_get_clientdata(client);
+	misc_deregister(&ad5823_device);
+	return 0;
+}
+
+static const struct i2c_device_id ad5823_id[] = {
+	{ "ad5823", 0 },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(i2c, ad5823_id);
+
+static struct i2c_driver ad5823_i2c_driver = {
+	.driver = {
+		.name = "ad5823",
+		.owner = THIS_MODULE,
+	},
+	.probe = ad5823_probe,
+	.remove = ad5823_remove,
+	.id_table = ad5823_id,
+};
+
+module_i2c_driver(ad5823_i2c_driver);
+MODULE_LICENSE("GPL v2");
