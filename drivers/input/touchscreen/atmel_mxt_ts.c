@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
  * Copyright (C) 2011 Atmel Corporation
- * Copyright (C) 2011-2012 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -25,7 +25,7 @@
 #include <linux/regulator/consumer.h>
 
 #define CREATE_TRACE_POINTS
-#include <trace/events/nvevent.h>
+#include <trace/events/touchscreen_atmel.h>
 
 /* Version */
 #define MXT_VER_20		20
@@ -1141,7 +1141,7 @@ update_count:
 static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 {
 	struct mxt_data *data = dev_id;
-	trace_nvevent_irq_data_read_start_series("Atmel_mxt_interrupt");
+	trace_touchscreen_atmel_irq("Atmel_mxt_interrupt");
 	if (data->T44_address)
 		return mxt_read_messages_t44(data);
 	else
@@ -2586,7 +2586,7 @@ err_free_object:
 err_disable_regulator:
 	regulator_disable(data->regulator_avdd);
 	regulator_disable(data->regulator_vdd);
-err_free_data:
+
 	kfree(data);
 	return error;
 }
