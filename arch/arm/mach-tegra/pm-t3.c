@@ -308,11 +308,19 @@ static void cluster_switch_epilog_actlr(void)
 	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC0F)
 		return;
 
+#ifdef CONFIG_ARM64
+	__asm__("mrs %0, actlr_el1\n" : "=r" (actlr));
+#else
 	__asm__("mrc p15, 0, %0, c1, c0, 1\n" : "=r" (actlr));
+#endif
 
 	if (actlr & (0x1 << 6)) {
 		actlr |= 0x1;
+#ifdef CONFIG_ARM64
+		__asm__("msr actlr_el1, %0\n" : "=r" (actlr));
+#else
 		__asm__("mcr p15, 0, %0, c1, c0, 1\n" : : "r" (actlr));
+#endif
 	}
 }
 

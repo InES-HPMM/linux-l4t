@@ -201,11 +201,19 @@ static inline unsigned int is_lp_cluster(void)
 	reg = readl(FLOW_CTRL_CLUSTER_CONTROL);
 	return reg & 1; /* 0 == G, 1 == LP*/
 #else
+#ifdef CONFIG_ARM64
+	asm("mrs	%0, mpidr_el1\n"
+	    "ubfx	%0, %0, #8, #4"
+	    : "=r" (reg)
+	    :
+	    : "cc","memory");
+#else
 	asm("mrc	p15, 0, %0, c0, c0, 5\n"
 	    "ubfx	%0, %0, #8, #4"
 	    : "=r" (reg)
 	    :
 	    : "cc","memory");
+#endif
 	return reg ; /* 0 == G, 1 == LP*/
 #endif
 }
