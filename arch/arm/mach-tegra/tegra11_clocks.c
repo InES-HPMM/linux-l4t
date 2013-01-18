@@ -6816,6 +6816,18 @@ static void tegra11_init_one_clock(struct clk *c)
 	clkdev_add(&c->lookup);
 }
 
+int tegra11_cpu_backup_rate_exchange(unsigned long *rate)
+{
+	struct clk *backup = tegra_clk_cpu_cmplx.parent->u.cpu.backup;
+	unsigned long old_rate = clk_get_rate(backup);
+	unsigned long new_rate = min(
+		*rate, tegra_clk_cpu_cmplx.parent->u.cpu.backup_rate);
+	*rate = old_rate;
+	if (new_rate != old_rate)
+		return clk_set_rate(backup, new_rate);
+	return 0;
+}
+
 void tegra_edp_throttle_cpu_now(u8 factor)
 {
 	/* empty definition for tegra11 */
