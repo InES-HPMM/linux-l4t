@@ -4917,6 +4917,11 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 	c->state = OFF;
 	c->set = true;
 
+	if (c->u.shared_bus_user.mode == SHARED_CEILING) {
+		c->state = ON;
+		c->refcnt++;
+	}
+
 	if (c->u.shared_bus_user.client_id) {
 		c->u.shared_bus_user.client =
 			tegra_get_clock_by_name(c->u.shared_bus_user.client_id);
