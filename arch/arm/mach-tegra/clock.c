@@ -1102,13 +1102,11 @@ unsigned long tegra_clk_measure_input_freq(void)
 		osc_freq = 38400000;
 	} else if (clock_autodetect >= 2928 - 3 && clock_autodetect <= 2928 + 3) {
 		osc_freq = 48000000;
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	} else if (tegra_platform_is_qt()) {
 		if (clock_autodetect >= 2 && clock_autodetect <= 9)
 			osc_freq = 115200;
 		else if (clock_autodetect >= 13 && clock_autodetect <= 15)
 			osc_freq = 230400;
-#endif
 #endif
 	} else {
 		pr_err("%s: Unexpected clock autodetect value %d", __func__, clock_autodetect);
