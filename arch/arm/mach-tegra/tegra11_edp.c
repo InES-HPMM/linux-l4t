@@ -179,7 +179,7 @@ int __init tegra11x_select_core_edp_table(unsigned int regulator_mA,
 
 	edp_entry = find_edp_entry(sku, regulator_mA);
 	if (!edp_entry) {
-		pr_err("%s: failed to find edp entry for sku %d, %d mA\n",
+		pr_info("%s: no core edp table for sku %d, %d mA\n",
 		       __func__, sku, regulator_mA);
 		return -ENODATA;
 	}
