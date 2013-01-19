@@ -413,7 +413,8 @@ static struct chip_revision tegra_chip_revisions[] = {
 	CHIP_REVISION(TEGRA3,  1, 2, 0,   A02),
 	CHIP_REVISION(TEGRA3,  1, 3, 0,   A03),
 	CHIP_REVISION(TEGRA11, 1, 1, 0,   A01),
-	CHIP_REVISION(TEGRA14, 1, 0, 0,   A01),
+	CHIP_REVISION(TEGRA11, 1, 2, 0,   A02),
+	CHIP_REVISION(TEGRA14, 1, 1, 0,   A01),
 };
 
 static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
