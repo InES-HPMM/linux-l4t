@@ -5553,8 +5553,9 @@ static struct tegra11_emc_pdata *dalmore_get_emc_data(void)
 
 	tegra_get_board_info(&board_info);
 
-	/* load T40T Table */
-	if (board_info.board_id == BOARD_E1611 && tegra_sku_id == 0x4)
+	/* load T40T/T40X Table */
+	if (board_info.board_id == BOARD_E1611 &&
+		(tegra_sku_id == 0x3 || tegra_sku_id == 0x4))
 		return &e1611_h5tc4g63afr_rda_T40T_pdata;
 	/* load T40S Table */
 	else if (board_info.board_id == BOARD_E1611 && tegra_sku_id == 0x5)
