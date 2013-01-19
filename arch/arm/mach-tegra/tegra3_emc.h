@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_emc.h
  *
- * Copyright (C) 2011-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,33 +22,14 @@
 #ifndef _MACH_TEGRA_TEGRA3_EMC_H
 #define _MACH_TEGRA_TEGRA3_EMC_H
 
+#include "tegra_emc.h"
+
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
-extern u8 tegra_emc_bw_efficiency;
 extern u8 tegra_emc_bw_efficiency_boost;
 
-enum {
-	DRAM_OVER_TEMP_NONE = 0,
-	DRAM_OVER_TEMP_REFRESH,
-};
-
-struct clk;
-
 int tegra30_init_emc(void);
-
-void tegra_init_dram_bit_map(const u32 *bit_map, int map_size);
-void tegra_emc_dram_type_init(struct clk *c);
-int tegra_emc_get_dram_type(void);
-int tegra_emc_get_dram_temperature(void);
-int tegra_emc_set_over_temp_state(unsigned long state);
-
-#ifdef CONFIG_PM_SLEEP
-void tegra_mc_timing_restore(void);
-#else
-static inline void tegra_mc_timing_restore(void)
-{ }
-#endif
 
 #define EMC_INTSTATUS				0x0
 #define EMC_INTSTATUS_CLKCHANGE_COMPLETE	(0x1 << 4)

@@ -18,8 +18,8 @@
 #ifndef __MACH_TEGRA_TEGRA2_EMC_H_
 #define __MACH_TEGRA_TEGRA2_EMC_H
 
+#include "tegra_emc.h"
+
 int __init tegra_emc_init(void);
-int tegra_emc_set_rate(unsigned long rate);
-long tegra_emc_round_rate(unsigned long rate);
 
 #endif
