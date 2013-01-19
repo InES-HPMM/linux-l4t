@@ -43,7 +43,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "devices.h"
-#include "tegra11_emc.h"
+#include "tegra14_emc.h"
 #include "tegra_cl_dvfs.h"
 
 #define RST_DEVICES_L			0x004
@@ -5244,9 +5244,9 @@ static struct clk_mux_sel mux_sclk[] = {
 	{ .input = &tegra_clk_m,	.value = 0},
 	{ .input = &tegra_pll_c_out1,	.value = 1},
 	{ .input = &tegra_pll_p_out4,	.value = 2},
-	{ .input = &tegra_pll_p_out3,	.value = 3},
+	{ .input = &tegra_pll_p,	.value = 3},
 	{ .input = &tegra_pll_p_out2,	.value = 4},
-	/* { .input = &tegra_clk_d,	.value = 5}, - no use on tegra14x */
+	{ .input = &tegra_pll_c,	.value = 5},
 	{ .input = &tegra_clk_32k,	.value = 6},
 	{ .input = &tegra_pll_m_out1,	.value = 7},
 	{ 0, 0},
@@ -5412,17 +5412,21 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 2},
 	{ .input = &tegra_clk_m, .value = 3},
 	{ .input = &tegra_pll_m, .value = 4}, /* low jitter PLLM input */
+	/* { .input = &tegra_pll_c2, .value = 5}, - no use on tegra14x */
+	/* { .input = &tegra_pll_c3, .value = 6}, - no use on tegra14x */
+	{ .input = &tegra_pll_c, .value = 7}, /* low jitter PLLM input */
 	{ 0, 0},
 };
 
 
 /* Display subsystem muxes */
-static struct clk_mux_sel mux_pllp_pllm_plld_plla_pllc_plld2_clkm[] = {
-	{.input = &tegra_pll_p, .value = 0},
-	{.input = &tegra_pll_m, .value = 1},
+static struct clk_mux_sel mux_plld2[] = {
+	{.input = &tegra_pll_d2_out0, .value = 5},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_plld_plld2_clkm[] = {
 	{.input = &tegra_pll_d_out0, .value = 2},
-	{.input = &tegra_pll_a_out0, .value = 3},
-	{.input = &tegra_pll_c, .value = 4},
 	{.input = &tegra_pll_d2_out0, .value = 5},
 	{.input = &tegra_clk_m, .value = 6},
 	{ 0, 0},
@@ -5757,9 +5761,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	384000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
-	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	297000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8 | DIV_U71),
-	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
-	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
+	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	297000000, mux_plld2,			MUX | MUX8 | DIV_U71),
+	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_plld_plld2_clkm,		MUX | MUX8),
+	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_plld_plld2_clkm,		MUX | MUX8),
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			0),
