@@ -242,4 +242,11 @@ static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 	return 0;
 }
 
+static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->nominal_millivolts;
+	return -ENOENT;
+}
+
 #endif
