@@ -54,7 +54,12 @@ static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
 
 static struct timespec persistent_ts;
+#ifdef CONFIG_ARM_ARCH_TIMER
+static u32 arch_timer_mult, arch_timer_shift;
+static u64 persistent_cycles, last_persistent_cycles;
+#else
 static u64 persistent_ms, last_persistent_ms;
+#endif
 static u32 usec_config;
 static u32 usec_offset;
 static bool usec_suspended;
@@ -141,6 +146,29 @@ u64 tegra_rtc_read_ms(void)
 	return (u64)s * MSEC_PER_SEC + ms;
 }
 
+#ifdef CONFIG_ARM_ARCH_TIMER
+
+/*
+ * tegra_read_persistent_clock -  Return time from a persistent clock.
+ *
+ * For systems with arch timer, TSC runs even during suspend
+ */
+void tegra_read_persistent_clock(struct timespec *ts)
+{
+	u32 cvalh, cvall;
+	u64 delta;
+	struct timespec *tsp = &persistent_ts;
+
+	asm volatile("mrrc p15, 1, %0, %1, c14" : "=r" (cvall), "=r" (cvalh));
+
+	last_persistent_cycles = persistent_cycles;
+	persistent_cycles = ((u64)cvalh << 32) | cvall;
+	delta = persistent_cycles - last_persistent_cycles;
+	delta = (delta * arch_timer_mult) >> arch_timer_shift;
+	timespec_add_ns(tsp, delta);
+	*ts = *tsp;
+}
+#else
 /*
  * tegra_read_persistent_clock -  Return time from a persistent clock.
  *
@@ -163,6 +191,7 @@ static void tegra_read_persistent_clock(struct timespec *ts)
 	timespec_add_ns(tsp, delta * NSEC_PER_MSEC);
 	*ts = *tsp;
 }
+#endif
 
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 {
@@ -338,10 +367,11 @@ static int local_timer_is_architected(void)
 
 void __init tegra_cpu_timer_init(void)
 {
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
-	return;
-#else
+	u64 sec;
 	u32 tsc_ref_freq;
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	tsc_ref_freq = tegra_clk_measure_input_freq();
+#else
 	u32 reg;
 
 	if (!local_timer_is_architected())
@@ -374,6 +404,11 @@ void __init tegra_cpu_timer_init(void)
 	reg |= TSC_CNTCR_ENABLE | TSC_CNTCR_HDBG;
 	tsc_writel(reg, TSC_CNTCR);
 #endif
+	sec = CLOCKSOURCE_MASK(56);
+	do_div(sec, tsc_ref_freq);
+	clocks_calc_mult_shift(&arch_timer_mult, &arch_timer_shift,
+				tsc_ref_freq, NSEC_PER_SEC, sec);
+	return;
 }
 
 static void tegra_arch_timer_per_cpu_init(void)
