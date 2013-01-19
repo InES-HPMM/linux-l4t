@@ -174,7 +174,7 @@ static inline int max77660_rtc_read(struct max77660_rtc *rtc, u8 addr,
 			goto out;
 	}
 
-	ret = max77660_read(dev, addr, values, len, 1);
+	ret = max77660_read(dev, addr, values, len, MAX77660_I2C_RTC);
 	dev_dbg(rtc->dev, "rtc_read: addr=0x%x, values=0x%x, len=%u, update_buffer=%d\n",
 		addr, *((u8 *)values), len, update_buffer);
 
@@ -282,7 +282,7 @@ static inline int max77660_rtc_do_irq(struct max77660_rtc *rtc)
 		return ret;
 	}
 
-	ret = max77660_read(dev, MAX77660_RTC_IRQ, &irq_status, 1, 1);
+	ret = max77660_read(dev, MAX77660_RTC_IRQ, &irq_status, 1, MAX77660_I2C_RTC);
 	if (ret < 0) {
 		dev_err(rtc->dev, "rtc_irq: Failed to get rtc irq status\n");
 		return ret;
