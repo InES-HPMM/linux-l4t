@@ -469,7 +469,7 @@
 #define DIVIDER_1_5_ALLOWED	0
 
 /* PLLP default fixed rate in h/w controlled mode */
-#define PLLP_DEFAULT_FIXED_RATE		216000000
+#define PLLP_DEFAULT_FIXED_RATE		408000000
 
 static bool tegra14_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
@@ -5208,11 +5208,12 @@ static struct clk tegra_pll_m_out1 = {
 };
 
 static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
-	{ 12000000, 216000000, 432, 12, 2, 8},
-	{ 13000000, 216000000, 432, 13, 2, 8},
-	{ 16800000, 216000000, 360, 14, 2, 8},
-	{ 19200000, 216000000, 360, 16, 2, 8},
-	{ 26000000, 216000000, 432, 26, 2, 8},
+	/* Parameters below are made up just to satisfy software */
+	{ 12000000, 408000000, 816, 12, 2, 8},
+	{ 13000000, 408000000, 816, 13, 2, 8},
+	{ 16800000, 408000000, 680, 14, 2, 8},
+	{ 19200000, 408000000, 680, 16, 2, 8},
+	{ 26000000, 408000000, 816, 26, 2, 8},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
