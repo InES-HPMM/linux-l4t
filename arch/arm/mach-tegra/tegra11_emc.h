@@ -126,6 +126,7 @@ enum {
 #define EMC_MODE_SET_LONG_CNT			(0x1 << 26)
 #define EMC_EMRS				0xd0
 #define EMC_REF					0xd4
+#define EMC_REF_FORCE_CMD			1
 #define EMC_PRE					0xd8
 #define EMC_NOP					0xdc
 
