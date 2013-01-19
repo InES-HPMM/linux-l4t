@@ -2515,9 +2515,12 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
 	if (c->state == ON) {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-#ifndef CONFIG_ARCH_TEGRA_14x_SOC
-		BUG_ON(val & PLLX_MISC3_IDDQ);
-#endif
+		/* Due to bug 1206550, bootloader doesn't handle
+		 * PLLX_MISC3_IDDQ at this point. Because this case is
+		 * not serious on FPGA, we treat it as warning for now.
+		 * Once bug 1206550 is fixed, this should be changed
+		 * to BUG_ON. */
+		WARN_ON(val & PLLX_MISC3_IDDQ);
 #endif
 	} else {
 		val |= PLLX_MISC3_IDDQ;
