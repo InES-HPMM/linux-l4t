@@ -4950,6 +4950,7 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 
 static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 {
+	int ret;
 	const struct clk_mux_sel *sel;
 
 	if (detach_shared_bus)
@@ -4972,7 +4973,15 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 		clk_enable(p);
 
 	list_move_tail(&c->u.shared_bus_user.node, &p->shared_bus_list);
-	tegra_clk_shared_bus_update(p);
+	ret = tegra_clk_shared_bus_update(p);
+	if (ret) {
+		list_move_tail(&c->u.shared_bus_user.node,
+			       &c->parent->shared_bus_list);
+		tegra_clk_shared_bus_update(c->parent);
+		clk_disable(p);
+		return ret;
+	}
+
 	tegra_clk_shared_bus_update(c->parent);
 
 	if (c->refcnt)
@@ -4985,13 +4994,15 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 
 static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 {
-	c->u.shared_bus_user.rate = rate;
-	tegra_clk_shared_bus_update(c->parent);
+	int ret;
 
-	if (c->cross_clk_mutex && clk_cansleep(c))
+	c->u.shared_bus_user.rate = rate;
+	ret = tegra_clk_shared_bus_update(c->parent);
+
+	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
 
-	return 0;
+	return ret;
 }
 
 static long tegra_clk_shared_bus_user_round_rate(
@@ -5017,14 +5028,14 @@ static long tegra_clk_shared_bus_user_round_rate(
 
 static int tegra_clk_shared_bus_user_enable(struct clk *c)
 {
-	int ret = 0;
+	int ret;
 
 	c->u.shared_bus_user.enabled = true;
-	tegra_clk_shared_bus_update(c->parent);
-	if (c->u.shared_bus_user.client)
+	ret = tegra_clk_shared_bus_update(c->parent);
+	if (!ret && c->u.shared_bus_user.client)
 		ret = clk_enable(c->u.shared_bus_user.client);
 
-	if (c->cross_clk_mutex && clk_cansleep(c))
+	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
 
 	return ret;
