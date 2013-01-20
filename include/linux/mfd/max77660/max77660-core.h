@@ -16,6 +16,7 @@
 
 #include <linux/irq.h>
 #include <linux/mfd/core.h>
+#include <linux/regmap.h>
 
 
 /* i2c slave address */
@@ -352,6 +353,43 @@ enum max77660_gpio_alt {
 	GPIO_ALT_DISABLE,
 };
 
+
+/* Max77660 Chip data */
+struct max77660_chip {
+	struct device *dev;
+	struct i2c_client *i2c_power;
+	struct i2c_client *i2c_rtc;
+	struct i2c_client *i2c_fg;
+	struct i2c_client *i2c_chg;
+	struct i2c_client *i2c_haptic;
+
+	struct regmap *regmap_power;
+	struct regmap *regmap_rtc;
+	struct regmap *regmap_chg;	      /* charger */
+	struct regmap *regmap_fg;	       /* fuel gauge */
+	struct regmap *regmap_haptic;   /* haptic */
+
+	struct i2c_client *clients[MAX77660_NUM_SLAVES];
+	struct regmap* rmap[MAX77660_NUM_SLAVES];
+
+
+	struct max77660_platform_data *pdata;
+	struct mutex io_lock;
+
+	struct irq_chip irq;
+	struct mutex irq_lock;
+	int irq_base;
+	int irq_top_count[8];
+	u8 cache_irq_top_mask;
+	u32 cache_irq_mask[CACHE_IRQ_NR];
+
+	u8 rtc_i2c_addr;
+	u8 fg_i2c_addr;
+	u8 chg_i2c_addr;
+	u8 haptic_i2c_addr;
+};
+
+
 /*
  * Flags
  */
@@ -407,6 +445,71 @@ enum max77660_i2c_slave {
 	MAX77660_I2C_FG,
 	MAX77660_I2C_HAPTIC,
 };
+
+static inline int max77660_reg_write(struct device *dev, int sid,
+		int reg, u8 val)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_write(chip->rmap[sid], reg, val);
+}
+
+static inline int max77660_reg_writes(struct device *dev, int sid, int reg,
+		int len, void *val)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_bulk_write(chip->rmap[sid], reg, val, len);
+}
+
+static inline int max77660_reg_read(struct device *dev, int sid,
+		int reg, u8 *val)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+	unsigned int ival;
+	int ret;
+
+	ret = regmap_read(chip->rmap[sid], reg, &ival);
+	if (ret < 0) {
+		dev_err(dev, "failed reading from reg 0x%02x\n", reg);
+		return ret;
+	}
+	*val = ival;
+	return ret;
+}
+
+static inline int max77660_reg_reads(struct device *dev, int sid,
+		int reg, int len, void *val)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_bulk_read(chip->rmap[sid], reg, val, len);
+}
+
+static inline int max77660_reg_set_bits(struct device *dev, int sid,
+		int reg, u8 bit_mask)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_update_bits(chip->rmap[sid], reg,
+				bit_mask, bit_mask);
+}
+
+static inline int max77660_reg_clr_bits(struct device *dev, int sid,
+		int reg, u8 bit_mask)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_update_bits(chip->rmap[sid], reg, bit_mask, 0);
+}
+
+static inline int max77660_reg_update(struct device *dev, int sid,
+		int reg, u8 val, uint8_t mask)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	return regmap_update_bits(chip->rmap[sid], reg, mask, val);
+}
 
 #if defined(CONFIG_MFD_MAX77660)
 int max77660_read(struct device *dev, u8 addr, void *values, u32 len,

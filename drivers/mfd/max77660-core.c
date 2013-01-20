@@ -40,40 +40,6 @@ struct max77660_irq_data {
 	u8 trigger_type;
 };
 
-struct max77660_chip {
-	struct device *dev;
-	struct i2c_client *i2c_power;
-	struct i2c_client *i2c_rtc;
-	struct i2c_client *i2c_fg;
-	struct i2c_client *i2c_chg;
-	struct i2c_client *i2c_haptic;
-
-	struct regmap *regmap_power;
-	struct regmap *regmap_rtc;
-	struct regmap *regmap_chg;		/* charger */
-	struct regmap *regmap_fg;		/* fuel gauge */
-	struct regmap *regmap_haptic;	/* haptic */
-
-	struct i2c_client *clients[MAX77660_NUM_SLAVES];
-	struct regmap *rmap[MAX77660_NUM_SLAVES];
-
-
-	struct max77660_platform_data *pdata;
-	struct mutex io_lock;
-
-	struct irq_chip irq;
-	struct mutex irq_lock;
-	int irq_base;
-	int irq_top_count[8];
-	u8 cache_irq_top_mask;
-	u32 cache_irq_mask[CACHE_IRQ_NR];
-
-	u8 rtc_i2c_addr;
-	u8 fg_i2c_addr;
-	u8 chg_i2c_addr;
-	u8 haptic_i2c_addr;
-};
-
 struct max77660_chip *max77660_chip;
 
 static struct resource gpio_resources[] = {
