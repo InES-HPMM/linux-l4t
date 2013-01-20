@@ -4719,7 +4719,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	}
 
 	old_rate = clk_get_rate_locked(bus);
-	if (old_rate != rate) {
+	if (IS_ENABLED(CONFIG_TEGRA_MIGRATE_CBUS_USERS) || (old_rate != rate)) {
 		ret = bus->ops->set_rate(bus, rate);
 		if (ret)
 			return ret;
@@ -4820,6 +4820,13 @@ static struct clk_ops tegra_clk_cbus_ops = {
  * clock to each user.  The frequency of the bus is set to the highest
  * enabled shared_bus_user clock, with a minimum value set by the
  * shared bus.
+ *
+ * Optionally shared bus may support users migration. Since shared bus and
+ * its * children (users) have reversed rate relations: user rates determine
+ * bus rate, * switching user from one parent/bus to another may change rates
+ * of both parents. Therefore we need a cross-bus lock on top of individual
+ * user and bus locks. For now, limit bus switch support to cbus only if
+ * CONFIG_TEGRA_MIGRATE_CBUS_USERS is set.
  */
 
 static unsigned long tegra11_clk_shared_bus_update(
@@ -4941,13 +4948,6 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 		&c->parent->shared_bus_list);
 }
 
-/*
- * Shared bus and its children/users have reversed rate relations - user rates
- * determine bus rate. Hence switching user from one parent/bus to another may
- * change rates of both parents. Therefore we need a cross-bus lock on top of
- * individual user and bus locks. For now limit bus switch support to cansleep
- * users with cross-clock mutex only.
- */
 static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 {
 	const struct clk_mux_sel *sel;
@@ -6233,7 +6233,13 @@ static struct clk tegra_clk_c3bus = {
 	.rate_change_nh = &c3bus_rate_change_nh,
 };
 
+#ifdef CONFIG_TEGRA_MIGRATE_CBUS_USERS
 static DEFINE_MUTEX(cbus_mutex);
+#define CROSS_CBUS_MUTEX (&cbus_mutex)
+#else
+#define CROSS_CBUS_MUTEX NULL
+#endif
+
 
 static struct clk_mux_sel mux_clk_cbus[] = {
 	{ .input = &tegra_clk_c2bus, .value = 0},
@@ -6257,7 +6263,7 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 			.client_div = _div,		\
 			.mode = _mode,			\
 		},					\
-		.cross_clk_mutex = &cbus_mutex,		\
+		.cross_clk_mutex = CROSS_CBUS_MUTEX,	\
 	}
 
 #else
