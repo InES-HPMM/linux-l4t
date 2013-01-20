@@ -367,6 +367,12 @@ struct max77660_gpio_config {
 	enum max77660_gpio_alt alternate;
 };
 
+/*
+ * max77660_platform_data: Platform data for MAX77660.
+ * @system_watchdog_timeout: System wathdog timeout in seconds. If this value
+ *		is -ve then timer will not start during initialisation.
+ */
+
 struct max77660_platform_data {
 	int irq_base;
 	int gpio_base;
@@ -388,6 +394,8 @@ struct max77660_platform_data {
 	unsigned char haptic_i2c_addr;
 
 	bool use_power_off;
+
+	int system_watchdog_timeout;
 };
 
 enum max77660_i2c_slave {
