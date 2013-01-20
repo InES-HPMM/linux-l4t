@@ -25,6 +25,15 @@
 #define MAX77660_FG_I2C_ADDR		0x36
 #define MAX77660_HAPTIC_I2C_ADDR	0x48
 
+
+/* I2c Slave Id */
+#define MAX77660_PWR_SLAVE		0
+#define MAX77660_RTC_SLAVE		1
+#define MAX77660_CHG_SLAVE		2
+#define MAX77660_FG_SLAVE		3
+#define MAX77660_HAPTIC_SLAVE		4
+#define MAX77660_NUM_SLAVES		5
+
 /* Registers */
 #if 0
 #define MAX77660_REG_IRQ_TOP		0x05

@@ -54,6 +54,9 @@ struct max77660_chip {
 	struct regmap *regmap_fg;		/* fuel gauge */
 	struct regmap *regmap_haptic;	/* haptic */
 
+	struct i2c_client *clients[MAX77660_NUM_SLAVES];
+	struct regmap *rmap[MAX77660_NUM_SLAVES];
+
 
 	struct max77660_platform_data *pdata;
 	struct mutex io_lock;
@@ -897,49 +900,46 @@ static bool rd_wr_reg_haptic(struct device *dev, unsigned int reg)
 	return false;
 }
 
-static const struct regmap_config max77660_regmap_config_power = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = 0x9F,
-	.writeable_reg = rd_wr_reg_power,
-	.readable_reg = rd_wr_reg_power,
-	.cache_type = REGCACHE_RBTREE,
+static const struct regmap_config max77660_regmap_config[] = {
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register = 0x9F,
+		.writeable_reg = rd_wr_reg_power,
+		.readable_reg = rd_wr_reg_power,
+	}, {
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register = 0xF2,
+		.writeable_reg = rd_wr_reg_rtc,
+		.readable_reg = rd_wr_reg_rtc,
+	}, {
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register = 0xFF,
+		.writeable_reg = rd_wr_reg_fg,
+		.readable_reg = rd_wr_reg_fg,
+	}, {
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register = 0xFF,
+		.writeable_reg = rd_wr_reg_chg,
+		.readable_reg = rd_wr_reg_chg,
+	}, {
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register = 0xFF,
+		.writeable_reg = rd_wr_reg_haptic,
+		.readable_reg = rd_wr_reg_haptic,
+	},
 };
 
-static const struct regmap_config max77660_regmap_config_rtc = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = 0xF2,
-	.writeable_reg = rd_wr_reg_rtc,
-	.readable_reg = rd_wr_reg_rtc,
-	.cache_type = REGCACHE_RBTREE,
-};
-
-static const struct regmap_config max77660_regmap_config_fg = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = 0xFF,
-	.writeable_reg = rd_wr_reg_fg,
-	.readable_reg = rd_wr_reg_fg,
-	.cache_type = REGCACHE_RBTREE,
-};
-
-static const struct regmap_config max77660_regmap_config_chg = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = 0xFF,
-	.writeable_reg = rd_wr_reg_chg,
-	.readable_reg = rd_wr_reg_chg,
-	.cache_type = REGCACHE_RBTREE,
-};
-
-static const struct regmap_config max77660_regmap_config_haptic = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = 0xFF,
-	.writeable_reg = rd_wr_reg_haptic,
-	.readable_reg = rd_wr_reg_haptic,
-	.cache_type = REGCACHE_RBTREE,
+static int max77660_slave_address[MAX77660_NUM_SLAVES] = {
+	MAX77660_PWR_I2C_ADDR,
+	MAX77660_RTC_I2C_ADDR,
+	MAX77660_CHG_I2C_ADDR,
+	MAX77660_FG_I2C_ADDR,
+	MAX77660_HAPTIC_I2C_ADDR,
 };
 
 static int max77660_probe(struct i2c_client *client,
@@ -949,118 +949,49 @@ static int max77660_probe(struct i2c_client *client,
 	struct max77660_chip *chip;
 	int ret = 0;
 	u8 val;
+	int i;
 
-	if (pdata == NULL) {
+	if (!pdata) {
 		dev_err(&client->dev, "probe: Invalid platform_data\n");
 		return -ENODEV;
 	}
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (chip == NULL) {
-		dev_err(&client->dev, "probe: kzalloc() failed\n");
+		dev_err(&client->dev, "Memory alloc for chip failed\n");
 		return -ENOMEM;
 	}
-	max77660_chip = chip;
 
 	chip->i2c_power = client;
 	i2c_set_clientdata(client, chip);
 
-	chip->regmap_power = devm_regmap_init_i2c(client,
-					&max77660_regmap_config_power);
-	if (IS_ERR(chip->regmap_power)) {
-		ret = PTR_ERR(chip->regmap_power);
-		dev_err(&client->dev, "power regmap init failed: %d\n", ret);
-		return ret;
+	for (i = 0; i < MAX77660_NUM_SLAVES; i++) {
+		if (max77660_slave_address[i] == client->addr)
+			chip->clients[i] = client;
+		else
+			chip->clients[i] = i2c_new_dummy(client->adapter,
+						max77660_slave_address[i]);
+		if (!chip->clients[i]) {
+			dev_err(&client->dev, "can't attach client %d\n", i);
+			ret = -ENOMEM;
+			goto fail_client_reg;
+		}
+
+		i2c_set_clientdata(chip->clients[i], chip);
+		chip->rmap[i] = devm_regmap_init_i2c(chip->clients[i],
+					&max77660_regmap_config[i]);
+		if (IS_ERR(chip->rmap[i])) {
+			ret = PTR_ERR(chip->rmap[i]);
+			dev_err(&client->dev,
+				"regmap %d init failed, err %d\n", i, ret);
+			goto fail_client_reg;
+		}
 	}
-	/* Set RTC I2C regmap */
-	if (pdata->rtc_i2c_addr)
-		chip->rtc_i2c_addr = pdata->rtc_i2c_addr;
-	else
-		chip->rtc_i2c_addr = MAX77660_RTC_I2C_ADDR;
-
-	chip->i2c_rtc = i2c_new_dummy(client->adapter, chip->rtc_i2c_addr);
-	if (!chip->i2c_rtc) {
-		dev_err(&client->dev, "can't attach client at addr 0x%x\n",
-				chip->rtc_i2c_addr);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(chip->i2c_rtc, chip);
-
-	chip->regmap_rtc = devm_regmap_init_i2c(chip->i2c_rtc,
-					&max77660_regmap_config_rtc);
-	if (IS_ERR(chip->regmap_rtc)) {
-		ret = PTR_ERR(chip->regmap_rtc);
-		dev_err(&client->dev, "rtc regmap init failed: %d\n", ret);
-		goto out_rtc_regmap_fail;
-	}
-
-	/* Set FG I2C regmap */
-	if (pdata->fg_i2c_addr)
-		chip->fg_i2c_addr = pdata->fg_i2c_addr;
-	else
-		chip->fg_i2c_addr = MAX77660_FG_I2C_ADDR;
-
-	chip->i2c_fg = i2c_new_dummy(client->adapter, chip->fg_i2c_addr);
-	if (!chip->i2c_fg) {
-		dev_err(&client->dev, "can't attach client at addr 0x%x\n",
-				chip->fg_i2c_addr);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(chip->i2c_fg, chip);
-
-	chip->regmap_fg = devm_regmap_init_i2c(chip->i2c_fg,
-						&max77660_regmap_config_fg);
-	if (IS_ERR(chip->regmap_fg)) {
-		ret = PTR_ERR(chip->regmap_fg);
-		dev_err(&client->dev, "fg regmap init failed: %d\n", ret);
-		goto out_fg_regmap_fail;
-	}
-
-	/* Set CHARGER I2C regmap */
-	if (pdata->chg_i2c_addr)
-		chip->chg_i2c_addr = pdata->chg_i2c_addr;
-	else
-		chip->chg_i2c_addr = MAX77660_CHG_I2C_ADDR;
-
-	chip->i2c_chg = i2c_new_dummy(client->adapter, chip->chg_i2c_addr);
-	if (!chip->i2c_chg) {
-		dev_err(&client->dev, "can't attach client at addr 0x%x\n",
-				chip->chg_i2c_addr);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(chip->i2c_chg, chip);
-
-	chip->regmap_chg = devm_regmap_init_i2c(chip->i2c_chg,
-						&max77660_regmap_config_chg);
-	if (IS_ERR(chip->regmap_chg)) {
-		ret = PTR_ERR(chip->regmap_chg);
-		dev_err(&client->dev, "chg regmap init failed: %d\n", ret);
-		goto out_chg_regmap_fail;
-	}
-
-	/* Set HAPTIC I2C regmap */
-	if (pdata->haptic_i2c_addr)
-		chip->haptic_i2c_addr = pdata->haptic_i2c_addr;
-	else
-		chip->haptic_i2c_addr = MAX77660_HAPTIC_I2C_ADDR;
-
-	chip->i2c_haptic =
-		i2c_new_dummy(client->adapter, chip->haptic_i2c_addr);
-
-	if (!chip->i2c_haptic) {
-		dev_err(&client->dev, "can't attach client at addr 0x%x\n",
-				chip->haptic_i2c_addr);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(chip->i2c_haptic, chip);
-
-	chip->regmap_chg = devm_regmap_init_i2c(chip->i2c_haptic,
-						&max77660_regmap_config_haptic);
-	if (IS_ERR(chip->regmap_haptic)) {
-		ret = PTR_ERR(chip->regmap_haptic);
-		dev_err(&client->dev, "haptic regmap init failed: %d\n", ret);
-		goto out_haptic_regmap_fail;
-	}
+	chip->regmap_power = chip->rmap[MAX77660_PWR_SLAVE];
+	chip->regmap_rtc = chip->rmap[MAX77660_RTC_SLAVE];
+	chip->regmap_fg = chip->rmap[MAX77660_FG_SLAVE];
+	chip->regmap_chg = chip->rmap[MAX77660_CHG_SLAVE];
+	chip->regmap_haptic = chip->rmap[MAX77660_HAPTIC_SLAVE];
 
 	chip->dev = &client->dev;
 	chip->pdata = pdata;
@@ -1083,8 +1014,10 @@ static int max77660_probe(struct i2c_client *client,
 		goto out_exit;
 	}
 
-	if (pdata->use_power_off && !pm_power_off)
+	if (pdata->use_power_off && !pm_power_off) {
+		max77660_chip = chip;
 		pm_power_off = max77660_power_off;
+	}
 
 	ret =  mfd_add_devices(&client->dev, -1, max77660_cells,
 			ARRAY_SIZE(max77660_cells), NULL, chip->irq_base);
@@ -1109,17 +1042,12 @@ out_exit:
 	max77660_irq_exit(chip);
 	mutex_destroy(&chip->io_lock);
 
-out_haptic_regmap_fail:
-	i2c_unregister_device(chip->i2c_haptic);
+fail_client_reg:
+	for (i = 0; i < MAX77660_NUM_SLAVES; i++) {
+		if (chip->clients[i]  && (chip->clients[i] != client))
+			i2c_unregister_device(chip->clients[i]);
+	}
 
-out_chg_regmap_fail:
-	i2c_unregister_device(chip->i2c_chg);
-
-out_fg_regmap_fail:
-	i2c_unregister_device(chip->i2c_fg);
-
-out_rtc_regmap_fail:
-	i2c_unregister_device(chip->i2c_rtc);
 	max77660_chip = NULL;
 	return ret;
 }
@@ -1127,14 +1055,17 @@ out_rtc_regmap_fail:
 static int __devexit max77660_remove(struct i2c_client *client)
 {
 	struct max77660_chip *chip = i2c_get_clientdata(client);
+	int i;
 
 	mfd_remove_devices(chip->dev);
 	max77660_debugfs_exit(chip);
 	max77660_irq_exit(chip);
 	mutex_destroy(&chip->io_lock);
-	i2c_unregister_device(chip->i2c_rtc);
+	for (i = 0; i < MAX77660_NUM_SLAVES; i++) {
+		if (chip->clients[i] != client)
+			i2c_unregister_device(chip->clients[i]);
+	}
 	max77660_chip = NULL;
-
 	return 0;
 }
 
