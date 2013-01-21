@@ -1214,7 +1214,7 @@ static long tegra11_cpu_clk_round_rate(struct clk *c, unsigned long rate)
 	unsigned long max_rate = c->max_rate;
 
 	/* Remove dfll boost to maximum rate when running on PLL */
-	if (!c->dvfs || !tegra_dvfs_is_dfll_scale(c->dvfs, rate))
+	if (c->dvfs && !tegra_dvfs_is_dfll_scale(c->dvfs, rate))
 		max_rate -= c->dvfs->dfll_data.max_rate_boost;
 
 	if (rate > max_rate)
@@ -1409,7 +1409,7 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	}
 
 	/* Disabling old parent scales old mode voltage rail */
-	if (c->refcnt && c->parent)
+	if (c->refcnt)
 		clk_disable(c->parent);
 
 	clk_reparent(c, p);
@@ -4843,7 +4843,8 @@ static unsigned long tegra11_clk_shared_bus_update(
 			case SHARED_FLOOR:
 			default:
 				rate = max(request_rate, rate);
-				if (c->u.shared_bus_user.client) {
+				if (c->u.shared_bus_user.client
+							&& request_rate) {
 					if (top_rate < request_rate) {
 						top_rate = request_rate;
 						top = c;
@@ -4945,7 +4946,7 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 	tegra_clk_shared_bus_update(p);
 	tegra_clk_shared_bus_update(c->parent);
 
-	if (c->refcnt && c->parent)
+	if (c->refcnt)
 		clk_disable(c->parent);
 
 	clk_reparent(c, p);
