@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/pm.h>
 #include <linux/rtc.h>
 #include <linux/mfd/max77660/max77660-core.h>
 
@@ -540,13 +541,6 @@ static int __devinit max77660_rtc_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	/*
-	 * RTC should be a wakeup source, or alarm dev can't link to
-	 * this devices. that cause Android time change not set into
-	 * RTC register.
-	 */
-	device_init_wakeup(&pdev->dev, true);
-
 	rtc->rtc = rtc_device_register("max77660-rtc", &pdev->dev,
 				       &max77660_rtc_ops, THIS_MODULE);
 	if (IS_ERR_OR_NULL(rtc->rtc)) {
@@ -560,16 +554,14 @@ static int __devinit max77660_rtc_probe(struct platform_device *pdev)
 
 	rtc->irq = parent_pdata->irq_base + MAX77660_IRQ_RTC;
 	ret = request_threaded_irq(rtc->irq, NULL, max77660_rtc_irq,
-				   IRQF_ONESHOT, "max77660-rtc", rtc);
+		   IRQF_ONESHOT | IRQF_EARLY_RESUME, "max77660-rtc", rtc);
 	if (ret < 0) {
 		dev_err(rtc->dev, "probe: Failed to request irq %d\n",
 			rtc->irq);
 		rtc->irq = -1;
-	} else {
-		device_init_wakeup(rtc->dev, 1);
-		enable_irq_wake(rtc->irq);
 	}
 
+	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
 out:
@@ -601,12 +593,37 @@ static void max77660_rtc_shutdown(struct platform_device *pdev)
 	max77660_rtc_alarm_irq_enable(&pdev->dev, 0);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77660_rtc_suspend(struct device *dev)
+{
+	struct max77660_rtc *rtc = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev))
+		enable_irq_wake(rtc->irq);
+	return 0;
+}
+
+static int max77660_rtc_resume(struct device *dev)
+{
+	struct max77660_rtc *rtc = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev))
+		disable_irq_wake(rtc->irq);
+	return 0;
+};
+#endif
+
+static const struct dev_pm_ops max77660_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77660_rtc_suspend, max77660_rtc_resume)
+};
+
 static struct platform_driver max77660_rtc_driver = {
 	.probe = max77660_rtc_probe,
 	.remove = __devexit_p(max77660_rtc_remove),
 	.driver = {
-		   .name = "max77660-rtc",
-		   .owner = THIS_MODULE,
+		.name = "max77660-rtc",
+		.owner = THIS_MODULE,
+		.pm = &max77660_pm_ops,
 	},
 	.shutdown = max77660_rtc_shutdown,
 };
