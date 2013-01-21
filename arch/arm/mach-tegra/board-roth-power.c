@@ -590,6 +590,7 @@ static struct tegra_suspend_platform_data roth_suspend_data = {
 	.core_off_timer = 2000,
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
+	.cpu_lp2_min_residency = 1000,
 	.min_residency_noncpu = 600,
 	.min_residency_crail = 1000,
 };
