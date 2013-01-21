@@ -2,7 +2,7 @@
  * include/linux/mfd/tps6591x.c
  * Core driver interface for TI TPS6591x PMIC family
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -121,6 +121,7 @@ struct tps6591x_platform_data {
 	struct tps6591x_subdev_info *subdevs;
 
 	bool dev_slp_en;
+	bool dev_slp_delayed; /* Set the SLEEP only before entering suspend */
 	struct tps6591x_sleep_keepon_data *slp_keepon;
 
 	struct tps6591x_gpio_init_data *gpio_init_data;

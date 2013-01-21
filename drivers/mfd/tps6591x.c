@@ -3,7 +3,7 @@
  *
  * Core driver for TI TPS6591x PMIC family
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -759,7 +759,10 @@ static int __devinit tps6591x_sleepinit(struct tps6591x *tpsi,
 	}
 
 	/* enabling SLEEP device state */
-	ret = tps6591x_set_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
+	if (!pdata->dev_slp_delayed)
+		ret = tps6591x_set_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
+	else
+		ret = tps6591x_clr_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
 	if (ret < 0) {
 		dev_err(dev, "set dev_slp failed: %d\n", ret);
 		goto err_sleep_init;
@@ -928,17 +931,37 @@ static int tps6591x_i2c_remove(struct i2c_client *client)
 static int tps6591x_i2c_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
+	struct tps6591x_platform_data *pdata = client->dev.platform_data;
+	int ret = 0;
+
+	if (pdata->dev_slp_delayed) {
+		ret = tps6591x_set_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
+		if (ret) {
+			dev_err(&client->dev, "Error in setting PMU's sleep bit; bailing out\n");
+			return ret;
+		}
+	}
+
 	if (client->irq)
 		disable_irq(client->irq);
-	return 0;
+	return ret;
 }
 
 static int tps6591x_i2c_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
+	struct tps6591x_platform_data *pdata = client->dev.platform_data;
+	int ret = 0;
+
 	if (client->irq)
 		enable_irq(client->irq);
-	return 0;
+	if (pdata->dev_slp_delayed) {
+		ret = tps6591x_clr_bits(dev, TPS6591X_DEVCTRL, DEVCTRL_DEV_SLP);
+		if (ret)
+			dev_err(&client->dev, "Error in Clearing PMU's sleep bit\n");
+	}
+
+	return ret;
 }
 
 static const struct dev_pm_ops tps6591x_pm_ops = {
