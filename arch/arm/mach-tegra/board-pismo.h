@@ -77,6 +77,7 @@
 
 /* HID over I2C GPIOs */
 #define I2C_KB_IRQ		TEGRA_GPIO_PC7
+#define I2C_TP_IRQ		TEGRA_GPIO_PH4
 
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME           "mpu9150"

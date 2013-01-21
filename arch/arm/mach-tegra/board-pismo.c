@@ -268,6 +268,15 @@ static struct i2c_board_info __initdata i2c_keyboard_board_info = {
 	.platform_data  = &i2c_keyboard_pdata,
 };
 
+static struct i2c_hid_platform_data i2c_touchpad_pdata = {
+	.hid_descriptor_address = 0x20,
+};
+
+static struct i2c_board_info __initdata i2c_touchpad_board_info = {
+	I2C_BOARD_INFO("hid", 0x2C),
+	.platform_data  = &i2c_touchpad_pdata,
+};
+
 static void pismo_i2c_init(void)
 {
 
@@ -290,6 +299,9 @@ static void pismo_i2c_init(void)
 
 	i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
 	i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
+
+	i2c_touchpad_board_info.irq = gpio_to_irq(I2C_TP_IRQ);
+	i2c_register_board_info(1, &i2c_touchpad_board_info , 1);
 }
 
 static struct platform_device *pismo_uart_devices[] __initdata = {
