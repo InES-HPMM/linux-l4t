@@ -1652,7 +1652,7 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 
 static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 {
-	unsigned long val;
+	unsigned long val, flags = 0;
 	void __iomem *base = phy->regs;
 	int wait_time_us = 25000; /* FPR should be set by this time */
 
@@ -1674,14 +1674,15 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 			wait_time_us--;
 		} while (val & (USB_PORTSC_RESUME | USB_PORTSC_SUSP));
 
-		/* wait for 25 ms to port resume complete */
-		msleep(25);
+		local_irq_save(flags);
 		/* disable PMC master control */
 		utmip_phy_disable_pmc_bus_ctrl(phy);
 
 		val = readl(base + USB_USBCMD);
 		val |= USB_USBCMD_RS;
 		writel(val, base + USB_USBCMD);
+
+		local_irq_restore(flags);
 
 		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
 							 USB_USBCMD_RS, 2000)) {
