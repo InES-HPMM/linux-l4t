@@ -37,12 +37,42 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra14 step */
 #define VDD_SAFE_STEP			100
 
+/* FIXME: need to clean-up, once thermal DVFS working */
+#define THERMAL_DVFS_ENABLE 0
+
+#ifdef THERMAL_DVFS_ENABLE
+static int dvfs_temperatures[] = { 20, };
+
+static struct tegra_cooling_device cpu_dfll_cdev = {
+	.cdev_type = "cpu_dfll",
+	.trip_temperatures = dvfs_temperatures,
+	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+};
+
+static struct tegra_cooling_device cpu_pll_cdev = {
+	.cdev_type = "cpu_pll",
+	.trip_temperatures = dvfs_temperatures,
+	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+};
+
+static struct tegra_cooling_device core_cdev = {
+	.cdev_type = "core",
+	.trip_temperatures = dvfs_temperatures,
+	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+};
+#endif
+
 static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
+	.min_millivolts_cold = 1000,
+#ifdef THERMAL_DVFS_ENABLE
+	.dfll_mode_cdev = &cpu_dfll_cdev,
+	.pll_mode_cdev = &cpu_pll_cdev,
+#endif
 };
 
 static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
@@ -50,6 +80,10 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
+	.min_millivolts_cold = 950,
+#ifdef THERMAL_DVFS_ENABLE
+	.pll_mode_cdev = &core_cdev,
+#endif
 };
 
 static struct dvfs_rail *tegra14_dvfs_rails[] = {
@@ -77,30 +111,30 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.min_millivolts = 1000,
 		},
 		.max_mv = 1250,
-		.freqs_mult = MHZ,
+		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 100,
 		.cvb_table = {
-			/*f    dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
-			{ 306, { 107330,  -1569,   0}, {  90000,    0,    0} },
-			{ 408, { 111250,  -1666,   0}, {  90000,    0,    0} },
-			{ 510, { 110000,  -1460,   0}, {  94000,    0,    0} },
-			{ 612, { 117290,  -1745,   0}, {  94000,    0,    0} },
-			{ 714, { 122700,  -1910,   0}, {  99000,    0,    0} },
-			{ 816, { 125620,  -1945,   0}, {  99000,    0,    0} },
-			{ 918, { 130560,  -2076,   0}, { 103000,    0,    0} },
-			{1020, { 137280,  -2303,   0}, { 103000,    0,    0} },
-			{1122, { 146440,  -2660,   0}, { 109000,    0,    0} },
-			{1224, { 152190,  -2825,   0}, { 109000,    0,    0} },
-			{1326, { 157520,  -2953,   0}, { 112000,    0,    0} },
-			{1428, { 166100,  -3261,   0}, { 140000,    0,    0} },
-			{1530, { 176410,  -3647,   0}, { 140000,    0,    0} },
-			{1632, { 189620,  -4186,   0}, { 140000,    0,    0} },
-			{1734, { 203190,  -4725,   0}, { 140000,    0,    0} },
-			{1836, { 222670,  -5573,   0}, { 140000,    0,    0} },
-			{1938, { 256210,  -7165,   0}, { 140000,    0,    0} },
-			{2040, { 250050,  -6544,   0}, { 140000,    0,    0} },
-			{   0, {      0,      0,   0}, {      0,    0,    0} },
+			/*f       dfll: c0,     c1,   c2  pll:  c0,   c1,    c2 */
+			{ 306000, { 107330,  -1569,   0}, {  90000,    0,    0} },
+			{ 408000, { 111250,  -1666,   0}, {  90000,    0,    0} },
+			{ 510000, { 110000,  -1460,   0}, {  94000,    0,    0} },
+			{ 612000, { 117290,  -1745,   0}, {  94000,    0,    0} },
+			{ 714000, { 122700,  -1910,   0}, {  99000,    0,    0} },
+			{ 816000, { 125620,  -1945,   0}, {  99000,    0,    0} },
+			{ 918000, { 130560,  -2076,   0}, { 103000,    0,    0} },
+			{1020000, { 137280,  -2303,   0}, { 103000,    0,    0} },
+			{1122000, { 146440,  -2660,   0}, { 109000,    0,    0} },
+			{1224000, { 152190,  -2825,   0}, { 109000,    0,    0} },
+			{1326000, { 157520,  -2953,   0}, { 112000,    0,    0} },
+			{1428000, { 166100,  -3261,   0}, { 140000,    0,    0} },
+			{1530000, { 176410,  -3647,   0}, { 140000,    0,    0} },
+			{1632000, { 189620,  -4186,   0}, { 140000,    0,    0} },
+			{1734000, { 203190,  -4725,   0}, { 140000,    0,    0} },
+			{1836000, { 222670,  -5573,   0}, { 140000,    0,    0} },
+			{1938000, { 256210,  -7165,   0}, { 140000,    0,    0} },
+			{2040000, { 250050,  -6544,   0}, { 140000,    0,    0} },
+			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
 	}
 };
@@ -298,7 +332,7 @@ static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
 {
 	if ((d->process_id != -1 && d->process_id != process_id) ||
 	    (d->speedo_id != -1 && d->speedo_id != speedo_id)) {
-		pr_debug("tegra11_dvfs: rejected cpu cvb speedo %d,"
+		pr_debug("tegra14_dvfs: rejected cpu cvb speedo %d,"
 			 " process %d\n", d->speedo_id, d->process_id);
 		return false;
 	}
