@@ -7,7 +7,7 @@
  * Author: Mike Rapoport <mike@compulab.co.il>
  *
  * Based on NVIDIA PCIe driver
- * Copyright (c) 2008-2012, NVIDIA Corporation.
+ * Copyright (c) 2008-2013, NVIDIA Corporation.
  *
  * Bits taken from arch/arm/mach-dove/pcie.c
  *
@@ -554,7 +554,7 @@ static int tegra_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 	return INT_PCIE_INTR;
 }
 
-static struct pci_bus *tegra_pcie_scan_bus(int nr,
+static struct pci_bus *__ref tegra_pcie_scan_bus(int nr,
 						  struct pci_sys_data *sys)
 {
 	struct tegra_pcie_port *pp;
@@ -1237,7 +1237,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
-static int tegra_pcie_init(void)
+static int __ref tegra_pcie_init(void)
 {
 	int err = 0;
 	int port;
@@ -1375,7 +1375,7 @@ static void tegra_pcie_set_irq(struct pci_bus *bus)
 	}
 }
 
-static int tegra_pcie_resume(struct device *dev)
+static int __ref tegra_pcie_resume(struct device *dev)
 {
 	int ret = 0;
 	struct pci_bus *bus = NULL;
