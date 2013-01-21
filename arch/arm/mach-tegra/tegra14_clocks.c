@@ -244,6 +244,8 @@
 #define PLLCX_MISC_VCO_GAIN_SHIFT	0
 #define PLLCX_MISC_VCO_GAIN_MASK	(0x3 << PLLCX_MISC_VCO_GAIN_SHIFT)
 
+#define PLLCX_MISC1_IDDQ		(1<<27)
+
 #define PLLCX_MISC_KOEF_LOW_RANGE	\
 	((0x14 << PLLCX_MISC_KA_SHIFT) | (0x38 << PLLCX_MISC_KB_SHIFT))
 
@@ -257,7 +259,7 @@
 					(0x19 << PLLCX_MISC_ALPHA_SHIFT) | \
 					PLLCX_MISC_DIV_LOW_RANGE | \
 					PLLCX_MISC_RESET)
-#define PLLCX_MISC1_DEFAULT_VALUE	0x000d2308
+#define PLLCX_MISC1_DEFAULT_VALUE	0x080d2308
 #define PLLCX_MISC2_DEFAULT_VALUE	0x30211200
 #define PLLCX_MISC3_DEFAULT_VALUE	0x200
 
@@ -2303,6 +2305,8 @@ static int tegra14_pllcx_clk_enable(struct clk *c)
 	u32 val;
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
+	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, false);
+
 	val = clk_readl(c->reg + PLL_BASE);
 	val &= ~PLL_BASE_BYPASS;
 	val |= PLL_BASE_ENABLE;
@@ -2330,6 +2334,8 @@ static void tegra14_pllcx_clk_disable(struct clk *c)
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLLCX_MISC_RESET;
 	pll_writel_delay(val, c->reg + PLL_MISC(c));
+
+	pll_do_iddq(c, PLL_MISCN(c, 1), PLLCX_MISC1_IDDQ, true);
 }
 
 static int tegra14_pllcx_clk_set_rate(struct clk *c, unsigned long rate)
