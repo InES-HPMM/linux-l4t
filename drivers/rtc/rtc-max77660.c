@@ -613,17 +613,7 @@ static struct platform_driver max77660_rtc_driver = {
 	.shutdown = max77660_rtc_shutdown,
 };
 
-static int __init max77660_rtc_init(void)
-{
-	return platform_driver_register(&max77660_rtc_driver);
-}
-module_init(max77660_rtc_init);
-
-static void __exit max77660_rtc_exit(void)
-{
-	platform_driver_unregister(&max77660_rtc_driver);
-}
-module_exit(max77660_rtc_exit);
+module_platform_driver(max77660_rtc_driver);
 
 MODULE_DESCRIPTION("max77660 RTC driver");
 MODULE_LICENSE("GPL v2");
