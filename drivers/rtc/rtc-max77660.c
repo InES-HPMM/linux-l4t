@@ -516,18 +516,19 @@ static int max77660_rtc_preinit(struct max77660_rtc *rtc)
 	return 0;
 }
 
-static int max77660_rtc_probe(struct platform_device *pdev)
+static int __devinit max77660_rtc_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *parent_pdata =
 						pdev->dev.parent->platform_data;
 	static struct max77660_rtc *rtc;
 	int ret = 0;
 
-	rtc = kzalloc(sizeof(struct max77660_rtc), GFP_KERNEL);
+	rtc = devm_kzalloc(&pdev->dev, sizeof(*rtc), GFP_KERNEL);
 	if (!rtc) {
-		dev_err(&pdev->dev, "probe: kzalloc() failed\n");
+		dev_err(&pdev->dev, "Memory allocation failed for rtc\n");
 		return -ENOMEM;
 	}
+
 	rtc->shutdown_ongoing = false;
 	dev_set_drvdata(&pdev->dev, rtc);
 	rtc->dev = &pdev->dev;
@@ -536,7 +537,7 @@ static int max77660_rtc_probe(struct platform_device *pdev)
 	ret = max77660_rtc_preinit(rtc);
 	if (ret) {
 		dev_err(&pdev->dev, "probe: Failed to rtc preinit\n");
-		goto out_kfree;
+		goto out;
 	}
 
 	/*
@@ -551,7 +552,7 @@ static int max77660_rtc_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(rtc->rtc)) {
 		dev_err(&pdev->dev, "probe: Failed to register rtc\n");
 		ret = PTR_ERR(rtc->rtc);
-		goto out_kfree;
+		goto out;
 	}
 
 	if (parent_pdata->irq_base < 0)
@@ -571,10 +572,8 @@ static int max77660_rtc_probe(struct platform_device *pdev)
 
 	return 0;
 
-out_kfree:
-	mutex_destroy(&rtc->io_lock);
-	kfree(rtc->rtc);
 out:
+	mutex_destroy(&rtc->io_lock);
 	return ret;
 }
 
@@ -587,7 +586,6 @@ static int __devexit max77660_rtc_remove(struct platform_device *pdev)
 
 	rtc_device_unregister(rtc->rtc);
 	mutex_destroy(&rtc->io_lock);
-	kfree(rtc);
 
 	return 0;
 }
