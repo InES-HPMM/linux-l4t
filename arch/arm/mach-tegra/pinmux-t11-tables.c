@@ -39,6 +39,7 @@
 #define TRISTATE	(1<<4)
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
+#define PMC_DPD_SAMPLE          0x20
 #define PMC_IO_DPD_REQ          0x1B8
 #define PMC_IO_DPD2_REQ         0x1C0
 
@@ -423,6 +424,9 @@ static void tegra11x_pinmux_resume(void)
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
 		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
 			tegra_soc_drive_pingroups[i].reg);
+
+	/* Clear DPD sample */
+	writel(0x0, pmc_base + PMC_DPD_SAMPLE);
 }
 
 static struct syscore_ops tegra_pinmux_syscore_ops = {

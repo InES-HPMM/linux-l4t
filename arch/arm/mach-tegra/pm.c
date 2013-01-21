@@ -763,9 +763,6 @@ static void tegra_common_resume(void)
 	void __iomem *emc = IO_ADDRESS(TEGRA_EMC_BASE);
 #endif
 
-	/* Clear DPD sample */
-	writel(0x0, pmc + PMC_DPD_SAMPLE);
-
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	/* Clear DPD Enable */
 	writel(0x0, pmc + PMC_DPD_ENABLE);

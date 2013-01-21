@@ -38,6 +38,7 @@
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 
 #define TRISTATE		(1<<4)
+#define PMC_DPD_SAMPLE		0x20
 #define PMC_IO_DPD_REQ_0	0x1B8
 #define PMC_IO_DPD2_REQ_0	0x1C0
 
@@ -200,7 +201,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(SDMMC3_DAT1,	  PB4,		SDMMC3,     SDMMC3,	TRACE,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x339c),\
 	PINGROUP(SDMMC3_DAT2,	  PB3,		SDMMC3,     SDMMC3,	TRACE,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x33a0),\
 	PINGROUP(SDMMC3_DAT3,	  PB2,		SDMMC3,     SDMMC3,	TRACE,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x33a4),\
-	PINGROUP(RESET_OUT_N,	  INVALID,	SYS,        RESET_OUT_N,RSVD1,	    RSVD2,	RSVD3,	     RSVD,	OUTPUT,	0x3408),\
+	PINGROUP(RESET_OUT_N,	  INVALID,	SYS,        RESET_OUT_N, RSVD1,	    RSVD2,	RSVD3,	     RSVD,	OUTPUT,	0x3408),\
 	PINGROUP(ALS_PROX_INT_L,  PN0,		UART,       RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x340c),\
 	PINGROUP(AP_GPS_EN,	  PH7,		AUDIO,      RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3410),\
 	PINGROUP(AP_GPS_RST,	  PI0,		AUDIO,      RSVD0,	RSVD1,	    RSVD2,	RSVD3,	     RSVD,	INPUT,	0x3414),\
@@ -336,6 +337,10 @@ static void tegra14x_pinmux_resume(void)
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
 		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
 			tegra_soc_drive_pingroups[i].reg);
+
+	/* Clear DPD sample */
+	writel(0x0, pmc + PMC_DPD_SAMPLE);
+
 }
 
 static struct syscore_ops tegra14x_pinmux_syscore_ops = {
