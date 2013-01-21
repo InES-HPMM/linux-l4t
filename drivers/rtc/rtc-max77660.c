@@ -519,8 +519,6 @@ static int max77660_rtc_preinit(struct max77660_rtc *rtc)
 
 static int __devinit max77660_rtc_probe(struct platform_device *pdev)
 {
-	struct max77660_platform_data *parent_pdata =
-						pdev->dev.parent->platform_data;
 	static struct max77660_rtc *rtc;
 	int ret = 0;
 
@@ -549,21 +547,19 @@ static int __devinit max77660_rtc_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	if (parent_pdata->irq_base < 0)
-		goto out;
-
-	rtc->irq = parent_pdata->irq_base + MAX77660_IRQ_RTC;
+	rtc->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(rtc->irq, NULL, max77660_rtc_irq,
-		   IRQF_ONESHOT | IRQF_EARLY_RESUME, "max77660-rtc", rtc);
+		   IRQF_ONESHOT | IRQF_EARLY_RESUME, dev_name(&pdev->dev), rtc);
 	if (ret < 0) {
-		dev_err(rtc->dev, "probe: Failed to request irq %d\n",
-			rtc->irq);
-		rtc->irq = -1;
+		dev_err(rtc->dev, "request irq %d failed: %dn", rtc->irq, ret);
+		goto out_rtc_free;
 	}
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
+out_rtc_free:
+	rtc_device_unregister(rtc->rtc);
 out:
 	mutex_destroy(&rtc->io_lock);
 	return ret;
@@ -573,8 +569,7 @@ static int __devexit max77660_rtc_remove(struct platform_device *pdev)
 {
 	struct max77660_rtc *rtc = dev_get_drvdata(&pdev->dev);
 
-	if (rtc->irq != -1)
-		free_irq(rtc->irq, rtc);
+	free_irq(rtc->irq, rtc);
 
 	rtc_device_unregister(rtc->rtc);
 	mutex_destroy(&rtc->io_lock);
