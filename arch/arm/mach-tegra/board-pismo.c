@@ -25,6 +25,7 @@
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c.h>
+#include <linux/i2c/i2c-hid.h>
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
 #include <linux/i2c-tegra.h>
@@ -258,6 +259,15 @@ static struct i2c_board_info __initdata nfc_board_info = {
 	.platform_data = &nfc_pdata,
 };
 
+static struct i2c_hid_platform_data i2c_keyboard_pdata = {
+	.hid_descriptor_address = 0x0,
+};
+
+static struct i2c_board_info __initdata i2c_keyboard_board_info = {
+	I2C_BOARD_INFO("hid", 0x3B),
+	.platform_data  = &i2c_keyboard_pdata,
+};
+
 static void pismo_i2c_init(void)
 {
 
@@ -277,6 +287,9 @@ static void pismo_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device1);
 
 	i2c_register_board_info(0, &rt5640_board_info, 1);
+
+	i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
+	i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
 }
 
 static struct platform_device *pismo_uart_devices[] __initdata = {

@@ -75,6 +75,9 @@
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI      TEGRA_GPIO_PK2
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PK4
 
+/* HID over I2C GPIOs */
+#define I2C_KB_IRQ		TEGRA_GPIO_PC7
+
 /* Invensense MPU Definitions */
 #define MPU_GYRO_NAME           "mpu9150"
 #define MPU_GYRO_IRQ_GPIO       TEGRA_GPIO_PR3
