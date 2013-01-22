@@ -33,6 +33,7 @@
 #define INT_STATUS_REG_ADDR	0x00
 #define MAIN_CONF_REG_ADDR	0x01
 #define AMB_CONF_REG_ADDR	0x02
+#define PROX_CONF_REG_ADDR	0x03
 #define AMB_CLEAR_HIGH_ADDR	0x04
 #define PROX_HIGH_ADDR		0x10
 #define AMB_TEMP_HIGH_ADDR	0x12
@@ -56,6 +57,9 @@
 #define AMB_PGA_4x		0x01
 #define AMB_PGA_16x		0x02
 #define AMB_PGA_256x		0x03
+
+#define LED_DRV_SHIFT		4
+#define LED_DRV_STRNGTH		110 /* mA */
 
 #define POWER_ON_DELAY		20 /* 20ms */
 
@@ -164,9 +168,15 @@ static void max44005_standby(struct max44005_chip *chip, bool shutdown)
 
 static bool set_main_conf(struct max44005_chip *chip, int mode)
 {
-
 	return max44005_write(chip, mode << MODE_SHIFT,
 				MAIN_CONF_REG_ADDR) == 0;
+}
+
+/* current is in mA */
+static bool set_led_drive_strength(struct max44005_chip *chip, int cur)
+{
+	return max44005_write(chip, (cur / 10) << LED_DRV_SHIFT,
+				PROX_CONF_REG_ADDR) == 0;
 }
 
 /* assumes power is on */
@@ -234,6 +244,13 @@ static bool max44005_power(struct max44005_chip *chip, int power_on)
 static bool max44005_restore_state(struct max44005_chip *chip)
 {
 	int ret;
+
+	if (PROXIMITY_ENABLED)
+		ret = set_led_drive_strength(chip, LED_DRV_STRNGTH);
+
+	if (!ret)
+		return false;
+
 	switch ((CLEAR_ENABLED << 1) | PROXIMITY_ENABLED) {
 	case 0:
 		ret = max44005_power(chip, false);
@@ -356,6 +373,9 @@ static ssize_t prox_enable(struct device *dev,
 	mutex_lock(&chip->lock);
 	if (lval) {
 		if (!max44005_power(chip, true))
+			goto fail;
+
+		if (!set_led_drive_strength(chip, LED_DRV_STRNGTH))
 			goto fail;
 
 		if (CLEAR_ENABLED && set_main_conf(chip, MODE_CLEAR_PROX))
