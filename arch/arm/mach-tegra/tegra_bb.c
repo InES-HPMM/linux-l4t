@@ -610,8 +610,9 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		 & MC_BBC_MEM_REGIONS_0_PRIV_BASE_MASK) << 23;
 
 	/* IPC */
-	size = (bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_PRIV_SIZE_SHIFT) &
-		MC_BBC_MEM_REGIONS_0_PRIV_SIZE_MASK;
+	size = (bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_IPC_SIZE_SHIFT) &
+		MC_BBC_MEM_REGIONS_0_IPC_SIZE_MASK;
+
 	switch (size) {
 	case 0:
 		bb->ipc_size = SZ_8M;
@@ -661,9 +662,12 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* Private is uncached */
 	bb->priv_virt =  ioremap_nocache(bb->priv_phy,
 					bb->priv_size);
-	/* IPC memory is uncached */
+	pr_debug("%s: Priv Virtual=0x%x\n", __func__, bb->priv_virt);
+
+	/* IPC memory is cached */
 	bb->ipc_virt =  ioremap_cached(bb->ipc_phy,
-				   bb->ipc_size);
+					bb->ipc_size);
+	pr_debug("%s: IPC Virtual=0x%x\n", __func__, bb->ipc_virt);
 
 	/* clear the first 4K of IPC memory */
 	memset(bb->mb_virt, 0, SZ_1K*4);
