@@ -74,6 +74,7 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 	int i2s_daifmt = 0;
 	int err;
 	struct tegra_asoc_vcm_platform_data *pdata;
+	int rate;
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	int dac_id;
 	int dap_id;
@@ -91,6 +92,11 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 		mclk = 256 * srate;
 		break;
 	}
+
+	rate = clk_get_rate(machine->util_data.clk_cdev1);
+
+	/* audio hub needs to be driven at 2x */
+	mclk *= 2;
 
 	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
 	if (err < 0) {
@@ -139,7 +145,11 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 	if (err < 0)
 		dev_info(card->dev, "codec_dai fmt not set\n");
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
+	if (pdata->codec_info[codec_id].i2s_format == format_tdm)
+		err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
+					SND_SOC_CLOCK_IN);
+	else
+		err = snd_soc_dai_set_sysclk(codec_dai, 2, rate,
 					SND_SOC_CLOCK_IN);
 	if (err < 0)
 		dev_info(card->dev, "codec_dai clock not set\n");
