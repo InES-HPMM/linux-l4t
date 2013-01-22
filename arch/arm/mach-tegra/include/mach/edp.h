@@ -41,7 +41,7 @@ struct tegra_edp_limits {
 struct tegra_system_edp_entry {
 	char speedo_id;
 	char power_limit_100mW;
-	char freq_limits[4];
+	unsigned int freq_limits[4];
 };
 
 struct tegra_edp_cpu_leakage_params {
@@ -86,6 +86,7 @@ unsigned int tegra_get_edp_limit(int *get_edp_thermal_index);
 void tegra_get_system_edp_limits(const unsigned int **limits);
 int tegra_system_edp_alarm(bool alarm);
 void tegra_platform_edp_init(struct thermal_trip_info *trips, int *num_trips);
+struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size);
 #else
 static inline struct thermal_cooling_device *edp_cooling_device_create(
 	int index)
@@ -108,6 +109,8 @@ static inline int tegra_system_edp_alarm(bool alarm)
 static inline void tegra_platform_edp_init(struct thermal_trip_info *trips,
 					   int *num_trips)
 {}
+static inline struct tegra_system_edp_entry
+		*tegra_get_system_edp_entries(int *size) { return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
