@@ -1457,6 +1457,8 @@ abort:
 	/* Re-lock DFLL if necessary after aborted switch */
 	if (c->parent->parent->parent == dfll)
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	pr_err("%s: aborted switch from %s to %s\n",
+	       __func__, c->parent->name, p->name);
 	return ret;
 }
 
