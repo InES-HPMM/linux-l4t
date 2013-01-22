@@ -19,19 +19,17 @@
 #include "nvshm_queue.h"
 #include "nvshm_iobuf.h"
 
-#include <asm/cacheflush.h>
 
 /* Flush cache lines associated with iobuf list */
 static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
-	struct nvshm_iobuf *phy_list, *leaf;
-
+	struct nvshm_iobuf *phy_list, *leaf, *next, *sg_next;
 	phy_list = iob;
 	while (phy_list) {
 		leaf = phy_list;
+		next = phy_list->next;
 		while (leaf) {
-			/* Flush iobuf */
-			FLUSH_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
+			sg_next = leaf->sg_next;
 			/* Flush associated data */
 			if (leaf->length) {
 				FLUSH_CPU_DCACHE(NVSHM_B2A(handle,
@@ -39,21 +37,21 @@ static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 							   + leaf->dataOffset),
 						 leaf->length);
 			}
-			if (leaf->sg_next) {
-				leaf = NVSHM_B2A(handle,
-						 leaf->sg_next);
-			} else {
+			/* Flush iobuf */
+			FLUSH_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
+			if (sg_next)
+				leaf = NVSHM_B2A(handle, sg_next);
+			else
 				leaf = NULL;
-			}
 		}
-		if (phy_list->next)
-			phy_list = NVSHM_B2A(handle, phy_list->next);
+		if (next)
+			phy_list = NVSHM_B2A(handle, next);
 		else
 			phy_list = NULL;
 	}
 }
 
-/* Flush cache lines associated with iobuf list */
+/* Invalidate cache lines associated with iobuf list */
 static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
 	struct nvshm_iobuf *phy_list, *leaf;
@@ -62,21 +60,19 @@ static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 	while (phy_list) {
 		leaf = phy_list;
 		while (leaf) {
-			/* Flush iobuf */
+			/* Invalidate first iobuf */
 			INV_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
-			/* Flush associated data */
+			/* Invalidate associated data */
 			if (leaf->length) {
 				INV_CPU_DCACHE(NVSHM_B2A(handle,
 							   (int)leaf->npduData
 							   + leaf->dataOffset),
-						 leaf->length);
+							   leaf->length);
 			}
-			if (leaf->sg_next) {
-				leaf = NVSHM_B2A(handle,
-						 leaf->sg_next);
-			} else {
+			if (leaf->sg_next)
+				leaf = NVSHM_B2A(handle, leaf->sg_next);
+			else
 				leaf = NULL;
-			}
 		}
 		if (phy_list->next)
 			phy_list = NVSHM_B2A(handle, phy_list->next);
@@ -94,15 +90,21 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		return NULL;
 	}
 
-	INV_CPU_DCACHE(handle->shared_queue_head, sizeof(struct nvshm_iobuf));
-
+	/* Invalidate lower part of iobuf - upper part can be written by AP */
+	INV_CPU_DCACHE(&handle->shared_queue_head->qnext,
+		       sizeof(struct nvshm_iobuf) / 2);
 	dummy = handle->shared_queue_head;
 	ret = NVSHM_B2A(handle, handle->shared_queue_head->qnext);
 
 	if (dummy->qnext == NULL)
 		return NULL;
 
+	pr_debug("%s (%x)->%x\n", __func__,
+		 (unsigned int)dummy, (unsigned int)dummy->qnext);
+
 	/* Flush cache to invalidate data */
+	pr_debug("%s inv 0x%x->0x%x\n", __func__, ret, ret->next);
+
 	inv_iob_list(handle, ret);
 	dummy->qnext = NULL;
 	handle->shared_queue_head = ret;
@@ -141,15 +143,18 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 		return -EINVAL;
 	}
 
+	pr_debug("%s (%x)->%x/%d/%d->0x%x\n", __func__,
+		 (unsigned int)handle->shared_queue_tail,
+		 (unsigned int)iob, iob->chan, iob->length,
+		 (unsigned int)iob->next);
+
 	/* Take a reference on queued iobufs (all of them!) */
 	nvshm_iobuf_ref_cluster(iob);
 	/* Flush iobuf(s) in cache */
 	flush_iob_list(handle, iob);
-	dsb();
 	handle->shared_queue_tail->qnext = NVSHM_A2B(handle, iob);
 	/* Flush guard element from cache */
 	FLUSH_CPU_DCACHE(handle->shared_queue_tail, sizeof(struct nvshm_iobuf));
-	dsb();
 	handle->shared_queue_tail = iob;
 
 	return 0;
@@ -183,6 +188,9 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	spin_lock_bh(&handle->lock);
 	iob = nvshm_queue_get(handle);
 	while (iob) {
+		pr_debug("%s %x/%d/%d->0x%x\n", __func__,
+			 (unsigned int)iob, iob->chan, iob->length,
+			 (unsigned int)iob->next);
 		chan = iob->chan;
 		if (iob->pool_id < NVSHM_AP_POOL_ID) {
 			ops = handle->chan[chan].ops;

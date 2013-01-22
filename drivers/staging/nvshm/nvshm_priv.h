@@ -20,6 +20,10 @@
 #include <linux/hrtimer.h>
 #include <linux/semaphore.h>
 #include <linux/module.h>
+#include <linux/mm.h>
+#include <asm/memory.h>
+#include <asm/cacheflush.h>
+#include <asm/outercache.h>
 
 /*
  * Test stub is used to implement nvshm on private memory for testing purpose.
@@ -40,16 +44,19 @@
 
 #define FLUSH_CPU_DCACHE(va, size)	\
 	do {	\
-		unsigned long _pa_ = virt_to_phys(va); \
+		unsigned long _pa_ = page_to_phys(vmalloc_to_page((va))) \
+			+ ((unsigned long)va & ~PAGE_MASK);		\
 		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
 		outer_flush_range(_pa_, _pa_+(size_t)(size));		\
 	} while (0)
 
-#define INV_CPU_DCACHE(va, size)	\
+#define INV_CPU_DCACHE(va, size)		\
 	do {	\
-		unsigned long _pa_ = virt_to_phys(va); \
+		unsigned long _pa_ = page_to_phys(vmalloc_to_page((va))) \
+			+ ((unsigned long)va & ~PAGE_MASK);		\
 		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
-		outer_clean_range(_pa_, _pa_+(size_t)(size));		\
+		outer_inv_range(_pa_, _pa_+(size_t)(size));		\
+		dsb(); \
 	} while (0)
 
 struct nvshm_handle {

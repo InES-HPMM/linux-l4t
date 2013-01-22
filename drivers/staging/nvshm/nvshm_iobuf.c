@@ -451,6 +451,9 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	iob->next = NULL;
 
 	alloc.free_pool_tail = iob;
+	FLUSH_CPU_DCACHE(alloc.free_pool_head,
+			 (long)alloc.free_pool_tail
+			 - (long)alloc.free_pool_head);
 	spin_unlock(&alloc.lock);
 #if 0
 	if (iobuf_sanity_check(handle))
