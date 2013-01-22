@@ -370,6 +370,9 @@ static struct platform_device *bonaire_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
 	&tegra_udc_device,
+#if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+	&tegra11_se_device,
+#endif
 #if defined(CONFIG_TEGRA_IOVMM_SMMU)
 	&tegra_smmu_device,
 #endif
