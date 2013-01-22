@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra3 CPUs
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,9 +69,6 @@
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
 #define PMC_POWERGATE_STATUS \
 	(IO_ADDRESS(TEGRA_PMC_BASE) + 0x038)
-
-#define ARCH_TIMER_CTRL_ENABLE          (1 << 0)
-#define ARCH_TIMER_CTRL_IT_MASK         (1 << 1)
 
 #ifdef CONFIG_SMP
 static s64 tegra_cpu_wake_by_time[4] = {
@@ -355,19 +352,13 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #ifdef CONFIG_SMP
 	s64 sleep_time;
 	ktime_t entry_time;
-#ifdef CONFIG_HAVE_ARM_TWD
 	struct tegra_twd_context twd_context;
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	struct arch_timer_context timer_context;
-#endif
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
-#if defined(CONFIG_TEGRA_LP2_CPU_TIMER) && defined(CONFIG_HAVE_ARM_TWD)
+#if defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 #endif
 
-#ifdef CONFIG_HAVE_ARM_TWD
 	if (!tegra_twd_get_state(&twd_context)) {
 		unsigned long twd_rate = clk_get_rate(twd_clk);
 
@@ -385,30 +376,6 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #endif
 		}
 	}
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	if (!arch_timer_get_state(&timer_context)) {
-		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
-		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
-			if (timer_context.cntp_tval <= 0) {
-				cpu_do_idle();
-				return false;
-			}
-			request = div_u64((u64)timer_context.cntp_tval *
-					1000000, timer_context.cntfrq);
-#ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-			if (request >= state->target_residency) {
-				timer_context.cntp_tval -= state->exit_latency *
-					(timer_context.cntfrq / 1000000);
-				__asm__("mcr p15, 0, %0, c14, c2, 0\n"
-					:
-					:
-					"r"(timer_context.cntp_tval));
-			}
-#endif
-		}
-	}
-#endif
 
 	if (!tegra_is_cpu_wake_timer_ready(dev->cpu) ||
 	    (request < state->target_residency) ||
@@ -423,18 +390,10 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	cpu_pm_enter();
 
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
-#ifdef CONFIG_HAVE_ARM_TWD
 	sleep_time = request - state->exit_latency;
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	tegra_twd_suspend(&twd_context);
 	tegra_pd_set_trigger(sleep_time);
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	sleep_time = request - state->exit_latency;
-	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	arch_timer_suspend(&timer_context);
-	tegra_pd_set_trigger(sleep_time);
-#endif
 #endif
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
 
@@ -457,23 +416,12 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-#ifdef CONFIG_HAVE_ARM_TWD
 	if (!tegra_twd_get_state(&twd_context))
 		sleep_completed = (twd_context.twd_cnt == 0);
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	if (!arch_timer_get_state(&timer_context))
-		sleep_completed = (timer_context.cntp_tval <= 0);
-#endif
 #else
 	sleep_completed = !tegra_pd_timer_remain();
 	tegra_pd_set_trigger(0);
-#ifdef CONFIG_HAVE_ARM_TWD
 	tegra_twd_resume(&twd_context);
-#endif
-#ifdef CONFIG_ARM_ARCH_TIMER
-	arch_timer_resume(&timer_context);
-#endif
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
