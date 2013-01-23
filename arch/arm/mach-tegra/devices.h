@@ -166,6 +166,12 @@ extern struct platform_device tegra_cl_dvfs_device;
 extern struct platform_device tegra_fuse_device;
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
+extern struct platform_device tegra14_i2c_device1;
+extern struct platform_device tegra14_i2c_device2;
+extern struct platform_device tegra14_i2c_device3;
+extern struct platform_device tegra14_i2c_device4;
+extern struct platform_device tegra14_i2c_device5;
+extern struct platform_device tegra14_i2c_device6;
 extern struct platform_device tegra_mipi_bif_device;
 #endif
 

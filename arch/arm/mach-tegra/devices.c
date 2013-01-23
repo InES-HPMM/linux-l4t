@@ -257,6 +257,21 @@ static struct resource i2c_resource5[] = {
 };
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+static struct resource i2c_resource6[] = {
+	[0] = {
+		.start  = INT_I2C6,
+		.end    = INT_I2C6,
+		.flags  = IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_I2C6_BASE,
+		.end	= TEGRA_I2C6_BASE + TEGRA_I2C6_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+#endif
+
 static struct tegra_i2c_platform_data tegra_i2c1_platform_data = {
 	.bus_clk_rate   = 400000,
 };
@@ -378,6 +393,66 @@ struct platform_device tegra11_i2c_device5 = {
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
+
+struct platform_device tegra14_i2c_device1 = {
+	.name		= "tegra14-i2c",
+	.id		= 0,
+	.resource	= i2c_resource1,
+	.num_resources	= ARRAY_SIZE(i2c_resource1),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra14_i2c_device2 = {
+	.name		= "tegra14-i2c",
+	.id		= 1,
+	.resource	= i2c_resource2,
+	.num_resources	= ARRAY_SIZE(i2c_resource2),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra14_i2c_device3 = {
+	.name		= "tegra14-i2c",
+	.id		= 2,
+	.resource	= i2c_resource3,
+	.num_resources	= ARRAY_SIZE(i2c_resource3),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra14_i2c_device4 = {
+	.name		= "tegra14-i2c",
+	.id		= 3,
+	.resource	= i2c_resource4,
+	.num_resources	= ARRAY_SIZE(i2c_resource4),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra14_i2c_device5 = {
+	.name		= "tegra14-i2c",
+	.id		= 4,
+	.resource	= i2c_resource5,
+	.num_resources	= ARRAY_SIZE(i2c_resource5),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
+struct platform_device tegra14_i2c_device6 = {
+	.name		= "tegra14-i2c",
+	.id		= 5,
+	.resource	= i2c_resource6,
+	.num_resources	= ARRAY_SIZE(i2c_resource6),
+	.dev = {
+		.platform_data = 0,
+	},
+};
 
 static struct tegra_mipi_bif_platform_data mipi_bif_pdata = {
 	.adapter_nr	= -1,
