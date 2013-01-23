@@ -303,29 +303,8 @@ int arch_timer_get_state(struct arch_timer_context *context)
 	return 0;
 }
 
-void arch_timer_suspend(struct arch_timer_context *context)
-{
-	s32 val;
-
-	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
-	context->cntp_tval = val;
-	asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r" (val));
-	context->cntp_ctl = val;
-}
-
-void arch_timer_resume(struct arch_timer_context *context)
-{
-	s32 val;
-
-	val = context->cntp_tval;
-	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(val));
-	val = context->cntp_ctl;
-	asm volatile("mcr p15, 0, %0, c14, c2, 1" : : "r"(val));
-}
 #else
 #define arch_timer_get_state do {} while(0)
-#define arch_timer_suspend do {} while(0)
-#define arch_timer_resume do {} while(0)
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER

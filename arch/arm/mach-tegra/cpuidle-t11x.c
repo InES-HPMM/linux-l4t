@@ -414,7 +414,6 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	sleep_time = request - state->exit_latency;
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
-	arch_timer_suspend(&timer_context);
 	tegra_pd_set_trigger(sleep_time);
 #endif
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
@@ -442,7 +441,6 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #else
 	sleep_completed = !tegra_pd_timer_remain();
 	tegra_pd_set_trigger(0);
-	arch_timer_resume(&timer_context);
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
