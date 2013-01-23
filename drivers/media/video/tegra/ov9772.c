@@ -1,7 +1,7 @@
 /*
  * ov9772.c - ov9772 sensor driver
  *
- *  * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
+ *  * Copyright (c) 2012-2013 NVIDIA Corporation.  All rights reserved.
  *
  * Contributors:
  *	Phil Breczinski <pbreczinski@nvidia.com>
@@ -142,6 +142,10 @@
 
 #include <media/ov9772.h>
 
+#ifdef CONFIG_DEBUG_FS
+#include <media/nvc_debugfs.h>
+#endif
+
 #define OV9772_ID			0x9772
 #define OV9772_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
 #define OV9772_STARTUP_DELAY_MS		50
@@ -198,6 +202,9 @@ struct ov9772_info {
 	struct nvc_imager_static_nvc sdata;
 	u8 i2c_buf[OV9772_SIZEOF_I2C_BUF];
 	u8 bin_en;
+#ifdef CONFIG_DEBUG_FS
+	struct nvc_debugfs_info debugfs_info;
+#endif
 };
 
 struct ov9772_reg {
@@ -625,7 +632,7 @@ static struct ov9772_mode_data *ov9772_mode_table[] = {
 };
 
 
-static int ov9772_i2c_rd8(struct ov9772_info *info, u16 reg, u8 *val)
+static int ov9772_i2c_rd8(struct i2c_client *client, u16 reg, u8 *val)
 {
 	struct i2c_msg msg[2];
 	u8 buf[3];
@@ -633,46 +640,46 @@ static int ov9772_i2c_rd8(struct ov9772_info *info, u16 reg, u8 *val)
 
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
-	msg[0].addr = info->i2c_client->addr;
+	msg[0].addr = client->addr;
 	msg[0].flags = 0;
 	msg[0].len = 2;
 	msg[0].buf = &buf[0];
-	msg[1].addr = info->i2c_client->addr;
+	msg[1].addr = client->addr;
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = 1;
 	msg[1].buf = &buf[2];
 	*val = 0;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+	if (i2c_transfer(client->adapter, msg, 2) != 2)
 		return -EIO;
 
 	*val = buf[2];
 	return 0;
 }
 
-static int ov9772_i2c_rd16(struct ov9772_info *info, u16 reg, u16 *val)
+static int ov9772_i2c_rd16(struct i2c_client *client, u16 reg, u16 *val)
 {
 	struct i2c_msg msg[2];
 	u8 buf[4];
 
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
-	msg[0].addr = info->i2c_client->addr;
+	msg[0].addr = client->addr;
 	msg[0].flags = 0;
 	msg[0].len = 2;
 	msg[0].buf = &buf[0];
-	msg[1].addr = info->i2c_client->addr;
+	msg[1].addr = client->addr;
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = 2;
 	msg[1].buf = &buf[2];
 	*val = 0;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+	if (i2c_transfer(client->adapter, msg, 2) != 2)
 		return -EIO;
 
 	*val = (((u16)buf[2] << 8) | (u16)buf[3]);
 	return 0;
 }
 
-static int ov9772_i2c_wr8(struct ov9772_info *info, u16 reg, u8 val)
+static int ov9772_i2c_wr8(struct i2c_client *client, u16 reg, u8 val)
 {
 	struct i2c_msg msg;
 	u8 buf[3];
@@ -680,11 +687,11 @@ static int ov9772_i2c_wr8(struct ov9772_info *info, u16 reg, u8 val)
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
 	buf[2] = val;
-	msg.addr = info->i2c_client->addr;
+	msg.addr = client->addr;
 	msg.flags = 0;
 	msg.len = 3;
 	msg.buf = &buf[0];
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+	if (i2c_transfer(client->adapter, &msg, 1) != 1)
 		return -EIO;
 
 	return 0;
@@ -698,7 +705,7 @@ static int ov9772_i2c_rd_table(struct ov9772_info *info,
 	int err = 0;
 
 	while (p_table->addr != OV9772_TABLE_END) {
-		err = ov9772_i2c_rd8(info, p_table->addr, &val);
+		err = ov9772_i2c_rd8(info->i2c_client, p_table->addr, &val);
 		if (err)
 			return err;
 
@@ -739,14 +746,14 @@ static int ov9772_i2c_wr_table(struct ov9772_info *info,
 			msleep(next->val);
 			continue;
 		} else if (next->addr == OV9772_TABLE_RESET) {
-			err = ov9772_i2c_wr8(info, 0x0103, 0x01);
+			err = ov9772_i2c_wr8(info->i2c_client, 0x0103, 0x01);
 			if (err)
 				return err;
 			while (reset_status) {
 				usleep_range(200, 300);
 				if (reset_tries_left < 1)
 					return -EIO;
-				err = ov9772_i2c_rd8(info, 0x0103,
+				err = ov9772_i2c_rd8(info->i2c_client, 0x0103,
 							&reset_status);
 				if (err)
 					return err;
@@ -850,7 +857,7 @@ static int ov9772_exposure_wr(struct ov9772_info *info,
 static int ov9772_gain_wr(struct ov9772_info *info, u32 gain)
 {
 	int err;
-	err = ov9772_i2c_wr8(info, 0x205, (u8)(gain & 0x7F));
+	err = ov9772_i2c_wr8(info->i2c_client, 0x205, (u8)(gain & 0x7F));
 	return err;
 }
 
@@ -859,7 +866,7 @@ static int ov9772_gain_rd(struct ov9772_info *info, u32 *gain)
 	int err;
 
 	*gain = 0;
-	err = ov9772_i2c_rd16(info, 0x204, (u16 *)gain);
+	err = ov9772_i2c_rd16(info->i2c_client, 0x204, (u16 *)gain);
 	return err;
 }
 
@@ -881,7 +888,7 @@ static int ov9772_group_hold_wr(struct ov9772_info *info,
 	groupHoldEnable = (count > 1) ? 1 : 0;
 
 	if (groupHoldEnable)
-		err |= ov9772_i2c_wr8(info, 0x3208, 0x01);
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3208, 0x01);
 
 	if (ae->gain_enable) {
 		ov9772_gain_reg(reg_list + offset, ae->gain);
@@ -899,8 +906,8 @@ static int ov9772_group_hold_wr(struct ov9772_info *info,
 	err |= ov9772_i2c_wr_table(info, reg_list);
 
 	if (groupHoldEnable) {
-		err |= ov9772_i2c_wr8(info, 0x3208, 0x11);
-		err |= ov9772_i2c_wr8(info, 0x3208, 0xe1);
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3208, 0x11);
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3208, 0xe1);
 	}
 
 	return err;
@@ -1109,12 +1116,15 @@ static int ov9772_power_on(struct ov9772_info *info, bool standby)
 
 ov9772_poweron_skip:
 	if (standby) {
-		err |= ov9772_i2c_wr8(info, 0x3002, 0x18); /*avoid GPIO leak */
+		/*avoid GPIO leak */
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3002, 0x18);
 		ov9772_gpio_pwrdn(info, 1); /* PWRDN on for standby */
 	} else {
-		err |= ov9772_i2c_wr8(info, 0x3002, 0x19);
-		err |= ov9772_i2c_wr8(info, 0x3025, 0x00); /* out of standby */
-		err |= ov9772_i2c_wr8(info, 0x4815, 0x20); /* out of standby */
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3002, 0x19);
+		/* out of standby */
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x3025, 0x00);
+		/* out of standby */
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x4815, 0x20);
 	}
 
 	return err;
@@ -1267,7 +1277,8 @@ static int ov9772_reset(struct ov9772_info *info, int level)
 
 	if (level == NVC_RESET_SOFT) {
 		err = ov9772_pm_wr(info, NVC_PWR_COMM);
-		err |= ov9772_i2c_wr8(info, 0x0103, 0x01); /* SW reset */
+		/* SW reset */
+		err |= ov9772_i2c_wr8(info->i2c_client, 0x0103, 0x01);
 	} else
 		err = ov9772_pm_wr(info, NVC_PWR_OFF_FORCE);
 	err |= ov9772_pm_wr(info, info->pwr_api);
@@ -1281,7 +1292,7 @@ static int ov9772_dev_id(struct ov9772_info *info)
 	int err;
 
 	ov9772_pm_dev_wr(info, NVC_PWR_COMM);
-	err = ov9772_i2c_rd16(info, 0x0000, &val);
+	err = ov9772_i2c_rd16(info->i2c_client, 0x0000, &val);
 	if (!err) {
 		dev_dbg(&info->i2c_client->dev, "%s found devId: %x\n",
 			__func__, val);
@@ -1311,7 +1322,7 @@ static int ov9772_mode_able(struct ov9772_info *info, bool mode_enable)
 		val = 0x01;
 	else
 		val = 0x00;
-	err = ov9772_i2c_wr8(info, 0x0100, val);
+	err = ov9772_i2c_wr8(info->i2c_client, 0x0100, val);
 	if (!err) {
 		info->mode_enable = mode_enable;
 		dev_dbg(&info->i2c_client->dev, "%s streaming=%x\n",
@@ -2148,6 +2159,9 @@ static int ov9772_remove(struct i2c_client *client)
 	struct ov9772_info *info = i2c_get_clientdata(client);
 
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+#ifdef CONFIG_DEBUG_FS
+	nvc_debugfs_remove(&info->debugfs_info);
+#endif
 	misc_deregister(&info->miscdev);
 	ov9772_del(info);
 	return 0;
@@ -2236,6 +2250,14 @@ static int ov9772_probe(
 		ov9772_del(info);
 		return -ENODEV;
 	}
+#ifdef CONFIG_DEBUG_FS
+	info->debugfs_info.name = dname;
+	info->debugfs_info.i2c_client = info->i2c_client;
+	info->debugfs_info.i2c_addr_limit = 0xFFFF;
+	info->debugfs_info.i2c_rd8 = ov9772_i2c_rd8;
+	info->debugfs_info.i2c_wr8 = ov9772_i2c_wr8;
+	nvc_debugfs_init(&(info->debugfs_info));
+#endif
 
 	return 0;
 }

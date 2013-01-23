@@ -23,14 +23,16 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/atomic.h>
-#include <linux/debugfs.h>
-#include <linux/seq_file.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
 #include <linux/list.h>
 #include <linux/edp.h>
 #include <media/imx091.h>
+
+#ifdef CONFIG_DEBUG_FS
+#include <media/nvc_debugfs.h>
+#endif
 
 #define IMX091_ID			0x0091
 #define IMX091_ID_ADDRESS   0x0000
@@ -93,8 +95,7 @@ struct imx091_info {
 	u8 i2c_buf[IMX091_SIZEOF_I2C_BUF];
 	u8 bin_en;
 #ifdef CONFIG_DEBUG_FS
-	struct dentry *debugfs_root;
-	u16	i2c_reg;
+	struct nvc_debugfs_info debugfs_info;
 #endif
 };
 
@@ -1145,53 +1146,53 @@ static struct imx091_mode_data *imx091_mode_table[] = {
 };
 
 
-static int imx091_i2c_rd8(struct imx091_info *info, u16 reg, u8 *val)
+static int imx091_i2c_rd8(struct i2c_client *client, u16 reg, u8 *val)
 {
 	struct i2c_msg msg[2];
 	u8 buf[3];
 
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
-	msg[0].addr = info->i2c_client->addr;
+	msg[0].addr = client->addr;
 	msg[0].flags = 0;
 	msg[0].len = 2;
 	msg[0].buf = &buf[0];
-	msg[1].addr = info->i2c_client->addr;
+	msg[1].addr = client->addr;
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = 1;
 	msg[1].buf = &buf[2];
 	*val = 0;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+	if (i2c_transfer(client->adapter, msg, 2) != 2)
 		return -EIO;
 
 	*val = buf[2];
 	return 0;
 }
 
-static int imx091_i2c_rd16(struct imx091_info *info, u16 reg, u16 *val)
+static int imx091_i2c_rd16(struct i2c_client *client, u16 reg, u16 *val)
 {
 	struct i2c_msg msg[2];
 	u8 buf[4];
 
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
-	msg[0].addr = info->i2c_client->addr;
+	msg[0].addr = client->addr;
 	msg[0].flags = 0;
 	msg[0].len = 2;
 	msg[0].buf = &buf[0];
-	msg[1].addr = info->i2c_client->addr;
+	msg[1].addr = client->addr;
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = 2;
 	msg[1].buf = &buf[2];
 	*val = 0;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+	if (i2c_transfer(client->adapter, msg, 2) != 2)
 		return -EIO;
 
 	*val = (((u16)buf[2] << 8) | (u16)buf[3]);
 	return 0;
 }
 
-static int imx091_i2c_wr8(struct imx091_info *info, u16 reg, u8 val)
+static int imx091_i2c_wr8(struct i2c_client *client, u16 reg, u8 val)
 {
 	struct i2c_msg msg;
 	u8 buf[3];
@@ -1199,17 +1200,17 @@ static int imx091_i2c_wr8(struct imx091_info *info, u16 reg, u8 val)
 	buf[0] = (reg >> 8);
 	buf[1] = (reg & 0x00FF);
 	buf[2] = val;
-	msg.addr = info->i2c_client->addr;
+	msg.addr = client->addr;
 	msg.flags = 0;
 	msg.len = 3;
 	msg.buf = &buf[0];
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+	if (i2c_transfer(client->adapter, &msg, 1) != 1)
 		return -EIO;
 
 	return 0;
 }
 
-static int imx091_i2c_wr16(struct imx091_info *info, u16 reg, u16 val)
+static int imx091_i2c_wr16(struct i2c_client *client, u16 reg, u16 val)
 {
 	struct i2c_msg msg;
 	u8 buf[4];
@@ -1218,11 +1219,11 @@ static int imx091_i2c_wr16(struct imx091_info *info, u16 reg, u16 val)
 	buf[1] = (reg & 0x00FF);
 	buf[2] = (val & 0x00FF);
 	buf[3] = (val >> 8);
-	msg.addr = info->i2c_client->addr;
+	msg.addr = client->addr;
 	msg.flags = 0;
 	msg.len = 4;
 	msg.buf = &buf[0];
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
+	if (i2c_transfer(client->adapter, &msg, 1) != 1)
 		return -EIO;
 
 	return 0;
@@ -1236,7 +1237,7 @@ static int imx091_i2c_rd_table(struct imx091_info *info,
 	int err = 0;
 
 	while (p_table->addr != IMX091_TABLE_END) {
-		err = imx091_i2c_rd8(info, p_table->addr, &val);
+		err = imx091_i2c_rd8(info->i2c_client, p_table->addr, &val);
 		if (err)
 			return err;
 
@@ -1448,7 +1449,7 @@ static int imx091_gain_wr(struct imx091_info *info, u32 gain)
 	int err;
 
 	gain &= 0xFF;
-	err = imx091_i2c_wr16(info, 0x0205, (u16)gain);
+	err = imx091_i2c_wr16(info->i2c_client, 0x0205, (u16)gain);
 	return err;
 }
 
@@ -1457,7 +1458,7 @@ static int imx091_gain_rd(struct imx091_info *info, u32 *gain)
 	int err;
 
 	*gain = 0;
-	err = imx091_i2c_rd8(info, 0x0205, (u8 *)gain);
+	err = imx091_i2c_rd8(info->i2c_client, 0x0205, (u8 *)gain);
 	return err;
 }
 
@@ -1474,7 +1475,7 @@ static int imx091_group_hold_wr(struct imx091_info *info,
 					ae->coarse_time_enable;
 
 	if (groupHoldEnable) {
-		err = imx091_i2c_wr8(info, 0x104, 1);
+		err = imx091_i2c_wr8(info->i2c_client, 0x104, 1);
 		if (err) {
 			dev_err(&info->i2c_client->dev,
 				"Error: %s fail to enable grouphold\n",
@@ -1503,7 +1504,7 @@ static int imx091_group_hold_wr(struct imx091_info *info,
 	}
 
 	if (groupHoldEnable) {
-		err = imx091_i2c_wr8(info, 0x104, 0);
+		err = imx091_i2c_wr8(info->i2c_client, 0x104, 0);
 		if (err) {
 			dev_err(&info->i2c_client->dev,
 				"Error: %s fail to release grouphold\n",
@@ -1537,17 +1538,17 @@ static int imx091_set_flash_output(struct imx091_info *info)
 		val |= 0x02;
 	dev_dbg(&info->i2c_client->dev, "%s: %02x\n", __func__, val);
 	/* disable all flash pulse output */
-	ret = imx091_i2c_wr8(info, 0x304A, 0);
+	ret = imx091_i2c_wr8(info->i2c_client, 0x304A, 0);
 	/* config XVS/SDO pin output mode */
-	ret |= imx091_i2c_wr8(info, 0x3240, val);
+	ret |= imx091_i2c_wr8(info->i2c_client, 0x3240, val);
 	/* set the control pulse width settings - Gain + Step
 	 * Pulse width(sec) = 64 * 2^(Gain) * (Step + 1) / Logic Clk
 	 * Logic Clk = ExtClk * PLL Multipiler / Pre_Div / Post_Div
 	 * / Logic Clk Division Ratio
 	 * Logic Clk Division Ratio = 5 @4lane, 10 @2lane, 20 @1lane
 	 */
-	ret |= imx091_i2c_wr8(info, 0x307C, 0x07);
-	ret |= imx091_i2c_wr8(info, 0x307D, 0x3F);
+	ret |= imx091_i2c_wr8(info->i2c_client, 0x307C, 0x07);
+	ret |= imx091_i2c_wr8(info->i2c_client, 0x307D, 0x3F);
 	return ret;
 }
 
@@ -1575,7 +1576,7 @@ static int imx091_flash_control(
 	if (!info->pdata)
 		return -EFAULT;
 
-	ret = imx091_i2c_wr8(info, 0x304A, 0);
+	ret = imx091_i2c_wr8(info->i2c_client, 0x304A, 0);
 	f_tim = 0;
 	f_cntl = 0;
 	if (fm->settings.enable) {
@@ -1589,8 +1590,8 @@ static int imx091_flash_control(
 		} else
 			f_cntl |= 0x20;
 	}
-	ret |= imx091_i2c_wr8(info, 0x307B, f_tim);
-	ret |= imx091_i2c_wr8(info, 0x304A, f_cntl);
+	ret |= imx091_i2c_wr8(info->i2c_client, 0x307B, f_tim);
+	ret |= imx091_i2c_wr8(info->i2c_client, 0x304A, f_cntl);
 
 	dev_dbg(&info->i2c_client->dev,
 		"%s: %04x %02x %02x\n", __func__, fm->mode, f_tim, f_cntl);
@@ -1922,7 +1923,8 @@ static int imx091_reset(struct imx091_info *info, u32 level)
 
 	if (level == NVC_RESET_SOFT) {
 		err = imx091_pm_wr(info, NVC_PWR_COMM);
-		err |= imx091_i2c_wr8(info, 0x0103, 0x01); /* SW reset */
+		/* SW reset */
+		err |= imx091_i2c_wr8(info->i2c_client, 0x0103, 0x01);
 	} else {
 		err = imx091_pm_wr(info, NVC_PWR_OFF_FORCE);
 	}
@@ -1941,7 +1943,7 @@ static int imx091_dev_id(struct imx091_info *info)
 	imx091_pm_dev_wr(info, NVC_PWR_COMM);
 	dev_dbg(&info->i2c_client->dev, "DUCK:%s:%d\n",
 			__func__, __LINE__);
-	err = imx091_i2c_rd16(info, IMX091_ID_ADDRESS, &val);
+	err = imx091_i2c_rd16(info->i2c_client, IMX091_ID_ADDRESS, &val);
 	if (!err) {
 		dev_dbg(&info->i2c_client->dev, "%s found devId: %x\n",
 			__func__, val);
@@ -1973,7 +1975,7 @@ static int imx091_mode_able(struct imx091_info *info, bool mode_enable)
 		val = IMX091_STREAM_ENABLE;
 	else
 		val = IMX091_STREAM_DISABLE;
-	err = imx091_i2c_wr8(info, IMX091_STREAM_CONTROL_REG, val);
+	err = imx091_i2c_wr8(info->i2c_client, IMX091_STREAM_CONTROL_REG, val);
 	if (!err) {
 		info->mode_enable = mode_enable;
 		dev_dbg(&info->i2c_client->dev, "%s streaming=%x\n",
@@ -2845,108 +2847,12 @@ static int imx091_remove(struct i2c_client *client)
 
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 #ifdef CONFIG_DEBUG_FS
-	if (info->debugfs_root)
-		debugfs_remove_recursive(info->debugfs_root);
+	nvc_debugfs_remove(&info->debugfs_info);
 #endif
 	misc_deregister(&info->miscdev);
 	imx091_del(info);
 	return 0;
 }
-
-#ifdef CONFIG_DEBUG_FS
-static int i2ca_get(void *data, u64 *val)
-{
-	struct imx091_info *info = (struct imx091_info *)(data);
-	*val = (u64)info->i2c_reg;
-	return 0;
-}
-
-static int i2ca_set(void *data, u64 val)
-{
-	struct imx091_info *info = (struct imx091_info *)(data);
-
-	if (val > 0x36FF) {
-		dev_err(&info->i2c_client->dev, "ERR:%s out of range\n",
-				__func__);
-		return -EIO;
-	}
-
-	info->i2c_reg = (u16) val;
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(i2ca_fops, i2ca_get, i2ca_set, "0x%02llx\n");
-
-static int i2cr_get(void *data, u64 *val)
-{
-	u8 temp = 0;
-	struct imx091_info *info = (struct imx091_info *)(data);
-
-	if (imx091_i2c_rd8(info, info->i2c_reg, &temp)) {
-		dev_err(&info->i2c_client->dev, "ERR:%s failed\n", __func__);
-		return -EIO;
-	}
-	*val = (u64)temp;
-	return 0;
-}
-
-static int i2cr_set(void *data, u64 val)
-{
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(i2cr_fops, i2cr_get, i2cr_set, "0x%02llx\n");
-
-static int i2cw_get(void *data, u64 *val)
-{
-	return 0;
-}
-
-static int i2cw_set(void *data, u64 val)
-{
-	struct imx091_info *info = (struct imx091_info *)(data);
-
-	val &= 0xFF;
-	if (imx091_i2c_wr8(info, info->i2c_reg, val)) {
-		dev_err(&info->i2c_client->dev, "ERR:%s failed\n", __func__);
-		return -EIO;
-	}
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(i2cw_fops, i2cw_get, i2cw_set, "0x%02llx\n");
-
-static int imx091_debug_init(struct imx091_info *info)
-{
-	dev_dbg(&info->i2c_client->dev, "%s", __func__);
-
-	info->i2c_reg = 0;
-	info->debugfs_root = debugfs_create_dir(info->miscdev.name, NULL);
-
-	if (!info->debugfs_root)
-		goto err_out;
-
-	if (!debugfs_create_file("i2ca", S_IRUGO | S_IWUSR,
-				info->debugfs_root, info, &i2ca_fops))
-		goto err_out;
-
-	if (!debugfs_create_file("i2cr", S_IRUGO,
-				info->debugfs_root, info, &i2cr_fops))
-		goto err_out;
-
-	if (!debugfs_create_file("i2cw", S_IWUSR,
-				info->debugfs_root, info, &i2cw_fops))
-		goto err_out;
-
-	return 0;
-
-err_out:
-	dev_err(&info->i2c_client->dev, "ERROR:%s failed", __func__);
-	if (info->debugfs_root)
-		debugfs_remove_recursive(info->debugfs_root);
-	return -ENOMEM;
-}
-#endif
 
 static int imx091_probe(
 	struct i2c_client *client,
@@ -3033,7 +2939,12 @@ static int imx091_probe(
 	}
 
 #ifdef CONFIG_DEBUG_FS
-	imx091_debug_init(info);
+	info->debugfs_info.name = dname;
+	info->debugfs_info.i2c_client = info->i2c_client;
+	info->debugfs_info.i2c_addr_limit = 0xFFFF;
+	info->debugfs_info.i2c_rd8 = imx091_i2c_rd8;
+	info->debugfs_info.i2c_wr8 = imx091_i2c_wr8;
+	nvc_debugfs_init(&info->debugfs_info);
 #endif
 	dev_dbg(&client->dev, "%s -----\n", __func__);
 	return 0;

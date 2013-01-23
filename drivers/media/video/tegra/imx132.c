@@ -28,6 +28,10 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
+#ifdef CONFIG_DEBUG_FS
+#include <media/nvc_debugfs.h>
+#endif
+
 struct imx132_reg {
 	u16 addr;
 	u16 val;
@@ -41,6 +45,10 @@ struct imx132_info {
 	struct i2c_client		*i2c_client;
 	struct imx132_platform_data	*pdata;
 	atomic_t			in_use;
+#ifdef CONFIG_DEBUG_FS
+	struct nvc_debugfs_info debugfs_info;
+#endif
+
 };
 
 #define IMX132_TABLE_WAIT_MS 0
@@ -728,6 +736,15 @@ imx132_probe(struct i2c_client *client,
 		__func__);
 	}
 
+#ifdef CONFIG_DEBUG_FS
+	info->debugfs_info.name = imx132_device.name;
+	info->debugfs_info.i2c_client = info->i2c_client;
+	info->debugfs_info.i2c_addr_limit = 0xFFFF;
+	info->debugfs_info.i2c_rd8 = imx132_read_reg;
+	info->debugfs_info.i2c_wr8 = imx132_write_reg;
+	nvc_debugfs_init(&(info->debugfs_info));
+#endif
+
 	return err;
 }
 
@@ -735,7 +752,9 @@ static int
 imx132_remove(struct i2c_client *client)
 {
 	struct imx132_info *info = i2c_get_clientdata(client);
-
+#ifdef CONFIG_DEBUG_FS
+	nvc_debugfs_remove(&info->debugfs_info);
+#endif
 	imx132_power_put(&info->power);
 	misc_deregister(&imx132_device);
 	return 0;
