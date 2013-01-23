@@ -10,11 +10,33 @@
 #include <linux/mfd/tlv320aic3xxx-core.h>
 
 struct regmap_config tlv320aic3xxx_spi_regmap = {
-	.reg_bits = 8,
+	.reg_bits = 7,
+	.pad_bits = 1,
 	.val_bits = 8,
 	.cache_type = REGCACHE_NONE,
 	.read_flag_mask = 0x1,
 };
+
+#ifdef CONFIG_PM
+static int aic3xxx_suspend(struct device *dev)
+{
+	struct aic3xxx *aic3xxx = dev_get_drvdata(dev);
+
+	aic3xxx->suspended = true;
+
+	return 0;
+}
+
+static int aic3xxx_resume(struct device *dev)
+{
+	struct aic3xxx *aic3xxx = dev_get_drvdata(dev);
+
+	aic3xxx->suspended = false;
+
+	return 0;
+}
+#endif
+
 
 static int __devinit tlv320aic3xxx_spi_probe(struct spi_device *spi)
 {
@@ -24,11 +46,9 @@ static int __devinit tlv320aic3xxx_spi_probe(struct spi_device *spi)
 	int ret;
 
 	switch (id->driver_data) {
-#ifdef CONFIG_SND_SOC_AIC3262
 	case TLV320AIC3262:
 		regmap_config = &tlv320aic3xxx_spi_regmap;
 		break;
-#endif
 #ifdef CONFIG_MFD_AIC3285
 	case TLV320AIC3285:
 		regmap_config = &tlv320aic3285_spi_regmap;
@@ -68,16 +88,21 @@ static int __devexit tlv320aic3xxx_spi_remove(struct spi_device *spi)
 }
 
 static const struct spi_device_id aic3xxx_spi_ids[] = {
-	{"tlv320aic3262", TLV320AIC3262},
+	{"tlv320aic3xxx", TLV320AIC3262},
 	{"tlv320aic3285", TLV320AIC3285},
 	{ }
 };
 MODULE_DEVICE_TABLE(spi, aic3xxx_spi_ids);
 
+static UNIVERSAL_DEV_PM_OPS(aic3xxx_pm_ops, aic3xxx_suspend, aic3xxx_resume,
+				NULL);
+
+
 static struct spi_driver tlv320aic3xxx_spi_driver = {
 	.driver = {
 		.name	= "tlv320aic3xxx",
 		.owner	= THIS_MODULE,
+		.pm	= &aic3xxx_pm_ops,
 	},
 	.probe		= tlv320aic3xxx_spi_probe,
 	.remove		= __devexit_p(tlv320aic3xxx_spi_remove),
