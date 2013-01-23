@@ -1799,7 +1799,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		12750,      /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x4000003e, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -1871,7 +1871,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x03035504, /* EMC_XM2VTTGENPADCTRL */
-			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
@@ -1995,7 +1995,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		20400,      /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x40000026, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -2067,7 +2067,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x03035504, /* EMC_XM2VTTGENPADCTRL */
-			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
@@ -2191,7 +2191,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		40800,      /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x40000012, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -2263,7 +2263,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x03035504, /* EMC_XM2VTTGENPADCTRL */
-			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
@@ -2387,7 +2387,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		68000,      /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x4000000a, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -2459,7 +2459,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x03035504, /* EMC_XM2VTTGENPADCTRL */
-			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
@@ -2583,7 +2583,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		102000,     /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x40000006, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -2655,7 +2655,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x03035504, /* EMC_XM2VTTGENPADCTRL */
-			0x00000000, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
@@ -2779,7 +2779,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 	{
 		0x41,       /* Rev 4.0.3 */
 		204000,     /* SDRAM frequency */
-		900,        /* min voltage */
+		900,       /* min voltage */
 		"pll_p",    /* clock source id */
 		0x40000002, /* CLK_SOURCE_EMC */
 		99,         /* number of burst_regs */
@@ -2851,7 +2851,7 @@ static struct tegra11_emc_table e1611_h5tc4g63afr_rda_T40T_table[] = {
 			0x77ffc085, /* EMC_XM2CLKPADCTRL */
 			0x81f1f108, /* EMC_XM2COMPPADCTRL */
 			0x05057404, /* EMC_XM2VTTGENPADCTRL */
-			0x0000001f, /* EMC_XM2VTTGENPADCTRL2 */
+			0x0000003f, /* EMC_XM2VTTGENPADCTRL2 */
 			0x0000003f, /* EMC_DSR_VTTGEN_DRV */
 			0x00000000, /* EMC_TXDSRVTTGEN */
 			0x02000000, /* EMC_FBIO_SPARE */
