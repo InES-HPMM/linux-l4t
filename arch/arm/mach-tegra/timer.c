@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation.
+ * Copyright (C) 2010-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -55,7 +55,8 @@ static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
 
 static struct timespec persistent_ts;
 #ifdef CONFIG_ARM_ARCH_TIMER
-static u32 arch_timer_mult, arch_timer_shift;
+static u32 arch_timer_ns_mult, arch_timer_ns_shift;
+static u32 arch_timer_us_mult, arch_timer_us_shift;
 static u64 persistent_cycles, last_persistent_cycles;
 #else
 static u64 persistent_ms, last_persistent_ms;
@@ -164,7 +165,7 @@ void tegra_read_persistent_clock(struct timespec *ts)
 	last_persistent_cycles = persistent_cycles;
 	persistent_cycles = ((u64)cvalh << 32) | cvall;
 	delta = persistent_cycles - last_persistent_cycles;
-	delta = (delta * arch_timer_mult) >> arch_timer_shift;
+	delta = (delta * arch_timer_ns_mult) >> arch_timer_ns_shift;
 	timespec_add_ns(tsp, delta);
 	*ts = *tsp;
 }
@@ -328,8 +329,21 @@ int arch_timer_get_state(struct arch_timer_context *context)
 	return 0;
 }
 
-#else
-#define arch_timer_get_state do {} while(0)
+int tegra_cpu_timer_get_remain(s64 *time)
+{
+	s32 cntp_tval;
+	int ret = 0;
+
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (cntp_tval));
+
+	if (cntp_tval <= 0)
+		ret = -ETIME;
+	else
+		*time = (s64)((s64)cntp_tval * arch_timer_us_mult)
+			>> arch_timer_us_shift;
+
+	return 0;
+}
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
@@ -402,8 +416,10 @@ void __init tegra_cpu_timer_init(void)
 #endif
 	sec = CLOCKSOURCE_MASK(56);
 	do_div(sec, tsc_ref_freq);
-	clocks_calc_mult_shift(&arch_timer_mult, &arch_timer_shift,
+	clocks_calc_mult_shift(&arch_timer_ns_mult, &arch_timer_ns_shift,
 				tsc_ref_freq, NSEC_PER_SEC, sec);
+	clocks_calc_mult_shift(&arch_timer_us_mult, &arch_timer_us_shift,
+				tsc_ref_freq, USEC_PER_SEC, sec);
 	return;
 }
 

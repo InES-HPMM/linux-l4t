@@ -165,7 +165,9 @@ bool tegra11x_pd_is_allowed(struct cpuidle_device *dev,
 				to_cpumask(&cpu_power_gating_in_idle)))
 		return false;
 
-	request = ktime_to_us(tick_nohz_get_sleep_length());
+	if (tegra_cpu_timer_get_remain(&request))
+		return false;
+
 	if (state->exit_latency != pd_exit_latencies[cpu_number(dev->cpu)]) {
 		/* possible on the 1st entry after cluster switch*/
 		state->exit_latency = pd_exit_latencies[cpu_number(dev->cpu)];
@@ -379,7 +381,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 
 	if (!arch_timer_get_state(&timer_context)) {
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
-		    ~(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
+		    !(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
 			if (timer_context.cntp_tval <= 0) {
 				cpu_do_idle();
 				return false;
@@ -472,7 +474,12 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	bool power_gating_cpu_only = true;
 	int status = -1;
 	unsigned long rate = ULONG_MAX;
-	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
+	s64 request;
+
+	if (tegra_cpu_timer_get_remain(&request)) {
+		cpu_do_idle();
+		return false;
+	}
 
 	tegra_set_cpu_in_pd(dev->cpu);
 	cpu_gating_only = (((fast_cluster_power_down_mode
