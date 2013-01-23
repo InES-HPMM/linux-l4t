@@ -104,6 +104,7 @@ struct dvfs_dfll_data {
 	int tune_high_min_millivolts;
 	int min_millivolts;
 	enum dfll_range	range;
+	void (*tune_trimmers)(bool trim_high);
 };
 
 struct dvfs {
@@ -276,6 +277,12 @@ static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,
 {
 	if (rail)
 		rail->dfll_mode_updating = updating;
+}
+
+static inline void tegra_dvfs_set_dfll_tune_trimmers(
+	struct dvfs *d, void (*tune_trimmers)(bool trim_high))
+{
+	d->dfll_data.tune_trimmers = tune_trimmers;
 }
 
 static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)

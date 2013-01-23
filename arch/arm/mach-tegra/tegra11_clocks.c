@@ -486,6 +486,14 @@
 #define USB_PLLS_USE_LOCKDET			(1<<6)
 #define USB_PLLS_ENABLE_SWCTL			((1<<2) | (1<<0))
 
+/* CPU clock trimmers */
+#define CPU_FINETRIM_BYP			0x4d0
+#define CPU_FINETRIM_SELECT			0x4d4
+#define CPU_FINETRIM_DR				0x4d8
+#define CPU_FINETRIM_DF				0x4dc
+#define CPU_FINETRIM_F				0x4e0
+#define CPU_FINETRIM_R				0x4e4
+
 /* DFLL */
 #define DFLL_BASE				0x2f4
 #define DFLL_BASE_RESET				(1<<0)
@@ -3468,11 +3476,33 @@ static struct clk_ops tegra_plle_ops = {
 
 #ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* DFLL operations */
+static void tune_cpu_trimmers(bool trim_high)
+{
+	if (trim_high) {
+		clk_writel(0, CPU_FINETRIM_SELECT);
+		clk_writel(0, CPU_FINETRIM_DR);
+		clk_writel(0, CPU_FINETRIM_R);
+	} else {
+		clk_writel(0x3F, CPU_FINETRIM_SELECT);
+		clk_writel(0x3F, CPU_FINETRIM_DR);
+		clk_writel(0xFFF, CPU_FINETRIM_R);
+	}
+	wmb();
+	clk_readl(CPU_FINETRIM_R);
+}
+
 static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	int ret;
-	struct clk *cpu = tegra_get_clock_by_name("cpu");
+	struct clk *cpu = tegra_get_clock_by_name("cpu_g");
+
+	if (!cpu || !cpu->dvfs) {
+		pr_err("%s: CPU dvfs is not present\n", __func__);
+		return;
+	}
+	if (cpu->dvfs->speedo_id > 0)	/* A01P and above parts */
+		tegra_dvfs_set_dfll_tune_trimmers(cpu->dvfs, tune_cpu_trimmers);
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	u32 netlist, patchid;
@@ -3492,7 +3522,7 @@ static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
 
 		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
-		tegra_dvfs_set_dfll_range(cpu->parent->dvfs, use_dfll);
+		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
 		pr_info("Tegra CPU DFLL is initialized\n");
 	}
 #endif

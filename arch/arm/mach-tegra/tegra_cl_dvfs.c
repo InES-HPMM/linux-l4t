@@ -407,6 +407,23 @@ static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 		pr_debug("%s: set tune state %d\n", __func__, state);	\
 	} while (0)
 
+static inline void tune_low(struct tegra_cl_dvfs *cld)
+{
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(false);
+	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
+	cl_dvfs_wmb(cld);
+}
+
+static inline void tune_high(struct tegra_cl_dvfs *cld)
+{
+	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0_high_mv,
+		       CL_DVFS_TUNE0);
+	cl_dvfs_wmb(cld);
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(true);
+}
+
 static void set_ol_config(struct tegra_cl_dvfs *cld)
 {
 	u32 val, out_min;
@@ -414,9 +431,7 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 	/* always tune low (safe) in open loop */
 	if (cld->tune_state != TEGRA_CL_DVFS_TUNE_LOW) {
 		set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
-		cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0,
-			       CL_DVFS_TUNE0);
-		cl_dvfs_wmb(cld);
+		tune_low(cld);
 
 		out_min = get_output_min(cld);
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
@@ -458,9 +473,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST:
 		if (req->cap <= cld->tune_high_out_start) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
-			cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0,
-				       CL_DVFS_TUNE0);
-			cl_dvfs_wmb(cld);
+			tune_low(cld);
 		}
 		break;
 	default:
@@ -514,8 +527,7 @@ static void tune_timer_cb(unsigned long data)
 		    (out_min >= cld->tune_high_out_min)) {
 			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
-			val = cld->safe_dvfs->dfll_data.tune0_high_mv;
-			cl_dvfs_writel(cld, val, CL_DVFS_TUNE0);
+			tune_high(cld);
 		} else {
 			mod_timer(&cld->tune_timer, jiffies + cld->tune_delay);
 		}
@@ -791,6 +803,8 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 		(param->cg_scale ? CL_DVFS_PARAMS_CG_SCALE : 0);
 	cl_dvfs_writel(cld, val, CL_DVFS_PARAMS);
 
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(false);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune1, CL_DVFS_TUNE1);
 
