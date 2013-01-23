@@ -1128,7 +1128,7 @@ static u32 soc_to_dram_bit_swap(u32 soc_val, u32 dram_mask, u32 dram_shift)
 static int emc_read_mrr(int dev, int addr)
 {
 	int ret;
-	u32 val;
+	u32 val, emc_cfg;
 
 	if (dram_type != DRAM_TYPE_LPDDR2)
 		return -ENODEV;
@@ -1137,11 +1137,21 @@ static int emc_read_mrr(int dev, int addr)
 	if (ret)
 		return ret;
 
+	emc_cfg = emc_readl(EMC_CFG);
+	if (emc_cfg & EMC_CFG_DRAM_ACPD) {
+		emc_writel(emc_cfg & ~EMC_CFG_DRAM_ACPD, EMC_CFG);
+		emc_timing_update();
+	}
+
 	val = dev ? DRAM_DEV_SEL_1 : DRAM_DEV_SEL_0;
 	val |= (addr << EMC_MRR_MA_SHIFT) & EMC_MRR_MA_MASK;
 	emc_writel(val, EMC_MRR);
 
 	ret = wait_for_update(EMC_STATUS, EMC_STATUS_MRR_DIVLD, true);
+	if (emc_cfg & EMC_CFG_DRAM_ACPD) {
+		emc_writel(emc_cfg, EMC_CFG);
+		emc_timing_update();
+	}
 	if (ret)
 		return ret;
 
