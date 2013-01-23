@@ -83,7 +83,7 @@ config SMC911X
 	select CRC32
 	select NET_CORE
 	select MII
-	depends on (ARM || SUPERH || MN10300)
+	depends on (ARM || ARM64 || SUPERH || MN10300)
 	---help---
 	  This is a driver for SMSC's LAN911x series of Ethernet chipsets
 	  including the new LAN9115, LAN9116, LAN9117, and LAN9118.
@@ -97,7 +97,7 @@ config SMC911X
 
 config SMSC911X
 	tristate "SMSC LAN911x/LAN921x families embedded ethernet support"
-	depends on (ARM || SUPERH || BLACKFIN || MIPS || MN10300)
+	depends on (ARM || ARM64 || SUPERH || BLACKFIN || MIPS || MN10300)
 	select CRC32
 	select NET_CORE
 	select MII
