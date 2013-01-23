@@ -962,4 +962,12 @@ config SCx200_ACB
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
 
+config I2C_PCA_GMI
+	tristate "PCA9564/PCA9665 on an GMI bus"
+	select I2C_ALGOPCA
+	default n
+	help
+	  This driver supports boards using the Philips PCA9564/PCA9665 parallel
+          bus to I2C bus controller connected on Nvidia Tegra GMI bus.
+
 endmenu
