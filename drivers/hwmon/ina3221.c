@@ -34,6 +34,7 @@
 #include <linux/init.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/hwmon.h>
+#include <linux/cpu.h>
 
 #include "linux/ina3221.h"
 
@@ -54,15 +55,18 @@
 #define busv_register_to_mv(x) ((x >> 3) * 8)
 #define shuntv_register_to_uv(x) ((x >> 3) * 40)
 
+#define CPU_THRESHOLD 2
+
 struct ina3221_data {
 	struct device *hwmon_dev;
 	struct i2c_client *client;
 	struct ina3221_platform_data *plat_data;
 	struct mutex mutex;
 	u8 mode;
+	struct notifier_block nb;
 };
 
-static s32 power_down_ina3221(struct i2c_client *client)
+static s32 __locked_power_down_ina3221(struct i2c_client *client)
 {
 	s32 ret;
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
@@ -72,52 +76,26 @@ static s32 power_down_ina3221(struct i2c_client *client)
 	return ret;
 }
 
-static s32 show_mode(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static s32 __locked_power_up_ina3221(struct i2c_client *client, int config)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct ina3221_data *data = i2c_get_clientdata(client);
-	return sprintf(buf, "%d\n", data->mode);
+	s32 ret;
+	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
+					__constant_cpu_to_be16(config));
+	if (ret < 0)
+		dev_err(&client->dev,
+			"Config data write failed, error: 0x%x", ret);
+	return ret;
 }
 
-/* mode setting :
- * running_mode = 0 ---> Triggered mode
- * running_mode > 0 ---> Continuous mode
- */
-static s32 set_mode(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static s32 show_mode(struct device *dev, struct device_attribute *attr,
+								char *buf)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct ina3221_data *data = i2c_get_clientdata(client);
-	long l;
 	int ret;
-
-	ret = kstrtol(buf, 10, &l);
-	if (ret < 0)
-		goto err;
-
 	mutex_lock(&data->mutex);
-	if ((l > 0) && (data->mode == TRIGGERED)) {
-		ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
-		__constant_cpu_to_be16(data->plat_data->cont_conf_data));
-		if (ret < 0)
-			goto error;
-		data->mode = CONTINUOUS;
-	} else if ((l == 0) && (data->mode == CONTINUOUS)) {
-		ret = power_down_ina3221(client);
-		if (ret < 0)
-			goto error;
-		data->mode = TRIGGERED;
-	} else
-		DEBUG_INA3221(("%s: mode already set\n", __func__));
+	ret = sprintf(buf, "%d\n", data->mode);
 	mutex_unlock(&data->mutex);
-	return 1;
-error:
-	mutex_unlock(&data->mutex);
-err:
-	dev_err(dev, "%s: failed\n", __func__);
 	return ret;
 }
 
@@ -148,12 +126,11 @@ static s32 show_voltage(struct device *dev,
 	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
 
 	if (data->mode == TRIGGERED) {
-		/* fill config data */
-		ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
-		__constant_cpu_to_be16(data->plat_data->trig_conf_data));
+		ret = __locked_power_up_ina3221(client,
+				data->plat_data->trig_conf_data);
 		if (ret < 0) {
 			dev_err(dev,
-			"config data write failed sts: 0x%x\n", ret);
+			"Power up failed, status: 0x%x\n", ret);
 			goto error;
 		}
 	}
@@ -170,7 +147,7 @@ static s32 show_voltage(struct device *dev,
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
-		ret = power_down_ina3221(client);
+		ret = __locked_power_down_ina3221(client);
 		if (ret < 0)
 			goto error;
 	}
@@ -202,12 +179,11 @@ static s32 show_current(struct device *dev,
 	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
 
 	if (data->mode == TRIGGERED) {
-		/* fill config data */
-		ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
-		__constant_cpu_to_be16(data->plat_data->trig_conf_data));
+		ret = __locked_power_up_ina3221(client,
+				data->plat_data->trig_conf_data);
 		if (ret < 0) {
 			dev_err(dev,
-			"config data write failed sts: 0x%x\n", ret);
+				"power up failed sts: 0x%x\n", ret);
 			goto error;
 		}
 	}
@@ -228,7 +204,7 @@ static s32 show_current(struct device *dev,
 
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
-		ret = power_down_ina3221(client);
+		ret = __locked_power_down_ina3221(client);
 		if (ret < 0)
 			goto error;
 	}
@@ -242,37 +218,18 @@ error:
 	return ret;
 }
 
-static s32 show_power(struct device *dev,
-		struct device_attribute *devattr,
-		char *buf)
+static s32 __locked_calculate_power(struct i2c_client *client,
+					u8 shunt_volt_reg_addr,
+					u8 bus_volt_reg_addr,
+					int index)
 {
-	struct i2c_client *client = to_i2c_client(dev);
+
 	struct ina3221_data *data = i2c_get_clientdata(client);
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
-	s32 ret;
-	s32 voltage_uV;
 	s32 voltage_mV;
-	s32 current_mA;
+	s32 voltage_uV;
 	s32 inverse_shunt_resistor;
+	s32 current_mA;
 	s32 power_mW;
-
-	mutex_lock(&data->mutex);
-	index = attr->index;
-	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
-	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
-
-	if (data->mode == TRIGGERED) {
-		/* fill config data */
-		ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
-		__constant_cpu_to_be16(data->plat_data->trig_conf_data));
-		if (ret < 0) {
-			dev_err(dev,
-			"config data write failed sts: 0x%x\n", ret);
-			goto error;
-		}
-	}
-
 	/* getting voltage readings in micro volts*/
 	voltage_uV =
 		be16_to_cpu(i2c_smbus_read_word_data(client,
@@ -297,10 +254,44 @@ static s32 show_power(struct device *dev,
 	inverse_shunt_resistor = 1000 / data->plat_data->shunt_resistor[index];
 	current_mA = voltage_uV * inverse_shunt_resistor / 1000;
 	power_mW = voltage_mV * current_mA / 1000;
+	return power_mW;
+error:
+	return -EIO;
+}
+
+static s32 show_power(struct device *dev,
+		struct device_attribute *devattr,
+		char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
+	s32 ret;
+	s32 power_mW;
+
+	mutex_lock(&data->mutex);
+	index = attr->index;
+	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
+	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
 
 	if (data->mode == TRIGGERED) {
+		ret = __locked_power_up_ina3221(client,
+				data->plat_data->trig_conf_data);
+		if (ret < 0) {
+			dev_err(dev,
+			"power up failed sts: 0x%x\n", ret);
+			goto error;
+		}
+	}
+
+	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
+						bus_volt_reg_addr, index);
+	if (power_mW < 0)
+		goto error;
+	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
-		ret = power_down_ina3221(client);
+		ret = __locked_power_down_ina3221(client);
 		if (ret < 0)
 			goto error;
 	}
@@ -311,7 +302,94 @@ static s32 show_power(struct device *dev,
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
-	return ret;
+	return -EIO;
+}
+
+static s32 show_power2(struct device *dev,
+		struct device_attribute *devattr,
+		char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
+	s32 power_mW;
+
+	mutex_lock(&data->mutex);
+
+	/*return 0 if INA is off*/
+	if (data->mode == TRIGGERED) {
+		mutex_unlock(&data->mutex);
+		return sprintf(buf, "%d mW\n", 0);
+	}
+	index = attr->index;
+	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
+	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
+
+	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
+						bus_volt_reg_addr, index);
+	if (power_mW < 0)
+		goto error;
+
+	DEBUG_INA3221(("%s power = %d\n", __func__, power_mW));
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "%d mW\n", power_mW);
+error:
+	mutex_unlock(&data->mutex);
+	dev_err(dev, "%s: failed\n", __func__);
+	return -EIO;
+}
+
+static int ina3221_hotplug_notify(struct notifier_block *nb,
+					unsigned long event,
+					void *hcpu)
+{
+	struct ina3221_data *data = container_of(nb, struct ina3221_data,
+						nb);
+	struct i2c_client *client = data->client;
+	int cpus;
+	int ret = 0;
+	if (event == CPU_ONLINE || event == CPU_DEAD) {
+		mutex_lock(&data->mutex);
+		cpus = num_online_cpus();
+		DEBUG_INA3221(("INA3221 got CPU notification %d\n", cpus));
+		if ((cpus >= CPU_THRESHOLD) && (data->mode == TRIGGERED)) {
+			/**
+			 * Turn INA on when number of cpu
+			 * cores crosses threshold
+			 */
+			ret = __locked_power_up_ina3221(client,
+					data->plat_data->cont_conf_data);
+			DEBUG_INA3221(("Turning on ina3221, cpus:%d\n", cpus));
+			if (ret < 0) {
+				dev_err(&client->dev,
+					"INA can't be turned on: 0x%x\n", ret);
+				goto error;
+			}
+			data->mode = CONTINUOUS;
+		} else if ((cpus < CPU_THRESHOLD) &&
+						(data->mode == CONTINUOUS)) {
+			/**
+			 * Turn off ina when number of cpu
+			 * cores on are below threshold
+			 */
+			ret = __locked_power_down_ina3221(client);
+			DEBUG_INA3221(("Turning off INA3221 cpus%d\n", cpus));
+			if (ret < 0) {
+				dev_err(&client->dev,
+					"INA can't be turned off: 0x%x\n", ret);
+				goto error;
+			}
+			data->mode = TRIGGERED;
+		}
+		mutex_unlock(&data->mutex);
+		return 0;
+	} else
+		return 0;
+
+error:
+	dev_err(&client->dev, "INA can't be turned off/on: 0x%x\n", ret);
+	return 0;
 }
 
 static struct sensor_device_attribute ina3221[] = {
@@ -319,15 +397,18 @@ static struct sensor_device_attribute ina3221[] = {
 	SENSOR_ATTR(in1_input_0, S_IRUGO, show_voltage, NULL, 0),
 	SENSOR_ATTR(curr1_input_0, S_IRUGO, show_current, NULL, 0),
 	SENSOR_ATTR(power1_input_0, S_IRUGO, show_power, NULL, 0),
+	SENSOR_ATTR(power2_input_0, S_IRUGO, show_power2, NULL, 0),
 	SENSOR_ATTR(rail_name_1, S_IRUGO, show_rail_name, NULL, 1),
 	SENSOR_ATTR(in1_input_1, S_IRUGO, show_voltage, NULL, 1),
 	SENSOR_ATTR(curr1_input_1, S_IRUGO, show_current, NULL, 1),
 	SENSOR_ATTR(power1_input_1, S_IRUGO, show_power, NULL, 1),
+	SENSOR_ATTR(power2_input_1, S_IRUGO, show_power2, NULL, 1),
 	SENSOR_ATTR(rail_name_2, S_IRUGO, show_rail_name, NULL, 2),
 	SENSOR_ATTR(in1_input_2, S_IRUGO, show_voltage, NULL, 2),
 	SENSOR_ATTR(curr1_input_2, S_IRUGO, show_current, NULL, 2),
 	SENSOR_ATTR(power1_input_2, S_IRUGO, show_power, NULL, 2),
-	SENSOR_ATTR(running_mode, 0644, show_mode, set_mode, 0),
+	SENSOR_ATTR(power2_input_2, S_IRUGO, show_power2, NULL, 2),
+	SENSOR_ATTR(running_mode, S_IRUGO, show_mode, NULL, 0),
 /* mode setting :
  * running_mode = 0 ---> Triggered mode
  * running_mode > 0 ---> Continuous mode
@@ -340,7 +421,8 @@ static int ina3221_probe(struct i2c_client *client,
 	struct ina3221_data *data;
 	int ret, i;
 
-	data = kzalloc(sizeof(struct ina3221_data), GFP_KERNEL);
+	data = devm_kzalloc(&client->dev, sizeof(struct ina3221_data),
+						GFP_KERNEL);
 	if (!data) {
 		ret = -ENOMEM;
 		goto exit;
@@ -366,6 +448,9 @@ static int ina3221_probe(struct i2c_client *client,
 			goto exit_remove;
 		}
 	}
+	data->client = client;
+	data->nb.notifier_call = ina3221_hotplug_notify;
+	register_hotcpu_notifier(&(data->nb));
 
 	data->hwmon_dev = hwmon_device_register(&client->dev);
 	if (IS_ERR(data->hwmon_dev)) {
@@ -374,7 +459,7 @@ static int ina3221_probe(struct i2c_client *client,
 	}
 
 	/* set ina3221 to power down mode */
-	ret = power_down_ina3221(client);
+	ret = __locked_power_down_ina3221(client);
 	if (ret < 0)
 		goto exit_remove;
 
@@ -393,10 +478,13 @@ static int ina3221_remove(struct i2c_client *client)
 {
 	u8 i;
 	struct ina3221_data *data = i2c_get_clientdata(client);
+	mutex_lock(&data->mutex);
+	__locked_power_down_ina3221(client);
 	hwmon_device_unregister(data->hwmon_dev);
+	mutex_unlock(&data->mutex);
+	unregister_hotcpu_notifier(&(data->nb));
 	for (i = 0; i < ARRAY_SIZE(ina3221); i++)
 		device_remove_file(&client->dev, &ina3221[i].dev_attr);
-	kfree(data);
 	return 0;
 }
 
