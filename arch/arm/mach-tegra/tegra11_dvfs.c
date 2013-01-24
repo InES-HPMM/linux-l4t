@@ -770,27 +770,10 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 	return 0;
 }
 
-/*
- * sysfs and dvfs interfaces to cap tegra core domains frequencies
- */
-static DEFINE_MUTEX(core_cap_lock);
-
-struct core_cap {
-	int refcnt;
-	int level;
-};
-static struct core_cap core_buses_cap;
-static struct core_cap kdvfs_core_cap;
-static struct core_cap user_core_cap;
-
+/* Core cap object and table */
 static struct kobject *cap_kobj;
 
-/* Arranged in order required for enabling/lowering the cap */
-static struct {
-	const char *cap_name;
-	struct clk *cap_clk;
-	unsigned long freqs[MAX_DVFS_FREQS];
-} core_cap_table[] = {
+static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ .cap_name = "cap.c2bus" },
 	{ .cap_name = "cap.c3bus" },
@@ -801,207 +784,9 @@ static struct {
 	{ .cap_name = "cap.emc" },
 };
 
-
-static void core_cap_level_set(int level)
+static int __init tegra11_dvfs_init_core_cap(void)
 {
-	int i, j;
-
-	for (j = 0; j < ARRAY_SIZE(core_millivolts); j++) {
-		int v = core_millivolts[j];
-		if ((v == 0) || (level < v))
-			break;
-	}
-	j = (j == 0) ? 0 : j - 1;
-	level = core_millivolts[j];
-
-	if (level < core_buses_cap.level) {
-		for (i = 0; i < ARRAY_SIZE(core_cap_table); i++)
-			if (core_cap_table[i].cap_clk)
-				clk_set_rate(core_cap_table[i].cap_clk,
-					     core_cap_table[i].freqs[j]);
-	} else if (level > core_buses_cap.level) {
-		for (i = ARRAY_SIZE(core_cap_table) - 1; i >= 0; i--)
-			if (core_cap_table[i].cap_clk)
-				clk_set_rate(core_cap_table[i].cap_clk,
-					     core_cap_table[i].freqs[j]);
-	}
-	core_buses_cap.level = level;
-}
-
-static void core_cap_update(void)
-{
-	int new_level = tegra11_dvfs_rail_vdd_core.max_millivolts;
-
-	if (kdvfs_core_cap.refcnt)
-		new_level = min(new_level, kdvfs_core_cap.level);
-	if (user_core_cap.refcnt)
-		new_level = min(new_level, user_core_cap.level);
-
-	if (core_buses_cap.level != new_level)
-		core_cap_level_set(new_level);
-}
-
-static void core_cap_enable(bool enable)
-{
-	if (enable)
-		core_buses_cap.refcnt++;
-	else if (core_buses_cap.refcnt)
-		core_buses_cap.refcnt--;
-
-	core_cap_update();
-}
-
-static ssize_t
-core_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	return sprintf(buf, "%d (%d)\n", core_buses_cap.refcnt ? 1 : 0,
-			user_core_cap.refcnt ? 1 : 0);
-}
-static ssize_t
-core_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int state;
-
-	if (sscanf(buf, "%d", &state) != 1)
-		return -1;
-
-	mutex_lock(&core_cap_lock);
-
-	if (state) {
-		user_core_cap.refcnt++;
-		if (user_core_cap.refcnt == 1)
-			core_cap_enable(true);
-	} else if (user_core_cap.refcnt) {
-		user_core_cap.refcnt--;
-		if (user_core_cap.refcnt == 0)
-			core_cap_enable(false);
-	}
-
-	mutex_unlock(&core_cap_lock);
-	return count;
-}
-
-static ssize_t
-core_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
-		    char *buf)
-{
-	return sprintf(buf, "%d (%d)\n", core_buses_cap.level,
-			user_core_cap.level);
-}
-static ssize_t
-core_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
-		     const char *buf, size_t count)
-{
-	int level;
-
-	if (sscanf(buf, "%d", &level) != 1)
-		return -1;
-
-	mutex_lock(&core_cap_lock);
-	user_core_cap.level = level;
-	core_cap_update();
-	mutex_unlock(&core_cap_lock);
-	return count;
-}
-
-static struct kobj_attribute cap_state_attribute =
-	__ATTR(core_cap_state, 0644, core_cap_state_show, core_cap_state_store);
-static struct kobj_attribute cap_level_attribute =
-	__ATTR(core_cap_level, 0644, core_cap_level_show, core_cap_level_store);
-
-const struct attribute *cap_attributes[] = {
-	&cap_state_attribute.attr,
-	&cap_level_attribute.attr,
-	NULL,
-};
-
-void tegra_dvfs_core_cap_enable(bool enable)
-{
-	mutex_lock(&core_cap_lock);
-
-	if (enable) {
-		kdvfs_core_cap.refcnt++;
-		if (kdvfs_core_cap.refcnt == 1)
-			core_cap_enable(true);
-	} else if (kdvfs_core_cap.refcnt) {
-		kdvfs_core_cap.refcnt--;
-		if (kdvfs_core_cap.refcnt == 0)
-			core_cap_enable(false);
-	}
-	mutex_unlock(&core_cap_lock);
-}
-
-void tegra_dvfs_core_cap_level_set(int level)
-{
-	mutex_lock(&core_cap_lock);
-	kdvfs_core_cap.level = level;
-	core_cap_update();
-	mutex_unlock(&core_cap_lock);
-}
-
-static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
-{
-	int i, v, next_v = 0;
-	unsigned long rate, next_rate = 0;
-
-	for (i = 0; i < ARRAY_SIZE(core_millivolts); i++) {
-		v = core_millivolts[i];
-		if (v == 0)
-			break;
-
-		for (;;) {
-			rate = next_rate;
-			next_rate = clk_round_rate(c->parent, rate + 1000);
-			if (IS_ERR_VALUE(next_rate)) {
-				pr_debug("tegra11_dvfs: failed to round %s rate %lu\n",
-					 c->name, rate);
-				return -EINVAL;
-			}
-			if (rate == next_rate)
-				break;
-
-			next_v = tegra_dvfs_predict_millivolts(
-				c->parent, next_rate);
-			if (IS_ERR_VALUE(next_v)) {
-				pr_debug("tegra11_dvfs: failed to predict %s mV for rate %lu\n",
-					 c->name, next_rate);
-				return -EINVAL;
-			}
-			if (next_v > v)
-				break;
-		}
-
-		if (rate == 0) {
-			rate = next_rate;
-			pr_warn("tegra11_dvfs: minimum %s rate %lu requires %d mV\n",
-				c->name, rate, next_v);
-		}
-		freqs[i] = rate;
-		next_rate = rate;
-	}
-	return 0;
-}
-
-static int __init tegra_dvfs_init_core_cap(void)
-{
-	int i;
-	struct clk *c = NULL;
-
-	core_buses_cap.level = kdvfs_core_cap.level = user_core_cap.level =
-		tegra11_dvfs_rail_vdd_core.max_millivolts;
-
-	for (i = 0; i < ARRAY_SIZE(core_cap_table); i++) {
-		c = tegra_get_clock_by_name(core_cap_table[i].cap_name);
-		if (!c || !c->parent ||
-		    init_core_cap_one(c, core_cap_table[i].freqs)) {
-			pr_err("tegra11_dvfs: failed to initialize %s table\n",
-			       core_cap_table[i].cap_name);
-			continue;
-		}
-		core_cap_table[i].cap_clk = c;
-	}
+	int ret;
 
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
@@ -1009,12 +794,18 @@ static int __init tegra_dvfs_init_core_cap(void)
 		return 0;
 	}
 
-	if (sysfs_create_files(cap_kobj, cap_attributes)) {
-		pr_err("tegra11_dvfs: failed to create sysfs cap interface\n");
+	ret = tegra_init_core_cap(
+		tegra11_core_cap_table, ARRAY_SIZE(tegra11_core_cap_table),
+		core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
+
+	if (ret) {
+		pr_err("tegra11_dvfs: failed to init core cap interface (%d)\n",
+		       ret);
+		kobject_del(cap_kobj);
 		return 0;
 	}
 	pr_info("tegra dvfs: tegra sysfs cap interface is initialized\n");
 
 	return 0;
 }
-late_initcall(tegra_dvfs_init_core_cap);
+late_initcall(tegra11_dvfs_init_core_cap);
