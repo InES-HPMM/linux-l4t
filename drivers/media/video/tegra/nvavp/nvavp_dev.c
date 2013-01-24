@@ -1239,10 +1239,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EPERM;
 	}
 
-	/* duplicate the new pushbuffer's handle into the nvavp driver's
-	 * nvmap context, to ensure that the handle won't be freed as
-	 * long as it is in-use by the fb driver */
-	cmdbuf_dupe = nvmap_duplicate_handle_id(nvavp->nvmap, hdr.cmdbuf.mem);
+	cmdbuf_dupe = nvmap_duplicate_handle_id(clientctx->nvmap, hdr.cmdbuf.mem);
 	nvmap_handle_put(cmdbuf_handle);
 
 	if (IS_ERR(cmdbuf_dupe)) {
@@ -1251,10 +1248,10 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return PTR_ERR(cmdbuf_dupe);
 	}
 
-	phys_addr = nvmap_pin(nvavp->nvmap, cmdbuf_dupe);
+	phys_addr = nvmap_pin(clientctx->nvmap, cmdbuf_dupe);
 	if (IS_ERR((void *)phys_addr)) {
 		dev_err(&nvavp->nvhost_dev->dev, "could not pin handle\n");
-		nvmap_free(nvavp->nvmap, cmdbuf_dupe);
+		nvmap_free(clientctx->nvmap, cmdbuf_dupe);
 		return PTR_ERR((void *)phys_addr);
 	}
 
@@ -1309,8 +1306,8 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 err_reloc_info:
 	nvmap_munmap(cmdbuf_dupe, (void *)virt_addr);
 err_cmdbuf_mmap:
-	nvmap_unpin(nvavp->nvmap, cmdbuf_dupe);
-	nvmap_free(nvavp->nvmap, cmdbuf_dupe);
+	nvmap_unpin(clientctx->nvmap, cmdbuf_dupe);
+	nvmap_free(clientctx->nvmap, cmdbuf_dupe);
 	return ret;
 }
 
