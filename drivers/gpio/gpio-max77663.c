@@ -1,7 +1,7 @@
 /*
  * MAXIM MAX77663 GPIO driver
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  * Author: Laxman dewangan <ldewangan@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -633,7 +633,9 @@ static int __devinit max77663_gpio_probe(struct platform_device *pdev)
 	return 0;
 
 fail:
-	gpiochip_remove(&max77663_gpio->gpio_chip);
+	if (gpiochip_remove(&max77663_gpio->gpio_chip))
+		dev_err(&pdev->dev, "%s gpiochip_remove failed\n", __func__);
+
 	return ret;
 }
 
