@@ -1318,6 +1318,15 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 		}
 		dev_dbg(dev, "Attached %s to map %p\n", dev_name(dev), map);
 		break;
+	case BUS_NOTIFY_DEL_DEVICE:
+		if (dev->driver)
+			break;
+		/* FALLTHROUGH */
+	case BUS_NOTIFY_UNBOUND_DRIVER:
+		dev_dbg(dev, "Detaching %s from map %p\n", dev_name(dev),
+			to_dma_iommu_mapping(dev));
+		arm_iommu_detach_device(dev);
+		break;
 	default:
 		break;
 	}
