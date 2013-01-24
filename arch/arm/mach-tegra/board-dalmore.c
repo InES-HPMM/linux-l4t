@@ -84,7 +84,7 @@
 
 static struct board_info board_info, display_board_info;
 
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 static struct rfkill_gpio_platform_data dalmore_bt_rfkill_pdata = {
 		.name           = "bt_rfkill",
 		.shutdown_gpio  = TEGRA_GPIO_PQ7,
@@ -873,7 +873,7 @@ static void __init tegra_dalmore_late_init(void)
 		dalmore_panel_init();
 	dalmore_kbc_init();
 	dalmore_pmon_init();
-#ifdef CONFIG_BT_BLUESLEEP
+#if defined(CONFIG_BT_BLUESLEEP) || defined(CONFIG_BT_BLUESLEEP_MODULE)
 	dalmore_setup_bluesleep();
 	dalmore_setup_bt_rfkill();
 #elif defined CONFIG_BLUEDROID_PM
