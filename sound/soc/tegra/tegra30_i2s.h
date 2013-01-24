@@ -276,6 +276,7 @@ struct tegra30_i2s {
 	#endif
 #endif
 	int call_record_dam_ifc;
+	int call_record_dam_ifc2;
 	int is_call_mode_rec;
 
 	struct dsp_config_t dsp_config;
