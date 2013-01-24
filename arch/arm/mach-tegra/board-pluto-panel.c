@@ -61,9 +61,6 @@ struct platform_device * __init pluto_host1x_init(void)
 }
 
 
-atomic_t __maybe_unused sd_brightness = ATOMIC_INIT(255);
-EXPORT_SYMBOL(sd_brightness);
-
 #ifdef CONFIG_TEGRA_DC
 
 /* hdmi pins for hotplug */
