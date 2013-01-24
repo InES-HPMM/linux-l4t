@@ -20,8 +20,6 @@
 #include <linux/mfd/core.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
-#include <linux/seq_file.h>
-#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/module.h>
@@ -423,144 +421,6 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 				 MAX77660_I2C_CORE);
 }
 
-#ifdef CONFIG_DEBUG_FS
-static struct dentry *max77660_dentry_regs;
-
-static int max77660_debugfs_dump_regs(struct max77660_chip *chip, char *label,
-			u8 *addrs, int num_addrs, char *buf,
-			ssize_t *len, enum max77660_i2c_slave slave)
-{
-	ssize_t count = *len;
-	u8 val;
-	int ret = 0;
-	int i;
-
-	count += sprintf(buf + count, "%s\n", label);
-	if (count >= PAGE_SIZE - 1)
-		return -ERANGE;
-
-	for (i = 0; i < num_addrs; i++) {
-		count += sprintf(buf + count, "0x%02x: ", addrs[i]);
-		if (count >= PAGE_SIZE - 1)
-			return -ERANGE;
-
-		ret = max77660_read(chip->dev, addrs[i], &val, 1, slave);
-		if (ret == 0)
-			count += sprintf(buf + count, "0x%02x\n", val);
-		else
-			count += sprintf(buf + count, "<read fail: %d>\n", ret);
-
-		if (count >= PAGE_SIZE - 1)
-			return -ERANGE;
-	}
-
-	*len = count;
-	return 0;
-}
-
-static int max77660_debugfs_regs_open(struct inode *inode, struct file *file)
-{
-	file->private_data = inode->i_private;
-	return 0;
-}
-
-static ssize_t max77660_debugfs_regs_read(struct file *file,
-					  char __user *user_buf,
-					  size_t count, loff_t *ppos)
-{
-	struct max77660_chip *chip = file->private_data;
-	char *buf;
-	size_t len = 0;
-	ssize_t ret;
-
-	/* Excluded interrupt status register to prevent register clear */
-	u8 global_regs[] = {
-		0x01, 0x02, 0x03, 0x04, 0x07, 0x08, 0x0F, 0x10, 0x11, 0x12
-	};
-	u8 sd_regs[] = {
-		0x09, 0x13, 0x17,
-		0x37, 0x38, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D,
-		0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53
-	};
-	u8 ldo_regs[] = {
-		0x14, 0x15, 0x16, 0x18, 0x19, 0x1A, 0x54, 0x55, 0x56, 0x57,
-		0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61,
-		0x61, 0x62, 0x63, 0x64, 0x65
-	};
-	u8 gpio_regs[] = {
-		0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73,
-		0x74, 0x75, 0x76, 0x77, 0x78, 0x79
-	};
-	u8 rtc_regs[] = {
-		0x01, 0x02, 0x03, 0x04, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
-		0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
-		0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B
-	};
-	u8 osc_32k_regs[] = { 0xA0, 0xA1 };
-	u8 fps_regs[] = {
-		0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A,
-		0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34,
-		0x35, 0x36
-	};
-	u8 cid_regs[] = { 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F };
-
-	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	len += sprintf(buf + len, "MAX77660 Registers\n");
-	max77660_debugfs_dump_regs(chip, "[Global]", global_regs,
-		ARRAY_SIZE(global_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[Step-Down]", sd_regs,
-		ARRAY_SIZE(sd_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[LDO]", ldo_regs,
-		ARRAY_SIZE(ldo_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[GPIO]", gpio_regs,
-		ARRAY_SIZE(gpio_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[RTC]", rtc_regs,
-		ARRAY_SIZE(rtc_regs), buf, &len, MAX77660_I2C_RTC);
-	max77660_debugfs_dump_regs(chip, "[32kHz Oscillator]", osc_32k_regs,
-		ARRAY_SIZE(osc_32k_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[Flexible Power Sequencer]", fps_regs,
-		ARRAY_SIZE(fps_regs), buf, &len, MAX77660_I2C_CORE);
-	max77660_debugfs_dump_regs(chip, "[Chip Identification]", cid_regs,
-		ARRAY_SIZE(cid_regs), buf, &len, MAX77660_I2C_CORE);
-
-	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
-	kfree(buf);
-
-	return ret;
-}
-
-static const struct file_operations max77660_debugfs_regs_fops = {
-	.open = max77660_debugfs_regs_open,
-	.read = max77660_debugfs_regs_read,
-};
-
-static void max77660_debugfs_init(struct max77660_chip *chip)
-{
-	max77660_dentry_regs = debugfs_create_file(chip->i2c_power->name,
-						   0444, 0, chip,
-						   &max77660_debugfs_regs_fops);
-	if (!max77660_dentry_regs)
-		dev_warn(chip->dev,
-			 "debugfs_init: Failed to create debugfs file\n");
-}
-
-static void max77660_debugfs_exit(struct max77660_chip *chip)
-{
-	debugfs_remove(max77660_dentry_regs);
-}
-#else
-static inline void max77660_debugfs_init(struct max77660_chip *chip)
-{
-}
-
-static inline void max77660_debugfs_exit(struct max77660_chip *chip)
-{
-}
-#endif /* CONFIG_DEBUG_FS */
-
 static struct regmap_irq_chip max77660_top_irq_chip = {
 	.name = "max77660-top",
 	.irqs = max77660_top_irqs,
@@ -782,7 +642,6 @@ static int max77660_probe(struct i2c_client *client,
 		goto fail_irq;
 	}
 
-	max77660_debugfs_init(chip);
 	ret = max77660_sleep(chip, false);
 	if (ret < 0) {
 		dev_err(&client->dev, "probe: Failed to disable sleep\n");
@@ -813,7 +672,6 @@ static int max77660_probe(struct i2c_client *client,
 out_mfd_clean:
 	mfd_remove_devices(chip->dev);
 out_exit:
-	max77660_debugfs_exit(chip);
 	regmap_del_irq_chip(pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
 		chip->global_irq_data);
 	regmap_del_irq_chip(chip->chip_irq, chip->top_irq_data);
@@ -838,7 +696,6 @@ static int __devexit max77660_remove(struct i2c_client *client)
 	int i;
 
 	mfd_remove_devices(chip->dev);
-	max77660_debugfs_exit(chip);
 	mutex_destroy(&chip->io_lock);
 	regmap_del_irq_chip(pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
 		chip->global_irq_data);
