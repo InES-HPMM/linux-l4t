@@ -194,7 +194,6 @@ static int sixaxis_set_operational_bt(struct hid_device *hdev)
 
 static void sixaxis_set_led_bt(struct hid_device *hdev)
 {
-	hid_info(hdev, "set LED BT\n");
 	/* set first LED on BT connection */
 	unsigned char led_data[] = {
 			0x01,
@@ -208,6 +207,7 @@ static void sixaxis_set_led_bt(struct hid_device *hdev)
 			0xff, 0x27, 0x10, 0x00, 0x32,	/* LED 1 */
 			0x00, 0x00, 0x00, 0x00, 0x00
 		};
+	hid_info(hdev, "set LED BT\n");
 	hdev->hid_output_raw_report(hdev, led_data, sizeof(led_data),
 					HID_OUTPUT_REPORT);
 }
