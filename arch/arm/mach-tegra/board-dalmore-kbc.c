@@ -37,9 +37,6 @@
 #define DALMORE_ROW_COUNT	3
 #define DALMORE_COL_COUNT	3
 
-#define DALMORE_ROW_COUNT_1001	1
-#define DALMORE_COL_COUNT_1001	1
-
 static const u32 kbd_keymap[] = {
 	KEY(0, 0, KEY_POWER),
 	KEY(0, 1, KEY_HOME),
@@ -57,15 +54,6 @@ static const struct matrix_keymap_data keymap_data = {
 	.keymap_size	= ARRAY_SIZE(kbd_keymap),
 };
 
-static const u32 kbd_keymap_1001[] = {
-	KEY(0, 0, KEY_POWER),
-};
-
-static const struct matrix_keymap_data keymap_data_1001 = {
-	.keymap		= kbd_keymap_1001,
-	.keymap_size	= ARRAY_SIZE(kbd_keymap_1001),
-};
-
 static struct tegra_kbc_wake_key dalmore_wake_cfg[] = {
 	[0] = {
 		.row = 0,
@@ -79,20 +67,6 @@ static struct tegra_kbc_platform_data dalmore_kbc_platform_data = {
 	.scan_count = 30,
 	.wakeup = true,
 	.keymap_data = &keymap_data,
-	.wake_cnt = 1,
-	.wake_cfg = &dalmore_wake_cfg[0],
-	.wakeup_key = KEY_POWER,
-#ifdef CONFIG_ANDROID
-	.disable_ev_rep = true,
-#endif
-};
-
-static struct tegra_kbc_platform_data dalmore_kbc_platform_data_1001 = {
-	.debounce_cnt = 20 * 32, /* 20 ms debaunce time */
-	.repeat_cnt = 1,
-	.scan_count = 30,
-	.wakeup = true,
-	.keymap_data = &keymap_data_1001,
 	.wake_cnt = 1,
 	.wake_cfg = &dalmore_wake_cfg[0],
 	.wakeup_key = KEY_POWER,
@@ -131,8 +105,10 @@ static struct gpio_keys_button dalmore_int_keys[] = {
 };
 
 static struct gpio_keys_button dalmore_e1611_1001_keys[] = {
-	[0] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
-	[1] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
+	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
 };
 
 static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
@@ -163,48 +139,21 @@ static struct platform_device dalmore_e1611_1001_keys_device = {
 
 static void __init dalmore_register_kbc(void)
 {
-	struct board_info board_info;
+	struct tegra_kbc_platform_data *data = &dalmore_kbc_platform_data;
+	int i;
 
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_E1611 && board_info.sku != 1001) {
-		struct tegra_kbc_platform_data *data = &dalmore_kbc_platform_data;
-		int i;
+	tegra_kbc_device.dev.platform_data = &dalmore_kbc_platform_data;
 
-		tegra_kbc_device.dev.platform_data = &dalmore_kbc_platform_data;
-		pr_info("Registering tegra-kbc\n");
-
-		BUG_ON((KBC_MAX_ROW + KBC_MAX_COL) > KBC_MAX_GPIO);
-		for (i = 0; i < DALMORE_ROW_COUNT; i++) {
-			data->pin_cfg[i].num = i;
-			data->pin_cfg[i].type = PIN_CFG_ROW;
-		}
-		for (i = 0; i < DALMORE_COL_COUNT; i++) {
-			data->pin_cfg[i + KBC_PIN_GPIO_11].num = i;
-			data->pin_cfg[i + KBC_PIN_GPIO_11].type = PIN_CFG_COL;
-		}
-
-		platform_device_register(&tegra_kbc_device);
-		pr_info("Registering successful tegra-kbc\n");
-	} else {
-		struct tegra_kbc_platform_data *data = &dalmore_kbc_platform_data_1001;
-		int i;
-
-		tegra_kbc_device.dev.platform_data = &dalmore_kbc_platform_data_1001;
-		pr_info("Registering tegra-kbc\n");
-
-		BUG_ON((KBC_MAX_ROW + KBC_MAX_COL) > KBC_MAX_GPIO);
-		for (i = 0; i < DALMORE_ROW_COUNT_1001; i++) {
-			data->pin_cfg[i].num = i;
-			data->pin_cfg[i].type = PIN_CFG_ROW;
-		}
-		for (i = 0; i < DALMORE_COL_COUNT_1001; i++) {
-			data->pin_cfg[i + KBC_PIN_GPIO_11].num = i;
-			data->pin_cfg[i + KBC_PIN_GPIO_11].type = PIN_CFG_COL;
-		}
-
-		platform_device_register(&tegra_kbc_device);
-		pr_info("Registering successful tegra-kbc\n");
+	for (i = 0; i < DALMORE_ROW_COUNT; i++) {
+		data->pin_cfg[i].num = i;
+		data->pin_cfg[i].type = PIN_CFG_ROW;
 	}
+	for (i = 0; i < DALMORE_COL_COUNT; i++) {
+		data->pin_cfg[i + KBC_PIN_GPIO_11].num = i;
+		data->pin_cfg[i + KBC_PIN_GPIO_11].type = PIN_CFG_COL;
+	}
+
+	platform_device_register(&tegra_kbc_device);
 }
 
 int __init dalmore_kbc_init(void)
@@ -214,20 +163,25 @@ int __init dalmore_kbc_init(void)
 	tegra_get_board_info(&board_info);
 	pr_info("Boardid:SKU = 0x%04x:0x%04x\n", board_info.board_id, board_info.sku);
 
-	if (board_info.board_id != BOARD_E1611 &&
-		board_info.board_id != BOARD_P2454) {
-		dalmore_register_kbc();
+	if (board_info.board_id == BOARD_E1613) {
 		platform_device_register(&dalmore_int_keys_device);
-	} else if (board_info.board_id == BOARD_E1611) {
-		if (board_info.sku != 1001) {
-			dalmore_register_kbc();
-		} else {
-			dalmore_register_kbc();
-			platform_device_register(
-				&dalmore_e1611_1001_keys_device);
-		}
+		dalmore_register_kbc();
 	}
 
+	if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1000)) {
+		dalmore_register_kbc();
+	} else {
+		int ret;
+
+		ret = gpio_request(TEGRA_GPIO_PR0, "row0");
+		if (ret < 0) {
+			pr_err("gpio_request for PR0 failed: %d\n", ret);
+		} else {
+			gpio_direction_output(TEGRA_GPIO_PR0, 0);
+		}
+
+		platform_device_register(&dalmore_e1611_1001_keys_device);
+	}
 	return 0;
 }
 

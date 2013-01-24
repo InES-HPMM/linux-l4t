@@ -207,6 +207,9 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_common[] = {
 
 	/* nct */
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
+
+	/* io rdy */
+	DEFAULT_PINMUX(GMI_IORDY,       GMI,         PULL_UP,   NORMAL, INPUT),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -255,7 +258,6 @@ static struct gpio_init_pin_info init_gpio_mode_dalmore_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ3, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PC7, true, 0),
