@@ -120,52 +120,31 @@
 
 #endif
 
+#define MAX77660_IRQ_TOP1_TOPSYS_MASK			BIT(7)
+#define MAX77660_IRQ_TOP1_ADC_MASK			BIT(6)
+#define MAX77660_IRQ_TOP1_SIM_MASK			BIT(5)
+#define MAX77660_IRQ_TOP1_GPIO_MASK			BIT(4)
+#define MAX77660_IRQ_TOP1_RTC_MASK			BIT(3)
+#define MAX77660_IRQ_TOP1_CHARGER_MASK			BIT(2)
+#define MAX77660_IRQ_TOP1_FUELG_MASK			BIT(1)
+#define MAX77660_IRQ_TOP1_OVF_MASK			BIT(0)
 
-#define IRQ_TOP1_TOPSYS_MASK	BIT(7)
-#define IRQ_TOP1_TOPSYS_SHIFT	7
-#define IRQ_TOP1_ADC_MASK		BIT(6)
-#define IRQ_TOP1_ADC_SHIFT		6
-#define IRQ_TOP1_SIM_MASK		BIT(5)
-#define IRQ_TOP1_SIM_SHIFT		5
-#define IRQ_TOP1_GPIO_MASK		BIT(4)
-#define IRQ_TOP1_GPIO_SHIFT		4
-#define IRQ_TOP1_RTC_MASK		BIT(3)
-#define IRQ_TOP1_RTC_SHIFT		3
-#define IRQ_TOP1_CHARGER_MASK	BIT(2)
-#define IRQ_TOP1_CHARGER_SHIFT	2
-#define IRQ_TOP1_FUELG_MASK		BIT(1)
-#define IRQ_TOP1_FUELG_SHIFT	1
-#define IRQ_TOP1_OVF_MASK		BIT(0)
-#define IRQ_TOP1_OVF_SHIFT		0
+#define MAX77660_IRQ_TOP2_BUCK_MASK			BIT(1)
+#define MAX77660_IRQ_TOP2_LDO_MASK			BIT(0)
 
-#define IRQ_TOP2_BUCK_MASK		BIT(1)
-#define IRQ_TOP2_BUCK_SHIFT		1
-#define IRQ_TOP2_LDO_MASK		BIT(0)
-#define IRQ_TOP2_LDO_SHIFT		0
+#define MAX77660_IRQ_GLBLINT1_EN0_R_MASK		BIT(7)
+#define MAX77660_IRQ_GLBLINT1_EN0_F_MASK		BIT(6)
+#define MAX77660_IRQ_GLBLINT1_EN0_1SEC_MASK		BIT(5)
+#define MAX77660_IRQ_GLBLINT1_I2CWDT_MASK		BIT(4)
+#define MAX77660_IRQ_GLBLINT1_SYSLOW_MASK		BIT(3)
+#define MAX77660_IRQ_GLBLINT1_TJALRM1_MASK		BIT(2)
+#define MAX77660_IRQ_GLBLINT1_TJALRM2_MASK		BIT(1)
+#define MAX77660_IRQ_GLBLINT1_IRQ_M_MASK		BIT(0)
 
-#define IRQ_GLBLINT1_EN0_R_MASK		BIT(7)
-#define IRQ_GLBLINT1_EN0_R_SHIFT		7
-#define IRQ_GLBLINT1_EN0_F_MASK		BIT(6)
-#define IRQ_GLBLINT1_EN0_F_SHIFT		6
-#define IRQ_GLBLINT1_EN0_1SEC_MASK	BIT(5)
-#define IRQ_GLBLINT1_EN0_1SEC_SHIFT		5
-#define IRQ_GLBLINT1_I2CWDT_MASK	BIT(4)
-#define IRQ_GLBLINT1_I2CWDT_SHIFT		4
-#define IRQ_GLBLINT1_SYSLOW_MASK	BIT(3)
-#define IRQ_GLBLINT1_SYSLOW_SHIFT		3
-#define IRQ_GLBLINT1_TJALRM1_MASK	BIT(2)
-#define IRQ_GLBLINT1_TJALRM1_SHIFT		2
-#define IRQ_GLBLINT1_TJALRM2_MASK	BIT(1)
-#define IRQ_GLBLINT1_TJALRM2_SHIFT		1
-
-#define IRQ_GLBLINT2_MR_R_MASK			BIT(3)
-#define IRQ_GLBLINT2_MR_R_SHIFT				3
-#define IRQ_GLBLINT2_MR_F_MASK			BIT(2)
-#define IRQ_GLBLINT2_MR_F_SHIFT				2
-#define IRQ_GLBLINT2_WDTWRN_SYS_MASK	BIT(1)
-#define IRQ_GLBLINT2_WDTWRN_SYS_SHIFT		1
-#define IRQ_GLBLINT2_WDTWRN_CHG_MASK	BIT(0)
-#define IRQ_GLBLINT2_WDTWRN_CHG_SHIFT		0
+#define MAX77660_IRQ_GLBLINT2_MR_R_MASK			BIT(3)
+#define MAX77660_IRQ_GLBLINT2_MR_F_MASK			BIT(2)
+#define MAX77660_IRQ_GLBLINT2_WDTWRN_SYS_MASK		BIT(1)
+#define MAX77660_IRQ_GLBLINT2_WDTWRN_CHG_MASK		BIT(0)
 
 #define GLBLCNFG0_SFT_OFF_SYSRST_MASK		BIT(3)
 #define GLBLCNFG0_SFT_OFF_SYSRST_SHIFT			3
@@ -240,25 +219,34 @@ enum {
  * Interrupts
  */
 enum {
-	MAX77660_IRQ_INT_TOP_GPIO,	/* TOP GPIO internal int to max77660 */
 	MAX77660_IRQ_INT_TOP_OVF,	/* If this bit is set read from TOP2  */
-	MAX77660_IRQ_INT_TOP_SYSINT,/* If this bit is set read from GLOBAL INT1 and INT2 */
+	MAX77660_IRQ_FG,		/* FG */
+	MAX77660_IRQ_CHG,		/* CHG */
+	MAX77660_IRQ_RTC,		/* RTC */
+	MAX77660_IRQ_INT_TOP_GPIO,	/* TOP GPIO internal int to max77660 */
+	MAX77660_IRQ_SIM,		/* SIM interrupt */
+	MAX77660_IRQ_ADC,		/* ADC interrupt */
+	MAX77660_IRQ_TOPSYSINT,		/* TOPSYS interrupt */
+	MAX77660_IRQ_LDOINT,		/* LDO power fail */
+	MAX77660_IRQ_BUCKINT,		/* BUCK power fail */
+
 #if 0
 	MAX77660_IRQ_LBT_LB,		/* Low-Battery */
 	MAX77660_IRQ_LBT_THERM_ALRM1,	/* Thermal alarm status, > 120C */
 	MAX77660_IRQ_LBT_THERM_ALRM2,	/* Thermal alarm status, > 140C */
 #endif
-	MAX77660_IRQ_GLBL_EN0_R,     /* EN0 Rising interrupt */
-	MAX77660_IRQ_GLBL_EN0_F,     /* EN0 Falling interrupt */
-	MAX77660_IRQ_GLBL_EN0_1SEC,  /* EN0 Active for 1 sec interrupt */
-	MAX77660_IRQ_GLBL_I2C_WDT,   /* I2C watchdog timeout interrupt */
-	MAX77660_IRQ_GLBL_SYSLOW,    /* Low main battery interrupt */
+	MAX77660_IRQ_GLBL_BASE,
+	MAX77660_IRQ_GLBL_TJALRM2 = MAX77660_IRQ_GLBL_BASE,	/* Thermal alarm status, > 140C */
 	MAX77660_IRQ_GLBL_TJALRM1,	/* Thermal alarm status, > 120C */
-	MAX77660_IRQ_GLBL_TJALRM2,	/* Thermal alarm status, > 140C */
-	MAX77660_IRQ_GLBL_MR_R,		/* Manual reset rising interrupt */
-	MAX77660_IRQ_GLBL_MR_F,		/* Manual reset falling interrupt */
-	MAX77660_IRQ_GLBL_WDTWRN_SYS,	/* System watchdog timer warning interrupt */
+	MAX77660_IRQ_GLBL_SYSLOW,    /* Low main battery interrupt */
+	MAX77660_IRQ_GLBL_I2C_WDT,   /* I2C watchdog timeout interrupt */
+	MAX77660_IRQ_GLBL_EN0_1SEC,  /* EN0 Active for 1 sec interrupt */
+	MAX77660_IRQ_GLBL_EN0_F,     /* EN0 Falling interrupt */
+	MAX77660_IRQ_GLBL_EN0_R,     /* EN0 Rising interrupt */
 	MAX77660_IRQ_GLBL_WDTWRN_CHG,	/* Charger watchdog timer warning interrupt */
+	MAX77660_IRQ_GLBL_WDTWRN_SYS,	/* System watchdog timer warning interrupt */
+	MAX77660_IRQ_GLBL_MR_F,		/* Manual reset falling interrupt */
+	MAX77660_IRQ_GLBL_MR_R,		/* Manual reset rising interrupt */
 
 	MAX77660_IRQ_GPIO0,		/* GPIO0 edge detection */
 	MAX77660_IRQ_GPIO1,		/* GPIO1 edge detection */
@@ -281,15 +269,7 @@ enum {
 	MAX77660_IRQ_ONOFF_ACOK_FALLING,/* ACOK falling */
 	MAX77660_IRQ_ONOFF_ACOK_RISING,	/* ACOK rising */
 #endif
-	MAX77660_IRQ_FG,		/* FG */
-	MAX77660_IRQ_CHG,		/* CHG */
-	MAX77660_IRQ_RTC,		/* RTC */
 	MAX77660_IRQ_HAPTIC,		/* HAPTIC */
-	MAX77660_IRQ_BUCK_PF,		/* BUCK power fail */
-	MAX77660_IRQ_LDO_PF,		/* LDO power fail */
-	MAX77660_IRQ_SIM,		/* SIM interrupt */
-	MAX77660_IRQ_ADC,		/* ADC interrupt */
-
 	MAX77660_IRQ_NR,
 };
 
@@ -377,6 +357,7 @@ struct max77660_chip {
 	struct mutex io_lock;
 
 	struct irq_chip irq;
+	int chip_irq;
 	struct mutex irq_lock;
 	int irq_base;
 	int irq_top_count[8];
@@ -387,6 +368,9 @@ struct max77660_chip {
 	u8 fg_i2c_addr;
 	u8 chg_i2c_addr;
 	u8 haptic_i2c_addr;
+
+	struct regmap_irq_chip_data *top_irq_data;
+	struct regmap_irq_chip_data *global_irq_data;
 };
 
 
