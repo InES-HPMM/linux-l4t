@@ -188,7 +188,7 @@ static struct tegra_dc_out pluto_disp2_out = {
 	.dcc_bus	= 3,
 	.hotplug_gpio	= pluto_hdmi_hpd,
 
-	.max_pixclock	= KHZ2PICOS(148500),
+	.max_pixclock	= KHZ2PICOS(297000),
 
 	.enable		= pluto_hdmi_enable,
 	.disable	= pluto_hdmi_disable,
