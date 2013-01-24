@@ -37,7 +37,11 @@ obj-y                                   += tegra_core_volt_cap.o
 ifeq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
 obj-y                                   += wakeups-t3.o
 else
+ifeq ($(CONFIG_ARCH_TEGRA_14x_SOC),y)
+obj-y                                   += wakeups-t14x.o
+else
 obj-y                                   += wakeups-t11x.o
+endif
 endif
 ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_PM_SLEEP),y)
