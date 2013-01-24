@@ -59,26 +59,25 @@
 #define AMB_PGA_256x		0x03
 
 #define LED_DRV_SHIFT		4
-#define LED_DRV_STRNGTH		110 /* mA */
+#define LED_DRV_STRENGTH		110 /* mA */
 
 #define POWER_ON_DELAY		20 /* 20ms */
 
-#define MAX44005_SYSFS_SHOW(reg_addr, nbytes)	{ \
-	do { \
-		int ret; \
-		int value; \
-		struct iio_dev *indio_dev = dev_to_iio_dev(dev); \
-		struct max44005_chip *chip = iio_priv(indio_dev); \
-		mutex_lock(&chip->lock); \
-		ret = max44005_read(chip, &value, reg_addr, nbytes); \
-		if (ret < 0) { \
-			mutex_unlock(&chip->lock); \
-			return sprintf(buf, "-1"); \
-		} \
-		mutex_unlock(&chip->lock); \
-		return sprintf(buf, "%d", value); \
-	} while (0); \
-} \
+#define MAX44005_SYSFS_SHOW(reg_addr, nbytes)				 \
+	do {								 \
+		int ret;						 \
+		int value;						 \
+		struct iio_dev *indio_dev = dev_to_iio_dev(dev);	 \
+		struct max44005_chip *chip = iio_priv(indio_dev);	 \
+		mutex_lock(&chip->lock);				 \
+		ret = max44005_read(chip, &value, reg_addr, nbytes);	 \
+		if (ret < 0) {						 \
+			mutex_unlock(&chip->lock);			 \
+			return sprintf(buf, "-1");			 \
+		}							 \
+		mutex_unlock(&chip->lock);				 \
+		return sprintf(buf, "%d", value);			 \
+	} while (0);							 \
 
 /* clear is needed for both temp and clear */
 #define CLEAR_ENABLED		(chip->using_temp && chip->using_als)
@@ -89,12 +88,17 @@
 
 #define TEMP_ENABLED		(chip->using_temp)
 
+enum {
+	CHIP = 0,
+	LED
+};
+
 struct max44005_chip {
 	struct i2c_client	*client;
 	struct mutex		lock;
 
-	struct regulator	*supply;
-	bool			power_utilization;
+	struct regulator	*supply[2];
+	bool			power_utilization[2];
 
 	bool			using_als;
 	bool			using_proximity;
@@ -109,6 +113,9 @@ static int max44005_read(struct max44005_chip *chip, int *rval, u8 reg_addr,
 {
 	u8 val[2];
 	int ret;
+
+	if (chip->supply[CHIP] && !regulator_is_enabled(chip->supply[CHIP]))
+		return -EINVAL;
 
 	if (chip->shutdown_complete)
 		return -EINVAL;
@@ -134,6 +141,9 @@ static int max44005_write(struct max44005_chip *chip, u8 val, u8 reg_addr)
 {
 	int ret;
 
+	if (chip->supply[CHIP] && !regulator_is_enabled(chip->supply[CHIP]))
+		return -EINVAL;
+
 	if (chip->shutdown_complete)
 		return -EINVAL;
 
@@ -153,7 +163,10 @@ static void max44005_standby(struct max44005_chip *chip, bool shutdown)
 	if (chip->is_standby == shutdown)
 		return;
 
-	if (shutdown) {
+	if (shutdown == chip->power_utilization[CHIP])
+		return;
+
+	if (shutdown == false) {
 		ret = max44005_write(chip, MAX_SHDN_DISABLE,
 					INT_STATUS_REG_ADDR);
 		if (!ret)
@@ -175,8 +188,17 @@ static bool set_main_conf(struct max44005_chip *chip, int mode)
 /* current is in mA */
 static bool set_led_drive_strength(struct max44005_chip *chip, int cur)
 {
-	return max44005_write(chip, (cur / 10) << LED_DRV_SHIFT,
-				PROX_CONF_REG_ADDR) == 0;
+	if (!chip->supply[LED])
+		goto finish;
+
+	if (cur && !chip->power_utilization[LED])
+		regulator_enable(chip->supply[LED]);
+	else if (!cur && chip->power_utilization[LED])
+		regulator_disable(chip->supply[LED]);
+
+finish:
+	chip->power_utilization[LED] = cur ? 1 : 0;
+	return max44005_write(chip, 0xA1, PROX_CONF_REG_ADDR) == 0;
 }
 
 /* assumes power is on */
@@ -188,7 +210,7 @@ static bool enable_temp_channel(struct max44005_chip *chip, int enable_temp)
 		return true;
 
 	if (enable_temp) {
-		/* if prox is not used, then clear is enabled */
+		/* if LED is not used, then clear is enabled */
 		if (!CLEAR_ENABLED && PROXIMITY_ENABLED)
 			set_main_conf(chip, MODE_CLEAR_PROX);
 		ret = max44005_write(chip, TEMP_ENABLE | COMP_ENABLE |
@@ -206,19 +228,19 @@ static bool max44005_power(struct max44005_chip *chip, int power_on)
 {
 	int was_regulator_already_on = false;
 
-	if (power_on && chip->power_utilization)
+	if (power_on && chip->power_utilization[CHIP])
 		return true;
 
 	if (power_on) {
-		if (chip->supply) {
+		if (chip->supply[CHIP]) {
 			was_regulator_already_on =
-				regulator_is_enabled(chip->supply);
-			if (regulator_enable(chip->supply))
+				regulator_is_enabled(chip->supply[CHIP]);
+			if (regulator_enable(chip->supply[CHIP]))
 				return false;
 			if (!was_regulator_already_on)
 				msleep(POWER_ON_DELAY);
 		}
-		chip->power_utilization = 1;
+		chip->power_utilization[CHIP] = 1;
 
 		/* wakeup if still in shutdown state */
 		max44005_standby(chip, false);
@@ -227,15 +249,14 @@ static bool max44005_power(struct max44005_chip *chip, int power_on)
 
 	/* power off request */
 	/* disable the power source as chip doesnot need it anymore */
-	if (chip->supply && chip->power_utilization &&
-			regulator_disable(chip->supply))
+	if (chip->supply[CHIP] && chip->power_utilization[CHIP] &&
+			regulator_disable(chip->supply[CHIP]))
 		return false;
-	chip->power_utilization = 0;
+	chip->power_utilization[CHIP] = 0;
 	/* chip doesnt utilize power now, power being
 	 * supplied is being wasted, so put the device to standby
 	 * to reduce wastage */
-	if (!chip->supply || regulator_is_enabled(chip->supply))
-		max44005_standby(chip, true);
+	max44005_standby(chip, true);
 
 	return true;
 }
@@ -246,7 +267,9 @@ static bool max44005_restore_state(struct max44005_chip *chip)
 	int ret;
 
 	if (PROXIMITY_ENABLED)
-		ret = set_led_drive_strength(chip, LED_DRV_STRNGTH);
+		ret = set_led_drive_strength(chip, LED_DRV_STRENGTH);
+	else
+		ret = set_led_drive_strength(chip, 0);
 
 	if (!ret)
 		return false;
@@ -320,8 +343,8 @@ static ssize_t amb_clear_enable(struct device *dev,
 		if (!PROXIMITY_ENABLED)
 			goto success;
 
-		/* if clear not enabled and prox enabled
-		 * change the mode to CLEAR+PROX enabled*/
+		/* if clear not enabled and LED enabled
+		 * change the mode to CLEAR+LED enabled*/
 		if (PROXIMITY_ENABLED &&
 				set_main_conf(chip, MODE_CLEAR_PROX))
 			goto success;
@@ -347,7 +370,7 @@ fail:
 }
 /* amb clear end */
 
-/* amb PROX begin */
+/* amb LED begin */
 static ssize_t show_prox_value(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -375,7 +398,7 @@ static ssize_t prox_enable(struct device *dev,
 		if (!max44005_power(chip, true))
 			goto fail;
 
-		if (!set_led_drive_strength(chip, LED_DRV_STRNGTH))
+		if (!set_led_drive_strength(chip, LED_DRV_STRENGTH))
 			goto fail;
 
 		if (CLEAR_ENABLED && set_main_conf(chip, MODE_CLEAR_PROX))
@@ -390,12 +413,12 @@ static ssize_t prox_enable(struct device *dev,
 		if (!CLEAR_ENABLED && max44005_power(chip, false))
 			goto success;
 
-		if (CLEAR_ENABLED && set_main_conf(chip, MODE_CLEAR_ONLY))
+		if (CLEAR_ENABLED && set_led_drive_strength(chip, 0) &&
+			set_main_conf(chip, MODE_CLEAR_ONLY))
 			goto success;
 
 		goto fail;
 	}
-
 
 success:
 	chip->using_proximity = lval;
@@ -405,7 +428,7 @@ fail:
 	mutex_unlock(&chip->lock);
 	return -EBUSY;
 }
-/* amb PROX end */
+/* amb LED end */
 
 /* amb TEMP begin */
 static ssize_t show_amb_temp_value(struct device *dev,
@@ -507,9 +530,10 @@ static int max44005_probe(struct i2c_client *client,
 	}
 
 	chip = iio_priv(indio_dev);
+
+
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
-
 	mutex_init(&chip->lock);
 
 	indio_dev->info = &max44005_iio_info;
@@ -523,11 +547,22 @@ static int max44005_probe(struct i2c_client *client,
 		return err;
 	}
 
-	chip->supply = regulator_get(&client->dev, "vdd");
+	chip->supply[CHIP] = regulator_get(&client->dev, "vdd");
 
-	if (IS_ERR_OR_NULL(chip->supply)) {
+	if (IS_ERR_OR_NULL(chip->supply[CHIP])) {
 		dev_err(&client->dev, "could not get regulator\n"
 				"assuming power supply is always on\n");
+		kfree(chip->supply);
+		chip->supply[CHIP] = NULL;
+		chip->supply[LED] = NULL;
+	} else {
+		chip->supply[LED] = regulator_get(&client->dev, "vdd_prox");
+
+		if (IS_ERR_OR_NULL(chip->supply[LED])) {
+			dev_err(&client->dev, "als_prox regulator not present\n"
+					"proximity sensor may not work fine\n");
+			chip->supply[LED] = NULL;
+		}
 	}
 
 	mutex_lock(&chip->lock);
@@ -584,8 +619,8 @@ static int max44005_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 	dev_dbg(&client->dev, "%s()\n", __func__);
-	if (chip->supply)
-		regulator_put(chip->supply);
+	if (chip->supply[CHIP])
+		regulator_put(chip->supply[CHIP]);
 	mutex_destroy(&chip->lock);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
@@ -597,8 +632,8 @@ static void max44005_shutdown(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 	mutex_lock(&chip->lock);
-	if (chip->supply)
-		regulator_put(chip->supply);
+	if (chip->supply[CHIP])
+		regulator_put(chip->supply[CHIP]);
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->lock);
 	mutex_destroy(&chip->lock);
