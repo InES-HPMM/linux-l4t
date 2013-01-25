@@ -236,7 +236,7 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 	if (!work_pending(&modem->cpu_boost_work))
 		queue_work(modem->wq, &modem->cpu_boost_work);
 
-	if (!v)
+	if (modem->edp_initialized && !v)
 		queue_work(modem->wq, &modem->edp_work);
 
 	/* USB disconnect maybe on going... */
