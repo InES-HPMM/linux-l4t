@@ -125,6 +125,7 @@ struct clk_ops {
 	int		(*shared_bus_update)(struct clk *);
 	int		(*clk_cfg_ex)(struct clk *,
 				enum tegra_clk_ex_param, u32);
+	long		(*round_rate_updown)(struct clk *, unsigned long, bool);
 };
 
 struct clk_stats {

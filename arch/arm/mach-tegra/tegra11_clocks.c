@@ -515,8 +515,10 @@
 static bool tegra11_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
 static void tegra11_pllp_init_dependencies(unsigned long pllp_rate);
-static unsigned long tegra11_clk_shared_bus_update(
-	struct clk *bus, struct clk **bus_top, struct clk **bus_slow);
+static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
+	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap);
+static unsigned long tegra11_clk_cap_shared_bus(struct clk *bus,
+	unsigned long rate, unsigned long ceiling);
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -1570,7 +1572,8 @@ static void tegra11_sbus_cmplx_init(struct clk *c)
  * recursive calls. Lost 1Hz is added in tegra11_sbus_cmplx_set_rate before
  * actually setting divider rate.
  */
-static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
+static long tegra11_sbus_cmplx_round_updown(struct clk *c, unsigned long rate,
+					    bool up)
 {
 	int divider;
 	unsigned long source_rate, round_rate;
@@ -1583,9 +1586,9 @@ static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 	source_rate = clk_get_rate(new_parent->parent);
 
 	divider = clk_div71_get_divider(source_rate, rate,
-		new_parent->flags, ROUND_DIVIDER_DOWN);
+		new_parent->flags, up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
 	if (divider < 0)
-		return divider;
+		return c->min_rate;
 
 	if (divider == 1)
 		divider = 0;
@@ -1605,6 +1608,11 @@ static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
 			round_rate = c->u.system.threshold;
 	}
 	return round_rate;
+}
+
+static long tegra11_sbus_cmplx_round_rate(struct clk *c, unsigned long rate)
+{
+	return tegra11_sbus_cmplx_round_updown(c, rate, true);
 }
 
 static int tegra11_sbus_cmplx_set_rate(struct clk *c, unsigned long rate)
@@ -1662,8 +1670,7 @@ static int tegra11_clk_sbus_update(struct clk *bus)
 	if (detach_shared_bus)
 		return 0;
 
-	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
-	rate = clk_round_rate_locked(bus, rate);
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL, NULL);
 
 	old_rate = clk_get_rate_locked(bus);
 	if (rate == old_rate)
@@ -1676,6 +1683,7 @@ static struct clk_ops tegra_sbus_cmplx_ops = {
 	.init = tegra11_sbus_cmplx_init,
 	.set_rate = tegra11_sbus_cmplx_set_rate,
 	.round_rate = tegra11_sbus_cmplx_round_rate,
+	.round_rate_updown = tegra11_sbus_cmplx_round_updown,
 	.shared_bus_update = tegra11_clk_sbus_update,
 };
 
@@ -4280,15 +4288,21 @@ static void tegra11_emc_clk_init(struct clk *c)
 	tegra_emc_dram_type_init(c);
 }
 
-static long tegra11_emc_clk_round_rate(struct clk *c, unsigned long rate)
+static long tegra11_emc_clk_round_updown(struct clk *c, unsigned long rate,
+					 bool up)
 {
 	long new_rate = max(rate, c->min_rate);
 
-	new_rate = tegra_emc_round_rate(new_rate);
+	new_rate = tegra_emc_round_rate_updown(new_rate, up);
 	if (new_rate < 0)
 		new_rate = c->max_rate;
 
 	return new_rate;
+}
+
+static long tegra11_emc_clk_round_rate(struct clk *c, unsigned long rate)
+{
+	return tegra11_emc_clk_round_updown(c, rate, true);
 }
 
 static int tegra11_emc_clk_set_rate(struct clk *c, unsigned long rate)
@@ -4339,8 +4353,7 @@ static int tegra11_clk_emc_bus_update(struct clk *bus)
 	if (detach_shared_bus)
 		return 0;
 
-	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
-	rate = clk_round_rate_locked(bus, rate);
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL, NULL);
 
 	old_rate = clk_get_rate_locked(bus);
 	if (rate == old_rate)
@@ -4388,6 +4401,7 @@ static struct clk_ops tegra_emc_clk_ops = {
 	.disable		= &tegra11_periph_clk_disable,
 	.set_rate		= &tegra11_emc_clk_set_rate,
 	.round_rate		= &tegra11_emc_clk_round_rate,
+	.round_rate_updown	= &tegra11_emc_clk_round_updown,
 	.reset			= &tegra11_periph_clk_reset,
 	.shared_bus_update	= &tegra11_clk_emc_bus_update,
 };
@@ -4530,7 +4544,8 @@ static int tegra11_clk_cbus_enable(struct clk *c)
 	return 0;
 }
 
-static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
+static long tegra11_clk_cbus_round_updown(struct clk *c, unsigned long rate,
+					  bool up)
 {
 	int i;
 
@@ -4554,13 +4569,22 @@ static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
 	}
 	rate = max(rate, c->min_rate);
 
-	for (i = 0; i < (c->dvfs->num_freqs - 1); i++) {
+	for (i = 0; ; i++) {
 		unsigned long f = c->dvfs->freqs[i];
 		int mv = c->dvfs->millivolts[i];
-		if ((f >= rate) || (mv >= c->dvfs->max_millivolts))
+		if ((f >= rate) || (mv >= c->dvfs->max_millivolts) ||
+		    ((i + 1) >=  c->dvfs->num_freqs)) {
+			if (!up && i && (f > rate))
+				i--;
 			break;
+		}
 	}
 	return c->dvfs->freqs[i];
+}
+
+static long tegra11_clk_cbus_round_rate(struct clk *c, unsigned long rate)
+{
+	return tegra11_clk_cbus_round_updown(c, rate, true);
 }
 
 static int cbus_switch_one(struct clk *c, struct clk *p, u32 div, bool abort)
@@ -4723,11 +4747,12 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	struct clk *top = NULL;
 	unsigned long rate;
 	unsigned long old_rate;
+	unsigned long ceiling;
 
 	if (detach_shared_bus)
 		return 0;
 
-	rate = tegra11_clk_shared_bus_update(bus, &top, &slow);
+	rate = tegra11_clk_shared_bus_update(bus, &top, &slow, &ceiling);
 
 	/* use dvfs table of the slowest enabled client as cbus dvfs table */
 	if (bus->dvfs && slow && (slow != bus->u.cbus.slow_user)) {
@@ -4746,7 +4771,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	bus->u.cbus.slow_user = slow;
 	bus->u.cbus.top_user = top;
 
-	rate = bus->ops->round_rate(bus, rate);
+	rate = tegra11_clk_cap_shared_bus(bus, rate, ceiling);
 	mv = tegra_dvfs_predict_millivolts(bus, rate);
 	if (IS_ERR_VALUE(mv))
 		return -EINVAL;
@@ -4786,8 +4811,7 @@ static int tegra11_clk_cbus_update(struct clk *bus)
 	if (detach_shared_bus)
 		return 0;
 
-	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL);
-	rate = clk_round_rate_locked(bus, rate);
+	rate = tegra11_clk_shared_bus_update(bus, NULL, NULL, NULL);
 
 	old_rate = clk_get_rate_locked(bus);
 	if (rate == old_rate)
@@ -4852,6 +4876,7 @@ static struct clk_ops tegra_clk_cbus_ops = {
 	.enable = tegra11_clk_cbus_enable,
 	.set_rate = tegra11_clk_cbus_set_rate,
 	.round_rate = tegra11_clk_cbus_round_rate,
+	.round_rate_updown = tegra11_clk_cbus_round_updown,
 	.shared_bus_update = tegra11_clk_cbus_update,
 };
 
@@ -4871,8 +4896,8 @@ static struct clk_ops tegra_clk_cbus_ops = {
  * CONFIG_TEGRA_MIGRATE_CBUS_USERS is set.
  */
 
-static unsigned long tegra11_clk_shared_bus_update(
-	struct clk *bus, struct clk **bus_top, struct clk **bus_slow)
+static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
+	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap)
 {
 	struct clk *c;
 	struct clk *slow = NULL;
@@ -4939,14 +4964,36 @@ static unsigned long tegra11_clk_shared_bus_update(
 		bw = (bw < bus->max_rate / 100) ? (bw * 100) : bus->max_rate;
 	}
 
-	rate = override_rate ? : min(max(rate, bw), ceiling);
+	rate = override_rate ? : max(rate, bw);
+	ceiling = override_rate ? bus->max_rate : ceiling;
 
-	if (bus_top)
+	if (bus_top && bus_slow && rate_cap) {
+		/* If dynamic bus dvfs table, let the caller to complete
+		   rounding and aggregation */
 		*bus_top = top;
-	if (bus_slow)
 		*bus_slow = slow;
+		*rate_cap = ceiling;
+	} else {
+		/* If satic bus dvfs table, complete rounding and aggregation */
+		rate = tegra11_clk_cap_shared_bus(bus, rate, ceiling);
+	}
+
 	return rate;
 };
+
+static unsigned long tegra11_clk_cap_shared_bus(struct clk *bus,
+	unsigned long rate, unsigned long ceiling)
+{
+	if (bus->ops && bus->ops->round_rate_updown)
+		ceiling = bus->ops->round_rate_updown(bus, ceiling, false);
+
+	rate = min(rate, ceiling);
+
+	if (bus->ops && bus->ops->round_rate)
+		rate = bus->ops->round_rate(bus, rate);
+
+	return rate;
+}
 
 static int tegra_clk_shared_bus_migrate_users(struct clk *user)
 {
