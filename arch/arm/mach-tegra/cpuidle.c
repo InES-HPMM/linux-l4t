@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra CPUs
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  * Copyright (c) 2011 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *         Gary King <gking@nvidia.com>
@@ -62,8 +62,6 @@ struct cpuidle_driver tegra_idle_driver = {
 	.name = "tegra_idle",
 	.owner = THIS_MODULE,
 };
-
-static DEFINE_PER_CPU(struct cpuidle_device *, tegra_idle_device);
 
 static int tegra_idle_enter_clock_gating(struct cpuidle_device *dev,
 	int index)
@@ -208,7 +206,6 @@ static int tegra_cpuidle_register_device(unsigned int cpu)
 		kfree(dev);
 		return -EIO;
 	}
-	per_cpu(tegra_idle_device, cpu) = dev;
 	return 0;
 }
 
