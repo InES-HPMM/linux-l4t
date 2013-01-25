@@ -41,6 +41,11 @@ config TEGRA_DC_CMU
     default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
     default y
 
+config TEGRA_DC_WIN_H
+    bool
+    default y if ARCH_TEGRA_14x_SOC
+    default n
+
 config TEGRA_MIPI_CAL
     bool
     default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
