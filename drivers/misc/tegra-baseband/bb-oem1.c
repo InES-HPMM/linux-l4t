@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-baseband/bb-oem1.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ static void bb_setdata(struct opsdata *data)
 	}
 	spin_unlock_irqrestore(&bb_locks.lock, flags);
 
-	if (data->powerstate == BBSTATE_UNKNOWN) {
+	if (data && (data->powerstate == BBSTATE_UNKNOWN)) {
 		if (!wake_lock_active(&bb_locks.wlock)) {
 			wake_lock(&bb_locks.wlock);
 			if (dlevel & DLEVEL_MISC)
