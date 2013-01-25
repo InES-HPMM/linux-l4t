@@ -24,6 +24,9 @@
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"
 
+#define PMC_WAKE_STATUS 0x14
+#define PMC_WAKE2_STATUS 0x168
+
 /* External peripheral act as gpio */
 /* MAX77663 GPIO */
 #define MAX77663_GPIO_BASE      TEGRA_NR_GPIOS
