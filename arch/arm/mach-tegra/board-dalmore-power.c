@@ -1078,6 +1078,14 @@ static struct tegra_suspend_platform_data dalmore_suspend_data = {
 	.sysclkreq_high	= true,
 	.cpu_lp2_min_residency = 1000,
 	.min_residency_crail = 20000,
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	.lp1_lowvolt_support = false,
+	.i2c_base_addr = 0,
+	.pmuslave_addr = 0,
+	.core_reg_addr = 0,
+	.lp1_core_volt_low = 0,
+	.lp1_core_volt_high = 0,
+#endif
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */

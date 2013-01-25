@@ -703,6 +703,14 @@ static struct tegra_suspend_platform_data pluto_suspend_data = {
 	.sysclkreq_high	= true,
 	.cpu_lp2_min_residency = 1000,
 	.min_residency_crail = 20000,
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	.lp1_lowvolt_support = true,
+	.i2c_base_addr = TEGRA_I2C5_BASE,
+	.pmuslave_addr = 0xB0,
+	.core_reg_addr = 0x2B,
+	.lp1_core_volt_low = 0x2E,
+	.lp1_core_volt_high = 0x42,
+#endif
 };
 
 int __init pluto_suspend_init(void)
