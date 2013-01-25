@@ -32,7 +32,11 @@ static inline void set_dma_ops(struct device *dev, struct dma_map_ops *ops)
 
 static inline int dma_set_mask(struct device *dev, u64 mask)
 {
-	return get_dma_ops(dev)->set_dma_mask(dev, mask);
+	struct dma_map_ops *ops = get_dma_ops(dev);
+
+	if (ops->set_dma_mask)
+		return ops->set_dma_mask(dev, mask);
+	return 0;
 }
 
 #ifdef __arch_page_to_dma
