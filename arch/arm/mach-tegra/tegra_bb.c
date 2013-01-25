@@ -662,12 +662,12 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* Private is uncached */
 	bb->priv_virt =  ioremap_nocache(bb->priv_phy,
 					bb->priv_size);
-	pr_debug("%s: Priv Virtual=0x%x\n", __func__, bb->priv_virt);
+	pr_debug("%s: Priv Virtual=0x%p\n", __func__, bb->priv_virt);
 
 	/* IPC memory is cached */
 	bb->ipc_virt =  ioremap_cached(bb->ipc_phy,
 					bb->ipc_size);
-	pr_debug("%s: IPC Virtual=0x%x\n", __func__, bb->ipc_virt);
+	pr_debug("%s: IPC Virtual=0x%p\n", __func__, bb->ipc_virt);
 
 	/* clear the first 4K of IPC memory */
 	memset(bb->mb_virt, 0, SZ_1K*4);

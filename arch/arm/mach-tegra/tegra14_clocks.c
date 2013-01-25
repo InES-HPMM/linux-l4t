@@ -2996,7 +2996,7 @@ static void tegra14_dfll_clk_resume(struct clk *c)
 	if (!(clk_readl(c->reg) & DFLL_BASE_RESET))
 		return;		/* already resumed */
 
-	if (c->state != UNINTIALIZED)
+	if (c->state != UNINITIALIZED) {
 		tegra_periph_reset_deassert(c);
 		tegra_cl_dvfs_resume(c->u.dfll.cl_dvfs);
 	}
