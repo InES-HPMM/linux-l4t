@@ -562,10 +562,10 @@ config ARCH_TEGRA_4GB_MEMORY
 	  Harmless to select this even if hardware does not support full
 	  4GB physical memory.
 
-config TEGRA_LP1_950
+config TEGRA_LP1_LOW_COREVOLTAGE
 	bool "LP1 low core voltage"
 	default n
-	depends on ARCH_TEGRA_3x_SOC
+	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC
 	help
 		Enable support for LP1 Core voltage to set to lowest
 

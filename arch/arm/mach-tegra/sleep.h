@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -322,10 +322,12 @@ int tegra2_finish_sleep_cpu_secondary(unsigned long int);
 #else
 extern unsigned int tegra3_iram_start;
 extern unsigned int tegra3_iram_end;
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 extern unsigned int lp1_register_pmuslave_addr;
 extern unsigned int lp1_register_i2c_base_addr;
 extern unsigned int lp1_register_core_lowvolt;
 extern unsigned int lp1_register_core_highvolt;
+#endif
 int tegra3_sleep_core_finish(unsigned long int);
 int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 int tegra3_stop_mc_clk_finish(unsigned long int);
@@ -362,6 +364,7 @@ static inline void *tegra_iram_end(void)
 #endif
 }
 
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 static inline void *tegra_lp1_register_pmuslave_addr(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -397,5 +400,6 @@ static inline void *tegra_lp1_register_core_highvolt(void)
 	return &lp1_register_core_highvolt;
 #endif
 }
+#endif /* For CONFIG_TEGRA_LP1_LOW_COREVOLTAGE */
 #endif
 #endif

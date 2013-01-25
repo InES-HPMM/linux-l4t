@@ -66,7 +66,7 @@ struct tegra_suspend_platform_data {
 	/* lp_state = 0 for LP0 state, 1 for LP1 state, 2 for LP2 state */
 	void (*board_resume)(int lp_state, enum resume_stage stg);
 	unsigned int cpu_resume_boost;	/* CPU frequency resume boost in kHz */
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	bool lp1_lowvolt_support;
 	unsigned int i2c_base_addr;
 	unsigned int pmuslave_addr;

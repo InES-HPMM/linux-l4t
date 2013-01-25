@@ -1387,7 +1387,7 @@ out:
 		plat->suspend_mode = TEGRA_SUSPEND_LP2;
 	}
 
-#ifdef CONFIG_TEGRA_LP1_950
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 	if (pdata->lp1_lowvolt_support) {
 		u32 lp1_core_lowvolt, lp1_core_highvolt;
 		memcpy(tegra_lp1_register_pmuslave_addr(), &pdata->pmuslave_addr, 4);
