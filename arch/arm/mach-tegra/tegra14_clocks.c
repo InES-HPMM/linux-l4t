@@ -5526,6 +5526,17 @@ static struct clk_mux_sel mux_clk_32k[] = {
 	{ 0, 0},
 };
 
+static struct clk tegra_clk_emc;
+static struct clk_mux_sel mux_clk_emc[] = {
+	{ .input = &tegra_clk_emc, .value = 0},
+	{ 0, 0},
+};
+
+static struct clk_mux_sel mux_pll_p[] = {
+	{ .input = &tegra_pll_p, .value = 0},
+	{ 0, 0},
+};
+
 static struct raw_notifier_head emc_rate_change_nh;
 
 static struct clk tegra_clk_emc = {
@@ -5801,6 +5812,9 @@ struct clk tegra_list_clks[] = {
 
 	PERIPH_CLK("dds",	"dds",			NULL,	150,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK("dp2",	"dp2",			NULL,	152,	0,	26000000, mux_clk_m,			PERIPH_ON_APB),
+
+	PERIPH_CLK("mc_bbc",	"mc_bbc",		NULL,	170,	0,	1066000000,mux_clk_emc,			PERIPH_NO_RESET),
+	PERIPH_CLK("pll_p_bbc",	"pll_p_bbc",		NULL,	175,	0,	432000000,mux_pll_p,			PERIPH_NO_RESET),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),

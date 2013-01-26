@@ -346,6 +346,9 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	416000000,	false },
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
 #endif
+	/* FIXME: pllp_bbc and mc_bbc has to be turned on by drivers */
+	{ "pll_p_bbc",	"pll_p",	0,		true },
+	{ "mc_bbc",	"emc",		0,		true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
