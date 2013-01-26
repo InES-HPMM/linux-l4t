@@ -430,6 +430,23 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 	return ret;
 }
 
+static int max77660_32kclk_init(struct max77660_chip *chip,
+		struct max77660_platform_data *pdata)
+{
+	u8 mask = 0;
+	u8 val = 0;
+	int ret;
+
+	val |= (pdata->en_clk32out1? 1 : 0) << OUT1_EN_32KCLK_SHIFT;
+	val |= (pdata->en_clk32out2? 1 : 0) << OUT2_EN_32KCLK_SHIFT;
+	mask = OUT1_EN_32KCLK_MASK | OUT2_EN_32KCLK_MASK;
+
+	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+					MAX77660_REG_CNFG32K1,
+					val, mask);
+	return ret;
+
+}
 static struct regmap_irq_chip max77660_top_irq_chip = {
 	.name = "max77660-top",
 	.irqs = max77660_top_irqs,
@@ -660,6 +677,12 @@ static int max77660_probe(struct i2c_client *client,
 	if (pdata->use_power_off && !pm_power_off) {
 		max77660_chip = chip;
 		pm_power_off = max77660_power_off;
+	}
+
+	ret = max77660_32kclk_init(chip, pdata);
+	if (ret < 0) {
+		dev_err(&client->dev, "probe: Failed to initialize 32k clk\n");
+		goto out_exit;
 	}
 
 	ret =  mfd_add_devices(&client->dev, -1, max77660_cells,

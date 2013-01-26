@@ -119,6 +119,8 @@
 #define MAX77660_REG_GLOBAL_CFG5		0x21
 #define MAX77660_REG_GLOBAL_CFG6		0x22
 #define MAX77660_REG_GLOBAL_CFG7		0xC0
+#define MAX77660_REG_CNFG32K1			0xA0
+#define MAX77660_REG_CNFG32K2			0xA1
 
 #define MAX77660_REG_CID0				0x9A
 #define MAX77660_REG_CID1				0x9B
@@ -203,7 +205,11 @@
 #define GLBLCNFG7_EN2_MASK_MASK		BIT(0)
 #define GLBLCNFG7_EN2_MASK_SHIFT	0
 
-
+#define PWR_MODE_32KCLK_MASK		(BIT(1) | BIT(0))
+#define OUT1_EN_32KCLK_MASK		BIT(2)
+#define OUT1_EN_32KCLK_SHIFT		2
+#define OUT2_EN_32KCLK_MASK		BIT(3)
+#define OUT2_EN_32KCLK_SHIFT		3
 
 #define CID_DIDM_MASK           (BIT(7)|BIT(6)|BIT(5)|BIT(4))
 #define CID_DIDM_SHIFT          4
@@ -489,6 +495,8 @@ struct max77660_platform_data {
 	unsigned char fg_i2c_addr;
 	unsigned char haptic_i2c_addr;
 	bool en_buck2_ext_ctrl;
+	bool en_clk32out1;
+	bool en_clk32out2;
 	bool use_power_off;
 
 	int system_watchdog_timeout;
