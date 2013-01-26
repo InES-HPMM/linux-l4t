@@ -79,6 +79,14 @@
 
 
 #endif
+#define MAX77660_REG_BUCK_PWR_MODE1	0x37
+#define MAX77660_REG_BUCK_PWR_MODE2	0x38
+
+#define MAX77660_REG_LDO_PWR_MODE1	0x3E
+#define MAX77660_REG_LDO_PWR_MODE2	0x3F
+#define MAX77660_REG_LDO_PWR_MODE3	0x40
+#define MAX77660_REG_LDO_PWR_MODE4	0x41
+#define MAX77660_REG_LDO_PWR_MODE5	0x42
 
 #define MAX77660_REG_GPIO_CTRL0		0x6A
 #define MAX77660_REG_GPIO_CTRL1		0x6B
@@ -110,6 +118,7 @@
 #define MAX77660_REG_GLOBAL_CFG4		0x20
 #define MAX77660_REG_GLOBAL_CFG5		0x21
 #define MAX77660_REG_GLOBAL_CFG6		0x22
+#define MAX77660_REG_GLOBAL_CFG7		0xC0
 
 #define MAX77660_REG_CID0				0x9A
 #define MAX77660_REG_CID1				0x9B
@@ -181,10 +190,20 @@
 #define GLBLCNFG5_EN1_FPS6_MASK_SHIFT	4
 #define GLBLCNFG5_EN5_MASK_MASK			BIT(3)
 #define GLBLCNFG5_EN5_MASK_SHIFT		3
-#define GLBLCNFG5_EN1234_MASK_MASK		BIT(2)
-#define GLBLCNFG5_EN1234_MASK_SHIFT		2
+#define GLBLCNFG5_EN1_MASK_MASK		BIT(2)
+#define GLBLCNFG5_EN1_MASK_SHIFT		2
 #define GLBLCNFG5_TRSTO_MASK			(BIT(0) | BIT(1))
 #define GLBLCNFG5_TRSTO_SHIFT			0
+
+
+#define GLBLCNFG7_EN4_MASK_MASK		BIT(2)
+#define GLBLCNFG7_EN4_MASK_SHIFT	2
+#define GLBLCNFG7_EN3_MASK_MASK		BIT(1)
+#define GLBLCNFG7_EN3_MASK_SHIFT	1
+#define GLBLCNFG7_EN2_MASK_MASK		BIT(0)
+#define GLBLCNFG7_EN2_MASK_SHIFT	0
+
+
 
 #define CID_DIDM_MASK           (BIT(7)|BIT(6)|BIT(5)|BIT(4))
 #define CID_DIDM_SHIFT          4
@@ -250,6 +269,7 @@
 #define MAX77660_RTC_YEAR_MASK			0xFF
 #define MAX77660_RTC_MONTHDAY_MASK		0x3F
 
+#define MAX77660_BUCK2_PWR_MODE_MASK	(BIT(2) | BIT(3))
 
 #if 0
 #define ONOFF_SFT_RST_MASK		(1 << 7)
@@ -468,7 +488,7 @@ struct max77660_platform_data {
 	unsigned char chg_i2c_addr;
 	unsigned char fg_i2c_addr;
 	unsigned char haptic_i2c_addr;
-
+	bool en_buck2_ext_ctrl;
 	bool use_power_off;
 
 	int system_watchdog_timeout;

@@ -415,10 +415,19 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 
 	/* Enable sleep that AP can be placed into sleep mode
 	 * by pulling EN1 low */
-	return max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG5,
-				 GLBLCNFG5_EN1234_MASK_MASK,
-				 on ? GLBLCNFG5_EN1234_MASK_MASK : 0,
-				 MAX77660_I2C_CORE);
+	ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG5,
+			GLBLCNFG5_EN1_MASK_MASK,
+			on ? 0 : GLBLCNFG5_EN1_MASK_MASK,
+			MAX77660_I2C_CORE);
+	if (ret < 0)
+		return ret;
+	if (chip->pdata->en_buck2_ext_ctrl)
+		ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG7,
+				BIT(0),
+				on ? 0 : GLBLCNFG7_EN2_MASK_MASK,
+				MAX77660_I2C_CORE);
+
+	return ret;
 }
 
 static struct regmap_irq_chip max77660_top_irq_chip = {
@@ -533,7 +542,7 @@ static const struct regmap_config max77660_regmap_config[] = {
 	{
 		.reg_bits = 8,
 		.val_bits = 8,
-		.max_register = 0x9F,
+		.max_register = 0xC0,
 		.writeable_reg = rd_wr_reg_power,
 		.readable_reg = rd_wr_reg_power,
 	}, {
@@ -722,6 +731,15 @@ static int max77660_suspend(struct device *dev)
 	if (ret < 0)
 		dev_err(dev, "suspend: Failed to enable sleep\n");
 
+	if (chip->pdata->en_buck2_ext_ctrl) {
+		ret = max77660_set_bits(chip->dev, MAX77660_REG_BUCK_PWR_MODE1,
+				MAX77660_BUCK2_PWR_MODE_MASK,
+				0,
+				MAX77660_I2C_CORE);
+		if (ret < 0)
+			dev_err(dev, "Failed to disable buck2 ext ctrl\n");
+	}
+
 	return ret;
 }
 
@@ -730,6 +748,15 @@ static int max77660_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct max77660_chip *chip = i2c_get_clientdata(client);
 	int ret;
+
+	if (chip->pdata->en_buck2_ext_ctrl) {
+		ret = max77660_set_bits(chip->dev, MAX77660_REG_BUCK_PWR_MODE1,
+				MAX77660_BUCK2_PWR_MODE_MASK,
+				MAX77660_BUCK2_PWR_MODE_MASK,
+				MAX77660_I2C_CORE);
+		if (ret < 0)
+			dev_err(dev, "Failed to disable buck2 ext ctrl\n");
+	}
 
 	ret = max77660_sleep(chip, false);
 	if (ret < 0) {
