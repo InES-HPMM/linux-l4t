@@ -100,6 +100,13 @@ config MAX77665_FLASH
         ---help---
           This is a driver for the MAX77665 flash/torch camera device
 
+config TORCH_MAX77387
+        tristate "MAX77387 flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the MAX77387 flash/torch camera device
+          for use with the tegra isp.
+
 config TORCH_AS364X
         tristate "AS364X flash/torch support"
         depends on I2C && ARCH_TEGRA
