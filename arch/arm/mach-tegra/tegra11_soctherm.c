@@ -384,9 +384,20 @@ static struct soctherm_platform_data plat_data;
  * tegra11_soctherm_init(). See nvbug 1206311.
  */
 static bool soctherm_init_platform_done;
+static bool read_hw_temp = true;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
+
+static inline long temp_convert(int cap, int a, int b)
+{
+	cap *= a;
+	cap >>= 10;
+	cap += (b << 3);
+	cap *= LOWER_PRECISION_FOR_CONV(500);
+	cap /= 8;
+	return cap;
+}
 
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
@@ -457,6 +468,9 @@ static const struct soctherm_sensor sensor_defaults = {
 
 static const unsigned long default_soctherm_clk_rate = 136000000;
 static const unsigned long default_tsensor_clk_rate = 500000;
+
+static int sensor2therm_a[TSENSE_SIZE];
+static int sensor2therm_b[TSENSE_SIZE];
 
 static const struct soctherm_throttle_dev throttle_defaults[] = {
 	[THROTTLE_LIGHT] = {
@@ -739,24 +753,66 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 					unsigned long *temp)
 {
 	int index = (int)thz->devdata;
-	u32 r;
+	u32 r, regv, shft, mask;
+	enum soctherm_sense i, j;
+	int tt, ti;
 
-	if (index < TSENSE_SIZE) {
-		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1,
-							index));
-		*temp = temp_translate(REG_GET(r, TS_CPU0_STATUS1_TEMP));
+	if (index < TSENSE_SIZE) { /* 'TSENSE_XXX' thermal zone */
+		regv = TS_CPU0_STATUS1;
+		shft = TS_CPU0_STATUS1_TEMP_SHIFT;
+		mask = TS_CPU0_STATUS1_TEMP_MASK;
+		i = j = index;
 	} else {
-		index -= TSENSE_SIZE;
+		index -= TSENSE_SIZE; /* 'THERM_XXX' thermal zone */
 
-		if (index == THERM_CPU || index == THERM_GPU)
-			r = soctherm_readl(TS_TEMP1);
-		else
-			r = soctherm_readl(TS_TEMP2);
+		switch (index) {
+		case THERM_CPU:
+			regv = TS_TEMP1;
+			shft = TS_TEMP1_CPU_TEMP_SHIFT;
+			mask = TS_TEMP1_CPU_TEMP_MASK;
+			i = TSENSE_CPU0;
+			j = TSENSE_CPU3;
+			break;
 
-		if (index == THERM_CPU || index == THERM_MEM)
-			*temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
-		else
-			*temp = temp_translate(REG_GET(r, TS_TEMP1_GPU_TEMP));
+		case THERM_GPU:
+			regv = TS_TEMP1;
+			shft = TS_TEMP1_GPU_TEMP_SHIFT;
+			mask = TS_TEMP1_GPU_TEMP_MASK;
+			i = j = TSENSE_GPU;
+			break;
+
+		case THERM_PLL:
+			regv = TS_TEMP2;
+			shft = TS_TEMP2_PLLX_TEMP_SHIFT;
+			mask = TS_TEMP2_PLLX_TEMP_MASK;
+			i = j = TSENSE_PLLX;
+			break;
+
+		case THERM_MEM:
+			regv = TS_TEMP2;
+			shft = TS_TEMP2_MEM_TEMP_SHIFT;
+			mask = TS_TEMP2_MEM_TEMP_MASK;
+			i = TSENSE_MEM0;
+			j = TSENSE_MEM1;
+			break;
+
+		default:
+			return 0; /* error really */
+		}
+	}
+
+	if (read_hw_temp) {
+		r = soctherm_readl(regv);
+		*temp = temp_translate((r & (mask << shft)) >> shft);
+	} else {
+		for (tt = 0; i <= j; i++) {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+						TS_CPU0_STATUS0, i));
+			ti = temp_convert(REG_GET(r, TS_CPU0_STATUS0_CAPTURE),
+						sensor2therm_a[i],
+						sensor2therm_b[i]);
+			*temp = tt = max(tt, ti);
+		}
 	}
 	return 0;
 }
@@ -1236,6 +1292,9 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				fuse_corr_beta[sensor], (s64)1000000LL);
 	}
 
+	sensor2therm_a[sensor] = (s16)therm_a;
+	sensor2therm_b[sensor] = (s16)therm_b;
+
 	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, therm_a);
 	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, therm_b);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, sensor));
@@ -1473,10 +1532,11 @@ static int regs_show(struct seq_file *s, void *data)
 {
 	u32 r;
 	u32 state;
-	long tcpu[TSENSE_SIZE];
+	int tcpu[TSENSE_SIZE];
 	int i, level;
 
-	seq_printf(s, "-----TSENSE (precision %s)-----\n", PRECISION_TO_STR());
+	seq_printf(s, "-----TSENSE (precision %s  convert %s)-----\n",
+		PRECISION_TO_STR(), read_hw_temp ? "HW" : "SW");
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, i));
 		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
@@ -1493,17 +1553,19 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
 		seq_printf(s, "tsample(%d) ", state);
 
-		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
-		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
-		seq_printf(s, "Capture(%d/", state);
-		state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
-		seq_printf(s, "%d) ", state);
-
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1, i));
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);
 		seq_printf(s, "Temp(%d/", state);
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
-		seq_printf(s, "%ld) ", tcpu[i] = temp_translate(state));
+		seq_printf(s, "%d) ", tcpu[i] = temp_translate(state));
+
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS0, i));
+		state = REG_GET(r, TS_CPU0_STATUS0_VALID);
+		seq_printf(s, "Capture(%d/", state);
+		state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
+		seq_printf(s, "%d) (Converted-temp(%ld) ", state,
+			   temp_convert(state, sensor2therm_a[i],
+					sensor2therm_b[i]));
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG0, i));
 		state = REG_GET(r, TS_CPU0_CONFIG0_TALL);
@@ -1654,6 +1716,19 @@ static const struct file_operations regs_fops = {
 	.release	= single_release,
 };
 
+static int convert_get(void *data, u64 *val)
+{
+	*val = !read_hw_temp;
+	return 0;
+}
+static int convert_set(void *data, u64 val)
+{
+	read_hw_temp = !val;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
+
 static int __init soctherm_debug_init(void)
 {
 	struct dentry *tegra_soctherm_root;
@@ -1661,6 +1736,8 @@ static int __init soctherm_debug_init(void)
 	tegra_soctherm_root = debugfs_create_dir("tegra_soctherm", 0);
 	debugfs_create_file("regs", 0644, tegra_soctherm_root,
 				NULL, &regs_fops);
+	debugfs_create_file("convert", 0644, tegra_soctherm_root,
+				NULL, &convert_fops);
 	return 0;
 }
 late_initcall(soctherm_debug_init);
