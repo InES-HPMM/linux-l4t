@@ -406,8 +406,8 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 		/* Put the power rails into Low-Power mode during sleep mode,
 		 * if the power rail's power mode is GLPM. */
 		ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG1,
-					GLBLCNFG1_GLBL_LPM_MASK,
-					on ? GLBLCNFG1_GLBL_LPM_MASK : 0,
+					MAX77660_GLBLCNFG1_GLBL_LPM,
+					on ? MAX77660_GLBLCNFG1_GLBL_LPM : 0,
 					MAX77660_I2C_CORE);
 		if (ret < 0)
 			return ret;

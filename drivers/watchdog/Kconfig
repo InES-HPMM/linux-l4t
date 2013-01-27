@@ -339,8 +339,8 @@ config MAX77660_SYSTEM_WATCHDOG
 	tristate "Maxim MAX77660 System Watchdog Timer"
 	depends on MFD_MAX77663
 	help
-	  Support for Maxim MAX77660 System watch dog timer. Say 'Y' here to enable the
-	  watchdog timer support for MAX77660 chips.
+	  Support for Maxim MAX77660 System watch dog timer. Say 'Y' here
+	  to enable the watchdog timer support for MAX77660 chips.
 
 config STMP3XXX_RTC_WATCHDOG
 	tristate "Freescale STMP3XXX & i.MX23/28 watchdog"

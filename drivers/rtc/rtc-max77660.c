@@ -357,7 +357,7 @@ static int max77660_rtc_suspend(struct device *dev)
 
 		/* Set RTC can generate the wakeup signal */
 		ret = max77660_reg_set_bits(rtc->parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG2, GLBLCNFG2_RTC_WKEN_MASK);
+			MAX77660_REG_GLOBAL_CFG2, MAX77660_GLBLCNFG2_RTCWKEN);
 		if (ret < 0)
 			dev_err(rtc->dev, "RTC wake enable failed: %d\n", ret);
 	}
@@ -374,7 +374,7 @@ static int max77660_rtc_resume(struct device *dev)
 
 		/* Set RTC can generate the wakeup signal */
 		ret = max77660_reg_clr_bits(rtc->parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG2, GLBLCNFG2_RTC_WKEN_MASK);
+			MAX77660_REG_GLOBAL_CFG2, MAX77660_GLBLCNFG2_RTCWKEN);
 		if (ret < 0)
 			dev_err(rtc->dev, "RTC wake enable failed: %d\n", ret);
 	}
