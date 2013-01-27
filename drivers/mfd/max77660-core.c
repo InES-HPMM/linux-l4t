@@ -77,6 +77,14 @@ static struct resource max77660_sys_wdt_resources[] = {
 	}
 };
 
+static struct resource max77660_chg_extcon_resources[] = {
+	{
+		.start	= MAX77660_IRQ_CHG,
+		.end	= MAX77660_IRQ_CHG,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static struct mfd_cell max77660_cells[] = {
 	{
 		.name = "max77660-gpio",
@@ -100,6 +108,11 @@ static struct mfd_cell max77660_cells[] = {
 		.name = "max77660-chg",
 		.num_resources	= ARRAY_SIZE(chg_resources),
 		.resources	= &chg_resources[0],
+	},
+	{
+		.name = "max77660-chg-extcopn",
+		.num_resources	= ARRAY_SIZE(max77660_chg_extcon_resources),
+		.resources	= &max77660_chg_extcon_resources[0],
 	},
 	{
 		.name = "max77660-vibrator",
@@ -537,12 +550,14 @@ static bool rd_wr_reg_fg(struct device *dev, unsigned int reg)
 
 static bool rd_wr_reg_chg(struct device *dev, unsigned int reg)
 {
-	if (reg <= 0xFF)
-		return true;
 
-	dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
-	BUG();
-	return false;
+	switch (reg) {
+	case MAX77660_CHARGER_USBCHGCTRL:
+	case MAX77660_CHARGER_CHGINT ... MAX77660_CHARGER_MBATREGMAX:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static bool rd_wr_reg_haptic(struct device *dev, unsigned int reg)
