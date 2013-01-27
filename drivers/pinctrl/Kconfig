@@ -223,6 +223,18 @@ config PINCTRL_S3C64XX
 
 source "drivers/pinctrl/mvebu/Kconfig"
 source "drivers/pinctrl/sh-pfc/Kconfig"
+
+config PINCTRL_MAX77660
+	tristate "MAX77660 Pincontrol support"
+	depends on MFD_MAX77660
+	help
+	  MAX77660 is a PMIC from MAXIM for smartphone and tablets. This PMIC
+	  has some pins i.e. named as GPIOx which can be act as GPIO or in
+	  alternate mode for special functionality. Also these pins can be
+	  configured for open drain, pullup, pull down etc.
+	  Say yes here to get support for pinmux configuration for this PMIC
+	  device.
+
 source "drivers/pinctrl/spear/Kconfig"
 source "drivers/pinctrl/vt8500/Kconfig"
 

@@ -99,6 +99,26 @@
 #define MAX77660_REG_GPIO_CTRL8		0x72
 #define MAX77660_REG_GPIO_CTRL9		0x73
 
+/* GPIO Configuration registers */
+#define MAX77660_REG_CNFG_GPIO0         0x6A
+#define MAX77660_REG_CNFG_GPIO1         0x6B
+#define MAX77660_REG_CNFG_GPIO2         0x6C
+#define MAX77660_REG_CNFG_GPIO3         0x6D
+#define MAX77660_REG_CNFG_GPIO4         0x6E
+#define MAX77660_REG_CNFG_GPIO5         0x6F
+#define MAX77660_REG_CNFG_GPIO6         0x70
+#define MAX77660_REG_CNFG_GPIO7         0x71
+#define MAX77660_REG_CNFG_GPIO8         0x72
+#define MAX77660_REG_CNFG_GPIO9         0x73
+
+/* Pins configuration registers */
+#define MAX77660_REG_PUE1_GPIO          0x74
+#define MAX77660_REG_PUE2_GPIO          0x75
+#define MAX77660_REG_PDE1_GPIO          0x76
+#define MAX77660_REG_PDE2_GPIO          0x77
+#define MAX77660_REG_AME1_GPIO          0x78
+#define MAX77660_REG_AME2_GPIO          0x78
+
 #if 0
 #define MAX77660_REG_GPIO_PU		0x3E
 #define MAX77660_REG_GPIO_PD		0x3F
@@ -489,6 +509,40 @@ struct max77660_chip {
 	struct regmap_irq_chip_data *global_irq_data;
 };
 
+enum max77660_pull_up_down {
+	MAX77660_PIN_DEFAULT,
+	MAX77660_PIN_PULL_UP,
+	MAX77660_PIN_PULL_DOWN,
+	MAX77660_PIN_PULL_NORMAL,
+};
+
+enum MAX77660_PINS {
+	MAX77660_PINS_GPIO0,
+	MAX77660_PINS_GPIO1,
+	MAX77660_PINS_GPIO2,
+	MAX77660_PINS_GPIO3,
+	MAX77660_PINS_GPIO4,
+	MAX77660_PINS_GPIO5,
+	MAX77660_PINS_GPIO6,
+	MAX77660_PINS_GPIO7,
+	MAX77660_PINS_GPIO8,
+	MAX77660_PINS_GPIO9,
+	MAX77660_PINS_MAX,
+};
+
+/*
+ * max77660_pinctrl_platform_data: Pin control platform data.
+ * @pin_id: Pin ID.
+ * @gpio_pin_mode: GPIO pin mode, 1 for GPIO, 0 for Alternate.
+ * @open_drain: Open drain, 1 for open drain mode, 0 for normal push pull.
+ * pullup_dn_normal: Pull up/down/normal.
+ */
+struct max77660_pinctrl_platform_data {
+	int pin_id;
+	unsigned gpio_pin_mode:1;
+	unsigned open_drain:1;
+	int pullup_dn_normal;
+};
 
 /*
  * Flags
@@ -507,6 +561,8 @@ struct max77660_gpio_config {
 
 /*
  * max77660_platform_data: Platform data for MAX77660.
+ * @pinctrl_pdata: Pincontrol configurations.
+ * @num_pinctrl: Number of pin control data.
  * @system_watchdog_timeout: System wathdog timeout in seconds. If this value
  *		is -ve then timer will not start during initialisation.
  */
@@ -523,6 +579,9 @@ struct max77660_platform_data {
 
 	struct max77660_regulator_platform_data **regulator_pdata;
 	int num_regulator_pdata;
+
+	struct max77660_pinctrl_platform_data *pinctrl_pdata;
+	int num_pinctrl;
 
 	unsigned int flags;
 
