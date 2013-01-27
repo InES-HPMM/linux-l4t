@@ -87,6 +87,9 @@ static struct resource max77660_chg_extcon_resources[] = {
 
 static struct mfd_cell max77660_cells[] = {
 	{
+		.name = "max77660-pinctrl",
+	},
+	{
 		.name = "max77660-gpio",
 		.num_resources	= ARRAY_SIZE(gpio_resources),
 		.resources	= &gpio_resources[0],
