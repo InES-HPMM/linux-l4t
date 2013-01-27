@@ -291,7 +291,8 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	/* name		parent		rate		enabled */
-	{ "clk_m",	NULL,		0,		true },
+	{ "osc",	NULL,		0,		true },
+	{ "clk_m",	"osc",		0,		true },
 	{ "emc",	NULL,		0,		true },
 	{ "cpu",	NULL,		0,		true },
 	{ "kfuse",	NULL,		0,		true },

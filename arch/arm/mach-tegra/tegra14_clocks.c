@@ -131,6 +131,9 @@
 	((AUDIO_SYNC_CLK_SPDIF - AUDIO_DLY_CLK) / 4 + 1)
 
 #define SPARE_REG			0x55c
+#define SPARE_REG_CLK_M_DIVISOR_SHIFT	2
+#define SPARE_REG_CLK_M_DIVISOR_MASK	(3 << SPARE_REG_CLK_M_DIVISOR_SHIFT)
+
 #define PERIPH_CLK_SOURCE_CILAB		0x614
 #define PERIPH_CLK_SOURCE_CLK72MHZ	0x66c
 #define PERIPH_CLK_SOURCE_NUM4 \
@@ -583,61 +586,122 @@ static inline bool bus_user_request_is_lower(struct clk *a, struct clk *b)
 		b->u.shared_bus_user.rate * b->div;
 }
 
-/* clk_m functions */
-static unsigned long tegra14_clk_m_autodetect_rate(struct clk *c)
+/* osc functions */
+static unsigned long tegra14_osc_autodetect_rate(struct clk *c)
 {
 	u32 osc_ctrl = clk_readl(OSC_CTRL);
 	u32 auto_clock_control = osc_ctrl & ~OSC_CTRL_OSC_FREQ_MASK;
 	u32 pll_ref_div = osc_ctrl & OSC_CTRL_PLL_REF_DIV_MASK;
+
+	u32 spare = clk_readl(SPARE_REG);
+	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
+		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
+	u32 spare_update = spare & ~SPARE_REG_CLK_M_DIVISOR_MASK;
+
+	/* FIXME: extra print for bringup */
+	pr_info("%s: OSC_CTRL=%08x\n", __func__, osc_ctrl);
+	pr_info("%s: SPARE_REG=%08x\n", __func__, spare);
 
 	c->rate = tegra_clk_measure_input_freq();
 	switch (c->rate) {
 	case 12000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	case 13000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	case 19200000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	case 26000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	case 16800000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	case 38400000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_2);
+		WARN_ON(divisor != 1); /* FIXME: change to BUG_ON later */
+		spare_update |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 48000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_4);
+		WARN_ON(divisor != 3); /* FIXME: change to BUG_ON later */
+		spare_update |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 115200:	/* fake 13M for QT */
 	case 230400:	/* fake 13M for QT */
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		c->rate = 13000000;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
 		break;
 	default:
 		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
 		BUG();
 	}
+
+	/* FIXME: extra print for bringup */
+	pr_info("%s: OSC_CTRL=%08x\n", __func__, auto_clock_control);
+	pr_info("%s: SPARE_REG=%08x\n", __func__, spare_update);
+
 	clk_writel(auto_clock_control, OSC_CTRL);
+	clk_writel(spare_update, SPARE_REG);
+
 	return c->rate;
 }
 
-static void tegra14_clk_m_init(struct clk *c)
+static void tegra14_osc_init(struct clk *c)
 {
 	pr_debug("%s on clock %s\n", __func__, c->name);
-	tegra14_clk_m_autodetect_rate(c);
+	tegra14_osc_autodetect_rate(c);
+}
+
+static int tegra14_osc_enable(struct clk *c)
+{
+	pr_debug("%s on clock %s\n", __func__, c->name);
+	return 0;
+}
+
+static void tegra14_osc_disable(struct clk *c)
+{
+	pr_debug("%s on clock %s\n", __func__, c->name);
+	WARN(1, "Attempting to disable main SoC clock\n");
+}
+
+static struct clk_ops tegra_osc_ops = {
+	.init		= tegra14_osc_init,
+	.enable		= tegra14_osc_enable,
+	.disable	= tegra14_osc_disable,
+};
+
+static struct clk_ops tegra_osc_div_ops = {
+	.enable		= tegra14_osc_enable,
+};
+
+static void tegra14_clk_m_init(struct clk *c)
+{
+	u32 spare = clk_readl(SPARE_REG);
+	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
+		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
+
+	pr_debug("%s on clock %s\n", __func__, c->name);
+
+	c->div = divisor + 1;
+	c->mul = 1;
+	c->state = ON;
 }
 
 static int tegra14_clk_m_enable(struct clk *c)
@@ -656,10 +720,6 @@ static struct clk_ops tegra_clk_m_ops = {
 	.init		= tegra14_clk_m_init,
 	.enable		= tegra14_clk_m_enable,
 	.disable	= tegra14_clk_m_disable,
-};
-
-static struct clk_ops tegra_clk_m_div_ops = {
-	.enable		= tegra14_clk_m_enable,
 };
 
 /* PLL reference divider functions */
@@ -688,8 +748,8 @@ static void tegra14_pll_ref_init(struct clk *c)
 
 static struct clk_ops tegra_pll_ref_ops = {
 	.init		= tegra14_pll_ref_init,
-	.enable		= tegra14_clk_m_enable,
-	.disable	= tegra14_clk_m_disable,
+	.enable		= tegra14_osc_enable,
+	.disable	= tegra14_osc_disable,
 };
 
 /* super clock functions */
@@ -4563,40 +4623,47 @@ static struct clk tegra_clk_32k = {
 	.max_rate = 32768,
 };
 
-static struct clk tegra_clk_m = {
-	.name      = "clk_m",
+static struct clk tegra_osc = {
+	.name      = "osc",
 	.flags     = ENABLE_ON_INIT,
-	.ops       = &tegra_clk_m_ops,
+	.ops       = &tegra_osc_ops,
 	.reg       = 0x1fc,
 	.reg_shift = 28,
 	.max_rate  = 48000000,
 };
 
-static struct clk tegra_clk_m_div2 = {
-	.name      = "clk_m_div2",
-	.ops       = &tegra_clk_m_div_ops,
-	.parent    = &tegra_clk_m,
+static struct clk tegra_osc_div2 = {
+	.name      = "osc_div2",
+	.ops       = &tegra_osc_div_ops,
+	.parent    = &tegra_osc,
 	.mul       = 1,
 	.div       = 2,
 	.state     = ON,
 	.max_rate  = 24000000,
 };
 
-static struct clk tegra_clk_m_div4 = {
-	.name      = "clk_m_div4",
-	.ops       = &tegra_clk_m_div_ops,
-	.parent    = &tegra_clk_m,
+static struct clk tegra_osc_div4 = {
+	.name      = "osc_div4",
+	.ops       = &tegra_osc_div_ops,
+	.parent    = &tegra_osc,
 	.mul       = 1,
 	.div       = 4,
 	.state     = ON,
 	.max_rate  = 12000000,
 };
 
+static struct clk tegra_clk_m = {
+	.name      = "clk_m",
+	.ops       = &tegra_clk_m_ops,
+	.parent    = &tegra_osc,
+	.max_rate  = 48000000,
+};
+
 static struct clk tegra_pll_ref = {
 	.name      = "pll_ref",
 	.flags     = ENABLE_ON_INIT,
 	.ops       = &tegra_pll_ref_ops,
-	.parent    = &tegra_clk_m,
+	.parent    = &tegra_osc,
 	.max_rate  = 26000000,
 };
 
@@ -5161,9 +5228,9 @@ MUX_I2S_SPDIF(audio, 5);		/* SPDIF */
 /* External clock outputs (through PMC) */
 #define MUX_EXTERN_OUT(_id)						\
 static struct clk_mux_sel mux_clkm_clkm2_clkm4_extern##_id[] = {	\
-	{.input = &tegra_clk_m,		.value = 0},			\
-	{.input = &tegra_clk_m_div2,	.value = 1},			\
-	{.input = &tegra_clk_m_div4,	.value = 2},			\
+	{.input = &tegra_osc,		.value = 0},			\
+	{.input = &tegra_osc_div2,	.value = 1},			\
+	{.input = &tegra_osc_div4,	.value = 2},			\
 	{.input = NULL,			.value = 3}, /* placeholder */	\
 	{ 0, 0},							\
 }
@@ -5956,9 +6023,10 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 
 struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_32k,
+	&tegra_osc,
+	&tegra_osc_div2,
+	&tegra_osc_div4,
 	&tegra_clk_m,
-	&tegra_clk_m_div2,
-	&tegra_clk_m_div4,
 	&tegra_pll_ref,
 	&tegra_pll_m,
 	&tegra_pll_m_out1,
