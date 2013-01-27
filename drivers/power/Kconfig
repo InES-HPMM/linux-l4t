@@ -438,6 +438,17 @@ config CHARGER_MAX77660
 	 Say Y here to enable battery charging driver support for
 	 maxim MAX77660 chipset.
 
+config CHARGER_EXTCON_MAX77660
+	tristate "MAX77660 battery charger and external connection support"
+	depends on MFD_MAX77660 && EXTCON
+	help
+	 MAX77660 is a pmic for smartphones and tablets which supports
+	 battery charging feature. It also detect the presence of HOST
+	 cable. Implement the notification mechanism for Host cable connection
+	 through extcon framework.
+	 Say Y here to enable battery charging driver support for
+	 maxim MAX77660 chipset.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

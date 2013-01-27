@@ -66,5 +66,6 @@ obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-$(CONFIG_MAX8907C_CHARGER)	+= max8907c-charger.o
 obj-$(CONFIG_CHARGER_MAX77660)	+= max77660-battery.o
 obj-$(CONFIG_CHARGER_MAX77660)	+= max77660-charger.o
+obj-$(CONFIG_CHARGER_EXTCON_MAX77660)	+= max77660-charger-extcon.o
 CFLAGS_tegra_bpc_mgmt.o		= -Werror
 obj-$(CONFIG_TEGRA_BPC_MGMT)	+= tegra_bpc_mgmt.o
