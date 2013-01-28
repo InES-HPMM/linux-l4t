@@ -138,8 +138,8 @@ static int max77660_gpio_dir_input(struct gpio_chip *gpio, unsigned offset)
 	int ret;
 
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
-		GPIO_REG_ADDR(offset), MAX77660_CNFG_GPIO_DIR_MASK,
-		MAX77660_CNFG_GPIO_DIR_INPUT);
+		GPIO_REG_ADDR(offset), MAX77660_CNFG_GPIO_DIR_INPUT,
+		MAX77660_CNFG_GPIO_DIR_MASK);
 	if (ret < 0)
 		dev_err(dev, "CNFG_GPIOx dir update failed: %d\n", ret);
 	return ret;
@@ -179,15 +179,15 @@ static int max77660_gpio_dir_output(struct gpio_chip *gpio, unsigned offset,
 
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
 			GPIO_REG_ADDR(offset),
-			MAX77660_CNFG_GPIO_OUTPUT_VAL_MASK, val);
+			val, MAX77660_CNFG_GPIO_OUTPUT_VAL_MASK);
 	if (ret < 0) {
 		dev_err(dev, "CNFG_GPIOx val update failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
-		GPIO_REG_ADDR(offset), MAX77660_CNFG_GPIO_DIR_MASK,
-			MAX77660_CNFG_GPIO_DIR_OUTPUT);
+		GPIO_REG_ADDR(offset), MAX77660_CNFG_GPIO_DIR_OUTPUT,
+		MAX77660_CNFG_GPIO_DIR_MASK);
 	if (ret < 0)
 		dev_err(dev, "CNFG_GPIOx dir update failed: %d\n", ret);
 	return ret;
@@ -216,7 +216,7 @@ static int max77660_gpio_set_debounce(struct gpio_chip *gpio,
 	}
 
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
-		GPIO_REG_ADDR(offset), MAX77660_CNFG_GPIO_DBNC_MASK, val);
+		GPIO_REG_ADDR(offset), val, MAX77660_CNFG_GPIO_DBNC_MASK);
 	if (ret < 0)
 		dev_err(dev, "CNFG_GPIOx debounce update failed: %d\n", ret);
 	return ret;
@@ -237,8 +237,8 @@ static void max77660_gpio_set(struct gpio_chip *gpio, unsigned offset,
 		val = MAX77660_CNFG_GPIO_OUTPUT_VAL_LOW;
 
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
-			GPIO_REG_ADDR(offset),
-			MAX77660_CNFG_GPIO_OUTPUT_VAL_MASK, val);
+			GPIO_REG_ADDR(offset), val,
+			MAX77660_CNFG_GPIO_OUTPUT_VAL_MASK);
 	if (ret < 0)
 		dev_err(dev, "CNFG_GPIOx val update failed: %d\n", ret);
 }
