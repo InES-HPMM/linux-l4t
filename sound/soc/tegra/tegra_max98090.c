@@ -148,13 +148,25 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 1;
 
-		tegra30_make_voice_call_connections(
-			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 1);
+		if (machine_is_ceres()) {
+			t14x_make_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND], 0);
+		} else {
+			tegra30_make_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND], 1);
+		}
 	} else {
-		tegra30_break_voice_call_connections(
+		if (machine_is_ceres()) {
+			t14x_break_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 1);
+			&machine->codec_info[BASEBAND], 0);
+		} else {
+			tegra30_break_voice_call_connections(
+				&machine->codec_info[codec_index],
+				&machine->codec_info[BASEBAND], 1);
+		}
 
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 0;
