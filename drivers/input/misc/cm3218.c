@@ -1,6 +1,6 @@
 /* drivers/input/misc/cm3218.c - cm3218 Ambient Light Sensor driver
  *
- * Copyright (c) 2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -64,19 +64,30 @@ static struct cm3218_info *chip_info;
 
 static inline int cm3218_read(void)
 {
-	if (chip_info && chip_info->shutdown_complete)
+	int ret = 0;
+	mutex_lock(&chip_info->lock);
+	if (chip_info && chip_info->shutdown_complete) {
+		mutex_unlock(&chip_info->lock);
 		return -ENODEV;
+	}
 
-	return i2c_smbus_read_word_data(chip_info->client, ALS_CMD_DATA);
+	ret = i2c_smbus_read_word_data(chip_info->client, ALS_CMD_DATA);
+	mutex_unlock(&chip_info->lock);
+	return ret;
 }
 
 static inline int cm3218_write(void)
 {
-	if (chip_info && chip_info->shutdown_complete)
+	int ret = 0;
+	mutex_lock(&chip_info->lock);
+	if (chip_info && chip_info->shutdown_complete) {
+		mutex_unlock(&chip_info->lock);
 		return -ENODEV;
-
-	return i2c_smbus_write_word_data(chip_info->client,
+	}
+	ret = i2c_smbus_write_word_data(chip_info->client,
 			ALS_CMD_SET, chip_info->als_set_reg);
+	mutex_unlock(&chip_info->lock);
+	return ret;
 }
 
 
@@ -84,14 +95,13 @@ static void report_alsensor_input_event(void)
 {
 	int ret = 0;
 
-	mutex_lock(&chip_info->lock);
 	ret = cm3218_read();
 	if (ret < 0) {
 		pr_err("[CM3218] %s: Error read value=%d\n", __func__, ret);
-		mutex_unlock(&chip_info->lock);
 		return;
 	}
 
+	mutex_lock(&chip_info->lock);
 	input_report_abs(chip_info->inp_dev, ABS_MISC, ret);
 	input_sync(chip_info->inp_dev);
 	mutex_unlock(&chip_info->lock);
@@ -307,16 +317,19 @@ err_misc_register:
 err_input_register_device:
 	input_free_device(chip_info->inp_dev);
 err_input_allocate:
+	mutex_destroy(&chip_info->lock);
 	kfree(chip_info);
 	return ret;
 }
 
 static void cm3218_shutdown(struct i2c_client *client)
 {
+	mutex_lock(&chip_info->lock);
 	if (IS_ALS_POWER_ON) {
 		cancel_delayed_work_sync(chip_info->wq);
-		chip_info->shutdown_complete = 1;
 	}
+	chip_info->shutdown_complete = 1;
+	mutex_unlock(&chip_info->lock);
 }
 
 static const struct i2c_device_id cm3218_id[] = {
