@@ -123,6 +123,11 @@
 #define I2C_BUS_CLEAR_STATUS				0x088
 #define I2C_BC_STATUS					(1<<0)
 
+#define I2C_CONFIG_LOAD				0x08C
+#define I2C_MSTR_CONFIG_LOAD			(1 << 0)
+#define I2C_SLV_CONFIG_LOAD			(1 << 1)
+#define I2C_TIMEOUT_CONFIG_LOAD			(1 << 2)
+
 #define SL_ADDR1(addr) (addr & 0xff)
 #define SL_ADDR2(addr) ((addr >> 8) & 0xff)
 
@@ -150,6 +155,7 @@ struct tegra_i2c_chipdata {
 	u16 clk_divisor_std_fast_mode;
 	u16 clk_divisor_hs_mode;
 	int clk_multiplier_hs_mode;
+	bool has_config_load_reg;
 };
 
 /**
@@ -496,6 +502,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	u32 val;
 	int err = 0;
 	u32 clk_divisor = 0;
+	unsigned long timeout = jiffies + HZ;
 
 	err = tegra_i2c_clock_enable(i2c_dev);
 	if (err < 0) {
@@ -541,6 +548,17 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	if (tegra_i2c_flush_fifos(i2c_dev))
 		err = -ETIMEDOUT;
+
+	if (i2c_dev->chipdata->has_config_load_reg) {
+		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD, I2C_CONFIG_LOAD);
+		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+			if (time_after(jiffies, timeout)) {
+				dev_warn(i2c_dev->dev, "timeout waiting for config load\n");
+				return -ETIMEDOUT;
+			}
+			msleep(1);
+		}
+	}
 
 	tegra_i2c_clock_disable(i2c_dev);
 
@@ -776,6 +794,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	u32 int_mask;
 	int ret;
 	unsigned long flags = 0;
+	unsigned long timeout = jiffies + HZ;
 
 	if (msg->len == 0)
 		return -EINVAL;
@@ -908,6 +927,20 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 					| I2C_BC_STOP_COND
 					| I2C_BC_TERMINATE
 					, I2C_BUS_CLEAR_CNFG);
+
+			if (i2c_dev->chipdata->has_config_load_reg) {
+				i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
+							I2C_CONFIG_LOAD);
+				while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+					if (time_after(jiffies, timeout)) {
+						dev_warn(i2c_dev->dev,
+							"timeout config_load");
+						return -ETIMEDOUT;
+					}
+					msleep(1);
+				}
+			}
+
 			tegra_i2c_unmask_irq(i2c_dev, I2C_INT_BUS_CLEAR_DONE);
 
 			wait_for_completion_timeout(&i2c_dev->msg_complete,
@@ -1055,6 +1088,7 @@ static struct tegra_i2c_chipdata tegra20_i2c_chipdata = {
 	.clk_divisor_std_fast_mode = 0,
 	.clk_divisor_hs_mode = 3,
 	.clk_multiplier_hs_mode = 12,
+	.has_config_load_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
@@ -1067,6 +1101,7 @@ static struct tegra_i2c_chipdata tegra30_i2c_chipdata = {
 	.clk_divisor_std_fast_mode = 0,
 	.clk_divisor_hs_mode = 3,
 	.clk_multiplier_hs_mode = 12,
+	.has_config_load_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
@@ -1079,6 +1114,7 @@ static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.clk_divisor_std_fast_mode = 0x19,
 	.clk_divisor_hs_mode = 1,
 	.clk_multiplier_hs_mode = 3,
+	.has_config_load_reg = false,
 };
 
 static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
@@ -1091,6 +1127,7 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.clk_divisor_std_fast_mode = 0x19,
 	.clk_divisor_hs_mode = 1,
 	.clk_multiplier_hs_mode = 3,
+	.has_config_load_reg = true,
 };
 
 /* Match table for of_platform binding */
