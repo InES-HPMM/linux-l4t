@@ -222,187 +222,6 @@ static const struct regmap_irq max77660_global_irqs[] = {
 	},
 };
 
-
-#if 0
-/* MAX77660 PMU doesn't allow PWR_OFF and SFT_RST setting in ONOFF_CFG1
- * at the same time. So if it try to set PWR_OFF and SFT_RST to ONOFF_CFG1
- * simultaneously, handle only SFT_RST and ignore PWR_OFF.
- */
-#define CHECK_ONOFF_CFG1_MASK	(ONOFF_SFT_RST_MASK | ONOFF_PWR_OFF_MASK)
-#define CHECK_ONOFF_CFG1(_addr, _val)			\
-	unlikely((_addr == MAX77660_REG_ONOFF_CFG1) &&	\
-		 ((_val & CHECK_ONOFF_CFG1_MASK) == CHECK_ONOFF_CFG1_MASK))
-#endif
-static inline int max77660_i2c_write(struct max77660_chip *chip, u8 addr,
-				void *src, u32 bytes,
-				enum max77660_i2c_slave slave)
-{
-	int ret = 0;
-	struct regmap *regmap = chip->regmap_power;
-
-	dev_dbg(chip->dev, "i2c_write: addr=0x%02x, src=0x%02x, bytes=%u\n",
-		addr, *((u8 *)src), bytes);
-
-	switch (slave) {
-	case MAX77660_I2C_CORE:
-	case MAX77660_I2C_GPIO:
-	case MAX77660_I2C_PMIC:
-		regmap = chip->regmap_power;
-		break;
-	case MAX77660_I2C_RTC:
-		regmap = chip->regmap_rtc;
-		break;
-	case MAX77660_I2C_CHG:
-		   regmap = chip->regmap_chg;
-		break;
-	case MAX77660_I2C_FG:
-		regmap = chip->regmap_fg;
-		break;
-	case MAX77660_I2C_HAPTIC:
-		regmap = chip->regmap_haptic;
-		break;
-	}
-
-	if (MAX77660_I2C_RTC == slave) {
-		/* RTC registers support sequential writing */
-		ret = regmap_bulk_write(regmap, addr, src, bytes);
-	} else {
-		/* Power registers support register-data pair writing */
-		u8 *src8 = (u8 *)src;
-		unsigned int val;
-		int i;
-
-		for (i = 0; i < bytes; i++) {
-			#if 0
-			if (CHECK_ONOFF_CFG1(addr, *src8))
-				val = *src8++ & ~ONOFF_PWR_OFF_MASK;
-			else
-			#endif
-			val = *src8++;
-			ret = regmap_write(regmap, addr, val);
-			if (ret < 0)
-				break;
-			addr++;
-		}
-	}
-	if (ret < 0)
-		dev_err(chip->dev, "%s() failed, e %d\n", __func__, ret);
-	return ret;
-}
-
-static inline int max77660_i2c_read(struct max77660_chip *chip, u8 addr,
-			void *dest, u32 bytes, enum max77660_i2c_slave slave)
-{
-	int ret = 0;
-	struct regmap *regmap = chip->regmap_power;
-
-	switch (slave) {
-	case MAX77660_I2C_CORE:
-	case MAX77660_I2C_GPIO:
-	case MAX77660_I2C_PMIC:
-		regmap = chip->regmap_power;
-		break;
-	case MAX77660_I2C_RTC:
-		regmap = chip->regmap_rtc;
-		break;
-	case MAX77660_I2C_CHG:
-		regmap = chip->regmap_chg;
-		break;
-	case MAX77660_I2C_FG:
-		regmap = chip->regmap_fg;
-		break;
-	case MAX77660_I2C_HAPTIC:
-		regmap = chip->regmap_haptic;
-		break;
-	}
-
-	ret = regmap_bulk_read(regmap, addr, dest, bytes);
-	if (ret < 0) {
-		dev_err(chip->dev, "%s() failed, e %d\n", __func__, ret);
-		return ret;
-	}
-
-	dev_dbg(chip->dev, "i2c_read: addr=0x%02x, dest=0x%02x, bytes=%u\n",
-		addr, *((u8 *)dest), bytes);
-	return ret;
-}
-
-int max77660_read(struct device *dev, u8 addr, void *values, u32 len,
-		  enum max77660_i2c_slave slave)
-{
-	struct max77660_chip *chip;
-	int ret;
-
-	if (slave == MAX77660_I2C_CORE)
-		chip = dev_get_drvdata(dev);
-	else
-		chip = dev_get_drvdata(dev->parent);
-
-
-	mutex_lock(&chip->io_lock);
-	ret = max77660_i2c_read(chip, addr, values, len, slave);
-	mutex_unlock(&chip->io_lock);
-	return ret;
-}
-EXPORT_SYMBOL(max77660_read);
-
-int max77660_write(struct device *dev, u8 addr, void *values, u32 len,
-		   enum max77660_i2c_slave slave)
-{
-	struct max77660_chip *chip;
-	int ret;
-
-	if (slave == MAX77660_I2C_CORE)
-		chip = dev_get_drvdata(dev);
-	else
-		chip = dev_get_drvdata(dev->parent);
-
-	mutex_lock(&chip->io_lock);
-	ret = max77660_i2c_write(chip, addr, values, len, slave);
-	mutex_unlock(&chip->io_lock);
-	return ret;
-}
-EXPORT_SYMBOL(max77660_write);
-
-int max77660_set_bits(struct device *dev, u8 addr, u8 mask, u8 value,
-		      enum max77660_i2c_slave slave)
-{
-	struct max77660_chip *chip;
-	struct regmap *regmap;
-	int ret;
-
-	if (slave == MAX77660_I2C_CORE)
-		chip = dev_get_drvdata(dev);
-	else
-		chip = dev_get_drvdata(dev->parent);
-
-	switch (slave) {
-	case MAX77660_I2C_CORE:
-	case MAX77660_I2C_GPIO:
-	case MAX77660_I2C_PMIC:
-		regmap = chip->regmap_power;
-		break;
-	case MAX77660_I2C_RTC:
-		 regmap = chip->regmap_rtc;
-		 break;
-	case MAX77660_I2C_CHG:
-		regmap = chip->regmap_chg;
-		break;
-	case MAX77660_I2C_FG:
-		regmap = chip->regmap_fg;
-		break;
-	case MAX77660_I2C_HAPTIC:
-		regmap = chip->regmap_haptic;
-		break;
-	}
-
-	mutex_lock(&chip->io_lock);
-	ret = regmap_update_bits(regmap, addr, mask, value);
-	mutex_unlock(&chip->io_lock);
-	return ret;
-}
-EXPORT_SYMBOL(max77660_set_bits);
-
 static void max77660_power_off(void)
 {
 	struct max77660_chip *chip = max77660_chip;
@@ -411,10 +230,9 @@ static void max77660_power_off(void)
 		return;
 
 	dev_info(chip->dev, "%s: Global shutdown\n", __func__);
-	max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG1,
-			GLBLCNFG0_SFT_OFF_OFFRST_MASK,
-			GLBLCNFG0_SFT_OFF_OFFRST_MASK,
-			MAX77660_I2C_CORE);
+	max77660_reg_set_bits(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG1,
+			GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 }
 
 static int max77660_sleep(struct max77660_chip *chip, bool on)
@@ -422,30 +240,34 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 	int ret = 0;
 
 	if (chip->pdata->flags & SLP_LPM_ENABLE) {
-		/* Put the power rails into Low-Power mode during sleep mode,
-		 * if the power rail's power mode is GLPM. */
-		ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG1,
-					MAX77660_GLBLCNFG1_GLBL_LPM,
-					on ? MAX77660_GLBLCNFG1_GLBL_LPM : 0,
-					MAX77660_I2C_CORE);
+		/*
+		 * Put the power rails into Low-Power mode during sleep mode,
+		 * if the power rail's power mode is GLPM.
+		 */
+		ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG1,
+				on ? MAX77660_GLBLCNFG1_GLBL_LPM : 0,
+				GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 		if (ret < 0)
 			return ret;
 	}
 
-	/* Enable sleep that AP can be placed into sleep mode
-	 * by pulling EN1 low */
-	ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG5,
-			GLBLCNFG5_EN1_MASK_MASK,
+	/*
+	 * Enable sleep that AP can be placed into sleep mode
+	 * by pulling EN1 low
+	 */
+	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG5,
 			on ? 0 : GLBLCNFG5_EN1_MASK_MASK,
-			MAX77660_I2C_CORE);
+			GLBLCNFG5_EN1_MASK_MASK);
 	if (ret < 0)
 		return ret;
-	if (chip->pdata->en_buck2_ext_ctrl)
-		ret = max77660_set_bits(chip->dev, MAX77660_REG_GLOBAL_CFG7,
-				BIT(0),
-				on ? 0 : GLBLCNFG7_EN2_MASK_MASK,
-				MAX77660_I2C_CORE);
 
+	if (chip->pdata->en_buck2_ext_ctrl)
+		ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG7,
+			on ? 0 : GLBLCNFG7_EN2_MASK_MASK,
+			GLBLCNFG7_EN2_MASK_MASK);
 	return ret;
 }
 
@@ -461,8 +283,7 @@ static int max77660_32kclk_init(struct max77660_chip *chip,
 	mask = OUT1_EN_32KCLK_MASK | OUT2_EN_32KCLK_MASK;
 
 	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
-					MAX77660_REG_CNFG32K1,
-					val, mask);
+			MAX77660_REG_CNFG32K1, val, mask);
 	return ret;
 
 }
@@ -638,7 +459,6 @@ static int max77660_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	chip->i2c_power = client;
 	i2c_set_clientdata(client, chip);
 
 	for (i = 0; i < MAX77660_NUM_SLAVES; i++) {
@@ -663,30 +483,25 @@ static int max77660_probe(struct i2c_client *client,
 			goto fail_client_reg;
 		}
 	}
-	chip->regmap_power = chip->rmap[MAX77660_PWR_SLAVE];
-	chip->regmap_rtc = chip->rmap[MAX77660_RTC_SLAVE];
-	chip->regmap_fg = chip->rmap[MAX77660_FG_SLAVE];
-	chip->regmap_chg = chip->rmap[MAX77660_CHG_SLAVE];
-	chip->regmap_haptic = chip->rmap[MAX77660_HAPTIC_SLAVE];
 
 	chip->dev = &client->dev;
 	chip->pdata = pdata;
 	chip->irq_base = pdata->irq_base;
 	chip->chip_irq = client->irq;
-	mutex_init(&chip->io_lock);
 
 	/* Dummy read to see if chip is present or not*/
-	ret = max77660_read(chip->dev, MAX77660_REG_CID5, &val, 1, 0);
+	ret = max77660_reg_read(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_CID5, &val);
 	if (ret < 0) {
 		dev_err(chip->dev, "preinit: Failed to get register 0x%x\n",
 				MAX77660_REG_CID5);
-		return ret;
+		goto fail_client_reg;
 	}
 
 	ret = max77660_init_irqs(chip, pdata);
 	if (ret < 0) {
 		dev_err(chip->dev, "Irq initialisation failed: %d\n", ret);
-		goto fail_irq;
+		goto fail_client_reg;
 	}
 
 	ret = max77660_sleep(chip, false);
@@ -713,24 +528,12 @@ static int max77660_probe(struct i2c_client *client,
 		goto out_exit;
 	}
 
-	ret = mfd_add_devices(&client->dev, 0, pdata->sub_devices,
-			      pdata->num_subdevs, NULL, 0, NULL);
-	if (ret != 0) {
-		dev_err(&client->dev, "probe: Failed to add subdev: %d\n", ret);
-		goto out_mfd_clean;
-	}
-
 	return 0;
 
-out_mfd_clean:
-	mfd_remove_devices(chip->dev);
 out_exit:
 	regmap_del_irq_chip(pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
 		chip->global_irq_data);
 	regmap_del_irq_chip(chip->chip_irq, chip->top_irq_data);
-
-fail_irq:
-	mutex_destroy(&chip->io_lock);
 
 fail_client_reg:
 	for (i = 0; i < MAX77660_NUM_SLAVES; i++) {
@@ -749,7 +552,6 @@ static int __devexit max77660_remove(struct i2c_client *client)
 	int i;
 
 	mfd_remove_devices(chip->dev);
-	mutex_destroy(&chip->io_lock);
 	regmap_del_irq_chip(pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
 		chip->global_irq_data);
 	regmap_del_irq_chip(chip->chip_irq, chip->top_irq_data);
@@ -776,10 +578,9 @@ static int max77660_suspend(struct device *dev)
 		dev_err(dev, "suspend: Failed to enable sleep\n");
 
 	if (chip->pdata->en_buck2_ext_ctrl) {
-		ret = max77660_set_bits(chip->dev, MAX77660_REG_BUCK_PWR_MODE1,
-				MAX77660_BUCK2_PWR_MODE_MASK,
-				0,
-				MAX77660_I2C_CORE);
+		ret = max77660_reg_clr_bits(chip->dev, MAX77660_PWR_SLAVE,
+				MAX77660_REG_BUCK_PWR_MODE1,
+				MAX77660_BUCK2_PWR_MODE_MASK);
 		if (ret < 0)
 			dev_err(dev, "Failed to disable buck2 ext ctrl\n");
 	}
@@ -794,12 +595,11 @@ static int max77660_resume(struct device *dev)
 	int ret;
 
 	if (chip->pdata->en_buck2_ext_ctrl) {
-		ret = max77660_set_bits(chip->dev, MAX77660_REG_BUCK_PWR_MODE1,
-				MAX77660_BUCK2_PWR_MODE_MASK,
-				MAX77660_BUCK2_PWR_MODE_MASK,
-				MAX77660_I2C_CORE);
+		ret = max77660_reg_set_bits(chip->dev, MAX77660_PWR_SLAVE,
+				MAX77660_REG_BUCK_PWR_MODE1,
+				MAX77660_BUCK2_PWR_MODE_MASK);
 		if (ret < 0)
-			dev_err(dev, "Failed to disable buck2 ext ctrl\n");
+			dev_err(dev, "Failed to enable buck2 ext ctrl\n");
 	}
 
 	ret = max77660_sleep(chip, false);

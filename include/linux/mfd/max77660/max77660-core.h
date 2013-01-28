@@ -460,32 +460,15 @@ enum {
 /* Max77660 Chip data */
 struct max77660_chip {
 	struct device *dev;
-	struct i2c_client *i2c_power;
-	struct i2c_client *i2c_rtc;
-	struct i2c_client *i2c_fg;
-	struct i2c_client *i2c_chg;
-	struct i2c_client *i2c_haptic;
-
-	struct regmap *regmap_power;
-	struct regmap *regmap_rtc;
-	struct regmap *regmap_chg;	      /* charger */
-	struct regmap *regmap_fg;	       /* fuel gauge */
-	struct regmap *regmap_haptic;   /* haptic */
 
 	struct i2c_client *clients[MAX77660_NUM_SLAVES];
 	struct regmap* rmap[MAX77660_NUM_SLAVES];
 
-
 	struct max77660_platform_data *pdata;
 	struct mutex io_lock;
 
-	struct irq_chip irq;
 	int chip_irq;
-	struct mutex irq_lock;
 	int irq_base;
-	int irq_top_count[8];
-	u8 cache_irq_top_mask;
-	u32 cache_irq_mask[CACHE_IRQ_NR];
 
 	u8 rtc_i2c_addr;
 	u8 fg_i2c_addr;
@@ -550,9 +533,6 @@ struct max77660_platform_data {
 	int irq_base;
 	int gpio_base;
 
-	int num_subdevs;
-	struct mfd_cell *sub_devices;
-
 	struct max77660_regulator_platform_data **regulator_pdata;
 	int num_regulator_pdata;
 
@@ -561,10 +541,6 @@ struct max77660_platform_data {
 
 	unsigned int flags;
 
-	unsigned char rtc_i2c_addr;
-	unsigned char chg_i2c_addr;
-	unsigned char fg_i2c_addr;
-	unsigned char haptic_i2c_addr;
 	bool en_buck2_ext_ctrl;
 	bool en_clk32out1;
 	bool en_clk32out2;
@@ -572,16 +548,6 @@ struct max77660_platform_data {
 
 	int system_watchdog_timeout;
 	bool led_disable;
-};
-
-enum max77660_i2c_slave {
-	MAX77660_I2C_CORE = 0,  /* Parent device */
-	MAX77660_I2C_GPIO,
-	MAX77660_I2C_PMIC,
-	MAX77660_I2C_RTC,
-	MAX77660_I2C_CHG,
-	MAX77660_I2C_FG,
-	MAX77660_I2C_HAPTIC,
 };
 
 static inline int max77660_reg_write(struct device *dev, int sid,
@@ -648,38 +614,4 @@ static inline int max77660_reg_update(struct device *dev, int sid,
 
 	return regmap_update_bits(chip->rmap[sid], reg, mask, val);
 }
-
-#if defined(CONFIG_MFD_MAX77660)
-int max77660_read(struct device *dev, u8 addr, void *values, u32 len,
-		  enum max77660_i2c_slave slave);
-int max77660_write(struct device *dev, u8 addr, void *values, u32 len,
-		  enum max77660_i2c_slave slve);
-int max77660_set_bits(struct device *dev, u8 addr, u8 mask, u8 value,
-		      enum max77660_i2c_slave slave);
-int max77660_gpio_set_alternate(int gpio, int alternate);
-#else
-static inline int max77660_read(struct device *dev, u8 addr, void *values,
-				u32 len, enum max77660_i2c_slave slave)
-{
-	return 0;
-}
-
-static inline int max77660_write(struct device *dev, u8 addr, void *values,
-				 u32 len, enum max77660_i2c_slave slave)
-{
-	return 0;
-}
-
-static inline int max77660_set_bits(struct device *dev, u8 addr, u8 mask,
-				    u8 value, enum max77660_i2c_slave slave)
-{
-	return 0;
-}
-
-static inline int max77660_gpio_set_alternate(int gpio, int alternate)
-{
-	return 0;
-}
-#endif /* defined(CONFIG_MFD_MAX77660) */
-
 #endif /* __LINUX_MFD_MAX77660_CORE_H__ */
