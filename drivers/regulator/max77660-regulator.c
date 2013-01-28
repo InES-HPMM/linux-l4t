@@ -598,6 +598,8 @@ static int max77660_regulator_set_mode(struct regulator_dev *rdev,
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	struct max77660_regulator_info *rinfo = reg->rinfo;
 	u8 power_mode;
+	u8 mask;
+	u8 val = 0;
 	int ret;
 
 	if (mode == REGULATOR_MODE_NORMAL)
@@ -609,6 +611,25 @@ static int max77660_regulator_set_mode(struct regulator_dev *rdev,
 			     POWER_MODE_LPM : POWER_MODE_NORMAL;
 	} else
 		return -EINVAL;
+
+	if (reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK6 ||
+			reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK7) {
+		mask = BUCK6_7_CNFG_FPWM_MASK;
+		switch (mode) {
+		case REGULATOR_MODE_FAST:
+			val = 0;
+			break;
+		case REGULATOR_MODE_NORMAL:
+			val = 1 << BUCK6_7_CNFG_FPWM_SHIFT;
+			break;
+		}
+
+		ret = max77660_reg_update(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE, rinfo->regs[CFG_REG].addr,
+				mask, val);
+		if (ret < 0)
+			return ret;
+	}
 
 	ret = max77660_regulator_set_power_mode(reg, power_mode);
 	if (!ret)
