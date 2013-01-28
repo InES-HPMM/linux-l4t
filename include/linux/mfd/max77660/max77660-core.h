@@ -119,6 +119,14 @@
 #define MAX77660_REG_AME1_GPIO          0x78
 #define MAX77660_REG_AME2_GPIO          0x78
 
+/* LED controls */
+#define MAX77660_REG_LEDEN		0x94
+#define MAX77660_REG_LED0BRT		0x95
+#define MAX77660_REG_LED1BRT		0x96
+#define MAX77660_REG_LED2BRT		0x97
+#define MAX77660_REG_LED3BRT		0x98
+#define MAX77660_REG_LEDBLNK		0x99
+
 #if 0
 #define MAX77660_REG_GPIO_PU		0x3E
 #define MAX77660_REG_GPIO_PD		0x3F
@@ -565,6 +573,7 @@ struct max77660_gpio_config {
  * @num_pinctrl: Number of pin control data.
  * @system_watchdog_timeout: System wathdog timeout in seconds. If this value
  *		is -ve then timer will not start during initialisation.
+ * led_disable: Disable LEDs.
  */
 
 struct max77660_platform_data {
@@ -595,6 +604,7 @@ struct max77660_platform_data {
 	bool use_power_off;
 
 	int system_watchdog_timeout;
+	bool led_disable;
 };
 
 enum max77660_i2c_slave {
