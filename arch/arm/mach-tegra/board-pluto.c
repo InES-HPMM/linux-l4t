@@ -495,7 +495,8 @@ static struct tegra_asoc_platform_data pluto_aic3262_pdata = {
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_I2S,
 		.sample_size	= 16,
-		.channels       = 2,
+		.rate		= 48000,
+		.channels	= 2,
 	},
 	.i2s_param[BASEBAND]	= {
 		.audio_port_id	= 2,
