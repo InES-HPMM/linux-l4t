@@ -98,6 +98,9 @@ static struct mfd_cell max77660_cells[] = {
 		.name = "max77660-pmic",
 	},
 	{
+		.name = "max77660-leds",
+	},
+	{
 		.name = "max77660-rtc",
 		.num_resources	= ARRAY_SIZE(rtc_resources),
 		.resources	= &rtc_resources[0],
