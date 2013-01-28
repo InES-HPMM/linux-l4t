@@ -116,7 +116,7 @@ static struct mfd_cell max77660_cells[] = {
 		.resources	= &chg_resources[0],
 	},
 	{
-		.name = "max77660-chg-extcopn",
+		.name = "max77660-charger-extcon",
 		.num_resources	= ARRAY_SIZE(max77660_chg_extcon_resources),
 		.resources	= &max77660_chg_extcon_resources[0],
 	},
