@@ -38,7 +38,7 @@ struct max77660_chg_extcon {
 };
 
 const char *max77660_excon_cable[] = {
-	[0] = "USB-Host",
+	[0] = "USB",
 	NULL,
 };
 
@@ -55,9 +55,9 @@ static int max77660_chg_extcon_cable_update(
 		return ret;
 	}
 	if (status & MAX77660_CHG_CHGINT_DC_UVP)
-		extcon_set_cable_state(chg_extcon->edev, "USB-Host", false);
+		extcon_set_cable_state(chg_extcon->edev, "USB", false);
 	else
-		extcon_set_cable_state(chg_extcon->edev, "USB-Host", true);
+		extcon_set_cable_state(chg_extcon->edev, "USB", true);
 
 	dev_info(chg_extcon->dev, "VBUS %s status: 0x%02x\n",
 		(status & MAX77660_CHG_CHGINT_DC_UVP) ? "Invalid" : "Valid",
