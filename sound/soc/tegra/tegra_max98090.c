@@ -1233,6 +1233,20 @@ static int tegra_max98090_set_bias_level_post(struct snd_soc_card *card,
 	return 0 ;
 }
 
+static struct snd_soc_aux_dev max97236_aux_devs[] = {
+	{
+		.name = "max97236",
+		.codec_name = "max97236.0-0040",
+	},
+};
+
+static struct snd_soc_codec_conf max97236_codec_conf[] = {
+	{
+		.dev_name = "max97236.0-0040",
+		.name_prefix = "Amp",
+	},
+};
+
 static struct snd_soc_card snd_soc_tegra_max98090 = {
 	.name = "tegra-max98090",
 	.owner = THIS_MODULE,
@@ -1242,6 +1256,10 @@ static struct snd_soc_card snd_soc_tegra_max98090 = {
 	.resume_pre = tegra_max98090_resume_pre,
 	.set_bias_level = tegra_max98090_set_bias_level,
 	.set_bias_level_post = tegra_max98090_set_bias_level_post,
+	.aux_dev = max97236_aux_devs,
+	.num_aux_devs = ARRAY_SIZE(max97236_aux_devs),
+	.codec_conf = max97236_codec_conf,
+	.num_configs = ARRAY_SIZE(max97236_codec_conf),
 
 	.controls = tegra_max98090_controls,
 	.num_controls = ARRAY_SIZE(tegra_max98090_controls),

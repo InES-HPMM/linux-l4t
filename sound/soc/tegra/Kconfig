@@ -266,6 +266,7 @@ config SND_SOC_TEGRA_MAX98090
 	select SND_SOC_MAX98090
 	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA30_SPDIF if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_MAX97236
 	help
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the MAX98090 codec. Currently, only supported board is
