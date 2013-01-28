@@ -475,6 +475,15 @@ config TEGRA_BB_XMM_POWER2
 	  insert this LKM to initiate 2nd USB enumeration power sequence
 	  - after modem software has been downloaded to flashless device.
 
+config TEGRA_BBC_PROXY
+	bool "Enable BBC Proxy driver"
+	default n
+	help
+	  Enables driver which handles miscellaneous services required
+	  by the BB core. Handles initialization of EDP, ISO Bandwidth,
+	  and Latency Allowance settings. Additional setting adjustments
+	  can be done from user space through sysfs.
+
 config TEGRA_PLLM_RESTRICTED
 	bool "Restrict PLLM usage as module clock source"
 	depends on !ARCH_TEGRA_2x_SOC
