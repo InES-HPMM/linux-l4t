@@ -1074,8 +1074,21 @@ static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.clk_multiplier_hs_mode = 3,
 };
 
+static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
+	.timeout_irq_occurs_before_bus_inactive = false,
+	.has_xfer_complete_interrupt = true,
+	.has_continue_xfer_support = true,
+	.has_hw_arb_support = true,
+	.has_fast_clock = false,
+	.has_clk_divisor_std_fast_mode = true,
+	.clk_divisor_std_fast_mode = 0x19,
+	.clk_divisor_hs_mode = 1,
+	.clk_multiplier_hs_mode = 3,
+};
+
 /* Match table for of_platform binding */
 static const struct of_device_id tegra_i2c_of_match[] = {
+	{ .compatible = "nvidia,tegra148-i2c", .data = &tegra148_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra114-i2c", .data = &tegra114_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra30-i2c", .data = &tegra30_i2c_chipdata, },
 	{ .compatible = "nvidia,tegra20-i2c", .data = &tegra20_i2c_chipdata, },
@@ -1100,6 +1113,10 @@ static struct platform_device_id tegra_i2c_devtype[] = {
 	{
 		.name = "tegra11-i2c",
 		.driver_data = (unsigned long)&tegra114_i2c_chipdata,
+	},
+	{
+		.name = "tegra14-i2c",
+		.driver_data = (unsigned long)&tegra148_i2c_chipdata,
 	},
 };
 
