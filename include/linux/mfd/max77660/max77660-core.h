@@ -88,17 +88,6 @@
 #define MAX77660_REG_LDO_PWR_MODE4	0x41
 #define MAX77660_REG_LDO_PWR_MODE5	0x42
 
-#define MAX77660_REG_GPIO_CTRL0		0x6A
-#define MAX77660_REG_GPIO_CTRL1		0x6B
-#define MAX77660_REG_GPIO_CTRL2		0x6C
-#define MAX77660_REG_GPIO_CTRL3		0x6D
-#define MAX77660_REG_GPIO_CTRL4		0x6E
-#define MAX77660_REG_GPIO_CTRL5		0x6F
-#define MAX77660_REG_GPIO_CTRL6		0x70
-#define MAX77660_REG_GPIO_CTRL7		0x71
-#define MAX77660_REG_GPIO_CTRL8		0x72
-#define MAX77660_REG_GPIO_CTRL9		0x73
-
 /* GPIO Configuration registers */
 #define MAX77660_REG_CNFG_GPIO0         0x6A
 #define MAX77660_REG_CNFG_GPIO1         0x6B
@@ -243,8 +232,10 @@
 #define GLBLCNFG7_EN2_MASK_SHIFT	0
 
 /* MAX77660 GPIO registers */
+#define MAX77660_CNFG_GPIO_DRV_MASK		BIT(0)
 #define MAX77660_CNFG_GPIO_DRV_PUSHPULL		BIT(0)
 #define MAX77660_CNFG_GPIO_DRV_OPENDRAIN	0
+#define MAX77660_CNFG_GPIO_DIR_MASK		BIT(1)
 #define MAX77660_CNFG_GPIO_DIR_INPUT		BIT(1)
 #define MAX77660_CNFG_GPIO_DIR_OUTPUT		0
 #define MAX77660_CNFG_GPIO_INPUT_VAL_MASK	BIT(2)
@@ -255,10 +246,10 @@
 #define MAX77660_CNFG_GPIO_INT_FALLING		BIT(4)
 #define MAX77660_CNFG_GPIO_INT_RISING		BIT(5)
 #define MAX77660_CNFG_GPIO_DBNC_MASK		(0x3 << 6)
-#define MAX77660_CNFG_GPIO_DBNC_None		0x0
-#define MAX77660_CNFG_GPIO_DBNC_8ms		0x1
-#define MAX77660_CNFG_GPIO_DBNC_16ms		0x2
-#define MAX77660_CNFG_GPIO_DBNC_32ms		0x3
+#define MAX77660_CNFG_GPIO_DBNC_None		(0x0 << 6)
+#define MAX77660_CNFG_GPIO_DBNC_8ms		(0x1 << 6)
+#define MAX77660_CNFG_GPIO_DBNC_16ms		(0x2 << 6)
+#define MAX77660_CNFG_GPIO_DBNC_32ms		(0x3 << 6)
 
 #define MAX77660_REG_IRQ1_LVL2_GPIO		0x0D
 #define MAX77660_REG_IRQ2_LVL2_GPIO		0x0E
@@ -466,49 +457,6 @@ enum {
 	MAX77660_GPIO_NR,
 };
 
-/* Direction */
-enum max77660_gpio_dir {
-	GPIO_DIR_DEF,
-	GPIO_DIR_IN,
-	GPIO_DIR_OUT,
-};
-
-/* Data output */
-enum max77660_gpio_data_out {
-	GPIO_DOUT_DEF,
-	GPIO_DOUT_HIGH,
-	GPIO_DOUT_LOW,
-};
-
-/* Output drive */
-enum max77660_gpio_out_drv {
-	GPIO_OUT_DRV_DEF,
-	GPIO_OUT_DRV_PUSH_PULL,
-	GPIO_OUT_DRV_OPEN_DRAIN,
-};
-
-/* Pull-up */
-enum max77660_gpio_pull_up {
-	GPIO_PU_DEF,
-	GPIO_PU_ENABLE,
-	GPIO_PU_DISABLE,
-};
-
-/* Pull-down */
-enum max77660_gpio_pull_down {
-	GPIO_PD_DEF,
-	GPIO_PD_ENABLE,
-	GPIO_PD_DISABLE,
-};
-
-/* Alternate */
-enum max77660_gpio_alt {
-	GPIO_ALT_DEF,
-	GPIO_ALT_ENABLE,
-	GPIO_ALT_DISABLE,
-};
-
-
 /* Max77660 Chip data */
 struct max77660_chip {
 	struct device *dev;
@@ -589,16 +537,6 @@ struct max77660_pinctrl_platform_data {
  */
 #define SLP_LPM_ENABLE		0x01
 
-struct max77660_gpio_config {
-	int gpio;	/* gpio number */
-	enum max77660_gpio_dir dir;
-	enum max77660_gpio_data_out dout;
-	enum max77660_gpio_out_drv out_drv;
-	enum max77660_gpio_pull_up pull_up;
-	enum max77660_gpio_pull_down pull_down;
-	enum max77660_gpio_alt alternate;
-};
-
 /*
  * max77660_platform_data: Platform data for MAX77660.
  * @pinctrl_pdata: Pincontrol configurations.
@@ -611,9 +549,6 @@ struct max77660_gpio_config {
 struct max77660_platform_data {
 	int irq_base;
 	int gpio_base;
-
-	int num_gpio_cfgs;
-	struct max77660_gpio_config *gpio_cfgs;
 
 	int num_subdevs;
 	struct mfd_cell *sub_devices;
