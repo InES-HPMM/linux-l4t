@@ -1107,19 +1107,9 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	 * has been transferred.
 	 */
 	if (brq->cmd.resp[0] & CMD_ERRORS) {
-		/*
-		 * As per SDA spec: "On CMD18 (multi read command)
-		 * when reading the last unprotected area block,
-		 * OUT_OF_RANGE error can occur this needs to be
-		 * ignored by the driver."
-		 */
-		if (!((brq->cmd.resp[0] & R1_OUT_OF_RANGE) &&
-			(brq->cmd.opcode == MMC_READ_MULTIPLE_BLOCK))) {
-				pr_err("%s: r/w command failed, status = %#x\n",
-					req->rq_disk->disk_name,
-					brq->cmd.resp[0]);
-				return MMC_BLK_ABORT;
-		}
+		pr_err("%s: r/w command failed, status = %#x\n",
+		       req->rq_disk->disk_name, brq->cmd.resp[0]);
+		return MMC_BLK_ABORT;
 	}
 
 	/*
