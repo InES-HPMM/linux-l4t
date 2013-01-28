@@ -1651,7 +1651,7 @@ static int soctherm_fuse_read_vsensor(void)
 	return 0;
 }
 
-static int fuse_corr_alpha[] = { /* scaled *1000000 */
+static int t11x_fuse_corr_alpha[] = { /* scaled *1000000 */
 	[TSENSE_CPU0] = 1196400,
 	[TSENSE_CPU1] = 1196400,
 	[TSENSE_CPU2] = 1196400,
@@ -1660,13 +1660,35 @@ static int fuse_corr_alpha[] = { /* scaled *1000000 */
 	[TSENSE_PLLX] = 1224200,
 };
 
-static int fuse_corr_beta[] = { /* scaled *1000000 */
+static int t11x_fuse_corr_beta[] = { /* scaled *1000000 */
 	[TSENSE_CPU0] = -13600000,
 	[TSENSE_CPU1] = -13600000,
 	[TSENSE_CPU2] = -13600000,
 	[TSENSE_CPU3] = -13600000,
 	[TSENSE_GPU]  =  -9793100,
 	[TSENSE_PLLX] = -14665000,
+};
+
+static int t14x_fuse_corr_alpha[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] = 1149000,
+	[TSENSE_CPU1] = 1148800,
+	[TSENSE_CPU2] = 1139100,
+	[TSENSE_CPU3] = 1141800,
+	[TSENSE_MEM0] = 1082300,
+	[TSENSE_MEM1] = 1061800,
+	[TSENSE_GPU]  = 1078900,
+	[TSENSE_PLLX] = 1125900,
+};
+
+static int t14x_fuse_corr_beta[] = { /* scaled *1000000 */
+	[TSENSE_CPU0] = -16753000,
+	[TSENSE_CPU1] = -16287000,
+	[TSENSE_CPU2] = -12552000,
+	[TSENSE_CPU3] = -11061000,
+	[TSENSE_MEM0] = -11061000,
+	[TSENSE_MEM1] =  -7596500,
+	[TSENSE_GPU]  = -10480000,
+	[TSENSE_PLLX] = -14736000,
 };
 
 static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
@@ -1708,15 +1730,27 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				     ((s64)actual_tsensor_cp * actual_temp_ft)),
 				    (s64)delta_sens);
 
-	/* FUSE corrections for T114 when precision is set LOW */
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11 && PRECISION_IS_LOWER()) {
-		fuse_corr_alpha[sensor] = fuse_corr_alpha[sensor] ?: 1000000;
-		therm_a = div64_s64_precise(
-				(s64)therm_a * fuse_corr_alpha[sensor],
+	/* FUSE corrections for Tegra when precision is set LOW */
+	if (PRECISION_IS_LOWER()) {
+		if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
+			t11x_fuse_corr_alpha[sensor] =
+				t11x_fuse_corr_alpha[sensor] ?: 1000000;
+			therm_a = div64_s64_precise(
+				(s64)therm_a * t11x_fuse_corr_alpha[sensor],
 				(s64)1000000LL);
-		therm_b = div64_s64_precise(
-				(s64)therm_b * fuse_corr_alpha[sensor] +
-				fuse_corr_beta[sensor], (s64)1000000LL);
+			therm_b = div64_s64_precise(
+				(s64)therm_b * t11x_fuse_corr_alpha[sensor] +
+				t11x_fuse_corr_beta[sensor], (s64)1000000LL);
+		} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14) {
+			t14x_fuse_corr_alpha[sensor] =
+				t14x_fuse_corr_alpha[sensor] ?: 1000000;
+			therm_a = div64_s64_precise(
+				(s64)therm_a * t14x_fuse_corr_alpha[sensor],
+				(s64)1000000LL);
+			therm_b = div64_s64_precise(
+				(s64)therm_b * t14x_fuse_corr_alpha[sensor] +
+				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
+		}
 	}
 
 	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
