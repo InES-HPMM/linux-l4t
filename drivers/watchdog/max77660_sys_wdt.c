@@ -207,6 +207,8 @@ static int __devinit max77660_sys_wdt_probe(struct platform_device *pdev)
 		}
 	}
 
+	device_set_wakeup_capable(&pdev->dev, 1);
+
 	return 0;
 scrub:
 	free_irq(wdt->irq, wdt);
