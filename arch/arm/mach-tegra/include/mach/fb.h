@@ -2,9 +2,9 @@
  * arch/arm/mach-tegra/include/mach/fb.h
  *
  * Copyright (C) 2010 Google, Inc.
+ * Author: Erik Gilling <konkers@google.com>
  *
- * Author:
- *	Erik Gilling <konkers@google.com>
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -37,6 +37,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 					struct tegra_fb_data *fb_data,
 					struct resource *fb_mem);
 void tegra_fb_unregister(struct tegra_fb_info *fb_info);
+void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info);
 void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			      struct fb_monspecs *specs,
 			      bool (*mode_filter)(const struct tegra_dc *dc,
@@ -50,6 +51,10 @@ static inline struct tegra_fb_info *tegra_fb_register(
 }
 
 static inline void tegra_fb_unregister(struct tegra_fb_info *fb_info)
+{
+}
+
+static inline void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info)
 {
 }
 
