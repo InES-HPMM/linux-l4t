@@ -440,11 +440,14 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
 	int sclk_src;
+	int reg63, reg64;
 	struct rt5640_priv *rt5640 = snd_soc_codec_get_drvdata(codec);
 	mutex_lock(&rt5640->lock);
 	CHECK_I2C_SHUTDOWN(rt5640, codec)
 
 	if (jack_insert) {
+		reg63 = snd_soc_read(codec, RT5640_PWR_ANLG1);
+		reg64 = snd_soc_read(codec, RT5640_PWR_ANLG2);
 		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
 			snd_soc_write(codec, RT5640_PWR_ANLG1, 0x2004);
 			snd_soc_write(codec, RT5640_MICBIAS, 0x3830);
@@ -474,6 +477,8 @@ int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5640_MB1_OC_CLR, 0);
 		snd_soc_update_bits(codec, RT5640_GLB_CLK,
 			RT5640_SCLK_SRC_MASK, sclk_src);
+		snd_soc_write(codec, RT5640_PWR_ANLG1, reg63);
+		snd_soc_write(codec, RT5640_PWR_ANLG2, reg64);
 	} else {
 		snd_soc_update_bits(codec, RT5640_MICBIAS,
 			RT5640_MIC1_OVCD_MASK,
