@@ -31,6 +31,7 @@
 #include <linux/module.h>
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/platform_device.h>
+#include <linux/pm.h>
 #include <linux/slab.h>
 #include <linux/watchdog.h>
 
@@ -40,6 +41,7 @@ struct max77660_sys_wdt {
 	struct watchdog_device wdt_dev;
 	struct device *dev;
 	struct device *parent;
+	int timeout;
 	int irq;
 };
 
@@ -114,6 +116,7 @@ static int max77660_sys_wdt_set_timeout(struct watchdog_device *wdt_dev,
 		dev_err(wdt->dev, "GLOBAL_CFG2 update failed: %d\n", ret);
 		return ret;
 	}
+	wdt->timeout = timeout;
 	return 0;
 }
 
@@ -221,10 +224,47 @@ static int __devexit max77660_sys_wdt_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77660_sys_wdt_suspend(struct device *dev)
+{
+	struct max77660_sys_wdt *wdt = dev_get_drvdata(dev);
+	int ret;
+
+	if (device_may_wakeup(dev)) {
+		enable_irq_wake(wdt->irq);
+	} else if (wdt->timeout > 0) {
+		ret = max77660_sys_wdt_stop(&wdt->wdt_dev);
+		if (ret < 0)
+			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+	}
+	return 0;
+}
+
+static int max77660_sys_wdt_resume(struct device *dev)
+{
+	struct max77660_sys_wdt *wdt = dev_get_drvdata(dev);
+	int ret;
+
+	if (device_may_wakeup(dev)) {
+		disable_irq_wake(wdt->irq);
+	} else if (wdt->timeout > 0) {
+		ret = max77660_sys_wdt_start(&wdt->wdt_dev);
+		if (ret < 0)
+			dev_err(wdt->dev, "wdt start failed: %d\n", ret);
+	}
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops max77660_sys_wdt_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77660_sys_wdt_suspend, max77660_sys_wdt_resume)
+};
+
 static struct platform_driver max77660_sys_wdt_driver = {
 	.driver	= {
 		.name	= "max77660-sys-wdt",
 		.owner	= THIS_MODULE,
+		.pm = &max77660_sys_wdt_pm_ops,
 	},
 	.probe	= max77660_sys_wdt_probe,
 	.remove	= __devexit_p(max77660_sys_wdt_remove),
