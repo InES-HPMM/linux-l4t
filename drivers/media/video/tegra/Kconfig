@@ -113,6 +113,12 @@ config TORCH_AS364X
         ---help---
           This is a driver for the AS364X flash/torch camera device
 
+config TORCH_LM3565
+        tristate "LM3565 flash/torch support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the LM3565 flash/torch camera device
+
 config VIDEO_SH532U
         tristate "SH532U focuser support"
         depends on I2C && ARCH_TEGRA
