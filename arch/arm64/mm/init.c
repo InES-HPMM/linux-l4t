@@ -37,6 +37,8 @@
 #include <asm/sizes.h>
 #include <asm/tlb.h>
 
+#include <asm/mach/arch.h>
+
 #include "mm.h"
 
 static unsigned long phys_initrd_start __initdata = 0;
@@ -177,6 +179,10 @@ void __init arm64_memblock_init(void)
 			break;
 		memblock_reserve(base, size);
 	}
+
+	/* reserve any platform specific memblock areas */
+	if (machine_desc->reserve)
+		machine_desc->reserve();
 
 	memblock_allow_resize();
 	memblock_dump_all();

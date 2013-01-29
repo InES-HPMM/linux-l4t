@@ -55,6 +55,8 @@
 #include <asm/mmu_context.h>
 #include <asm/psci.h>
 
+#include <asm/mach/arch.h>
+
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
 
@@ -73,6 +75,7 @@ EXPORT_SYMBOL(system_serial_low);
 unsigned int system_serial_high;
 EXPORT_SYMBOL(system_serial_high);
 
+struct machine_desc *machine_desc __initdata;
 phys_addr_t __fdt_pointer __initdata;
 
 /*
@@ -144,9 +147,11 @@ static void __init setup_processor(void)
 	cpu_last_asid = 1 << max_asid_bits;
 }
 
-static void __init setup_machine_fdt(phys_addr_t dt_phys)
+static struct machine_desc * __init setup_machine_fdt(phys_addr_t dt_phys)
 {
 	struct boot_param_header *devtree;
+	struct machine_desc *mdesc, *mdesc_best = NULL;
+	unsigned int score, mdesc_score = ~1;
 	unsigned long dt_root;
 
 	/* Check we have a non-NULL DT pointer */
@@ -179,6 +184,32 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 	initial_boot_params = devtree;
 	dt_root = of_get_flat_dt_root();
 
+	for_each_machine_desc(mdesc) {
+		score = of_flat_dt_match(dt_root, mdesc->dt_compat);
+		if (score > 0 && score < mdesc_score) {
+			mdesc_best = mdesc;
+			mdesc_score = score;
+		}
+	}
+	if (!mdesc_best) {
+		const char *prop;
+		long size;
+
+		pr_info("\nError: unrecognized/unsupported "
+			    "device tree compatible list:\n[ ");
+
+		prop = of_get_flat_dt_prop(dt_root, "compatible", &size);
+		while (size > 0) {
+			pr_info("'%s' ", prop);
+			size -= strlen(prop) + 1;
+			prop += strlen(prop) + 1;
+		}
+		pr_info("]\n\n");
+
+		while (true)
+			/* can't use cpu_relax() here as it may require MMU setup */;
+	}
+
 	machine_name = of_get_flat_dt_prop(dt_root, "model", NULL);
 	if (!machine_name)
 		machine_name = of_get_flat_dt_prop(dt_root, "compatible", NULL);
@@ -192,6 +223,8 @@ static void __init setup_machine_fdt(phys_addr_t dt_phys)
 	of_scan_flat_dt(early_init_dt_scan_root, NULL);
 	/* Setup memory, calling early_init_dt_add_memory_arch */
 	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
+
+	return mdesc_best;
 }
 
 void __init early_init_dt_add_memory_arch(u64 base, u64 size)
@@ -268,9 +301,11 @@ u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
 void __init setup_arch(char **cmdline_p)
 {
-	setup_processor();
+	struct machine_desc *mdesc;
 
-	setup_machine_fdt(__fdt_pointer);
+	setup_processor();
+	mdesc = setup_machine_fdt(__fdt_pointer);
+	machine_desc = mdesc;
 
 	init_mm.start_code = (unsigned long) _text;
 	init_mm.end_code   = (unsigned long) _etext;
@@ -303,6 +338,9 @@ void __init setup_arch(char **cmdline_p)
 	conswitchp = &dummy_con;
 #endif
 #endif
+
+	if (machine_desc->init_early)
+		machine_desc->init_early();
 }
 
 static int __init arm64_device_init(void)
@@ -402,3 +440,12 @@ const struct seq_operations cpuinfo_op = {
 	.stop	= c_stop,
 	.show	= c_show
 };
+
+static int __init customize_machine(void)
+{
+	/* customizes platform devices, or adds new ones */
+	if (machine_desc->init_machine)
+		machine_desc->init_machine();
+	return 0;
+}
+arch_initcall(customize_machine);
