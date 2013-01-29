@@ -129,7 +129,7 @@ config NVMAP_CARVEOUT_COMPACTOR
 
 config NVMAP_PAGE_POOLS
 	bool "Use page pools to reduce allocation overhead"
-	depends on TEGRA_NVMAP
+	depends on TEGRA_NVMAP && CPA
 	default y
 	help
 	  say Y here to reduce the alloction overhead, which is significant
@@ -151,6 +151,7 @@ config NVMAP_PAGE_POOLS_INIT_FILLUP
 	  If increase in boot time is not acceptable, keep this option disabled.
 
 config NVMAP_PAGE_POOL_SIZE
+	depends on NVMAP_PAGE_POOLS
 	hex
 	default 0x0
 
