@@ -57,8 +57,9 @@
 
 #define	DRIVER_AUTHOR	"Venkat Moganty/Rakesh Bodla"
 #define	DRIVER_VERSION	"Apr 30, 2012"
+#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define USB1_PREFETCH_ID	6
-
+#endif
 #define AHB_PREFETCH_BUFFER	SZ_128
 
 #define get_ep_by_pipe(udc, pipe)	((pipe == 1) ? &udc->eps[0] : \
@@ -1970,8 +1971,9 @@ static int process_ep_req(struct tegra_udc *udc, int pipe,
 
 	for (j = 0; j < curr_req->dtd_count; j++) {
 		/* Fence read for coherency of AHB master intiated writes */
+		#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-
+		#endif
 		dma_sync_single_for_cpu(udc->gadget.dev.parent, curr_td->td_dma,
 				sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
 
@@ -2321,8 +2323,9 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 		goto done;
 
 	/* Fence read for coherency of AHB master intiated writes */
+	#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
-
+	#endif
 	irq_src = udc_readl(udc, USB_STS_REG_OFFSET) &
 				udc_readl(udc, USB_INTR_REG_OFFSET);
 
