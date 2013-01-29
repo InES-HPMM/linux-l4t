@@ -237,7 +237,7 @@ void nvshm_tty_start_tx(struct nvshm_channel *chan)
 	tty_wakeup(tty);
 }
 
-static const struct nvshm_if_operations nvshm_tty_ops = {
+static struct nvshm_if_operations nvshm_tty_ops = {
 	.rx_event = nvshm_tty_rx_event,
 	.error_event = nvshm_tty_error_event,
 	.start_tx = nvshm_tty_start_tx
@@ -319,11 +319,10 @@ static int nvshm_tty_write_room(struct tty_struct *tty)
 static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 			   int len)
 {
-	struct nvshm_iobuf *iob, *leaf, *list = NULL;
+	struct nvshm_iobuf *iob, *leaf = NULL, *list = NULL;
 	int to_send = 0, remain, idx = tty->index;
 
 	if (!nvshm_interface_up()) {
-		nvshm_iobuf_free_cluster(iob);
 		return 0;
 	}
 
@@ -468,7 +467,7 @@ void nvshm_tty_cleanup(void)
 			spin_unlock(&tty_dev.line[chan].lock);
 			nvshm_close_channel(tty_dev.line[chan].pchan);
 			pr_debug("%s hangup tty device %d\n", __func__,
-				 tty_dev.line[chan].tty);
+				 tty_dev.line[chan].tty->index);
 			tty_hangup(tty_dev.line[chan].tty);
 		} else {
 			spin_unlock(&tty_dev.line[chan].lock);

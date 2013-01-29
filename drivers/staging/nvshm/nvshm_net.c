@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -172,7 +172,7 @@ void nvshm_netif_start_tx(struct nvshm_channel *chan)
 	netif_wake_queue(dev);
 }
 
-static const struct nvshm_if_operations nvshm_netif_ops = {
+static struct nvshm_if_operations nvshm_netif_ops = {
 	.rx_event    = nvshm_netif_rx_event,	/* nvshm_queue.c */
 	.error_event = nvshm_netif_error_event,	/* nvshm_iobuf.c */
 	.start_tx    = nvshm_netif_start_tx,
@@ -238,7 +238,7 @@ static int nvshm_netops_close(struct net_device *dev)
 static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 {
 	struct nvshm_net_line *priv = netdev_priv(dev);
-	struct nvshm_iobuf *iob, *leaf, *list = NULL;
+	struct nvshm_iobuf *iob, *leaf = NULL, *list = NULL;
 	int to_send = 0, remain;
 	int len;
 	char *data;

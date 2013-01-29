@@ -83,7 +83,7 @@ struct nvshm_if_operations {
  * @return struct nvshm_channel channel handle
  */
 struct nvshm_channel *nvshm_open_channel(int chan,
-					 const struct nvshm_if_operations *ops,
+					 struct nvshm_if_operations *ops,
 					 void *interface_data);
 
 /**
@@ -121,5 +121,5 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
  *
  * @return 1 if nvshm is configured and running
  */
-int nvshm_interface_up();
+int nvshm_interface_up(void);
 #endif /* _NVSHM_IF_H */

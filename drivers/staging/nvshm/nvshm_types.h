@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -131,7 +131,7 @@ struct nvshm_iobuf {
 struct nvshm_channel {
 	int index;
 	struct nvshm_chan_map map;
-	const struct nvshm_if_operations *ops;
+	struct nvshm_if_operations *ops;
 	void *data;
 };
 

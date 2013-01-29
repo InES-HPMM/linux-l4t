@@ -22,7 +22,7 @@
 #include "nvshm_iobuf.h"
 
 struct nvshm_channel *nvshm_open_channel(int chan,
-					 const struct nvshm_if_operations *ops,
+					 struct nvshm_if_operations *ops,
 					 void *interface_data)
 {
 	struct nvshm_handle *handle = nvshm_get_handle();

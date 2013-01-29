@@ -1,3 +1,5 @@
+subdir-ccflags-y := -Werror
+
 nvshm-objs := nvshm_init.o
 nvshm-objs += nvshm_ipc.o
 nvshm-objs += nvshm_queue.o

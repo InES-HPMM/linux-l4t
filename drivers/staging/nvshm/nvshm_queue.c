@@ -114,7 +114,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 
 	if ((handle->conf->queue_bb_offset < 0) ||
 	    (handle->conf->queue_bb_offset > handle->conf->shmem_size))
-		pr_err("%s: out of bound descriptor offset %d addr 0x%x/0x%x\n",
+		pr_err("%s: out of bound descriptor offset %d addr 0x%p/0x%p\n",
 		       __func__,
 		       handle->conf->queue_bb_offset,
 		       ret,

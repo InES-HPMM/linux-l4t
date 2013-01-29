@@ -96,8 +96,8 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 		return;
 	}
 	spin_lock(&alloc.lock);
-	pr_debug("%s: free 0x%x ref %d pool %x\n", __func__,
-		 (unsigned long)desc, desc->ref, desc->pool_id);
+	pr_debug("%s: free 0x%p ref %d pool %x\n", __func__,
+		 desc, desc->ref, desc->pool_id);
 	desc->ref--;
 	if (desc->ref == 0) {
 		if (desc->pool_id >= NVSHM_AP_POOL_ID) {
@@ -280,6 +280,7 @@ int nvshm_iobuf_check(struct nvshm_channel *chan, struct nvshm_iobuf *iob)
 	return 0;
 }
 
+#ifdef IOBUF_CHECK
 static int iobuf_sanity_check(struct nvshm_handle *handle)
 {
 	struct nvshm_iobuf *list = NULL, *iob = NULL;
@@ -394,6 +395,7 @@ static int iobuf_sanity_check(struct nvshm_handle *handle)
 	}
 	return 0;
 }
+#endif
 
 int nvshm_iobuf_init(struct nvshm_handle *handle)
 {
@@ -457,7 +459,7 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 			 (long)alloc.free_pool_tail
 			 - (long)alloc.free_pool_head);
 	spin_unlock(&alloc.lock);
-#if 0
+#ifdef IOBUF_CHECK
 	if (iobuf_sanity_check(handle))
 		pr_err("%s iobuf sanity check failure!\n", __func__);
 #endif

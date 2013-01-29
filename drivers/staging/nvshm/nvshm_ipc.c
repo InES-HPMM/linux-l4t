@@ -44,12 +44,13 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	}
 	if (handle->ipc_size != conf->shmem_size) {
 		pr_warn("%s shmem mapped/reported not matching: 0x%x/0x%x\n",
-		       __func__, handle->ipc_size, conf->shmem_size);
+			__func__, (unsigned int)handle->ipc_size,
+			conf->shmem_size);
 	}
 	handle->desc_base_virt = handle->ipc_base_virt
 		+ conf->region_ap_desc_offset;
-	pr_debug("%s desc_base_virt=0x%x\n",
-		__func__, (unsigned int)handle->desc_base_virt);
+	pr_debug("%s desc_base_virt=0x%p\n",
+		 __func__, handle->desc_base_virt);
 
 	handle->desc_size = conf->region_ap_desc_size;
 	pr_debug("%s desc_size=%d\n",
@@ -58,8 +59,8 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	/* Data is cached */
 	handle->data_base_virt = handle->ipc_base_virt
 		+ conf->region_ap_data_offset;
-	pr_debug("%s data_base_virt=0x%x\n",
-		__func__, (unsigned int)handle->data_base_virt);
+	pr_debug("%s data_base_virt=0x%p\n",
+		__func__, handle->data_base_virt);
 
 	handle->data_size = conf->region_ap_data_size;
 	pr_debug("%s data_size=%d\n", __func__, (int)handle->data_size);
@@ -68,25 +69,23 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				     + conf->queue_bb_offset);
-	pr_debug("%s shared_queue_head offset=0x%x\n",
+	pr_debug("%s shared_queue_head offset=0x%lx\n",
 		__func__,
-		(unsigned int)handle->shared_queue_head-
-		(unsigned int)handle->ipc_base_virt);
+		 (long)handle->shared_queue_head - (long)handle->ipc_base_virt);
 #else
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				      + conf->queue_ap_offset);
-	pr_debug("%s shared_queue_head offset=0x%x\n",
+	pr_debug("%s shared_queue_head offset=0x%lx\n",
 		__func__,
-		(unsigned int)handle->shared_queue_head -
-		(unsigned int)handle->ipc_base_virt);
+		 (long)handle->shared_queue_head - (long)handle->ipc_base_virt);
 #endif
 	handle->shared_queue_tail =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
 				     + conf->queue_ap_offset);
-	pr_debug("%s shared_queue_tail offset=0x%x\n",
-		__func__, (unsigned int)handle->shared_queue_tail -
-		(unsigned int)handle->ipc_base_virt);
+	pr_debug("%s shared_queue_tail offset=0x%lx\n",
+		__func__, (long)handle->shared_queue_tail -
+		(long)handle->ipc_base_virt);
 
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		handle->chan[chan].index = chan;
@@ -258,7 +257,7 @@ static enum hrtimer_restart nvshm_ipc_timer_func(struct hrtimer *timer)
 
 	if (tegra_bb_check_ipc(handle->tegra_bb) == 1) {
 		pr_debug("%s is cleared\n", __func__);
-		pm_relax(&handle->dev);
+		pm_relax(handle->dev);
 		return HRTIMER_NORESTART;
 	}
 	pr_debug("%s is still set\n", __func__);
@@ -298,7 +297,7 @@ int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
 	int ret;
 	/* take wake lock until BB ack our irq */
-	pm_stay_awake(&handle->dev);
+	pm_stay_awake(handle->dev);
 	if (!hrtimer_active(&handle->wake_timer)) {
 		ret = hrtimer_start(&handle->wake_timer,
 				    ktime_set(0, 50000000), HRTIMER_MODE_REL);
