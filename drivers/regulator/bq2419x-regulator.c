@@ -41,6 +41,8 @@ struct bq2419x_regulator_info {
 	struct regulator_dev *rdev;
 	struct bq2419x_chip *chip;
 	int gpio_otg_iusb;
+	struct mutex mutex;
+	int shutdown_complete;
 };
 
 static int bq2419x_regulator_enable_time(struct regulator_dev *rdev)
@@ -56,13 +58,20 @@ static int bq2419x_dcdc_enable(struct regulator_dev *rdev)
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_set_value(bq->gpio_otg_iusb, 1);
 
+	mutex_lock(&bq->mutex);
+	if (bq && bq->shutdown_complete) {
+		mutex_unlock(&bq->mutex);
+		return -ENODEV;
+	}
 	ret = regmap_update_bits(bq->chip->regmap, BQ2419X_OTG,
 			BQ2419X_OTG_ENABLE_MASK, BQ2419X_OTG_ENABLE);
 	if (ret < 0) {
 		dev_err(bq->dev, "register %d update failed with err %d",
 			 BQ2419X_OTG, ret);
+		mutex_unlock(&bq->mutex);
 		return ret;
 	}
+	mutex_unlock(&bq->mutex);
 	return ret;
 }
 
@@ -71,17 +80,25 @@ static int bq2419x_dcdc_disable(struct regulator_dev *rdev)
 	struct bq2419x_regulator_info *bq = rdev_get_drvdata(rdev);
 	int ret = 0;
 
+	mutex_lock(&bq->mutex);
+	if (bq && bq->shutdown_complete) {
+		mutex_unlock(&bq->mutex);
+		return -ENODEV;
+	}
+
 	ret = regmap_update_bits(bq->chip->regmap, BQ2419X_OTG,
 					BQ2419X_OTG_ENABLE_MASK, 0x10);
 	if (ret < 0) {
 		dev_err(bq->dev, "register %d update failed with err %d",
 			BQ2419X_OTG, ret);
+		mutex_unlock(&bq->mutex);
 		return ret;
 	}
 
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_set_value(bq->gpio_otg_iusb, 0);
 
+	mutex_unlock(&bq->mutex);
 	return ret;
 }
 
@@ -91,13 +108,19 @@ static int bq2419x_dcdc_is_enabled(struct regulator_dev *rdev)
 	int ret;
 	unsigned int data;
 
+	mutex_lock(&bq->mutex);
+	if (bq && bq->shutdown_complete) {
+		mutex_unlock(&bq->mutex);
+		return -ENODEV;
+	}
 	ret = regmap_read(bq->chip->regmap, BQ2419X_OTG, &data);
 	if (ret < 0) {
 		dev_err(bq->dev, "register %d read failed with err %d",
 			BQ2419X_OTG, ret);
+		mutex_unlock(&bq->mutex);
 		return ret;
 	}
-
+	mutex_unlock(&bq->mutex);
 	return (data & BQ2419X_OTG_ENABLE_MASK) == BQ2419X_OTG_ENABLE;
 }
 
@@ -107,6 +130,15 @@ static struct regulator_ops bq2419x_dcdc_ops = {
 	.is_enabled		= bq2419x_dcdc_is_enabled,
 	.enable_time		= bq2419x_regulator_enable_time,
 };
+
+static void bq2419x_regulator_shutdown(struct platform_device *pdev)
+{
+	struct bq2419x_regulator_info *bq = platform_get_drvdata(pdev);
+
+	mutex_lock(&bq->mutex);
+	bq->shutdown_complete = 1;
+	mutex_unlock(&bq->mutex);
+}
 
 static int bq2419x_regulator_probe(struct platform_device *pdev)
 {
@@ -141,6 +173,8 @@ static int bq2419x_regulator_probe(struct platform_device *pdev)
 	bq->desc.ops = &bq2419x_dcdc_ops;
 	bq->desc.type = REGULATOR_VOLTAGE;
 	bq->desc.owner = THIS_MODULE;
+	bq->shutdown_complete = 0;
+	mutex_init(&bq->mutex);
 
 	platform_set_drvdata(pdev, bq);
 
@@ -182,6 +216,7 @@ err_reg_update:
 err_init:
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_free(bq->gpio_otg_iusb);
+	mutex_destroy(&bq->mutex);
 	return ret;
 }
 
@@ -189,6 +224,7 @@ static int bq2419x_regulator_remove(struct platform_device *pdev)
 {
 	struct bq2419x_regulator_info *bq = platform_get_drvdata(pdev);
 
+	mutex_destroy(&bq->mutex);
 	regulator_unregister(bq->rdev);
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_free(bq->gpio_otg_iusb);
@@ -201,6 +237,7 @@ static struct platform_driver bq2419x_regulator_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = bq2419x_regulator_probe,
+	.shutdown = bq2419x_regulator_shutdown,
 	.remove = bq2419x_regulator_remove,
 };
 
