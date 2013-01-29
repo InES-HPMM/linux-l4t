@@ -487,6 +487,7 @@ static struct tegra_gpio_soc_config tegra30_gpio_config = {
 };
 
 static struct of_device_id tegra_gpio_of_match[] = {
+	{ .compatible = "nvidia,tegra148-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra114-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra30-gpio", .data = &tegra30_gpio_config },
 	{ .compatible = "nvidia,tegra20-gpio", .data = &tegra20_gpio_config },
