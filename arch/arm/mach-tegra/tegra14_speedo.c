@@ -31,7 +31,7 @@
 #include "fuse.h"
 #include "iomap.h"
 
-#define TEGRA148_CPU_SPEEDO 1777  /* FIXME: Get correct value */
+#define TEGRA148_CPU_SPEEDO 2109
 
 static int cpu_process_id;
 static int core_process_id;
