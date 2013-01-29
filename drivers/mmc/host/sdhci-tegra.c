@@ -95,6 +95,8 @@
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8	128
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4	64
 #define MAX_TAP_VALUES	255
+#define TUNING_FREQ_COUNT	2
+#define TUNING_VOLTAGES_COUNT	2
 
 static unsigned int uhs_max_freq_MHz[] = {
 	[MMC_TIMING_UHS_SDR50] = 100,
@@ -157,6 +159,30 @@ struct sdhci_tegra_sd_stats {
 	unsigned int cmd_to_count;
 };
 
+enum tegra_tuning_freq {
+	TUNING_LOW_FREQ,
+	TUNING_HIGH_FREQ,
+};
+
+struct freq_tuning_params {
+	unsigned int	freq_hz;
+	unsigned int	nr_voltages;
+	unsigned int	voltages[TUNING_VOLTAGES_COUNT];
+};
+
+static struct freq_tuning_params tuning_params[TUNING_FREQ_COUNT] = {
+	[TUNING_LOW_FREQ] = {
+		.freq_hz = 82000000,
+		.nr_voltages = 1,
+		.voltages = {ULONG_MAX},
+	},
+	[TUNING_HIGH_FREQ] = {
+		.freq_hz = 156000000,
+		.nr_voltages = 2,
+		.voltages = {ULONG_MAX, 1100000},
+	},
+};
+
 struct tap_window_data {
 	unsigned int	partial_win;
 	unsigned int	full_win_begin;
@@ -170,7 +196,7 @@ struct tap_window_data {
 struct tegra_tuning_data {
 	unsigned int		best_tap_value;
 	bool			select_partial_win;
-	struct tap_window_data	*tap_data;
+	struct tap_window_data	*tap_data[TUNING_VOLTAGES_COUNT];
 };
 
 struct sdhci_tegra {
@@ -1002,7 +1028,7 @@ static void calculate_low_freq_tap_value(struct sdhci_host *sdhci)
 	struct tegra_tuning_data *tuning_data;
 
 	tuning_data = &tegra_host->tuning_data;
-	tap_data = tuning_data->tap_data;
+	tap_data = tuning_data->tap_data[0];
 
 	if (tap_data->abandon_full_win) {
 		if (tap_data->abandon_partial_win) {
@@ -1041,6 +1067,107 @@ calculate_best_tap:
 	} else {
 		tuning_data->best_tap_value = tap_data->full_win_begin +
 			tap_data->sampling_point;
+	}
+}
+
+/*
+ * Calculation of best tap value for high frequencies(156MHz).
+ * Tap window data at 1.25V core voltage
+ * X = Partial win, Y = Full win start, Z = Full win end.
+ * Full Window = Z-Y.
+ * UI = Z-X.
+ * Tap_margin = (0.20375)UI
+ *
+ * Tap window data at 1.1V core voltage
+ * X' = Partial win, Y' = Full win start, Z' = Full win end.
+ * UI' = Z'-X'.
+ * Full Window' = Z'-Y'.
+ * Tap_margin' = (0.20375)UI'
+ *
+ * Full_window_tap=[(Z'-0.20375UI')+(Y+0.20375UI)]/2
+ * Partial_window_tap=[(X'-0.20375UI')+(X-(Z-Y)+0x20375UI)]/2
+ * if(Partial_window_tap < 0), Partial_window_tap=0
+ *
+ * Full_window_quality=[(Z'-0.20375UI')-(Y+0.20375UI)]/2
+ * Partial_window_quality=(X'-0.20375UI')-Partial_window_tap
+ * if(Full_window_quality>Partial_window_quality) choose full window,
+ * else choose partial window.
+ * If there is no margin window for both cases,
+ * best tap=(Y+Z')/2.
+ */
+static void calculate_high_freq_tap_value(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	unsigned int curr_clock;
+	unsigned int max_clock;
+	struct tap_window_data *vmax_tap_data;
+	struct tap_window_data *vmid_tap_data;
+	struct tegra_tuning_data *tuning_data;
+	unsigned int full_win_tap;
+	int partial_win_start;
+	int partial_win_tap;
+	int full_win_quality;
+	int partial_win_quality;
+
+	tuning_data = &tegra_host->tuning_data;
+	vmax_tap_data = tuning_data->tap_data[0];
+	vmid_tap_data = tuning_data->tap_data[1];
+
+	curr_clock = sdhci->max_clk / 1000000;
+	max_clock = uhs_max_freq_MHz[sdhci->mmc->ios.timing];
+
+	/*
+	 * Calculate the tuning_ui and sampling points for tap windows found
+	 * at all core voltages.
+	 */
+	vmax_tap_data->tuning_ui = vmax_tap_data->full_win_end -
+		vmax_tap_data->partial_win;
+	vmax_tap_data->sampling_point =
+		(vmax_tap_data->tuning_ui * curr_clock) / max_clock;
+	vmax_tap_data->sampling_point >>= 2;
+
+	vmid_tap_data->tuning_ui = vmid_tap_data->full_win_end -
+		vmid_tap_data->partial_win;
+	vmid_tap_data->sampling_point =
+		(vmid_tap_data->tuning_ui * curr_clock) / max_clock;
+	vmid_tap_data->sampling_point >>= 2;
+
+	full_win_tap = ((vmid_tap_data->full_win_end -
+		vmid_tap_data->sampling_point) +
+		(vmax_tap_data->full_win_begin +
+		vmax_tap_data->sampling_point));
+	full_win_tap >>= 1;
+	full_win_quality = (vmid_tap_data->full_win_end -
+		vmid_tap_data->sampling_point) -
+		(vmax_tap_data->full_win_begin +
+		vmax_tap_data->sampling_point);
+	full_win_quality >>= 1;
+
+	partial_win_start = (vmax_tap_data->partial_win -
+		(vmax_tap_data->full_win_end -
+		vmax_tap_data->full_win_begin));
+	partial_win_tap = ((vmid_tap_data->partial_win -
+		vmid_tap_data->sampling_point) +
+		(partial_win_start + vmax_tap_data->sampling_point)) / 2;
+	if (partial_win_tap < 0)
+		partial_win_tap = 0;
+	partial_win_quality = (vmid_tap_data->partial_win -
+		vmid_tap_data->sampling_point) - partial_win_tap;
+
+	if ((full_win_quality <= 0) && (partial_win_quality)) {
+		dev_warn(mmc_dev(sdhci->mmc),
+			"No margin window for both windows\n");
+		tuning_data->best_tap_value = vmax_tap_data->full_win_begin +
+			vmid_tap_data->full_win_end;
+		tuning_data->best_tap_value >>= 1;
+	} else {
+		if (full_win_quality > partial_win_quality) {
+			tuning_data->best_tap_value = full_win_tap;
+		} else {
+			tuning_data->best_tap_value = partial_win_tap;
+			tuning_data->select_partial_win = true;
+		}
 	}
 }
 
@@ -1161,17 +1288,15 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
  * this process and ignored.
  */
 static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
-	struct tegra_tuning_data *tuning_data)
+	struct tap_window_data *tap_data)
 {
-	struct tap_window_data *tap_data;
 	unsigned int tap_value;
 	int err = 0;
 
-	if (!tuning_data || !tuning_data->tap_data) {
-		dev_err(mmc_dev(sdhci->mmc), "Invalid tuning or tap data\n");
+	if (!tap_data) {
+		dev_err(mmc_dev(sdhci->mmc), "Invalid tap data\n");
 		return -ENODATA;
 	}
-	tap_data = tuning_data->tap_data;
 
 	/* Get the partial window data */
 	tap_value = 0;
@@ -1198,6 +1323,7 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	}
 
 	/* Get the full window start */
+	tap_value++;
 	tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, true);
 	if (tap_value > MAX_TAP_VALUES) {
 		/* All tap values exhausted. No full window */
@@ -1216,11 +1342,11 @@ static int sdhci_tegra_get_tap_window_data(struct sdhci_host *sdhci,
 	}
 
 	/* Get the full window end */
+	tap_value++;
 	tap_value = sdhci_tegra_scan_tap_values(sdhci, tap_value, false);
 	tap_data->full_win_end = tap_value - 1;
 	if (tap_value > MAX_TAP_VALUES)
 		tap_data->full_win_end = MAX_TAP_VALUES;
-
 out:
 	/*
 	 * Mark tuning as failed if both partial and full windows are
@@ -1236,9 +1362,13 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	struct tegra_tuning_data *tuning_data;
+	struct tap_window_data *tap_data;
 	int err;
 	u16 ctrl_2;
 	u32 ier;
+	unsigned int freq_band;
+	unsigned int i;
+	unsigned int voltage;
 
 	/* Tuning is valid only in SDR104 and SDR50 modes */
 	ctrl_2 = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
@@ -1275,6 +1405,11 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	if (tegra_host->tuning_status == TUNING_STATUS_DONE)
 		goto set_best_tap;
 
+	if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
+		freq_band = TUNING_HIGH_FREQ;
+	else
+		freq_band = TUNING_LOW_FREQ;
+
 	/*
 	 * Run tuning and get the passing tap window info for all frequencies
 	 * and core voltages required to calculate the final tap value. The
@@ -1282,49 +1417,59 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	 * holding a lock. The spinlock needs to be released when calling
 	 * non-atomic context functions like regulator calls etc.
 	 */
-	spin_unlock(&sdhci->lock);
-	if (tegra_host->nominal_vcore_uV) {
-		tegra_host->vcore_reg = regulator_get(mmc_dev(sdhci->mmc),
-			"vdd_core");
-		if (IS_ERR_OR_NULL(tegra_host->vcore_reg)) {
-			dev_info(mmc_dev(sdhci->mmc),
-				"No vdd_core_sdmmc %ld. Tuning might fail.\n",
-				PTR_ERR(tegra_host->vcore_reg));
-			tegra_host->vcore_reg = NULL;
-		} else {
-			err = regulator_set_voltage(tegra_host->vcore_reg,
-				tegra_host->nominal_vcore_uV,
-				tegra_host->nominal_vcore_uV);
-			if (err) {
+	tuning_data = &tegra_host->tuning_data;
+	for (i = 0; i < tuning_params[freq_band].nr_voltages; i++) {
+		spin_unlock(&sdhci->lock);
+		if (!tuning_data->tap_data[i]) {
+			tuning_data->tap_data[i] = devm_kzalloc(
+				mmc_dev(sdhci->mmc),
+				sizeof(struct tap_window_data), GFP_KERNEL);
+			if (!tuning_data->tap_data[i]) {
+				err = -ENOMEM;
 				dev_err(mmc_dev(sdhci->mmc),
-					"Setting nominal core voltage failed\n");
+					"Insufficient memory for tap window info\n");
+				spin_lock(&sdhci->lock);
+				goto out;
 			}
 		}
-	}
+		tap_data = tuning_data->tap_data[i];
 
-	tuning_data = &tegra_host->tuning_data;
-	if (!tuning_data->tap_data) {
-		tuning_data->tap_data = devm_kzalloc(mmc_dev(sdhci->mmc),
-			sizeof(struct tap_window_data), GFP_KERNEL);
-		if (!tuning_data->tap_data) {
-			err = -ENOMEM;
-			dev_err(mmc_dev(sdhci->mmc),
-				"Insufficient memory for tap window info\n");
-			spin_lock(&sdhci->lock);
+		if (tegra_host->nominal_vcore_uV) {
+			if (!tegra_host->vcore_reg)
+				tegra_host->vcore_reg = regulator_get(
+				mmc_dev(sdhci->mmc), "vdd_core");
+			if (IS_ERR_OR_NULL(tegra_host->vcore_reg)) {
+				dev_info(mmc_dev(sdhci->mmc),
+					"No vdd_core %ld. Tuning might fail.\n",
+					PTR_ERR(tegra_host->vcore_reg));
+				tegra_host->vcore_reg = NULL;
+			} else {
+				voltage = tuning_params[freq_band].voltages[i];
+				if (voltage > tegra_host->nominal_vcore_uV)
+					voltage = tegra_host->nominal_vcore_uV;
+				err = regulator_set_voltage(
+					tegra_host->vcore_reg, voltage,
+					voltage);
+				if (err)
+					dev_err(mmc_dev(sdhci->mmc),
+						"Setting nominal core voltage failed\n");
+			}
+		}
+		spin_lock(&sdhci->lock);
+
+		/* Get the tuning window info */
+		err = sdhci_tegra_get_tap_window_data(sdhci, tap_data);
+		if (err) {
+			dev_err(mmc_dev(sdhci->mmc), "Failed to tuning window info\n");
 			goto out;
 		}
 	}
-	spin_lock(&sdhci->lock);
 
-	/* Get the tuning window info */
-	err = sdhci_tegra_get_tap_window_data(sdhci, tuning_data);
-	if (err) {
-		dev_err(mmc_dev(sdhci->mmc), "Failed to tuning window info\n");
-		goto out;
-	}
-
-	/* Calculate best tap for low freq */
-	calculate_low_freq_tap_value(sdhci);
+	/* Calculate best tap for current freq band */
+	if (freq_band == TUNING_LOW_FREQ)
+		calculate_low_freq_tap_value(sdhci);
+	else
+		calculate_high_freq_tap_value(sdhci);
 
 set_best_tap:
 	sdhci_tegra_set_tap_delay(sdhci,
