@@ -312,7 +312,11 @@ static inline int tegra_get_cpu_iddq_value(void) { return 0; }
 static inline int tegra_cpu_process_id(void) { return 0; }
 static inline int tegra_core_process_id(void) { return 0; }
 static inline int tegra_cpu_speedo_id(void) { return 0; }
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+static inline int tegra_cpu_speedo_value(void) { return 2109; }
+#else
 static inline int tegra_cpu_speedo_value(void) { return 1777; }
+#endif
 static inline int tegra_soc_speedo_id(void) { return 0; }
 static inline int tegra_package_id(void) { return -1; }
 static inline int tegra_cpu_speedo_mv(void) { return 1250; }
