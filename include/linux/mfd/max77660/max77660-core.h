@@ -521,6 +521,22 @@ struct max77660_pinctrl_platform_data {
 #define SLP_LPM_ENABLE		0x01
 
 /*
+ * max77660_pwm_dvfs_init_data: PWM based DVFS init data.
+ * @en_pwm: Enable PWM.
+ * @step_voltage_uV: step voltage for DVFS VOUT: 6.125mV, 12.25mV and 25mV.
+ * @default_voltage_uV: default voltage for DVFS: 0.6V to 1.5V.
+ * @base_voltage_uV: base voltage for DVFS voltage calculation: 0.6V to 1.5V.
+ * @max_voltage_uV: maximum voltage for DVFS: 0.6V to 1.5V.
+ */
+struct max77660_pwm_dvfs_init_data {
+	bool	en_pwm;
+	int	step_voltage_uV;
+	int	default_voltage_uV;
+	int	base_voltage_uV;
+	int	max_voltage_uV;
+};
+
+/*
  * max77660_platform_data: Platform data for MAX77660.
  * @pinctrl_pdata: Pincontrol configurations.
  * @num_pinctrl: Number of pin control data.
@@ -548,6 +564,7 @@ struct max77660_platform_data {
 
 	int system_watchdog_timeout;
 	bool led_disable;
+	struct max77660_pwm_dvfs_init_data dvfs_pd;
 };
 
 static inline int max77660_reg_write(struct device *dev, int sid,

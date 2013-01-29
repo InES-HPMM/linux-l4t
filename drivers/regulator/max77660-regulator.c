@@ -125,14 +125,26 @@
 #define MAX77660_REG_SW5_CNFG       0x69
 
 
-#define MAX77660_REG_BUCK_PWR_MODE1 0x37
-#define MAX77660_REG_BUCK_PWR_MODE2 0x38
+#define MAX77660_REG_BUCK_PWR_MODE1	0x37
+#define MAX77660_REG_BUCK_PWR_MODE2	0x38
+#define MAX77660_REG_BUCK4_DVFS_CNFG	0x39
+#define MAX77660_REG_BUCK4_VBR		0x3A
+#define MAX77660_REG_BUCK4_PWM		0x3B
+#define MAX77660_REG_BUCK4_MVR		0x3C
+#define MAX77660_REG_BUCK4_VSR		0x3C
+#define MAX77660_REG_LDO_PWR_MODE1	0x3E
+#define MAX77660_REG_LDO_PWR_MODE2	0x3F
+#define MAX77660_REG_LDO_PWR_MODE3	0x40
+#define MAX77660_REG_LDO_PWR_MODE4	0x41
+#define MAX77660_REG_LDO_PWR_MODE5	0x42
 
-#define MAX77660_REG_LDO_PWR_MODE1  0x3E
-#define MAX77660_REG_LDO_PWR_MODE2  0x3F
-#define MAX77660_REG_LDO_PWR_MODE3  0x40
-#define MAX77660_REG_LDO_PWR_MODE4  0x41
-#define MAX77660_REG_LDO_PWR_MODE5  0x42
+/* BUCK4 DVFS */
+#define DVFS_BASE_VOLTAGE_UV	600000
+#define DVFS_VOLTAGE_STEP_UV	6250
+#define BUCK4_DVFS_EN_MASK	BIT(1)
+#define BUCK4_DVFS_EN_SHIFT	1
+#define PWMRST_SHIFT		7
+#define PWMEN_SHIFT		2
 
 /* Power Mode */
 #define POWER_MODE_NORMAL		3
@@ -946,6 +958,61 @@ static struct max77660_regulator_info
 	REGULATOR_SW(SW5),
 };
 
+static int max77660_pwm_dvfs_init(struct device *parent,
+					struct max77660_platform_data *pdata)
+{
+	u8 val = 0;
+	int ret;
+	struct max77660_pwm_dvfs_init_data *dvfs_pd = &pdata->dvfs_pd;
+
+	if (!dvfs_pd->en_pwm)
+		return 0;
+
+	val = DIV_ROUND_UP((dvfs_pd->default_voltage_uV - DVFS_BASE_VOLTAGE_UV),
+			DVFS_VOLTAGE_STEP_UV);
+	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_VSR, val);
+	if (ret < 0)
+		return ret;
+
+	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_CNFG,
+			1 << BUCK4_DVFS_EN_SHIFT,
+			BUCK4_DVFS_EN_MASK);
+	if (ret < 0)
+		return ret;
+
+	val = (1 << PWMEN_SHIFT);
+	switch (dvfs_pd->step_voltage_uV) {
+	case 12250:
+		val |= 0x1;
+		break;
+	case 25000:
+		val |= 0x2;
+		break;
+	}
+
+	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_DVFS_CNFG, val);
+	if (ret < 0)
+		return ret;
+
+	val = DIV_ROUND_UP((dvfs_pd->base_voltage_uV - DVFS_BASE_VOLTAGE_UV),
+			DVFS_VOLTAGE_STEP_UV);
+	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_VBR, val);
+	if (ret < 0)
+		return ret;
+
+	val = DIV_ROUND_UP((dvfs_pd->max_voltage_uV - DVFS_BASE_VOLTAGE_UV),
+			DVFS_VOLTAGE_STEP_UV);
+	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_MVR, val);
+	return ret;
+
+}
+
+
 static int max77660_regulator_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *pdata =
@@ -1013,6 +1080,10 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 			goto clean_exit;
 		}
 	}
+
+	ret = max77660_pwm_dvfs_init(pdev->dev.parent, pdata);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to initialize BUCK4 dvfs");
 
 	return 0;
 
