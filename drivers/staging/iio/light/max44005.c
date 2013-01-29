@@ -80,7 +80,7 @@
 	} while (0);							 \
 
 /* clear is needed for both temp and clear */
-#define CLEAR_ENABLED		(chip->using_temp && chip->using_als)
+#define CLEAR_ENABLED		(chip->using_temp || chip->using_als)
 
 #define USING_CLEAR		(chip->using_als)
 
@@ -205,9 +205,6 @@ finish:
 static bool enable_temp_channel(struct max44005_chip *chip, int enable_temp)
 {
 	int ret = 0;
-
-	if (TEMP_ENABLED == enable_temp)
-		return true;
 
 	if (enable_temp) {
 		/* if LED is not used, then clear is enabled */
@@ -458,9 +455,11 @@ static ssize_t amb_temp_enable(struct device *dev,
 		if (!max44005_power(chip, true))
 			goto fail;
 
-		if (!chip->using_als &&
-				set_main_conf(chip, MODE_CLEAR_ONLY) &&
-				enable_temp_channel(chip, true))
+		if (PROXIMITY_ENABLED && !USING_CLEAR &&
+				!set_main_conf(chip, MODE_CLEAR_PROX))
+			goto fail;
+
+		if (enable_temp_channel(chip, true))
 			goto success;
 
 		goto fail;
@@ -530,7 +529,6 @@ static int max44005_probe(struct i2c_client *client,
 	}
 
 	chip = iio_priv(indio_dev);
-
 
 	i2c_set_clientdata(client, indio_dev);
 	chip->client = client;
