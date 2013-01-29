@@ -2745,11 +2745,20 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/* Enable power rails to the PAD,VBUS
+	 * and pull-up voltage.Initialize the regulators
+	 */
+	ret = tegra_xusb_regulator_init(tegra, pdev);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to initialize xusb regulator\n");
+		goto err_deinit_xusb_partition_clk;
+	}
+
 	/* Enable UTMIP, PLLU and PLLE */
 	ret = tegra_usb2_clocks_init(tegra);
 	if (ret) {
 		dev_err(&pdev->dev, "error initializing usb2 clocks\n");
-		goto err_deinit_xusb_partition_clk;
+		goto err_deinit_tegra_xusb_regulator;
 	}
 
 	/* tegra_unpowergate_partition also does partition reset deassert */
@@ -2761,15 +2770,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBC);
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
-
-	/* Step 5: Enable power rails to the PAD,VBUS
-	 * and pull-up voltage.Initialize the regulators
-	 */
-	ret = tegra_xusb_regulator_init(tegra, pdev);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to initialize xusb regulator\n");
-		goto err_deinit_usb2_clocks;
-	}
 
 	tegra->xusb_padctl = dev_get_platdata(&pdev->dev);
 
@@ -2802,7 +2802,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (!res) {
 		dev_err(&pdev->dev, "mem resource host doesn't exist\n");
 		ret = -ENODEV;
-		goto err_deinit_tegra_xusb_regulator;
+		goto err_deinit_usb2_clocks;
 	}
 	tegra->host_phy_base = res->start;
 
@@ -2819,7 +2819,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
 				tegra->fw_phys_base);
 		ret = -ENOMEM;
-		goto err_deinit_tegra_xusb_regulator;
+		goto err_deinit_usb2_clocks;
 	}
 	dev_info(&pdev->dev, "fw_phys_base=0x%x, fw_virt_base=0x%x\n",
 				tegra->fw_phys_base, tegra->fw_virt_base);
@@ -2831,7 +2831,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	ret = tegra_xhci_load_fw_from_pmc(tegra, 1);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Error loading fw from RAM\n");
-		goto err_deinit_tegra_xusb_regulator;
+		goto err_deinit_usb2_clocks;
 	}
 
 	driver = &tegra_plat_xhci_driver;
@@ -2840,7 +2840,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (!hcd) {
 		dev_err(&pdev->dev, "failed to create usb2 hcd\n");
 		ret = -ENOMEM;
-		goto err_deinit_tegra_xusb_regulator;
+		goto err_deinit_usb2_clocks;
 	}
 
 	ret = tegra_xhci_request_mem_region(pdev, "host", &hcd->regs);
@@ -2958,10 +2958,10 @@ err_remove_usb2_hcd:
 	usb_remove_hcd(hcd);
 err_put_usb2_hcd:
 	usb_put_hcd(hcd);
-err_deinit_tegra_xusb_regulator:
-	tegra_xusb_regulator_deinit(tegra);
 err_deinit_usb2_clocks:
 	tegra_usb2_clocks_deinit(tegra);
+err_deinit_tegra_xusb_regulator:
+	tegra_xusb_regulator_deinit(tegra);
 err_deinit_xusb_partition_clk:
 	tegra_xusb_partitions_clk_deinit(tegra);
 
