@@ -156,7 +156,9 @@ EXPORT_SYMBOL_GPL(tegra_bb_register_ipc);
 void tegra_bb_generate_ipc(struct platform_device *pdev)
 {
 	struct tegra_bb *bb;
+#ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	void __iomem *flow = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+#endif
 	struct tegra_bb_platform_data *pdata;
 
 	if (!pdev) {
@@ -537,6 +539,7 @@ static ssize_t show_tegra_bb_reset(struct device *dev,
 static DEVICE_ATTR(reset, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 		   show_tegra_bb_reset, store_tegra_bb_reset);
 
+#ifndef CONFIG_TEGRA_BASEBAND_SIMU
 static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 {
 	struct tegra_bb *bb = (struct tegra_bb *)data;
@@ -569,6 +572,7 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 	bb->status = sts;
 	return IRQ_HANDLED;
 }
+#endif
 
 static int tegra_bb_probe(struct platform_device *pdev)
 {

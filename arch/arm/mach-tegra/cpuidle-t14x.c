@@ -370,6 +370,7 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	return true;
 }
 
+#ifdef CONFIG_SMP
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 static unsigned int g_diag_reg;
 
@@ -386,6 +387,7 @@ static void restore_cpu_arch_register(void)
 	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC09)
 		asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(g_diag_reg) : "cc");
 }
+#endif
 #endif
 
 static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,

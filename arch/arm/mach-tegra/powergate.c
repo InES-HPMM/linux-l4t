@@ -42,6 +42,7 @@
 
 static struct powergate_ops *pg_ops;
 
+#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 static spinlock_t *tegra_get_powergate_lock(void)
 {
 	if (pg_ops && pg_ops->get_powergate_lock)
@@ -51,6 +52,7 @@ static spinlock_t *tegra_get_powergate_lock(void)
 
 	return NULL;
 }
+#endif
 
 int tegra_powergate_set(int id, bool new_state)
 {
