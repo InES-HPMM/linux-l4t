@@ -134,6 +134,8 @@ struct tegra_usb_platform_data {
 struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
+	bool support_pmu_vbus;
+	char *extcon_dev_name;
 };
 
 #endif /* _TEGRA_USB_H_ */
