@@ -1,7 +1,7 @@
 /*
  * ina3221.c - driver for TI INA3221
  *
- * Copyright (c) 2012, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software. you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,11 +64,15 @@ struct ina3221_data {
 	struct mutex mutex;
 	u8 mode;
 	struct notifier_block nb;
+	int shutdown_complete;
 };
 
 static s32 __locked_power_down_ina3221(struct i2c_client *client)
 {
 	s32 ret;
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	if (data->shutdown_complete)
+		return -ENODEV;
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
 		INA3221_POWER_DOWN);
 	if (ret < 0)
@@ -79,6 +83,9 @@ static s32 __locked_power_down_ina3221(struct i2c_client *client)
 static s32 __locked_power_up_ina3221(struct i2c_client *client, int config)
 {
 	s32 ret;
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	if (data->shutdown_complete)
+		return -ENODEV;
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
 					__constant_cpu_to_be16(config));
 	if (ret < 0)
@@ -122,6 +129,10 @@ static s32 show_voltage(struct device *dev,
 	s32 voltage_mV;
 
 	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
 	index = attr->index;
 	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
 
@@ -175,6 +186,10 @@ static s32 show_current(struct device *dev,
 	s32 inverse_shunt_resistor;
 
 	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
 	index = attr->index;
 	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
 
@@ -271,6 +286,10 @@ static s32 show_power(struct device *dev,
 	s32 power_mW;
 
 	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
 	index = attr->index;
 	bus_volt_reg_addr = (INA3221_BUS_VOL_CHAN1 + (index * 2));
 	shunt_volt_reg_addr = (INA3221_SHUNT_VOL_CHAN1 + (index * 2));
@@ -284,11 +303,14 @@ static s32 show_power(struct device *dev,
 			goto error;
 		}
 	}
-
+	/*Will get -EIO on error*/
 	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
 						bus_volt_reg_addr, index);
-	if (power_mW < 0)
+	if (power_mW < 0) {
+		ret = power_mW;
 		goto error;
+	}
+
 	if (data->mode == TRIGGERED) {
 		/* set ina3221 to power down mode */
 		ret = __locked_power_down_ina3221(client);
@@ -302,7 +324,7 @@ static s32 show_power(struct device *dev,
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
-	return -EIO;
+	return ret;
 }
 
 static s32 show_power2(struct device *dev,
@@ -314,8 +336,13 @@ static s32 show_power2(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	u8 index, bus_volt_reg_addr, shunt_volt_reg_addr;
 	s32 power_mW;
+	s32 ret;
 
 	mutex_lock(&data->mutex);
+	if (data->shutdown_complete) {
+		ret = -ENODEV;
+		goto error;
+	}
 
 	/*return 0 if INA is off*/
 	if (data->mode == TRIGGERED) {
@@ -328,8 +355,10 @@ static s32 show_power2(struct device *dev,
 
 	power_mW = __locked_calculate_power(client, shunt_volt_reg_addr,
 						bus_volt_reg_addr, index);
-	if (power_mW < 0)
+	if (power_mW < 0) {
+		ret = power_mW;
 		goto error;
+	}
 
 	DEBUG_INA3221(("%s power = %d\n", __func__, power_mW));
 	mutex_unlock(&data->mutex);
@@ -337,7 +366,7 @@ static s32 show_power2(struct device *dev,
 error:
 	mutex_unlock(&data->mutex);
 	dev_err(dev, "%s: failed\n", __func__);
-	return -EIO;
+	return ret;
 }
 
 static int ina3221_hotplug_notify(struct notifier_block *nb,
@@ -388,6 +417,7 @@ static int ina3221_hotplug_notify(struct notifier_block *nb,
 		return 0;
 
 error:
+	mutex_unlock(&data->mutex);
 	dev_err(&client->dev, "INA can't be turned off/on: 0x%x\n", ret);
 	return 0;
 }
@@ -432,6 +462,7 @@ static int ina3221_probe(struct i2c_client *client,
 	mutex_init(&data->mutex);
 
 	data->mode = TRIGGERED;
+	data->shutdown_complete = 0;
 	/* reset ina3221 */
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
 		__constant_cpu_to_be16((INA3221_RESET)));
@@ -469,7 +500,7 @@ exit_remove:
 	while (i--)
 		device_remove_file(&client->dev, &ina3221[i].dev_attr);
 exit_free:
-	kfree(data);
+	devm_kfree(&client->dev, data);
 exit:
 	return ret;
 }
@@ -488,6 +519,15 @@ static int ina3221_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void ina3221_shutdown(struct i2c_client *client)
+{
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	mutex_lock(&data->mutex);
+	__locked_power_down_ina3221(client);
+	data->shutdown_complete = 1;
+	mutex_unlock(&data->mutex);
+}
+
 static const struct i2c_device_id ina3221_id[] = {
 	{DRIVER_NAME, 0 },
 	{}
@@ -501,6 +541,7 @@ static struct i2c_driver ina3221_driver = {
 	},
 	.probe		= ina3221_probe,
 	.remove		= ina3221_remove,
+	.shutdown	= ina3221_shutdown,
 	.id_table	= ina3221_id,
 };
 
