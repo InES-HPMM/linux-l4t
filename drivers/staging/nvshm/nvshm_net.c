@@ -297,10 +297,9 @@ static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 		}
 	}
 	if (nvshm_write(priv->pchan, list)) {
-		/* write failed */
-		nvshm_iobuf_free_cluster(list);
 		/* no more transmit possible - stop queue */
-		pr_debug("%s partial write: %d\n", __func__, len);
+		pr_warning("%s rate limit hit on channel %d\n",
+			   __func__, priv->nvshm_chan);
 		netif_stop_queue(dev);
 		return NETDEV_TX_BUSY;
 	}

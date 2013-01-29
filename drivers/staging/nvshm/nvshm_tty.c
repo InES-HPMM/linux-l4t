@@ -234,7 +234,7 @@ void nvshm_tty_start_tx(struct nvshm_channel *chan)
 	struct tty_struct *tty = (struct tty_struct *)chan->data;
 
 	pr_debug("%s\n", __func__);
-	tty_wakeup(tty);
+	tty_unthrottle(tty);
 }
 
 static struct nvshm_if_operations nvshm_tty_ops = {
@@ -320,7 +320,7 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 			   int len)
 {
 	struct nvshm_iobuf *iob, *leaf = NULL, *list = NULL;
-	int to_send = 0, remain, idx = tty->index;
+	int to_send = 0, remain, idx = tty->index, ret;
 
 	if (!nvshm_interface_up()) {
 		return 0;
@@ -332,12 +332,12 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 		iob = nvshm_iobuf_alloc(tty_dev.line[idx].pchan, to_send);
 		if (!iob) {
 			if (tty_dev.line[idx].errno) {
-				pr_debug("%s iobuf alloc failed\n", __func__);
+				pr_err("%s iobuf alloc failed\n", __func__);
 				if (list)
 					nvshm_iobuf_free_cluster(list);
 				return -ENOMEM;
 			} else {
-				pr_debug("%s: Xoff condition\n", __func__);
+				pr_err("%s: Xoff condition\n", __func__);
 				return 0;
 			}
 		}
@@ -359,11 +359,13 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 			leaf = iob;
 		}
 	}
-	if (nvshm_write(tty_dev.line[idx].pchan, list)) {
-		pr_err("%s: nvshm_write return error\n", __func__);
-		nvshm_iobuf_free_cluster(list);
-		return -EAGAIN;
+	ret = nvshm_write(tty_dev.line[idx].pchan, list);
+
+	if (ret == 1) {
+		pr_warn("%s rate limit hit on TTY %d\n", __func__, idx);
+		tty_throttle(tty);
 	}
+
 	return len;
 }
 

@@ -61,6 +61,9 @@ void nvshm_close_channel(struct nvshm_channel *handle)
 int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
+	struct nvshm_iobuf *list, *leaf;
+	int count = 0, ret = 0;
+
 	spin_lock_bh(&priv->lock);
 	if (!priv->chan[handle->index].ops) {
 		pr_err("%s: channel not mapped\n", __func__);
@@ -68,13 +71,32 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 		return -EINVAL;
 	}
 
+	list = iob;
+	while (list) {
+		count++;
+		leaf = list->sg_next;
+		while (leaf) {
+			count++;
+			leaf = NVSHM_B2A(priv, leaf);
+			leaf = leaf->sg_next;
+		}
+		list = list->next;
+		if (list)
+			list = NVSHM_B2A(priv, list);
+	}
+	priv->chan[handle->index].rate_counter -= count;
+	if (priv->chan[handle->index].rate_counter < 0) {
+		pr_warn("%s: rate limit hit on chan %d\n", __func__,
+			handle->index);
+		ret = 1;
+	}
+
 	iob->chan = handle->index;
-	/* TBD: update alloc/BW limit counter */
 	iob->qnext = NULL;
 	nvshm_queue_put(priv, iob);
 	nvshm_generate_ipc(priv);
 	spin_unlock_bh(&priv->lock);
-	return 0;
+	return ret;
 }
 
 int nvshm_interface_up()
@@ -82,4 +104,11 @@ int nvshm_interface_up()
 	struct nvshm_handle *handle = nvshm_get_handle();
 
 	return handle->configured;
+}
+
+void nvshm_start_tx(struct nvshm_channel *handle)
+{
+	pr_warn("%s: start tx on chan %d\n", __func__, handle->index);
+	if (handle->ops)
+		handle->ops->start_tx(handle);
 }

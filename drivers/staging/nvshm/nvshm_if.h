@@ -106,7 +106,7 @@ void nvshm_close_channel(struct nvshm_channel *handle);
  * @param struct nvshm_channel handle
  * @param struct nvshm_iobuf holding packet to write
  *
- * @return 0 if write is ok
+ * @return 0 if write is ok, 1 if flow control is XOFF, negative for error
  */
 int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
 
@@ -122,4 +122,17 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
  * @return 1 if nvshm is configured and running
  */
 int nvshm_interface_up(void);
+
+/**
+ * Start TX on nvshm channel
+ *
+ * Used to signal upper driver to start tx again
+ * after a XOFF situation
+ * Can be called from irq context
+ *
+ * @param struct nvshm_channel
+ *
+ */
+void nvshm_start_tx(struct nvshm_channel *handle);
+
 #endif /* _NVSHM_IF_H */

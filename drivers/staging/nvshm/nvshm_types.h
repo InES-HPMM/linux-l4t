@@ -30,6 +30,11 @@
 
 #define NVSHM_AP_POOL_ID (128) /* IOPOOL ID - use 128-255 for AP */
 
+#define NVSHM_RATE_LIMIT_TTY (256)
+#define NVSHM_RATE_LIMIT_LOG (512)
+#define NVSHM_RATE_LIMIT_NET (2048)
+#define NVSHM_RATE_LIMIT_TRESHOLD (8)
+
 /* NVSHM_IPC mailbox messages ids */
 enum nvshm_ipc_mailbox {
 	/* Boot status */
@@ -133,6 +138,7 @@ struct nvshm_channel {
 	struct nvshm_chan_map map;
 	struct nvshm_if_operations *ops;
 	void *data;
+	int rate_counter;
 };
 
 

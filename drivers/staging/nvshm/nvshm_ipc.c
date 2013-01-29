@@ -110,8 +110,10 @@ static int init_interfaces(struct nvshm_handle *handle)
 		case NVSHM_CHAN_TTY:
 		case NVSHM_CHAN_LOG:
 			ntty++;
+			handle->chan[chan].rate_counter = NVSHM_RATE_LIMIT_TTY;
 			break;
 		case NVSHM_CHAN_NET:
+			handle->chan[chan].rate_counter = NVSHM_RATE_LIMIT_NET;
 			nnet++;
 			break;
 		default:
