@@ -642,6 +642,7 @@ static void __init tegra_init_ahb_gizmo_settings(void)
 	val &= ~MST_ID(~0);
 	val |= PREFETCH_ENB | SDMMC4_MST_ID | ADDR_BNDRY(0xc) |
 		INACTIVITY_TIMEOUT(0x1000);
+	val &= ~SDMMC4_MST_ID;
 	ahb_gizmo_writel(val,
 		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG5));
 #endif
