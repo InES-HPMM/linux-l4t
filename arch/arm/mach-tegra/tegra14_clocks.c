@@ -5577,6 +5577,13 @@ static struct clk_mux_sel mux_plla_clk32_pllp_clkm[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp3_pllc_clkm[] = {
+	{ .input = &tegra_pll_p_out3, .value = 0},
+	{ .input = &tegra_pll_c,  .value = 1},
+	{ .input = &tegra_clk_m,  .value = 3},
+	{ 0, 0},
+};
+
 /* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
@@ -5824,6 +5831,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c3",	"tegra14-i2c.2",	"div-clk",	67,	0x1b8,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c4",	"tegra14-i2c.3",	"div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c5",	"tegra14-i2c.4",	"div-clk",	47,	0x128,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
+	PERIPH_CLK("i2c6",	"tegra14-i2c.5",	"div-clk",	166,	0x65c,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	60000000,  mux_clk_m,	0),
 	PERIPH_CLK("uarta",	"tegra_uart.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartb",	"tegra_uart.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
@@ -5839,6 +5847,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	700000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
 	PERIPH_CLK_EX("vi",	"tegra_camera",		"vi",	20,	0x148,	425000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
 	PERIPH_CLK("vi_sensor",	"tegra_camera",		"vi_sensor",	20,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("vi_sensor2","tegra_camera",		"vi_sensor2",	0,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET | PERIPH_NO_ENB),
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	700000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
@@ -5859,7 +5868,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
-	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	150000000, mux_clk_m,			0), /* same frequency as VI */
+	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71),
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"tegra_camera",		"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cilcd",	"tegra_camera",		"cilcd", 145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
@@ -5882,6 +5891,15 @@ struct clk tegra_list_clks[] = {
 
 	PERIPH_CLK("mc_bbc",	"mc_bbc",		NULL,	170,	0,	1066000000,mux_clk_emc,			PERIPH_NO_RESET),
 	PERIPH_CLK("pll_p_bbc",	"pll_p_bbc",		NULL,	175,	0,	432000000,mux_pll_p,			PERIPH_NO_RESET),
+
+	PERIPH_CLK("isp_sapor",	"isp_sapor",		NULL,	163,	0x654,	26000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("mipibif",	"mipibif",		NULL,	173,	0x660,	26000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("hdmi_audio","hdmi_audio",		NULL,	176,	0x668,	26000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL,	177,	0x66c,	26000000, mux_pllp3_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("cam_mclk",	"cam_mclk",		NULL,	164,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("cam_mclk2",	"cam_mclk2",		NULL,	165,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("vim2_clk",	"vim2_clk",		NULL,	171,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("vgpio",	"vgpio",		NULL,	172,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
