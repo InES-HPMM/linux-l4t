@@ -256,10 +256,11 @@ ENTRY(tegra_turn_off_mmu)
 	mcr	p15, 0, r3, c2, c0, 0	@ TTB 0
 	isb
 
-	mov	r2, #0
 	mcr	p15, 0, r2, c8, c3, 0	@ invalidate TLB
 	mcr	p15, 0, r2, c7, c5, 6	@ flush BTAC
 	mcr	p15, 0, r2, c7, c5, 0	@ flush instruction cache
+	dsb
+	isb
 
 	mov32	r3, tegra_shut_off_mmu
 	add	r3, r3, r0
