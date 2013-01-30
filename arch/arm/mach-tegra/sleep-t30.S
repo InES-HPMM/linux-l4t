@@ -64,6 +64,9 @@
 #define PMC_IO_DPD_STATUS		0x1bc
 #define PMC_SCRATCH1_ECO       0x264
 
+#define FLOW_IPC_STS			0x500
+#define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
+
 #define CLK_RESET_CCLK_BURST		0x20
 #define CLK_RESET_CCLK_DIVIDER		0x24
 #define CLK_RESET_SCLK_BURST		0x28
@@ -746,6 +749,11 @@ tegra148_lp0_entry:
 	ldr	r1, [r4, #PMC_IPC_CLR]
 	orr	r1, r1, #PMC_IPC_CLR_MEM_STS
 	str	r1, [r4, #PMC_IPC_CLR]
+
+	/* Clear FLOW_I2C_STS[AP2BB_MSC_STS[0]] */
+	ldr	r1, [r6, #FLOW_IPC_STS]
+	bic	r1, #FLOW_IPC_STS_AP2BB_MSC_STS_0
+	str	r1, [r6, #FLOW_IPC_STS]
 
 	/* Check PMC_IPC_STS[mem_req] and PMC_IPC_STS[mem_req_soon]
 	 * once again. If both 0 then go to LP0 entry
