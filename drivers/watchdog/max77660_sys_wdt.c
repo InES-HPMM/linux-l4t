@@ -272,7 +272,17 @@ static struct platform_driver max77660_sys_wdt_driver = {
 	.remove	= __devexit_p(max77660_sys_wdt_remove),
 };
 
-module_platform_driver(max77660_sys_wdt_driver);
+static int __init max77660_sys_wdt_init(void)
+{
+	return platform_driver_register(&max77660_sys_wdt_driver);
+}
+subsys_initcall(max77660_sys_wdt_init);
+
+static void __exit max77660_reg_exit(void)
+{
+	platform_driver_unregister(&max77660_sys_wdt_driver);
+}
+module_exit(max77660_reg_exit);
 
 MODULE_ALIAS("platform:max77660-sys-wdt");
 MODULE_DESCRIPTION("Maxim Max77660 system watchdog timer driver");
