@@ -139,6 +139,12 @@
 	TEGRA_MUX(DDR0) \
 	/* End of Tegra114 MUX selectors */\
 	TEGRA_MUX(BCL)	\
+	TEGRA_MUX(PG)	\
+	TEGRA_MUX(VIMCLK2) \
+	TEGRA_MUX(VIMCLK2_ALT) \
+	TEGRA_MUX(VIMCLK2_ALT_ALT) \
+	TEGRA_MUX(SOC_ALT)	\
+	/* End of Tegra148 MUX selectors */\
 
 enum tegra_mux_func {
 #define TEGRA_MUX(mux) TEGRA_MUX_##mux,
