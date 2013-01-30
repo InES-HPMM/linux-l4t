@@ -24,6 +24,7 @@
 #include <linux/completion.h>
 #include <linux/hardirq.h>
 #include <linux/irqflags.h>
+#include <linux/pm_runtime.h>
 #include <linux/mipi-bif.h>
 
 static DEFINE_MUTEX(core_lock);
