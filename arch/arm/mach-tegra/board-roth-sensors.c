@@ -230,6 +230,8 @@ static int roth_nct1008_init(void)
 				&roth_nct1008_pdata.num_trips);
 	tegra_add_cdev_trips(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips);
+	tegra_add_tj_trips(roth_nct1008_pdata.trips,
+				&roth_nct1008_pdata.num_trips);
 
 	roth_i2c4_nct1008_board_info[0].irq = gpio_to_irq(nct1008_port);
 	pr_info("%s: roth nct1008 irq %d", __func__, \

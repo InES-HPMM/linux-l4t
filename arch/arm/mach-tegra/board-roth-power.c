@@ -708,21 +708,21 @@ static struct soctherm_platform_data roth_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 85000,
+					.trip_temp = 84000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 95000,
+					.trip_temp = 94000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 105000,
+					.trip_temp = 104000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,

@@ -113,24 +113,8 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
 	.conv_rate = 0x08,
-	.offset = 0,
-	.shutdown_ext_limit = 85, /* C */
+	.shutdown_ext_limit = 105, /* C */
 	.shutdown_local_limit = 120, /* C */
-
-	.passive_delay = 2000,
-
-	.num_trips = 1,
-	.trips = {
-		/* Thermal Throttling */
-		[0] = {
-			.cdev_type = "tegra-balanced",
-			.trip_temp = 75000,
-			.trip_type = THERMAL_TRIP_PASSIVE,
-			.upper = THERMAL_NO_LIMIT,
-			.lower = THERMAL_NO_LIMIT,
-			.hysteresis = 0,
-		},
-	},
 };
 
 static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
@@ -584,8 +568,6 @@ static int dalmore_nct1008_init(void)
 			board_info.board_id);
 	}
 
-	tegra_platform_edp_init(dalmore_nct1008_pdata.trips,
-				&dalmore_nct1008_pdata.num_trips);
 	tegra_add_cdev_trips(dalmore_nct1008_pdata.trips,
 				&dalmore_nct1008_pdata.num_trips);
 

@@ -325,7 +325,7 @@ static struct tegra_edp_limits edp_default_limits[] = {
 };
 
 /* Constants for EDP calculations */
-static int temperatures[] = { 23, 40, 50, 60, 70, 75, 80, 85, 90, 95 };
+static int temperatures[] = { 23, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100, 105 };
 static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 	{
 		.cpu_speedo_id	    = 0, /* A01 CPU */
@@ -789,7 +789,7 @@ void tegra_platform_edp_init(struct thermal_trip_info *trips, int *num_trips)
 	for (i = 0; i < cpu_edp_limits_size-1; i++) {
 		trip_state = &trips[*num_trips];
 
-		trip_state->cdev_type = "edp";
+		trip_state->cdev_type = "cpu_edp";
 		trip_state->trip_temp =
 			cpu_edp_limits[i].temperature * 1000;
 		trip_state->trip_type = THERMAL_TRIP_ACTIVE;

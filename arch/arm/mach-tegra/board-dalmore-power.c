@@ -47,6 +47,7 @@
 #include "tegra-board-id.h"
 #include "board.h"
 #include "gpio-names.h"
+#include "board-common.h"
 #include "board-dalmore.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
@@ -1184,21 +1185,21 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",
-					.trip_temp = 85000,
+					.trip_temp = 84000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 95000,
+					.trip_temp = 94000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 105000,
+					.trip_temp = 104000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -1225,5 +1226,10 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 
 int __init dalmore_soctherm_init(void)
 {
+	tegra_platform_edp_init(dalmore_soctherm_data.therm[THERM_CPU].trips,
+			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
+	tegra_add_tj_trips(dalmore_soctherm_data.therm[THERM_CPU].trips,
+			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
+
 	return tegra11_soctherm_init(&dalmore_soctherm_data);
 }
