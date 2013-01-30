@@ -343,6 +343,41 @@ static const int power_cap_levels[] = { /* milliwatts (mW) */
 	16000, 16500, 17000,
 };
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+static struct tegra_edp_cpu_leakage_params leakage_params[] = {
+	{
+		.cpu_speedo_id	    = 0, /* A01 CPU */
+		.dyn_consts_n       = {  643724,  908655, 1173586, 1438517 },
+		.leakage_consts_n   = {  524409,  699606,  874803, 1050000 },
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {   0,   -5346808,   97234,   -464, },
+			  {   0,   16803984, -307162,   1481, },
+			  {   0,  -17730060,  322460,  -1546, },
+			  {   0,    6489900, -118190,    564, },
+			},
+			/* i = 1 */
+			{ {   0,   -7166070,   16144,  -2495, },
+			  {   0,   22733881,  -62339,   7849, },
+			  {   0,  -22851718,   17626,  -7211, },
+			  {   0,    8845764,   -3232,	2668, },
+			},
+			/* i = 2 */
+			{ {   0,  -13755297,   88228,    194, },
+			  {   0,   43058825, -281494,	-604, },
+			  {   0,  -45854189,  328873,    337, },
+			  {   0,   17332703, -123100,	-128, },
+			},
+			/* i = 3 */
+			{ {   0,    1950888,   -8210,	 -62, },
+			  {   0,   -6086732,   26052,    197, },
+			  {   0,    6462190,  -32222,	-161, },
+			  {   0,   -2416618,   11593,	  62, },
+			},
+		 },
+	},
+};
+#else
 static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 	{
 		.cpu_speedo_id	    = 0, /* A01 CPU */
@@ -440,6 +475,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 		.safety_cap = { 1912500, 1912500, 1708500, 1708500 },
 	},
 };
+#endif
 
 static struct tegra_edp_freq_voltage_table *freq_voltage_lut;
 static unsigned int freq_voltage_lut_size;
@@ -757,6 +793,7 @@ void __init tegra_init_cpu_edp_limits(unsigned int regulator_mA)
 			return;
 		break;
 	case TEGRA11X:
+	case TEGRA14X:
 		if (init_cpu_edp_limits_calculated() == 0)
 			return;
 		break;
@@ -874,7 +911,9 @@ struct tegra_system_edp_entry *tegra_get_system_edp_entries(int *size)
 
 static int edp_limit_debugfs_show(struct seq_file *s, void *data)
 {
+#ifdef CONFIG_CPU_FREQ
 	seq_printf(s, "%u\n", tegra_get_edp_limit(NULL));
+#endif
 	return 0;
 }
 
@@ -882,7 +921,11 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 {
 	int i, th_idx;
 
+#ifdef CONFIG_CPU_FREQ
 	tegra_get_edp_limit(&th_idx);
+#else
+	th_idx = 0;
+#endif
 	seq_printf(s, "-- VDD_CPU %sEDP table (%umA = %umA - %umA) --\n",
 		   edp_limits == edp_default_limits ? "default " : "",
 		   regulator_cur - edp_reg_override_mA,
@@ -965,6 +1008,7 @@ static int edp_reg_override_write(struct file *file,
 		goto override_err;
 	}
 
+#ifdef CONFIG_CPU_FREQ
 	if (tegra_cpu_set_speed_cap(NULL)) {
 		pr_err("FAILED: Set CPU freq cap with new VDD_CPU EDP table\n");
 		goto override_out;
@@ -972,13 +1016,18 @@ static int edp_reg_override_write(struct file *file,
 
 	pr_info("Reinitialized VDD_CPU EDP table with regulator current limit"
 			" %u mA\n", regulator_cur - edp_reg_override_mA);
+#else
+	pr_err("FAILED: tegra_cpu_set_speed_cap() does not exist, failed to reinitialize VDD_CPU EDP table");
+#endif
 
 	return count;
 
 override_err:
 	pr_err("FAILED: Reinitialize VDD_CPU EDP table with override \"%s\"",
 	       buf);
+#ifdef CONFIG_CPU_FREQ
 override_out:
+#endif
 	return -EINVAL;
 }
 

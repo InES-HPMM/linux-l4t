@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_speedo.c
  *
- * Copyright (C) 2012 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "iomap.h"
 
 #define TEGRA148_CPU_SPEEDO 2109
+#define FUSE_CPU_IDDQ 0x118 /*FIXME: update T148 register*/
 
 static int cpu_process_id;
 static int core_process_id;
@@ -39,6 +40,7 @@ static int cpu_speedo_id;
 static int cpu_speedo_value;
 static int soc_speedo_id;
 static int package_id;
+static int cpu_iddq_value;
 
 static int enable_app_profiles;
 
@@ -48,6 +50,8 @@ void tegra_init_speedo_data(void)
 
 	pr_info("Tegra14: CPU Speedo ID %d, Soc Speedo ID %d",
 		 cpu_speedo_id, soc_speedo_id);
+
+	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 }
 
 int tegra_cpu_process_id(void)
@@ -99,6 +103,11 @@ int tegra_core_speedo_mv(void)
 	default:
 		BUG();
 	}
+}
+
+int tegra_get_cpu_iddq_value()
+{
+	return cpu_iddq_value;
 }
 
 static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
