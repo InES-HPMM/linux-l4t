@@ -6941,6 +6941,30 @@ static void tegra11_init_one_clock(struct clk *c)
 	clkdev_add(&c->lookup);
 }
 
+/* Direct access to CPU clock sources fot CPU idle driver */
+int tegra11_cpu_dfll_rate_exchange(unsigned long *rate)
+{
+	int ret = 0;
+	struct clk *dfll = tegra_clk_cpu_cmplx.parent->u.cpu.dynamic;
+	unsigned long old_rate, new_rate, flags;
+
+	if (!dfll || !tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		return -EPERM;
+
+	/* Clipping min to oscillator rate is pretty much arbitrary */
+	new_rate = max(*rate, tegra_clk_m.rate);
+
+	clk_lock_save(dfll, &flags);
+
+	old_rate = clk_get_rate_locked(dfll);
+	*rate = old_rate;
+	if (new_rate != old_rate)
+		ret = clk_set_rate_locked(dfll, new_rate);
+
+	clk_unlock_restore(dfll, &flags);
+	return ret;
+}
+
 int tegra11_cpu_backup_rate_exchange(unsigned long *rate)
 {
 	int ret = 0;

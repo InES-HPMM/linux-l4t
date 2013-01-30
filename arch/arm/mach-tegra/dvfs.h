@@ -230,7 +230,7 @@ int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
 
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {
-	return rail->dfll_mode;
+	return rail ? rail->dfll_mode : false;
 }
 static inline bool tegra_dvfs_is_dfll_scale(struct dvfs *d, unsigned long rate)
 {
