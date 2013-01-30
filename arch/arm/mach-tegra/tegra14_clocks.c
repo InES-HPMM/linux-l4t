@@ -4279,7 +4279,7 @@ static int tegra14_clk_cbus_update(struct clk *bus)
 	}
 
 	old_rate = clk_get_rate_locked(bus);
-	if (old_rate != rate) {
+	if (IS_ENABLED(CONFIG_TEGRA_MIGRATE_CBUS_USERS) || (old_rate != rate)) {
 		ret = bus->ops->set_rate(bus, rate);
 		if (ret)
 			return ret;
@@ -4380,6 +4380,13 @@ static struct clk_ops tegra_clk_cbus_ops = {
  * clock to each user.  The frequency of the bus is set to the highest
  * enabled shared_bus_user clock, with a minimum value set by the
  * shared bus.
+ *
+ * Optionally shared bus may support users migration. Since shared bus and
+ * its * children (users) have reversed rate relations: user rates determine
+ * bus rate, * switching user from one parent/bus to another may change rates
+ * of both parents. Therefore we need a cross-bus lock on top of individual
+ * user and bus locks. For now, limit bus switch support to cbus only if
+ * CONFIG_TEGRA_MIGRATE_CBUS_USERS is set.
  */
 
 static unsigned long tegra14_clk_shared_bus_update(
@@ -4476,6 +4483,11 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 	c->state = OFF;
 	c->set = true;
 
+	if (c->u.shared_bus_user.mode == SHARED_CEILING) {
+		c->state = ON;
+		c->refcnt++;
+	}
+
 	if (c->u.shared_bus_user.client_id) {
 		c->u.shared_bus_user.client =
 			tegra_get_clock_by_name(c->u.shared_bus_user.client_id);
@@ -4495,15 +4507,9 @@ static void tegra_clk_shared_bus_user_init(struct clk *c)
 		&c->parent->shared_bus_list);
 }
 
-/*
- * Shared bus and its children/users have reversed rate relations - user rates
- * determine bus rate. Hence switching user from one parent/bus to another may
- * change rates of both parents. Therefore we need a cross-bus lock on top of
- * individual user and bus locks. For now limit bus switch support to cansleep
- * users with cross-clock mutex only.
- */
 static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 {
+	int ret;
 	const struct clk_mux_sel *sel;
 
 	if (detach_shared_bus)
@@ -4526,7 +4532,15 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 		clk_enable(p);
 
 	list_move_tail(&c->u.shared_bus_user.node, &p->shared_bus_list);
-	tegra_clk_shared_bus_update(p);
+	ret = tegra_clk_shared_bus_update(p);
+	if (ret) {
+		list_move_tail(&c->u.shared_bus_user.node,
+			       &c->parent->shared_bus_list);
+		tegra_clk_shared_bus_update(c->parent);
+		clk_disable(p);
+		return ret;
+	}
+
 	tegra_clk_shared_bus_update(c->parent);
 
 	if (c->refcnt && c->parent)
@@ -4539,13 +4553,15 @@ static int tegra_clk_shared_bus_user_set_parent(struct clk *c, struct clk *p)
 
 static int tegra_clk_shared_bus_user_set_rate(struct clk *c, unsigned long rate)
 {
-	c->u.shared_bus_user.rate = rate;
-	tegra_clk_shared_bus_update(c->parent);
+	int ret;
 
-	if (c->cross_clk_mutex && clk_cansleep(c))
+	c->u.shared_bus_user.rate = rate;
+	ret = tegra_clk_shared_bus_update(c->parent);
+
+	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
 
-	return 0;
+	return ret;
 }
 
 static long tegra_clk_shared_bus_user_round_rate(
@@ -4571,14 +4587,14 @@ static long tegra_clk_shared_bus_user_round_rate(
 
 static int tegra_clk_shared_bus_user_enable(struct clk *c)
 {
-	int ret = 0;
+	int ret;
 
 	c->u.shared_bus_user.enabled = true;
-	tegra_clk_shared_bus_update(c->parent);
-	if (c->u.shared_bus_user.client)
+	ret = tegra_clk_shared_bus_update(c->parent);
+	if (!ret && c->u.shared_bus_user.client)
 		ret = clk_enable(c->u.shared_bus_user.client);
 
-	if (c->cross_clk_mutex && clk_cansleep(c))
+	if (!ret && c->cross_clk_mutex && clk_cansleep(c))
 		tegra_clk_shared_bus_migrate_users(c);
 
 	return ret;
@@ -5659,7 +5675,13 @@ static struct clk tegra_clk_c3bus = {
 	.rate_change_nh = &c3bus_rate_change_nh,
 };
 
+#ifdef CONFIG_TEGRA_MIGRATE_CBUS_USERS
 static DEFINE_MUTEX(cbus_mutex);
+#define CROSS_CBUS_MUTEX (&cbus_mutex)
+#else
+#define CROSS_CBUS_MUTEX NULL
+#endif
+
 
 static struct clk_mux_sel mux_clk_cbus[] = {
 	{ .input = &tegra_clk_c2bus, .value = 0},
@@ -5683,7 +5705,7 @@ static struct clk_mux_sel mux_clk_cbus[] = {
 			.client_div = _div,		\
 			.mode = _mode,			\
 		},					\
-		.cross_clk_mutex = &cbus_mutex,		\
+		.cross_clk_mutex = CROSS_CBUS_MUTEX,	\
 	}
 
 #else
