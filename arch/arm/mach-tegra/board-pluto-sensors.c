@@ -152,7 +152,7 @@ static struct nvc_torch_lumi_level_v1 pluto_max77665_lumi_tbl[] = {
 	{15, 1375060},
 };
 
-static unsigned max77665_f_estates[] = {1000, 800, 600, 400, 200, 100, 0};
+static unsigned max77665_f_estates[] = { 3500, 2375, 560, 456, 0 };
 
 static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.config		= {
@@ -209,7 +209,7 @@ static struct max77665_haptic_platform_data max77665_haptic_pdata = {
 	.cont_mode = MAX77665_CONT_MODE,
 	.motor_startup_val = 0,
 	.scf_val = 2,
-	.edp_states = {90, 0},
+	.edp_states = { 360, 0 },
 };
 
 static struct max77665_charger_cable maxim_cable[] = {

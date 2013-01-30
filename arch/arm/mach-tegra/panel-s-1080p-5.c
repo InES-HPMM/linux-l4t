@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/panel-s-1080p-5.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -289,7 +289,7 @@ static struct platform_max8831_backlight_data dsi_s_1080p_5_max8831_bl_data = {
 	.dft_brightness	= 100,
 	.notify	= dsi_s_1080p_5_bl_notify,
 	.is_powered = dsi_s_1080p_5_check_bl_power,
-	.edp_states = {297, 267, 237, 208, 178, 148, 118, 89, 59, 29, 0},
+	.edp_states = { 1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0 },
 	.edp_brightness = {255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0},
 };
 
