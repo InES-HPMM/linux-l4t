@@ -993,6 +993,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 				i2c_dev->sda_gpio,GPIOF_OPEN_DRAIN,
 				MAX_BUSCLEAR_CLOCK, 100000);
 		}
+		return -EAGAIN;
 	}
 
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK) {
