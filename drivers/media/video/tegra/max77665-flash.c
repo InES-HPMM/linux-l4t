@@ -440,6 +440,7 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	unsigned *estates;
 	unsigned total_curr = 0;
 	unsigned curr_mA;
+	unsigned int curr_mW;
 	unsigned approved;
 	unsigned new_state;
 	int ret = 0;
@@ -455,12 +456,13 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	if (mask & 2)
 		total_curr += *curr2;
 	curr_mA = GET_CURRENT_BY_INDEX(total_curr);
+	curr_mW = curr_mA * 38 / 10;
 
 	for (new_state = info->edpc->num_states - 1; new_state > 0; new_state--)
-		if (estates[new_state] >= curr_mA)
+		if (estates[new_state] >= curr_mW)
 			break;
 
-	dev_dbg(info->dev, "edp req: %d curr = %d mA\n", new_state, curr_mA);
+	dev_dbg(info->dev, "edp req: %d curr = %d mW\n", new_state, curr_mW);
 	ret = edp_update_client_request(info->edpc, new_state, &approved);
 	if (ret) {
 		dev_err(info->dev, "E state transition failed\n");
@@ -468,7 +470,8 @@ static int max77665_f_edp_req(struct max77665_f_info *info,
 	}
 
 	if (approved > new_state) { /* edp manager returned less current */
-		curr_mA = GET_INDEX_BY_CURRENT(estates[approved]);
+		curr_mA = estates[approved] * 10 / 38;
+		curr_mA = GET_INDEX_BY_CURRENT(curr_mA);
 		if (mask & 1)
 			*curr1 = curr_mA * (*curr1) / total_curr;
 		*curr2 = curr_mA - (*curr1);

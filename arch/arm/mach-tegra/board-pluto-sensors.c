@@ -555,7 +555,7 @@ static struct nvc_imager_cap imx091_cap = {
 	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
-static unsigned imx091_estates[] = {200, 100, 2};
+static unsigned imx091_estates[] = { 876, 656, 220, 0 };
 
 static struct imx091_platform_data imx091_pdata = {
 	.num			= 0,
