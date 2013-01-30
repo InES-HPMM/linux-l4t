@@ -76,6 +76,9 @@
 #include "timer.h"
 #include "dvfs.h"
 #include "cpu-tegra.h"
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#include "tegra14_scratch.h"
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvpower.h>
@@ -125,6 +128,10 @@ static u64 resume_time;
 static u64 resume_entry_time;
 static u64 suspend_time;
 static u64 suspend_entry_time;
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static void update_pmc_registers(int instance);
 #endif
 
 struct suspend_context tegra_sctx;
@@ -1121,6 +1128,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		goto fail;
 	}
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	update_pmc_registers(1);
+#endif
+
 	if (tegra_is_voice_call_active()) {
 		/* backup the current value of scratch37 */
 		scratch37 = readl(pmc + PMC_SCRATCH37);
@@ -1718,3 +1729,50 @@ static int tegra_debug_uart_syscore_init(void)
 	return 0;
 }
 arch_initcall(tegra_debug_uart_syscore_init);
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static inline bool pmc_write_check(int index, int bit_position)
+{
+	if (pmc_write_bitmap[index] & (1 << bit_position))
+		return true;
+	else
+		return false;
+}
+
+static void update_pmc_registers(int instance)
+{
+	u32 i, j;
+
+	/* Based on index, we select that block of scratches */
+	u32 base2 = (tegra_wb0_params_address + (instance - 1) *
+		tegra_wb0_params_block_size);
+	void __iomem *base = ioremap(base2, tegra_wb0_params_block_size);
+
+#define copy_dram_to_pmc(index, bit)	\
+	pmc_32kwritel(readl(base + PMC_REGISTER_OFFSET(index, bit)), \
+		PMC_REGISTER_OFFSET(index, bit) + PMC_SCRATCH0)
+
+
+	/* Iterate through the bitmap, and copy those registers
+	 * which are marked in the bitmap
+	 */
+	for (i = 0, j = 0; j < ARRAY_SIZE(pmc_write_bitmap);) {
+		if (pmc_write_bitmap[j] == 0) {
+			j++;
+			i = 0;
+			continue;
+		}
+
+		if (pmc_write_check(j, i))
+			copy_dram_to_pmc(j, i);
+
+		if (++i > (sizeof(pmc_write_bitmap[0]) * 8)) {
+			i = 0;
+			j++;
+		}
+	}
+
+#undef copy_dram_to_pmc
+	iounmap(base);
+}
+#endif
