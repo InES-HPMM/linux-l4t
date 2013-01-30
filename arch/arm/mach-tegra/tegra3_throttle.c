@@ -28,15 +28,34 @@
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
 #include <linux/module.h>
+#include <mach/thermal.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
-#include "dvfs.h"
 
 static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
 static int num_throt;
+
+static struct {
+	const char *cap_name;
+	struct clk *cap_clk;
+	unsigned long cap_freq;
+} cap_freqs_table[] = {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ .cap_name = "cap.throttle.c2bus" },
+	{ .cap_name = "cap.throttle.c3bus" },
+#else
+	{ .cap_name = "cap.throttle.cbus" },
+#endif
+	{ .cap_name = "cap.throttle.sclk" },
+	{ .cap_name = "cap.throttle.emc" },
+};
+
+#define CAP_TBL_CAP_NAME(index)	(cap_freqs_table[index].cap_name)
+#define CAP_TBL_CAP_CLK(index)	(cap_freqs_table[index].cap_clk)
+#define CAP_TBL_CAP_FREQ(index)	(cap_freqs_table[index].cap_freq)
 
 #ifndef CONFIG_TEGRA_THERMAL_THROTTLE_EXACT_FREQ
 static unsigned int clip_to_table(unsigned int cpu_freq)
@@ -69,7 +88,6 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 {
 	struct balanced_throttle *bthrot;
 	unsigned int throttle_speed = requested_speed;
-	int index;
 	unsigned int bthrot_speed;
 	unsigned int lowest_speed;
 	struct cpufreq_frequency_table *cpu_freq_table;
@@ -79,18 +97,16 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 	if (!table_data)
 		return requested_speed;
 
-
 	cpu_freq_table = table_data->freq_table;
 	lowest_speed = cpu_freq_table[table_data->throttle_lowest_index].frequency;
 
 	mutex_lock(&bthrot_list_lock);
 
 	list_for_each_entry(bthrot, &bthrot_list, node) {
-		if (bthrot->is_throttling) {
-			index = bthrot->throttle_index;
-			bthrot_speed = bthrot->throt_tab[index].cpu_freq;
+		if (bthrot->cur_state) {
+			bthrot_speed = bthrot->cpu_cap_freq;
 
-			if (bthrot_speed == 0)
+			if (bthrot_speed == CPU_THROT_LOW)
 				bthrot_speed = lowest_speed;
 			else
 				bthrot_speed = clip_to_table(bthrot_speed);
@@ -103,24 +119,6 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 	return throttle_speed;
 }
 
-static void tegra_throttle_set_core_level(void)
-{
-	struct balanced_throttle *bthrot;
-	int core_level = INT_MAX;
-
-	mutex_lock(&bthrot_list_lock);
-	list_for_each_entry(bthrot, &bthrot_list, node) {
-		if (bthrot->is_throttling) {
-			int idx = bthrot->throttle_index;
-			core_level = min(core_level,
-					 bthrot->throt_tab[idx].core_cap_level);
-		}
-	}
-	mutex_unlock(&bthrot_list_lock);
-
-	tegra_dvfs_core_cap_level_set(core_level);
-}
-
 bool tegra_is_throttling(int *count)
 {
 	struct balanced_throttle *bthrot;
@@ -129,7 +127,7 @@ bool tegra_is_throttling(int *count)
 
 	mutex_lock(&bthrot_list_lock);
 	list_for_each_entry(bthrot, &bthrot_list, node) {
-		if (bthrot->is_throttling)
+		if (bthrot->cur_state)
 			is_throttling = true;
 		lcount += bthrot->throttle_count;
 	}
@@ -157,13 +155,48 @@ tegra_throttle_get_cur_state(struct thermal_cooling_device *cdev,
 {
 	struct balanced_throttle *bthrot = cdev->devdata;
 
-	mutex_lock(cpu_throttle_lock);
-	*cur_state = bthrot->is_throttling ?
-			(bthrot->throt_tab_size - bthrot->throttle_index) :
-			0;
-	mutex_unlock(cpu_throttle_lock);
+	*cur_state = bthrot->cur_state;
 
 	return 0;
+}
+
+static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
+					int cap_tbl_index,
+					int cap_clk_index)
+{
+	unsigned long cap_rate, clk_rate;
+
+	if (throt_tab == NULL && cap_tbl_index == -1) /* uncap fregs */
+		cap_rate = NO_CAP;
+	else
+		cap_rate = throt_tab[cap_tbl_index].cap_freqs[cap_clk_index];
+
+	if (cap_rate == NO_CAP)
+		clk_rate = clk_get_max_rate(CAP_TBL_CAP_CLK(cap_clk_index-1));
+	else
+		clk_rate = cap_rate * 1000UL;
+
+	if (CAP_TBL_CAP_FREQ(cap_clk_index-1) != clk_rate) {
+		clk_set_rate(CAP_TBL_CAP_CLK(cap_clk_index-1), clk_rate);
+		CAP_TBL_CAP_FREQ(cap_clk_index-1) = clk_rate;
+	}
+}
+
+static void
+tegra_throttle_cap_freqs_update(struct throttle_table *throt_tab,
+				int cap_tbl_index,
+				int direction)
+{
+	int i;
+	int num_of_cap_clocks = ARRAY_SIZE(cap_freqs_table);
+
+	if (direction == 1) { /* performance up : throttle less */
+		for (i = num_of_cap_clocks; i > 0; i--)
+			tegra_throttle_set_cap_clk(throt_tab, cap_tbl_index, i);
+	} else { /* performance down : throotle more */
+		for (i = 1; i <= num_of_cap_clocks; i++)
+			tegra_throttle_set_cap_clk(throt_tab, cap_tbl_index, i);
+	}
 }
 
 static int
@@ -171,28 +204,36 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 				unsigned long cur_state)
 {
 	struct balanced_throttle *bthrot = cdev->devdata;
+	int index;
+	int direction;
 
-	mutex_lock(cpu_throttle_lock);
+	direction = bthrot->cur_state >= cur_state;
+	bthrot->cur_state = cur_state;
+
 	if (cur_state == 0) {
-		/* restore speed requested by governor */
-		if (bthrot->is_throttling) {
-			tegra_dvfs_core_cap_enable(false);
-			bthrot->is_throttling = false;
-		}
+		tegra_throttle_cap_freqs_update(NULL, -1, 1);/* uncap freqs */
+
+		mutex_lock(cpu_throttle_lock);
+		tegra_cpu_set_speed_cap(NULL);
+		mutex_unlock(cpu_throttle_lock);
 	} else {
-		if (!bthrot->is_throttling) {
-			tegra_dvfs_core_cap_enable(true);
-			bthrot->is_throttling = true;
+		if (cur_state == 1 && direction == 0)
 			bthrot->throttle_count++;
+		index = cur_state - 1;
+		tegra_throttle_cap_freqs_update(bthrot->throt_tab,
+						index,
+						direction);
+
+		if (bthrot->cpu_cap_freq !=
+					bthrot->throt_tab[index].cap_freqs[0]) {
+			bthrot->cpu_cap_freq =
+					bthrot->throt_tab[index].cap_freqs[0];
+
+			mutex_lock(cpu_throttle_lock);
+			tegra_cpu_set_speed_cap(NULL);
+			mutex_unlock(cpu_throttle_lock);
 		}
-
-		bthrot->throttle_index = bthrot->throt_tab_size - cur_state;
-		tegra_throttle_set_core_level();
 	}
-
-	tegra_cpu_set_speed_cap(NULL);
-
-	mutex_unlock(cpu_throttle_lock);
 
 	return 0;
 }
@@ -207,12 +248,19 @@ static struct thermal_cooling_device_ops tegra_throttle_cooling_ops = {
 static int table_show(struct seq_file *s, void *data)
 {
 	struct balanced_throttle *bthrot = s->private;
-	int i;
+	int i, j;
 
-	for (i = 0; i < bthrot->throt_tab_size; i++)
-		seq_printf(s, "[%d] = %7u %4d\n",
-			i, bthrot->throt_tab[i].cpu_freq,
-			bthrot->throt_tab[i].core_cap_level);
+	for (i = 0; i < bthrot->throt_tab_size; i++) {
+		/* CPU FREQ */
+		seq_printf(s, "[%d] = %7lu",
+			i, bthrot->throt_tab[i].cap_freqs[0]);
+
+		/* OTHER DVFS MODULE FREQS */
+		for (j = 1; j <= ARRAY_SIZE(cap_freqs_table); j++)
+			seq_printf(s, " %7lu",
+				bthrot->throt_tab[i].cap_freqs[j]);
+		seq_printf(s, "\n");
+	}
 
 	return 0;
 }
@@ -225,11 +273,11 @@ static int table_open(struct inode *inode, struct file *file)
 static ssize_t table_write(struct file *file,
 	const char __user *userbuf, size_t count, loff_t *ppos)
 {
-	struct balanced_throttle *bthrot = file->private_data;
-	char buf[80];
-	int table_idx;
-	unsigned int cpu_freq;
-	int core_cap_level;
+	struct balanced_throttle *bthrot =
+			((struct seq_file *)(file->private_data))->private;
+	char buf[80], temp_buf[10], *cur_pos;
+	int table_idx, i;
+	unsigned long cap_rate;
 
 	if (sizeof(buf) <= count)
 		return -EINVAL;
@@ -241,17 +289,25 @@ static ssize_t table_write(struct file *file,
 	 *  at the end when invoked from shell command line */
 	buf[count] = '\0';
 	strim(buf);
+	cur_pos = buf;
 
-	if (sscanf(buf, "[%d] = %u %d",
-		   &table_idx, &cpu_freq, &core_cap_level) != 3)
-		return -1;
-
+	/* get table index */
+	if (sscanf(cur_pos, "[%d] = ", &table_idx) != 1)
+		return -EINVAL;
+	sscanf(cur_pos, "[%s] = ", temp_buf);
+	cur_pos += strlen(temp_buf) + 4;
 	if ((table_idx < 0) || (table_idx >= bthrot->throt_tab_size))
 		return -EINVAL;
 
-	/* round new settings before updating table */
-	bthrot->throt_tab[table_idx].cpu_freq = clip_to_table(cpu_freq);
-	bthrot->throt_tab[table_idx].core_cap_level = (core_cap_level / 50) * 50;
+	/* CPU FREQ and DVFS FREQS == DVFS FREQS + 1(cpu) */
+	for (i = 0; i < ARRAY_SIZE(cap_freqs_table) + 1; i++) {
+		if (sscanf(cur_pos, "%lu", &cap_rate) != 1)
+			return -EINVAL;
+		sscanf(cur_pos, "%s", temp_buf);
+		cur_pos += strlen(temp_buf) + 1;
+
+		bthrot->throt_tab[table_idx].cap_freqs[i] = cap_rate;
+	}
 
 	return count;
 }
@@ -301,10 +357,27 @@ struct thermal_cooling_device *balanced_throttle_register(
 
 int __init tegra_throttle_init(struct mutex *cpu_lock)
 {
+	int i;
+	struct clk *c;
+
 	cpu_throttle_lock = cpu_lock;
 #ifdef CONFIG_DEBUG_FS
 	throttle_debugfs_root = debugfs_create_dir("tegra_throttle", 0);
 #endif
+
+	for (i = 0; i < ARRAY_SIZE(cap_freqs_table); i++) {
+		c = tegra_get_clock_by_name(CAP_TBL_CAP_NAME(i));
+		if (!c) {
+			pr_err("tegra_throttle: cannot get clock %s\n",
+				CAP_TBL_CAP_NAME(i));
+			continue;
+		}
+
+		CAP_TBL_CAP_CLK(i) = c;
+		CAP_TBL_CAP_FREQ(i) = clk_get_max_rate(c);
+	}
+	pr_info("tegra_throttle : init done\n");
+
 	return 0;
 }
 
