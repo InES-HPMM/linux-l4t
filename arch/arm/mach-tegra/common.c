@@ -459,11 +459,19 @@ void tegra_init_cache(bool init)
 #else
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (is_lp_cluster()) {
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+		tag_latency = 0x110;
+		data_latency = 0x331;
+#else
 		tag_latency = 0x221;
 		data_latency = 0x221;
+#endif
 	} else {
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+		tag_latency = 0x111;
+		data_latency = 0x441;
+#else
 		u32 speedo;
-
 		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
 		speedo = tegra_cpu_speedo_id();
 		if (speedo == 4 || speedo == 5 || speedo == 6 ||
@@ -474,6 +482,7 @@ void tegra_init_cache(bool init)
 			tag_latency = 0x441;
 			data_latency = 0x551;
 		}
+#endif
 	}
 #else
 	tag_latency = 0x770;
