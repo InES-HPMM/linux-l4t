@@ -136,6 +136,11 @@ extern unsigned long tegra_vpr_start;
 extern unsigned long tegra_vpr_size;
 extern unsigned long tegra_lp0_vec_start;
 extern unsigned long tegra_lp0_vec_size;
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+extern unsigned long tegra_wb0_params_address;
+extern unsigned long tegra_wb0_params_instances;
+extern unsigned long tegra_wb0_params_block_size;
+#endif
 #ifdef CONFIG_TEGRA_NVDUMPER
 extern unsigned long nvdumper_reserved;
 #endif

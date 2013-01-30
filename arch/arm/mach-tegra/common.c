@@ -121,6 +121,12 @@ unsigned long tegra_tsec_start;
 unsigned long tegra_tsec_size;
 unsigned long tegra_lp0_vec_start;
 unsigned long tegra_lp0_vec_size;
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+unsigned long tegra_wb0_params_address;
+unsigned long tegra_wb0_params_instances;
+unsigned long tegra_wb0_params_block_size;
+#endif
+
 #ifdef CONFIG_TEGRA_NVDUMPER
 unsigned long nvdumper_reserved;
 #endif
@@ -836,6 +842,22 @@ static int __init tegra_lp0_vec_arg(char *options)
 	return 0;
 }
 early_param("lp0_vec", tegra_lp0_vec_arg);
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static int __init tegra_wb0_params_arg(char *options)
+{
+	char *p = options;
+
+	tegra_wb0_params_address = memparse(p, &p);
+	if (*p == ',')
+		tegra_wb0_params_instances = memparse(p+1, &p);
+	if (*p == ',')
+		tegra_wb0_params_block_size = memparse(p+1, &p);
+
+	return 0;
+}
+early_param("wb0_params", tegra_wb0_params_arg);
+#endif
 
 #ifdef CONFIG_TEGRA_NVDUMPER
 static int __init tegra_nvdumper_arg(char *options)
