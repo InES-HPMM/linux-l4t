@@ -1290,7 +1290,7 @@ static int __init pluto_touch_init(void)
 #ifdef CONFIG_EDP_FRAMEWORK
 static struct edp_manager battery_edp_manager = {
 	.name = "battery",
-	.max = 3250
+	.max = 12350
 };
 
 static void __init pluto_battery_edp_init(void)
