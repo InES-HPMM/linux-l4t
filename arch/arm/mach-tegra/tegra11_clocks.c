@@ -1149,8 +1149,10 @@ static int tegra11_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 			}
 		}
 
+		tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 		ret = clk_set_parent(c->parent, dfll);
 		if (ret) {
+			tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 			pr_err("Failed to switch cpu to %s\n", dfll->name);
 			return ret;
 		}
@@ -1159,6 +1161,7 @@ static int tegra11_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 
 		/* prevent legacy dvfs voltage scaling */
 		tegra_dvfs_dfll_mode_set(c->dvfs, rate);
+		tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	}
 	return 0;
 }
@@ -1174,6 +1177,7 @@ static int tegra11_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	rate = min(rate, c->max_rate - c->dvfs->dfll_data.max_rate_boost);
 	pll = (rate <= c->u.cpu.backup_rate) ? c->u.cpu.backup : c->u.cpu.main;
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	if (ret) {
 		pr_err("Failed to unlock %s\n", dfll->name);
@@ -1205,11 +1209,13 @@ static int tegra11_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	if (old_rate <= rate)
 		tegra_dvfs_set_rate(c, rate);
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return 0;
 
 back_to_dfll:
 	tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
 	tegra_dvfs_dfll_mode_set(c->dvfs, old_rate);
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return ret;
 }
 
@@ -1387,6 +1393,7 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		return 0;	/* already switched - exit */
 	}
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	if (c->parent->parent->parent == dfll) {
 		/* G (DFLL selected as clock source) => LP switch:
 		 * turn DFLL into open loop mode ("release" VDD_CPU rail)
@@ -1451,12 +1458,15 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	if (p_source == dfll)
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return 0;
 
 abort:
 	/* Re-lock DFLL if necessary after aborted switch */
 	if (c->parent->parent->parent == dfll)
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
+
 	pr_err("%s: aborted switch from %s to %s\n",
 	       __func__, c->parent->name, p->name);
 	return ret;

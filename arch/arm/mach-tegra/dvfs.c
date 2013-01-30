@@ -762,7 +762,8 @@ bool tegra_dvfs_rail_updating(struct clk *clk)
 	return (!clk ? false :
 		(!clk->dvfs ? false :
 		 (!clk->dvfs->dvfs_rail ? false :
-		  (clk->dvfs->dvfs_rail->updating))));
+		  (clk->dvfs->dvfs_rail->updating ||
+		   clk->dvfs->dvfs_rail->dfll_mode_updating))));
 }
 
 #ifdef CONFIG_OF

@@ -80,6 +80,7 @@ struct dvfs_rail {
 	int offs_millivolts;
 	bool suspended;
 	bool dfll_mode;
+	bool dfll_mode_updating;
 	int thermal_idx;
 	struct tegra_cooling_device *pll_mode_cdev;
 	struct tegra_cooling_device *dfll_mode_cdev;
@@ -255,6 +256,12 @@ static inline int tegra_dvfs_set_dfll_range(struct dvfs *d, int range)
 
 	d->dfll_data.range = range;
 	return 0;
+}
+static inline void tegra_dvfs_rail_mode_updating(struct dvfs_rail *rail,
+						 bool updating)
+{
+	if (rail)
+		rail->dfll_mode_updating = updating;
 }
 
 static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
