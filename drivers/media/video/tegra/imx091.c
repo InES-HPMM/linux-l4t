@@ -2577,7 +2577,7 @@ static long imx091_ioctl(struct file *file,
 			return -EFAULT;
 		}
 
-		dev_dbg(&info->i2c_client->dev,
+		dev_info(&info->i2c_client->dev,
 			"%s MODE_WR x=%d y=%d coarse=%u frame=%u gain=%u\n",
 			__func__, mode.res_x, mode.res_y,
 			mode.coarse_time, mode.frame_length, mode.gain);
