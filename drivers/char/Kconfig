@@ -629,6 +629,14 @@ config TEGRA_EFS
 	help
 	Enable tegra efs helper driver for Nvidia's board.
 
+config TEGRA_GMI_ACCESS_CONTROL
+	bool "Provides access control functionality for multiple devices connected on tegra GMI bus."
+	depends on ARCH_TEGRA
+	---help---
+	  This driver provides access control and priority support for
+	  tegra GMI bus. Nvidia Embedded entertainment boards support multiple
+	  devices connected on the same bus selectable using CS.
+
 config TEGRA_GMI_CHAR
 	bool "Character-device interface for tegra GMI bus"
 	depends on  ARCH_TEGRA

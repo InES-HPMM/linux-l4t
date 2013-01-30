@@ -39,7 +39,7 @@
 #include <linux/tegra_snor.h>
 
 #ifdef CONFIG_TEGRA_GMI_ACCESS_CONTROL
-#include <linux/tegra-gmi-access.h>
+#include <linux/tegra_gmi_access.h>
 #endif
 
 struct map_info_list {
