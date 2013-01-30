@@ -106,7 +106,7 @@ static struct max17042_config_data conf_data = {
 };
 
 static unsigned int bat_depl_states[] = {
-	900, 800, 700, 600, 500, 400, 300, 200, 100, 0
+	5400, 4800, 4200, 3600, 3000, 2400, 1800, 1200, 600, 0
 };
 
 static struct edp_client bat_depl_client = {

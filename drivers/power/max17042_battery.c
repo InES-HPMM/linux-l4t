@@ -751,7 +751,7 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	s64 rbat_calc;
 	s64 temp;
 	unsigned int ibat;
-	unsigned int depl;
+	s64 depl;
 	unsigned int deplmax;
 	unsigned int safe;
 	struct power_supply *psy;
@@ -789,7 +789,9 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 
 	safe = ibat_safepeak(temp);
 	depl = safe - min(safe, ibat);
-	return min(depl, deplmax);
+	depl = div64_s64(ocv * depl, 1000000);
+
+	return min_t(unsigned int, depl, deplmax);
 
 err_ret:
 	WARN_ON(1);
