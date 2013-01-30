@@ -683,8 +683,8 @@ static struct tegra_dc_sd_settings roth_sd_settings = {
 	.soft_clipping_enable = true,
 	/* Low soft clipping threshold to compensate for aggressive k_limit */
 	.soft_clipping_threshold = 128,
-	.smooth_k_enable = false,
-	.smooth_k_incr = 64,
+	.smooth_k_enable = true,
+	.smooth_k_incr = 4,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
 	.fc = {0, 0},
