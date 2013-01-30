@@ -686,7 +686,7 @@ struct spi_board_info rm31080a_pismo_spi_board[1] = {
 #ifdef CONFIG_EDP_FRAMEWORK
 static struct edp_manager battery_edp_manager = {
 	.name = "battery",
-	.imax = 2500
+	.max = 2500
 };
 
 static void __init pismo_battery_edp_init(void)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,7 +27,7 @@
 
 struct edp_manager {
 	char name[EDP_NAME_LEN];
-	unsigned int imax;
+	unsigned int max;
 
 	/* internal */
 	struct list_head link;

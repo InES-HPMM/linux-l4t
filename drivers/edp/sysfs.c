@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,7 +35,7 @@ struct manager_attr {
 
 static ssize_t cap_show(struct edp_manager *m, char *s)
 {
-	return scnprintf(s, PAGE_SIZE, "%u\n", m->imax);
+	return scnprintf(s, PAGE_SIZE, "%u\n", m->max);
 }
 
 static ssize_t remaining_show(struct edp_manager *m, char *s)

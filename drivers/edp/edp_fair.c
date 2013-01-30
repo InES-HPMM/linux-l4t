@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,7 +29,7 @@ static unsigned int approvable_req(struct edp_client *c, unsigned int net)
 		return req_index(c);
 
 	cl = cur_level(c);
-	fair_level = c->manager->imax * e0_level(c) / net;
+	fair_level = c->manager->max * e0_level(c) / net;
 	step = max(fair_level, cl + c->manager->remaining) - cl;
 	return edp_promotion_point(c, step);
 }

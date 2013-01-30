@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -56,14 +56,14 @@ int edp_register_manager(struct edp_manager *mgr)
 
 	if (!mgr)
 		return -EINVAL;
-	if (!mgr->imax)
+	if (!mgr->max)
 		return -EINVAL;
 
 	mutex_lock(&edp_lock);
 	if (!find_manager(mgr->name)) {
 		list_add_tail(&mgr->link, &edp_managers);
 		mgr->registered = true;
-		mgr->remaining = mgr->imax;
+		mgr->remaining = mgr->max;
 		mgr->gov = NULL;
 		mgr->gov_data = NULL;
 		INIT_LIST_HEAD(&mgr->clients);
@@ -225,7 +225,7 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 		return -EINVAL;
 
 	/* make sure that we can satisfy E0 for all registered clients */
-	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->imax)
+	if (e0_current_sum(mgr) + client->states[client->e0_index] > mgr->max)
 		return -E2BIG;
 
 	add_client(client, &mgr->clients);

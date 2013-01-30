@@ -766,7 +766,7 @@ static int __init dalmore_touch_init(void)
 #ifdef CONFIG_EDP_FRAMEWORK
 static struct edp_manager battery_edp_manager = {
 	.name = "battery",
-	.imax = 2500
+	.max = 2500
 };
 
 static void __init dalmore_battery_edp_init(void)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -124,7 +124,7 @@ static unsigned int bestfit_point(struct edp_client *rc, struct edp_client *c,
 	unsigned int i;
 	unsigned int j;
 
-	*opt_bal = rc->manager->imax;
+	*opt_bal = rc->manager->max;
 
 	for (i = cur_index(c) + 1; i <= c->e0_index && ai > ri; i++) {
 		step = rc->manager->remaining + *c->cur - c->states[i];
@@ -155,7 +155,7 @@ static struct edp_client *throttle_bestfit_hi(struct edp_client *rc,
 		return NULL;
 
 	opt_c = NULL;
-	*opt_bal = rc->manager->imax;
+	*opt_bal = rc->manager->max;
 
 	list_for_each_entry(c, &hilist, glnk) {
 		i = bestfit_point(rc, c, mn, &bal);
