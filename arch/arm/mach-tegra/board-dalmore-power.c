@@ -991,7 +991,7 @@ static struct tegra_suspend_platform_data dalmore_suspend_data = {
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
 	.cpu_lp2_min_residency = 1000,
-	.min_residency_noncpu = 4000,
+	.min_residency_noncpu = 2000,
 	.min_residency_crail = 8000,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
