@@ -26,6 +26,8 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
+#include <linux/mfd/bq2419x.h>
+#include <linux/max17048_battery.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -53,6 +55,44 @@
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
+
+/* BQ2419X VBUS regulator */
+static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+};
+
+static struct regulator_init_data bq2419x_init_data = {
+	.constraints = {
+		.name = "bq2419x_vbus",
+		.min_uV = 0,
+		.max_uV = 5000000,
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
+					REGULATOR_MODE_STANDBY),
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
+					REGULATOR_CHANGE_STATUS |
+					REGULATOR_CHANGE_VOLTAGE),
+	},
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
+	.consumer_supplies = bq2419x_vbus_supply,
+};
+
+static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
+	.reg_init_data = &bq2419x_init_data,
+	.gpio_otg_iusb = TEGRA_GPIO_PI4,
+};
+
+struct bq2419x_platform_data macallan_bq2419x_pdata = {
+	.reg_pdata = &bq2419x_reg_pdata,
+	.disable_watchdog = true,
+};
+
+static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("bq2419x", 0x6b),
+		.platform_data	= &macallan_bq2419x_pdata,
+	},
+};
+
 
 /************************ Macallan based regulator ****************/
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
@@ -432,6 +472,9 @@ int __init macallan_palmas_regulator_init(void)
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
+	i2c_register_board_info(0, bq2419x_boardinfo,
+			ARRAY_SIZE(bq2419x_boardinfo));
+
 	return 0;
 }
 
