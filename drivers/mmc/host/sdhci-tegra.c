@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1031,17 +1031,8 @@ static int sdhci_tegra_sd_error_stats(struct sdhci_host *host, u32 int_status)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
-	struct sdhci_tegra_sd_stats *head;
+	struct sdhci_tegra_sd_stats *head = tegra_host->sd_stat_head;
 
-	if (tegra_host->sd_stat_head == NULL) {
-		tegra_host->sd_stat_head = devm_kzalloc(&pdev->dev, sizeof(
-						struct sdhci_tegra_sd_stats),
-						GFP_KERNEL);
-		if (tegra_host->sd_stat_head == NULL)
-			return -ENOMEM;
-		}
-	head = tegra_host->sd_stat_head;
 	if (int_status & SDHCI_INT_DATA_CRC)
 		head->data_crc_count = head->data_crc_count + 1;
 	if (int_status & SDHCI_INT_CRC)
@@ -1439,7 +1430,14 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	tegra_host->plat = plat;
 	pdev->dev.platform_data = plat;
-	tegra_host->sd_stat_head = NULL;
+	tegra_host->sd_stat_head =
+		devm_kzalloc(&pdev->dev, sizeof(struct sdhci_tegra_sd_stats),
+			     GFP_KERNEL);
+	if (!tegra_host->sd_stat_head) {
+		dev_err(mmc_dev(host->mmc), "failed to allocate sd_stat_head\n");
+		rc = -ENOMEM;
+		goto err_power_req;
+	}
 	tegra_host->soc_data = soc_data;
 
 	pltfm_host->priv = tegra_host;
