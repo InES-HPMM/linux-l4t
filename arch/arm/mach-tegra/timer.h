@@ -33,8 +33,6 @@
 #define TIMER_PTV		0x0
 #define TIMER_PCR		0x4
 
-void __init tegra_init_timer(void);
-
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void __init tegra20_init_timer(void);
 #else
