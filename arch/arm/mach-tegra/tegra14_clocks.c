@@ -5956,7 +5956,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_pllp_out3,		0),
-	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71),
+	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0x648,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71),
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"tegra_camera",		"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cilcd",	"tegra_camera",		"cilcd", 145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
@@ -5981,7 +5981,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("pll_p_bbc",	"pll_p_bbc",		NULL,	175,	0,	432000000,mux_pll_p,			PERIPH_NO_RESET),
 
 	PERIPH_CLK("isp_sapor",	"isp_sapor",		NULL,	163,	0x654,	26000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("mipibif",	"mipibif",		NULL,	173,	0x660,	26000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hdmi_audio","hdmi_audio",		NULL,	176,	0x668,	26000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL,	177,	0x66c,	26000000, mux_pllp3_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("cam_mclk",	"cam_mclk",		NULL,	164,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
