@@ -48,7 +48,7 @@
  *  NB: We must use lower precision (0) due to cp_fuse corrections
  *  (see Sec9.2 T35_Thermal_Sensing_IAS.docx)
  */
-static int soc_therm_precision; /* default 0 -> low precision */
+static const int soc_therm_precision; /* default 0 -> low precision */
 
 #define TS_TSENSE_REGS_SIZE		0x20
 #define TS_TSENSE_REG_OFFSET(reg, ts)	((reg) + ((ts) * TS_TSENSE_REGS_SIZE))
@@ -303,14 +303,14 @@ static u32 fuse_calib_base_ft;
 static s32 actual_temp_cp;
 static s32 actual_temp_ft;
 
-static char *therm_names[] = {
+static const char *const therm_names[] = {
 	[THERM_CPU] = "CPU",
 	[THERM_MEM] = "MEM",
 	[THERM_GPU] = "GPU",
 	[THERM_PLL] = "PLL",
 };
 
-static char *sensor_names[] = {
+static const char *const sensor_names[] = {
 	[TSENSE_CPU0] = "cpu0",
 	[TSENSE_CPU1] = "cpu1",
 	[TSENSE_CPU2] = "cpu2",
@@ -321,7 +321,7 @@ static char *sensor_names[] = {
 	[TSENSE_PLLX] = "pllx",
 };
 
-static int sensor2tsensorcalib[] = {
+static const int sensor2tsensorcalib[] = {
 	[TSENSE_CPU0] = 0,
 	[TSENSE_CPU1] = 1,
 	[TSENSE_CPU2] = 2,
@@ -332,7 +332,7 @@ static int sensor2tsensorcalib[] = {
 	[TSENSE_PLLX] = 7,
 };
 
-static int tsensor2therm_map[] = {
+static const int tsensor2therm_map[] = {
 	[TSENSE_CPU0] = THERM_CPU,
 	[TSENSE_CPU1] = THERM_CPU,
 	[TSENSE_CPU2] = THERM_CPU,
@@ -343,14 +343,14 @@ static int tsensor2therm_map[] = {
 	[TSENSE_PLLX] = THERM_PLL,
 };
 
-static enum soctherm_throttle_dev_id therm2dev[] = {
+static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_CPU] = THROTTLE_DEV_CPU,
 	[THERM_MEM] = -1,
 	[THERM_GPU] = THROTTLE_DEV_GPU,
 	[THERM_PLL] = -1,
 };
 
-struct soctherm_sensor sensor_defaults = {
+static const struct soctherm_sensor sensor_defaults = {
 	.tall      = 16300,
 	.tiddq     = 1,
 	.ten_count = 1,
@@ -358,10 +358,10 @@ struct soctherm_sensor sensor_defaults = {
 	.pdiv      = 10,
 };
 
-static unsigned long default_soctherm_clk_rate = 136000000;
-static unsigned long default_tsensor_clk_rate = 500000;
+static const unsigned long default_soctherm_clk_rate = 136000000;
+static const unsigned long default_tsensor_clk_rate = 500000;
 
-static struct soctherm_throttle_dev throttle_defaults[] = {
+static const struct soctherm_throttle_dev throttle_defaults[] = {
 	[THROTTLE_LIGHT] = {
 		.dividend = 229,	/* 20% throttling */
 		.divisor  = 255,
