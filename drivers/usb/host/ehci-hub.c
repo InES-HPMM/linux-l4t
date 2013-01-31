@@ -178,9 +178,9 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 				temp = ehci_readl(ehci, hostpc_reg);
 				ehci_writel(ehci, temp & ~HOSTPC_PHCD, hostpc_reg);
 			}
-			spin_unlock_irqrestore(&ehci->lock, flags);
+			spin_unlock_irq(&ehci->lock);
 			msleep(5);
-			spin_lock_irqsave(&ehci->lock, flags);
+			spin_lock_irq(&ehci->lock);
 #ifdef CONFIG_USB_EHCI_TEGRA
 		}
 #endif
