@@ -446,9 +446,6 @@ int __init pismo_panel_init(void)
 		return -EINVAL;
 	}
 
-	gpio_request(pismo_hdmi_hpd, "hdmi_hpd");
-	gpio_direction_input(pismo_hdmi_hpd);
-
 	res = platform_get_resource_byname(&pismo_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;

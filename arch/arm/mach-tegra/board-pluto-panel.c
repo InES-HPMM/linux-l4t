@@ -414,9 +414,6 @@ int __init pluto_panel_init(void)
 		return err;
 	}
 #endif
-	gpio_request(pluto_hdmi_hpd, "hdmi_hpd");
-	gpio_direction_input(pluto_hdmi_hpd);
-
 	phost1x = pluto_host1x_init();
 	if (!phost1x) {
 		pr_err("host1x devices registration failed\n");

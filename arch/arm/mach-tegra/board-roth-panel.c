@@ -745,8 +745,6 @@ int __init roth_panel_init(void)
 		return -EINVAL;
 	}
 
-	gpio_request(roth_hdmi_hpd, "hdmi_hpd");
-	gpio_direction_input(roth_hdmi_hpd);
 	res = platform_get_resource_byname(&roth_disp1_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
