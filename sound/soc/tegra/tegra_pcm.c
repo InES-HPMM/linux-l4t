@@ -50,6 +50,7 @@ static const struct snd_pcm_hardware tegra_pcm_hardware = {
 	.formats		= SNDRV_PCM_FMTBIT_S8 |
 				  SNDRV_PCM_FMTBIT_S16_LE |
 				  SNDRV_PCM_FMTBIT_S24_LE |
+				  SNDRV_PCM_FMTBIT_S20_3LE |
 				  SNDRV_PCM_FMTBIT_S32_LE,
 	.channels_min		= 1,
 	.channels_max		= 2,

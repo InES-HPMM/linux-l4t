@@ -87,7 +87,9 @@
 #define TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_AVG		(TEGRA30_AUDIOCIF_STEREO_CONV_AVG << TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_SHIFT)
 
 #define TEGRA30_AUDIOCIF_CTRL_REPLICATE			3
-
+#define TEGRA30_AUDIOCIF_CTRL_REPLICATE_SHIFT		3
+#define TEGRA30_AUDIOCIF_CTRL_REPLICATE_MASK		\
+		(1 << TEGRA30_AUDIOCIF_CTRL_REPLICATE_SHIFT)
 #define TEGRA30_AUDIOCIF_DIRECTION_TX			0
 #define TEGRA30_AUDIOCIF_DIRECTION_RX			1
 
@@ -505,6 +507,7 @@ extern int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 extern int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
 					    unsigned int audio_ch,
 					    unsigned int client_ch);
+extern int tegra30_ahub_set_rx_cif_stereo_conv(enum tegra30_ahub_rxcif rxcif);
 extern int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
 					    unsigned int audio_bits,
 					    unsigned int client_bits);

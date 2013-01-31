@@ -54,6 +54,14 @@ config SND_SOC_TEGRA30_DAM
 	depends on SND_SOC_TEGRA && !ARCH_TEGRA_2x_SOC
 	select SND_SOC_TEGRA30_AHUB
 
+config SND_SOC_TEGRA_DMIC
+	tristate "Tegra DMic driver"
+	depends on SND_SOC_TEGRA && !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_AHUB
+	help
+	  Say Y or M if you want to add support for DMIC platform driver for
+	  dummy DMIC codec interfaces.
+
 config SND_SOC_TEGRA30_I2S
 	tristate
 	depends on SND_SOC_TEGRA && !ARCH_TEGRA_2x_SOC
@@ -271,3 +279,22 @@ config SND_SOC_TEGRA_MAX98090
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the MAX98090 codec. Currently, only supported board is
 	  Pluto.
+
+config MACH_HAS_SND_SOC_TEGRA_DMIC_REV1
+	bool
+	help
+	  Machines that use the SND_SOC_TEGRA_DMIC_REV1 driver should select
+	  this config option, in order to allow the user to enable
+	  SND_SOC_TEGRA_DMIC_REV1.
+
+config SND_SOC_TEGRA_DMIC_REV1
+	tristate "SoC Audio support for Tegra boards using a DMIC_REV1 codec"
+	depends on SND_SOC_TEGRA
+	depends on MACH_HAS_SND_SOC_TEGRA_DMIC_REV1
+	select SND_SOC_DMIC
+	select SND_SOC_TEGRA_DMIC if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA30_AHUB if !ARCH_TEGRA_2x_SOC
+	help
+	  Say Y or M here if you want to add support for SoC audio on Tegra
+	  boards using the DMIC_REV1 codec. Currently, only supported board is
+	  E1664 (dolak).

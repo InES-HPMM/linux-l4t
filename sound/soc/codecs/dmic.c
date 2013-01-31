@@ -33,10 +33,15 @@ static struct snd_soc_dai_driver dmic_dai = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 8,
-		.rates = SNDRV_PCM_RATE_CONTINUOUS,
+		.rates = SNDRV_PCM_RATE_CONTINUOUS
+			| SNDRV_PCM_RATE_8000
+			| SNDRV_PCM_RATE_16000
+			| SNDRV_PCM_RATE_44100
+			| SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S32_LE
 			| SNDRV_PCM_FMTBIT_S24_LE
-			| SNDRV_PCM_FMTBIT_S16_LE,
+			| SNDRV_PCM_FMTBIT_S16_LE
+			| SNDRV_PCM_FMTBIT_S20_3LE,
 	},
 };
 
@@ -69,7 +74,7 @@ static struct snd_soc_codec_driver soc_dmic = {
 static int dmic_dev_probe(struct platform_device *pdev)
 {
 	return snd_soc_register_codec(&pdev->dev,
-			&soc_dmic, &dmic_dai, 1);
+		&soc_dmic, &dmic_dai, 1);
 }
 
 static int dmic_dev_remove(struct platform_device *pdev)

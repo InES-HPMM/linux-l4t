@@ -613,6 +613,25 @@ int tegra30_ahub_set_rx_cif_channels(enum tegra30_ahub_rxcif rxcif,
 	return 0;
 }
 
+int tegra30_ahub_set_rx_cif_stereo_conv(enum tegra30_ahub_rxcif rxcif)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_MASK;
+	val |= TEGRA30_AUDIOCIF_CTRL_STEREO_CONV_AVG;
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
 int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 				     unsigned int audio_ch,
 				     unsigned int client_ch)
