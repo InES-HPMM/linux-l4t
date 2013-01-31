@@ -339,7 +339,7 @@ static void dr_controller_run(struct tegra_udc *udc)
 	udc->stopped = 0;
 
 	/* If OTG transceiver is available, then it handles the VBUS detection*/
-	if (!udc->transceiver) {
+	if (IS_ERR_OR_NULL(udc->transceiver)) {
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 		/* Enable cable detection interrupt, without setting the
 		 * USB_SYS_VBUS_WAKEUP_INT bit. USB_SYS_VBUS_WAKEUP_INT is
@@ -1431,7 +1431,7 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 		schedule_work(&udc->charger_work);
 	}
 
-	if (udc->transceiver)
+	if (!IS_ERR_OR_NULL(udc->transceiver))
 		return usb_phy_set_power(udc->transceiver, mA);
 	return -ENOTSUPP;
 }
@@ -1447,7 +1447,7 @@ static int tegra_pullup(struct usb_gadget *gadget, int is_on)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 	udc->softconnect = (is_on != 0);
-	if (udc->transceiver && udc->transceiver->state !=
+	if (!IS_ERR_OR_NULL(udc->transceiver) && udc->transceiver->state !=
 			OTG_STATE_B_PERIPHERAL)
 			return 0;
 
@@ -2293,7 +2293,7 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 
 	spin_lock_irqsave(&udc->lock, flags);
 
-	if (!udc->transceiver) {
+	if (IS_ERR_OR_NULL(udc->transceiver)) {
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
 		temp = udc_readl(udc, VBUS_WAKEUP_REG_OFFSET);
 		/* write back the register to clear the interrupt */
@@ -2773,12 +2773,12 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_USB_OTG_UTILS
 	if (tegra_usb_phy_otg_supported(udc->phy))
-		udc->transceiver = usb_get_transceiver();
+		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 #else
-		udc->transceiver = usb_get_transceiver();
+		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 #endif
 
-	if (udc->transceiver) {
+	if (!IS_ERR_OR_NULL(udc->transceiver)) {
 		dr_controller_stop(udc);
 		dr_controller_reset(udc);
 		tegra_usb_phy_power_off(udc->phy);
@@ -2844,7 +2844,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	if (udc->vbus_reg)
 		regulator_put(udc->vbus_reg);
 
-	if (udc->transceiver)
+	if (!IS_ERR_OR_NULL(udc->transceiver))
 		otg_set_peripheral(udc->transceiver->otg, NULL);
 
 
@@ -2874,7 +2874,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	/* If the controller is in otg mode, return */
-	if (udc->transceiver)
+	if (!IS_ERR_OR_NULL(udc->transceiver))
 			return 0;
 
 	if (udc->vbus_active) {
@@ -2887,7 +2887,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	}
 	/* Stop the controller and turn off the clocks */
 	dr_controller_stop(udc);
-	if (udc->transceiver)
+	if (!IS_ERR_OR_NULL(udc->transceiver))
 		udc->transceiver->state = OTG_STATE_UNDEFINED;
 
 	tegra_usb_phy_power_off(udc->phy);
@@ -2901,7 +2901,7 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	if (udc->transceiver)
+	if (!IS_ERR_OR_NULL(udc->transceiver))
 		return 0;
 
 	tegra_usb_phy_power_on(udc->phy);
