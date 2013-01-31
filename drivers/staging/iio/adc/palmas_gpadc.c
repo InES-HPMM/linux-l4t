@@ -650,7 +650,8 @@ out_irq_auto0_free:
 out_irq_free:
 	free_irq(adc->irq, adc);
 out_unregister_map:
-	iio_map_array_unregister(iodev);
+	if (adc_pdata->iio_maps)
+		iio_map_array_unregister(iodev);
 out:
 	iio_device_free(iodev);
 	return ret;
@@ -661,8 +662,8 @@ static int palmas_gpadc_remove(struct platform_device *pdev)
 	struct iio_dev *iodev = dev_to_iio_dev(&pdev->dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
 	struct palmas_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
-
-	iio_map_array_unregister(iodev);
+	if (pdata->gpadc_pdata->iio_maps)
+		iio_map_array_unregister(iodev);
 	iio_device_unregister(iodev);
 	free_irq(adc->irq, adc);
 	if (adc->wakeup1_enable)
