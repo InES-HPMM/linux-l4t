@@ -3108,7 +3108,7 @@ static int azx_suspend(struct device *dev)
 			pci_disable_msi(chip->pci);
 		pci_disable_device(chip->pci);
 		pci_save_state(chip->pci);
-		pci_set_power_state(pci, PCI_D3hot);
+		pci_set_power_state(chip->pci, PCI_D3hot);
 	}
 
 #ifdef CONFIG_SND_HDA_PLATFORM_DRIVER
