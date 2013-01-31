@@ -232,11 +232,11 @@ static const char *mode_name[] = {
 
 static inline u32 cl_dvfs_readl(struct tegra_cl_dvfs *cld, u32 offs)
 {
-	return __raw_readl(cld->cl_base + offs);
+	return __raw_readl((void *)cld->cl_base + offs);
 }
 static inline void cl_dvfs_writel(struct tegra_cl_dvfs *cld, u32 val, u32 offs)
 {
-	__raw_writel(val, cld->cl_base + offs);
+	__raw_writel(val, (void *)cld->cl_base + offs);
 }
 static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
 {

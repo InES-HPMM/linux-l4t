@@ -6867,7 +6867,7 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 void __init tegra12x_clk_init_la(void)
 {
 	struct clk *c;
-	u32 reg = readl((u32)misc_gp_base + MISC_GP_TRANSACTOR_SCRATCH_0);
+	u32 reg = readl(misc_gp_base + MISC_GP_TRANSACTOR_SCRATCH_0);
 
 	if (!(reg & MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE))
 		return;
