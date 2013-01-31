@@ -281,6 +281,10 @@
 #define VBUS_SENSOR_REG_OFFSET			0x404
 #define VBUS_WAKEUP_REG_OFFSET			0x408
 
+#define  USB_SYS_VBUS_A_VLD_SW_VALUE		BIT(28)
+#define  USB_SYS_VBUS_A_VLD_SW_EN		BIT(27)
+#define  USB_SYS_VBUS_ASESSION_VLD_SW_VALUE	BIT(20)
+#define  USB_SYS_VBUS_ASESSION_VLD_SW_EN	BIT(19)
 #define  USB_SYS_VBUS_ASESSION_INT_EN		0x10000
 #define  USB_SYS_VBUS_ASESSION_CHANGED		0x20000
 #define  USB_SYS_VBUS_ASESSION			0x40000
@@ -453,6 +457,7 @@ struct tegra_udc {
 	unsigned remote_wakeup:1;
 	unsigned selfpowered:1;
 	bool has_hostpc;
+	bool support_pmu_vbus;
 };
 
 

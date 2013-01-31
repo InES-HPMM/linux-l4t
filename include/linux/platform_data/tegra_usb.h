@@ -112,6 +112,7 @@ struct tegra_usb_platform_data {
 	bool has_hostpc;
 	bool builtin_host_disabled;
 	bool unaligned_dma_buf_supported;
+	bool support_pmu_vbus;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 
@@ -134,7 +135,6 @@ struct tegra_usb_platform_data {
 struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
-	bool support_pmu_vbus;
 	char *extcon_dev_name;
 };
 

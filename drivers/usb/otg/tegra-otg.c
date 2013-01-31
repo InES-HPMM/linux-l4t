@@ -455,7 +455,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	if (pdata) {
 		tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
-		tegra->support_pmu_vbus = pdata->support_pmu_vbus;
+		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
 		tegra->pdata = pdata;
 	}
 

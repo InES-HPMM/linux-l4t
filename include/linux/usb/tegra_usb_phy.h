@@ -110,6 +110,10 @@ bool tegra_usb_phy_has_hostpc(struct tegra_usb_phy *phy);
  */
 bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy);
 
+/**
+ * Indicates controller port supports pmu vbus
+ */
+bool tegra_support_pmu_vbus(struct tegra_usb_phy *phy);
 
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy);
 

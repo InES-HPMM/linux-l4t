@@ -372,6 +372,15 @@ static void dr_controller_run(struct tegra_udc *udc)
 	temp |= USB_MODE_CTRL_MODE_DEVICE;
 	udc_writel(udc, temp, USB_MODE_REG_OFFSET);
 
+	if (udc->support_pmu_vbus) {
+		temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
+		temp |= (USB_SYS_VBUS_A_VLD_SW_VALUE |
+					USB_SYS_VBUS_A_VLD_SW_EN |
+					USB_SYS_VBUS_ASESSION_VLD_SW_VALUE |
+					USB_SYS_VBUS_ASESSION_VLD_SW_EN);
+		udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
+	}
+
 	/* Set controller to Run */
 	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
 	if (can_pullup(udc))
@@ -2774,6 +2783,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 #else
 		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 #endif
+	udc->support_pmu_vbus = tegra_support_pmu_vbus(udc->phy) ? 1 : 0;
 
 	if (!IS_ERR_OR_NULL(udc->transceiver)) {
 		dr_controller_stop(udc);

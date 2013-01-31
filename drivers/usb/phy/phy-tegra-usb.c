@@ -600,6 +600,12 @@ bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy)
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_otg_supported);
 
+bool tegra_support_pmu_vbus(struct tegra_usb_phy *phy)
+{
+	return phy->pdata->support_pmu_vbus;
+}
+EXPORT_SYMBOL_GPL(tegra_support_pmu_vbus);
+
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {
 	void __iomem *ahb_gizmo = IO_ADDRESS(TEGRA_AHB_GIZMO_BASE);
