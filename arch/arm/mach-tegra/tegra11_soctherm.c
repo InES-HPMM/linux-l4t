@@ -664,12 +664,20 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 	struct thermal_trip_info *trip_state;
+	long rem;
 
 	if (index < 0)
 		return -EINVAL;
 
 	trip_state = &plat_data.therm[index].trips[trip];
 	trip_state->trip_temp = temp;
+
+	rem = trip_state->trip_temp % (!soc_therm_precision ? 2000 : 1000);
+	if (rem) {
+		pr_warn("soctherm: zone%d/trip_point%d %ld mC rounded down\n",
+			index, trip, trip_state->trip_temp);
+		trip_state->trip_temp -= rem;
+	}
 
 	if (trip_state->trip_type == THERMAL_TRIP_HOT) {
 		if (strnstr(trip_state->cdev_type,
@@ -1069,6 +1077,7 @@ static int soctherm_init_platform_data(void)
 	struct soctherm_therm *therm;
 	struct soctherm_sensor *s;
 	int i, j, k;
+	long rem;
 	u32 r;
 
 	/* initialize default values for unspecified params */
@@ -1098,6 +1107,24 @@ static int soctherm_init_platform_data(void)
 		if (plat_data.sensor_data[i].sensor_enable) {
 			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
 			soctherm_fuse_read_tsensor(i);
+		}
+	}
+
+	/* Sanitize therm trips */
+	for (i = 0; i < THERM_SIZE; i++) {
+		therm = &plat_data.therm[i];
+		if (!therm->zone_enable)
+			continue;
+
+		for (j = 0; j < therm->num_trips; j++) {
+			rem = therm->trips[j].trip_temp %
+				(!soc_therm_precision ? 2000 : 1000);
+			if (rem) {
+				pr_warn(
+			"soctherm: zone%d/trip_point%d %ld mC rounded down\n",
+					i, j, therm->trips[j].trip_temp);
+				therm->trips[j].trip_temp -= rem;
+			}
 		}
 	}
 
