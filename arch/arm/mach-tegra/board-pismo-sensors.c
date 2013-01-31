@@ -86,7 +86,7 @@ static struct throttle_table tj_throttle_table[] = {
 
 static struct balanced_throttle tj_throttle = {
 	.throt_tab_size = ARRAY_SIZE(tj_throttle_table),
-	.throt_tab = &tj_throttle_table,
+	.throt_tab = tj_throttle_table,
 };
 
 static int __init pismo_throttle_init(void)
