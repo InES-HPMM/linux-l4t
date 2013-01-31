@@ -383,16 +383,31 @@ static int max_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 					unsigned long action, void *hcpu)
 {
-	if (action != CPU_POST_DEAD)
-		return NOTIFY_OK;
+	switch (action) {
+	case CPU_POST_DEAD:
+		if (num_online_cpus() == 1 &&
+		    tegra_getspeed(0) <= idle_bottom_freq) {
+			mutex_lock(tegra_cpu_lock);
 
-	if (num_online_cpus() == 1 && tegra_getspeed(0) <= idle_bottom_freq) {
-		mutex_lock(tegra_cpu_lock);
+			cpq_target_cluster_state = TEGRA_CPQ_LP;
+			mod_timer(&updown_timer, jiffies + down_delay);
 
-		cpq_target_cluster_state = TEGRA_CPQ_LP;
-		queue_work(cpuquiet_wq, &cpuquiet_work);
+			mutex_unlock(tegra_cpu_lock);
+		}
+		break;
+	case CPU_ONLINE:
+	case CPU_ONLINE_FROZEN:
+		if (cpq_target_cluster_state == TEGRA_CPQ_LP) {
+			mutex_lock(tegra_cpu_lock);
 
-		mutex_unlock(tegra_cpu_lock);
+			if (cpq_target_cluster_state == TEGRA_CPQ_LP) {
+				cpq_target_cluster_state = TEGRA_CPQ_G;
+				del_timer(&updown_timer);
+			}
+
+			mutex_unlock(tegra_cpu_lock);
+		}
+		break;
 	}
 
 	return NOTIFY_OK;
