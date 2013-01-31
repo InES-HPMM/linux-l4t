@@ -1226,6 +1226,7 @@ config MFD_MAX77660
 	bool "Maxim Semiconductor MAX77660 PMIC Support"
 	select MFD_CORE
 	select REGMAP_I2C
+	select REGMAP_IRQ
 	depends on I2C=y
 	help
 	Say yes here to support for Maxim Semiconductor MAX77660. This is
