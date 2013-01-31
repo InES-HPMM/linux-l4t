@@ -337,7 +337,7 @@ config TWL4030_WATCHDOG
 
 config MAX77660_SYSTEM_WATCHDOG
 	tristate "Maxim MAX77660 System Watchdog Timer"
-	depends on MFD_MAX77663
+	depends on MFD_MAX77660
 	help
 	  Support for Maxim MAX77660 System watch dog timer. Say 'Y' here
 	  to enable the watchdog timer support for MAX77660 chips.
