@@ -211,7 +211,7 @@ static void tegra30_i2s_set_channel_bit_count(struct tegra30_i2s *i2s,
 	if (!sym_bitclk)
 		val |= TEGRA30_I2S_TIMING_NON_SYM_ENABLE;
 
-	tegra30_i2s_write(i2s, TEGRA30_I2S_TIMING, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_TIMING, val);
 }
 
 static void tegra30_i2s_set_data_offset(struct tegra30_i2s *i2s)
@@ -225,29 +225,28 @@ static void tegra30_i2s_set_data_offset(struct tegra30_i2s *i2s)
 			(tx_data_offset <<
 				TEGRA30_I2S_OFFSET_TX_DATA_OFFSET_SHIFT);
 
-	tegra30_i2s_write(i2s, TEGRA30_I2S_OFFSET, val);
+	regmap_write(i2s->regmap, TEGRA30_I2S_OFFSET, val);
 }
 
 static void tegra30_i2s_set_slot_control(struct tegra30_i2s *i2s, int stream)
 {
-	u32 val;
+	u32 mask, val = 0;
 	int tx_mask = i2s->dsp_config.tx_mask;
 	int rx_mask = i2s->dsp_config.rx_mask;
 
-	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		val &= ~TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
+		mask = TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
 		val |= (tx_mask << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
 	} else {
-		val &= ~TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
+		mask = TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
 		val |= (rx_mask << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 	}
 
-	val &= ~TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
+	mask |= TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_MASK;
 	val |= (i2s->dsp_config.num_slots - 1)
 			<< TEGRA30_I2S_SLOT_CTRL_TOTAL_SLOTS_SHIFT;
 
-	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
 }
 
 static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
@@ -673,22 +672,21 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	tegra30_i2s_write(i2s, TEGRA30_I2S_CH_CTRL, i2s->reg_ch_ctrl);
 
+	val = 0;
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		val &= ~TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
+		mask = TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_MASK;
 		val |= (1 << TEGRA30_I2S_SLOT_CTRL_TX_SLOT_ENABLES_SHIFT);
 	} else {
-		val &= ~TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
+		mask = TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_MASK;
 		val |= (1 << TEGRA30_I2S_SLOT_CTRL_RX_SLOT_ENABLES_SHIFT);
 	}
+	regmap_update_bits(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, mask, val);
 #else
-	val = 0;
 	if (i2s->reg_ctrl & TEGRA30_I2S_CTRL_FRAME_FORMAT_FSYNC)
 		val = params_channels(params) - 1;
+	regmap_write(i2s->regmap, TEGRA30_I2S_SLOT_CTRL, val);
 #endif
-
-	tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL, val);
 
 	return 0;
 }
