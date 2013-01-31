@@ -45,6 +45,14 @@ static struct resource rtc_resources[] = {
 	}
 };
 
+static struct resource adc_resources[] = {
+	{
+		.start	= MAX77660_IRQ_ADC,
+		.end	= MAX77660_IRQ_ADC,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static struct resource fg_resources[] = {
 	{
 		.start	= MAX77660_IRQ_FG,
@@ -104,6 +112,11 @@ static struct mfd_cell max77660_cells[] = {
 		.name = "max77660-rtc",
 		.num_resources	= ARRAY_SIZE(rtc_resources),
 		.resources	= &rtc_resources[0],
+	},
+	{
+		.name = "max77660-adc",
+		.num_resources	= ARRAY_SIZE(adc_resources),
+		.resources	= &adc_resources[0],
 	},
 	{
 		.name = "max77660-fg",
