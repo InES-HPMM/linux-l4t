@@ -319,8 +319,6 @@ static void tegra_ehci_shutdown(struct usb_hcd *hcd)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	mutex_lock(&tegra->sync_lock);
-	del_timer_sync(&ehci->watchdog);
-	del_timer_sync(&ehci->iaa_watchdog);
 	if (tegra_usb_phy_hw_accessible(tegra->phy)) {
 		spin_lock_irq(&ehci->lock);
 		ehci_silence_controller(ehci);
