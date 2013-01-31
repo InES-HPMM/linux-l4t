@@ -1219,11 +1219,11 @@ static int do_test(int m)
 		break;
 
 	case 110:
-		ret += tcrypt_test("hmac(crc32)");
+		ret += tcrypt_test("cmac(aes)");
 		break;
 
-	case 110:
-		ret += tcrypt_test("cmac(aes)");
+	case 111:
+		ret += tcrypt_test("hmac(crc32)");
 		break;
 
 	case 150:
