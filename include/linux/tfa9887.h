@@ -11,6 +11,7 @@ struct tfa9887_priv {
         struct regmap *regmap;
         int irq;
         bool deviceInit;
+	struct mutex lock;
 };
 
 typedef enum Tfa9887_Mute {

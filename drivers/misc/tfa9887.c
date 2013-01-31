@@ -735,35 +735,44 @@ int Tfa9887_Init(int sRate)
 {
 	int error = 0;
 	srate = sRate;
-	if ((tfa9887R) && (tfa9887R->deviceInit)) {
-		coldStartup(tfa9887R, tfa9887R_byte, srate);
-		//Tfa9887_WriteRegister(tfa9887R, 0x0B, 0x5A); /* unlock key2 */
-		//Tfa9887_WriteRegister(tfa9887R, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
-		setOtc(tfa9887R,1);
+	if (tfa9887R) {
+		mutex_lock(&tfa9887R->lock);
+		if (tfa9887R->deviceInit) {
+			coldStartup(tfa9887R, tfa9887R_byte, srate);
+			//Tfa9887_WriteRegister(tfa9887R, 0x0B, 0x5A); /* unlock key2 */
+			//Tfa9887_WriteRegister(tfa9887R, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+			setOtc(tfa9887R,1);
 
-		if((checkMTPEX(tfa9887R) == 0)) {
-			calibration = 1;
-                        calibrate(tfa9887R, tfa9887R_byte, &calibdata[0]);
-		}
-		else {
-			error = Init(tfa9887R,tfa9887R_byte, sRate);
+			if((checkMTPEX(tfa9887R) == 0)) {
+				calibration = 1;
+				calibrate(tfa9887R, tfa9887R_byte, &calibdata[0]);
+			}
+			else {
+				error = Init(tfa9887R,tfa9887R_byte, sRate);
 
+			}
 		}
+		mutex_unlock(&tfa9887R->lock);
 	}
-	if ((tfa9887L) && (tfa9887L->deviceInit)) {
-		coldStartup(tfa9887L, tfa9887L_byte, srate);
-		//Tfa9887_WriteRegister(tfa9887L, 0x0B, 0x5A); /* unlock key2 */
-		//Tfa9887_WriteRegister(tfa9887L, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
-		setOtc(tfa9887L,1);
 
-		if((checkMTPEX(tfa9887L) == 0)) {
-			calibration = 1;
-			calibrate(tfa9887L, tfa9887L_byte, &calibdata[8]);
-		}
-		else {
-			error = Init(tfa9887L,tfa9887L_byte, sRate);
+	if (tfa9887L) {
+		mutex_lock(&tfa9887L->lock);
+		if (tfa9887L->deviceInit) {
+			coldStartup(tfa9887L, tfa9887L_byte, srate);
+			//Tfa9887_WriteRegister(tfa9887L, 0x0B, 0x5A); /* unlock key2 */
+			//Tfa9887_WriteRegister(tfa9887L, TFA9887_MTP, 0); /* MTPOTC=1, MTPEX=0 */
+			setOtc(tfa9887L,1);
 
+			if((checkMTPEX(tfa9887L) == 0)) {
+				calibration = 1;
+				calibrate(tfa9887L, tfa9887L_byte, &calibdata[8]);
+			}
+			else {
+				error = Init(tfa9887L,tfa9887L_byte, sRate);
+
+			}
 		}
+		mutex_unlock(&tfa9887L->lock);
 	}
         if (error != 0)
 		pr_info("Failed to Init tfa\n");
@@ -809,10 +818,20 @@ void setOtc(struct tfa9887_priv *tfa9887, unsigned short otcOn)
 int Tfa9887_SetEq(void)
 {
 	int error = 0;
-	if ((tfa9887R) && (tfa9887R->deviceInit))
-		error = SetEq(tfa9887R, tfa9887R_byte);
-	if ((tfa9887L) && (tfa9887L->deviceInit))
-		error = SetEq(tfa9887L, tfa9887L_byte);
+
+	if (tfa9887R) {
+		mutex_lock(&tfa9887R->lock);
+		if (tfa9887R->deviceInit)
+			error = SetEq(tfa9887R, tfa9887R_byte);
+		mutex_unlock(&tfa9887R->lock);
+	}
+
+	if (tfa9887L) {
+		mutex_lock(&tfa9887L->lock);
+		if (tfa9887L->deviceInit)
+			error = SetEq(tfa9887L, tfa9887L_byte);
+		mutex_unlock(&tfa9887L->lock);
+	}
 	return error;
 }
 
@@ -821,10 +840,20 @@ int Tfa9887_SetPreset(unsigned int preset)
 	int error = 0;
 	if (preset != preset_mode) {
 		preset_mode = preset;
-		if ((tfa9887R) && (tfa9887R->deviceInit))
-			error = SetPreset(tfa9887R, tfa9887R_byte);
-		if ((tfa9887L) && (tfa9887L->deviceInit))
-			error = SetPreset(tfa9887L, tfa9887L_byte);
+
+		if (tfa9887R) {
+			mutex_lock(&tfa9887R->lock);
+			if (tfa9887R->deviceInit)
+				error = SetPreset(tfa9887R, tfa9887R_byte);
+			mutex_unlock(&tfa9887R->lock);
+		}
+
+		if (tfa9887L) {
+			mutex_lock(&tfa9887L->lock);
+			if (tfa9887L->deviceInit)
+				error = SetPreset(tfa9887L, tfa9887L_byte);
+			mutex_unlock(&tfa9887L->lock);
+		}
 	}
 	return error;
 }
@@ -1115,10 +1144,20 @@ int stereoRouting(struct tfa9887_priv *tfa9887)
 int Tfa9887_Powerdown(int powerdown)
 {
 	int error = 0;
-	if ((tfa9887R) && (tfa9887R->deviceInit))
-		error = Powerdown(tfa9887R, tfa9887R_byte, powerdown);
-	if ((tfa9887L) && (tfa9887L->deviceInit))
-		error = Powerdown(tfa9887L, tfa9887L_byte, powerdown);
+
+	if (tfa9887R) {
+		mutex_lock(&tfa9887R->lock);
+		if (tfa9887R->deviceInit)
+			error = Powerdown(tfa9887R, tfa9887R_byte, powerdown);
+		mutex_unlock(&tfa9887R->lock);
+	}
+
+	if (tfa9887L) {
+		mutex_lock(&tfa9887L->lock);
+		if (tfa9887L->deviceInit)
+			error = Powerdown(tfa9887L, tfa9887L_byte, powerdown);
+		mutex_unlock(&tfa9887L->lock);
+	}
 	return error;
 }
 
@@ -1251,11 +1290,6 @@ static ssize_t tfa9887_cal_store(struct kobject *kobj,
 {
 	ssize_t ret = count;
 	//printk("+tfa9887_cal_store: %p, %d\n", buf, count);
-	if (!tfa9887R || !tfa9887L ||
-		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
-		ret = -EINVAL;
-		goto fail;
-	}
 
 	if (!buf || !count) {
 		ret = -EINVAL;
@@ -1282,15 +1316,20 @@ fail:
 void recalibrate(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte) {
 
 	unsigned int value;
-	resetMtpEx(tfa9887);
-	SetMute(tfa9887, Tfa9887_Mute_Amplifier);
-	coldStartup(tfa9887, tfa9887_byte, srate);
-	Init(tfa9887,tfa9887_byte, srate);
-	calibrate(tfa9887, tfa9887_byte, &calibdata[0]);
-	Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
-	value |= TFA9887_SYSCTRL_POWERDOWN;
-	Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
-
+	if (tfa9887) {
+		mutex_lock(&tfa9887->lock);
+		if (tfa9887->deviceInit) {
+			resetMtpEx(tfa9887);
+			SetMute(tfa9887, Tfa9887_Mute_Amplifier);
+			coldStartup(tfa9887, tfa9887_byte, srate);
+			Init(tfa9887,tfa9887_byte, srate);
+			calibrate(tfa9887, tfa9887_byte, &calibdata[0]);
+			Tfa9887_ReadRegister(tfa9887, TFA9887_SYSTEM_CONTROL, &value);
+			value |= TFA9887_SYSCTRL_POWERDOWN;
+			Tfa9887_WriteRegister(tfa9887, TFA9887_SYSTEM_CONTROL, value);
+		}
+		mutex_unlock(&tfa9887->lock);
+	}
 }
 
 static ssize_t tfa9887_config_show(struct kobject *kobj,
@@ -1316,11 +1355,6 @@ static ssize_t tfa9887_config_store(struct kobject *kobj,
 	ssize_t ret = count;
 
 	//printk("+tfa9887_config_store: %p, %d\n", buf, count);
-	if (!tfa9887R || !tfa9887L ||
-		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
-		ret = -EINVAL;
-		goto fail;
-	}
 
 	if (!buf || !count) {
 		ret = -EINVAL;
@@ -1354,11 +1388,6 @@ static ssize_t tfa9887_vol_store(struct kobject *kobj,
 	unsigned int preset;
 
 	//printk("+tfa9887_vol_store: %d, %d\n", *buf, count);
-	if (!tfa9887R || !tfa9887L ||
-		!tfa9887R->deviceInit || !tfa9887L->deviceInit) {
-		ret = -EINVAL;
-		goto fail;
-	}
 
 	if (!buf || !count) {
 		ret = -EINVAL;
@@ -1400,6 +1429,7 @@ static __devinit int tfa9887R_i2c_probe(struct i2c_client *i2c,
 
 	i2c_set_clientdata(i2c, tfa9887R);
 	i2c_set_clientdata(i2c, tfa9887R_byte);
+	mutex_init(&tfa9887R->lock);
 	tfa9887R->irq = i2c->irq;
 	tfa9887R_byte->irq = i2c->irq;
 	ret = regmap_read(tfa9887R->regmap, TFA9887_REVISIONNUMBER, &val);
@@ -1428,7 +1458,11 @@ static __devinit int tfa9887R_i2c_probe(struct i2c_client *i2c,
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
 	}
-	tfa9887R->deviceInit = true;
+	if (tfa9887R) {
+		mutex_lock(&tfa9887R->lock);
+		tfa9887R->deviceInit = true;
+		mutex_unlock(&tfa9887R->lock);
+	}
 	eq_mode = IN_HAND_MODE;
 	preset_mode = PRESET_DEFAULT;
 	return 0;
@@ -1446,6 +1480,17 @@ static __devexit int tfa9887R_i2c_remove(struct i2c_client *client)
 	sysfs_remove_file(tfa9887_kobj, &tfa9887_vol);
 	kobject_del(tfa9887_kobj);
 	return 0;
+}
+
+static void tfa9887R_i2c_shutdown(struct i2c_client *i2c)
+{
+	if (tfa9887R) {
+		mutex_lock(&tfa9887R->lock);
+		if (i2c->irq)
+			disable_irq(i2c->irq);
+		tfa9887R->deviceInit = false;
+		mutex_unlock(&tfa9887R->lock);
+        }
 }
 
 static const struct of_device_id tfa9887R_of_match[] = {
@@ -1469,6 +1514,7 @@ static struct i2c_driver tfa9887R_i2c_driver = {
 	 .probe =    tfa9887R_i2c_probe,
 	 .remove =   __devexit_p(tfa9887R_i2c_remove),
 	 .id_table = tfa9887R_i2c_id,
+	 .shutdown = tfa9887R_i2c_shutdown,
 };
 
 static __devinit int tfa9887L_i2c_probe(struct i2c_client *i2c,
@@ -1495,6 +1541,7 @@ static __devinit int tfa9887L_i2c_probe(struct i2c_client *i2c,
 	}
 
 	i2c_set_clientdata(i2c, tfa9887L);
+	mutex_init(&tfa9887L->lock);
 	tfa9887L->irq = i2c->irq;
 	ret = regmap_read(tfa9887L->regmap, TFA9887_REVISIONNUMBER, &val);
 	if (ret != 0) {
@@ -1502,7 +1549,11 @@ static __devinit int tfa9887L_i2c_probe(struct i2c_client *i2c,
 		goto err;
 	}
 	dev_info(&i2c->dev, "TFA9887 revision %d\n",val);
-	tfa9887L->deviceInit = true;
+	if (tfa9887L) {
+		mutex_lock(&tfa9887L->lock);
+		tfa9887L->deviceInit = true;
+		mutex_unlock(&tfa9887L->lock);
+	}
 	return 0;
 err:
 	regmap_exit(tfa9887L->regmap);
@@ -1514,6 +1565,17 @@ static __devexit int tfa9887L_i2c_remove(struct i2c_client *client)
 	struct tfa9887_priv *tfa9887L = i2c_get_clientdata(client);
 	regmap_exit(tfa9887L->regmap);
 	return 0;
+}
+
+static void tfa9887L_i2c_shutdown(struct i2c_client *i2c)
+{
+	if (tfa9887L) {
+		mutex_lock(&tfa9887L->lock);
+		if (i2c->irq)
+			disable_irq(i2c->irq);
+		tfa9887L->deviceInit = false;
+		mutex_unlock(&tfa9887L->lock);
+	}
 }
 
 static const struct of_device_id tfa9887L_of_match[] = {
@@ -1537,6 +1599,7 @@ static struct i2c_driver tfa9887L_i2c_driver = {
 	 .probe =    tfa9887L_i2c_probe,
 	 .remove =   __devexit_p(tfa9887L_i2c_remove),
 	 .id_table = tfa9887L_i2c_id,
+	 .shutdown = tfa9887L_i2c_shutdown,
 };
 
 static int __init tfa9887_modinit(void)
