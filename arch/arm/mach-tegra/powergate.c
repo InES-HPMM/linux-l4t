@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/powergate.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (c) 2011 - 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011 - 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -103,7 +103,7 @@ int tegra_powergate_set(int id, bool new_state)
 	}
 
 	trace_power_domain_target(tegra_powergate_get_name(id), new_state,
-			smp_processor_id());
+			raw_smp_processor_id());
 #endif
 
 	return 0;
