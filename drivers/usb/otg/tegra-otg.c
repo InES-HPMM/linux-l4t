@@ -477,7 +477,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	tegra->phy.otg->phy = &tegra->phy;
 
 
-	err = usb_set_transceiver(&tegra->phy);
+	err = usb_add_phy(&tegra->phy, USB_PHY_TYPE_USB2);
 	if (err) {
 		dev_err(&pdev->dev, "usb_set_transceiver failed\n");
 		goto err_clk;
@@ -497,7 +497,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	return 0;
 
 err_irq:
-	usb_set_transceiver(NULL);
+	usb_remove_phy(&tegra->phy);
 	iounmap(tegra->regs);
 err_io:
 	clk_put(tegra->clk);
@@ -510,7 +510,7 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(tegra->phy.dev);
-	usb_set_transceiver(NULL);
+	usb_remove_phy(&tegra->phy);
 	iounmap(tegra->regs);
 	clk_put(tegra->clk);
 	platform_set_drvdata(pdev, NULL);
