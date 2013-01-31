@@ -1403,6 +1403,10 @@ static int tegra11_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		if (ret)
 			goto abort;
 
+		ret = tegra_dvfs_rail_dfll_mode_set_cold(tegra_cpu_rail);
+		if (ret)
+			goto abort;
+
 		p_source = rate <= p->u.cpu.backup_rate ?
 			p->u.cpu.backup : p->u.cpu.main;
 		ret = clk_set_rate(p_source, rate);

@@ -172,6 +172,22 @@ void tegra_dvfs_rail_pause(struct dvfs_rail *rail, ktime_t delta, bool on)
 		dvfs_rail_stats_pause(rail, delta, on);
 }
 
+static int dvfs_rail_set_voltage_reg(struct dvfs_rail *rail, int millivolts)
+{
+	int ret;
+
+	rail->updating = true;
+	rail->reg_max_millivolts = rail->reg_max_millivolts ==
+		rail->max_millivolts ?
+		rail->max_millivolts + 1 : rail->max_millivolts;
+	ret = regulator_set_voltage(rail->reg,
+		millivolts * 1000,
+		rail->reg_max_millivolts * 1000);
+	rail->updating = false;
+
+	return ret;
+}
+
 /* Sets the voltage on a dvfs rail to a specific value, and updates any
  * rails that depend on this rail. */
 static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
@@ -230,16 +246,7 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 				goto out;
 		}
 
-		if (!rail->disabled) {
-			rail->updating = true;
-			rail->reg_max_millivolts = rail->reg_max_millivolts ==
-				rail->max_millivolts ?
-				rail->max_millivolts + 1 : rail->max_millivolts;
-			ret = regulator_set_voltage(rail->reg,
-				rail->new_millivolts * 1000,
-				rail->reg_max_millivolts * 1000);
-			rail->updating = false;
-		}
+		ret = dvfs_rail_set_voltage_reg(rail, rail->new_millivolts);
 		if (ret) {
 			pr_err("Failed to set dvfs regulator %s\n", rail->reg_id);
 			goto out;
@@ -887,6 +894,24 @@ static void tegra_dvfs_rail_register_pll_mode_cdev(struct dvfs_rail *rail)
 #else
 #define tegra_dvfs_rail_register_pll_mode_cdev(rail)
 #endif
+
+/* Directly set cold temperature limit in dfll mode */
+int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
+{
+	int ret = 0;
+
+#ifdef CONFIG_THERMAL
+	if (!rail || !rail->dfll_mode_cdev || !rail->min_millivolts_cold)
+		return ret;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->dfll_mode)
+		ret = dvfs_rail_set_voltage_reg(
+			rail, rail->min_millivolts_cold);
+	mutex_unlock(&dvfs_lock);
+#endif
+	return ret;
+}
 
 /*
  * Iterate through all the dvfs regulators, finding the regulator exported

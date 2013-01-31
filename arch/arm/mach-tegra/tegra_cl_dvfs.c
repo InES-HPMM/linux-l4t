@@ -909,6 +909,7 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
  */
 static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 {
+	int ret;
 	unsigned long flags;
 	struct tegra_cl_dvfs *cld = dev_get_drvdata(dev);
 
@@ -917,7 +918,10 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 		tegra_cl_dvfs_unlock(cld);
 	cld->cl_suspended = true;
 	clk_unlock_restore(cld->dfll_clk, &flags);
-	return 0;
+
+	/* Enforce safe cold limit via direct regulator api */
+	ret = tegra_dvfs_rail_dfll_mode_set_cold(cld->safe_dvfs->dvfs_rail);
+	return ret;
 }
 
 static int tegra_cl_dvfs_resume_cl(struct device *dev)
