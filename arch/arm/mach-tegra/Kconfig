@@ -325,6 +325,7 @@ config TEGRA_SIMULATION_PLATFORM
         bool "Simulation"
         select TEGRA_PRE_SILICON_SUPPORT
 	select LESS_GCC_OPT if DEBUG_KERNEL
+	select READABLE_ASM if DEBUG_KERNEL
         select TEGRA_SIMULATION_SPLIT_MEM
         help
           This enables support for a Tegra simulation platform.
@@ -334,6 +335,8 @@ config TEGRA_SIMULATION_PLATFORM
 config TEGRA_FPGA_PLATFORM
         bool "FPGA"
         select TEGRA_PRE_SILICON_SUPPORT
+	select LESS_GCC_OPT if DEBUG_KERNEL
+	select READABLE_ASM if DEBUG_KERNEL
         help
           This enables support for a Tegra FPGA platform.
           Select this only if you are an NVIDIA developer working
