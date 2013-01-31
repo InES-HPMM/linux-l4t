@@ -736,6 +736,10 @@ int __init pluto_edp_init(void)
 	return 0;
 }
 
+static struct thermal_zone_params soctherm_tzp = {
+	.governor_name = "pid_thermal_gov",
+};
+
 static struct tegra_tsensor_pmu_data tpdata_palmas = {
 	.reset_tegra = 1,
 	.pmu_16bit_ops = 0,
@@ -776,6 +780,7 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 					.lower = THERMAL_NO_LIMIT,
 				},
 			},
+			.tzp = &soctherm_tzp,
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
@@ -805,6 +810,7 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 					.lower = THERMAL_NO_LIMIT,
 				},
 			},
+			.tzp = &soctherm_tzp,
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
