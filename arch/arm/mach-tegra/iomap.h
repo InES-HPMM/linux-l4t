@@ -924,7 +924,7 @@
 #endif
 
 #define IO_TO_VIRT_BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))
-#define IO_TO_VIRT_XLATE(p, pst, vst)	(((p) - (pst) + (vst)))
+#define IO_TO_VIRT_XLATE(p, pst, vst)	((void *)((p) - (pst) + (vst)))
 
 #ifdef CONFIG_TEGRA_GK20A
 #define IO_TO_VIRT_GK20A_B0(n) \
