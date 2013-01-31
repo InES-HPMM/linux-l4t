@@ -103,7 +103,7 @@ static int __devinit max8831_probe(struct i2c_client *client,
 
 	ret = mfd_add_devices(chip->dev, 0,
 		      max8831_mfd_cells, ARRAY_SIZE(max8831_mfd_cells),
-		      NULL, 0);
+		      NULL, 0, NULL);
 	if (ret < 0)
 		goto failed;
 
