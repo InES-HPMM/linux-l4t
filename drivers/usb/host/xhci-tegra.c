@@ -374,7 +374,6 @@ static int tegra_xhci_pmc_usb2_wakenotif_init(struct tegra_xhci_hcd *tegra,
 	struct platform_device *pdev = tegra->pdev;
 	struct xhci_hcd	*xhci = tegra->xhci;
 	struct usb_hcd *hcd = xhci_to_hcd(xhci);
-	int i;
 	u32 val;
 
 	/*
@@ -457,18 +456,6 @@ static int tegra_xhci_pmc_usb2_wakenotif_init(struct tegra_xhci_hcd *tegra,
 		val |= UTMIP_SPEED(port, UTMIP_SPEED_HS);
 
 	writel(val, pmc_base + PMC_UTMIP_UHSIC_SAVED_STATE_0);
-
-	/* PMC_UTMIP_UHSIC_LINE_WAKEUP_0 */
-	for (i = 0; i < PMC_PORT_NUM; i++) {
-		val = readl(pmc_base + PMC_UTMIP_UHSIC_LINE_WAKEUP_0);
-		val &= ~UTMIP_LINE_WAKEUP_EN(i);
-		writel(val, pmc_base + PMC_UTMIP_UHSIC_LINE_WAKEUP_0);
-	}
-
-	/* UHSIC2_LINE_WAKEUP_EN_P1=0 */
-	val = readl(pmc_base + PMC_UTMIP_UHSIC2_LINE_WAKEUP_0);
-	val &= ~UHSIC_LINE_WAKEUP_EN_P1;
-	writel(val, pmc_base + PMC_UTMIP_UHSIC2_LINE_WAKEUP_0);
 
 	/*
 	 * G. Remove fake values and make synchronizers work a bit.
