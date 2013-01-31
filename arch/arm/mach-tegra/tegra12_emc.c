@@ -38,21 +38,21 @@ static void __iomem *mc_base = IO_ADDRESS(TEGRA_MC_BASE);
 
 static inline void emc_writel(u32 val, unsigned long addr)
 {
-	writel(val, (u32)emc_base + addr);
+	writel(val, emc_base + addr);
 	barrier();
 }
 static inline u32 emc_readl(unsigned long addr)
 {
-	return readl((u32)emc_base + addr);
+	return readl(emc_base + addr);
 }
 static inline void mc_writel(u32 val, unsigned long addr)
 {
-	writel(val, (u32)mc_base + addr);
+	writel(val, mc_base + addr);
 	barrier();
 }
 static inline u32 mc_readl(unsigned long addr)
 {
-	return readl((u32)mc_base + addr);
+	return readl(mc_base + addr);
 }
 
 int tegra_emc_set_rate(unsigned long rate)
