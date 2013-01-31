@@ -4389,9 +4389,9 @@ MODULE_DEVICE_TABLE(pci, azx_pci_ids);
 /* pci_driver definition */
 static struct pci_driver azx_driver = {
 	.name = KBUILD_MODNAME,
-	.id_table = azx_ids,
-	.probe = azx_probe,
-	.remove = azx_remove,
+	.id_table = azx_pci_ids,
+	.probe = azx_probe_pci,
+	.remove = azx_remove_pci,
 	.driver = {
 		.pm = AZX_PM_OPS,
 	},
