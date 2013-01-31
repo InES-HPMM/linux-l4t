@@ -51,17 +51,16 @@ int tegra14_cpu_g_idle_rate_exchange(unsigned long *rate);
 
 static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 {
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	return tegra2_cpuidle_init_soc(ops);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	return tegra3_cpuidle_init_soc(ops);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	return tegra11x_cpuidle_init_soc(ops);
-#endif
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	return tegra14x_cpuidle_init_soc(ops);
+#else
+	return 0;
 #endif
 }
 
