@@ -472,9 +472,10 @@ static int soctherm_set_limits(enum soctherm_therm_id therm,
 
 static void soctherm_update(void)
 {
-	long temp, trip_temp, low_temp = 0, high_temp = 128000;
+	long temp, trip_temp, hyst_temp, low_temp = 0, high_temp = 128000;
 	int i, count;
 	enum thermal_trip_type trip_type;
+	struct thermal_trip_info *trip_state;
 
 	if (!soctherm_init_platform_done)
 		return;
@@ -493,14 +494,19 @@ static void soctherm_update(void)
 			    (trip_type == THERMAL_TRIP_CRITICAL))
 				continue; /* handled in HW */
 
-			thz[i]->ops->get_trip_temp(thz[i], count, &trip_temp);
+			trip_state = &plat_data.therm[i].trips[count];
+			trip_temp = trip_state->trip_temp;
+
+			hyst_temp = trip_temp - trip_state->hysteresis;
+			if ((trip_type == THERMAL_TRIP_PASSIVE) &&
+			    !trip_state->tripped)
+				hyst_temp = trip_temp;
 
 			if ((trip_temp >= temp) && (trip_temp < high_temp))
 				high_temp = trip_temp;
 
-			if ((trip_temp < temp) && (trip_temp > low_temp))
-				low_temp = trip_temp -
-				    plat_data.therm[i].trips[count].hysteresis;
+			if ((hyst_temp < temp) && (hyst_temp > low_temp))
+				low_temp = hyst_temp;
 		}
 	}
 
@@ -656,6 +662,17 @@ static int soctherm_get_trip_temp(struct thermal_zone_device *thz,
 
 	trip_state = &plat_data.therm[index].trips[trip];
 	*temp = trip_state->trip_temp;
+
+	if (trip_state->trip_type != THERMAL_TRIP_PASSIVE)
+		return 0;
+
+	if (thz->temperature >= *temp) {
+		trip_state->tripped = true;
+	} else if (trip_state->tripped) {
+		*temp -= trip_state->hysteresis;
+		if (thz->temperature < *temp)
+			trip_state->tripped = false;
+	}
 	return 0;
 }
 
