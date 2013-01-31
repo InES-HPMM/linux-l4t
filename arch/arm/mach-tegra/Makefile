@@ -134,10 +134,12 @@ endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_soctherm.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra11_soctherm.o
 endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_throttle.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_throttle.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra3_throttle.o
 endif
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
