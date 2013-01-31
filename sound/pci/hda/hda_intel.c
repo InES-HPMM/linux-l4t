@@ -4422,7 +4422,7 @@ MODULE_DEVICE_TABLE(platform, azx_platform_ids);
 /* platform_driver definition */
 static struct platform_driver hda_platform_driver = {
 	.driver = {
-		.name = "hda-platform"
+		.name = "hda-platform",
 		.pm = AZX_PM_OPS,
 	},
 	.probe = azx_probe_platform,
