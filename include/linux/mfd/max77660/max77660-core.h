@@ -108,6 +108,40 @@
 #define MAX77660_REG_AME1_GPIO          0x78
 #define MAX77660_REG_AME2_GPIO          0x78
 
+/* ADC registers */
+#define MAX77660_REG_ADCINT		0x7A
+#define MAX77660_REG_ADCINTM		0x7B
+#define MAX77660_REG_ADCCTRL		0x7C
+#define MAX77660_REG_ADCDLY		0x7D
+#define MAX77660_REG_ADCSEL0		0x7E
+#define MAX77660_REG_ADCSEL1		0x7F
+#define MAX77660_REG_ADCCHSEL		0x80
+#define MAX77660_REG_ADCDATAL		0x81
+#define MAX77660_REG_ADCDATAH		0x82
+#define MAX77660_REG_IADC		0x83
+#define MAX77660_REG_DTRL		0x84
+#define MAX77660_REG_DTRH		0x85
+#define MAX77660_REG_DTFL		0x86
+#define MAX77660_REG_DTFH		0x87
+#define MAX77660_REG_DTOFFL		0x88
+#define MAX77660_REG_DTOFFH		0x89
+
+#define MAX77660_ADCINT_DTRINT		BIT(1)
+#define MAX77660_ADCINT_DTFINT		BIT(2)
+#define MAX77660_ADCINT_ADCCONVINT	BIT(3)
+#define MAX77660_ADCINT_ADCCONTINT	BIT(4)
+#define MAX77660_ADCINT_ADCTRIGINT	BIT(5)
+
+#define MAX77660_ADCCTRL_ADCEN		BIT(0)
+#define MAX77660_ADCCTRL_ADCREFEN	BIT(1)
+#define MAX77660_ADCCTRL_ADCAVG_MASK	0x0C
+#define MAX77660_ADCCTRL_ADCAVG(n)	(((n) & 0x3) << 2)
+#define MAX77660_ADCCTRL_ADCCONV	BIT(4)
+#define MAX77660_ADCCTRL_ADCCONT	BIT(5)
+
+#define MAX77660_IADC_IADC(n)		((n) & 0x3)
+#define MAX77660_IADC_IADCMUX(ch)	(((ch) & 0x3) << 2)
+
 /* LED controls */
 #define MAX77660_REG_LEDEN		0x94
 #define MAX77660_REG_LED0BRT		0x95
@@ -506,6 +540,24 @@ enum MAX77660_PINS {
 	MAX77660_PINS_MAX,
 };
 
+enum MAX77660_ADC_CHANNELS {
+	MAX77660_ADC_CH_VBYP,
+	MAX77660_ADC_CH_TDIE,
+	MAX77660_ADC_CH_VBBATT,
+	MAX77660_ADC_CH_VSYS,
+	MAX77660_ADC_CH_VDCIN,
+	MAX77660_ADC_CH_VWCSNS,
+	MAX77660_ADC_CH_VTHM,
+	MAX77660_ADC_CH_VICHG,
+	MAX77660_ADC_CH_VMBATDET,
+	MAX77660_ADC_CH_VMBAT,
+	MAX77660_ADC_CH_ADC0,
+	MAX77660_ADC_CH_ADC1,
+	MAX77660_ADC_CH_ADC2,
+	MAX77660_ADC_CH_ADC3,
+	MAX77660_ADC_CH_MAX,
+};
+
 /*
  * max77660_pinctrl_platform_data: Pin control platform data.
  * @pin_id: Pin ID.
@@ -525,6 +577,18 @@ struct max77660_pinctrl_platform_data {
  */
 struct max77660_charger_platform_data {
 	struct regulator_init_data *vbus_reg_init_data;
+};
+
+/*
+ * max77660_adc_platform_data: Platform data for ADC.
+ * @adc_current_uA: ADC current source in uA.
+ * @adc_avg_sample: Average ADC sample. 0 Means 1 sample.
+ * @adc_ref_enabled: ADC reference enabled.
+ */
+struct max77660_adc_platform_data {
+	int adc_current_uA;
+	int adc_avg_sample;
+	unsigned adc_ref_enabled:1;
 };
 
 /*
@@ -569,6 +633,7 @@ struct max77660_platform_data {
 
 	struct max77660_charger_platform_data *charger_pdata;
 
+	struct max77660_adc_platform_data *adc_pdata;
 	unsigned int flags;
 
 	bool en_buck2_ext_ctrl;
