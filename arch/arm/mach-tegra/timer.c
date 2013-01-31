@@ -644,7 +644,7 @@ void __init tegra_init_timer(void)
 
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
 
-	arm_delay_ops.delay		= __tegra_delay;
-	arm_delay_ops.const_udelay	= __tegra_const_udelay;
-	arm_delay_ops.udelay		= __tegra_udelay;
+	//arm_delay_ops.delay		= __tegra_delay;
+	//arm_delay_ops.const_udelay	= __tegra_const_udelay;
+	//arm_delay_ops.udelay		= __tegra_udelay;
 }
