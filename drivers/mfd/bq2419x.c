@@ -85,7 +85,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	}
 
 	ret = mfd_add_devices(bq->dev, -1, bq2419x_children,
-			ARRAY_SIZE(bq2419x_children), NULL, 0);
+			ARRAY_SIZE(bq2419x_children), NULL, 0, NULL);
 	if (ret < 0) {
 		dev_err(bq->dev,
 			"registering mfd sub devices failed, err = %d\n", ret);
