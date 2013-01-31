@@ -6039,8 +6039,6 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.c2bus",		"edp.c2bus",		NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
 
-	DUAL_CBUS_CLK("msenc.cbus",	"tegra_msenc",		"msenc",  &tegra_clk_c3bus, "msenc", 0, 0),
-	DUAL_CBUS_CLK("tsec.cbus",	"tegra_tsec",		"tsec",   &tegra_clk_c3bus, "tsec", 0, 0),
 	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	  &tegra_clk_c3bus, "vde", 0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra14-se",		NULL,	  &tegra_clk_c3bus, "se",  0, 0),
 	SHARED_CLK("cap.c3bus",		"cap.c3bus",		NULL,	&tegra_clk_c3bus, NULL,  0, SHARED_CEILING),
@@ -6050,8 +6048,6 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_cbus, "3d",  0, 0),
 	SHARED_CLK("2d.cbus",	"tegra_gr2d",		"gr2d",	&tegra_clk_cbus, "2d",  0, 0),
 	SHARED_CLK("epp.cbus",	"tegra_gr2d",		"epp",	&tegra_clk_cbus, "epp", 0, 0),
-	SHARED_CLK("msenc.cbus", "tegra_msenc",		"msenc", &tegra_clk_cbus, "msenc", 0, 0),
-	SHARED_CLK("tsec.cbus",	"tegra_tsec",		"tsec", &tegra_clk_cbus, "tsec", 0, 0),
 	SHARED_CLK("vde.cbus",	"tegra-avp",		"vde",	&tegra_clk_cbus, "vde", 0, 0),
 	SHARED_CLK("se.cbus",	"tegra14-se",		NULL,	&tegra_clk_cbus, "se",  0, 0),
 	SHARED_CLK("cap.cbus",	"cap.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
@@ -6122,6 +6118,8 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
 	CLK_DUPLICATE("twd", "smp_twd", NULL),
+	CLK_DUPLICATE("msenc", "tegra_msenc", "msenc"),
+	CLK_DUPLICATE("tsec", "tegra_tsec", "tsec"),
 };
 
 struct clk *tegra_ptr_clks[] = {
