@@ -353,6 +353,7 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 	/* 1:1 scaling in open loop */
 	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
 	val |= (SCALE_MAX - 1) << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+	val &= ~CL_DVFS_FREQ_REQ_FORCE_ENABLE;
 	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 }
 
