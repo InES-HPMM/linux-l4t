@@ -5157,6 +5157,9 @@ static void tegra11_clk_coupled_gate_disable(struct clk *c)
 
 	tegra11_periph_clk_disable(c);
 
+	if (!c->refcnt)	/* happens only on boot clean-up: don't propagate */
+		return;
+
 	for (sel = c->inputs; sel->input != NULL; sel++) {
 		if (sel->input == c->parent)
 			continue;
