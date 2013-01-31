@@ -440,7 +440,7 @@ config CHARGER_MAX77660
 
 config CHARGER_EXTCON_MAX77660
 	tristate "MAX77660 battery charger and external connection support"
-	depends on MFD_MAX77660 && EXTCON
+	depends on MFD_MAX77660 && EXTCON && REGULATOR
 	help
 	 MAX77660 is a pmic for smartphones and tablets which supports
 	 battery charging feature. It also detect the presence of HOST

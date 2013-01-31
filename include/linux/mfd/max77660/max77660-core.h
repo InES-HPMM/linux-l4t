@@ -360,6 +360,11 @@
 
 #define MAX77660_CHG_CHGINT_DC_UVP		BIT(4)
 
+#define MAX77660_RBOOST_RBOOSTEN		BIT(0)
+#define MAX77660_RBOOST_RBOUT_MASK		0x1E
+#define MAX77660_RBOOST_RBOUT_VOUT(n)		((n & 0xF) << 1)
+#define MAX77660_RBOOST_RBFORCEPWM		BIT(5)
+#define MAX77660_RBOOST_BSTSLEWRATE_MASK	0xC0
 
 #define MAX77660_BUCK2_PWR_MODE_MASK	(BIT(2) | BIT(3))
 
@@ -516,6 +521,13 @@ struct max77660_pinctrl_platform_data {
 };
 
 /*
+ * max77660_charger_platform_data: Platform data for charger.
+ */
+struct max77660_charger_platform_data {
+	struct regulator_init_data *vbus_reg_init_data;
+};
+
+/*
  * Flags
  */
 #define SLP_LPM_ENABLE		0x01
@@ -540,11 +552,11 @@ struct max77660_pwm_dvfs_init_data {
  * max77660_platform_data: Platform data for MAX77660.
  * @pinctrl_pdata: Pincontrol configurations.
  * @num_pinctrl: Number of pin control data.
+ * charger_pdata: Charger platform data.
  * @system_watchdog_timeout: System wathdog timeout in seconds. If this value
  *		is -ve then timer will not start during initialisation.
  * led_disable: Disable LEDs.
  */
-
 struct max77660_platform_data {
 	int irq_base;
 	int gpio_base;
@@ -554,6 +566,8 @@ struct max77660_platform_data {
 
 	struct max77660_pinctrl_platform_data *pinctrl_pdata;
 	int num_pinctrl;
+
+	struct max77660_charger_platform_data *charger_pdata;
 
 	unsigned int flags;
 

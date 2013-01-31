@@ -20,6 +20,7 @@
  * 02111-1307, USA
  */
 #include <linux/module.h>
+#include <linux/err.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
@@ -28,12 +29,15 @@
 #include <linux/i2c.h>
 #include <linux/pm.h>
 #include <linux/extcon.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
 #include <linux/mfd/max77660/max77660-core.h>
 
 struct max77660_chg_extcon {
 	struct device		*dev;
 	struct device		*parent;
 	struct extcon_dev	*edev;
+	struct regulator_dev	*rdev;
 	int			irq;
 };
 
@@ -88,18 +92,89 @@ out:
 	return IRQ_HANDLED;
 }
 
+static int max77660_vbus_enable_time(struct regulator_dev *rdev)
+{
+	 return 500000;
+}
+
+static int max77660_vbus_is_enabled(struct regulator_dev *rdev)
+{
+	struct max77660_chg_extcon *chg_extcon =rdev_get_drvdata(rdev);
+	int ret;
+	u8 val;
+
+	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_RBOOST, &val);
+	if (ret < 0) {
+		dev_err(chg_extcon->dev, "RBOOST read failed: %d\n", ret);
+		return ret;
+	}
+	return !!(val & MAX77660_RBOOST_RBOOSTEN);
+}
+
+static int max77660_vbus_enable(struct regulator_dev *rdev)
+{
+	struct max77660_chg_extcon *chg_extcon =rdev_get_drvdata(rdev);
+	int ret;
+
+	ret = max77660_reg_update(chg_extcon->parent, MAX77660_CHG_SLAVE,
+			MAX77660_CHARGER_RBOOST,
+			MAX77660_RBOOST_RBOUT_VOUT(0x6),
+			MAX77660_RBOOST_RBOUT_MASK);
+	if (ret < 0) {
+		dev_err(chg_extcon->dev, "RBOOST update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_set_bits(chg_extcon->parent, MAX77660_CHG_SLAVE,
+			MAX77660_CHARGER_RBOOST, MAX77660_RBOOST_RBOOSTEN);
+	if (ret < 0)
+		dev_err(chg_extcon->dev, "RBOOST setbits failed: %d\n", ret);
+	return ret;
+}
+
+static int max77660_vbus_disable(struct regulator_dev *rdev)
+{
+	struct max77660_chg_extcon *chg_extcon =rdev_get_drvdata(rdev);
+	 int ret;
+
+	ret = max77660_reg_clr_bits(chg_extcon->parent, MAX77660_CHG_SLAVE,
+			MAX77660_CHARGER_RBOOST, MAX77660_RBOOST_RBOOSTEN);
+	if (ret < 0)
+		dev_err(chg_extcon->dev, "RBOOST clrbits failed: %d\n", ret);
+	 return ret;
+}
+
+static struct regulator_ops max77660_vbus_ops = {
+	.enable		= max77660_vbus_enable,
+	.disable	= max77660_vbus_disable,
+	.is_enabled	= max77660_vbus_is_enabled,
+	.enable_time	= max77660_vbus_enable_time,
+};
+
+static struct regulator_desc max77660_vbus_desc = {
+	.name = "max77660-vbus",
+	.ops = &max77660_vbus_ops,
+	.type = REGULATOR_VOLTAGE,
+	.owner = THIS_MODULE,
+};
+
 static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon;
 	struct max77660_platform_data *pdata;
+	struct max77660_charger_platform_data *chg_pdata;
 	struct extcon_dev *edev;
+	struct regulator_config config = { };
 	int ret;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
-	if (!pdata) {
+	if (!pdata || !pdata->charger_pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODEV;
 	}
+
+	chg_pdata = pdata->charger_pdata;
 
 	chg_extcon = devm_kzalloc(&pdev->dev, sizeof(*chg_extcon), GFP_KERNEL);
 	if (!chg_extcon) {
@@ -152,6 +227,17 @@ static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 		goto out_irq_free;
 	}
 
+	config.dev = &pdev->dev;
+	config.init_data = chg_pdata->vbus_reg_init_data;
+	config.driver_data = chg_extcon;
+
+	chg_extcon->rdev = regulator_register(&max77660_vbus_desc, &config);
+	if (IS_ERR(chg_extcon->rdev)) {
+		ret = PTR_ERR(chg_extcon->rdev);
+		dev_err(&pdev->dev, "Failed to register VBUS regulator: %d\n",
+					ret);
+		goto out_irq_free;
+	}
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
@@ -169,6 +255,7 @@ static int __devexit max77660_chg_extcon_remove(struct platform_device *pdev)
 
 	extcon_dev_unregister(chg_extcon->edev);
 	free_irq(chg_extcon->irq, chg_extcon);
+	regulator_unregister(chg_extcon->rdev);
 	return 0;
 }
 
