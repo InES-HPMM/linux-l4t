@@ -30,6 +30,7 @@
 #include <mach/clk.h>
 #include <mach/pinmux.h>
 #include <mach/tegra_usb_pmc.h>
+#include <mach/tegra_usb_pad_ctrl.h>
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #include <mach/pinmux-t14.h>
@@ -151,13 +152,6 @@
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
 #define   XCVR_SETUP_MSB_CALIB(x) ((x) >> 4)
 
-#define UTMIP_BIAS_CFG0		0x80c
-#define   UTMIP_OTGPD			(1 << 11)
-#define   UTMIP_BIASPD			(1 << 10)
-#define   UTMIP_HSSQUELCH_LEVEL(x)	(((x) & 0x3) << 0)
-#define   UTMIP_HSDISCON_LEVEL(x)	(((x) & 0x3) << 2)
-#define   UTMIP_HSDISCON_LEVEL_MSB	(1 << 24)
-
 #define UTMIP_HSRX_CFG0		0x810
 #define   UTMIP_ELASTIC_LIMIT(x)	(((x) & 0x1f) << 10)
 #define   UTMIP_IDLE_WAIT(x)		(((x) & 0x1f) << 15)
@@ -208,9 +202,6 @@
 #define UTMIP_BIAS_STS0			0x840
 #define   UTMIP_RCTRL_VAL(x)		(((x) & 0xffff) << 0)
 #define   UTMIP_TCTRL_VAL(x)		(((x) & (0xffff << 16)) >> 16)
-
-#define UTMIPLL_HW_PWRDN_CFG0			0x52c
-#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
 
 #define UHSIC_PLL_CFG1				0xc04
 #define   UHSIC_XTAL_FREQ_COUNT(x)		(((x) & 0xfff) << 0)
@@ -336,8 +327,6 @@
 #define HSIC_ELASTIC_OVERRUN_LIMIT	16
 
 struct tegra_usb_pmc_data pmc_data[3];
-static DEFINE_SPINLOCK(utmip_pad_lock);
-static int utmip_pad_count;
 
 static struct tegra_xtal_freq utmip_freq_table[] = {
 	{
@@ -802,69 +791,6 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 	clk_put(phy->utmi_pad_clk);
 }
 
-static int utmi_phy_pad_power_on(struct tegra_usb_phy *phy)
-{
-	unsigned long val, flags;
-	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
-	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
-
-	clk_enable(phy->utmi_pad_clk);
-
-	spin_lock_irqsave(&utmip_pad_lock, flags);
-	utmip_pad_count++;
-
-	val = readl(pad_base + UTMIP_BIAS_CFG0);
-	val &= ~(UTMIP_OTGPD | UTMIP_BIASPD);
-	val |= UTMIP_HSSQUELCH_LEVEL(0x2) | UTMIP_HSDISCON_LEVEL(0x1) |
-		UTMIP_HSDISCON_LEVEL_MSB;
-	writel(val, pad_base + UTMIP_BIAS_CFG0);
-
-	spin_unlock_irqrestore(&utmip_pad_lock, flags);
-
-	clk_disable(phy->utmi_pad_clk);
-
-	return 0;
-}
-
-static int utmi_phy_pad_power_off(struct tegra_usb_phy *phy)
-{
-	unsigned long val, flags;
-	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
-	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	clk_enable(phy->utmi_pad_clk);
-	spin_lock_irqsave(&utmip_pad_lock, flags);
-
-	if (!utmip_pad_count) {
-		pr_err("%s: utmip pad already powered off\n", __func__);
-		goto out;
-	}
-	if (--utmip_pad_count == 0) {
-		val = readl(pad_base + UTMIP_BIAS_CFG0);
-		val |= UTMIP_OTGPD | UTMIP_BIASPD;
-		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
-			UTMIP_HSDISCON_LEVEL_MSB);
-		writel(val, pad_base + UTMIP_BIAS_CFG0);
-
-		val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	}
-out:
-	spin_unlock_irqrestore(&utmip_pad_lock, flags);
-	clk_disable(phy->utmi_pad_clk);
-
-	return 0;
-}
-
 static int utmi_phy_irq(struct tegra_usb_phy *phy)
 {
 	void __iomem *base = phy->regs;
@@ -1078,7 +1004,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
-	utmi_phy_pad_power_off(phy);
+	utmi_phy_pad_disable();
 
 	/* Disable PHY clock */
 	val = readl(base + HOSTPC1_DEVLC);
@@ -1166,7 +1092,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	}
 
-	utmi_phy_pad_power_on(phy);
+	utmi_phy_pad_enable();
 
 	val = readl(base + UTMIP_XCVR_CFG0);
 	val &= ~(UTMIP_XCVR_LSBIAS_SEL | UTMIP_FORCE_PD_POWERDOWN |
