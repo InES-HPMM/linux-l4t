@@ -3,7 +3,7 @@
  *
  * Author: Vinod G. <vinodg@nvidia.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -298,9 +298,6 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, sample_size, i2s_daifmt;
 	int err, rate;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
-#endif
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
@@ -384,12 +381,7 @@ static int tegra_aic326x_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "failed to set dac-dap path\n");
 		return err;
 	}
-#else /*assumes tegra3*/
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK  && i2s->is_dam_used)
-		tegra_aic326x_set_dam_cif(i2s->dam_ifc, srate,
-			params_channels(params), sample_size, 0, 0, 0, 0);
 #endif
-
 	return 0;
 }
 
@@ -611,7 +603,7 @@ static int tegra_aic326x_startup(struct snd_pcm_substream *substream)
 			i2s->call_record_dam_ifc2);
 		tegra30_ahub_set_rx_cif_source(i2s->rxcif,
 			TEGRA30_AHUB_TXCIF_DAM0_TX0 + i2s->call_record_dam_ifc);
-
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
 		/* Configure DAM0 for SRC */
 		if (bb_info->rate != hifi_info->rate) {
 			tegra30_dam_write_coeff_ram(i2s->call_record_dam_ifc,
@@ -625,7 +617,7 @@ static int tegra_aic326x_startup(struct snd_pcm_substream *substream)
 							bb_info->rate,
 							hifi_info->rate);
 		}
-
+#endif
 		/* enable the dam */
 		tegra30_dam_enable(i2s->call_record_dam_ifc, TEGRA30_DAM_ENABLE,
 				TEGRA30_DAM_CHIN1);
@@ -652,22 +644,10 @@ static void tegra_aic326x_shutdown(struct snd_pcm_substream *substream)
 		return;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* disable the dam*/
-		tegra30_dam_enable(i2s->dam_ifc, TEGRA30_DAM_DISABLE,
-				TEGRA30_DAM_CHIN1);
-
-		/* disconnect the ahub connections*/
-		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
-					(i2s->dam_ifc*2));
-
-		/* disable the dam and free the controller */
-		tegra30_dam_disable_clock(i2s->dam_ifc);
-		tegra30_dam_free_channel(i2s->dam_ifc, TEGRA30_DAM_CHIN1);
-		i2s->dam_ch_refcount--;
-		if (!i2s->dam_ch_refcount)
-			tegra30_dam_free_controller(i2s->dam_ifc);
+		tegra30_ahub_unset_rx_cif_source(
+					TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id);
+		tegra30_ahub_disable_clocks();
 	 } else {
-
 		if (!i2s->is_call_mode_rec)
 			return;
 
