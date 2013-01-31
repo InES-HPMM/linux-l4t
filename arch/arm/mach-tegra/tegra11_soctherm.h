@@ -69,6 +69,7 @@ struct soctherm_therm {
 	int etemp;
 	int num_trips;
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
+	struct thermal_zone_params *tzp;
 };
 
 struct soctherm_throttle_dev {

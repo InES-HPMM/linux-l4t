@@ -833,7 +833,7 @@ static int __init soctherm_thermal_sys_init(void)
 					(1 << therm->num_trips) - 1,
 					(void *)TSENSE_SIZE + i,
 					&soctherm_ops,
-					NULL,
+					therm->tzp,
 					therm->passive_delay,
 					0);
 	}
