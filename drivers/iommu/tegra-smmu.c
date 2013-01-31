@@ -31,6 +31,8 @@
 #include <linux/sched.h>
 #include <linux/iommu.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_iommu.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/tegra-ahb.h>
@@ -346,6 +348,9 @@ struct smmu_device {
 	struct smmu_debugfs_info *debugfs_info;
 
 	struct device_node *ahb;
+
+	int		num_as;
+	struct smmu_as	as[0];		/* Run-time allocated array */
 };
 
 static struct smmu_device *smmu_handle; /* unique for a system */
