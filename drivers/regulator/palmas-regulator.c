@@ -739,8 +739,8 @@ static void palmas_enable_smps10_boost(struct palmas *palmas)
 		return;
 	}
 
-	reg |= PALMA_SMPS10_VSEL;
-	reg |= PALMA_SMPS10_BOOST_EN;
+	reg |= SMPS10_VSEL;
+	reg |= SMPS10_BOOST_EN;
 
 	ret = palmas_smps_write(palmas, addr, reg);
 	if (ret < 0) {
