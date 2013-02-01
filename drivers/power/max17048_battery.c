@@ -509,6 +509,7 @@ static int max17048_probe(struct i2c_client *client,
 	chip->battery.get_property	= max17048_get_property;
 	chip->battery.properties	= max17048_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17048_battery_props);
+	chip->status			= POWER_SUPPLY_STATUS_DISCHARGING;
 
 	ret = power_supply_register(&client->dev, &chip->battery);
 	if (ret) {
