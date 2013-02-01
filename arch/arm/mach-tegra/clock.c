@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/list.h>
+#include <linux/lockdep.h>
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
@@ -243,6 +244,11 @@ void clk_init(struct clk *c)
 			c->state = ON;
 	}
 	c->stats.last_update = get_jiffies_64();
+
+#ifdef CONFIG_LOCKDEP
+	lockdep_set_class_and_name(&c->mutex, &c->lockdep_class, c->name);
+	lockdep_set_class_and_name(&c->spinlock, &c->lockdep_class, c->name);
+#endif
 
 	mutex_lock(&clock_list_lock);
 	list_add(&c->node, &clocks);

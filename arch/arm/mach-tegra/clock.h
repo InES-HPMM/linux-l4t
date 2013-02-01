@@ -43,6 +43,7 @@
 #include <linux/clkdev.h>
 #include <linux/clk.h>
 #include <linux/list.h>
+#include <linux/lockdep.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
@@ -178,6 +179,10 @@ struct clk {
 	const struct clk_mux_sel	*inputs;
 	u32				reg;
 	u32				reg_shift;
+
+#ifdef CONFIG_LOCKDEP
+	struct lock_class_key	lockdep_class;
+#endif
 
 	struct list_head		shared_bus_list;
 	struct clk_backup		shared_bus_backup;
