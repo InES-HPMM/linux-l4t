@@ -63,6 +63,7 @@
 #define PMC_IO_DPD_REQ			0x1b8
 #define PMC_IO_DPD_STATUS		0x1bc
 #define PMC_SCRATCH1_ECO       0x264
+#define PMC_POR_DPD_CTRL	       0x264
 
 #define FLOW_IPC_STS			0x500
 #define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
@@ -881,6 +882,12 @@ tegra3_cpu_clk32k:
 	ldr r1, [r4, #PMC_SCRATCH1_ECO]
 	orr r1, r1, #0x3F
 	str r1, [r4, #PMC_SCRATCH1_ECO]
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	ldr r1, [r4, #PMC_POR_DPD_CTRL]
+	orr r1, r1, #0x47
+	str r1, [r4, #PMC_POR_DPD_CTRL]
 #endif
 
 	mov	pc, lr
