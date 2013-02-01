@@ -244,7 +244,7 @@ static void max77660_power_off(void)
 
 	dev_info(chip->dev, "%s: Global shutdown\n", __func__);
 	max77660_reg_set_bits(chip->dev, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG1,
+			MAX77660_REG_GLOBAL_CFG0,
 			GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 }
 
