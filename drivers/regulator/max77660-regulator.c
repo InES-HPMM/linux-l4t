@@ -146,6 +146,8 @@
 #define PWMRST_SHIFT		7
 #define PWMEN_SHIFT		2
 
+#define MAX77660_REG_GLBLCNFG7	0xC0
+
 /* Power Mode */
 #define POWER_MODE_NORMAL		3
 #define POWER_MODE_LPM			2
@@ -211,7 +213,6 @@
 #define LDO1_18_CNFG_ADE_SHIFT      6
 #define LDO1_18_CNFG_VOUT_MASK      0x3F  /*  BIT(0-5) */
 #define LDO1_18_CNFG_VOUT_SHIFT     0
-
 
 #if 0
 #define CID_DIDM_MASK			0xF0
@@ -557,6 +558,8 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	int power_mode = (pdata->flags & GLPM_ENABLE) ?
 			 POWER_MODE_GLPM : POWER_MODE_NORMAL;
+	u8 val;
+	int ret;
 
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "enable: Regulator %s using %s\n",
@@ -569,12 +572,43 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 			(reg->regulator_mode == REGULATOR_MODE_STANDBY))
 		power_mode = POWER_MODE_LPM;
 
+	if (pdata->flags & ENABLE_EN) {
+		ret = max77660_reg_read(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLBLCNFG7, &val);
+		if (ret < 0) {
+			dev_err(reg->dev, "preinit: Failed to get GLBLCNFG7 register 0x%x\n",
+				MAX77660_REG_GLBLCNFG7);
+			return ret;
+		}
+		/* if pdata->flags has enable_en3,
+		 * when regulator_enable for buck4 or ldo8,
+		 * en3 will be actually enabled. */
+		if (pdata->flags & ENABLE_EN3) {
+			val &= ~GLBLCNFG7_EN3_MASK_MASK;
+			power_mode = POWER_MODE_DISABLE;
+		}
+
+		ret = max77660_reg_write(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLBLCNFG7, &val);
+		if (ret < 0) {
+			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
+				MAX77660_REG_GLBLCNFG7);
+			return ret;
+
+		}
+	}
+
 	return max77660_regulator_set_power_mode(reg, power_mode);
 }
 
 static int max77660_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
+	struct max77660_regulator_platform_data *pdata = reg->pdata;
+	u8 val;
+	int ret;
 
 	int power_mode = POWER_MODE_DISABLE;
 
@@ -582,6 +616,32 @@ static int max77660_regulator_disable(struct regulator_dev *rdev)
 		dev_dbg(&rdev->dev, "disable: Regulator %s using %s\n",
 			rdev->desc->name, fps_src_name(reg->fps_src));
 		return 0;
+	}
+
+	if (pdata->flags & ENABLE_EN) {
+		ret = max77660_reg_read(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLBLCNFG7, &val);
+		if (ret < 0) {
+			dev_err(reg->dev, "preinit: Failed to get GLBLCNFG7 register 0x%x\n",
+				MAX77660_REG_GLBLCNFG7);
+			return ret;
+		}
+		/* if pdata->flags has enable_en3,
+		 * when regulator_disable for buck4 or ldo8,
+		 * en3 will be actually disabled. */
+		if (pdata->flags & ENABLE_EN3)
+			val |= GLBLCNFG7_EN3_MASK_MASK;
+
+		ret = max77660_reg_write(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLBLCNFG7, &val);
+		if (ret < 0) {
+			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
+				MAX77660_REG_GLBLCNFG7);
+			return ret;
+
+		}
 	}
 	return max77660_regulator_set_power_mode(reg, power_mode);
 }
@@ -799,6 +859,13 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		}
 	}
 
+	/* enable EN */
+	if (pdata->flags & ENABLE_EN) {
+		if (pdata->flags & ENABLE_EN3)
+			max77660_regulator_set_power_mode(reg,
+				POWER_MODE_DISABLE);
+	}
+
 	ret = max77660_regulator_set_fps(reg);
 	if (ret < 0) {
 		dev_err(reg->dev, "preinit: Failed to set FPS\n");
@@ -817,6 +884,10 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 			mask |= BUCK1_5_CNFG_FSRADE_MASK;
 			if (pdata->flags & SD_FSRADE_DISABLE)
 				val |= BUCK1_5_CNFG_FSRADE_MASK;
+
+			mask |= BUCK1_5_CNFG_DVFS_EN_MASK;
+			if (pdata->flags & DISABLE_DVFS)
+				val |= BUCK1_5_CNFG_DVFS_EN_MASK;
 		} else if ((reg->rinfo->id >= MAX77660_REGULATOR_ID_BUCK6) &&
 			(reg->rinfo->id <= MAX77660_REGULATOR_ID_BUCK7)) {
 			mask |= BUCK6_7_CNFG_FPWM_MASK;

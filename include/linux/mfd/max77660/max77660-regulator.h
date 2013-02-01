@@ -99,6 +99,15 @@ enum max77660_regulator_fps_src {
 /* Group Low-Power Mode */
 #define GLPM_ENABLE		0x80
 
+/* EN enable */
+#define ENABLE_EN		0x01
+#define ENABLE_EN1		(0x02 | ENABLE_EN)
+#define ENABLE_EN2		(0x04 | ENABLE_EN)
+#define ENABLE_EN3		(0x08 | ENABLE_EN)
+
+/* Disable DVFS */
+#define DISABLE_DVFS		0x10
+
 /* Tracking for LDO4 */
 #define LDO4_EN_TRACKING	0x100
 
