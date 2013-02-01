@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -377,7 +377,7 @@ static int nvavp_service(struct nvavp_info *nvavp)
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE) {
 		if (!pm_runtime_suspended(&nvavp->nvhost_dev->dev))
-			pm_runtime_put_sync(&nvavp->nvhost_dev->dev);
+			pm_runtime_put(&nvavp->nvhost_dev->dev);
 		pr_debug("nvavp_service NVE276_OS_INTERRUPT_AUDIO_IDLE\n");
 	}
 #endif
