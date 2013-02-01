@@ -27,10 +27,14 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <asm/io.h>
+#include <linux/regulator/consumer.h>
+#include <linux/clk.h>
 
+#include <mach/clk.h>
 #include <mach/tegra_bb.h>
 #include <linux/platform_data/nvshm.h>
 
+#include "clock.h"
 #include "iomap.h"
 
 /* BB mailbox offset */
@@ -605,6 +609,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		pdev->dev.platform_data;
 	void __iomem *tegra_mc = IO_ADDRESS(TEGRA_MC_BASE);
 	unsigned int size, bbc_mem_regions_0;
+	struct clk *c;
 
 
 	if (!pdev) {
@@ -775,6 +780,36 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_state);
 
 	bb->sd = sysfs_get_dirent(pdev->dev.kobj.sd, NULL, "status");
+
+	bb->vdd_buck4 = regulator_get(NULL, "vdd_bb");
+	if (IS_ERR_OR_NULL(bb->vdd_buck4)) {
+		pr_err("vdd_bb regulator get failed\n");
+		bb->vdd_buck4 = NULL;
+	} else {
+		regulator_set_voltage(bb->vdd_buck4, 1100000, 1100000);
+		regulator_enable(bb->vdd_buck4);
+	}
+
+	bb->vdd_ldo8 = regulator_get(NULL, "avdd_bb_pll");
+	if (IS_ERR_OR_NULL(bb->vdd_ldo8)) {
+		pr_err("avdd_bb_pll regulator get failed\n");
+		bb->vdd_ldo8 = NULL;
+	} else {
+		regulator_set_voltage(bb->vdd_ldo8, 900000, 900000);
+		regulator_enable(bb->vdd_ldo8);
+	}
+
+	/* clk enable for mc_bbc / pll_p_bbc */
+	c = tegra_get_clock_by_name("mc_bbc");
+	if (IS_ERR_OR_NULL(c))
+		clk_enable(c);
+	else
+		pr_err("mc_bbc get failed\n");
+	c = tegra_get_clock_by_name("pll_p_bbc");
+	if (IS_ERR_OR_NULL(c))
+		clk_enable(c);
+	else
+		pr_err("pll_p_bbc get failed\n");
 
 	bb->nvshm_pdata.ipc_base_virt = bb->ipc_virt;
 	bb->nvshm_pdata.ipc_size = bb->ipc_size;
