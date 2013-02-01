@@ -1,6 +1,5 @@
 /*
- * ina230.c - driver for TI INA230 current / power monitor sensor
- * (also compatible with TI INA226)
+ * ina230.c - driver for TI INA230/INA226/HPA02149 current/power monitor sensor
  *
  *
  * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
@@ -598,7 +597,9 @@ static int ina230_resume(struct i2c_client *client)
 
 
 static const struct i2c_device_id ina230_id[] = {
-	{DRIVER_NAME, 0 },
+	{"ina226", 0 },
+	{"ina230", 0 },
+	{"hpa02149", 0 },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, ina230_id);
