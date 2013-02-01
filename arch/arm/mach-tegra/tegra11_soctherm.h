@@ -21,6 +21,7 @@
 #ifndef __MACH_TEGRA_11x_SOCTHERM_H
 #define __MACH_TEGRA_11x_SOCTHERM_H
 
+/* This order must match the soc_therm HW register spec */
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
 	TSENSE_CPU1,
@@ -33,10 +34,11 @@ enum soctherm_sense {
 	TSENSE_SIZE,
 };
 
+/* This order must match the soc_therm HW register spec */
 enum soctherm_therm_id {
 	THERM_CPU = 0,
-	THERM_MEM,
 	THERM_GPU,
+	THERM_MEM,
 	THERM_PLL,
 	THERM_SIZE,
 };
@@ -61,6 +63,7 @@ struct soctherm_sensor {
 	int ten_count;
 	int tsample;
 	u8 pdiv;
+	u8 hot_off;
 };
 
 struct soctherm_therm {

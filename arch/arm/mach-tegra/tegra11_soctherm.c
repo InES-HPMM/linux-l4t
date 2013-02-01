@@ -145,6 +145,14 @@ static const int soc_therm_precision; /* default 0 -> low precision */
 #define TS_PDIV_PLLX_SHIFT		0
 #define TS_PDIV_PLLX_MASK		0xf
 
+#define TS_HOTSPOT_OFF			0x1c4
+#define TS_HOTSPOT_OFF_CPU_SHIFT	16
+#define TS_HOTSPOT_OFF_CPU_MASK		0xff
+#define TS_HOTSPOT_OFF_GPU_SHIFT	8
+#define TS_HOTSPOT_OFF_GPU_MASK		0xff
+#define TS_HOTSPOT_OFF_MEM_SHIFT	0
+#define TS_HOTSPOT_OFF_MEM_MASK		0xff
+
 #define TS_TEMP1			0x1c8
 #define TS_TEMP1_CPU_TEMP_SHIFT		16
 #define TS_TEMP1_CPU_TEMP_MASK		0xffff
@@ -158,27 +166,75 @@ static const int soc_therm_precision; /* default 0 -> low precision */
 #define TS_TEMP2_PLLX_TEMP_MASK		0xffff
 
 #define INTR_STATUS			0x84
-#define INTR_STATUS_CD2_SHIFT		13
-#define INTR_STATUS_CD2_MASK		0x1
-#define INTR_STATUS_CU2_SHIFT		12
-#define INTR_STATUS_CU2_MASK		0x1
-#define INTR_STATUS_CD1_SHIFT		11
-#define INTR_STATUS_CD1_MASK		0x1
-#define INTR_STATUS_CU1_SHIFT		10
-#define INTR_STATUS_CU1_MASK		0x1
-#define INTR_STATUS_CD0_SHIFT		9
-#define INTR_STATUS_CD0_MASK		0x1
-#define INTR_STATUS_CU0_SHIFT		8
-#define INTR_STATUS_CU0_MASK		0x1
+#define INTR_EN				0x88
+#define INTR_DIS			0x8c
+#define LOCK_CTL			0x90
 
-#define INTR_EN			0x88
-#define INTR_EN_MU0_SHIFT	24
-#define INTR_EN_MD0_SHIFT	25
-#define INTR_EN_CU0_SHIFT	8
-#define INTR_EN_CD0_SHIFT	9
+#define INTR_POS_MD3_SHIFT		31
+#define INTR_POS_MD3_MASK		0x1
+#define INTR_POS_MU3_SHIFT		30
+#define INTR_POS_MU3_MASK		0x1
+#define INTR_POS_MD2_SHIFT		29
+#define INTR_POS_MD2_MASK		0x1
+#define INTR_POS_MU2_SHIFT		28
+#define INTR_POS_MU2_MASK		0x1
+#define INTR_POS_MD1_SHIFT		27
+#define INTR_POS_MD1_MASK		0x1
+#define INTR_POS_MU1_SHIFT		26
+#define INTR_POS_MU1_MASK		0x1
+#define INTR_POS_MD0_SHIFT		25
+#define INTR_POS_MD0_MASK		0x1
+#define INTR_POS_MU0_SHIFT		24
+#define INTR_POS_MU0_MASK		0x1
+#define INTR_POS_GD3_SHIFT		23
+#define INTR_POS_GD3_MASK		0x1
+#define INTR_POS_GU3_SHIFT		22
+#define INTR_POS_GU3_MASK		0x1
+#define INTR_POS_GD2_SHIFT		21
+#define INTR_POS_GD2_MASK		0x1
+#define INTR_POS_GU2_SHIFT		20
+#define INTR_POS_GU2_MASK		0x1
+#define INTR_POS_GD1_SHIFT		19
+#define INTR_POS_GD1_MASK		0x1
+#define INTR_POS_GU1_SHIFT		18
+#define INTR_POS_GU1_MASK		0x1
+#define INTR_POS_GD0_SHIFT		17
+#define INTR_POS_GD0_MASK		0x1
+#define INTR_POS_GU0_SHIFT		16
+#define INTR_POS_GU0_MASK		0x1
+#define INTR_POS_CD3_SHIFT		15
+#define INTR_POS_CD3_MASK		0x1
+#define INTR_POS_CU3_SHIFT		14
+#define INTR_POS_CU3_MASK		0x1
+#define INTR_POS_CD2_SHIFT		13
+#define INTR_POS_CD2_MASK		0x1
+#define INTR_POS_CU2_SHIFT		12
+#define INTR_POS_CU2_MASK		0x1
+#define INTR_POS_CD1_SHIFT		11
+#define INTR_POS_CD1_MASK		0x1
+#define INTR_POS_CU1_SHIFT		10
+#define INTR_POS_CU1_MASK		0x1
+#define INTR_POS_CD0_SHIFT		9
+#define INTR_POS_CD0_MASK		0x1
+#define INTR_POS_CU0_SHIFT		8
+#define INTR_POS_CU0_MASK		0x1
+#define INTR_POS_PD3_SHIFT		7
+#define INTR_POS_PD3_MASK		0x1
+#define INTR_POS_PU3_SHIFT		6
+#define INTR_POS_PU3_MASK		0x1
+#define INTR_POS_PD2_SHIFT		5
+#define INTR_POS_PD2_MASK		0x1
+#define INTR_POS_PU2_SHIFT		4
+#define INTR_POS_PU2_MASK		0x1
+#define INTR_POS_PD1_SHIFT		3
+#define INTR_POS_PD1_MASK		0x1
+#define INTR_POS_PU1_SHIFT		2
+#define INTR_POS_PU1_MASK		0x1
+#define INTR_POS_PD0_SHIFT		1
+#define INTR_POS_PD0_MASK		0x1
+#define INTR_POS_PU0_SHIFT		0
+#define INTR_POS_PU0_MASK		0x1
 
-#define INTR_DIS		0x8c
-#define LOCK_CTL		0x90
 
 #define UP_STATS_L0		0x10
 #define DN_STATS_L0		0x14
@@ -316,8 +372,6 @@ static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #define soctherm_readl(reg) \
 	__raw_readl(reg_soctherm_base + (reg))
 
-#define max4(a, b, c, d)	(max((max((a), (b))), (max((c), (d)))))
-
 static struct soctherm_platform_data plat_data;
 
 /*
@@ -394,6 +448,7 @@ static const struct soctherm_sensor sensor_defaults = {
 	.ten_count = 1,
 	.tsample   = 163,
 	.pdiv      = 10,
+	.hot_off   = 0,
 };
 
 static const unsigned long default_soctherm_clk_rate = 136000000;
@@ -452,10 +507,17 @@ static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
 	if (therm == THERM_CPU) {
 		r = REG_SET(r, THERMTRIP_CPU_EN, 1);
 		r = REG_SET(r, THERMTRIP_CPU_THRESH, trip_temp);
-	} else {
+	} else if (therm == THERM_GPU) {
 		r = REG_SET(r, THERMTRIP_GPU_EN, 1);
 		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
+	} else if (therm == THERM_PLL) {
+		r = REG_SET(r, THERMTRIP_TSENSE_EN, 1);
+		r = REG_SET(r, THERMTRIP_TSENSE_THRESH, trip_temp);
+	} else if (therm == THERM_MEM) {
+		r = REG_SET(r, THERMTRIP_MEM_EN, 1);
+		r = REG_SET(r, THERMTRIP_GPUMEM_THRESH, trip_temp);
 	}
+	r = REG_SET(r, THERMTRIP_ANY_EN, 0);
 	soctherm_writel(r, THERMTRIP);
 }
 
@@ -492,25 +554,41 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 static int soctherm_set_limits(enum soctherm_therm_id therm,
 				long lo_limit, long hi_limit)
 {
-	u32 r = soctherm_readl(CTL_LVL0_CPU0);
+	u32 r, reg_off;
+
+	reg_off = TS_THERM_REG_OFFSET(CTL_LVL0_CPU0, 0, therm);
+	r = soctherm_readl(reg_off);
 
 	if (!soc_therm_precision) {
 		lo_limit /= 2;
 		hi_limit /= 2;
 	}
-
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, lo_limit);
 	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, hi_limit);
-	soctherm_writel(r, CTL_LVL0_CPU0);
+	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+	soctherm_writel(r, reg_off);
 
-	soctherm_writel(1<<INTR_EN_CU0_SHIFT, INTR_EN);
-	soctherm_writel(1<<INTR_EN_CD0_SHIFT, INTR_EN);
+	r = soctherm_readl(INTR_EN);
+	if (therm == THERM_CPU) {
+		r = REG_SET(r, INTR_POS_CD0, 1);
+		r = REG_SET(r, INTR_POS_CU0, 1);
+	} else if (therm == THERM_GPU) {
+		r = REG_SET(r, INTR_POS_GD0, 1);
+		r = REG_SET(r, INTR_POS_GU0, 1);
+	} else if (therm == THERM_PLL) {
+		r = REG_SET(r, INTR_POS_PD0, 1);
+		r = REG_SET(r, INTR_POS_PU0, 1);
+	} else if (therm == THERM_MEM) {
+		r = REG_SET(r, INTR_POS_MD0, 1);
+		r = REG_SET(r, INTR_POS_MU0, 1);
+	}
+	soctherm_writel(r, INTR_EN);
 	return 0;
 }
 
 static void soctherm_update(void)
 {
-	long trip_temp, hyst_temp, low_temp = 0, high_temp = 128000;
+	long trip_temp, hyst_temp, low_temp, high_temp;
 	int i, count;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
@@ -519,11 +597,13 @@ static void soctherm_update(void)
 		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (!thz[i])
+		if (!thz[i] || !thz[i]->trips)
 			continue;
 
 		thermal_zone_device_update(thz[i]);
 
+		low_temp = 0;
+		high_temp = 128000;
 		for (count = 0; count < thz[i]->trips; count++) {
 			thz[i]->ops->get_trip_type(thz[i], count, &trip_type);
 			if ((trip_type == THERMAL_TRIP_HOT) ||
@@ -548,9 +628,9 @@ static void soctherm_update(void)
 			    (hyst_temp > low_temp))
 				low_temp = hyst_temp;
 		}
-	}
 
-	soctherm_set_limits(THERM_CPU, low_temp/1000, high_temp/1000);
+		soctherm_set_limits(i, low_temp/1000, high_temp/1000);
+	}
 }
 
 static int soctherm_hw_action_get_max_state(struct thermal_cooling_device *cdev,
@@ -616,13 +696,17 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 
 	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
 		trip_state = &plat_data.therm[index].trips[i];
+		if (trip_state->bound)
+			continue;
 		trip_state->hysteresis = trip_state->hysteresis ?: 2000;
 		if (trip_state->cdev_type &&
 		    !strncmp(trip_state->cdev_type, cdev->type,
-			     THERMAL_NAME_LENGTH))
+						THERMAL_NAME_LENGTH)) {
 			thermal_zone_bind_cooling_device(thz, i, cdev,
 							 trip_state->upper,
 							 trip_state->lower);
+			trip_state->bound = true;
+		}
 	}
 
 	return 0;
@@ -639,10 +723,14 @@ static int soctherm_unbind(struct thermal_zone_device *thz,
 
 	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
 		trip_state = &plat_data.therm[index].trips[i];
+		if (!trip_state->bound)
+			continue;
 		if (trip_state->cdev_type &&
 		    !strncmp(trip_state->cdev_type, cdev->type,
-			     THERMAL_NAME_LENGTH))
+						THERMAL_NAME_LENGTH)) {
 			thermal_zone_unbind_cooling_device(thz, 0, cdev);
+			trip_state->bound = false;
+		}
 	}
 
 	return 0;
@@ -894,8 +982,14 @@ static void soctherm_work_func(struct work_struct *work)
 	st = soctherm_readl(INTR_STATUS);
 
 	/* deliberately clear expected interrupts handled in SW */
-	ex |= REG_GET_BIT(st, INTR_STATUS_CD0);
-	ex |= REG_GET_BIT(st, INTR_STATUS_CU0);
+	ex |= REG_GET_BIT(st, INTR_POS_CD0);
+	ex |= REG_GET_BIT(st, INTR_POS_CU0);
+	ex |= REG_GET_BIT(st, INTR_POS_GD0);
+	ex |= REG_GET_BIT(st, INTR_POS_GU0);
+	ex |= REG_GET_BIT(st, INTR_POS_PD0);
+	ex |= REG_GET_BIT(st, INTR_POS_PU0);
+	ex |= REG_GET_BIT(st, INTR_POS_MD0);
+	ex |= REG_GET_BIT(st, INTR_POS_MU0);
 	if (ex) {
 		soctherm_writel(ex, INTR_STATUS);
 		st &= ~ex;
@@ -903,10 +997,33 @@ static void soctherm_work_func(struct work_struct *work)
 	}
 
 	/* deliberately ignore expected interrupts NOT handled in SW */
-	ex |= REG_GET_BIT(st, INTR_STATUS_CD1);
-	ex |= REG_GET_BIT(st, INTR_STATUS_CU1);
-	ex |= REG_GET_BIT(st, INTR_STATUS_CD2);
-	ex |= REG_GET_BIT(st, INTR_STATUS_CU2);
+	ex |= REG_GET_BIT(st, INTR_POS_CD1);
+	ex |= REG_GET_BIT(st, INTR_POS_CU1);
+	ex |= REG_GET_BIT(st, INTR_POS_CD2);
+	ex |= REG_GET_BIT(st, INTR_POS_CU2);
+	ex |= REG_GET_BIT(st, INTR_POS_CD3);
+	ex |= REG_GET_BIT(st, INTR_POS_CU3);
+
+	ex |= REG_GET_BIT(st, INTR_POS_GD1);
+	ex |= REG_GET_BIT(st, INTR_POS_GU1);
+	ex |= REG_GET_BIT(st, INTR_POS_GD2);
+	ex |= REG_GET_BIT(st, INTR_POS_GU2);
+	ex |= REG_GET_BIT(st, INTR_POS_GD3);
+	ex |= REG_GET_BIT(st, INTR_POS_GU3);
+
+	ex |= REG_GET_BIT(st, INTR_POS_PD1);
+	ex |= REG_GET_BIT(st, INTR_POS_PU1);
+	ex |= REG_GET_BIT(st, INTR_POS_PD2);
+	ex |= REG_GET_BIT(st, INTR_POS_PU2);
+	ex |= REG_GET_BIT(st, INTR_POS_PD3);
+	ex |= REG_GET_BIT(st, INTR_POS_PU3);
+
+	ex |= REG_GET_BIT(st, INTR_POS_MD1);
+	ex |= REG_GET_BIT(st, INTR_POS_MU1);
+	ex |= REG_GET_BIT(st, INTR_POS_MD2);
+	ex |= REG_GET_BIT(st, INTR_POS_MU2);
+	ex |= REG_GET_BIT(st, INTR_POS_MD3);
+	ex |= REG_GET_BIT(st, INTR_POS_MU3);
 	st &= ~ex;
 
 	if (!st)
@@ -1182,6 +1299,7 @@ static int soctherm_init_platform_data(void)
 		s->ten_count = s->ten_count ?: sensor_defaults.ten_count;
 		s->tsample   = s->tsample   ?: sensor_defaults.tsample;
 		s->pdiv      = s->pdiv      ?: sensor_defaults.pdiv;
+		s->hot_off   = s->hot_off   ?: sensor_defaults.hot_off;
 	}
 
 	/* Pdiv */
@@ -1191,6 +1309,15 @@ static int soctherm_init_platform_data(void)
 	r = REG_SET(r, TS_PDIV_MEM, plat_data.sensor_data[TSENSE_MEM0].pdiv);
 	r = REG_SET(r, TS_PDIV_PLLX, plat_data.sensor_data[TSENSE_PLLX].pdiv);
 	soctherm_writel(r, TS_PDIV);
+
+	/* Hotspot Offsets */
+	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
+		    plat_data.sensor_data[TSENSE_CPU0].hot_off);
+	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
+		    plat_data.sensor_data[TSENSE_GPU].hot_off);
+	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
+		    plat_data.sensor_data[TSENSE_MEM0].hot_off);
+	soctherm_writel(r, TS_HOTSPOT_OFF);
 
 	/* Thermal Sensing programming */
 	soctherm_fuse_read_vsensor();
@@ -1252,17 +1379,12 @@ static int soctherm_init_platform_data(void)
 		}
 	}
 
-	/* Enable Level 0 */
-	r = soctherm_readl(CTL_LVL0_CPU0);
-	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
-	soctherm_writel(r, CTL_LVL0_CPU0);
-
 	/* Enable PMC to shutdown */
 	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
 
 	r = clk_reset_readl(CAR_SUPER_CCLK_DIVIDER);
 	r = REG_SET(r, CDIV_USE_THERM_CONTROLS, 1);
-	clk_reset_writel(r, 0x24);
+	clk_reset_writel(r, CAR_SUPER_CCLK_DIVIDER);
 
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -1412,20 +1534,18 @@ static int regs_show(struct seq_file *s, void *data)
 
 	r = soctherm_readl(TS_TEMP1);
 	state = REG_GET(r, TS_TEMP1_CPU_TEMP);
-	seq_printf(s, "Temperature: CPU(%ld) [Max(%ld)%c] ",
-		   temp_translate(state),
-		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]),
-		   max4(tcpu[0], tcpu[1], tcpu[2], tcpu[3]) ==
-		   temp_translate(state) ? '=' : '!');
+	seq_printf(s, "Temperatures: CPU(%ld) ", temp_translate(state));
 	state = REG_GET(r, TS_TEMP1_GPU_TEMP);
 	seq_printf(s, " GPU(%ld) ", temp_translate(state));
 	r = soctherm_readl(TS_TEMP2);
-	state = REG_GET(r, TS_TEMP2_MEM_TEMP);
-	seq_printf(s, " MEM(%ld) ", temp_translate(state));
 	state = REG_GET(r, TS_TEMP2_PLLX_TEMP);
-	seq_printf(s, " PLLX(%ld)\n\n", temp_translate(state));
+	seq_printf(s, " PLLX(%ld) ", temp_translate(state));
+	state = REG_GET(r, TS_TEMP2_MEM_TEMP);
+	seq_printf(s, " MEM(%ld)\n", temp_translate(state));
 
 	for (i = 0; i < THERM_SIZE; i++) {
+		if (i == THERM_MEM)
+			continue;
 		seq_printf(s, "%s:\n", therm_names[i]);
 
 		for (level = 0; level < 4; level++) {
@@ -1464,34 +1584,24 @@ static int regs_show(struct seq_file *s, void *data)
 		seq_printf(s, "Dn(%d)\n", r);
 	}
 
-	r = soctherm_readl(INTR_STATUS);
-	state = REG_GET(r, INTR_STATUS_CD0);
-	seq_printf(s, "CD0: %d\n", state);
-	state = REG_GET(r, INTR_STATUS_CU0);
-	seq_printf(s, "CU0: %d\n", state);
-
 	r = soctherm_readl(THERMTRIP);
-	state = REG_GET(r, THERMTRIP_CPU_THRESH);
-	seq_printf(s, "THERMTRIP_CPU_THRESH: %d ",
-		   !soc_therm_precision ? state * 2 : state);
+	state = REG_GET(r, THERMTRIP_ANY_EN);
+	seq_printf(s, "ThermTRIP ANY En(%d)\n", state);
 	state = REG_GET(r, THERMTRIP_CPU_EN);
-	seq_printf(s, "%d\n", state);
-	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
-	seq_printf(s, "THERMTRIP_TSENSE_THRESH: %d ", state);
-	state = REG_GET(r, THERMTRIP_TSENSE_EN);
-	seq_printf(s, "%d\n", state);
-	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
-	seq_printf(s, "THERMTRIP_GPUMEM_THRESH: %d ", state);
+	seq_printf(s, "     CPU En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_CPU_THRESH);
+	seq_printf(s, "Thresh(%d)\n", !soc_therm_precision ? state*2 : state);
 	state = REG_GET(r, THERMTRIP_GPU_EN);
-	seq_printf(s, "gpu=%d ", state);
-	state = REG_GET(r, THERMTRIP_MEM_EN);
-	seq_printf(s, "mem=%d\n", state);
-
-
-	seq_printf(s, "\n-----THROTTLE-----\n");
+	seq_printf(s, "     GPU En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_GPUMEM_THRESH);
+	seq_printf(s, "Thresh(%d)\n", !soc_therm_precision ? state*2 : state);
+	state = REG_GET(r, THERMTRIP_TSENSE_EN);
+	seq_printf(s, "    PLLX En(%d) ", state);
+	state = REG_GET(r, THERMTRIP_TSENSE_THRESH);
+	seq_printf(s, "Thresh(%d)\n", !soc_therm_precision ? state*2 : state);
 
 	r = soctherm_readl(THROT_GLOBAL_CFG);
-	seq_printf(s, "GLOBAL CONFIG: 0x%x\n", r);
+	seq_printf(s, "GLOBAL THROTTLE CONFIG: 0x%x\n", r);
 
 	r = soctherm_readl(THROT_STATUS);
 	state = REG_GET(r, THROT_STATUS_BREACH);
