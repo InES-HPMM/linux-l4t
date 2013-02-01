@@ -70,7 +70,7 @@ int uart_console_debug_init(int default_debug_port)
 	case 1:
 		/* UARTB is the debug port. */
 		pr_info("Selecting UARTB as the debug console\n");
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uartb");
+		debug_uart_clk =  clk_get_sys("serial8250.1", "uartb");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartb_device.dev.platform_data))->mapbase;
 		uart_console_debug_device = &debug_uartb_device;
@@ -79,7 +79,7 @@ int uart_console_debug_init(int default_debug_port)
 	case 2:
 		/* UARTC is the debug port. */
 		pr_info("Selecting UARTC as the debug console\n");
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uartc");
+		debug_uart_clk =  clk_get_sys("serial8250.2", "uartc");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartc_device.dev.platform_data))->mapbase;
 		uart_console_debug_device = &debug_uartc_device;
@@ -88,7 +88,7 @@ int uart_console_debug_init(int default_debug_port)
 	case 3:
 		/* UARTD is the debug port. */
 		pr_info("Selecting UARTD as the debug console\n");
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uartd");
+		debug_uart_clk =  clk_get_sys("serial8250.3", "uartd");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uartd_device.dev.platform_data))->mapbase;
 		uart_console_debug_device = &debug_uartd_device;
@@ -98,7 +98,7 @@ int uart_console_debug_init(int default_debug_port)
 	case 4:
 		/* UARTE is the debug port. */
 		pr_info("Selecting UARTE as the debug console\n");
-		debug_uart_clk =  clk_get_sys("serial8250.0", "uarte");
+		debug_uart_clk =  clk_get_sys("serial8250.4", "uarte");
 		debug_uart_port_base = ((struct plat_serial8250_port *)(
 			debug_uarte_device.dev.platform_data))->mapbase;
 		uart_console_debug_device = &debug_uarte_device;
