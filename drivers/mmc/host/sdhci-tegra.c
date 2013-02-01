@@ -89,6 +89,8 @@
 #define TEGRA2_SDHOST_STD_FREQ	50000000
 #define TEGRA3_SDHOST_STD_FREQ	104000000
 
+#define MAX_DIVISOR_VALUE	128
+
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8	128
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4	64
 #define MAX_TAP_VALUES	256
@@ -191,7 +193,13 @@ struct sdhci_tegra {
 	unsigned int emc_max_clk;
 	struct sdhci_tegra_sd_stats *sd_stat_head;
 	struct notifier_block reboot_notify;
+	bool is_parent_pllc;
 };
+
+static struct clk *pll_c;
+static struct clk *pll_p;
+static unsigned long pll_c_rate;
+static unsigned long pll_p_rate;
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
@@ -524,6 +532,79 @@ static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
 	return 0;
 }
 
+/*
+* Calculation of nearest clock frequency for desired rate:
+* Get the divisor value, div = p / d_rate
+* 1. If it is nearer to ceil(p/d_rate) then increment the div value by 0.5 and
+* nearest_rate, i.e. result = p / (div + 0.5) = (p << 1)/((div << 1) + 1).
+* 2. If not, result = p / div
+* As the nearest clk freq should be <= to desired_rate,
+* 3. If result > desired_rate then increment the div by 0.5
+* and do, (p << 1)/((div << 1) + 1)
+* 4. Else return result
+* Here, If condtions 1 & 3 are both satisfied then to keep track of div value,
+* defined index variable.
+*/
+static unsigned long get_nearest_clock_freq(unsigned long pll_rate,
+		unsigned long desired_rate)
+{
+	unsigned long result;
+	int div;
+	int index = 1;
+
+	div = pll_rate / desired_rate;
+	if (div > MAX_DIVISOR_VALUE) {
+		div = MAX_DIVISOR_VALUE;
+		result = pll_rate / div;
+	} else {
+		if ((pll_rate % desired_rate) >= (desired_rate / 2))
+			result = (pll_rate << 1) / ((div << 1) + index++);
+		else
+			result = pll_rate / div;
+
+		if (desired_rate < result) {
+			/*
+			* Trying to get lower clock freq than desired clock,
+			* by increasing the divisor value by 0.5
+			*/
+			result = (pll_rate << 1) / ((div << 1) + index);
+		}
+	}
+
+	return result;
+}
+
+static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
+		unsigned long desired_rate)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct clk *parent_clk;
+	unsigned long pll_c_freq;
+	unsigned long pll_p_freq;
+	int rc;
+
+	pll_c_freq = get_nearest_clock_freq(pll_c_rate, desired_rate);
+	pll_p_freq = get_nearest_clock_freq(pll_p_rate, desired_rate);
+
+	if (pll_c_freq > pll_p_freq) {
+		if (!tegra_host->is_parent_pllc) {
+			parent_clk = pll_c;
+			tegra_host->is_parent_pllc = true;
+		} else
+			return;
+	} else if (tegra_host->is_parent_pllc) {
+		parent_clk = pll_p;
+		tegra_host->is_parent_pllc = false;
+	} else
+		return;
+
+	rc = clk_set_parent(pltfm_host->clk, parent_clk);
+	if (rc)
+		pr_err("%s: failed to set pll parent clock %d\n",
+			mmc_hostname(host->mmc), rc);
+}
+
 static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	unsigned int clock)
 {
@@ -567,6 +648,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		(clk_rate > tegra_host->max_clk_limit))
 		clk_rate = tegra_host->max_clk_limit;
 
+	tegra_sdhci_clock_set_parent(sdhci, clk_rate);
 	clk_set_rate(pltfm_host->clk, clk_rate);
 	sdhci->max_clk = clk_get_rate(pltfm_host->clk);
 
@@ -1435,6 +1517,23 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	pltfm_host->priv = tegra_host;
 
+	pll_c = clk_get_sys(NULL, "pll_c");
+	if (IS_ERR(pll_c)) {
+		rc = PTR_ERR(pll_c);
+		dev_err(mmc_dev(host->mmc),
+			"clk error in getting pll_c: %d\n", rc);
+	}
+
+	pll_p = clk_get_sys(NULL, "pll_p");
+	if (IS_ERR(pll_p)) {
+		rc = PTR_ERR(pll_p);
+		dev_err(mmc_dev(host->mmc),
+			"clk error in getting pll_p: %d\n", rc);
+	}
+
+	pll_c_rate = clk_get_rate(pll_c);
+	pll_p_rate = clk_get_rate(pll_p);
+
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (plat->mmc_data.embedded_sdio)
 		mmc_set_embedded_sdio_data(host->mmc,
@@ -1568,6 +1667,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		rc = PTR_ERR(pltfm_host->clk);
 		goto err_clk_get;
 	}
+
+	if (clk_get_parent(pltfm_host->clk) == pll_c)
+		tegra_host->is_parent_pllc = true;
+
 	pm_runtime_get_sync(&pdev->dev);
 	rc = clk_prepare_enable(pltfm_host->clk);
 	if (rc != 0)
