@@ -731,7 +731,7 @@ void __init tegra11x_init_early(void)
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
 
-	init_dma_coherent_pool_size(SZ_1M);
+	init_dma_coherent_pool_size(SZ_2M);
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
