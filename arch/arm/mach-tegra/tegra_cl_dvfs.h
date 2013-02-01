@@ -75,6 +75,7 @@ struct tegra_cl_dvfs_platform_data {
 	int			vdd_map_size;
 
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
+	bool					out_quiet_then_disable;
 };
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS

@@ -36,6 +36,7 @@
 #include <mach/irqs.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
+#include <mach/hardware.h>
 
 #include "cpu-tegra.h"
 #include "pm.h"
@@ -640,6 +641,8 @@ static struct tegra_cl_dvfs_platform_data roth_cl_dvfs_data = {
 static int __init roth_cl_dvfs_init(void)
 {
 	fill_reg_map();
+	if (tegra_revision < TEGRA_REVISION_A02)
+		roth_cl_dvfs_data.out_quiet_then_disable = true;
 	tegra_cl_dvfs_device.dev.platform_data = &roth_cl_dvfs_data;
 	platform_device_register(&tegra_cl_dvfs_device);
 

@@ -243,13 +243,13 @@ static inline int output_enable(struct tegra_cl_dvfs *cld)
 	return  0;
 }
 
-static inline int output_disable(struct tegra_cl_dvfs *cld)
+static noinline int output_flush_disable(struct tegra_cl_dvfs *cld)
 {
 	int i;
 	u32 sts;
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 
-	/* FIXME: PWM output control */
+	/* Flush transactions in flight, and then disable */
 	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT / 2; i++) {
 		sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
 		udelay(2);
@@ -275,8 +275,69 @@ static inline int output_disable(struct tegra_cl_dvfs *cld)
 	val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
-	pr_err("cl_dvfs output disable: I2C pending timeout\n");
 	return -ETIMEDOUT;
+}
+
+static noinline int output_disable_flush(struct tegra_cl_dvfs *cld)
+{
+	int i;
+	u32 sts;
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+
+	/* Disable output interface right away */
+	val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_wmb(cld);
+
+	/* Flush possible transaction in flight */
+	for (i = 0; i < CL_DVFS_OUTPUT_PENDING_TIMEOUT / 2; i++) {
+		sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		udelay(2);
+		if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING)) {
+			sts = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+			if (!(sts & CL_DVFS_I2C_STS_I2C_REQ_PENDING))
+				return 0;
+		}
+	}
+
+	/* I2C request is still pending - report error */
+	return -ETIMEDOUT;
+}
+
+static inline int output_disable_ol_prepare(struct tegra_cl_dvfs *cld)
+{
+	/* FIXME: PWM output control */
+	/*
+	 * If cl-dvfs h/w does not require output to be quiet before disable,
+	 * s/w can stop I2C communications at any time (including operations
+	 * in closed loop mode), and I2C bus integrity is guaranteed even in
+	 * case of flush timeout.
+	 */
+	if (!cld->p_data->out_quiet_then_disable) {
+		int ret = output_disable_flush(cld);
+		if (ret)
+			pr_debug("cl_dvfs: I2C pending timeout ol_prepare\n");
+		return ret;
+	}
+	return 0;
+}
+
+static inline int output_disable_post_ol(struct tegra_cl_dvfs *cld)
+{
+	/* FIXME: PWM output control */
+	/*
+	 * If cl-dvfs h/w requires output to be quiet before disable, s/w
+	 * should stop I2C communications only after the switch to open loop
+	 * mode, and I2C bus integrity is not guaranteed in case of flush
+	 * timeout
+	*/
+	if (cld->p_data->out_quiet_then_disable) {
+		int ret = output_flush_disable(cld);
+		if (ret)
+			pr_err("cl_dvfs: I2C pending timeout post_ol\n");
+		return ret;
+	}
+	return 0;
 }
 
 static inline void set_mode(struct tegra_cl_dvfs *cld,
@@ -298,7 +359,7 @@ static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
 	return max(tune_min, thermal_min);
 }
 
-static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
+static inline void _load_lut(struct tegra_cl_dvfs *cld)
 {
 	int i;
 	u32 val;
@@ -317,6 +378,28 @@ static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_LUT + i * 4);
 
 	cl_dvfs_wmb(cld);
+}
+
+static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	bool disable_out_for_load = !cld->p_data->out_quiet_then_disable &&
+		(val & CL_DVFS_OUTPUT_CFG_I2C_ENABLE);
+
+	if (disable_out_for_load) {
+		val &= ~CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_wmb(cld);
+		udelay(2); /* 2us (big margin) window for disable propafation */
+	}
+
+	_load_lut(cld);
+
+	if (disable_out_for_load) {
+		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		cl_dvfs_wmb(cld);
+	}
 }
 
 #define set_tune_state(cld, state) \
@@ -1074,8 +1157,9 @@ void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
 		WARN(1, "DFLL is disabled directly from closed loop mode\n");
 		set_ol_config(cld);
+		output_disable_ol_prepare(cld);
 		set_mode(cld, TEGRA_CL_DVFS_DISABLED);
-		output_disable(cld);
+		output_disable_post_ol(cld);
 		cl_dvfs_disable_clocks(cld);
 		return;
 
@@ -1147,11 +1231,16 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 /* Switch from CLOSED_LOOP state to OPEN_LOOP state */
 int tegra_cl_dvfs_unlock(struct tegra_cl_dvfs *cld)
 {
+	int ret;
+
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
 		set_ol_config(cld);
+		ret = output_disable_ol_prepare(cld);
 		set_mode(cld, TEGRA_CL_DVFS_OPEN_LOOP);
-		return output_disable(cld);
+		if (!ret)
+			ret = output_disable_post_ol(cld);
+		return ret;
 
 	case TEGRA_CL_DVFS_OPEN_LOOP:
 		return 0;
