@@ -174,7 +174,11 @@ struct core_dvfs_cap_table {
 	unsigned long freqs[MAX_DVFS_FREQS];
 };
 
-struct core_cap {
+struct core_bus_cap_table {
+	const char *cap_name;
+	struct clk *cap_clk;
+	struct kobj_attribute refcnt_attr;
+	struct kobj_attribute level_attr;
 	int refcnt;
 	int level;
 };
@@ -228,7 +232,8 @@ static inline int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 
 int tegra_init_core_cap(struct core_dvfs_cap_table *table, int table_size,
 	const int *millivolts, int millivolts_num, struct kobject *cap_kobj);
-
+int tegra_init_shared_bus_cap(struct core_bus_cap_table *table, int table_size,
+	struct kobject *cap_kobj);
 
 static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 {

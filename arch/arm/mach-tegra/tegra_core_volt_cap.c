@@ -36,6 +36,11 @@
  */
 static DEFINE_MUTEX(core_cap_lock);
 
+struct core_cap {
+	int refcnt;
+	int level;
+};
+
 static struct core_cap core_buses_cap;
 static struct core_cap kdvfs_core_cap;
 static struct core_cap user_core_cap;
@@ -273,3 +278,123 @@ int __init tegra_init_core_cap(
 	return 0;
 }
 
+
+/*
+ * sysfs interfaces to profile tegra core shared bus frequencies by directly
+ * specifying limit level in Hz for each bus independently
+ */
+static DEFINE_MUTEX(bus_cap_lock);
+
+#define MAX_BUS_NUM	8
+const struct attribute *bus_cap_attributes[2 * MAX_BUS_NUM + 1];
+
+#define refcnt_to_bus_cap(attr) \
+	container_of(attr, struct core_bus_cap_table, refcnt_attr)
+#define level_to_bus_cap(attr) \
+	container_of(attr, struct core_bus_cap_table, level_attr)
+
+static void bus_cap_update(struct core_bus_cap_table *bus_cap)
+{
+	struct clk *c = bus_cap->cap_clk;
+
+	if (!c)
+		return;
+
+	if (bus_cap->refcnt)
+		clk_set_rate(c, bus_cap->level);
+	else
+		clk_set_rate(c, clk_get_max_rate(c));
+}
+
+static ssize_t
+bus_cap_state_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	struct core_bus_cap_table *bus_cap = refcnt_to_bus_cap(attr);
+	return sprintf(buf, "%d\n", bus_cap->refcnt ? 1 : 0);
+}
+static ssize_t
+bus_cap_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int state;
+	struct core_bus_cap_table *bus_cap = refcnt_to_bus_cap(attr);
+
+	if (sscanf(buf, "%d", &state) != 1)
+		return -1;
+
+	mutex_lock(&bus_cap_lock);
+
+	if (state) {
+		bus_cap->refcnt++;
+		if (bus_cap->refcnt == 1)
+			bus_cap_update(bus_cap);
+	} else if (bus_cap->refcnt) {
+		bus_cap->refcnt--;
+		if (bus_cap->refcnt == 0)
+			bus_cap_update(bus_cap);
+	}
+
+	mutex_unlock(&bus_cap_lock);
+	return count;
+}
+
+static ssize_t
+bus_cap_level_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+	struct core_bus_cap_table *bus_cap = level_to_bus_cap(attr);
+	return sprintf(buf, "%d\n", bus_cap->level);
+}
+static ssize_t
+bus_cap_level_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int level;
+	struct core_bus_cap_table *bus_cap = level_to_bus_cap(attr);
+
+	if (sscanf(buf, "%d", &level) != 1)
+		return -1;
+
+	mutex_lock(&bus_cap_lock);
+	if (bus_cap->level != level) {
+		bus_cap->level = level;
+		bus_cap_update(bus_cap);
+	}
+	mutex_unlock(&bus_cap_lock);
+	return count;
+}
+
+int __init tegra_init_shared_bus_cap(
+	struct core_bus_cap_table *table, int table_size,
+	struct kobject *cap_kobj)
+{
+	int i, j;
+	struct clk *c = NULL;
+
+	if (!table || !table_size || (table_size > MAX_BUS_NUM))
+		return -EINVAL;
+
+	for (i = 0, j = 0; i < table_size; i++) {
+		c = tegra_get_clock_by_name(table[i].cap_name);
+		if (!c) {
+			pr_err("%s: failed to initialize %s table\n",
+			       __func__, table[i].cap_name);
+			continue;
+		}
+		table[i].cap_clk = c;
+		table[i].level = clk_get_max_rate(c);
+		table[i].refcnt = 0;
+		table[i].refcnt_attr.show = bus_cap_state_show;
+		table[i].refcnt_attr.store = bus_cap_state_store;
+		table[i].level_attr.show = bus_cap_level_show;
+		table[i].level_attr.store = bus_cap_level_store;
+		bus_cap_attributes[j++] = &table[i].refcnt_attr.attr;
+		bus_cap_attributes[j++] = &table[i].level_attr.attr;
+	}
+	bus_cap_attributes[j] = NULL;
+
+	if (!cap_kobj || sysfs_create_files(cap_kobj, bus_cap_attributes))
+		return -ENOMEM;
+	return 0;
+}
