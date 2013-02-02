@@ -770,7 +770,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 	return 0;
 }
 
-/* Core cap object and table */
+/* Core voltage and bus cap object and tables */
 static struct kobject *cap_kobj;
 
 static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
@@ -784,6 +784,24 @@ static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
 	{ .cap_name = "cap.emc" },
 };
 
+/*
+ * Keep sys file names the same for dual and single cbus configurations to
+ * avoid changes in user space GPU capping interface.
+ */
+static struct core_bus_cap_table tegra11_bus_cap_table[] = {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ .cap_name = "cap.profile.c2bus",
+	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
+	},
+#else
+	{ .cap_name = "cap.profile.cbus",
+	  .refcnt_attr = {.attr = {.name = "cbus_cap_state", .mode = 0644} },
+	  .level_attr  = {.attr = {.name = "cbus_cap_level", .mode = 0644} },
+	},
+#endif
+};
+
 static int __init tegra11_dvfs_init_core_cap(void)
 {
 	int ret;
@@ -791,6 +809,16 @@ static int __init tegra11_dvfs_init_core_cap(void)
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
 		pr_err("tegra11_dvfs: failed to create sysfs cap object\n");
+		return 0;
+	}
+
+	ret = tegra_init_shared_bus_cap(
+		tegra11_bus_cap_table, ARRAY_SIZE(tegra11_bus_cap_table),
+		cap_kobj);
+	if (ret) {
+		pr_err("tegra11_dvfs: failed to init bus cap interface (%d)\n",
+		       ret);
+		kobject_del(cap_kobj);
 		return 0;
 	}
 
