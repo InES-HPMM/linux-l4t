@@ -99,6 +99,8 @@ struct tegra_bb {
 	unsigned long ipc_size;
 	unsigned long ipc_irq;
 	unsigned int irq;
+	struct regulator *vdd_buck4;
+	struct regulator *vdd_ldo8;
 	void (*ipc_cb)(void *data);
 	void  *ipc_cb_data;
 	struct miscdevice dev_priv;
