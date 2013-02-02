@@ -41,10 +41,6 @@ int __init touch_init_raydium(int irq_gpio, int reset_gpio,
 
 	rm31080ts_data->gpio_reset = reset_gpio;
 
-	usleep_range(5000, 6000);/*msleep(5); */
-	gpio_set_value(reset_gpio, 1);
-	usleep_range(5000, 6000);/*msleep(5); */
-
 	rm31080a_spi_board->irq = gpio_to_irq(irq_gpio);
 
 	spi_register_board_info(rm31080a_spi_board, asize);
