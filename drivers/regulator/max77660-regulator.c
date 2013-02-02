@@ -25,7 +25,6 @@
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
-#include <linux/mfd/max77660/max77660-regulator.h>
 
 /* Regulator types */
 #define REGULATOR_TYPE_BUCK			0
@@ -1096,30 +1095,26 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 	int ret = 0;
 	int id;
 	int reg_id;
-	int reg_count;
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "No Platform data\n");
 		return -ENODEV;
 	}
 
-	reg_count = pdata->num_regulator_pdata;
 	max_regs = devm_kzalloc(&pdev->dev,
-			reg_count * sizeof(*max_regs), GFP_KERNEL);
+			MAX77660_REGULATOR_ID_NR * sizeof(*max_regs), GFP_KERNEL);
 	if (!max_regs) {
 		dev_err(&pdev->dev, "mem alloc for reg failed\n");
 		return -ENOMEM;
 	}
+	platform_set_drvdata(pdev, max_regs);
 
-	for (id = 0; id < reg_count; ++id) {
+	for (id = 0; id < MAX77660_REGULATOR_ID_NR; ++id) {
 		reg_pdata = pdata->regulator_pdata[id];
-		if (!reg_pdata) {
-			dev_err(&pdev->dev,
-				"Regulator pltform data not there\n");
-			goto clean_exit;
-		}
+		if (!reg_pdata)
+			continue;
 
-		reg_id = reg_pdata->id;
+		reg_id = id;
 		reg  = &max_regs[id];
 		rdesc = &max77660_regs_info[reg_id].desc;
 		reg->rinfo = &max77660_regs_info[reg_id];
@@ -1127,8 +1122,6 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 		reg->pdata = reg_pdata;
 		reg->regulator_mode = REGULATOR_MODE_NORMAL;
 		reg->power_mode = POWER_MODE_NORMAL;
-
-		platform_set_drvdata(pdev, max_regs);
 
 		dev_dbg(&pdev->dev, "probe: name=%s\n", rdesc->name);
 
@@ -1170,17 +1163,12 @@ static int max77660_regulator_remove(struct platform_device *pdev)
 {
 	struct max77660_regulator *max_regs = platform_get_drvdata(pdev);
 	struct max77660_regulator *reg;
-	struct max77660_platform_data *pdata =
-					dev_get_platdata(pdev->dev.parent);
-	int reg_count;
+	int reg_count = MAX77660_REGULATOR_ID_NR;
 
-	if (!pdata)
-		return 0;
-
-	reg_count = pdata->num_regulator_pdata;
 	while (--reg_count >= 0) {
 		reg  = &max_regs[reg_count];
-		regulator_unregister(reg->rdev);
+		if (reg->dev)
+			regulator_unregister(reg->rdev);
 	}
 
 	return 0;

@@ -593,7 +593,6 @@ struct max77660_regulator_fps_cfg {
 
 struct max77660_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
-	int id;
 	enum max77660_regulator_fps_src fps_src;
 	enum max77660_regulator_fps_power_period fps_pu_period;
 	enum max77660_regulator_fps_power_period fps_pd_period;
@@ -679,8 +678,7 @@ struct max77660_platform_data {
 	int irq_base;
 	int gpio_base;
 
-	struct max77660_regulator_platform_data **regulator_pdata;
-	int num_regulator_pdata;
+	struct max77660_regulator_platform_data *regulator_pdata[MAX77660_REGULATOR_ID_NR];
 
 	struct max77660_pinctrl_platform_data *pinctrl_pdata;
 	int num_pinctrl;
