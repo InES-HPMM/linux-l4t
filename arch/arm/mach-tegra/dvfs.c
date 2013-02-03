@@ -703,6 +703,9 @@ static void __tegra_dvfs_rail_enable(struct dvfs_rail *rail)
 
 void tegra_dvfs_rail_enable(struct dvfs_rail *rail)
 {
+	if (!rail)
+		return;
+
 	mutex_lock(&rail_disable_lock);
 
 	if (rail->disabled) {
@@ -713,11 +716,13 @@ void tegra_dvfs_rail_enable(struct dvfs_rail *rail)
 		tegra_dvfs_rail_post_enable(rail);
 	}
 	mutex_unlock(&rail_disable_lock);
-
 }
 
 void tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 {
+	if (!rail)
+		return;
+
 	mutex_lock(&rail_disable_lock);
 	if (rail->disabled)
 		goto out;
