@@ -279,6 +279,23 @@ out:
  * the dvfs clocks and any rails that this rail depends on.  Calls
  * dvfs_rail_set_voltage with the new voltage, which will call
  * dvfs_rail_update on any rails that depend on this rail. */
+static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
+{
+	int min_mv = rail->min_millivolts;
+
+	if (rail->pll_mode_cdev)
+		min_mv = max(min_mv, rail->thermal_idx ?
+			     0 : rail->min_millivolts_cold);
+
+	millivolts += rail->offs_millivolts;
+	if (millivolts > rail->max_millivolts)
+		millivolts = rail->max_millivolts;
+	else if (millivolts < min_mv)
+		millivolts = min_mv;
+
+	return millivolts;
+}
+
 static int dvfs_rail_update(struct dvfs_rail *rail)
 {
 	int millivolts = 0;
@@ -304,19 +321,9 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	list_for_each_entry(d, &rail->dvfs, reg_node)
 		millivolts = max(d->cur_millivolts, millivolts);
 
-	/* Apply offset if any clock is requesting voltage */
-	if (millivolts) {
-		int min_mv = rail->min_millivolts;
-		if (rail->pll_mode_cdev)
-			min_mv = max(min_mv, rail->thermal_idx ?
-				     0 : rail->min_millivolts_cold);
-
-		millivolts += rail->offs_millivolts;
-		if (millivolts > rail->max_millivolts)
-			millivolts = rail->max_millivolts;
-		else if (millivolts < min_mv)
-			millivolts = min_mv;
-	}
+	/* Apply offset and min/max limits if any clock is requesting voltage */
+	if (millivolts)
+		millivolts = dvfs_rail_apply_limits(rail, millivolts);
 
 	/* retry update if limited by from-relationship to account for
 	   circular dependencies */
@@ -587,8 +594,9 @@ static int tegra_dvfs_suspend_one(void)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		if (!rail->suspended && !rail->disabled &&
 		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
-			ret = dvfs_rail_set_voltage(rail,
-				rail->nominal_millivolts);
+			int mv = dvfs_rail_apply_limits(
+				rail, rail->nominal_millivolts);
+			ret = dvfs_rail_set_voltage(rail, mv);
 			if (ret)
 				return ret;
 			rail->suspended = true;
@@ -682,7 +690,8 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 		return;
 	}
 
-	ret = dvfs_rail_set_voltage(rail, rail->nominal_millivolts);
+	ret = dvfs_rail_set_voltage(rail,
+		dvfs_rail_apply_limits(rail, rail->nominal_millivolts));
 	if (ret) {
 		pr_info("dvfs: failed to set regulator %s to disable "
 			"voltage %d\n", rail->reg_id,
