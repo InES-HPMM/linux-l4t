@@ -208,12 +208,10 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 
 	/*
 	 * DFLL adjusts rail voltage automatically, but not exactly to the
-	 * expected level - update stats, anyway, and made sure that recorded
-	 * level will not match any target that can be requested when/if we
-	 * switch back from DFLL to s/w control
+	 * expected level - update stats, anyway.
 	 */
 	if (rail->dfll_mode) {
-		rail->millivolts = rail->new_millivolts = millivolts - 1;
+		rail->millivolts = rail->new_millivolts = millivolts;
 		dvfs_rail_stats_update(rail, millivolts, ktime_get());
 		return 0;
 	}
@@ -815,6 +813,9 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	mutex_lock(&dvfs_lock);
 	if (d->dvfs_rail->dfll_mode) {
 		d->dvfs_rail->dfll_mode = false;
+		/* avoid false detection of matching target (voltage in dfll
+		   mode is fluctuating, and recorded level is just estimate) */
+		d->dvfs_rail->millivolts--;
 		if (d->dvfs_rail->disabled) {
 			d->dvfs_rail->disabled = false;
 			__tegra_dvfs_rail_disable(d->dvfs_rail);
@@ -986,15 +987,12 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
-		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
-			   rail->millivolts + (rail->dfll_mode ? 1 : 0),
+		seq_printf(s, "%s %d mV%s:\n", rail->reg_id, rail->millivolts,
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
 		list_for_each_entry(rel, &rail->relationships_from, from_node) {
 			seq_printf(s, "   %-10s %-7d mV %-4d mV\n",
-				rel->from->reg_id,
-				rel->from->millivolts +
-				   (rel->from->dfll_mode ? 1 : 0),
+				rel->from->reg_id, rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
 		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
