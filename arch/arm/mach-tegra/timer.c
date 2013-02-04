@@ -316,42 +316,12 @@ static void __init tegra_init_late_timer(void)
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
-int arch_timer_get_state(struct arch_timer_context *context)
-{
-	s32 val;
-
-	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (val));
-	context->cntp_tval = val;
-	asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r" (val));
-	context->cntp_ctl = val;
-	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (val));
-	context->cntfrq = val;
-	return 0;
-}
-
-int tegra_cpu_timer_get_remain(s64 *time)
-{
-	s32 cntp_tval;
-	int ret = 0;
-
-	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (cntp_tval));
-
-	if (cntp_tval <= 0)
-		ret = -ETIME;
-	else
-		*time = (s64)((s64)cntp_tval * arch_timer_us_mult)
-			>> arch_timer_us_shift;
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_ARM_ARCH_TIMER
 
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 /* Time Stamp Counter (TSC) base address */
 static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
 #endif
+
 static bool arch_timer_initialized;
 
 #define TSC_CNTCR		0		/* TSC control registers */
@@ -568,6 +538,22 @@ void tegra_tsc_wait_for_resume(void)
 			cpu_relax();
 		}
 	}
+}
+
+int tegra_cpu_timer_get_remain(s64 *time)
+{
+	s32 cntp_tval;
+	int ret = 0;
+
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (cntp_tval));
+
+	if (cntp_tval <= 0)
+		ret = -ETIME;
+	else
+		*time = (s64)((s64)cntp_tval * arch_timer_us_mult)
+			>> arch_timer_us_shift;
+
+	return ret;
 }
 
 #endif

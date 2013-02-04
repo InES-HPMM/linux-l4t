@@ -371,37 +371,17 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 {
 #ifdef CONFIG_SMP
 	s64 sleep_time;
+	u32 cntp_tval;
+	u32 cntfrq;
 	ktime_t entry_time;
-	struct arch_timer_context timer_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
 	unsigned int cpu = cpu_number(dev->cpu);
 
-	if (!arch_timer_get_state(&timer_context)) {
-		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
-		    !(timer_context.cntp_ctl & ARCH_TIMER_CTRL_IT_MASK)) {
-			if (timer_context.cntp_tval <= 0) {
-				cpu_do_idle();
-				return false;
-			}
-			request = div_u64((u64)timer_context.cntp_tval *
-					1000000, timer_context.cntfrq);
-#ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-			if (request >= state->target_residency) {
-				timer_context.cntp_tval -= state->exit_latency *
-					(timer_context.cntfrq / 1000000);
-				__asm__("mcr p15, 0, %0, c14, c2, 0\n"
-					:
-					:
-					"r"(timer_context.cntp_tval));
-			}
-#endif
-		}
-	}
-
-	if (!tegra_is_cpu_wake_timer_ready(dev->cpu) ||
-	    (request < state->target_residency) ||
-	    (!ts) || (ts->nohz_mode == NOHZ_MODE_INACTIVE)) {
+	if ((tegra_cpu_timer_get_remain(&request) == -ETIME) ||
+		(request <= state->target_residency) || (!ts) ||
+		(ts->nohz_mode == NOHZ_MODE_INACTIVE) ||
+		!tegra_is_cpu_wake_timer_ready(dev->cpu)) {
 		/*
 		 * Not enough time left to enter LP2, or wake timer not ready
 		 */
@@ -409,6 +389,11 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 		return false;
 	}
 
+#ifdef CONFIG_TEGRA_LP2_CPU_TIMER
+	asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r" (cntfrq));
+	cntp_tval = (request - state->exit_latency) * (cntfrq / 1000000);
+	asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(cntp_tval));
+#endif
 	cpu_pm_enter();
 
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
@@ -436,8 +421,9 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
-	if (!arch_timer_get_state(&timer_context))
-		sleep_completed = (timer_context.cntp_tval <= 0);
+	asm volatile("mrc p15, 0, %0, c14, c2, 0" : "=r" (cntp_tval));
+	if ((s32)cntp_tval <= 0)
+		sleep_completed = true;
 #else
 	sleep_completed = !tegra_pd_timer_remain();
 	tegra_pd_set_trigger(0);
