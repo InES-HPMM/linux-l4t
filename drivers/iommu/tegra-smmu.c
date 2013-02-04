@@ -429,11 +429,11 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 			}
 #endif
 			val |= mask;
-		} else {
 #if !defined(SKIP_SWGRP_CHECK)
+		} else {
 			WARN_ON((val & mask) == mask);
-#endif
 			val &= ~mask;
+#endif
 		}
 		smmu_write(smmu, val, offs);
 	}
