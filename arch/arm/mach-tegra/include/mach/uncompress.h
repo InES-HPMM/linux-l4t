@@ -257,6 +257,9 @@ static inline void arch_decomp_setup(void)
 	(void) val;
 	uart_dll = DEBUG_UART_DLL_13;
 #else
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	uart_dll = DEBUG_UART_DLL_408;
+#else
 	addr = (volatile u32 *)PLLP_BASE;
 	val = *addr;
 	if (val & PLLP_BASE_OVERRIDE) {
@@ -277,6 +280,7 @@ static inline void arch_decomp_setup(void)
 			break;
 		}
 	}
+#endif
 #endif
 
 	/* Set up debug UART. */
