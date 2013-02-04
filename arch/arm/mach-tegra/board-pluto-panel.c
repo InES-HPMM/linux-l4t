@@ -405,7 +405,7 @@ int __init pluto_panel_init(void)
 	}
 
 	res = platform_get_resource_byname(&pluto_disp1_device,
-		IORESOURCE_MEM, "fbmem");
+					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
@@ -415,7 +415,8 @@ int __init pluto_panel_init(void)
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
 	res = platform_get_resource_byname(&pluto_disp2_device,
-		IORESOURCE_MEM, "fbmem");
+					 IORESOURCE_MEM, "fbmem");
+
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 

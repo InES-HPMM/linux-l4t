@@ -465,7 +465,8 @@ int __init dalmore_panel_init(void)
 			min(tegra_fb_size, tegra_bootloader_fb_size));
 
 	res = platform_get_resource_byname(&dalmore_disp2_device,
-		IORESOURCE_MEM, "fbmem");
+					 IORESOURCE_MEM, "fbmem");
+
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
 
