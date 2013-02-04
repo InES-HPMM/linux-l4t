@@ -68,7 +68,7 @@
 #define TOUCH_GPIO_RST_RAYDIUM_SPI      TEGRA_GPIO_PK4
 
 /* Invensense MPU Definitions */
-#define MPU_GYRO_NAME           "mpu9150"
+#define MPU_GYRO_NAME           "mpu6050"
 #define MPU_GYRO_IRQ_GPIO       TEGRA_GPIO_PR3
 #define MPU_GYRO_ADDR           0x69
 #define MPU_GYRO_BUS_NUM        0

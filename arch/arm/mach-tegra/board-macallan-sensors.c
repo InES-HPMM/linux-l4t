@@ -35,6 +35,7 @@
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
+#include <linux/cm3217.h>
 #include <mach/edp.h>
 #include <linux/edp.h>
 #include <mach/gpio-tegra.h>
@@ -522,7 +523,7 @@ static int macallan_camera_init(void)
 }
 
 /* MPU board file definition	*/
-static struct mpu_platform_data mpu9150_gyro_data = {
+static struct mpu_platform_data mpu6050_gyro_data = {
 	.int_config	= 0x10,
 	.level_shifter	= 0,
 	/* Located in board_[platformname].h */
@@ -543,16 +544,23 @@ static struct mpu_platform_data mpu9150_gyro_data = {
 		.value = _value,				\
 	}
 
-static struct i2c_board_info macallan_i2c_board_info_cm3218[] = {
+static struct cm3217_platform_data macallan_cm3217_pdata = {
+	.levels = {10, 160, 225, 320, 640, 1280, 2600, 5800, 8000, 10240},
+	.golden_adc = 0,
+	.power = 0,
+};
+
+static struct i2c_board_info macallan_i2c0_board_info_cm3217[] = {
 	{
-		I2C_BOARD_INFO("cm3218", 0x48),
+		I2C_BOARD_INFO("cm3217", 0x10),
+		.platform_data = &macallan_cm3217_pdata,
 	},
 };
 
-static struct i2c_board_info __initdata inv_mpu9150_i2c2_board_info[] = {
+static struct i2c_board_info __initdata inv_mpu6050_i2c2_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
-		.platform_data = &mpu9150_gyro_data,
+		.platform_data = &mpu6050_gyro_data,
 	},
 };
 
@@ -580,9 +588,9 @@ static void mpuirq_init(void)
 	}
 	pr_info("*** MPU END *** mpuirq_init...\n");
 
-	inv_mpu9150_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
-	i2c_register_board_info(gyro_bus_num, inv_mpu9150_i2c2_board_info,
-		ARRAY_SIZE(inv_mpu9150_i2c2_board_info));
+	inv_mpu6050_i2c2_board_info[0].irq = gpio_to_irq(MPU_GYRO_IRQ_GPIO);
+	i2c_register_board_info(gyro_bus_num, inv_mpu6050_i2c2_board_info,
+		ARRAY_SIZE(inv_mpu6050_i2c2_board_info));
 }
 
 static int macallan_nct1008_init(void)
@@ -761,15 +769,20 @@ int __init macallan_sensors_init(void)
 
 	tegra_get_board_info(&board_info);
 
-	err = macallan_nct1008_init();
-	if (err)
-		return err;
+	/* E1545+E1604 has no temp sensor. */
+	if (board_info.board_id != BOARD_E1545) {
+		err = macallan_nct1008_init();
+		if (err) {
+			pr_err("%s: nct1008 register failed.\n", __func__);
+			return err;
+		}
+	}
 
 	macallan_camera_init();
 	mpuirq_init();
 
-	i2c_register_board_info(0, macallan_i2c_board_info_cm3218,
-				ARRAY_SIZE(macallan_i2c_board_info_cm3218));
+	i2c_register_board_info(0, macallan_i2c0_board_info_cm3217,
+				ARRAY_SIZE(macallan_i2c0_board_info_cm3217));
 
 	i2c_register_board_info(0, bq20z45_pdata,
 		ARRAY_SIZE(bq20z45_pdata));
