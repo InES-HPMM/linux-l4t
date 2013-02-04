@@ -889,7 +889,6 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 			smmu_client_disable_hwgrp(c);
 			list_del(&c->list);
 			devm_kfree(smmu->dev, c);
-			c->as = NULL;
 			dev_dbg(smmu->dev,
 				"%s is detached\n", dev_name(c->dev));
 			goto out;
