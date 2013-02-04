@@ -326,6 +326,9 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		break;
 	case TEGRA11X:
 	case TEGRA14X:
+		/* set SCLK as event trigger for flow conroller */
+		flowctrl_write_cpu_csr(cpu, 0x1);
+		flowctrl_write_cpu_halt(cpu, 0x48000000);
 		status = tegra11x_power_up_cpu(cpu);
 		break;
 	default:
