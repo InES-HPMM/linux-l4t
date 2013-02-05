@@ -1474,7 +1474,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
 				 carddetect_irq,
-				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 				 mmc_hostname(host->mmc), host);
 
 		if (rc)	{
