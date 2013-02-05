@@ -1408,7 +1408,8 @@ static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 			| FORCE_PULLDN_DP | DISABLE_PULLDN_DM);
 	writel(val, base + UTMIP_MISC_CFG0);
 
-	udelay(100);
+	/*Wait for 20 ms to turn off terminations and stabilize line satus*/
+	msleep(20);
 
 	val = readl(base + USB_PORTSC);
 	status = (USB_PORTSC_LINE_STATE(val) == 0);
@@ -1420,7 +1421,7 @@ static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 			| DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
 	writel(val, base + UTMIP_MISC_CFG0);
 
-	udelay(100);
+	msleep(20);
 
 	val = readl(base + USB_PORTSC);
 	if (status & (USB_PORTSC_LINE_STATE(val) == 0x3)) {
