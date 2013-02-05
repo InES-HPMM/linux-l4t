@@ -804,14 +804,14 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* clk enable for mc_bbc / pll_p_bbc */
 	c = tegra_get_clock_by_name("mc_bbc");
 	if (IS_ERR_OR_NULL(c))
-		clk_enable(c);
-	else
 		pr_err("mc_bbc get failed\n");
+	else
+		clk_enable(c);
 	c = tegra_get_clock_by_name("pll_p_bbc");
 	if (IS_ERR_OR_NULL(c))
-		clk_enable(c);
-	else
 		pr_err("pll_p_bbc get failed\n");
+	else
+		clk_enable(c);
 
 	bb->nvshm_pdata.ipc_base_virt = bb->ipc_virt;
 	bb->nvshm_pdata.ipc_size = bb->ipc_size;

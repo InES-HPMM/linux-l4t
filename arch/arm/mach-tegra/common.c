@@ -349,9 +349,6 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "sbc6.sclk",	NULL,		40000000,	false},
 	{ "msenc",	"pll_p",	108000000,	false },
 	{ "tsec",	"pll_p",	108000000,	false },
-	/* FIXME: pllp_bbc and mc_bbc has to be turned on by drivers */
-	{ "pll_p_bbc",	"pll_p",	0,		true },
-	{ "mc_bbc",	"emc",		0,		true },
 	{ "mc_capa",	"emc",		0,		true },
 	{ "mc_cbpa",	"emc",		0,		true },
 	/* Initialize c2bus, c3bus, or cbus at the end of the list
