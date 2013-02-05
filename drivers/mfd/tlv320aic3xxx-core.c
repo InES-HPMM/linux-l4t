@@ -471,12 +471,14 @@ int aic3xxx_device_init(struct aic3xxx *aic3xxx, int irq)
 	switch (aic3xxx->type) {
 	case TLV320AIC3262:
 		ret = mfd_add_devices(aic3xxx->dev, -1,
-			      aic3262_devs, ARRAY_SIZE(aic3262_devs), NULL, 0);
+			      aic3262_devs, ARRAY_SIZE(aic3262_devs), NULL, 0,
+			      NULL);
 		break;
 
 	case TLV320AIC3285:
 		ret = mfd_add_devices(aic3xxx->dev, -1,
-			      aic3285_devs, ARRAY_SIZE(aic3285_devs), NULL, 0);
+			      aic3285_devs, ARRAY_SIZE(aic3285_devs), NULL, 0,
+			      NULL);
 		break;
 	case TLV320AIC3266:
 		break;
