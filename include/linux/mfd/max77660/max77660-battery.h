@@ -13,12 +13,4 @@
 #ifndef __MAX77660_BATTERY_H__
 #define __MAX77660_BATTERY_H__
 
-struct max77660_fg_platform_data {
-	u8 valrt_min;
-	u8 valrt_max;
-	bool alsc;
-	bool alrt;
-	bool athd;
- };
-
 #endif /* __MAX77660_BATTERY_H__ */

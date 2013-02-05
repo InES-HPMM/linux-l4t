@@ -591,7 +591,7 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 
 		ret = max77660_reg_write(to_max77660_chip(reg),
 				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLBLCNFG7, &val);
+				MAX77660_REG_GLBLCNFG7, val);
 		if (ret < 0) {
 			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
 				MAX77660_REG_GLBLCNFG7);
@@ -635,7 +635,7 @@ static int max77660_regulator_disable(struct regulator_dev *rdev)
 
 		ret = max77660_reg_write(to_max77660_chip(reg),
 				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLBLCNFG7, &val);
+				MAX77660_REG_GLBLCNFG7, val);
 		if (ret < 0) {
 			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
 				MAX77660_REG_GLBLCNFG7);
