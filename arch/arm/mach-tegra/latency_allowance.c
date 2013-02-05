@@ -59,6 +59,9 @@ static void init_chip_specific(void)
 	case TEGRA_CHIPID_TEGRA11:
 		tegra_la_get_t11x_specific(&cs);
 		break;
+	case TEGRA_CHIPID_TEGRA14:
+		tegra_la_get_t14x_specific(&cs);
+		break;
 	default:
 		cs.set_la = NULL;
 	}

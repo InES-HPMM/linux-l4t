@@ -98,13 +98,27 @@
 #define T14X_MC_RING1_PTSA_MIN_0		0x480
 #define T14X_MC_RING1_PTSA_MAX_0		0x484
 
+#define T14X_MC_BBC_PTSA_RATE_0			0x4d0
+#define T14X_MC_BBC_PTSA_MIN_0			0x4d4
+#define T14X_MC_BBC_PTSA_MAX_0			0x4d8
+
+#define T14X_MC_SCALED_LA_DISPLAY0A_0		0x690
+#define T14X_MC_SCALED_LA_DISPLAY0B_0		0x698
+#define T14X_MC_SCALED_LA_DISPLAY0BB_0		0x69c
+#define T14X_MC_SCALED_LA_DISPLAY0C_0		0x6a0
+
+
 #define T14X_MC_DIS_EXTRA_SNAP_LEVELS_0		0x2ac
 #define T14X_MC_HEG_EXTRA_SNAP_LEVELS_0		0x2b0
 #define T14X_MC_EMEM_ARB_MISC0_0		0x0d8
 #define T14X_MC_PTSA_GRANT_DECREMENT_0		0x960
 
-#define T14X_BASE_EMC_FREQ_MHZ		500
+#define T14X_MC_BBCLL_EARB_CFG_0		0x080
+
+#define T14X_BASE_EMC_FREQ_MHZ		800
 #define T14X_MAX_CAMERA_BW_MHZ		528
+#define T14X_MAX_BBCDMA_BW_MHZ		1200
+#define T14X_MAX_BBCLL_BW_MHZ		640
 
 /* maximum valid value for latency allowance */
 #define T14X_MC_LA_MAX_VALUE		255
@@ -144,10 +158,12 @@ struct la_client_info t14x_la_info_array[] = {
 	T14X_LA(128,	1050,	DC_0,	23 : 16,	DISPLAY_0B,	true,	0),
 	T14X_LA(128,	1050,	DC_1,	7 : 0,		DISPLAY_0C,	true,	0),
 	T14X_LA(192,	1050,	DC_2,	7 : 0,		DISPLAY_HC,	false,	0),
-	T14X_LA(128,	1050,	DCB_0,	7 : 0,		DISPLAY_0AB,	true,	0),
+	T14X_LA(128,	1920,	DCB_0,	7 : 0,		DISPLAY_0AB,	true,	0),
 	T14X_LA(128,	1050,	DCB_0,	23 : 16,	DISPLAY_0BB,	true,	0),
-	T14X_LA(128,	1050,	DCB_1,	7 : 0,		DISPLAY_0CB,	true,	0),
+	T14X_LA(128,	1920,	DCB_1,	7 : 0,		DISPLAY_0CB,	true,	0),
 	T14X_LA(192,	1050,	DCB_2,	7 : 0,		DISPLAY_HCB,	false,	0),
+	T14X_LA(192,	1920,	DC_2,	23 : 16,	DISPLAY_T,	false,	0),
+	T14X_LA(192,	1920,	DC_3,	7 : 0,		DISPLAYD,	false,	0),
 	T14X_LA(32,	150,	EPP_0,	7 : 0,		EPPUP,		false,	0),
 	T14X_LA(32,	150,	EPP_0,	23 : 16,	EPPU,		false,	0),
 	T14X_LA(32,	150,	EPP_1,	7 : 0,		EPPV,		false,	0),
@@ -190,32 +206,34 @@ struct la_client_info t14x_la_info_array[] = {
 	T14X_LA(200,	1050,	VI_1,	23 : 16,	VI_WV,		true,	0),
 	T14X_LA(200,	1050,	VI_2,	7 : 0,		VI_WY,		true,	0),
 
-	T14X_LA(64,	150,	MSENC_0,    7 : 0,	MSENCSRD,	false,	50),
-	T14X_LA(16,	150,	MSENC_0,    23 : 16,	MSENCSWR,	false,	37),
-	T14X_LA(14,	150,	EMUCIF_0,   7 : 0,	EMUCIFR,	false,	0),
-	T14X_LA(24,	150,	EMUCIF_0,   23 : 16,	EMUCIFW,	false,	0),
-	T14X_LA(32,	150,	TSEC_0,	    7 : 0,	TSECSRD,	false,	0),
-	T14X_LA(32,	150,	TSEC_0,	    23 : 16,	TSECSWR,	false,	0),
+	T14X_LA(64,	150,	MSENC_0,7 : 0,		MSENCSRD,	false,	50),
+	T14X_LA(16,	150,	MSENC_0,23 : 16,	MSENCSWR,	false,	37),
+	T14X_LA(14,	150,	EMUCIF_0,7 : 0,		EMUCIFR,	false,	0),
+	T14X_LA(24,	150,	EMUCIF_0,23 : 16,	EMUCIFW,	false,	0),
+	T14X_LA(32,	150,	TSEC_0,	7 : 0,		TSECSRD,	false,	0),
+	T14X_LA(32,	150,	TSEC_0,	23 : 16,	TSECSWR,	false,	0),
 
-	T14X_LA(192,	150,	DC_2,	    23 : 16,	DISPLAY_T,	false,	0),
-	T14X_LA(125,	150,	VI_0,	    23 : 16,	VI_W,		false,	0),
-	T14X_LA(75,	150,	ISP2_0,	    7 : 0,	ISP_RA,		false,	0),
-	T14X_LA(150,	150,	ISP2_1,	    7 : 0,	ISP_WA,		false,	0),
-	T14X_LA(64,	150,	ISP2_1,	    23 : 16,	ISP_WB,		false,	0),
-	T14X_LA(32,	150,	BBMCI_0,    7 : 0,	BBCR,		false,	8),
-	T14X_LA(32,	150,	BBMCI_0,    23 : 16,	BBCW,		false,	8),
-	T14X_LA(16,	150,	BBMCILL_0,  7 : 0,	BBCLLR,		false,	1),
-	T14X_LA(192,	150,	DC_3,	    7 : 0,	DISPLAYD,	false,	0),
+	T14X_LA(125,	150,	VI_0,	23 : 16,	VI_W,		false,	0),
+	T14X_LA(75,	150,	ISP2_0,	7 : 0,		ISP_RA,		false,	0),
+	T14X_LA(150,	150,	ISP2_1,	7 : 0,		ISP_WA,		false,	0),
+	T14X_LA(64,	150,	ISP2_1,	23 : 16,	ISP_WB,		false,	0),
+	T14X_LA(32,	150,	BBMCI_0,7 : 0,		BBCR,		false,	8),
+	T14X_LA(32,	150,	BBMCI_0,23 : 16,	BBCW,		false,	8),
+	T14X_LA(16,	150,	BBMCILL_0,7 : 0,	BBCLLR,		false,	1),
 
 /* end of list. */
 	T14X_LA(0,	0,	DC_3,	0 : 0,		MAX_ID,		false,	0)
 };
 
+static struct la_chip_specific *cs;
+
 static unsigned int t14x_get_ptsa_rate(unsigned int bw)
 {
-	/* 16 = 2 channels * 2 ddr * 4 bytes */
-	unsigned int base_memory_bw = 16 * T14X_BASE_EMC_FREQ_MHZ;
-	unsigned int rate = 281 * bw / base_memory_bw;
+	// 8 = (1 channels) * (2 ddr) * (4 bytes)
+	// T148DIFF - T114 code was wrong - hopefully this is right for T148
+	unsigned base_memory_bw = 8 * T14X_BASE_EMC_FREQ_MHZ;
+	// 281 = 256 * 1.1 (1.1 is the extra margin for ISO clients)
+	unsigned rate = 281 * bw / base_memory_bw;
 	if (rate > 255)
 		rate = 255;
 	return rate;
@@ -230,23 +248,24 @@ static void t14x_init_ptsa(void)
 	unsigned long ring1_rate __attribute__((unused));
 
 	emc_clk = clk_get(NULL, "emc");
-	la_debug("**** emc clk_rate=%luMHz", clk_get_rate(emc_clk)/1000000);
+	la_debug("**** emc clk_rate=%luMHz", clk_get_rate(emc_clk) / 1000000);
 
 	emc_freq = clk_get_rate(emc_clk);
 	emc_freq /= 1000000;
 	/* Compute initial value for grant dec */
 	same_freq = readl(T14X_MC_RA(EMEM_ARB_MISC0_0));
 	same_freq = same_freq >> 27 & 1;
-	grant_dec = 256 * (same_freq ? 2 : 1) * emc_freq;
+	grant_dec = 256 * (same_freq ? 2 : 1) * emc_freq /
+		    T14X_BASE_EMC_FREQ_MHZ;
 	if (grant_dec > 511)
 		grant_dec = 511;
 	writel(grant_dec, T14X_MC_RA(PTSA_GRANT_DECREMENT_0));
 
-	writel(0x3d, T14X_MC_RA(DIS_PTSA_MIN_0));
-	writel(0x14, T14X_MC_RA(DIS_PTSA_MAX_0));
+	writel(0x36, T14X_MC_RA(DIS_PTSA_MIN_0));
+	writel(0x1e, T14X_MC_RA(DIS_PTSA_MAX_0));
 
-	writel(0x3d, T14X_MC_RA(DISB_PTSA_MIN_0));
-	writel(0x14, T14X_MC_RA(DISB_PTSA_MAX_0));
+	writel(0x36, T14X_MC_RA(DISB_PTSA_MIN_0));
+	writel(0x1e, T14X_MC_RA(DISB_PTSA_MAX_0));
 
 	writel(t14x_get_ptsa_rate(T14X_MAX_CAMERA_BW_MHZ),
 		T14X_MC_RA(VE_PTSA_RATE_0));
@@ -255,24 +274,26 @@ static void t14x_init_ptsa(void)
 
 	writel(0x01, T14X_MC_RA(RING2_PTSA_RATE_0));
 	writel(0x3f, T14X_MC_RA(RING2_PTSA_MIN_0));
-	writel(0x05, T14X_MC_RA(RING2_PTSA_MAX_0));
+	writel(0x01, T14X_MC_RA(RING2_PTSA_MAX_0));
 
-	writel(38 * emc_freq / T14X_BASE_EMC_FREQ_MHZ,
+	writel(t14x_get_ptsa_rate(T14X_MAX_BBCDMA_BW_MHZ),
+		T14X_MC_RA(BBC_PTSA_RATE_0));
+	writel(0x3d, T14X_MC_RA(BBC_PTSA_MIN_0));
+	writel(0x14, T14X_MC_RA(BBC_PTSA_MAX_0));
+
+	/* BBC ring0 ptsa max/min/rate/limit */
+	writel(0x14 << 20 | 0x3d << 16 |
+		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0,
+		T14X_MC_RA(BBCLL_EARB_CFG_0));
+
+	writel(23 * emc_freq / T14X_BASE_EMC_FREQ_MHZ,
 		T14X_MC_RA(MLL_MPCORER_PTSA_RATE_0));
 	writel(0x3f, T14X_MC_RA(MLL_MPCORER_PTSA_MIN_0));
-	writel(0x05, T14X_MC_RA(MLL_MPCORER_PTSA_MAX_0));
+	writel(0x0B, T14X_MC_RA(MLL_MPCORER_PTSA_MAX_0));
 
 	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_RATE_0));
 	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_MIN_0));
 	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
-
-	writel(0x00, T14X_MC_RA(R0_DIS_PTSA_RATE_0));
-	writel(0x3f, T14X_MC_RA(R0_DIS_PTSA_MIN_0));
-	writel(0x3f, T14X_MC_RA(R0_DIS_PTSA_MAX_0));
-
-	writel(0x00, T14X_MC_RA(R0_DISB_PTSA_RATE_0));
-	writel(0x3f, T14X_MC_RA(R0_DISB_PTSA_MIN_0));
-	writel(0x3f, T14X_MC_RA(R0_DISB_PTSA_MAX_0));
 
 	ring1_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
 		     readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
@@ -291,40 +312,34 @@ static void t14x_init_ptsa(void)
 
 static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 {
-	unsigned int num_active = (disp_bw_array[0] != 0) +
-				  (disp_bw_array[1] != 0) +
-				  (disp_bw_array[2] != 0);
-	unsigned int num_activeb = (disp_bw_array[5] != 0) +
-				   (disp_bw_array[6] != 0) +
-				   (disp_bw_array[7] != 0);
-	unsigned int max_bw = disp_bw_array[0];
-	unsigned int max_bwb = disp_bw_array[5];
 	unsigned int rate_dis;
 	unsigned int rate_disb;
 	unsigned long ring1_rate;
+	unsigned int total_dis_bw;
+	unsigned int total_disb_bw;
 
-	max_bw = max(disp_bw_array[0], disp_bw_array[1]);
-	max_bw = max(max_bw, disp_bw_array[2]);
+	total_dis_bw = disp_bw_array[ID(DISPLAY_0A)] + disp_bw_array[ID(DISPLAY_0B)] +
+		       disp_bw_array[ID(DISPLAY_0C)] + disp_bw_array[ID(DISPLAY_T)] +
+		       disp_bw_array[ID(DISPLAYD)];
+	total_disb_bw = disp_bw_array[ID(DISPLAY_0AB)] + disp_bw_array[ID(DISPLAY_0BB)] +
+		       disp_bw_array[ID(DISPLAY_0CB)];
 
-	max_bwb = max(disp_bw_array[5], disp_bw_array[6]);
-	max_bwb = max(max_bwb, disp_bw_array[7]);
-
-	rate_dis = t14x_get_ptsa_rate(num_active * max_bw);
-	rate_disb = t14x_get_ptsa_rate(num_activeb * max_bwb);
+	rate_dis = t14x_get_ptsa_rate(total_dis_bw);
+	rate_disb = t14x_get_ptsa_rate(total_disb_bw);
 
 	writel(rate_dis, T14X_MC_RA(DIS_PTSA_RATE_0));
 	writel(rate_disb, T14X_MC_RA(DISB_PTSA_RATE_0));
-
 
 	ring1_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
 		     readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
 		     readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
 		     readl(T14X_MC_RA(RING2_PTSA_RATE_0));
-	la_debug("max_bw=0x%x, max_bwb=0x%x, num_active=0x%x,"
-		" num_activeb=0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x ",
-		max_bw, max_bwb, num_active, num_activeb, disp_bw_array[0],
-		disp_bw_array[1], disp_bw_array[2], disp_bw_array[5],
-		disp_bw_array[6], disp_bw_array[7]);
+	la_debug("total_dis_bw=%d, total_disb_bw=%d,"
+		" A=%d, B=%d, C=%d, T=%d, D=%d, AB=%d, BB=%d, CC=%d ",
+		total_dis_bw, total_disb_bw, disp_bw_array[0],
+		disp_bw_array[1], disp_bw_array[2], disp_bw_array[10],
+		disp_bw_array[11], disp_bw_array[5], disp_bw_array[6],
+		disp_bw_array[7]);
 	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%lx",
 		readl(T14X_MC_RA(DIS_PTSA_RATE_0)),
 		readl(T14X_MC_RA(DISB_PTSA_RATE_0)),
@@ -336,13 +351,96 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	writel(ring1_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
 }
 
-void tegra_la_get_t14x_specific(struct la_chip_specific *cs)
+static void program_la(struct la_client_info *ci, int la)
 {
-	cs->ns_per_tick = 30;
-	cs->atom_size = 16;
-	cs->la_max_value = T14X_MC_LA_MAX_VALUE;
-	cs->la_info_array = t14x_la_info_array;
-	cs->la_info_array_size = ARRAY_SIZE(t14x_la_info_array);
-	cs->init_ptsa = t14x_init_ptsa;
-	cs->update_display_ptsa_rate = t14x_update_display_ptsa_rate;
+	unsigned long reg_read;
+	unsigned long reg_write;
+
+	spin_lock(&cs->lock);
+	reg_read = readl(ci->reg_addr);
+	reg_write = (reg_read & ~ci->mask) |
+			(la << ci->shift);
+	writel(reg_write, ci->reg_addr);
+	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
+		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
+
+	BUG_ON(la > 255);
+	/* la scaling for display is on in MC always.
+	 * set lo and hi la values to same as normal la.
+	 */
+	switch (ci->id) {
+		case ID(DISPLAY_0A):
+			writel(la << 16 | la, T14X_MC_RA(SCALED_LA_DISPLAY0A_0));
+			break;
+		case ID(DISPLAY_0B):
+			writel(la << 16 | la, T14X_MC_RA(SCALED_LA_DISPLAY0B_0));
+			break;
+		case ID(DISPLAY_0C):
+			writel(la << 16 | la, T14X_MC_RA(SCALED_LA_DISPLAY0C_0));
+			break;
+		case ID(DISPLAY_0BB):
+			writel(la << 16 | la, T14X_MC_RA(SCALED_LA_DISPLAY0BB_0));
+			break;
+		default:
+			break;
+	}
+	spin_unlock(&cs->lock);
+}
+
+static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
+{
+	int ideal_la;
+	int la_to_set;
+	unsigned int fifo_size_in_atoms;
+	int bytes_per_atom = cs->atom_size;
+	struct la_client_info *ci;
+	int idx = cs->id_to_index[id];
+
+	VALIDATE_ID(id, cs);
+	VALIDATE_BW(bw_mbps);
+
+	ci = &cs->la_info_array[idx];
+	fifo_size_in_atoms = ci->fifo_size_in_atoms;
+
+	if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAYD) {
+		cs->disp_bw_array[id - TEGRA_LA_DISPLAY_0A] = bw_mbps;
+		if (cs->update_display_ptsa_rate)
+			cs->update_display_ptsa_rate(cs->disp_bw_array);
+	}
+
+	if (bw_mbps == 0) {
+		la_to_set = cs->la_max_value;
+	} else {
+		if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAYD) {
+			/* display la margin shold be 1.1 */
+			ideal_la = (100 * fifo_size_in_atoms * bytes_per_atom * 1000) /
+				   (110 * bw_mbps * cs->ns_per_tick);
+		} else {
+			ideal_la = (fifo_size_in_atoms * bytes_per_atom * 1000) /
+				   (bw_mbps * cs->ns_per_tick);
+		}
+		la_to_set = ideal_la -
+			    (ci->expiration_in_ns / cs->ns_per_tick) - 1;
+	}
+
+	la_debug("\n%s:id=%d,idx=%d, bw=%dmbps, la_to_set=%d",
+		__func__, id, idx, bw_mbps, la_to_set);
+	la_to_set = (la_to_set < 0) ? 0 : la_to_set;
+	la_to_set = (la_to_set > cs->la_max_value) ? cs->la_max_value : la_to_set;
+
+	program_la(ci, la_to_set);
+	return 0;
+}
+
+void tegra_la_get_t14x_specific(struct la_chip_specific *cs_la)
+{
+	cs_la->ns_per_tick = 30;
+	cs_la->atom_size = 16;
+	cs_la->la_max_value = T14X_MC_LA_MAX_VALUE;
+	cs_la->la_info_array = t14x_la_info_array;
+	cs_la->la_info_array_size = ARRAY_SIZE(t14x_la_info_array);
+	cs_la->init_ptsa = t14x_init_ptsa;
+	cs_la->update_display_ptsa_rate = t14x_update_display_ptsa_rate;
+	cs_la->set_la = t14x_set_la;
+	cs = cs_la;
 }

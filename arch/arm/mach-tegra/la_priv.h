@@ -96,7 +96,7 @@ struct la_chip_specific {
 	int la_info_array_size;
 	struct la_client_info *la_info_array;
 	unsigned short id_to_index[ID(MAX_ID) + 1];
-	unsigned int disp_bw_array[ID(DISPLAY_HCB) - ID(DISPLAY_0A) + 1];
+	unsigned int disp_bw_array[ID(DISPLAYD) - ID(DISPLAY_0A) + 1];
 	struct la_scaling_info scaling_info[ID(MAX_ID)];
 	int la_scaling_enable_count;
 	struct dentry *latency_debug_dir;

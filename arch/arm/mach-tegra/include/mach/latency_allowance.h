@@ -32,6 +32,8 @@ enum tegra_la_id {
 	TEGRA_LA_DISPLAY_0CB,
 	TEGRA_LA_DISPLAY_1BB,			/* T30 specific */
 	TEGRA_LA_DISPLAY_HCB,
+	TEGRA_LA_DISPLAY_T,			/* T14x specific */
+	TEGRA_LA_DISPLAYD,			/* T14x specific */
 	TEGRA_LA_EPPUP,
 	TEGRA_LA_EPPU,
 	TEGRA_LA_EPPV,
@@ -101,7 +103,6 @@ enum tegra_la_id {
 	TEGRA_LA_TSECSRD,			/* T11x, T14x specific */
 	TEGRA_LA_TSECSWR,			/* T11x, T14x specific */
 
-	TEGRA_LA_DISPLAY_T,			/* T14x specific */
 	TEGRA_LA_VI_W,				/* T14x specific */
 	TEGRA_LA_ISP_RA,			/* T14x specific */
 	TEGRA_LA_ISP_WA,			/* T14x specific */
@@ -109,7 +110,6 @@ enum tegra_la_id {
 	TEGRA_LA_BBCR,				/* T14x specific */
 	TEGRA_LA_BBCW,				/* T14x specific */
 	TEGRA_LA_BBCLLR,			/* T14x specific */
-	TEGRA_LA_DISPLAYD,			/* T14x specific */
 	TEGRA_LA_MAX_ID
 };
 
