@@ -27,8 +27,8 @@
 #include <linux/slab.h>
 #include <linux/completion.h>
 #include <linux/regulator/consumer.h>
-#include "../iio.h"
-#include "../sysfs.h"
+#include <linux/iio/iio.h>
+#include <linux/iio/sysfs.h>
 
 #define INT_STATUS_REG_ADDR	0x00
 #define MAIN_CONF_REG_ADDR	0x01
