@@ -1,7 +1,7 @@
 /*
  * Bit COREPDRQ toggling interface
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -68,7 +68,7 @@ static int corenpdrq_write(struct file *file, const char __user *userbuf,
 	size_t count, loff_t *f_pos)
 {
 	char buf[32];
-	uint32_t in_val = 0;
+	unsigned long in_val = 0;
 	uint32_t val = 0;
 
 	if (sizeof buf <= count)
