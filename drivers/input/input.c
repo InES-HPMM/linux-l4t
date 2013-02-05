@@ -1380,8 +1380,8 @@ static ssize_t input_dev_show_properties(struct device *dev,
 static DEVICE_ATTR(properties, S_IRUGO, input_dev_show_properties, NULL);
 
 static ssize_t input_dev_set_enabled(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf, size_t count)
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
 	long en;
