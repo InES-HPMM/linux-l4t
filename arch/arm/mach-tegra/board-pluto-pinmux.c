@@ -147,6 +147,8 @@
 		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,	\
 	}
 
+#define USB_PINMUX CEC_PINMUX
+
 /* We are disabling this code for now. */
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
 	{					\

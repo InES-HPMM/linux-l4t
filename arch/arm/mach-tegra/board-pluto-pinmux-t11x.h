@@ -214,7 +214,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	I2C_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, DEFAULT),
 
 	/* USB pinmux */
-	DEFAULT_PINMUX(USB_VBUS_EN0,  RSVD3,       PULL_DOWN, NORMAL, OUTPUT),
+	USB_PINMUX(USB_VBUS_EN0, RSVD3, NORMAL, NORMAL, OUTPUT, DISABLE, DISABLE),
 
 	/* nct */
 	DEFAULT_PINMUX(GPIO_X6_AUD,   SPI6,        PULL_UP,   TRISTATE, INPUT),
