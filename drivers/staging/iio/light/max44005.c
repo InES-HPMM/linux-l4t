@@ -500,7 +500,7 @@ static int max44005_probe(struct i2c_client *client,
 	struct max44005_chip *chip;
 	int err;
 
-	indio_dev = iio_allocate_device(sizeof(struct max44005_chip));
+	indio_dev = iio_device_alloc(sizeof(struct max44005_chip));
 	if (indio_dev == NULL) {
 		dev_err(&client->dev, "iio allocation fails\n");
 		return -ENOMEM;
@@ -519,7 +519,7 @@ static int max44005_probe(struct i2c_client *client,
 	if (err) {
 		dev_err(&client->dev, "iio registration fails\n");
 		mutex_destroy(&chip->lock);
-		iio_free_device(indio_dev);
+		iio_device_free(indio_dev);
 		return err;
 	}
 
@@ -588,7 +588,7 @@ static int max44005_remove(struct i2c_client *client)
 		regulator_put(chip->supply);
 	mutex_destroy(&chip->lock);
 	iio_device_unregister(indio_dev);
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 	return 0;
 }
 
@@ -603,7 +603,7 @@ static void max44005_shutdown(struct i2c_client *client)
 	mutex_unlock(&chip->lock);
 	mutex_destroy(&chip->lock);
 	iio_device_unregister(indio_dev);
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 }
 
 static const struct i2c_device_id max44005_id[] = {
