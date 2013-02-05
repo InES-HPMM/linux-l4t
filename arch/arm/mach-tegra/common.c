@@ -347,13 +347,6 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ "c2bus",	"pll_c2",	200000000,	false },
-	{ "c3bus",	"pll_c3",	200000000,	false },
-#else
-	{ "cbus",	"pll_c",	200000000,	false },
-	{ "pll_c_out1",	"pll_c",	100000000,	false },
-#endif
 	{ "msenc",	"pll_p",	108000000,	false },
 	{ "tsec",	"pll_p",	108000000,	false },
 	/* FIXME: pllp_bbc and mc_bbc has to be turned on by drivers */
@@ -361,6 +354,16 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "mc_bbc",	"emc",		0,		true },
 	{ "mc_capa",	"emc",		0,		true },
 	{ "mc_cbpa",	"emc",		0,		true },
+	/* Initialize c2bus, c3bus, or cbus at the end of the list
+	 * after all the clocks are moved under the proper parents.
+	 */
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	200000000,	false },
+	{ "c3bus",	"pll_c3",	200000000,	false },
+#else
+	{ "cbus",	"pll_c",	200000000,	false },
+	{ "pll_c_out1",	"pll_c",	100000000,	false },
+#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
