@@ -23,6 +23,9 @@
 
 #ifdef CONFIG_PM_SLEEP
 
+#define TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN 0x1
+#define TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN 0x2
+
 extern int tegra_pg_exit_latency;
 extern u32 tegra_force_clkgt_at_vmin;
 

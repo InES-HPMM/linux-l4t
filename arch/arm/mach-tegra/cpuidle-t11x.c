@@ -72,8 +72,9 @@
 #define ARCH_TIMER_CTRL_ENABLE          (1 << 0)
 #define ARCH_TIMER_CTRL_IT_MASK         (1 << 1)
 
-#define TEGRA_MIN_RESIDENCY_NCPU_SLOW 2000
-#define TEGRA_MIN_RESIDENCY_NCPU_FAST 13000
+#define TEGRA_MIN_RESIDENCY_CLKGT_VMIN	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_SLOW	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_FAST	13000
 
 #ifdef CONFIG_SMP
 static s64 tegra_cpu_wake_by_time[4] = {
@@ -458,9 +459,10 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 {
 	bool power_down;
 	bool cpu_gating_only = false;
+	bool clkgt_at_vmin = false;
 	bool power_gating_cpu_only = true;
 	int status = -1;
-	unsigned long rate = ULONG_MAX;
+	unsigned long rate;
 	s64 request;
 
 	if (tegra_cpu_timer_get_remain(&request)) {
@@ -479,31 +481,57 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
-	} else if (!cpu_gating_only &&
-		(num_online_cpus() == 1) &&
-		tegra_rail_off_is_allowed()) {
-		if (fast_cluster_power_down_mode &&
-			TEGRA_POWER_CLUSTER_FORCE_MASK)
-			power_gating_cpu_only = cpu_gating_only;
-		else if (request > TEGRA_MIN_RESIDENCY_NCPU_FAST)
-			power_gating_cpu_only = false;
-		else
+	} else {
+		if (num_online_cpus() > 1)
 			power_gating_cpu_only = true;
-	} else
-		power_gating_cpu_only = true;
+		else {
+			if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
+				clkgt_at_vmin = true;
+			else if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
+				clkgt_at_vmin = false;
+			else if ((request >= TEGRA_MIN_RESIDENCY_CLKGT_VMIN) &&
+				 (request < TEGRA_MIN_RESIDENCY_NCPU_FAST))
+				clkgt_at_vmin = true;
 
-	if (power_gating_cpu_only)
-		power_down = tegra_cpu_core_power_down(dev, state, request);
-	else {
-		if (is_lp_cluster())
+			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
+				if (fast_cluster_power_down_mode &
+						TEGRA_POWER_CLUSTER_FORCE_MASK)
+					power_gating_cpu_only = false;
+				else if (request >
+						TEGRA_MIN_RESIDENCY_NCPU_FAST)
+					power_gating_cpu_only = false;
+				else
+					power_gating_cpu_only = true;
+			} else
+				power_gating_cpu_only = true;
+		}
+	}
+
+	if (clkgt_at_vmin) {
+		rate = 0;
+		status = tegra11_cpu_dfll_rate_exchange(&rate);
+		if (!status) {
+			cpu_do_idle();
+			tegra11_cpu_dfll_rate_exchange(&rate);
+			power_down = false;
+		} else
+			power_down = tegra_cpu_core_power_down(dev, state,
+								request);
+	} else if (!power_gating_cpu_only) {
+		if (is_lp_cluster()) {
+			rate = ULONG_MAX;
 			status = tegra_cpu_backup_rate_exchange(&rate);
+		}
 
 		power_down = tegra_cpu_cluster_power_down(dev, state, request);
 
 		/* restore cpu clock after cluster power ungating */
 		if (status == 0)
 			tegra_cpu_backup_rate_exchange(&rate);
-	}
+	} else
+		power_down = tegra_cpu_core_power_down(dev, state, request);
 
 	tegra_clear_cpu_in_pd(dev->cpu);
 
