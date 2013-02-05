@@ -1431,7 +1431,8 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		}
 		/* start the controller */
 		dr_controller_run(udc);
-		tegra_usb_set_charging_current(udc);
+		if (udc->connect_type != CONNECT_TYPE_SDP)
+			tegra_usb_set_charging_current(udc);
 	}
 
 	return 0;
@@ -1451,7 +1452,7 @@ static int tegra_vbus_draw(struct usb_gadget *gadget, unsigned mA)
 
 	udc = container_of(gadget, struct tegra_udc, gadget);
 	/* Do not set current limits for CDP ports */
-	if (udc->connect_type != CONNECT_TYPE_CDP) {
+	if (udc->connect_type == CONNECT_TYPE_SDP) {
 		udc->current_limit = mA;
 		schedule_work(&udc->current_work);
 	}
@@ -1814,6 +1815,9 @@ static void setup_received_irq(struct tegra_udc *udc,
 		return;
 
 	case USB_REQ_SET_ADDRESS:
+		udc->connect_type = CONNECT_TYPE_SDP;
+		tegra_vbus_draw(&udc->gadget,
+				USB_CHARGING_SDP_CURRENT_LIMIT_UA/1000);
 		/* Status phase from udc */
 		if (setup->bRequestType != (USB_DIR_OUT | USB_TYPE_STANDARD
 						| USB_RECIP_DEVICE))
