@@ -2981,9 +2981,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	devm_free_irq(&pdev->dev, tegra->smi_irq, tegra);
 	usb_remove_hcd(xhci->shared_hcd);
 	usb_put_hcd(xhci->shared_hcd);
-	kfree(xhci);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
+	kfree(xhci);
 
 	tegra_xusb_regulator_deinit(tegra);
 	tegra_usb2_clocks_deinit(tegra);
