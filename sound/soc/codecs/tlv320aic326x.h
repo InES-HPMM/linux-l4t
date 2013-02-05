@@ -124,6 +124,7 @@ struct aic3262_priv {
 	int dsp_runstate;
 	struct firmware *cur_fw;
 	int isdefault_fw;
+	int *shutdown;
 };
 
 extern struct snd_soc_dai tlv320aic3262_dai;

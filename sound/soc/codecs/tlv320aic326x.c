@@ -62,7 +62,9 @@
 
 #include "tlv320aic326x.h"
 
-
+#define CHECK_AIC326x_I2C_SHUTDOWN(a, c) { if (a && *(a->shutdown)) { \
+dev_err(c->dev, "error: i2c state is 'shutdown'\n"); \
+mutex_unlock(&a->mutex); return -ENODEV; } }
 
 #define SOC_DOUBLE_R_SX_TLV3262(xname, xreg_left, xreg_right, xshift, \
 		xmin, xmax, tlv_array) \
@@ -133,7 +135,9 @@ int snd_soc_put_volsw_2r_sx_aic3262(struct snd_kcontrol *kcontrol,
 	int min = mc->min;
 	int ret;
 	unsigned int val, valr;
-
+	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 
 	val = ((ucontrol->value.integer.value[0]+min) & 0xff);
 	val &= mask;
@@ -142,11 +146,16 @@ int snd_soc_put_volsw_2r_sx_aic3262(struct snd_kcontrol *kcontrol,
 
 	ret = 0;
 	ret = snd_soc_update_bits_locked(codec, mc->reg, mask, val);
-	if (ret < 0)
+	if (ret < 0) {
+		mutex_unlock(&aic3262->mutex);
 		return ret;
+	}
 	ret = snd_soc_update_bits_locked(codec, mc->rreg, mask, valr);
-	if (ret < 0)
+	if (ret < 0) {
+		mutex_unlock(&aic3262->mutex);
 		return ret;
+	}
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -701,6 +710,9 @@ static int aic326x_hp_event(struct snd_soc_dapm_widget *w,
 	int mute_reg = 0;
 	int ret_wbits = 0;
 	u8 hpl_hpr;
+	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(w->codec);
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, w->codec)
 
 	if (w->shift == 1) {
 		reg_mask = AIC3262_HPL_POWER_STATUS_MASK;
@@ -728,6 +740,7 @@ static int aic326x_hp_event(struct snd_soc_dapm_widget *w,
 					      AIC326X_DELAY_COUNTER);
 		if (!ret_wbits) {
 			dev_err(w->codec->dev, "HP POST_PMU timedout\n");
+			mutex_unlock(&aic3262->mutex);
 			return -1;
 		}
 		snd_soc_update_bits(w->codec, AIC3262_HP_CTL,
@@ -756,6 +769,7 @@ static int aic326x_hp_event(struct snd_soc_dapm_widget *w,
 						AIC326X_DELAY_COUNTER);
 		if (!ret_wbits) {
 			dev_err(w->codec->dev, "HP POST_PMD timedout\n");
+			mutex_unlock(&aic3262->mutex);
 			return -1;
 		}
 		snd_soc_write(w->codec, mute_reg, 0xb9);
@@ -764,8 +778,10 @@ static int aic326x_hp_event(struct snd_soc_dapm_widget *w,
 		break;
 	default:
 		BUG();
+		mutex_unlock(&aic3262->mutex);
 		return -EINVAL;
 	}
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -2202,6 +2218,8 @@ int aic3262_hw_params(struct snd_pcm_substream *substream,
 		wclk_div = 0x20;
 	}
 
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 	snd_soc_update_bits(codec, AIC3262_ASI1_CHNL_SETUP,
 				AIC3262_ASI1_CHNL_MASK, value);
 
@@ -2222,9 +2240,11 @@ int aic3262_hw_params(struct snd_pcm_substream *substream,
 					 channels);
 	if (ret < 0) {
 		dev_err(codec->dev, "failed to set hardware params for AIC3262\n");
+		mutex_unlock(&aic3262->mutex);
 		return ret;
 	}
 
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -2243,6 +2263,8 @@ static int aic3262_mute(struct snd_soc_dai *dai, int mute)
 	dev_dbg(codec->dev, "codec : %s : started\n", __func__);
 	if (dai->id > 2)
 		return -EINVAL;
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 	if (mute) {
 		aic3262->mute_asi &= ~((0x1) << dai->id);
 		if (aic3262->mute_asi == 0)
@@ -2263,6 +2285,7 @@ static int aic3262_mute(struct snd_soc_dai *dai, int mute)
 		aic3262->mute_asi |= ((0x1) << dai->id);
 	}
 	dev_dbg(codec->dev, "codec : %s : ended\n", __func__);
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -2353,8 +2376,11 @@ static int aic3262_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	default:
 		return -EINVAL;
 	}
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 	snd_soc_update_bits(codec, aif_bclk_wclk_reg,
 			    AIC3262_WCLK_BCLK_MASTER_MASK, master);
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -2377,11 +2403,14 @@ static int aic3262_dai_set_pll(struct snd_soc_dai *dai, int pll_id, int source,
 	dev_dbg(codec->dev, "%d, %s, dai->id = %d\n", __LINE__,
 		__func__, dai->id);
 	/* select the PLL_CLKIN */
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 	snd_soc_update_bits(codec, AIC3262_PLL_CLKIN_REG,
 			    AIC3262_PLL_CLKIN_MASK, source <<
 			    AIC3262_PLL_CLKIN_SHIFT);
 	/* TODO: How to select low/high clock range? */
 
+	mutex_unlock(&aic3262->mutex);
 	aic3xxx_cfw_set_pll(aic3262->cfw_p, dai->id);
 
 	return 0;
@@ -2399,7 +2428,9 @@ static int aic3262_dai_set_pll(struct snd_soc_dai *dai, int pll_id, int source,
 static int aic3262_set_bias_level(struct snd_soc_codec *codec,
 				  enum snd_soc_bias_level level)
 {
-
+	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
+	mutex_lock(&aic3262->mutex);
+	CHECK_AIC326x_I2C_SHUTDOWN(aic3262, codec)
 	switch (level) {
 		/* full On */
 	case SND_SOC_BIAS_ON:
@@ -2454,6 +2485,7 @@ static int aic3262_set_bias_level(struct snd_soc_codec *codec,
 	}
 
 	codec->dapm.bias_level = level;
+	mutex_unlock(&aic3262->mutex);
 	return 0;
 }
 
@@ -2508,6 +2540,7 @@ static int aic3262_codec_probe(struct snd_soc_codec *codec)
 	snd_soc_codec_set_drvdata(codec, aic3262);
 	aic3262->pdata = dev_get_platdata(codec->dev->parent);
 	aic3262->codec = codec;
+	aic3262->shutdown = &control->shutdown_complete;
 	aic3262->cur_fw = NULL;
 	aic3262->cfw_p = &(aic3262->cfw_ps);
 	aic3xxx_cfw_init(aic3262->cfw_p, &aic3262_cfw_codec_ops,

@@ -73,6 +73,9 @@ struct aic3262_gpio aic3262_gpio_control[] = {
 /*Ap read conut limit once*/
 #define CODEC_BULK_READ_LIMIT 63
 
+#define CHECK_AIC3xxx_I2C_SHUTDOWN(a) { if (a && a->shutdown_complete) { \
+dev_err(a->dev, "error: i2c state is 'shutdown'\n"); return -ENODEV; } }
+
 int set_aic3xxx_book(struct aic3xxx *aic3xxx, int book)
 {
 	int ret = 0;
@@ -125,6 +128,7 @@ int aic3xxx_reg_read(struct aic3xxx *aic3xxx, unsigned int reg)
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (aic3xxx->book_no != book) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -174,6 +178,7 @@ int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (aic3xxx->book_no != book) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -230,6 +235,7 @@ int aic3xxx_reg_write(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -271,6 +277,7 @@ int aic3xxx_bulk_write(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {
@@ -311,6 +318,7 @@ int aic3xxx_set_bits(struct aic3xxx *aic3xxx, unsigned int reg,
 	offset = aic_reg->aic3xxx_register.offset;
 
 	mutex_lock(&aic3xxx->io_lock);
+	CHECK_AIC3xxx_I2C_SHUTDOWN(aic3xxx)
 	if (book != aic3xxx->book_no) {
 		ret = set_aic3xxx_book(aic3xxx, book);
 		if (ret < 0) {

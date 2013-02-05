@@ -105,6 +105,14 @@ static int __devexit aic3xxx_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void aic3xxx_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct aic3xxx *aic3xxx = dev_get_drvdata(&i2c->dev);
+	mutex_lock(&aic3xxx->io_lock);
+	aic3xxx->shutdown_complete = 1;
+	mutex_unlock(&aic3xxx->io_lock);
+}
+
 static const struct i2c_device_id aic3xxx_i2c_id[] = {
 	{"tlv320aic3262", TLV320AIC3262},
 	{"tlv320aic3285", TLV320AIC3285},
@@ -124,6 +132,7 @@ static struct i2c_driver aic3xxx_i2c_driver = {
 	.probe		= aic3xxx_i2c_probe,
 	.remove		= __devexit_p(aic3xxx_i2c_remove),
 	.id_table	= aic3xxx_i2c_id,
+	.shutdown	= aic3xxx_i2c_shutdown,
 };
 
 module_i2c_driver(aic3xxx_i2c_driver);

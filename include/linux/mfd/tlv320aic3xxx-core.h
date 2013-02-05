@@ -216,6 +216,7 @@ struct aic3xxx {
 	bool suspended;
 	u8 book_no;
 	u8 page_no;
+	int shutdown_complete;
 };
 
 struct aic3262_gpio_setup {
