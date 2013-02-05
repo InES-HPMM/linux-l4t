@@ -235,6 +235,18 @@ config TEGRA_DSI
 	help
 	  Say Y here to enable the DSI panel.
 
+config TEGRA_DSI2EDP_TC358767
+	bool "Enable DSI2EDP TC358767 bridge."
+	default n
+	help
+	  Say Y here to enable the DSI2EDP TOSHIBA 358767 adapter.
+
+config TEGRA_DSI2EDP_SN65DSI86
+	bool "Enable DSI2EDP SN65DSI86 bridge."
+	default n
+	help
+	  Say Y here to enable the DSI2EDP TI SN65DSI86 adapter.
+
 config TEGRA_DP
 	bool "Enable eDP panel."
 	default  n
