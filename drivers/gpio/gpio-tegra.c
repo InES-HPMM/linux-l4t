@@ -131,10 +131,6 @@ static void tegra_gpio_enable(int gpio)
 
 int tegra_is_gpio(int gpio)
 {
-	if (gpio >= TEGRA_NR_GPIOS) {
-		pr_warn("%s : Invalid gpio ID - %d\n", __func__, gpio);
-		return 0;
-	}
 	return (tegra_gpio_readl(GPIO_CNF(gpio)) >> GPIO_BIT(gpio)) & 0x1;
 }
 EXPORT_SYMBOL(tegra_is_gpio);
