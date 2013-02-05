@@ -1,7 +1,7 @@
 /*
  * ina219.c - driver for TI INA219 current / power monitor sensor
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * The INA219 is a sensor chip made by Texas Instruments. It measures
  * power, voltage and current on a power rail.
@@ -276,8 +276,10 @@ static s32 show_power(struct device *dev,
 	mutex_lock(&data->mutex);
 	cur_state = data->state;
 	if (data->state == STOPPED) {
-		if (power_up_INA219(client, data->pInfo->trig_conf) < 0)
+		if (power_up_INA219(client, data->pInfo->trig_conf) < 0) {
+			retval = -EAGAIN;
 			goto error;
+		}
 	} else {
 		mutex_unlock(&data->mutex);
 		return show_power2(dev, attr, buf);
@@ -398,8 +400,10 @@ static s32 show_current(struct device *dev,
 
 	cur_state = data->state;
 	if (data->state == STOPPED) {
-		if (power_up_INA219(client, data->pInfo->trig_conf) < 0)
+		if (power_up_INA219(client, data->pInfo->trig_conf) < 0) {
+			retval = -EAGAIN;
 			goto error;
+		}
 	} else {
 		mutex_unlock(&data->mutex);
 		show_current2(dev, attr, buf);
