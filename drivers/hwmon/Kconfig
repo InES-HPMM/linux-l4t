@@ -1565,10 +1565,11 @@ config SENSORS_INA219
 		Support for the TI INA219 power monitor sensor.
 
 config SENSORS_INA230
-	tristate "TI INA230/INA226/HPA02149 POWER MONITOR SENSOR DRIVER"
+	tristate "TI INA230/INA226/HPA02149/HPA01112 POWER MONITOR SENSOR DRIVER"
 	depends on I2C
 	help
-	  Support for the TI INA230/INA226/HPA02149 power monitor sensor.
+	  Support for the TI INA230/INA226/HPA02149/HPA01112 power monitor
+	  sensor.
 
 config SENSORS_INA3221
 	tristate "Texas Instruments INA3221 POWER MONITOR SENSOR DRIVER"
