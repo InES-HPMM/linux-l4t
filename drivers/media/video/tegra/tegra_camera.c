@@ -62,6 +62,9 @@ struct tegra_camera_dev {
 	struct clk *cilcd_clk;
 	struct clk *cile_clk;
 #endif
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	struct clk *vim2_clk;
+#endif
 	struct regulator *reg;
 	struct tegra_camera_clk_info info;
 	struct mutex tegra_camera_lock;
@@ -91,6 +94,9 @@ static int tegra_camera_enable_clk(struct tegra_camera_dev *dev)
 	clk_prepare_enable(dev->cilcd_clk);
 	clk_prepare_enable(dev->cile_clk);
 #endif
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	clk_prepare_enable(dev->vim2_clk);
+#endif
 	return 0;
 }
 
@@ -109,7 +115,9 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 	if (tegra_is_clk_enabled(dev->pll_d2_clk))
 		clk_disable_unprepare(dev->pll_d2_clk);
 #endif
-
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	clk_disable_unprepare(dev->vim2_clk);
+#endif
 	return 0;
 }
 
@@ -577,7 +585,11 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	err = tegra_camera_clk_get(pdev, "vi", &dev->vi_clk);
 	if (err)
 		goto vi_clk_get_err;
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	err = tegra_camera_clk_get(pdev, "vi_sensor2", &dev->vi_sensor_clk);
+#else
 	err = tegra_camera_clk_get(pdev, "vi_sensor", &dev->vi_sensor_clk);
+#endif
 	if (err)
 		goto vi_sensor_clk_get_err;
 	err = tegra_camera_clk_get(pdev, "csus", &dev->csus_clk);
@@ -603,6 +615,12 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	err = tegra_camera_clk_get(pdev, "pll_d2", &dev->pll_d2_clk);
 	if (err)
 		goto pll_d2_clk_get_err;
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	err = tegra_camera_clk_get(pdev, "vim2_clk", &dev->vim2_clk);
+	if (err)
+		goto vim2_clk_get_err;
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -632,6 +650,12 @@ static int tegra_camera_probe(struct platform_device *pdev)
 isomgr_reg_err:
 	clk_put(dev->pll_d2_clk);
 #endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+vim2_clk_get_err:
+	clk_put(dev->pll_d2_clk);
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 pll_d2_clk_get_err:
 	clk_put(dev->cile_clk);
@@ -675,6 +699,10 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	clk_put(dev->cilcd_clk);
 	clk_put(dev->cile_clk);
 	clk_put(dev->pll_d2_clk);
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	clk_put(dev->vim2_clk);
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
