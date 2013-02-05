@@ -554,6 +554,18 @@ static struct kernel_param_ops tegra_platform_ops = {
 	.get = get_platform,
 };
 module_param_cb(tegra_platform, &tegra_platform_ops, &tegra_platform_ptr, 0444);
+
+static const char *tegra_cpu_ptr;
+static int get_cpu_type(char *val, const struct kernel_param *kp)
+{
+	tegra_cpu_ptr = cpu_is_asim ? "asim" :
+				tegra_platform_name[tegra_platform];
+	return param_get_charp(val, kp);
+}
+static struct kernel_param_ops tegra_cpu_ops = {
+	.get = get_cpu_type,
+};
+module_param_cb(tegra_cpu, &tegra_cpu_ops, &tegra_cpu_ptr, 0444);
 #endif
 
 static int get_chip_id(char *val, const struct kernel_param *kp)
