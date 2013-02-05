@@ -1032,14 +1032,14 @@ static int max77660_probe(struct i2c_client *client,
 	}
 
 	ret =  mfd_add_devices(&client->dev, -1, max77660_cells,
-			ARRAY_SIZE(max77660_cells), NULL, chip->irq_base);
+			ARRAY_SIZE(max77660_cells), NULL, chip->irq_base, NULL);
 	if (ret < 0) {
 		dev_err(&client->dev, "mfd add dev failed, e = %d\n", ret);
 		goto out_exit;
 	}
 
 	ret = mfd_add_devices(&client->dev, 0, pdata->sub_devices,
-			      pdata->num_subdevs, NULL, 0);
+			      pdata->num_subdevs, NULL, 0, NULL);
 	if (ret != 0) {
 		dev_err(&client->dev, "probe: Failed to add subdev: %d\n", ret);
 		goto out_mfd_clean;
