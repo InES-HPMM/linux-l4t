@@ -24,6 +24,7 @@
 #ifdef CONFIG_PM_SLEEP
 
 extern int tegra_pg_exit_latency;
+extern u32 tegra_force_clkgt_at_vmin;
 
 struct tegra_cpuidle_ops {
 	bool (*tegra_idle_pd)(struct cpuidle_device *dev,

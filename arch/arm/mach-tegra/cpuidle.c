@@ -91,6 +91,10 @@ static bool pd_in_idle_modifiable __read_mostly = true;
 static bool pd_disabled_by_suspend;
 static struct tegra_cpuidle_ops tegra_idle_ops;
 
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+u32 tegra_force_clkgt_at_vmin;
+#endif
+
 void tegra_pd_in_idle(bool enable)
 {
 	/*
@@ -311,6 +315,13 @@ static int __init tegra_cpuidle_debug_init(void)
 		&tegra_pd_debug_ops);
 	if (!d)
 		return -ENOMEM;
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+	d = debugfs_create_x32("force_clkgt_at_vmin", S_IRUGO | S_IWUSR,
+		dir, &tegra_force_clkgt_at_vmin);
+	if (!d)
+		return -ENOMEM;
+#endif
 
 	return 0;
 }
