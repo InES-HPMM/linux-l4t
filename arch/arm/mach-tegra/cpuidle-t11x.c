@@ -116,6 +116,7 @@ static struct {
 	unsigned int c1nc_gating_done_count_bin[32];
 	unsigned int pd_int_count[NR_IRQS];
 	unsigned int last_pd_int_count[NR_IRQS];
+	unsigned int clk_gating_vmin;
 } idle_stats;
 
 static inline unsigned int time_to_bin(unsigned int time)
@@ -513,6 +514,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 		rate = 0;
 		status = tegra11_cpu_dfll_rate_exchange(&rate);
 		if (!status) {
+			idle_stats.clk_gating_vmin++;
 			cpu_do_idle();
 			tegra11_cpu_dfll_rate_exchange(&rate);
 			power_down = false;
@@ -557,6 +559,8 @@ int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 		idle_stats.tear_down_count[2],
 		idle_stats.tear_down_count[3],
 		idle_stats.tear_down_count[4]);
+	seq_printf(s, "clk gating @ Vmin count:      %8u\n",
+		idle_stats.clk_gating_vmin);
 	seq_printf(s, "rail gating count:      %8u\n",
 		idle_stats.rail_gating_count);
 	seq_printf(s, "rail gating completed:  %8u %7u%%\n",
