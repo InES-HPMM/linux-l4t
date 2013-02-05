@@ -1195,9 +1195,11 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 		machine->gpio_requested |= GPIO_HP_DET;
 	}
 
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	/* update jack status during boot */
 	aic3262_hs_jack_detect(codec, &tegra_aic326x_hp_jack,
 		SND_JACK_HEADSET);
+#endif
 
 	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
@@ -1209,10 +1211,6 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
-
-/*	snd_soc_dapm_force_enable_pin(dapm, "Mic Bias Ext");
-	snd_soc_dapm_force_enable_pin(dapm,"Mic Bias Int");
-	snd_soc_dapm_sync(dapm); */
 
 	return 0;
 }
