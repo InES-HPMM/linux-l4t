@@ -72,6 +72,9 @@
 #define ARCH_TIMER_CTRL_ENABLE          (1 << 0)
 #define ARCH_TIMER_CTRL_IT_MASK         (1 << 1)
 
+#define TEGRA_MIN_RESIDENCY_NCPU_SLOW 2000
+#define TEGRA_MIN_RESIDENCY_NCPU_FAST 13000
+
 #ifdef CONFIG_SMP
 static s64 tegra_cpu_wake_by_time[4] = {
 	LLONG_MAX, LLONG_MAX, LLONG_MAX, LLONG_MAX };
@@ -472,7 +475,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu &&
-			(request > tegra_min_residency_noncpu()))
+			(request > TEGRA_MIN_RESIDENCY_NCPU_SLOW))
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
@@ -482,7 +485,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 		if (fast_cluster_power_down_mode &&
 			TEGRA_POWER_CLUSTER_FORCE_MASK)
 			power_gating_cpu_only = cpu_gating_only;
-		else if (request > tegra_min_residency_noncpu())
+		else if (request > TEGRA_MIN_RESIDENCY_NCPU_FAST)
 			power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;

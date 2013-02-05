@@ -257,11 +257,6 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 }
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-unsigned long tegra_min_residency_noncpu(void)
-{
-	return pdata->min_residency_noncpu;
-}
-
 unsigned long tegra_min_residency_crail(void)
 {
 	return pdata->min_residency_crail;

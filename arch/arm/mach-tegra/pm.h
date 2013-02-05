@@ -74,7 +74,6 @@ struct tegra_suspend_platform_data {
 	unsigned int lp1_core_volt_high;
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	unsigned long min_residency_noncpu;
 	unsigned long min_residency_crail;
 #endif
 };
@@ -86,7 +85,6 @@ unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-unsigned long tegra_min_residency_noncpu(void);
 unsigned long tegra_min_residency_crail(void);
 #endif
 void tegra_clear_cpu_in_pd(int cpu);
