@@ -510,7 +510,7 @@ static int soctherm_set_limits(enum soctherm_therm_id therm,
 
 static void soctherm_update(void)
 {
-	long temp, trip_temp, hyst_temp, low_temp = 0, high_temp = 128000;
+	long trip_temp, hyst_temp, low_temp = 0, high_temp = 128000;
 	int i, count;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
@@ -524,8 +524,6 @@ static void soctherm_update(void)
 
 		thermal_zone_device_update(thz[i]);
 
-		thz[i]->ops->get_temp(thz[i], &temp);
-
 		for (count = 0; count < thz[i]->trips; count++) {
 			thz[i]->ops->get_trip_type(thz[i], count, &trip_type);
 			if ((trip_type == THERMAL_TRIP_HOT) ||
@@ -536,14 +534,18 @@ static void soctherm_update(void)
 			trip_temp = trip_state->trip_temp;
 
 			hyst_temp = trip_temp - trip_state->hysteresis;
-			if ((trip_type == THERMAL_TRIP_PASSIVE) &&
-			    !trip_state->tripped)
-				hyst_temp = trip_temp;
+			if (trip_type == THERMAL_TRIP_PASSIVE) {
+				high_temp = trip_temp;
+				if (!trip_state->tripped)
+					hyst_temp = trip_temp;
+			}
 
-			if ((trip_temp >= temp) && (trip_temp < high_temp))
+			if ((trip_temp >= thz[i]->temperature) &&
+			    (trip_temp < high_temp))
 				high_temp = trip_temp;
 
-			if ((hyst_temp < temp) && (hyst_temp > low_temp))
+			if ((hyst_temp < thz[i]->temperature) &&
+			    (hyst_temp > low_temp))
 				low_temp = hyst_temp;
 		}
 	}
@@ -668,8 +670,6 @@ static int soctherm_get_temp(struct thermal_zone_device *thz,
 			*temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
 		else
 			*temp = temp_translate(REG_GET(r, TS_TEMP1_GPU_TEMP));
-
-		plat_data.therm[index].etemp = *temp;
 	}
 
 	return 0;
@@ -771,7 +771,7 @@ static int soctherm_get_trend(struct thermal_zone_device *thz,
 		*trend = THERMAL_TREND_RAISING;
 		break;
 	case THERMAL_TRIP_PASSIVE:
-		if (plat_data.therm[index].etemp > trip_state->trip_temp)
+		if (thz->temperature > trip_state->trip_temp)
 			*trend = THERMAL_TREND_RAISING;
 		else
 			*trend = THERMAL_TREND_DROPPING;

@@ -66,7 +66,6 @@ struct soctherm_sensor {
 struct soctherm_therm {
 	bool zone_enable;
 	int passive_delay;
-	int etemp;
 	int num_trips;
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 	struct thermal_zone_params *tzp;
