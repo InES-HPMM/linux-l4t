@@ -67,7 +67,7 @@
 	do { \
 		int ret; \
 		int value; \
-		struct iio_dev *indio_dev = dev_get_drvdata(dev); \
+		struct iio_dev *indio_dev = dev_to_iio_dev(dev); \
 		struct max44005_chip *chip = iio_priv(indio_dev); \
 		mutex_lock(&chip->lock); \
 		ret = max44005_read(chip, &value, reg_addr, nbytes); \
@@ -275,7 +275,7 @@ static bool max44005_restore_state(struct max44005_chip *chip)
 static ssize_t show_name(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 	return sprintf(buf, "%s\n", chip->client->name);
 }
@@ -292,7 +292,7 @@ static ssize_t amb_clear_enable(struct device *dev,
 	struct device_attribute *attr, char *buf, size_t count)
 {
 	u32 lval;
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 
 	if (kstrtou32(buf, 10, &lval))
@@ -358,7 +358,7 @@ static ssize_t prox_enable(struct device *dev,
 	struct device_attribute *attr, char *buf, size_t count)
 {
 	u32 lval;
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 
 	if (kstrtou32(buf, 10, &lval))
@@ -418,7 +418,7 @@ static ssize_t amb_temp_enable(struct device *dev,
 	struct device_attribute *attr, char *buf, size_t count)
 {
 	u32 lval;
-	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct max44005_chip *chip = iio_priv(indio_dev);
 
 	if (kstrtou32(buf, 10, &lval))
