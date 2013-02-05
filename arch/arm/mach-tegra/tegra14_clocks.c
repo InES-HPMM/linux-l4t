@@ -5985,7 +5985,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("isp_sapor",	"isp_sapor",		NULL,	163,	0x654,	26000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("hdmi_audio","hdmi_audio",		NULL,	176,	0x668,	26000000, mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL,	177,	0x66c,	26000000, mux_pllp3_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("vim2_clk",	"vim2_clk",		NULL,	171,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("vim2_clk",	"tegra_camera",		"vim2_clk",	171,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("vgpio",	"vgpio",		NULL,	172,	0,	26000000, mux_clk_m,			PERIPH_NO_RESET),
 
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_sbus_cmplx, NULL, 0, 0),
