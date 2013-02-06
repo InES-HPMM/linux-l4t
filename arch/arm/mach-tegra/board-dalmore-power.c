@@ -386,7 +386,7 @@ MAX77663_PDATA_INIT(LDO3, ldo3, 1050000, 1050000, max77663_rails(sd2), 1, 1, 1,
 		    FPS_SRC_NONE, -1, -1, 0);
 
 MAX77663_PDATA_INIT(LDO4, ldo4, 1100000, 1100000, tps65090_rails(DCDC2), 1, 1,
-		    1, FPS_SRC_NONE, -1, -1, 0);
+		    1, FPS_SRC_NONE, -1, -1, LDO4_EN_TRACKING);
 
 MAX77663_PDATA_INIT(LDO5, ldo5, 1200000, 1200000, max77663_rails(sd2), 0, 1, 1,
 		    FPS_SRC_NONE, -1, -1, 0);
@@ -1129,8 +1129,13 @@ static int __init dalmore_cl_dvfs_init(void)
 
 static int __init dalmore_max77663_regulator_init(void)
 {
+	struct board_info board_info;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.fab < BOARD_FAB_A02)
+		max77663_regulator_pdata_ldo4.flags = 0;
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
