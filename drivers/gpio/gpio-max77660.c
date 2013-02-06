@@ -193,6 +193,7 @@ static int max77660_gpio_dir_output(struct gpio_chip *gpio, unsigned offset,
 	return ret;
 }
 
+
 static int max77660_gpio_set_debounce(struct gpio_chip *gpio,
 		unsigned offset, unsigned debounce)
 {
@@ -201,6 +202,12 @@ static int max77660_gpio_set_debounce(struct gpio_chip *gpio,
 	struct device *parent = max77660_gpio->parent;
 	u8 val;
 	int ret;
+
+	/* ES 1.0 errata: GPIO1 debaunce does not worked in ES1.0 */
+	if (max77660_is_es_1_0(parent) && (offset == 1)) {
+		dev_err(dev, "ES1.0: GPIO1 Debaunce is not supported in HW\n");
+		return -EINVAL;
+	}
 
 	if (debounce == 0)
 		val = MAX77660_CNFG_GPIO_DBNC_None;
