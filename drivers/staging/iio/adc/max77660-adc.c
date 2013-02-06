@@ -75,6 +75,21 @@ struct max77660_adc {
 	struct completion		conv_completion;
 };
 
+static inline int max77660_is_valid_channel(struct  max77660_adc *adc, int chan)
+{
+	int minor, major;
+
+	/*
+	 * ES1.0: Do not convert ADC0 channel otherwise it will shutdown system.
+	 */
+	if (max77660_is_es_1_0(adc->parent) &&
+			(chan == MAX77660_ADC_CH_ADC0))  {
+		dev_err(adc->dev, "ES1.0 verion errata: do not convert ADC0\n");
+		return false;
+	}
+	return true;
+}
+
 static irqreturn_t max77660_adc_irq(int irq, void *data)
 {
 	struct max77660_adc *adc = data;
@@ -250,6 +265,9 @@ static int max77660_adc_read_raw(struct iio_dev *indio_dev,
 {
 	struct  max77660_adc *adc = iio_priv(indio_dev);
 	int ret;
+
+	if (!max77660_is_valid_channel(adc, chan->channel))
+		return -EINVAL;
 
 	switch (mask) {
 	case 0:
