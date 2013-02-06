@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,8 +26,20 @@ enum {
 	AS364X_NUM,
 };
 
+struct as364x_led_config {
+	u16 color_setting;
+	u16 flash_torch_ratio;	/* max flash to max torch ratio, in 1/1000 */
+	u16 granularity;	/* 1, 10, 100, ... to carry float settings */
+	u16 flash_levels;	/* calibrated flash levels < 32 */
+	/* this table contains the calibrated flash level - luminance pair */
+	struct nvc_torch_lumi_level_v1 *lumi_levels;
+};
+
 struct as364x_config {
+	u32 led_mask; /* which led(s) enabled, 1/2/3 - left/right/both */
+	bool synchronized_led;  /* if both leds enabled, consider as one. */
 	bool use_tx_mask; /* enable TXMASK */
+
 	u16 I_limit_mA; /* AS3647/AS3648: 2000, 2500, 3000, 3500 mA
 			 * AS3643: 1000, 1500, 2000, 2500 mA for the coil*/
 	u16 txmasked_current_mA; /* 57,113,...847, roughly 56.47 mA steps */
@@ -36,7 +48,7 @@ struct as364x_config {
 				 reduction */
 	u16 vin_low_v_mV; /* 0xffff=off, 3000, 3070, 3140, 3220, 3300, 3338,
 				3470mV battery limit for flash denial */
-	u8 strobe_type; /* 1=edge, 2=level */
+	u8 strobe_type; /* 1=edge, 2=level, 3=i2c */
 	u8 inct_pwm; /* pwm duty cycle for indicator or low current mode */
 	bool freq_switch_on;
 	/* balance the current sinks for unmatched LED forward valtages */
@@ -53,6 +65,8 @@ struct as364x_config {
 	u16 min_current_mA; /* This leds minimum current in mA, desired
 			       values smaller than this will be realised
 			       using PWM. */
+	u8 def_ftimer; /* default flash timer setting 0 ~ 255, 2ms ~ 1280mS */
+	struct as364x_led_config led_config[2];
 };
 
 struct as364x_power_rail {
@@ -63,10 +77,8 @@ struct as364x_power_rail {
 struct as364x_platform_data {
 	struct as364x_config config;
 	u32 type; /* flash device type, refer to as364x_type */
-	u32 led_mask; /* which led(s) enabled, 1/2/3 - left/right/both */
 	unsigned cfg; /* use the NVC_CFG_ defines */
 	unsigned num; /* see implementation notes in driver */
-	unsigned sync; /* see implementation notes in driver */
 	const char *dev_name; /* see implementation notes in driver */
 	struct nvc_torch_pin_state pinstate; /* see notes in driver */
 	unsigned gpio_strobe; /* GPIO connected to the ACT signal */

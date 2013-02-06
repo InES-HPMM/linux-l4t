@@ -1,7 +1,7 @@
 /*
  * AS364X.c - AS364X flash/torch kernel driver
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,8 +29,18 @@
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/regmap.h>
 #include <media/nvc.h>
 #include <media/as364x.h>
+
+/* #define DEBUG_I2C_TRAFFIC */
+
+#define LEDS_SUPPORTED			2
+#define AS364X_MAX_FLASH_LEVEL		256
+#define AS364X_MAX_TORCH_LEVEL		128
+
+#define AS364X_FLASH_TIMER_NUM		256
+#define AS364X_TORCH_TIMER_NUM		1
 
 #define AS364X_REG_CHIPID		0x00
 #define AS364X_REG_LED1_SET_CURR	0x01
@@ -47,30 +57,45 @@
 #define AS364X_REG_PASSWORD		0x80
 #define AS364X_REG_CURR_BOOST		0x81
 
-#define AS364X_REG_CONTROL_MODE_EXT_TORCH	0x00
-#define AS364X_REG_CONTROL_MODE_INDICATOR	0x01
-#define AS364X_REG_CONTROL_MODE_ASSIST		0x02
-#define AS364X_REG_CONTROL_MODE_FLASH		0x03
+#define AS364X_REG_CONTROL_MODE_NONE	0x00
+#define AS364X_REG_CONTROL_MODE_IND	0x01
+#define AS364X_REG_CONTROL_MODE_TORCH	0x02
+#define AS364X_REG_CONTROL_MODE_FLASH	0x03
 
-#define AS364X_MAX_ASSIST_CURRENT(x)    \
-	DIV_ROUND_UP(((x) * 0xff * 0x7f / 0xff), 1000)
-#define AS364X_MAX_INDICATOR_CURRENT(x) \
-	DIV_ROUND_UP(((x) * 0xff * 0x3f / 0xff), 1000)
+#define AS364X_LEVEL_OFF		0
+#define AS364X_TORCH_TIMER_FOREVER	0xFFFFFFFF
 
-#define AS364X_MAX_FLASH_LEVEL	256
-#define AS364X_MAX_TORCH_LEVEL	128
-
-#define SUSTAINTIME_DEF		558
+#define SUSTAINTIME_DEF			558
 #define DEFAULT_FLASHTIME	((SUSTAINTIME_DEF > 256) ? \
 				((SUSTAINTIME_DEF - 249) / 8 + 128) : \
 				((SUSTAINTIME_DEF - 1) / 2))
-#define RECHARGEFACTOR_DEF	197
 
-#define as364x_max_flash_cap_size	(sizeof(u32) \
-				+ (sizeof(struct nvc_torch_level_info) \
-				* (AS364X_MAX_FLASH_LEVEL)))
-#define as364x_max_torch_cap_size	(sizeof(u32) \
-				+ (sizeof(s32) * (AS364X_MAX_TORCH_LEVEL)))
+#define AS364X_MAX_ASSIST_CURRENT(x)    \
+			DIV_ROUND_UP(((x) * 0xff * 0x7f / 0xff), 1000)
+#define AS364X_MAX_INDICATOR_CURRENT(x) \
+			DIV_ROUND_UP(((x) * 0xff * 0x3f / 0xff), 1000)
+
+#define as364x_flash_cap_size \
+			(sizeof(struct nvc_torch_flash_capabilities_v1) \
+			+ sizeof(struct nvc_torch_lumi_level_v1) \
+			* AS364X_MAX_FLASH_LEVEL)
+#define as364x_flash_timeout_size \
+			(sizeof(struct nvc_torch_timer_capabilities_v1) \
+			+ sizeof(struct nvc_torch_timeout_v1) \
+			* AS364X_FLASH_TIMER_NUM)
+#define as364x_max_flash_cap_size (as364x_flash_cap_size * LEDS_SUPPORTED \
+			+ as364x_flash_timeout_size * LEDS_SUPPORTED)
+
+#define as364x_torch_cap_size \
+			(sizeof(struct nvc_torch_torch_capabilities_v1) \
+			+ sizeof(struct nvc_torch_lumi_level_v1) \
+			* AS364X_MAX_TORCH_LEVEL)
+#define as364x_torch_timeout_size \
+			(sizeof(struct nvc_torch_timer_capabilities_v1) \
+			+ sizeof(struct nvc_torch_timeout_v1) \
+			* AS364X_TORCH_TIMER_NUM)
+#define as364x_max_torch_cap_size (as364x_torch_timeout_size * LEDS_SUPPORTED\
+			+ as364x_torch_timeout_size * LEDS_SUPPORTED)
 
 struct as364x_caps_struct {
 	char *name;
@@ -97,6 +122,36 @@ struct as364x_reg_cache {
 	u8 pwm_ind;
 };
 
+struct as364x_info {
+	struct i2c_client *i2c_client;
+	struct miscdevice miscdev;
+	struct device *dev;
+	struct dentry *d_as364x;
+	struct regmap *regmap;
+	struct list_head list;
+	struct mutex mutex;
+	struct regulator *v_in;
+	struct as364x_power_rail power;
+	struct as364x_platform_data *pdata;
+	const struct as364x_caps_struct *dev_cap;
+	struct nvc_torch_capability_query query;
+	struct nvc_torch_flash_capabilities_v1 *flash_cap[LEDS_SUPPORTED];
+	struct nvc_torch_timer_capabilities_v1 *flash_timeouts[LEDS_SUPPORTED];
+	struct nvc_torch_torch_capabilities_v1 *torch_cap[LEDS_SUPPORTED];
+	struct nvc_torch_timer_capabilities_v1 *torch_timeouts[LEDS_SUPPORTED];
+	struct as364x_config config;
+	struct as364x_reg_cache regs;
+	atomic_t in_use;
+	int flash_cap_size;
+	int torch_cap_size;
+	int pwr_state;
+	u8 s_mode;
+	u8 op_mode;
+	u8 led_num;
+	u8 led_mask;
+	u8 power_on;
+};
+
 static const struct as364x_caps_struct as364x_caps[] = {
 	{"as3643", 5098, 0, 81600, 0, 11, 1300, 1000,
 		AS364X_MAX_ASSIST_CURRENT(5098),
@@ -109,13 +164,26 @@ static const struct as364x_caps_struct as364x_caps[] = {
 		AS364X_MAX_INDICATOR_CURRENT(3529), true},
 };
 
+static const u16 v_in_low[] = {0, 3000, 3070, 3140, 3220, 3300, 3338, 3470};
+
+/* flash timer duration settings in uS */
+static u32 as364x_flash_timer[AS364X_FLASH_TIMER_NUM];
+
+static u32 as364x_torch_timer[AS364X_TORCH_TIMER_NUM] = {
+	AS364X_TORCH_TIMER_FOREVER
+};
+
+static struct nvc_torch_lumi_level_v1
+	as364x_def_flash_levels[AS364X_MAX_FLASH_LEVEL - 1];
+
 /* translated from the default register values after power up */
-const struct as364x_config default_cfg = {
+static const struct as364x_config default_cfg = {
+	.led_mask	= 3,
 	.use_tx_mask = 0,
 	.I_limit_mA = 3000,
 	.txmasked_current_mA = 339,
-	.vin_low_v_run_mV = 3220,
-	.vin_low_v_mV = 3300,
+	.vin_low_v_run_mV = 0,
+	.vin_low_v_mV = 0,
 	.strobe_type = 2,
 	.freq_switch_on = 0,
 	.led_off_when_vin_low = 0,
@@ -123,40 +191,32 @@ const struct as364x_config default_cfg = {
 	.max_sustained_current_mA = 0,
 	.max_peak_duration_ms = 0,
 	.min_current_mA = 0,
-};
-
-struct as364x_info {
-	struct i2c_client *i2c_client;
-	struct miscdevice miscdev;
-	struct dentry *d_as364x;
-	struct list_head list;
-	struct as364x_info *s_info;
-	struct mutex mutex;
-	struct regulator *v_in;
-	struct as364x_power_rail power;
-	struct as364x_platform_data *pdata;
-	struct nvc_torch_flash_capabilities *flash_cap;
-	struct nvc_torch_torch_capabilities *torch_cap;
-	struct as364x_caps_struct caps;
-	struct as364x_config config;
-	struct as364x_reg_cache regs;
-	atomic_t in_use;
-	int flash_cap_size;
-	int torch_cap_size;
-	int pwr_state;
-	u8 s_mode;
-	u8 flash_mode;
-	u8 led_num;
-	u8 led_mask;
+	.def_ftimer = 0x23,
+	.led_config[0] = {
+		.flash_torch_ratio = 10000,
+		.granularity = 1000,
+		.flash_levels = ARRAY_SIZE(as364x_def_flash_levels),
+		.lumi_levels = as364x_def_flash_levels,
+	},
+	.led_config[1] = {
+		.flash_torch_ratio = 10000,
+		.granularity = 1000,
+		.flash_levels = ARRAY_SIZE(as364x_def_flash_levels),
+		.lumi_levels = as364x_def_flash_levels,
+	},
 };
 
 static struct as364x_platform_data as364x_default_pdata = {
 	.cfg		= 0,
 	.num		= 0,
-	.sync		= 0,
 	.dev_name	= "torch",
 	.pinstate	= {0x0000, 0x0000},
-	.led_mask	= 3,
+};
+
+static const struct regmap_config as364x_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.cache_type = REGCACHE_NONE,
 };
 
 static const struct i2c_device_id as364x_id[] = {
@@ -172,111 +232,133 @@ MODULE_DEVICE_TABLE(i2c, as364x_id);
 static LIST_HEAD(as364x_info_list);
 static DEFINE_SPINLOCK(as364x_spinlock);
 
-static const u16 v_in_low[] = {0, 3000, 3070, 3140, 3220, 3300, 3338, 3470};
-
 static int as364x_debugfs_init(struct as364x_info *info);
 
-static int as364x_reg_rd(struct as364x_info *info, u8 reg, u8 *val)
+static inline void as364x_i2c_dump(
+	struct as364x_info *info, u8 reg, u8 *buf, u8 num)
 {
-	struct i2c_msg msg[2];
+#ifdef DEBUG_I2C_TRAFFIC
+	static unsigned char i2c_buf[32 + 3 * 16];
+	int len = sprintf(i2c_buf, "%s %02x =", __func__, reg);
+	int i;
 
-	*val = 0;
-	msg[0].addr = info->i2c_client->addr;
-	msg[0].flags = 0;
-	msg[0].len = 1;
-	msg[0].buf = &reg;
-	msg[1].addr = info->i2c_client->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = val;
-	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
-		return -EIO;
-
-	return 0;
+	for (i = 0; i < num; i++)
+		len += sprintf(i2c_buf + len, " %02x", buf[i]);
+	i2c_buf[len] = 0;
+	dev_info(info->dev, "%s\n", i2c_buf);
+#else
+	if (num == 1) {
+		dev_dbg(info->dev, "%s %02x = %02x\n", __func__, reg, *buf);
+		return;
+	}
+	dev_dbg(info->dev, "%s %02x = %02x %02x ...\n",
+		__func__, reg, buf[0], buf[1]);
+#endif
 }
 
-static int as364x_reg_raw_wr(struct as364x_info *info, u8 *buf, u8 num)
+static inline int as364x_reg_rd(struct as364x_info *info, u8 reg, u8 *val)
 {
-	struct i2c_msg msg;
+	int err = -ENODEV;
 
-	msg.addr = info->i2c_client->addr;
-	msg.flags = 0;
-	msg.len = num;
-	msg.buf = buf;
-	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
-		return -EIO;
+	mutex_lock(&info->mutex);
+	if (info->power_on)
+		err = regmap_raw_read(info->regmap, reg, val, sizeof(*val));
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
 
-	dev_dbg(&info->i2c_client->dev, "%s %x %x\n", __func__, buf[0], buf[1]);
-	return 0;
+	return err;
+}
+
+static int as364x_reg_raw_wr(struct as364x_info *info, u8 reg, u8 *buf, u8 num)
+{
+	int err = -ENODEV;
+
+	as364x_i2c_dump(info, reg, buf, num);
+	mutex_lock(&info->mutex);
+	if (info->power_on)
+		err = regmap_raw_write(info->regmap, reg, buf, num);
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
+
+	return err;
 }
 
 static int as364x_reg_wr(struct as364x_info *info, u8 reg, u8 val)
 {
-	u8 buf[2];
+	int err = -ENODEV;
 
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
-	buf[0] = reg;
-	buf[1] = val;
-	return as364x_reg_raw_wr(info, buf, sizeof(buf));
+	as364x_i2c_dump(info, reg, &val, 1);
+	mutex_lock(&info->mutex);
+	if (info->power_on)
+		err = regmap_write(info->regmap, reg, val);
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
+
+	return err;
 }
 
 static int as364x_set_leds(struct as364x_info *info,
 			u8 mask, u8 curr1, u8 curr2)
 {
 	int err = 0;
-	u8 regs[7];
+	u8 regs[6];
 
 	if (mask & 1) {
-		if (info->flash_mode == AS364X_REG_CONTROL_MODE_FLASH) {
-			if (curr1 >= info->flash_cap->numberoflevels)
-				curr1 = info->flash_cap->numberoflevels - 1;
+		if (info->op_mode == AS364X_REG_CONTROL_MODE_FLASH) {
+			if (curr1 >= info->flash_cap[0]->numberoflevels)
+				curr1 = info->flash_cap[0]->numberoflevels - 1;
 		} else {
-			if (curr1 >= info->torch_cap->numberoflevels)
-				curr1 = info->torch_cap->numberoflevels - 1;
+			if (curr1 >= info->torch_cap[0]->numberoflevels)
+				curr1 = info->torch_cap[0]->numberoflevels - 1;
 		}
 	} else
 		curr1 = 0;
 
-	if (mask & 2 && info->caps.led2_support) {
-		if (info->flash_mode == AS364X_REG_CONTROL_MODE_FLASH) {
-			if (curr2 >= info->flash_cap->numberoflevels)
-				curr2 = info->flash_cap->numberoflevels - 1;
+	if (mask & 2 && info->dev_cap->led2_support) {
+		if (info->op_mode == AS364X_REG_CONTROL_MODE_FLASH) {
+			if (curr2 >= info->flash_cap[0]->numberoflevels)
+				curr2 = info->flash_cap[0]->numberoflevels - 1;
 		} else {
-			if (curr2 >= info->torch_cap->numberoflevels)
-				curr2 = info->torch_cap->numberoflevels - 1;
+			if (curr2 >= info->torch_cap[0]->numberoflevels)
+				curr2 = info->torch_cap[0]->numberoflevels - 1;
 		}
 	} else
 		curr2 = 0;
 
-	regs[0] = AS364X_REG_LED1_SET_CURR;
-	regs[1] = curr1;
-	regs[2] = curr2;
-	regs[3] = info->regs.txmask;
-	regs[4] = info->regs.vlow;
-	regs[5] = info->regs.ftime;
+	regs[0] = curr1;
+	regs[1] = curr2;
+	regs[2] = info->regs.txmask;
+	regs[3] = info->regs.vlow;
+	regs[4] = info->regs.ftime;
 	if (mask == 0 || (curr1 == 0 && curr2 == 0))
-		regs[6] = info->flash_mode & (~0x08);
+		regs[5] = info->op_mode & (~0x08);
 	else
-		regs[6] = info->flash_mode | 0x08;
-	err = as364x_reg_raw_wr(info, regs, sizeof(regs));
+		regs[5] = info->op_mode | 0x08;
+	err = as364x_reg_raw_wr(
+		info, AS364X_REG_LED1_SET_CURR, regs, sizeof(regs));
 	if (!err) {
 		info->regs.led1_curr = curr1;
 		info->regs.led2_curr = curr2;
 	}
 
-	dev_dbg(&info->i2c_client->dev, "%s %x %x %x %x control = %x\n",
+	dev_dbg(info->dev, "%s %x %x %x %x control = %x\n",
 			__func__, mask, curr1, curr2,
-			info->regs.ftime, regs[6]);
+			info->regs.ftime, regs[5]);
 	return err;
 }
 
 static int as364x_set_txmask(struct as364x_info *info)
 {
-	struct as364x_caps_struct *p_cap = &info->caps;
+	const struct as364x_caps_struct *p_cap = info->dev_cap;
 	struct as364x_config *p_cfg = &info->config;
 	int err;
 	u8 tm;
 	u32 limit = 0, txmask;
+
+	dev_dbg(info->dev, "%s\n", __func__);
 
 	tm = p_cfg->use_tx_mask ? 1 : 0;
 
@@ -322,15 +404,50 @@ static void as364x_config_init(struct as364x_info *info)
 {
 	struct as364x_config *pcfg = &info->config;
 	struct as364x_config *pcfg_cust = &info->pdata->config;
+	unsigned i;
 
-	memcpy(pcfg, &default_cfg, sizeof(info->config));
+	dev_dbg(info->dev, "%s +++\n", __func__);
+	dev_dbg(info->dev, "as364x_def_flash_levels:\n");
+	for (i = 0; i < ARRAY_SIZE(as364x_def_flash_levels); i++) {
+		as364x_def_flash_levels[i].guidenum = i + 1;
+		as364x_def_flash_levels[i].luminance =
+			(i + 1) * info->dev_cap->curr_step_uA;
+		dev_dbg(info->dev, "0x%02x - %d\n",
+			i, as364x_def_flash_levels[i].luminance);
+	}
 
+	dev_dbg(info->dev, "as364x_flash_timer:\n");
+	/* 0 ~ 0x7f, 2 ms step / 0x80 ~ 0xff, 8 ms step*/
+	for (i = 0; i < 0x80; i++) {
+		as364x_flash_timer[i] = (i + 1) * 2000;
+		dev_dbg(info->dev,
+			"0x%02x - %06d\n", i, as364x_flash_timer[i]);
+	}
+	for (; i < ARRAY_SIZE(as364x_flash_timer); i++) {
+		as364x_flash_timer[i] = 256000 + (i - 0x7f) * 8000;
+		dev_dbg(info->dev,
+			"0x%02x - %06d\n", i, as364x_flash_timer[i]);
+	}
+
+	memcpy(pcfg, &default_cfg, sizeof(*pcfg));
+	if (!info->pdata) {
+		info->pdata = &as364x_default_pdata;
+		dev_dbg(info->dev, "%s No platform data.  Using defaults.\n",
+			__func__);
+		goto config_init_done;
+	}
+	pcfg_cust = &info->pdata->config;
+
+	pcfg->synchronized_led = pcfg_cust->synchronized_led;
 	pcfg->use_tx_mask = pcfg_cust->use_tx_mask;
 	pcfg->freq_switch_on = pcfg_cust->freq_switch_on;
 	pcfg->inct_pwm = pcfg_cust->inct_pwm;
 	pcfg->load_balance_on = pcfg_cust->load_balance_on;
 	pcfg->led_off_when_vin_low = pcfg_cust->led_off_when_vin_low;
 	pcfg->boost_mode = pcfg_cust->boost_mode;
+
+	if (pcfg_cust->led_mask)
+		pcfg->led_mask = pcfg_cust->led_mask;
 
 	if (pcfg_cust->strobe_type)
 		pcfg->strobe_type = pcfg_cust->strobe_type;
@@ -371,6 +488,20 @@ static void as364x_config_init(struct as364x_info *info)
 	if (pcfg_cust->min_current_mA)
 		pcfg->min_current_mA = pcfg_cust->min_current_mA;
 
+	for (i = 0; i < LEDS_SUPPORTED; i++) {
+		if (pcfg_cust->led_config[i].flash_levels &&
+			pcfg_cust->led_config[i].flash_torch_ratio &&
+			pcfg_cust->led_config[i].granularity &&
+			pcfg_cust->led_config[i].lumi_levels)
+			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
+				sizeof(pcfg_cust->led_config[0]));
+		else
+			dev_warn(info->dev,
+				"%s: invalid led config[%d].\n", __func__, i);
+	}
+
+config_init_done:
+	dev_dbg(info->dev, "%s ---\n", __func__);
 }
 
 static int as364x_update_settings(struct as364x_info *info)
@@ -386,7 +517,7 @@ static int as364x_update_settings(struct as364x_info *info)
 
 	err |= as364x_reg_wr(info, AS364X_REG_STROBE, info->regs.strobe);
 
-	if (info->caps.led2_support) {
+	if (info->dev_cap->led2_support) {
 		err |= as364x_reg_wr(info, AS364X_REG_PASSWORD, 0xa1);
 		if (info->config.boost_mode)
 			err |= as364x_reg_wr(info, AS364X_REG_CURR_BOOST, 1);
@@ -397,7 +528,7 @@ static int as364x_update_settings(struct as364x_info *info)
 	err |= as364x_set_leds(info,
 		info->led_mask, info->regs.led1_curr, info->regs.led2_curr);
 
-	dev_dbg(&info->i2c_client->dev, "UP: strobe: %x pwm_ind: %x vlow: %x\n",
+	dev_dbg(info->dev, "UP: strobe: %x pwm_ind: %x vlow: %x\n",
 		info->regs.strobe, info->regs.pwm_ind, info->regs.vlow);
 	return err;
 }
@@ -405,11 +536,15 @@ static int as364x_update_settings(struct as364x_info *info)
 static int as364x_configure(struct as364x_info *info, bool update)
 {
 	struct as364x_config *pcfg = &info->config;
-	struct as364x_caps_struct *pcap = &info->caps;
-	struct nvc_torch_flash_capabilities *pfcap = info->flash_cap;
-	struct nvc_torch_torch_capabilities *ptcap = info->torch_cap;
+	const struct as364x_caps_struct *pcap = info->dev_cap;
+	struct nvc_torch_capability_query *pqry = &info->query;
+	struct nvc_torch_flash_capabilities_v1	*pfcap = NULL;
+	struct nvc_torch_torch_capabilities_v1	*ptcap = NULL;
+	struct nvc_torch_timer_capabilities_v1	*ptmcap = NULL;
+	struct nvc_torch_lumi_level_v1		*plvls = NULL;
 	int val;
 	int i;
+	int j;
 
 	if (!pcap->led2_support)
 		pcfg->boost_mode = false;
@@ -429,24 +564,41 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	if (pcfg->load_balance_on)
 		info->regs.pwm_ind |= 0x20;
 
-	info->regs.strobe = pcfg->strobe_type == 2 ? 0xc0 : 0x80;
-	info->led_mask = info->pdata->led_mask;
+	switch (pcfg->strobe_type) {
+	case 1:
+		info->regs.strobe = 0x80;
+		break;
+	case 2:
+		info->regs.strobe = 0xc0;
+		break;
+	case 3:
+	default:
+		info->regs.strobe = 0x00;
+		break;
+	}
+
+	info->led_mask = pcfg->led_mask;
 
 	info->regs.ftime = DEFAULT_FLASHTIME;
 
 	if (pcfg->max_peak_current_mA > pcap->max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
-		dev_warn(&info->i2c_client->dev,
-				"max_peak_current_mA of %d invalid"
-				"changing to %d\n",
-				pcfg->max_peak_current_mA,
-				pcap->max_peak_curr_mA);
+		dev_warn(info->dev,
+			"max_peak_current_mA of %d invalid changing to %d\n",
+			pcfg->max_peak_current_mA, pcap->max_peak_curr_mA);
 		pcfg->max_peak_current_mA = pcap->max_peak_curr_mA;
 	}
 
 	info->led_num = 1;
-	if (pcap->led2_support && (info->led_mask & 3) == 3)
-		info->led_num = 2;
+	if (!pcfg->synchronized_led && pcap->led2_support &&
+		(info->led_mask & 3) == 3)
+		info->led_num = LEDS_SUPPORTED;
+
+	pqry->version = NVC_TORCH_CAPABILITY_VER_1;
+	pqry->flash_num = info->led_num;
+	pqry->torch_num = info->led_num;
+	pqry->led_attr = 0;
+
 	val = pcfg->max_peak_current_mA * info->led_num;
 
 	if (!pcfg->max_total_current_mA || pcfg->max_total_current_mA > val)
@@ -456,27 +608,25 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	if (pcfg->max_sustained_current_mA > pcap->max_assist_curr_mA ||
 		!pcfg->max_sustained_current_mA) {
-		dev_warn(&info->i2c_client->dev,
-				"max_sustained_current_mA of %d invalid"
-				"changing to %d\n",
-				pcfg->max_sustained_current_mA,
-				pcap->max_assist_curr_mA);
+		dev_warn(info->dev,
+			"max_sustained_current_mA of %d invalid"
+			"changing to %d\n",
+			pcfg->max_sustained_current_mA,
+			pcap->max_assist_curr_mA);
 		pcfg->max_sustained_current_mA =
 			pcap->max_assist_curr_mA;
 	}
 	if ((1000 * pcfg->min_current_mA) < pcap->curr_step_uA) {
 		pcfg->min_current_mA = pcap->curr_step_uA / 1000;
-		dev_warn(&info->i2c_client->dev,
-				"min_current_mA lower than possible, icreasing"
-				" to %d\n",
-				pcfg->min_current_mA);
+		dev_warn(info->dev,
+			"min_current_mA lower than possible, increasing to %d\n",
+			pcfg->min_current_mA);
 	}
 	if (pcfg->min_current_mA > pcap->max_indicator_curr_mA) {
-		dev_warn(&info->i2c_client->dev,
-				"min_current_mA of %d higher than possible,"
-				" reducing to %d",
-				pcfg->min_current_mA,
-				pcap->max_indicator_curr_mA);
+		dev_warn(info->dev,
+			"min_current_mA of %d higher than possible,"
+			" reducing to %d",
+			pcfg->min_current_mA, pcap->max_indicator_curr_mA);
 		pcfg->min_current_mA =
 			pcap->max_indicator_curr_mA;
 	}
@@ -485,29 +635,78 @@ static int as364x_configure(struct as364x_info *info, bool update)
 		val = pcap->curr_step_uA;
 	else
 		val = pcap->curr_step_boost_uA;
-	for (i = 0; i < AS364X_MAX_FLASH_LEVEL; i++) {
-		pfcap->levels[i].guidenum = val * i / 1000;
-		if (pfcap->levels[i].guidenum >
-			pcfg->max_peak_current_mA) {
-			pfcap->levels[i].guidenum = 0;
-			break;
-		}
-		pfcap->levels[i].sustaintime = SUSTAINTIME_DEF;
-		pfcap->levels[i].rechargefactor = RECHARGEFACTOR_DEF;
-	}
-	info->flash_cap_size = (sizeof(u32) +
-			(sizeof(struct nvc_torch_level_info) * i));
-	pfcap->numberoflevels = i;
 
-	for (i = 0; i < AS364X_MAX_TORCH_LEVEL; i++) {
-		ptcap->guidenum[i] = pfcap->levels[i].guidenum;
-		if (ptcap->guidenum[i] > pcfg->max_peak_current_mA) {
-			ptcap->guidenum[i] = 0;
-			break;
+	for (i = 0; i < pqry->flash_num; i++) {
+		pfcap = info->flash_cap[i];
+		pfcap->version = NVC_TORCH_CAPABILITY_VER_1;
+		pfcap->led_idx = i;
+		pfcap->attribute = 0;
+		pfcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
+		pfcap->granularity = pcfg->led_config[i].granularity;
+		pfcap->timeout_num = ARRAY_SIZE(as364x_flash_timer);
+		ptmcap = info->flash_timeouts[i];
+		pfcap->timeout_off = (void *)ptmcap - (void *)pfcap;
+		pfcap->flash_torch_ratio =
+				pcfg->led_config[i].flash_torch_ratio;
+		dev_dbg(info->dev,
+			"%s flash#%d, attr: %x, levels: %d, g: %d, ratio: %d\n",
+			__func__, pfcap->led_idx, pfcap->attribute,
+			pfcap->numberoflevels, pfcap->granularity,
+			pfcap->flash_torch_ratio);
+
+		plvls = pcfg->led_config[i].lumi_levels;
+		pfcap->levels[0].guidenum = AS364X_LEVEL_OFF;
+		pfcap->levels[0].luminance = 0;
+		for (j = 1; j < pfcap->numberoflevels; j++) {
+			pfcap->levels[j].guidenum = plvls[j - 1].guidenum;
+			pfcap->levels[j].luminance = plvls[j - 1].luminance;
+			dev_dbg(info->dev, "%03d - %d\n",
+				pfcap->levels[j].guidenum,
+				pfcap->levels[j].luminance);
+		}
+
+		ptmcap->timeout_num = pfcap->timeout_num;
+		for (j = 0; j < ptmcap->timeout_num; j++) {
+			ptmcap->timeouts[j].timeout = as364x_flash_timer[j];
+			dev_dbg(info->dev, "t: %03d - %d uS\n", j,
+				ptmcap->timeouts[j].timeout);
 		}
 	}
-	info->torch_cap_size = (sizeof(u32) + (sizeof(s32) * i));
-	ptcap->numberoflevels = i;
+
+	for (i = 0; i < pqry->torch_num; i++) {
+		ptcap = info->torch_cap[i];
+		ptcap->version = NVC_TORCH_CAPABILITY_VER_1;
+		ptcap->led_idx = i;
+		ptcap->attribute = 0;
+		ptcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
+		if (ptcap->numberoflevels > AS364X_MAX_TORCH_LEVEL)
+			ptcap->numberoflevels = AS364X_MAX_TORCH_LEVEL;
+		ptcap->granularity = pcfg->led_config[i].granularity;
+		ptcap->timeout_num = ARRAY_SIZE(as364x_torch_timer);
+		ptmcap = info->torch_timeouts[i];
+		ptcap->timeout_off = (void *)ptmcap - (void *)ptcap;
+		dev_dbg(info->dev, "torch#%d, attr: %x, levels: %d, g: %d\n",
+			ptcap->led_idx, ptcap->attribute,
+			ptcap->numberoflevels, ptcap->granularity);
+
+		plvls = pcfg->led_config[i].lumi_levels;
+		ptcap->levels[0].guidenum = AS364X_LEVEL_OFF;
+		ptcap->levels[0].luminance = 0;
+		for (j = 1; j < ptcap->numberoflevels; j++) {
+			ptcap->levels[j].guidenum = plvls[j - 1].guidenum;
+			ptcap->levels[j].luminance = plvls[j - 1].luminance;
+			dev_dbg(info->dev, "%03d - %d\n",
+				ptcap->levels[j].guidenum,
+				ptcap->levels[j].luminance);
+		}
+
+		ptmcap->timeout_num = ptcap->timeout_num;
+		for (j = 0; j < ptmcap->timeout_num; j++) {
+			ptmcap->timeouts[j].timeout = as364x_torch_timer[j];
+			dev_dbg(info->dev, "t: %03d - %d uS\n", j,
+				ptmcap->timeouts[j].timeout);
+		}
+	}
 
 	if (update && (info->pwr_state == NVC_PWR_COMM ||
 			info->pwr_state == NVC_PWR_ON))
@@ -528,7 +727,7 @@ static int as364x_suspend(struct i2c_client *client, pm_message_t msg)
 {
 	struct as364x_info *info = i2c_get_clientdata(client);
 
-	dev_info(&client->dev, "Suspending %s\n", info->caps.name);
+	dev_info(&client->dev, "Suspending %s\n", info->dev_cap->name);
 
 	return 0;
 }
@@ -537,7 +736,7 @@ static int as364x_resume(struct i2c_client *client)
 {
 	struct as364x_info *info = i2c_get_clientdata(client);
 
-	dev_info(&client->dev, "Resuming %s\n", info->caps.name);
+	dev_info(&client->dev, "Resuming %s\n", info->dev_cap->name);
 
 	return 0;
 }
@@ -546,11 +745,9 @@ static void as364x_shutdown(struct i2c_client *client)
 {
 	struct as364x_info *info = i2c_get_clientdata(client);
 
-	dev_info(&client->dev, "Shutting down %s\n", info->caps.name);
+	dev_info(&client->dev, "Shutting down %s\n", info->dev_cap->name);
 
-	mutex_lock(&info->mutex);
 	as364x_set_leds(info, 3, 0, 0);
-	mutex_unlock(&info->mutex);
 }
 #endif
 
@@ -559,28 +756,35 @@ static int as364x_power_on(struct as364x_info *info)
 	struct as364x_power_rail *power = &info->power;
 	int err = 0;
 
+	if (info->power_on)
+		return 0;
+
+	mutex_lock(&info->mutex);
 	if (power->v_in) {
 		err = regulator_enable(power->v_in);
 		if (err) {
-			dev_err(&info->i2c_client->dev, "%s v_in err\n",
-				__func__);
-			return err;
+			dev_err(info->dev, "%s v_in err\n", __func__);
+			goto power_on_end;
 		}
 	}
 
 	if (power->v_i2c) {
 		err = regulator_enable(power->v_i2c);
 		if (err) {
-			dev_err(&info->i2c_client->dev, "%s v_i2c err\n",
-				__func__);
+			dev_err(info->dev, "%s v_i2c err\n", __func__);
 			if (power->v_in)
 				regulator_disable(power->v_in);
-			return err;
+			goto power_on_end;
 		}
 	}
 
 	if (info->pdata && info->pdata->power_on_callback)
 		err = info->pdata->power_on_callback(&info->power);
+
+	if (!err)
+		info->power_on = 1;
+power_on_end:
+	mutex_unlock(&info->mutex);
 
 	if (!err) {
 		usleep_range(100, 120);
@@ -594,38 +798,41 @@ static int as364x_power_off(struct as364x_info *info)
 	struct as364x_power_rail *power = &info->power;
 	int err = 0;
 
+	if (!info->power_on)
+		return 0;
+
+	mutex_lock(&info->mutex);
 	if (info->pdata && info->pdata->power_off_callback)
 		err = info->pdata->power_off_callback(&info->power);
 	if (IS_ERR_VALUE(err))
-		return err;
+		goto power_off_end;
 
 	if (power->v_in) {
 		err = regulator_disable(power->v_in);
 		if (err) {
-			dev_err(&info->i2c_client->dev, "%s vi_in err\n",
-				__func__);
-			return err;
+			dev_err(info->dev, "%s vi_in err\n", __func__);
+			goto power_off_end;
 		}
 	}
 
 	if (power->v_i2c) {
 		err = regulator_disable(power->v_i2c);
-		if (err) {
-			dev_err(&info->i2c_client->dev, "%s vi_i2c err\n",
-				__func__);
-			return err;
-		}
+		if (err)
+			dev_err(info->dev, "%s vi_i2c err\n", __func__);
 	}
 
-	return 0;
+	if (!err)
+		info->power_on = 0;
+power_off_end:
+	mutex_unlock(&info->mutex);
+	return err;
 }
 
 static int as364x_power(struct as364x_info *info, int pwr)
 {
 	int err = 0;
 
-	dev_dbg(&info->i2c_client->dev, "%s %d %d\n",
-		__func__, pwr, info->pwr_state);
+	dev_dbg(info->dev, "%s %d %d\n", __func__, pwr, info->pwr_state);
 	if (pwr == info->pwr_state) /* power state no change */
 		return 0;
 
@@ -660,7 +867,7 @@ static int as364x_power(struct as364x_info *info, int pwr)
 	}
 
 	if (err < 0) {
-		dev_err(&info->i2c_client->dev, "%s error\n", __func__);
+		dev_err(info->dev, "%s error\n", __func__);
 		pwr = NVC_PWR_ERR;
 	}
 	info->pwr_state = pwr;
@@ -670,25 +877,11 @@ static int as364x_power(struct as364x_info *info, int pwr)
 	return err;
 }
 
-static int as364x_power_sync(struct as364x_info *info, int pwr)
-{
-	int err1 = 0;
-	int err2 = 0;
-
-	if ((info->s_mode == NVC_SYNC_OFF) ||
-		(info->s_mode == NVC_SYNC_MASTER) ||
-		(info->s_mode == NVC_SYNC_STEREO))
-		err1 = as364x_power(info, pwr);
-	if ((info->s_mode == NVC_SYNC_SLAVE) ||
-		(info->s_mode == NVC_SYNC_STEREO))
-		err2 = as364x_power(info->s_info, pwr);
-	return err1 | err2;
-}
-
 static int as364x_get_dev_id(struct as364x_info *info)
 {
 	int err;
 
+	dev_dbg(info->dev, "%s %02x\n", __func__, info->regs.dev_id);
 	/* ChipID[7:3] is a fixed identification B0 */
 	if ((info->regs.dev_id & 0xb0) == 0xb0)
 		return 0;
@@ -716,204 +909,224 @@ static int as364x_user_get_param(struct as364x_info *info, long arg)
 	struct nvc_torch_pin_state pinstate;
 	const void *data_ptr = NULL;
 	u32 data_size = 0;
+	int err = 0;
 	u8 reg;
 
 	if (copy_from_user(&params,
 			(const void __user *)arg,
 			sizeof(struct nvc_param))) {
-		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
-				__func__, __LINE__);
+		dev_err(info->dev,
+			"%s %d copy_from_user err\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if (info->s_mode == NVC_SYNC_SLAVE)
-		info = info->s_info;
 	switch (params.param) {
-	case NVC_PARAM_FLASH_CAPS:
-		dev_dbg(&info->i2c_client->dev, "%s FLASH_CAPS\n", __func__);
-		data_ptr = info->flash_cap;
+	case NVC_PARAM_TORCH_QUERY:
+		dev_dbg(info->dev, "%s QUERY\n", __func__);
+		data_ptr = &info->query;
+		data_size = sizeof(info->query);
+		break;
+	case NVC_PARAM_FLASH_EXT_CAPS:
+		dev_dbg(info->dev, "%s EXT_FLASH_CAPS %d\n",
+			__func__, params.variant);
+		if (params.variant >= info->query.flash_num) {
+			dev_err(info->dev, "%s unsupported flash index.\n",
+				__func__);
+			err = -EINVAL;
+			break;
+		}
+		data_ptr = info->flash_cap[params.variant];
 		data_size = info->flash_cap_size;
 		break;
-	case NVC_PARAM_FLASH_LEVEL:
-		reg = info->regs.led1_curr;
-		data_ptr = &info->flash_cap->levels[reg].guidenum;
-		data_size = sizeof(info->flash_cap->levels[reg].guidenum);
-		break;
-	case NVC_PARAM_TORCH_CAPS:
-		dev_dbg(&info->i2c_client->dev, "%s TORCH_CAPS\n", __func__);
-		data_ptr = info->torch_cap;
+	case NVC_PARAM_TORCH_EXT_CAPS:
+		dev_dbg(info->dev, "%s EXT_TORCH_CAPS %d\n",
+			__func__, params.variant);
+		if (params.variant >= info->query.torch_num) {
+			dev_err(info->dev, "%s unsupported torch index.\n",
+				__func__);
+			err = -EINVAL;
+			break;
+		}
+		data_ptr = info->torch_cap[params.variant];
 		data_size = info->torch_cap_size;
 		break;
+	case NVC_PARAM_FLASH_LEVEL:
+		if (params.variant >= info->query.flash_num) {
+			dev_err(info->dev,
+				"%s unsupported flash index.\n", __func__);
+			err = -EINVAL;
+			break;
+		}
+		if (info->op_mode != AS364X_REG_CONTROL_MODE_FLASH)
+			reg = 0;
+		else if (params.variant > 0)
+			reg = info->regs.led2_curr;
+		else
+			reg = info->regs.led1_curr;
+		data_ptr = &reg;
+		data_size = sizeof(reg);
+		dev_dbg(info->dev, "%s FLASH_LEVEL %d\n", __func__, reg);
+		break;
 	case NVC_PARAM_TORCH_LEVEL:
-		reg = info->regs.led1_curr;
-		data_ptr = &info->torch_cap->guidenum[reg];
-		data_size = sizeof(info->torch_cap->guidenum[reg]);
+		if (params.variant >= info->query.torch_num) {
+			dev_err(info->dev, "%s unsupported torch index.\n",
+				__func__);
+			err = -EINVAL;
+			break;
+		}
+		if (info->op_mode != AS364X_REG_CONTROL_MODE_TORCH)
+			reg = 0;
+		else if (params.variant > 0)
+			reg = info->regs.led2_curr;
+		else
+			reg = info->regs.led1_curr;
+		data_ptr = &reg;
+		data_size = sizeof(reg);
+		dev_dbg(info->dev, "%s TORCH_LEVEL %d\n", __func__, reg);
 		break;
 	case NVC_PARAM_FLASH_PIN_STATE:
 		/* By default use Active Pin State Setting */
 		pinstate = info->pdata->pinstate;
-		if ((info->flash_mode != AS364X_REG_CONTROL_MODE_FLASH) ||
+		if ((info->op_mode != AS364X_REG_CONTROL_MODE_FLASH) ||
 		    (!info->regs.led1_curr && !info->regs.led2_curr))
 			pinstate.values ^= 0xffff; /* Inactive Pin Setting */
 
-		dev_dbg(&info->i2c_client->dev, "%s FLASH_PIN_STATE: %x&%x\n",
-				__func__, pinstate.mask, pinstate.values);
+		dev_dbg(info->dev, "%s FLASH_PIN_STATE: %x&%x\n",
+			__func__, pinstate.mask, pinstate.values);
 		data_ptr = &pinstate;
 		data_size = sizeof(pinstate);
 		break;
-	case NVC_PARAM_STEREO:
-		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n",
-				__func__, info->s_mode);
-		data_ptr = &info->s_mode;
-		data_size = sizeof(info->s_mode);
-		break;
 	default:
-		dev_err(&info->i2c_client->dev,
-				"%s unsupported parameter: %d\n",
-				__func__, params.param);
-		return -EINVAL;
+		dev_err(info->dev, "%s unsupported parameter: %d\n",
+			__func__, params.param);
+		err = -EINVAL;
 	}
 
-	if (params.sizeofvalue < data_size) {
-		dev_err(&info->i2c_client->dev,
-				"%s data size mismatch %d != %d\n",
-				__func__, params.sizeofvalue, data_size);
-		return -EINVAL;
+	if (!err && params.sizeofvalue < data_size) {
+		dev_err(info->dev, "%s data size mismatch %d != %d\n",
+			__func__, params.sizeofvalue, data_size);
+		err = -EINVAL;
 	}
 
-	if (copy_to_user((void __user *)params.p_value,
-			 data_ptr,
-			 data_size)) {
-		dev_err(&info->i2c_client->dev,
-				"%s copy_to_user err line %d\n",
-				__func__, __LINE__);
-		return -EFAULT;
+	if (!err && copy_to_user((void __user *)params.p_value,
+		data_ptr, data_size)) {
+		dev_err(info->dev, "%s copy_to_user err line %d\n",
+			__func__, __LINE__);
+		err = -EFAULT;
 	}
 
-	return 0;
+	return err;
 }
 
-static int as364x_set_param(struct as364x_info *info,
+static int as364x_get_levels(struct as364x_info *info,
 			       struct nvc_param *params,
-			       u8 val)
+			       bool flash_mode,
+			       struct nvc_torch_set_level_v1 *plevels)
 {
-	int err;
+	struct nvc_torch_timer_capabilities_v1 *p_tm;
+	u8 op_mode;
 
-	switch (params->param) {
-	case NVC_PARAM_FLASH_LEVEL:
-		dev_dbg(&info->i2c_client->dev, "%s FLASH_LEVEL: %d\n",
-				__func__, val);
-
-		info->flash_mode = AS364X_REG_CONTROL_MODE_FLASH;
-		err = as364x_set_leds(info, info->led_mask, val, val);
-		if (!val)
-			info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST;
-		return err;
-	case NVC_PARAM_TORCH_LEVEL:
-		dev_dbg(&info->i2c_client->dev, "%s TORCH_LEVEL: %d\n",
-				__func__, val);
-		info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST;
-		err = as364x_set_leds(info, info->led_mask, val, val);
-		return err;
-	case NVC_PARAM_FLASH_PIN_STATE:
-		dev_dbg(&info->i2c_client->dev, "%s FLASH_PIN_STATE: %d\n",
-				__func__, val);
-		return as364x_strobe(info, val);
-	default:
-		dev_err(&info->i2c_client->dev,
-				"%s unsupported parameter: %d\n",
-				__func__, params->param);
+	if (copy_from_user(plevels, (const void __user *)params->p_value,
+			   sizeof(*plevels))) {
+		dev_err(info->dev, "%s %d copy_from_user err\n",
+				__func__, __LINE__);
 		return -EINVAL;
 	}
+
+	if (flash_mode) {
+		dev_dbg(info->dev, "%s FLASH_LEVEL: %d %d %d\n",
+			__func__, plevels->ledmask,
+			plevels->levels[0], plevels->levels[1]);
+		p_tm = info->flash_timeouts[0];
+		op_mode = AS364X_REG_CONTROL_MODE_FLASH;
+	} else {
+		dev_dbg(info->dev, "%s TORCH_LEVEL: %d %d %d\n",
+			__func__, plevels->ledmask,
+			plevels->levels[0], plevels->levels[1]);
+		p_tm = info->torch_timeouts[0];
+		op_mode = AS364X_REG_CONTROL_MODE_TORCH;
+	}
+
+	if (plevels->timeout) {
+		u16 i;
+		for (i = 0; i < p_tm->timeout_num; i++) {
+			plevels->timeout = i;
+			if (plevels->timeout == p_tm->timeouts[i].timeout)
+				break;
+		}
+	} else
+		plevels->timeout = p_tm->timeout_num - 1;
+
+	if (plevels->levels[0] == AS364X_LEVEL_OFF)
+		plevels->ledmask &= ~1;
+	if (plevels->levels[1] == AS364X_LEVEL_OFF)
+		plevels->ledmask &= ~2;
+	plevels->ledmask &= info->config.led_mask;
+
+	if (!plevels->ledmask)
+		info->op_mode = AS364X_REG_CONTROL_MODE_NONE;
+	else {
+		info->op_mode = op_mode;
+		if (info->config.synchronized_led) {
+			plevels->ledmask = 3;
+			plevels->levels[1] = plevels->levels[0];
+		}
+	}
+
+	dev_dbg(info->dev, "Return: %d - %d %d %d\n", info->op_mode,
+		plevels->ledmask, plevels->levels[0], plevels->levels[1]);
+	return 0;
 }
 
 static int as364x_user_set_param(struct as364x_info *info, long arg)
 {
 	struct nvc_param params;
-	u8 val;
+	struct nvc_torch_set_level_v1 led_levels;
 	int err = 0;
+	u8 val;
 
-	if (copy_from_user(&params,
-				(const void __user *)arg,
-				sizeof(struct nvc_param))) {
-		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
-				__func__, __LINE__);
+	if (copy_from_user(
+		&params, (const void __user *)arg, sizeof(struct nvc_param))) {
+		dev_err(info->dev,
+			"%s %d copy_from_user err\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if (copy_from_user(&val, (const void __user *)params.p_value,
-			   sizeof(val))) {
-		dev_err(&info->i2c_client->dev, "%s %d copy_from_user err\n",
-				__func__, __LINE__);
-		return -EINVAL;
-	}
-
-	/* parameters independent of sync mode */
 	switch (params.param) {
-	case NVC_PARAM_STEREO:
-		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n",
-				__func__, (int)val);
-		if (val == info->s_mode)
-			return 0;
-
-		switch (val) {
-		case NVC_SYNC_OFF:
-			info->s_mode = val;
-			if (info->s_info != NULL) {
-				info->s_info->s_mode = val;
-				as364x_power(info->s_info, NVC_PWR_OFF);
-			}
-			break;
-		case NVC_SYNC_MASTER:
-			info->s_mode = val;
-			if (info->s_info != NULL)
-				info->s_info->s_mode = val;
-			break;
-		case NVC_SYNC_SLAVE:
-		case NVC_SYNC_STEREO:
-			if (info->s_info != NULL) {
-				/* sync power */
-				info->s_info->pwr_state = info->pwr_state;
-				err = as364x_power(info->s_info,
-						     info->pwr_state);
-				if (!err) {
-					info->s_mode = val;
-					info->s_info->s_mode = val;
-				} else {
-					as364x_power(info->s_info,
-						       NVC_PWR_OFF);
-					err = -EIO;
-				}
-			} else {
-				err = -EINVAL;
-			}
-			break;
-		default:
+	case NVC_PARAM_FLASH_LEVEL:
+		as364x_get_levels(info, &params, true, &led_levels);
+		if (led_levels.timeout == 0)
+			info->regs.ftime = info->config.def_ftimer;
+		else
+			info->regs.ftime = led_levels.timeout;
+		err = as364x_set_leds(info, info->led_mask,
+			led_levels.levels[0], led_levels.levels[1]);
+		break;
+	case NVC_PARAM_TORCH_LEVEL:
+		as364x_get_levels(info, &params, false, &led_levels);
+		info->regs.ftime = led_levels.timeout;
+		err = as364x_set_leds(info, info->led_mask,
+			led_levels.levels[0], led_levels.levels[1]);
+		break;
+	case NVC_PARAM_FLASH_PIN_STATE:
+		if (copy_from_user(&val, (const void __user *)params.p_value,
+			sizeof(val))) {
+			dev_err(info->dev, "%s %d copy_from_user err\n",
+				__func__, __LINE__);
 			err = -EINVAL;
+			break;
 		}
-		if (info->pdata->cfg & NVC_CFG_NOERR)
-			return 0;
-		return err;
+		dev_dbg(info->dev, "%s FLASH_PIN_STATE: %d\n", __func__, val);
+		err = as364x_strobe(info, val);
+		break;
 	default:
-	/* parameters dependent on sync mode */
-		switch (info->s_mode) {
-		case NVC_SYNC_OFF:
-		case NVC_SYNC_MASTER:
-			return as364x_set_param(info, &params, val);
-		case NVC_SYNC_SLAVE:
-			return as364x_set_param(info->s_info, &params, val);
-		case NVC_SYNC_STEREO:
-			err = as364x_set_param(info, &params, val);
-			if (!(info->pdata->cfg & NVC_CFG_SYNC_I2C_MUX))
-				err |= as364x_set_param(info->s_info,
-						&params, val);
-			return err;
-		default:
-			dev_err(&info->i2c_client->dev, "%s %d internal err\n",
-					__func__, __LINE__);
-			return -EINVAL;
-		}
+		dev_err(info->dev, "%s unsupported parameter: %d\n",
+			__func__, params.param);
+		err = -EINVAL;
+		break;
 	}
+
+	return err;
 }
 
 static long as364x_ioctl(struct file *file,
@@ -922,106 +1135,50 @@ static long as364x_ioctl(struct file *file,
 {
 	struct as364x_info *info = file->private_data;
 	int pwr;
-	int err;
+	int err = 0;
 
 	switch (cmd) {
 	case NVC_IOCTL_PARAM_WR:
-		return as364x_user_set_param(info, arg);
+		err = as364x_user_set_param(info, arg);
+		break;
 	case NVC_IOCTL_PARAM_RD:
-		return as364x_user_get_param(info, arg);
+		err = as364x_user_get_param(info, arg);
+		break;
 	case NVC_IOCTL_PWR_WR:
 		/* This is a Guaranteed Level of Service (GLOS) call */
 		pwr = (int)arg * 2;
-		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
-			__func__, pwr);
+		dev_dbg(info->dev, "%s PWR_WR: %d\n", __func__, pwr);
 		if (!pwr || (pwr > NVC_PWR_ON)) /* Invalid Power State */
-			return 0;
+			break;
 
-		err = as364x_power_sync(info, pwr);
+		err = as364x_power(info, pwr);
 
 		if (info->pdata->cfg & NVC_CFG_NOERR)
-			return 0;
-		return err;
+			err = 0;
+		break;
 	case NVC_IOCTL_PWR_RD:
-		if (info->s_mode == NVC_SYNC_SLAVE)
-			pwr = info->s_info->pwr_state / 2;
-		else
-			pwr = info->pwr_state / 2;
-		dev_dbg(&info->i2c_client->dev, "%s PWR_RD: %d\n",
-				__func__, pwr);
+		pwr = info->pwr_state / 2;
+		dev_dbg(info->dev, "%s PWR_RD: %d\n", __func__, pwr);
 		if (copy_to_user((void __user *)arg, (const void *)&pwr,
 				 sizeof(pwr))) {
-			dev_err(&info->i2c_client->dev,
-					"%s copy_to_user err line %d\n",
-					__func__, __LINE__);
-			return -EFAULT;
+			dev_err(info->dev, "%s copy_to_user err line %d\n",
+				__func__, __LINE__);
+			err = -EFAULT;
 		}
-
-		return 0;
+		break;
 	default:
-		dev_err(&info->i2c_client->dev, "%s unsupported ioctl: %x\n",
-				__func__, cmd);
-		return -EINVAL;
-	}
-}
-
-static int as364x_sync_en(int dev1, int dev2)
-{
-	struct as364x_info *sync1 = NULL;
-	struct as364x_info *sync2 = NULL;
-	struct as364x_info *pos = NULL;
-
-	rcu_read_lock();
-	list_for_each_entry_rcu(pos, &as364x_info_list, list) {
-		if (pos->pdata->num == dev1) {
-			sync1 = pos;
-			break;
-		}
-	}
-	pos = NULL;
-	list_for_each_entry_rcu(pos, &as364x_info_list, list) {
-		if (pos->pdata->num == dev2) {
-			sync2 = pos;
-			break;
-		}
-	}
-	rcu_read_unlock();
-	if (sync1 != NULL)
-		sync1->s_info = NULL;
-	if (sync2 != NULL)
-		sync2->s_info = NULL;
-	if (!dev1 && !dev2)
-		return 0; /* no err if default instance 0's used */
-
-	if (dev1 == dev2)
-		return -EINVAL; /* err if sync instance is itself */
-
-	if ((sync1 != NULL) && (sync2 != NULL)) {
-		sync1->s_info = sync2;
-		sync2->s_info = sync1;
+		dev_err(info->dev, "%s unsupported ioctl: %x\n", __func__, cmd);
+		err = -EINVAL;
+		break;
 	}
 
-	return 0;
-}
-
-static int as364x_sync_dis(struct as364x_info *info)
-{
-	if (info->s_info != NULL) {
-		info->s_info->s_mode = 0;
-		info->s_info->s_info = NULL;
-		info->s_mode = 0;
-		info->s_info = NULL;
-		return 0;
-	}
-
-	return -EINVAL;
+	return err;
 }
 
 static int as364x_open(struct inode *inode, struct file *file)
 {
 	struct as364x_info *info = NULL;
 	struct as364x_info *pos = NULL;
-	int err;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(pos, &as364x_info_list, list) {
@@ -1034,21 +1191,11 @@ static int as364x_open(struct inode *inode, struct file *file)
 	if (!info)
 		return -ENODEV;
 
-	err = as364x_sync_en(info->pdata->num, info->pdata->sync);
-	if (err == -EINVAL)
-		dev_err(&info->i2c_client->dev,
-			 "%s err: invalid num (%u) and sync (%u) instance\n",
-			 __func__, info->pdata->num, info->pdata->sync);
 	if (atomic_xchg(&info->in_use, 1))
 		return -EBUSY;
 
-	if (info->s_info != NULL) {
-		if (atomic_xchg(&info->s_info->in_use, 1))
-			return -EBUSY;
-	}
-
 	file->private_data = info;
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	dev_dbg(info->dev, "%s\n", __func__);
 	return 0;
 }
 
@@ -1056,13 +1203,10 @@ static int as364x_release(struct inode *inode, struct file *file)
 {
 	struct as364x_info *info = file->private_data;
 
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
-	as364x_power_sync(info, NVC_PWR_OFF);
+	dev_dbg(info->dev, "%s\n", __func__);
+	as364x_power(info, NVC_PWR_OFF);
 	file->private_data = NULL;
 	WARN_ON(!atomic_xchg(&info->in_use, 0));
-	if (info->s_info != NULL)
-		WARN_ON(!atomic_xchg(&info->s_info->in_use, 0));
-	as364x_sync_dis(info);
 	return 0;
 }
 
@@ -1086,15 +1230,14 @@ static int as364x_regulator_get(struct as364x_info *info,
 	struct regulator *reg = NULL;
 	int err = 0;
 
-	reg = regulator_get(&info->i2c_client->dev, vreg_name);
+	reg = regulator_get(info->dev, vreg_name);
 	if (unlikely(IS_ERR_OR_NULL(reg))) {
-		dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
-			__func__, vreg_name, (int)reg);
+		dev_err(info->dev,
+			"%s %s ERR: %d\n", __func__, vreg_name, (int)reg);
 		err = PTR_ERR(reg);
 		reg = NULL;
 	} else
-		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
-			__func__, vreg_name);
+		dev_dbg(info->dev, "%s: %s\n", __func__, vreg_name);
 
 	*vreg = reg;
 	return err;
@@ -1120,10 +1263,9 @@ static const struct file_operations as364x_fileops = {
 
 static void as364x_del(struct as364x_info *info)
 {
-	as364x_power_sync(info, NVC_PWR_OFF);
+	as364x_power(info, NVC_PWR_OFF);
 	as364x_power_put(&info->power);
 
-	as364x_sync_dis(info);
 	spin_lock(&as364x_spinlock);
 	list_del_rcu(&info->list);
 	spin_unlock(&as364x_spinlock);
@@ -1134,10 +1276,40 @@ static int as364x_remove(struct i2c_client *client)
 {
 	struct as364x_info *info = i2c_get_clientdata(client);
 
-	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	dev_dbg(info->dev, "%s\n", __func__);
 	misc_deregister(&info->miscdev);
 	as364x_del(info);
 	return 0;
+}
+
+static void as364x_caps_layout(struct as364x_info *info)
+{
+#define AS364X_FLASH_CAP_TIMEOUT_SIZE \
+	(as364x_flash_cap_size + as364x_flash_timeout_size)
+#define AS364X_TORCH_CAP_TIMEOUT_SIZE \
+	(as364x_torch_cap_size + as364x_torch_timeout_size)
+	void *start_ptr;
+	int i;
+
+	start_ptr = (void *)info + sizeof(*info);
+	for (i = 0; i < LEDS_SUPPORTED; i++) {
+		info->flash_cap[i] = start_ptr;
+		info->flash_timeouts[i] = start_ptr + as364x_flash_cap_size;
+		start_ptr += AS364X_FLASH_CAP_TIMEOUT_SIZE;
+	}
+	info->flash_cap_size = AS364X_FLASH_CAP_TIMEOUT_SIZE;
+
+	for (i = 0; i < LEDS_SUPPORTED; i++) {
+		info->torch_cap[i] = start_ptr;
+		info->torch_timeouts[i] = start_ptr + as364x_torch_cap_size;
+		start_ptr += AS364X_TORCH_CAP_TIMEOUT_SIZE;
+	}
+	info->torch_cap_size = AS364X_TORCH_CAP_TIMEOUT_SIZE;
+
+	dev_dbg(info->dev, "%s: %d(%d + %d), %d(%d + %d)\n", __func__,
+		info->flash_cap_size, as364x_flash_cap_size,
+		as364x_flash_timeout_size, info->torch_cap_size,
+		as364x_torch_cap_size, as364x_torch_timeout_size);
 }
 
 static int as364x_probe(
@@ -1150,14 +1322,23 @@ static int as364x_probe(
 
 	dev_dbg(&client->dev, "%s\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info) +
-			as364x_max_flash_cap_size + as364x_max_torch_cap_size,
+			as364x_max_flash_cap_size +
+			as364x_max_torch_cap_size,
 			GFP_KERNEL);
 	if (info == NULL) {
 		dev_err(&client->dev, "%s: kzalloc error\n", __func__);
 		return -ENOMEM;
 	}
 
+	info->regmap = devm_regmap_init_i2c(client, &as364x_regmap_config);
+	if (IS_ERR(info->regmap)) {
+		dev_err(&client->dev,
+			"regmap init failed: %ld\n", PTR_ERR(info->regmap));
+		return -ENODEV;
+	}
+
 	info->i2c_client = client;
+	info->dev = &client->dev;
 	if (client->dev.platform_data)
 		info->pdata = client->dev.platform_data;
 	else {
@@ -1167,14 +1348,12 @@ static int as364x_probe(
 				__func__);
 	}
 
-	info->flash_cap = (void *)info + sizeof(*info);
-	info->torch_cap = (void *)info->flash_cap + as364x_max_flash_cap_size;
-	memcpy(&info->caps, &as364x_caps[info->pdata->type],
-		sizeof(info->caps));
+	as364x_caps_layout(info);
+	info->dev_cap = &as364x_caps[info->pdata->type];
 
 	as364x_config_init(info);
 
-	info->flash_mode = AS364X_REG_CONTROL_MODE_ASSIST; /* torch mode */
+	info->op_mode = AS364X_REG_CONTROL_MODE_TORCH; /* torch mode */
 
 	as364x_configure(info, false);
 
@@ -1251,7 +1430,7 @@ static int as364x_status_show(struct seq_file *s, void *data)
 		k_info->led_mask,
 		k_info->regs.led1_curr,
 		k_info->regs.led2_curr,
-		k_info->flash_mode, k_info->regs.ftime,
+		k_info->op_mode, k_info->regs.ftime,
 		pcfg->strobe_type,
 		pcfg->max_peak_current_mA,
 		pcfg->use_tx_mask,
@@ -1299,56 +1478,35 @@ static ssize_t as364x_attr_set(struct file *s,
 set_attr:
 	pr_info("new data = %x\n", val);
 	switch (buf[0]) {
+	/* enable/disable power */
 	case 'p':
 		if (val & 0xffff)
 			as364x_power(k_info, NVC_PWR_ON);
 		else
 			as364x_power(k_info, NVC_PWR_OFF);
 		break;
-	case 'c': /* change led 1/2 current settings */
+	/* enable/disable led 1/2 */
+	case 'l':
+		k_info->config.led_mask = val;
+		as364x_configure(k_info, false);
+		break;
+	/* change led 1/2 current settings */
+	case 'c':
 		as364x_set_leds(k_info, k_info->led_mask,
 			val & 0xff, (val >> 8) & 0xff);
 		break;
-	case 'l': /* enable/disable led 1/2 */
-		k_info->pdata->led_mask = val;
-		as364x_configure(k_info, false);
-		break;
-	case 'm': /* change pinstate setting */
-		k_info->pdata->pinstate.mask = (val >> 16) & 0xffff;
-		k_info->pdata->pinstate.values = val & 0xffff;
-		break;
-	case 'f': /* modify flash timeout reg */
+	/* modify flash timeout reg */
+	case 'f':
 		k_info->regs.ftime = val;
 		as364x_set_leds(k_info, k_info->led_mask,
 			k_info->regs.led1_curr,
 			k_info->regs.led2_curr);
 		break;
-	case 't': /* change txmask/torch settings */
-		k_info->config.use_tx_mask = (val >> 4) & 1;
-		k_info->config.txmasked_current_mA = val & 0x0f;
-		val = (val >> 8) & 0xffff;
-		if (val)
-			k_info->config.I_limit_mA = val;
-		as364x_set_txmask(k_info);
-		break;
-	case 'v':
-		if (val & 0xffff)
-			k_info->config.vin_low_v_run_mV = val & 0xffff;
-		val >>= 16;
-		if (val & 0xffff)
-			k_info->config.vin_low_v_mV = val & 0xffff;
-		as364x_configure(k_info, true);
-		break;
-	case 'k':
-		if (val & 0xffff)
-			k_info->config.max_peak_current_mA = val & 0xffff;
-		as364x_configure(k_info, true);
-		break;
+	/* set led work mode/trigger mode */
 	case 'x':
 		if (val & 0xf)
-			k_info->flash_mode = (val & 0xf) - 1;
-		if (val & 0xf0)
-			k_info->config.strobe_type = ((val & 0xf0) >> 4) - 1;
+			k_info->config.strobe_type = (val & 0xf);
+		k_info->op_mode = (val & 0xf0) >> 4;
 		if (val & 0xf00)
 			k_info->config.freq_switch_on =
 				((val & 0xf00) == 0x200);
@@ -1362,12 +1520,40 @@ set_attr:
 				return -ENODEV;
 			}
 			k_info->pdata->type = val;
-			memcpy(&k_info->caps,
-				&as364x_caps[k_info->pdata->type],
-				sizeof(k_info->caps));
+			k_info->dev_cap = &as364x_caps[k_info->pdata->type];
 		}
 		as364x_configure(k_info, true);
 		break;
+	/* change txmask/torch settings */
+	case 't':
+		k_info->config.use_tx_mask = (val >> 4) & 1;
+		k_info->config.txmasked_current_mA = val & 0x0f;
+		val = (val >> 8) & 0xffff;
+		if (val)
+			k_info->config.I_limit_mA = val;
+		as364x_set_txmask(k_info);
+		break;
+	/* change voltage low settings */
+	case 'v':
+		if (val & 0xffff)
+			k_info->config.vin_low_v_run_mV = val & 0xffff;
+		val >>= 16;
+		if (val & 0xffff)
+			k_info->config.vin_low_v_mV = val & 0xffff;
+		as364x_configure(k_info, true);
+		break;
+	/* set max_peak_current_mA */
+	case 'k':
+		if (val & 0xffff)
+			k_info->config.max_peak_current_mA = val & 0xffff;
+		as364x_configure(k_info, true);
+		break;
+	/* change pinstate setting */
+	case 'm':
+		k_info->pdata->pinstate.mask = (val >> 16) & 0xffff;
+		k_info->pdata->pinstate.values = val & 0xffff;
+		break;
+	/* trigger an external flash/torch event */
 	case 'g':
 		k_info->pdata->gpio_strobe = val;
 		as364x_strobe(k_info, 1);
