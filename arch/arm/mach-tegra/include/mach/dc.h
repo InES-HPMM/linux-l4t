@@ -532,6 +532,7 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_ONE_SHOT_MODE		(1 << 3)
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
 #define TEGRA_DC_OUT_ONE_SHOT_LP_MODE		(1 << 5)
+#define TEGRA_DC_OUT_INITIALIZED_MODE		(1 << 6)
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1
