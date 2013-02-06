@@ -639,9 +639,7 @@ struct spi_board_info rm31080a_roth_spi_board[1] = {
 static int __init roth_touch_init(void)
 {
 	tegra_clk_init_from_table(touch_clk_init_table);
-	clk_enable(tegra_get_clock_by_name("clk_out_2"));
 	rm31080ts_roth_data.platform_id = RM_PLATFORM_R005;
-	mdelay(20);
 	rm31080a_roth_spi_board[0].irq =
 		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
