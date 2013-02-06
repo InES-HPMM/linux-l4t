@@ -456,6 +456,20 @@ static int max77660_read_es_version(struct max77660_chip *chip)
 {
 	int ret;
 	u8 val;
+	u8 cid;
+	int i;
+
+	for (i = MAX77660_REG_CID0; i <= MAX77660_REG_CID5; ++i) {
+		ret = max77660_reg_read(chip->dev, MAX77660_PWR_SLAVE,
+				i, &cid);
+		if (ret < 0) {
+			dev_err(chip->dev, "CID%d register read failed: %d\n",
+					i - MAX77660_REG_CID0, ret);
+			return ret;
+		}
+		dev_info(chip->dev, "CID%d: 0x%02x\n",
+			i - MAX77660_REG_CID0, cid);
+	}
 
 	/* Read ES version */
 	ret = max77660_reg_read(chip->dev, MAX77660_PWR_SLAVE,
@@ -464,7 +478,7 @@ static int max77660_read_es_version(struct max77660_chip *chip)
 		dev_err(chip->dev, "CID5 read failed: %d\n", ret);
 		return ret;
 	}
-	chip->es_minor_version = MAX77660_CID5_DIDM(val) + 1;
+	chip->es_minor_version = MAX77660_CID5_DIDM(val);
 	chip->es_major_version = 1;
 	return ret;
 }

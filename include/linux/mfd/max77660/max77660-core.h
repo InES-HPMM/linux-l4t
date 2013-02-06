@@ -784,4 +784,15 @@ static inline int max77660_get_es_version(struct device *dev,
 
 	return 0;
 }
+
+static inline int max77660_is_es_1_0(struct device *dev)
+{
+	int minor, major;
+
+	max77660_get_es_version(dev->parent, &major, &minor);
+	if ((major == 1) && (minor == 0))
+		return true;
+	return false;
+}
+
 #endif /* __LINUX_MFD_MAX77660_CORE_H__ */
