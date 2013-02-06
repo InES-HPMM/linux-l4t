@@ -1082,7 +1082,6 @@ static int max77660_pwm_dvfs_init(struct device *parent,
 
 }
 
-
 static int max77660_regulator_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *pdata =
@@ -1134,6 +1133,19 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 				dev_err(&pdev->dev,
 					"Preinit regualtor %s failed: %d\n",
 					rdesc->name, ret);
+				goto clean_exit;
+			}
+		}
+
+		/* ES1.0 errata: Clear active discharge for LDO1 */
+		if (max77660_is_es_1_0(&pdev->dev) &&
+			(id == MAX77660_REGULATOR_ID_LDO1)) {
+			ret = max77660_reg_clr_bits(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE, MAX77660_REG_LDO1_CNFG,
+				LDO1_18_CNFG_ADE_MASK);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"LDO1_CNFG update failed: %d\n", ret);
 				goto clean_exit;
 			}
 		}
