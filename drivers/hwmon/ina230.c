@@ -3,7 +3,7 @@
  * (also compatible with TI INA226)
  *
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,11 +71,11 @@ rst|-   -   -  |AVG        |Vbus_CT    |Vsh_CT     |MODE
 #define INA230_VSH_CT		(0 << 3) /* Vshunt 140us conversion time */
 
 #if MEASURE_BUS_VOLT
-#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
-#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
-#else
 #define INA230_CONT_MODE	7	/* Continuous Bus and shunt measure */
 #define INA230_TRIG_MODE	3	/* Triggered Bus and shunt measure */
+#else
+#define INA230_CONT_MODE	5	/* Continuous Shunt measurement */
+#define INA230_TRIG_MODE	1	/* Triggered Shunt measurement */
 #endif
 
 #define INA230_POWER_DOWN	0
