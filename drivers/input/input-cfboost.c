@@ -26,6 +26,9 @@
 #include <linux/module.h>
 #include <linux/pm_qos.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/input_cfboost.h>
+
 /* This module listens to input events and sets a temporary frequency
  * floor upon input event detection. This is based on changes to
  * cpufreq ondemand governor by:
@@ -59,6 +62,7 @@ static struct workqueue_struct *cfb_wq;
 
 static void cfb_boost(struct work_struct *w)
 {
+	trace_input_cfboost_params("boost_params", boost_freq, boost_time);
 	cancel_delayed_work_sync(&unboost);
 	pm_qos_update_request(&core_req, 1);
 	pm_qos_update_request(&freq_req, boost_freq);
@@ -74,6 +78,7 @@ static void cfb_unboost(struct work_struct *w)
 static void cfb_input_event(struct input_handle *handle, unsigned int type,
 			    unsigned int code, int value)
 {
+	trace_input_cfboost_event("event", type, code, value);
 	if (!work_pending(&boost))
 		queue_work(cfb_wq, &boost);
 }
