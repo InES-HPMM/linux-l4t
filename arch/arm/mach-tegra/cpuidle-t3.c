@@ -328,24 +328,6 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 	return true;
 }
 
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
-static unsigned int g_diag_reg;
-
-static void save_cpu_arch_register(void)
-{
-	/* read diagnostic register */
-	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC09)
-		asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(g_diag_reg) : : "cc");
-}
-
-static void restore_cpu_arch_register(void)
-{
-	/* write diagnostic register */
-	if (((read_cpuid_id() >> 4) & 0xFFF) == 0xC09)
-		asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(g_diag_reg) : "cc");
-}
-#endif
-
 static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 			   struct cpuidle_state *state, s64 request)
 {
@@ -355,6 +337,9 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	struct tegra_twd_context twd_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+#ifndef CONFIG_TRUSTED_FOUNDATIONS
+	unsigned int diag_reg;
+#endif
 #if defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 #endif
@@ -404,13 +389,13 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	smp_wmb();
 
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
-	save_cpu_arch_register();
+	asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(diag_reg) : : "cc");
 #endif
 
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
-	restore_cpu_arch_register();
+	asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(diag_reg) : "cc");
 #endif
 
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
