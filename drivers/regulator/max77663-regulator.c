@@ -99,6 +99,7 @@
 
 /* Voltage */
 #define SDX_VOLT_MASK			0xFF
+#define SD0_VOLT_MASK			0x3F
 #define SD1_VOLT_MASK			0x3F
 #define LDO_VOLT_MASK			0x3F
 
@@ -840,6 +841,7 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 	int id;
 	int reg_id;
 	int reg_count;
+	u8 val;
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "No Platform data\n");
@@ -852,6 +854,18 @@ static int max77663_regulator_probe(struct platform_device *pdev)
 	if (!max_regs) {
 		dev_err(&pdev->dev, "mem alloc for reg failed\n");
 		return -ENOMEM;
+	}
+
+	ret = max77663_read_chip_version(pdev->dev.parent, &val);
+	if (ret == MAX77663_DRV_24) {
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD0].volt_mask =
+								SD0_VOLT_MASK;
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD0].min_uV = 800000;
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD0].max_uV = 1587500;
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD1].volt_mask =
+								SDX_VOLT_MASK;
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD1].min_uV = 600000;
+		max77663_regs_info[MAX77663_REGULATOR_ID_SD1].max_uV = 3387500;
 	}
 
 	for (id = 0; id < reg_count; ++id) {
