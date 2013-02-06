@@ -300,6 +300,7 @@ max77660_regulator_set_fps(struct max77660_regulator *reg)
 			(reg->fps_src ==  pdata->fps_src))
 		return 0;
 
+	/* FPS SRC setting */
 	switch (pdata->fps_src) {
 	case FPS_SRC_0:
 	case FPS_SRC_1:
@@ -308,11 +309,13 @@ max77660_regulator_set_fps(struct max77660_regulator *reg)
 	case FPS_SRC_4:
 	case FPS_SRC_5:
 	case FPS_SRC_6:
-		/* FPS SRC setting */
 		val = pdata->fps_src << FPS_SRC_SHIFT;
 		mask = FPS_SRC_MASK;
 		break;
 	case FPS_SRC_NONE:
+		val = FPS_SRC_MASK | FPS_PU_PERIOD_MASK | FPS_PD_PERIOD_MASK;
+		mask = FPS_SRC_MASK | FPS_PU_PERIOD_MASK | FPS_PD_PERIOD_MASK;
+		goto reg_update;
 	case FPS_SRC_DEF:
 		return 0;
 	default:
@@ -331,6 +334,7 @@ max77660_regulator_set_fps(struct max77660_regulator *reg)
 		mask |= FPS_PD_PERIOD_MASK;
 	}
 
+reg_update:
 	ret = max77660_reg_update(to_max77660_chip(reg), MAX77660_PWR_SLAVE,
 					rinfo->regs[FPS_REG].addr, val,
 					mask);
