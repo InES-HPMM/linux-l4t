@@ -1111,7 +1111,7 @@ static struct snd_soc_dai_link tegra_max98090_dai[NUM_DAI_LINKS] = {
 	[DAI_LINK_HIFI] = {
 			.name = "MAX98090",
 			.stream_name = "MAX98090 HIFI",
-			.codec_name = "max98090.0-0010",
+			.codec_name = "max98090.5-0010",
 			.platform_name = "tegra-pcm-audio",
 			.codec_dai_name = "HiFi",
 			.init = tegra_max98090_init,
@@ -1138,7 +1138,7 @@ static struct snd_soc_dai_link tegra_max98090_dai[NUM_DAI_LINKS] = {
 	[DAI_LINK_VOICE_CALL] = {
 			.name = "VOICE CALL",
 			.stream_name = "VOICE CALL PCM",
-			.codec_name = "max98090.0-0010",
+			.codec_name = "max98090.5-0010",
 			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
 			.codec_dai_name = "HiFi",
@@ -1236,13 +1236,13 @@ static int tegra_max98090_set_bias_level_post(struct snd_soc_card *card,
 static struct snd_soc_aux_dev max97236_aux_devs[] = {
 	{
 		.name = "max97236",
-		.codec_name = "max97236.0-0040",
+		.codec_name = "max97236.5-0040",
 	},
 };
 
 static struct snd_soc_codec_conf max97236_codec_conf[] = {
 	{
-		.dev_name = "max97236.0-0040",
+		.dev_name = "max97236.5-0040",
 		.name_prefix = "Amp",
 	},
 };
