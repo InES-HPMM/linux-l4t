@@ -153,6 +153,14 @@
 #define MAX77660_REG_CID4			0x9E
 #define MAX77660_REG_CID5			0x9F
 
+/* CID5 details */
+#define MAX77660_CID5_DIDM_MASK			0xF0
+#define MAX77660_CID5_DIDO_MASK			0x0F
+/* Device Identification Metal */
+#define MAX77660_CID5_DIDM(n)			(((n) >> 4) & 0xF)
+/* Device Indentification OTP */
+#define MAX77660_CID5_DIDO(n)			((n) & 0xF)
+
 #define MAX77660_IRQ_TOP1_TOPSYS_MASK		BIT(7)
 #define MAX77660_IRQ_TOP1_ADC_MASK		BIT(6)
 #define MAX77660_IRQ_TOP1_SIM_MASK		BIT(5)
@@ -445,6 +453,9 @@ struct max77660_chip {
 
 	int chip_irq;
 	int irq_base;
+
+	int es_minor_version;
+	int es_major_version;
 
 	struct regmap_irq_chip_data *top_irq_data;
 	struct regmap_irq_chip_data *global_irq_data;
@@ -761,5 +772,16 @@ static inline int max77660_reg_update(struct device *dev, int sid,
 	struct max77660_chip *chip = dev_get_drvdata(dev);
 
 	return regmap_update_bits(chip->rmap[sid], reg, mask, val);
+}
+
+static inline int max77660_get_es_version(struct device *dev,
+		int *major, int *minor)
+{
+	struct max77660_chip *chip = dev_get_drvdata(dev);
+
+	*minor = chip->es_minor_version;
+	*major = chip->es_major_version;
+
+	return 0;
 }
 #endif /* __LINUX_MFD_MAX77660_CORE_H__ */

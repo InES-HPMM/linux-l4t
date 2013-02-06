@@ -452,13 +452,29 @@ static int max77660_slave_address[MAX77660_NUM_SLAVES] = {
 	MAX77660_HAPTIC_I2C_ADDR,
 };
 
+static int max77660_read_es_version(struct max77660_chip *chip)
+{
+	int ret;
+	u8 val;
+
+	/* Read ES version */
+	ret = max77660_reg_read(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_CID5, &val);
+	if (ret < 0) {
+		dev_err(chip->dev, "CID5 read failed: %d\n", ret);
+		return ret;
+	}
+	chip->es_minor_version = MAX77660_CID5_DIDM(val) + 1;
+	chip->es_major_version = 1;
+	return ret;
+}
+
 static int max77660_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	struct max77660_platform_data *pdata = client->dev.platform_data;
 	struct max77660_chip *chip;
 	int ret = 0;
-	u8 val;
 	int i;
 
 	if (!pdata) {
@@ -502,14 +518,14 @@ static int max77660_probe(struct i2c_client *client,
 	chip->irq_base = pdata->irq_base;
 	chip->chip_irq = client->irq;
 
-	/* Dummy read to see if chip is present or not*/
-	ret = max77660_reg_read(chip->dev, MAX77660_PWR_SLAVE,
-			MAX77660_REG_CID5, &val);
+	ret = max77660_read_es_version(chip);
 	if (ret < 0) {
-		dev_err(chip->dev, "preinit: Failed to get register 0x%x\n",
-				MAX77660_REG_CID5);
+		dev_err(chip->dev, "Chip revision init failed: %d\n", ret);
 		goto fail_client_reg;
 	}
+
+	dev_info(chip->dev, "MAX77660 Rev Number ES%d.%d\n",
+		chip->es_major_version, chip->es_minor_version);
 
 	ret = max77660_init_irqs(chip, pdata);
 	if (ret < 0) {
