@@ -243,7 +243,11 @@ static void max77660_power_off(void)
 		return;
 
 	dev_info(chip->dev, "%s: Global shutdown\n", __func__);
-	max77660_reg_set_bits(chip->dev, MAX77660_PWR_SLAVE,
+	/*
+	 * ES1.0 errata suggest that in place of doing read modify write,
+	 * write direct valid value.
+	 */
+	max77660_reg_write(chip->dev, MAX77660_PWR_SLAVE,
 			MAX77660_REG_GLOBAL_CFG0,
 			GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 }
