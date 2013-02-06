@@ -886,7 +886,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 
 			mask |= BUCK1_5_CNFG_DVFS_EN_MASK;
 			if (pdata->flags & DISABLE_DVFS)
-				val |= BUCK1_5_CNFG_DVFS_EN_MASK;
+				val &= ~BUCK1_5_CNFG_DVFS_EN_MASK;
 		} else if ((reg->rinfo->id >= MAX77660_REGULATOR_ID_BUCK6) &&
 			(reg->rinfo->id <= MAX77660_REGULATOR_ID_BUCK7)) {
 			mask |= BUCK6_7_CNFG_FPWM_MASK;
