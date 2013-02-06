@@ -1396,6 +1396,7 @@ static void *__iommu_alloc_atomic(struct device *dev, size_t size,
 	if (*handle == DMA_ERROR_CODE)
 		goto err_mapping;
 
+	dev_dbg(dev, "%s() %08x(%x)\n", __func__, *handle, size);
 	return addr;
 
 err_mapping:
@@ -1408,6 +1409,7 @@ static void __iommu_free_atomic(struct device *dev, void *cpu_addr,
 {
 	__iommu_remove_mapping(dev, handle, size);
 	__free_from_pool(cpu_addr, size);
+	dev_dbg(dev, "%s() %08x(%x)\n", __func__, handle, size);
 }
 
 static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
