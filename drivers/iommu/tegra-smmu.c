@@ -1203,7 +1203,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	regs2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	window = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	window = tegra_smmu_window(0);
 	if (!regs || !regs2 || !window) {
 		dev_err(dev, "No SMMU resources\n");
 		return -ENODEV;
