@@ -59,6 +59,7 @@
 #define MAX77663_REG_GPIO_ALT		0x40
 #define MAX77663_REG_ONOFF_CFG1		0x41
 #define MAX77663_REG_ONOFF_CFG2		0x42
+#define MAX77663_REG_CID4			0x5C
 #define MAX77663_REG_CID5			0x5D
 
 #define IRQ_TOP_GLBL_MASK		(1 << 7)
@@ -827,6 +828,21 @@ static bool rd_wr_reg_rtc(struct device *dev, unsigned int reg)
 	return false;
 }
 
+int max77663_read_chip_version(struct device *dev, u8 *val)
+{
+	int ret, version;
+
+	version = MAX77663_DRV_NOT_DEFINED;
+	ret = max77663_read(dev, MAX77663_REG_CID4, val, 1, 0);
+
+	if (!ret) {
+		if (*val == 0x24)
+			version = MAX77663_DRV_24;
+		return version;
+	}
+	return ret;
+}
+
 static const struct regmap_config max77663_regmap_config_power = {
 	.reg_bits = 8,
 	.val_bits = 8,
@@ -909,6 +925,13 @@ static int max77663_probe(struct i2c_client *client,
 				MAX77663_REG_CID5);
 		return ret;
 	}
+
+	/* Reading chip version */
+	ret = max77663_read_chip_version(chip->dev, &val);
+	if (ret < 0)
+		dev_err(chip->dev, "Failed to read chip version\n");
+	else
+		dev_dbg(chip->dev, "Chip version - 0x%x\n", val);
 
 	max77663_irq_init(chip);
 	max77663_debugfs_init(chip);

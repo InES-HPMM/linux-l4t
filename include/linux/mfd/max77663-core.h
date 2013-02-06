@@ -111,6 +111,17 @@ enum max77663_gpio_alt {
 	GPIO_ALT_DISABLE,
 };
 
+enum max77663_chip_version {
+	MAX77663_DRV_NOT_DEFINED,
+	MAX77663_DRV_10,
+	MAX77663_DRV_12,
+	MAX77663_DRV_1A,
+	MAX77663_DRV_1B,
+	MAX77663_DRV_1E,
+	MAX77663_DRV_20,
+	MAX77663_DRV_22,
+	MAX77663_DRV_24,
+};
 /*
  * Flags
  */
@@ -154,6 +165,7 @@ int max77663_write(struct device *dev, u8 addr, void *values, u32 len,
 int max77663_set_bits(struct device *dev, u8 addr, u8 mask, u8 value,
 		      bool is_rtc);
 int max77663_gpio_set_alternate(int gpio, int alternate);
+int max77663_read_chip_version(struct device *dev, u8 *val);
 #else
 static inline int max77663_read(struct device *dev, u8 addr, void *values,
 				u32 len, bool is_rtc)
@@ -174,6 +186,11 @@ static inline int max77663_set_bits(struct device *dev, u8 addr, u8 mask,
 }
 
 static inline int max77663_gpio_set_alternate(int gpio, int alternate)
+{
+	return 0;
+}
+
+static inline int max77663_read_chip_version(struct device *dev, u8 *val)
 {
 	return 0;
 }
