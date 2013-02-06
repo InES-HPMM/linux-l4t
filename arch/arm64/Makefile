@@ -50,7 +50,7 @@ libs-y		+= $(LIBGCC)
 KBUILD_IMAGE	:= Image.gz
 KBUILD_DTBS	:= dtbs
 
-all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
+all:	$(KBUILD_IMAGE) $(KBUILD_DTBS) zImage
 
 boot := arch/arm64/boot
 
@@ -58,7 +58,7 @@ boot := arch/arm64/boot
 archprepare:
 	$(Q)$(MAKE) $(build)=arch/arm/tools include/generated/mach-types.h
 
-Image Image.gz: vmlinux
+Image Image.gz zImage: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 zinstall install: vmlinux
