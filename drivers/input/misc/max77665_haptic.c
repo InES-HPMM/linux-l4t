@@ -1,7 +1,7 @@
 /*
  * MAX77665-haptic controller driver
  *
- * Copyright (c) 2012, NVIDIA Corporation, All Rights Reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation, All Rights Reserved.
  *
  * Based on driver max8997_haptic.c
  * Copyright (c) 2012 Samsung Electronics
@@ -466,7 +466,7 @@ static int max77665_haptic_probe(struct platform_device *pdev)
 	chip->haptic_edp_client->states = haptic_pdata->edp_states;
 	chip->haptic_edp_client->num_states = MAX77665_HAPTIC_EDP_NUM_STATES;
 	chip->haptic_edp_client->e0_index = MAX77665_HAPTIC_EDP_LOW;
-	chip->haptic_edp_client->priority = EDP_MAX_PRIO - 2;
+	chip->haptic_edp_client->priority = EDP_MAX_PRIO + 2;
 	chip->haptic_edp_client->throttle = max77665_haptic_throttle;
 	chip->haptic_edp_client->private_data = chip;
 

@@ -219,8 +219,8 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	if (client->manager || find_client(mgr, client->name))
 		return -EEXIST;
 
-	if (!states_ok(client) || client->priority < EDP_MIN_PRIO ||
-			client->priority > EDP_MAX_PRIO ||
+	if (!states_ok(client) || client->priority > EDP_MIN_PRIO ||
+			client->priority < EDP_MAX_PRIO ||
 			(client->e0_index && !client->throttle))
 		return -EINVAL;
 

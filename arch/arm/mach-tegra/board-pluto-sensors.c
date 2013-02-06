@@ -191,7 +191,7 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 		.states = max77665_f_estates,
 		.num_states = ARRAY_SIZE(max77665_f_estates),
 		.e0_index = 3,
-		.priority = EDP_MAX_PRIO - 2,
+		.priority = EDP_MAX_PRIO + 2,
 		},
 };
 
@@ -567,7 +567,7 @@ static struct imx091_platform_data imx091_pdata = {
 		.states = imx091_estates,
 		.num_states = ARRAY_SIZE(imx091_estates),
 		.e0_index = 0,
-		.priority = EDP_MAX_PRIO - 1,
+		.priority = EDP_MAX_PRIO + 1,
 		},
 	.power_on		= pluto_imx091_power_on,
 	.power_off		= pluto_imx091_power_off,

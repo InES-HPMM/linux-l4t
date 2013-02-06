@@ -22,8 +22,8 @@
 #include <linux/workqueue.h>
 
 #define EDP_NAME_LEN	16
-#define EDP_MIN_PRIO	0
-#define EDP_MAX_PRIO	19
+#define EDP_MIN_PRIO	19
+#define EDP_MAX_PRIO	0
 
 struct edp_manager {
 	char name[EDP_NAME_LEN];

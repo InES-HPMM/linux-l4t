@@ -155,7 +155,7 @@ examples show how the usual operations are performed.
 		.states = modem_states,
 		.num_states = ARRAY_SIZE(num_states),
 		.e0_index = MODEM_EDP_E0,
-		.priority = EDP_MAX_PRIO - 3,
+		.priority = EDP_MAX_PRIO + 3,
 		.max_borrowers = 1,
 		...
 	};
