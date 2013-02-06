@@ -111,7 +111,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune_high_min_millivolts = 0,
 			.min_millivolts = 900,
 		},
-		.max_mv = 1215,
+		.max_mv = 1210,
 		.freqs_mult = KHZ,
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
