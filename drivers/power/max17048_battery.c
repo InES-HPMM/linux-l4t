@@ -176,6 +176,9 @@ static int max17048_get_property(struct power_supply *psy,
 				struct max17048_chip, battery);
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = chip->status;
 		break;
@@ -324,6 +327,7 @@ void max17048_battery_status(int status,
 EXPORT_SYMBOL_GPL(max17048_battery_status);
 
 static enum power_supply_property max17048_battery_props[] = {
+	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
