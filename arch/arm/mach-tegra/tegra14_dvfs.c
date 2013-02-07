@@ -196,6 +196,25 @@ static struct dvfs core_dvfs_table[] = {
 #else
 	CORE_DVFS("cbus",  -1, 1, KHZ,        1,      1, 115200, 134400, 172800, 211200, 268800),
 #endif
+	/* Core voltages (mV):		    810,    850,    900,    950,   1000,   1050,   1100 */
+	/* Clock limits for I/O peripherals */
+	CORE_DVFS("csi",  -1, 1, KHZ,        1,      1, 75000, 75000, 75000, 84400, 100000),
+	CORE_DVFS("cilab",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
+	CORE_DVFS("cilcd",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
+	CORE_DVFS("cile",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
+	CORE_DVFS("dsia",  -1, 1, KHZ,        1,      1, 75000, 75000, 86100, 105500, 125000),
+	CORE_DVFS("dsib",  -1, 1, KHZ,        1,      1, 75000, 75000, 86100, 105500, 125000),
+	CORE_DVFS("dsialp",  -1, 1, KHZ,        1,      1, 72000, 72000, 77500, 94900, 112500),
+	CORE_DVFS("dsiblp",  -1, 1, KHZ,        1,      1, 72000, 72000, 77500, 94900, 112500),
+	CORE_DVFS("hdmi",  -1, 1, KHZ,        1,      1, 111300, 135600, 173200, 212300, 270000),
+	/*
+	 * The clock rate for the display controllers that determines the
+	 * necessary core voltage depends on a divider that is internal
+	 * to the display block. Disable auto-dvfs on the display clocks,
+	 * and let the display driver call tegra_dvfs_set_rate manually
+	 */
+	CORE_DVFS("disp1",  -1, 0, KHZ,        1,      1, 74300, 88900, 113600, 139200, 165000),
+	CORE_DVFS("disp2",  -1, 0, KHZ,        1,      1, 74300, 88900, 113600, 139200, 165000),
 #endif
 };
 
