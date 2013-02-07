@@ -197,7 +197,6 @@ static bool skip_pg_check(int id, bool is_unpowergate)
 		 */
 		TEGRA_POWERGATE_DISA,
 		TEGRA_POWERGATE_DISB,
-		TEGRA_POWERGATE_VDEC,
 	};
 	int i;
 
