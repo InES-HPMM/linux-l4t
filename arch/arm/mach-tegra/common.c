@@ -351,6 +351,7 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "tsec",	"pll_p",	108000000,	false },
 	{ "mc_capa",	"emc",		0,		true },
 	{ "mc_cbpa",	"emc",		0,		true },
+	{ "soc_therm",	"pll_p",	136000000,	false },
 	/* Initialize c2bus, c3bus, or cbus at the end of the list
 	 * after all the clocks are moved under the proper parents.
 	 */
