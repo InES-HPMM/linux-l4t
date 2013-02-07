@@ -375,9 +375,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	struct arch_timer_context timer_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
 	unsigned int cpu = cpu_number(dev->cpu);
-#endif
 
 	if (!arch_timer_get_state(&timer_context)) {
 		if ((timer_context.cntp_ctl & ARCH_TIMER_CTRL_ENABLE) &&
@@ -418,7 +416,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
 	tegra_pd_set_trigger(sleep_time);
 #endif
-	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
+	idle_stats.tear_down_count[cpu]++;
 
 	entry_time = ktime_get();
 
@@ -446,17 +444,17 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
-	idle_stats.cpu_pg_time[cpu_number(dev->cpu)] += sleep_time;
+	idle_stats.cpu_pg_time[cpu] += sleep_time;
 	if (sleep_completed) {
 		/*
 		 * Stayed in LP2 for the full time until timer expires,
 		 * adjust the exit latency based on measurement
 		 */
 		int offset = sleep_time - request;
-		int latency = pd_exit_latencies[cpu_number(dev->cpu)] +
+		int latency = pd_exit_latencies[cpu] +
 			offset / 16;
 		latency = clamp(latency, 0, 10000);
-		pd_exit_latencies[cpu_number(dev->cpu)] = latency;
+		pd_exit_latencies[cpu] = latency;
 		state->exit_latency = latency;		/* for idle governor */
 		smp_wmb();
 	}
