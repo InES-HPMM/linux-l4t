@@ -906,6 +906,14 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		return ret;
 	}
 
+	/*
+	* ES 1.0 errata suggest to keep BUCK3 and BUCK5 in FPWM mode
+	*/
+	if (max77660_is_es_1_0(reg->dev))
+		if (reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK3 ||
+			reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK5)
+			pdata->flags |= SD_FORCED_PWM_MODE;
+
 	if (rinfo->type == REGULATOR_TYPE_BUCK) {
 		val = 0;
 		mask = 0;
