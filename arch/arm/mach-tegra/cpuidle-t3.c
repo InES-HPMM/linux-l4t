@@ -152,14 +152,6 @@ bool tegra3_lp2_is_allowed(struct cpuidle_device *dev,
 	if ((!lp2_0_in_idle && !dev->cpu) || (!lp2_n_in_idle && dev->cpu))
 		return false;
 
-	/* On A01, LP2 on slave CPU's cause ranhdom CPU hangs.
-	 * Refer to Bug 804085.
-	 */
-	if ((tegra_revision == TEGRA_REVISION_A01) &&
-		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
-		num_online_cpus() > 1)
-			return false;
-
 #ifndef CONFIG_TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	/* FIXME: All CPU's entering LP2 is not working.
 	 * Don't let CPU0 enter LP2 when any secondary CPU is online.

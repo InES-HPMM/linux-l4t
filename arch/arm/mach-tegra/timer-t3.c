@@ -256,13 +256,6 @@ void tegra3_lp2_timer_cancel_secondary(void)
 void __init tegra30_init_timer(void)
 {
 #ifdef CONFIG_PM_SLEEP
-#ifdef CONFIG_SMP
-	/* For T30.A01 use INT_TMR_SHARED instead of INT_TMR6 for CPU3. */
-	if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) &&
-		(tegra_revision == TEGRA_REVISION_A01))
-			tegra_lp2wake_irq[3].irq = INT_TMR_SHARED;
-#endif
-
 	tegra3_register_wake_timer(0);
 #endif
 }
