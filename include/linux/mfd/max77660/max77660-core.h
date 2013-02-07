@@ -620,12 +620,16 @@ struct max77660_regulator_platform_data {
  * @gpio_pin_mode: GPIO pin mode, 1 for GPIO, 0 for Alternate.
  * @open_drain: Open drain, 1 for open drain mode, 0 for normal push pull.
  * pullup_dn_normal: Pull up/down/normal.
+ * @gpio_init_flag: Initial flag of GPIO state as per gpio.h. This is
+ *                  applicable only if pins are in gpio mode and it is set
+ *		    for output mode.
  */
 struct max77660_pinctrl_platform_data {
 	int pin_id;
 	unsigned gpio_pin_mode:1;
 	unsigned open_drain:1;
 	int pullup_dn_normal;
+	int gpio_init_flag;
 };
 
 /*

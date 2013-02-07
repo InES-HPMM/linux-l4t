@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/pm.h>
 #include <linux/mfd/max77660/max77660-core.h>
 
@@ -62,6 +63,37 @@ struct max77660_pinctrl_config max77660_pin_data[MAX77660_PINS_MAX] = {
 	MAX77660_PIN(GPIO8, 1, 0),
 	MAX77660_PIN(GPIO9, 1, 1),
 };
+
+static int max77660_init_pin_gpio_mode(struct device *dev,
+		unsigned offset, unsigned flag)
+{
+	struct device *parent = dev->parent;
+	u8 val;
+	int ret;
+
+	if (flag & GPIOF_DIR_IN)
+		return 0;
+
+	if (flag & GPIOF_INIT_HIGH)
+		val = MAX77660_CNFG_GPIO_OUTPUT_VAL_HIGH;
+	else
+		val = MAX77660_CNFG_GPIO_OUTPUT_VAL_LOW;
+
+	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_CNFG_GPIO0 + offset,
+			val, MAX77660_CNFG_GPIO_OUTPUT_VAL_MASK);
+	if (ret < 0) {
+		dev_err(dev, "CNFG_GPIOx val update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
+		MAX77660_REG_CNFG_GPIO0 + offset, MAX77660_CNFG_GPIO_DIR_OUTPUT,
+		MAX77660_CNFG_GPIO_DIR_MASK);
+	if (ret < 0)
+		dev_err(dev, "CNFG_GPIOx dir update failed: %d\n", ret);
+	return ret;
+}
 
 static int __devinit max77660_pinctrl_probe(struct platform_device *pdev)
 {
@@ -136,20 +168,28 @@ skip_pup_dn:
 			return ret;
 		}
 
-		if (pctrl_pdata->gpio_pin_mode)
+		if (pctrl_pdata->gpio_pin_mode) {
+			ret = max77660_init_pin_gpio_mode(&pdev->dev, i,
+						pctrl_pdata->gpio_init_flag);
+			if (ret < 0) {
+				dev_err(&pdev->dev,
+					"Pin init failed: %d\n", ret);
+				return ret;
+			}
 			ret = max77660_reg_clr_bits(parent, MAX77660_PWR_SLAVE,
 				MAX77660_REG_AME1_GPIO + pcfg->reg_offset,
 				pcfg->ame_mask);
-		else
+		} else {
 			ret = max77660_reg_set_bits(parent, MAX77660_PWR_SLAVE,
 				MAX77660_REG_AME1_GPIO + pcfg->reg_offset,
 				pcfg->ame_mask);
+		}
 		if (ret < 0) {
 			dev_err(&pdev->dev,
 				"AMEx_GPIO update failed: %d\n", ret);
 			return ret;
 		}
-	};
+	}
 	return 0;
 }
 
