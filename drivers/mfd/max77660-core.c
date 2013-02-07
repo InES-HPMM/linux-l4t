@@ -256,19 +256,6 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 {
 	int ret = 0;
 
-	if (chip->pdata->flags & SLP_LPM_ENABLE) {
-		/*
-		 * Put the power rails into Low-Power mode during sleep mode,
-		 * if the power rail's power mode is GLPM.
-		 */
-		ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG1,
-				on ? MAX77660_GLBLCNFG1_GLBL_LPM : 0,
-				GLBLCNFG0_SFT_OFF_OFFRST_MASK);
-		if (ret < 0)
-			return ret;
-	}
-
 	/*
 	 * Enable sleep that AP can be placed into sleep mode
 	 * by pulling EN1 low
