@@ -784,6 +784,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 	u8 idx;
 	u8 val, mask;
 	int ret;
+	int addr;
 
 	/* Update Power Mode register mask and offset */
 	if (rinfo->type == REGULATOR_TYPE_BUCK) {
@@ -809,7 +810,7 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 						(reg->rinfo->power_mode_shift);
 	}
 
-	/* Update FPS source */
+		/* Update FPS source */
 	if (rinfo->regs[FPS_REG].addr == MAX77660_REG_FPS_NONE)
 		reg->fps_src = FPS_SRC_NONE;
 	else
@@ -864,6 +865,36 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 			max77660_regulator_set_power_mode(reg,
 				POWER_MODE_DISABLE);
 	}
+	if (reg->rinfo->id == MAX77660_REGULATOR_ID_LDO15 ||
+		reg->rinfo->id == MAX77660_REGULATOR_ID_LDO16) {
+		mask = 0;
+		addr = (reg->rinfo->id == MAX77660_REGULATOR_ID_LDO15) ?
+			MAX77660_REG_SIM_SIM1CNFG1 :
+			MAX77660_REG_SIM_SIM2CNFG1;
+
+		ret = max77660_reg_read(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				addr, &val);
+
+		if (ret < 0) {
+			dev_err(reg->dev, "preinit: Failed to get register 0x%x\n",
+				addr);
+		}
+		mask |= SIM_SIM1_2_CNFG1_BATREM_EN_MASK |
+			SIM_SIM1_2_CNFG1_SIM1DBCNT_MASK;
+		val &= ~(SIM_SIM1_2_CNFG1_SIM1DBCNT_MASK);
+		val |= SIM_SIM1_2_DBCNT;
+		/* FIXME: if BAT remove is considered */
+		val &= ~(1 << SIM_SIM1_2_CNFG1_BATREM_EN_SHIFT);
+
+		max77660_reg_update(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				addr, val, mask);
+
+		max77660_regulator_set_power_mode(reg,
+				POWER_MODE_NORMAL);
+	}
+
 
 	ret = max77660_regulator_set_fps(reg);
 	if (ret < 0) {
