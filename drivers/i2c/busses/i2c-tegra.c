@@ -1109,7 +1109,8 @@ static int tegra_i2c_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int tegra_i2c_suspend_noirq(struct device *dev)
 {
-	struct tegra_i2c_dev *i2c_dev = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 
 	i2c_lock_adapter(&i2c_dev->adapter);
 
@@ -1124,7 +1125,8 @@ static int tegra_i2c_suspend_noirq(struct device *dev)
 
 static int tegra_i2c_resume_noirq(struct device *dev)
 {
-	struct tegra_i2c_dev *i2c_dev = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_i2c_dev *i2c_dev = platform_get_drvdata(pdev);
 	int ret;
 
 	i2c_lock_adapter(&i2c_dev->adapter);
