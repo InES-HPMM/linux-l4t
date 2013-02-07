@@ -225,7 +225,6 @@ enum usb_pmc_port_speed {
 	USB_PMC_PORT_SPEED_LOW,
 	USB_PMC_PORT_SPEED_HIGH,
 	USB_PMC_PORT_SPEED_UNKNOWN,
-	USB_PMC_PORT_SPEED_SUPER,
 };
 
 struct tegra_usb_pmc_data;

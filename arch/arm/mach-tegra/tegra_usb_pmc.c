@@ -171,33 +171,53 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	val &= ~BIAS_MASTER_PROG_VAL;
 	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
 
-	/* program walk sequence, maintain a J, followed by a driven K
-	* to signal a resume once an wake event is detected */
-	val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
-	val &= ~UTMIP_AP_A;
-	val |= UTMIP_USBOP_RPD_A | UTMIP_USBON_RPD_A | UTMIP_AN_A |
-				UTMIP_HIGHZ_A |
-		UTMIP_USBOP_RPD_B | UTMIP_USBON_RPD_B | UTMIP_AP_B |
-				UTMIP_AN_B |
-		UTMIP_USBOP_RPD_C | UTMIP_USBON_RPD_C | UTMIP_AP_C |
-				UTMIP_AN_C |
-		UTMIP_USBOP_RPD_D | UTMIP_USBON_RPD_D | UTMIP_AP_D |
-				UTMIP_AN_D;
-	writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
-
-	if (pmc_data->port_speed == USB_PMC_PORT_SPEED_LOW) {
+	/* program walk sequence for remote or hotplug wakeup */
+	if (pmc_data->port_speed < USB_PMC_PORT_SPEED_UNKNOWN) {
+		/* program walk sequence, maintain a J, followed by a driven K
+		* to signal a resume once an wake event is detected */
 		val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
-		val &= ~(UTMIP_AN_B | UTMIP_HIGHZ_B | UTMIP_AN_C |
-			UTMIP_HIGHZ_C | UTMIP_AN_D | UTMIP_HIGHZ_D);
+		val &= ~UTMIP_AP_A;
+		val |= UTMIP_USBOP_RPD_A | UTMIP_USBON_RPD_A | UTMIP_AN_A |
+					UTMIP_HIGHZ_A |
+			UTMIP_USBOP_RPD_B | UTMIP_USBON_RPD_B | UTMIP_AP_B |
+					UTMIP_AN_B |
+			UTMIP_USBOP_RPD_C | UTMIP_USBON_RPD_C | UTMIP_AP_C |
+					UTMIP_AN_C |
+			UTMIP_USBOP_RPD_D | UTMIP_USBON_RPD_D | UTMIP_AP_D |
+					UTMIP_AN_D;
 		writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
+
+		if (pmc_data->port_speed == USB_PMC_PORT_SPEED_LOW) {
+			val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
+			val &= ~(UTMIP_AN_B | UTMIP_HIGHZ_B | UTMIP_AN_C |
+				UTMIP_HIGHZ_C | UTMIP_AN_D | UTMIP_HIGHZ_D);
+			writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
+		} else {
+			val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
+			val &= ~(UTMIP_AP_B | UTMIP_HIGHZ_B | UTMIP_AP_C |
+				UTMIP_HIGHZ_C | UTMIP_AP_D | UTMIP_HIGHZ_D |
+				UTMIP_AN_A);
+				val |= UTMIP_AP_A;
+			writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
+		}
 	} else {
+		/* program walk sequence, pull down both dp and dn lines,
+		* tristate lines once an hotplug-in wake event is detected */
 		val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
-		val &= ~(UTMIP_AP_B | UTMIP_HIGHZ_B | UTMIP_AP_C |
-			UTMIP_HIGHZ_C | UTMIP_AP_D | UTMIP_HIGHZ_D |
-			UTMIP_AN_A);
+		val |= UTMIP_USBOP_RPD_A | UTMIP_USBON_RPD_A | UTMIP_HIGHZ_A;
+		val &= ~UTMIP_AP_A;
+		val &= ~UTMIP_AN_A;
+		val |= UTMIP_USBOP_RPD_B | UTMIP_USBON_RPD_B | UTMIP_HIGHZ_B;
+		val &= ~UTMIP_AP_B;
+		val &= ~UTMIP_AN_B;
+		val |= UTMIP_USBOP_RPD_C | UTMIP_USBON_RPD_C | UTMIP_HIGHZ_C;
+		val &= ~UTMIP_AP_C;
+		val &= ~UTMIP_AN_C;
+		val |= UTMIP_USBOP_RPD_D | UTMIP_USBON_RPD_D | UTMIP_HIGHZ_D;
+		val &= ~UTMIP_AP_D;
+		val &= ~UTMIP_AN_D;
 		writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 	}
-
 	/* turn on pad detectors */
 	val = readl(pmc_base + PMC_USB_AO);
 	val &= ~(USBOP_VAL_PD(inst) | USBON_VAL_PD(inst));
@@ -400,6 +420,11 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	val = readl(pmc_base + PMC_UHSIC_MASTER_CONFIG(inst));
 	val |= UHSIC_PWR(inst);
 	writel(val, pmc_base + PMC_UHSIC_MASTER_CONFIG(inst));
+
+	/* config debouncer */
+	val = readl(pmc_base + PMC_USB_DEBOUNCE);
+	val |= PMC_USB_DEBOUNCE_VAL(2);
+	writel(val, pmc_base + PMC_USB_DEBOUNCE);
 
 	/* Make sure nothing is happening on the line with respect to PMC */
 	val = readl(pmc_base + PMC_UHSIC_FAKE(inst));

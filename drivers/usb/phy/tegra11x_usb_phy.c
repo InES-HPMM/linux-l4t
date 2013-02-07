@@ -851,34 +851,6 @@ exit:
 	return irq_status;
 }
 
-static int utmi_phy_post_resume(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned  int inst = phy->inst;
-	void __iomem *base = phy->regs;
-	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(pmc_base + PMC_SLEEP_CFG);
-
-	/* if PMC is not disabled by now then disable it */
-	if (val & UTMIP_MASTER_ENABLE(inst)) {
-
-		val = readl(base + UTMIP_PMC_WAKEUP0);
-		val &= ~EVENT_INT_ENB;
-		writel(val, base + UTMIP_PMC_WAKEUP0);
-
-		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
-
-		phy->pmc_remote_wakeup = false;
-		phy->pmc_hotplug_wakeup = false;
-		PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, inst);
-		}
-
-	return 0;
-}
-
 static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 {
 	unsigned long val;
@@ -946,6 +918,16 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 			pr_err("%s: timeout waiting for USB_USBSTS_HCH\n"
 							, __func__);
 		}
+
+		pmc_data[phy->inst].port_speed = (readl(base +
+				HOSTPC1_DEVLC) >> 25) &
+				HOSTPC1_DEVLC_PSPD_MASK;
+
+		if (pmc_data[phy->inst].port_speed <
+					USB_PMC_PORT_SPEED_UNKNOWN)
+			phy->pmc_remote_wakeup = false;
+		else
+			phy->pmc_hotplug_wakeup = false;
 
 		pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 		val = readl(base + UTMIP_PMC_WAKEUP0);
@@ -1157,17 +1139,8 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_STS;
 	writel(val, base + HOSTPC1_DEVLC);
 
-	pmc_data[phy->inst].port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
-		HOSTPC1_DEVLC_PSPD_MASK;
-
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE)
 		pmc->pmc_ops->powerup_pmc_wake_detect(pmc);
-
-	phy->pmc_remote_wakeup = false;
-
-	val = readl(base + UTMIP_PMC_WAKEUP0);
-	val |= EVENT_INT_ENB;
-	writel(val, base + UTMIP_PMC_WAKEUP0);
 
 	phy->phy_clk_on = true;
 	phy->hw_accessible = true;
@@ -1189,27 +1162,11 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	return 0;
 }
 
-static int uhsic_phy_post_resume(struct tegra_usb_phy *phy)
-{
-	unsigned long val;
-	void __iomem *base = phy->regs;
-
-	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(base + USB_TXFILLTUNING);
-	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
-		val = USB_FIFO_TXFILL_THRES(0x10);
-		writel(val, base + USB_TXFILLTUNING);
-	}
-	return 0;
-}
-
 static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 	int inst = phy->inst;
-	void __iomem *base = phy->regs;
-	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	val = readl(pmc_base + UTMIP_STATUS);
@@ -1224,19 +1181,6 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 	   utmi_phy_irq(). */
 	if (UTMIP_WALK_PTR_VAL(inst) & val) {
 		phy->pmc_remote_wakeup = true;
-	} else if (!phy->pmc_remote_wakeup) {
-		val = readl(pmc_base + PMC_SLEEP_CFG);
-		if (val & UTMIP_MASTER_ENABLE(inst)) {
-			val = readl(base + UTMIP_PMC_WAKEUP0);
-			val &= ~EVENT_INT_ENB;
-			writel(val, base + UTMIP_PMC_WAKEUP0);
-
-			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
-
-			phy->pmc_remote_wakeup = false;
-			phy->pmc_hotplug_wakeup = false;
-			PHY_DBG("%s DISABLE_PMC inst = %d\n", __func__, inst);
-		}
 	}
 }
 
@@ -1259,7 +1203,12 @@ static void utmi_phy_restore_end(struct tegra_usb_phy *phy)
 				PHY_DBG("%s PMC FPR" \
 				"timeout val = 0x%x instance = %d\n", \
 				__func__, (u32)val, phy->inst);
-				utmi_phy_post_resume(phy);
+				val = readl(base + UTMIP_PMC_WAKEUP0);
+				val &= ~EVENT_INT_ENB;
+				writel(val, base + UTMIP_PMC_WAKEUP0);
+				pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
+				phy->pmc_remote_wakeup = false;
+				phy->pmc_hotplug_wakeup = false;
 				return;
 			}
 			wait_time_us--;
@@ -1483,6 +1432,23 @@ static void uhsic_phy_restore_start(struct tegra_usb_phy *phy)
 			val &= ~EVENT_INT_ENB;
 			writel(val, base + UHSIC_PMC_WAKEUP0);
 
+			/*
+			 * If pmc wakeup is detected after putting controller
+			 * in suspend in usb_phy_bringup_host_cotroller,
+			 * restart bringing up host controller as
+			 * in case of only pmc wakeup.
+			 */
+			if (phy->pmc_remote_wakeup && phy->ctrlr_suspended) {
+				usb_phy_bringup_host_controller(phy);
+				if (usb_phy_reg_status_wait(base + USB_PORTSC,
+					(USB_PORTSC_RESUME | USB_PORTSC_SUSP),
+						0, FPR_WAIT_TIME_US) < 0)
+					pr_err("%s: timeout waiting" \
+					"for SUSPEND to clear\n",
+						__func__);
+				phy->ctrlr_suspended = false;
+			}
+
 			pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
 			phy->pmc_remote_wakeup = false;
 		} else {
@@ -1519,9 +1485,25 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 				val &= ~EVENT_INT_ENB;
 				writel(val, base + UHSIC_PMC_WAKEUP0);
 
+			/*
+			 * If pmc wakeup is detected after putting controller
+			 * in suspend in usb_phy_bringup_host_cotroller,
+			 * restart bringing up host controller as
+			 * in case of only pmc wakeup.
+			 */
+			if (phy->pmc_remote_wakeup && phy->ctrlr_suspended) {
+				usb_phy_bringup_host_controller(phy);
+				if (usb_phy_reg_status_wait(base + USB_PORTSC,
+					(USB_PORTSC_RESUME | USB_PORTSC_SUSP),
+						0, FPR_WAIT_TIME_US) < 0)
+					pr_err("%s: timeout waiting" \
+						" for SUSPEND to clear\n",
+						__func__);
+				phy->ctrlr_suspended = false;
+			}
+
 				pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
 				phy->pmc_remote_wakeup = false;
-				uhsic_phy_post_resume(phy);
 				return;
 			}
 			wait_time_us--;
@@ -1530,38 +1512,26 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 		 * context switch b/t disable PMC and set RUN bit ops */
 		local_irq_save(flags);
 		irq_disabled = true;
-#if 0
-		/* wait for 25 ms to port resume complete */
-		msleep(25);
-		/* disable PMC master control */
-		val = readl(base + UHSIC_PMC_WAKEUP0);
-		val &= ~EVENT_INT_ENB;
-		writel(val, base + UHSIC_PMC_WAKEUP0);
-
-		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
-		phy->pmc_remote_wakeup = false;
-		/* Clear PCI and SRI bits to avoid an interrupt upon resume */
-		val = readl(base + USB_USBSTS);
-		writel(val, base + USB_USBSTS);
-		/* wait to avoid SOF if there is any */
-		if (usb_phy_reg_status_wait(base + USB_USBSTS,
-			USB_USBSTS_SRI, USB_USBSTS_SRI, 2500)) {
-			pr_warn("%s: timeout waiting for SOF\n", __func__);
-		}
-		uhsic_phy_post_resume(phy);
-	} else {
-		val = readl(base + UHSIC_PMC_WAKEUP0);
-		val &= ~EVENT_INT_ENB;
-		writel(val, base + UHSIC_PMC_WAKEUP0);
-
-		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
-		phy->pmc_remote_wakeup = false;
-#endif
 	}
 	/* disable PMC master control */
 	val = readl(base + UHSIC_PMC_WAKEUP0);
 	val &= ~EVENT_INT_ENB;
 	writel(val, base + UHSIC_PMC_WAKEUP0);
+
+	/*
+	 * If pmc wakeup is detected after putting controller in suspend
+	 * in usb_phy_bringup_host_cotroller, restart bringing up host
+	 * controller as in case of only pmc wakeup.
+	 */
+	if (phy->pmc_remote_wakeup && phy->ctrlr_suspended) {
+		usb_phy_bringup_host_controller(phy);
+		if (usb_phy_reg_status_wait(base + USB_PORTSC,
+			(USB_PORTSC_RESUME | USB_PORTSC_SUSP), 0,
+				FPR_WAIT_TIME_US) < 0)
+			pr_err("%s: timeout waiting for SUSPEND to clear\n",
+				__func__);
+		phy->ctrlr_suspended = false;
+	}
 
 	pmc->pmc_ops->disable_pmc_bus_ctrl(pmc);
 	phy->pmc_remote_wakeup = false;
@@ -1650,7 +1620,7 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 	}
 
 	pmc_init(phy);
-	pmc->pmc_ops->setup_pmc_wake_detect(pmc);
+	pmc->pmc_ops->powerup_pmc_wake_detect(pmc);
 
 	return 0;
 }
@@ -1831,6 +1801,7 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	bool port_connected;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
@@ -1843,7 +1814,11 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	/* Disable interrupts */
 	writel(0, base + USB_USBINTR);
 
-	if (phy->pmc_sleepwalk == false) {
+	/* check for port connect status */
+	val = readl(base + USB_PORTSC);
+	port_connected = val & USB_PORTSC_CCS;
+
+	if (phy->pmc_sleepwalk == false && port_connected) {
 		pmc->pmc_ops->setup_pmc_wake_detect(pmc);
 
 		phy->pmc_remote_wakeup = false;
@@ -1852,6 +1827,8 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 		val = readl(base + UHSIC_PMC_WAKEUP0);
 		val |= EVENT_INT_ENB;
 		writel(val, base + UHSIC_PMC_WAKEUP0);
+	} else {
+		phy->pmc_sleepwalk = true;
 	}
 
 	val = readl(base + HOSTPC1_DEVLC);
