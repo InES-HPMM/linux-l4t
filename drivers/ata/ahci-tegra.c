@@ -1,7 +1,7 @@
 /*
  * ahci-tegra.c - AHCI SATA support for TEGRA AHCI device
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -132,8 +132,8 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define TEGRA_SATA_ENABLE_BUS_MASTER		(1 << 2)
 #define TEGRA_SATA_ENABLE_SERR			(1 << 8)
 
-#define TEGRA_SATA_CORE_CLOCK_FREQ_HZ		(108*1000*1000)
-#define TEGRA_SATA_OOB_CLOCK_FREQ_HZ		(216*1000*1000)
+#define TEGRA_SATA_CORE_CLOCK_FREQ_HZ		(272*1000*1000)
+#define TEGRA_SATA_OOB_CLOCK_FREQ_HZ		(272*1000*1000)
 
 #define APB_PMC_SATA_PWRGT_0_REG		0x1ac
 #define CLK_RST_SATA_PLL_CFG0_REG		0x490
