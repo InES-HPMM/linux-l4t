@@ -178,43 +178,10 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 	},
 };
 
-static struct nct1008_platform_data roth_nct1008_left_pdata = {
-	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.loc_name = "left",
-	.shutdown_ext_limit = 90, /* C */
-	.shutdown_local_limit = 120, /* C */
-};
-
-static struct nct1008_platform_data roth_nct1008_right_pdata = {
-	.supported_hwrev = true,
-	.ext_range = true,
-	.conv_rate = 0x08,
-	.offset = 0,
-	.loc_name = "right",
-	.shutdown_ext_limit = 90, /* C */
-	.shutdown_local_limit = 120, /* C */
-};
-
 static struct i2c_board_info roth_i2c4_nct1008_board_info[] = {
 	{
 		I2C_BOARD_INFO("nct1008", 0x4C),
 		.platform_data = &roth_nct1008_pdata,
-		.irq = -1,
-	}
-};
-
-static struct i2c_board_info roth_i2c4_nct1008_lr_board_info[] = {
-	{
-		I2C_BOARD_INFO("nct1008", 0x4C),
-		.platform_data = &roth_nct1008_left_pdata,
-		.irq = -1,
-	},
-	{
-		I2C_BOARD_INFO("nct1008", 0x4D),
-		.platform_data = &roth_nct1008_right_pdata,
 		.irq = -1,
 	}
 };
@@ -309,8 +276,6 @@ static int roth_nct1008_init(void)
 	i2c_register_board_info(0, roth_i2c4_nct1008_board_info,
 		ARRAY_SIZE(roth_i2c4_nct1008_board_info));
 
-	i2c_register_board_info(1, roth_i2c4_nct1008_lr_board_info,
-		ARRAY_SIZE(roth_i2c4_nct1008_lr_board_info));
 	return ret;
 }
 
