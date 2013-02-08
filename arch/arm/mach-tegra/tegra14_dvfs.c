@@ -198,7 +198,7 @@ static struct dvfs core_dvfs_table[] = {
 #endif
 	/* Core voltages (mV):		    810,    850,    900,    950,   1000,   1050,   1100 */
 	/* Clock limits for I/O peripherals */
-	CORE_DVFS("csi",  -1, 1, KHZ,        1,      1, 75000, 75000, 75000, 84400, 100000),
+	CORE_DVFS("csi",  -1, 1, KHZ,        1,      1, 75000, 75000, 75000, 84400, 102000),
 	CORE_DVFS("cilab",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
 	CORE_DVFS("cilcd",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
 	CORE_DVFS("cile",  -1, 1, KHZ,        1,      1, 102000, 102000, 102000, 114700, 136000),
