@@ -257,9 +257,35 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 }
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
+#define TEGRA_MIN_RESIDENCY_VMIN_FMIN	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_SLOW	2000
+#define TEGRA_MIN_RESIDENCY_NCPU_FAST	13000
+#define TEGRA_MIN_RESIDENCY_CRAIL	20000
+
+unsigned long tegra_min_residency_vmin_fmin(void)
+{
+	return pdata && pdata->min_residency_vmin_fmin
+			? pdata->min_residency_vmin_fmin
+			: TEGRA_MIN_RESIDENCY_VMIN_FMIN;
+}
+
+unsigned long tegra_min_residency_ncpu()
+{
+	if (is_lp_cluster()) {
+		return pdata && pdata->min_residency_ncpu_slow
+			? pdata->min_residency_ncpu_slow
+			: TEGRA_MIN_RESIDENCY_NCPU_SLOW;
+	} else
+		return pdata && pdata->min_residency_ncpu_fast
+			? pdata->min_residency_ncpu_fast
+			: TEGRA_MIN_RESIDENCY_NCPU_FAST;
+}
+
 unsigned long tegra_min_residency_crail(void)
 {
-	return pdata->min_residency_crail;
+	return pdata && pdata->min_residency_crail
+			? pdata->min_residency_crail
+			: TEGRA_MIN_RESIDENCY_CRAIL;
 }
 #endif
 

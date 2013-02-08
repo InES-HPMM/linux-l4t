@@ -72,10 +72,6 @@
 #define ARCH_TIMER_CTRL_ENABLE          (1 << 0)
 #define ARCH_TIMER_CTRL_IT_MASK         (1 << 1)
 
-#define TEGRA_MIN_RESIDENCY_CLKGT_VMIN	2000
-#define TEGRA_MIN_RESIDENCY_NCPU_SLOW	2000
-#define TEGRA_MIN_RESIDENCY_NCPU_FAST	13000
-
 #ifdef CONFIG_SMP
 static s64 tegra_cpu_wake_by_time[4] = {
 	LLONG_MAX, LLONG_MAX, LLONG_MAX, LLONG_MAX };
@@ -478,7 +474,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu &&
-			(request > TEGRA_MIN_RESIDENCY_NCPU_SLOW))
+			(request > tegra_min_residency_ncpu()))
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
@@ -492,8 +488,8 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 			else if (tegra_force_clkgt_at_vmin ==
 					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
 				clkgt_at_vmin = false;
-			else if ((request >= TEGRA_MIN_RESIDENCY_CLKGT_VMIN) &&
-				 (request < TEGRA_MIN_RESIDENCY_NCPU_FAST))
+			else if ((request >= tegra_min_residency_vmin_fmin()) &&
+				 (request < tegra_min_residency_ncpu()))
 				clkgt_at_vmin = true;
 
 			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
@@ -501,7 +497,7 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 						TEGRA_POWER_CLUSTER_FORCE_MASK)
 					power_gating_cpu_only = false;
 				else if (request >
-						TEGRA_MIN_RESIDENCY_NCPU_FAST)
+						tegra_min_residency_ncpu())
 					power_gating_cpu_only = false;
 				else
 					power_gating_cpu_only = true;
