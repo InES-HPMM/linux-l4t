@@ -93,6 +93,8 @@ enum {
 	LED
 };
 
+static struct class *sensor_class;
+
 struct max44005_chip {
 	struct i2c_client	*client;
 	struct mutex		lock;
@@ -309,7 +311,7 @@ static ssize_t show_amb_clear_value(struct device *dev,
 }
 
 static ssize_t amb_clear_enable(struct device *dev,
-	struct device_attribute *attr, char *buf, size_t count)
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	u32 lval;
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
@@ -375,7 +377,7 @@ static ssize_t show_prox_value(struct device *dev,
 }
 
 static ssize_t prox_enable(struct device *dev,
-	struct device_attribute *attr, char *buf, size_t count)
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	u32 lval;
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
@@ -435,7 +437,7 @@ static ssize_t show_amb_temp_value(struct device *dev,
 }
 
 static ssize_t amb_temp_enable(struct device *dev,
-	struct device_attribute *attr, char *buf, size_t count)
+	struct device_attribute *attr, const char *buf, size_t count)
 {
 	u32 lval;
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
@@ -515,6 +517,28 @@ static const struct iio_info max44005_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
+static int max44005_sysfs_init(struct i2c_client *client)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct device *class_device;
+
+	sensor_class = class_create(THIS_MODULE, "sensors");
+	if (!sensor_class) {
+		dev_err(&client->dev, "create /sys/class/sensors fails\n");
+		return -EINVAL;
+	}
+
+	class_device = device_create(sensor_class, &indio_dev->dev,
+					0, NULL, "%s", "light");
+	if (!class_device) {
+		dev_err(&client->dev, "create ...sensors/light fails\n");
+		class_destroy(sensor_class);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int max44005_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
@@ -538,8 +562,10 @@ static int max44005_probe(struct i2c_client *client,
 	indio_dev->dev.parent = &client->dev;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	err = iio_device_register(indio_dev);
-	if (err) {
+	if (err | max44005_sysfs_init(client)) {
 		dev_err(&client->dev, "iio registration fails\n");
+		device_destroy(sensor_class, 0);
+		class_destroy(sensor_class);
 		mutex_destroy(&chip->lock);
 		iio_device_free(indio_dev);
 		return err;
@@ -576,7 +602,7 @@ static int max44005_probe(struct i2c_client *client,
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int max44005_suspend(struct i2c_client *client, pm_message_t mesg)
+static int max44005_suspend(struct device *dev)
 {
 	int ret = 0;
 /* Keep suspend/resume disabled till LP0 is stable on ceres.
@@ -593,7 +619,7 @@ static int max44005_suspend(struct i2c_client *client, pm_message_t mesg)
 	return ret;
 }
 
-static int max44005_resume(struct i2c_client *client)
+static int max44005_resume(struct device *dev)
 {
 	int ret = 0;
 /* struct iio_dev *indio_dev = i2c_get_clientdata(client);
@@ -620,6 +646,8 @@ static int max44005_remove(struct i2c_client *client)
 	if (chip->supply[CHIP])
 		regulator_put(chip->supply[CHIP]);
 	mutex_destroy(&chip->lock);
+	device_destroy(sensor_class, 0);
+	class_destroy(sensor_class);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 	return 0;
@@ -635,6 +663,8 @@ static void max44005_shutdown(struct i2c_client *client)
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->lock);
 	mutex_destroy(&chip->lock);
+	device_destroy(sensor_class, 0);
+	class_destroy(sensor_class);
 	iio_device_unregister(indio_dev);
 	iio_device_free(indio_dev);
 }
