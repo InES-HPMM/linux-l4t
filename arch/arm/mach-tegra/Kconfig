@@ -114,7 +114,6 @@ config ARCH_TEGRA_11x_SOC
 	select ARM_SAVE_DEBUG_CONTEXT if PM_SLEEP
 	select CPA
 	select CPU_V7
-	select EDP_FRAMEWORK
 	select NVMAP_CACHE_MAINT_BY_SET_WAYS
 	select NVMAP_DEFERRED_CACHE_MAINT
 	select PM_GENERIC_DOMAINS if PM
@@ -238,6 +237,7 @@ config MACH_TEGRA_PLUTO
        depends on ARCH_TEGRA_11x_SOC
        select MACH_HAS_SND_SOC_TEGRA_CS42L73 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_TLV320AIC326X if SND_SOC
+       select EDP_FRAMEWORK
        help
          Support for NVIDIA PLUTO development platform
 

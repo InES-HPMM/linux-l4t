@@ -746,42 +746,6 @@ static int __init dalmore_touch_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_EDP_FRAMEWORK
-static struct edp_manager battery_edp_manager = {
-	.name = "battery",
-	.max = 9500
-};
-
-static void __init dalmore_battery_edp_init(void)
-{
-	struct edp_governor *g;
-	int r;
-
-	r = edp_register_manager(&battery_edp_manager);
-	if (r)
-		goto err_ret;
-
-	/* start with priority governor */
-	g = edp_get_governor("priority");
-	if (!g) {
-		r = -EFAULT;
-		goto err_ret;
-	}
-
-	r = edp_set_governor(&battery_edp_manager, g);
-	if (r)
-		goto err_ret;
-
-	return;
-
-err_ret:
-	pr_err("Battery EDP init failed with error %d\n", r);
-	WARN_ON(1);
-}
-#else
-static inline void dalmore_battery_edp_init(void) {}
-#endif
-
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata dalmore_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
@@ -837,7 +801,6 @@ struct of_dev_auxdata dalmore_auxdata_lookup[] __initdata = {
 
 static void __init tegra_dalmore_early_init(void)
 {
-	dalmore_battery_edp_init();
 	tegra_clk_init_from_table(dalmore_clk_init_table);
 	tegra_clk_vefify_parents();
 	tegra_smmu_init();
