@@ -165,17 +165,27 @@ static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
+	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
+	REGULATOR_SUPPLY("dvdd", "2-0010"),
+	REGULATOR_SUPPLY("vdig", "2-0036"),
 };
 
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
+	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
+	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("avdd_cam1", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
+
 static struct regulator_consumer_supply palmas_ldo8_supply[] = {
 	REGULATOR_SUPPLY("vdd_rtc", NULL),
 };
@@ -240,7 +250,7 @@ PALMAS_PDATA_INIT(ldo6, 2850,  2850, palmas_rails(smps9), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo7, 2700,  2700, palmas_rails(smps9), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo8, 1100,  1100, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldo9, 1800,  2900, palmas_rails(smps9), 0, 0, 1);
-PALMAS_PDATA_INIT(ldoln, 3300, 3300, NULL, 0, 0, 1);
+PALMAS_PDATA_INIT(ldoln, 3300,   3300, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(ldousb, 3300,  3300, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(regen1, 4200,  4200, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(regen2, 4200,  4200, palmas_rails(smps8), 0, 0, 0);
@@ -379,6 +389,13 @@ static struct regulator_consumer_supply fixed_reg_vddio_sd_slot_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
+static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
+	REGULATOR_SUPPLY("vdd_cam_1v8", NULL),
+	REGULATOR_SUPPLY("vi2c", "2-0030"),
+	REGULATOR_SUPPLY("vif", "2-0036"),
+	REGULATOR_SUPPLY("dovdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
+};
 
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
@@ -442,6 +459,10 @@ FIXED_REG(5,	vddio_sd_slot,	vddio_sd_slot,
 	palmas_rails(smps9),	0,	0,
 	TEGRA_GPIO_PK1,	false,	true,	0,	2900);
 
+FIXED_REG(6,	vd_cam_1v8,	vd_cam_1v8,
+	palmas_rails(smps8),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	1800);
+
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
 
 /* Gpio switch regulator platform data for Macallan E1545 */
@@ -451,6 +472,7 @@ static struct platform_device *fixed_reg_devs[] = {
 	ADD_FIXED_REG(dvdd_ts),
 	ADD_FIXED_REG(vdd_hdmi_5v0),
 	ADD_FIXED_REG(vddio_sd_slot),
+	ADD_FIXED_REG(vd_cam_1v8),
 };
 
 
