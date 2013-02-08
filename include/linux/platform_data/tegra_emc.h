@@ -104,7 +104,8 @@ struct tegra11_emc_pdata {
 };
 
 /* !!!FIXME!!! Need actual Tegra14x values */
-#define TEGRA14_EMC_MAX_NUM_REGS	140
+#define TEGRA14_EMC_MAX_NUM_REGS	200
+#define TEGRA14_EMC_MAX_UP_DOWN_REGS	20
 
 struct tegra14_emc_table {
 	u8 rev;
@@ -120,7 +121,7 @@ struct tegra14_emc_table {
 	u32 burst_regs[TEGRA14_EMC_MAX_NUM_REGS];
 
 	/* one burst shot, but update time depends on rate change direction */
-	u32 burst_up_down_regs[TEGRA14_EMC_MAX_NUM_REGS];
+	u32 burst_up_down_regs[TEGRA14_EMC_MAX_UP_DOWN_REGS];
 
 	/* updated separately under some conditions */
 	u32 emc_zcal_cnt_long;
