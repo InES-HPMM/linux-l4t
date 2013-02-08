@@ -6530,7 +6530,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2c2",	"tegra11-i2c.1",	"div-clk",	54,	0x198,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c3",	"tegra11-i2c.2",	"div-clk",	67,	0x1b8,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("i2c4",	"tegra11-i2c.3",	"div-clk",	103,	0x3c4,	136000000, mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
-	PERIPH_CLK("i2c5",	"tegra11-i2c.4",	"div-clk",	47,	0x128,	58300000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
+	PERIPH_CLK("i2c5",	"tegra11-i2c.4",	"div-clk",	47,	0x128,	64000000,  mux_pllp_clkm,	MUX | DIV_U16 | PERIPH_ON_APB),
 	PERIPH_CLK("mipi-cal",	"mipi-cal",		NULL,	56,	0,	60000000,  mux_clk_m,	0),
 	PERIPH_CLK("uarta",	"tegra_uart.0",		NULL,	6,	0x178,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("uartb",	"tegra_uart.1",		NULL,	7,	0x17c,	800000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
