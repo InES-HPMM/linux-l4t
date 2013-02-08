@@ -91,6 +91,9 @@
 #define MAX77665_F_RW_FLASH_INTMASK		0x0F
 #define MAX77665_F_RO_FLASH_STATUS		0x10
 
+#define MAX77665_PMIC_CHG_CNFG_01		0xB7
+#define CHG_CNFG_01_DEFAULT_MODE		0x0C
+
 #define FIELD(x, y)			((x) << (y))
 #define FMASK(x)			FIELD(0x03, (x))
 
@@ -232,6 +235,7 @@ struct max77665_f_reg_cache {
 	u8 m_timing;
 	u8 boost_control;
 	u8 boost_vout_flash;
+	u8 pmic_chg_cnfg01;
 };
 
 struct max77665_f_state_regs {
@@ -716,6 +720,7 @@ update_end:
 	if (info->regs.boost_control == FIELD(BOOST_FLASH_MODE_BOTH, 0))
 		info->regs.boost_control |= FIELD(BOOST_MODE_TWOLED, 7);
 
+	info->regs.pmic_chg_cnfg01 = CHG_CNFG_01_DEFAULT_MODE;
 	info->regs.boost_vout_flash =
 		max77665_f_get_boost_volt(pcfg->boost_vout_flash_mV);
 
@@ -775,6 +780,9 @@ static int max77665_f_update_settings(struct max77665_f_info *info)
 	int err = 0;
 
 	info->regs.regs_stale = true;
+	err |= max77665_f_reg_wr(info, MAX77665_PMIC_CHG_CNFG_01,
+				info->regs.pmic_chg_cnfg01, false);
+
 	err |= max77665_f_reg_wr(info, MAX77665_F_RW_BOOST_MODE,
 				info->regs.boost_control, false);
 
