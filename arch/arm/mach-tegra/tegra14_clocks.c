@@ -371,8 +371,6 @@
 #define UTMIP_PLL_CFG2_STABLE_COUNT(x)			(((x) & 0xfff) << 6)
 #define UTMIP_PLL_CFG2_ACTIVE_DLY_COUNT(x)		(((x) & 0x3f) << 18)
 #define UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN	(1 << 0)
-#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN	(1 << 2)
-#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERDOWN	(1 << 4)
 
 #define UTMIP_PLL_CFG1					0x484
 #define UTMIP_PLL_CFG1_ENABLE_DLY_COUNT(x)		(((x) & 0x1f) << 27)
@@ -384,20 +382,10 @@
 #define UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN		(1 << 16)
 
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
-#define UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE	(1<<25)
-#define UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE	(1<<24)
-#define UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET	(1<<6)
 #define UTMIPLL_HW_PWRDN_CFG0_SEQ_RESET_INPUT_VALUE	(1<<5)
 #define UTMIPLL_HW_PWRDN_CFG0_SEQ_IN_SWCTL	(1<<4)
-#define UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
 #define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
 #define UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL	(1<<0)
-
-#define PLLU_HW_PWRDN_CFG0			0x530
-#define PLLU_HW_PWRDN_CFG0_SEQ_ENABLE		(1<<24)
-#define PLLU_HW_PWRDN_CFG0_USE_LOCKDET		(1<<6)
-#define PLLU_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL	(1<<2)
-#define PLLU_HW_PWRDN_CFG0_CLK_SWITCH_SWCTL	(1<<0)
 
 #define USB_PLLS_SEQ_START_STATE		(1<<25)
 #define USB_PLLS_SEQ_ENABLE			(1<<24)
@@ -451,6 +439,7 @@ static const struct utmi_clk_param utmi_parameters[] = {
 	{12000000,	0x02,		0x2F,		0x04,		0x76},
 	{26000000,	0x04,		0x66,		0x09,		0xFE},
 	{16800000,	0x03,		0x41,		0x0A,		0xA4},
+	{38400000,	0x03,		0x4B,		0x06,		0xBB},
 };
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
@@ -1782,18 +1771,6 @@ static int tegra14_pll_clk_wait_for_lock(
 	return 0;
 }
 
-static void usb_plls_hw_control_enable(u32 reg)
-{
-	u32 val = clk_readl(reg);
-	val |= USB_PLLS_USE_LOCKDET;
-	val &= ~USB_PLLS_ENABLE_SWCTL;
-	val |= USB_PLLS_SEQ_START_STATE;
-	pll_writel_delay(val, reg);
-
-	val |= USB_PLLS_SEQ_ENABLE;
-	pll_writel_delay(val, reg);
-}
-
 static void tegra14_utmi_param_configure(struct clk *c)
 {
 	u32 reg;
@@ -1826,8 +1803,6 @@ static void tegra14_utmi_param_configure(struct clk *c)
 
 	/* Remove power downs from UTMIP PLL control bits */
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN;
-	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERDOWN;
 
 	clk_writel(reg, UTMIP_PLL_CFG2);
 
@@ -1849,13 +1824,6 @@ static void tegra14_utmi_param_configure(struct clk *c)
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLLU_POWERDOWN;
 	clk_writel(reg, UTMIP_PLL_CFG1);
 
-	/* Setup HW control of UTMIPLL */
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_USE_LOCKDET;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_CLK_ENABLE_SWCTL;
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_START_STATE;
-	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
-
 	reg = clk_readl(UTMIP_PLL_CFG1);
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERUP;
 	reg &= ~UTMIP_PLL_CFG1_FORCE_PLL_ENABLE_POWERDOWN;
@@ -1867,15 +1835,10 @@ static void tegra14_utmi_param_configure(struct clk *c)
 	   ports are assigned to USB2 */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	udelay(1);
-
-	/* Enable HW control UTMIPLL */
-	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
-	reg |= UTMIPLL_HW_PWRDN_CFG0_SEQ_ENABLE;
-	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 }
 
 static void tegra14_pll_clk_init(struct clk *c)
@@ -1918,9 +1881,6 @@ static void tegra14_pll_clk_init(struct clk *c)
 	if (c->flags & PLLU) {
 		/* Configure UTMI PLL power management */
 		tegra14_utmi_param_configure(c);
-
-		/* Put PLLU under h/w control */
-		usb_plls_hw_control_enable(PLLU_HW_PWRDN_CFG0);
 
 		val = clk_readl(c->reg + PLL_BASE);
 		val &= ~PLLU_BASE_OVERRIDE;
