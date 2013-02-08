@@ -80,6 +80,7 @@ struct tegra_gpio_bank {
 	u32 int_enb[4];
 	u32 int_lvl[4];
 	u32 wake_enb[4];
+	int wake_depth;
 #endif
 };
 
@@ -424,7 +425,21 @@ static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
 	}
 
 	/* LP1 enable for bank interrupt */
-	ret = tegra_update_lp1_irq_wake(bank->irq, enable);
+	if (enable) {
+		if (bank->wake_depth++ == 0) {
+			ret = tegra_update_lp1_irq_wake(bank->irq, enable);
+			if (ret)
+				bank->wake_depth = 0;
+		}
+	} else {
+		if (bank->wake_depth == 0) {
+			WARN(1, "Unbalanced IRQ %d wake disable\n", bank->irq);
+		} else if (--bank->wake_depth == 0) {
+			ret = tegra_update_lp1_irq_wake(bank->irq, enable);
+			if (ret)
+				bank->wake_depth = 1;
+		}
+	}
 	if (ret)
 		pr_err("Failed gpio lp1 %s for irq=%d, error=%d\n",
 			(enable ? "enable" : "disable"), bank->irq, ret);
