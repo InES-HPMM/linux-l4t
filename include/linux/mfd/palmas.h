@@ -3631,4 +3631,16 @@ static inline int palmas_update_bits(struct palmas *palmas, unsigned int base,
 
 extern int palmas_irq_get_virq(struct palmas *palmas, int irq);
 
+static inline int palmas_is_es_version_or_less(struct palmas *palmas,
+	int major, int minor)
+{
+	if (palmas->es_major_version < major)
+		return true;
+
+	if ((palmas->es_major_version == major) &&
+		(palmas->es_minor_version <= minor))
+		return true;
+
+	return false;
+}
 #endif /*  __LINUX_MFD_PALMAS_H */
