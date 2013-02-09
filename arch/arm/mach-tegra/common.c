@@ -502,7 +502,12 @@ void tegra_init_cache(bool init)
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
-	writel(7, p + L2X0_PREFETCH_CTRL);
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	/* Enable double line fill */
+	writel(0x40000007, p + L2X0_PREFETCH_CTRL);
+#else
+	writel(0x7, p + L2X0_PREFETCH_CTRL);
+#endif
 	writel(0x3, p + L2X0_POWER_CTRL);
 #endif
 #endif
