@@ -56,6 +56,8 @@ static int calibration;
 
 static int recalibration;
 
+static int powerDown = 1;
+
 unsigned int volume_step[5] = {0, 2, 4, 6, 12};
 
 /* begin binary data: */
@@ -502,10 +504,10 @@ int DspSetParam(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte,
 	 		usleep_range(100, 200);
 		} while ((error == Tfa9887_Error_Ok) && ((cf_status & 0x0100) == 0) && (tries < 100)); /* don't wait forever, DSP is pretty quick to respond (< 1ms) */
 
-		if (tries >= 100) {
+		if (tries >= 100 && !powerDown) {
 	 		/* something wrong with communication with DSP */
 			pr_info("Setparam failed\n");
-	 		error = -1;
+			error = -1;
 		}
 	}
 	cf_ctrl = 0x0002;
@@ -1145,6 +1147,8 @@ int Tfa9887_Powerdown(int powerdown)
 {
 	int error = 0;
 
+	powerDown = powerdown;
+
 	if (tfa9887R) {
 		mutex_lock(&tfa9887R->lock);
 		if (tfa9887R->deviceInit)
@@ -1191,7 +1195,6 @@ int Powerdown(struct tfa9887_priv *tfa9887, struct tfa9887_priv *tfa9887_byte, i
 		SetPreset(tfa9887,tfa9887_byte);
 		SetEq(tfa9887,tfa9887_byte);
 	}
-
 
         return error;
 }
@@ -1441,19 +1444,19 @@ static __devinit int tfa9887R_i2c_probe(struct i2c_client *i2c,
 	tfa9887_kobj = kobject_create_and_add("tfa9887", kernel_kobj);
 
 	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_config);
-	printk("tfa9887_add_sysfs ret=%d",ret);
+	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
 	}
 	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_cal);
-	printk("tfa9887_add_sysfs ret=%d",ret);
+	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
 	}
 	ret = sysfs_create_file(tfa9887_kobj, &tfa9887_vol);
-	printk("tfa9887_add_sysfs ret=%d",ret);
+	printk("tfa9887_add_sysfs ret=%d\n", ret);
 	if (ret != 0) {
                 dev_err(&i2c->dev, "Failed to add sysfs: %d\n", ret);
 		goto err;
