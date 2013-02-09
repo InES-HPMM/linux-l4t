@@ -136,8 +136,9 @@ static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
 #define NVQUIRK_ENABLE_BLOCK_GAP_DET		BIT(1)
 #define NVQUIRK_ENABLE_SDHCI_SPEC_300		BIT(2)
 #define NVQUIRK_DISABLE_AUTO_CALIBRATION	BIT(3)
-#define NVQUIRK_SET_CALIBRATION_OFFSETS	BIT(4)
+#define NVQUIRK_SET_CALIBRATION_OFFSETS		BIT(4)
 #define NVQUIRK_SET_DRIVE_STRENGTH		BIT(5)
+#define NVQUIRK_DISABLE_SDMMC4_CALIB		BIT(6)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -764,7 +765,8 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 	unsigned int timeout = 10;
 
 	/* No Calibration for sdmmc4 */
-	if (tegra_host->instance == 3)
+	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_SDMMC4_CALIB) &&
+		(tegra_host->instance == 3))
 		return;
 
 	/*
@@ -1312,6 +1314,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		    NVQUIRK_SET_DRIVE_STRENGTH |
+		    NVQUIRK_DISABLE_SDMMC4_CALIB |
 #elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
