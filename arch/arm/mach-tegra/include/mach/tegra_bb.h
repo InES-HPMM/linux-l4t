@@ -41,7 +41,14 @@ void tegra_bb_register_ipc(struct platform_device *dev,
 void tegra_bb_generate_ipc(struct platform_device *dev);
 
 /*
- * tegra_bb_clear_ipc: clear IPC irq status
+ * tegra_bb_abort_ipc: Clear AP2BB irq
+ * @param struct tegra_bb device pointer
+ * @return none
+ */
+void tegra_bb_abort_ipc(struct platform_device *dev);
+
+/*
+ * tegra_bb_clear_ipc: clear BB2AP IPC irq status
  * @param struct tegra_bb device pointer
  * @return none
  */
@@ -53,4 +60,5 @@ void tegra_bb_clear_ipc(struct platform_device *dev);
  * @return 1 if IRQ is cleared - 0 otherwise
  */
 int tegra_bb_check_ipc(struct platform_device *dev);
+
 #endif

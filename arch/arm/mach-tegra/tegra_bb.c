@@ -211,16 +211,22 @@ EXPORT_SYMBOL_GPL(tegra_bb_generate_ipc);
 void tegra_bb_clear_ipc(struct platform_device *dev)
 {
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
-	int sts;
 
-	/* read/clear INT status */
-	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT)) {
-		writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
-		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
-	}
+	/* clear BB2AP INT status */
+	writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
+	       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
 }
 EXPORT_SYMBOL_GPL(tegra_bb_clear_ipc);
+
+void tegra_bb_abort_ipc(struct platform_device *dev)
+{
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+
+	/* clear AP2BB INT status */
+	writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_AP2BB_INT0_STS_SHIFT,
+	       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
+}
+EXPORT_SYMBOL_GPL(tegra_bb_abort_ipc);
 
 int tegra_bb_check_ipc(struct platform_device *dev)
 {
@@ -517,6 +523,7 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 		       1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT,
 			pmc + APBDEV_PMC_IPC_PMC_IPC_SET_0);
 	}
+
 	return ret;
 }
 
@@ -530,6 +537,7 @@ static ssize_t show_tegra_bb_reset(struct device *dev,
 						    struct platform_device,
 						    dev);
 	/* reset is active low - sysfs interface assume reset is active high */
+
 	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
 	dev_dbg(&pdev->dev, "%s IPC_STS=0x%x\n",
 		 __func__,
@@ -639,7 +647,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* Private region */
 	bbc_mem_regions_0 = readl(tegra_mc + MC_BBC_MEM_REGIONS_0_OFFSET);
 
-	pr_debug("%s MC_BBC_MEM_REGIONS_0=0x%x\n", __func__, bbc_mem_regions_0);
+	pr_info("%s MC_BBC_MEM_REGIONS_0=0x%x\n", __func__, bbc_mem_regions_0);
 
 	size = (bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_PRIV_SIZE_SHIFT) &
 		MC_BBC_MEM_REGIONS_0_PRIV_SIZE_MASK;
@@ -699,11 +707,11 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		((bbc_mem_regions_0 >> MC_BBC_MEM_REGIONS_0_IPC_BASE_SHIFT)
 		 & MC_BBC_MEM_REGIONS_0_IPC_BASE_MASK) << 23;
 
-	pr_debug("%s  priv@0x%lx/0x%lx\n", __func__,
+	pr_info("%s  priv@0x%lx/0x%lx\n", __func__,
 		 (unsigned long)bb->priv_phy,
 		bb->priv_size);
 
-	pr_debug("%s  ipc@0x%lx/0x%lx\n", __func__,
+	pr_info("%s  ipc@0x%lx/0x%lx\n", __func__,
 		 (unsigned long)bb->ipc_phy,
 		bb->ipc_size);
 
@@ -719,6 +727,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	/* Map mb_virt uncached (first 4K of IPC) */
 	bb->mb_virt = ioremap_nocache(bb->ipc_phy,
 					      SZ_1K*4);
+	pr_debug("%s: uncached IPC Virtual=0x%p\n", __func__, bb->mb_virt);
 
 	/* Private is uncached */
 	bb->priv_virt =  ioremap_nocache(bb->priv_phy,
@@ -732,6 +741,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 
 	/* clear the first 4K of IPC memory */
 	memset(bb->mb_virt, 0, SZ_1K*4);
+
 	/* init value of cold boot */
 	*(unsigned int *)bb->mb_virt = TEGRA_BB_IPC_COLDBOOT |
 		((~TEGRA_BB_IPC_COLDBOOT) << 16);

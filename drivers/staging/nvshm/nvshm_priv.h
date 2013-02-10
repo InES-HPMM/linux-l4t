@@ -81,6 +81,7 @@ struct nvshm_handle {
 	struct work_struct nvshm_work;
 	struct workqueue_struct *nvshm_wq;
 	struct hrtimer wake_timer;
+	int timeout;
 	char wq_name[16];
 	struct device *dev;
 	void *ipc_data;

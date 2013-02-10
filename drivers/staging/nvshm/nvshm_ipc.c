@@ -26,7 +26,8 @@
 #include <mach/tegra_bb.h>
 #include <asm/cacheflush.h>
 
-#define NVSHM_QUEUE_TIMEOUT_US (1000)
+#define NVSHM_WAKE_TIMEOUT_NS (20 * NSEC_PER_MSEC)
+#define NVSHM_WAKE_MAX_COUNT (50)
 
 static int ipc_readconfig(struct nvshm_handle *handle)
 {
@@ -258,11 +259,18 @@ static enum hrtimer_restart nvshm_ipc_timer_func(struct hrtimer *timer)
 		container_of(timer, struct nvshm_handle, wake_timer);
 
 	if (tegra_bb_check_ipc(handle->tegra_bb) == 1) {
-		pr_debug("%s is cleared\n", __func__);
+		pr_debug("%s AP2BB is cleared\n", __func__);
 		pm_relax(handle->dev);
 		return HRTIMER_NORESTART;
 	}
-	pr_debug("%s is still set\n", __func__);
+	if (handle->timeout > NVSHM_WAKE_MAX_COUNT) {
+		pr_warn("%s AP2BB not cleared in 1s - aborting\n", __func__);
+		tegra_bb_abort_ipc(handle->tegra_bb);
+		pm_relax(handle->dev);
+		return HRTIMER_NORESTART;
+	}
+	pr_debug("%s AP2BB is still set\n", __func__);
+	hrtimer_forward_now(timer, ktime_set(0, NVSHM_WAKE_TIMEOUT_NS));
 	return HRTIMER_RESTART;
 }
 
@@ -273,7 +281,7 @@ int nvshm_register_ipc(struct nvshm_handle *handle)
 	handle->nvshm_wq = create_singlethread_workqueue(handle->wq_name);
 	INIT_WORK(&handle->nvshm_work, ipc_work);
 
-	hrtimer_init(&handle->wake_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_init(&handle->wake_timer, CLOCK_REALTIME, HRTIMER_MODE_ABS);
 	handle->wake_timer.function = nvshm_ipc_timer_func;
 
 	tegra_bb_register_ipc(handle->tegra_bb, nvshm_ipc_handler, handle);
@@ -301,9 +309,10 @@ int nvshm_generate_ipc(struct nvshm_handle *handle)
 	/* take wake lock until BB ack our irq */
 	pm_stay_awake(handle->dev);
 	if (!hrtimer_active(&handle->wake_timer)) {
+		handle->timeout = 0;
 		ret = hrtimer_start(&handle->wake_timer,
-				    ktime_set(0, 50000000), HRTIMER_MODE_REL);
-		pr_debug("%s awake ret %d\n", __func__, ret);
+				    ktime_set(0, NVSHM_WAKE_TIMEOUT_NS),
+				    HRTIMER_MODE_REL);
 	}
 	mb();
 	/* generate ipc */
