@@ -786,11 +786,29 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 	}
 }
 
+
+static void __init tegra_clk_vefify_rates(void)
+{
+	struct clk *c;
+	unsigned long rate;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		rate = clk_get_rate(c);
+		if (rate > clk_get_max_rate(c))
+			WARN(1, "tegra: %s boot rate %lu exceeds max rate %lu\n",
+			     c->name, rate, clk_get_max_rate(c));
+	}
+	mutex_unlock(&clock_list_lock);
+}
+
 void __init tegra_common_init_clock(void)
 {
 #if defined(CONFIG_HAVE_ARM_TWD) || defined(CONFIG_ARM_ARCH_TIMER)
 	tegra_cpu_timer_init();
 #endif
+	tegra_clk_vefify_rates();
 }
 
 void __init tegra_clk_vefify_parents(void)
