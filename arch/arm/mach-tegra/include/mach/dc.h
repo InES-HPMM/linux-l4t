@@ -483,6 +483,7 @@ struct tegra_dc_out {
 
 	int				dcc_bus;
 	int				hotplug_gpio;
+	int				hotplug_state; /* 0 normal 1 force on */
 	const char			*parent_clk;
 	const char			*parent_clk_backup;
 
