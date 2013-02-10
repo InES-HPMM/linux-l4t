@@ -47,6 +47,7 @@ static int nvshm_probe(struct platform_device *pdev)
 	_nvshm_instance = handle;
 
 	spin_lock_init(&handle->lock);
+	spin_lock_init(&handle->qlock);
 
 	handle->ipc_base_virt = pdata->ipc_base_virt;
 	handle->ipc_size = pdata->ipc_size;
