@@ -286,7 +286,7 @@ static struct therm_est_data skin_data = {
 	.toffset = 9793,
 	.polling_period = 1100,
 	.ndevs = 2,
-	.tc1 = 5,
+	.tc1 = 10,
 	.tc2 = 1,
 	.devs = {
 			{
@@ -312,8 +312,8 @@ static struct therm_est_data skin_data = {
 				},
 			},
 	},
-	.trip_temp = 43000,
-	.passive_delay = 5000,
+	.trip_temp = 45000,
+	.passive_delay = 15000,
 };
 
 static struct throttle_table skin_throttle_table[] = {

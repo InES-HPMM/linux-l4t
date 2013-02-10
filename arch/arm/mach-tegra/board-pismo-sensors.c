@@ -619,9 +619,9 @@ static struct therm_est_data skin_data = {
 				},
 			},
 	},
-	.trip_temp = 43000,
-	.tc1 = 1,
-	.tc2 = 15,
+	.trip_temp = 45000,
+	.tc1 = 10,
+	.tc2 = 1,
 	.passive_delay = 15000,
 };
 
