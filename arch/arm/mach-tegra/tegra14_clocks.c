@@ -5266,6 +5266,37 @@ MUX_I2S_SPDIF(audio3, 3);
 MUX_I2S_SPDIF(audio4, 4);
 MUX_I2S_SPDIF(audio, 5);		/* SPDIF */
 
+/* Audio sync dmic clocks */
+#define AUDIO_SYNC_DMIC_CLK(_id, _dev, _index)		\
+	{						\
+		.name      = #_id "dmic",		\
+		.lookup    = {				\
+			.dev_id    = #_dev,		\
+			.con_id    = "audio_sync_dmic",	\
+		},					\
+		.inputs    = mux_audio_sync_clk,	\
+		.reg       = 0x560 + (_index) * 4,	\
+		.max_rate  = 24000000,			\
+		.ops       = &tegra_audio_sync_clk_ops	\
+	}
+
+static struct clk tegra_clk_audio_dmic_list[] = {
+	AUDIO_SYNC_DMIC_CLK(audio0, tegra30-i2s.0, 0),
+	AUDIO_SYNC_DMIC_CLK(audio1, tegra30-i2s.1, 1),
+};
+
+#define MUX_AUDIO_DMIC(_id, _index)					\
+static struct clk_mux_sel mux_pllaout0_##_id##_dmic_pllp_clkm[] = {	\
+	{.input = &tegra_pll_a_out0, .value = 0},			\
+	{.input = &tegra_clk_audio_dmic_list[(_index)], .value = 1},	\
+	{.input = &tegra_pll_p, .value = 2},				\
+	{.input = &tegra_clk_m, .value = 3},				\
+	{ 0, 0},							\
+}
+MUX_AUDIO_DMIC(audio0, 0);
+MUX_AUDIO_DMIC(audio1, 1);
+
+
 /* External clock outputs (through PMC) */
 #define MUX_EXTERN_OUT(_id)						\
 static struct clk_mux_sel mux_clkm_clkm2_clkm4_extern##_id[] = {	\
@@ -5837,6 +5868,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2s4",	"tegra30-i2s.4",	NULL,	102,	0x3c0,	24576000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_out",	"tegra30-spdif",	"spdif_out",	10,	0x108,	 24576000, mux_pllaout0_audio_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("spdif_in",	"tegra30-spdif",	"spdif_in",	10,	0x10c,	100000000, mux_pllp_pllc_pllm,		MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("dmic0",	"tegra30-i2s.0",	NULL,	160,	0x64c,	24576000,  mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("dmic1",	"tegra30-i2s.0",	NULL,	161,	0x650,	24576000,  mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	48000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam0",	"tegra30-dam.0",	NULL,	108,	0x3d8,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -6781,6 +6814,8 @@ void __init tegra14x_init_clocks(void)
 		tegra14_init_one_clock(&tegra_clk_audio_list[i]);
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_2x_list); i++)
 		tegra14_init_one_clock(&tegra_clk_audio_2x_list[i]);
+	for (i = 0; i < ARRAY_SIZE(tegra_clk_audio_dmic_list); i++)
+		tegra14_init_one_clock(&tegra_clk_audio_dmic_list[i]);
 
 	init_clk_out_mux();
 	for (i = 0; i < ARRAY_SIZE(tegra_clk_out_list); i++)
