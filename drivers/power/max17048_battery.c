@@ -320,8 +320,8 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 	int ret;
 	uint8_t rcomp_seg_table[16];
 
-	rs2 = rcomp_seg | 0x00FF;
-	rs1 = rcomp_seg >> 8;
+	rs2 = (rcomp_seg >> 8) & 0xff;
+	rs1 = rcomp_seg & 0xff;
 
 	rcomp_seg_table[0] = rcomp_seg_table[2] = rcomp_seg_table[4] =
 		rcomp_seg_table[6] = rcomp_seg_table[8] = rcomp_seg_table[10] =
@@ -434,8 +434,7 @@ static int max17048_load_model_data(struct max17048_chip *chip)
 
 static int max17048_initialize(struct max17048_chip *chip)
 {
-	uint8_t ret, config, status;
-	uint16_t wrt_status;
+	uint8_t ret, config;
 	struct i2c_client *client = chip->client;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
@@ -471,25 +470,7 @@ static int max17048_initialize(struct max17048_chip *chip)
 	if (ret < 0)
 		return ret;
 
-	/* Hibernate configuration */
-	ret = max17048_write_word(client, MAX17048_HIBRT, mdata->hibernate);
-	if (ret < 0)
-		return ret;
-
 	ret = max17048_write_word(client, MAX17048_VRESET, mdata->vreset);
-	if (ret < 0)
-		return ret;
-
-	/* clears the reset indicator */
-	ret = max17048_read_word(client, MAX17048_STATUS);
-	if (ret < 0)
-		return ret;
-
-	/* Sets the EnVR bit if selected */
-	status = (ret & 0xFE) | mdata->alert_on_reset;
-	wrt_status = status << 8;
-
-	ret = max17048_write_word(client, MAX17048_STATUS, wrt_status);
 	if (ret < 0)
 		return ret;
 
