@@ -301,12 +301,12 @@ config TEGRA_EMC_SCALING_ENABLE
 config TEGRA_CPU_DVFS
 	bool "Enable voltage scaling on Tegra CPU"
 	depends on TEGRA_SILICON_PLATFORM
-	depends on !ARCH_TEGRA_14x_SOC
 	default y
 
 config TEGRA_CORE_DVFS
 	bool "Enable voltage scaling on Tegra core"
 	depends on TEGRA_SILICON_PLATFORM
+	depends on !ARCH_TEGRA_14x_SOC
 	depends on TEGRA_CPU_DVFS
 	default y
 
