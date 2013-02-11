@@ -1870,7 +1870,7 @@ static struct resource tegra_pwfm_resource = {
 
 struct platform_device tegra_pwfm_device = {
 	.name		= "tegra-pwm",
-	.id		= 0,
+	.id		= -1,
 	.num_resources	= 1,
 	.resource	= &tegra_pwfm_resource,
 };

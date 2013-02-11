@@ -714,7 +714,7 @@ static struct tegra_dc_sd_settings roth_sd_settings = {
 
 static struct platform_device __maybe_unused
 			*roth_bl_device[] __initdata = {
-	&tegra_pwfm1_device,
+	&tegra_pwfm_device,
 	&roth_disp1_bl_device,
 };
 

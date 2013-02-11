@@ -53,7 +53,7 @@ static struct platform_device pwm_fan_therm_cooling_device = {
 };
 
 static struct platform_device *roth_fan_device[] = {
-	&tegra_pwfm0_device,
+	&tegra_pwfm_device,
 };
 
 int __init roth_fan_init(void)
