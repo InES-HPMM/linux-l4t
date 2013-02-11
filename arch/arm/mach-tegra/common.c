@@ -741,6 +741,7 @@ void __init tegra14x_init_early(void)
 	   handler initializer is not called, so do it here for non-SMP. */
 	tegra_cpu_reset_handler_init();
 #endif
+	tegra_apb_io_init();
 	tegra_perf_init();
 	tegra_init_fuse();
 	tegra_ramrepair_init();
