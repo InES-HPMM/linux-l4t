@@ -33,6 +33,7 @@
 #include "clock.h"
 #include "cpu-tegra.h"
 
+/* cpu_throttle_lock is tegra_cpu_lock from cpu-tegra.c */
 static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
@@ -218,9 +219,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 	if (cur_state == 0) {
 		tegra_throttle_cap_freqs_update(NULL, -1, 1);/* uncap freqs */
 
-		mutex_lock(cpu_throttle_lock);
 		tegra_cpu_set_speed_cap(NULL);
-		mutex_unlock(cpu_throttle_lock);
 	} else {
 		if (cur_state == 1 && direction == 0)
 			bthrot->throttle_count++;
@@ -234,9 +233,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 			bthrot->cpu_cap_freq =
 					bthrot->throt_tab[index].cap_freqs[0];
 
-			mutex_lock(cpu_throttle_lock);
 			tegra_cpu_set_speed_cap(NULL);
-			mutex_unlock(cpu_throttle_lock);
 		}
 	}
 

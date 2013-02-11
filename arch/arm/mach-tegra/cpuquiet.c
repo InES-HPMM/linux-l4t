@@ -3,7 +3,7 @@
  *
  * Cpuquiet driver for Tegra CPUs
  *
- * Copyright (c) 2012 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -371,6 +371,7 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 		current_cluster = __apply_cluster_config(current_cluster,
 					new_cluster);
 
+		tegra_cpu_set_speed_cap_locked(NULL);
 		mutex_unlock(tegra_cpu_lock);
 
 		if (current_cluster == TEGRA_CPQ_LP)
@@ -378,9 +379,9 @@ static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
 		else
 			cpuquiet_device_free();
 
-		tegra_cpu_set_speed_cap(NULL);
-	} else
+	} else {
 		mutex_unlock(tegra_cpu_lock);
+	}
 
 	if (current_cluster == TEGRA_CPQ_G)
 		__apply_core_config();
