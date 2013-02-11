@@ -480,6 +480,7 @@ void mipi_bif_unregister_device(struct mipi_bif_client *client)
 {
 	device_unregister(&client->dev);
 }
+EXPORT_SYMBOL_GPL(mipi_bif_unregister_device);
 
 static int mipi_bif_do_del_adapter(struct mipi_bif_driver *driver,
 			      struct mipi_bif_adapter *adapter)
