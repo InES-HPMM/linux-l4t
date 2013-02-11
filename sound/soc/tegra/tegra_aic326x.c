@@ -1539,7 +1539,7 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	machine->spk_edp_client->states = pdata->edp_states;
 	machine->spk_edp_client->num_states = TEGRA_SPK_EDP_NUM_STATES;
 	machine->spk_edp_client->e0_index = TEGRA_SPK_EDP_ZERO;
-	machine->spk_edp_client->priority = EDP_MAX_PRIO - 2;
+	machine->spk_edp_client->priority = EDP_MAX_PRIO + 2;
 	machine->spk_edp_client->throttle = tegra_speaker_throttle;
 	machine->spk_edp_client->private_data = machine;
 

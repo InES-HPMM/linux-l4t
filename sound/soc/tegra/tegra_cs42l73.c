@@ -1,10 +1,9 @@
-	/*
+/*
  * tegra_cs42l73.c - Tegra machine ASoC driver for boards using CS42L73 codec.
  *
  * Author: Vijay Mali <vmali@nvidia.com>
- * Copyright (C) 2011-2012, NVIDIA, Inc.
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -1448,7 +1447,7 @@ static __devinit int tegra_cs42l73_driver_probe(struct platform_device *pdev)
 	machine->spk_edp_client->states = pdata->edp_states;
 	machine->spk_edp_client->num_states = TEGRA_SPK_EDP_NUM_STATES;
 	machine->spk_edp_client->e0_index = TEGRA_SPK_EDP_ZERO;
-	machine->spk_edp_client->priority = EDP_MAX_PRIO - 2;
+	machine->spk_edp_client->priority = EDP_MAX_PRIO + 2;
 	machine->spk_edp_client->throttle = tegra_speaker_throttle;
 	machine->spk_edp_client->private_data = machine;
 
