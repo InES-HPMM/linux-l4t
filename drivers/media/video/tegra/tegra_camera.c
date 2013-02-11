@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/pm_runtime.h>
 
 #include <mach/iomap.h>
 #include <mach/clk.h>
@@ -424,6 +425,8 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 
 	file->private_data = dev;
 
+	pm_runtime_get_sync(dev->dev);
+
 	mutex_lock(&dev->tegra_camera_lock);
 	/* turn on CSI regulator */
 	ret = tegra_camera_power_on(dev);
@@ -448,6 +451,7 @@ enable_emc_err:
 	tegra_camera_power_off(dev);
 power_on_err:
 	mutex_unlock(&dev->tegra_camera_lock);
+	pm_runtime_put(dev->dev);
 	return ret;
 }
 
@@ -476,6 +480,7 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 release_exit:
 	mutex_unlock(&dev->tegra_camera_lock);
 	WARN_ON(!atomic_xchg(&dev->in_use, 0));
+	pm_runtime_put(dev->dev);
 	return 0;
 }
 
@@ -617,6 +622,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto isomgr_reg_err;
 #endif
 
+	pm_runtime_enable(&pdev->dev);
 	/* dev is set in order to restore in _remove */
 	platform_set_drvdata(pdev, dev);
 
