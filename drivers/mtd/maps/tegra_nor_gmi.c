@@ -484,10 +484,9 @@ static int flash_probe(struct tegra_nor_info *info)
 	for (i = 0; i < info->n_maps; i++) {
 		map = &map_list[i];
 		mtd[i] = do_map_probe(info->plat->flash.map_name, map);
-		if (mtd[i] == NULL) {
+		if (mtd[i] == NULL)
 			dev_err(dev, "cannot probe flash\n");
-			return -EIO;
-		} else {
+		else {
 			present_banks++;
 			size += map->size;
 		}
@@ -495,13 +494,17 @@ static int flash_probe(struct tegra_nor_info *info)
 	}
 
 	info->mtd = mtd;
-	if (present_banks < info->n_maps)
-		info->concat_mtd = mtd_concat_create(info->mtd, present_banks,
-								DRV_NAME);
-	else
-		info->concat_mtd = mtd_concat_create(info->mtd, info->n_maps,
-								 DRV_NAME);
 
+	if (present_banks == 0) {
+		return -EIO;
+	} else{
+		if (present_banks < info->n_maps)
+			info->concat_mtd = mtd_concat_create(info->mtd,
+						present_banks, DRV_NAME);
+		else
+			info->concat_mtd = mtd_concat_create(info->mtd,
+						info->n_maps, DRV_NAME);
+	}
 	if (!info->concat_mtd) {
 		dev_err(dev, "cannot concatenate flash\n");
 		return -ENODEV;
