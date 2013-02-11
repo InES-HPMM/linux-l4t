@@ -715,8 +715,7 @@ tegra_mipi_bif_xfer(struct mipi_bif_adapter *adap, struct mipi_bif_msg *msg)
 	} else if (msg->commands == MIPI_BIF_INT_READ) {
 
 		tegra_mipi_bif_send(mipi_bif_dev, sda_part | MIPI_BIF_SDA);
-		tegra_mipi_bif_send(mipi_bif_dev,
-					sda_part | MIPI_BIF_BUS_COMMAND_EINT);
+		tegra_mipi_bif_send(mipi_bif_dev, MIPI_BIF_BUS_COMMAND_EINT);
 
 		tegra_mipi_bif_unmask_irq(mipi_bif_dev, int_mask);
 
