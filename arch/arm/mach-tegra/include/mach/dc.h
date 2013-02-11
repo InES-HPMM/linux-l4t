@@ -292,6 +292,8 @@ struct tegra_dsi_out {
 	u32		burst_mode_freq_khz;
 	u32		fpga_freq_khz;
 
+	u32		te_gpio;
+
 	const u32		*pkt_seq;
 
 	struct dsi_phy_timing_ns phy_timing;
