@@ -46,6 +46,7 @@
 #include "cpu-tegra.h"
 #include "pm.h"
 #include "tegra-board-id.h"
+#include "board-pmu-defines.h"
 #include "board.h"
 #include "gpio-names.h"
 #include "board-common.h"
@@ -596,7 +597,6 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 
 #define palmas_ldo1_supply max77663_ldo7_supply
 
-/* FIXME!! Put the device address of camera */
 static struct regulator_consumer_supply palmas_ldo1_config2_supply[] = {
 	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
@@ -648,48 +648,27 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 };
 
-#define PALMAS_PDATA_INIT(_name, _minmv, _maxmv, _supply_reg, _always_on, \
-	_boot_on, _apply_uv)						\
-	static struct regulator_init_data reg_idata_##_name = {		\
-		.constraints = {					\
-			.name = palmas_rails(_name),			\
-			.min_uV = (_minmv)*1000,			\
-			.max_uV = (_maxmv)*1000,			\
-			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
-					REGULATOR_MODE_STANDBY),	\
-			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
-					REGULATOR_CHANGE_STATUS |	\
-					REGULATOR_CHANGE_VOLTAGE),	\
-			.always_on = _always_on,			\
-			.boot_on = _boot_on,				\
-			.apply_uV = _apply_uv,				\
-		},							\
-		.num_consumer_supplies =				\
-			ARRAY_SIZE(palmas_##_name##_supply),		\
-		.consumer_supplies = palmas_##_name##_supply,		\
-		.supply_regulator = _supply_reg,			\
-	}
-
-PALMAS_PDATA_INIT(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0);
-PALMAS_PDATA_INIT(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0);
-PALMAS_PDATA_INIT(smps45, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
-PALMAS_PDATA_INIT(smps457, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0);
-PALMAS_PDATA_INIT(smps8, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
-PALMAS_PDATA_INIT(smps8_config2, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1);
-PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0);
-PALMAS_PDATA_INIT(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo1_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo2_config2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps3), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo4, 1800,  1800, tps65090_rails(DCDC2), 0, 0, 0);
-PALMAS_PDATA_INIT(ldo4_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo6, 2850,  2850, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo7, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1);
-PALMAS_PDATA_INIT(ldo8, 900,  900, tps65090_rails(DCDC3), 1, 1, 1);
-PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1);
-PALMAS_PDATA_INIT(ldoln, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1);
-PALMAS_PDATA_INIT(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1);
+PALMAS_PDATA_INIT(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0, NORMAL);
+PALMAS_PDATA_INIT(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0, NORMAL);
+PALMAS_PDATA_INIT(smps45, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0, NORMAL);
+PALMAS_PDATA_INIT(smps457, 900,  1400, tps65090_rails(DCDC2), 1, 1, 0, NORMAL);
+PALMAS_PDATA_INIT(smps8, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1, NORMAL);
+PALMAS_PDATA_INIT(smps8_config2, 1050,  1050, tps65090_rails(DCDC2), 0, 1, 1,
+	NORMAL);
+PALMAS_PDATA_INIT(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0, NORMAL);
+PALMAS_PDATA_INIT(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo1_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo2_config2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps3), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo4_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo4, 1800,  1800, tps65090_rails(DCDC2), 0, 0, 0, 0);
+PALMAS_PDATA_INIT(ldo6, 2850,  2850, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo7, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldo8, 900,  900, tps65090_rails(DCDC3), 1, 1, 1, 0);
+PALMAS_PDATA_INIT(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldoln, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1, 0);
+PALMAS_PDATA_INIT(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 
@@ -1188,6 +1167,7 @@ static int __init dalmore_fixed_regulator_init(void)
 
 	if (!machine_is_dalmore())
 		return 0;
+
 	power_config = get_power_config();
 	tegra_get_board_info(&board_info);
 
