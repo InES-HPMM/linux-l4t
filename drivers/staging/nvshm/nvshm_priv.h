@@ -53,9 +53,8 @@
 	do {	\
 		unsigned long _pa_ = page_to_phys(vmalloc_to_page((va))) \
 			+ ((unsigned long)va & ~PAGE_MASK);              \
-		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
 		outer_inv_range(_pa_, _pa_+(size_t)(size));		\
-		dsb(); \
+		__cpuc_flush_dcache_area((void *)(va), (size_t)(size));	\
 	} while (0)
 
 struct nvshm_handle {

@@ -92,20 +92,16 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		return NULL;
 	}
 
-	/* Invalidate lower part of iobuf - upper part can be written by AP */
-	INV_CPU_DCACHE(&handle->shared_queue_head->qnext,
-		       sizeof(struct nvshm_iobuf) / 2);
 	dummy = handle->shared_queue_head;
-	ret = NVSHM_B2A(handle, handle->shared_queue_head->qnext);
+	/* Invalidate lower part of iobuf - upper part can be written by AP */
+	INV_CPU_DCACHE(&dummy->qnext,
+		       sizeof(struct nvshm_iobuf) / 2);
+	ret = NVSHM_B2A(handle, dummy->qnext);
 
 	if (dummy->qnext == NULL)
 		return NULL;
 
-	pr_debug("%s (%x)->%x\n", __func__,
-		 (unsigned int)dummy, (unsigned int)dummy->qnext);
-
 	inv_iob_list(handle, ret);
-	dummy->qnext = NULL;
 	handle->shared_queue_head = ret;
 
 	/* Update queue_bb_offset for debug purpose */
@@ -119,8 +115,11 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 		       handle->conf->queue_bb_offset,
 		       ret,
 		       NVSHM_A2B(handle, ret));
-	nvshm_iobuf_free_cluster(dummy);
 
+	pr_debug("%s (%p)->%p->(%p)\n", __func__,
+		 dummy, ret, ret->qnext);
+
+	nvshm_iobuf_free_cluster(dummy);
 	return ret;
 }
 
@@ -146,10 +145,10 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 		return -EINVAL;
 	}
 
-	pr_debug("%s (%x)->%x/%d/%d->0x%x\n", __func__,
-		 (unsigned int)handle->shared_queue_tail,
-		 (unsigned int)iob, iob->chan, iob->length,
-		 (unsigned int)iob->next);
+	pr_debug("%s (%p)->%p/%d/%d->%p\n", __func__,
+		handle->shared_queue_tail,
+		iob, iob->chan, iob->length,
+		iob->next);
 
 	/* Take a reference on queued iobufs (all of them!) */
 	nvshm_iobuf_ref_cluster(iob);
@@ -194,9 +193,8 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	pm_stay_awake(handle->dev);
 	iob = nvshm_queue_get(handle);
 	while (iob) {
-		pr_debug("%s %x/%d/%d/%d->0x%x\n", __func__,
-			(unsigned int)iob, iob->chan, iob->length, iob->ref,
-			(unsigned int)iob->next);
+		pr_debug("%s %p/%d/%d/%d->%p\n", __func__,
+			iob, iob->chan, iob->length, iob->ref, iob->next);
 		tegra_bb_clear_ipc(handle->tegra_bb);
 		chan = iob->chan;
 		if (iob->pool_id < NVSHM_AP_POOL_ID) {
