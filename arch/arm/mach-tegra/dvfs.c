@@ -402,6 +402,11 @@ __tegra_dvfs_set_rate(struct dvfs *d, unsigned long rate)
 	if (freqs == NULL || millivolts == NULL)
 		return -ENODEV;
 
+	/* On entry to dfll range limit 1st step to range bottom (full ramp of
+	   voltage/rate is completed automatically in dfll mode) */
+	if (tegra_dvfs_is_dfll_range_entry(d, rate))
+		rate = d->dfll_data.use_dfll_rate_min;
+
 	if (rate > freqs[d->num_freqs - 1]) {
 		pr_warn("tegra_dvfs: rate %lu too high for dvfs on %s\n", rate,
 			d->clk_name);
