@@ -442,6 +442,14 @@ config BACKLIGHT_MAX8831
 	  If you have a MAX8831 for backlight, say Y to enable the
 	  backlight driver.
 
+config BACKLIGHT_LM3528
+	tristate "Backlight driver for TI LM3528"
+	depends on I2C=y
+	select REGMAP_I2C
+	help
+	  If you have a LM3528 for backlight, say Y to enable the
+	  backlight driver.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT

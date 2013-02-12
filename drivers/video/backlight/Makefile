@@ -55,3 +55,4 @@ obj-$(CONFIG_BACKLIGHT_TEGRA_PWM)	+= tegra_pwm_bl.o
 obj-$(CONFIG_BACKLIGHT_TOSA)		+= tosa_bl.o
 obj-$(CONFIG_BACKLIGHT_TPS65217)	+= tps65217_bl.o
 obj-$(CONFIG_BACKLIGHT_WM831X)		+= wm831x_bl.o
+obj-$(CONFIG_BACKLIGHT_LM3528)		+= lm3528_bl.o
