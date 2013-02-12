@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_clocks.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -7334,8 +7334,8 @@ unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
 
 	/* Vote on memory bus frequency based on cpu frequency;
 	   cpu rate is in kHz, emc rate is in Hz */
-	if (cpu_rate >= 1300000)
-		return emc_max_rate;	/* cpu >= 1.3GHz, emc max */
+	if (cpu_rate >= 1500000)
+		return emc_max_rate;	/* cpu >= 1.5GHz, emc max */
 	else if (cpu_rate >= 975000)
 		return 400000000;	/* cpu >= 975 MHz, emc 400 MHz */
 	else if (cpu_rate >= 725000)
