@@ -2604,7 +2604,11 @@ static void pllc_set_defaults(struct clk *c, unsigned long input_rate)
 
 	if (c->state == ON) {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-		BUG_ON(val & PLLC_MISC_IDDQ);
+		/* FIXME: WAR for bug 1235180 */
+		/* BUG_ON(val & PLLC_MISC_IDDQ); */
+		pr_err("PLLC_MISC_IDDQ was on. Clearing it.\n");
+		val &= ~PLLC_MISC_IDDQ;
+		clk_writel(val, c->reg + PLL_MISC(c));
 #endif
 	} else {
 		val |= PLLC_MISC_IDDQ;
