@@ -2,7 +2,7 @@
  * Driver for Nvidia TEGRA11 spi controller.
  *
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -685,7 +685,7 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 	}
 
 	if (final_index >= 0) {
-		dev_info(&tspi->pdev->dev, "Setting clk_src %s\n",
+		dev_dbg(&tspi->pdev->dev, "Setting clk_src %s\n",
 				tspi->parent_clk_list[final_index].name);
 		clk_set_parent(tspi->clk,
 			tspi->parent_clk_list[final_index].parent_clk);
