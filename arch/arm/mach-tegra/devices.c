@@ -266,7 +266,7 @@ static struct resource i2c_resource5[] = {
 };
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 static struct resource i2c_resource6[] = {
 	[0] = {
 		.start  = INT_I2C6,
@@ -401,7 +401,7 @@ struct platform_device tegra11_i2c_device5 = {
 };
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 
 struct platform_device tegra14_i2c_device1 = {
 	.name		= "tegra14-i2c",
@@ -462,6 +462,10 @@ struct platform_device tegra14_i2c_device6 = {
 		.platform_data = 0,
 	},
 };
+
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 
 static struct tegra_mipi_bif_platform_data mipi_bif_pdata = {
 	.adapter_nr	= -1,
