@@ -173,7 +173,7 @@ static const struct tegra_pingroup_config i2c2_gen2 = {
 
 static struct tegra_i2c_platform_data bonaire_i2c2_platform_data = {
 	.adapter_nr	= 1,
-	.bus_count	= 2,
+	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 100000 },
 #if 0	/* !!!FIXME!!!! TESE ARE VENTANA SETTINGS */
 	.bus_mux	= { &i2c2_ddc, &i2c2_gen2 },
@@ -182,18 +182,24 @@ static struct tegra_i2c_platform_data bonaire_i2c2_platform_data = {
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c3_platform_data = {
-	.adapter_nr	= 3,
+	.adapter_nr	= 2,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c4_platform_data = {
-	.adapter_nr	= 4,
+	.adapter_nr	= 3,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c5_platform_data = {
+	.adapter_nr	= 4,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 100000, 0 },
+};
+
+static struct tegra_i2c_platform_data bonaire_i2c6_platform_data = {
 	.adapter_nr	= 5,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
@@ -201,19 +207,21 @@ static struct tegra_i2c_platform_data bonaire_i2c5_platform_data = {
 
 static void bonaire_i2c_init(void)
 {
-	tegra_i2c_device1.dev.platform_data = &bonaire_i2c1_platform_data;
-	tegra_i2c_device2.dev.platform_data = &bonaire_i2c2_platform_data;
-	tegra_i2c_device3.dev.platform_data = &bonaire_i2c3_platform_data;
-	tegra_i2c_device4.dev.platform_data = &bonaire_i2c4_platform_data;
-	tegra_i2c_device5.dev.platform_data = &bonaire_i2c5_platform_data;
+	tegra14_i2c_device1.dev.platform_data = &bonaire_i2c1_platform_data;
+	tegra14_i2c_device2.dev.platform_data = &bonaire_i2c2_platform_data;
+	tegra14_i2c_device3.dev.platform_data = &bonaire_i2c3_platform_data;
+	tegra14_i2c_device4.dev.platform_data = &bonaire_i2c4_platform_data;
+	tegra14_i2c_device5.dev.platform_data = &bonaire_i2c5_platform_data;
+	tegra14_i2c_device6.dev.platform_data = &bonaire_i2c6_platform_data;
 
 	i2c_register_board_info(0, bonaire_i2c_bus1_board_info, 1);
 
-	platform_device_register(&tegra_i2c_device5);
-	platform_device_register(&tegra_i2c_device4);
-	platform_device_register(&tegra_i2c_device3);
-	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra14_i2c_device6);
+	platform_device_register(&tegra14_i2c_device5);
+	platform_device_register(&tegra14_i2c_device4);
+	platform_device_register(&tegra14_i2c_device3);
+	platform_device_register(&tegra14_i2c_device2);
+	platform_device_register(&tegra14_i2c_device1);
 }
 
 #define GPIO_KEY(_id, _gpio, _iswake)		\
