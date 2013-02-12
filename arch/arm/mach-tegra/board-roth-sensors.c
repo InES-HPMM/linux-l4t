@@ -227,7 +227,8 @@ static int roth_nct1008_init(void)
 	int ret = 0;
 
 	tegra_platform_edp_init(roth_nct1008_pdata.trips,
-				&roth_nct1008_pdata.num_trips);
+				&roth_nct1008_pdata.num_trips,
+				0); /* edp temperature margin */
 	tegra_add_cdev_trips(roth_nct1008_pdata.trips,
 				&roth_nct1008_pdata.num_trips);
 	tegra_add_tj_trips(roth_nct1008_pdata.trips,

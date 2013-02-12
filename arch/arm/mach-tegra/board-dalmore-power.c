@@ -1258,7 +1258,8 @@ int __init dalmore_soctherm_init(void)
 		dalmore_soctherm_data.tshut_pmu_trip_data = &tpdata_max77663;
 
 	tegra_platform_edp_init(dalmore_soctherm_data.therm[THERM_CPU].trips,
-			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
+			&dalmore_soctherm_data.therm[THERM_CPU].num_trips,
+			8000); /* edp temperature margin */
 	tegra_add_tj_trips(dalmore_soctherm_data.therm[THERM_CPU].trips,
 			&dalmore_soctherm_data.therm[THERM_CPU].num_trips);
 

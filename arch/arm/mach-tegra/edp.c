@@ -333,7 +333,7 @@ static struct tegra_system_edp_entry power_edp_default_limits[] = {
 
 /* Constants for EDP calculations */
 static const int temperatures[] = { /* degree celcius (C) */
-	23, 40, 50, 60, 70, 75, 80, 85, 90, 95, 100, 105,
+	23, 40, 50, 60, 70, 74, 78, 82, 86, 90, 94, 98, 102,
 };
 static const int power_cap_levels[] = { /* milliwatts (mW) */
 	500, 1000, 1500, 2000, 2500, 3000, 3500,
@@ -626,7 +626,7 @@ static int init_cpu_edp_limits_calculated(void)
 	for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++) {
 		for (temp_idx = 0;
 		     temp_idx < ARRAY_SIZE(temperatures); temp_idx++) {
-			edp_calculated_limits[temp_idx]. temperature =
+			edp_calculated_limits[temp_idx].temperature =
 				temperatures[temp_idx];
 			limit = edp_calculate_maxf(params,
 						   temperatures[temp_idx],
@@ -831,7 +831,8 @@ void tegra_get_system_edp_limits(const unsigned int **limits)
 	*limits = system_edp_limits;
 }
 
-void tegra_platform_edp_init(struct thermal_trip_info *trips, int *num_trips)
+void tegra_platform_edp_init(struct thermal_trip_info *trips,
+				int *num_trips, int margin)
 {
 	const struct tegra_edp_limits *cpu_edp_limits;
 	struct thermal_trip_info *trip_state;
@@ -851,7 +852,7 @@ void tegra_platform_edp_init(struct thermal_trip_info *trips, int *num_trips)
 
 		trip_state->cdev_type = "cpu_edp";
 		trip_state->trip_temp =
-			cpu_edp_limits[i].temperature * 1000;
+			(cpu_edp_limits[i].temperature * 1000) - margin;
 		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
 		trip_state->upper = trip_state->lower = i + 1;
 		trip_state->hysteresis = 1000;

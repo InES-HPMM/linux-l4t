@@ -552,7 +552,7 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 
 	trip_state->hysteresis = trip_state->hysteresis ?:
 		LOWER_PRECISION_FOR_CONV(1000);
-	trip_temp -= (trip_state->hysteresis / 1000);
+	trip_temp -= LOWER_PRECISION_FOR_TEMP(trip_state->hysteresis / 1000);
 
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
