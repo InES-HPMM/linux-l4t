@@ -42,6 +42,7 @@
 #define INITIAL_STATE		TEGRA_CPQ_DISABLED
 #define UP_DELAY_MS		70
 #define DOWN_DELAY_MS		2000
+#define HOTPLUG_DELAY_MS	100
 
 static struct mutex *tegra_cpu_lock;
 static DEFINE_MUTEX(tegra_cpq_lock_stats);
@@ -54,11 +55,13 @@ static struct kobject *tegra_auto_sysfs_kobject;
 
 static wait_queue_head_t wait_no_lp;
 static wait_queue_head_t wait_enable;
+static wait_queue_head_t wait_cpu;
 
 static bool no_lp;
 static bool enable;
 static unsigned long up_delay;
 static unsigned long down_delay;
+static unsigned long hotplug_timeout;
 static int mp_overhead = 10;
 static unsigned int idle_top_freq;
 static unsigned int idle_bottom_freq;
@@ -183,14 +186,45 @@ static int update_core_config(unsigned int cpunumber, bool up)
 	return ret;
 }
 
-static int tegra_quiesence_cpu(unsigned int cpunumber)
+static int tegra_quiesence_cpu(unsigned int cpunumber, bool sync)
 {
-        return update_core_config(cpunumber, false);
+	int err = 0;
+
+	err = update_core_config(cpunumber, false);
+	if (err || !sync)
+		return err;
+
+	err = wait_event_interruptible_timeout(wait_cpu,
+					       !cpu_online(cpunumber),
+					       hotplug_timeout);
+
+	if (err < 0)
+		return err;
+
+	if (err > 0)
+		return 0;
+	else
+		return -ETIMEDOUT;
 }
 
-static int tegra_wake_cpu(unsigned int cpunumber)
+static int tegra_wake_cpu(unsigned int cpunumber, bool sync)
 {
-        return update_core_config(cpunumber, true);
+	int err = 0;
+
+	err = update_core_config(cpunumber, true);
+	if (err || !sync)
+		return err;
+
+	err = wait_event_interruptible_timeout(wait_cpu, cpu_online(cpunumber),
+					       hotplug_timeout);
+
+	if (err < 0)
+		return err;
+
+	if (err > 0)
+		return 0;
+	else
+		return -ETIMEDOUT;
 }
 
 static struct cpuquiet_driver tegra_cpuquiet_driver = {
@@ -394,6 +428,7 @@ static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 
 			mutex_unlock(tegra_cpu_lock);
 		}
+		wake_up_interruptible(&wait_cpu);
 		break;
 	case CPU_ONLINE:
 	case CPU_ONLINE_FROZEN:
@@ -407,6 +442,7 @@ static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 
 			mutex_unlock(tegra_cpu_lock);
 		}
+		wake_up_interruptible(&wait_cpu);
 		break;
 	}
 
@@ -536,6 +572,7 @@ CPQ_BASIC_ATTRIBUTE(mp_overhead, 0644, int);
 CPQ_ATTRIBUTE(no_lp, 0644, bool, no_lp_callback);
 CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
+CPQ_ATTRIBUTE(hotplug_timeout, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(enable, 0644, bool, enable_callback);
 
 static struct attribute *tegra_auto_attributes[] = {
@@ -546,6 +583,7 @@ static struct attribute *tegra_auto_attributes[] = {
 	&idle_bottom_freq_attr.attr,
 	&mp_overhead_attr.attr,
 	&enable_attr.attr,
+	&hotplug_timeout_attr.attr,
 	NULL,
 };
 
@@ -677,6 +715,7 @@ int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 
 	init_waitqueue_head(&wait_no_lp);
 	init_waitqueue_head(&wait_enable);
+	init_waitqueue_head(&wait_cpu);
 
 	/*
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
@@ -697,6 +736,7 @@ int __cpuinit tegra_auto_hotplug_init(struct mutex *cpulock)
 
 	up_delay = msecs_to_jiffies(UP_DELAY_MS);
 	down_delay = msecs_to_jiffies(DOWN_DELAY_MS);
+	hotplug_timeout = msecs_to_jiffies(HOTPLUG_DELAY_MS);
 	cpumask_clear(&cr_online_requests);
 	cpumask_clear(&cr_offline_requests);
 
