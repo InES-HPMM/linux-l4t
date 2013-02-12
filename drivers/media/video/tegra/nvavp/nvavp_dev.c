@@ -1879,9 +1879,10 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 }
 
 #ifdef CONFIG_PM
-static int tegra_nvavp_suspend(struct platform_device *ndev, pm_message_t state)
+static int tegra_nvavp_suspend(struct device *dev)
 {
-	struct nvavp_info *nvavp = platform_get_drvdata(ndev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
 	int ret = 0;
 
 	mutex_lock(&nvavp->open_lock);
@@ -1911,9 +1912,10 @@ static int tegra_nvavp_suspend(struct platform_device *ndev, pm_message_t state)
 	return ret;
 }
 
-static int tegra_nvavp_resume(struct platform_device *ndev)
+static int tegra_nvavp_resume(struct device *dev)
 {
-	struct nvavp_info *nvavp = platform_get_drvdata(ndev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct nvavp_info *nvavp = platform_get_drvdata(pdev);
 
 	mutex_lock(&nvavp->open_lock);
 
@@ -1927,19 +1929,28 @@ static int tegra_nvavp_resume(struct platform_device *ndev)
 
 	return 0;
 }
-#endif
+
+static const struct dev_pm_ops nvavp_pm_ops = {
+	.suspend = tegra_nvavp_suspend,
+	.resume = tegra_nvavp_resume,
+};
+
+#define NVAVP_PM_OPS	(&nvavp_pm_ops)
+
+#else /* CONFIG_PM */
+
+#define NVAVP_PM_OPS	NULL
+
+#endif /* CONFIG_PM */
 
 static struct platform_driver tegra_nvavp_driver = {
 	.driver	= {
 		.name	= TEGRA_NVAVP_NAME,
 		.owner	= THIS_MODULE,
+		.pm	= NVAVP_PM_OPS,
 	},
 	.probe		= tegra_nvavp_probe,
 	.remove		= tegra_nvavp_remove,
-#ifdef CONFIG_PM
-	.suspend	= tegra_nvavp_suspend,
-	.resume		= tegra_nvavp_resume,
-#endif
 };
 
 static int __init tegra_nvavp_init(void)
