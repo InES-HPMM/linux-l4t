@@ -188,6 +188,8 @@ static int __devinit palmas_gpio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	gpio->palmas = palmas;
+	if (palmas->ngpio > 0)
+		palmas_gpio_chip.ngpio = palmas->ngpio;
 	gpio->gpio_chip = palmas_gpio_chip;
 	gpio->gpio_chip.dev = &pdev->dev;
 
