@@ -156,7 +156,6 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 	int len, idx;
 
 	if (!nvshm_interface_up()) {
-		nvshm_iobuf_free_cluster(iob);
 		return;
 	}
 
