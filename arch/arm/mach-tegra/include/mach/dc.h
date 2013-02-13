@@ -336,6 +336,7 @@ struct tegra_dc_mode {
 	int	stereo_mode;
 	u32	flags;
 	u8	avi_m;
+	u32	vmode;
 };
 
 #define TEGRA_DC_MODE_FLAG_NEG_V_SYNC	(1 << 0)
@@ -605,6 +606,12 @@ struct tegra_dc_win {
 	dma_addr_t		phys_addr;
 	dma_addr_t		phys_addr_u;
 	dma_addr_t		phys_addr_v;
+#if defined(CONFIG_TEGRA_DC_INTERLACE)
+	/* field 2 starting address */
+	dma_addr_t		phys_addr2;
+	dma_addr_t		phys_addr_u2;
+	dma_addr_t		phys_addr_v2;
+#endif
 	unsigned		stride;
 	unsigned		stride_uv;
 	fixed20_12		x;
@@ -645,7 +652,8 @@ struct tegra_dc_win {
 #define TEGRA_WIN_FLAG_V_FILTER		(1 << 7)
 #define TEGRA_WIN_FLAG_BLOCKLINEAR	(1 << 8)
 #define TEGRA_WIN_FLAG_SCAN_COLUMN	(1 << 9)
-
+#define TEGRA_WIN_FLAG_INTERLACE	(1 << 10)
+#define TEGRA_WIN_FLAG_FB		(1 << 11)
 
 #define TEGRA_WIN_BLEND_FLAGS_MASK \
 	(TEGRA_WIN_FLAG_BLEND_PREMULT | TEGRA_WIN_FLAG_BLEND_COVERAGE)
