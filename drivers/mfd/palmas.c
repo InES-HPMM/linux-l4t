@@ -246,6 +246,38 @@ static const struct regmap_irq palmas_irqs[] = {
 		.mask = PALMAS_INT4_STATUS_GPIO_7,
 		.reg_offset = 3,
 	},
+	[PALMAS_GPIO_8_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_8,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_9_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_9,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_10_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_10,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_11_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_11,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_12_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_12,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_13_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_13,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_14_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_14,
+		.reg_offset = 4,
+	},
+	[PALMAS_GPIO_15_IRQ] = {
+		.mask = PALMAS_INT5_STATUS_GPIO_15,
+		.reg_offset = 4,
+	},
 };
 
 static struct regmap_irq_chip palmas_irq_chip = {
@@ -253,7 +285,7 @@ static struct regmap_irq_chip palmas_irq_chip = {
 	.irqs = palmas_irqs,
 	.num_irqs = ARRAY_SIZE(palmas_irqs),
 
-	.num_regs = 4,
+	.num_regs = 5,
 	.irq_reg_stride = 5,
 	.status_base = PALMAS_BASE_TO_REG(PALMAS_INTERRUPT_BASE,
 			PALMAS_INT1_STATUS),
@@ -302,6 +334,14 @@ static struct palmas_sleep_requestor_info sleep_reqt_info[] = {
 	SLEEP_REQUESTOR(LDO9, 3, 0),
 	SLEEP_REQUESTOR(LDOLN, 3, 1),
 	SLEEP_REQUESTOR(LDOUSB, 3, 2),
+	SLEEP_REQUESTOR(LDO10, 3, 3),
+	SLEEP_REQUESTOR(LDO11, 3, 4),
+	SLEEP_REQUESTOR(LDO12, 3, 5),
+	SLEEP_REQUESTOR(LDO13, 3, 6),
+	SLEEP_REQUESTOR(LDO14, 3, 7),
+	SLEEP_REQUESTOR(REGEN4, 0, 7),
+	SLEEP_REQUESTOR(REGEN5, 18, 0),
+	SLEEP_REQUESTOR(REGEN7, 18, 2),
 };
 
 struct palmas_clk32k_info {
@@ -357,14 +397,29 @@ int palmas_ext_power_req_config(struct palmas *palmas,
 	if (id >= PALMAS_SLEEP_REQSTR_ID_MAX)
 		return 0;
 
+	if (palmas->id == TPS80036 && id == PALMAS_SLEEP_REQSTR_ID_REGEN3)
+		return 0;
+
+	if (palmas->id != TPS80036 && id > PALMAS_SLEEP_REQSTR_ID_LDO14)
+		return 0;
+
 	if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_NSLEEP) {
-		base_reg = PALMAS_NSLEEP_RES_ASSIGN;
+		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+			base_reg = PALMAS_NSLEEP_RES_ASSIGN;
+		else
+			base_reg = PALMAS_NSLEEP_RES_ASSIGN2;
 		preq_mask_bit = 0;
 	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE1) {
-		base_reg = PALMAS_ENABLE1_RES_ASSIGN;
+		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+			base_reg = PALMAS_ENABLE1_RES_ASSIGN;
+		else
+			base_reg = PALMAS_ENABLE1_RES_ASSIGN2;
 		preq_mask_bit = 1;
 	} else if (ext_pwr_ctrl & PALMAS_EXT_CONTROL_ENABLE2) {
-		base_reg = PALMAS_ENABLE2_RES_ASSIGN;
+		if (id <= PALMAS_SLEEP_REQSTR_ID_REGEN4)
+			base_reg = PALMAS_ENABLE2_RES_ASSIGN;
+		else
+			base_reg = PALMAS_ENABLE2_RES_ASSIGN2;
 		preq_mask_bit = 2;
 	}
 
@@ -608,6 +663,11 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	regmap_write(palmas->regmap[slave], addr, reg);
 
+	if (palmas->id != TPS80036) {
+		/* INT5 is only supported for TPS80036 */
+		palmas_irq_chip.num_irqs = ARRAY_SIZE(palmas_irqs) - 8;
+		palmas_irq_chip.num_regs = 4;
+	}
 	ret = regmap_add_irq_chip(palmas->regmap[slave], palmas->irq,
 			IRQF_ONESHOT | pdata->irq_flags, pdata->irq_base,
 			&palmas_irq_chip, &palmas->irq_data);
@@ -689,6 +749,43 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2))
 		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
+
+
+	if (palmas->id != TPS80036) {
+		palmas->ngpio = 8;
+	} else {
+		palmas->ngpio = 16;
+
+		addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
+				PALMAS_PRIMARY_SECONDARY_PAD4);
+
+		if (pdata->mux_from_pdata) {
+			reg = pdata->pad4;
+			ret = regmap_write(palmas->regmap[slave], addr, reg);
+			if (ret)
+				goto err;
+		} else {
+			ret = regmap_read(palmas->regmap[slave], addr, &reg);
+			if (ret)
+				goto err;
+		}
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_8_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_8_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_9_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_9_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_10_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_10_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_11_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_11_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_12_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_12_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_13_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_13_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_14_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_14_MUXED;
+		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_15_MASK))
+			palmas->gpio_muxed |= PALMAS_GPIO_15_MUXED;
+	}
 
 	dev_info(palmas->dev, "Muxing GPIO %x, PWM %x, LED %x\n",
 			palmas->gpio_muxed, palmas->pwm_muxed,
@@ -796,10 +893,11 @@ static int palmas_resume(struct device *dev)
 #endif
 
 static const struct i2c_device_id palmas_i2c_id[] = {
-	{ "palmas", },
-	{ "twl6035", },
-	{ "twl6037", },
-	{ "tps65913", },
+	{ "palmas", PALMAS},
+	{ "twl6035", TWL6035},
+	{ "twl6037", TWL6037},
+	{ "tps65913", TPS65913},
+	{ "tps80036", TPS80036},
 	{ /* end */ }
 };
 MODULE_DEVICE_TABLE(i2c, palmas_i2c_id);
