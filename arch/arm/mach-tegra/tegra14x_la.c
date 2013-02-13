@@ -187,7 +187,7 @@ struct la_client_info t14x_la_info_array[] = {
 	T14X_LA(256,	150,	NV_1,	7 : 0,		TEXL2SRD,	false,	23),
 	T14X_LA(128,	150,	NV_1,	23 : 16,	FDCDWR,		false,	23),
 	T14X_LA(160,	150,	NV2_0,	7 : 0,		FDCDRD2,	false,	30),
-	T14X_LA(128,	150,	NV2_1,	23 : 16,	FDCDWR2,	false,	23),
+	T14X_LA(128,	150,	NV2_1,	7 : 0,		FDCDWR2,	false,	23),
 	T14X_LA(4,	150,	PPCS_0,	7 : 0,		PPCS_AHBDMAR,	false,	0),
 	T14X_LA(29,	150,	PPCS_0,	23 : 16,	PPCS_AHBSLVR,	false,	0),
 	T14X_LA(8,	150,	PPCS_1,	7 : 0,		PPCS_AHBDMAW,	false,	0),
