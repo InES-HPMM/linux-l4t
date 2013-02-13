@@ -243,7 +243,8 @@ static inline bool tegra_dvfs_rail_is_dfll_mode(struct dvfs_rail *rail)
 static inline bool tegra_dvfs_is_dfll_range_entry(struct dvfs *d,
 						  unsigned long rate)
 {
-	return  d->dvfs_rail && (!d->dvfs_rail->dfll_mode) &&
+	/* make exception for cluster switch (cur_rate = 0) */
+	return  d->cur_rate && d->dvfs_rail && (!d->dvfs_rail->dfll_mode) &&
 		(d->dfll_data.range == DFLL_RANGE_HIGH_RATES) &&
 		(rate >= d->dfll_data.use_dfll_rate_min) &&
 		(d->cur_rate < d->dfll_data.use_dfll_rate_min);
