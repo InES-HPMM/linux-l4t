@@ -68,11 +68,9 @@
 #define GPIO_HP_DET     BIT(4)
 
 #define DAI_LINK_HIFI		0
-#define DAI_LINK_SPDIF		1
-#define DAI_LINK_BTSCO		2
-#define DAI_LINK_VOICE_CALL	3
-#define DAI_LINK_BT_VOICE_CALL	4
-#define NUM_DAI_LINKS       5
+#define DAI_LINK_BTSCO		1
+#define DAI_LINK_VOICE_CALL	2
+#define DAI_LINK_BT_VOICE_CALL	3
 
 const char *tegra_max98090_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 	"tegra30-i2s.0",
@@ -326,51 +324,6 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 		tegra_max98090_set_dam_cif(i2s->dam_ifc, srate,
 			params_channels(params), sample_size, 0, 0, 0, 0);
 #endif
-
-	return 0;
-}
-
-static int tegra_spdif_hw_params(struct snd_pcm_substream *substream,
-					struct snd_pcm_hw_params *params)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_card *card = rtd->card;
-	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
-	int srate, mclk, min_mclk;
-	int err;
-
-	srate = params_rate(params);
-	switch (srate) {
-	case 11025:
-	case 22050:
-	case 44100:
-	case 88200:
-		mclk = 11289600;
-		break;
-	case 8000:
-	case 16000:
-	case 32000:
-	case 48000:
-	case 64000:
-	case 96000:
-		mclk = 12288000;
-		break;
-	default:
-		return -EINVAL;
-	}
-	min_mclk = 128 * srate;
-
-	err = tegra_asoc_utils_set_rate(&machine->util_data, srate, mclk);
-	if (err < 0) {
-		if (!(machine->util_data.set_mclk % min_mclk))
-			mclk = machine->util_data.set_mclk;
-		else {
-			dev_err(card->dev, "Can't configure clocks\n");
-			return err;
-		}
-	}
-
-	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
 	return 0;
 }
@@ -809,11 +762,6 @@ static struct snd_soc_ops tegra_max98090_ops = {
 #endif
 };
 
-static struct snd_soc_ops tegra_spdif_ops = {
-	.hw_params = tegra_spdif_hw_params,
-	.hw_free = tegra_hw_free,
-};
-
 static struct snd_soc_ops tegra_voice_call_ops = {
 	.hw_params = tegra_voice_call_hw_params,
 	.shutdown = tegra_voice_call_shutdown,
@@ -1119,7 +1067,7 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static struct snd_soc_dai_link tegra_max98090_dai[NUM_DAI_LINKS] = {
+static struct snd_soc_dai_link tegra_max98090_dai[] = {
 	[DAI_LINK_HIFI] = {
 			.name = "MAX98090",
 			.stream_name = "MAX98090 HIFI",
@@ -1128,15 +1076,6 @@ static struct snd_soc_dai_link tegra_max98090_dai[NUM_DAI_LINKS] = {
 			.codec_dai_name = "HiFi",
 			.init = tegra_max98090_init,
 			.ops = &tegra_max98090_ops,
-		},
-	[DAI_LINK_SPDIF] = {
-			.name = "SPDIF",
-			.stream_name = "SPDIF PCM",
-			.codec_name = "spdif-dit.0",
-			.platform_name = "tegra-pcm-audio",
-			.cpu_dai_name = "tegra30-spdif",
-			.codec_dai_name = "dit-hifi",
-			.ops = &tegra_spdif_ops,
 		},
 	[DAI_LINK_BTSCO] = {
 			.name = "BT SCO",
