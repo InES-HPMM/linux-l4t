@@ -179,6 +179,36 @@ static const struct regs_info palmas_regs_info[] = {
 		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO9,
 	},
 	{
+		.name		= "LDO10",
+		.vsel_addr	= PALMAS_LDO10_VOLTAGE,
+		.ctrl_addr	= PALMAS_LDO10_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO10,
+	},
+	{
+		.name		= "LDO11",
+		.vsel_addr	= PALMAS_LDO11_VOLTAGE,
+		.ctrl_addr	= PALMAS_LDO11_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO11,
+	},
+	{
+		.name		= "LDO12",
+		.vsel_addr	= PALMAS_LDO12_VOLTAGE,
+		.ctrl_addr	= PALMAS_LDO12_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO12,
+	},
+	{
+		.name		= "LDO13",
+		.vsel_addr	= PALMAS_LDO13_VOLTAGE,
+		.ctrl_addr	= PALMAS_LDO13_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO13,
+	},
+	{
+		.name		= "LDO14",
+		.vsel_addr	= PALMAS_LDO14_VOLTAGE,
+		.ctrl_addr	= PALMAS_LDO14_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_LDO14,
+	},
+	{
 		.name		= "LDOLN",
 		.sname		= "ldoln-in",
 		.vsel_addr	= PALMAS_LDOLN_VOLTAGE,
@@ -206,6 +236,21 @@ static const struct regs_info palmas_regs_info[] = {
 		.name		= "REGEN3",
 		.ctrl_addr	= PALMAS_REGEN3_CTRL,
 		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN3,
+	},
+	{
+		.name		= "REGEN4",
+		.ctrl_addr	= PALMAS_REGEN4_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN4,
+	},
+	{
+		.name		= "REGEN5",
+		.ctrl_addr	= PALMAS_REGEN5_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN5,
+	},
+	{
+		.name		= "REGEN7",
+		.ctrl_addr	= PALMAS_REGEN7_CTRL,
+		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_REGEN7,
 	},
 	{
 		.name		= "SYSEN1",
@@ -1206,7 +1251,15 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 
 	/* Start this loop from the id left from previous loop */
 	for (; id < PALMAS_NUM_REGS; id++) {
-
+		if (palmas->id != TPS80036) {
+			if (id > PALMAS_REG_LDO9 && id < PALMAS_REG_LDOLN)
+				continue;
+			if (id > PALMAS_REG_REGEN3 && id < PALMAS_REG_SYSEN1)
+				continue;
+		} else {
+			if (id == PALMAS_REG_REGEN3)
+				continue;
+		}
 		/* Miss out regulators which are not available due
 		 * to alternate functions.
 		 */
