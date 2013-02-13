@@ -3,7 +3,7 @@
  *
  * CPU idle driver for Tegra14x CPUs
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -532,10 +532,11 @@ int tegra14x_pd_debug_show(struct seq_file *s, void *data)
 {
 	int bin;
 	int i;
-	seq_printf(s, "                                    cpu0     cpu1     "\
-						"cpu2     cpu3     cpulp\n");
-	seq_printf(s, "------------------------------------------------------"\
-						"-----------------------\n");
+	unsigned long long total_c0cpu0_pg_time = 0;
+	unsigned long long total_c1cpu0_pg_time = 0;
+
+	seq_printf(s, "                                    cpu0     cpu1     cpu2     cpu3     cpulp\n");
+	seq_printf(s, "-----------------------------------------------------------------------------\n");
 	seq_printf(s, "cpu ready:                      %8u %8u %8u %8u %8u\n",
 		idle_stats.cpu_ready_count[0],
 		idle_stats.cpu_ready_count[1],
@@ -578,18 +579,24 @@ int tegra14x_pd_debug_show(struct seq_file *s, void *data)
 		div64_u64(idle_stats.cpu_wants_pd_time[3], 1000),
 		div64_u64(idle_stats.cpu_wants_pd_time[4], 1000));
 
+	total_c0cpu0_pg_time = idle_stats.cpu_pg_time[0] + \
+				idle_stats.c0nc_pg_time + \
+				 idle_stats.rail_pd_time;
+	total_c1cpu0_pg_time = idle_stats.cpu_pg_time[4] + \
+				idle_stats.c1nc_pg_time;
+
 	seq_printf(s, "cpu power gating time:          " \
 			"%8llu %8llu %8llu %8llu %8llu ms\n",
-		div64_u64(idle_stats.cpu_pg_time[0], 1000),
+		div64_u64(total_c0cpu0_pg_time, 1000),
 		div64_u64(idle_stats.cpu_pg_time[1], 1000),
 		div64_u64(idle_stats.cpu_pg_time[2], 1000),
 		div64_u64(idle_stats.cpu_pg_time[3], 1000),
-		div64_u64(idle_stats.cpu_pg_time[4], 1000));
+		div64_u64(total_c1cpu0_pg_time, 1000));
 
 	seq_printf(s, "power gated %%:                 " \
 			"%7d%% %7d%% %7d%% %7d%% %7d%%\n",
 		(int)(idle_stats.cpu_wants_pd_time[0] ?
-			div64_u64(idle_stats.cpu_pg_time[0] * 100,
+			div64_u64(total_c0cpu0_pg_time * 100,
 			idle_stats.cpu_wants_pd_time[0]) : 0),
 		(int)(idle_stats.cpu_wants_pd_time[1] ?
 			div64_u64(idle_stats.cpu_pg_time[1] * 100,
@@ -601,7 +608,7 @@ int tegra14x_pd_debug_show(struct seq_file *s, void *data)
 			div64_u64(idle_stats.cpu_pg_time[3] * 100,
 			idle_stats.cpu_wants_pd_time[3]) : 0),
 		(int)(idle_stats.cpu_wants_pd_time[4] ?
-			div64_u64(idle_stats.cpu_pg_time[4] * 100,
+			div64_u64(total_c1cpu0_pg_time * 100,
 			idle_stats.cpu_wants_pd_time[4]) : 0));
 
 	seq_printf(s, "\n");
