@@ -589,47 +589,43 @@ static unsigned long tegra14_osc_autodetect_rate(struct clk *c)
 		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
 	u32 spare_update = spare & ~SPARE_REG_CLK_M_DIVISOR_MASK;
 
-	/* FIXME: extra print for bringup */
-	pr_info("%s: OSC_CTRL=%08x\n", __func__, osc_ctrl);
-	pr_info("%s: SPARE_REG=%08x\n", __func__, spare);
-
 	c->rate = tegra_clk_measure_input_freq();
 	switch (c->rate) {
 	case 12000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	case 13000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	case 19200000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	case 26000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	case 16800000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	case 38400000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_2);
-		WARN_ON(divisor != 1); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 1);
 		spare_update |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 48000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_4);
-		WARN_ON(divisor != 3); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 3);
 		spare_update |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 115200:	/* fake 13M for QT */
@@ -637,16 +633,12 @@ static unsigned long tegra14_osc_autodetect_rate(struct clk *c)
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		c->rate = 13000000;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
-		WARN_ON(divisor != 0); /* FIXME: change to BUG_ON later */
+		BUG_ON(divisor != 0);
 		break;
 	default:
 		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
 		BUG();
 	}
-
-	/* FIXME: extra print for bringup */
-	pr_info("%s: OSC_CTRL=%08x\n", __func__, auto_clock_control);
-	pr_info("%s: SPARE_REG=%08x\n", __func__, spare_update);
 
 	clk_writel(auto_clock_control, OSC_CTRL);
 	clk_writel(spare_update, SPARE_REG);
@@ -2565,12 +2557,7 @@ static void pllx_set_defaults(struct clk *c, unsigned long input_rate)
 	val = clk_readl(c->reg + PLL_MISCN(c, 3));
 	if (c->state == ON) {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-		/* Due to bug 1206550, bootloader doesn't handle
-		 * PLLX_MISC3_IDDQ at this point. Because this case is
-		 * not serious on FPGA, we treat it as warning for now.
-		 * Once bug 1206550 is fixed, this should be changed
-		 * to BUG_ON. */
-		WARN_ON(val & PLLX_MISC3_IDDQ);
+		BUG_ON(val & PLLX_MISC3_IDDQ);
 #endif
 	} else {
 		val |= PLLX_MISC3_IDDQ;
