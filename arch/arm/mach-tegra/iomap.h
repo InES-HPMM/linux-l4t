@@ -6,8 +6,6 @@
  *	Colin Cross <ccross@google.com>
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
- *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -585,7 +583,7 @@
 #define TEGRA_I2C4_SIZE			SZ_512
 
 #define TEGRA_I2C5_BASE			0x7000D000
-#define TEGRA_I2C5_SIZE			SZ_256
+#define TEGRA_I2C5_SIZE			SZ_512
 
 #endif
 
@@ -782,10 +780,13 @@
 
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || (CONFIG_ARCH_TEGRA_12x_SOC)
 
 #define TEGRA_I2C6_BASE			0x7000d100
 #define TEGRA_I2C6_SIZE			SZ_512
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 
 #define TEGRA_MIPI_BIF_BASE		0x70120000
 #define TEGRA_MIPI_BIF_SIZE		SZ_1K
