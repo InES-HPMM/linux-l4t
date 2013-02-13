@@ -645,7 +645,7 @@
 #define INT_APB_DMA_COP			(INT_SEC_BASE + 28)
 #define INT_AHB_DMA_COP			(INT_SEC_BASE + 29)
 /* unused				(INT_SEC_BASE + 30) */
-/* unused				(INT_SEC_BASE + 31) */
+#define INT_I2C6			(INT_SEC_BASE + 31)
 
 /* Tertiary Interrupt Controller */
 #define INT_TRI_BASE			(INT_SEC_BASE + 32)
