@@ -554,6 +554,12 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 
 	if (plat->uhs_mask & MMC_UHS_MASK_SDR25)
 		host->mmc->caps &= ~MMC_CAP_UHS_SDR25;
+
+	if (plat->uhs_mask & MMC_UHS_MASK_SDR12)
+		host->mmc->caps &= ~MMC_CAP_UHS_SDR12;
+
+	if (plat->uhs_mask & MMC_MASK_HS200)
+		host->mmc->caps2 &= ~MMC_CAP2_HS200;
 }
 
 static int tegra_sdhci_buswidth(struct sdhci_host *sdhci, int bus_width)
