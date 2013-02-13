@@ -69,6 +69,7 @@ static struct regulator *imx132_ext_reg2;
 static struct imx132_reg mode_1920x1080[] = {
 	/* Stand by */
 	{0x0100, 0x00},
+	{0x0101, 0x03},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 
 	/* global settings */
@@ -179,6 +180,7 @@ static struct imx132_reg mode_1920x1080[] = {
 static struct imx132_reg mode_1976x1200[] = {
 	/* Stand by */
 	{0x0100, 0x00},
+	{0x0101, 0x03},
 	{IMX132_TABLE_WAIT_MS, IMX132_WAIT_MS},
 
 	/* global settings */
