@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#define pr_fmt(fmt)	"%s(): " fmt, __func__
+#define pr_fmt(fmt)	"%s %s(): " fmt, current->comm, __func__
 
 #include <linux/delay.h>
 #include <linux/types.h>
@@ -32,7 +32,10 @@
 #include <linux/printk.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/kref.h>
+#include <linux/sched.h>
 #include <asm/processor.h>
+#include <asm/current.h>
 #include <mach/hardware.h>
 #include <mach/isomgr.h>
 #include <mach/mc.h>
@@ -54,6 +57,14 @@
 #else
 #define SANITY_CHECK_AVAIL_BW()
 #endif
+
+char *client_name[] = {
+	"disp_0",
+	"disp_1",
+	"vi_0",
+	"bbc_0",
+	"unknown"
+};
 
 struct isoclient_info {
 	enum tegra_iso_client client;
@@ -116,6 +127,8 @@ static struct isoclient_info tegra14x_isoclients[] = {
 	},
 };
 
+static void isomgr_scatter(int client);
+
 static struct isoclient_info *get_iso_client_info(void)
 {
 	enum tegra_chipid cid;
@@ -140,7 +153,7 @@ static struct isoclient_info *get_iso_client_info(void)
 #define ISOMGR_MAGIC  0x150A1C
 static struct isomgr_client {
 	u32 magic;		/* magic to identify handle */
-	bool busy;		/* already registered */
+	struct kref kref;	/* ref counting */
 	s32 dedi_bw;		/* BW dedicated to this client	(KB/sec) */
 	s32 rsvd_bw;		/* BW reserved for this client	(KB/sec) */
 	s32 real_bw;		/* BW realized for this client	(KB/sec) */
@@ -151,12 +164,12 @@ static struct isomgr_client {
 	tegra_isomgr_renegotiate renegotiate;	/* ask client to renegotiate */
 	bool realize;		/* bw realization in progress */
 	s32 sleep_bw;		/* sleeping for realize */
+	s32 margin_bw;		/* BW set aside for this client	(KB/sec) */
 	void *priv;		/* client driver's private data */
 	struct completion cmpl;	/* so we can sleep waiting for delta BW */
 #ifdef CONFIG_TEGRA_ISOMGR_SYSFS
 	struct kobject *client_kobj;
 	struct isomgr_client_attrs {
-		struct kobj_attribute busy;
 		struct kobj_attribute dedi_bw;
 		struct kobj_attribute rsvd_bw;
 		struct kobj_attribute real_bw;
@@ -242,43 +255,16 @@ static inline void isomgr_unlock(void)
 	mutex_unlock(&isomgr.lock);
 }
 
-static inline void isomgr_scavenge(void)
-{
-	struct isomgr_client *cp;
-	int i;
-
-	/* ask flexible clients above dedicated BW levels to pitch in */
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
-		cp = &isomgr_clients[i];
-		if (cp->busy && cp->renegotiate)
-			if (cp->real_bw > cp->dedi_bw)
-				cp->renegotiate(cp->priv);
-	}
-}
-
-static inline void isomgr_scatter(int client)
-{
-	struct isomgr_client *cp;
-	int i;
-
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
-		if (i == client)
-			continue;
-		cp = &isomgr_clients[i];
-		if (cp->busy && cp->renegotiate)
-			cp->renegotiate(cp->priv); /* poke flexibles */
-	}
-}
-
 /* call with isomgr_lock held. */
 static void update_mc_clock(void)
 {
 	int i;
 
+	BUG_ON(mutex_trylock(&isomgr.lock));
 	/* determine worst case freq to satisfy LT */
 	isomgr.lt_mf = 0;
 	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
-		if (isomgr_clients[i].busy)
+		if (atomic_read(&isomgr_clients[i].kref.refcount))
 			isomgr.lt_mf = max(isomgr.lt_mf,
 					   isomgr_clients[i].real_mf);
 	}
@@ -292,10 +278,78 @@ static void update_mc_clock(void)
 
 }
 
+static void purge_isomgr_client(struct isomgr_client *cp)
+{
+	cp->magic = 0;
+	atomic_set(&cp->kref.refcount, 0);
+	cp->dedi_bw = 0;
+	cp->rsvd_bw = 0;
+	cp->real_bw = 0;
+	cp->renegotiate = 0;
+	cp->realize = false;
+	cp->priv = NULL;
+	cp->sleep_bw = 0;
+	cp->margin_bw = 0;
+}
+
+static void unregister_iso_client(struct kref *kref)
+{
+	struct isomgr_client *cp = container_of(kref,
+					struct isomgr_client, kref);
+	int client = cp - &isomgr_clients[0];
+
+	isomgr_lock();
+	BUG_ON(cp->realize);
+
+	if (cp->real_bw > cp->margin_bw)
+		isomgr.avail_bw += cp->real_bw;
+	else
+		isomgr.avail_bw += cp->margin_bw;
+	isomgr.dedi_bw -= cp->dedi_bw;
+	purge_isomgr_client(cp);
+	update_mc_clock();
+	isomgr_unlock();
+
+	isomgr_scatter(client); /* share the excess */
+}
+
+static void isomgr_scatter(int client)
+{
+	struct isomgr_client *cp;
+	int i;
+
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
+		cp = &isomgr_clients[i];
+		if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
+			continue;
+		if (cp->renegotiate && i != client)
+			cp->renegotiate(cp->priv); /* poke flexibles */
+		kref_put(&cp->kref, unregister_iso_client);
+	}
+}
+
+static void isomgr_scavenge(enum tegra_iso_client client)
+{
+	struct isomgr_client *cp;
+	int i;
+
+	/* ask flexible clients above dedicated BW levels to pitch in */
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
+		cp = &isomgr_clients[i];
+		if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
+			continue;
+		if (cp->renegotiate)
+			if (cp->real_bw > cp->dedi_bw && i != client &&
+			    !cp->realize)
+				cp->renegotiate(cp->priv);
+		kref_put(&cp->kref, unregister_iso_client);
+	}
+}
+
 static bool is_client_valid(enum tegra_iso_client client)
 {
-	if (client < 0 || client >= TEGRA_ISO_CLIENT_COUNT ||
-	    !client_valid[client])
+	if (unlikely(client < 0 || client >= TEGRA_ISO_CLIENT_COUNT ||
+		     !client_valid[client]))
 		return false;
 	return true;
 }
@@ -332,35 +386,38 @@ tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 	s32 dedi_bw = udedi_bw;
 	struct isomgr_client *cp = NULL;
 
-	if (!is_client_valid(client)) {
+	if (unlikely(!is_client_valid(client))) {
 		pr_err("invalid client %d", client);
 		goto fail;
 	}
 
-	if (!udedi_bw && !renegotiate)
-		return ERR_PTR(-EINVAL);
+	if (unlikely(!udedi_bw && !renegotiate))
+		goto fail;
 
 	isomgr_lock();
 	cp = &isomgr_clients[client];
 
-	if (unlikely(cp->busy)) {
-		pr_err("client %d already registered", client);
+	if (unlikely(atomic_read(&cp->kref.refcount))) {
+		pr_err("client %s is already registered",
+			client_name[client]);
 		goto fail_unlock;
 	}
 
 	if (unlikely(dedi_bw > isomgr.max_iso_bw - isomgr.dedi_bw)) {
-		pr_err("bandwidth %u is beyond available iso bw, client %d\n",
-			dedi_bw, client);
+		pr_err("bandwidth %uKB is not available, client %s\n",
+			dedi_bw, client_name[client]);
 		goto fail_unlock;
 	}
 
-	cp->busy = true;
+	purge_isomgr_client(cp);
 	cp->magic = ISOMGR_MAGIC;
+	kref_init(&cp->kref);
 	cp->dedi_bw = dedi_bw;
 	cp->renegotiate = renegotiate;
 	cp->priv = priv;
 	isomgr.dedi_bw += dedi_bw;
 
+	pr_debug("%s register successful", client_name[client]);
 	isomgr_unlock();
 	return (tegra_isomgr_handle)cp;
 
@@ -381,29 +438,13 @@ void tegra_isomgr_unregister(tegra_isomgr_handle handle)
 	struct isomgr_client *cp = (struct isomgr_client *)handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (!cp || !is_client_valid(client) || cp->magic != ISOMGR_MAGIC) {
+	if (unlikely(!cp || !is_client_valid(client) ||
+		     cp->magic != ISOMGR_MAGIC)) {
 		pr_err("bad handle %p", handle);
 		return;
 	}
 
-	isomgr_lock();
-	if (!cp->busy)
-		goto out;
-	BUG_ON(cp->realize);
-
-	cp->busy = false;
-	cp->magic = 0;
-	isomgr.avail_bw += cp->real_bw;
-	isomgr.dedi_bw -= cp->dedi_bw;
-	cp->dedi_bw = 0;
-	cp->renegotiate = 0;
-	cp->priv = 0;
-	cp->rsvd_bw = 0;
-	cp->real_bw = 0;
-	update_mc_clock();
-out:
-	isomgr_unlock();
-	isomgr_scatter(client); /* share the excess */
+	kref_put(&cp->kref, unregister_iso_client);
 }
 EXPORT_SYMBOL(tegra_isomgr_unregister);
 
@@ -425,30 +466,43 @@ u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
 	struct isomgr_client *cp = (struct isomgr_client *) handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (!cp || !is_client_valid(client) || cp->magic != ISOMGR_MAGIC) {
+	if (unlikely(!cp || !is_client_valid(client) ||
+		     cp->magic != ISOMGR_MAGIC)) {
 		pr_err("bad handle %p", handle);
-		return dvfs_latency;
+		goto validation_fail;
 	}
 
 	isomgr_lock();
+	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
+		goto handle_unregistered;
 	pr_debug("n c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d, bw=%d",
 		 client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw, bw);
-	if (!cp->busy)
-		goto out;
-	if (cp->realize) {
-		pr_err("realize in progress. reserve rejected.");
+
+	if (unlikely(cp->realize)) {
+		pr_err("realize in progress. reserve rejected."
+			" real_bw=%d, rsvd_bw=%d, dedi_bw=%d, c=%s",
+			cp->real_bw, cp->rsvd_bw, cp->dedi_bw,
+			client_name[client]);
 		goto out;
 	}
+
+	if (bw <= cp->margin_bw)
+		goto skip_bw_check;
+
+	if (unlikely(!cp->renegotiate && bw > cp->dedi_bw)) {
+		pr_debug("request to reserve more than dedi_bw with"
+			" no renegotiation support, c=%s",
+			client_name[client]);
+		goto out;
+	}
+
 	if (bw > cp->dedi_bw &&
 	    bw > isomgr.avail_bw + cp->real_bw - isomgr.sleep_bw) {
 		pr_debug("invalid BW (%u Kb/sec), client=%d\n", bw, client);
 		goto out;
 	}
-	if (!cp->renegotiate && bw > cp->dedi_bw) {
-		pr_debug("request to reserve more than dedi_bw");
-		goto out;
-	}
 
+skip_bw_check:
 	/* Look up MC's min freq that could satisfy requested BW and LT */
 	mf = mc_min_freq(ubw, ult);
 	if (unlikely(!mf)) {
@@ -466,7 +520,12 @@ out:
 	pr_debug("x c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d, bw=%d\n",
 		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw, bw);
 	isomgr_unlock();
+	kref_put(&cp->kref, unregister_iso_client);
 	return dvfs_latency;
+handle_unregistered:
+	isomgr_unlock();
+validation_fail:
+	return 0;
 }
 EXPORT_SYMBOL(tegra_isomgr_reserve);
 
@@ -480,63 +539,148 @@ EXPORT_SYMBOL(tegra_isomgr_reserve);
  */
 u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
 {
-	u32 rval = 0;
+	u32 dvfs_latency = 0;
+	s32 delta_bw = 0;
 	struct isomgr_client *cp = (struct isomgr_client *) handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (!cp || !is_client_valid(client) || cp->magic != ISOMGR_MAGIC) {
+	if (unlikely(!cp || !is_client_valid(client) ||
+		     cp->magic != ISOMGR_MAGIC)) {
 		pr_err("bad handle %p", handle);
-		return rval;
+		return dvfs_latency;
 	}
 
 retry:
 	isomgr_lock();
+	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
+		goto handle_unregistered;
 
 	pr_debug("n c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d",
 		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw);
 
-	if (!cp->busy || cp->realize)
-		goto out;
-
-	isomgr.avail_bw += cp->real_bw;
+	if (cp->margin_bw < cp->real_bw)
+		isomgr.avail_bw += cp->real_bw - cp->margin_bw;
 	pr_debug("after release, c=%d avail_bw=%d", client, isomgr.avail_bw);
 	cp->real_bw = 0;
 	cp->realize = true;
 	BUG_ON(isomgr.avail_bw > isomgr.max_iso_bw);
 
-	if (cp->rsvd_bw <= isomgr.avail_bw) {
-		isomgr.avail_bw -= cp->rsvd_bw;
+	if (cp->rsvd_bw <= cp->margin_bw) {
+		BUG_ON(cp->sleep_bw);
+		cp->real_bw = cp->rsvd_bw; /* reservation has been realized */
+		cp->real_mf = cp->rsvd_mf; /* minimum frequency realized */
+	} else if (cp->rsvd_bw <= isomgr.avail_bw + cp->margin_bw) {
+		delta_bw = cp->rsvd_bw - cp->margin_bw;
+		isomgr.avail_bw -= delta_bw;
 		pr_debug("after alloc, c=%d avail_bw=%d",
 			 client, isomgr.avail_bw);
 		cp->real_bw = cp->rsvd_bw; /* reservation has been realized */
 		cp->real_mf = cp->rsvd_mf; /* minimum frequency realized */
 		if (cp->sleep_bw) {
-			isomgr.sleep_bw -= cp->rsvd_bw;
-			cp->sleep_bw -= cp->rsvd_bw;
+			isomgr.sleep_bw -= delta_bw;
+			cp->sleep_bw -= delta_bw;
+			BUG_ON(cp->sleep_bw);
 		}
 		BUG_ON(isomgr.avail_bw < 0);
 		SANITY_CHECK_AVAIL_BW();
 	} else {
+		delta_bw = cp->rsvd_bw - cp->margin_bw;
 		SANITY_CHECK_AVAIL_BW();
-		isomgr.sleep_bw += cp->rsvd_bw;
-		cp->sleep_bw += cp->rsvd_bw;
+		isomgr.sleep_bw += delta_bw;
+		BUG_ON(cp->sleep_bw);
+		cp->sleep_bw += delta_bw;
 		isomgr_unlock();
-		isomgr_scavenge();
+		kref_put(&cp->kref, unregister_iso_client);
+		isomgr_scavenge(client);
 		goto retry;
 	}
 
-	rval = (u32)cp->lto;
-	update_mc_clock();
+	dvfs_latency = (u32)cp->lto;
 	cp->realize = false;
+	update_mc_clock();
 	pr_debug("iso req clk=%dKHz", isomgr.iso_mf);
 
-out:
 	pr_debug("x c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d",
 		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw);
 	isomgr_unlock();
-	return rval;
+	kref_put(&cp->kref, unregister_iso_client);
+	return dvfs_latency;
+handle_unregistered:
+	isomgr_unlock();
+	return dvfs_latency;
 }
 EXPORT_SYMBOL(tegra_isomgr_realize);
+
+/* This sets bw aside for the client specified.
+ * This bw can never be used for other clients needs.
+ * margin bw, if not zero, should always be greater than equal to
+ * reserved/realized bw.
+ *
+ * @client client
+ * @bw bw margin KB.
+ * @wait if true and bw is not available, it would wait till bw is available.
+ *	  if false, it would return immediately with success or failure.
+ *
+ * @retval  0 operation is successful.
+ * @retval -ENOMEM Iso Bw requested is not avialable.
+ * @retval -EINVAL Invalid arguments, bw is less than reserved/realized bw.
+ */
+int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw, bool wait)
+{
+	int ret = -EINVAL;
+	s32 high_bw;
+	struct isomgr_client *cp = NULL;
+
+	if (unlikely(!is_client_valid(client))) {
+		pr_err("invalid client %d", client);
+		goto validation_fail;
+	}
+
+retry:
+	isomgr_lock();
+	cp = &isomgr_clients[client];
+	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
+		goto handle_unregistered;
+
+	if (bw > cp->dedi_bw)
+		goto out;
+
+	if (bw <= cp->real_bw) {
+		if (cp->margin_bw > cp->real_bw)
+			isomgr.avail_bw += cp->margin_bw - cp->real_bw;
+		cp->margin_bw = bw;
+	} else if (bw <= cp->margin_bw) {
+		BUG_ON(cp->margin_bw > cp->real_bw);
+		isomgr.avail_bw += cp->margin_bw - bw;
+		cp->margin_bw = bw;
+		BUG_ON(cp->margin_bw > cp->real_bw);
+	} else if (bw > cp->margin_bw) {
+		high_bw = (cp->margin_bw > cp->real_bw) ?
+				cp->margin_bw : cp->real_bw;
+		if (bw - high_bw <= isomgr.avail_bw - isomgr.sleep_bw) {
+			isomgr.avail_bw -= bw - high_bw;
+			cp->margin_bw = bw;
+		} else {
+			if (wait) {
+				isomgr_unlock();
+				kref_put(&cp->kref, unregister_iso_client);
+				wait = false;
+				isomgr_scavenge(client);
+				goto retry;
+			}
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+out:
+	isomgr_unlock();
+	kref_put(&cp->kref, unregister_iso_client);
+	return ret;
+handle_unregistered:
+	isomgr_unlock();
+validation_fail:
+	return ret;
+}
 
 #ifdef CONFIG_TEGRA_ISOMGR_SYSFS
 static ssize_t isomgr_show(struct kobject *kobj,
@@ -717,9 +861,7 @@ static ssize_t isomgr_client_show(struct kobject *kobj,
 			(struct isomgr_client *)&isomgr_clients[client];
 	ssize_t rval = 0;
 
-	if (attr == &cp->client_attrs.busy)
-		rval = sprintf(buf, "%d\n", cp->busy ? 1 : 0);
-	else if (attr == &cp->client_attrs.dedi_bw)
+	if (attr == &cp->client_attrs.dedi_bw)
 		rval = sprintf(buf, "%dKB\n", cp->dedi_bw);
 	else if (attr == &cp->client_attrs.rsvd_bw)
 		rval = sprintf(buf, "%dKB\n", cp->rsvd_bw);
@@ -737,7 +879,6 @@ static ssize_t isomgr_client_show(struct kobject *kobj,
 }
 
 static const struct isomgr_client_attrs client_attrs = {
-	__ATTR(busy,    0444, isomgr_client_show, 0),
 	__ATTR(dedi_bw, 0444, isomgr_client_show, 0),
 	__ATTR(rsvd_bw, 0444, isomgr_client_show, 0),
 	__ATTR(real_bw, 0444, isomgr_client_show, 0),
@@ -752,7 +893,6 @@ static const struct isomgr_client_attrs client_attrs = {
 static const struct attribute *client_attr_list[][NCATTRS+1] = {
 #define CLIENT_ATTR(i)\
 	{\
-		&isomgr_clients[i].client_attrs.busy.attr,\
 		&isomgr_clients[i].client_attrs.dedi_bw.attr,\
 		&isomgr_clients[i].client_attrs.rsvd_bw.attr,\
 		&isomgr_clients[i].client_attrs.real_bw.attr,\
@@ -844,8 +984,10 @@ int __init isomgr_init(void)
 		pr_info("max_iso_bw=%dKB", isomgr.max_iso_bw);
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i)
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
+		atomic_set(&isomgr_clients[i].kref.refcount, 0);
 		init_completion(&isomgr_clients[i].cmpl);
+	}
 	isomgr_create_sysfs();
 	return 0;
 }
