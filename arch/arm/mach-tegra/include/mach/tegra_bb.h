@@ -61,4 +61,12 @@ void tegra_bb_clear_ipc(struct platform_device *dev);
  */
 int tegra_bb_check_ipc(struct platform_device *dev);
 
+/*
+ * tegra_bb_set_ipc_serial: store SHM serial number for sysfs access
+ * @param struct tegra_bb device pointer
+ * @param serial pointer to SHM serial
+ * @return none
+ */
+void tegra_bb_set_ipc_serial(struct platform_device *pdev, char *serial);
+
 #endif

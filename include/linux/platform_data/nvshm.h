@@ -18,6 +18,11 @@
 #ifndef __PLATFORM_DATA_NVSHM_H
 #define __PLATFORM_DATA_NVSHM_H
 
+#include <linux/types.h>
+
+/* NVSHM serial number size in bytes */
+#define NVSHM_SERIAL_BYTE_SIZE 20
+
 struct nvshm_platform_data {
 	void *ipc_base_virt;
 	size_t ipc_size;

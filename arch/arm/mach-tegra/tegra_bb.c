@@ -98,6 +98,7 @@ struct tegra_bb {
 	unsigned long priv_size;
 	unsigned long ipc_size;
 	unsigned long ipc_irq;
+	char ipc_serial[NVSHM_SERIAL_BYTE_SIZE];
 	unsigned int irq;
 	struct regulator *vdd_buck4;
 	struct regulator *vdd_ldo8;
@@ -575,6 +576,92 @@ static ssize_t show_tegra_bb_state(struct device *dev,
 }
 
 static DEVICE_ATTR(state, S_IRUSR | S_IRGRP, show_tegra_bb_state, NULL);
+
+static ssize_t show_tegra_bb_serial(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct tegra_bb *bb;
+	struct platform_device *pdev = container_of(dev,
+						    struct platform_device,
+						    dev);
+	struct tegra_bb_platform_data *pdata;
+	int idx, ret, total_len = 0;
+
+	if (!pdev) {
+		dev_err(dev, "%s platform device is NULL!\n", __func__);
+		return 0;
+	}
+
+	pdata = pdev->dev.platform_data;
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s platform data not found!\n", __func__);
+		return 0;
+	}
+
+	bb = (struct tegra_bb *)pdata->bb_handle;
+
+	if (!bb) {
+		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		return 0;
+	}
+
+	for (idx = 0; NVSHM_SERIAL_BYTE_SIZE > idx; ++idx) {
+		ret = sprintf(buf+2*idx, "%02X", bb->ipc_serial[idx]);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "%s sprintf shm serial failure!\n",
+					__func__);
+			return 0;
+		}
+		total_len += ret;
+	}
+
+	buf[2*NVSHM_SERIAL_BYTE_SIZE] = '\n';
+	buf[2*NVSHM_SERIAL_BYTE_SIZE+1] = '\0';
+	total_len += 2;
+
+	return total_len;
+}
+
+static DEVICE_ATTR(serial, S_IRUSR | S_IRGRP, show_tegra_bb_serial, NULL);
+
+void tegra_bb_set_ipc_serial(struct platform_device *pdev, char *serial)
+{
+	struct tegra_bb *bb;
+	struct tegra_bb_platform_data *pdata;
+
+	if (!pdev) {
+		pr_err("%s platform device is NULL!\n", __func__);
+		return;
+	}
+
+	pdata = pdev->dev.platform_data;
+
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
+		return;
+	}
+
+	bb = (struct tegra_bb *)pdata->bb_handle;
+
+	if (!bb) {
+		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		return;
+	}
+
+	if (serial == NULL) {
+		/* Remove sysfs entry */
+		device_remove_file(&pdev->dev, &dev_attr_serial);
+		return;
+	}
+
+	/* Create sysfs entry */
+	device_create_file(&pdev->dev, &dev_attr_serial);
+
+	/* Locally store serail number for future sysfs access */
+	memcpy(bb->ipc_serial, serial, sizeof(bb->ipc_serial));
+}
+EXPORT_SYMBOL_GPL(tegra_bb_set_ipc_serial);
 
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 static irqreturn_t tegra_bb_isr_handler(int irq, void *data)

@@ -39,9 +39,10 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	conf = (struct nvshm_config *)(handle->mb_base_virt
 				       + NVSHM_CONFIG_OFFSET);
 	if (conf->version != NVSHM_CONFIG_VERSION) {
-		pr_err("%s: wrong config version 0x%x\n",
-		       __func__, (unsigned int)conf->version);
-		return -1;
+		pr_warn("%s: new/old config version 0x%x vs. 0x%x\n",
+				__func__,
+				(unsigned int)conf->version,
+				NVSHM_CONFIG_VERSION);
 	}
 	if (handle->ipc_size != conf->shmem_size) {
 		pr_warn("%s shmem mapped/reported not matching: 0x%x/0x%x\n",
@@ -96,6 +97,12 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 				__func__, chan, handle->chan[chan].map.name);
 		}
 	}
+
+	if (conf->version >= NVSHM_CONFIG_SERIAL_VERSION) {
+		/* Serial number (e.g BBC PCID) */
+		tegra_bb_set_ipc_serial(handle->tegra_bb, conf->serial);
+	}
+
 	handle->conf = conf;
 	handle->configured = 1;
 	return 0;
@@ -174,6 +181,10 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 		pr_debug("%s cleanup %d net channels\n", __func__, nnet);
 		nvshm_net_cleanup();
 	}
+
+	/* Remove serial sysfs entry */
+	tegra_bb_set_ipc_serial(handle->tegra_bb, NULL);
+
 	return 0;
 }
 

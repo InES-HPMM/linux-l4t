@@ -15,6 +15,8 @@
 #ifndef _NVSHM_TYPES_H
 #define _NVSHM_TYPES_H
 
+#include <linux/platform_data/nvshm.h> /* NVSHM_SERIAL_BYTE_SIZE */
+
 /* NVSHM common types */
 
 /* Shared memory fixed offsets */
@@ -24,9 +26,18 @@
 #define NVSHM_IPC_RETCODE (0x4)           /* IPC mailbox return code offset */
 #define NVSHM_IPC_SIZE (4096)             /* IPC mailbox region size */
 #define NVSHM_CONFIG_OFFSET (8)           /* shared memory config offset */
-#define NVSHM_MAX_CHANNELS (32)           /* Maximum number of channels */
+#define NVSHM_MAX_CHANNELS (12)           /* Maximum number of channels */
 #define NVSHM_CHAN_NAME_SIZE (27)         /* max channel name size in chars */
-#define NVSHM_CONFIG_VERSION (0x00010001) /* Current configuration version */
+
+/* Versions: */
+/* Original version */
+#define NVSHM_CONFIG_ORIGINAL_VERSION (0x00010001)
+/** Serial version: support for SHM serial version in SHM
+ *  config: SHM serial version is PCID */
+#define NVSHM_CONFIG_SERIAL_VERSION (0x00010002)
+/** Current configuration version (major/minor) */
+#define NVSHM_CONFIG_VERSION NVSHM_CONFIG_SERIAL_VERSION
+
 
 #define NVSHM_AP_POOL_ID (128) /* IOPOOL ID - use 128-255 for AP */
 
@@ -98,6 +109,7 @@ struct nvshm_config {
 	int queue_ap_offset;
 	int queue_bb_offset;
 	struct nvshm_chan_map chan_map[NVSHM_MAX_CHANNELS];
+	char serial[NVSHM_SERIAL_BYTE_SIZE];
 };
 
 /*
