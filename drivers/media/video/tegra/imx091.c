@@ -1803,6 +1803,7 @@ static int imx091_pm_wr(struct imx091_info *info, int pwr)
 {
 	int ret;
 	int err = 0;
+	u16 val;
 
 	if ((info->pdata->cfg & (NVC_CFG_OFF2STDBY | NVC_CFG_BOOT_INIT)) &&
 			(pwr == NVC_PWR_OFF ||
@@ -1841,6 +1842,9 @@ static int imx091_pm_wr(struct imx091_info *info, int pwr)
 		ret &= !imx091_gpio_reset(info, 1);
 		if (ret) /* if no reset && pwrdn changed states then delay */
 			msleep(IMX091_STARTUP_DELAY_MS);
+		if (err > 0)
+			err = imx091_i2c_rd16(info->i2c_client,
+					      IMX091_ID_ADDRESS, &val);
 		break;
 
 	default:
