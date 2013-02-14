@@ -2214,8 +2214,7 @@ int aic3262_hw_params(struct snd_pcm_substream *substream,
 		value = value | 0xC0;
 		break;
 	default:
-		bclk_div = 0x04;
-		wclk_div = 0x20;
+		break;
 	}
 
 	mutex_lock(&aic3262->mutex);
@@ -2223,12 +2222,12 @@ int aic3262_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_update_bits(codec, AIC3262_ASI1_CHNL_SETUP,
 				AIC3262_ASI1_CHNL_MASK, value);
 
-	snd_soc_update_bits(codec, AIC3262_ASI1_BCLK_N,
+	if (channels > 2) {
+		snd_soc_update_bits(codec, AIC3262_ASI1_BCLK_N,
 				AIC3262_ASI1_BCLK_N_MASK, bclk_div);
-
-	snd_soc_update_bits(codec, AIC3262_ASI1_WCLK_N,
+		snd_soc_update_bits(codec, AIC3262_ASI1_WCLK_N,
 				AIC3262_ASI1_WCLK_N_MASK, wclk_div);
-
+	}
 
 	val = snd_soc_read(codec, AIC3262_ASI1_BUS_FMT);
 	val = snd_soc_read(codec, AIC3262_ASI1_CHNL_SETUP);
