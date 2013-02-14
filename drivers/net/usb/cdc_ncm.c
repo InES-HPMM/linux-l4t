@@ -1027,6 +1027,7 @@ next_ndp:
 			skb->len = len;
 			skb->data = ((u8 *)skb_in->data) + offset;
 			skb_set_tail_pointer(skb, len);
+			skb->truesize = len + sizeof(struct sk_buff);
 			usbnet_skb_return(dev, skb);
 		}
 	}
