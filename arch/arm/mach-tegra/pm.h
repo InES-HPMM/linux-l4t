@@ -159,7 +159,7 @@ static inline unsigned int is_lp_cluster(void)
 	    "ubfx	%0, %0, #8, #4"
 	    : "=r" (reg)
 	    :
-	    : "cc");
+	    : "cc","memory");
 	return reg ; /* 0 == G, 1 == LP*/
 #endif
 }
