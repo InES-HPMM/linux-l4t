@@ -609,11 +609,15 @@ static int init_cpu_edp_limits_calculated(void)
 				   * freq_voltage_lut_size, GFP_KERNEL);
 	if (!freq_voltage_lut) {
 		pr_err("%s: failed alloc mem for freq/voltage LUT\n", __func__);
+		kfree(power_edp_calc_limits);
+		kfree(edp_calculated_limits);
 		return -ENOMEM;
 	}
 
 	ret = edp_relate_freq_voltage(clk_cpu_g, cpu_speedo_idx);
 	if (ret) {
+		kfree(power_edp_calc_limits);
+		kfree(edp_calculated_limits);
 		kfree(freq_voltage_lut);
 		return ret;
 	}
