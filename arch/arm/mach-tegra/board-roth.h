@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012 - 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -97,7 +97,7 @@ int roth_pinmux_init(void);
 int roth_sensors_init(void);
 int roth_emc_init(void);
 int roth_edp_init(void);
-int roth_panel_init(void);
+int roth_panel_init(int board_id);
 int roth_kbc_init(void);
 int roth_pmon_init(void);
 int roth_soctherm_init(void);

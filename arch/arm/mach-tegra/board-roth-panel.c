@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -718,7 +718,7 @@ static struct platform_device __maybe_unused
 	&roth_disp1_bl_device,
 };
 
-int __init roth_panel_init(void)
+int __init roth_panel_init(int board_id)
 {
 	int err = 0;
 	struct resource __maybe_unused *res;
@@ -759,6 +759,12 @@ int __init roth_panel_init(void)
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb2_start;
 	res->end = tegra_fb2_start + tegra_fb2_size - 1;
+
+	/*
+	 * only roth supports initialized mode.
+	 */
+	if (!board_id)
+		roth_disp1_out.flags |= TEGRA_DC_OUT_INITIALIZED_MODE;
 
 	roth_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&roth_disp1_device);

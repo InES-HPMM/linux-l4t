@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore.h
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -115,7 +115,7 @@ int dalmore_sensors_init(void);
 int dalmore_emc_init(void);
 int dalmore_edp_init(void);
 int dalmore_panel_init(void);
-int roth_panel_init(void);
+int roth_panel_init(int board_id);
 int dalmore_kbc_init(void);
 int dalmore_pmon_init(void);
 int dalmore_soctherm_init(void);
