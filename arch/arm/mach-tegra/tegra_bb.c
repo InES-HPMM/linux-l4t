@@ -99,8 +99,8 @@ struct tegra_bb {
 	unsigned long ipc_irq;
 	char ipc_serial[NVSHM_SERIAL_BYTE_SIZE];
 	unsigned int irq;
-	struct regulator *vdd_buck4;
-	struct regulator *vdd_ldo8;
+	struct regulator *vdd_bb_core;
+	struct regulator *vdd_bb_pll;
 	void (*ipc_cb)(void *data);
 	void  *ipc_cb_data;
 	struct miscdevice dev_priv;
@@ -496,10 +496,29 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 				      const char *buf, size_t count)
 {
 	int ret, value;
+	static bool regulator_status;
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	struct platform_device *pdev = container_of(dev,
-						    struct platform_device,
+	struct platform_device *pdev = container_of(dev, struct platform_device,
 						    dev);
+	struct tegra_bb_platform_data *pdata;
+	struct tegra_bb *bb;
+
+	if (!pdev) {
+		dev_err(dev, "%s platform device is NULL\n", __func__);
+		return 0;
+	}
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s platform data not found\n", __func__);
+		return 0;
+	}
+
+	bb = (struct tegra_bb *)pdata->bb_handle;
+	if (!bb) {
+		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		return 0;
+	}
 
 	ret = sscanf(buf, "%d", &value);
 
@@ -518,7 +537,29 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 		writel(1 << APBDEV_PMC_IPC_PMC_IPC_CLEAR_0_AP2BB_RESET_SHIFT |
 		       1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT,
 			pmc + APBDEV_PMC_IPC_PMC_IPC_CLEAR_0);
+
+		if (regulator_status == true) {
+			pr_debug("%s: disabling bbc regulators\n", __func__);
+			regulator_disable(bb->vdd_bb_core);
+			regulator_disable(bb->vdd_bb_pll);
+
+			regulator_status = false;
+		}
 	} else {
+		/* power on bbc rails */
+		if (bb->vdd_bb_core && bb->vdd_bb_pll &&
+				regulator_status == false) {
+			pr_debug("%s: enabling bbc regulators\n", __func__);
+			regulator_set_voltage(bb->vdd_bb_core, 1100000,
+							1100000);
+			regulator_enable(bb->vdd_bb_core);
+
+			regulator_set_voltage(bb->vdd_bb_pll, 900000, 900000);
+			regulator_enable(bb->vdd_bb_pll);
+
+			regulator_status = true;
+		}
+
 		writel(1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_RESET_SHIFT |
 		       1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_MEM_STS_SHIFT,
 			pmc + APBDEV_PMC_IPC_PMC_IPC_SET_0);
@@ -874,22 +915,16 @@ static int tegra_bb_probe(struct platform_device *pdev)
 
 	bb->sd = sysfs_get_dirent(pdev->dev.kobj.sd, NULL, "status");
 
-	bb->vdd_buck4 = regulator_get(NULL, "vdd_bb");
-	if (IS_ERR_OR_NULL(bb->vdd_buck4)) {
+	bb->vdd_bb_core = regulator_get(NULL, "vdd_bb");
+	if (IS_ERR_OR_NULL(bb->vdd_bb_core)) {
 		pr_err("vdd_bb regulator get failed\n");
-		bb->vdd_buck4 = NULL;
-	} else {
-		regulator_set_voltage(bb->vdd_buck4, 1100000, 1100000);
-		regulator_enable(bb->vdd_buck4);
+		bb->vdd_bb_core = NULL;
 	}
 
-	bb->vdd_ldo8 = regulator_get(NULL, "avdd_bb_pll");
-	if (IS_ERR_OR_NULL(bb->vdd_ldo8)) {
+	bb->vdd_bb_pll = regulator_get(NULL, "avdd_bb_pll");
+	if (IS_ERR_OR_NULL(bb->vdd_bb_pll)) {
 		pr_err("avdd_bb_pll regulator get failed\n");
-		bb->vdd_ldo8 = NULL;
-	} else {
-		regulator_set_voltage(bb->vdd_ldo8, 900000, 900000);
-		regulator_enable(bb->vdd_ldo8);
+		bb->vdd_bb_pll = NULL;
 	}
 
 	/* clk enable for mc_bbc / pll_p_bbc */
