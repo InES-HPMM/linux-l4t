@@ -1036,7 +1036,11 @@ static int aic326x_headset_switch_notify(struct notifier_block *self,
 
 	switch (action) {
 	case SND_JACK_HEADPHONE:
-		state |= BIT_HEADSET_NO_MIC;
+	/*
+	 * FIX ME: For now force headset mic mode
+	 * Known HW issue Mic detection is not working
+	 */
+		state |= BIT_HEADSET;
 		break;
 	case SND_JACK_HEADSET:
 		state |= BIT_HEADSET;
