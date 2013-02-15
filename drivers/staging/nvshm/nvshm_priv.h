@@ -20,10 +20,10 @@
 #include <linux/hrtimer.h>
 #include <linux/module.h>
 #include <linux/mm.h>
+#include <linux/wakelock.h>
 #include <asm/memory.h>
 #include <asm/cacheflush.h>
 #include <asm/outercache.h>
-
 /*
  * Test stub is used to implement nvshm on private memory for testing purpose.
  * Data are allocated into this private memory but queues loop on themselves
@@ -60,6 +60,8 @@
 struct nvshm_handle {
 	spinlock_t lock;
 	spinlock_t qlock;
+	struct wake_lock ul_lock;
+	struct wake_lock dl_lock;
 	int instance;
 	int old_status;
 	int configured;

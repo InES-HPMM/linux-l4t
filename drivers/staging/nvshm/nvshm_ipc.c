@@ -21,7 +21,6 @@
 #include "nvshm_queue.h"
 
 #include <linux/interrupt.h>
-#include <linux/pm_wakeup.h>
 #include <asm/mach/map.h>
 #include <mach/tegra_bb.h>
 #include <asm/cacheflush.h>
@@ -196,6 +195,8 @@ static void ipc_work(struct work_struct *work)
 	int new_state;
 	int cmd;
 
+	if (!wake_lock_active(&handle->dl_lock))
+		wake_lock(&handle->dl_lock);
 	new_state = *((int *)handle->mb_base_virt);
 	cmd = new_state & 0xFFFF;
 	if (((~new_state >> 16) ^ (cmd)) & 0xFFFF) {
@@ -206,6 +207,7 @@ static void ipc_work(struct work_struct *work)
 			cleanup_interfaces(handle);
 		}
 		enable_irq(handle->bb_irq);
+		wake_unlock(&handle->dl_lock);
 		return;
 	}
 	switch (cmd) {
@@ -222,12 +224,14 @@ static void ipc_work(struct work_struct *work)
 		}
 		handle->old_status = cmd;
 		enable_irq(handle->bb_irq);
+		wake_unlock(&handle->dl_lock);
 		return;
 	case NVSHM_IPC_BOOT_FW_REQ:
 	case NVSHM_IPC_BOOT_RESTART_FW_REQ:
 		if (handle->configured) {
 			nvshm_abort_queue(handle);
 			cleanup_interfaces(handle);
+			pr_debug("%s: cleanup done\n", __func__);
 		}
 		break;
 	case NVSHM_IPC_BOOT_ERROR_BT2_HDR:
@@ -254,6 +258,7 @@ static void ipc_work(struct work_struct *work)
 	}
 	handle->old_status = cmd;
 	enable_irq(handle->bb_irq);
+	wake_unlock(&handle->dl_lock);
 }
 
 static void nvshm_ipc_handler(void *data)
@@ -271,13 +276,13 @@ static enum hrtimer_restart nvshm_ipc_timer_func(struct hrtimer *timer)
 
 	if (tegra_bb_check_ipc(handle->tegra_bb) == 1) {
 		pr_debug("%s AP2BB is cleared\n", __func__);
-		pm_relax(handle->dev);
+		wake_unlock(&handle->ul_lock);
 		return HRTIMER_NORESTART;
 	}
-	if (handle->timeout > NVSHM_WAKE_MAX_COUNT) {
+	if (handle->timeout++ > NVSHM_WAKE_MAX_COUNT) {
 		pr_warn("%s AP2BB not cleared in 1s - aborting\n", __func__);
 		tegra_bb_abort_ipc(handle->tegra_bb);
-		pm_relax(handle->dev);
+		wake_unlock(&handle->ul_lock);
 		return HRTIMER_NORESTART;
 	}
 	pr_debug("%s AP2BB is still set\n", __func__);
@@ -317,8 +322,11 @@ int nvshm_unregister_ipc(struct nvshm_handle *handle)
 int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
 	int ret;
+
 	/* take wake lock until BB ack our irq */
-	pm_stay_awake(handle->dev);
+	if (!wake_lock_active(&handle->ul_lock))
+		wake_lock(&handle->ul_lock);
+
 	if (!hrtimer_active(&handle->wake_timer)) {
 		handle->timeout = 0;
 		ret = hrtimer_start(&handle->wake_timer,

@@ -20,7 +20,6 @@
 #include "nvshm_iobuf.h"
 
 #include <mach/tegra_bb.h>
-#include <linux/pm_wakeup.h>
 
 /* Flush cache lines associated with iobuf list */
 static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
@@ -189,8 +188,6 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 	int chan;
 
 	spin_lock_bh(&handle->lock);
-	pr_debug("%s: awake\n", __func__);
-	pm_stay_awake(handle->dev);
 	iob = nvshm_queue_get(handle);
 	while (iob) {
 		pr_debug("%s %p/%d/%d/%d->%p\n", __func__,
@@ -212,8 +209,6 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 		}
 		iob = nvshm_queue_get(handle);
 	}
-	pm_relax(handle->dev);
-	pr_debug("%s: relax\n", __func__);
 	spin_unlock_bh(&handle->lock);
 }
 
