@@ -25,9 +25,11 @@
 #include <linux/max8831_backlight.h>
 #include <linux/leds.h>
 #include <linux/ioport.h>
+#include <linux/lm3528.h>
 
 #include "gpio-names.h"
 #include "board-panel.h"
+#include "board.h"
 
 #define DSI_PANEL_RESET         1
 
@@ -329,10 +331,27 @@ static struct i2c_board_info dsi_l_720p_5_i2c_led_info = {
 	.addr		= 0x4d,
 	.platform_data	= &dsi_l_720p_5_max8831,
 };
+
+static struct lm3528_platform_data lm3528_pdata = {
+	.dft_brightness	= 100,
+};
+
+static struct i2c_board_info lm3528_dsi_l_720p_5_i2c_led_info = {
+	.type		= "lm3528_display_bl",
+	.addr		= 0x36,
+	.platform_data	= &lm3528_pdata,
+};
 static int __init dsi_l_720p_5_register_bl_dev(void)
 {
 	int err = 0;
-	err = i2c_register_board_info(1, &dsi_l_720p_5_i2c_led_info, 1);
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+
+	if (bi.board_id == BOARD_E1670)
+		err = i2c_register_board_info(1, &lm3528_dsi_l_720p_5_i2c_led_info, 1);
+	else
+		err = i2c_register_board_info(1, &dsi_l_720p_5_i2c_led_info, 1);
+
 	return err;
 }
 
