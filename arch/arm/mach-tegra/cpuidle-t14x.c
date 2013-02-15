@@ -502,7 +502,7 @@ bool tegra14x_idle_power_down(struct cpuidle_device *dev,
 
 	if (is_lp_cluster()) {
 		if (slow_cluster_power_gating_noncpu &&
-			(request > tegra_min_residency_noncpu()))
+			(request > tegra_min_residency_ncpu()))
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
@@ -510,7 +510,7 @@ bool tegra14x_idle_power_down(struct cpuidle_device *dev,
 		(dev->cpu == 0) &&
 		(num_online_cpus() == 1) &&
 		tegra_rail_off_is_allowed() &&
-		(request > tegra_min_residency_noncpu()))
+		(request > tegra_min_residency_ncpu()))
 			power_gating_cpu_only = false;
 	else
 		power_gating_cpu_only = true;
