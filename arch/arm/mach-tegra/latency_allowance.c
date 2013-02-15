@@ -24,6 +24,7 @@
 #include <linux/spinlock.h>
 #include <linux/stringify.h>
 #include <linux/clk.h>
+#include <linux/syscore_ops.h>
 #include <asm/bug.h>
 #include <asm/io.h>
 #include <asm/string.h>
@@ -246,7 +247,40 @@ static int __init tegra_latency_allowance_debugfs_init(void)
 	return 0;
 }
 
-late_initcall(tegra_latency_allowance_debugfs_init);
+static int tegra_la_suspend(void)
+{
+	return 0;
+}
+
+static void tegra_la_resume(void)
+{
+	int i;
+
+	for (i = 0; i < cs.la_info_array_size; i++) {
+		if (cs.la_info_array[i].init_la)
+			set_la(&cs.la_info_array[i],
+				cs.la_info_array[i].init_la);
+	}
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
+	tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
+	tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
+	tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
+#endif
+	if (cs.init_ptsa)
+		cs.init_ptsa();
+}
+
+static struct syscore_ops tegra_la_syscore_ops = {
+	.suspend = tegra_la_suspend,
+	.resume = tegra_la_resume,
+};
+
+static __init int tegra_la_syscore_init(void)
+{
+	register_syscore_ops(&tegra_la_syscore_ops);
+	return 0;
+}
 
 static int __init tegra_latency_allowance_init(void)
 {
@@ -274,6 +308,8 @@ static int __init tegra_latency_allowance_init(void)
 	return 0;
 }
 
+late_initcall(tegra_latency_allowance_debugfs_init);
+subsys_initcall(tegra_la_syscore_init);
 core_initcall(tegra_latency_allowance_init);
 
 #if TEST_LA_CODE

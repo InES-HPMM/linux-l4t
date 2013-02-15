@@ -263,14 +263,6 @@ static void t11x_init_ptsa(void)
 	writel(0x01, T11X_MC_RA(SMMU_SMMU_PTSA_MIN_0));
 	writel(0x01, T11X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
 
-	writel(0x00, T11X_MC_RA(R0_DIS_PTSA_RATE_0));
-	writel(0x3f, T11X_MC_RA(R0_DIS_PTSA_MIN_0));
-	writel(0x3f, T11X_MC_RA(R0_DIS_PTSA_MAX_0));
-
-	writel(0x00, T11X_MC_RA(R0_DISB_PTSA_RATE_0));
-	writel(0x3f, T11X_MC_RA(R0_DISB_PTSA_MIN_0));
-	writel(0x3f, T11X_MC_RA(R0_DISB_PTSA_MAX_0));
-
 	ring1_rate = readl(T11X_MC_RA(DIS_PTSA_RATE_0)) +
 		     readl(T11X_MC_RA(DISB_PTSA_RATE_0)) +
 		     readl(T11X_MC_RA(VE_PTSA_RATE_0)) +
