@@ -307,9 +307,10 @@ static void t14x_init_ptsa(void)
 	writel(0x1f, T14X_MC_RA(RING1_PTSA_MAX_0));
 
 	writel(0x00, T14X_MC_RA(DIS_EXTRA_SNAP_LEVELS_0));
-	writel(0x03, T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
+	writel(0x02, T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
 }
 
+#define ID_IDX(x) (ID(x) - ID(DISPLAY_0A))
 static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 {
 	unsigned int rate_dis;
@@ -318,11 +319,14 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	unsigned int total_dis_bw;
 	unsigned int total_disb_bw;
 
-	total_dis_bw = disp_bw_array[ID(DISPLAY_0A)] + disp_bw_array[ID(DISPLAY_0B)] +
-		       disp_bw_array[ID(DISPLAY_0C)] + disp_bw_array[ID(DISPLAY_T)] +
-		       disp_bw_array[ID(DISPLAYD)];
-	total_disb_bw = disp_bw_array[ID(DISPLAY_0AB)] + disp_bw_array[ID(DISPLAY_0BB)] +
-		       disp_bw_array[ID(DISPLAY_0CB)];
+	total_dis_bw = disp_bw_array[ID_IDX(DISPLAY_0A)] +
+			disp_bw_array[ID_IDX(DISPLAY_0B)] +
+			disp_bw_array[ID_IDX(DISPLAY_0C)] +
+			disp_bw_array[ID_IDX(DISPLAY_T)] +
+			disp_bw_array[ID_IDX(DISPLAYD)];
+	total_disb_bw = disp_bw_array[ID_IDX(DISPLAY_0AB)] +
+			disp_bw_array[ID_IDX(DISPLAY_0BB)] +
+			disp_bw_array[ID_IDX(DISPLAY_0CB)];
 
 	rate_dis = t14x_get_ptsa_rate(total_dis_bw);
 	rate_disb = t14x_get_ptsa_rate(total_disb_bw);
@@ -387,6 +391,7 @@ static void program_la(struct la_client_info *ci, int la)
 	spin_unlock(&cs->lock);
 }
 
+#define DISPLAY_MARGIN 100 /* 100 -> 1.0, 110 -> 1.1 */
 static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 {
 	int ideal_la;
@@ -414,7 +419,7 @@ static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 		if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAYD) {
 			/* display la margin shold be 1.1 */
 			ideal_la = (100 * fifo_size_in_atoms * bytes_per_atom * 1000) /
-				   (110 * bw_mbps * cs->ns_per_tick);
+				   (DISPLAY_MARGIN * bw_mbps * cs->ns_per_tick);
 		} else {
 			ideal_la = (fifo_size_in_atoms * bytes_per_atom * 1000) /
 				   (bw_mbps * cs->ns_per_tick);
