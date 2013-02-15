@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -411,7 +411,12 @@ ENTRY(tegra3_lp1_reset)
 	add	r1, r1, #LOCK_DELAY
 	wait_until r1, r7, r3
 
-	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 reserved for pad base
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	add	r5, pc, #tegra11_sdram_pad_save-(.+8)	@ r5 --> saved data
+#endif
 
 	ldr	r4, [r5, #0x18]
 	str	r4, [r0, #CLK_RESET_CLK_SOURCE_MSELECT]
@@ -499,13 +504,19 @@ powerup_l2_done:
 	str	r0, [r2, #PMC_REMOVE_CLAMPING_CMD]
 #endif
 
-	mov32	r0, TEGRA_EMC_BASE			@ r0 reserved for emc base
-
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
+#endif
 	ldr	r1, [r5, #0x14]	@ PMC_IO_DPD_STATUS
 	mvn	r1, r1
 	bic	r1, r1, #(0x1<<31)
 	orr	r1, r1, #(0x1<<30)
 	str	r1, [r2, #PMC_IO_DPD_REQ]
+
+exit_self_refresh:
 	ldr	r1, [r5, #0xC]
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL]
 	ldr	r1, [r5, #0x10]
@@ -519,8 +530,15 @@ powerup_l2_done:
 
 	emc_timing_update r1, r0
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov32	r1, TEGRA_EMC1_BASE
+	cmp	r0, r1
+#endif
 	ldr	r1, [r0, #EMC_AUTO_CAL_CONFIG]
 	orr	r1, r1, #(0x1<<31)		@ set AUTO_CAL_ACTIVE
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	orreq	r1, r1, #(0x1<<27)		@ set slave mode for channel 1
+#endif
 	str	r1, [r0, #EMC_AUTO_CAL_CONFIG]
 
 emc_wait_audo_cal_onetime:
@@ -599,11 +617,19 @@ zcal_done:
 	ldr	r1, [r5, #0x0]
 	str	r1, [r0, #EMC_CFG]
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov32	r1, TEGRA_EMC1_BASE
+	cmp	r0, r1
+	movne	r0, r1
+	addne	r5, r5, #0x20
+	bne	exit_self_refresh
+#endif
 	mov32	r0, TEGRA_PMC_BASE
 	ldr	r0, [r0, #PMC_SCRATCH41]
 	mov	pc, r0
 ENDPROC(tegra3_lp1_reset)
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	.align	L1_CACHE_SHIFT
 	.type	tegra3_sdram_pad_save, %object
 tegra3_sdram_pad_save:
@@ -625,9 +651,40 @@ tegra3_sdram_pad_address:
 	.word	TEGRA_PMC_BASE + PMC_IO_DPD_STATUS			@0x14
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CLK_SOURCE_MSELECT	@0x18
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_SCLK_BURST		@0x1c
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	.align	L1_CACHE_SHIFT
+	.type	tegra11_sdram_pad_save, %object
+tegra11_sdram_pad_save:
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
+	.word	0
 
-tegra3_sdram_pad_size:
-	.word	tegra3_sdram_pad_address - tegra3_sdram_pad_save
+tegra11_sdram_pad_address:
+	.word	TEGRA_EMC0_BASE + EMC_CFG				@0x0
+	.word	TEGRA_EMC0_BASE + EMC_ZCAL_INTERVAL			@0x4
+	.word	TEGRA_EMC0_BASE + EMC_AUTO_CAL_INTERVAL			@0x8
+	.word	TEGRA_EMC0_BASE + EMC_XM2VTTGENPADCTRL			@0xc
+	.word	TEGRA_EMC0_BASE + EMC_XM2VTTGENPADCTRL2			@0x10
+	.word	TEGRA_PMC_BASE + PMC_IO_DPD_STATUS			@0x14
+	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CLK_SOURCE_MSELECT	@0x18
+	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_SCLK_BURST		@0x1c
+	.word	TEGRA_EMC1_BASE + EMC_CFG				@0x20
+	.word	TEGRA_EMC1_BASE + EMC_ZCAL_INTERVAL			@0x24
+	.word	TEGRA_EMC1_BASE + EMC_AUTO_CAL_INTERVAL			@0x28
+	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL			@0x2c
+	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL2			@0x30
+#endif
 
 #ifdef CONFIG_TEGRA_LP1_950
 	.globl lp1_register_pmuslave_addr
@@ -883,31 +940,43 @@ halted:
 
 tegra3_sdram_self_refresh:
 
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	adr	r2, tegra3_sdram_pad_address
 	adr	r8, tegra3_sdram_pad_save
-	mov	r9, #0
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	adr	r2, tegra11_sdram_pad_address
+	adr	r8, tegra11_sdram_pad_save
+#endif
+	mov	r9, r2
 
 padsave:
-	ldr	r0, [r2, r9]			@ r0 is emc register address
+	ldr	r0, [r2], #4			@ r0 is emc register address
 
 	ldr	r1, [r0]
-	str	r1, [r8, r9]			@ save emc register
+	str	r1, [r8], #4			@ save emc register
 
-	add	r9, r9, #4
-	ldr	r0, tegra3_sdram_pad_size
-	cmp	r0, r9
+	cmp	r8, r9
 	bne	padsave
 padsave_done:
 
 	dsb
 
-	mov32	r0, TEGRA_EMC_BASE			@ r0 reserved for emc base
-
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
+#endif
+enter_self_refresh:
 	mov	r1, #0
 	str	r1, [r0, #EMC_ZCAL_INTERVAL]
 	str	r1, [r0, #EMC_AUTO_CAL_INTERVAL]
 	ldr	r1, [r0, #EMC_CFG]
 	bic	r1, r1, #(1<<28)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	bic	r1, r1, #(1<<29)
+#endif
 	str	r1, [r0, #EMC_CFG]		@ disable DYN_SELF_REF
 
 	emc_timing_update r1, r0
@@ -945,10 +1014,22 @@ emcself:
 	and	r1, r1, r2
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL]
 	ldr	r1, [r0, #EMC_XM2VTTGENPADCTRL2]
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	orr	r1, r1, #7			@ set E_NO_VTTGEN
+#endif
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	orr	r1, r1, #0x3f			@ set E_NO_VTTGEN
+#endif
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL2]
 
 	emc_timing_update r1, r0
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+	mov32	r1, TEGRA_EMC1_BASE
+	cmp	r0, r1
+	movne	r0, r1
+	bne	enter_self_refresh
+#endif
 
 	ldr	r1, [r4, #PMC_CTRL]
 	tst	r1, #PMC_CTRL_SIDE_EFFECT_LP0
