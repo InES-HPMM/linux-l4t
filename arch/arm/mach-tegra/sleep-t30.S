@@ -1009,10 +1009,10 @@ powerdown_pll_cx:
 	str	r0, [r5, #CLK_RESET_PLLX_BASE]
 #if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	/*
-	 * FIXME: put PLLM into IDDQ (need additional testing)
+	 * FIXME: put PLLM/C into IDDQ (need additional testing)
 	 * pll_iddq_entry r1, r5, CLK_RESET_PLLM_MISC, CLK_RESET_PLLM_MISC_IDDQ
+	 * pll_iddq_entry r1, r5, CLK_RESET_PLLC_MISC, CLK_RESET_PLLC_MISC_IDDQ
 	 */
-	pll_iddq_entry r1, r5, CLK_RESET_PLLC_MISC, CLK_RESET_PLLC_MISC_IDDQ
 	pll_iddq_entry r1, r5, CLK_RESET_PLLX_MISC3, CLK_RESET_PLLX_MISC3_IDDQ
 #endif
 
