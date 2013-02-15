@@ -2379,7 +2379,7 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 			} else {
 				/* Few TDM slots, or No TDM */
 				regval |= M98090_CLK_MAS_MASK |
-					 M98090_CLK_BSEL_32;
+					 M98090_CLK_BSEL_64;
 			}
 			break;
 		case SND_SOC_DAIFMT_CBS_CFM:
