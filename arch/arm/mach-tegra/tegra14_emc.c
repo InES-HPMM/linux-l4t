@@ -450,7 +450,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 2.5 check dq/dqs vref delay */
 	if (dqs_preset(next_timing, last_timing)) {
 		if (pre_wait < 3)
-			pre_wait = 3;	/* 3us+ for dqs vref settled */
+			pre_wait = 30;	/* 3us+ for dqs vref settled */
 	}
 	if (pre_wait) {
 		emc_timing_update();
