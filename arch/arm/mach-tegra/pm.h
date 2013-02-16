@@ -279,6 +279,11 @@ void tegra_smp_clear_power_mask(void);
 static inline void tegra_smp_clear_power_mask(void){}
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+void tegra_smp_save_power_mask(void);
+void tegra_smp_restore_power_mask(void);
+#endif
+
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 void tegra_generic_smc(u32 type, u32 subtype, u32 arg);
 #endif
