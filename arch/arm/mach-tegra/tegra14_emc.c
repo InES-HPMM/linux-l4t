@@ -370,7 +370,24 @@ static inline void auto_cal_disable(void)
 static inline bool dqs_preset(const struct tegra14_emc_table *next_timing,
 			      const struct tegra14_emc_table *last_timing)
 {
-	return true;
+	bool ret = false;
+
+#define DQS_SET(reg, bit)						\
+	do {								\
+		if ((next_timing->burst_regs[EMC_##reg##_INDEX] &	\
+		     EMC_##reg##_##bit##_ENABLE) &&			\
+		    (!(last_timing->burst_regs[EMC_##reg##_INDEX] &	\
+		       EMC_##reg##_##bit##_ENABLE)))   {		\
+			emc_writel(last_timing->burst_regs[EMC_##reg##_INDEX] \
+				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg); \
+			pr_debug("dqs preset: presetting rx_ft_rec\n");	\
+			ret = true;					\
+		}							\
+	} while (0)
+
+	DQS_SET(XM2DQSPADCTRL2, RX_FT_REC);
+
+	return ret;
 }
 
 static inline int get_dll_change(const struct tegra14_emc_table *next_timing,
