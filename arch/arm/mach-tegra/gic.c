@@ -48,11 +48,6 @@ void tegra_gic_cpu_disable(bool disable_pass_through)
 	writel(gic_cpu_ctrl, tegra_gic_cpu_base + GIC_CPU_CTRL);
 }
 
-void tegra_gic_cpu_enable(void)
-{
-	writel(1, tegra_gic_cpu_base + GIC_CPU_CTRL);
-}
-
 #endif
 
 #if defined(CONFIG_PM_SLEEP)
@@ -147,11 +142,6 @@ static struct notifier_block tegra_gic_notifier_block = {
 	.notifier_call = tegra_gic_notifier,
 };
 #endif
-
-u32 tegra_gic_version(void)
-{
-	return gic_version;
-}
 
 void __init tegra_gic_init(bool is_dt)
 {
