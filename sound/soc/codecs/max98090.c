@@ -1178,11 +1178,6 @@ static const struct snd_kcontrol_new max98090_snd_controls[] = {
 		M98090_DMIC_COMP_SHIFT, M98090_DMIC_COMP_NUM - 1, 0),
 	SOC_ENUM("DMIC MIC Freq Range Config", max98090_dmicfreq_enum),
 
-	SOC_SINGLE("DMIC MIC Left Enable", M98090_REG_13_MIC_CFG1,
-		M98090_DIGMICL_SHIFT, M98090_DIGMICL_NUM - 1, 0),
-	SOC_SINGLE("DMIC MIC Right Enable", M98090_REG_13_MIC_CFG1,
-		M98090_DIGMICR_SHIFT, M98090_DIGMICR_NUM - 1, 0),
-
 	SOC_ENUM_EXT("External MIC Mux", max98090_extmic_mux_enum,
 		max98090_extmic_mux_get, max98090_extmic_mux_set),
 
@@ -1395,11 +1390,6 @@ static const struct snd_kcontrol_new max98091_snd_controls[] = {
 	SOC_SINGLE("DAI TDM MIC4 Slot", M98090_REG_C1_RECORD_TDM_SLOT,
 		M98090_DAI_TDM_SLOTDMIC4_SHIFT,
 		M98090_DAI_TDM_SLOTDMIC4_NUM - 1, 0),
-
-	SOC_SINGLE("DMIC MIC3 Enable", M98090_REG_13_MIC_CFG1,
-		M98090_DIGMIC3_SHIFT, M98090_DIGMIC3_NUM - 1, 0),
-	SOC_SINGLE("DMIC MIC4 Enable", M98090_REG_13_MIC_CFG1,
-		M98090_DIGMIC4_SHIFT, M98090_DIGMIC4_NUM - 1, 0),
 
 	SOC_ENUM("DMIC34 MIC Clock Config", max98090_dmic34clk_enum),
 	SOC_SINGLE("DMIC34 Zeropad", M98090_REG_C2_SAMPLE_RATE,
@@ -1835,8 +1825,8 @@ static const struct snd_soc_dapm_widget max98090_dapm_widgets[] = {
 
 	SND_SOC_DAPM_INPUT("MIC1"),
 	SND_SOC_DAPM_INPUT("MIC2"),
-	SND_SOC_DAPM_INPUT("DMIC1"),
-	SND_SOC_DAPM_INPUT("DMIC2"),
+	SND_SOC_DAPM_INPUT("DMICL"),
+	SND_SOC_DAPM_INPUT("DMICR"),
 	SND_SOC_DAPM_INPUT("IN1"),
 	SND_SOC_DAPM_INPUT("IN2"),
 	SND_SOC_DAPM_INPUT("IN3"),
@@ -1857,6 +1847,12 @@ static const struct snd_soc_dapm_widget max98090_dapm_widgets[] = {
 		M98090_DAI_SDIEN_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("SDOEN", M98090_REG_25_DAI_IOCFG,
 		M98090_DAI_SDOEN_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("DMICL_ENA", M98090_REG_13_MIC_CFG1,
+		 M98090_DIGMICL_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("DMICR_ENA", M98090_REG_13_MIC_CFG1,
+		 M98090_DIGMICR_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("AHPF", M98090_REG_26_DAI_FILTERS,
+		M98090_DAI_FLT_AHPF_SHIFT, 0, NULL, 0),
 
 /*
  * Note: Sysclk and misc power supplies are taken care of by SHDN and VCM
@@ -1991,12 +1987,30 @@ static const struct snd_soc_dapm_widget max98090_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("RCVR"),
 };
 
+static const struct snd_soc_dapm_widget max98091_dapm_widgets[] = {
+
+	SND_SOC_DAPM_INPUT("DMIC3"),
+	SND_SOC_DAPM_INPUT("DMIC4"),
+
+	SND_SOC_DAPM_SUPPLY("DMIC3_ENA", M98090_REG_13_MIC_CFG1,
+		 M98090_DIGMIC3_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("DMIC4_ENA", M98090_REG_13_MIC_CFG1,
+		 M98090_DIGMIC4_SHIFT, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("DHPF", M98090_REG_26_DAI_FILTERS,
+		M98090_DAI_FLT_DMIC34HPF_SHIFT, 0, NULL, 0),
+};
+
 static const struct snd_soc_dapm_route max98090_audio_map[] = {
 
 	{"MIC1 Input", NULL, "MIC1"},
 	{"MIC2 Input", NULL, "MIC2"},
 	{"MIC1 Input", NULL, "MICBIAS"},
 	{"MIC2 Input", NULL, "MICBIAS"},
+
+	{"DMICL", NULL, "DMICL_ENA"},
+	{"DMICR", NULL, "DMICR_ENA"},
+	{"DMICL", NULL, "AHPF"},
+	{"DMICR", NULL, "AHPF"},
 
 	/* MIC1 input mux */
 	{"MIC1 Mux", "IN12", "IN12"},
@@ -2051,8 +2065,10 @@ static const struct snd_soc_dapm_route max98090_audio_map[] = {
 	{"ADCR", NULL, "VCM"},
 
 	{"LBENL Mux", "Normal", "ADCL"},
+	{"LBENL Mux", "Normal", "DMICL"},
 	{"LBENL Mux", "Loopback", "LTENL Mux"},
 	{"LBENR Mux", "Normal", "ADCR"},
+	{"LBENR Mux", "Normal", "DMICR"},
 	{"LBENR Mux", "Loopback", "LTENR Mux"},
 
 	{"AIFOUTL", NULL, "LBENL Mux"},
@@ -2166,9 +2182,22 @@ static const struct snd_soc_dapm_route max98090_audio_map[] = {
 
 };
 
+static const struct snd_soc_dapm_route max98091_dapm_routes[] = {
+
+	/* DMIC inputs */
+	{"DMIC3", NULL, "DMIC3_ENA"},
+	{"DMIC4", NULL, "DMIC4_ENA"},
+	{"DMIC3", NULL, "DHPF"},
+	{"DMIC4", NULL, "DHPF"},
+
+	{"LBENL Mux", "Normal", "DMIC3"},
+	{"LBENR Mux", "Normal", "DMIC4"},
+};
+
 static int max98090_add_widgets(struct snd_soc_codec *codec)
 {
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
 
 	snd_soc_add_codec_controls(codec, max98090_snd_controls,
 		ARRAY_SIZE(max98090_snd_controls));
@@ -2177,6 +2206,21 @@ static int max98090_add_widgets(struct snd_soc_codec *codec)
 		snd_soc_add_codec_controls(codec, max98091_snd_controls,
 			ARRAY_SIZE(max98091_snd_controls));
 	}
+
+	snd_soc_dapm_new_controls(dapm, max98090_dapm_widgets,
+		ARRAY_SIZE(max98090_dapm_widgets));
+
+	snd_soc_dapm_add_routes(dapm, max98090_audio_map,
+		ARRAY_SIZE(max98090_audio_map));
+
+	if (max98090->devtype == MAX98091) {
+		snd_soc_dapm_new_controls(dapm, max98091_dapm_widgets,
+			ARRAY_SIZE(max98091_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, max98091_dapm_routes,
+			ARRAY_SIZE(max98091_dapm_routes));
+	}
+	snd_soc_dapm_new_widgets(&codec->dapm);
 
 	return 0;
 }
@@ -2602,9 +2646,10 @@ static int max98090_dai_set_sysclk(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
+	max98090->sysclk = freq;
+
 	max98090_configure_bclk(codec);
 
-	max98090->sysclk = freq;
 	return 0;
 }
 
@@ -3725,10 +3770,6 @@ static struct snd_soc_codec_driver soc_codec_dev_max98090 = {
 	.reg_cache_default = max98090_reg_def,
 	.readable_register = max98090_readable,
 	.volatile_register = max98090_volatile_register,
-	.dapm_widgets	  = max98090_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(max98090_dapm_widgets),
-	.dapm_routes	 = max98090_audio_map,
-	.num_dapm_routes = ARRAY_SIZE(max98090_audio_map),
 };
 
 static int max98090_i2c_probe(struct i2c_client *i2c,

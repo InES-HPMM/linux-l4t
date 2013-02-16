@@ -878,33 +878,6 @@ static struct snd_soc_jack_pin tegra_max98090_hs_jack_pins[] = {
 };
 #endif
 
-static int tegra_max98090_event_int_dmic(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_dapm_context *dapm = w->dapm;
-	struct snd_soc_card *card = dapm->card;
-	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
-
-	if (machine->dmic_reg && machine->dmic_1v8_reg) {
-		if (SND_SOC_DAPM_EVENT_ON(event)) {
-			regulator_enable(machine->dmic_reg);
-			regulator_enable(machine->dmic_1v8_reg);
-		} else {
-			regulator_disable(machine->dmic_reg);
-			regulator_disable(machine->dmic_1v8_reg);
-		}
-	}
-
-	if (!(machine->gpio_requested & GPIO_INT_MIC_EN))
-		return 0;
-
-	gpio_set_value_cansleep(pdata->gpio_int_mic_en,
-				SND_SOC_DAPM_EVENT_ON(event));
-
-	return 0;
-}
-
 static int tegra_max98090_event_int_spk(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -952,7 +925,8 @@ static const struct snd_soc_dapm_widget tegra_max98090_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_INPUT("Ext Mic"),
 	SND_SOC_DAPM_INPUT("Int Mic"),
-	SND_SOC_DAPM_MIC("Int D-Mic", tegra_max98090_event_int_dmic),
+	SND_SOC_DAPM_MIC("DMic Pri", NULL),
+	SND_SOC_DAPM_MIC("DMic Sec", NULL),
 };
 
 static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
@@ -968,8 +942,10 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 	{"IN34", NULL, "MICBIAS"},
 	{"MICBIAS", NULL, "Mic Jack"},
 	{"IN56", NULL, "MICBIAS"},
-	{"DMIC1", NULL, "Int D-Mic"},
-	{"DMIC2", NULL, "Int D-Mic"},
+	{"DMICL", NULL, "DMic Pri"},
+	{"DMICR", NULL, "DMic Pri"},
+	{"DMIC3", NULL, "DMic Sec"},
+	{"DMIC4", NULL, "DMic Sec"},
 };
 
 static const struct snd_kcontrol_new tegra_max98090_controls[] = {
@@ -979,7 +955,8 @@ static const struct snd_kcontrol_new tegra_max98090_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
 	SOC_DAPM_PIN_SWITCH("Ext Mic"),
-	SOC_DAPM_PIN_SWITCH("Int D-Mic"),
+	SOC_DAPM_PIN_SWITCH("DMic Pri"),
+	SOC_DAPM_PIN_SWITCH("DMic Sec"),
 };
 
 static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
