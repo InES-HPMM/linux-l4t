@@ -151,7 +151,7 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 		} else {
 			tegra30_make_voice_call_connections(
 				&machine->codec_info[codec_index],
-				&machine->codec_info[BASEBAND], 1);
+				&machine->codec_info[BASEBAND], 0);
 		}
 	} else {
 		if (machine_is_ceres()) {
@@ -161,7 +161,7 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 		} else {
 			tegra30_break_voice_call_connections(
 				&machine->codec_info[codec_index],
-				&machine->codec_info[BASEBAND], 1);
+				&machine->codec_info[BASEBAND], 0);
 		}
 
 		for (i = 0; i < machine->pcard->num_links; i++)
@@ -286,6 +286,9 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 	case TEGRA_DAIFMT_DSP_A:
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
 		break;
+	case TEGRA_DAIFMT_DSP_B:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+		break;
 	case TEGRA_DAIFMT_LEFT_J:
 		i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
 		break;
@@ -400,6 +403,9 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 	case TEGRA_DAIFMT_DSP_A:
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
 		break;
+	case TEGRA_DAIFMT_DSP_B:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
+		break;
 	case TEGRA_DAIFMT_LEFT_J:
 		i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
 		break;
@@ -493,6 +499,7 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 		i2s->call_record_dam_ifc = tegra30_dam_allocate_controller();
 		if (i2s->call_record_dam_ifc < 0)
 			return i2s->call_record_dam_ifc;
+
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
 			TEGRA30_DAM_CHIN0_SRC);
 		tegra30_dam_allocate_channel(i2s->call_record_dam_ifc,
@@ -631,6 +638,9 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 		break;
 	case TEGRA_DAIFMT_DSP_A:
 		i2s_daifmt |= SND_SOC_DAIFMT_DSP_A;
+		break;
+	case TEGRA_DAIFMT_DSP_B:
+		i2s_daifmt |= SND_SOC_DAIFMT_DSP_B;
 		break;
 	case TEGRA_DAIFMT_LEFT_J:
 		i2s_daifmt |= SND_SOC_DAIFMT_LEFT_J;
