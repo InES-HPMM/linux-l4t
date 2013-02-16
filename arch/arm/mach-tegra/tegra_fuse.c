@@ -339,7 +339,7 @@ void tegra_gpu_get_info(struct gpu_info *pInfo)
 		pInfo->num_pixel_pipes = 4;
 		pInfo->num_alus_per_pixel_pipe = 3;
 	} else if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14) {
-		u32 reg = readl(IO_TO_VIRT(TEGRA_CLK_RESET_BASE +
+		u32 reg = readl(IO_TO_VIRT(TEGRA_FUSE_BASE +
 			FUSE_SKU_DIRECT_CONFIG_0));
 		pInfo->num_pixel_pipes = 2;
 		pInfo->num_alus_per_pixel_pipe = 6;
