@@ -40,19 +40,19 @@ static bool tegra_dvfs_core_disabled;
 static int dvfs_temperatures[] = { 20, };
 
 static struct tegra_cooling_device cpu_dfll_cdev = {
-	.cdev_type = "cpu_dfll",
+	.cdev_type = "cpu_dfll_cold",
 	.trip_temperatures = dvfs_temperatures,
 	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
 static struct tegra_cooling_device cpu_pll_cdev = {
-	.cdev_type = "cpu_pll",
+	.cdev_type = "cpu_pll_cold",
 	.trip_temperatures = dvfs_temperatures,
 	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
 static struct tegra_cooling_device core_cdev = {
-	.cdev_type = "core",
+	.cdev_type = "core_cold",
 	.trip_temperatures = dvfs_temperatures,
 	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
