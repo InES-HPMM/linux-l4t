@@ -744,11 +744,15 @@ tegra3_tear_down_core:
  * PMC_IPC_STS register is queried again
  */
 lp0_delayed_entry:
-	/* Wait for a few ticks for this to stabilize */
-	ldr 	r0, =0x3000
-wait_stable:
-	subs	r0, r0, #1
-	bne	wait_stable
+	/* Use us timer to wait for 10 ms
+	 * FIXME: we need to increase this timeout according to BB
+	 * requirements.
+	 */
+	mov32	r7, TEGRA_TMRUS_BASE
+	wait_for_us r1, r7, r9
+	ldr r2, =10000
+	add r1, r1, r2
+	wait_until r1, r7, r9
 
 	ldr	r0, [r4, #PMC_IPC_STS]
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
@@ -818,21 +822,22 @@ tegra148_set_mem_req_interrupt:
 	orrne	r0, r0, #PMC_WAKE2_BB_MEM_REQ
 	str     r0, [r4, #PMC_WAKE2_LEVEL]
 
-	/* Wait for a few ticks for this to stabilize */
-	ldr 	r0, =0x300
-wait_stable3:
-	subs	r0, r0, #1
-	bne	wait_stable3
+	/* Wait for 1ms for write to take effect */
+	mov32	r7, TEGRA_TMRUS_BASE
+	wait_for_us r1, r7, r9
+	add r1, r1, #1000
+	wait_until r1, r7, r9
 
 	/* Program the auto_wake_lvl regsiters */
 	ldr	r0, [r4, #PMC_AUTO_WAKE_LVL]
 	orr	r0, r0, #1
 	str	r0, [r4, #PMC_AUTO_WAKE_LVL]
 
-	ldr	r0, =0x300
-wait_stable2:
-	subs	r0, r0, #1
-	bne	wait_stable2
+	/* Wait for 1ms for write to take effect */
+	mov32	r7, TEGRA_TMRUS_BASE
+	wait_for_us r1, r7, r9
+	add r1, r1, #1000
+	wait_until r1, r7, r9
 
 	/* Configure mem_req active low to be wake event */
 	ldr	r0, [r4, #PMC_WAKE2_MASK]
