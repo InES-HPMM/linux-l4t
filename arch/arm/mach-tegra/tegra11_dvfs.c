@@ -623,6 +623,10 @@ static int __init set_cpu_dvfs_data(
 	cpu_dvfs->dfll_data.out_rate_min = fmax_at_vmin * d->freqs_mult;
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
+
+	/* Invalidate dfll cooling if cold minimum is below dfll minimum */
+	if (cpu_dvfs->dvfs_rail->min_millivolts_cold <= min_dfll_mv)
+		cpu_dvfs->dvfs_rail->dfll_mode_cdev = NULL;
 	return 0;
 }
 

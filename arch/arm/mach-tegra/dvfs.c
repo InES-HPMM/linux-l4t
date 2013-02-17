@@ -65,6 +65,23 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 	mutex_unlock(&dvfs_lock);
 }
 
+/*
+ * Make sure that DFLL and PLL mode cooling devices have identical set of
+ * trip-points (needed for DFLL/PLL auto-switch)
+ */
+static void dvfs_validate_cdevs(struct dvfs_rail *rail)
+{
+	if (rail->dfll_mode_cdev) {
+		if (!rail->pll_mode_cdev ||
+		    (rail->dfll_mode_cdev->trip_temperatures !=
+		     rail->pll_mode_cdev->trip_temperatures)) {
+			rail->dfll_mode_cdev = NULL;
+			WARN(1, "%s: not matching dfll/pll mode trip-points\n",
+			     rail->reg_id);
+		}
+	}
+}
+
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 {
 	int i;
@@ -81,6 +98,8 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 			rails[i]->step = rails[i]->max_millivolts;
 
 		list_add_tail(&rails[i]->node, &dvfs_rail_list);
+
+		dvfs_validate_cdevs(rails[i]);
 
 		if (!strcmp("vdd_cpu", rails[i]->reg_id))
 			tegra_cpu_rail = rails[i];
@@ -921,11 +940,17 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 	int ret = 0;
 
 #ifdef CONFIG_THERMAL
-	if (!rail || !rail->dfll_mode_cdev || !rail->min_millivolts_cold)
+	/* No cooling in dfll mode - nothing to do */
+	if (!rail || !rail->dfll_mode_cdev)
 		return ret;
 
+	/*
+	 * Since cooling thresholds are the same in pll and dfll modes, pll mode
+	 * thermal index can be used to decide if cold limit should be set in
+	 * dfll mode.
+	 */
 	mutex_lock(&dvfs_lock);
-	if (rail->dfll_mode)
+	if (rail->dfll_mode && !rail->thermal_idx)
 		ret = dvfs_rail_set_voltage_reg(
 			rail, rail->min_millivolts_cold);
 	mutex_unlock(&dvfs_lock);
