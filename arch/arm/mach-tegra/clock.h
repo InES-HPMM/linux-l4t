@@ -159,6 +159,7 @@ struct clk {
 	struct clk_ops		*ops;
 	unsigned long		dvfs_rate;
 	unsigned long		rate;
+	unsigned long		boot_rate;
 	unsigned long		max_rate;
 	unsigned long		min_rate;
 	bool			auto_dvfs;

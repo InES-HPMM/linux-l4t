@@ -799,6 +799,7 @@ static void __init tegra_clk_vefify_rates(void)
 		if (rate > clk_get_max_rate(c))
 			WARN(1, "tegra: %s boot rate %lu exceeds max rate %lu\n",
 			     c->name, rate, clk_get_max_rate(c));
+		c->boot_rate = rate;
 	}
 	mutex_unlock(&clock_list_lock);
 }
