@@ -5432,7 +5432,7 @@ static struct clk tegra_pll_m_out1 = {
 	.parent    = &tegra_pll_m,
 	.reg       = 0x94,
 	.reg_shift = 0,
-	.max_rate  = 600000000,
+	.max_rate  = 1066000000,
 };
 
 static struct clk_pll_freq_table tegra_pll_p_freq_table[] = {
@@ -6521,9 +6521,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("sbc4",	"spi-tegra114.3",	NULL,	68,	0x1b4,	52000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc5",	"spi-tegra114.4",	NULL,	104,	0x3c8,	52000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("sbc6",	"spi-tegra114.5",	NULL,	105,	0x3cc,	52000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata_oob",	"tegra_sata_oob",	NULL,	123,	0x420,	216000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata",	"tegra_sata",		NULL,	124,	0x424,	216000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("sata_cold",	"tegra_sata_cold",	NULL,	129,	0,	48000000,  mux_clk_m,			PERIPH_ON_APB),
 	PERIPH_CLK_EX("ndflash", "tegra_nand",		NULL,	13,	0x160,	240000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB,	&tegra_nand_clk_ops),
 	PERIPH_CLK("ndspeed",	"tegra_nand_speed",	NULL,	80,	0x3f8,	240000000, mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("vfir",	"vfir",			NULL,	7,	0x168,	72000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
