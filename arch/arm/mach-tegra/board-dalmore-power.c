@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1231,6 +1231,35 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		},
 		[THERM_GPU] = {
 			.zone_enable = true,
+			.passive_delay = 1000,
+			.num_trips = 0, /* Disables the trips config below */
+			/*
+			 * Following .trips config retained for compatibility
+			 * with dalmore/pluto and later enablement when needed
+			 */
+			.trips = {
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 90000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 100000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 102000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
 		},
 		[THERM_PLL] = {
 			.zone_enable = true,
