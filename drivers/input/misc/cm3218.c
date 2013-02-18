@@ -126,7 +126,7 @@ static int cm3218_power(int on)
 		if (ret < 0)
 			return ret;
 		chip_info->inp_dev->enabled = true;
-		queue_work(chip_info->wq, &report_work);
+		queue_delayed_work(chip_info->wq, &report_work, 0);
 	} else if (!on && IS_ALS_POWER_ON) {
 		ALS_POWER_DISABLE;
 		ret = cm3218_write();
@@ -326,7 +326,7 @@ static void cm3218_shutdown(struct i2c_client *client)
 {
 	mutex_lock(&chip_info->lock);
 	if (IS_ALS_POWER_ON) {
-		cancel_delayed_work_sync(chip_info->wq);
+		cancel_delayed_work_sync(&report_work);
 	}
 	chip_info->shutdown_complete = 1;
 	mutex_unlock(&chip_info->lock);
