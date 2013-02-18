@@ -177,9 +177,6 @@ static struct platform_device tegra_sdhci_device3 = {
 int __init bonaire_sdhci_init(void)
 {
 	platform_device_register(&tegra_sdhci_device3);
-	platform_device_register(&tegra_sdhci_device2);
-	platform_device_register(&tegra_sdhci_device1);
-	platform_device_register(&tegra_sdhci_device0);
 
 	return 0;
 }
