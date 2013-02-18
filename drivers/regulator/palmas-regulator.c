@@ -275,6 +275,11 @@ static unsigned int palmas_smps_ramp_delay[4] = {0, 10000, 5000, 2500};
 #define SMPS_CTRL_MODE_ECO		0x02
 #define SMPS_CTRL_MODE_PWM		0x03
 
+#define SMPS_CTRL_SLEEP_MODE_OFF	0x00
+#define SMPS_CTRL_SLEEP_MODE_ON		0x04
+#define SMPS_CTRL_SLEEP_MODE_ECO	0x08
+#define SMPS_CTRL_SLEEP_MODE_PWM	0x0C
+
 /* These values are derived from the data sheet. And are the number of steps
  * where there is a voltage change, the ranges at beginning and end of register
  * max/min values where there are no change are ommitted.
@@ -434,6 +439,37 @@ static unsigned int palmas_get_mode_smps(struct regulator_dev *dev)
 	return 0;
 }
 
+static int palmas_set_sleep_mode_smps(struct regulator_dev *dev,
+	unsigned int mode)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+	unsigned int reg;
+
+	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
+	reg &= ~PALMAS_SMPS12_CTRL_MODE_SLEEP_MASK;
+
+	switch (mode) {
+	case REGULATOR_MODE_NORMAL:
+		reg |= SMPS_CTRL_SLEEP_MODE_ON;
+		break;
+	case REGULATOR_MODE_IDLE:
+		reg |= SMPS_CTRL_SLEEP_MODE_ECO;
+		break;
+	case REGULATOR_MODE_FAST:
+		reg |= SMPS_CTRL_SLEEP_MODE_PWM;
+		break;
+	case REGULATOR_MODE_STANDBY:
+	case REGULATOR_MODE_OFF:
+		reg |= SMPS_CTRL_SLEEP_MODE_OFF;
+		break;
+	default:
+		return -EINVAL;
+	}
+	palmas_smps_write(pmic->palmas, palmas_regs_info[id].ctrl_addr, reg);
+	return 0;
+}
+
 static int palmas_list_voltage_smps(struct regulator_dev *dev,
 					unsigned selector)
 {
@@ -554,6 +590,7 @@ static struct regulator_ops palmas_ops_smps = {
 	.disable		= palmas_disable_smps,
 	.set_mode		= palmas_set_mode_smps,
 	.get_mode		= palmas_get_mode_smps,
+	.set_sleep_mode		= palmas_set_sleep_mode_smps,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= palmas_list_voltage_smps,
