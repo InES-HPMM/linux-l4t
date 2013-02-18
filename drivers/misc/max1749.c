@@ -63,7 +63,7 @@ static void vibrator_stop(void)
 	}
 }
 
-static void vibrator_work_func(unsigned long data)
+static void vibrator_work_func(struct work_struct *work)
 {
 	vibrator_stop();
 }
