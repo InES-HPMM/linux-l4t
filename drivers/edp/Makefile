@@ -1,9 +1,9 @@
 GCOV_PROFILE := y
 
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp_priority.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= sysfs.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp_overage.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp_fair.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp_bestfit.o
-obj-$(CONFIG_EDP_FRAMEWORK)	+= edp_temporal.o
+obj-y			+= edp.o
+obj-y			+= edp_bestfit.o
+obj-y			+= edp_fair.o
+obj-y			+= edp_overage.o
+obj-y			+= edp_priority.o
+obj-y			+= edp_temporal.o
+obj-y			+= sysfs.o
