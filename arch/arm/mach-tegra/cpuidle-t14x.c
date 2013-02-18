@@ -164,16 +164,6 @@ bool tegra14x_pd_is_allowed(struct cpuidle_device *dev,
 				to_cpumask(&cpu_power_gating_in_idle)))
 		return false;
 
-#ifndef CONFIG_TEGRA_RAIL_OFF_MULTIPLE_CPUS
-	/* FIXME: All CPU's entering LP2 is not working.
-	 * Don't let CPU0 enter LP2 when any secondary CPU is online.
-	 */
-	if ((dev->cpu == 0) && (num_online_cpus() > 1))
-		return false;
-#endif
-	if ((dev->cpu == 0)  && (!tegra_rail_off_is_allowed()))
-		return false;
-
 	request = ktime_to_us(tick_nohz_get_sleep_length());
 	if (state->exit_latency != pd_exit_latencies[cpu_number(dev->cpu)]) {
 		/* possible on the 1st entry after cluster switch*/
