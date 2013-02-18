@@ -1322,6 +1322,17 @@ config SENSORS_VEXPRESS
 	  the ARM Ltd's Versatile Express platform. It can provide wide
 	  range of information like temperature, power, energy.
 
+config SENSORS_TMON_TMP411
+	tristate "Temperature Monitor driver"
+	depends on !SENSORS_TMP401
+	default n
+	help
+	  This driver supports TMP411 sensor by TI. It is used to update
+	  registers dynamically based on the curret temperature.
+
+	  If you say yes here temperature monitor driver will monitor
+	  temperature.
+
 config SENSORS_VIA_CPUTEMP
 	tristate "VIA CPU temperature sensor"
 	depends on X86
