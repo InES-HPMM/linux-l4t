@@ -50,6 +50,12 @@ static void promote(struct work_struct *work)
 	mutex_unlock(&edp_lock);
 }
 
+void schedule_promotion(struct edp_manager *mgr)
+{
+	if (mgr->remaining && mgr->num_denied && mgr->gov->promote)
+		schedule_work(&mgr->work);
+}
+
 int edp_register_manager(struct edp_manager *mgr)
 {
 	int r = -EEXIST;
@@ -70,6 +76,7 @@ int edp_register_manager(struct edp_manager *mgr)
 		INIT_WORK(&mgr->work, promote);
 		mgr->kobj = NULL;
 		edp_manager_add_kobject(mgr);
+		manager_add_dentry(mgr);
 		r = 0;
 	}
 	mutex_unlock(&edp_lock);
@@ -128,6 +135,7 @@ int edp_unregister_manager(struct edp_manager *mgr)
 	} else if (!list_empty(&mgr->clients)) {
 		r = -EBUSY;
 	} else {
+		manager_remove_dentry(mgr);
 		edp_manager_remove_kobject(mgr);
 		edp_set_governor_unlocked(mgr, NULL);
 		list_del(&mgr->link);
@@ -166,7 +174,7 @@ static struct edp_client *find_client(struct edp_manager *mgr,
 	return NULL;
 }
 
-static unsigned int e0_current_sum(struct edp_manager *mgr)
+unsigned int e0_current_sum(struct edp_manager *mgr)
 {
 	struct edp_client *p;
 	unsigned int sum = 0;
@@ -238,6 +246,7 @@ static int register_client(struct edp_manager *mgr, struct edp_client *client)
 	client->ithreshold = client->states[0];
 	client->kobj = NULL;
 	edp_client_add_kobject(client);
+	client_add_dentry(client);
 
 	return 0;
 }
@@ -352,8 +361,8 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 	update_loans(client);
 
 	/* Do not block calling clients for promotions */
-	if (m->remaining > prev_remain && m->num_denied && m->gov->promote)
-		schedule_work(&m->work);
+	if (m->remaining > prev_remain)
+		schedule_promotion(m);
 
 	return 0;
 }
@@ -391,6 +400,7 @@ static int unregister_client(struct edp_client *client)
 	if (client->num_loans)
 		return -EBUSY;
 
+	client_remove_dentry(client);
 	edp_client_remove_kobject(client);
 	close_all_loans(client);
 	mod_request(client, NULL);

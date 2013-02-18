@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -72,5 +72,12 @@ void edp_default_update_request(struct edp_client *client,
 void edp_default_update_loans(struct edp_client *lender);
 unsigned int edp_throttling_point(struct edp_client *c, unsigned int deficit);
 unsigned int edp_promotion_point(struct edp_client *c, unsigned int step);
+
+void manager_add_dentry(struct edp_manager *m);
+void manager_remove_dentry(struct edp_manager *m);
+void client_add_dentry(struct edp_client *c);
+void client_remove_dentry(struct edp_client *c);
+void schedule_promotion(struct edp_manager *m);
+unsigned int e0_current_sum(struct edp_manager *mgr);
 
 #endif

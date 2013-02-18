@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <linux/edp.h>
 #include <mach/edp.h>
 
 #include "fuse.h"
@@ -1105,6 +1106,18 @@ static const struct file_operations edp_reg_override_debugfs_fops = {
 	.release	= single_release,
 };
 
+#ifdef CONFIG_EDP_FRAMEWORK
+static __init struct dentry *tegra_edp_debugfs_dir(void)
+{
+	return edp_debugfs_dir;
+}
+#else
+static __init struct dentry *tegra_edp_debugfs_dir(void)
+{
+	return debugfs_create_dir("edp", NULL);
+}
+#endif
+
 static int __init tegra_edp_debugfs_init(void)
 {
 	struct dentry *d_edp;
@@ -1113,7 +1126,7 @@ static int __init tegra_edp_debugfs_init(void)
 	struct dentry *edp_dir;
 	struct dentry *vdd_cpu_dir;
 
-	edp_dir = debugfs_create_dir("edp", NULL);
+	edp_dir = tegra_edp_debugfs_dir();
 
 	if (!edp_dir)
 		goto edp_dir_err;

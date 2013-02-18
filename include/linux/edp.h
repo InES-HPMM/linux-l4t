@@ -41,6 +41,11 @@ struct edp_manager {
 
 	/* governor internal */
 	void *gov_data;
+
+#ifdef CONFIG_DEBUG_FS
+	/* public */
+	struct dentry *dentry;
+#endif
 };
 
 /*
@@ -85,6 +90,11 @@ struct edp_client {
 	/* governor internal */
 	unsigned int gwt;
 	struct list_head glnk;
+
+#ifdef CONFIG_DEBUG_FS
+	/* public */
+	struct dentry *dentry;
+#endif
 };
 
 struct edp_governor {
@@ -104,6 +114,8 @@ struct edp_governor {
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
+extern struct dentry *edp_debugfs_dir;
+
 extern int edp_register_manager(struct edp_manager *mgr);
 extern int edp_unregister_manager(struct edp_manager *mgr);
 extern struct edp_manager *edp_get_manager(const char *name);
