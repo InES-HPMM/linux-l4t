@@ -1093,6 +1093,20 @@ static int set_machine_constraints(struct regulator_dev *rdev,
 		}
 	}
 
+	if (rdev->constraints->sleep_mode) {
+		if (!ops->set_sleep_mode) {
+			rdev_err(rdev, "no set_sleep_mode operation\n");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		ret = ops->set_sleep_mode(rdev, rdev->constraints->sleep_mode);
+		if (ret < 0) {
+			rdev_err(rdev, "failed to set sleep mode: %d\n", ret);
+			goto out;
+		}
+	}
+
 	/* If the constraints say the regulator should be on at this point
 	 * and we have control then make sure it is enabled.
 	 */

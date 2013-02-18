@@ -125,6 +125,10 @@ struct regulator_ops {
 	int (*set_mode) (struct regulator_dev *, unsigned int mode);
 	unsigned int (*get_mode) (struct regulator_dev *);
 
+	/* get/set regulator sleep mode (defined in consumer.h) */
+	int (*set_sleep_mode) (struct regulator_dev *, unsigned int sleep_mode);
+	unsigned int (*get_sleep_mode) (struct regulator_dev *);
+
 	/* get/set regulator control mode (defined in consumer.h) */
 	int (*set_control_mode) (struct regulator_dev *, unsigned int mode);
 	unsigned int (*get_control_mode) (struct regulator_dev *);
