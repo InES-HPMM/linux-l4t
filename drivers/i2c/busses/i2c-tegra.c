@@ -1124,8 +1124,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 		chip_data = match->data;
-		if (!plat)
-			plat = parse_i2c_tegra_dt(pdev);
+		if (!pdata)
+			pdata = parse_i2c_tegra_dt(pdev);
 		bus_num = of_alias_get_id(pdev->dev.of_node, "i2c");
 		if (bus_num < 0)
 			dev_warn(&pdev->dev, "No bus number specified from device-tree\n");
@@ -1134,9 +1134,9 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 		bus_num = pdev->id;
 	}
 
-	if (IS_ERR(plat) || !plat || !chip_data) {
+	if (IS_ERR(pdata) || !pdata || !chip_data) {
 		dev_err(&pdev->dev, "no platform/chip data?\n");
-		return IS_ERR(plat) ? PTR_ERR(plat) : -ENODEV;
+		return IS_ERR(pdata) ? PTR_ERR(pdata) : -ENODEV;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
