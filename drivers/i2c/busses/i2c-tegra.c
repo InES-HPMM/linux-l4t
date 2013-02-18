@@ -181,6 +181,9 @@ struct tegra_i2c_dev {
 	struct i2c_adapter adapter;
 	struct clk *div_clk;
 	struct clk *fast_clk;
+	bool needs_cl_dvfs_clock;
+	struct clk *dvfs_ref_clk;
+	struct clk *dvfs_soc_clk;
 	spinlock_t fifo_lock;
 	void __iomem *base;
 	int cont_id;
@@ -459,20 +462,46 @@ static void tegra_i2c_slave_init(struct tegra_i2c_dev *i2c_dev)
 static inline int tegra_i2c_clock_enable(struct tegra_i2c_dev *i2c_dev)
 {
 	int ret;
+
+	if (i2c_dev->needs_cl_dvfs_clock) {
+		ret = clk_prepare_enable(i2c_dev->dvfs_soc_clk);
+		if (ret < 0) {
+			dev_err(i2c_dev->dev,
+				"Error in enabling dvfs soc clock %d\n", ret);
+			return ret;
+		}
+		ret = clk_prepare_enable(i2c_dev->dvfs_ref_clk);
+		if (ret < 0) {
+			dev_err(i2c_dev->dev,
+				"Error in enabling dvfs ref clock %d\n", ret);
+			goto ref_clk_err;
+		}
+	}
 	if (i2c_dev->chipdata->has_fast_clock) {
 		ret = clk_prepare_enable(i2c_dev->fast_clk);
 		if (ret < 0) {
 			dev_err(i2c_dev->dev,
 				"Enabling fast clk failed, err %d\n", ret);
-			return ret;
+			goto fast_clk_err;
 		}
 	}
 	ret = clk_prepare_enable(i2c_dev->div_clk);
 	if (ret < 0) {
 		dev_err(i2c_dev->dev,
 			"Enabling div clk failed, err %d\n", ret);
-		clk_disable_unprepare(i2c_dev->fast_clk);
+		goto div_clk_err;
 	}
+	return 0;
+
+div_clk_err:
+	if (i2c_dev->chipdata->has_fast_clock)
+		clk_disable_unprepare(i2c_dev->fast_clk);
+fast_clk_err:
+	if (i2c_dev->needs_cl_dvfs_clock)
+		clk_disable_unprepare(i2c_dev->dvfs_ref_clk);
+ref_clk_err:
+	if (i2c_dev->needs_cl_dvfs_clock)
+		clk_disable_unprepare(i2c_dev->dvfs_soc_clk);
 	return ret;
 }
 
@@ -481,6 +510,10 @@ static inline void tegra_i2c_clock_disable(struct tegra_i2c_dev *i2c_dev)
 	clk_disable_unprepare(i2c_dev->div_clk);
 	if (i2c_dev->chipdata->has_fast_clock)
 		clk_disable_unprepare(i2c_dev->fast_clk);
+	if (i2c_dev->needs_cl_dvfs_clock) {
+		clk_disable_unprepare(i2c_dev->dvfs_soc_clk);
+		clk_disable_unprepare(i2c_dev->dvfs_ref_clk);
+	}
 }
 
 static void tegra_i2c_set_clk_rate(struct tegra_i2c_dev *i2c_dev)
@@ -1171,6 +1204,8 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct clk *div_clk;
 	struct clk *fast_clk = NULL;
+	struct clk *dvfs_ref_clk = NULL;
+	struct clk *dvfs_soc_clk = NULL;
 	void __iomem *base;
 	int irq;
 	int ret = 0;
@@ -1224,6 +1259,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	}
 
 	i2c_dev->chipdata = chip_data;
+	i2c_dev->needs_cl_dvfs_clock = pdata->needs_cl_dvfs_clock;
 
 	div_clk = devm_clk_get(&pdev->dev, "div-clk");
 	if (IS_ERR(div_clk)) {
@@ -1237,6 +1273,21 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "missing bus clock");
 			return PTR_ERR(fast_clk);
 		}
+	}
+
+	if (i2c_dev->needs_cl_dvfs_clock) {
+		dvfs_ref_clk = devm_clk_get(&pdev->dev, "cl_dvfs_ref");
+		if (IS_ERR(dvfs_ref_clk)) {
+			dev_err(&pdev->dev, "missing cl_dvfs_ref clock");
+			return PTR_ERR(dvfs_ref_clk);
+		}
+		i2c_dev->dvfs_ref_clk = dvfs_ref_clk;
+		dvfs_soc_clk = devm_clk_get(&pdev->dev, "cl_dvfs_soc");
+		if (IS_ERR(dvfs_soc_clk)) {
+			dev_err(&pdev->dev, "missing cl_dvfs_soc clock");
+			return PTR_ERR(dvfs_soc_clk);
+		}
+		i2c_dev->dvfs_soc_clk = dvfs_soc_clk;
 	}
 
 	i2c_dev->base = base;
