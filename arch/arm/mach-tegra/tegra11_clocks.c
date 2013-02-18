@@ -6822,6 +6822,8 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("i2c3", "tegra-i2c-slave.2", NULL),
 	CLK_DUPLICATE("i2c4", "tegra-i2c-slave.3", NULL),
 	CLK_DUPLICATE("i2c5", "tegra-i2c-slave.4", NULL),
+	CLK_DUPLICATE("cl_dvfs_soc", "tegra11-i2c.4", NULL),
+	CLK_DUPLICATE("cl_dvfs_ref", "tegra11-i2c.4", NULL),
 	CLK_DUPLICATE("sbc1", "tegra11-spi-slave.0", NULL),
 	CLK_DUPLICATE("sbc2", "tegra11-spi-slave.1", NULL),
 	CLK_DUPLICATE("sbc3", "tegra11-spi-slave.2", NULL),
