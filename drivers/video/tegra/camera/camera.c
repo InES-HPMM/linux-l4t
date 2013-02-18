@@ -278,7 +278,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	return camera;
 
 clk_get_fail:
-	for (; i > 0; i--)
+	while (i--)
 		clk_put(camera->clock[clock_init[i].index].clk);
 	misc_deregister(&camera->misc_dev);
 misc_register_fail:
