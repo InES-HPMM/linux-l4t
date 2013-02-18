@@ -95,6 +95,12 @@ bool tegra_usb_phy_hw_accessible(struct tegra_usb_phy *phy);
 bool tegra_usb_phy_charger_detected(struct tegra_usb_phy *phy);
 
 /**
+ * Indicates whether nvidia proprietary charger is connected or not
+ * if nvidia proprietary charger is detected then returns true else false
+ */
+bool tegra_usb_phy_nv_charger_detected(struct tegra_usb_phy *phy);
+
+/**
  * Indicates whether phy resumed due to the pmc remote/hotplug wake event
  *  or not, returns true if remote/hotplug wake is detected.
  */

@@ -1320,6 +1320,10 @@ static int tegra_usb_set_charging_current(struct tegra_udc *udc)
 		pr_debug("detected CDP port(1A USB port)");
 		max_ua = USB_CHARGING_CDP_CURRENT_LIMIT_UA;
 		break;
+	case CONNECT_TYPE_NV_CHARGER:
+		pr_debug("detected NV charging port");
+		max_ua = USB_CHARGING_NV_CHARGER_CURRENT_LIMIT_UA;
+		break;
 	case CONNECT_TYPE_NON_STANDARD_CHARGER:
 		pr_debug("detected non-standard charging port");
 		max_ua = USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA;
@@ -1408,15 +1412,18 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		if (tegra_usb_phy_charger_detected(udc->phy)) {
 			tegra_detect_charging_type_is_cdp_or_dcp(udc);
 		} else {
-			udc->connect_type = CONNECT_TYPE_SDP;
-			/*
-			 * Schedule work to wait for 1000 msec and check for
-			 * a non-standard charger if setup packet is not
-			 * received.
-			 */
-			schedule_delayed_work(&udc->non_std_charger_work,
-				msecs_to_jiffies(
-				USB_CHARGER_DETECTION_WAIT_TIME_MS));
+			if (tegra_usb_phy_nv_charger_detected(udc->phy)) {
+				udc->connect_type = CONNECT_TYPE_NV_CHARGER;
+			} else {
+				udc->connect_type = CONNECT_TYPE_SDP;
+				/* Schedule work to wait for 4000 msec and check
+				 * for a non-standard charger if setup packet is
+				 * not received.
+				 */
+				schedule_delayed_work(&udc->non_std_charger_work
+					, msecs_to_jiffies(
+					USB_CHARGER_DETECTION_WAIT_TIME_MS));
+			}
 		}
 		/* start the controller */
 		dr_controller_run(udc);
