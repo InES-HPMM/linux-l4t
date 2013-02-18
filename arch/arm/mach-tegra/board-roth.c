@@ -231,6 +231,7 @@ static struct tegra_i2c_platform_data roth_i2c5_platform_data = {
 	.bus_clk_rate	= 400000,
 	.scl_gpio	= TEGRA_GPIO_I2C5_SCL,
 	.sda_gpio	= TEGRA_GPIO_I2C5_SDA,
+	.needs_cl_dvfs_clock = true,
 };
 
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
