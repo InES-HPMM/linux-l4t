@@ -414,6 +414,8 @@ static int max17048_initialize(struct max17048_chip *chip)
 		config = 32 - (mdata->alert_threshold * 2);
 	else if (mdata->bits == 18)
 		config = 32 - mdata->alert_threshold;
+	else
+		WARN_ON("Unknown mdata->bits");
 
 	config = mdata->one_percent_alerts | config;
 
@@ -597,7 +599,7 @@ static int max17048_resume(struct i2c_client *client)
 
 	update_charger_status();
 
-	schedule_work(&chip->work);
+	schedule_delayed_work(&chip->work, 0);
 	return 0;
 }
 
