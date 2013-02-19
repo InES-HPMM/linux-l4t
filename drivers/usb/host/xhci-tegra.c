@@ -1391,12 +1391,14 @@ tegra_xhci_padctl_enable_usb_vbus(struct tegra_xhci_hcd *tegra)
 	 * for USB 2.0 ports owned by XUSB and USB2:
 	 */
 	reg = readl(tegra->padctl_base + SNPS_OC_MAP_0);
+	reg &= ~(0x1ff << 0);
 	reg |= xusb_padctl->snps_oc_map;
 	writel(reg, tegra->padctl_base + SNPS_OC_MAP_0);
 	reg = readl(tegra->padctl_base + SNPS_OC_MAP_0);
 
 	reg = readl(tegra->padctl_base + OC_DET_0);
-	reg = xusb_padctl->oc_det;
+	reg &= ~(0x3f << 10);
+	reg |= xusb_padctl->oc_det;
 	writel(reg, tegra->padctl_base + OC_DET_0);
 
 	/* check if over current seen. Clear if present */
@@ -1413,6 +1415,7 @@ tegra_xhci_padctl_enable_usb_vbus(struct tegra_xhci_hcd *tegra)
 	}
 
 	reg = readl(tegra->padctl_base + USB2_OC_MAP_0);
+	reg &= ~(0x3f << 0);
 	reg |= xusb_padctl->usb2_oc_map;
 	writel(reg, tegra->padctl_base + USB2_OC_MAP_0);
 }
@@ -1431,13 +1434,15 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	 * FUSE setting read 0x10 for hs_curr_level causing
 	 * SS/HS/FS hub re-enumeration.
 	 */
-	xusb_padctl->hs_curr_level = 0x30;
+	xusb_padctl->hs_curr_level_pad0 = 0x30;
+	xusb_padctl->hs_curr_level_pad1 = 0x30;
 
 	/* Program the following XUSB PADCTL registers to assign
 	 * the USB2.0 ports to XUSB or USB2, according to the platform
 	 * specific configuration
 	 */
 	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
+	reg &= ~(0xf << 2);
 	reg |= xusb_padctl->pad_mux;
 	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
 
@@ -1446,6 +1451,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	 * according to the platform specific configuration:
 	 */
 	reg = readl(tegra->padctl_base + USB2_PORT_CAP_0);
+	reg &= ~((0x3 << 4) | (0x3 << 0));
 	reg |= xusb_padctl->port_cap;
 	writel(reg, tegra->padctl_base + USB2_PORT_CAP_0);
 
@@ -1458,17 +1464,18 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	 * platform specific configuration
 	 */
 	reg = readl(tegra->padctl_base + SS_PORT_MAP_0);
+	reg &= ~(0x7 << 0);
 	reg |= xusb_padctl->ss_port_map;
 	writel(reg, tegra->padctl_base + SS_PORT_MAP_0);
 
 	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD0_CTL_2_0);
-	reg &= ~0xfffffff0; /* clear needed field */
+	reg &= ~0xfffffff0;
 	reg |= xusb_padctl->rx_wander | xusb_padctl->rx_eq |
 			xusb_padctl->cdr_cntl;
 	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD0_CTL_2_0);
 
 	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD1_CTL_2_0);
-	reg &= ~0xfffffff0; /* clear needed field */
+	reg &= ~0xfffffff0;
 	reg |= xusb_padctl->rx_wander | xusb_padctl->rx_eq |
 			xusb_padctl->cdr_cntl;
 	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_2_0);
@@ -1482,46 +1489,44 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD0_CTL_0_0);
-	reg &= xusb_padctl->otg_pad0_ctl0;
-	reg |= xusb_padctl->hs_slew;
-	reg &= ~(0x83f << 0);
-	reg |= xusb_padctl->hs_curr_level;
+	reg &= ~((0xfff << 0) | (0x1f << 19));
+	reg |= xusb_padctl->hs_slew
+		| xusb_padctl->hs_curr_level_pad0 | xusb_padctl->otg_pad0_ctl0;
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD0_CTL_0_0);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD1_CTL_0_0);
-	reg &= xusb_padctl->otg_pad1_ctl0;
-	reg |= xusb_padctl->hs_slew;
-	reg &= ~(0x83f << 0);
-	reg |= xusb_padctl->hs_curr_level;
+	reg &= ~((0xfff << 0) | (0x1f << 19));
+	reg |= xusb_padctl->hs_slew
+		| xusb_padctl->hs_curr_level_pad1 | xusb_padctl->otg_pad1_ctl0;
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD1_CTL_0_0);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD0_CTL_1_0);
-	reg ^= xusb_padctl->otg_pad0_ctl1;
-	reg &= ~((0x3 << 9) | (0xf << 3));
-	reg |= (xusb_padctl->hs_iref_cap << 9) |
-					(xusb_padctl->hs_term_range_adj << 3);
+	reg &= ~((0x7 << 0) | (0x3 << 9) | (0xf << 3));
+	reg |= (xusb_padctl->otg_pad0_ctl1 << 0)
+		| (xusb_padctl->hs_iref_cap << 9)
+		| (xusb_padctl->hs_term_range_adj << 3);
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD0_CTL_1_0);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD1_CTL_1_0);
-	reg ^= xusb_padctl->otg_pad1_ctl1;
-	reg &= ~((0x3 << 9) | (0xf << 3));
-	reg |= (xusb_padctl->hs_iref_cap << 9) |
-					(xusb_padctl->hs_term_range_adj << 3);
+	reg &= ~((0x7 << 0) | (0xf << 3) | (0x3 << 9));
+	reg |= (xusb_padctl->otg_pad1_ctl1 << 0)
+		| (xusb_padctl->hs_term_range_adj << 3)
+		| (xusb_padctl->hs_iref_cap << 9);
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD1_CTL_1_0);
 
 	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg &= xusb_padctl->bias_pad_ctl0;
-	reg |= HS_DISCON_LEVEL(5);
-	reg &= ~(0x3 << 0);
-	reg |= xusb_padctl->hs_squelch_level;
+	reg &= ~((0x1f << 0) | (0x3 << 12));
+	reg |= xusb_padctl->hs_squelch_level | xusb_padctl->hs_disc_lvl;
 	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
 	reg = readl(tegra->padctl_base + HSIC_PAD0_CTL_0_0);
-	reg &= xusb_padctl->hsic_pad0_ctl0;
+	reg &= ~(0xff << 8);
+	reg |= xusb_padctl->hsic_pad0_ctl0;
 	writel(reg, tegra->padctl_base + HSIC_PAD0_CTL_0_0);
 
 	reg = readl(tegra->padctl_base + HSIC_PAD1_CTL_0_0);
-	reg &= xusb_padctl->hsic_pad0_ctl1;
+	reg &= ~(0xff << 8);
+	reg |= xusb_padctl->hsic_pad0_ctl1;
 	writel(reg, tegra->padctl_base + HSIC_PAD1_CTL_0_0);
 }
 
