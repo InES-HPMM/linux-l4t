@@ -37,11 +37,9 @@ static struct regulator *vdd_lcd_s_1v8;
 static struct regulator *vdd_sys_bl_3v7;
 static struct regulator *avdd_lcd_3v0_2v8;
 
-
 static bool dsi_l_720p_5_reg_requested;
 static bool dsi_l_720p_5_gpio_requested;
 static bool is_bl_powered;
-
 
 #ifdef CONFIG_TEGRA_DC_CMU
 static struct tegra_dc_cmu dsi_l_720p_5_cmu = {
@@ -360,7 +358,11 @@ static int dsi_l_720p_5_reg_get(void)
 	if (dsi_l_720p_5_reg_requested)
 		return 0;
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd_ext");
+#else
 	avdd_lcd_3v0_2v8 = regulator_get(NULL, "avdd_lcd");
+#endif
 	if (IS_ERR_OR_NULL(avdd_lcd_3v0_2v8)) {
 		pr_err("avdd_lcd regulator get failed\n");
 		err = PTR_ERR(avdd_lcd_3v0_2v8);
