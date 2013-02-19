@@ -34,7 +34,6 @@
 static unsigned short target_frame_time;
 static unsigned short last_frame_time;
 static ktime_t last_flip;
-static unsigned int multiple_app_disable;
 static spinlock_t lock;
 
 #define EMA_PERIOD 16
@@ -46,6 +45,9 @@ static long frame_time_sum; /* used for fps EMA */
 static struct work_struct work;
 static int throughput_hint;
 
+static int sync_rate;
+static int throughput_active_app_count;
+
 static void set_throughput_hint(struct work_struct *work)
 {
 	/* notify throughput hint clients here */
@@ -56,10 +58,6 @@ static void throughput_flip_callback(void)
 {
 	long timediff;
 	ktime_t now;
-
-	/* only register flips when a single app is active */
-	if (multiple_app_disable)
-		return NOTIFY_DONE;
 
 	now = ktime_get();
 
@@ -74,13 +72,14 @@ static void throughput_flip_callback(void)
 		if (last_frame_time == 0) {
 			pr_warn("%s: flips %lld nsec apart\n",
 				__func__, now.tv64 - last_flip.tv64);
-			return NOTIFY_DONE;
+			return;
 		}
 
 		throughput_hint =
 			((int) target_frame_time * 1000) / last_frame_time;
 
-		if (!work_pending(&work))
+		/* only deliver throughput hints when a single app is active */
+		if (throughput_active_app_count == 1 && !work_pending(&work))
 			schedule_work(&work);
 
 		if (frame_time_sum_init) {
@@ -97,9 +96,6 @@ static void throughput_flip_callback(void)
 	return NOTIFY_OK;
 }
 
-static int sync_rate;
-static int throughput_active_app_count;
-
 static void reset_target_frame_time(void)
 {
 	if (sync_rate == 0) {
@@ -115,23 +111,13 @@ static void reset_target_frame_time(void)
 		__func__, sync_rate, target_frame_time);
 }
 
-static int callback_initialized;
-
 static int throughput_open(struct inode *inode, struct file *file)
 {
 	spin_lock(&lock);
 
-	if (!callback_initialized) {
-		callback_initialized = 1;
-		tegra_dc_set_flip_callback(throughput_flip_callback);
-	}
-
 	throughput_active_app_count++;
-	if (throughput_active_app_count > 1) {
-		multiple_app_disable = 1;
-		frame_time_sum_init = 1;
-		frame_time_sum = 0;
-	}
+	frame_time_sum_init = 1;
+	frame_time_sum = 0;
 
 	spin_unlock(&lock);
 
@@ -146,14 +132,11 @@ static int throughput_release(struct inode *inode, struct file *file)
 	spin_lock(&lock);
 
 	throughput_active_app_count--;
-	if (throughput_active_app_count == 0) {
+	frame_time_sum_init = 1;
+	frame_time_sum = 0;
+
+	if (throughput_active_app_count == 1)
 		reset_target_frame_time();
-		multiple_app_disable = 0;
-		callback_initialized = 0;
-		frame_time_sum_init = 1;
-		frame_time_sum = 0;
-		tegra_dc_unset_flip_callback();
-	}
 
 	spin_unlock(&lock);
 
@@ -164,13 +147,9 @@ static int throughput_release(struct inode *inode, struct file *file)
 
 static int throughput_set_target_fps(unsigned long arg)
 {
-	int disable;
-
 	pr_debug("%s: target fps %lu requested\n", __func__, arg);
 
-	disable = multiple_app_disable;
-
-	if (disable) {
+	if (throughput_active_app_count != 1) {
 		pr_debug("%s: %d active apps, disabling fps usage\n",
 			__func__, throughput_active_app_count);
 		return 0;
@@ -268,6 +247,8 @@ int __init throughput_init_miscdev(void)
 
 	debugfs_create_file("fps", 0444, NULL, NULL, &fps_fops);
 
+	tegra_dc_set_flip_callback(throughput_flip_callback);
+
 	return 0;
 }
 
@@ -276,6 +257,8 @@ module_init(throughput_init_miscdev);
 void __exit throughput_exit_miscdev(void)
 {
 	pr_debug("%s: exiting\n", __func__);
+
+	tegra_dc_unset_flip_callback();
 
 	cancel_work_sync(&work);
 
