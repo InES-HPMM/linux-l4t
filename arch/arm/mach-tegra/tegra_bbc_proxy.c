@@ -308,11 +308,63 @@ static ssize_t iso_realize_store(struct device *dev,
 	return size;
 }
 
+
+static ssize_t iso_res_realize_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	unsigned int bw;
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	sscanf(buf, "%u", &bw);
+
+	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, 4);
+	if (!ret) {
+		dev_err(dev, "can't reserve iso bw\n");
+		return size;
+	}
+
+	ret = tegra_isomgr_realize(bbc->isomgr_handle);
+
+	if (!ret) {
+		dev_err(dev, "can't realize iso bw\n");
+	return size;
+	}
+
+/* TODO: set LA*/
+
+	return size;
+}
+
+static ssize_t iso_register_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	unsigned int bw;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	sscanf(buf, "%u", &bw);
+
+	if (bbc->isomgr_handle)
+		tegra_isomgr_unregister(bbc->isomgr_handle);
+
+	bbc->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_BBC_0,
+		bw, NULL, NULL);
+
+	return size;
+}
+
+
+
 static DEVICE_ATTR(la_bbcr, S_IWUSR, NULL, la_bbcr_store);
 static DEVICE_ATTR(la_bbcw, S_IWUSR, NULL, la_bbcw_store);
 static DEVICE_ATTR(la_bbcllr, S_IWUSR, NULL, la_bbcllr_store);
 static DEVICE_ATTR(iso_reserve, S_IWUSR, NULL, iso_reserve_store);
 static DEVICE_ATTR(iso_realize, S_IWUSR, NULL, iso_realize_store);
+static DEVICE_ATTR(iso_reserve_realize, S_IWUSR, NULL, iso_res_realize_store);
+static DEVICE_ATTR(iso_register, S_IWUSR, NULL, iso_register_store);
+
 
 static struct device_attribute *mc_attributes[] = {
 	&dev_attr_la_bbcr,
@@ -320,8 +372,11 @@ static struct device_attribute *mc_attributes[] = {
 	&dev_attr_la_bbcllr,
 	&dev_attr_iso_reserve,
 	&dev_attr_iso_realize,
+	&dev_attr_iso_reserve_realize,
+	&dev_attr_iso_register,
 	NULL
 };
+
 
 static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 {
@@ -395,7 +450,7 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 
 	/* for bringup we will reserve/realize through sysfs */
 	bbc->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_BBC_0,
-						MAX_ISO_BW_REQ, NULL, NULL);
+		MAX_ISO_BW_REQ, NULL, NULL);
 	if (!bbc->isomgr_handle)
 		goto iso_error;
 
