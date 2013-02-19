@@ -35,6 +35,8 @@ struct tegra_spi_device_controller_data {
 	bool is_hw_based_cs;
 	int cs_setup_clk_count;
 	int cs_hold_clk_count;
+	int rx_clk_tap_delay;
+	int tx_clk_tap_delay;
 };
 
 #endif /* _LINUX_SPI_TEGRA_H */
