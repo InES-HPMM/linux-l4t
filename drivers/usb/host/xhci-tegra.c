@@ -198,6 +198,10 @@ struct cfgtbl {
 	u32 l2_imem_end;
 	u32 version_id;
 	u8 init_ddirect;
+	u8 reserved[3];
+	u32 phys_addr_log_buffer;
+	u32 total_log_entries;
+	u32 dequeue_ptr;
 
 	/*	Below two dummy variables are used to replace
 	 *	L2IMemSymTabOffsetInDFI and L2IMemSymTabSize in order to
@@ -208,6 +212,9 @@ struct cfgtbl {
 
 	/* fwimg_len */
 	u32 fwimg_len;
+	u8 magic[8];
+	u32 SS_low_power_entry_timeout;
+	u8 padding[140]; /* padding bytes to makeup 256-bytes cfgtbl */
 };
 
 struct xusb_save_regs {
@@ -232,6 +239,12 @@ struct xusb_save_regs {
 	u32 cfg_order;
 	u32 cfg_fladj;
 	u32 cfg_sid;
+};
+
+struct tegra_xhci_firmware {
+	void *data; /* kernel virtual address */
+	size_t size; /* firmware size */
+	dma_addr_t dma; /* dma address for controller */
 };
 
 struct tegra_xhci_hcd {
@@ -333,9 +346,7 @@ struct tegra_xhci_hcd {
 	bool hc_in_elpg;
 
 	/* firmware loading related */
-	u32 fw_phys_base;
-	u32 fw_virt_base;
-	u32 fw_size;
+	struct tegra_xhci_firmware firmware;
 };
 
 /* functions */
@@ -822,138 +833,6 @@ void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
 
 	dev_dbg(&pdev->dev, "csb_write: input_addr = 0x%08x data = %0x08x\n",
 			input_addr, data);
-}
-
-static int tegra_xhci_load_firmware(struct tegra_xhci_hcd *tegra, bool reset)
-{
-	struct platform_device *pdev = tegra->pdev;
-	u32 fw_virt_base = tegra->fw_virt_base;
-	u32 fw_phys_base = tegra->fw_phys_base;
-	u32 fw_size = tegra->fw_size;
-	u64 phys_addr_lo, phys_addr_hi = 0;
-	u32 HwReg, boot_start, imem_block_start;
-	u32 boot_code_tag, boot_code_pc, imem_block_size;
-	struct cfgtbl *cfg_tbl;
-	u16 nblocks, rbytes;
-	time_t fw_time;
-	struct tm fw_tm;
-	int ret = 0;
-
-	/* First thing, reset the ARU. By the time we get to
-	 * loading boot code below, reset would be complete.
-	 * alternatively we can busy wait on rst pending bit.
-	 */
-	/* Don't reset during ELPG/LP0 exit path */
-	if (reset) {
-		iowrite32(0x1, tegra->fpci_base + XUSB_CFG_ARU_RST);
-		usleep_range(1000, 2000);
-	}
-
-	if (csb_read(tegra, XUSB_CSB_MP_ILOAD_BASE_LO) != 0) {
-
-		dev_dbg(&pdev->dev, "fw already loaded by BIOS\n");
-		dev_dbg(&pdev->dev, "falcon state = %x\n",
-				csb_read(tegra, XUSB_FALC_CPUCTL));
-		return 0;
-	}
-	imem_block_size = IMEM_BLOCK_SIZE;
-	/* TODO: use readl/writel to access mapped memory region */
-	cfg_tbl = (struct cfgtbl *)fw_virt_base;
-
-	fw_time = cfg_tbl->fwimg_created_time;
-	time_to_tm(fw_time, 0, &fw_tm);
-	dev_dbg(&pdev->dev, "%s: fwimg_created_time %ld-%02d-%02d "\
-		"%02d:%02d:%02d UTC\n", __func__, fw_tm.tm_year + 1900,
-		fw_tm.tm_mon + 1, fw_tm.tm_mday, fw_tm.tm_hour, fw_tm.tm_min,
-		fw_tm.tm_sec);
-
-	/* Offset from start of code region in DFI
-	 * (does not include 256 byte cfgtbl)
-	 */
-
-	boot_start = (u32)((u8 *)cfg_tbl->boot_codedfi_offset  + 256);
-	imem_block_start = cfg_tbl->boot_loadaddr_in_imem/IMEM_BLOCK_SIZE;
-	boot_code_pc = cfg_tbl->boot_codetag;
-
-	/* below to be programmed to BOOTVEC as start of boot code */
-	boot_code_tag = cfg_tbl->boot_codetag/256;
-
-	nblocks = cfg_tbl->boot_codesize/imem_block_size;
-	rbytes = cfg_tbl->boot_codesize % imem_block_size;
-
-	phys_addr_lo = (u32) ((char *)fw_phys_base + 256);
-
-	/* Program the size of DFI into ILOAD_ATTR */
-	csb_write(tegra, XUSB_CSB_MP_ILOAD_ATTR, fw_size);
-
-	/* Boot code of the firmware reads the ILOAD_BASE_LO register
-	 * to get to the start of the dfi in system memory.
-	 */
-	csb_write(tegra, XUSB_CSB_MP_ILOAD_BASE_LO, phys_addr_lo);
-
-	/* Program the ILOAD_BASE_HI with a value of MSB 32 bits */
-	csb_write(tegra, XUSB_CSB_MP_ILOAD_BASE_HI, phys_addr_hi);
-
-	/* Set BOOTPATH to 1 in APMAP Register.Bit 31 is APMAP_BOOTMAP */
-	HwReg = APMAP_BOOTPATH;
-	csb_write(tegra, XUSB_CSB_MP_APMAP, HwReg);
-
-	/* Invalidate l2imem. */
-	HwReg = L2IMEM_INVALIDATE_ALL;
-	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_TRIG, HwReg);
-
-	/* Initiate Fetch of Bootcode from system memory into l2imem.
-	 * a. Program BootCode location and size in system memory.
-	 */
-
-	HwReg = (((cfg_tbl->boot_codetag/imem_block_size)
-			<< L2IMEMOP_SIZE_SRC_OFFSET_SHIFT)
-			| ((cfg_tbl->boot_codesize/imem_block_size)
-			<< L2IMEMOP_SIZE_SRC_COUNT_SHIFT)
-			);
-
-	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_SIZE, HwReg);
-
-	/* b. Trigger Load operation. */
-	HwReg = L2IMEM_LOAD_LOCKED_RESULT << L2IMEMOP_TRIG_LOAD_LOCKED_SHIFT;
-	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_TRIG, HwReg);
-
-	/* Program the size of autofill section */
-	HwReg = cfg_tbl->boot_codesize/imem_block_size;
-	csb_write(tegra, XUSB_FALC_IMFILLCTL, HwReg);
-
-
-	/* Program TagLo/TagHi of autofill section. */
-	HwReg = ((cfg_tbl->boot_codetag/imem_block_size)|
-				(((cfg_tbl->boot_codetag+cfg_tbl->boot_codesize)
-				/imem_block_size-1)<<IMFILLRNG1_TAG_HI_SHIFT));
-
-	csb_write(tegra, XUSB_FALC_IMFILLRNG1, HwReg);
-
-	/* Write 0x0 to DMACTL register. */
-	csb_write(tegra, XUSB_FALC_DMACTL, 0x0);
-
-	/* write to BOOTVEC register */
-	csb_write(tegra, XUSB_FALC_BOOTVEC, boot_code_pc);
-
-	/* Start Falcon CPU */
-	csb_write(tegra, XUSB_FALC_CPUCTL, CPUCTL_STARTCPU);
-	usleep_range(1000, 2000);
-
-	dev_info(&pdev->dev,
-		"load fw created at %ld-%02d-%02d %02d:%02d:%02d "\
-		"UTC falcon state = %x\n", fw_tm.tm_year + 1900,
-		fw_tm.tm_mon + 1, fw_tm.tm_mday, fw_tm.tm_hour,
-		fw_tm.tm_min, fw_tm.tm_sec,
-		csb_read(tegra, XUSB_FALC_CPUCTL));
-
-	/* return fail if firmware status is not good */
-	if (csb_read(tegra, XUSB_FALC_CPUCTL) == XUSB_FALC_STATE_HALTED)
-		ret = -EFAULT;
-	else
-		ret = 0;
-
-	return ret;
 }
 
 static void tegra_xhci_debug_read_pads(struct tegra_xhci_hcd *tegra)
@@ -1777,25 +1656,116 @@ tegra_xhci_restore_ctx(struct tegra_xhci_hcd *tegra)
 		tegra->ipfs_base + IPFS_XUSB_HOST_MCCIF_FIFOCTRL_0);
 }
 
-static int
-tegra_xhci_load_fw_from_pmc(struct tegra_xhci_hcd *tegra, bool reset)
+static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 {
-	u32 cnr, count = 0xff;
 	struct platform_device *pdev = tegra->pdev;
+	struct cfgtbl *cfg_tbl = (struct cfgtbl *) tegra->firmware.data;
+	u32 phys_addr_lo;
+	u32 HwReg;
+	u16 nblocks;
+	time_t fw_time;
+	struct tm fw_tm;
+	u8 hc_caplength;
+	u32 usbsts, count = 0xff;
+	struct xhci_cap_regs __iomem *cap_regs;
+	struct xhci_op_regs __iomem *op_regs;
 
-	if (tegra_xhci_load_firmware(tegra, reset)) {
-		dev_err(&pdev->dev, "Firmware load unsuccessful\n");
-		return -ENODEV;
+	/* First thing, reset the ARU. By the time we get to
+	 * loading boot code below, reset would be complete.
+	 * alternatively we can busy wait on rst pending bit.
+	 */
+	/* Don't reset during ELPG/LP0 exit path */
+	if (resetARU) {
+		iowrite32(0x1, tegra->fpci_base + XUSB_CFG_ARU_RST);
+		usleep_range(1000, 2000);
 	}
 
-	/* wait for CNR to get set */
+	if (csb_read(tegra, XUSB_CSB_MP_ILOAD_BASE_LO) != 0) {
+		dev_info(&pdev->dev, "Firmware already loaded, Falcon state 0x%x\n",
+				csb_read(tegra, XUSB_FALC_CPUCTL));
+		return 0;
+	}
+
+	phys_addr_lo = tegra->firmware.dma;
+	phys_addr_lo += sizeof(struct cfgtbl);
+
+	/* Program the size of DFI into ILOAD_ATTR */
+	csb_write(tegra, XUSB_CSB_MP_ILOAD_ATTR, tegra->firmware.size);
+
+	/* Boot code of the firmware reads the ILOAD_BASE_LO register
+	 * to get to the start of the dfi in system memory.
+	 */
+	csb_write(tegra, XUSB_CSB_MP_ILOAD_BASE_LO, phys_addr_lo);
+
+	/* Program the ILOAD_BASE_HI with a value of MSB 32 bits */
+	csb_write(tegra, XUSB_CSB_MP_ILOAD_BASE_HI, 0);
+
+	/* Set BOOTPATH to 1 in APMAP Register. Bit 31 is APMAP_BOOTMAP */
+	csb_write(tegra, XUSB_CSB_MP_APMAP, APMAP_BOOTPATH);
+
+	/* Invalidate L2IMEM. */
+	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_TRIG, L2IMEM_INVALIDATE_ALL);
+
+	/* Initiate fetch of Bootcode from system memory into L2IMEM.
+	 * Program BootCode location and size in system memory.
+	 */
+	HwReg = ((cfg_tbl->boot_codetag / IMEM_BLOCK_SIZE) &
+			L2IMEMOP_SIZE_SRC_OFFSET_MASK)
+			<< L2IMEMOP_SIZE_SRC_OFFSET_SHIFT;
+	HwReg |= ((cfg_tbl->boot_codesize / IMEM_BLOCK_SIZE) &
+			L2IMEMOP_SIZE_SRC_COUNT_MASK)
+			<< L2IMEMOP_SIZE_SRC_COUNT_SHIFT;
+	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_SIZE, HwReg);
+
+	/* Trigger L2IMEM Load operation. */
+	csb_write(tegra, XUSB_CSB_MP_L2IMEMOP_TRIG, L2IMEM_LOAD_LOCKED_RESULT);
+
+	/* Setup Falcon Auto-fill */
+	nblocks = (cfg_tbl->boot_codesize / IMEM_BLOCK_SIZE);
+	if ((cfg_tbl->boot_codesize % IMEM_BLOCK_SIZE) != 0)
+		nblocks += 1;
+	csb_write(tegra, XUSB_FALC_IMFILLCTL, nblocks);
+
+	HwReg = (cfg_tbl->boot_codetag / IMEM_BLOCK_SIZE) & IMFILLRNG_TAG_MASK;
+	HwReg |= (((cfg_tbl->boot_codetag + cfg_tbl->boot_codesize)
+			/IMEM_BLOCK_SIZE) - 1) << IMFILLRNG1_TAG_HI_SHIFT;
+	csb_write(tegra, XUSB_FALC_IMFILLRNG1, HwReg);
+
+	csb_write(tegra, XUSB_FALC_DMACTL, 0);
+	msleep(50);
+
+	csb_write(tegra, XUSB_FALC_BOOTVEC, cfg_tbl->boot_codetag);
+
+	/* Start Falcon CPU */
+	csb_write(tegra, XUSB_FALC_CPUCTL, CPUCTL_STARTCPU);
+	usleep_range(1000, 2000);
+
+	fw_time = cfg_tbl->fwimg_created_time;
+	time_to_tm(fw_time, 0, &fw_tm);
+	dev_info(&pdev->dev,
+		"Firmware timestamp: %ld-%02d-%02d %02d:%02d:%02d UTC, "\
+		"Falcon state 0x%x\n", fw_tm.tm_year + 1900,
+		fw_tm.tm_mon + 1, fw_tm.tm_mday, fw_tm.tm_hour,
+		fw_tm.tm_min, fw_tm.tm_sec,
+		csb_read(tegra, XUSB_FALC_CPUCTL));
+
+	/* return fail if firmware status is not good */
+	if (csb_read(tegra, XUSB_FALC_CPUCTL) == XUSB_FALC_STATE_HALTED)
+		return -EFAULT;
+
+	cap_regs = IO_ADDRESS(tegra->host_phy_base);
+	hc_caplength = HC_LENGTH(ioread32(&cap_regs->hc_capbase));
+	op_regs = IO_ADDRESS(tegra->host_phy_base + hc_caplength);
+
+	/* wait for USBSTS_CNR to get set */
 	do {
-		cnr = readl(tegra->host_phy_virt_base + 0x24);
-	} while ((cnr & 0x800) && count--);
+		usbsts = ioread32(&op_regs->status);
+	} while ((usbsts & STS_CNR) && count--);
 
-	if (!count && !(cnr & 0x800))
-		dev_err(&pdev->dev, "CNR not set. Nothing would work now\n");
-
+	if (!count && (usbsts & STS_CNR)) {
+		dev_err(&pdev->dev, "Controller not ready\n");
+		return -EFAULT;
+	}
 	return 0;
 }
 
@@ -2088,9 +2058,9 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 			csb_read(tegra, XUSB_FALC_FS_PVTPORTSC3));
 	debug_print_portsc(xhci);
 
-	ret = tegra_xhci_load_fw_from_pmc(tegra, 0);
+	ret = load_firmware(tegra, false /* EPLG exit, do not reset ARU */);
 	if (ret < 0) {
-		xhci_err(xhci, "%s: error loading fw from RAM %d\n",
+		xhci_err(xhci, "%s: failed to load firmware %d\n",
 			__func__, ret);
 		goto out;
 	}
@@ -2679,6 +2649,93 @@ tegra_xhci_resume(struct platform_device *pdev)
 }
 #endif
 
+
+static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
+{
+	struct platform_device *pdev = tegra->pdev;
+	void __iomem *fw_mmio_base;
+	phys_addr_t fw_mem_phy_addr;
+	size_t fw_size;
+	dma_addr_t fw_dma;
+	int ret;
+
+	/* bootloader saved firmware memory address in PMC SCRATCH34 register */
+	fw_mem_phy_addr = ioread32(tegra->pmc_base + PMC_SCRATCH34);
+
+	fw_mmio_base = devm_ioremap_nocache(&pdev->dev,
+			fw_mem_phy_addr, sizeof(struct cfgtbl));
+
+	if (!fw_mmio_base) {
+			dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
+					fw_mem_phy_addr);
+			return -ENOMEM;
+	}
+
+	fw_size = ioread32(fw_mmio_base + FW_SIZE_OFFSET);
+	devm_iounmap(&pdev->dev, fw_mmio_base);
+
+	fw_mmio_base = devm_ioremap_nocache(&pdev->dev,
+			fw_mem_phy_addr, fw_size);
+	if (!fw_mmio_base) {
+			dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
+					fw_mem_phy_addr);
+			return -ENOMEM;
+	}
+
+	dev_info(&pdev->dev, "Firmware Memory: phy 0x%x mapped 0x%p (%d Bytes)\n",
+			fw_mem_phy_addr, fw_mmio_base, fw_size);
+
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	fw_dma = dma_map_linear(&pdev->dev, fw_mem_phy_addr, fw_size,
+			DMA_TO_DEVICE);
+	if (fw_dma == DMA_ERROR_CODE) {
+		dev_err(&pdev->dev, "%s: dma_map_linear failed\n",
+				__func__);
+		ret = -ENOMEM;
+		goto error_iounmap;
+	}
+#else
+	fw_dma = fw_mem_phy_addr;
+#endif
+	dev_info(&pdev->dev, "Firmware DMA Memory: dma 0x%p (%d Bytes)\n",
+			(void *) fw_dma, fw_size);
+
+	/* all set and ready to go */
+	tegra->firmware.data = fw_mmio_base;
+	tegra->firmware.dma = fw_dma;
+	tegra->firmware.size = fw_size;
+
+	return 0;
+
+error_iounmap:
+	devm_iounmap(&pdev->dev, fw_mmio_base);
+	return ret;
+}
+
+static void deinit_bootloader_firmware(struct tegra_xhci_hcd *tegra)
+{
+	struct platform_device *pdev = tegra->pdev;
+	void __iomem *fw_mmio_base = tegra->firmware.data;
+
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	dma_unmap_single(&pdev->dev, tegra->firmware.dma,
+			tegra->firmware.size, DMA_TO_DEVICE);
+#endif
+	devm_iounmap(&pdev->dev, fw_mmio_base);
+
+	memset(&tegra->firmware, 0, sizeof(tegra->firmware));
+}
+
+static int init_firmware(struct tegra_xhci_hcd *tegra)
+{
+	return init_bootloader_firmware(tegra);
+}
+
+static void deinit_firmware(struct tegra_xhci_hcd *tegra)
+{
+	deinit_bootloader_firmware(tegra);
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -2690,6 +2747,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	u32 pmc_reg;
 	int ret;
 	int irq;
+
+	BUILD_BUG_ON(sizeof(struct cfgtbl) != 256);
 
 	if (usb_disabled())
 		return -ENODEV;
@@ -2805,29 +2864,18 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	/* Setup IPFS access and BAR0 space */
 	tegra_xhci_cfg(tegra);
 
-	/* Read fw base address from SCRATCH34 register  */
-	tegra->fw_phys_base = readl(tegra->pmc_base + PMC_SCRATCH34);
-
-	/* ioremap the fw physical base address */
-	tegra->fw_virt_base = (u32) devm_ioremap(&pdev->dev,
-				tegra->fw_phys_base, FW_SIZE_OFFSET);
-	if (!tegra->fw_virt_base) {
-		dev_err(&pdev->dev, "error mapping fw memory 0x%x\n",
-				tegra->fw_phys_base);
-		ret = -ENOMEM;
+	ret = init_firmware(tegra);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "failed to init firmware\n");
+		ret = -ENODEV;
 		goto err_deinit_usb2_clocks;
 	}
-	dev_info(&pdev->dev, "fw_phys_base=0x%x, fw_virt_base=0x%x\n",
-				tegra->fw_phys_base, tegra->fw_virt_base);
 
-	/* Read fw size at offset 0x100 in CFG table */
-	tegra->fw_size = *((u32 *)((u8 *)tegra->fw_virt_base + FW_SIZE_OFFSET));
-
-	/* Load firmware */
-	ret = tegra_xhci_load_fw_from_pmc(tegra, 1);
+	ret = load_firmware(tegra, true /* do reset ARU */);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "Error loading fw from RAM\n");
-		goto err_deinit_usb2_clocks;
+		dev_err(&pdev->dev, "failed to load firmware\n");
+		ret = -ENODEV;
+		goto err_deinit_firmware;
 	}
 
 	driver = &tegra_plat_xhci_driver;
@@ -2836,7 +2884,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	if (!hcd) {
 		dev_err(&pdev->dev, "failed to create usb2 hcd\n");
 		ret = -ENOMEM;
-		goto err_deinit_usb2_clocks;
+		goto err_deinit_firmware;
 	}
 
 	ret = tegra_xhci_request_mem_region(pdev, "host", &hcd->regs);
@@ -2954,6 +3002,8 @@ err_remove_usb2_hcd:
 	usb_remove_hcd(hcd);
 err_put_usb2_hcd:
 	usb_put_hcd(hcd);
+err_deinit_firmware:
+	deinit_firmware(tegra);
 err_deinit_usb2_clocks:
 	tegra_usb2_clocks_deinit(tegra);
 err_deinit_tegra_xusb_regulator:
@@ -2985,6 +3035,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	usb_put_hcd(hcd);
 	kfree(xhci);
 
+	deinit_firmware(tegra);
 	tegra_xusb_regulator_deinit(tegra);
 	tegra_usb2_clocks_deinit(tegra);
 	tegra_xusb_partitions_clk_deinit(tegra);
