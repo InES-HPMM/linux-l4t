@@ -19,7 +19,7 @@
  *
  */
 
-/* Note: Copied temperature conversion code from tmp401 driver */
+/* Note: Copied temperature conversion code from TMP411 driver */
 
 #include <linux/module.h>
 #include <linux/i2c.h>
@@ -49,6 +49,20 @@
 						platform callback */
 #define TMON_ERR			INT_MAX
 #define TMON_NOCHANGE			(INT_MAX - 1)
+
+static const u8 TMP411_TEMP_LOW_LIMIT_MSB_READ[2]	= { 0x06, 0x08 };
+static const u8 TMP411_TEMP_LOW_LIMIT_MSB_WRITE[2]	= { 0x0C, 0x0E };
+static const u8 TMP411_TEMP_LOW_LIMIT_LSB[2]		= { 0x17, 0x14 };
+static const u8 TMP411_TEMP_HIGH_LIMIT_MSB_READ[2]	= { 0x05, 0x07 };
+static const u8 TMP411_TEMP_HIGH_LIMIT_MSB_WRITE[2]	= { 0x0B, 0x0D };
+static const u8 TMP411_TEMP_HIGH_LIMIT_LSB[2]		= { 0x16, 0x13 };
+/* These are called the THERM limit / hysteresis / mask in the datasheet */
+static const u8 TMP411_TEMP_CRIT_LIMIT[2]		= { 0x20, 0x19 };
+
+static u16 temp_low_limit[2];
+static u16 temp_high_limit[2];
+static u8 temp_crit_limit[2];
+static u8 conv_rate;
 
 struct tmon_info {
 	int mode;
@@ -301,7 +315,7 @@ static int __devinit tmon_tmp411_probe(struct i2c_client *client,
 	schedule_delayed_work(&data->tmon_work,
 			      msecs_to_jiffies(data->pdata->delta_time));
 
-	dev_info(&client->dev, "golden_reg enabled\n");
+	dev_info(&client->dev, "Temperature Monitor enabled\n");
 	return 0;
 }
 
@@ -318,6 +332,84 @@ static int __devexit tmon_tmp411_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tmon_tmp411_suspend(struct device *dev)
+{
+	int i;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	/* save temperature limits for restore during resume */
+	for (i = 0; i < 2; i++) {
+		/*
+		 * High byte must be read first immediately followed
+		 * by the low byte
+		 */
+		temp_low_limit[i] = i2c_smbus_read_byte_data(client,
+			TMP411_TEMP_LOW_LIMIT_MSB_READ[i]) << 8;
+
+		temp_low_limit[i] |= i2c_smbus_read_byte_data(client,
+			TMP411_TEMP_LOW_LIMIT_LSB[i]);
+
+
+		temp_high_limit[i] = i2c_smbus_read_byte_data(client,
+			TMP411_TEMP_HIGH_LIMIT_MSB_READ[i]) << 8;
+
+		temp_high_limit[i] |= i2c_smbus_read_byte_data(client,
+			TMP411_TEMP_HIGH_LIMIT_LSB[i]);
+
+		temp_crit_limit[i] = i2c_smbus_read_byte_data(client,
+			TMP411_TEMP_CRIT_LIMIT[i]);
+	}
+	conv_rate = i2c_smbus_read_byte_data(client, CONVERSION_REG_READ);
+
+	cancel_delayed_work_sync(&data->tmon_work);
+	return 0;
+}
+
+static int tmon_tmp411_resume(struct device *dev)
+{
+	int i;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct tmon_info *data = i2c_get_clientdata(client);
+
+	/*  Restore temperature limits */
+	for (i = 0; i < 2; i++) {
+		i2c_smbus_write_byte_data(client,
+			TMP411_TEMP_HIGH_LIMIT_MSB_WRITE[i],
+			temp_high_limit[i] >> 8);
+
+		i2c_smbus_write_byte_data(client,
+			TMP411_TEMP_HIGH_LIMIT_LSB[i],
+			temp_high_limit[i] & 0xFF);
+
+		i2c_smbus_write_byte_data(client,
+			 TMP411_TEMP_LOW_LIMIT_MSB_WRITE[i],
+			 temp_low_limit[i] >> 8);
+
+		i2c_smbus_write_byte_data(client,
+			TMP411_TEMP_LOW_LIMIT_LSB[i],
+			temp_low_limit[i] & 0xFF);
+
+		i2c_smbus_write_byte_data(client,
+			TMP411_TEMP_CRIT_LIMIT[i],
+			temp_crit_limit[i]);
+	}
+	i2c_smbus_write_byte_data(client, CONVERSION_REG_WRITE, conv_rate);
+
+	schedule_delayed_work(&data->tmon_work,
+				msecs_to_jiffies(data->pdata->delta_time));
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops tegra_tmp411_dev_pm_ops = {
+#ifdef CONFIG_PM_SLEEP
+	.suspend = tmon_tmp411_suspend,
+	.resume = tmon_tmp411_resume,
+#endif
+};
+
 /* tmon-tmp411 driver struct */
 static const struct i2c_device_id tmon_tmp411_id[] = {
 	{"tmon-tmp411-sensor", 0},
@@ -328,7 +420,10 @@ MODULE_DEVICE_TABLE(i2c, tmon_tmp411_id);
 
 static struct i2c_driver tmon_tmp411_driver = {
 	.driver = {
-		   .name = "tmon-tmp411-sensor",
+			.name = "tmon-tmp411-sensor",
+#ifdef CONFIG_PM_SLEEP
+			.pm = &tegra_tmp411_dev_pm_ops,
+#endif
 		   },
 	.probe = tmon_tmp411_probe,
 	.remove = __devexit_p(tmon_tmp411_remove),
