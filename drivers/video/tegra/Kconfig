@@ -37,9 +37,9 @@ config TEGRA_DC
 	  Tegra display controller support.
 
 config TEGRA_DC_CMU
-    bool
-    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
-    default y
+	bool
+	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+	default y
 
 config TEGRA_DC_WIN_H
     bool
@@ -47,19 +47,19 @@ config TEGRA_DC_WIN_H
     default n
 
 config TEGRA_MIPI_CAL
-    bool
-    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
-    default y
+	bool
+	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+	default y
 
 config TEGRA_DC_SCAN_COLUMN
-    bool
-    default y if ARCH_TEGRA_11x_SOC
-    default n
+	bool
+	default y if ARCH_TEGRA_11x_SOC
+	default n
 
 config TEGRA_SD_GEN2
-    bool
-    default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
-    default y
+	bool
+	default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC
+	default y
 
 config FB_TEGRA
 	tristate "Tegra Framebuffer driver"
