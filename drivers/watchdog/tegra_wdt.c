@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -119,7 +119,7 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 	return IRQ_HANDLED;
 }
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC)
 
 #define TIMER_PTV			0
  #define TIMER_EN			(1 << 31)
