@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_throttle.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +52,8 @@ static struct {
 	{ .cap_name = "cap.throttle.sclk" },
 	{ .cap_name = "cap.throttle.emc" },
 };
+
+static bool tegra_throttle_init_failed;
 
 #define CAP_TBL_CAP_NAME(index)	(cap_freqs_table[index].cap_name)
 #define CAP_TBL_CAP_CLK(index)	(cap_freqs_table[index].cap_clk)
@@ -165,6 +167,9 @@ static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
 					int cap_clk_index)
 {
 	unsigned long cap_rate, clk_rate;
+
+	if (tegra_throttle_init_failed)
+		return;
 
 	if (throt_tab == NULL && cap_tbl_index == -1) /* uncap fregs */
 		cap_rate = NO_CAP;
@@ -370,14 +375,15 @@ int __init tegra_throttle_init(struct mutex *cpu_lock)
 		if (!c) {
 			pr_err("tegra_throttle: cannot get clock %s\n",
 				CAP_TBL_CAP_NAME(i));
+			tegra_throttle_init_failed = true;
 			continue;
 		}
 
 		CAP_TBL_CAP_CLK(i) = c;
 		CAP_TBL_CAP_FREQ(i) = clk_get_max_rate(c);
 	}
-	pr_info("tegra_throttle : init done\n");
-
+	pr_info("tegra_throttle : init %s\n",
+		tegra_throttle_init_failed ? "FAILED" : "passed");
 	return 0;
 }
 
