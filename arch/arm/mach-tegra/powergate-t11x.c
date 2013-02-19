@@ -214,55 +214,6 @@ int tegra11x_powergate_mc_flush_done(int id);
 int tegra11x_unpowergate_partition_with_clk_on(int id);
 int tegra11x_powergate_partition_with_clk_off(int id);
 
-static bool skip_pg_check(int id, bool is_unpowergate)
-{
-	/*
-	 * FIXME: need to stress test partition power gating before
-	 * enabling power gating for T11x
-	 * List of T11x partition id which skip power gating
-	 */
-	static int skip_pg_t11x_list[] = {
-		/*
-		 * CPU and 3D partitions enable/disable
-		 * is managed by respective modules
-		 */
-		TEGRA_POWERGATE_DISA,
-		TEGRA_POWERGATE_DISB
-	};
-	int i;
-
-	/*
-	 * skip unnecessary multiple calls e.g. powergate call when
-	 * partition is already powered-off or vice-versa
-	 */
-	if ((tegra_powergate_is_powered(id) && is_unpowergate) ||
-	    (!(tegra_powergate_is_powered(id)) && (!is_unpowergate))) {
-
-		pr_err("Partition %s already powered-%s and %spowergate skipped\n",
-			tegra_powergate_get_name(id),
-			(tegra_powergate_is_powered(id)) ?
-			"on" : "off",
-			(is_unpowergate) ? "un" : "");
-
-		return true;
-	}
-
-	/* unpowergate is allowed for all partitions */
-	if (!tegra_powergate_is_powered(id) && is_unpowergate)
-		return false;
-
-	for (i = 0; i < ARRAY_SIZE(skip_pg_t11x_list); i++) {
-		if (id == skip_pg_t11x_list[i]) {
-			pr_err("Partition %s %spowergate skipped\n",
-				tegra_powergate_get_name(id),
-				(is_unpowergate) ? "un" : "");
-			return true;
-		}
-	}
-
-	return false;
-}
-
 #define HOTRESET_READ_COUNT	5
 static bool tegra11x_stable_hotreset_check(u32 *stat)
 {
@@ -567,9 +518,6 @@ int tegra11x_powergate_partition(int id)
 		atomic_dec_return(&ref_count_b) != 0)
 		return 0;
 
-	if (skip_pg_check(id, false))
-		return 0;
-
 	ret = tegra11x_check_partition_pg_seq(id,
 		&tegra11x_powergate_partition_info[id]);
 	if (ret)
@@ -595,9 +543,6 @@ int tegra11x_unpowergate_partition(int id)
 		atomic_inc_return(&ref_count_b) != 1)
 		return 0;
 
-	if (skip_pg_check(id, true))
-		return 0;
-
 	ret = tegra11x_check_partition_pug_seq(id,
 		&tegra11x_powergate_partition_info[id]);
 	if (ret)
@@ -613,18 +558,12 @@ int tegra11x_unpowergate_partition(int id)
 
 int tegra11x_powergate_partition_with_clk_off(int id)
 {
-	if (skip_pg_check(id, false))
-		return 0;
-
 	return tegraxx_powergate_partition_with_clk_off(id,
 		&tegra11x_powergate_partition_info[id]);
 }
 
 int tegra11x_unpowergate_partition_with_clk_on(int id)
 {
-	if (skip_pg_check(id, true))
-		return 0;
-
 	return tegraxx_unpowergate_partition_with_clk_on(id,
 		&tegra11x_powergate_partition_info[id]);
 }
