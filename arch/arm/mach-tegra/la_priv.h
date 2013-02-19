@@ -64,6 +64,7 @@ struct la_client_info {
 	char *name;
 	bool scaling_supported;
 	unsigned int init_la;		/* initial la to set for client */
+	unsigned int la_set;
 };
 
 struct la_scaling_info {
@@ -88,6 +89,38 @@ struct la_scaling_reg_info {
 	unsigned int th_shift;
 };
 
+struct ptsa_info {
+	unsigned int dis_ptsa_rate;
+	unsigned int dis_ptsa_min;
+	unsigned int dis_ptsa_max;
+	unsigned int disb_ptsa_rate;
+	unsigned int disb_ptsa_min;
+	unsigned int disb_ptsa_max;
+	unsigned int ve_ptsa_rate;
+	unsigned int ve_ptsa_min;
+	unsigned int ve_ptsa_max;
+	unsigned int ring2_ptsa_rate;
+	unsigned int ring2_ptsa_min;
+	unsigned int ring2_ptsa_max;
+	unsigned int bbc_ptsa_rate;
+	unsigned int bbc_ptsa_min;
+	unsigned int bbc_ptsa_max;
+	unsigned int mpcorer_ptsa_rate;
+	unsigned int mpcorer_ptsa_min;
+	unsigned int mpcorer_ptsa_max;
+	unsigned int smmu_ptsa_rate;
+	unsigned int smmu_ptsa_min;
+	unsigned int smmu_ptsa_max;
+	unsigned int ring1_ptsa_rate;
+	unsigned int ring1_ptsa_min;
+	unsigned int ring1_ptsa_max;
+
+	unsigned int dis_extra_snap_level;
+	unsigned int heg_extra_snap_level;
+	unsigned int ptsa_grant_dec;
+	unsigned int bbcll_earb_cfg;
+};
+
 struct la_chip_specific {
 	int ns_per_tick;
 	int atom_size;
@@ -100,6 +133,9 @@ struct la_chip_specific {
 	struct la_scaling_info scaling_info[ID(MAX_ID)];
 	int la_scaling_enable_count;
 	struct dentry *latency_debug_dir;
+	struct ptsa_info ptsa_info;
+	bool disable_la;
+	bool disable_ptsa;
 
 	void (*init_ptsa)(void);
 	void (*update_display_ptsa_rate)(unsigned int *disp_bw_array);
@@ -109,6 +145,8 @@ struct la_chip_specific {
 				unsigned int threshold_mid,
 				unsigned int threshold_high);
 	void (*disable_la_scaling)(enum tegra_la_id id);
+	int (*suspend)(void);
+	void (*resume)(void);
 };
 
 void tegra_la_get_t3_specific(struct la_chip_specific *cs);

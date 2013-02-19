@@ -18,6 +18,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/debugfs.h>
+#include <linux/moduleparam.h>
 #include <linux/seq_file.h>
 #include <linux/err.h>
 #include <linux/spinlock_types.h>
@@ -40,6 +41,9 @@
 static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps);
 
 static struct la_chip_specific cs;
+module_param_named(disable_la, cs.disable_la, bool, 0644);
+module_param_named(disable_ptsa, cs.disable_ptsa, bool, 0644);
+
 static void init_chip_specific(void)
 {
 	enum tegra_chipid cid;
@@ -80,6 +84,7 @@ static void set_la(struct la_client_info *ci, int la)
 			(la << ci->shift);
 	writel(reg_write, ci->reg_addr);
 	cs.scaling_info[idx].la_set = la;
+	ci->la_set = la;
 	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
 		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
 	spin_unlock(&cs.lock);
@@ -249,6 +254,8 @@ static int __init tegra_latency_allowance_debugfs_init(void)
 
 static int tegra_la_suspend(void)
 {
+	if (cs.suspend)
+		return cs.suspend();
 	return 0;
 }
 
@@ -256,17 +263,15 @@ static void tegra_la_resume(void)
 {
 	int i;
 
-	for (i = 0; i < cs.la_info_array_size; i++) {
-		if (cs.la_info_array[i].init_la)
-			set_la(&cs.la_info_array[i],
-				cs.la_info_array[i].init_la);
+	if (cs.resume) {
+		cs.resume();
+		return;
 	}
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2SR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2DR, 20);
-	tegra_set_latency_allowance(TEGRA_LA_G2DW, 20);
-#endif
+	for (i = 0; i < cs.la_info_array_size; i++) {
+		if (cs.la_info_array[i].la_set)
+			set_la(&cs.la_info_array[i],
+				cs.la_info_array[i].la_set);
+	}
 	if (cs.init_ptsa)
 		cs.init_ptsa();
 }

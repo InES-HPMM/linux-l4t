@@ -111,6 +111,7 @@
 #define T14X_MC_DIS_EXTRA_SNAP_LEVELS_0		0x2ac
 #define T14X_MC_HEG_EXTRA_SNAP_LEVELS_0		0x2b0
 #define T14X_MC_EMEM_ARB_MISC0_0		0x0d8
+#define T14X_MC_TIMING_CONTROL_0		0xfc
 #define T14X_MC_PTSA_GRANT_DECREMENT_0		0x960
 
 #define T14X_MC_BBCLL_EARB_CFG_0		0x080
@@ -239,13 +240,102 @@ static unsigned int t14x_get_ptsa_rate(unsigned int bw)
 	return rate;
 }
 
+static void program_ptsa(void)
+{
+	struct ptsa_info *p = &cs->ptsa_info;
+
+	writel(p->ptsa_grant_dec, T14X_MC_RA(PTSA_GRANT_DECREMENT_0));
+	writel(1, T14X_MC_RA(TIMING_CONTROL_0));
+
+	writel(p->dis_ptsa_rate, T14X_MC_RA(DIS_PTSA_RATE_0));
+	writel(p->dis_ptsa_min, T14X_MC_RA(DIS_PTSA_MIN_0));
+	writel(p->dis_ptsa_max, T14X_MC_RA(DIS_PTSA_MAX_0));
+
+	writel(p->disb_ptsa_rate, T14X_MC_RA(DISB_PTSA_RATE_0));
+	writel(p->disb_ptsa_min, T14X_MC_RA(DISB_PTSA_MIN_0));
+	writel(p->disb_ptsa_max, T14X_MC_RA(DISB_PTSA_MAX_0));
+
+	writel(p->ve_ptsa_rate, T14X_MC_RA(VE_PTSA_RATE_0));
+	writel(p->ve_ptsa_min, T14X_MC_RA(VE_PTSA_MIN_0));
+	writel(p->ve_ptsa_max, T14X_MC_RA(VE_PTSA_MAX_0));
+
+	writel(p->ring2_ptsa_rate, T14X_MC_RA(RING2_PTSA_RATE_0));
+	writel(p->ring2_ptsa_min, T14X_MC_RA(RING2_PTSA_MIN_0));
+	writel(p->ring2_ptsa_max, T14X_MC_RA(RING2_PTSA_MAX_0));
+
+	writel(p->bbc_ptsa_rate, T14X_MC_RA(BBC_PTSA_RATE_0));
+	writel(p->bbc_ptsa_min, T14X_MC_RA(BBC_PTSA_MIN_0));
+	writel(p->bbc_ptsa_max, T14X_MC_RA(BBC_PTSA_MAX_0));
+
+	writel(p->bbcll_earb_cfg, T14X_MC_RA(BBCLL_EARB_CFG_0));
+
+	writel(p->mpcorer_ptsa_rate, T14X_MC_RA(MLL_MPCORER_PTSA_RATE_0));
+	writel(p->mpcorer_ptsa_min, T14X_MC_RA(MLL_MPCORER_PTSA_MIN_0));
+	writel(p->mpcorer_ptsa_max, T14X_MC_RA(MLL_MPCORER_PTSA_MAX_0));
+
+	writel(p->smmu_ptsa_rate, T14X_MC_RA(SMMU_SMMU_PTSA_RATE_0));
+	writel(p->smmu_ptsa_min, T14X_MC_RA(SMMU_SMMU_PTSA_MIN_0));
+	writel(p->smmu_ptsa_max, T14X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
+
+	writel(p->ring1_ptsa_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
+	writel(p->ring1_ptsa_min, T14X_MC_RA(RING1_PTSA_MIN_0));
+	writel(p->ring1_ptsa_max, T14X_MC_RA(RING1_PTSA_MAX_0));
+
+	writel(p->dis_extra_snap_level, T14X_MC_RA(DIS_EXTRA_SNAP_LEVELS_0));
+	writel(p->heg_extra_snap_level, T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
+}
+
+static void save_ptsa(void)
+{
+	struct ptsa_info *p = &cs->ptsa_info;
+
+	p->ptsa_grant_dec = readl(T14X_MC_RA(PTSA_GRANT_DECREMENT_0));
+
+	p->dis_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0));
+	p->dis_ptsa_min = readl(T14X_MC_RA(DIS_PTSA_MIN_0));
+	p->dis_ptsa_max = readl(T14X_MC_RA(DIS_PTSA_MAX_0));
+
+	p->disb_ptsa_rate = readl(T14X_MC_RA(DISB_PTSA_RATE_0));
+	p->disb_ptsa_min = readl(T14X_MC_RA(DISB_PTSA_MIN_0));
+	p->disb_ptsa_max = readl(T14X_MC_RA(DISB_PTSA_MAX_0));
+
+	p->ve_ptsa_rate = readl(T14X_MC_RA(VE_PTSA_RATE_0));
+	p->ve_ptsa_min = readl(T14X_MC_RA(VE_PTSA_MIN_0));
+	p->ve_ptsa_max = readl(T14X_MC_RA(VE_PTSA_MAX_0));
+
+	p->ring2_ptsa_rate = readl(T14X_MC_RA(RING2_PTSA_RATE_0));
+	p->ring2_ptsa_min = readl(T14X_MC_RA(RING2_PTSA_MIN_0));
+	p->ring2_ptsa_max = readl(T14X_MC_RA(RING2_PTSA_MAX_0));
+
+	p->bbc_ptsa_rate = readl(T14X_MC_RA(BBC_PTSA_RATE_0));
+	p->bbc_ptsa_min = readl(T14X_MC_RA(BBC_PTSA_MIN_0));
+	p->bbc_ptsa_max = readl(T14X_MC_RA(BBC_PTSA_MAX_0));
+
+	p->bbcll_earb_cfg = readl(T14X_MC_RA(BBCLL_EARB_CFG_0));
+
+	p->mpcorer_ptsa_rate = readl(T14X_MC_RA(MLL_MPCORER_PTSA_RATE_0));
+	p->mpcorer_ptsa_min = readl(T14X_MC_RA(MLL_MPCORER_PTSA_MIN_0));
+	p->mpcorer_ptsa_max = readl(T14X_MC_RA(MLL_MPCORER_PTSA_MAX_0));
+
+	p->smmu_ptsa_rate = readl(T14X_MC_RA(SMMU_SMMU_PTSA_RATE_0));
+	p->smmu_ptsa_min = readl(T14X_MC_RA(SMMU_SMMU_PTSA_MIN_0));
+	p->smmu_ptsa_max = readl(T14X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
+
+	p->ring1_ptsa_rate = readl(T14X_MC_RA(RING1_PTSA_RATE_0));
+	p->ring1_ptsa_min = readl(T14X_MC_RA(RING1_PTSA_MIN_0));
+	p->ring1_ptsa_max = readl(T14X_MC_RA(RING1_PTSA_MAX_0));
+
+	p->dis_extra_snap_level = readl(T14X_MC_RA(DIS_EXTRA_SNAP_LEVELS_0));
+	p->heg_extra_snap_level = readl(T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
+}
+
 static void t14x_init_ptsa(void)
 {
+	struct ptsa_info *p = &cs->ptsa_info;
 	struct clk *emc_clk __attribute__((unused));
 	unsigned long emc_freq __attribute__((unused));
 	unsigned long same_freq __attribute__((unused));
 	unsigned long grant_dec __attribute__((unused));
-	unsigned long ring1_rate __attribute__((unused));
 
 	emc_clk = clk_get(NULL, "emc");
 	la_debug("**** emc clk_rate=%luMHz", clk_get_rate(emc_clk) / 1000000);
@@ -259,66 +349,65 @@ static void t14x_init_ptsa(void)
 		    T14X_BASE_EMC_FREQ_MHZ;
 	if (grant_dec > 511)
 		grant_dec = 511;
-	writel(grant_dec, T14X_MC_RA(PTSA_GRANT_DECREMENT_0));
 
-	writel(0x36, T14X_MC_RA(DIS_PTSA_MIN_0));
-	writel(0x1e, T14X_MC_RA(DIS_PTSA_MAX_0));
+	p->dis_ptsa_min = 0x36;
+	p->dis_ptsa_max = 0x1e;
 
-	writel(0x36, T14X_MC_RA(DISB_PTSA_MIN_0));
-	writel(0x1e, T14X_MC_RA(DISB_PTSA_MAX_0));
+	p->disb_ptsa_min = 0x36;
+	p->disb_ptsa_max = 0x1e;
 
-	writel(t14x_get_ptsa_rate(T14X_MAX_CAMERA_BW_MHZ),
-		T14X_MC_RA(VE_PTSA_RATE_0));
-	writel(0x3d, T14X_MC_RA(VE_PTSA_MIN_0));
-	writel(0x14, T14X_MC_RA(VE_PTSA_MAX_0));
+	p->ve_ptsa_rate = t14x_get_ptsa_rate(T14X_MAX_CAMERA_BW_MHZ);
+	p->ve_ptsa_min = 0x3d;
+	p->ve_ptsa_max = 0x14;
 
-	writel(0x01, T14X_MC_RA(RING2_PTSA_RATE_0));
-	writel(0x3f, T14X_MC_RA(RING2_PTSA_MIN_0));
-	writel(0x01, T14X_MC_RA(RING2_PTSA_MAX_0));
+	p->ring2_ptsa_rate = 0x01;
+	p->ring2_ptsa_min = 0x3f;
+	p->ring2_ptsa_max = 0x01;
 
-	writel(t14x_get_ptsa_rate(T14X_MAX_BBCDMA_BW_MHZ),
-		T14X_MC_RA(BBC_PTSA_RATE_0));
-	writel(0x3d, T14X_MC_RA(BBC_PTSA_MIN_0));
-	writel(0x14, T14X_MC_RA(BBC_PTSA_MAX_0));
+	p->bbc_ptsa_min = 0x3d;
+	p->bbc_ptsa_max = 0x14;
+
+	p->mpcorer_ptsa_rate = 23 * emc_freq / T14X_BASE_EMC_FREQ_MHZ;
+	p->mpcorer_ptsa_min = 0x3f;
+	p->mpcorer_ptsa_max = 0x0b;
+
+	p->smmu_ptsa_rate = 0x1;
+	p->smmu_ptsa_min = 0x1;
+	p->smmu_ptsa_max = 0x1;
+
+	p->ring1_ptsa_min = 0x36;
+	p->ring1_ptsa_max = 0x1f;
+
+	p->dis_extra_snap_level = 0x0;
+	p->heg_extra_snap_level = 0x2;
+	p->ptsa_grant_dec = grant_dec;
+
+	p->bbc_ptsa_rate = t14x_get_ptsa_rate(T14X_MAX_BBCDMA_BW_MHZ);
 
 	/* BBC ring0 ptsa max/min/rate/limit */
-	writel(0x14 << 20 | 0x3d << 16 |
-		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0,
-		T14X_MC_RA(BBCLL_EARB_CFG_0));
+	p->bbcll_earb_cfg = 0x14 << 20 | 0x3d << 16 |
+		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0;
 
-	writel(23 * emc_freq / T14X_BASE_EMC_FREQ_MHZ,
-		T14X_MC_RA(MLL_MPCORER_PTSA_RATE_0));
-	writel(0x3f, T14X_MC_RA(MLL_MPCORER_PTSA_MIN_0));
-	writel(0x0B, T14X_MC_RA(MLL_MPCORER_PTSA_MAX_0));
-
-	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_RATE_0));
-	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_MIN_0));
-	writel(0x01, T14X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
-
-	ring1_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(RING2_PTSA_RATE_0));
+	p->ring1_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
+			readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
+			readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
+			readl(T14X_MC_RA(RING2_PTSA_RATE_0));
 #if defined(CONFIG_TEGRA_ERRATA_977223)
-	ring1_rate /= 2;
+	p->ring1_ptsa_rate /= 2;
 #endif
-	writel(ring1_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
-	writel(0x36, T14X_MC_RA(RING1_PTSA_MIN_0));
-	writel(0x1f, T14X_MC_RA(RING1_PTSA_MAX_0));
 
-	writel(0x00, T14X_MC_RA(DIS_EXTRA_SNAP_LEVELS_0));
-	writel(0x02, T14X_MC_RA(HEG_EXTRA_SNAP_LEVELS_0));
+	program_ptsa();
 }
 
 #define ID_IDX(x) (ID(x) - ID(DISPLAY_0A))
 static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 {
-	unsigned int rate_dis;
-	unsigned int rate_disb;
-	unsigned long ring1_rate;
 	unsigned int total_dis_bw;
 	unsigned int total_disb_bw;
+	struct ptsa_info *p = &cs->ptsa_info;
 
+	if (cs->disable_ptsa)
+		return;
 	total_dis_bw = disp_bw_array[ID_IDX(DISPLAY_0A)] +
 			disp_bw_array[ID_IDX(DISPLAY_0B)] +
 			disp_bw_array[ID_IDX(DISPLAY_0C)] +
@@ -328,31 +417,31 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 			disp_bw_array[ID_IDX(DISPLAY_0BB)] +
 			disp_bw_array[ID_IDX(DISPLAY_0CB)];
 
-	rate_dis = t14x_get_ptsa_rate(total_dis_bw);
-	rate_disb = t14x_get_ptsa_rate(total_disb_bw);
+	p->dis_ptsa_rate = t14x_get_ptsa_rate(total_dis_bw);
+	p->disb_ptsa_rate = t14x_get_ptsa_rate(total_disb_bw);
 
-	writel(rate_dis, T14X_MC_RA(DIS_PTSA_RATE_0));
-	writel(rate_disb, T14X_MC_RA(DISB_PTSA_RATE_0));
+	writel(p->dis_ptsa_rate, T14X_MC_RA(DIS_PTSA_RATE_0));
+	writel(p->disb_ptsa_rate, T14X_MC_RA(DISB_PTSA_RATE_0));
 
-	ring1_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
-		     readl(T14X_MC_RA(RING2_PTSA_RATE_0));
+	p->ring1_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
+			    readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
+			    readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
+			    readl(T14X_MC_RA(RING2_PTSA_RATE_0));
 	la_debug("total_dis_bw=%d, total_disb_bw=%d,"
 		" A=%d, B=%d, C=%d, T=%d, D=%d, AB=%d, BB=%d, CC=%d ",
 		total_dis_bw, total_disb_bw, disp_bw_array[0],
 		disp_bw_array[1], disp_bw_array[2], disp_bw_array[10],
 		disp_bw_array[11], disp_bw_array[5], disp_bw_array[6],
 		disp_bw_array[7]);
-	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%lx",
+	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%x",
 		readl(T14X_MC_RA(DIS_PTSA_RATE_0)),
 		readl(T14X_MC_RA(DISB_PTSA_RATE_0)),
 		readl(T14X_MC_RA(VE_PTSA_RATE_0)),
-		readl(T14X_MC_RA(RING2_PTSA_RATE_0)), ring1_rate);
+		readl(T14X_MC_RA(RING2_PTSA_RATE_0)), p->ring1_ptsa_rate);
 #if defined(CONFIG_TEGRA_ERRATA_977223)
-	ring1_rate /= 2;
+	p->ring1_ptsa_rate /= 2;
 #endif
-	writel(ring1_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
+	writel(p->ring1_ptsa_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
 }
 
 static void program_la(struct la_client_info *ci, int la)
@@ -365,6 +454,7 @@ static void program_la(struct la_client_info *ci, int la)
 	reg_write = (reg_read & ~ci->mask) |
 			(la << ci->shift);
 	writel(reg_write, ci->reg_addr);
+	ci->la_set = la;
 	la_debug("reg_addr=0x%x, read=0x%x, write=0x%x",
 		(u32)ci->reg_addr, (u32)reg_read, (u32)reg_write);
 
@@ -433,8 +523,39 @@ static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 	la_to_set = (la_to_set < 0) ? 0 : la_to_set;
 	la_to_set = (la_to_set > cs->la_max_value) ? cs->la_max_value : la_to_set;
 
+	if (cs->disable_la)
+		return 0;
 	program_la(ci, la_to_set);
 	return 0;
+}
+
+static int t14x_la_suspend(void)
+{
+	int i = 0;
+	struct la_client_info *ci;
+
+	/* stashing LA and PTSA from registers is necessary
+	 * in order to get latest values programmed by DVFS.
+	 */
+	for (i = 0; i < cs->la_info_array_size; i++) {
+		ci = &cs->la_info_array[i];
+		ci->la_set = (readl(ci->reg_addr) & ci->mask) >>
+			     ci->shift;
+	}
+	save_ptsa();
+	return 0;
+}
+
+static void t14x_la_resume(void)
+{
+	int i;
+
+	for (i = 0; i < cs->la_info_array_size; i++) {
+		if (cs->la_info_array[i].la_set)
+			program_la(&cs->la_info_array[i],
+				cs->la_info_array[i].la_set);
+	}
+	program_ptsa();
 }
 
 void tegra_la_get_t14x_specific(struct la_chip_specific *cs_la)
@@ -447,5 +568,7 @@ void tegra_la_get_t14x_specific(struct la_chip_specific *cs_la)
 	cs_la->init_ptsa = t14x_init_ptsa;
 	cs_la->update_display_ptsa_rate = t14x_update_display_ptsa_rate;
 	cs_la->set_la = t14x_set_la;
+	cs_la->suspend = t14x_la_suspend;
+	cs_la->resume = t14x_la_resume;
 	cs = cs_la;
 }
