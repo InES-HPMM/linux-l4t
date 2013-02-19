@@ -37,6 +37,9 @@
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_uart.h>
+#if defined(CONFIG_SMSC911X)
+#include <linux/smsc911x.h>
+#endif
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
@@ -411,6 +414,36 @@ static struct platform_device tegra_sim_smc91x_device = {
 };
 #endif
 
+#if defined(CONFIG_SMSC911X)
+static struct resource tegra_smsc911x_resources[] = {
+	[0] = {
+		.start		= 0x4E000000,
+		.end		= 0x4E000000 + SZ_64K - 1,
+		.flags		= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_ETH,
+		.end		= IRQ_ETH,
+		.flags		= IORESOURCE_IRQ,
+	},
+};
+
+static struct smsc911x_platform_config tegra_smsc911x_config = {
+	.flags          = SMSC911X_USE_32BIT,
+	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
+	.irq_type       = SMSC911X_IRQ_TYPE_PUSH_PULL,
+	.phy_interface  = PHY_INTERFACE_MODE_MII,
+};
+
+static struct platform_device tegra_smsc911x_device = {
+	.name              = "smsc911x",
+	.id                = 0,
+	.resource          = tegra_smsc911x_resources,
+	.num_resources     = ARRAY_SIZE(tegra_smsc911x_resources),
+	.dev.platform_data = &tegra_smsc911x_config,
+};
+#endif
+
 static struct platform_device *bonaire_devices[] __initdata = {
 #if ENABLE_OTG
 	&tegra_otg_device,
@@ -437,6 +470,9 @@ static struct platform_device *bonaire_devices[] __initdata = {
 #endif
 #if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
 	&tegra_sim_smc91x_device,
+#endif
+#if defined(CONFIG_SMSC911X)
+	&tegra_smsc911x_device,
 #endif
 };
 
