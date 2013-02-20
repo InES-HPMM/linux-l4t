@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto-powermon.c
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,6 +26,12 @@
 #include "board-pluto.h"
 
 #define PRECISION_MULTIPLIER_PLUTO	1000
+
+/*
+ * following power_config will be passed from Bootloader
+ * if board is reworked for power measurement
+ */
+#define PLUTO_POWER_REWORKED_CONFIG	0x10
 
 enum {
 	UNUSED_RAIL,
@@ -371,8 +377,59 @@ static const struct i2c_board_info pluto_i2c2_board_info[] = {
 	},
 };
 
+static void modify_reworked_rail_data(void)
+{
+	power_mon_info_1[VDD_SYS_SUM].calibration_data = 0x426;
+	power_mon_info_1[VDD_SYS_SUM].power_lsb =
+				1.20527307 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_SMPS123].calibration_data = 0x2134;
+	power_mon_info_1[VDD_SYS_SMPS123].power_lsb =
+				0.301176471 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_SMPS45].calibration_data = 0x2134;
+	power_mon_info_1[VDD_SYS_SMPS45].power_lsb =
+				0.301176471 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_SMPS6].calibration_data = 0x3756;
+	power_mon_info_1[VDD_SYS_SMPS6].power_lsb =
+				0.180714387 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_SMPS7].calibration_data = 0x84D;
+	power_mon_info_1[VDD_SYS_SMPS7].power_lsb =
+				0.120470588 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_SMPS8].calibration_data = 0x14C0;
+	power_mon_info_1[VDD_SYS_SMPS8].power_lsb =
+				0.240963855 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_SYS_LDO8].calibration_data = 0x18E7;
+	power_mon_info_1[VDD_SYS_LDO8].power_lsb =
+				0.040156863 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_MMC_LDO9].calibration_data = 0xEAD;
+	power_mon_info_1[VDD_MMC_LDO9].power_lsb =
+				0.068139473 * PRECISION_MULTIPLIER_PLUTO;
+
+	power_mon_info_1[VDD_MMC_LCD].calibration_data = 0x1E95;
+	power_mon_info_1[VDD_MMC_LCD].power_lsb =
+				0.08174735 * PRECISION_MULTIPLIER_PLUTO;
+}
+
 int __init pluto_pmon_init(void)
 {
+	u8 power_config;
+
+	/*
+	 * Get power_config of board and check whether
+	 * board is power reworked or not.
+	 * In case board is reworked, modify rail data
+	 * for which rework was done.
+	 */
+	power_config = get_power_config();
+	if (power_config & PLUTO_POWER_REWORKED_CONFIG)
+		modify_reworked_rail_data();
+
 	i2c_register_board_info(1, pluto_i2c2_board_info,
 		ARRAY_SIZE(pluto_i2c2_board_info));
 
