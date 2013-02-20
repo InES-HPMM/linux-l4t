@@ -220,6 +220,12 @@ static __initdata struct tegra_clk_init_table pluto_clk_init_table[] = {
 	{ "i2c3",	"pll_p",	3200000,	false},
 	{ "i2c4",	"pll_p",	3200000,	false},
 	{ "i2c5",	"pll_p",	3200000,	false},
+	{ "sbc1",	"pll_p",	25000000,	false},
+	{ "sbc2",	"pll_p",	25000000,	false},
+	{ "sbc3",	"pll_p",	25000000,	false},
+	{ "sbc4",	"pll_p",	25000000,	false},
+	{ "sbc5",	"pll_p",	25000000,	false},
+	{ "sbc6",	"pll_p",	25000000,	false},
 	{ "extern3",	"clk_m",	12000000,	false},
 	{ NULL,		NULL,		0,		0},
 };
