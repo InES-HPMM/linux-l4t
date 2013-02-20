@@ -17,6 +17,7 @@
 #include <linux/sched.h>
 #include <linux/suspend.h>
 #include <linux/export.h>
+#include <linux/debugfs.h>
 
 #define GENPD_DEV_CALLBACK(genpd, type, callback, dev)		\
 ({								\
@@ -42,8 +43,6 @@
 	struct gpd_timing_data *__td = &dev_gpd_data(dev)->td;			\
 	if (!__retval && __elapsed > __td->field) {				\
 		__td->field = __elapsed;					\
-		dev_warn(dev, name " latency exceeded, new value %lld ns\n",	\
-			__elapsed);						\
 		genpd->max_off_time_changed = true;				\
 		__td->constraint_changed = true;				\
 	}									\
@@ -52,6 +51,51 @@
 
 static LIST_HEAD(gpd_list);
 static DEFINE_MUTEX(gpd_list_lock);
+
+#ifdef CONFIG_DEBUG_FS
+static struct dentry *rootdir;
+
+static int genpd_summary_show(struct seq_file *s, void *data)
+{
+	struct generic_pm_domain *gpd, *slave;
+	struct pm_domain_data *pdd;
+	struct gpd_link *link;
+
+	mutex_lock(&gpd_list_lock);
+
+	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
+		seq_printf(s, "%*s%-*s %-11s\n", 1, "", 27, gpd->name,
+				(gpd->status == GPD_STATE_POWER_OFF) ?
+				"off" : "on");
+		list_for_each_entry(link, &gpd->master_links, master_node) {
+			slave = link->slave;
+			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24, slave->name,
+					(slave->status ==
+					GPD_STATE_POWER_OFF) ? "off" : "on");
+		}
+		list_for_each_entry(pdd, &gpd->dev_list, list_node)
+			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24,
+					dev_name(pdd->dev),
+					pm_runtime_suspended(pdd->dev) ?
+					"suspended" : "active");
+	}
+
+	mutex_unlock(&gpd_list_lock);
+
+	return 0;
+}
+
+static int genpd_summary_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, genpd_summary_show, inode->i_private);
+}
+static const struct file_operations genpd_summary_fops = {
+	.open		= genpd_summary_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif
 
 static struct generic_pm_domain *pm_genpd_lookup_name(const char *domain_name)
 {
@@ -2178,3 +2222,21 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	list_add(&genpd->gpd_list_node, &gpd_list);
 	mutex_unlock(&gpd_list_lock);
 }
+
+static int __init pm_genpd_debug_init(void)
+{
+	struct dentry *d;
+
+	rootdir = debugfs_create_dir("pm_domains", NULL);
+
+	if (!rootdir)
+		return -ENOMEM;
+
+	d = debugfs_create_file("domain_summary", S_IRUGO, rootdir, NULL,
+				&genpd_summary_fops);
+	if (!d)
+		return -ENOMEM;
+
+	return 0;
+}
+late_initcall(pm_genpd_debug_init);
