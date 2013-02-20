@@ -227,7 +227,6 @@
 			      0 141 0x04
 			      0 142 0x04
 			      0 143 0x04>;
-		status = "disable";
 	};
 
 	pinmux: pinmux {
