@@ -572,7 +572,7 @@ struct platform_device tegra_spi_device6 = {
 #endif
 
 struct platform_device tegra11_spi_device1 = {
-	.name		= "tegra11-spi",
+	.name		= "spi-tegra114",
 	.id		= 0,
 	.resource	= spi_resource1,
 	.num_resources	= ARRAY_SIZE(spi_resource1),
@@ -582,7 +582,7 @@ struct platform_device tegra11_spi_device1 = {
 };
 
 struct platform_device tegra11_spi_device2 = {
-	.name		= "tegra11-spi",
+	.name		= "spi-tegra114",
 	.id		= 1,
 	.resource	= spi_resource2,
 	.num_resources	= ARRAY_SIZE(spi_resource2),
@@ -592,7 +592,7 @@ struct platform_device tegra11_spi_device2 = {
 };
 
 struct platform_device tegra11_spi_device3 = {
-	.name		= "tegra11-spi",
+	.name		= "spi-tegra114",
 	.id		= 2,
 	.resource	= spi_resource3,
 	.num_resources	= ARRAY_SIZE(spi_resource3),
@@ -602,7 +602,7 @@ struct platform_device tegra11_spi_device3 = {
 };
 
 struct platform_device tegra11_spi_device4 = {
-	.name		= "tegra11-spi",
+	.name		= "spi-tegra114",
 	.id		= 3,
 	.resource	= spi_resource4,
 	.num_resources	= ARRAY_SIZE(spi_resource4),
@@ -613,7 +613,7 @@ struct platform_device tegra11_spi_device4 = {
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 struct platform_device tegra11_spi_device5 = {
-	.name           = "tegra11-spi",
+	.name           = "spi-tegra114",
 	.id             = 4,
 	.resource       = spi_resource5,
 	.num_resources  = ARRAY_SIZE(spi_resource5),
@@ -623,7 +623,7 @@ struct platform_device tegra11_spi_device5 = {
 };
 
 struct platform_device tegra11_spi_device6 = {
-	.name           = "tegra11-spi",
+	.name           = "spi-tegra114",
 	.id             = 5,
 	.resource       = spi_resource6,
 	.num_resources  = ARRAY_SIZE(spi_resource6),

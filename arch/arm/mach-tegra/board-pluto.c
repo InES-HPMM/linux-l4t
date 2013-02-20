@@ -36,7 +36,7 @@
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/tegra_uart.h>
 #include <linux/memblock.h>
-#include <linux/spi-tegra.h>
+#include <linux/spi/spi-tegra.h>
 #include <linux/nfc/pn544.h>
 #include <linux/nfc/bcm2079x.h>
 #include <linux/rfkill-gpio.h>
@@ -1200,52 +1200,33 @@ static void pluto_audio_init(void)
 
 }
 
+#ifndef CONFIG_USE_OF
 static struct platform_device *pluto_spi_devices[] __initdata = {
         &tegra11_spi_device4,
 };
 
-struct spi_clk_parent spi_parent_clk_pluto[] = {
-        [0] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
-        [1] = {.name = "pll_m"},
-        [2] = {.name = "clk_m"},
-#else
-        [1] = {.name = "clk_m"},
-#endif
-};
-
 static struct tegra_spi_platform_data pluto_spi_pdata = {
-	.is_dma_based           = false,
-	.max_dma_buffer         = 16 * 1024,
-        .is_clkon_always        = false,
-        .max_rate               = 25000000,
+	.dma_req_sel            = 0,
+	.spi_max_frequency      = 25000000,
+	.clock_always_on        = false,
 };
 
 static void __init pluto_spi_init(void)
 {
-        int i;
-        struct clk *c;
         struct board_info board_info, display_board_info;
 
         tegra_get_board_info(&board_info);
         tegra_get_display_board_info(&display_board_info);
 
-        for (i = 0; i < ARRAY_SIZE(spi_parent_clk_pluto); ++i) {
-                c = tegra_get_clock_by_name(spi_parent_clk_pluto[i].name);
-                if (IS_ERR_OR_NULL(c)) {
-                        pr_err("Not able to get the clock for %s\n",
-                                                spi_parent_clk_pluto[i].name);
-                        continue;
-                }
-                spi_parent_clk_pluto[i].parent_clk = c;
-                spi_parent_clk_pluto[i].fixed_clk_rate = clk_get_rate(c);
-        }
-        pluto_spi_pdata.parent_clk_list = spi_parent_clk_pluto;
-        pluto_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk_pluto);
 	tegra11_spi_device4.dev.platform_data = &pluto_spi_pdata;
         platform_add_devices(pluto_spi_devices,
                                 ARRAY_SIZE(pluto_spi_devices));
 }
+#else
+static void __init pluto_spi_init(void)
+{
+}
+#endif
 
 static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 	/* name         parent          rate            enabled */
