@@ -227,7 +227,7 @@ enum tegra_usb_controller_type {
 /**
  * defines USB port speeds
  */
-enum usb_pmc_port_speed {
+enum tegra_usb_port_speed {
 	USB_PMC_PORT_SPEED_FULL = 0,
 	USB_PMC_PORT_SPEED_LOW,
 	USB_PMC_PORT_SPEED_HIGH,
@@ -256,7 +256,7 @@ struct tegra_usb_pmc_data {
 	u8 instance;
 	enum tegra_usb_controller_type controller_type;
 	enum tegra_usb_phy_interface phy_type;
-	enum usb_pmc_port_speed port_speed;
+	enum tegra_usb_port_speed port_speed;
 	struct tegra_usb_pmc_ops *pmc_ops;
 	void __iomem *usb_base;
 	u32 utmip_rctrl_val;

@@ -19,7 +19,7 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 
-#include "iomap.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 static DEFINE_SPINLOCK(utmip_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);

@@ -20,11 +20,11 @@
 #define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL     (1<<0)
 
 #define UTMIP_BIAS_CFG0		0x80c
-#define   UTMIP_OTGPD			(1 << 11)
-#define   UTMIP_BIASPD			(1 << 10)
-#define   UTMIP_HSSQUELCH_LEVEL(x)	(((x) & 0x3) << 0)
-#define   UTMIP_HSDISCON_LEVEL(x)	(((x) & 0x3) << 2)
-#define   UTMIP_HSDISCON_LEVEL_MSB	(1 << 24)
+#define UTMIP_OTGPD			(1 << 11)
+#define UTMIP_BIASPD			(1 << 10)
+#define UTMIP_HSSQUELCH_LEVEL(x)	(((x) & 0x3) << 0)
+#define UTMIP_HSDISCON_LEVEL(x)	(((x) & 0x3) << 2)
+#define UTMIP_HSDISCON_LEVEL_MSB	(1 << 24)
 
 /* xusb padctl regs for pad programming of t124 pcie */
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0	0x40

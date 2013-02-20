@@ -1,0 +1,6 @@
+#
+# Makefile for linux/drivers/platform/tegra
+# Tegra Platform-Specific Drivers
+#
+obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
+obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pad_ctrl.o

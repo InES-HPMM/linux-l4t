@@ -30,7 +30,7 @@
 #include <mach/pinmux-t11.h>
 #include <mach/tegra_usb_pmc.h>
 
-#include "iomap.h"
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 static void __iomem *pmc_base;
 static unsigned long flags;
