@@ -6,8 +6,8 @@
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2010, NVIDIA Corporation.
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  * Scott Peterson <speterson@nvidia.com>
  *
  * Copyright (C) 2010 Google, Inc.
@@ -460,15 +460,19 @@ static int tegra30_i2s_hw_params(struct snd_pcm_substream *substream,
 			bitcnt = (i2sclock / srate) - 1;
 			sym_bitclk = !(i2sclock % srate);
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
-			val = 0;
-			for (i = 0; i < params_channels(params); i++)
-				val |= (1 << i);
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				val = val <<
+			val = tegra30_i2s_read(i2s, TEGRA30_I2S_SLOT_CTRL2);
+
+			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+				val &=
+				  ~TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK;
+				val |= ((1 << params_channels(params)) - 1) <<
 				  TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT;
-			else
-				val = val <<
+			} else {
+				val &=
+				  ~TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK;
+				val |= ((1 << params_channels(params)) - 1) <<
 				  TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT;
+			}
 			tegra30_i2s_write(i2s, TEGRA30_I2S_SLOT_CTRL2, val);
 #endif
 		} else {

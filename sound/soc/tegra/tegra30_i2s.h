@@ -1,7 +1,7 @@
 /*
  * tegra30_i2s.h - Definitions for Tegra30 I2S driver
  *
- * Copyright (c) 2011,2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -187,7 +187,10 @@
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
 #define TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT	0
+#define TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_MASK	(0xffff << TEGRA30_I2S_SLOT_CTRL2_TX_SLOT_ENABLES_SHIFT)
+
 #define TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT	16
+#define TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_MASK	(0xffff << TEGRA30_I2S_SLOT_CTRL2_RX_SLOT_ENABLES_SHIFT)
 #endif
 
 /* Fields in TEGRA30_I2S_CIF_RX_CTRL */
