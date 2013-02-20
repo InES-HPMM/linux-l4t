@@ -28,8 +28,6 @@
 #include <asm/io.h>
 #include <asm/string.h>
 #include <mach/hardware.h>
-#include <mach/iomap.h>
-#include <mach/io.h>
 #include <mach/clk.h>
 #include <mach/latency_allowance.h>
 #include "la_priv.h"
