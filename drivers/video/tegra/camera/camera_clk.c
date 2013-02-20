@@ -97,23 +97,18 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		{
 			/*
-			 * User space assumes that HW emc controller is 4
-			 * byte-wide DDR controller.
-			 * Emc bandwidth needs to be calcaluated using input emc
-			 * freq first, and then real emc freq will
-			 * be calculated using tegra_emc API.
-			 * tegra_emc_bw_to_freq_req takes HW difference
-			 * into consideration.
-			 * bw param in tegra_emc_bw_to_freq_req() is in KHz.
+			 * When emc_clock is set through TEGRA_CAMERA_EMC_CLK,
+			 * info->rate has peak memory bandwidth in Bps.
 			 */
-			unsigned long bw = (info->rate * 8) >> 10;
+			unsigned long bw = info->rate >> 10;
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 			int ret = 0;
 #endif
-			dev_dbg(camera->dev, "%s: emc_clk rate=%lu\n",
-				__func__, info->rate);
-			clk_set_rate(clk,
-					tegra_emc_bw_to_freq_req(bw) << 10);
+			clk_set_rate(clk, tegra_emc_bw_to_freq_req(bw) << 10);
+
+			dev_dbg(camera->dev, "%s: bw=%lu, emc_clk=%d\n",
+				__func__, bw,
+				tegra_emc_bw_to_freq_req(bw) << 10);
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 			/*
 			 * There is no way to figure out what latency
