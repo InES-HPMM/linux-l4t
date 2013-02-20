@@ -188,7 +188,6 @@ struct tegra_cl_dvfs {
 	u8				minimax_output;
 	unsigned long			dfll_rate_min;
 
-	bool				cl_suspended;
 	u8				lut_min;
 	u8				lut_max;
 	int				thermal_idx;
@@ -897,7 +896,7 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 /*
  * Re-initialize and enable target device clock in open loop mode. Called
  * directly from SoC clock resume syscore operation. Closed loop will be
- * re-entered in cl_dvfs pm callback tegra_cl_dvfs_resume_cl() below.
+ * re-entered in platform syscore ops as well.
  */
 void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 {
@@ -987,58 +986,32 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 #ifdef CONFIG_PM_SLEEP
 /*
  * cl_dvfs controls clock/voltage to other devices, including CPU. Therefore,
- * cl_dvfs pm suspend/resume callbacks are limited to exit/entry from/to closed
- * loop mode without actually stopping/resuming output clock to target device.
+ * cl_dvfs driver pm suspend callback does not stop cl-dvfs operations. It is
+ * only used to enforce cold volatge limit, since SoC may cool down during
+ * suspend without waking up. The correct temperature zone after supend will
+ * be updated via cl_dvfs cooling device interface during resume of temperature
+ * sensor.
  */
 static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 {
-	int ret;
 	unsigned long flags;
 	struct tegra_cl_dvfs *cld = dev_get_drvdata(dev);
 
 	clk_lock_save(cld->dfll_clk, &flags);
-	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP)
-		tegra_cl_dvfs_unlock(cld);
-	cld->cl_suspended = true;
+	cld->thermal_idx = 0;
+	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
+		set_cl_config(cld, &cld->last_req);
+		set_request(cld, &cld->last_req);
+	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
 
-	/* Enforce safe cold limit via direct regulator api */
-	ret = tegra_dvfs_rail_dfll_mode_set_cold(cld->safe_dvfs->dvfs_rail);
-	return ret;
-}
-
-static int tegra_cl_dvfs_resume_cl(struct device *dev)
-{
-	unsigned long flags;
-	struct tegra_cl_dvfs *cld = dev_get_drvdata(dev);
-
-	clk_lock_save(cld->dfll_clk, &flags);
-	cld->cl_suspended = false;
-	cld->thermal_idx = 0; /* safe, as SoC may cool down during suspend */
-	if (cld->mode == TEGRA_CL_DVFS_OPEN_LOOP)
-		tegra_cl_dvfs_lock(cld);
-	clk_unlock_restore(cld->dfll_clk, &flags);
 	return 0;
 }
 
 static const struct dev_pm_ops tegra_cl_dvfs_pm_ops = {
 	.suspend = tegra_cl_dvfs_suspend_cl,
-	.resume = tegra_cl_dvfs_resume_cl,
 };
 #endif
-
-/* Make sure cl_dvfs is in open loop mode during shutdown */
-static void tegra_cl_dvfs_shutdown(struct platform_device *pdev)
-{
-	unsigned long flags;
-	struct tegra_cl_dvfs *cld = platform_get_drvdata(pdev);
-
-	clk_lock_save(cld->dfll_clk, &flags);
-	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP)
-		tegra_cl_dvfs_unlock(cld);
-	cld->cl_suspended = true;
-	clk_unlock_restore(cld->dfll_clk, &flags);
-}
 
 static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 {
@@ -1130,7 +1103,6 @@ static struct platform_driver tegra_cl_dvfs_driver = {
 		.pm = &tegra_cl_dvfs_pm_ops,
 #endif
 	},
-	.shutdown = tegra_cl_dvfs_shutdown,
 };
 
 int __init tegra_init_cl_dvfs(void)
@@ -1195,9 +1167,6 @@ int tegra_cl_dvfs_enable(struct tegra_cl_dvfs *cld)
 int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 {
 	struct dfll_rate_req *req = &cld->last_req;
-
-	if (cld->cl_suspended)
-		return -EBUSY;
 
 	switch (cld->mode) {
 	case TEGRA_CL_DVFS_CLOSED_LOOP:
