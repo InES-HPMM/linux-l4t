@@ -253,6 +253,7 @@ struct tegra_xhci_hcd {
 	bool lp0_exit;
 	unsigned long last_jiffies;
 	unsigned long host_phy_base;
+	void __iomem *host_phy_virt_base;
 
 	void __iomem *pmc_base;
 	void __iomem *padctl_base;
@@ -1789,7 +1790,7 @@ tegra_xhci_load_fw_from_pmc(struct tegra_xhci_hcd *tegra, bool reset)
 
 	/* wait for CNR to get set */
 	do {
-		cnr = readl(IO_ADDRESS(tegra->host_phy_base + 0x24));
+		cnr = readl(tegra->host_phy_virt_base + 0x24);
 	} while ((cnr & 0x800) && count--);
 
 	if (!count && !(cnr & 0x800))
@@ -2792,6 +2793,14 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		goto err_deinit_usb2_clocks;
 	}
 	tegra->host_phy_base = res->start;
+
+	tegra->host_phy_virt_base = devm_ioremap(&pdev->dev,
+				res->start, resource_size(res));
+	if (!tegra->host_phy_virt_base) {
+		dev_err(&pdev->dev, "error mapping host phy memory\n");
+		ret = -ENOMEM;
+		goto err_deinit_usb2_clocks;
+	}
 
 	/* Setup IPFS access and BAR0 space */
 	tegra_xhci_cfg(tegra);
