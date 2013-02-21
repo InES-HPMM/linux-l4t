@@ -318,6 +318,8 @@ fail:
 	return err;
 }
 
+static struct tegra_dc_out roth_disp1_out;
+
 static int roth_dsi_panel_enable(struct device *dev)
 {
 	int err = 0;
@@ -367,6 +369,10 @@ static int roth_dsi_panel_enable(struct device *dev)
 			goto fail;
 		}
 	}
+
+	/* Skip panel programming if in initialized mode */
+	if (roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE)
+		return 0;
 
 #if DSI_PANEL_RESET
 	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
