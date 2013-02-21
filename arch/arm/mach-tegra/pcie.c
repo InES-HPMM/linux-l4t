@@ -41,6 +41,7 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
+#include <linux/async.h>
 #include <linux/vmalloc.h>
 
 #include <asm/sizes.h>
@@ -1441,6 +1442,8 @@ static int tegra_pcie_probe(struct platform_device *pdev)
 static int tegra_pcie_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = NULL;
+
+	async_synchronize_full();
 
 	for_each_pci_dev(pdev) {
 		pci_stop_and_remove_bus_device(pdev);
