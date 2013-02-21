@@ -173,11 +173,65 @@ done:
 }
 static DEVICE_ATTR(i_max, S_IRUSR | S_IWUSR, i_max_show, i_max_store);
 
+static ssize_t request_store(struct device *pdev, struct device_attribute *attr,
+			     const char *buff, size_t size)
+{
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(pdev);
+	struct edp_client *c;
+	unsigned int id;
+	int ret;
+
+	if (sscanf(buff, "%u", &id) != 1)
+		return -EINVAL;
+
+	if (!bbc->edp_client_registered)
+		return -EINVAL;
+
+	c = &bbc->modem_edp_client;
+	if (id >= c->num_states)
+		return -EINVAL;
+
+	ret = edp_update_client_request(c, id, NULL);
+	if (ret)
+		dev_err(pdev, "state update to %u failed\n", id);
+	else
+		ret = size;
+
+	return ret;
+}
+static DEVICE_ATTR(request, S_IWUSR, NULL, request_store);
+
+static ssize_t threshold_store(struct device *pdev,
+			       struct device_attribute *attr,
+			       const char *buff, size_t size)
+{
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(pdev);
+	unsigned int tv;
+	int ret;
+
+	if (sscanf(buff, "%u", &tv) != 1)
+		return -EINVAL;
+
+	if (!bbc->edp_client_registered)
+		return -EINVAL;
+
+	ret = edp_update_loan_threshold(&bbc->modem_edp_client, tv);
+	if (ret)
+		dev_err(pdev, "threshold update to %u failed\n", tv);
+	else
+		ret = size;
+
+	return ret;
+}
+DEVICE_ATTR(threshold, S_IWUSR, NULL, threshold_store);
+
 static struct device_attribute *edp_attributes[] = {
 	&dev_attr_i_breach_ppm,
 	&dev_attr_i_thresh_3g_adjperiod,
 	&dev_attr_i_thresh_lte_adjperiod,
 	&dev_attr_i_max,
+	&dev_attr_request,
+	&dev_attr_threshold,
 	NULL
 };
 
