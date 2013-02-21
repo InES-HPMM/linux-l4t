@@ -3,7 +3,7 @@
  *
  * CPU complex suspend & resume functions for Tegra SoCs
  *
- * Copyright (c) 2009-2013, NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,6 +133,8 @@ struct suspend_context tegra_sctx;
 #define TEGRA_POWER_CPU_PWRREQ_POLARITY (1 << 15)  /* CPU power request polarity */
 #define TEGRA_POWER_CPU_PWRREQ_OE	(1 << 16)  /* CPU power request enable */
 #define TEGRA_POWER_CPUPWRGOOD_EN	(1 << 19)  /* CPU power good enable */
+
+#define TEGRA_DPAD_ORIDE_SYS_CLK_REQ	(1 << 21)
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_LATCH_WAKEUPS	(1 << 5)
@@ -1440,6 +1442,12 @@ out:
 	if (!pdata->combined_req)
 		reg |= TEGRA_POWER_PWRREQ_OE;
 	pmc_32kwritel(reg, PMC_CTRL);
+
+	if (pdata->sysclkreq_gpio) {
+		reg = readl(pmc + PMC_DPAD_ORIDE);
+		reg &= ~TEGRA_DPAD_ORIDE_SYS_CLK_REQ;
+		pmc_32kwritel(reg, PMC_DPAD_ORIDE);
+	}
 
 	if (pdata->suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_suspend_init();
