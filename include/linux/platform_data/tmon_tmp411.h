@@ -26,10 +26,9 @@ struct tmon_plat_data {
 	signed int delta_temp;
 	signed int delta_time;
 	signed int remote_offset;
-	int rtemp_low_boundary;
-	int rtemp_high_boundary;
+	int utmip_temp_bound;
 	void (*ltemp_dependent_reg_update)(int ltemp);
-	void (*rtemp_dependent_reg_update)(int rtemp, int low_to_high);
+	void (*utmip_temp_dep_update)(int rtemp, int utmip_temp_bound);
 };
 
 

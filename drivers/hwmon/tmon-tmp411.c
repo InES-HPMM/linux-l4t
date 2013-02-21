@@ -175,33 +175,17 @@ static int tmon_check_local_temp(struct i2c_client *client,
 	return TMON_NOCHANGE;
 }
 
-static int tmon_rtemp_boundary_check(struct i2c_client *client,
-				int rtemp_low_boundary,
-				int rtemp_high_boundary, int *low_to_high)
+static int tmon_check_remote_temp(struct i2c_client *client,
+						 u32 delta_temp)
 {
 	static int last_temp;
 	int err;
 	int curr_temp = 0;
-
-	*low_to_high = -1;
-
 	err = tmon_read_remote_temp(client, &curr_temp);
 	if (err)
 		return TMON_ERR;
 
-	/* If remote temp is changing from < rtemp_high_boundary
-		to >= rtemp_high_boundary. */
-	if (last_temp < rtemp_high_boundary &&
-		curr_temp >= rtemp_high_boundary)
-		*low_to_high = 1;
-
-	/* If remote temp is changing from >= rtemp_low_boundary
-		to < rtemp_low_boundary */
-	else if (last_temp >= rtemp_low_boundary &&
-		curr_temp < rtemp_low_boundary)
-		*low_to_high = 0;
-
-	if (*low_to_high == 0 || *low_to_high == 1) {
+	if (abs(curr_temp - last_temp) >= delta_temp) {
 		last_temp = curr_temp;
 		return curr_temp;
 	}
@@ -235,7 +219,6 @@ device_attr(local_temp);
 static void tmon_update(struct work_struct *work)
 {
 	int ret;
-	int low_to_high;
 	struct tmon_info *tmon_data =
 	    container_of(to_delayed_work(work),
 			 struct tmon_info,
@@ -256,15 +239,12 @@ static void tmon_update(struct work_struct *work)
 		pdata->ltemp_dependent_reg_update)
 		pdata->ltemp_dependent_reg_update(ret);
 
-	ret =
-	    tmon_rtemp_boundary_check(tmon_data->client,
-					pdata->rtemp_low_boundary,
-					pdata->rtemp_high_boundary,
-					&low_to_high);
+	ret = tmon_check_remote_temp(tmon_data->client,
+						pdata->delta_temp);
 
 	if (ret != TMON_ERR && ret != TMON_NOCHANGE &&
-		pdata->rtemp_dependent_reg_update)
-		pdata->rtemp_dependent_reg_update(ret, low_to_high);
+		pdata->utmip_temp_dep_update)
+		pdata->utmip_temp_dep_update(ret, pdata->utmip_temp_bound);
 
 	schedule_delayed_work(&tmon_data->tmon_work,
 			      msecs_to_jiffies(pdata->delta_time));
