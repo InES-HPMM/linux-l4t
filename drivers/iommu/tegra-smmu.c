@@ -288,6 +288,25 @@ static const u32 tegra11x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
 	HWGRP_INIT(XUSB_HOST),
 };
 #endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+static const u32 tegra14x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
+	HWGRP_INIT(AVPC),
+	HWGRP_INIT(DC),
+	HWGRP_INIT(DCB),
+	HWGRP_INIT(EPP),
+	HWGRP_INIT(G2),
+	HWGRP_INIT(HC),
+	HWGRP_INIT(HDA),
+	HWGRP_INIT(ISP),
+	HWGRP_INIT(MSENC),
+	HWGRP_INIT(NV),
+	HWGRP_INIT(PPCS),
+	HWGRP_INIT(VDE),
+	HWGRP_INIT(VI),
+	HWGRP_INIT(TSEC),
+	HWGRP_INIT(PPCS1),
+};
+#endif
 
 #define HWGRP_ASID_REG(x) (smmu_hwgrp_asid_reg[x])
 
@@ -1196,6 +1215,11 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		smmu_hwgrp_asid_reg = tegra11x_smmu_hwgrp_asid_reg;
 		break;
 #endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	case TEGRA_CHIPID_TEGRA14:
+		smmu_hwgrp_asid_reg = tegra14x_smmu_hwgrp_asid_reg;
+		break;
+#endif
 	default:
 		dev_err(dev, "No SMMU support\n");
 		return -ENODEV;
@@ -1260,6 +1284,8 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu_debugfs_create(smmu);
 	smmu_handle = smmu;
 	bus_set_iommu(&platform_bus_type, &smmu_iommu_ops);
+
+	dev_info(dev, "Loaded Tegra IOMMU driver\n");
 	return 0;
 }
 
