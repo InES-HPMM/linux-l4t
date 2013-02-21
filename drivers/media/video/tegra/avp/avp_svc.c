@@ -33,8 +33,6 @@
 #include <mach/clk.h>
 #include <linux/nvmap.h>
 
-#include "../../../../video/tegra/nvmap/nvmap.h"
-
 #include "avp_msg.h"
 #include "trpc.h"
 #include "avp.h"

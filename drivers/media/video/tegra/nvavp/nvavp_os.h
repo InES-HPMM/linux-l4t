@@ -13,7 +13,7 @@
 
 #include <linux/types.h>
 
-#include "../../../../video/tegra/nvmap/nvmap.h"
+#include "linux/nvmap.h"
 
 #define NVE2_AVP				(0x0000E276)
 
