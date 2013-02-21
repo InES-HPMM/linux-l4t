@@ -43,9 +43,9 @@
 #include <linux/completion.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
+#include <linux/nvmap.h>
 
 #include <mach/arb_sema.h>
-#include "../video/tegra/nvmap/nvmap.h"
 
 #include <crypto/scatterwalk.h>
 #include <crypto/aes.h>
