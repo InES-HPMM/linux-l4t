@@ -22,24 +22,54 @@
 
 struct dentry *edp_debugfs_dir;
 
+/*
+ * Reducing the cap is tricky - we might require throttling of other
+ * clients (therefore, involving the governor). So we will fool the
+ * framework by using a dummy client that has a single E-state (E0)
+ * equalling the reduction.
+ */
+static int reduce_cap(struct edp_manager *m, unsigned int new_max)
+{
+	int r = 0;
+	unsigned int delta = m->max - new_max;
+	unsigned int remain;
+	struct edp_client c = {
+		.name = ".",
+		.states = &delta,
+		.num_states = 1,
+		.e0_index = 0,
+		.max_borrowers = 0,
+		.priority = EDP_MIN_PRIO
+	};
+
+	r = register_client(m, &c);
+	if (r)
+		return r;
+
+	r = edp_update_client_request_unlocked(&c, 0, NULL);
+	if (r)
+		return r;
+
+	remain = m->remaining;
+	r = unregister_client(&c);
+	if (r)
+		return r;
+
+	m->remaining = remain;
+	m->max = new_max;
+	return 0;
+}
+
 static int __manager_cap_set(struct edp_manager *m, unsigned int new_max)
 {
-	if (new_max < e0_current_sum(m))
-		return -EINVAL;
-
-	if (new_max < m->max - m->remaining)
-		return -EBUSY;
-
-	if (new_max > m->max) {
+	if (new_max >= m->max) {
 		m->remaining += new_max - m->max;
 		m->max = new_max;
 		schedule_promotion(m);
-	} else {
-		m->remaining -= m->max - new_max;
-		m->max = new_max;
+		return 0;
 	}
 
-	return 0;
+	return reduce_cap(m, new_max);
 }
 
 static int manager_status_show(struct seq_file *file, void *data)
@@ -156,6 +186,7 @@ static int __client_current_set(struct edp_client *c, unsigned int new)
 		m->remaining += cl - nl;
 		if (c->throttle)
 			c->throttle(new, c->private_data);
+		schedule_promotion(m);
 	} else if (nl > cl) {
 		m->remaining -= nl - cl;
 		if (c->notify_promotion)

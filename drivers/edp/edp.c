@@ -216,7 +216,7 @@ static void add_client(struct edp_client *new, struct list_head *head)
 	list_add_tail(&new->link, &p->link);
 }
 
-static int register_client(struct edp_manager *mgr, struct edp_client *client)
+int register_client(struct edp_manager *mgr, struct edp_client *client)
 {
 	if (!mgr || !client)
 		return -EINVAL;
@@ -392,7 +392,7 @@ static inline bool registered_client(struct edp_client *client)
 	return client ? client->manager : false;
 }
 
-static int unregister_client(struct edp_client *client)
+int unregister_client(struct edp_client *client)
 {
 	if (!registered_client(client))
 		return -EINVAL;

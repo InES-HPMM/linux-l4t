@@ -54,6 +54,9 @@ static inline unsigned int req_index(struct edp_client *c)
 extern struct mutex edp_lock;
 extern struct list_head edp_governors;
 
+int register_client(struct edp_manager *m, struct edp_client *c);
+int unregister_client(struct edp_client *c);
+
 int edp_update_client_request_unlocked(struct edp_client *client,
 		unsigned int req, int *approved);
 int edp_update_loan_threshold_unlocked(struct edp_client *client,
