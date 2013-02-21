@@ -924,7 +924,7 @@ static const struct tegra_modem_operations baseband_operations = {
 
 #define MODEM_BOOT_EDP_MAX 0
 /* FIXME: get accurate boot current value */
-static unsigned int modem_boot_edp_states[] = { 1900 };
+static unsigned int modem_boot_edp_states[] = { 1900, 0 };
 static struct edp_client modem_boot_edp_client = {
 	.name = "modem_boot",
 	.states = modem_boot_edp_states,
