@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pismo-sensors.c
  *
- * Copyright (c) 2012 NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -63,25 +63,25 @@ static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 };
 
 static struct throttle_table tj_throttle_table[] = {
-	{      0, 1000 },
-	{  51000, 1000 },
-	{ 102000, 1000 },
-	{ 204000, 1000 },
-	{ 252000, 1000 },
-	{ 288000, 1000 },
-	{ 372000, 1000 },
-	{ 468000, 1000 },
-	{ 510000, 1000 },
-	{ 612000, 1000 },
-	{ 714000, 1050 },
-	{ 816000, 1050 },
-	{ 918000, 1050 },
-	{1020000, 1100 },
-	{1122000, 1100 },
-	{1224000, 1100 },
-	{1326000, 1100 },
-	{1428000, 1100 },
-	{1530000, 1100 },
+	{ {      0, 1000 } },
+	{ {  51000, 1000 } },
+	{ { 102000, 1000 } },
+	{ { 204000, 1000 } },
+	{ { 252000, 1000 } },
+	{ { 288000, 1000 } },
+	{ { 372000, 1000 } },
+	{ { 468000, 1000 } },
+	{ { 510000, 1000 } },
+	{ { 612000, 1000 } },
+	{ { 714000, 1050 } },
+	{ { 816000, 1050 } },
+	{ { 918000, 1050 } },
+	{ {1020000, 1100 } },
+	{ {1122000, 1100 } },
+	{ {1224000, 1100 } },
+	{ {1326000, 1100 } },
+	{ {1428000, 1100 } },
+	{ {1530000, 1100 } },
 };
 
 static struct balanced_throttle tj_throttle = {
@@ -626,12 +626,12 @@ static struct therm_est_data skin_data = {
 };
 
 static struct throttle_table skin_throttle_table[] = {
-	{ 640000, 1200 },
-	{ 640000, 1200 },
-	{ 760000, 1200 },
-	{ 760000, 1200 },
-	{1000000, 1200 },
-	{1000000, 1200 },
+	{ { 640000, 1200 } },
+	{ { 640000, 1200 } },
+	{ { 760000, 1200 } },
+	{ { 760000, 1200 } },
+	{ {1000000, 1200 } },
+	{ {1000000, 1200 } },
 };
 
 static struct balanced_throttle skin_throttle = {
