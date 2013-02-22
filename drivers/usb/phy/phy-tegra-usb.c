@@ -36,10 +36,10 @@
 /* HACK -- need to pass this through DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
-#include "clock.h"
-#include "tegra_usb_phy.h"
-#include "fuse.h"
-#include "common.h"
+#include "../../../arch/arm/mach-tegra/clock.h"
+#include "../../../arch/arm/mach-tegra/tegra_usb_phy.h"
+#include "../../../arch/arm/mach-tegra/fuse.h"
+#include "../../../arch/arm/mach-tegra/common.h"
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
