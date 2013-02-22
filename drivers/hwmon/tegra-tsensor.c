@@ -32,7 +32,6 @@
 #include <linux/module.h>
 
 #include <mach/clk.h>
-#include <mach/delay.h>
 #include <mach/tsensor.h>
 #include <mach/tegra_fuse.h>
 
