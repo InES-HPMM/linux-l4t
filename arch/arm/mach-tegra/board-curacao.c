@@ -62,7 +62,7 @@
 #include "fuse.h"
 #include "gpio-names.h"
 #include <mach/i2s.h>
-#include <mach/tegra_wm8903_pdata.h>
+#include <sound/tegra_wm8903.h>
 #include <sound/wm8903.h>
 
 #define ENABLE_OTG 0
