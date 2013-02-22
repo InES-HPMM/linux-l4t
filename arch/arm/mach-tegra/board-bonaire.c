@@ -154,9 +154,7 @@ static struct i2c_board_info __initdata bonaire_i2c_bus1_board_info[] = {
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c1_platform_data = {
-	.adapter_nr	= 0,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 #if 0	/* !!!FIXME!!! THESE ARE VENTANA SETTINGS */
@@ -172,9 +170,7 @@ static const struct tegra_pingroup_config i2c2_gen2 = {
 #endif
 
 static struct tegra_i2c_platform_data bonaire_i2c2_platform_data = {
-	.adapter_nr	= 1,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 100000 },
+	.bus_clk_rate	= 100000,
 #if 0	/* !!!FIXME!!!! TESE ARE VENTANA SETTINGS */
 	.bus_mux	= { &i2c2_ddc, &i2c2_gen2 },
 	.bus_mux_len	= { 1, 1 },
@@ -182,27 +178,19 @@ static struct tegra_i2c_platform_data bonaire_i2c2_platform_data = {
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c3_platform_data = {
-	.adapter_nr	= 2,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c4_platform_data = {
-	.adapter_nr	= 3,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c5_platform_data = {
-	.adapter_nr	= 4,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 static struct tegra_i2c_platform_data bonaire_i2c6_platform_data = {
-	.adapter_nr	= 5,
-	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= 100000,
 };
 
 static void bonaire_i2c_init(void)
