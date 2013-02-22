@@ -252,6 +252,9 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_FORMAT_S16_LE:
 		sample_size = 16;
 		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		sample_size = 24;
+		break;
 	default:
 		return -EINVAL;
 	}
