@@ -32,7 +32,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/pm_qos.h>
-#include <mach/usb_phy.h>
+#include <linux/usb/tegra_usb_phy.h>
 #include <linux/regulator/consumer.h>
 #include "board.h"
 #include "board-enterprise.h"
