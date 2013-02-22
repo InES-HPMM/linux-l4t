@@ -222,7 +222,7 @@ static int as3720_i2c_probe(struct i2c_client *i2c,
 
 	ret = mfd_add_devices(&i2c->dev, -1, as3720_devs,
 		ARRAY_SIZE(as3720_devs), NULL,
-		pdata->irq_base);
+		pdata->irq_base, NULL);
 	if (ret) {
 		dev_err(as3720->dev, "add mfd devices failed with err: %d\n",
 			ret);
