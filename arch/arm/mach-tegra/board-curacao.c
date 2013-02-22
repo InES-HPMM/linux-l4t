@@ -36,6 +36,7 @@
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/of_platform.h>
+#include <linux/usb/tegra_usb_phy.h>
 
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
@@ -46,7 +47,6 @@
 #include <mach/iomap.h>
 #include <mach/i2s.h>
 #include <mach/audio.h>
-#include <mach/usb_phy.h>
 #include <mach/nand.h>
 #include <mach/hardware.h>
 
