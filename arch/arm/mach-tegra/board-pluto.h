@@ -83,7 +83,7 @@
 #define MPU_COMPASS_IRQ_GPIO	0
 #define MPU_COMPASS_ADDR	0x0D
 #define MPU_COMPASS_BUS_NUM	0
-#define MPU_COMPASS_ORIENTATION	{ 0, 1, 0, -1, 0, 0, 0, 0, 1 }
+#define MPU_COMPASS_ORIENTATION	{ -1, 0, 0, 0, -1, 0, 0, 0, 1 }
 
 /* Modem1 related GPIOs */
 #define MDM_RST				TEGRA_GPIO_PR3
