@@ -31,9 +31,9 @@
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "tegra_usb_phy.h"
-#include "gpio-names.h"
-#include "fuse.h"
-#include "clock.h"
+#include "../../../arch/arm/mach-tegra/gpio-names.h"
+#include "../../../arch/arm/mach-tegra/fuse.h"
+#include "../../../arch/arm/mach-tegra/clock.h"
 
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
