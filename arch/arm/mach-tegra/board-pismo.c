@@ -735,7 +735,7 @@ static void __init tegra_pismo_init(void)
 	pismo_uart_init();
 	pismo_audio_init();
 	platform_add_devices(pismo_devices, ARRAY_SIZE(pismo_devices));
-	tegra_ram_console_debug_init();
+	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	pismo_regulator_init();
 	pismo_sdhci_init();
