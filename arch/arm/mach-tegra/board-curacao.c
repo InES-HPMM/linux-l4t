@@ -631,7 +631,7 @@ static const char * const curacao_dt_board_compat[] = {
 
 MACHINE_START(CURACAO, CURACAO_BOARD_NAME)
 	.atag_offset    = 0x80000100,
-	.soc		= &tegra_soc_desc,
+	.smp		= smp_ops(tegra_smp_ops),
 	.map_io         = tegra_map_common_io,
 	.reserve        = tegra_curacao_reserve,
 	.init_early	= tegra11x_init_early,
