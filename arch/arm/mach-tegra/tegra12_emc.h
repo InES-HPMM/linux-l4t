@@ -22,6 +22,8 @@
 #ifndef _MACH_TEGRA_TEGRA11_EMC_H
 #define _MACH_TEGRA_TEGRA11_EMC_H
 
+#include "tegra_emc.h"
+
 /* !!!FIXME!!! Need actual Tegra11x values */
 #define TEGRA_EMC_NUM_REGS		110
 
