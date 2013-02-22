@@ -3633,6 +3633,7 @@ static int max98090_suspend(struct snd_soc_codec *codec)
 
 static int max98090_resume(struct snd_soc_codec *codec)
 {
+	snd_soc_cache_sync(codec);
 	return 0;
 }
 
@@ -3649,6 +3650,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 
 	max98090->codec = codec;
 
+	codec->dapm.idle_bias_off = 1;
 	codec->cache_sync = 1;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
