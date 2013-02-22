@@ -809,7 +809,7 @@ static const char * const pismo_dt_board_compat[] = {
 
 MACHINE_START(PISMO, "pismo")
 	.atag_offset	= 0x100,
-	.soc		= &tegra_soc_desc,
+	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_pismo_reserve,
 	.init_early	= tegra11x_init_early,
