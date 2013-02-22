@@ -28,7 +28,7 @@
 #include <linux/uaccess.h>
 #include <linux/suspend.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <mach/usb_phy.h>
+#include <linux/usb/tegra_usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra-bb-power.h>
 #include "bb-power.h"
