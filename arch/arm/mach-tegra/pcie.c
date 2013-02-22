@@ -316,7 +316,7 @@ struct tegra_pcie_info {
 	struct clk		*pll_e;
 	struct device		*dev;
 	struct tegra_pci_platform_data *plat_data;
-}tegra_pcie;
+};
 
 static struct tegra_pcie_info tegra_pcie;
 
@@ -725,8 +725,8 @@ static void tegra_pcie_setup_translations(void)
 
 	/* Bar 2: downstream IO bar */
 	fpci_bar = ((__u32)0xfdfc << 16);
-	size = SZ_128K;
-	axi_address = TEGRA_PCIE_IO_BASE;
+	size = MMIO_SIZE;
+	axi_address = MMIO_BASE;
 	afi_writel(axi_address, AFI_AXI_BAR2_START);
 	afi_writel(size >> 12, AFI_AXI_BAR2_SZ);
 	afi_writel(fpci_bar, AFI_FPCI_BAR2);
@@ -993,10 +993,6 @@ static int tegra_pcie_map_resources(void)
 
 void tegra_pcie_unmap_resources(void)
 {
-	if (tegra_pcie_io_base) {
-		iounmap(tegra_pcie_io_base);
-		tegra_pcie_io_base = 0;
-	}
 	if (tegra_pcie.regs) {
 		iounmap(tegra_pcie.regs);
 		tegra_pcie.regs = 0;
