@@ -735,32 +735,7 @@ tegra3_tear_down_core:
 	/* Checking for BB-idle or Paging case */
 	ldr	r0, [r4, #PMC_IPC_STS]
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	moveq	r0, #0
-	beq	tegra148_lp0_entry
-
-/* lp0_delayed_entry
- *
- * If BB has a paging request, a 30msec timeout has to be done before the
- * PMC_IPC_STS register is queried again
- */
-lp0_delayed_entry:
-	/* Use us timer to wait for 10 ms
-	 * FIXME: we need to increase this timeout according to BB
-	 * requirements.
-	 */
-	mov32	r7, TEGRA_TMRUS_BASE
-	wait_for_us r1, r7, r9
-	ldr r2, =10000
-	add r1, r1, r2
-	wait_until r1, r7, r9
-
-	ldr	r0, [r4, #PMC_IPC_STS]
-	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
 	moveq	r0, #PMC_LP_STATE_LP0
-	bne	lp1bb_entry
-
-/* R0 contains info whether delay timeout has already taken place or not */
-tegra148_lp0_entry:
 
 	/* Write PMC_IPC_CLR[mem_sts] = 1 */
 	ldr	r1, [r4, #PMC_IPC_CLR]
@@ -772,17 +747,8 @@ tegra148_lp0_entry:
 	bic	r1, #FLOW_IPC_STS_AP2BB_MSC_STS_0
 	str	r1, [r6, #FLOW_IPC_STS]
 
-	/* Check PMC_IPC_STS[mem_req] and PMC_IPC_STS[mem_req_soon]
-	 * once again. If both 0 then go to LP0 entry
-	 */
-	ldr	r3, [r4, #PMC_IPC_STS]
-	tst	r3, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	beq	tegra3_lp0_tear_down_core
-
-	/* Check if delay has happened. If yes, then set PMC_IPC_SET[mem_sts]
-	 * and then go to LP1BB, else go to delay */
 	cmp	r0, #PMC_LP_STATE_LP0
-	beq	lp0_delayed_entry
+	beq	tegra3_lp0_tear_down_core
 	ldr	r1, [r4, #PMC_IPC_SET]
 	orr	r1, r1, #PMC_IPC_SET_MEM_STS
 	str	r1, [r4, #PMC_IPC_SET]
@@ -825,7 +791,7 @@ tegra148_set_mem_req_interrupt:
 	/* Wait for 1ms for write to take effect */
 	mov32	r7, TEGRA_TMRUS_BASE
 	wait_for_us r1, r7, r9
-	add r1, r1, #1000
+	add r1, r1, #100
 	wait_until r1, r7, r9
 
 	/* Program the auto_wake_lvl regsiters */
@@ -836,7 +802,7 @@ tegra148_set_mem_req_interrupt:
 	/* Wait for 1ms for write to take effect */
 	mov32	r7, TEGRA_TMRUS_BASE
 	wait_for_us r1, r7, r9
-	add r1, r1, #1000
+	add r1, r1, #100
 	wait_until r1, r7, r9
 
 	/* Configure mem_req active low to be wake event */
