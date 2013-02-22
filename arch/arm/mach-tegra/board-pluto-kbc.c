@@ -22,7 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
-#include <mach/kbc.h>
+#include <linux/input/tegra_kbc.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 
