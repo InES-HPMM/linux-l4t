@@ -975,14 +975,18 @@ static int __devinit as3720_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct as3720 *as3720 = dev_get_drvdata(pdev->dev.parent);
 	struct as3720_platform_data *pdata;
+	struct regulator_config config = { };
 
 	pdata = dev_get_platdata(pdev->dev.parent);
 
 	for (regulator = 0; regulator < AS3720_NUM_REGULATORS; regulator++) {
 		if (pdata->reg_init[regulator]) {
+			config.dev = &pdev->dev;
+			config.init_data = pdata->reg_init[regulator];
+			config.driver_data = as3720;
+
 			rdev = regulator_register(&regulators[regulator],
-				&pdev->dev, pdata->reg_init[regulator],
-					as3720, NULL);
+				&config);
 			if (IS_ERR(rdev)) {
 				dev_err(&pdev->dev, "as3720 regulator err\n");
 				return PTR_ERR(rdev);
