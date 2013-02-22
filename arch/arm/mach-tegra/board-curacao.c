@@ -44,7 +44,6 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
-#include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/audio.h>
 #include <mach/usb_phy.h>
