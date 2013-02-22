@@ -794,6 +794,7 @@ fail_clk:
 	regulator_put(phy->vdd_reg);
 	iounmap(phy->regs);
 
+fail_io:
 fail_nomem:
 fail_inval:
 	return ERR_PTR(err);
