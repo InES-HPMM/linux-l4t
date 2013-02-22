@@ -38,6 +38,7 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/pm_qos.h>
+#include <linux/usb/tegra_usb_phy.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -45,7 +46,6 @@
 #include <asm/unaligned.h>
 #include <asm/dma.h>
 
-#include <mach/usb_phy.h>
 #include <mach/iomap.h>
 
 #include "tegra_udc.h"
