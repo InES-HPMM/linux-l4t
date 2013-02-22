@@ -32,8 +32,6 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/tegra_usb_phy.h>
-#include <asm/mach-types.h>
-#include <asm/mach/arch.h>
 #include <mach/tegra-bb-power.h>
 #include "bb-power.h"
 #include "bb-oem1.h"
