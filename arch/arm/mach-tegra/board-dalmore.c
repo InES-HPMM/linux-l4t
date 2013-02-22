@@ -48,6 +48,7 @@
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
 #include <linux/edp.h>
+#include <linux/usb/tegra_usb_phy.h>
 
 #include <asm/hardware/gic.h>
 
@@ -63,7 +64,6 @@
 #include <mach/tegra_asoc_pdata.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include <mach/usb_phy.h>
 #include <mach/gpio-tegra.h>
 #include <mach/tegra_fiq_debugger.h>
 #include <mach/tegra_usb_modem_power.h>
