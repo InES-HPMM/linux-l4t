@@ -35,10 +35,9 @@
 #else
 #include <mach/pinmux-t11.h>
 #endif
-#include <asm/mach-types.h>
 #include "tegra_usb_phy.h"
-#include "gpio-names.h"
-#include "fuse.h"
+#include "../../../arch/arm/mach-tegra/gpio-names.h"
+#include "../../../arch/arm/mach-tegra/fuse.h"
 
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
