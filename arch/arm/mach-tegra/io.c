@@ -76,20 +76,20 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = IO_PPCS_VIRT,
+		.virtual = (unsigned long)IO_PPCS_VIRT,
 		.pfn = __phys_to_pfn(IO_PPCS_PHYS),
 		.length = IO_PPCS_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = IO_PCIE_VIRT,
+		.virtual = (unsigned long)IO_PCIE_VIRT,
 		.pfn = __phys_to_pfn(IO_PCIE_PHYS),
 		.length = IO_PCIE_SIZE,
 		.type = MT_DEVICE,
 	},
 #if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_TEGRA_GMI)
 	{
-		.virtual = IO_NOR_VIRT,
+		.virtual = (unsigned long)IO_NOR_VIRT,
 		.pfn = __phys_to_pfn(IO_NOR_PHYS),
 		.length = IO_NOR_SIZE,
 		.type = MT_DEVICE,
@@ -97,13 +97,13 @@ static struct map_desc tegra_io_desc[] __initdata = {
 #endif
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	{
-		.virtual = IO_SMC_VIRT,
+		.virtual = (unsigned long)IO_SMC_VIRT,
 		.pfn = __phys_to_pfn(IO_SMC_PHYS),
 		.length = IO_SMC_SIZE,
 		.type = MT_DEVICE,
 	},
 	{
-		.virtual = IO_SIM_ESCAPE_VIRT,
+		.virtual = (unsigned long)IO_SIM_ESCAPE_VIRT,
 		.pfn = __phys_to_pfn(IO_SIM_ESCAPE_PHYS),
 		.length = IO_SIM_ESCAPE_SIZE,
 		.type = MT_DEVICE,
