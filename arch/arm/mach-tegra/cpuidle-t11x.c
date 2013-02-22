@@ -508,11 +508,11 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 
 	if (clkgt_at_vmin) {
 		rate = 0;
-		status = tegra11_cpu_dfll_rate_exchange(&rate);
+		status = tegra_cpu_g_idle_rate_exchange(&rate);
 		if (!status) {
 			idle_stats.clk_gating_vmin++;
 			cpu_do_idle();
-			tegra11_cpu_dfll_rate_exchange(&rate);
+			tegra_cpu_g_idle_rate_exchange(&rate);
 			power_down = true;
 		} else
 			power_down = tegra_cpu_core_power_down(dev, state,
@@ -520,14 +520,14 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 	} else if (!power_gating_cpu_only) {
 		if (is_lp_cluster()) {
 			rate = ULONG_MAX;
-			status = tegra_cpu_backup_rate_exchange(&rate);
+			status = tegra_cpu_lp_idle_rate_exchange(&rate);
 		}
 
 		power_down = tegra_cpu_cluster_power_down(dev, state, request);
 
 		/* restore cpu clock after cluster power ungating */
 		if (status == 0)
-			tegra_cpu_backup_rate_exchange(&rate);
+			tegra_cpu_lp_idle_rate_exchange(&rate);
 	} else
 		power_down = tegra_cpu_core_power_down(dev, state, request);
 

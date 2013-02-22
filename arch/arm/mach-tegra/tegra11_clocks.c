@@ -7004,7 +7004,7 @@ static void tegra11_init_one_clock(struct clk *c)
 }
 
 /* Direct access to CPU clock sources fot CPU idle driver */
-int tegra11_cpu_dfll_rate_exchange(unsigned long *rate)
+int tegra11_cpu_g_idle_rate_exchange(unsigned long *rate)
 {
 	int ret = 0;
 	struct clk *dfll = tegra_clk_cpu_cmplx.parent->u.cpu.dynamic;
@@ -7027,7 +7027,7 @@ int tegra11_cpu_dfll_rate_exchange(unsigned long *rate)
 	return ret;
 }
 
-int tegra11_cpu_backup_rate_exchange(unsigned long *rate)
+int tegra11_cpu_lp_idle_rate_exchange(unsigned long *rate)
 {
 	int ret = 0;
 	struct clk *backup = tegra_clk_cpu_cmplx.parent->u.cpu.backup;
