@@ -398,7 +398,6 @@ static struct platform_device *curacao_devices[] __initdata = {
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_i2s_device0,
-	&tegra_pcm_device,
 	&curacao_audio_device,
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
