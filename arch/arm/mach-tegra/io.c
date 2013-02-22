@@ -82,12 +82,14 @@ static struct map_desc tegra_io_desc[] __initdata = {
 		.length = IO_PPCS_SIZE,
 		.type = MT_DEVICE,
 	},
+#if defined(CONFIG_TEGRA_PCI)
 	{
 		.virtual = (unsigned long)IO_PCIE_VIRT,
 		.pfn = __phys_to_pfn(IO_PCIE_PHYS),
 		.length = IO_PCIE_SIZE,
 		.type = MT_DEVICE,
 	},
+#endif
 #if defined(CONFIG_MTD_NOR_TEGRA) || defined(CONFIG_MTD_NOR_TEGRA_GMI)
 	{
 		.virtual = (unsigned long)IO_NOR_VIRT,
