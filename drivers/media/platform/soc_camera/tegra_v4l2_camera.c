@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012, 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -266,7 +266,7 @@ struct tegra_buffer {
 struct tegra_camera_dev {
 	struct soc_camera_host		ici;
 	struct soc_camera_device	*icd;
-	struct nvhost_device		*ndev;
+	struct platform_device		*ndev;
 	struct tegra_camera_platform_data *pdata;
 
 	struct clk			*clk_vi;
@@ -1640,85 +1640,96 @@ static struct soc_camera_host_ops tegra_soc_camera_host_ops = {
 	.querycap	= tegra_camera_querycap,
 };
 
-static int tegra_camera_probe(struct nvhost_device *ndev,
-					struct nvhost_device_id *id_table)
+static int tegra_camera_probe(struct platform_device *pdev)
 {
 	struct tegra_camera_dev *pcdev;
+	struct nvhost_device_data *ndata;
 	int err = 0;
+
+	ndata = pdev->dev.platform_data;
+	if (!ndata) {
+		dev_err(&pdev->dev, "No nvhost device data!\n");
+		err = -EINVAL;
+		goto exit;
+	}
 
 	pcdev = kzalloc(sizeof(struct tegra_camera_dev), GFP_KERNEL);
 	if (!pcdev) {
-		dev_err(&ndev->dev, "Could not allocate pcdev\n");
+		dev_err(&pdev->dev, "Could not allocate pcdev\n");
 		err = -ENOMEM;
 		goto exit;
 	}
 
-	pcdev->pdata			= ndev->dev.platform_data;
-	pcdev->ndev			= ndev;
+	pcdev->pdata = ndata->private_data;
+	if (!pcdev->pdata) {
+		dev_err(&pdev->dev, "No platform data!\n");
+		err = -EINVAL;
+		goto exit_free_pcdev;
+	}
+	pcdev->ndev = pdev;
 
-	pcdev->ici.priv		= pcdev;
-	pcdev->ici.v4l2_dev.dev	= &ndev->dev;
-	pcdev->ici.nr		= ndev->id;
-	pcdev->ici.drv_name	= dev_name(&ndev->dev);
-	pcdev->ici.ops		= &tegra_soc_camera_host_ops;
+	pcdev->ici.priv = pcdev;
+	pcdev->ici.v4l2_dev.dev = &pdev->dev;
+	pcdev->ici.nr = pdev->id;
+	pcdev->ici.drv_name = dev_name(&pdev->dev);
+	pcdev->ici.ops = &tegra_soc_camera_host_ops;
 
 	INIT_LIST_HEAD(&pcdev->capture);
 	INIT_WORK(&pcdev->work, tegra_camera_work);
 	spin_lock_init(&pcdev->videobuf_queue_lock);
 	mutex_init(&pcdev->work_mutex);
 
-	nvhost_set_drvdata(ndev, pcdev);
-
 	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
-		dev_err(&ndev->dev, "Invalid camera port %d in platform data\n",
+		dev_err(&pdev->dev, "Invalid camera port %d in platform data\n",
 			pcdev->pdata->port);
 		goto exit_free_pcdev;
 	}
 
-	pcdev->clk_vi = clk_get_sys("tegra_camera", "vi");
+	pcdev->clk_vi = clk_get(&pdev->dev, "vi");
 	if (IS_ERR_OR_NULL(pcdev->clk_vi)) {
-		dev_err(&ndev->dev, "Failed to get vi clock.\n");
+		dev_err(&pdev->dev, "Failed to get vi clock.\n");
 		goto exit_free_pcdev;
 	}
 
-	pcdev->clk_vi_sensor = clk_get_sys("tegra_camera", "vi_sensor");
+	pcdev->clk_vi_sensor = clk_get(&pdev->dev, "vi_sensor");
 	if (IS_ERR_OR_NULL(pcdev->clk_vi_sensor)) {
-		dev_err(&ndev->dev, "Failed to get vi_sensor clock.\n");
+		dev_err(&pdev->dev, "Failed to get vi_sensor clock.\n");
 		goto exit_put_clk_vi;
 	}
 
-	pcdev->clk_csi = clk_get_sys("tegra_camera", "csi");
+	pcdev->clk_csi = clk_get(&pdev->dev, "csi");
 	if (IS_ERR_OR_NULL(pcdev->clk_csi)) {
-		dev_err(&ndev->dev, "Failed to get csi clock.\n");
+		dev_err(&pdev->dev, "Failed to get csi clock.\n");
 		goto exit_put_clk_vi_sensor;
 	}
 
-	pcdev->clk_isp = clk_get_sys("tegra_camera", "isp");
+	pcdev->clk_isp = clk_get(&pdev->dev, "isp");
 	if (IS_ERR_OR_NULL(pcdev->clk_isp)) {
-		dev_err(&ndev->dev, "Failed to get isp clock.\n");
+		dev_err(&pdev->dev, "Failed to get isp clock.\n");
 		goto exit_put_clk_csi;
 	}
 
-	pcdev->clk_csus = clk_get_sys("tegra_camera", "csus");
+	pcdev->clk_csus = clk_get(&pdev->dev, "csus");
 	if (IS_ERR_OR_NULL(pcdev->clk_csus)) {
-		dev_err(&ndev->dev, "Failed to get csus clock.\n");
+		dev_err(&pdev->dev, "Failed to get csus clock.\n");
 		goto exit_put_clk_isp;
 	}
 
 	clk_set_rate(pcdev->clk_vi, 150000000);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 
-	err = nvhost_client_device_get_resources(ndev);
+	platform_set_drvdata(pdev, ndata);
+	err = nvhost_client_device_get_resources(pdev);
 	if (err)
 		goto exit_put_clk_csus;
 
-	nvhost_client_device_init(ndev);
+	nvhost_client_device_init(pdev);
 
-	pcdev->vi_base = ndev->aperture;
+	pcdev->vi_base = ndata->aperture;
 
-	pm_suspend_ignore_children(&ndev->dev, true);
-	pm_runtime_enable(&ndev->dev);
-	pm_runtime_resume(&ndev->dev);
+	pm_suspend_ignore_children(&pdev->dev, true);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_resume(&pdev->dev);
 
 	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(NULL);
 	if (IS_ERR(pcdev->alloc_ctx)) {
@@ -1726,19 +1737,20 @@ static int tegra_camera_probe(struct nvhost_device *ndev,
 		goto exit_put_resources;
 	}
 
+	platform_set_drvdata(pdev, pcdev);
 	err = soc_camera_host_register(&pcdev->ici);
 	if (IS_ERR_VALUE(err))
 		goto exit_cleanup_alloc_ctx;
 
-	dev_notice(&ndev->dev, "Tegra camera driver loaded.\n");
+	dev_notice(&pdev->dev, "Tegra camera driver loaded.\n");
 
 	return err;
 
 exit_cleanup_alloc_ctx:
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
+	vb2_dma_nvmap_cleanup_ctx(&pdev->dev);
 exit_put_resources:
-	pm_runtime_disable(&ndev->dev);
-	nvhost_client_device_put_resources(ndev);
+	pm_runtime_disable(&pdev->dev);
+	nvhost_client_device_put_resources(pdev);
 exit_put_clk_csus:
 	clk_put(pcdev->clk_csus);
 exit_put_clk_isp:
@@ -1755,24 +1767,24 @@ exit:
 	return err;
 }
 
-static int tegra_camera_remove(struct nvhost_device *ndev)
+static int tegra_camera_remove(struct platform_device *pdev)
 {
-	struct soc_camera_host *ici = to_soc_camera_host(&ndev->dev);
+	struct soc_camera_host *ici = to_soc_camera_host(&pdev->dev);
 	struct tegra_camera_dev *pcdev = container_of(ici,
 					struct tegra_camera_dev, ici);
 	struct resource *res;
 
-	res = nvhost_get_resource_byname(ndev, IORESOURCE_MEM, "regs");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
 	if (!res)
 		return -EBUSY;
+	iounmap(pcdev->vi_base);
+	release_mem_region(res->start, resource_size(res));
 
 	soc_camera_host_unregister(ici);
 
-	vb2_dma_nvmap_cleanup_ctx(&ndev->dev);
+	vb2_dma_nvmap_cleanup_ctx(&pdev->dev);
 
-	pm_runtime_disable(&ndev->dev);
-
-	nvhost_client_device_put_resources(ndev);
+	pm_runtime_disable(&pdev->dev);
 
 	clk_put(pcdev->clk_csus);
 	clk_put(pcdev->clk_isp);
@@ -1782,15 +1794,16 @@ static int tegra_camera_remove(struct nvhost_device *ndev)
 
 	kfree(pcdev);
 
-	dev_notice(&ndev->dev, "Tegra camera host driver unloaded\n");
+	dev_notice(&pdev->dev, "Tegra camera host driver unloaded\n");
 
 	return 0;
 }
 
 #ifdef CONFIG_PM_FISH
-static int tegra_camera_suspend(struct nvhost_device *ndev, pm_message_t state)
+static int tegra_camera_suspend(struct platform_device *pdev,
+		pm_message_t state)
 {
-	struct soc_camera_host *ici = to_soc_camera_host(&ndev->dev);
+	struct soc_camera_host *ici = to_soc_camera_host(&pdev->dev);
 	struct tegra_camera_dev *pcdev = container_of(ici,
 					struct tegra_camera_dev, ici);
 
@@ -1805,21 +1818,21 @@ static int tegra_camera_suspend(struct nvhost_device *ndev, pm_message_t state)
 		/* Power off the camera subsystem. */
 		pcdev->pdata->disable_camera(pcdev->ndev);
 
-		nvhost_module_idle_ext(nvhost_get_parent(ndev));
+		nvhost_module_idle_ext(nvhost_get_parent(pdev));
 	}
 
 	return 0;
 }
 
-static int tegra_camera_resume(struct nvhost_device *ndev)
+static int tegra_camera_resume(struct platform_device *pdev)
 {
-	struct soc_camera_host *ici = to_soc_camera_host(&ndev->dev);
+	struct soc_camera_host *ici = to_soc_camera_host(&pdev->dev);
 	struct tegra_camera_dev *pcdev = container_of(ici,
 					struct tegra_camera_dev, ici);
 
 	/* We only need to do something if a camera sensor is attached. */
 	if (pcdev->icd) {
-		nvhost_module_busy_ext(nvhost_get_parent(ndev));
+		nvhost_module_busy_ext(nvhost_get_parent(pdev));
 
 		/* Power on the camera subsystem. */
 		pcdev->pdata->enable_camera(pcdev->ndev);
@@ -1839,7 +1852,7 @@ static int tegra_camera_resume(struct nvhost_device *ndev)
 }
 #endif
 
-static struct nvhost_driver tegra_camera_driver = {
+static struct platform_driver tegra_camera_driver = {
 	.driver	= {
 		.name	= TEGRA_CAM_DRV_NAME,
 		.owner	= THIS_MODULE,
@@ -1855,12 +1868,12 @@ static struct nvhost_driver tegra_camera_driver = {
 
 static int __init tegra_camera_init(void)
 {
-	return nvhost_driver_register(&tegra_camera_driver);
+	return platform_driver_register(&tegra_camera_driver);
 }
 
 static void __exit tegra_camera_exit(void)
 {
-	nvhost_driver_unregister(&tegra_camera_driver);
+	platform_driver_unregister(&tegra_camera_driver);
 }
 
 module_init(tegra_camera_init);
@@ -1868,5 +1881,6 @@ module_exit(tegra_camera_exit);
 
 MODULE_DESCRIPTION("TEGRA SoC Camera Host driver");
 MODULE_AUTHOR("Andrew Chew <achew@nvidia.com>");
+MODULE_AUTHOR("Bryan Wu <pengw@nvidia.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("nvhost:" TEGRA_CAM_DRV_NAME);
