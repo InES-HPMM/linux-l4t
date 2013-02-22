@@ -42,7 +42,6 @@
 #include <linux/export.h>
 
 #include <mach/clk.h>
-#include <mach/io.h>
 #include <mach/iomap.h>
 #include <linux/nvmap.h>
 #include <mach/legacy_irq.h>
