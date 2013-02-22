@@ -19,7 +19,7 @@
 #ifndef __MTD_DEV_TEGRA_NAND_H
 #define __MTD_DEV_TEGRA_NAND_H
 
-#include <mach/io.h>
+#include <mach/iomap.h>
 
 #define __BITMASK0(len)				((1 << (len)) - 1)
 #define __BITMASK(start, len)			(__BITMASK0(len) << (start))
