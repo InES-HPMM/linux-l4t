@@ -39,7 +39,6 @@
 
 #include <mach/clk.h>
 #include <mach/hardware.h>
-#include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/legacy_irq.h>
 #include <linux/nvmap.h>
