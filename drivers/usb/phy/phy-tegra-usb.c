@@ -37,7 +37,7 @@
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
 #include "../../../arch/arm/mach-tegra/clock.h"
-#include "../../../arch/arm/mach-tegra/tegra_usb_phy.h"
+#include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/fuse.h"
 #include "../../../arch/arm/mach-tegra/common.h"
 
