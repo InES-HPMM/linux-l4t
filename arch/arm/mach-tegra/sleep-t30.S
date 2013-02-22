@@ -510,12 +510,22 @@ powerup_l2_done:
 	str	r0, [r2, #PMC_REMOVE_CLAMPING_CMD]
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	mov32	r4, TEGRA_PMC_BASE
+	ldr	r0, [r4, #PMC_LP_STATE_SCRATCH_REG]
+	mov	r0, r0, lsr #PMC_LP_STATE_BIT_OFFSET
+	and	r0, r0, #PMC_LP_STATE_BIT_MASK
+	cmp	r0, #PMC_LP_STATE_LP1BB
+	beq	self_refresh_skip
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
 #endif
+
 	ldr	r1, [r5, #0x14]	@ PMC_IO_DPD_STATUS
 	mvn	r1, r1
 	bic	r1, r1, #(0x1<<31)
@@ -630,6 +640,10 @@ zcal_done:
 	addne	r5, r5, #0x20
 	bne	exit_self_refresh
 #endif
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+self_refresh_skip:
+#endif
 	mov32	r0, TEGRA_PMC_BASE
 	ldr	r0, [r0, #PMC_SCRATCH41]
 	mov	pc, r0
@@ -707,6 +721,11 @@ lp1_register_core_highvolt:
 	.word	0
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+lp_enter_state:
+	.word	0
+#endif
+
 /* tegra3_tear_down_core
  *
  * LP0 entry check conditions w.r.t BB take place here
@@ -715,13 +734,9 @@ tegra3_tear_down_core:
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	/* Checking for BB-idle or Paging case */
 	ldr	r0, [r4, #PMC_IPC_STS]
-	ldr	r3, [r4, #PMC_SCRATCH37]
-
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
 	moveq	r0, #0
 	beq	tegra148_lp0_entry
-	andnes	r3, r3, #TEGRA_POWER_LP1_AUDIO
-	bne	lp1bb_entry
 
 /* lp0_delayed_entry
  *
@@ -729,18 +744,15 @@ tegra3_tear_down_core:
  * PMC_IPC_STS register is queried again
  */
 lp0_delayed_entry:
-	 /* Use RTC MS timer
-	 */
-	mov32	r8, TEGRA_RTC_BASE
-	ldr	r0, [r8, #TEGRA_RTC_MSEC]
-	add	r0, r0, #30
-timer_loop:
-	ldr	r1, [r8, #TEGRA_RTC_MSEC]
-	subs	r1,r1, r0
-	ble	timer_loop
+	/* Wait for a few ticks for this to stabilize */
+	ldr 	r0, =0x3000
+wait_stable:
+	subs	r0, r0, #1
+	bne	wait_stable
+
 	ldr	r0, [r4, #PMC_IPC_STS]
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	moveq	r0, #1
+	moveq	r0, #PMC_LP_STATE_LP0
 	bne	lp1bb_entry
 
 /* R0 contains info whether delay timeout has already taken place or not */
@@ -765,8 +777,8 @@ tegra148_lp0_entry:
 
 	/* Check if delay has happened. If yes, then set PMC_IPC_SET[mem_sts]
 	 * and then go to LP1BB, else go to delay */
-	cmp	r0, #1
-	bne	lp0_delayed_entry
+	cmp	r0, #PMC_LP_STATE_LP0
+	beq	lp0_delayed_entry
 	ldr	r1, [r4, #PMC_IPC_SET]
 	orr	r1, r1, #PMC_IPC_SET_MEM_STS
 	str	r1, [r4, #PMC_IPC_SET]
@@ -781,7 +793,18 @@ tegra148_lp0_entry:
  * Invoke remaining LP routines.
  */
 lp1bb_entry:
+	bl	tegra148_lp1bb_clear_warmboot_flag
+	mov	r0, #PMC_LP_STATE_LP1BB
+	str	r0, lp_enter_state
+	bl	tegra148_set_lp_state
+	bl	tegra148_set_mem_req_interrupt
+	bl	tegra3_cpu_clk32k
+	b	tegra3_enter_sleep
 
+/* Based on LP state being entered, sets mem_req=0
+ * or mem_req=1 as a wake interrupt
+ */
+tegra148_set_mem_req_interrupt:
 	/* Clear the PMC_CTRL2_WAKE_DET_EN bit */
 	ldr	r0, [r4, #PMC_CTRL2]
 	bic	r0, r0, #PMC_CTRL2_WAKE_DET_EN
@@ -789,14 +812,17 @@ lp1bb_entry:
 
 	/* Program the wake_level2 registers */
 	ldr     r0, [r4, #PMC_WAKE2_LEVEL]
-	bic     r0, r0, #PMC_WAKE2_BB_MEM_REQ
+	ldr	r1, lp_enter_state
+	cmp	r1, #PMC_LP_STATE_LP1BB
+	biceq	r0, r0, #PMC_WAKE2_BB_MEM_REQ
+	orrne	r0, r0, #PMC_WAKE2_BB_MEM_REQ
 	str     r0, [r4, #PMC_WAKE2_LEVEL]
 
 	/* Wait for a few ticks for this to stabilize */
 	ldr 	r0, =0x300
-wait_stable:
+wait_stable3:
 	subs	r0, r0, #1
-	bne	wait_stable
+	bne	wait_stable3
 
 	/* Program the auto_wake_lvl regsiters */
 	ldr	r0, [r4, #PMC_AUTO_WAKE_LVL]
@@ -817,35 +843,16 @@ wait_stable2:
 	orr	r0, r0, #PMC_CTRL2_WAKE_DET_EN
 	str	r0, [r4, #PMC_CTRL2]
 
-	/* Configure the EVP reset vector */
-	ldr 	r0, [r4, #PMC_SCRATCH41]
-	ldr	r8, =TEGRA_EXCEPTION_VECTORS_BASE
-	str	r0, [r8, #0x100]
-
 	/* Set up the LIC to accept pmc_wake events as interrupts */
 	ldr	r8, =TEGRA_TERTIARY_ICTLR_BASE
 	ldr	r0, =TRI_ICTLR_PMC_WAKE_INT
 	str	r0, [r8, #TRI_ICTLR_CPU_IER_SET]
-
-	bl	tegra148_lp1bb_clear_warmboot_flag
-	bl	tegra3_cpu_clk32k
-	b	tegra3_enter_sleep
-#endif
-
-/* tegra3_lp0_tear_down_core
- *
- * copied into and executed from IRAM
- * puts memory in self-refresh for LP0 and LP1
- */
-tegra3_lp0_tear_down_core:
-	bl	tegra3_sdram_self_refresh
-	bl	tegra3_cpu_clk32k
-	b	tegra3_enter_sleep
+	mov	pc, lr
 
 /*
  * tegra148_lp1bb_clear_warmboot_flag
- * Clears warmboot0 flag, and clears SIDE_EFFECT_BIT.
- * Called by lp1bb_entry.
+ * Clears side effect bit in case it was set during
+ * suspend entry. Also clears Warmboot0 flag.
  */
 tegra148_lp1bb_clear_warmboot_flag:
 	ldr	r0, [r4, #PMC_SCRATCH0]
@@ -855,6 +862,38 @@ tegra148_lp1bb_clear_warmboot_flag:
 	bic	r0, r0, #PMC_CTRL_SIDE_EFFECT_LP0
 	str	r0, [r4, #PMC_CTRL]
 	mov	pc, lr
+
+/* Based on value of lp_enter_state, update LP state
+ * scratch register
+ */
+tegra148_set_lp_state:
+	ldr	r0, lp_enter_state
+	mov	r0, r0, lsl #PMC_LP_STATE_BIT_OFFSET
+	ldr	r1, [r4, #PMC_LP_STATE_SCRATCH_REG]
+	mov	r2, #PMC_LP_STATE_BIT_MASK
+	bic	r1, r2, lsl #PMC_LP_STATE_BIT_OFFSET
+	orr	r1, r0
+	str	r1, [r4, #PMC_LP_STATE_SCRATCH_REG]
+	mov	pc, lr
+
+/* tegra3_lp0_tear_down_core
+ *
+ * copied into and executed from IRAM
+ * puts memory in self-refresh for LP0 and LP1
+ */
+tegra3_lp0_tear_down_core:
+	ldr	r0, [r4, #PMC_CTRL]
+	tst	r0, #PMC_CTRL_SIDE_EFFECT_LP0
+	moveq	r0, #PMC_LP_STATE_LP1
+	movne	r0, #PMC_LP_STATE_LP0
+	str	r0, lp_enter_state
+	bleq	tegra148_set_mem_req_interrupt
+	bl	tegra148_set_lp_state
+#endif
+	bl	tegra3_sdram_self_refresh
+	bl	tegra3_cpu_clk32k
+	b	tegra3_enter_sleep
+
 
 /*
  * tegra3_cpu_clk32k

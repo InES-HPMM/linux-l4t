@@ -60,13 +60,17 @@
 
 #define PMC_SCRATCH1_ECO		0x264
 
-/* PMC_SCRATCH0 is used to store the Warmboot flag for LP0 */
+/* PMC_LP_STATE_SCRATCH_REG is used to store the Warmboot flag for LP0 */
 #define PMC_SCRATCH0			0x50
 
-/* Wake masks to determine wake events for BB related LP states */
-#define PMC_WAKE2_MASK			0x160
-#define PMC_WAKE2_LEVEL			0x164
-#define PMC_WAKE2_BB_MEM_REQ		(1 << 29)
+/* PMC_LP_STATE_SCRATCH_REG is used to store the Warmboot flag for LP0 */
+#define PMC_LP_STATE_SCRATCH_REG	0x50
+#define PMC_LP_STATE_BIT_OFFSET		28
+#define PMC_LP_STATE_BIT_MASK		0x3
+#define PMC_LP_STATE_LP0		0
+#define PMC_LP_STATE_LP1		1
+#define PMC_LP_STATE_LP1BB		2
+
 
 #define PMC_SCRATCH1_ECO		0x264
 
@@ -109,6 +113,7 @@
  * to be propagated to LIC as interrupts.
  */
 #define TRI_ICTLR_CPU_IER_SET		0x24
+#define TRI_ICTLR_CPU_IER_CLR		0x28
 #define TRI_ICTLR_PMC_WAKE_INT		(1 << 12)
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC

@@ -115,6 +115,9 @@ static unsigned long iram_save_size;
 static void __iomem *iram_code = IO_ADDRESS(TEGRA_IRAM_CODE_AREA);
 static void __iomem *clk_rst = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static void __iomem *tert_ictlr = IO_ADDRESS(TEGRA_TERTIARY_ICTLR_BASE);
+#endif
 static int tegra_last_pclk;
 #endif
 
@@ -935,11 +938,39 @@ static void tegra_suspend_check_pwr_stats(void)
 	return;
 }
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+/* This is the opposite of the LP1BB related PMC setup that occurs
+ * during suspend.
+ */
+static void tegra_disable_lp1bb_interrupt(void)
+{
+	unsigned reg;
+	/* mem_req = 0 was set as an interrupt during LP1BB entry.
+	 * It has to be disabled now
+	 */
+	reg = readl(pmc + PMC_CTRL2);
+	reg &= ~(PMC_CTRL2_WAKE_DET_EN);
+	pmc_32kwritel(reg, PMC_CTRL2);
+
+	/* Program mem_req NOT to be a wake event */
+	reg = readl(pmc + PMC_WAKE2_MASK);
+	reg &= ~(PMC_WAKE2_BB_MEM_REQ);
+	pmc_32kwritel(reg, PMC_WAKE2_MASK);
+
+	/* Set up the LIC to NOT accept pmc_wake events as interrupts */
+	reg = TRI_ICTLR_PMC_WAKE_INT;
+	writel(reg, tert_ictlr + TRI_ICTLR_CPU_IER_CLR);
+}
+#endif
+
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 {
 	int err = 0;
 	u32 scratch37 = 0xDEADBEEF;
 	u32 reg;
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	u32 enter_state = 0;
+#endif
 
 	if (WARN_ON(mode <= TEGRA_SUSPEND_NONE ||
 		mode >= TEGRA_MAX_SUSPEND_MODE)) {
@@ -973,6 +1004,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_disable();
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	tegra_smp_save_power_mask();
+#endif
+
 	trace_cpu_suspend(CPU_SUSPEND_START, tegra_rtc_read_ms());
 
 	if (mode == TEGRA_SUSPEND_LP0) {
@@ -992,7 +1027,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_smp_clear_power_mask();
 #endif
 	}
-	else if (mode == TEGRA_SUSPEND_LP1)
+
+#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	if (mode == TEGRA_SUSPEND_LP1)
+#endif
 		*iram_cpu_lp1_mask = 1;
 
 	suspend_cpu_complex(flags);
@@ -1019,6 +1057,19 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_sleep_core(mode, PHYS_OFFSET - PAGE_OFFSET);
 
 	tegra_init_cache(true);
+
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	reg = readl(pmc + PMC_LP_STATE_SCRATCH_REG);
+	enter_state = (reg >> PMC_LP_STATE_BIT_OFFSET) & PMC_LP_STATE_BIT_MASK;
+	/* If we actually had entered in either LP1 or LP1BB,
+	 * restore power mask and disable mem_req interrupt PMC
+	 */
+	if (enter_state) {
+		pr_info("Exited state is LP1/LP1BB\n");
+		tegra_disable_lp1bb_interrupt();
+		tegra_smp_restore_power_mask();
+	}
+#endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
@@ -1047,7 +1098,11 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		tegra_cpu_reset_handler_restore();
 		tegra_lp0_resume_mc();
 		tegra_tsc_wait_for_resume();
-	} else if (mode == TEGRA_SUSPEND_LP1)
+	}
+
+#if !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	if (mode == TEGRA_SUSPEND_LP1)
+#endif
 		*iram_cpu_lp1_mask = 0;
 
 	/* if scratch37 was clobbered during LP1, restore it */
