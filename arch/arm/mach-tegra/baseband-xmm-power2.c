@@ -27,7 +27,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
-#include <mach/usb_phy.h>
+#include <linux/usb/tegra_usb_phy.h>
 #include "baseband-xmm-power.h"
 #include "board.h"
 #include "devices.h"
