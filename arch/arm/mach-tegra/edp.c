@@ -473,7 +473,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			   {   15618709,   -4576116,   158401,  -1538, },
 			 },
 		 },
-		.safety_cap = { 1912500, 1912500, 1708500, 1708500 },
+		.safety_cap = { 1912500, 1912500, 1912500, 1912500 },
 	},
 };
 #endif
