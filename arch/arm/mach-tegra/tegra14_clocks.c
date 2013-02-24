@@ -1132,7 +1132,22 @@ static int tegra14_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 
 	rate = min(rate, c->max_rate - c->dvfs->dfll_data.max_rate_boost);
 	pll = (rate <= c->u.cpu.backup_rate) ? c->u.cpu.backup : c->u.cpu.main;
+	dfll_rate_min = max(rate, dfll_rate_min);
 
+	/* set target rate last time in dfll mode */
+	if (old_rate != dfll_rate_min) {
+		ret = tegra_dvfs_set_rate(c, dfll_rate_min);
+		if (!ret)
+			ret = clk_set_rate(dfll, dfll_rate_min);
+
+		if (ret) {
+			pr_err("Failed to set cpu rate %lu on source %s\n",
+			       dfll_rate_min, dfll->name);
+			return ret;
+		}
+	}
+
+	/* unlock dfll - release volatge rail control */
 	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	if (ret) {
@@ -1141,7 +1156,7 @@ static int tegra14_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	}
 
 	/* restore legacy dvfs operations and set appropriate voltage */
-	ret = tegra_dvfs_dfll_mode_clear(c->dvfs, max(rate, dfll_rate_min));
+	ret = tegra_dvfs_dfll_mode_clear(c->dvfs, dfll_rate_min);
 	if (ret) {
 		pr_err("Failed to set cpu rail for rate %lu\n", rate);
 		goto back_to_dfll;
