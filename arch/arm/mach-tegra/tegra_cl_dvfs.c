@@ -186,7 +186,7 @@ struct tegra_cl_dvfs {
 	u8				tune_high_out_min;
 	u8				cold_out_min;
 	u8				minimax_output;
-	unsigned long			dfll_rate_min;
+	unsigned long			dvco_rate_min;
 
 	u8				lut_min;
 	u8				lut_max;
@@ -817,8 +817,8 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
-	cld->dfll_rate_min = cld->safe_dvfs->dfll_data.out_rate_min;
-	cld->dfll_rate_min = ROUND_MIN_RATE(cld->dfll_rate_min, cld->ref_rate);
+	cld->dvco_rate_min = cld->safe_dvfs->dfll_data.out_rate_min;
+	cld->dvco_rate_min = ROUND_MIN_RATE(cld->dvco_rate_min, cld->ref_rate);
 
 	cld->last_req.cap = 0;
 	cld->last_req.freq = 0;
@@ -1253,16 +1253,16 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
-	if (rate < cld->dfll_rate_min) {
+	if (rate < cld->dvco_rate_min) {
 		req.scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
-			(cld->dfll_rate_min / 1000));
+			(cld->dvco_rate_min / 1000));
 		if (!req.scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
 			return -EINVAL;
 		}
 		req.scale--;
-		rate = cld->dfll_rate_min;
+		rate = cld->dvco_rate_min;
 	}
 
 	/* Convert requested rate into frequency request and scale settings */
