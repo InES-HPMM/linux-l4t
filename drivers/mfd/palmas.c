@@ -41,6 +41,7 @@ enum palmas_ids {
 	PALMAS_CLK_ID,
 	PALMAS_PWM_ID,
 	PALMAS_USB_ID,
+	PALMAS_EXTCON_ID,
 };
 
 static struct resource palmas_rtc_resources[] = {
@@ -97,6 +98,10 @@ static const struct mfd_cell palmas_children[] = {
 	{
 		.name = "palmas-usb",
 		.id = PALMAS_USB_ID,
+	},
+	{
+		.name = "palmas-extcon",
+		.id = PALMAS_EXTCON_ID,
 	}
 };
 
