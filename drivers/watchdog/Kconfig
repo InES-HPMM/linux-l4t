@@ -53,6 +53,15 @@ comment "Watchdog Device Drivers"
 
 # Architecture Independent
 
+config PALMAS_WATCHDOG
+	tristate "PALMAS watchdog"
+	depends on MFD_PALMAS
+	select WATCHDOG_CORE
+	help
+	  Support for the watchdog in the TI Palmas PMIC PMICs.  When
+	  the watchdog triggers the system will be reset/Off based on
+	  configuration.
+
 config SOFT_WATCHDOG
 	tristate "Software watchdog"
 	select WATCHDOG_CORE
