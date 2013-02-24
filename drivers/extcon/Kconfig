@@ -52,6 +52,13 @@ config EXTCON_MAX8997
 	  Maxim MAX8997 PMIC. The MAX8997 MUIC is a USB port accessory
 	  detector and switch.
 
+config EXTCON_PALMAS
+	tristate "PALMAS EXTCON Support"
+	depends on MFD_PALMAS
+	help
+	 If you say yes here you get support for the VBUS detection and notification
+	 through extcon framework from Palmas PMIC.
+
 config EXTCON_ARIZONA
 	tristate "Wolfson Arizona EXTCON support"
 	depends on MFD_ARIZONA && INPUT && SND_SOC
