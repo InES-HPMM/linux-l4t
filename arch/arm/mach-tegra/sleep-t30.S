@@ -642,6 +642,13 @@ zcal_done:
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	/* In the LP1 case, we need to set the Memory status from
+	 * AP to BB, so that memory transactions can take place
+	 */
+	mov32	r4, TEGRA_PMC_BASE
+	ldr	r1, [r4, #PMC_IPC_SET]
+	orr	r1, r1, #PMC_IPC_SET_MEM_STS
+	str	r1, [r4, #PMC_IPC_SET]
 self_refresh_skip:
 #endif
 	mov32	r0, TEGRA_PMC_BASE
@@ -735,25 +742,23 @@ tegra3_tear_down_core:
 	/* Checking for BB-idle or Paging case */
 	ldr	r0, [r4, #PMC_IPC_STS]
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	moveq	r0, #PMC_LP_STATE_LP0
+	movne	r0, #PMC_LP_STATE_LP1BB
 
 	/* Write PMC_IPC_CLR[mem_sts] = 1 */
 	ldr	r1, [r4, #PMC_IPC_CLR]
 	orr	r1, r1, #PMC_IPC_CLR_MEM_STS
 	str	r1, [r4, #PMC_IPC_CLR]
 
-	/* Clear FLOW_I2C_STS[AP2BB_MSC_STS[0]] */
+	/* Clear FLOW_IPC_STS[AP2BB_MSC_STS[0]] */
 	ldr	r1, [r6, #FLOW_IPC_STS]
 	bic	r1, #FLOW_IPC_STS_AP2BB_MSC_STS_0
 	str	r1, [r6, #FLOW_IPC_STS]
 
-	cmp	r0, #PMC_LP_STATE_LP0
-	beq	tegra3_lp0_tear_down_core
+	cmp	r0, #PMC_LP_STATE_LP1BB
+	bne	tegra3_lp0_tear_down_core
 	ldr	r1, [r4, #PMC_IPC_SET]
 	orr	r1, r1, #PMC_IPC_SET_MEM_STS
 	str	r1, [r4, #PMC_IPC_SET]
-	b	lp1bb_entry
-
 
 /* lp1bb_entry
  * Set up mem_req active low to be a wake event.
@@ -786,7 +791,7 @@ tegra148_set_mem_req_interrupt:
 	cmp	r1, #PMC_LP_STATE_LP1BB
 	biceq	r0, r0, #PMC_WAKE2_BB_MEM_REQ
 	orrne	r0, r0, #PMC_WAKE2_BB_MEM_REQ
-	str     r0, [r4, #PMC_WAKE2_LEVEL]
+	str	r0, [r4, #PMC_WAKE2_LEVEL]
 
 	/* Wait for 1ms for write to take effect */
 	mov32	r7, TEGRA_TMRUS_BASE
