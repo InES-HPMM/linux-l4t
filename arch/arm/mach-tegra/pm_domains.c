@@ -140,11 +140,31 @@ struct gpd_dev_ops tegra_pd_ops = {
 
 static int tegra_mc_clk_power_off(struct generic_pm_domain *genpd)
 {
+	struct tegra_pm_domain *pd = to_tegra_pd(genpd);
+
+	if (!pd)
+		return -EINVAL;
+
+	if (IS_ERR_OR_NULL(pd->clk))
+		return 0;
+
+	clk_disable_unprepare(pd->clk);
+
 	return 0;
 }
 
 static int tegra_mc_clk_power_on(struct generic_pm_domain *genpd)
 {
+	struct tegra_pm_domain *pd = to_tegra_pd(genpd);
+
+	if (!pd)
+		return -EINVAL;
+
+	if (IS_ERR_OR_NULL(pd->clk))
+		return 0;
+
+	clk_prepare_enable(pd->clk);
+
 	return 0;
 }
 
@@ -154,21 +174,42 @@ struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.power_on = tegra_mc_clk_power_on,
 };
 
+struct tegra_pm_domain tegra_mc_chain_a = {
+	.gpd.name = "tegra_mc_chain_a",
+	.gpd.power_off = tegra_mc_clk_power_off,
+	.gpd.power_on = tegra_mc_clk_power_on,
+};
+
+struct tegra_pm_domain tegra_mc_chain_b = {
+	.gpd.name = "tegra_chain_b",
+	.gpd.power_off = tegra_mc_clk_power_off,
+	.gpd.power_on = tegra_mc_clk_power_on,
+};
+
 static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
+
+	tegra_mc_chain_a.clk = clk_get_sys("mc_capa", "mc_capa");
+	pm_genpd_init(&tegra_mc_chain_a.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_mc_clk, &tegra_mc_chain_a.gpd);
+
+	tegra_mc_chain_b.clk = clk_get_sys("mc_cbpa", "mc_cbpa");
+	pm_genpd_init(&tegra_mc_chain_b.gpd, &simple_qos_governor, false);
+	tegra_pd_add_sd(&tegra_mc_clk, &tegra_mc_chain_b.gpd);
+
 	return 0;
 }
 core_initcall(tegra_init_pm_domain);
 
-void tegra_mc_clk_add_device(struct device *dev)
+void tegra_pd_add_device(struct tegra_pm_domain *pd, struct device *dev)
 {
 	device_set_wakeup_capable(dev, 1);
-	pm_genpd_add_device(&tegra_mc_clk.gpd, dev);
+	pm_genpd_add_device(&pd->gpd, dev);
 	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
 
-void tegra_mc_clk_add_sd(struct generic_pm_domain *sd)
+void tegra_pd_add_sd(struct tegra_pm_domain *pd, struct generic_pm_domain *sd)
 {
-	pm_genpd_add_subdomain(&tegra_mc_clk.gpd, sd);
+	pm_genpd_add_subdomain(&pd->gpd, sd);
 }
