@@ -247,6 +247,7 @@ struct max77660_regulator_info {
 
 	u8 power_mode_mask;
 	u8 power_mode_shift;
+	int enable_bit;
 };
 
 struct max77660_regulator {
@@ -726,7 +727,10 @@ static int max77660_switch_enable(struct regulator_dev *rdev)
 	struct max77660_regulator_info *rinfo = reg->rinfo;
 	int idx, ret;
 
-	idx = rinfo->id - MAX77660_REGULATOR_ID_SW1;
+	if (rinfo->id == MAX77660_REGULATOR_ID_SW4)
+		return 0;
+
+	idx = rinfo->enable_bit;
 	ret = max77660_reg_set_bits(to_max77660_chip(reg), MAX77660_PWR_SLAVE,
 					rinfo->regs[VOLT_REG].addr, 1 << idx);
 	return ret;
@@ -738,7 +742,10 @@ static int max77660_switch_disable(struct regulator_dev *rdev)
 	struct max77660_regulator_info *rinfo = reg->rinfo;
 	int idx, ret;
 
-	idx = rinfo->id - MAX77660_REGULATOR_ID_SW1;
+	if (rinfo->id == MAX77660_REGULATOR_ID_SW4)
+		return 0;
+
+	idx = rinfo->enable_bit;
 	ret = max77660_reg_clr_bits(to_max77660_chip(reg), MAX77660_PWR_SLAVE,
 					rinfo->regs[VOLT_REG].addr, 1 << idx);
 	return ret;
@@ -751,11 +758,14 @@ static int max77660_switch_is_enabled(struct regulator_dev *rdev)
 	int idx, ret;
 	u8 val = 0;
 
-	idx = rinfo->id - MAX77660_REGULATOR_ID_SW1;
+	if (rinfo->id == MAX77660_REGULATOR_ID_SW4)
+		return 1;
+
+	idx = rinfo->enable_bit;
 	ret = max77660_reg_read(to_max77660_chip(reg), MAX77660_PWR_SLAVE,
 					rinfo->regs[VOLT_REG].addr, &val);
 
-	return val & (1 << idx);
+	return !!(val & (1 << idx));
 }
 
 static int max77660_reg_enable_time(struct regulator_dev *dev)
@@ -1010,11 +1020,12 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		},								\
 	}
 
-#define REGULATOR_SW(_id)					\
+#define REGULATOR_SW(_id, _enable_bit)				\
 	[MAX77660_REGULATOR_ID_##_id] = {			\
 		.id = MAX77660_REGULATOR_ID_##_id,		\
 		.type = REGULATOR_TYPE_SW,			\
 		.volt_mask = 0,					\
+		.enable_bit = _enable_bit,			\
 		.regs = { 					\
 			[VOLT_REG] = { 				\
 				.addr = MAX77660_REG_SW_EN,	\
@@ -1064,11 +1075,11 @@ static struct max77660_regulator_info
 	REGULATOR_LDO(LDO17, P, 800000, 3950000, 50000),
 	REGULATOR_LDO(LDO18, P, 800000, 3950000, 50000),
 
-	REGULATOR_SW(SW1),
-	REGULATOR_SW(SW2),
-	REGULATOR_SW(SW3),
-	REGULATOR_SW(SW4),
-	REGULATOR_SW(SW5),
+	REGULATOR_SW(SW1, 0),
+	REGULATOR_SW(SW2, 1),
+	REGULATOR_SW(SW3, 2),
+	REGULATOR_SW(SW4, -1),
+	REGULATOR_SW(SW5, 3),
 };
 
 static int max77660_pwm_dvfs_init(struct device *parent,
