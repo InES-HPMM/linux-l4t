@@ -257,7 +257,7 @@ static struct tegra_i2c_platform_data pluto_i2c2_platform_data = {
 };
 
 static struct tegra_i2c_platform_data pluto_i2c3_platform_data = {
-	.bus_clk_rate	= 100000,
+	.bus_clk_rate	= 400000,
 	.scl_gpio	= TEGRA_GPIO_I2C3_SCL,
 	.sda_gpio	= TEGRA_GPIO_I2C3_SDA,
 };
