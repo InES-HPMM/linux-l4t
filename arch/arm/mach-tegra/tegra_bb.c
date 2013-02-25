@@ -92,7 +92,6 @@ struct tegra_bb {
 	char ipc_name[16];
 	unsigned long priv_phy;
 	unsigned long ipc_phy;
-	void *priv_virt;
 	void *ipc_virt;
 	void *mb_virt;
 	unsigned long priv_size;
@@ -815,11 +814,6 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->mb_virt = ioremap_nocache(bb->ipc_phy,
 					      SZ_1K*4);
 	pr_debug("%s: uncached IPC Virtual=0x%p\n", __func__, bb->mb_virt);
-
-	/* Private is uncached */
-	bb->priv_virt =  ioremap_nocache(bb->priv_phy,
-					bb->priv_size);
-	pr_debug("%s: Priv Virtual=0x%p\n", __func__, bb->priv_virt);
 
 	/* IPC memory is cached */
 	bb->ipc_virt =  ioremap_cached(bb->ipc_phy,
