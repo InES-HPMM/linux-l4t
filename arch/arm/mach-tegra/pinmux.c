@@ -1074,6 +1074,10 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	tegra11x_default_pinmux();
+#endif
+
 	return 0;
 }
 
