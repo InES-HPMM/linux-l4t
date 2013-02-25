@@ -489,7 +489,8 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
 				clkgt_at_vmin = false;
 			else if ((request >= tegra_min_residency_vmin_fmin()) &&
-				 (request < tegra_min_residency_ncpu()))
+				 ((request < tegra_min_residency_ncpu()) ||
+				   cpu_gating_only))
 				clkgt_at_vmin = true;
 
 			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
