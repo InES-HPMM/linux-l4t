@@ -20,7 +20,6 @@
 #ifndef _MACH_TEGRA_BOARD_CURACAO_H
 #define _MACH_TEGRA_BOARD_CURACAO_H
 
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
 #include "gpio-names.h"
