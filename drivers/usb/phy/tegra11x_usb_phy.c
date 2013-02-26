@@ -92,6 +92,8 @@
 #define   ULPI_PADS_CLKEN_RESET		(1 << 24)
 
 #define USB_PHY_VBUS_WAKEUP_ID	0x408
+#define   VDCD_DET_STS		(1 << 26)
+#define   VDCD_DET_CHG_DET	(1 << 25)
 #define   VDAT_DET_INT_EN	(1 << 16)
 #define   VDAT_DET_CHG_DET	(1 << 17)
 #define   VDAT_DET_STS		(1 << 18)
@@ -168,8 +170,11 @@
 
 #define UTMIP_BAT_CHRG_CFG0 0x830
 #define   UTMIP_PD_CHRG			(1 << 0)
+#define   UTMIP_OP_SINK_EN		(1 << 1)
 #define   UTMIP_ON_SINK_EN		(1 << 2)
 #define   UTMIP_OP_SRC_EN		(1 << 3)
+#define   UTMIP_ON_SRC_EN		(1 << 4)
+#define   UTMIP_OP_I_SRC_EN		(1 << 5)
 
 #define UTMIP_XCVR_CFG1		0x838
 #define   UTMIP_FORCE_PDDISC_POWERDOWN	(1 << 0)
@@ -1342,17 +1347,100 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 	return status;
 }
 
+static unsigned long utmi_phy_set_dp_dm_pull_up_down(struct tegra_usb_phy *phy,
+		unsigned long pull_up_down_flags)
+{
+	unsigned long val;
+	unsigned long org;
+	void __iomem *base = phy->regs;
+
+	org = readl(base + UTMIP_MISC_CFG0);
+
+	val = org & ~MASK_ALL_PULLUP_PULLDOWN;
+	val |= pull_up_down_flags;
+
+	writel(val, base + UTMIP_MISC_CFG0);
+
+	usleep_range(500, 2000);
+	return org;
+}
+
+unsigned long utmi_phy_get_dp_dm_status(struct tegra_usb_phy *phy,
+		unsigned long pull_up_down_flags)
+{
+	void __iomem *base = phy->regs;
+	unsigned long org_flags;
+	unsigned long ret;
+
+	org_flags = utmi_phy_set_dp_dm_pull_up_down(phy, pull_up_down_flags);
+	ret = USB_PORTSC_LINE_STATE(readl(base + USB_PORTSC));
+	utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+	return ret;
+}
+
+/*
+ * Per Battery Charging Specification 1.2  section 3.2.3:
+ * We check Data Contact Detect (DCD) before we check the USB cable type.
+ */
+static bool utmi_phy_dcd_detect(struct tegra_usb_phy *phy)
+{
+	void __iomem *base = phy->regs;
+	unsigned long val;
+	unsigned long org_flags;
+	bool ret;
+
+	val = readl(base + UTMIP_BAT_CHRG_CFG0);
+	/* inject IDP_SRC */
+	val |= UTMIP_OP_I_SRC_EN;
+	writel(val, base + UTMIP_BAT_CHRG_CFG0);
+	/* enable pull down resistor RDM_DWN on D- */
+	org_flags = utmi_phy_set_dp_dm_pull_up_down(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | FORCE_PULLDN_DM);
+	usleep_range(20000, 30000);
+
+	ret = false;
+	if (0 == USB_PORTSC_LINE_STATE(readl(base + USB_PORTSC))) {
+		/* minimum debounce time is 10mS per TDCD_DBNC */
+		usleep_range(10000, 12000);
+		if (0 == USB_PORTSC_LINE_STATE(readl(base + USB_PORTSC)))
+			ret = true;
+	}
+
+	val &= ~UTMIP_OP_I_SRC_EN;
+	writel(val, base + UTMIP_BAT_CHRG_CFG0);
+	utmi_phy_set_dp_dm_pull_up_down(phy, org_flags);
+	return ret;
+}
+
 static bool utmi_phy_charger_detect(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
 	bool status;
+	int dcd_timeout_ms;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	if (phy->pdata->op_mode != TEGRA_USB_OPMODE_DEVICE) {
 		/* Charger detection is not there for ULPI
 		 * return Charger not available */
 		return false;
+	}
+
+	/* DCD timeout max value is 900mS */
+	dcd_timeout_ms = 0;
+	while (dcd_timeout_ms < 900) {
+		/* standard DCD detect for SDP/DCP/CDP */
+		if (utmi_phy_dcd_detect(phy))
+			break;
+		/* for NV-charger, we wait D+/D- both set */
+		if ((USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET) ==
+			utmi_phy_get_dp_dm_status(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM))
+			break;
+		usleep_range(20000, 22000);
+		dcd_timeout_ms += 22;
 	}
 
 	/* Enable charger detection logic */
@@ -1386,60 +1474,81 @@ static bool utmi_phy_charger_detect(struct tegra_usb_phy *phy)
 	return status;
 }
 
+static bool utmi_phy_is_non_std_charger(struct tegra_usb_phy *phy)
+{
+	/*
+	 * non std charger has D+/D- line float, we can apply pull up/down on
+	 * each line and verify if line status change.
+	 */
+	/* pull up DP only */
+	if (USB_PORTSC_LINE_DP_SET != utmi_phy_get_dp_dm_status(phy,
+				FORCE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM))
+		goto NOT_NON_STD_CHARGER;
+
+	/* pull down DP only */
+	if (0x0 != utmi_phy_get_dp_dm_status(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				FORCE_PULLDN_DP | DISABLE_PULLDN_DM))
+		goto NOT_NON_STD_CHARGER;
+
+	/* pull up DM only */
+	if (USB_PORTSC_LINE_DM_SET != utmi_phy_get_dp_dm_status(phy,
+				DISABLE_PULLUP_DP | FORCE_PULLUP_DM |
+				DISABLE_PULLDN_DP | DISABLE_PULLDN_DM))
+		goto NOT_NON_STD_CHARGER;
+
+	/* pull down DM only */
+	if (0x0 != utmi_phy_get_dp_dm_status(phy,
+				DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+				DISABLE_PULLDN_DP | FORCE_PULLDN_DM))
+		goto NOT_NON_STD_CHARGER;
+
+	utmi_phy_set_dp_dm_pull_up_down(phy, 0);
+	return true;
+
+NOT_NON_STD_CHARGER:
+	utmi_phy_set_dp_dm_pull_up_down(phy, 0);
+	return false;
+
+}
+
 static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 {
-	unsigned long val;
-	void __iomem *base = phy->regs;
-	bool status;
+	int status1;
+	int status2;
+	int status3;
+	bool ret;
+
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-	/* Turn off all terminations so we see DPDN states clearly,
-		and only leave on DM pulldown */
-	val = readl(base + UTMIP_MISC_CFG0);
-	val &= ~MASK_ALL_PULLUP_PULLDOWN;
-	val |= (DISABLE_PULLUP_DP | DISABLE_PULLUP_DM
-			| FORCE_PULLDN_DP | DISABLE_PULLDN_DM);
-	writel(val, base + UTMIP_MISC_CFG0);
+	if (utmi_phy_is_non_std_charger(phy))
+		return false;
 
-	/*Wait for 20 ms to turn off terminations and stabilize line satus*/
-	msleep(20);
-
-	val = readl(base + USB_PORTSC);
-	status = (USB_PORTSC_LINE_STATE(val) == 0);
+	ret = false;
+	/* Turn off all terminations except DP pulldown */
+	status1 = utmi_phy_get_dp_dm_status(phy,
+			DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+			FORCE_PULLDN_DP | DISABLE_PULLDN_DM);
 
 	/* Turn off all terminations except for DP pullup */
-	val = readl(base + UTMIP_MISC_CFG0);
-	val &= ~MASK_ALL_PULLUP_PULLDOWN;
-	val |= (FORCE_PULLUP_DP | DISABLE_PULLUP_DM
-			| DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
-	writel(val, base + UTMIP_MISC_CFG0);
+	status2 = utmi_phy_get_dp_dm_status(phy,
+			FORCE_PULLUP_DP | DISABLE_PULLUP_DM |
+			DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
 
-	msleep(20);
+	/* Check for NV charger DISABLE all terminations */
+	status3 = utmi_phy_get_dp_dm_status(phy,
+			DISABLE_PULLUP_DP | DISABLE_PULLUP_DM |
+			DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
 
-	val = readl(base + USB_PORTSC);
-	if (status & (USB_PORTSC_LINE_STATE(val) == 0x3)) {
-		status = false;
-	} else {
-		status = false;
-
-		/* Check for NV charger DISABLE all terminations */
-		val = readl(base + UTMIP_MISC_CFG0);
-		val &= ~MASK_ALL_PULLUP_PULLDOWN;
-		val |= (DISABLE_PULLUP_DP | DISABLE_PULLUP_DM
-				| DISABLE_PULLDN_DP | DISABLE_PULLDN_DM);
-		writel(val, base + UTMIP_MISC_CFG0);
-
-		val = readl(base + USB_PORTSC);
-		if (USB_PORTSC_LINE_STATE(val) == 0x3)
-			status = true;
-	}
+	if ((status1 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)) &&
+	    (status2 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)) &&
+	    (status3 == (USB_PORTSC_LINE_DP_SET | USB_PORTSC_LINE_DM_SET)))
+		ret = true;
 
 	/* Restore standard termination by hardware. */
-	val = readl(base + UTMIP_MISC_CFG0);
-	val &= ~MASK_ALL_PULLUP_PULLDOWN;
-	writel(val, base + UTMIP_MISC_CFG0);
-
-	return status;
+	utmi_phy_set_dp_dm_pull_up_down(phy, 0);
+	return ret;
 }
 
 static bool uhsic_phy_remotewake_detected(struct tegra_usb_phy *phy)
