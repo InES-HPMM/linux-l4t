@@ -36,6 +36,13 @@ struct i2s_config {
 	int bit_clk;
 };
 
+enum tegra_speaker_edp_states {
+	TEGRA_SPK_EDP_NEG_1,
+	TEGRA_SPK_EDP_ZERO,
+	TEGRA_SPK_EDP_1,
+	TEGRA_SPK_EDP_NUM_STATES,
+};
+
 struct tegra_asoc_platform_data {
 	const char *codec_name;
 	const char *codec_dai_name;
@@ -49,5 +56,6 @@ struct tegra_asoc_platform_data {
 	int gpio_codec2;
 	int gpio_codec3;
 	unsigned int debounce_time_hp;
+	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
 };
