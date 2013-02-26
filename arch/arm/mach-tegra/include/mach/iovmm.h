@@ -220,7 +220,7 @@ size_t tegra_iovmm_get_max_free(struct tegra_iovmm_client *client);
  * a specific physical address pfn. I/O VMA should have been created with
  * a NULL tegra_iovmm_area_ops structure.
  */
-void tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *area,
+int tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *area,
 	tegra_iovmm_addr_t vaddr, unsigned long pfn);
 
 /*
@@ -301,9 +301,10 @@ static inline size_t tegra_iovmm_get_max_free(struct tegra_iovmm_client *client)
 	return 0;
 }
 
-static inline void tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *area,
+static inline int tegra_iovmm_vm_insert_pfn(struct tegra_iovmm_area *area,
 	tegra_iovmm_addr_t vaddr, unsigned long pfn)
 {
+	return 0;
 }
 
 static inline struct tegra_iovmm_area *tegra_iovmm_find_area_get(
@@ -364,23 +365,29 @@ static inline void tegra_iovmm_resume(void)
 	tegra_iommu_create_vm((c)->dev, i, s, p)
 #define tegra_iovmm_free_vm(v)	tegra_iommu_free_vm(v)
 
+#define tegra_iovmm_zap_vm(v)	tegra_iommu_zap_vm(v)
+
 #define tegra_iovmm_get_vm_size(c)	dma_iova_get_free_total((c)->dev)
 #define tegra_iovmm_get_max_free(c)	dma_iova_get_free_max((c)->dev)
 
 #define tegra_iovmm_vm_insert_pfn(area, handle, pfn)			\
-	do {								\
+	({								\
+		dma_addr_t da;						\
 		struct device *dev = area->dev;				\
 		struct dma_map_ops *ops = get_dma_ops(dev);		\
 		DEFINE_DMA_ATTRS(attrs);				\
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);		\
-		ops->map_page_at(dev, pfn_to_page(pfn), handle,		\
+		da = ops->map_page_at(dev, pfn_to_page(pfn), handle,	\
 				 PAGE_SIZE, 0, 0, &attrs);		\
-	} while (0)
+		dma_mapping_error(dev, da);				\
+	})
 
 struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
 		       dma_addr_t req, size_t size, pgprot_t prot);
 
 void tegra_iommu_free_vm(struct tegra_iovmm_area *area);
+
+void tegra_iommu_zap_vm(struct tegra_iovmm_area *area);
 
 struct tegra_iovmm_client *tegra_iommu_alloc_client(struct device *dev);
 
