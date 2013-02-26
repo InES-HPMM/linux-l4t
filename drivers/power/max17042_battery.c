@@ -752,6 +752,7 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	s64 temp;
 	unsigned int ibat;
 	s64 depl;
+	unsigned int depl_ret;
 	unsigned int deplmax;
 	unsigned int safe;
 	struct power_supply *psy;
@@ -790,8 +791,23 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	safe = ibat_safepeak(temp);
 	depl = safe - min(safe, ibat);
 	depl = div64_s64(ocv * depl, 1000000);
+	depl_ret = min_t(unsigned int, depl, deplmax);
 
-	return min_t(unsigned int, depl, deplmax);
+	if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
+		printk(KERN_DEBUG "max17042\n");
+		printk(KERN_DEBUG "    VFOCV        : %lld uV\n", ocv);
+		printk(KERN_DEBUG "    AVERAGE_VCELL: %lld uV\n", avgvcell);
+		printk(KERN_DEBUG "    AVERAGE_ICELL: %lld uA\n", -avgcurrent);
+		printk(KERN_DEBUG "    RBAT         : %lld uO\n", rbat_calc);
+		printk(KERN_DEBUG "    TEMPERATURE  : %lld C\n", temp);
+		printk(KERN_DEBUG "    CHGIN_ILIM   : %u mA\n",
+				chip->chgin_ilim);
+		printk(KERN_DEBUG "    IBAT_safepeak: %u mA\n", safe);
+		printk(KERN_DEBUG "    IBAT_possible: %u mA\n", ibat);
+		printk(KERN_DEBUG "    depletion    : %u uA\n", depl_ret);
+	}
+
+	return depl_ret;
 
 err_ret:
 	WARN_ON(1);
