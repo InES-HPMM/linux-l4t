@@ -33,13 +33,11 @@
 
 #include <linux/i2c.h>
 #include <linux/delay.h>
-#include <mach/gpio.h>
 #include <media/ov5650.h>
 #include <media/ov14810.h>
 #include <media/ov2710.h>
 #include "gpio-names.h"
 #include "board.h"
-#include <mach/gpio.h>
 
 #include "gpio-names.h"
 #include "board-curacao.h"
