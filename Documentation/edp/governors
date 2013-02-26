@@ -74,3 +74,11 @@ client is throttled first.
 8. Round Robin (RR)
 
 In this policy, clients are throttled in a round-robin fashion.
+
+9. Debug
+
+When the debug policy governor is selected, the framework stops
+processing requests from clients. Further changes to the client E-states
+can only be made manually via debugfs (see the EDP debugfs
+documentation). This allows one to do manual budget allocations and
+prevent clients from overriding them.
