@@ -698,7 +698,7 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 };
 
 struct rm_spi_ts_platform_data rm31080ts_dalmore_data = {
-	.gpio_reset = 0,
+	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
 	.platform_id = RM_PLATFORM_D010,
 	.name_of_clock = "clk_out_2",
