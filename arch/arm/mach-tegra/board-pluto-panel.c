@@ -1,12 +1,11 @@
 /*
  * arch/arm/mach-tegra/board-pluto-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -68,6 +67,8 @@ struct platform_device * __init pluto_host1x_init(void)
 
 /* hdmi related regulators */
 static struct regulator *pluto_hdmi_vddio;
+static struct regulator *pluto_hdmi_reg;
+static struct regulator *pluto_hdmi_pll;
 
 static struct resource pluto_disp1_resources[] = {
 	{
@@ -138,13 +139,52 @@ static struct tegra_dc_out pluto_disp1_out = {
 
 static int pluto_hdmi_enable(struct device *dev)
 {
-	/* TODO */
+	int ret;
+	if (!pluto_hdmi_reg) {
+		pluto_hdmi_reg = regulator_get(dev, "avdd_hdmi");
+		if (IS_ERR_OR_NULL(pluto_hdmi_reg)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
+			pluto_hdmi_reg = NULL;
+			return PTR_ERR(pluto_hdmi_reg);
+		}
+	}
+	ret = regulator_enable(pluto_hdmi_reg);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi\n");
+		return ret;
+	}
+	if (!pluto_hdmi_pll) {
+		pluto_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
+		if (IS_ERR_OR_NULL(pluto_hdmi_pll)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
+			pluto_hdmi_pll = NULL;
+			regulator_put(pluto_hdmi_reg);
+			pluto_hdmi_reg = NULL;
+			return PTR_ERR(pluto_hdmi_pll);
+		}
+	}
+	ret = regulator_enable(pluto_hdmi_pll);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi_pll\n");
+		return ret;
+	}
 	return 0;
 }
 
 static int pluto_hdmi_disable(void)
 {
-	/* TODO */
+	if (pluto_hdmi_reg) {
+		regulator_disable(pluto_hdmi_reg);
+		regulator_put(pluto_hdmi_reg);
+		pluto_hdmi_reg = NULL;
+	}
+
+	if (pluto_hdmi_pll) {
+		regulator_disable(pluto_hdmi_pll);
+		regulator_put(pluto_hdmi_pll);
+		pluto_hdmi_pll = NULL;
+	}
+
 	return 0;
 }
 

@@ -53,6 +53,7 @@
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
+#define PLUTO_4K_REWORKED	0x2
 
 /************************ Pluto based regulator ****************/
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
@@ -151,6 +152,18 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 	REGULATOR_SUPPLY("avdd_plle", NULL),
 };
 
+static struct regulator_consumer_supply palmas_ldo1_4K_supply[] = {
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
+	REGULATOR_SUPPLY("avdd_pllm", NULL),
+	REGULATOR_SUPPLY("avdd_pllu", NULL),
+	REGULATOR_SUPPLY("avdd_plla_p_c", NULL),
+	REGULATOR_SUPPLY("avdd_pllx", NULL),
+	REGULATOR_SUPPLY("vdd_ddr_hs", NULL),
+	REGULATOR_SUPPLY("avdd_plle", NULL),
+};
+
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
@@ -168,6 +181,11 @@ static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo4_supply[] = {
+	REGULATOR_SUPPLY("vdd_spare", NULL),
+};
+
+static struct regulator_consumer_supply palmas_ldo4_4K_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("vdd_spare", NULL),
 };
 
@@ -243,7 +261,7 @@ PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo1, 1050,  1050, palmas_rails(smps7), 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo2, 2800,  3000, NULL, 0, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, palmas_rails(smps8), 0, 1, 1, 0);
-PALMAS_PDATA_INIT(ldo4, 900,  3300, NULL, 0, 0, 0, 0);
+PALMAS_PDATA_INIT(ldo4, 1200,  1200, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo5, 2700,  2700, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo6, 3000,  3000, NULL, 1, 1, 1, 0);
 PALMAS_PDATA_INIT(ldo7, 2800,  2800, NULL, 0, 0, 1, 0);
@@ -683,6 +701,16 @@ int __init pluto_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	if (get_power_config() & PLUTO_4K_REWORKED) {
+		/* Account for the change of avdd_hdmi_pll from ldo1 to ldo4 */
+		reg_idata_ldo1.consumer_supplies = palmas_ldo1_4K_supply;
+		reg_idata_ldo1.num_consumer_supplies =
+			ARRAY_SIZE(palmas_ldo1_4K_supply);
+		reg_idata_ldo4.consumer_supplies = palmas_ldo4_4K_supply;
+		reg_idata_ldo4.num_consumer_supplies =
+			ARRAY_SIZE(palmas_ldo4_4K_supply);
+	}
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = pluto_reg_data[i];
