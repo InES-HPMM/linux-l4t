@@ -20,7 +20,6 @@
 #ifndef _MACH_TEGRA_BOARD_DALMORE_H
 #define _MACH_TEGRA_BOARD_DALMORE_H
 
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <linux/mfd/max77663-core.h>
 #include <linux/mfd/tps65090.h>
