@@ -748,7 +748,7 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 	return 0;
 }
 
-static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
+static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 				 unsigned long pfn)
 {
 	struct smmu_device *smmu = as->smmu;
@@ -758,7 +758,7 @@ static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 
 	pte = locate_pte(as, iova, true, &page, &count);
 	if (WARN_ON(!pte))
-		return;
+		return -ENOMEM;
 
 	if (*pte == _PTE_VACANT(iova))
 		(*count)++;
@@ -768,6 +768,7 @@ static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(smmu, as, iova, pte, page, 0);
 	put_signature(as, iova, pfn);
+	return 0;
 }
 
 static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
@@ -776,13 +777,14 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	struct smmu_as *as = domain->priv;
 	unsigned long pfn = __phys_to_pfn(pa);
 	unsigned long flags;
+	int err;
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%08x\n", as->asid, iova, pa);
 
 	spin_lock_irqsave(&as->lock, flags);
-	__smmu_iommu_map_pfn(as, iova, pfn);
+	err = __smmu_iommu_map_pfn(as, iova, pfn);
 	spin_unlock_irqrestore(&as->lock, flags);
-	return 0;
+	return err;
 }
 
 static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
