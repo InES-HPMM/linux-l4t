@@ -440,6 +440,7 @@ struct tegra_udc {
 	/* irq work for controlling the usb power */
 	struct work_struct irq_work;
 	enum tegra_connect_type connect_type;
+	enum tegra_connect_type prev_connect_type;
 	void __iomem *regs;
 	size_t ep_qh_size;		/* size after alignment adjustment*/
 	dma_addr_t ep_qh_dma;		/* dma address of QH */
@@ -462,6 +463,9 @@ struct tegra_udc {
 	bool has_hostpc;
 	bool support_pmu_vbus;
 	bool fence_read;
+#ifdef CONFIG_EXTCON
+	struct extcon_dev *edev;
+#endif
 };
 
 
