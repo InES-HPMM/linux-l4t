@@ -20,7 +20,6 @@
 #ifndef _MACH_TEGRA_BOARD_PISMO_H
 #define _MACH_TEGRA_BOARD_PISMO_H
 
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
 
