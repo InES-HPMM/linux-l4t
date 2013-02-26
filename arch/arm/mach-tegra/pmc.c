@@ -185,6 +185,8 @@ void set_power_timers(unsigned long us_on, unsigned long us_off)
 #endif
 
 static const struct of_device_id matches[] __initconst = {
+	{ .compatible = "nvidia,tegra124-pmc" },
+	{ .compatible = "nvidia,tegra148-pmc" },
 	{ .compatible = "nvidia,tegra114-pmc" },
 	{ .compatible = "nvidia,tegra30-pmc" },
 	{ .compatible = "nvidia,tegra20-pmc" },
