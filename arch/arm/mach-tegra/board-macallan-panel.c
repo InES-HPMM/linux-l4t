@@ -390,6 +390,9 @@ static void macallan_panel_select(void)
 	tegra_get_display_board_info(&board);
 
 	switch (board.board_id) {
+	case BOARD_E1639:
+		panel = &dsi_s_wqxga_10_1;
+		break;
 	default:
 		panel = &dsi_p_wuxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
