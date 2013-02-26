@@ -86,8 +86,11 @@
 #define PMC_IPC_CLR_MEM_STS		(1 << 5)
 
 /* PMC register to program mem_req->0 interrupt for LP1BB */
+#define PMC_WAKE_STATUS			0x14
+
 #define PMC_WAKE2_MASK			0x160
 #define PMC_WAKE2_LEVEL			0x164
+#define PMC_WAKE2_STATUS		0x168
 #define PMC_WAKE2_BB_MEM_REQ		(1 << 29)
 
 /* Additional PMC Control register */
