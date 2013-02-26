@@ -25,11 +25,11 @@
 #include <linux/regulator/consumer.h>
 #include <linux/mmc/host.h>
 #include <linux/wl12xx.h>
+#include <linux/platform_data/mmc-sdhci-tegra.h>
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
-#include <mach/sdhci.h>
 #include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
