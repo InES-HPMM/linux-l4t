@@ -361,9 +361,8 @@ static int charger_extcon_notifier(struct notifier_block *self,
 	return NOTIFY_DONE;
 }
 
-static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
+static int max77665_update_charger_status(struct max77665_charger *charger)
 {
-	struct max77665_charger *charger = data;
 	int ret;
 	uint32_t read_val;
 
@@ -404,6 +403,14 @@ static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
 		goto error;
 	}
 error:
+	return ret;
+}
+
+static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
+{
+	struct max77665_charger *charger = data;
+	int ret;
+	ret = max77665_update_charger_status(charger);
 	return IRQ_HANDLED;
 }
 
@@ -542,11 +549,35 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 
 	return 0;
 }
+#ifdef CONFIG_PM_SLEEP
+static int max77665_suspend(struct device *dev)
+{
+	return 0;
+}
+static int max77665_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct max77665_charger *charger = platform_get_drvdata(pdev);
+	int ret;
+	ret = max77665_update_charger_status(charger);
+	if (ret < 0)
+		dev_err(charger->dev, "error occured in resume\n");
+	return ret;
+}
 
+static const struct dev_pm_ops max77665_pm = {
+	.suspend = max77665_suspend,
+	.resume = max77665_resume,
+};
+#define MAX77665_PM	(&max77665_pm)
+#else
+#define MAX77665_PM	NULL
+#endif
 static struct platform_driver max77665_battery_driver = {
 	.driver = {
 		.name = "max77665-charger",
 		.owner = THIS_MODULE,
+		.pm	= MAX77665_PM,
 	},
 	.probe = max77665_battery_probe,
 	.remove = __devexit_p(max77665_battery_remove),
