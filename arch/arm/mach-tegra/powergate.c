@@ -621,12 +621,10 @@ int __init tegra_powergate_debugfs_init(void)
 {
 	struct dentry *d;
 
-	if (powergate_name) {
-		d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
-			&powergate_fops);
-		if (!d)
-			return -ENOMEM;
-	}
+	d = debugfs_create_file("powergate", S_IRUGO, NULL, NULL,
+		&powergate_fops);
+	if (!d)
+		return -ENOMEM;
 
 	return 0;
 }
