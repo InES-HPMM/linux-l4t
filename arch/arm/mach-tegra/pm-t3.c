@@ -29,7 +29,6 @@
 #include <linux/clockchips.h>
 #include <linux/cpu_pm.h>
 
-#include <mach/gpio.h>
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
 #include <mach/edp.h>
