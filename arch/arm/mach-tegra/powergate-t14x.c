@@ -54,6 +54,11 @@ struct tegra14x_powergate_mc_client_info {
 
 static struct tegra14x_powergate_mc_client_info
 	tegra14x_pg_mc_info[TEGRA_NUM_POWERGATE] = {
+	[TEGRA_POWERGATE_CRAIL] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
 	[TEGRA_POWERGATE_3D] = {
 		.hot_reset_clients = {
 			[0] = MC_CLIENT_NV,
@@ -86,6 +91,41 @@ static struct tegra14x_powergate_mc_client_info
 			[2] = MC_CLIENT_LAST,
 		},
 	},
+	[TEGRA_POWERGATE_CPU1] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_CPU2] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_CPU3] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_CELP] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_CPU0] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_C0NC] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
+	[TEGRA_POWERGATE_C1NC] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_LAST,
+		},
+	},
 	[TEGRA_POWERGATE_DISA] = {
 		.hot_reset_clients = {
 			[0] = MC_CLIENT_DC,
@@ -102,6 +142,7 @@ static struct tegra14x_powergate_mc_client_info
 
 static struct powergate_partition_info
 	tegra14x_powergate_partition_info[TEGRA_NUM_POWERGATE] = {
+	[TEGRA_POWERGATE_CRAIL] = { .name = "crail" },
 	[TEGRA_POWERGATE_3D] = {
 		.name = "3d",
 		.clk_info = {
@@ -138,6 +179,13 @@ static struct powergate_partition_info
 				.clk_type = CLK_AND_RST },
 		},
 	},
+	[TEGRA_POWERGATE_CPU1] = { .name = "cpu1" },
+	[TEGRA_POWERGATE_CPU2] = { .name = "cpu2" },
+	[TEGRA_POWERGATE_CPU3] = { .name = "cpu3" },
+	[TEGRA_POWERGATE_CELP] = { .name = "celp" },
+	[TEGRA_POWERGATE_CPU0] = { .name = "cpu0" },
+	[TEGRA_POWERGATE_C0NC] = { .name = "c0nc" },
+	[TEGRA_POWERGATE_C1NC] = { .name = "c1nc" },
 	[TEGRA_POWERGATE_DISA] = {
 		.name = "disa",
 		.clk_info = {
