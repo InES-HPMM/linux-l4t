@@ -33,16 +33,20 @@
 #include <linux/regulator/machine.h>
 #include <linux/mfd/palmas.h>
 
+#define MAX_INT_NAME	40
 struct palmas_extcon {
 	struct device		*dev;
 	struct palmas		*palmas;
 	struct extcon_dev	*edev;
 	int			vbus_irq;
 	int			id_irq;
+	char			vbus_irq_name[MAX_INT_NAME];
+	char			id_irq_name[MAX_INT_NAME];
 };
 
 const char *palmas_excon_cable[] = {
 	[0] = "USB",
+	[1] = "USB-Host",
 	NULL,
 };
 
@@ -66,6 +70,15 @@ static int palmas_extcon_cable_update(
 		extcon_set_cable_state(palma_econ->edev, "USB", false);
 
 	dev_info(palma_econ->dev, "VBUS %s status: 0x%02x\n",
+		(status & PALMAS_INT3_LINE_STATE_VBUS) ? "Valid" : "Invalid",
+		status);
+
+	if (status & PALMAS_INT3_LINE_STATE_ID)
+		extcon_set_cable_state(palma_econ->edev, "USB-Host", true);
+	else
+		extcon_set_cable_state(palma_econ->edev, "USB-Host", false);
+
+	dev_info(palma_econ->dev, "ID %s status: 0x%02x\n",
 		(status & PALMAS_INT3_LINE_STATE_VBUS) ? "Valid" : "Invalid",
 		status);
 
@@ -125,18 +138,33 @@ static int __devinit palmas_extcon_probe(struct platform_device *pdev)
 		goto out;
 	}
 
+	snprintf(palma_econ->vbus_irq_name, MAX_INT_NAME,
+			"vbus-%s\n", dev_name(palma_econ->dev));
+	snprintf(palma_econ->id_irq_name, MAX_INT_NAME,
+			"id-%s\n", dev_name(palma_econ->dev));
+
 	ret = request_threaded_irq(palma_econ->vbus_irq, NULL,
 		palmas_extcon_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
-		dev_name(palma_econ->dev), palma_econ);
+		palma_econ->vbus_irq_name, palma_econ);
 	if (ret < 0) {
-		dev_err(palma_econ->dev, "request irq %d failed: %dn",
+		dev_err(palma_econ->dev, "request irq %d failed: %d\n",
 			palma_econ->vbus_irq, ret);
 		goto out;
 	}
 
+	ret = request_threaded_irq(palma_econ->id_irq, NULL,
+		palmas_extcon_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
+		palma_econ->id_irq_name, palma_econ);
+	if (ret < 0) {
+		dev_err(palma_econ->dev, "request irq %d failed: %d\n",
+			palma_econ->id_irq, ret);
+		goto out_free_vbus;
+	}
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
-
+out_free_vbus:
+	free_irq(palma_econ->vbus_irq, palma_econ);
 out:
 	extcon_dev_unregister(palma_econ->edev);
 	return ret;
@@ -148,6 +176,7 @@ static int __devexit palmas_extcon_remove(struct platform_device *pdev)
 
 	extcon_dev_unregister(palma_econ->edev);
 	free_irq(palma_econ->vbus_irq, palma_econ);
+	free_irq(palma_econ->id_irq, palma_econ);
 	return 0;
 }
 
