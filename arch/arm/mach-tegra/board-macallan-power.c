@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-power.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -185,7 +185,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 
 PALMAS_PDATA_INIT(smps123, 900,  1300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps45, 900,  1400, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps6, 2800,  3000, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(smps6, 3200,  3200, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps7, 1350,  1350, NULL, 0, 0, 1);
 PALMAS_PDATA_INIT(smps8, 1800,  1800, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(smps9, 2900,  2900, NULL, 1, 0, 1);
