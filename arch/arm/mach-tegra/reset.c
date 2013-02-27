@@ -27,6 +27,7 @@
 #include "sleep.h"
 #include "pm.h"
 #include "fuse.h"
+#include "mach/hardware.h"
 
 #define TEGRA_IRAM_RESET_BASE (TEGRA_IRAM_BASE + \
 				TEGRA_IRAM_RESET_HANDLER_OFFSET)
@@ -120,5 +121,6 @@ void __init tegra_cpu_reset_handler_init(void)
 	outer_clean_range(__pa(&__tegra_cpu_reset_handler_data[0]),
 			  __pa(&__tegra_cpu_reset_handler_data[TEGRA_RESET_DATA_SIZE]));
 
-	tegra_cpu_reset_handler_enable();
+	if (!tegra_cpu_is_dsim()) /* Can't write IRAM on DSIM/MTS (yet) */
+		tegra_cpu_reset_handler_enable();
 }
