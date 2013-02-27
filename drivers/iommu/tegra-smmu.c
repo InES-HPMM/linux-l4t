@@ -79,7 +79,7 @@ enum smmu_hwgrp {
 #define SKIP_SWGRP_CHECK
 
 /* bitmap of the page sizes currently supported */
-#define SMMU_IOMMU_PGSIZES	(SZ_4K)
+#define SMMU_IOMMU_PGSIZES	(SZ_4K | SZ_4M)
 
 #define SMMU_CONFIG				0x10
 #define SMMU_CONFIG_DISABLE			0
@@ -726,7 +726,7 @@ err_out:
 	return err;
 }
 
-static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+static size_t __smmu_iommu_unmap_page(struct smmu_as *as, dma_addr_t iova)
 {
 	unsigned long *pte;
 	struct page *page;
@@ -734,10 +734,10 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 
 	pte = locate_pte(as, iova, false, &page, &count);
 	if (WARN_ON(!pte))
-		return -EINVAL;
+		return 0;
 
 	if (*pte == _PTE_VACANT(iova))
-		return -EINVAL;
+		return 0;
 
 	*pte = _PTE_VACANT(iova);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
@@ -745,7 +745,18 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 	if (!--(*count))
 		free_ptbl(as, iova);
 
-	return 0;
+	return SZ_4K;
+}
+
+static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
+{
+	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+
+	pdir[pdn] = _PDE_VACANT(pdn);
+	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+	flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn], as->pdir_page, 1);
+	return SZ_4M;
 }
 
 static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
@@ -771,20 +782,67 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 	return 0;
 }
 
+static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
+				 phys_addr_t pa)
+{
+	unsigned long pfn = __phys_to_pfn(pa);
+
+	return __smmu_iommu_map_pfn(as, iova, pfn);
+}
+
+static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
+				 phys_addr_t pa)
+{
+	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+
+	if (pdir[pdn] != _PDE_VACANT(pdn))
+		return -EINVAL;
+
+	pdir[pdn] = SMMU_ADDR_TO_PDN(pa) << 10 | _PDE_ATTR;
+	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+	flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn], as->pdir_page, 1);
+
+	return 0;
+}
+
 static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			  phys_addr_t pa, size_t bytes, int prot)
 {
 	struct smmu_as *as = domain->priv;
-	unsigned long pfn = __phys_to_pfn(pa);
 	unsigned long flags;
 	int err;
+	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa);
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%08x\n", as->asid, iova, pa);
 
+	switch (bytes) {
+	case SZ_4K:
+		fn = __smmu_iommu_map_page;
+		break;
+	case SZ_4M:
+		fn = __smmu_iommu_map_largepage;
+		break;
+	default:
+		WARN(1,  "%d not supported\n", bytes);
+		return -EINVAL;
+	}
+
 	spin_lock_irqsave(&as->lock, flags);
-	err = __smmu_iommu_map_pfn(as, iova, pfn);
+	err = fn(as, iova, pa);
 	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
+}
+
+static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+{
+	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	unsigned long *pdir = page_address(as->pdir_page);
+
+	if (!(pdir[pdn] & _PDE_NEXT))
+		return __smmu_iommu_unmap_largepage(as, iova);
+
+	return __smmu_iommu_unmap_page(as, iova);
 }
 
 static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
@@ -792,37 +850,47 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 {
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
-	int err;
+	size_t unmapped;
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-	err = __smmu_iommu_unmap(as, iova);
+	unmapped = __smmu_iommu_unmap(as, iova);
 	spin_unlock_irqrestore(&as->lock, flags);
-	return err ? 0 : SMMU_PAGE_SIZE;
+	return unmapped;
 }
 
 static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 					   dma_addr_t iova)
 {
 	struct smmu_as *as = domain->priv;
-	unsigned long *pte;
-	unsigned int *count;
-	struct page *page;
-	unsigned long pfn = 0;
 	unsigned long flags;
+	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	unsigned long *pdir = page_address(as->pdir_page);
+	phys_addr_t pa = 0;
 
 	spin_lock_irqsave(&as->lock, flags);
 
-	pte = locate_pte(as, iova, false, &page, &count);
-	if (pte)
-		pfn = *pte & SMMU_PFN_MASK;
+	if (pdir[pdn] & _PDE_NEXT) {
+		unsigned long *pte;
+		unsigned int *count;
+		struct page *page;
+
+		pte = locate_pte(as, iova, false, &page, &count);
+		if (pte) {
+			unsigned long pfn = *pte & SMMU_PFN_MASK;
+			pa = PFN_PHYS(pfn);
+		}
+	} else {
+		pa = pdir[pdn] << SMMU_PDE_SHIFT;
+	}
+
 	dev_dbg(as->smmu->dev,
-		"iova:%08llx pfn:%08lx asid:%d\n", (unsigned long long)iova,
-		 pfn, as->asid);
+		"iova:%08llx pfn:%08x asid:%d\n", (unsigned long long)iova,
+		 pa, as->asid);
 
 	spin_unlock_irqrestore(&as->lock, flags);
-	return PFN_PHYS(pfn);
+	return pa;
 }
 
 static int smmu_iommu_domain_has_cap(struct iommu_domain *domain,
