@@ -482,7 +482,7 @@ static int pluto_imx091_power_on(struct nvc_regulator *vreg)
 		goto imx091_vcm_fail;
 	usleep_range(300, 310);
 
-	return 0;
+	return 1;
 
 imx091_vcm_fail:
 	regulator_disable(pluto_i2cvdd);
