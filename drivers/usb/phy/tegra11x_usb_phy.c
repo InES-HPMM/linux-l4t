@@ -1702,6 +1702,11 @@ static int uhsic_phy_open(struct tegra_usb_phy *phy)
 		pr_err("invalid pll_u parent rate %ld\n", parent_rate);
 		return -EINVAL;
 	}
+	/* reset controller for reenumerating hsic device */
+	tegra_periph_reset_assert(phy->ctrlr_clk);
+	udelay(2);
+	tegra_periph_reset_deassert(phy->ctrlr_clk);
+	udelay(2);
 
 	pmc_init(phy);
 	pmc->pmc_ops->powerup_pmc_wake_detect(pmc);
