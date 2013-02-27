@@ -417,7 +417,7 @@ ENTRY(tegra3_lp1_reset)
 	add	r1, r1, #LOCK_DELAY
 	wait_until r1, r7, r3
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
@@ -510,7 +510,7 @@ powerup_l2_done:
 	str	r0, [r2, #PMC_REMOVE_CLAMPING_CMD]
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
@@ -635,7 +635,7 @@ zcal_done:
 	mov	pc, r0
 ENDPROC(tegra3_lp1_reset)
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)|| defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	.align	L1_CACHE_SHIFT
 	.type	tegra3_sdram_pad_save, %object
 tegra3_sdram_pad_save:
@@ -1092,7 +1092,7 @@ halted:
 
 tegra3_sdram_self_refresh:
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	adr	r2, tegra3_sdram_pad_address
 	adr	r8, tegra3_sdram_pad_save
 #endif
@@ -1114,7 +1114,7 @@ padsave_done:
 
 	dsb
 
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
@@ -1126,7 +1126,7 @@ enter_self_refresh:
 	str	r1, [r0, #EMC_AUTO_CAL_INTERVAL]
 	ldr	r1, [r0, #EMC_CFG]
 	bic	r1, r1, #(1<<28)
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	bic	r1, r1, #(1<<29)
 #endif
 	str	r1, [r0, #EMC_CFG]		@ disable DYN_SELF_REF
@@ -1169,7 +1169,7 @@ emcself:
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	orr	r1, r1, #7			@ set E_NO_VTTGEN
 #endif
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	orr	r1, r1, #0x3f			@ set E_NO_VTTGEN
 #endif
 	str	r1, [r0, #EMC_XM2VTTGENPADCTRL2]
