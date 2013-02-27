@@ -6053,6 +6053,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("twd", "smp_twd", NULL),
 	CLK_DUPLICATE("msenc", "tegra_msenc", "msenc"),
 	CLK_DUPLICATE("tsec", "tegra_tsec", "tsec"),
+	CLK_DUPLICATE("csus", "touch_clk", "e1680_ts_clk_con"),
 };
 
 struct clk *tegra_ptr_clks[] = {
