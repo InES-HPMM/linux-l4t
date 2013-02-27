@@ -59,6 +59,19 @@
 
 #define DRV_NAME "tegra-snd-rt5640"
 
+#define DAI_LINK_HIFI		0
+#define DAI_LINK_SPDIF		1
+#define DAI_LINK_BTSCO		2
+#define NUM_DAI_LINKS		3
+
+const char *tegra_rt5640_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
+	"tegra30-i2s.0",
+	"tegra30-i2s.1",
+	"tegra30-i2s.2",
+	"tegra30-i2s.3",
+	"tegra30-i2s.4",
+};
+
 #define GPIO_SPKR_EN    BIT(0)
 #define GPIO_HP_MUTE    BIT(1)
 #define GPIO_INT_MIC_EN BIT(2)
@@ -631,8 +644,8 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static struct snd_soc_dai_link tegra_rt5640_dai[] = {
-	{
+static struct snd_soc_dai_link tegra_rt5640_dai[NUM_DAI_LINKS] = {
+	[DAI_LINK_HIFI] = {
 		.name = "RT5640",
 		.stream_name = "RT5640 PCM",
 		.codec_name = "rt5640.4-001c",
@@ -642,16 +655,18 @@ static struct snd_soc_dai_link tegra_rt5640_dai[] = {
 		.init = tegra_rt5640_init,
 		.ops = &tegra_rt5640_ops,
 	},
-	{
+
+	[DAI_LINK_SPDIF] = {
 		.name = "SPDIF",
 		.stream_name = "SPDIF PCM",
 		.codec_name = "spdif-dit.0",
-		.platform_name = "tegra-pcm-audio",
+		.platform_name = "tegra30-spdif",
 		.cpu_dai_name = "tegra30-spdif",
 		.codec_dai_name = "dit-hifi",
 		.ops = &tegra_spdif_ops,
 	},
-	{
+
+	[DAI_LINK_BTSCO] = {
 		.name = "BT-SCO",
 		.stream_name = "BT SCO PCM",
 		.codec_name = "spdif-dit.1",
@@ -769,6 +784,7 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	struct tegra_rt5640 *machine;
 	struct tegra_asoc_platform_data *pdata;
 	int ret;
+	int codec_id;
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
@@ -872,6 +888,21 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
+
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	codec_id = pdata->i2s_param[HIFI_CODEC].audio_port_id;
+	tegra_rt5640_dai[DAI_LINK_HIFI].cpu_dai_name =
+	tegra_rt5640_i2s_dai_name[codec_id];
+	tegra_rt5640_dai[DAI_LINK_HIFI].platform_name =
+	tegra_rt5640_i2s_dai_name[codec_id];
+
+	codec_id = pdata->i2s_param[BT_SCO].audio_port_id;
+	tegra_rt5640_dai[DAI_LINK_BTSCO].cpu_dai_name =
+	tegra_rt5640_i2s_dai_name[codec_id];
+	tegra_rt5640_dai[DAI_LINK_BTSCO].platform_name =
+	tegra_rt5640_i2s_dai_name[codec_id];
+#endif
+
 	card->dapm.idle_bias_off = 1;
 	ret = snd_soc_register_card(card);
 	if (ret) {

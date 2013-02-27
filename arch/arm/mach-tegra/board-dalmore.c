@@ -785,7 +785,6 @@ static inline void dalmore_battery_edp_init(void) {}
 
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata dalmore_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-dma", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000400, "sdhci-tegra.2",
@@ -831,7 +830,8 @@ struct of_dev_auxdata dalmore_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
 				NULL),
-
+	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
+				NULL),
 	{}
 };
 #endif
