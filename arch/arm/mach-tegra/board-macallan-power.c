@@ -534,6 +534,7 @@ static struct tegra_suspend_platform_data macallan_suspend_data = {
 	.core_off_timer = 2000,
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
+	.cpu_lp2_min_residency = 1000,
 	.min_residency_crail = 20000,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
