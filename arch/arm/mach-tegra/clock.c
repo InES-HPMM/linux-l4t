@@ -1289,10 +1289,14 @@ static int possible_parents_show(struct seq_file *s, void *data)
 {
 	struct clk *c = s->private;
 	int i;
+	bool first = true;
 
 	for (i = 0; c->inputs[i].input; i++) {
-		char *first = (i == 0) ? "" : " ";
-		seq_printf(s, "%s%s", first, c->inputs[i].input->name);
+		if (tegra_clk_is_parent_allowed(c, c->inputs[i].input)) {
+			seq_printf(s, "%s%s", first ? "" : " ",
+				   c->inputs[i].input->name);
+			first = false;
+		}
 	}
 	seq_printf(s, "\n");
 	return 0;
