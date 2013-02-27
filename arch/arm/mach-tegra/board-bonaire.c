@@ -64,6 +64,7 @@
 #include "gpio-names.h"
 
 #define ENABLE_OTG 0
+/*#define USB_HOST_ONLY*/
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
@@ -368,7 +369,9 @@ static struct platform_device *bonaire_devices[] __initdata = {
 	&debug_uart,
 	&tegra_pmu_device,
 	&tegra_rtc_device,
+#if !defined(USB_HOST_ONLY)
 	&tegra_udc_device,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
 	&tegra11_se_device,
 #endif
@@ -392,26 +395,6 @@ static int __init bonaire_touch_init(void)
 {
 	return 0;
 }
-
-#if defined(USB_HOST_ONLY)
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 0,
-	},
-	[1] = {
-			.phy_config = &ulpi_phy_config,
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-	},
-	[2] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 0,
-	},
-};
-#endif
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
@@ -438,7 +421,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 };
 
 static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-	.port_otg = true,
+	.port_otg = false,
 	.has_hostpc = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
