@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.h
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (c) 2011-2013 NVIDIA Corporation. All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,7 +62,9 @@ struct soctherm_sensor {
 	int tiddq;
 	int ten_count;
 	int tsample;
+	int tsamp_ATE;
 	u8 pdiv;
+	u8 pdiv_ATE;
 	u8 hot_off;
 };
 

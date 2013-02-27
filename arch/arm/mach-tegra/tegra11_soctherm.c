@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 
 #include "iomap.h"
 #include "tegra3_tsensor.h"
+#include "fuse.h"
 #include "tegra11_soctherm.h"
 
 /* Min temp granularity specified as X in 2^X.
@@ -457,17 +458,31 @@ static const enum soctherm_throttle_dev_id therm2dev[] = {
 	[THERM_PLL] = -1,
 };
 
-static const struct soctherm_sensor sensor_defaults = {
+static const struct soctherm_sensor default_t11x_sensor_params = {
 	.tall      = 16300,
 	.tiddq     = 1,
 	.ten_count = 1,
 	.tsample   = 163,
+	.tsamp_ATE = 655,
 	.pdiv      = 10,
+	.pdiv_ATE  = 10,
+	.hot_off   = 0,
+};
+static const struct soctherm_sensor default_t14x_sensor_params = {
+	.tall      = 16300,
+	.tiddq     = 1,
+	.ten_count = 1,
+	.tsample   = 120,
+	.tsamp_ATE = 481,
+	.pdiv      = 8,
+	.pdiv_ATE  = 8,
 	.hot_off   = 0,
 };
 
-static const unsigned long default_soctherm_clk_rate = 136000000;
-static const unsigned long default_tsensor_clk_rate = 500000;
+static const unsigned long default_t11x_soctherm_clk_rate = 136000000;
+static const unsigned long default_t11x_tsensor_clk_rate = 500000;
+static const unsigned long default_t14x_soctherm_clk_rate = 136000000;
+static const unsigned long default_t14x_tsensor_clk_rate = 400000;
 
 static int sensor2therm_a[TSENSE_SIZE];
 static int sensor2therm_b[TSENSE_SIZE];
@@ -1156,12 +1171,15 @@ static void __init soctherm_tsense_program(enum soctherm_sense sensor,
 	r = REG_SET(0, TS_CPU0_CONFIG1_TIDDQ, data->tiddq);
 	r = REG_SET(r, TS_CPU0_CONFIG1_EN, 1);
 	r = REG_SET(r, TS_CPU0_CONFIG1_TEN_COUNT, data->ten_count);
-	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample);
+	r = REG_SET(r, TS_CPU0_CONFIG1_TSAMPLE, data->tsample - 1);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG1, sensor));
 }
 
 static int __init soctherm_clk_init(void)
 {
+	unsigned long default_soctherm_clk_rate;
+	unsigned long default_tsensor_clk_rate;
+
 	soctherm_clk = clk_get_sys("soc_therm", NULL);
 	tsensor_clk = clk_get_sys("tegra-tsensor", NULL);
 
@@ -1173,6 +1191,15 @@ static int __init soctherm_clk_init(void)
 	}
 
 	/* initialize default clock rates */
+	default_soctherm_clk_rate =
+		tegra_chip_id == TEGRA14X ?
+		default_t14x_soctherm_clk_rate :
+		default_t11x_soctherm_clk_rate;
+	default_tsensor_clk_rate =
+		tegra_chip_id == TEGRA14X ?
+		default_t14x_tsensor_clk_rate :
+		default_t11x_tsensor_clk_rate;
+
 	plat_data.soctherm_clk_rate =
 		plat_data.soctherm_clk_rate ?: default_soctherm_clk_rate;
 	plat_data.tsensor_clk_rate =
@@ -1209,6 +1236,7 @@ static void soctherm_fuse_read_vsensor(void)
 {
 	u32 value;
 	s32 calib_cp, calib_ft;
+	s32 nominal_calib_cp, nominal_calib_ft;
 
 	tegra_fuse_get_vsensor_calib(&value);
 
@@ -1223,13 +1251,12 @@ static void soctherm_fuse_read_vsensor(void)
 	calib_ft = REG_GET(value, FUSE_SHIFT_FT);
 	calib_ft = MAKE_SIGNED32(calib_ft, FUSE_SHIFT_FT_BITS);
 
-	/* default: HI precision: use fuse_temp in 0.5C */
-	actual_temp_cp = 2 * 25 + calib_cp;
-	actual_temp_ft = 2 * 90 + calib_ft;
+	nominal_calib_cp = 25;
+	nominal_calib_ft = tegra_chip_id == TEGRA14X ? 105 : 90;
 
-	/* adjust: for LO precision: use fuse_temp in 1C */
-	actual_temp_cp = LOWER_PRECISION_FOR_TEMP(actual_temp_cp);
-	actual_temp_ft = LOWER_PRECISION_FOR_TEMP(actual_temp_ft);
+	/* use HI precision to calculate: use fuse_temp in 0.5C */
+	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
+	actual_temp_ft = 2 * nominal_calib_ft + calib_ft;
 }
 
 static int fuse_corr_alpha[] = { /* scaled *1000000 */
@@ -1268,9 +1295,12 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	calib = MAKE_SIGNED32(calib, FUSE_TSENSOR_CALIB_BITS);
 	actual_tsensor_cp = (fuse_calib_base_cp * 64) + calib;
 
-	mult = plat_data.sensor_data[sensor].pdiv * 655;
-	div = plat_data.sensor_data[sensor].tsample * 10;
+	mult = plat_data.sensor_data[sensor].pdiv *
+		plat_data.sensor_data[sensor].tsamp_ATE;
+	div = plat_data.sensor_data[sensor].tsample *
+		plat_data.sensor_data[sensor].pdiv_ATE;
 
+	/* first calculate therm_a and therm_b in Hi precision */
 	delta_sens = actual_tsensor_ft - actual_tsensor_cp;
 	delta_temp = actual_temp_ft - actual_temp_cp;
 
@@ -1281,8 +1311,8 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				     ((s64)actual_tsensor_cp * actual_temp_ft)),
 				    (s64)delta_sens);
 
-	if (PRECISION_IS_LOWER()) {
-		/* cp_fuse corrections */
+	/* FUSE corrections for T114 when precision is set LOW */
+	if (tegra_chip_id == TEGRA11X && PRECISION_IS_LOWER()) {
 		fuse_corr_alpha[sensor] = fuse_corr_alpha[sensor] ?: 1000000;
 		therm_a = div64_s64_precise(
 				(s64)therm_a * fuse_corr_alpha[sensor],
@@ -1291,6 +1321,9 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				(s64)therm_b * fuse_corr_alpha[sensor] +
 				fuse_corr_beta[sensor], (s64)1000000LL);
 	}
+
+	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
+	therm_b = LOWER_PRECISION_FOR_TEMP(therm_b);
 
 	sensor2therm_a[sensor] = (s16)therm_a;
 	sensor2therm_b[sensor] = (s16)therm_b;
@@ -1304,13 +1337,14 @@ static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 {
 	u32 val, checksum;
 
-	if (!data)
-		return;
-
+	/* enable therm trip at PMC */
 	val = pmc_readl(PMC_SENSOR_CTRL);
 	val = REG_SET(val, PMC_SCRATCH_WRITE, 1);
 	val = REG_SET(val, PMC_ENABLE_RST, 1);
 	pmc_writel(val, PMC_SENSOR_CTRL);
+
+	if (!data)
+		return;
 
 	/* Fill scratch registers to shutdown device on therm TRIP */
 	val = REG_SET(0, PMU_OFF_DATA, data->poweroff_reg_data);
@@ -1340,9 +1374,13 @@ static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
 	struct soctherm_sensor *s;
+	struct soctherm_sensor sensor_defaults;
 	int i, j, k;
 	long rem;
 	u32 r;
+
+	sensor_defaults = tegra_chip_id == TEGRA14X ?
+		default_t14x_sensor_params : default_t11x_sensor_params;
 
 	/* initialize default values for unspecified params */
 	for (i = 0; i < TSENSE_SIZE; i++) {
@@ -1354,7 +1392,9 @@ static int soctherm_init_platform_data(void)
 		s->tiddq     = s->tiddq     ?: sensor_defaults.tiddq;
 		s->ten_count = s->ten_count ?: sensor_defaults.ten_count;
 		s->tsample   = s->tsample   ?: sensor_defaults.tsample;
+		s->tsamp_ATE = s->tsamp_ATE ?: sensor_defaults.tsamp_ATE;
 		s->pdiv      = s->pdiv      ?: sensor_defaults.pdiv;
+		s->pdiv_ATE  = s->pdiv_ATE  ?: sensor_defaults.pdiv_ATE;
 		s->hot_off   = s->hot_off   ?: sensor_defaults.hot_off;
 	}
 
@@ -1499,6 +1539,11 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int err;
 
+	if (!(tegra_chip_id == TEGRA11X || tegra_chip_id == TEGRA14X)) {
+		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
+		return -1;
+	}
+
 	register_pm_notifier(&soctherm_nb);
 
 	if (!data)
@@ -1551,7 +1596,7 @@ static int regs_show(struct seq_file *s, void *data)
 		state = REG_GET(r, TS_CPU0_CONFIG1_TEN_COUNT);
 		seq_printf(s, "ten_count(%d) ", state);
 		state = REG_GET(r, TS_CPU0_CONFIG1_TSAMPLE);
-		seq_printf(s, "tsample(%d) ", state);
+		seq_printf(s, "tsample(%d) ", state + 1);
 
 		r = soctherm_readl(TS_TSENSE_REG_OFFSET(TS_CPU0_STATUS1, i));
 		state = REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID);

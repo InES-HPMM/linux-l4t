@@ -361,6 +361,10 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	200000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	100000000,	false },
+#ifdef CONFIG_TEGRA_SOCTHERM
+	{ "soc_therm",	"pll_p",	136000000,	false },
+	{ "tsensor",	"clk_m",	400000,		false },
+#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
