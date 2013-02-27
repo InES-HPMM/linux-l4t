@@ -741,17 +741,7 @@ static struct gpio modem_gpios[] = { /* i500 modem */
 
 static struct gpio modem2_gpios[] = {
 	{MDM2_PWR_ON, GPIOF_OUT_INIT_LOW, "MODEM2 PWR ON"},
-	{MDM2_RST, GPIOF_DIR_OUT, "MODEM2 RESET"},
-	{MDM2_ACK2, GPIOF_OUT_INIT_HIGH, "MODEM2 ACK2"},
-	{MDM2_ACK1, GPIOF_OUT_INIT_LOW, "MODEM2 ACK1"},
-};
-
-static void baseband2_post_phy_on(void);
-static void baseband2_pre_phy_off(void);
-
-static struct tegra_usb_phy_platform_ops baseband2_plat_ops = {
-	.pre_phy_off = baseband2_pre_phy_off,
-	.post_phy_on = baseband2_post_phy_on,
+	{MDM2_RST, GPIOF_OUT_INIT_LOW, "MODEM2 RESET"},
 };
 
 static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
@@ -780,7 +770,6 @@ static struct tegra_usb_platform_data tegra_ehci3_hsic_baseband2_pdata = {
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
-	.ops = &baseband2_plat_ops,
 };
 
 static struct tegra_usb_platform_data tegra_hsic_pdata = {
@@ -942,51 +931,37 @@ static struct platform_device icera_baseband_device = {
 	},
 };
 
-static void baseband2_post_phy_on(void)
-{
-	/* set MDM2_ACK2 low */
-	gpio_set_value(MDM2_ACK2, 0);
-}
-
-static void baseband2_pre_phy_off(void)
-{
-	/* set MDM2_ACK2 high */
-	gpio_set_value(MDM2_ACK2, 1);
-}
-
 static void baseband2_start(void)
 {
-	/*
-	 *  Leave baseband powered OFF.
-	 *  User-space daemons will take care of powering it up.
-	 */
 	pr_info("%s\n", __func__);
-	gpio_set_value(MDM2_PWR_ON, 0);
+	gpio_set_value(MDM2_PWR_ON, 1);
 }
 
 static void baseband2_reset(void)
 {
 	/* Initiate power cycle on baseband sub system */
 	pr_info("%s\n", __func__);
-	gpio_set_value(MDM2_PWR_ON, 0);
+	gpio_set_value(MDM2_RST, 0);
 	mdelay(200);
-	gpio_set_value(MDM2_PWR_ON, 1);
+	gpio_set_value(MDM2_RST, 1);
 }
 
 static int baseband2_init(void)
 {
 	int ret;
 
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_GPIO_X1_AUD, TEGRA_TRI_NORMAL);
+
 	ret = gpio_request_array(modem2_gpios, ARRAY_SIZE(modem2_gpios));
 	if (ret)
 		return ret;
 
-	/* enable pull-up for MDM2_REQ2 */
-	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GPIO_PV1,
-				    TEGRA_PUPD_PULL_UP);
+	/* enable pull-down for MDM2_COLD_BOOT */
+	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_KB_ROW4,
+				    TEGRA_PUPD_PULL_DOWN);
 
 	/* export GPIO for user space access through sysfs */
-	gpio_export(MDM2_PWR_ON, false);
+	gpio_export(MDM2_RST, false);
 
 	return 0;
 }
@@ -999,8 +974,7 @@ static const struct tegra_modem_operations baseband2_operations = {
 
 static struct tegra_usb_modem_power_platform_data baseband2_pdata = {
 	.ops = &baseband2_operations,
-	.wake_gpio = MDM2_REQ2,
-	.wake_irq_flags = IRQF_TRIGGER_FALLING,
+	.wake_gpio = -1,
 	.boot_gpio = MDM2_COLDBOOT,
 	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.autosuspend_delay = 2000,
