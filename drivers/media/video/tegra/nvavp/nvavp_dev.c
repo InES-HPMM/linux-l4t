@@ -1233,14 +1233,16 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 	}
 
-	cmdbuf_handle = nvmap_get_handle_id(clientctx->nvmap, hdr.cmdbuf.mem);
+	cmdbuf_handle = nvmap_get_handle_user_id(clientctx->nvmap,
+						hdr.cmdbuf.mem);
 	if (cmdbuf_handle == NULL) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
 		return -EPERM;
 	}
 
-	cmdbuf_dupe = nvmap_duplicate_handle_id(clientctx->nvmap, hdr.cmdbuf.mem);
+	cmdbuf_dupe = nvmap_duplicate_handle_user_id(clientctx->nvmap,
+						hdr.cmdbuf.mem);
 	nvmap_handle_put(cmdbuf_handle);
 
 	if (IS_ERR(cmdbuf_dupe)) {
@@ -1278,8 +1280,8 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		reloc_addr = cmdbuf_data +
 			     (clientctx->relocs[i].cmdbuf_offset >> 2);
 
-		target_phys_addr = nvmap_handle_address(clientctx->nvmap,
-					    clientctx->relocs[i].target);
+		target_phys_addr = nvmap_handle_address_user_id(
+			clientctx->nvmap, clientctx->relocs[i].target);
 		target_phys_addr += clientctx->relocs[i].target_offset;
 		writel(target_phys_addr, reloc_addr);
 	}
