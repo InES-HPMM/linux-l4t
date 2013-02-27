@@ -69,6 +69,7 @@ DEVICE_ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 #define MINOR_FPGA		1
 #define MINOR_ASIM_QT		2
 #define MINOR_ASIM_LINSIM	3
+#define MINOR_DSIM_ASIM_LINSIM	4
 
 struct tegra_id {
 	enum tegra_chipid chipid;
@@ -130,6 +131,7 @@ static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 static enum tegra_platform tegra_platform;
 static bool cpu_is_asim;
+static bool cpu_is_dsim;
 static const char *tegra_platform_name[TEGRA_PLATFORM_MAX] = {
 	[TEGRA_PLATFORM_SILICON] = "silicon",
 	[TEGRA_PLATFORM_QT]      = "quickturn",
@@ -467,6 +469,10 @@ static void tegra_set_tegraid(u32 chipid,
 		} else if (tegra_id.minor == MINOR_ASIM_LINSIM) {
 			cpu_is_asim = true;
 			tegra_platform = TEGRA_PLATFORM_LINSIM;
+		} else if (tegra_id.minor == MINOR_DSIM_ASIM_LINSIM) {
+			cpu_is_asim = true;
+			cpu_is_dsim = true;
+			tegra_platform = TEGRA_PLATFORM_LINSIM;
 		}
 	} else {
 		cpu_is_asim = false;
@@ -533,6 +539,13 @@ bool tegra_cpu_is_asim(void)
 	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
 	return cpu_is_asim;
+}
+
+bool tegra_cpu_is_dsim(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+	return cpu_is_dsim;
 }
 
 static const char *tegra_platform_ptr;
@@ -1229,8 +1242,9 @@ void tegra_init_fuse(void)
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 	if (!tegra_platform_is_silicon()) {
-		pr_info("Tegra Platform: %s%s\n",
+		pr_info("Tegra Platform: %s%s%s\n",
 			tegra_cpu_is_asim() ? "ASIM+" : "",
+			tegra_cpu_is_dsim() ? "DSIM+" : "",
 			tegra_platform_name[tegra_platform]);
 	}
 #endif
