@@ -24,16 +24,26 @@
 static struct clock_data clock_init[] = {
 	{ CAMERA_ISP_CLK, "isp", true},
 	{ CAMERA_VI_CLK, "vi", true},
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	{ CAMERA_VI_SENSOR_CLK, "vi_sensor2", true},
+#else
 	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true},
+#endif
 	{ CAMERA_CSUS_CLK, "csus", true},
 	{ CAMERA_CSI_CLK, "csi", true},
 	{ CAMERA_EMC_CLK, "emc", true},
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	{ CAMERA_CILAB_CLK, "cilab", true},
-	{ CAMERA_CILCD_CLK, "cilcd", true},
 	{ CAMERA_CILE_CLK, "cile", true},
-	{ CAMERA_PLL_D2_CLK, "pll_d2", false}
+	{ CAMERA_PLL_D2_CLK, "pll_d2", false},
 #endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	{ CAMERA_CILCD_CLK, "cilcd", true},
+#endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	{ CAMERA_VIM2CLK_CLK, "vim2_clk", true},
+#endif
+
 };
 
 static long tegra_camera_ioctl(struct file *file,
