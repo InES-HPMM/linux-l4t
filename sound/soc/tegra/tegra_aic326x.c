@@ -530,24 +530,51 @@ static int tegra_aic326x_startup(struct snd_pcm_substream *substream)
 		return 0;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/*
-		*make apbif tx to i2s rx connection if this is the only client
-		*using i2s for playback
-		*/
-		if (i2s->playback_ref_count == 1) {
-			tegra30_ahub_set_rx_cif_source(
-				TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id,
-				i2s->txcif);
-			tegra30_ahub_enable_clocks();
-		}
+		if (i2s->id == machine->codec_info[BT_SCO].i2s_id) {
+			/*dam configuration*/
+			if (!i2s->dam_ch_refcount)
+				i2s->dam_ifc =
+					tegra30_dam_allocate_controller();
+			if (i2s->dam_ifc < 0)
+				return i2s->dam_ifc;
+			tegra30_dam_allocate_channel(i2s->dam_ifc,
+				TEGRA30_DAM_CHIN1);
+			i2s->dam_ch_refcount++;
+			tegra30_dam_enable_clock(i2s->dam_ifc);
 
+			tegra30_ahub_set_rx_cif_source(
+			  TEGRA30_AHUB_RXCIF_DAM0_RX1 + (i2s->dam_ifc*2),
+			  i2s->txcif);
+
+			/* make the dam tx to i2s rx connection if this is
+			 * the only client using i2s for playback */
+			if (i2s->playback_ref_count == 1)
+				tegra30_ahub_set_rx_cif_source(
+				  TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id,
+				  TEGRA30_AHUB_TXCIF_DAM0_TX0 + i2s->dam_ifc);
+
+			/* enable the dam*/
+			tegra30_dam_enable(i2s->dam_ifc, TEGRA30_DAM_ENABLE,
+				TEGRA30_DAM_CHIN1);
+		} else {
+			/* make apbif tx to i2s rx connection if this is
+			 * the only client using i2s for playback */
+			if (i2s->playback_ref_count == 1) {
+				tegra30_ahub_set_rx_cif_source(
+					TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id,
+					i2s->txcif);
+			tegra30_ahub_enable_clocks();
+			}
+		}
 	} else {
 		i2s->is_call_mode_rec = machine->is_call_mode;
 		if (!i2s->is_call_mode_rec)
 			return 0;
 
-		if (machine->is_device_bt)
-			codec_index = BT_SCO;
+		if (machine->is_device_bt) {
+			i2s->is_call_mode_rec = 0;
+			return 0;
+		}
 		else
 			codec_index = VOICE_CODEC;
 
@@ -641,14 +668,34 @@ static void tegra_aic326x_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(rtd->card);
 
 	if (!i2s->is_dam_used)
 		return;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		tegra30_ahub_unset_rx_cif_source(
+		if (i2s->id == machine->codec_info[BT_SCO].i2s_id) {
+			/* disable the dam*/
+			tegra30_dam_enable(i2s->dam_ifc, TEGRA30_DAM_DISABLE,
+				TEGRA30_DAM_CHIN1);
+
+			/* disconnect the ahub connections*/
+			tegra30_ahub_unset_rx_cif_source(
+			  TEGRA30_AHUB_RXCIF_DAM0_RX1 + (i2s->dam_ifc*2));
+
+			/* disable the dam and free the controller */
+			tegra30_dam_disable_clock(i2s->dam_ifc);
+			tegra30_dam_free_channel(i2s->dam_ifc,
+				TEGRA30_DAM_CHIN1);
+			i2s->dam_ch_refcount--;
+			if (!i2s->dam_ch_refcount)
+				tegra30_dam_free_controller(i2s->dam_ifc);
+
+		} else {
+			tegra30_ahub_unset_rx_cif_source(
 					TEGRA30_AHUB_RXCIF_I2S0_RX0 + i2s->id);
-		tegra30_ahub_disable_clocks();
+			tegra30_ahub_disable_clocks();
+		}
 	 } else {
 		if (!i2s->is_call_mode_rec)
 			return;
