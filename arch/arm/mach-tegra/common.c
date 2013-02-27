@@ -783,6 +783,7 @@ void __init tegra14x_init_early(void)
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
 	tegra_gpio_resume_init();
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
 static int __init tegra_lp0_vec_arg(char *options)
