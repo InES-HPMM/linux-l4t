@@ -3522,8 +3522,8 @@ static struct clk_ops tegra_plle_ops = {
  * basically cl-dvfs wrappers.
  */
 
-#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* DFLL operations */
+#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 static void tune_cpu_trimmers(bool trim_high)
 {
 	if (trim_high) {
@@ -3538,6 +3538,7 @@ static void tune_cpu_trimmers(bool trim_high)
 	wmb();
 	clk_readl(CPU_FINETRIM_R);
 }
+#endif
 
 static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 {
@@ -3571,11 +3572,16 @@ static void __init tegra11_dfll_cpu_late_init(struct clk *c)
 
 		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
 		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		tegra_cl_dvfs_debug_init(c);
 		pr_info("Tegra CPU DFLL is initialized\n");
 	}
 #endif
 }
-#endif
+
+static void tegra11_dfll_clk_init(struct clk *c)
+{
+	c->ops->init = tegra11_dfll_cpu_late_init;
+}
 
 static int tegra11_dfll_clk_enable(struct clk *c)
 {
@@ -3626,6 +3632,7 @@ static void tegra11_dfll_clk_resume(struct clk *c)
 #endif
 
 static struct clk_ops tegra_dfll_ops = {
+	.init			= tegra11_dfll_clk_init,
 	.enable			= tegra11_dfll_clk_enable,
 	.disable		= tegra11_dfll_clk_disable,
 	.set_rate		= tegra11_dfll_clk_set_rate,
@@ -7735,11 +7742,6 @@ void __init tegra11x_init_clocks(void)
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
-
-#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-	/* To be ready for DFLL late init */
-	tegra_dfll_cpu.ops->init = tegra11_dfll_cpu_late_init;
-#endif
 
 	tegra11_cpu_car_ops_init();
 

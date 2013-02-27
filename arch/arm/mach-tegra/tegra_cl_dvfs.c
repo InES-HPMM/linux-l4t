@@ -1587,48 +1587,45 @@ static const struct file_operations cl_register_fops = {
 	.release	= single_release,
 };
 
-static int __init tegra_cl_dvfs_debug_init(void)
+int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 {
-	struct dentry *cpu_cl_dvfs_dentry;
-	struct clk *dfll_cpu = tegra_get_clock_by_name("dfll_cpu");
+	struct dentry *cl_dvfs_dentry;
 
-	if (!dfll_cpu || !dfll_cpu->dent || (dfll_cpu->state == UNINITIALIZED))
+	if (!dfll_clk || !dfll_clk->dent || (dfll_clk->state == UNINITIALIZED))
 		return 0;
 
 	if (!debugfs_create_file("lock", S_IRUGO | S_IWUSR,
-		dfll_cpu->dent, dfll_cpu, &lock_fops))
+		dfll_clk->dent, dfll_clk, &lock_fops))
 		goto err_out;
 
-	cpu_cl_dvfs_dentry = debugfs_create_dir("cl_dvfs", dfll_cpu->dent);
-	if (!cpu_cl_dvfs_dentry)
+	cl_dvfs_dentry = debugfs_create_dir("cl_dvfs", dfll_clk->dent);
+	if (!cl_dvfs_dentry)
 		goto err_out;
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
-		cpu_cl_dvfs_dentry, dfll_cpu, &monitor_fops))
+		cl_dvfs_dentry, dfll_clk, &monitor_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("vmin_mv", S_IRUGO,
-		cpu_cl_dvfs_dentry, dfll_cpu, &vmin_fops))
+		cl_dvfs_dentry, dfll_clk, &vmin_fops))
 		goto err_out;
 
-	if (!debugfs_create_file("tune_high_mv", S_IRUGO,
-		cpu_cl_dvfs_dentry, dfll_cpu, &tune_high_mv_fops))
+	if (!debugfs_create_file("tune_high_mv", S_IRUGO | S_IWUSR,
+		cl_dvfs_dentry, dfll_clk, &tune_high_mv_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("dvco_min", S_IRUGO,
-		cpu_cl_dvfs_dentry, dfll_cpu, &dvco_rate_min_fops))
+		cl_dvfs_dentry, dfll_clk, &dvco_rate_min_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
-		cpu_cl_dvfs_dentry, dfll_cpu, &cl_register_fops))
+		cl_dvfs_dentry, dfll_clk, &cl_register_fops))
 		goto err_out;
 
 	return 0;
 
 err_out:
-	debugfs_remove_recursive(dfll_cpu->dent);
+	debugfs_remove_recursive(dfll_clk->dent);
 	return -ENOMEM;
 }
-
-late_initcall(tegra_cl_dvfs_debug_init);
 #endif

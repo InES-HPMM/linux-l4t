@@ -3035,13 +3035,17 @@ static struct clk_ops tegra_pllm_ops = {
  * basically cl-dvfs wrappers.
  */
 
-#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* DFLL operations */
 static void __init tegra14_dfll_cpu_late_init(struct clk *c)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 	int ret;
-	struct clk *cpu = tegra_get_clock_by_name("cpu");
+	struct clk *cpu = tegra_get_clock_by_name("cpu_g");
+
+	if (!cpu || !cpu->dvfs) {
+		pr_err("%s: CPU dvfs is not present\n", __func__);
+		return;
+	}
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	u32 netlist, patchid;
@@ -3061,12 +3065,17 @@ static void __init tegra14_dfll_cpu_late_init(struct clk *c)
 		c->u.dfll.cl_dvfs = platform_get_drvdata(&tegra_cl_dvfs_device);
 
 		use_dfll = CONFIG_TEGRA_USE_DFLL_RANGE;
-		tegra_dvfs_set_dfll_range(cpu->parent->dvfs, use_dfll);
+		tegra_dvfs_set_dfll_range(cpu->dvfs, use_dfll);
+		tegra_cl_dvfs_debug_init(c);
 		pr_info("Tegra CPU DFLL is initialized\n");
 	}
 #endif
 }
-#endif
+
+static void tegra14_dfll_clk_init(struct clk *c)
+{
+	c->ops->init = tegra14_dfll_cpu_late_init;
+}
 
 static int tegra14_dfll_clk_enable(struct clk *c)
 {
@@ -3117,6 +3126,7 @@ static void tegra14_dfll_clk_resume(struct clk *c)
 #endif
 
 static struct clk_ops tegra_dfll_ops = {
+	.init			= tegra14_dfll_clk_init,
 	.enable			= tegra14_dfll_clk_enable,
 	.disable		= tegra14_dfll_clk_disable,
 	.set_rate		= tegra14_dfll_clk_set_rate,
@@ -6842,11 +6852,6 @@ void __init tegra14x_init_clocks(void)
 
 	/* Initialize to default */
 	tegra_init_cpu_edp_limits(0);
-
-#ifdef	CONFIG_ARCH_TEGRA_HAS_CL_DVFS
-	/* To be ready for DFLL late init */
-	tegra_dfll_cpu.ops->init = tegra14_dfll_cpu_late_init;
-#endif
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
