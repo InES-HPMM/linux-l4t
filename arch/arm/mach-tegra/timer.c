@@ -156,13 +156,12 @@ u64 tegra_rtc_read_ms(void)
 void tegra_read_persistent_clock(struct timespec *ts)
 {
 	u32 cvalh, cvall;
-	u64 cycles;
 	s64 ns;
 
 	asm volatile("mrrc p15, 1, %0, %1, c14" : "=r" (cvall), "=r" (cvalh));
 
-	cycles = ((u64)cvalh << 32) | cvall;
-	ns = (cycles * arch_timer_ns_mult) >> arch_timer_ns_shift;
+	ns = ((u64)cvalh * arch_timer_ns_mult) << (32 - arch_timer_ns_shift);
+	ns += ((u64)cvall * arch_timer_ns_mult >> arch_timer_ns_shift);
 	*ts = ns_to_timespec(ns);
 }
 #else
@@ -324,7 +323,6 @@ static int local_timer_is_architected(void)
 
 void __init tegra_cpu_timer_init(void)
 {
-	u64 sec;
 	u32 tsc_ref_freq;
 
 	if (!local_timer_is_architected())
@@ -340,12 +338,10 @@ void __init tegra_cpu_timer_init(void)
 		pr_info("fake tsc_ref_req=%d in QT\n", tsc_ref_freq);
 	}
 
-	sec = CLOCKSOURCE_MASK(56);
-	do_div(sec, tsc_ref_freq);
 	clocks_calc_mult_shift(&arch_timer_ns_mult, &arch_timer_ns_shift,
-				tsc_ref_freq, NSEC_PER_SEC, sec);
+				tsc_ref_freq, NSEC_PER_SEC, 0);
 	clocks_calc_mult_shift(&arch_timer_us_mult, &arch_timer_us_shift,
-				tsc_ref_freq, USEC_PER_SEC, sec);
+				tsc_ref_freq, USEC_PER_SEC, 0);
 	return;
 }
 
