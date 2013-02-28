@@ -52,6 +52,14 @@ u32 tegra_isomgr_realize(tegra_isomgr_handle handle);
 /* This sets bw aside for the client specified. */
 int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw, bool wait);
 
+int tegra_isomgr_get_imp_time(enum tegra_iso_client, u32 bw);
+
+/* returns available in iso bw in KB/sec */
+u32 tegra_isomgr_get_available_iso_bw(void);
+
+/* returns total iso bw in KB/sec */
+u32 tegra_isomgr_get_total_iso_bw(void);
+
 /* Initialize isomgr.
  * This api would be called by .init_machine during boot.
  * isomgr clients, don't call this api.
@@ -87,6 +95,21 @@ static inline u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
 static inline int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw)
 {
 	return 0;
+}
+
+static inline int tegra_isomgr_get_imp_time(enum tegra_iso_client, u32 bw)
+{
+	return 0;
+}
+
+static inline u32 tegra_isomgr_get_available_iso_bw(void)
+{
+	return UINT_MAX;
+}
+
+static inline u32 tegra_isomgr_get_total_iso_bw(void)
+{
+	return UINT_MAX;
 }
 
 static inline int isomgr_init(void)

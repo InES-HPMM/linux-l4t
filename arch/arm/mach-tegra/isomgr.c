@@ -611,7 +611,8 @@ handle_unregistered:
 }
 EXPORT_SYMBOL(tegra_isomgr_realize);
 
-/* This sets bw aside for the client specified.
+/**
+ * This sets bw aside for the client specified.
  * This bw can never be used for other clients needs.
  * margin bw, if not zero, should always be greater than equal to
  * reserved/realized bw.
@@ -680,6 +681,52 @@ handle_unregistered:
 	isomgr_unlock();
 validation_fail:
 	return ret;
+}
+
+/**
+ * Returns the imp time required to realize the bw request.
+ * The time returned is an approximate. It is possible that imp
+ * time is returned as zero and still realize would be blocked for
+ * non-zero time in realize call.
+ *
+ * @client	client id
+ * @bw		bw in KB/sec
+ *
+ * @returns	time in milliseconds.
+ * @retval	-EINVAL, client id is invalid.
+ */
+int tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
+{
+	int ret = -EINVAL;
+
+	if (unlikely(!is_client_valid(client)))
+		return ret;
+
+	/* FIXME: get this from renegotiable clients(display driver). */
+	ret = 100;
+	if (isomgr.avail_bw >= bw)
+		ret = 0;
+	return ret;
+}
+
+/**
+ * Returns available iso bw at the time of calling this API.
+ *
+ * @returns	available bw in KB/sec.
+ */
+u32 tegra_isomgr_get_available_iso_bw(void)
+{
+	return isomgr.avail_bw;
+}
+
+/**
+ * Returns total iso bw in the system.
+ *
+ * @returns	total bw in KB/sec.
+ */
+u32 tegra_isomgr_get_total_iso_bw(void)
+{
+	return isomgr.max_iso_bw;
 }
 
 #ifdef CONFIG_TEGRA_ISOMGR_SYSFS
