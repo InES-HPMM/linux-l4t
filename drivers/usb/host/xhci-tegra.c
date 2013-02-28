@@ -1773,6 +1773,10 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 	/* Check the intr cause. Could be  USB2 or HSIC or SS wake events */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
 
+	/* Clear the interrupt cause. We already read the intr status. */
+	tegra_xhci_ss_wake_on_interrupts(tegra, false);
+	tegra_xhci_hs_wake_on_interrupts(tegra, false);
+
 	xhci_dbg(xhci, "%s: elpg_program0 = %x\n",
 		__func__, elpg_program0);
 	xhci_dbg(xhci, "%s: PMC REGISTER = %x\n",
@@ -1791,59 +1795,22 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 		__func__,
 		readl(tegra->padctl_base + USB2_BATTERY_CHRG_BIASPAD_0));
 
-	if (elpg_program0 & SS_PORT0_WAKEUP_EVENT) {
-		elpg_program0 &= ~SS_PORT0_WAKE_INTERRUPT_ENABLE;
-		writel(elpg_program0 | SS_PORT0_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
+	if (elpg_program0 & (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT))
 		tegra->ss_wake_event = true;
-
-	} else if (elpg_program0 & SS_PORT1_WAKEUP_EVENT) {
-		elpg_program0 &= ~SS_PORT1_WAKE_INTERRUPT_ENABLE;
-		writel(elpg_program0 | SS_PORT1_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
-		tegra->ss_wake_event = true;
-
-	} else if (elpg_program0 &  USB2_PORT0_WAKEUP_EVENT) {
-		elpg_program0 &= ~USB2_PORT0_WAKE_INTERRUPT_ENABLE;
-		writel(elpg_program0 | USB2_PORT0_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
+	else if (elpg_program0 &
+			(USB2_PORT0_WAKEUP_EVENT | USB2_PORT1_WAKEUP_EVENT))
 		tegra->hs_wake_event = true;
-
-	} else if (elpg_program0 & USB2_PORT1_WAKEUP_EVENT) {
-		elpg_program0 &= ~USB2_PORT1_WAKE_INTERRUPT_ENABLE;
-		writel(elpg_program0 | USB2_PORT1_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
-		tegra->hs_wake_event = true;
-
-	} else if (elpg_program0 & USB2_HSIC_PORT0_WAKEUP_EVENT) {
-		writel(elpg_program0 | USB2_HSIC_PORT0_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
-
-	} else if (elpg_program0 & USB2_HSIC_PORT1_WAKEUP_EVENT) {
-		writel(elpg_program0 | USB2_HSIC_PORT1_WAKEUP_EVENT,
-				tegra->padctl_base + ELPG_PROGRAM_0);
-	}
 
 	if (tegra->ss_wake_event || tegra->hs_wake_event) {
-		tegra_xhci_ss_wake_on_interrupts(tegra, false);
-		tegra_xhci_hs_wake_on_interrupts(tegra, false);
-	}
-
-	if (tegra->ss_wake_event) {
 		if (tegra->ss_pwr_gated && !tegra->host_pwr_gated) {
-			xhci_dbg(xhci, "[%s] schedule ss_elpg_exit_work\n",
-				__func__);
-			schedule_work(&tegra->ss_elpg_exit_work);
+			xhci_err(xhci, "SS gated Host ungated. Should not happen\n");
+			WARN_ON(tegra->ss_pwr_gated && tegra->host_pwr_gated);
 		} else if (tegra->ss_pwr_gated
 				&& tegra->host_pwr_gated) {
 			xhci_dbg(xhci, "[%s] schedule host_elpg_exit_work\n",
 				__func__);
 			schedule_work(&tegra->host_elpg_exit_work);
 		}
-	} else if (tegra->hs_wake_event) {
-		xhci_dbg(xhci, "[%s] schedule host_elpg_exit_work\n",
-			__func__);
-		schedule_work(&tegra->host_elpg_exit_work);
 	} else {
 		xhci_err(xhci, "error: wake due to no hs/ss event\n");
 		writel(0xffffffff, tegra->padctl_base + ELPG_PROGRAM_0);
@@ -1995,6 +1962,10 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	}
 	/* FIXME: verify and enable for power saving */
 	/* utmi_phy_pad_disable(); */
+
+	/* At this point,ensure ss/hs intr enables are always on */
+	tegra_xhci_ss_wake_on_interrupts(tegra, true);
+	tegra_xhci_hs_wake_on_interrupts(tegra, true);
 
 done:
 	mutex_unlock(&tegra->sync_lock);
