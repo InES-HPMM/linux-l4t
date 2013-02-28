@@ -739,9 +739,13 @@ static unsigned int utmi_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
 static int utmi_phy_open(struct tegra_usb_phy *phy)
 {
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
-	unsigned long parent_rate, val;
-	int i;
+	unsigned long val;
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
+
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
+	unsigned long parent_rate;
+	int i;
+	#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -754,6 +758,7 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 
 	phy->utmi_xcvr_setup = utmi_phy_xcvr_setup_value(phy);
 
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	parent_rate = clk_get_rate(clk_get_parent(phy->pllu_clk));
 	for (i = 0; i < ARRAY_SIZE(utmip_freq_table); i++) {
 		if (utmip_freq_table[i].freq == parent_rate) {
@@ -765,6 +770,7 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 		pr_err("invalid pll_u parent rate %ld\n", parent_rate);
 		return -EINVAL;
 	}
+	#endif
 
 	/* Power-up the VBUS, ID detector for UTMIP PHY */
 	val = readl(pmc_base + PMC_USB_AO);
@@ -1066,10 +1072,12 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_HS_SYNC_START_DLY(config->hssync_start_delay);
 	writel(val, base + UTMIP_HSRX_CFG1);
 
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	val = readl(base + UTMIP_DEBOUNCE_CFG0);
 	val &= ~UTMIP_BIAS_DEBOUNCE_A(~0);
 	val |= UTMIP_BIAS_DEBOUNCE_A(phy->freq->debounce);
 	writel(val, base + UTMIP_DEBOUNCE_CFG0);
+	#endif
 
 	val = readl(base + UTMIP_MISC_CFG0);
 	val &= ~UTMIP_SUSPEND_EXIT_ON_EDGE;
@@ -1110,10 +1118,12 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_TERM_RANGE_ADJ(config->term_range_adj);
 	writel(val, base + UTMIP_XCVR_CFG1);
 
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	val = readl(base + UTMIP_BIAS_CFG1);
 	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
 	val |= UTMIP_BIAS_PDTRK_COUNT(phy->freq->pdtrk_count);
 	writel(val, base + UTMIP_BIAS_CFG1);
+	#endif
 
 	val = readl(base + UTMIP_SPARE_CFG0);
 	val &= ~FUSE_SETUP_SEL;

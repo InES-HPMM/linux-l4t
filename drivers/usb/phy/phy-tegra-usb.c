@@ -142,10 +142,10 @@ static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->has_hostpc)
-#if defined (CONFIG_ARCH_TEGRA_11x_SOC) || defined (CONFIG_ARCH_TEGRA_14x_SOC)
-		err = tegra11x_usb_phy_init_ops(phy);
-#else
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		err = tegra3_usb_phy_init_ops(phy);
+#else
+		err = tegra11x_usb_phy_init_ops(phy);
 #endif
 #if defined (CONFIG_ARCH_TEGRA_2x_SOC)
 	else
@@ -186,14 +186,17 @@ static void tegra_usb_phy_release_clocks(struct tegra_usb_phy *phy)
 			phy->pdata->u_data.host.remote_wakeup_supported)
 			tegra_clk_disable_unprepare(phy->ctrlr_clk);
 	clk_put(phy->ctrlr_clk);
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	tegra_clk_disable_unprepare(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
+	#endif
 }
 
 static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 {
 	int err = 0;
 
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	phy->pllu_reg = regulator_get(&phy->pdev->dev, "avdd_usb_pll");
 	if (IS_ERR_OR_NULL(phy->pllu_reg)) {
 		ERR("Couldn't get regulator avdd_usb_pll: %ld\n",
@@ -210,6 +213,7 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		goto fail_pll;
 	}
 	tegra_clk_prepare_enable(phy->pllu_clk);
+	#endif
 
 	phy->ctrlr_clk = clk_get(&phy->pdev->dev, NULL);
 	if (IS_ERR(phy->ctrlr_clk)) {
@@ -252,12 +256,14 @@ fail_sclk:
 	clk_put(phy->ctrlr_clk);
 
 fail_ctrlr_clk:
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	tegra_clk_disable_unprepare(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
 
 fail_pll:
 	regulator_disable(phy->pllu_reg);
 	regulator_put(phy->pllu_reg);
+	#endif
 
 	return err;
 }
@@ -302,10 +308,12 @@ void tegra_usb_phy_close(struct usb_phy *x)
 
 	tegra_usb_phy_release_clocks(phy);
 
+	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	if (phy->pllu_reg) {
 		regulator_disable(phy->pllu_reg);
 		regulator_put(phy->pllu_reg);
 	}
+	#endif
 }
 
 irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
