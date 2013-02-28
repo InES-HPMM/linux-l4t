@@ -7,6 +7,13 @@ config TEGRA_GRHOST
 	help
 	  Driver for the Tegra graphics host hardware.
 
+config TEGRA_GRHOST_VI
+	tristate "Tegra video input host1x client driver"
+	help
+	  Driver for the Tegra video input hardware.
+	  To compile this driver as a module, choose M here:
+	  the  module will be called nvhost-vi.
+
 config TEGRA_GRHOST_USE_NVMAP
 	bool "Use nvmap as graphics memory manager"
 	default y if TEGRA_NVMAP
