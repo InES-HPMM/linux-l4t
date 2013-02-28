@@ -166,6 +166,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.max_clk_limit = 156000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -315,6 +316,8 @@ int __init pluto_sdhci_init(void)
 	if (nominal_core_mv > 0) {
 		pluto_tegra_sdhci_platform_data0.nominal_vcore_uV =
 			nominal_core_mv * 1000;
+		tegra_sdhci_platform_data2.nominal_vcore_uV = nominal_core_mv *
+			1000;
 		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
 			1000;
 	}
