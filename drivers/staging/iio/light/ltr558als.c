@@ -1,6 +1,6 @@
 /* Lite-On LTR-558ALS Linux Driver
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "ltr558als.h"
 
 #define DRIVER_VERSION "1.0"
-#define DEVICE_NAME "LTR_558ALS"
+#define DEVICE_NAME "ltr558"
 
 struct ltr558_chip {
 	struct i2c_client	*client;
