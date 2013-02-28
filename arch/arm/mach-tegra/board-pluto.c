@@ -664,21 +664,6 @@ static struct tegra_usb_phy_platform_ops oem2_plat_ops = {
 	.post_phy_off = pluto_usb_hsic_post_phy_off,
 };
 
-static struct tegra_usb_platform_data tegra_ehci3_hsic_xmm_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.unaligned_dma_buf_supported = false,
-	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.hot_plug = false,
-		.remote_wakeup_supported = false,
-		.power_off_on_suspend = false,
-	},
-	.ops = &oem2_plat_ops,
-};
-
 static struct tegra_usb_platform_data tegra_ehci3_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -831,7 +816,7 @@ tegra_usb_hsic_host_register(struct platform_device *ehci_dev)
 	pdev->dev.dma_mask =  ehci_dev->dev.dma_mask;
 	pdev->dev.coherent_dma_mask = ehci_dev->dev.coherent_dma_mask;
 
-	val = platform_device_add_data(pdev, &tegra_ehci3_hsic_xmm_pdata,
+	val = platform_device_add_data(pdev, &tegra_hsic_pdata,
 			sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
@@ -1125,8 +1110,11 @@ static void pluto_modem_init(void)
 				= MDM2_PWR_ON_FOR_PLUTO_A02;
 		}
 		/* baseband-power.ko will register ehci3 device */
+		tegra_hsic_pdata.ops = &oem2_plat_ops;
+		tegra_hsic_pdata.u_data.host.remote_wakeup_supported = false;
+		tegra_hsic_pdata.u_data.host.power_off_on_suspend = false;
 		tegra_ehci3_device.dev.platform_data =
-					&tegra_ehci3_hsic_xmm_pdata;
+					&tegra_hsic_pdata;
 		tegra_baseband_xmm_power_data.hsic_register =
 						&tegra_usb_hsic_host_register;
 		tegra_baseband_xmm_power_data.hsic_unregister =
@@ -1155,7 +1143,7 @@ static void pluto_modem_init(void)
 			= pluto_aic3262_pdata.i2s_param[BASEBAND].channels
 			= 2;
 		break;
-	case TEGRA_BB_HSIC_HUB: /* i500 SWD HSIC */
+	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
 		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)) {
 			tegra_ehci3_device.dev.platform_data =
 				&tegra_ehci3_hsic_smsc_hub_pdata;
