@@ -28,7 +28,7 @@
 
 #include "dev.h"
 #include "bus_client.h"
-#include "host1x/host1x_syncpt.h"
+#include "nvhost_syncpt.h"
 
 #define TEGRA_CAM_DRV_NAME "vi"
 #define TEGRA_CAM_VERSION_CODE KERNEL_VERSION(0, 0, 5)
@@ -268,6 +268,7 @@ struct tegra_camera_dev {
 	struct soc_camera_device	*icd;
 	struct platform_device		*ndev;
 	struct tegra_camera_platform_data *pdata;
+	struct nvhost_device_data	*ndata;
 
 	struct clk			*clk_vi;
 	struct clk			*clk_vi_sensor;
@@ -850,12 +851,14 @@ static int tegra_camera_capture_start(struct tegra_camera_dev *pcdev,
 			TEGRA_VI_SYNCPT_CSI,
 			pcdev->syncpt_csi,
 			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+			NULL,
 			NULL);
 	else
 		err = nvhost_syncpt_wait_timeout_ext(pcdev->ndev,
 			TEGRA_VI_SYNCPT_VI,
 			pcdev->syncpt_csi,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
+			NULL,
 			NULL);
 
 	if (!err)
@@ -920,6 +923,7 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 			TEGRA_VI_SYNCPT_VI,
 			pcdev->syncpt_vi,
 			TEGRA_SYNCPT_VI_WAIT_TIMEOUT,
+			NULL,
 			NULL);
 	else
 		err = 0;
@@ -1668,6 +1672,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
+	pcdev->ndata = ndata;
 	pcdev->pdata = ndata->private_data;
 	if (!pcdev->pdata) {
 		dev_err(&pdev->dev, "No platform data!\n");
@@ -1754,7 +1759,7 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	pcdev->alloc_ctx = vb2_dma_nvmap_init_ctx(NULL);
 	if (IS_ERR(pcdev->alloc_ctx)) {
 		err = PTR_ERR(pcdev->alloc_ctx);
-		goto exit_put_resources;
+		goto exit_pm_disable;
 	}
 
 	platform_set_drvdata(pdev, pcdev);
@@ -1767,10 +1772,10 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	return err;
 
 exit_cleanup_alloc_ctx:
-	vb2_dma_nvmap_cleanup_ctx(&pdev->dev);
-exit_put_resources:
+	platform_set_drvdata(pdev, pcdev->ndata);
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
+exit_pm_disable:
 	pm_runtime_disable(&pdev->dev);
-	nvhost_client_device_put_resources(pdev);
 exit_put_regulator:
 	regulator_put(pcdev->reg);
 exit_put_clk_csus:
@@ -1794,17 +1799,13 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	struct soc_camera_host *ici = to_soc_camera_host(&pdev->dev);
 	struct tegra_camera_dev *pcdev = container_of(ici,
 					struct tegra_camera_dev, ici);
-	struct resource *res;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
-	if (!res)
-		return -EBUSY;
-	iounmap(pcdev->vi_base);
-	release_mem_region(res->start, resource_size(res));
 
 	soc_camera_host_unregister(ici);
 
-	vb2_dma_nvmap_cleanup_ctx(&pdev->dev);
+	platform_set_drvdata(pdev, pcdev->ndata);
+	nvhost_client_device_release(pdev);
+
+	vb2_dma_nvmap_cleanup_ctx(pcdev->alloc_ctx);
 
 	pm_runtime_disable(&pdev->dev);
 
