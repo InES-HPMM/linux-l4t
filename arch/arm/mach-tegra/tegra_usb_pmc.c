@@ -172,7 +172,8 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	writel(val, pmc_base + PMC_UTMIP_BIAS_MASTER_CNTRL);
 
 	/* program walk sequence for remote or hotplug wakeup */
-	if (pmc_data->port_speed < USB_PMC_PORT_SPEED_UNKNOWN) {
+	if ((pmc_data->port_speed < USB_PMC_PORT_SPEED_UNKNOWN) ||
+		(pmc_data->port_speed == USB_PMC_PORT_SPEED_SUPER)) {
 		/* program walk sequence, maintain a J, followed by a driven K
 		* to signal a resume once an wake event is detected */
 		val = readl(pmc_base + PMC_SLEEPWALK_REG(inst));
@@ -563,20 +564,18 @@ void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data)
 	if (!pmc_base)
 		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
-	if (pmc_data->controller_type == TEGRA_USB_2_0) {
 #ifdef KERNEL_WARNING
-		pmc_data->pmc_ops.power_down_pmc = usb_phy_power_down_pmc;
+	pmc_data->pmc_ops.power_down_pmc = usb_phy_power_down_pmc;
 #endif
-		if (pmc_data->phy_type == TEGRA_USB_PHY_INTF_UTMI) {
-			if (pmc_data->instance == 0) {
-				utmip_rctrl_val = pmc_data->utmip_rctrl_val;
-				utmip_tctrl_val = pmc_data->utmip_tctrl_val;
-			} else {
-				pmc_data->utmip_rctrl_val = utmip_rctrl_val;
-				pmc_data->utmip_tctrl_val = utmip_tctrl_val;
-			}
+	if (pmc_data->phy_type == TEGRA_USB_PHY_INTF_UTMI) {
+		if (pmc_data->instance == 0) {
+			utmip_rctrl_val = pmc_data->utmip_rctrl_val;
+			utmip_tctrl_val = pmc_data->utmip_tctrl_val;
+		} else {
+			pmc_data->utmip_rctrl_val = utmip_rctrl_val;
+			pmc_data->utmip_tctrl_val = utmip_tctrl_val;
 		}
-		pmc_data->pmc_ops = pmc_ops[pmc_data->phy_type];
 	}
+	pmc_data->pmc_ops = pmc_ops[pmc_data->phy_type];
 }
 EXPORT_SYMBOL_GPL(tegra_usb_pmc_init);
