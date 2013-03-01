@@ -463,13 +463,6 @@ config TEGRA_WAKEUP_MONITOR
 	  send out wakeup source and uevents which indicate suspend_prepare and
 	  post_suspend.
 
-config TEGRA_USB_MODEM_POWER
-	bool "Enable tegra usb modem power management"
-	default n
-	help
-	  This option enables support for out-of_band remote wakeup, selective
-	  suspend and system suspend/resume.
-
 config TEGRA_BB_XMM_POWER
 	bool "Enable power driver for XMM modem"
 	default n

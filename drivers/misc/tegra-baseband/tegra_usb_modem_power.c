@@ -1,7 +1,5 @@
 /*
- * arch/arm/mach-tegra/tegra_usb_modem_power.c
- *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +32,7 @@
 #include <linux/pm_qos.h>
 #include <linux/edp.h>
 #include <mach/gpio-tegra.h>
-#include <mach/tegra_usb_modem_power.h>
+#include <linux/platform_data/tegra_usb_modem_power.h>
 
 #define BOOST_CPU_FREQ_MIN	1200000
 #define BOOST_CPU_FREQ_TIMEOUT	5000
@@ -84,7 +82,7 @@ struct tegra_usb_modem {
 	struct mutex edp_lock;
 };
 
-static struct platform_device *hc = NULL;	/* USB host controller */
+static struct platform_device *hc;	/* USB host controller */
 static struct mutex hc_lock;
 static const struct platform_device *hc_device;
 static const struct tegra_usb_platform_data *hc_pdata;
@@ -701,7 +699,7 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	struct device_attribute *attr;
 
 	modem->pdata = pdata;
-
+	hc = NULL;
 	hc_device = pdata->tegra_ehci_device;
 	hc_pdata = pdata->tegra_ehci_pdata;
 	mutex_init(&hc_lock);
