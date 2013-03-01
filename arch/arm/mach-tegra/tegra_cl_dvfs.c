@@ -530,7 +530,8 @@ static void tune_timer_cb(unsigned long data)
 		val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
 		out_last = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
 
-		if ((out_last >= cld->tune_high_out_min)  &&
+		if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) &&
+		    (out_last >= cld->tune_high_out_min)  &&
 		    (out_min >= cld->tune_high_out_min)) {
 			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
