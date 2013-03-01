@@ -32,6 +32,8 @@
 #include <linux/power/max17042_battery.h>
 #include <linux/interrupt.h>
 
+#define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS 500
+
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
 	0, 33, 66, 99, 133, 166, 199, 233, 266, 299,
@@ -287,55 +289,68 @@ error:
 	return ret;
 }
 
-static int max77665_enable_charger(struct max77665_charger *charger)
+static int max77665_enable_charger(struct max77665_charger *charger,
+		struct extcon_dev *edev)
 {
 	int ret = 0;
 	uint32_t val = 0;
 	int ilim;
 
+	charger->usb_online = 0;
+	charger->ac_online = 0;
+
 	ret = max77665_read_reg(charger, MAX77665_CHG_CNFG_09, &val);
-	if (ret)
-		goto error;
+	if (0 > ret)
+		return ret;
 	val &= 0x7F;
 	ilim = max_t(int, 60, val * 20);
 
 	if (charger->plat_data->update_status)
-			charger->plat_data->update_status(false);
+		charger->plat_data->update_status(false);
 
-	if (extcon_get_cable_state(charger->edev, "USB")) {
-
-		ret = max77665_charger_enable(charger, CHARGER);
-		if (ret < 0)
-			goto error;
-
-		charger->usb_online = 1;
-		power_supply_changed(&charger->usb);
-		charger->plat_data->curr_lim = 500;
-		if (charger->plat_data->update_status)
-			charger->plat_data->update_status(ilim);
-	}
-
-	if (extcon_get_cable_state(charger->edev, "USB-Host")) {
+	if (true == extcon_get_cable_state(edev, "USB-Host")) {
 		ret = max77665_charger_enable(charger, OTG);
-		if (ret < 0)
-			goto error;
+		if (0 > ret)
+			dev_err(charger->dev,
+				"failed to set device to USB-host mode");
+		power_supply_changed(&charger->usb);
+		power_supply_changed(&charger->ac);
+		return ret;
 	}
 
-	if (extcon_get_cable_state(charger->edev, "TA")) {
-		ret = max77665_charger_enable(charger, CHARGER);
-		if (ret < 0)
-			goto error;
-
+	if (true == extcon_get_cable_state(edev, "USB")) {
+		charger->usb_online = 1;
+		charger->plat_data->curr_lim = 500;
+	} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
+		charger->usb_online = 1;
+	} else if (true == extcon_get_cable_state(edev, "TA")) {
 		charger->ac_online = 1;
-		power_supply_changed(&charger->ac);
-		if (charger->plat_data->update_status)
-			charger->plat_data->update_status(ilim);
+	} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
+		charger->ac_online = 1;
+	} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
+		charger->ac_online = 1;
+		charger->plat_data->curr_lim = 500;
+	} else {
+		/* no cable connected */
+		return 0;
+	}
+
+	power_supply_changed(charger->usb_online ?
+			&charger->usb : &charger->ac);
+
+	if (charger->plat_data->update_status)
+		charger->plat_data->update_status(ilim);
+
+	ret = max77665_charger_enable(charger, CHARGER);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to set device to charger mode\n");
+		return ret;
 	}
 
 	ret = max77665_charger_init(charger);
 	if (ret < 0) {
 		dev_err(charger->dev, "failed to initialize charger\n");
-		goto error;
+		return ret;
 	}
 
 	/* set the charging watchdog timer */
@@ -343,8 +358,24 @@ static int max77665_enable_charger(struct max77665_charger *charger)
 			ktime_set(MAX77665_WATCHDOG_TIMER_PERIOD_S / 2, 0)));
 
 	return 0;
-error:
-	return ret;
+}
+
+static void charger_extcon_handle_notifier(struct work_struct *w)
+{
+	struct max77665_charger_cable *cable = container_of(to_delayed_work(w),
+			struct max77665_charger_cable, extcon_notifier_work);
+
+	if (cable->event == 0) {
+		cable->charger->ac_online = 0;
+		cable->charger->usb_online = 0;
+		if (cable->charger->plat_data->update_status)
+			cable->charger->plat_data->update_status(0);
+		power_supply_changed(&cable->charger->usb);
+		power_supply_changed(&cable->charger->ac);
+	} else {
+		max77665_enable_charger(cable->charger,
+				cable->extcon_dev->edev);
+	}
 }
 
 static void max77665_charger_wdt_ack_work_handler(struct work_struct *w)
@@ -380,7 +411,14 @@ static void max77665_charger_disable_wdt(struct max77665_charger *charger)
 static int charger_extcon_notifier(struct notifier_block *self,
 		unsigned long event, void *ptr)
 {
-	/* Need to disable watch dog timer if cable is added */
+	struct max77665_charger_cable *cable = container_of(self,
+		struct max77665_charger_cable, nb);
+
+	cable->event = event;
+	cancel_delayed_work(&cable->extcon_notifier_work);
+	schedule_delayed_work(&cable->extcon_notifier_work,
+		msecs_to_jiffies(CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS));
+
 	return NOTIFY_DONE;
 }
 
@@ -512,10 +550,21 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	for (j = 0 ; j < charger->plat_data->num_cables; j++) {
 		struct max77665_charger_cable *cable =
 				&charger->plat_data->cables[j];
+		cable->extcon_dev =  devm_kzalloc(&pdev->dev,
+			sizeof(struct extcon_specific_cable_nb), GFP_KERNEL);
+		if (!cable->extcon_dev) {
+			dev_err(&pdev->dev, "failed to allocate memory for extcon_dev\n");
+			return -ENOMEM;
+		}
 
+		INIT_DELAYED_WORK(&cable->extcon_notifier_work,
+			charger_extcon_handle_notifier);
+
+		cable->charger = charger;
 		cable->nb.notifier_call = charger_extcon_notifier;
 		ret = extcon_register_interest(cable->extcon_dev,
-				"max77665-muic", cable->name, &cable->nb);
+			charger->plat_data->extcon_name,
+			cable->name, &cable->nb);
 
 		if (ret < 0) {
 			dev_err(charger->dev, "Cannot register for cable: %s\n",
@@ -524,16 +573,15 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		}
 	}
 
-	charger->edev = extcon_get_extcon_dev("max77665-muic");
+	charger->edev = extcon_get_extcon_dev(charger->plat_data->extcon_name);
 	if (!charger->edev)
 		return -ENODEV;
 
 	if (charger->plat_data->irq_base) {
-		ret = request_threaded_irq(charger->plat_data->irq_base +
-				MAX77665_IRQ_CHARGER, NULL,
-				max77665_charger_irq_handler,
-				0, "charger_irq",
-					charger);
+		ret = devm_request_threaded_irq(&pdev->dev,
+			charger->plat_data->irq_base + MAX77665_IRQ_CHARGER,
+			NULL, max77665_charger_irq_handler,
+			0, "charger_irq", charger);
 		if (ret) {
 			dev_err(&pdev->dev,
 				"failed: irq request error :%d)\n", ret);

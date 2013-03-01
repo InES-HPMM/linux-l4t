@@ -76,6 +76,8 @@ struct max77665_charger_cable {
 	struct notifier_block nb;
 	struct max77665_charger *charger;
 	struct extcon_specific_cable_nb *extcon_dev;
+	struct delayed_work extcon_notifier_work;
+	long int event;
 };
 
 struct max77665_charger_plat_data {
@@ -84,6 +86,7 @@ struct max77665_charger_plat_data {
 	uint32_t curr_lim; /* input current limit */
 	uint8_t num_cables;
 	struct max77665_charger_cable *cables;
+	char *extcon_name;
 	int irq_base;
 	void (*update_status)(int);
 };
