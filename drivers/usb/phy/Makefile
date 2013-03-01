@@ -30,6 +30,7 @@ obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_usb_phy.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_usb_phy.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11x_usb_phy.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra11x_usb_phy.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra11x_usb_phy.o
 endif
 obj-$(CONFIG_USB_GPIO_VBUS)		+= phy-gpio-vbus-usb.o
 obj-$(CONFIG_USB_ISP1301)		+= phy-isp1301.o
