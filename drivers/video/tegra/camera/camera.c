@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera.c
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,28 +22,26 @@
 #define TEGRA_CAMERA_NAME "tegra_camera"
 
 static struct clock_data clock_init[] = {
-	{ CAMERA_ISP_CLK, "isp", true},
-	{ CAMERA_VI_CLK, "vi", true},
+	{ CAMERA_ISP_CLK, "isp", true, 0},
+	{ CAMERA_VI_CLK, "vi", true, 0},
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor2", true},
+	{ CAMERA_VI_SENSOR_CLK, "vi_sensor2", true, 0},
+	{ CAMERA_VIM2CLK_CLK, "vim2_clk", true, 0},
 #else
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true},
+	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true, 0},
 #endif
-	{ CAMERA_CSUS_CLK, "csus", true},
-	{ CAMERA_CSI_CLK, "csi", true},
-	{ CAMERA_EMC_CLK, "emc", true},
+	{ CAMERA_CSUS_CLK, "csus", true, 0},
+	{ CAMERA_CSI_CLK, "csi", true, 0},
+	{ CAMERA_EMC_CLK, "emc", true, 0},
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	{ CAMERA_CILAB_CLK, "cilab", true},
-	{ CAMERA_CILE_CLK, "cile", true},
-	{ CAMERA_PLL_D2_CLK, "pll_d2", false},
+	{ CAMERA_CILAB_CLK, "cilab", true, 0},
+	{ CAMERA_CILE_CLK, "cile", true, 0},
+	{ CAMERA_PLL_D2_CLK, "pll_d2", false, 0},
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	{ CAMERA_CILCD_CLK, "cilcd", true},
+	{ CAMERA_CILCD_CLK, "cilcd", true, 0},
 #endif
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	{ CAMERA_VIM2CLK_CLK, "vim2_clk", true},
-#endif
-
+	{ CAMERA_SCLK, "sclk", true, 80000000},
 };
 
 static long tegra_camera_ioctl(struct file *file,

@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera_clk.c
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,8 +40,17 @@ int tegra_camera_init_clk(struct tegra_camera *camera,
 		struct clock_data *clock_init)
 {
 	int i;
-	for (i = 0; i < CAMERA_CLK_MAX; i++)
+	for (i = 0; i < CAMERA_CLK_MAX; i++) {
 		camera->clock[clock_init[i].index].on = clock_init[i].init;
+		/*
+		 * clock_init[i].freq is initial clock frequency to set.
+		 * If it is zero, then skip it. It can be set again through
+		 * IOCTL.
+		 */
+		if (clock_init[i].freq)
+			clk_set_rate(camera->clock[clock_init[i].index].clk,
+				clock_init[i].freq);
+	}
 	return 0;
 }
 
