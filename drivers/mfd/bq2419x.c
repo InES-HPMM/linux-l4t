@@ -3,7 +3,7 @@
  *
  * MFD driver for BQ2419X charger.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -43,7 +43,6 @@ static const struct regmap_config bq2419x_regmap_config = {
 	.reg_bits		= 8,
 	.val_bits		= 8,
 	.max_register		= BQ2419X_MAX_REGS,
-	.cache_type		= REGCACHE_RBTREE,
 };
 
 static int __devinit bq2419x_probe(struct i2c_client *client,
@@ -82,6 +81,15 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 				BQ2419X_WD, ret);
 			return ret;
 		}
+	}
+
+	/* Clear EN_HIZ */
+	ret = regmap_update_bits(bq->regmap,
+		BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	if (ret < 0) {
+		dev_err(bq->dev, "error reading reg: 0x%x\n",
+			BQ2419X_INPUT_SRC_REG);
+		return ret;
 	}
 
 	ret = mfd_add_devices(bq->dev, -1, bq2419x_children,
