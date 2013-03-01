@@ -1,7 +1,7 @@
 /*
  * max97236.h -- MAX97236 ALSA SoC Audio driver
  *
- * Copyright 2012 Maxim Integrated Products
+ * Copyright 2012-2013 Maxim Integrated Products
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,15 +13,16 @@
 
 #include <linux/version.h>
 
-/*
- *
- */
+/* Controls detection mode, either AUTO1 or simplified auto */
 #undef MAX97236_AUTOMODE1_JACK_DETECTION
 
+/* Define depending on the type of switch in the jack receptacle */
+#define M97236_JACK_SWITCH_NORMALLY_CLOSED
+
 /*
- * Driver revision
+ * Driver major.minor.build number
  */
-#define MAX97236_REVISION			"0.00.0015"
+#define MAX97236_REVISION			"0.00.0107"
 
 /*
  * MAX97236 Register Definitions
@@ -342,7 +343,7 @@
 #define M97236_STATE_WIDTH		5
 #define M97236_STATE_NUM		(1<<M97236_STATE_WIDTH)
 
-
+#define M97236_STATE_FLOAT		0x01
 /*
  * M97236_REG_1A_AC_TEST_CONTROL
  */
@@ -421,11 +422,11 @@
 #define M97236_AUTO_MODE_2		2
 
 #define M97236_JACK_STATE_NONE	    0
-#define M97236_JACK_STATE_CABLE	    0x100
-#define M97236_JACK_STATE_UNKNOWN	0xFFFF
+/* #define M97236_JACK_STATE_CABLE	    0x100 */
+#define M97236_JACK_STATE_UNKNOWN	0x00
 
-#define M97236_JACK_SWITCH_NORMALLY_CLOSED
-#define MAX97236_DEFAULT_JACK_DETECT_DELAY		250
+#define M97236_DEFAULT_JACK_DETECT_DELAY		250
+#define M97236_DEFAULT_RETRIES					15
 
 #define M97236_BYTE1(w) ((w >> 8) & 0xff)
 #define M97236_BYTE0(w) (w & 0xff)

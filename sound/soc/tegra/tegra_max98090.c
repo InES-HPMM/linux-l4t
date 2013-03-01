@@ -1190,8 +1190,8 @@ static int tegra_late_probe(struct snd_soc_card *card)
 	int ret;
 
 	ret = snd_soc_jack_new(codec236,
-			"JACK",
-			SND_JACK_HEADSET,
+			"Headphone Jack",
+			SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00,
 			&tegra_max98090_hp_jack);
 
 #ifdef CONFIG_SWITCH
