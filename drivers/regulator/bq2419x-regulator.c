@@ -3,7 +3,7 @@
  *
  * Regulator driver for BQ2419X charger.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA Corporation.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -55,6 +55,7 @@ static int bq2419x_dcdc_enable(struct regulator_dev *rdev)
 	struct bq2419x_regulator_info *bq = rdev_get_drvdata(rdev);
 	int ret;
 
+	dev_info(bq->dev, "%s called\n", __func__);
 	if (gpio_is_valid(bq->gpio_otg_iusb))
 		gpio_set_value(bq->gpio_otg_iusb, 1);
 
@@ -63,6 +64,16 @@ static int bq2419x_dcdc_enable(struct regulator_dev *rdev)
 		mutex_unlock(&bq->mutex);
 		return -ENODEV;
 	}
+
+	/* Clear EN_HIZ */
+	ret = regmap_update_bits(bq->chip->regmap,
+			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	if (ret < 0) {
+		dev_err(bq->dev, "error reading reg: 0x%x\n",
+			BQ2419X_INPUT_SRC_REG);
+		return ret;
+	}
+
 	ret = regmap_update_bits(bq->chip->regmap, BQ2419X_OTG,
 			BQ2419X_OTG_ENABLE_MASK, BQ2419X_OTG_ENABLE);
 	if (ret < 0) {
@@ -80,6 +91,7 @@ static int bq2419x_dcdc_disable(struct regulator_dev *rdev)
 	struct bq2419x_regulator_info *bq = rdev_get_drvdata(rdev);
 	int ret = 0;
 
+	dev_info(bq->dev, "%s called\n", __func__);
 	mutex_lock(&bq->mutex);
 	if (bq && bq->shutdown_complete) {
 		mutex_unlock(&bq->mutex);
