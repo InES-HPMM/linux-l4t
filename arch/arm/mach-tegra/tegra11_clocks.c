@@ -4295,6 +4295,16 @@ static struct clk_ops tegra_dsi_clk_ops = {
 	.reset			= &tegra11_periph_clk_reset,
 };
 
+/* xusb common clock gate - enabled on init and never disabled */
+static void tegra11_xusb_gate_clk_init(struct clk *c)
+{
+	tegra11_periph_clk_enable(c);
+}
+
+static struct clk_ops tegra_xusb_gate_clk_ops = {
+	.init    = tegra11_xusb_gate_clk_init,
+};
+
 /* pciex clock support only reset function */
 static struct clk_ops tegra_pciex_clk_ops = {
 	.reset    = tegra11_periph_clk_reset,
@@ -6763,6 +6773,17 @@ struct clk tegra_list_clks[] = {
 /* XUSB clocks */
 #define XUSB_ID "tegra-xhci"
 
+static struct clk tegra_clk_xusb_gate = {
+	.name      = "xusb_gate",
+	.flags     = ENABLE_ON_INIT | PERIPH_NO_RESET,
+	.ops       = &tegra_xusb_gate_clk_ops,
+	.rate      = 12000000,
+	.max_rate  = 48000000,
+	.u.periph = {
+		.clk_num   = 143,
+	},
+};
+
 static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | PERIPH_NO_RESET | PERIPH_ON_APB),
 	PERIPH_CLK("xusb_falcon_src",	XUSB_ID, "falcon_src",	143,	0x604,	350000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | PERIPH_NO_RESET),
@@ -6911,6 +6932,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_pll_d_out0,
 	&tegra_pll_d2,
 	&tegra_pll_d2_out0,
+	&tegra_clk_xusb_gate,
 	&tegra_pll_u,
 	&tegra_pll_u_480M,
 	&tegra_pll_u_60M,
