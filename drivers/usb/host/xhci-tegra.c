@@ -726,6 +726,32 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 	tegra->pll_u_480M = NULL;
 }
 
+static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
+	bool enable)
+{
+	u32 reg;
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_3_0);
+	if (enable) {
+		reg &= ~RX_IDLE_MODE;
+		reg |= RX_IDLE_MODE_OVRD;
+	} else {
+		reg |= RX_IDLE_MODE;
+		reg &= ~RX_IDLE_MODE_OVRD;
+	}
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD0_CTL_3_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_3_0);
+	if (enable) {
+		reg &= ~RX_IDLE_MODE;
+		reg |= RX_IDLE_MODE_OVRD;
+	} else {
+		reg |= RX_IDLE_MODE;
+		reg &= ~RX_IDLE_MODE_OVRD;
+	}
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD1_CTL_3_0);
+}
+
 /* Enable ss clk, host clk, falcon clk,
  * fs clk, dev clk, plle and refplle
  */
@@ -755,11 +781,17 @@ tegra_xusb_request_clk_rate(struct tegra_xhci_hcd *tegra,
 			/* Change SS clock source to CLK_M at 12MHz */
 			clk_set_parent(clk_handle, tegra->clk_m);
 			clk_set_rate(clk_handle, fw_req_rate * 1000);
+
+			/* save leakage power when SS freq is being decreased */
+			tegra_xhci_rx_idle_mode_override(tegra, true);
 		} else if (clk_handle == tegra->ss_clk &&
 				fw_req_rate == 120000) {
 			/* Change SS clock source to HSIC_480 at 120MHz */
 			clk_set_rate(clk_handle,  3000 * 1000);
 			clk_set_parent(clk_handle, tegra->pll_u_480M);
+
+			/* clear ovrd bits when SS freq is being increased */
+			tegra_xhci_rx_idle_mode_override(tegra, false);
 		}
 
 		*sw_resp = clk_get_rate(clk_handle);
@@ -1535,10 +1567,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 				xhci_info(xhci, "Over current still present\n");
 		}
 		tegra_xhci_padctl_portmap_and_caps(tegra);
-	}
-
-	/* release clamps post deassert */
-	if (tegra->lp0_exit) {
+		/* release clamps post deassert */
 		tegra_xhci_padctl_enable_usb_vbus(tegra);
 		tegra->lp0_exit = false;
 	}
