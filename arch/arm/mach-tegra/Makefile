@@ -13,6 +13,11 @@ obj-y                                   += irq.o
 obj-y                                   += clock.o
 obj-y                                   += timer.o
 obj-y                                   += timerinfo.o
+ifneq ($(CONFIG_ARCH_TEGRA_2x_SOC),y)
+ifneq ($(CONFIG_ARCH_TEGRA_3x_SOC),y)
+obj-y                                   += mipi-cal.o
+endif
+endif
 ifeq ($(CONFIG_CPU_FREQ),y)
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_cpu_volt_cap.o
 endif
