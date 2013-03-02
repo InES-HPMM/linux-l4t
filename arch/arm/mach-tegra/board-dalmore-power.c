@@ -1072,7 +1072,7 @@ static struct platform_device dalmore_pda_power_device = {
 };
 
 static struct tegra_suspend_platform_data dalmore_suspend_data = {
-	.cpu_timer	= 300,
+	.cpu_timer	= 500,
 	.cpu_off_timer	= 300,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 0x157e,
