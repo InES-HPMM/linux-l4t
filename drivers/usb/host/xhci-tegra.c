@@ -1433,6 +1433,9 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	/* wait 150us */
 	usleep_range(150, 200);
 
+	/* flush MC client of XUSB_HOST */
+	tegra_powergate_mc_flush(TEGRA_POWERGATE_XUSBC);
+
 	/* STEP 4: Powergate host partition */
 	/* tegra_powergate_partition also does partition reset assert */
 	ret = tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
@@ -1571,6 +1574,9 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		tegra_xhci_padctl_enable_usb_vbus(tegra);
 		tegra->lp0_exit = false;
 	}
+
+	/* Clear FLUSH_ENABLE of MC client */
+	tegra_powergate_mc_flush_done(TEGRA_POWERGATE_XUSBC);
 
 	/*
 	 * PWR_UNGATE Host partition. XUSBC
