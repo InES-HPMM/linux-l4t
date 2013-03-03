@@ -324,7 +324,7 @@ struct tegra_clk_init_table {
 #ifndef CONFIG_COMMON_CLK
 void tegra_init_max_rate(struct clk *c, unsigned long max_rate);
 void tegra_clk_preset_emc_monitor(void);
-void tegra_clk_vefify_parents(void);
+void tegra_clk_verify_parents(void);
 void clk_init(struct clk *clk);
 unsigned long tegra_clk_measure_input_freq(void);
 unsigned long clk_get_rate_locked(struct clk *c);
