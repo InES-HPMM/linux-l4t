@@ -6,7 +6,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (c) 2019-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -786,6 +786,16 @@ void tegra_init_max_rate(struct clk *c, unsigned long max_rate)
 	}
 }
 
+/* Use boot rate as emc monitor output until actual monitoring starts */
+void __init tegra_clk_preset_emc_monitor(void)
+{
+	struct clk *c = tegra_get_clock_by_name("mon.emc");
+
+	if (c) {
+		clk_set_rate(c, c->boot_rate);
+		clk_enable(c);
+	}
+}
 
 static void __init tegra_clk_vefify_rates(void)
 {
