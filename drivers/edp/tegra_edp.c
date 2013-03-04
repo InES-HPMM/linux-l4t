@@ -34,6 +34,7 @@ struct freqcap {
 
 static unsigned int gpu_high_threshold = 500;
 static unsigned int gpu_window = 2000;
+static unsigned int gain_factor = 100;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int core_state;
@@ -175,7 +176,7 @@ static void update_cur_corecap(void)
 	if (!core_platdata)
 		return;
 
-	power = core_edp_states[core_state];
+	power = core_edp_states[core_state] * gain_factor / 100;
 	i = core_platdata->corecap_size - 1;
 	cap = core_platdata->corecap + i;
 
@@ -279,8 +280,13 @@ static int core_set(void *data, u64 val)
 
 	old = *pdata;
 	*pdata = val;
-	if (old != *pdata)
+
+	if (old != *pdata) {
+		if (pdata == &gain_factor)
+			update_cur_corecap();
 		do_cap_control();
+	}
+
 	return 0;
 }
 
@@ -317,6 +323,7 @@ static __devinit void init_debug(void)
 	create_attr("force_gpu", core_client.dentry, &forced_caps.gpu);
 	create_attr("force_emc", core_client.dentry, &forced_caps.emc);
 	create_attr("gpu_window", core_client.dentry, &gpu_window);
+	create_attr("gain", core_client.dentry, &gain_factor);
 }
 #else
 static inline void init_debug(void) {}
