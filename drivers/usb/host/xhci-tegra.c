@@ -965,13 +965,6 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	u32 reg;
 	struct tegra_xusb_pad_data *xusb_padctl = tegra->xusb_padctl;
 
-	/* Below line should be removed when we have clarity on why
-	 * FUSE setting read 0x10 for hs_curr_level causing
-	 * SS/HS/FS hub re-enumeration.
-	 */
-	xusb_padctl->hs_curr_level_pad0 = 0x30;
-	xusb_padctl->hs_curr_level_pad1 = 0x30;
-
 	/* Program the following XUSB PADCTL registers to assign
 	 * the USB2.0 ports to XUSB or USB2, according to the platform
 	 * specific configuration
