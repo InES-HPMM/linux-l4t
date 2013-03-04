@@ -33,6 +33,8 @@
 
 #define TEGRA148_CPU_SPEEDO 2109
 #define FUSE_CPU_IDDQ 0x118 /*FIXME: update T148 register*/
+#define FUSE_CPU_SPEEDO_0 0x114
+#define FUSE_CORE_SPEEDO_0 0x134
 
 static int cpu_process_id;
 static int core_process_id;
@@ -41,15 +43,19 @@ static int cpu_speedo_value;
 static int soc_speedo_id;
 static int package_id;
 static int cpu_iddq_value;
+static int core_speedo_value;
 
 static int enable_app_profiles;
 
 void tegra_init_speedo_data(void)
 {
-	cpu_speedo_value = TEGRA148_CPU_SPEEDO;
+	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
+	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
+	pr_info("Tegra14: CPU Speedo %d, Soc Speedo %d",
+		cpu_speedo_value, core_speedo_value);
 
 	pr_info("Tegra14: CPU Speedo ID %d, Soc Speedo ID %d",
-		 cpu_speedo_id, soc_speedo_id);
+		cpu_speedo_id, soc_speedo_id);
 
 	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 }
