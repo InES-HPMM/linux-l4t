@@ -1604,6 +1604,15 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	tegra_xhci_ss_partition_elpg_exit(tegra);
 
+	/* Change SS clock source to HSIC_480 and set ss_clk at 120MHz */
+	if (clk_get_rate(tegra->ss_clk) == 12000000) {
+		clk_set_rate(tegra->ss_clk,  3000 * 1000);
+		clk_set_parent(tegra->ss_clk, tegra->pll_u_480M);
+
+		/* clear ovrd bits when SS freq is being increased */
+		tegra_xhci_rx_idle_mode_override(tegra, false);
+	}
+
 	/* Load firmware */
 	xhci_dbg(xhci, "%s: elpg_exit: loading firmware from pmc.\n"
 			"ss (p1=0x%x, p2=0x%x, p3=0x%x), "
