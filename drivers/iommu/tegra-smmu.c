@@ -1398,9 +1398,6 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 {
 	struct dma_iommu_mapping *map = tegra_smmu_get_map();
 	struct device *dev = _dev;
-	dma_addr_t base;
-	size_t size;
-	int err;
 
 	switch (event) {
 	case BUS_NOTIFY_BIND_DRIVER:
@@ -1408,13 +1405,11 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			break;
 		/* FALLTHROUGH */
 	case BUS_NOTIFY_ADD_DEVICE:
-		err = of_get_dma_window(dev->of_node, NULL, 0, NULL, &base,
-					&size);
-		if (!err)
-			map = arm_iommu_create_mapping(&platform_bus_type,
-						       base, size, 0);
-		if (IS_ERR_OR_NULL(map))
+		if (!smmu_handle) {
+			dev_warn(dev, "No map yet available\n");
 			break;
+		}
+
 		if (arm_iommu_attach_device(dev, map)) {
 			arm_iommu_release_mapping(map);
 			dev_err(dev, "Failed to attach %s\n", dev_name(dev));
