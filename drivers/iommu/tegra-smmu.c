@@ -47,36 +47,6 @@
 /* HACK! This needs to come from device tree */
 #include "../../arch/arm/mach-tegra/iomap.h"
 
-enum smmu_hwgrp {
-	HWGRP_AFI,
-	HWGRP_AVPC,
-	HWGRP_DC,
-	HWGRP_DCB,
-	HWGRP_EPP,
-	HWGRP_G2,
-	HWGRP_HC,
-	HWGRP_HDA,
-	HWGRP_ISP,
-	HWGRP_MPE,
-	HWGRP_NV,
-	HWGRP_NV2,
-	HWGRP_PPCS,
-	HWGRP_SATA,
-	HWGRP_VDE,
-	HWGRP_VI,
-	HWGRP_MSENC,
-	HWGRP_TSEC,
-	HWGRP_PPCS1,
-	HWGRP_XUSB_HOST,
-	HWGRP_XUSB_DEV,
-	HWGRP_DC1,
-
-	HWGRP_COUNT,
-
-	HWGRP_END = ~0,
-};
-#define HWG_AVPC	(1 << HWGRP_AVPC)
-
 /* REVISIT: With new configurations for t114/124/148 passed from DT */
 #define SKIP_SWGRP_CHECK
 
@@ -145,27 +115,13 @@ enum {
 
 #define SMMU_AFI_ASID	0x238   /* PCIE */
 #define SMMU_AVPC_ASID	0x23c   /* AVP */
-#define SMMU_DC_ASID	0x240   /* Display controller */
-#define SMMU_DCB_ASID	0x244   /* Display controller B */
-#define SMMU_EPP_ASID	0x248   /* Encoder pre-processor */
-#define SMMU_G2_ASID	0x24c   /* 2D engine */
-#define SMMU_HC_ASID	0x250   /* Host1x */
-#define SMMU_HDA_ASID	0x254   /* High-def audio */
-#define SMMU_ISP_ASID	0x258   /* Image signal processor */
-#define SMMU_MPE_ASID	0x264   /* MPEG encoder */
-#define SMMU_MSENC_ASID 0x264	/* MPEG encoder */
-#define SMMU_NV_ASID	0x268   /* (3D) */
-#define SMMU_NV2_ASID	0x26c   /* (3D) */
-#define SMMU_PPCS_ASID	0x270   /* AHB */
-#define SMMU_SATA_ASID	0x278   /* SATA */
-#define SMMU_VDE_ASID	0x27c   /* Video decoder */
-#define SMMU_VI_ASID	0x280   /* Video input */
-#define SMMU_XUSB_HOST_ASID	0x288   /* USB host */
-#define SMMU_XUSB_DEV_ASID	0x28c   /* USB dev */
-#define SMMU_TSEC_ASID	0x294   /* TSEC */
-#define SMMU_PPCS1_ASID	0x298   /* AHB secondary */
-#define SMMU_DC1_ASID	0x490   /* Display controller1 (T14x) */
 
+#define SMMU_SWGRP_ASID_BASE	SMMU_AFI_ASID
+
+#define HWG_AVPC	((SMMU_AVPC_ASID - SMMU_SWGRP_ASID_BASE) / 4)
+#define HWGRP_AFI	((SMMU_AFI_ASID - SMMU_SWGRP_ASID_BASE) / 4)
+
+#define HWGRP_COUNT	64
 
 #define SMMU_PDE_NEXT_SHIFT		28
 
@@ -247,72 +203,7 @@ enum {
 #define __smmu_client_enable_hwgrp(c, m) __smmu_client_set_hwgrp(c, m, 1)
 #define __smmu_client_disable_hwgrp(c)	__smmu_client_set_hwgrp(c, 0, 0)
 
-#define HWGRP_INIT(client) [HWGRP_##client] = SMMU_##client##_ASID
-
-static const u32 *smmu_hwgrp_asid_reg;
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-static const u32 tegra3x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
-	HWGRP_INIT(AFI),
-	HWGRP_INIT(AVPC),
-	HWGRP_INIT(DC),
-	HWGRP_INIT(DCB),
-	HWGRP_INIT(EPP),
-	HWGRP_INIT(G2),
-	HWGRP_INIT(HC),
-	HWGRP_INIT(HDA),
-	HWGRP_INIT(ISP),
-	HWGRP_INIT(MPE),
-	HWGRP_INIT(NV),
-	HWGRP_INIT(NV2),
-	HWGRP_INIT(PPCS),
-	HWGRP_INIT(SATA),
-	HWGRP_INIT(VDE),
-	HWGRP_INIT(VI),
-};
-#endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-static const u32 tegra11x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
-	HWGRP_INIT(AVPC),
-	HWGRP_INIT(DC),
-	HWGRP_INIT(DCB),
-	HWGRP_INIT(EPP),
-	HWGRP_INIT(G2),
-	HWGRP_INIT(HC),
-	HWGRP_INIT(HDA),
-	HWGRP_INIT(ISP),
-	HWGRP_INIT(MSENC),
-	HWGRP_INIT(NV),
-	HWGRP_INIT(PPCS),
-	HWGRP_INIT(PPCS1),
-	HWGRP_INIT(TSEC),
-	HWGRP_INIT(VDE),
-	HWGRP_INIT(VI),
-	HWGRP_INIT(XUSB_DEV),
-	HWGRP_INIT(XUSB_HOST),
-};
-#endif
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-static const u32 tegra14x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
-	HWGRP_INIT(AVPC),
-	HWGRP_INIT(DC),
-	HWGRP_INIT(DCB),
-	HWGRP_INIT(EPP),
-	HWGRP_INIT(G2),
-	HWGRP_INIT(HC),
-	HWGRP_INIT(HDA),
-	HWGRP_INIT(ISP),
-	HWGRP_INIT(MSENC),
-	HWGRP_INIT(NV),
-	HWGRP_INIT(PPCS),
-	HWGRP_INIT(VDE),
-	HWGRP_INIT(VI),
-	HWGRP_INIT(TSEC),
-	HWGRP_INIT(PPCS1),
-	HWGRP_INIT(DC1),
-};
-#endif
-
-#define HWGRP_ASID_REG(x) (smmu_hwgrp_asid_reg[x])
+#define HWGRP_ASID_REG(id) (4 * (id) + SMMU_SWGRP_ASID_BASE)
 
 /*
  * Per client for address space
@@ -321,7 +212,7 @@ struct smmu_client {
 	struct device		*dev;
 	struct list_head	list;
 	struct smmu_as		*as;
-	u32			hwgrp;
+	u64			swgids;
 };
 
 /*
@@ -357,6 +248,7 @@ struct smmu_device {
 	spinlock_t	lock;
 	char		*name;
 	struct device	*dev;
+	u64		swgids;		/* memory client ID bitmap */
 	struct page *avp_vector_page;	/* dummy page shared by all AS's */
 
 	/*
@@ -415,10 +307,7 @@ static inline void ahb_write(struct smmu_device *smmu, u32 val, size_t offs)
  */
 #define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_CONFIG)
 
-#define smmu_client_hwgrp(c) (u32)((c)->dev->platform_data)
-
-static int __smmu_client_set_hwgrp(struct smmu_client *c,
-				   unsigned long map, int on)
+static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	int i;
 	struct smmu_as *as = c->as;
@@ -429,9 +318,9 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 	if (on && !map)
 		return -EINVAL;
 	if (!on)
-		map = smmu_client_hwgrp(c);
+		map = c->swgids;
 
-	for_each_set_bit(i, &map, HWGRP_COUNT) {
+	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
 
 		/* FIXME: PCIe client hasn't been registered as IOMMU */
 		if (i == HWGRP_AFI)
@@ -461,7 +350,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c,
 		smmu_write(smmu, val, offs);
 	}
 	FLUSH_SMMU_REGS(smmu);
-	c->hwgrp = map;
+	c->swgids = map;
 	return 0;
 
 }
@@ -514,7 +403,7 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		smmu_write(smmu, val, SMMU_PTB_DATA);
 
 		list_for_each_entry(c, &as->client, list)
-			__smmu_client_set_hwgrp(c, c->hwgrp, 1);
+			__smmu_client_set_hwgrp(c, c->swgids, 1);
 	}
 
 	smmu_write(smmu, smmu->translation_enable_0, SMMU_TRANSLATION_ENABLE_0);
@@ -920,7 +809,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 
 #ifdef SKIP_SWGRP_CHECK
 	/* Enable all SWGRP blindly by default */
-	map = (1 << HWGRP_COUNT) - 1;
+	map = ~0UL;
 #else
 	map = (unsigned long)dev->platform_data;
 	if (!map)
@@ -1278,28 +1167,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	if (smmu_handle)
 		return -EIO;
 
-	switch (tegra_get_chipid()) {
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	case TEGRA_CHIPID_TEGRA3:
-		smmu_hwgrp_asid_reg = tegra3x_smmu_hwgrp_asid_reg;
-		break;
-#endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	case TEGRA_CHIPID_TEGRA11:
-		smmu_hwgrp_asid_reg = tegra11x_smmu_hwgrp_asid_reg;
-		break;
-#endif
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	case TEGRA_CHIPID_TEGRA14:
-		smmu_hwgrp_asid_reg = tegra14x_smmu_hwgrp_asid_reg;
-		break;
-#endif
-	default:
-		dev_err(dev, "No SMMU support\n");
-		return -ENODEV;
-		break;
-	}
-
 	BUILD_BUG_ON(PAGE_SHIFT != SMMU_PAGE_SHIFT);
 
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1328,6 +1195,16 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to remap SMMU registers\n");
 		return -ENXIO;
 	}
+
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_3x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3))
+		smmu->swgids = 0x00000000000779ff;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_11x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11))
+		smmu->swgids = 0x0000000001b659fe;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_14x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14))
+		smmu->swgids = 0x00000020018659fe;
 
 	smmu->translation_enable_0 = ~0;
 	smmu->translation_enable_1 = ~0;
@@ -1471,6 +1348,6 @@ static void __exit tegra_smmu_exit(void)
 core_initcall(tegra_smmu_init);
 module_exit(tegra_smmu_exit);
 
-MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra30");
+MODULE_DESCRIPTION("IOMMU API for SMMU in Tegra SoC");
 MODULE_AUTHOR("Hiroshi DOYU <hdoyu@nvidia.com>");
 MODULE_LICENSE("GPL v2");
