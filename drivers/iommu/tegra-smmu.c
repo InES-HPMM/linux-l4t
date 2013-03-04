@@ -68,6 +68,7 @@ enum smmu_hwgrp {
 	HWGRP_PPCS1,
 	HWGRP_XUSB_HOST,
 	HWGRP_XUSB_DEV,
+	HWGRP_DC1,
 
 	HWGRP_COUNT,
 
@@ -162,6 +163,7 @@ enum {
 #define SMMU_XUSB_DEV_ASID	0x28c   /* USB dev */
 #define SMMU_TSEC_ASID	0x294   /* TSEC */
 #define SMMU_PPCS1_ASID	0x298   /* AHB secondary */
+#define SMMU_DC1_ASID	0x490   /* Display controller1 (T14x) */
 
 
 #define SMMU_PDE_NEXT_SHIFT		28
@@ -305,6 +307,7 @@ static const u32 tegra14x_smmu_hwgrp_asid_reg[HWGRP_COUNT] = {
 	HWGRP_INIT(VI),
 	HWGRP_INIT(TSEC),
 	HWGRP_INIT(PPCS1),
+	HWGRP_INIT(DC1),
 };
 #endif
 
