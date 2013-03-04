@@ -47,9 +47,6 @@
 /* HACK! This needs to come from device tree */
 #include "../../arch/arm/mach-tegra/iomap.h"
 
-/* REVISIT: With new configurations for t114/124/148 passed from DT */
-#define SKIP_SWGRP_CHECK
-
 /* bitmap of the page sizes currently supported */
 #define SMMU_IOMMU_PGSIZES	(SZ_4K | SZ_4M)
 
@@ -328,25 +325,11 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 
 		offs = HWGRP_ASID_REG(i);
 		val = smmu_read(smmu, offs);
-		if (on) {
-#if !defined(SKIP_SWGRP_CHECK)
-			if (WARN_ON(val & mask)) {
-				for_each_set_bit(i, &map, HWGRP_COUNT) {
-					offs = HWGRP_ASID_REG(i);
-					val = smmu_read(smmu, offs);
-					val &= ~mask;
-					smmu_write(smmu, val, offs);
-				}
-				return -EBUSY;
-			}
-#endif
+		if (on)
 			val |= mask;
-#if !defined(SKIP_SWGRP_CHECK)
-		} else {
-			WARN_ON((val & mask) == mask);
+		else
 			val &= ~mask;
-#endif
-		}
+
 		smmu_write(smmu, val, offs);
 	}
 	FLUSH_SMMU_REGS(smmu);
@@ -798,7 +781,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	struct smmu_client *client, *c;
-	u32 map;
+	u64 map = smmu->swgids;
 	int err;
 
 	client = devm_kzalloc(smmu->dev, sizeof(*c), GFP_KERNEL);
@@ -806,15 +789,6 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		return -ENOMEM;
 	client->dev = dev;
 	client->as = as;
-
-#ifdef SKIP_SWGRP_CHECK
-	/* Enable all SWGRP blindly by default */
-	map = ~0UL;
-#else
-	map = (unsigned long)dev->platform_data;
-	if (!map)
-		return -EINVAL;
-#endif
 
 	err = smmu_client_enable_hwgrp(client, map);
 	if (err)
