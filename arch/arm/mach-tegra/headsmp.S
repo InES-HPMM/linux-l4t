@@ -109,6 +109,9 @@ ENTRY(tegra_resume)
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	orr	r1, r1, #8
+#endif
 	str	r1, [r0]
 #endif /* CONFIG_HAVE_ARM_SCU */
 

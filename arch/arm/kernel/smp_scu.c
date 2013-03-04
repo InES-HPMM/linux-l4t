@@ -54,6 +54,10 @@ void scu_enable(void __iomem *scu_base)
 		return;
 
 	scu_ctrl |= 1;
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	/* Enable SCU speculative line fill enable */
+	scu_ctrl |= 8;
+#endif
 	__raw_writel(scu_ctrl, scu_base + SCU_CTRL);
 
 	/*
