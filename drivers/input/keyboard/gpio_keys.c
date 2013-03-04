@@ -4,7 +4,7 @@
  * Copyright 2005 Phil Blundell
  * Copyright 2010, 2011 David Jander <david@protonic.nl>
  *
- * Copyright 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -323,6 +323,16 @@ static struct attribute *gpio_keys_attrs[] = {
 static struct attribute_group gpio_keys_attr_group = {
 	.attrs = gpio_keys_attrs,
 };
+
+static void gpio_keys_gpio_report_wake(struct gpio_button_data *bdata)
+{
+	const struct gpio_keys_button *button = bdata->button;
+	struct input_dev *input = bdata->input;
+	unsigned int type = button->type ?: EV_KEY;
+
+	input_event(input, type, button->code, 1);
+	input_sync(input);
+}
 
 static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
@@ -846,13 +856,8 @@ static int gpio_keys_resume(struct device *dev)
 			if (bdata->button->wakeup) {
 				disable_irq_wake(bdata->irq);
 
-				if (wakeup_key == bdata->button->code) {
-					unsigned int type = bdata->button->type ?: EV_KEY;
-
-					input_event(ddata->input, type, bdata->button->code, 1);
-					input_event(ddata->input, type, bdata->button->code, 0);
-					input_sync(ddata->input);
-				}
+				if (wakeup_key == bdata->button->code)
+					gpio_keys_gpio_report_wake(bdata);
 			}
 		}
 	} else {
