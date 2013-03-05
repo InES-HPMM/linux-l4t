@@ -1803,6 +1803,11 @@ int tegra_smmu_window_count(void)
 	return ARRAY_SIZE(tegra_smmu);
 }
 
+u64 tegra_smmu_fixup_swgids(struct device *dev)
+{
+	return 0;
+}
+
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 
 /*
@@ -1830,7 +1835,7 @@ static void tegra_smmu_map_init(struct platform_device *pdev)
 	}
 }
 
-struct dma_iommu_mapping *tegra_smmu_get_map(void)
+struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
 	return smmu_default_map[0]; /* default map */
 }

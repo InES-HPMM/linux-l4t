@@ -33,6 +33,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/tegra-ahb.h>
+#include <linux/of.h>
 #include <linux/of_iommu.h>
 #include <linux/tegra-ahb.h>
 #include <linux/dma-mapping.h>
@@ -43,6 +44,7 @@
 
 #include <mach/hardware.h>
 #include <mach/tegra_smmu.h>
+#include <mach/tegra-swgid.h>
 
 /* HACK! This needs to come from device tree */
 #include "../../arch/arm/mach-tegra/iomap.h"
@@ -111,12 +113,8 @@ enum {
 #define SMMU_TRANSLATION_ENABLE_2		0x230
 
 #define SMMU_AFI_ASID	0x238   /* PCIE */
-#define SMMU_AVPC_ASID	0x23c   /* AVP */
 
 #define SMMU_SWGRP_ASID_BASE	SMMU_AFI_ASID
-
-#define HWG_AVPC	((SMMU_AVPC_ASID - SMMU_SWGRP_ASID_BASE) / 4)
-#define HWGRP_AFI	((SMMU_AFI_ASID - SMMU_SWGRP_ASID_BASE) / 4)
 
 #define HWGRP_COUNT	64
 
@@ -200,7 +198,13 @@ enum {
 #define __smmu_client_enable_hwgrp(c, m) __smmu_client_set_hwgrp(c, m, 1)
 #define __smmu_client_disable_hwgrp(c)	__smmu_client_set_hwgrp(c, 0, 0)
 
-#define HWGRP_ASID_REG(id) (4 * (id) + SMMU_SWGRP_ASID_BASE)
+static size_t tegra_smmu_get_offset_base(int id)
+{
+	if (!(id & BIT(5)))
+		return SMMU_SWGRP_ASID_BASE;
+
+	return 0x490 - SWGID_DC14 * sizeof(unsigned long);
+}
 
 /*
  * Per client for address space
@@ -304,6 +308,24 @@ static inline void ahb_write(struct smmu_device *smmu, u32 val, size_t offs)
  */
 #define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_CONFIG)
 
+static u64 tegra_smmu_of_get_swgids(struct device *dev)
+{
+	size_t bytes;
+	const char *propname = "nvidia,memory-clients";
+	const __be32 *prop;
+	int i;
+	u64 swgids = 0;
+
+	prop = of_get_property(dev->of_node, propname, &bytes);
+	if (!prop || !bytes)
+		return 0;
+
+	for (i = 0; i < bytes / sizeof(u32); i++, prop++)
+		swgids |= 1ULL << be32_to_cpup(prop);
+
+	return swgids;
+}
+
 static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	int i;
@@ -320,17 +342,27 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 	for_each_set_bit(i, (unsigned long *)&map, HWGRP_COUNT) {
 
 		/* FIXME: PCIe client hasn't been registered as IOMMU */
-		if (i == HWGRP_AFI)
+		if (i == SWGID_AFI)
 			continue;
 
-		offs = HWGRP_ASID_REG(i);
+		offs = i * sizeof(unsigned long) +
+			tegra_smmu_get_offset_base(i);
+
 		val = smmu_read(smmu, offs);
+		val &= ~3; /* always overwrite ASID */
+
 		if (on)
 			val |= mask;
+		else if (list_empty(&c->list))
+			val = 0; /* turn off if this is the last */
 		else
-			val &= ~mask;
+			return 0; /* leave if off but not the last */
 
 		smmu_write(smmu, val, offs);
+
+		dev_dbg(c->dev, "swgid:%d asid:%d %s @%s\n",
+			i, val & 3, (val & BIT(31)) ? "Enabled" : "Disabled",
+			__func__);
 	}
 	FLUSH_SMMU_REGS(smmu);
 	c->swgids = map;
@@ -781,8 +813,17 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	struct smmu_client *client, *c;
-	u64 map = smmu->swgids;
+	u64 map;
 	int err;
+
+	map = tegra_smmu_of_get_swgids(dev);
+	if (!map) {
+		map = tegra_smmu_fixup_swgids(dev);
+		if (!map)
+			return -EINVAL;
+	}
+
+	map &= smmu->swgids;
 
 	client = devm_kzalloc(smmu->dev, sizeof(*c), GFP_KERNEL);
 	if (!client)
@@ -810,7 +851,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	 * Reserve "page zero" for AVP vectors using a common dummy
 	 * page.
 	 */
-	if (map & HWG_AVPC) {
+	if (map & SWGID(AVPC)) {
 		struct page *page;
 
 		page = as->smmu->avp_vector_page;
@@ -842,8 +883,8 @@ static void smmu_iommu_detach_dev(struct iommu_domain *domain,
 
 	list_for_each_entry(c, &as->client, list) {
 		if (c->dev == dev) {
-			smmu_client_disable_hwgrp(c);
 			list_del(&c->list);
+			smmu_client_disable_hwgrp(c);
 			devm_kfree(smmu->dev, c);
 			dev_dbg(smmu->dev,
 				"%s is detached\n", dev_name(c->dev));
@@ -1247,7 +1288,7 @@ static struct platform_driver tegra_smmu_driver = {
 static int tegra_smmu_device_notifier(struct notifier_block *nb,
 				      unsigned long event, void *_dev)
 {
-	struct dma_iommu_mapping *map = tegra_smmu_get_map();
+	struct dma_iommu_mapping *map;
 	struct device *dev = _dev;
 
 	switch (event) {
@@ -1260,6 +1301,10 @@ static int tegra_smmu_device_notifier(struct notifier_block *nb,
 			dev_warn(dev, "No map yet available\n");
 			break;
 		}
+
+		map = tegra_smmu_get_map(dev, tegra_smmu_of_get_swgids(dev));
+		if (!map)
+			break;
 
 		if (arm_iommu_attach_device(dev, map)) {
 			arm_iommu_release_mapping(map);

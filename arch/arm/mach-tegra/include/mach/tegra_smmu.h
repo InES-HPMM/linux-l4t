@@ -19,10 +19,14 @@ extern int tegra_smmu_window_count(void);
 #endif
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
-extern struct dma_iommu_mapping *tegra_smmu_get_map(void);
+extern struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
+						    u64 swgids);
 #else
-static inline struct dma_iommu_mapping *tegra_smmu_get_map(void)
+static inline struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev,
+							   u64 swgids)
 {
 	return NULL;
 }
 #endif
+
+u64 tegra_smmu_fixup_swgids(struct device *dev);
