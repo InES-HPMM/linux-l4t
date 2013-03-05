@@ -1157,6 +1157,7 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 	DBG("%s inst:[%d]\n", __func__, phy->inst);
 
@@ -1166,6 +1167,10 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		val &= ~USB_PHY_CLK_VALID_INT_ENB;
 		writel(val, base + USB_SUSP_CTRL);
 	}
+
+	val = readl(pmc_base + PMC_SLEEP_CFG);
+	if (val & UTMIP_MASTER_ENABLE(phy->inst))
+		utmip_phy_disable_pmc_bus_ctrl(phy);
 
 	clk_put(phy->utmi_pad_clk);
 }
