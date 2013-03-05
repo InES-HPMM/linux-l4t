@@ -329,9 +329,6 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	struct tegra_twd_context twd_context;
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
-	unsigned int diag_reg;
-#endif
 #if defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 #endif
@@ -380,15 +377,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = ktime_to_us(entry_time) + request;
 	smp_wmb();
 
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
-	asm("mrc p15, 0, %0, c15, c0, 1" : "=r"(diag_reg) : : "cc");
-#endif
-
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
-
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
-	asm("mcr p15, 0, %0, c15, c0, 1" : : "r"(diag_reg) : "cc");
-#endif
 
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
