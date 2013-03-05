@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_asoc_pdata.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -56,6 +56,7 @@ struct tegra_asoc_platform_data {
 	int gpio_codec2;
 	int gpio_codec3;
 	unsigned int debounce_time_hp;
+	bool edp_support;
 	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
 };
