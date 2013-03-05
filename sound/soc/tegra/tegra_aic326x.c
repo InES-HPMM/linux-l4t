@@ -1524,7 +1524,7 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	}
 #endif
 
-	if (pdata->edp_states == NULL)
+	if (!pdata->edp_support)
 		return 0;
 
 	machine->spk_edp_client = devm_kzalloc(&pdev->dev,
@@ -1545,6 +1545,8 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 
 	battery_manager = edp_get_manager("battery");
 	if (!battery_manager) {
+		devm_kfree(&pdev->dev, machine->spk_edp_client);
+		machine->spk_edp_client = NULL;
 		dev_err(&pdev->dev, "unable to get edp manager\n");
 	} else {
 		/* register speaker edp client */
