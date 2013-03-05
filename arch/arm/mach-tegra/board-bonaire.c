@@ -397,7 +397,7 @@ static int __init bonaire_touch_init(void)
 }
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
-	.port_otg = true,
+	.port_otg = false,
 	.has_hostpc = true,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
