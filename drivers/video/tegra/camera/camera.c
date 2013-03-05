@@ -266,16 +266,10 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	}
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/*
-	 * Dedicated bw is what VI could ask for at most.
-	 * Assume that preview has 3M@30fps and video has 8M@30fps
-	 * Total = 3M * 30fps * 2Bpp + 8M * 30fps * 1.5Bpp
-	 *       = 540MBps
-	 * This number can be changed if VI requests more than this.
-	 *
-	 */
+	/* Dedicated bw is what VI could ask for at most */
 	camera->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
-					540000,	/* dedicated bw, KBps*/
+					/* dedicated bw, KBps*/
+					tegra_camera_get_max_bw(camera),
 					NULL,	/* tegra_isomgr_renegotiate */
 					NULL);	/* *priv */
 	if (!camera->isomgr_handle) {

@@ -120,12 +120,20 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			ret = tegra_isomgr_reserve(camera->isomgr_handle,
 					bw,	/* KB/sec */
 					4);	/* usec */
-			if (!ret)
+			if (!ret) {
+				dev_err(camera->dev,
+				"%s: failed to reserve %lu KBps\n",
+				__func__, bw);
 				return -ENOMEM;
+			}
 
 			ret = tegra_isomgr_realize(camera->isomgr_handle);
-			if (!ret)
+			if (!ret) {
+				dev_err(camera->dev,
+				"%s: failed to realize %lu KBps\n",
+				__func__, bw);
 				return -ENOMEM;
+			}
 #endif
 		}
 #endif
@@ -203,4 +211,26 @@ set_rate_end:
 	dev_dbg(camera->dev, "%s: get_rate=%lu",
 			__func__, info->rate);
 	return 0;
+}
+
+unsigned int tegra_camera_get_max_bw(struct tegra_camera *camera)
+{
+	unsigned long max_bw = 0;
+
+	if (!camera->clock[CAMERA_VI_CLK].clk) {
+		dev_err(camera->dev, "%s: no vi clock", __func__);
+		return -EFAULT;
+	}
+
+	/*
+	 * Peak memory bandwidth is calculated as follows.
+	 * BW = max(VI clock) * (2BPP + 1.5BPP)
+	 * Preview port has 2BPP and video port has 1.5BPP.
+	 * max_bw is KBps.
+	 */
+	max_bw = ((clk_round_rate(camera->clock[CAMERA_VI_CLK].clk, UINT_MAX) >>
+			10)*7) >> 1;
+	dev_dbg(camera->dev, "%s: max_bw = %lu", __func__, max_bw);
+
+	return (unsigned int)max_bw;
 }
