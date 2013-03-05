@@ -726,10 +726,7 @@ struct temp_ibat_map {
 };
 
 struct temp_ibat_map safe_ibat_lut[] = {
-	{  0, 5000 },
 	{ 25, 3700 },
-	{ 60, 1900 },
-	{ 70, 1600 }
 };
 
 unsigned int ibat_safepeak(int temp)
