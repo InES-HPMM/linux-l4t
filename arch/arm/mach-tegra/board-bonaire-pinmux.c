@@ -2,6 +2,7 @@
  * arch/arm/mach-tegra/board-bonaire-pinmux.c
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -219,6 +220,7 @@ static __initdata struct tegra_pingroup_config bonaire_pinmux[] = {
 	DEFAULT_PINMUX(SDMMC1_WP_N,     SDMMC1,          NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPI1_CS1_N,      SPI1,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(SPI1_CS2_N,      SPI1,            NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(GPIO_PV1,        RSVD0,           PULL_UP,   NORMAL,     OUTPUT),
 };
 
 void __init bonaire_pinmux_init(void)
