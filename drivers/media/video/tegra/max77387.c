@@ -1737,7 +1737,7 @@ static int max77387_probe(
 
 	max77387_dev_id(info);
 	if ((info->pdata->cfg & NVC_CFG_NODEV) &&
-		((info->chip_id & 0xff00) == 0x91)) {
+		((info->chip_id & 0xff00) == 0x9100)) {
 		max77387_del(info);
 		return -ENODEV;
 	}
