@@ -3,7 +3,7 @@
  *
  * Common pinmux configurations for Tegra30 SoCs
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -373,7 +373,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(CLK1_REQ,		PEE2,		AUDIO,		DAP,		HDA,		RSVD2,		RSVD3,		DAP,	INPUT,	0x3348),\
 	PINGROUP(CLK1_OUT,		PW4,		AUDIO,		EXTPERIPH1,	RSVD1,		RSVD2,		RSVD3,		EXTPERIPH1,	INPUT,	0x334c),\
 	PINGROUP(SPDIF_IN,		PK6,		AUDIO,		SPDIF,		HDA,		INVALID,	DAPSDMMC2,	RSVD,	INPUT,	0x3350),\
-	PINGROUP(SPDIF_OUT,		PK5,		AUDIO,		SPDIF,		RSVD1,		INVALID,	DAPSDMMC2,	RSVD,	INPUT,	0x3354),\
+	PINGROUP(SPDIF_OUT,		PK5,		AUDIO,		SPDIF,		RSVD1,		INVALID,	DAPSDMMC2,	RSVD1,	INPUT,	0x3354),\
 	PINGROUP(DAP2_FS,		PA2,		AUDIO,		I2S1,		HDA,		RSVD2,		GMI,		I2S1,	INPUT,	0x3358),\
 	PINGROUP(DAP2_DIN,		PA4,		AUDIO,		I2S1,		HDA,		RSVD2,		GMI,		I2S1,	INPUT,	0x335c),\
 	PINGROUP(DAP2_DOUT,		PA5,		AUDIO,		I2S1,		HDA,		RSVD2,		GMI,		I2S1,	INPUT,	0x3360),\
