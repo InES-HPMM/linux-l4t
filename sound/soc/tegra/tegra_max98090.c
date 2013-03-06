@@ -89,9 +89,7 @@ struct tegra_max98090 {
 	bool init_done;
 	int is_call_mode;
 	int is_device_bt;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct codec_config codec_info[NUM_I2S_DEVICES];
-#endif
 	struct regulator *avdd_aud_reg;
 	struct regulator *vdd_sw_1v8_reg;
 	enum snd_soc_bias_level bias_level;
@@ -186,7 +184,6 @@ struct snd_kcontrol_new tegra_max98090_call_mode_control = {
 	.put = tegra_call_mode_put
 };
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static int tegra_max98090_set_dam_cif(int dam_ifc, int srate,
 			int channels, int bit_size, int src_on, int src_srate,
 			int src_channels, int src_bit_size)
@@ -227,7 +224,6 @@ static int tegra_max98090_set_dam_cif(int dam_ifc, int srate,
 
 	return 0;
 }
-#endif
 
 static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
@@ -239,9 +235,7 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *card = codec->card;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
-#endif
 	int srate, mclk, sample_size, i2s_daifmt, i2s_master;
 	int err;
 	int rate;
@@ -336,11 +330,9 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		tegra_max98090_set_dam_cif(i2s->dam_ifc, srate,
 			params_channels(params), sample_size, 0, 0, 0, 0);
-#endif
 
 	return 0;
 }
@@ -349,9 +341,7 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(rtd->cpu_dai);
-#endif
 	struct snd_soc_card *card = rtd->card;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
@@ -427,11 +417,9 @@ static int tegra_bt_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		tegra_max98090_set_dam_cif(i2s->dam_ifc, params_rate(params),
 			params_channels(params), sample_size, 0, 0, 0, 0);
-#endif
 
 	return 0;
 }
@@ -446,7 +434,6 @@ static int tegra_hw_free(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -599,7 +586,6 @@ static void tegra_max98090_shutdown(struct snd_pcm_substream *substream)
 
 	return;
 }
-#endif
 
 static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 			struct snd_pcm_hw_params *params)
@@ -683,11 +669,9 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* codec configuration */
 	machine->codec_info[HIFI_CODEC].rate = params_rate(params);
 	machine->codec_info[HIFI_CODEC].channels = params_channels(params);
-#endif
 
 	machine->is_device_bt = 0;
 
@@ -700,10 +684,8 @@ static void tegra_voice_call_shutdown(struct snd_pcm_substream *substream)
 	struct tegra_max98090 *machine  =
 			snd_soc_card_get_drvdata(rtd->codec->card);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	machine->codec_info[HIFI_CODEC].rate = 0;
 	machine->codec_info[HIFI_CODEC].channels = 0;
-#endif
 
 	return;
 }
@@ -749,11 +731,9 @@ static int tegra_bt_voice_call_hw_params(struct snd_pcm_substream *substream,
 
 	tegra_asoc_utils_lock_clk_rate(&machine->util_data, 1);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	/* codec configuration */
 	machine->codec_info[BT_SCO].rate = params_rate(params);
 	machine->codec_info[BT_SCO].channels = params_channels(params);
-#endif
 
 	machine->is_device_bt = 1;
 
@@ -766,10 +746,8 @@ static void tegra_bt_voice_call_shutdown(struct snd_pcm_substream *substream)
 	struct tegra_max98090 *machine  =
 			snd_soc_card_get_drvdata(rtd->codec->card);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	machine->codec_info[BT_SCO].rate = 0;
 	machine->codec_info[BT_SCO].channels = 0;
-#endif
 
 	return;
 }
@@ -777,10 +755,8 @@ static void tegra_bt_voice_call_shutdown(struct snd_pcm_substream *substream)
 static struct snd_soc_ops tegra_max98090_ops = {
 	.hw_params = tegra_max98090_hw_params,
 	.hw_free = tegra_hw_free,
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	.startup = tegra_max98090_startup,
 	.shutdown = tegra_max98090_shutdown,
-#endif
 };
 
 static struct snd_soc_ops tegra_voice_call_ops = {
@@ -798,10 +774,8 @@ static struct snd_soc_ops tegra_bt_voice_call_ops = {
 static struct snd_soc_ops tegra_bt_ops = {
 	.hw_params = tegra_bt_hw_params,
 	.hw_free = tegra_hw_free,
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	.startup = tegra_max98090_startup,
 	.shutdown = tegra_max98090_shutdown,
-#endif
 };
 
 /* Headphone jack */
@@ -881,23 +855,6 @@ static struct snd_soc_jack_pin tegra_max98090_hs_jack_pins[] = {
 };
 #endif
 
-static int tegra_max98090_event_int_spk(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	struct snd_soc_dapm_context *dapm = w->dapm;
-	struct snd_soc_card *card = dapm->card;
-	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
-
-	if (!(machine->gpio_requested & GPIO_SPKR_EN))
-		return 0;
-
-	gpio_set_value_cansleep(pdata->gpio_spkr_en,
-				SND_SOC_DAPM_EVENT_ON(event));
-
-	return 0;
-}
-
 static int tegra_max98090_event_hp(struct snd_soc_dapm_widget *w,
 					struct snd_kcontrol *k, int event)
 {
@@ -911,18 +868,12 @@ static int tegra_max98090_event_hp(struct snd_soc_dapm_widget *w,
 
 	gpio_set_value_cansleep(pdata->gpio_hp_det,
 				!SND_SOC_DAPM_EVENT_ON(event));
-#if 0
-	if (!(machine->gpio_requested & GPIO_HP_MUTE))
-		return 0;
 
-	gpio_set_value_cansleep(pdata->gpio_hp_mute,
-				!SND_SOC_DAPM_EVENT_ON(event));
-#endif
 	return 0;
 }
 
 static const struct snd_soc_dapm_widget tegra_max98090_dapm_widgets[] = {
-	SND_SOC_DAPM_SPK("Int Spk", tegra_max98090_event_int_spk),
+	SND_SOC_DAPM_SPK("Int Spk", NULL),
 	SND_SOC_DAPM_OUTPUT("Earpiece"),
 	SND_SOC_DAPM_HP("Headphone Jack", tegra_max98090_event_hp),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
@@ -940,16 +891,16 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 	{"Headphone Jack", NULL, "HPL"},
 	{"Headphone Jack", NULL, "HPR"},
 
-	{ "MAX97236_HPL", NULL, "HPL" },
-	{ "MAX97236_HPR", NULL, "HPR" },
-	{ "Headphone Jack", NULL, "MAX97236_JACK_LEFT_AUDIO" },
-	{ "Headphone Jack", NULL, "MAX97236_JACK_RIGHT_AUDIO" },
+	{"MAX97236_HPL", NULL, "HPL"},
+	{"MAX97236_HPR", NULL, "HPR"},
+	{"Headphone Jack", NULL, "MAX97236_JACK_LEFT_AUDIO"},
+	{"Headphone Jack", NULL, "MAX97236_JACK_RIGHT_AUDIO"},
 
-	{ "MAX97236_JACK_MICROPHONE", NULL, "MAX97236_MIC_BIAS" },
-	{ "MAX97236_JACK_MICROPHONE", NULL, "Mic Jack" },
-	{ "MAX97236_JACK_MICROPHONE", NULL, "Mic Jack" },
+	{"MAX97236_JACK_MICROPHONE", NULL, "MAX97236_MIC_BIAS"},
+	{"MAX97236_JACK_MICROPHONE", NULL, "Mic Jack"},
+	{"MAX97236_JACK_MICROPHONE", NULL, "Mic Jack"},
 
-	{"MICBIAS", NULL, "MAX97236_MOUT" },
+	{"MICBIAS", NULL, "MAX97236_MOUT"},
 	{"MICBIAS", NULL, "Int Mic"},
 	{"IN12", NULL, "MICBIAS"},
 	{"MICBIAS", NULL, "Ext Mic"},
@@ -980,32 +931,16 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_card *card = codec->card;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(rtd->cpu_dai);
-#endif
 	int ret;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	if (machine->codec_info[BASEBAND].i2s_id != -1)
 		i2s->is_dam_used = true;
-#endif
 
 	if (machine->init_done)
 		return 0;
 
 	machine->init_done = true;
-
-
-	if (gpio_is_valid(pdata->gpio_spkr_en)) {
-		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get spkr_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_SPKR_EN;
-
-		gpio_direction_output(pdata->gpio_spkr_en, 0);
-	}
 
 	if (gpio_is_valid(pdata->gpio_hp_mute)) {
 		ret = gpio_request(pdata->gpio_hp_mute, "hp_mute");
@@ -1018,31 +953,7 @@ static int tegra_max98090_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_hp_mute, 0);
 	}
 
-	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
-		ret = gpio_request(pdata->gpio_int_mic_en, "int_mic_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get int_mic_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_INT_MIC_EN;
-
-		/* Disable int mic; enable signal is active-high */
-		gpio_direction_output(pdata->gpio_int_mic_en, 0);
-	}
-
-	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
-		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_EXT_MIC_EN;
-
-		/* Enable ext mic; enable signal is active-low */
-		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
-	}
-
-    /* Add call mode switch control */
+	/* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 		snd_ctl_new1(&tegra_max98090_call_mode_control, machine));
 	if (ret < 0)
@@ -1297,7 +1208,6 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	for (i = 0; i < NUM_I2S_DEVICES ; i++) {
 		machine->codec_info[i].i2s_id =
 			pdata->i2s_param[i].audio_port_id;
@@ -1323,7 +1233,6 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 
 	tegra_max98090_dai[DAI_LINK_BTSCO].cpu_dai_name =
 	tegra_max98090_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
-#endif
 
 	card->dapm.idle_bias_off = 1;
 	ret = snd_soc_register_card(card);
@@ -1372,14 +1281,8 @@ static int __devexit tegra_max98090_driver_remove(struct platform_device *pdev)
 	switch_dev_unregister(&tegra_max98090_headset_switch);
 #endif
 
-	if (machine->gpio_requested & GPIO_EXT_MIC_EN)
-		gpio_free(pdata->gpio_ext_mic_en);
-	if (machine->gpio_requested & GPIO_INT_MIC_EN)
-		gpio_free(pdata->gpio_int_mic_en);
 	if (machine->gpio_requested & GPIO_HP_MUTE)
 		gpio_free(pdata->gpio_hp_mute);
-	if (machine->gpio_requested & GPIO_SPKR_EN)
-		gpio_free(pdata->gpio_spkr_en);
 	if (machine->gpio_requested & GPIO_HP_DET)
 		snd_soc_jack_free_gpios(&tegra_max98090_hp_jack,
 			1,
