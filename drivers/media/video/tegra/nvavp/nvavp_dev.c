@@ -100,7 +100,7 @@ static bool audio_enabled;
 struct nvavp_channel {
 	struct mutex			pushbuffer_lock;
 	struct nvmap_handle_ref		*pushbuf_handle;
-	unsigned long			pushbuf_phys;
+	phys_addr_t			pushbuf_phys;
 	u8				*pushbuf_data;
 	u32				pushbuf_index;
 	u32				pushbuf_fence;
@@ -565,12 +565,11 @@ static int nvavp_pushbuffer_alloc(struct nvavp_info *nvavp, int channel_id)
 		ret = -ENOMEM;
 		goto err_pushbuf_mmap;
 	}
-	channel_info->pushbuf_phys = nvmap_pin(nvavp->nvmap,
-					channel_info->pushbuf_handle);
-	if (IS_ERR((void *)channel_info->pushbuf_phys)) {
+	ret = nvmap_pin(nvavp->nvmap, channel_info->pushbuf_handle,
+			&channel_info->pushbuf_phys);
+	if (ret) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"cannot pin pushbuffer handle\n");
-		ret = PTR_ERR((void *)channel_info->pushbuf_phys);
 		goto err_pushbuf_pin;
 	}
 
@@ -829,11 +828,11 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 			ret = -ENOMEM;
 			goto err_ucode_mmap;
 		}
-		ucode_info->phys = nvmap_pin(nvavp->nvmap, ucode_info->handle);
-		if (IS_ERR((void *)ucode_info->phys)) {
+		ret = nvmap_pin(nvavp->nvmap, ucode_info->handle,
+				&ucode_info->phys);
+		if (ret) {
 			dev_err(&nvavp->nvhost_dev->dev,
 				"cannot pin ucode handle\n");
-			ret = PTR_ERR((void *)ucode_info->phys);
 			goto err_ucode_pin;
 		}
 		memcpy(ucode_info->ucode_bin, ptr, ucode_info->size);
@@ -1235,7 +1234,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	ulong cmdbuf_handle_id;
 	struct nvmap_handle_ref *cmdbuf_dupe;
 	int ret = 0, i;
-	unsigned long phys_addr;
+	phys_addr_t phys_addr;
 	unsigned long virt_addr;
 	struct nvavp_pushbuffer_submit_hdr *user_hdr =
 			(struct nvavp_pushbuffer_submit_hdr *) arg;
@@ -1276,11 +1275,11 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return PTR_ERR(cmdbuf_dupe);
 	}
 
-	phys_addr = nvmap_pin(clientctx->nvmap, cmdbuf_dupe);
-	if (IS_ERR((void *)phys_addr)) {
+	ret = nvmap_pin(clientctx->nvmap, cmdbuf_dupe, &phys_addr);
+	if (ret) {
 		dev_err(&nvavp->nvhost_dev->dev, "could not pin handle\n");
 		nvmap_free(clientctx->nvmap, cmdbuf_dupe);
-		return PTR_ERR((void *)phys_addr);
+		return ret;
 	}
 
 	virt_addr = (unsigned long)nvmap_mmap(cmdbuf_dupe);
@@ -1669,12 +1668,11 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 			goto err_nvmap_mmap;
 		}
 
-		nvavp->os_info.phys =
-			nvmap_pin(nvavp->nvmap, nvavp->os_info.handle);
-		if (IS_ERR_OR_NULL((void *)nvavp->os_info.phys)) {
+		ret = nvmap_pin(nvavp->nvmap, nvavp->os_info.handle,
+				&nvavp->os_info.phys);
+		if (ret) {
 			dev_err(&ndev->dev,
 				"cannot pin os handle\n");
-			ret = PTR_ERR((void *)nvavp->os_info.phys);
 			goto err_nvmap_pin;
 		}
 
@@ -1698,11 +1696,10 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 			goto err_nvmap_mmap;
 		}
 
-		nvavp->os_info.phys = nvmap_pin(nvavp->nvmap,
-					nvavp->os_info.handle);
-		if (IS_ERR_OR_NULL((void *)nvavp->os_info.phys)) {
+		ret = nvmap_pin(nvavp->nvmap, nvavp->os_info.handle,
+				&nvavp->os_info.phys);
+		if (ret) {
 			dev_err(&ndev->dev, "cannot pin AVP os handle\n");
-			ret = PTR_ERR((void *)nvavp->os_info.phys);
 			goto err_nvmap_pin;
 		}
 
