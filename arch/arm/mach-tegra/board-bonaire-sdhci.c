@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-bonaire-sdhci.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2012, NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -177,6 +177,7 @@ static struct platform_device tegra_sdhci_device3 = {
 int __init bonaire_sdhci_init(void)
 {
 	platform_device_register(&tegra_sdhci_device3);
+	platform_device_register(&tegra_sdhci_device2);
 
 	return 0;
 }
