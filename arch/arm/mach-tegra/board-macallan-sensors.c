@@ -60,6 +60,7 @@
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
 	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
+	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
 };
 
 static struct board_info board_info;
@@ -227,12 +228,36 @@ static struct tegra_pingroup_config pbb0_disable =
 static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
+/*
+ * As a workaround, macallan_vcmvdd need to be allocated to activate the
+ * sensor devices. This is due to the focuser device(AD5816) will hook up
+ * the i2c bus if it is not powered up.
+*/
+static struct regulator *macallan_vcmvdd;
+
+static int macallan_get_vcmvdd(void)
+{
+	if (!macallan_vcmvdd) {
+		macallan_vcmvdd = regulator_get(NULL, "vdd_af_cam1");
+		if (unlikely(WARN_ON(IS_ERR(macallan_vcmvdd)))) {
+			pr_err("%s: can't get regulator vcmvdd: %ld\n",
+				__func__, PTR_ERR(macallan_vcmvdd));
+			macallan_vcmvdd = NULL;
+			return -ENODEV;
+		}
+	}
+	return 0;
+}
+
 static int macallan_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
 
 	if (unlikely(WARN_ON(!vreg)))
 		return -EFAULT;
+
+	if (macallan_get_vcmvdd())
+		goto imx091_poweron_fail;
 
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(10, 20);
@@ -248,10 +273,17 @@ static int macallan_imx091_power_on(struct nvc_regulator *vreg)
 	usleep_range(1, 2);
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 1);
 
+	err = regulator_enable(macallan_vcmvdd);
+	if (unlikely(err))
+		goto imx091_vcmvdd_fail;
+
 	tegra_pinmux_config_table(&mclk_enable, 1);
 	usleep_range(300, 310);
 
 	return 1;
+
+imx091_vcmvdd_fail:
+	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 
 imx091_iovdd_fail:
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
@@ -259,6 +291,7 @@ imx091_iovdd_fail:
 imx091_avdd_fail:
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 
+imx091_poweron_fail:
 	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
@@ -273,6 +306,7 @@ static int macallan_imx091_power_off(struct nvc_regulator *vreg)
 	gpio_set_value(CAM1_POWER_DWN_GPIO, 0);
 	usleep_range(1, 2);
 
+	regulator_disable(macallan_vcmvdd);
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
@@ -337,6 +371,9 @@ static int macallan_ov9772_power_on(struct ov9772_power_rail *pw)
 	if (unlikely(!pw || !pw->avdd || !pw->dovdd))
 		return -EFAULT;
 
+	if (macallan_get_vcmvdd())
+		goto ov9772_get_vcmvdd_fail;
+
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
 	gpio_set_value(CAM_RSTN, 0);
 
@@ -351,11 +388,18 @@ static int macallan_ov9772_power_on(struct ov9772_power_rail *pw)
 	gpio_set_value(CAM_RSTN, 1);
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 1);
 
+	err = regulator_enable(macallan_vcmvdd);
+	if (unlikely(err))
+		goto ov9772_vcmvdd_fail;
+
 	tegra_pinmux_config_table(&pbb0_enable, 1);
 	usleep_range(340, 380);
 
 	/* return 1 to skip the in-driver power_on sequence */
 	return 1;
+
+ov9772_vcmvdd_fail:
+	regulator_disable(pw->dovdd);
 
 ov9772_dovdd_fail:
 	regulator_disable(pw->avdd);
@@ -364,13 +408,14 @@ ov9772_avdd_fail:
 	gpio_set_value(CAM_RSTN, 0);
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
 
+ov9772_get_vcmvdd_fail:
 	pr_err("%s FAILED\n", __func__);
 	return -ENODEV;
 }
 
 static int macallan_ov9772_power_off(struct ov9772_power_rail *pw)
 {
-	if (unlikely(!pw || !pw->avdd || !pw->dovdd))
+	if (unlikely(!pw || !macallan_vcmvdd || !pw->avdd || !pw->dovdd))
 		return -EFAULT;
 
 	usleep_range(21, 25);
@@ -379,6 +424,7 @@ static int macallan_ov9772_power_off(struct ov9772_power_rail *pw)
 	gpio_set_value(CAM2_POWER_DWN_GPIO, 0);
 	gpio_set_value(CAM_RSTN, 0);
 
+	regulator_disable(macallan_vcmvdd);
 	regulator_disable(pw->dovdd);
 	regulator_disable(pw->avdd);
 
@@ -400,6 +446,24 @@ static struct ov9772_platform_data macallan_ov9772_pdata = {
 	.power_off	= macallan_ov9772_power_off,
 };
 
+static int macallan_as3648_power_on(struct as364x_power_rail *pw)
+{
+	int err = macallan_get_vcmvdd();
+
+	if (err)
+		return err;
+
+	return regulator_enable(macallan_vcmvdd);
+}
+
+static int macallan_as3648_power_off(struct as364x_power_rail *pw)
+{
+	if (!macallan_vcmvdd)
+		return -ENODEV;
+
+	return regulator_disable(macallan_vcmvdd);
+}
+
 static struct as364x_platform_data macallan_as3648_pdata = {
 	.config		= {
 		.led_mask	= 3,
@@ -415,6 +479,9 @@ static struct as364x_platform_data macallan_as3648_pdata = {
 	.dev_name	= "torch",
 	.type		= AS3648,
 	.gpio_strobe	= CAM_FLASH_STROBE,
+
+	.power_on_callback = macallan_as3648_power_on,
+	.power_off_callback = macallan_as3648_power_off,
 };
 
 static struct ad5816_platform_data macallan_ad5816_pdata = {
