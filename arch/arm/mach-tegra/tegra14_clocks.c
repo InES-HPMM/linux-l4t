@@ -253,9 +253,9 @@
 	((0x14 << PLLCX_MISC_KA_SHIFT) | (0x38 << PLLCX_MISC_KB_SHIFT))
 
 #define PLLCX_MISC_DIV_LOW_RANGE	\
-	((0x2 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x2 << PLLCX_MISC_FILT_DIV_SHIFT))
-#define PLLCX_MISC_DIV_HIGH_RANGE	\
 	((0x1 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x1 << PLLCX_MISC_FILT_DIV_SHIFT))
+#define PLLCX_MISC_DIV_HIGH_RANGE	\
+	((0x2 << PLLCX_MISC_SDM_DIV_SHIFT) | (0x2 << PLLCX_MISC_FILT_DIV_SHIFT))
 
 #define PLLCX_MISC_DEFAULT_VALUE	((0x0 << PLLCX_MISC_VCO_GAIN_SHIFT) | \
 					PLLCX_MISC_KOEF_LOW_RANGE | \
@@ -1971,7 +1971,9 @@ static void tegra14_pll_clk_disable(struct clk *c)
 static u8 get_pll_cpcon(struct clk *c, u16 n)
 {
 	if (c->flags & PLLD) {
-		if (n >= 600)
+		if (n >= 1000)
+			return 15;
+		else if (n >= 600)
 			return 12;
 		else if (n >= 300)
 			return 8;
@@ -2307,7 +2309,7 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 		n_threshold = 55;
 		break;
 	case 19200000:
-		n_threshold = 48;
+		n_threshold = 43;
 		break;
 	default:
 		pr_err("%s: Unexpected reference rate %lu\n",
