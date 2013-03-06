@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,6 +27,7 @@
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
 #define DVFS_RAIL_STATS_TOP_BIN	60
+#define MAX_THERMAL_FLOORS	8
 
 struct clk;
 struct dvfs_rail;
@@ -62,7 +63,7 @@ struct dvfs_rail {
 	int max_millivolts;
 	int reg_max_millivolts;
 	int nominal_millivolts;
-	int min_millivolts_cold;
+	const int *therm_mv_floors;
 
 	int step;
 	bool jmp_to_zero;
@@ -156,6 +157,8 @@ struct cpu_cvb_dvfs {
 	int speedo_scale;
 	int voltage_scale;
 	struct cpu_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
+	int therm_trips_table[MAX_THERMAL_FLOORS];
+	int therm_floors_table[MAX_THERMAL_FLOORS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;

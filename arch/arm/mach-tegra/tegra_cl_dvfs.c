@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_cl_dvfs.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -186,7 +186,7 @@ struct tegra_cl_dvfs {
 	u8				safe_output;
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
-	u8				cold_out_min;
+	u8				thermal_out_floors[MAX_THERMAL_FLOORS];
 	u8				minimax_output;
 	unsigned long			dvco_rate_min;
 
@@ -360,7 +360,9 @@ static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
 
 	tune_min = cld->tune_state == TEGRA_CL_DVFS_TUNE_LOW ?
 		0 : cld->tune_high_out_min;
-	thermal_min = cld->thermal_idx ? 0 : cld->cold_out_min;
+	thermal_min = 0;
+	if (cld->cdev && (cld->thermal_idx < cld->cdev->trip_temperatures_num))
+		thermal_min = cld->thermal_out_floors[cld->thermal_idx];
 
 	return max(tune_min, thermal_min);
 }
@@ -760,15 +762,21 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
 {
+	int i;
+	if (!cld->cdev)
+		return;
 	/*
-	 * Convert minimum voltage at low temperature into output LUT index;
-	 * make sure there is room for regulation above cold minimum output
+	 * Convert monotonically decreasing thermal floors at low temperature
+	 * into output LUT indexes; make sure there is a room for regulation
+	 * above maximum thermal floor.
 	 */
-	cld->cold_out_min = find_mv_out_cap(
-		cld, cld->safe_dvfs->dvfs_rail->min_millivolts_cold);
-	BUG_ON(cld->cold_out_min + 2 >= cld->num_voltages);
-	if (cld->minimax_output <= cld->cold_out_min)
-		cld->minimax_output = cld->cold_out_min + 1;
+	for (i = 0; i < cld->cdev->trip_temperatures_num; i++) {
+		cld->thermal_out_floors[i] = find_mv_out_cap(
+			cld, cld->safe_dvfs->dvfs_rail->therm_mv_floors[i]);
+	}
+	BUG_ON(cld->thermal_out_floors[0] + 2 >= cld->num_voltages);
+	if (cld->minimax_output <= cld->thermal_out_floors[0])
+		cld->minimax_output = cld->thermal_out_floors[0] + 1;
 }
 
 static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
@@ -778,7 +786,7 @@ static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_cold_output_floor(cld);
 
 	/* make sure safe output is safe at any temperature */
-	cld->safe_output = cld->cold_out_min ? : 1;
+	cld->safe_output = cld->thermal_out_floors[0] ? : 1;
 	if (cld->minimax_output <= cld->safe_output)
 		cld->minimax_output = cld->safe_output + 1;
 }

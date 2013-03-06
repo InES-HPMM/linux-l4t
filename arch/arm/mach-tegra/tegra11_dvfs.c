@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_dvfs.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -37,24 +37,19 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
 
-static int dvfs_temperatures[] = { 20, };
+static int vdd_core_therm_trips_table[MAX_THERMAL_FLOORS] = { 20, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_FLOORS] = { 950, };
 
 static struct tegra_cooling_device cpu_dfll_cdev = {
 	.cdev_type = "cpu_dfll_cold",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
 static struct tegra_cooling_device cpu_pll_cdev = {
 	.cdev_type = "cpu_pll_cold",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
 static struct tegra_cooling_device core_cdev = {
 	.cdev_type = "core_cold",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
 };
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
@@ -63,7 +58,6 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-	.min_millivolts_cold = 1000,
 	.dfll_mode_cdev = &cpu_dfll_cdev,
 	.pll_mode_cdev = &cpu_pll_cdev,
 };
@@ -73,7 +67,6 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
-	.min_millivolts_cold = 950,
 	.pll_mode_cdev = &core_cdev,
 };
 
@@ -126,6 +119,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2040000, { 250050,  -6544,   0}, { 140000,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
+		.therm_trips_table = { 20, },
+		.therm_floors_table = { 1000, },
 	},
 	{
 		.speedo_id = 1,
@@ -162,6 +157,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
+		.therm_trips_table = { 20, },
+		.therm_floors_table = { 1000, },
 	},
 	{
 		.speedo_id = 1,
@@ -198,6 +195,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1810500, { 3304747, -179126, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
+		.therm_trips_table = { 20, },
+		.therm_floors_table = { 1000, },
 	},
 	{
 		.speedo_id = 2,
@@ -235,6 +234,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1912500, { 3395401, -181606, 3576}, { 1400000,    0,    0} },
 			{      0, {       0,       0,    0}, {       0,    0,    0} },
 		},
+		.therm_trips_table = { 20, },
+		.therm_floors_table = { 1000, },
 	},
 };
 
@@ -413,6 +414,41 @@ module_param_cb(disable_core, &tegra_dvfs_disable_core_ops,
 module_param_cb(disable_cpu, &tegra_dvfs_disable_cpu_ops,
 	&tegra_dvfs_cpu_disabled, 0644);
 
+/*
+ * Install rail thermal profile provided:
+ * - voltage floors are descending with temperature increasing
+ * - and the lowest floor is above rail minimum voltage in pll and
+ *   in dfll mode (if applicable)
+ */
+static void __init init_rail_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i, min_mv;
+
+	for (i = 0; i < MAX_THERMAL_FLOORS - 1; i++) {
+		if (!therm_floors_table[i+1])
+			break;
+
+		if ((therm_trips_table[i] >= therm_trips_table[i+1]) ||
+		    (therm_floors_table[i] < therm_floors_table[i+1]))
+			return;
+	}
+
+	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
+	if (therm_floors_table[i] < min_mv)
+		return;
+
+	if (rail->pll_mode_cdev) {
+		rail->pll_mode_cdev->trip_temperatures_num = i + 1;
+		rail->pll_mode_cdev->trip_temperatures = therm_trips_table;
+	}
+	if (rail->dfll_mode_cdev) {
+		rail->dfll_mode_cdev->trip_temperatures_num = i + 1;
+		rail->dfll_mode_cdev->trip_temperatures = therm_trips_table;
+	}
+	rail->therm_mv_floors = therm_floors_table;
+}
 
 static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 {
@@ -624,9 +660,6 @@ static int __init set_cpu_dvfs_data(
 	cpu_dvfs->dfll_data.use_dfll_rate_min = fmin_use_dfll * d->freqs_mult;
 	cpu_dvfs->dfll_data.min_millivolts = min_dfll_mv;
 
-	/* Invalidate dfll cooling if cold minimum is below dfll minimum */
-	if (cpu_dvfs->dvfs_rail->min_millivolts_cold <= min_dfll_mv)
-		cpu_dvfs->dvfs_rail->dfll_mode_cdev = NULL;
 	return 0;
 }
 
@@ -723,6 +756,13 @@ void __init tegra11x_init_dvfs(void)
 		}
 	}
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
+
+	/* Init thermal floors */
+	init_rail_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
+		cpu_cvb_dvfs_table[i].therm_floors_table,
+		&tegra11_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
+	init_rail_thermal_profile(vdd_core_therm_trips_table,
+		vdd_core_therm_floors_table, &tegra11_dvfs_rail_vdd_core, NULL);
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra11_dvfs_rails,

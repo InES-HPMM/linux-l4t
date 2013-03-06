@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (C) 2010-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -71,10 +71,17 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
  */
 static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 {
+	if (rail->pll_mode_cdev && !rail->therm_mv_floors) {
+		rail->pll_mode_cdev = NULL;
+		WARN(1, "%s: invalid thermal floors\n", rail->reg_id);
+	}
+
 	if (rail->dfll_mode_cdev) {
 		if (!rail->pll_mode_cdev ||
 		    (rail->dfll_mode_cdev->trip_temperatures !=
-		     rail->pll_mode_cdev->trip_temperatures)) {
+		     rail->pll_mode_cdev->trip_temperatures) ||
+		    (rail->dfll_mode_cdev->trip_temperatures_num !=
+		     rail->pll_mode_cdev->trip_temperatures_num)) {
 			rail->dfll_mode_cdev = NULL;
 			WARN(1, "%s: not matching dfll/pll mode trip-points\n",
 			     rail->reg_id);
@@ -302,9 +309,11 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 {
 	int min_mv = rail->min_millivolts;
 
-	if (rail->pll_mode_cdev)
-		min_mv = max(min_mv, rail->thermal_idx ?
-			     0 : rail->min_millivolts_cold);
+	if (rail->pll_mode_cdev) {
+		int i = rail->thermal_idx;
+		if (i < rail->pll_mode_cdev->trip_temperatures_num)
+			min_mv = rail->therm_mv_floors[i];
+	}
 
 	millivolts += rail->offs_millivolts;
 	if (millivolts > rail->max_millivolts)
@@ -950,9 +959,11 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 	 * dfll mode.
 	 */
 	mutex_lock(&dvfs_lock);
-	if (rail->dfll_mode && !rail->thermal_idx)
-		ret = dvfs_rail_set_voltage_reg(
-			rail, rail->min_millivolts_cold);
+	if (rail->dfll_mode &&
+	    (rail->thermal_idx < rail->pll_mode_cdev->trip_temperatures_num)) {
+			int mv = rail->therm_mv_floors[rail->thermal_idx];
+			ret = dvfs_rail_set_voltage_reg(rail, mv);
+	}
 	mutex_unlock(&dvfs_lock);
 #endif
 	return ret;
@@ -1065,6 +1076,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		int thermal_mv_floor = 0;
+
 		seq_printf(s, "%s %d mV%s:\n", rail->reg_id, rail->millivolts,
 			   rail->dfll_mode ? " dfll mode" :
 				rail->disabled ? " disabled" : "");
@@ -1074,6 +1087,14 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				dvfs_solve_relationship(rel));
 		}
 		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
+
+		if ((!rail->dfll_mode && rail->pll_mode_cdev) ||
+		    rail->dfll_mode_cdev) {
+			int i = rail->thermal_idx;
+			if (i < rail->pll_mode_cdev->trip_temperatures_num)
+				thermal_mv_floor = rail->therm_mv_floors[i];
+		}
+		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
 
 		list_sort(NULL, &rail->dvfs, dvfs_tree_sort_cmp);
 
