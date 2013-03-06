@@ -468,12 +468,6 @@ static struct platform_device *bonaire_devices[] __initdata = {
 #if defined(CONFIG_MTD_NAND_TEGRA)
 	&tegra_nand_device,
 #endif
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
-	&tegra_sim_smc91x_device,
-#endif
-#if defined(CONFIG_SMSC911X)
-	&tegra_smsc911x_device,
-#endif
 };
 
 static int __init bonaire_touch_init(void)
@@ -643,6 +637,18 @@ static void __init tegra_bonaire_init(void)
 #endif
 
 	platform_add_devices(bonaire_devices, ARRAY_SIZE(bonaire_devices));
+
+#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
+	if (!tegra_cpu_is_dsim()) { /* no ethernet card on DSIM */
+		platform_device_register(&tegra_sim_smc91x_device);
+	}
+#endif
+
+#if defined(CONFIG_SMSC911X)
+	if (!tegra_cpu_is_dsim()) { /* no ethernet card on DSIM */
+		platform_device_register(&tegra_smsc911x_device);
+	}
+#endif
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	bonaire_power_off_init();
