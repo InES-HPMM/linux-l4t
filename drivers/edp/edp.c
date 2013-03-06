@@ -43,10 +43,18 @@ static struct edp_manager *find_manager(const char *name)
 
 static void promote(struct work_struct *work)
 {
+	unsigned int prev_denied;
 	struct edp_manager *m = container_of(work, struct edp_manager, work);
+
 	mutex_lock(&edp_lock);
-	if (m->num_denied && m->remaining)
+
+	if (m->num_denied && m->remaining) {
+		prev_denied = m->num_denied;
 		m->gov->promote(m);
+		if (prev_denied != m->num_denied)
+			sysfs_notify(m->kobj, NULL, "denied");
+	}
+
 	mutex_unlock(&edp_lock);
 }
 
@@ -353,6 +361,7 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 {
 	struct edp_manager *m = client->manager;
 	unsigned int prev_remain = m->remaining;
+	unsigned int prev_denied = m->num_denied;
 
 	if (!m->gov)
 		return -ENODEV;
@@ -363,6 +372,9 @@ static int mod_request(struct edp_client *client, const unsigned int *req)
 	/* Do not block calling clients for promotions */
 	if (m->remaining > prev_remain)
 		schedule_promotion(m);
+
+	if (m->num_denied != prev_denied)
+		sysfs_notify(m->kobj, NULL, "denied");
 
 	return 0;
 }

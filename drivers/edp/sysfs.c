@@ -43,6 +43,11 @@ static ssize_t remaining_show(struct edp_manager *m, char *s)
 	return scnprintf(s, PAGE_SIZE, "%u\n", m->remaining);
 }
 
+static ssize_t denied_show(struct edp_manager *m, char *s)
+{
+	return scnprintf(s, PAGE_SIZE, "%u\n", m->num_denied);
+}
+
 static ssize_t manager_governor_show(struct edp_manager *m, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%s\n", m->gov ? m->gov->name : "");
@@ -69,12 +74,14 @@ static ssize_t manager_governor_store(struct edp_manager *m, const char *s,
 
 struct manager_attr attr_cap = __ATTR_RO(cap);
 struct manager_attr attr_remaining = __ATTR_RO(remaining);
+struct manager_attr attr_denied = __ATTR_RO(denied);
 struct manager_attr attr_mgr_gov = __ATTR(governor, 0644,
 		manager_governor_show, manager_governor_store);
 
 static struct attribute *manager_attrs[] = {
 	&attr_cap.attr,
 	&attr_remaining.attr,
+	&attr_denied.attr,
 	&attr_mgr_gov.attr,
 	NULL
 };
