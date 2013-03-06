@@ -27,6 +27,8 @@
 
 #include <linux/usb/tegra_usb_phy.h>
 
+#include <mach/pm_domains.h>
+
 /* HACK! This needs to come from DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"
 
@@ -568,6 +570,9 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		if (!IS_ERR_OR_NULL(tegra->transceiver))
 			otg_set_host(tegra->transceiver->otg, &hcd->self);
 	}
+
+	tegra_pd_add_device(&tegra_mc_chain_b, &pdev->dev);
+
 	return err;
 
 fail_phy:

@@ -34,6 +34,7 @@
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
 
+#include <mach/pm_domains.h>
 #include "dmaengine.h"
 
 #define TEGRA_APBDMA_GENERAL			0x0
@@ -1296,6 +1297,7 @@ static int tegra_dma_probe(struct platform_device *pdev)
 
 	spin_lock_init(&tdma->global_lock);
 
+	tegra_pd_add_device(&tegra_mc_chain_b, &pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev)) {
 		ret = tegra_dma_runtime_resume(&pdev->dev);

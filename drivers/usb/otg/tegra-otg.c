@@ -34,6 +34,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/extcon.h>
 
+#include <mach/pm_domains.h>
+
 #define USB_PHY_WAKEUP		0x408
 #define  USB_ID_INT_EN		(1 << 0)
 #define  USB_ID_INT_STATUS	(1 << 1)
@@ -545,6 +547,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		extcon_register_notifier(tegra->edev, &otg_nb);
 	}
 
+	tegra_pd_add_device(&tegra_mc_chain_b, tegra->phy.dev);
 	pm_runtime_use_autosuspend(tegra->phy.dev);
 	pm_runtime_set_autosuspend_delay(tegra->phy.dev, 100);
 	pm_runtime_enable(tegra->phy.dev);

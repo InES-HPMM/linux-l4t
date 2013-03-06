@@ -28,10 +28,13 @@
 #include <linux/platform_data/tegra_xusb.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/uaccess.h>
+
 #include <mach/powergate.h>
 #include <mach/clk.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
+#include <mach/pm_domains.h>
+
 #include "xhci-tegra.h"
 #include "xhci.h"
 
@@ -2499,6 +2502,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	tegra_xhci_debug_read_pads(tegra);
 	utmi_phy_pad_enable();
+
+	tegra_pd_add_device(&tegra_mc_chain_b, &pdev->dev);
 
 	return 0;
 

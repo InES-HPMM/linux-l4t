@@ -40,6 +40,7 @@
 #include <linux/platform_data/mmc-sdhci-tegra.h>
 #include <mach/io_dpd.h>
 #include <mach/pinmux.h>
+#include <mach/pm_domains.h>
 
 #include "sdhci-pltfm.h"
 
@@ -1564,6 +1565,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		tegra_host->is_rail_enabled = 1;
 	}
 
+	tegra_pd_add_device(&tegra_mc_chain_b, &pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	pltfm_host->clk = clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(pltfm_host->clk)) {
