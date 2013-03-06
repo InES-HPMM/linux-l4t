@@ -1350,14 +1350,14 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dvco_rate_min) {
-		req.scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
+		int scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
 			(cld->dvco_rate_min / 1000));
-		if (!req.scale) {
+		if (!scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
 			       __func__, rate);
 			return -EINVAL;
 		}
-		req.scale--;
+		req.scale = scale - 1;
 		rate = cld->dvco_rate_min;
 	}
 
