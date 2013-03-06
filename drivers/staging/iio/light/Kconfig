@@ -62,4 +62,13 @@ config SENSORS_CM3218
 	help
 	  Say Y here to enable the CM3218 Ambient Light Sensor.
 
+config SENSORS_TCS3772
+	tristate "TCS3772 Ambient light, RGB and proximity Sensor"
+	depends on I2C
+	select REGMAP_I2C
+	default n
+	help
+	  If you say yes here you get support for ambient light, RGB and
+	  Proximity sensing from TCS3772.
+
 endmenu
