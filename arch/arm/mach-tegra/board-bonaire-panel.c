@@ -256,8 +256,8 @@ static struct tegra_dc_mode bonaire_panel_modes[] = {
 		.h_back_porch = 20,
 		.v_back_porch = 7,
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-		.h_active = 240,
-		.v_active = 320,
+		.h_active = 120,
+		.v_active = 160,
 #else
 		.h_active = 480,
 		.v_active = 640,
@@ -270,8 +270,8 @@ static struct tegra_dc_mode bonaire_panel_modes[] = {
 static struct tegra_fb_data bonaire_fb_data = {
 	.win		= 0,
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.xres		= 240,
-	.yres		= 320,
+	.xres		= 120,
+	.yres		= 160,
 	.bits_per_pixel	= 16,
 	.flags		= 0,
 #else
