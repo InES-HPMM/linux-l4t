@@ -482,7 +482,9 @@ bool tegra11x_idle_power_down(struct cpuidle_device *dev,
 		if (num_online_cpus() > 1)
 			power_gating_cpu_only = true;
 		else {
-			if (tegra_force_clkgt_at_vmin ==
+			if (tegra_dvfs_rail_updating(cpu_clk_for_dvfs))
+				clkgt_at_vmin = false;
+			else if (tegra_force_clkgt_at_vmin ==
 					TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
 				clkgt_at_vmin = true;
 			else if (tegra_force_clkgt_at_vmin ==
