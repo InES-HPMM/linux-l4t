@@ -40,7 +40,7 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need to clean-up, once thermal DVFS working */
 #define THERMAL_DVFS_ENABLE 0
 
-#ifdef THERMAL_DVFS_ENABLE
+#if THERMAL_DVFS_ENABLE
 static int dvfs_temperatures[] = { 20, };
 
 static struct tegra_cooling_device cpu_dfll_cdev = {
@@ -68,8 +68,8 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
+#if THERMAL_DVFS_ENABLE
 	.min_millivolts_cold = 1000,
-#ifdef THERMAL_DVFS_ENABLE
 	.dfll_mode_cdev = &cpu_dfll_cdev,
 	.pll_mode_cdev = &cpu_pll_cdev,
 #endif
@@ -80,8 +80,8 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
+#if THERMAL_DVFS_ENABLE
 	.min_millivolts_cold = 950,
-#ifdef THERMAL_DVFS_ENABLE
 	.pll_mode_cdev = &core_cdev,
 #endif
 };
