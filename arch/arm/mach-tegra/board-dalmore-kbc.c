@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/board-dalmore-kbc.c
  * Keys configuration for Nvidia tegra3 dalmore platform.
  *
- * Copyright (C) 2012 NVIDIA, Inc.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/input/tegra_kbc.h>
+#include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/gpio_keys.h>
 #include <linux/mfd/palmas.h>
@@ -31,9 +32,28 @@
 #include "board.h"
 #include "board-dalmore.h"
 #include "devices.h"
+#include "iomap.h"
+#include "wakeups-t11x.h"
 
 #define DALMORE_ROW_COUNT	3
 #define DALMORE_COL_COUNT	3
+
+static int dalmore_wakeup_key(void)
+{
+	int wakeup_key;
+	u64 status = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS)
+		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
+		+ PMC_WAKE2_STATUS) << 32;
+
+	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
+		wakeup_key = KEY_POWER;
+	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+		wakeup_key = SW_LID;
+	else
+		wakeup_key = KEY_RESERVED;
+
+	return wakeup_key;
+}
 
 static const u32 kbd_keymap[] = {
 	KEY(0, 0, KEY_POWER),
@@ -117,6 +137,7 @@ static struct gpio_keys_platform_data dalmore_int_keys_pdata = {
 static struct gpio_keys_platform_data dalmore_e1611_1001_keys_pdata = {
 	.buttons	= dalmore_e1611_1001_keys,
 	.nbuttons	= ARRAY_SIZE(dalmore_e1611_1001_keys),
+	.wakeup_key	= dalmore_wakeup_key,
 };
 
 static struct platform_device dalmore_int_keys_device = {
