@@ -146,6 +146,7 @@ static int board_panel_type;
 static enum power_supply_type pow_supply_type = POWER_SUPPLY_TYPE_MAINS;
 static int pwr_i2c_clk = 400;
 static u8 power_config;
+static u8 display_config;
 /*
  * Storage for debug-macro.S's state.
  *
@@ -989,6 +990,18 @@ static int __init tegra_board_power_config(char *options)
 	return 1;
 }
 __setup("power-config=", tegra_board_power_config);
+
+u8 get_display_config(void)
+{
+	return display_config;
+}
+static int __init tegra_board_display_config(char *options)
+{
+	char *p = options;
+	display_config = memparse(p, &p);
+	return 1;
+}
+__setup("display-config=", tegra_board_display_config);
 
 enum power_supply_type get_power_supply_type(void)
 {

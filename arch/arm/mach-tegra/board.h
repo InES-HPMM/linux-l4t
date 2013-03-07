@@ -220,6 +220,7 @@ int tegra_get_usb_port_owner_info(void);
 int tegra_get_modem_id(void);
 int tegra_get_commchip_id(void);
 u8 get_power_config(void);
+u8 get_display_config(void);
 enum power_supply_type get_power_supply_type(void);
 enum audio_codec_type get_audio_codec_type(void);
 int get_maximum_cpu_current_supported(void);
