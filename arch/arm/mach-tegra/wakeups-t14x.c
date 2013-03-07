@@ -142,6 +142,14 @@ static int tegra_wake_event_irq[] = {
 	INT_I2C3, /* I2C3 CLK */		/* wake53 */
 	-EAGAIN,				/* wake54 */
 	INT_UARTC, /* UART3 CTS */		/* wake55 */
+	-EAGAIN,				/* wake56 */
+	-EAGAIN,				/* wake57 */
+	-EAGAIN,				/* wake58 */
+	INT_BB2AP_INT0,				/* wake59 */
+	-EAGAIN,				/* wake60 */
+	-EAGAIN,				/* wake61 */
+	-EAGAIN,				/* wake62 */
+	-EAGAIN,				/* wake63 */
 };
 
 static int last_gpio = -1;
