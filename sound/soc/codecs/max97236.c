@@ -449,7 +449,30 @@ static int max97236_set_bias_level(struct snd_soc_codec *codec,
 /*
  * Note: Mic bias goes here
  */
+	int ret;
 
+	switch (level) {
+	case SND_SOC_BIAS_ON:
+		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
+			ret = snd_soc_cache_sync(codec);
+
+			if (ret != 0) {
+				dev_err(codec->dev,
+					"Failed to sync cache: %d\n", ret);
+				return ret;
+			}
+		}
+		break;
+
+	case SND_SOC_BIAS_PREPARE:
+		break;
+
+	case SND_SOC_BIAS_STANDBY:
+	case SND_SOC_BIAS_OFF:
+		codec->cache_sync = 1;
+		break;
+	}
+	codec->dapm.bias_level = level;
 	return 0;
 }
 
@@ -1019,6 +1042,8 @@ static int max97236_probe(struct snd_soc_codec *codec)
 
 	max97236->codec = codec;
 	codec->control_data = max97236->regmap;
+	codec->dapm.idle_bias_off = 1;
+	codec->cache_sync = 1;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
 	if (ret != 0) {
@@ -1092,12 +1117,16 @@ static int max97236_suspend(struct snd_soc_codec *codec)
 	struct max97236_priv *max97236 = snd_soc_codec_get_drvdata(codec);
 	if (gpio_is_valid(max97236->irq))
 		disable_irq(gpio_to_irq(max97236->irq));
+	max97236_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int max97236_resume(struct snd_soc_codec *codec)
 {
 	struct max97236_priv *max97236 = snd_soc_codec_get_drvdata(codec);
+	max97236_reset(max97236);
+	max97236_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	max97236_mic_detect(codec, max97236->jack);
 	if (gpio_is_valid(max97236->irq))
 		enable_irq(gpio_to_irq(max97236->irq));
 	return 0;
