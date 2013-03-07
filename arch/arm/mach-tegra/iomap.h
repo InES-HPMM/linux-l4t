@@ -867,13 +867,15 @@
 #endif
 #define IO_PPCS_SIZE	SZ_1M
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 #define IO_PCIE_PHYS	0x80000000
-#else
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define IO_PCIE_PHYS	0x00000000
+#else
+#define IO_PCIE_PHYS	0x01000000
 #endif
 #if defined(CONFIG_TEGRA_PCI)
-#define IO_PCIE_SIZE	(SZ_16M * 3)
+#define IO_PCIE_SIZE	(SZ_16M * 2)
 #else
 #define IO_PCIE_SIZE	0
 #endif

@@ -155,6 +155,9 @@
 #define AFI_PEX_CTRL_REFCLK_EN					(1 << 3)
 
 #define AFI_PEXBIAS_CTRL_0					0x168
+#define AFI_WR_SCRATCH_0					0x120
+#define AFI_WR_SCRATCH_0_RESET_VAL				0x00202020
+#define AFI_WR_SCRATCH_0_DEFAULT_VAL				0x00000000
 
 #define AFI_MSG_0						0x190
 #define AFI_MSG_PM_PME_MASK					0x00100010
@@ -202,11 +205,19 @@
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
-#define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		1 << 23
-#define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE		1 << 31
+#define PCIE2_RP_PRIV_MISC_PRSNT_MAP				(0xE << 0)
+#define PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD		(0xF << 16)
+#define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		(1 << 23)
+#define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_THRESHOLD		(0xF << 24)
+#define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE		(1 << 31)
 
 #define NV_PCIE2_RP_VEND_XP1					0x00000F04
 #define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE	1 << 21
+
+#define NV_PCIE2_RP_DEV_CTRL					0x00000004
+#define PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED			(1 << 0)
+#define PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED			(1 << 1)
+#define PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED			(1 << 2)
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /*
@@ -261,23 +272,28 @@
  *  which is good enough for all the current use cases.
  *
  */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 #define TEGRA_PCIE_BASE	0x00000000
+#else
+#define TEGRA_PCIE_BASE	0x01000000
+#endif
 
 #define PCIE_REGS_SZ		SZ_16M
 #define PCIE_CFG_OFF		PCIE_REGS_SZ
 #define PCIE_CFG_SZ		SZ_16M
 #define PCIE_EXT_CFG_OFF	(PCIE_CFG_SZ + PCIE_CFG_OFF)
-#define PCIE_EXT_CFG_SZ		SZ_16M
+/* Extended config space is not supported as of now */
+#define PCIE_EXT_CFG_SZ	0
 /* During the boot only registers/config and extended config apertures are
  * mapped. Rest are mapped on demand by the PCI device drivers.
  */
-#define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ + PCIE_EXT_CFG_SZ)
+#define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ)
 
 #define MMIO_BASE				(TEGRA_PCIE_BASE + PCIE_IOMAP_SZ)
 #define MMIO_SIZE				SZ_1M
-#define MEM_BASE_0				(TEGRA_PCIE_BASE + SZ_64M)
+#define MEM_BASE_0				SZ_64M
 #define MEM_SIZE_0				(SZ_128M + SZ_64M)
-#define PREFETCH_MEM_BASE_0			(TEGRA_PCIE_BASE + SZ_256M)
+#define PREFETCH_MEM_BASE_0			SZ_256M
 #define PREFETCH_MEM_SIZE_0			(SZ_512M + SZ_256M)
 #endif
 
@@ -940,20 +956,25 @@ static int tegra_pcie_enable_controller(void)
 	val = afi_readl(AFI_PCIE_CONFIG);
 	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE |
-		 AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_DUAL;
-#else
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
 	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
+#else
+	/* configure T124 pcie lanes in X2_X1 mode */
+	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_SINGLE;
 #endif
 	afi_writel(val, AFI_PCIE_CONFIG);
 
-	/* Disable Gen 2 capability of PCIE */
+	/* Enable Gen 2 capability of PCIE */
 	val = afi_readl(AFI_FUSE) & ~AFI_FUSE_PCIE_T0_GEN2_DIS;
 	afi_writel(val, AFI_FUSE);
 
+	timeout = 0;
+	/* All T124 PADS programming moved to XUSB_PADCTL address space */
+#ifndef CONFIG_ARCH_TEGRA_12x_SOC
 	/* Initialze internal PHY, enable up to 16 PCIE lanes */
+	/* TODO: Program pads through XUSB_PADCTL for T124 */
 	pads_writel(0x0, PADS_CTL_SEL);
 
 	/* override IDDQ to 1 on all 4 lanes */
@@ -1004,13 +1025,16 @@ static int tegra_pcie_enable_controller(void)
 	val = pads_readl(PADS_CTL);
 	val |= (PADS_CTL_TX_DATA_EN_1L | PADS_CTL_RX_DATA_EN_1L);
 	pads_writel(val, PADS_CTL);
+#endif
 
 	/* Take the PCIe interface module out of reset */
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
 
-	/* WAR avoid hang on CPU read/write while gpu transfers in progress */
-	val = afi_readl(AFI_CONFIGURATION) | AFI_CONFIGURATION_DFPCI_RSPPASSPW;
-
+	val = afi_readl(AFI_CONFIGURATION);
+	/* T30 WAR avoid hang on CPU read/write while gpu transfers in progress */
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+	val |= AFI_CONFIGURATION_DFPCI_RSPPASSPW;
+#endif
 	/* Finally enable PCIe */
 	val |=  AFI_CONFIGURATION_EN_FPCI;
 	afi_writel(val, AFI_CONFIGURATION);
@@ -1031,6 +1055,7 @@ static int tegra_pcie_enable_controller(void)
 	return 0;
 }
 
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 static int tegra_pcie_enable_regulators(void)
 {
 	if (tegra_pcie.power_rails_enabled) {
@@ -1085,6 +1110,7 @@ static int tegra_pcie_enable_regulators(void)
 
 	return 0;
 }
+#endif
 
 static int tegra_pcie_disable_regulators(void)
 {
@@ -1111,14 +1137,23 @@ err_exit:
 
 static int tegra_pcie_power_regate(void)
 {
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	int err;
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
 	if (err) {
 		pr_err("PCIE: powerup sequence failed: %d\n", err);
 		return err;
 	}
+#endif
 	tegra_periph_reset_assert(tegra_pcie.pcie_xclk);
-	return clk_prepare_enable(tegra_pcie.pll_e);
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+	err = clk_prepare_enable(tegra_pcie.pll_e);
+	if (err) {
+		pr_err("PCIE: plle clk enable failed: %d\n", err);
+		return err;
+	}
+#endif
+	return 0;
 }
 
 static int tegra_pcie_map_resources(void)
@@ -1151,12 +1186,13 @@ static int tegra_pcie_power_on(void)
 		goto err_exit;
 	}
 	tegra_pcie.pcie_power_enabled = 1;
-
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	err = tegra_pcie_enable_regulators();
 	if (err) {
 		pr_err("PCIE: Failed to enable regulators\n");
 		goto err_exit;
 	}
+#endif
 	err = tegra_pcie_power_regate();
 	if (err) {
 		pr_err("PCIE: Failed to power regate\n");
@@ -1321,9 +1357,9 @@ static void tegra_pcie_enable_clock_clamp(int index)
 
 	/* Power mangagement settings */
 	/* Enable clock clamping by default */
-	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
-	data |= (PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE) |
-		(PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE);
+	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
+		PCIE2_RP_PRIV_MISC_PRSNT_MAP | PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD |
+		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
 }
 
@@ -1337,13 +1373,28 @@ static void tegra_pcie_enable_aspm_l1_support(int index)
 	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
 }
 
+static void tegra_pcie_enable_pcie_master(int index)
+{
+	unsigned int data;
+
+	/* enable PCIE mastering and accepting memory and IO requests */
+	data = rp_readl(NV_PCIE2_RP_DEV_CTRL, index);
+	data |= (PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED |
+		PCIE2_RP_DEV_CTRL_MEMORY_SPACE_ENABLED |
+		PCIE2_RP_DEV_CTRL_BUS_MASTER_ENABLED);
+	rp_writel(data, NV_PCIE2_RP_DEV_CTRL, index);
+}
+
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
 	unsigned int data;
 
-	pp = tegra_pcie.port + tegra_pcie.num_ports;
+	tegra_pcie_enable_clock_clamp(index);
+	tegra_pcie_enable_aspm_l1_support(index);
+	tegra_pcie_enable_pcie_master(index);
 
+	pp = tegra_pcie.port + tegra_pcie.num_ports;
 	pp->index = -1;
 	pp->base = tegra_pcie.regs + offset;
 	pp->link_up = tegra_pcie_check_link(pp, index, reset_reg);
@@ -1353,9 +1404,6 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		printk(KERN_INFO "PCIE: port %d: link down, ignoring\n", index);
 		return;
 	}
-	tegra_pcie_enable_clock_clamp(index);
-	tegra_pcie_enable_aspm_l1_support(index);
-
 	/*
 	 * Initialize TXBA1 register to fix the unfair arbitration
 	 * between downstream reads and completions to upstream reads
@@ -1374,6 +1422,18 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		pp->root_bus_nr = -1;
 	memset(pp->res, 0, sizeof(pp->res));
 }
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static void tegra_pcie_fpga_phy_init(void)
+{
+	/* Do reset for FPGA pcie phy */
+	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+	udelay(10);
+	afi_writel(AFI_WR_SCRATCH_0_DEFAULT_VAL, AFI_WR_SCRATCH_0);
+	udelay(10);
+	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+}
+#endif
 
 static int __init tegra_pcie_init(void)
 {
@@ -1396,6 +1456,9 @@ static int __init tegra_pcie_init(void)
 	if (err)
 		return err;
 
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	tegra_pcie_fpga_phy_init();
+#endif
 	err = tegra_pcie_enable_controller();
 	if (err)
 		return err;
