@@ -123,7 +123,7 @@ static struct regulator_consumer_supply palmas_smps10_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
-	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
+
 	REGULATOR_SUPPLY("vdd_lcd", NULL),
 };
 
@@ -394,6 +394,7 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_gps", NULL),
 		REGULATOR_SUPPLY("vdd_sys_bt", NULL),
 		REGULATOR_SUPPLY("vdd_sys_audio", NULL),
+		REGULATOR_SUPPLY("vdd_vbrtr", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
