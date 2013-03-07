@@ -954,9 +954,17 @@ static int tegra_bb_probe(struct platform_device *pdev)
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	snprintf(bb->name, sizeof(bb->name), "tegra_bb%d", pdev->id);
 
-	ret = request_irq(bb->irq, tegra_bb_isr_handler, 0, bb->name, bb);
+	ret = request_irq(bb->irq, tegra_bb_isr_handler, IRQF_TRIGGER_HIGH,
+				bb->name, bb);
 	if (ret) {
 		dev_err(&pdev->dev, "Could not register irq handler\n");
+		kfree(bb);
+		return -EAGAIN;
+	}
+
+	ret = enable_irq_wake(bb->irq);
+	if (ret) {
+		dev_err(&pdev->dev, "set enable_irq_wake failed\n");
 		kfree(bb);
 		return -EAGAIN;
 	}
