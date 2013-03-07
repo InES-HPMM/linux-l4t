@@ -54,6 +54,7 @@
 #include <mach/audio.h>
 #include <mach/usb_phy.h>
 #include <mach/nand.h>
+#include <mach/pci.h>
 #include <mach/hardware.h>
 
 #include <asm/hardware/gic.h>
@@ -584,6 +585,7 @@ static void bonaire_usb_init(void)
 
 #endif
 }
+
 static struct platform_device *bonaire_hs_uart_devices[] __initdata = {
 	&tegra_uartd_device, &tegra_uartb_device, &tegra_uartc_device,
 };
@@ -621,6 +623,19 @@ static void __init bonaire_hs_uart_init(void)
 	tegra_uartd_device.dev.platform_data = &bonaire_uart_pdata;
 	platform_add_devices(bonaire_hs_uart_devices,
 			ARRAY_SIZE(bonaire_hs_uart_devices));
+}
+
+static struct tegra_pci_platform_data bonaire_pcie_platform_data = {
+	.port_status[0]	= 1,
+	.port_status[1]	= 1,
+	.use_dock_detect	= 0,
+	.gpio			= 0,
+};
+
+static void bonaire_pcie_init(void)
+{
+	tegra_pci_device.dev.platform_data = &bonaire_pcie_platform_data;
+	platform_device_register(&tegra_pci_device);
 }
 
 static void __init tegra_bonaire_init(void)
@@ -664,6 +679,7 @@ static void __init tegra_bonaire_init(void)
 	bonaire_usb_init();
 	bonaire_panel_init();
 	bonaire_bt_rfkill();
+	bonaire_pcie_init();
 }
 
 static void __init tegra_bonaire_reserve(void)

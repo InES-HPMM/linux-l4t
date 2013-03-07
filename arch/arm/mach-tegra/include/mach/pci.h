@@ -3,7 +3,7 @@
  *
  *  Header file containing constants for the tegra PCIe driver.
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,7 +24,7 @@
 
 #include <linux/pci.h>
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#ifndef CONFIG_ARCH_TEGRA_3x_SOC
 	#define MAX_PCIE_SUPPORTED_PORTS 2
 #else
 	#define MAX_PCIE_SUPPORTED_PORTS 3
