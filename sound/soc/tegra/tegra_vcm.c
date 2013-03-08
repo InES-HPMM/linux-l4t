@@ -40,6 +40,7 @@
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
+#include "../codecs/ad193x.h"
 
 #ifdef CONFIG_MACH_P1852
 #define DRV_NAME "tegra-snd-p1852"
@@ -169,6 +170,15 @@ static int tegra_vcm_hw_params(struct snd_pcm_substream *substream,
 					pdata->codec_info[codec_id].slot_width);
 		if (err < 0)
 			dev_err(card->dev, "codec_dai tdm mode setting not done\n");
+#ifdef CONFIG_MACH_E1853
+		if (strstr((pdata->codec_info[codec_id].codec_name),
+					"ad193x")) {
+			/* Override the default settings */
+			/* Set mode to TDM single-line & ASDATA delay to 0 */
+			/* to eliminate noise during ad1937 record */
+			snd_soc_write(codec_dai->codec, AD193X_ADC_CTRL1, 0x27);
+		}
+#endif
 	}
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
