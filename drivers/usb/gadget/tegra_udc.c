@@ -39,6 +39,7 @@
 #include <linux/io.h>
 #include <linux/pm_qos.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/platform_data/tegra_usb.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -2646,6 +2647,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 {
 	struct tegra_udc *udc;
 	struct resource *res;
+	struct tegra_usb_platform_data *pdata;
 	int err = -ENODEV;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
@@ -2704,6 +2706,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		err = 0;
 	}
 
+	pdata = dev_get_platdata(&pdev->dev);
+
 	udc->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(udc->phy)) {
 		dev_err(&pdev->dev, "failed to open USB phy\n");
@@ -2725,7 +2729,8 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	spin_lock_init(&udc->lock);
 	udc->stopped = 1;
 	udc->pdev = pdev;
-	udc->has_hostpc = tegra_usb_phy_has_hostpc(udc->phy) ? 1 : 0;
+	udc->has_hostpc = pdata->has_hostpc;
+	udc->support_pmu_vbus = pdata->support_pmu_vbus;
 	platform_set_drvdata(pdev, udc);
 
 	/* Initialize the udc structure including QH members */
@@ -2791,12 +2796,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_USB_OTG_UTILS
-	if (tegra_usb_phy_otg_supported(udc->phy))
+	if (pdata->port_otg)
 		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 #else
 		udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 #endif
-	udc->support_pmu_vbus = tegra_support_pmu_vbus(udc->phy) ? 1 : 0;
 
 	if (!IS_ERR_OR_NULL(udc->transceiver)) {
 		dr_controller_stop(udc);
