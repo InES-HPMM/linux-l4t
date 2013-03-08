@@ -57,7 +57,7 @@ static wait_queue_head_t wait_no_lp;
 static wait_queue_head_t wait_enable;
 static wait_queue_head_t wait_cpu;
 
-static bool no_lp;
+static int no_lp;
 static bool enable;
 static unsigned long up_delay;
 static unsigned long down_delay;
@@ -247,7 +247,7 @@ static int __apply_cluster_config(int state, int target_state)
 	int new_state = state;
 
 	if (state == TEGRA_CPQ_LP) {
-		if (target_state == TEGRA_CPQ_G) {
+		if (target_state == TEGRA_CPQ_G && no_lp != -1) {
 			unsigned long speed;
 			/* make sure cpu rate is within g-mode range before
 			   switching */
@@ -261,7 +261,7 @@ static int __apply_cluster_config(int state, int target_state)
 				new_state = TEGRA_CPQ_G;
 			}
 		}
-	} else if (target_state == TEGRA_CPQ_LP && !no_lp &&
+	} else if (target_state == TEGRA_CPQ_LP && no_lp != 1 &&
 			num_online_cpus() == 1) {
 		if (!tegra_cluster_switch(cpu_clk, cpu_lp_clk)) {
 			hp_stats_update(CONFIG_NR_CPUS, true);
@@ -331,6 +331,7 @@ static void __cpuinit __apply_core_config(void)
 		cpu_down(cpu);
 		hp_stats_update(cpu, false);
 	}
+	wake_up_interruptible(&wait_cpu);
 }
 
 static void __cpuinit tegra_cpuquiet_work_func(struct work_struct *work)
@@ -423,16 +424,21 @@ static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 {
 	switch (action) {
 	case CPU_POST_DEAD:
-		if (num_online_cpus() == 1 &&
+		if (no_lp != 1 &&
+		    num_online_cpus() == 1 &&
 		    tegra_getspeed(0) <= idle_bottom_freq) {
 			mutex_lock(tegra_cpu_lock);
 
 			cpq_target_cluster_state = TEGRA_CPQ_LP;
-			mod_timer(&updown_timer, jiffies + down_delay);
+
+			/* Explicit LP cluster request: force switch now. */
+			if (no_lp == -1)
+				queue_work(cpuquiet_wq, &cpuquiet_work);
+			else
+				mod_timer(&updown_timer, jiffies + down_delay);
 
 			mutex_unlock(tegra_cpu_lock);
 		}
-		wake_up_interruptible(&wait_cpu);
 		break;
 	case CPU_ONLINE:
 	case CPU_ONLINE_FROZEN:
@@ -446,7 +452,6 @@ static int __cpuinit cpu_online_notify(struct notifier_block *nfb,
 
 			mutex_unlock(tegra_cpu_lock);
 		}
-		wake_up_interruptible(&wait_cpu);
 		break;
 	}
 
@@ -555,25 +560,49 @@ static void enable_callback(struct cpuquiet_attribute *attr)
 	wait_event_interruptible(wait_enable, cpq_state == target_state);
 }
 
-static void no_lp_callback(struct cpuquiet_attribute *attr)
+ssize_t store_no_lp(struct cpuquiet_attribute *attr,
+		const char *buf,
+		size_t count)
 {
+	int lp_req;
+	int rv;
+
+	rv = store_int_attribute(attr, buf, count);
+	if (rv < 0)
+		return rv;
+
 	mutex_lock(tegra_cpu_lock);
 
-	if (no_lp && is_lp_cluster()) {
-		/* Force switch */
+	/* Force switch if necessary. */
+	if (no_lp == 1 && is_lp_cluster()) {
 		cpq_target_cluster_state = TEGRA_CPQ_G;
 		queue_work(cpuquiet_wq, &cpuquiet_work);
+		lp_req = 0;
+	} else if (no_lp == -1 && !is_lp_cluster()) {
+		cpq_target_cluster_state = TEGRA_CPQ_LP;
+		queue_work(cpuquiet_wq, &cpuquiet_work);
+		lp_req = 1;
+	} else {
+		lp_req = is_lp_cluster();
 	}
 
 	mutex_unlock(tegra_cpu_lock);
 
-	wait_event_interruptible(wait_no_lp, no_lp ? !is_lp_cluster() : 1);
+	wait_event_interruptible_timeout(
+		wait_no_lp,
+		no_lp == 0 || is_lp_cluster() == lp_req,
+		hotplug_timeout);
+
+	if (no_lp == 0 || is_lp_cluster() == lp_req)
+		return rv;
+	else
+		return -ETIMEDOUT;
 }
 
 CPQ_BASIC_ATTRIBUTE(idle_top_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(idle_bottom_freq, 0644, uint);
 CPQ_BASIC_ATTRIBUTE(mp_overhead, 0644, int);
-CPQ_ATTRIBUTE(no_lp, 0644, bool, no_lp_callback);
+CPQ_ATTRIBUTE_CUSTOM(no_lp, 0644, show_int_attribute, store_no_lp);
 CPQ_ATTRIBUTE(up_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(down_delay, 0644, ulong, delay_callback);
 CPQ_ATTRIBUTE(hotplug_timeout, 0644, ulong, delay_callback);
