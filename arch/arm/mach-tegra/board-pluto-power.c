@@ -182,6 +182,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("imx132_reg1", NULL),
 	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
 static struct regulator_consumer_supply palmas_ldo8_supply[] = {
@@ -396,6 +397,7 @@ static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vddio_cam_mb", NULL),
+	REGULATOR_SUPPLY("imx132_reg2", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam12", NULL),
 	REGULATOR_SUPPLY("vif", "2-0010"),
 	REGULATOR_SUPPLY("vif", "2-0036"),
