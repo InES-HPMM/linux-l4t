@@ -830,6 +830,19 @@
 		};
 	};
 
+	i2c@7000c500 {
+		status = "okay";
+		clock-frequency = <100000>;
+
+		imx132@36 {
+			compatible = "nvidia,imx132";
+			cam2_gpios = <&gpio 222 0>; /* gpio PBB6 */
+			reg = <0x36>;
+			nvidia,ext_reg; /* Extra power-regulators needed */
+			status = "okay";
+		};
+	};
+
 	spi@7000da00 {
 		status = "okay";
 		spi-max-frequency = <25000000>;
