@@ -61,6 +61,7 @@ struct tegra_ehci_hcd {
 	unsigned int irq;
 	bool bus_suspended_fail;
 	bool unaligned_dma_buf_supported;
+	bool has_hostpc;
 };
 
 struct dma_align_buffer {
@@ -316,7 +317,7 @@ static int tegra_ehci_setup(struct usb_hcd *hcd)
 	/* EHCI registers start at offset 0x100 */
 	ehci->caps = hcd->regs + 0x100;
 
-	ehci->has_hostpc = tegra_usb_phy_has_hostpc(tegra->phy) ? 1 : 0;
+	ehci->has_hostpc = tegra->has_hostpc;
 	ehci->broken_hostpc_phcd = true;
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -528,6 +529,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	tegra->irq = irq;
 
 	tegra->unaligned_dma_buf_supported = pdata->unaligned_dma_buf_supported;
+	tegra->has_hostpc = pdata->has_hostpc;
 
 	tegra->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(tegra->phy)) {
@@ -565,7 +567,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 
 	tegra->ehci = hcd_to_ehci(hcd);
 
-	if (tegra_usb_phy_otg_supported(tegra->phy)) {
+	if (pdata->port_otg) {
 		tegra->transceiver =
 			devm_usb_get_phy(&pdev->dev, USB_PHY_TYPE_USB2);
 		if (!IS_ERR_OR_NULL(tegra->transceiver))
