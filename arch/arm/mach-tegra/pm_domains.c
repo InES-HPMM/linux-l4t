@@ -15,6 +15,7 @@
  *
  */
 
+#include <linux/module.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
@@ -173,18 +174,21 @@ struct tegra_pm_domain tegra_mc_clk = {
 	.gpd.power_off = tegra_mc_clk_power_off,
 	.gpd.power_on = tegra_mc_clk_power_on,
 };
+EXPORT_SYMBOL(tegra_mc_clk);
 
 struct tegra_pm_domain tegra_mc_chain_a = {
 	.gpd.name = "tegra_mc_chain_a",
 	.gpd.power_off = tegra_mc_clk_power_off,
 	.gpd.power_on = tegra_mc_clk_power_on,
 };
+EXPORT_SYMBOL(tegra_mc_chain_a);
 
 struct tegra_pm_domain tegra_mc_chain_b = {
 	.gpd.name = "tegra_chain_b",
 	.gpd.power_off = tegra_mc_clk_power_off,
 	.gpd.power_on = tegra_mc_clk_power_on,
 };
+EXPORT_SYMBOL(tegra_mc_chain_b);
 
 static int __init tegra_init_pm_domain(void)
 {
@@ -208,8 +212,10 @@ void tegra_pd_add_device(struct tegra_pm_domain *pd, struct device *dev)
 	pm_genpd_add_device(&pd->gpd, dev);
 	pm_genpd_add_callbacks(dev, &tegra_pd_ops, NULL);
 }
+EXPORT_SYMBOL(tegra_pd_add_device);
 
 void tegra_pd_add_sd(struct tegra_pm_domain *pd, struct generic_pm_domain *sd)
 {
 	pm_genpd_add_subdomain(&pd->gpd, sd);
 }
+EXPORT_SYMBOL(tegra_pd_add_sd);
