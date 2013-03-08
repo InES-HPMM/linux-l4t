@@ -426,8 +426,10 @@ config TEGRA_EMC_TO_DDR_CLOCK
 	default "1"
 
 config TEGRA_GADGET_BOOST_CPU_FREQ
-	int "Boost cpu frequency for tegra usb gadget (0-1300 mhz)"
-	range 0 1300
+	int "Boost cpu frequency for tegra usb gadget"
+	range 0 1300 if ARCH_TEGRA_3x_SOC
+	range 0 1800 if ARCH_TEGRA_11x_SOC
+	range 0 2000 if ARCH_TEGRA_14x_SOC
 	default 0
 	help
 	  Devices need to boost frequency of CPU when they are connected
