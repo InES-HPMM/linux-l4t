@@ -1,7 +1,7 @@
 /*
  * imx132.c - imx132 sensor driver
  *
- * Copyright (c) 2012 - 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,6 +24,9 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 #include <media/imx132.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -55,6 +58,9 @@ struct imx132_info {
 #define IMX132_TABLE_END 1
 
 #define IMX132_WAIT_MS 5
+
+static struct regulator *imx132_ext_reg1;
+static struct regulator *imx132_ext_reg2;
 
 static struct imx132_reg mode_1920x1080[] = {
 	/* Stand by */
@@ -711,6 +717,118 @@ imx132_ioctl(struct file *file,
 	return 0;
 }
 
+static int imx132_get_extra_regulators(void)
+{
+	if (!imx132_ext_reg1) {
+		imx132_ext_reg1 = regulator_get(NULL, "imx132_reg1");
+		if (WARN_ON(IS_ERR(imx132_ext_reg1))) {
+			pr_err("%s: can't get regulator imx132_reg1: %ld\n",
+				__func__, PTR_ERR(imx132_ext_reg1));
+			imx132_ext_reg1 = NULL;
+			return -ENODEV;
+		}
+	}
+
+	if (!imx132_ext_reg2) {
+		imx132_ext_reg2 = regulator_get(NULL, "imx132_reg2");
+		if (unlikely(WARN_ON(IS_ERR(imx132_ext_reg2)))) {
+			pr_err("%s: can't get regulator imx132_reg2: %ld\n",
+				__func__, PTR_ERR(imx132_ext_reg2));
+			imx132_ext_reg2 = NULL;
+			regulator_put(imx132_ext_reg1);
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+static int imx132_power_on(struct imx132_info *info)
+{
+	int err;
+	struct imx132_power_rail *pw = &info->power;
+	unsigned int cam2_gpio = info->pdata->cam2_gpio;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+		return -EFAULT;
+
+	if (info->pdata->ext_reg) {
+		if (imx132_get_extra_regulators())
+			goto imx132_poweron_fail;
+
+		err = regulator_enable(imx132_ext_reg1);
+		if (unlikely(err))
+			goto imx132_i2c_fail;
+
+		err = regulator_enable(imx132_ext_reg2);
+		if (unlikely(err))
+			goto imx132_vcm_fail;
+	}
+
+	gpio_set_value(cam2_gpio, 0);
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto imx132_avdd_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto imx132_dvdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto imx132_iovdd_fail;
+
+	usleep_range(1, 2);
+
+	gpio_set_value(cam2_gpio, 1);
+
+	return 0;
+
+imx132_iovdd_fail:
+	regulator_disable(pw->dvdd);
+
+imx132_dvdd_fail:
+	regulator_disable(pw->avdd);
+
+imx132_avdd_fail:
+	if (info->pdata->ext_reg)
+		regulator_disable(imx132_ext_reg2);
+
+imx132_vcm_fail:
+	if (info->pdata->ext_reg)
+		regulator_disable(imx132_ext_reg1);
+
+imx132_i2c_fail:
+imx132_poweron_fail:
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int imx132_power_off(struct imx132_info *info)
+{
+	struct imx132_power_rail *pw = &info->power;
+	unsigned int cam2_gpio = info->pdata->cam2_gpio;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+		return -EFAULT;
+
+	gpio_set_value(cam2_gpio, 0);
+
+	usleep_range(1, 2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->avdd);
+
+	if (info->pdata->ext_reg) {
+		regulator_disable(imx132_ext_reg1);
+		regulator_disable(imx132_ext_reg2);
+	}
+
+	return 0;
+}
+
 static int
 imx132_open(struct inode *inode, struct file *file)
 {
@@ -726,12 +844,16 @@ imx132_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->power);
-	else {
-		dev_err(&info->i2c_client->dev,
-			"%s:no valid power_on function.\n", __func__);
-		return -EEXIST;
+	if (info->i2c_client->dev.of_node) {
+		imx132_power_on(info);
+	} else {
+		if (info->pdata && info->pdata->power_on)
+			info->pdata->power_on(&info->power);
+		else {
+			dev_err(&info->i2c_client->dev,
+				"%s:no valid power_on function.\n", __func__);
+			return -EEXIST;
+		}
 	}
 
 	return 0;
@@ -742,8 +864,13 @@ imx132_release(struct inode *inode, struct file *file)
 {
 	struct imx132_info *info = file->private_data;
 
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
+	if (info->i2c_client->dev.of_node) {
+		imx132_power_off(info);
+	} else {
+		if (info->pdata && info->pdata->power_off)
+			info->pdata->power_off(&info->power);
+	}
+
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -762,9 +889,17 @@ static int imx132_power_put(struct imx132_power_rail *pw)
 	if (likely(pw->iovdd))
 		regulator_put(pw->iovdd);
 
+	if (likely(imx132_ext_reg1))
+		regulator_put(imx132_ext_reg1);
+
+	if (likely(imx132_ext_reg2))
+		regulator_put(imx132_ext_reg2);
+
 	pw->dvdd = NULL;
 	pw->avdd = NULL;
 	pw->iovdd = NULL;
+	imx132_ext_reg1 = NULL;
+	imx132_ext_reg2 = NULL;
 
 	return 0;
 }
@@ -813,6 +948,39 @@ static struct miscdevice imx132_device = {
 	.fops = &imx132_fileops,
 };
 
+static struct of_device_id imx132_of_match[] = {
+	{ .compatible = "nvidia,imx132", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, imx132_of_match);
+
+static struct imx132_platform_data *imx132_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct imx132_platform_data *board_info_pdata;
+	const struct of_device_id *match;
+
+	match = of_match_device(imx132_of_match, &client->dev);
+	if (!match) {
+		dev_err(&client->dev, "Failed to find matching dt id\n");
+		return NULL;
+	}
+
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+			GFP_KERNEL);
+	if (!board_info_pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return NULL;
+	}
+
+	board_info_pdata->cam2_gpio = of_get_named_gpio(np, "cam2_gpios", 0);
+
+	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
+
+	return board_info_pdata;
+}
+
 static int
 imx132_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -829,7 +997,16 @@ imx132_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	info->pdata = client->dev.platform_data;
+	if (client->dev.of_node)
+		info->pdata = imx132_parse_dt(client);
+	else
+		info->pdata = client->dev.platform_data;
+
+	if (!info->pdata) {
+		pr_err("[imx132]:%s:Unable to get platform data\n", __func__);
+		return -EFAULT;
+	}
+
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;

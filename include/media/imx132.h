@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software and related documentation
@@ -62,6 +62,8 @@ struct imx132_power_rail {
 };
 
 struct imx132_platform_data {
+	unsigned int cam2_gpio;
+	bool ext_reg;
 	int (*power_on)(struct imx132_power_rail *pw);
 	int (*power_off)(struct imx132_power_rail *pw);
 };
