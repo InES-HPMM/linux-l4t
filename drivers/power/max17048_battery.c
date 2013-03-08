@@ -235,9 +235,11 @@ static void max17048_get_soc(struct i2c_client *client)
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 	} else if (chip->soc < MAX17048_BATTERY_LOW) {
+		chip->status = chip->lasttime_status;
 		chip->health = POWER_SUPPLY_HEALTH_DEAD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 	} else {
+		chip->status = chip->lasttime_status;
 		chip->health = POWER_SUPPLY_HEALTH_GOOD;
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
 	}
@@ -263,7 +265,6 @@ static void max17048_work(struct work_struct *work)
 
 		chip->lasttime_vcell = chip->vcell;
 		chip->lasttime_soc = chip->soc;
-		chip->lasttime_status = chip->status;
 
 		power_supply_changed(&chip->battery);
 	}
@@ -289,6 +290,7 @@ void max17048_battery_status(int status,
 	} else
 		max17048_data->status = POWER_SUPPLY_STATUS_DISCHARGING;
 
+	max17048_data->lasttime_status = max17048_data->status;
 	power_supply_changed(&max17048_data->battery);
 	if (max17048_data->use_usb)
 		power_supply_changed(&max17048_data->usb);
