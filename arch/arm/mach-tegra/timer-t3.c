@@ -1,7 +1,7 @@
 /*
  * arch/arch/mach-tegra/timer-t3.c
  *
- * Copyright (c) 2011-2012, NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,10 +58,10 @@
  * TMR4 - used by CPU1 for LP2 wakeup.
  * TMR5 - used by CPU2 for LP2 wakeup.
  * TMR6 - used by CPU3 for LP2 wakeup.
- * TMR7 - Free.
+ * TMR7 - watchdog, for generic purpose.
  * TMR8 - Free.
  * TMR9 - Free.
- * TMR10 - used as source for watchdog controller 0.
+ * TMR10 - watchdog, suspend/resume recovery
 */
 
 #define TIMER1_OFFSET (TEGRA_TMR1_BASE-TEGRA_TMR1_BASE)
