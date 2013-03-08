@@ -118,7 +118,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 	pr_debug("%s (%p)->%p->(%p)\n", __func__,
 		 dummy, ret, ret->qnext);
 
-	nvshm_iobuf_free_cluster(dummy);
+	nvshm_iobuf_free(dummy);
 	return ret;
 }
 
@@ -149,8 +149,8 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 		iob, iob->chan, iob->length,
 		iob->next);
 
-	/* Take a reference on queued iobufs (all of them!) */
-	nvshm_iobuf_ref_cluster(iob);
+	/* Take a reference on queued iobuf */
+	nvshm_iobuf_ref(iob);
 	/* Flush iobuf(s) in cache */
 	flush_iob_list(handle, iob);
 	handle->shared_queue_tail->qnext = NVSHM_A2B(handle, iob);
