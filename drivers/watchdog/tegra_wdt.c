@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -394,8 +394,8 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	struct tegra_wdt *wdt;
 	int ret = 0;
 
-	if (pdev->id < -1 && pdev->id > 3) {
-		dev_err(&pdev->dev, "only IDs 3:0 supported\n");
+	if ((pdev->id < -1) || (pdev->id > 0)) {
+		dev_err(&pdev->dev, "Only support IDs -1 and 0\n");
 		return -ENODEV;
 	}
 
