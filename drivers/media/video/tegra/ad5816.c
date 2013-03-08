@@ -252,7 +252,7 @@ void ad5816_set_arc_mode(struct ad5816_info *info)
 			__func__);
 
 	/* set ARC enable */
-	err = ad5816_i2c_wr8(info, CONTROL, 0x02);
+	err = ad5816_i2c_wr8(info, CONTROL, 0x0A);
 	if (err)
 		dev_err(&info->i2c_client->dev,
 		"%s: CONTROL reg write failed\n", __func__);
