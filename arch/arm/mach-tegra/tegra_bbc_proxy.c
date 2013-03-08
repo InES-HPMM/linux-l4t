@@ -281,14 +281,36 @@ static ssize_t iso_reserve_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	unsigned int bw;
+	unsigned int ult = 4;
+	char buff[50];
+	char *val, *s;
 	int ret;
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
 
-	sscanf(buf, "%u", &bw);
+	strlcpy(buff, buf, sizeof(buff));
+	s = strim(buff);
+
+	/* first param is bw */
+	val = strsep(&s, ",");
+	ret = kstrtouint(val, 10, &bw);
+	if (ret) {
+		pr_err("invalid bw setting\n");
+		return -EINVAL;
+	}
+
+	/* second param is latency */
+	if (s) {
+		ret = kstrtouint(s, 10, &ult);
+		if (ret) {
+			pr_err("invalid latency setting\n");
+			return -EINVAL;
+		}
+	}
+
 	if (bw > MAX_ISO_BW_REQ)
 		return -EINVAL;
 
-	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, 4);
+	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, ult);
 	if (!ret)
 		dev_err(dev, "can't reserve iso bw\n");
 
@@ -314,12 +336,36 @@ static ssize_t iso_res_realize_store(struct device *dev,
 {
 
 	unsigned int bw;
+	unsigned int ult = 4;
+	char buff[50];
+	char *val, *s;
 	int ret;
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
 
-	sscanf(buf, "%u", &bw);
+	strlcpy(buff, buf, sizeof(buff));
+	s = strim(buff);
 
-	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, 4);
+	/* first param is bw */
+	val = strsep(&s, ",");
+	ret = kstrtouint(val, 10, &bw);
+	if (ret) {
+		pr_err("invalid bw setting\n");
+		return -EINVAL;
+	}
+
+	/* second param is latency */
+	if (s) {
+		ret = kstrtouint(s, 10, &ult);
+		if (ret) {
+			pr_err("invalid latency setting\n");
+			return -EINVAL;
+		}
+	}
+
+	if (bw > MAX_ISO_BW_REQ)
+		return -EINVAL;
+
+	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, ult);
 	if (!ret) {
 		dev_err(dev, "can't reserve iso bw\n");
 		return size;
@@ -329,11 +375,10 @@ static ssize_t iso_res_realize_store(struct device *dev,
 
 	if (!ret) {
 		dev_err(dev, "can't realize iso bw\n");
-	return size;
+		return size;
 	}
 
 /* TODO: set LA*/
-
 	return size;
 }
 
