@@ -599,24 +599,6 @@ bool tegra_usb_phy_pmc_wakeup(struct tegra_usb_phy *phy)
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_pmc_wakeup);
 
-bool tegra_usb_phy_has_hostpc(struct tegra_usb_phy *phy)
-{
-	return phy->pdata->has_hostpc;
-}
-EXPORT_SYMBOL_GPL(tegra_usb_phy_has_hostpc);
-
-bool tegra_usb_phy_otg_supported(struct tegra_usb_phy *phy)
-{
-	return phy->pdata->port_otg;
-}
-EXPORT_SYMBOL_GPL(tegra_usb_phy_otg_supported);
-
-bool tegra_support_pmu_vbus(struct tegra_usb_phy *phy)
-{
-	return phy->pdata->support_pmu_vbus;
-}
-EXPORT_SYMBOL_GPL(tegra_support_pmu_vbus);
-
 void tegra_usb_phy_memory_prefetch_on(struct tegra_usb_phy *phy)
 {
 	void __iomem *ahb_gizmo = IO_ADDRESS(TEGRA_AHB_GIZMO_BASE);
