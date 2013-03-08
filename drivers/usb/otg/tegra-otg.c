@@ -141,12 +141,17 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
 		if (tegra->builtin_host)
-			val |= USB_INT_EN;
+			val |= USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN;
 		else
-			val |= USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
+			val |= USB_ID_PIN_WAKEUP_EN;
+
+		/* Enable vbus interrupt if cable is not detected through PMU */
+		if (!tegra->support_pmu_vbus)
+			val |= USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN;
 	}
 	else
 		val &= ~USB_INT_EN;
+
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	/* Add delay to make sure register is updated */
 	udelay(1);
