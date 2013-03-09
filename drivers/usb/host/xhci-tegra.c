@@ -77,6 +77,7 @@ enum MBOX_CMD_TYPE {
 	MBOX_CMD_SET_BW,
 	MBOX_CMD_SET_SS_PWR_GATING,
 	MBOX_CMD_SET_SS_PWR_UNGATING, /* 8 */
+	MBOX_CMD_SAVE_DFE_CTLE_CTX,
 
 	/* needs to be the last cmd */
 	MBOX_CMD_MAX,
@@ -159,6 +160,15 @@ struct xusb_save_regs {
 	u32 cfg_order;
 	u32 cfg_fladj;
 	u32 cfg_sid;
+	/* DFE and CTLE */
+	u32 tap1_val0;
+	u32 tap1_val1;
+	u32 amp_val0;
+	u32 amp_val1;
+	u32 ctle_z_val0;
+	u32 ctle_z_val1;
+	u32 ctle_g_val0;
+	u32 ctle_g_val1;
 };
 
 struct tegra_xhci_firmware {
@@ -184,6 +194,7 @@ struct tegra_xhci_hcd {
 	bool hs_wake_event;
 	bool host_resume_req;
 	bool lp0_exit;
+	bool dfe_ctle_ctx_saved;
 	unsigned long last_jiffies;
 	unsigned long host_phy_base;
 	void __iomem *host_phy_virt_base;
@@ -838,6 +849,124 @@ tegra_xhci_padctl_enable_usb_vbus(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + USB2_OC_MAP_0);
 }
 
+static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra)
+{
+	struct xhci_hcd *xhci = tegra->xhci;
+	u32 reg;
+
+	xhci_info(xhci, "saving dfe_cntl and ctle context\n");
+	/* save tap1_val0 for pad0 for dfe_cntl */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x32 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	tegra->sregs.tap1_val0 = ((reg & (0x1f << 24)) >> 24);
+
+	/* save tap1_val1 for pad1 for dfe_cntl */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x32 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	tegra->sregs.tap1_val1 = ((reg & (0x1f << 24)) >> 24);
+
+	/* save amp_val0 for pad0 for dfe_cntl */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x33 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	tegra->sregs.amp_val0 = ((reg & (0x7f << 24)) >> 24);
+
+	/* save amp_val1 for pad1 for dfe_cntl */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x33 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	tegra->sregs.amp_val1 = ((reg & (0x7f << 24)) >> 24);
+
+	/* save ctle_z_val0 for pad0 for ctle */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x20 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	tegra->sregs.ctle_z_val0 = ((reg & (0x3f << 24)) >> 24);
+
+	/* save ctle_z_val1 for pad1 for ctle */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x20 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	tegra->sregs.ctle_z_val1 = ((reg & (0x3f << 24)) >> 24);
+
+	/* save ctle_g_val0 for pad0 for ctle */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x21 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD0_CTL_6_0);
+	tegra->sregs.ctle_g_val0 = ((reg & (0x3f << 24)) >> 24);
+
+	/* save ctle_g_val1 for pad1 for ctle */
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	reg &= ~(0xff << 16);
+	reg |= (0x21 << 16);
+	writel(reg, tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+
+	reg = readl(tegra->padctl_base + IOPHY_MISC_PAD1_CTL_6_0);
+	tegra->sregs.ctle_g_val1 = ((reg & (0x3f << 24)) >> 24);
+
+	tegra->dfe_ctle_ctx_saved = true;
+}
+
+static void tegra_xhci_restore_dfe_ctle_context(struct tegra_xhci_hcd *tegra)
+{
+	struct xhci_hcd *xhci = tegra->xhci;
+	u32 reg;
+
+	/* don't restore if not saved */
+	if (tegra->dfe_ctle_ctx_saved == false)
+		return;
+
+	xhci_info(xhci, "restoring dfe_cntl and ctle context\n");
+
+	/* restore dfe_cntl for pad0 */
+	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD0_CTL_4_0);
+	reg &= ~((0x7f << 16) | (0x1f << 24));
+	reg |= ((tegra->sregs.amp_val0 << 16) | (tegra->sregs.tap1_val0 << 24));
+	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD0_CTL_4_0);
+
+	/* restore dfe_cntl for pad1 */
+	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
+	reg &= ~((0x7f << 16) | (0x1f << 24));
+	reg |= ((tegra->sregs.amp_val1 << 16) | (tegra->sregs.tap1_val1 << 24));
+	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
+
+	/* restore ctle for pad0 */
+	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD0_CTL_2_0);
+	reg &= ~((0x3f << 8) | (0x3f << 16));
+	reg |= ((tegra->sregs.ctle_g_val0 << 8) |
+		(tegra->sregs.ctle_z_val0 << 16));
+	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD0_CTL_2_0);
+
+	/* restore ctle for pad1 */
+	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD1_CTL_2_0);
+	reg &= ~((0x3f << 8) | (0x3f << 16));
+	reg |= ((tegra->sregs.ctle_g_val1 << 8) |
+		(tegra->sregs.ctle_z_val1 << 16));
+	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_2_0);
+}
 /* This function assigns the USB ports to the controllers,
  * then programs the port capabilities and pad parameters
  * of ports assigned to XUSB after booted to OS.
@@ -898,6 +1027,8 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	reg = readl(tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
 	reg = xusb_padctl->dfe_cntl;
 	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
+
+	tegra_xhci_restore_dfe_ctle_context(tegra);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD0_CTL_0_0);
 	reg &= ~((0x3fff << 0) | (0x1f << 19));
@@ -1079,13 +1210,17 @@ static void tegra_xhci_enable_fw_message(struct tegra_xhci_hcd *tegra)
 
 	mutex_lock(&tegra->mbox_lock);
 
-	writel(MBOX_OWNER_SW, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
 	do {
+		writel(MBOX_OWNER_SW,
+			tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
 		reg = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+		usleep_range(10, 20);
 	} while (reg != MBOX_OWNER_SW && timeout--);
 
-	if ((timeout == 0) && (reg != MBOX_OWNER_SW))
+	if ((timeout == 0) && (reg != MBOX_OWNER_SW)) {
 		dev_err(&pdev->dev, "Failed to set mbox message owner ID\n");
+		return;
+	}
 
 	writel((MBOX_CMD_MSG_ENABLED << MBOX_CMD_SHIFT),
 			tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
@@ -1110,6 +1245,10 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	u32 usbsts, count = 0xff;
 	struct xhci_cap_regs __iomem *cap_regs;
 	struct xhci_op_regs __iomem *op_regs;
+
+	/* enable mbox interrupt */
+	writel(readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD) | MBOX_INT_EN,
+		tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
 
 	/* First thing, reset the ARU. By the time we get to
 	 * loading boot code below, reset would be complete.
@@ -1624,8 +1763,6 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 
-	tegra_xhci_enable_fw_message(tegra);
-
 	pmc_init();
 	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
 
@@ -1742,6 +1879,11 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		if (ret)
 			xhci_err(xhci, "%s: could not set required mem bw.\n",
 				__func__);
+		goto send_sw_response;
+	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
+		tegra_xhci_save_dfe_ctle_context(tegra);
+		tegra_xhci_restore_dfe_ctle_context(tegra);
+		sw_resp |= (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
 		goto send_sw_response;
 	case MBOX_CMD_ACK:
 		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
@@ -2532,6 +2674,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->hs_wake_event = false;
 	tegra->host_resume_req = false;
 	tegra->lp0_exit = false;
+	tegra->dfe_ctle_ctx_saved = false;
 
 	/* reset wake event to NONE */
 	pmc_reg = readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0);
