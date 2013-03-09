@@ -460,7 +460,11 @@
 #define INT_DISPLAY_GENERAL		(INT_TRI_BASE + 9)
 #define INT_DISPLAY_B_GENERAL		(INT_TRI_BASE + 10)
 #define INT_HDMI			(INT_TRI_BASE + 11)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INT_PMC_WAKE_INT		(INT_TRI_BASE + 12)
+#else
 /* unused				(INT_TRI_BASE + 12) */
+#endif
 #define INT_MC_GENERAL			(INT_TRI_BASE + 13)
 #define INT_EMC_GENERAL			(INT_TRI_BASE + 14)
 #define INT_SPI_6			(INT_SEC_BASE + 15)
@@ -550,7 +554,11 @@
 #define INT_TMR8			(INT_QUINT_BASE + 26)
 #define INT_TMR9			(INT_QUINT_BASE + 27)
 #define INT_TMR10			(INT_QUINT_BASE + 28)
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define INT_BB2AP_MEM_REQ_SOON_INT	(INT_QUINT_BASE + 29)
+#else
 #define INT_HIER_GROUP1_COP		(INT_QUINT_BASE + 29)
+#endif
 #define INT_MC0_GENERAL			(INT_QUINT_BASE + 30)
 #define INT_EMC0_GENERAL		(INT_QUINT_BASE + 31)
 

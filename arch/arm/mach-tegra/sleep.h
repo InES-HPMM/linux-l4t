@@ -118,6 +118,7 @@
 /* Legacy Interrupt Controller register to allow PMC Wake events
  * to be propagated to LIC as interrupts.
  */
+#define TRI_ICTLR_VIRQ_CPU		0x0
 #define TRI_ICTLR_CPU_IER_SET		0x24
 #define TRI_ICTLR_CPU_IER_CLR		0x28
 #define TRI_ICTLR_PMC_WAKE_INT		(1 << 12)

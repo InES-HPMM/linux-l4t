@@ -21,6 +21,7 @@
 struct tegra_bb_platform_data {
 	/* Baseband->AP IRQ */
 	unsigned int bb_irq;
+	unsigned int mem_req_soon;
 	void *bb_handle;
 };
 
