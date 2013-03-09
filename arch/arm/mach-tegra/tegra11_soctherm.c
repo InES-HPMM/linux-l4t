@@ -1,21 +1,19 @@
 /*
  * arch/arm/mach-tegra/tegra11_soctherm.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/debugfs.h>
@@ -613,50 +611,54 @@ static int soctherm_set_limits(enum soctherm_therm_id therm,
 	return 0;
 }
 
-static void soctherm_update(void)
+static void soctherm_update_zone(int zn)
 {
-	long trip_temp, hyst_temp, low_temp, high_temp;
-	int i, count;
+	long low_temp = 0, high_temp = 128000;
+	long trip_temp, hyst_temp;
 	enum thermal_trip_type trip_type;
 	struct thermal_trip_info *trip_state;
+	int count;
+
+	thermal_zone_device_update(thz[zn]);
+
+	for (count = 0; count < thz[zn]->trips; count++) {
+		thz[zn]->ops->get_trip_type(thz[zn], count, &trip_type);
+		if ((trip_type == THERMAL_TRIP_HOT) ||
+		    (trip_type == THERMAL_TRIP_CRITICAL))
+			continue; /* handled in HW */
+
+		trip_state = &plat_data.therm[zn].trips[count];
+		trip_temp = trip_state->trip_temp;
+
+		hyst_temp = trip_temp - trip_state->hysteresis;
+		if (trip_type == THERMAL_TRIP_PASSIVE) {
+			high_temp = trip_temp;
+			if (!trip_state->tripped)
+				hyst_temp = trip_temp;
+		}
+
+		if ((trip_temp >= thz[zn]->temperature) &&
+		    (trip_temp < high_temp))
+			high_temp = trip_temp;
+
+		if ((hyst_temp < thz[zn]->temperature) &&
+		    (hyst_temp > low_temp))
+			low_temp = hyst_temp;
+	}
+
+	soctherm_set_limits(zn, low_temp/1000, high_temp/1000);
+}
+
+static void soctherm_update(void)
+{
+	int i;
 
 	if (!soctherm_init_platform_done)
 		return;
 
 	for (i = 0; i < THERM_SIZE; i++) {
-		if (!thz[i] || !thz[i]->trips)
-			continue;
-
-		thermal_zone_device_update(thz[i]);
-
-		low_temp = 0;
-		high_temp = 128000;
-		for (count = 0; count < thz[i]->trips; count++) {
-			thz[i]->ops->get_trip_type(thz[i], count, &trip_type);
-			if ((trip_type == THERMAL_TRIP_HOT) ||
-			    (trip_type == THERMAL_TRIP_CRITICAL))
-				continue; /* handled in HW */
-
-			trip_state = &plat_data.therm[i].trips[count];
-			trip_temp = trip_state->trip_temp;
-
-			hyst_temp = trip_temp - trip_state->hysteresis;
-			if (trip_type == THERMAL_TRIP_PASSIVE) {
-				high_temp = trip_temp;
-				if (!trip_state->tripped)
-					hyst_temp = trip_temp;
-			}
-
-			if ((trip_temp >= thz[i]->temperature) &&
-			    (trip_temp < high_temp))
-				high_temp = trip_temp;
-
-			if ((hyst_temp < thz[i]->temperature) &&
-			    (hyst_temp > low_temp))
-				low_temp = hyst_temp;
-		}
-
-		soctherm_set_limits(i, low_temp/1000, high_temp/1000);
+		if (thz[i] && thz[i]->trips)
+			soctherm_update_zone(i);
 	}
 }
 
@@ -902,7 +904,7 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	}
 
 	/* Allow SW to shutdown at 'Critical temperature reached' */
-	soctherm_update();
+	soctherm_update_zone(index);
 
 	/* Reprogram HW thermtrip */
 	if (trip_state->trip_type == THERMAL_TRIP_CRITICAL)
@@ -1040,6 +1042,9 @@ static int __init soctherm_thermal_sys_init(void)
 module_init(soctherm_thermal_sys_init);
 
 #else
+static void soctherm_update_zone(int zn)
+{
+}
 static void soctherm_update(void)
 {
 }
@@ -1047,26 +1052,35 @@ static void soctherm_update(void)
 
 static void soctherm_work_func(struct work_struct *work)
 {
-	u32 st, ex = 0;
+	u32 st, ex = 0, cp = 0, gp = 0;
 
 	st = soctherm_readl(INTR_STATUS);
 
 	/* deliberately clear expected interrupts handled in SW */
-	ex |= REG_GET_BIT(st, INTR_POS_CD0);
-	ex |= REG_GET_BIT(st, INTR_POS_CU0);
-	ex |= REG_GET_BIT(st, INTR_POS_GD0);
-	ex |= REG_GET_BIT(st, INTR_POS_GU0);
+	cp |= REG_GET_BIT(st, INTR_POS_CD0);
+	cp |= REG_GET_BIT(st, INTR_POS_CU0);
+	ex |= cp;
+
+	gp |= REG_GET_BIT(st, INTR_POS_GD0);
+	gp |= REG_GET_BIT(st, INTR_POS_GU0);
+	ex |= gp;
+
+	if (ex) {
+		soctherm_writel(ex, INTR_STATUS);
+		st &= ~ex;
+		if (cp)
+			soctherm_update_zone(THERM_CPU);
+		if (gp)
+			soctherm_update_zone(THERM_GPU);
+
+	}
+
+	/* deliberately ignore expected interrupts NOT handled in SW */
 	ex |= REG_GET_BIT(st, INTR_POS_PD0);
 	ex |= REG_GET_BIT(st, INTR_POS_PU0);
 	ex |= REG_GET_BIT(st, INTR_POS_MD0);
 	ex |= REG_GET_BIT(st, INTR_POS_MU0);
-	if (ex) {
-		soctherm_writel(ex, INTR_STATUS);
-		st &= ~ex;
-		soctherm_update();
-	}
 
-	/* deliberately ignore expected interrupts NOT handled in SW */
 	ex |= REG_GET_BIT(st, INTR_POS_CD1);
 	ex |= REG_GET_BIT(st, INTR_POS_CU1);
 	ex |= REG_GET_BIT(st, INTR_POS_CD2);
