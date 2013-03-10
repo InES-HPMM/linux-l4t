@@ -504,7 +504,7 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 {
 	int ret = 0;
 	unsigned long old_rate, max_rate;
-	long new_rate;
+	unsigned long new_rate;
 	bool disable = false;
 
 	if (!c->ops || !c->ops->set_rate)
@@ -519,7 +519,7 @@ int clk_set_rate_locked(struct clk *c, unsigned long rate)
 	if (c->ops && c->ops->round_rate) {
 		new_rate = c->ops->round_rate(c, rate);
 
-		if (new_rate < 0) {
+		if (IS_ERR_VALUE(new_rate)) {
 			ret = new_rate;
 			return ret;
 		}
@@ -1439,7 +1439,7 @@ static int possible_rates_show(struct seq_file *s, void *data)
 
 	/* shared bus clock must round up, unless top of range reached */
 	while (rate <= c->max_rate) {
-		long rounded_rate = c->ops->round_rate(c, rate);
+		unsigned long rounded_rate = c->ops->round_rate(c, rate);
 		if (IS_ERR_VALUE(rounded_rate) || (rounded_rate <= rate))
 			break;
 

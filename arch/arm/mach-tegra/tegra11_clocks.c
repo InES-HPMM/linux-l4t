@@ -4397,10 +4397,10 @@ static void tegra11_emc_clk_init(struct clk *c)
 static long tegra11_emc_clk_round_updown(struct clk *c, unsigned long rate,
 					 bool up)
 {
-	long new_rate = max(rate, c->min_rate);
+	unsigned long new_rate = max(rate, c->min_rate);
 
 	new_rate = tegra_emc_round_rate_updown(new_rate, up);
-	if (new_rate < 0)
+	if (IS_ERR_VALUE(new_rate))
 		new_rate = c->max_rate;
 
 	return new_rate;
