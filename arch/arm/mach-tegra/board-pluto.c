@@ -437,6 +437,7 @@ static struct platform_device tegra_rtc_device = {
 static struct tegra_wakeup_monitor_platform_data
 			pluto_tegra_wakeup_monitor_pdata = {
 	.wifi_wakeup_source	= 6,
+	.rtc_wakeup_source	= 18,
 };
 
 static struct platform_device pluto_tegra_wakeup_monitor_device = {
