@@ -178,9 +178,10 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "vi"),
-	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-ehci.2"),
+	/* This is an optional assignment, keep it as the last entry*/
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
@@ -202,6 +203,10 @@ static struct regulator_consumer_supply palmas_ldo3_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
+};
+
+static struct regulator_consumer_supply palmas_ldo5_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
 
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
@@ -251,6 +256,7 @@ PALMAS_PDATA_INIT(smps9, 2800,  2800, NULL, 0, 0, 0, NORMAL);
 PALMAS_PDATA_INIT(smps10, 5000,  5000, NULL, 0, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo2, 2800,  2800, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo3, 1200,  1200, NULL, 1, 1, 1, 0);
+PALMAS_PDATA_INIT(ldo5, 1200,  1200, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo6, 2850,  2850, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ldo8, 900,  900, NULL, 1, 1, 1, 0);
 PALMAS_PDATA_INIT(ldo9, 1800,  3300, NULL, 0, 0, 1, 0);
@@ -549,8 +555,16 @@ static struct platform_device *fixed_reg_devs_roth[] = {
 int __init roth_palmas_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	struct board_info board_info;
 	u32 pmc_ctrl;
 	int i;
+	int new_brd = 0;
+
+	tegra_get_board_info(&board_info);
+	new_brd = (board_info.board_id == BOARD_P2560);
+	/* Let avdd_hdmi_pll not depend on smps8 for roth 2560 */
+	if (new_brd)
+		(*PALMAS_REG_PDATA(smps8)).num_consumer_supplies--;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -565,7 +579,11 @@ int __init roth_palmas_regulator_init(void)
 			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
-		pmic_platform.reg_data[i] = roth_reg_data[i];
+		/* Include ldo5 for roth 2560 */
+		if ((roth_reg_init[i] == PALMAS_REG_INIT_DATA(ldo5)) && new_brd)
+			pmic_platform.reg_data[i] = PALMAS_REG_PDATA(ldo5);
+		else
+			pmic_platform.reg_data[i] = roth_reg_data[i];
 		pmic_platform.reg_init[i] = roth_reg_init[i];
 	}
 
