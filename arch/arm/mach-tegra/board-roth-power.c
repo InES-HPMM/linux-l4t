@@ -42,6 +42,7 @@
 #include "pm.h"
 #include "tegra-board-id.h"
 #include "board.h"
+#include "board-common.h"
 #include "gpio-names.h"
 #include "board-roth.h"
 #include "tegra_cl_dvfs.h"
@@ -821,5 +822,8 @@ static struct soctherm_platform_data roth_soctherm_data = {
 
 int __init roth_soctherm_init(void)
 {
+	tegra_add_vc_trips(roth_soctherm_data.therm[THERM_CPU].trips,
+			&roth_soctherm_data.therm[THERM_CPU].num_trips);
+
 	return tegra11_soctherm_init(&roth_soctherm_data);
 }
