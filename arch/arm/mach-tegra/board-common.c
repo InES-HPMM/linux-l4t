@@ -175,3 +175,12 @@ void tegra_add_tj_trips(struct thermal_trip_info *trips, int *num_trips)
 {
 	tegra_add_trip_points(trips, num_trips, tegra_core_edp_get_cdev());
 }
+
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
+void tegra_add_vc_trips(struct thermal_trip_info *trips, int *num_trips)
+{
+#ifdef CONFIG_CPU_FREQ
+	tegra_add_trip_points(trips, num_trips, tegra_vc_get_cdev());
+#endif
+}
+#endif

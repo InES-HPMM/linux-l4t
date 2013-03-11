@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra11_cpu_volt_cap.c
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,10 +22,25 @@
 
 #include "cpu-tegra.h"
 
-static struct volt_cap_data {
+static int vc_temperatures[] = {20, 30, 40, 50, 60, 70, 80, 90, 100};
+
+static struct tegra_cooling_device vc_cdev = {
+			.cdev_type = "tegra_vc",
+			.trip_temperatures = vc_temperatures,
+			.trip_temperatures_num = ARRAY_SIZE(vc_temperatures)
+};
+
+struct volt_cap_data {
 	int capped_voltage;
 	bool voltage_capping_enabled;
-} capping_data;
+	struct tegra_cooling_device *cd;
+	int thermal_idx;
+};
+
+static struct volt_cap_data capping_data = {
+			.cd = &vc_cdev,
+			.thermal_idx = 0,
+};
 
 static DEFINE_MUTEX(capping_lock);
 static struct kobject *volt_cap_kobj;
@@ -107,9 +122,63 @@ static int volt_cap_sysfs_init(void)
 	return 0;
 }
 
+/* Cooling device limits minimum rail voltage at cold temperature in pll mode */
+static int tegra_vc_get_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct volt_cap_data *vcd = (struct volt_cap_data *)cdev->devdata;
+	*max_state = vcd->cd->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_vc_get_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct volt_cap_data *vcd = (struct volt_cap_data *)cdev->devdata;
+
+	*cur_state = vcd->thermal_idx;
+	return 0;
+}
+
+static int tegra_vc_set_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct volt_cap_data *vcd = (struct volt_cap_data *)cdev->devdata;
+
+	mutex_lock(&capping_lock);
+	if (vcd->thermal_idx != cur_state) {
+		thermal_generate_netlink_event(
+			vcd->cd->trip_temperatures[cur_state],
+			cur_state > vcd->thermal_idx ?
+				THERMAL_AUX1 : THERMAL_AUX0);
+		vcd->thermal_idx = cur_state;
+	}
+	mutex_unlock(&capping_lock);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_vc_notify_cooling_ops = {
+	.get_max_state = tegra_vc_get_max_state,
+	.get_cur_state = tegra_vc_get_cur_state,
+	.set_cur_state = tegra_vc_set_cur_state,
+};
+
+struct tegra_cooling_device *tegra_vc_get_cdev(void)
+{
+	return &vc_cdev;
+}
+
 static int __init tegra_volt_cap_init(void)
 {
+	struct thermal_cooling_device *tcd;
+
 	volt_cap_sysfs_init();
+	tcd = thermal_cooling_device_register(
+		"tegra_vc", &capping_data,
+		&tegra_vc_notify_cooling_ops);
+	if (IS_ERR_OR_NULL(tcd))
+		pr_err("tegra cooling device %s failed to register\n",
+		       "tegra-vc");
 
 	return 0;
 }
