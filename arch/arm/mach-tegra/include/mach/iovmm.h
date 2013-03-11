@@ -379,7 +379,7 @@ static inline void tegra_iovmm_resume(void)
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);		\
 		da = ops->map_page_at(dev, pfn_to_page(pfn), handle,	\
 				 PAGE_SIZE, 0, 0, &attrs);		\
-		dma_mapping_error(dev, da);				\
+		dma_mapping_error(dev, da) ? -ENOMEM : 0;		\
 	})
 
 struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
