@@ -29,7 +29,7 @@
 
 #define MAX_MODEM_EDP_STATES 10
 
-#define MAX_ISO_BW_REQ  900000
+#define MAX_ISO_BW_REQ  1200000
 
 struct tegra_bbc_proxy {
 	struct edp_client *modem_boot_edp_client;
@@ -241,7 +241,7 @@ static ssize_t la_bbcr_store(struct device *dev,
 	unsigned int la_val;
 
 	sscanf(buf, "%u", &la_val);
-	if (la_val > 4096)
+	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
 	tegra_set_latency_allowance(TEGRA_LA_BBCR, la_val);
@@ -255,7 +255,7 @@ static ssize_t la_bbcw_store(struct device *dev,
 	unsigned int la_val;
 
 	sscanf(buf, "%u", &la_val);
-	if (la_val > 4096)
+	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
 	tegra_set_latency_allowance(TEGRA_LA_BBCW, la_val);
@@ -269,7 +269,7 @@ static ssize_t la_bbcllr_store(struct device *dev,
 	unsigned int la_val;
 
 	sscanf(buf, "%u", &la_val);
-	if (la_val > 4096)
+	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
 	tegra_set_latency_allowance(TEGRA_LA_BBCLLR, la_val);
