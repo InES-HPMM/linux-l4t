@@ -397,6 +397,8 @@ static int enable_sensor(struct rmi_device *rmi_dev)
 
 	rmi_phys = rmi_dev->phys;
 	if (data->irq) {
+		pr_info("%s: use handler 0x%p\n", __func__,
+			rmi_phys->hard_irq ? rmi_phys->hard_irq : NULL);
 		retval = request_threaded_irq(data->irq,
 				rmi_phys->hard_irq ? rmi_phys->hard_irq : NULL,
 				rmi_phys->irq_thread ?
@@ -750,6 +752,15 @@ static int rmi_driver_irq_restore(struct rmi_device *rmi_dev)
 	struct rmi_driver_data *data = dev_get_drvdata(&rmi_dev->dev);
 	struct device *dev = &rmi_dev->dev;
 
+	if ( rmi_dev->interrupt_restore_block_flag ) {
+		/* in Direct Touch Mode, or other related modes,
+		** we do nto restore interrupts -- done automagically
+		** by the firmware
+		*/
+		return retval;
+	}
+
+
 	mutex_lock(&data->irq_mutex);
 
 	if (data->irq_stored) {
@@ -778,6 +789,8 @@ error_unlock:
 static int rmi_driver_irq_handler(struct rmi_device *rmi_dev, int irq)
 {
 	struct rmi_driver_data *data = dev_get_drvdata(&rmi_dev->dev);
+
+	//pr_info("%s: rmi_driver_irq_handler IRQ = 0x%x\n", __func__, irq);
 
 	might_sleep();
 	/* Can get called before the driver is fully ready to deal with

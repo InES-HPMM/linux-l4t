@@ -1022,7 +1022,7 @@ static int rmi_f54_reset(struct rmi_function_dev *fn_dev)
 
 	mutex_lock(&data->status_mutex);
 	if (driver->restore_irq_mask) {
-		dev_dbg(&fn_dev->dev, "Restoring interupts!\n");
+		dev_dbg(&fn_dev->dev, "%s: Restoring interupts!\n", __func__);
 		driver->restore_irq_mask(fn_dev->rmi_dev);
 	} else {
 		dev_err(&fn_dev->dev, "No way to restore interrupts!\n");
@@ -1698,6 +1698,7 @@ int rmi_f54_attention(struct rmi_function_dev *fn_dev,
 
 	pdata->spi_data.block_delay_us = 0;
 	pdata->spi_data.read_delay_us  = 0;
+	rmi_dev->interrupt_restore_block_flag = 1;
 
 	/* Write 0 to fifohi and fifolo. */
 	fifo[0] = 0;
@@ -1710,6 +1711,7 @@ int rmi_f54_attention(struct rmi_function_dev *fn_dev,
 		retval = rmi_read_block(fn_dev->rmi_dev,
 			fn_dev->fd.data_base_addr + RMI_F54_REPORT_DATA_OFFSET,
 			data->report_data, data->report_size);
+	//dev_info(&fn_dev->dev, "%s: read data retval = 0x%x\n", __func__, retval);
 	
 	/*
 	** restore current SPI delays
@@ -1725,6 +1727,7 @@ int rmi_f54_attention(struct rmi_function_dev *fn_dev,
 
 		data->fresh_or_stale = F54_REPORT_STALE;
 		error = IDLE;
+		rmi_dev->interrupt_restore_block_flag = 0;
 		goto error_exit;
 	}
 	// dev_dbg(&fn_dev->dev, "%s: The Report Size is %d",__func__,data->report_size);
@@ -1733,17 +1736,83 @@ int rmi_f54_attention(struct rmi_function_dev *fn_dev,
 		error = -EINVAL;
 	        data->fresh_or_stale = F54_REPORT_STALE;
 		error = IDLE;
+		rmi_dev->interrupt_restore_block_flag = 0;
 
 		goto error_exit;
 	}
 #if RAW_HEX
 	int l;
 	/* Debugging: Print out the file in hex. */
-	pr_info("Report data (raw hex):\n");
-	for (l = 0; l < data->report_size; l += 2) {
-		pr_info("%03d: 0x%02x%02x\n", l/2,
-			data->report_data[l+1], data->report_data[l]);
+	pr_info("Report data (raw hex), size: %5d:\n", retval);
+	for (l = 0; l <= data->report_size; l += 54) {
+		pr_info("%3d - %3d: 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x 0x%02x%02x\n",
+			l, l+15,
+			data->report_data[l+ 1], data->report_data[l+ 0],
+			data->report_data[l+ 3], data->report_data[l+ 2],
+			data->report_data[l+ 5], data->report_data[l+ 4],
+			data->report_data[l+ 7], data->report_data[l+ 6],
+			data->report_data[l+ 9], data->report_data[l+ 8],
+			data->report_data[l+11], data->report_data[l+10],
+			data->report_data[l+13], data->report_data[l+12],
+			data->report_data[l+15], data->report_data[l+14],
+			data->report_data[l+17], data->report_data[l+16],
+			data->report_data[l+19], data->report_data[l+18],
+			data->report_data[l+21], data->report_data[l+20],
+			data->report_data[l+23], data->report_data[l+22],
+			data->report_data[l+25], data->report_data[l+24],
+			data->report_data[l+27], data->report_data[l+26],
+			data->report_data[l+29], data->report_data[l+28],
+			data->report_data[l+31], data->report_data[l+30],
+			data->report_data[l+33], data->report_data[l+32],
+			data->report_data[l+35], data->report_data[l+34],
+			data->report_data[l+37], data->report_data[l+36],
+			data->report_data[l+39], data->report_data[l+38],
+			data->report_data[l+41], data->report_data[l+40],
+			data->report_data[l+43], data->report_data[l+42],
+			data->report_data[l+45], data->report_data[l+44],
+			data->report_data[l+47], data->report_data[l+46],
+			data->report_data[l+49], data->report_data[l+48],
+			data->report_data[l+51], data->report_data[l+50],
+			data->report_data[l+53], data->report_data[l+52]
+			);
 	}
+
+
+	pr_info("Report data (raw Dec), size: %5d:\n", retval);
+	for (l = 0; l <= data->report_size; l += 54) {
+		pr_info("%3d - %3d: %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			l, l+15,
+			(data->report_data[l+ 1]*256)+ data->report_data[l+ 0],
+			(data->report_data[l+ 3]*256)+ data->report_data[l+ 2],
+			(data->report_data[l+ 5]*256)+ data->report_data[l+ 4],
+			(data->report_data[l+ 7]*256)+ data->report_data[l+ 6],
+			(data->report_data[l+ 9]*256)+ data->report_data[l+ 8],
+			(data->report_data[l+11]*256)+ data->report_data[l+10],
+			(data->report_data[l+13]*256)+ data->report_data[l+12],
+			(data->report_data[l+15]*256)+ data->report_data[l+14],
+			(data->report_data[l+17]*256)+ data->report_data[l+16],
+			(data->report_data[l+19]*256)+ data->report_data[l+18],
+			(data->report_data[l+21]*256)+ data->report_data[l+20],
+			(data->report_data[l+23]*256)+ data->report_data[l+22],
+			(data->report_data[l+25]*256)+ data->report_data[l+24],
+			(data->report_data[l+27]*256)+ data->report_data[l+26],
+			(data->report_data[l+29]*256)+ data->report_data[l+28],
+			(data->report_data[l+31]*256)+ data->report_data[l+30],
+			(data->report_data[l+33]*256)+ data->report_data[l+32],
+			(data->report_data[l+35]*256)+ data->report_data[l+34],
+			(data->report_data[l+37]*256)+ data->report_data[l+36],
+			(data->report_data[l+39]*256)+ data->report_data[l+38],
+			(data->report_data[l+41]*256)+ data->report_data[l+40],
+			(data->report_data[l+43]*256)+ data->report_data[l+42],
+			(data->report_data[l+45]*256)+ data->report_data[l+44],
+			(data->report_data[l+47]*256)+ data->report_data[l+46],
+			(data->report_data[l+49]*256)+ data->report_data[l+48],
+			(data->report_data[l+51]*256)+ data->report_data[l+50],
+			(data->report_data[l+53]*256)+ data->report_data[l+52]
+			);
+	}
+
+
 #endif
 #if HUMAN_READABLE
 	/* Debugging: Print out file in human understandable image */
@@ -1826,7 +1895,7 @@ static void clear_status_worker(struct work_struct *work)
 			}
 		}
 		if (driver->restore_irq_mask) {
-			dev_dbg(&fn_dev->dev, "Restoring interupts!\n");
+			dev_dbg(&fn_dev->dev, "%s: Restoring interupts!\n", __func__);
 			driver->restore_irq_mask(fn_dev->rmi_dev);
 		} else {
 			dev_err(&fn_dev->dev, "No way to restore interrupts!\n");
@@ -2711,7 +2780,6 @@ static ssize_t SynSens_char_dev_read(struct file *filp, const char __user *buf,
 	long int curr_sleep = 0;
 	u8 command = 1;
 
-
 	if (!filp) {
 		pr_info("%s: called with NULL file pointer\n", __func__);
 		return -EINVAL;
@@ -2740,6 +2808,7 @@ static ssize_t SynSens_char_dev_read(struct file *filp, const char __user *buf,
 	/* get the next report, unless special report type */
 	if (my_instance_data->report_type != F54_16BIT_UNSIGNED_RAW_IMAGE) {
 		/* Write the command to the command register */
+		pr_info("%s: Get data report\n", __func__);
 		ret_value = rmi_write_block(my_instance_data->fn_dev->rmi_dev, 
 					my_instance_data->fn_dev->fd.command_base_addr,
 					&command, 1);
@@ -2812,6 +2881,7 @@ static ssize_t SynSens_char_dev_read(struct file *filp, const char __user *buf,
 	if (curr_sleep >= 3000000) {
 	  pr_info("#");
 	}
+
 	ret_value = copy_to_user((void __user *)buf,
 				 (const void *)buffer_to_copy_to_output,
 				 my_instance_data->report_size);
@@ -2876,7 +2946,8 @@ static ssize_t SynSens_char_dev_write(struct file *filp, const char __user *buf,
 	driver = fn_dev->rmi_dev->driver;
 	driver_data = dev_get_drvdata(&fn_dev->rmi_dev->dev);
 	memset(tmpbuf, '\0', 128);
-	retval = copy_from_user(tmpbuf, buf, count);
+	pr_info("%s: count = %d tmpbuf size = %d\n", __func__, count, 128);
+	retval = copy_from_user(tmpbuf, buf, count > 128 ? 128 : count);
 	command = tmpbuf[0];
 	switch(command) {
 	case F54_REPORT_SET_TYPE:
@@ -2916,7 +2987,7 @@ static ssize_t SynSens_char_dev_write(struct file *filp, const char __user *buf,
 		/* Turn back on other interupts, if it
 		 * appears that we turned them off. */
 		if (driver_data->irq_stored && driver->restore_irq_mask) {
-			dev_dbg(&fn_dev->dev, "Restoring interupts!\n");
+			dev_dbg(&fn_dev->dev, "%s: Restoring interupts!\n", __func__);
 			driver->restore_irq_mask(fn_dev->rmi_dev);
 		}
 	}

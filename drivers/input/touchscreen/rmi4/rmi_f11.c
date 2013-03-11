@@ -2817,6 +2817,7 @@ rmi_f11_raw_finger_char_dev_write(struct file *filp, const char __user *buf,
 	struct raw_finger_data_feed_char_dev *char_dev_container = NULL;
 	ssize_t ret_value  = 0;
 	int i = 0;
+	int len;
 
 	if (!filp) {
 		pr_err("%s: called with NULL file pointer\n", __func__);
@@ -2839,9 +2840,11 @@ rmi_f11_raw_finger_char_dev_write(struct file *filp, const char __user *buf,
 		return -ENOMEM;
 	}
 
+	len = my_instance_data->sensors[0].pkt_size > count ? count
+		: my_instance_data->sensors[0].pkt_size;
 	retval =
 		copy_from_user(my_instance_data->sensors[0].data_pkt,
-			       buf, count);
+			       buf, len);
 
 	/*
 	 * call the rmi_f11_finger_handler() as if the

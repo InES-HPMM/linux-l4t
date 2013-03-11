@@ -571,6 +571,7 @@ struct rmi_device {
 #endif
 
 	struct dentry *debugfs_root;
+	int    interrupt_restore_block_flag;
 };
 
 #define to_rmi_device(d) container_of(d, struct rmi_device, dev);
