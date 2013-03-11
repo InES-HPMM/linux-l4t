@@ -90,6 +90,7 @@
 #define TEGRA3_SDHOST_STD_FREQ	104000000
 
 #define MAX_DIVISOR_VALUE	128
+#define DEFAULT_SDHOST_FREQ	50000000
 
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_8	128
 #define MMC_TUNING_BLOCK_SIZE_BUS_WIDTH_4	64
@@ -591,6 +592,7 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 		if (!tegra_host->is_parent_pllc) {
 			parent_clk = pll_c;
 			tegra_host->is_parent_pllc = true;
+			clk_set_rate(pltfm_host->clk, DEFAULT_SDHOST_FREQ);
 		} else
 			return;
 	} else if (tegra_host->is_parent_pllc) {
