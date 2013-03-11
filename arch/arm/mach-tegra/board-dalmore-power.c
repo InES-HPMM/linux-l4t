@@ -1301,6 +1301,7 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		[THERM_CPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
+			.hotspot_offset = 6000,
 			.num_trips = 3,
 			.trips = {
 				{
@@ -1329,11 +1330,8 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 		[THERM_GPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
-			.num_trips = 0, /* Disables the trips config below */
-			/*
-			 * Following .trips config retained for compatibility
-			 * with dalmore/pluto and later enablement when needed
-			 */
+			.hotspot_offset = 6000,
+			.num_trips = 3,
 			.trips = {
 				{
 					.cdev_type = "tegra-balanced",

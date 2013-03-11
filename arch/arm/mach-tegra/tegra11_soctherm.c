@@ -464,7 +464,6 @@ static const struct soctherm_sensor default_t11x_sensor_params = {
 	.tsamp_ATE = 655,
 	.pdiv      = 10,
 	.pdiv_ATE  = 10,
-	.hot_off   = 0,
 };
 static const struct soctherm_sensor default_t14x_sensor_params = {
 	.tall      = 16300,
@@ -474,7 +473,6 @@ static const struct soctherm_sensor default_t14x_sensor_params = {
 	.tsamp_ATE = 481,
 	.pdiv      = 8,
 	.pdiv_ATE  = 8,
-	.hot_off   = 0,
 };
 
 static const unsigned long default_t11x_soctherm_clk_rate = 136000000;
@@ -1419,7 +1417,6 @@ static int soctherm_init_platform_data(void)
 		s->tsamp_ATE = s->tsamp_ATE ?: sensor_defaults.tsamp_ATE;
 		s->pdiv      = s->pdiv      ?: sensor_defaults.pdiv;
 		s->pdiv_ATE  = s->pdiv_ATE  ?: sensor_defaults.pdiv_ATE;
-		s->hot_off   = s->hot_off   ?: sensor_defaults.hot_off;
 	}
 
 	/* Pdiv */
@@ -1429,15 +1426,6 @@ static int soctherm_init_platform_data(void)
 	r = REG_SET(r, TS_PDIV_MEM, plat_data.sensor_data[TSENSE_MEM0].pdiv);
 	r = REG_SET(r, TS_PDIV_PLLX, plat_data.sensor_data[TSENSE_PLLX].pdiv);
 	soctherm_writel(r, TS_PDIV);
-
-	/* Hotspot Offsets */
-	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
-		    plat_data.sensor_data[TSENSE_CPU0].hot_off);
-	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
-		    plat_data.sensor_data[TSENSE_GPU].hot_off);
-	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
-		    plat_data.sensor_data[TSENSE_MEM0].hot_off);
-	soctherm_writel(r, TS_HOTSPOT_OFF);
 
 	/* Thermal Sensing programming */
 	if (soctherm_fuse_read_vsensor() < 0)
@@ -1467,6 +1455,15 @@ static int soctherm_init_platform_data(void)
 			}
 		}
 	}
+
+	/* Program hotspot offsets per THERM */
+	r = REG_SET(0, TS_HOTSPOT_OFF_CPU,
+		    plat_data.therm[THERM_CPU].hotspot_offset / 1000);
+	r = REG_SET(r, TS_HOTSPOT_OFF_GPU,
+		    plat_data.therm[THERM_GPU].hotspot_offset / 1000);
+	r = REG_SET(r, TS_HOTSPOT_OFF_MEM,
+		    plat_data.therm[THERM_MEM].hotspot_offset / 1000);
+	soctherm_writel(r, TS_HOTSPOT_OFF);
 
 	/* Sanitize HW throttle priority */
 	for (i = 0; i < THROTTLE_SIZE; i++)

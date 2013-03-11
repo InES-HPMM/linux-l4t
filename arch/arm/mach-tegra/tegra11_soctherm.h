@@ -63,13 +63,13 @@ struct soctherm_sensor {
 	int tsamp_ATE;
 	u8 pdiv;
 	u8 pdiv_ATE;
-	u8 hot_off;
 };
 
 struct soctherm_therm {
 	bool zone_enable;
 	int passive_delay;
 	int num_trips;
+	int hotspot_offset;
 	struct thermal_trip_info trips[THERMAL_MAX_TRIPS];
 	struct thermal_zone_params *tzp;
 };

@@ -832,6 +832,7 @@ static struct soctherm_platform_data pismo_soctherm_data = {
 		[THERM_CPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
+			.hotspot_offset = 6000,
 			.num_trips = 3,
 			.trips = {
 				{
@@ -860,6 +861,7 @@ static struct soctherm_platform_data pismo_soctherm_data = {
 		[THERM_GPU] = {
 			.zone_enable = true,
 			.passive_delay = 1000,
+			.hotspot_offset = 6000,
 			.num_trips = 3,
 			.trips = {
 				{
