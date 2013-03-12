@@ -133,11 +133,7 @@ static int palmas_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 	struct palmas_gpio *palmas_gpio = to_palmas_gpio(chip);
 	struct palmas *palmas = palmas_gpio->palmas;
 
-	if (!regmap_irq_chip_get_base(palmas->irq_data))
-		return -EINVAL;
-
-	return (regmap_irq_chip_get_base(palmas->irq_data))
-				+ PALMAS_GPIO_0_IRQ + offset;
+	return palmas_irq_get_virq(palmas, PALMAS_GPIO_0_IRQ + offset);
 }
 
 static int palmas_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
