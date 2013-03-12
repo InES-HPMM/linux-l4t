@@ -47,6 +47,7 @@
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/powergate.h>
+#include <linux/platform_data/tegra_ahci.h>
 
 #define DRV_NAME	"tegra-sata"
 #define DRV_VERSION	"1.0"
@@ -465,7 +466,8 @@ static const struct sata_pad_cntrl sata_calib_pad_val[] = {
 	}
 };
 
-static void tegra_ahci_set_pad_cntrl_regs(void)
+static void tegra_ahci_set_pad_cntrl_regs(
+			struct tegra_ahci_platform_data *ahci_pdata)
 {
 	int	calib_val;
 	int	val;
@@ -503,7 +505,16 @@ static void tegra_ahci_set_pad_cntrl_regs(void)
 		/* set 2 to SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ field */
 		val = scfg_readl(T_SATA0_CHX_PHY_CTRL1_GEN2_OFFSET);
 		val &= ~SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_MASK;
-		val |= (2 << SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT);
+
+		if ((ahci_pdata) && (ahci_pdata->gen2_rx_eq > 0)) {
+			val |= (ahci_pdata->gen2_rx_eq <<
+					SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT);
+		} else {
+			/* Default set 2 to SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ
+								field */
+			val |= (2 << SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT);
+		}
+
 		scfg_writel(val, T_SATA0_CHX_PHY_CTRL1_GEN2_OFFSET);
 	}
 	scfg_writel(SATA0_NONE_SELECTED, T_SATA0_INDEX_OFFSET);
@@ -590,6 +601,9 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	struct clk *clk_pllp = NULL;
 	u32 val;
 	u32 timeout;
+
+	struct tegra_ahci_platform_data *ahci_pdata =
+					tegra_hpriv->dev->platform_data;
 
 	err = tegra_ahci_get_rails(tegra_hpriv->power_rails);
 	if (err) {
@@ -757,7 +771,7 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv)
 	sata_writel(val, SATA_CONFIGURATION_0_OFFSET);
 
 	/* program sata pad control based on the fuse */
-	tegra_ahci_set_pad_cntrl_regs();
+	tegra_ahci_set_pad_cntrl_regs(ahci_pdata);
 
 	/*
 	 * clear bit T_SATA0_CFG_PHY_0_USE_7BIT_ALIGN_DET_FOR_SPD of
@@ -1904,6 +1918,7 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	hpriv->flags |= (unsigned long)pi.private_data;
 	tegra_hpriv = (struct tegra_ahci_host_priv *)hpriv;
 	g_tegra_hpriv = tegra_hpriv;
+	tegra_hpriv->dev = dev;
 
 	/* Call tegra init routine */
 	rc = tegra_ahci_controller_init(tegra_hpriv);
@@ -1944,7 +1959,6 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	}
 	host->private_data = hpriv;
 	tegra_hpriv->host = host;
-	tegra_hpriv->dev = dev;
 	host->iomap = tegra_hpriv->bars_table;
 
 	if (!(hpriv->cap & HOST_CAP_SSS))
