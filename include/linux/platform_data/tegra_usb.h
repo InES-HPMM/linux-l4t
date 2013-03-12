@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,6 +33,16 @@ enum tegra_usb_phy_interface {
 	TEGRA_USB_PHY_INTF_ULPI_NULL = 2,
 	TEGRA_USB_PHY_INTF_HSIC = 3,
 	TEGRA_USB_PHY_INTF_ICUSB = 4,
+};
+
+/**
+ * defines the various ID cable detection types
+ */
+enum tegra_usb_id_detection {
+	TEGRA_USB_ID = 0,
+	TEGRA_USB_PMU_ID = 1,
+	TEGRA_USB_GPIO_ID = 2,
+	TEGRA_USB_VIRTUAL_ID = 3,
 };
 
 /**
@@ -110,9 +120,9 @@ struct tegra_usb_host_mode_data {
 struct tegra_usb_platform_data {
 	bool port_otg;
 	bool has_hostpc;
-	bool builtin_host_disabled;
 	bool unaligned_dma_buf_supported;
 	bool support_pmu_vbus;
+	enum tegra_usb_id_detection id_det_type;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 
@@ -136,6 +146,7 @@ struct tegra_usb_otg_data {
 	struct platform_device *ehci_device;
 	struct tegra_usb_platform_data *ehci_pdata;
 	char *extcon_dev_name;
+	int id_det_gpio;
 };
 
 #endif /* _TEGRA_USB_H_ */
