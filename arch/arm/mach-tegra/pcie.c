@@ -1,6 +1,4 @@
 /*
- * arch/arm/mach-tegra/pcie.c
- *
  * PCIe host controller driver for TEGRA SOCs
  *
  * Copyright (c) 2010, CompuLab, Ltd.
@@ -158,6 +156,11 @@
 
 #define AFI_PEXBIAS_CTRL_0					0x168
 
+#define AFI_MSG_0						0x190
+#define AFI_MSG_PM_PME_MASK					0x00100010
+#define AFI_MSG_INTX_MASK					0x1f001f00
+#define AFI_MSG_PM_PME0					(1 << 4)
+
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
 
@@ -195,9 +198,8 @@
 
 #define  PADS_REFCLK_CFG1					0x000000CC
 
-/* PMC access is required for PCIE xclk (un)clamping */
-#define PMC_SCRATCH42						0x144
-#define PMC_SCRATCH42_PCX_CLAMP				(1 << 0)
+#define NV_PCIE2_RP_RSR					0x000000A0
+#define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
 #define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		1 << 23
@@ -765,6 +767,38 @@ static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+static void notify_device_isr(u32 mesg)
+{
+	printk(KERN_INFO "Legacy INTx interrupt occurred %x\n", mesg);
+	/* TODO: Need to call pcie device isr instead of ignoring the interrupt */
+	/* same comment applies to below handler also */
+}
+#endif
+
+static void handle_sb_intr(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	/* Handle sideband intr differently for T124 */
+	u32 mesg;
+
+	mesg = afi_readl(AFI_MSG_0);
+
+	if (mesg & AFI_MSG_INTX_MASK)
+		/* notify device isr for INTx messages from pcie devices */
+		notify_device_isr(mesg);
+	else if (mesg & AFI_MSG_PM_PME_MASK) {
+		u32 idx;
+		/* handle PME messages */
+		idx = (mesg & AFI_MSG_PM_PME0) ? 0 : 1;
+		mesg = rp_readl(NV_PCIE2_RP_RSR, idx);
+		mesg |= NV_PCIE2_RP_RSR_PMESTAT;
+		rp_writel(mesg, NV_PCIE2_RP_RSR, idx);
+	} else
+		afi_writel(mesg, AFI_MSG_0);
+#endif
+}
+
 static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 {
 	const char *err_msg[] = {
@@ -784,10 +818,11 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 
 	code = afi_readl(AFI_INTR_CODE) & AFI_INTR_CODE_MASK;
 	signature = afi_readl(AFI_INTR_SIGNATURE);
-	afi_writel(0, AFI_INTR_CODE);
 
 	if (code == AFI_INTR_LEGACY)
-		return IRQ_NONE;
+		handle_sb_intr();
+
+	afi_writel(0, AFI_INTR_CODE);
 
 	if (code >= ARRAY_SIZE(err_msg))
 		code = 0;
