@@ -319,6 +319,92 @@ static struct ov9772_reg *test_patterns[] = {
 	tp_cbars_seq,
 	tp_checker_seq,
 };
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static struct ov9772_reg ov9772_1280x720_i2c[] = {
+	{OV9772_TABLE_RESET, 0},
+	{OV9772_TABLE_WAIT_MS, 100},
+	{0x0200, 0x00},
+	{0x0201, 0x00},
+	{0x0301, 0x0a},
+	{0x0303, 0x08},
+	{0x0305, 0x02},
+	{0x0307, 0x20},
+	{0x0340, 0x02},
+	{0x0341, 0xf8},
+	{0x0342, 0x06},
+	{0x0343, 0x2a},
+	{0x034c, 0x05},
+	{0x034d, 0x00},
+	{0x034e, 0x02},
+	{0x034f, 0xd0},
+	{0x300c, 0x22},
+	{0x300d, 0x1e},
+	{0x300e, 0xc2},
+	{0x3010, 0x81},
+	{0x3012, 0x70},
+	{0x3014, 0x0d},
+	{0x3022, 0x20},
+	{0x3025, 0x03},
+	{0x303c, 0x23},
+	{0x3103, 0x00},
+	{0x3104, 0x04},
+	{0x3503, 0x14},
+	{0x3602, 0xc0},
+	{0x3611, 0x10},
+	{0x3613, 0x83},
+	{0x3620, 0x24},
+	{0x3622, 0x2c},
+	{0x3631, 0xc2},
+	{0x3634, 0x04},
+	{0x3708, 0x24},
+	{0x3709, 0x10},
+	{0x370e, 0x00},
+	{0x371b, 0x60},
+	{0x3724, 0x1c},
+	{0x372c, 0x00},
+	{0x372d, 0x00},
+	{0x3745, 0x00},
+	{0x3746, 0x18},
+	{0x0601, 0x00},
+	{0x0101, 0x00},
+	{0x3811, 0x0e},
+	{0x3813, 0x08},
+	{0x3a0c, 0x20},
+	{0x3b01, 0x32},
+	{0x3b02, 0xa4},
+	{0x3c00, 0x00},
+	{0x3f00, 0x2a},
+	{0x3f01, 0x8c},
+	{0x3f0f, 0xf5},
+	{0x4000, 0x07},
+	{0x4001, 0x02},
+	{0x460e, 0xb1},
+	{0x4800, 0x44},
+	{0x4801, 0x0f},
+	{0x4805, 0x10},
+	{0x4815, 0x00},
+	{0x4837, 0x36},
+	{0x5000, 0x06},
+	{0x5001, 0x31},
+	{0x5005, 0x08},
+	{0x5100, 0x00},
+	{0x5310, 0x01},
+	{0x5311, 0xff},
+	{0x53b9, 0x0f},
+	{0x53ba, 0x04},
+	{0x53bb, 0x4a},
+	{0x53bc, 0xd3},
+	{0x53bd, 0x41},
+	{0x53be, 0x00},
+	{0x53c4, 0x03},
+
+	{0x0100, 0x01},
+
+	{OV9772_TABLE_END, 0x0000}
+};
+#endif
+
 #ifdef OV9772_ENABLE_1284x724
 static struct ov9772_reg ov9772_1284x724_i2c[] = {
 	{OV9772_TABLE_RESET, 0},
@@ -626,6 +712,52 @@ static struct ov9772_mode_data ov9772_960x720 = {
 	.p_mode_i2c			= ov9772_960x720_i2c,
 };
 #endif
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static struct ov9772_mode_data ov9772_1280x720 = {
+	.sensor_mode = {
+		.res_x			= 1280,
+		.res_y			= 720,
+		.active_start_x		= 0,
+		.active_stary_y		= 0,
+		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
+		.pixel_aspect_ratio	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.pll_multiplier		= 18000, /* / _INT2FLOAT_DIVISOR */
+		.crop_mode		= NVC_IMAGER_CROPMODE_NONE,
+	},
+	.sensor_dnvc = {
+		.api_version		= NVC_IMAGER_API_DYNAMIC_VER,
+		.region_start_x		= 0,
+		.region_start_y		= 0,
+		.x_scale		= 1,
+		.y_scale		= 1,
+		.bracket_caps		= 1,
+		.flush_count		= 2,
+		.init_intra_frame_skip	= 0,
+		.ss_intra_frame_skip	= 2,
+		.ss_frame_number	= 3,
+		.coarse_time		= 754,
+		.max_coarse_diff	= 6,
+		.min_exposure_course	= 3,
+		.max_exposure_course	= 0xFFF7,
+		.diff_integration_time	= 230, /* / _INT2FLOAT_DIVISOR */
+		.line_length		= 1578,
+		.frame_length		= 760,
+		.min_frame_length	= 760,
+		.max_frame_length	= 0xFFFC,
+		.min_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 15500, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.support_bin_control	= 0,
+		.support_fast_mode	= 0,
+		.pll_mult		= 60,
+		.pll_div		= 4,
+		.mode_sw_wait_frames	= 1500, /* / _INT2FLOAT_DIVISOR */
+	},
+	.p_mode_i2c			= ov9772_1280x720_i2c,
+};
+#endif
+
 static struct ov9772_mode_data *ov9772_mode_table[] = {
 	[0] =
 #ifdef OV9772_ENABLE_1284x724
@@ -633,6 +765,9 @@ static struct ov9772_mode_data *ov9772_mode_table[] = {
 #endif
 #ifdef OV9772_ENABLE_960x720
 	&ov9772_960x720,
+#endif
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	&ov9772_1280x720,
 #endif
 };
 
