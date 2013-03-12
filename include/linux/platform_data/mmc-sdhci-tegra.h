@@ -50,6 +50,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int uhs_mask;
 	unsigned int base_clk;
 	struct mmc_platform_data mmc_data;
+	bool power_off_rail;
 };
 
 #endif
