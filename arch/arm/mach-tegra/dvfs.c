@@ -85,6 +85,10 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 
 	if (rail->therm_mv_floors && !rail->vmin_cdev)
 		WARN(1, "%s: missing vmin cooling device\n", rail->reg_id);
+
+	/* Limit override range to maximum floor */
+	if (rail->therm_mv_floors)
+		rail->min_override_millivolts = rail->therm_mv_floors[0];
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -313,7 +317,10 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 			min_mv = rail->therm_mv_floors[i];
 	}
 
-	millivolts += rail->offs_millivolts;
+	if (rail->override_millivolts)
+		millivolts = rail->override_millivolts;
+	else
+		millivolts += rail->offs_millivolts;
 	if (millivolts > rail->max_millivolts)
 		millivolts = rail->max_millivolts;
 	else if (millivolts < min_mv)
@@ -553,6 +560,77 @@ int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
 }
 EXPORT_SYMBOL(tegra_dvfs_set_rate);
 
+#ifdef CONFIG_TEGRA_VDD_CORE_OVERRIDE
+static DEFINE_MUTEX(rail_override_lock);
+
+int tegra_dvfs_override_core_voltage(int override_mv)
+{
+	int ret, floor, ceiling;
+	struct dvfs_rail *rail = tegra_core_rail;
+
+	if (!rail)
+		return -ENOENT;
+
+	floor = rail->min_override_millivolts;
+	ceiling = rail->nominal_millivolts;
+	if (override_mv && ((override_mv < floor) || (override_mv > ceiling))) {
+		pr_err("%s: override level %d outside the range [%d...%d]\n",
+		       __func__, override_mv, floor, ceiling);
+		return -EINVAL;
+	}
+
+	mutex_lock(&rail_override_lock);
+
+	if (override_mv == rail->override_millivolts) {
+		ret = 0;
+		goto out;
+	}
+
+	if (override_mv) {
+		ret = tegra_dvfs_core_cap_level_apply(override_mv);
+		if (ret) {
+			pr_err("%s: failed to set cap for override level %d\n",
+			       __func__, override_mv);
+			goto out;
+		}
+	}
+
+	mutex_lock(&dvfs_lock);
+	if (rail->disabled || rail->suspended) {
+		pr_err("%s: cannot scale %s rail\n", __func__,
+		       rail->disabled ? "disabled" : "suspended");
+		ret = -EPERM;
+		if (!override_mv) {
+			mutex_unlock(&dvfs_lock);
+			goto out;
+		}
+	} else {
+		rail->override_millivolts = override_mv;
+		ret = dvfs_rail_update(rail);
+		if (ret) {
+			pr_err("%s: failed to set override level %d\n",
+			       __func__, override_mv);
+			rail->override_millivolts = 0;
+			dvfs_rail_update(rail);
+		}
+	}
+	mutex_unlock(&dvfs_lock);
+
+	if (!override_mv || ret)
+		tegra_dvfs_core_cap_level_apply(0);
+out:
+	mutex_unlock(&rail_override_lock);
+	return ret;
+}
+#else
+int tegra_dvfs_override_core_voltage(int override_mv)
+{
+	pr_err("%s: vdd core override is not supported\n", __func__);
+	return -ENOSYS;
+}
+#endif
+EXPORT_SYMBOL(tegra_dvfs_override_core_voltage);
+
 /* May only be called during clock init, does not take any locks on clock c. */
 int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 {
@@ -584,6 +662,18 @@ int __init tegra_enable_dvfs_on_clk(struct clk *c, struct dvfs *d)
 	}
 
 	c->dvfs = d;
+
+	/*
+	 * Minimum core override level is determined as maximum voltage required
+	 * for clocks outside shared buses (shared bus rates can be capped to
+	 * safe levels when override limit is set)
+	 */
+	if (i && c->ops && !c->ops->shared_bus_update &&
+	    !(c->flags & PERIPH_ON_CBUS)) {
+		int mv = tegra_dvfs_predict_millivolts(c, d->freqs[i-1]);
+		if (d->dvfs_rail->min_override_millivolts < mv)
+			d->dvfs_rail->min_override_millivolts = mv;
+	}
 
 	mutex_lock(&dvfs_lock);
 	list_add_tail(&d->reg_node, &d->dvfs_rail->dvfs);
@@ -1092,6 +1182,13 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 		}
 		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
 
+		if (rail == tegra_core_rail) {
+			seq_printf(s, "   override   %-7d mV [%-4d...%-4d]\n",
+				   rail->override_millivolts,
+				   rail->min_override_millivolts,
+				   rail->nominal_millivolts);
+		}
+
 		list_sort(NULL, &rail->dvfs, dvfs_tree_sort_cmp);
 
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
@@ -1187,6 +1284,22 @@ static int core_offs_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(core_offs_fops, core_offs_get, core_offs_set, "%lld\n");
 
+static int core_override_get(void *data, u64 *val)
+{
+	if (tegra_core_rail) {
+		*val = (u64)tegra_core_rail->override_millivolts;
+		return 0;
+	}
+	*val = 0;
+	return -ENOENT;
+}
+static int core_override_set(void *data, u64 val)
+{
+	return tegra_dvfs_override_core_voltage((int)val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(core_override_fops,
+			core_override_get, core_override_set, "%llu\n");
+
 int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 {
 	struct dentry *d;
@@ -1208,6 +1321,11 @@ int __init dvfs_debugfs_init(struct dentry *clk_debugfs_root)
 
 	d = debugfs_create_file("vdd_core_offs", S_IRUGO | S_IWUSR,
 		clk_debugfs_root, NULL, &core_offs_fops);
+	if (!d)
+		return -ENOMEM;
+
+	d = debugfs_create_file("vdd_core_override", S_IRUGO | S_IWUSR,
+		clk_debugfs_root, NULL, &core_override_fops);
 	if (!d)
 		return -ENOMEM;
 

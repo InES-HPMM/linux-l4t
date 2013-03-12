@@ -63,6 +63,8 @@ struct dvfs_rail {
 	int max_millivolts;
 	int reg_max_millivolts;
 	int nominal_millivolts;
+	int override_millivolts;
+	int min_override_millivolts;
 	const int *therm_mv_floors;
 	int therm_mv_floors_num;
 	const int *therm_mv_caps;
@@ -314,6 +316,13 @@ static inline int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
 	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
 		return rail->therm_mv_floors[rail->therm_floor_idx];
 	return 0;
+}
+
+static inline int tegra_dvfs_rail_get_override_floor(struct dvfs_rail *rail)
+{
+	if (rail)
+		return rail->min_override_millivolts;
+	return -ENOENT;
 }
 
 #endif
