@@ -98,6 +98,14 @@ static struct resource max77660_chg_extcon_resources[] = {
 	}
 };
 
+static struct resource sim_resources[] = {
+	{
+		.start	= MAX77660_IRQ_SIM,
+		.end	= MAX77660_IRQ_SIM,
+		.flags  = IORESOURCE_IRQ,
+	}
+};
+
 static struct mfd_cell max77660_cells[] = {
 	{
 		.name = "max77660-pinctrl",
@@ -147,6 +155,11 @@ static struct mfd_cell max77660_cells[] = {
 		.name = "max77660-sys-wdt",
 		.num_resources	= ARRAY_SIZE(max77660_sys_wdt_resources),
 		.resources	= &max77660_sys_wdt_resources[0],
+	},
+	{
+		.name = "max77660-sim",
+		.num_resources	= ARRAY_SIZE(sim_resources),
+		.resources	= &sim_resources[0],
 	},
 };
 

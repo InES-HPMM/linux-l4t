@@ -248,6 +248,32 @@
 #define MAX77660_REG_DTOFFL			0x88
 #define MAX77660_REG_DTOFFH			0x89
 
+/* SIM registers */
+#define MAX77660_REG_SIM1INT                    0xB0
+#define MAX77660_REG_SIM1NTM                    0xB1
+#define MAX77660_REG_SIM1STAT                   0xB2
+#define MAX77660_REG_SIM1CNFG1                  0xB3
+#define MAX77660_REG_SIM1CNFG2                  0xB4
+#define MAX77660_REG_SIM2INT                    0xB8
+#define MAX77660_REG_SIM2NTM                    0xB9
+#define MAX77660_REG_SIM2STAT                   0xBA
+#define MAX77660_REG_SIM2CNFG1                  0xBB
+#define MAX77660_REG_SIM2CNFG2                  0xBC
+
+#define SIM_SIM1_2_CNFG1_SIM_EN_SHIFT           7
+#define SIM_SIM1_2_CNFG1_BATREM_EN_SHIFT        6
+#define SIM_SIM1_2_CNFG1_SIMDBCNT_SHIFT         0
+
+#define SIM_SIM1_2_CNFG1_SIM_PWRDEN_SHIFT       7
+#define SIM_SIM1_2_CNFG1_SIMAH_SHIFT            6
+#define SIM_SIM1_2_CNFG1_SIM_PUEN_SHIFT         5
+#define SIM_SIM1_2_CNFG1_SIMPWRDNCNT_SHIFT      0
+
+#define SIM_SIM1_2_CNFG1_BATREM_EN_MASK         BIT(6)
+#define SIM_SIM1_2_CNFG1_SIM1DBCNT_MASK (BIT(0) | BIT(1) | BIT(2) \
+				| BIT(3) | BIT(4) | BIT(5))
+#define SIM_SIM1_2_DBCNT        (0x10) /* COUNT=16, table 160 */
+
 #define MAX77660_ADCINT_DTRINT			BIT(1)
 #define MAX77660_ADCINT_DTFINT			BIT(2)
 #define MAX77660_ADCINT_ADCCONVINT		BIT(3)
@@ -526,12 +552,6 @@
 #define MAX77660_RBOOST_BSTSLEWRATE_MASK	0xC0
 
 #define MAX77660_BUCK2_PWR_MODE_MASK		(BIT(2) | BIT(3))
-
-#define SIM_SIM1_2_CNFG1_BATREM_EN_MASK		BIT(6)
-#define SIM_SIM1_2_CNFG1_BATREM_EN_SHIFT	6
-#define SIM_SIM1_2_CNFG1_SIM1DBCNT_MASK	(BIT(0) | BIT(1) | BIT(2) \
-					| BIT(3) | BIT(4) | BIT(5))
-#define SIM_SIM1_2_DBCNT	(0x10) /* COUNT=16, table 160 */
 
 /*
  * Interrupts
@@ -822,6 +842,24 @@ struct max77660_adc_platform_data {
 };
 
 /*
+ * max77660_sim_platform_data: Platform data for SIM.
+ * @
+ */
+
+struct max77660_sim_reg_data {
+	unsigned int detect_en:1;
+	unsigned int batremove_en:1;
+	unsigned int det_debouncecnt:5;
+	unsigned int auto_pwrdn_en:1;
+	unsigned int inst_pol:1;
+	unsigned int pwrdn_debouncecnt:5;
+};
+
+struct max77660_sim_platform_data {
+	struct max77660_sim_reg_data sim_reg[2];
+};
+
+/*
  * Flags
  */
 #define SLP_LPM_ENABLE		0x01
@@ -895,6 +933,9 @@ struct max77660_platform_data {
 	struct max77660_charger_platform_data *charger_pdata;
 
 	struct max77660_adc_platform_data *adc_pdata;
+
+	struct max77660_sim_platform_data *sim_pdata;
+
 	unsigned int flags;
 
 	bool en_buck2_ext_ctrl;
