@@ -170,7 +170,7 @@ void __init tegra_init_core_edp_limits(unsigned int regulator_mA)
 	unsigned long *cap_rates;
 
 	switch (tegra_chip_id) {
-	case TEGRA11X:
+	case TEGRA_CHIPID_TEGRA11:
 		if (tegra11x_select_core_edp_table(
 			regulator_mA, &core_edp_limits))
 			return;

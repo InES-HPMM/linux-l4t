@@ -92,11 +92,6 @@
 #define SKU_ID_AP25E	27
 #define SKU_ID_T25E	28
 
-#define TEGRA20		0x20
-#define TEGRA30		0x30
-#define TEGRA11X	0x35
-#define TEGRA14X	0x14
-
 #define SBK_DEVKEY_STATUS_SZ	sizeof(u32)
 
 /*

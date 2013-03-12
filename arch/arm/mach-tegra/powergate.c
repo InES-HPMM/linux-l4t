@@ -34,6 +34,7 @@
 #include <asm/atomic.h>
 
 #include <mach/powergate.h>
+#include <mach/hardware.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -555,19 +556,19 @@ EXPORT_SYMBOL(tegra_powergate_get_name);
 int __init tegra_powergate_init(void)
 {
 	switch (tegra_chip_id) {
-		case TEGRA20:
+		case TEGRA_CHIPID_TEGRA2:
 			pg_ops = tegra2_powergate_init_chip_support();
 			break;
 
-		case TEGRA30:
+		case TEGRA_CHIPID_TEGRA3:
 			pg_ops = tegra3_powergate_init_chip_support();
 			break;
 
-		case TEGRA11X:
+		case TEGRA_CHIPID_TEGRA11:
 			pg_ops = tegra11x_powergate_init_chip_support();
 			break;
 
-		case TEGRA14X:
+		case TEGRA_CHIPID_TEGRA14:
 			pg_ops = tegra14x_powergate_init_chip_support();
 			break;
 

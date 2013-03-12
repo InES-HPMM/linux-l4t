@@ -1192,11 +1192,11 @@ static int __init soctherm_clk_init(void)
 
 	/* initialize default clock rates */
 	default_soctherm_clk_rate =
-		tegra_chip_id == TEGRA14X ?
+		tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
 		default_t14x_soctherm_clk_rate :
 		default_t11x_soctherm_clk_rate;
 	default_tsensor_clk_rate =
-		tegra_chip_id == TEGRA14X ?
+		tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
 		default_t14x_tsensor_clk_rate :
 		default_t11x_tsensor_clk_rate;
 
@@ -1252,7 +1252,7 @@ static void soctherm_fuse_read_vsensor(void)
 	calib_ft = MAKE_SIGNED32(calib_ft, FUSE_SHIFT_FT_BITS);
 
 	nominal_calib_cp = 25;
-	nominal_calib_ft = tegra_chip_id == TEGRA14X ? 105 : 90;
+	nominal_calib_ft = tegra_chip_id == TEGRA_CHIPID_TEGRA14 ? 105 : 90;
 
 	/* use HI precision to calculate: use fuse_temp in 0.5C */
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
@@ -1312,7 +1312,7 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				    (s64)delta_sens);
 
 	/* FUSE corrections for T114 when precision is set LOW */
-	if (tegra_chip_id == TEGRA11X && PRECISION_IS_LOWER()) {
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11 && PRECISION_IS_LOWER()) {
 		fuse_corr_alpha[sensor] = fuse_corr_alpha[sensor] ?: 1000000;
 		therm_a = div64_s64_precise(
 				(s64)therm_a * fuse_corr_alpha[sensor],
@@ -1379,7 +1379,7 @@ static int soctherm_init_platform_data(void)
 	long rem;
 	u32 r;
 
-	sensor_defaults = tegra_chip_id == TEGRA14X ?
+	sensor_defaults = tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
 		default_t14x_sensor_params : default_t11x_sensor_params;
 
 	/* initialize default values for unspecified params */
@@ -1539,7 +1539,8 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	int err;
 
-	if (!(tegra_chip_id == TEGRA11X || tegra_chip_id == TEGRA14X)) {
+	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
+	      tegra_chip_id == TEGRA_CHIPID_TEGRA14)) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
 		return -1;
 	}

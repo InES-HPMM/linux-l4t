@@ -63,7 +63,7 @@ static void tegra_cpu_reset_handler_enable(void)
 	 * Prevent further modifications to the physical reset vector.
 	 *  NOTE: Has no effect on chips prior to Tegra30.
 	 */
-	if (tegra_chip_id != TEGRA20) {
+	if (tegra_chip_id != TEGRA_CHIPID_TEGRA2) {
 		reg = readl(sb_ctrl);
 		reg |= 2;
 		writel(reg, sb_ctrl);
