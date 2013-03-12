@@ -358,18 +358,8 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (!regmap_irq_chip_get_base(palmas->irq_data))
-		return -EINVAL;
-
-	palmas_rtc->irq = regmap_irq_chip_get_base(palmas->irq_data);
-	if (palmas_rtc->irq <= 0) {
-		dev_err(&pdev->dev, "Wake up is not possible as irq = %d\n",
-			palmas_rtc->irq);
-		return ret;
-	}
-
-	palmas_rtc->irq += PALMAS_RTC_ALARM_IRQ;
-
+	palmas_rtc->irq = platform_get_irq(pdev, 0);
+	dev_info(&pdev->dev, "RTC interrupt %d\n", palmas_rtc->irq);
 	ret = request_threaded_irq(palmas_rtc->irq, NULL,
 		palmas_rtc_interrupt, IRQF_TRIGGER_LOW,
 		"palmas-rtc", &pdev->dev);
