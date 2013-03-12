@@ -391,7 +391,8 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 
 	val = enable_interrupt(tegra, true);
 
-	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS))
+	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS)
+			&& !tegra->support_pmu_vbus)
 		val |= USB_VBUS_INT_STATUS;
 	else if (!(val & USB_ID_STATUS)) {
 		if (tegra->support_usb_id)
