@@ -155,10 +155,10 @@ static struct resource pinmux_resource[] = {
 	[1] = {
 		/* Mux registers */
 		.start	= TEGRA_APB_MISC_BASE + 0x3000,
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-		.end	= TEGRA_APB_MISC_BASE + 0x33e0 + 3,
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		.end	= TEGRA_APB_MISC_BASE + 0x3408 + 3,
+#else
+		.end	= TEGRA_APB_MISC_BASE + 0x33e0 + 3,
 #endif
 		.flags	= IORESOURCE_MEM,
 	},
