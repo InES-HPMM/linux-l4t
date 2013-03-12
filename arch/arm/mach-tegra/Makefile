@@ -86,6 +86,7 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += powergate-t20.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += powergate-t30.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += powergate-t11x.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += powergate-t14x.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += powergate-t12x.o
 
 obj-y                                   += apbio.o
 obj-y                                   += mc.o

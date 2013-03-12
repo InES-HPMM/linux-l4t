@@ -593,6 +593,10 @@ int __init tegra_powergate_init(void)
 			pg_ops = tegra14x_powergate_init_chip_support();
 			break;
 
+		case TEGRA_CHIPID_TEGRA12:
+			pg_ops = tegra12x_powergate_init_chip_support();
+			break;
+
 		default:
 			pg_ops = NULL;
 			pr_info("%s: Unknown Tegra variant. Disabling powergate\n", __func__);
