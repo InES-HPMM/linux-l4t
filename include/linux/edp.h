@@ -71,6 +71,7 @@ struct edp_client {
 	int priority;
 	void *private_data;
 	struct edp_client_attribute *attrs;
+	unsigned int notify_ui;
 
 	void (*throttle)(unsigned int new_state, void *priv_data);
 	void (*notify_promotion)(unsigned int new_state, void *priv_data);

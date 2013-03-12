@@ -286,6 +286,23 @@ static ssize_t loans_show(struct edp_client *c,
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->num_loans);
 }
 
+static ssize_t notify_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
+{
+	return scnprintf(s, PAGE_SIZE, "%u\n", c->notify_ui);
+}
+
+static ssize_t notify_store(struct edp_client *c,
+		struct edp_client_attribute *attr, const char *s, size_t count)
+{
+	unsigned int f;
+
+	if (sscanf(s, "%u", &f) != 1)
+		return -EINVAL;
+	c->notify_ui = f;
+	return count;
+}
+
 struct edp_client_attribute attr_states = __ATTR_RO(states);
 struct edp_client_attribute attr_num_states = __ATTR_RO(num_states);
 struct edp_client_attribute attr_e0 = __ATTR_RO(e0);
@@ -301,6 +318,8 @@ struct edp_client_attribute attr_current = {
 	.attr = { .name = "current", .mode = 0444 },
 	.show = current_show
 };
+struct edp_client_attribute attr_notify = __ATTR(notify, 0644, notify_show,
+		notify_store);
 
 static struct attribute *client_attrs[] = {
 	&attr_states.attr,
@@ -313,6 +332,7 @@ static struct attribute *client_attrs[] = {
 	&attr_threshold.attr,
 	&attr_borrowers.attr,
 	&attr_loans.attr,
+	&attr_notify.attr,
 	NULL
 };
 
