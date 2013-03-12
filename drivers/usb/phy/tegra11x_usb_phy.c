@@ -764,13 +764,13 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 		return -EINVAL;
 	}
 
-	/* Power-up the VBUS detector for UTMIP PHY */
+	/* Power-up the VBUS, ID detector for UTMIP PHY */
 	val = readl(pmc_base + PMC_USB_AO);
 	val &= ~(PMC_USB_AO_VBUS_WAKEUP_PD_P0);
-	if (phy->pdata->builtin_host_disabled)
-		val |= PMC_USB_AO_ID_PD_P0;
-	else
+	if (phy->pdata->id_det_type == TEGRA_USB_ID)
 		val &= ~PMC_USB_AO_ID_PD_P0;
+	else
+		val |= PMC_USB_AO_ID_PD_P0;
 	writel(val, (pmc_base + PMC_USB_AO));
 
 	pmc->pmc_ops->powerup_pmc_wake_detect(pmc);

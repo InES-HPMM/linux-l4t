@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -364,7 +364,7 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 		 * support through OTG is supported on the board.
 		 */
 		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
-			phy->pdata->builtin_host_disabled) {
+			phy->pdata->id_det_type == TEGRA_USB_VIRTUAL_ID) {
 			tegra_clk_disable_unprepare(phy->ctrlr_clk);
 			phy->ctrl_clk_on = false;
 			if (phy->vdd_reg && phy->vdd_reg_on) {
