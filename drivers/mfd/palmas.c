@@ -19,6 +19,7 @@
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/irqdomain.h>
 #include <linux/regmap.h>
 #include <linux/err.h>
 #include <linux/mfd/core.h>
@@ -126,178 +127,452 @@ static const struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 	},
 };
 
-static const struct regmap_irq palmas_irqs[] = {
+#define PALMAS_MAX_INTERRUPT_MASK_REG	4
+#define PALMAS_MAX_INTERRUPT_EDGE_REG	8
+
+struct palmas_regs {
+	int reg_base;
+	int reg_add;
+};
+
+struct palmas_irq_regs {
+	struct palmas_regs mask_reg[PALMAS_MAX_INTERRUPT_MASK_REG];
+	struct palmas_regs status_reg[PALMAS_MAX_INTERRUPT_MASK_REG];
+	struct palmas_regs edge_reg[PALMAS_MAX_INTERRUPT_EDGE_REG];
+};
+
+#define PALMAS_REGS(base, add)	{ .reg_base = base, .reg_add = add, }
+static struct palmas_irq_regs palmas_irq_regs = {
+	.mask_reg = {
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT1_MASK),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT2_MASK),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT3_MASK),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT4_MASK),
+	},
+	.status_reg = {
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT1_STATUS),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT2_STATUS),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT3_STATUS),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT4_STATUS),
+	},
+	.edge_reg = {
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT1_EDGE_DETECT1_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT1_EDGE_DETECT2_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT2_EDGE_DETECT1_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT2_EDGE_DETECT2_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT3_EDGE_DETECT1_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE,
+					PALMAS_INT3_EDGE_DETECT2_RESERVED),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT4_EDGE_DETECT1),
+		PALMAS_REGS(PALMAS_INTERRUPT_BASE, PALMAS_INT4_EDGE_DETECT2),
+	},
+};
+
+struct palmas_irq {
+	unsigned int	interrupt_mask;
+	unsigned int	rising_mask;
+	unsigned int	falling_mask;
+	unsigned int	edge_mask;
+	unsigned int	mask_reg_index;
+	unsigned int	edge_reg_index;
+};
+
+#define PALMAS_IRQ(_nr, _imask, _mrindex, _rmask, _fmask, _erindex)	\
+[PALMAS_##_nr] = {							\
+			.interrupt_mask = PALMAS_##_imask,		\
+			.mask_reg_index = _mrindex,			\
+			.rising_mask = _rmask,				\
+			.falling_mask = _fmask,				\
+			.edge_mask = _rmask | _fmask,			\
+			.edge_reg_index = _erindex			\
+		}
+
+static struct palmas_irq palmas_irqs[] = {
 	/* INT1 IRQs */
-	[PALMAS_CHARG_DET_N_VBUS_OVV_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_CHARG_DET_N_VBUS_OVV,
-	},
-	[PALMAS_PWRON_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_PWRON,
-	},
-	[PALMAS_LONG_PRESS_KEY_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_LONG_PRESS_KEY,
-	},
-	[PALMAS_RPWRON_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_RPWRON,
-	},
-	[PALMAS_PWRDOWN_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_PWRDOWN,
-	},
-	[PALMAS_HOTDIE_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_HOTDIE,
-	},
-	[PALMAS_VSYS_MON_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_VSYS_MON,
-	},
-	[PALMAS_VBAT_MON_IRQ] = {
-		.mask = PALMAS_INT1_STATUS_VBAT_MON,
-	},
-	/* INT2 IRQs*/
-	[PALMAS_RTC_ALARM_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_RTC_ALARM,
-		.reg_offset = 1,
-	},
-	[PALMAS_RTC_TIMER_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_RTC_TIMER,
-		.reg_offset = 1,
-	},
-	[PALMAS_WDT_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_WDT,
-		.reg_offset = 1,
-	},
-	[PALMAS_BATREMOVAL_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_BATREMOVAL,
-		.reg_offset = 1,
-	},
-	[PALMAS_RESET_IN_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_RESET_IN,
-		.reg_offset = 1,
-	},
-	[PALMAS_FBI_BB_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_FBI_BB,
-		.reg_offset = 1,
-	},
-	[PALMAS_SHORT_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_SHORT,
-		.reg_offset = 1,
-	},
-	[PALMAS_VAC_ACOK_IRQ] = {
-		.mask = PALMAS_INT2_STATUS_VAC_ACOK,
-		.reg_offset = 1,
-	},
+	PALMAS_IRQ(CHARG_DET_N_VBUS_OVV_IRQ,
+			INT1_STATUS_CHARG_DET_N_VBUS_OVV, 0, 0, 0, 0),
+	PALMAS_IRQ(PWRON_IRQ, INT1_STATUS_PWRON, 0, 0, 0, 0),
+	PALMAS_IRQ(LONG_PRESS_KEY_IRQ, INT1_STATUS_LONG_PRESS_KEY, 0, 0, 0, 0),
+	PALMAS_IRQ(RPWRON_IRQ, INT1_STATUS_RPWRON, 0, 0, 0, 0),
+	PALMAS_IRQ(PWRDOWN_IRQ, INT1_STATUS_PWRDOWN, 0, 0, 0, 0),
+	PALMAS_IRQ(HOTDIE_IRQ, INT1_STATUS_HOTDIE, 0, 0, 0, 0),
+	PALMAS_IRQ(VSYS_MON_IRQ, INT1_STATUS_VSYS_MON, 0, 0, 0, 0),
+	PALMAS_IRQ(VBAT_MON_IRQ, INT1_STATUS_VBAT_MON, 0, 0, 0, 0),
+	/* INT2 IRQs */
+	PALMAS_IRQ(RTC_ALARM_IRQ, INT2_STATUS_RTC_ALARM, 1, 0, 0, 0),
+	PALMAS_IRQ(RTC_TIMER_IRQ, INT2_STATUS_RTC_TIMER, 1, 0, 0, 0),
+	PALMAS_IRQ(WDT_IRQ, INT2_STATUS_WDT, 1, 0, 0, 0),
+	PALMAS_IRQ(BATREMOVAL_IRQ, INT2_STATUS_BATREMOVAL, 1, 0, 0, 0),
+	PALMAS_IRQ(RESET_IN_IRQ, INT2_STATUS_RESET_IN, 1, 0, 0, 0),
+	PALMAS_IRQ(FBI_BB_IRQ, INT2_STATUS_FBI_BB, 1, 0, 0, 0),
+	PALMAS_IRQ(SHORT_IRQ, INT2_STATUS_SHORT, 1, 0, 0, 0),
+	PALMAS_IRQ(VAC_ACOK_IRQ, INT2_STATUS_VAC_ACOK, 1, 0, 0, 0),
 	/* INT3 IRQs */
-	[PALMAS_GPADC_AUTO_0_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_GPADC_AUTO_0,
-		.reg_offset = 2,
-	},
-	[PALMAS_GPADC_AUTO_1_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_GPADC_AUTO_1,
-		.reg_offset = 2,
-	},
-	[PALMAS_GPADC_EOC_SW_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_GPADC_EOC_SW,
-		.reg_offset = 2,
-	},
-	[PALMAS_GPADC_EOC_RT_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_GPADC_EOC_RT,
-		.reg_offset = 2,
-	},
-	[PALMAS_ID_OTG_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_ID_OTG,
-		.reg_offset = 2,
-	},
-	[PALMAS_ID_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_ID,
-		.reg_offset = 2,
-	},
-	[PALMAS_VBUS_OTG_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_VBUS_OTG,
-		.reg_offset = 2,
-	},
-	[PALMAS_VBUS_IRQ] = {
-		.mask = PALMAS_INT3_STATUS_VBUS,
-		.reg_offset = 2,
-	},
+	PALMAS_IRQ(GPADC_AUTO_0_IRQ, INT3_STATUS_GPADC_AUTO_0, 2, 0, 0, 0),
+	PALMAS_IRQ(GPADC_AUTO_1_IRQ, INT3_STATUS_GPADC_AUTO_1, 2, 0, 0, 0),
+	PALMAS_IRQ(GPADC_EOC_SW_IRQ, INT3_STATUS_GPADC_EOC_SW, 2, 0, 0, 0),
+	PALMAS_IRQ(GPADC_EOC_RT_IRQ, INT3_STATUS_GPADC_EOC_RT, 2, 0, 0, 0),
+	PALMAS_IRQ(ID_OTG_IRQ, INT3_STATUS_ID_OTG, 2, 0, 0, 0),
+	PALMAS_IRQ(ID_IRQ, INT3_STATUS_ID, 2, 0, 0, 0),
+	PALMAS_IRQ(VBUS_OTG_IRQ, INT3_STATUS_VBUS_OTG, 2, 0, 0, 0),
+	PALMAS_IRQ(VBUS_IRQ, INT3_STATUS_VBUS, 2, 0, 0, 0),
 	/* INT4 IRQs */
-	[PALMAS_GPIO_0_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_0,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_1_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_1,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_2_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_2,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_3_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_3,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_4_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_4,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_5_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_5,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_6_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_6,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_7_IRQ] = {
-		.mask = PALMAS_INT4_STATUS_GPIO_7,
-		.reg_offset = 3,
-	},
-	[PALMAS_GPIO_8_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_8,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_9_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_9,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_10_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_10,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_11_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_11,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_12_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_12,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_13_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_13,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_14_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_14,
-		.reg_offset = 4,
-	},
-	[PALMAS_GPIO_15_IRQ] = {
-		.mask = PALMAS_INT5_STATUS_GPIO_15,
-		.reg_offset = 4,
-	},
+	PALMAS_IRQ(GPIO_0_IRQ, INT4_STATUS_GPIO_0, 3,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_0_RISING,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_0_FALLING, 6),
+	PALMAS_IRQ(GPIO_1_IRQ, INT4_STATUS_GPIO_1, 3,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_1_RISING,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_1_FALLING, 6),
+	PALMAS_IRQ(GPIO_2_IRQ, INT4_STATUS_GPIO_2, 3,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_2_RISING,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_2_FALLING, 6),
+	PALMAS_IRQ(GPIO_3_IRQ, INT4_STATUS_GPIO_3, 3,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_3_RISING,
+			PALMAS_INT4_EDGE_DETECT1_GPIO_3_FALLING, 6),
+	PALMAS_IRQ(GPIO_4_IRQ, INT4_STATUS_GPIO_4, 3,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_4_RISING,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_4_FALLING, 7),
+	PALMAS_IRQ(GPIO_5_IRQ, INT4_STATUS_GPIO_5, 3,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_5_RISING,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_5_FALLING, 7),
+	PALMAS_IRQ(GPIO_6_IRQ, INT4_STATUS_GPIO_6, 3,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_6_RISING,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_6_FALLING, 7),
+	PALMAS_IRQ(GPIO_7_IRQ, INT4_STATUS_GPIO_7, 3,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_7_RISING,
+			PALMAS_INT4_EDGE_DETECT2_GPIO_7_FALLING, 7),
 };
 
-static struct regmap_irq_chip palmas_irq_chip = {
-	.name = "palmas",
-	.irqs = palmas_irqs,
-	.num_irqs = ARRAY_SIZE(palmas_irqs),
+struct palmas_irq_chip_data {
+	struct palmas		*palmas;
+	int			irq_base;
+	int			irq;
+	struct mutex		irq_lock;
+	struct irq_chip		irq_chip;
+	struct irq_domain	*domain;
 
-	.num_regs = 5,
-	.irq_reg_stride = 5,
-	.status_base = PALMAS_BASE_TO_REG(PALMAS_INTERRUPT_BASE,
-			PALMAS_INT1_STATUS),
-	.mask_base = PALMAS_BASE_TO_REG(PALMAS_INTERRUPT_BASE,
-			PALMAS_INT1_MASK),
-	.wake_base = 1,
+	struct palmas_irq_regs	*irq_regs;
+	struct palmas_irq	*irqs;
+	int			num_irqs;
+	unsigned int		mask_value[PALMAS_MAX_INTERRUPT_MASK_REG];
+	unsigned int		status_value[PALMAS_MAX_INTERRUPT_MASK_REG];
+	unsigned int		edge_value[PALMAS_MAX_INTERRUPT_EDGE_REG];
+	unsigned int		mask_def_value[PALMAS_MAX_INTERRUPT_MASK_REG];
+	unsigned int		edge_def_value[PALMAS_MAX_INTERRUPT_EDGE_REG];
+	int			num_mask_regs;
+	int			num_edge_regs;
+	int			wake_count;
 };
+
+static inline const struct palmas_irq *irq_to_palmas_irq(
+	struct palmas_irq_chip_data *data, int irq)
+{
+	return &data->irqs[irq];
+}
+
+static void palmas_irq_lock(struct irq_data *data)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	mutex_lock(&d->irq_lock);
+}
+
+static void palmas_irq_sync_unlock(struct irq_data *data)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+	int i, ret;
+
+	for (i = 0; i < d->num_mask_regs; i++) {
+		ret = palmas_update_bits(d->palmas,
+				d->irq_regs->mask_reg[i].reg_base,
+				d->irq_regs->mask_reg[i].reg_add,
+				d->mask_def_value[i], d->mask_value[i]);
+		if (ret < 0)
+			dev_err(d->palmas->dev, "Failed to sync masks in %x\n",
+					d->irq_regs->mask_reg[i].reg_add);
+	}
+
+	for (i = 0; i < d->num_edge_regs; i++) {
+		if (!d->edge_def_value[i])
+			continue;
+
+		ret = palmas_update_bits(d->palmas,
+				d->irq_regs->edge_reg[i].reg_base,
+				d->irq_regs->edge_reg[i].reg_add,
+				d->edge_def_value[i], d->edge_value[i]);
+		if (ret < 0)
+			dev_err(d->palmas->dev, "Failed to sync edge in %x\n",
+					d->irq_regs->edge_reg[i].reg_add);
+	}
+
+	/* If we've changed our wakeup count propagate it to the parent */
+	if (d->wake_count < 0)
+		for (i = d->wake_count; i < 0; i++)
+			irq_set_irq_wake(d->irq, 0);
+	else if (d->wake_count > 0)
+		for (i = 0; i < d->wake_count; i++)
+			irq_set_irq_wake(d->irq, 1);
+
+	d->wake_count = 0;
+
+	mutex_unlock(&d->irq_lock);
+}
+
+static void palmas_irq_enable(struct irq_data *data)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+	const struct palmas_irq *irq_data = irq_to_palmas_irq(d, data->hwirq);
+
+	d->mask_value[irq_data->mask_reg_index] &= ~irq_data->interrupt_mask;
+}
+
+static void palmas_irq_disable(struct irq_data *data)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+	const struct palmas_irq *irq_data = irq_to_palmas_irq(d, data->hwirq);
+
+	d->mask_value[irq_data->mask_reg_index] |= irq_data->interrupt_mask;
+}
+
+static int palmas_irq_set_type(struct irq_data *data, unsigned int type)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+	const struct palmas_irq *irq_data = irq_to_palmas_irq(d, data->hwirq);
+	unsigned int reg = irq_data->edge_reg_index;
+
+	if (!irq_data->edge_mask)
+		return 0;
+
+	d->edge_value[reg] &= ~irq_data->edge_mask;
+	switch (type) {
+	case IRQ_TYPE_EDGE_FALLING:
+		d->edge_value[reg] |= irq_data->falling_mask;
+		break;
+
+	case IRQ_TYPE_EDGE_RISING:
+		d->edge_value[reg] |= irq_data->rising_mask;
+		break;
+
+	case IRQ_TYPE_EDGE_BOTH:
+		d->edge_value[reg] |= irq_data->edge_mask;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int palmas_irq_set_wake(struct irq_data *data, unsigned int on)
+{
+	struct palmas_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	if (on)
+		d->wake_count++;
+	else
+		d->wake_count--;
+
+	return 0;
+}
+
+static const struct irq_chip palmas_irq_chip = {
+	.irq_bus_lock		= palmas_irq_lock,
+	.irq_bus_sync_unlock	= palmas_irq_sync_unlock,
+	.irq_disable		= palmas_irq_disable,
+	.irq_enable		= palmas_irq_enable,
+	.irq_set_type		= palmas_irq_set_type,
+	.irq_set_wake		= palmas_irq_set_wake,
+};
+
+static irqreturn_t palmas_irq_thread(int irq, void *data)
+{
+	struct palmas_irq_chip_data *d = data;
+	int ret, i;
+	bool handled = false;
+
+	for (i = 0; i < d->num_mask_regs; i++) {
+		ret = palmas_read(d->palmas,
+				d->irq_regs->status_reg[i].reg_base,
+				d->irq_regs->status_reg[i].reg_add,
+				&d->status_value[i]);
+
+		if (ret != 0) {
+			dev_err(d->palmas->dev,
+				"Failed to read IRQ status: %d\n", ret);
+			return IRQ_NONE;
+		}
+		d->status_value[i] &= ~d->mask_value[i];
+	}
+
+	for (i = 0; i < d->num_irqs; i++) {
+		if (d->status_value[d->irqs[i].mask_reg_index] &
+				d->irqs[i].interrupt_mask) {
+			handle_nested_irq(irq_find_mapping(d->domain, i));
+			handled = true;
+		}
+	}
+
+	if (handled)
+		return IRQ_HANDLED;
+	else
+		return IRQ_NONE;
+}
+
+static int palmas_irq_map(struct irq_domain *h, unsigned int virq,
+			  irq_hw_number_t hw)
+{
+	struct palmas_irq_chip_data *data = h->host_data;
+
+	irq_set_chip_data(virq, data);
+	irq_set_chip(virq, &data->irq_chip);
+	irq_set_nested_thread(virq, 1);
+
+	/* ARM needs us to explicitly flag the IRQ as valid
+	 * and will set them noprobe when we do so. */
+#ifdef CONFIG_ARM
+	set_irq_flags(virq, IRQF_VALID);
+#else
+	irq_set_noprobe(virq);
+#endif
+
+	return 0;
+}
+
+static struct irq_domain_ops palmas_domain_ops = {
+	.map	= palmas_irq_map,
+	.xlate	= irq_domain_xlate_twocell,
+};
+
+static int palmas_add_irq_chip(struct palmas *palmas, int irq, int irq_flags,
+			int irq_base, struct palmas_irq_chip_data **data)
+{
+	struct palmas_irq_chip_data *d;
+	int i;
+	int ret;
+	unsigned int status_value;
+	int num_irqs = ARRAY_SIZE(palmas_irqs);
+
+	if (irq_base) {
+		irq_base = irq_alloc_descs(irq_base, 0, num_irqs, 0);
+		if (irq_base < 0) {
+			dev_warn(palmas->dev, "Failed to allocate IRQs: %d\n",
+				 irq_base);
+			return irq_base;
+		}
+	}
+
+	d = devm_kzalloc(palmas->dev, sizeof(*d), GFP_KERNEL);
+	if (!d) {
+		dev_err(palmas->dev, "mem alloc for d failed\n");
+		return -ENOMEM;
+	}
+
+	d->palmas = palmas;
+	d->irq = irq;
+	d->irq_base = irq_base;
+	mutex_init(&d->irq_lock);
+	d->irq_chip = palmas_irq_chip;
+	d->irq_chip.name = dev_name(palmas->dev);
+	d->irq_regs = &palmas_irq_regs;
+
+	d->irqs = palmas_irqs;
+	d->num_irqs = num_irqs;
+	d->num_mask_regs = 4;
+	d->num_edge_regs = 8;
+	d->wake_count = 0;
+	*data = d;
+
+	for (i = 0; i < d->num_irqs; i++) {
+		d->mask_def_value[d->irqs[i].mask_reg_index] |=
+						d->irqs[i].interrupt_mask;
+		d->edge_def_value[d->irqs[i].edge_reg_index] |=
+						d->irqs[i].edge_mask;
+	}
+
+	/* Mask all interrupts */
+	for (i = 0; i < d->num_mask_regs; i++) {
+		d->mask_value[i] = d->mask_def_value[i];
+		ret = palmas_update_bits(d->palmas,
+				d->irq_regs->mask_reg[i].reg_base,
+				d->irq_regs->mask_reg[i].reg_add,
+				d->mask_def_value[i], d->mask_value[i]);
+		if (ret < 0)
+			dev_err(d->palmas->dev, "Failed to update masks in %x\n",
+					d->irq_regs->mask_reg[i].reg_add);
+	}
+
+	/* Set edge registers */
+	for (i = 0; i < d->num_edge_regs; i++) {
+		if (!d->edge_def_value[i])
+			continue;
+
+		ret = palmas_update_bits(d->palmas,
+				d->irq_regs->edge_reg[i].reg_base,
+				d->irq_regs->edge_reg[i].reg_add,
+				d->edge_def_value[i], 0);
+		if (ret < 0)
+			dev_err(palmas->dev, "Failed to sync edge in %x\n",
+					d->irq_regs->edge_reg[i].reg_add);
+	}
+
+	/* Clear all interrupts */
+	for (i = 0; i < d->num_mask_regs; i++) {
+		ret = palmas_read(d->palmas,
+				d->irq_regs->status_reg[i].reg_base,
+				d->irq_regs->status_reg[i].reg_add,
+				&status_value);
+
+		if (ret != 0) {
+			dev_err(palmas->dev, "Failed to read status %x\n",
+				d->irq_regs->status_reg[i].reg_add);
+		}
+	}
+
+	if (irq_base)
+		d->domain = irq_domain_add_legacy(palmas->dev->of_node,
+						  num_irqs, irq_base, 0,
+						  &palmas_domain_ops, d);
+	else
+		d->domain = irq_domain_add_linear(palmas->dev->of_node,
+						  num_irqs,
+						  &palmas_domain_ops, d);
+	if (!d->domain) {
+		dev_err(palmas->dev, "Failed to create IRQ domain\n");
+		return -ENOMEM;
+	}
+
+	ret = request_threaded_irq(irq, NULL, palmas_irq_thread, irq_flags,
+				   dev_name(palmas->dev), d);
+	if (ret != 0) {
+		dev_err(palmas->dev,
+			"Failed to request IRQ %d: %d\n", irq, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void palmas_del_irq_chip(int irq, struct palmas_irq_chip_data *d)
+{
+	if (d)
+		free_irq(irq, d);
+}
+
+int palmas_irq_get_virq(struct palmas *palmas, int irq)
+{
+	struct palmas_irq_chip_data *data = palmas->irq_chip_data;
+
+	if (!data->irqs[irq].interrupt_mask)
+		return -EINVAL;
+
+	return irq_create_mapping(data->domain, irq);
+}
+EXPORT_SYMBOL_GPL(palmas_irq_get_virq);
 
 struct palmas_sleep_requestor_info {
 	int id;
@@ -668,14 +943,9 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	regmap_write(palmas->regmap[slave], addr, reg);
 
-	if (palmas->id != TPS80036) {
-		/* INT5 is only supported for TPS80036 */
-		palmas_irq_chip.num_irqs = ARRAY_SIZE(palmas_irqs) - 8;
-		palmas_irq_chip.num_regs = 4;
-	}
-	ret = regmap_add_irq_chip(palmas->regmap[slave], palmas->irq,
+	ret = palmas_add_irq_chip(palmas, palmas->irq,
 			IRQF_ONESHOT | pdata->irq_flags, pdata->irq_base,
-			&palmas_irq_chip, &palmas->irq_data);
+			&palmas->irq_chip_data);
 	if (ret < 0)
 		goto err;
 
@@ -847,8 +1117,8 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	ret = mfd_add_devices(palmas->dev, -1,
 			      children, ARRAY_SIZE(palmas_children),
-			      NULL, 0,
-			      regmap_irq_get_domain(palmas->irq_data));
+			      NULL, palmas->irq_chip_data->irq_base,
+			      NULL);
 	kfree(children);
 
 	if (ret < 0)
@@ -863,7 +1133,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 err_devices:
 	mfd_remove_devices(palmas->dev);
 err_irq:
-	regmap_del_irq_chip(palmas->irq, palmas->irq_data);
+	palmas_del_irq_chip(palmas->irq, palmas->irq_chip_data);
 err:
 	return ret;
 }
@@ -873,7 +1143,7 @@ static int palmas_i2c_remove(struct i2c_client *i2c)
 	struct palmas *palmas = i2c_get_clientdata(i2c);
 
 	mfd_remove_devices(palmas->dev);
-	regmap_del_irq_chip(palmas->irq, palmas->irq_data);
+	palmas_del_irq_chip(palmas->irq, palmas->irq_chip_data);
 
 	return 0;
 }

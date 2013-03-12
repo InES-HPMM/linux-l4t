@@ -52,8 +52,7 @@ struct palmas {
 	/* IRQ Data */
 	int irq;
 	u32 irq_mask;
-	struct mutex irq_lock;
-	struct regmap_irq_chip_data *irq_data;
+	struct palmas_irq_chip_data *irq_chip_data;
 
 	/* Child Devices */
 	struct palmas_pmic *pmic;
@@ -2208,6 +2207,10 @@ enum usb_irq_events {
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_MASK			0xff
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_SHIFT			0
 
+/* Maximum INT mask/edge regsiter */
+#define PALMAS_MAX_INTERRUPT_MASK_REG				4
+#define PALMAS_MAX_INTERRUPT_EDGE_REG				8
+
 /* Registers for function INTERRUPT */
 #define PALMAS_INT1_STATUS					0x0
 #define PALMAS_INT1_MASK					0x1
@@ -3479,9 +3482,6 @@ static inline int palmas_update_bits(struct palmas *palmas, unsigned int base,
 	return regmap_update_bits(palmas->regmap[slave_id], addr, mask, val);
 }
 
-static inline int palmas_irq_get_virq(struct palmas *palmas, int irq)
-{
-	return regmap_irq_get_virq(palmas->irq_data, irq);
-}
+extern int palmas_irq_get_virq(struct palmas *palmas, int irq);
 
 #endif /*  __LINUX_MFD_PALMAS_H */
