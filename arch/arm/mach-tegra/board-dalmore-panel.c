@@ -543,12 +543,6 @@ int __init dalmore_panel_init(void)
 		__tegra_clear_framebuffer(&dalmore_nvmap_device,
 					  tegra_fb_start, tegra_fb_size);
 
-	res = platform_get_resource_byname(&dalmore_disp2_device,
-					 IORESOURCE_MEM, "fbmem");
-
-	res->start = tegra_fb2_start;
-	res->end = tegra_fb2_start + tegra_fb2_size - 1;
-
 	dalmore_disp1_device.dev.parent = &phost1x->dev;
 	err = platform_device_register(&dalmore_disp1_device);
 	if (err) {
@@ -556,12 +550,9 @@ int __init dalmore_panel_init(void)
 		return err;
 	}
 
-	dalmore_disp2_device.dev.parent = &phost1x->dev;
-	err = platform_device_register(&dalmore_disp2_device);
-	if (err) {
-		pr_err("disp2 device registration failed\n");
+	err = tegra_init_hdmi(&dalmore_disp2_device, phost1x);
+	if (err)
 		return err;
-	}
 
 #ifdef CONFIG_TEGRA_NVAVP
 	nvavp_device.dev.parent = &phost1x->dev;
