@@ -100,21 +100,6 @@ union tee_param {
 	} value;
 };
 
-struct tee_request {
-	uint32_t	type;
-	uint32_t	session_id;
-	uint32_t	command_id;
-	phys_addr_t	cmd_param;
-};
-
-struct tee_answer {
-	uint32_t	type;
-	uint32_t	result;
-	uint32_t	return_origin;
-	uint32_t	session_id;
-	union TEEC_Param	params[4];
-};
-
 /*
  * structures for user app communication
  */
@@ -184,33 +169,39 @@ struct tee_cmd_param {
 	uint32_t	dest_uuid[4];
 };
 
-/*
- * SMC protocol union
- */
-union smc_args_t {
-	struct tee_request	request;
-	struct tee_answer	answer;
-	unsigned int		smc[8];
+struct tee_request {
+	uint32_t		type;
+	uint32_t		session_id;
+	uint32_t		command_id;
+	struct tee_cmd_param	cmd_param;
+	uint32_t		result;
+	uint32_t		result_origin;
 };
 
-int tee_open_session(struct tee_opensession *cmd,
-	phys_addr_t phy_cmd_page,
-	struct tee_answer *answer);
+struct tee_answer {
+	uint32_t	type;
+	uint32_t	result;
+	uint32_t	return_origin;
+	uint32_t	session_id;
+	union TEEC_Param	params[4];
+};
 
-int tee_close_session(uint32_t session_id);
+void tee_open_session(struct tee_opensession *cmd,
+	struct tee_request *request,
+	struct nv_tee_context *context);
 
-int tee_register_memory(struct tee_sharedmem *cmd,
-	phys_addr_t phy_cmd_page,
-	struct tee_answer *answer,
+void tee_close_session(struct tee_closesession *cmd,
+		struct tee_request *request);
+
+void tee_register_memory(struct tee_sharedmem *cmd,
+	struct tee_request *request,
+	struct nv_tee_context *context);
+
+void tee_invoke_command(struct tee_invokecmd *cmd,
+	struct tee_request *request,
 	struct nv_tee_context *context);
 
 void tee_unregister_memory(void *buffer,
 	struct nv_tee_context *context);
 
-int tee_invoke_command(struct tee_invokecmd *cmd,
-	phys_addr_t phy_cmd_page,
-	struct tee_answer *answer);
-
-int tee_pin_mem_buffers(void *buffer, size_t size,
-	struct nv_tee_context *context);
 #endif
