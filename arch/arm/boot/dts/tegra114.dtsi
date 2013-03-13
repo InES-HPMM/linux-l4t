@@ -279,7 +279,7 @@
 		status = "disabled";
 	};
 
-	i2c@7000c000 {
+	i2c1: i2c@7000c000 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c000 0x100>;
 		interrupts = <0 38 0x04>;
@@ -287,10 +287,12 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 12>;
 		clock-names = "div-clk";
+		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
+		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
 		status = "disabled";
 	};
 
-	i2c@7000c400 {
+	i2c2: i2c@7000c400 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c400 0x100>;
 		interrupts = <0 84 0x04>;
@@ -298,10 +300,12 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 54>;
 		clock-names = "div-clk";
+		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
+		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
 		status = "disabled";
 	};
 
-	i2c@7000c500 {
+	i2c3: i2c@7000c500 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c500 0x100>;
 		interrupts = <0 92 0x04>;
@@ -309,10 +313,12 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 67>;
 		clock-names = "div-clk";
+		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
+		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
 		status = "disabled";
 	};
 
-	i2c@7000c700 {
+	i2c4: i2c@7000c700 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c700 0x100>;
 		interrupts = <0 120 0x04>;
@@ -320,10 +326,12 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 103>;
 		clock-names = "div-clk";
+		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
+		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
 		status = "disabled";
 	};
 
-	i2c@7000d000 {
+	i2c5: i2c@7000d000 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000d000 0x100>;
 		interrupts = <0 53 0x04>;
@@ -331,6 +339,8 @@
 		#size-cells = <0>;
 		clocks = <&tegra_car 47>;
 		clock-names = "div-clk";
+		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
+		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		status = "disabled";
 	};
 
@@ -511,61 +521,6 @@
 			     <1 11 0xf08>,
 			     <1 10 0xf08>;
 		clock-frequency = <12000000>;
-	};
-
-	i2c1: i2c@7000c000 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nvidia,tegra114-i2c";
-		reg = <0x7000c000 0x100>;
-		interrupts = <0 38 0x04>;
-		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
-		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
-		status = "disable";
-	};
-
-	i2c2: i2c@7000c400 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nvidia,tegra114-i2c";
-		reg = <0x7000c400 0x100>;
-		interrupts = <0 84 0x04>;
-		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
-		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
-		status = "disable";
-	};
-
-	i2c3: i2c@7000c500 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nvidia,tegra114-i2c";
-		reg = <0x7000c500 0x100>;
-		interrupts = <0 92 0x04>;
-		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
-		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
-		status = "disable";
-	};
-
-	i2c4: i2c@7000c700 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nvidia,tegra114-i2c";
-		reg = <0x7000c700 0x100>;
-		interrupts = <0 120 0x04>;
-		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
-		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
-		status = "disable";
-	};
-
-	i2c5: i2c@7000d000 {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		compatible = "nvidia,tegra114-i2c";
-		reg = <0x7000d000 0x100>;
-		interrupts = <0 53 0x04>;
-		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
-		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
-		status = "disable";
 	};
 
 	spi0: spi@7000d400 {
