@@ -68,7 +68,8 @@ void __init tegra20_hotplug_init(void)
 }
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
+    defined(CONFIG_ARCH_TEGRA_14x_SOC)
 extern void tegra30_hotplug_shutdown(void);
 void __init tegra30_hotplug_init(void)
 {

@@ -724,6 +724,7 @@ void __init tegra11x_init_early(void)
 	tegra11x_clk_init_la();
 	tegra_pmc_init();
 	tegra_powergate_init();
+	tegra30_hotplug_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
@@ -752,6 +753,7 @@ void __init tegra14x_init_early(void)
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
+	tegra30_hotplug_init();
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
