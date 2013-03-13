@@ -29,6 +29,7 @@
 #include <linux/cpufreq.h>
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
+#include <linux/clk/tegra.h>
 
 #include <asm/clkdev.h>
 
@@ -484,6 +485,13 @@
 #define ROUND_DIVIDER_UP	0
 #define ROUND_DIVIDER_DOWN	1
 #define DIVIDER_1_5_ALLOWED	0
+
+/* Tegra CPU clock and reset control regs */
+#define TEGRA_CLK_RST_CONTROLLER_CLK_CPU_CMPLX		0x4c
+#define TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET	0x340
+#define TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_CLR	0x344
+#define TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR	0x34c
+#define TEGRA30_CLK_RST_CONTROLLER_CPU_CMPLX_STATUS	0x470
 
 #define CPU_CLOCK(cpu)	(0x1 << (8 + cpu))
 #define CPU_RESET(cpu)	(0x111001ul << (cpu))
@@ -7373,8 +7381,58 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 };
 #endif
 
+/* Tegra11 CPU clock and reset control functions */
+static void tegra11_wait_cpu_in_reset(u32 cpu)
+{
+	unsigned int reg;
+
+	do {
+		reg = readl(reg_clk_base +
+			    TEGRA30_CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
+		cpu_relax();
+	} while (!(reg & (1 << cpu)));	/* check CPU been reset or not */
+
+	return;
+}
+
+static void tegra11_put_cpu_in_reset(u32 cpu)
+{
+	writel(CPU_RESET(cpu),
+	       reg_clk_base + TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_SET);
+	dmb();
+}
+
+static void tegra11_cpu_out_of_reset(u32 cpu)
+{
+	writel(CPU_RESET(cpu),
+	       reg_clk_base + TEGRA_CLK_RST_CONTROLLER_RST_CPU_CMPLX_CLR);
+	wmb();
+}
+
+static void tegra11_enable_cpu_clock(u32 cpu)
+{
+	unsigned int reg;
+
+	writel(CPU_CLOCK(cpu),
+	       reg_clk_base + TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+	reg = readl(reg_clk_base +
+		    TEGRA30_CLK_RST_CONTROLLER_CLK_CPU_CMPLX_CLR);
+}
 static void tegra11_disable_cpu_clock(u32 cpu)
 {
+}
+
+static struct tegra_cpu_car_ops tegra11_cpu_car_ops = {
+	.wait_for_reset	= tegra11_wait_cpu_in_reset,
+	.put_in_reset	= tegra11_put_cpu_in_reset,
+	.out_of_reset	= tegra11_cpu_out_of_reset,
+	.enable_clock	= tegra11_enable_cpu_clock,
+	.disable_clock	= tegra11_disable_cpu_clock,
+};
+
+static void __init tegra11_cpu_car_ops_init(void)
+{
+	tegra_cpu_car_ops = &tegra11_cpu_car_ops;
 }
 
 void __init tegra11x_init_clocks(void)
@@ -7424,6 +7482,8 @@ void __init tegra11x_init_clocks(void)
 	/* To be ready for DFLL late init */
 	tegra_dfll_cpu.ops->init = tegra11_dfll_cpu_late_init;
 #endif
+
+	tegra11_cpu_car_ops_init();
 
 #ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_clk_syscore_ops);
