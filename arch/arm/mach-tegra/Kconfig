@@ -661,7 +661,7 @@ config TEGRA_USE_DFLL_RANGE
 	int "Default CPU DFLL operating range"
 	depends on ARCH_TEGRA_HAS_CL_DVFS
 	range 0 2
-	default "1" if TEGRA_SILICON_PLATFORM && !ARCH_TEGRA_14x_SOC
+	default "1" if TEGRA_SILICON_PLATFORM
 	default "0"
 	help
 	  Defines default range for dynamic frequency lock loop (DFLL)
