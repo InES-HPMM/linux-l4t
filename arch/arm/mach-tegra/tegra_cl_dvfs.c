@@ -1525,8 +1525,6 @@ static int cl_register_show(struct seq_file *s, void *data)
 	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(cld, offs));
 	offs = CL_DVFS_INTR_EN;
 	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(cld, offs));
-	offs = CL_DVFS_I2C_CLK_DIVISOR;
-	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, cl_dvfs_readl(cld, offs));
 
 	seq_printf(s, "\nLUT:\n");
 	for (offs = CL_DVFS_OUTPUT_LUT;
