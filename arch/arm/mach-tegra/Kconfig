@@ -768,4 +768,8 @@ config TEGRA_MC_DOMAINS
 	help
 	  When enabled, clock gates MC when it's not needed.
 
+config TEGRA_USE_NCT
+	bool "Enable NCT partition access"
+	help
+	  When enabled, we can read non-volatile items from NCT partition.
 endif

@@ -46,6 +46,7 @@
 #include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
 #include <mach/gpio-tegra.h>
+#include <mach/nct.h>
 
 #include "apbio.h"
 #include "board.h"
@@ -138,6 +139,10 @@ static struct board_info button_board_info;
 static struct board_info joystick_board_info;
 static struct board_info rightspeaker_board_info;
 static struct board_info leftspeaker_board_info;
+#ifdef CONFIG_TEGRA_USE_NCT
+unsigned long tegra_nck_start;
+unsigned long tegra_nck_size;
+#endif
 
 static int pmu_core_edp;
 static int board_panel_type;
@@ -922,6 +927,24 @@ static int __init tegra_tzram_arg(char *options)
 early_param("tzram", tegra_tzram_arg);
 #endif
 
+#ifdef CONFIG_TEGRA_USE_NCT
+static int __init tegra_nck_arg(char *options)
+{
+	char *p = options;
+
+	tegra_nck_size = memparse(p, &p);
+	if (*p == '@')
+		tegra_nck_start = memparse(p+1, &p);
+	if (!tegra_nck_size || !tegra_nck_start) {
+		tegra_nck_size = 0;
+		tegra_nck_start = 0;
+	}
+
+	return 0;
+}
+early_param("nck", tegra_nck_arg);
+#endif	/* CONFIG_TEGRA_USE_NCT */
+
 enum panel_type get_panel_type(void)
 {
 	return board_panel_type;
@@ -1594,6 +1617,18 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 #endif
 
+#ifdef CONFIG_TEGRA_USE_NCT
+	if (tegra_nck_size &&
+	   (tegra_nck_start < memblock_end_of_DRAM())) {
+		if (memblock_reserve(tegra_nck_start, tegra_nck_size)) {
+			pr_err("Failed to reserve nck %08lx@%08lx\n",
+				tegra_nck_size, tegra_nck_start);
+			tegra_nck_start = 0;
+			tegra_nck_size = 0;
+		}
+	}
+#endif
+
 	/*
 	 * We copy the bootloader's framebuffer to the framebuffer allocated
 	 * above, and then free this one.
@@ -1682,6 +1717,15 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		tegra_tzram_start,
 		tegra_tzram_size ?
 			tegra_tzram_start + tegra_tzram_size - 1 : 0);
+#endif
+
+#ifdef CONFIG_TEGRA_USE_NCT
+	if (tegra_nck_size) {
+		pr_info("Nck:                    %08lx - %08lx\n",
+			tegra_nck_start,
+			tegra_nck_size ?
+				tegra_nck_start + tegra_nck_size - 1 : 0);
+	}
 #endif
 }
 
