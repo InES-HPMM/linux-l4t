@@ -238,6 +238,7 @@ struct sdhci_tegra {
 #define TUNING_STATUS_RETUNE	2
 	/* Freq tuning information for each sampling clock freq */
 	struct tegra_tuning_data tuning_data;
+	unsigned int best_tap_values[TUNING_FREQ_COUNT];
 };
 
 static struct clk *pll_c;
@@ -1387,6 +1388,9 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	unsigned int freq_band;
 	unsigned int i;
 	unsigned int voltage;
+#ifdef CONFIG_MMC_FREQ_SCALING
+	unsigned int dfs_freq = 0;
+#endif
 
 	/* Tuning is valid only in SDR104 and SDR50 modes */
 	ctrl_2 = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
@@ -1422,77 +1426,88 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	 */
 	if (tegra_host->tuning_status == TUNING_STATUS_DONE)
 		goto set_best_tap;
+#ifdef CONFIG_MMC_FREQ_SCALING
+	for (dfs_freq = 0; dfs_freq < TUNING_FREQ_COUNT; dfs_freq++) {
+		if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
+			sdhci->max_clk = tuning_params[TUNING_LOW_FREQ].freq_hz;
+		else
+			sdhci->max_clk =
+				tuning_params[TUNING_HIGH_FREQ].freq_hz;
+		tegra_sdhci_set_clk_rate(sdhci, sdhci->max_clk);
+#endif
+		if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
+			freq_band = TUNING_HIGH_FREQ;
+		else
+			freq_band = TUNING_LOW_FREQ;
 
-	if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
-		freq_band = TUNING_HIGH_FREQ;
-	else
-		freq_band = TUNING_LOW_FREQ;
-
-	/*
-	 * Run tuning and get the passing tap window info for all frequencies
-	 * and core voltages required to calculate the final tap value. The
-	 * standard driver calls this platform specific tuning callback after
-	 * holding a lock. The spinlock needs to be released when calling
-	 * non-atomic context functions like regulator calls etc.
-	 */
-	tuning_data = &tegra_host->tuning_data;
-	for (i = 0; i < tuning_params[freq_band].nr_voltages; i++) {
-		spin_unlock(&sdhci->lock);
-		if (!tuning_data->tap_data[i]) {
-			tuning_data->tap_data[i] = devm_kzalloc(
+		/*
+		 * Run tuning and get the passing tap window info for all
+		 * frequencies and core voltages required to calculate the
+		 * final tap value. The standard driver calls this platform
+		 * specific tuning callback after holding a lock. The spinlock
+		 * needs to be released when calling non-atomic context
+		 * functions like regulator calls etc.
+		 */
+		tuning_data = &tegra_host->tuning_data;
+		for (i = 0; i < tuning_params[freq_band].nr_voltages; i++) {
+			spin_unlock(&sdhci->lock);
+			if (!tuning_data->tap_data[i]) {
+				tuning_data->tap_data[i] = devm_kzalloc(
 				mmc_dev(sdhci->mmc),
 				sizeof(struct tap_window_data), GFP_KERNEL);
-			if (!tuning_data->tap_data[i]) {
-				err = -ENOMEM;
-				dev_err(mmc_dev(sdhci->mmc),
+				if (!tuning_data->tap_data[i]) {
+					err = -ENOMEM;
+					dev_err(mmc_dev(sdhci->mmc),
 					"Insufficient memory for tap window info\n");
-				spin_lock(&sdhci->lock);
+					spin_lock(&sdhci->lock);
+					goto out;
+				}
+			}
+			tap_data = tuning_data->tap_data[i];
+
+			if (tegra_host->nominal_vcore_uV) {
+				if (!tegra_host->vcore_reg)
+					tegra_host->vcore_reg = regulator_get(
+					mmc_dev(sdhci->mmc), "vdd_core");
+				if (IS_ERR_OR_NULL(tegra_host->vcore_reg)) {
+					dev_info(mmc_dev(sdhci->mmc),
+					"No vdd_core %ld. Tuning might fail.\n",
+					PTR_ERR(tegra_host->vcore_reg));
+					tegra_host->vcore_reg = NULL;
+				} else {
+					voltage =
+					tuning_params[freq_band].voltages[i];
+					if (voltage >
+						tegra_host->nominal_vcore_uV)
+						voltage =
+						tegra_host->nominal_vcore_uV;
+					err = regulator_set_voltage(
+						tegra_host->vcore_reg, voltage,
+						voltage);
+					if (err)
+						dev_err(mmc_dev(sdhci->mmc),
+						"Setting nominal core voltage failed\n");
+				}
+			}
+			spin_lock(&sdhci->lock);
+
+			/* Get the tuning window info */
+			err = sdhci_tegra_get_tap_window_data(sdhci, tap_data);
+			if (err) {
+				dev_err(mmc_dev(sdhci->mmc), "Failed to tuning window info\n");
 				goto out;
 			}
 		}
-		tap_data = tuning_data->tap_data[i];
 
-		if (tegra_host->nominal_vcore_uV) {
-			if (!tegra_host->vcore_reg)
-				tegra_host->vcore_reg = regulator_get(
-				mmc_dev(sdhci->mmc), "vdd_core");
-			if (IS_ERR_OR_NULL(tegra_host->vcore_reg)) {
-				dev_info(mmc_dev(sdhci->mmc),
-					"No vdd_core %ld. Tuning might fail.\n",
-					PTR_ERR(tegra_host->vcore_reg));
-				tegra_host->vcore_reg = NULL;
-			} else {
-				voltage = tuning_params[freq_band].voltages[i];
-				if (voltage > tegra_host->nominal_vcore_uV)
-					voltage = tegra_host->nominal_vcore_uV;
-				err = regulator_set_voltage(
-					tegra_host->vcore_reg, voltage,
-					voltage);
-				if (err)
-					dev_err(mmc_dev(sdhci->mmc),
-						"Setting nominal core voltage failed\n");
-			}
-		}
-		spin_lock(&sdhci->lock);
-
-		/* Get the tuning window info */
-		err = sdhci_tegra_get_tap_window_data(sdhci, tap_data);
-		if (err) {
-			dev_err(mmc_dev(sdhci->mmc), "Failed to tuning window info\n");
-			goto out;
-		}
-	}
-
-	/* Calculate best tap for current freq band */
-	if (freq_band == TUNING_LOW_FREQ)
-		calculate_low_freq_tap_value(sdhci);
-	else
-		calculate_high_freq_tap_value(sdhci);
+		/* Calculate best tap for current freq band */
+		if (freq_band == TUNING_LOW_FREQ)
+			calculate_low_freq_tap_value(sdhci);
+		else
+			calculate_high_freq_tap_value(sdhci);
 
 set_best_tap:
-	sdhci_tegra_set_tap_delay(sdhci,
-		tegra_host->tuning_data.best_tap_value);
-
+		sdhci_tegra_set_tap_delay(sdhci,
+			tegra_host->tuning_data.best_tap_value);
 	/*
 	 * Run tuning with the best tap value. If tuning fails, set the status
 	 * for retuning next time enumeration is done.
@@ -1502,6 +1517,15 @@ set_best_tap:
 		tegra_host->tuning_status = TUNING_STATUS_RETUNE;
 	else
 		tegra_host->tuning_status = TUNING_STATUS_DONE;
+#ifdef CONFIG_MMC_FREQ_SCALING
+	if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
+		tegra_host->best_tap_values[TUNING_HIGH_FREQ] =
+			tegra_host->tuning_data.best_tap_value;
+	else
+		tegra_host->best_tap_values[TUNING_LOW_FREQ] =
+			tegra_host->tuning_data.best_tap_value;
+}
+#endif
 
 out:
 	/* Enable the full range for core voltage if vcore_reg exists */
