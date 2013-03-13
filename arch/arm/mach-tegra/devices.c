@@ -1885,6 +1885,11 @@ u64 tegra_smmu_fixup_swgids(struct device *dev)
  * ASID[1] for PPCS, which has SDMMC
  * ASID[3][4] open for drivers, first come, first served.
  */
+enum {
+	SYSTEM_DEFAULT,
+	SYSTEM_PROTECTED,
+};
+
 static struct dma_iommu_mapping *smmu_default_map[2];
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
@@ -1907,7 +1912,16 @@ static void tegra_smmu_map_init(struct platform_device *pdev)
 
 struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
-	return smmu_default_map[0]; /* default map */
+	if (!swgids)
+		swgids = tegra_smmu_fixup_swgids(dev);
+
+	if (!swgids)
+		return NULL;
+
+	if (swgids & SWGID(PPCS))
+		return smmu_default_map[SYSTEM_PROTECTED];
+
+	return smmu_default_map[SYSTEM_DEFAULT];
 }
 #else
 static inline void tegra_smmu_map_init(struct platform_device *pdev)
