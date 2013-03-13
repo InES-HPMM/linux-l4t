@@ -155,7 +155,7 @@ static unsigned int uhs_max_freq_MHz[] = {
 #define NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK	BIT(19)
 
 struct sdhci_tegra_soc_data {
-	struct sdhci_pltfm_data *pdata;
+	const struct sdhci_pltfm_data *pdata;
 	u32 nvquirks;
 };
 
@@ -2032,7 +2032,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 #endif
 };
 
-static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
+static const struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
