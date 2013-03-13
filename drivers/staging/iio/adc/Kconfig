@@ -138,4 +138,12 @@ config SPEAR_ADC
 	  Say yes here to build support for the integrated ADC inside the
 	  ST SPEAr SoC. Provides direct access via sysfs.
 
+config PALMAS_GPADC
+	tristate "TI Palmas General Purpose ADC"
+	depends on MFD_PALMAS
+	help
+	 Palmas series pmic chip is used in smartphones and tablets
+	 which supports a 16 channel GPADC. Add iio driver to read
+	 different channel of GPADCs.
+
 endmenu
