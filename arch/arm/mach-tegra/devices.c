@@ -158,6 +158,8 @@ static struct resource pinmux_resource[] = {
 		.start	= TEGRA_APB_MISC_BASE + 0x3000,
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 		.end	= TEGRA_APB_MISC_BASE + 0x3408 + 3,
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		.end	= TEGRA_APB_MISC_BASE + 0x3514 + 3,
 #else
 		.end	= TEGRA_APB_MISC_BASE + 0x33e0 + 3,
 #endif
