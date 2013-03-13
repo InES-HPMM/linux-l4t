@@ -246,6 +246,8 @@ static int tegra_emc_table_size;
 static u32 dram_dev_num;
 static u32 dram_type = -1;
 
+static u32 dsr_override;
+
 static struct clk *emc;
 
 static struct {
@@ -540,8 +542,9 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 
 	/* 15. restore auto-cal - removed */
 
-	/* 16. restore dynamic self-refresh */
-	if (next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
+	/* 16. restore dynamic self-refresh - for t148 if requested, we will
+	   leave DSR disabled. Otherwise just follow the table entry. */
+	if (!dsr_override && next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
 		emc_cfg_reg |= EMC_CFG_DYN_SREF_ENABLE;
 		emc_writel(emc_cfg_reg, EMC_CFG);
 	}
@@ -1172,6 +1175,74 @@ int tegra_emc_get_dram_temperature(void)
 	return mr4;
 }
 
+int tegra_emc_dsr_override(int override)
+{
+	int i, emc_cfg;
+	unsigned long flags, rate;
+	const struct tegra14_emc_table *tbl_timing;
+
+	if (override != TEGRA_EMC_DSR_NORMAL &&
+	    override != TEGRA_EMC_DSR_OVERRIDE)
+		return -EINVAL;
+
+	/* No-op. */
+	if (override == dsr_override)
+		return 0;
+
+	spin_lock_irqsave(&emc_access_lock, flags);
+
+	dsr_override = override;
+	emc_cfg = emc_readl(EMC_CFG);
+
+	/*
+	 * If override is specified, just turn off DSR. Otherwise follow the
+	 * state specified in the current rate's table entry. However, it is
+	 * possible that we will be booting (warm or cold) with a rate that
+	 * is not in the table. If this is the case, we cannot determine what
+	 * needs to happen so we will simply leave dsr_override set to 0 and
+	 * let the next clock change handle returning DSR state to the table's
+	 * state.
+	 */
+	emc_cfg &= ~EMC_CFG_DYN_SREF_ENABLE;
+	if (override == TEGRA_EMC_DSR_NORMAL) {
+		/* Get table entry for current rate if we don't have a valid
+		   rate already. */
+		tbl_timing = emc_timing;
+		if (!tbl_timing) {
+			rate = clk_get_rate(emc) / 1000;
+			for (i = 0; i < tegra_emc_table_size; i++) {
+				if (tegra_emc_table[i].rate == rate) {
+					tbl_timing = &tegra_emc_table[i];
+					break;
+				}
+			}
+		}
+
+		if (tbl_timing && tbl_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE)
+			emc_cfg |= EMC_CFG_DYN_SREF_ENABLE;
+	}
+
+	emc_writel(emc_cfg, EMC_CFG);
+	emc_timing_update();
+	spin_unlock_irqrestore(&emc_access_lock, flags);
+	return 0;
+}
+
+int tegra_emc_dsr_override_status(void)
+{
+	return dsr_override;
+}
+
+int tegra_emc_dsr_status(void)
+{
+	int emc_cfg = emc_readl(EMC_CFG);
+
+	if (emc_cfg & EMC_CFG_DYN_SREF_ENABLE)
+		return 1;
+	else
+		return 0;
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static struct dentry *emc_debugfs_root;
@@ -1234,6 +1305,31 @@ static int efficiency_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
 			efficiency_set, "%llu\n");
 
+static int dsr_get(void *data, u64 *val)
+{
+	*val = tegra_emc_dsr_status();
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(dsr_fops, dsr_get, NULL, "%llu\n");
+
+static int dsr_override_set(void *data, u64 val)
+{
+	if (val)
+		tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
+	else
+		tegra_emc_dsr_override(TEGRA_EMC_DSR_NORMAL);
+
+	return 0;
+}
+
+static int dsr_override_get(void *data, u64 *val)
+{
+	*val = tegra_emc_dsr_override_status();
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(dsr_override_fops, dsr_override_get,
+			dsr_override_set, "%llu\n");
+
 static int __init tegra_emc_debug_init(void)
 {
 	if (!tegra_emc_table)
@@ -1257,6 +1353,14 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &efficiency_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("dsr", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &dsr_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("dsr_override", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &dsr_override_fops))
 		goto err_out;
 
 	return 0;

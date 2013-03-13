@@ -48,6 +48,12 @@ int tegra_emc_backup(unsigned long rate);
 void tegra_init_dram_bit_map(const u32 *bit_map, int map_size);
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#define TEGRA_EMC_DSR_NORMAL	0x0
+#define TEGRA_EMC_DSR_OVERRIDE	0x1
+int tegra_emc_dsr_override(int override);
+#endif
+
 #ifdef CONFIG_PM_SLEEP
 void tegra_mc_timing_restore(void);
 #else
