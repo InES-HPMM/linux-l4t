@@ -919,11 +919,13 @@ static int soctherm_get_trend(struct thermal_zone_device *thz,
 {
 	int index = ((int)thz->devdata) - TSENSE_SIZE;
 	struct thermal_trip_info *trip_state;
+	long trip_temp;
 
 	if (index < 0)
 		return -EINVAL;
 
 	trip_state = &plat_data.therm[index].trips[trip];
+	thz->ops->get_trip_temp(thz, trip, &trip_temp);
 
 	switch (trip_state->trip_type) {
 	case THERMAL_TRIP_ACTIVE:
@@ -933,13 +935,14 @@ static int soctherm_get_trend(struct thermal_zone_device *thz,
 	case THERMAL_TRIP_PASSIVE:
 		if (thz->temperature > trip_state->trip_temp)
 			*trend = THERMAL_TREND_RAISING;
-		else
+		else if (thz->temperature < trip_temp)
 			*trend = THERMAL_TREND_DROPPING;
+		else
+			*trend = THERMAL_TREND_STABLE;
 		break;
 	default:
 		return -EINVAL;
 	}
-
 	return 0;
 }
 
