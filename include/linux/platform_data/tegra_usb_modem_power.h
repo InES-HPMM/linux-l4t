@@ -21,6 +21,7 @@
 
 #include <linux/interrupt.h>
 #include <linux/edp.h>
+#include <linux/usb.h>
 
 /* modem capabilities */
 #define TEGRA_MODEM_AUTOSUSPEND	0x01
@@ -40,13 +41,14 @@ struct tegra_modem_operations {
 /* tegra usb modem power platform data */
 struct tegra_usb_modem_power_platform_data {
 	const struct tegra_modem_operations *ops;
+	const struct usb_device_id *modem_list; /* supported modem list */
 	int wake_gpio;			/* remote wakeup gpio */
 	unsigned long wake_irq_flags;	/* remote wakeup irq flags */
 	int boot_gpio;			/* modem boot gpio */
 	unsigned long boot_irq_flags;	/* modem boot irq flags */
 	int autosuspend_delay;		/* autosuspend delay in milliseconds */
 	int short_autosuspend_delay;	/* short autosuspend delay in ms */
-	const struct platform_device *tegra_ehci_device;
+	const struct platform_device *tegra_ehci_device; /* USB host device */
 	const struct tegra_usb_platform_data *tegra_ehci_pdata;
 	struct edp_client *modem_boot_edp_client;
 	char *edp_manager_name;

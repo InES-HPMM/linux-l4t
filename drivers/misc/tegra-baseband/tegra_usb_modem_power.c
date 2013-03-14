@@ -44,6 +44,7 @@
 
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
+	struct platform_device *pdev;
 	unsigned int wake_cnt;	/* remote wakeup counter */
 	unsigned int wake_irq;	/* remote wakeup irq */
 	unsigned int boot_irq;	/* modem boot irq */
@@ -68,6 +69,8 @@ struct tegra_usb_modem {
 	struct notifier_block usb_notifier;	/* usb event notifier */
 	int sysfs_file_created;
 	int short_autosuspend_enabled;
+	struct platform_device *hc;	/* USB host controller */
+	struct mutex hc_lock;
 	struct edp_client *modem_boot_edp_client;
 	struct edp_client modem_edp_client;
 	unsigned int modem_edp_states[MAX_MODEM_EDP_STATES];
@@ -82,10 +85,6 @@ struct tegra_usb_modem {
 	struct mutex edp_lock;
 };
 
-static struct platform_device *hc;	/* USB host controller */
-static struct mutex hc_lock;
-static const struct platform_device *hc_device;
-static const struct tegra_usb_platform_data *hc_pdata;
 
 /* supported modems */
 static const struct usb_device_id modem_list[] = {
@@ -189,7 +188,8 @@ static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 
 	mutex_lock(&modem->lock);
 	if (modem->udev && modem->udev->state != USB_STATE_NOTATTACHED) {
-		pr_info("modem wake (%u)\n", ++(modem->wake_cnt));
+		dev_info(&modem->pdev->dev, "remote wake (%u)\n",
+			 ++(modem->wake_cnt));
 
 		if (!modem->system_suspend) {
 			wake_lock_timeout(&modem->wake_lock,
@@ -219,8 +219,7 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 	struct tegra_usb_modem *modem = (struct tegra_usb_modem *)data;
 	int v = gpio_get_value(modem->pdata->boot_gpio);
 
-	pr_info("MDM_COLDBOOT %s\n",  v ? "high" : "low");
-
+	dev_info(&modem->pdev->dev, "MDM_COLDBOOT %s\n", v ? "high" : "low");
 	if (modem->capability & TEGRA_USB_HOST_RELOAD)
 		if (!work_pending(&modem->host_load_work) &&
 		    !work_pending(&modem->host_unload_work))
@@ -261,12 +260,16 @@ static void tegra_usb_modem_recovery(struct work_struct *ws)
 
 static void tegra_usb_host_load(struct work_struct *ws)
 {
-	load_unload_usb_host(NULL, NULL, "1", 1);
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     host_load_work);
+	load_unload_usb_host(&modem->pdev->dev, NULL, "1", 1);
 }
 
 static void tegra_usb_host_unload(struct work_struct *ws)
 {
-	load_unload_usb_host(NULL, NULL, "0", 1);
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     host_unload_work);
+	load_unload_usb_host(&modem->pdev->dev, NULL, "0", 1);
 }
 
 static void device_add_handler(struct tegra_usb_modem *modem,
@@ -276,8 +279,15 @@ static void device_add_handler(struct tegra_usb_modem *modem,
 	struct usb_interface *intf = usb_ifnum_to_if(udev, 0);
 	const struct usb_device_id *id = NULL;
 
-	if (intf)
-		id = usb_match_id(intf, modem_list);
+	if (intf) {
+		/* only look for specific modems if modem_list is provided in
+		   platform data. Otherwise, look for the modems in the default
+		   supported modem list */
+		if (modem->pdata->modem_list)
+			id = usb_match_id(intf, modem->pdata->modem_list);
+		else
+			id = usb_match_id(intf, modem_list);
+	}
 
 	if (id) {
 		/* hold wakelock to ensure ril has enough time to restart */
@@ -431,8 +441,11 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 }
 
 /* load USB host controller */
-static struct platform_device *tegra_usb_host_register(void)
+static struct platform_device *tegra_usb_host_register(
+				const struct tegra_usb_modem *modem)
 {
+	const struct platform_device *hc_device =
+	    modem->pdata->tegra_ehci_device;
 	struct platform_device *pdev;
 	int val;
 
@@ -448,7 +461,7 @@ static struct platform_device *tegra_usb_host_register(void)
 	pdev->dev.dma_mask = hc_device->dev.dma_mask;
 	pdev->dev.coherent_dma_mask = hc_device->dev.coherent_dma_mask;
 
-	val = platform_device_add_data(pdev, hc_pdata,
+	val = platform_device_add_data(pdev, modem->pdata->tegra_ehci_pdata,
 				       sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
@@ -474,13 +487,16 @@ static void tegra_usb_host_unregister(struct platform_device *pdev)
 static ssize_t show_usb_host(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", (hc) ? 1 : 0);
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", (modem->hc) ? 1 : 0);
 }
 
 static ssize_t load_unload_usb_host(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf, size_t count)
 {
+	struct tegra_usb_modem *modem = dev_get_drvdata(dev);
 	int host;
 
 	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
@@ -488,17 +504,17 @@ static ssize_t load_unload_usb_host(struct device *dev,
 
 	pr_info("%s USB host\n", (host) ? "load" : "unload");
 
-	mutex_lock(&hc_lock);
+	mutex_lock(&modem->hc_lock);
 	if (host) {
-		if (!hc)
-			hc = tegra_usb_host_register();
+		if (!modem->hc)
+			modem->hc = tegra_usb_host_register(modem);
 	} else {
-		if (hc) {
-			tegra_usb_host_unregister(hc);
-			hc = NULL;
+		if (modem->hc) {
+			tegra_usb_host_unregister(modem->hc);
+			modem->hc = NULL;
 		}
 	}
-	mutex_unlock(&hc_lock);
+	mutex_unlock(&modem->hc_lock);
 
 	return count;
 }
@@ -699,10 +715,7 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	struct device_attribute *attr;
 
 	modem->pdata = pdata;
-	hc = NULL;
-	hc_device = pdata->tegra_ehci_device;
-	hc_pdata = pdata->tegra_ehci_pdata;
-	mutex_init(&hc_lock);
+	modem->pdev = pdev;
 
 	if (pdata->modem_boot_edp_client && pdata->edp_manager_name) {
 		mutex_init(&modem->edp_lock);
@@ -777,7 +790,12 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	modem->sysfs_file_created = 1;
 	modem->capability = TEGRA_USB_HOST_RELOAD;
 	mutex_init(&(modem->lock));
+	mutex_init(&modem->hc_lock);
 	wake_lock_init(&modem->wake_lock, WAKE_LOCK_SUSPEND, "mdm_lock");
+	if (pdev->id >= 0)
+		dev_set_name(&pdev->dev, "MDM%d", pdev->id);
+	else
+		dev_set_name(&pdev->dev, "MDM");
 
 	/* create work queue platform_driver_registe */
 	modem->wq = create_workqueue("tegra_usb_mdm_queue");
