@@ -280,7 +280,7 @@ static void nvshm_tty_close(struct tty_struct *tty, struct file *f)
 	int use = 0;
 	int idx = tty->index;
 
-	if (!nvshm_interface_up())
+	if ((!nvshm_interface_up()) || (!tty_dev.handle))
 		return;
 
 	spin_lock(&tty_dev.line[idx].lock);
