@@ -1006,8 +1006,6 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		}
 	}
 
-	utmi_phy_pad_disable();
-
 	/* Disable PHY clock */
 	val = readl(base + HOSTPC1_DEVLC);
 	val |= HOSTPC1_DEVLC_PHCD;
@@ -1018,6 +1016,8 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		val |= UTMIP_RESET;
 		writel(val, base + USB_SUSP_CTRL);
 	}
+
+	utmi_phy_pad_disable();
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -1032,6 +1032,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 #endif
@@ -1133,13 +1134,20 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val &= ~UTMIP_RESET;
 	writel(val, base + USB_SUSP_CTRL);
 
-	val = readl(base + HOSTPC1_DEVLC);
-	val &= ~HOSTPC1_DEVLC_PHCD;
-	writel(val, base + HOSTPC1_DEVLC);
+	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
+	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	if (val & UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE) {
+		val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	}
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
 		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2500))
 		pr_warn("%s: timeout waiting for phy to stabilize\n", __func__);
+
+	val = readl(base + HOSTPC1_DEVLC);
+	val &= ~HOSTPC1_DEVLC_PHCD;
+	writel(val, base + HOSTPC1_DEVLC);
 
 	utmi_phy_enable_trking_data(phy);
 

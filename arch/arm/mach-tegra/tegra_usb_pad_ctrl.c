@@ -27,14 +27,9 @@ int utmi_phy_pad_enable(void)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
-	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
-
-	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-	writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
 
 	clk_enable(utmi_pad_clk);
 
@@ -78,6 +73,8 @@ int utmi_phy_pad_disable(void)
 			UTMIP_HSDISCON_LEVEL_MSB);
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
 
+		/* Put UTMIPLL in IDDQ mode once all UTMIP ports
+		   are in reset/suspend */
 		val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
 		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
