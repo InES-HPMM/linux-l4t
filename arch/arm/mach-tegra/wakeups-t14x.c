@@ -83,6 +83,14 @@ static int tegra_gpio_wakes[] = {
 	-EINVAL,				/* wake53 */
 	TEGRA_GPIO_PQ5,				/* wake54 */
 	-EINVAL,				/* wake55 */
+	-EINVAL,				/* wake56 */
+	-EINVAL,				/* wake57 */
+	-EINVAL,				/* wake58 */
+	-EINVAL,				/* wake59 */
+	-EINVAL,				/* wake60 */
+	-EINVAL,				/* wake61 */
+	-EINVAL,				/* wake62 */
+	-EINVAL,				/* wake63 */
 };
 
 static int tegra_wake_event_irq[] = {
