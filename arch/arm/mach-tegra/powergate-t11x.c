@@ -553,17 +553,55 @@ err_power:
 	return ret;
 }
 
+void tegra11x_powergate_dis_partition(void)
+{
+	tegra1xx_powergate(TEGRA_POWERGATE_DISB,
+		&tegra11x_powergate_partition_info[TEGRA_POWERGATE_DISB]);
+
+	tegra11x_powergate_partition_internal(TEGRA_POWERGATE_VENC,
+		&tegra11x_powergate_partition_info[TEGRA_POWERGATE_DISA]);
+
+	tegra1xx_powergate(TEGRA_POWERGATE_DISA,
+		&tegra11x_powergate_partition_info[TEGRA_POWERGATE_DISA]);
+}
+
+/* The logic manages the ref-count for dis partitions. The dependency between
+ * disa and disb is hided from client. */
+bool tegra11x_powergate_check_dis_refcount(int id, int op)
+{
+	WARN_ONCE(atomic_read(&ref_count_a), "dis ref a count underflow");
+	WARN_ONCE(atomic_read(&ref_count_b), "dis ref b count underflow");
+
+	if (op && id == TEGRA_POWERGATE_DISA) {
+		if (atomic_inc_return(&ref_count_a) != 1)
+			return 0;
+	} else if (op && id == TEGRA_POWERGATE_DISB) {
+		if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISA))
+			atomic_inc(&ref_count_a);
+		if (atomic_inc_return(&ref_count_b) != 1)
+			return 0;
+	} else if (!op && id == TEGRA_POWERGATE_DISA) {
+		if (atomic_dec_return(&ref_count_a) != 0)
+			return 0;
+	} else if (!op && id == TEGRA_POWERGATE_DISB) {
+		atomic_dec(&ref_count_a);
+		if (atomic_dec_return(&ref_count_b) != 0) {
+			return 0;
+		} else if (atomic_read(&ref_count_a) == 0) {
+			tegra11x_powergate_dis_partition();
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 int tegra11x_powergate_partition(int id)
 {
 	int ret;
 
-	WARN_ONCE(atomic_read(&ref_count_a) < 0, "ref count A underflow");
-	WARN_ONCE(atomic_read(&ref_count_b) < 0, "ref count B underflow");
-
-	if (id == TEGRA_POWERGATE_DISA && atomic_dec_return(&ref_count_a) != 0)
-		return 0;
-	else if (id == TEGRA_POWERGATE_DISB &&
-		atomic_dec_return(&ref_count_b) != 0)
+	if ((id == TEGRA_POWERGATE_DISA || id == TEGRA_POWERGATE_DISB) &&
+			!tegra11x_powergate_check_dis_refcount(id, 0))
 		return 0;
 
 	ret = tegra11x_check_partition_pg_seq(id,
@@ -582,13 +620,8 @@ int tegra11x_unpowergate_partition(int id)
 {
 	int ret;
 
-	WARN_ONCE(atomic_read(&ref_count_a) < 0, "ref count A underflow");
-	WARN_ONCE(atomic_read(&ref_count_b) < 0, "ref count B underflow");
-
-	if (id == TEGRA_POWERGATE_DISA && atomic_inc_return(&ref_count_a) != 1)
-		return 0;
-	else if (id == TEGRA_POWERGATE_DISB &&
-		atomic_inc_return(&ref_count_b) != 1)
+	if ((id == TEGRA_POWERGATE_DISA || id == TEGRA_POWERGATE_DISB) &&
+			!tegra11x_powergate_check_dis_refcount(id, 1))
 		return 0;
 
 	ret = tegra11x_check_partition_pug_seq(id,
@@ -626,6 +659,20 @@ spinlock_t *tegra11x_get_powergate_lock(void)
 	return &tegra11x_powergate_lock;
 }
 
+int tegra11x_powergate_init_refcount(void)
+{
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISA))
+			atomic_set(&ref_count_a, 1);
+	else
+			atomic_set(&ref_count_a, 0);
+
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISB))
+			atomic_set(&ref_count_b, 1);
+	else
+			atomic_set(&ref_count_b, 0);
+	return 0;
+}
+
 static struct powergate_ops tegra11x_powergate_ops = {
 	.soc_name = "tegra11x",
 
@@ -645,6 +692,8 @@ static struct powergate_ops tegra11x_powergate_ops = {
 
 	.powergate_mc_flush = tegra11x_powergate_mc_flush,
 	.powergate_mc_flush_done = tegra11x_powergate_mc_flush_done,
+
+	.powergate_init_refcount = tegra11x_powergate_init_refcount,
 };
 
 struct powergate_ops *tegra11x_powergate_init_chip_support(void)

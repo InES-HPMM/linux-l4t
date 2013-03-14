@@ -553,6 +553,14 @@ const char *tegra_powergate_get_name(int id)
 }
 EXPORT_SYMBOL(tegra_powergate_get_name);
 
+int tegra_powergate_init_refcount(void)
+{
+	if (!pg_ops->powergate_init_refcount)
+		return 0;
+
+	return pg_ops->powergate_init_refcount();
+}
+
 int __init tegra_powergate_init(void)
 {
 	switch (tegra_chip_id) {
@@ -577,6 +585,8 @@ int __init tegra_powergate_init(void)
 			pr_info("%s: Unknown Tegra variant. Disabling powergate\n", __func__);
 			break;
 	}
+
+	tegra_powergate_init_refcount();
 
 	pr_info("%s: DONE\n", __func__);
 
