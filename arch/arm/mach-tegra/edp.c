@@ -932,7 +932,6 @@ void tegra_platform_edp_init(struct thermal_trip_info *trips,
 			(cpu_edp_limits[i].temperature * 1000) - margin;
 		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
 		trip_state->upper = trip_state->lower = i + 1;
-		trip_state->hysteresis = 1000;
 
 		(*num_trips)++;
 

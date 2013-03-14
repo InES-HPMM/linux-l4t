@@ -563,10 +563,6 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 	r = soctherm_readl(reg_off);
 	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, trip_temp);
 
-	trip_state->hysteresis = trip_state->hysteresis ?:
-		LOWER_PRECISION_FOR_CONV(1000);
-	trip_temp -= LOWER_PRECISION_FOR_TEMP(trip_state->hysteresis / 1000);
-
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
 	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
@@ -727,8 +723,6 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 		trip_state = &plat_data.therm[index].trips[i];
 		if (trip_state->bound)
 			continue;
-		trip_state->hysteresis = trip_state->hysteresis ?:
-			LOWER_PRECISION_FOR_CONV(1000);
 		if (trip_state->cdev_type &&
 		    !strncmp(trip_state->cdev_type, cdev->type,
 						THERMAL_NAME_LENGTH)) {
