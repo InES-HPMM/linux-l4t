@@ -193,11 +193,9 @@ static int aic3xxx_cfw_setmode_cfg_u(struct cfw_state *ps, int mode, int cfg)
 		 * overlay applies only to one
 		 */
 		im = pfw->base;
-		/* removing if condition below. While switching *
-		 * PFW, switch OFF minidsps anyways             */
-		/*if (im->block[CFW_BLOCK_A_INST])*/
+
+		/* While switching PFW, switch OFF minidsps anyways */
 		which |= AIC3XXX_COPS_MDSP_A;
-		/*if (im->block[CFW_BLOCK_D_INST])*/
 		which |= AIC3XXX_COPS_MDSP_D;
 
 		if (pmode->pfw != ps->cur_pfw) {
