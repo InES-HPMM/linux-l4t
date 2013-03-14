@@ -106,6 +106,8 @@ static struct regulator_consumer_supply palmas_smps123_supply[] = {
 
 static struct regulator_consumer_supply palmas_smps45_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
+	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.0"),
+	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.3"),
 };
 
 static struct regulator_consumer_supply palmas_smps6_supply[] = {
