@@ -3,7 +3,7 @@
  *
  * Interface for mfd/regualtor/battery charging driver for BQ2419X VBUS.
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
 
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -70,10 +70,12 @@ struct bq2419x_chip {
  *
  * @reg_init_data: The regulator init data.
  * @gpio_otg_iusb: Gpio number for OTG/IUSB
+ * @power_off_on_suspend: shutdown upon suspend
  */
 struct bq2419x_regulator_platform_data {
 	struct regulator_init_data *reg_init_data;
 	int gpio_otg_iusb;
+	bool power_off_on_suspend;
 };
 
 struct bq2419x_charger_platform_data {

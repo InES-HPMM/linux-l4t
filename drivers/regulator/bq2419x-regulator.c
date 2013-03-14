@@ -3,7 +3,7 @@
  *
  * Regulator driver for BQ2419X charger.
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -41,6 +41,7 @@ struct bq2419x_regulator_info {
 	struct regulator_dev *rdev;
 	struct bq2419x_chip *chip;
 	int gpio_otg_iusb;
+	bool power_off_on_suspend;
 	struct mutex mutex;
 	int shutdown_complete;
 };
@@ -180,6 +181,7 @@ static int bq2419x_regulator_probe(struct platform_device *pdev)
 	bq->chip = dev_get_drvdata(pdev->dev.parent);
 
 	bq->gpio_otg_iusb = pdata->gpio_otg_iusb;
+	bq->power_off_on_suspend = pdata->power_off_on_suspend;
 	bq->desc.name = "bq2419x-vbus";
 	bq->desc.id = 0;
 	bq->desc.ops = &bq2419x_dcdc_ops;
@@ -243,10 +245,41 @@ static int bq2419x_regulator_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int bq2419x_reg_suspend(struct device *dev)
+{
+	struct bq2419x_regulator_info *bq = dev_get_drvdata(dev);
+
+	if (bq->power_off_on_suspend && bq2419x_dcdc_is_enabled(bq->rdev) > 0)
+		bq2419x_dcdc_disable(bq->rdev);
+	return 0;
+}
+
+static int bq2419x_reg_resume(struct device *dev)
+{
+	struct bq2419x_regulator_info *bq = dev_get_drvdata(dev);
+
+	/* Turn on regulator that might be turned off by bq2419x_reg_suspend()
+	 * and that should be turned on according to the regulators properties.
+	 */
+	if (bq->power_off_on_suspend &&
+		(bq->rdev->use_count > 0 || bq->rdev->constraints->always_on))
+		bq2419x_dcdc_enable(bq->rdev);
+	return 0;
+}
+
+static const struct dev_pm_ops bq2419x_reg_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(bq2419x_reg_suspend, bq2419x_reg_resume)
+};
+#endif
+
 static struct platform_driver bq2419x_regulator_driver = {
 	.driver = {
 		.name = "bq2419x-pmic",
 		.owner = THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
+		.pm = &bq2419x_reg_pm_ops,
+#endif
 	},
 	.probe = bq2419x_regulator_probe,
 	.shutdown = bq2419x_regulator_shutdown,
