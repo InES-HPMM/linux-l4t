@@ -75,6 +75,7 @@
 
 #include "board.h"
 #include "board-common.h"
+#include "board-touch.h"
 #include "board-touch-raydium.h"
 #include "clock.h"
 #include "board-pluto.h"
@@ -1253,15 +1254,58 @@ struct spi_board_info rm31080a_pluto_spi_board[1] = {
 	 },
 };
 
+static struct synaptics_gpio_data synaptics_gpio_pluto_data = {
+	.attn_gpio = SYNAPTICS_ATTN_GPIO,
+	.attn_polarity = RMI_ATTN_ACTIVE_LOW,
+	.reset_gpio = SYNAPTICS_RESET_GPIO,
+};
+
+static struct rmi_device_platform_data synaptics_pluto_platformdata = {
+	.sensor_name   = "TM9999",
+	.attn_gpio     = SYNAPTICS_ATTN_GPIO,
+	.attn_polarity = RMI_ATTN_ACTIVE_LOW,
+	.gpio_data     = &synaptics_gpio_pluto_data,
+	.gpio_config   = synaptics_touchpad_gpio_setup,
+	.spi_data = {
+		.block_delay_us = 100,
+		.read_delay_us = 100,
+		.write_delay_us = 20,
+	},
+	.power_management = {
+		.nosleep = RMI_F01_NOSLEEP_OFF,
+	},
+	.f19_button_map = &synaptics_button_map,
+	.f54_direct_touch_report_size = 944,
+};
+
+static struct spi_board_info synaptics_9999_spi_board_pluto[] = {
+	{
+		.modalias = "rmi_spi",
+		.bus_num = 3,
+		.chip_select = 2,
+		.max_speed_hz = 8*1000*1000,
+		.mode = SPI_MODE_3,
+		.platform_data = &synaptics_pluto_platformdata,
+	},
+};
+
 static int __init pluto_touch_init(void)
 {
 	tegra_clk_init_from_table(touch_clk_init_table);
-	rm31080a_pluto_spi_board[0].irq = gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
-	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
-				TOUCH_GPIO_RST_RAYDIUM_SPI,
-				&rm31080ts_pluto_data,
-				&rm31080a_pluto_spi_board[0],
-				ARRAY_SIZE(rm31080a_pluto_spi_board));
+	if (tegra_get_touch_id() == RAYDIUM_TOUCH) {
+		pr_info("%s: initializing raydium\n", __func__);
+		rm31080a_pluto_spi_board[0].irq =
+			gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
+		touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,
+					TOUCH_GPIO_RST_RAYDIUM_SPI,
+					&rm31080ts_pluto_data,
+					&rm31080a_pluto_spi_board[0],
+					ARRAY_SIZE(rm31080a_pluto_spi_board));
+	} else {
+		pr_info("%s: initializing synaptics\n", __func__);
+		touch_init_synaptics(synaptics_9999_spi_board_pluto,
+				ARRAY_SIZE(synaptics_9999_spi_board_pluto));
+	}
 	return 0;
 }
 

@@ -19,4 +19,18 @@
 #ifndef _MACH_TEGRA_BOARD_TOUCH_H
 #define _MACH_TEGRA_BOARD_TOUCH_H
 
+#include <linux/rmi.h>
+
+struct synaptics_gpio_data {
+	int attn_gpio;
+	int attn_polarity;
+	int reset_gpio;
+};
+
+extern struct rmi_button_map synaptics_button_map;
+
+int synaptics_touchpad_gpio_setup(void *gpio_data, bool configure);
+int __init touch_init_synaptics(struct spi_board_info *board_info,
+						int board_info_size);
+
 #endif
