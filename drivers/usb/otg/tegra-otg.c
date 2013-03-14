@@ -96,10 +96,7 @@ static int otg_notifications(struct notifier_block *nb,
 	DBG("%s(%d) tegra->int_status = 0x%lx\n", __func__,
 				__LINE__, tegra->int_status);
 
-	mutex_lock(&tegra->irq_work_mutex);
 	schedule_work(&tegra->work);
-	mutex_unlock(&tegra->irq_work_mutex);
-
 	DBG("%s(%d) End\n", __func__, __LINE__);
 	return NOTIFY_DONE;
 }
@@ -635,6 +632,7 @@ static void tegra_otg_resume(struct device *dev)
 
 	if (tegra->support_pmu_vbus) {
 		mutex_unlock(&tegra->irq_work_mutex);
+		tegra->int_status = enable_interrupt(tegra, true);
 		otg_notifications(NULL, 0, NULL);
 		tegra->suspended = false;
 		return ;
