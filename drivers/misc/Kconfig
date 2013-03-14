@@ -644,4 +644,5 @@ source "drivers/misc/tegra-baseband/Kconfig"
 source "drivers/misc/tegra-cec/Kconfig"
 source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
+source "drivers/misc/issp/Kconfig"
 endmenu
