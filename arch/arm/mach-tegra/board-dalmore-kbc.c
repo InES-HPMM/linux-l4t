@@ -45,9 +45,9 @@ static int dalmore_wakeup_key(void)
 		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
 		+ PMC_WAKE2_STATUS) << 32;
 
-	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
+	if (status & (1ULL << TEGRA_WAKE_GPIO_PQ0))
 		wakeup_key = KEY_POWER;
-	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+	else if (status & (1ULL << TEGRA_WAKE_GPIO_PS0))
 		wakeup_key = SW_LID;
 	else
 		wakeup_key = KEY_RESERVED;
