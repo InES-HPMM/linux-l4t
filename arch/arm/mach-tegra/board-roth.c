@@ -44,6 +44,7 @@
 #include <linux/leds.h>
 #include <linux/leds_pwm.h>
 #include <linux/i2c/at24.h>
+#include <linux/issp.h>
 #include <linux/of_platform.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <asm/system_info.h>
@@ -410,6 +411,25 @@ static struct platform_device roth_leds_pwm_device = {
 };
 
 
+static struct issp_platform_data roth_issp_pdata = {
+	.reset_gpio	= TEGRA_GPIO_PH4,
+	.data_gpio	= TEGRA_GPIO_PH6,
+	.clk_gpio	= TEGRA_GPIO_PH7,
+	.fw_name	= "p2454-uc.fw",
+	.si_id		= {0x00, 0xA2, 0x52, 0x21}, /* CY7C64345 */
+	.block_size	= 128,
+	.blocks		= 128,
+	.security_size	= 64,
+	.version_addr	= 0x0286,
+};
+
+static struct platform_device roth_issp_device = {
+	.name	= "issp",
+	.dev	= {
+		.platform_data = &roth_issp_pdata,
+	},
+};
+
 static struct platform_device *roth_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -438,6 +458,7 @@ static struct platform_device *roth_devices[] __initdata = {
 #endif
 
 	&roth_leds_pwm_device,
+	&roth_issp_device,
 };
 
 #ifdef CONFIG_USB_SUPPORT
