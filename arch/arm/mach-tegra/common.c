@@ -2051,14 +2051,53 @@ static struct platform_device tegra_asim_smc91x_device = {
 	.resource	= tegra_asim_smc91x_resources,
 };
 
-static int __init asim_enet_init(void)
+static int __init asim_enet_smc91x_init(void)
 {
-	if (tegra_cpu_is_asim())
+	if (tegra_cpu_is_asim() && !tegra_cpu_is_dsim())
 		platform_device_register(&tegra_asim_smc91x_device);
 	return 0;
 }
 
-rootfs_initcall(asim_enet_init);
+rootfs_initcall(asim_enet_smc91x_init);
+#endif
+
+#if defined(CONFIG_SMSC911X)
+static struct resource tegra_smsc911x_resources[] = {
+	[0] = {
+		.start		= 0x4E000000,
+		.end		= 0x4E000000 + SZ_64K - 1,
+		.flags		= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_ETH,
+		.end		= IRQ_ETH,
+		.flags		= IORESOURCE_IRQ,
+	},
+};
+
+static struct smsc911x_platform_config tegra_smsc911x_config = {
+	.flags          = SMSC911X_USE_32BIT,
+	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
+	.irq_type       = SMSC911X_IRQ_TYPE_PUSH_PULL,
+	.phy_interface  = PHY_INTERFACE_MODE_MII,
+};
+
+static struct platform_device tegra_smsc911x_device = {
+	.name              = "smsc911x",
+	.id                = 0,
+	.resource          = tegra_smsc911x_resources,
+	.num_resources     = ARRAY_SIZE(tegra_smsc911x_resources),
+	.dev.platform_data = &tegra_smsc911x_config,
+};
+
+static int __init asim_enet_smsc911x_init(void)
+{
+	if (tegra_cpu_is_asim() && !tegra_cpu_is_dsim())
+		platform_device_register(&tegra_smsc911x_device);
+	return 0;
+}
+
+rootfs_initcall(asim_enet_smsc911x_init);
 #endif
 
 #ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM

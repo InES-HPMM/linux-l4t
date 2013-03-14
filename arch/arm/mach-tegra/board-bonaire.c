@@ -393,58 +393,6 @@ struct platform_device tegra_nand_device = {
 };
 #endif
 
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
-static struct resource tegra_sim_smc91x_resources[] = {
-	[0] = {
-		.start		= TEGRA_SIM_ETH_BASE,
-		.end		= TEGRA_SIM_ETH_BASE + TEGRA_SIM_ETH_SIZE - 1,
-		.flags		= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start		= IRQ_ETH,
-		.end		= IRQ_ETH,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device tegra_sim_smc91x_device = {
-	.name		= "smc91x",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(tegra_sim_smc91x_resources),
-	.resource	= tegra_sim_smc91x_resources,
-};
-#endif
-
-#if defined(CONFIG_SMSC911X)
-static struct resource tegra_smsc911x_resources[] = {
-	[0] = {
-		.start		= 0x4E000000,
-		.end		= 0x4E000000 + SZ_64K - 1,
-		.flags		= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start		= IRQ_ETH,
-		.end		= IRQ_ETH,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct smsc911x_platform_config tegra_smsc911x_config = {
-	.flags          = SMSC911X_USE_32BIT,
-	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,
-	.irq_type       = SMSC911X_IRQ_TYPE_PUSH_PULL,
-	.phy_interface  = PHY_INTERFACE_MODE_MII,
-};
-
-static struct platform_device tegra_smsc911x_device = {
-	.name              = "smsc911x",
-	.id                = 0,
-	.resource          = tegra_smsc911x_resources,
-	.num_resources     = ARRAY_SIZE(tegra_smsc911x_resources),
-	.dev.platform_data = &tegra_smsc911x_config,
-};
-#endif
-
 static struct platform_device *bonaire_devices[] __initdata = {
 #if ENABLE_OTG
 	&tegra_otg_device,
@@ -652,18 +600,6 @@ static void __init tegra_bonaire_init(void)
 #endif
 
 	platform_add_devices(bonaire_devices, ARRAY_SIZE(bonaire_devices));
-
-#if defined(CONFIG_TEGRA_SIMULATION_PLATFORM) && defined(CONFIG_SMC91X)
-	if (!tegra_cpu_is_dsim()) { /* no ethernet card on DSIM */
-		platform_device_register(&tegra_sim_smc91x_device);
-	}
-#endif
-
-#if defined(CONFIG_SMSC911X)
-	if (!tegra_cpu_is_dsim()) { /* no ethernet card on DSIM */
-		platform_device_register(&tegra_smsc911x_device);
-	}
-#endif
 
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	bonaire_power_off_init();
