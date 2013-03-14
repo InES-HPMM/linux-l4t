@@ -20,6 +20,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/workqueue.h>
+#include <linux/sysfs.h>
 
 #define EDP_NAME_LEN	16
 #define EDP_MIN_PRIO	19
@@ -69,6 +70,7 @@ struct edp_client {
 	unsigned int max_borrowers;
 	int priority;
 	void *private_data;
+	struct edp_client_attribute *attrs;
 
 	void (*throttle)(unsigned int new_state, void *priv_data);
 	void (*notify_promotion)(unsigned int new_state, void *priv_data);
@@ -95,6 +97,15 @@ struct edp_client {
 	/* public */
 	struct dentry *dentry;
 #endif
+};
+
+struct edp_client_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct edp_client *c,
+			struct edp_client_attribute *attr, char *buf);
+	ssize_t (*store)(struct edp_client *c,
+			struct edp_client_attribute *attr,
+			const char *buf, size_t count);
 };
 
 struct edp_governor {

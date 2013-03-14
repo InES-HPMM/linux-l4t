@@ -171,13 +171,8 @@ struct client_entry {
 	struct kobject kobj;
 };
 
-struct client_attr {
-	struct attribute attr;
-	ssize_t (*show)(struct edp_client *, char *);
-	ssize_t (*store)(struct edp_client *, const char *);
-};
-
-static ssize_t states_show(struct edp_client *c, char *s)
+static ssize_t states_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	unsigned int i;
 	int cnt = 0;
@@ -190,90 +185,112 @@ static ssize_t states_show(struct edp_client *c, char *s)
 	return cnt;
 }
 
-static ssize_t num_states_show(struct edp_client *c, char *s)
+static ssize_t num_states_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->num_states);
 }
 
-static ssize_t e0_show(struct edp_client *c, char *s)
+static ssize_t e0_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->states[c->e0_index]);
 }
 
-static ssize_t max_borrowers_show(struct edp_client *c, char *s)
+static ssize_t max_borrowers_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->max_borrowers);
 }
 
-static ssize_t priority_show(struct edp_client *c, char *s)
+static ssize_t priority_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%d\n", c->priority);
 }
 
-static ssize_t request_show(struct edp_client *c, char *s)
+static ssize_t request_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", req_level(c));
 }
 
 /* Allow only updates that are guaranteed to succeed */
-static ssize_t request_store(struct edp_client *c, const char *s)
+static ssize_t request_store(struct edp_client *c,
+		struct edp_client_attribute *attr, const char *s, size_t count)
 {
 	unsigned int id;
+	int r;
 
 	if (sscanf(s, "%u", &id) != 1)
 		return -EINVAL;
 
-	if (id >= c->num_states)
-		return -EINVAL;
+	mutex_lock(&edp_lock);
 
-	if (id < c->e0_index && id < req_index(c))
-		return -EPERM;
+	if (id >= c->num_states) {
+		r = -EINVAL;
+		goto out;
+	}
 
-	return edp_update_client_request_unlocked(c, id, NULL);
+	if (id < c->e0_index && id < req_index(c)) {
+		r = -EPERM;
+		goto out;
+	}
+
+	r = edp_update_client_request_unlocked(c, id, NULL);
+
+out:
+	mutex_unlock(&edp_lock);
+	return r;
 }
 
-static ssize_t current_show(struct edp_client *c, char *s)
+static ssize_t current_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", cur_level(c));
 }
 
-static ssize_t threshold_show(struct edp_client *c, char *s)
+static ssize_t threshold_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->ithreshold);
 }
 
-static ssize_t threshold_store(struct edp_client *c, const char *s)
+static ssize_t threshold_store(struct edp_client *c,
+		struct edp_client_attribute *attr, const char *s, size_t count)
 {
 	unsigned int tv;
 
 	if (sscanf(s, "%u", &tv) != 1)
 		return -EINVAL;
 
-	return edp_update_loan_threshold_unlocked(c, tv);
+	return edp_update_loan_threshold(c, tv);
 }
 
-static ssize_t borrowers_show(struct edp_client *c, char *s)
+static ssize_t borrowers_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->num_borrowers);
 }
 
-static ssize_t loans_show(struct edp_client *c, char *s)
+static ssize_t loans_show(struct edp_client *c,
+		struct edp_client_attribute *attr, char *s)
 {
 	return scnprintf(s, PAGE_SIZE, "%u\n", c->num_loans);
 }
 
-struct client_attr attr_states = __ATTR_RO(states);
-struct client_attr attr_num_states = __ATTR_RO(num_states);
-struct client_attr attr_e0 = __ATTR_RO(e0);
-struct client_attr attr_max_borrowers = __ATTR_RO(max_borrowers);
-struct client_attr attr_priority = __ATTR_RO(priority);
-struct client_attr attr_request = __ATTR(request, 0644, request_show,
+struct edp_client_attribute attr_states = __ATTR_RO(states);
+struct edp_client_attribute attr_num_states = __ATTR_RO(num_states);
+struct edp_client_attribute attr_e0 = __ATTR_RO(e0);
+struct edp_client_attribute attr_max_borrowers = __ATTR_RO(max_borrowers);
+struct edp_client_attribute attr_priority = __ATTR_RO(priority);
+struct edp_client_attribute attr_request = __ATTR(request, 0644, request_show,
 		request_store);
-struct client_attr attr_threshold = __ATTR(threshold, 0644, threshold_show,
-		threshold_store);
-struct client_attr attr_borrowers = __ATTR_RO(borrowers);
-struct client_attr attr_loans = __ATTR_RO(loans);
-struct client_attr attr_current = {
+struct edp_client_attribute attr_threshold = __ATTR(threshold, 0644,
+		threshold_show, threshold_store);
+struct edp_client_attribute attr_borrowers = __ATTR_RO(borrowers);
+struct edp_client_attribute attr_loans = __ATTR_RO(loans);
+struct edp_client_attribute attr_current = {
 	.attr = { .name = "current", .mode = 0444 },
 	.show = current_show
 };
@@ -302,15 +319,16 @@ static struct edp_client *to_client(struct kobject *kobj)
 static ssize_t client_state_show(struct kobject *kobj,
 		struct attribute *attr,	char *buf)
 {
-	ssize_t r;
+	ssize_t r = -EINVAL;
 	struct edp_client *c;
-	struct client_attr *cattr;
+	struct edp_client_attribute *cattr;
 
-	mutex_lock(&edp_lock);
 	c = to_client(kobj);
-	cattr = container_of(attr, struct client_attr, attr);
-	r = c && cattr ? cattr->show(c, buf) : -EINVAL;
-	mutex_unlock(&edp_lock);
+	cattr = container_of(attr, struct edp_client_attribute, attr);
+	if (c && cattr) {
+		if (cattr->show)
+			r = cattr->show(c, cattr, buf);
+	}
 
 	return r;
 }
@@ -320,20 +338,16 @@ static ssize_t client_state_store(struct kobject *kobj,
 {
 	ssize_t r = -EINVAL;
 	struct edp_client *c;
-	struct client_attr *cattr;
-
-	mutex_lock(&edp_lock);
+	struct edp_client_attribute *cattr;
 
 	c = to_client(kobj);
-	cattr = container_of(attr, struct client_attr, attr);
+	cattr = container_of(attr, struct edp_client_attribute, attr);
 	if (c && cattr) {
 		if (cattr->store)
-			r = cattr->store(c, buf);
+			r = cattr->store(c, cattr, buf, count);
 	}
 
-	mutex_unlock(&edp_lock);
-
-	return r ?: count;
+	return r;
 }
 
 static const struct sysfs_ops client_sysfs_ops = {
@@ -345,6 +359,31 @@ static struct kobj_type ktype_client = {
 	.sysfs_ops = &client_sysfs_ops,
 	.default_attrs = client_attrs
 };
+
+static void create_driver_attrs(struct edp_client *c)
+{
+	struct edp_client_attribute *p;
+	int r;
+
+	if (!c->attrs)
+		return;
+
+	for (p = c->attrs; attr_name(*p); p++) {
+		r = sysfs_create_file(c->kobj, &p->attr);
+		WARN_ON(r);
+	}
+}
+
+static void remove_driver_attrs(struct edp_client *c)
+{
+	struct edp_client_attribute *p;
+
+	if (!c->attrs)
+		return;
+
+	for (p = c->attrs; attr_name(*p); p++)
+		sysfs_remove_file(c->kobj, &p->attr);
+}
 
 void edp_client_add_kobject(struct edp_client *client)
 {
@@ -371,8 +410,8 @@ void edp_client_add_kobject(struct edp_client *client)
 
 	ce->client = client;
 	client->kobj = &ce->kobj;
+	create_driver_attrs(client);
 	kobject_uevent(&ce->kobj, KOBJ_ADD);
-	return;
 }
 
 void edp_client_remove_kobject(struct edp_client *client)
@@ -383,6 +422,8 @@ void edp_client_remove_kobject(struct edp_client *client)
 		return;
 
 	ce = container_of(client->kobj, struct client_entry, kobj);
+
+	remove_driver_attrs(client);
 	client->kobj = NULL;
 	kobject_put(&ce->kobj);
 	kfree(ce);
