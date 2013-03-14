@@ -730,6 +730,7 @@ int tegra_dvfs_rail_post_enable(struct dvfs_rail *rail)
 /* Core cap object and table */
 static struct kobject *cap_kobj;
 
+/* Arranged in order required for enabling/lowering the cap */
 static struct core_dvfs_cap_table tegra12_core_cap_table[] = {
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	{ .cap_name = "cap.c2bus" },
@@ -745,20 +746,19 @@ static int __init tegra12_dvfs_init_core_cap(void)
 {
 	int ret;
 
-
 	cap_kobj = kobject_create_and_add("tegra_cap", kernel_kobj);
 	if (!cap_kobj) {
 		pr_err("tegra12_dvfs: failed to create sysfs cap object\n");
 		return 0;
 	}
-	
+
 	ret = tegra_init_core_cap(
 		tegra12_core_cap_table, ARRAY_SIZE(tegra12_core_cap_table),
 		core_millivolts, ARRAY_SIZE(core_millivolts), cap_kobj);
 
 	if (ret) {
 		pr_err("tegra12_dvfs: failed to init core cap interface (%d)\n",
-			ret);
+		       ret);
 		kobject_del(cap_kobj);
 		return 0;
 	}
