@@ -79,6 +79,7 @@ static struct regulator_init_data bq2419x_init_data = {
 static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
 	.reg_init_data = &bq2419x_init_data,
 	.gpio_otg_iusb = TEGRA_GPIO_PI4,
+	.power_off_on_suspend = true,
 };
 
 struct bq2419x_platform_data macallan_bq2419x_pdata = {
