@@ -1028,6 +1028,26 @@ static int soctherm_set_trip_temp(struct thermal_zone_device *thz,
 	return 0;
 }
 
+static int soctherm_get_crit_temp(struct thermal_zone_device *thz,
+				  unsigned long *temp)
+{
+	int i, index = ((int)thz->devdata) - TSENSE_SIZE;
+	struct thermal_trip_info *trip_state;
+
+	if (index < 0)
+		return -EINVAL;
+
+	for (i = 0; i < plat_data.therm[index].num_trips; i++) {
+		trip_state = &plat_data.therm[index].trips[i];
+		if (trip_state->trip_type != THERMAL_TRIP_CRITICAL)
+			continue;
+		*temp = trip_state->trip_temp;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static int soctherm_get_trend(struct thermal_zone_device *thz,
 				int trip,
 				enum thermal_trend *trend)
@@ -1068,6 +1088,7 @@ static struct thermal_zone_device_ops soctherm_ops = {
 	.get_trip_type = soctherm_get_trip_type,
 	.get_trip_temp = soctherm_get_trip_temp,
 	.set_trip_temp = soctherm_set_trip_temp,
+	.get_crit_temp = soctherm_get_crit_temp,
 	.get_trend = soctherm_get_trend,
 };
 
