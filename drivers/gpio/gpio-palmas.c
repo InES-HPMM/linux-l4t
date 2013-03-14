@@ -64,17 +64,23 @@ static int palmas_gpio_direction_in(struct gpio_chip *chip, unsigned offset)
 	struct palmas *palmas = palmas_gpio->palmas;
 	int ret;
 	unsigned int reg = 0;
+	unsigned int gpio_reg = PALMAS_GPIO_DATA_DIR;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return -EINVAL;
 
-	ret = palmas_gpio_read(palmas, PALMAS_GPIO_DATA_DIR, &reg);
+	if (offset > 7) {
+		gpio_reg = PALMAS_GPIO_DATA_DIR2;
+		offset = (offset % 8);
+	}
+
+	ret = palmas_gpio_read(palmas, gpio_reg, &reg);
 	if (ret)
 		return ret;
 
 	reg &= ~(1 << offset);
 
-	return palmas_gpio_write(palmas, PALMAS_GPIO_DATA_DIR, reg);
+	return palmas_gpio_write(palmas, gpio_reg, reg);
 }
 
 static int palmas_gpio_get(struct gpio_chip *chip, unsigned offset)
@@ -82,11 +88,17 @@ static int palmas_gpio_get(struct gpio_chip *chip, unsigned offset)
 	struct palmas_gpio *palmas_gpio = to_palmas_gpio(chip);
 	struct palmas *palmas = palmas_gpio->palmas;
 	unsigned int reg = 0;
+	unsigned int gpio_reg = PALMAS_GPIO_DATA_IN;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return 0;
 
-	palmas_gpio_read(palmas, PALMAS_GPIO_DATA_IN, &reg);
+	if (offset > 7) {
+		gpio_reg = PALMAS_GPIO_DATA_IN2;
+		offset = (offset % 8);
+	}
+
+	palmas_gpio_read(palmas, gpio_reg, &reg);
 
 	return !!(reg & (1 << offset));
 }
@@ -96,16 +108,22 @@ static void palmas_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	struct palmas_gpio *palmas_gpio = to_palmas_gpio(chip);
 	struct palmas *palmas = palmas_gpio->palmas;
 	unsigned int reg;
+	unsigned int gpio_reg = PALMAS_GPIO_DATA_OUT;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return;
 
-	palmas_gpio_read(palmas, PALMAS_GPIO_DATA_OUT, &reg);
+	if (offset > 7) {
+		gpio_reg = PALMAS_GPIO_DATA_OUT2;
+		offset = (offset % 8);
+	}
+
+	palmas_gpio_read(palmas, gpio_reg, &reg);
 
 	reg &= ~(1 << offset);
 	reg |= value << offset;
 
-	palmas_gpio_write(palmas, PALMAS_GPIO_DATA_OUT, reg);
+	palmas_gpio_write(palmas, gpio_reg, reg);
 }
 
 static int palmas_gpio_direction_out(struct gpio_chip *chip,
@@ -115,17 +133,23 @@ static int palmas_gpio_direction_out(struct gpio_chip *chip,
 	struct palmas *palmas = palmas_gpio->palmas;
 	int ret;
 	unsigned int reg;
+	unsigned int gpio_reg = PALMAS_GPIO_DATA_DIR;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return -EINVAL;
 
-	ret = palmas_gpio_read(palmas, PALMAS_GPIO_DATA_DIR, &reg);
+	if (offset > 7) {
+		gpio_reg = PALMAS_GPIO_DATA_DIR2;
+		offset = (offset % 8);
+	}
+
+	ret = palmas_gpio_read(palmas, gpio_reg, &reg);
 	if (ret)
 		return ret;
 
 	reg |= 1 << offset;
 
-	return palmas_gpio_write(palmas, PALMAS_GPIO_DATA_DIR, reg);
+	return palmas_gpio_write(palmas, gpio_reg, reg);
 }
 
 static int palmas_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
@@ -143,11 +167,17 @@ static int palmas_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 	struct palmas *palmas = palmas_gpio->palmas;
 	int ret;
 	unsigned int reg;
+	unsigned int gpio_reg = PALMAS_GPIO_DEBOUNCE_EN;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return -EINVAL;
 
-	ret = palmas_gpio_read(palmas, PALMAS_GPIO_DATA_DIR, &reg);
+	if (offset > 7) {
+		gpio_reg = PALMAS_GPIO_DEBOUNCE_EN2;
+		offset = (offset % 8);
+	}
+
+	ret = palmas_gpio_read(palmas, gpio_reg, &reg);
 	if (ret)
 		return ret;
 
@@ -156,7 +186,7 @@ static int palmas_gpio_set_debounce(struct gpio_chip *chip, unsigned offset,
 	else
 		reg &= ~(1 << offset);
 
-	return palmas_gpio_write(palmas, PALMAS_GPIO_DATA_DIR, reg);
+	return palmas_gpio_write(palmas, gpio_reg, reg);
 }
 
 static struct gpio_chip palmas_gpio_chip = {
