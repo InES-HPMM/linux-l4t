@@ -2426,6 +2426,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		goto err_deinit_firmware;
 	}
 
+	device_init_wakeup(&pdev->dev, 1);
 	driver = &tegra_plat_xhci_driver;
 
 	hcd = usb_create_hcd(driver, &pdev->dev, dev_name(&pdev->dev));
@@ -2482,6 +2483,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		goto err_put_usb3_hcd;
 	}
 
+	device_init_wakeup(&hcd->self.root_hub->dev, 1);
+	device_init_wakeup(&xhci->shared_hcd->self.root_hub->dev, 1);
 	spin_lock_init(&tegra->lock);
 	mutex_init(&tegra->sync_lock);
 	mutex_init(&tegra->mbox_lock);
@@ -2519,8 +2522,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 			&tegra->usb3_irq);
 	if (ret != 0)
 		goto err_remove_usb3_hcd;
-
-	device_init_wakeup(&pdev->dev, 1);
 
 	tegra->ss_pwr_gated = false;
 	tegra->host_pwr_gated = false;
