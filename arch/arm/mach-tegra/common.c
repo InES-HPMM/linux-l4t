@@ -881,7 +881,6 @@ void __init tegra12x_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
-	tegra_gpio_resume_init();
 }
 #endif
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
