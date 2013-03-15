@@ -345,8 +345,8 @@ static int palmas_is_enabled_smps(struct regulator_dev *dev)
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
-	reg &= PALMAS_SMPS12_CTRL_STATUS_MASK;
-	reg >>= PALMAS_SMPS12_CTRL_STATUS_SHIFT;
+	reg &= PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
+	reg >>= PALMAS_SMPS12_CTRL_MODE_ACTIVE_SHIFT;
 
 	return !!(reg);
 }
