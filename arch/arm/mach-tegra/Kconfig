@@ -638,6 +638,15 @@ config TEGRA_ISOMGR_DEBUG
 	  user space tests that exercise isomgr in ways that drivers
 	  couldn't easily accommodate.
 
+config TEGRA_ISOMGR_MAX_ISO_BW_QUIRK
+	bool "Relax Max ISO Bw limit"
+	depends on TEGRA_ISOMGR
+	default y
+	help
+	  When enabled, allows system with less ISO bw continue to
+	  work. This is necessary for systems running at lower
+	  EMC clock freq or on FPGA.
+
 config TEGRA_IO_DPD
 	bool "Allow IO DPD"
 	depends on ARCH_TEGRA_3x_SOC

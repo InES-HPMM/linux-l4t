@@ -404,9 +404,26 @@ tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 	}
 
 	if (unlikely(dedi_bw > isomgr.max_iso_bw - isomgr.dedi_bw)) {
+#ifdef CONFIG_TEGRA_ISOMGR_MAX_ISO_BW_QUIRK
+		int i;
+		WARN(1, "max_iso_bw is relaxed to %dKB from %dKB",
+			dedi_bw + isomgr.dedi_bw, isomgr.max_iso_bw);
+		isomgr.max_iso_bw = dedi_bw + isomgr.dedi_bw;
+		pr_info("ISO BW usage:");
+		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
+			if (!client_valid[client])
+				continue;
+			pr_info("client=%s, iso dedi bw=%dKB",
+				client_name[client],
+				(client == i) ? dedi_bw :
+				isomgr_clients[client].dedi_bw);
+		}
+		pr_info("Revisit BW usage of iso clients");
+#else
 		pr_err("bandwidth %uKB is not available, client %s\n",
 			dedi_bw, client_name[client]);
 		goto fail_unlock;
+#endif
 	}
 
 	purge_isomgr_client(cp);
