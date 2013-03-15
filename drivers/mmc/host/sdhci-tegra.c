@@ -44,25 +44,22 @@
 
 #include "sdhci-pltfm.h"
 
-/* Tegra SDHOST controller vendor register definitions */
-#define SDHCI_TEGRA_VENDOR_MISC_CTRL		0x120
-#define SDHCI_MISC_CTRL_ENABLE_SDHCI_SPEC_300	0x20
+#define SDHCI_VNDR_CLK_CTRL	0x100
+#define SDHCI_VNDR_CLK_CTRL_SDMMC_CLK	0x1
+#define SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE	0x8
+#define SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE	0x4
+#define SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK		0x2
+#define SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT	8
+#define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT	16
+#define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT	24
+#define SDHCI_VNDR_CLK_CTRL_SDR50_TUNING		0x20
 
-#define SDHCI_VENDOR_CLOCK_CNTRL	0x100
-#define SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK	0x1
-#define SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE	0x8
-#define SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE	0x4
-#define SDHCI_VENDOR_CLOCK_CNTRL_INPUT_IO_CLK		0x2
-#define SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT	8
-#define SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT	16
-#define SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT	24
-#define SDHCI_VENDOR_CLOCK_CNTRL_SDR50_TUNING		0x20
-
-#define SDHCI_VENDOR_MISC_CNTRL		0x120
-#define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT	0x8
-#define SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT	0x10
-#define SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT	0x200
-#define SDHCI_VENDOR_MISC_CNTRL_INFINITE_ERASE_TIMEOUT	0x1
+#define SDHCI_VNDR_MISC_CTRL		0x120
+#define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR104_SUPPORT	0x8
+#define SDHCI_VNDR_MISC_CTRL_ENABLE_SDR50_SUPPORT	0x10
+#define SDHCI_VNDR_MISC_CTRL_ENABLE_DDR50_SUPPORT	0x200
+#define SDHCI_VNDR_MISC_CTRL_ENABLE_SD_3_0	0x20
+#define SDHCI_VNDR_MISC_CTRL_INFINITE_ERASE_TIMEOUT	0x1
 
 #define SDMMC_SDMEMCOMPPADCTRL	0x1E0
 #define SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK	0xF
@@ -97,26 +94,14 @@
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void tegra_3x_sdhci_set_card_clock(struct sdhci_host *sdhci, unsigned int clock);
-static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci);
-#endif
-
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci);
 #endif
 
 static unsigned int tegra_sdhost_min_freq;
 static unsigned int tegra_sdhost_std_freq;
 
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-static unsigned int tegra3_sdhost_max_clk[4] = {
-	208000000,	104000000,	208000000,	104000000 };
-#endif
-
-struct tegra_sdhci_hw_ops{
+struct tegra_sdhci_hw_ops {
 	/* Set the internal clk and card clk.*/
 	void	(*set_card_clock)(struct sdhci_host *sdhci, unsigned int clock);
-	/* Post reset vendor registers configuration */
-	void	(*sdhost_init)(struct sdhci_host *sdhci);
 };
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
@@ -125,21 +110,46 @@ static struct tegra_sdhci_hw_ops tegra_2x_sdhci_ops = {
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
-	.sdhost_init = tegra3_sdhci_post_reset_init,
 };
 #else
 static struct tegra_sdhci_hw_ops tegra_11x_sdhci_ops = {
-        .sdhost_init = tegra11x_sdhci_post_reset_init,
 };
 #endif
 
+/* Erratum: Version register is invalid in HW */
 #define NVQUIRK_FORCE_SDHCI_SPEC_200		BIT(0)
+/* Erratum: Enable block gap interrupt detection */
 #define NVQUIRK_ENABLE_BLOCK_GAP_DET		BIT(1)
-#define NVQUIRK_ENABLE_SDHCI_SPEC_300		BIT(2)
-#define NVQUIRK_DISABLE_AUTO_CALIBRATION	BIT(3)
-#define NVQUIRK_SET_CALIBRATION_OFFSETS		BIT(4)
-#define NVQUIRK_SET_DRIVE_STRENGTH		BIT(5)
-#define NVQUIRK_DISABLE_SDMMC4_CALIB		BIT(6)
+/* Do not enable auto calibration if the platform doesn't support */
+#define NVQUIRK_DISABLE_AUTO_CALIBRATION	BIT(2)
+/* Set Calibration Offsets */
+#define NVQUIRK_SET_CALIBRATION_OFFSETS		BIT(3)
+/* Set Drive Strengths */
+#define NVQUIRK_SET_DRIVE_STRENGTH		BIT(4)
+/* Enable PADPIPE CLKEN */
+#define NVQUIRK_ENABLE_PADPIPE_CLKEN		BIT(5)
+/* DISABLE SPI_MODE CLKEN */
+#define NVQUIRK_DISABLE_SPI_MODE_CLKEN		BIT(6)
+/* Set tap delay */
+#define NVQUIRK_SET_TAP_DELAY			BIT(7)
+/* Set trim delay */
+#define NVQUIRK_SET_TRIM_DELAY			BIT(8)
+/* Enable SDHOST v3.0 support */
+#define NVQUIRK_ENABLE_SD_3_0			BIT(9)
+/* Enable SDR50 mode */
+#define NVQUIRK_ENABLE_SDR50			BIT(10)
+/* Enable SDR104 mode */
+#define NVQUIRK_ENABLE_SDR104			BIT(11)
+/*Enable DDR50 mode */
+#define NVQUIRK_ENABLE_DDR50			BIT(12)
+/* Enable Frequency Tuning for SDR50 mode */
+#define NVQUIRK_ENABLE_SDR50_TUNING		BIT(13)
+/* Enable Infinite Erase Timeout*/
+#define NVQUIRK_INFINITE_ERASE_TIMEOUT		BIT(14)
+/* No Calibration for sdmmc4 */
+#define NVQUIRK_DISABLE_SDMMC4_CALIB		BIT(15)
+/* ENAABLE FEEDBACK IO CLOCK */
+#define NVQUIRK_EN_FEEDBACK_CLK			BIT(16)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -231,7 +241,6 @@ static u16 tegra_sdhci_readw(struct sdhci_host *host, int reg)
 
 	if (unlikely((soc_data->nvquirks & NVQUIRK_FORCE_SDHCI_SPEC_200) &&
 			(reg == SDHCI_HOST_VERSION))) {
-		/* Erratum: Version register is invalid in HW. */
 		return SDHCI_SPEC_200;
 	}
 #endif
@@ -258,7 +267,6 @@ static void tegra_sdhci_writel(struct sdhci_host *host, u32 val, int reg)
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	if (unlikely((soc_data->nvquirks & NVQUIRK_ENABLE_BLOCK_GAP_DET) &&
 			(reg == SDHCI_INT_ENABLE))) {
-		/* Erratum: Must enable block gap interrupt detection */
 		u8 gap_ctrl = readb(host->ioaddr + SDHCI_BLOCK_GAP_CONTROL);
 		if (val & SDHCI_INT_CARD_INT)
 			gap_ctrl |= 0x8;
@@ -288,116 +296,6 @@ static unsigned int tegra_sdhci_get_ro(struct sdhci_host *sdhci)
 		return -1;
 
 	return gpio_get_value_cansleep(plat->wp_gpio);
-}
-#endif
-
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
-static void tegra3_sdhci_post_reset_init(struct sdhci_host *sdhci)
-{
-	u16 misc_ctrl;
-	u32 vendor_ctrl;
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
-
-	if (tegra_host->sd_stat_head != NULL) {
-		tegra_host->sd_stat_head->data_crc_count = 0;
-		tegra_host->sd_stat_head->cmd_crc_count = 0;
-		tegra_host->sd_stat_head->data_to_count = 0;
-		tegra_host->sd_stat_head->cmd_to_count = 0;
-	}
-	/* Set the base clock frequency */
-	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-
-	if (plat->base_clk > 0)
-		vendor_ctrl |= (plat->base_clk / 1000000) <<
-			SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
-	else
-		vendor_ctrl |=
-			(tegra3_sdhost_max_clk[tegra_host->instance] / 1000000)
-			<< SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
-
-	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
-	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
-
-	/* Set tap delay */
-	if (plat->tap_delay) {
-		vendor_ctrl &= ~(0xFF <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-		vendor_ctrl |= (plat->tap_delay <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-	}
-	/* Enable frequency tuning for SDR50 mode */
-	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_SDR50_TUNING;
-	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
-
-	/* Enable SDHOST v3.0 support */
-	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
-	misc_ctrl |=
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT;
-	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
-}
-#endif
-
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-static void tegra11x_sdhci_post_reset_init(struct sdhci_host *sdhci)
-{
-	u16 misc_ctrl;
-	u32 vendor_ctrl;
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
-	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	struct platform_device *pdev = to_platform_device(mmc_dev(sdhci->mmc));
-	struct tegra_sdhci_platform_data *plat;
-
-	if (tegra_host->sd_stat_head != NULL) {
-		tegra_host->sd_stat_head->data_crc_count = 0;
-		tegra_host->sd_stat_head->cmd_crc_count = 0;
-		tegra_host->sd_stat_head->data_to_count = 0;
-		tegra_host->sd_stat_head->cmd_to_count = 0;
-	}
-	plat = pdev->dev.platform_data;
-	/* Set the base clock frequency */
-	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT);
-
-	if (plat->base_clk > 0)
-		vendor_ctrl |= (plat->base_clk / 1000000) <<
-			SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
-	else
-		vendor_ctrl |=
-			(tegra3_sdhost_max_clk[tegra_host->instance] / 1000000)
-			<< SDHCI_VENDOR_CLOCK_CNTRL_BASE_CLK_FREQ_SHIFT;
-
-	vendor_ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE;
-	vendor_ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SPI_MODE_CLKEN_OVERRIDE;
-	vendor_ctrl &=  ~SDHCI_VENDOR_CLOCK_CNTRL_INPUT_IO_CLK;
-
-	/* Set tap delay */
-	if (plat->tap_delay) {
-		vendor_ctrl &= ~(0xFF <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-		vendor_ctrl |= (plat->tap_delay <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-	}
-
-	/* Set trim delay */
-	if (plat->trim_delay) {
-		vendor_ctrl &= ~(0x1F <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
-		vendor_ctrl |= (plat->trim_delay <<
-			SDHCI_VENDOR_CLOCK_CNTRL_TRIM_VALUE_SHIFT);
-	}
-	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
-
-	/* Enable SDHOST v3.0 support */
-	misc_ctrl = sdhci_readw(sdhci, SDHCI_VENDOR_MISC_CNTRL);
-	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR104_SUPPORT |
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_SDR50_SUPPORT |
-		SDHCI_VENDOR_MISC_CNTRL_ENABLE_DDR50_SUPPORT;
-	misc_ctrl |= SDHCI_VENDOR_MISC_CNTRL_INFINITE_ERASE_TIMEOUT;
-	sdhci_writew(sdhci, misc_ctrl, SDHCI_VENDOR_MISC_CNTRL);
 }
 #endif
 
@@ -509,6 +407,8 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 
 static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 {
+	u16 misc_ctrl;
+	u32 vendor_ctrl;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
@@ -517,17 +417,68 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (!(mask & SDHCI_RESET_ALL))
 		return;
 
-	if (tegra_host->hw_ops->sdhost_init)
-		tegra_host->hw_ops->sdhost_init(host);
-
-	/* Erratum: Enable SDHCI spec v3.00 support */
-	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDHCI_SPEC_300) {
-		u32 misc_ctrl;
-
-		misc_ctrl = sdhci_readb(host, SDHCI_TEGRA_VENDOR_MISC_CTRL);
-		misc_ctrl |= SDHCI_MISC_CTRL_ENABLE_SDHCI_SPEC_300;
-		sdhci_writeb(host, misc_ctrl, SDHCI_TEGRA_VENDOR_MISC_CTRL);
+	if (tegra_host->sd_stat_head != NULL) {
+		tegra_host->sd_stat_head->data_crc_count = 0;
+		tegra_host->sd_stat_head->cmd_crc_count = 0;
+		tegra_host->sd_stat_head->data_to_count = 0;
+		tegra_host->sd_stat_head->cmd_to_count = 0;
 	}
+	vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_PADPIPE_CLKEN) {
+		vendor_ctrl |=
+			SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE;
+	}
+	if (soc_data->nvquirks & NVQUIRK_DISABLE_SPI_MODE_CLKEN) {
+		vendor_ctrl &=
+			~SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE;
+	}
+	if (soc_data->nvquirks & NVQUIRK_EN_FEEDBACK_CLK) {
+		vendor_ctrl &=
+			~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+	}
+	if (soc_data->nvquirks & NVQUIRK_SET_TAP_DELAY) {
+		if (plat->tap_delay) {
+			vendor_ctrl &= ~(0xFF <<
+			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+			vendor_ctrl |= (plat->tap_delay <<
+			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+		}
+	}
+	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
+		if (plat->trim_delay) {
+			vendor_ctrl &= ~(0x1F <<
+			SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+			vendor_ctrl |= (plat->trim_delay <<
+			SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+		}
+	}
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR50_TUNING)
+		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_SDR50_TUNING;
+	sdhci_writel(host, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
+
+	misc_ctrl = sdhci_readw(host, SDHCI_VNDR_MISC_CTRL);
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_SD_3_0)
+		misc_ctrl |= SDHCI_VNDR_MISC_CTRL_ENABLE_SD_3_0;
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR104) {
+		misc_ctrl |=
+		SDHCI_VNDR_MISC_CTRL_ENABLE_SDR104_SUPPORT;
+	}
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR50) {
+		misc_ctrl |=
+		SDHCI_VNDR_MISC_CTRL_ENABLE_SDR50_SUPPORT;
+	}
+	/* Enable DDR mode support only for SDMMC4 */
+	if (soc_data->nvquirks & NVQUIRK_ENABLE_DDR50) {
+		if (tegra_host->instance == 3) {
+			misc_ctrl |=
+			SDHCI_VNDR_MISC_CTRL_ENABLE_DDR50_SUPPORT;
+		}
+	}
+	if (soc_data->nvquirks & NVQUIRK_INFINITE_ERASE_TIMEOUT) {
+		misc_ctrl |=
+		SDHCI_VNDR_MISC_CTRL_INFINITE_ERASE_TIMEOUT;
+	}
+	sdhci_writew(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 
 	/* Mask the support for any UHS modes if specified */
 	if (plat->uhs_mask & MMC_UHS_MASK_SDR104)
@@ -725,9 +676,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
 			clk_prepare_enable(pltfm_host->clk);
-			ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-			ctrl |= SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
-			sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+			ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
+			ctrl |= SDHCI_VNDR_CLK_CTRL_SDMMC_CLK;
+			sdhci_writeb(sdhci, ctrl, SDHCI_VNDR_CLK_CTRL);
 			tegra_host->clk_enabled = true;
 		}
 		tegra_sdhci_set_clk_rate(sdhci, clock);
@@ -736,9 +687,9 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 	} else if (!clock && tegra_host->clk_enabled) {
 		if (tegra_host->hw_ops->set_card_clock)
 			tegra_host->hw_ops->set_card_clock(sdhci, clock);
-		ctrl = sdhci_readb(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-		ctrl &= ~SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK;
-		sdhci_writeb(sdhci, ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+		ctrl = sdhci_readb(sdhci, SDHCI_VNDR_CLK_CTRL);
+		ctrl &= ~SDHCI_VNDR_CLK_CTRL_SDMMC_CLK;
+		sdhci_writeb(sdhci, ctrl, SDHCI_VNDR_CLK_CTRL);
 		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
@@ -770,10 +721,6 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 		(tegra_host->instance == 3))
 		return;
 
-	/*
-	 * Do not enable auto calibration if the platform doesn't
-	 * support it.
-	 */
 	if (unlikely(soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CALIBRATION))
 		return;
 
@@ -943,10 +890,10 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	/* Max tap delay value is 255 */
 	BUG_ON(tap_delay > MAX_TAP_VALUES);
 
-	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VENDOR_CLOCK_CNTRL);
-	vendor_ctrl &= ~(0xFF << SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-	vendor_ctrl |= (tap_delay << SDHCI_VENDOR_CLOCK_CNTRL_TAP_VALUE_SHIFT);
-	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VENDOR_CLOCK_CNTRL);
+	vendor_ctrl = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+	vendor_ctrl &= ~(0xFF << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	vendor_ctrl |= (tap_delay << SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 }
 
 static int sdhci_tegra_run_frequency_tuning(struct sdhci_host *sdhci, u32 opcode, u32 block_size)
@@ -1313,14 +1260,28 @@ static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
 static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 	.pdata = &sdhci_tegra20_pdata,
 	.nvquirks = NVQUIRK_FORCE_SDHCI_SPEC_200 |
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+		   NVQUIRK_ENABLE_PADPIPE_CLKEN |
+		   NVQUIRK_DISABLE_SPI_MODE_CLKEN |
+		   NVQUIRK_EN_FEEDBACK_CLK |
+		   NVQUIRK_SET_TAP_DELAY |
+		   NVQUIRK_ENABLE_SDR50_TUNING |
+		   NVQUIRK_ENABLE_SDR50 |
+		   NVQUIRK_ENABLE_SDR104 |
+#endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		    NVQUIRK_SET_DRIVE_STRENGTH |
 		    NVQUIRK_DISABLE_SDMMC4_CALIB |
-#elif defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#endif
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		    NVQUIRK_SET_CALIBRATION_OFFSETS |
-		    NVQUIRK_ENABLE_SDHCI_SPEC_300 |
+		    NVQUIRK_ENABLE_SD_3_0 |
+#else
+		    NVQUIRK_SET_TRIM_DELAY |
+		    NVQUIRK_ENABLE_DDR50 |
+		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 #endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
