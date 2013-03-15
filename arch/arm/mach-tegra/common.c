@@ -102,28 +102,28 @@
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
-unsigned long tegra_avp_kernel_start;
-unsigned long tegra_avp_kernel_size;
-unsigned long tegra_bootloader_fb_start;
-unsigned long tegra_bootloader_fb_size;
-unsigned long tegra_bootloader_fb2_start;
-unsigned long tegra_bootloader_fb2_size;
-unsigned long tegra_fb_start;
-unsigned long tegra_fb_size;
-unsigned long tegra_fb2_start;
-unsigned long tegra_fb2_size;
-unsigned long tegra_carveout_start;
-unsigned long tegra_carveout_size;
-unsigned long tegra_vpr_start;
-unsigned long tegra_vpr_size;
-unsigned long tegra_tsec_start;
-unsigned long tegra_tsec_size;
-unsigned long tegra_lp0_vec_start;
-unsigned long tegra_lp0_vec_size;
+phys_addr_t tegra_avp_kernel_start;
+phys_addr_t tegra_avp_kernel_size;
+phys_addr_t tegra_bootloader_fb_start;
+phys_addr_t tegra_bootloader_fb_size;
+phys_addr_t tegra_bootloader_fb2_start;
+phys_addr_t tegra_bootloader_fb2_size;
+phys_addr_t tegra_fb_start;
+phys_addr_t tegra_fb_size;
+phys_addr_t tegra_fb2_start;
+phys_addr_t tegra_fb2_size;
+phys_addr_t tegra_carveout_start;
+phys_addr_t tegra_carveout_size;
+phys_addr_t tegra_vpr_start;
+phys_addr_t tegra_vpr_size;
+phys_addr_t tegra_tsec_start;
+phys_addr_t tegra_tsec_size;
+phys_addr_t tegra_lp0_vec_start;
+phys_addr_t tegra_lp0_vec_size;
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-unsigned long tegra_wb0_params_address;
-unsigned long tegra_wb0_params_instances;
-unsigned long tegra_wb0_params_block_size;
+phys_addr_t tegra_wb0_params_address;
+phys_addr_t tegra_wb0_params_instances;
+phys_addr_t tegra_wb0_params_block_size;
 #endif
 
 #ifdef CONFIG_TEGRA_NVDUMPER
@@ -970,8 +970,8 @@ static int __init tegra_bootloader_fb_arg(char *options)
 	if (*p == '@')
 		tegra_bootloader_fb_start = memparse(p+1, &p);
 
-	pr_info("Found tegra_fbmem: %08lx@%08lx\n",
-		tegra_bootloader_fb_size, tegra_bootloader_fb_start);
+	pr_info("Found tegra_fbmem: %08llx@%08llx\n",
+		(u64)tegra_bootloader_fb_size, (u64)tegra_bootloader_fb_start);
 
 	return 0;
 }
@@ -985,8 +985,9 @@ static int __init tegra_bootloader_fb2_arg(char *options)
 	if (*p == '@')
 		tegra_bootloader_fb2_start = memparse(p+1, &p);
 
-	pr_info("Found tegra_fbmem2: %08lx@%08lx\n",
-		tegra_bootloader_fb2_size, tegra_bootloader_fb2_start);
+	pr_info("Found tegra_fbmem2: %08llx@%08llx\n",
+		(u64)tegra_bootloader_fb2_size,
+		(u64)tegra_bootloader_fb2_start);
 
 	return 0;
 }
@@ -1014,8 +1015,8 @@ static int __init tegra_vpr_arg(char *options)
 	tegra_vpr_size = memparse(p, &p);
 	if (*p == '@')
 		tegra_vpr_start = memparse(p+1, &p);
-	pr_info("Found vpr, start=0x%lx size=%lx",
-		tegra_vpr_start, tegra_vpr_size);
+	pr_info("Found vpr, start=0x%llx size=%llx",
+		(u64)tegra_vpr_start, (u64)tegra_vpr_size);
 	return 0;
 }
 early_param("vpr", tegra_vpr_arg);
@@ -1027,8 +1028,8 @@ static int __init tegra_tsec_arg(char *options)
 	tegra_tsec_size = memparse(p, &p);
 	if (*p == '@')
 		tegra_tsec_start = memparse(p+1, &p);
-	pr_info("Found tsec, start=0x%lx size=%lx",
-		tegra_tsec_start, tegra_tsec_size);
+	pr_info("Found tsec, start=0x%llx size=%llx",
+		(u64)tegra_tsec_start, (u64)tegra_tsec_size);
 	return 0;
 }
 early_param("tsec", tegra_tsec_arg);
@@ -1655,16 +1656,45 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	unsigned long fb2_size)
 {
 	const size_t avp_kernel_reserve = SZ_32M;
+	int i = 0;
 #if !defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */ && \
 	!defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 & up with SMMU */
 	/* Reserve hardcoded AVP kernel load area starting at 0xXe000000*/
 	tegra_avp_kernel_size = SECTION_SIZE;
-	tegra_avp_kernel_start = memblock_end_of_DRAM() - avp_kernel_reserve;
+
+	/*
+	 * Choose a DRAM region in which to allocate the AVP kernel, using the
+	 * following guidelines:
+	 *     - Choose a DRAM region which exists below the 4 GB physical
+	 *       address limit. This is necessary because AVP is a 32 bit
+	 *       processor and it cannot access physical addresses above 4 GB.
+	 *     - Out of the applicable DRAM regions (i.e. those which exist
+	 *       below 4 GB), choose the region with the highest starting
+	 *       physical address.
+	 */
+	for (i = memblock.memory.cnt - 1; i >= 0; i--) {
+		if ((u64)(memblock.memory.regions[i].base) +
+			(u64)(memblock.memory.regions[i].size) <
+			(u64)(SZ_2G)*(u64)(2)) {
+			tegra_avp_kernel_start =
+				memblock.memory.regions[i].base +
+				memblock.memory.regions[i].size -
+				avp_kernel_reserve;
+			break;
+		}
+	}
+	/*
+	 * If tegra_avp_kernel_start is still 0, that means we didn't find any
+	 * DRAM region below the 4 GB physical address limit. This is a problem
+	 * because the AVP kernel must reside below 4 GB.
+	 */
+	BUG_ON(tegra_avp_kernel_start == 0);
+
 	if (memblock_remove(tegra_avp_kernel_start, avp_kernel_reserve)) {
-		pr_err("Failed to remove AVP kernel load area %08lx@%08lx "
+		pr_err("Failed to remove AVP kernel load area %08lx@%08llx "
 				"from memory map\n",
 			(unsigned long)avp_kernel_reserve,
-			tegra_avp_kernel_start);
+			(u64)tegra_avp_kernel_start);
 		tegra_avp_kernel_size = 0;
 	}
 #endif
@@ -1672,9 +1702,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	if (carveout_size) {
 		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
 		if (memblock_remove(tegra_carveout_start, carveout_size)) {
-			pr_err("Failed to remove carveout %08lx@%08lx "
+			pr_err("Failed to remove carveout %08lx@%08llx "
 				"from memory map\n",
-				carveout_size, tegra_carveout_start);
+				carveout_size, (u64)tegra_carveout_start);
 			tegra_carveout_start = 0;
 			tegra_carveout_size = 0;
 		} else
@@ -1685,8 +1715,8 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
 		if (memblock_remove(tegra_fb2_start, fb2_size)) {
 			pr_err("Failed to remove second framebuffer "
-				"%08lx@%08lx from memory map\n",
-				fb2_size, tegra_fb2_start);
+				"%08lx@%08llx from memory map\n",
+				fb2_size, (u64)tegra_fb2_start);
 			tegra_fb2_start = 0;
 			tegra_fb2_size = 0;
 		} else
@@ -1696,9 +1726,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	if (fb_size) {
 		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
 		if (memblock_remove(tegra_fb_start, fb_size)) {
-			pr_err("Failed to remove framebuffer %08lx@%08lx "
+			pr_err("Failed to remove framebuffer %08lx@%08llx "
 				"from memory map\n",
-				fb_size, tegra_fb_start);
+				fb_size, (u64)tegra_fb_start);
 			tegra_fb_start = 0;
 			tegra_fb_size = 0;
 		} else
@@ -1726,8 +1756,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	if (tegra_lp0_vec_size &&
 	   (tegra_lp0_vec_start < memblock_end_of_DRAM())) {
 		if (memblock_reserve(tegra_lp0_vec_start, tegra_lp0_vec_size)) {
-			pr_err("Failed to reserve lp0_vec %08lx@%08lx\n",
-				tegra_lp0_vec_size, tegra_lp0_vec_start);
+			pr_err("Failed to reserve lp0_vec %08llx@%08llx\n",
+				(u64)tegra_lp0_vec_size,
+				(u64)tegra_lp0_vec_start);
 			tegra_lp0_vec_start = 0;
 			tegra_lp0_vec_size = 0;
 		}
@@ -1766,8 +1797,9 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 		if (memblock_reserve(tegra_bootloader_fb_start,
 				tegra_bootloader_fb_size)) {
 			pr_err("Failed to reserve bootloader frame buffer "
-				"%08lx@%08lx\n", tegra_bootloader_fb_size,
-				tegra_bootloader_fb_start);
+				"%08llx@%08llx\n",
+				(u64)tegra_bootloader_fb_size,
+				(u64)tegra_bootloader_fb_start);
 			tegra_bootloader_fb_start = 0;
 			tegra_bootloader_fb_size = 0;
 		}
@@ -1778,47 +1810,49 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 				PAGE_ALIGN(tegra_bootloader_fb2_size);
 		if (memblock_reserve(tegra_bootloader_fb2_start,
 				tegra_bootloader_fb2_size)) {
-			pr_err("Failed to reserve bootloader fb2 %08lx@%08lx\n",
-				tegra_bootloader_fb2_size,
-				tegra_bootloader_fb2_start);
+			pr_err("Failed to reserve bootloader fb2 %08llx@%08llx\n",
+				(u64)tegra_bootloader_fb2_size,
+				(u64)tegra_bootloader_fb2_start);
 			tegra_bootloader_fb2_start = 0;
 			tegra_bootloader_fb2_size = 0;
 		}
 	}
 
 	pr_info("Tegra reserved memory:\n"
-		"LP0:                    %08lx - %08lx\n"
-		"Bootloader framebuffer: %08lx - %08lx\n"
-		"Bootloader framebuffer2: %08lx - %08lx\n"
-		"Framebuffer:            %08lx - %08lx\n"
-		"2nd Framebuffer:        %08lx - %08lx\n"
-		"Carveout:               %08lx - %08lx\n"
-		"Vpr:                    %08lx - %08lx\n"
-		"Tsec:                   %08lx - %08lx\n",
-		tegra_lp0_vec_start,
-		tegra_lp0_vec_size ?
-			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
-		tegra_bootloader_fb_start,
-		tegra_bootloader_fb_size ?
-		 tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
-		tegra_bootloader_fb2_start,
-		tegra_bootloader_fb2_size ?
-		 tegra_bootloader_fb2_start + tegra_bootloader_fb2_size - 1 : 0,
-		tegra_fb_start,
-		tegra_fb_size ?
-			tegra_fb_start + tegra_fb_size - 1 : 0,
-		tegra_fb2_start,
-		tegra_fb2_size ?
-			tegra_fb2_start + tegra_fb2_size - 1 : 0,
-		tegra_carveout_start,
-		tegra_carveout_size ?
-			tegra_carveout_start + tegra_carveout_size - 1 : 0,
-		tegra_vpr_start,
-		tegra_vpr_size ?
-			tegra_vpr_start + tegra_vpr_size - 1 : 0,
-		tegra_tsec_start,
-		tegra_tsec_size ?
-		tegra_tsec_start + tegra_tsec_size - 1 : 0);
+		"LP0:                    %08llx - %08llx\n"
+		"Bootloader framebuffer: %08llx - %08llx\n"
+		"Bootloader framebuffer2: %08llx - %08llx\n"
+		"Framebuffer:            %08llx - %08llx\n"
+		"2nd Framebuffer:        %08llx - %08llx\n"
+		"Carveout:               %08llx - %08llx\n"
+		"Vpr:                    %08llx - %08llx\n"
+		"Tsec:                   %08llx - %08llx\n",
+		(u64)tegra_lp0_vec_start,
+		(u64)(tegra_lp0_vec_size ?
+			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0),
+		(u64)tegra_bootloader_fb_start,
+		(u64)(tegra_bootloader_fb_size ?
+			tegra_bootloader_fb_start +
+			tegra_bootloader_fb_size - 1 : 0),
+		(u64)tegra_bootloader_fb2_start,
+		(u64)(tegra_bootloader_fb2_size ?
+			tegra_bootloader_fb2_start +
+			tegra_bootloader_fb2_size - 1 : 0),
+		(u64)tegra_fb_start,
+		(u64)(tegra_fb_size ?
+			tegra_fb_start + tegra_fb_size - 1 : 0),
+		(u64)tegra_fb2_start,
+		(u64)(tegra_fb2_size ?
+			tegra_fb2_start + tegra_fb2_size - 1 : 0),
+		(u64)tegra_carveout_start,
+		(u64)(tegra_carveout_size ?
+			tegra_carveout_start + tegra_carveout_size - 1 : 0),
+		(u64)tegra_vpr_start,
+		(u64)(tegra_vpr_size ?
+			tegra_vpr_start + tegra_vpr_size - 1 : 0),
+		(u64)tegra_tsec_start,
+		(u64)(tegra_tsec_size ?
+			tegra_tsec_start + tegra_tsec_size - 1 : 0));
 
 	if (tegra_avp_kernel_size) {
 		/* Return excessive memory reserved for AVP kernel */
@@ -1826,10 +1860,16 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			memblock_add(
 				tegra_avp_kernel_start + tegra_avp_kernel_size,
 				avp_kernel_reserve - tegra_avp_kernel_size);
+		/* The AVP kernel should be loaded below the 4 GB physical
+		   address limit. */
+		BUG_ON((u64)(tegra_avp_kernel_start) +
+			(u64)(tegra_avp_kernel_size) - (u64)(1) >=
+			(u64)(SZ_2G)*(u64)(2));
 		pr_info(
-		"AVP kernel: %08lx - %08lx\n",
-			tegra_avp_kernel_start,
-			tegra_avp_kernel_start + tegra_avp_kernel_size - 1);
+		"AVP kernel: %08llx - %08llx\n",
+			(u64)tegra_avp_kernel_start,
+			(u64)(tegra_avp_kernel_start +
+				tegra_avp_kernel_size - 1));
 	}
 
 #ifdef CONFIG_TEGRA_NVDUMPER

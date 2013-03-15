@@ -123,24 +123,24 @@ static inline void __init tegra_ram_console_debug_reserve(unsigned long ram_cons
 {}
 #endif
 
-extern unsigned long tegra_bootloader_fb_start;
-extern unsigned long tegra_bootloader_fb_size;
-extern unsigned long tegra_bootloader_fb2_start;
-extern unsigned long tegra_bootloader_fb2_size;
-extern unsigned long tegra_fb_start;
-extern unsigned long tegra_fb_size;
-extern unsigned long tegra_fb2_start;
-extern unsigned long tegra_fb2_size;
-extern unsigned long tegra_carveout_start;
-extern unsigned long tegra_carveout_size;
-extern unsigned long tegra_vpr_start;
-extern unsigned long tegra_vpr_size;
-extern unsigned long tegra_lp0_vec_start;
-extern unsigned long tegra_lp0_vec_size;
+extern phys_addr_t tegra_bootloader_fb_start;
+extern phys_addr_t tegra_bootloader_fb_size;
+extern phys_addr_t tegra_bootloader_fb2_start;
+extern phys_addr_t tegra_bootloader_fb2_size;
+extern phys_addr_t tegra_fb_start;
+extern phys_addr_t tegra_fb_size;
+extern phys_addr_t tegra_fb2_start;
+extern phys_addr_t tegra_fb2_size;
+extern phys_addr_t tegra_carveout_start;
+extern phys_addr_t tegra_carveout_size;
+extern phys_addr_t tegra_vpr_start;
+extern phys_addr_t tegra_vpr_size;
+extern phys_addr_t tegra_lp0_vec_start;
+extern phys_addr_t tegra_lp0_vec_size;
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-extern unsigned long tegra_wb0_params_address;
-extern unsigned long tegra_wb0_params_instances;
-extern unsigned long tegra_wb0_params_block_size;
+extern phys_addr_t tegra_wb0_params_address;
+extern phys_addr_t tegra_wb0_params_instances;
+extern phys_addr_t tegra_wb0_params_block_size;
 #endif
 #ifdef CONFIG_TEGRA_NVDUMPER
 extern unsigned long nvdumper_reserved;
