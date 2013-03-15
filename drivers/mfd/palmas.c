@@ -31,6 +31,7 @@
 			PALMAS_EXT_CONTROL_NSLEEP)
 
 enum palmas_ids {
+	PALMAS_PIN_MUX_ID,
 	PALMAS_PMIC_ID,
 	PALMAS_GPIO_ID,
 	PALMAS_LEDS_ID,
@@ -54,6 +55,10 @@ static struct resource palmas_rtc_resources[] = {
 };
 
 static const struct mfd_cell palmas_children[] = {
+	{
+		.name = "palmas-pinctrl",
+		.id = PALMAS_PIN_MUX_ID,
+	},
 	{
 		.name = "palmas-pmic",
 		.id = PALMAS_PMIC_ID,
@@ -863,18 +868,6 @@ static void palmas_dt_to_pdata(struct i2c_client *i2c,
 	int ret;
 	u32 prop;
 
-	ret = of_property_read_u32(node, "ti,mux-pad1", &prop);
-	if (!ret) {
-		pdata->mux_from_pdata = 1;
-		pdata->pad1 = prop;
-	}
-
-	ret = of_property_read_u32(node, "ti,mux-pad2", &prop);
-	if (!ret) {
-		pdata->mux_from_pdata = 1;
-		pdata->pad2 = prop;
-	}
-
 	/* The default for this register is all masked */
 	ret = of_property_read_u32(node, "ti,power-ctrl", &prop);
 	if (!ret)
@@ -1043,122 +1036,10 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (ret < 0)
 		goto err;
 
-	slave = PALMAS_BASE_TO_SLAVE(PALMAS_PU_PD_OD_BASE);
-	addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
-			PALMAS_PRIMARY_SECONDARY_PAD1);
-
-	if (pdata->mux_from_pdata) {
-		reg = pdata->pad1;
-		ret = regmap_write(palmas->regmap[slave], addr, reg);
-		if (ret)
-			goto err_irq;
-	} else {
-		ret = regmap_read(palmas->regmap[slave], addr, &reg);
-		if (ret)
-			goto err_irq;
-	}
-
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_0))
-		palmas->gpio_muxed |= PALMAS_GPIO_0_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK))
-		palmas->gpio_muxed |= PALMAS_GPIO_1_MUXED;
-	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK) ==
-			(2 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_SHIFT))
-		palmas->led_muxed |= PALMAS_LED1_MUXED;
-	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_MASK) ==
-			(3 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_1_SHIFT))
-		palmas->pwm_muxed |= PALMAS_PWM1_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK))
-		palmas->gpio_muxed |= PALMAS_GPIO_2_MUXED;
-	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK) ==
-			(2 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_SHIFT))
-		palmas->led_muxed |= PALMAS_LED2_MUXED;
-	else if ((reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_MASK) ==
-			(3 << PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_2_SHIFT))
-		palmas->pwm_muxed |= PALMAS_PWM2_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD1_GPIO_3))
-		palmas->gpio_muxed |= PALMAS_GPIO_3_MUXED;
-
-	addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
-			PALMAS_PRIMARY_SECONDARY_PAD2);
-
-	if (pdata->mux_from_pdata) {
-		reg = pdata->pad2;
-		ret = regmap_write(palmas->regmap[slave], addr, reg);
-		if (ret)
-			goto err_irq;
-	} else {
-		ret = regmap_read(palmas->regmap[slave], addr, &reg);
-		if (ret)
-			goto err_irq;
-	}
-
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_4))
-		palmas->gpio_muxed |= PALMAS_GPIO_4_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK))
-		palmas->gpio_muxed |= PALMAS_GPIO_5_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_6))
-		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_7_MASK))
-		palmas->gpio_muxed |= PALMAS_GPIO_7_MUXED;
-
-	addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
-			PALMAS_PRIMARY_SECONDARY_PAD3);
-
-	if (pdata->mux_from_pdata) {
-		reg = pdata->pad3;
-		ret = regmap_write(palmas->regmap[slave], addr, reg);
-		if (ret)
-			goto err;
-	} else {
-		ret = regmap_read(palmas->regmap[slave], addr, &reg);
-		if (ret)
-			goto err;
-	}
-
-	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2))
-		palmas->gpio_muxed |= PALMAS_GPIO_6_MUXED;
-
-
-	if (palmas->id != TPS80036) {
+	if (palmas->id != TPS80036)
 		palmas->ngpio = 8;
-	} else {
+	else
 		palmas->ngpio = 16;
-
-		addr = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
-				PALMAS_PRIMARY_SECONDARY_PAD4);
-
-		if (pdata->mux_from_pdata) {
-			reg = pdata->pad4;
-			ret = regmap_write(palmas->regmap[slave], addr, reg);
-			if (ret)
-				goto err;
-		} else {
-			ret = regmap_read(palmas->regmap[slave], addr, &reg);
-			if (ret)
-				goto err;
-		}
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_8_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_8_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_9_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_9_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_10_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_10_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_11_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_11_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_12_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_12_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_13_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_13_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_14_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_14_MUXED;
-		if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_15_MASK))
-			palmas->gpio_muxed |= PALMAS_GPIO_15_MUXED;
-	}
-
-	dev_info(palmas->dev, "Muxing GPIO %x, PWM %x, LED %x\n",
-			palmas->gpio_muxed, palmas->pwm_muxed,
-			palmas->led_muxed);
 
 	reg = pdata->power_ctrl;
 
