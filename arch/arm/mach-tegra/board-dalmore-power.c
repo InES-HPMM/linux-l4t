@@ -788,6 +788,26 @@ static struct palmas_rtc_platform_data rtc_platform = {
 	.charging_current_ua = 100,
 };
 
+static struct palmas_pinctrl_config palmas_pincfg[] = {
+	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO0, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO1, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO2, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO3, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO4, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO5, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO6, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO7, GPIO, DEFAULT, DEFAULT),
+};
+
+static struct palmas_pinctrl_platform_data palmas_pinctrl_pdata = {
+	.pincfg = palmas_pincfg,
+	.num_pinctrl = ARRAY_SIZE(palmas_pincfg),
+	.dvfs1_enable = true,
+	.dvfs2_enable = false,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
@@ -798,6 +818,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.pad2 = 0,
 	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS1,
 	.use_power_off = true,
+	.pinctrl_pdata = &palmas_pinctrl_pdata,
 };
 
 static struct i2c_board_info palma_device[] = {

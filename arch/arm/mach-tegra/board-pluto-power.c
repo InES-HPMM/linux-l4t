@@ -616,6 +616,26 @@ struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	},
 };
 
+static struct palmas_pinctrl_config palmas_pincfg[] = {
+	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO0, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO1, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO2, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO3, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO4, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO5, CLK32KGAUDIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO6, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO7, GPIO, DEFAULT, DEFAULT),
+};
+
+static struct palmas_pinctrl_platform_data palmas_pinctrl_pdata = {
+	.pincfg = palmas_pincfg,
+	.num_pinctrl = ARRAY_SIZE(palmas_pincfg),
+	.dvfs1_enable = false,
+	.dvfs2_enable = true,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
@@ -629,6 +649,7 @@ static struct palmas_platform_data palmas_pdata = {
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_type = IRQ_TYPE_LEVEL_HIGH,
 	.use_power_off = true,
+	.pinctrl_pdata = &palmas_pinctrl_pdata,
 };
 
 static struct i2c_board_info palma_device[] = {
