@@ -242,6 +242,35 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_set_nontristate[] = 
 
 #include "board-pluto-pinmux-t11x.h"
 
+#ifdef CONFIG_PM_SLEEP
+/* pinmux settings during low power mode for power saving purpose */
+static struct tegra_pingroup_config pluto_sleep_pinmux[] = {
+	DEFAULT_PINMUX(GMI_AD14,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD15,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD8,     DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_WAIT,    DTV,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD6,     SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD7,     SPI4,    NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,   SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_WR_N,    SPI4,    NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS1_N,   SOC,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_OE_N,    SOC,     NORMAL,    TRISTATE,  INPUT),
+	DEFAULT_PINMUX(GMI_AD10,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD12,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD13,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD14,    GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_AD8,     GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_ADV_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CLK,     GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS0_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS3_N,   GMI,     NORMAL,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GMI_CS4_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_CS7_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_IORDY,   GMI,     NORMAL,    NORMAL,    INPUT),
+	DEFAULT_PINMUX(GMI_RST_N,   GMI,     NORMAL,    NORMAL,    INPUT),
+};
+#endif
+
 static void __init pluto_gpio_init_configure(void)
 {
 	int len;
@@ -269,6 +298,7 @@ int __init pluto_pinmux_init(void)
 					ARRAY_SIZE(pluto_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
-
+	tegra11x_set_sleep_pinmux(pluto_sleep_pinmux,
+		ARRAY_SIZE(pluto_sleep_pinmux));
 	return 0;
 }
