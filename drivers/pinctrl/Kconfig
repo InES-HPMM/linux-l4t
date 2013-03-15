@@ -229,6 +229,12 @@ config PINCTRL_MAX77660
 	depends on MFD_MAX77660
 	help
 	  MAX77660 is a PMIC from MAXIM for smartphone and tablets. This PMIC
+
+config PINCTRL_PALMAS
+	tristate "PALMAS Pincontrol support"
+	depends on MFD_PALMAS
+	help
+	  PALMAS is a PMIC series from TI for smartphone and tablets. This PMIC
 	  has some pins i.e. named as GPIOx which can be act as GPIO or in
 	  alternate mode for special functionality. Also these pins can be
 	  configured for open drain, pullup, pull down etc.

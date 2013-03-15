@@ -286,6 +286,20 @@ struct palmas_rtc_platform_data {
 	unsigned charging_current_ua;
 };
 
+struct palmas_pinctrl_config {
+	int pin_name;
+	int pin_mux_option;
+	int open_drain_state;
+	int pin_pull_up_dn;
+};
+
+struct palmas_pinctrl_platform_data {
+	struct palmas_pinctrl_config *pincfg;
+	int num_pinctrl;
+	bool dvfs1_enable;
+	bool dvfs2_enable;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -311,6 +325,8 @@ struct palmas_platform_data {
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
 	bool use_power_off;
+
+	struct palmas_pinctrl_platform_data *pinctrl_pdata;
 
 	int watchdog_timer_initial_period;
 };
@@ -3479,6 +3495,73 @@ enum {
 
 	/* Last entry */
 	PALMAS_SLEEP_REQSTR_ID_MAX,
+};
+
+/* Palmas Pinmux option */
+enum {
+	PALMAS_PINMUX_GPIO = 0,
+	PALMAS_PINMUX_LED,
+	PALMAS_PINMUX_PWM,
+	PALMAS_PINMUX_REGEN,
+	PALMAS_PINMUX_SYSEN,
+	PALMAS_PINMUX_CLK32KGAUDIO,
+	PALMAS_PINMUX_ID,
+	PALMAS_PINMUX_VBUS_DET,
+	PALMAS_PINMUX_CHRG_DET,
+	PALMAS_PINMUX_VAC,
+	PALMAS_PINMUX_VACOK,
+	PALMAS_PINMUX_POWERGOOD,
+	PALMAS_PINMUX_USB_PSEL,
+	PALMAS_PINMUX_MSECURE,
+	PALMAS_PINMUX_PWRHOLD,
+	PALMAS_PINMUX_INT,
+	PALMAS_PINMUX_DVFS2,
+	PALMAS_PINMUX_DVFS1,
+	PALMAS_PINMUX_NRESWARM,
+	PALMAS_PINMUX_PWRDOWN,
+	PALMAS_PINMUX_GPADC_START,
+	PALMAS_PINMUX_RESET_IN,
+	PALMAS_PINMUX_NSLEEP,
+	PALMAS_PINMUX_ENABLE1,
+	PALMAS_PINMUX_ENABLE2,
+	PALMAS_PINMUX_RESVD = 0x2000,
+	PALMAS_PINMUX_DEFAULT = 0x4000,
+	PALMAS_PINMUX_INVALID = 0x8000,
+};
+
+/* Palmas Pinmux Pullup/pulldown/opendrain configuration. */
+enum {
+	PALMAS_PIN_CONFIG_DEFAULT,
+	PALMAS_PIN_CONFIG_NORMAL,
+	PALMAS_PIN_CONFIG_PULL_UP,
+	PALMAS_PIN_CONFIG_PULL_DOWN,
+
+	PALMAS_PIN_CONFIG_OD_DEFAULT,
+	PALMAS_PIN_CONFIG_OD_ENABLE,
+	PALMAS_PIN_CONFIG_OD_DISABLE,
+};
+
+/* Palmas Pins name */
+enum {
+	PALMAS_PIN_NAME_GPIO0,
+	PALMAS_PIN_NAME_GPIO1,
+	PALMAS_PIN_NAME_GPIO2,
+	PALMAS_PIN_NAME_GPIO3,
+	PALMAS_PIN_NAME_GPIO4,
+	PALMAS_PIN_NAME_GPIO5,
+	PALMAS_PIN_NAME_GPIO6,
+	PALMAS_PIN_NAME_GPIO7,
+	PALMAS_PIN_NAME_VAC,
+	PALMAS_PIN_NAME_POWERGOOD,
+	PALMAS_PIN_NAME_NRESWARM,
+	PALMAS_PIN_NAME_PWRDOWN,
+	PALMAS_PIN_NAME_GPADC_START,
+	PALMAS_PIN_NAME_RESET_IN,
+	PALMAS_PIN_NAME_NSLEEP,
+	PALMAS_PIN_NAME_ENABLE1,
+	PALMAS_PIN_NAME_ENABLE2,
+	PALMAS_PIN_NAME_INT,
+	PALMAS_PIN_NAME_MAX,
 };
 
 extern int palmas_ext_power_req_config(struct palmas *palmas,
