@@ -1232,7 +1232,7 @@ static int soctherm_clk_enable(bool enable)
 	return 0;
 }
 
-static void soctherm_fuse_read_vsensor(void)
+static int soctherm_fuse_read_vsensor(void)
 {
 	u32 value;
 	s32 calib_cp, calib_ft;
@@ -1257,6 +1257,12 @@ static void soctherm_fuse_read_vsensor(void)
 	/* use HI precision to calculate: use fuse_temp in 0.5C */
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
 	actual_temp_ft = 2 * nominal_calib_ft + calib_ft;
+
+	if (!actual_temp_ft || !actual_temp_cp) {
+		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int fuse_corr_alpha[] = { /* scaled *1000000 */
@@ -1277,7 +1283,7 @@ static int fuse_corr_beta[] = { /* scaled *1000000 */
 	[TSENSE_PLLX] = -14665000,
 };
 
-static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
+static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 {
 	u32 r, value;
 	s32 calib, delta_sens, delta_temp;
@@ -1294,6 +1300,11 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	calib = REG_GET(value, FUSE_TSENSOR_CALIB_CP);
 	calib = MAKE_SIGNED32(calib, FUSE_TSENSOR_CALIB_BITS);
 	actual_tsensor_cp = (fuse_calib_base_cp * 64) + calib;
+
+	if (!actual_tsensor_ft || !actual_tsensor_cp) {
+		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
+		return -EINVAL;
+	}
 
 	mult = plat_data.sensor_data[sensor].pdiv *
 		plat_data.sensor_data[sensor].tsamp_ATE;
@@ -1331,6 +1342,8 @@ static void soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	r = REG_SET(0, TS_CPU0_CONFIG2_THERM_A, therm_a);
 	r = REG_SET(r, TS_CPU0_CONFIG2_THERM_B, therm_b);
 	soctherm_writel(r, TS_TSENSE_REG_OFFSET(TS_CPU0_CONFIG2, sensor));
+
+	return 0;
 }
 
 static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
@@ -1416,11 +1429,13 @@ static int soctherm_init_platform_data(void)
 	soctherm_writel(r, TS_HOTSPOT_OFF);
 
 	/* Thermal Sensing programming */
-	soctherm_fuse_read_vsensor();
+	if (soctherm_fuse_read_vsensor() < 0)
+		return -EINVAL;
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].sensor_enable) {
 			soctherm_tsense_program(i, &plat_data.sensor_data[i]);
-			soctherm_fuse_read_tsensor(i);
+			if (soctherm_fuse_read_tsensor(i) < 0)
+				return -EINVAL;
 		}
 	}
 
