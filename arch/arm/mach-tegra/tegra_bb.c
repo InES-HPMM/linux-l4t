@@ -625,7 +625,7 @@ static ssize_t show_tegra_bb_serial(struct device *dev,
 						    struct platform_device,
 						    dev);
 	struct tegra_bb_platform_data *pdata;
-	int idx, ret, total_len = 0;
+	int idx, ret;
 
 	if (!pdev) {
 		dev_err(dev, "%s platform device is NULL!\n", __func__);
@@ -653,14 +653,11 @@ static ssize_t show_tegra_bb_serial(struct device *dev,
 					__func__);
 			return 0;
 		}
-		total_len += ret;
 	}
 
 	buf[2*NVSHM_SERIAL_BYTE_SIZE] = '\n';
-	buf[2*NVSHM_SERIAL_BYTE_SIZE+1] = '\0';
-	total_len += 2;
 
-	return total_len;
+	return (2*NVSHM_SERIAL_BYTE_SIZE+1);
 }
 
 static DEVICE_ATTR(serial, S_IRUSR | S_IRGRP, show_tegra_bb_serial, NULL);
