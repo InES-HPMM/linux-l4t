@@ -483,9 +483,9 @@ static const struct soctherm_sensor default_t14x_sensor_params = {
 	.pdiv_ATE  = 8,
 };
 
-static const unsigned long default_t11x_soctherm_clk_rate = 136000000;
+static const unsigned long default_t11x_soctherm_clk_rate = 51000000;
 static const unsigned long default_t11x_tsensor_clk_rate = 500000;
-static const unsigned long default_t14x_soctherm_clk_rate = 136000000;
+static const unsigned long default_t14x_soctherm_clk_rate = 51000000;
 static const unsigned long default_t14x_tsensor_clk_rate = 400000;
 
 static int sensor2therm_a[TSENSE_SIZE];
