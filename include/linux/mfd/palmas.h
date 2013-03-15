@@ -308,13 +308,6 @@ struct palmas_platform_data {
 	/* bit value to be loaded to the POWER_CTRL register */
 	u8 power_ctrl;
 
-	/*
-	 * boolean to select if we want to configure muxing here
-	 * then the two value to load into the registers if true
-	 */
-	int mux_from_pdata;
-	u8 pad1, pad2, pad3, pad4;
-
 	struct palmas_pmic_platform_data *pmic_pdata;
 	struct palmas_gpadc_platform_data *gpadc_pdata;
 	struct palmas_usb_platform_data *usb_pdata;
