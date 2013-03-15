@@ -46,6 +46,11 @@
 #define TEGRA_BB_IPC_COLDBOOT  (0x0001)
 #define TEGRA_BB_IPC_READY  (0x0005)
 
+#define APBDEV_PMC_EVENT_COUNTER_0	(0x44c)
+#define APBDEV_PMC_EVENT_COUNTER_0_EN_MASK	(1<<20)
+#define APBDEV_PMC_EVENT_COUNTER_0_LP0BB	(0<<16)
+#define APBDEV_PMC_EVENT_COUNTER_0_LP0ACTIVE	(1<<16)
+
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0 (0x500)
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT (1)
 #define APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK (1)
@@ -1021,6 +1026,111 @@ static void __exit tegra_bb_exit(void)
 
 fs_initcall(tegra_bb_init);
 module_exit(tegra_bb_exit);
+
+#ifdef CONFIG_DEBUG_FS
+static struct dentry *bb_debugfs_root;
+static enum pmc_event_sel {
+	PMC_EVENT_NONE,
+	PMC_EVENT_LP0BB,
+	PMC_EVENT_LP0ACTIVE,
+} pmc_event_sel;
+
+static int lp0bb_transitions_set(void *data, u64 val)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 reg;
+
+	if (!val) {
+		/* disable event counting and clear counter */
+		reg = 0;
+		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		pmc_event_sel = PMC_EVENT_NONE;
+	} else if (val == 1) {
+		reg = APBDEV_PMC_EVENT_COUNTER_0_EN_MASK |
+				APBDEV_PMC_EVENT_COUNTER_0_LP0BB;
+		 /* lp0->lp0bb transitions */
+		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		pmc_event_sel = PMC_EVENT_LP0BB;
+	}
+	return 0;
+}
+
+static inline unsigned long read_pmc_event_counter(void)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 reg = readl(pmc + APBDEV_PMC_EVENT_COUNTER_0);
+	/* hw event counter is 16 bit */
+	reg = reg & 0xffff;
+	return reg;
+}
+
+static int lp0bb_transitions_get(void *data, u64 *val)
+{
+	if (pmc_event_sel == PMC_EVENT_LP0BB)
+		*val = (u32) read_pmc_event_counter();
+	else
+		*val = 0;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(lp0bb_fops, lp0bb_transitions_get,
+		lp0bb_transitions_set, "%lld\n");
+
+static int lp0active_transitions_set(void *data, u64 val)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 reg;
+
+	if (!val) {
+		/* disable event counting and clear counter */
+		reg = 0;
+		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		pmc_event_sel = PMC_EVENT_NONE;
+	} else if (val == 1) {
+		reg = APBDEV_PMC_EVENT_COUNTER_0_EN_MASK |
+				APBDEV_PMC_EVENT_COUNTER_0_LP0ACTIVE;
+		 /* lp0->active transitions */
+		writel(reg, pmc + APBDEV_PMC_EVENT_COUNTER_0);
+		pmc_event_sel = PMC_EVENT_LP0ACTIVE;
+	}
+	return 0;
+}
+static int lp0active_transitions_get(void *data, u64 *val)
+{
+	if (pmc_event_sel == PMC_EVENT_LP0ACTIVE)
+		*val = (u32) read_pmc_event_counter();
+	else
+		*val = 0;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(lp0active_fops, lp0active_transitions_get,
+		lp0active_transitions_set, "%lld\n");
+
+static int __init tegra_bb_debug_init(void)
+{
+	struct dentry *d;
+
+	bb_debugfs_root = debugfs_create_dir("tegra_bb", NULL);
+	if (!bb_debugfs_root)
+		return -ENOMEM;
+
+	d = debugfs_create_file("lp0bb_transitions", S_IWUSR | S_IRUGO,
+			bb_debugfs_root, NULL, &lp0bb_fops);
+	if (!d)
+		goto err;
+
+	d = debugfs_create_file("lp0active_transitions", S_IWUSR | S_IRUGO,
+			bb_debugfs_root, NULL, &lp0active_fops);
+	if (!d)
+		goto err;
+
+	return 0;
+err:
+	debugfs_remove_recursive(bb_debugfs_root);
+	return -ENOMEM;
+}
+
+late_initcall(tegra_bb_debug_init);
+#endif
 
 MODULE_DESCRIPTION("Tegra T148 BB Module");
 MODULE_LICENSE("GPL");
