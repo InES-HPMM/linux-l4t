@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tegra/include/mach/pinmux-t11.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (C) 2011-2013 NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -17,6 +17,8 @@
 
 #ifndef __MACH_TEGRA_PINMUX_T11_H
 #define __MACH_TEGRA_PINMUX_T11_H
+
+#include <mach/pinmux.h>
 
 void tegra11x_default_pinmux(void);
 
@@ -244,4 +246,10 @@ enum tegra_drive_pingroup {
 	TEGRA_MAX_DRIVE_PINGROUP,
 };
 
+#ifdef CONFIG_PM_SLEEP
+void tegra11x_set_sleep_pinmux(struct tegra_pingroup_config *config, int size);
+#else
+static inline void
+tegra11x_set_sleep_pinmux(struct tegra_pingroup_config *config, int size) {}
+#endif
 #endif
