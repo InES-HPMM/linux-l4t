@@ -1572,6 +1572,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 
+	/* disable access to boot partitions */
+	host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC;
+
 	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_host->hw_ops = &tegra_2x_sdhci_ops;
