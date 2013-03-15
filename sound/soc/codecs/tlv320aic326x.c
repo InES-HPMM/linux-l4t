@@ -2575,6 +2575,9 @@ static int aic3262_codec_probe(struct snd_soc_codec *codec)
 			AIC3262_HEADSET_IN_MASK, AIC3262_HEADSET_IN_MASK);
 		}
 	}
+
+	codec->dapm.idle_bias_off = 1;
+
 	/* Keep the reference voltage ON while in$
 	   STANDBY mode for fast power up */
 
@@ -2659,6 +2662,7 @@ static struct snd_soc_codec_driver soc_codec_driver_aic326x = {
 	.dapm_routes = aic3262_dapm_routes,
 	.num_dapm_routes = ARRAY_SIZE(aic3262_dapm_routes),
 	.set_bias_level = aic3262_set_bias_level,
+	.idle_bias_off = true,
 	.reg_cache_size = 0,
 	.reg_word_size = sizeof(u8),
 	.reg_cache_default = NULL,

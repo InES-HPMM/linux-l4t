@@ -1297,17 +1297,6 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 	}
 
-	ret = snd_soc_add_card_controls(card, tegra_aic326x_controls,
-				   ARRAY_SIZE(tegra_aic326x_controls));
-	if (ret < 0)
-		return ret;
-
-	snd_soc_dapm_new_controls(dapm, tegra_aic326x_dapm_widgets,
-					ARRAY_SIZE(tegra_aic326x_dapm_widgets));
-
-	snd_soc_dapm_add_routes(dapm, aic326x_audio_map,
-					ARRAY_SIZE(aic326x_audio_map));
-
 	ret = snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET,
 			&tegra_aic326x_hp_jack);
 	if (ret < 0)
@@ -1350,6 +1339,8 @@ static int tegra_aic326x_init(struct snd_soc_pcm_runtime *rtd)
 	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
+
+	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }
@@ -1479,14 +1470,11 @@ static int tegra_aic326x_set_bias_level_post(struct snd_soc_card *card,
 		level == SND_SOC_BIAS_OFF && machine->clock_enabled) {
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
+		machine->bias_level = level;
 	}
-
-	machine->bias_level = level;
 
 	return 0 ;
 }
-
-
 
 static struct snd_soc_card snd_soc_tegra_aic326x = {
 	.name = "tegra-aic326x",
@@ -1497,6 +1485,13 @@ static struct snd_soc_card snd_soc_tegra_aic326x = {
 	.set_bias_level_post = tegra_aic326x_set_bias_level_post,
 	.suspend_post = tegra_aic326x_suspend_post,
 	.resume_pre = tegra_aic326x_resume_pre,
+	.controls = tegra_aic326x_controls,
+	.num_controls = ARRAY_SIZE(tegra_aic326x_controls),
+	.dapm_widgets = tegra_aic326x_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(tegra_aic326x_dapm_widgets),
+	.dapm_routes = aic326x_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(aic326x_audio_map),
+	.fully_routed = true,
 };
 
 static int tegra_aic326x_driver_probe(struct platform_device *pdev)
@@ -1523,6 +1518,8 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	}
 
 	machine->pdata = pdata;
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
