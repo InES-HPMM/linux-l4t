@@ -640,11 +640,6 @@ static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
-	.mux_from_pdata = true,
-	.pad1 = 0,
-	.pad2 = (PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_MASK &
-			(1 << PALMAS_PRIMARY_SECONDARY_PAD2_GPIO_5_SHIFT)),
-	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS2,
 	.clk32k_init_data =  palmas_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_type = IRQ_TYPE_LEVEL_HIGH,

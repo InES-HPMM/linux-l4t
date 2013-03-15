@@ -813,10 +813,6 @@ static struct palmas_platform_data palmas_pdata = {
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
 	.rtc_pdata = &rtc_platform,
-	.mux_from_pdata = true,
-	.pad1 = 0,
-	.pad2 = 0,
-	.pad3 = PALMAS_PRIMARY_SECONDARY_PAD3_DVFS1,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 };
