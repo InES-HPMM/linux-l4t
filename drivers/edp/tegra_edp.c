@@ -263,10 +263,41 @@ static struct notifier_block tegra_edp_cpu_nb = {
 	.notifier_call = tegra_edp_cpu_notify
 };
 
+static ssize_t core_request_store(struct edp_client *c,
+		struct edp_client_attribute *attr, const char *s, size_t count)
+{
+	unsigned int id;
+	unsigned int approved;
+	int r;
+
+	if (sscanf(s, "%u", &id) != 1)
+		return -EINVAL;
+
+	mutex_lock(&core_lock);
+
+	r = edp_update_client_request(c, id, &approved);
+	if (r)
+		goto out;
+
+	core_state = approved;
+	update_cur_corecap();
+	__do_cap_control();
+
+out:
+	mutex_unlock(&core_lock);
+	return r ?: count;
+}
+
+struct edp_client_attribute core_attrs[] = {
+	__ATTR(set_request, 0200, NULL, core_request_store),
+	__ATTR_NULL
+};
+
 static struct edp_client core_client = {
 	.name = "core",
 	.priority = EDP_MIN_PRIO,
 	.throttle = state_change_cb,
+	.attrs = core_attrs,
 	.notify_promotion = state_change_cb,
 	.notify_loan_update = loan_update_cb,
 	.notify_loan_close = loan_close_cb
