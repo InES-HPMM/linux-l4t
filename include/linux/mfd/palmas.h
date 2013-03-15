@@ -2208,8 +2208,8 @@ enum usb_irq_events {
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_SHIFT			0
 
 /* Maximum INT mask/edge regsiter */
-#define PALMAS_MAX_INTERRUPT_MASK_REG				4
-#define PALMAS_MAX_INTERRUPT_EDGE_REG				8
+#define PALMAS_MAX_INTERRUPT_MASK_REG				5
+#define PALMAS_MAX_INTERRUPT_EDGE_REG				10
 
 /* Registers for function INTERRUPT */
 #define PALMAS_INT1_STATUS					0x0
@@ -2232,6 +2232,11 @@ enum usb_irq_events {
 #define PALMAS_INT4_LINE_STATE					0x11
 #define PALMAS_INT4_EDGE_DETECT1				0x12
 #define PALMAS_INT4_EDGE_DETECT2				0x13
+#define PALMAS_INT5_STATUS					0x15
+#define PALMAS_INT5_MASK					0x16
+#define PALMAS_INT5_LINE_STATE					0x17
+#define PALMAS_INT5_EDGE_DETECT1				0x18
+#define PALMAS_INT5_EDGE_DETECT2				0x19
 #define PALMAS_INT_CTRL						0x14
 
 /* Bit definitions for INT1_STATUS */
