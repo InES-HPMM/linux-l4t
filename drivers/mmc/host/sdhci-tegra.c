@@ -2437,9 +2437,14 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	host->mmc->caps2 |= MMC_CAP2_HS200;
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	/* Enable HS200 mode */
+	host->mmc->caps2 |= MMC_CAP2_HS200;
+#else
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
+#endif
 #endif
 
 #ifdef CONFIG_MMC_FREQ_SCALING
