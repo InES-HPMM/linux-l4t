@@ -33,6 +33,7 @@
 #include <linux/export.h>
 #include <linux/pm_runtime.h>
 #include <linux/extcon.h>
+#include <linux/gpio.h>
 
 #include <mach/pm_domains.h>
 
@@ -73,6 +74,7 @@ struct tegra_otg_data {
 	bool support_usb_id;
 	bool support_pmu_id;
 	bool support_gpio_id;
+	int id_det_gpio;
 	struct extcon_dev *edev;
 };
 
@@ -112,6 +114,39 @@ static int otg_notifications(struct notifier_block *nb,
 
 	DBG("%s(%d) End\n", __func__, __LINE__);
 	return NOTIFY_DONE;
+}
+
+void check_host_cable_connection(struct tegra_otg_data *tegra)
+{
+	unsigned long flags;
+	bool id_present;
+	DBG("%s(%d) Begin\n", __func__, __LINE__);
+
+	id_present = (gpio_get_value_cansleep(tegra->id_det_gpio) == 0);
+
+	spin_lock_irqsave(&tegra->lock, flags);
+	if (id_present) {
+		DBG("%s(%d) id connect\n", __func__, __LINE__);
+		tegra->int_status &= ~USB_ID_STATUS;
+		tegra->int_status |= USB_ID_INT_EN;
+	} else {
+		DBG("%s(%d) id disconnect\n", __func__, __LINE__);
+		tegra->int_status |= USB_ID_STATUS;
+	}
+	spin_unlock_irqrestore(&tegra->lock, flags);
+	DBG("%s(%d) tegra->int_status = 0x%lx\n", __func__,
+				__LINE__, tegra->int_status);
+
+	mutex_lock(&tegra->irq_work_mutex);
+	schedule_work(&tegra->work);
+	mutex_unlock(&tegra->irq_work_mutex);
+}
+
+static irqreturn_t tegra_otg_id_detect_gpio_thr(int irq, void *data)
+{
+	struct tegra_otg_data *tegra = data;
+	check_host_cable_connection(tegra);
+	return IRQ_HANDLED;
 }
 
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
@@ -492,6 +527,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	if (pdata) {
 		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
+		tegra->id_det_gpio = pdata->id_det_gpio;
 		tegra->pdata = pdata;
 		tegra_otg_set_id_detection_type(tegra);
 	}
@@ -534,6 +570,28 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "Failed to register IRQ\n");
 		goto err_irq;
+	}
+
+	if (tegra->support_gpio_id && gpio_is_valid(tegra->id_det_gpio)) {
+		err = gpio_request(tegra->id_det_gpio, "id_det_gpio");
+		if (err) {
+			dev_err(&pdev->dev,
+				"failed to allocate id_det_gpio\n");
+		}
+		gpio_direction_input(tegra->id_det_gpio);
+
+		err = request_threaded_irq(gpio_to_irq(tegra->id_det_gpio), NULL
+			, tegra_otg_id_detect_gpio_thr, IRQF_TRIGGER_FALLING |
+			IRQF_TRIGGER_RISING, "tegra-otg", tegra);
+		if (err) {
+			dev_err(&pdev->dev, "request irq error\n");
+			goto err_id_irq_req;
+		}
+
+		err = enable_irq_wake(gpio_to_irq(tegra->id_det_gpio));
+		if (err < 0)
+			dev_err(&pdev->dev,
+				"ID wake-up event failed with error %d\n", err);
 	}
 
 	err = enable_irq_wake(tegra->irq);
@@ -595,7 +653,12 @@ err_irq:
 	iounmap(tegra->regs);
 err_io:
 	clk_put(tegra->clk);
+err_id_irq_req:
+	if (gpio_is_valid(tegra->id_det_gpio))
+		gpio_free(tegra->id_det_gpio);
 err_clk:
+	if (gpio_is_valid(tegra->id_det_gpio))
+		free_irq(gpio_to_irq(tegra->id_det_gpio), tegra);
 	return err;
 }
 
@@ -603,6 +666,10 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 
+	if (tegra->support_gpio_id && gpio_is_valid(tegra->id_det_gpio)) {
+		free_irq(gpio_to_irq(tegra->id_det_gpio), tegra);
+		gpio_free(tegra->id_det_gpio);
+	}
 	if (tegra->support_pmu_vbus || tegra->support_pmu_id)
 		extcon_unregister_notifier(tegra->edev, &otg_nb);
 	pm_runtime_disable(tegra->phy.dev);
