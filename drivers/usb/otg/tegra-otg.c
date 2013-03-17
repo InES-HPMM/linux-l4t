@@ -3,7 +3,7 @@
  *
  * OTG transceiver driver for Tegra UTMI phy
  *
- * Copyright (C) 2010-2012 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2013 NVIDIA CORPORATION. All rights reserved.
  * Copyright (C) 2010 Google, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -68,9 +68,11 @@ struct tegra_otg_data {
 	unsigned int intr_reg_data;
 	bool clk_enabled;
 	bool interrupt_mode;
-	bool builtin_host;
 	bool suspended;
 	bool support_pmu_vbus;
+	bool support_usb_id;
+	bool support_pmu_id;
+	bool support_gpio_id;
 	struct extcon_dev *edev;
 };
 
@@ -87,16 +89,27 @@ static int otg_notifications(struct notifier_block *nb,
 
 	spin_lock_irqsave(&tegra->lock, flags);
 
-	if (extcon_get_cable_state(tegra->edev, "USB"))
-		tegra->int_status |= USB_VBUS_STATUS ;
-	else
-		tegra->int_status &= ~USB_VBUS_STATUS;
+	if (tegra->support_pmu_vbus) {
+		if (extcon_get_cable_state(tegra->edev, "USB"))
+			tegra->int_status |= USB_VBUS_STATUS ;
+		else
+			tegra->int_status &= ~USB_VBUS_STATUS;
+	}
+
+	if (tegra->support_pmu_id) {
+		if (extcon_get_cable_state(tegra->edev, "USB-Host")) {
+			tegra->int_status &= ~USB_ID_STATUS;
+			tegra->int_status |= USB_ID_INT_EN;
+		 } else
+			tegra->int_status |= USB_ID_STATUS;
+	}
 
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	DBG("%s(%d) tegra->int_status = 0x%lx\n", __func__,
 				__LINE__, tegra->int_status);
 
 	schedule_work(&tegra->work);
+
 	DBG("%s(%d) End\n", __func__, __LINE__);
 	return NOTIFY_DONE;
 }
@@ -137,10 +150,9 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
-		if (tegra->builtin_host)
+		/* Enable ID interrupt if detection is through USB controller */
+		if (tegra->support_usb_id)
 			val |= USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN;
-		else
-			val |= USB_ID_PIN_WAKEUP_EN;
 
 		/* Enable vbus interrupt if cable is not detected through PMU */
 		if (!tegra->support_pmu_vbus)
@@ -347,7 +359,7 @@ static int tegra_otg_set_peripheral(struct usb_otg *otg,
 	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS))
 		val |= USB_VBUS_INT_STATUS;
 	else if (!(val & USB_ID_STATUS)) {
-		if(!tegra->builtin_host)
+		if (!tegra->support_usb_id)
 			val &= ~USB_ID_INT_STATUS;
 		else
 			val |= USB_ID_INT_STATUS;
@@ -379,7 +391,7 @@ static int tegra_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	clk_prepare_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	val &= ~(USB_VBUS_INT_STATUS | USB_ID_INT_STATUS);
-	if (tegra->builtin_host)
+	if (tegra->support_usb_id)
 		val |= (USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN);
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable_unprepare(tegra->clk);
@@ -437,6 +449,27 @@ static int tegra_otg_set_suspend(struct usb_phy *phy, int suspend)
 	return 0;
 }
 
+void tegra_otg_set_id_detection_type(struct tegra_otg_data *tegra)
+{
+	switch (tegra->pdata->ehci_pdata->id_det_type) {
+	case TEGRA_USB_ID:
+		tegra->support_usb_id = true;
+		break;
+	case TEGRA_USB_PMU_ID:
+		tegra->support_pmu_id = true;
+		break;
+	case TEGRA_USB_GPIO_ID:
+		tegra->support_gpio_id = true;
+		break;
+	case TEGRA_USB_VIRTUAL_ID:
+		tegra->support_usb_id = false;
+		break;
+	default:
+		pr_info("otg detection method is unknown\n");
+		break;
+	}
+}
+
 static int tegra_otg_probe(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra;
@@ -458,9 +491,9 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	mutex_init(&tegra->irq_work_mutex);
 
 	if (pdata) {
-		tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
 		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
 		tegra->pdata = pdata;
+		tegra_otg_set_id_detection_type(tegra);
 	}
 
 	platform_set_drvdata(pdev, tegra);
@@ -522,14 +555,14 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	tegra->phy.state = OTG_STATE_A_SUSPEND;
 	tegra->phy.otg->phy = &tegra->phy;
 
-
 	err = usb_add_phy(&tegra->phy, USB_PHY_TYPE_USB2);
 	if (err) {
 		dev_err(&pdev->dev, "usb_set_transceiver failed\n");
 		goto err_clk;
 	}
 
-	if (!tegra->builtin_host) {
+	if (!tegra->support_usb_id && !tegra->support_pmu_id
+					&& !tegra->support_gpio_id) {
 		err = device_create_file(&pdev->dev, &dev_attr_enable_host);
 		if (err) {
 			dev_warn(&pdev->dev, "Can't register sysfs attribute\n");
@@ -537,14 +570,14 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (tegra->support_pmu_vbus) {
+	if (tegra->support_pmu_vbus || tegra->support_pmu_id) {
 		tegra->edev = extcon_get_extcon_dev(pdata->extcon_dev_name);
 		if (!tegra->edev) {
-			dev_err(&pdev->dev, "Cannot get the extcon dev\n");
+			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
+						pdata->extcon_dev_name);
 			err = -ENODEV;
 			goto err_irq;
 		}
-
 		otg_nb.notifier_call = otg_notifications;
 		extcon_register_notifier(tegra->edev, &otg_nb);
 	}
@@ -570,7 +603,7 @@ static int __exit tegra_otg_remove(struct platform_device *pdev)
 {
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 
-	if (tegra->support_pmu_vbus)
+	if (tegra->support_pmu_vbus || tegra->support_pmu_id)
 		extcon_unregister_notifier(tegra->edev, &otg_nb);
 	pm_runtime_disable(tegra->phy.dev);
 	usb_remove_phy(&tegra->phy);
@@ -650,12 +683,10 @@ static void tegra_otg_resume(struct device *dev)
 
 	/* Enable interrupt and call work to set to appropriate state */
 	spin_lock_irqsave(&tegra->lock, flags);
-	if (tegra->builtin_host)
+	if (tegra->support_usb_id)
 		tegra->int_status = val | USB_INT_EN;
 	else
-		tegra->int_status = val | USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN |
-			USB_ID_PIN_WAKEUP_EN;
-
+		tegra->int_status = val | USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN;
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	schedule_work(&tegra->work);
 
