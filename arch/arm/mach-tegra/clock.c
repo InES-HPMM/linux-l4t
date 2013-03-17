@@ -723,6 +723,81 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 	return 0;
 }
 
+/*
+ * If table refer pll directly it can be scaled only if all its children are OFF
+ */
+static bool tegra_can_scale_pll_direct(struct clk *pll)
+{
+	bool can_scale = true;
+	struct clk *c;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		if ((clk_get_parent(c) == pll) && (c->state == ON)) {
+			WARN(1, "tegra: failed initialize %s: in use by %s\n",
+			     pll->name, c->name);
+			can_scale = false;
+			break;
+		}
+	}
+	mutex_unlock(&clock_list_lock);
+	return can_scale;
+}
+
+/*
+ * If table entry refer pll as cbus parent it can be scaled as long as all its
+ * children are cbus users (that will be switched to cbus backup during scaling)
+ */
+static bool tegra_can_scale_pll_cbus(struct clk *pll)
+{
+	bool can_scale = true;
+	struct clk *c;
+
+	mutex_lock(&clock_list_lock);
+
+	list_for_each_entry(c, &clocks, node) {
+		if ((clk_get_parent(c) == pll) &&
+		    !(c->flags & PERIPH_ON_CBUS)) {
+			WARN(1, "tegra: failed initialize %s: in use by %s\n",
+			     pll->name, c->name);
+			can_scale = false;
+			break;
+		}
+	}
+	mutex_unlock(&clock_list_lock);
+	return can_scale;
+}
+
+static int tegra_clk_init_cbus_pll_one(struct tegra_clk_init_table *table)
+{
+	bool can_scale = true;
+	struct clk *pll;
+	struct clk *c = tegra_get_clock_by_name(table->name);
+	if (!c)
+		return tegra_clk_init_one_from_table(table);
+
+	if (c->flags & PERIPH_ON_CBUS) {
+		/* table entry refer pllc/c2/c3 indirectly as cbus parent */
+		pll = clk_get_parent(c);
+		can_scale = tegra_can_scale_pll_cbus(pll);
+	} else if (c->state == ON) {
+		/* table entry refer pllc/c2/c3 directly, and it is ON */
+		pll = c;
+		can_scale = tegra_can_scale_pll_direct(pll);
+	}
+
+	if (can_scale)
+		return tegra_clk_init_one_from_table(table);
+	return -EBUSY;
+}
+
+void tegra_clk_init_cbus_plls_from_table(struct tegra_clk_init_table *table)
+{
+	for (; table->name; table++)
+		tegra_clk_init_cbus_pll_one(table);
+}
+
 void tegra_clk_init_from_table(struct tegra_clk_init_table *table)
 {
 	for (; table->name; table++)

@@ -328,6 +328,7 @@ void tegra_clk_verify_parents(void);
 void clk_init(struct clk *clk);
 unsigned long tegra_clk_measure_input_freq(void);
 unsigned long clk_get_rate_locked(struct clk *c);
+void tegra_clk_init_cbus_plls_from_table(struct tegra_clk_init_table *table);
 void clk_set_cansleep(struct clk *c);
 unsigned long clk_get_min_rate(struct clk *c);
 unsigned long clk_get_max_rate(struct clk *c);
