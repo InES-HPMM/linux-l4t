@@ -202,7 +202,8 @@ struct tegra_cl_dvfs {
 	struct timer_list		calibration_timer;
 	unsigned long			calibration_delay;
 	ktime_t				last_calibration;
-
+	unsigned long			calibration_range_min;
+	unsigned long			calibration_range_max;
 };
 
 /* Conversion macros (different scales for frequency request, and monitored
@@ -545,30 +546,27 @@ static void tune_timer_cb(unsigned long data)
 	clk_unlock_restore(cld->dfll_clk, &flags);
 }
 
+static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
+{
+	mod_timer(&cld->calibration_timer, jiffies + cld->calibration_delay);
+}
+
 static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 {
 	u32 val;
 	ktime_t now;
 	unsigned long data;
-
-	static unsigned long rate_min_low_limit;
-	static unsigned long rate_min_high_limit;
-
-	/* Initial dvco min rate is under-estimated - skewed range up */
-	if (!rate_min_low_limit) {
-		rate_min_low_limit = cld->dvco_rate_min - 2 * RATE_STEP(cld);
-		rate_min_high_limit = cld->dvco_rate_min + 6 * RATE_STEP(cld);
-	}
+	u8 out_min = get_output_min(cld);
 
 	/*
 	 *  Enter calibration procedure only if
 	 *  - closed loop operations
 	 *  - last request engaged clock skipper
-	 *  - unrestricted Vmin
 	 *  - at least specified time after the last calibration attempt
 	 */
 	if ((cld->mode != TEGRA_CL_DVFS_CLOSED_LOOP) ||
-	    (cld->last_req.scale == (SCALE_MAX - 1)) || get_output_min(cld))
+	    ((cld->last_req.scale == (SCALE_MAX - 1)) &&
+	     (cld->last_req.cap > out_min)))
 		return;
 
 	now = ktime_get();
@@ -599,7 +597,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	/* Adjust minimum rate */
 	data &= CL_DVFS_MONITOR_DATA_MASK;
 	data = GET_MONITORED_RATE(data, cld->ref_rate);
-	if (val || (data < (cld->dvco_rate_min - RATE_STEP(cld))))
+	if ((val > out_min) || (data < (cld->dvco_rate_min - RATE_STEP(cld))))
 		cld->dvco_rate_min -= RATE_STEP(cld);
 	else if (data > (cld->dvco_rate_min + RATE_STEP(cld)))
 		cld->dvco_rate_min += RATE_STEP(cld);
@@ -607,8 +605,8 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		return;
 
 	cld->dvco_rate_min = clamp(cld->dvco_rate_min,
-				   rate_min_low_limit, rate_min_high_limit);
-	mod_timer(&cld->calibration_timer, jiffies + cld->calibration_delay);
+			cld->calibration_range_min, cld->calibration_range_max);
+	calibration_timer_update(cld);
 	pr_debug("%s: calibrated dvco_rate_min %lu\n",
 		 __func__, cld->dvco_rate_min);
 }
@@ -669,6 +667,33 @@ static int find_safe_output(
 		}
 	}
 	return -EINVAL;
+}
+
+static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
+{
+	int i;
+
+	for (i = 0; i < cld->safe_dvfs->num_freqs; i++) {
+		if (cld->clk_dvfs_map[i] > out_min)
+			break;
+	}
+	i = i ? i-1 : 0;
+	return cld->safe_dvfs->freqs[i];
+}
+
+static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
+{
+	unsigned long rate = cld->safe_dvfs->dfll_data.out_rate_min;
+	if (cld->cdev && (cld->thermal_idx < cld->cdev->trip_temperatures_num))
+		rate = find_dvco_rate_min(
+				cld, cld->thermal_out_floors[cld->thermal_idx]);
+
+	/* round minimum rate to request unit (ref_rate/2) boundary */
+	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
+
+	/* dvco min rate is under-estimated - skewed range up */
+	cld->calibration_range_min = cld->dvco_rate_min - 2 * RATE_STEP(cld);
+	cld->calibration_range_max = cld->dvco_rate_min + 6 * RATE_STEP(cld);
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
@@ -841,6 +866,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	 */
 	cld->tune_state = TEGRA_CL_DVFS_TUNE_LOW;
 	cld->thermal_idx = 0;
+	cl_dvfs_set_dvco_rate_min(cld);
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
 	val = get_output_min(cld);
 	cld->lut_min = 0;
@@ -909,10 +935,6 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	val |= (param->droop_cut_value << CL_DVFS_DROOP_CTRL_CUT_SHIFT);
 	val |= (param->droop_restore_ramp << CL_DVFS_DROOP_CTRL_RAMP_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
-
-	/* round minimum rate to request unit (ref_rate/2) boundary */
-	cld->dvco_rate_min = cld->safe_dvfs->dfll_data.out_rate_min;
-	cld->dvco_rate_min = ROUND_MIN_RATE(cld->dvco_rate_min, cld->ref_rate);
 
 	cld->last_req.cap = 0;
 	cld->last_req.freq = 0;
@@ -1062,9 +1084,10 @@ static int tegra_cl_dvfs_set_cdev_state(struct thermal_cooling_device *cdev,
 
 	if (cld->thermal_idx != cur_state) {
 		cld->thermal_idx = cur_state;
+		cl_dvfs_set_dvco_rate_min(cld);
 		if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
-			set_cl_config(cld, &cld->last_req);
-			set_request(cld, &cld->last_req);
+			tegra_cl_dvfs_request_rate(cld,
+				tegra_cl_dvfs_request_get(cld));
 		}
 	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
@@ -1113,6 +1136,7 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 
 	clk_lock_save(cld->dfll_clk, &flags);
 	cld->thermal_idx = 0;
+	cl_dvfs_set_dvco_rate_min(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);
 		set_request(cld, &cld->last_req);
@@ -1301,6 +1325,7 @@ int tegra_cl_dvfs_lock(struct tegra_cl_dvfs *cld)
 		output_enable(cld);
 		set_mode(cld, TEGRA_CL_DVFS_CLOSED_LOOP);
 		set_request(cld, req);
+		calibration_timer_update(cld);
 		return 0;
 
 	default:
