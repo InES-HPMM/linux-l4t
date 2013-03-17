@@ -708,7 +708,7 @@ static struct tegra_suspend_platform_data pluto_suspend_data = {
 	.i2c_base_addr = TEGRA_I2C5_BASE,
 	.pmuslave_addr = 0xB0,
 	.core_reg_addr = 0x2B,
-	.lp1_core_volt_low = 0x2E,
+	.lp1_core_volt_low = 0x33,
 	.lp1_core_volt_high = 0x42,
 #endif
 };
