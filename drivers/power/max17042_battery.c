@@ -81,6 +81,7 @@
 #define RBAT_INIT	150000
 #define NOMINAL_TEMP	25
 #define NOMINAL_VOLTAGE	3800000
+#define RBAT_HIST_COUNT	5
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -89,7 +90,7 @@ struct max17042_chip {
 	struct max17042_platform_data *pdata;
 	struct delayed_work work;
 	int    init_complete;
-	unsigned int rbat_lastgood;
+	s64 rbat_lastgood;
 	unsigned int edp_req;
 	struct delayed_work depl_work;
 	int shutdown_complete;
@@ -732,7 +733,7 @@ struct temp_ibat_map safe_ibat_lut[] = {
 	{ 25, 3700 },
 };
 
-unsigned int max17042_safe_ibat(int temp)
+static unsigned int max17042_safe_ibat(int temp)
 {
 	int i;
 
@@ -775,6 +776,52 @@ static inline unsigned int max17042_max_depletion(struct max17042_chip *chip)
 	return chip->pdata->edp_client->states[0];
 }
 
+static int rbat_hist_sum = RBAT_HIST_COUNT * RBAT_INIT;
+static int rbat_hist[RBAT_HIST_COUNT];
+static int rbat_hist_i;
+
+static void max17042_rbat_hist_init(void)
+{
+	int i;
+	for (i = 0; i < RBAT_HIST_COUNT; i++)
+		rbat_hist[i] = RBAT_INIT;
+}
+
+static int max17042_rbat(struct max17042_chip *chip, s64 avgcurrent,
+		s64 avgvcell, s64 vfocv)
+{
+	int rbat;
+
+	if (avgcurrent < AVG_CURRENT_MIN) {
+		rbat = chip->rbat_lastgood;
+	} else {
+		rbat = div64_s64(1000000 * (vfocv - avgvcell), avgcurrent);
+		rbat = max(rbat, RBAT_INIT);
+		chip->rbat_lastgood = rbat;
+	}
+
+	rbat_hist_sum -= rbat_hist[rbat_hist_i];
+	rbat_hist[rbat_hist_i] = rbat;
+	rbat_hist_sum += rbat;
+	rbat = rbat_hist_sum / RBAT_HIST_COUNT;
+	rbat_hist_i = (rbat_hist_i + 1) % RBAT_HIST_COUNT;
+
+	return rbat;
+}
+
+static s64 max17042_ibat_possible(struct max17042_chip *chip, s64 avgcurrent,
+		s64 vfocv, s64 rbat)
+{
+	s64 ibat;
+
+	rbat += R_CONTACTS + R_BOARD + R_PASSFET;
+	ibat = div64_s64(1000 * (vfocv - VSYS_MIN), rbat);
+	if (avgcurrent < 0)
+		ibat += chip->chgin_ilim;
+
+	return ibat;
+}
+
 static unsigned int max17042_depletion(struct max17042_chip *chip)
 {
 	s64 avgcurrent;
@@ -782,7 +829,7 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	s64 vfocv;
 	s64 temp;
 
-	s64 rbat_calc;
+	s64 rbat;
 	s64 ibat_possible;
 	s64 ibat_tbat;
 	s64 ibat_nominal;
@@ -798,16 +845,8 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 		return max17042_max_depletion(chip);
 	}
 
-	if (avgcurrent >= AVG_CURRENT_MIN) {
-		rbat_calc = div64_s64(1000000 * (vfocv - avgvcell), avgcurrent);
-		chip->rbat_lastgood = rbat_calc;
-	} else {
-		rbat_calc = chip->rbat_lastgood;
-	}
-
-	ibat_possible = div64_s64(1000 * (vfocv - VSYS_MIN),
-			rbat_calc + R_CONTACTS + R_BOARD + R_PASSFET);
-	ibat_possible += chip->chgin_ilim;
+	rbat = max17042_rbat(chip, avgcurrent, avgvcell, vfocv);
+	ibat_possible = max17042_ibat_possible(chip, avgcurrent, vfocv, rbat);
 
 	ibat_tbat = max17042_safe_ibat(temp);
 	ibat_nominal = max17042_safe_ibat(NOMINAL_TEMP);
@@ -830,7 +869,7 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 		printk(KERN_DEBUG "    AVERAGE_VCELL: %lld uV\n", avgvcell);
 		printk(KERN_DEBUG "    VFOCV        : %lld uV\n", vfocv);
 		printk(KERN_DEBUG "    TEMPERATURE  : %lld C\n", temp);
-		printk(KERN_DEBUG "    RBAT_calc    : %lld\n", rbat_calc);
+		printk(KERN_DEBUG "    RBAT         : %lld\n", rbat);
 		printk(KERN_DEBUG "    CHGIN_ILIM   : %u\n", chip->chgin_ilim);
 		printk(KERN_DEBUG "    IBAT_possible: %lld\n", ibat_possible);
 		printk(KERN_DEBUG "    IBAT_tbat    : %lld\n", ibat_tbat);
@@ -906,6 +945,7 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 		return r;
 	}
 
+	max17042_rbat_hist_init();
 	INIT_DEFERRABLE_WORK(&chip->depl_work, max17042_update_depletion);
 	schedule_delayed_work(&chip->depl_work,
 			msecs_to_jiffies(DEPL_INTERVAL));
