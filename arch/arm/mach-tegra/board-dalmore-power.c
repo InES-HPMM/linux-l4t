@@ -965,7 +965,7 @@ FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,
 
 FIXED_REG(10,	avdd_hdmi_pll,	avdd_hdmi_pll,
 	palmas_rails(ldo3),	0,	0,
-	TEGRA_GPIO_PO1,	false,	false,	1,	1200);
+	TEGRA_GPIO_PO1,	false,	true,	1,	1200);
 /*
  * Creating the fixed regulator device tables
  */
