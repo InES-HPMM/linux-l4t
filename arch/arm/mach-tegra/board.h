@@ -187,6 +187,11 @@ enum panel_type {
 	panel_type_dsi,
 };
 
+enum touch_type {
+	RAYDIUM_TOUCH  = 0,
+	SYNAPTIC_TOUCH = 1,
+};
+
 enum audio_codec_type {
 	audio_codec_none,
 	audio_codec_wm8903,
@@ -202,6 +207,7 @@ void tegra_get_pmu_board_info(struct board_info *bi);
 void tegra_get_display_board_info(struct board_info *bi);
 void tegra_get_camera_board_info(struct board_info *bi);
 int tegra_get_board_panel_id(void);
+int tegra_get_touch_id(void);
 
 int get_core_edp(void);
 enum panel_type get_panel_type(void);

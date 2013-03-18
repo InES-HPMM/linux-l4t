@@ -132,6 +132,7 @@ static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
 static struct board_info camera_board_info;
+static int touch_id;
 
 static int pmu_core_edp;
 static int board_panel_type;
@@ -942,6 +943,19 @@ static int __init tegra_board_panel_id(char *options)
 	return panel_id;
 }
 __setup("display_panel=", tegra_board_panel_id);
+
+int tegra_get_touch_id(void)
+{
+	return touch_id;
+}
+static int __init tegra_touch_id(char *options)
+{
+	char *p = options;
+	touch_id = memparse(p, &p);
+	return touch_id;
+}
+__setup("touch_type=", tegra_touch_id);
+
 
 u8 get_power_config(void)
 {
