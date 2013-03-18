@@ -23,6 +23,7 @@
 #include <linux/usb/otg.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
+#include <linux/delay.h>
 #include <linux/of_gpio.h>
 #include <linux/pm_runtime.h>
 
@@ -663,6 +664,9 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+	struct usb_device *rhdev = NULL;
+	struct tegra_usb_platform_data *pdata;
+	unsigned long timeout = 0;
 
 #ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
 	cancel_delayed_work(&tegra->boost_cpu_freq_work);
@@ -670,6 +674,8 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 				PM_QOS_DEFAULT_VALUE);
 	tegra->cpu_boost_in_work = false;
 #endif
+	rhdev = hcd->self.root_hub;
+	pdata = dev_get_platdata(&pdev->dev);
 
 	if (!IS_ERR(tegra->transceiver))
 		otg_set_host(tegra->transceiver->otg, NULL);
@@ -680,6 +686,19 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	/* Make sure phy is powered ON to access USB register */
 	if(!tegra_usb_phy_hw_accessible(tegra->phy))
 		tegra_usb_phy_power_on(tegra->phy);
+
+	if (pdata->port_otg) {
+
+		timeout = jiffies + 5 * HZ;
+
+		/* wait for devices connected to root hub to disconnect*/
+		while (time_before(jiffies, timeout) &&
+			rhdev && usb_hub_find_child(rhdev, 0))
+			;
+
+		/* wait for any control packets sent to root hub to complete */
+		mdelay(1000);
+	}
 
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
