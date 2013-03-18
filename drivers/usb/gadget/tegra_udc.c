@@ -122,7 +122,9 @@ static inline bool vbus_enabled(struct tegra_udc *udc)
 {
 	bool status = false;
 #ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET) & USB_SYS_VBUS_STATUS);
+	if (!udc->support_pmu_vbus)
+		status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET)
+							& USB_SYS_VBUS_STATUS);
 #else
 	/* On FPGA VBUS is detected through VBUS A Session instead of VBUS
 	 * status.*/
