@@ -1726,14 +1726,14 @@ static struct resource tegra_udc_resources[] = {
 	},
 };
 
-static u64 tegra_udc_dmamask = DMA_BIT_MASK(32);
+static u64 tegra_udc_dmamask = DMA_BIT_MASK(64);
 
 struct platform_device tegra_udc_device = {
 	.name	= "tegra-udc",
 	.id	= 0,
 	.dev	= {
 		.dma_mask	= &tegra_udc_dmamask,
-		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.coherent_dma_mask = DMA_BIT_MASK(64),
 	},
 	.resource = tegra_udc_resources,
 	.num_resources = ARRAY_SIZE(tegra_udc_resources),
