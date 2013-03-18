@@ -85,6 +85,7 @@ static int manager_status_show(struct seq_file *file, void *data)
 	mutex_lock(&edp_lock);
 
 	seq_printf(file, "cap      : %u\n", m->max);
+	seq_printf(file, "sum(E0)  : %u\n", e0_current_sum(m));
 	seq_printf(file, "remaining: %u\n", m->remaining);
 
 	seq_printf(file, "------------------------------------------\n");
