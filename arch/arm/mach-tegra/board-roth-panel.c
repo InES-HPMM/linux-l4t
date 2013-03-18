@@ -64,6 +64,8 @@ struct platform_device * __init roth_host1x_init(void)
 #define DSI_PANEL_RST_GPIO	TEGRA_GPIO_PH3
 #define DSI_PANEL_BL_PWM	TEGRA_GPIO_PH1
 
+#define DSI_PANEL_CE		0
+
 #define DC_CTRL_MODE	TEGRA_DC_OUT_CONTINUOUS_MODE
 
 /* HDMI Hotplug detection pin */
@@ -318,19 +320,21 @@ static u8 panel_disp_ctrl2[] = {0xb6, 0x04, 0x74, 0x0f, 0x16, 0x13};
 static u8 panel_internal_clk[] = {0xc0, 0x01, 0x08};
 static u8 panel_pwr_ctrl3[] = {
 	0xc3, 0x0, 0x09, 0x10, 0x02, 0x0, 0x66, 0x20, 0x13, 0x0};
-static u8 panel_pwr_ctrl4[] = {0xc4, 0x23, 0x24, 0x17, 0x17, 0x59};
+static u8 panel_pwr_ctrl4[] = {0xc4, 0x23, 0x24, 0x12, 0x12, 0x60};
 static u8 panel_positive_gamma_red[] = {
-	0xd0, 0x21, 0x13, 0x67, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+	0xd0, 0x21, 0x25, 0x67, 0x36, 0x0a, 0x06, 0x61, 0x23, 0x03};
 static u8 panel_negetive_gamma_red[] = {
-	0xd1, 0x32, 0x13, 0x66, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+	0xd1, 0x31, 0x25, 0x66, 0x36, 0x05, 0x06, 0x61, 0x23, 0x03};
 static u8 panel_positive_gamma_green[] = {
-	0xd2, 0x41, 0x14, 0x56, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+	0xd2, 0x41, 0x26, 0x56, 0x36, 0x0a, 0x06, 0x61, 0x23, 0x03};
 static u8 panel_negetive_gamma_green[] = {
-	0xd3, 0x52, 0x14, 0x55, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+	0xd3, 0x51, 0x26, 0x55, 0x36, 0x05, 0x06, 0x61, 0x23, 0x03};
 static u8 panel_positive_gamma_blue[] = {
-	0xd4, 0x41, 0x14, 0x56, 0x37, 0x0c, 0x06, 0x62, 0x23, 0x03};
+	0xd4, 0x41, 0x26, 0x56, 0x36, 0x0a, 0x06, 0x61, 0x23, 0x03};
 static u8 panel_negetive_gamma_blue[] = {
-	0xd5, 0x52, 0x14, 0x55, 0x37, 0x02, 0x06, 0x62, 0x23, 0x03};
+	0xd5, 0x51, 0x26, 0x55, 0x36, 0x05, 0x06, 0x61, 0x23, 0x03};
+
+#if DSI_PANEL_CE
 static u8 panel_ce2[] = {0x71, 0x0, 0x0, 0x01, 0x01};
 static u8 panel_ce3[] = {0x72, 0x01, 0x0e};
 static u8 panel_ce4[] = {0x73, 0x34, 0x52, 0x0};
@@ -344,8 +348,12 @@ static u8 panel_ce10[] = {
 static u8 panel_ce11[] = {0x7a, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 static u8 panel_ce12[] = {0x7b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 static u8 panel_ce13[] = {0x7c, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+#endif
 
 static struct tegra_dsi_cmd dsi_init_cmd[] = {
+	DSI_DLY_MS(20),
+	DSI_GPIO_SET(DSI_PANEL_RST_GPIO, 1),
+
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_dsi_config),
 
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_disp_ctrl1),
@@ -370,6 +378,7 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	/* panel OTP 2 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x0),
 
+#if DSI_PANEL_CE
 	/* panel CE 1 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0x70, 0x0),
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce2),
@@ -384,7 +393,7 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce11),
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce12),
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_ce13),
-
+#endif
 	/* panel power control 2 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc2, 0x02),
 	DSI_DLY_MS(20),
@@ -398,13 +407,38 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	DSI_DLY_MS(100),
 
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_EXIT_SLEEP_MODE, 0x0),
-	DSI_DLY_MS(20),
+	DSI_DLY_MS(140),
 
 	/* panel OTP 2 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x80),
 	DSI_DLY_MS(20),
 
 	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_ON, 0x0),
+};
+
+static u8 panel_suspend_pwr_ctrl4[] = {0xc4, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
+	DSI_DLY_MS(40),
+
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_SET_DISPLAY_OFF, 0x0),
+	DSI_DLY_MS(20),
+
+	DSI_CMD_SHORT(DSI_DCS_WRITE_0_PARAM, DSI_DCS_ENTER_SLEEP_MODE, 0x0),
+
+	/* panel power control 2 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc2, 0x0),
+
+	/* panel power control 4 */
+	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_suspend_pwr_ctrl4),
+
+	/* panel power control 1 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc1, 0x2),
+	DSI_DLY_MS(20),
+
+	/* panel power control 1 */
+	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xc1, 0x3),
+	DSI_DLY_MS(20),
 };
 
 static struct tegra_dsi_out roth_dsi = {
@@ -423,6 +457,8 @@ static struct tegra_dsi_out roth_dsi = {
 	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE_WITH_SYNC_END,
 	.dsi_init_cmd = dsi_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
+	.dsi_suspend_cmd = dsi_suspend_cmd,
+	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 };
 
 static int roth_dsi_regulator_get(struct device *dev)
@@ -506,15 +542,9 @@ static int roth_dsi_panel_enable(struct device *dev)
 		goto fail;
 	}
 
-	if (avdd_lcd_3v0_2v8) {
-		err = regulator_enable(avdd_lcd_3v0_2v8);
-		if (err < 0) {
-			pr_err("avdd_lcd_3v0_2v8 regulator enable failed\n");
-			goto fail;
-		}
-		regulator_set_voltage(avdd_lcd_3v0_2v8, 2800000, 2800000);
-	}
-	usleep_range(3000, 5000);
+
+	if (!(roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE))
+		gpio_set_value(DSI_PANEL_RST_GPIO, 0);
 
 	if (vdd_lcd_s_1v8) {
 		err = regulator_enable(vdd_lcd_s_1v8);
@@ -522,6 +552,16 @@ static int roth_dsi_panel_enable(struct device *dev)
 			pr_err("vdd_lcd_1v8_s regulator enable failed\n");
 			goto fail;
 		}
+	}
+	usleep_range(3000, 5000);
+
+	if (avdd_lcd_3v0_2v8) {
+		err = regulator_enable(avdd_lcd_3v0_2v8);
+		if (err < 0) {
+			pr_err("avdd_lcd_3v0_2v8 regulator enable failed\n");
+			goto fail;
+		}
+		regulator_set_voltage(avdd_lcd_3v0_2v8, 2800000, 2800000);
 	}
 	usleep_range(3000, 5000);
 
@@ -545,15 +585,6 @@ static int roth_dsi_panel_enable(struct device *dev)
 	if (roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE)
 		return 0;
 
-#if DSI_PANEL_RESET
-	gpio_direction_output(DSI_PANEL_RST_GPIO, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
-	usleep_range(1000, 5000);
-	gpio_set_value(DSI_PANEL_RST_GPIO, 1);
-	msleep(20);
-#endif
-
 	return 0;
 fail:
 	return err;
@@ -566,6 +597,9 @@ static int roth_dsi_panel_disable(void)
 
 	if (vdd_lcd_bl_en)
 		regulator_disable(vdd_lcd_bl_en);
+
+	gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	mdelay(20);
 
 	if (vdd_lcd_s_1v8)
 		regulator_disable(vdd_lcd_s_1v8);
