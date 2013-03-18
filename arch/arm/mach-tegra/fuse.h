@@ -52,7 +52,7 @@
 #define TEGRA_AGE_1_0 0x2f0 /*Spare bit 43*/
 
 
-#define NFUSES	64
+#define NFUSES	92
 #define STATE_IDLE	(0x4 << 16)
 #define SENSE_DONE	(0x1 << 30)
 
