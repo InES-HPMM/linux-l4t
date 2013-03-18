@@ -632,6 +632,10 @@ static void __init tegra_bonaire_reserve(void)
 #endif
 }
 
+static const char * const bonaire_dt_board_compat[] = {
+	"nvidia,bonaire",
+	NULL
+};
 
 MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
 	.atag_offset    = 0x80000100,
@@ -642,4 +646,5 @@ MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= tegra_bonaire_init,
 	.timer		= &tegra_sys_timer,
+	.dt_compat	= bonaire_dt_board_compat,
 MACHINE_END

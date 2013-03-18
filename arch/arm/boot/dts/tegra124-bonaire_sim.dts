@@ -1,0 +1,9 @@
+/dts-v1/;
+
+/include/ "tegra124.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 bonaire simulation";
+	compatible = "nvidia,bonaire", "nvidia,tegra124";
+
+};
