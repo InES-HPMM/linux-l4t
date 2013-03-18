@@ -1044,6 +1044,7 @@ static int max97236_probe(struct snd_soc_codec *codec)
 	codec->control_data = max97236->regmap;
 	codec->dapm.idle_bias_off = 1;
 	codec->cache_sync = 1;
+	max97236->jack_state = M97236_JACK_STATE_UNKNOWN;
 
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
 	if (ret != 0) {
@@ -1094,6 +1095,19 @@ static int max97236_probe(struct snd_soc_codec *codec)
 	max97236->ignore_int = 0;
 
 	INIT_DELAYED_WORK(&max97236->jack_work, max97236_jack_work);
+
+	/* Clear any interrupts then enable jack detection */
+	regmap_read(max97236->regmap, M97236_REG_00_STATUS1,
+			&reg);
+	regmap_read(max97236->regmap, M97236_REG_01_STATUS2,
+			&reg);
+#ifdef MAX97236_AUTOMODE1_JACK_DETECTION
+	max97236_configure_for_detection(max97236,
+			M97236_AUTO_MODE_1);
+#else
+	max97236_configure_for_detection(max97236,
+			M97236_AUTO_MODE_0);
+#endif
 
 	max97236_handle_pdata(codec);
 	max97236_add_widgets(codec);
