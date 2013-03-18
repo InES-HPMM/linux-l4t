@@ -148,6 +148,18 @@ static struct nct1008_platform_data dalmore_nct1008_pdata = {
 	.conv_rate = 0x08,
 	.shutdown_ext_limit = 105, /* C */
 	.shutdown_local_limit = 120, /* C */
+
+	.num_trips = 1,
+	.trips = {
+		{
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
+		},
+	},
 };
 
 static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {

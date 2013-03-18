@@ -370,10 +370,17 @@ static void __iomem *clk_reset_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #define pmc_writel(value, reg) __raw_writel(value, pmc_base + (reg))
 #define pmc_readl(reg) __raw_readl(pmc_base + (reg))
 
-#define soctherm_writel(value, reg) \
-	__raw_writel(value, reg_soctherm_base + (reg))
-#define soctherm_readl(reg) \
-	__raw_readl(reg_soctherm_base + (reg))
+#define soctherm_writel(value, reg)	\
+	(soctherm_suspended ?:		\
+		__raw_writel(value, reg_soctherm_base + (reg)))
+#define soctherm_readl(reg)		\
+	(soctherm_suspended ? 0 :	\
+		__raw_readl(reg_soctherm_base + (reg)))
+
+static DEFINE_SPINLOCK(soctherm_suspend_resume_lock);
+
+static int soctherm_suspend(void);
+static int soctherm_resume(void);
 
 static struct soctherm_platform_data plat_data;
 
@@ -384,6 +391,7 @@ static struct soctherm_platform_data plat_data;
  */
 static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
+static bool soctherm_suspended;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
@@ -706,6 +714,38 @@ static struct thermal_cooling_device_ops soctherm_hw_action_ops = {
 	.get_max_state = soctherm_hw_action_get_max_state,
 	.get_cur_state = soctherm_hw_action_get_cur_state,
 	.set_cur_state = soctherm_hw_action_set_cur_state,
+};
+
+static int soctherm_suspend_get_max_state(struct thermal_cooling_device *cdev,
+					  unsigned long *max_state)
+{
+	*max_state = 1;
+	return 0;
+}
+
+static int soctherm_suspend_get_cur_state(struct thermal_cooling_device *cdev,
+					  unsigned long *cur_state)
+{
+	*cur_state = !soctherm_suspended;
+	return 0;
+}
+
+static int soctherm_suspend_set_cur_state(struct thermal_cooling_device *cdev,
+					  unsigned long cur_state)
+{
+	if (!cur_state != soctherm_suspended) {
+		if (cur_state)
+			soctherm_resume();
+		else
+			soctherm_suspend();
+	}
+	return 0;
+}
+
+static struct thermal_cooling_device_ops soctherm_suspend_ops = {
+	.get_max_state = soctherm_suspend_get_max_state,
+	.get_cur_state = soctherm_suspend_get_cur_state,
+	.set_cur_state = soctherm_suspend_set_cur_state,
 };
 
 static int soctherm_bind(struct thermal_zone_device *thz,
@@ -1031,6 +1071,9 @@ static int __init soctherm_thermal_sys_init(void)
 					0);
 	}
 
+	thermal_cooling_device_register("suspend_soctherm",
+					0, &soctherm_suspend_ops);
+
 	soctherm_update();
 	return 0;
 }
@@ -1169,7 +1212,7 @@ void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throttle,
 	soctherm_writel(r, STATS_CTL);
 }
 
-static void __init soctherm_tsense_program(enum soctherm_sense sensor,
+static void soctherm_tsense_program(enum soctherm_sense sensor,
 						struct soctherm_sensor *data)
 {
 	u32 r;
@@ -1521,21 +1564,35 @@ static int soctherm_init_platform_data(void)
 
 static int soctherm_suspend(void)
 {
-	soctherm_writel((u32)-1, INTR_DIS);
-	soctherm_clk_enable(false);
-	disable_irq(INT_THERMAL);
-	cancel_work_sync(&work);
+	spin_lock(&soctherm_suspend_resume_lock);
 
+	if (!soctherm_suspended) {
+		soctherm_writel((u32)-1, INTR_DIS);
+		disable_irq(INT_THERMAL);
+		cancel_work_sync(&work);
+		soctherm_clk_enable(false);
+		soctherm_init_platform_done = false;
+		soctherm_suspended = true;
+	}
+
+	spin_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
 static int soctherm_resume(void)
 {
-	soctherm_clk_enable(true);
-	enable_irq(INT_THERMAL);
-	soctherm_init_platform_data();
-	soctherm_update();
+	spin_lock(&soctherm_suspend_resume_lock);
 
+	if (soctherm_suspended) {
+		soctherm_suspended = false;
+		soctherm_clk_enable(true);
+		soctherm_init_platform_data();
+		soctherm_init_platform_done = true;
+		soctherm_update();
+		enable_irq(INT_THERMAL);
+	}
+
+	spin_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
@@ -1603,6 +1660,11 @@ static int regs_show(struct seq_file *s, void *data)
 	u32 state;
 	int tcpu[TSENSE_SIZE];
 	int i, level;
+
+	if (soctherm_suspended) {
+		seq_printf(s, "SOC_THERM is SUSPENDED\n");
+		return 0;
+	}
 
 	seq_printf(s, "-----TSENSE (precision %s  convert %s)-----\n",
 		PRECISION_TO_STR(), read_hw_temp ? "HW" : "SW");
@@ -1795,7 +1857,6 @@ static int convert_set(void *data, u64 val)
 	read_hw_temp = !val;
 	return 0;
 }
-
 DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
 
 static int __init soctherm_debug_init(void)
