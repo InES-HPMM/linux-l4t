@@ -901,7 +901,8 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 	}
 
 	INIT_DEFERRABLE_WORK(&chip->depl_work, max17042_update_depletion);
-	schedule_delayed_work(&chip->depl_work, DEPL_INTERVAL);
+	schedule_delayed_work(&chip->depl_work,
+			msecs_to_jiffies(DEPL_INTERVAL));
 	return 0;
 }
 
