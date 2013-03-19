@@ -202,7 +202,7 @@ static struct max77665_f_platform_data pluto_max77665_flash_pdata = {
 	.edpc_config	= {
 		.states = max77665_f_estates,
 		.num_states = ARRAY_SIZE(max77665_f_estates),
-		.e0_index = 3,
+		.e0_index = ARRAY_SIZE(max77665_f_estates) - 1,
 		.priority = EDP_MAX_PRIO + 2,
 		},
 };
