@@ -67,3 +67,4 @@ obj-$(CONFIG_INPUT_XEN_KBDDEV_FRONTEND)	+= xen-kbdfront.o
 obj-$(CONFIG_INPUT_YEALINK)		+= yealink.o
 obj-y					+= compass/
 obj-y					+= mpu/
+obj-y					+= pressure/

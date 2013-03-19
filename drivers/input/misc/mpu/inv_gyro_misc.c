@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
+* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -76,11 +77,11 @@
 #define DEF_GYRO_CT_SHIFT_MAX       (105)
 
 static struct test_setup_t test_setup = {
-	.gyro_sens   = 32768 / 250,
-	.sample_rate = DEF_SELFTEST_SAMPLE_RATE,
-	.lpf         = DEF_SELFTEST_LPF_PARA,
-	.fsr         = DEF_SELFTEST_GYRO_FULL_SCALE,
-	.accl_fs     = DEF_SELFTEST_ACCL_FULL_SCALE
+	.gyro_sens	= 32768 / 250,
+	.sample_rate	= DEF_SELFTEST_SAMPLE_RATE,
+	.lpf		= DEF_SELFTEST_LPF_PARA,
+	.gyro_fsr	= DEF_SELFTEST_GYRO_FULL_SCALE,
+	.accl_fsr	= DEF_SELFTEST_ACCL_FULL_SCALE
 };
 
 /* NOTE: product entries are in chronological order */
@@ -623,13 +624,13 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 		return result;
 
 	result = inv_i2c_single_write(st, reg->gyro_config,
-		self_test_flag | test_setup.fsr);
+		self_test_flag | test_setup.gyro_fsr);
 	if (result)
 		return result;
 
 	if (has_accl) {
 		result = inv_i2c_single_write(st, reg->accl_config,
-			self_test_flag | test_setup.accl_fs);
+			self_test_flag | test_setup.accl_fsr);
 		if (result)
 			return result;
 	}
@@ -717,111 +718,16 @@ static void inv_recover_setting(struct inv_gyro_state_s *st)
 
 	reg = st->reg;
 	set_inv_enable(st, st->chip_config.enable);
-	inv_i2c_single_write(st, reg->gyro_config, st->chip_config.fsr<<3);
+	inv_i2c_single_write(st, reg->gyro_config,
+			     st->chip_config.gyro_fsr<<3);
 	inv_i2c_single_write(st, reg->lpf, st->chip_config.lpf);
 	data = ONE_K_HZ/st->chip_config.fifo_rate - 1;
 	inv_i2c_single_write(st, reg->sample_rate_div, data);
 	if (INV_ITG3500 != st->chip_type) {
 		inv_i2c_single_write(st, reg->accl_config,
-			(st->chip_config.accl_fs << 3)|0);
+			(st->chip_config.accl_fsr << 3)|0);
 	}
-	if (st->chip_config.is_asleep)
-		inv_set_power_state(st, 0);
-	else
-		inv_set_power_state(st, 1);
-}
-
-static int inv_check_compass_self_test(struct inv_gyro_state_s *st)
-{
-	int result;
-	unsigned char data[6];
-	unsigned char counter, cntl;
-	short x, y, z;
-	unsigned char *sens;
-
-	sens = st->chip_info.compass_sens;
-	/*set to bypass mode */
-	result = inv_i2c_single_write(st, REG_INT_PIN_CFG, BIT_BYPASS_EN);
-	if (result) {
-		inv_i2c_single_write(st, REG_INT_PIN_CFG, 0x0);
-		return result;
-	}
-
-	/*set to power down mode */
-	result = inv_secondary_write(REG_AKM_MODE, DATA_AKM_MODE_PW_DN);
-	if (result)
-		goto AKM_fail;
-
-	/*write 1 to ASTC register */
-	result = inv_secondary_write(REG_AKM_ST_CTRL, DATA_AKM_SELF_TEST);
-	if (result)
-		goto AKM_fail;
-
-	/*set self test mode */
-	result = inv_secondary_write(REG_AKM_MODE, DATA_AKM_MODE_PW_ST);
-	if (result)
-		goto AKM_fail;
-
-	counter = 10;
-	while (counter > 0) {
-		mdelay(10);
-		result = inv_secondary_read(REG_AKM_STATUS, 1, data);
-		if (result)
-			goto AKM_fail;
-
-		if (data[0] != DATA_AKM_DRDY)
-			counter--;
-		else
-			counter = 0;
-	}
-
-	if (data[0] != DATA_AKM_DRDY) {
-		result = -1;
-		goto AKM_fail;
-	}
-
-	result = inv_secondary_read(REG_AKM_MEASURE_DATA, 6, data);
-	if (result)
-		goto AKM_fail;
-
-	x = (short)((data[1]<<8) | data[0]);
-	y = (short)((data[3]<<8) | data[2]);
-	z = (short)((data[5]<<8) | data[4]);
-	x = ((x * (sens[0] + 128)) >> 8);
-	y = ((y * (sens[1] + 128)) >> 8);
-	z = ((z * (sens[2] + 128)) >> 8);
-	if (COMPASS_ID_AK8963 == st->plat_data.sec_slave_id) {
-		result = inv_secondary_read(REG_AKM8963_CNTL1, 1, &cntl);
-		if (result)
-			goto AKM_fail;
-
-		if (0 == (cntl & DATA_AKM8963_BIT)) {
-			x <<= 2;
-			y <<= 2;
-			z <<= 2;
-		}
-	}
-
-	result = 1;
-	result = inv_secondary_read(REG_AKM8963_CNTL1, 1, &cntl);
-	if (x > st->compass_st_upper[0] || x < st->compass_st_lower[0])
-		goto AKM_fail;
-
-	if (y > st->compass_st_upper[1] || y < st->compass_st_lower[1])
-		goto AKM_fail;
-
-	if (z > st->compass_st_upper[2] || z < st->compass_st_lower[2])
-		goto AKM_fail;
-
-	result = 0;
-AKM_fail:
-	/*write 0 to ASTC register */
-	result |= inv_secondary_write(REG_AKM_ST_CTRL, 0);
-	/*set to power down mode */
-	result |= inv_secondary_write(REG_AKM_MODE, DATA_AKM_MODE_PW_DN);
-	/*restore to non-bypass mode */
-	result |= inv_i2c_single_write(st, REG_INT_PIN_CFG, 0x0);
-	return result;
+	inv_set_power_state(st, 1);
 }
 
 /**
@@ -834,9 +740,9 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 	int gyro_bias_st[3];
 	int accl_bias_st[3], accl_bias_regular[3];
 	int test_times;
-	char compass_result, accel_result, gyro_result;
+	char accel_result, gyro_result;
 
-	compass_result = accel_result = gyro_result = 0;
+	accel_result = gyro_result = 0;
 	test_times = 2;
 	while (test_times > 0) {
 		result = inv_do_test(st, 0,  gyro_bias_regular,
@@ -865,8 +771,6 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 		gyro_result = !inv_check_3500_gyro_self_test(st,
 			gyro_bias_regular, gyro_bias_st);
 	} else {
-		if (st->has_compass)
-			compass_result = !inv_check_compass_self_test(st);
 		accel_result = !inv_check_accl_self_test(st,
 			accl_bias_regular, accl_bias_st);
 		gyro_result = !inv_check_6050_gyro_self_test(st,
@@ -874,7 +778,7 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 	}
 test_fail:
 	inv_recover_setting(st);
-	return (compass_result<<2) | (accel_result<<1) | gyro_result;
+	return (accel_result<<1) | gyro_result;
 }
 
 /**
@@ -1517,9 +1421,6 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	struct inv_reg_map_s *reg;
 
 	st = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	if (st->chip_config.is_asleep)
-		return -EPERM;
-
 	if (1 == st->chip_config.firmware_loaded)
 		return -EINVAL;
 

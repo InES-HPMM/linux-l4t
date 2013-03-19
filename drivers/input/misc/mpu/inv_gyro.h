@@ -1,5 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
+* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -32,6 +33,11 @@
 #include <linux/mpu.h>
 #include <linux/regulator/consumer.h>
 #include "dmpKey.h"
+
+
+#define GYRO_INPUT_RESOLUTION		(1)
+#define ACCL_INPUT_RESOLUTION		(1)
+
 
 /**
  *  struct inv_reg_map_s - Notable slave registers.
@@ -94,16 +100,16 @@ enum inv_devices {
  *  @sample_rate: sensitity for gyro.
  *  @sample_rate: sample rate, i.e, fifo rate.
  *  @lpf:	low pass filter.
- *  @fsr:	full scale range.
- *  @accl_fs:	accel full scale range.
+ *  @gyro_fsr:	full scale range.
+ *  @accl_fsr:	accel full scale range.
  *  @accl_sens:	accel sensitivity
  */
 struct test_setup_t {
 	int gyro_sens;
 	int sample_rate;
 	int lpf;
-	int fsr;
-	int accl_fs;
+	int gyro_fsr;
+	int accl_fsr;
 	unsigned int accl_sens[3];
 };
 
@@ -119,10 +125,10 @@ struct inv_hw_s {
 
 /**
  *  struct inv_chip_config_s - Cached chip configuration data.
- *  @fsr:		Full scale range.
+ *  @gyro_fsr:		Full scale range.
  *  @lpf:		Digital low pass filter frequency.
  *  @clk_src:		Clock source.
- *  @accl_fs:		accel full scale range.
+ *  @accl_fsr:		accel full scale range.
  *  @fifo_rate:		FIFO update rate.
  *  @enable:		master enable to enable output
  *  @accl_enable:	enable accel functionality
@@ -138,23 +144,29 @@ struct inv_hw_s {
  *  @prog_start_addr:	firmware program start address
  */
 struct inv_chip_config_s {
-	unsigned char fsr;
 	unsigned char lpf;
 	unsigned char clk_src;
-	unsigned char accl_fs;
-	unsigned short fifo_rate;
 	unsigned char enable;
-	unsigned char accl_enable;
-	unsigned char accl_fifo_enable;
 	unsigned char gyro_enable;
 	unsigned char gyro_fifo_enable;
-	unsigned char compass_enable;
-	unsigned char is_asleep;
+	unsigned long gyro_delay_us;
+	unsigned int gyro_resolution;
+	unsigned char gyro_fsr;
+	unsigned char accl_enable;
+	unsigned char accl_fifo_enable;
+	unsigned long accl_delay_us;
+	unsigned int accl_resolution;
+	unsigned char accl_fsr;
+	unsigned long lpa_delay_us;
+	unsigned char temp_fifo_enable;
 	unsigned char dmp_on;
 	unsigned char firmware_loaded;
-	unsigned char lpa_mode;
-	unsigned char lpa_freq;
+	unsigned char mot_dur;
+	unsigned char mot_ctrl;
+	unsigned int mot_cnt;
+	unsigned char fifo_rate;
 	unsigned int  prog_start_addr;
+	unsigned long min_delay_us;
 };
 
 /**
@@ -230,6 +242,67 @@ struct inv_regulator_s {
 	struct regulator *regulator_vdd;
 };
 
+struct nvi_hw {
+	unsigned char aux_vddio;
+	unsigned char smplrt_div;
+	unsigned char config;
+	unsigned char gyro_config;
+	unsigned char accl_config;
+	unsigned char mot_thr;
+	unsigned char mot_dur;
+	unsigned char zrmot_thr;
+	unsigned char zrmot_dur;
+	unsigned char fifo_en;
+	unsigned char i2c_mst_ctrl;
+	unsigned char i2c_slv4_ctrl;
+	unsigned char int_pin_cfg;
+	unsigned char int_enable;
+	unsigned char i2c_mst_delay_ctrl;
+	unsigned char mot_detect_ctrl;
+	unsigned char user_ctrl;
+	unsigned char pwr_mgmt_1;
+	unsigned char pwr_mgmt_2;
+};
+
+#define AUX_PORT_MAX            (5)
+#define AUX_PORT_SPECIAL        (4)
+#define AUX_PORT_BYPASS         (-1)
+#define AUX_EXT_DATA_REG_MAX    (24)
+#define AUX_DEV_VALID_READ_MAX  (10)
+
+struct aux_port {
+	struct nvi_mpu_port nmp;
+	long long delay_ns;
+	unsigned short ext_data_offset;
+	bool hw_valid;
+	bool hw_en;
+	bool hw_do;
+	bool enable;
+	bool fifo_en;
+};
+
+struct aux_ports {
+	struct aux_port port[AUX_PORT_MAX];
+	int bypass_lock;
+	unsigned char delay_hw;
+	unsigned short ext_data_n;
+	unsigned char ext_data[AUX_EXT_DATA_REG_MAX];
+	unsigned char clock_i2c;
+	bool need_reset;
+	bool enable;
+	bool dbg;
+};
+
+#define NVI_PM_ERR			0
+#define NVI_PM_AUTO			1
+#define NVI_PM_OFF_FORCE		2
+#define NVI_PM_OFF			3
+#define NVI_PM_STDBY			4
+#define NVI_PM_ON_CYCLE			5
+#define NVI_PM_ON			6
+#define NVI_PM_ON_FULL			7
+
+
 struct inv_mpu_slave;
 /**
  *  struct inv_gyro_state_s - Driver state variables.
@@ -267,35 +340,47 @@ struct inv_gyro_state_s {
 	struct inv_chip_config_s chip_config;
 	struct inv_chip_info_s chip_info;
 	struct inv_flick_s flick;
-	struct inv_tap_s   tap;
+	struct inv_tap_s tap;
 	struct inv_reg_map_s *reg;
-	struct inv_hw_s *hw;
+	struct inv_hw_s *hw_s;
 	struct inv_trigger_s trigger;
 	struct input_dev *idev;
 	struct input_dev *idev_dmp;
-	struct input_dev *idev_compass;
 	enum   inv_devices chip_type;
 	spinlock_t time_stamp_lock;
 	struct class *inv_class;
-	struct device   *inv_dev;
+	struct device *inv_dev;
 	struct i2c_client *i2c;
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *mpu_slave;
-	short compass_st_upper[3];
-	short compass_st_lower[3];
+	struct regulator_bulk_data vreg[2];
 	unsigned char fifo_counter;
-	unsigned char has_compass;
-	unsigned char compass_scale;
 	unsigned char i2c_addr;
-	unsigned char compass_divider;
-	unsigned char compass_counter;
 	unsigned char sample_divider;
 	unsigned char fifo_divider;
 	void *sl_handle;
 	unsigned int irq_dur_us;
 	long long last_isr_time;
-	struct inv_regulator_s inv_regulator;
-	bool i2c_shutdown;
+	struct mutex mutex;
+	struct mutex mutex_temp;
+	struct nvi_hw hw;
+	struct aux_ports aux;
+	int pm;
+	int stby;
+	int lpa_hw;
+	unsigned long sample_delay_us;
+	bool shutdown;
+	bool nvi;
+	bool lpa_enable;
+	bool mot_enable;
+	bool mot_dbg;
+	unsigned int mot_cnt;
+	short temp_val;
+	s64 temp_ts;
+#if DEBUG_SYSFS_INTERFACE
+	unsigned short dbg_i2c_addr;
+	unsigned char dbg_reg;
+#endif /* DEBUG_SYSFS_INTERFACE */
 };
 
 /* produces an unique identifier for each device based on the
@@ -325,52 +410,6 @@ struct inv_mpu_slave {
 	int (*set_lpf)(struct inv_gyro_state_s *, int rate);
 	int (*set_fs)(struct inv_gyro_state_s *, int fs);
 };
-/* AKM definitions */
-#define REG_AKM_ID              (0x00)
-#define REG_AKM_STATUS          (0x02)
-#define REG_AKM_MEASURE_DATA    (0x03)
-#define REG_AKM_MODE            (0x0A)
-#define REG_AKM_ST_CTRL         (0x0C)
-#define REG_AKM_SENSITIVITY     (0x10)
-#define REG_AKM8963_CNTL1       (0x0A)
-
-#define DATA_AKM_ID             (0x48)
-#define DATA_AKM_MODE_PW_DN     (0x00)
-#define DATA_AKM_MODE_PW_SM     (0x01)
-#define DATA_AKM_MODE_PW_ST     (0x08)
-#define DATA_AKM_MODE_PW_FR     (0x0F)
-#define DATA_AKM_SELF_TEST      (0x40)
-#define DATA_AKM_DRDY           (0x01)
-#define DATA_AKM8963_BIT        (0x10)
-#define DATA_AKM_STAT_MASK      (0x0C)
-
-#define DATA_AKM8975_SCALE      (9830)
-#define DATA_AKM8972_SCALE      (19661)
-#define DATA_AKM8963_SCALE0     (19661)
-#define DATA_AKM8963_SCALE1     (4915)
-
-#define DATA_AKM8975_ST_X_UP    (100)
-#define DATA_AKM8975_ST_X_LW    (-100)
-#define DATA_AKM8975_ST_Y_UP    (100)
-#define DATA_AKM8975_ST_Y_LW    (-100)
-#define DATA_AKM8975_ST_Z_UP    (-300)
-#define DATA_AKM8975_ST_Z_LW    (-1000)
-
-/*need to verify the range for 8972 */
-#define DATA_AKM8972_ST_X_UP    (50)
-#define DATA_AKM8972_ST_X_LW    (-50)
-#define DATA_AKM8972_ST_Y_UP    (50)
-#define DATA_AKM8972_ST_Y_LW    (-50)
-#define DATA_AKM8972_ST_Z_UP    (-100)
-#define DATA_AKM8972_ST_Z_LW    (-500)
-
-#define DATA_AKM8963_ST_X_UP    (200)
-#define DATA_AKM8963_ST_X_LW    (-200)
-#define DATA_AKM8963_ST_Y_UP    (200)
-#define DATA_AKM8963_ST_Y_LW    (-200)
-#define DATA_AKM8963_ST_Z_UP    (-800)
-#define DATA_AKM8963_ST_Z_LW    (-3200)
-
 
 /* register definition*/
 #define REG_3050_AUX_VDDIO      (0x13)
@@ -379,22 +418,34 @@ struct inv_mpu_slave {
 #define REG_3050_AUX_XOUT_H     (0x23)
 
 #define REG_3500_OTP            (0x00)
-
+#define REG_AUX_VDDIO           (0x01)
 #define REG_ST_GCT_X            (0x0D)
+#define REG_MOT_THR             (0x1F)
+#define REG_MOT_DUR             (0x20)
+#define REG_ZMOT_THR            (0x21)
+#define REG_ZMOT_DUR            (0x22)
 #define REG_I2C_MST_CTRL        (0x24)
+#define BIT_SLV3_FIFO_EN        (0x20)
 #define REG_I2C_SLV0_ADDR       (0x25)
 #define REG_I2C_SLV0_REG        (0x26)
 #define REG_I2C_SLV0_CTRL       (0x27)
-#define REG_I2C_SLV1_ADDR       (0x28)
-#define REG_I2C_SLV1_REG        (0x29)
-#define REG_I2C_SLV1_CTRL       (0x2A)
-
+#define BITS_I2C_SLV_CTRL_LEN   (0x0F)
+#define BITS_I2C_SLV_REG_DIS    (0x10)
+#define REG_I2C_SLV4_ADDR       (0x31)
+#define REG_I2C_SLV4_REG        (0x32)
+#define REG_I2C_SLV4_DO         (0x33)
 #define REG_I2C_SLV4_CTRL       (0x34)
+#define REG_I2C_SLV4_DI         (0x35)
+#define REG_I2C_MST_STATUS      (0x36)
+#define REG_I2C_SLV0_DO         (0x63)
+#define REG_FIFO_EN             (0x23)
+
+#define BITS_I2C_MST_DLY        (0x1F)
 #define REG_INT_PIN_CFG         (0x37)
 #define REG_DMP_INT_STATUS      (0x39)
 #define REG_EXT_SENS_DATA_00    (0x49)
-#define REG_I2C_SLV1_DO         (0x64)
 #define REG_I2C_MST_DELAY_CTRL  (0x67)
+#define REG_MOT_DETECT_CTRL     (0x69)
 #define REG_BANK_SEL            (0x6D)
 #define REG_MEM_START           (0x6E)
 #define REG_MEM_RW              (0x6F)
@@ -407,27 +458,32 @@ struct inv_mpu_slave {
 
 #define BIT_BYPASS_EN           (0x2)
 #define BIT_WAIT_FOR_ES         (0x40)
+#define BIT_I2C_MST_P_NSR       (0x10)
 #define BIT_I2C_READ            (0x80)
 #define BIT_SLV_EN              (0x80)
 
 #define BIT_DMP_EN              (0x80)
-#define BIT_FIFO_EN		(0x40)
+#define BIT_FIFO_EN             (0x40)
 #define BIT_I2C_MST_EN          (0x20)
 #define BIT_DMP_RST             (0x08)
-#define BIT_FIFO_RST		(0x04)
+#define BIT_FIFO_RST            (0x04)
 #define BIT_I2C_MST_RST         (0x02)
 
 #define BIT_SLV0_DLY_EN         (0x01)
 #define BIT_SLV1_DLY_EN         (0x02)
+#define BIT_DELAY_ES_SHADOW     (0x80)
 
-#define BIT_FIFO_OVERFLOW	(0x10)
-#define BIT_DATA_RDY_EN		(0x01)
+#define BIT_MOT_EN              (0x40)
+#define BIT_ZMOT_EN             (0x20)
+#define BIT_FIFO_OVERFLOW       (0x10)
+#define BIT_DATA_RDY_EN	        (0x01)
 #define BIT_DMP_INT_EN          (0x02)
 
 #define BIT_PWR_ACCL_STBY       (0x38)
 #define BIT_PWR_GYRO_STBY       (0x07)
 
-#define BIT_GYRO_XOUT		(0x40)
+#define BIT_TEMP_FIFO_EN	(0x80)
+#define BIT_GYRO_XOUT           (0x40)
 #define BIT_GYRO_YOUT		(0x20)
 #define BIT_GYRO_ZOUT		(0x10)
 #define BIT_ACCEL_OUT		(0x08)
@@ -464,9 +520,15 @@ struct inv_mpu_slave {
 #define TIME_STAMP_TOR           (5)
 #define MAX_CATCH_UP             (5)
 #define DEFAULT_ACCL_TRIM        (16384)
-#define MAX_FIFO_RATE            (1000)
-#define MIN_FIFO_RATE            (4)
+#define MAX_FIFO_RATE            (1000000)
+#define MIN_FIFO_RATE            (4000)
 #define ONE_K_HZ                 (1000)
+#define NVI_DELAY_US_MAX         (256000)
+#define NVI_DELAY_US_MIN         (125)
+#define NVI_DELAY_DEFAULT        (50000)
+#define NVI_INPUT_GYRO_DELAY_US_MIN	(125)
+#define NVI_INPUT_ACCL_DELAY_US_MIN	(1000)
+
 
 /* authenticate key */
 #define D_AUTH_OUT               (32)
@@ -606,8 +668,6 @@ int mpu_memory_read(struct i2c_adapter *i2c_adap,
 void inv_setup_reg_mpu3050(struct inv_reg_map_s *reg);
 int inv_init_config_mpu3050(struct inv_gyro_state_s *st);
 irqreturn_t inv_read_fifo_mpu3050(int irq, void *dev_id);
-int inv_reset_fifo(struct inv_gyro_state_s *st);
-void inv_clear_kfifo(struct inv_gyro_state_s *st);
 int inv_setup_mpu3050(struct inv_gyro_state_s *st);
 int inv_register_kxtf9_slave(struct inv_gyro_state_s *st);
 int create_device_attributes(struct device *dev,
@@ -620,28 +680,28 @@ int inv_mpu3050_create_sysfs(struct inv_gyro_state_s *st);
 int inv_mpu3050_remove_sysfs(struct inv_gyro_state_s *st);
 int inv_get_accl_bias(struct inv_gyro_state_s *st, int *accl_bias_regular);
 int set_power_mpu3050(struct inv_gyro_state_s *st, unsigned char power_on);
-int reset_fifo_mpu3050(struct inv_gyro_state_s *st);
 int inv_enable_tap_dmp(struct inv_gyro_state_s *st, unsigned char on);
 int inv_enable_orientation_dmp(struct inv_gyro_state_s *st);
 unsigned short inv_dmp_get_address(unsigned short key);
-ssize_t inv_gyro_fifo_enable_show(struct device *dev,
-	struct device_attribute *attr, char *buf);
-ssize_t inv_gyro_fifo_enable_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count);
-ssize_t inv_gyro_enable_show(struct device *dev,
-	struct device_attribute *attr, char *buf);
-ssize_t inv_gyro_enable_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count);
-ssize_t inv_accl_enable_show(struct device *dev,
-	struct device_attribute *attr, char *buf);
-ssize_t inv_accl_fifo_enable_show(struct device *dev,
-	struct device_attribute *attr, char *buf);
-ssize_t inv_accl_fs_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count);
-ssize_t inv_accl_fs_show(struct device *dev,
-		struct device_attribute *attr, char *buf);
+ssize_t nvi_gyro_enable_show(struct device *dev,
+			     struct device_attribute *attr, char *buf);
+ssize_t nvi_gyro_fifo_enable_show(struct device *dev,
+				  struct device_attribute *attr, char *buf);
+ssize_t nvi_gyro_max_range_show(struct device *dev,
+				struct device_attribute *attr, char *buf);
+ssize_t nvi_accl_enable_show(struct device *dev,
+			     struct device_attribute *attr, char *buf);
+ssize_t nvi_accl_fifo_enable_show(struct device *dev,
+				  struct device_attribute *attr, char *buf);
+ssize_t nvi_accl_delay_show(struct device *dev,
+			    struct device_attribute *attr, char *buf);
+ssize_t nvi_accl_max_range_show(struct device *dev,
+				struct device_attribute *attr, char *buf);
 ssize_t inv_accl_matrix_show(struct device *dev,
-	struct device_attribute *attr, char *buf);
+			     struct device_attribute *attr, char *buf);
+ssize_t nvi_enable_show(struct device *dev,
+			struct device_attribute *attr, char *buf);
+
 ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t pos, size_t size);
 

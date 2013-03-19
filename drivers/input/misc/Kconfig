@@ -686,5 +686,6 @@ config INPUT_CAPELLA_CM3217
 
 source	"drivers/input/misc/compass/Kconfig"
 source	"drivers/input/misc/mpu/Kconfig"
+source	"drivers/input/misc/pressure/Kconfig"
 
 endif
