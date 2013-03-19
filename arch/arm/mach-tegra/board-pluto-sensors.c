@@ -32,11 +32,11 @@
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
 #include <media/max77665-flash.h>
-#include <media/imx091.h>
 #ifndef CONFIG_OF
+#include <media/imx091.h>
 #include <media/imx132.h>
-#endif
 #include <media/ad5816.h>
+#endif
 #include <asm/mach-types.h>
 
 #include "gpio-names.h"
@@ -52,11 +52,13 @@
 #define NTC_10K_TOFF    0x2694
 #define MAX77665_CHARGER_INT	TEGRA_GPIO_PJ2
 
+#ifndef CONFIG_OF
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
 	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
 	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
 };
+#endif
 
 static struct board_info board_info;
 static struct max17042_config_data conf_data = {
@@ -350,6 +352,7 @@ static struct i2c_board_info pluto_i2c4_nct1008_board_info[] = {
 	}
 };
 
+#ifndef CONFIG_OF
 #define VI_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _ioreset) \
 	{							\
 		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
@@ -405,13 +408,11 @@ static struct tegra_pingroup_config mclk_disable =
 static struct tegra_pingroup_config mclk_enable =
 	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
-#ifndef CONFIG_OF
 static struct tegra_pingroup_config pbb0_disable =
 	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
 
 static struct tegra_pingroup_config pbb0_enable =
 	VI_PINMUX(GPIO_PBB0, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
-#endif
 
 /*
  * more regulators need to be allocated to activate the sensor devices.
@@ -581,7 +582,6 @@ static struct imx091_platform_data imx091_pdata = {
 	.power_off		= pluto_imx091_power_off,
 };
 
-#ifndef CONFIG_OF
 static int pluto_imx132_power_on(struct imx132_power_rail *pw)
 {
 	int err;
@@ -668,7 +668,6 @@ struct imx132_platform_data imx132_pdata = {
 	.power_on = pluto_imx132_power_on,
 	.power_off = pluto_imx132_power_off,
 };
-#endif
 
 static struct ad5816_platform_data pluto_ad5816_pdata = {
 	.cfg		= 0,
@@ -684,12 +683,10 @@ static struct i2c_board_info pluto_i2c_board_info_e1625[] = {
 		I2C_BOARD_INFO("imx091", 0x10),
 		.platform_data = &imx091_pdata,
 	},
-#ifndef CONFIG_OF
 	{
 		I2C_BOARD_INFO("imx132", 0x36),
 		.platform_data = &imx132_pdata,
 	},
-#endif
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
 		.platform_data = &pluto_ad5816_pdata,
@@ -701,14 +698,13 @@ static int pluto_camera_init(void)
 	pr_debug("%s: ++\n", __func__);
 
 	tegra_pinmux_config_table(&mclk_disable, 1);
-#ifndef CONFIG_OF
 	tegra_pinmux_config_table(&pbb0_disable, 1);
-#endif
 	i2c_register_board_info(2, pluto_i2c_board_info_e1625,
 		ARRAY_SIZE(pluto_i2c_board_info_e1625));
 
 	return 0;
 }
+#endif
 
 /* MPU board file definition */
 static struct mpu_platform_data mpu_gyro_data = {
@@ -988,8 +984,10 @@ int __init pluto_sensors_init(void)
 	tegra_get_board_info(&board_info);
 
 	pr_debug("%s: ++\n", __func__);
-	pluto_camera_init();
 
+#ifndef CONFIG_OF
+	pluto_camera_init();
+#endif
 	err = pluto_nct1008_init();
 	if (err)
 		return err;
