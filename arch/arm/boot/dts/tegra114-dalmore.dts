@@ -730,6 +730,60 @@
 	i2c@7000c500 {
 		status = "okay";
 		clock-frequency = <400000>;
+
+		imx091@36 {
+			compatible = "nvidia,imx091";
+			reg = <0x36>;
+
+			nvidia,num = <0>;
+			nvidia,sync = <0>;
+			nvidia,dev_name = "camera";
+
+			/* imx091 gpios */
+			reset-gpios = <&gpio 219 0>; /* gpio PBB3 */
+			power-gpios = <&gpio 221 0>; /* gpio PBB6 */
+			gp1-gpios = <&gpio 225 0>; /* gpio PCC1 */
+
+			/* imx091 caps */
+			nvidia,identifier = "IMX091";
+			nvidia,sensor_nvc_interface = <3>;
+			nvidia,pixel_types = <0x100>;
+			nvidia,orientation = <0>;
+			nvidia,direction = <0>;
+			nvidia,initial_clock_rate_khz = <6000>;
+			nvidia,h_sync_edge = <0>;
+			nvidia,v_sync_edge = <0>;
+			nvidia,mclk_on_vgp0 = <0>;
+			nvidia,csi_port = <0>;
+			nvidia,data_lanes = <4>;
+			nvidia,virtual_channel_id = <0>;
+			nvidia,discontinuous_clk_mode = <1>;
+			nvidia,cil_threshold_settle = <0x0>;
+			nvidia,min_blank_time_width = <16>;
+			nvidia,min_blank_time_height = <16>;
+			nvidia,preferred_mode_index = <0>;
+			nvidia,external_clock_khz_0 = <24000>;
+			nvidia,clock_multiplier_0 = <850000>;
+			nvidia,external_clock_khz_1 = <0>;
+			nvidia,clock_multiplier_1 = <0>;
+
+			/* flash caps */
+			nvidia,sdo_trigger_enabled;
+			nvidia,adjustable_flash_timing;
+
+			status = "okay";
+
+		};
+
+		ad5816@0E {
+			compatible = "nvidia,ad5816";
+			reg = <0x0E>;
+			nvidia,cfg = <0>;
+			nvidia,num = <0>;
+			nvidia,sync = <0>;
+			nvidia,dev_name = "focuser";
+			status = "okay";
+		};
 	};
 
 	i2c@7000c700 {
