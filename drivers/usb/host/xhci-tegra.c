@@ -2224,7 +2224,9 @@ static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
 	phys_addr_t fw_mem_phy_addr;
 	size_t fw_size;
 	dma_addr_t fw_dma;
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	int ret;
+#endif
 
 	/* bootloader saved firmware memory address in PMC SCRATCH34 register */
 	fw_mem_phy_addr = ioread32(tegra->pmc_base + PMC_SCRATCH34);
@@ -2274,9 +2276,11 @@ static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
 
 	return 0;
 
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 error_iounmap:
 	devm_iounmap(&pdev->dev, fw_mmio_base);
 	return ret;
+#endif
 }
 
 static void deinit_bootloader_firmware(struct tegra_xhci_hcd *tegra)
@@ -2624,6 +2628,11 @@ static void tegra_xhci_shutdown(struct platform_device *pdev)
 	if (tegra == NULL)
 		return;
 
+	if (tegra->hc_in_elpg) {
+		mutex_lock(&tegra->sync_lock);
+		tegra_xhci_host_partition_elpg_exit(tegra);
+		mutex_unlock(&tegra->sync_lock);
+	}
 	xhci = tegra->xhci;
 	hcd = xhci_to_hcd(xhci);
 	xhci_shutdown(hcd);
