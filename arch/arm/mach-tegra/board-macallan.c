@@ -718,7 +718,6 @@ static void __init tegra_macallan_early_init(void)
 {
 	tegra_clk_init_from_table(macallan_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_smmu_init();
 	tegra_soc_device_init("macallan");
 }
 

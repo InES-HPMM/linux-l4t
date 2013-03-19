@@ -655,7 +655,6 @@ static void __init tegra_roth_init(void)
 {
 	tegra_clk_init_from_table(roth_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_smmu_init();
 	tegra_soc_device_init("roth");
 	tegra_enable_pinmux();
 	roth_pinmux_init();

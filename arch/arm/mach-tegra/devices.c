@@ -1833,11 +1833,13 @@ static inline void tegra_smmu_map_init(struct platform_device *pdev)
 }
 #endif
 
-void tegra_smmu_init(void)
+static int __init tegra_smmu_init(void)
 {
 	platform_device_register(&tegra_smmu_device);
 	tegra_smmu_map_init(&tegra_smmu_device);
+	return 0;
 }
+postcore_initcall(tegra_smmu_init);
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)

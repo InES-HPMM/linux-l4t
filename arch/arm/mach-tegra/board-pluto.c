@@ -1393,7 +1393,6 @@ static void __init tegra_pluto_early_init(void)
 	pluto_battery_edp_init();
 	tegra_clk_init_from_table(pluto_clk_init_table);
 	tegra_clk_verify_parents();
-	tegra_smmu_init();
 	tegra_soc_device_init("tegra_pluto");
 }
 
