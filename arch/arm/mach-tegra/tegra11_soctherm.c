@@ -251,6 +251,45 @@ static const int precision; /* default 0 -> low precision */
 
 #define THROT_GLOBAL_CFG	0x400
 
+#define OC1_CFG				0x310
+#define OC1_CFG_LONG_LATENCY_SHIFT	6
+#define OC1_CFG_LONG_LATENCY_MASK	0x1
+#define OC1_CFG_HW_RESTORE_SHIFT	5
+#define OC1_CFG_HW_RESTORE_MASK		0x1
+#define OC1_CFG_PWR_GOOD_MASK_SHIFT	4
+#define OC1_CFG_PWR_GOOD_MASK_MASK	0x1
+#define OC1_CFG_THROTTLE_MODE_SHIFT	2
+#define OC1_CFG_THROTTLE_MODE_MASK	0x3
+#define OC1_CFG_ALARM_POLARITY_SHIFT	1
+#define OC1_CFG_ALARM_POLARITY_MASK	0x1
+#define OC1_CFG_EN_THROTTLE_SHIFT	0
+#define OC1_CFG_EN_THROTTLE_MASK	0x1
+
+#define OC1_CNT_THRESHOLD		0x314
+#define OC1_THRESHOLD_PERIOD		0x318
+#define OC1_ALARM_COUNT			0x31c
+#define OC1_FILTER			0x320
+
+#define OC1_STATS			0x3a8
+
+#define OC_INTR_STATUS			0x39c
+#define OC_INTR_ENABLE			0x3a0
+#define OC_INTR_DISABLE			0x3a4
+#define OC_INTR_POS_OC1_SHIFT		0
+#define OC_INTR_POS_OC1_MASK		0x1
+#define OC_INTR_POS_OC2_SHIFT		1
+#define OC_INTR_POS_OC2_MASK		0x1
+#define OC_INTR_POS_OC3_SHIFT		2
+#define OC_INTR_POS_OC3_MASK		0x1
+#define OC_INTR_POS_OC4_SHIFT		3
+#define OC_INTR_POS_OC4_MASK		0x1
+#define OC_INTR_POS_OC5_SHIFT		4
+#define OC_INTR_POS_OC5_MASK		0x1
+
+#define OC_STATS_CTL			0x3c4
+#define OC_STATS_CTL_CLR_ALL		0x2
+#define OC_STATS_CTL_EN_ALL		0x1
+
 #define CPU_PSKIP_STATUS			0x418
 #define CPU_PSKIP_STATUS_M_SHIFT		12
 #define CPU_PSKIP_STATUS_M_MASK			0xff
@@ -360,6 +399,24 @@ static const int precision; /* default 0 -> low precision */
 						(THROT_OFFSET * throt))
 #define THROT_DELAY_CTRL(throt)			(THROT_DELAY_LITE + \
 						(THROT_OFFSET * throt))
+#define ALARM_CFG(throt)			(OC1_CFG + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_CNT_THRESHOLD(throt)		(OC1_CNT_THRESHOLD + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_THRESHOLD_PERIOD(throt)		(OC1_THRESHOLD_PERIOD + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_ALARM_COUNT(throt)		(OC1_ALARM_COUNT + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_FILTER(throt)			(OC1_FILTER + \
+						(ALARM_OFFSET * (throt - \
+								THROTTLE_OC1)))
+#define ALARM_STATS(throt)			(OC1_STATS + \
+						(4 * (throt - THROTTLE_OC1)))
+
 #define THROT_DEPTH_DIVIDEND(depth)	((256 * (100 - (depth)) / 100) - 1)
 #define THROT_DEPTH_DEFAULT		(80)
 #define THROT_DEPTH(th, dp)		{			\
@@ -428,6 +485,7 @@ static struct thermal_zone_device *thz[THERM_SIZE];
 #endif
 static struct workqueue_struct *workqueue;
 static struct work_struct work_thermal;
+static struct work_struct work_edp;
 
 static u32 fuse_calib_base_cp;
 static u32 fuse_calib_base_ft;
@@ -444,6 +502,11 @@ static const char *const therm_names[] = {
 static const char *const throt_names[] = {
 	[THROTTLE_LIGHT]   = "light",
 	[THROTTLE_HEAVY]   = "heavy",
+	[THROTTLE_OC1]     = "oc1",
+	[THROTTLE_OC2]     = "oc2",
+	[THROTTLE_OC3]     = "oc3",
+	[THROTTLE_OC4]     = "oc4",
+	[THROTTLE_OC5]     = "oc5",
 };
 
 static const char *const throt_dev_names[] = {
@@ -1015,6 +1078,7 @@ static int __init soctherm_thermal_sys_init(void)
 {
 	char name[THERMAL_NAME_LENGTH];
 	struct soctherm_therm *therm;
+	bool oc_en = false;
 	int i, j, k;
 
 	if (!soctherm_init_platform_done)
@@ -1065,7 +1129,27 @@ static int __init soctherm_thermal_sys_init(void)
 					    (strnstr(therm->trips[j].cdev_type,
 						     "light",
 						     THERMAL_NAME_LENGTH)
-					     && k == THROTTLE_HEAVY))
+					     && k == THROTTLE_HEAVY) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc1",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC1) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc2",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC2) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc3",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC3) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc4",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC4) ||
+					    (strnstr(therm->trips[j].cdev_type,
+						     "oc5",
+						     THERMAL_NAME_LENGTH)
+					     && k == THROTTLE_OC5))
 						continue;
 
 					thermal_cooling_device_register(
@@ -1092,10 +1176,19 @@ static int __init soctherm_thermal_sys_init(void)
 					therm->tzp,
 					therm->passive_delay,
 					0);
+
+		for (k = THROTTLE_OC1; !oc_en && k < THROTTLE_SIZE; k++)
+			if (plat_data.throttle[k].devs[therm2dev[i]].enable)
+				oc_en = true;
 	}
 
-	thermal_cooling_device_register("suspend_soctherm",
-					0, &soctherm_suspend_ops);
+	/* do not enable suspend feature if any OC alarms are enabled */
+	if (!oc_en)
+		thermal_cooling_device_register("suspend_soctherm", 0,
+						&soctherm_suspend_ops);
+	else
+		pr_warn("soctherm: Suspend feature CANNOT be enabled %s\n",
+			"when any OC alarm is enabled");
 
 	soctherm_update();
 	return 0;
@@ -1178,6 +1271,121 @@ static void soctherm_work_func(struct work_struct *work)
 	}
 }
 
+static inline void soctherm_oc_intr_enable(enum soctherm_throttle_id alarm,
+					   bool enable)
+{
+	u32 r;
+
+	if (!enable)
+		return;
+
+	switch (alarm) {
+	case THROTTLE_OC1:
+		r = REG_SET(0, OC_INTR_POS_OC1, 1);
+		break;
+	case THROTTLE_OC2:
+		r = REG_SET(0, OC_INTR_POS_OC2, 1);
+		break;
+	case THROTTLE_OC3:
+		r = REG_SET(0, OC_INTR_POS_OC3, 1);
+		break;
+	case THROTTLE_OC4:
+		r = REG_SET(0, OC_INTR_POS_OC4, 1);
+		break;
+	case THROTTLE_OC5:
+		r = REG_SET(0, OC_INTR_POS_OC5, 1);
+		break;
+	default:
+		r = 0;
+		break;
+	}
+	soctherm_writel(r, OC_INTR_ENABLE);
+}
+
+/* Return 0 (success) if you want to  reenable OC alarm intr. */
+static int soctherm_handle_alarm(enum soctherm_throttle_id alarm)
+{
+	int rv = -EINVAL;
+
+	switch (alarm) {
+	case THROTTLE_OC1:
+		pr_warn("soctherm: Unexpected OC1 alarm\n");
+		/* add OC1 alarm handling code here */
+		break;
+
+	case THROTTLE_OC2:
+		pr_info("soctherm: Successfully handled OC2 alarm\n");
+		/* TODO: add OC2 alarm handling code here */
+		rv = 0;
+		break;
+
+	case THROTTLE_OC3:
+		pr_warn("soctherm: Unexpected OC3 alarm\n");
+		/* add OC3 alarm handling code here */
+		break;
+
+	case THROTTLE_OC4:
+		pr_info("soctherm: Successfully handled OC4 alarm\n");
+		/* TODO: add OC4 alarm handling code here */
+		rv = 0;
+
+		break;
+	case THROTTLE_OC5:
+		pr_warn("soctherm: Unexpected OC5 alarm\n");
+		/* add OC5 alarm handling code here */
+		break;
+
+	default:
+		break;
+	}
+
+	if (rv)
+		pr_err("soctherm: ERROR in handling %s alarm\n",
+			throt_names[alarm]);
+
+	return rv;
+}
+
+static void soctherm_edp_work_func(struct work_struct *work)
+{
+	u32 st, ex, oc1, oc2, oc3, oc4, oc5;
+
+	st = soctherm_readl(OC_INTR_STATUS);
+
+	/* deliberately clear expected interrupts handled in SW */
+	oc1 = REG_GET_BIT(st, OC_INTR_POS_OC1);
+	oc2 = REG_GET_BIT(st, OC_INTR_POS_OC2);
+	oc3 = REG_GET_BIT(st, OC_INTR_POS_OC3);
+	oc4 = REG_GET_BIT(st, OC_INTR_POS_OC4);
+	oc5 = REG_GET_BIT(st, OC_INTR_POS_OC5);
+	ex = oc1 | oc2 | oc3 | oc4 | oc5;
+
+	if (ex) {
+		soctherm_writel(st, OC_INTR_STATUS);
+		st &= ~ex;
+
+		if (oc1 && !soctherm_handle_alarm(THROTTLE_OC1))
+			soctherm_oc_intr_enable(THROTTLE_OC1, true);
+
+		if (oc2 && !soctherm_handle_alarm(THROTTLE_OC2))
+			soctherm_oc_intr_enable(THROTTLE_OC2, true);
+
+		if (oc3 && !soctherm_handle_alarm(THROTTLE_OC3))
+			soctherm_oc_intr_enable(THROTTLE_OC3, true);
+
+		if (oc4 && !soctherm_handle_alarm(THROTTLE_OC4))
+			soctherm_oc_intr_enable(THROTTLE_OC4, true);
+
+		if (oc5 && !soctherm_handle_alarm(THROTTLE_OC5))
+			soctherm_oc_intr_enable(THROTTLE_OC5, true);
+	}
+
+	if (st) {
+		pr_err("soctherm: Ignored unexpected OC ALARM 0x%08x\n", st);
+		soctherm_writel(st, OC_INTR_STATUS);
+	}
+}
+
 static irqreturn_t soctherm_isr(int irq, void *arg_data)
 {
 	u32 r;
@@ -1186,6 +1394,18 @@ static irqreturn_t soctherm_isr(int irq, void *arg_data)
 
 	r = soctherm_readl(TH_INTR_STATUS);
 	soctherm_writel(r, TH_INTR_DISABLE);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t soctherm_edp_isr(int irq, void *arg_data)
+{
+	u32 r;
+
+	queue_work(workqueue, &work_edp);
+
+	r = soctherm_readl(OC_INTR_STATUS);
+	soctherm_writel(r, OC_INTR_DISABLE);
 
 	return IRQ_HANDLED;
 }
@@ -1234,6 +1454,27 @@ static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 		r = REG_SET(0, THROT_PRIORITY_LOCK_PRIORITY, data->priority);
 		soctherm_writel(r, THROT_PRIORITY_LOCK);
 	}
+
+	if (!throt_enable || (throt < THROTTLE_OC1))
+		return;
+
+	/* ----- configure OC alarms ----- */
+
+	if (!(data->throt_mode == BRIEF || data->throt_mode == STICKY))
+		pr_warn("soctherm: Invalid throt_mode in %s\n",
+			throt_names[throt]);
+
+	r = soctherm_readl(ALARM_CFG(throt));
+	r = REG_SET(r, OC1_CFG_HW_RESTORE, 1);
+	r = REG_SET(r, OC1_CFG_THROTTLE_MODE, data->throt_mode);
+	r = REG_SET(r, OC1_CFG_ALARM_POLARITY, data->polarity);
+	r = REG_SET(r, OC1_CFG_EN_THROTTLE, 1);
+	soctherm_writel(r, ALARM_CFG(throt));
+
+	soctherm_oc_intr_enable(throt, data->intr);
+
+	soctherm_writel(data->period, ALARM_THRESHOLD_PERIOD(throt)); /* usec */
+	soctherm_writel(0xffffffff, ALARM_FILTER(throt));
 }
 
 static void soctherm_tsense_program(enum soctherm_sense sensor,
@@ -1569,6 +1810,7 @@ static int soctherm_init_platform_data(void)
 	r = STATS_CTL_CLR_DN | STATS_CTL_EN_DN |
 		STATS_CTL_CLR_UP | STATS_CTL_EN_UP;
 	soctherm_writel(r, STATS_CTL);
+	soctherm_writel(OC_STATS_CTL_EN_ALL, OC_STATS_CTL);
 
 	/* Enable PMC to shutdown */
 	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
@@ -1597,8 +1839,11 @@ static int soctherm_suspend(void)
 
 	if (!soctherm_suspended) {
 		soctherm_writel((u32)-1, TH_INTR_DISABLE);
+		soctherm_writel((u32)-1, OC_INTR_DISABLE);
 		disable_irq(INT_THERMAL);
+		disable_irq(INT_EDP);
 		cancel_work_sync(&work_thermal);
+		cancel_work_sync(&work_edp);
 		soctherm_clk_enable(false);
 		soctherm_init_platform_done = false;
 		soctherm_suspended = true;
@@ -1619,6 +1864,7 @@ static int soctherm_resume(void)
 		soctherm_init_platform_done = true;
 		soctherm_update();
 		enable_irq(INT_THERMAL);
+		enable_irq(INT_EDP);
 	}
 
 	spin_unlock(&soctherm_suspend_resume_lock);
@@ -1673,10 +1919,15 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 
 	/* enable interrupts */
 	workqueue = create_singlethread_workqueue("soctherm-wq");
-	INIT_WORK(&work_thermal, soctherm_work_func);
 
+	INIT_WORK(&work_thermal, soctherm_work_func);
 	err = request_irq(INT_THERMAL, soctherm_isr, 0,
 			  "soctherm_thermal", NULL);
+	if (err < 0)
+		return -1;
+
+	INIT_WORK(&work_edp, soctherm_edp_work_func);
+	err = request_irq(INT_EDP, soctherm_edp_isr, 0, "soctherm_edp", NULL);
 	if (err < 0)
 		return -1;
 
@@ -1880,6 +2131,33 @@ static int regs_show(struct seq_file *s, void *data)
 			r = soctherm_readl(THROT_DELAY_CTRL(i));
 			state = REG_GET(r, THROT_DELAY_LITE_DELAY);
 			seq_printf(s, "%5d  ", state);
+
+			if (i >= THROTTLE_OC1) {
+				r = soctherm_readl(ALARM_CFG(i));
+				state = REG_GET(r, OC1_CFG_LONG_LATENCY);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_HW_RESTORE);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_PWR_GOOD_MASK);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_THROTTLE_MODE);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_ALARM_POLARITY);
+				seq_printf(s, "%2d  ", state);
+				state = REG_GET(r, OC1_CFG_EN_THROTTLE);
+				seq_printf(s, "%2d  ", state);
+
+				r = soctherm_readl(ALARM_CNT_THRESHOLD(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_THRESHOLD_PERIOD(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_ALARM_COUNT(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_FILTER(i));
+				seq_printf(s, "%8d  ", r);
+				r = soctherm_readl(ALARM_STATS(i));
+				seq_printf(s, "%8d  ", r);
+			}
 			seq_printf(s, "\n");
 		}
 	}

@@ -44,6 +44,11 @@ enum soctherm_therm_id {
 enum soctherm_throttle_id {
 	THROTTLE_LIGHT = 0,
 	THROTTLE_HEAVY,
+	THROTTLE_OC1,
+	THROTTLE_OC2,
+	THROTTLE_OC3,
+	THROTTLE_OC4,
+	THROTTLE_OC5,
 	THROTTLE_SIZE,
 };
 
@@ -83,8 +88,19 @@ struct soctherm_throttle_dev {
 	u8 step;
 };
 
+enum throt_mode {
+	DISABLED = 0,
+	STICKY,
+	BRIEF,
+	RESERVED,
+};
+
 struct soctherm_throttle {
+	u8 throt_mode;
+	u8 polarity;
 	u8 priority;
+	u8 period;
+	bool intr;
 	struct soctherm_throttle_dev devs[THROTTLE_DEV_SIZE];
 };
 

@@ -1373,9 +1373,11 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 	},
 	.throttle = {
 		[THROTTLE_HEAVY] = {
+			.priority = 100,
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
-					.enable = 1,
+					.enable = true,
+					.depth = 80,
 				},
 			},
 		},
