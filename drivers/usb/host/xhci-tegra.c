@@ -970,7 +970,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	 * specific configuration
 	 */
 	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
-	reg &= ~(0xf << 2);
+	reg &= ~(0xf << 0);
 	reg |= xusb_padctl->pad_mux;
 	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
 
@@ -1302,6 +1302,19 @@ static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 	return 0;
 }
 
+static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
+	bool release)
+{
+	u32 reg;
+
+	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
+	reg &= ~(0xf << 0);
+
+	if (!release)
+		reg |= tegra->xusb_padctl->pad_mux;
+
+	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
+}
 /* SS ELPG Entry initiated by fw */
 static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 {
@@ -1440,6 +1453,9 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	}
 	tegra->host_pwr_gated = true;
 
+	/* set port ownership to SNPS */
+	tegra_xhci_release_port_ownership(tegra, true);
+
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
 		readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
@@ -1570,6 +1586,9 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	/* Clear FLUSH_ENABLE of MC client */
 	tegra_powergate_mc_flush_done(TEGRA_POWERGATE_XUSBC);
+
+	/* set port ownership back to xusb */
+	tegra_xhci_release_port_ownership(tegra, false);
 
 	/*
 	 * PWR_UNGATE Host partition. XUSBC
