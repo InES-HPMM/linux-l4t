@@ -1,7 +1,7 @@
 /*
  * imx091.c - imx091 sensor driver
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,6 +29,11 @@
 #include <linux/list.h>
 #include <linux/edp.h>
 #include <media/imx091.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
+
+#include "nvc_utilities.c"
 
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
@@ -92,6 +97,8 @@ struct imx091_info {
 	bool reset_flag;
 	unsigned test_pattern;
 	struct nvc_imager_static_nvc sdata;
+	struct regulator *imx091_ext_reg_vcm_vdd;
+	struct regulator *imx091_ext_reg_i2c_vdd;
 	u8 i2c_buf[IMX091_SIZEOF_I2C_BUF];
 	u8 bin_en;
 #ifdef CONFIG_DEBUG_FS
@@ -203,6 +210,9 @@ static struct imx091_reg *test_patterns[] = {
 	tp_cbars_seq,
 	tp_checker_seq,
 };
+
+static int imx091_power_on(struct nvc_regulator *vreg);
+static int imx091_power_off(struct nvc_regulator *vreg);
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 #define IMX091_WAIT_1000_MS 1000
@@ -1768,9 +1778,18 @@ static void imx091_vreg_exit(struct imx091_info *info)
 	unsigned i;
 
 	for (i = 0; i < ARRAY_SIZE(imx091_vregs); i++) {
-		regulator_put(info->vreg[i].vreg);
+		if (info->vreg[i].vreg)
+			regulator_put(info->vreg[i].vreg);
 		info->vreg[i].vreg = NULL;
 	}
+
+	if (likely(info->imx091_ext_reg_vcm_vdd))
+		regulator_put(info->imx091_ext_reg_vcm_vdd);
+	info->imx091_ext_reg_vcm_vdd = NULL;
+
+	if (likely(info->imx091_ext_reg_i2c_vdd))
+		regulator_put(info->imx091_ext_reg_i2c_vdd);
+	info->imx091_ext_reg_i2c_vdd = NULL;
 }
 
 static int imx091_vreg_init(struct imx091_info *info)
@@ -2286,8 +2305,9 @@ static int imx091_param_wr_s(struct imx091_info *info,
 		imx091_pm_dev_wr(info, NVC_PWR_COMM);
 		err = imx091_gain_wr(info, u32val);
 		if (err) {
-			dev_err(&info->i2c_client->dev, "Error: %s SET GAIN ERR",
-							__func__);
+			dev_err(&info->i2c_client->dev,
+				"Error: %s SET GAIN ERR",
+				__func__);
 		}
 		imx091_pm_dev_wr(info, NVC_PWR_STDBY);
 		return err;
@@ -2473,7 +2493,8 @@ static int imx091_param_wr(struct imx091_info *info, unsigned long arg)
 			__func__);
 		if (copy_from_user(&ae, (const void __user *)params.p_value,
 				sizeof(struct nvc_imager_ae))) {
-			dev_err(&info->i2c_client->dev, "Error: %s %d copy_from_user err\n",
+			dev_err(&info->i2c_client->dev,
+				"Error: %s %d copy_from_user err\n",
 				__func__, __LINE__);
 			return -EFAULT;
 		}
@@ -2798,8 +2819,9 @@ static int imx091_open(struct inode *inode, struct file *file)
 	}
 	if (info->s_info != NULL) {
 		if (atomic_xchg(&info->s_info->in_use, 1)) {
-			dev_err(&info->i2c_client->dev, "%s err @%d sync device is busy\n",
-					__func__, __LINE__);
+			dev_err(&info->i2c_client->dev,
+				"%s err @%d sync device is busy\n",
+				__func__, __LINE__);
 			return -EBUSY;
 		}
 		info->sdata.stereo_cap = 1;
@@ -2858,6 +2880,275 @@ static int imx091_remove(struct i2c_client *client)
 	return 0;
 }
 
+static struct of_device_id imx091_of_match[] = {
+	{ .compatible = "nvidia,imx091", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, imx091_of_match);
+
+static int imx091_get_extra_regulators(struct imx091_info *info)
+{
+	if (info->pdata->vcm_vdd && !info->imx091_ext_reg_vcm_vdd) {
+		info->imx091_ext_reg_vcm_vdd = regulator_get(NULL,
+							"imx091_vcm_vdd");
+		if (WARN_ON(IS_ERR(info->imx091_ext_reg_vcm_vdd))) {
+			pr_err("%s: imx091_ext_reg_vcm_vdd get failed %ld\n",
+				__func__,
+				PTR_ERR(info->imx091_ext_reg_vcm_vdd));
+			info->imx091_ext_reg_vcm_vdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	if (info->pdata->i2c_vdd && !info->imx091_ext_reg_i2c_vdd) {
+		info->imx091_ext_reg_i2c_vdd = regulator_get(NULL,
+							"imx091_i2c_vdd");
+		if (unlikely(WARN_ON(IS_ERR(info->imx091_ext_reg_i2c_vdd)))) {
+			pr_err("%s: imx091_ext_reg_i2c_vdd get failed %ld\n",
+				__func__,
+				PTR_ERR(info->imx091_ext_reg_i2c_vdd));
+			info->imx091_ext_reg_i2c_vdd = NULL;
+			if (info->pdata->vcm_vdd)
+				regulator_put(info->imx091_ext_reg_vcm_vdd);
+			info->imx091_ext_reg_vcm_vdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+static int imx091_power_on(struct nvc_regulator *vreg)
+{
+
+	int err;
+	struct imx091_info *info = container_of(vreg, struct imx091_info,
+						vreg[0]);
+
+	if (unlikely(WARN_ON(!info)))
+		return -EFAULT;
+
+	if (imx091_get_extra_regulators(info))
+		goto imx091_poweron_fail;
+
+	if (info->pdata->vcm_vdd) {
+		err = regulator_enable(info->imx091_ext_reg_vcm_vdd);
+		if (unlikely(err))
+			goto imx091_vcm_fail;
+	}
+
+	if (info->pdata->i2c_vdd) {
+		err = regulator_enable(info->imx091_ext_reg_i2c_vdd);
+		if (unlikely(err))
+			goto imx091_i2c_fail;
+	}
+
+	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 0);
+	usleep_range(10, 20);
+
+	if (vreg[IMX091_VREG_AVDD].vreg) {
+		err = regulator_enable(vreg[IMX091_VREG_AVDD].vreg);
+		if (unlikely(err))
+			goto imx091_avdd_fail;
+	}
+
+	if (vreg[IMX091_VREG_DVDD].vreg) {
+		err = regulator_enable(vreg[IMX091_VREG_DVDD].vreg);
+		if (unlikely(err))
+			goto imx091_dvdd_fail;
+	}
+
+	if (vreg[IMX091_VREG_IOVDD].vreg) {
+		err = regulator_enable(vreg[IMX091_VREG_IOVDD].vreg);
+		if (unlikely(err))
+			goto imx091_iovdd_fail;
+	}
+
+	usleep_range(1, 2);
+	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+imx091_iovdd_fail:
+	if (vreg[IMX091_VREG_DVDD].vreg)
+		regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
+
+imx091_dvdd_fail:
+	if (vreg[IMX091_VREG_AVDD].vreg)
+		regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
+
+imx091_avdd_fail:
+	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 0);
+	if (info->pdata->i2c_vdd)
+		regulator_disable(info->imx091_ext_reg_i2c_vdd);
+imx091_i2c_fail:
+	if (info->pdata->vcm_vdd)
+		regulator_disable(info->imx091_ext_reg_vcm_vdd);
+imx091_vcm_fail:
+imx091_poweron_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+
+}
+
+static int imx091_power_off(struct nvc_regulator *vreg)
+{
+	struct imx091_info *info = container_of(vreg, struct imx091_info,
+						vreg[0]);
+
+	if (unlikely(WARN_ON(!info)))
+		return -EFAULT;
+
+	usleep_range(1, 2);
+
+	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 0);
+	usleep_range(1, 2);
+
+	if (vreg[IMX091_VREG_IOVDD].vreg)
+		regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
+	if (vreg[IMX091_VREG_DVDD].vreg)
+		regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
+	if (vreg[IMX091_VREG_AVDD].vreg)
+		regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
+
+	if (info->pdata->i2c_vdd)
+		regulator_disable(info->imx091_ext_reg_i2c_vdd);
+	if (info->pdata->vcm_vdd)
+		regulator_disable(info->imx091_ext_reg_vcm_vdd);
+
+	return 0;
+}
+
+static int imx091_parse_dt_gpio(struct device_node *np, const char *name,
+			enum imx091_gpio type,
+			struct nvc_gpio_pdata *pdata)
+{
+	enum of_gpio_flags gpio_flags;
+
+	if (of_find_property(np, name, NULL)) {
+		pdata->gpio = of_get_named_gpio_flags(np, name, 0, &gpio_flags);
+		pdata->gpio_type = type;
+		pdata->init_en = true;
+		pdata->active_high = !(gpio_flags & OF_GPIO_ACTIVE_LOW);
+		return 1;
+	}
+	return 0;
+}
+
+static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct imx091_platform_data *board_info_pdata;
+	const struct of_device_id *match;
+	struct nvc_gpio_pdata *gpio_pdata = NULL;
+	struct nvc_imager_cap *imx091_cap = NULL;
+	u32 temp_prop_read = 0;
+
+	match = of_match_device(imx091_of_match, &client->dev);
+	if (!match) {
+		dev_err(&client->dev, "Failed to find matching dt id\n");
+		return NULL;
+	}
+
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+			GFP_KERNEL);
+	if (!board_info_pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	gpio_pdata = devm_kzalloc(&client->dev,
+		sizeof(*gpio_pdata) * ARRAY_SIZE(imx091_gpios),
+		GFP_KERNEL);
+	if (!gpio_pdata) {
+		dev_err(&client->dev, "cannot allocate gpio data memory\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	imx091_cap = devm_kzalloc(&client->dev,
+		sizeof(*imx091_cap),
+		GFP_KERNEL);
+	if (!imx091_cap) {
+		dev_err(&client->dev, "cannot allocate imx091_cap memory\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	/* init with default platform data values */
+	memcpy(board_info_pdata, &imx091_dflt_pdata, sizeof(*board_info_pdata));
+
+	/* extra regulators info */
+	board_info_pdata->vcm_vdd = of_property_read_bool(np, "nvidia,vcm_vdd");
+	board_info_pdata->i2c_vdd = of_property_read_bool(np, "nvidia,i2c_vdd");
+
+	/* generic info */
+	of_property_read_u32(np, "nvidia,num", &board_info_pdata->num);
+	of_property_read_u32(np, "nvidia,sync", &board_info_pdata->sync);
+	of_property_read_string(np, "nvidia,dev_name",
+				&board_info_pdata->dev_name);
+
+	/* edpc config */
+	of_property_read_u32(np, "nvidia,num_states",
+				&board_info_pdata->edpc_config.num_states);
+	if (board_info_pdata->edpc_config.num_states > 0) {
+		u32 *states = devm_kzalloc(&client->dev,
+			sizeof(u32) * board_info_pdata->edpc_config.num_states,
+			GFP_KERNEL);
+		if (!states) {
+			dev_err(&client->dev, "cannot allocate states\n");
+		} else {
+			board_info_pdata->edpc_config.states = states;
+			of_property_read_u32_array(np, "nvidia,imx091_estates",
+				board_info_pdata->edpc_config.states,
+				board_info_pdata->edpc_config.num_states);
+		}
+	}
+	of_property_read_u32(np, "nvidia,e0_index",
+				&board_info_pdata->edpc_config.e0_index);
+	of_property_read_u32(np, "nvidia,priority",
+				&board_info_pdata->edpc_config.priority);
+
+	/* imx091 gpios */
+	board_info_pdata->gpio_count = 0;
+	board_info_pdata->gpio_count += imx091_parse_dt_gpio(np,
+				"reset-gpios", IMX091_GPIO_RESET,
+				&gpio_pdata[board_info_pdata->gpio_count]);
+	board_info_pdata->gpio_count += imx091_parse_dt_gpio(np,
+				"power-gpios", IMX091_GPIO_PWDN,
+				&gpio_pdata[board_info_pdata->gpio_count]);
+	board_info_pdata->gpio_count += imx091_parse_dt_gpio(np,
+				"gp1-gpios", IMX091_GPIO_GP1,
+				&gpio_pdata[board_info_pdata->gpio_count]);
+	board_info_pdata->gpio = gpio_pdata;
+
+	/* imx091 caps */
+	parse_nvc_imager_caps(np, imx091_cap);
+	imx091_cap->focuser_guid = NVC_FOCUS_GUID(0);
+	imx091_cap->torch_guid = NVC_TORCH_GUID(0);
+	imx091_cap->cap_version = NVC_IMAGER_CAPABILITIES_VERSION2;
+
+	board_info_pdata->cap = imx091_cap;
+
+	/* imx091 flash caps */
+	board_info_pdata->flash_cap.xvs_trigger_enabled =
+		of_property_read_bool(np, "nvidia,xvs_trigger_enabled");
+	board_info_pdata->flash_cap.sdo_trigger_enabled =
+		of_property_read_bool(np, "nvidia,sdo_trigger_enabled");
+	board_info_pdata->flash_cap.adjustable_flash_timing =
+		of_property_read_bool(np, "nvidia,adjustable_flash_timing");
+	of_property_read_u32(np, "nvidia,pulse_width_uS",
+				&temp_prop_read);
+	board_info_pdata->flash_cap.pulse_width_uS = (u16)temp_prop_read;
+
+	/* imx091 power functions */
+	board_info_pdata->power_on = imx091_power_on;
+	board_info_pdata->power_off = imx091_power_off;
+
+	return board_info_pdata;
+}
+
 static int imx091_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -2875,13 +3166,22 @@ static int imx091_probe(
 	}
 
 	info->i2c_client = client;
-	if (client->dev.platform_data) {
+
+	if (client->dev.of_node) {
+		info->pdata = imx091_parse_dt(client);
+	} else if (client->dev.platform_data) {
 		info->pdata = client->dev.platform_data;
 	} else {
 		info->pdata = &imx091_dflt_pdata;
 		dev_dbg(&client->dev,
 			"%s No platform data.  Using defaults.\n", __func__);
 	}
+
+	if (!info->pdata) {
+		dev_err(&client->dev, "%s: Platform data error.\n", __func__);
+		return -EINVAL;
+	}
+
 	i2c_set_clientdata(client, info);
 	INIT_LIST_HEAD(&info->list);
 	spin_lock(&imx091_spinlock);

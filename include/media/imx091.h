@@ -1,7 +1,7 @@
 /*
 * imx091.h
 *
-* Copyright (c) 2012, NVIDIA, All Rights Reserved.
+* Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
 *
 * This file is licensed under the terms of the GNU General Public License
 * version 2. This program is licensed "as is" without any warranty of any
@@ -52,6 +52,8 @@ struct imx091_platform_data {
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
 	struct edp_client edpc_config;
+	bool vcm_vdd;
+	bool i2c_vdd;
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct nvc_regulator *);
 	int (*power_off)(struct nvc_regulator *);

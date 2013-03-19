@@ -1,4 +1,7 @@
-/* Copyright (C) 2011-2012 NVIDIA Corporation.
+/*
+ * ad5816.c - ad5816 focuser driver
+ *
+ * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -93,6 +96,8 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <media/ad5816.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
 #define AD5816_ID			0x04
 #define AD5816_FOCAL_LENGTH_FLOAT	(4.570f)
@@ -946,6 +951,83 @@ static int ad5816_remove(struct i2c_client *client)
 	ad5816_del(info);
 	return 0;
 }
+static struct of_device_id ad5816_of_match[] = {
+	{ .compatible = "nvidia,ad5816", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, ad5816_of_match);
+
+static int ad5816_focuser_power_on(struct ad5816_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	err = regulator_enable(pw->vdd_i2c);
+	if (unlikely(err))
+		goto ad5816_vdd_i2c_fail;
+
+	err = regulator_enable(pw->vdd);
+	if (unlikely(err))
+		goto ad5816_vdd_fail;
+
+	return 0;
+
+ad5816_vdd_fail:
+	regulator_disable(pw->vdd_i2c);
+
+ad5816_vdd_i2c_fail:
+	pr_err("%s FAILED\n", __func__);
+
+	return -ENODEV;
+}
+
+static int ad5816_focuser_power_off(struct ad5816_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->vdd || !pw->vdd_i2c)))
+		return -EFAULT;
+
+	regulator_disable(pw->vdd);
+	regulator_disable(pw->vdd_i2c);
+
+	return 0;
+}
+static struct ad5816_platform_data *ad5816_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct ad5816_platform_data *board_info_pdata;
+	const struct of_device_id *match;
+
+	match = of_match_device(ad5816_of_match, &client->dev);
+	if (!match) {
+		dev_err(&client->dev, "Failed to find matching dt id\n");
+		return NULL;
+	}
+
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+			GFP_KERNEL);
+	if (!board_info_pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return NULL;
+	}
+
+	/* init with default platform data values */
+	memcpy(board_info_pdata, &ad5816_default_pdata,
+		sizeof(*board_info_pdata));
+
+	of_property_read_u32(np, "nvidia,cfg", &board_info_pdata->cfg);
+	of_property_read_u32(np, "nvidia,num", &board_info_pdata->num);
+	of_property_read_u32(np, "nvidia,sync", &board_info_pdata->sync);
+	of_property_read_string(np, "nvidia,dev_name",
+			&board_info_pdata->dev_name);
+
+	board_info_pdata->power_on = ad5816_focuser_power_on;
+	board_info_pdata->power_off = ad5816_focuser_power_off;
+
+	return board_info_pdata;
+}
 
 static int ad5816_probe(
 		struct i2c_client *client,
@@ -964,7 +1046,10 @@ static int ad5816_probe(
 		return -ENOMEM;
 	}
 	info->i2c_client = client;
-	if (client->dev.platform_data) {
+
+	if (client->dev.of_node) {
+		info->pdata = ad5816_parse_dt(client);
+	} else if (client->dev.platform_data) {
 		info->pdata = client->dev.platform_data;
 	} else {
 		info->pdata = &ad5816_default_pdata;
