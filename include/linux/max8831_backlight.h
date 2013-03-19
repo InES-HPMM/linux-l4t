@@ -1,23 +1,36 @@
 /*
- * Generic PWM backlight driver data - see drivers/video/backlight/pwm_bl.c
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef __LINUX_MAX8831_BACKLIGHT_H
 #define __LINUX_PWM8831_BACKLIGHT_H
 
 #include <linux/backlight.h>
 
 enum max8831_edp_states {
+	MAX8831_EDP_NEG_8,
+	MAX8831_EDP_NEG_7,
+	MAX8831_EDP_NEG_6,
+	MAX8831_EDP_NEG_5,
+	MAX8831_EDP_NEG_4,
 	MAX8831_EDP_NEG_3,
 	MAX8831_EDP_NEG_2,
 	MAX8831_EDP_NEG_1,
 	MAX8831_EDP_ZERO,
 	MAX8831_EDP_1,
 	MAX8831_EDP_2,
-	MAX8831_EDP_3,
-	MAX8831_EDP_4,
-	MAX8831_EDP_5,
-	MAX8831_EDP_6,
-	MAX8831_EDP_7,
 	MAX8831_EDP_NUM_STATES,
 };
 
