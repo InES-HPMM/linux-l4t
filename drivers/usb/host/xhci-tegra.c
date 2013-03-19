@@ -232,6 +232,7 @@ struct tegra_xhci_hcd {
 	bool usb3_rh_suspend;
 	bool hc_in_elpg;
 
+	unsigned long usb3_rh_remote_wakeup_ports; /* one bit per port */
 	/* firmware loading related */
 	struct tegra_xhci_firmware firmware;
 };
@@ -1420,6 +1421,73 @@ static void ss_partition_elpg_exit_work(struct work_struct *work)
 	mutex_unlock(&tegra->sync_lock);
 }
 
+/* read pmc WAKE2_STATUS register to know if SS port caused remote wake */
+static void update_remote_wakeup_ports_pmc(struct tegra_xhci_hcd *tegra)
+{
+	struct xhci_hcd *xhci = tegra->xhci;
+	u32 wake2_status;
+
+#define PMC_WAKE2_STATUS	0x168
+#define PADCTL_WAKE		(1 << (58 - 32)) /* PADCTL is WAKE#58 */
+
+	wake2_status = ioread32(tegra->pmc_base + PMC_WAKE2_STATUS);
+
+	if (wake2_status & PADCTL_WAKE) {
+		/* FIXME: This is customized for Dalmore, find a generic way */
+		set_bit(0, &tegra->usb3_rh_remote_wakeup_ports);
+		/* clear wake status */
+		iowrite32(PADCTL_WAKE, tegra->pmc_base + PMC_WAKE2_STATUS);
+	}
+
+	xhci_dbg(xhci, "%s: usb3 roothub remote_wakeup_ports 0x%lx\n",
+			__func__, tegra->usb3_rh_remote_wakeup_ports);
+}
+
+static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
+{
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+	struct tegra_xhci_hcd *tegra = hcd_to_tegra_xhci(hcd);
+	int port, num_ports;
+	unsigned long *remote_wakeup_ports;
+	u32 portsc;
+	__le32 __iomem	**port_array;
+	unsigned char *rh;
+	unsigned int retry = 64;
+
+
+	if (hcd == xhci->shared_hcd) {
+		port_array = xhci->usb3_ports;
+		num_ports = xhci->num_usb3_ports;
+		remote_wakeup_ports = &tegra->usb3_rh_remote_wakeup_ports;
+		rh = "usb3 roothub";
+	} else
+		return;
+
+	while (*remote_wakeup_ports && retry--) {
+		for_each_set_bit(port, remote_wakeup_ports, num_ports) {
+			portsc = xhci_readl(xhci, port_array[port]);
+
+			if (!(portsc & PORT_CONNECT)) {
+				/* nothing to do if already disconnected */
+				clear_bit(port, remote_wakeup_ports);
+				continue;
+			}
+
+			if ((portsc & PORT_PLS_MASK) == XDEV_U0)
+				clear_bit(port, remote_wakeup_ports);
+			else
+				xhci_dbg(xhci, "%s: %s port %d status 0x%x\n",
+						__func__, rh, port, portsc);
+		}
+
+		if (*remote_wakeup_ports)
+			msleep(20); /* give some time, irq will direct U0 */
+	}
+
+	xhci_dbg(xhci, "%s: %s remote_wakeup_ports 0x%lx\n", __func__, rh,
+			*remote_wakeup_ports);
+}
+
 /* Host ELPG Exit triggered by PADCTL irq */
 /**
  * tegra_xhci_host_partition_elpg_exit - bring XUSBC partition out from elpg
@@ -1540,6 +1608,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 				__func__, ret);
 		goto out;
 	}
+
+	update_remote_wakeup_ports_pmc(tegra);
 
 	if (tegra->hs_wake_event)
 		tegra->hs_wake_event = false;
@@ -1928,6 +1998,9 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
 			tegra_xhci_host_partition_elpg_exit(tegra);
 	}
+
+	 /* handle remote wakeup before resuming bus */
+	wait_remote_wakeup_ports(hcd);
 
 	err = xhci_bus_resume(hcd);
 	if (err) {
