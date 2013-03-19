@@ -41,7 +41,7 @@ static __initdata struct tegra_drive_pingroup_config roth_drive_pinmux[] = {
 
 /* Initially setting all used GPIO's to non-TRISTATE */
 static __initdata struct tegra_pingroup_config roth_pinmux_set_nontristate[] = {
-	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GPIO_X5_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GPIO_X6_AUD,     RSVD3,  PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GPIO_X7_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
@@ -101,6 +101,7 @@ static __initdata struct tegra_pingroup_config roth_pinmux_set_nontristate[] = {
 	DEFAULT_PINMUX(GPIO_PU4,        PWM1,  NORMAL,      NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PU5,        PWM2,  NORMAL,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GPIO_PU6,        PWM3,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU2,        RSVD,   PULL_UP,     NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(GPIO_PU3,        PWM0,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),

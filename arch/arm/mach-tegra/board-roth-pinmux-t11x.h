@@ -233,7 +233,7 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 };
 
 static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX4, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX4, true, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW2, true, 0),
@@ -286,7 +286,7 @@ static struct gpio_init_pin_info init_gpio_mode_roth_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PEE1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU1, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU2, true, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU2, true, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU4, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU5, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, true, 0),
