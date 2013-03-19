@@ -200,7 +200,7 @@ static int __init tegra_init_pm_domain(void)
 
 	tegra_mc_chain_b.clk = clk_get_sys("mc_cbpa", "mc_cbpa");
 	pm_genpd_init(&tegra_mc_chain_b.gpd, &simple_qos_governor, false);
-	tegra_pd_add_sd(&tegra_mc_clk, &tegra_mc_chain_b.gpd);
+	tegra_pd_add_sd(&tegra_mc_chain_a, &tegra_mc_chain_b.gpd);
 
 	return 0;
 }
