@@ -1,7 +1,7 @@
 /*
  * Backlight LEDs driver for MAX8831
  *
- * Copyright (c) 2008-2013, NVIDIA Corporation.
+ * Copyright (c) 2008-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,10 +81,10 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 {
 	struct max8831_backlight_data *data = bl_get_data(bl);
 	struct device *dev = data->max8831_dev;
-	int approved;
+	unsigned int approved;
 	int ret;
-	int edp_state;
-	int i;
+	unsigned int edp_state;
+	unsigned int i;
 	if (data->max8831_edp_client) {
 		for (i = 0; i < MAX8831_EDP_NUM_STATES; i++) {
 			if (brightness >= data->edp_brightness_states[i])
