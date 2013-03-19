@@ -165,7 +165,7 @@ EXPORT_SYMBOL_GPL(aic3xxx_reg_read);
 int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 		      int count, u8 *buf)
 {
-	int ret;
+	int ret = 0;
 	int count_temp = count;
 	union aic3xxx_reg_union *aic_reg = (union aic3xxx_reg_union *) &reg;
 	u8 book, page, offset;
@@ -212,7 +212,7 @@ int aic3xxx_bulk_read(struct aic3xxx *aic3xxx, unsigned int reg,
 	}
 
 	mutex_unlock(&aic3xxx->io_lock);
-		return ret;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(aic3xxx_bulk_read);
 
