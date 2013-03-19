@@ -45,6 +45,8 @@ struct tegra_bbc_proxy {
 	struct work_struct edp_work;
 	struct mutex edp_lock;
 	tegra_isomgr_handle isomgr_handle;
+	struct regulator *sim0;
+	struct regulator *sim1;
 };
 
 static void edp_work(struct work_struct *ws)
@@ -423,6 +425,89 @@ static struct device_attribute *mc_attributes[] = {
 };
 
 
+#define SIM_ATTR(field)							\
+static ssize_t								\
+field ## _show_state(struct device *dev, struct device_attribute *attr,	\
+		     char *buf)						\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	if (regulator_is_enabled(bbc->field))				\
+		return sprintf(buf, "enabled\n");			\
+	else								\
+		return sprintf(buf, "disabled\n");			\
+}									\
+									\
+static ssize_t								\
+field ## _store_state(struct device *dev, struct device_attribute *attr,\
+		      const char *buf, size_t count)			\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+	int value;							\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	sscanf(buf, "%d", &value);					\
+									\
+	if (sysfs_streq(buf, "enabled\n") || sysfs_streq(buf, "1"))	\
+		regulator_enable(bbc->field);				\
+	else if (sysfs_streq(buf, "disabled\n") ||			\
+		 sysfs_streq(buf, "0"))					\
+		regulator_disable(bbc->field);				\
+									\
+	return count;							\
+}									\
+static DEVICE_ATTR(field ## _state, 0644,				\
+		   field ## _show_state, field ## _store_state);	\
+									\
+static ssize_t								\
+field ## _show_microvolts(struct device *dev,				\
+			  struct device_attribute *attr, char *buf)	\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	return sprintf(buf, "%d\n", regulator_get_voltage(bbc->field));	\
+}									\
+									\
+static ssize_t								\
+field ## _store_microvolts(struct device *dev,				\
+	struct device_attribute *attr, const char *buf, size_t count)	\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+	int value;							\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	sscanf(buf, "%d", &value);					\
+									\
+	if (value)							\
+		regulator_set_voltage(bbc->field, value, value);	\
+									\
+	return count;							\
+}									\
+static DEVICE_ATTR(field ## _microvolts, 0644,				\
+		   field ## _show_microvolts,				\
+		   field ## _store_microvolts);
+
+SIM_ATTR(sim0);
+SIM_ATTR(sim1);
+
+static struct device_attribute *sim_attributes[] = {
+	&dev_attr_sim0_state,
+	&dev_attr_sim0_microvolts,
+	&dev_attr_sim1_state,
+	&dev_attr_sim1_microvolts,
+	NULL
+};
+
 static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 {
 	struct tegra_bbc_proxy_platform_data *pdata = pdev->dev.platform_data;
@@ -508,9 +593,40 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		}
 	}
 
+	bbc->sim0 = regulator_get(NULL, "vddio_sim0");
+	if (IS_ERR_OR_NULL(bbc->sim0)) {
+		dev_err(&pdev->dev, "vddio_sim0 regulator get failed\n");
+		bbc->sim0 = NULL;
+		goto sim_error;
+	}
+
+	bbc->sim1 = regulator_get(NULL, "vddio_sim1");
+	if (IS_ERR_OR_NULL(bbc->sim1)) {
+		dev_err(&pdev->dev, "vddio_sim1 regulator get failed\n");
+		bbc->sim1 = NULL;
+		goto sim_error;
+	}
+
+	attrs = sim_attributes;
+	while ((attr = *attrs++)) {
+		ret = device_create_file(&pdev->dev, attr);
+		if (ret) {
+			dev_err(&pdev->dev, "can't create sysfs file\n");
+			goto sim_error;
+		}
+	}
+
 	dev_set_drvdata(&pdev->dev, bbc);
 
 	return 0;
+
+sim_error:
+	regulator_put(bbc->sim0);
+	regulator_put(bbc->sim1);
+
+	attrs = mc_attributes;
+	while ((attr = *attrs++))
+		device_remove_file(&pdev->dev, attr);
 
 mc_error:
 	tegra_isomgr_unregister(bbc->isomgr_handle);
@@ -537,6 +653,13 @@ static int __exit tegra_bbc_proxy_remove(struct platform_device *pdev)
 	struct tegra_bbc_proxy *bbc = platform_get_drvdata(pdev);
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
+
+	attrs = sim_attributes;
+	while ((attr = *attrs++))
+		device_remove_file(&pdev->dev, attr);
+
+	regulator_put(bbc->sim0);
+	regulator_put(bbc->sim1);
 
 	attrs = mc_attributes;
 	while ((attr = *attrs++))
