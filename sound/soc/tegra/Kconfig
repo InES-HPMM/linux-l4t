@@ -174,6 +174,26 @@ config SND_SOC_TEGRA_TLV320AIC326X
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the TI AIC326X codec.
 
+config MACH_HAS_SND_SOC_TEGRA_TLV320AIC325X
+	tristate "SoC Audio support for Tegra boards using TI AIC325x"
+	help
+	  Machines that use the SND_SOC_TEGRA_TLV320AIC325X driver should select
+	  this config option, in order to allow the user to enable
+	  SND_SOC_TEGRA_TLV320AIC325X.
+
+config SND_SOC_TEGRA_TLV320AIC325X
+	tristate "SoC Audio support for Tegra boards using a TI AIC325x codec"
+	depends on SND_SOC_TEGRA && I2C && TEGRA_DC
+	depends on MACH_HAS_SND_SOC_TEGRA_TLV320AIC325X
+	select SND_SOC_TEGRA30_I2S if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_TLV320AIC325X
+	select SND_SOC_TEGRA30_DAM if !ARCH_TEGRA_2x_SOC
+	select SND_SOC_SPDIF
+	select MFD_AIC3256_I2C
+	help
+	  Say Y or M here if you want to add support for SoC audio on Tegra
+	  boards using the TI AIC325X codec.
+
 config MACH_HAS_SND_SOC_TEGRA_RT5639
 	bool
 	help
