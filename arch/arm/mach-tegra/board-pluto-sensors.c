@@ -620,7 +620,7 @@ static struct imx091_platform_data imx091_pdata = {
 	.edpc_config	= {
 		.states = imx091_estates,
 		.num_states = ARRAY_SIZE(imx091_estates),
-		.e0_index = 0,
+		.e0_index = ARRAY_SIZE(imx091_estates) - 1,
 		.priority = EDP_MAX_PRIO + 1,
 		},
 	.power_on		= pluto_imx091_power_on,
