@@ -160,6 +160,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
 	.ddr_clk_limit = 41000000,
+	.power_off_rail = true,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
