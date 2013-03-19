@@ -248,7 +248,7 @@ static ssize_t request_store(struct edp_client *c,
 
 out:
 	mutex_unlock(&edp_lock);
-	return r;
+	return r ?: count;
 }
 
 static ssize_t current_show(struct edp_client *c,
@@ -267,11 +267,13 @@ static ssize_t threshold_store(struct edp_client *c,
 		struct edp_client_attribute *attr, const char *s, size_t count)
 {
 	unsigned int tv;
+	int r;
 
 	if (sscanf(s, "%u", &tv) != 1)
 		return -EINVAL;
 
-	return edp_update_loan_threshold(c, tv);
+	r = edp_update_loan_threshold(c, tv);
+	return r ?: count;
 }
 
 static ssize_t borrowers_show(struct edp_client *c,
