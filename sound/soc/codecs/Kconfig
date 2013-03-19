@@ -73,6 +73,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
 	select SND_SOC_TLV320AIC32X4 if I2C
 	select SND_SOC_TLV320AIC326X if I2C
+	select SND_SOC_TLV320AIC325X if I2C
 	select SND_SOC_TLV320AIC3X if I2C
 	select SND_SOC_TPA6130A2 if I2C
 	select SND_SOC_TLV320DAC33 if I2C
@@ -366,6 +367,9 @@ config SND_SOC_TWL4030
 
 config SND_SOC_TWL6040
 	tristate
+
+config SND_SOC_TLV320AIC325X
+	tristate "TI AIC325x Codec"
 
 config SND_SOC_UDA134X
        tristate
