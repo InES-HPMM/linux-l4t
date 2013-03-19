@@ -1017,8 +1017,8 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + IOPHY_USB3_PAD1_CTL_4_0);
 
 	reg = readl(tegra->padctl_base + USB2_OTG_PAD0_CTL_0_0);
-	reg &= ~((0xfff << 0) | (0x1f << 19));
-	reg |= xusb_padctl->hs_slew
+	reg &= ~((0x3fff << 0) | (0x1f << 19));
+	reg |= xusb_padctl->hs_slew | xusb_padctl->ls_rslew
 		| xusb_padctl->hs_curr_level_pad0 | xusb_padctl->otg_pad0_ctl0;
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD0_CTL_0_0);
 
