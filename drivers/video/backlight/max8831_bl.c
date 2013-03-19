@@ -93,8 +93,10 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 		edp_state = i;
 		ret = edp_update_client_request(data->max8831_edp_client,
 							edp_state, &approved);
-		if (ret || approved != edp_state)
+		if (ret || approved != edp_state) {
 			dev_err(dev, "E state transition failed\n");
+			return ret;
+		}
 	}
 
 	max8831_backlight_set(bl, brightness);
