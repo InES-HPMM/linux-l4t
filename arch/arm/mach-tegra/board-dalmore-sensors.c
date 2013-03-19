@@ -40,10 +40,12 @@
 #include <mach/gpio-tegra.h>
 #include <mach/pinmux-t11.h>
 #include <mach/pinmux.h>
+#ifndef CONFIG_OF
 #include <media/imx091.h>
+#include <media/ad5816.h>
+#endif
 #include <media/ov9772.h>
 #include <media/as364x.h>
-#include <media/ad5816.h>
 #include <generated/mach-types.h>
 #include <linux/power/sbs-battery.h>
 
@@ -56,11 +58,13 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 
+#ifndef CONFIG_OF
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 	{IMX091_GPIO_RESET, CAM_RSTN, true, false},
 	{IMX091_GPIO_PWDN, CAM1_POWER_DWN_GPIO, true, false},
 	{IMX091_GPIO_GP1, CAM_GPIO1, true, false}
 };
+#endif
 
 static struct board_info board_info;
 
@@ -137,6 +141,7 @@ static struct i2c_board_info dalmore_i2c4_nct1008_board_info[] = {
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 }
 
+#ifndef CONFIG_OF
 static int dalmore_focuser_power_on(struct ad5816_power_rail *pw)
 {
 	int err;
@@ -179,6 +184,7 @@ static struct tegra_pingroup_config mclk_disable =
 
 static struct tegra_pingroup_config mclk_enable =
 	VI_PINMUX(CAM_MCLK, VI_ALT3, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
+#endif
 
 static struct tegra_pingroup_config pbb0_disable =
 	VI_PINMUX(GPIO_PBB0, VI, NORMAL, NORMAL, OUTPUT, DEFAULT, DEFAULT);
@@ -207,6 +213,7 @@ static int dalmore_get_vcmvdd(void)
 	return 0;
 }
 
+#ifndef CONFIG_OF
 static int dalmore_imx091_power_on(struct nvc_regulator *vreg)
 {
 	int err;
@@ -316,6 +323,7 @@ static struct imx091_platform_data imx091_pdata = {
 	.power_on		= dalmore_imx091_power_on,
 	.power_off		= dalmore_imx091_power_off,
 };
+#endif
 
 static struct sbs_platform_data sbs_pdata = {
 	.poll_retry_count = 100,
@@ -442,6 +450,7 @@ static struct as364x_platform_data dalmore_as3648_pdata = {
 	.power_off_callback = dalmore_as3648_power_off,
 };
 
+#ifndef CONFIG_OF
 static struct ad5816_platform_data dalmore_ad5816_pdata = {
 	.cfg = 0,
 	.num = 0,
@@ -450,12 +459,15 @@ static struct ad5816_platform_data dalmore_ad5816_pdata = {
 	.power_on = dalmore_focuser_power_on,
 	.power_off = dalmore_focuser_power_off,
 };
+#endif
 
 static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
+#ifndef CONFIG_OF
 	{
 		I2C_BOARD_INFO("imx091", 0x36),
 		.platform_data = &imx091_pdata,
 	},
+#endif
 	{
 		I2C_BOARD_INFO("ov9772", 0x10),
 		.platform_data = &dalmore_ov9772_pdata,
@@ -464,15 +476,19 @@ static struct i2c_board_info dalmore_i2c_board_info_e1625[] = {
 		I2C_BOARD_INFO("as3648", 0x30),
 		.platform_data = &dalmore_as3648_pdata,
 	},
+#ifndef CONFIG_OF
 	{
 		I2C_BOARD_INFO("ad5816", 0x0E),
 		.platform_data = &dalmore_ad5816_pdata,
 	},
+#endif
 };
 
 static int dalmore_camera_init(void)
 {
+#ifndef CONFIG_OF
 	tegra_pinmux_config_table(&mclk_disable, 1);
+#endif
 	tegra_pinmux_config_table(&pbb0_disable, 1);
 
 	i2c_register_board_info(2, dalmore_i2c_board_info_e1625,
