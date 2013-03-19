@@ -739,6 +739,12 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 
 int __init macallan_soctherm_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1545)
+		tegra_add_cdev_trips(
+			macallan_soctherm_data.therm[THERM_CPU].trips,
+			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_platform_edp_init(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips,
 			8000);
