@@ -209,51 +209,20 @@ struct tegra_xhci_hcd {
 	struct work_struct ss_elpg_exit_work;
 	struct work_struct host_elpg_exit_work;
 
-	struct clk *host_partition_clk;
-	struct clk *ss_partition_clk;
-	struct clk *dev_partition_clk;
-
-	/* XUSB Core Host Clock */
 	struct clk *host_clk;
+	struct clk *ss_clk;
 
 	/* XUSB Falcon SuperSpeed Clock */
 	struct clk *falc_clk;
 
 	/* EMC Clock */
 	struct clk *emc_clk;
-
 	/* XUSB SS PI Clock */
-	struct clk *ss_clk;
-
-	/* XUSB HS PI Clock */
-	struct clk *hs_clk;
-
-	/* PLLU Clock */
-	struct clk *pllu_clk;
-
+	struct clk *ss_src_clk;
 	/* PLLE Clock */
 	struct clk *plle_clk;
-
-	/* UTMIP Clock */
-	struct clk *utmip_clk;
-
-	/* FS Clock */
-	struct clk *fs_clk;
-
-	/* Dev Clock */
-	struct clk *dev_clk;
-
 	struct clk *pll_u_480M;
 	struct clk *clk_m;
-
-	struct clk *plle_re_vco_clk;
-
-	struct clk *pll_u_60M;
-
-	struct clk *pll_p_clk;
-
-	struct clk *pll_u_48M;
-
 	/*
 	 * XUSB/IPFS specific registers these need to be saved/restored in
 	 * addition to spec defined registers
@@ -516,91 +485,35 @@ static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 	tegra->xusb_hvdd_usb3_reg = NULL;
 }
 
+/*
+ * We need to enable only plle_clk as pllu_clk, utmip_clk and plle_re_vco_clk
+ * are under hardware control
+ */
 static int tegra_usb2_clocks_init(struct tegra_xhci_hcd *tegra)
 {
 	struct platform_device *pdev = tegra->pdev;
 	int err = 0;
 
-	/* get clock handle for pllu clock. */
-	tegra->pllu_clk = devm_clk_get(&pdev->dev, "pll_u");
-	if (IS_ERR(tegra->pllu_clk)) {
-		dev_err(&pdev->dev, "%s: Failed to get pllu clock\n", __func__);
-		err = PTR_ERR(tegra->pllu_clk);
-		goto err_clk;
-	}
-
-	/* enable pllu clock */
-	err = clk_enable(tegra->pllu_clk);
-	if (err) {
-		dev_err(&pdev->dev, "%s: could not enable pllu clock\n",
-			__func__);
-		goto err_clk;
-	}
-
-	tegra->utmip_clk = devm_clk_get(&pdev->dev, "utmip-pad");
-	if (IS_ERR(tegra->utmip_clk)) {
-		dev_err(&pdev->dev, "%s: can't get utmip clock\n", __func__);
-		err = PTR_ERR(tegra->utmip_clk);
-		goto err_disable_pllu;
-	}
-	/* enable utmip clock */
-	err = clk_enable(tegra->utmip_clk);
-	if (err) {
-		dev_err(&pdev->dev, "%s: could not enable utmip clock\n",
-			__func__);
-		goto err_disable_pllu;
-	}
-
-	tegra->plle_re_vco_clk = devm_clk_get(&pdev->dev, "pll_re_vco");
-	if (IS_ERR(tegra->plle_re_vco_clk)) {
-		dev_err(&pdev->dev, "%s: Failed to get plle_re_vco_clk\n",
-			__func__);
-		goto err_disable_pll_re_vco;
-	}
-	err = clk_enable(tegra->plle_re_vco_clk);
-	if (err) {
-		dev_err(&pdev->dev, "%s: could not enable plle_re_vco_clk\n",
-			__func__);
-		goto err_disable_pll_re_vco;
-	}
-
-	/* Enable PLLE as well */
 	tegra->plle_clk = devm_clk_get(&pdev->dev, "pll_e");
 	if (IS_ERR(tegra->plle_clk)) {
 		dev_err(&pdev->dev, "%s: Failed to get plle clock\n", __func__);
 		err = PTR_ERR(tegra->plle_clk);
-		goto err_disable_utmi_pad;
+		return err;
 	}
-	/* enable plle clock */
 	err = clk_enable(tegra->plle_clk);
 	if (err) {
 		dev_err(&pdev->dev, "%s: could not enable plle clock\n",
 			__func__);
-		goto err_disable_utmi_pad;
+		return err;
 	}
 
-	return err;
-
-err_disable_utmi_pad:
-	clk_disable(tegra->utmip_clk);
-err_disable_pll_re_vco:
-	clk_disable(tegra->plle_re_vco_clk);
-err_disable_pllu:
-	clk_disable(tegra->pllu_clk);
-err_clk:
 	return err;
 }
 
 static void tegra_usb2_clocks_deinit(struct tegra_xhci_hcd *tegra)
 {
 	clk_disable(tegra->plle_clk);
-	clk_disable(tegra->utmip_clk);
-	clk_disable(tegra->plle_re_vco_clk);
-	clk_disable(tegra->pllu_clk);
 	tegra->plle_clk = NULL;
-	tegra->utmip_clk = NULL;
-	tegra->plle_re_vco_clk = NULL;
-	tegra->pllu_clk = NULL;
 }
 
 static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
@@ -623,7 +536,23 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto clk_get_clk_m_failed;
 	}
 
-	tegra->ss_clk = devm_clk_get(&pdev->dev, "ss_src");
+	tegra->ss_src_clk = devm_clk_get(&pdev->dev, "ss_src");
+	if (IS_ERR(tegra->ss_src_clk)) {
+		dev_err(&pdev->dev, "Failed to get SSPI clk\n");
+		err = PTR_ERR(tegra->ss_src_clk);
+		tegra->ss_src_clk = NULL;
+		goto get_ss_src_clk_failed;
+	}
+
+	tegra->host_clk = devm_clk_get(&pdev->dev, "host");
+	if (IS_ERR(tegra->host_clk)) {
+		dev_err(&pdev->dev, "Failed to get host partition clk\n");
+		err = PTR_ERR(tegra->host_clk);
+		tegra->host_clk = NULL;
+		goto get_host_clk_failed;
+	}
+
+	tegra->ss_clk = devm_clk_get(&pdev->dev, "ss");
 	if (IS_ERR(tegra->ss_clk)) {
 		dev_err(&pdev->dev, "Failed to get ss partition clk\n");
 		err = PTR_ERR(tegra->ss_clk);
@@ -631,79 +560,34 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto get_ss_clk_failed;
 	}
 
-	tegra->host_partition_clk = devm_clk_get(&pdev->dev, "host");
-	if (IS_ERR(tegra->host_partition_clk)) {
-		dev_err(&pdev->dev, "Failed to get host partition clk\n");
-		err = PTR_ERR(tegra->host_partition_clk);
-		tegra->host_partition_clk = NULL;
-		goto get_host_partition_clk_failed;
-	}
-
-	tegra->ss_partition_clk = devm_clk_get(&pdev->dev, "ss");
-	if (IS_ERR(tegra->ss_partition_clk)) {
-		dev_err(&pdev->dev, "Failed to get ss partition clk\n");
-		err = PTR_ERR(tegra->ss_partition_clk);
-		tegra->ss_partition_clk = NULL;
-		goto get_ss_partition_clk_failed;
-	}
-
-	tegra->dev_partition_clk = devm_clk_get(&pdev->dev, "dev");
-	if (IS_ERR(tegra->dev_partition_clk)) {
-		dev_err(&pdev->dev, "Failed to get dev partition clk\n");
-		err = PTR_ERR(tegra->dev_partition_clk);
-		tegra->dev_partition_clk = NULL;
-		goto get_dev_partition_clk_failed;
-	}
-
 	/* enable ss clock */
+	err = clk_enable(tegra->host_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
+		goto enable_host_clk_failed;
+	}
+
 	err = clk_enable(tegra->ss_clk);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable ss partition clk\n");
-		goto enable_ss_clk_failed;
-	}
-
-	err = clk_enable(tegra->host_partition_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
-		goto enable_host_partition_clk_failed;
-	}
-
-	err = clk_enable(tegra->ss_partition_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable ss partition clk\n");
-		goto eanble_ss_partition_clk_failed;
-	}
-
-	err = clk_enable(tegra->dev_partition_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable dev partition clk\n");
-		goto enable_dev_partition_clk_failed;
+		goto eanble_ss_clk_failed;
 	}
 
 	return 0;
 
-enable_dev_partition_clk_failed:
-	clk_disable(tegra->ss_partition_clk);
+eanble_ss_clk_failed:
+	clk_disable(tegra->host_clk);
 
-eanble_ss_partition_clk_failed:
-	clk_disable(tegra->host_partition_clk);
-
-enable_host_partition_clk_failed:
-	clk_disable(tegra->ss_clk);
-
-enable_ss_clk_failed:
-	tegra->dev_partition_clk = NULL;
-
-get_dev_partition_clk_failed:
-	tegra->ss_partition_clk = NULL;
-
-get_ss_partition_clk_failed:
-	tegra->host_partition_clk = NULL;
-
-get_host_partition_clk_failed:
+enable_host_clk_failed:
 	tegra->ss_clk = NULL;
 
 get_ss_clk_failed:
+	tegra->host_clk = NULL;
+
+get_host_clk_failed:
+	tegra->ss_src_clk = NULL;
+
+get_ss_src_clk_failed:
 	tegra->clk_m = NULL;
 
 clk_get_clk_m_failed:
@@ -714,14 +598,11 @@ clk_get_clk_m_failed:
 
 static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 {
-	clk_disable(tegra->dev_partition_clk);
-	clk_disable(tegra->ss_partition_clk);
-	clk_disable(tegra->host_partition_clk);
 	clk_disable(tegra->ss_clk);
-	tegra->dev_partition_clk = NULL;
-	tegra->ss_partition_clk = NULL;
-	tegra->host_partition_clk = NULL;
+	clk_disable(tegra->host_clk);
 	tegra->ss_clk = NULL;
+	tegra->host_clk = NULL;
+	tegra->ss_src_clk = NULL;
 	tegra->clk_m = NULL;
 	tegra->pll_u_480M = NULL;
 }
@@ -777,14 +658,14 @@ tegra_xusb_request_clk_rate(struct tegra_xhci_hcd *tegra,
 		*sw_resp = fw_req_rate;
 	} else {
 
-		if (clk_handle == tegra->ss_clk && fw_req_rate == 12000) {
+		if (clk_handle == tegra->ss_src_clk && fw_req_rate == 12000) {
 			/* Change SS clock source to CLK_M at 12MHz */
 			clk_set_parent(clk_handle, tegra->clk_m);
 			clk_set_rate(clk_handle, fw_req_rate * 1000);
 
 			/* save leakage power when SS freq is being decreased */
 			tegra_xhci_rx_idle_mode_override(tegra, true);
-		} else if (clk_handle == tegra->ss_clk &&
+		} else if (clk_handle == tegra->ss_src_clk &&
 				fw_req_rate == 120000) {
 			/* Change SS clock source to HSIC_480 at 120MHz */
 			clk_set_rate(clk_handle,  3000 * 1000);
@@ -1350,8 +1231,8 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	/* STEP 4: System Power Management driver asserts reset
 	 * to XUSB SuperSpeed partition then disables its clocks
 	 */
-	tegra_periph_reset_assert(tegra->ss_partition_clk);
-	clk_disable(tegra->ss_partition_clk);
+	tegra_periph_reset_assert(tegra->ss_clk);
+	clk_disable(tegra->ss_clk);
 
 	usleep_range(100, 200);
 
@@ -1432,9 +1313,9 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 		readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
 	/* STEP 4: Assert reset to host clk and disable host clk */
-	tegra_periph_reset_assert(tegra->host_partition_clk);
+	tegra_periph_reset_assert(tegra->host_clk);
 
-	clk_disable(tegra->host_partition_clk);
+	clk_disable(tegra->host_clk);
 
 	/* wait 150us */
 	usleep_range(150, 200);
@@ -1506,7 +1387,7 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	}
 
 	/* Step 3: Enable clock to ss partition */
-	clk_enable(tegra->ss_partition_clk);
+	clk_enable(tegra->ss_clk);
 
 	/* Step 4: Disable ss wake detection logic */
 	tegra_xhci_ss_wake_on_interrupts(tegra, false);
@@ -1521,7 +1402,7 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	tegra_xhci_ss_wake_signal(tegra, false);
 
 	/* Step 6 Deassert reset for ss clks */
-	tegra_periph_reset_deassert(tegra->ss_partition_clk);
+	tegra_periph_reset_deassert(tegra->ss_clk);
 
 	xhci_dbg(xhci, "%s: SS ELPG EXIT. ALL DONE\n", __func__);
 	tegra->ss_pwr_gated = false;
@@ -1560,7 +1441,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		return 0;
 
 	/* Step 2: Enable clock to host partition */
-	clk_enable(tegra->host_partition_clk);
+	clk_enable(tegra->host_clk);
 
 	if (tegra->lp0_exit) {
 		u32 reg;
@@ -1602,7 +1483,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	}
 
 	/* Step 4: Deassert reset to host partition clk */
-	tegra_periph_reset_deassert(tegra->host_partition_clk);
+	tegra_periph_reset_deassert(tegra->host_clk);
 
 	/* Step 6.1: IPFS and XUSB BAR initialization */
 	tegra_xhci_cfg(tegra);
@@ -1616,10 +1497,10 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 
 	tegra_xhci_ss_partition_elpg_exit(tegra);
 
-	/* Change SS clock source to HSIC_480 and set ss_clk at 120MHz */
-	if (clk_get_rate(tegra->ss_clk) == 12000000) {
-		clk_set_rate(tegra->ss_clk,  3000 * 1000);
-		clk_set_parent(tegra->ss_clk, tegra->pll_u_480M);
+	/* Change SS clock source to HSIC_480 and set ss_src_clk at 120MHz */
+	if (clk_get_rate(tegra->ss_src_clk) == 12000000) {
+		clk_set_rate(tegra->ss_src_clk,  3000 * 1000);
+		clk_set_parent(tegra->ss_src_clk, tegra->pll_u_480M);
 
 		/* clear ovrd bits when SS freq is being increased */
 		tegra_xhci_rx_idle_mode_override(tegra, false);
@@ -1744,7 +1625,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	case MBOX_CMD_DEC_SSPI_CLOCK:
 		ret = tegra_xusb_request_clk_rate(
 				tegra,
-				tegra->ss_clk,
+				tegra->ss_src_clk,
 				tegra->cmd_data,
 				&sw_resp);
 		if (ret)
@@ -2189,7 +2070,7 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	}
 	regulator_disable(tegra->xusb_avdd_usb3_pll_reg);
 	regulator_disable(tegra->xusb_avddio_usb3_reg);
-	clk_disable(tegra->plle_clk);
+	tegra_usb2_clocks_deinit(tegra);
 
 	return ret;
 }
@@ -2404,17 +2285,9 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra_xhci_ss_wake_signal(tegra, false);
 	tegra_xhci_ss_vcore(tegra, false);
 
-	/* Disable clocks to get ref cnt to 0 */
-	clk_disable(tegra->host_partition_clk);
-	clk_disable(tegra->ss_partition_clk);
-
-	/* Enable host, ss, dev clocks */
-	clk_enable(tegra->host_partition_clk);
-	clk_enable(tegra->ss_partition_clk);
-
 	/* Deassert reset to XUSB host, ss, dev clocks */
-	tegra_periph_reset_deassert(tegra->host_partition_clk);
-	tegra_periph_reset_deassert(tegra->ss_partition_clk);
+	tegra_periph_reset_deassert(tegra->host_clk);
+	tegra_periph_reset_deassert(tegra->ss_clk);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "host");
 	if (!res) {
