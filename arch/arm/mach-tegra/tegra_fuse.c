@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2013 NVIDIA Corp.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -53,32 +53,15 @@
 #include "tegra14x_fuse_offsets.h"
 #endif
 
-static struct kobj_attribute devkey_attr =
-	__ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute jtagdis_attr =
-	__ATTR(jtag_disable, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute odm_prod_mode_attr =
-	__ATTR(odm_production_mode, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute sec_boot_dev_cfg_attr =
-	__ATTR(sec_boot_dev_cfg, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute sec_boot_dev_sel_attr =
-	__ATTR(sec_boot_dev_sel, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute sbk_attr =
-	__ATTR(secure_boot_key, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute sw_rsvd_attr =
-	__ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute ignore_dev_sel_straps_attr =
-	__ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute odm_rsvd_attr =
-	__ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(jtag_disable, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(odm_production_mode, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(sec_boot_dev_cfg, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(sec_boot_dev_sel, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(secure_boot_key, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 
 #define MINOR_QT		0
 #define MINOR_FPGA		1
@@ -1068,7 +1051,7 @@ static int char_to_xdigit(char c)
 	} \
 }
 
-ssize_t tegra_fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t count)
 {
 	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
@@ -1143,19 +1126,24 @@ ssize_t tegra_fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 	/* if odm prodn mode fuse is burnt, change file permissions to 0440 */
 	if (param == ODM_PROD_MODE) {
-		CHK_ERR(sysfs_chmod_file(kobj, &attr->attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &devkey_attr.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &jtagdis_attr.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &sec_boot_dev_cfg_attr.attr,
+		CHK_ERR(sysfs_chmod_file(&dev->kobj, &attr->attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj, &dev_attr_device_key.attr,
 								0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &sec_boot_dev_sel_attr.attr,
-								0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &sbk_attr.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &sw_rsvd_attr.attr, 0440));
-		CHK_ERR(sysfs_chmod_file(kobj, &ignore_dev_sel_straps_attr.attr,
-								0440));
-		tegra_fuse_ch_sysfs_perm(kobj);
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+					&dev_attr_jtag_disable.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+					&dev_attr_sec_boot_dev_cfg.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+					&dev_attr_sec_boot_dev_sel.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+					&dev_attr_secure_boot_key.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+					&dev_attr_sw_reserved.attr, 0440));
+		CHK_ERR(sysfs_chmod_file(&dev->kobj,
+				&dev_attr_ignore_dev_sel_straps.attr, 0440));
+		tegra_fuse_ch_sysfs_perm(&dev->kobj);
 	}
+
 
 done:
 	wake_unlock(&fuse_wk_lock);
@@ -1163,7 +1151,7 @@ done:
 	return orig_count;
 }
 
-ssize_t tegra_fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 								char *buf)
 {
 	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
@@ -1262,29 +1250,34 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 
 	/* change fuse file permissions, if ODM production fuse is not blown */
 	if (!fuse_odm_prod_mode()) {
-		devkey_attr.attr.mode = 0640;
-		jtagdis_attr.attr.mode = 0640;
-		sec_boot_dev_cfg_attr.attr.mode = 0640;
-		sec_boot_dev_sel_attr.attr.mode = 0640;
-		sbk_attr.attr.mode = 0640;
-		sw_rsvd_attr.attr.mode = 0640;
-		ignore_dev_sel_straps_attr.attr.mode = 0640;
-		odm_prod_mode_attr.attr.mode = 0644;
+		dev_attr_device_key.attr.mode = 0640;
+		dev_attr_jtag_disable.attr.mode = 0640;
+		dev_attr_sec_boot_dev_cfg.attr.mode = 0640;
+		dev_attr_sec_boot_dev_sel.attr.mode = 0640;
+		dev_attr_secure_boot_key.attr.mode = 0640;
+		dev_attr_sw_reserved.attr.mode = 0640;
+		dev_attr_ignore_dev_sel_straps.attr.mode = 0640;
+		dev_attr_odm_production_mode.attr.mode = 0644;
 	}
-	odm_rsvd_attr.attr.mode = 0640;
+	dev_attr_odm_reserved.attr.mode = 0640;
 
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_prod_mode_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &devkey_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &jtagdis_attr.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
-				&sec_boot_dev_cfg_attr.attr));
+				&dev_attr_odm_production_mode.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_device_key.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
-				&sec_boot_dev_sel_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &sbk_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &sw_rsvd_attr.attr));
+						&dev_attr_jtag_disable.attr));
 	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
-				&ignore_dev_sel_straps_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_rsvd_attr.attr));
+				&dev_attr_sec_boot_dev_cfg.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_sec_boot_dev_sel.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_secure_boot_key.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+					&dev_attr_sw_reserved.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+				&dev_attr_ignore_dev_sel_straps.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj,
+					&dev_attr_odm_reserved.attr));
 	tegra_fuse_add_sysfs_variables(pdev, fuse_odm_prod_mode());
 	return 0;
 }
@@ -1299,15 +1292,16 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 	if (!IS_ERR_OR_NULL(clk_fuse))
 		clk_put(clk_fuse);
 
-	sysfs_remove_file(&pdev->dev.kobj, &odm_prod_mode_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &devkey_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &jtagdis_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &sec_boot_dev_cfg_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &sec_boot_dev_sel_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &sbk_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &sw_rsvd_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &ignore_dev_sel_straps_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &odm_rsvd_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_odm_production_mode.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_device_key.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_jtag_disable.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_sec_boot_dev_cfg.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_sec_boot_dev_sel.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_secure_boot_key.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_sw_reserved.attr);
+	sysfs_remove_file(&pdev->dev.kobj,
+				&dev_attr_ignore_dev_sel_straps.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_sw_reserved.attr);
 	tegra_fuse_rm_sysfs_variables(pdev);
 	return 0;
 }

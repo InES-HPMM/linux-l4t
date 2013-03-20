@@ -171,9 +171,9 @@ extern int tegra_bct_strapping;
 u32 tegra_fuse_readl(unsigned long offset);
 void tegra_fuse_writel(u32 val, unsigned long offset);
 
-ssize_t tegra_fuse_show(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_show(struct device *dev, struct device_attribute *attr,
 								char *buf);
-ssize_t tegra_fuse_store(struct kobject *kobj, struct kobj_attribute *attr,
+ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count);
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC) || defined(CONFIG_ARCH_TEGRA_3x_SOC)
