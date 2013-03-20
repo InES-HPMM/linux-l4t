@@ -548,6 +548,8 @@ static void tune_timer_cb(unsigned long data)
 
 static inline void calibration_timer_update(struct tegra_cl_dvfs *cld)
 {
+	if (!cld->calibration_delay)
+		return;
 	mod_timer(&cld->calibration_timer, jiffies + cld->calibration_delay);
 }
 
@@ -615,6 +617,8 @@ static void calibration_timer_cb(unsigned long data)
 {
 	unsigned long flags;
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)data;
+
+	pr_debug("%s\n", __func__);
 
 	clk_lock_save(cld->dfll_clk, &flags);
 	cl_dvfs_calibrate(cld);
@@ -1536,6 +1540,26 @@ static int fmin_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(dvco_rate_min_fops, fmin_get, NULL, "%llu\n");
 
+static int calibr_delay_get(void *data, u64 *val)
+{
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	*val = jiffies_to_msecs(cld->calibration_delay);
+	return 0;
+}
+static int calibr_delay_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+	clk_lock_save(c, &flags);
+	cld->calibration_delay = msecs_to_jiffies(val);
+	clk_unlock_restore(c, &flags);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(calibr_delay_fops, calibr_delay_get, calibr_delay_set,
+			"%llu\n");
+
 static int cl_register_show(struct seq_file *s, void *data)
 {
 	u32 offs;
@@ -1641,6 +1665,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	if (!debugfs_create_file("dvco_min", S_IRUGO,
 		cl_dvfs_dentry, dfll_clk, &dvco_rate_min_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("calibr_delay", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &calibr_delay_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
