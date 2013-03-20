@@ -872,6 +872,11 @@ static void max17042_update_depletion(struct work_struct *work)
 			msecs_to_jiffies(DEPL_INTERVAL));
 }
 
+/* Nothing to do */
+static void max17042_throttle(unsigned int new_state, void *priv_data)
+{
+}
+
 static int max17042_init_depletion(struct max17042_chip *chip)
 {
 	struct edp_client *c;
@@ -891,6 +896,7 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 
 	strncpy(c->name, chip->battery.name, EDP_NAME_LEN - 1);
 	c->name[EDP_NAME_LEN - 1] = 0;
+	c->throttle = max17042_throttle;
 
 	r = edp_register_client(chip->edp_manager, c);
 	if (r) {
