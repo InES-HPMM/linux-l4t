@@ -128,6 +128,7 @@ enum tegra_clk_ex_param {
 	TEGRA_CLK_PLLD_DSI_OUT_ENB,
 	TEGRA_CLK_PLLD_MIPI_MUX_SEL,
 	TEGRA_CLK_DFLL_LOCK,
+	TEGRA_CLK_SOR_CLK_SEL,
 };
 
 void tegra_periph_reset_deassert(struct clk *c);
