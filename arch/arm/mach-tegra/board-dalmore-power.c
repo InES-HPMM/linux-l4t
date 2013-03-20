@@ -244,6 +244,8 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("vddio_bt_1v8", "bluedroid_pm.0"),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
+	REGULATOR_SUPPLY("vid", "0-000d"),
+	REGULATOR_SUPPLY("vddio", "0-0078"),
 };
 
 static struct regulator_consumer_supply max77663_sd3_supply[] = {
@@ -271,6 +273,8 @@ static struct regulator_consumer_supply max77663_ldo2_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
 	REGULATOR_SUPPLY("vdd", "0-0069"),
+	REGULATOR_SUPPLY("vdd", "0-000d"),
+	REGULATOR_SUPPLY("vdd", "0-0078"),
 };
 
 static struct regulator_consumer_supply max77663_ldo3_supply[] = {
