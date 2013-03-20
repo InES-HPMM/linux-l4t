@@ -275,6 +275,8 @@ struct tegra_camera_dev {
 	struct clk			*clk_isp;
 	struct clk			*clk_csus;
 
+	struct regulator		*reg;
+
 	void __iomem			*vi_base;
 	spinlock_t			videobuf_queue_lock;
 	struct list_head		capture;
@@ -1062,6 +1064,9 @@ static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 {
 	nvhost_module_busy_ext(pcdev->ndev);
 
+	/* Enable external power */
+	regulator_enable(pcdev->reg);
+
 	/* Turn on relevant clocks. */
 	clk_prepare_enable(pcdev->clk_vi);
 	clk_prepare_enable(pcdev->clk_vi_sensor);
@@ -1092,6 +1097,9 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 	clk_disable_unprepare(pcdev->clk_csi);
 	clk_disable_unprepare(pcdev->clk_isp);
 	clk_disable_unprepare(pcdev->clk_csus);
+
+	/* Disable external power */
+	regulator_disable(pcdev->reg);
 
 	nvhost_module_idle_ext(pcdev->ndev);
 }
@@ -1718,10 +1726,22 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	clk_set_rate(pcdev->clk_vi, 150000000);
 	clk_set_rate(pcdev->clk_vi_sensor, 24000000);
 
+	/* Get regulator pointer */
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	pcdev->reg = regulator_get(&pdev->dev, "vcsi");
+#else
+	pcdev->reg = regulator_get(&pdev->dev, "avdd_dsi_csi");
+#endif
+	if (IS_ERR_OR_NULL(pcdev->reg)) {
+		dev_err(&pdev->dev, "%s: couldn't get regulator\n",
+				__func__);
+		goto exit_put_clk_csus;
+	}
+
 	platform_set_drvdata(pdev, ndata);
 	err = nvhost_client_device_get_resources(pdev);
 	if (err)
-		goto exit_put_clk_csus;
+		goto exit_put_regulator;
 
 	nvhost_client_device_init(pdev);
 
@@ -1751,6 +1771,8 @@ exit_cleanup_alloc_ctx:
 exit_put_resources:
 	pm_runtime_disable(&pdev->dev);
 	nvhost_client_device_put_resources(pdev);
+exit_put_regulator:
+	regulator_put(pcdev->reg);
 exit_put_clk_csus:
 	clk_put(pcdev->clk_csus);
 exit_put_clk_isp:
@@ -1785,6 +1807,8 @@ static int tegra_camera_remove(struct platform_device *pdev)
 	vb2_dma_nvmap_cleanup_ctx(&pdev->dev);
 
 	pm_runtime_disable(&pdev->dev);
+
+	regulator_put(pcdev->reg);
 
 	clk_put(pcdev->clk_csus);
 	clk_put(pcdev->clk_isp);
