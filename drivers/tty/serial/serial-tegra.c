@@ -43,7 +43,7 @@
 #include <linux/termios.h>
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
-
+#include <linux/serial_tegra.h>
 #include <mach/clk.h>
 
 #define TEGRA_UART_TYPE				"TEGRA_UART"
@@ -1267,8 +1267,12 @@ static int tegra_uart_probe(struct platform_device *pdev)
 	struct uart_port *u;
 	struct resource *resource;
 	int ret;
-	const struct tegra_uart_chip_data *cdata;
-	const struct of_device_id *match;
+	const struct tegra_uart_chip_data *cdata = &tegra30_uart_chip_data;
+	const struct of_device_id *match = NULL;
+	struct tegra_serial_platform_data *pdata = pdev->dev.platform_data;
+
+	if (!pdev->dev.of_node)
+		goto board_file;
 
 	match = of_match_device(of_match_ptr(tegra_uart_of_match),
 				&pdev->dev);
@@ -1278,15 +1282,22 @@ static int tegra_uart_probe(struct platform_device *pdev)
 	}
 	cdata = match->data;
 
+board_file:
 	tup = devm_kzalloc(&pdev->dev, sizeof(*tup), GFP_KERNEL);
 	if (!tup) {
 		dev_err(&pdev->dev, "Failed to allocate memory for tup\n");
 		return -ENOMEM;
 	}
 
-	ret = tegra_uart_parse_dt(pdev, tup);
-	if (ret < 0)
-		return ret;
+	if (match) {
+		ret = tegra_uart_parse_dt(pdev, tup);
+		if (ret < 0)
+			return ret;
+	} else {
+		tup->uport.line = pdev->id;
+		tup->enable_modem_interrupt = pdata->modem_interrupt;
+		tup->dma_req_sel = pdata->dma_req_selector;
+	}
 
 	u = &tup->uport;
 	u->dev = &pdev->dev;
