@@ -744,7 +744,7 @@
 		ddr-clk-limit = <41000000>;
 		base-clk = <104000000>;
 		mmc-ocr-mask = <0>;
-		support-8bit;
+		bus-width = <8>;
 		built-in;
 		status = "okay";
 	};
@@ -754,6 +754,7 @@
 		trim-delay = <3>;
 		ddr-clk-limit = <41000000>;
 		base-clk = <208000000>;
+		bus-width = <4>;
 		status = "okay";
 	};
 	sdhci@78000000 {
