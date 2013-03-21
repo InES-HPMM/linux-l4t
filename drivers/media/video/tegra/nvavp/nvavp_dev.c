@@ -316,7 +316,10 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 		clk_disable_unprepare(nvavp->bsev_clk);
 		clk_disable_unprepare(nvavp->vde_clk);
 		clk_set_rate(nvavp->emc_clk, 0);
-		clk_set_rate(nvavp->sclk, 0);
+		if (boost_sclk)
+			clk_set_rate(nvavp->sclk, SCLK_BOOST_RATE);
+		else
+			clk_set_rate(nvavp->sclk, 0);
 		nvavp_powergate_vde(nvavp);
 		nvhost_module_idle_ext(nvavp->nvhost_dev);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
