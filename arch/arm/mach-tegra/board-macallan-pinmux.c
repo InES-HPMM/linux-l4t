@@ -76,6 +76,11 @@ static void __init macallan_gpio_init_configure(void)
 static struct tegra_pingroup_config macallan_sleep_pinmux[] = {
 	/* VDDIO_HV */
 	GPIO_PINMUX(SPDIF_IN, NORMAL, NORMAL, OUTPUT, DISABLE),
+	/* VDDIO_GMI*/
+	DEFAULT_PINMUX(GMI_AD7,       SPI4,        NORMAL,   NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         NORMAL,   NORMAL,   INPUT),
+	GPIO_PINMUX(GMI_CS2_N,  NORMAL,   NORMAL,   INPUT,   DISABLE),
+	GPIO_PINMUX(GMI_CS7_N,  NORMAL,   NORMAL,   INPUT,   DISABLE),
 };
 #endif
 
