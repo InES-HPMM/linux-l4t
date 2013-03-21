@@ -1108,6 +1108,8 @@ static int tegra_aic326x_event_int_spk(struct snd_soc_dapm_widget *w,
 			/*  set speaker amplifier voulme to 18 dB, E-1 state */
 			snd_soc_write(codec, AIC3262_SPK_AMP_CNTL_R4, 0x33);
 		}
+		if (machine->audio_reg)
+			regulator_enable(machine->audio_reg);
 	} else {
 		ret = edp_update_client_request(
 					machine->spk_edp_client,
@@ -1116,6 +1118,8 @@ static int tegra_aic326x_event_int_spk(struct snd_soc_dapm_widget *w,
 			dev_err(card->dev,
 				"E+1 state transition failed\n");
 		}
+		if (machine->audio_reg)
+			regulator_disable(machine->audio_reg);
 	}
 err_null_spk_edp_client:
 	if (!(machine->gpio_requested & GPIO_SPKR_EN))
@@ -1134,6 +1138,13 @@ static int tegra_aic326x_event_hp(struct snd_soc_dapm_widget *w,
 	struct snd_soc_card *card = dapm->card;
 	struct tegra_aic326x *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+
+	if (machine->audio_reg) {
+		if (SND_SOC_DAPM_EVENT_ON(event))
+			regulator_enable(machine->audio_reg);
+		else
+			regulator_disable(machine->audio_reg);
+	}
 
 	if (!(machine->gpio_requested & GPIO_HP_MUTE))
 		return 0;
@@ -1545,6 +1556,12 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	if (IS_ERR(machine->hmic_reg)) {
 		dev_info(&pdev->dev, "No headset mic regulator found\n");
 		machine->hmic_reg = 0;
+	}
+
+	machine->audio_reg = regulator_get(NULL, "avdd_audio");
+	if (IS_ERR(machine->audio_reg)) {
+		dev_info(&pdev->dev, "No avdd_audio regulator found\n");
+		machine->audio_reg = 0;
 	}
 
 	card->dev = &pdev->dev;
