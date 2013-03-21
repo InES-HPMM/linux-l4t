@@ -569,8 +569,10 @@ static int pluto_imx091_power_off(struct nvc_regulator *vreg)
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
-	regulator_disable(pluto_i2cvdd);
-	regulator_disable(pluto_vcmvdd);
+	if (pluto_i2cvdd)
+		regulator_disable(pluto_i2cvdd);
+	if (pluto_vcmvdd)
+		regulator_disable(pluto_vcmvdd);
 
 	return 0;
 }
