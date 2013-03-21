@@ -2613,7 +2613,8 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	deinit_firmware(tegra);
 	tegra_xusb_regulator_deinit(tegra);
 	tegra_usb2_clocks_deinit(tegra);
-	tegra_xusb_partitions_clk_deinit(tegra);
+	if (!tegra->hc_in_elpg)
+		tegra_xusb_partitions_clk_deinit(tegra);
 	utmi_phy_pad_disable();
 
 	return 0;
