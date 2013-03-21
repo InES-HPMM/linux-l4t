@@ -922,7 +922,7 @@ static int max77660_pwm_dvfs_init(struct device *parent,
 
 	val = (1 << MAX77660_BUCK4_DVFS_PWMEN_SHIFT);
 	switch (dvfs_pd->step_voltage_uV) {
-	case 12250:
+	case 12500:
 		val |= 0x1;
 		break;
 	case 25000:
