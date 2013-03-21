@@ -175,6 +175,12 @@
 
 #define RP_LINK_CONTROL_STATUS					0x00000090
 #define RP_LINK_CONTROL_STATUS_LINKSTAT_MASK			0x3fff0000
+#define RP_LINK_CONTROL_STATUS_RETRAIN_LINK			(0x1 << 5)
+
+#define RP_LINK_CONTROL_STATUS_2				0x000000B0
+#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_MASK		0x0000000F
+#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1		(0x1 << 0)
+#define RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2		(0x2 << 0)
 
 #define PADS_CTL_SEL						0x0000009C
 
@@ -1435,12 +1441,82 @@ static void tegra_pcie_fpga_phy_init(void)
 }
 #endif
 
+static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
+{
+	u16 val, link_up_spd, link_dn_spd;
+	struct pci_dev *up_dev, *dn_dev;
+
+	/* skip if current device is not PCI express capable */
+	/* or is either a root port or downstream port */
+	if (!pci_is_pcie(pdev))
+		goto skip;
+	if ((pci_pcie_type(pdev) == PCI_EXP_TYPE_DOWNSTREAM) ||
+		(pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT))
+		goto skip;
+
+	/* initialize upstream/endpoint and downstream/root port device ptr */
+	up_dev = pdev;
+	dn_dev = pdev->bus->self;
+
+	/* read link status register to find current speed */
+	pcie_capability_read_word(up_dev, PCI_EXP_LNKSTA, &link_up_spd);
+	link_up_spd &= PCI_EXP_LNKSTA_CLS;
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKSTA, &link_dn_spd);
+	link_dn_spd &= PCI_EXP_LNKSTA_CLS;
+
+	/* skip if both devices across the link are already trained to gen2 */
+	if (isGen2 &&
+		(link_up_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2) &&
+		(link_dn_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2))
+		goto skip;
+	/* skip if both devices across the link are already trained to gen1 */
+	else if (!isGen2 &&
+		((link_up_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1) ||
+		(link_dn_spd == RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1)))
+		goto skip;
+
+	/* read link capability register to find max speed supported */
+	pcie_capability_read_word(up_dev, PCI_EXP_LNKCAP, &link_up_spd);
+	link_up_spd &= PCI_EXP_LNKCAP_SLS;
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCAP, &link_dn_spd);
+	link_dn_spd &= PCI_EXP_LNKCAP_SLS;
+
+	/* skip if any device across the link is not supporting gen2 speed */
+	if (isGen2 &&
+		((link_up_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2) ||
+		(link_dn_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2)))
+		goto skip;
+	/* skip if any device across the link is not supporting gen1 speed */
+	else if (!isGen2 &&
+		((link_up_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1) ||
+		(link_dn_spd < RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1)))
+		goto skip;
+
+	/* Set Link Speed */
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCTL2, &val);
+	val &= ~RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_MASK;
+	if (isGen2)
+		val |= RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN2;
+	else
+		val |= RP_LINK_CONTROL_STATUS_2_TGT_LINK_SPD_GEN1;
+	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL2, val);
+
+	/* Retrain the link */
+	pcie_capability_read_word(dn_dev, PCI_EXP_LNKCTL, &val);
+	val |= RP_LINK_CONTROL_STATUS_RETRAIN_LINK;
+	pcie_capability_write_word(dn_dev, PCI_EXP_LNKCTL, val);
+
+skip:
+	return 0;
+}
+
 static int __init tegra_pcie_init(void)
 {
 	int err = 0;
 	int port;
 	int rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
+	struct pci_dev *pdev = NULL;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	pcibios_min_mem = 0x1000;
@@ -1517,8 +1593,11 @@ static int __init tegra_pcie_init(void)
 		}
 	}
 
-	return 0;
+	/* configure all links to gen2 speed by default */
+	for_each_pci_dev(pdev)
+		tegra_pcie_change_link_speed(pdev, true);
 
+	return 0;
 err_irq:
 	gpio_free(tegra_pcie.plat_data->gpio);
 	return err;
