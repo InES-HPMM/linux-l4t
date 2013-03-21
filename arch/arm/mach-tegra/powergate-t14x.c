@@ -430,7 +430,9 @@ int tegra14x_powergate_mc_flush(int id)
 		spin_unlock_irqrestore(&tegra14x_powergate_lock, flags);
 
 		do {
+#ifdef CONFIG_TEGRA_ERRATA_1213083
 			udelay(10);
+#endif
 			rst_stat = 0;
 			ret = tegra14x_stable_hotreset_check(&rst_stat);
 			if (!ret)
