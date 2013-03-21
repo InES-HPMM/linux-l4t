@@ -37,6 +37,7 @@
 #define BOARD_E1681   0x0691
 #define BOARD_E1670   0x0686
 #define BOARD_E1671   0x0687
+#define BOARD_E1690   0x069A
 
 
 /* Panel board ID */
