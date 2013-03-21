@@ -334,6 +334,7 @@ static struct i2c_board_info dsi_l_720p_5_i2c_led_info = {
 
 static struct lm3528_platform_data lm3528_pdata = {
 	.dft_brightness	= 100,
+	.is_powered = dsi_l_720p_5_check_bl_power,
 };
 
 static struct i2c_board_info lm3528_dsi_l_720p_5_i2c_led_info = {

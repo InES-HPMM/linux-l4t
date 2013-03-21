@@ -52,6 +52,7 @@ struct lm3528_backlight_data {
 	struct i2c_client	*client;
 	struct regulator	*regulator;
 	struct backlight_device *bl;
+	bool (*is_powered)(void);
 	int (*notify)(struct device *dev, int brightness);
 	int			current_brightness;
 };
@@ -72,6 +73,15 @@ static const struct regmap_config lm3528_regmap_config = {
 static int lm3528_backlight_set(struct backlight_device *bl, int brightness)
 {
 	struct lm3528_backlight_data *data = bl_get_data(bl);
+
+	if (data->is_powered)
+		if (!data->is_powered()) {
+			pr_err("%s skipped as panel is not powered\n",
+				__func__);
+			/* do not report error else suspend fails */
+			return 0;
+		}
+
 	data->current_brightness = brightness;
 
 	regmap_update_bits(data->regmap, LM3528_GP,
@@ -120,6 +130,7 @@ static int lm3528_bl_probe(struct i2c_client *i2c,
 	data->lm3528_dev = &i2c->dev;
 	data->current_brightness = 0;
 	data->notify = pData->notify;
+	data->is_powered = pData->is_powered;
 	data->regulator = regulator_get(data->lm3528_dev, "vin");
 	if (IS_ERR(data->regulator)) {
 		dev_err(&i2c->dev, "%s: failed to get regulator\n", __func__);

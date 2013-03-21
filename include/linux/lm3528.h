@@ -5,6 +5,7 @@
 
 struct lm3528_platform_data {
 	unsigned int dft_brightness;
+	bool (*is_powered)(void);
 	int (*notify)(struct device *dev, int brightness);
 };
 
