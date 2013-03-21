@@ -657,56 +657,50 @@ static struct i2c_board_info __initdata bq20z45_pdata[] = {
 };
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
-static int tegra_skin_match(struct thermal_zone_device *thz, void *data)
-{
-	return strcmp((char *)data, thz->type) == 0;
-}
+static struct thermal_trip_info skin_trips[] = {
+	{
+		.cdev_type = "skin-balanced",
+		.trip_temp = 45000,
+		.trip_type = THERMAL_TRIP_PASSIVE,
+		.upper = THERMAL_NO_LIMIT,
+		.lower = THERMAL_NO_LIMIT,
+		.hysteresis = 0,
+	},
+};
 
-static int tegra_skin_get_temp(void *data, long *temp)
-{
-	struct thermal_zone_device *thz;
-
-	thz = thermal_zone_device_find(data, tegra_skin_match);
-
-	if (!thz || thz->ops->get_temp(thz, temp))
-		*temp = 25000;
-
-	return 0;
-}
+static struct therm_est_subdevice skin_devs[] = {
+	{
+		.dev_data = "nct_ext",
+		.coeffs = {
+			2, 1, 1, 1,
+			1, 1, 1, 1,
+			1, 1, 1, 0,
+			1, 1, 0, 0,
+			0, 0, -1, -7
+		},
+	},
+	{
+		.dev_data = "nct_int",
+		.coeffs = {
+			-11, -7, -5, -3,
+			-3, -2, -1, 0,
+			0, 0, 1, 1,
+			1, 2, 2, 3,
+			4, 6, 11, 18
+		},
+	},
+};
 
 static struct therm_est_data skin_data = {
-	.cdev_type = "skin-balanced",
+	.num_trips = ARRAY_SIZE(skin_trips),
+	.trips = skin_trips,
 	.toffset = 9793,
 	.polling_period = 1100,
-	.ndevs = 2,
+	.passive_delay = 15000,
 	.tc1 = 10,
 	.tc2 = 1,
-	.devs = {
-			{
-				.dev_data = "nct_ext",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					2, 1, 1, 1,
-					1, 1, 1, 1,
-					1, 1, 1, 0,
-					1, 1, 0, 0,
-					0, 0, -1, -7
-				},
-			},
-			{
-				.dev_data = "nct_int",
-				.get_temp = tegra_skin_get_temp,
-				.coeffs = {
-					-11, -7, -5, -3,
-					-3, -2, -1, 0,
-					0, 0, 1, 1,
-					1, 2, 2, 3,
-					4, 6, 11, 18
-				},
-			},
-	},
-	.trip_temp = 45000,
-	.passive_delay = 15000,
+	.ndevs = ARRAY_SIZE(skin_devs),
+	.devs = skin_devs,
 };
 
 static struct throttle_table skin_throttle_table[] = {
