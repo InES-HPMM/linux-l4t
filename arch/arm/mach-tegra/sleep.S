@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -113,12 +113,6 @@ ENDPROC(tegra_pen_unlock)
  * corrupts r4-r5
  */
 ENTRY(tegra_cpu_exit_coherency)
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	ldr	r4, =TEGRA_CLK_RESET_VIRT
-	ldr	r5, [r4, #0x70]	/* BOND_OUT_L */
-	tst	r5, #1
-	bne	.
-#endif
 	exit_smp r4, r5
 	mov	pc, lr
 ENDPROC(tegra_cpu_exit_coherency)
