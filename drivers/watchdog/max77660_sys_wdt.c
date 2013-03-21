@@ -110,8 +110,8 @@ static int max77660_sys_wdt_set_timeout(struct watchdog_device *wdt_dev,
 
 	ret = max77660_reg_update(wdt->parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_GLOBAL_CFG2,
-			MAX77660_GLBLCNFG2_TWD_SYS_MASK,
-			MAX77660_GLBLCNFG2_TWD_SYS(i));
+			MAX77660_GLBLCNFG2_TWD_SYS(i),
+			MAX77660_GLBLCNFG2_TWD_SYS_MASK);
 	if (ret < 0) {
 		dev_err(wdt->dev, "GLOBAL_CFG2 update failed: %d\n", ret);
 		return ret;
