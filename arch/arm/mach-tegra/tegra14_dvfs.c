@@ -415,11 +415,15 @@ static int __init set_cpu_dvfs_data(
 			speedo, d->speedo_scale, &table->cvb_pll_param);
 		mv = round_cvb_voltage(mv, d->voltage_scale);
 
-		/* Check maximum frequency at minimum voltage for dfll source */
+		/*
+		 * Check maximum frequency at minimum voltage for dfll source;
+		 * round down unless all table entries are above Vmin, then use
+		 * the 1st entry as is.
+		 */
 		dfll_mv = max(dfll_mv, min_dfll_mv);
 		if (dfll_mv > min_dfll_mv) {
 			if (!j)
-				break;	/* 1st entry already above Vmin */
+				fmax_at_vmin = table->freq;
 			if (!fmax_at_vmin)
 				fmax_at_vmin = cpu_dvfs->freqs[j - 1];
 		}
@@ -451,8 +455,7 @@ static int __init set_cpu_dvfs_data(
 		if (dfll_mv > d->max_mv)
 			break;
 	}
-	/* Table must not be empty and must have and at least one entry below,
-	   and one entry above Vmin */
+	/* Table must not be empty, must have at least one entry above Vmin */
 	if (!i || !j || !fmax_at_vmin) {
 		pr_err("tegra14_dvfs: invalid cpu dvfs table\n");
 		return -ENOENT;
