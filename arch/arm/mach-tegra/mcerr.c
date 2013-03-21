@@ -319,8 +319,10 @@ static int __init tegra_mcerr_init(void)
 	u32 reg;
 	int ret = 0;
 
-	reg = 0x0F7F1010;
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	reg = 0x0f7f1010;
 	writel(reg, mc + MC_RESERVED_RSV);
+#endif
 
 #if defined(CONFIG_TEGRA_MC_EARLY_ACK)
 	reg = readl(mc + MC_EMEM_ARB_OVERRIDE);
