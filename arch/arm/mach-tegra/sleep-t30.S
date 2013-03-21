@@ -398,7 +398,7 @@ ENTRY(tegra3_lp1_reset)
 	bne	emc_exit_selfrefresh
 
 	mov32	r0, TEGRA_CLK_RESET_BASE
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
 	mov	r1, #(1<<28)
 	str	r1, [r0, #CLK_RESET_SCLK_BURST]

@@ -208,7 +208,7 @@ ENDPROC(tegra_flush_l1_cache)
  */
 ENTRY(tegra_sleep_cpu_finish)
 	mov	r4, r0
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	ldr	r0, =0xFFFFFFFC
 	ldr	r1, =0xFFFFFFE4
 	ldr	r2, =TEGRA_RESET_HANDLER_BASE
@@ -286,7 +286,8 @@ tegra_shut_off_mmu:
 	dsb
 	mcr	p15, 0, r3, c1, c0, 0
 	isb
-#if defined(CONFIG_CACHE_L2X0) && !defined(CONFIG_TRUSTED_FOUNDATIONS)
+#if defined(CONFIG_CACHE_L2X0) && \
+		!defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	tst	r11, #1
 	beq	2f
 	mov32	r1, TEGRA_ARM_PL310_BASE
@@ -305,7 +306,7 @@ tegra_shut_off_mmu:
 	mov	r2, #0
 	str	r2, [r1, #L2X0_CACHE_SYNC]
 	str	r2, [r1, #L2X0_CTRL]
-#endif /* CONFIG_CACHE_L2X0 && !CONFIG_TRUSTED_FOUNDATIONS */
+#endif /* CONFIG_CACHE_L2X0 && !CONFIG_TEGRA_USE_SECURE_KERNEL */
 2:	mov	pc, r0
 
 /*
@@ -325,7 +326,7 @@ ENTRY(tegra_cpu_pllp)
 ENDPROC(tegra_cpu_pllp)
 #endif
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 /*
  * tegra_generic_smc
  *

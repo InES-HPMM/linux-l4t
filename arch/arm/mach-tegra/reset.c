@@ -36,7 +36,7 @@ static bool is_enabled;
 static void tegra_cpu_reset_handler_enable(void)
 {
 	void __iomem *iram_base = IO_ADDRESS(TEGRA_IRAM_BASE);
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	void __iomem *evp_cpu_reset =
 		IO_ADDRESS(TEGRA_EXCEPTION_VECTORS_BASE + 0x100);
 	void __iomem *sb_ctrl = IO_ADDRESS(TEGRA_SB_BASE);
@@ -48,7 +48,7 @@ static void tegra_cpu_reset_handler_enable(void)
 	memcpy(iram_base, (void *)__tegra_cpu_reset_handler_start,
 		tegra_cpu_reset_handler_size);
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	tegra_generic_smc(0xFFFFF200,
 		TEGRA_RESET_HANDLER_BASE + tegra_cpu_reset_handler_offset, 0);
 #else

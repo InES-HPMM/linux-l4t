@@ -78,7 +78,7 @@ ENDPROC(tegra_secondary_startup)
  *	  re-enabling sdram.
  */
 ENTRY(tegra_resume)
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	mov32	r1, TEGRA_TMRUS_BASE
 	ldr	r0, [r1]
 	adr	r1, tegra_resume_entry_time
@@ -115,7 +115,7 @@ ENTRY(tegra_resume)
 	str	r1, [r0]
 #endif /* CONFIG_HAVE_ARM_SCU */
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	mov32	r1, TEGRA_TMRUS_BASE
 	ldr	r0, [r1]
@@ -131,10 +131,11 @@ ENTRY(tegra_resume)
 	adr	r1, tegra_resume_smc_exit_time
 	str	r0, [r1]
 #endif /* !CONFIG_ARCH_TEGRA_11x_SOC */
-#endif /* CONFIG_TRUSTED_FOUNDATIONS */
+#endif /* CONFIG_TEGRA_USE_SECURE_KERNEL */
 
 #ifdef CONFIG_CACHE_L2X0
-#if !defined(CONFIG_TRUSTED_FOUNDATIONS) && !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
+		!defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	adr	r0, tegra_resume_l2_init
 	ldr	r1, [r0]
 	tst	r1, #1
@@ -186,13 +187,13 @@ ENTRY(tegra_resume)
 	str	r2, [r3, #L2X0_AUX_CTRL]
 	mov	r2, #1
 	str	r2, [r3, #L2X0_CTRL]
-#endif /* ?CONFIG_TRUSTED_FOUNDATIONS */
+#endif /* ?CONFIG_TEGRA_USE_SECURE_KERNEL */
 #endif /* CONFIG_CACHE_L2X0 */
 no_l2_init:
 	b	cpu_resume
 ENDPROC(tegra_resume)
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	.globl tegra_resume_timestamps_start
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	.globl tegra_resume_smc_entry_time
@@ -210,7 +211,7 @@ tegra_resume_smc_exit_time:
 tegra_resume_entry_time:
 	.long	0
 tegra_resume_timestamps_end:
-#endif /* CONFIG_TRUSTED_FOUNDATIONS */
+#endif /* CONFIG_TEGRA_USE_SECURE_KERNEL */
 #ifdef CONFIG_CACHE_L2X0
 	.globl tegra_resume_l2_init
 tegra_resume_l2_init:
@@ -371,7 +372,7 @@ ENTRY(__tegra_cpu_reset_handler)
 #if DEBUG_CPU_RESET_HANDLER
 	b	.
 #endif
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 	cpsid	aif, 0x13			@ SVC mode, interrupts disabled
 	mrc	p15, 0, r0, c0, c0, 0		@ read main ID register
 	and	r5, r0, #0x00f00000		@ variant

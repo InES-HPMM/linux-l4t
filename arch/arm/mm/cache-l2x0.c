@@ -97,7 +97,7 @@ static inline void l2x0_inv_line(unsigned long addr)
 	writel_relaxed(addr, base + L2X0_INV_LINE_PA);
 }
 
-#if !defined(CONFIG_TRUSTED_FOUNDATIONS) && \
+#if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
 	(defined(CONFIG_PL310_ERRATA_588369) || defined(CONFIG_PL310_ERRATA_727915))
 static inline void debug_writel(unsigned long val)
 {

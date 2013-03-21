@@ -171,7 +171,7 @@ obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += mcerr-t11.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += mcerr-t14.o
 endif
 
-obj-$(CONFIG_TRUSTED_FOUNDATIONS)       += tegra_tzram.o
+obj-$(CONFIG_TEGRA_USE_SECURE_KERNEL)   += tegra_tzram.o
 
 obj-${CONFIG_MACH_CURACAO}              += board-curacao.o
 obj-${CONFIG_MACH_CURACAO}              += board-curacao-panel.o

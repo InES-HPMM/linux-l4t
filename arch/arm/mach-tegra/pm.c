@@ -571,7 +571,7 @@ bool tegra_set_cpu_in_pd(int cpu)
 static void tegra_sleep_core(enum tegra_suspend_mode mode,
 			     unsigned long v2p)
 {
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	outer_flush_range(__pa(&tegra_resume_timestamps_start),
 			  __pa(&tegra_resume_timestamps_end));
 
@@ -604,7 +604,7 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 
 static inline void tegra_stop_mc_clk(unsigned long v2p)
 {
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 	outer_flush_range(__pa(&tegra_resume_timestamps_start),
 			  __pa(&tegra_resume_timestamps_end));
 	trace_smc_sleep_core(NVSEC_SMC_START);
@@ -695,7 +695,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	suspend_cpu_complex(flags);
 	tegra_cluster_switch_time(flags, tegra_cluster_switch_time_id_prolog);
 #if defined(CONFIG_CACHE_L2X0)
-#if defined(CONFIG_TRUSTED_FOUNDATIONS)
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	flush_cache_all();
 	outer_disable();
 #elif !defined(CONFIG_ARCH_TEGRA_14x_SOC)
@@ -713,11 +713,11 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_init_cache(true);
-#elif defined(CONFIG_TRUSTED_FOUNDATIONS)
+#elif defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	tegra_init_cache(false);
 #endif
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
 	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);
@@ -1112,7 +1112,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	}
 #endif
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	trace_smc_wake(tegra_resume_smc_entry_time, NVSEC_SMC_START);
 	trace_smc_wake(tegra_resume_smc_exit_time, NVSEC_SMC_DONE);

@@ -3,7 +3,7 @@ extern struct smp_operations tegra_smp_ops;
 extern unsigned long tegra_tsec_start;
 extern unsigned long tegra_tsec_size;
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 extern unsigned long tegra_tzram_start;
 extern unsigned long tegra_tzram_size;
 #endif

@@ -330,7 +330,7 @@ void __init tegra_cpu_timer_init(void)
 
 static void tegra_arch_timer_per_cpu_init(void)
 {
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#if defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	return;
 #else
 	if (arch_timer_initialized) {

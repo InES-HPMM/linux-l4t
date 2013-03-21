@@ -694,9 +694,17 @@ config TEGRA_SOCTHERM
         help
 	  Enables use of soctherm for thermal management.
 
+config TEGRA_USE_SECURE_KERNEL
+	bool "Boot the linux kernel in non-secure mode"
+	help
+	 When enabled, the CPU will boot in the non-secure mode and issue
+	 SMCs in order to access secure registers. SMC requests would be
+	 serviced by a third party software component running in the secure
+	 mode.
+
 config TEGRA_VIRTUAL_CPUID
 	bool "virtualized CPUID"
-	depends on !TRUSTED_FOUNDATIONS
+	depends on !TEGRA_USE_SECURE_KERNEL
 	depends on ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	default n
 	help
@@ -745,4 +753,5 @@ config TEGRA_PLLM_SCALED
 	  granularity of possible memory rate steps. In this case PLLC
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
+
 endif

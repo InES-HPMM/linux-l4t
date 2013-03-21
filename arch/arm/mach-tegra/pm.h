@@ -289,7 +289,7 @@ void tegra_smp_save_power_mask(void);
 void tegra_smp_restore_power_mask(void);
 #endif
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 void tegra_generic_smc(u32 type, u32 subtype, u32 arg);
 #endif
 

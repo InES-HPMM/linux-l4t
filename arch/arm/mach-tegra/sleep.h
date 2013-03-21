@@ -19,7 +19,7 @@
 
 #include "iomap.h"
 
-#ifndef CONFIG_TRUSTED_FOUNDATIONS
+#ifndef CONFIG_TEGRA_USE_SECURE_KERNEL
 /* FIXME: The code associated with this should be removed if our change to
    save the diagnostic regsiter in the CPU context is accepted. */
 #define USE_TEGRA_DIAG_REG_SAVE	1
@@ -331,7 +331,7 @@ int tegra3_sleep_cpu_secondary_finish(unsigned long int);
 int tegra3_stop_mc_clk_finish(unsigned long int);
 #endif
 
-#ifdef CONFIG_TRUSTED_FOUNDATIONS
+#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
 extern unsigned long tegra_resume_timestamps_start;
 extern unsigned long tegra_resume_timestamps_end;
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
