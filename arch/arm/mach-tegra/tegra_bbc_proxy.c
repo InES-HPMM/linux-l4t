@@ -316,6 +316,9 @@ static ssize_t iso_reserve_store(struct device *dev,
 	if (!ret)
 		dev_err(dev, "can't reserve iso bw\n");
 
+	tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
+	tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
+
 	return size;
 }
 
@@ -380,7 +383,9 @@ static ssize_t iso_res_realize_store(struct device *dev,
 		return size;
 	}
 
-/* TODO: set LA*/
+	tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
+	tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
+
 	return size;
 }
 
@@ -583,6 +588,8 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		MAX_ISO_BW_REQ, NULL, NULL);
 	if (!bbc->isomgr_handle)
 		goto iso_error;
+
+	tegra_set_latency_allowance(TEGRA_LA_BBCLLR, 640);
 
 	attrs = mc_attributes;
 	while ((attr = *attrs++)) {
