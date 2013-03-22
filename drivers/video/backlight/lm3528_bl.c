@@ -84,6 +84,9 @@ static int lm3528_backlight_set(struct backlight_device *bl, int brightness)
 
 	data->current_brightness = brightness;
 
+	/* normalize the brightness value [0-255] to lm3528 range */
+	brightness = brightness * LM3528_BL_MAX_CURR / 255;
+
 	regmap_update_bits(data->regmap, LM3528_GP,
 				LM3528_GP_ENM | LM3528_GP_UNI,
 				LM3528_GP_ENM | LM3528_GP_UNI);
