@@ -683,26 +683,42 @@ err_out:
 	return err;
 }
 
-static size_t __smmu_iommu_unmap_page(struct smmu_as *as, dma_addr_t iova)
+static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
+				       size_t bytes)
 {
-	unsigned long *pte;
-	struct page *page;
-	unsigned int *count;
+	int total = bytes >> PAGE_SHIFT;
+	unsigned long *pdir = page_address(as->pdir_page);
 
-	pte = locate_pte(as, iova, false, &page, &count);
-	if (WARN_ON(!pte))
-		return 0;
+	while (total > 0) {
+		unsigned long ptn = SMMU_ADDR_TO_PFN(iova);
+		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+		struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		unsigned long *ptbl = page_address(page);
+		unsigned long *pte = &ptbl[ptn];
+		int count = min_t(unsigned long, SZ_1K - ptn, total);
 
-	if (*pte == _PTE_VACANT(iova))
-		return 0;
+		dev_dbg(as->smmu->dev, "unmapping %d pages at once\n", count);
 
-	*pte = _PTE_VACANT(iova);
-	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
-	flush_ptc_and_tlb(as->smmu, as, iova, pte, page, 0);
-	if (!--(*count))
-		free_ptbl(as, iova);
+		if (pte) {
+			unsigned int *rest = &as->pte_count[pdn];
+			size_t bytes = sizeof(*pte) * count;
 
-	return SZ_4K;
+			memset(pte, 0, bytes);
+			FLUSH_CPU_DCACHE(pte, page, bytes);
+
+			*rest -= count;
+			if (!*rest)
+				free_ptbl(as, iova);
+
+			flush_ptc_and_tlb_range(as->smmu, as, iova, pte,
+						page, count);
+		}
+
+		iova += PAGE_SIZE * count;
+		total -= count;
+	}
+
+	return bytes;
 }
 
 static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
@@ -791,7 +807,8 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
-static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
+static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
+	size_t bytes)
 {
 	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 	unsigned long *pdir = page_address(as->pdir_page);
@@ -799,7 +816,7 @@ static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova)
 	if (!(pdir[pdn] & _PDE_NEXT))
 		return __smmu_iommu_unmap_largepage(as, iova);
 
-	return __smmu_iommu_unmap_page(as, iova);
+	return __smmu_iommu_unmap_pages(as, iova, bytes);
 }
 
 static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
@@ -812,7 +829,7 @@ static size_t smmu_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 	dev_dbg(as->smmu->dev, "[%d] %08lx\n", as->asid, iova);
 
 	spin_lock_irqsave(&as->lock, flags);
-	unmapped = __smmu_iommu_unmap(as, iova);
+	unmapped = __smmu_iommu_unmap(as, iova, bytes);
 	spin_unlock_irqrestore(&as->lock, flags);
 	return unmapped;
 }
