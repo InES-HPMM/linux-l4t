@@ -619,6 +619,13 @@ config CPULOAD_MONITOR
 	Publish cpu load measured in sysfs, to be used by user space cpu
 	frequency controllers.
 
+config SIM_MAX77660
+        tristate "Maxim SIM MAX77660"
+        depends on MFD_MAX77660
+       ---help---
+       If you say yes, SIM drv of Maxim MAX77660 will be enabled.
+       It supports SIM Card detection and SIM configuration of Max77660.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
