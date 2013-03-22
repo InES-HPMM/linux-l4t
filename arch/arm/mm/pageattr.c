@@ -31,7 +31,6 @@
 #define cpa_debug(x, ...)
 #endif
 
-extern void v7_flush_kern_cache_all(void *);
 extern void __flush_dcache_page(struct address_space *, struct page *);
 
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
