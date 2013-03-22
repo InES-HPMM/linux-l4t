@@ -174,7 +174,7 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 release_exit:
 	mutex_unlock(&camera->tegra_camera_lock);
 	WARN_ON(!atomic_xchg(&camera->in_use, 0));
-	return 0;
+	return ret;
 }
 
 static const struct file_operations tegra_camera_fops = {
@@ -263,7 +263,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 			goto clk_get_fail;
 	}
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_TEGRA_ISOMGR)
 	/* Dedicated bw is what VI could ask for at most */
 	camera->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
 					/* dedicated bw, KBps*/
@@ -300,7 +300,7 @@ int tegra_camera_unregister(struct tegra_camera *camera)
 	for (i = 0; i < CAMERA_CLK_MAX; i++)
 		clk_put(camera->clock[i].clk);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_TEGRA_ISOMGR)
 	/*
 	 * Return memory bandwidth to isomgr.
 	 * If bandwidth is zero, then latency will be ignored

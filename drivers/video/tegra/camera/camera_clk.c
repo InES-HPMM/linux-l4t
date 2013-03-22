@@ -15,6 +15,7 @@
  */
 
 #include "camera_clk.h"
+#include "camera_emc.h"
 
 int tegra_camera_enable_clk(struct tegra_camera *camera)
 {
@@ -110,11 +111,11 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			 * info->rate has peak memory bandwidth in Bps.
 			 */
 			unsigned long bw = info->rate / 1000;
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_TEGRA_ISOMGR)
 			int ret = 0;
 #endif
 
-			dev_dbg(camera->dev, "%s: bw=%lu\n",
+			dev_dbg(camera->dev, "%s: bw=%lu KBps\n",
 				__func__, bw);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -128,7 +129,7 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			clk_set_rate(clk, tegra_emc_bw_to_freq_req(bw) * 1000);
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_TEGRA_ISOMGR)
 			/*
 			 * There is no way to figure out what latency
 			 * can be tolerated in VI without reading VI
@@ -136,20 +137,10 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			 * to switch PLL source. Let's put 4 usec as
 			 * latency for now.
 			 */
-			ret = tegra_isomgr_reserve(camera->isomgr_handle,
-					bw,	/* KB/sec */
-					4);	/* usec */
-			if (!ret) {
+			ret = tegra_camera_isomgr_request(camera, bw, 4);
+			if (ret) {
 				dev_err(camera->dev,
 				"%s: failed to reserve %lu KBps\n",
-				__func__, bw);
-				return -ENOMEM;
-			}
-
-			ret = tegra_isomgr_realize(camera->isomgr_handle);
-			if (!ret) {
-				dev_err(camera->dev,
-				"%s: failed to realize %lu KBps\n",
 				__func__, bw);
 				return -ENOMEM;
 			}
@@ -247,8 +238,8 @@ unsigned int tegra_camera_get_max_bw(struct tegra_camera *camera)
 	 * Preview port has 2BPP and video port has 1.5BPP.
 	 * max_bw is KBps.
 	 */
-	max_bw = ((clk_round_rate(camera->clock[CAMERA_VI_CLK].clk, UINT_MAX) >>
-			10)*7) >> 1;
+	max_bw = ((clk_round_rate(camera->clock[CAMERA_VI_CLK].clk, UINT_MAX) /
+			1000) * 7) / 2;
 	dev_dbg(camera->dev, "%s: max_bw = %lu", __func__, max_bw);
 
 	return (unsigned int)max_bw;

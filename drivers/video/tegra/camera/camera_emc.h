@@ -20,5 +20,8 @@
 
 int tegra_camera_enable_emc(struct tegra_camera *camera);
 int tegra_camera_disable_emc(struct tegra_camera *camera);
-
+#if defined(CONFIG_TEGRA_ISOMGR)
+int tegra_camera_isomgr_request(struct tegra_camera *camera, unsigned long bw,
+				unsigned long lt);
+#endif
 #endif
