@@ -426,13 +426,21 @@ static void __init init_rail_thermal_profile(
 			break;
 
 		if ((therm_trips_table[i] >= therm_trips_table[i+1]) ||
-		    (therm_floors_table[i] < therm_floors_table[i+1]))
+		    (therm_floors_table[i] < therm_floors_table[i+1])) {
+			WARN(1, "%s: invalid thermal floors\n", rail->reg_id);
 			return;
+		}
 	}
 
 	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
-	if (therm_floors_table[i] < min_mv)
+	if (therm_floors_table[i] < min_mv) {
+		WARN(1, "%s: thermal floor below Vmin\n", rail->reg_id);
 		return;
+	}
+
+	/* Install validated thermal floors */
+	rail->therm_mv_floors = therm_floors_table;
+	rail->therm_mv_floors_num = i + 1;
 
 	/* Setup trip-points, use the same trips in dfll mode (if applicable) */
 	if (rail->pll_mode_cdev) {
@@ -441,7 +449,6 @@ static void __init init_rail_thermal_profile(
 		if (d)
 			rail->dfll_mode_cdev = rail->pll_mode_cdev;
 	}
-	rail->therm_mv_floors = therm_floors_table;
 }
 
 static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)

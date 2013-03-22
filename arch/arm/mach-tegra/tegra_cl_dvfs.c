@@ -186,8 +186,9 @@ struct tegra_cl_dvfs {
 	u8				safe_output;
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
-	u8				thermal_out_floors[MAX_THERMAL_FLOORS];
 	u8				minimax_output;
+	u8				thermal_out_floors[MAX_THERMAL_FLOORS];
+	int				therm_floors_num;
 	unsigned long			dvco_rate_min;
 
 	u8				lut_min;
@@ -362,7 +363,7 @@ static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
 	tune_min = cld->tune_state == TEGRA_CL_DVFS_TUNE_LOW ?
 		0 : cld->tune_high_out_min;
 	thermal_min = 0;
-	if (cld->cdev && (cld->thermal_idx < cld->cdev->trip_temperatures_num))
+	if (cld->thermal_idx < cld->therm_floors_num)
 		thermal_min = cld->thermal_out_floors[cld->thermal_idx];
 
 	return max(tune_min, thermal_min);
@@ -688,7 +689,7 @@ static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
 static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 {
 	unsigned long rate = cld->safe_dvfs->dfll_data.out_rate_min;
-	if (cld->cdev && (cld->thermal_idx < cld->cdev->trip_temperatures_num))
+	if (cld->thermal_idx < cld->therm_floors_num)
 		rate = find_dvco_rate_min(
 				cld, cld->thermal_out_floors[cld->thermal_idx]);
 
@@ -792,14 +793,20 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
 {
 	int i;
-	if (!cld->cdev)
+	if (!cld->safe_dvfs->dvfs_rail->therm_mv_floors ||
+	    !cld->safe_dvfs->dvfs_rail->therm_mv_floors_num)
 		return;
+
+	if (!cld->cdev)
+		WARN(1, "%s: missing dfll mode cooling device\n",
+		     cld->safe_dvfs->dvfs_rail->reg_id);
 	/*
 	 * Convert monotonically decreasing thermal floors at low temperature
 	 * into output LUT indexes; make sure there is a room for regulation
 	 * above maximum thermal floor.
 	 */
-	for (i = 0; i < cld->cdev->trip_temperatures_num; i++) {
+	cld->therm_floors_num = cld->safe_dvfs->dvfs_rail->therm_mv_floors_num;
+	for (i = 0; i < cld->therm_floors_num; i++) {
 		cld->thermal_out_floors[i] = find_mv_out_cap(
 			cld, cld->safe_dvfs->dvfs_rail->therm_mv_floors[i]);
 	}

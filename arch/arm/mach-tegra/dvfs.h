@@ -64,6 +64,7 @@ struct dvfs_rail {
 	int reg_max_millivolts;
 	int nominal_millivolts;
 	const int *therm_mv_floors;
+	int therm_mv_floors_num;
 
 	int step;
 	bool jmp_to_zero;

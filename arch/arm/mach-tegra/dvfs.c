@@ -67,14 +67,27 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 
 /*
  * Make sure that DFLL and PLL mode cooling devices have identical set of
- * trip-points (needed for DFLL/PLL auto-switch)
+ * trip-points (needed for DFLL/PLL auto-switch) and matching thermal floors.
  */
 static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 {
-	if (rail->pll_mode_cdev && !rail->therm_mv_floors) {
-		rail->pll_mode_cdev = NULL;
-		WARN(1, "%s: invalid thermal floors\n", rail->reg_id);
+	if (!rail->therm_mv_floors != !rail->therm_mv_floors_num) {
+		rail->therm_mv_floors_num = 0;
+		rail->therm_mv_floors = NULL;
+		WARN(1, "%s: not matching thermal floors/num\n", rail->reg_id);
 	}
+
+	if (rail->pll_mode_cdev) {
+		if (rail->pll_mode_cdev->trip_temperatures_num !=
+		    rail->therm_mv_floors_num) {
+			rail->pll_mode_cdev = NULL;
+			WARN(1, "%s: not matching thermal floors/trips\n",
+			     rail->reg_id);
+		}
+	}
+
+	if (rail->therm_mv_floors && !rail->pll_mode_cdev)
+		WARN(1, "%s: missing pll mode cooling device\n", rail->reg_id);
 
 	if (rail->dfll_mode_cdev) {
 		if (rail->dfll_mode_cdev != rail->pll_mode_cdev) {
@@ -305,9 +318,9 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 {
 	int min_mv = rail->min_millivolts;
 
-	if (rail->pll_mode_cdev) {
+	if (rail->therm_mv_floors) {
 		int i = rail->thermal_idx;
-		if (i < rail->pll_mode_cdev->trip_temperatures_num)
+		if (i < rail->therm_mv_floors_num)
 			min_mv = rail->therm_mv_floors[i];
 	}
 
@@ -946,9 +959,8 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 {
 	int ret = 0;
 
-#ifdef CONFIG_THERMAL
-	/* No cooling in dfll mode - nothing to do */
-	if (!rail || !rail->dfll_mode_cdev)
+	/* No thermal floors - nothing to do */
+	if (!rail || !rail->therm_mv_floors)
 		return ret;
 
 	/*
@@ -958,12 +970,12 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 	 */
 	mutex_lock(&dvfs_lock);
 	if (rail->dfll_mode &&
-	    (rail->thermal_idx < rail->pll_mode_cdev->trip_temperatures_num)) {
+	    (rail->thermal_idx < rail->therm_mv_floors_num)) {
 			int mv = rail->therm_mv_floors[rail->thermal_idx];
 			ret = dvfs_rail_set_voltage_reg(rail, mv);
 	}
 	mutex_unlock(&dvfs_lock);
-#endif
+
 	return ret;
 }
 
@@ -1086,10 +1098,9 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 		}
 		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
 
-		if ((!rail->dfll_mode && rail->pll_mode_cdev) ||
-		    rail->dfll_mode_cdev) {
+		if (rail->therm_mv_floors) {
 			int i = rail->thermal_idx;
-			if (i < rail->pll_mode_cdev->trip_temperatures_num)
+			if (i < rail->therm_mv_floors_num)
 				thermal_mv_floor = rail->therm_mv_floors[i];
 		}
 		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
