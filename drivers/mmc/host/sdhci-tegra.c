@@ -98,6 +98,8 @@
 #define TUNING_FREQ_COUNT	2
 #define TUNING_VOLTAGES_COUNT	2
 
+#define TUNING_RETRIES	1
+
 static unsigned int uhs_max_freq_MHz[] = {
 	[MMC_TIMING_UHS_SDR50] = 100,
 	[MMC_TIMING_UHS_SDR104] = 208,
@@ -1274,6 +1276,7 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
 {
 	unsigned int tap_value = starting_tap;
 	int err;
+	unsigned int retry = TUNING_RETRIES;
 
 	do {
 		/* Set the tap delay */
@@ -1281,9 +1284,15 @@ static int sdhci_tegra_scan_tap_values(struct sdhci_host *sdhci,
 
 		/* Run frequency tuning */
 		err = sdhci_tegra_run_frequency_tuning(sdhci);
-		if ((expect_failure && !err) ||
-			(!expect_failure && err))
-			break;
+		if (err && retry) {
+			retry--;
+			continue;
+		} else {
+			retry = TUNING_RETRIES;
+			if ((expect_failure && !err) ||
+				(!expect_failure && err))
+				break;
+		}
 		tap_value++;
 	} while (tap_value <= MAX_TAP_VALUES);
 
