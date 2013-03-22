@@ -540,8 +540,8 @@ void tegra14x_powergate_dis_partition(void)
  * disa and disb is hided from client. */
 bool tegra14x_powergate_check_dis_refcount(int id, int op)
 {
-	WARN_ONCE(atomic_read(&ref_count_a), "dis ref a count underflow");
-	WARN_ONCE(atomic_read(&ref_count_b), "dis ref b count underflow");
+	WARN_ONCE(atomic_read(&ref_count_a) < 0, "dis ref a count underflow");
+	WARN_ONCE(atomic_read(&ref_count_b) < 0, "dis ref b count underflow");
 
 	if (op && id == TEGRA_POWERGATE_DISA) {
 		if (atomic_inc_return(&ref_count_a) != 1)
