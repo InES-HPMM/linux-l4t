@@ -31,6 +31,7 @@
 
 #include "sleep.h"
 #include "clock.h"
+#include "reset.h"
 
 #define EMC_CFG				0xc
 #define EMC_ADR_CFG			0x10
@@ -270,6 +271,31 @@ ENTRY(tegra3_sleep_core_finish)
 	b	tegra_turn_off_mmu
 ENDPROC(tegra3_sleep_core_finish)
 
+ENTRY(tegra3_stop_mc_clk_finish)
+	mov	r4, r0
+	bl	tegra_flush_cache
+	mov	r0, r4
+	bl	tegra_cpu_exit_coherency
+
+	/* preload all the address literals that are needed for the
+	 * CPU power-gating process, to avoid loads from SDRAM (which are
+	 * not supported once SDRAM is put into self-refresh.
+	 * LP0 / LP1 use physical address, since the MMU needs to be
+	 * disabled before putting SDRAM into self-refresh to avoid
+	 * memory access due to page table walks */
+	mov32	r4, TEGRA_PMC_BASE
+	mov32	r5, TEGRA_CLK_RESET_BASE
+	mov32	r6, TEGRA_FLOW_CTRL_BASE
+	mov32	r7, TEGRA_TMRUS_BASE
+
+	mov32	r1, tegra3_stop_mc_clk
+	mov32	r2, tegra3_iram_start
+	sub	r1, r1, r2
+	mov32	r2, TEGRA_IRAM_CODE_AREA
+	add	r1, r1, r2
+	b	tegra_turn_off_mmu
+ENDPROC(tegra3_stop_mc_clk_finish)
+
 /*
  * tegra3_sleep_cpu_secondary_finish(unsigned long v2p)
  *
@@ -365,6 +391,12 @@ ENTRY(tegra3_lp1_reset)
 	/* the CPU and system bus are running at 32KHz and executing from
 	 * IRAM when this code is executed; immediately switch to CLKM and
 	 * enable PLLP, PLLM, PLLC, and PLLX. */
+
+	ldr	r8, [r12, #RESET_DATA(MASK_MC_CLK)]
+	tst	r8, r11		@ if memory clock stopped
+	mov32	r2, TEGRA_PMC_BASE
+	bne	emc_exit_selfrefresh
+
 	mov32	r0, TEGRA_CLK_RESET_BASE
 #ifndef CONFIG_TRUSTED_FOUNDATIONS
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
@@ -573,11 +605,14 @@ powerup_l2_done:
 lp1_exit_resume:
 #endif
 
+emc_exit_selfrefresh:
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	mov32	r0, TEGRA_EMC_BASE		@ r0 reserved for emc base
+	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	mov32	r0, TEGRA_EMC0_BASE		@ r0 reserved for emc base
+	add	r5, pc, #tegra11_sdram_pad_save-(.+8)	@ r5 --> saved data
 #endif
 
 	ldr	r1, [r5, #0x14]	@ PMC_IO_DPD_STATUS
@@ -924,6 +959,9 @@ tegra3_lp0_tear_down_core:
 	bl	tegra3_cpu_clk32k
 	b	tegra3_enter_sleep
 
+tegra3_stop_mc_clk:
+	bl	tegra3_sdram_self_refresh
+	b	tegra3_enter_sleep
 
 /*
  * tegra3_cpu_clk32k

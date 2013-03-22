@@ -79,6 +79,7 @@ struct tegra_suspend_platform_data {
 	unsigned long min_residency_ncpu_fast;
 	unsigned long min_residency_crail;
 #endif
+	unsigned long min_residency_mc_clk;
 };
 
 /* clears io dpd settings before kernel code */
@@ -87,6 +88,7 @@ void tegra_bl_io_dpd_cleanup(void);
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
+unsigned long tegra_mc_clk_stop_min_residency(void);
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 unsigned long tegra_min_residency_vmin_fmin(void);
 unsigned long tegra_min_residency_ncpu(void);
@@ -95,6 +97,8 @@ unsigned long tegra_min_residency_crail(void);
 void tegra_clear_cpu_in_pd(int cpu);
 bool tegra_set_cpu_in_pd(int cpu);
 
+void tegra_mc_clk_prepare(void);
+void tegra_mc_clk_finish(void);
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC

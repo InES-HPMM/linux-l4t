@@ -29,7 +29,10 @@
 #define TEGRA_RESET_C0_L2_DATA_LATENCY	7
 #define TEGRA_RESET_C1_L2_TAG_LATENCY	8
 #define TEGRA_RESET_C1_L2_DATA_LATENCY	9
-#define TEGRA_RESET_DATA_SIZE		10
+#define TEGRA_RESET_MASK_MC_CLK		10
+#define TEGRA_RESET_DATA_SIZE		11
+
+#define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
 
 #ifndef __ASSEMBLY__
 
@@ -45,6 +48,10 @@ void tegra_secondary_startup(void);
 #ifdef CONFIG_PM_SLEEP
 #define tegra_cpu_lp1_mask ((unsigned long *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE + \
 		((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_LP1] - \
+		 (u32)__tegra_cpu_reset_handler_start))))
+
+#define tegra_mc_clk_mask ((unsigned long *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE + \
+		((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_MC_CLK] - \
 		 (u32)__tegra_cpu_reset_handler_start))))
 
 #define tegra_cpu_reset_handler_ptr ((u32 *)(IO_ADDRESS(TEGRA_RESET_HANDLER_BASE + \

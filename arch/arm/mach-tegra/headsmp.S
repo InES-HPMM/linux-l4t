@@ -39,8 +39,6 @@
 #define RESET_DATA_PHYS (TEGRA_RESET_HANDLER_BASE \
 	+ __tegra_cpu_reset_handler_data - __tegra_cpu_reset_handler_start)
 
-#define RESET_DATA(x)	((TEGRA_RESET_##x)*4)
-
 #ifdef CONFIG_SMP
 /*
  *	tegra_secondary_startup

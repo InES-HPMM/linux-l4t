@@ -52,6 +52,8 @@
 #include "sleep.h"
 #include "timer.h"
 
+#define DRAM_SELF_REFRESH_EXIT_LATENCY	10000
+
 int tegra_pg_exit_latency;
 static int tegra_pd_power_off_time;
 static unsigned int tegra_pd_min_residency;
@@ -64,7 +66,7 @@ struct cpuidle_driver tegra_idle_driver = {
 	.owner = THIS_MODULE,
 	.en_core_tk_irqen = 1,
 #ifdef CONFIG_PM_SLEEP
-	.state_count = 2,
+	.state_count = 3,
 #else
 	.state_count = 1,
 #endif
@@ -73,10 +75,18 @@ struct cpuidle_driver tegra_idle_driver = {
 #ifdef CONFIG_PM_SLEEP
 		[1] = {
 			.enter		= tegra_idle_enter_pd,
-			.power_usage	= 0,
+			.power_usage	= 100,
 			.flags		= CPUIDLE_FLAG_TIME_VALID,
 			.name		= "powered-down",
 			.desc		= "CPU power gated",
+		},
+		[2] = {
+			.enter		= tegra_idle_enter_pd,
+			.power_usage	= 0,
+			.flags		= CPUIDLE_FLAG_TIME_VALID,
+			.name		= "mc-clock",
+			.desc		= "MC clock stop",
+			.disabled	= true,
 		},
 #endif
 	},
@@ -173,6 +183,10 @@ static int tegra_cpuidle_register_device(struct cpuidle_driver *drv,
 	dev->cpu = cpu;
 	dev->state_count = drv->state_count;
 
+	/* MC clock stop is only for CPU 0 */
+	if (cpu != 0)
+		dev->state_count -= 1;
+
 	if (cpuidle_register_device(dev)) {
 		pr_err("CPU%u: failed to register idle device\n", cpu);
 		kfree(dev);
@@ -217,6 +231,14 @@ static int __init tegra_cpuidle_init(void)
 	if (state->target_residency < tegra_pd_min_residency)
 		state->target_residency = tegra_pd_min_residency;
 
+	state = &tegra_idle_driver.states[2];
+	state->exit_latency = tegra_cpu_power_good_time() +
+		DRAM_SELF_REFRESH_EXIT_LATENCY;
+	state->target_residency = tegra_cpu_power_off_time() +
+		tegra_cpu_power_good_time() + DRAM_SELF_REFRESH_EXIT_LATENCY;
+	if (state->target_residency < tegra_mc_clk_stop_min_residency())
+		state->target_residency = tegra_mc_clk_stop_min_residency();
+
 	tegra_pd_min_residency = tegra_cpu_lp2_min_residency();
 	tegra_pg_exit_latency = tegra_cpu_power_good_time();
 	tegra_pd_power_off_time = tegra_cpu_power_off_time();
@@ -228,6 +250,9 @@ static int __init tegra_cpuidle_init(void)
 		memcpy(drv, &tegra_idle_driver, sizeof(tegra_idle_driver));
 
 		per_cpu(tegra_idle_drivers, cpu) = drv;
+
+		if (cpu != 0)
+			drv->state_count -= 1;
 
 		ret = cpuidle_register_cpu_driver(drv, cpu);
 		if (ret) {

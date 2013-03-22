@@ -110,6 +110,7 @@ static DEFINE_SPINLOCK(tegra_lp2_lock);
 static cpumask_t tegra_in_lp2;
 static cpumask_t *iram_cpu_lp2_mask;
 static unsigned long *iram_cpu_lp1_mask;
+static unsigned long *iram_mc_clk_mask;
 static u8 *iram_save;
 static unsigned long iram_save_size;
 static void __iomem *iram_code = IO_ADDRESS(TEGRA_IRAM_CODE_AREA);
@@ -257,6 +258,11 @@ unsigned long tegra_cpu_lp2_min_residency(void)
 		return 2000;
 
 	return pdata->cpu_lp2_min_residency;
+}
+
+unsigned long tegra_mc_clk_stop_min_residency(void)
+{
+	return 20000;
 }
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
@@ -594,6 +600,22 @@ static inline void tegra_sleep_cpu(unsigned long v2p)
 	cpu_suspend(v2p, tegra_sleep_cpu_finish);
 }
 
+static inline void tegra_stop_mc_clk(unsigned long v2p)
+{
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
+	outer_flush_range(__pa(&tegra_resume_timestamps_start),
+			  __pa(&tegra_resume_timestamps_end));
+	trace_smc_sleep_core(NVSEC_SMC_START);
+
+	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
+			  (TEGRA_RESET_HANDLER_BASE +
+			   tegra_cpu_reset_handler_offset));
+
+	trace_smc_sleep_core(NVSEC_SMC_DONE);
+#endif
+	cpu_suspend(v2p, tegra3_stop_mc_clk_finish);
+}
+
 unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 					unsigned int flags)
 {
@@ -682,7 +704,10 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 #endif
 #endif
 
-	tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
+	if (flags & TEGRA_POWER_STOP_MC_CLK)
+		tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
+	else
+		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_init_cache(true);
@@ -731,6 +756,28 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	}
 #endif
 	return remain;
+}
+
+void tegra_mc_clk_prepare(void)
+{
+	/* copy the reset vector and SDRAM shutdown code into IRAM */
+	memcpy(iram_save, iram_code, iram_save_size);
+	memcpy(iram_code, tegra_iram_start(), iram_save_size);
+
+	*iram_cpu_lp1_mask = 1;
+	*iram_mc_clk_mask = 1;
+
+	__raw_writel(virt_to_phys(tegra_resume), pmc + PMC_SCRATCH41);
+	wmb();
+}
+
+void tegra_mc_clk_finish(void)
+{
+	/* restore IRAM */
+	memcpy(iram_code, iram_save, iram_save_size);
+	*iram_cpu_lp1_mask = 0;
+	*iram_mc_clk_mask = 0;
+	writel(0, pmc + PMC_SCRATCH41);
 }
 
 static int tegra_common_suspend(void)
@@ -1410,6 +1457,7 @@ out:
 
 	iram_cpu_lp2_mask = tegra_cpu_lp2_mask;
 	iram_cpu_lp1_mask = tegra_cpu_lp1_mask;
+	iram_mc_clk_mask = tegra_mc_clk_mask;
 
 	/* clear io dpd settings before kernel */
 	tegra_bl_io_dpd_cleanup();

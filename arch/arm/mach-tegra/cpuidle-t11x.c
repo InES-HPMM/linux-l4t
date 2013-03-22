@@ -86,6 +86,9 @@ module_param(slow_cluster_power_gating_noncpu, bool, 0644);
 static uint fast_cluster_power_down_mode __read_mostly;
 module_param(fast_cluster_power_down_mode, uint, 0644);
 
+static bool stop_mc_clk_in_idle __read_mostly = false;
+module_param(stop_mc_clk_in_idle, bool, 0644);
+
 static struct clk *cpu_clk_for_dvfs;
 
 static int pd_exit_latencies[5];
@@ -98,6 +101,7 @@ static struct {
 	unsigned long long rail_pd_time;
 	unsigned long long c0nc_pg_time;
 	unsigned long long c1nc_pg_time;
+	unsigned long long mc_clk_stop_time;
 	unsigned int rail_gating_count;
 	unsigned int rail_gating_bin[32];
 	unsigned int rail_gating_done_count;
@@ -110,6 +114,10 @@ static struct {
 	unsigned int c1nc_gating_bin[32];
 	unsigned int c1nc_gating_done_count;
 	unsigned int c1nc_gating_done_count_bin[32];
+	unsigned int mc_clk_stop_count;
+	unsigned int mc_clk_stop_bin[32];
+	unsigned int mc_clk_stop_done_count;
+	unsigned int mc_clk_stop_done_count_bin[32];
 	unsigned int pd_int_count[NR_IRQS];
 	unsigned int last_pd_int_count[NR_IRQS];
 	unsigned int clk_gating_vmin;
@@ -303,6 +311,16 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		}
 	}
 
+	if (stop_mc_clk_in_idle && (state->power_usage == 0) &&
+	    (request > tegra_mc_clk_stop_min_residency())) {
+		flag |= TEGRA_POWER_STOP_MC_CLK;
+
+		idle_stats.mc_clk_stop_count++;
+		idle_stats.mc_clk_stop_bin[bin]++;
+
+		tegra_mc_clk_prepare();
+	}
+
 	if (tegra_idle_power_down_last(sleep_time, flag) == 0)
 		sleep_completed = true;
 	else {
@@ -312,13 +330,20 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 	exit_time = ktime_get();
+
+	if (flag & TEGRA_POWER_STOP_MC_CLK)
+		tegra_mc_clk_finish();
+
 	if (!is_lp_cluster())
 		tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
 
-	if (flag == TEGRA_POWER_CLUSTER_PART_CRAIL)
+	if (flag & TEGRA_POWER_STOP_MC_CLK)
+		idle_stats.mc_clk_stop_time +=
+			ktime_to_us(ktime_sub(exit_time, entry_time));
+	else if (flag & TEGRA_POWER_CLUSTER_PART_CRAIL)
 		idle_stats.rail_pd_time +=
 			ktime_to_us(ktime_sub(exit_time, entry_time));
-	else if (flag == TEGRA_POWER_CLUSTER_PART_NONCPU) {
+	else if (flag & TEGRA_POWER_CLUSTER_PART_NONCPU) {
 		if (is_lp_cluster())
 			idle_stats.c1nc_pg_time +=
 				ktime_to_us(ktime_sub(exit_time, entry_time));
@@ -344,10 +369,13 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		state->exit_latency = latency;		/* for idle governor */
 		smp_wmb();
 
-		if (flag == TEGRA_POWER_CLUSTER_PART_CRAIL) {
+		if (flag & TEGRA_POWER_STOP_MC_CLK) {
+			idle_stats.mc_clk_stop_done_count++;
+			idle_stats.mc_clk_stop_done_count_bin[bin]++;
+		} else if (flag & TEGRA_POWER_CLUSTER_PART_CRAIL) {
 			idle_stats.rail_gating_done_count++;
 			idle_stats.rail_gating_done_count_bin[bin]++;
-		} else if (flag == TEGRA_POWER_CLUSTER_PART_NONCPU) {
+		} else if (flag & TEGRA_POWER_CLUSTER_PART_NONCPU) {
 			if (is_lp_cluster()) {
 				idle_stats.c1nc_gating_done_count++;
 				idle_stats.c1nc_gating_done_count_bin[bin]++;
@@ -674,6 +702,20 @@ int tegra11x_pd_debug_show(struct seq_file *s, void *data)
 			idle_stats.c1nc_gating_done_count_bin[bin],
 			idle_stats.c1nc_gating_done_count_bin[bin] * 100 /
 				idle_stats.c1nc_gating_bin[bin]);
+	}
+	seq_printf(s, "\n");
+
+	seq_printf(s, "%19s %8s %8s %8s\n", "", "mc clk stop", "comp", "%");
+	seq_printf(s, "-------------------------------------------------\n");
+	for (bin = 0; bin < 32; bin++) {
+		if (idle_stats.mc_clk_stop_bin[bin] == 0)
+			continue;
+		seq_printf(s, "%6u - %6u ms: %8u %8u %7u%%\n",
+			1 << (bin - 1), 1 << bin,
+			idle_stats.mc_clk_stop_bin[bin],
+			idle_stats.mc_clk_stop_done_count_bin[bin],
+			idle_stats.mc_clk_stop_done_count_bin[bin] * 100 /
+				idle_stats.mc_clk_stop_bin[bin]);
 	}
 
 	seq_printf(s, "\n");
