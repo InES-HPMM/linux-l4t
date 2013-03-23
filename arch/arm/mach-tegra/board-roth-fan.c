@@ -41,7 +41,7 @@ static struct pwm_fan_platform_data fan_data = {
 	.step_time = 100, /*msecs*/
 	.pwm_cap = 158,
 	.precision_multiplier = 1024,
-	.tach_gpio = TEGRA_GPIO_PX4,
+	.tach_gpio = TEGRA_GPIO_PU2,
 };
 
 static struct platform_device pwm_fan_therm_cooling_device = {
