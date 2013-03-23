@@ -77,11 +77,7 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 	}
 
 	if (rail->dfll_mode_cdev) {
-		if (!rail->pll_mode_cdev ||
-		    (rail->dfll_mode_cdev->trip_temperatures !=
-		     rail->pll_mode_cdev->trip_temperatures) ||
-		    (rail->dfll_mode_cdev->trip_temperatures_num !=
-		     rail->pll_mode_cdev->trip_temperatures_num)) {
+		if (rail->dfll_mode_cdev != rail->pll_mode_cdev) {
 			rail->dfll_mode_cdev = NULL;
 			WARN(1, "%s: not matching dfll/pll mode trip-points\n",
 			     rail->reg_id);
@@ -870,7 +866,9 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void)
 {
-	if (tegra_cpu_rail)
+	/* dfll mode need its own trips only if they are different */
+	if (tegra_cpu_rail &&
+	    (tegra_cpu_rail->dfll_mode_cdev != tegra_cpu_rail->pll_mode_cdev))
 		return tegra_cpu_rail->dfll_mode_cdev;
 	return NULL;
 }

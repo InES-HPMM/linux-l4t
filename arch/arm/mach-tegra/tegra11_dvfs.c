@@ -40,12 +40,8 @@ static bool tegra_dvfs_core_disabled;
 static int vdd_core_therm_trips_table[MAX_THERMAL_FLOORS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_FLOORS] = { 950, };
 
-static struct tegra_cooling_device cpu_dfll_cdev = {
-	.cdev_type = "cpu_dfll_cold",
-};
-
-static struct tegra_cooling_device cpu_pll_cdev = {
-	.cdev_type = "cpu_pll_cold",
+static struct tegra_cooling_device cpu_cdev = {
+	.cdev_type = "cpu_cold",
 };
 
 static struct tegra_cooling_device core_cdev = {
@@ -58,8 +54,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-	.dfll_mode_cdev = &cpu_dfll_cdev,
-	.pll_mode_cdev = &cpu_pll_cdev,
+	.pll_mode_cdev = &cpu_cdev,
 };
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
@@ -439,13 +434,12 @@ static void __init init_rail_thermal_profile(
 	if (therm_floors_table[i] < min_mv)
 		return;
 
+	/* Setup trip-points, use the same trips in dfll mode (if applicable) */
 	if (rail->pll_mode_cdev) {
 		rail->pll_mode_cdev->trip_temperatures_num = i + 1;
 		rail->pll_mode_cdev->trip_temperatures = therm_trips_table;
-	}
-	if (rail->dfll_mode_cdev) {
-		rail->dfll_mode_cdev->trip_temperatures_num = i + 1;
-		rail->dfll_mode_cdev->trip_temperatures = therm_trips_table;
+		if (d)
+			rail->dfll_mode_cdev = rail->pll_mode_cdev;
 	}
 	rail->therm_mv_floors = therm_floors_table;
 }
