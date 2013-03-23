@@ -574,8 +574,8 @@
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c000 0x100>;
 		interrupts = <0 38 0x04>;
-		scl-gpios = <&gpio 20 0>; /* gpio PC4 */
-		sda-gpios = <&gpio 21 0>; /* gpio PC5 */
+		scl-gpio = <&gpio 20 0>; /* gpio PC4 */
+		sda-gpio = <&gpio 21 0>; /* gpio PC5 */
 		status = "disable";
 	};
 
@@ -585,8 +585,8 @@
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c400 0x100>;
 		interrupts = <0 84 0x04>;
-		scl-gpios = <&gpio 157 0>; /* gpio PT5 */
-		sda-gpios = <&gpio 158 0>; /* gpio PT6 */
+		scl-gpio = <&gpio 157 0>; /* gpio PT5 */
+		sda-gpio = <&gpio 158 0>; /* gpio PT6 */
 		status = "disable";
 	};
 
@@ -596,8 +596,8 @@
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c500 0x100>;
 		interrupts = <0 92 0x04>;
-		scl-gpios = <&gpio 217 0>; /* gpio PBB1 */
-		sda-gpios = <&gpio 218 0>; /* gpio PBB2 */
+		scl-gpio = <&gpio 217 0>; /* gpio PBB1 */
+		sda-gpio = <&gpio 218 0>; /* gpio PBB2 */
 		status = "disable";
 	};
 
@@ -607,8 +607,8 @@
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c700 0x100>;
 		interrupts = <0 120 0x04>;
-		scl-gpios = <&gpio 172 0>; /* gpio PV4 */
-		sda-gpios = <&gpio 173 0>; /* gpio PV5 */
+		scl-gpio = <&gpio 172 0>; /* gpio PV4 */
+		sda-gpio = <&gpio 173 0>; /* gpio PV5 */
 		status = "disable";
 	};
 
@@ -618,8 +618,8 @@
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000d000 0x100>;
 		interrupts = <0 53 0x04>;
-		scl-gpios = <&gpio 206 0>; /* gpio PZ6 */
-		sda-gpios = <&gpio 207 0>; /* gpio PZ7 */
+		scl-gpio = <&gpio 206 0>; /* gpio PZ6 */
+		sda-gpio = <&gpio 207 0>; /* gpio PZ7 */
 		status = "disable";
 	};
 
