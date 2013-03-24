@@ -676,6 +676,15 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 		return -ENODEV;
 	}
 
+	if (table->enabled) {
+		ret = tegra_clk_prepare_enable(c);
+		if (ret) {
+			pr_warning("Unable to enable clock %s: %d\n",
+				table->name, ret);
+			return -EINVAL;
+		}
+	}
+
 	if (table->parent) {
 		p = tegra_get_clock_by_name(table->parent);
 		if (!p) {
@@ -707,15 +716,6 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 		if (ret) {
 			pr_warning("Unable to set clock %s to rate %lu: %d\n",
 				table->name, table->rate, ret);
-			return -EINVAL;
-		}
-	}
-
-	if (table->enabled) {
-		ret = tegra_clk_prepare_enable(c);
-		if (ret) {
-			pr_warning("Unable to enable clock %s: %d\n",
-				table->name, ret);
 			return -EINVAL;
 		}
 	}
