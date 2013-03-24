@@ -1986,6 +1986,59 @@ static u8 get_pll_cpcon(struct clk *c, u16 n)
 	return c->u.pll.cpcon_default ? : OUT_OF_TABLE_CPCON;
 }
 
+/* Special comparison frequency selection for PLLD at 19.2MHz reference rate */
+unsigned long get_pll_cfreq_special(struct clk *c, unsigned long input_rate,
+				   unsigned long rate, unsigned long *vco)
+{
+	if (!(c->flags & PLLD) || (input_rate != 19200000))
+		return 0;
+
+	*vco = c->u.pll.vco_min;
+
+	if (rate <= 250000000)
+		return 4800000;
+	else if (rate <= 500000000)
+		return 2400000;
+	else
+		return 1200000;
+}
+
+/* Common comparison frequency selection */
+unsigned long get_pll_cfreq_common(struct clk *c, unsigned long input_rate,
+				   unsigned long rate, unsigned long *vco)
+{
+	unsigned long cfreq = 0;
+
+	switch (input_rate) {
+	case 12000000:
+	case 26000000:
+		cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2000000;
+		break;
+	case 13000000:
+		cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2600000;
+		break;
+	case 16800000:
+	case 19200000:
+		cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
+		break;
+	default:
+		if (c->parent->flags & DIV_U71_FIXED) {
+			/* PLLP_OUT1 rate is not in PLLA table */
+			pr_warn("%s: failed %s ref/out rates %lu/%lu\n",
+				__func__, c->name, input_rate, rate);
+			cfreq = input_rate/(input_rate/1000000);
+			break;
+		}
+		pr_err("%s: Unexpected reference rate %lu\n",
+		       __func__, input_rate);
+		BUG();
+	}
+
+	/* Raise VCO to guarantee 0.5% accuracy, and vco min boundary */
+	*vco = max(200 * cfreq, c->u.pll.vco_min);
+	return cfreq;
+}
+
 static int tegra14_pll_clk_set_rate(struct clk *c, unsigned long rate)
 {
 	u32 val, p_div, old_base;
@@ -2031,33 +2084,12 @@ static int tegra14_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		BUG_ON(c->flags & PLLU);
 		sel = &cfg;
 
-		switch (input_rate) {
-		case 12000000:
-		case 26000000:
-			cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2000000;
-			break;
-		case 13000000:
-			cfreq = (rate <= 1000000 * 1000) ? 1000000 : 2600000;
-			break;
-		case 16800000:
-		case 19200000:
-			cfreq = (rate <= 1200000 * 1000) ? 1200000 : 2400000;
-			break;
-		default:
-			if (c->parent->flags & DIV_U71_FIXED) {
-				/* PLLP_OUT1 rate is not in PLLA table */
-				pr_warn("%s: failed %s ref/out rates %lu/%lu\n",
-					__func__, c->name, input_rate, rate);
-				cfreq = input_rate/(input_rate/1000000);
-				break;
-			}
-			pr_err("%s: Unexpected reference rate %lu\n",
-			       __func__, input_rate);
-			BUG();
-		}
+		/* If available, use pll specific algorithm to select comparison
+		   frequency, and vco target */
+		cfreq = get_pll_cfreq_special(c, input_rate, rate, &vco);
+		if (!cfreq)
+			cfreq = get_pll_cfreq_common(c, input_rate, rate, &vco);
 
-		/* Raise VCO to guarantee 0.5% accuracy, and vco min boundary */
-		vco = max(200 * cfreq, c->u.pll.vco_min);
 		for (cfg.output_rate = rate; cfg.output_rate < vco; p_div++)
 			cfg.output_rate <<= 1;
 
