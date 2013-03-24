@@ -2090,12 +2090,22 @@ static int tegra14_pll_clk_set_rate(struct clk *c, unsigned long rate)
 		if (!cfreq)
 			cfreq = get_pll_cfreq_common(c, input_rate, rate, &vco);
 
+		/* Select output divider to get Vco rate above the target */
 		for (cfg.output_rate = rate; cfg.output_rate < vco; p_div++)
 			cfg.output_rate <<= 1;
 
+		/*
+		 * Below we rely on the fact that in either special, or common
+		 * case input rate is an exact multiple of comparison rate.
+		 * However, the same is not guaranteed for Vco rate.
+		 */
 		cfg.p = 0x1 << p_div;
 		cfg.m = input_rate / cfreq;
 		cfg.n = cfg.output_rate / cfreq;
+		if (cfg.n * cfreq < vco) {
+			cfg.n++;
+			cfg.output_rate = cfreq * cfg.n;
+		}
 		cfg.cpcon = get_pll_cpcon(c, cfg.n);
 
 		if ((cfg.m > (PLL_BASE_DIVM_MASK >> PLL_BASE_DIVM_SHIFT)) ||
