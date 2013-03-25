@@ -1113,6 +1113,11 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = palmas_power_off;
 
+	if (pdata->auto_ldousb_en)
+		/* VBUS detection enables the LDOUSB */
+		palmas_control_update(palmas, PALMAS_EXT_CHRG_CTRL, 1,
+					PALMAS_EXT_CHRG_CTRL_AUTO_LDOUSB_EN);
+
 	palmas_dev = palmas;
 	return ret;
 

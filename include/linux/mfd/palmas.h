@@ -2,6 +2,7 @@
  * TI Palmas
  *
  * Copyright 2011-2013 Texas Instruments Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Ian Lartey <ian@slimlogic.co.uk>
@@ -324,6 +325,8 @@ struct palmas_platform_data {
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
 	bool use_power_off;
+	/* LDOUSB is enabled or disabled on VBUS detection */
+	bool auto_ldousb_en;
 
 	struct palmas_pinctrl_platform_data *pinctrl_pdata;
 	struct palmas_extcon_platform_data *extcon_pdata;
