@@ -37,9 +37,6 @@
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_uart.h>
-#if defined(CONFIG_SMSC911X)
-#include <linux/smsc911x.h>
-#endif
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>

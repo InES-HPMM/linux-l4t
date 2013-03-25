@@ -33,6 +33,9 @@
 #include <linux/pstore_ram.h>
 #include <linux/dma-mapping.h>
 #include <linux/sys_soc.h>
+#if defined(CONFIG_SMSC911X)
+#include <linux/smsc911x.h>
+#endif
 
 #include <linux/export.h>
 #include <linux/bootmem.h>
@@ -2130,14 +2133,14 @@ static struct platform_device tegra_smsc911x_device = {
 	.dev.platform_data = &tegra_smsc911x_config,
 };
 
-static int __init asim_enet_smsc911x_init(void)
+static int __init enet_smsc911x_init(void)
 {
-	if (tegra_cpu_is_asim() && !tegra_cpu_is_dsim())
+	if (!tegra_cpu_is_dsim())
 		platform_device_register(&tegra_smsc911x_device);
 	return 0;
 }
 
-rootfs_initcall(asim_enet_smsc911x_init);
+rootfs_initcall(enet_smsc911x_init);
 #endif
 
 #ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
