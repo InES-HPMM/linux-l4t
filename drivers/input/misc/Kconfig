@@ -684,12 +684,6 @@ config INPUT_CAPELLA_CM3217
 	help
 	  Say Y here to enable the CM3217 Ambient Light Sensor.
 
-config INPUT_CAPELLA_CM3218
-	tristate "CM3218 light sensor"
-	depends on I2C
-	help
-	  Say Y here to enable the CM3218 Ambient Light Sensor.
-
 source	"drivers/input/misc/compass/Kconfig"
 source	"drivers/input/misc/mpu/Kconfig"
 

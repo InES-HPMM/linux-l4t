@@ -56,4 +56,10 @@ config SENSORS_MAX44005
 	  If you say yes here you get support for ambient light, RGB, IR,
 	  Proximity and temperature sensing from MAX44005.
 
+config SENSORS_CM3218
+	tristate "CM3218 Ambient light sensor"
+	depends on I2C
+	help
+	  Say Y here to enable the CM3218 Ambient Light Sensor.
+
 endmenu
