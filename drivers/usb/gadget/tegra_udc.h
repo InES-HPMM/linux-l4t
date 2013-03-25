@@ -460,6 +460,7 @@ struct tegra_udc {
 	unsigned selfpowered:1;
 	bool has_hostpc;
 	bool support_pmu_vbus;
+	bool fence_read;
 };
 
 
