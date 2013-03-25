@@ -23,15 +23,22 @@
 #include <linux/dma-mapping.h>
 #include "common.h"
 
+#if defined(CONFIG_PLATFORM_ENABLE_IOMMU)
 static struct platform_device tegra_tzram_device __initdata = {
 	.name   = "tegra-tzram",
 	.id     = -1,
 };
+#endif
 
 static int __init tegra_tzram_carveout_init(void)
 {
 	int err = 0;
+
+#if defined(CONFIG_PLATFORM_ENABLE_IOMMU)
 	DEFINE_DMA_ATTRS(attrs);
+
+	if (!tegra_tzram_start || !tegra_tzram_size)
+		return -EINVAL;
 
 	err = platform_device_register(&tegra_tzram_device);
 	if (err) {
@@ -42,6 +49,8 @@ static int __init tegra_tzram_carveout_init(void)
 	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 	dma_map_linear_attrs(&tegra_tzram_device.dev,
 		tegra_tzram_start, tegra_tzram_size, DMA_TO_DEVICE, &attrs);
+#endif
+
 	return err;
 }
 late_initcall(tegra_tzram_carveout_init);
