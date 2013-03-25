@@ -299,8 +299,8 @@ tegra_shut_off_mmu:
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	/* need to flush the L2 */
 	ldr	r2, [r1, #L2X0_AUX_CTRL]
-	mov	r2, #0xff
 	tst	r2, #(1 << 16)			@ associativity
+	mov	r2, #0xff
 	orrne	r2, #0xff00
 	str	r2, [r1, #L2X0_CLEAN_INV_WAY]
 1:	ldr	r3, [r1, #L2X0_CLEAN_INV_WAY]
