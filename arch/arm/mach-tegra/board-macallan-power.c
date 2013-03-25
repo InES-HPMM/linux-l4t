@@ -470,7 +470,7 @@ FIXED_REG(3,	dvdd_ts,	dvdd_ts,
 
 FIXED_REG(4,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	palmas_rails(smps10),	0,	0,
-	TEGRA_GPIO_PK6,	false,	true,	0,	5000);
+	TEGRA_GPIO_PK6,	true,	true,	0,	5000);
 
 FIXED_REG(5,	vddio_sd_slot,	vddio_sd_slot,
 	palmas_rails(smps9),	0,	0,

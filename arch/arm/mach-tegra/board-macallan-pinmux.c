@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-pinmux.c
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -237,6 +237,14 @@ static void __init macallan_gpio_init_configure(void)
 	}
 }
 
+#ifdef CONFIG_PM_SLEEP
+/* pinmux settings during low power mode for power saving purpose */
+static struct tegra_pingroup_config macallan_sleep_pinmux[] = {
+	/* VDDIO_HV */
+	GPIO_PINMUX(SPDIF_IN, NORMAL, NORMAL, OUTPUT, DISABLE),
+};
+#endif
+
 int __init macallan_pinmux_init(void)
 {
 	macallan_gpio_init_configure();
@@ -249,6 +257,10 @@ int __init macallan_pinmux_init(void)
 		ARRAY_SIZE(unused_pins_lowpower));
 	tegra_pinmux_config_table(manual_config_pinmux,
 		ARRAY_SIZE(manual_config_pinmux));
+#ifdef CONFIG_PM_SLEEP
+	tegra11x_set_sleep_pinmux(macallan_sleep_pinmux,
+		ARRAY_SIZE(macallan_sleep_pinmux));
+#endif
 
 	return 0;
 }

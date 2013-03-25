@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-pinmux-t11x.h
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -183,9 +183,6 @@ static __initdata struct tegra_pingroup_config macallan_pinmux_common[] = {
 	DDC_PINMUX(DDC_SCL, I2C4, NORMAL, NORMAL, INPUT, DISABLE, HIGH),
 	DDC_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DISABLE, HIGH),
 
-	/* USB pinmux */
-	DEFAULT_PINMUX(USB_VBUS_EN0,  USB,         NORMAL,    NORMAL,   OUTPUT),
-
 	/* GPIO pinmux */
 	GPIO_PINMUX(GPIO_X4_AUD, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(GPIO_X5_AUD, PULL_UP, NORMAL, INPUT, DISABLE),
@@ -258,7 +255,7 @@ static __initdata struct tegra_pingroup_config macallan_pinmux_common[] = {
 	GPIO_PINMUX(GPIO_PU5, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(GPIO_PU6, NORMAL, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(HDMI_INT, PULL_DOWN, NORMAL, INPUT, DEFAULT),
-	GPIO_PINMUX(SPDIF_IN, NORMAL, NORMAL, OUTPUT, DISABLE),
+	GPIO_PINMUX(SPDIF_IN, PULL_UP, NORMAL, OUTPUT, DISABLE),
 };
 
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
@@ -273,6 +270,7 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(GMI_CS6_N),
 	UNUSED_PINMUX(OWR),
 	UNUSED_PINMUX(SPDIF_OUT),
+	UNUSED_PINMUX(USB_VBUS_EN0),
 	UNUSED_PINMUX(USB_VBUS_EN1),
 };
 
