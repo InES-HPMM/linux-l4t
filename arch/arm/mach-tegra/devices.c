@@ -2146,6 +2146,10 @@ struct platform_device nvavp_device = {
 	.id             = -1,
 	.resource       = tegra_nvavp_resources,
 	.num_resources  = ARRAY_SIZE(tegra_nvavp_resources),
+	.dev  = {
+		.coherent_dma_mask	= 0xffffffffULL,
+		.platform_data		= &tegra_avp_pdata,
+	},
 };
 
 static struct resource tegra_avp_resources[] = {

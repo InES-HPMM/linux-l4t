@@ -877,9 +877,8 @@ static int nvavp_load_os(struct nvavp_info *nvavp, char *fw_os_file)
 	os_info->reset_addr = os_info->phys + os_info->entry_offset;
 
 	dev_info(&nvavp->nvhost_dev->dev,
-		"AVP os at vaddr=%p paddr=%lx reset_addr=%p\n",
-		os_info->data, (unsigned long)(os_info->phys),
-				(void *)os_info->reset_addr);
+		"AVP os at vaddr=%p paddr=%llx reset_addr=%llx\n",
+		os_info->data, (u64)(os_info->phys), (u64)os_info->reset_addr);
 	return 0;
 
 err_os_bin:
@@ -947,9 +946,9 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 		BUG();
 	}
 	dev_info(&nvavp->nvhost_dev->dev,
-		"using nvmem= carveout at %x to load AVP os\n",
-		nvavp->os_info.phys);
-	sprintf(fw_os_file, "nvavp_os_%08x.bin", nvavp->os_info.phys);
+		"using nvmem= carveout at %llx to load AVP os\n",
+		(u64)nvavp->os_info.phys);
+	sprintf(fw_os_file, "nvavp_os_%08llx.bin", (u64)nvavp->os_info.phys);
 	nvavp->os_info.reset_addr = nvavp->os_info.phys;
 	nvavp->os_info.data = ioremap(nvavp->os_info.phys, SZ_1M);
 #endif
