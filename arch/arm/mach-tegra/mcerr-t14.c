@@ -81,7 +81,8 @@ struct mc_client mc_clients[] = {
 	client("tsec"),			client("tsec"),
 	client("viw"),			client("bbcr"),
 	client("bbcw"),			client("bbcllr"),
-	client("disp_t"), /* 90 */	client("disp_d"),
+	client("disp_t"), /* 90 */	dummy_client,
+	client("disp_d"),
 };
 
 int mc_client_last = ARRAY_SIZE(mc_clients) - 1;
