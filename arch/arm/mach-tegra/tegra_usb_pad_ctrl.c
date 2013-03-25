@@ -23,6 +23,28 @@ static DEFINE_SPINLOCK(utmip_pad_lock);
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
 
+int utmi_phy_iddq_override(bool set)
+{
+	unsigned long val, flags;
+	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+
+	spin_lock_irqsave(&utmip_pad_lock, flags);
+	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
+	if (set && !utmip_pad_count)
+		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	else if (!set && utmip_pad_count)
+		val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	else
+		goto out1;
+	val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
+	writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
+
+out1:
+	spin_unlock_irqrestore(&utmip_pad_lock, flags);
+	return 0;
+}
+
+
 int utmi_phy_pad_enable(void)
 {
 	unsigned long val, flags;
@@ -54,7 +76,6 @@ int utmi_phy_pad_disable(void)
 {
 	unsigned long val, flags;
 	void __iomem *pad_base =  IO_ADDRESS(TEGRA_USB_BASE);
-	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 	if (!utmi_pad_clk)
 		utmi_pad_clk = clk_get_sys("utmip-pad", NULL);
@@ -72,12 +93,6 @@ int utmi_phy_pad_disable(void)
 		val &= ~(UTMIP_HSSQUELCH_LEVEL(~0) | UTMIP_HSDISCON_LEVEL(~0) |
 			UTMIP_HSDISCON_LEVEL_MSB);
 		writel(val, pad_base + UTMIP_BIAS_CFG0);
-
-		/* Put UTMIPLL in IDDQ mode once all UTMIP ports
-		   are in reset/suspend */
-		val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-		val |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
 	}
 out:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);

@@ -1016,7 +1016,7 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	}
 
 	utmi_phy_pad_disable();
-
+	utmi_phy_iddq_override(true);
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
 
@@ -1030,7 +1030,6 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
-	void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	void __iomem *padctl_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
 #endif
@@ -1133,11 +1132,7 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 
 	/* Bring UTMIPLL out of IDDQ mode while exiting from reset/suspend */
-	val = readl(clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	if (val & UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE) {
-		val &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
-		writel(val, clk_base + UTMIPLL_HW_PWRDN_CFG0);
-	}
+	utmi_phy_iddq_override(false);
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
 		USB_PHY_CLK_VALID, USB_PHY_CLK_VALID, 2500))

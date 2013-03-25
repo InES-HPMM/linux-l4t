@@ -16,7 +16,8 @@
 #define _TEGRA_USB_PAD_CTRL_INTERFACE_H_
 
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
-#define UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE	(1<<1)
+#define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE  (1<<1)
+#define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL     (1<<0)
 
 #define UTMIP_BIAS_CFG0		0x80c
 #define   UTMIP_OTGPD			(1 << 11)
@@ -27,4 +28,5 @@
 
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
+int utmi_phy_iddq_override(bool set);
 #endif
