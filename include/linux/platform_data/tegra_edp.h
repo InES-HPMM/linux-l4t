@@ -23,7 +23,7 @@
 struct tegra_system_edp_entry {
 	char speedo_id;
 	char power_limit_100mW;
-	unsigned int freq_limits[NR_CPUS];
+	unsigned int freq_limits[4];
 };
 
 struct tegra_sysedp_devcap {
