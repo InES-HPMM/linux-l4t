@@ -1326,6 +1326,8 @@ static void imx091_edp_lowest(struct imx091_info *info)
 	}
 }
 
+static void imx091_edp_throttle(unsigned int new_state, void *priv_data);
+
 static void imx091_edp_register(struct imx091_info *info)
 {
 	struct edp_manager *edp_manager;
@@ -1342,6 +1344,7 @@ static void imx091_edp_register(struct imx091_info *info)
 	strncpy(edpc->name, "imx091", EDP_NAME_LEN - 1);
 	edpc->name[EDP_NAME_LEN - 1] = 0;
 	edpc->private_data = info;
+	edpc->throttle = imx091_edp_throttle;
 
 	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
 		__func__, edpc->name, edpc->e0_index, edpc->priority);
@@ -3147,6 +3150,18 @@ static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
 	board_info_pdata->power_off = imx091_power_off;
 
 	return board_info_pdata;
+}
+
+static void imx091_edp_throttle(unsigned int new_state, void *priv_data)
+{
+	struct imx091_info *info = priv_data;
+
+	imx091_gpio_pwrdn(info, 1);
+	imx091_vreg_dis_all(info);
+	imx091_gpio_able(info, 0);
+	imx091_gpio_reset(info, 0);
+	info->mode_valid = false;
+	info->bin_en = 0;
 }
 
 static int imx091_probe(
