@@ -351,8 +351,8 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 	int ret;
 	uint8_t rcomp_seg_table[16];
 
-	rs2 = (rcomp_seg >> 8) & 0xff;
-	rs1 = rcomp_seg & 0xff;
+	rs1 = (rcomp_seg >> 8) & 0xff;
+	rs2 = rcomp_seg & 0xff;
 
 	rcomp_seg_table[0] = rcomp_seg_table[2] = rcomp_seg_table[4] =
 		rcomp_seg_table[6] = rcomp_seg_table[8] = rcomp_seg_table[10] =
