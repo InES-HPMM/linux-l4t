@@ -300,6 +300,12 @@ struct palmas_pinctrl_platform_data {
 	bool dvfs2_enable;
 };
 
+struct palmas_extcon_platform_data {
+	const char *connection_name;
+	bool enable_vbus_detection;
+	bool enable_id_pin_detection;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -320,6 +326,7 @@ struct palmas_platform_data {
 	bool use_power_off;
 
 	struct palmas_pinctrl_platform_data *pinctrl_pdata;
+	struct palmas_extcon_platform_data *extcon_pdata;
 
 	int watchdog_timer_initial_period;
 };

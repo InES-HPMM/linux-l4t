@@ -373,12 +373,19 @@ static struct palmas_pinctrl_platform_data palmas_pinctrl_pdata = {
 	.dvfs2_enable = false,
 };
 
+struct palmas_extcon_platform_data palmas_extcon_pdata = {
+	.connection_name = "palmas-extcon",
+	.enable_vbus_detection = true,
+	.enable_id_pin_detection = false,
+};
+
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
+	.extcon_pdata = &palmas_extcon_pdata,
 };
 
 static struct i2c_board_info palma_device[] = {
