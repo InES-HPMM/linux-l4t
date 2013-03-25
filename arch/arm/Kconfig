@@ -1411,6 +1411,21 @@ config ARM_ERRATA_798181
 	  which sends an IPI to the CPUs that are running the same ASID
 	  as the one being invalidated.
 
+config ARM_ERRATA_799270
+	bool "ARM errata: Writing ACTLR.SMP when the L2 cache has been idle for an extended period may not work correctly"
+	depends on CPU_V7 && SMP
+	help
+	  This option enables the workaround for the 799270 Cortex-A15 (r2p0,
+	  r2p1, r2p2, r2p3, r2p4) erratum. If the L2 cache logic clock is
+	  stopped because of L2 inactivity, setting or clearing the ACTLR.SMP
+	  bit might not be effective. The bit is modified in the ACTLR, meaning
+	  a read of the register returns the updated value. However the logic
+	  that uses that bit retains the previous value. The workaround is to
+	  do a memory read to a memory location with Non-cacheable, Strongly-
+	  ordered, or Device memory attributes. A dependency must be created
+	  between the returning load data and the MCR instruction that sets the
+	  ACTLR.SMP bit.
+
 endmenu
 
 source "arch/arm/common/Kconfig"
