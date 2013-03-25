@@ -191,7 +191,7 @@ struct sdhci_tegra {
 	struct notifier_block reboot_notify;
 };
 
-static int show_register_dump(struct seq_file *s, void *data)
+static int show_error_stats_dump(struct seq_file *s, void *data)
 {
 	struct sdhci_host *host = s->private;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -208,13 +208,13 @@ static int show_register_dump(struct seq_file *s, void *data)
 	return 0;
 }
 
-static int sdhci_register_dump(struct inode *inode, struct file *file)
+static int sdhci_error_stats_dump(struct inode *inode, struct file *file)
 {
-	return single_open(file, show_register_dump, inode->i_private);
+	return single_open(file, show_error_stats_dump, inode->i_private);
 }
 
 static const struct file_operations sdhci_host_fops = {
-	.open		= sdhci_register_dump,
+	.open		= sdhci_error_stats_dump,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= single_release,
