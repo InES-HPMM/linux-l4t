@@ -1426,6 +1426,18 @@ config ARM_ERRATA_799270
 	  between the returning load data and the MCR instruction that sets the
 	  ACTLR.SMP bit.
 
+config ARM_ERRATA_798870
+	bool "ARM errata: A memory read can stall indefinitely in the L2 cache"
+	depends on CPU_V7
+	help
+	  If back-to-back speculative cache line fills (fill A and fill B)
+	  are issued from the L1 data cache of a CPU to the L2 cache, the
+	  second request (fill B) is then cancelled, and the second request
+	  would have detected a hazard against a recent write or eviction
+	  (write B) to the same cache line as fill B, then the L2 logic might
+	  deadlock. The workaround is to let a secondary CPU go through reset
+	  cycle periodically which can restart L2 clock.
+
 endmenu
 
 source "arch/arm/common/Kconfig"
