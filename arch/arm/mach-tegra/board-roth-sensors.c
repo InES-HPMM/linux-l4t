@@ -153,7 +153,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "tegra-balanced",
-			.trip_temp = 84000,
+			.trip_temp = 86000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = THERMAL_NO_LIMIT,
 			.lower = THERMAL_NO_LIMIT,
@@ -436,7 +436,8 @@ static int roth_fan_est_get_temp(void *data, long *temp)
 	return 0;
 }
 
-static struct therm_fan_est_data fan_est_data = {
+/*Fan thermal estimator init data for P2454*/
+static struct therm_fan_est_data fan_est_data_p2454 = {
 	.toffset = 0,
 	.polling_period = 1100,
 	.ndevs = 2,
@@ -470,20 +471,72 @@ static struct therm_fan_est_data fan_est_data = {
 	.active_hysteresis = {0, 10000, 7000, 0, 0, 0, 0, 0, 0, 0},
 };
 
-static struct platform_device roth_fan_therm_est_device = {
+static struct platform_device roth_fan_therm_est_device_p2454 = {
 	.name   = "therm-fan-est",
 	.id     = -1,
 	.num_resources  = 0,
 	.dev = {
-		.platform_data = &fan_est_data,
+		.platform_data = &fan_est_data_p2454,
+	},
+};
+
+/*Fan thermal estimator data for P2560*/
+static struct therm_fan_est_data fan_est_data_p2560 = {
+	.toffset = 0,
+	.polling_period = 1100,
+	.ndevs = 2,
+	.devs = {
+			{
+				.dev_data = "nct_ext_soc",
+				.get_temp = roth_fan_est_get_temp,
+				.coeffs = {
+					100, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+			{
+				.dev_data = "nct_int_soc",
+				.get_temp = roth_fan_est_get_temp,
+				.coeffs = {
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0
+				},
+			},
+	},
+	.cdev_type = "pwm-fan",
+	.active_trip_temps = {0, 72000, 83000, 120000, 130000,
+				140000, 150000, 160000, 170000, 180000},
+	.active_hysteresis = {0, 10000, 6000, 0, 0, 0, 0, 0, 0, 0},
+};
+
+static struct platform_device roth_fan_therm_est_device_p2560 = {
+	.name   = "therm-fan-est",
+	.id     = -1,
+	.num_resources  = 0,
+	.dev = {
+		.platform_data = &fan_est_data_p2560,
 	},
 };
 
 static int __init roth_fan_est_init(void)
 {
-	platform_device_register(&roth_fan_therm_est_device);
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P2560)
+		platform_device_register(&roth_fan_therm_est_device_p2560);
+	else
+		platform_device_register(&roth_fan_therm_est_device_p2454);
+
 	return 0;
 }
+
 int __init roth_sensors_init(void)
 {
 	int err;
