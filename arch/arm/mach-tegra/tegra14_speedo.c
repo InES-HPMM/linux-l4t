@@ -31,11 +31,13 @@
 #include "fuse.h"
 #include "iomap.h"
 
+#define CPU_PROCESS_CORNERS_NUM		2
+
 #define TEGRA148_CPU_SPEEDO 2109
 #define FUSE_CPU_IDDQ 0x118 /*FIXME: update T148 register*/
 #define FUSE_CPU_SPEEDO_0 0x114
 #define FUSE_CORE_SPEEDO_0 0x134
-
+static int threshold_index;
 static int cpu_process_id;
 static int core_process_id;
 static int cpu_speedo_id;
@@ -47,17 +49,34 @@ static int core_speedo_value;
 
 static int enable_app_profiles;
 
+static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
+/* proc_id  0,     1 */
+	{2162,     UINT_MAX}, /* [0]: threshold_index 0 */
+	{0,        UINT_MAX}, /* [1]: threshold_index 1 */
+};
+
 void tegra_init_speedo_data(void)
 {
+	int i;
+
 	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
+
+	for (i = 0; i < CPU_PROCESS_CORNERS_NUM; i++) {
+		if (cpu_speedo_value <
+			cpu_process_speedos[threshold_index][i]) {
+			break;
+		}
+	}
+	cpu_process_id = i;
+
+	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
+
 	pr_info("Tegra14: CPU Speedo %d, Soc Speedo %d",
 		cpu_speedo_value, core_speedo_value);
-
 	pr_info("Tegra14: CPU Speedo ID %d, Soc Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id);
 
-	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 }
 
 int tegra_cpu_process_id(void)
