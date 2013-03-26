@@ -604,9 +604,6 @@ static int max77660_suspend(struct device *dev)
 	struct max77660_chip *chip = i2c_get_clientdata(client);
 	int ret;
 
-	if (client->irq)
-		disable_irq(client->irq);
-
 	ret = max77660_sleep(chip, true);
 	if (ret < 0)
 		dev_err(dev, "suspend: Failed to enable sleep\n");
@@ -641,9 +638,6 @@ static int max77660_resume(struct device *dev)
 		dev_err(dev, "resume: Failed to disable sleep\n");
 		return ret;
 	}
-
-	if (client->irq)
-		enable_irq(client->irq);
 
 	return 0;
 }
