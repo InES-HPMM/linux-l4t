@@ -26,6 +26,8 @@
 #include <linux/spinlock.h>
 #include <linux/types.h>
 
+#include "../../iomap.h"
+
 #ifndef _MACH_TEGRA_IOVMM_H_
 #define _MACH_TEGRA_IOVMM_H_
 
@@ -141,7 +143,7 @@ struct tegra_iovmm_area_ops {
 
 #define tegra_iovmm_zap_vm(v)	tegra_iommu_zap_vm(v)
 
-#define tegra_iovmm_get_vm_size(c)	dma_iova_get_free_total((c)->dev)
+#define tegra_iovmm_get_vm_size(c)	TEGRA_IOMMU_SIZE
 #define tegra_iovmm_get_max_free(c)	dma_iova_get_free_max((c)->dev)
 
 #define tegra_iovmm_vm_insert_pfn(area, handle, pfn)			\
