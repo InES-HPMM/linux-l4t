@@ -1314,27 +1314,12 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
 
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-static struct sdhci_pltfm_data sdhci_tegra30_pdata = {
-	.quirks = SDHCI_QUIRK_BROKEN_TIMEOUT_VAL |
-		  SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK |
-		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
-		  SDHCI_QUIRK_NO_HISPD_BIT |
-		  SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC,
-	.ops  = &tegra_sdhci_ops,
-};
-
-static struct sdhci_tegra_soc_data soc_data_tegra30 = {
-	.pdata = &sdhci_tegra30_pdata,
-};
-#endif
-
 static const struct of_device_id sdhci_tegra_dt_match[] = {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	{ .compatible = "nvidia,tegra114-sdhci", .data = &soc_data_tegra20 },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	{ .compatible = "nvidia,tegra30-sdhci", .data = &soc_data_tegra30 },
+	{ .compatible = "nvidia,tegra30-sdhci", .data = &soc_data_tegra20 },
 #endif
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ .compatible = "nvidia,tegra20-sdhci", .data = &soc_data_tegra20 },
