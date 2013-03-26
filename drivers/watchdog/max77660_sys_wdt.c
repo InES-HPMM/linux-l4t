@@ -22,20 +22,28 @@
  * 02111-1307, USA
  */
 
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/mfd/max77660/max77660-core.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
 #include <linux/watchdog.h>
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
+
+/* Kthread scheduling parameters */
+struct sched_param max77660_wdt_kthread_param = {
+	.sched_priority = MAX_RT_PRIO - 1,
+};
 
 struct max77660_sys_wdt {
 	struct watchdog_device wdt_dev;
@@ -43,6 +51,12 @@ struct max77660_sys_wdt {
 	struct device *parent;
 	int timeout;
 	int irq;
+	struct kthread_worker wdt_kworker;
+	struct task_struct *wdt_kworker_task;
+	struct kthread_work wdt_work;
+	bool sw_wdt_reset;
+	bool stop_kthread;
+	int system_watchdog_reset_timeout;
 };
 
 static int max77660_twd_sys[] = {16, 32, 64, 128};
@@ -63,6 +77,31 @@ static irqreturn_t max77660_sys_wdt_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void max77660_work_thread(struct kthread_work *work)
+{
+	struct max77660_sys_wdt *wdt = container_of(work,
+					struct max77660_sys_wdt, wdt_work);
+	int ret;
+
+	for (;;) {
+		if (wdt->stop_kthread) {
+			dev_info(wdt->dev, "System WDT kthread stopped\n");
+			return;
+		}
+
+		/* Reset timer before any debug prints */
+		ret = max77660_reg_write(wdt->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG4,
+			MAX77660_GLBLCNFG4_WDTC_SYS_CLR);
+		if (ret < 0)
+			dev_err(wdt->dev,
+				"GLOBAL_CFG4 update failed: %d\n", ret);
+
+		dev_info(wdt->dev, "System WDT reset from thread\n");
+		msleep(wdt->system_watchdog_reset_timeout * 1000);
+	}
+}
+
 static int max77660_sys_wdt_start(struct watchdog_device *wdt_dev)
 {
 	struct max77660_sys_wdt *wdt = watchdog_get_drvdata(wdt_dev);
@@ -74,6 +113,7 @@ static int max77660_sys_wdt_start(struct watchdog_device *wdt_dev)
 		dev_err(wdt->dev, "GLOBAL_CFG1 update failed: %d\n", ret);
 		return ret;
 	}
+	wdt->stop_kthread = false;
 	return 0;
 }
 
@@ -88,6 +128,7 @@ static int max77660_sys_wdt_stop(struct watchdog_device *wdt_dev)
 		dev_err(wdt->dev, "GLOBAL_CFG1 update failed: %d\n", ret);
 		return ret;
 	}
+	wdt->stop_kthread = true;
 	return 0;
 }
 
@@ -193,6 +234,26 @@ static int __devinit max77660_sys_wdt_probe(struct platform_device *pdev)
 		goto scrub;
 	}
 
+	if (pdata && pdata->system_watchdog_reset_timeout &&
+			pdata->system_watchdog_timeout) {
+		init_kthread_worker(&wdt->wdt_kworker);
+		wdt->wdt_kworker_task = kthread_run(kthread_worker_fn,
+				&wdt->wdt_kworker, dev_name(&pdev->dev));
+		if (IS_ERR(wdt->wdt_kworker_task)) {
+			ret = PTR_ERR(wdt->wdt_kworker_task);
+			dev_err(&pdev->dev,
+				"Kworker task creation failed %d\n", ret);
+			goto scrub;
+		}
+
+		init_kthread_work(&wdt->wdt_work, max77660_work_thread);
+		sched_setscheduler(wdt->wdt_kworker_task,
+				SCHED_FIFO, &max77660_wdt_kthread_param);
+		wdt->sw_wdt_reset = true;
+		wdt->system_watchdog_reset_timeout =
+				pdata->system_watchdog_reset_timeout;
+	}
+
 	if (pdata && (pdata->system_watchdog_timeout > 0)) {
 		ret = max77660_sys_wdt_set_timeout(wdt_dev,
 					pdata->system_watchdog_timeout);
@@ -204,6 +265,10 @@ static int __devinit max77660_sys_wdt_probe(struct platform_device *pdev)
 		if (ret < 0) {
 			dev_err(wdt->dev, "wdt start failed: %d\n", ret);
 			goto scrub;
+		}
+		if (wdt->sw_wdt_reset) {
+			queue_kthread_work(&wdt->wdt_kworker, &wdt->wdt_work);
+			dev_info(wdt->dev, "Starting system wdt kthread\n");
 		}
 	}
 
