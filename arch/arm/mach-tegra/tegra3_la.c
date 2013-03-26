@@ -89,9 +89,9 @@
 #define T3_MC_LA_MAX_VALUE		255
 
 #define T3_MC_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (T3_MC_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (T3_MC_##r))
 #define T3_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (T3_MC_LA_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (T3_MC_LA_##r))
 
 #define T3_LA(f, e, a, r, i, ss, la) \
 { \
@@ -188,9 +188,9 @@ struct la_client_info t3_la_info_array[] = {
 };
 
 #define DISP1_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_DISPLAY_BASE) + DS_DISP_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_DISPLAY_BASE) + DS_DISP_MCCIF_##r##_HYST)
 #define DISP2_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_DISPLAY2_BASE) + DS_DISP_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_DISPLAY2_BASE) + DS_DISP_MCCIF_##r##_HYST)
 
 #define DISP_SCALING_REG_INFO(id, r, ra) \
 	{ \
@@ -213,11 +213,11 @@ struct la_scaling_reg_info disp_info[] = {
 };
 
 #define VI_TH_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_MCCIF_##r##_HYST)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_MCCIF_##r##_HYST)
 #define VI_TM_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_TIMEOUT_WOCAL_VI)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_TIMEOUT_WOCAL_VI)
 #define VI_TL_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_VI_BASE) + VI_RESERVE_##r)
+	(IO_ADDRESS(TEGRA_VI_BASE) + VI_RESERVE_##r)
 
 struct la_scaling_reg_info vi_info[] = {
 	{

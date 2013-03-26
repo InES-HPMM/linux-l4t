@@ -108,9 +108,9 @@
 #define T11X_MC_LA_MAX_VALUE		255
 
 #define T11X_MC_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (T11X_MC_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (T11X_MC_##r))
 #define T11X_RA(r) \
-	((u32)IO_ADDRESS(TEGRA_MC_BASE) + (T11X_MC_LA_##r))
+	(IO_ADDRESS(TEGRA_MC_BASE) + (T11X_MC_LA_##r))
 
 #define T11X_LA(f, e, a, r, i, ss, la) \
 { \

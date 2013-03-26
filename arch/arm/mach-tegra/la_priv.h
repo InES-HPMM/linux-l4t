@@ -57,7 +57,7 @@ do { \
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
 	unsigned int expiration_in_ns;	/* worst case expiration value */
-	unsigned long reg_addr;
+	void *reg_addr;
 	unsigned long mask;
 	unsigned long shift;
 	enum tegra_la_id id;
@@ -77,13 +77,13 @@ struct la_scaling_info {
 
 struct la_scaling_reg_info {
 	enum tegra_la_id id;
-	unsigned int tl_reg_addr;
+	void *tl_reg_addr;
 	unsigned int tl_mask;
 	unsigned int tl_shift;
-	unsigned int tm_reg_addr;
+	void *tm_reg_addr;
 	unsigned int tm_mask;
 	unsigned int tm_shift;
-	unsigned int th_reg_addr;
+	void *th_reg_addr;
 	unsigned int th_mask;
 	unsigned int th_shift;
 };
