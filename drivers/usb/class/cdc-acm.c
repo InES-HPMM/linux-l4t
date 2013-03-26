@@ -258,7 +258,9 @@ static int acm_write_start(struct acm *acm, int wbn)
 		usb_put_urb(res);
 		rc = usb_submit_urb(res, GFP_ATOMIC);
 		if (rc < 0) {
-			dbg("usb_submit_urb(pending request) failed: %d", rc);
+			dev_dbg(&acm->data->dev,
+				"usb_submit_urb(pending request) failed: %d",
+				rc);
 			usb_unanchor_urb(res);
 			acm_write_done(acm, res->context);
 		}
@@ -1539,8 +1541,9 @@ static int acm_resume(struct usb_interface *intf)
 			usb_put_urb(res);
 			rv = usb_submit_urb(res, GFP_ATOMIC);
 			if (rv < 0) {
-				dbg("usb_submit_urb(pending request)"
-					" failed: %d", rv);
+				dev_dbg(&acm->data->dev,
+					"usb_submit_urb(pending request) failed: %d",
+					rv);
 				usb_unanchor_urb(res);
 				acm_write_done(acm, res->context);
 			}
