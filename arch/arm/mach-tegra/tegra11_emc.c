@@ -1448,11 +1448,19 @@ static struct platform_driver tegra11_emc_driver = {
 	.probe          = tegra11_emc_probe,
 };
 
+static struct emc_iso_usage tegra11_emc_iso_usage[] = {
+	{ BIT(EMC_USER_DC),			80 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	35 },
+};
+
 int __init tegra11_emc_init(void)
 {
 	int ret = platform_driver_register(&tegra11_emc_driver);
-	if (!ret)
+	if (!ret) {
 		tegra_clk_preset_emc_monitor();
+		tegra_emc_iso_usage_table_init(tegra11_emc_iso_usage,
+			ARRAY_SIZE(tegra11_emc_iso_usage));
+	}
 	return ret;
 }
 
@@ -1627,6 +1635,9 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &efficiency_fops))
+		goto err_out;
+
+	if (tegra_emc_iso_usage_debugfs_init(emc_debugfs_root))
 		goto err_out;
 
 	return 0;
