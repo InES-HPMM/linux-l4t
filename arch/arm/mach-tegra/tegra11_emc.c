@@ -289,7 +289,7 @@ static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
 
 static inline void emc_writel(u32 val, unsigned long addr)
 {
-	writel(val, (u32)emc_base + addr);
+	writel(val, emc_base + addr);
 }
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static inline void emc0_writel(u32 val, unsigned long addr)
@@ -303,15 +303,15 @@ static inline void emc1_writel(u32 val, unsigned long addr)
 #endif
 static inline u32 emc_readl(unsigned long addr)
 {
-	return readl((u32)emc_base + addr);
+	return readl(emc_base + addr);
 }
 static inline void mc_writel(u32 val, unsigned long addr)
 {
-	writel(val, (u32)mc_base + addr);
+	writel(val, mc_base + addr);
 }
 static inline u32 mc_readl(unsigned long addr)
 {
-	return readl((u32)mc_base + addr);
+	return readl(mc_base + addr);
 }
 
 static inline void ccfifo_writel(u32 val, unsigned long addr)
