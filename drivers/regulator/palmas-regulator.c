@@ -1189,7 +1189,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			config.init_data = NULL;
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
-		config.of_node = palmas_matches[id].of_node;
+		config.of_node = NULL;//palmas_matches[id].of_node;
 
 		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
@@ -1257,7 +1257,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			config.init_data = NULL;
 
 		pmic->desc[id].supply_name = palmas_regs_info[id].sname;
-		config.of_node = palmas_matches[id].of_node;
+		config.of_node = NULL; //palmas_matches[id].of_node;
 
 		rdev = regulator_register(&pmic->desc[id], &config);
 		if (IS_ERR(rdev)) {
