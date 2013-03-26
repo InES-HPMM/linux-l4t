@@ -1028,19 +1028,29 @@ static int tegra_max98090_suspend_post(struct snd_soc_card *card)
 {
 	struct snd_soc_jack_gpio *gpio = &tegra_max98090_hp_jack_gpio;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
+	int i, suspend_allowed = 1;
 
-	if (gpio_is_valid(gpio->gpio))
-		disable_irq(gpio_to_irq(gpio->gpio));
-
-	if (machine->clock_enabled) {
-		machine->clock_enabled = 0;
-		tegra_asoc_utils_clk_disable(&machine->util_data);
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
 	}
 
-	if (machine->avdd_aud_reg)
-		regulator_disable(machine->avdd_aud_reg);
-	if (machine->vdd_sw_1v8_reg)
-		regulator_disable(machine->vdd_sw_1v8_reg);
+	if (suspend_allowed) {
+		if (gpio_is_valid(gpio->gpio))
+			disable_irq(gpio_to_irq(gpio->gpio));
+
+		if (machine->clock_enabled) {
+			machine->clock_enabled = 0;
+			tegra_asoc_utils_clk_disable(&machine->util_data);
+		}
+
+		if (machine->avdd_aud_reg)
+			regulator_disable(machine->avdd_aud_reg);
+		if (machine->vdd_sw_1v8_reg)
+			regulator_disable(machine->vdd_sw_1v8_reg);
+	}
 
 	return 0;
 }
@@ -1050,23 +1060,33 @@ static int tegra_max98090_resume_pre(struct snd_soc_card *card)
 	int val;
 	struct snd_soc_jack_gpio *gpio = &tegra_max98090_hp_jack_gpio;
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
+	int i, suspend_allowed = 1;
 
-	if (gpio_is_valid(gpio->gpio)) {
-		val = gpio_get_value(gpio->gpio);
-		val = gpio->invert ? !val : val;
-		snd_soc_jack_report(gpio->jack, val, gpio->report);
-		enable_irq(gpio_to_irq(gpio->gpio));
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
 	}
 
-	if (!machine->clock_enabled) {
-		machine->clock_enabled = 1;
-		tegra_asoc_utils_clk_enable(&machine->util_data);
-	}
+	if (suspend_allowed) {
+		if (gpio_is_valid(gpio->gpio)) {
+			val = gpio_get_value(gpio->gpio);
+			val = gpio->invert ? !val : val;
+			snd_soc_jack_report(gpio->jack, val, gpio->report);
+			enable_irq(gpio_to_irq(gpio->gpio));
+		}
 
-	if (machine->avdd_aud_reg)
-		regulator_enable(machine->avdd_aud_reg);
-	if (machine->vdd_sw_1v8_reg)
-		regulator_enable(machine->vdd_sw_1v8_reg);
+		if (!machine->clock_enabled) {
+			machine->clock_enabled = 1;
+			tegra_asoc_utils_clk_enable(&machine->util_data);
+		}
+
+		if (machine->avdd_aud_reg)
+			regulator_enable(machine->avdd_aud_reg);
+		if (machine->vdd_sw_1v8_reg)
+			regulator_enable(machine->vdd_sw_1v8_reg);
+	}
 
 	return 0;
 }
