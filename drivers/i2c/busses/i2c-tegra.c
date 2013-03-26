@@ -204,7 +204,7 @@ struct tegra_i2c_dev {
 	bool is_clkon_always;
 	bool is_high_speed_enable;
 	u16 hs_master_code;
-	struct tegra_i2c_chipdata *chipdata;
+	const struct tegra_i2c_chipdata *chipdata;
 	int scl_gpio;
 	int sda_gpio;
 };
@@ -1113,7 +1113,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	void __iomem *base;
 	int irq;
 	int ret = 0;
-	struct tegra_i2c_chipdata *chip_data = NULL;
+	const struct tegra_i2c_chipdata *chip_data = NULL;
 	const struct of_device_id *match;
 	int bus_num;
 
