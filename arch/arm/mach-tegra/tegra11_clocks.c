@@ -5078,8 +5078,9 @@ static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
 	unsigned long top_rate = 0;
 	unsigned long rate = bus->min_rate;
 	unsigned long bw = 0;
+	unsigned long iso_bw = 0;
 	unsigned long ceiling = bus->max_rate;
-	u8 emc_bw_efficiency = tegra_emc_bw_efficiency;
+	u32 usage_flags = 0;
 
 	list_for_each_entry(c, &bus->shared_bus_list,
 			u.shared_bus_user.node) {
@@ -5093,8 +5094,14 @@ static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
 		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
 			unsigned long request_rate = c->u.shared_bus_user.rate *
 				(c->div ? : 1);
+			usage_flags |= c->u.shared_bus_user.usage_flag;
 
 			switch (c->u.shared_bus_user.mode) {
+			case SHARED_ISO_BW:
+				iso_bw += request_rate;
+				if (iso_bw > bus->max_rate)
+					iso_bw = bus->max_rate;
+				/* fall thru */
 			case SHARED_BW:
 				bw += request_rate;
 				if (bw > bus->max_rate)
@@ -5129,10 +5136,21 @@ static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
 		}
 	}
 
-	if ((bus->flags & PERIPH_EMC_ENB) && bw && (emc_bw_efficiency < 100)) {
-		bw = emc_bw_efficiency ?
-			(bw / emc_bw_efficiency) : bus->max_rate;
-		bw = (bw < bus->max_rate / 100) ? (bw * 100) : bus->max_rate;
+	if (bus->flags & PERIPH_EMC_ENB) {
+		u8 efficiency = tegra_emc_get_iso_share(usage_flags);
+		if (iso_bw && efficiency && (efficiency < 100)) {
+			iso_bw /= efficiency;
+			iso_bw = (iso_bw < bus->max_rate / 100) ?
+					(iso_bw * 100) : bus->max_rate;
+		}
+		bw = max(bw, iso_bw);
+		efficiency = tegra_emc_bw_efficiency;
+
+		if (bw && efficiency && (efficiency < 100)) {
+			bw = bw / efficiency;
+			bw = (bw < bus->max_rate / 100) ?
+				(bw * 100) : bus->max_rate;
+		}
 	}
 
 	rate = override_rate ? : max(rate, bw);
@@ -5271,7 +5289,8 @@ static long tegra_clk_shared_bus_user_round_rate(
 	/* Defer rounding requests until aggregated. BW users must not be
 	   rounded at all, others just clipped to bus range (some clients
 	   may use round api to find limits) */
-	if (c->u.shared_bus_user.mode != SHARED_BW) {
+	if ((c->u.shared_bus_user.mode != SHARED_BW) &&
+	    (c->u.shared_bus_user.mode != SHARED_ISO_BW)) {
 		if (c->div > 1)
 			rate *= c->div;
 
@@ -6629,6 +6648,23 @@ static struct clk tegra_clk_cbus = {
 			.mode = _mode,			\
 		},					\
 	}
+#define SHARED_EMC_CLK(_name, _dev, _con, _parent, _id, _div, _mode, _flag)\
+	{						\
+		.name      = _name,			\
+		.lookup    = {				\
+			.dev_id    = _dev,		\
+			.con_id    = _con,		\
+		},					\
+		.ops = &tegra_clk_shared_bus_user_ops,	\
+		.parent = _parent,			\
+		.u.shared_bus_user = {			\
+			.client_id = _id,		\
+			.client_div = _div,		\
+			.mode = _mode,			\
+			.usage_flag = _flag,		\
+		},					\
+	}
+
 struct clk tegra_list_clks[] = {
 	PERIPH_CLK("apbdma",	"tegra-apbdma",		NULL,	34,	0,	26000000,  mux_clk_m,			0),
 	PERIPH_CLK("rtc",	"rtc-tegra",		NULL,	4,	0,	32768,     mux_clk_32k,			PERIPH_NO_RESET | PERIPH_ON_APB),
@@ -6758,29 +6794,29 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("sbc5.sclk", "tegra11-spi.4",	"sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
 	SHARED_CLK("sbc6.sclk", "tegra11-spi.5",	"sclk", &tegra_clk_sbus_cmplx, NULL, 0, 0),
 
-	SHARED_CLK("avp.emc",	"tegra-avp",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("cpu.emc",	"cpu",			"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("disp1.emc",	"tegradc.0",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("disp2.emc",	"tegradc.1",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("hdmi.emc",	"hdmi",			"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("usbd.emc",	"tegra-udc.0",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("usb1.emc",	"tegra-ehci.0",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("usb2.emc",	"tegra-ehci.1",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("usb3.emc",	"tegra-ehci.2",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("mon.emc",	"tegra_actmon",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("cap.emc",	"cap.emc",		NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING),
-	SHARED_CLK("cap.throttle.emc", "cap_throttle",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING),
-	SHARED_CLK("3d.emc",	"tegra_gr3d",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("2d.emc",	"tegra_gr2d",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("tsec.emc",	"tegra_tsec",		"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("sdmmc4.emc", "sdhci-tegra.3",	"emc",	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("camera.emc", "vi",			"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("iso.emc",	"iso",			"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
-	SHARED_CLK("floor.emc",	"floor.emc",		NULL,	&tegra_clk_emc, NULL, 0, 0),
-	SHARED_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE),
-	SHARED_CLK("edp.emc",	"edp.emc",		NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING),
-	SHARED_CLK("battery.emc", "battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING),
+	SHARED_EMC_CLK("avp.emc",	"tegra-avp",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("cpu.emc",	"cpu",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("disp1.emc",	"tegradc.0",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC)),
+	SHARED_EMC_CLK("disp2.emc",	"tegradc.1",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, BIT(EMC_USER_DC)),
+	SHARED_EMC_CLK("hdmi.emc",	"hdmi",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("usbd.emc",	"tegra-udc.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("usb1.emc",	"tegra-ehci.0",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("usb2.emc",	"tegra-ehci.1",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("usb3.emc",	"tegra-ehci.2",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("mon.emc",	"tegra_actmon",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("cap.emc",	"cap.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("cap.throttle.emc", "cap_throttle", NULL, &tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("3d.emc",	"tegra_gr3d",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
+	SHARED_EMC_CLK("2d.emc",	"tegra_gr2d",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_2D)),
+	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_MSENC)),
+	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("sdmmc4.emc", "sdhci-tegra.3",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("camera.emc", "vi",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI)),
+	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, 0),
+	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0),
+	SHARED_EMC_CLK("override.emc", "override.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_OVERRIDE, 0),
+	SHARED_EMC_CLK("edp.emc",	"edp.emc",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("battery.emc", "battery_edp",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	DUAL_CBUS_CLK("3d.cbus",	"tegra_gr3d",		"gr3d",	&tegra_clk_c2bus, "3d",  0, 0),
@@ -6857,7 +6893,7 @@ static struct clk tegra_xusb_source_clks[] = {
 			.src_shift = 25,
 		},
 	},
-	SHARED_CLK("xusb.emc",	"XUSB_ID",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW),
+	SHARED_EMC_CLK("xusb.emc",	XUSB_ID, "emc",	&tegra_clk_emc,	NULL,	0,	SHARED_BW, 0),
 };
 
 static struct clk_mux_sel mux_xusb_host[] = {

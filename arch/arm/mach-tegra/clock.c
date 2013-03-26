@@ -1269,6 +1269,7 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 	if (c->parent && !list_empty(&c->parent->shared_bus_list))
 		seq_printf(s, " (%lu%s)", c->u.shared_bus_user.rate,
 			   c->u.shared_bus_user.mode == SHARED_CEILING ? "^" :
+			   c->u.shared_bus_user.mode == SHARED_ISO_BW ? "+" :
 			   c->u.shared_bus_user.mode == SHARED_BW ? "+" : "");
 	seq_printf(s, "\n");
 
