@@ -1477,7 +1477,7 @@ static void tegra_udc_release(struct device *dev)
 }
 
 static int tegra_udc_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *));
+		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *));
 static int tegra_udc_stop(struct usb_gadget_driver *driver);
 /* defined in gadget.h */
 static struct usb_gadget_ops tegra_gadget_ops = {
@@ -2345,7 +2345,7 @@ static irqreturn_t tegra_udc_irq(int irq, void *_udc)
 				EP_SETUP_STATUS_EP0) {
 			/* Setup packet received, we are connected to host
 			 * and not to charger. Cancel any delayed work */
-			__cancel_delayed_work(&udc->non_std_charger_work);
+			cancel_delayed_work(&udc->non_std_charger_work);
 			tripwire_handler(udc, 0,
 					(u8 *) (&udc->local_setup_buff));
 			setup_received_irq(udc, &udc->local_setup_buff);
@@ -2394,7 +2394,7 @@ done:
  * Called by initialization code of gadget drivers
  */
 static int tegra_udc_start(struct usb_gadget_driver *driver,
-		int (*bind)(struct usb_gadget *))
+		int (*bind)(struct usb_gadget *, struct usb_gadget_driver *))
 {
 	struct tegra_udc *udc = the_udc;
 	int retval = -ENODEV;
@@ -2421,7 +2421,7 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	/* bind udc driver to gadget driver */
-	retval = bind(&udc->gadget);
+	retval = bind(&udc->gadget, driver);
 	if (retval) {
 		VDBG("bind to %s --> %d", driver->driver.name, retval);
 		udc->gadget.dev.driver = NULL;
