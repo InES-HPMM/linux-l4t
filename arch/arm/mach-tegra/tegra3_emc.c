@@ -182,7 +182,7 @@ enum {
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_CFG_RSV),
 
 #define DEFINE_REG(base, reg) ((base) ? (IO_ADDRESS((base)) + (reg)) : 0)
-static const void __iomem *burst_reg_addr[TEGRA30_EMC_NUM_REGS] = {
+static void __iomem *burst_reg_addr[TEGRA30_EMC_NUM_REGS] = {
 	BURST_REG_LIST
 };
 #undef DEFINE_REG
