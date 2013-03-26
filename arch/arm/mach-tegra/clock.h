@@ -240,6 +240,7 @@ struct clk {
 			struct clk			*client;
 			u32				client_div;
 			enum shared_bus_users_mode	mode;
+			u32				usage_flag;
 		} shared_bus_user;
 	} u;
 
