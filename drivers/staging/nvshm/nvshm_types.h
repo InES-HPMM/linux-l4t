@@ -44,6 +44,7 @@
 #define NVSHM_RATE_LIMIT_TTY (256)
 #define NVSHM_RATE_LIMIT_LOG (512)
 #define NVSHM_RATE_LIMIT_NET (2048)
+#define NVSHM_RATE_LIMIT_RPC (256)
 #define NVSHM_RATE_LIMIT_TRESHOLD (8)
 
 /* NVSHM_IPC mailbox messages ids */
@@ -76,6 +77,7 @@ enum nvshm_chan_type {
 	NVSHM_CHAN_TTY,
 	NVSHM_CHAN_LOG,
 	NVSHM_CHAN_NET,
+	NVSHM_CHAN_RPC,
 };
 
 /* Channel mapping structure */

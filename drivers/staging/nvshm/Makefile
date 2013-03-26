@@ -7,6 +7,7 @@ nvshm-objs += nvshm_iobuf.o
 nvshm-objs += nvshm_tty.o
 nvshm-objs += nvshm_net.o
 nvshm-objs += nvshm_if.o
+nvshm-objs += nvshm_rpc.o
 
 obj-$(CONFIG_NVSHM)		+= nvshm.o
 

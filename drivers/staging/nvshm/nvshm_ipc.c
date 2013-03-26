@@ -109,11 +109,13 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 
 static int init_interfaces(struct nvshm_handle *handle)
 {
-	int nlog = 0, ntty = 0, nnet = 0;
+	int nlog = 0, ntty = 0, nnet = 0, nrpc = 0;
 	int chan;
 
 	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++) {
 		switch (handle->chan[chan].map.type) {
+		case NVSHM_CHAN_UNMAP:
+			break;
 		case NVSHM_CHAN_TTY:
 		case NVSHM_CHAN_LOG:
 			ntty++;
@@ -122,6 +124,10 @@ static int init_interfaces(struct nvshm_handle *handle)
 		case NVSHM_CHAN_NET:
 			handle->chan[chan].rate_counter = NVSHM_RATE_LIMIT_NET;
 			nnet++;
+			break;
+		case NVSHM_CHAN_RPC:
+			handle->chan[chan].rate_counter = NVSHM_RATE_LIMIT_RPC;
+			nrpc++;
 			break;
 		default:
 			break;
@@ -141,12 +147,17 @@ static int init_interfaces(struct nvshm_handle *handle)
 		nvshm_net_init(handle);
 	}
 
+	if (nrpc) {
+		pr_debug("%s init %d rpc channels\n", __func__, nrpc);
+		nvshm_rpc_init(handle);
+	}
+
 	return 0;
 }
 
 static int cleanup_interfaces(struct nvshm_handle *handle)
 {
-	int nlog = 0, ntty = 0, nnet = 0;
+	int nlog = 0, ntty = 0, nnet = 0, nrpc = 0;
 	int chan;
 
 	/* No need to protect this as configuration will arrive after cleanup
@@ -162,6 +173,9 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 			break;
 		case NVSHM_CHAN_NET:
 			nnet++;
+			break;
+		case NVSHM_CHAN_RPC:
+			nrpc++;
 			break;
 		default:
 			break;
@@ -181,7 +195,12 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 		nvshm_net_cleanup();
 	}
 
-	/* Remove serial sysfs entry */
+	if (nrpc) {
+		pr_debug("%s cleanup %d rpc channels\n", __func__, nrpc);
+		nvshm_rpc_cleanup();
+	}
+
+    /* Remove serial sysfs entry */
 	tegra_bb_set_ipc_serial(handle->tegra_bb, NULL);
 
 	return 0;

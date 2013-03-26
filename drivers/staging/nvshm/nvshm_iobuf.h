@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -42,6 +42,16 @@
  */
 #define NVSHM_A2B(h, x) ((void *)(x) - ((int)(h)->ipc_base_virt) \
 			 + NVSHM_IPC_BB_BASE)
+
+/**
+* Payload start address in AP virtual memory space
+*
+* @param h : struct nvshm_handle pointer
+* @param b : pointer to the iobuf
+* @return : pointer to payload in cached kernel space
+*/
+#define NVSHM_IOBUF_PAYLOAD(h, b) \
+	NVSHM_B2A((h), (b)->npduData + (b)->dataOffset)
 
 /**
  * Alloc a nvshm_iobuf descriptor to be used for write operation
