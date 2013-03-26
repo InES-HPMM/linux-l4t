@@ -24,12 +24,17 @@
 #include <linux/serial_8250.h>
 #include <linux/i2c-tegra.h>
 #include <mach/irqs.h>
-#include <mach/dma.h>
 #include <linux/usb/tegra_usb_phy.h>
 
 #include "gpio-names.h"
 #include "iomap.h"
 #include "devices.h"
+
+#define TEGRA_DMA_REQ_SEL_I2S_1			2
+#define TEGRA_DMA_REQ_SEL_SPD_I			3
+#define TEGRA_DMA_REQ_SEL_I2S2_1		7
+#define TEGRA_DMA_REQ_SEL_SPI			11
+#define TEGRA_DMA_REQ_SEL_DTV			TEGRA_DMA_REQ_SEL_SPI
 
 static struct resource gpio_resource[] = {
 	[0] = {
