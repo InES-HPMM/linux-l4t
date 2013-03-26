@@ -801,7 +801,7 @@ skip_gpio:
 	dev_info(&client->dev,
 		"%s: battery gas gauge device registered\n", client->name);
 
-	INIT_DELAYED_WORK_DEFERRABLE(&chip->work, sbs_delayed_work);
+	INIT_DEFERRABLE_WORK(&chip->work, sbs_delayed_work);
 	schedule_delayed_work(&chip->work, HZ);
 
 	chip->enable_detection = true;
