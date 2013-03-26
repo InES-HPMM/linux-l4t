@@ -557,15 +557,15 @@ static DEFINE_SPINLOCK(periph_refcount_lock);
 static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #define clk_writel(value, reg) \
-	__raw_writel(value, (u32)reg_clk_base + (reg))
+	__raw_writel(value, reg_clk_base + (reg))
 #define clk_readl(reg) \
-	__raw_readl((u32)reg_clk_base + (reg))
+	__raw_readl(reg_clk_base + (reg))
 #define pmc_writel(value, reg) \
-	__raw_writel(value, (u32)reg_pmc_base + (reg))
+	__raw_writel(value, reg_pmc_base + (reg))
 #define pmc_readl(reg) \
-	__raw_readl((u32)reg_pmc_base + (reg))
+	__raw_readl(reg_pmc_base + (reg))
 #define chipid_readl() \
-	__raw_readl((u32)misc_gp_base + MISC_GP_HIDREV)
+	__raw_readl(misc_gp_base + MISC_GP_HIDREV)
 #define xusb_padctl_writel(value, reg) \
 	__raw_writel(value, reg_xusb_padctl_base + (reg))
 #define xusb_padctl_readl(reg) \
@@ -573,7 +573,7 @@ static int tegra_periph_clk_enable_refcount[CLK_OUT_ENB_NUM * 32];
 
 #define clk_writel_delay(value, reg) 					\
 	do {								\
-		__raw_writel((value), (u32)reg_clk_base + (reg));	\
+		__raw_writel((value), reg_clk_base + (reg));	\
 		udelay(2);						\
 	} while (0)
 
