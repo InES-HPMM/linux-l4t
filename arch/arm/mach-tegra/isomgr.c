@@ -51,6 +51,8 @@
 		t += isomgr_clients[idx].real_bw; \
 	if (t + isomgr.avail_bw != isomgr.max_iso_bw) { \
 		pr_err("bw mismatch, line=%d", __LINE__); \
+		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d", \
+			t + isomgr.avail_bw, isomgr.max_iso_bw); \
 		BUG(); \
 	} \
 }
@@ -408,6 +410,8 @@ tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
 		int i;
 		WARN(1, "max_iso_bw is relaxed to %dKB from %dKB",
 			dedi_bw + isomgr.dedi_bw, isomgr.max_iso_bw);
+		isomgr.avail_bw += dedi_bw + isomgr.dedi_bw -
+				   isomgr.max_iso_bw;
 		isomgr.max_iso_bw = dedi_bw + isomgr.dedi_bw;
 		pr_info("ISO BW usage:");
 		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
