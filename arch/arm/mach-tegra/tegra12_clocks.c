@@ -38,7 +38,6 @@
 
 #include "clock.h"
 #include "fuse.h"
-enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 #include "dvfs.h"
 #include "iomap.h"
 #include "pm.h"
@@ -6928,7 +6927,8 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 void __init tegra12x_clk_init_la(void)
 {
 	struct clk *c;
-	u32 reg = readl(misc_gp_base + MISC_GP_TRANSACTOR_SCRATCH_0);
+	u32 reg = readl((void *)
+		((uintptr_t)misc_gp_base + MISC_GP_TRANSACTOR_SCRATCH_0));
 
 	if (!(reg & MISC_GP_TRANSACTOR_SCRATCH_LA_ENABLE))
 		return;
