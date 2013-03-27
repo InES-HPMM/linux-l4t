@@ -301,8 +301,9 @@ tegra_shut_off_mmu:
 	tst	r3, r2
 	bne	1b
 #endif /* CONFIG_ARCH_TEGRA_14x_SOC */
-	/* Disable L2 */
+	/* Sync and disable L2 */
 	mov	r2, #0
+	str	r2, [r1, #L2X0_CACHE_SYNC]
 	str	r2, [r1, #L2X0_CTRL]
 #endif /* CONFIG_CACHE_L2X0 && !CONFIG_TRUSTED_FOUNDATIONS */
 2:	mov	pc, r0
