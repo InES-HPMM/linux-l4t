@@ -1535,7 +1535,7 @@ static struct platform_driver tegra11_emc_driver = {
 
 static struct emc_iso_usage tegra11_emc_iso_usage[] = {
 	{ BIT(EMC_USER_DC),			80 },
-	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	35 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
 };
 
 int __init tegra11_emc_init(void)
