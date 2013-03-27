@@ -425,8 +425,8 @@ static int use_dfll;
 * Structure defining the fields for USB UTMI clocks Parameters.
 */
 struct utmi_clk_param {
-	/* Oscillator Frequency in KHz */
-	u32 osc_frequency;
+	/* CLK_M Frequency in KHz */
+	u32 clk_m_frequency;
 	/* UTMIP PLL Enable Delay Count  */
 	u8 enable_delay_count;
 	/* UTMIP PLL Stable count */
@@ -434,17 +434,15 @@ struct utmi_clk_param {
 	/*  UTMIP PLL Active delay count */
 	u8 active_delay_count;
 	/* UTMIP PLL Xtal frequency count */
-	u8 xtal_freq_count;
+	u16 xtal_freq_count;
 };
 
 static const struct utmi_clk_param utmi_parameters[] = {
-/*	OSC_FREQUENCY,	ENABLE_DLY,	STABLE_CNT,	ACTIVE_DLY,	XTAL_FREQ_CNT */
-	{13000000,	0x02,		0x33,		0x05,		0x7F},
-	{19200000,	0x03,		0x4B,		0x06,		0xBB},
-	{12000000,	0x02,		0x2F,		0x04,		0x76},
-	{26000000,	0x04,		0x66,		0x09,		0xFE},
-	{16800000,	0x03,		0x41,		0x0A,		0xA4},
-	{38400000,	0x03,		0x4B,		0x06,		0xBB},
+/*	CLK_M_FREQ,	ENABLE_DLY,	STABLE_CNT,	ACTIVE_DLY,	XTAL_FREQ_CNT */
+	{38400000,	0x05,		0x96,		0x0C,		0x177},
+	{19200000,	0x03,		0x4B,		0x06,		0x0BC},
+	{12800000,	0x02,		0x32,		0x04,		0x07D},
+	{9600000,	0x02,		0x26,		0x03,		0x05E},
 };
 
 static void __iomem *reg_clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
@@ -1821,10 +1819,10 @@ static void tegra14_utmi_param_configure(struct clk *c)
 	u32 reg;
 	int i;
 	unsigned long main_rate =
-		clk_get_rate(c->parent->parent);
+		clk_get_rate(tegra_get_clock_by_name("clk_m"));
 
 	for (i = 0; i < ARRAY_SIZE(utmi_parameters); i++) {
-		if (main_rate == utmi_parameters[i].osc_frequency)
+		if (main_rate == utmi_parameters[i].clk_m_frequency)
 			break;
 	}
 
