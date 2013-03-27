@@ -111,6 +111,10 @@ extern struct platform_device tegra_apbif3_device;
 extern struct platform_device tegra_dam_device0;
 extern struct platform_device tegra_dam_device1;
 extern struct platform_device tegra_dam_device2;
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+extern struct platform_device tegra_dmic_device0;
+extern struct platform_device tegra_dmic_device1;
+#endif
 extern struct platform_device tegra_hda_device;
 extern struct platform_device tegra_sata_device;
 #endif
