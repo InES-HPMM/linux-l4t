@@ -919,7 +919,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	int err;
 	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa);
 
-	dev_dbg(as->smmu->dev, "[%d] %08lx:%08x\n", as->asid, iova, pa);
+	dev_dbg(as->smmu->dev, "[%d] %08lx:%llx\n", as->asid, iova, (u64)pa);
 
 	switch (bytes) {
 	case SZ_4K:
@@ -1136,8 +1136,8 @@ static phys_addr_t smmu_iommu_iova_to_phys(struct iommu_domain *domain,
 	}
 
 	dev_dbg(as->smmu->dev,
-		"iova:%08llx pfn:%08x asid:%d\n", (unsigned long long)iova,
-		 pa, as->asid);
+		"iova:%08llx pfn:%08llx asid:%d\n", (unsigned long long)iova,
+		 (u64)pa, as->asid);
 
 	spin_unlock_irqrestore(&as->lock, flags);
 	return pa;
