@@ -71,4 +71,11 @@ config SENSORS_TCS3772
 	  If you say yes here you get support for ambient light, RGB and
 	  Proximity sensing from TCS3772.
 
+config SENSORS_CM3217
+	tristate "CM3217 Ambient light sensor"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable the CM3217 Ambient Light Sensor.
+
 endmenu

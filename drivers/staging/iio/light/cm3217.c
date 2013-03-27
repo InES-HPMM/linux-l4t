@@ -739,11 +739,19 @@ err_mutex:
 }
 
 static const struct i2c_device_id cm3217_i2c_device_id[] = {
-	{CM3217_NAME, 0},
+	{"cm3217", 0},
 	{}
 };
 
 MODULE_DEVICE_TABLE(i2c, cm3217_i2c_device_id);
+
+#ifdef CONFIG_OF
+static const struct of_device_id cm3217_of_match[] = {
+	{ .compatible = "capella,cm3217", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, cm3217_of_match);
+#endif
 
 static struct i2c_driver cm3217_driver = {
 	.class		= I2C_CLASS_HWMON,
@@ -751,24 +759,13 @@ static struct i2c_driver cm3217_driver = {
 	.remove		= cm3217_remove,
 	.id_table	= cm3217_i2c_device_id,
 	.driver = {
-		.name	= CM3217_NAME,
+		.name	= "cm3217",
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(cm3217_of_match),
 	},
 	.shutdown	= cm3217_shutdown,
 };
-
-static int __init cm3217_init(void)
-{
-	return i2c_add_driver(&cm3217_driver);
-}
-
-static void __exit cm3217_exit(void)
-{
-	i2c_del_driver(&cm3217_driver);
-}
-
-module_init(cm3217_init);
-module_exit(cm3217_exit);
+module_i2c_driver(cm3217_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("CM3217 driver");
