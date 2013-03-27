@@ -2094,7 +2094,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
 	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS), },
-	{ .name = "tegradc",	.swgids = SWGID(DC) | SWGID(DCB), },
+	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
 	{ .name = "tegra_bb",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra_dma",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS), },
@@ -2112,11 +2112,14 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra-udc",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS), },
 	{ .name = "tsec",	.swgids = SWGID(TSEC), },
+	/* vic must be before vi to prevent incorrect matching */
+	{ .name = "vic",	.swgids = SWGID(VIC), },
 	{ .name = "vi",	.swgids = SWGID(VI), },
 	{ .name = "therm_est",	.swgids = SWGID(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif
+	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
 	{},
 };
 
