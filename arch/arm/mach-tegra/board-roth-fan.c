@@ -38,6 +38,8 @@ static struct pwm_fan_platform_data fan_data_yltc_8k = {
 				245*1024, 250*1024, 252*1024, 255*1024},
 	.active_rru = {1024*50, 1024, 1024, 256, 256, 256, 256, 256, 256, 256},
 	.active_rrd = {1024*50, 1024, 1024, 256, 256, 256, 256, 128, 128, 128},
+	/*Lookup table to get the actual state cap*/
+	.state_cap_lookup = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2},
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
@@ -56,6 +58,7 @@ static struct pwm_fan_platform_data fan_data_delta_6k = {
 						256, 256, 256, 256, 256, 256},
 	.active_rrd = {1024*40, 1024*2, 1024, 256, 256,
 						256, 256, 128, 128, 128},
+	.state_cap_lookup = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2},
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
