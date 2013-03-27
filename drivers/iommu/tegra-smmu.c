@@ -370,7 +370,7 @@ static int __smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 
 }
 
-static int smmu_client_set_hwgrp(struct smmu_client *c, u32 map, int on)
+static int smmu_client_set_hwgrp(struct smmu_client *c, u64 map, int on)
 {
 	u32 val;
 	unsigned long flags;
