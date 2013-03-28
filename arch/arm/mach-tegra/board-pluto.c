@@ -58,11 +58,9 @@
 #include <asm/hardware/gic.h>
 
 #include <mach/clk.h>
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>
-#include <mach/iomap.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/isomgr.h>
@@ -87,6 +85,7 @@
 #include "fuse.h"
 #include "pm.h"
 #include "common.h"
+#include "iomap.h"
 
 #ifdef CONFIG_BT_BLUESLEEP
 static struct rfkill_gpio_platform_data pluto_bt_rfkill_pdata = {
