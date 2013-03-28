@@ -3,6 +3,7 @@
  *  Note that Maxim 8966 and 8997 are mfd and this is its subdevice.
  *
  * Copyright (C) 2011 Samsung Electronics
+ * Copyright (C) 2013, NVIDIA CORPORATION.  All rights reserved.
  * MyungJoo Ham <myungjoo.ham@samsung.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -200,6 +201,11 @@ struct max17042_config_data {
 	u16	cell_char_tbl[MAX17042_CHARACTERIZATION_DATA_SIZE];
 } __packed;
 
+struct max17042_rbat_map {
+	unsigned int capacity;
+	unsigned int rbat;
+};
+
 struct max17042_platform_data {
 	struct max17042_reg_data *init_data;
 	struct max17042_config_data *config_data;
@@ -214,6 +220,7 @@ struct max17042_platform_data {
 	 */
 	unsigned int r_sns;
 
+	struct max17042_rbat_map *rbat_map;
 	struct edp_client *edp_client;
 };
 
