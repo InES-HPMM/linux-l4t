@@ -23,11 +23,11 @@
 #include <linux/io.h>
 
 #include <mach/clk.h>
-#include <mach/iomap.h>
 #include <mach/powergate.h>
 
 #include "clock.h"
 #include "fuse.h"
+#include "iomap.h"
 
 #define MAX_CLK_EN_NUM			9
 #define MAX_HOTRESET_CLIENT_NUM		4
