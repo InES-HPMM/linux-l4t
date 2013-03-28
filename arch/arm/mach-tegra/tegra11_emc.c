@@ -32,11 +32,10 @@
 
 #include <asm/cputime.h>
 
-#include <mach/iomap.h>
-
 #include "clock.h"
 #include "dvfs.h"
 #include "board.h"
+#include "iomap.h"
 #include "tegra11_emc.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
