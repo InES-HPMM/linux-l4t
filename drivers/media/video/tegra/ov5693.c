@@ -24,7 +24,10 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
-
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <media/ov5693.h>
 
 #define OV5693_ID			0x5693
@@ -63,6 +66,7 @@ struct ov5693_info {
 	u8 bin_en;
 	struct ov5693_fuseid fuseid;
 	struct regmap *regmap;
+	struct regulator *ext_vcm_vdd;
 };
 
 struct ov5693_reg {
@@ -1892,6 +1896,131 @@ static int ov5693_remove(struct i2c_client *client)
 	return 0;
 }
 
+static struct of_device_id ov5693_of_match[] = {
+	{ .compatible = "nvidia,ov5693", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, ov5693_of_match);
+
+static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
+{
+	int err;
+	struct ov5693_info *info = container_of(pw, struct ov5693_info,
+						regulators);
+
+	if (info->pdata->use_vcm_vdd) {
+		err = regulator_enable(info->ext_vcm_vdd);
+		if (unlikely(err))
+			goto ov5693_vcm_fail;
+	}
+
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto ov5693_avdd_fail;
+
+	err = regulator_enable(pw->dovdd);
+	if (err)
+		goto ov5693_iovdd_fail;
+
+	usleep_range(1, 2);
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 1);
+
+	usleep_range(300, 310);
+
+	return 0;
+
+ov5693_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+ov5693_avdd_fail:
+	if (info->pdata->use_vcm_vdd)
+		regulator_disable(info->ext_vcm_vdd);
+
+ov5693_vcm_fail:
+	pr_err("%s FAILED\n", __func__);
+	return err;
+}
+
+static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
+{
+	struct ov5693_info *info = container_of(pw, struct ov5693_info,
+						regulators);
+
+	usleep_range(21, 25);
+	ov5693_gpio_wr(info, OV5693_GPIO_TYPE_PWRDN, 0);
+	usleep_range(1, 2);
+
+	regulator_disable(pw->dovdd);
+	regulator_disable(pw->avdd);
+	if (info->pdata->use_vcm_vdd)
+		regulator_disable(info->ext_vcm_vdd);
+
+	return 0;
+}
+
+static int ov5693_parse_dt_gpio(struct device_node *np, const char *name,
+				enum ov5693_gpio_type type,
+				struct nvc_gpio_pdata *pdata)
+{
+	enum of_gpio_flags gpio_flags;
+
+	if (of_find_property(np, name, NULL)) {
+		pdata->gpio = of_get_named_gpio_flags(np, name, 0, &gpio_flags);
+		pdata->gpio_type = type;
+		pdata->init_en = true;
+		pdata->active_high = !(gpio_flags & OF_GPIO_ACTIVE_LOW);
+		return 1;
+	}
+	return 0;
+}
+
+static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct ov5693_platform_data *pdata;
+	struct nvc_gpio_pdata *gpio_pdata = NULL;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	gpio_pdata = devm_kzalloc(&client->dev,
+		sizeof(*gpio_pdata) * ARRAY_SIZE(ov5693_gpio), GFP_KERNEL);
+	if (!gpio_pdata) {
+		dev_err(&client->dev, "cannot allocate gpio data memory\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	/* init with default platform data values */
+	memcpy(pdata, &ov5693_dflt_pdata, sizeof(*pdata));
+
+	/* extra regulators info */
+	pdata->use_vcm_vdd = of_property_read_bool(np, "nvidia,use-vcm-vdd");
+
+	/* generic info */
+	of_property_read_u32(np, "nvidia,num", &pdata->num);
+	of_property_read_string(np, "nvidia,dev-name", &pdata->dev_name);
+
+	/* ov5693 gpios */
+	pdata->gpio_count = 0;
+	pdata->gpio_count += ov5693_parse_dt_gpio(np,
+				"reset-gpios", OV5693_GPIO_TYPE_PWRDN,
+				&gpio_pdata[pdata->gpio_count]);
+	pdata->gpio = gpio_pdata;
+
+	/* ov5693 power functions */
+	pdata->power_on = ov5693_platform_power_on;
+	pdata->power_off = ov5693_platform_power_off;
+
+	return pdata;
+}
+
 static int ov5693_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -1914,13 +2043,32 @@ static int ov5693_probe(
 	}
 
 	info->i2c_client = client;
-	if (client->dev.platform_data)
+	if (client->dev.of_node) {
+		info->pdata = ov5693_parse_dt(client);
+		if (IS_ERR(info->pdata)) {
+			err = PTR_ERR(info->pdata);
+			dev_err(&client->dev,
+				"Failed to parse OF node: %d\n", err);
+			return err;
+		}
+	} else if (client->dev.platform_data)
 		info->pdata = client->dev.platform_data;
 	else {
 		info->pdata = &ov5693_dflt_pdata;
 		dev_dbg(&client->dev,
 			"%s No platform data. Using defaults.\n",
 			__func__);
+	}
+	if (info->pdata->use_vcm_vdd) {
+		info->ext_vcm_vdd = devm_regulator_get(&info->i2c_client->dev,
+							"ext_vcm_vdd");
+		if (WARN_ON(IS_ERR(info->ext_vcm_vdd))) {
+			err = PTR_ERR(info->ext_vcm_vdd);
+			dev_err(&client->dev,
+				"ext_vcm_vdd get failed %d\n", err);
+			info->ext_vcm_vdd = NULL;
+			return err;
+		}
 	}
 
 	info->regmap = devm_regmap_init_i2c(client, &ad5823_regmap_config);
@@ -1934,6 +2082,9 @@ static int ov5693_probe(
 
 	i2c_set_clientdata(client, info);
 	ov5693_pm_init(info);
+	if (!info->regulators.avdd || !info->regulators.dovdd)
+		return -EFAULT;
+
 	ov5693_sdata_init(info);
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		if (info->pdata->probe_clock) {
@@ -1979,6 +2130,7 @@ static struct i2c_driver ov5693_i2c_driver = {
 	.driver = {
 		.name = "ov5693",
 		.owner = THIS_MODULE,
+		.of_match_table = ov5693_of_match,
 	},
 	.id_table = ov5693_id,
 	.probe = ov5693_probe,
