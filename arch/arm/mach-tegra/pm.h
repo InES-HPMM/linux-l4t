@@ -27,7 +27,7 @@
 #include <linux/errno.h>
 #include <linux/clkdev.h>
 
-#include <mach/iomap.h>
+#include "iomap.h"
 
 #define PMC_SCRATCH0		0x50
 #define PMC_SCRATCH1		0x54
