@@ -27,12 +27,12 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "board-pluto.h"
+#include "iomap.h"
 
 #define PLUTO_WLAN_PWR	TEGRA_GPIO_PCC5
 #define PLUTO_WLAN_WOW	TEGRA_GPIO_PU5
