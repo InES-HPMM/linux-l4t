@@ -46,7 +46,8 @@
 #include <asm/unaligned.h>
 #include <asm/dma.h>
 
-#include <mach/iomap.h>
+/* HACK! This needs to come from DT */
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #include "tegra_udc.h"
 
