@@ -74,15 +74,12 @@
 /* Battery depletion constants */
 #define DEPL_INTERVAL	60000
 #define VSYS_MIN	3100000
-#define AVG_CURRENT_MIN	100000
 #define R_CONTACTS	20000
 #define R_BOARD		30000
 #define R_PASSFET	30000
-#define RBAT_INIT	150000
 #define NOMINAL_VOLTAGE	3800000
 #define IBAT_NOMINAL	3700
 #define PBAT_NOMINAL	14060
-#define RBAT_HIST_COUNT	5
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -91,7 +88,6 @@ struct max17042_chip {
 	struct max17042_platform_data *pdata;
 	struct delayed_work work;
 	int    init_complete;
-	s64 rbat_lastgood;
 	unsigned int edp_req;
 	struct delayed_work depl_work;
 	int shutdown_complete;
@@ -726,7 +722,7 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 
 #ifdef CONFIG_EDP_FRAMEWORK
 static int max17042_get_bat_vars(struct max17042_chip *chip, s64 *avgcurrent,
-		s64 *avgvcell, s64 *vfocv)
+		s64 *vfocv, unsigned int *capacity)
 {
 	struct power_supply *psy;
 	union power_supply_propval pv;
@@ -737,13 +733,13 @@ static int max17042_get_bat_vars(struct max17042_chip *chip, s64 *avgcurrent,
 		return -EFAULT;
 	*avgcurrent = -pv.intval;
 
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_AVG, &pv))
-		return -EFAULT;
-	*avgvcell = pv.intval;
-
 	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_OCV, &pv))
 		return -EFAULT;
 	*vfocv = pv.intval;
+
+	if (max17042_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &pv))
+		return -EFAULT;
+	*capacity = pv.intval;
 
 	return 0;
 }
@@ -753,37 +749,16 @@ static inline unsigned int max17042_max_depletion(struct max17042_chip *chip)
 	return chip->pdata->edp_client->states[0];
 }
 
-static int rbat_hist_sum = RBAT_HIST_COUNT * RBAT_INIT;
-static int rbat_hist[RBAT_HIST_COUNT];
-static int rbat_hist_i;
-
-static void max17042_rbat_hist_init(void)
+static int max17042_rbat(struct max17042_chip *chip, unsigned int capacity)
 {
-	int i;
-	for (i = 0; i < RBAT_HIST_COUNT; i++)
-		rbat_hist[i] = RBAT_INIT;
-}
+	struct max17042_rbat_map *p;
 
-static int max17042_rbat(struct max17042_chip *chip, s64 avgcurrent,
-		s64 avgvcell, s64 vfocv)
-{
-	int rbat;
+	p = chip->pdata->rbat_map;
 
-	if (avgcurrent < AVG_CURRENT_MIN) {
-		rbat = chip->rbat_lastgood;
-	} else {
-		rbat = div64_s64(1000000 * (vfocv - avgvcell), avgcurrent);
-		rbat = max(rbat, RBAT_INIT);
-		chip->rbat_lastgood = rbat;
-	}
+	while (p->capacity > capacity)
+		p++;
 
-	rbat_hist_sum -= rbat_hist[rbat_hist_i];
-	rbat_hist[rbat_hist_i] = rbat;
-	rbat_hist_sum += rbat;
-	rbat = rbat_hist_sum / RBAT_HIST_COUNT;
-	rbat_hist_i = (rbat_hist_i + 1) % RBAT_HIST_COUNT;
-
-	return rbat;
+	return p->rbat;
 }
 
 static s64 max17042_ibat_possible(struct max17042_chip *chip, s64 avgcurrent,
@@ -802,7 +777,7 @@ static s64 max17042_ibat_possible(struct max17042_chip *chip, s64 avgcurrent,
 static unsigned int max17042_depletion(struct max17042_chip *chip)
 {
 	s64 avgcurrent;
-	s64 avgvcell;
+	unsigned int capacity;
 	s64 vfocv;
 
 	s64 rbat;
@@ -812,12 +787,12 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	s64 depl_vdroop;
 	s64 depl;
 
-	if (max17042_get_bat_vars(chip, &avgcurrent, &avgvcell, &vfocv)) {
+	if (max17042_get_bat_vars(chip, &avgcurrent, &vfocv, &capacity)) {
 		WARN_ON(1);
 		return max17042_max_depletion(chip);
 	}
 
-	rbat = max17042_rbat(chip, avgcurrent, avgvcell, vfocv);
+	rbat = max17042_rbat(chip, capacity);
 	ibat_possible = max17042_ibat_possible(chip, avgcurrent, vfocv, rbat);
 
 	pbat_adjusted = div64_s64(IBAT_NOMINAL * vfocv, 1000000);
@@ -833,8 +808,8 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
 		printk(KERN_DEBUG "max17042\n");
 		printk(KERN_DEBUG "    AVERAGE_ICELL: %lld uA\n", avgcurrent);
-		printk(KERN_DEBUG "    AVERAGE_VCELL: %lld uV\n", avgvcell);
 		printk(KERN_DEBUG "    VFOCV        : %lld uV\n", vfocv);
+		printk(KERN_DEBUG "    CAPACITY     : %u\n", capacity);
 		printk(KERN_DEBUG "    RBAT         : %lld\n", rbat);
 		printk(KERN_DEBUG "    CHGIN_ILIM   : %u\n", chip->chgin_ilim);
 		printk(KERN_DEBUG "    IBAT_possible: %lld\n", ibat_possible);
@@ -891,8 +866,12 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 		return -ENODEV;
 	}
 
+	if (!chip->pdata->edp_client || !chip->pdata->rbat_map) {
+		dev_err(&chip->client->dev, "no edp platform data\n");
+		return -ENODEV;
+	}
+
 	c = chip->pdata->edp_client;
-	chip->rbat_lastgood = RBAT_INIT;
 	chip->edp_req = c->num_states;
 	chip->chgin_ilim = 0;
 
@@ -908,7 +887,6 @@ static int max17042_init_depletion(struct max17042_chip *chip)
 		return r;
 	}
 
-	max17042_rbat_hist_init();
 	INIT_DEFERRABLE_WORK(&chip->depl_work, max17042_update_depletion);
 	schedule_delayed_work(&chip->depl_work,
 			msecs_to_jiffies(DEPL_INTERVAL));
