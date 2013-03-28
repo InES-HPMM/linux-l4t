@@ -670,6 +670,13 @@ int __init bonaire_panel_init(void)
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
+#ifdef CONFIG_TEGRA_IOMMU_SMMU
+	/* Copy the bootloader fb to the fb. */
+	__tegra_move_framebuffer(&bonaire_nvmap_device,
+			tegra_fb_start, tegra_bootloader_fb_start,
+			tegra_fb_size);
+#endif
+
 	if (!err) {
 		bonaire_disp1_device.dev.parent = &phost1x->dev;
 		err = platform_device_register(&bonaire_disp1_device);
