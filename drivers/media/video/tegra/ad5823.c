@@ -23,6 +23,10 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <media/ad5823.h>
 
 #define POS_LOW		(32)
@@ -139,6 +143,52 @@ static struct miscdevice ad5823_device = {
 	.fops = &ad5823_fileops,
 };
 
+static struct of_device_id ad5823_of_match[] = {
+	{ .compatible = "nvidia,ad5823", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, ad5823_of_match);
+
+static int ad5823_power_on(struct ad5823_platform_data *pdata)
+{
+	int err = 0;
+
+	pr_info("%s\n", __func__);
+	gpio_set_value_cansleep(pdata->gpio, 1);
+
+	return err;
+}
+
+static int ad5823_power_off(struct ad5823_platform_data *pdata)
+{
+	pr_info("%s\n", __func__);
+	gpio_set_value_cansleep(pdata->gpio, 0);
+	return 0;
+}
+
+static struct ad5823_platform_data *ad5823_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct ad5823_platform_data *pdata;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pdata->gpio = of_get_named_gpio_flags(np, "af-pwdn-gpios", 0, NULL);
+	if (!gpio_is_valid(pdata->gpio)) {
+		dev_err(&client->dev, "Invalid af-pwdn-gpios\n");
+		return ERR_PTR(-EINVAL);
+	}
+	pdata->power_on = ad5823_power_on;
+	pdata->power_off = ad5823_power_off;
+
+	return pdata;
+}
+
 static int ad5823_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -165,7 +215,15 @@ static int ad5823_probe(struct i2c_client *client,
 		goto ERROR_RET;
 	}
 
-	if (client->dev.platform_data) {
+	if (client->dev.of_node) {
+		info->pdata = ad5823_parse_dt(client);
+		if (IS_ERR(info->pdata)) {
+			err = PTR_ERR(info->pdata);
+			dev_err(&client->dev,
+				"Failed to parse OF node: %d\n", err);
+			goto ERROR_RET;
+		}
+	} else if (client->dev.platform_data) {
 		info->pdata = client->dev.platform_data;
 	} else {
 		info->pdata = NULL;
@@ -173,6 +231,10 @@ static int ad5823_probe(struct i2c_client *client,
 		err = EINVAL;
 		goto ERROR_RET;
 	}
+	err = gpio_request_one(info->pdata->gpio, GPIOF_OUT_INIT_LOW,
+				"af_pwdn");
+	if (err)
+		goto ERROR_RET;
 
 	info->regulator = devm_regulator_get(&client->dev, "vdd");
 	if (IS_ERR_OR_NULL(info->regulator)) {
@@ -216,6 +278,8 @@ static int ad5823_remove(struct i2c_client *client)
 {
 	struct ad5823_info *info;
 	info = i2c_get_clientdata(client);
+
+	gpio_free(info->pdata->gpio);
 	misc_deregister(&ad5823_device);
 	return 0;
 }
@@ -231,6 +295,7 @@ static struct i2c_driver ad5823_i2c_driver = {
 	.driver = {
 		.name = "ad5823",
 		.owner = THIS_MODULE,
+		.of_match_table = ad5823_of_match,
 	},
 	.probe = ad5823_probe,
 	.remove = ad5823_remove,
