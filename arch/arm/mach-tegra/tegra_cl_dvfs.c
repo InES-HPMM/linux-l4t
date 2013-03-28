@@ -159,6 +159,7 @@ struct dfll_rate_req {
 	u8	scale;
 	u8	output;
 	u8	cap;
+	unsigned long rate;
 };
 
 struct tegra_cl_dvfs {
@@ -1381,6 +1382,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 {
 	u32 val;
 	struct dfll_rate_req req;
+	req.rate = rate;
 
 	if (cld->mode == TEGRA_CL_DVFS_UNINITIALIZED) {
 		pr_err("%s: Cannot set DFLL rate in %s mode\n",
@@ -1394,7 +1396,7 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 	/* Determine DFLL output scale */
 	req.scale = SCALE_MAX - 1;
 	if (rate < cld->dvco_rate_min) {
-		int scale = DIV_ROUND_UP((rate / 1000 * SCALE_MAX),
+		int scale = DIV_ROUND_CLOSEST((rate / 1000 * SCALE_MAX),
 			(cld->dvco_rate_min / 1000));
 		if (!scale) {
 			pr_err("%s: Rate %lu is below scalable range\n",
@@ -1439,12 +1441,17 @@ int tegra_cl_dvfs_request_rate(struct tegra_cl_dvfs *cld, unsigned long rate)
 unsigned long tegra_cl_dvfs_request_get(struct tegra_cl_dvfs *cld)
 {
 	struct dfll_rate_req *req = &cld->last_req;
-	u32 rate = GET_REQUEST_RATE(req->freq, cld->ref_rate);
-	if ((req->scale + 1) < SCALE_MAX) {
-		rate = (rate / 1000 * (req->scale + 1)) / SCALE_MAX;
-		rate *= 1000;
-	}
-	return rate;
+
+	/*
+	 * If running below dvco minimum rate with skipper resolution:
+	 * dvco min rate / 256 - return last requested rate rounded to 1kHz.
+	 * If running above dvco minimum, with closed loop resolution:
+	 * ref rate / 2 - return cl_dvfs target rate.
+	 */
+	if ((req->scale + 1) < SCALE_MAX)
+		return req->rate / 1000 * 1000;
+
+	return GET_REQUEST_RATE(req->freq, cld->ref_rate);
 }
 
 #ifdef CONFIG_DEBUG_FS
