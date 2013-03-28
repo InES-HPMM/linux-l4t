@@ -20,10 +20,10 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
 #include <mach/csi.h>
 
 #include "clock.h"
+#include "iomap.h"
 
 static struct clk *vi_clk;
 static struct clk *csi_clk;
