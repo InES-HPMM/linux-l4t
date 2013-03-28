@@ -374,6 +374,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
 	.support_pmu_vbus = true,
+	.id_det_type = TEGRA_USB_PMU_ID,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
@@ -399,6 +400,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.port_otg = true,
 	.has_hostpc = true,
 	.support_pmu_vbus = true,
+	.id_det_type = TEGRA_USB_PMU_ID,
 	.unaligned_dma_buf_supported = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
@@ -426,6 +428,7 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 	.vbus_extcon_dev_name = "palmas-extcon",
+	.id_extcon_dev_name = "palmas-extcon",
 };
 
 static void macallan_usb_init(void)
