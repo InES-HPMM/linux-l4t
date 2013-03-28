@@ -18,9 +18,9 @@
 #include <linux/kernel.h>
 
 #include <mach/dc.h>
-#include <mach/iomap.h>
 
 #include "board-panel.h"
+#include "iomap.h"
 
 atomic_t sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
