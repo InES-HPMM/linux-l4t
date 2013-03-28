@@ -360,7 +360,7 @@ module_init(pluto_throttle_init);
 static struct nct1008_platform_data pluto_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = true,
-	.conv_rate = 0x08,
+	.conv_rate = 0x06, /* 4Hz conversion rate */
 	.offset = 0,
 	.shutdown_ext_limit = 105, /* C */
 	.shutdown_local_limit = 120, /* C */
