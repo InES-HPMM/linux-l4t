@@ -17,12 +17,12 @@
 #include <linux/init.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
 #include "board.h"
 #include "tegra-board-id.h"
 #include "gpio-names.h"
+#include "iomap.h"
 
 static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PO5,				/* wake0 */
