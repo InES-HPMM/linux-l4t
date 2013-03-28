@@ -30,7 +30,6 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/of.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/dc.h>
 
 #include "board.h"
@@ -39,6 +38,7 @@
 #include "board-pluto.h"
 #include "board-panel.h"
 #include "common.h"
+#include "iomap.h"
 
 #include "tegra11_host1x_devices.h"
 
