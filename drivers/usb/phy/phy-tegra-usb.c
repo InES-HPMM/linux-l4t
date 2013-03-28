@@ -41,6 +41,9 @@
 #include "../../../arch/arm/mach-tegra/fuse.h"
 #include "../../../arch/arm/mach-tegra/common.h"
 
+/* HACK! This needs to come from DT */
+#include "../../../arch/arm/mach-tegra/iomap.h"
+
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
 #define INFO(stuff...)		pr_info("usb_phy: " stuff)
