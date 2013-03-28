@@ -30,11 +30,11 @@
 #include <linux/bug.h>
 #include <linux/bitops.h>
 
-#include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-t11.h>
 
 #include "gpio-names.h"
+#include "iomap.h"
 
 #define TRISTATE	(1<<4)
 #define PINGROUP_REG_A	0x868
