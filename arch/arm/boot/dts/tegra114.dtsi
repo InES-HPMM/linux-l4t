@@ -717,4 +717,9 @@
 		reg = <0x0 0x0>;
 		status = "disable";
 	};
+
+	mipi_cal {
+		compatible = "nvidia,tegra114-mipi_cal";
+		reg = <0x700e3000 0x00040000>;
+	};
 };
