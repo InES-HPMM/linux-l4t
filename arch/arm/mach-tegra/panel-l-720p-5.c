@@ -212,7 +212,7 @@ static struct tegra_dc_cmu dsi_l_720p_5_cmu = {
 };
 #endif
 
-static tegra_dc_bl_output dsi_l_720p_5_bl_response_curve = {
+static tegra_dc_bl_output dsi_l_720p_5_max8831_bl_response_curve = {
 	0, 1, 3, 5, 7, 9, 11, 13,
 	15, 17, 19, 21, 22, 23, 25, 26,
 	28, 29, 30, 32, 33, 34, 36, 37,
@@ -246,6 +246,43 @@ static tegra_dc_bl_output dsi_l_720p_5_bl_response_curve = {
 	239, 240, 241, 242, 243, 244, 245, 246,
 	247, 247, 248, 250, 251, 252, 253, 255
 };
+
+static tegra_dc_bl_output dsi_l_720p_5_lm3528_bl_response_curve = {
+	1, 33, 61, 77, 88, 97, 105, 111,
+	116, 121, 125, 129, 132, 136, 139, 141,
+	144, 146, 149, 151, 153, 155, 157, 158,
+	160, 162, 163, 165, 166, 168, 169, 170,
+	172, 173, 174, 175, 176, 177, 178, 180,
+	181, 182, 182, 183, 184, 185, 186, 187,
+	188, 189, 189, 190, 191, 192, 193, 193,
+	194, 195, 195, 196, 197, 197, 198, 199,
+	199, 200, 201, 201, 202, 202, 203, 203,
+	204, 205, 205, 206, 206, 207, 207, 208,
+	208, 209, 209, 210, 210, 211, 211, 212,
+	212, 212, 213, 213, 214, 214, 215, 215,
+	216, 216, 216, 217, 217, 218, 218, 218,
+	219, 219, 219, 220, 220, 221, 221, 221,
+	222, 222, 222, 223, 223, 223, 224, 224,
+	224, 225, 225, 225, 226, 226, 226, 227,
+	227, 227, 228, 228, 228, 229, 229, 229,
+	229, 230, 230, 230, 231, 231, 231, 231,
+	232, 232, 232, 233, 233, 233, 233, 234,
+	234, 234, 234, 235, 235, 235, 235, 236,
+	236, 236, 236, 237, 237, 237, 237, 238,
+	238, 238, 238, 239, 239, 239, 239, 240,
+	240, 240, 240, 240, 241, 241, 241, 241,
+	242, 242, 242, 242, 242, 243, 243, 243,
+	243, 243, 244, 244, 244, 244, 244, 245,
+	245, 245, 245, 245, 246, 246, 246, 246,
+	246, 247, 247, 247, 247, 247, 248, 248,
+	248, 248, 248, 248, 249, 249, 249, 249,
+	249, 250, 250, 250, 250, 250, 250, 251,
+	251, 251, 251, 251, 251, 252, 252, 252,
+	252, 252, 252, 253, 253, 253, 253, 253,
+	253, 254, 254, 254, 254, 254, 254, 255
+};
+
+static p_tegra_dc_bl_output dsi_l_720p_5_bl_response_curve;
 
 static int __maybe_unused dsi_l_720p_5_bl_notify(struct device *unused,
 							int brightness)
@@ -346,12 +383,17 @@ static int __init dsi_l_720p_5_register_bl_dev(void)
 {
 	int err = 0;
 	struct board_info bi;
-	tegra_get_board_info(&bi);
+	tegra_get_display_board_info(&bi);
 
-	if (bi.board_id == BOARD_E1670)
+	if (bi.board_id == BOARD_E1563) {
 		err = i2c_register_board_info(1, &lm3528_dsi_l_720p_5_i2c_led_info, 1);
-	else
+		dsi_l_720p_5_bl_response_curve =
+			dsi_l_720p_5_lm3528_bl_response_curve;
+	} else {
 		err = i2c_register_board_info(1, &dsi_l_720p_5_i2c_led_info, 1);
+		dsi_l_720p_5_bl_response_curve =
+			dsi_l_720p_5_max8831_bl_response_curve;
+	}
 
 	return err;
 }
@@ -660,7 +702,13 @@ static void dsi_l_720p_5_fb_data_init(struct tegra_fb_data *fb)
 
 static void dsi_l_720p_5_sd_settings_init(struct tegra_dc_sd_settings *settings)
 {
-	settings->bl_device_name = "max8831_display_bl";
+	struct board_info bi;
+	tegra_get_display_board_info(&bi);
+
+	if (bi.board_id == BOARD_E1563)
+		settings->bl_device_name = "lm3528_display_bl";
+	else
+		settings->bl_device_name = "max8831_display_bl";
 }
 
 #ifdef CONFIG_TEGRA_DC_CMU
