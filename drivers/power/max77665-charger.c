@@ -1,7 +1,7 @@
 /*
  * max77665-charger.c - Battery charger driver
  *
- *  Copyright (C) 2012-2013 NVIDIA corporation
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -86,7 +86,7 @@ static int max77665_write_reg(struct max77665_charger *charger,
 
 	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_PMIC, reg, value);
 	if (ret < 0)
-		return ret;
+		dev_err(charger->dev, "Failed to write to reg 0x%x\n", reg);
 	return ret;
 }
 
@@ -111,7 +111,6 @@ static int max77665_update_reg(struct max77665_charger *charger,
 {
 	int ret = 0;
 	uint8_t read_val;
-
 	struct device *dev = charger->dev;
 
 	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_PMIC,
@@ -173,24 +172,13 @@ static int max77665_enable_write(struct max77665_charger *charger, int access)
 {
 	int ret = 0;
 
-	if (access) {
+	if (access)
 		/* enable write acces to registers */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_06, 0x0c);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed to write to reg 0x%x\n",
-				MAX77665_CHG_CNFG_06);
-			return ret;
-		}
-	} else {
+	else
 		/* Disable write acces to registers */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_06, 0x00);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed to write to reg 0x%x\n",
-				MAX77665_CHG_CNFG_06);
-			return ret;
-		}
-	}
-	return 0;
+	return ret;
 }
 
 static int max77665_charger_enable(struct max77665_charger *charger,
@@ -207,19 +195,13 @@ static int max77665_charger_enable(struct max77665_charger *charger,
 	if (mode == CHARGER) {
 		/* enable charging */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, 0x05);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed in wirting to register 0x%x:\n",
-					MAX77665_CHG_CNFG_00);
+		if (ret < 0)
 			return ret;
-		}
 	} else if (mode == OTG) {
 		/* enable OTG mode */
 		ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_00, 0x2A);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed in writing to register 0x%x:\n",
-					 MAX77665_CHG_CNFG_00);
+		if (ret < 0)
 			return ret;
-		}
 	}
 
 	ret = max77665_enable_write(charger, false);
@@ -284,11 +266,8 @@ static int max77665_charger_init(struct max77665_charger *charger)
 
 		ret = max77665_write_reg(charger,
 				MAX77665_CHG_CNFG_09, ret*5);
-		if (ret < 0) {
-			dev_err(charger->dev, "Failed writing to reg:0x%x\n",
-				MAX77665_CHG_CNFG_09);
+		if (ret < 0)
 			goto error;
-		}
 	}
 error:
 	ret = max77665_enable_write(charger, false);
@@ -397,11 +376,8 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 	}
 
 	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_INT_MASK);
+	if (ret < 0)
 		goto error;
-	}
 error:
 	return ret;
 }
@@ -434,11 +410,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	/* modify OTP setting of input current limit to 100ma */
 	ret = max77665_write_reg(charger, MAX77665_CHG_CNFG_09, 0x05);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_CNFG_09);
+	if (ret < 0)
 		goto error;
-	}
 
 	/* check for battery presence */
 	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
@@ -462,11 +435,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	}
 
 	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to write to reg: 0x%x\n",
-				MAX77665_CHG_INT_MASK);
+	if (ret < 0)
 		goto error;
-	}
 
 	charger->ac.name		= "ac";
 	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
