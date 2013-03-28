@@ -278,19 +278,71 @@ static int max77660_sleep(struct max77660_chip *chip, bool on)
 static int max77660_32kclk_init(struct max77660_chip *chip,
 		struct max77660_platform_data *pdata)
 {
+	struct max77660_clk32k_platform_data *clk32_pdata = pdata->clk32k_pdata;
 	u8 mask = 0;
 	u8 val = 0;
 	int ret;
 
-	val |= (pdata->en_clk32out1? 1 : 0) << OUT1_EN_32KCLK_SHIFT;
-	val |= (pdata->en_clk32out2? 1 : 0) << OUT2_EN_32KCLK_SHIFT;
+	val |= (clk32_pdata->en_clk32out1 ? 1 : 0) << OUT1_EN_32KCLK_SHIFT;
+	val |= (clk32_pdata->en_clk32out2 ? 1 : 0) << OUT2_EN_32KCLK_SHIFT;
 	mask = OUT1_EN_32KCLK_MASK | OUT2_EN_32KCLK_MASK;
 
 	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
 			MAX77660_REG_CNFG32K1, val, mask);
-	return ret;
 
+	switch (clk32_pdata->clk32k_mode) {
+	case MAX77660_CLK_MODE_DEFAULT:
+		goto skip_mod_config;
+	case MAX77660_CLK_MODE_LOW_POWER:
+		val = 0;
+		break;
+	case MAX77660_CLK_MODE_GLOBAL_LOW_POWER:
+		val = 1;
+		break;
+	case MAX77660_CLK_MODE_LOW_JITTER:
+		val = 3;
+		break;
+	default:
+		val = 0;
+		break;
+	}
+
+	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_CNFG32K1, val, PWR_MODE_32KCLK_MASK);
+	if (ret < 0) {
+		dev_err(chip->dev, "CNFG32K1 read failed: %d\n", ret);
+		return ret;
+	}
+
+skip_mod_config:
+	switch (clk32_pdata->clk32k_load_cap) {
+	case MAX77660_CLK_LOAD_CAP_DEFAULT:
+		goto skip_cap_config;
+	case MAX77660_CLK_LOAD_CAP_12pF:
+		val = 0;
+		break;
+	case MAX77660_CLK_LOAD_CAP_22pF:
+		val = 1;
+		break;
+	case MAX77660_CLK_LOAD_CAP_10pF:
+		val = 3;
+		break;
+	default:
+		val = 0;
+		break;
+	}
+
+	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
+			MAX77660_REG_CNFG32K2, val,
+			MAX77660_CNFG32K2_32K_LOAD_MASK);
+	if (ret < 0) {
+		dev_err(chip->dev, "CNFG32K2 read failed: %d\n", ret);
+		return ret;
+	}
+skip_cap_config:
+	return ret;
 }
+
 static struct regmap_irq_chip max77660_top_irq_chip = {
 	.name = "max77660-top",
 	.irqs = max77660_top_irqs,

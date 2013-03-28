@@ -429,6 +429,8 @@
 #define OUT2_EN_32KCLK_MASK			BIT(3)
 #define OUT2_EN_32KCLK_SHIFT			3
 
+#define MAX77660_CNFG32K2_32K_LOAD_MASK		0x3
+
 #define CID_DIDM_MASK				0xF0
 #define CID_DIDM_SHIFT				4
 #define CID_DIDO_MASK				0xF
@@ -847,10 +849,32 @@ struct max77660_fg_platform_data {
 	bool athd;
  };
 
+enum {
+	MAX77660_CLK_MODE_DEFAULT,
+	MAX77660_CLK_MODE_LOW_POWER,
+	MAX77660_CLK_MODE_GLOBAL_LOW_POWER,
+	MAX77660_CLK_MODE_LOW_JITTER,
+};
+
+enum {
+	MAX77660_CLK_LOAD_CAP_DEFAULT,
+	MAX77660_CLK_LOAD_CAP_12pF,
+	MAX77660_CLK_LOAD_CAP_22pF,
+	MAX77660_CLK_LOAD_CAP_10pF,
+};
+
+struct max77660_clk32k_platform_data {
+	bool en_clk32out1;
+	bool en_clk32out2;
+	int clk32k_mode;
+	int clk32k_load_cap;
+};
+
 /*
  * max77660_platform_data: Platform data for MAX77660.
  * @pinctrl_pdata: Pincontrol configurations.
  * @num_pinctrl: Number of pin control data.
+ * clk32k_pdata: Clock 32K platform data.
  * charger_pdata: Charger platform data.
  * @system_watchdog_timeout: System wathdog timeout in seconds. If this value
  *		is -ve then timer will not start during initialisation.
@@ -865,14 +889,14 @@ struct max77660_platform_data {
 	struct max77660_pinctrl_platform_data *pinctrl_pdata;
 	int num_pinctrl;
 
+	struct max77660_clk32k_platform_data *clk32k_pdata;
+
 	struct max77660_charger_platform_data *charger_pdata;
 
 	struct max77660_adc_platform_data *adc_pdata;
 	unsigned int flags;
 
 	bool en_buck2_ext_ctrl;
-	bool en_clk32out1;
-	bool en_clk32out2;
 	bool use_power_off;
 
 	int system_watchdog_timeout;
