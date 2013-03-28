@@ -47,7 +47,6 @@
 #include <asm/suspend.h>
 #include <asm/cputype.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 
@@ -58,6 +57,7 @@
 #include "dvfs.h"
 #include "fuse.h"
 #include "gic.h"
+#include "iomap.h"
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
