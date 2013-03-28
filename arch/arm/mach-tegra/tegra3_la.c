@@ -21,9 +21,10 @@
 #include <linux/clk.h>
 #include <asm/io.h>
 #include <mach/hardware.h>
-#include <mach/iomap.h>
 #include <mach/clk.h>
 #include <mach/latency_allowance.h>
+
+#include "iomap.h"
 #include "la_priv.h"
 
 #define T3_MC_LA_AFI_0		0x2e0
