@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,6 +33,7 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm.h>
+#include <linux/syscore_ops.h>
 
 #include <mach/hardware.h>
 #include <mach/legacy_irq.h>
@@ -337,7 +338,7 @@ static void tegra_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int tegra_gpio_resume(struct device *dev)
+static void tegra_gpio_resume(void)
 {
 	unsigned long flags;
 	int b;
@@ -359,10 +360,9 @@ static int tegra_gpio_resume(struct device *dev)
 	}
 
 	local_irq_restore(flags);
-	return 0;
 }
 
-static int tegra_gpio_suspend(struct device *dev)
+static int tegra_gpio_suspend(void)
 {
 	unsigned long flags;
 	int b;
@@ -385,6 +385,7 @@ static int tegra_gpio_suspend(struct device *dev)
 		}
 	}
 	local_irq_restore(flags);
+
 	return 0;
 }
 
@@ -468,6 +469,11 @@ fail:
 #define tegra_update_lp1_gpio_wake NULL
 #endif
 
+static struct syscore_ops tegra_gpio_syscore_ops = {
+	.suspend = tegra_gpio_suspend,
+	.resume = tegra_gpio_resume,
+};
+
 static struct irq_chip tegra_gpio_irq_chip = {
 	.name		= "GPIO",
 	.irq_ack	= tegra_gpio_irq_ack,
@@ -476,10 +482,6 @@ static struct irq_chip tegra_gpio_irq_chip = {
 	.irq_set_type	= tegra_gpio_irq_set_type,
 	.irq_set_wake	= tegra_gpio_irq_set_wake,
 	.flags		= IRQCHIP_MASK_ON_SUSPEND,
-};
-
-static const struct dev_pm_ops tegra_gpio_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(tegra_gpio_suspend, tegra_gpio_resume)
 };
 
 struct tegra_gpio_soc_config {
@@ -622,7 +624,6 @@ static struct platform_driver tegra_gpio_driver = {
 	.driver		= {
 		.name	= "tegra-gpio",
 		.owner	= THIS_MODULE,
-		.pm	= &tegra_gpio_pm_ops,
 		.of_match_table = tegra_gpio_of_match,
 	},
 	.probe		= tegra_gpio_probe,
@@ -630,6 +631,7 @@ static struct platform_driver tegra_gpio_driver = {
 
 static int __init tegra_gpio_init(void)
 {
+	register_syscore_ops(&tegra_gpio_syscore_ops);
 	return platform_driver_register(&tegra_gpio_driver);
 }
 postcore_initcall(tegra_gpio_init);
