@@ -21,9 +21,10 @@
 #include <linux/clk.h>
 #include <asm/io.h>
 #include <mach/hardware.h>
-#include <mach/iomap.h>
 #include <mach/clk.h>
 #include <mach/latency_allowance.h>
+
+#include "iomap.h"
 #include "la_priv.h"
 
 #define T14X_MC_LA_AVPC_ARM7_0	0x2e4
