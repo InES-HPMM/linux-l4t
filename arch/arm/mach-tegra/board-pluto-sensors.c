@@ -126,6 +126,16 @@ static struct edp_client bat_depl_client = {
 	.priority = EDP_MAX_PRIO
 };
 
+struct max17042_rbat_map max17042_rbat_map[] = {
+	{ 100,  72950 },
+	{  90, 136885 },
+	{  80, 168032 },
+	{  60, 172131 },
+	{  40, 195901 },
+	{  20, 207377 },
+	{   0, 220000 }
+};
+
 static struct max17042_platform_data max17042_pdata = {
 	.config_data = &conf_data,
 	.init_data  = NULL,
@@ -133,6 +143,7 @@ static struct max17042_platform_data max17042_pdata = {
 	.enable_por_init = 1, /* Use POR init from Maxim appnote */
 	.enable_current_sense = 1,
 	.r_sns = 0,
+	.rbat_map = max17042_rbat_map,
 	.edp_client = &bat_depl_client
 };
 
