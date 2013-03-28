@@ -27,8 +27,7 @@
 #include <linux/export.h>
 #include <linux/module.h>
 
-#include <mach/iomap.h>
-
+#include "iomap.h"
 #include "timer.h"
 
 static int timerinfo_dev_mmap(struct file *file, struct vm_area_struct *vma);
