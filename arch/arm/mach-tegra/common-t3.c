@@ -23,8 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
-
+#include "iomap.h"
 #include "mcerr.h"
 
 #define MC_TIMING_REG_NUM1					\
