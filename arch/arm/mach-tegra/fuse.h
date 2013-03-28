@@ -17,7 +17,6 @@
  *
  */
 
-#include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
 #include <linux/sysfs.h>
@@ -25,6 +24,7 @@
 #include <linux/platform_device.h>
 
 #include "apbio.h"
+#include "iomap.h"
 
 #ifndef __TEGRA_FUSE_H
 #define __TEGRA_FUSE_H
