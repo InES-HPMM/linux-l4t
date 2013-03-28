@@ -29,13 +29,13 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include<mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "board-roth.h"
+#include "iomap.h"
 
 #define ROTH_WLAN_PWR	TEGRA_GPIO_PCC5
 #define ROTH_WLAN_RST	TEGRA_GPIO_INVALID
