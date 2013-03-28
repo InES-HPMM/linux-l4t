@@ -38,13 +38,13 @@
 #include <asm/sched_clock.h>
 #include <asm/smp_plat.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 
 #include "board.h"
 #include "clock.h"
 #include "cpuidle.h"
+#include "iomap.h"
 #include "timer.h"
 #include "fuse.h"
 
