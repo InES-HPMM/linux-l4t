@@ -393,6 +393,7 @@ struct palmas_dvfs_init_data {
 	bool	step_20mV;
 	int	base_voltage_uV;
 	int 	max_voltage_uV;
+	bool	smps3_ctrl;
 };
 
 struct palmas_pmic_platform_data {
@@ -979,6 +980,7 @@ enum usb_irq_events {
 #define PALMAS_SMPS12_FORCE					0x2
 #define PALMAS_SMPS12_VOLTAGE					0x3
 #define PALMAS_SMPS3_CTRL					0x4
+#define PALMAS_SMPS3_FORCE					0x6
 #define PALMAS_SMPS3_VOLTAGE					0x7
 #define PALMAS_SMPS45_CTRL					0x8
 #define PALMAS_SMPS45_TSTEP					0x9
@@ -1668,6 +1670,7 @@ enum usb_irq_events {
 #define PALMAS_SMPS_DVFS1_OFFSET_STEP_SHIFT			1
 #define PALMAS_SMPS_DVFS1_ENABLE_RST_SHIFT			2
 #define PALMAS_SMPS_DVFS1_RESTORE_VALUE_SHIFT			3
+#define PALMAS_SMPS_DVFS1_SMPS_SELECT_SHIFT			4
 #define PALMAS_SMPS_DVFS1_VOLTAGE_MAX				0x1
 #define PALMAS_SMPS_DVFS1_STATUS				0x2
 
