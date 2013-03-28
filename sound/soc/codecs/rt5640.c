@@ -2009,7 +2009,7 @@ static int rt5640_hw_params(struct snd_pcm_substream *substream,
 		mutex_unlock(&rt5640->lock);
 		return -EINVAL;
 	}
-	bclk_ms = frame_size > 32 ? 1 : 0;
+	bclk_ms = frame_size >= 32 ? 1 : 0;
 	rt5640->bclk[dai->id] = rt5640->lrck[dai->id] * (32 << bclk_ms);
 
 	dev_dbg(dai->dev, "bclk is %dHz and lrck is %dHz\n",

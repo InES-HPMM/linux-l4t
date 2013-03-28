@@ -167,11 +167,29 @@ static int tegra_rt5640_hw_params(struct snd_pcm_substream *substream,
 		return err;
 	}
 
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai clock not set\n");
-		return err;
+	if (pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
+		err = snd_soc_dai_set_sysclk(codec_dai, 0, rate,
+				SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
+	} else {
+		err = snd_soc_dai_set_pll(codec_dai, RT5640_SCLK_S_PLL1,
+				RT5640_PLL1_S_MCLK, rate, 512 * srate);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai pll not set\n");
+			return err;
+		}
+
+		err = snd_soc_dai_set_sysclk(codec_dai, RT5640_SCLK_S_PLL1,
+				512 * srate, SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
 	}
+
 	if(machine_is_roth()) {
 		if(initTfa == 1) {
 			i2s_tfa = i2s;
