@@ -43,6 +43,9 @@
 #include <mach/hardware.h>
 #include <mach/tegra_smmu.h>
 
+/* HACK! This needs to come from device tree */
+#include "../../arch/arm/mach-tegra/iomap.h"
+
 enum smmu_hwgrp {
 	HWGRP_AFI,
 	HWGRP_AVPC,
