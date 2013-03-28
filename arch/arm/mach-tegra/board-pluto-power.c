@@ -23,7 +23,6 @@
 #include <linux/resource.h>
 #include <linux/io.h>
 
-#include <mach/iomap.h>
 #include <mach/edp.h>
 #include <mach/irqs.h>
 #include <linux/regulator/fixed.h>
@@ -37,6 +36,7 @@
 #include "pm.h"
 #include "board.h"
 #include "board-pluto.h"
+#include "iomap.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include "tegra11_soctherm.h"
