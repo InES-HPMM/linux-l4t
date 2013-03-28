@@ -79,8 +79,9 @@
 #define R_BOARD		30000
 #define R_PASSFET	30000
 #define RBAT_INIT	150000
-#define NOMINAL_TEMP	25
 #define NOMINAL_VOLTAGE	3800000
+#define IBAT_NOMINAL	3700
+#define PBAT_NOMINAL	14060
 #define RBAT_HIST_COUNT	5
 
 struct max17042_chip {
@@ -724,28 +725,8 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 }
 
 #ifdef CONFIG_EDP_FRAMEWORK
-struct temp_ibat_map {
-	unsigned int temp;
-	unsigned int ibat;
-};
-
-struct temp_ibat_map safe_ibat_lut[] = {
-	{ 25, 3700 },
-};
-
-static unsigned int max17042_safe_ibat(int temp)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(safe_ibat_lut) - 1; i++)
-		if (temp <= safe_ibat_lut[i].temp)
-			break;
-
-	return safe_ibat_lut[i].ibat;
-}
-
 static int max17042_get_bat_vars(struct max17042_chip *chip, s64 *avgcurrent,
-		s64 *avgvcell, s64 *vfocv, s64 *temp)
+		s64 *avgvcell, s64 *vfocv)
 {
 	struct power_supply *psy;
 	union power_supply_propval pv;
@@ -763,10 +744,6 @@ static int max17042_get_bat_vars(struct max17042_chip *chip, s64 *avgcurrent,
 	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_OCV, &pv))
 		return -EFAULT;
 	*vfocv = pv.intval;
-
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_TEMP, &pv))
-		return -EFAULT;
-	*temp = pv.intval;
 
 	return 0;
 }
@@ -827,20 +804,15 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	s64 avgcurrent;
 	s64 avgvcell;
 	s64 vfocv;
-	s64 temp;
 
 	s64 rbat;
 	s64 ibat_possible;
-	s64 ibat_tbat;
-	s64 ibat_nominal;
-	s64 pbat_nominal;
 	s64 pbat_adjusted;
 	s64 depl_temp;
 	s64 depl_vdroop;
 	s64 depl;
 
-	if (max17042_get_bat_vars(chip, &avgcurrent, &avgvcell, &vfocv,
-				&temp)) {
+	if (max17042_get_bat_vars(chip, &avgcurrent, &avgvcell, &vfocv)) {
 		WARN_ON(1);
 		return max17042_max_depletion(chip);
 	}
@@ -848,33 +820,24 @@ static unsigned int max17042_depletion(struct max17042_chip *chip)
 	rbat = max17042_rbat(chip, avgcurrent, avgvcell, vfocv);
 	ibat_possible = max17042_ibat_possible(chip, avgcurrent, vfocv, rbat);
 
-	ibat_tbat = max17042_safe_ibat(temp);
-	ibat_nominal = max17042_safe_ibat(NOMINAL_TEMP);
-	pbat_nominal = div64_s64(ibat_nominal * NOMINAL_VOLTAGE, 1000000);
-	pbat_adjusted = div64_s64(pbat_nominal * ibat_tbat * vfocv,
-			ibat_nominal * NOMINAL_VOLTAGE);
-
-	depl_temp = pbat_nominal - pbat_adjusted;
+	pbat_adjusted = div64_s64(IBAT_NOMINAL * vfocv, 1000000);
+	depl_temp = PBAT_NOMINAL - pbat_adjusted;
 
 	depl_vdroop = pbat_adjusted - div64_s64(vfocv * ibat_possible, 1000000);
 	depl_vdroop = max_t(s64, 0, depl_vdroop);
 
 	depl = depl_temp + depl_vdroop;
 	depl = div64_s64(depl * NOMINAL_VOLTAGE * chip->edp_manager->max,
-			vfocv * pbat_nominal);
+			vfocv * PBAT_NOMINAL);
 
 	if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
 		printk(KERN_DEBUG "max17042\n");
 		printk(KERN_DEBUG "    AVERAGE_ICELL: %lld uA\n", avgcurrent);
 		printk(KERN_DEBUG "    AVERAGE_VCELL: %lld uV\n", avgvcell);
 		printk(KERN_DEBUG "    VFOCV        : %lld uV\n", vfocv);
-		printk(KERN_DEBUG "    TEMPERATURE  : %lld C\n", temp);
 		printk(KERN_DEBUG "    RBAT         : %lld\n", rbat);
 		printk(KERN_DEBUG "    CHGIN_ILIM   : %u\n", chip->chgin_ilim);
 		printk(KERN_DEBUG "    IBAT_possible: %lld\n", ibat_possible);
-		printk(KERN_DEBUG "    IBAT_tbat    : %lld\n", ibat_tbat);
-		printk(KERN_DEBUG "    IBAT_nominal : %lld\n", ibat_nominal);
-		printk(KERN_DEBUG "    PBAT_nominal : %lld\n", pbat_nominal);
 		printk(KERN_DEBUG "    PBAT_adjusted: %lld\n", pbat_adjusted);
 		printk(KERN_DEBUG "    DEPL_temp    : %lld\n", depl_temp);
 		printk(KERN_DEBUG "    DEPL_vdroop  : %lld\n", depl_vdroop);
