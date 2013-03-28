@@ -16,12 +16,12 @@
  * 51 franklin street, fifth floor, boston, ma  02110-1301, usa.
  */
 
-#include <mach/iomap.h>
 #include <mach/tegra_fuse.h>
 #include <mach/hardware.h>
 
 #include "apbio.h"
 #include "fuse.h"
+#include "iomap.h"
 
 #ifndef __TEGRA11x_FUSE_OFFSETS_H
 #define __TEGRA11x_FUSE_OFFSETS_H
