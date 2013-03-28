@@ -33,13 +33,13 @@
 
 #include <asm/clkdev.h>
 
-#include <mach/iomap.h>
 #include <mach/edp.h>
 #include <mach/hardware.h>
 #include <mach/mc.h>
 
 #include "clock.h"
 #include "fuse.h"
+#include "iomap.h"
 #include "dvfs.h"
 #include "pm.h"
 #include "sleep.h"
