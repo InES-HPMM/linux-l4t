@@ -69,19 +69,20 @@
 /* private data types */
 /* command requests from the firmware */
 enum MBOX_CMD_TYPE {
-	MBOX_CMD_INC_FALC_CLOCK = 1,
+	MBOX_CMD_MSG_ENABLED = 1,
+	MBOX_CMD_INC_FALC_CLOCK,
 	MBOX_CMD_DEC_FALC_CLOCK,
 	MBOX_CMD_INC_SSPI_CLOCK,
-	MBOX_CMD_DEC_SSPI_CLOCK,
+	MBOX_CMD_DEC_SSPI_CLOCK, /* 5 */
 	MBOX_CMD_SET_BW,
 	MBOX_CMD_SET_SS_PWR_GATING,
-	MBOX_CMD_SET_SS_PWR_UNGATING,
+	MBOX_CMD_SET_SS_PWR_UNGATING, /* 8 */
 
 	/* needs to be the last cmd */
 	MBOX_CMD_MAX,
 
 	/* resp msg to ack above commands */
-	MBOX_CMD_ACK,
+	MBOX_CMD_ACK = 128,
 	MBOX_CMD_NACK
 };
 
@@ -1071,6 +1072,31 @@ tegra_xhci_restore_ctx(struct tegra_xhci_hcd *tegra)
 		tegra->ipfs_base + IPFS_XUSB_HOST_MCCIF_FIFOCTRL_0);
 }
 
+static void tegra_xhci_enable_fw_message(struct tegra_xhci_hcd *tegra)
+{
+	struct platform_device *pdev = tegra->pdev;
+	u32 reg, timeout = 0xff, cmd;
+
+	mutex_lock(&tegra->mbox_lock);
+
+	writel(MBOX_OWNER_SW, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+	do {
+		reg = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+	} while (reg != MBOX_OWNER_SW && timeout--);
+
+	if ((timeout == 0) && (reg != MBOX_OWNER_SW))
+		dev_err(&pdev->dev, "Failed to set mbox message owner ID\n");
+
+	writel((MBOX_CMD_MSG_ENABLED << MBOX_CMD_SHIFT),
+			tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
+
+	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
+	writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+
+	mutex_unlock(&tegra->mbox_lock);
+}
+
 static int load_firmware(struct tegra_xhci_hcd *tegra, bool resetARU)
 {
 	struct platform_device *pdev = tegra->pdev;
@@ -1598,6 +1624,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		goto out;
 	}
 
+	tegra_xhci_enable_fw_message(tegra);
+
 	pmc_init();
 	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
 
@@ -1650,8 +1678,8 @@ static void host_partition_elpg_exit_work(struct work_struct *work)
 static void
 tegra_xhci_process_mbox_message(struct work_struct *work)
 {
-	u32 sw_resp = 0;
-	int ret = 0, fw_msg, data_in;
+	u32 sw_resp = 0, cmd, data_in, fw_msg;
+	int ret = 0;
 	struct tegra_xhci_hcd *tegra = container_of(work, struct tegra_xhci_hcd,
 					mbox_work);
 	struct xhci_hcd *xhci = tegra->xhci;
@@ -1731,15 +1759,13 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	return;
 
 send_sw_response:
-	writel(sw_resp,
-		 tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
+	writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
 
-
-	writel(MBOX_INT_EN|MBOX_FALC_INT_EN,
-			tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
+	writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
 
 	mutex_unlock(&tegra->mbox_lock);
-	usleep_range(100, 200);
 }
 
 static irqreturn_t tegra_xhci_xusb_host_irq(int irq, void *ptrdev)
@@ -2461,6 +2487,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	/* do mailbox related initializations */
 	tegra->mbox_owner = 0xffff;
 	INIT_WORK(&tegra->mbox_work, tegra_xhci_process_mbox_message);
+
+	tegra_xhci_enable_fw_message(tegra);
 
 	/* do ss partition elpg exit related initialization */
 	INIT_WORK(&tegra->ss_elpg_exit_work, ss_partition_elpg_exit_work);
