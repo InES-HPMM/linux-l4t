@@ -766,26 +766,27 @@ static int lm3565_get_dev_id(struct lm3565_info *info)
 	unsigned version;
 	int err;
 
-	dev_dbg(info->dev, "%s %02x\n", __func__, info->regs.dev_id);
+	dev_dbg(info->dev, "%s %02x %d\n", __func__, info->regs.dev_id, pwr);
 	/* ChipID[7:3] is a fixed identification B0 */
 	if ((info->regs.dev_id & 0x34) == 0x34)
 		return 0;
 
 	lm3565_power(info, NVC_PWR_COMM);
 	err = lm3565_reg_rd(info, LM3565_REG_CHIPID, &devid);
-	if (!err && (info->regs.dev_id & 0x34) != 0x34)
+	if (!err && (devid & 0x34) != 0x34)
 		err = -ENODEV;
 	else
 		err |= lm3565_reg_rd(
 			info, LM3565_REG_VERSION, &version);
-
 	lm3565_power(info, pwr);
+
+	dev_dbg(info->dev, "%s: %02x %02x err = %02x\n",
+		__func__, devid, version, err);
 	if (err)
 		dev_err(info->dev, "%s failed.\n", __func__);
 	else {
 		info->regs.dev_id = (u8)devid;
 		info->regs.version = (u8)version;
-		dev_dbg(info->dev, "%s %02x %02x\n", __func__, devid, version);
 	}
 
 	return err;
