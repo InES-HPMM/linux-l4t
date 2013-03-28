@@ -38,8 +38,8 @@
 #include <linux/platform_data/thermal_sensors.h>
 
 #include <mach/tegra_fuse.h>
-#include <mach/iomap.h>
 
+#include "iomap.h"
 #include "tegra11_soctherm.h"
 
 /* Min temp granularity specified as X in 2^X.
