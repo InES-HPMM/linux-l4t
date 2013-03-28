@@ -27,9 +27,8 @@
 
 #include <linux/usb/tegra_usb_phy.h>
 
-#define TEGRA_USB_BASE			0xC5000000
-#define TEGRA_USB2_BASE			0xC5004000
-#define TEGRA_USB3_BASE			0xC5008000
+/* HACK! This needs to come from DT */
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #if 0
 #define EHCI_DBG(stuff...)	pr_info("ehci-tegra: " stuff)
