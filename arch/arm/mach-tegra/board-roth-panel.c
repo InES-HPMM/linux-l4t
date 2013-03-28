@@ -30,13 +30,13 @@
 #include <linux/of.h>
 
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/dc.h>
 #include <asm/mach-types.h>
 
 #include "board.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "iomap.h"
 #include "tegra11_host1x_devices.h"
 
 struct platform_device * __init roth_host1x_init(void)
