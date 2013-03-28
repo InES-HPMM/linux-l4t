@@ -12,6 +12,8 @@
 		@@ debug using ARM EmbeddedICE DCC channel
 
 		.macro	addruart, rp, rv, tmp
+		mov     \rp, #0
+		mov     \rv, #0
 		.endm
 
 #if defined(CONFIG_CPU_V6) || defined(CONFIG_CPU_V6K) || defined(CONFIG_CPU_V7)
