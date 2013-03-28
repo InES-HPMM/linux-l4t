@@ -20,10 +20,10 @@
 
 #include <asm/hardware/gic.h>
 
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 
 #include "gic.h"
+#include "iomap.h"
 #include "pm.h"
 
 #define ARM_VERSION_CORTEX_A15	0xC0F
