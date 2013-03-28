@@ -32,9 +32,9 @@
 #include <linux/spinlock_types.h>
 
 #include <mach/hardware.h>
-#include <mach/iomap.h>
 #include <mach/irqs.h>
 
+#include "iomap.h"
 #include "mcerr.h"
 
 void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
