@@ -29,12 +29,12 @@
 
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
-#include <mach/iomap.h>
 #include <mach/gpio-tegra.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "board-dalmore.h"
+#include "iomap.h"
 
 
 #define DALMORE_WLAN_PWR	TEGRA_GPIO_PCC5
