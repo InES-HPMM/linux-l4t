@@ -1227,7 +1227,7 @@ static __devinit int tegra_max98090_driver_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_SWITCH
 	/* Add h2w switch class support */
-	ret = switch_dev_register(&tegra_max98090_headset_switch);
+	ret = tegra_asoc_switch_register(&tegra_max98090_headset_switch);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "not able to register switch device\n");
 		goto err_fini_utils;

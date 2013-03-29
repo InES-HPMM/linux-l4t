@@ -175,7 +175,7 @@ config SND_SOC_TEGRA_TLV320AIC326X
 	  boards using the TI AIC326X codec.
 
 config MACH_HAS_SND_SOC_TEGRA_TLV320AIC325X
-	tristate "SoC Audio support for Tegra boards using TI AIC325x"
+	bool
 	help
 	  Machines that use the SND_SOC_TEGRA_TLV320AIC325X driver should select
 	  this config option, in order to allow the user to enable
