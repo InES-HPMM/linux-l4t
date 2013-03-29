@@ -1061,7 +1061,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + USB2_OTG_PAD1_CTL_1_0);
 
 	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg &= ~((0x1f << 0) | (0x3 << 12));
+	reg &= ~(0x1f << 0);
 	reg |= xusb_padctl->hs_squelch_level | xusb_padctl->hs_disc_lvl;
 	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
@@ -1657,6 +1657,61 @@ static void wait_remote_wakeup_ports(struct usb_hcd *hcd)
 			*remote_wakeup_ports);
 }
 
+static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
+{
+	u32 reg, utmip_rctrl_val, utmip_tctrl_val;
+	struct tegra_xusb_pad_data *xusb_padctl = tegra->xusb_padctl;
+
+	/* Program XUSB as port owner for both Port 0 and port 1 */
+	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
+	reg &= ~(0xf << 0);
+	reg |= (1 << 0) | (1 << 2);
+	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
+
+	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 0 and
+	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 0
+	 */
+	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+	reg &= ~((1 << 12) | (1 << 13));
+	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+
+	/* wait 20us */
+	usleep_range(20, 30);
+
+	/* Read XUSB_PADCTL:: XUSB_PADCTL_USB2_BIAS_PAD_CTL_1_0
+	 * :: TCTRL and RCTRL
+	 */
+	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_1_0);
+	utmip_rctrl_val = RCTRL(reg);
+	utmip_tctrl_val = TCTRL(reg);
+
+	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
+	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
+	 */
+	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+	reg |= (1 << 12) | (1 << 13);
+	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
+
+	/* Program these values into PMC regiseter and program the
+	 * PMC override
+	 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
+	 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
+	 */
+	reg = PMC_TCTRL_VAL(0xf + ffz(utmip_tctrl_val)) |
+		PMC_RCTRL_VAL(0xf + ffz(utmip_rctrl_val));
+	writel(reg, tegra->pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+
+	reg = readl(tegra->pmc_base + PMC_SLEEP_CFG);
+	reg |= UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
+	writel(reg, tegra->pmc_base + PMC_SLEEP_CFG);
+
+	/* Restore correct port ownership in padctl */
+	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
+	reg &= ~(0xf << 0);
+	reg |= xusb_padctl->pad_mux;
+	writel(reg, tegra->padctl_base + USB2_PAD_MUX_0);
+}
+
 /* Host ELPG Exit triggered by PADCTL irq */
 /**
  * tegra_xhci_host_partition_elpg_exit - bring XUSBC partition out from elpg
@@ -1683,6 +1738,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	if (tegra->lp0_exit) {
 		u32 reg;
 
+		tegra_xhci_war_for_tctrl_rctrl(tegra);
 		/* check if over current seen. Clear if present */
 		reg = readl(tegra->padctl_base + OC_DET_0);
 		xhci_dbg(xhci, "%s: OC_DET_0=0x%x\n", __func__, reg);

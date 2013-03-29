@@ -526,7 +526,7 @@
 
 #define USB2_BIAS_PAD_CTL_1_0	0xa4
 #define RCTRL(x)			(((x) & 0xffff) << 0)
-#define TCTRL(x)			(((x) & 0xffff) << 16)
+#define TCTRL(x)			(((x) & 0xffff0000) >> 16)
 
 #define HSIC_PAD0_CTL_0_0	0xa8
 #define HSIC_PAD1_CTL_0_0	0xac
