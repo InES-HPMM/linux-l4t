@@ -542,9 +542,13 @@ static int roth_dsi_panel_enable(struct device *dev)
 		goto fail;
 	}
 
-
-	if (!(roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE))
+	/* Skip panel programming if in initialized mode */
+	if (!(roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE)) {
+		roth_dsi.dsi_init_cmd = dsi_init_cmd;
 		gpio_set_value(DSI_PANEL_RST_GPIO, 0);
+	} else {
+		roth_dsi.dsi_init_cmd = dsi_init_cmd + 2;
+	}
 
 	if (vdd_lcd_s_1v8) {
 		err = regulator_enable(vdd_lcd_s_1v8);
@@ -580,10 +584,6 @@ static int roth_dsi_panel_enable(struct device *dev)
 			goto fail;
 		}
 	}
-
-	/* Skip panel programming if in initialized mode */
-	if (roth_disp1_out.flags & TEGRA_DC_OUT_INITIALIZED_MODE)
-		return 0;
 
 	return 0;
 fail:
