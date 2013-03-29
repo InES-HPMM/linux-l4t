@@ -38,10 +38,11 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	conf = (struct nvshm_config *)(handle->mb_base_virt
 				       + NVSHM_CONFIG_OFFSET);
 	if (conf->version != NVSHM_CONFIG_VERSION) {
-		pr_warn("%s: new/old config version 0x%x vs. 0x%x\n",
-				__func__,
-				(unsigned int)conf->version,
-				NVSHM_CONFIG_VERSION);
+		pr_err("%s:No SHM: protocol mismatch: BBC=%x  AP=%x\n",
+			 __func__,
+			 (unsigned int)conf->version,
+			 NVSHM_CONFIG_VERSION);
+		return -1;
 	}
 	if (handle->ipc_size != conf->shmem_size) {
 		pr_warn("%s shmem mapped/reported not matching: 0x%x/0x%x\n",
@@ -238,7 +239,10 @@ static void ipc_work(struct work_struct *work)
 			/* Process IPC queue but do not notify sysfs */
 			nvshm_process_queue(handle);
 		} else {
-			ipc_readconfig(handle);
+			if (ipc_readconfig(handle)) {
+				nvshm_unregister_ipc(handle);
+				return;
+			}
 			nvshm_iobuf_init(handle);
 			nvshm_init_queue(handle);
 			init_interfaces(handle);
