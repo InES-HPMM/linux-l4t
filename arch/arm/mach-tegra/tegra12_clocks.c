@@ -6504,6 +6504,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	102000000, mux_plld,		PLLD),
 	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0x144,	150000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("ispb",	"tegra_camera",		"ispb",	3,	0,	150000000, mux_clk_m,			0),
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"tegra_camera",		"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cilcd",	"tegra_camera",		"cilcd", 145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
