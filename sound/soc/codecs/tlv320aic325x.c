@@ -107,189 +107,11 @@ static inline unsigned int dsp_non_sync_mode(unsigned int state)
 
 static void aic3256_firmware_load(const struct firmware *fw, void *context);
 
-/* DAC Volume Soft Step Control */
-static const char * const dacsoftstep_control[] = { "1 step/sample",
-						"1 step/2 sample",
-						"disabled" };
-SOC_ENUM_SINGLE_DECL(dac_vol_soft_setp_enum, AIC3256_DAC_CHN_REG, 0,
-						dacsoftstep_control);
-
-/* Volume Mode Selection Control */
-static const char * const volume_extra[] = { "L_R Ind Vol", "LVol=RVol",
-								"RVol=LVol" };
-/* DAC Volume Mode Selection */
-SOC_ENUM_SINGLE_DECL(dac_vol_extra_enum, AIC3256_DAC_MUTE_CTRL_REG, 0,
-						volume_extra);
-
-/* Beep Master Volume Control */
-SOC_ENUM_SINGLE_DECL(beep_master_vol_enum, AIC3256_BEEP_CTRL_REG2, 6,
-						volume_extra);
-
-/* Headset Detection Enable/Disable Control */
-static const char * const headset_detection[] = { "Enabled", "Disabled" };
-SOC_ENUM_SINGLE_DECL(hs_det_ctrl_enum, AIC3256_HEADSET_DETECT, 7,
-						headset_detection);
-
-/* MIC BIAS Voltage Control */
-static const char * const micbias_voltage[] = { "1.04/1.25V", "1.425/1.7V",
-						"2.075/2.5V", "POWER SUPPY" };
-SOC_ENUM_SINGLE_DECL(micbias_voltage_enum, AIC3256_MICBIAS_CTRL, 4,
-						micbias_voltage);
-
-/* IN1L to Left MICPGA Positive Terminal Selection */
-static const char * const micpga_selection[] = { "off", "10k", "20k", "40k" };
-SOC_ENUM_SINGLE_DECL(IN1L_LMICPGA_P_sel_enum, AIC3256_LMICPGA_PIN_CFG, 6,
-						micpga_selection);
-
-/* IN2L to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(IN2L_LMICPGA_P_sel_enum, AIC3256_LMICPGA_PIN_CFG, 4,
-						micpga_selection);
-
-/* IN3L to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(IN3L_LMICPGA_P_sel_enum, AIC3256_LMICPGA_PIN_CFG, 4,
-						micpga_selection);
-
-/* IN1R to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(IN1R_LMICPGA_P_sel_enum, AIC3256_LMICPGA_PIN_CFG, 2,
-						micpga_selection);
-
-/* CM1L to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(CM1L_LMICPGA_P_sel_enum, AIC3256_LMICPGA_PIN_CFG, 0,
-						micpga_selection);
-
-/* IN2R to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(IN2R_LMICPGA_P_sel_enum, AIC3256_LMICPGA_NIN_CFG, 6,
-						micpga_selection);
-
-/* IN3R to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(IN3R_LMICPGA_P_sel_enum, AIC3256_LMICPGA_NIN_CFG, 4,
-						micpga_selection);
-
-/*CM2L to Left MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(CM2L_LMICPGA_P_sel_enum, AIC3256_LMICPGA_NIN_CFG, 2,
-						micpga_selection);
-
-/* IN1R to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in1r_rmicpga_enum, AIC3256_RMICPGA_PIN_CFG, 6,
-						micpga_selection);
-
-/* IN2R to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in2r_rmicpga_enum, AIC3256_RMICPGA_PIN_CFG, 4,
-						micpga_selection);
-
-/* IN3R to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in3r_rmicpga_enum, AIC3256_RMICPGA_PIN_CFG, 2,
-						micpga_selection);
-
-/* IN2L to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in2l_rmicpga_enum, AIC3256_RMICPGA_PIN_CFG, 0,
-						micpga_selection);
-
-/* CM1R to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(cm1r_rmicpga_enum, AIC3256_RMICPGA_NIN_CFG, 6,
-						micpga_selection);
-
-/* IN1L to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in1l_rmicpga_enum, AIC3256_RMICPGA_NIN_CFG, 4,
-						micpga_selection);
-
-/* IN3L to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(in3l_rmicpga_enum, AIC3256_RMICPGA_NIN_CFG, 2,
-						micpga_selection);
-
-/* CM2R to Right MICPGA Positive Terminal Selection */
-SOC_ENUM_SINGLE_DECL(cm2r_rmicpga_enum, AIC3256_RMICPGA_NIN_CFG, 0,
-						micpga_selection);
-
 /* Power up/down */
 static const char * const powerup[] = { "Power Down", "Power Up" };
 
 /* Mic Bias Power up/down */
 SOC_ENUM_SINGLE_DECL(micbias_pwr_ctrl_enum, AIC3256_MICBIAS_CTRL, 6, powerup);
-
-/* Left DAC Power Control */
-SOC_ENUM_SINGLE_DECL(ldac_power_enum, AIC3256_DAC_CHN_REG, 7, powerup);
-
-/* Right DAC Power Control */
-SOC_ENUM_SINGLE_DECL(rdac_power_enum, AIC3256_DAC_CHN_REG, 6, powerup);
-
-/* Left ADC Power Control */
-SOC_ENUM_SINGLE_DECL(ladc_pwr_ctrl_enum, AIC3256_ADC_CHN_REG, 7, powerup);
-/* Right ADC Power Control */
-SOC_ENUM_SINGLE_DECL(radc_pwr_ctrl_enum, AIC3256_ADC_CHN_REG, 6, powerup);
-
-/* HeadPhone Driver Power Control */
-SOC_ENUM_DOUBLE_DECL(hp_pwr_ctrl_enum, AIC3256_OUT_PWR_CTRL, 5, 4, powerup);
-
-/*Line-Out Driver Power Control */
-SOC_ENUM_DOUBLE_DECL(lineout_pwr_ctrl_enum, AIC3256_OUT_PWR_CTRL, 3, 2,
-						powerup);
-
-/* Mixer Amplifiers Power Control */
-SOC_ENUM_DOUBLE_DECL(mixer_amp_pwr_ctrl_enum, AIC3256_OUT_PWR_CTRL, 1, 0,
-						powerup);
-
-/* Mic Bias Generation */
-static const char * const vol_generation[] = { "AVDD", "LDOIN" };
-SOC_ENUM_SINGLE_DECL(micbias_voltage_ctrl_enum, AIC3256_MICBIAS_CTRL, 3,
-						vol_generation);
-
-/* DAC Data Path Control */
-static const char * const path_control[] = { "Disabled", "LDAC Data",
-						"RDAC Data", "L_RDAC Data" };
-/* Left DAC Data Path Control */
-SOC_ENUM_SINGLE_DECL(ldac_data_path_ctrl_enum, AIC3256_DAC_CHN_REG, 4,
-						path_control);
-
-/* Right DAC Data Path Control */
-SOC_ENUM_SINGLE_DECL(rdac_data_path_ctrl_enum, AIC3256_DAC_CHN_REG, 2,
-						path_control);
-
-/* Audio gain control (AGC) Enable/Disable Control */
-static const char * const disable_enable[] = { "Disabled", "Enabled" };
-
-/* Left Audio gain control (AGC) Enable/Disable Control */
-SOC_ENUM_SINGLE_DECL(left_agc_enable_disable_enum, AIC3256_LEFT_AGC_REG1, 7,
-						disable_enable);
-
-/* Left/Right Audio gain control (AGC) Enable/Disable Control */
-SOC_ENUM_SINGLE_DECL(right_agc_enable_disable_enum, AIC3256_RIGHT_AGC_REG1, 7,
-						disable_enable);
-
-/* Left MICPGA Gain Enabled/Disable */
-SOC_ENUM_SINGLE_DECL(left_micpga_ctrl_enum, AIC3256_LMICPGA_VOL_CTRL, 7,
-						disable_enable);
-
-/* Right MICPGA Gain Enabled/Disable */
-SOC_ENUM_SINGLE_DECL(right_micpga_ctrl_enum, AIC3256_RMICPGA_VOL_CTRL, 7,
-						disable_enable);
-
-/* DRC Enable/Disable Control */
-SOC_ENUM_DOUBLE_DECL(drc_ctrl_enum, AIC3256_DRC_CTRL_REG1, 6, 5,
-						disable_enable);
-
-/* Beep generator Enable/Disable control */
-SOC_ENUM_SINGLE_DECL(beep_gen_ctrl_enum, AIC3256_BEEP_CTRL_REG1, 7,
-						disable_enable);
-
-/* Headphone ground centered mode enable/disable control */
-SOC_ENUM_SINGLE_DECL(hp_gnd_centred_mode_ctrl, AIC3256_HP_DRIVER_CONF_REG, 4,
-						disable_enable);
-
-/* Audio loopback enable/disable control */
-SOC_ENUM_SINGLE_DECL(audio_loopback_enum, AIC3256_AIS_REG_3, 5,
-						disable_enable);
-
-/* DMIC intput Selection control */
-static const char * const dmic_input_sel[] = { "GPIO", "SCLK", "DIN" };
-SOC_ENUM_SINGLE_DECL(dmic_input_enum, AIC3256_ADC_CHN_REG, 4, dmic_input_sel);
-
-/*charge pump Enable*/
-static const char * const charge_pump_ctrl_enum[] = { "Power_Down",
-							"Reserved",
-							"Power_Up" };
-SOC_ENUM_SINGLE_DECL(charge_pump_ctrl, AIC3256_POW_CFG, 0,
-						charge_pump_ctrl_enum);
 
 /* DAC volume DB scale */
 static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -6350, 50, 0);
@@ -302,79 +124,6 @@ static const DECLARE_TLV_DB_SCALE(micpga_gain_tlv, 0, 50, 0);
 
 /* Various Controls For AIC325x */
 static const struct snd_kcontrol_new aic325x_snd_controls[] = {
-	/* IN1L to HPL Volume Control */
-	SOC_SINGLE("IN1L to HPL volume control", AIC3256_IN1L_HPL_CTRL,
-		0, 0x72, 1),
-
-	/* IN1R to HPR Volume Control */
-	SOC_SINGLE("IN1R to HPR volume control", AIC3256_IN1R_HPR_CTRL,
-		0, 0x72, 1),
-
-	/* IN1L to HPL routing */
-	SOC_SINGLE("IN1L to HPL Route", AIC3256_HPL_ROUTE_CTRL, 2, 1, 0),
-
-	/* MAL output to HPL */
-	SOC_SINGLE("MAL Output to HPL Route", AIC3256_HPL_ROUTE_CTRL, 1, 1, 0),
-
-	/*MAR output to HPL */
-	SOC_SINGLE("MAR Output to HPL Route", AIC3256_HPL_ROUTE_CTRL, 0, 1, 0),
-
-	/* IN1R to HPR routing */
-	SOC_SINGLE("IN1R to HPR Route", AIC3256_HPR_ROUTE_CTRL, 2, 1, 0),
-
-	/* MAR to HPR routing */
-	SOC_SINGLE("MAR Output to HPR Route", AIC3256_HPR_ROUTE_CTRL, 1, 1, 0),
-
-	/* HPL Output to HRP routing */
-	SOC_SINGLE("HPL Output to HPR Route", AIC3256_HPR_ROUTE_CTRL, 0, 1, 0),
-
-	/* MAL Output to LOL routing*/
-	SOC_SINGLE("MAL Output to LOL Route", AIC3256_LOL_ROUTE_CTRL, 1, 1, 0),
-
-	/* LOR Output to LOL routing*/
-	SOC_SINGLE("LOR Output to LOL Route", AIC3256_LOL_ROUTE_CTRL, 0, 1, 0),
-
-	/* MAR Output to LOR routing*/
-	SOC_SINGLE("MAR Outout to LOR Route", AIC3256_LOR_ROUTE_CTRL, 1, 1, 0),
-
-	/* DRC Threshold value Control */
-	SOC_SINGLE("DRC Threshold value",
-					AIC3256_DRC_CTRL_REG1, 2, 0x07, 0),
-
-	/* DRC Hysteresis value control */
-	SOC_SINGLE("DRC Hysteresis value",
-					AIC3256_DRC_CTRL_REG1, 0, 0x03, 0),
-
-	/* DRC Hold time control */
-	SOC_SINGLE("DRC hold time", AIC3256_DRC_CTRL_REG2, 3, 0x0F, 0),
-
-	/* DRC Attack rate control */
-	SOC_SINGLE("DRC attack rate", AIC3256_DRC_CTRL_REG3, 4, 0x0F, 0),
-
-	/* DRC Decay rate control */
-	SOC_SINGLE("DRC decay rate", AIC3256_DRC_CTRL_REG3, 0, 0x0F, 0),
-
-	/* Beep Length MSB control */
-	SOC_SINGLE("Beep Length MSB", AIC3256_BEEP_CTRL_REG3, 0, 255, 0),
-
-	/* Beep Length MID control */
-	SOC_SINGLE("Beep Length MID", AIC3256_BEEP_CTRL_REG4, 0, 255, 0),
-
-	/* Beep Length LSB control */
-	SOC_SINGLE("Beep Length LSB", AIC3256_BEEP_CTRL_REG5, 0, 255, 0),
-
-	/* Beep Sin(x) MSB control */
-	SOC_SINGLE("Beep Sin(x) MSB", AIC3256_BEEP_CTRL_REG6, 0, 255, 0),
-	/* Beep Sin(x) LSB control */
-	SOC_SINGLE("Beep Sin(x) LSB", AIC3256_BEEP_CTRL_REG7, 0, 255, 0),
-
-	/* Beep Cos(x) MSB control */
-	SOC_SINGLE("Beep Cos(x) MSB", AIC3256_BEEP_CTRL_REG8, 0, 255, 0),
-
-	/* Beep Cos(x) LSB control */
-	SOC_SINGLE("Beep Cos(x) LSB", AIC3256_BEEP_CTRL_REG9, 0, 255, 0),
-
-
 	/* Left/Right DAC Digital Volume Control */
 	SOC_DOUBLE_R_SX_TLV("DAC Digital Volume Control",
 			AIC3256_LDAC_VOL, AIC3256_RDAC_VOL, 8, 0xffffff81, 0x30,
@@ -410,78 +159,10 @@ static const struct snd_kcontrol_new aic325x_snd_controls[] = {
 	AIC3256_LMICPGA_VOL_CTRL, AIC3256_RMICPGA_VOL_CTRL, 0, 0x5F,
 			0, micpga_gain_tlv),
 
-	/* Beep generator Volume Control */
-	SOC_DOUBLE_R("Beep_gen_Vol_Ctrl",
-			AIC3256_BEEP_CTRL_REG1, AIC3256_BEEP_CTRL_REG2,
-			0, 0x3F, 1),
-
-	/* Left/Right AGC Target level control */
-	SOC_DOUBLE_R("AGC Target Level Control",
-			AIC3256_LEFT_AGC_REG1, AIC3256_RIGHT_AGC_REG1,
-			4, 0x07, 1),
-
-	/* Left/Right AGC Hysteresis Control */
-	SOC_DOUBLE_R("AGC Hysteresis Control",
-			AIC3256_LEFT_AGC_REG1, AIC3256_RIGHT_AGC_REG1,
-			0, 0x03, 0),
-
-	/*Left/Right AGC Maximum PGA applicable */
-	SOC_DOUBLE_R("AGC Maximum PGA Control",
-			AIC3256_LEFT_AGC_REG3, AIC3256_RIGHT_AGC_REG3,
-			0, 0x7F, 0),
-
-	/* Left/Right AGC Noise Threshold */
-	SOC_DOUBLE_R("AGC Noise Threshold",
-			AIC3256_LEFT_AGC_REG2, AIC3256_RIGHT_AGC_REG2,
-			1, 0x1F, 1),
-
-	/* Left/Right AGC Attack Time control */
-	SOC_DOUBLE_R("AGC Attack Time control",
-			AIC3256_LEFT_AGC_REG4, AIC3256_RIGHT_AGC_REG4,
-			3, 0x1F, 0),
-
-	/* Left/Right AGC Decay Time control */
-	SOC_DOUBLE_R("AGC Decay Time control",
-			AIC3256_LEFT_AGC_REG5, AIC3256_RIGHT_AGC_REG5,
-			3, 0x1F, 0),
-
-	/* Left/Right AGC Noise Debounce control */
-	SOC_DOUBLE_R("AGC Noice bounce control",
-			AIC3256_LEFT_AGC_REG6, AIC3256_RIGHT_AGC_REG6,
-			0, 0x1F, 0),
-
-	/* Left/Right AGC Signal Debounce control */
-	SOC_DOUBLE_R("AGC_Signal bounce ctrl",
-		AIC3256_LEFT_AGC_REG7, AIC3256_RIGHT_AGC_REG7, 0, 0x0F, 0),
-
 	/* DAC Signal Processing Block Control*/
 	SOC_SINGLE("DAC PRB Selection(1 to 25)", AIC3256_DAC_PRB, 0, 0x19, 0),
 	/* ADC Signal Processing Block Control */
 	SOC_SINGLE("ADC PRB Selection(1 to 18)", AIC3256_ADC_PRB, 0, 0x12, 0),
-
-	/*charge pump configuration for n/8 peak load current*/
-	SOC_SINGLE("Charge_pump_peak_load_conf",
-				AIC3256_CHRG_CTRL_REG, 4, 8, 0),
-
-	/*charge pump clock divide control*/
-	SOC_SINGLE("charge_pump_clk_divider_ctrl", AIC3256_CHRG_CTRL_REG,
-			0, 16, 0),
-
-	/*HPL, HPR master gain control in ground centerd mode */
-	SOC_SINGLE("HP_gain_ctrl_gnd_centered_mode",
-				AIC3256_HP_DRIVER_CONF_REG, 5, 3, 0),
-
-	/*headphone amplifier compensation adjustment */
-	SOC_SINGLE(" hp_amp_compensation_adjustment",
-				AIC3256_HP_DRIVER_CONF_REG, 7, 1, 0),
-
-	/*headphone driver power configuration*/
-	SOC_SINGLE(" HP_drv_pwr_conf",
-				AIC3256_HP_DRIVER_CONF_REG, 2, 4, 0),
-
-	/*DC offset correction*/
-	SOC_SINGLE("DC offset correction", AIC3256_HP_DRIVER_CONF_REG, 0, 4, 0),
-
 
 	SOC_ENUM("Mic_Bias_Power_ctrl", micbias_pwr_ctrl_enum),
 
@@ -928,12 +609,14 @@ static const struct snd_soc_dapm_route aic325x_dapm_routes[] = {
 	{"NADC_DIV", NULL, "CODEC_CLK_IN"},
 	{"MDAC_DIV", NULL, "NDAC_DIV"},
 	{"MADC_DIV", NULL, "NADC_DIV"},
-	{"BCLK_N_DIV", NULL, "MADC_DIV"},
-	{"BCLK_N_DIV", NULL, "MDAC_DIV"},
 
 	/* Clock routing for ADC */
 	{"Left ADC", NULL, "MADC_DIV"},
 	{"Right ADC", NULL, "MADC_DIV"},
+
+	/* Enable codec to record in master mode */
+	{"Left ADC", NULL, "MDAC_DIV"},
+	{"Right ADC", NULL, "MDAC_DIV"},
 
 	/* Clock routing for DAC */
 	{"Left DAC", NULL, "MDAC_DIV" },
@@ -1098,14 +781,12 @@ static void aic3256_hs_jack_report(struct snd_soc_codec *codec,
 	int status, state = 0, switch_state = BIT_NO_ACCESSORY;
 	int debounce_bits, debounce_time_ms;
 
-	/* Sync status */
-	status = snd_soc_update_bits(codec, AIC3256_HEADSET_DETECT,
-					AIC3256_HEADSET_IN_MASK,
-					AIC3256_HEADSET_DISABLE);
-	mdelay(1);
-	status = snd_soc_update_bits(codec, AIC3256_HEADSET_DETECT,
-					AIC3256_HEADSET_IN_MASK,
-					AIC3256_HEADSET_ENABLE);
+	/* Dynamic Headset Detection Enabled */
+	snd_soc_update_bits(codec, AIC3256_HEADSET_DETECT,
+				AIC3256_HEADSET_IN_MASK |
+				AIC3256_HEADSET_DEBOUNCE_MASK,
+				AIC3256_HEADSET_ENABLE |
+				AIC3256_HEADSET_DEBOUNCE_64);
 	state = aic325x_reg_read(codec->control_data,
 				AIC3256_HEADSET_DETECT);
 
@@ -1117,8 +798,13 @@ static void aic3256_hs_jack_report(struct snd_soc_codec *codec,
 				((debounce_bits == 3) ? 128 :
 				((debounce_bits == 4) ? 256 : 512))));
 	mdelay(2*debounce_time_ms);
-	mdelay(50);
 	status = snd_soc_read(codec, AIC3256_HEADSET_DETECT);
+
+	/* Dynamic Headset Detection Disable */
+	snd_soc_update_bits(codec, AIC3256_HEADSET_DETECT,
+				AIC3256_HEADSET_IN_MASK,
+				AIC3256_HEADSET_DISABLE);
+
 	/* We will check only stereo MIC and headphone */
 	switch (status & AIC3256_JACK_TYPE_MASK) {
 	case AIC3256_JACK_WITH_MIC:
@@ -1139,7 +825,6 @@ static void aic3256_hs_jack_report(struct snd_soc_codec *codec,
 
 	if (&aic3256->hs_jack.sdev)
 		switch_set_state(&aic3256->hs_jack.sdev, switch_state);
-
 }
 
 /**
@@ -1668,9 +1353,6 @@ static int aic325x_hw_params(struct snd_pcm_substream *substream,
 						(codec->active < 2))
 		aic325x->record_stream = 0;
 
-
-	dprintk(KERN_INFO "Function: %s, %d\n", __func__, aic325x->sysclk);
-
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		data |= (0x00);
@@ -1727,7 +1409,6 @@ static int aic325x_mute(struct snd_soc_dai *dai, int mute)
 						(~AIC3256_ADC_MUTE_ON));
 		}
 	}
-	dprintk(KERN_INFO "Function: %s Exiting\n", __func__);
 
 	return 0;
 }

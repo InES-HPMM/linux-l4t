@@ -353,11 +353,6 @@ config SND_SOC_TLV320AIC32X4
 config SND_SOC_TLV320AIC3X
 	tristate
 
-# TI TLV320AIC3262 codec
-config SND_SOC_TLV320AIC326X
-	select AIC3262_CODEC
-	tristate "TI AIC326x Codec"
-
 config SND_SOC_TLV320DAC33
 	tristate
 
@@ -368,8 +363,32 @@ config SND_SOC_TWL4030
 config SND_SOC_TWL6040
 	tristate
 
+config SND_SOC_AIC_CFW_OPS
+	bool
+	help
+	  say yes here if you want to support minidsp firmware of
+	  Texas Instruments AIC3262 or AIC3256 codec.
+
+config SND_SOC_TLV320AIC326X
+	tristate "TI AIC326x Codec"
+	select AIC3262_CODEC
+	select SND_SOC_AIC_CFW_OPS
+	help
+	  Say yes here if you want support for Texas Instruments AIC3262 audio
+	  codec.
+	  This driver provides support for accessing the device AIC3262,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
+
 config SND_SOC_TLV320AIC325X
-	tristate "TI AIC325x Codec"
+	tristate
+	select SND_SOC_AIC_CFW_OPS
+	help
+	  Say yes here if you want support for Texas Instruments AIC3256 audio
+	  codec.
+	  This driver provides support for accessing the device AIC3256,
+	  additional drivers must be enabled in order to use the
+	  functionality of the device.
 
 config SND_SOC_UDA134X
        tristate

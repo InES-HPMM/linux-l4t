@@ -107,7 +107,7 @@
 #endif
 
 
-/* SASKEN :: Moved the registers to tlv320aic3256-registers.h file
+/* Moved the registers to tlv320aic3256-registers.h file
 	as part of the MFD changes */
 
 /****************************************************************************/
