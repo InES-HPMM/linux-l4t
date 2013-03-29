@@ -66,7 +66,7 @@
 
 #define LM3565_MAX_FLASH_LEVEL		17
 #define LM3565_MAX_TORCH_LEVEL		3
-#define LM3565_FLASH_TIMER_NUM		257
+#define LM3565_FLASH_TIMER_NUM		256
 #define LM3565_TORCH_TIMER_NUM		1
 
 #define LM3565_LEVEL_OFF		0xFFFF
@@ -528,8 +528,8 @@ static int lm3565_configure(struct lm3565_info *info, bool update)
 	pfcap->timeout_off = (void *)ptmcap - (void *)pfcap;
 	pfcap->timeout_num = LM3565_FLASH_TIMER_NUM;
 	ptmcap->timeout_num = LM3565_FLASH_TIMER_NUM;
-	for (i = 1; i < ptmcap->timeout_num; i++) {
-		ptmcap->timeouts[i].timeout = 2000 * i;
+	for (i = 0; i < ptmcap->timeout_num; i++) {
+		ptmcap->timeouts[i].timeout = 2000 * (i + 1);
 		dev_dbg(info->dev,
 			"t: %03d - %06d uS\n", i, ptmcap->timeouts[i].timeout);
 	}
