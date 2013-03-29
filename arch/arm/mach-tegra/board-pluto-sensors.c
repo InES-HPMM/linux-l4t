@@ -127,13 +127,7 @@ static struct edp_client bat_depl_client = {
 };
 
 struct max17042_rbat_map max17042_rbat_map[] = {
-	{ 100,  72950 },
-	{  90, 136885 },
-	{  80, 168032 },
-	{  60, 172131 },
-	{  40, 195901 },
-	{  20, 207377 },
-	{   0, 220000 }
+	{   0, 150000 }
 };
 
 static struct max17042_platform_data max17042_pdata = {
