@@ -58,11 +58,11 @@ static struct pwm_fan_platform_data fan_data_delta_6k = {
 						256, 256, 256, 256, 256, 256},
 	.active_rrd = {1024*40, 1024*2, 1024, 256, 256,
 						256, 256, 128, 128, 128},
-	.state_cap_lookup = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2},
+	.state_cap_lookup = {2, 2, 2, 2, 2, 2, 2, 3, 3, 3},
 	.pwm_period = 256,
 	.pwm_id = 0,
 	.step_time = 100, /*msecs*/
-	.state_cap = 1,
+	.state_cap = 2,
 	.precision_multiplier = 1024,
 	.tach_gpio = TEGRA_GPIO_PU2,
 };
