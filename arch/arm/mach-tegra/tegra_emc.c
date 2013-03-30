@@ -43,7 +43,7 @@ void __init tegra_emc_iso_usage_table_init(struct emc_iso_usage *table,
 		       size * sizeof(struct emc_iso_usage));
 }
 
-u8 tegra_emc_get_iso_share(u32 usage_flags)
+static u8 tegra_emc_get_iso_share(u32 usage_flags)
 {
 	int i;
 	u8 iso_share = 100;
@@ -69,6 +69,25 @@ u8 tegra_emc_get_iso_share(u32 usage_flags)
 	}
 	emc_iso_share = iso_share;
 	return iso_share;
+}
+
+unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
+	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags)
+{
+	u8 efficiency = tegra_emc_get_iso_share(usage_flags);
+	if (iso_bw && efficiency && (efficiency < 100)) {
+		iso_bw /= efficiency;
+		iso_bw = (iso_bw < max_rate / 100) ?
+				(iso_bw * 100) : max_rate;
+	}
+
+	efficiency = tegra_emc_bw_efficiency;
+	if (total_bw && efficiency && (efficiency < 100)) {
+		total_bw = total_bw / efficiency;
+		total_bw = (total_bw < max_rate / 100) ?
+				(total_bw * 100) : max_rate;
+	}
+	return max(total_bw, iso_bw);
 }
 
 #ifdef CONFIG_DEBUG_FS

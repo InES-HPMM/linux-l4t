@@ -5136,21 +5136,9 @@ static unsigned long tegra11_clk_shared_bus_update(struct clk *bus,
 		}
 	}
 
-	if (bus->flags & PERIPH_EMC_ENB) {
-		u8 efficiency = tegra_emc_get_iso_share(usage_flags);
-		if (iso_bw && efficiency && (efficiency < 100)) {
-			iso_bw /= efficiency;
-			iso_bw = (iso_bw < bus->max_rate / 100) ?
-					(iso_bw * 100) : bus->max_rate;
-		}
-		efficiency = tegra_emc_bw_efficiency;
-		if (bw && efficiency && (efficiency < 100)) {
-			bw = bw / efficiency;
-			bw = (bw < bus->max_rate / 100) ?
-				(bw * 100) : bus->max_rate;
-		}
-		bw = max(bw, iso_bw);
-	}
+	if (bus->flags & PERIPH_EMC_ENB)
+		bw = tegra_emc_apply_efficiency(
+			bw, iso_bw, bus->max_rate, usage_flags);
 
 	rate = override_rate ? : max(rate, bw);
 	ceiling = override_rate ? bus->max_rate : ceiling;
