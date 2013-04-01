@@ -374,8 +374,12 @@ static __init int create_suspend_pgtable(void)
 	identity_mapping_add(tegra_pgd, IO_IRAM_VIRT,
 		IO_IRAM_VIRT + SECTION_SIZE, 0);
 
+#if defined(CONFIG_ARM_LPAE)
+	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK);
+#else
 	/* inner/outer write-back/write-allocate, sharable */
 	tegra_pgd_phys = (virt_to_phys(tegra_pgd) & PAGE_MASK) | 0x4A;
+#endif
 
 	return 0;
 }

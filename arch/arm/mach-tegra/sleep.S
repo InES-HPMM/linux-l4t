@@ -242,6 +242,17 @@ ENTRY(tegra_turn_off_mmu)
 	 * change page table pointer to tegra_pgd_phys, so that IRAM
 	 * and MMU shut-off will be mapped virtual == physical
 	 */
+#if defined(CONFIG_ARM_LPAE)
+	mrrc	p15, 0, r3, r8, c2	@ TTB 0
+	ldr	r2, tegra_pgd_phys_address
+	ldrd	r2, r3, [r2]
+	bic	r8, r8, #0xFF		@ clear base_addr[40:32] from TTB 0
+	orr	r8, r8, r3		@ load new base_addr[40:32] into TTB 0
+	mov	r3, #0
+	mcr	p15, 0, r3, c13, c0, 1	@ reserved context
+	isb
+	mcrr	p15, 0, r2, r8, c2	@ TTB 0
+#else
 	mrc	p15, 0, r2, c2, c0, 0	@ TTB 0
 	mov32	r3, ~PAGE_MASK
 	and	r2, r2, r3
@@ -252,6 +263,7 @@ ENTRY(tegra_turn_off_mmu)
 	mcr	p15, 0, r2, c13, c0, 1	@ reserved context
 	isb
 	mcr	p15, 0, r3, c2, c0, 0	@ TTB 0
+#endif
 	isb
 
 	mcr	p15, 0, r2, c8, c3, 0	@ invalidate TLB
