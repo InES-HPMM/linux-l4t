@@ -58,10 +58,22 @@ static const struct max77665_irq_data max77665_irqs[] = {
 	MAX77665_IRQ(MUIC, 3),
 };
 
+static const struct resource muic_resource[] = {
+	{
+		.start = MAX77665_IRQ_MUIC,
+		.end = MAX77665_IRQ_MUIC,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static struct mfd_cell max77665s[] = {
 	[MAX77665_CELL_CHARGER]	= {.name = "max77665-charger",},
 	[MAX77665_CELL_FLASH]	= {.name = "max77665-flash",},
-	[MAX77665_CELL_MUIC]	= {.name = "max77665-muic",},
+	[MAX77665_CELL_MUIC]	= {
+			.name = "max77665-muic",
+			.resources = muic_resource,
+			.num_resources = ARRAY_SIZE(muic_resource),
+	},
 	[MAX77665_CELL_HAPTIC]	= {.name = "max77665-haptic",},
 };
 
@@ -95,13 +107,12 @@ static void max77665_irq_sync_unlock(struct irq_data *data)
 	struct max77665 *max77665 = irq_data_get_irq_chip_data(data);
 	int ret;
 
-	mutex_unlock(&max77665->irq_lock);
 	ret = max77665_write(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
 			MAX77665_INT_MSK, int_mask_reg);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(max77665->dev,
 				"Int mask reg write failed, e %d\n", ret);
-	}
+	mutex_unlock(&max77665->irq_lock);
 }
 
 static irqreturn_t max77665_irq(int irq, void *data)
@@ -112,6 +123,7 @@ static irqreturn_t max77665_irq(int irq, void *data)
 	unsigned long int acks = 0;
 	int i;
 
+	dev_info(max77665->dev, "In ISR %s\n", __func__);
 	ret = max77665_read(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
 					MAX77665_INT_STS, &status);
 	if (ret < 0) {
@@ -119,6 +131,7 @@ static irqreturn_t max77665_irq(int irq, void *data)
 				"failed to read status regi, e %d\n", ret);
 		return IRQ_NONE;
 	}
+
 	acks = status;
 	for_each_set_bit(i, &acks, ARRAY_SIZE(max77665_irqs))
 		handle_nested_irq(max77665->irq_base + i);
@@ -195,7 +208,7 @@ static bool rd_wr_reg_pmic(struct device *dev, unsigned int reg)
 	case MAX77665_PMIC_CHARGER:
 		return true;
 	default:
-		dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
+		dev_dbg(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
 		return false;
 	}
 }
@@ -206,7 +219,7 @@ static bool rd_wr_reg_muic(struct device *dev, unsigned int reg)
 	case MAX77665_MUIC:
 		return true;
 	default:
-		dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
+		dev_dbg(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
 		return false;
 	}
 }
@@ -217,7 +230,7 @@ static bool rd_wr_reg_haptic(struct device *dev, unsigned int reg)
 	case MAX77665_HAPTIC:
 		return true;
 	default:
-		dev_err(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
+		dev_dbg(dev, "non-existing reg %s() reg 0x%x\n", __func__, reg);
 		return false;
 	}
 }
