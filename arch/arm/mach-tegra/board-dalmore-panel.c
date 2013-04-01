@@ -1,21 +1,19 @@
 /*
  * arch/arm/mach-tegra/board-dalmore-panel.c
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <linux/ioport.h>
 #include <linux/fb.h>
@@ -31,6 +29,8 @@
 
 #include <mach/irqs.h>
 #include <mach/dc.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 
 #include "board.h"
 #include "devices.h"
@@ -226,6 +226,21 @@ static int dalmore_hdmi_hotplug_init(struct device *dev)
 	return e;
 }
 
+static void dalmore_hdmi_hotplug_report(bool state)
+{
+	if (state) {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_PULL_DOWN);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_PULL_DOWN);
+	} else {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_NORMAL);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_NORMAL);
+	}
+}
+
 /* Electrical characteristics for HDMI, all modes must be declared here */
 struct tmds_config dalmore_tmds_config[] = {
 	{ /* 480p : 27 MHz and below */
@@ -285,6 +300,7 @@ static struct tegra_dc_out dalmore_disp2_out = {
 	.disable	= dalmore_hdmi_disable,
 	.postsuspend	= dalmore_hdmi_postsuspend,
 	.hotplug_init	= dalmore_hdmi_hotplug_init,
+	.hotplug_report	= dalmore_hdmi_hotplug_report,
 };
 
 static struct tegra_fb_data dalmore_disp1_fb_data = {
