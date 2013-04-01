@@ -413,6 +413,22 @@ static ssize_t iso_register_store(struct device *dev,
 	return size;
 }
 
+static ssize_t iso_margin_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	unsigned int bw;
+	int ret;
+
+	sscanf(buf, "%u", &bw);
+
+	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
+		bw, true);
+	if (!ret)
+		dev_err(dev, "can't margin for bbc bw\n");
+
+	return size;
+}
 
 
 static DEVICE_ATTR(la_bbcr, S_IWUSR, NULL, la_bbcr_store);
@@ -422,6 +438,7 @@ static DEVICE_ATTR(iso_reserve, S_IWUSR, NULL, iso_reserve_store);
 static DEVICE_ATTR(iso_realize, S_IWUSR, NULL, iso_realize_store);
 static DEVICE_ATTR(iso_reserve_realize, S_IWUSR, NULL, iso_res_realize_store);
 static DEVICE_ATTR(iso_register, S_IWUSR, NULL, iso_register_store);
+static DEVICE_ATTR(iso_margin, S_IWUSR, NULL, iso_margin_store);
 
 
 static struct device_attribute *mc_attributes[] = {
@@ -432,6 +449,7 @@ static struct device_attribute *mc_attributes[] = {
 	&dev_attr_iso_realize,
 	&dev_attr_iso_reserve_realize,
 	&dev_attr_iso_register,
+	&dev_attr_iso_margin,
 	NULL
 };
 
@@ -659,6 +677,12 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		goto iso_error;
 
 	tegra_set_latency_allowance(TEGRA_LA_BBCLLR, 640);
+
+	/* statically margin for bbc bw */
+	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
+		MAX_ISO_BW_REQ, true);
+	if (!ret)
+		dev_err(&pdev->dev, "can't margin for bbc bw\n");
 
 	attrs = mc_attributes;
 	while ((attr = *attrs++)) {
