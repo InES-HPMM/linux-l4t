@@ -35,13 +35,13 @@
 #include <asm/cputime.h>
 #include <asm/cacheflush.h>
 
-#include <mach/iomap.h>
 #include <mach/latency_allowance.h>
 
 #include "clock.h"
 #include "dvfs.h"
 #include "tegra3_emc.h"
 #include "fuse.h"
+#include "iomap.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
