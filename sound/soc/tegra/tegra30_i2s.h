@@ -311,22 +311,6 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 int t14x_break_voice_call_connections(struct codec_config *codec_info,
 				struct codec_config *bb_info,
 				int uses_voice_codec);
-#else
-static inline int t14x_make_voice_call_connections(
-				struct codec_config *codec_info,
-				struct codec_config *bb_info,
-				int uses_voice_codec)
-{
-	return -EINVAL;
-}
-
-static inline int t14x_break_voice_call_connections(
-					struct codec_config *codec_info,
-				struct codec_config *bb_info,
-				int uses_voice_codec)
-{
-	return -EINVAL;
-}
 #endif
 
 #endif

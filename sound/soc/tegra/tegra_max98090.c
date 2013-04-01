@@ -144,25 +144,25 @@ static int tegra_call_mode_put(struct snd_kcontrol *kcontrol,
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 1;
 
-		if (machine_is_ceres()) {
-			t14x_make_voice_call_connections(
-				&machine->codec_info[codec_index],
-				&machine->codec_info[BASEBAND], 0);
-		} else {
-			tegra30_make_voice_call_connections(
-				&machine->codec_info[codec_index],
-				&machine->codec_info[BASEBAND], 0);
-		}
-	} else {
-		if (machine_is_ceres()) {
-			t14x_break_voice_call_connections(
+ #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		t14x_make_voice_call_connections(
 			&machine->codec_info[codec_index],
 			&machine->codec_info[BASEBAND], 0);
-		} else {
-			tegra30_break_voice_call_connections(
-				&machine->codec_info[codec_index],
-				&machine->codec_info[BASEBAND], 0);
-		}
+#else
+		tegra30_make_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], 0);
+#endif
+	} else {
+ #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		t14x_break_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], 0);
+#else
+		tegra30_break_voice_call_connections(
+			&machine->codec_info[codec_index],
+			&machine->codec_info[BASEBAND], 0);
+#endif
 
 		for (i = 0; i < machine->pcard->num_links; i++)
 			machine->pcard->dai_link[i].ignore_suspend = 0;
@@ -515,9 +515,15 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 		/* setup the connections for voice call record */
 
 		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
+			(i2s->call_record_dam_ifc*2),
+			TEGRA30_AHUB_TXCIF_BBC1_TX0);
+#else
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + bb_info->i2s_id);
+#endif
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX1 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + codec_info->i2s_id);
