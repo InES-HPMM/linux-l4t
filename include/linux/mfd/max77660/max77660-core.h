@@ -805,6 +805,7 @@ struct max77660_pinctrl_platform_data {
  * max77660_charger_platform_data: Platform data for charger.
  */
 struct max77660_charger_platform_data {
+	const char *ext_conn_name;
 	struct regulator_init_data *vbus_reg_init_data;
 };
 

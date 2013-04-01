@@ -188,7 +188,9 @@ static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	chg_extcon->edev = edev;
-	chg_extcon->edev->name = dev_name(&pdev->dev);
+	chg_extcon->edev->name = (chg_pdata->ext_conn_name) ?
+					chg_pdata->ext_conn_name :
+					dev_name(&pdev->dev);
 	chg_extcon->edev->supported_cable = max77660_excon_cable;
 
 	chg_extcon->dev = &pdev->dev;
