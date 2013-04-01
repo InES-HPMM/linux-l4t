@@ -4,6 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1320,6 +1321,15 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		host->card = card;
 
 	mmc_free_ext_csd(ext_csd);
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/*
+	 * This implementation is still in experimental phase. So, don't fail
+	 * enumeration even if dev freq init fails.
+	 */
+	if (mmc_devfreq_init(host))
+		dev_info(mmc_dev(host),
+		"Device frequency scaling initialization failed %d\n", err);
+#endif
 	return 0;
 
 free_card:
@@ -1367,7 +1377,9 @@ static void mmc_remove(struct mmc_host *host)
 {
 	BUG_ON(!host);
 	BUG_ON(!host->card);
-
+#ifdef CONFIG_MMC_FREQ_SCALING
+	mmc_devfreq_deinit(host);
+#endif
 	mmc_remove_card(host->card);
 	host->card = NULL;
 }
