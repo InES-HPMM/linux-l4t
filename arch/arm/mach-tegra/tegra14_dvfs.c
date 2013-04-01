@@ -206,7 +206,7 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 static struct dvfs core_dvfs_table[] = {
 #ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	/* FIXME: This is based on T148_Safe_DVFS.xlsx */
-	/* Core voltages (mV):		         800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1250 */
+	/* Core voltages (mV):		             800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1250 */
 	CORE_DVFS("cpu_lp",  -1, -1, 1, KHZ,      201600, 201600, 201600, 211200, 211200, 211200, 710400, 710400, 787200, 806400),
 
 	CORE_DVFS("3d",      -1, -1, 1, KHZ,       96000,  96000,  96000, 105600, 105600, 105600, 576000, 576000, 633600, 710400),
@@ -231,7 +231,7 @@ static struct dvfs core_dvfs_table[] = {
 #else
 	CORE_DVFS("cbus",      -1, -1, 1, KHZ,     96000,  96000,  96000, 105600, 105600, 105600, 441600, 441600, 518400, 537600),
 #endif
-	/* Core voltages (mV):		         800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1250 */
+	/* Core voltages (mV):		             800,    850,    900,    950,   1000,   1050,   1100,   1150,   1200,   1250 */
 	/* Clock limits for I/O peripherals */
 	CORE_DVFS("csi",    -1, -1, 1, KHZ,        75000,  75000,  75000,  75000,  75000,  84400, 102000, 102000, 102000, 102000),
 	CORE_DVFS("cilab",  -1, -1, 1, KHZ,       102000, 102000, 102000, 102000, 102000, 114700, 136000, 136000, 136000, 136000),
@@ -248,8 +248,8 @@ static struct dvfs core_dvfs_table[] = {
 	 * to the display block. Disable auto-dvfs on the display clocks,
 	 * and let the display driver call tegra_dvfs_set_rate manually
 	 */
-	CORE_DVFS("disp1",  -1, -1, 0, KHZ,        74300,  74300,  74300,  88900, 113600, 139200, 165000, 165000, 165000, 165000),
-	CORE_DVFS("disp2",  -1, -1, 0, KHZ,        74300,  74300,  74300,  88900, 113600, 139200, 165000, 165000, 165000, 165000),
+	CORE_DVFS("disp1",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
+	CORE_DVFS("disp2",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
 #endif
 };
 
