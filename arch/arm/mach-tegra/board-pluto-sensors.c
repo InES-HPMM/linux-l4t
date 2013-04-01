@@ -263,7 +263,7 @@ static struct max77665_charger_plat_data max77665_charger = {
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
-	.irq_base = 0,
+	.ext_conn_name = "MAX77665_MUIC_ID",
 };
 
 struct max77665_system_interrupt max77665_sys_int = {

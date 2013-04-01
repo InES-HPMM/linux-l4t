@@ -72,293 +72,87 @@
 #define MAX77665_ADC_GROUND	0x00
 #define MAX77665_ADC_OPEN	0x1f
 
-enum max77665_muic_usb_type {
-	MAX77665_USB_HOST,
-	MAX77665_USB_DEVICE,
-};
-
-enum max77665_muic_charger_type {
-	MAX77665_CHARGER_TYPE_NONE = 0,
-	MAX77665_CHARGER_TYPE_USB,
-	MAX77665_CHARGER_TYPE_DOWNSTREAM_PORT,
-	MAX77665_CHARGER_TYPE_DEDICATED_CHG,
-	MAX77665_CHARGER_TYPE_500MA,
-	MAX77665_CHARGER_TYPE_1A,
-};
-
 struct max77665_muic {
 	struct device *dev;
-	struct max77665_muic_platform_data *pdata;
-
+	struct device *parent;
 	int irq;
-	struct work_struct irq_work;
-
-	enum max77665_muic_charger_type pre_charger_type;
-	int pre_adc;
-
-	struct mutex mutex;
-
-	struct extcon_dev	*edev;
+	struct extcon_dev	edev;
 };
 
 const char *max77665_extcon_cable[] = {
-	[0] = "USB",
 	[1] = "USB-Host",
-	[2] = "TA",
-	[3] = "Fast-charger",
-	[4] = "Slow-charger",
-	[5] = "Charge-downstream",
 	NULL,
 };
 
-static int max77665_read_reg(struct max77665_muic *muic,
-		uint8_t reg, uint8_t *value)
+static int max77660_id_cable_update(struct max77665_muic *muic)
 {
 	int ret;
-	struct device *dev = muic->dev;
+	uint8_t val = 0;
 
-	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_MUIC, reg, value);
-	if (ret < 0)
+	ret = max77665_read(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_STATUS1, &val);
+	if (ret < 0) {
+		dev_err(muic->dev, "MUIC_STATUS1 read failed %d\n", ret);
 		return ret;
-	return 0;
-}
-
-static int max77665_update_reg(struct max77665_muic *muic,
-				uint8_t reg, uint8_t value, uint8_t mask)
-{
-	int ret;
-	uint8_t read_val;
-	struct device *dev = muic->dev;
-
-	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_MUIC,
-				reg, &read_val);
-	if (ret < 0)
-		return ret;
-
-	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_MUIC, reg,
-			(value & mask) | (read_val & (~mask)));
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
-static int max77665_muic_handle_usb(struct max77665_muic *muic,
-			enum max77665_muic_usb_type usb_type, bool attached)
-{
-	int ret = 0;
-
-	if (usb_type == MAX77665_USB_HOST) {
-		ret = max77665_update_reg(muic, MAX77665_MUIC_REG_CONTROL1,
-				attached ? MAX77665_SW_USB : MAX77665_SW_OPEN,
-				SW_MASK);
-		if (ret) {
-			dev_err(muic->dev, "failed to update muic register\n");
-			goto out;
-		}
 	}
 
-	switch (usb_type) {
-	case MAX77665_USB_HOST:
-		extcon_set_cable_state(muic->edev, "USB-Host", attached);
-		break;
-	case MAX77665_USB_DEVICE:
-		extcon_set_cable_state(muic->edev, "USB", attached);
-		break;
-	default:
-		ret = -EINVAL;
-		break;
-	}
+	dev_info(muic->dev, "STATUS1 = 0x%02x\n", val);
 
-out:
+	if (val & 0x1F) {
+		extcon_set_cable_state(&muic->edev, "USB-Host", false);
+		dev_info(muic->dev, "USB-Host is dis-connected\n");
+	} else {
+		extcon_set_cable_state(&muic->edev, "USB-Host", true);
+		dev_info(muic->dev, "USB-Host is connected\n");
+	}
 	return ret;
-}
-
-static int max77665_muic_handle_adc_detach(struct max77665_muic *muic)
-{
-	int ret = 0;
-
-	switch (muic->pre_adc) {
-	case MAX77665_ADC_GROUND:
-		ret = max77665_muic_handle_usb(muic, MAX77665_USB_HOST, false);
-		break;
-	default:
-		break;
-	}
-
-	return ret;
-}
-
-static int max77665_muic_handle_adc(struct max77665_muic *muic, int adc)
-{
-	int ret = 0;
-
-	switch (adc) {
-	case MAX77665_ADC_GROUND:
-		ret = max77665_muic_handle_usb(muic, MAX77665_USB_HOST, true);
-		break;
-	case MAX77665_ADC_OPEN:
-		ret = max77665_muic_handle_adc_detach(muic);
-		break;
-	default:
-		ret = -EINVAL;
-		goto out;
-	}
-
-	muic->pre_adc = adc;
-out:
-	return ret;
-}
-
-static int max77665_muic_handle_charger_type_detach(
-				struct max77665_muic *muic)
-{
-	int ret = 0;
-
-	switch (muic->pre_charger_type) {
-	case MAX77665_CHARGER_TYPE_USB:
-		extcon_set_cable_state(muic->edev, "USB", false);
-		break;
-	case MAX77665_CHARGER_TYPE_DOWNSTREAM_PORT:
-		extcon_set_cable_state(muic->edev, "Charge-downstream", false);
-		break;
-	case MAX77665_CHARGER_TYPE_DEDICATED_CHG:
-		extcon_set_cable_state(muic->edev, "TA", false);
-		break;
-	case MAX77665_CHARGER_TYPE_500MA:
-		extcon_set_cable_state(muic->edev, "Slow-charger", false);
-		break;
-	case MAX77665_CHARGER_TYPE_1A:
-		extcon_set_cable_state(muic->edev, "Fast-charger", false);
-		break;
-	default:
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
-static int max77665_muic_handle_charger_type(struct max77665_muic *muic,
-				enum max77665_muic_charger_type charger_type)
-{
-	uint8_t adc;
-	int ret = 0;
-
-	ret = max77665_read_reg(muic, MAX77665_MUIC_REG_STATUS1, &adc);
-	if (ret) {
-		dev_err(muic->dev, "failed to read muic register\n");
-		goto out;
-	}
-
-	switch (charger_type) {
-	case MAX77665_CHARGER_TYPE_NONE:
-		ret = max77665_muic_handle_charger_type_detach(muic);
-		break;
-	case MAX77665_CHARGER_TYPE_USB:
-		if ((adc & STATUS1_ADC_MASK) == MAX77665_ADC_OPEN) {
-			max77665_muic_handle_usb(muic,
-					MAX77665_USB_DEVICE, true);
-		}
-		break;
-	case MAX77665_CHARGER_TYPE_DOWNSTREAM_PORT:
-		extcon_set_cable_state(muic->edev, "Charge-downstream", true);
-		break;
-	case MAX77665_CHARGER_TYPE_DEDICATED_CHG:
-		extcon_set_cable_state(muic->edev, "TA", true);
-		break;
-	case MAX77665_CHARGER_TYPE_500MA:
-		extcon_set_cable_state(muic->edev, "Slow-charger", true);
-		break;
-	case MAX77665_CHARGER_TYPE_1A:
-		extcon_set_cable_state(muic->edev, "Fast-charger", true);
-		break;
-	default:
-		ret = -EINVAL;
-		goto out;
-	}
-
-	muic->pre_charger_type = charger_type;
-out:
-	return ret;
-}
-
-static void max77665_muic_irq_work(struct work_struct *work)
-{
-	struct max77665_muic *muic = container_of(work,
-			struct max77665_muic, irq_work);
-	uint8_t status[2];
-	uint8_t adc, chg_type;
-
-	int ret;
-
-	mutex_lock(&muic->mutex);
-
-	ret = max77665_bulk_read(muic->dev->parent, MAX77665_I2C_SLAVE_MUIC,
-				MAX77665_MUIC_REG_STATUS1,
-				2, status);
-	if (ret) {
-		dev_err(muic->dev, "failed to read muic register\n");
-		mutex_unlock(&muic->mutex);
-		return;
-	}
-
-	dev_dbg(muic->dev, "%s: STATUS1:0x%x, 2:0x%x\n", __func__,
-			status[0], status[1]);
-
-	adc = status[0] & STATUS1_ADC_MASK;
-	adc >>= STATUS1_ADC_SHIFT;
-
-	chg_type = status[1] & STATUS2_CHGTYP_MASK;
-	chg_type >>= STATUS2_CHGTYP_SHIFT;
-
-	max77665_muic_handle_charger_type(muic, chg_type);
-
-	mutex_unlock(&muic->mutex);
-
-	return;
 }
 
 static irqreturn_t max77665_muic_irq_handler(int irq, void *data)
 {
 	struct max77665_muic *muic = data;
+	uint8_t status = 0;
+	int ret;
 
-	dev_dbg(muic->dev, "irq:%d\n", irq);
-	muic->irq = irq;
+	ret = max77665_read(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_INT1, &status);
+	if (ret < 0) {
+		dev_dbg(muic->dev, "MUIC_INT1 read failed %d\n", ret);
+		goto done;
+	}
+	dev_info(muic->dev, "INT1 is 0x%02x\n", status);
 
-	schedule_work(&muic->irq_work);
-
+	if (status & 0x1)
+		max77660_id_cable_update(muic);
+	else
+		dev_info(muic->dev, "Unknown interrupt %d\n", irq);
+done:
 	return IRQ_HANDLED;
 }
 
-static void max77665_muic_detect_dev(struct max77665_muic *muic)
+static int max77665_enable_id_detect_interrupt(struct max77665_muic *muic)
 {
+
 	int ret;
-	uint8_t status[2], adc, chg_type;
 
-	ret = max77665_bulk_read(muic->dev->parent, MAX77665_I2C_SLAVE_MUIC,
-				MAX77665_MUIC_REG_STATUS1,
-				2, status);
-	if (ret) {
-		dev_err(muic->dev, "failed to read muic register\n");
-		return;
-	}
-
-	dev_info(muic->dev, "STATUS1:0x%x, STATUS2:0x%x\n",
-			status[0], status[1]);
-
-	adc = status[0] & STATUS1_ADC_MASK;
-	adc >>= STATUS1_ADC_SHIFT;
-
-	chg_type = status[1] & STATUS2_CHGTYP_MASK;
-	chg_type >>= STATUS2_CHGTYP_SHIFT;
-
-	max77665_muic_handle_charger_type(muic, chg_type);
+	ret = max77665_set_bits(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_INTMASK1, 0);
+	if (ret < 0)
+		dev_err(muic->dev, "MUIC_INTMASK1  set bits failed: %d\n", ret);
+	return ret;
 }
 
 static int __devinit max77665_muic_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	struct max77665_muic_platform_data *pdata;
 	struct max77665_muic *muic;
+	int ret = 0;
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "no platform data available\n");
+		return -ENODEV;
+	}
 
 	muic = devm_kzalloc(&pdev->dev, sizeof(struct max77665_muic),
 			GFP_KERNEL);
@@ -368,51 +162,60 @@ static int __devinit max77665_muic_probe(struct platform_device *pdev)
 	}
 
 	muic->dev = &pdev->dev;
-	muic->pdata = pdev->dev.platform_data;
-	if (!muic->pdata) {
-		dev_err(&pdev->dev, "no platform data available\n");
-		return -ENODEV;
-	}
+	muic->parent = pdev->dev.parent;
 
+	muic->irq = platform_get_irq(pdev, 0);
 	dev_set_drvdata(&pdev->dev, muic);
-	mutex_init(&muic->mutex);
-	INIT_WORK(&muic->irq_work, max77665_muic_irq_work);
 
-	if (muic->pdata->irq_base) {
-		ret = request_threaded_irq(muic->pdata->irq_base +
-					MAX77665_IRQ_MUIC, NULL,
-					max77665_muic_irq_handler,
-					0, "muic_irq",
-					muic);
-		if (ret) {
-			dev_err(&pdev->dev,
-				"failed: irq request error :%d)\n", ret);
-			return ret;
-		}
+	ret = max77665_write(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_INTMASK1, 0);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "MUIC_INTMASK1 write failed: %d\n", ret);
+		return ret;
 	}
-	/* External connector */
-	muic->edev = kzalloc(sizeof(struct extcon_dev),
-			GFP_KERNEL);
-	if (!muic->edev) {
-		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
-		ret = -ENOMEM;
-		goto error;
+
+	ret = max77665_write(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_INTMASK2, 0);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "MUIC_INTMASK2 write failed: %d\n", ret);
+		return ret;
 	}
-	muic->edev->name = DEV_NAME;
-	muic->edev->supported_cable = max77665_extcon_cable;
-	ret = extcon_dev_register(muic->edev, NULL);
+
+	ret = max77665_write(muic->parent, MAX77665_I2C_SLAVE_MUIC,
+			MAX77665_MUIC_REG_INTMASK3, 0);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "MUIC_INTMASK3 write failed: %d\n", ret);
+		return ret;
+	}
+
+	muic->edev.name = (pdata->ext_conn_name) ?
+			pdata->ext_conn_name : DEV_NAME;
+	muic->edev.supported_cable = max77665_extcon_cable;
+	ret = extcon_dev_register(&muic->edev, NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "extcon device register failed %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_id_cable_update(muic);
+	if (ret < 0)
+		goto scrub;
+
+	ret = request_threaded_irq(muic->irq, NULL, max77665_muic_irq_handler,
+			0, dev_name(&pdev->dev), muic);
 	if (ret) {
-		dev_err(&pdev->dev, "failed to register extcon device\n");
-		goto error1;
+		dev_err(&pdev->dev, "failed: irq request error :%d)\n", ret);
+		goto scrub;
 	}
-	/* Initial device detection */
-	max77665_muic_detect_dev(muic);
 
-	return 0;
-error1:
-	kfree(muic->edev);
-error:
-	free_irq(muic->pdata->irq_base + MAX77665_IRQ_MUIC, muic);
+	ret = max77665_enable_id_detect_interrupt(muic);
+	if (ret < 0)
+		goto scrub;
+
+	return ret;
+
+scrub:
+	extcon_dev_unregister(&muic->edev);
 	return ret;
 }
 
@@ -420,9 +223,8 @@ static int __devexit max77665_muic_remove(struct platform_device *pdev)
 {
 	struct max77665_muic *muic = platform_get_drvdata(pdev);
 
-	cancel_work_sync(&muic->irq_work);
-	extcon_dev_unregister(muic->edev);
-
+	free_irq(muic->irq, muic);
+	extcon_dev_unregister(&muic->edev);
 	return 0;
 }
 
@@ -435,7 +237,17 @@ static struct platform_driver max77665_muic_driver = {
 	.remove		= __devexit_p(max77665_muic_remove),
 };
 
-module_platform_driver(max77665_muic_driver);
+static int __init max77665_extcon_driver_init(void)
+{
+	return platform_driver_register(&max77665_muic_driver);
+}
+subsys_initcall_sync(max77665_extcon_driver_init);
+
+static void __exit max77665_extcon_driver_exit(void)
+{
+	platform_driver_unregister(&max77665_muic_driver);
+}
+module_exit(max77665_extcon_driver_exit);
 
 MODULE_DESCRIPTION("Maxim MAX77665 Extcon driver");
 MODULE_AUTHOR("Syed Rafiuddin <srafiuddin@nvidia.com>");
