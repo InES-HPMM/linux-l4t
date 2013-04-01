@@ -35,7 +35,8 @@
 #include <mach/tsensor.h>
 #include <mach/tegra_fuse.h>
 
-#include "../../../arch/arm/mach-tegra/iomap.h"
+/* HACK: These need to come from DT */
+#include "../../arch/arm/mach-tegra/iomap.h"
 
 /* macro to enable tsensor hw reset */
 /* FIXME: till tsensor temperature is reliable this should be 0 */
