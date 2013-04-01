@@ -366,7 +366,7 @@ const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
 	}
 
 static __initdata struct tegra_drive_pingroup_config t11x_def_drive_pinmux[] = {
-	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),
+	SET_DRIVE(AT2, DISABLE, DISABLE, DIV_8, 48, 55, FASTEST, FASTEST),
 };
 
 #ifdef CONFIG_PM_SLEEP
