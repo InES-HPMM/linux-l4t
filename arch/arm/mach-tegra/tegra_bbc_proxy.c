@@ -47,6 +47,8 @@ struct tegra_bbc_proxy {
 	tegra_isomgr_handle isomgr_handle;
 	struct regulator *sim0;
 	struct regulator *sim1;
+	struct regulator *rf1v7;
+	struct regulator *rf2v65;
 };
 
 static void edp_work(struct work_struct *ws)
@@ -430,7 +432,7 @@ static struct device_attribute *mc_attributes[] = {
 };
 
 
-#define SIM_ATTR(field)							\
+#define REG_ATTR(field)							\
 static ssize_t								\
 field ## _show_state(struct device *dev, struct device_attribute *attr,	\
 		     char *buf)						\
@@ -500,16 +502,81 @@ field ## _store_microvolts(struct device *dev,				\
 }									\
 static DEVICE_ATTR(field ## _microvolts, 0644,				\
 		   field ## _show_microvolts,				\
-		   field ## _store_microvolts);
+		   field ## _store_microvolts);				\
+									\
+static ssize_t								\
+field ## _show_mode(struct device *dev, struct device_attribute *attr,	\
+		     char *buf)						\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	switch (regulator_get_mode(bbc->field)) {			\
+	case REGULATOR_MODE_FAST:					\
+		return sprintf(buf, "fast\n");				\
+	case REGULATOR_MODE_NORMAL:					\
+		return sprintf(buf, "normal\n");			\
+	case REGULATOR_MODE_IDLE:					\
+		return sprintf(buf, "idle\n");				\
+	case REGULATOR_MODE_STANDBY:					\
+		return sprintf(buf, "standby\n");			\
+	}								\
+	return sprintf(buf, "unknown\n");				\
+}									\
+									\
+static ssize_t								\
+field ## _store_mode(struct device *dev, struct device_attribute *attr,	\
+		      const char *buf, size_t count)			\
+{									\
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
+	int mode = 0;							\
+									\
+	if (!bbc)							\
+		return -EAGAIN;						\
+									\
+	if (sysfs_streq(buf, "fast\n"))					\
+		mode = REGULATOR_MODE_FAST;				\
+	else if (sysfs_streq(buf, "normal\n"))				\
+		mode = REGULATOR_MODE_NORMAL;				\
+	else if (sysfs_streq(buf, "idle\n"))				\
+		mode = REGULATOR_MODE_IDLE;				\
+	else if (sysfs_streq(buf, "standby\n"))				\
+		mode = REGULATOR_MODE_STANDBY;				\
+	else								\
+		return -EINVAL;						\
+									\
+	if (regulator_set_mode(bbc->field, mode))			\
+		return -EINVAL;						\
+									\
+	return count;							\
+}									\
+static DEVICE_ATTR(field ## _mode, 0644,				\
+		   field ## _show_mode, field ## _store_mode);
 
-SIM_ATTR(sim0);
-SIM_ATTR(sim1);
+REG_ATTR(sim0);
+REG_ATTR(sim1);
+REG_ATTR(rf1v7);
+REG_ATTR(rf2v65);
 
 static struct device_attribute *sim_attributes[] = {
 	&dev_attr_sim0_state,
 	&dev_attr_sim0_microvolts,
+	&dev_attr_sim0_mode,
 	&dev_attr_sim1_state,
 	&dev_attr_sim1_microvolts,
+	&dev_attr_sim1_mode,
+	NULL
+};
+
+static struct device_attribute *rf_attributes[] = {
+	&dev_attr_rf1v7_state,
+	&dev_attr_rf1v7_microvolts,
+	&dev_attr_rf1v7_mode,
+	&dev_attr_rf2v65_state,
+	&dev_attr_rf2v65_microvolts,
+	&dev_attr_rf2v65_mode,
 	NULL
 };
 
@@ -623,10 +690,39 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		}
 	}
 
+	bbc->rf1v7 = regulator_get(NULL, "vdd_1v7_rf");
+	if (IS_ERR_OR_NULL(bbc->rf1v7)) {
+		dev_info(&pdev->dev,
+			 "vdd_1v7_rf regulator not available\n");
+		bbc->rf1v7 = NULL;
+	}
+
+	bbc->rf2v65 = regulator_get(NULL, "vdd_2v65_rf");
+	if (IS_ERR_OR_NULL(bbc->rf2v65)) {
+		dev_info(&pdev->dev,
+			 "vdd_2v65_rf regulator not available\n");
+		bbc->rf2v65 = NULL;
+	}
+
+	if (bbc->rf1v7 && bbc->rf2v65) {
+		attrs = rf_attributes;
+		while ((attr = *attrs++)) {
+			ret = device_create_file(&pdev->dev, attr);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"can't create sysfs file\n");
+				goto rf_error;
+			}
+		}
+	}
+
 	dev_set_drvdata(&pdev->dev, bbc);
 
 	return 0;
 
+rf_error:
+	regulator_put(bbc->rf1v7);
+	regulator_put(bbc->rf2v65);
 sim_error:
 	regulator_put(bbc->sim0);
 	regulator_put(bbc->sim1);
@@ -660,6 +756,15 @@ static int __exit tegra_bbc_proxy_remove(struct platform_device *pdev)
 	struct tegra_bbc_proxy *bbc = platform_get_drvdata(pdev);
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
+
+
+	if (bbc->rf1v7 && bbc->rf2v65) {
+		attrs = rf_attributes;
+		while ((attr = *attrs++))
+			device_remove_file(&pdev->dev, attr);
+		regulator_put(bbc->rf1v7);
+		regulator_put(bbc->rf2v65);
+	}
 
 	attrs = sim_attributes;
 	while ((attr = *attrs++))
