@@ -28,8 +28,8 @@
  * LUX / CM3217_INPUT_LUX_DIVISOR.
  */
 #define CM3217_NAME			"cm3217"
-#define	CM3217_I2C_ADDR_CMD1_WR		(0x10)
-#define	CM3217_I2C_ADDR_CMD2_WR		(0x11)
+#define CM3217_I2C_ADDR_CMD1_WR		(0x10)
+#define CM3217_I2C_ADDR_CMD2_WR		(0x11)
 #define CM3217_I2C_ADDR_RD		(0x10)
 #define CM3217_HW_CMD1_DFLT		(0x22)
 #define CM3217_HW_CMD1_BIT_SD		(0)
@@ -54,16 +54,10 @@ static char *cm3217_vregs[] = {
 	"vdd",
 };
 
-static char const *const cm3217_class_name = "sensors";
-static char const *const cm3217_device_name = "als";
-static dev_t const cm3217_dev_t = MKDEV(MISC_MAJOR, MISC_DYNAMIC_MINOR);
-
-
 struct cm3217_inf {
 	struct i2c_client *i2c;
 	struct mutex mutex;
 	struct input_dev *idev;
-	struct class *class;
 	struct device *dev;
 	struct workqueue_struct *wq;
 	struct delayed_work dw;
@@ -622,71 +616,27 @@ static DEVICE_ATTR(microamp, S_IRUGO,
 static DEVICE_ATTR(lux, S_IRUGO,
 		   cm3217_lux_show, NULL);
 
-static struct device_attribute *cm3217_dev_attr[] = {
-	&dev_attr_enable,
-	&dev_attr_delay,
-	&dev_attr_resolution,
-	&dev_attr_divisor,
-	&dev_attr_max_range,
-	&dev_attr_microamp,
-	&dev_attr_lux,
+static struct attribute *cm3217_attrs[] = {
+	&dev_attr_enable.attr,
+	&dev_attr_delay.attr,
+	&dev_attr_resolution.attr,
+	&dev_attr_divisor.attr,
+	&dev_attr_max_range.attr,
+	&dev_attr_microamp.attr,
+	&dev_attr_lux.attr,
 	NULL
 };
 
-static void cm3217_sysfs_remove(struct cm3217_inf *inf)
-{
-	unsigned int i;
-	struct device_attribute **attrs;
-
-	attrs = cm3217_dev_attr;
-	for (i = 0; attrs[i] != NULL; ++i)
-		device_remove_file(inf->dev, attrs[i]);
-	device_destroy(inf->class, cm3217_dev_t);
-	class_destroy(inf->class);
-	inf->dev = NULL;
-	inf->class = NULL;
-}
+static struct attribute_group cm3217_attr_group = {
+	.name = "cm3217",
+	.attrs = cm3217_attrs
+};
 
 static int cm3217_sysfs_create(struct cm3217_inf *inf)
 {
-	struct device_attribute **attrs;
-	int i;
-	int err = 0;
+	int err;
 
-	inf->class = class_create(THIS_MODULE, cm3217_class_name);
-	if (IS_ERR(inf->class)) {
-		err = PTR_ERR(inf->class);
-		goto err_class;
-	}
-
-	inf->dev = device_create(inf->class, &inf->i2c->dev, cm3217_dev_t,
-				 inf, cm3217_device_name);
-	if (IS_ERR(inf->dev)) {
-		err = PTR_ERR(inf->dev);
-		inf->dev = NULL;
-		goto err_dev;
-	}
-
-	attrs = cm3217_dev_attr;
-	for (i = 0; attrs[i] != NULL; i++) {
-		err = sysfs_create_file(&inf->dev->kobj, &attrs[i]->attr);
-		if (err) {
-			while (--i >= 0)
-				sysfs_remove_file(&inf->dev->kobj,
-						  &attrs[i]->attr);
-			goto err_attr;
-		}
-	}
-
-	return err;
-
-err_attr:
-	device_destroy(inf->class, cm3217_dev_t);
-err_dev:
-	inf->dev = NULL;
-	class_destroy(inf->class);
-err_class:
-	inf->class = NULL;
+	err = sysfs_create_group(&inf->idev->dev.kobj, &cm3217_attr_group);
 	return err;
 }
 
@@ -727,7 +677,6 @@ static int cm3217_remove(struct i2c_client *client)
 	struct cm3217_inf *inf;
 
 	inf = i2c_get_clientdata(client);
-	cm3217_sysfs_remove(inf);
 	input_unregister_device(inf->idev);
 	input_free_device(inf->idev);
 	destroy_workqueue(inf->wq);
@@ -800,6 +749,7 @@ static struct i2c_driver cm3217_driver = {
 		.name	= CM3217_NAME,
 		.owner	= THIS_MODULE,
 	},
+	.shutdown	= cm3217_remove,
 };
 
 static int __init cm3217_init(void)
