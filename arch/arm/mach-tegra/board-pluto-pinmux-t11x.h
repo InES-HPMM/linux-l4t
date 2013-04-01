@@ -94,7 +94,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_AD9,       PWM1,        NORMAL,    NORMAL,   OUTPUT),
 
 	/* SOC pinmux */
-	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         PULL_UP,   TRISTATE, INPUT),
+	DEFAULT_PINMUX(GMI_CS1_N,     SOC,         PULL_UP,   NORMAL, INPUT),
 	DEFAULT_PINMUX(GMI_OE_N,      SOC,         PULL_UP,   TRISTATE, INPUT),
 	DEFAULT_PINMUX(CLK_32K_OUT,   SOC,         PULL_UP,   TRISTATE, INPUT),
 

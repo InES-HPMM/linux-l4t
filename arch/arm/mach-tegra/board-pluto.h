@@ -25,6 +25,9 @@
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/max77665.h>
 #include "gpio-names.h"
+#include <linux/thermal.h>
+#include <linux/platform_data/thermal_sensors.h>
+#include "tegra11_soctherm.h"
 
 /* External peripheral act as gpio */
 /* PALMAS GPIO */
@@ -38,9 +41,12 @@
 #define TEGRA_GPIO_INT_MIC_EN		-1
 #define TEGRA_GPIO_EXT_MIC_EN		-1
 
+#define TEGRA_SOC_OC_IRQ_BASE		TEGRA_NR_IRQS
+#define TEGRA_SOC_OC_NUM_IRQ		TEGRA_SOC_OC_IRQ_MAX
+
 /* External peripheral act as interrupt controller */
 /* PLUTO IRQs */
-#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
+#define PALMAS_TEGRA_IRQ_BASE	(TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_NUM_IRQ)
 #define MAX77665_TEGRA_IRQ_BASE	(PALMAS_TEGRA_IRQ_BASE + PALMAS_NUM_IRQ)
 
 /* AIC326X IRQs */

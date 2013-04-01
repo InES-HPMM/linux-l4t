@@ -50,7 +50,6 @@
 
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
-#define MAX77665_CHARGER_INT	TEGRA_GPIO_PJ2
 
 #ifndef CONFIG_OF
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
@@ -297,6 +296,7 @@ static struct i2c_board_info pluto_i2c_board_info_max77665[] = {
 	{
 		I2C_BOARD_INFO("max77665", 0x66),
 		.platform_data = &pluto_max77665_pdata,
+		.irq = (TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_IRQ_4),
 	},
 };
 
@@ -1006,21 +1006,6 @@ void __init max77665_init(void)
 {
 	int err;
 
-	err = gpio_request(MAX77665_CHARGER_INT, "CHARGER_INT");
-	if (err < 0) {
-		pr_err("%s: gpio_request failed %d\n", __func__, err);
-		goto fail_init_irq;
-	}
-
-	err = gpio_direction_input(MAX77665_CHARGER_INT);
-	if (err < 0) {
-		pr_err("%s: gpio_direction_input failed %d\n", __func__, err);
-		goto fail_init_irq;
-	}
-
-	pluto_i2c_board_info_max77665[0].irq =
-				gpio_to_irq(MAX77665_CHARGER_INT);
-fail_init_irq:
 	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
 		ARRAY_SIZE(pluto_i2c_board_info_max77665));
 	if (err)
@@ -1051,7 +1036,6 @@ int __init pluto_sensors_init(void)
 
 	mpuirq_init();
 	max77665_init();
-	pluto_i2c_board_info_max77665[0].irq = gpio_to_irq(TEGRA_GPIO_PJ0);
 
 	err = i2c_register_board_info(0, max17042_device,
 				ARRAY_SIZE(max17042_device));
