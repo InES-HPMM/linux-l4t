@@ -27,6 +27,19 @@
 #include <linux/of.h>
 
 #include <mach/clk.h>
+#include <mach/pinmux.h>
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+#include <mach/pinmux-tegra20.h>
+#endif
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#include <mach/pinmux-tegra30.h>
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#include <mach/pinmux-t11.h>
+#endif
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+#include <mach/pinmux-t14.h>
+#endif
 
 #include <sound/soc.h>
 
@@ -34,6 +47,7 @@
 #include "tegra_asoc_utils.h"
 
 int g_is_call_mode;
+static atomic_t dap_ref_count[5];
 
 #ifdef CONFIG_SWITCH
 static bool is_switch_registered;
@@ -45,6 +59,51 @@ enum headset_state {
 	BIT_HEADSET_NO_MIC = (1 << 1),
 };
 #endif
+
+#define TRISTATE_DAP_PORT(n) \
+static void tristate_dap_##n(bool tristate) \
+{ \
+	enum tegra_pingroup fs, sclk, din, dout; \
+	fs = TEGRA_PINGROUP_DAP##n##_FS; \
+	sclk = TEGRA_PINGROUP_DAP##n##_SCLK; \
+	din = TEGRA_PINGROUP_DAP##n##_DIN; \
+	dout = TEGRA_PINGROUP_DAP##n##_DOUT; \
+	if (tristate) { \
+		if (atomic_dec_return(&dap_ref_count[n-1]) == 0) {\
+			tegra_pinmux_set_tristate(fs, TEGRA_TRI_TRISTATE); \
+			tegra_pinmux_set_tristate(sclk, TEGRA_TRI_TRISTATE); \
+			tegra_pinmux_set_tristate(din, TEGRA_TRI_TRISTATE); \
+			tegra_pinmux_set_tristate(dout, TEGRA_TRI_TRISTATE); \
+		} \
+	} else { \
+		if (atomic_inc_return(&dap_ref_count[n-1]) == 1) {\
+			tegra_pinmux_set_tristate(fs, TEGRA_TRI_NORMAL); \
+			tegra_pinmux_set_tristate(sclk, TEGRA_TRI_NORMAL); \
+			tegra_pinmux_set_tristate(din, TEGRA_TRI_NORMAL); \
+			tegra_pinmux_set_tristate(dout, TEGRA_TRI_NORMAL); \
+		} \
+	} \
+}
+
+TRISTATE_DAP_PORT(1)
+TRISTATE_DAP_PORT(2)
+
+int tegra_asoc_utils_tristate_dap(int id, bool tristate)
+{
+	switch (id) {
+	case 0:
+		tristate_dap_1(tristate);
+		break;
+	case 1:
+		tristate_dap_2(tristate);
+		break;
+	default:
+		pr_warn("Invalid DAP port\n");
+		break;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_asoc_utils_tristate_dap);
 
 bool tegra_is_voice_call_active(void)
 {

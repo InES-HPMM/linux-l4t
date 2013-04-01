@@ -450,6 +450,8 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 	struct codec_config *bb_info;
 	int codec_index;
 
+	tegra_asoc_utils_tristate_dap(i2s->id, false);
+
 	if (!i2s->is_dam_used)
 		return 0;
 
@@ -549,6 +551,8 @@ static void tegra_max98090_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+
+	tegra_asoc_utils_tristate_dap(i2s->id, true);
 
 	if (!i2s->is_dam_used)
 		return;
