@@ -22,11 +22,11 @@
 
 #include <mach/tsensor.h>
 #include <mach/tegra_fuse.h>
-#include <mach/iomap.h>
 #include <mach/tsensor.h>
 
 #include "cpu-tegra.h"
 #include "devices.h"
+#include "iomap.h"
 #include "tegra3_tsensor.h"
 
 /* fuse revision constants used for tsensor */
