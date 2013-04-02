@@ -85,7 +85,6 @@
 static int aic325x_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
 				struct snd_soc_dai *);
-static int aic325x_mute(struct snd_soc_dai *dai, int mute);
 static int aic325x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt);
 static int aic325x_set_bias_level(struct snd_soc_codec *codec,
 					enum snd_soc_bias_level level);
@@ -176,8 +175,6 @@ static const struct snd_kcontrol_new aic325x_snd_controls[] = {
  */
 struct snd_soc_dai_ops aic325x_dai_ops = {
 	.hw_params = aic325x_hw_params,
-	.digital_mute = aic325x_mute,
-/*	.set_sysclk = aic325x_set_dai_sysclk, */
 	.set_fmt = aic325x_set_dai_fmt,
 	.set_pll = aic325x_dai_set_pll,
 };
@@ -1375,45 +1372,6 @@ static int aic325x_hw_params(struct snd_pcm_substream *substream,
 }
 
 /**
- * aic325x_mute: This function is to mute or unmute the left and right DAC
- * @dai: ponter to dai Holds runtime data for a DAI,
- * @mute: integer value one if we using mute else unmute,
- *
- * Return: return 0 on success.
- */
-static int aic325x_mute(struct snd_soc_dai *dai, int mute)
-{
-	struct snd_soc_codec *codec = dai->codec;
-	struct aic325x_priv *aic325x = snd_soc_codec_get_drvdata(codec);
-
-	if (mute) {
-		if (aic325x->playback_stream) {
-			snd_soc_update_bits(codec, AIC3256_DAC_MUTE_CTRL_REG,
-						AIC3256_DAC_MUTE_MASK,
-						AIC3256_DAC_MUTE_ON);
-		}
-		if (aic325x->record_stream) {
-			snd_soc_update_bits(codec, AIC3256_ADC_FGA,
-						AIC3256_ADC_MUTE_MASK,
-						AIC3256_ADC_MUTE_ON);
-		}
-	} else {
-		if (aic325x->playback_stream) {
-			snd_soc_update_bits(codec, AIC3256_DAC_MUTE_CTRL_REG,
-						AIC3256_DAC_MUTE_MASK,
-						(~AIC3256_DAC_MUTE_ON));
-		}
-		if (aic325x->record_stream) {
-			snd_soc_update_bits(codec, AIC3256_ADC_FGA,
-						AIC3256_ADC_MUTE_MASK,
-						(~AIC3256_ADC_MUTE_ON));
-		}
-	}
-
-	return 0;
-}
-
-/**
  * aic325x_set_dai_fmt: This function is to set the DAI format
  * @codec_dai: pointer to dai Holds runtime data for a DAI,
  * @fmt: asi format info,
@@ -1657,14 +1615,44 @@ static int aic325x_probe(struct snd_soc_codec *codec)
 		dprintk("#Completed adding DAPM routes = %d\n",
 			ARRAY_SIZE(aic325x_dapm_routes));
 
+	if (control->irq) {
+		ret = aic325x_request_irq(codec->control_data,
+					  AIC3256_IRQ_HEADSET_DETECT,
+					  aic3256_audio_handler,
+					  IRQF_NO_SUSPEND,
+					  "aic3256_irq_headset", codec);
+
+		if (ret) {
+			dev_err(codec->dev, "HEADSET detect irq request" \
+				"failed: %d\n", ret);
+			goto irq_err;
+		} else {
+			/*  Dynamic Headset Detection Enabled */
+			snd_soc_update_bits(codec, AIC3256_HEADSET_DETECT,
+						AIC3256_HEADSET_IN_MASK |
+						AIC3256_HEADSET_DEBOUNCE_MASK,
+						AIC3256_HEADSET_ENABLE |
+						AIC3256_HEADSET_DEBOUNCE_64);
+		}
+	}
+
 	/* firmware load */
-	request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
 				"tlv320aic3206_fw_v1.bin",
 				codec->dev, GFP_KERNEL, codec,
 				aic3256_firmware_load);
-
+	if (ret < 0) {
+		dev_err(codec->dev, "Firmware load failed: %d\n", ret);
+		goto firm_err;
+	}
 	return ret;
 
+firm_err:
+	aic325x_free_irq(control,
+			 AIC3256_HEADSET_DETECT, codec);
+irq_err:
+	kfree(aic325x);
+	return ret;
 }
 
 /*
