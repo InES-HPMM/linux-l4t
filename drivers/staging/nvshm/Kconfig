@@ -2,6 +2,15 @@ config NVSHM
 	tristate "NV Tegra Baseband Shared Memory Interface"
 	depends on ARCH_TEGRA
 	depends on TEGRA_BASEBAND
+	depends on SUNRPC
 	help
-	    Say Y here to enable support for high level shared memory interface driver on NVIDIA Tegra integrated baseband
+	    Say Y here to enable support for high level shared memory interface
+	    driver on NVIDIA Tegra integrated baseband
 
+config NVSHM_RPC_TEST
+	tristate "RPC test functions"
+	depends on NVSHM
+	help
+	    The RPC test functions are a set of functions used to self-test the
+	    RPC mechanism, such as ping, printk, msleep, etc... They require the
+	    baseband side to support the corresponding calls (test mode.)

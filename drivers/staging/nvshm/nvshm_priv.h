@@ -101,4 +101,7 @@ extern void nvshm_net_cleanup(void);
 extern int nvshm_rpc_init(struct nvshm_handle *handle);
 extern void nvshm_rpc_cleanup(void);
 
+extern int nvshm_rpc_dispatcher_init(void);
+extern void nvshm_rpc_dispatcher_cleanup(void);
+
 #endif /* _NVSHM_PRIV_H */

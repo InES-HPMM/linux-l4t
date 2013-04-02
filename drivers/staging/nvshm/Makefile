@@ -8,6 +8,9 @@ nvshm-objs += nvshm_tty.o
 nvshm-objs += nvshm_net.o
 nvshm-objs += nvshm_if.o
 nvshm-objs += nvshm_rpc.o
+nvshm-objs += nvshm_rpc_utils.o
+nvshm-objs += nvshm_rpc_dispatcher.o
 
-obj-$(CONFIG_NVSHM)		+= nvshm.o
+obj-$(CONFIG_NVSHM) += nvshm.o
+obj-$(CONFIG_NVSHM_RPC_TEST) += nvshm_rpc_functions.o
 

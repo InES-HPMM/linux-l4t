@@ -150,6 +150,7 @@ static int init_interfaces(struct nvshm_handle *handle)
 	if (nrpc) {
 		pr_debug("%s init %d rpc channels\n", __func__, nrpc);
 		nvshm_rpc_init(handle);
+		nvshm_rpc_dispatcher_init();
 	}
 
 	return 0;
@@ -197,10 +198,11 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 
 	if (nrpc) {
 		pr_debug("%s cleanup %d rpc channels\n", __func__, nrpc);
+		nvshm_rpc_dispatcher_cleanup();
 		nvshm_rpc_cleanup();
 	}
 
-    /* Remove serial sysfs entry */
+	/* Remove serial sysfs entry */
 	tegra_bb_set_ipc_serial(handle->tegra_bb, NULL);
 
 	return 0;
