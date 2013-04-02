@@ -47,8 +47,13 @@
 #define SANITY_CHECK_AVAIL_BW() { \
 	int t = 0; \
 	int idx = 0; \
-	for (idx = 0; idx < TEGRA_ISO_CLIENT_COUNT; idx++) \
-		t += isomgr_clients[idx].real_bw; \
+	for (idx = 0; idx < TEGRA_ISO_CLIENT_COUNT; idx++) { \
+		if (isomgr_clients[idx].real_bw >= \
+		    isomgr_clients[idx].margin_bw) \
+			t += isomgr_clients[idx].real_bw; \
+		else \
+			t += isomgr_clients[idx].margin_bw; \
+	} \
 	if (t + isomgr.avail_bw != isomgr.max_iso_bw) { \
 		pr_err("bw mismatch, line=%d", __LINE__); \
 		pr_err("t+isomgr.avail_bw=%d, isomgr.max_iso_bw=%d", \
@@ -59,6 +64,9 @@
 #else
 #define SANITY_CHECK_AVAIL_BW()
 #endif
+
+/* To allow test code take over control */
+static bool test_mode;
 
 char *client_name[] = {
 	"disp_0",
@@ -356,31 +364,7 @@ static bool is_client_valid(enum tegra_iso_client client)
 	return true;
 }
 
-/**
- * tegra_isomgr_register - register an ISO BW client.
- *
- * @client	client to register as an ISO client.
- * @udedi_bw	minimum bw client can work at. This bw is guarnteed to be
- *		available for client when ever client need it. Client can
- *		always request for more bw and client can get it based on
- *		availability of bw in the system. udedi_bw is specified in KB.
- * @renegotiate	callback function to be called to renegotiate for bw.
- *		client with no renegotiate callback provided can't allocate
- *		bw more than udedi_bw.
- *		Client with renegotiate callback can allocate more than
- *		udedi_bw and release it during renegotiate callback, when
- *		other clients in the system need their bw back.
- *		renegotiate callback is called in two cases. 1. The isomgr
- *		has excess bw, checking client to see if they need more bw.
- *		2. The isomgr is out of bw and other clients need their udedi_bw
- *		back. In this case, the client, which is using higher bw need to
- *		release the bw and fallback to low(udedi_bw) bw use case.
- * @priv	pointer to renegotiate callback function.
- *
- * @return	returns valid handle on successful registration.
- * @retval	-EINVAL invalid arguments passed.
- */
-tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
+static tegra_isomgr_handle __tegra_isomgr_register(enum tegra_iso_client client,
 					  u32 udedi_bw,
 					  tegra_isomgr_renegotiate renegotiate,
 					  void *priv)
@@ -447,14 +431,43 @@ fail_unlock:
 fail:
 	return ERR_PTR(-EINVAL);
 }
-EXPORT_SYMBOL(tegra_isomgr_register);
 
 /**
- * tegra_isomgr_unregister - unregister an ISO BW client.
+ * tegra_isomgr_register - register an ISO BW client.
  *
- * @handle	handle acquired during tegra_isomgr_register.
+ * @client	client to register as an ISO client.
+ * @udedi_bw	minimum bw client can work at. This bw is guarnteed to be
+ *		available for client when ever client need it. Client can
+ *		always request for more bw and client can get it based on
+ *		availability of bw in the system. udedi_bw is specified in KB.
+ * @renegotiate	callback function to be called to renegotiate for bw.
+ *		client with no renegotiate callback provided can't allocate
+ *		bw more than udedi_bw.
+ *		Client with renegotiate callback can allocate more than
+ *		udedi_bw and release it during renegotiate callback, when
+ *		other clients in the system need their bw back.
+ *		renegotiate callback is called in two cases. 1. The isomgr
+ *		has excess bw, checking client to see if they need more bw.
+ *		2. The isomgr is out of bw and other clients need their udedi_bw
+ *		back. In this case, the client, which is using higher bw need to
+ *		release the bw and fallback to low(udedi_bw) bw use case.
+ * @priv	pointer to renegotiate callback function.
+ *
+ * @return	returns valid handle on successful registration.
+ * @retval	-EINVAL invalid arguments passed.
  */
-void tegra_isomgr_unregister(tegra_isomgr_handle handle)
+tegra_isomgr_handle tegra_isomgr_register(enum tegra_iso_client client,
+					  u32 udedi_bw,
+					  tegra_isomgr_renegotiate renegotiate,
+					  void *priv)
+{
+	if (test_mode)
+		return (tegra_isomgr_handle)1;
+	return __tegra_isomgr_register(client, udedi_bw, renegotiate, priv);
+}
+EXPORT_SYMBOL(tegra_isomgr_register);
+
+static void __tegra_isomgr_unregister(tegra_isomgr_handle handle)
 {
 	struct isomgr_client *cp = (struct isomgr_client *)handle;
 	int client = cp - &isomgr_clients[0];
@@ -467,19 +480,21 @@ void tegra_isomgr_unregister(tegra_isomgr_handle handle)
 
 	kref_put(&cp->kref, unregister_iso_client);
 }
-EXPORT_SYMBOL(tegra_isomgr_unregister);
 
 /**
- * tegra_isomgr_reserve - reserve bw for the ISO client.
+ * tegra_isomgr_unregister - unregister an ISO BW client.
  *
  * @handle	handle acquired during tegra_isomgr_register.
- * @ubw		bandwidth in KBps.
- * @ult		latency that can be tolerated by client in usec.
- *
- * returns dvfs latency thresh in usec.
- * return 0 indicates that reserve failed.
  */
-u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
+void tegra_isomgr_unregister(tegra_isomgr_handle handle)
+{
+	if (test_mode)
+		return;
+	__tegra_isomgr_unregister(handle);
+}
+EXPORT_SYMBOL(tegra_isomgr_unregister);
+
+static u32 __tegra_isomgr_reserve(tegra_isomgr_handle handle,
 			 u32 ubw, u32 ult)
 {
 	s32 bw = ubw;
@@ -548,17 +563,27 @@ handle_unregistered:
 validation_fail:
 	return 0;
 }
-EXPORT_SYMBOL(tegra_isomgr_reserve);
 
 /**
- * tegra_isomgr_realize - realize the bw reserved by client.
+ * tegra_isomgr_reserve - reserve bw for the ISO client.
  *
  * @handle	handle acquired during tegra_isomgr_register.
+ * @ubw		bandwidth in KBps.
+ * @ult		latency that can be tolerated by client in usec.
  *
  * returns dvfs latency thresh in usec.
- * return 0 indicates that realize failed.
+ * return 0 indicates that reserve failed.
  */
-u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
+u32 tegra_isomgr_reserve(tegra_isomgr_handle handle,
+			 u32 ubw, u32 ult)
+{
+	if (test_mode)
+		return 1;
+	return __tegra_isomgr_reserve(handle, ubw, ult);
+}
+EXPORT_SYMBOL(tegra_isomgr_reserve);
+
+static u32 __tegra_isomgr_realize(tegra_isomgr_handle handle)
 {
 	u32 dvfs_latency = 0;
 	s32 delta_bw = 0;
@@ -630,24 +655,25 @@ handle_unregistered:
 	isomgr_unlock();
 	return dvfs_latency;
 }
-EXPORT_SYMBOL(tegra_isomgr_realize);
 
 /**
- * This sets bw aside for the client specified.
- * This bw can never be used for other clients needs.
- * margin bw, if not zero, should always be greater than equal to
- * reserved/realized bw.
+ * tegra_isomgr_realize - realize the bw reserved by client.
  *
- * @client client
- * @bw bw margin KB.
- * @wait if true and bw is not available, it would wait till bw is available.
- *	  if false, it would return immediately with success or failure.
+ * @handle	handle acquired during tegra_isomgr_register.
  *
- * @retval  0 operation is successful.
- * @retval -ENOMEM Iso Bw requested is not avialable.
- * @retval -EINVAL Invalid arguments, bw is less than reserved/realized bw.
+ * returns dvfs latency thresh in usec.
+ * return 0 indicates that realize failed.
  */
-int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw, bool wait)
+u32 tegra_isomgr_realize(tegra_isomgr_handle handle)
+{
+	if (test_mode)
+		return 1;
+	return __tegra_isomgr_realize(handle);
+}
+EXPORT_SYMBOL(tegra_isomgr_realize);
+
+static int __tegra_isomgr_set_margin(enum tegra_iso_client client,
+					u32 bw, bool wait)
 {
 	int ret = -EINVAL;
 	s32 high_bw;
@@ -705,18 +731,29 @@ validation_fail:
 }
 
 /**
- * Returns the imp time required to realize the bw request.
- * The time returned is an approximate. It is possible that imp
- * time is returned as zero and still realize would be blocked for
- * non-zero time in realize call.
+ * This sets bw aside for the client specified.
+ * This bw can never be used for other clients needs.
+ * margin bw, if not zero, should always be greater than equal to
+ * reserved/realized bw.
  *
- * @client	client id
- * @bw		bw in KB/sec
+ * @client client
+ * @bw bw margin KB.
+ * @wait if true and bw is not available, it would wait till bw is available.
+ *	  if false, it would return immediately with success or failure.
  *
- * @returns	time in milliseconds.
- * @retval	-EINVAL, client id is invalid.
+ * @retval  0 operation is successful.
+ * @retval -ENOMEM Iso Bw requested is not avialable.
+ * @retval -EINVAL Invalid arguments, bw is less than reserved/realized bw.
  */
-int tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
+int tegra_isomgr_set_margin(enum tegra_iso_client client, u32 bw, bool wait)
+{
+	if (test_mode)
+		return 0;
+	return __tegra_isomgr_set_margin(client, bw, wait);
+}
+EXPORT_SYMBOL(tegra_isomgr_set_margin);
+
+static int __tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
 {
 	int ret = -EINVAL;
 
@@ -731,13 +768,46 @@ int tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
 }
 
 /**
+ * Returns the imp time required to realize the bw request.
+ * The time returned is an approximate. It is possible that imp
+ * time is returned as zero and still realize would be blocked for
+ * non-zero time in realize call.
+ *
+ * @client	client id
+ * @bw		bw in KB/sec
+ *
+ * @returns	time in milliseconds.
+ * @retval	-EINVAL, client id is invalid.
+ */
+int tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
+{
+	if (test_mode)
+		return 0;
+	return __tegra_isomgr_get_imp_time(client, bw);
+}
+EXPORT_SYMBOL(tegra_isomgr_get_imp_time);
+
+static u32 __tegra_isomgr_get_available_iso_bw(void)
+{
+	return isomgr.avail_bw;
+}
+
+/**
  * Returns available iso bw at the time of calling this API.
  *
  * @returns	available bw in KB/sec.
  */
 u32 tegra_isomgr_get_available_iso_bw(void)
 {
-	return isomgr.avail_bw;
+	if (test_mode)
+		return UINT_MAX;
+	return __tegra_isomgr_get_available_iso_bw();
+}
+EXPORT_SYMBOL(tegra_isomgr_get_available_iso_bw);
+
+static u32 __tegra_isomgr_get_total_iso_bw(void)
+{
+	return isomgr.max_iso_bw;
 }
 
 /**
@@ -747,8 +817,11 @@ u32 tegra_isomgr_get_available_iso_bw(void)
  */
 u32 tegra_isomgr_get_total_iso_bw(void)
 {
-	return isomgr.max_iso_bw;
+	if (test_mode)
+		return UINT_MAX;
+	return __tegra_isomgr_get_total_iso_bw();
 }
+EXPORT_SYMBOL(tegra_isomgr_get_total_iso_bw);
 
 #ifdef CONFIG_TEGRA_ISOMGR_SYSFS
 static ssize_t isomgr_show(struct kobject *kobj,
@@ -1059,3 +1132,79 @@ int __init isomgr_init(void)
 	isomgr_create_sysfs();
 	return 0;
 }
+
+int tegra_isomgr_enable_test_mode(void)
+{
+	int i;
+	struct isomgr_client *cp = NULL;
+
+	isomgr_lock();
+	test_mode = 1;
+	isomgr_unlock();
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
+		if (!client_valid[i])
+			continue;
+		cp = &isomgr_clients[i];
+retry:
+		__tegra_isomgr_unregister(cp);
+		if (atomic_read(&cp->kref.refcount))
+			goto retry;
+	}
+	pr_info("done");
+	return 0;
+}
+EXPORT_SYMBOL(tegra_isomgr_enable_test_mode);
+
+tegra_isomgr_handle test_tegra_isomgr_register(enum tegra_iso_client client,
+					  u32 dedicated_bw,	/* KB/sec */
+					  tegra_isomgr_renegotiate renegotiate,
+					  void *priv)
+{
+	return __tegra_isomgr_register(client, dedicated_bw, renegotiate, priv);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_register);
+
+void test_tegra_isomgr_unregister(tegra_isomgr_handle handle)
+{
+	return __tegra_isomgr_unregister(handle);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_unregister);
+
+u32 test_tegra_isomgr_reserve(tegra_isomgr_handle handle,
+			 u32 bw,	/* KB/sec */
+			 u32 lt)	/* usec */
+{
+	return __tegra_isomgr_reserve(handle, bw, lt);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_reserve);
+
+u32 test_tegra_isomgr_realize(tegra_isomgr_handle handle)
+{
+	return __tegra_isomgr_realize(handle);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_realize);
+
+int test_tegra_isomgr_set_margin(enum tegra_iso_client client,
+				u32 bw, bool wait)
+{
+	return __tegra_isomgr_set_margin(client, bw, wait);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_set_margin);
+
+int test_tegra_isomgr_get_imp_time(enum tegra_iso_client client, u32 bw)
+{
+	return __tegra_isomgr_get_imp_time(client, bw);
+}
+EXPORT_SYMBOL(test_tegra_isomgr_get_imp_time);
+
+u32 test_tegra_isomgr_get_available_iso_bw(void)
+{
+	return __tegra_isomgr_get_available_iso_bw();
+}
+EXPORT_SYMBOL(test_tegra_isomgr_get_available_iso_bw);
+
+u32 test_tegra_isomgr_get_total_iso_bw(void)
+{
+	return __tegra_isomgr_get_total_iso_bw();
+}
+EXPORT_SYMBOL(test_tegra_isomgr_get_total_iso_bw);
