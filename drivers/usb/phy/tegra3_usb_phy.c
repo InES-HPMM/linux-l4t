@@ -27,13 +27,15 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <mach/clk.h>
-#include <mach/iomap.h>
 #include <mach/pinmux.h>
 #include <mach/pinmux-tegra30.h>
 #include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/gpio-names.h"
 #include "../../../arch/arm/mach-tegra/fuse.h"
 #include "../../../arch/arm/mach-tegra/clock.h"
+
+/* HACK! This needs to come from DT */
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define USB_USBCMD		0x130
 #define   USB_USBCMD_RS		(1 << 0)
