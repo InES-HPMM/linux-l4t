@@ -633,6 +633,7 @@ struct palmas_pmic {
 	unsigned int ramp_delay[PALMAS_REG_SMPS10];
 	bool ramp_delay_support[PALMAS_NUM_REGS];
 	unsigned int current_reg_mode[PALMAS_REG_SMPS10];
+	unsigned long roof_floor[PALMAS_NUM_REGS];
 };
 
 struct palmas_resource {

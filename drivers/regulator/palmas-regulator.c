@@ -2,6 +2,7 @@
  * Driver for Regulator part of Palmas PMIC Chips
  *
  * Copyright 2011-2013 Texas Instruments Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Graeme Gregory <gg@slimlogic.co.uk>
  * Author: Ian Lartey <ian@slimlogic.co.uk>
@@ -26,6 +27,10 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/regulator/of_regulator.h>
+
+#define EXT_PWR_REQ (PALMAS_EXT_CONTROL_ENABLE1 |	\
+		     PALMAS_EXT_CONTROL_ENABLE2 |	\
+		     PALMAS_EXT_CONTROL_NSLEEP)
 
 struct regs_info {
 	char	*name;
@@ -345,6 +350,9 @@ static int palmas_is_enabled_smps(struct regulator_dev *dev)
 	int id = rdev_get_id(dev);
 	unsigned int reg;
 
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return true;
+
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
 	reg &= PALMAS_SMPS12_CTRL_MODE_ACTIVE_MASK;
@@ -358,6 +366,9 @@ static int palmas_enable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
@@ -377,6 +388,9 @@ static int palmas_disable_smps(struct regulator_dev *dev)
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
 	int id = rdev_get_id(dev);
 	unsigned int reg;
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
 
 	palmas_smps_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
@@ -600,10 +614,25 @@ static struct regulator_ops palmas_ops_smps = {
 	.set_ramp_delay		= palmas_smps_set_ramp_delay,
 };
 
+static int palmas_is_enabled_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return true;
+
+	return regulator_is_enabled_regmap(dev);
+}
+
 static int palmas_enable_smps10(struct regulator_dev *dev)
 {
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int ret = regulator_enable_regmap(dev);
+	int id = rdev_get_id(dev);
+	int ret = 0;
+
+	if (!(EXT_PWR_REQ & pmic->roof_floor[id]))
+		ret = regulator_enable_regmap(dev);
 
 	pmic->smps10_regulator_enabled = true;
 	return ret;
@@ -612,14 +641,18 @@ static int palmas_enable_smps10(struct regulator_dev *dev)
 static int palmas_disable_smps10(struct regulator_dev *dev)
 {
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
-	int ret = regulator_disable_regmap(dev);
+	int id = rdev_get_id(dev);
+	int ret = 0;
+	
+	if (!(EXT_PWR_REQ & pmic->roof_floor[id]))
+		ret = regulator_disable_regmap(dev);
 
 	pmic->smps10_regulator_enabled = false;
 	return ret;
 }
 
 static struct regulator_ops palmas_ops_smps10 = {
-	.is_enabled		= regulator_is_enabled_regmap,
+	.is_enabled		= palmas_is_enabled_smps10,
 	.enable			= palmas_enable_smps10,
 	.disable		= palmas_disable_smps10,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
@@ -634,11 +667,36 @@ static int palmas_is_enabled_ldo(struct regulator_dev *dev)
 	int id = rdev_get_id(dev);
 	unsigned int reg;
 
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return true;
+
 	palmas_ldo_read(pmic->palmas, palmas_regs_info[id].ctrl_addr, &reg);
 
 	reg &= PALMAS_LDO1_CTRL_STATUS;
 
 	return !!(reg);
+}
+
+static int palmas_enable_ldo(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
+
+	return regulator_enable_regmap(dev);
+}
+
+static int palmas_disable_ldo(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
+
+	return regulator_disable_regmap(dev);
 }
 
 static int palmas_list_voltage_ldo(struct regulator_dev *dev,
@@ -684,8 +742,8 @@ static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
 
 static struct regulator_ops palmas_ops_ldo = {
 	.is_enabled		= palmas_is_enabled_ldo,
-	.enable			= regulator_enable_regmap,
-	.disable		= regulator_disable_regmap,
+	.enable			= palmas_enable_ldo,
+	.disable		= palmas_disable_ldo,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= palmas_list_voltage_ldo,
@@ -751,10 +809,43 @@ static int palmas_getvoltage_chargepump(struct regulator_dev *rdev)
 	return 5000;
 }
 
+static int palmas_is_enabled_extreg(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return true;
+	
+	return regulator_is_enabled_regmap(dev);
+}
+
+static int palmas_enable_extreg(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
+	
+	return regulator_enable_regmap(dev);
+}
+
+static int palmas_disable_extreg(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
+	if (EXT_PWR_REQ & pmic->roof_floor[id])
+		return 0;
+	
+	return regulator_disable_regmap(dev);
+}
+
 static struct regulator_ops palmas_ops_extreg = {
-	.is_enabled		= regulator_is_enabled_regmap,
-	.enable			= regulator_enable_regmap,
-	.disable		= regulator_disable_regmap,
+	.is_enabled		= palmas_is_enabled_extreg,
+	.enable			= palmas_enable_extreg,
+	.disable		= palmas_disable_extreg,
 };
 
 static struct regulator_ops palmas_ops_chargepump = {
@@ -1441,6 +1532,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		/* Initialise sleep/init values from platform data */
 		if (pdata && pdata->reg_init[id]) {
 			reg_init = pdata->reg_init[id];
+			pmic->roof_floor[id] = reg_init->roof_floor;
 			ret = palmas_smps_init(palmas, id, reg_init);
 			if (ret)
 				goto err_unregister_regulator;
@@ -1600,6 +1692,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		if (pdata) {
 			reg_init = pdata->reg_init[id];
 			if (reg_init) {
+				pmic->roof_floor[id] = reg_init->roof_floor;
 				if (id < PALMAS_REG_REGEN1)
 					ret = palmas_ldo_init(palmas,
 							id, reg_init);
