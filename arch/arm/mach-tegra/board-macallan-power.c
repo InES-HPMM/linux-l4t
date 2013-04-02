@@ -624,6 +624,7 @@ static struct tegra_suspend_platform_data macallan_suspend_data = {
 	.i2c_base_addr = 0,
 	.pmuslave_addr = 0,
 	.core_reg_addr = 0,
+	.lp1_core_volt_low_cold = 0,
 	.lp1_core_volt_low = 0,
 	.lp1_core_volt_high = 0,
 #endif

@@ -71,6 +71,7 @@ struct tegra_suspend_platform_data {
 	unsigned int i2c_base_addr;
 	unsigned int pmuslave_addr;
 	unsigned int core_reg_addr;
+	unsigned int lp1_core_volt_low_cold;
 	unsigned int lp1_core_volt_low;
 	unsigned int lp1_core_volt_high;
 #endif
