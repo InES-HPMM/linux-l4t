@@ -840,6 +840,19 @@ static int tegra_common_suspend(void)
 	tegra_sctx.mc[1] = readl(mc + MC_SECURITY_SIZE);
 	tegra_sctx.mc[2] = readl(mc + MC_SECURITY_CFG2);
 
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	if (pdata && pdata->lp1_lowvolt_support) {
+		u32 lp1_core_lowvolt =
+			(tegra_is_voice_call_active() ||
+			tegra_dvfs_rail_get_thermal_floor(tegra_core_rail)) ?
+			pdata->lp1_core_volt_low_cold << 8 :
+			pdata->lp1_core_volt_low << 8;
+
+		lp1_core_lowvolt |= pdata->core_reg_addr;
+		memcpy(tegra_lp1_register_core_lowvolt(), &lp1_core_lowvolt, 4);
+	}
+#endif
+
 	/* copy the reset vector and SDRAM shutdown code into IRAM */
 	memcpy(iram_save, iram_code, iram_save_size);
 	memcpy(iram_code, tegra_iram_start(), iram_save_size);
