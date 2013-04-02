@@ -297,4 +297,12 @@ static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
 	return -ENOENT;
 }
 
+static inline int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
+{
+	if (rail && rail->therm_mv_floors &&
+	    (rail->thermal_idx < rail->therm_mv_floors_num))
+		return rail->therm_mv_floors[rail->thermal_idx];
+	return 0;
+}
+
 #endif
