@@ -203,7 +203,7 @@ static __initdata struct tegra_pingroup_config pluto_pinmux_common[] = {
 	/* OWR pinmux */
 	DEFAULT_PINMUX(OWR,           OWR,         NORMAL,    NORMAL,   INPUT),
 
-	DEFAULT_PINMUX(KB_ROW6,       KBC,       NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW6,       DISPLAYA_ALT,       NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(GPIO_X1_AUD,   RSVD1,       NORMAL,    TRISTATE, INPUT),
 
 	/* CEC pinmux */
