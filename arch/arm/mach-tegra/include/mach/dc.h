@@ -775,7 +775,7 @@ int tegra_dc_get_panel_sync_rate(void);
 int tegra_dc_get_out(const struct tegra_dc *dc);
 
 /* table of electrical settings, must be in acending order. */
-struct tdms_config {
+struct tmds_config {
 	int pclk;
 	u32 pll0;
 	u32 pll1;
@@ -785,7 +785,7 @@ struct tdms_config {
 };
 
 struct tegra_hdmi_out {
-	struct tdms_config *tdms_config;
-	int n_tdms_config;
+	struct tmds_config *tmds_config;
+	int n_tmds_config;
 };
 #endif
