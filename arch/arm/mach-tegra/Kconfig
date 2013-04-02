@@ -275,6 +275,12 @@ config MACH_BONAIRE
        help
          Support for NVIDIA Bonaire FPGA development platform
 
+config MACH_ARDBEG
+       bool "ARDBEG board"
+       depends on ARCH_TEGRA_12x_SOC || ARCH_TEGRA_11x_SOC
+       help
+         Support for NVIDIA ARDBEG Development platform
+
 config MACH_DALMORE
        bool "Dalmore board"
        depends on ARCH_TEGRA_11x_SOC
