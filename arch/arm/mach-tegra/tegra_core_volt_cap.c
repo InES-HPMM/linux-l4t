@@ -51,14 +51,18 @@ static int core_cap_table_size;
 static const int *cap_millivolts;
 static int cap_millivolts_num;
 
-static int core_nominal_mv;
-
-static void core_cap_level_set(int level)
+static int core_cap_level_set(int level, int core_nominal_mv)
 {
 	int i, j;
+	int ret = 0;
 
-	if (!core_cap_table)
-		return;
+	if (!core_cap_table) {
+		if (level == core_nominal_mv) {
+			core_buses_cap.level = level;
+			return 0;
+		}
+		return -ENOENT;
+	}
 
 	for (j = 0; j < cap_millivolts_num; j++) {
 		int v = cap_millivolts[j];
@@ -71,38 +75,47 @@ static void core_cap_level_set(int level)
 	if (level < core_buses_cap.level) {
 		for (i = 0; i < core_cap_table_size; i++)
 			if (core_cap_table[i].cap_clk)
-				clk_set_rate(core_cap_table[i].cap_clk,
+				ret |= clk_set_rate(core_cap_table[i].cap_clk,
 					     core_cap_table[i].freqs[j]);
 	} else if (level > core_buses_cap.level) {
 		for (i = core_cap_table_size - 1; i >= 0; i--)
 			if (core_cap_table[i].cap_clk)
-				clk_set_rate(core_cap_table[i].cap_clk,
+				ret |= clk_set_rate(core_cap_table[i].cap_clk,
 					     core_cap_table[i].freqs[j]);
 	}
 	core_buses_cap.level = level;
+	if (ret)
+		ret = -EAGAIN;
+	return ret;
 }
 
-static void core_cap_update(void)
+static int core_cap_update(void)
 {
-	int new_level = core_nominal_mv;
+	int new_level;
+	int core_nominal_mv =
+		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+	if (core_nominal_mv <= 0)
+		return -ENOENT;
 
+	new_level = core_nominal_mv;
 	if (kdvfs_core_cap.refcnt)
 		new_level = min(new_level, kdvfs_core_cap.level);
 	if (user_core_cap.refcnt)
 		new_level = min(new_level, user_core_cap.level);
 
 	if (core_buses_cap.level != new_level)
-		core_cap_level_set(new_level);
+		return core_cap_level_set(new_level, core_nominal_mv);
+	return 0;
 }
 
-static void core_cap_enable(bool enable)
+static int core_cap_enable(bool enable)
 {
 	if (enable)
 		core_buses_cap.refcnt++;
 	else if (core_buses_cap.refcnt)
 		core_buses_cap.refcnt--;
 
-	core_cap_update();
+	return core_cap_update();
 }
 
 static ssize_t
@@ -171,28 +184,32 @@ const struct attribute *cap_attributes[] = {
 	NULL,
 };
 
-void tegra_dvfs_core_cap_enable(bool enable)
+int tegra_dvfs_core_cap_level_apply(int level)
 {
+	int ret = 0;
+
 	mutex_lock(&core_cap_lock);
 
-	if (enable) {
-		kdvfs_core_cap.refcnt++;
-		if (kdvfs_core_cap.refcnt == 1)
-			core_cap_enable(true);
+	if (level) {
+		if (kdvfs_core_cap.refcnt) {
+			pr_err("%s: core cap is already set\n", __func__);
+			ret = -EPERM;
+		} else {
+			kdvfs_core_cap.level = level;
+			kdvfs_core_cap.refcnt = 1;
+			ret = core_cap_enable(true);
+			if (ret) {
+				kdvfs_core_cap.refcnt = 0;
+				core_cap_enable(false);
+			}
+		}
 	} else if (kdvfs_core_cap.refcnt) {
-		kdvfs_core_cap.refcnt--;
-		if (kdvfs_core_cap.refcnt == 0)
-			core_cap_enable(false);
+		kdvfs_core_cap.refcnt = 0;
+		core_cap_enable(false);
 	}
-	mutex_unlock(&core_cap_lock);
-}
 
-void tegra_dvfs_core_cap_level_set(int level)
-{
-	mutex_lock(&core_cap_lock);
-	kdvfs_core_cap.level = level;
-	core_cap_update();
 	mutex_unlock(&core_cap_lock);
+	return ret;
 }
 
 static int __init init_core_cap_one(struct clk *c, unsigned long *freqs)
@@ -249,15 +266,13 @@ int __init tegra_init_core_cap(
 	if (!table || !table_size || !millivolts || !millivolts_num)
 		return -EINVAL;
 
-	core_nominal_mv =
+	user_core_cap.level =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
-	if (core_nominal_mv <= 0)
-		return -ENODATA;
+	if (user_core_cap.level <= 0)
+		return -ENOENT;
 
 	cap_millivolts = millivolts;
 	cap_millivolts_num = millivolts_num;
-	core_buses_cap.level = kdvfs_core_cap.level = user_core_cap.level =
-		core_nominal_mv;
 
 	for (i = 0; i < table_size; i++) {
 		c = tegra_get_clock_by_name(table[i].cap_name);
