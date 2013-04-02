@@ -23,6 +23,7 @@
 #include "board-dalmore.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra-board-id.h"
 
 #include <mach/pinmux-t11.h>
 
@@ -251,6 +252,16 @@ static __initdata struct tegra_pingroup_config dalmore_pinmux_set_nontristate[] 
 
 #include "board-dalmore-pinmux-t11x.h"
 
+static __initdata struct tegra_pingroup_config dalmore_e1611_1000[] = {
+	/* io rdy Lock rotation */
+	DEFAULT_PINMUX(GMI_IORDY,	GMI,	NORMAL,	NORMAL,	INPUT),
+};
+
+static __initdata struct tegra_pingroup_config dalmore_e1611_1001[] = {
+	/* kbcol1 rdy Lock rotation */
+	DEFAULT_PINMUX(KB_COL1,       KBC,         NORMAL,   NORMAL, INPUT),
+};
+
 static void __init dalmore_gpio_init_configure(void)
 {
 	int len;
@@ -269,6 +280,10 @@ static void __init dalmore_gpio_init_configure(void)
 
 int __init dalmore_pinmux_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
 	tegra_pinmux_config_table(dalmore_pinmux_set_nontristate,
 					ARRAY_SIZE(dalmore_pinmux_set_nontristate));
 	dalmore_gpio_init_configure();
@@ -278,6 +293,13 @@ int __init dalmore_pinmux_init(void)
 					ARRAY_SIZE(dalmore_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
+
+	if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1000))
+		tegra_pinmux_config_table(dalmore_e1611_1000,
+			ARRAY_SIZE(dalmore_e1611_1000));
+	else if ((board_info.board_id == BOARD_E1611) && (board_info.sku == 1001))
+		tegra_pinmux_config_table(dalmore_e1611_1001,
+			ARRAY_SIZE(dalmore_e1611_1001));
 
 	return 0;
 }
