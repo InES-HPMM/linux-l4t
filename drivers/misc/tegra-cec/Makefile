@@ -4,4 +4,4 @@
 
 subdir-ccflags-y	= -Werror
 
-obj-$(CONFIG_TEGRA_CEC_T30)	+= tegra_cec.o
+obj-$(CONFIG_TEGRA_CEC_SUPPORT)	+= tegra_cec.o
