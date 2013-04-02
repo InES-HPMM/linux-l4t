@@ -832,6 +832,13 @@ void tegra_mc_clk_finish(void)
 	writel(0, pmc + PMC_SCRATCH41);
 }
 
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+int tegra_is_lp1_suspend_mode(void)
+{
+	return (current_suspend_mode == TEGRA_SUSPEND_LP1);
+}
+#endif
+
 static int tegra_common_suspend(void)
 {
 	void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);

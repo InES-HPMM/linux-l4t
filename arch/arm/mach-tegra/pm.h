@@ -102,6 +102,9 @@ bool tegra_set_cpu_in_pd(int cpu);
 void tegra_mc_clk_prepare(void);
 void tegra_mc_clk_finish(void);
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+int tegra_is_lp1_suspend_mode(void);
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #define FLOW_CTRL_CLUSTER_CONTROL \

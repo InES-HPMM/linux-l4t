@@ -25,6 +25,7 @@
 #include <linux/input/max77665-haptic.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/nct1008.h>
+#include <linux/io.h>
 #include <linux/interrupt.h>
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
@@ -46,6 +47,7 @@
 #include "devices.h"
 #include "tegra-board-id.h"
 #include "dvfs.h"
+#include "pm.h"
 
 #define NTC_10K_TGAIN   0xE6A2
 #define NTC_10K_TOFF    0x2694
@@ -378,6 +380,12 @@ static struct nct1008_platform_data pluto_nct1008_pdata = {
 			.hysteresis = 5000,
 		},
 	},
+
+#ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
+	.suspend_ext_limit_hi = 25000,
+	.suspend_ext_limit_lo = 20000,
+	.suspend_with_wakeup = tegra_is_lp1_suspend_mode,
+#endif
 };
 
 static struct i2c_board_info pluto_i2c4_nct1008_board_info[] = {
