@@ -1124,6 +1124,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	int div = 0; /* Initialized for compiler warning */
 	int real_div = div, clk_mul = 1;
 	u16 clk = 0;
+	u8 ctrl;
 	unsigned long timeout;
 
 	if (clock && clock == host->clock)
@@ -1133,7 +1134,11 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 
 	if (host->quirks & SDHCI_QUIRK_NONSTANDARD_CLOCK)
 		return;
-
+	if (host->quirks & SDHCI_QUIRK_DISABLE_CARD_CLOCK) {
+		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+		clk &= ~SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+	}
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
 	if (clock == 0)
@@ -1214,6 +1219,13 @@ clock_set:
 		<< SDHCI_DIVIDER_HI_SHIFT;
 	clk |= SDHCI_CLOCK_INT_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+
+	/* Do a dummy write */
+	if (host->quirks & SDHCI_QUIRK_DO_DUMMY_WRITE) {
+		ctrl = sdhci_readb(host, SDHCI_CAPABILITIES);
+		ctrl |= 1;
+		sdhci_writeb(host, ctrl, SDHCI_CAPABILITIES);
+	}
 
 	/* Wait max 20 ms */
 	timeout = 20;

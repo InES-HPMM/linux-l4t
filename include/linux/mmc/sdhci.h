@@ -93,6 +93,10 @@ struct sdhci_host {
 #define SDHCI_QUIRK_NON_STANDARD_TUNING 		(1ULL<<33)
 /* Controller doesn't calculate max_discard_to */
 #define SDHCI_QUIRK_NO_CALC_MAX_DISCARD_TO 		(1ULL<<34)
+/* Disable the card clock before disabling the internal*/
+#define SDHCI_QUIRK_DISABLE_CARD_CLOCK			(1ULL<<35)
+/* Do dummy write */
+#define SDHCI_QUIRK_DO_DUMMY_WRITE			(1ULL<<36)
 
 	unsigned int quirks2;	/* More deviations from spec. */
 
