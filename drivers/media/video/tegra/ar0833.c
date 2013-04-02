@@ -71,17 +71,6 @@ struct ar0833_info {
 
 #include "ar0833_mode_tbls.c"
 
-static struct ar0833_reg set_param_grphold_tbl[] = {
-	/* Enable Group Hold */
-	{0x0104 | AR0833_TABLE_8BIT, 0x0001},
-	/* place holders */
-	{AR0833_TABLE_NOP, 0x0000},
-	{AR0833_TABLE_NOP, 0x0000},
-	/* Release Group Hold */
-	{0x0104 | AR0833_TABLE_8BIT, 0x0000},
-	{AR0833_TABLE_END, 0x0000},
-};
-
 struct ar0833_mode_desc {
 	u16			xres;
 	u16			yres;
@@ -400,61 +389,162 @@ static int ar0833_write_table(
 	return 0;
 }
 
-static int ar0833_set_frame_length(struct ar0833_info *info, u32 frame_length)
+static int ar0833_set_frame_length(struct ar0833_info *info, u32 frame_length,
+					bool group_hold)
 {
+	struct ar0833_reg reg_list;
 	int ret;
 
-	dev_dbg(&info->i2c_client->dev, "%s 0x%x\n", __func__, frame_length);
-	set_param_grphold_tbl[1].addr = 0x0340;
-	set_param_grphold_tbl[1].val = (u16)frame_length;
-	ret = ar0833_write_table(info, set_param_grphold_tbl, NULL, 0);
-	set_param_grphold_tbl[1].addr = AR0833_TABLE_NOP;
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x1);
+		if (ret)
+			return ret;
+	}
 
+	ar0833_get_frame_length_regs(&reg_list, frame_length);
+	ret = ar0833_write_reg16(info->i2c_client, reg_list.addr,
+		reg_list.val);
+	if (ret)
+		return ret;
+
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x0);
+		if (ret)
+			return ret;
+	}
 	return ret;
 }
 
-static int ar0833_set_coarse_time(struct ar0833_info *info, u32 coarse_time)
+static int ar0833_set_coarse_time(struct ar0833_info *info, u32 coarse_time,
+					bool group_hold)
 {
 	int ret;
+	struct ar0833_reg reg_list;
 
-	dev_dbg(&info->i2c_client->dev, "%s 0x%x\n", __func__, coarse_time);
-	set_param_grphold_tbl[1].addr = 0x0202;
-	set_param_grphold_tbl[1].val = (u16)coarse_time;
-	ret = ar0833_write_table(info, set_param_grphold_tbl, NULL, 0);
-	set_param_grphold_tbl[1].addr = AR0833_TABLE_NOP;
+	ar0833_get_coarse_time_regs(&reg_list, coarse_time);
 
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x1);
+		if (ret)
+			return ret;
+	}
+
+	ret = ar0833_write_reg16(info->i2c_client, reg_list.addr,
+		reg_list.val);
+	if (ret)
+		return ret;
+
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x0);
+		if (ret)
+			return ret;
+	}
 	return ret;
 }
 
-static int ar0833_set_hdr_coarse_time(
-	struct ar0833_info *info, struct ar0833_hdr *values)
+static int ar0833_set_hdr_coarse_time(struct ar0833_info *info,
+				 struct ar0833_hdr *values,
+				 bool group_hold)
 {
 	int ret;
+	struct ar0833_reg reg_list;
+	struct ar0833_reg reg_list_short;
 
-	dev_dbg(&info->i2c_client->dev, "%s 0x%04x 0x%04x\n",
-		__func__, values->coarse_time_long, values->coarse_time_short);
-	set_param_grphold_tbl[1].addr = 0x0202;
-	set_param_grphold_tbl[1].val = values->coarse_time_long;
-	set_param_grphold_tbl[2].addr = 0x3088;
-	set_param_grphold_tbl[2].val = values->coarse_time_short;
-	ret = ar0833_write_table(info, set_param_grphold_tbl, NULL, 0);
-	set_param_grphold_tbl[1].addr = AR0833_TABLE_NOP;
-	set_param_grphold_tbl[2].addr = AR0833_TABLE_NOP;
+	ar0833_get_coarse_time_regs(&reg_list, values->coarse_time_long);
+	ar0833_get_coarse_time_short_regs(&reg_list_short,
+					values->coarse_time_short);
 
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x1);
+		if (ret)
+			return ret;
+	}
+
+	ret = ar0833_write_reg16(info->i2c_client, reg_list.addr,
+		reg_list.val);
+	if (ret)
+		return ret;
+
+	ret = ar0833_write_reg16(info->i2c_client, reg_list_short.addr,
+		reg_list_short.val);
+	if (ret)
+		return ret;
+
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x0);
+		if (ret)
+			return ret;
+	}
 	return ret;
 }
 
-static int ar0833_set_gain(struct ar0833_info *info, u16 gain)
+static int ar0833_set_gain(struct ar0833_info *info, u16 gain,
+				bool group_hold)
 {
 	int ret;
+	struct ar0833_reg reg_list;
 
-	dev_dbg(&info->i2c_client->dev, "%s 0x%04x\n", __func__, gain);
-	set_param_grphold_tbl[1].addr = 0x305e;
-	set_param_grphold_tbl[1].val = gain;
-	ret = ar0833_write_table(info, set_param_grphold_tbl, NULL, 0);
-	set_param_grphold_tbl[1].addr = AR0833_TABLE_NOP;
+	ar0833_get_gain_reg(&reg_list, gain);
 
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x1);
+		if (ret)
+			return ret;
+	}
+
+	ret = ar0833_write_reg16(info->i2c_client, reg_list.addr,
+		reg_list.val);
+	if (ret)
+		return ret;
+
+	if (group_hold) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x0);
+		if (ret)
+			return ret;
+	}
 	return ret;
+}
+
+static int
+ar0833_set_group_hold(struct ar0833_info *info, struct ar0833_ae *ae)
+{
+	int ret;
+	int count = 0;
+	bool groupHoldEnabled = false;
+	struct ar0833_hdr values;
+
+	values.coarse_time_long = ae->coarse_time;
+	values.coarse_time_short = ae->coarse_time_short;
+
+	if (ae->gain_enable)
+		count++;
+	if (ae->coarse_time_enable)
+		count++;
+	if (ae->frame_length_enable)
+		count++;
+	if (count >= 2)
+		groupHoldEnabled = true;
+
+	if (groupHoldEnabled) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x104, 0x1);
+		if (ret)
+			return ret;
+	}
+
+	if (ae->gain_enable)
+		ar0833_set_gain(info, ae->gain, false);
+	if (ae->coarse_time_enable)
+		ar0833_set_hdr_coarse_time(info, &values, false);
+	if (ae->frame_length_enable)
+		ar0833_set_frame_length(info, ae->frame_length, false);
+
+	if (groupHoldEnabled) {
+		ret = ar0833_write_reg16(info->i2c_client, 0x104, 0x0);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int ar0833_get_status(struct ar0833_info *info, u8 *status)
@@ -1016,12 +1106,12 @@ static long ar0833_ioctl(struct file *file,
 	case AR0833_IOCTL_SET_FRAME_LENGTH:
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_FRAME_LENGTH %x\n", (u32)arg);
-		err = ar0833_set_frame_length(info, (u32)arg);
+		err = ar0833_set_frame_length(info, (u32)arg, true);
 		break;
 	case AR0833_IOCTL_SET_COARSE_TIME:
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_COARSE_TIME %x\n", (u32)arg);
-		err = ar0833_set_coarse_time(info, (u32)arg);
+		err = ar0833_set_coarse_time(info, (u32)arg, true);
 		break;
 	case AR0833_IOCTL_SET_HDR_COARSE_TIME:
 	{
@@ -1035,14 +1125,25 @@ static long ar0833_ioctl(struct file *file,
 			err = -EFAULT;
 			break;
 		}
-		err = ar0833_set_hdr_coarse_time(info, &values);
+		err = ar0833_set_hdr_coarse_time(info, &values, true);
 		break;
 	}
 	case AR0833_IOCTL_SET_GAIN:
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_GAIN %x\n", (u32)arg);
-		err = ar0833_set_gain(info, (u16)arg);
+		err = ar0833_set_gain(info, (u16)arg, true);
 		break;
+	case AR0833_IOCTL_SET_GROUP_HOLD:
+	{
+		struct ar0833_ae ae;
+		if (copy_from_user(&ae, (const void __user *)arg,
+				sizeof(struct ar0833_ae))) {
+			dev_err(&info->i2c_client->dev,
+				"%s:fail group hold\n", __func__);
+			return -EFAULT;
+		}
+		return ar0833_set_group_hold(info, &ae);
+	}
 	case AR0833_IOCTL_GET_STATUS:
 	{
 		u8 status;

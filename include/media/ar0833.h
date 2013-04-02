@@ -29,6 +29,7 @@
 #define AR0833_IOCTL_GET_STATUS		_IOR('o', 5, __u8)
 #define AR0833_IOCTL_GET_MODE		_IOR('o', 6, struct ar0833_modeinfo)
 #define AR0833_IOCTL_SET_HDR_COARSE_TIME	_IOW('o', 7, struct ar0833_hdr)
+#define AR0833_IOCTL_SET_GROUP_HOLD	_IOW('o', 8, struct ar0833_ae)
 
 struct ar0833_mode {
 	int xres;
@@ -71,6 +72,16 @@ struct ar0833_modeinfo {
 struct ar0833_hdr {
 	__u32 coarse_time_long;
 	__u32 coarse_time_short;
+};
+
+struct ar0833_ae {
+	__u32 frame_length;
+	__u8  frame_length_enable;
+	__u32 coarse_time;
+	__u32 coarse_time_short;
+	__u8  coarse_time_enable;
+	__s32 gain;
+	__u8  gain_enable;
 };
 
 struct ar0833_sensordata {
