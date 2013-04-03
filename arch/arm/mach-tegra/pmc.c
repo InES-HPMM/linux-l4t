@@ -49,7 +49,9 @@ static DEFINE_SPINLOCK(tegra_powergate_lock);
 
 static void __iomem *tegra_pmc_base;
 static bool tegra_pmc_invert_interrupt;
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
 static struct clk *tegra_pclk;
+#endif
 
 struct pmc_pm_data {
 	u32 cpu_good_time;	/* CPU power good time in uS */
@@ -156,7 +158,7 @@ int tegra_pmc_cpu_remove_clamping(int cpuid)
 	return tegra_pmc_powergate_remove_clamping(id);
 }
 
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK) && defined(CONFIG_PM_SLEEP)
 void set_power_timers(unsigned long us_on, unsigned long us_off)
 {
 	unsigned long long ticks;
@@ -208,8 +210,10 @@ static void tegra_pmc_parse_dt(void)
 
 	tegra_pmc_invert_interrupt = of_property_read_bool(np,
 				     "nvidia,invert-interrupt");
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
 	tegra_pclk = of_clk_get_by_name(np, "pclk");
 	WARN_ON(IS_ERR(tegra_pclk));
+#endif
 
 	/* Grabbing the power management configurations */
 	if (of_property_read_u32(np, "nvidia,suspend-mode", &prop)) {

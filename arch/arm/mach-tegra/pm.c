@@ -28,7 +28,9 @@
 #include <linux/smp.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <linux/clk.h>
+#include <linux/cpumask.h>
+#include <linux/delay.h>
+#include <linux/cpu_pm.h>
 #include <linux/err.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
@@ -72,6 +74,7 @@
 #include "pm.h"
 #include "pm-irq.h"
 #include "reset.h"
+#include "pmc.h"
 #include "sleep.h"
 #include "timer.h"
 #include "dvfs.h"
@@ -105,6 +108,7 @@ struct suspend_context {
 
 	struct tegra_twd_context twd;
 };
+#define PMC_CTRL		0x0
 
 #ifdef CONFIG_PM_SLEEP
 phys_addr_t tegra_pgd_phys;	/* pgd used by hotplug & LP2 bootup */
@@ -472,6 +476,8 @@ void tegra_limit_cpu_power_timers(unsigned long us_on, unsigned long us_off)
 	/* make sure power timers would not exceed specified limits */
 	set_power_timers(us_on, us_off, clk_get_min_rate(tegra_pclk));
 }
+
+void (*tegra_tear_down_cpu)(void);
 
 /*
  * restore_cpu_complex

@@ -26,7 +26,7 @@ enum tegra_suspend_mode {
 	TEGRA_MAX_SUSPEND_MODE,
 };
 
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK) && defined(CONFIG_PM_SLEEP)
 void set_power_timers(unsigned long us_on, unsigned long us_off);
 #endif
 
