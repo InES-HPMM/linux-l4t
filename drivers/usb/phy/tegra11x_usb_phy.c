@@ -955,6 +955,9 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		writel(val, base + UTMIP_PMC_WAKEUP0);
 		PHY_DBG("%s ENABLE_PMC inst = %d\n", __func__, phy->inst);
 
+		val = readl(base + USB_SUSP_CTRL);
+		val &= ~USB_WAKE_ON_CNNT_EN_DEV;
+		writel(val, base + USB_SUSP_CTRL);
 	}
 
 	if (!phy->hot_plug) {
