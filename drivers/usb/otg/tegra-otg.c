@@ -48,6 +48,8 @@
 #define  USB_VBUS_STATUS	(1 << 10)
 #define  USB_INT_EN		(USB_VBUS_INT_EN | USB_ID_INT_EN | \
 						USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN)
+#define USB_VBUS_INT_STS_MASK	(0x7 << 8)
+#define USB_ID_INT_STS_MASK	(0x7 << 0)
 
 #ifdef OTG_DEBUG
 #define DBG(stuff...)	pr_info("tegra-otg: " stuff)
@@ -60,6 +62,7 @@ struct tegra_otg_data {
 	struct tegra_usb_otg_data *pdata;
 	struct usb_phy phy;
 	unsigned long int_status;
+	unsigned long int_mask;
 	spinlock_t lock;
 	struct mutex irq_work_mutex;
 	void __iomem *regs;
@@ -188,12 +191,16 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
 	if (en) {
 		/* Enable ID interrupt if detection is through USB controller */
-		if (tegra->support_usb_id)
+		if (tegra->support_usb_id) {
 			val |= USB_ID_INT_EN | USB_ID_PIN_WAKEUP_EN;
+			tegra->int_mask |= USB_ID_INT_STS_MASK;
+		}
 
 		/* Enable vbus interrupt if cable is not detected through PMU */
-		if (!tegra->support_pmu_vbus)
+		if (!tegra->support_pmu_vbus) {
 			val |= USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN;
+			tegra->int_mask |= USB_VBUS_INT_STS_MASK;
+		}
 	}
 	else
 		val &= ~USB_INT_EN;
@@ -205,6 +212,8 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 	pm_runtime_mark_last_busy(tegra->phy.dev);
 	pm_runtime_put_autosuspend(tegra->phy.dev);
 
+	DBG("%s(%d) interrupt mask = 0x%lx\n", __func__, __LINE__,
+							tegra->int_mask);
 	return val;
 }
 
@@ -371,7 +380,8 @@ static irqreturn_t tegra_otg_irq(int irq, void *data)
 		DBG("%s(%d) PHY_WAKEUP = 0x%lx\n", __func__, __LINE__, val);
 		otg_writel(tegra, val, USB_PHY_WAKEUP);
 		if ((val & USB_ID_INT_STATUS) || (val & USB_VBUS_INT_STATUS)) {
-			tegra->int_status = val;
+			tegra->int_status &= ~tegra->int_mask;
+			tegra->int_status |= val & tegra->int_mask;
 			schedule_work(&tegra->work);
 		}
 	}
