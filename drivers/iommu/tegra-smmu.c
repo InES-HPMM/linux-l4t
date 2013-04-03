@@ -543,6 +543,38 @@ static void free_pdir(struct smmu_as *as)
 	as->pte_count = NULL;
 }
 
+static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
+{
+	int i;
+	unsigned long *pdir = page_address(as->pdir_page);
+	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+	unsigned long addr = SMMU_PDN_TO_ADDR(pdn);
+	struct page *page;
+	unsigned long *ptbl;
+
+	/* Vacant - allocate a new page table */
+	dev_dbg(as->smmu->dev, "New PTBL pdn: %lx\n", pdn);
+
+	page = alloc_page(GFP_ATOMIC);
+	if (!page)
+		return NULL;
+
+	SetPageReserved(page);
+	ptbl = (unsigned long *)page_address(page);
+	for (i = 0; i < SMMU_PTBL_COUNT; i++) {
+		ptbl[i] = _PTE_VACANT(addr);
+		addr += SMMU_PAGE_SIZE;
+	}
+
+	FLUSH_CPU_DCACHE(ptbl, page, SMMU_PTBL_SIZE);
+	pdir[pdn] = SMMU_MK_PDE(page, as->pde_attr | _PDE_NEXT);
+	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+	if (flush)
+		flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn],
+				  as->pdir_page, 1);
+	return page;
+}
+
 /*
  * Maps PTBL for given iova and returns the PTE address
  * Caller must unmap the mapped PTBL returned in *ptbl_page_p
@@ -560,37 +592,16 @@ static unsigned long *locate_pte(struct smmu_as *as,
 	if (pdir[pdn] != _PDE_VACANT(pdn)) {
 		/* Mapped entry table already exists */
 		*ptbl_page_p = SMMU_EX_PTBL_PAGE(pdir[pdn]);
-		ptbl = page_address(*ptbl_page_p);
 	} else if (!allocate) {
 		return NULL;
 	} else {
-		int pn;
-		unsigned long addr = SMMU_PDN_TO_ADDR(pdn);
-
-		/* Vacant - allocate a new page table */
-		dev_dbg(as->smmu->dev, "New PTBL pdn: %lx\n", pdn);
-
-		*ptbl_page_p = alloc_page(GFP_ATOMIC);
-		if (!*ptbl_page_p) {
-			dev_err(as->smmu->dev,
-				"failed to allocate smmu_device page table\n");
+		*ptbl_page_p = alloc_ptbl(as, iova, 1);
+		if (!*ptbl_page_p)
 			return NULL;
-		}
-		SetPageReserved(*ptbl_page_p);
-		ptbl = (unsigned long *)page_address(*ptbl_page_p);
-		for (pn = 0; pn < SMMU_PTBL_COUNT;
-		     pn++, addr += SMMU_PAGE_SIZE) {
-			ptbl[pn] = _PTE_VACANT(addr);
-		}
-		FLUSH_CPU_DCACHE(ptbl, *ptbl_page_p, SMMU_PTBL_SIZE);
-		pdir[pdn] = SMMU_MK_PDE(*ptbl_page_p,
-					as->pde_attr | _PDE_NEXT);
-		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
-		flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn],
-				  as->pdir_page, 1);
 	}
-	*count = &as->pte_count[pdn];
 
+	ptbl = page_address(*ptbl_page_p);
+	*count = &as->pte_count[pdn];
 	return &ptbl[ptn];
 }
 
