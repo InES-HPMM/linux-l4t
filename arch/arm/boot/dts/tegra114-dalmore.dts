@@ -836,6 +836,7 @@
 		bus-width = <8>;
 		built-in;
 		status = "okay";
+		non-removable;
 	};
 
 	clocks {
