@@ -921,6 +921,17 @@
 		nvidia,dma-request-selector = <&apbdma 0>;
 	};
 
+	pmc {
+		status = "okay";
+		nvidia,suspend-mode = <0>;
+		nvidia,cpu-pwr-good-time = <300>;
+		nvidia,cpu-pwr-off-time = <300>;
+		nvidia,core-pwr-good-time = <3845 3845>;
+		nvidia,core-pwr-off-time = <2000>;
+		nvidia,core-power-req-active-high;
+		nvidia,sys-clock-req-active-high;
+	};
+
 	sdhci@78000600 {
 		tap-delay = <5>;
 		trim-delay = <3>;
