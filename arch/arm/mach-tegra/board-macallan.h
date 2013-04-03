@@ -100,7 +100,11 @@ int macallan_kbc_init(void);
 int macallan_pmon_init(void);
 int macallan_soctherm_init(void);
 
+
 extern struct tegra_sdhci_platform_data macallan_tegra_sdhci_platform_data0;
+
+/* UART port which is used by bluetooth*/
+#define BLUETOOTH_UART_DEV_NAME "/dev/ttyHS2"
 
 /* Baseband IDs */
 enum tegra_bb_type {

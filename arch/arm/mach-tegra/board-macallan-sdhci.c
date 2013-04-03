@@ -28,15 +28,30 @@
 #include <mach/irqs.h>
 #include <mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
+#include <linux/wl12xx.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "board-macallan.h"
 #include "iomap.h"
 
-#define MACALLAN_SD_CD		TEGRA_GPIO_PV2
-
+#define MACALLAN_SD_CD	TEGRA_GPIO_PV2
+#define MACALLAN_WLAN_PWR	TEGRA_GPIO_PCC5
+#define MACALLAN_WLAN_RST	TEGRA_GPIO_PX7
+#define MACALLAN_WLAN_WOW	TEGRA_GPIO_PU5
+static void (*wifi_status_cb)(int card_present, void *dev_id);
+static void *wifi_status_cb_devid;
 static int macallan_wifi_status_register(void (*callback)(int , void *), void *);
+
+static int macallan_wifi_power(int on);
+static int macallan_wifi_set_carddetect(int val);
+
+static struct wl12xx_platform_data macallan_wl12xx_wlan_data __initdata = {
+	.board_ref_clock = WL12XX_REFCLOCK_26,
+	.board_tcxo_clock = 1,
+	.set_power = macallan_wifi_power,
+	.set_carddetect = macallan_wifi_set_carddetect,
+};
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 static struct embedded_sdio_data embedded_sdio_data0 = {
@@ -177,12 +192,70 @@ static int macallan_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
 		void *dev_id)
 {
+	if (wifi_status_cb)
+		return -EAGAIN;
+	wifi_status_cb = callback;
+	wifi_status_cb_devid = dev_id;
 	return 0;
 }
 
+static int macallan_wifi_set_carddetect(int val)
+{
+	pr_debug("%s: %d\n", __func__, val);
+	if (wifi_status_cb)
+		wifi_status_cb(val, wifi_status_cb_devid);
+	else
+		pr_warning("%s: Nobody to notify\n", __func__);
+	return 0;
+}
+
+static int macallan_wifi_power(int on)
+{
+	pr_debug("%s: %d\n", __func__, on);
+
+	if (on) {
+		gpio_set_value(MACALLAN_WLAN_RST, 1);
+		mdelay(100);
+		gpio_set_value(MACALLAN_WLAN_RST, 0);
+		mdelay(100);
+		gpio_set_value(MACALLAN_WLAN_RST, 1);
+		mdelay(100);
+		gpio_set_value(MACALLAN_WLAN_PWR, 1);
+		mdelay(200);
+	} else {
+		gpio_set_value(MACALLAN_WLAN_RST, 0);
+		mdelay(100);
+		gpio_set_value(MACALLAN_WLAN_PWR, 0);
+	}
+
+	return 0;
+}
 
 static int __init macallan_wifi_init(void)
 {
+	int rc;
+
+	rc = gpio_request(MACALLAN_WLAN_PWR, "wlan_power");
+	if (rc)
+		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
+	rc = gpio_request(MACALLAN_WLAN_RST, "wlan_rst");
+	if (rc)
+		pr_err("WLAN_RST gpio request failed:%d\n", rc);
+	rc = gpio_request(MACALLAN_WLAN_WOW, "bcmsdh_sdmmc");
+	if (rc)
+		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
+
+	rc = gpio_direction_output(MACALLAN_WLAN_PWR, 0);
+	if (rc)
+		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
+	rc = gpio_direction_output(MACALLAN_WLAN_RST, 0);
+	if (rc)
+		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
+	rc = gpio_direction_input(MACALLAN_WLAN_WOW);
+	if (rc)
+		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
+	macallan_wl12xx_wlan_data.irq = gpio_to_irq(MACALLAN_WLAN_WOW);
+		wl12xx_set_platform_data(&macallan_wl12xx_wlan_data);
 	return 0;
 }
 

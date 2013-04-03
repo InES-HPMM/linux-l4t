@@ -38,7 +38,6 @@
 #include <linux/memblock.h>
 #include <linux/spi-tegra.h>
 #include <linux/nfc/pn544.h>
-#include <linux/rfkill-gpio.h>
 #include <linux/skbuff.h>
 #include <linux/ti_wilink_st.h>
 #include <linux/regulator/consumer.h>
@@ -81,106 +80,53 @@
 
 static struct board_info board_info, display_board_info;
 
-#ifdef CONFIG_BT_BLUESLEEP
-static struct rfkill_gpio_platform_data macallan_bt_rfkill_pdata = {
-		.name           = "bt_rfkill",
-		.shutdown_gpio  = TEGRA_GPIO_PQ7,
-		.reset_gpio	= TEGRA_GPIO_PQ6,
-		.type           = RFKILL_TYPE_BLUETOOTH,
+#if defined CONFIG_TI_ST || defined CONFIG_TI_ST_MODULE
+struct ti_st_plat_data macallan_wilink_pdata = {
+	.nshutdown_gpio = TEGRA_GPIO_PQ7,
+	.dev_name = BLUETOOTH_UART_DEV_NAME,
+	.flow_cntrl = 1,
+	.baud_rate = 3000000,
 };
 
-static struct platform_device macallan_bt_rfkill_device = {
-	.name = "rfkill_gpio",
+static struct platform_device wl128x_device = {
+	.name           = "kim",
 	.id             = -1,
-	.dev = {
-		.platform_data = &macallan_bt_rfkill_pdata,
-	},
+	.dev.platform_data = &macallan_wilink_pdata,
 };
 
-static struct resource macallan_bluesleep_resources[] = {
-	[0] = {
-		.name = "gpio_host_wake",
-			.start  = TEGRA_GPIO_PU6,
-			.end    = TEGRA_GPIO_PU6,
-			.flags  = IORESOURCE_IO,
-	},
-	[1] = {
-		.name = "gpio_ext_wake",
-			.start  = TEGRA_GPIO_PEE1,
-			.end    = TEGRA_GPIO_PEE1,
-			.flags  = IORESOURCE_IO,
-	},
-	[2] = {
-		.name = "host_wake",
-			.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
-	},
+static struct platform_device btwilink_device = {
+	.name = "btwilink",
+	.id = -1,
 };
 
-static struct platform_device macallan_bluesleep_device = {
-	.name           = "bluesleep",
-	.id             = -1,
-	.num_resources  = ARRAY_SIZE(macallan_bluesleep_resources),
-	.resource       = macallan_bluesleep_resources,
-};
-
-static noinline void __init macallan_setup_bt_rfkill(void)
+static noinline void __init macallan_bt_st(void)
 {
-	platform_device_register(&macallan_bt_rfkill_device);
+	pr_info("macallan_bt_st");
+
+	platform_device_register(&wl128x_device);
+	platform_device_register(&btwilink_device);
 }
 
-static noinline void __init macallan_setup_bluesleep(void)
-{
-	macallan_bluesleep_resources[2].start =
-		macallan_bluesleep_resources[2].end =
-			gpio_to_irq(TEGRA_GPIO_PU6);
-	platform_device_register(&macallan_bluesleep_device);
-	return;
-}
-#elif defined CONFIG_BLUEDROID_PM
-static struct resource macallan_bluedroid_pm_resources[] = {
+static struct resource macallan_st_host_wake_resources[] = {
 	[0] = {
-		.name   = "shutdown_gpio",
-		.start  = TEGRA_GPIO_PQ7,
-		.end    = TEGRA_GPIO_PQ7,
-		.flags  = IORESOURCE_IO,
-	},
-	[1] = {
 		.name = "host_wake",
 		.flags  = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE,
 	},
-	[2] = {
-		.name = "gpio_ext_wake",
-		.start  = TEGRA_GPIO_PEE1,
-		.end    = TEGRA_GPIO_PEE1,
-		.flags  = IORESOURCE_IO,
-	},
-	[3] = {
-		.name = "gpio_host_wake",
-		.start  = TEGRA_GPIO_PU6,
-		.end    = TEGRA_GPIO_PU6,
-		.flags  = IORESOURCE_IO,
-	},
-	[4] = {
-		.name = "reset_gpio",
-		.start  = TEGRA_GPIO_PQ6,
-		.end    = TEGRA_GPIO_PQ6,
-		.flags  = IORESOURCE_IO,
-	},
 };
 
-static struct platform_device macallan_bluedroid_pm_device = {
-	.name = "bluedroid_pm",
+static struct platform_device macallan_st_host_wake_device = {
+	.name           = "st_host_wake",
 	.id             = 0,
-	.num_resources  = ARRAY_SIZE(macallan_bluedroid_pm_resources),
-	.resource       = macallan_bluedroid_pm_resources,
+	.num_resources  = ARRAY_SIZE(macallan_st_host_wake_resources),
+	.resource       = macallan_st_host_wake_resources,
 };
 
-static noinline void __init macallan_setup_bluedroid_pm(void)
+static noinline void __init macallan_tegra_setup_st_host_wake(void)
 {
-	macallan_bluedroid_pm_resources[1].start =
-		macallan_bluedroid_pm_resources[1].end =
-				gpio_to_irq(TEGRA_GPIO_PU6);
-	platform_device_register(&macallan_bluedroid_pm_device);
+	macallan_st_host_wake_resources[0].start =
+		macallan_st_host_wake_resources[0].end =
+		gpio_to_irq(TEGRA_GPIO_PU6);
+	platform_device_register(&macallan_st_host_wake_device);
 }
 #endif
 
@@ -744,11 +690,9 @@ static void __init tegra_macallan_late_init(void)
 	macallan_panel_init();
 	macallan_kbc_init();
 	macallan_pmon_init();
-#ifdef CONFIG_BT_BLUESLEEP
-	macallan_setup_bluesleep();
-	macallan_setup_bt_rfkill();
-#elif defined CONFIG_BLUEDROID_PM
-	macallan_setup_bluedroid_pm();
+#if defined CONFIG_TI_ST || defined CONFIG_TI_ST_MODULE
+	macallan_bt_st();
+	macallan_tegra_setup_st_host_wake();
 #endif
 	tegra_release_bootloader_fb();
 	macallan_modem_init();

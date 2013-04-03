@@ -621,28 +621,6 @@ static int __init macallan_cl_dvfs_init(void)
 }
 #endif
 
-static struct regulator_bulk_data macallan_gps_regulator_supply[] = {
-	[0] = {
-		.supply	= "vdd_gps_3v3",
-	},
-	[1] = {
-		.supply	= "vdd_gps_1v8",
-	},
-};
-
-static struct regulator_userspace_consumer_data macallan_gps_regulator_pdata = {
-	.num_supplies	= ARRAY_SIZE(macallan_gps_regulator_supply),
-	.supplies	= macallan_gps_regulator_supply,
-};
-
-static struct platform_device macallan_gps_regulator_device = {
-	.name	= "reg-userspace-consumer",
-	.id	= 2,
-	.dev	= {
-			.platform_data = &macallan_gps_regulator_pdata,
-	},
-};
-
 static int __init macallan_fixed_regulator_init(void)
 {
 	if (!machine_is_macallan())
@@ -662,7 +640,6 @@ int __init macallan_regulator_init(void)
 	macallan_palmas_regulator_init();
 
 	platform_device_register(&macallan_pda_power_device);
-	platform_device_register(&macallan_gps_regulator_device);
 
 	return 0;
 }
