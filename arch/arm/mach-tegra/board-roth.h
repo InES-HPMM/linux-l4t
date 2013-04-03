@@ -119,5 +119,6 @@ int roth_kbc_init(void);
 int roth_pmon_init(void);
 int roth_soctherm_init(void);
 int roth_fan_init(void);
+int roth_led_init(void);
 
 #endif

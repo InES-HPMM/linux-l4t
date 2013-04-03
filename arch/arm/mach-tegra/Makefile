@@ -304,3 +304,4 @@ obj-${CONFIG_MACH_ROTH}                 += board-roth-panel.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-kbc.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-sensors.o
 obj-${CONFIG_MACH_ROTH}                 += board-roth-fan.o
+obj-${CONFIG_MACH_ROTH}                 += board-roth-leds.o

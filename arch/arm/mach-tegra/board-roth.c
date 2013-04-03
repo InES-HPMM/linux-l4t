@@ -386,30 +386,6 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
-static struct led_pwm roth_led_info[] = {
-	{
-		.name			= "roth-led",
-		.default_trigger	= "none",
-		.pwm_id			= 2,
-		.active_low		= 0,
-		.max_brightness		= 255,
-		.pwm_period_ns		= 10000000,
-	},
-};
-
-static struct led_pwm_platform_data roth_leds_pdata = {
-	.leds		= roth_led_info,
-	.num_leds	= ARRAY_SIZE(roth_led_info),
-};
-
-static struct platform_device roth_leds_pwm_device = {
-	.name	= "leds_pwm",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &roth_leds_pdata,
-	},
-};
-
 
 static struct issp_platform_data roth_issp_pdata = {
 	.reset_gpio	= TEGRA_GPIO_PH4,
@@ -456,8 +432,6 @@ static struct platform_device *roth_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-
-	&roth_leds_pwm_device,
 	&roth_issp_device,
 };
 
@@ -690,6 +664,7 @@ static void __init tegra_roth_init(void)
 	roth_spi_init();
 	roth_usb_init();
 	roth_uart_init();
+	roth_led_init();
 	roth_audio_init();
 	platform_add_devices(roth_devices, ARRAY_SIZE(roth_devices));
 	//tegra_ram_console_debug_init();
