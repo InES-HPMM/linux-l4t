@@ -30,6 +30,12 @@
 		status = "disable";
 	};
 
+	tegra_car: clock {
+		compatible = "nvidia,tegra124-car";
+		reg = <0x60006000 0x1000>;
+		#clock-cells = <1>;
+	};
+
 	apbdma: dma@60020000 {
 		compatible = "nvidia,tegra124-apbdma";
 		reg = <0x60020000 0x1400>;
@@ -179,5 +185,25 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		status = "disabled";
+	};
+
+	pmc {
+		compatible = "nvidia,tegra124-pmc";
+		reg = <0x7000e400 0x400>;
+		clocks = <&tegra_car 261>, <&clk32k_in>;
+		clock-names = "pclk", "clk32k_in";
+	};
+
+	clocks {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk32k_in: clock {
+			compatible = "fixed-clock";
+			reg=<0>;
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+		};
 	};
 };

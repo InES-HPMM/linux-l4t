@@ -292,6 +292,13 @@
 		status = "disabled";
 	};
 
+	pmc {
+		compatible = "nvidia,tegra114-pmc";
+		reg = <0x7000e400 0x400>;
+		clocks = <&tegra_car 261>, <&clk32k_in>;
+		clock-names = "pclk", "clk32k_in";
+	};
+
 	i2c2: i2c@7000c400 {
 		compatible = "nvidia,tegra114-i2c";
 		reg = <0x7000c400 0x100>;
@@ -607,5 +614,18 @@
 	mipical {
 		compatible = "nvidia,tegra114-mipical";
 		reg = <0x700e3000 0x00040000>;
+	};
+
+	clocks {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		clk32k_in: clock {
+			compatible = "fixed-clock";
+			reg=<0>;
+			#clock-cells = <0>;
+			clock-frequency = <32768>;
+		};
 	};
 };
