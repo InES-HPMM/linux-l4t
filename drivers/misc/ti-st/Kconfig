@@ -30,4 +30,32 @@ config ST_HCI
 	  user-space Bluetooth stacks.
 	  It will provide a character device for user space Bluetooth stack to
 	  send/receive data over shared transport.
+
+config ST_HOST_WAKE
+	tristate "Host wake up driver for protocols registered with ST"
+	depends on TI_ST
+	help
+	  This enables the host to wake up whenever a transaction is initiated
+	  by the remote side.
+
+config ST_HOST_WAKE_GPS
+	bool "Enable Host wake up driver when GPS registers with ST"
+	depends on ST_HOST_WAKE
+	help
+	  This enables the host to wake up whenever GPS transaction is initiated
+	  by the remote side.
+
+config ST_HOST_WAKE_FM
+	bool "Enable Host wake up driver when FM registers with ST"
+	depends on ST_HOST_WAKE
+	help
+	  This enables the host to wake up whenever FM transaction is initiated
+	  by the remote side.
+
+config ST_HOST_WAKE_NFC
+	bool "Enable Host wake up driver when NFC registers with ST"
+	depends on ST_HOST_WAKE
+	help
+	  This enables the host to wake up whenever NFC transaction is initiated
+	  by the remote side.
 endmenu
