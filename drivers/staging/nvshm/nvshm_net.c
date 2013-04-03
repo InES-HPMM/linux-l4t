@@ -116,8 +116,8 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 		ap_iob = ap_next;
 		bb_iob = bb_next;
 		while (bb_iob) {
-			src = NVSHM_B2A(netdev.handle, ap_iob->npduData)
-			      + ap_iob->dataOffset;
+			src = NVSHM_B2A(netdev.handle, ap_iob->npdu_data)
+			      + ap_iob->data_offset;
 			memcpy(dst, src, ap_iob->length);
 			dst += ap_iob->length;
 			bb_iob = ap_iob->sg_next;
@@ -302,7 +302,7 @@ static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 		remain -= to_send;
 
 		memcpy(NVSHM_B2A(netdev.handle,
-				 iob->npduData + iob->dataOffset),
+				 iob->npdu_data + iob->data_offset),
 		       data,
 		       to_send);
 

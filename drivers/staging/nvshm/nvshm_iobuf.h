@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _NVSHM_IOBUF_H
@@ -17,6 +19,12 @@
 
 /* Baseband base address in BB memory space - this is a constant */
 #define NVSHM_IPC_BB_BASE (0x8C000000)
+
+#define ADDR_OUTSIDE(addr, base, size) (((unsigned long)(addr)	\
+					     < (unsigned long)(base)) || \
+					    ((unsigned long)(addr)	\
+					     > ((unsigned long)(base) + \
+						(unsigned long)(size))))
 
 /**
  * NVSHM_B2A convert from Baseband address space
@@ -51,7 +59,7 @@
 * @return : pointer to payload in cached kernel space
 */
 #define NVSHM_IOBUF_PAYLOAD(h, b) \
-	NVSHM_B2A((h), (b)->npduData + (b)->dataOffset)
+	NVSHM_B2A((h), (b)->npdu_data + (b)->data_offset)
 
 /**
  * Alloc a nvshm_iobuf descriptor to be used for write operation
@@ -135,7 +143,7 @@ int nvshm_iobuf_unref_cluster(struct nvshm_iobuf *iob);
  * @param struct nvshm_iobuf to check
  * @return 0 if sane
  */
-int nvshm_iobuf_check(struct nvshm_channel *chan, struct nvshm_iobuf *iob);
+int nvshm_iobuf_check(struct nvshm_iobuf *iob);
 
 /**
  * Finalize BBC iobuf free

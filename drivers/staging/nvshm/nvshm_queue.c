@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvshm_types.h"
@@ -34,8 +36,8 @@ static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 			/* Flush associated data */
 			if (leaf->length) {
 				FLUSH_CPU_DCACHE(NVSHM_B2A(handle,
-							   (int)leaf->npduData
-							   + leaf->dataOffset),
+							   (int)leaf->npdu_data
+							   + leaf->data_offset),
 						 leaf->length);
 			}
 			/* Flush iobuf */
@@ -53,7 +55,8 @@ static void flush_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 }
 
 /* Invalidate cache lines associated with iobuf list */
-static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
+/* Return 0 if ok or non zero otherwise */
+static int inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
 	struct nvshm_iobuf *phy_list, *leaf;
 
@@ -61,13 +64,23 @@ static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 	while (phy_list) {
 		leaf = phy_list;
 		while (leaf) {
-			/* Invalidate first iobuf */
+			/* Check leaf address before any operation on it */
+			/* Cannot use nvshm_iobuf_check because iobuf */
+			/* is not invalidated so content will be wrong */
+			if (ADDR_OUTSIDE(leaf, handle->ipc_base_virt,
+					handle->ipc_size)) {
+				return -EIO;
+			}
+			/* Invalidate iobuf */
 			INV_CPU_DCACHE(leaf, sizeof(struct nvshm_iobuf));
+			/* Check iobuf */
+			if (nvshm_iobuf_check(leaf))
+				return -EIO;
 			/* Invalidate associated data */
 			if (leaf->length) {
 				INV_CPU_DCACHE(NVSHM_B2A(handle,
-							   (int)leaf->npduData
-							   + leaf->dataOffset),
+							   (int)leaf->npdu_data
+							   + leaf->data_offset),
 							   leaf->length);
 			}
 			if (leaf->sg_next)
@@ -80,6 +93,7 @@ static void inv_iob_list(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 		else
 			phy_list = NULL;
 	}
+	return 0;
 }
 
 struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
@@ -93,6 +107,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 
 	dummy = handle->shared_queue_head;
 	/* Invalidate lower part of iobuf - upper part can be written by AP */
+
 	INV_CPU_DCACHE(&dummy->qnext,
 		       sizeof(struct nvshm_iobuf) / 2);
 	ret = NVSHM_B2A(handle, dummy->qnext);
@@ -100,7 +115,14 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 	if (dummy->qnext == NULL)
 		return NULL;
 
-	inv_iob_list(handle, ret);
+	/* Invalidate iobuf(s) and check validity */
+	handle->errno = inv_iob_list(handle, ret);
+
+	if (handle->errno) {
+		pr_err("%s: queue corruption\n", __func__);
+		return NULL;
+	}
+
 	handle->shared_queue_head = ret;
 
 	/* Update queue_bb_offset for debug purpose */
@@ -120,6 +142,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 
 	dummy->qnext = NULL;
 	nvshm_iobuf_free(dummy);
+
 	return ret;
 }
 

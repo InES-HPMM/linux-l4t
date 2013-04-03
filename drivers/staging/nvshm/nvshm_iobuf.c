@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvshm_types.h"
@@ -76,13 +78,19 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 
 	spin_lock_irqsave(&alloc.lock, f);
 	if (alloc.free_pool_head) {
-		if (size > (alloc.free_pool_head->totalLength -
+		int check = nvshm_iobuf_check(alloc.free_pool_head);
+
+		if (check) {
+			pr_err("%s: iobuf check ret %d\n", __func__, check);
+			return NULL;
+		}
+		if (size > (alloc.free_pool_head->total_length -
 			    NVSHM_DEFAULT_OFFSET)) {
 			spin_unlock_irqrestore(&alloc.lock, f);
 			pr_err("%s: requested size (%d > %d) too big\n",
 			       __func__,
 			       size,
-			       alloc.free_pool_head->totalLength -
+			       alloc.free_pool_head->total_length -
 			       NVSHM_DEFAULT_OFFSET);
 			if (chan->ops) {
 				chan->ops->error_event(chan,
@@ -102,7 +110,7 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 		}
 		desc->length = 0;
 		desc->flags = 0;
-		desc->dataOffset = NVSHM_DEFAULT_OFFSET;
+		desc->data_offset = NVSHM_DEFAULT_OFFSET;
 		desc->sg_next = NULL;
 		desc->next = NULL;
 		desc->ref = 1;
@@ -149,7 +157,7 @@ void nvshm_iobuf_process_freed(struct nvshm_iobuf *desc)
 		desc->next = NULL;
 		desc->length = 0;
 		desc->flags = 0;
-		desc->dataOffset = 0;
+		desc->data_offset = 0;
 		desc->chan = 0;
 		if (alloc.free_pool_tail) {
 			alloc.free_pool_tail->next = NVSHM_A2B(priv,
@@ -201,7 +209,7 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->next = NULL;
 			desc->length = 0;
 			desc->flags = 0;
-			desc->dataOffset = 0;
+			desc->data_offset = 0;
 			desc->chan = 0;
 			if (alloc.free_pool_tail) {
 				alloc.free_pool_tail->next = NVSHM_A2B(priv,
@@ -217,7 +225,7 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->sg_next = NULL;
 			desc->next = NULL;
 			desc->length = 0;
-			desc->dataOffset = 0;
+			desc->data_offset = 0;
 			bbc_free(priv, desc);
 			spin_unlock_irqrestore(&alloc.lock, f);
 			return;
@@ -338,40 +346,53 @@ int nvshm_iobuf_flags(struct nvshm_iobuf *iob,
 	return 0;
 }
 
-int nvshm_iobuf_check(struct nvshm_channel *chan, struct nvshm_iobuf *iob)
+int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 
-	if (((int)iob->npduData < NVSHM_IPC_BB_BASE) ||
-	    ((int)iob->npduData > (NVSHM_IPC_BB_BASE+priv->ipc_size))) {
-		pr_err("%s: npduData @ check failed 0x%x\n",
+	/* Check iobuf is in IPC space */
+	if (ADDR_OUTSIDE(iob, priv->ipc_base_virt, priv->ipc_size)) {
+		pr_err("%s: iob @ check failed 0x%lx\n",
 		       __func__,
-		       (int)iob->npduData);
+		       (long)iob);
 		return -1;
 	}
-	if ((((int)iob->npduData + iob->dataOffset) <
-	     NVSHM_IPC_BB_BASE) ||
-	    (((int)iob->npduData + iob->dataOffset) >
-	     (NVSHM_IPC_BB_BASE+priv->ipc_size))) {
-		pr_err("%s: npduData + offset @ check failed 0x%x\n",
-		       __func__, (int)iob->npduData);
+
+	if (ADDR_OUTSIDE(iob->npdu_data, NVSHM_IPC_BB_BASE, priv->ipc_size)) {
+		pr_err("%s: npdu_data @ check failed 0x%lx\n",
+		       __func__,
+		       (long)iob->npdu_data);
 		return -2;
 	}
+	if (ADDR_OUTSIDE(iob->npdu_data + iob->data_offset,
+			NVSHM_IPC_BB_BASE, priv->ipc_size)) {
+		pr_err("%s: npdu_data + offset @ check failed 0x%lx/0x%lx\n",
+		       __func__, (long)iob->npdu_data, (long)iob->data_offset);
+		return -3;
+	}
 	if (iob->next) {
-		if (((int)iob->next < NVSHM_IPC_BB_BASE) ||
-		    ((int)iob->next > (NVSHM_IPC_BB_BASE+priv->ipc_size))) {
-			pr_err("%s: next @ check failed 0x%x\n",
+		if (ADDR_OUTSIDE(iob->next,
+				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
+			pr_err("%s: next @ check failed 0x%lx\n",
 			       __func__,
-			       (int)iob->next);
-			return -3;
+			       (long)iob->next);
+			return -4;
 		}
 	}
 	if (iob->sg_next) {
-		if (((int)iob->sg_next < NVSHM_IPC_BB_BASE) ||
-		    ((int)iob->sg_next > (NVSHM_IPC_BB_BASE+priv->ipc_size))) {
-			pr_err("%s:sg_next @ check failed 0x%x\n",
-			       __func__, (int)iob->sg_next);
-			return -4;
+		if (ADDR_OUTSIDE(iob->sg_next,
+				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
+			pr_err("%s:sg_next @ check failed 0x%lx\n",
+			       __func__, (long)iob->sg_next);
+			return -5;
+		}
+	}
+	if (iob->qnext) {
+		if (ADDR_OUTSIDE(iob->qnext,
+				NVSHM_IPC_BB_BASE, priv->ipc_size)) {
+			pr_err("%s:qnext @ check failed 0x%lx\n",
+			       __func__, (long)iob->qnext);
+			return -6;
 		}
 	}
 	return 0;
@@ -526,28 +547,28 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	dataptr = handle->data_base_virt;
 	/* Dummy queue element */
 	memset(handle->desc_base_virt, 0, handle->desc_size);
-	iob->npduData = NVSHM_A2B(handle, dataptr);
+	iob->npdu_data = NVSHM_A2B(handle, dataptr);
 	dataptr += datasize;
-	iob->dataOffset = NVSHM_DEFAULT_OFFSET;
-	iob->totalLength = datasize;
+	iob->data_offset = NVSHM_DEFAULT_OFFSET;
+	iob->total_length = datasize;
 	iob->next = NULL;
 	iob->pool_id = NVSHM_AP_POOL_ID;
 	iob->ref = 1;
 	alloc.free_pool_head = ++iob;
 	for (desc = 1; desc < (ndesc-1); desc++) {
-		iob->npduData = NVSHM_A2B(handle, dataptr);
+		iob->npdu_data = NVSHM_A2B(handle, dataptr);
 		dataptr += datasize;
-		iob->dataOffset = NVSHM_DEFAULT_OFFSET;
-		iob->totalLength = datasize;
+		iob->data_offset = NVSHM_DEFAULT_OFFSET;
+		iob->total_length = datasize;
 		iob->next = NVSHM_A2B(handle, (void *)iob +
 				      sizeof(struct nvshm_iobuf));
 		iob->pool_id = NVSHM_AP_POOL_ID;
 		iob++;
 	}
 	/* Untied last */
-	iob->npduData = NVSHM_A2B(handle, dataptr);
-	iob->dataOffset = NVSHM_DEFAULT_OFFSET;
-	iob->totalLength = datasize;
+	iob->npdu_data = NVSHM_A2B(handle, dataptr);
+	iob->data_offset = NVSHM_DEFAULT_OFFSET;
+	iob->total_length = datasize;
 	iob->pool_id = NVSHM_AP_POOL_ID;
 	iob->next = NULL;
 

@@ -76,13 +76,13 @@ static void nvshm_tty_rx_rewrite_line(int l)
 		spin_unlock(&tty_dev.line[l].lock);
 		len = tty_insert_flip_string(tty,
 					     NVSHM_B2A(tty_dev.handle,
-						       list->npduData)
-					     + list->dataOffset,
+						       list->npdu_data)
+					     + list->data_offset,
 					     list->length);
 		tty_flip_buffer_push(tty);
 		spin_lock(&tty_dev.line[l].lock);
 		if (len < list->length) {
-			list->dataOffset += len;
+			list->data_offset += len;
 			list->length -= len;
 			spin_unlock(&tty_dev.line[l].lock);
 			tty_kref_put(tty);
@@ -177,14 +177,14 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 			spin_unlock(&line->lock);
 			len = tty_insert_flip_string(tty,
 						     NVSHM_B2A(tty_dev.handle,
-							       iob->npduData)
-						     + iob->dataOffset,
+							       iob->npdu_data)
+						     + iob->data_offset,
 						     iob->length);
 			tty_flip_buffer_push(tty);
 			spin_lock(&line->lock);
 			if (len < iob->length) {
 				line->throttled = 1;
-				iob->dataOffset += len;
+				iob->data_offset += len;
 				iob->length -= len;
 				goto queue;
 			}
@@ -320,8 +320,8 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 		iob->chan = tty_dev.line[idx].pchan->index;
 		remain -= to_send;
 		memcpy(NVSHM_B2A(tty_dev.handle,
-				 iob->npduData +
-				 iob->dataOffset),
+				 iob->npdu_data +
+				 iob->data_offset),
 		       buf,
 		       to_send);
 		buf += to_send;

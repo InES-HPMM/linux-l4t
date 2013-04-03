@@ -1,16 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "nvshm_types.h"
@@ -239,28 +240,32 @@ static void ipc_work(struct work_struct *work)
 	new_state = *((int *)handle->mb_base_virt);
 	cmd = new_state & 0xFFFF;
 	if (((~new_state >> 16) ^ (cmd)) & 0xFFFF) {
-		pr_err("%s IPC check failure msg=0x%x\n",
+		pr_err("%s: IPC check failure msg=0x%x\n",
 		       __func__, new_state);
 		if (handle->configured) {
 			nvshm_abort_queue(handle);
 			cleanup_interfaces(handle);
 		}
-		enable_irq(handle->bb_irq);
-		wake_unlock(&handle->dl_lock);
-		return;
+		goto ipc_exit;
 	}
 	switch (cmd) {
 	case NVSHM_IPC_READY:
 		/* most encountered message - process queue */
 		if (cmd == handle->old_status) {
 			/* Process IPC queue but do not notify sysfs */
-			nvshm_process_queue(handle);
-		} else {
-			if (ipc_readconfig(handle)) {
-				enable_irq(handle->bb_irq);
-				wake_unlock(&handle->dl_lock);
-				return;
+			if (handle->configured) {
+				nvshm_process_queue(handle);
+				if (handle->errno) {
+					pr_err("%s: cleanup interfaces\n",
+					       __func__);
+					nvshm_abort_queue(handle);
+					cleanup_interfaces(handle);
+					break;
+				}
 			}
+		} else {
+			if (ipc_readconfig(handle))
+				goto ipc_exit;
 
 			nvshm_iobuf_init(handle);
 			nvshm_init_queue(handle);
@@ -297,8 +302,9 @@ static void ipc_work(struct work_struct *work)
 		       __func__, new_state);
 	}
 	handle->old_status = cmd;
-	enable_irq(handle->bb_irq);
+ipc_exit:
 	wake_unlock(&handle->dl_lock);
+	enable_irq(handle->bb_irq);
 }
 
 static void start_tx_worker(struct work_struct *work)

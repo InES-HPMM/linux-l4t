@@ -122,10 +122,10 @@ struct nvshm_config {
  */
 struct nvshm_iobuf {
 	/* Standard iobuf part - This part is fixed and cannot be changed */
-	unsigned char   *npduData;
+	unsigned char   *npdu_data;
 	unsigned short   length;
-	unsigned short   dataOffset;
-	unsigned short   totalLength;
+	unsigned short   data_offset;
+	unsigned short   total_length;
 	unsigned char ref;
 	unsigned char pool_id;
 	struct nvshm_iobuf *next;
