@@ -20,6 +20,7 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/export.h>
 
 #include "pmc.h"
 
@@ -53,21 +54,23 @@ static bool tegra_pmc_invert_interrupt;
 static struct clk *tegra_pclk;
 #endif
 
-struct pmc_pm_data {
-	u32 cpu_good_time;	/* CPU power good time in uS */
-	u32 cpu_off_time;	/* CPU power off time in uS */
-	u32 core_osc_time;	/* Core power good osc time in uS */
-	u32 core_pmu_time;	/* Core power good pmu time in uS */
-	u32 core_off_time;	/* Core power off time in uS */
-	bool corereq_high;	/* Core power request active-high */
-	bool sysclkreq_high;	/* System clock request active-high */
-	bool combined_req;	/* Combined pwr req for CPU & Core */
-	bool cpu_pwr_good_en;	/* CPU power good signal is enabled */
-	u32 lp0_vec_phy_addr;	/* The phy addr of LP0 warm boot code */
-	u32 lp0_vec_size;	/* The size of LP0 warm boot code */
-	enum tegra_suspend_mode suspend_mode;
-};
+#ifdef CONFIG_OF
 static struct pmc_pm_data pmc_pm_data;
+#endif
+struct pmc_pm_data *tegra_get_pm_data()
+{
+#ifdef CONFIG_OF
+	/*
+	 * Some boards have CONFIG_OF defined but no dts files
+	 */
+	if (!tegra_pmc_base)
+		return NULL;
+	return &pmc_pm_data;
+#else
+	return NULL;
+#endif
+}
+EXPORT_SYMBOL(tegra_get_pm_data);
 
 static inline u32 tegra_pmc_readl(u32 reg)
 {

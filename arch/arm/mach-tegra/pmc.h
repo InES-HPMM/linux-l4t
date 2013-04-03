@@ -36,4 +36,20 @@ int tegra_pmc_cpu_remove_clamping(int cpuid);
 
 void tegra_pmc_init(void);
 
+struct pmc_pm_data {
+	u32 cpu_good_time;	/* CPU power good time in uS */
+	u32 cpu_off_time;	/* CPU power off time in uS */
+	u32 core_osc_time;	/* Core power good osc time in uS */
+	u32 core_pmu_time;	/* Core power good pmu time in uS */
+	u32 core_off_time;	/* Core power off time in uS */
+	bool corereq_high;	/* Core power request active-high */
+	bool sysclkreq_high;	/* System clock request active-high */
+	bool combined_req;	/* Combined pwr req for CPU & Core */
+	bool cpu_pwr_good_en;	/* CPU power good signal is enabled */
+	u32 lp0_vec_phy_addr;	/* The phy addr of LP0 warm boot code */
+	u32 lp0_vec_size;	/* The size of LP0 warm boot code */
+	enum tegra_suspend_mode suspend_mode;
+};
+struct pmc_pm_data *tegra_get_pm_data(void);
+
 #endif
