@@ -38,6 +38,7 @@ extern struct platform_device tegra_i2c_device3;
 extern struct platform_device tegra_i2c_device4;
 extern struct platform_device tegra_kbc_device;
 extern struct platform_device tegra_pci_device;
+extern struct platform_device tegra_apbdma;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 extern struct platform_device tegra_i2c_device5;
 #endif

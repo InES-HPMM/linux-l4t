@@ -185,6 +185,182 @@ struct platform_device tegra_pinmux_device = {
 	.num_resources	= ARRAY_SIZE(pinmux_resource),
 };
 
+static struct resource apbdma_resource[] = {
+	[0] = {
+		.start	= TEGRA_APB_DMA_BASE,
+		.end	= TEGRA_APB_DMA_BASE + TEGRA_APB_DMA_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= INT_APB_DMA_CH0,
+		.end	= INT_APB_DMA_CH0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start	= INT_APB_DMA_CH1,
+		.end	= INT_APB_DMA_CH1,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[3] = {
+		.start	= INT_APB_DMA_CH2,
+		.end	= INT_APB_DMA_CH2,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[4] = {
+		.start	= INT_APB_DMA_CH3,
+		.end	= INT_APB_DMA_CH3,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[5] = {
+		.start	= INT_APB_DMA_CH4,
+		.end	= INT_APB_DMA_CH4,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[6] = {
+		.start	= INT_APB_DMA_CH5,
+		.end	= INT_APB_DMA_CH5,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[7] = {
+		.start	= INT_APB_DMA_CH6,
+		.end	= INT_APB_DMA_CH6,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[8] = {
+		.start	= INT_APB_DMA_CH7,
+		.end	= INT_APB_DMA_CH7,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[9] = {
+		.start	= INT_APB_DMA_CH8,
+		.end	= INT_APB_DMA_CH8,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[10] = {
+		.start	= INT_APB_DMA_CH9,
+		.end	= INT_APB_DMA_CH9,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[11] = {
+		.start	= INT_APB_DMA_CH10,
+		.end	= INT_APB_DMA_CH10,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[12] = {
+		.start	= INT_APB_DMA_CH11,
+		.end	= INT_APB_DMA_CH11,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[13] = {
+		.start	= INT_APB_DMA_CH12,
+		.end	= INT_APB_DMA_CH12,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[14] = {
+		.start	= INT_APB_DMA_CH13,
+		.end	= INT_APB_DMA_CH13,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[15] = {
+		.start	= INT_APB_DMA_CH14,
+		.end	= INT_APB_DMA_CH14,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[16] = {
+		.start	= INT_APB_DMA_CH15,
+		.end	= INT_APB_DMA_CH15,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[17] = {
+		.start	= INT_APB_DMA_CH16,
+		.end	= INT_APB_DMA_CH16,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[18] = {
+		.start	= INT_APB_DMA_CH17,
+		.end	= INT_APB_DMA_CH17,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[19] = {
+		.start	= INT_APB_DMA_CH18,
+		.end	= INT_APB_DMA_CH18,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[20] = {
+		.start	= INT_APB_DMA_CH19,
+		.end	= INT_APB_DMA_CH19,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[21] = {
+		.start	= INT_APB_DMA_CH20,
+		.end	= INT_APB_DMA_CH20,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[22] = {
+		.start	= INT_APB_DMA_CH21,
+		.end	= INT_APB_DMA_CH21,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[23] = {
+		.start	= INT_APB_DMA_CH22,
+		.end	= INT_APB_DMA_CH22,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[24] = {
+		.start	= INT_APB_DMA_CH23,
+		.end	= INT_APB_DMA_CH23,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[25] = {
+		.start	= INT_APB_DMA_CH24,
+		.end	= INT_APB_DMA_CH24,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[26] = {
+		.start	= INT_APB_DMA_CH25,
+		.end	= INT_APB_DMA_CH25,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[27] = {
+		.start	= INT_APB_DMA_CH26,
+		.end	= INT_APB_DMA_CH26,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[28] = {
+		.start	= INT_APB_DMA_CH27,
+		.end	= INT_APB_DMA_CH27,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[29] = {
+		.start	= INT_APB_DMA_CH28,
+		.end	= INT_APB_DMA_CH28,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[30] = {
+		.start	= INT_APB_DMA_CH29,
+		.end	= INT_APB_DMA_CH29,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[31] = {
+		.start	= INT_APB_DMA_CH30,
+		.end	= INT_APB_DMA_CH30,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[32] = {
+		.start	= INT_APB_DMA_CH31,
+		.end	= INT_APB_DMA_CH31,
+		.flags	= IORESOURCE_IRQ,
+	},
+
+};
+
+struct platform_device tegra_apbdma = {
+	.name		= "tegra124-apbdma",
+	.id 		= -1,
+	.resource	= apbdma_resource,
+	.num_resources	= ARRAY_SIZE(apbdma_resource),
+};
+
 static struct resource i2c_resource1[] = {
 	[0] = {
 		.start	= INT_I2C,
