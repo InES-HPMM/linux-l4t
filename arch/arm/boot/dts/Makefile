@@ -199,6 +199,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra114-macallan.dtb \
 	tegra114-roth.dtb \
 	tegra114-pluto.dtb \
+	tegra114-ardbeg.dtb \
 	tegra124-bonaire_sim.dtb \
 	tegra124-bonaire.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
