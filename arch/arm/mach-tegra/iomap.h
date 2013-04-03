@@ -827,7 +827,11 @@
 #define IO_NOR_SIZE	(SZ_64M)
 #else
 #define IO_NOR_PHYS	0x48000000
+#if defined(CONFIG_MTD_NOR_TEGRA_GMI)
 #define IO_NOR_SIZE	(SZ_128M)
+#else
+#define IO_NOR_SIZE	(SZ_64M)
+#endif
 #endif
 #else
 #define IO_NOR_PHYS	0x0
