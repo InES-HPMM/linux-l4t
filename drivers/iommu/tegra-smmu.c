@@ -485,6 +485,19 @@ static void flush_ptc_and_tlb(struct smmu_device *smmu,
 	smmu_flush_tlb(smmu, as, iova, is_pde);
 }
 
+static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
+				    struct smmu_as *as, dma_addr_t iova,
+				    unsigned long *pte, struct page *page,
+				    size_t count)
+{
+	int i;
+
+	for (i = 0; i < count; i++) {
+		smmu_flush_ptc(smmu, pte + i, page);
+		smmu_flush_tlb(smmu, as, iova + i * PAGE_SIZE, 0);
+	}
+}
+
 static inline void flush_ptc_and_tlb_all(struct smmu_device *smmu,
 					 struct smmu_as *as)
 {
