@@ -136,6 +136,9 @@ enum {
 	SMMU_TLB_FLUSH_VA_MATCH_##which)
 #define SMMU_PTB_ASID_CUR(n)	\
 		((n) << SMMU_PTB_ASID_CURRENT_SHIFT)
+
+#define SMMU_TLB_FLUSH_ALL 0
+
 #define SMMU_TLB_FLUSH_ASID_MATCH_disable		\
 		(SMMU_TLB_FLUSH_ASID_MATCH_DISABLE <<	\
 			SMMU_TLB_FLUSH_ASID_MATCH_SHIFT)
@@ -436,23 +439,56 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	ahb_write(smmu, val, AHB_XBAR_CTRL);
 }
 
-static void flush_ptc_and_tlb(struct smmu_device *smmu,
-		      struct smmu_as *as, dma_addr_t iova,
-		      unsigned long *pte, struct page *page, int is_pde)
+
+static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
+			   struct page *page)
 {
 	u32 val;
-	unsigned long tlb_flush_va = is_pde
-		?  SMMU_TLB_FLUSH_VA(iova, SECTION)
-		:  SMMU_TLB_FLUSH_VA(iova, GROUP);
 
-	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
+	if (pte)
+		val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
+	else
+		val = SMMU_PTC_FLUSH_TYPE_ALL;
+
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
-	val = tlb_flush_va |
-		SMMU_TLB_FLUSH_ASID_MATCH__ENABLE |
-		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT);
+}
+
+static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
+			   dma_addr_t iova, int is_pde)
+{
+	u32 val = SMMU_TLB_FLUSH_ALL;
+
+#if 0 /* Disabled temproary for reordering issue */
+	if (as) {
+		val |= SMMU_TLB_FLUSH_ASID_MATCH__ENABLE;
+		val |= as->asid << SMMU_TLB_FLUSH_ASID_SHIFT;
+	}
+#endif
+
+	if (iova) {
+		if (is_pde)
+			val |= SMMU_TLB_FLUSH_VA(iova, SECTION);
+		else
+			val |= SMMU_TLB_FLUSH_VA(iova, GROUP);
+	}
+
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
+}
+
+static void flush_ptc_and_tlb(struct smmu_device *smmu,
+			      struct smmu_as *as, dma_addr_t iova,
+			      unsigned long *pte, struct page *page, int is_pde)
+{
+	smmu_flush_ptc(smmu, pte, page);
+	smmu_flush_tlb(smmu, as, iova, is_pde);
+}
+
+static inline void flush_ptc_and_tlb_all(struct smmu_device *smmu,
+					 struct smmu_as *as)
+{
+	flush_ptc_and_tlb(smmu, as, 0, 0, NULL, 1);
 }
 
 static void free_ptbl(struct smmu_as *as, dma_addr_t iova)
