@@ -22,6 +22,14 @@
 #include <linux/irq.h>
 #include <linux/regmap.h>
 
+/* Max77665 irq register */
+#define MAX77665_REG_INTSRC		0x22
+#define MAX77665_REG_INTSRC_MASK	0x23
+#define MAX77665_INTSRC_CHGR_MASK	BIT(0)
+#define MAX77665_INTSRC_TOP_MASK	BIT(1)
+#define MAX77665_INTSRC_FLASH_MASK	BIT(2)
+#define MAX77665_INTSRC_MUIC_MASK	BIT(3)
+
 /* MAX77665 Interrups */
 enum {
 	MAX77665_IRQ_CHARGER,
@@ -50,8 +58,7 @@ struct max77665 {
 	struct device		*dev;
 	struct i2c_client	*client[MAX77665_I2C_SLAVE_MAX];
 	struct regmap		*regmap[MAX77665_I2C_SLAVE_MAX];
-	struct irq_chip		irq_chip;
-	struct mutex		irq_lock;
+	struct regmap_irq_chip_data *regmap_irq_data;
 	int			irq_base;
 };
 

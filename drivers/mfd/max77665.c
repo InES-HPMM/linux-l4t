@@ -34,28 +34,26 @@
 #define MAX77665_MUIC		0x00 ... 0x0E
 #define MAX77665_HAPTIC		0x00 ... 0x10
 
-static u8 int_mask_reg = 0xff;
-
 static u8 max77665_i2c_slave_address[] = {
 	[MAX77665_I2C_SLAVE_PMIC] = 0x66,
 	[MAX77665_I2C_SLAVE_MUIC] = 0x25,
 	[MAX77665_I2C_SLAVE_HAPTIC] = 0x48,
 };
 
-struct max77665_irq_data {
-	int bit;
+static const struct resource charger_resource[] = {
+	{
+		.start = MAX77665_IRQ_CHARGER,
+		.end = MAX77665_IRQ_CHARGER,
+		.flags = IORESOURCE_IRQ,
+	},
 };
 
-#define MAX77665_IRQ(_id, _bit_pos)				\
-	[MAX77665_IRQ_##_id] =	{				\
-					.bit	= (_bit_pos),	\
-				}
-
-static const struct max77665_irq_data max77665_irqs[] = {
-	MAX77665_IRQ(CHARGER, 0),
-	MAX77665_IRQ(TOP_SYS, 1),
-	MAX77665_IRQ(FLASH, 2),
-	MAX77665_IRQ(MUIC, 3),
+static const struct resource flash_resource[] = {
+	{
+		.start = MAX77665_IRQ_FLASH,
+		.end = MAX77665_IRQ_FLASH,
+		.flags = IORESOURCE_IRQ,
+	},
 };
 
 static const struct resource muic_resource[] = {
@@ -67,136 +65,70 @@ static const struct resource muic_resource[] = {
 };
 
 static struct mfd_cell max77665s[] = {
-	[MAX77665_CELL_CHARGER]	= {.name = "max77665-charger",},
-	[MAX77665_CELL_FLASH]	= {.name = "max77665-flash",},
+	[MAX77665_CELL_CHARGER]	= {
+			.name = "max77665-charger",
+			.resources = charger_resource,
+			.num_resources = ARRAY_SIZE(charger_resource),
+	},
+
+	[MAX77665_CELL_FLASH]	= {
+			.name = "max77665-flash",
+			.resources = flash_resource,
+			.num_resources = ARRAY_SIZE(flash_resource),
+	},
+
 	[MAX77665_CELL_MUIC]	= {
 			.name = "max77665-muic",
 			.resources = muic_resource,
 			.num_resources = ARRAY_SIZE(muic_resource),
 	},
-	[MAX77665_CELL_HAPTIC]	= {.name = "max77665-haptic",},
+
+	[MAX77665_CELL_HAPTIC]	= {
+			.name = "max77665-haptic",
+	},
 };
 
-static void max77665_irq_lock(struct irq_data *data)
-{
-	struct max77665 *max77665 = irq_data_get_irq_chip_data(data);
+static const struct regmap_irq max77665_irqs[] = {
+	[MAX77665_IRQ_CHARGER] = {
+		.mask = MAX77665_INTSRC_CHGR_MASK,
+	},
+	[MAX77665_IRQ_TOP_SYS] = {
+		.mask = MAX77665_INTSRC_TOP_MASK,
+	},
+	[MAX77665_IRQ_FLASH] = {
+		.mask = MAX77665_INTSRC_FLASH_MASK,
+	},
+	[MAX77665_IRQ_MUIC] = {
+		.mask = MAX77665_INTSRC_MUIC_MASK,
+	},
+};
 
-	mutex_lock(&max77665->irq_lock);
-}
+static struct regmap_irq_chip max77665_irq_chip = {
+	.name = "max77665-irq",
+	.irqs = max77665_irqs,
+	.num_irqs = ARRAY_SIZE(max77665_irqs),
+	.num_regs = 1,
+	.irq_reg_stride = 1,
+	.status_base = MAX77665_REG_INTSRC,
+	.mask_base = MAX77665_REG_INTSRC_MASK,
+};
 
-static void max77665_irq_mask(struct irq_data *irq_data)
-{
-	struct max77665 *max77665 = irq_data_get_irq_chip_data(irq_data);
-	unsigned int __irq = irq_data->irq - max77665->irq_base;
-	const struct max77665_irq_data *data = &max77665_irqs[__irq];
-
-	int_mask_reg |= (1 << data->bit);
-}
-
-static void max77665_irq_unmask(struct irq_data *irq_data)
-{
-	struct max77665 *max77665 = irq_data_get_irq_chip_data(irq_data);
-	unsigned int __irq = irq_data->irq - max77665->irq_base;
-	const struct max77665_irq_data *data = &max77665_irqs[__irq];
-
-	int_mask_reg &= ~(1 << data->bit);
-}
-
-static void max77665_irq_sync_unlock(struct irq_data *data)
-{
-	struct max77665 *max77665 = irq_data_get_irq_chip_data(data);
-	int ret;
-
-	ret = max77665_write(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
-			MAX77665_INT_MSK, int_mask_reg);
-	if (ret < 0)
-		dev_err(max77665->dev,
-				"Int mask reg write failed, e %d\n", ret);
-	mutex_unlock(&max77665->irq_lock);
-}
-
-static irqreturn_t max77665_irq(int irq, void *data)
-{
-	struct max77665 *max77665 = data;
-	int ret = 0;
-	u8 status = 0;
-	unsigned long int acks = 0;
-	int i;
-
-	dev_info(max77665->dev, "In ISR %s\n", __func__);
-	ret = max77665_read(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
-					MAX77665_INT_STS, &status);
-	if (ret < 0) {
-		dev_err(max77665->dev,
-				"failed to read status regi, e %d\n", ret);
-		return IRQ_NONE;
-	}
-
-	acks = status;
-	for_each_set_bit(i, &acks, ARRAY_SIZE(max77665_irqs))
-		handle_nested_irq(max77665->irq_base + i);
-	return acks ? IRQ_HANDLED : IRQ_NONE;
-}
-
-#ifdef CONFIG_PM_SLEEP
-static int max77665_irq_set_wake(struct irq_data *data, unsigned int enable)
-{
-	struct max77665 *max77665 = irq_data_get_irq_chip_data(data);
-
-	return irq_set_irq_wake(max77665->irq_base, enable);
-}
-
-#else
-#define max77665_irq_set_wake NULL
-#endif
-
-static int __devinit max77665_irq_init(struct max77665 *max77665, int irq,
+static int max77665_irq_init(struct max77665 *max77665, int irq,
 	int irq_base, unsigned long irq_flag)
 {
-	int i, ret;
+	int ret;
 
-	if (irq_base <= 0) {
+	if (!irq || (irq_base <= 0)) {
 		dev_err(max77665->dev, "IRQ base not set, int not supported\n");
 		return -EINVAL;
 	}
 
-	mutex_init(&max77665->irq_lock);
-
-	ret = max77665_write(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
-					MAX77665_INT_MSK, 0xFF);
-	if (ret < 0) {
-		dev_err(max77665->dev,
-			"Int mask reg write failed, e %d\n", ret);
-		return ret;
-	}
-
-	max77665->irq_base = irq_base;
-	max77665->irq_chip.name = "max77665";
-	max77665->irq_chip.irq_mask = max77665_irq_mask;
-	max77665->irq_chip.irq_unmask = max77665_irq_unmask;
-	max77665->irq_chip.irq_bus_lock = max77665_irq_lock;
-	max77665->irq_chip.irq_bus_sync_unlock = max77665_irq_sync_unlock;
-	max77665->irq_chip.irq_set_wake = max77665_irq_set_wake;
-
-	for (i = 0; i < ARRAY_SIZE(max77665_irqs); i++) {
-		int __irq = i + max77665->irq_base;
-		irq_set_chip_data(__irq, max77665);
-		irq_set_chip_and_handler(__irq, &max77665->irq_chip,
-					 handle_simple_irq);
-		irq_set_nested_thread(__irq, 1);
-#ifdef CONFIG_ARM
-		set_irq_flags(__irq, IRQF_VALID);
-#endif
-	}
-
-	ret = request_threaded_irq(irq, NULL, max77665_irq, irq_flag,
-				"max77665", max77665);
-	if (ret < 0) {
-		dev_err(max77665->dev, "Int registration failed, e %d\n", ret);
-		return ret;
-	}
-
-	device_init_wakeup(max77665->dev, 1);
+	ret = regmap_add_irq_chip(max77665->regmap[MAX77665_I2C_SLAVE_PMIC],
+			irq, irq_flag | IRQF_ONESHOT, irq_base,
+			&max77665_irq_chip, &max77665->regmap_irq_data);
+	if (ret < 0)
+		dev_err(max77665->dev, "regmap irq registration failed %d\n",
+			ret);
 	return ret;
 }
 
@@ -306,8 +238,7 @@ static int max77665_i2c_probe(struct i2c_client *client,
 		}
 	}
 
-	if (client->irq > 0)
-		max77665_irq_init(max77665, client->irq,
+	max77665_irq_init(max77665, client->irq,
 				pdata->irq_base, pdata->irq_flag);
 
 	max77665s[MAX77665_CELL_CHARGER].platform_data =
@@ -341,8 +272,8 @@ static int max77665_i2c_probe(struct i2c_client *client,
 	return 0;
 
 err_irq_exit:
-	if (client->irq > 0)
-		free_irq(client->irq, max77665);
+	regmap_del_irq_chip(client->irq, max77665->regmap_irq_data);
+
 err_exit:
 	for (i = 0; i < MAX77665_I2C_SLAVE_MAX; ++i) {
 		slv_client = max77665->client[i];
@@ -359,8 +290,7 @@ static int max77665_i2c_remove(struct i2c_client *client)
 	struct i2c_client *slv_client;
 
 	mfd_remove_devices(max77665->dev);
-	if (client->irq > 0)
-		free_irq(client->irq, max77665);
+	regmap_del_irq_chip(client->irq, max77665->regmap_irq_data);
 
 	for (i = 0; i < MAX77665_I2C_SLAVE_MAX; ++i) {
 		slv_client = max77665->client[i];
