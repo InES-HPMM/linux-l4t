@@ -932,6 +932,73 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	return err;
 }
 
+static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
+				struct page **pages, size_t total, int prot)
+{
+	struct smmu_as *as = domain->priv;
+	struct smmu_device *smmu = as->smmu;
+	unsigned long flags;
+	unsigned long *pdir = page_address(as->pdir_page);
+	int err = 0;
+	bool flush_all = (total > SZ_512) ? true : false;
+
+	spin_lock_irqsave(&as->lock, flags);
+
+	while (total > 0) {
+		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+		unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
+		unsigned int *rest = &as->pte_count[pdn];
+		int count = min_t(unsigned long, SMMU_PTBL_COUNT - ptn, total);
+		struct page *tbl_page;
+		unsigned long *ptbl;
+		unsigned long *pte;
+		int i;
+
+		if (pdir[pdn] == _PDE_VACANT(pdn)) {
+			tbl_page = alloc_ptbl(as, iova, !flush_all);
+			if (!tbl_page) {
+				err = -ENOMEM;
+				goto out;
+			}
+
+		} else {
+			tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+		}
+
+		if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
+			goto skip;
+
+		ptbl = page_address(tbl_page);
+		for (i = 0; i < count; i++) {
+			pte = &ptbl[ptn + i];
+
+			if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE))
+				(*rest)++;
+
+			*pte = SMMU_PFN_TO_PTE(page_to_pfn(pages[i]),
+					       as->pte_attr);
+		}
+
+		pte = &ptbl[ptn];
+		FLUSH_CPU_DCACHE(pte, tbl_page,
+				 count * sizeof(unsigned long *));
+		if (!flush_all)
+			flush_ptc_and_tlb_range(smmu, as, iova, pte, tbl_page,
+						count);
+skip:
+		iova += PAGE_SIZE * count;
+		total -= count;
+		pages += count;
+	}
+
+out:
+	if (flush_all)
+		flush_ptc_and_tlb_as(as, iova, iova + total * PAGE_SIZE);
+
+	spin_unlock_irqrestore(&as->lock, flags);
+	return err;
+}
+
 static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	size_t bytes)
 {
@@ -1172,6 +1239,7 @@ static struct iommu_ops smmu_iommu_ops = {
 	.attach_dev	= smmu_iommu_attach_dev,
 	.detach_dev	= smmu_iommu_detach_dev,
 	.map		= smmu_iommu_map,
+	.map_pages	= smmu_iommu_map_pages,
 	.unmap		= smmu_iommu_unmap,
 	.iova_to_phys	= smmu_iommu_iova_to_phys,
 	.domain_has_cap	= smmu_iommu_domain_has_cap,
