@@ -155,7 +155,7 @@ enum {
 #define SMMU_PTE_SHIFT	12
 #define SMMU_PFN_MASK	0x000fffff
 
-#define SMMU_ADDR_TO_PFN(addr)	((addr) >> 12)
+#define SMMU_ADDR_TO_PFN(addr)	(((addr) >> 12) & (BIT(10) - 1))
 #define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
 #define SMMU_PDN_TO_ADDR(pdn)	((pdn) << 22)
 
@@ -542,7 +542,7 @@ static unsigned long *locate_pte(struct smmu_as *as,
 	}
 	*count = &as->pte_count[pdn];
 
-	return &ptbl[ptn % SMMU_PTBL_COUNT];
+	return &ptbl[ptn];
 }
 
 #ifdef CONFIG_SMMU_SIG_DEBUG
