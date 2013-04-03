@@ -274,27 +274,29 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "dsialp", "pll_p",	70000000,	false },
 	{ "dsiblp", "pll_p",	70000000,	false },
 #else
-	{ "pll_p",	NULL,		0,		true },
-	{ "pll_p_out1",	"pll_p",	0,		false },
-	{ "pll_p_out3",	"pll_p",	0,		true },
 	{ "pll_m_out1",	"pll_m",	275000000,	true },
 	{ "pll_p_out2",	"pll_p",	108000000,	false },
 	{ "sclk",	"pll_p_out2",	108000000,	true },
 	{ "pll_p_out4",	"pll_p",	216000000,	true },
+	{ "hclk",	"sclk",		108000000,	true },
+	{ "pclk",	"hclk",		54000000,	true },
+	{ "mselect",	"pll_p",	108000000,	true },
 	{ "host1x",	"pll_p",	108000000,	false },
 	{ "cl_dvfs_ref", "clk_m",	13000000,	false },
 	{ "cl_dvfs_soc", "clk_m",	13000000,	false },
-	{ "hclk",	"sclk",		108000000,	true },
-	{ "pclk",	"hclk",		54000000,	true },
-	{ "wake.sclk",  NULL,           250000000,	true },
-	{ "mselect",	"pll_p",	108000000,	true },
 #endif
 #ifdef CONFIG_TEGRA_SLOW_CSITE
 	{ "csite",	"clk_m",	1000000,	true },
 #else
 	{ "csite",      NULL,           0,              true },
 #endif
-	{ "pll_u",	NULL,		480000000,	false },
+	{ "pll_u",	NULL,		480000000,	true },
+	{ "pll_re_vco",	NULL,		612000000,	false },
+	{ "xusb_falcon_src",	"pll_p",	204000000,	false},
+	{ "xusb_host_src",	"pll_p",	102000000,	false},
+	{ "xusb_ss_src",	"pll_u_480M",	120000000,	false},
+	{ "xusb_hs_src",	"pll_u_60M",	60000000,	false},
+	{ "xusb_fs_src",	"pll_u_48M",	48000000,	false},
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
@@ -305,12 +307,21 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ "c2bus",	"pll_c2",	300000000,	false },
-	{ "c3bus",	"pll_c3",	300000000,	false },
+	{ "c2bus",	"pll_c2",	250000000,	false },
+	{ "c3bus",	"pll_c3",	250000000,	false },
+	{ "pll_c",	NULL,		624000000,	false },
 #else
-	{ "cbus",	"pll_c",	416000000,	false },
-	{ "pll_c_out1",	"pll_c",	208000000,	false },
+	{ "cbus",	"pll_c",	250000000,	false },
 #endif
+	{ "pll_c_out1",	"pll_c",	150000000,	false },
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+	{ "vi",		"pll_p",	0,		false},
+#endif
+#ifdef CONFIG_TEGRA_SOCTHERM
+	{ "soc_therm",	"pll_p",	136000000,	false },
+	{ "tsensor",	"clk_m",	500000,		false },
+#endif
+	{ "csite",	NULL,		0,		true },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
