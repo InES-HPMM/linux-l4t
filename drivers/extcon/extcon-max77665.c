@@ -80,7 +80,7 @@ struct max77665_muic {
 };
 
 const char *max77665_extcon_cable[] = {
-	[1] = "USB-Host",
+	[0] = "USB-Host",
 	NULL,
 };
 
