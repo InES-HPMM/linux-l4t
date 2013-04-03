@@ -7,7 +7,7 @@
  *  Copyright (C) 2009 Palm
  *  All Rights Reserved
  *
- *  Copyright (C) 2010-2011 NVIDIA Corporation
+ *  Copyright (C) 2010-2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -330,6 +330,7 @@ static int __cpuinit tegra_boot_secondary(unsigned int cpu, struct task_struct *
 		break;
 	case TEGRA_CHIPID_TEGRA11:
 	case TEGRA_CHIPID_TEGRA14:
+	case TEGRA_CHIPID_TEGRA12:
 		status = tegra11x_power_up_cpu(cpu);
 		break;
 	default:

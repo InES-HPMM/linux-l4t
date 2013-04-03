@@ -112,10 +112,12 @@ endif
 ifeq ($(CONFIG_TEGRA_SILICON_PLATFORM),y)
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_speedo.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra12_speedo.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_actmon.o
 endif
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra3_actmon.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra3_actmon.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_emc.o
@@ -146,6 +148,7 @@ ifeq ($(CONFIG_TEGRA_CPUQUIET),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuquiet.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += cpuquiet.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += cpuquiet.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += cpuquiet.o
 else
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
 endif
@@ -154,11 +157,13 @@ obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_soctherm.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra11_soctherm.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra11_soctherm.o
 endif
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_throttle.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra3_throttle.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra3_throttle.o
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += tegra3_throttle.o
 endif
 obj-$(CONFIG_DEBUG_ICEDCC)              += sysfs-dcc.o
 obj-$(CONFIG_TEGRA_CLUSTER_CONTROL)     += sysfs-cluster.o
@@ -254,6 +259,8 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += board-pluto-powermon.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-l-720p-5.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-j-720p-4-7.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-s-1080p-5.o
+
+obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
