@@ -444,10 +444,15 @@ static int tegra_gpio_irq_set_wake(struct irq_data *d, unsigned int enable)
 		pr_err("Failed gpio lp1 %s for irq=%d, error=%d\n",
 			(enable ? "enable" : "disable"), bank->irq, ret);
 
-	ret = tegra_pm_irq_set_wake(wake, enable);
-	if (ret)
-		pr_err("Failed gpio lp0 %s for irq=%d, error=%d\n",
-			(enable ? "enable" : "disable"), d->irq, ret);
+	if (wake < 0)
+		pr_err("Warning: enabling a non-LP0 wake source %lu\n",
+			d->hwirq);
+	else {
+		ret = tegra_pm_irq_set_wake(wake, enable);
+		if (ret)
+			pr_err("Failed gpio lp0 %s for irq=%d, error=%d\n",
+				(enable ? "enable" : "disable"), d->irq, ret);
+	}
 
 fail:
 	return ret;
