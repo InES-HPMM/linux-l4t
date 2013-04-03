@@ -267,7 +267,7 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "xusb_falcon_src",	"pll_re_vco",	224000000,	false},
 	{ "xusb_host_src",	"pll_re_vco",	112000000,	false},
 	{ "xusb_ss_src",	"pll_u_480M",	120000000,	false},
-	{ "xusb_hs_src",	"pll_u_60M",	60000000,	false},
+	{ "xusb_hs_src",	"xusb_ss_div2",	60000000,	false},
 	{ "xusb_fs_src",	"pll_u_48M",	48000000,	false},
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
