@@ -684,6 +684,14 @@ config INPUT_CAPELLA_CM3217
 	help
 	  Say Y here to enable the CM3217 Ambient Light Sensor.
 
+config INPUT_DRV2603_VIBRATOR
+	tristate "DRV2603 Vibrator"
+	select HAVE_PWM
+	help
+	  DRV2603 is vibrator haptic driver with auto-resonance detection
+	  for LRA & ERM haptic elements.
+	  Say Y here to enable the DRV2603 vibrator haptic driver.
+
 source	"drivers/input/misc/compass/Kconfig"
 source	"drivers/input/misc/mpu/Kconfig"
 source	"drivers/input/misc/pressure/Kconfig"
