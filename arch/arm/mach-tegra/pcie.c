@@ -47,6 +47,7 @@
 
 #include <mach/powergate.h>
 #include <mach/pci.h>
+#include <mach/tegra_usb_pad_ctrl.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -935,7 +936,7 @@ static void tegra_pcie_setup_translations(void)
 static int tegra_pcie_enable_controller(void)
 {
 	u32 val, reg;
-	int i, timeout;
+	int i, timeout, ret = 0;
 	void __iomem *reg_mselect_base;
 
 	reg_mselect_base = IO_ADDRESS(TEGRA_MSELECT_BASE);
@@ -978,11 +979,12 @@ static int tegra_pcie_enable_controller(void)
 
 	timeout = 0;
 	/* All T124 PADS programming moved to XUSB_PADCTL address space */
-#ifndef CONFIG_ARCH_TEGRA_12x_SOC
+
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	/* Initialze internal PHY, enable up to 16 PCIE lanes */
-	/* TODO: Program pads through XUSB_PADCTL for T124 */
 	pads_writel(0x0, PADS_CTL_SEL);
 
+#ifndef CONFIG_ARCH_TEGRA_12x_SOC
 	/* override IDDQ to 1 on all 4 lanes */
 	val = pads_readl(PADS_CTL) | PADS_CTL_IDDQ_1L;
 	pads_writel(val, PADS_CTL);
@@ -1026,7 +1028,14 @@ static int tegra_pcie_enable_controller(void)
 	/* turn off IDDQ override */
 	val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
 	pads_writel(val, PADS_CTL);
-
+#else
+	/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
+	ret = pcie_phy_pad_enable();
+	if (ret) {
+		pr_err("%s unable to initalize pads\n", __func__);
+		return ret;
+	}
+#endif
 	/* enable TX/RX data */
 	val = pads_readl(PADS_CTL);
 	val |= (PADS_CTL_TX_DATA_EN_1L | PADS_CTL_RX_DATA_EN_1L);
@@ -1058,7 +1067,7 @@ static int tegra_pcie_enable_controller(void)
 	/* Disable all execptions */
 	afi_writel(0, AFI_FPCI_ERROR_MASKS);
 
-	return 0;
+	return ret;
 }
 
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
