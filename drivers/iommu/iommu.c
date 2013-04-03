@@ -832,6 +832,13 @@ int iommu_map(struct iommu_domain *domain, unsigned long iova,
 }
 EXPORT_SYMBOL_GPL(iommu_map);
 
+int iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
+		    struct page **pages, size_t count, int prot)
+{
+	return domain->ops->map_pages(domain, iova, pages, count, prot);
+}
+EXPORT_SYMBOL_GPL(iommu_map_pages);
+
 size_t iommu_unmap(struct iommu_domain *domain, unsigned long iova, size_t size)
 {
 	size_t unmapped_page, unmapped = 0;
