@@ -5802,9 +5802,9 @@ static struct clk_mux_sel *mux_extern_out_list[] = {
 		},						\
 	}
 static struct clk tegra_clk_out_list[] = {
-	CLK_OUT_CLK(1, 12288000),
+	CLK_OUT_CLK(1, 26000000),
 	CLK_OUT_CLK(2, 40800000),
-	CLK_OUT_CLK(3, 12288000),
+	CLK_OUT_CLK(3, 26000000),
 };
 
 /* called after peripheral external clocks are initialized */
