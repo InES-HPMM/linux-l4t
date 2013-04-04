@@ -68,6 +68,7 @@ struct ina3221_data {
 	struct notifier_block nb;
 	struct notifier_block nb2;
 	int shutdown_complete;
+	int is_suspended;
 };
 
 static s32 __locked_power_down_ina3221(struct i2c_client *client)
@@ -427,6 +428,10 @@ static int ina3221_cpufreq_notify(struct notifier_block *nb,
 	struct i2c_client *client = data->client;
 	if (event == CPUFREQ_POSTCHANGE) {
 		mutex_lock(&data->mutex);
+		if (data->is_suspended) {
+			mutex_unlock(&data->mutex);
+			return 0;
+		}
 		cpufreq = ((struct cpufreq_freqs *)hcpu)->new;
 		cpus = num_online_cpus();
 		DEBUG_INA3221(("***INA3221 CPUfreq notified freq:%d cpus:%d\n",
@@ -514,6 +519,7 @@ static int ina3221_probe(struct i2c_client *client,
 
 	data->mode = TRIGGERED;
 	data->shutdown_complete = 0;
+	data->is_suspended = 0;
 	/* reset ina3221 */
 	ret = i2c_smbus_write_word_data(client, INA3221_CONFIG,
 		__constant_cpu_to_be16((INA3221_RESET)));
@@ -581,16 +587,66 @@ static void ina3221_shutdown(struct i2c_client *client)
 	mutex_unlock(&data->mutex);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int ina3221_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	s32 ret = 0;
+	mutex_lock(&data->mutex);
+	ret = __locked_power_down_ina3221(client);
+	if (ret < 0) {
+		dev_err(&client->dev,
+			"INA can't be turned off: 0x%x\n", ret);
+		goto error;
+	}
+	data->mode = TRIGGERED;
+	data->is_suspended = 1;
+error:
+	mutex_unlock(&data->mutex);
+	return ret;
+}
+
+static int ina3221_resume(struct device *dev)
+{
+	int cpufreq, cpus, ret;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina3221_data *data = i2c_get_clientdata(client);
+	mutex_lock(&data->mutex);
+	cpufreq = cpufreq_quick_get(0);
+	cpus = num_online_cpus();
+	ret = __locked_ina3221_switch(data, client, cpus, cpufreq);
+	if (ret < 0)
+		dev_err(&client->dev,
+			"INA can't be turned off/on: 0x%x\n", ret);
+
+	data->is_suspended = 0;
+	mutex_unlock(&data->mutex);
+	return ret;
+}
+#endif
+
 static const struct i2c_device_id ina3221_id[] = {
 	{DRIVER_NAME, 0 },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, ina3221_id);
 
+#ifdef CONFIG_PM_SLEEP
+static const struct dev_pm_ops ina3221_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(ina3221_suspend,
+				ina3221_resume)
+};
+#endif
+
 static struct i2c_driver ina3221_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.driver = {
 		.name	= DRIVER_NAME,
+		.owner = THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
+		.pm = &ina3221_pm_ops,
+#endif
 	},
 	.probe		= ina3221_probe,
 	.remove		= ina3221_remove,
