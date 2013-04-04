@@ -75,6 +75,7 @@
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 
+#include <linux/pasr.h>
 #include <asm/io.h>
 #include <asm/bugs.h>
 #include <asm/setup.h>
@@ -499,6 +500,9 @@ asmlinkage void __init start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
+#ifdef CONFIG_PASR
+	early_pasr_setup();
+#endif
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
@@ -562,6 +566,10 @@ asmlinkage void __init start_kernel(void)
 	local_irq_enable();
 
 	kmem_cache_init_late();
+
+#ifdef CONFIG_PASR
+	late_pasr_setup();
+#endif
 
 	/*
 	 * HACK ALERT! This is early. We're enabling the console before
