@@ -2,6 +2,8 @@
 # Makefile for tegra baseband support.
 #
 
+GCOV_PROFILE := y
+
 subdir-ccflags-y := -Werror
 
 obj-$(CONFIG_TEGRA_USB_MODEM_POWER)    += tegra_usb_modem_power.o
