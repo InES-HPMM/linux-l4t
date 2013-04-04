@@ -304,6 +304,10 @@ struct sdhci_ops {
 	int	(*execute_freq_tuning)(struct sdhci_host *sdhci, u32 opcode);
 	int	(*get_tuning_counter)(struct sdhci_host *sdhci);
 	int	(*sd_error_stats)(struct sdhci_host *host, u32 int_status);
+	int	(*dfs_gov_init)(struct sdhci_host *host);
+	void	(*dfs_gov_exit)(struct sdhci_host *host);
+	unsigned long	(*dfs_gov_get_target_freq)(struct sdhci_host *host,
+		struct devfreq_dev_status *dev_status);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

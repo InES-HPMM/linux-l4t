@@ -2169,6 +2169,40 @@ int sdhci_disable(struct mmc_host *mmc)
 	return 0;
 }
 
+#ifdef CONFIG_MMC_FREQ_SCALING
+/*
+ * Wrapper functions to call any platform specific implementation for
+ * supporting dynamic frequency scaling for SD/MMC devices.
+ */
+static int sdhci_gov_get_target(struct mmc_host *mmc, unsigned long *freq)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops->dfs_gov_get_target_freq)
+		*freq = host->ops->dfs_gov_get_target_freq(host,
+			mmc->devfreq_stats);
+
+	return 0;
+}
+
+static int sdhci_gov_init(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops->dfs_gov_init)
+		return host->ops->dfs_gov_init(host);
+
+	return 0;
+}
+
+static void sdhci_gov_exit(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops->dfs_gov_exit)
+		host->ops->dfs_gov_exit(host);
+}
+#endif
 static const struct mmc_host_ops sdhci_ops = {
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
@@ -2182,6 +2216,11 @@ static const struct mmc_host_ops sdhci_ops = {
 	.execute_tuning			= sdhci_execute_tuning,
 	.card_event			= sdhci_card_event,
 	.card_busy	= sdhci_card_busy,
+#ifdef CONFIG_MMC_FREQ_SCALING
+	.dfs_governor_init		= sdhci_gov_init,
+	.dfs_governor_exit		= sdhci_gov_exit,
+	.dfs_governor_get_target	= sdhci_gov_get_target,
+#endif
 };
 
 /*****************************************************************************\
