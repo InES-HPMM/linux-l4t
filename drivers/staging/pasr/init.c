@@ -156,6 +156,7 @@ static int __init pasr_check_interleave_in_physmem(struct pasr_info *info,
 
 	for (j = 0; j < info->nr_dies; j++) {
 		d = &info->die[j];
+
 		if (is_in_physmem(i->addr1, d))
 			err--;
 		if (is_in_physmem(i->addr1 + i->size - 1, d))
@@ -297,8 +298,9 @@ static void __init pasr_print_map(struct pasr_map *map)
 		pr_info("Die %d:\n", i);
 		for (j = 0; j < die->nr_sections; j++) {
 			struct pasr_section *s = &die->section[j];
-			pr_info("\tSection %d: @ = %#08x, Pair = %s\n"
-					, j, s->start, s->pair ? "Yes" : "No");
+			pr_info("\tSection %d: @ = %#08x, Pair = %s @%#08x\n"
+					, j, s->start, s->pair ? "Yes" : "No",
+					s->pair ? s->pair->start : 0);
 		}
 	}
 out:
