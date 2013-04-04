@@ -609,7 +609,7 @@ emc_wait_audo_cal_onetime:
 	mov	r1, #0
 	str	r1, [r0, #EMC_SELF_REF]	@ take DRAM out of self refresh
 	mov	r1, #1
-#if defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	str	r1, [r0, #EMC_NOP]
 	str	r1, [r0, #EMC_NOP]
 #endif
