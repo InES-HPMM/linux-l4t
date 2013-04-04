@@ -90,6 +90,11 @@ static struct resource max77660_chg_extcon_resources[] = {
 		.start	= MAX77660_IRQ_CHG,
 		.end	= MAX77660_IRQ_CHG,
 		.flags  = IORESOURCE_IRQ,
+	},
+	{
+		.start	= MAX77660_IRQ_GLBL_WDTWRN_CHG,
+		.end	= MAX77660_IRQ_GLBL_WDTWRN_CHG,
+		.flags	= IORESOURCE_IRQ,
 	}
 };
 
