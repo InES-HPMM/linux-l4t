@@ -422,15 +422,6 @@ config BATTERY_GOLDFISH
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
 
-config CHARGER_MAX77660
-	tristate "MAX77660 battery charger support"
-	depends on MFD_MAX77660 && EXTCON
-	help
-	 MAX77660 is a pmic for smartphones and tablets
-	 which supports battery charging feature.
-	 Say Y here to enable battery charging driver support for
-	 maxim MAX77660 chipset.
-
 config CHARGER_EXTCON_MAX77660
 	tristate "MAX77660 battery charger and external connection support"
 	depends on MFD_MAX77660 && EXTCON && REGULATOR
