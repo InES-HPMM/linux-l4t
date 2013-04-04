@@ -1779,7 +1779,7 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	if (mode->hdr_en == 1) {  /* if HDR is enabled */
 		imx135_get_gain_short_reg(reg_list + 5, mode->gain);
 		imx135_get_coarse_time_short_regs(
-			reg_list + 5, mode->coarse_time_short);
+			reg_list + 6, mode->coarse_time_short);
 	}
 
 	err = imx135_write_table(info->i2c_client,
