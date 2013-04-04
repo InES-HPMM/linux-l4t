@@ -552,57 +552,8 @@ powerup_l2_done:
 	ldr	r0, [r4, #PMC_LP_STATE_SCRATCH_REG]
 	mov	r0, r0, lsr #PMC_LP_STATE_BIT_OFFSET
 	and	r0, r0, #PMC_LP_STATE_BIT_MASK
-	cmp	r0, #PMC_LP_STATE_LP1
-	beq	lp1_exit_resume
-
-	/* If we are waking up from LP1BB, see the wake source.
-	 * If it was mem_req=0, then go into LP1.
-	 * Otherwise wake to active.
-	 */
-	ldr	r0, [r4, #PMC_WAKE2_STATUS]
-	tst	r0, #PMC_WAKE2_BB_MEM_REQ
-
-	/* If it isn't mem_req=0, continue with resume, just
-	 * skip self refresh routine
-	 */
+	cmp	r0, #PMC_LP_STATE_LP1BB
 	beq	self_refresh_skip
-
-	/* If it is mem_req=0, check to see if there was another
-	 * wake event, if yes, continue with wake to active
-	 */
-	ldr	r1, [r4, #PMC_WAKE_STATUS]
-
-	/* Mask out other wake events from WAKE2_STATUS */
-	bic	r0, r0, #PMC_WAKE2_BB_MEM_REQ
-	orrs	r1, r1, r0
-
-	/* If there were any other wake events, wake to active */
-	bne	self_refresh_skip
-
-	/* Since the wake was mem_req, we need to enter LP1 */
-	mov32	r5, TEGRA_CLK_RESET_BASE
-	mov32	r6, TEGRA_FLOW_CTRL_BASE
-	mov32	r7, TEGRA_TMRUS_BASE
-
-	/* Write PMC_IPC_CLR[mem_sts] = 1 */
-	ldr     r1, [r4, #PMC_IPC_CLR]
-	orr     r1, r1, #PMC_IPC_CLR_MEM_STS
-	str     r1, [r4, #PMC_IPC_CLR]
-
-	/* Set lp state variable */
-	mov	r0, #PMC_LP_STATE_LP1
-	str	r0, lp_enter_state
-	bl	tegra148_set_lp_state
-
-	/* Set mem_req=1 interrupt */
-	bl	tegra148_set_mem_req_interrupt
-
-	/* Legacy LP1 entry routine */
-	bl	tegra3_sdram_self_refresh
-	bl	tegra3_cpu_clk32k
-	b	tegra3_enter_sleep
-
-lp1_exit_resume:
 #endif
 
 emc_exit_selfrefresh:
