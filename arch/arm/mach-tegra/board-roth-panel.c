@@ -31,6 +31,8 @@
 
 #include <mach/irqs.h>
 #include <mach/dc.h>
+#include <mach/pinmux.h>
+#include <mach/pinmux-t11.h>
 #include <asm/mach-types.h>
 
 #include "board.h"
@@ -690,6 +692,20 @@ static int roth_hdmi_hotplug_init(struct device *dev)
 	return 0;
 }
 
+static void roth_hdmi_hotplug_report(bool state)
+{
+	if (state) {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_PULL_DOWN);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_PULL_DOWN);
+	} else {
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SDA,
+						TEGRA_PUPD_NORMAL);
+		tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_DDC_SCL,
+						TEGRA_PUPD_NORMAL);
+	}
+}
 
 static struct tegra_dc_out roth_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
@@ -708,6 +724,7 @@ static struct tegra_dc_out roth_disp2_out = {
 	.disable	= roth_hdmi_disable,
 	.postsuspend	= roth_hdmi_postsuspend,
 	.hotplug_init	= roth_hdmi_hotplug_init,
+	.hotplug_report = roth_hdmi_hotplug_report,
 };
 
 static struct tegra_fb_data roth_disp1_fb_data = {
