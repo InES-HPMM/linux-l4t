@@ -705,6 +705,37 @@ TRACE_EVENT(nvhost_module_update_rate,
 		__entry->rate)
 );
 
+TRACE_EVENT(nvhost_channel_submit_gpfifo,
+		TP_PROTO(const char *name, u32 hw_chid, u32 num_entries,
+		u32 flags, u32 wait_id, u32 incr_id),
+
+		TP_ARGS(name, hw_chid, num_entries, flags, wait_id, incr_id),
+
+	TP_STRUCT__entry(
+		__field(const char *, name)
+		__field(u32, hw_chid)
+		__field(u32, num_entries)
+		__field(u32, flags)
+		__field(u32, wait_id)
+		__field(u32, incr_id)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->hw_chid = hw_chid;
+		__entry->num_entries = num_entries;
+		__entry->flags = flags;
+		__entry->wait_id = wait_id;
+		__entry->incr_id = incr_id;
+	),
+
+	TP_printk("name=%s, hw_chid=%d, num_entries=%u, flags=%u, wait_id=%d,"
+		" incr_id=%u",
+		__entry->name, __entry->hw_chid, __entry->num_entries,
+		__entry->flags, __entry->wait_id,
+		__entry->incr_id)
+);
+
 #endif /*  _TRACE_NVHOST_H */
 
 /* This part must be outside protection */
