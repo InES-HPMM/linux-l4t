@@ -831,7 +831,7 @@ tegra3_tear_down_core:
 	/* Checking for BB-idle or Paging case */
 	ldr	r0, [r4, #PMC_IPC_STS]
 	tst	r0, #PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON
-	movne	r0, #PMC_LP_STATE_LP1BB
+	bne	lp1bb_entry
 
 	/* Write PMC_IPC_CLR[mem_sts] = 1 */
 	ldr	r1, [r4, #PMC_IPC_CLR]
@@ -843,11 +843,7 @@ tegra3_tear_down_core:
 	bic	r1, #FLOW_IPC_STS_AP2BB_MSC_STS_0
 	str	r1, [r6, #FLOW_IPC_STS]
 
-	cmp	r0, #PMC_LP_STATE_LP1BB
-	bne	tegra3_lp0_tear_down_core
-	ldr	r1, [r4, #PMC_IPC_SET]
-	orr	r1, r1, #PMC_IPC_SET_MEM_STS
-	str	r1, [r4, #PMC_IPC_SET]
+	b	tegra3_lp0_tear_down_core
 
 /* lp1bb_entry
  * Set up mem_req active low to be a wake event.
