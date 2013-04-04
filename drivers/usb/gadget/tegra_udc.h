@@ -453,6 +453,7 @@ struct tegra_udc {
 	u8 device_address;	/* Device USB address */
 	u32 current_limit;
 	spinlock_t lock;
+	struct mutex sync_lock;
 	unsigned softconnect:1;
 	unsigned vbus_active:1;
 	unsigned stopped:1;
