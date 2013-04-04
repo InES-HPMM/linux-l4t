@@ -251,7 +251,7 @@ on = 0x0001 (Default) */
 
 /* general definitions */
 #define TIMEOUT			20	/* ms */
-#define RETRY_CNT		5
+#define RETRY_CNT		1
 #define POLLING_RETRY_CNT	3
 #define A2220_ERROR_CODE	0xffff
 #define A2220_SLEEP		0

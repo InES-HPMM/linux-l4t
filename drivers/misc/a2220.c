@@ -303,13 +303,10 @@ static int hpt_longCmd_execute(unsigned char *i2c_cmds, int size)
 }
 #endif
 
-static ssize_t a2220_bootup_init(struct a2220img *pImg)
+static int a2220_set_boot_mode()
 {
-	struct a2220img *vp = pImg;
-	int rc, pass = 0;
-	int remaining;
+	int rc;
 	int retry = RETRY_CNT;
-	unsigned char *index;
 	char buf[2];
 
 	mdelay(100);
@@ -333,19 +330,39 @@ static ssize_t a2220_bootup_init(struct a2220img *pImg)
 		buf[1] = A2220_msg_BOOT & 0xff;
 		rc = a2220_i2c_write(buf, 2);
 		if (rc < 0) {
-			printk(KERN_ERR "%s: set boot mode error (%d retries left)\n",
+			printk(KERN_ERR "%s: write error (%d retries left)\n",
 			       __func__, retry);
-			continue;
+			if (retry > 0)
+				continue;
+			else
+				return rc;
 		}
 
 		mdelay(1);
 		rc = a2220_i2c_read(buf, 1);
 
 		if (rc < 0) {
-			printk(KERN_ERR "%s: boot mode ack error (%d retries left)\n",
+			printk(KERN_ERR "%s: ack error (%d retries left)\n",
 			       __func__, retry);
 			continue;
 		}
+	}
+
+	return rc;
+}
+
+static ssize_t a2220_bootup_init(struct a2220img *pImg)
+{
+	struct a2220img *vp = pImg;
+	int rc, pass = 0;
+	int remaining;
+	int retry = RETRY_CNT;
+	unsigned char *index;
+	char buf[2];
+
+	mdelay(10);
+
+	while (retry--) {
 		remaining = vp->img_size / 32;
 		index = vp->buf;
 		pr_info("%s: starting to load image (%d passes)...\n",
@@ -1319,6 +1336,13 @@ static int a2220_probe(struct i2c_client *client,
 		goto err_free_gpio_all;
 	}
 
+	/* send boot msg */
+	rc = a2220_set_boot_mode();
+	if (rc < 0) {
+		printk(KERN_ERR "%s: failed %d\n", __func__, rc);
+		goto err_free_gpio_all;
+	}
+
 	/* A2220 firmware download start .. */
 	a2220_ioctl2(A2220_BOOTUP_INIT, 0);
 
@@ -1349,7 +1373,7 @@ static int a2220_probe(struct i2c_client *client,
 	if (pdata->gpio_a2220_micsel)
 		gpio_free(pdata->gpio_a2220_micsel);
  err_free_gpio_clk:
-	if (control_a2220_clk)
+	if (pdata->gpio_a2220_clk)
 		gpio_free(pdata->gpio_a2220_clk);
  err_alloc_data_failed:
 
