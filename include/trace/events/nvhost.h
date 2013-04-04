@@ -900,6 +900,45 @@ TRACE_EVENT(nvhost_gk20a_mmu_fault,
 		      __entry->engine, __entry->client, __entry->fault_type)
 );
 
+DECLARE_EVENT_CLASS(nvhost_map,
+	TP_PROTO(const char *devname, void *handle, int size,
+		dma_addr_t iova),
+
+	TP_ARGS(devname, handle, size, iova),
+
+	TP_STRUCT__entry(
+		__field(const char *, devname)
+		__field(void *, handle)
+		__field(int, size)
+		__field(dma_addr_t, iova)
+	),
+
+	TP_fast_assign(
+		__entry->devname = devname;
+		__entry->handle = handle;
+		__entry->size = size;
+		__entry->iova = iova;
+	),
+
+	TP_printk("dev=%s, handle=%p, size=%d, iova=%08x",
+		__entry->devname, __entry->handle, __entry->size,
+		__entry->iova)
+);
+
+DEFINE_EVENT(nvhost_map, nvhost_nvmap_pin,
+	TP_PROTO(const char *devname, void *handle, int size,
+		dma_addr_t iova),
+
+	TP_ARGS(devname, handle, size, iova)
+);
+
+DEFINE_EVENT(nvhost_map, nvhost_nvmap_unpin,
+	TP_PROTO(const char *devname, void *handle, int size,
+		dma_addr_t iova),
+
+	TP_ARGS(devname, handle, size, iova)
+);
+
 #endif /*  _TRACE_NVHOST_H */
 
 /* This part must be outside protection */
