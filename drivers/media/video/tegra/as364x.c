@@ -496,7 +496,7 @@ static void as364x_config_init(struct as364x_info *info)
 			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
 				sizeof(pcfg_cust->led_config[0]));
 		else
-			dev_warn(info->dev,
+			dev_notice(info->dev,
 				"%s: invalid led config[%d].\n", __func__, i);
 	}
 
@@ -583,7 +583,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	if (pcfg->max_peak_current_mA > pcap->max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
-		dev_warn(info->dev,
+		dev_notice(info->dev,
 			"max_peak_current_mA of %d invalid changing to %d\n",
 			pcfg->max_peak_current_mA, pcap->max_peak_curr_mA);
 		pcfg->max_peak_current_mA = pcap->max_peak_curr_mA;
@@ -608,7 +608,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 
 	if (pcfg->max_sustained_current_mA > pcap->max_assist_curr_mA ||
 		!pcfg->max_sustained_current_mA) {
-		dev_warn(info->dev,
+		dev_notice(info->dev,
 			"max_sustained_current_mA of %d invalid"
 			"changing to %d\n",
 			pcfg->max_sustained_current_mA,
@@ -618,12 +618,12 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	}
 	if ((1000 * pcfg->min_current_mA) < pcap->curr_step_uA) {
 		pcfg->min_current_mA = pcap->curr_step_uA / 1000;
-		dev_warn(info->dev,
+		dev_notice(info->dev,
 			"min_current_mA lower than possible, increasing to %d\n",
 			pcfg->min_current_mA);
 	}
 	if (pcfg->min_current_mA > pcap->max_indicator_curr_mA) {
-		dev_warn(info->dev,
+		dev_notice(info->dev,
 			"min_current_mA of %d higher than possible,"
 			" reducing to %d",
 			pcfg->min_current_mA, pcap->max_indicator_curr_mA);

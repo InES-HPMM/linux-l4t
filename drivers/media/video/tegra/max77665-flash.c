@@ -406,7 +406,7 @@ static void max77665_f_edp_register(struct max77665_f_info *info)
 
 	info->edpc = NULL;
 	if (!edpc->num_states) {
-		dev_warn(info->dev, "%s: NO edp states defined.\n", __func__);
+		dev_notice(info->dev, "%s: NO edp states defined.\n", __func__);
 		return;
 	}
 
@@ -674,7 +674,7 @@ static void max77665_f_update_config(struct max77665_f_info *info)
 			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
 				sizeof(pcfg_cust->led_config[0]));
 		else
-			dev_warn(info->dev,
+			dev_notice(info->dev,
 				"%s: invalid led config[%d].\n", __func__, i);
 	}
 
@@ -814,9 +814,9 @@ static int max77665_f_configure(struct max77665_f_info *info, bool update)
 
 	if (pcfg->max_peak_current_mA > max77665_f_caps.max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
-		dev_warn(info->dev, "invalid max_peak_current_mA: %d,",
+		dev_notice(info->dev, "invalid max_peak_current_mA: %d,",
 				pcfg->max_peak_current_mA);
-		dev_info(info->dev, " changed to %d\n",
+		dev_notice(info->dev, " changed to %d\n",
 				max77665_f_caps.max_peak_curr_mA);
 		pcfg->max_peak_current_mA = max77665_f_caps.max_peak_curr_mA;
 	}
@@ -840,9 +840,9 @@ static int max77665_f_configure(struct max77665_f_info *info, bool update)
 
 	if (pcfg->max_torch_current_mA > max77665_f_caps.max_torch_curr_mA ||
 		!pcfg->max_torch_current_mA) {
-		dev_warn(info->dev, "invalid max_torch_current_mA: %d,",
+		dev_notice(info->dev, "invalid max_torch_current_mA: %d,",
 				pcfg->max_torch_current_mA);
-		dev_info(info->dev, " changed to %d\n",
+		dev_notice(info->dev, " changed to %d\n",
 				max77665_f_caps.max_torch_curr_mA);
 		pcfg->max_torch_current_mA =
 			max77665_f_caps.max_torch_curr_mA;
@@ -1577,7 +1577,7 @@ static int max77665_f_probe(struct platform_device *pdev)
 		info->pdata = pdev->dev.platform_data;
 		dev_dbg(&pdev->dev, "pdata: %s\n", info->pdata->dev_name);
 	} else
-		dev_warn(&pdev->dev, "%s NO platform data\n", __func__);
+		dev_notice(&pdev->dev, "%s NO platform data\n", __func__);
 
 	max77665_f_caps_layout(info);
 

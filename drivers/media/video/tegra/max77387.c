@@ -402,7 +402,7 @@ static void max77387_edp_register(struct max77387_info *info)
 
 	info->edpc = NULL;
 	if (!edpc->num_states) {
-		dev_warn(info->dev, "%s: NO edp states defined.\n", __func__);
+		dev_notice(info->dev, "%s: NO edp states defined.\n", __func__);
 		return;
 	}
 
@@ -727,7 +727,7 @@ static void max77387_update_config(struct max77387_info *info)
 			memcpy(&pcfg->led_config[i], &pcfg_cust->led_config[i],
 				sizeof(pcfg_cust->led_config[0]));
 		else
-			dev_warn(info->dev,
+			dev_notice(info->dev,
 				"%s: invalid led config[%d].\n", __func__, i);
 	}
 
@@ -883,9 +883,9 @@ static int max77387_configure(struct max77387_info *info, bool update)
 
 	if (pcfg->max_peak_current_mA > max77387_caps.max_peak_curr_mA ||
 		!pcfg->max_peak_current_mA) {
-		dev_warn(info->dev, "invalid max_peak_current_mA: %d,",
+		dev_notice(info->dev, "invalid max_peak_current_mA: %d,",
 				pcfg->max_peak_current_mA);
-		dev_info(info->dev, " changed to %d\n",
+		dev_notice(info->dev, " changed to %d\n",
 				max77387_caps.max_peak_curr_mA);
 		pcfg->max_peak_current_mA = max77387_caps.max_peak_curr_mA;
 	}
@@ -893,7 +893,7 @@ static int max77387_configure(struct max77387_info *info, bool update)
 	pst->tx1_mask = 0;
 	if (pcfg->tx1_mask_mA) {
 		if (pcfg->tx1_mask_mA > 1000) {
-			dev_warn(info->dev, "%s: tx1_mask OUT OF RANGE. %d\n",
+			dev_notice(info->dev, "%s: tx1_mask OUT OF RANGE. %d\n",
 				__func__, pcfg->tx1_mask_mA);
 			pcfg->tx1_mask_mA = 1000;
 		}
@@ -904,7 +904,7 @@ static int max77387_configure(struct max77387_info *info, bool update)
 	pst->tx1_mask = 0;
 	if (pcfg->tx2_mask_mA) {
 		if (pcfg->tx2_mask_mA > 1000) {
-			dev_warn(info->dev, "%s: tx2_mask OUT OF RANGE. %d\n",
+			dev_notice(info->dev, "%s: tx2_mask OUT OF RANGE. %d\n",
 				__func__, pcfg->tx2_mask_mA);
 			pcfg->tx2_mask_mA = 1000;
 		}
@@ -913,12 +913,12 @@ static int max77387_configure(struct max77387_info *info, bool update)
 	}
 
 	if (pcfg->flash_rampup_uS > 32896) {
-		dev_warn(info->dev, "%s: flash ramp up OUT OF RANGE. %d\n",
+		dev_notice(info->dev, "%s: flash ramp up OUT OF RANGE. %d\n",
 				__func__, pcfg->flash_rampup_uS);
 		pcfg->flash_rampup_uS = 32896;
 	}
 	if (pcfg->flash_rampdn_uS > 32896) {
-		dev_warn(info->dev, "%s: flash ramp up OUT OF RANGE. %d\n",
+		dev_notice(info->dev, "%s: flash ramp up OUT OF RANGE. %d\n",
 				__func__, pcfg->flash_rampdn_uS);
 		pcfg->flash_rampdn_uS = 32896;
 	}
@@ -926,12 +926,12 @@ static int max77387_configure(struct max77387_info *info, bool update)
 				pcfg->flash_rampdn_uS / 384;
 
 	if (pcfg->torch_rampup_uS > 32896) {
-		dev_warn(info->dev, "%s: torch ramp up OUT OF RANGE. %d\n",
+		dev_notice(info->dev, "%s: torch ramp up OUT OF RANGE. %d\n",
 				__func__, pcfg->torch_rampup_uS);
 		pcfg->torch_rampup_uS = 32896;
 	}
 	if (pcfg->torch_rampdn_uS > 32896) {
-		dev_warn(info->dev, "%s: torch ramp up OUT OF RANGE. %d\n",
+		dev_notice(info->dev, "%s: torch ramp up OUT OF RANGE. %d\n",
 				__func__, pcfg->torch_rampdn_uS);
 		pcfg->torch_rampdn_uS = 32896;
 	}
@@ -957,9 +957,9 @@ static int max77387_configure(struct max77387_info *info, bool update)
 
 	if (pcfg->max_torch_current_mA > max77387_caps.max_torch_curr_mA ||
 		!pcfg->max_torch_current_mA) {
-		dev_warn(info->dev, "invalid max_torch_current_mA: %d,",
+		dev_notice(info->dev, "invalid max_torch_current_mA: %d,",
 				pcfg->max_torch_current_mA);
-		dev_info(info->dev, " changed to %d\n",
+		dev_notice(info->dev, " changed to %d\n",
 				max77387_caps.max_torch_curr_mA);
 		pcfg->max_torch_current_mA =
 			max77387_caps.max_torch_curr_mA;
@@ -1717,7 +1717,7 @@ static int max77387_probe(
 		info->pdata = client->dev.platform_data;
 		dev_dbg(&client->dev, "pdata: %s\n", info->pdata->dev_name);
 	} else
-		dev_warn(&client->dev, "%s NO platform data\n", __func__);
+		dev_notice(&client->dev, "%s NO platform data\n", __func__);
 
 	max77387_power_get(info);
 

@@ -1338,7 +1338,7 @@ static void imx091_edp_register(struct imx091_info *info)
 
 	info->edpc = NULL;
 	if (!edpc->num_states) {
-		dev_info(&info->i2c_client->dev,
+		dev_notice(&info->i2c_client->dev,
 			"%s: NO edp states defined.\n", __func__);
 		return;
 	}
