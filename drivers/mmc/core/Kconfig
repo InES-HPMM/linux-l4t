@@ -41,3 +41,13 @@ config MMC_PARANOID_SD_INIT
 	  about re-trying SD init requests. This can be a useful
 	  work-around for buggy controllers and hardware. Enable
 	  if you are experiencing issues with SD detection.
+
+config MMC_FREQ_SCALING
+	bool "Enable dynamic frequency scaling for SD/MMC/SDIO devices"
+	depends on EXPERIMENTAL
+	default N
+	help
+	  If you say Y here, the MMC layer will vary the SD/MMC/SDIO
+	  device frequency dynamically. Enable this config only if
+	  there is a custom implementation to determine the frequency
+	  using the device stats.

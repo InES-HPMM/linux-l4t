@@ -1,6 +1,7 @@
 #
 # Makefile for the kernel mmc core.
 #
+ccflags-y := -Idrivers/devfreq
 
 obj-$(CONFIG_MMC)		+= mmc_core.o
 mmc_core-y			:= core.o bus.o host.o \
