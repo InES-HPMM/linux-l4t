@@ -40,6 +40,12 @@
 #define PLUTO_SD_CD	TEGRA_GPIO_PV2
 #define WLAN_PWR_STR	"wlan_power"
 #define WLAN_WOW_STR	"bcmsdh_sdmmc"
+#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+/* Wifi power levels */
+#define ON  1080 /* 1080 mW */
+#define OFF 0
+static unsigned int wifi_states[] = {ON, OFF};
+#endif
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
