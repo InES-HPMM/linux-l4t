@@ -305,11 +305,11 @@ int tegra30_break_voice_call_connections(struct codec_config *codec_info,
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 int t14x_make_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
+				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec);
 
 int t14x_break_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
+				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec);
 #endif
 

@@ -83,6 +83,7 @@ struct tegra_aic325x {
 	int is_call_mode;
 	int is_device_bt;
 	struct codec_config codec_info[NUM_I2S_DEVICES];
+	struct ahub_bbc1_config ahub_bbc1_info;
 	struct snd_soc_card *pcard;
 	struct regulator *dmic_reg;
 	struct regulator *dmic_1v8_reg;
@@ -158,7 +159,7 @@ static int tegra_aic325x_call_mode_put(struct snd_kcontrol *kcontrol,
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 		t14x_make_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 0);
+			&machine->ahub_bbc1_info, 0);
 #else
 		tegra30_make_voice_call_connections(
 			&machine->codec_info[codec_index],
@@ -168,7 +169,7 @@ static int tegra_aic325x_call_mode_put(struct snd_kcontrol *kcontrol,
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 		t14x_break_voice_call_connections(
 			&machine->codec_info[codec_index],
-			&machine->codec_info[BASEBAND], 0);
+			&machine->ahub_bbc1_info, 0);
 #else
 		tegra30_break_voice_call_connections(
 			&machine->codec_info[codec_index],
@@ -1105,6 +1106,19 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 			pdata->i2s_param[i].i2s_mode;
 		machine->codec_info[i].bit_clk =
 			pdata->i2s_param[i].bit_clk;
+	}
+
+	if (pdata->ahub_bbc1_param) {
+		machine->ahub_bbc1_info.port_id =
+			pdata->ahub_bbc1_param->port_id;
+		machine->ahub_bbc1_info.sample_size =
+			pdata->ahub_bbc1_param->sample_size;
+		machine->ahub_bbc1_info.rate =
+			pdata->ahub_bbc1_param->rate;
+		machine->ahub_bbc1_info.channels =
+			pdata->ahub_bbc1_param->channels;
+		machine->ahub_bbc1_info.bit_clk =
+			pdata->ahub_bbc1_param->bit_clk;
 	}
 
 	tegra_aic325x_dai[DAI_LINK_HIFI].cpu_dai_name =

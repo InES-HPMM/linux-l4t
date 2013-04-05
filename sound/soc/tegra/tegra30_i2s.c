@@ -50,6 +50,10 @@
 
 static struct tegra30_i2s  i2scont[TEGRA30_NR_I2S_IFC];
 
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+static struct tegra30_i2s bbc1cont;
+#endif
+
 static int tegra30_i2s_runtime_suspend(struct device *dev)
 {
 	struct tegra30_i2s *i2s = dev_get_drvdata(dev);
@@ -1099,14 +1103,11 @@ static int configure_dam(struct tegra30_i2s  *i2s, int out_channel,
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 int t14x_make_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
+				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s  *codec_i2s;
-	struct tegra30_i2s  *bb_i2s;
-
-	codec_i2s = &i2scont[codec_info->i2s_id];
-	bb_i2s = &i2scont[bb_info->i2s_id];
+	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
+	struct tegra30_i2s *bb_i2s = &bbc1cont;
 
 	/* increment the codec i2s playback ref count */
 	codec_i2s->playback_ref_count++;
@@ -1125,21 +1126,21 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0+1);
 
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
-			    bb_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
+			    bb_info->port_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
 			    codec_info->i2s_id);
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    codec_info->i2s_id, TEGRA30_AHUB_TXCIF_I2S0_TX0 +
-			    bb_info->i2s_id);
+			    bb_info->port_id);
 	} else {
 
 		/*configure codec dam*/
 		configure_dam(codec_i2s, codec_info->channels,
 		   codec_info->rate, codec_info->bitsize, bb_info->channels,
-		   bb_info->rate, bb_info->bitsize);
+		   bb_info->rate, bb_info->sample_size);
 
 		/*configure bb dam*/
 		configure_dam(bb_i2s, bb_info->channels,
-			bb_info->rate, bb_info->bitsize, codec_info->channels,
+			bb_info->rate, bb_info->sample_size, codec_info->channels,
 			codec_info->rate, codec_info->bitsize);
 
 		/*make ahub connections*/
@@ -1175,15 +1176,12 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 }
 
 int t14x_break_voice_call_connections(struct codec_config *codec_info,
-				struct codec_config *bb_info,
+				struct ahub_bbc1_config *bb_info,
 				int uses_voice_codec)
 {
-	struct tegra30_i2s  *codec_i2s;
-	struct tegra30_i2s  *bb_i2s;
+	struct tegra30_i2s *codec_i2s = &i2scont[codec_info->i2s_id];
+	struct tegra30_i2s *bb_i2s = &bbc1cont;
 	int dcnt = 10;
-
-	codec_i2s = &i2scont[codec_info->i2s_id];
-	bb_i2s = &i2scont[bb_info->i2s_id];
 
 	/*Disable Codec I2S RX (TX to ahub)*/
 	if (codec_i2s->capture_ref_count == 1)
@@ -1209,7 +1207,7 @@ int t14x_break_voice_call_connections(struct codec_config *codec_info,
 
 	if (uses_voice_codec) {
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
-			    bb_info->i2s_id);
+			    bb_info->port_id);
 		tegra30_ahub_unset_rx_cif_source(TEGRA30_AHUB_RXCIF_I2S0_RX0 +
 			    codec_info->i2s_id);
 	} else {
