@@ -36,6 +36,14 @@ struct i2s_config {
 	int bit_clk;
 };
 
+struct ahub_bbc1_config {
+	int port_id;
+	int sample_size;
+	int rate;
+	int channels;
+	int bit_clk;
+};
+
 enum tegra_speaker_edp_states {
 	TEGRA_SPK_EDP_NEG_1,
 	TEGRA_SPK_EDP_ZERO,
@@ -59,4 +67,5 @@ struct tegra_asoc_platform_data {
 	bool edp_support;
 	unsigned int edp_states[TEGRA_SPK_EDP_NUM_STATES];
 	struct i2s_config i2s_param[NUM_I2S_DEVICES];
+	struct ahub_bbc1_config *ahub_bbc1_param;
 };
