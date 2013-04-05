@@ -127,13 +127,6 @@ static inline void ar0833_msleep(u32 t)
 	usleep_range(t*1000, t*1000 + 500);
 }
 
-static inline void ar0833_get_frame_length_regs(struct ar0833_reg *regs,
-						u32 frame_length)
-{
-	regs->addr = 0x0340;
-	regs->val = frame_length & 0xFFFF;
-}
-
 static inline void ar0833_get_coarse_time_regs(struct ar0833_reg *regs,
 						u32 coarse_time)
 {
@@ -389,32 +382,6 @@ static int ar0833_write_table(
 	return 0;
 }
 
-static int ar0833_set_frame_length(struct ar0833_info *info, u32 frame_length,
-					bool group_hold)
-{
-	struct ar0833_reg reg_list;
-	int ret;
-
-	if (group_hold) {
-		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x1);
-		if (ret)
-			return ret;
-	}
-
-	ar0833_get_frame_length_regs(&reg_list, frame_length);
-	ret = ar0833_write_reg16(info->i2c_client, reg_list.addr,
-		reg_list.val);
-	if (ret)
-		return ret;
-
-	if (group_hold) {
-		ret = ar0833_write_reg16(info->i2c_client, 0x0104, 0x0);
-		if (ret)
-			return ret;
-	}
-	return ret;
-}
-
 static int ar0833_set_coarse_time(struct ar0833_info *info, u32 coarse_time,
 					bool group_hold)
 {
@@ -520,9 +487,7 @@ ar0833_set_group_hold(struct ar0833_info *info, struct ar0833_ae *ae)
 		count++;
 	if (ae->coarse_time_enable)
 		count++;
-	if (ae->frame_length_enable)
-		count++;
-	if (count >= 2)
+	if (count >= 1)
 		groupHoldEnabled = true;
 
 	if (groupHoldEnabled) {
@@ -535,8 +500,6 @@ ar0833_set_group_hold(struct ar0833_info *info, struct ar0833_ae *ae)
 		ar0833_set_gain(info, ae->gain, false);
 	if (ae->coarse_time_enable)
 		ar0833_set_hdr_coarse_time(info, &values, false);
-	if (ae->frame_length_enable)
-		ar0833_set_frame_length(info, ae->frame_length, false);
 
 	if (groupHoldEnabled) {
 		ret = ar0833_write_reg16(info->i2c_client, 0x104, 0x0);
@@ -1062,15 +1025,14 @@ static int ar0833_set_mode(struct ar0833_info *info, struct ar0833_mode *mode)
 	memset(reg_list, 0, sizeof(reg_list));
 	/* get a list of override regs for the asking frame length, */
 	/* coarse integration time, and gain.	*/
-	ar0833_get_frame_length_regs(reg_list, mode->frame_length);
-	ar0833_get_coarse_time_regs(reg_list + 1, mode->coarse_time);
-	ar0833_get_gain_reg(reg_list + 2, mode->gain);
+	ar0833_get_coarse_time_regs(reg_list, mode->coarse_time);
+	ar0833_get_gain_reg(reg_list + 1, mode->gain);
 	if (mode->hdr_en == 1)  /* if HDR is enabled */
 		ar0833_get_coarse_time_short_regs(
-			reg_list + 3, mode->coarse_time_short);
+			reg_list + 2, mode->coarse_time_short);
 
 	err = ar0833_write_table(
-		info, sensor_mode->mode_tbl, reg_list, mode->hdr_en ? 4 : 3);
+		info, sensor_mode->mode_tbl, reg_list, mode->hdr_en ? 3 : 2);
 	if (err)
 		return err;
 
@@ -1106,7 +1068,8 @@ static long ar0833_ioctl(struct file *file,
 	case AR0833_IOCTL_SET_FRAME_LENGTH:
 		dev_dbg(&info->i2c_client->dev,
 			"AR0833_IOCTL_SET_FRAME_LENGTH %x\n", (u32)arg);
-		err = ar0833_set_frame_length(info, (u32)arg, true);
+		/* obsolete. we should not update frame length,
+		   it is done by sensor automatically */
 		break;
 	case AR0833_IOCTL_SET_COARSE_TIME:
 		dev_dbg(&info->i2c_client->dev,
