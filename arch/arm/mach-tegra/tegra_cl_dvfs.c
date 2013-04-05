@@ -137,7 +137,7 @@
 #define CL_DVFS_OUTPUT_RAMP_DELAY	100
 #define CL_DVFS_TUNE_HIGH_DELAY		2000
 
-#define CL_DVFS_TUNE_HIGH_MARGIN_STEPS	2
+#define CL_DVFS_TUNE_HIGH_MARGIN_MV	20
 
 #define CL_DVFS_DYNAMIC_OUTPUT_CFG	0
 
@@ -778,14 +778,14 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
 	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
 		u8 out_min = find_mv_out_cap(cld, mv);
-		if ((out_min + 2) < cld->num_voltages) {
-			u8 out_start = out_min + CL_DVFS_TUNE_HIGH_MARGIN_STEPS;
-			if (out_start < cld->num_voltages) {
-				cld->tune_high_out_min = out_min;
-				cld->tune_high_out_start = out_start;
-				if (cld->minimax_output <= out_min)
-					cld->minimax_output = out_min + 1;
-			}
+		u8 out_start = find_mv_out_cap(
+			cld, mv + CL_DVFS_TUNE_HIGH_MARGIN_MV);
+		out_start = max(out_start, (u8)(out_min + 1));
+		if ((out_start + 1) < cld->num_voltages) {
+			cld->tune_high_out_min = out_min;
+			cld->tune_high_out_start = out_start;
+			if (cld->minimax_output <= out_start)
+				cld->minimax_output = out_start + 1;
 		}
 	}
 }
