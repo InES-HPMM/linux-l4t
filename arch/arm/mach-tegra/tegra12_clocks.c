@@ -1916,6 +1916,12 @@ static int tegra12_pll_clk_enable(struct clk *c)
 	pr_debug("%s on clock %s\n", __func__, c->name);
 
 #if USE_PLL_LOCK_BITS
+	/* toggle lock enable bit to reset lock detection circuit (couple
+	   register reads provide enough duration for reset pulse) */
+	val = clk_readl(c->reg + PLL_MISC(c));
+	val &= ~PLL_MISC_LOCK_ENABLE(c);
+	clk_writel(val, c->reg + PLL_MISC(c));
+	val = clk_readl(c->reg + PLL_MISC(c));
 	val = clk_readl(c->reg + PLL_MISC(c));
 	val |= PLL_MISC_LOCK_ENABLE(c);
 	clk_writel(val, c->reg + PLL_MISC(c));
