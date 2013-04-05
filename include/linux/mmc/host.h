@@ -1,6 +1,8 @@
 /*
  *  linux/include/linux/mmc/host.h
  *
+ *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -20,6 +22,12 @@
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
+
+enum sd_edp_states {
+	SD_EDP_HIGH,
+	SD_EDP_LOW,
+	SD_EDP_NUM_STATES,
+};
 
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
