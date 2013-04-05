@@ -569,8 +569,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	 *  - at least specified time after the last calibration attempt
 	 */
 	if ((cld->mode != TEGRA_CL_DVFS_CLOSED_LOOP) ||
-	    ((cld->last_req.scale == (SCALE_MAX - 1)) &&
-	     (cld->last_req.cap > out_min)))
+	    (cld->last_req.rate > cld->dvco_rate_min))
 		return;
 
 	now = ktime_get();
