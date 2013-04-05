@@ -187,6 +187,7 @@ u32 tegra_uart_config[4] = {
 
 
 #define NEVER_RESET 0
+static DEFINE_SPINLOCK(ahb_lock);
 
 void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 {
@@ -196,6 +197,7 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 	/* Read and check if write is successful,
 	 * if val doesn't match with read, retry write.
 	 */
+	spin_lock(&ahb_lock);
 	do {
 		writel(val, reg);
 		check = readl(reg);
@@ -204,6 +206,7 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 		else
 			pr_err("AHB register access fail for reg\n");
 	} while (--retry);
+	spin_unlock(&ahb_lock);
 }
 
 void tegra_assert_system_reset(char mode, const char *cmd)
