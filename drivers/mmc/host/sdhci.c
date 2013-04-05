@@ -2,6 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
+ *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +23,7 @@
 #include <linux/scatterlist.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
+#include <linux/platform_device.h>
 
 #include <linux/leds.h>
 
@@ -29,6 +31,8 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/slot-gpio.h>
+
+#include <linux/edp.h>
 
 #include "sdhci.h"
 
@@ -2143,6 +2147,9 @@ static void sdhci_card_event(struct mmc_host *mmc)
 int sdhci_enable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	unsigned int approved;
+	int ret;
+	struct platform_device *pdev = to_platform_device(mmc_dev(mmc));
 
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
@@ -2153,12 +2160,21 @@ int sdhci_enable(struct mmc_host *mmc)
 		sdhci_set_clock(host, mmc->ios.clock);
 	}
 
+	if (host->sd_edp_client) {
+		ret = edp_update_client_request(host->sd_edp_client,
+				SD_EDP_HIGH, &approved);
+		if (ret)
+			dev_err(&pdev->dev, "Unable to set SD_EDP_HIGH state\n");
+	}
+
 	return 0;
 }
 
 int sdhci_disable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	int ret;
+	struct platform_device *pdev = to_platform_device(mmc_dev(mmc));
 
 	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
 		return 0;
@@ -2166,6 +2182,13 @@ int sdhci_disable(struct mmc_host *mmc)
 	sdhci_set_clock(host, 0);
 	if (host->ops->set_clock)
 		host->ops->set_clock(host, 0);
+
+	if (host->sd_edp_client) {
+		ret = edp_update_client_request(host->sd_edp_client,
+				SD_EDP_LOW, NULL);
+		if (ret)
+			dev_err(&pdev->dev, "Unable to set SD_EDP_LOW state\n");
+	}
 
 	return 0;
 }
@@ -2911,6 +2934,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	u32 max_current_caps;
 	unsigned int ocr_avail;
 	int ret;
+	struct edp_manager *battery_manager = NULL;
+	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
 
 	WARN_ON(host == NULL);
 	if (host == NULL)
@@ -3374,6 +3399,51 @@ int sdhci_add_host(struct sdhci_host *host)
 	}
 
 	sdhci_init(host, 0);
+
+	if (host->edp_support == true) {
+		battery_manager = edp_get_manager("battery");
+		if (!battery_manager)
+			dev_err(&pdev->dev, "unable to get edp manager\n");
+		else {
+			host->sd_edp_client = devm_kzalloc(&pdev->dev,
+					sizeof(struct edp_client), GFP_KERNEL);
+			if (IS_ERR_OR_NULL(host->sd_edp_client)) {
+				dev_err(&pdev->dev,
+					"could not allocate edp client\n");
+				host->sd_edp_client = NULL;
+			}
+
+			strncpy(host->sd_edp_client->name,
+				dev_name(mmc_dev(mmc)), EDP_NAME_LEN-1);
+			host->sd_edp_client->name[EDP_NAME_LEN-1] = '\0';
+			host->sd_edp_client->states = host->edp_states;
+			host->sd_edp_client->num_states = SD_EDP_NUM_STATES;
+			host->sd_edp_client->e0_index = SD_EDP_HIGH;
+			host->sd_edp_client->priority = EDP_MAX_PRIO + 2;
+
+			ret = edp_register_client(battery_manager,
+				host->sd_edp_client);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"unable to register edp client\n");
+			} else {
+				pr_info("%s: edp client registration" \
+					" successful.\n",
+					dev_name(mmc_dev(mmc)));
+				ret = edp_update_client_request(
+						host->sd_edp_client,
+						SD_EDP_LOW, NULL);
+				if (ret) {
+					dev_err(&pdev->dev,
+						"Unable to set E0 EDP state\n");
+					edp_unregister_client(
+							host->sd_edp_client);
+					devm_kfree(&pdev->dev,
+							host->sd_edp_client);
+				}
+			}
+		}
+	}
 
 #ifdef CONFIG_MMC_DEBUG
 	sdhci_dumpregs(host);
