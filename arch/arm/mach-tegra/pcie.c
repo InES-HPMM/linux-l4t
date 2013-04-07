@@ -1439,14 +1439,24 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 }
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
-static void tegra_pcie_fpga_phy_init(void)
+static int tegra_pcie_fpga_phy_init(void)
 {
+#define CLK_RST_BOND_OUT_REG		0x60006078
+#define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
+	int val = 0;
+
+	val = readl(IO_ADDRESS(CLK_RST_BOND_OUT_REG));
+	/* return if current netlist does not contain PCIE */
+	if (val & CLK_RST_BOND_OUT_REG_PCIE)
+		return -ENODEV;
+
 	/* Do reset for FPGA pcie phy */
 	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
 	udelay(10);
 	afi_writel(AFI_WR_SCRATCH_0_DEFAULT_VAL, AFI_WR_SCRATCH_0);
 	udelay(10);
 	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+	return 0;
 }
 #endif
 
@@ -1542,7 +1552,9 @@ static int __init tegra_pcie_init(void)
 		return err;
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	tegra_pcie_fpga_phy_init();
+	err = tegra_pcie_fpga_phy_init();
+	if (err)
+		return err;
 #endif
 	err = tegra_pcie_enable_controller();
 	if (err)
