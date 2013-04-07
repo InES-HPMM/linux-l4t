@@ -46,6 +46,10 @@ static bool emc_enable;
 module_param(emc_enable, bool, 0644);
 
 u8 tegra_emc_bw_efficiency = 100;
+static struct emc_iso_usage tegra14_emc_iso_usage[] = {
+	{ BIT(EMC_USER_DC),			80 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
+};
 
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
@@ -1081,7 +1085,13 @@ static struct platform_driver tegra14_emc_driver = {
 
 int __init tegra14_emc_init(void)
 {
-	return platform_driver_register(&tegra14_emc_driver);
+	int ret = platform_driver_register(&tegra14_emc_driver);
+	if (!ret) {
+		/* FIXME: set monitor boot rate */
+		tegra_emc_iso_usage_table_init(tegra14_emc_iso_usage,
+			ARRAY_SIZE(tegra14_emc_iso_usage));
+	}
+	return ret;
 }
 
 void tegra_emc_timing_invalidate(void)
@@ -1366,6 +1376,9 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("dsr_override", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &dsr_override_fops))
+		goto err_out;
+
+	if (tegra_emc_iso_usage_debugfs_init(emc_debugfs_root))
 		goto err_out;
 
 	return 0;
