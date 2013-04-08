@@ -223,15 +223,6 @@ static int __devinit palmas_extcon_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = request_threaded_irq(palma_econ->id_irq, NULL,
-		palmas_extcon_irq, IRQF_ONESHOT | IRQF_EARLY_RESUME,
-		palma_econ->id_irq_name, palma_econ);
-	if (ret < 0) {
-		dev_err(palma_econ->dev, "request irq %d failed: %d\n",
-			palma_econ->id_irq, ret);
-		goto out_free_vbus;
-	}
-
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 out_free_vbus:
