@@ -115,7 +115,7 @@ ENTRY(tegra_resume)
 	str	r1, [r0]
 #endif /* CONFIG_HAVE_ARM_SCU */
 
-#ifdef CONFIG_TEGRA_USE_SECURE_KERNEL
+#ifdef CONFIG_TRUSTED_FOUNDATIONS
 #ifndef CONFIG_ARCH_TEGRA_11x_SOC
 	mov32	r1, TEGRA_TMRUS_BASE
 	ldr	r0, [r1]
@@ -131,7 +131,7 @@ ENTRY(tegra_resume)
 	adr	r1, tegra_resume_smc_exit_time
 	str	r0, [r1]
 #endif /* !CONFIG_ARCH_TEGRA_11x_SOC */
-#endif /* CONFIG_TEGRA_USE_SECURE_KERNEL */
+#endif /* CONFIG_TRUSTED_FOUNDATIONS */
 
 #ifdef CONFIG_CACHE_L2X0
 #if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL) && \
