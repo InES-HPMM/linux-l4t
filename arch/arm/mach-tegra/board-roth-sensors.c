@@ -153,7 +153,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 		/* Thermal Throttling */
 		[0] = {
 			.cdev_type = "tegra-balanced",
-			.trip_temp = 86000,
+			.trip_temp = 80000,
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = THERMAL_NO_LIMIT,
 			.lower = THERMAL_NO_LIMIT,
@@ -161,7 +161,7 @@ static struct nct1008_platform_data roth_nct1008_pdata = {
 		},
 		[1] = {
 			.cdev_type = "tegra-hard",
-			.trip_temp = 89000, /* shutdown_ext_limit - 2C */
+			.trip_temp = 86000, /* shutdown_ext_limit - 2C */
 			.trip_type = THERMAL_TRIP_PASSIVE,
 			.upper = 1,
 			.lower = 1,
@@ -510,9 +510,9 @@ static struct therm_fan_est_data fan_est_data_p2560 = {
 			},
 	},
 	.cdev_type = "pwm-fan",
-	.active_trip_temps = {0, 72000, 83000, 120000, 130000,
+	.active_trip_temps = {0, 47000, 55000, 67000, 103000,
 				140000, 150000, 160000, 170000, 180000},
-	.active_hysteresis = {0, 10000, 6000, 0, 0, 0, 0, 0, 0, 0},
+	.active_hysteresis = {0, 12000, 7000, 10000, 0, 0, 0, 0, 0, 0},
 };
 
 static struct platform_device roth_fan_therm_est_device_p2560 = {
