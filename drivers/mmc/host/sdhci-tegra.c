@@ -563,8 +563,10 @@ static void tegra_sdhci_clock_set_parent(struct sdhci_host *host,
 	unsigned long pll_p_freq;
 	int rc;
 
-	pll_c_freq = get_nearest_clock_freq(pll_c_rate, desired_rate);
-	pll_p_freq = get_nearest_clock_freq(pll_p_rate, desired_rate);
+	pll_c_freq = (pll_c_rate >= desired_rate) ?
+		get_nearest_clock_freq(pll_c_rate, desired_rate) : pll_c_rate;
+	pll_p_freq = (pll_p_rate >= desired_rate) ?
+		get_nearest_clock_freq(pll_p_rate, desired_rate) : pll_p_rate;
 
 	if (pll_c_freq > pll_p_freq) {
 		if (!tegra_host->is_parent_pllc) {
