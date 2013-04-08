@@ -492,7 +492,8 @@ static int max77660_regulator_set_mode(struct regulator_dev *rdev,
 	u8 val = 0;
 	int ret;
 
-	if (mode == REGULATOR_MODE_NORMAL)
+	if ((mode == REGULATOR_MODE_NORMAL) ||
+			(mode == REGULATOR_MODE_FAST))
 		power_mode = (pdata->flags & GLPM_ENABLE) ?
 			     POWER_MODE_GLPM : POWER_MODE_NORMAL;
 	else if (mode == REGULATOR_MODE_STANDBY) {
