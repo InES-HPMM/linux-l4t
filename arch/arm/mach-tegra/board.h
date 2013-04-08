@@ -99,10 +99,10 @@ void __init tegra_release_bootloader_fb(void);
 void __init tegra_protected_aperture_init(unsigned long aperture);
 int  __init tegra_init_board_info(void);
 void __tegra_move_framebuffer(struct platform_device *pdev,
-			      unsigned long to, unsigned long from,
-			      unsigned long size);
-static inline void tegra_move_framebuffer(unsigned long to, unsigned long from,
-					  unsigned long size)
+			      phys_addr_t to, phys_addr_t from,
+			      size_t size);
+static inline void tegra_move_framebuffer(phys_addr_t to, phys_addr_t from,
+					  size_t size)
 {
 	__tegra_move_framebuffer(NULL, to, from, size);
 }

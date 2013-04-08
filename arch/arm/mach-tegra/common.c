@@ -1588,13 +1588,14 @@ void __init tegra_protected_aperture_init(unsigned long aperture)
  * the memory map.
  */
 void __tegra_move_framebuffer(struct platform_device *pdev,
-	unsigned long to, unsigned long from,
-	unsigned long size)
+	phys_addr_t to, phys_addr_t from,
+	size_t size)
 {
 	struct page *page;
 	void __iomem *to_io;
 	void *from_virt;
-	unsigned long i, addr[] = { to, from, };
+	unsigned long i;
+	phys_addr_t addr[] = { to, from, };
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
