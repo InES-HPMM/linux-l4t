@@ -1283,9 +1283,19 @@ static const struct tegra_dma_chip_data tegra148_dma_chip_data = {
 	.support_separate_wcount_reg = true,
 };
 
+static const struct tegra_dma_chip_data tegra124_dma_chip_data = {
+        .nr_channels            = 32,
+        .channel_reg_size       = 0x40,
+        .max_dma_count          = 1024UL * 64,
+        .support_channel_pause  = true,
+        .support_separate_wcount_reg = true,
+};
 
 static const struct of_device_id tegra_dma_of_match[] = {
 	{
+		.compatible = "nvidia,tegra124-apbdma",
+		.data = &tegra124_dma_chip_data,
+	}, {
 		.compatible = "nvidia,tegra148-apbdma",
 		.data = &tegra148_dma_chip_data,
 	}, {
@@ -1302,6 +1312,29 @@ static const struct of_device_id tegra_dma_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, tegra_dma_of_match);
 #endif
+
+static struct platform_device_id tegra_dma_devtype[] = {
+	{
+		.name = "tegra20-apbdma",
+		.driver_data = (unsigned long)&tegra20_dma_chip_data,
+	},
+	{
+		.name = "tegra30-apbdma",
+		.driver_data = (unsigned long)&tegra30_dma_chip_data,
+	},
+	{
+		.name = "tegra114-apbdma",
+		.driver_data = (unsigned long)&tegra114_dma_chip_data,
+	},
+	{
+		.name = "tegra148-apbdma",
+		.driver_data = (unsigned long)&tegra148_dma_chip_data,
+	},
+	{
+		.name = "tegra124-apbdma",
+		.driver_data = (unsigned long)&tegra124_dma_chip_data,
+	},
+};
 
 static int tegra_dma_probe(struct platform_device *pdev)
 {
@@ -1322,7 +1355,7 @@ static int tegra_dma_probe(struct platform_device *pdev)
 		cdata = match->data;
 	} else {
 		/* If no device tree then fallback to tegra20 */
-		cdata = &tegra20_dma_chip_data;
+		cdata = (struct tegra_dma_chip_data *)pdev->id_entry->driver_data;
 	}
 
 	tdma = devm_kzalloc(&pdev->dev, sizeof(*tdma) + cdata->nr_channels *
@@ -1586,6 +1619,7 @@ static struct platform_driver tegra_dmac_driver = {
 	},
 	.probe		= tegra_dma_probe,
 	.remove		= tegra_dma_remove,
+	.id_table	= tegra_dma_devtype,
 };
 
 module_platform_driver(tegra_dmac_driver);
