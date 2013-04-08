@@ -33,6 +33,8 @@
 #include "gpio-names.h"
 #include "board.h"
 
+#define BONAIRE_SD_CD	TEGRA_GPIO_PV2
+
 static struct resource sdhci_resource0[] = {
 	[0] = {
 		.start  = INT_SDMMC1,
@@ -110,7 +112,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
-	.cd_gpio = -1,
+	.cd_gpio = BONAIRE_SD_CD,
 	.wp_gpio = -1,
 	.power_gpio = -1,
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
