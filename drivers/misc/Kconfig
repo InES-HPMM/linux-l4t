@@ -626,6 +626,13 @@ config SIM_MAX77660
        If you say yes, SIM drv of Maxim MAX77660 will be enabled.
        It supports SIM Card detection and SIM configuration of Max77660.
 
+config SIM_PALMAS
+	tristate "Palmas SIM driver"
+	depends on MFD_PALMAS
+	---help---
+	If yes, the Palmas SIM driver will be enabled. It supports SIM card
+	detection and SIM configuration for Palmas PMICs.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
