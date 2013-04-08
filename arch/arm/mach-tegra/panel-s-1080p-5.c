@@ -26,9 +26,11 @@
 #include <linux/max8831_backlight.h>
 #include <linux/leds.h>
 #include <linux/ioport.h>
+#include <linux/lm3528.h>
 
 #include "gpio-names.h"
 #include "board-panel.h"
+#include "board.h"
 
 #define DSI_PANEL_RESET         1
 
@@ -324,17 +326,41 @@ static struct max8831_platform_data dsi_s_1080p_5_max8831 = {
 	.subdevs = dsi_s_1080p_5_max8831_subdevs,
 };
 
-static struct i2c_board_info dsi_s_1080p_5_i2c_led_info = {
+static __maybe_unused struct i2c_board_info dsi_s_1080p_5_i2c_led_info = {
 	.type		= "max8831",
 	.addr		= 0x4d,
 	.platform_data	= &dsi_s_1080p_5_max8831,
 };
+
+static struct lm3528_platform_data lm3528_pdata = {
+	.dft_brightness	= 200,
+	.is_powered = dsi_s_1080p_5_check_bl_power,
+	.notify = dsi_s_1080p_5_bl_notify,
+};
+
+static __maybe_unused struct i2c_board_info
+	lm3528_dsi_s_1080p_5_i2c_led_info = {
+	.type		= "lm3528_display_bl",
+	.addr		= 0x36,
+	.platform_data	= &lm3528_pdata,
+};
+
 static int __init dsi_s_1080p_5_register_bl_dev(void)
 {
 	int err = 0;
-	err = i2c_register_board_info(1, &dsi_s_1080p_5_i2c_led_info, 1);
+	struct board_info bi;
+	tegra_get_display_board_info(&bi);
+
+	if (bi.board_id == BOARD_E1563)
+		err = i2c_register_board_info(1,
+			&lm3528_dsi_s_1080p_5_i2c_led_info, 1);
+	else
+		err = i2c_register_board_info(1,
+			&dsi_s_1080p_5_i2c_led_info, 1);
+
 	return err;
 }
+
 struct tegra_dc_mode dsi_s_1080p_5_modes[] = {
 	/* 1080x1920@60Hz */
 	{
@@ -457,13 +483,14 @@ static int dsi_s_1080p_5_enable(struct device *dev)
 		}
 	}
 	gpio_direction_output(dsi_s_1080p_5_pdata.dsi_panel_bl_en_gpio, 1);
-	is_bl_powered = true;
-	usleep_range(3000, 5000);
+	mdelay(50);
 
 #if DSI_PANEL_RESET
 	gpio_set_value(dsi_s_1080p_5_pdata.dsi_panel_rst_gpio, 1);
 	msleep(20);
 #endif
+	is_bl_powered = true;
+
 	return 0;
 fail:
 	return err;

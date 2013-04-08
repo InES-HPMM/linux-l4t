@@ -82,6 +82,9 @@ static int lm3528_backlight_set(struct backlight_device *bl, int brightness)
 			return 0;
 		}
 
+	if (data->notify)
+		brightness = data->notify(data->lm3528_dev, brightness);
+
 	data->current_brightness = brightness;
 
 	/* normalize the brightness value [0-255] to lm3528 range */

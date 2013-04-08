@@ -48,6 +48,8 @@
 #define    BOARD_E1639    0x0667
 #define    BOARD_E1631    0x065f
 
+#define    BOARD_E1563    0x061b
+
 /* Board Fab version */
 #define BOARD_FAB_A00			0x0
 #define BOARD_FAB_A01			0x1
