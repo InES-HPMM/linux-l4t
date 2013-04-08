@@ -219,6 +219,11 @@ static void bonaire_i2c_init(void)
 	platform_device_register(&tegra14_i2c_device1);
 }
 
+static void bonaire_apbdma_init(void)
+{
+	platform_device_register(&tegra_apbdma);
+}
+
 static struct platform_device *bonaire_spi_devices[] __initdata = {
 	&tegra11_spi_device4,
 };
@@ -589,6 +594,7 @@ static void __init tegra_bonaire_init(void)
 	tegra_enable_pinmux();
 	bonaire_pinmux_init();
 	tegra_soc_device_init("bonaire");
+	bonaire_apbdma_init();
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	if (tegra_platform_is_qt())
