@@ -507,6 +507,18 @@ struct palmas_battery_platform_data {
 	int is_battery_present;
 };
 
+struct palmas_sim_platform_data {
+	unsigned dbcnt:5;
+	unsigned pwrdncnt:5;
+	unsigned pwrdnen1:1;
+	unsigned pwrdnen2:1;
+	unsigned det_polarity:1;
+	unsigned det1_pu:1;
+	unsigned det1_pd:1;
+	unsigned det2_pu:1;
+	unsigned det2_pd:1;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -522,6 +534,7 @@ struct palmas_platform_data {
 	struct palmas_clk_platform_data *clk_pdata;
 	struct palmas_rtc_platform_data *rtc_pdata;
 	struct palmas_battery_platform_data *battery_pdata;
+	struct palmas_sim_platform_data *sim_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
@@ -625,6 +638,8 @@ enum palmas_irqs {
 	PALMAS_GPIO_15_IRQ,
 	/* INT6 interrupts */
 	PALMAS_CHARGER_IRQ,
+	PALMAS_SIM1_IRQ,
+	PALMAS_SIM2_IRQ,
 	/* INT7 interrupts */
 	PALMAS_BAT_TEMP_FAULT_IRQ,
 	/* Total Number IRQs */
@@ -747,6 +762,7 @@ enum usb_irq_events {
 #define PALMAS_SMPS_BASE					0x120
 #define PALMAS_LDO_BASE						0x150
 #define PALMAS_DVFS_BASE					0x180
+#define PALMAS_SIMCARD_BASE					0X19E
 #define PALMAS_PMU_CONTROL_BASE					0x1A0
 #define PALMAS_RESOURCE_BASE					0x1D4
 #define PALMAS_PU_PD_OD_BASE					0x1F0
@@ -1679,6 +1695,30 @@ enum usb_irq_events {
 #define DVFS_MAX_VOLTAGE_UV					1650000
 #define DVFS_VOLTAGE_STEP_UV					10000
 
+/* Registers for function SIMCARD Func */
+#define PALMAS_SIM_DEBOUNCE					0x0
+#define PALMAS_SIM_PWR_DOWN					0x1
+
+/* Bit definitions for SIM_DEBOUNCE */
+#define PALMAS_SIM_DEBOUNCE_SIM2_IR				0x80
+#define PALMAS_SIM_DEBOUNCE_SIM2_IR_SHIFT			7
+#define PALMAS_SIM_DEBOUNCE_SIM1_IR				0x40
+#define PALMAS_SIM_DEBOUNCE_SIM1_IR_SHIFT			6
+#define PALMAS_SIM_DEBOUNCE_SIM_DET1_PIN_STATE			0x20
+#define PALMAS_SIM_DEBOUNCE_SIM_DET1_PIN_STATE_SHIFT		5
+#define PALMAS_SIM_DEBOUNCE_DBCNT_MASK				0x1F
+#define PALMAS_SIM_DEBOUNCE_DBCNT_SHIFT				0
+
+/* Bit definitions for SIM_PWR_DOWN */
+#define PALMAS_SIM_PWR_DOWN_PWRDNEN2				0x80
+#define PALMAS_SIM_PWR_DOWN_PWRDNEN2_SHIFT			7
+#define PALMAS_SIM_PWR_DOWN_PWRDNEN1				0x40
+#define PALMAS_SIM_PWR_DOWN_PWRDNEN1_SHIFT			6
+#define PALMAS_SIM_PWR_DOWN_SIM_DET2_PIN_STATE			0x20
+#define PALMAS_SIM_PWR_DOWN_SIM_DET2_PIN_STATE_SHIFT		5
+#define PALMAS_SIM_PWR_DOWN_PWRDNCNT_MASK			0x1F
+#define PALMAS_SIM_PWR_DOWN_PWRDNCNT_SHIFT			0
+
 /* Registers for function PMU_CONTROL */
 #define PALMAS_DEV_CTRL						0x0
 #define PALMAS_POWER_CTRL					0x1
@@ -2286,6 +2326,7 @@ enum usb_irq_events {
 #define PALMAS_PU_PD_INPUT_CTRL1				0x4
 #define PALMAS_PU_PD_INPUT_CTRL2				0x5
 #define PALMAS_PU_PD_INPUT_CTRL3				0x6
+#define PALMAS_PU_PD_INPUT_CTRL5				0x7
 #define PALMAS_OD_OUTPUT_CTRL					0x8
 #define PALMAS_POLARITY_CTRL					0x9
 #define PALMAS_PRIMARY_SECONDARY_PAD1				0xA
@@ -2306,6 +2347,10 @@ enum usb_irq_events {
 #define PALMAS_OD_OUTPUT_CTRL2_OD_REGEN2_SHIFT			1
 #define PALMAS_OD_OUTPUT_CTRL2_OD_REGEN1			0x01
 #define PALMAS_OD_OUTPUT_CTRL2_OD_REGEN1_SHIFT			0
+
+/* Bit definitions for POLARITY_CTRL2 */
+#define PALMAS_POLARITY_CTRL2_DET_POLARITY			0x01
+#define PALMAS_POLARITY_CTRL2_DET_POLARITY_SHIFT		0
 
 /* Bit definitions for PU_PD_INPUT_CTRL1 */
 #define PALMAS_PU_PD_INPUT_CTRL1_RESET_IN_PD			0x40
@@ -2342,6 +2387,16 @@ enum usb_irq_events {
 #define PALMAS_PU_PD_INPUT_CTRL3_POWERHOLD_PD_SHIFT		2
 #define PALMAS_PU_PD_INPUT_CTRL3_MSECURE_PD			0x01
 #define PALMAS_PU_PD_INPUT_CTRL3_MSECURE_PD_SHIFT		0
+
+/* Bit definitions for PU_PD_INPUT_CTRL5 */
+#define PALMAS_PU_PD_INPUT_CTRL5_DET2_PU			0x80
+#define PALMAS_PU_PD_INPUT_CTRL5_DET2_PU_SHIFT			7
+#define PALMAS_PU_PD_INPUT_CTRL5_DET2_PD			0x40
+#define PALMAS_PU_PD_INPUT_CTRL5_DET2_PD_SHIFT			6
+#define PALMAS_PU_PD_INPUT_CTRL5_DET1_PU			0x20
+#define PALMAS_PU_PD_INPUT_CTRL5_DET1_PU_SHIFT			5
+#define PALMAS_PU_PD_INPUT_CTRL5_DET1_PD			0x10
+#define PALMAS_PU_PD_INPUT_CTRL5_DET1_PD_SHIFT			4
 
 /* Bit definitions for OD_OUTPUT_CTRL */
 #define PALMAS_OD_OUTPUT_CTRL_PWM_2_OD				0x80
@@ -2476,8 +2531,8 @@ enum usb_irq_events {
 #define PALMAS_PWM_CTRL2_PWM_DUTY_SEL_SHIFT			0
 
 /* Maximum INT mask/edge regsiter */
-#define PALMAS_MAX_INTERRUPT_MASK_REG				5
-#define PALMAS_MAX_INTERRUPT_EDGE_REG				10
+#define PALMAS_MAX_INTERRUPT_MASK_REG				6
+#define PALMAS_MAX_INTERRUPT_EDGE_REG				12
 
 /* Registers for function INTERRUPT */
 #define PALMAS_INT1_STATUS					0x0
