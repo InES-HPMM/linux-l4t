@@ -1116,6 +1116,13 @@ int __init isomgr_init(void)
 	}
 
 	isomgr.emc_clk = clk_get_sys("iso", "emc");
+	if (IS_ERR_OR_NULL(isomgr.emc_clk)) {
+		pr_err("couldn't find iso emc clock. Disabling isomgr.");
+		test_mode = 1;
+		return 0;
+	}
+	clk_enable(isomgr.emc_clk);
+
 	if (!isomgr.max_iso_bw) {
 		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
 		pr_info("iso emc max clk=%dKHz", max_emc_clk);
