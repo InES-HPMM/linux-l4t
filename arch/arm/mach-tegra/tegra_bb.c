@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_bb.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -921,8 +921,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 {
 	struct tegra_bb *bb;
 	int ret;
-	struct tegra_bb_platform_data *pdata =
-		pdev->dev.platform_data;
+	struct tegra_bb_platform_data *pdata;
 	void __iomem *tegra_mc = IO_ADDRESS(TEGRA_MC_BASE);
 	unsigned int size, bbc_mem_regions_0;
 	struct clk *c;
