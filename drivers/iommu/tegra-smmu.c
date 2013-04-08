@@ -158,7 +158,7 @@ enum {
 #define SMMU_PTE_SHIFT	12
 #define SMMU_PFN_MASK	0x000fffff
 
-#define SMMU_ADDR_TO_PFN(addr)	(((addr) >> 12) & (BIT(10) - 1))
+#define SMMU_ADDR_TO_PTN(addr)	(((addr) >> 12) & (BIT(10) - 1))
 #define SMMU_ADDR_TO_PDN(addr)	((addr) >> 22)
 #define SMMU_PDN_TO_ADDR(pdn)	((pdn) << 22)
 
@@ -584,7 +584,7 @@ static unsigned long *locate_pte(struct smmu_as *as,
 				 struct page **ptbl_page_p,
 				 unsigned int **count)
 {
-	unsigned long ptn = SMMU_ADDR_TO_PFN(iova);
+	unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
 	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 	unsigned long *pdir = page_address(as->pdir_page);
 	unsigned long *ptbl;
@@ -701,7 +701,7 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	unsigned long *pdir = page_address(as->pdir_page);
 
 	while (total > 0) {
-		unsigned long ptn = SMMU_ADDR_TO_PFN(iova);
+		unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
 		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 		struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
 		unsigned long *ptbl;
