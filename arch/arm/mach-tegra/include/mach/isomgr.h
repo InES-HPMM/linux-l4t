@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#ifndef _INCLUDE_MACH_ISOMGR_H
+#define _INCLUDE_MACH_ISOMGR_H
+
 enum tegra_iso_client {
 	TEGRA_ISO_CLIENT_DISP_0,
 	TEGRA_ISO_CLIENT_DISP_1,
@@ -118,3 +121,4 @@ static inline int isomgr_init(void)
 	return 0;
 }
 #endif
+#endif /* _INCLUDE_MACH_ISOMGR_H */
