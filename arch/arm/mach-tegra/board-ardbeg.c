@@ -32,6 +32,7 @@
 #include <asm/mach/arch.h>
 
 #include "board.h"
+#include "board-ardbeg.h"
 #include "board-common.h"
 #include "clock.h"
 #include "common.h"
@@ -99,6 +100,7 @@ static void __init tegra_ardbeg_init(void)
 	tegra_clk_init_from_table(ardbeg_clk_init_table);
 	tegra_enable_pinmux();
 	tegra_soc_device_init("ardbeg");
+	ardbeg_panel_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 }
 
