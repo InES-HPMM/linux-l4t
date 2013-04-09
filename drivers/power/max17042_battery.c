@@ -749,16 +749,28 @@ static inline unsigned int max17042_max_depletion(struct max17042_chip *chip)
 	return chip->pdata->edp_client->states[0];
 }
 
+static int interpolate(int x, int x1, int y1, int x2, int y2)
+{
+	return x1 == x2 ? y1 : (y2 * (x - x1) - y1 * (x - x2)) / (x2 - x1);
+}
+
 static int max17042_rbat(struct max17042_chip *chip, unsigned int capacity)
 {
 	struct max17042_rbat_map *p;
+	struct max17042_rbat_map *q;
 
 	p = chip->pdata->rbat_map;
 
 	while (p->capacity > capacity)
 		p++;
 
-	return p->rbat;
+	if (p == chip->pdata->rbat_map)
+		return p->rbat;
+
+	q = p - 1;
+
+	return interpolate(capacity, p->capacity, p->rbat,
+			q->capacity, q->rbat);
 }
 
 static s64 max17042_ibat_possible(struct max17042_chip *chip, s64 avgcurrent,
