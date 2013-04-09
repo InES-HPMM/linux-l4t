@@ -353,6 +353,13 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "tsec",	"pll_p",	108000000,	false },
 	{ "mc_capa",	"emc",		0,		true },
 	{ "mc_cbpa",	"emc",		0,		true },
+#ifdef CONFIG_TEGRA_SOCTHERM
+	{ "soc_therm",	"pll_p",	51000000,	false },
+	{ "tsensor",	"clk_m",	400000,		false },
+#endif
+	{ NULL,		NULL,		0,		0},
+};
+static __initdata struct tegra_clk_init_table tegra14x_cbus_init_table[] = {
 	/* Initialize c2bus, c3bus, or cbus at the end of the list
 	 * after all the clocks are moved under the proper parents.
 	 */
@@ -364,10 +371,6 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "cbus",	"pll_c",	200000000,	false },
 #endif
 	{ "pll_c_out1",	"pll_c",	100000000,	false },
-#ifdef CONFIG_TEGRA_SOCTHERM
-	{ "soc_therm",	"pll_p",	51000000,	false },
-	{ "tsensor",	"clk_m",	400000,		false },
-#endif
 	{ NULL,		NULL,		0,		0},
 };
 #endif
@@ -795,6 +798,7 @@ void __init tegra14x_init_early(void)
 	tegra14x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra14x_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra14x_cbus_init_table);
 	tegra_cpu_c1_l2_tag_latency = 0x110;
 	tegra_cpu_c1_l2_data_latency = 0x331;
 	writel_relaxed(0x110, tegra_cpu_c1_l2_tag_latency_iram);
