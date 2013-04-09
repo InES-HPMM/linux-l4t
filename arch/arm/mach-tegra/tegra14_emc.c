@@ -1086,7 +1086,7 @@ int __init tegra14_emc_init(void)
 {
 	int ret = platform_driver_register(&tegra14_emc_driver);
 	if (!ret) {
-		/* FIXME: set monitor boot rate */
+		tegra_clk_preset_emc_monitor();
 		tegra_emc_iso_usage_table_init(tegra14_emc_iso_usage,
 			ARRAY_SIZE(tegra14_emc_iso_usage));
 	}
