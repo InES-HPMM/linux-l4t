@@ -425,7 +425,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
-	.extcon_dev_name = "palmas-extcon.10",
+	.vbus_extcon_dev_name = "palmas-extcon",
 };
 
 static void macallan_usb_init(void)
