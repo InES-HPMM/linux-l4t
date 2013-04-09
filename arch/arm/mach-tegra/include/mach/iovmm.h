@@ -172,6 +172,7 @@ static inline int tegra_iovmm_vm_insert_pages(struct tegra_iovmm_area *area,
 	return dma_mapping_error(dev, da) ? -ENOMEM : 0;
 }
 
+#ifdef CONFIG_IOMMU_API
 struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
 		       dma_addr_t req, size_t size, pgprot_t prot);
 
@@ -182,5 +183,21 @@ void tegra_iommu_zap_vm(struct tegra_iovmm_area *area);
 struct tegra_iovmm_client *tegra_iommu_alloc_client(struct device *dev);
 
 void tegra_iommu_free_client(struct tegra_iovmm_client *client);
+#else
+static struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
+			dma_addr_t req, size_t size, pgprot_t prot) {
+	return NULL;
+}
+
+static void tegra_iommu_free_vm(struct tegra_iovmm_area *area) {}
+
+static void tegra_iommu_zap_vm(struct tegra_iovmm_area *area) {}
+
+static struct tegra_iovmm_client *tegra_iommu_alloc_client(struct device *dev) {
+	return NULL;
+}
+
+static void tegra_iommu_free_client(struct tegra_iovmm_client *client) {}
+#endif
 
 #endif /* _MACH_TEGRA_IOVMM_H_*/
