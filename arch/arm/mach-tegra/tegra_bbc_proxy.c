@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra_bbc_proxy.c
  *
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -244,7 +244,8 @@ static ssize_t la_bbcr_store(struct device *dev,
 {
 	unsigned int la_val;
 
-	sscanf(buf, "%u", &la_val);
+	if (sscanf(buf, "%u", &la_val) != 1)
+		return -EINVAL;
 	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
@@ -258,7 +259,8 @@ static ssize_t la_bbcw_store(struct device *dev,
 {
 	unsigned int la_val;
 
-	sscanf(buf, "%u", &la_val);
+	if (sscanf(buf, "%u", &la_val) != 1)
+		return -EINVAL;
 	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
@@ -272,7 +274,8 @@ static ssize_t la_bbcllr_store(struct device *dev,
 {
 	unsigned int la_val;
 
-	sscanf(buf, "%u", &la_val);
+	if (sscanf(buf, "%u", &la_val) != 1)
+		return -EINVAL;
 	if (la_val > (MAX_ISO_BW_REQ / 1000))
 		return -EINVAL;
 
@@ -398,7 +401,8 @@ static ssize_t iso_register_store(struct device *dev,
 	unsigned int bw;
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
 
-	sscanf(buf, "%u", &bw);
+	if (sscanf(buf, "%u", &bw) != 1)
+		return -EINVAL;
 
 	if (bbc->isomgr_handle)
 		tegra_isomgr_unregister(bbc->isomgr_handle);
@@ -458,7 +462,8 @@ field ## _store_state(struct device *dev, struct device_attribute *attr,\
 	if (!bbc)							\
 		return -EAGAIN;						\
 									\
-	sscanf(buf, "%d", &value);					\
+	if (sscanf(buf, "%d", &value) != 1)				\
+		return -EINVAL;						\
 									\
 	if (sysfs_streq(buf, "enabled\n") || sysfs_streq(buf, "1"))	\
 		regulator_enable(bbc->field);				\
@@ -493,7 +498,8 @@ field ## _store_microvolts(struct device *dev,				\
 	if (!bbc)							\
 		return -EAGAIN;						\
 									\
-	sscanf(buf, "%d", &value);					\
+	if (sscanf(buf, "%d", &value) != 1)				\
+		return -EINVAL;						\
 									\
 	if (value)							\
 		regulator_set_voltage(bbc->field, value, value);	\
