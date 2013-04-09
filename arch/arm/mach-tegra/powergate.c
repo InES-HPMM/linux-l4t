@@ -568,7 +568,7 @@ EXPORT_SYMBOL(tegra_powergate_get_name);
 
 int tegra_powergate_init_refcount(void)
 {
-	if (!pg_ops->powergate_init_refcount)
+	if ((!pg_ops) || (!pg_ops->powergate_init_refcount))
 		return 0;
 
 	return pg_ops->powergate_init_refcount();
