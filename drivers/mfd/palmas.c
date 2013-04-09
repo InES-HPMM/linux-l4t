@@ -125,7 +125,7 @@ static const struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 		.reg_bits = 8,
 		.val_bits = 8,
 		.max_register = PALMAS_BASE_TO_REG(PALMAS_PU_PD_OD_BASE,
-					PALMAS_PRIMARY_SECONDARY_PAD3),
+					PALMAS_PRIMARY_SECONDARY_PAD4),
 		.volatile_reg = is_volatile_palma_func_reg,
 		.cache_type  = REGCACHE_RBTREE,
 	},
