@@ -51,10 +51,8 @@ struct mc_client mc_clients[] = {
 	client("vde_bsev"),		client("vde_mbe"),
 	client("vde_mce"),		client("vde_tpe"),
 	client("cpu_lp"),		client("cpu"),
-	client("msenc"),
 	dummy_client,			dummy_client,
-	dummy_client,
-	client("msenc"),
+	dummy_client,			client("msenc"),
 	dummy_client,			dummy_client,
 	dummy_client,			dummy_client,
 	dummy_client,
@@ -64,16 +62,16 @@ struct mc_client mc_clients[] = {
 	dummy_client,
 	client("cpu_lp"),		client("cpu"),
 	dummy_client,
-	client("ahb_dma"),		client("ahb_slave"),
+	client("ahb_dma_wr"),		client("ahb_slave_wr"),
 	client("sata"),			client("vde_bsev"),
-	client("vde_mbe"),		client("vde_mce"),
+	client("vde_dbg"),		client("vde_mbe"),
 	client("vde_tpe"),
 	dummy_client,			dummy_client,
 	client("isp2_a"),
 	dummy_client,
 	client("isp2_a"),		client("isp2_b"),
 	dummy_client,			dummy_client,
-	client("xusb_host"),	client("xusb_host"),
+	client("xusb_host"),		client("xusb_host"),
 	client("xusb_dev"),		client("xusb_dev"),
 	client("isp2_a"),
 	dummy_client,
@@ -153,12 +151,12 @@ static void mcerr_t12x_print(const char *mc_type, u32 err, u32 addr,
 {
 	u64 hi_addr = err & 0x300000;
 	u64 fin_addr = (addr | ((hi_addr >> 20) << 32));
-	pr_err("%s [0x%llx] %s (%s %s %s)\n", mc_type,
+	pr_err("%s [0x%llx] %s (%s %s %s), %llx\n", mc_type,
 	       fin_addr,
 	       (client) ? client->name : "unknown",
 	       (is_secure) ? "secure" : "non-secure",
 	       (is_write) ? "write" : "read",
-	       mc_err_info);
+	       mc_err_info, err);
 }
 
 static int mcerr_t12x_debugfs_show(struct seq_file *s, void *v)
