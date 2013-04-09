@@ -1179,9 +1179,14 @@ int __init tegra14_emc_init(void)
 {
 	int ret = platform_driver_register(&tegra14_emc_driver);
 	if (!ret) {
-		tegra_clk_preset_emc_monitor();
 		tegra_emc_iso_usage_table_init(tegra14_emc_iso_usage,
 			ARRAY_SIZE(tegra14_emc_iso_usage));
+		if (emc_enable) {
+			unsigned long rate = tegra_emc_round_rate_updown(
+				emc->boot_rate, false);
+			if (!IS_ERR_VALUE(rate))
+				tegra_clk_preset_emc_monitor(rate);
+		}
 	}
 	return ret;
 }
