@@ -37,6 +37,7 @@
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_uart.h>
+#include <linux/serial_tegra.h>
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
@@ -544,33 +545,27 @@ static struct uart_clk_parent uart_parent_clk[] = {
 	[0] = {.name = "clk_m"},
 };
 
-static struct tegra_uart_platform_data bonaire_uart_pdata;
+static struct tegra_serial_platform_data bonaire_uartb_pdata = {
+	.dma_req_selector = 9,
+	.modem_interrupt = false,
+};
+static struct tegra_serial_platform_data bonaire_uartc_pdata = {
+	.dma_req_selector = 10,
+	.modem_interrupt = false,
+};
+static struct tegra_serial_platform_data bonaire_uartd_pdata = {
+	.dma_req_selector = 19,
+	.modem_interrupt = false,
+};
+
 static struct tegra_uart_platform_data bonaire_loopback_uart_pdata;
 
 static void __init bonaire_hs_uart_init(void)
 {
-	struct clk *c;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
-		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
-		if (IS_ERR_OR_NULL(c)) {
-			pr_err("Not able to get the clock for %s\n",
-					uart_parent_clk[i].name);
-			continue;
-		}
-		uart_parent_clk[i].parent_clk = c;
-		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
-	}
-	bonaire_uart_pdata.parent_clk_list = uart_parent_clk;
-	bonaire_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
-	bonaire_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	bonaire_loopback_uart_pdata.parent_clk_count =
-		ARRAY_SIZE(uart_parent_clk);
 	bonaire_loopback_uart_pdata.is_loopback = true;
-	tegra_uartb_device.dev.platform_data = &bonaire_uart_pdata;
-	tegra_uartc_device.dev.platform_data = &bonaire_uart_pdata;
-	tegra_uartd_device.dev.platform_data = &bonaire_uart_pdata;
+	tegra_uartb_device.dev.platform_data = &bonaire_uartb_pdata;
+	tegra_uartc_device.dev.platform_data = &bonaire_uartc_pdata;
+	tegra_uartd_device.dev.platform_data = &bonaire_uartd_pdata;
 	platform_add_devices(bonaire_hs_uart_devices,
 			ARRAY_SIZE(bonaire_hs_uart_devices));
 }
