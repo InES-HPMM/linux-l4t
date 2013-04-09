@@ -1891,9 +1891,26 @@ static void generic_hdmi_free(struct hda_codec *codec)
 	kfree(spec);
 }
 
+static int generic_hdmi_suspend(struct hda_codec *codec, pm_message_t state)
+{
+	struct hdmi_spec *spec = codec->spec;
+	int pin_idx;
+
+	for (pin_idx = 0; pin_idx < spec->num_pins; pin_idx++) {
+		struct hdmi_spec_per_pin *per_pin = &spec->pins[pin_idx];
+		struct hdmi_eld *eld = &per_pin->sink_eld;
+
+		cancel_delayed_work_sync(&per_pin->work);
+		snd_hda_eld_proc_free(codec, eld);
+	}
+
+	return 0;
+}
+
 static const struct hda_codec_ops generic_hdmi_patch_ops = {
 	.init			= generic_hdmi_init,
 	.free			= generic_hdmi_free,
+	.suspend		= generic_hdmi_suspend,
 	.build_pcms		= generic_hdmi_build_pcms,
 	.build_controls		= generic_hdmi_build_controls,
 	.unsol_event		= hdmi_unsol_event,
