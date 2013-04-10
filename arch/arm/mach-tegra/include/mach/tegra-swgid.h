@@ -49,6 +49,23 @@
 /* UNUSED: 38 */
 /* UNUSED: 39 */
 
+#define SWGID_DC12 48 /* 0xa88 */
+/* UNUSED: 49 */
+/* UNUSED: 50 */
+#define SWGID_SDMMC1A 51 /* 0xa94 */
+#define SWGID_SDMMC2A 52
+#define SWGID_SDMMC3A 53
+#define SWGID_SDMMC4A 54
+#define SWGID_ISP2B 55
+#define SWGID_GPU 56
+#define SWGID_GPUB 57
+#define SWGID_PPCS2 58
+/* UNUSED: 59 */
+/* UNUSED: 60 */
+/* UNUSED: 61 */
+/* UNUSED: 62 */
+/* UNUSED: 63 */
+
 #define SWGID(x)	(1ULL << SWGID_##x)
 
 #endif /* DT_BINDINGS_IOMMU_TEGRA_SWGID_H */

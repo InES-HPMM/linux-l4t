@@ -208,6 +208,9 @@ static size_t tegra_smmu_get_offset_base(int id)
 	if (!(id & BIT(5)))
 		return SMMU_SWGRP_ASID_BASE;
 
+	if (id & BIT(4))
+		return  0xa88 - SWGID_DC12 * sizeof(unsigned long);
+
 	return 0x490 - SWGID_DC14 * sizeof(unsigned long);
 }
 
@@ -1561,6 +1564,9 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_14x_SOC) &&
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14))
 		smmu->swgids = 0x00000020018659fe;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+		smmu->swgids = 0x06f9000001fec9cf;
 
 	smmu->translation_enable_0 = ~0;
 	smmu->translation_enable_1 = ~0;
