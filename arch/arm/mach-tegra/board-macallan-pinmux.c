@@ -35,7 +35,7 @@ static __initdata struct tegra_drive_pingroup_config macallan_drive_pinmux[] = {
 	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
 
 	/* SDMMC4 */
-	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
+	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 2, FASTEST,
 								FASTEST, 1),
 };
 
