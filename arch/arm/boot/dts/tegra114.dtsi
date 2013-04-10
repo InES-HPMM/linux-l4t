@@ -290,7 +290,7 @@
 
 	uartc: serial@70006200 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006200 0x100>;
+		reg = <0x70006200 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 46 0x04>;
 		nvidia,dma-request-selector = <&apbdma 10>;
@@ -300,7 +300,7 @@
 
 	uartd: serial@70006300 {
 		compatible = "nvidia,tegra114-uart", "nvidia,tegra20-uart";
-		reg = <0x70006300 0x100>;
+		reg = <0x70006300 0x40>;
 		reg-shift = <2>;
 		interrupts = <0 90 0x04>;
 		nvidia,dma-request-selector = <&apbdma 19>;
