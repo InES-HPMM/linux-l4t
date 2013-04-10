@@ -426,6 +426,8 @@ static int __init set_cpu_dvfs_data(
 	int speedo = tegra_cpu_speedo_value();
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
+	min_dfll_mv =  round_cvb_voltage((min_dfll_mv * d->voltage_scale),
+							d->voltage_scale);
 	BUG_ON(min_dfll_mv < tegra14_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
