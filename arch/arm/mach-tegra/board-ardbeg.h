@@ -23,6 +23,7 @@
 #include <mach/irqs.h>
 #include "gpio-names.h"
 
+int ardbeg_pinmux_init(void);
 int ardbeg_panel_init(void);
 
 #endif
