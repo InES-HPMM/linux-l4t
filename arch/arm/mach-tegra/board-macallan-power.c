@@ -185,6 +185,13 @@ static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd", "2-0010"),
 };
 
+static struct regulator_consumer_supply palmas_ldo5_e1569_supply[] = {
+	REGULATOR_SUPPLY("avdd_cam2", NULL),
+	REGULATOR_SUPPLY("avdd", "2-0010"),
+	REGULATOR_SUPPLY("vdd_af_cam1", NULL),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
+};
+
 static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0069"),
 	REGULATOR_SUPPLY("vdd", "0-000d"),
@@ -197,6 +204,12 @@ static struct regulator_consumer_supply palmas_ldo7_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam1", NULL),
 	REGULATOR_SUPPLY("vana", "2-0036"),
 	REGULATOR_SUPPLY("vdd", "2-000e"),
+};
+
+static struct regulator_consumer_supply palmas_ldo7_e1569_supply[] = {
+	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
+	REGULATOR_SUPPLY("avdd_cam1", NULL),
+	REGULATOR_SUPPLY("vana", "2-0036"),
 };
 
 static struct regulator_consumer_supply palmas_ldo8_supply[] = {
@@ -498,6 +511,7 @@ int __init macallan_palmas_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	int i;
+	struct board_info board_info;
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -505,6 +519,17 @@ int __init macallan_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1569) {
+		reg_idata_ldo5.consumer_supplies = palmas_ldo5_e1569_supply;
+		reg_idata_ldo5.num_consumer_supplies =
+			ARRAY_SIZE(palmas_ldo5_e1569_supply);
+		reg_idata_ldo7.consumer_supplies = palmas_ldo7_e1569_supply;
+		reg_idata_ldo7.num_consumer_supplies =
+			ARRAY_SIZE(palmas_ldo7_e1569_supply);
+	}
+
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = macallan_reg_data[i];
 		pmic_platform.reg_init[i] = macallan_reg_init[i];
