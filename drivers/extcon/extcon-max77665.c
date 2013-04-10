@@ -228,10 +228,30 @@ static int __devexit max77665_muic_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int max77665_extcon_suspend(struct device *pdev)
+{
+	return 0;
+}
+
+static int max77665_extcon_resume(struct device *pdev)
+{
+	struct max77665_muic *muic = dev_get_drvdata(pdev);
+
+	return max77660_id_cable_update(muic);
+};
+#endif
+
+static const struct dev_pm_ops max77665_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(max77665_extcon_suspend,
+				max77665_extcon_resume)
+};
+
 static struct platform_driver max77665_muic_driver = {
 	.driver		= {
 		.name	= DEV_NAME,
 		.owner	= THIS_MODULE,
+		.pm = &max77665_pm_ops,
 	},
 	.probe		= max77665_muic_probe,
 	.remove		= __devexit_p(max77665_muic_remove),
