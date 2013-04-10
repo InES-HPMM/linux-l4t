@@ -1037,7 +1037,7 @@ int __init dalmore_palmas_regulator_init(void)
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
 	power_config = get_power_config();
-	if (power_config && POWER_CONFIG2)
+	if (power_config & POWER_CONFIG2)
 		set_dalmore_power_config2();
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
@@ -1203,7 +1203,7 @@ static int __init dalmore_fixed_regulator_init(void)
 	power_config = get_power_config();
 	tegra_get_board_info(&board_info);
 
-	if (power_config && POWER_CONFIG2)
+	if (power_config & POWER_CONFIG2)
 		platform_add_devices(fixed_reg_devs_dalmore_config2,
 				ARRAY_SIZE(fixed_reg_devs_dalmore_config2));
 
