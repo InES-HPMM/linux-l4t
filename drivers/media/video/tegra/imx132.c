@@ -36,6 +36,8 @@
 #include <media/nvc_debugfs.h>
 #endif
 
+#define IMX132_SIZEOF_I2C_BUF 16
+
 struct imx132_reg {
 	u16 addr;
 	u16 val;
@@ -388,6 +390,18 @@ imx132_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	return err;
 }
 
+static int imx132_i2c_wr_blk(struct i2c_client *client, u8 *buf, int len)
+{
+	struct i2c_msg msg;
+	msg.addr = client->addr;
+	msg.flags = 0;
+	msg.len = len;
+	msg.buf = buf;
+	if (i2c_transfer(client->adapter, &msg, 1) != 1)
+		return -EIO;
+	return 0;
+}
+
 static int
 imx132_write_table(struct i2c_client *client,
 			 const struct imx132_reg table[],
@@ -395,9 +409,11 @@ imx132_write_table(struct i2c_client *client,
 			 int num_override_regs)
 {
 	int err;
+	u8 i2c_transfer_buf[IMX132_SIZEOF_I2C_BUF];
 	const struct imx132_reg *next;
-	int i;
-	u16 val;
+	const struct imx132_reg *n_next;
+	u8 *b_ptr = i2c_transfer_buf;
+	u16 buf_count = 0;
 
 	for (next = table; next->addr != IMX132_TABLE_END; next++) {
 		if (next->addr == IMX132_TABLE_WAIT_MS) {
@@ -405,28 +421,31 @@ imx132_write_table(struct i2c_client *client,
 			continue;
 		}
 
-		val = next->val;
-
-		/*
-		 * When an override list is passed in, replace the reg
-		 * value to write if the reg is in the list
-		 */
-		if (override_list) {
-			for (i = 0; i < num_override_regs; i++) {
-				if (next->addr == override_list[i].addr) {
-					val = override_list[i].val;
-					break;
-				}
-			}
+		if (!buf_count) {
+			b_ptr = i2c_transfer_buf;
+			*b_ptr++ = next->addr >> 8;
+			*b_ptr++ = next->addr & 0xFF;
+			buf_count = 2;
 		}
+		*b_ptr++ = next->val;
+		buf_count++;
+		n_next = next + 1;
+		if ((n_next->addr == next->addr + 1) &&
+			(n_next->addr != IMX132_TABLE_WAIT_MS) &&
+			(buf_count < IMX132_SIZEOF_I2C_BUF) &&
+			(n_next->addr != IMX132_TABLE_END))
+				continue;
 
-		err = imx132_write_reg(client, next->addr, val);
+		err = imx132_i2c_wr_blk(client, i2c_transfer_buf, buf_count);
 		if (err) {
-			dev_err(&client->dev, "%s:imx132_write_table:%d",
-				__func__, err);
+			pr_err("%s:imx132_write_table:%d", __func__, err);
 			return err;
 		}
+
+		buf_count = 0;
+
 	}
+
 	return 0;
 }
 
@@ -442,9 +461,9 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		__func__, mode->xres, mode->yres,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
-	if (mode->xres == 1920 && mode->yres == 1080) {
+	if ((mode->xres == 1920) && (mode->yres == 1080)) {
 		sensor_mode = IMX132_MODE_1920X1080;
-	} else if (mode->xres == 1976 && mode->yres == 1200) {
+	} else if ((mode->xres == 1976) && (mode->yres == 1200)) {
 		sensor_mode = IMX132_MODE_1976X1200;
 	} else {
 		dev_err(dev, "%s: invalid resolution to set mode %d %d\n",
