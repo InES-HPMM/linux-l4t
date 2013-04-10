@@ -629,7 +629,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 	status = i2c_readl(i2c_dev, I2C_INT_STATUS);
 
 	if (status == 0) {
-		dev_warn(i2c_dev->dev, "unknown interrupt Add 0x%02x\n",
+		dev_dbg(i2c_dev->dev, "unknown interrupt Add 0x%02x\n",
 						i2c_dev->msg_add);
 		i2c_dev->msg_err |= I2C_ERR_UNKNOWN_INTERRUPT;
 
@@ -644,7 +644,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 		dev_dbg(i2c_dev->dev, "I2c error status 0x%08x\n", status);
 		if (status & I2C_INT_NO_ACK) {
 			i2c_dev->msg_err |= I2C_ERR_NO_ACK;
-			dev_warn(i2c_dev->dev, "no acknowledge from address"
+			dev_dbg(i2c_dev->dev, "no acknowledge from address"
 					" 0x%x\n", i2c_dev->msg_add);
 			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
@@ -652,7 +652,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 
 		if (status & I2C_INT_ARBITRATION_LOST) {
 			i2c_dev->msg_err |= I2C_ERR_ARBITRATION_LOST;
-			dev_warn(i2c_dev->dev, "arbitration lost during "
+			dev_dbg(i2c_dev->dev, "arbitration lost during "
 				" communicate to add 0x%x\n", i2c_dev->msg_add);
 			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
@@ -660,7 +660,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 
 		if (status & I2C_INT_TX_FIFO_OVERFLOW) {
 			i2c_dev->msg_err |= I2C_INT_TX_FIFO_OVERFLOW;
-			dev_warn(i2c_dev->dev, "Tx fifo overflow during "
+			dev_dbg(i2c_dev->dev, "Tx fifo overflow during "
 				" communicate to add 0x%x\n", i2c_dev->msg_add);
 			dev_dbg(i2c_dev->dev, "Packet status 0x%08x\n",
 				i2c_readl(i2c_dev, I2C_PACKET_TRANSFER_STATUS));
@@ -676,7 +676,7 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 				&& (status == I2C_INT_TX_FIFO_DATA_REQ)
 				&& i2c_dev->msg_read
 				&& i2c_dev->msg_buf_remaining)) {
-		dev_warn(i2c_dev->dev, "unexpected status\n");
+		dev_dbg(i2c_dev->dev, "unexpected status\n");
 		i2c_dev->msg_err |= I2C_ERR_UNEXPECTED_STATUS;
 
 		if (!i2c_dev->irq_disabled) {
@@ -936,6 +936,23 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 
 	if (likely(i2c_dev->msg_err == I2C_ERR_NONE))
 		return 0;
+
+	/* Prints errors */
+	if (i2c_dev->msg_err & I2C_ERR_UNKNOWN_INTERRUPT)
+		dev_warn(i2c_dev->dev, "unknown interrupt Add 0x%02x\n",
+				i2c_dev->msg_add);
+	if (i2c_dev->msg_err & I2C_ERR_NO_ACK)
+		dev_warn(i2c_dev->dev, "no acknowledge from address 0x%x\n",
+				i2c_dev->msg_add);
+	if (i2c_dev->msg_err & I2C_ERR_ARBITRATION_LOST)
+		dev_warn(i2c_dev->dev, "arb lost in communicate to add 0x%x\n",
+				i2c_dev->msg_add);
+	if (i2c_dev->msg_err & I2C_INT_TX_FIFO_OVERFLOW)
+		dev_warn(i2c_dev->dev, "Tx fifo overflow to add 0x%x\n",
+				i2c_dev->msg_add);
+	if (i2c_dev->msg_err & I2C_ERR_UNEXPECTED_STATUS)
+		dev_warn(i2c_dev->dev, "unexpected status to add 0x%x\n",
+				i2c_dev->msg_add);
 
 	if ((i2c_dev->chipdata->timeout_irq_occurs_before_bus_inactive) &&
 		(i2c_dev->msg_err == I2C_ERR_NO_ACK)) {
