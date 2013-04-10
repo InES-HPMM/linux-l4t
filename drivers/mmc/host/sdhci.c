@@ -1184,9 +1184,13 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 			div--;
 		} else {
 			/* Version 3.00 divisors must be a multiple of 2. */
-			if (host->max_clk <= clock)
-				div = 1;
-			else {
+			if (host->max_clk <= clock) {
+				if (host->mmc->ios.timing ==
+					MMC_TIMING_UHS_DDR50)
+					div = 2;
+				else
+					div = 1;
+			} else {
 				for (div = 2; div < SDHCI_MAX_DIV_SPEC_300;
 				     div += 2) {
 					if ((host->max_clk / div) <= clock)
