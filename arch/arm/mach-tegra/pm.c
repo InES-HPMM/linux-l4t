@@ -690,7 +690,10 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 	 * are in LP2 state and irqs are disabled
 	 */
 	if (flags & TEGRA_POWER_CLUSTER_MASK) {
-		trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_START);
+		if (is_idle_task(current))
+			trace_nvcpu_cluster_rcuidle(NVPOWER_CPU_CLUSTER_START);
+		else
+			trace_nvcpu_cluster(NVPOWER_CPU_CLUSTER_START);
 		set_power_timers(pdata->cpu_timer, 2,
 			clk_get_rate_all_locked(tegra_pclk));
 		if (flags & TEGRA_POWER_CLUSTER_G) {
