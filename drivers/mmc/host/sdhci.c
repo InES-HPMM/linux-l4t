@@ -1138,6 +1138,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
 		clk &= ~SDHCI_CLOCK_CARD_EN;
 		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+		clk = 0;
 	}
 	sdhci_writew(host, 0, SDHCI_CLOCK_CONTROL);
 
