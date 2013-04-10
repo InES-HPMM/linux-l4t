@@ -43,7 +43,7 @@ out1:
 	spin_unlock_irqrestore(&utmip_pad_lock, flags);
 	return 0;
 }
-
+EXPORT_SYMBOL_GPL(utmi_phy_iddq_override);
 
 int utmi_phy_pad_enable(void)
 {
