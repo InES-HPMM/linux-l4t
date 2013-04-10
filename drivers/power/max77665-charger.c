@@ -575,7 +575,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	charger->edev = extcon_get_extcon_dev(charger->plat_data->extcon_name);
 	if (!charger->edev)
-		return -ENODEV;
+		goto chrg_error;
 
 	if (charger->plat_data->irq_base) {
 		ret = devm_request_threaded_irq(&pdev->dev,
