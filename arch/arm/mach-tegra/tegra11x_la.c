@@ -264,12 +264,12 @@ static void t11x_init_ptsa(void)
 	writel(0x01, T11X_MC_RA(SMMU_SMMU_PTSA_MAX_0));
 
 	ring1_rate = readl(T11X_MC_RA(DIS_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(DISB_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(VE_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(RING2_PTSA_RATE_0));
+		     readl(T11X_MC_RA(DISB_PTSA_RATE_0));
 #if defined(CONFIG_TEGRA_ERRATA_977223)
 	ring1_rate /= 2;
 #endif
+	ring1_rate += readl(T11X_MC_RA(VE_PTSA_RATE_0)) +
+		      readl(T11X_MC_RA(RING2_PTSA_RATE_0));
 	writel(ring1_rate, T11X_MC_RA(RING1_PTSA_RATE_0));
 	writel(0x36, T11X_MC_RA(RING1_PTSA_MIN_0));
 	writel(0x1f, T11X_MC_RA(RING1_PTSA_MAX_0));
@@ -304,24 +304,12 @@ static void t11x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	writel(rate_dis, T11X_MC_RA(DIS_PTSA_RATE_0));
 	writel(rate_disb, T11X_MC_RA(DISB_PTSA_RATE_0));
 
-
-	ring1_rate = readl(T11X_MC_RA(DIS_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(DISB_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(VE_PTSA_RATE_0)) +
-		     readl(T11X_MC_RA(RING2_PTSA_RATE_0));
-	la_debug("max_bw=0x%x, max_bwb=0x%x, num_active=0x%x,"
-		"num_activeb=0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x ",
-		max_bw, max_bwb, num_active, num_activeb, disp_bw_array[0],
-		disp_bw_array[1], disp_bw_array[2], disp_bw_array[5],
-		disp_bw_array[6], disp_bw_array[7]);
-	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%lx",
-		readl(T11X_MC_RA(DIS_PTSA_RATE_0)),
-		readl(T11X_MC_RA(DISB_PTSA_RATE_0)),
-		readl(T11X_MC_RA(VE_PTSA_RATE_0)),
-		readl(T11X_MC_RA(RING2_PTSA_RATE_0)), ring1_rate);
+	ring1_rate = rate_dis + rate_disb;
 #if defined(CONFIG_TEGRA_ERRATA_977223)
 	ring1_rate /= 2;
 #endif
+	ring1_rate += readl(T11X_MC_RA(VE_PTSA_RATE_0)) +
+		      readl(T11X_MC_RA(RING2_PTSA_RATE_0));
 	writel(ring1_rate, T11X_MC_RA(RING1_PTSA_RATE_0));
 }
 

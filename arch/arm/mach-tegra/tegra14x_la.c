@@ -352,9 +352,11 @@ static void t14x_init_ptsa(void)
 
 	p->dis_ptsa_min = 0x36;
 	p->dis_ptsa_max = 0x1e;
+	p->dis_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0));
 
 	p->disb_ptsa_min = 0x36;
 	p->disb_ptsa_max = 0x1e;
+	p->disb_ptsa_rate = readl(T14X_MC_RA(DISB_PTSA_RATE_0));
 
 	p->ve_ptsa_rate = t14x_get_ptsa_rate(T14X_MAX_CAMERA_BW_MHZ);
 	p->ve_ptsa_min = 0x3d;
@@ -388,14 +390,14 @@ static void t14x_init_ptsa(void)
 	p->bbcll_earb_cfg = 0x14 << 20 | 0x3d << 16 |
 		t14x_get_ptsa_rate(T14X_MAX_BBCLL_BW_MHZ) << 8 | 8 << 0;
 
-	p->ring1_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
-			readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
-			readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
-			readl(T14X_MC_RA(RING2_PTSA_RATE_0));
+	p->ring1_ptsa_rate = p->dis_ptsa_rate +
+			     p->bbc_ptsa_rate;
 #if defined(CONFIG_TEGRA_ERRATA_977223)
 	p->ring1_ptsa_rate /= 2;
 #endif
-
+	p->ring1_ptsa_rate += p->disb_ptsa_rate +
+			      p->ve_ptsa_rate +
+			      p->ring2_ptsa_rate;
 	program_ptsa();
 }
 
@@ -423,24 +425,13 @@ static void t14x_update_display_ptsa_rate(unsigned int *disp_bw_array)
 	writel(p->dis_ptsa_rate, T14X_MC_RA(DIS_PTSA_RATE_0));
 	writel(p->disb_ptsa_rate, T14X_MC_RA(DISB_PTSA_RATE_0));
 
-	p->ring1_ptsa_rate = readl(T14X_MC_RA(DIS_PTSA_RATE_0)) +
-			    readl(T14X_MC_RA(DISB_PTSA_RATE_0)) +
-			    readl(T14X_MC_RA(VE_PTSA_RATE_0)) +
-			    readl(T14X_MC_RA(RING2_PTSA_RATE_0));
-	la_debug("total_dis_bw=%d, total_disb_bw=%d,"
-		" A=%d, B=%d, C=%d, T=%d, D=%d, AB=%d, BB=%d, CC=%d ",
-		total_dis_bw, total_disb_bw, disp_bw_array[0],
-		disp_bw_array[1], disp_bw_array[2], disp_bw_array[10],
-		disp_bw_array[11], disp_bw_array[5], disp_bw_array[6],
-		disp_bw_array[7]);
-	la_debug("dis=0x%x, disb=0x%x, ve=0x%x, rng2=0x%x, rng1=0x%x",
-		readl(T14X_MC_RA(DIS_PTSA_RATE_0)),
-		readl(T14X_MC_RA(DISB_PTSA_RATE_0)),
-		readl(T14X_MC_RA(VE_PTSA_RATE_0)),
-		readl(T14X_MC_RA(RING2_PTSA_RATE_0)), p->ring1_ptsa_rate);
+	p->ring1_ptsa_rate = p->dis_ptsa_rate + p->bbc_ptsa_rate;
 #if defined(CONFIG_TEGRA_ERRATA_977223)
 	p->ring1_ptsa_rate /= 2;
 #endif
+	p->ring1_ptsa_rate += p->disb_ptsa_rate +
+			      p->ve_ptsa_rate +
+			      p->ring2_ptsa_rate;
 	writel(p->ring1_ptsa_rate, T14X_MC_RA(RING1_PTSA_RATE_0));
 }
 
