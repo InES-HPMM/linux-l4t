@@ -1613,7 +1613,11 @@ static int rtl8169_set_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 
 static const char *rtl_lookup_firmware_name(struct rtl8169_private *tp)
 {
+#ifdef CONFIG_R8169_FW_LOAD
 	return rtl_chip_infos[tp->mac_version].fw_name;
+#else
+	return NULL;
+#endif
 }
 
 static void rtl8169_get_drvinfo(struct net_device *dev,
