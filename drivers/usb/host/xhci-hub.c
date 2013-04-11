@@ -640,6 +640,14 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				clear_bit(wIndex, &bus_state->resuming_ports);
 				xhci_set_link_state(xhci, port_array, wIndex,
 							XDEV_U0);
+
+				/* add reset/resume recovery time of 10ms
+				 * per usb2.0 spec section 9.2.6.2
+				 */
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				msleep(10);
+				spin_lock_irqsave(&xhci->lock, flags);
+
 				xhci_dbg(xhci, "set port %d resume\n",
 					wIndex + 1);
 				slot_id = xhci_find_slot_id_by_port(hcd, xhci,
