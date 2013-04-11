@@ -59,7 +59,7 @@ TRACE_EVENT(cooling_device_update,
 			   __entry->target = target;
 			   ),
 
-	    TP_printk("%s -> %d", __entry->type, __entry->target)
+	    TP_printk("%s -> %ld", __entry->type, __entry->target)
 	    );
 
 
