@@ -88,7 +88,9 @@ static bool stop_mc_clk_in_idle __read_mostly;
 module_param(stop_mc_clk_in_idle, bool, 0644);
 
 static struct clk *cpu_clk_for_dvfs;
+#ifdef CONFIG_HAVE_ARM_TWD
 static struct clk *twd_clk;
+#endif
 
 static int pd_exit_latencies[5];
 
@@ -394,9 +396,12 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #ifdef CONFIG_SMP
 	s64 sleep_time;
 	ktime_t entry_time;
+#ifdef CONFIG_HAVE_ARM_TWD
 	struct tegra_twd_context twd_context;
+#endif
 	bool sleep_completed = false;
 	struct tick_sched *ts = tick_get_tick_sched(dev->cpu);
+#ifdef CONFIG_HAVE_ARM_TWD
 #if defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	void __iomem *twd_base = IO_ADDRESS(TEGRA_ARM_PERIF_BASE + 0x600);
 #endif
@@ -418,6 +423,7 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #endif
 		}
 	}
+#endif
 
 	if (!tegra_is_cpu_wake_timer_ready(dev->cpu) ||
 	    (request < state->target_residency) ||
@@ -434,7 +440,9 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 #if !defined(CONFIG_TEGRA_LP2_CPU_TIMER)
 	sleep_time = request - state->exit_latency;
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &dev->cpu);
+#ifdef CONFIG_HAVE_ARM_TWD
 	tegra_twd_suspend(&twd_context);
+#endif
 	tegra_pd_set_trigger(sleep_time);
 #endif
 	idle_stats.tear_down_count[cpu_number(dev->cpu)]++;
@@ -450,12 +458,16 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
 
 #ifdef CONFIG_TEGRA_LP2_CPU_TIMER
+#ifdef CONFIG_HAVE_ARM_TWD
 	if (!tegra_twd_get_state(&twd_context))
 		sleep_completed = (twd_context.twd_cnt == 0);
+#endif
 #else
 	sleep_completed = !tegra_pd_timer_remain();
 	tegra_pd_set_trigger(0);
+#ifdef CONFIG_HAVE_ARM_TWD
 	tegra_twd_resume(&twd_context);
+#endif
 	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &dev->cpu);
 #endif
 	sleep_time = ktime_to_us(ktime_sub(ktime_get(), entry_time));
@@ -714,7 +726,9 @@ int __init tegra14x_cpuidle_init_soc(struct tegra_cpuidle_ops *idle_ops)
 	};
 
 	cpu_clk_for_dvfs = tegra_get_clock_by_name("cpu_g");
+#ifdef CONFIG_HAVE_ARM_TWD
 	twd_clk = tegra_get_clock_by_name("twd");
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(pd_exit_latencies); i++)
 		pd_exit_latencies[i] = tegra_pg_exit_latency;
