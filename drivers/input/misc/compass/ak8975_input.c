@@ -108,6 +108,11 @@ static char *akm_vregs[] = {
 	"vid",
 };
 
+static char *akm_configs[] = {
+	"auto",
+	"mpu",
+	"host",
+};
 
 struct akm_asa {
 	u8 asa[3];			/* axis sensitivity adjustment */
@@ -1119,6 +1124,47 @@ static void akm_shutdown(struct i2c_client *client)
 	akm_remove(client);
 }
 
+static struct mpu_platform_data *akm_parse_dt(struct i2c_client *client)
+{
+	struct mpu_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	char *pchar;
+	u8 config;
+	int len;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pchar = of_get_property(np, "orientation", &len);
+	if (!pchar || len != sizeof(pdata->orientation)) {
+		dev_err(&client->dev, "Cannot read orientation property\n");
+		return ERR_PTR(-EINVAL);
+	}
+	memcpy(pdata->orientation, pchar, len);
+
+	if (of_property_read_string(np, "config", &pchar)) {
+		dev_err(&client->dev, "Cannot read config property\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	for (config = 0; config < ARRAY_SIZE(akm_configs); config++) {
+		if (!strcasecmp(pchar, akm_configs[config])) {
+			pdata->config = config;
+			break;
+		}
+	}
+
+	if (config == ARRAY_SIZE(akm_configs)) {
+		dev_err(&client->dev, "Invalid config value\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	return pdata;
+}
+
 static int akm_probe(struct i2c_client *client,
 		     const struct i2c_device_id *devid)
 {
@@ -1128,19 +1174,26 @@ static int akm_probe(struct i2c_client *client,
 
 	dev_info(&client->dev, "%s\n", __func__);
 	inf = kzalloc(sizeof(*inf), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(inf)) {
+	if (!inf) {
 		dev_err(&client->dev, "%s kzalloc ERR\n", __func__);
 		return -ENOMEM;
 	}
 
 	inf->i2c = client;
 	i2c_set_clientdata(client, inf);
-	pd = (struct mpu_platform_data *)dev_get_platdata(&client->dev);
-	if (pd == NULL)
-		dev_err(&client->dev, "%s No %s platform data ERR\n",
-			__func__, devid->name);
+
+	if (client->dev.of_node)
+		pd = akm_parse_dt(client);
 	else
-		inf->pdata = *pd;
+		pd = (struct mpu_platform_data *)dev_get_platdata(&client->dev);
+
+	if (!pd || IS_ERR(pd)) {
+		kfree(inf);
+		return -EINVAL;
+	}
+
+	inf->pdata = *pd;
+
 	akm_pm_init(inf);
 	err = akm_id(inf);
 	akm_pm(inf, false);
@@ -1185,6 +1238,15 @@ static const struct i2c_device_id akm_i2c_device_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, akm_i2c_device_id);
 
+static const struct of_device_id akm_of_match[] = {
+	{ .compatible = "ak,ak8963", },
+	{ .compatible = "ak,ak8972", },
+	{ .compatible = "ak,ak8975", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, akm_of_match);
+
 static struct i2c_driver akm_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.probe		= akm_probe,
@@ -1192,6 +1254,7 @@ static struct i2c_driver akm_driver = {
 	.driver = {
 		.name	= AKM_NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(akm_of_match),
 	},
 	.id_table	= akm_i2c_device_id,
 	.shutdown	= akm_shutdown,
