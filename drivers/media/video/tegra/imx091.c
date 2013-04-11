@@ -220,6 +220,111 @@ static int imx091_power_off(struct nvc_regulator *vreg);
 
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 #define IMX091_WAIT_1000_MS 1000
+/* The setting is for 1-lane mode.
+ * THS time is different as well. They are set
+ * in the VI programming layer
+ */
+static struct imx091_reg imx091_FPGA_4160x3120_i2c[] = {
+	{0x0103, 0x01},
+	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
+
+	{0x3087, 0x53},
+	{0x309D, 0x94},
+	{0x30A1, 0x08},
+	{0x30C7, 0x00},
+	{0x3115, 0x0E},
+	{0x3118, 0x42},
+	{0x311D, 0x34},
+	{0x3121, 0x0D},
+	{0x3212, 0xF2},
+	{0x3213, 0x0F},
+	{0x3215, 0x0F},
+	{0x3217, 0x0B},
+	{0x3219, 0x0B},
+	{0x321B, 0x0D},
+	{0x321D, 0x0D},
+	{0x0305, 0x01},
+	{0x0307, 0x18},
+	{0x30A4, 0x01},
+	{0x303C, 0x28},
+	{0x3032, 0x00},
+	{0x0112, 0x0A},
+	{0x0113, 0x0A},
+	{0x0340, 0x0C},
+	{0x0341, 0x58},
+	{0x0342, 0x12},
+	{0x0343, 0x0C},
+	{0x0344, 0x00},
+	{0x0345, 0x08},
+	{0x0346, 0x00},
+	{0x0347, 0x30},
+	{0x0348, 0x10},
+	{0x0349, 0x77},
+	{0x034A, 0x0C},
+	{0x034B, 0x5F},
+	{0x034C, 0x10},
+	{0x034D, 0x40},
+	{0x034E, 0x0C},
+	{0x034F, 0x30},
+	{0x0381, 0x01},
+	{0x0383, 0x01},
+	{0x0385, 0x01},
+	{0x0387, 0x01},
+	{0x3033, 0x00},
+	{0x303D, 0x10},
+	{0x303E, 0xD0},
+	{0x3040, 0x08},
+	{0x3041, 0x97},
+	{0x3048, 0x00},
+	{0x304C, 0x7F},
+	{0x304D, 0x04},
+	{0x3064, 0x12},
+	{0x309B, 0x20},
+	{0x309E, 0x00},
+	{0x30D5, 0x00},
+	{0x30D6, 0x85},
+	{0x30D7, 0x2A},
+	{0x30D8, 0x64},
+	{0x30D9, 0x89},
+	{0x30DA, 0x00},
+	{0x30DB, 0x00},
+	{0x30DC, 0x00},
+	{0x30DD, 0x00},
+	{0x30DE, 0x00},
+	{0x3102, 0x10},
+	{0x3103, 0x44},
+	{0x3104, 0x40},
+	{0x3105, 0x00},
+	{0x3106, 0x0D},
+	{0x3107, 0x01},
+	{0x310A, 0x0A},
+	{0x315C, 0x99},
+	{0x315D, 0x98},
+	{0x316E, 0x9A},
+	{0x316F, 0x99},
+	{0x3301, 0x01},
+	{0x3304, 0x05},
+	{0x3305, 0x04},
+	{0x3306, 0x12},
+	{0x3307, 0x03},
+	{0x3308, 0x0D},
+	{0x3309, 0x05},
+	{0x330A, 0x09},
+	{0x330B, 0x04},
+	{0x330C, 0x08},
+	{0x330D, 0x05},
+	{0x330E, 0x03},
+	{0x3318, 0x65},
+	{0x3322, 0x02},
+	{0x3342, 0x0F},
+	{0x3348, 0xE0},
+	{0x0600, 0x00},
+	{0x0601, 0x00},
+
+	{IMX091_TABLE_WAIT_MS, 5000},
+	{IMX091_TABLE_END, 0x00}
+};
+
 static struct imx091_reg imx091_FPGA_1052x1560_i2c[] = {
 	/* Stand by */
 	{0x0100, 0x00},
@@ -334,7 +439,7 @@ static struct imx091_reg imx091_FPGA_1052x1560_i2c[] = {
 	{0x3348, 0xE0},
 	{0x0600, 0x00}, /* colorbar fade-to-gray */
 	{0x0601, 0x00},
-	{0x0101, 0x03}, /* image orientation */
+	{0x0101, 0x00}, /* image orientation */
 	{0x0100, 0x01},
 
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
@@ -888,6 +993,49 @@ static struct imx091_reg imx091_524X390_i2c[] = {
  * 3. Add entry to the imx091_mode_table
  */
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static struct imx091_mode_data imx091_FPGA_4160x3120 = {
+	.sensor_mode = {
+		.res_x			= 4160,
+		.res_y			= 3120,
+		.active_start_x		= 0,
+		.active_stary_y		= 0,
+		.peak_frame_rate	= 30000, /* / _INT2FLOAT_DIVISOR */
+		.pixel_aspect_ratio	= 1000,  /* / _INT2FLOAT_DIVISOR */
+		.pll_multiplier		= 5000,  /* / _INT2FLOAT_DIVISOR */
+		.crop_mode		= NVC_IMAGER_CROPMODE_NONE,
+	},
+	.sensor_dnvc = {
+		.api_version		= NVC_IMAGER_API_DYNAMIC_VER,
+		.region_start_x		= 0,
+		.region_start_y		= 0,
+		.x_scale		= 1,
+		.y_scale		= 1,
+		.bracket_caps		= 1,
+		.flush_count		= 2,
+		.init_intra_frame_skip	= 0,
+		.ss_intra_frame_skip	= 2,
+		.ss_frame_number	= 3,
+		.coarse_time		= 0x06FB,
+		.max_coarse_diff	= 5,
+		.min_exposure_course	= 2,
+		.max_exposure_course	= 0xFFFC,
+		.diff_integration_time	= 110, /* / _INT2FLOAT_DIVISOR */
+		.line_length		= 0x120C,
+		.frame_length		= 0x0c58,
+		.min_frame_length	= 0x0c58,
+		.max_frame_length	= 0xFFFF,
+		.min_gain		= 1, /* / _INT2FLOAT_DIVISOR */
+		.max_gain		= 16000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain		= 1000, /* / _INT2FLOAT_DIVISOR */
+		.inherent_gain_bin_en	= 1000, /* / _INT2FLOAT_DIVISOR */
+		.support_bin_control	= 0,
+		.support_fast_mode	= 0,
+		.pll_mult		= 0x20,
+		.pll_div		= 0x2,
+	},
+	.p_mode_i2c			= imx091_FPGA_4160x3120_i2c,
+};
+
 static struct imx091_mode_data imx091_FPGA_1052x1560 = {
 	.sensor_mode = {
 		.res_x			= 1032,
@@ -1150,6 +1298,7 @@ static struct imx091_mode_data imx091_524x390 = {
 static struct imx091_mode_data *imx091_mode_table[] = {
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	&imx091_FPGA_1052x1560,
+	&imx091_FPGA_4160x3120,
 #else
 	&imx091_4208x3120,
 	&imx091_1948x1096,
