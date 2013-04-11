@@ -430,7 +430,10 @@ static int dw9718_set_focuser_capabilities(struct dw9718_info *info,
 	}
 
 	/* set pre-set value, as currently ODM sets incorrect value */
-	info->cap.settle_time = dw9718_SETTLETIME;
+	if (info->pdata->cap->settle_time)
+		info->cap.settle_time = info->pdata->cap->settle_time;
+	else
+		info->cap.settle_time = dw9718_SETTLETIME;
 
 	dev_dbg(&info->i2c_client->dev,
 		"%s: copy_from_user bytes %d info->cap.settle_time %d\n",
