@@ -132,7 +132,9 @@ struct tegra_iovmm_area_ops {
 #include <linux/dma-mapping.h>
 #include <linux/dma-direction.h>
 
+#ifdef CONFIG_IOMMU_API
 #include <asm/dma-iommu.h>
+#endif
 
 #define tegra_iovmm_alloc_client(d, s, m)	tegra_iommu_alloc_client(d)
 #define tegra_iovmm_free_client(c)		tegra_iommu_free_client(c)
