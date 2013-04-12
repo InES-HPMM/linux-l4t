@@ -583,7 +583,7 @@
 #define TEGRA_I2C4_SIZE			SZ_512
 
 #define TEGRA_I2C5_BASE			0x7000D000
-#define TEGRA_I2C5_SIZE			SZ_512
+#define TEGRA_I2C5_SIZE			SZ_256
 
 #endif
 
