@@ -457,13 +457,9 @@ field ## _store_state(struct device *dev, struct device_attribute *attr,\
 		      const char *buf, size_t count)			\
 {									\
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);		\
-	int value;							\
 									\
 	if (!bbc)							\
 		return -EAGAIN;						\
-									\
-	if (sscanf(buf, "%d", &value) != 1)				\
-		return -EINVAL;						\
 									\
 	if (sysfs_streq(buf, "enabled\n") || sysfs_streq(buf, "1"))	\
 		regulator_enable(bbc->field);				\
