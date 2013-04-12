@@ -353,6 +353,63 @@ static int __init pasr_build_map(struct pasr_info *info, struct pasr_map *map)
 	return 0;
 }
 
+#ifdef DEBUG
+static struct dentry *rootdir;
+
+static int pasr_print_meminfo(struct seq_file *s, void *data)
+{
+	struct pasr_map *map = &pasr_map;
+	unsigned int i, j;
+
+	if (!map)
+		return 0;
+
+	for (i = 0; i < map->nr_dies; i++) {
+		struct pasr_die *die = &map->die[i];
+		seq_printf(s, "die %d\n", i);
+		for (j = 0; j < die->nr_sections; j++) {
+			struct pasr_section *section = &die->section[j];
+			u64 percentage;
+
+			percentage = (u64)section->free_size * 100;
+			do_div(percentage, PASR_SECTION_SZ);
+			seq_printf(s, "section %d %lu %llu\n", j, section->free_size,
+					percentage);
+		}
+	}
+	return 0;
+}
+
+static int meminfo_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pasr_print_meminfo, inode->i_private);
+}
+
+static const struct file_operations meminfo_fops = {
+	.open = meminfo_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int __init pasr_init_debug(void)
+{
+	struct dentry *d;
+
+	rootdir = debugfs_create_dir("pasr", NULL);
+	if (!rootdir)
+		return -ENOMEM;
+
+	d = debugfs_create_file("meminfo", S_IRUGO, rootdir, (void *)&pasr_map,
+				&meminfo_fops);
+	if (!d)
+		return -ENOMEM;
+
+	return 0;
+}
+late_initcall(pasr_init_debug);
+#endif
+
 int __init early_pasr_setup(void)
 {
 	int ret;
