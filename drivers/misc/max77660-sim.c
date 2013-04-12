@@ -44,10 +44,10 @@ static ssize_t max77660_sim1_state_read(struct device *dev,
 	struct platform_device *device = to_platform_device(dev);
 	struct max77660_sim *sim = dev_get_platdata(&device->dev);
 
-	return sprintf(buf, "%s\n", sim->sim1_insert ? "insert" : "removal");
+	return sprintf(buf, "%s\n", sim->sim1_insert ? "1" : "0");
 }
 
-static DEVICE_ATTR(sim1_state, S_IRUSR,
+static DEVICE_ATTR(sim1_inserted, S_IRUSR,
 		max77660_sim1_state_read, NULL);
 
 static ssize_t max77660_sim2_state_read(struct device *dev,
@@ -57,15 +57,15 @@ static ssize_t max77660_sim2_state_read(struct device *dev,
 	struct max77660_sim *sim = dev_get_platdata(&device->dev);
 
 
-	return sprintf(buf, "%s\n", sim->sim2_insert ? "insert" : "removal");
+	return sprintf(buf, "%s\n", sim->sim2_insert ? "1" : "0");
 }
 
-static DEVICE_ATTR(sim2_state, S_IRUSR,
+static DEVICE_ATTR(sim2_inserted, S_IRUSR,
 		max77660_sim2_state_read, NULL);
 
 static struct attribute *sim_attrs[] = {
-	&dev_attr_sim1_state.attr,
-	&dev_attr_sim2_state.attr,
+	&dev_attr_sim1_inserted.attr,
+	&dev_attr_sim2_inserted.attr,
 	NULL
 };
 
@@ -241,6 +241,14 @@ static int __devinit max77660_sim_probe(struct platform_device *pdev)
 		goto err_malloc;
 	}
 
+	sim->parent = pdev->dev.parent;
+	sim->dev = &pdev->dev;
+	sim->miscdev = sim_miscdev.this_device;
+	sim->sim_irq = sim_irq;
+	platform_set_drvdata(pdev, sim);
+	misc_pdev = to_platform_device(sim_miscdev.this_device);
+	misc_pdev->dev.platform_data = sim;
+
 	ret = request_threaded_irq(sim_irq, NULL,  max77660_sim_irq,
 			IRQF_ONESHOT,
 			"SIM_DETECT_IRQ", sim);
@@ -249,15 +257,6 @@ static int __devinit max77660_sim_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto err_malloc;
 	}
-
-	misc_pdev = to_platform_device(sim_miscdev.this_device);
-	misc_pdev->dev.platform_data = sim;
-
-	sim->parent = pdev->dev.parent;
-	sim->dev = &pdev->dev;
-	sim->miscdev = sim_miscdev.this_device;
-	sim->sim_irq = sim_irq;
-	platform_set_drvdata(pdev, sim);
 
 	return 0;
 
