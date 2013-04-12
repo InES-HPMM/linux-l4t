@@ -261,6 +261,7 @@ obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-j-720p-4-7.o
 obj-${CONFIG_MACH_TEGRA_PLUTO}          += panel-s-1080p-5.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
+obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-kbc.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-pinmux.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o

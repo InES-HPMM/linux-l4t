@@ -101,6 +101,7 @@ static void __init tegra_ardbeg_init(void)
 	tegra_enable_pinmux();
 	ardbeg_pinmux_init();
 	tegra_soc_device_init("ardbeg");
+	ardbeg_kbc_init();
 	ardbeg_panel_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 }
