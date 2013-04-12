@@ -89,9 +89,29 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			datagram_len += ap_iob->length;
 			bb_iob = ap_iob->sg_next;
 			ap_iob = NVSHM_B2A(netdev.handle, bb_iob);
+			if (datagram_len > dev->mtu) {
+				pr_err("%s: MTU %d>%d\n", __func__,
+				       dev->mtu, datagram_len);
+				priv->stats.rx_errors++;
+				/* move to next datagram - drop current one */
+				ap_iob = ap_next;
+				bb_next = ap_next->next;
+				ap_next = NVSHM_B2A(netdev.handle, bb_next);
+				nvshm_iobuf_free_cluster(ap_iob);
+				continue;
+			}
 		}
 		/* construct the skb */
 		skb = (struct sk_buff *) dev_alloc_skb(datagram_len);
+		if (!skb) {
+			/* Out of memory - nothing to do except */
+			/* free current iobufs and return */
+			pr_err("%s: skb alloc failed!\n", __func__);
+			priv->stats.rx_errors++;
+			nvshm_iobuf_free_cluster(ap_next);
+			spin_unlock(&priv->lock);
+			return;
+		}
 		dst = skb_put(skb, datagram_len);
 
 		ap_iob = ap_next;
@@ -121,7 +141,8 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			priv->stats.rx_errors++;
 			/* Drop packet */
 			kfree_skb(skb);
-			continue;
+			/* move to next datagram */
+			goto next_datagram;
 		}
 		skb->pkt_type = PACKET_HOST;
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
@@ -129,7 +150,7 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 		priv->stats.rx_bytes += datagram_len;
 		if (netif_rx(skb) == NET_RX_DROP)
 			pr_debug("%s() : dropped packet\n", __func__);
-		/* move to next datagram */
+next_datagram:	/* move to next datagram */
 		bb_next = ap_next->next;
 		ap_next = NVSHM_B2A(netdev.handle, bb_next);
 	}
