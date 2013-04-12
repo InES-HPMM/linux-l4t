@@ -22,10 +22,12 @@
 #include <linux/platform_device.h>
 #include <linux/resource.h>
 #include <linux/io.h>
+#include <linux/gpio.h>
 
 #include <mach/edp.h>
 #include <mach/irqs.h>
 #include <mach/hardware.h>
+#include <mach/io_dpd.h>
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>
@@ -702,6 +704,30 @@ static int __init pluto_fixed_regulator_init(void)
 }
 subsys_initcall_sync(pluto_fixed_regulator_init);
 
+static struct tegra_io_dpd hv_io = {
+	.name			= "HV",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 6,
+};
+
+static void pluto_board_suspend(int state, enum suspend_stage stage)
+{
+	/* put HV IOs into DPD mode to save additional power */
+	if (state == TEGRA_SUSPEND_LP1 && stage == TEGRA_SUSPEND_BEFORE_CPU) {
+		gpio_direction_input(TEGRA_GPIO_PK6);
+		tegra_io_dpd_enable(&hv_io);
+	}
+}
+
+static void pluto_board_resume(int state, enum resume_stage stage)
+{
+	/* bring HV IOs back from DPD mode, GPIO configuration
+	 * will be restored by gpio driver
+	 */
+	if (state == TEGRA_SUSPEND_LP1 && stage == TEGRA_RESUME_AFTER_CPU)
+		tegra_io_dpd_disable(&hv_io);
+}
+
 static struct tegra_suspend_platform_data pluto_suspend_data = {
 	.cpu_timer	= 300,
 	.cpu_off_timer	= 300,
@@ -721,6 +747,8 @@ static struct tegra_suspend_platform_data pluto_suspend_data = {
 	.lp1_core_volt_low = 0x2e,
 	.lp1_core_volt_high = 0x42,
 #endif
+	.board_suspend	= pluto_board_suspend,
+	.board_resume	= pluto_board_resume,
 };
 
 int __init pluto_suspend_init(void)
