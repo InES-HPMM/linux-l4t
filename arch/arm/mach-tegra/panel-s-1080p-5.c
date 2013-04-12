@@ -289,14 +289,14 @@ static int __maybe_unused dsi_s_1080p_5_bl_notify(struct device *unused,
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
 
+	/* SD brightness is a percentage */
+	brightness = (brightness * cur_sd_brightness) / 255;
+
 	/* Apply any backlight response curve */
 	if (brightness > 255)
 		pr_info("Error: Brightness > 255!\n");
 	else
 		brightness = dsi_s_1080p_5_bl_response_curve[brightness];
-
-	/* SD brightness is a percentage */
-	brightness = (brightness * cur_sd_brightness) / 255;
 
 	return brightness;
 }
