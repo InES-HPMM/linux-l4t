@@ -304,6 +304,13 @@
 #define PREFETCH_MEM_SIZE_0			(SZ_512M + SZ_256M)
 #endif
 
+#define DEBUG 0
+#if DEBUG
+#define PR_FUNC_LINE	pr_info("PCIE: %s(%d)\n", __func__, __LINE__)
+#else
+#define PR_FUNC_LINE	do {} while (0)
+#endif
+
 struct tegra_pcie_port {
 	int			index;
 	u8			root_bus_nr;
@@ -643,6 +650,7 @@ DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, tegra_pcie_relax_enable);
 
 static void tegra_pcie_preinit(void)
 {
+	PR_FUNC_LINE;
 	pcie_mem_space.name = "PCIe MEM Space";
 	pcie_mem_space.start = MEM_BASE_0;
 	pcie_mem_space.end = MEM_BASE_0 + MEM_SIZE_0 - 1;
@@ -663,6 +671,7 @@ static int tegra_pcie_setup(int nr, struct pci_sys_data *sys)
 {
 	struct tegra_pcie_port *pp;
 
+	PR_FUNC_LINE;
 	if (nr >= tegra_pcie.num_ports)
 		return 0;
 
@@ -686,6 +695,7 @@ static struct pci_bus *__init tegra_pcie_scan_bus(int nr,
 {
 	struct tegra_pcie_port *pp;
 
+	PR_FUNC_LINE;
 	if (nr >= tegra_pcie.num_ports)
 		return NULL;
 
@@ -719,6 +729,7 @@ static void __init tegra_pcie_hotplug_init(void)
 	if (is_dock_conn_at_boot)
 		return;
 
+	PR_FUNC_LINE;
 	tegra_pcie_preinit();
 	for (nr = 0; nr < tegra_pcie_hw.nr_controllers; nr++) {
 		sys = kzalloc(sizeof(struct pci_sys_data), GFP_KERNEL);
@@ -839,6 +850,7 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 
 	u32 code, signature;
 
+	PR_FUNC_LINE;
 	code = afi_readl(AFI_INTR_CODE) & AFI_INTR_CODE_MASK;
 	signature = afi_readl(AFI_INTR_SIGNATURE);
 
@@ -872,6 +884,7 @@ static void tegra_pcie_setup_translations(void)
 	u32 size;
 	u32 axi_address;
 
+	PR_FUNC_LINE;
 	/* Bar 0: config Bar */
 	fpci_bar = ((u32)0xfdff << 16);
 	size = PCIE_CFG_SZ;
@@ -939,6 +952,7 @@ static int tegra_pcie_enable_controller(void)
 	int i, timeout, ret = 0;
 	void __iomem *reg_mselect_base;
 
+	PR_FUNC_LINE;
 	reg_mselect_base = IO_ADDRESS(TEGRA_MSELECT_BASE);
 	/* select the PCIE APERTURE in MSELECT config */
 	reg = readl(reg_mselect_base);
@@ -1073,6 +1087,7 @@ static int tegra_pcie_enable_controller(void)
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 static int tegra_pcie_enable_regulators(void)
 {
+	PR_FUNC_LINE;
 	if (tegra_pcie.power_rails_enabled) {
 		pr_debug("PCIE: Already power rails enabled");
 		return 0;
@@ -1131,6 +1146,7 @@ static int tegra_pcie_disable_regulators(void)
 {
 	int err = 0;
 
+	PR_FUNC_LINE;
 	if (tegra_pcie.power_rails_enabled == 0) {
 		pr_debug("PCIE: Already power rails disabled");
 		goto err_exit;
@@ -1154,6 +1170,8 @@ static int tegra_pcie_power_regate(void)
 {
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	int err;
+
+	PR_FUNC_LINE;
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
 	if (err) {
 		pr_err("PCIE: powerup sequence failed: %d\n", err);
@@ -1173,6 +1191,7 @@ static int tegra_pcie_power_regate(void)
 
 static int tegra_pcie_map_resources(void)
 {
+	PR_FUNC_LINE;
 	/* Allocate config space virtual memory */
 	tegra_pcie.regs = ioremap_nocache(TEGRA_PCIE_BASE, PCIE_REGS_SZ);
 	if (tegra_pcie.regs == NULL) {
@@ -1185,6 +1204,7 @@ static int tegra_pcie_map_resources(void)
 
 void tegra_pcie_unmap_resources(void)
 {
+	PR_FUNC_LINE;
 	if (tegra_pcie.regs) {
 		iounmap(tegra_pcie.regs);
 		tegra_pcie.regs = 0;
@@ -1196,6 +1216,7 @@ static int tegra_pcie_power_on(void)
 {
 	int err = 0;
 
+	PR_FUNC_LINE;
 	if (tegra_pcie.pcie_power_enabled) {
 		pr_debug("PCIE: Already powered on");
 		goto err_exit;
@@ -1229,6 +1250,7 @@ static int tegra_pcie_power_off(void)
 {
 	int err = 0;
 
+	PR_FUNC_LINE;
 	if (tegra_pcie.pcie_power_enabled == 0) {
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
@@ -1250,6 +1272,7 @@ err_exit:
 
 static int tegra_pcie_clocks_get(void)
 {
+	PR_FUNC_LINE;
 	/* reset the PCIEXCLK */
 	tegra_pcie.pcie_xclk = clk_get_sys("tegra_pcie", "pciex");
 	if (IS_ERR_OR_NULL(tegra_pcie.pcie_xclk)) {
@@ -1272,6 +1295,7 @@ error_exit:
 
 static void tegra_pcie_clocks_put(void)
 {
+	PR_FUNC_LINE;
 	if (tegra_pcie.pll_e)
 		clk_put(tegra_pcie.pll_e);
 	if (tegra_pcie.pcie_xclk)
@@ -1282,6 +1306,7 @@ static int tegra_pcie_get_resources(void)
 {
 	int err;
 
+	PR_FUNC_LINE;
 	tegra_pcie.power_rails_enabled = 0;
 	tegra_pcie.pcie_power_enabled = 0;
 
@@ -1324,6 +1349,7 @@ static bool tegra_pcie_check_link(struct tegra_pcie_port *pp, int idx,
 	int retries = 3;
 	int timeout;
 
+	PR_FUNC_LINE;
 	do {
 		timeout = TEGRA_PCIE_LINKUP_TIMEOUT;
 		while (timeout) {
@@ -1370,6 +1396,7 @@ static void tegra_pcie_enable_clock_clamp(int index)
 {
 	unsigned int data;
 
+	PR_FUNC_LINE;
 	/* Power mangagement settings */
 	/* Enable clock clamping by default */
 	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
@@ -1382,6 +1409,7 @@ static void tegra_pcie_enable_aspm_l1_support(int index)
 {
 	unsigned int data;
 
+	PR_FUNC_LINE;
 	/* Enable ASPM - L1 state support by default */
 	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
 	data |= (NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE);
@@ -1392,6 +1420,7 @@ static void tegra_pcie_enable_pcie_master(int index)
 {
 	unsigned int data;
 
+	PR_FUNC_LINE;
 	/* enable PCIE mastering and accepting memory and IO requests */
 	data = rp_readl(NV_PCIE2_RP_DEV_CTRL, index);
 	data |= (PCIE2_RP_DEV_CTRL_IO_SPACE_ENABLED |
@@ -1405,6 +1434,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	struct tegra_pcie_port *pp;
 	unsigned int data;
 
+	PR_FUNC_LINE;
 	tegra_pcie_enable_clock_clamp(index);
 	tegra_pcie_enable_aspm_l1_support(index);
 	tegra_pcie_enable_pcie_master(index);
@@ -1445,6 +1475,7 @@ static int tegra_pcie_fpga_phy_init(void)
 #define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
 	int val = 0;
 
+	PR_FUNC_LINE;
 	val = readl(IO_ADDRESS(CLK_RST_BOND_OUT_REG));
 	/* return if current netlist does not contain PCIE */
 	if (val & CLK_RST_BOND_OUT_REG_PCIE)
@@ -1545,6 +1576,7 @@ static int __init tegra_pcie_init(void)
 	pcibios_min_io = 0x10000000ul;
 #endif
 
+	PR_FUNC_LINE;
 	INIT_LIST_HEAD(&tegra_pcie.busses);
 	INIT_WORK(&tegra_pcie.hotplug_detect, work_hotplug_handler);
 	err = tegra_pcie_get_resources();
@@ -1628,6 +1660,7 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	PR_FUNC_LINE;
 	tegra_pcie.dev = &pdev->dev;
 	tegra_pcie.plat_data = pdev->dev.platform_data;
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[0] %d\n",
@@ -1646,6 +1679,7 @@ static int tegra_pcie_suspend(struct device *dev)
 {
 	struct pci_dev *pdev = NULL;
 
+	PR_FUNC_LINE;
 	async_synchronize_full();
 
 	for_each_pci_dev(pdev) {
@@ -1668,6 +1702,7 @@ static int tegra_pcie_resume(struct device *dev)
 	int port, rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
 
+	PR_FUNC_LINE;
 	/* return w/o resume if cardhu dock is not connected */
 	if (gpio_get_value(tegra_pcie.plat_data->gpio))
 		goto exit;
@@ -1846,6 +1881,7 @@ static bool tegra_pcie_enable_msi(void)
 	u32 msi_base = 0;
 	u32 msi_aligned = 0;
 
+	PR_FUNC_LINE;
 	/* this only happens once. */
 	if (msi_enable) {
 		retval = true;
@@ -1912,6 +1948,7 @@ int arch_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 	struct msi_msg msg;
 	struct msi_map_entry *map_entry = NULL;
 
+	PR_FUNC_LINE;
 	if (!tegra_pcie_enable_msi())
 		goto exit;
 
@@ -1953,6 +1990,8 @@ exit:
 void arch_teardown_msi_irq(unsigned int irq)
 {
 	int i;
+
+	PR_FUNC_LINE;
 	for (i = 0; i < MSI_MAP_SIZE; i++) {
 		if ((msi_map[i].used) && (msi_map[i].irq == irq)) {
 			irq_free_desc(msi_map[i].irq);
