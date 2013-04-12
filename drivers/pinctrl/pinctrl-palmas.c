@@ -523,6 +523,8 @@ static int __devinit palmas_pinctrl_probe(struct platform_device *pdev)
 		palmas->gpio_muxed |= PALMAS_GPIO_11_MUXED;
 	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_12_MASK))
 		palmas->gpio_muxed |= PALMAS_GPIO_12_MUXED;
+	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_14_MASK))
+		palmas->gpio_muxed |= PALMAS_GPIO_14_MUXED;
 	if (!(reg & PALMAS_PRIMARY_SECONDARY_PAD4_GPIO_15_MASK))
 		palmas->gpio_muxed |= PALMAS_GPIO_15_MUXED;
 
