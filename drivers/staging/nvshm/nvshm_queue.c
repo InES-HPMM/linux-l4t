@@ -124,7 +124,9 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 
 int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
-	spin_lock_irq(&handle->qlock);
+	unsigned long f;
+
+	spin_lock_irqsave(&handle->qlock, f);
 	if (!handle->shared_queue_tail) {
 		spin_unlock_irq(&handle->qlock);
 		pr_err("%s: Queue not init!\n", __func__);
@@ -133,14 +135,14 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 
 	if (!iob) {
 		pr_err("%s: Queueing null pointer!\n", __func__);
-		spin_unlock_irq(&handle->qlock);
+		spin_unlock_irqrestore(&handle->qlock, f);
 		return -EINVAL;
 	}
 
 	/* Sanity check */
 	if (handle->shared_queue_tail->qnext) {
 		pr_err("%s: illegal queue pointer detected!\n", __func__);
-		spin_unlock_irq(&handle->qlock);
+		spin_unlock_irqrestore(&handle->qlock, f);
 		return -EINVAL;
 	}
 
@@ -158,7 +160,7 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 	FLUSH_CPU_DCACHE(handle->shared_queue_tail, sizeof(struct nvshm_iobuf));
 	handle->shared_queue_tail = iob;
 
-	spin_unlock_irq(&handle->qlock);
+	spin_unlock_irqrestore(&handle->qlock, f);
 	return 0;
 }
 

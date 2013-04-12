@@ -38,12 +38,13 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 {
 	struct nvshm_handle *handle = nvshm_get_handle();
 	struct nvshm_iobuf *desc = NULL;
+	unsigned long f;
 
-	spin_lock_irq(&alloc.lock);
+	spin_lock_irqsave(&alloc.lock, f);
 	if (alloc.free_pool_head) {
 		if (size > (alloc.free_pool_head->totalLength -
 			    NVSHM_DEFAULT_OFFSET)) {
-			spin_unlock_irq(&alloc.lock);
+			spin_unlock_irqrestore(&alloc.lock, f);
 			pr_err("%s: requested size (%d > %d) too big\n",
 			       __func__,
 			       size,
@@ -73,13 +74,13 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 		desc->ref = 1;
 
 	} else {
-		spin_unlock_irq(&alloc.lock);
+		spin_unlock_irqrestore(&alloc.lock, f);
 		pr_err("%s: no more alloc space\n", __func__);
 		/* No error since it's only Xoff situation */
 		return desc;
 	}
 
-	spin_unlock_irq(&alloc.lock);
+	spin_unlock_irqrestore(&alloc.lock, f);
 
 	return desc;
 }
@@ -89,6 +90,7 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 {
 	struct nvshm_handle *priv = nvshm_get_handle();
 	int callback = 0, chan;
+	unsigned long f;
 
 	if (desc->ref == 0) {
 		pr_err("%s: freeing an already freed iobuf (0x%x)\n",
@@ -96,7 +98,7 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 		       (unsigned int)desc);
 		return;
 	}
-	spin_lock_irq(&alloc.lock);
+	spin_lock_irqsave(&alloc.lock, f);
 	pr_debug("%s: free 0x%p ref %d pool %x\n", __func__,
 		 desc, desc->ref, desc->pool_id);
 	desc->ref--;
@@ -133,13 +135,13 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->length = 0;
 			desc->dataOffset = 0;
 			desc->qnext = NULL;
-			spin_unlock_irq(&alloc.lock);
+			spin_unlock_irqrestore(&alloc.lock, f);
 			nvshm_queue_put(priv, desc);
 			nvshm_generate_ipc(priv);
 			return;
 		}
 	}
-	spin_unlock_irq(&alloc.lock);
+	spin_unlock_irqrestore(&alloc.lock, f);
 	if (callback)
 		nvshm_start_tx(&priv->chan[chan]);
 }
@@ -171,20 +173,22 @@ void nvshm_iobuf_free_cluster(struct nvshm_iobuf *list)
 int nvshm_iobuf_ref(struct nvshm_iobuf *iob)
 {
 	int ref;
+	unsigned long f;
 
-	spin_lock_irq(&alloc.lock);
+	spin_lock_irqsave(&alloc.lock, f);
 	ref = iob->ref++;
-	spin_unlock_irq(&alloc.lock);
+	spin_unlock_irqrestore(&alloc.lock, f);
 	return ref;
 }
 
 int nvshm_iobuf_unref(struct nvshm_iobuf *iob)
 {
 	int ref;
+	unsigned long f;
 
-	spin_lock_irq(&alloc.lock);
+	spin_lock_irqsave(&alloc.lock, f);
 	ref = iob->ref--;
-	spin_unlock_irq(&alloc.lock);
+	spin_unlock_irqrestore(&alloc.lock, f);
 	return ref;
 }
 
