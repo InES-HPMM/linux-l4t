@@ -27,12 +27,46 @@
 
 struct nvshm_allocator {
 	spinlock_t lock;
+	/* AP free iobufs */
 	struct nvshm_iobuf *free_pool_head;
 	struct nvshm_iobuf *free_pool_tail;
+	/* Freed BBC iobuf to be returned */
+	struct nvshm_iobuf *bbc_pool_head;
+	struct nvshm_iobuf *bbc_pool_tail;
 	int nbuf;
 };
 
 static struct nvshm_allocator alloc;
+
+/* Accumulate BBC freed iobuf to return them later at end of rx processing */
+/* This saves a lot of CPU/memory cycles on both sides */
+static void bbc_free(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
+{
+	if (alloc.bbc_pool_head) {
+		alloc.bbc_pool_tail->next = NVSHM_A2B(handle, iob);
+		alloc.bbc_pool_tail = iob;
+	} else {
+		alloc.bbc_pool_head = alloc.bbc_pool_tail = iob;
+	}
+}
+
+/* Effectively free all iobufs accumulated */
+void nvshm_iobuf_bbc_free(struct nvshm_handle *handle)
+{
+	struct nvshm_iobuf *iob = NULL;
+	unsigned long f;
+
+	spin_lock_irqsave(&alloc.lock, f);
+	if (alloc.bbc_pool_head) {
+		iob = alloc.bbc_pool_head;
+		alloc.bbc_pool_head = alloc.bbc_pool_tail = NULL;
+	}
+	spin_unlock_irqrestore(&alloc.lock, f);
+	if (iob) {
+		nvshm_queue_put(handle, iob);
+		nvshm_generate_ipc(handle);
+	}
+}
 
 struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 {
@@ -85,6 +119,57 @@ struct nvshm_iobuf *nvshm_iobuf_alloc(struct nvshm_channel *chan, int size)
 	return desc;
 }
 
+/** Returned iobuf are already freed - just process them */
+void nvshm_iobuf_process_freed(struct nvshm_iobuf *desc)
+{
+	struct nvshm_handle *priv = nvshm_get_handle();
+	unsigned long f;
+
+	while (desc) {
+		int callback = 0, chan;
+		struct nvshm_iobuf *next = desc->next;
+
+		if (desc->ref != 0) {
+			pr_err("%s: BBC returned an non freed iobuf (0x%x)\n",
+			       __func__,
+			       (unsigned int)desc);
+			return;
+		}
+
+		chan = desc->chan;
+		spin_lock_irqsave(&alloc.lock, f);
+		/* update rate counter */
+		if ((chan >= 0) &&
+		    (chan < NVSHM_MAX_CHANNELS)) {
+			if (priv->chan[chan].rate_counter++ ==
+			    NVSHM_RATE_LIMIT_TRESHOLD)
+				callback = 1;
+		}
+		desc->sg_next = NULL;
+		desc->next = NULL;
+		desc->length = 0;
+		desc->flags = 0;
+		desc->dataOffset = 0;
+		desc->chan = 0;
+		if (alloc.free_pool_tail) {
+			alloc.free_pool_tail->next = NVSHM_A2B(priv,
+							       desc);
+			alloc.free_pool_tail = desc;
+		} else {
+			alloc.free_pool_head = desc;
+				alloc.free_pool_tail = desc;
+		}
+		spin_unlock_irqrestore(&alloc.lock, f);
+		if (callback)
+			nvshm_start_tx(&priv->chan[chan]);
+		if (next) {
+			desc = NVSHM_B2A(priv, next);
+		} else {
+			desc = next;
+		}
+	}
+}
+
 /** Single iobuf free - do not follow iobuf links */
 void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 {
@@ -118,7 +203,6 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->flags = 0;
 			desc->dataOffset = 0;
 			desc->chan = 0;
-			desc->qnext = NULL;
 			if (alloc.free_pool_tail) {
 				alloc.free_pool_tail->next = NVSHM_A2B(priv,
 								       desc);
@@ -134,10 +218,8 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->next = NULL;
 			desc->length = 0;
 			desc->dataOffset = 0;
-			desc->qnext = NULL;
+			bbc_free(priv, desc);
 			spin_unlock_irqrestore(&alloc.lock, f);
-			nvshm_queue_put(priv, desc);
-			nvshm_generate_ipc(priv);
 			return;
 		}
 	}

@@ -360,19 +360,16 @@ int nvshm_unregister_ipc(struct nvshm_handle *handle)
 
 int nvshm_generate_ipc(struct nvshm_handle *handle)
 {
-	int ret;
-
 	/* take wake lock until BB ack our irq */
 	if (!wake_lock_active(&handle->ul_lock))
 		wake_lock(&handle->ul_lock);
 
 	if (!hrtimer_active(&handle->wake_timer)) {
 		handle->timeout = 0;
-		ret = hrtimer_start(&handle->wake_timer,
-				    ktime_set(0, NVSHM_WAKE_TIMEOUT_NS),
-				    HRTIMER_MODE_REL);
+		hrtimer_start(&handle->wake_timer,
+			      ktime_set(0, NVSHM_WAKE_TIMEOUT_NS),
+			      HRTIMER_MODE_REL);
 	}
-	mb();
 	/* generate ipc */
 	tegra_bb_generate_ipc(handle->tegra_bb);
 	return 0;

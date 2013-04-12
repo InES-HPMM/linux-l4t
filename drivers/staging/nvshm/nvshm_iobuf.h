@@ -138,6 +138,22 @@ int nvshm_iobuf_unref_cluster(struct nvshm_iobuf *iob);
 int nvshm_iobuf_check(struct nvshm_channel *chan, struct nvshm_iobuf *iob);
 
 /**
+ * Finalize BBC iobuf free
+ * Only called internaly
+ * @param handle to nvshm
+ * @return None
+ */
+void nvshm_iobuf_bbc_free(struct nvshm_handle *handle);
+
+/**
+ * Process iobuf freed by BBC
+ * Only called internaly
+ * @param handle to nvshm_iobuf
+ * @return None
+ */
+void nvshm_iobuf_process_freed(struct nvshm_iobuf *desc);
+
+/**
  * Init iobuf subsystem
  *
  * @param handle to nvshm channel

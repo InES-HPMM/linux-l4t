@@ -118,6 +118,7 @@ struct nvshm_iobuf *nvshm_queue_get(struct nvshm_handle *handle)
 	pr_debug("%s (%p)->%p->(%p)\n", __func__,
 		 dummy, ret, ret->qnext);
 
+	dummy->qnext = NULL;
 	nvshm_iobuf_free(dummy);
 	return ret;
 }
@@ -128,7 +129,7 @@ int nvshm_queue_put(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 
 	spin_lock_irqsave(&handle->qlock, f);
 	if (!handle->shared_queue_tail) {
-		spin_unlock_irq(&handle->qlock);
+		spin_unlock_irqrestore(&handle->qlock, f);
 		pr_err("%s: Queue not init!\n", __func__);
 		return -EINVAL;
 	}
@@ -208,10 +209,20 @@ void nvshm_process_queue(struct nvshm_handle *handle)
 				nvshm_iobuf_free_cluster(
 					iob);
 			}
+		} else {
+			/* freed iobuf can form a tree */
+			/* Process attached iobufs but do not touch iob */
+			/* as it will be freed by next queue_get */
+			if (iob->next) {
+				nvshm_iobuf_process_freed(
+					NVSHM_B2A(handle, iob->next));
+			}
 		}
 		iob = nvshm_queue_get(handle);
 	}
 	spin_unlock_bh(&handle->lock);
+	/* Finalize BBC free */
+	nvshm_iobuf_bbc_free(handle);
 }
 
 void nvshm_abort_queue(struct nvshm_handle *handle)
