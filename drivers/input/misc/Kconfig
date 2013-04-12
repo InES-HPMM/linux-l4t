@@ -185,6 +185,19 @@ config INPUT_MAX77665_HAPTIC
 	  on MAXIM MAX77665 chip. This driver supports ff-memless interface
 	  from input framework.
 
+config INPUT_MAX77660_HAPTIC
+	tristate "MAXIM MAX77660 haptic controller support"
+	depends on HAVE_PWM && MFD_MAX77660
+	select INPUT_FF_MEMLESS
+	help
+	  Say Y here if you want to support MAXIM MAX77660 Haptic controller
+	  integrated in MAX77660 PMIC.
+
+	  This driver supports ff-memless interface from input framework.
+
+	  To compile this driver as module, choose M here: the
+	  module will be called max77660-vibrator.
+
 config INPUT_MMA8450
 	tristate "MMA8450 - Freescale's 3-Axis, 8/12-bit Digital Accelerometer"
 	depends on I2C

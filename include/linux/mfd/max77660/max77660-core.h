@@ -910,6 +910,108 @@ struct max77660_clk32k_platform_data {
 };
 
 /*
+ * max77660_haptic_platform_data: Platform data for Haptic Motor driver.
+ */
+struct max77660_haptic_platform_data_encl {
+	void *pdata;
+	size_t size;
+};
+
+/*
+ * Haptic constants
+ */
+
+#define MAX77660_HAPTIC_REG_GENERAL	0x00
+#define MAX77660_HAPTIC_REG_CONF1	0x01
+#define MAX77660_HAPTIC_REG_CONF2	0x02
+#define MAX77660_HAPTIC_REG_DRVCONF	0x03
+#define MAX77660_HAPTIC_REG_CYCLECONF1	0x04
+#define MAX77660_HAPTIC_REG_CYCLECONF2	0x05
+#define MAX77660_HAPTIC_REG_SIGCONF1	0x06
+#define MAX77660_HAPTIC_REG_SIGCONF2	0x07
+#define MAX77660_HAPTIC_REG_SIGCONF3	0x08
+#define MAX77660_HAPTIC_REG_SIGCONF4	0x09
+#define MAX77660_HAPTIC_REG_SIGDC1	0x0a
+#define MAX77660_HAPTIC_REG_SIGDC2	0x0b
+#define MAX77660_HAPTIC_REG_SIGPWMDC1	0x0c
+#define MAX77660_HAPTIC_REG_SIGPWMDC2	0x0d
+#define MAX77660_HAPTIC_REG_SIGPWMDC3	0x0e
+#define MAX77660_HAPTIC_REG_SIGPWMDC4	0x0f
+#define MAX77660_HAPTIC_REG_MTR_REV	0x10
+#define MAX77660_HAPTIC_REG_END		0x11
+
+#define MAX77660_PMIC_REG_LSCNFG	0x2B
+
+/* Haptic configuration 1 register */
+#define MAX77660_INVERT_SHIFT		7
+#define MAX77660_CONT_MODE_SHIFT	6
+#define MAX77660_MOTOR_STRT_SHIFT	3
+
+/* Haptic configuration 2 register */
+#define MAX77660_MOTOR_TYPE_SHIFT	7
+#define MAX77660_ENABLE_SHIFT		6
+#define MAX77660_MODE_SHIFT		5
+
+/* Haptic driver configuration register */
+#define MAX77660_CYCLE_SHIFT		6
+#define MAX77660_SIG_PERIOD_SHIFT	4
+#define MAX77660_SIG_DUTY_SHIFT		2
+#define MAX77660_PWM_DUTY_SHIFT		0
+
+enum max77660_haptic_motor_type {
+	MAX77660_HAPTIC_ERM,
+	MAX77660_HAPTIC_LRA,
+};
+
+enum max77660_haptic_pulse_mode {
+	MAX77660_EXTERNAL_MODE,
+	MAX77660_INTERNAL_MODE,
+};
+
+enum max77660_haptic_pwm_divisor {
+	MAX77660_PWM_DIVISOR_32,
+	MAX77660_PWM_DIVISOR_64,
+	MAX77660_PWM_DIVISOR_128,
+	MAX77660_PWM_DIVISOR_256,
+};
+
+enum max77660_haptic_invert {
+	MAX77660_INVERT_OFF,
+	MAX77660_INVERT_ON,
+};
+
+enum max77660_haptic_continous_mode {
+	MAX77660_NORMAL_MODE,
+	MAX77660_CONT_MODE,
+};
+
+enum max77660_haptic_edp_states {
+	MAX77660_HAPTIC_EDP_HIGH,
+	MAX77660_HAPTIC_EDP_LOW,
+	MAX77660_HAPTIC_EDP_NUM_STATES,
+};
+
+struct max77660_haptic_platform_data {
+	int pwm_channel_id;
+	int pwm_period;
+
+	enum max77660_haptic_motor_type type;
+	enum max77660_haptic_pulse_mode mode;
+	enum max77660_haptic_pwm_divisor pwm_divisor;
+	enum max77660_haptic_invert invert;
+	enum max77660_haptic_continous_mode cont_mode;
+
+	int internal_mode_pattern;
+	int pattern_cycle;
+	int pattern_signal_period;
+	int feedback_duty_cycle;
+	int motor_startup_val;
+	int scf_val;
+
+	unsigned int edp_states[MAX77660_HAPTIC_EDP_NUM_STATES];
+};
+
+/*
  * max77660_platform_data: Platform data for MAX77660.
  * @pinctrl_pdata: Pincontrol configurations.
  * @num_pinctrl: Number of pin control data.
@@ -935,6 +1037,9 @@ struct max77660_platform_data {
 	struct max77660_adc_platform_data *adc_pdata;
 
 	struct max77660_sim_platform_data *sim_pdata;
+
+	/* vibrator platform data */
+	struct max77660_haptic_platform_data_encl *haptic_pdata;
 
 	unsigned int flags;
 
