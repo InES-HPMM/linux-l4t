@@ -593,7 +593,6 @@ enum {
 	MAX77660_IRQ_GPIO8,		/* GPIO7 edge detection */
 	MAX77660_IRQ_GPIO9,		/* GPIO7 edge detection */
 
-	MAX77660_IRQ_HAPTIC,		/* HAPTIC */
 	MAX77660_IRQ_NR,
 };
 

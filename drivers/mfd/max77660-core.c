@@ -69,14 +69,6 @@ static struct resource chg_resources[] = {
 	}
 };
 
-static struct resource haptic_resources[] = {
-	{
-		.start	= MAX77660_IRQ_HAPTIC,
-		.end	= MAX77660_IRQ_HAPTIC,
-		.flags  = IORESOURCE_IRQ,
-	}
-};
-
 static struct resource max77660_sys_wdt_resources[] = {
 	{
 		.start	= MAX77660_IRQ_GLBL_WDTWRN_SYS,
@@ -147,9 +139,9 @@ static struct mfd_cell max77660_cells[] = {
 		.resources	= &max77660_chg_extcon_resources[0],
 	},
 	{
+		/* name matched in max77660 haptic driver */
 		.name = "max77660-vibrator",
-		.num_resources	= ARRAY_SIZE(haptic_resources),
-		.resources	= &haptic_resources[0],
+		/* no irq exists for haptic */
 	},
 	{
 		.name = "max77660-sys-wdt",
