@@ -414,6 +414,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			   {   15618709,   -4576116,   158401,  -1538, },
 			 },
 		 },
+		.volt_temp_cap = { 70, 1240 },
 	},
 	{
 		.cpu_speedo_id	    = 1, /* A01P+ CPU */
@@ -446,6 +447,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			 },
 		 },
 		.safety_cap = { 1810500, 1810500, 1606500, 1606500 },
+		.volt_temp_cap = { 70, 1240 },
 	},
 	{
 		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
@@ -478,6 +480,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			 },
 		 },
 		.safety_cap = { 1912500, 1912500, 1912500, 1912500 },
+		.volt_temp_cap = { 70, 1240 },
 	},
 };
 #endif
@@ -508,7 +511,8 @@ static inline s64 edp_pow(s64 val, int pwr)
  * temp_C - always valid
  * power_mW - valid or -1 (infinite)
  */
-unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
+static unsigned int edp_calculate_maxf(
+				struct tegra_edp_cpu_leakage_params *params,
 				int temp_C, int power_mW,
 				int iddq_mA,
 				int n_cores_idx)
@@ -522,6 +526,11 @@ unsigned int edp_calculate_maxf(struct tegra_edp_cpu_leakage_params *params,
 	for (f = freq_voltage_lut_size - 1; f >= 0; f--) {
 		freq_KHz = freq_voltage_lut[f].freq / 1000;
 		voltage_mV = freq_voltage_lut[f].voltage_mV;
+
+		/* Constrain Volt-Temp. Eg. at Tj >= 70C, no VDD_CPU > 1.24V */
+		if (temp_C >= params->volt_temp_cap.temperature &&
+		    voltage_mV > params->volt_temp_cap.voltage_limit_mV)
+			continue;
 
 		/* Calculate leakage current */
 		leakage_mA = 0;
@@ -614,7 +623,7 @@ unsigned int tegra_edp_find_maxf(int volt)
 }
 
 
-int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
+static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 {
 	int i;
 
