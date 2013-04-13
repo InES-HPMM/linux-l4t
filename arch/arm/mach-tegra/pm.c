@@ -999,6 +999,9 @@ static void tegra_disable_lp1bb_interrupt(void)
 	reg &= ~(PMC_WAKE2_BB_MEM_REQ);
 	pmc_32kwritel(reg, PMC_WAKE2_MASK);
 
+	reg = PMC_WAKE2_BB_MEM_REQ;
+	pmc_32kwritel(reg, PMC_WAKE2_STATUS);
+
 	/* Set up the LIC to NOT accept pmc_wake events as interrupts */
 	reg = TRI_ICTLR_PMC_WAKE_INT;
 	writel(reg, tert_ictlr + TRI_ICTLR_CPU_IER_CLR);
