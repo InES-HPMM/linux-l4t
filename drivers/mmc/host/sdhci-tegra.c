@@ -2082,6 +2082,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 		    NVQUIRK_ENABLE_DDR50 |
 		    NVQUIRK_INFINITE_ERASE_TIMEOUT |
 		    NVQUIRK_DISABLE_AUTO_CMD23 |
+		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
