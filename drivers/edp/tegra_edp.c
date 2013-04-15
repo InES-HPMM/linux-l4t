@@ -107,7 +107,7 @@ static void pr_caps(struct freqcap *old, struct freqcap *new,
 			new->emc == old->emc)
 		return;
 
-	printk(KERN_DEBUG "sysedp: ncpus %u, gpupri %d, core %5u mW, "
+	pr_debug("sysedp: ncpus %u, gpupri %d, core %5u mW, "
 			"cpu %5u mW %u kHz, gpu %u kHz, emc %u kHz\n",
 			online_cpu_count, gpu_busy, cur_corecap->power,
 			cpu_power, new->cpu, new->gpu, new->emc);
