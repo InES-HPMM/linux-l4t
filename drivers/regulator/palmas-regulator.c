@@ -1476,6 +1476,8 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	for (id = 0; id < PALMAS_REG_LDO1; id++) {
 		bool ramp_delay_support = false;
 
+		reg_init = NULL;
+
 		/*
 		 * Miss out regulators which are not available due
 		 * to slaving configurations.
@@ -1532,7 +1534,6 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		/* Initialise sleep/init values from platform data */
 		if (pdata && pdata->reg_init[id]) {
 			reg_init = pdata->reg_init[id];
-			pmic->roof_floor[id] = reg_init->roof_floor;
 			ret = palmas_smps_init(palmas, id, reg_init);
 			if (ret)
 				goto err_unregister_regulator;
@@ -1608,6 +1609,9 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			ret = PTR_ERR(rdev);
 			goto err_unregister_regulator;
 		}
+
+		if (reg_init && pdata->reg_data[id])
+			pmic->roof_floor[id] = reg_init->roof_floor;
 
 		/* Save regulator for cleanup */
 		pmic->rdev[id] = rdev;
