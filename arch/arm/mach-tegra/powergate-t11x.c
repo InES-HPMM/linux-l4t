@@ -262,6 +262,23 @@ int tegra11x_powergate_mc_flush_done(int id);
 int tegra11x_unpowergate_partition_with_clk_on(int id);
 int tegra11x_powergate_partition_with_clk_off(int id);
 
+bool tegra11x_powergate_check_clamping(int id)
+{
+	u32 mask;
+	/*
+	 * PCIE and VDE clamping masks are swapped with respect to their
+	 * partition ids
+	 */
+	if (id ==  TEGRA_POWERGATE_VDEC)
+		mask = (1 << TEGRA_POWERGATE_PCIE);
+	else if (id == TEGRA_POWERGATE_PCIE)
+		mask = (1 << TEGRA_POWERGATE_VDEC);
+	else
+		mask = (1 << id);
+
+	return !!(pmc_read(PWRGATE_CLAMP_STATUS) & mask);
+}
+
 #define HOTRESET_READ_COUNT	5
 static bool tegra11x_stable_hotreset_check(u32 *stat)
 {
@@ -694,6 +711,7 @@ static struct powergate_ops tegra11x_powergate_ops = {
 	.powergate_mc_flush_done = tegra11x_powergate_mc_flush_done,
 
 	.powergate_init_refcount = tegra11x_powergate_init_refcount,
+	.powergate_check_clamping = tegra11x_powergate_check_clamping,
 };
 
 struct powergate_ops *tegra11x_powergate_init_chip_support(void)

@@ -32,6 +32,7 @@
 #define MAX_CLK_EN_NUM			9
 #define MAX_HOTRESET_CLIENT_NUM		4
 
+#define PWRGATE_CLAMP_STATUS	0x2c
 #define PWRGATE_TOGGLE		0x30
 #define PWRGATE_TOGGLE_START	(1 << 8)
 #define REMOVE_CLAMPING		0x34
@@ -102,6 +103,7 @@ struct powergate_ops {
 	int (*powergate_mc_flush_done)(int id);
 
 	int (*powergate_init_refcount)(void);
+	bool (*powergate_check_clamping)(int id);
 };
 
 void get_clk_info(struct powergate_partition_info *pg_info);

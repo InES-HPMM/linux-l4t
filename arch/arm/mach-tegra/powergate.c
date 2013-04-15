@@ -286,6 +286,19 @@ int tegra_powergate_reset_module(struct powergate_partition_info *pg_info)
 	return 0;
 }
 
+bool tegra_powergate_check_clamping(int id)
+{
+	if (!pg_ops || !pg_ops->powergate_check_clamping) {
+		pr_info("This SOC can't check clamping status\n");
+		return -EINVAL;
+	}
+
+	if (id < 0 || id >= pg_ops->num_powerdomains)
+		return -EINVAL;
+
+	return pg_ops->powergate_check_clamping(id);
+}
+
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
