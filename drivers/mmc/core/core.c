@@ -5,6 +5,7 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -2830,7 +2831,7 @@ int mmc_devfreq_init(struct mmc_host *host)
 	}
 
 	/* Set the frequency constraints for the device */
-	df->min_freq = host->f_min;
+	df->min_freq = 0;
 	if (mmc_card_mmc(host->card)) {
 		df->max_freq = max(host->card->ext_csd.hs_max_dtr,
 			host->card->csd.max_dtr);
