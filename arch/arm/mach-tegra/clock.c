@@ -579,11 +579,15 @@ int clk_set_rate(struct clk *c, unsigned long rate)
 	if (!c->ops || !c->ops->set_rate)
 		return -ENOSYS;
 
+	trace_clock_set_start(c->name, rate, raw_smp_processor_id());
+
 	clk_lock_save(c, &flags);
 
 	ret = clk_set_rate_locked(c, rate);
 
 	clk_unlock_restore(c, &flags);
+
+	trace_clock_set_done(c->name, rate, raw_smp_processor_id());
 
 	return ret;
 }
