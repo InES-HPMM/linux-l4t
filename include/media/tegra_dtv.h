@@ -126,8 +126,6 @@ enum {
 struct tegra_dtv_platform_data {
 	unsigned int dma_buf_size;
 	int clk_edge;
-	bool byte_swz_enabled;
-	bool bit_swz_enabled;
 };
 #endif /* __KERNEL__ */
 

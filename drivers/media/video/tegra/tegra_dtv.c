@@ -240,20 +240,25 @@ static inline void _dtv_set_attn_level(struct tegra_dtv_context *dtv_ctx)
 static inline void _dtv_set_hw_params(struct tegra_dtv_context *dtv_ctx)
 {
 	u32 val = 0;
-	u32 reg;
+	u32 reg = 0;
 	struct tegra_dtv_hw_config *cfg = &dtv_ctx->config;
 
-	val = (cfg->clk_edge << DTV_MODE_CLK_EDGE_SHIFT) |
+	/* program DTV_MODE */
+	val = (cfg->byte_swz_enabled << DTV_MODE_BYTE_SWIZZLE_SHIFT) |
+		(cfg->bit_swz_enabled << DTV_MODE_BIT_SWIZZLE_SHIFT) |
+		(cfg->clk_edge << DTV_MODE_CLK_EDGE_SHIFT) |
 		(cfg->protocol_sel << DTV_MODE_PRTL_SEL_SHIFT) |
 		(cfg->clk_mode << DTV_MODE_CLK_MODE_SHIFT);
 	reg = tegra_dtv_readl(dtv_ctx, DTV_MODE);
-	reg &= ~(DTV_MODE_CLK_EDGE_MASK |
+	reg &= ~(DTV_MODE_BYTE_SWIZZLE_MASK |
+		 DTV_MODE_BIT_SWIZZLE |
+		 DTV_MODE_CLK_EDGE_MASK |
 		 DTV_MODE_PRTL_SEL_MASK |
 		 DTV_MODE_CLK_MODE_MASK);
 	reg |= val;
 	tegra_dtv_writel(dtv_ctx, reg, DTV_MODE);
 
-	val = 0;
+	/* program DTV_CTRL */
 	reg = 0;
 	val = (cfg->fec_size << DTV_CTRL_FEC_SIZE_SHIFT) |
 		(cfg->body_size << DTV_CTRL_BODY_SIZE_SHIFT) |

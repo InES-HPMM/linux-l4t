@@ -3,7 +3,7 @@
  *
  * Header file for describing resources of DTV module
  *
- * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Authors:
  *     Adam Jiang <chaoj@nvidia.com>
@@ -44,8 +44,10 @@
 /* DTV_MODE_0 */
 #define DTV_MODE_BYTE_SWIZZLE_SHIFT 6
 #define DTV_MODE_BYTE_SWIZZLE       (1 << DTV_MODE_BYTE_SWIZZLE_SHIFT)
+#define DTV_MODE_BYTE_SWIZZLE_MASK  1
 #define DTV_MODE_BIT_SWIZZLE_SHIFT  5
 #define DTV_MODE_BIT_SWIZZLE        (1 << DTV_MODE_BIT_SWIZZLE_SHIFT)
+#define DTV_MODE_BIT_SWIZZLE_MASK   1
 #define DTV_MODE_CLK_EDGE_SHIFT     4
 #define DTV_MODE_CLK_EDGE_MASK      1
 #define DTV_MODE_CLK_EDGE_NEG       (1 << DTV_MODE_CLK_EDGE_SHIFT)
