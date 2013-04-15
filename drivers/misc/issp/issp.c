@@ -196,8 +196,8 @@ err_id:
 	issp_uc_run(host);
 
 err:
-	devm_gpio_free(dev, pdata->data_gpio);
-	devm_gpio_free(dev, pdata->clk_gpio);
+	gpio_direction_input(pdata->data_gpio);
+	gpio_direction_input(pdata->clk_gpio);
 	release_firmware(host->fw);
 	devm_kfree(dev, host);
 
