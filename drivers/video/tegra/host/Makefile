@@ -1,5 +1,5 @@
 GCOV_PROFILE := y
-EXTRA_CFLAGS += -Idrivers/video/tegra/host
+EXTRA_CFLAGS += -Idrivers/video/tegra/host -Idrivers/devfreq
 
 nvhost-objs = \
 	nvhost_acm.o \
@@ -13,6 +13,7 @@ nvhost-objs = \
 	bus_client.o \
 	chip_support.o \
 	nvhost_memmgr.o \
+	nvhost_scale.o \
 	user_hwctx.o
 
 obj-$(CONFIG_TEGRA_GRHOST) += mpe/
