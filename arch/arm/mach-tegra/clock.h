@@ -186,6 +186,8 @@ struct clk {
 
 	struct list_head		shared_bus_list;
 	struct clk_backup		shared_bus_backup;
+	struct clk			*child_bus;
+	unsigned long			override_rate;
 
 	union {
 		struct {
