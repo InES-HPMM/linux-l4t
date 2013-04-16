@@ -33,7 +33,12 @@
 #include "board-ardbeg.h"
 #include "devices.h"
 #include "iomap.h"
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #include "wakeups-t11x.h"
+#else
+/* FIXME: update with wakeups-t12x.h */
+#endif
 
 /*
 static const u32 kbd_keymap[] = {
