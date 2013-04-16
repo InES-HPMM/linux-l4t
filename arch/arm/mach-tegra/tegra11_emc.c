@@ -30,6 +30,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/hrtimer.h>
+#include <linux/pasr.h>
 
 #include <asm/cputime.h>
 
@@ -47,11 +48,18 @@ static bool emc_enable;
 #endif
 module_param(emc_enable, bool, 0644);
 
+static int pasr_enable;
+
 u8 tegra_emc_bw_efficiency = 100;
 
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
 #define TEGRA_EMC_TABLE_MAX_SIZE	16
+
+#define TEGRA_EMC_MODE_REG_17	0x00110000
+#define TEGRA_EMC_MRW_DEV_SHIFT	30
+#define TEGRA_EMC_MRW_DEV1	2
+#define TEGRA_EMC_MRW_DEV2	1
 
 enum {
 	DLL_CHANGE_NONE = 0,
@@ -1407,10 +1415,87 @@ static int init_emc_table(const struct tegra11_emc_table *table, int table_size)
 	return 0;
 }
 
+#ifdef CONFIG_PASR
+/* Check if the attached memory device uses LPDDR3 protocol.
+ * Bit 8 (enable LPDDR3 write preamble toggle) of EMC_FBIO_SPARE is enabled
+ * for LPDDR3.
+ */
+static bool tegra11_is_lpddr3(void)
+{
+	return emc_readl(EMC_FBIO_SPARE) & BIT(8);
+}
+
+static void tegra11_pasr_apply_mask(u16 *mem_reg, void *cookie)
+{
+	u32 val = 0;
+	int device = (int)cookie;
+
+	val = TEGRA_EMC_MODE_REG_17 | *mem_reg;
+	val |= device << TEGRA_EMC_MRW_DEV_SHIFT;
+
+	emc0_writel(val, EMC_MRW);
+	emc1_writel(val, EMC_MRW);
+
+	pr_debug("%s: cookie = %d mem_reg = 0x%04x val = 0x%08x\n", __func__,
+			(int)cookie, *mem_reg, val);
+}
+
+static int tegra11_pasr_enable(const char *arg, const struct kernel_param *kp)
+{
+	unsigned int old_pasr_enable;
+	void *cookie;
+	u16 mem_reg;
+
+	if (!tegra11_is_lpddr3())
+		return -ENOSYS;
+
+	old_pasr_enable = pasr_enable;
+	param_set_int(arg, kp);
+
+	if (old_pasr_enable == pasr_enable)
+		return 0;
+
+	/* Cookie represents the device number to write to MRW register.
+	 * 0x2 to for only dev0, 0x1 for dev1.
+	 */
+	if (pasr_enable == 0) {
+		mem_reg = 0;
+
+		cookie = (void *)(int)TEGRA_EMC_MRW_DEV1;
+		if (!pasr_register_mask_function(TEGRA_DRAM_BASE,
+							NULL, cookie))
+			tegra11_pasr_apply_mask(&mem_reg, cookie);
+
+		cookie = (void *)(int)TEGRA_EMC_MRW_DEV2;
+		if (!pasr_register_mask_function(TEGRA_DRAM_BASE + SZ_1G,
+							NULL, cookie))
+			tegra11_pasr_apply_mask(&mem_reg, cookie);
+	} else {
+		cookie = (void *)(int)2;
+		pasr_register_mask_function(0x80000000,
+					&tegra11_pasr_apply_mask, cookie);
+
+		cookie = (void *)(int)1;
+		pasr_register_mask_function(0xC0000000,
+					&tegra11_pasr_apply_mask, cookie);
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops tegra11_pasr_enable_ops = {
+	.set = tegra11_pasr_enable,
+	.get = param_get_int,
+};
+module_param_cb(pasr_enable, &tegra11_pasr_enable_ops, &pasr_enable, 0644);
+#endif
+
 static int __devinit tegra11_emc_probe(struct platform_device *pdev)
 {
 	struct tegra11_emc_pdata *pdata;
 	struct resource *res;
+
+	pasr_enable = 0;
 
 	if (tegra_emc_table)
 		return -EINVAL;
