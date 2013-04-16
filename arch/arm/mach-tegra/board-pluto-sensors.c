@@ -266,9 +266,15 @@ static struct max77665_muic_platform_data max77665_muic = {
 	.irq_base = 0,
 };
 
+struct max77665_system_interrupt max77665_sys_int = {
+	.enable_thermal_interrupt = true,
+	.enable_low_sys_interrupt = true,
+};
+
 static struct max77665_platform_data pluto_max77665_pdata = {
 	.irq_base = MAX77665_TEGRA_IRQ_BASE,
 	.irq_flag = IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+	.system_interrupt = &max77665_sys_int,
 	.muic_platform_data = {
 		.pdata = &max77665_muic,
 		.size =	sizeof(max77665_muic),
