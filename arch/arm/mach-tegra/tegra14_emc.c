@@ -1322,6 +1322,7 @@ static int __devinit tegra14_emc_probe(struct platform_device *pdev)
 {
 	struct tegra14_emc_pdata *pdata;
 	struct resource *res;
+	u32 padctrl;
 
 	pasr_enable = 0;
 
@@ -1336,6 +1337,13 @@ static int __devinit tegra14_emc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "missing platform data\n");
 		return -ENODATA;
 	}
+
+#if defined(CONFIG_TEGRA_ERRATA_1252872)
+	padctrl = emc_readl(EMC_XM2CMDPADCTRL);
+	padctrl &= ~(0x7 << 12);
+	padctrl &= ~(0x7 << 20);
+	emc_writel(padctrl, EMC_XM2CMDPADCTRL);
+#endif
 
 	return init_emc_table(pdata->tables, pdata->num_tables);
 }
