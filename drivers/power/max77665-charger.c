@@ -31,6 +31,7 @@
 #include <linux/max77665-charger.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/interrupt.h>
+#include <linux/sysfs.h>
 
 #define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS 500
 
@@ -63,6 +64,11 @@ static const uint32_t chgin_ilim[] = {
 	1500, 1600, 1700, 1800, 1900, 2000, 2100,
 	2200, 2300, 2400, 2500,
 };
+
+static int max77665_bat_to_sys_oc_thres[] = {
+	0, 3000, 3250, 3500, 3750, 4000, 4250, 4500
+};
+
 
 struct max77665_charger {
 	struct device		*dev;
@@ -454,6 +460,7 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 				MAX77665_CHG_INT);
 		goto error;
 	}
+	dev_info(charger->dev, "CHG_INT = 0x%02x\n", read_val);
 
 	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
 	if (ret < 0) {
@@ -461,9 +468,13 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 				MAX77665_CHG_INT_OK);
 		goto error;
 	}
+	dev_info(charger->dev, "CHG_INT_OK = 0x%02x\n", read_val);
+
 	max77665_display_charger_status(charger, read_val);
 
-	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0a);
+	ret = max77665_update_bits(charger->dev->parent,
+			MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_CHG_INT_MASK, ~0x0a, 0x0);
 error:
 	return ret;
 }
@@ -474,6 +485,119 @@ static irqreturn_t max77665_charger_irq_handler(int irq, void *data)
 	int ret;
 	ret = max77665_update_charger_status(charger);
 	return IRQ_HANDLED;
+}
+
+static ssize_t max77665_set_bat_oc_threshold(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	int i;
+	int ret;
+	int val = 0;
+	int n = ARRAY_SIZE(max77665_bat_to_sys_oc_thres);
+	char *p = (char *)buf;
+	int oc_curr = memparse(p, &p);
+
+	for (i = 0; i < n; ++i) {
+		if (oc_curr <= max77665_bat_to_sys_oc_thres[i])
+			break;
+	}
+
+	val = (i < n) ? i : n - 1;
+	ret = max77665_update_bits(charger->dev->parent,
+			MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_CHG_CNFG_12, 0x7, val);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_CNFG_12 update failed: %d\n", ret);
+		return ret;
+	}
+	return count;
+}
+
+static ssize_t max77665_show_bat_oc_threshold(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	uint8_t val = 0;
+	int ret;
+
+	ret = max77665_read(charger->dev->parent, MAX77665_I2C_SLAVE_PMIC,
+				MAX77665_CHG_CNFG_12, &val);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_CNFG_12 read failed: %d\n", ret);
+		return ret;
+	}
+	return sprintf(buf, "%d\n", max77665_bat_to_sys_oc_thres[val & 0x7]);
+}
+static DEVICE_ATTR(oc_threshold,  0644,
+		max77665_show_bat_oc_threshold, max77665_set_bat_oc_threshold);
+
+static ssize_t max77665_set_battery_oc_state(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	int ret;
+	bool enabled;
+	unsigned int val;
+
+	if ((*buf == 'E') || (*buf == 'e')) {
+		enabled = true;
+	} else if ((*buf == 'D') || (*buf == 'd')) {
+		enabled = false;
+	} else {
+		dev_err(charger->dev, "Illegal option\n");
+		return -EINVAL;
+	}
+
+	val = (enabled) ? 0x0 : 0x8;
+	ret = max77665_update_bits(charger->dev->parent,
+			MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_CHG_INT_MASK, 0x08, val);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_INT_MASK update failed: %d\n", ret);
+		return ret;
+	}
+	return count;
+}
+
+static ssize_t max77665_show_battery_oc_state(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	uint8_t val = 0;
+	int ret;
+
+	ret = max77665_read(charger->dev->parent, MAX77665_I2C_SLAVE_PMIC,
+			 MAX77665_CHG_INT_MASK, &val);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_CNFG_12 read failed: %d\n", ret);
+		return ret;
+	}
+	if (val & 0x8)
+		return sprintf(buf, "disabled\n");
+	else
+		return sprintf(buf, "enabled\n");
+}
+static DEVICE_ATTR(oc_state, 0644,
+		max77665_show_battery_oc_state, max77665_set_battery_oc_state);
+
+static struct attribute *max77665_chg_attributes[] = {
+	&dev_attr_oc_threshold.attr,
+	&dev_attr_oc_state.attr,
+	NULL,
+};
+
+static const struct attribute_group max77665_chg_attr_group = {
+	.attrs = max77665_chg_attributes,
+};
+
+static int max77665_add_sysfs_entry(struct device *dev)
+{
+	return sysfs_create_group(&dev->kobj, &max77665_chg_attr_group);
+}
+static void max77665_remove_sysfs_entry(struct device *dev)
+{
+	sysfs_remove_group(&dev->kobj, &max77665_chg_attr_group);
 }
 
 static __devinit int max77665_battery_probe(struct platform_device *pdev)
@@ -588,10 +712,31 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto chrg_error;
 	}
 
+	ret = max77665_add_sysfs_entry(&pdev->dev);
+	if (ret < 0) {
+		dev_err(charger->dev, "sysfs create failed %d\n", ret);
+		goto free_irq;
+	}
+
 	ret = max77665_enable_charger(charger, charger->edev);
 	if (ret < 0) {
 		dev_err(charger->dev, "failed to enable charger\n");
-		goto free_irq;
+		goto remove_sysfs;
+	}
+
+	/* Enable OC interrupt and threshold to 3250mA */
+	ret = max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x02);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_INT_MASK write failed %d\n", ret);
+		goto remove_sysfs;
+	}
+
+	ret = max77665_update_bits(charger->dev->parent,
+			MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_CHG_CNFG_12, 0x7, 0x2);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_CNFG_12 update failed: %d\n", ret);
+		return ret;
 	}
 
 	wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
@@ -603,6 +748,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 
 	return 0;
 
+remove_sysfs:
+	max77665_remove_sysfs_entry(&pdev->dev);
 free_irq:
 	free_irq(charger->irq, charger);
 chrg_error:
@@ -617,6 +764,7 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 {
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
+	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
 	power_supply_unregister(&charger->ac);
 	power_supply_unregister(&charger->usb);
