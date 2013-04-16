@@ -30,6 +30,12 @@
 #define MAX77665_INTSRC_FLASH_MASK	BIT(2)
 #define MAX77665_INTSRC_MUIC_MASK	BIT(3)
 
+#define MAX77665_REG_TOP_SYS_INT_STS	0x24
+#define MAX77665_REG_TOP_SYS_INT_MASK	0x26
+#define MAX77665_TOP_SYS_INT_120C	BIT(0)
+#define MAX77665_TOP_SYS_INT_140C	BIT(1)
+#define MAX77665_TOP_SYS_INT_LOWSYS	BIT(3)
+
 /* MAX77665 Interrups */
 enum {
 	MAX77665_IRQ_CHARGER,
@@ -60,6 +66,7 @@ struct max77665 {
 	struct regmap		*regmap[MAX77665_I2C_SLAVE_MAX];
 	struct regmap_irq_chip_data *regmap_irq_data;
 	int			irq_base;
+	int			top_sys_irq;
 };
 
 struct max77665_cell_data {
@@ -67,9 +74,15 @@ struct max77665_cell_data {
 	size_t size;
 };
 
+struct max77665_system_interrupt {
+	bool enable_thermal_interrupt;
+	bool enable_low_sys_interrupt;
+};
+
 struct max77665_platform_data {
 	int irq_base;
 	unsigned long irq_flag;
+	struct max77665_system_interrupt *system_interrupt;
 	struct max77665_cell_data charger_platform_data;
 	struct max77665_cell_data flash_platform_data;
 	struct max77665_cell_data muic_platform_data;
@@ -103,6 +116,14 @@ static inline int max77665_bulk_read(struct device *dev, int slv_id,
 	struct max77665 *maxim = dev_get_drvdata(dev);
 
 	return regmap_bulk_read(maxim->regmap[slv_id], reg, val, count);
+}
+
+static inline int max77665_update_bits(struct device *dev, int slv_id,
+		int reg, unsigned int mask, unsigned int  val)
+{
+	struct max77665 *maxim = dev_get_drvdata(dev);
+
+	return regmap_update_bits(maxim->regmap[slv_id], reg, mask, val);
 }
 
 static inline int max77665_set_bits(struct device *dev, int slv_id,

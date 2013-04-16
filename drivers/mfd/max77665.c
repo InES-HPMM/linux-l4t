@@ -132,6 +132,88 @@ static int max77665_irq_init(struct max77665 *max77665, int irq,
 	return ret;
 }
 
+static irqreturn_t max77665_top_sys_irq_handler(int irq, void *data)
+{
+	struct max77665 *max77665 = data;
+	uint8_t top_int_sts = 0;
+	int ret;
+
+	dev_info(max77665->dev, "Top Sys interrupt occured\n");
+
+	ret = max77665_read(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_REG_TOP_SYS_INT_STS, &top_int_sts);
+	if (ret < 0) {
+		dev_err(max77665->dev,
+			"TOP_SYS_INT_STS read failed: %d\n", ret);
+		return ret;
+	}
+
+	dev_info(max77665->dev,
+		"Top Sys interrupt status 0x%02x\n", top_int_sts);
+
+	if (top_int_sts & MAX77665_TOP_SYS_INT_120C)
+		dev_info(max77665->dev, "120C thermal interrupt detected\n");
+	if (top_int_sts & MAX77665_TOP_SYS_INT_140C)
+		dev_info(max77665->dev, "140C thermal interrupt detected\n");
+	if (top_int_sts & MAX77665_TOP_SYS_INT_LOWSYS)
+		dev_info(max77665->dev, "Low Sys interrupt detected\n");
+	return IRQ_HANDLED;
+}
+
+static int max77665_init_top_sys_interrupt(struct max77665 *max77665,
+	struct max77665_platform_data *pdata)
+{
+	struct max77665_system_interrupt *sys_int = pdata->system_interrupt;
+	unsigned int mask = 0;
+	unsigned int val = 0;
+	int ret;
+
+	if (!sys_int)
+		return 0;
+
+	if (sys_int->enable_thermal_interrupt)
+		val |= MAX77665_TOP_SYS_INT_120C | MAX77665_TOP_SYS_INT_140C;
+	if (sys_int->enable_low_sys_interrupt)
+		val |= MAX77665_TOP_SYS_INT_LOWSYS;
+
+	mask = MAX77665_TOP_SYS_INT_120C | MAX77665_TOP_SYS_INT_140C |
+			MAX77665_TOP_SYS_INT_LOWSYS;
+
+	ret = max77665_update_bits(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_REG_TOP_SYS_INT_MASK, mask, mask);
+	if (ret < 0) {
+		dev_err(max77665->dev,
+			"TOP_SYS_INT_MASK update failed: %d\n", ret);
+		return ret;
+	}
+
+	max77665->top_sys_irq = pdata->irq_base + MAX77665_IRQ_TOP_SYS;
+	ret = request_threaded_irq(max77665->top_sys_irq, NULL,
+		max77665_top_sys_irq_handler, 0, "max77665-top-sys",
+		max77665);
+	if (ret < 0) {
+		dev_err(max77665->dev,
+			"TopSysInterrupt register failed: %d\n", ret);
+		max77665->top_sys_irq = 0;
+		return ret;
+	}
+
+	ret = max77665_update_bits(max77665->dev, MAX77665_I2C_SLAVE_PMIC,
+			MAX77665_REG_TOP_SYS_INT_MASK, mask, ~val);
+	if (ret < 0) {
+		dev_err(max77665->dev,
+			"TOP_SYS_INT_MASK update failed: %d\n", ret);
+		return ret;
+	}
+	return ret;
+}
+
+static void max77665_deinit_top_sys_interrupt(struct max77665 *max77665)
+{
+	if (max77665->top_sys_irq)
+		free_irq(max77665->top_sys_irq, max77665);
+}
+
 static bool rd_wr_reg_pmic(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -241,6 +323,8 @@ static int max77665_i2c_probe(struct i2c_client *client,
 	max77665_irq_init(max77665, client->irq,
 				pdata->irq_base, pdata->irq_flag);
 
+	max77665_init_top_sys_interrupt(max77665, pdata);
+
 	max77665s[MAX77665_CELL_CHARGER].platform_data =
 					pdata->charger_platform_data.pdata;
 	max77665s[MAX77665_CELL_CHARGER].pdata_size =
@@ -272,6 +356,7 @@ static int max77665_i2c_probe(struct i2c_client *client,
 	return 0;
 
 err_irq_exit:
+	max77665_deinit_top_sys_interrupt(max77665);
 	regmap_del_irq_chip(client->irq, max77665->regmap_irq_data);
 
 err_exit:
@@ -290,6 +375,7 @@ static int max77665_i2c_remove(struct i2c_client *client)
 	struct i2c_client *slv_client;
 
 	mfd_remove_devices(max77665->dev);
+	max77665_deinit_top_sys_interrupt(max77665);
 	regmap_del_irq_chip(client->irq, max77665->regmap_irq_data);
 
 	for (i = 0; i < MAX77665_I2C_SLAVE_MAX; ++i) {
