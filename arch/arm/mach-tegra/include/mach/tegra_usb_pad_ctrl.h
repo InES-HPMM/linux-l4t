@@ -57,7 +57,9 @@
 
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 int pcie_phy_pad_enable(void);
+#endif
 
 int utmi_phy_iddq_override(bool set);
 #endif

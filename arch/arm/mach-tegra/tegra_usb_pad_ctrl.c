@@ -107,6 +107,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
 int pcie_phy_pad_enable(void)
 {
 	unsigned long val, flags, timeout;
@@ -179,3 +180,4 @@ int pcie_phy_pad_enable(void)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pcie_phy_pad_enable);
+#endif
