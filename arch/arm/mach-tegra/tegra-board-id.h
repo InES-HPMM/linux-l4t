@@ -33,6 +33,7 @@
 #define BOARD_P2454   0x0996
 #define BOARD_PM347   0x015B
 #define BOARD_E1545   0x0609
+#define BOARD_E1569   0x0621
 #define BOARD_E1680   0x0690
 #define BOARD_E1681   0x0691
 #define BOARD_E1670   0x0686
