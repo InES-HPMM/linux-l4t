@@ -2564,6 +2564,7 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_FORMAT_S16_LE:
 		snd_soc_update_bits(codec, M98090_REG_22_DAI_INTERFACE_FORMAT,
 			M98090_DAI_WS_MASK, 0);
+		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
 		snd_soc_update_bits(codec, M98090_REG_22_DAI_INTERFACE_FORMAT,
 			M98090_DAI_WS_MASK, 2);
