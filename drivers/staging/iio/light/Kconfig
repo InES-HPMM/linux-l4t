@@ -3,6 +3,28 @@
 #
 menu "Light sensors"
 
+config SENSORS_CM3218
+	tristate "CM3218 Ambient light sensor"
+	depends on I2C
+	select REGMAP_I2C
+	default n
+	help
+	  Say Y here to enable the CM3218 Ambient Light Sensor.
+	  This driver will provide the measurements of ambient light intensity
+	  in its own units.
+	  Data from sensor is accessible via sysfs.
+
+config SENSORS_CM32181
+	tristate "CM32181 Ambient light sensor"
+	depends on I2C
+	select REGMAP_I2C
+	default n
+	help
+	  Say Y here to enable the CM32181 Ambient Light Sensor.
+	  This driver will provide the measurements of ambient light intensity
+	  in its own units.
+	  Data from sensor is accessible via sysfs.
+
 config SENSORS_ISL29018
 	tristate "ISL 29018 light and proximity sensor"
 	depends on I2C
@@ -56,11 +78,6 @@ config SENSORS_MAX44005
 	  If you say yes here you get support for ambient light, RGB, IR,
 	  Proximity and temperature sensing from MAX44005.
 
-config SENSORS_CM3218
-	tristate "CM3218 Ambient light sensor"
-	depends on I2C
-	help
-	  Say Y here to enable the CM3218 Ambient Light Sensor.
 
 config SENSORS_TCS3772
 	tristate "TCS3772 Ambient light, RGB and proximity Sensor"
