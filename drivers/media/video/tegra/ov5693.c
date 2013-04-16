@@ -1744,7 +1744,7 @@ ov5693_mode_wr_err:
 static int ov5693_get_fuse_id(struct ov5693_info *info)
 {
 	ov5693_i2c_rd8(info, 0x300A, &info->fuseid.id[0]);
-	ov5693_i2c_rd8(info, 0x300B, &info->fuseid.id[0]);
+	ov5693_i2c_rd8(info, 0x300B, &info->fuseid.id[1]);
 	info->fuseid.size = 2;
 	dev_dbg(&info->i2c_client->dev, "ov5693 fuse_id: %x,%x\n",
 		info->fuseid.id[0], info->fuseid.id[1]);
