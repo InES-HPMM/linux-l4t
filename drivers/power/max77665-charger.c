@@ -66,6 +66,7 @@ static const uint32_t chgin_ilim[] = {
 
 struct max77665_charger {
 	struct device		*dev;
+	int			irq;
 	struct power_supply	ac;
 	struct power_supply	usb;
 	struct max77665_charger_plat_data *plat_data;
@@ -577,16 +578,20 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	if (!charger->edev)
 		goto chrg_error;
 
-	if (charger->plat_data->irq_base) {
-		ret = devm_request_threaded_irq(&pdev->dev,
-			charger->plat_data->irq_base + MAX77665_IRQ_CHARGER,
-			NULL, max77665_charger_irq_handler,
-			0, "charger_irq", charger);
-		if (ret) {
-			dev_err(&pdev->dev,
+	charger->irq = platform_get_irq(pdev, 0);
+	ret = request_threaded_irq(charger->irq, NULL,
+			max77665_charger_irq_handler, 0, "charger_irq",
+			charger);
+	if (ret) {
+		dev_err(&pdev->dev,
 				"failed: irq request error :%d)\n", ret);
-			goto chrg_error;
-		}
+		goto chrg_error;
+	}
+
+	ret = max77665_enable_charger(charger, charger->edev);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to enable charger\n");
+		goto free_irq;
 	}
 
 	wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
@@ -596,15 +601,10 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&charger->wdt_ack_work,
 			max77665_charger_wdt_ack_work_handler);
 
-	ret = max77665_enable_charger(charger, charger->edev);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to enable charger\n");
-		goto chrg_error;
-	}
-
-
 	return 0;
 
+free_irq:
+	free_irq(charger->irq, charger);
 chrg_error:
 	power_supply_unregister(&charger->usb);
 pwr_sply_error:
@@ -617,6 +617,7 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 {
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
+	free_irq(charger->irq, charger);
 	power_supply_unregister(&charger->ac);
 	power_supply_unregister(&charger->usb);
 

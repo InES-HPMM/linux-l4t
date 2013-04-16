@@ -87,7 +87,6 @@ struct max77665_charger_plat_data {
 	uint8_t num_cables;
 	struct max77665_charger_cable *cables;
 	char *extcon_name;
-	int irq_base;
 	void (*update_status)(int);
 };
 #endif

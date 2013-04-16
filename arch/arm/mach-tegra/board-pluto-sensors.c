@@ -259,7 +259,6 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
 	.extcon_name = "tegra-udc",
-	.irq_base = MAX77665_TEGRA_IRQ_BASE,
 	.update_status = max17042_update_status,
 };
 
