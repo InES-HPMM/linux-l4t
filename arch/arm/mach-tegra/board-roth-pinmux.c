@@ -26,148 +26,6 @@
 
 #include <mach/pinmux-t11.h>
 
-#define DEFAULT_DRIVE(_name)					\
-	{							\
-		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
-		.hsm = TEGRA_HSM_DISABLE,			\
-		.schmitt = TEGRA_SCHMITT_ENABLE,		\
-		.drive = TEGRA_DRIVE_DIV_1,			\
-		.pull_down = TEGRA_PULL_31,			\
-		.pull_up = TEGRA_PULL_31,			\
-		.slew_rising = TEGRA_SLEW_SLOWEST,		\
-		.slew_falling = TEGRA_SLEW_SLOWEST,		\
-	}
-/* Setting the drive strength of pins
- * hsm: Enable High speed mode (ENABLE/DISABLE)
- * Schimit: Enable/disable schimit (ENABLE/DISABLE)
- * drive: low power mode (DIV_1, DIV_2, DIV_4, DIV_8)
- * pulldn_drive - drive down (falling edge) - Driver Output Pull-Down drive
- *                strength code. Value from 0 to 31.
- * pullup_drive - drive up (rising edge)  - Driver Output Pull-Up drive
- *                strength code. Value from 0 to 31.
- * pulldn_slew -  Driver Output Pull-Up slew control code  - 2bit code
- *                code 11 is least slewing of signal. code 00 is highest
- *                slewing of the signal.
- *                Value - FASTEST, FAST, SLOW, SLOWEST
- * pullup_slew -  Driver Output Pull-Down slew control code -
- *                code 11 is least slewing of signal. code 00 is highest
- *                slewing of the signal.
- *                Value - FASTEST, FAST, SLOW, SLOWEST
- */
-#define SET_DRIVE(_name, _hsm, _schmitt, _drive, _pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew) \
-	{                                               \
-		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,   \
-		.hsm = TEGRA_HSM_##_hsm,                    \
-		.schmitt = TEGRA_SCHMITT_##_schmitt,        \
-		.drive = TEGRA_DRIVE_##_drive,              \
-		.pull_down = TEGRA_PULL_##_pulldn_drive,    \
-		.pull_up = TEGRA_PULL_##_pullup_drive,		\
-		.slew_rising = TEGRA_SLEW_##_pulldn_slew,   \
-		.slew_falling = TEGRA_SLEW_##_pullup_slew,	\
-	}
-
-/* Setting the drive strength of pins
- * hsm: Enable High speed mode (ENABLE/DISABLE)
- * Schimit: Enable/disable schimit (ENABLE/DISABLE)
- * drive: low power mode (DIV_1, DIV_2, DIV_4, DIV_8)
- * pulldn_drive - drive down (falling edge) - Driver Output Pull-Down drive
- *                strength code. Value from 0 to 31.
- * pullup_drive - drive up (rising edge)  - Driver Output Pull-Up drive
- *                strength code. Value from 0 to 31.
- * pulldn_slew -  Driver Output Pull-Up slew control code  - 2bit code
- *                code 11 is least slewing of signal. code 00 is highest
- *                slewing of the signal.
- *                Value - FASTEST, FAST, SLOW, SLOWEST
- * pullup_slew -  Driver Output Pull-Down slew control code -
- *                code 11 is least slewing of signal. code 00 is highest
- *                slewing of the signal.
- *                Value - FASTEST, FAST, SLOW, SLOWEST
- * drive_type - Drive type to be used depending on the resistors.
- */
-
-#define SET_DRIVE_WITH_TYPE(_name, _hsm, _schmitt, _drive, _pulldn_drive,\
-		_pullup_drive, _pulldn_slew, _pullup_slew, _drive_type)	\
-	{								\
-		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,		\
-		.hsm = TEGRA_HSM_##_hsm,				\
-		.schmitt = TEGRA_SCHMITT_##_schmitt,			\
-		.drive = TEGRA_DRIVE_##_drive,				\
-                .pull_down = TEGRA_PULL_##_pulldn_drive,		\
-		.pull_up = TEGRA_PULL_##_pullup_drive,			\
-		.slew_rising = TEGRA_SLEW_##_pulldn_slew,		\
-		.slew_falling = TEGRA_SLEW_##_pullup_slew,		\
-		.drive_type = TEGRA_DRIVE_TYPE_##_drive_type,		\
-	}
-
-#define DEFAULT_PINMUX(_pingroup, _mux, _pupd, _tri, _io)	\
-	{							\
-		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
-		.func		= TEGRA_MUX_##_mux,		\
-		.pupd		= TEGRA_PUPD_##_pupd,		\
-		.tristate	= TEGRA_TRI_##_tri,		\
-		.io		= TEGRA_PIN_##_io,		\
-		.lock		= TEGRA_PIN_LOCK_DEFAULT,	\
-		.od		= TEGRA_PIN_OD_DEFAULT,		\
-		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,	\
-	}
-
-#define I2C_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _od) \
-	{							\
-		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
-		.func		= TEGRA_MUX_##_mux,		\
-		.pupd		= TEGRA_PUPD_##_pupd,		\
-		.tristate	= TEGRA_TRI_##_tri,		\
-		.io		= TEGRA_PIN_##_io,		\
-		.lock		= TEGRA_PIN_LOCK_##_lock,	\
-		.od		= TEGRA_PIN_OD_##_od,		\
-		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,	\
-	}
-
-#define DDC_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _rcv_sel) \
-	{							\
-		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
-		.func		= TEGRA_MUX_##_mux,		\
-		.pupd		= TEGRA_PUPD_##_pupd,		\
-		.tristate	= TEGRA_TRI_##_tri,		\
-		.io		= TEGRA_PIN_##_io,		\
-		.lock		= TEGRA_PIN_LOCK_##_lock,	\
-		.rcv_sel	= TEGRA_PIN_RCV_SEL_##_rcv_sel,		\
-		.ioreset	= TEGRA_PIN_IO_RESET_DEFAULT,	\
-	}
-
-#define VI_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _ioreset) \
-	{							\
-		.pingroup	= TEGRA_PINGROUP_##_pingroup,	\
-		.func		= TEGRA_MUX_##_mux,		\
-		.pupd		= TEGRA_PUPD_##_pupd,		\
-		.tristate	= TEGRA_TRI_##_tri,		\
-		.io		= TEGRA_PIN_##_io,		\
-		.lock		= TEGRA_PIN_LOCK_##_lock,	\
-		.od		= TEGRA_PIN_OD_DEFAULT,		\
-		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
-	}
-
-#define CEC_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _od)   \
-	{                                                               \
-		.pingroup   = TEGRA_PINGROUP_##_pingroup,                   \
-		.func       = TEGRA_MUX_##_mux,                             \
-		.pupd       = TEGRA_PUPD_##_pupd,                           \
-		.tristate   = TEGRA_TRI_##_tri,                             \
-		.io         = TEGRA_PIN_##_io,                              \
-		.lock       = TEGRA_PIN_LOCK_##_lock,                       \
-		.od         = TEGRA_PIN_OD_##_od,                           \
-		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,                   \
-	}
-
-#define USB_PINMUX CEC_PINMUX
-
-#define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
-	{					\
-		.gpio_nr	= _gpio,	\
-		.is_input	= _is_input,	\
-		.value		= _value,	\
-	}
-
 static __initdata struct tegra_drive_pingroup_config roth_drive_pinmux[] = {
 	/* DEFAULT_DRIVE(<pin_group>), */
 	/* SDMMC1 */
@@ -250,6 +108,12 @@ static __initdata struct tegra_pingroup_config roth_pinmux_set_nontristate[] = {
 
 #include "board-roth-pinmux-t11x.h"
 
+/* THIS IS FOR EXPERIMENTAL OR WORKAROUND PURPOSES. ANYTHING INSIDE THIS TABLE
+ * SHOULD BE CONSIDERED TO BE PUSHED TO PINMUX SPREADSHEET FOR CONSISTENCY
+ */
+static __initdata struct tegra_pingroup_config manual_config_pinmux[] = {
+};
+
 static void __init roth_gpio_init_configure(void)
 {
 	int len;
@@ -280,6 +144,8 @@ int __init roth_pinmux_init(void)
 					ARRAY_SIZE(roth_drive_pinmux));
 	tegra_pinmux_config_table(unused_pins_lowpower,
 		ARRAY_SIZE(unused_pins_lowpower));
+	tegra_pinmux_config_table(manual_config_pinmux,
+		ARRAY_SIZE(manual_config_pinmux));
 
 	return 0;
 }
