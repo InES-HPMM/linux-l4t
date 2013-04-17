@@ -3,17 +3,9 @@
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
 
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
-
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
-
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2. This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
  */
 
 /* Implementation
@@ -359,26 +351,54 @@ static const struct regmap_config max77387_regmap_config = {
 static inline int max77387_reg_raw_rd(
 	struct max77387_info *info, u8 reg, u8 *val, u8 num)
 {
-	return regmap_raw_read(info->regmap, reg, val, num);
+	int ret = -ENODEV;
+
+	mutex_lock(&info->mutex);
+	if (info->power_is_on)
+		ret = regmap_raw_read(info->regmap, reg, val, num);
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
+
+	return ret;
 }
 
 static int max77387_reg_raw_wr(
 	struct max77387_info *info, u8 reg, u8 *buf, u8 num)
 {
+	int ret = -ENODEV;
+
 	dev_dbg(info->dev, "%s %x = %x %x\n", __func__, reg, buf[0], buf[1]);
-	return regmap_raw_write(info->regmap, reg, buf, num);
+	mutex_lock(&info->mutex);
+	if (info->power_is_on)
+		ret = regmap_raw_write(info->regmap, reg, buf, num);
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
+
+	return ret;
 }
 
 static int max77387_reg_wr(
 	struct max77387_info *info, u8 reg, u8 val, bool refresh)
 {
+	int ret = -ENODEV;
+
 	dev_dbg(info->dev,
 		"%s: %02x - %02x, %s %s\n", __func__, reg, val,
 		info->regs.regs_stale ? "STALE" : "NONE",
 		refresh ? "REFRESH" : "NONE");
+
 	if (unlikely(!info->regs.regs_stale && !refresh))
 		return 0;
-	return regmap_write(info->regmap, reg, val);
+	mutex_lock(&info->mutex);
+	if (info->power_is_on)
+		ret = regmap_write(info->regmap, reg, val);
+	else
+		dev_err(info->dev, "%s: power is off.\n", __func__);
+	mutex_unlock(&info->mutex);
+
+	return ret;
 }
 
 static void max77387_edp_lowest(struct max77387_info *info)
@@ -1053,17 +1073,17 @@ static int max77387_strobe(struct max77387_info *info, int t_on)
 
 static int max77387_enter_offmode(struct max77387_info *info, bool op_off)
 {
-	int err;
+	int err = 0;
 
-	mutex_lock(&info->mutex);
 	if (op_off) {
-		info->op_mode = MAXFLASH_MODE_NONE;
-		err = max77387_set_leds(info, 3, 0, 0);
+		if (info->power_is_on) {
+			info->op_mode = MAXFLASH_MODE_NONE;
+			err = max77387_set_leds(info, 3, 0, 0);
+		}
 	} else {
 		err = max77387_reg_wr(
 			info, MAX77387_RW_FLED_MODE, 0, true);
 	}
-	mutex_unlock(&info->mutex);
 	return err;
 }
 
@@ -1117,27 +1137,30 @@ static int max77387_power_off(struct max77387_info *info)
 	if (!info->power_is_on)
 		return 0;
 
+	mutex_lock(&info->mutex);
+
 	if (info->pdata && info->pdata->poweroff_callback)
 		err = info->pdata->poweroff_callback(pw);
 
-	if (IS_ERR_VALUE(err))
+	if (IS_ERR_VALUE(err)) {
+		mutex_unlock(&info->mutex);
 		return err;
-
-	/* the call back function already handles the power off sequence */
-	if (err) {
-		err = 0;
-		goto max77387_poweroff_done;
 	}
 
-	if (pw->vin)
-		regulator_disable(pw->vin);
+	/* the call back function already handles the power off sequence */
+	if (err)
+		err = 0;
+	else {
+		if (pw->vin)
+			regulator_disable(pw->vin);
+		if (pw->vdd)
+			regulator_disable(pw->vdd);
 
-	if (pw->vdd)
-		regulator_disable(pw->vdd);
+		info->power_is_on = 0;
+	}
 
-max77387_poweroff_done:
+	mutex_unlock(&info->mutex);
 	max77387_edp_lowest(info);
-	info->power_is_on = 0;
 	return err;
 }
 
@@ -1149,42 +1172,43 @@ static int max77387_power_on(struct max77387_info *info)
 	if (info->power_is_on)
 		return 0;
 
+	mutex_lock(&info->mutex);
+
 	if (info->pdata && info->pdata->poweron_callback)
 		err = info->pdata->poweron_callback(pw);
 
 	if (IS_ERR_VALUE(err))
-		return err;
+		goto max77387_poweron_callback_fail;
 
 	/* the call back function already handles the power on sequence */
-	if (err) {
+	if (err)
 		err = 0;
-		goto max77387_poweron_sync;
-	}
-
-	if (pw->vdd) {
-		err = regulator_enable(pw->vdd);
-		if (err) {
-			dev_err(info->dev, "%s vdd err\n", __func__);
-			goto max77387_poweron_vdd_fail;
+	else {
+		if (pw->vdd) {
+			err = regulator_enable(pw->vdd);
+			if (err) {
+				dev_err(info->dev, "%s vdd err\n", __func__);
+				goto max77387_poweron_vdd_fail;
+			}
+		}
+		if (pw->vin) {
+			err = regulator_enable(pw->vin);
+			if (err) {
+				dev_err(info->dev, "%s vin err\n", __func__);
+				goto max77387_poweron_vin_fail;
+			}
 		}
 	}
 
-	if (pw->vin) {
-		err = regulator_enable(pw->vin);
-		if (err) {
-			dev_err(info->dev, "%s vin err\n", __func__);
-			goto max77387_poweron_vin_fail;
-		}
-	}
-
-max77387_poweron_sync:
 	info->power_is_on = 1;
+
+	mutex_unlock(&info->mutex);
+
 	err = max77387_update_settings(info);
 	if (err) {
 		max77387_power_off(info);
 		return err;
 	}
-
 	max77387_edp_lowest(info);
 
 	return 0;
@@ -1195,6 +1219,8 @@ max77387_poweron_vin_fail:
 max77387_poweron_vdd_fail:
 	if (info->pdata && info->pdata->poweroff_callback)
 		info->pdata->poweroff_callback(pw);
+max77387_poweron_callback_fail:
+	mutex_unlock(&info->mutex);
 	return err;
 }
 
@@ -1937,4 +1963,4 @@ module_i2c_driver(max77387_drv);
 
 MODULE_DESCRIPTION("MAXIM MAX77387 flash/torch driver");
 MODULE_AUTHOR("Charlie Huang <chahuang@nvidia.com>");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
