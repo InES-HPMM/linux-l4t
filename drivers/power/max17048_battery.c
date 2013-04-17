@@ -2,7 +2,7 @@
  *  max17048_battery.c
  *  fuel-gauge systems for lithium-ion (Li+) batteries
  *
- *  Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *  Chandler Zhang <chazhang@nvidia.com>
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
@@ -29,7 +29,7 @@
 #define MAX17048_HIBRT		0x0A
 #define MAX17048_CONFIG		0x0C
 #define MAX17048_OCV		0x0E
-#define MAX17048_VLRT		0x14
+#define MAX17048_VALRT		0x14
 #define MAX17048_VRESET		0x18
 #define MAX17048_STATUS		0x1A
 #define MAX17048_UNLOCK		0x3E
@@ -468,7 +468,7 @@ static int max17048_initialize(struct max17048_chip *chip)
 		return ret;
 
 	/* Voltage Alert configuration */
-	ret = max17048_write_word(client, MAX17048_VLRT, mdata->valert);
+	ret = max17048_write_word(client, MAX17048_VALRT, mdata->valert);
 	if (ret < 0)
 		return ret;
 
@@ -501,6 +501,122 @@ int max17048_check_battery()
 }
 EXPORT_SYMBOL_GPL(max17048_check_battery);
 
+#ifdef CONFIG_OF
+static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
+{
+	struct max17048_platform_data *pdata;
+	struct max17048_battery_model *model_data;
+	struct device_node *np = dev->of_node;
+	u32 val, val_array[MAX17048_DATA_SIZE];
+	int i, ret;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return ERR_PTR(-ENOMEM);
+
+	model_data = devm_kzalloc(dev, sizeof(*model_data), GFP_KERNEL);
+	if (!model_data)
+		return ERR_PTR(-ENOMEM);
+
+	pdata->model_data = model_data;
+
+	ret = of_property_read_u32(np, "bits", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+
+	if ((val == 18) || (val == 19))
+		model_data->bits = val;
+
+	ret = of_property_read_u32(np, "alert-threshold", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+
+	model_data->alert_threshold = val;
+	if (model_data->bits == 19) /* LSB is 0.5%, if 19-bit model. */
+		model_data->alert_threshold /= 2;
+
+	ret = of_property_read_u32(np, "one-percent-alerts", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+
+	if (val)
+		model_data->one_percent_alerts = 0x40;
+
+	ret = of_property_read_u32(np, "valert-max", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->valert = ((val / 20) & 0xFF) << 8; /* LSB is 20mV. */
+
+	ret = of_property_read_u32(np, "valert-min", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->valert |= (val / 20) & 0xFF; /* LSB is 20mV. */
+
+	ret = of_property_read_u32(np, "vreset-threshold", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->vreset = ((val / 40) & 0xFE) << 8; /* LSB is 40mV. */
+
+	ret = of_property_read_u32(np, "vreset-disable", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->vreset |= (val & 0x01) << 8;
+
+	ret = of_property_read_u32(np, "hib-threshold", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->hibernate = (val & 0xFF) << 8;
+
+	ret = of_property_read_u32(np, "hib-active-threshold", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->hibernate |= val & 0xFF;
+
+	ret = of_property_read_u32(np, "rcomp", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->rcomp = val;
+
+	ret = of_property_read_u32(np, "rcomp-seg", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->rcomp_seg = val;
+
+	ret = of_property_read_u32(np, "soccheck-a", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->soccheck_A = val;
+
+	ret = of_property_read_u32(np, "soccheck-b", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->soccheck_B = val;
+
+	ret = of_property_read_u32(np, "ocvtest", &val);
+	if (ret < 0)
+		return ERR_PTR(ret);
+	model_data->ocvtest = val;
+
+	ret = of_property_read_u32_array(np, "data-tbl", val_array,
+					 MAX17048_DATA_SIZE);
+	if (ret < 0)
+		return ERR_PTR(ret);
+
+	for (i = 0; i < MAX17048_DATA_SIZE; i++)
+		model_data->data_tbl[i] = val_array[i];
+
+	pdata->use_ac = of_property_read_bool(np, "use-ac");
+	pdata->use_usb = of_property_read_bool(np, "use-usb");
+
+	return pdata;
+}
+#else
+static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
+{
+	return NULL;
+}
+#endif /* CONFIG_OF */
+
 static int max17048_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -508,12 +624,22 @@ static int max17048_probe(struct i2c_client *client,
 	int ret;
 	uint16_t version;
 
-	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
+	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
 	chip->client = client;
-	chip->pdata = client->dev.platform_data;
+
+	if (client->dev.of_node) {
+		chip->pdata = max17048_parse_dt(&client->dev);
+		if (IS_ERR(chip->pdata))
+			return PTR_ERR(chip->pdata);
+	} else {
+		chip->pdata = client->dev.platform_data;
+		if (!chip->pdata)
+			return -ENODATA;
+	}
+
 	chip->ac_online = 0;
 	chip->usb_online = 0;
 	max17048_data = chip;
@@ -585,7 +711,7 @@ error1:
 	power_supply_unregister(&chip->battery);
 error2:
 	mutex_destroy(&chip->mutex);
-	kfree(chip);
+
 	return ret;
 }
 
@@ -598,7 +724,6 @@ static int max17048_remove(struct i2c_client *client)
 	power_supply_unregister(&chip->ac);
 	cancel_delayed_work_sync(&chip->work);
 	mutex_destroy(&chip->mutex);
-	kfree(chip);
 
 	return 0;
 }
@@ -656,6 +781,14 @@ static int max17048_resume(struct i2c_client *client)
 
 #endif /* CONFIG_PM */
 
+#ifdef CONFIG_OF
+static const struct of_device_id max17048_dt_match[] = {
+	{ .compatible = "maxim,max17048" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, max17048_dt_match);
+#endif
+
 static const struct i2c_device_id max17048_id[] = {
 	{ "max17048", 0 },
 	{ }
@@ -665,6 +798,7 @@ MODULE_DEVICE_TABLE(i2c, max17048_id);
 static struct i2c_driver max17048_i2c_driver = {
 	.driver	= {
 		.name	= "max17048",
+		.of_match_table = of_match_ptr(max17048_dt_match),
 	},
 	.probe		= max17048_probe,
 	.remove		= max17048_remove,
