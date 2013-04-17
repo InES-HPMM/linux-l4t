@@ -1430,7 +1430,7 @@ static int tegra_aic326x_suspend_post(struct snd_soc_card *card)
 	if (gpio_is_valid(gpio->gpio))
 		disable_irq(gpio_to_irq(gpio->gpio));
 
-	if (machine->clock_enabled) {
+	if (machine->clock_enabled && !machine->is_call_mode) {
 		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
 	}
@@ -1452,7 +1452,7 @@ static int tegra_aic326x_resume_pre(struct snd_soc_card *card)
 		enable_irq(gpio_to_irq(gpio->gpio));
 	}
 
-	if (!machine->clock_enabled) {
+	if (!machine->clock_enabled && !machine->is_call_mode) {
 		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
 	}
