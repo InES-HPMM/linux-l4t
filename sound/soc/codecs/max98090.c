@@ -2347,7 +2347,7 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
 	struct max98090_cdata *cdata;
-	u8 regval;
+	u8 regval = 0;
 
 	max98090->dai_fmt = fmt;
 	cdata = &max98090->dai[0];
@@ -2424,16 +2424,19 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 			return -EINVAL;
 		}
 
+		snd_soc_write(codec, M98090_REG_22_DAI_INTERFACE_FORMAT,
+			regval);
+	}
 /*
  * This accommodates an inverted logic in the MAX98090 chip for
  * Bit Clock Invert (BCI). The inverted logic is only seen for the case
  * of TDM mode. The remaining cases have normal logic.
  */
-		if (max98090->tdm_slots > 1)
-			regval ^= M98090_DAI_BCI_MASK;
-
+	if (max98090->tdm_slots > 1) {
+		regval = snd_soc_read(codec, M98090_REG_21_CLOCK_MAS_MODE);
+		regval ^= M98090_DAI_BCI_MASK;
 		snd_soc_write(codec, M98090_REG_22_DAI_INTERFACE_FORMAT,
-			regval);
+		regval);
 	}
 
 	return 0;

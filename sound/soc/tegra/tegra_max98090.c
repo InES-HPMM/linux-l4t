@@ -315,12 +315,6 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 
 	rate = clk_get_rate(machine->util_data.clk_cdev1);
 
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai fmt not set\n");
-		return err;
-	}
-
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
@@ -332,6 +326,20 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
+	}
+
+	if (pdata->i2s_param[HIFI_CODEC].i2s_mode == TEGRA_DAIFMT_I2S) {
+		err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai fmt not set\n");
+			return err;
+		}
+	} else {
+		err = snd_soc_dai_set_tdm_slot(codec_dai, 3, 3, 2, sample_size);
+		if (err < 0) {
+			dev_err(card->dev, "cpu_dai tdm mode setting not done\n");
+			return err;
+		}
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
