@@ -36,6 +36,7 @@
 #include <mach/edp.h>
 #include <mach/hardware.h>
 #include <mach/mc.h>
+#include <mach/powergate.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -1867,6 +1868,9 @@ static int tegra11_pll_clk_wait_for_lock(
 		pr_debug("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
 			 c->name, lock_reg, val);
 		return 0;
+	} else if ((c->flags & PLLD) &&
+			tegra_powergate_check_clamping(TEGRA_POWERGATE_DISA)) {
+		pr_debug("Waiting for %s lock.\n", c->name);
 	} else {
 		pr_err("Timed out waiting for %s lock bit ([0x%x] = 0x%x)\n",
 		       c->name, lock_reg, val);
