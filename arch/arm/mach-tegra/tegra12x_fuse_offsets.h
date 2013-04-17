@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, nvidia corporation.
+ * copyright (c) 2012-2013, nvidia corporation.
  *
  * this program is free software; you can redistribute it and/or modify
  * it under the terms of the gnu general public license as published by
@@ -23,12 +23,12 @@
 #include "fuse.h"
 #include "iomap.h"
 
-#ifndef __TEGRA11x_FUSE_OFFSETS_H
-#define __TEGRA11x_FUSE_OFFSETS_H
+#ifndef __TEGRA12x_FUSE_OFFSETS_H
+#define __TEGRA12x_FUSE_OFFSETS_H
 
 /* private_key4 */
-#define DEVKEY_START_OFFSET		0x2C
-#define DEVKEY_START_BIT		7
+#define DEVKEY_START_OFFSET		0x2A
+#define DEVKEY_START_BIT		12
 
 /* arm_debug_dis */
 #define JTAG_START_OFFSET		0x0
@@ -36,47 +36,47 @@
 
 /* security_mode */
 #define ODM_PROD_START_OFFSET		0x0
-#define ODM_PROD_START_BIT		7
+#define ODM_PROD_START_BIT		11
 
 /* boot_device_info */
-#define SB_DEVCFG_START_OFFSET		0x2E
-#define SB_DEVCFG_START_BIT		7
+#define SB_DEVCFG_START_OFFSET		0x2C
+#define SB_DEVCFG_START_BIT		12
 
 /* reserved_sw[2:0] */
-#define SB_DEVSEL_START_OFFSET		0x2E
-#define SB_DEVSEL_START_BIT		23
+#define SB_DEVSEL_START_OFFSET		0x2C
+#define SB_DEVSEL_START_BIT		28
 
 /* private_key0 -> private_key3 (SBK) */
-#define SBK_START_OFFSET		0x24
-#define SBK_START_BIT			7
+#define SBK_START_OFFSET		0x22
+#define SBK_START_BIT			12
 
 /* reserved_sw[7:4] */
 #define SW_RESERVED_START_OFFSET	0x2E
-#define SW_RESERVED_START_BIT		27
+#define SW_RESERVED_START_BIT		0
 
 /* reserved_sw[3] */
-#define IGNORE_DEVSEL_START_OFFSET	0x2E
-#define IGNORE_DEVSEL_START_BIT		26
+#define IGNORE_DEVSEL_START_OFFSET	0x2C
+#define IGNORE_DEVSEL_START_BIT		31
 
 /* public key */
-#define	PUBLIC_KEY_START_OFFSET		0x0A
-#define PUBLIC_KEY_START_BIT		25
+#define PUBLIC_KEY_START_OFFSET		0x0A
+#define PUBLIC_KEY_START_BIT		30
 
 /* pkc_disable */
-#define PKC_DISABLE_START_OFFSET	0x5A
-#define PKC_DISABLE_START_BIT		22
+#define PKC_DISABLE_START_OFFSET        0x5A
+#define PKC_DISABLE_START_BIT           9
 
 /* video vp8 enable */
 #define VP8_ENABLE_START_OFFSET		0x2E
-#define VP8_ENABLE_START_BIT		31
+#define VP8_ENABLE_START_BIT		4
 
 /* odm lock */
-#define ODM_LOCK_START_OFFSET		0x02
-#define ODM_LOCK_START_BIT		0
+#define ODM_LOCK_START_OFFSET		0x0
+#define ODM_LOCK_START_BIT		6
 
 /* reserved_odm0 -> reserved_odm7 */
-#define ODM_RESERVED_DEVSEL_START_OFFSET	0x30
-#define ODM_RESERVED_START_BIT			0
+#define ODM_RESERVED_DEVSEL_START_OFFSET	0x2E
+#define ODM_RESERVED_START_BIT			5
 
 #define FUSE_VENDOR_CODE	0x200
 #define FUSE_VENDOR_CODE_MASK	0xf
@@ -92,7 +92,7 @@
 #define FUSE_Y_COORDINATE_MASK	0x1ff
 #define FUSE_GPU_INFO		0x390
 #define FUSE_GPU_INFO_MASK	(1<<2)
-#define FUSE_SPARE_BIT		0x244
+#define FUSE_SPARE_BIT		0x300
 /* fuse registers used in public fuse data read API */
 #define FUSE_TEST_PROGRAM_REVISION_0	0x128
 /* fuse spare bits are used to get Tj-ADT values */
@@ -198,8 +198,8 @@ unsigned long long tegra_chip_uid(void)
 		Total     64
 	*/
 
-	/* chip id is 1 for tegra 11x */
-	cid = 1;
+	/* chip id is 3 for tegra 12x */
+	cid = 3;
 
 	vendor = tegra_fuse_readl(FUSE_VENDOR_CODE) & FUSE_VENDOR_CODE_MASK;
 	fab = tegra_fuse_readl(FUSE_FAB_CODE) & FUSE_FAB_CODE_MASK;
@@ -295,4 +295,4 @@ int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
 
 	return 0;
 }
-#endif /* __TEGRA11x_FUSE_OFFSETS_H */
+#endif /* __TEGRA12x_FUSE_OFFSETS_H */
