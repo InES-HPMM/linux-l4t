@@ -27,6 +27,8 @@
 
 #define MAX77665_CHG_INT        0xb0
 #define MAX77665_CHG_INT_MASK   0xb1
+#define BAT_I			(1 << 3)
+#define CHG_I			(1 << 4)
 #define MAX77665_CHG_INT_OK     0xb2
 #define BYP_OK			(1 << 0)
 #define DETBAT_OK		(1 << 2)

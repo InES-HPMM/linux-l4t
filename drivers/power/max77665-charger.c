@@ -460,17 +460,20 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 				MAX77665_CHG_INT);
 		goto error;
 	}
-	dev_info(charger->dev, "CHG_INT = 0x%02x\n", read_val);
+	dev_dbg(charger->dev, "CHG_INT = 0x%02x\n", read_val);
 
-	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to reading reg: 0x%x\n",
-				MAX77665_CHG_INT_OK);
-		goto error;
+	if (read_val & CHG_I) {
+		ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK,
+				&read_val);
+		if (ret < 0) {
+			dev_err(charger->dev, "failed to reading reg: 0x%x\n",
+					MAX77665_CHG_INT_OK);
+			goto error;
+		}
+
+		dev_info(charger->dev, "CHG_INT_OK = 0x%02x\n", read_val);
+		max77665_display_charger_status(charger, read_val);
 	}
-	dev_info(charger->dev, "CHG_INT_OK = 0x%02x\n", read_val);
-
-	max77665_display_charger_status(charger, read_val);
 
 	ret = max77665_update_bits(charger->dev->parent,
 			MAX77665_I2C_SLAVE_PMIC,
