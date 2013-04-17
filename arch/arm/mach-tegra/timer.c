@@ -38,7 +38,9 @@
 #include <asm/cputype.h>
 #include <asm/delay.h>
 #include <asm/smp_twd.h>
+#ifndef CONFIG_ARM64
 #include <asm/system.h>
+#endif
 #include <asm/sched_clock.h>
 #include <asm/localtimer.h>
 
@@ -539,8 +541,12 @@ static void __iomem *tsc = IO_ADDRESS(TEGRA_TSC_BASE);
 /* Is the optional system timer available? */
 static int local_timer_is_architected(void)
 {
+#ifdef CONFIG_ARM64
+	return 1;
+#else
 	return (cpu_architecture() >= CPU_ARCH_ARMv7) &&
 	       ((read_cpuid_ext(CPUID_EXT_PFR1) >> 16) & 0xf) == 1;
+#endif
 }
 
 void __init tegra_cpu_timer_init(void)
@@ -668,9 +674,9 @@ static u32 tsc_suspend_start;
 static u32 tsc_resume_start;
 
 #define pmc_writel(value, reg) \
-		writel(value, pmc + (reg))
+		writel(value, (uintptr_t)pmc + (reg))
 #define pmc_readl(reg) \
-		readl(pmc + (reg))
+		readl((uintptr_t)pmc + (reg))
 
 #define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
@@ -752,6 +758,13 @@ static inline int tegra_init_late_arch_timer(void) { return -ENODEV; }
 extern void __tegra_delay(unsigned long cycles);
 extern void __tegra_const_udelay(unsigned long loops);
 extern void __tegra_udelay(unsigned long usecs);
+
+#ifdef CONFIG_ARM64
+void read_persistent_clock(struct timespec *ts)
+{
+	tegra_read_persistent_clock(ts);
+}
+#endif
 
 void __init tegra_init_timer(void)
 {
@@ -845,15 +858,21 @@ void __init tegra_init_timer(void)
 	   Only register a broadcast clockevent device if architectural
 	   timers do not exist or cannot be initialized. */
 	if (tegra_init_arch_timer())
+#ifdef CONFIG_ARM64
+		; /* FIXME: sched_clock is n/a in arm64 */
+#else
 		/* Architectural timers do not exist or cannot be initialzied.
 		   Fall back to using the broadcast timer as the sched clock. */
 		setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
+#endif
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
 
 	late_time_init = tegra_init_late_timer;
 
+#ifndef CONFIG_ARM64 /* FIXME */
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
+#endif
 
 	//arm_delay_ops.delay		= __tegra_delay;
 	//arm_delay_ops.const_udelay	= __tegra_const_udelay;

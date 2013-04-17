@@ -32,7 +32,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #include <linux/pm_runtime.h>
+
+#ifndef CONFIG_ARM64
 #include <asm/gpio.h>
+#endif
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/reboot.h>
