@@ -953,7 +953,8 @@ int tegra_fuse_program(struct fuse_data *pgm_data, u32 flags)
 		return -ENODEV;
 	}
 
-	if (fuse_odm_prod_mode() && (flags != FLAGS_ODMRSVD)) {
+	if (fuse_odm_prod_mode() && !(flags &
+				(FLAGS_ODMRSVD | FLAGS_ODM_LOCK))) {
 		pr_err("Non ODM reserved fuses cannot be burnt after ODM"
 			"production mode/secure mode fuse is burnt");
 		return -EPERM;
@@ -1093,7 +1094,8 @@ ssize_t tegra_fuse_store(struct device *dev, struct device_attribute *attr,
 	raw_data = ((u32 *)&data) + fuse_info_tbl[param].data_offset;
 	raw_byte_data = (u8 *)raw_data;
 
-	if (fuse_odm_prod_mode() && (param != ODM_RSVD)) {
+	if (fuse_odm_prod_mode() && (param != ODM_RSVD)
+					&& (param != ODM_LOCK)) {
 		pr_err("%s: Non ODM reserved fuses cannot be burnt after"
 		"ODM production mode/secure mode fuse is burnt\n", __func__);
 		return -EPERM;
