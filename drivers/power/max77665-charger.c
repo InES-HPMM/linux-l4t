@@ -815,6 +815,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	uint8_t j;
 	uint32_t read_val;
 	struct max77665_charger *charger;
+	int temp;
 
 	charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
 	if (!charger) {
@@ -852,11 +853,11 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	}
 
 	/* differentiate between E1236 and E1587*/
-	ret = maxim_get_temp();
-	if (ret == 0xff) {
+	ret = maxim_get_temp(&temp);
+	if (ret < 0) {
 		dev_err(&pdev->dev, "failed in reading temperaure\n");
 		goto remove_charging;
-	} else if ((ret < MIN_TEMP) || (ret > MAX_TEMP)) {
+	} else if ((temp < MIN_TEMP) || (temp > MAX_TEMP)) {
 		dev_err(&pdev->dev, "E1236 detected exiting driver....\n");
 		goto remove_charging;
 	}
