@@ -3,23 +3,19 @@
  *
  * Copyright (c) 2012-2013, NVIDIA Corporation. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/* This is a NVC kernel driver for a focuser device called
- * ad5816.
- */
+
 /* Implementation
  * --------------
  * The board level details about the device need to be provided in the board
@@ -136,6 +132,7 @@ struct ad5816_info {
 	struct nvc_focus_cap cap;
 	struct nv_focuser_config nv_config;
 	struct ad5816_pdata_info config;
+	unsigned long ltv_ms;
 };
 
 /**
@@ -456,14 +453,33 @@ static int ad5816_position_rd(struct ad5816_info *info, unsigned *position)
 
 static int ad5816_position_wr(struct ad5816_info *info, s32 position)
 {
-	s16 data;
+	struct timeval tv;
+	unsigned long tvl;
+	unsigned long dly;
+	int err;
 
 	if (position < info->config.pos_low || position > info->config.pos_high)
-		return -EINVAL;
+		err = -EINVAL;
+	else {
+		do_gettimeofday(&tv);
+		tvl = ((unsigned long)tv.tv_sec * USEC_PER_SEC +
+			tv.tv_usec) / USEC_PER_MSEC;
+		if (tvl - info->ltv_ms < info->cap.settle_time) {
+			dly = (tvl - info->ltv_ms) * USEC_PER_MSEC;
+			dev_dbg(&info->i2c_client->dev,
+				"%s not settled(%lu uS).\n", __func__, dly);
+			usleep_range(dly, dly + 20);
+		}
+		err = ad5816_i2c_wr16(info, VCM_CODE_MSB,
+			position & AD5816_POS_CLAMP);
+	}
 
-	data = position & AD5816_POS_CLAMP;
-	return ad5816_i2c_wr16(info, VCM_CODE_MSB, data);
-
+	if (err)
+		dev_err(&info->i2c_client->dev, "%s ERROR: %d\n",
+			__func__, err);
+	else
+		info->ltv_ms = tvl;
+	return err;
 }
 
 static void ad5816_get_focuser_capabilities(struct ad5816_info *info)
@@ -665,8 +681,7 @@ static int ad5816_param_wr(struct ad5816_info *info, unsigned long arg)
 				if (!err) {
 					info->s_mode = u8val;
 					info->s_info->s_mode = u8val;
-				}
-				else {
+				} else {
 					if (info->s_mode != NVC_SYNC_STEREO)
 						ad5816_pm_wr(info->s_info,
 						NVC_PWR_OFF);
@@ -686,8 +701,7 @@ static int ad5816_param_wr(struct ad5816_info *info, unsigned long arg)
 				if (!err) {
 					info->s_mode = u8val;
 					info->s_info->s_mode = u8val;
-				}
-				else {
+				} else {
 					if (info->s_mode != NVC_SYNC_SLAVE)
 						ad5816_pm_wr(info->s_info,
 							NVC_PWR_OFF);
@@ -1140,4 +1154,4 @@ static void __exit ad5816_exit(void)
 
 module_init(ad5816_init);
 module_exit(ad5816_exit);
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
