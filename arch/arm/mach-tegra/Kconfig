@@ -755,4 +755,11 @@ config TEGRA_PLLM_SCALED
 	  provides a backup memory clock while PLLM is re-locking to the
 	  new rate.
 
+config TEGRA_MC_DOMAINS
+	bool "Enable MC domains"
+	depends on PM_GENERIC_DOMAINS
+	default n
+	help
+	  When enabled, clock gates MC when it's not needed.
+
 endif

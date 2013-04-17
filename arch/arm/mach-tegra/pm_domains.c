@@ -22,6 +22,7 @@
 
 #include <mach/pm_domains.h>
 
+#ifdef CONFIG_TEGRA_MC_DOMAINS
 #define TEGRA_PD_DEV_CALLBACK(callback, dev)			\
 ({								\
 	int (*__routine)(struct device *__d);			\
@@ -219,3 +220,11 @@ void tegra_pd_add_sd(struct tegra_pm_domain *pd, struct generic_pm_domain *sd)
 	pm_genpd_add_subdomain(&pd->gpd, sd);
 }
 EXPORT_SYMBOL(tegra_pd_add_sd);
+#else
+struct tegra_pm_domain tegra_mc_clk;
+EXPORT_SYMBOL(tegra_mc_clk);
+struct tegra_pm_domain tegra_mc_chain_a;
+EXPORT_SYMBOL(tegra_mc_chain_a);
+struct tegra_pm_domain tegra_mc_chain_b;
+EXPORT_SYMBOL(tegra_mc_chain_b);
+#endif
