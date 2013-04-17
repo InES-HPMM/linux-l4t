@@ -643,7 +643,7 @@ static void __init tegra_perf_init(void)
 	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(reg));
 }
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 static void __init tegra_ramrepair_init(void)
 {
 	if (tegra_spare_fuse(10)  | tegra_spare_fuse(11)) {
