@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -52,6 +52,7 @@ struct therm_monitor_data {
 	unsigned int delta_temp;
 	unsigned int delta_time;
 	unsigned int remote_offset;
+	signed int alert_gpio;
 	int utmip_temp_bound;
 	unsigned char local_temp_update;
 	unsigned char utmip_reg_update;

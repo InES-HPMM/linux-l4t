@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,8 +21,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
 #include <linux/platform_data/tmon_tmp411.h>
-#include <mach/iomap.h>
-#include <mach/io.h>
+#include <iomap.h>
 #include <asm/io.h>
 #include "therm-monitor.h"
 
@@ -33,10 +32,8 @@ static struct tmon_plat_data tmon_pdata;
 /* For now assume only one entry */
 struct i2c_board_info __initdata tgr_i2c_board_info[1];
 
-/*  T30 USB Base address:                  USB1,       USB2,       USB3     */
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+/* USB Base address:                  USB1,       USB2,       USB3     */
 static unsigned int s_tegra_usb_base[] = {0x7D000000, 0x7D004000, 0x7D008000};
-#endif
 
 /*  Fuse USB Calib Value. */
 static unsigned int s_fuse_usb_calib_value;
@@ -145,6 +142,7 @@ void register_therm_monitor(struct therm_monitor_data *brd_therm_monitor_data)
 	tmon_pdata.delta_temp = brd_therm_monitor_data->delta_temp;
 	tmon_pdata.delta_time = brd_therm_monitor_data->delta_time;
 	tmon_pdata.remote_offset = brd_therm_monitor_data->remote_offset;
+	tmon_pdata.alert_gpio = brd_therm_monitor_data->alert_gpio;
 
 	/* Local temperature monitoring: Used for pad controls */
 	if (brd_therm_monitor_data->local_temp_update)
