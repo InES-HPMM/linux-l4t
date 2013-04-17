@@ -105,6 +105,7 @@ static void __init tegra_ardbeg_init(void)
 	ardbeg_sdhci_init();
 	ardbeg_panel_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
+	tegra_register_fuse();
 }
 
 static void __init tegra_ardbeg_dt_init(void)

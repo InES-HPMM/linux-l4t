@@ -611,6 +611,7 @@ static void __init tegra_bonaire_init(void)
 	bonaire_panel_init();
 	bonaire_bt_rfkill();
 	bonaire_pcie_init();
+	tegra_register_fuse();
 }
 
 static void __init tegra_bonaire_reserve(void)
