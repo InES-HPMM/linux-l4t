@@ -113,17 +113,10 @@ int fuse_pgm_cycles[] = {130, 168, 0, 0, 192, 384, 0, 0, 120, 480, 0, 0, 260};
 	} \
 }
 
-static struct kobj_attribute public_key_attr =
-	__ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute pkc_disable_attr =
-	__ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute vp8_enable_attr =
-	__ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
-
-static struct kobj_attribute odm_lock_attr =
-	__ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(public_key, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(pkc_disable, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(vp8_enable, 0440, tegra_fuse_show, tegra_fuse_store);
+DEVICE_ATTR(odm_lock, 0440, tegra_fuse_show, tegra_fuse_store);
 
 int tegra_fuse_get_revision(u32 *rev)
 {
@@ -259,39 +252,39 @@ int tegra_fuse_get_tsensor_calib(int index, u32 *calib)
 int tegra_fuse_add_sysfs_variables(struct platform_device *pdev,
 					bool odm_security_mode)
 {
-	odm_lock_attr.attr.mode = 0640;
+	dev_attr_odm_lock.attr.mode = 0640;
 	if (odm_security_mode) {
-		public_key_attr.attr.mode =  0440;
-		pkc_disable_attr.attr.mode = 0440;
-		vp8_enable_attr.attr.mode = 0440;
+		dev_attr_public_key.attr.mode =  0440;
+		dev_attr_pkc_disable.attr.mode = 0440;
+		dev_attr_vp8_enable.attr.mode = 0440;
 	} else {
-		public_key_attr.attr.mode =  0640;
-		pkc_disable_attr.attr.mode = 0640;
-		vp8_enable_attr.attr.mode = 0640;
+		dev_attr_public_key.attr.mode =  0640;
+		dev_attr_pkc_disable.attr.mode = 0640;
+		dev_attr_vp8_enable.attr.mode = 0640;
 	}
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &public_key_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &pkc_disable_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &vp8_enable_attr.attr));
-	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &odm_lock_attr.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_public_key.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_pkc_disable.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_vp8_enable.attr));
+	CHK_ERR(sysfs_create_file(&pdev->dev.kobj, &dev_attr_odm_lock.attr));
 
 	return 0;
 }
 
 int tegra_fuse_rm_sysfs_variables(struct platform_device *pdev)
 {
-	sysfs_remove_file(&pdev->dev.kobj, &public_key_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &pkc_disable_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &vp8_enable_attr.attr);
-	sysfs_remove_file(&pdev->dev.kobj, &odm_lock_attr.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_public_key.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_pkc_disable.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_vp8_enable.attr);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_odm_lock.attr);
 
 	return 0;
 }
 
 int tegra_fuse_ch_sysfs_perm(struct kobject *kobj)
 {
-	CHK_ERR(sysfs_chmod_file(kobj, &public_key_attr.attr, 0440));
-	CHK_ERR(sysfs_chmod_file(kobj, &pkc_disable_attr.attr, 0440));
-	CHK_ERR(sysfs_chmod_file(kobj, &vp8_enable_attr.attr, 0440));
+	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_public_key.attr, 0440));
+	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_pkc_disable.attr, 0440));
+	CHK_ERR(sysfs_chmod_file(kobj, &dev_attr_vp8_enable.attr, 0440));
 
 	return 0;
 }
