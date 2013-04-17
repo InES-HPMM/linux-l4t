@@ -787,6 +787,7 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[PALMAS_NUM_REGS] = {
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 	.disabe_ldo8_tracking_suspend = true,
+	.disable_smps10_boost_suspend = false,
 };
 
 static struct palmas_rtc_platform_data rtc_platform = {
