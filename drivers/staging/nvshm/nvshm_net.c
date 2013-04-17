@@ -77,8 +77,6 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 		return;
 	}
 
-	spin_lock(&priv->lock);
-
 	ap_next = iobuf;
 	bb_next = NVSHM_A2B(netdev.handle, iobuf);
 	while (bb_next) {
@@ -102,14 +100,15 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			}
 		}
 		/* construct the skb */
-		skb = (struct sk_buff *) dev_alloc_skb(datagram_len);
+		skb = (struct sk_buff *) __netdev_alloc_skb(dev,
+							    datagram_len,
+							    GFP_KERNEL);
 		if (!skb) {
 			/* Out of memory - nothing to do except */
 			/* free current iobufs and return */
 			pr_err("%s: skb alloc failed!\n", __func__);
 			priv->stats.rx_errors++;
 			nvshm_iobuf_free_cluster(ap_next);
-			spin_unlock(&priv->lock);
 			return;
 		}
 		dst = skb_put(skb, datagram_len);
@@ -154,7 +153,6 @@ next_datagram:	/* move to next datagram */
 		bb_next = ap_next->next;
 		ap_next = NVSHM_B2A(netdev.handle, bb_next);
 	}
-	spin_unlock(&priv->lock);
 }
 
 /* error_event() is called when an error event is received */
@@ -346,8 +344,6 @@ static int nvshm_netops_change_mtu(struct net_device *dev, int new_mtu)
 	if (!priv)
 		return -EINVAL;
 
-	spin_lock(&priv->lock);
-	spin_unlock(&priv->lock);
 	return 0;
 }
 
