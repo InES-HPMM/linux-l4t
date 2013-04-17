@@ -83,6 +83,7 @@ struct max77665_charger {
 	struct alarm wdt_alarm;
 	struct delayed_work wdt_ack_work;
 	struct wake_lock wdt_wake_lock;
+	unsigned int oc_count;
 };
 
 static enum power_supply_property max77665_ac_props[] = {
@@ -462,6 +463,9 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 	}
 	dev_dbg(charger->dev, "CHG_INT = 0x%02x\n", read_val);
 
+	if (read_val & BAT_I)
+		charger->oc_count++;
+
 	if (read_val & CHG_I) {
 		ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK,
 				&read_val);
@@ -584,9 +588,19 @@ static ssize_t max77665_show_battery_oc_state(struct device *dev,
 static DEVICE_ATTR(oc_state, 0644,
 		max77665_show_battery_oc_state, max77665_set_battery_oc_state);
 
+static ssize_t max77665_show_battery_oc_count(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77665_charger *charger = dev_get_drvdata(dev);
+	return sprintf(buf, "%u\n", charger->oc_count);
+}
+
+static DEVICE_ATTR(oc_count, 0444, max77665_show_battery_oc_count, NULL);
+
 static struct attribute *max77665_chg_attributes[] = {
 	&dev_attr_oc_threshold.attr,
 	&dev_attr_oc_state.attr,
+	&dev_attr_oc_count.attr,
 	NULL,
 };
 
