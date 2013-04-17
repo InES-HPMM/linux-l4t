@@ -658,6 +658,10 @@ tegra_xusb_request_clk_rate(struct tegra_xhci_hcd *tegra,
 	enum MBOX_CMD_TYPE cmd_ack = MBOX_CMD_ACK;
 	int fw_req_rate = rate, cur_rate;
 
+	/* Do not handle clock change as needed for HS disconnect issue */
+	*sw_resp = fw_req_rate | (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
+	return ret;
+
 	/* frequency request from firmware is in KHz.
 	 * Convert it to MHz
 	 */
