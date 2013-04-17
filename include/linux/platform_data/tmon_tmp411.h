@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,7 +25,8 @@
 struct tmon_plat_data {
 	signed int delta_temp;
 	signed int delta_time;
-	signed int remote_offset;
+	unsigned int remote_offset;
+	signed int alert_gpio;
 	int utmip_temp_bound;
 	void (*ltemp_dependent_reg_update)(int ltemp);
 	void (*utmip_temp_dep_update)(int rtemp, int utmip_temp_bound);
