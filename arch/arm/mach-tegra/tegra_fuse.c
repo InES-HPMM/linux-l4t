@@ -265,12 +265,12 @@ static struct param_info fuse_info_tbl[] = {
 
 u32 tegra_fuse_readl(unsigned long offset)
 {
-	return tegra_apb_readl(TEGRA_FUSE_BASE + offset);
+	return readl(IO_ADDRESS(TEGRA_FUSE_BASE + offset));
 }
 
 void tegra_fuse_writel(u32 val, unsigned long offset)
 {
-	tegra_apb_writel(val, TEGRA_FUSE_BASE + offset);
+	writel(val, IO_ADDRESS(TEGRA_FUSE_BASE + offset));
 }
 
 bool tegra_spare_fuse(int bit)
@@ -1225,7 +1225,7 @@ void tegra_init_fuse(void)
 	reg = tegra_fuse_readl(FUSE_SKU_INFO);
 	tegra_sku_id = reg & 0xFF;
 
-	reg = tegra_apb_readl(TEGRA_APB_MISC_BASE + STRAP_OPT);
+	reg = readl(IO_ADDRESS(TEGRA_APB_MISC_BASE + STRAP_OPT));
 	tegra_bct_strapping = (reg & RAM_ID_MASK) >> RAM_CODE_SHIFT;
 
 	id = tegra_read_chipid();
