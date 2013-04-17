@@ -161,6 +161,8 @@ static unsigned int uhs_max_freq_MHz[] = {
  * is below 1.2V, CRC errors would occur during data transfers
  */
 #define NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK	BIT(19)
+/* Set Pipe stages value o zero */
+#define NVQUIRK_SET_PIPE_STAGES_MASK_0		BIT(20)
 
 struct sdhci_tegra_soc_data {
 	const struct sdhci_pltfm_data *pdata;
@@ -823,6 +825,8 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 	if (soc_data->nvquirks & NVQUIRK_EN_FEEDBACK_CLK) {
 		vendor_ctrl &=
 			~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
+	} else {
+		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_INTERNAL_CLK;
 	}
 	if (soc_data->nvquirks & NVQUIRK_SET_TAP_DELAY) {
 		if ((tegra_host->tuning_status == TUNING_STATUS_DONE) &&
@@ -873,6 +877,8 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		misc_ctrl |=
 		SDHCI_VNDR_MISC_CTRL_INFINITE_ERASE_TIMEOUT;
 	}
+	if (soc_data->nvquirks & NVQUIRK_SET_PIPE_STAGES_MASK_0)
+		misc_ctrl &= ~SDHCI_VNDR_MISC_CTRL_PIPE_STAGES_MASK;
 	sdhci_writew(host, misc_ctrl, SDHCI_VNDR_MISC_CTRL);
 
 	if (soc_data->nvquirks & NVQUIRK_DISABLE_AUTO_CMD23)
@@ -2080,7 +2086,9 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		   NVQUIRK_ENABLE_PADPIPE_CLKEN |
 		   NVQUIRK_DISABLE_SPI_MODE_CLKEN |
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 		   NVQUIRK_EN_FEEDBACK_CLK |
+#endif
 		   NVQUIRK_SET_TAP_DELAY |
 		   NVQUIRK_ENABLE_SDR50_TUNING |
 		   NVQUIRK_ENABLE_SDR50 |
