@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra30 device tree board support
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation
  *
  * Derived from:
  *
@@ -35,6 +35,8 @@
 #include "board.h"
 #include "common.h"
 #include "iomap.h"
+
+#ifdef CONFIG_USE_OF
 
 struct of_dev_auxdata tegra30_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra20-sdhci", 0x78000000, "sdhci-tegra.0", NULL),
@@ -86,3 +88,5 @@ DT_MACHINE_START(TEGRA30_DT, "NVIDIA Tegra30 (Flattened Device Tree)")
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra30_dt_board_compat,
 MACHINE_END
+
+#endif

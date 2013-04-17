@@ -3,7 +3,7 @@
  *
  * NVIDIA Tegra148 device tree board support
  *
- * Copyright (C) 2012 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,6 +25,8 @@
 #include "clock.h"
 #include "common.h"
 
+#ifdef CONFIG_USE_OF
+
 static void __init tegra148_dt_init(void)
 {
 }
@@ -44,3 +46,5 @@ DT_MACHINE_START(TEGRA148_DT, "NVIDIA Tegra148 (Flattened Device Tree)")
 	.restart	= tegra_assert_system_reset,
 	.dt_compat	= tegra148_dt_board_compat,
 MACHINE_END
+
+#endif
