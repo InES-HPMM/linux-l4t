@@ -163,10 +163,11 @@
 #define AFI_MSG_0						0x190
 #define AFI_MSG_PM_PME_MASK					0x00100010
 #define AFI_MSG_INTX_MASK					0x1f001f00
-#define AFI_MSG_PM_PME0					(1 << 4)
+#define AFI_MSG_PM_PME0						(1 << 4)
 
 #define RP_VEND_XP						0x00000F00
 #define RP_VEND_XP_DL_UP					(1 << 30)
+#define RP_VEND_XP_BIST						0x00000F4C
 
 #define  RP_TXBA1						0x00000E1C
 #define  RP_TXBA1_CM_OVER_PW_BURST_MASK			(0xF << 4)
@@ -1473,6 +1474,7 @@ static int tegra_pcie_fpga_phy_init(void)
 {
 #define CLK_RST_BOND_OUT_REG		0x60006078
 #define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
+#define FPGA_GEN2_SPEED_SUPPORT		0x90000001
 	int val = 0;
 
 	PR_FUNC_LINE;
@@ -1487,6 +1489,10 @@ static int tegra_pcie_fpga_phy_init(void)
 	afi_writel(AFI_WR_SCRATCH_0_DEFAULT_VAL, AFI_WR_SCRATCH_0);
 	udelay(10);
 	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+
+	/* required for gen2 speed support on FPGA */
+	rp_writel(FPGA_GEN2_SPEED_SUPPORT, RP_VEND_XP_BIST, 0);
+
 	return 0;
 }
 #endif
@@ -1496,6 +1502,7 @@ static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 	u16 val, link_up_spd, link_dn_spd;
 	struct pci_dev *up_dev, *dn_dev;
 
+	PR_FUNC_LINE;
 	/* skip if current device is not PCI express capable */
 	/* or is either a root port or downstream port */
 	if (!pci_is_pcie(pdev))
@@ -1849,6 +1856,7 @@ static irqreturn_t tegra_pcie_msi_isr(int irq, void *arg)
 	int index;
 	u32 reg;
 
+	PR_FUNC_LINE;
 	for (i = 0; i < 8; i++) {
 		reg = afi_readl(AFI_MSI_VEC0_0 + i * 4);
 		while (reg != 0x00000000) {
