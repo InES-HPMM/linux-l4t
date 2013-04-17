@@ -543,7 +543,8 @@ static int tegra_otg_probe(struct platform_device *pdev)
 
 	if (pdata) {
 		tegra->support_pmu_vbus = pdata->ehci_pdata->support_pmu_vbus;
-		tegra->id_det_gpio = pdata->id_det_gpio;
+		tegra->id_det_gpio = pdata->id_det_gpio ?
+					pdata->id_det_gpio : -1;
 		tegra->pdata = pdata;
 		tegra_otg_set_id_detection_type(tegra);
 	}
