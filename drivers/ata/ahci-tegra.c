@@ -1248,8 +1248,8 @@ static void tegra_ahci_save_regs(u32 **save_addr,
 				 u32 regs)
 {
 	u32 i;
-	u32 *dest = (u32 *)*save_addr;
-	u32 base = (u32)IO_ADDRESS(reg_base);
+	u32 *dest = *save_addr;
+	void __iomem *base = IO_ADDRESS(reg_base);
 
 	for (i = 0; i < regs; ++i, ++dest) {
 		*dest = readl(base + (u32)reg_array[i]);
@@ -1265,8 +1265,8 @@ static void tegra_ahci_restore_regs(void **save_addr,
 				    u32 regs)
 {
 	u32 i;
-	u32 *src = (u32 *)*save_addr;
-	u32 base = (u32)IO_ADDRESS(reg_base);
+	u32 *src = *save_addr;
+	void __iomem *base = IO_ADDRESS(reg_base);
 
 	for (i = 0; i < regs; ++i, ++src) {
 		writel(*src, base + (u32)reg_array[i]);
