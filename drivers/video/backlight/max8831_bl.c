@@ -93,13 +93,13 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 		edp_state = i;
 		ret = edp_update_client_request(data->max8831_edp_client,
 							edp_state, &approved);
-		if (ret || approved != edp_state) {
+		if (ret) {
 			dev_err(dev, "E state transition failed\n");
 			return ret;
 		}
 	}
 
-	max8831_backlight_set(bl, brightness);
+	max8831_backlight_set(bl, data->edp_brightness_states[approved]);
 	return 0;
 }
 
@@ -122,10 +122,12 @@ static int max8831_backlight_update_status(struct backlight_device *bl)
 	return max8831_backlight_set_with_edp(bl, brightness);
 }
 
-static void max8831_backlight_throttle(unsigned int new_state, void *priv_data)
+static void max8831_backlight_edpcb(unsigned int new_state, void *priv_data)
 {
 	struct backlight_device *bl_device = (struct backlight_device *) priv_data;
-	max8831_backlight_set(bl_device, 0);
+	struct max8831_backlight_data *data = bl_get_data(bl_device);
+	max8831_backlight_set(bl_device,
+			data->edp_brightness_states[new_state]);
 }
 
 static int max8831_backlight_get_brightness(struct backlight_device *bl)
@@ -192,7 +194,8 @@ static int max8831_bl_probe(struct platform_device *pdev)
 	data->max8831_edp_client->e0_index = MAX8831_EDP_ZERO;
 	data->max8831_edp_client->private_data = bl;
 	data->max8831_edp_client->priority = EDP_MAX_PRIO + 2;
-	data->max8831_edp_client->throttle = max8831_backlight_throttle;
+	data->max8831_edp_client->throttle = max8831_backlight_edpcb;
+	data->max8831_edp_client->notify_promotion = max8831_backlight_edpcb;
 
 	battery_manager = edp_get_manager("battery");
 	if (!battery_manager) {
