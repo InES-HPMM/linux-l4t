@@ -263,7 +263,7 @@
 					PLLCX_MISC_DIV_LOW_RANGE | \
 					PLLCX_MISC_RESET)
 #define PLLCX_MISC1_DEFAULT_VALUE	0x080d2308
-#define PLLCX_MISC2_DEFAULT_VALUE	0x30211200
+#define PLLCX_MISC2_DEFAULT_VALUE	0x21312200
 #define PLLCX_MISC3_DEFAULT_VALUE	0x200
 
 /* PLLX and PLLC (PLLXC)*/
@@ -2350,7 +2350,7 @@ static void pllcx_update_dynamic_koef(struct clk *c, unsigned long input_rate,
 		n_threshold = 55;
 		break;
 	case 19200000:
-		n_threshold = 43;
+		n_threshold = 44;
 		break;
 	default:
 		pr_err("%s: Unexpected reference rate %lu\n",
