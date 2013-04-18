@@ -99,13 +99,6 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 	return ret;
 }
 
-int nvshm_interface_up()
-{
-	struct nvshm_handle *handle = nvshm_get_handle();
-
-	return handle->configured;
-}
-
 /* Defered to nvshm_wq because it can be called from atomic context */
 void nvshm_start_tx(struct nvshm_channel *handle)
 {

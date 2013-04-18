@@ -111,19 +111,6 @@ void nvshm_close_channel(struct nvshm_channel *handle);
 int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob);
 
 /**
- * check nvshm status
- *
- * Use to check if interface is running and configure
- * use it in rx_event to catch restart while receiving
- *
- * @param None
- * @param struct nvshm_iobuf holding packet to write
- *
- * @return 1 if nvshm is configured and running
- */
-int nvshm_interface_up(void);
-
-/**
  * Start TX on nvshm channel
  *
  * Used to signal upper driver to start tx again
