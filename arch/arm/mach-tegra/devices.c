@@ -1854,7 +1854,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra-sata",	.swgids = SWGID(SATA), },
 	{ .name = "tegra-se",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-snd",	.swgids = SWGID(PPCS), },
-	{ .name = "tegra-tzram",	.swgids = SWGID(PPCS), },
+	{ .name = "tegra-tzram",	.swgids = SWGID(VDE), },
 	{ .name = "tegra_uart",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-udc",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS), },
