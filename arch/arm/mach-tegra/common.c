@@ -348,6 +348,8 @@ static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
 	{ "sdmmc1",	"pll_p",	48000000,	false},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc4",	"pll_p",	48000000,	false},
+	{ "mon.avp",	NULL,		80000000,	false},
+	{ "mon.avp",	NULL,		0,		true },
 	{ "sbc1.sclk",	NULL,		20000000,	false},
 	{ "sbc2.sclk",	NULL,		20000000,	false},
 	{ "sbc3.sclk",	NULL,		20000000,	false},
