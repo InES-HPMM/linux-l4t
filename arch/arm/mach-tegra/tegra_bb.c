@@ -586,7 +586,8 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 							1100000);
 			regulator_enable(bb->vdd_bb_core);
 
-			regulator_set_voltage(bb->vdd_bb_pll, 900000, 900000);
+			regulator_set_voltage(bb->vdd_bb_pll, 1100000,
+							1100000);
 			regulator_enable(bb->vdd_bb_pll);
 
 			regulator_status = true;
