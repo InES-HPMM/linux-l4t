@@ -621,7 +621,7 @@ static int ina230_remove(struct i2c_client *client)
 }
 
 
-static int ina230_suspend(struct i2c_client *client)
+static int ina230_suspend(struct i2c_client *client, pm_message_t state)
 {
 	return power_down_ina230(client);
 }
