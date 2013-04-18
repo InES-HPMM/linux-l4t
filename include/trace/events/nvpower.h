@@ -42,6 +42,11 @@ enum {
 	NVPOWER_CPU_POWERGATE_EXIT,
 };
 
+enum {
+	NVPOWER_MC_CLK_STOP_ENTRY,
+	NVPOWER_MC_CLK_STOP_EXIT,
+};
+
 #endif
 
 TRACE_EVENT(nvcpu_cluster,
@@ -85,6 +90,29 @@ TRACE_EVENT(nvcpu_powergate,
 		  (unsigned long)__entry->state)
 );
 
+TRACE_EVENT(nvmc_clk_stop,
+
+	TP_PROTO(int state, unsigned long sleep),
+
+	TP_ARGS(state, sleep),
+
+	TP_STRUCT__entry(
+		__field(u32, counter)
+		__field(u32, sleep)
+		__field(u32, state)
+	),
+
+	TP_fast_assign(
+		__entry->counter = tegra_read_usec_raw();
+		__entry->sleep = sleep;
+		__entry->state = state;
+	),
+
+	TP_printk("counter=%lu, sleep=%lu state=%lu",
+		  (unsigned long)__entry->counter,
+		  (unsigned long)__entry->sleep,
+		  (unsigned long)__entry->state)
+);
 #endif /* _TRACE_NVPOWER_H */
 
 /* This part must be outside protection */
