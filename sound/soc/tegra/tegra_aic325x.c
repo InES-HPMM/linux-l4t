@@ -61,10 +61,45 @@
 #define DAI_LINK_VOICE_CALL	2
 #define DAI_LINK_BT_VOICE_CALL	3
 
+/*
+ * ALSA SoC TPA2054D4A amplifier
+ *
+ */
+/* Register Offsets */
+#define TPA2054D4A_FAULT_REG				0x01
+#define TPA2054D4A_POWER_MGMT_REG			0x02
+#define TPA2054D4A_MUX_OUTPUT_CNTRL_REG			0x03
+#define TPA2054D4A_MON_VOL_CTRL_REG			0x04
+#define TPA2054D4A_ST1_VOL_CTRL_REG			0x05
+#define TPA2054D4A_ST2_VOL_CTRL_REG			0x06
+#define TPA2054D4A_HP_OUTPUT_CNTRL_REG			0x07
+
+/* Register Bits */
+#define TPA2054D4A_PA_EN				(0x01 << 1)
+#define TPA2054D4A_HPR_EN				(0x01 << 2)
+#define TPA2054D4A_HPL_EN				(0x01 << 3)
+#define TPA2054D4A_SWS					(0x01 << 4)
+
+#define TPA2054D4A_MODE(x)				(x << 0)
+
+#define TPA2054D4A_MODE_MONO_INPUT			(0x00)
+#define TPA2054D4A_MODE_STEREO_1_INPUT			(0x01)
+#define TPA2054D4A_MODE_STEREO_2_INPUT			(0x02)
+#define TPA2054D4A_MODE_STEREO_DIFF			(0x03)
+#define TPA2054D4A_MODE_STEREO_DIFF_MONO		(0x04)
+#define TPA2054D4A_MODE_STEREO_1_MONO			(0x05)
+#define TPA2054D4A_MODE_STEREO_2_MONO			(0x06)
+#define TPA2054D4A_MODE_MUTE				(0x07)
+
+#define TPA2054D4A_MUX_OUTPUT_MODE(x)			((x & 0x07) << 0)
+
+#define TPA2054D4A_VOLUME(x)				((x & 0x1f) << 0)
+
+#define TPA2054D4A_HP_GAIN(x)				((x & 0x03) << 0)
+#define TPA2054D4A_HP_VOUT(x)				((x & 0x07) << 2)
+
 extern int g_is_call_mode;
 
-static struct i2c_board_info i2c_info = {I2C_BOARD_INFO("tpa2054", 0x70)};
-static struct i2c_client *i2c_client;
 
 const char *tegra_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 	"tegra30-i2s.0",
@@ -82,6 +117,10 @@ struct tegra_aic325x {
 	bool init_done;
 	int is_call_mode;
 	int is_device_bt;
+
+	struct i2c_client *tpa2054d4a_client;
+	struct i2c_adaptor *tpa2054d4a_adapter;
+
 	struct codec_config codec_info[NUM_I2S_DEVICES];
 	struct ahub_bbc1_config ahub_bbc1_info;
 	struct snd_soc_card *pcard;
@@ -91,6 +130,113 @@ struct tegra_aic325x {
 	enum snd_soc_bias_level bias_level;
 	int clock_enabled;
 };
+
+static struct i2c_board_info tpa2054d4a_hwinfo = {
+	I2C_BOARD_INFO("tpa2054d4a", 0x70),
+};
+
+/* Function Prototypes */
+static int tpa2054d4a_i2c_read_device(struct i2c_client *tpa2054d4a_client,
+					unsigned int reg, u16 bytes,
+					void *dest);
+static int tpa2054d4a_i2c_write_device(struct i2c_client *tpa2054d4a_client,
+					unsigned int reg, u16 bytes,
+					const void *src);
+static int tpa2054d4a_init(struct tegra_aic325x *machine);
+
+/*
+ * tpa2054d4a_i2c_read_device: read tpa2054 registers using i2c interface
+ * @tpa2054d4a_client: Handle to slave device
+ * @reg: register offset to be read
+ * @dest: Where to store data read from slave
+ * @bytes: How many bytes to read, must be less than 64k since msg.len is u16
+ */
+static int tpa2054d4a_i2c_read_device(struct i2c_client *tpa2054d4a_client,
+					unsigned int reg, u16 bytes,
+					void *dest)
+{
+	int ret;
+
+	/* Send the required register offset to be read */
+	ret = i2c_master_send(tpa2054d4a_client, (unsigned char *)&reg, 1);
+	if (ret < 0)
+		return ret;
+	if (ret != 1)
+		return -EIO;
+
+	ret = i2c_master_recv(tpa2054d4a_client, (unsigned char *)dest, bytes);
+	if (ret < 0)
+		return ret;
+	if (ret != bytes)
+		return -EIO;
+
+	return 0;
+}
+
+/*
+ * tpa2054d4a_i2c_write_device: write to tpa2054 registers using i2c interface
+ * @tpa2054d4a_client: Handle to slave device
+ * @reg: register offset where data is to be written
+ * @bytes: How many bytes to write, must be less than 64k since msg.len is u16
+ * @src: Data that will be written to the slave
+ */
+static int tpa2054d4a_i2c_write_device(struct i2c_client *tpa2054d4a_client,
+					unsigned int reg, u16 bytes,
+					const void *src)
+{
+	int ret;
+	u8 write_buf[bytes + 1];
+	write_buf[0] = reg;
+	memcpy(&write_buf[1], src, bytes);
+
+	ret = i2c_master_send(tpa2054d4a_client, (unsigned char *)write_buf,
+					(bytes + 1));
+	if (ret < 0)
+		return ret;
+	if (ret != (bytes + 1))
+		return -EIO;
+
+	return 0;
+}
+
+struct i2c_client *tpa2054d4a_client;
+/*
+ * tpa2054d4a_init: TPA2054D4A i2c integration & register configurations
+ * @machine: struct tegra_aic325x
+ */
+static int tpa2054d4a_init(struct tegra_aic325x *machine)
+{
+	int ret;
+	int i2c_bus_num = 5;
+	machine->tpa2054d4a_adapter = (struct i2c_adaptor *)
+					i2c_get_adapter(i2c_bus_num);
+	if (!machine->tpa2054d4a_adapter)
+		return -ENODEV;
+
+	machine->tpa2054d4a_client = i2c_new_device(
+			((struct i2c_adapter *)(machine->tpa2054d4a_adapter)),
+			&tpa2054d4a_hwinfo);
+	if (!machine->tpa2054d4a_client) {
+		i2c_put_adapter(
+			(struct i2c_adapter *)(machine->tpa2054d4a_adapter));
+		return -ENODEV;
+	}
+
+	/* tmp hack : to be removed in independant tpa driver */
+	tpa2054d4a_client = machine->tpa2054d4a_client;
+	/* Write Reg2 of TPA2054 */
+	ret = 0x00;
+	tpa2054d4a_i2c_write_device(machine->tpa2054d4a_client,
+					TPA2054D4A_POWER_MGMT_REG, 1, &ret);
+	ret = 0x01;
+	tpa2054d4a_i2c_write_device(machine->tpa2054d4a_client,
+					TPA2054D4A_MUX_OUTPUT_CNTRL_REG,
+					1, &ret);
+	ret = TPA2054D4A_HPR_EN | TPA2054D4A_HPL_EN;
+	tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+		TPA2054D4A_POWER_MGMT_REG, 1, &ret);
+	return 0;
+}
 
 static int get_dai_fmt(int i2s_mode)
 {
@@ -723,10 +869,6 @@ static struct snd_soc_ops tegra_aic325x_bt_ops = {
 static struct snd_soc_jack tegra_aic325x_hp_jack;
 
 #ifdef CONFIG_SWITCH
-static struct switch_dev aic325x_wired_switch_dev = {
-	.name = "h2w",
-};
-
 /* Headset jack detection gpios */
 static struct snd_soc_jack_gpio tegra_aic325x_hp_jack_gpio = {
 	.name = "headphone detect",
@@ -735,30 +877,25 @@ static struct snd_soc_jack_gpio tegra_aic325x_hp_jack_gpio = {
 	.invert = 1,
 };
 
-/* These values are copied from WiredAccessoryObserver */
-enum headset_state {
-	BIT_NO_HEADSET = 0,
-	BIT_HEADSET = (1 << 0),
-	BIT_HEADSET_NO_MIC = (1 << 1),
-};
 
 static int aic325x_headset_switch_notify(struct notifier_block *self,
 	unsigned long action, void *dev)
 {
-	int state = BIT_NO_HEADSET;
 
-	switch (action) {
-	case SND_JACK_HEADPHONE:
-		state |= BIT_HEADSET_NO_MIC;
-		break;
-	case SND_JACK_HEADSET:
-		state |= BIT_HEADSET;
-		break;
-	default:
-		state |= BIT_NO_HEADSET;
-	}
+	struct snd_soc_jack *jack = (struct snd_soc_jack *)dev;
+	struct snd_soc_codec *codec = jack->codec;
+	struct aic325x_priv *aic325x = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_card *card = codec->card;
+	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
+	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
-	switch_set_state(&aic325x_wired_switch_dev, state);
+	gpio_direction_output(pdata->gpio_ext_mic_en, action);
+
+	/* Schedule the delayed work again after 250 ms */
+	aic325x->hs_half_insert_count = 0;
+
+	queue_delayed_work(aic325x->workqueue, &aic325x->delayed_work,
+	msecs_to_jiffies(250));
 
 	return NOTIFY_OK;
 }
@@ -775,28 +912,162 @@ static struct snd_soc_jack_pin tegra_aic325x_hp_jack_pins[] = {
 };
 #endif
 
+/**
+ * tpa_hp_event: - To handle hprelated task before and after
+ *			powrup and power down
+ * @w: pointer variable to dapm_widget
+ * @kcontrol: mixer control
+ * @event: event element information
+ *
+ * Returns 0 for success.
+ */
+static int tpa_hp_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
+{
+	int val;
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		val = 0x00;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+	} else {
+		val = 0x1f;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+	}
+	return 0;
+
+}
+
+/**
+ * tpa_spk_event: - To handle spk related task before and after
+ *			powrup and power down
+ * @w: pointer variable to dapm_widget
+ * @kcontrol: mixer control
+ * @event: event element information
+ *
+ * Returns 0 for success.
+ */
+static int tpa_spk_event(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
+{
+	int val;
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		val = 0x1f;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+		val = TPA2054D4A_HPR_EN | TPA2054D4A_HPL_EN | TPA2054D4A_PA_EN;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_POWER_MGMT_REG, 1, &val);
+	} else {
+		val = 0x00;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+		val = TPA2054D4A_HPR_EN | TPA2054D4A_HPL_EN;
+		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+			TPA2054D4A_POWER_MGMT_REG, 1, &val);
+	}
+	return 0;
+}
+
+static int tpa2054d4a_mon_vol_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	int ret = 0;
+
+	ret = tpa2054d4a_i2c_read_device(tpa2054d4a_client,
+				TPA2054D4A_MON_VOL_CTRL_REG, 1, &ret);
+	return ret;
+}
+
+static int tpa2054d4a_mon_vol_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	u16 val;
+
+	val = (u16)ucontrol->value.integer.value[0];
+	tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+				TPA2054D4A_MON_VOL_CTRL_REG, 1, &val);
+	return 0;
+}
+
+static int tpa2054d4a_st1_vol_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	int ret = 0;
+
+	ret = tpa2054d4a_i2c_read_device(tpa2054d4a_client,
+				TPA2054D4A_ST1_VOL_CTRL_REG, 1, &ret);
+	return ret;
+}
+
+static int tpa2054d4a_st1_vol_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	u16 val;
+
+	val = (u16)ucontrol->value.integer.value[0];
+	tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+				TPA2054D4A_ST1_VOL_CTRL_REG, 1, &val);
+	return 0;
+}
+
+static int tpa2054d4a_st2_vol_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	int ret = 0;
+
+	ret = tpa2054d4a_i2c_read_device(tpa2054d4a_client,
+				TPA2054D4A_ST2_VOL_CTRL_REG, 1, &ret);
+	return ret;
+}
+
+static int tpa2054d4a_st2_vol_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	u16 val;
+
+	val = (u16)ucontrol->value.integer.value[0];
+
+	tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+				TPA2054D4A_ST2_VOL_CTRL_REG, 1, &val);
+	return 0;
+}
+
+static int tpa2054d4a_hp_gain_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	int ret = 0;
+
+	ret = tpa2054d4a_i2c_read_device(tpa2054d4a_client,
+				TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &ret);
+	return ret;
+}
+
+static int tpa2054d4a_hp_gain_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol) {
+	u16 val;
+
+	val = (u16)ucontrol->value.integer.value[0];
+
+	tpa2054d4a_i2c_write_device(tpa2054d4a_client,
+				TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget tegra_aic325x_dapm_widgets[] = {
-	SND_SOC_DAPM_HP("Headphone jack", NULL),
+	SND_SOC_DAPM_HP("Headphone Jack", tpa_hp_event),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_MIC("Int Mic", NULL),
 	SND_SOC_DAPM_MIC("D-Mic", NULL),
-	SND_SOC_DAPM_SPK("SPK out", NULL),
+	SND_SOC_DAPM_SPK("Int Spk", tpa_spk_event),
 	SND_SOC_DAPM_OUTPUT("Earpiece"),
 };
 
 static const struct snd_soc_dapm_route aic325x_audio_map[] = {
 	/* Headphone connected to HPL, HPR */
-	{"Headphone jack", NULL, "LOL"},
-	{"Headphone jack", NULL, "LOR"},
+	{"Headphone Jack", NULL, "LOL"},
+	{"Headphone Jack", NULL, "LOR"},
 
-	{"SPK out", NULL, "LOL"},
-	{"SPK out", NULL, "LOR"},
+	{"Int Spk", NULL, "LOL"},
+	{"Int Spk", NULL, "LOR"},
 
 	{"Earpiece", NULL, "HPL"},
 	{"Earpiece", NULL, "HPR"},
 
 	{"IN3_L", NULL, "Mic Jack"},
-
 	{"IN2_L", NULL, "Int Mic"},
 	{"IN2_R", NULL, "Int Mic"},
 	{"Mic Bias", NULL, "Int Mic"},
@@ -807,9 +1078,16 @@ static const struct snd_soc_dapm_route aic325x_audio_map[] = {
 
 static const struct snd_kcontrol_new tegra_aic325x_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Earpiece"),
-	SOC_DAPM_PIN_SWITCH("Headphone jack"),
-	SOC_DAPM_PIN_SWITCH("SPK out"),
-
+	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
+	SOC_DAPM_PIN_SWITCH("Int Spk"),
+	SOC_SINGLE_EXT("TPA Mono Vol Cntrl", SND_SOC_NOPM, 0, 32, 0,
+			tpa2054d4a_mon_vol_get, tpa2054d4a_mon_vol_put),
+	SOC_SINGLE_EXT("TPA Stereo1 Vol Cntrl",	SND_SOC_NOPM, 0, 32, 0,
+			tpa2054d4a_st1_vol_get, tpa2054d4a_st1_vol_put),
+	SOC_SINGLE_EXT("TPA Stereo2 Vol Cntrl",	SND_SOC_NOPM, 0, 32, 0,
+			tpa2054d4a_st2_vol_get, tpa2054d4a_st2_vol_put),
+	SOC_SINGLE_EXT("TPA HP Gain Cntrl", SND_SOC_NOPM, 0, 3, 0,
+			tpa2054d4a_hp_gain_get, tpa2054d4a_hp_gain_put),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
 	SOC_DAPM_PIN_SWITCH("D-Mic"),
@@ -832,7 +1110,11 @@ static int tegra_aic325x_init(struct snd_soc_pcm_runtime *rtd)
 		return 0;
 
 	machine->init_done = true;
-
+	ret = tpa2054d4a_init(machine);
+	if (ret) {
+		dev_err(card->dev, "tpa2054d4a_init failed\n");
+		/* return ret; */
+	}
 	if (gpio_is_valid(pdata->gpio_spkr_en)) {
 		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
 		if (ret) {
@@ -856,6 +1138,18 @@ static int tegra_aic325x_init(struct snd_soc_pcm_runtime *rtd)
 		gpio_direction_output(pdata->gpio_int_mic_en, 0);
 	}
 
+	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
+		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
+		if (ret) {
+			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
+			return ret;
+		}
+		machine->gpio_requested |= GPIO_EXT_MIC_EN;
+
+		/* Enable ext mic; enable signal is active-low */
+		gpio_direction_output(pdata->gpio_ext_mic_en, 0);
+	}
+
 	ret = snd_soc_add_card_controls(card, tegra_aic325x_controls,
 				   ARRAY_SIZE(tegra_aic325x_controls));
 	if (ret < 0)
@@ -867,10 +1161,6 @@ static int tegra_aic325x_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm, aic325x_audio_map,
 					ARRAY_SIZE(aic325x_audio_map));
 
-	ret = snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET,
-			&tegra_aic325x_hp_jack);
-	if (ret < 0)
-		return ret;
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		/* Headphone detection */
@@ -879,9 +1169,9 @@ static int tegra_aic325x_init(struct snd_soc_pcm_runtime *rtd)
 				SND_JACK_HEADSET, &tegra_aic325x_hp_jack);
 
 #ifndef CONFIG_SWITCH
-	snd_soc_jack_add_pins(&tegra_aic325x_hp_jack,
-		ARRAY_SIZE(tegra_aic325x_hp_jack_pins),
-		tegra_aic325x_hp_jack_pins);
+		snd_soc_jack_add_pins(&tegra_aic325x_hp_jack,
+				ARRAY_SIZE(tegra_aic325x_hp_jack_pins),
+				tegra_aic325x_hp_jack_pins);
 #else
 		snd_soc_jack_notifier_register(&tegra_aic325x_hp_jack,
 					&aic325x_headset_switch_nb);
@@ -1035,8 +1325,6 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 	struct tegra_asoc_platform_data *pdata;
 	int ret;
 	int i;
-	struct i2c_adapter *adap;
-	u8 buf[3];
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
@@ -1081,16 +1369,6 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, machine);
 
-#ifdef CONFIG_SWITCH
-	/* Add h2w switch class support */
-	ret = tegra_asoc_switch_register(&aic325x_wired_switch_dev);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "not able to register switch device %d\n",
-			ret);
-		goto err_fini_utils;
-	}
-#endif
-
 	for (i = 0; i < NUM_I2S_DEVICES ; i++) {
 		machine->codec_info[i].i2s_id =
 			pdata->i2s_param[i].audio_port_id;
@@ -1133,7 +1411,7 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
-		goto err_switch_unregister;
+		goto err_fini_utils;
 	}
 
 	if (!card->instantiated) {
@@ -1149,23 +1427,11 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 		goto err_unregister_card;
 	}
 
-	adap = i2c_get_adapter(5);
-	i2c_client = i2c_new_device(adap, &i2c_info);
-	if (i2c_client == NULL)
-		dev_err(&pdev->dev, "Failed to access TPA2054\n");
-
-	buf[0] = 0x02;
-	buf[1] = 0x0E;
-	i2c_master_send(i2c_client, buf, 2);
 
 	return 0;
 
 err_unregister_card:
 	snd_soc_unregister_card(card);
-err_switch_unregister:
-#ifdef CONFIG_SWITCH
-	tegra_asoc_switch_unregister(&aic325x_wired_switch_dev);
-#endif
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
@@ -1186,10 +1452,6 @@ static int __devexit tegra_aic325x_driver_remove(struct platform_device *pdev)
 
 	snd_soc_unregister_card(card);
 
-#ifdef CONFIG_SWITCH
-	tegra_asoc_switch_unregister(&aic325x_wired_switch_dev);
-#endif
-
 	tegra_asoc_utils_fini(&machine->util_data);
 
 	if (machine->gpio_requested & GPIO_INT_MIC_EN)
@@ -1198,8 +1460,6 @@ static int __devexit tegra_aic325x_driver_remove(struct platform_device *pdev)
 		gpio_free(pdata->gpio_spkr_en);
 
 	kfree(machine);
-
-	i2c_unregister_device(i2c_client);
 
 	return 0;
 }

@@ -1350,6 +1350,8 @@ static int aic325x_hw_params(struct snd_pcm_substream *substream,
 						(codec->active < 2))
 		aic325x->record_stream = 0;
 
+	dprintk(KERN_INFO "Function: %s, %d\n", __func__, aic325x->sysclk);
+
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		data |= (0x00);
@@ -1606,6 +1608,13 @@ static int aic325x_probe(struct snd_soc_codec *codec)
 	 aic3xxx_cfw_init(aic325x->cfw_p, &aic3256_cfw_codec_ops,
 				aic325x->codec);
 
+	aic325x->workqueue = create_singlethread_workqueue("aic3262-codec");
+	if (!aic325x->workqueue) {
+		ret = -ENOMEM;
+		goto work_err;
+	}
+	INIT_DELAYED_WORK(&aic325x->delayed_work, aic3256_accessory_work);
+
 	snd_soc_dapm_new_controls(dapm, aic325x_dapm_widgets,
 				ARRAY_SIZE(aic325x_dapm_widgets));
 
@@ -1615,6 +1624,15 @@ static int aic325x_probe(struct snd_soc_codec *codec)
 		dprintk("#Completed adding DAPM routes = %d\n",
 			ARRAY_SIZE(aic325x_dapm_routes));
 
+	/* use switch-class based headset reporting if platform requires it */
+	jack = &aic325x->hs_jack;
+	jack->sdev.name = "h2w";
+	ret = switch_dev_register(&jack->sdev);
+	if (ret) {
+		dev_err(codec->dev, "error registering switch device %d\n",
+			ret);
+		goto jack_err;
+	}
 	if (control->irq) {
 		ret = aic325x_request_irq(codec->control_data,
 					  AIC3256_IRQ_HEADSET_DETECT,
@@ -1651,6 +1669,10 @@ firm_err:
 	aic325x_free_irq(control,
 			 AIC3256_HEADSET_DETECT, codec);
 irq_err:
+	switch_dev_unregister(&jack->sdev);
+jack_err:
+	destroy_workqueue(aic325x->workqueue);
+work_err:
 	kfree(aic325x);
 	return ret;
 }
