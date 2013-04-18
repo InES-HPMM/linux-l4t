@@ -40,7 +40,6 @@ int palmas_gpio_read(struct palmas *palmas, unsigned int reg,
 {
 	unsigned int addr;
 	addr = PALMAS_BASE_TO_REG(PALMAS_GPIO_BASE, reg);
-
 	return regmap_read(palmas->regmap[GPIO_SLAVE], addr, dest);
 }
 
@@ -87,16 +86,29 @@ static int palmas_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
 	struct palmas_gpio *palmas_gpio = to_palmas_gpio(chip);
 	struct palmas *palmas = palmas_gpio->palmas;
-	unsigned int reg = 0;
-	unsigned int gpio_reg = PALMAS_GPIO_DATA_IN;
+	int ret, flag = 0;
+	unsigned int reg = 0, val;
+	unsigned int gpio_reg = PALMAS_GPIO_DATA_DIR;
 
 	if (!((1 << offset) & palmas->gpio_muxed))
 		return 0;
 
 	if (offset > 7) {
-		gpio_reg = PALMAS_GPIO_DATA_IN2;
+		gpio_reg = PALMAS_GPIO_DATA_DIR2;
+		flag = 1;
 		offset = (offset % 8);
 	}
+
+	ret = palmas_gpio_read(palmas, gpio_reg, &val);
+	if (ret)
+		return ret;
+
+	if (val & (1 << offset))
+		gpio_reg = (!flag) ?
+			PALMAS_GPIO_DATA_OUT : PALMAS_GPIO_DATA_OUT2;
+	else
+		gpio_reg = (!flag) ?
+			PALMAS_GPIO_DATA_IN : PALMAS_GPIO_DATA_IN2;
 
 	palmas_gpio_read(palmas, gpio_reg, &reg);
 
