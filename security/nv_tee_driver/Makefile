@@ -19,9 +19,11 @@
 plus_sec := $(call as-instr,.arch_extension sec,+sec)
 AFLAGS_tee_irq.o :=-Wa,-march=armv7-a$(plus_sec)
 CFLAGS_tee_comms.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
+CFLAGS_tee_fs.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
 nv_tee_driver-objs += tee_device.o
 nv_tee_driver-objs += tee_comms.o
+nv_tee_driver-objs += tee_fs.o
 nv_tee_driver-objs += tee_irq.o
 
 obj-$(CONFIG_TRUSTED_LITTLE_KERNEL) += nv_tee_driver.o

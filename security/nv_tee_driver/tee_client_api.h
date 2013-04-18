@@ -88,4 +88,28 @@ struct TEEC_UUID {
 	uint8_t clock_seq_and_node[8];
 };
 
+#define TEEC_MAX_FILE_NAME_LEN		64
+
+typedef enum {
+	TEEC_FILE_REQ_READ = 0,
+	TEEC_FILE_REQ_WRITE = 1,
+	TEEC_FILE_REQ_DELETE = 2,
+	TEEC_FILE_REQ_SIZE = 3,
+} TEEC_FileReqType;
+
+typedef struct {
+	char name[TEEC_MAX_FILE_NAME_LEN];
+	TEEC_FileReqType type;
+	void *user_data_buf;
+	void *kern_data_buf;
+	unsigned long data_len;
+	unsigned long result;
+	int error;
+} TEEC_FileReq;
+
+struct tee_file_req_node {
+	struct list_head node;
+	TEEC_FileReq *req;
+};
+
 #endif

@@ -35,9 +35,15 @@
 	_IOWR(TEE_IOCTL_MAGIC_NUMBER, 0x14, union tee_cmd)
 #define TEE_IOCTL_REQ_CANCELLATION \
 	_IOR(TEE_IOCTL_MAGIC_NUMBER, 0x15, union tee_cmd)
+#define TEE_IOCTL_FILE_NEW_REQ \
+	_IOR(TEE_IOCTL_MAGIC_NUMBER, 0x16, TEEC_FileReq)
+#define TEE_IOCTL_FILE_FILL_BUF \
+	_IOR(TEE_IOCTL_MAGIC_NUMBER, 0x17, TEEC_FileReq)
+#define TEE_IOCTL_FILE_REQ_COMPLETE \
+	_IOWR(TEE_IOCTL_MAGIC_NUMBER, 0x18, TEEC_FileReq)
 
 #define TEE_IOCTL_MIN_NR	_IOC_NR(TEE_IOCTL_OPEN_CLIENT_SESSION)
-#define TEE_IOCTL_MAX_NR	_IOC_NR(TEE_IOCTL_REQ_CANCELLATION)
+#define TEE_IOCTL_MAX_NR	_IOC_NR(TEE_IOCTL_FILE_REQ_COMPLETE)
 
 #define NV_CMD_DESC_MAX	120
 
@@ -203,5 +209,8 @@ void tee_invoke_command(struct tee_invokecmd *cmd,
 
 void tee_unregister_memory(void *buffer,
 	struct nv_tee_context *context);
+
+int tee_handle_fs_ioctl(struct file * file, unsigned int ioctl_num,
+	unsigned long ioctl_param);
 
 #endif

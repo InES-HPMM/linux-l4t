@@ -172,7 +172,7 @@ static int tee_device_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static long tee_device_ioctl(struct file *file, unsigned int ioctl_num,
+static long tee_handle_trustedapp_ioctl(struct file *file, unsigned int ioctl_num,
 	unsigned long ioctl_param)
 {
 	long err = 0;
@@ -298,6 +298,36 @@ static long tee_device_ioctl(struct file *file, unsigned int ioctl_num,
 error:
 	if (cmd_desc)
 		tee_put_used_cmd_desc(nv_dev, cmd_desc);
+	return err;
+}
+
+static long tee_device_ioctl(struct file *file, unsigned int ioctl_num,
+	unsigned long ioctl_param)
+{
+	int err;
+
+	switch (ioctl_num) {
+	case TEE_IOCTL_OPEN_CLIENT_SESSION:
+	case TEE_IOCTL_CLOSE_CLIENT_SESSION:
+	case TEE_IOCTL_REGISTER_MEMORY:
+	case TEE_IOCTL_RELEASE_SHARED_MEM:
+	case TEE_IOCTL_INVOKE_COMMAND:
+		err = tee_handle_trustedapp_ioctl(file, ioctl_num, ioctl_param);
+		break;
+
+	case TEE_IOCTL_FILE_NEW_REQ:
+	case TEE_IOCTL_FILE_FILL_BUF:
+	case TEE_IOCTL_FILE_REQ_COMPLETE:
+		err = tee_handle_fs_ioctl(file, ioctl_num, ioctl_param);
+		break;
+
+	default:
+		pr_err("%s: Invalid IOCTL (0x%lx) 0x%lx, %d\n", __func__,
+			ioctl_num, TEE_IOCTL_FILE_NEW_REQ,
+			sizeof(TEEC_FileReq));
+		err = -EINVAL;
+	}
+
 	return err;
 }
 

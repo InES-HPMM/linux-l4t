@@ -273,6 +273,7 @@ static void tee_unpin_temp_buffers(struct TEEC_Operation *oper,
 static void do_smc(struct tee_request *request)
 {
 	phys_addr_t smc_args = virt_to_phys(request);
+	unsigned long regs[15];
 
 #ifdef CONFIG_SMP
 	long ret;
@@ -287,15 +288,17 @@ static void do_smc(struct tee_request *request)
 #endif
 
 	asm volatile (
-		"stmdb	sp!, {r4-r12}\n"
-		"mov    r0,  %0\n"
-		"mov    r1,  %1\n"
+		"mov	r0, %0		\n"
+		"stmia	r0, {r4-r12}	\n"
+		"mov	r0, %1		\n"
+		"mov	r1, %2		\n"
 #ifdef REQUIRES_SEC
-		".arch_extension sec\n"
+		".arch_extension sec	\n"
 #endif
-		"smc	#0\n"
-		"ldmia	sp!, {r4-r12}\n"
-		: : "r" (request->type), "r" (smc_args)
+		"smc	#0		\n"
+		"mov	r1, %0		\n"
+		"ldmia	r1, {r4-r12}	\n"
+		: : "r" (regs), "r" (request->type), "r" (smc_args)
 		: "r0", "r1"
 	);
 
