@@ -54,7 +54,7 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 	}
 
 	buf->nvmap_ref = nvmap_alloc(conf->nvmap_client, size, 32,
-				     NVMAP_HANDLE_CACHEABLE, 0);
+				     NVMAP_HANDLE_UNCACHEABLE, 0);
 	if (IS_ERR(buf->nvmap_ref)) {
 		dev_err(conf->dev, "nvmap_alloc failed\n");
 		ret = -ENOMEM;
@@ -134,14 +134,42 @@ static unsigned int vb2_dma_nvmap_num_users(void *buf_priv)
 static int vb2_dma_nvmap_mmap(void *buf_priv, struct vm_area_struct *vma)
 {
 	struct vb2_dc_buf *buf = buf_priv;
+	unsigned long vm_start, paddr;
+	void *vaddr;
+	int size;
+	int ret;
 
 	if (!buf) {
-		printk(KERN_ERR "No buffer to map\n");
+		pr_err("No buffer to map\n");
 		return -EINVAL;
 	}
 
-	return vb2_mmap_pfn_range(vma, buf->paddr, buf->size,
-				  &vb2_common_vm_ops, &buf->handler);
+	size = min_t(unsigned long, vma->vm_end - vma->vm_start, buf->size);
+
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
+	for (vaddr = buf->vaddr; vaddr < buf->vaddr + size;
+		vaddr += PAGE_SIZE) {
+		paddr = page_to_phys(vmalloc_to_page(vaddr));
+		vm_start = vma->vm_start + (unsigned long) (vaddr - buf->vaddr);
+		ret = remap_pfn_range(vma, vm_start, paddr >> PAGE_SHIFT,
+				PAGE_SIZE, vma->vm_page_prot);
+		if (ret) {
+			pr_err("Remapping memory failed, error: %d\n",
+					ret);
+			return ret;
+		}
+		pr_debug("%s: mapped paddr 0x%08lx at 0x%08lx, size %ld\n",
+			__func__, paddr, vm_start, PAGE_SIZE);
+	}
+
+	vma->vm_flags		|= VM_DONTEXPAND | VM_RESERVED;
+	vma->vm_private_data	= &buf->handler;
+	vma->vm_ops		= &vb2_common_vm_ops;
+
+	vma->vm_ops->open(vma);
+
+	return 0;
 }
 
 static void *vb2_dma_nvmap_get_userptr(void *alloc_ctx, unsigned long vaddr,
@@ -158,7 +186,7 @@ static void *vb2_dma_nvmap_get_userptr(void *alloc_ctx, unsigned long vaddr,
 
 	ret = vb2_get_contig_userptr(vaddr, size, &vma, &paddr);
 	if (ret) {
-		printk(KERN_ERR "Failed acquiring VMA for vaddr 0x%08lx\n",
+		pr_err("Failed acquiring VMA for vaddr 0x%08lx\n",
 				vaddr);
 		kfree(buf);
 		return ERR_PTR(ret);
