@@ -341,7 +341,9 @@ static void pluto_i2c_init(void)
 
 	platform_device_register(&tegra11_i2c_device5);
 	platform_device_register(&tegra11_i2c_device4);
+#ifndef CONFIG_OF
 	platform_device_register(&tegra11_i2c_device3);
+#endif
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 
