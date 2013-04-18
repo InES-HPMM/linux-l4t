@@ -599,10 +599,28 @@ static struct regulator_ops palmas_ops_smps = {
 	.set_ramp_delay		= palmas_smps_set_ramp_delay,
 };
 
+static int palmas_enable_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int ret = regulator_enable_regmap(dev);
+
+	pmic->smps10_regulator_enabled = true;
+	return ret;
+}
+
+static int palmas_disable_smps10(struct regulator_dev *dev)
+{
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int ret = regulator_disable_regmap(dev);
+
+	pmic->smps10_regulator_enabled = false;
+	return ret;
+}
+
 static struct regulator_ops palmas_ops_smps10 = {
 	.is_enabled		= regulator_is_enabled_regmap,
-	.enable			= regulator_enable_regmap,
-	.disable		= regulator_disable_regmap,
+	.enable			= palmas_enable_smps10,
+	.disable		= palmas_disable_smps10,
 	.get_voltage_sel	= regulator_get_voltage_sel_regmap,
 	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
 	.list_voltage		= regulator_list_voltage_linear,
@@ -1506,13 +1524,15 @@ static struct of_device_id of_palmas_match_tbl[] = {
 static int palmas_suspend(struct device *dev)
 {
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_disable_ldo8_track(palmas);
 
-	if (pdata->disable_smps10_boost_suspend)
+	if (pdata->disable_smps10_boost_suspend &&
+			!pmic->smps10_regulator_enabled)
 		palmas_disable_smps10_boost(palmas);
 	return 0;
 }
@@ -1520,13 +1540,15 @@ static int palmas_suspend(struct device *dev)
 static int palmas_resume(struct device *dev)
 {
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
+	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
 		palmas_enable_ldo8_track(palmas);
 
-	if (pdata->disable_smps10_boost_suspend)
+	if (pdata->disable_smps10_boost_suspend &&
+			!pmic->smps10_regulator_enabled)
 		palmas_enable_smps10_boost(palmas);
 	return 0;
 }
