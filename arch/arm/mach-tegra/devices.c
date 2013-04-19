@@ -1969,10 +1969,14 @@ static void tegra_smmu_map_init(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(smmu_default_map); i++) {
 		struct dma_iommu_mapping *map;
+		int order = 0;
+
+		if (IS_ENABLED(CONFIG_TEGRA_ERRATA_1053704))
+			order = get_order(SZ_16K);
 
 		map = arm_iommu_create_mapping(&platform_bus_type,
 					       TEGRA_IOMMU_BASE,
-					       TEGRA_IOMMU_SIZE, 0);
+					       TEGRA_IOMMU_SIZE, order);
 		if (IS_ERR(map))
 			dev_err(&pdev->dev,
 				"Failed create IOVA map for ASID[%d]\n", i);
