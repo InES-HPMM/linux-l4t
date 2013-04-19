@@ -646,26 +646,36 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	}
 
 	if (tegra->support_pmu_vbus) {
+		if (!pdata->vbus_extcon_dev_name) {
+			dev_err(&pdev->dev, "Missing vbus_extcon_dev_name!\n");
+			err = -EINVAL;
+			goto err_vbus_extcon;
+		}
 		tegra->vbus_extcon_dev =
 			extcon_get_extcon_dev(pdata->vbus_extcon_dev_name);
 		if (!tegra->vbus_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
 						pdata->vbus_extcon_dev_name);
 			err = -ENODEV;
-			goto err_irq;
+			goto err_vbus_extcon;
 		}
 		otg_vbus_nb.notifier_call = otg_notifications;
 		extcon_register_notifier(tegra->vbus_extcon_dev, &otg_vbus_nb);
 	}
 
 	if (tegra->support_pmu_id) {
+		if (!pdata->id_extcon_dev_name) {
+			dev_err(&pdev->dev, "Missing id_extcon_dev_name!\n");
+			err = -EINVAL;
+			goto err_id_extcon;
+		}
 		tegra->id_extcon_dev =
 			extcon_get_extcon_dev(pdata->id_extcon_dev_name);
 		if (!tegra->id_extcon_dev) {
 			dev_err(&pdev->dev, "Cannot get the %s extcon dev\n",
 						pdata->id_extcon_dev_name);
 			err = -ENODEV;
-			goto err_irq;
+			goto err_id_extcon;
 		}
 		otg_id_nb.notifier_call = otg_notifications;
 		extcon_register_notifier(tegra->id_extcon_dev, &otg_id_nb);
@@ -679,6 +689,11 @@ static int tegra_otg_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "otg transceiver registered\n");
 	return 0;
 
+err_id_extcon:
+	if (tegra->support_pmu_vbus)
+		extcon_unregister_notifier(tegra->vbus_extcon_dev,
+						&otg_vbus_nb);
+err_vbus_extcon:
 err_irq:
 	usb_remove_phy(&tegra->phy);
 	iounmap(tegra->regs);
