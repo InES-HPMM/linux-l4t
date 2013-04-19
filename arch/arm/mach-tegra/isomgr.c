@@ -65,10 +65,27 @@
 #define SANITY_CHECK_AVAIL_BW()
 #endif
 
+#define VALIDATE_HANDLE() \
+do { \
+	if (unlikely(!cp || !is_client_valid(client) || \
+		     cp->magic != ISOMGR_MAGIC)) { \
+		pr_err("bad handle %p", handle); \
+		goto validation_fail; \
+	} \
+} while (0)
+
+#define VALIDATE_CLIENT() \
+do { \
+	if (unlikely(!is_client_valid(client))) { \
+		pr_err("invalid client %d", client); \
+		goto validation_fail; \
+	} \
+} while (0)
+
 /* To allow test code take over control */
 static bool test_mode;
 
-char *client_name[] = {
+static char *cname[] = {
 	"disp_0",
 	"disp_1",
 	"vi_0",
@@ -364,30 +381,23 @@ static bool is_client_valid(enum tegra_iso_client client)
 	return true;
 }
 
-static tegra_isomgr_handle __tegra_isomgr_register(enum tegra_iso_client client,
-					  u32 udedi_bw,
-					  tegra_isomgr_renegotiate renegotiate,
-					  void *priv)
+static tegra_isomgr_handle __tegra_isomgr_register(
+			enum tegra_iso_client client, u32 udedi_bw,
+			tegra_isomgr_renegotiate renegotiate, void *priv)
 {
 	s32 dedi_bw = udedi_bw;
 	struct isomgr_client *cp = NULL;
 
-	if (unlikely(!is_client_valid(client))) {
-		pr_err("invalid client %d", client);
-		goto fail;
-	}
+	VALIDATE_CLIENT();
 
 	if (unlikely(!udedi_bw && !renegotiate))
-		goto fail;
+		goto validation_fail;
 
 	isomgr_lock();
 	cp = &isomgr_clients[client];
 
-	if (unlikely(atomic_read(&cp->kref.refcount))) {
-		pr_err("client %s is already registered",
-			client_name[client]);
+	if (unlikely(atomic_read(&cp->kref.refcount)))
 		goto fail_unlock;
-	}
 
 	if (unlikely(dedi_bw > isomgr.max_iso_bw - isomgr.dedi_bw)) {
 #ifdef CONFIG_TEGRA_ISOMGR_MAX_ISO_BW_QUIRK
@@ -402,14 +412,14 @@ static tegra_isomgr_handle __tegra_isomgr_register(enum tegra_iso_client client,
 			if (!client_valid[client])
 				continue;
 			pr_info("client=%s, iso dedi bw=%dKB",
-				client_name[client],
+				cname[client],
 				(client == i) ? dedi_bw :
 				isomgr_clients[client].dedi_bw);
 		}
-		pr_info("Revisit BW usage of iso clients");
+		pr_info("revisit BW usage of iso clients");
 #else
-		pr_err("bandwidth %uKB is not available, client %s\n",
-			dedi_bw, client_name[client]);
+		pr_err("iso bandwidth %uKB is not available, client %s\n",
+			dedi_bw, cname[client]);
 		goto fail_unlock;
 #endif
 	}
@@ -422,13 +432,12 @@ static tegra_isomgr_handle __tegra_isomgr_register(enum tegra_iso_client client,
 	cp->priv = priv;
 	isomgr.dedi_bw += dedi_bw;
 
-	pr_debug("%s register successful", client_name[client]);
 	isomgr_unlock();
 	return (tegra_isomgr_handle)cp;
 
 fail_unlock:
 	isomgr_unlock();
-fail:
+validation_fail:
 	return ERR_PTR(-EINVAL);
 }
 
@@ -472,13 +481,10 @@ static void __tegra_isomgr_unregister(tegra_isomgr_handle handle)
 	struct isomgr_client *cp = (struct isomgr_client *)handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (unlikely(!cp || !is_client_valid(client) ||
-		     cp->magic != ISOMGR_MAGIC)) {
-		pr_err("bad handle %p", handle);
-		return;
-	}
-
+	VALIDATE_HANDLE();
 	kref_put(&cp->kref, unregister_iso_client);
+validation_fail:
+	return;
 }
 
 /**
@@ -502,41 +508,24 @@ static u32 __tegra_isomgr_reserve(tegra_isomgr_handle handle,
 	struct isomgr_client *cp = (struct isomgr_client *) handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (unlikely(!cp || !is_client_valid(client) ||
-		     cp->magic != ISOMGR_MAGIC)) {
-		pr_err("bad handle %p", handle);
-		goto validation_fail;
-	}
+	VALIDATE_HANDLE();
 
 	isomgr_lock();
 	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
 		goto handle_unregistered;
-	pr_debug("n c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d, bw=%d",
-		 client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw, bw);
 
-	if (unlikely(cp->realize)) {
-		pr_err("realize in progress. reserve rejected."
-			" real_bw=%d, rsvd_bw=%d, dedi_bw=%d, c=%s",
-			cp->real_bw, cp->rsvd_bw, cp->dedi_bw,
-			client_name[client]);
+	if (unlikely(cp->realize))
 		goto out;
-	}
 
 	if (bw <= cp->margin_bw)
 		goto skip_bw_check;
 
-	if (unlikely(!cp->renegotiate && bw > cp->dedi_bw)) {
-		pr_debug("request to reserve more than dedi_bw with"
-			" no renegotiation support, c=%s",
-			client_name[client]);
+	if (unlikely(!cp->renegotiate && bw > cp->dedi_bw))
 		goto out;
-	}
 
 	if (bw > cp->dedi_bw &&
-	    bw > isomgr.avail_bw + cp->real_bw - isomgr.sleep_bw) {
-		pr_debug("invalid BW (%u Kb/sec), client=%d\n", bw, client);
+	    bw > isomgr.avail_bw + cp->real_bw - isomgr.sleep_bw)
 		goto out;
-	}
 
 skip_bw_check:
 	/* Look up MC's min freq that could satisfy requested BW and LT */
@@ -553,8 +542,6 @@ skip_bw_check:
 	cp->rsvd_mf = mf;	/* remember associated min freq */
 	cp->rsvd_bw = bw;
 out:
-	pr_debug("x c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d, bw=%d\n",
-		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw, bw);
 	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
 	return dvfs_latency;
@@ -590,23 +577,15 @@ static u32 __tegra_isomgr_realize(tegra_isomgr_handle handle)
 	struct isomgr_client *cp = (struct isomgr_client *) handle;
 	int client = cp - &isomgr_clients[0];
 
-	if (unlikely(!cp || !is_client_valid(client) ||
-		     cp->magic != ISOMGR_MAGIC)) {
-		pr_err("bad handle %p", handle);
-		return dvfs_latency;
-	}
+	VALIDATE_HANDLE();
 
 retry:
 	isomgr_lock();
 	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
 		goto handle_unregistered;
 
-	pr_debug("n c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d",
-		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw);
-
 	if (cp->margin_bw < cp->real_bw)
 		isomgr.avail_bw += cp->real_bw - cp->margin_bw;
-	pr_debug("after release, c=%d avail_bw=%d", client, isomgr.avail_bw);
 	cp->real_bw = 0;
 	cp->realize = true;
 	BUG_ON(isomgr.avail_bw > isomgr.max_iso_bw);
@@ -618,8 +597,6 @@ retry:
 	} else if (cp->rsvd_bw <= isomgr.avail_bw + cp->margin_bw) {
 		delta_bw = cp->rsvd_bw - cp->margin_bw;
 		isomgr.avail_bw -= delta_bw;
-		pr_debug("after alloc, c=%d avail_bw=%d",
-			 client, isomgr.avail_bw);
 		cp->real_bw = cp->rsvd_bw; /* reservation has been realized */
 		cp->real_mf = cp->rsvd_mf; /* minimum frequency realized */
 		if (cp->sleep_bw) {
@@ -644,15 +621,13 @@ retry:
 	dvfs_latency = (u32)cp->lto;
 	cp->realize = false;
 	update_mc_clock();
-	pr_debug("iso req clk=%dKHz", isomgr.iso_mf);
 
-	pr_debug("x c=%d, cp->rsvd_bw=%d, cp->real_bw=%d, avail_bw=%d",
-		client, cp->rsvd_bw, cp->real_bw, isomgr.avail_bw);
 	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
 	return dvfs_latency;
 handle_unregistered:
 	isomgr_unlock();
+validation_fail:
 	return dvfs_latency;
 }
 
@@ -679,10 +654,7 @@ static int __tegra_isomgr_set_margin(enum tegra_iso_client client,
 	s32 high_bw;
 	struct isomgr_client *cp = NULL;
 
-	if (unlikely(!is_client_valid(client))) {
-		pr_err("invalid client %d", client);
-		goto validation_fail;
-	}
+	VALIDATE_CLIENT();
 
 retry:
 	isomgr_lock();
