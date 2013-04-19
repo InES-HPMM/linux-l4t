@@ -45,6 +45,8 @@ enum palmas_ids {
 	PALMAS_PWM_ID,
 	PALMAS_USB_ID,
 	PALMAS_EXTCON_ID,
+	PALMAS_BATTERY_GAUGE_ID,
+	PALMAS_CHARGER_ID
 };
 
 static struct resource palmas_rtc_resources[] = {
@@ -109,7 +111,15 @@ static const struct mfd_cell palmas_children[] = {
 	{
 		.name = "palmas-extcon",
 		.id = PALMAS_EXTCON_ID,
-	}
+	},
+	{
+		.name = "palmas-battery-gauge",
+		.id = PALMAS_BATTERY_GAUGE_ID,
+	},
+	{
+		.name = "palmas-charger",
+		.id = PALMAS_CHARGER_ID,
+	},
 };
 
 static bool is_volatile_palma_func_reg(struct device *dev, unsigned int reg)
@@ -141,6 +151,19 @@ static const struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 		.max_register = PALMAS_BASE_TO_REG(PALMAS_TRIM_GPADC_BASE,
 					PALMAS_GPADC_TRIM16),
 	},
+	{
+		.reg_bits = 8,
+		.val_bits = 8,
+		.max_register =	PALMAS_BASE_TO_REG(PALMAS_CHARGER_BASE,
+					PALMAS_REG10),
+	},
+};
+
+static const int palmas_i2c_ids[PALMAS_NUM_CLIENTS] = {
+	0x58,
+	0x59,
+	0x5a,
+	0x6a,
 };
 
 struct palmas_regs {
@@ -997,7 +1020,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 		else {
 			palmas->i2c_clients[i] =
 					i2c_new_dummy(i2c->adapter,
-							i2c->addr + i);
+						palmas_i2c_ids[i]);
 			if (!palmas->i2c_clients[i]) {
 				dev_err(palmas->dev,
 					"can't attach client %d\n", i);
