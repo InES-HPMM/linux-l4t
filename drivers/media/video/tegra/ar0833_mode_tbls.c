@@ -18,7 +18,7 @@
 
 static struct ar0833_reg Reset_tbl[] = {
 	{0x301A, 0x0019},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	/* Disable Streaming */
 	{0x301A, 0x0218},
 	{AR0833_TABLE_END, 0x0000},
@@ -264,7 +264,7 @@ static void *sub_tbls[] = {
 /*
  * Initialize
  * XMCLK=24000000
- * PAUSE=100
+ * PAUSE=1
  * STATE= Master Clock, 292800000
  * REG=0x301A, 0x0218, Disable Streaming
  * LOAD=Default_3P
@@ -273,7 +273,7 @@ static void *sub_tbls[] = {
 static struct ar0833_reg mode_3264x2448_30fps[] = {
 	{AR0833_TABLE_CALL, AR0833_TBL_RESET},
 	{AR0833_TABLE_CALL, AR0833_TBL_DEF3P},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_ADJ_V7P2},
 
 	/* PLL Configuration */
@@ -339,7 +339,7 @@ static struct ar0833_reg mode_3264x2448_HDR_30fps[] = {
 
 	/* Disable Streaming */
 	{0x301A, 0x0218},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	/*LOAD=Sequencer_iHDR_v7p2 */
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_HDR_V12P12},
 	/* Enable iHDR readout */
@@ -364,7 +364,7 @@ static struct ar0833_reg mode_3264x2448_HDR_30fps[] = {
 /*
  * Initialize
  * XMCLK=24000000
- * PAUSE=100
+ * PAUSE=1
  * STATE= Master Clock, 292800000
  * REG=0x301A, 0x0218, Disable Streaming
  * LOAD=Default_3P
@@ -395,7 +395,7 @@ static struct ar0833_reg mode_1920x1080_HDR_30fps[] = {
 
 	/* Disable Streaming */
 	{0x301A, 0x0218},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_HDR_V7P2},
 
 	{0x303E, 0x0001},	/* Enable iHDR readout */
@@ -417,7 +417,7 @@ static struct ar0833_reg mode_1920x1080_HDR_30fps[] = {
 /*
  * Initialize
  * XMCLK=24000000
- * PAUSE=100
+ * PAUSE=1
  * STATE= Master Clock, 292800000
  * REG=0x301A, 0x0218, Disable Streaming
  * LOAD=Default_3P
@@ -449,7 +449,7 @@ static struct ar0833_reg mode_3264x1836_HDR_30fps[] = {
 
 	/* Disable Streaming */
 	{0x301A, 0x0218},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	/*LOAD=Sequencer_iHDR_v7p2 */
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_HDR_V7P2},
 	/* Enable iHDR readout */
@@ -467,7 +467,7 @@ static struct ar0833_reg mode_3264x1836_HDR_30fps[] = {
 /*
  * Initialize
  * XMCLK=24000000
- * PAUSE=100
+ * PAUSE=1
  * STATE= Master Clock, 292800000
  * REG=0x301A, 0x0218, Disable Streaming
  * LOAD=Default_3P
@@ -476,7 +476,7 @@ static struct ar0833_reg mode_3264x1836_HDR_30fps[] = {
 static struct ar0833_reg mode_1920x1080_30fps[] = {
 	{AR0833_TABLE_CALL, AR0833_TBL_RESET},
 	{AR0833_TABLE_CALL, AR0833_TBL_DEF3P},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_ADJ_V7P2},
 
 	/*PLL Configuration */
@@ -517,7 +517,7 @@ static struct ar0833_reg mode_1920x1080_30fps[] = {
 /*
  * Initialize
  * XMCLK=24000000
- * PAUSE=100
+ * PAUSE=1
  * STATE= Master Clock, 292800000
  * REG=0x301A, 0x0218, Disable Streaming
  * LOAD=Default_3P
@@ -526,7 +526,7 @@ static struct ar0833_reg mode_1920x1080_30fps[] = {
 static struct ar0833_reg mode_3264x1836_30fps[] = {
 	{AR0833_TABLE_CALL, AR0833_TBL_RESET},
 	{AR0833_TABLE_CALL, AR0833_TBL_DEF3P},
-	{AR0833_TABLE_WAIT_MS, 100},
+	{AR0833_TABLE_WAIT_MS, 1},
 	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_ADJ_V7P2},
 
 	/*PLL Configuration */
