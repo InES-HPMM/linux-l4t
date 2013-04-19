@@ -127,8 +127,10 @@ static int drv2603_haptic_play_effect(struct input_dev *dev, void *data,
 {
 	struct drv2603_chip *chip = input_get_drvdata(dev);
 
-	chip->state = VIBRATOR_ON;
-	schedule_work(&chip->work);
+	if (chip->state == VIBRATOR_OFF) {
+		chip->state = VIBRATOR_ON;
+		schedule_work(&chip->work);
+	}
 	return 0;
 }
 
@@ -147,10 +149,12 @@ static ssize_t drv2603_vibrator_enable_store(struct device *dev,
 	int var;
 
 	sscanf(buf, "%d", &var);
-	if (var == 0) {
+	if (var == 0 && chip->state == VIBRATOR_ON) {
+		cancel_work_sync(&chip->work);
 		chip->state = VIBRATOR_OFF;
 		schedule_work(&chip->work);
-	} else if (var == 1) {
+	} else if (var == 1 && chip->state == VIBRATOR_OFF) {
+		cancel_work_sync(&chip->work);
 		chip->state = VIBRATOR_ON;
 		schedule_work(&chip->work);
 	}
@@ -189,8 +193,10 @@ static void drv2603_vibrator_throttle(unsigned int new_state, void *priv_data)
 	if (!chip)
 		return;
 
-	chip->state = VIBRATOR_OFF;
-	drv2603_vibrate(chip);
+	if (chip->state == VIBRATOR_ON) {
+		chip->state = VIBRATOR_OFF;
+		drv2603_vibrate(chip);
+	}
 }
 
 static DEVICE_ATTR(vibrator_enable, 0640, drv2603_vibrator_enable_show,
@@ -378,8 +384,10 @@ static int drv2603_suspend(struct device *dev)
 {
 	struct drv2603_chip *chip = dev_get_drvdata(dev);
 
-	chip->state = VIBRATOR_OFF;
-	drv2603_vibrate(chip);
+	if (chip->state == VIBRATOR_ON) {
+		chip->state = VIBRATOR_OFF;
+		drv2603_vibrate(chip);
+	}
 
 	return 0;
 }
