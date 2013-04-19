@@ -1115,13 +1115,13 @@ static int a2220_probe(struct i2c_client *client,
 	extern3_clk = clk_get_sys("extern3", NULL);
 	if (IS_ERR(extern3_clk)) {
 		printk(KERN_ERR "%s: Can't retrieve extern3\n", __func__);
-		goto err_alloc_data_failed;
+		goto err_clk_get_failed;
 	}
 
 	ret = clk_enable(extern3_clk);
 	if (ret) {
 		printk(KERN_ERR "Can't enable clk extern3");
-		goto err_alloc_data_failed;
+		goto err_clk_enable_failed;
 	}
 
 	control_a2220_clk = 1;
@@ -1376,6 +1376,10 @@ static int a2220_probe(struct i2c_client *client,
 	if (pdata->gpio_a2220_clk)
 		gpio_free(pdata->gpio_a2220_clk);
  err_alloc_data_failed:
+	clk_disable(extern3_clk);
+ err_clk_enable_failed:
+	clk_put(extern3_clk);
+ err_clk_get_failed:
 
 	return rc;
 }
