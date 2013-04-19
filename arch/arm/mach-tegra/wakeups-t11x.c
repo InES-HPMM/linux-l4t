@@ -40,7 +40,7 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PW2,				/* wake12 */
 	-EINVAL,				/* wake13 */
 	TEGRA_GPIO_PDD3,			/* wake14 */
-	-EINVAL,				/* wake15 */
+	TEGRA_GPIO_PJ2,				/* wake15 */
 	-EINVAL,				/* wake16 */
 	-EINVAL,				/* wake17 */
 	-EINVAL,				/* wake18 */
@@ -77,7 +77,7 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PR7,				/* wake49 */
 	TEGRA_GPIO_PR4,				/* wake50 */
 	TEGRA_GPIO_PQ0,				/* wake51 */
-	-EINVAL,				/* wake52 */
+	TEGRA_GPIO_PEE3,			/* wake52 */
 	-EINVAL,				/* wake53 */
 	TEGRA_GPIO_PQ5,				/* wake54 */
 	-EINVAL,				/* wake55 */
@@ -102,7 +102,7 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN,				/* wake12 */
 	INT_SDMMC1, /* SDMMC1 DAT1 */		/* wake13 */
 	-EAGAIN,				/* wake14 */
-	INT_THERMAL,				/* wake15 */
+	INT_EDP,				/* wake15 */
 	INT_RTC,				/* wake16 */
 	INT_KBC,				/* wake17 */
 	INT_EXTERNAL_PMU,			/* wake18 */
