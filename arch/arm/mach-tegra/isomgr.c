@@ -99,11 +99,12 @@ static char *cname[] = {
 struct isoclient_info {
 	enum tegra_iso_client client;
 	char *name;
+	char *emc_clk_name;
 };
 
 static struct isoclient_info *isoclient_info;
 static bool client_valid[TEGRA_ISO_CLIENT_COUNT];
-static int iso_bw_percentage = 35;
+static int iso_bw_percentage = 100;
 
 static struct isoclient_info tegra_null_isoclients[] = {
 	/* This must be last entry*/
@@ -117,14 +118,17 @@ static struct isoclient_info tegra11x_isoclients[] = {
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_0,
 		.name = "disp_0",
+		.emc_clk_name = "tegradc.0",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_1,
 		.name = "disp_1",
+		.emc_clk_name = "tegradc.1",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
+		.emc_clk_name = "vi",
 	},
 	/* This must be last entry*/
 	{
@@ -137,18 +141,22 @@ static struct isoclient_info tegra14x_isoclients[] = {
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_0,
 		.name = "disp_0",
+		.emc_clk_name = "tegradc.0",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_1,
 		.name = "disp_1",
+		.emc_clk_name = "tegradc.1",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
+		.emc_clk_name = "vi",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_BBC_0,
 		.name = "bbc_0",
+		.emc_clk_name = "tegra_bb.0",
 	},
 	/* This must be last entry*/
 	{
@@ -168,6 +176,7 @@ static struct isoclient_info *get_iso_client_info(void)
 	switch (cid) {
 	case TEGRA_CHIPID_TEGRA11:
 		cinfo = tegra11x_isoclients;
+		iso_bw_percentage = 35;
 		break;
 	case TEGRA_CHIPID_TEGRA14:
 		cinfo = tegra14x_isoclients;
@@ -191,19 +200,20 @@ static struct isomgr_client {
 	s32 lto;		/* MC calculated Latency Tolerance (usec) */
 	s32 rsvd_mf;		/* reserved minimum freq in support of LT */
 	s32 real_mf;		/* realized minimum freq in support of LT */
+	s32 real_mf_rq;		/* real_mf requested */
 	tegra_isomgr_renegotiate renegotiate;	/* ask client to renegotiate */
 	bool realize;		/* bw realization in progress */
 	s32 sleep_bw;		/* sleeping for realize */
 	s32 margin_bw;		/* BW set aside for this client	(KB/sec) */
 	void *priv;		/* client driver's private data */
 	struct completion cmpl;	/* so we can sleep waiting for delta BW */
+	struct clk *emc_clk;	/* client emc clk for bw */
 #ifdef CONFIG_TEGRA_ISOMGR_SYSFS
 	struct kobject *client_kobj;
 	struct isomgr_client_attrs {
 		struct kobj_attribute dedi_bw;
 		struct kobj_attribute rsvd_bw;
 		struct kobj_attribute real_bw;
-		struct kobj_attribute need_bw;
 		struct kobj_attribute lti;
 		struct kobj_attribute lto;
 		struct kobj_attribute rsvd_mf;
@@ -217,10 +227,9 @@ static struct isomgr_client {
 static struct {
 	struct mutex lock;		/* to lock ALL isomgr state */
 	struct task_struct *task;	/* check reentrant/mismatched locks */
-	struct clk *emc_clk;		/* emc clock handle */
-	s32 bw_mf;			/* min freq to support aggregate bw */
+	struct clk *emc_clk;		/* isomgr emc clock for floor freq */
 	s32 lt_mf;			/* min freq to support worst LT */
-	s32 iso_mf;			/* min freq to support ISO clients */
+	s32 lt_mf_rq;			/* requested lt_mf */
 	s32 avail_bw;			/* globally available MC BW */
 	s32 dedi_bw;			/* total BW 'dedicated' to clients */
 	s32 sleep_bw;			/* pending bw requirement */
@@ -234,16 +243,12 @@ static struct {
 /* get minimum MC frequency for client that can support this BW and LT */
 static inline u32 mc_min_freq(u32 ubw, u32 ult) /* in KB/sec and usec */
 {
-	unsigned int min_freq = 1;
+	unsigned int min_freq = 0;
 
 	/* ult==0 means ignore LT (effectively infinite) */
 	if (ubw == 0)
 		goto out;
 	min_freq = tegra_emc_bw_to_freq_req(ubw);
-
-	/* ISO clients can only expect iso_bw_percentage efficiency. */
-	min_freq = (min_freq * 100  + iso_bw_percentage - 1) /
-			iso_bw_percentage;
 out:
 	return min_freq; /* return value in KHz*/
 }
@@ -276,19 +281,32 @@ static void update_mc_clock(void)
 	BUG_ON(mutex_trylock(&isomgr.lock));
 	/* determine worst case freq to satisfy LT */
 	isomgr.lt_mf = 0;
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
-		if (atomic_read(&isomgr_clients[i].kref.refcount))
-			isomgr.lt_mf = max(isomgr.lt_mf,
-					   isomgr_clients[i].real_mf);
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++)
+		isomgr.lt_mf = max(isomgr.lt_mf, isomgr_clients[i].real_mf);
+
+	/* request the floor freq to satisfy LT */
+	if (isomgr.lt_mf_rq != isomgr.lt_mf &&
+	    !clk_set_rate(isomgr.emc_clk, isomgr.lt_mf * 1000)) {
+
+		if (isomgr.lt_mf_rq == 0)
+			clk_enable(isomgr.emc_clk);
+		isomgr.lt_mf_rq = isomgr.lt_mf;
+		if (isomgr.lt_mf_rq == 0)
+			clk_disable(isomgr.emc_clk);
 	}
 
-	/* determine worst case freq to satisfy BW */
-	isomgr.bw_mf = mc_min_freq(isomgr.max_iso_bw - isomgr.avail_bw, 0);
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
+		if (isomgr_clients[i].real_mf != isomgr_clients[i].real_mf_rq &&
+		    !clk_set_rate(isomgr_clients[i].emc_clk,
+			isomgr_clients[i].real_mf * 1000)) {
 
-	/* combine them and set the MC clock */
-	isomgr.iso_mf = max(isomgr.lt_mf, isomgr.bw_mf);
-	clk_set_rate(isomgr.emc_clk, isomgr.iso_mf * 1000);
-
+			if (isomgr_clients[i].real_mf_rq == 0)
+				clk_enable(isomgr_clients[i].emc_clk);
+			isomgr_clients[i].real_mf_rq = isomgr_clients[i].real_mf;
+			if (isomgr_clients[i].real_mf_rq == 0)
+				clk_disable(isomgr_clients[i].emc_clk);
+		}
+	}
 }
 
 static void purge_isomgr_client(struct isomgr_client *cp)
@@ -298,6 +316,8 @@ static void purge_isomgr_client(struct isomgr_client *cp)
 	cp->dedi_bw = 0;
 	cp->rsvd_bw = 0;
 	cp->real_bw = 0;
+	cp->rsvd_mf = 0;
+	cp->real_mf = 0;
 	cp->renegotiate = 0;
 	cp->realize = false;
 	cp->priv = NULL;
@@ -524,10 +544,6 @@ static u32 __tegra_isomgr_reserve(tegra_isomgr_handle handle,
 skip_bw_check:
 	/* Look up MC's min freq that could satisfy requested BW and LT */
 	mf = mc_min_freq(ubw, ult);
-	if (unlikely(!mf)) {
-		pr_err("invalid LT (%u usec), client=%d\n", ult, client);
-		goto out;
-	}
 	/* Look up MC's dvfs latency at min freq */
 	dvfs_latency = mc_dvfs_latency(mf);
 
@@ -809,12 +825,8 @@ EXPORT_SYMBOL(tegra_isomgr_get_total_iso_bw);
 static ssize_t isomgr_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf);
 
-static const struct kobj_attribute bw_mf_attr =
-	__ATTR(bw_mf, 0444, isomgr_show, 0);
 static const struct kobj_attribute lt_mf_attr =
 	__ATTR(lt_mf, 0444, isomgr_show, 0);
-static const struct kobj_attribute iso_mf_attr =
-	__ATTR(iso_mf, 0444, isomgr_show, 0);
 static const struct kobj_attribute avail_bw_attr =
 	__ATTR(avail_bw, 0444, isomgr_show, 0);
 static const struct kobj_attribute max_iso_bw_attr =
@@ -823,9 +835,7 @@ static const struct kobj_attribute version_attr =
 	__ATTR(version, 0444, isomgr_show, 0);
 
 static const struct attribute *isomgr_attrs[] = {
-	&bw_mf_attr.attr,
 	&lt_mf_attr.attr,
-	&iso_mf_attr.attr,
 	&avail_bw_attr.attr,
 	&max_iso_bw_attr.attr,
 	&version_attr.attr,
@@ -837,12 +847,8 @@ static ssize_t isomgr_show(struct kobject *kobj,
 {
 	ssize_t rval = 0;
 
-	if (attr == &bw_mf_attr)
-		rval = sprintf(buf, "%dKHz\n", isomgr.bw_mf);
-	else if (attr == &lt_mf_attr)
+	if (attr == &lt_mf_attr)
 		rval = sprintf(buf, "%dKHz\n", isomgr.lt_mf);
-	else if (attr == &iso_mf_attr)
-		rval = sprintf(buf, "%dKHz\n", isomgr.iso_mf);
 	else if (attr == &avail_bw_attr)
 		rval = sprintf(buf, "%dKB\n", isomgr.avail_bw);
 	else if (attr == &max_iso_bw_attr)
@@ -886,7 +892,6 @@ static const struct isomgr_client_attrs client_attrs = {
 	__ATTR(dedi_bw, 0444, isomgr_client_show, 0),
 	__ATTR(rsvd_bw, 0444, isomgr_client_show, 0),
 	__ATTR(real_bw, 0444, isomgr_client_show, 0),
-	__ATTR(need_bw, 0444, isomgr_client_show, 0),
 	__ATTR(lti,     0444, isomgr_client_show, 0),
 	__ATTR(lto,     0444, isomgr_client_show, 0),
 	__ATTR(rsvd_mf, 0444, isomgr_client_show, 0),
@@ -902,7 +907,6 @@ static const struct attribute *client_attr_list[][NCATTRS+1] = {
 		&isomgr_clients[i].client_attrs.dedi_bw.attr,\
 		&isomgr_clients[i].client_attrs.rsvd_bw.attr,\
 		&isomgr_clients[i].client_attrs.real_bw.attr,\
-		&isomgr_clients[i].client_attrs.need_bw.attr,\
 		&isomgr_clients[i].client_attrs.lti.attr,\
 		&isomgr_clients[i].client_attrs.lto.attr,\
 		&isomgr_clients[i].client_attrs.rsvd_mf.attr,\
@@ -987,11 +991,10 @@ int __init isomgr_init(void)
 
 	isomgr.emc_clk = clk_get_sys("iso", "emc");
 	if (IS_ERR_OR_NULL(isomgr.emc_clk)) {
-		pr_err("couldn't find iso emc clock. Disabling isomgr.");
+		pr_err("couldn't find iso emc clock. disabling isomgr.");
 		test_mode = 1;
 		return 0;
 	}
-	clk_enable(isomgr.emc_clk);
 
 	if (!isomgr.max_iso_bw) {
 		max_emc_clk = clk_round_rate(isomgr.emc_clk, ULONG_MAX) / 1000;
@@ -1002,9 +1005,21 @@ int __init isomgr_init(void)
 		pr_info("max_iso_bw=%dKB", isomgr.max_iso_bw);
 		isomgr.avail_bw = isomgr.max_iso_bw;
 	}
-	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
+
+	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
 		atomic_set(&isomgr_clients[i].kref.refcount, 0);
 		init_completion(&isomgr_clients[i].cmpl);
+		if (client_valid[i]) {
+			isomgr_clients[i].emc_clk = clk_get_sys(
+					isoclient_info[i].emc_clk_name, "emc");
+			if (IS_ERR_OR_NULL(isomgr_clients[i].emc_clk)) {
+				pr_err("couldn't find %s emc clock",
+					isoclient_info[i].emc_clk_name);
+				pr_err("disabling iso mgr");
+				test_mode = 1;
+				return 0;
+			}
+		}
 	}
 	isomgr_create_sysfs();
 	return 0;
