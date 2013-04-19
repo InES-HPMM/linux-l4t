@@ -200,8 +200,11 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra114-roth.dtb \
 	tegra114-pluto.dtb \
 	tegra114-ardbeg.dtb \
+	tegra114-laguna.dtb \
 	tegra124-bonaire_sim.dtb \
-	tegra124-bonaire.dtb
+	tegra124-bonaire.dtb \
+	tegra124-ardbeg.dtb \
+	tegra124-laguna.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += vexpress-v2p-ca5s.dtb \
