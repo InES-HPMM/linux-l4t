@@ -208,6 +208,8 @@ static struct isomgr_client {
 		struct kobj_attribute lto;
 		struct kobj_attribute rsvd_mf;
 		struct kobj_attribute real_mf;
+		struct kobj_attribute sleep_bw;
+		struct kobj_attribute margin_bw;
 	} client_attrs;
 #endif /* CONFIG_TEGRA_ISOMGR_SYSFS */
 } isomgr_clients[TEGRA_ISO_CLIENT_COUNT];
@@ -873,6 +875,10 @@ static ssize_t isomgr_client_show(struct kobject *kobj,
 		rval = sprintf(buf, "%dKHz\n", cp->rsvd_mf);
 	else if (attr == &cp->client_attrs.real_mf)
 		rval = sprintf(buf, "%dKHz\n", cp->real_mf);
+	else if (attr == &cp->client_attrs.sleep_bw)
+		rval = sprintf(buf, "%dKB\n", cp->sleep_bw);
+	else if (attr == &cp->client_attrs.margin_bw)
+		rval = sprintf(buf, "%dKB\n", cp->margin_bw);
 	return rval;
 }
 
@@ -885,6 +891,8 @@ static const struct isomgr_client_attrs client_attrs = {
 	__ATTR(lto,     0444, isomgr_client_show, 0),
 	__ATTR(rsvd_mf, 0444, isomgr_client_show, 0),
 	__ATTR(real_mf, 0444, isomgr_client_show, 0),
+	__ATTR(sleep_bw, 0444, isomgr_client_show, 0),
+	__ATTR(margin_bw, 0444, isomgr_client_show, 0),
 };
 
 #define NCATTRS (sizeof(client_attrs) / sizeof(struct kobj_attribute))
@@ -899,6 +907,8 @@ static const struct attribute *client_attr_list[][NCATTRS+1] = {
 		&isomgr_clients[i].client_attrs.lto.attr,\
 		&isomgr_clients[i].client_attrs.rsvd_mf.attr,\
 		&isomgr_clients[i].client_attrs.real_mf.attr,\
+		&isomgr_clients[i].client_attrs.sleep_bw.attr,\
+		&isomgr_clients[i].client_attrs.margin_bw.attr,\
 		NULL\
 	},
 	CLIENT_ATTR(0)
@@ -913,6 +923,10 @@ static void isomgr_create_client(int client, const char *name)
 {
 	struct isomgr_client *cp = &isomgr_clients[client];
 
+	/* If this error hits, more CLIENT_ATTR(x) need to be added
+	 * in the above array client_attr_list.
+	 */
+	BUILD_BUG_ON(TEGRA_ISO_CLIENT_COUNT > 6);
 	BUG_ON(!isomgr.kobj);
 	BUG_ON(cp->client_kobj);
 	cp->client_kobj = kobject_create_and_add(name, isomgr.kobj);
