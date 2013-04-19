@@ -69,6 +69,7 @@
 
 #define SDMMC_SDMEMCOMPPADCTRL	0x1E0
 #define SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK	0xF
+#define SDMMC_SDMEMCOMPPADCTRL_PAD_E_INPUT_OR_E_PWRD_MASK	0x80000000
 
 #define SDMMC_AUTO_CAL_CONFIG	0x1E4
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START	0x80000000
@@ -151,6 +152,8 @@ static unsigned int uhs_max_freq_MHz[] = {
 #define NVQUIRK_EN_FEEDBACK_CLK			BIT(16)
 /* Disable AUTO CMD23 */
 #define NVQUIRK_DISABLE_AUTO_CMD23		BIT(17)
+/* update PAD_E_INPUT_OR_E_PWRD bit */
+#define NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD	BIT(18)
 /* Shadow write xfer mode reg and write it alongwith CMD register */
 #define NVQUIRK_SHADOW_XFER_MODE_REG		BIT(18)
 /* In SDR50 mode, run the sdmmc controller at freq greater than
@@ -1117,6 +1120,8 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 
 	val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
 	val &= ~SDMMC_SDMEMCOMPPADCTRL_VREF_SEL_MASK;
+	if (soc_data->nvquirks & NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD)
+		val |= SDMMC_SDMEMCOMPPADCTRL_PAD_E_INPUT_OR_E_PWRD_MASK;
 	val |= 0x7;
 	sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
 
@@ -1164,6 +1169,12 @@ skip_setting_calib_offsets:
 	val = sdhci_readl(sdhci, SDMMC_AUTO_CAL_CONFIG);
 	val &= ~SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
 	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
+
+	if (soc_data->nvquirks & NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD) {
+		val = sdhci_readl(sdhci, SDMMC_SDMEMCOMPPADCTRL);
+		val &= ~SDMMC_SDMEMCOMPPADCTRL_PAD_E_INPUT_OR_E_PWRD_MASK;
+		sdhci_writel(sdhci, val, SDMMC_SDMEMCOMPPADCTRL);
+	}
 
 	if (unlikely(soc_data->nvquirks & NVQUIRK_SET_DRIVE_STRENGTH)) {
 		unsigned int pulldown_code;
@@ -2093,6 +2104,9 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 #ifdef CONFIG_TEGRA_FPGA_PLATFORM
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #endif
+#endif
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+		    NVQUIRK_SET_PAD_E_INPUT_OR_E_PWRD |
 #endif
 		    NVQUIRK_ENABLE_BLOCK_GAP_DET,
 };
