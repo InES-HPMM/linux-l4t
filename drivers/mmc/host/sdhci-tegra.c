@@ -2032,6 +2032,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
+	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
 #endif
 
 	if (plat->nominal_vcore_uV)
