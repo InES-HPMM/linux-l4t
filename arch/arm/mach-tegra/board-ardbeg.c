@@ -306,6 +306,141 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #endif
 };
 
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
+};
+
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x4,
+	},
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+	.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.vbus_oc_map = 0x5,
+	},
+};
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
+
+
+static struct tegra_usb_otg_data tegra_otg_pdata = {
+	.ehci_device = &tegra_ehci1_device,
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
+};
+
+static void ardbeg_usb_init(void)
+{
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
+		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+		platform_device_register(&tegra_otg_device);
+		/* Setup the udc platform data */
+		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	}
+
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
+		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+		platform_device_register(&tegra_ehci3_device);
+	}
+}
+
+static void ardbeg_modem_init(void)
+{
+	int modem_id = tegra_get_modem_id();
+	struct board_info board_info;
+	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+
+	tegra_get_board_info(&board_info);
+	pr_info("%s: modem_id = %d\n", __func__, modem_id);
+
+	switch (modem_id) {
+	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
+			tegra_ehci2_device.dev.platform_data =
+				&tegra_ehci2_hsic_smsc_hub_pdata;
+			platform_device_register(&tegra_ehci2_device);
+		}
+		break;
+	default:
+		return;
+	}
+}
+
 #ifndef CONFIG_USE_OF
 static struct platform_device *ardbeg_spi_devices[] __initdata = {
 	&tegra11_spi_device4,
@@ -395,6 +530,8 @@ static void __init tegra_ardbeg_late_init(void)
 {
 	platform_device_register(&tegra_pinmux_device);
 	ardbeg_pinmux_init();
+	ardbeg_usb_init();
+	ardbeg_modem_init();
 	ardbeg_i2c_init();
 	ardbeg_uart_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));

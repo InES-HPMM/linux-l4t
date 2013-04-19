@@ -32,10 +32,17 @@ int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
 
+#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
+#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
+
+/* Baseband IDs */
+enum tegra_bb_type {
+	TEGRA_BB_NEMO = 1,
+	TEGRA_BB_HSIC_HUB = 6,
+};
+
 #define UTMI1_PORT_OWNER_XUSB   0x1
 #define UTMI2_PORT_OWNER_XUSB   0x2
 #define HSIC1_PORT_OWNER_XUSB   0x4
 
-#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
-#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
 #endif
