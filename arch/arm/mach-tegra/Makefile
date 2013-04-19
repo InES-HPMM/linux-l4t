@@ -91,6 +91,8 @@ obj-$(CONFIG_PM_GENERIC_DOMAINS)        += pm_domains.o
 obj-y                                   += dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_11x_SOC)        += tegra11_dvfs.o
 obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra14_dvfs.o
+obj-$(CONFIG_ARCH_TEGRA_14x_SOC)        += tegra_emc_therm.o
+
 obj-y                                   += latency_allowance.o
 obj-y                                   += tegra3_la.o
 obj-y                                   += tegra11x_la.o
