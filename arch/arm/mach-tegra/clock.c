@@ -686,6 +686,10 @@ static int tegra_clk_init_one_from_table(struct tegra_clk_init_table *table)
 		return -ENODEV;
 	}
 
+	if (table->rate && c->parent && c->parent->ops &&
+	    c->parent->ops->shared_bus_update)
+			c->u.shared_bus_user.rate = table->rate;
+
 	if (table->enabled) {
 		ret = tegra_clk_prepare_enable(c);
 		if (ret) {
