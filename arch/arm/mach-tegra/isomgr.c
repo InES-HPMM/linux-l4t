@@ -209,25 +209,6 @@ static struct isomgr_client {
 		struct kobj_attribute rsvd_mf;
 		struct kobj_attribute real_mf;
 	} client_attrs;
-#ifdef CONFIG_TEGRA_ISOMGR_DEBUG
-	u32 __arg0;		/* args to inject stimulus */
-	u32 __arg1;		/* args to inject stimulus */
-	u32 __arg2;		/* args to inject stimulus */
-	u32 reneg_seqnum;	/* renegotiation() callback count */
-	u32 dvfs_latency;	/* retained value (in usec) */
-	struct kobject *debug_kobj;
-	struct isomgr_debug_attrs {
-		struct kobj_attribute __arg0;
-		struct kobj_attribute __arg1;
-		struct kobj_attribute __arg2;
-		struct kobj_attribute _register;
-		struct kobj_attribute _unregister;
-		struct kobj_attribute _reserve;
-		struct kobj_attribute _realize;
-		struct kobj_attribute reneg_seqnum;
-		struct kobj_attribute dvfs_latency;
-	} debug_attrs;
-#endif /* CONFIG_TEGRA_ISOMGR_DEBUG */
 #endif /* CONFIG_TEGRA_ISOMGR_SYSFS */
 } isomgr_clients[TEGRA_ISO_CLIENT_COUNT];
 
@@ -869,129 +850,6 @@ static ssize_t isomgr_show(struct kobject *kobj,
 	return rval;
 }
 
-#ifdef CONFIG_TEGRA_ISOMGR_DEBUG
-static void isomgr_client_reneg(void *priv)
-{
-	struct isomgr_client *cp = (struct isomgr_client *)priv;
-
-	++cp->reneg_seqnum;
-}
-
-static ssize_t isomgr_debug_store(struct kobject *kobj,
-	struct kobj_attribute *attr, const char *buf, size_t size)
-{
-	int client = ((char *)attr - (char *)isomgr_clients) /
-			sizeof(struct isomgr_client);
-	struct isomgr_client *cp =
-		(struct isomgr_client *)&isomgr_clients[client];
-
-	if (attr == &cp->debug_attrs.__arg0)
-		sscanf(buf, "%d\n", &cp->__arg0);
-	else if (attr == &cp->debug_attrs.__arg1)
-		sscanf(buf, "%d\n", &cp->__arg1);
-	else if (attr == &cp->debug_attrs.__arg2)
-		sscanf(buf, "%d\n", &cp->__arg2);
-	return size;
-}
-
-static ssize_t isomgr_debug_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
-{
-	int client = ((char *)attr - (char *)isomgr_clients) /
-			sizeof(struct isomgr_client);
-	struct isomgr_client *cp =
-			(struct isomgr_client *)&isomgr_clients[client];
-	ssize_t rval = 0;
-	bool b;
-	tegra_isomgr_handle h;
-
-	if (attr == &cp->debug_attrs.__arg0)
-		rval = sprintf(buf, "%d\n", cp->__arg0);
-	else if (attr == &cp->debug_attrs.__arg1)
-		rval = sprintf(buf, "%d\n", cp->__arg1);
-	else if (attr == &cp->debug_attrs.__arg2)
-		rval = sprintf(buf, "%d\n", cp->__arg2);
-	else if (attr == &cp->debug_attrs._register) {
-		h = tegra_isomgr_register(client,
-					  cp->__arg0, /* dedi_bw */
-					  cp->__arg1 ? isomgr_client_reneg : 0,
-					  &isomgr_clients[client]);
-		rval = sprintf(buf, "%p\n", h);
-	} else if (attr == &cp->debug_attrs._unregister) {
-		tegra_isomgr_unregister((tegra_isomgr_handle)cp);
-		rval = sprintf(buf, "\n");
-	} else if (attr == &cp->debug_attrs._reserve) {
-		b = tegra_isomgr_reserve((tegra_isomgr_handle)cp,
-					 (u32)cp->__arg0,
-					 (u32)cp->__arg1);
-		rval = sprintf(buf, "%d\n", b ? 1 : 0);
-	} else if (attr == &cp->debug_attrs._realize) {
-		tegra_isomgr_realize((tegra_isomgr_handle)cp);
-		rval = sprintf(buf, "\n");
-	} else if (attr == &cp->debug_attrs.reneg_seqnum)
-		rval = sprintf(buf, "%d\n", cp->reneg_seqnum);
-	else if (attr == &cp->debug_attrs.dvfs_latency)
-		rval = sprintf(buf, "%d\n", cp->dvfs_latency);
-	return rval;
-}
-
-static const struct isomgr_debug_attrs debug_attrs = {
-	__ATTR(__arg0, 0644, isomgr_debug_show, isomgr_debug_store),
-	__ATTR(__arg1, 0644, isomgr_debug_show, isomgr_debug_store),
-	__ATTR(__arg2, 0644, isomgr_debug_show, isomgr_debug_store),
-	__ATTR(_register, 0400, isomgr_debug_show, 0),
-	__ATTR(_unregister, 0400, isomgr_debug_show, 0),
-	__ATTR(_reserve, 0400, isomgr_debug_show, 0),
-	__ATTR(_realize, 0400, isomgr_debug_show, 0),
-	__ATTR(reneg_seqnum, 0444, isomgr_debug_show, 0),
-	__ATTR(dvfs_latency, 0444, isomgr_debug_show, 0),
-};
-
-#define NDATTRS (sizeof(debug_attrs) / sizeof(struct kobj_attribute))
-static const struct attribute *debug_attr_list[][NDATTRS+1] = {
-#define DEBUG_ATTR(i)\
-	{\
-		&isomgr_clients[i].debug_attrs.__arg0.attr,\
-		&isomgr_clients[i].debug_attrs.__arg1.attr,\
-		&isomgr_clients[i].debug_attrs.__arg2.attr,\
-		&isomgr_clients[i].debug_attrs._register.attr,\
-		&isomgr_clients[i].debug_attrs._unregister.attr,\
-		&isomgr_clients[i].debug_attrs._reserve.attr,\
-		&isomgr_clients[i].debug_attrs._realize.attr,\
-		&isomgr_clients[i].debug_attrs.reneg_seqnum.attr,\
-		&isomgr_clients[i].debug_attrs.dvfs_latency.attr,\
-		NULL\
-	},
-	DEBUG_ATTR(0)
-	DEBUG_ATTR(1)
-	DEBUG_ATTR(2)
-	DEBUG_ATTR(3)
-	DEBUG_ATTR(4)
-	DEBUG_ATTR(5)
-};
-
-static void isomgr_create_debug(int client)
-{
-	struct isomgr_client *cp = &isomgr_clients[client];
-
-	BUG_ON(!cp->client_kobj);
-	BUG_ON(cp->debug_kobj);
-	cp->debug_kobj = kobject_create_and_add("debug", cp->client_kobj);
-	if (!cp->debug_kobj) {
-		pr_err("failed to create sysfs debug client dir");
-		return;
-	}
-	cp->debug_attrs = debug_attrs;
-	if (sysfs_create_files(cp->debug_kobj, &debug_attr_list[client][0])) {
-		pr_err("failed to create sysfs debug files");
-		kobject_del(cp->debug_kobj);
-		return;
-	}
-}
-#else
-static inline void isomgr_create_debug(int client) {}
-#endif
-
 static ssize_t isomgr_client_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1068,7 +926,6 @@ static void isomgr_create_client(int client, const char *name)
 		kobject_del(cp->client_kobj);
 		return;
 	}
-	isomgr_create_debug(client);
 }
 
 static void isomgr_create_sysfs(void)
