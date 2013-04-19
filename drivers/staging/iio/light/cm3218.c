@@ -98,7 +98,7 @@ static const struct regmap_config cm3218_regmap_config = {
 /* device's read/write functionality and a helper */
 static void change_endianness_16(int *val)
 {
-	u8 *buf = val;
+	u8 *buf = (u8 *)val;
 	u8 temp = buf[0];
 	buf[0] = buf[1];
 	buf[1] = temp;
@@ -107,7 +107,6 @@ static void change_endianness_16(int *val)
 static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 {
 	int ret;
-	int temp;
 
 	if (!chip->regmap)
 		return -ENODEV;
@@ -141,7 +140,7 @@ static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 static int _cm3218_register_write(struct cm3218_chip *chip, int reg, int mask,
 				int val)
 {
-	int ret, value;
+	int ret;
 
 	if (!chip->regmap)
 		return -ENODEV;
@@ -169,7 +168,8 @@ static int _cm3218_register_write(struct cm3218_chip *chip, int reg, int mask,
 
 /* device's registration with iio to facilitate user operations */
 static ssize_t cm3218_chan_regulator_enable(struct iio_dev *indio_dev,
-		uintptr_t private, struct iio_chan_spec const *chan, char *buf)
+		uintptr_t private, struct iio_chan_spec const *chan,
+		const char *buf, size_t len)
 {
 	u8 enable;
 	int ret = 0;
@@ -209,10 +209,10 @@ fail:
 }
 
 static ssize_t cm3218_chan_enable(struct iio_dev *indio_dev, uintptr_t private,
-		struct iio_chan_spec const *chan, char *buf)
+		struct iio_chan_spec const *chan, const char *buf, size_t len)
 {
 	u8 enable;
-	int ret;
+	int ret = 0;
 	struct cm3218_chip *chip = iio_priv(indio_dev);
 
 	if (kstrtou8(buf, 10, &enable))
@@ -269,11 +269,13 @@ static const struct iio_chan_spec_ext_info cm3218_ext_info[] = {
 	{
 		.name = "regulator_enable",
 		.write = cm3218_chan_regulator_enable,
-	}, {
+	},
+	{
 		.name = "enable",
 		.write = cm3218_chan_enable,
 	},
-	NULL,
+	{
+	},
 };
 
 static const struct iio_chan_spec cm3218_channels[] = {
@@ -435,7 +437,6 @@ static int cm3218_probe(struct i2c_client *client,
 	struct cm3218_chip *chip;
 	struct iio_dev *indio_dev;
 	struct regmap *regmap;
-	u8 *buf;
 
 	indio_dev = iio_device_alloc(sizeof(*chip));
 	if (indio_dev == NULL) {

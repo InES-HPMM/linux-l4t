@@ -261,6 +261,7 @@ static bool max44005_power(struct max44005_chip *chip, int power_on)
 }
 
 /* assumes power is on */
+/*
 static bool max44005_restore_state(struct max44005_chip *chip)
 {
 	int ret;
@@ -292,6 +293,7 @@ static bool max44005_restore_state(struct max44005_chip *chip)
 		return enable_temp_channel(chip, TEMP_ENABLED);
 	return false;
 }
+*/
 
 /* sysfs name begin */
 static ssize_t show_name(struct device *dev,
