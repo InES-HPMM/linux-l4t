@@ -30,6 +30,7 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/regmap.h>
+#include <linux/edp.h>
 #include <media/nvc.h>
 #include <media/lm3565.h>
 
@@ -119,6 +120,7 @@ struct lm3565_info {
 	struct mutex mutex;
 	struct lm3565_power_rail power;
 	struct regmap *regmap;
+	struct edp_client *edpc;
 	struct lm3565_platform_data *pdata;
 	struct nvc_torch_capability_query query;
 	struct nvc_torch_flash_capabilities_v1 flash_cap;
@@ -133,6 +135,7 @@ struct lm3565_info {
 	struct lm3565_config config;
 	struct lm3565_reg_cache regs;
 	atomic_t in_use;
+	unsigned int edp_state;
 	int pwr_state;
 	u8 op_mode;
 	u8 power_on;
@@ -239,7 +242,8 @@ static const struct regmap_config lm3565_regmap_config = {
 	.cache_type = REGCACHE_NONE,
 };
 
-static inline int lm3565_reg_rd(struct lm3565_info *info, u8 reg, unsigned *val)
+static inline int lm3565_reg_rd(
+	struct lm3565_info *info, u8 reg, unsigned int *val)
 {
 	int ret = -ENODEV;
 
@@ -280,6 +284,124 @@ static int lm3565_reg_wr(struct lm3565_info *info, u8 reg, u8 val)
 	return ret;
 }
 
+static int lm3565_get_current_mA(u8 curr)
+{
+	if (curr >= ARRAY_SIZE(lm3565_def_flash_levels))
+		return -ENODEV;
+
+	return lm3565_def_flash_levels[curr].luminance / 1000;
+}
+
+static void lm3565_throttle(unsigned int new_state, void *priv_data)
+{
+	struct lm3565_info *info = priv_data;
+
+	if (!info)
+		return;
+
+	/* power off chip to turn off led */
+	lm3565_power(info, NVC_PWR_OFF);
+}
+
+static void lm3565_edp_lowest(struct lm3565_info *info)
+{
+	if (!info->edpc)
+		return;
+
+	info->edp_state = info->edpc->num_states - 1;
+	dev_dbg(info->dev, "%s %d\n", __func__, info->edp_state);
+	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
+		dev_err(info->dev, "THIS IS NOT LIKELY HAPPEN!\n");
+		dev_err(info->dev, "UNABLE TO SET LOWEST EDP STATE!\n");
+	}
+}
+
+static void lm3565_edp_register(struct lm3565_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states) {
+		dev_notice(info->dev, "%s: NO edp states defined.\n", __func__);
+		return;
+	}
+
+	strncpy(edpc->name, "lm3565", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->throttle = lm3565_throttle;
+	edpc->private_data = info;
+
+	dev_dbg(info->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(info->dev, "e%d = %d mA\n",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(info->dev, "unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(info->dev, "unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	lm3565_edp_lowest(info);
+}
+
+static int lm3565_edp_req(struct lm3565_info *info, u8 *curr)
+{
+	unsigned int *estates;
+	int curr_mA;
+	unsigned int curr_mW;
+	unsigned int approved;
+	unsigned int new_state;
+	int ret = 0;
+
+	if (!info->edpc)
+		return 0;
+
+	dev_dbg(info->dev, "%s: curr = %02x\n", __func__, *curr);
+	estates = info->edpc->states;
+	curr_mA = lm3565_get_current_mA(*curr);
+	if (curr_mA < 0) {
+		dev_err(info->dev, "%s: invalid current %d\n", __func__, *curr);
+		return curr_mA;
+	}
+	curr_mW = curr_mA * 38 / 10;
+
+	for (new_state = info->edpc->num_states - 1; new_state > 0; new_state--)
+		if (estates[new_state] >= curr_mW)
+			break;
+
+	dev_dbg(info->dev, "edp req: %d curr = %d mW\n", new_state, curr_mW);
+	ret = edp_update_client_request(info->edpc, new_state, &approved);
+	if (ret) {
+		dev_err(info->dev, "E state transition failed\n");
+		return ret;
+	}
+
+	if (approved > new_state) { /* edp manager returned less current */
+		curr_mA = estates[approved] * 10 / 38;
+		curr_mA = lm3565_get_current_mA(curr_mA);
+		if (curr_mA < 0)
+			return curr_mA;
+		dev_dbg(info->dev, "new state: %d curr = %d mA (%d)\n",
+			approved, curr_mA, *curr);
+	}
+
+	info->edp_state = approved;
+
+	return 0;
+}
+
 static int lm3565_get_lut_index(u16 val, const u16 *lut, int num)
 {
 	int idx;
@@ -302,11 +424,17 @@ static int lm3565_set_leds(struct lm3565_info *info, u8 curr)
 
 	if (info->op_mode == LM3565_MODE_STDBY) {
 		err = lm3565_reg_wr(info, LM3565_REG_MODE, 0);
-		if (!err)
+		if (!err) {
 			info->regs.outmode = 0;
+			lm3565_edp_lowest(info);
+		}
 		dev_dbg(info->dev, "%s led disabled\n", __func__);
 		goto set_leds_end;
 	}
+
+	err = lm3565_edp_req(info, &curr);
+	if (err)
+		goto set_leds_end;
 
 	if (info->op_mode == LM3565_MODE_FLASH) {
 		if (curr >= pfcap->numberoflevels - 1)
@@ -655,6 +783,7 @@ static int lm3565_power_on(struct lm3565_info *info)
 
 power_on_end:
 	mutex_unlock(&info->mutex);
+	lm3565_edp_lowest(info);
 
 	return err;
 }
@@ -702,6 +831,7 @@ static int lm3565_power_off(struct lm3565_info *info)
 
 power_off_end:
 	mutex_unlock(&info->mutex);
+	lm3565_edp_lowest(info);
 
 	return err;
 }
@@ -752,6 +882,7 @@ static int lm3565_power(struct lm3565_info *info, int pwr)
 		dev_err(info->dev, "%s error\n", __func__);
 		pwr = NVC_PWR_ERR;
 	}
+
 	info->pwr_state = pwr;
 	if (err > 0)
 		return 0;
@@ -762,8 +893,8 @@ static int lm3565_power(struct lm3565_info *info, int pwr)
 static int lm3565_get_dev_id(struct lm3565_info *info)
 {
 	int pwr = info->pwr_state;
-	unsigned devid;
-	unsigned version;
+	unsigned int devid;
+	unsigned int version;
 	int err;
 
 	dev_dbg(info->dev, "%s %02x %d\n", __func__, info->regs.dev_id, pwr);
@@ -1249,6 +1380,8 @@ static int lm3565_probe(
 	info->op_mode = LM3565_MODE_STDBY;
 
 	lm3565_configure(info, false);
+
+	lm3565_edp_register(info);
 
 	i2c_set_clientdata(client, info);
 	mutex_init(&info->mutex);
