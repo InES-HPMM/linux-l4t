@@ -202,7 +202,7 @@ static int __devinit max77665_muic_probe(struct platform_device *pdev)
 		goto scrub;
 
 	ret = request_threaded_irq(muic->irq, NULL, max77665_muic_irq_handler,
-			0, dev_name(&pdev->dev), muic);
+			IRQF_ONESHOT | IRQF_EARLY_RESUME, dev_name(&pdev->dev), muic);
 	if (ret) {
 		dev_err(&pdev->dev, "failed: irq request error :%d)\n", ret);
 		goto scrub;
@@ -212,6 +212,7 @@ static int __devinit max77665_muic_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto scrub;
 
+	device_init_wakeup(&pdev->dev, 1);
 	return ret;
 
 scrub:
@@ -229,16 +230,25 @@ static int __devexit max77665_muic_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int max77665_extcon_suspend(struct device *pdev)
+static int max77665_extcon_suspend(struct device *dev)
 {
+	struct max77665_muic *muic = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev))
+		enable_irq_wake(muic->irq);
+
 	return 0;
 }
 
-static int max77665_extcon_resume(struct device *pdev)
+static int max77665_extcon_resume(struct device *dev)
 {
-	struct max77665_muic *muic = dev_get_drvdata(pdev);
+	struct max77665_muic *muic = dev_get_drvdata(dev);
 
-	return max77660_id_cable_update(muic);
+	if (device_may_wakeup(dev))
+		disable_irq_wake(muic->irq);
+
+	max77665_muic_irq_handler(muic->irq, muic);
+	return 0;
 };
 #endif
 
