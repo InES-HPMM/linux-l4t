@@ -517,20 +517,27 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 			TEGRA30_DAM_CHIN1);
 		tegra30_dam_enable_clock(i2s->call_record_dam_ifc);
 
+		/* setup the connections for voice call record */
+		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		/* configure the dam */
+		tegra_max98090_set_dam_cif(i2s->call_record_dam_ifc,
+			codec_info->rate, codec_info->channels,
+			codec_info->bitsize, 1,
+			machine->ahub_bbc1_info.rate,
+			machine->ahub_bbc1_info.channels,
+			machine->ahub_bbc1_info.sample_size);
+
+		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
+			(i2s->call_record_dam_ifc*2),
+			TEGRA30_AHUB_TXCIF_BBC1_TX0);
+#else
 		/* configure the dam */
 		tegra_max98090_set_dam_cif(i2s->call_record_dam_ifc,
 			codec_info->rate, codec_info->channels,
 			codec_info->bitsize, 1, bb_info->rate,
 			bb_info->channels, bb_info->bitsize);
 
-		/* setup the connections for voice call record */
-
-		tegra30_ahub_unset_rx_cif_source(i2s->rxcif);
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
-			(i2s->call_record_dam_ifc*2),
-			TEGRA30_AHUB_TXCIF_BBC1_TX0);
-#else
 		tegra30_ahub_set_rx_cif_source(TEGRA30_AHUB_RXCIF_DAM0_RX0 +
 			(i2s->call_record_dam_ifc*2),
 			TEGRA30_AHUB_TXCIF_I2S0_TX0 + bb_info->i2s_id);
@@ -543,7 +550,6 @@ static int tegra_max98090_startup(struct snd_pcm_substream *substream)
 			i2s->call_record_dam_ifc);
 
 		/* enable the dam*/
-
 		tegra30_dam_enable(i2s->call_record_dam_ifc,
 				TEGRA30_DAM_ENABLE,
 				TEGRA30_DAM_CHIN1);
