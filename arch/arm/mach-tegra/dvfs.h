@@ -85,7 +85,6 @@ struct dvfs_rail {
 	bool dfll_mode_updating;
 	int thermal_idx;
 	struct tegra_cooling_device *pll_mode_cdev;
-	struct tegra_cooling_device *dfll_mode_cdev;
 	struct rail_stats stats;
 };
 
@@ -220,7 +219,6 @@ int tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
 			 bool before_clk_update, int cpu_event);
 int tegra_dvfs_dfll_mode_set(struct dvfs *d, unsigned long rate);
 int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate);
-struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void);
 struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void);
 int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail);

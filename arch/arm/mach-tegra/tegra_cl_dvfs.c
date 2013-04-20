@@ -1220,7 +1220,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	cld->dfll_clk = dfll_clk;
 	cld->safe_dvfs = safe_dvfs_clk->dvfs;
 #ifdef CONFIG_THERMAL
-	cld->cdev = cld->safe_dvfs->dvfs_rail->dfll_mode_cdev;
+	cld->cdev = cld->safe_dvfs->dvfs_rail->pll_mode_cdev;
 	INIT_WORK(&cld->init_cdev_work, tegra_cl_dvfs_init_cdev);
 #endif
 	/* Initialize cl_dvfs */

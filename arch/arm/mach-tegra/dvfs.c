@@ -65,10 +65,7 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 	mutex_unlock(&dvfs_lock);
 }
 
-/*
- * Make sure that DFLL and PLL mode cooling devices have identical set of
- * trip-points (needed for DFLL/PLL auto-switch) and matching thermal floors.
- */
+/* Make sure there is a matching cooling device for thermal limit profile. */
 static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 {
 	if (!rail->therm_mv_floors != !rail->therm_mv_floors_num) {
@@ -88,14 +85,6 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 
 	if (rail->therm_mv_floors && !rail->pll_mode_cdev)
 		WARN(1, "%s: missing pll mode cooling device\n", rail->reg_id);
-
-	if (rail->dfll_mode_cdev) {
-		if (rail->dfll_mode_cdev != rail->pll_mode_cdev) {
-			rail->dfll_mode_cdev = NULL;
-			WARN(1, "%s: not matching dfll/pll mode trip-points\n",
-			     rail->reg_id);
-		}
-	}
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -875,15 +864,6 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	}
 	mutex_unlock(&dvfs_lock);
 	return ret;
-}
-
-struct tegra_cooling_device *tegra_dvfs_get_cpu_dfll_cdev(void)
-{
-	/* dfll mode need its own trips only if they are different */
-	if (tegra_cpu_rail &&
-	    (tegra_cpu_rail->dfll_mode_cdev != tegra_cpu_rail->pll_mode_cdev))
-		return tegra_cpu_rail->dfll_mode_cdev;
-	return NULL;
 }
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void)

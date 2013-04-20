@@ -446,8 +446,6 @@ static void __init init_rail_thermal_profile(
 	if (rail->pll_mode_cdev) {
 		rail->pll_mode_cdev->trip_temperatures_num = i + 1;
 		rail->pll_mode_cdev->trip_temperatures = therm_trips_table;
-		if (d)
-			rail->dfll_mode_cdev = rail->pll_mode_cdev;
 	}
 }
 
