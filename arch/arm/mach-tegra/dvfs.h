@@ -27,7 +27,7 @@
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
 #define DVFS_RAIL_STATS_TOP_BIN	60
-#define MAX_THERMAL_FLOORS	8
+#define MAX_THERMAL_LIMITS	8
 
 struct clk;
 struct dvfs_rail;
@@ -157,8 +157,8 @@ struct cpu_cvb_dvfs {
 	int speedo_scale;
 	int voltage_scale;
 	struct cpu_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
-	int therm_trips_table[MAX_THERMAL_FLOORS];
-	int therm_floors_table[MAX_THERMAL_FLOORS];
+	int therm_trips_table[MAX_THERMAL_LIMITS];
+	int therm_floors_table[MAX_THERMAL_LIMITS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;

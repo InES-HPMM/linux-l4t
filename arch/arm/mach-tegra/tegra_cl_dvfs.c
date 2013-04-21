@@ -188,7 +188,7 @@ struct tegra_cl_dvfs {
 	u8				tune_high_out_start;
 	u8				tune_high_out_min;
 	u8				minimax_output;
-	u8				thermal_out_floors[MAX_THERMAL_FLOORS];
+	u8				thermal_out_floors[MAX_THERMAL_LIMITS];
 	int				therm_floors_num;
 	unsigned long			dvco_rate_min;
 

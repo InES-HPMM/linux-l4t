@@ -37,8 +37,8 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
 
-static int vdd_core_therm_trips_table[MAX_THERMAL_FLOORS] = { 20, };
-static int vdd_core_therm_floors_table[MAX_THERMAL_FLOORS] = { 950, };
+static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
@@ -421,7 +421,7 @@ static void __init init_rail_vmin_thermal_profile(
 {
 	int i, min_mv;
 
-	for (i = 0; i < MAX_THERMAL_FLOORS - 1; i++) {
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
 		if (!therm_floors_table[i+1])
 			break;
 
