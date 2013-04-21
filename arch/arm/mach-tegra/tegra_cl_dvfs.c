@@ -167,7 +167,7 @@ struct tegra_cl_dvfs {
 	struct tegra_cl_dvfs_platform_data	*p_data;
 
 	struct dvfs			*safe_dvfs;
-	struct tegra_cooling_device	*cdev;
+	struct tegra_cooling_device	*vmin_cdev;
 	struct work_struct		init_cdev_work;
 
 	struct clk			*soc_clk;
@@ -797,8 +797,8 @@ static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
 	    !cld->safe_dvfs->dvfs_rail->therm_mv_floors_num)
 		return;
 
-	if (!cld->cdev)
-		WARN(1, "%s: missing dfll mode cooling device\n",
+	if (!cld->vmin_cdev)
+		WARN(1, "%s: missing dfll floor cooling device\n",
 		     cld->safe_dvfs->dvfs_rail->reg_id);
 	/*
 	 * Convert monotonically decreasing thermal floors at low temperature
@@ -1073,7 +1073,7 @@ static int tegra_cl_dvfs_get_cdev_max_state(struct thermal_cooling_device *cdev,
 					    unsigned long *max_state)
 {
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
-	*max_state = cld->cdev->trip_temperatures_num;
+	*max_state = cld->vmin_cdev->trip_temperatures_num;
 	return 0;
 }
 
@@ -1116,18 +1116,18 @@ static void tegra_cl_dvfs_init_cdev(struct work_struct *work)
 	struct tegra_cl_dvfs *cld = container_of(
 		work, struct tegra_cl_dvfs, init_cdev_work);
 
-	if (!cld->cdev)
+	if (!cld->vmin_cdev)
 		return;
 
 	/* just report error - initialized at WC temperature, anyway */
 	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
-		cld->cdev->cdev_type, (void *)cld,
+		cld->vmin_cdev->cdev_type, (void *)cld,
 		&tegra_cl_dvfs_cooling_ops))) {
 		pr_err("tegra cooling device %s failed to register\n",
-		       cld->cdev->cdev_type);
+		       cld->vmin_cdev->cdev_type);
 		return;
 	}
-	pr_info("%s cooling device is registered\n", cld->cdev->cdev_type);
+	pr_info("%s cooling device is registered\n", cld->vmin_cdev->cdev_type);
 }
 #endif
 
@@ -1220,7 +1220,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	cld->dfll_clk = dfll_clk;
 	cld->safe_dvfs = safe_dvfs_clk->dvfs;
 #ifdef CONFIG_THERMAL
-	cld->cdev = cld->safe_dvfs->dvfs_rail->pll_mode_cdev;
+	cld->vmin_cdev = cld->safe_dvfs->dvfs_rail->vmin_cdev;
 	INIT_WORK(&cld->init_cdev_work, tegra_cl_dvfs_init_cdev);
 #endif
 	/* Initialize cl_dvfs */
@@ -1239,7 +1239,7 @@ static int __init tegra_cl_dvfs_probe(struct platform_device *pdev)
 	 * registration will update the entire thermal zone, and may trigger
 	 * rate change of the target clock
 	 */
-	if (cld->cdev)
+	if (cld->vmin_cdev)
 		schedule_work(&cld->init_cdev_work);
 	return 0;
 }

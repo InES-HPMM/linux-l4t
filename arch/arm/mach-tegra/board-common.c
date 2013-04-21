@@ -166,8 +166,9 @@ static void tegra_add_trip_points(struct thermal_trip_info *trips,
 
 void tegra_add_cdev_trips(struct thermal_trip_info *trips, int *num_trips)
 {
-	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_cpu_pll_cdev());
-	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_core_cdev());
+	tegra_add_trip_points(trips, num_trips, tegra_dvfs_get_cpu_vmin_cdev());
+	tegra_add_trip_points(trips, num_trips,
+			      tegra_dvfs_get_core_vmin_cdev());
 }
 
 void tegra_add_tj_trips(struct thermal_trip_info *trips, int *num_trips)

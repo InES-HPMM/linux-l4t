@@ -74,17 +74,17 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 		WARN(1, "%s: not matching thermal floors/num\n", rail->reg_id);
 	}
 
-	if (rail->pll_mode_cdev) {
-		if (rail->pll_mode_cdev->trip_temperatures_num !=
+	if (rail->vmin_cdev) {
+		if (rail->vmin_cdev->trip_temperatures_num !=
 		    rail->therm_mv_floors_num) {
-			rail->pll_mode_cdev = NULL;
+			rail->vmin_cdev = NULL;
 			WARN(1, "%s: not matching thermal floors/trips\n",
 			     rail->reg_id);
 		}
 	}
 
-	if (rail->therm_mv_floors && !rail->pll_mode_cdev)
-		WARN(1, "%s: missing pll mode cooling device\n", rail->reg_id);
+	if (rail->therm_mv_floors && !rail->vmin_cdev)
+		WARN(1, "%s: missing vmin cooling device\n", rail->reg_id);
 }
 
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
@@ -866,17 +866,17 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	return ret;
 }
 
-struct tegra_cooling_device *tegra_dvfs_get_cpu_pll_cdev(void)
+struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void)
 {
 	if (tegra_cpu_rail)
-		return tegra_cpu_rail->pll_mode_cdev;
+		return tegra_cpu_rail->vmin_cdev;
 	return NULL;
 }
 
-struct tegra_cooling_device *tegra_dvfs_get_core_cdev(void)
+struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 {
 	if (tegra_core_rail)
-		return tegra_core_rail->pll_mode_cdev;
+		return tegra_core_rail->vmin_cdev;
 	return NULL;
 }
 
@@ -886,7 +886,7 @@ static int tegra_dvfs_rail_get_cdev_max_state(
 	struct thermal_cooling_device *cdev, unsigned long *max_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
-	*max_state = rail->pll_mode_cdev->trip_temperatures_num;
+	*max_state = rail->vmin_cdev->trip_temperatures_num;
 	return 0;
 }
 
@@ -918,20 +918,20 @@ static struct thermal_cooling_device_ops tegra_dvfs_rail_cooling_ops = {
 	.set_cur_state = tegra_dvfs_rail_set_cdev_state,
 };
 
-static void tegra_dvfs_rail_register_pll_mode_cdev(struct dvfs_rail *rail)
+static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 {
-	if (!rail->pll_mode_cdev)
+	if (!rail->vmin_cdev)
 		return;
 
 	/* just report error - initialized for cold temperature, anyway */
 	if (IS_ERR_OR_NULL(thermal_cooling_device_register(
-		rail->pll_mode_cdev->cdev_type, (void *)rail,
+		rail->vmin_cdev->cdev_type, (void *)rail,
 		&tegra_dvfs_rail_cooling_ops)))
 		pr_err("tegra cooling device %s failed to register\n",
-		       rail->pll_mode_cdev->cdev_type);
+		       rail->vmin_cdev->cdev_type);
 }
 #else
-#define tegra_dvfs_rail_register_pll_mode_cdev(rail)
+#define tegra_dvfs_rail_register_vmin_cdev(rail)
 #endif
 
 /* Directly set cold temperature limit in dfll mode */
@@ -991,7 +991,7 @@ int __init tegra_dvfs_late_init(void)
 	register_reboot_notifier(&tegra_dvfs_reboot_nb);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node)
-		tegra_dvfs_rail_register_pll_mode_cdev(rail);
+		tegra_dvfs_rail_register_vmin_cdev(rail);
 
 	return 0;
 }
