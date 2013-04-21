@@ -74,15 +74,6 @@ static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 		WARN(1, "%s: not matching thermal floors/num\n", rail->reg_id);
 	}
 
-	if (rail->vmin_cdev) {
-		if (rail->vmin_cdev->trip_temperatures_num !=
-		    rail->therm_mv_floors_num) {
-			rail->vmin_cdev = NULL;
-			WARN(1, "%s: not matching thermal floors/trips\n",
-			     rail->reg_id);
-		}
-	}
-
 	if (rail->therm_mv_floors && !rail->vmin_cdev)
 		WARN(1, "%s: missing vmin cooling device\n", rail->reg_id);
 }
