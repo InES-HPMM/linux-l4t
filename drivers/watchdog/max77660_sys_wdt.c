@@ -32,6 +32,7 @@
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/mfd/max77660/max77660-core.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
 #include <linux/slab.h>
@@ -57,23 +58,34 @@ struct max77660_sys_wdt {
 	bool sw_wdt_reset;
 	bool stop_kthread;
 	int system_watchdog_reset_timeout;
+	bool suspended;
+	struct mutex reset_lock;
 };
 
 static int max77660_twd_sys[] = {16, 32, 64, 128};
 
-static irqreturn_t max77660_sys_wdt_irq(int irq, void *data)
+static int max77660_reset_sys_wdt(struct max77660_sys_wdt *wdt,
+	const char *from)
 {
-	struct max77660_sys_wdt *wdt = data;
 	int ret;
 
-	/* Reset timer before any debug prints */
 	ret = max77660_reg_write(wdt->parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_GLOBAL_CFG4,
 			MAX77660_GLBLCNFG4_WDTC_SYS_CLR);
 	if (ret < 0)
 		dev_err(wdt->dev, "GLOBAL_CFG4 update failed: %d\n", ret);
 
-	dev_info(wdt->dev, "System WDT interrupt occur\n");
+	dev_info(wdt->dev, "Resetting system WDT from %s", from);
+	return ret;
+}
+
+static irqreturn_t max77660_sys_wdt_irq(int irq, void *data)
+{
+	struct max77660_sys_wdt *wdt = data;
+
+	mutex_lock(&wdt->reset_lock);
+	max77660_reset_sys_wdt(wdt, "irq_handler");
+	mutex_unlock(&wdt->reset_lock);
 	return IRQ_HANDLED;
 }
 
@@ -81,23 +93,17 @@ static void max77660_work_thread(struct kthread_work *work)
 {
 	struct max77660_sys_wdt *wdt = container_of(work,
 					struct max77660_sys_wdt, wdt_work);
-	int ret;
-
 	for (;;) {
 		if (wdt->stop_kthread) {
 			dev_info(wdt->dev, "System WDT kthread stopped\n");
 			return;
 		}
 
-		/* Reset timer before any debug prints */
-		ret = max77660_reg_write(wdt->parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG4,
-			MAX77660_GLBLCNFG4_WDTC_SYS_CLR);
-		if (ret < 0)
-			dev_err(wdt->dev,
-				"GLOBAL_CFG4 update failed: %d\n", ret);
+		mutex_lock(&wdt->reset_lock);
+		if (!wdt->suspended)
+			max77660_reset_sys_wdt(wdt, "thread");
+		mutex_unlock(&wdt->reset_lock);
 
-		dev_info(wdt->dev, "System WDT reset from thread\n");
 		msleep(wdt->system_watchdog_reset_timeout * 1000);
 	}
 }
@@ -191,6 +197,8 @@ static int __devinit max77660_sys_wdt_probe(struct platform_device *pdev)
 	wdt->irq = platform_get_irq(pdev, 0);
 	wdt->parent = pdev->dev.parent;
 	wdt_dev = &wdt->wdt_dev;
+	wdt->suspended = false;
+	mutex_init(&wdt->reset_lock);
 
 	wdt_dev->info = &max77660_sys_wdt_info;
 	wdt_dev->ops = &max77660_sys_wdt_ops;
@@ -297,6 +305,13 @@ static int max77660_sys_wdt_suspend(struct device *dev)
 	struct max77660_sys_wdt *wdt = dev_get_drvdata(dev);
 	int ret;
 
+	if (wdt->timeout > 0) {
+		mutex_lock(&wdt->reset_lock);
+		wdt->suspended = true;
+		max77660_reset_sys_wdt(wdt, "suspend");
+		mutex_unlock(&wdt->reset_lock);
+	}
+
 	if (device_may_wakeup(dev)) {
 		enable_irq_wake(wdt->irq);
 	} else if (wdt->timeout > 0) {
@@ -318,6 +333,12 @@ static int max77660_sys_wdt_resume(struct device *dev)
 		ret = max77660_sys_wdt_start(&wdt->wdt_dev);
 		if (ret < 0)
 			dev_err(wdt->dev, "wdt start failed: %d\n", ret);
+	}
+	if (wdt->timeout > 0) {
+		mutex_lock(&wdt->reset_lock);
+		wdt->suspended = false;
+		max77660_reset_sys_wdt(wdt, "resume");
+		mutex_unlock(&wdt->reset_lock);
 	}
 	return 0;
 }
