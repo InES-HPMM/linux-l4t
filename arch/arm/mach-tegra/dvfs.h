@@ -83,7 +83,7 @@ struct dvfs_rail {
 	bool suspended;
 	bool dfll_mode;
 	bool dfll_mode_updating;
-	int thermal_idx;
+	int therm_floor_idx;
 	struct tegra_cooling_device *vmin_cdev;
 	struct rail_stats stats;
 };
@@ -298,8 +298,8 @@ static inline int tegra_dvfs_rail_get_nominal_millivolts(struct dvfs_rail *rail)
 static inline int tegra_dvfs_rail_get_thermal_floor(struct dvfs_rail *rail)
 {
 	if (rail && rail->therm_mv_floors &&
-	    (rail->thermal_idx < rail->therm_mv_floors_num))
-		return rail->therm_mv_floors[rail->thermal_idx];
+	    (rail->therm_floor_idx < rail->therm_mv_floors_num))
+		return rail->therm_mv_floors[rail->therm_floor_idx];
 	return 0;
 }
 

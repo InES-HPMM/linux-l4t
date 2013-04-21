@@ -194,7 +194,7 @@ struct tegra_cl_dvfs {
 
 	u8				lut_min;
 	u8				lut_max;
-	int				thermal_idx;
+	int				therm_floor_idx;
 	struct dfll_rate_req		last_req;
 	enum tegra_cl_dvfs_tune_state	tune_state;
 	enum tegra_cl_dvfs_ctrl_mode	mode;
@@ -364,8 +364,8 @@ static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
 	tune_min = cld->tune_state == TEGRA_CL_DVFS_TUNE_LOW ?
 		0 : cld->tune_high_out_min;
 	thermal_min = 0;
-	if (cld->thermal_idx < cld->therm_floors_num)
-		thermal_min = cld->thermal_out_floors[cld->thermal_idx];
+	if (cld->therm_floor_idx < cld->therm_floors_num)
+		thermal_min = cld->thermal_out_floors[cld->therm_floor_idx];
 
 	return max(tune_min, thermal_min);
 }
@@ -689,9 +689,9 @@ static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
 static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 {
 	unsigned long rate = cld->safe_dvfs->dfll_data.out_rate_min;
-	if (cld->thermal_idx < cld->therm_floors_num)
+	if (cld->therm_floor_idx < cld->therm_floors_num)
 		rate = find_dvco_rate_min(
-				cld, cld->thermal_out_floors[cld->thermal_idx]);
+			cld, cld->thermal_out_floors[cld->therm_floor_idx]);
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
 	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
@@ -876,7 +876,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	 * disable and clear limit interrupts.
 	 */
 	cld->tune_state = TEGRA_CL_DVFS_TUNE_LOW;
-	cld->thermal_idx = 0;
+	cld->therm_floor_idx = 0;
 	cl_dvfs_set_dvco_rate_min(cld);
 #if CL_DVFS_DYNAMIC_OUTPUT_CFG
 	val = get_output_min(cld);
@@ -1081,7 +1081,7 @@ static int tegra_cl_dvfs_get_cdev_cur_state(struct thermal_cooling_device *cdev,
 					    unsigned long *cur_state)
 {
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
-	*cur_state = cld->thermal_idx;
+	*cur_state = cld->therm_floor_idx;
 	return 0;
 }
 
@@ -1093,8 +1093,8 @@ static int tegra_cl_dvfs_set_cdev_state(struct thermal_cooling_device *cdev,
 
 	clk_lock_save(cld->dfll_clk, &flags);
 
-	if (cld->thermal_idx != cur_state) {
-		cld->thermal_idx = cur_state;
+	if (cld->therm_floor_idx != cur_state) {
+		cld->therm_floor_idx = cur_state;
 		cl_dvfs_set_dvco_rate_min(cld);
 		if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 			tegra_cl_dvfs_request_rate(cld,
@@ -1146,7 +1146,7 @@ static int tegra_cl_dvfs_suspend_cl(struct device *dev)
 	struct tegra_cl_dvfs *cld = dev_get_drvdata(dev);
 
 	clk_lock_save(cld->dfll_clk, &flags);
-	cld->thermal_idx = 0;
+	cld->therm_floor_idx = 0;
 	cl_dvfs_set_dvco_rate_min(cld);
 	if (cld->mode == TEGRA_CL_DVFS_CLOSED_LOOP) {
 		set_cl_config(cld, &cld->last_req);

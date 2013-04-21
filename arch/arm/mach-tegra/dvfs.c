@@ -308,7 +308,7 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 	int min_mv = rail->min_millivolts;
 
 	if (rail->therm_mv_floors) {
-		int i = rail->thermal_idx;
+		int i = rail->therm_floor_idx;
 		if (i < rail->therm_mv_floors_num)
 			min_mv = rail->therm_mv_floors[i];
 	}
@@ -894,7 +894,7 @@ static int tegra_dvfs_rail_get_cdev_cur_state(
 	struct thermal_cooling_device *cdev, unsigned long *cur_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
-	*cur_state = rail->thermal_idx;
+	*cur_state = rail->therm_floor_idx;
 	return 0;
 }
 
@@ -904,8 +904,8 @@ static int tegra_dvfs_rail_set_cdev_state(
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
 
 	mutex_lock(&dvfs_lock);
-	if (rail->thermal_idx != cur_state) {
-		rail->thermal_idx = cur_state;
+	if (rail->therm_floor_idx != cur_state) {
+		rail->therm_floor_idx = cur_state;
 		dvfs_rail_update(rail);
 	}
 	mutex_unlock(&dvfs_lock);
@@ -950,8 +950,8 @@ int tegra_dvfs_rail_dfll_mode_set_cold(struct dvfs_rail *rail)
 	 */
 	mutex_lock(&dvfs_lock);
 	if (rail->dfll_mode &&
-	    (rail->thermal_idx < rail->therm_mv_floors_num)) {
-			int mv = rail->therm_mv_floors[rail->thermal_idx];
+	    (rail->therm_floor_idx < rail->therm_mv_floors_num)) {
+			int mv = rail->therm_mv_floors[rail->therm_floor_idx];
 			ret = dvfs_rail_set_voltage_reg(rail, mv);
 	}
 	mutex_unlock(&dvfs_lock);
@@ -1079,7 +1079,7 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 		seq_printf(s, "   offset     %-7d mV\n", rail->offs_millivolts);
 
 		if (rail->therm_mv_floors) {
-			int i = rail->thermal_idx;
+			int i = rail->therm_floor_idx;
 			if (i < rail->therm_mv_floors_num)
 				thermal_mv_floor = rail->therm_mv_floors[i];
 		}
