@@ -656,7 +656,7 @@ static int tegra_pcie_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 	return INT_PCIE_INTR;
 }
 
-static struct pci_bus *__ref tegra_pcie_scan_bus(int nr,
+static struct pci_bus *__init tegra_pcie_scan_bus(int nr,
 						  struct pci_sys_data *sys)
 {
 	struct tegra_pcie_port *pp;
@@ -671,7 +671,7 @@ static struct pci_bus *__ref tegra_pcie_scan_bus(int nr,
 				 &sys->resources);
 }
 
-static struct hw_pci tegra_pcie_hw = {
+static struct hw_pci __initdata tegra_pcie_hw = {
 	.nr_controllers	= MAX_PCIE_SUPPORTED_PORTS,
 	.preinit	= tegra_pcie_preinit,
 	.setup		= tegra_pcie_setup,
@@ -683,9 +683,10 @@ static struct hw_pci tegra_pcie_hw = {
 static int tegra_pcie_suspend(struct device *dev);
 static int tegra_pcie_resume(struct device *dev);
 
+#ifdef HOTPLUG_ON_SYSTEM_BOOT
 /* It enumerates the devices when dock is connected after system boot */
 /* this is similar to pcibios_init_hw in bios32.c */
-static void tegra_pcie_hotplug_init(void)
+static void __init tegra_pcie_hotplug_init(void)
 {
 	struct pci_sys_data *sys = NULL;
 	int ret, nr;
@@ -721,7 +722,7 @@ static void tegra_pcie_hotplug_init(void)
 	is_dock_conn_at_boot = true;
 }
 #endif
-
+#endif
 static void tegra_pcie_attach(void)
 {
 #ifdef CONFIG_PM
@@ -736,7 +737,7 @@ static void tegra_pcie_detach(void)
 #endif
 }
 
-static void work_hotplug_handler(struct work_struct *work)
+static void __init work_hotplug_handler(struct work_struct *work)
 {
 	struct tegra_pcie_info *pcie_driver =
 		container_of(work, struct tegra_pcie_info, hotplug_detect);
@@ -1335,7 +1336,7 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
-static int __ref tegra_pcie_init(void)
+static int __init tegra_pcie_init(void)
 {
 	int err = 0;
 	int port;
@@ -1421,7 +1422,7 @@ err_irq:
 	return err;
 }
 
-static int tegra_pcie_probe(struct platform_device *pdev)
+static int __init tegra_pcie_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -1458,25 +1459,7 @@ static int tegra_pcie_suspend(struct device *dev)
 	return tegra_pcie_power_off();
 }
 
-static void tegra_pcie_set_irq(struct pci_bus *bus)
-{
-	struct pci_bus *b;
-	struct pci_dev *pdev;
-
-	list_for_each_entry(pdev, &bus->devices, bus_list) {
-		b = pdev->subordinate;
-		if (!b) {
-			pdev->irq = tegra_pcie_map_irq(pdev,0,0);
-			pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
-			continue;
-		}
-		tegra_pcie_set_irq(b);
-		pdev->irq = tegra_pcie_map_irq(pdev,0,0);
-		pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
-	}
-}
-
-static int __ref tegra_pcie_resume(struct device *dev)
+static int tegra_pcie_resume(struct device *dev)
 {
 	int ret = 0;
 	struct pci_bus *bus = NULL;
@@ -1509,24 +1492,9 @@ static int __ref tegra_pcie_resume(struct device *dev)
 	}
 	msi_enable = false;
 
-	tegra_pcie_hotplug_init();
-	while ((bus = pci_find_next_bus(bus)) != NULL) {
-		struct pci_dev *dev;
+	while ((bus = pci_find_next_bus(bus)) != NULL)
+		pci_rescan_bus(bus);
 
-		pci_scan_child_bus(bus);
-
-		list_for_each_entry(dev, &bus->devices, bus_list)
-		if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
-			dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
-			if (dev->subordinate)
-				pci_bus_size_bridges(dev->subordinate);
-
-		/* set irq for all devices */
-		tegra_pcie_set_irq(bus);
-		pci_bus_assign_resources(bus);
-		pci_enable_bridges(bus);
-		pci_bus_add_devices(bus);
-	}
 exit:
 	return 0;
 }
@@ -1551,7 +1519,7 @@ static const struct dev_pm_ops tegra_pcie_pm_ops = {
 	};
 #endif
 
-static struct platform_driver tegra_pcie_driver = {
+static struct platform_driver __initdata tegra_pcie_driver = {
 	.probe   = tegra_pcie_probe,
 	.remove  = tegra_pcie_remove,
 	.driver  = {
@@ -1568,7 +1536,7 @@ static int __init tegra_pcie_init_driver(void)
 	return platform_driver_register(&tegra_pcie_driver);
 }
 
-static void __exit tegra_pcie_exit_driver(void)
+static void __exit_refok tegra_pcie_exit_driver(void)
 {
 	platform_driver_unregister(&tegra_pcie_driver);
 }
