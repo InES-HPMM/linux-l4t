@@ -39,7 +39,7 @@
 #include "tegra14_emc.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
-static bool emc_enable;
+static bool emc_enable = true;
 #else
 static bool emc_enable;
 #endif
