@@ -31,6 +31,8 @@
 #include <linux/mfd/palmas.h>
 #include <linux/completion.h>
 #include <linux/iio/iio.h>
+#include <linux/iio/machine.h>
+#include <linux/iio/driver.h>
 
 #define MOD_NAME "palmas-gpadc"
 #define ADC_CONVERTION_TIMEOUT	(msecs_to_jiffies(5000))
@@ -46,6 +48,10 @@ struct palmas_gpadc_info {
 	int offset;
 	bool is_correct_code;
 };
+
+
+#define PALMAS_DATASHEET_NAME(_name)	"PALMAS_GPADC_"#_name
+
 
 #define PALMAS_ADC_INFO(_chan, _x1, _x2, _t1, _t2, _is_correct_code)	\
 [PALMAS_ADC_CH_##_chan] = {						\
@@ -268,7 +274,8 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 		mutex_lock(&indio_dev->mlock);
 		ret = palmas_gpadc_start_convertion(adc, adc_chan);
 		if (ret < 0) {
-			dev_err(adc->dev, "ADC start coversion failed\n");
+			dev_err(adc->dev,
+			"ADC start coversion failed\n");
 			mutex_unlock(&indio_dev->mlock);
 			return ret;
 		}
@@ -294,16 +301,18 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info palmas_gpadc_iio_info = {
-	.read_raw = &palmas_gpadc_read_raw,
+	.read_raw = palmas_gpadc_read_raw,
 	.driver_module = THIS_MODULE,
 };
 
-#define PALMAS_ADC_CHAN_IIO(chan)				\
-{								\
-	.type = IIO_VOLTAGE,					\
-	.info_mask = 0 | IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,	\
-	.indexed = 1,						\
-	.channel = PALMAS_ADC_CH_##chan,			\
+
+#define PALMAS_ADC_CHAN_IIO(chan)					\
+{									\
+	.datasheet_name = PALMAS_DATASHEET_NAME(chan),			\
+	.type = IIO_VOLTAGE, 						\
+	.info_mask = 0 | IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,		\
+	.indexed = 1,							\
+	.channel = PALMAS_ADC_CH_##chan,				\
 }
 
 static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
@@ -323,6 +332,19 @@ static const struct iio_chan_spec palmas_gpadc_iio_channel[] = {
 	PALMAS_ADC_CHAN_IIO(IN13),
 	PALMAS_ADC_CHAN_IIO(IN14),
 	PALMAS_ADC_CHAN_IIO(IN15),
+};
+
+#define PALMAS_GPADC_IIO_MAP(chan, _consumer, _comsumer_channel_name)	\
+{									\
+	.adc_channel_label = PALMAS_DATASHEET_NAME(chan),		\
+	.consumer_dev_name = _consumer,					\
+	.consumer_channel = _comsumer_channel_name,			\
+}									\
+
+
+static struct iio_map palmas_iio_map[] = {
+	PALMAS_GPADC_IIO_MAP(IN1, "palmas-battery", "temp_channel"),
+	PALMAS_GPADC_IIO_MAP(IN6, "palmas-battery", "vbat_channel"),
 };
 
 static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
@@ -395,6 +417,12 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 		goto out_irq_free;
 	}
 
+	ret = iio_map_array_register(iodev, palmas_iio_map);
+	if (ret < 0) {
+		dev_err(adc->dev, "iio_map_array_register() failed: %d\n", ret);
+		goto out_irq_free;
+		}
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	for (i = 0; i < PALMAS_ADC_CH_MAX; i++) {
 		if (!(adc->adc_info[i].is_correct_code))
@@ -458,7 +486,17 @@ static struct platform_driver palmas_gpadc_driver = {
 	},
 };
 
-module_platform_driver(palmas_gpadc_driver);
+static int __init palmas_gpadc_init(void)
+{
+	return platform_driver_register(&palmas_gpadc_driver);
+}
+subsys_initcall(palmas_gpadc_init);
+
+static void __exit palmas_gpadc_exit(void)
+{
+	platform_driver_unregister(&palmas_gpadc_driver);
+}
+module_exit(palmas_gpadc_exit);
 
 MODULE_DESCRIPTION("palmas GPADC driver");
 MODULE_AUTHOR("Pradeep Goudagunta<pgoudagunta@nvidia.com>");
