@@ -397,7 +397,8 @@ static int max77660_init_irqs(struct max77660_chip *chip,
 
 	ret = regmap_add_irq_chip(chip->rmap[MAX77660_PWR_SLAVE],
 		pdata->irq_base + MAX77660_IRQ_TOPSYSINT,
-		IRQF_ONESHOT, pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
+		IRQF_ONESHOT | IRQF_EARLY_RESUME,
+		pdata->irq_base + MAX77660_IRQ_GLBL_BASE,
 		&max77660_global_irq_chip, &chip->global_irq_data);
 	if (ret < 0) {
 		dev_err(chip->dev, "Failed to add global irq_chip %d\n", ret);
