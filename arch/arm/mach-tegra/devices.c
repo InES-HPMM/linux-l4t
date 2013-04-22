@@ -1871,6 +1871,12 @@ struct swgid_fixup {
 	u64 swgids;
 };
 
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+#define DUMMY_DEV_NAME "dummy_dev"
+#define DUMMY_DEV_MAX_NAME_SIZE 100
+static char dummy_name[DUMMY_DEV_MAX_NAME_SIZE] = DUMMY_DEV_NAME;
+#endif
+
 /*
  * FIXME: They should have a DT entry with swgroup IDs.
  */
@@ -1923,6 +1929,9 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tsec",	.swgids = SWGID(TSEC), },
 	{ .name = "vi",	.swgids = SWGID(VI), },
 	{ .name = "therm_est",	.swgids = SWGID(PPCS), },
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
+#endif
 	{},
 };
 
@@ -1971,6 +1980,33 @@ static void tegra_smmu_map_init(struct platform_device *pdev)
 		smmu_default_map[i] = map;
 	}
 }
+
+void tegra_smmu_map_misc_device(struct device *dev)
+{
+	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED];
+	if (!strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name))) {
+		strncpy(dummy_name, dev_name(dev),
+			DUMMY_DEV_MAX_NAME_SIZE);
+		arm_iommu_attach_device(dev, map);
+		dev_info(dev, "Mapped the misc device\n");
+		return;
+	}
+	dev_err(dev, "Can't Map device\n");
+}
+EXPORT_SYMBOL(tegra_smmu_map_misc_device);
+
+void tegra_smmu_unmap_misc_device(struct device *dev)
+{
+	if (!strncmp(dummy_name, dev_name(dev), strlen(dummy_name))) {
+		arm_iommu_detach_device(dev);
+		strncpy(dummy_name, DUMMY_DEV_NAME,
+			DUMMY_DEV_MAX_NAME_SIZE);
+		dev_info(dev, "Un-mapped the misc device\n");
+		return;
+	}
+	dev_err(dev, "Can't Unmap device\n");
+}
+EXPORT_SYMBOL(tegra_smmu_unmap_misc_device);
 
 struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 {
