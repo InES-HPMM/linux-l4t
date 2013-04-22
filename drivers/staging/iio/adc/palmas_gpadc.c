@@ -42,10 +42,13 @@ struct palmas_gpadc_info {
 /* calibration codes and regs */
 	int x1;
 	int x2;
+	int v1;
+	int v2;
 	u8 trim1_reg;
 	u8 trim2_reg;
 	int gain;
 	int offset;
+	int gain_error;
 	bool is_correct_code;
 };
 
@@ -53,34 +56,37 @@ struct palmas_gpadc_info {
 #define PALMAS_DATASHEET_NAME(_name)	"PALMAS_GPADC_"#_name
 
 
-#define PALMAS_ADC_INFO(_chan, _x1, _x2, _t1, _t2, _is_correct_code)	\
+#define PALMAS_ADC_INFO(_chan, _x1, _x2, _v1, _v2, _t1, _t2, _is_correct_code)\
 [PALMAS_ADC_CH_##_chan] = {						\
 		.x1 = _x1,						\
 		.x2 = _x2,						\
+		.v1 = _v1,						\
+		.v2 = _v2,						\
 		.gain = TO_BE_CALCULATED,				\
 		.offset = TO_BE_CALCULATED,				\
+		.gain_error = TO_BE_CALCULATED,				\
 		.trim1_reg = PALMAS_GPADC_TRIM##_t1,			\
 		.trim2_reg = PALMAS_GPADC_TRIM##_t2,			\
 		.is_correct_code = _is_correct_code			\
 	}
 
 static struct palmas_gpadc_info palmas_gpadc_info[] = {
-	PALMAS_ADC_INFO(IN0, 2064, 3112, 1, 2, false),
-	PALMAS_ADC_INFO(IN1, 2064, 3112, 1, 2, false),
-	PALMAS_ADC_INFO(IN2, 2064, 3112, 3, 4, false),
-	PALMAS_ADC_INFO(IN3, 2064, 3112, 1, 2, false),
-	PALMAS_ADC_INFO(IN4, 2064, 3112, 1, 2, false),
-	PALMAS_ADC_INFO(IN5, 2064, 3112, 1, 2, false),
-	PALMAS_ADC_INFO(IN6, 2064, 3112, 5, 6, false),
-	PALMAS_ADC_INFO(IN7, 2064, 3112, 7, 8, false),
-	PALMAS_ADC_INFO(IN8, 2064, 3112, 9, 10, false),
-	PALMAS_ADC_INFO(IN9, 2064, 3112, 11, 12, false),
-	PALMAS_ADC_INFO(IN10, 2064, 3112, 13, 14, false),
-	PALMAS_ADC_INFO(IN11, 0, 0, INVALID, INVALID, true),
-	PALMAS_ADC_INFO(IN12, 0, 0, INVALID, INVALID, true),
-	PALMAS_ADC_INFO(IN13, 0, 0, INVALID, INVALID, true),
-	PALMAS_ADC_INFO(IN14, 2064, 3112, 15, 16, false),
-	PALMAS_ADC_INFO(IN15, 0, 0, INVALID, INVALID, true),
+	PALMAS_ADC_INFO(IN0, 2064, 3112, 630, 950, 1, 2, false),
+	PALMAS_ADC_INFO(IN1, 2064, 3112, 630, 950, 1, 2, false),
+	PALMAS_ADC_INFO(IN2, 2064, 3112, 1260, 1900, 3, 4, false),
+	PALMAS_ADC_INFO(IN3, 2064, 3112, 630, 950, 1, 2, false),
+	PALMAS_ADC_INFO(IN4, 2064, 3112, 630, 950, 1, 2, false),
+	PALMAS_ADC_INFO(IN5, 2064, 3112, 630, 950, 1, 2, false),
+	PALMAS_ADC_INFO(IN6, 2064, 3112, 2520, 3800, 5, 6, false),
+	PALMAS_ADC_INFO(IN7, 2064, 3112, 2520, 3800, 7, 8, false),
+	PALMAS_ADC_INFO(IN8, 2064, 3112, 3150, 4750, 9, 10, false),
+	PALMAS_ADC_INFO(IN9, 2064, 3112, 5670, 8550, 11, 12, false),
+	PALMAS_ADC_INFO(IN10, 2064, 3112, 3465, 5225, 13, 14, false),
+	PALMAS_ADC_INFO(IN11, 0, 0, 0, 0, INVALID, INVALID, true),
+	PALMAS_ADC_INFO(IN12, 0, 0, 0, 0, INVALID, INVALID, true),
+	PALMAS_ADC_INFO(IN13, 0, 0, 0, 0, INVALID, INVALID, true),
+	PALMAS_ADC_INFO(IN14, 2064, 3112, 3645, 5225, 15, 16, false),
+	PALMAS_ADC_INFO(IN15, 0, 0, 0, 0, INVALID, INVALID, true),
 };
 
 struct palmas_gpadc {
@@ -126,8 +132,11 @@ static int palmas_gpadc_calibrate(struct palmas_gpadc *adc, int adc_chan)
 	int d1;
 	int d2;
 	int ret;
+	int gain;
 	int x1 =  adc->adc_info[adc_chan].x1;
 	int x2 =  adc->adc_info[adc_chan].x2;
+	int v1 = adc->adc_info[adc_chan].v1;
+	int v2 = adc->adc_info[adc_chan].v2;
 
 	ret = palmas_read(adc->palmas, PALMAS_TRIM_GPADC_BASE,
 				adc->adc_info[adc_chan].trim1_reg, &d1);
@@ -143,9 +152,14 @@ static int palmas_gpadc_calibrate(struct palmas_gpadc *adc, int adc_chan)
 		goto scrub;
 	}
 
-	/*Gain Calculation*/
+	/*Gain error Calculation*/
 	k = (1000 + (1000 * (d2 - d1)) / (x2 - x1));
-	adc->adc_info[adc_chan].gain = k;
+
+	/*Gain Calculation*/
+	gain = ((v2 - v1) * 1000) / (x2 - x1);
+
+	adc->adc_info[adc_chan].gain_error = k;
+	adc->adc_info[adc_chan].gain = gain;
 	/*offset Calculation*/
 	adc->adc_info[adc_chan].offset = (d1 * 1000) - ((k - 1000) * x1);
 
@@ -252,9 +266,13 @@ static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
 		return 0;
 	}
 
+
 	if (!(adc->adc_info[adc_chan].is_correct_code))
 		ret  = ((ret*1000) - adc->adc_info[adc_chan].offset) /
-						adc->adc_info[adc_chan].gain;
+					adc->adc_info[adc_chan].gain_error;
+	ret = ret * adc->adc_info[adc_chan].gain;
+
+	ret = ret/1000;
 
 	return ret;
 }
