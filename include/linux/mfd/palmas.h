@@ -22,7 +22,183 @@
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
 
-#define PALMAS_NUM_CLIENTS		4
+#define PALMAS_NUM_CLIENTS	4
+
+/* Fuel Gauge Constatnts */
+#define MAX_CAPACITY	0x7fff
+#define MAX_SOC		100
+#define MAX_PERCENTAGE	100
+
+/* Num, cycles with no Learning, after this many cycles, the gauge
+   start adjusting FCC, based on Estimated Cell Degradation */
+#define NO_LEARNING_CYCLES	25
+
+/* Size of the OCV Lookup table */
+#define OCV_TABLE_SIZE	21
+
+/* OCV Configuration */
+struct ocv_config {
+	unsigned char voltage_diff;
+	unsigned char current_diff;
+
+	unsigned short sleep_enter_current;
+	unsigned char sleep_enter_samples;
+
+	unsigned short sleep_exit_current;
+	unsigned char sleep_exit_samples;
+
+	unsigned short long_sleep_current;
+
+	unsigned int ocv_period;
+	unsigned int relax_period;
+
+	unsigned char flat_zone_low;
+	unsigned char flat_zone_high;
+
+	unsigned short max_ocv_discharge;
+
+	unsigned short table[OCV_TABLE_SIZE];
+};
+
+/* EDV Point */
+struct edv_point {
+	short voltage;
+	unsigned char percent;
+};
+
+/* EDV Point tracking data */
+struct edv_state {
+	short voltage;
+	unsigned char percent;
+	short min_capacity;
+	unsigned char edv_cmp;
+};
+
+/* EDV Configuration */
+struct edv_config {
+	bool averaging;
+
+	unsigned char seq_edv;
+
+	unsigned char filter_light;
+	unsigned char filter_heavy;
+	short overload_current;
+
+	struct edv_point edv[3];
+};
+
+/* General Battery Cell Configuration */
+struct cell_config {
+	bool cc_polarity;
+	bool cc_out;
+	bool ocv_below_edv1;
+
+	short cc_voltage;
+	short cc_current;
+	unsigned char cc_capacity;
+	unsigned char seq_cc;
+
+	unsigned short design_capacity;
+	short design_qmax;
+
+	unsigned char r_sense;
+
+	unsigned char qmax_adjust;
+	unsigned char fcc_adjust;
+
+	unsigned short max_overcharge;
+	unsigned short electronics_load; /* *10uAh */
+
+	short max_increment;
+	short max_decrement;
+	unsigned char low_temp;
+	unsigned short deep_dsg_voltage;
+	unsigned short max_dsg_estimate;
+	unsigned char light_load;
+	unsigned short near_full;
+	unsigned short cycle_threshold;
+	unsigned short recharge;
+
+	unsigned char mode_switch_capacity;
+
+	unsigned char call_period;
+
+	struct ocv_config *ocv;
+	struct edv_config *edv;
+};
+
+/* Cell State */
+struct cell_state {
+	short soc;
+
+	short nac;
+
+	short fcc;
+	short qmax;
+
+	short voltage;
+	short av_voltage;
+	short cur;
+	short av_current;
+
+	short temperature;
+	short cycle_count;
+
+	bool sleep;
+	bool relax;
+
+	bool chg;
+	bool dsg;
+
+	bool edv0;
+	bool edv1;
+	bool edv2;
+	bool ocv;
+	bool cc;
+	bool full;
+
+	bool vcq;
+	bool vdq;
+	bool init;
+
+	struct timeval last_correction;
+	struct timeval last_ocv;
+	struct timeval sleep_timer;
+	struct timeval el_timer;
+	unsigned int cumulative_sleep;
+
+	short prev_soc;
+	short learn_q;
+	unsigned short dod_eoc;
+	short learn_offset;
+	unsigned short learned_cycle;
+	short new_fcc;
+	short ocv_total_q;
+	short ocv_enter_q;
+	short negative_q;
+	short overcharge_q;
+	short charge_cycle_q;
+	short discharge_cycle_q;
+	short cycle_q;
+	short top_off_q;
+	unsigned char seq_cc_voltage;
+	unsigned char seq_cc_current;
+	unsigned char sleep_samples;
+	unsigned char seq_edvs;
+
+	unsigned int electronics_load;
+	unsigned short cycle_dsg_estimate;
+
+	struct edv_state edv;
+
+	bool updated;
+	bool calibrate;
+
+	struct cell_config *config;
+	struct device *dev;
+
+	int *charge_status;
+};
 
 /* The ID_REVISION NUMBERS */
 #define PALMAS_CHIP_OLD_ID		0x0000
@@ -38,6 +214,7 @@ struct palmas_gpadc;
 struct palmas_resource;
 struct palmas_usb;
 struct palmas_rtc;
+struct palmas_battery_info;
 
 #define palmas_rails(_name) "palmas_"#_name
 
@@ -61,6 +238,7 @@ struct palmas {
 	struct palmas_resource *resource;
 	struct palmas_usb *usb;
 	struct palmas_rtc *rtc;
+	struct palmas_battery_info *battery;
 
 	/* GPIO MUXing */
 	u8 ngpio;
@@ -307,6 +485,20 @@ struct palmas_extcon_platform_data {
 	bool enable_id_pin_detection;
 };
 
+struct palmas_battery_platform_data {
+	/* Battery Values */
+	int battery_soldered; /* if battery detection should not be used */
+	int battery_status_interval; /* time in ms for charge status polling */
+	int *battery_temperature_chart;
+	int battery_temperature_chart_size;
+	int gpadc_retry_count;
+
+
+	/* Fuelgauge Config */
+	int current_avg_interval;
+	struct cell_config *cell_cfg;
+};
+
 struct palmas_platform_data {
 	int irq_flags;
 	int gpio_base;
@@ -321,6 +513,7 @@ struct palmas_platform_data {
 	struct palmas_resource_platform_data *resource_pdata;
 	struct palmas_clk_platform_data *clk_pdata;
 	struct palmas_rtc_platform_data *rtc_pdata;
+	struct palmas_battery_platform_data *battery_pdata;
 
 	struct palmas_clk32k_init_data  *clk32k_init_data;
 	int clk32k_init_data_size;
@@ -2282,6 +2475,16 @@ enum usb_irq_events {
 #define PALMAS_INT5_EDGE_DETECT1				0x18
 #define PALMAS_INT5_EDGE_DETECT2				0x19
 #define PALMAS_INT_CTRL						0x14
+#define PALMAS_INT5_STATUS                                      0x15
+#define PALMAS_INT5_MASK                                        0x16
+#define PALMAS_INT5_LINE_STATE                                  0x17
+#define PALMAS_INT5_EDGE_DETECT1                                0x18
+#define PALMAS_INT5_EDGE_DETECT2                                0x19
+#define PALMAS_INT6_STATUS                                      0x1A
+#define PALMAS_INT6_MASK                                        0x1B
+#define PALMAS_INT6_LINE_STATE                                  0x1C
+#define PALMAS_INT6_EDGE_DETECT1_RESERVED                       0x1D
+#define PALMAS_INT6_EDGE_DETECT2_RESERVED                       0x1E
 
 /* Bit definitions for INT1_STATUS */
 #define PALMAS_INT1_STATUS_VBAT_MON				0x80
@@ -2630,6 +2833,60 @@ enum usb_irq_events {
 #define PALMAS_INT_CTRL_INT_PENDING_SHIFT			2
 #define PALMAS_INT_CTRL_INT_CLEAR				0x01
 #define PALMAS_INT_CTRL_INT_CLEAR_SHIFT				0
+
+/* Bit definitions for INT6_STATUS */
+#define PALMAS_INT6_STATUS_SIM2                                 0x80
+#define PALMAS_INT6_STATUS_SIM2_SHIFT                           7
+#define PALMAS_INT6_STATUS_SIM1                                 0x40
+#define PALMAS_INT6_STATUS_SIM1_SHIFT                           6
+#define PALMAS_INT6_STATUS_CHARGER                              0x20
+#define PALMAS_INT6_STATUS_CHARGER_SHIFT                        5
+#define PALMAS_INT6_STATUS_CC_AUTOCAL                           0x10
+#define PALMAS_INT6_STATUS_CC_AUTOCAL_SHIFT                     4
+#define PALMAS_INT6_STATUS_CC_BAT_STABLE                        0x08
+#define PALMAS_INT6_STATUS_CC_BAT_STABLE_SHIFT                  3
+#define PALMAS_INT6_STATUS_CC_OVC_LIMIT                         0x04
+#define PALMAS_INT6_STATUS_CC_OVC_LIMIT_SHIFT                   2
+#define PALMAS_INT6_STATUS_CC_SYNC_EOC                          0x02
+#define PALMAS_INT6_STATUS_CC_SYNC_EOC_SHIFT                    1
+#define PALMAS_INT6_STATUS_CC_EOC                               0x01
+#define PALMAS_INT6_STATUS_CC_EOC_SHIFT                         0
+
+/* Bit definitions for INT6_MASK */
+#define PALMAS_INT6_MASK_SIM2                                   0x80
+#define PALMAS_INT6_MASK_SIM2_SHIFT                             7
+#define PALMAS_INT6_MASK_SIM1                                   0x40
+#define PALMAS_INT6_MASK_SIM1_SHIFT                             6
+#define PALMAS_INT6_MASK_CHARGER                                0x20
+#define PALMAS_INT6_MASK_CHARGER_SHIFT                          5
+#define PALMAS_INT6_MASK_CC_AUTOCAL                             0x10
+#define PALMAS_INT6_MASK_CC_AUTOCAL_SHIFT                       4
+#define PALMAS_INT6_MASK_CC_BAT_STABLE                          0x08
+#define PALMAS_INT6_MASK_CC_BAT_STABLE_SHIFT                    3
+#define PALMAS_INT6_MASK_CC_OVC_LIMIT                           0x04
+#define PALMAS_INT6_MASK_CC_OVC_LIMIT_SHIFT                     2
+#define PALMAS_INT6_MASK_CC_SYNC_EOC                            0x02
+#define PALMAS_INT6_MASK_CC_SYNC_EOC_SHIFT                      1
+#define PALMAS_INT6_MASK_CC_EOC                                 0x01
+#define PALMAS_INT6_MASK_CC_EOC_SHIFT                           0
+
+/* Bit definitions for INT6_LINE_STATE */
+#define PALMAS_INT6_LINE_STATE_SIM2                             0x80
+#define PALMAS_INT6_LINE_STATE_SIM2_SHIFT                       7
+#define PALMAS_INT6_LINE_STATE_SIM1                             0x40
+#define PALMAS_INT6_LINE_STATE_SIM1_SHIFT                       6
+#define PALMAS_INT6_LINE_STATE_CHARGER                          0x20
+#define PALMAS_INT6_LINE_STATE_CHARGER_SHIFT                    5
+#define PALMAS_INT6_LINE_STATE_CC_AUTOCAL                       0x10
+#define PALMAS_INT6_LINE_STATE_CC_AUTOCAL_SHIFT                 4
+#define PALMAS_INT6_LINE_STATE_CC_BAT_STABLE                    0x08
+#define PALMAS_INT6_LINE_STATE_CC_BAT_STABLE_SHIFT              3
+#define PALMAS_INT6_LINE_STATE_CC_OVC_LIMIT                     0x04
+#define PALMAS_INT6_LINE_STATE_CC_OVC_LIMIT_SHIFT               2
+#define PALMAS_INT6_LINE_STATE_CC_SYNC_EOC                      0x02
+#define PALMAS_INT6_LINE_STATE_CC_SYNC_EOC_SHIFT                1
+#define PALMAS_INT6_LINE_STATE_CC_EOC                           0x01
+#define PALMAS_INT6_LINE_STATE_CC_EOC_SHIFT                     0
 
 /* Registers for function USB_OTG */
 #define PALMAS_USB_WAKEUP					0x3
@@ -3414,9 +3671,153 @@ enum usb_irq_events {
 #define PALMAS_GPADC_TRIM16					0xF
 #define PALMAS_GPADC_TRIMINVALID				-1
 
-#define PALMAS_FG_REG_22					0x16
-
+/* Registers for function BQ24192 */
 #define PALMAS_REG10                                            0xA
+
+/* Registers for function FUEL_GAUGE */
+#define PALMAS_FG_REG_00                                      0x0
+#define PALMAS_FG_REG_01                                      0x1
+#define PALMAS_FG_REG_02                                      0x2
+#define PALMAS_FG_REG_03                                      0x3
+#define PALMAS_FG_REG_04                                      0x4
+#define PALMAS_FG_REG_05                                      0x5
+#define PALMAS_FG_REG_06                                      0x6
+#define PALMAS_FG_REG_07                                      0x7
+#define PALMAS_FG_REG_08                                      0x8
+#define PALMAS_FG_REG_09                                      0x9
+#define PALMAS_FG_REG_10                                      0xA
+#define PALMAS_FG_REG_11                                      0xB
+#define PALMAS_FG_REG_12                                      0xC
+#define PALMAS_FG_REG_13                                      0xD
+#define PALMAS_FG_REG_14                                      0xE
+#define PALMAS_FG_REG_15                                      0xF
+#define PALMAS_FG_REG_16                                      0x10
+#define PALMAS_FG_REG_17                                      0x11
+#define PALMAS_FG_REG_18                                      0x12
+#define PALMAS_FG_REG_19                                      0x13
+#define PALMAS_FG_REG_20                                      0x14
+#define PALMAS_FG_REG_21                                      0x15
+#define PALMAS_FG_REG_22                                      0x16
+
+/* Bit definitions for FG_REG_00 */
+#define PALMAS_FG_REG_00_CC_ACTIVE_MODE_MASK                  0xc0
+#define PALMAS_FG_REG_00_CC_ACTIVE_MODE_SHIFT                 6
+#define PALMAS_FG_REG_00_CC_BAT_STABLE_EN                     0x20
+#define PALMAS_FG_REG_00_CC_BAT_STABLE_EN_SHIFT                       5
+#define PALMAS_FG_REG_00_CC_DITH_EN                           0x10
+#define PALMAS_FG_REG_00_CC_DITH_EN_SHIFT                     4
+#define PALMAS_FG_REG_00_CC_FG_EN                             0x08
+#define PALMAS_FG_REG_00_CC_FG_EN_SHIFT                               3
+#define PALMAS_FG_REG_00_CC_AUTOCLEAR                         0x04
+#define PALMAS_FG_REG_00_CC_AUTOCLEAR_SHIFT                   2
+#define PALMAS_FG_REG_00_CC_CAL_EN                            0x02
+#define PALMAS_FG_REG_00_CC_CAL_EN_SHIFT                      1
+#define PALMAS_FG_REG_00_CC_PAUSE                             0x01
+#define PALMAS_FG_REG_00_CC_PAUSE_SHIFT                               0
+
+/* Bit definitions for FG_REG_01 */
+#define PALMAS_FG_REG_01_CC_SAMPLE_CNTR_MASK                  0xff
+#define PALMAS_FG_REG_01_CC_SAMPLE_CNTR_SHIFT                 0
+
+/* Bit definitions for FG_REG_02 */
+#define PALMAS_FG_REG_02_CC_SAMPLE_CNTR_MASK                  0xff
+#define PALMAS_FG_REG_02_CC_SAMPLE_CNTR_SHIFT                 0
+
+/* Bit definitions for FG_REG_03 */
+#define PALMAS_FG_REG_03_CC_SAMPLE_CNTR_MASK                  0xff
+#define PALMAS_FG_REG_03_CC_SAMPLE_CNTR_SHIFT                 0
+
+/* Bit definitions for FG_REG_04 */
+#define PALMAS_FG_REG_04_CC_ACCUM_MASK                                0xff
+#define PALMAS_FG_REG_04_CC_ACCUM_SHIFT                               0
+
+/* Bit definitions for FG_REG_05 */
+#define PALMAS_FG_REG_05_CC_ACCUM_MASK                                0xff
+#define PALMAS_FG_REG_05_CC_ACCUM_SHIFT                               0
+
+/* Bit definitions for FG_REG_06 */
+#define PALMAS_FG_REG_06_CC_ACCUM_MASK                                0xff
+#define PALMAS_FG_REG_06_CC_ACCUM_SHIFT                               0
+
+/* Bit definitions for FG_REG_07 */
+#define PALMAS_FG_REG_07_CC_ACCUM_MASK                                0xff
+#define PALMAS_FG_REG_07_CC_ACCUM_SHIFT                               0
+
+/* Bit definitions for FG_REG_08 */
+#define PALMAS_FG_REG_08_CC_OFFSET_MASK                               0xff
+#define PALMAS_FG_REG_08_CC_OFFSET_SHIFT                      0
+
+/* Bit definitions for FG_REG_09 */
+#define PALMAS_FG_REG_09_CC_OFFSET_MASK                               0x03
+#define PALMAS_FG_REG_09_CC_OFFSET_SHIFT                      0
+
+/* Bit definitions for FG_REG_10 */
+#define PALMAS_FG_REG_10_CC_INTEG_MASK                                0xff
+#define PALMAS_FG_REG_10_CC_INTEG_SHIFT                               0
+
+/* Bit definitions for FG_REG_11 */
+#define PALMAS_FG_REG_11_CC_INTEG_MASK                                0x3f
+#define PALMAS_FG_REG_11_CC_INTEG_SHIFT                               0
+
+/* Bit definitions for FG_REG_12 */
+#define PALMAS_FG_REG_12_CC_VBAT_SYNC_MASK                    0xfc
+#define PALMAS_FG_REG_12_CC_VBAT_SYNC_SHIFT                   2
+#define PALMAS_FG_REG_12_CC_SYNC_EN                           0x02
+#define PALMAS_FG_REG_12_CC_SYNC_EN_SHIFT                     1
+#define PALMAS_FG_REG_12_CC_SYNC_RDY                          0x01
+#define PALMAS_FG_REG_12_CC_SYNC_RDY_SHIFT                    0
+
+/* Bit definitions for FG_REG_13 */
+#define PALMAS_FG_REG_13_CC_VBAT_SYNC_MASK                    0x3f
+#define PALMAS_FG_REG_13_CC_VBAT_SYNC_SHIFT                   0
+
+/* Bit definitions for FG_REG_14 */
+#define PALMAS_FG_REG_14_CC_VBAT_CNTR_MASK                    0xff
+#define PALMAS_FG_REG_14_CC_VBAT_CNTR_SHIFT                   0
+
+/* Bit definitions for FG_REG_15 */
+#define PALMAS_FG_REG_15_CC_VBAT_CNTR_MASK                    0x03
+#define PALMAS_FG_REG_15_CC_VBAT_CNTR_SHIFT                   0
+
+/* Bit definitions for FG_REG_16 */
+#define PALMAS_FG_REG_16_CC_VBAT_ACCUM_MASK                   0xff
+#define PALMAS_FG_REG_16_CC_VBAT_ACCUM_SHIFT                  0
+
+/* Bit definitions for FG_REG_17 */
+#define PALMAS_FG_REG_17_CC_VBAT_ACCUM_MASK                   0xff
+#define PALMAS_FG_REG_17_CC_VBAT_ACCUM_SHIFT                  0
+
+/* Bit definitions for FG_REG_18 */
+#define PALMAS_FG_REG_18_CC_VBAT_ACCUM_MASK                   0x3f
+#define PALMAS_FG_REG_18_CC_VBAT_ACCUM_SHIFT                  0
+
+/* Bit definitions for FG_REG_19 */
+#define PALMAS_FG_REG_19_CC_CUR_LVL_MASK                      0x3f
+#define PALMAS_FG_REG_19_CC_CUR_LVL_SHIFT                     0
+
+/* Bit definitions for FG_REG_20 */
+#define PALMAS_FG_REG_20_BAT_SLEEP_STATUS                     0x40
+#define PALMAS_FG_REG_20_BAT_SLEEP_STATUS_SHIFT                       6
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_PERIOD_MASK             0x30
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_PERIOD_SHIFT            4
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_EXIT_MASK                       0x0c
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_EXIT_SHIFT              2
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_ENTER_MASK              0x03
+#define PALMAS_FG_REG_20_CC_BAT_SLEEP_ENTER_SHIFT             0
+
+/* Bit definitions for FG_REG_21 */
+#define PALMAS_FG_REG_21_CC_OVERCUR_THRES_MASK                        0x7f
+#define PALMAS_FG_REG_21_CC_OVERCUR_THRES_SHIFT                       0
+
+/* Bit definitions for FG_REG_22 */
+#define PALMAS_FG_REG_22_CC_CHOPPER_DIS                               0x80
+#define PALMAS_FG_REG_22_CC_CHOPPER_DIS_SHIFT                 7
+#define PALMAS_FG_REG_22_CC_NSLEEP_GATE                               0x08
+#define PALMAS_FG_REG_22_CC_NSLEEP_GATE_SHIFT                 3
+#define PALMAS_FG_REG_22_CC_OVC_EN                            0x04
+#define PALMAS_FG_REG_22_CC_OVC_EN_SHIFT                      2
+#define PALMAS_FG_REG_22_CC_OVC_PER_MASK                      0x03
+#define PALMAS_FG_REG_22_CC_OVC_PER_SHIFT                     0
 
 enum {
 	PALMAS_EXT_CONTROL_ENABLE1	= 0x1,
