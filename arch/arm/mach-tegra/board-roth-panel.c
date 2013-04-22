@@ -626,7 +626,7 @@ static struct nvmap_platform_data roth_nvmap_data = {
 	.nr_carveouts	= ARRAY_SIZE(roth_carveouts),
 };
 
-static struct platform_device roth_nvmap_device __initdata = {
+static struct platform_device roth_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {

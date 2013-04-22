@@ -279,7 +279,7 @@ static struct nvmap_platform_data pluto_nvmap_data = {
 	.nr_carveouts	= ARRAY_SIZE(pluto_carveouts),
 };
 
-static struct platform_device pluto_nvmap_device __initdata = {
+static struct platform_device pluto_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {

@@ -324,7 +324,7 @@ static struct nvmap_platform_data macallan_nvmap_data = {
 	.carveouts	= macallan_carveouts,
 	.nr_carveouts	= ARRAY_SIZE(macallan_carveouts),
 };
-static struct platform_device macallan_nvmap_device __initdata = {
+static struct platform_device macallan_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {
