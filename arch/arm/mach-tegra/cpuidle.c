@@ -53,7 +53,7 @@
 #include "sleep.h"
 #include "timer.h"
 
-#define DRAM_SELF_REFRESH_EXIT_LATENCY	10000
+#define DRAM_SELF_REFRESH_EXIT_LATENCY	3000
 
 int tegra_pg_exit_latency;
 static int tegra_pd_power_off_time;

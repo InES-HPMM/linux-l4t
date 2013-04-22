@@ -718,10 +718,48 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 #endif
 #endif
 
-	if (flags & TEGRA_POWER_STOP_MC_CLK)
+	/* T148: Check for mem_req and mem_req_soon only if it is
+	 * MC clock stop state.
+	 */
+	if (flags & TEGRA_POWER_STOP_MC_CLK) {
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		u32 val;
+
+		/* Check if mem_req or mem_req_soon is asserted or if voice
+		 * call is active call, if yes then we skip SDRAM
+		 * self-refresh and just do CPU power-gating.
+		 */
+		val = readl(pmc + PMC_IPC_STS);
+		if ((val & (PMC_IPC_STS_MEM_REQ | PMC_IPC_STS_MEM_REQ_SOON)) ||
+			tegra_is_voice_call_active()) {
+
+			/* Reset LP1 and MC clock mask if we skipping SDRAM
+			 * self-refresh.
+			 */
+			*iram_cpu_lp1_mask = 0;
+			*iram_mc_clk_mask = 0;
+			writel(0, pmc + PMC_SCRATCH41);
+
+			tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
+		} else {
+			/* Clear mem_sts since SDRAM will not be accessible
+			 * to BBC in this state.
+			 */
+			val = readl(pmc + PMC_IPC_CLR);
+			val |= PMC_IPC_CLR_MEM_STS;
+			writel(val, pmc + PMC_IPC_CLR);
+
+			tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
+		}
+#else
+		/* If it is not T148 then we do not have to
+		 * check mem_req and mem_req_soon.
+		 */
 		tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
-	else
+#endif
+	} else {
 		tegra_sleep_cpu(PHYS_OFFSET - PAGE_OFFSET);
+	}
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	tegra_init_cache(true);
