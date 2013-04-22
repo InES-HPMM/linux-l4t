@@ -95,6 +95,8 @@ enum {
 #define SMMU_TLB_FLUSH_ASID_MATCH_DISABLE	0
 #define SMMU_TLB_FLUSH_ASID_MATCH_ENABLE	1
 #define SMMU_TLB_FLUSH_ASID_MATCH_SHIFT		31
+#define SMMU_TLB_FLUSH_ASID_ENABLE					\
+	(SMMU_TLB_FLUSH_ASID_MATCH_ENABLE << SMMU_TLB_FLUSH_ASID_MATCH_SHIFT)
 
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
@@ -454,6 +456,11 @@ static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
 	FLUSH_SMMU_REGS(smmu);
 }
 
+static inline void smmu_flush_ptc_all(struct smmu_device *smmu)
+{
+	smmu_flush_ptc(smmu, 0, NULL);
+}
+
 static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
 			   dma_addr_t iova, int is_pde)
 {
@@ -466,6 +473,11 @@ static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
 
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
+}
+
+static inline void smmu_flush_tlb_section(struct smmu_as *as, dma_addr_t iova)
+{
+	smmu_flush_tlb(as->smmu, as, iova, 1);
 }
 
 static void flush_ptc_and_tlb(struct smmu_device *smmu,
@@ -524,7 +536,7 @@ static inline void flush_ptc_and_tlb_all(struct smmu_device *smmu,
 	flush_ptc_and_tlb(smmu, as, 0, 0, NULL, 1);
 }
 
-static void free_ptbl(struct smmu_as *as, dma_addr_t iova)
+static void free_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 {
 	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
@@ -536,9 +548,77 @@ static void free_ptbl(struct smmu_as *as, dma_addr_t iova)
 		__free_page(SMMU_EX_PTBL_PAGE(pdir[pdn]));
 		pdir[pdn] = _PDE_VACANT(pdn);
 		FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
+		if (!flush)
+			return;
+
 		flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn],
 				  as->pdir_page, 1);
 	}
+}
+
+#ifdef CONFIG_TEGRA_ERRATA_1053704
+static void smmu_flush_tlb_range(struct smmu_as *as, dma_addr_t iova,
+				 dma_addr_t end)
+{
+	unsigned long *pdir;
+	struct smmu_device *smmu = as->smmu;
+
+	if (!pfn_valid(page_to_pfn(as->pdir_page)))
+		return;
+
+	pdir = page_address(as->pdir_page);
+	while (iova < end) {
+		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+
+		if (pdir[pdn] & _PDE_NEXT) {
+			struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+			dma_addr_t _end = min_t(dma_addr_t, end,
+						SMMU_PDN_TO_ADDR(pdn + 1));
+
+			if (pfn_valid(page_to_pfn(page)))
+				__smmu_flush_tlb_range(smmu, iova, _end);
+
+			iova = _end;
+		} else {
+			if (pdir[pdn])
+				smmu_flush_tlb_section(as, iova);
+
+			iova = SMMU_PDN_TO_ADDR(pdn + 1);
+		}
+
+		if (pdn == SMMU_PTBL_COUNT - 1)
+			break;
+	}
+}
+
+static void smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
+			      dma_addr_t end)
+{
+	smmu_flush_tlb_range(as, iova, end);
+}
+#else
+static void __smmu_flush_tlb_as(struct smmu_as *as)
+{
+	u32 val;
+	struct smmu_device *smmu = as->smmu;
+
+	val = SMMU_TLB_FLUSH_ASID_ENABLE |
+		as->asid << SMMU_TLB_FLUSH_ASID_SHIFT;
+	smmu_write(smmu, val, SMMU_TLB_FLUSH);
+	FLUSH_SMMU_REGS(smmu);
+}
+static inline void smmu_flush_tlb_as(struct smmu_as *as, dma_addr_t iova,
+				     dma_addr_t end)
+{
+	__smmu_flush_tlb_as(as);
+}
+#endif
+
+static void flush_ptc_and_tlb_as(struct smmu_as *as, dma_addr_t start,
+				 dma_addr_t end)
+{
+	smmu_flush_ptc_all(as->smmu);
+	smmu_flush_tlb_as(as, start, end);
 }
 
 static void free_pdir(struct smmu_as *as)
@@ -553,7 +633,7 @@ static void free_pdir(struct smmu_as *as)
 	addr = as->smmu->iovmm_base;
 	count = as->smmu->page_count;
 	while (count-- > 0) {
-		free_ptbl(as, addr);
+		free_ptbl(as, addr, 1);
 		addr += SMMU_PAGE_SIZE * SMMU_PTBL_COUNT;
 	}
 	ClearPageReserved(as->pdir_page);
@@ -719,6 +799,8 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 {
 	int total = bytes >> PAGE_SHIFT;
 	unsigned long *pdir = page_address(as->pdir_page);
+	struct smmu_device *smmu = as->smmu;
+	bool flush_all = (total > SZ_512) ? true : false;
 
 	while (total > 0) {
 		unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
@@ -749,15 +831,19 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 
 			*rest -= count;
 			if (!*rest)
-				free_ptbl(as, iova);
+				free_ptbl(as, iova, !flush_all);
 
-			flush_ptc_and_tlb_range(as->smmu, as, iova, pte,
-						page, count);
+			if (!flush_all)
+				flush_ptc_and_tlb_range(smmu, as, iova, pte,
+							page, count);
 		}
 
 		iova += PAGE_SIZE * count;
 		total -= count;
 	}
+
+	if (flush_all)
+		flush_ptc_and_tlb_as(as, iova, iova + bytes);
 
 	return bytes;
 }
