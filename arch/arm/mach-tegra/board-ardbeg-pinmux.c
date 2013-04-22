@@ -187,7 +187,15 @@ static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
 								FASTEST, 1),
 #else
-	/* TODO: update for t124 ardbeg */
+	/* FIXME: update settings for t124 ardbeg */
+	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
+
+	/* SDMMC3 */
+	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
+
+	/* SDMMC4 */
+	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
+								FASTEST, 1),
 #endif
 };
 
