@@ -99,6 +99,10 @@ static int max77660_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	max77660_register_to_time(tm, buf);
 
+	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
+		tm->tm_hour, tm->tm_min, tm->tm_sec);
+
 out:
 	mutex_unlock(&rtc->rtc_reg_lock);
 	return 0;
@@ -109,6 +113,10 @@ static int max77660_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	struct max77660_rtc *rtc = dev_get_drvdata(dev);
 	u8 buf[RTC_MAX_BUF];
 	int ret;
+
+	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
+		tm->tm_hour, tm->tm_min, tm->tm_sec);
 
 	max77660_time_to_register(tm, buf);
 
@@ -148,6 +156,8 @@ static int max77660_rtc_alarm_irq_enable(struct device *dev,
 		return -ESHUTDOWN;
 	}
 
+	dev_info(dev, "%s(): enabled %u\n", __func__, enabled);
+
 	if (enabled)
 		ret = max77660_reg_clr_bits(rtc->parent, MAX77660_RTC_SLAVE,
 			MAX77660_RTC_IRQ_MASK, MAX77660_RTC_IRQ_ALARM1_MASK);
@@ -180,6 +190,9 @@ static int max77660_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return ret;
 	}
 	max77660_register_to_time(&alrm->time, buf);
+	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+		alrm->time.tm_year, alrm->time.tm_mon, alrm->time.tm_mday,
+		alrm->time.tm_hour, alrm->time.tm_min, alrm->time.tm_sec);
 	return 0;
 }
 
@@ -202,6 +215,10 @@ static int max77660_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		dev_err(rtc->dev, "RTC_AE1 write failed: %d\n", ret);
 		return ret;
 	}
+
+	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+		alrm->time.tm_year, alrm->time.tm_mon, alrm->time.tm_mday,
+		alrm->time.tm_hour, alrm->time.tm_min, alrm->time.tm_sec);
 	max77660_time_to_register(&alrm->time, buf);
 	buf[RTC_WEEKDAY] = 0;
 
