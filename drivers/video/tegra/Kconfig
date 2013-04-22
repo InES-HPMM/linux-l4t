@@ -80,6 +80,12 @@ config TEGRA_DC_INTERLACE
 	default y if ARCH_TEGRA_12x_SOC
 	default n
 
+config TEGRA_DC_64BIT_SUPPORT
+	bool
+	default n
+	help
+		T12x LPAE support in dc driver
+
 config TEGRA_DC_CLOCK_GEN2
     bool
     default y if ARCH_TEGRA_12x_SOC
