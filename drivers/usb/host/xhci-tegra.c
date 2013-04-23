@@ -2134,6 +2134,13 @@ done:
 	if (xhci->main_hcd == hcd) {
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
+	} else if (xhci->shared_hcd == hcd) {
+		/* save leakage power when SS not in use.
+		 * This is also done when fw mbox message is received for freq
+		 * decrease but on T114 we don't change freq due to sw WAR
+		 * used for hs disconnect issue.
+		 */
+		tegra_xhci_rx_idle_mode_override(tegra, true);
 	}
 	mutex_unlock(&tegra->sync_lock);
 	return 0;
@@ -2173,6 +2180,9 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
 		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
+	} else if (xhci->shared_hcd == hcd && tegra->usb3_rh_suspend) {
+		/* clear ovrd bits */
+		tegra_xhci_rx_idle_mode_override(tegra, false);
 	}
 	if (tegra->usb2_rh_suspend && tegra->usb3_rh_suspend) {
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
