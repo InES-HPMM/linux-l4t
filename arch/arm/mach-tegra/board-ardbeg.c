@@ -25,6 +25,8 @@
 #include <linux/gpio.h>
 #include <linux/memblock.h>
 #include <linux/of_platform.h>
+#include <linux/i2c.h>
+#include <linux/i2c-tegra.h>
 
 #include <mach/irqs.h>
 
@@ -64,6 +66,63 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
+static struct tegra_i2c_platform_data ardbeg_i2c1_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+
+static struct tegra_i2c_platform_data ardbeg_i2c2_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+
+static struct tegra_i2c_platform_data ardbeg_i2c3_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+
+static struct tegra_i2c_platform_data ardbeg_i2c4_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+
+static struct tegra_i2c_platform_data ardbeg_i2c5_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+static struct tegra_i2c_platform_data ardbeg_i2c6_platform_data = {
+	.bus_clk_rate   = 100000,
+};
+#endif
+
+static void ardbeg_i2c_init(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	tegra14_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
+	tegra14_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
+	tegra14_i2c_device3.dev.platform_data = &ardbeg_i2c3_platform_data;
+	tegra14_i2c_device4.dev.platform_data = &ardbeg_i2c4_platform_data;
+	tegra14_i2c_device5.dev.platform_data = &ardbeg_i2c5_platform_data;
+	tegra14_i2c_device6.dev.platform_data = &ardbeg_i2c6_platform_data;
+
+	platform_device_register(&tegra14_i2c_device6);
+	platform_device_register(&tegra14_i2c_device5);
+	platform_device_register(&tegra14_i2c_device4);
+	platform_device_register(&tegra14_i2c_device3);
+	platform_device_register(&tegra14_i2c_device2);
+	platform_device_register(&tegra14_i2c_device1);
+#else
+	tegra11_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
+	tegra11_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
+	tegra11_i2c_device3.dev.platform_data = &ardbeg_i2c3_platform_data;
+	tegra11_i2c_device4.dev.platform_data = &ardbeg_i2c4_platform_data;
+	tegra11_i2c_device5.dev.platform_data = &ardbeg_i2c5_platform_data;
+
+	platform_device_register(&tegra11_i2c_device5);
+	platform_device_register(&tegra11_i2c_device4);
+	platform_device_register(&tegra11_i2c_device3);
+	platform_device_register(&tegra11_i2c_device2);
+	platform_device_register(&tegra11_i2c_device1);
+#endif
+}
+
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -101,6 +160,7 @@ static void __init tegra_ardbeg_init(void)
 	tegra_enable_pinmux();
 	ardbeg_pinmux_init();
 	tegra_soc_device_init("ardbeg");
+	ardbeg_i2c_init();
 	ardbeg_kbc_init();
 	ardbeg_sdhci_init();
 	ardbeg_panel_init();
