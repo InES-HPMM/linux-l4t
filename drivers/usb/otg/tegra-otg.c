@@ -681,7 +681,7 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		extcon_register_notifier(tegra->id_extcon_dev, &otg_id_nb);
 	}
 
-	tegra_pd_add_device(&tegra_mc_chain_b, tegra->phy.dev);
+	tegra_pd_add_device(tegra->phy.dev);
 	pm_runtime_use_autosuspend(tegra->phy.dev);
 	pm_runtime_set_autosuspend_delay(tegra->phy.dev, 100);
 	pm_runtime_enable(tegra->phy.dev);

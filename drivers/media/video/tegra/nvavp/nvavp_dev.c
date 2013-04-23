@@ -1804,7 +1804,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	nvavp->nvhost_dev = ndev;
 	platform_set_drvdata(ndev, nvavp);
 
-	tegra_pd_add_device(&tegra_mc_chain_b, &ndev->dev);
+	tegra_pd_add_device(&ndev->dev);
 	pm_runtime_enable(&ndev->dev);
 
 	ret = device_create_file(&ndev->dev, &dev_attr_boost_sclk);

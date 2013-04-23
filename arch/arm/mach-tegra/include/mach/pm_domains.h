@@ -30,15 +30,12 @@ struct tegra_pm_domain {
 
 #define to_tegra_pd(_pd) container_of(_pd, struct tegra_pm_domain, gpd);
 
-extern struct tegra_pm_domain tegra_mc_chain_a;
-extern struct tegra_pm_domain tegra_mc_chain_b;
 #ifdef CONFIG_TEGRA_MC_DOMAINS
-extern struct tegra_pm_domain tegra_mc_clk;
-void tegra_pd_add_device(struct tegra_pm_domain *pd, struct device *dev);
-void tegra_pd_add_sd(struct tegra_pm_domain *pd, struct generic_pm_domain *sd);
+void tegra_pd_add_device(struct device *dev);
+void tegra_pd_add_sd(struct generic_pm_domain *sd);
 #else
-#define tegra_pd_add_device(pd, dev) do { } while (0)
-#define tegra_pd_add_sd(pd, sd) do { } while (0)
+#define tegra_pd_add_device(dev) do { } while (0)
+#define tegra_pd_add_sd(sd) do { } while (0)
 #endif /* CONFIG_TEGRA_MC_DOMAINS */
 
 #endif /* _MACH_TEGRA_PM_DOMAINS_H_ */

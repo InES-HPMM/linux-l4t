@@ -4201,7 +4201,7 @@ static int azx_probe_continue(struct azx *chip)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 	pm_runtime_enable(&pdev->dev);
-	tegra_pd_add_device(&tegra_mc_chain_a, &pdev->dev);
+	tegra_pd_add_device(&pdev->dev);
 #endif
 
 	chip->running = 1;

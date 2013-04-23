@@ -2692,7 +2692,7 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	utmi_phy_pad_enable();
 	utmi_phy_iddq_override(false);
 
-	tegra_pd_add_device(&tegra_mc_chain_b, &pdev->dev);
+	tegra_pd_add_device(&pdev->dev);
 
 	return 0;
 
