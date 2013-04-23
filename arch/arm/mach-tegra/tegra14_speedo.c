@@ -33,11 +33,13 @@
 
 #define CPU_PROCESS_CORNERS_NUM		2
 #define CORE_PROCESS_CORNERS_NUM	2
+#define CPU_IDDQ_BITS			13
 
 #define TEGRA148_CPU_SPEEDO 2109
 #define FUSE_CPU_IDDQ 0x118 /*FIXME: update T148 register*/
 #define FUSE_CPU_SPEEDO_0 0x114
 #define FUSE_CORE_SPEEDO_0 0x134
+#define FUSE_SPARE_BIT_62_0 0x398
 static int threshold_index;
 static int cpu_process_id;
 static int core_process_id;
@@ -76,7 +78,14 @@ void tegra_init_speedo_data(void)
 	}
 	cpu_process_id = i;
 
-	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
+	cpu_iddq_value = 0;
+	for (i = 0; i < CPU_IDDQ_BITS; i++) {
+		cpu_iddq_value = (cpu_iddq_value << 1) +
+		tegra_fuse_readl(FUSE_SPARE_BIT_62_0 - 4*i);
+	}
+
+	if (!cpu_iddq_value)
+		cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
 
 	for (i = 0; i < CORE_PROCESS_CORNERS_NUM; i++) {
 		if (core_speedo_value <
