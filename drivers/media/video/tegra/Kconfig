@@ -97,6 +97,13 @@ config VIDEO_OV5693
           This is a driver for the OV5693 camera sensor
           for use with the tegra isp.
 
+config VIDEO_OV7695
+        tristate "OV7695 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the OV7695 YUV camera sensor device
+          This sensor has external ISP, it isn't using tegra ISP.
+
 config TORCH_SSL3250A
         tristate "SSL3250A flash/torch support"
         depends on I2C && ARCH_TEGRA
