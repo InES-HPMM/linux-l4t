@@ -93,6 +93,9 @@
 #define SCLK_BOOST_RATE		40000000
 
 static bool boost_sclk;
+#if defined(CONFIG_TEGRA_NVAVP_AUDIO)
+static bool audio_enabled;
+#endif
 
 struct nvavp_channel {
 	struct mutex			pushbuffer_lock;
@@ -297,6 +300,7 @@ static int nvavp_unpowergate_vde(struct nvavp_info *nvavp)
 static void nvavp_clks_enable(struct nvavp_info *nvavp)
 {
 	if (nvavp->clk_enabled++ == 0) {
+		pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
 		nvhost_module_busy_ext(nvavp->nvhost_dev);
 		clk_prepare_enable(nvavp->bsev_clk);
 		clk_prepare_enable(nvavp->vde_clk);
@@ -322,6 +326,7 @@ static void nvavp_clks_disable(struct nvavp_info *nvavp)
 			clk_set_rate(nvavp->sclk, 0);
 		nvavp_powergate_vde(nvavp);
 		nvhost_module_idle_ext(nvavp->nvhost_dev);
+		pm_runtime_put(&nvavp->nvhost_dev->dev);
 		dev_dbg(&nvavp->nvhost_dev->dev, "%s: resetting emc_clk "
 				"and sclk\n", __func__);
 	}
@@ -381,8 +386,10 @@ static int nvavp_service(struct nvavp_info *nvavp)
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE) {
-		if (!pm_runtime_suspended(&nvavp->nvhost_dev->dev))
+		if (audio_enabled) {
+			audio_enabled = false;
 			pm_runtime_put(&nvavp->nvhost_dev->dev);
+		}
 		pr_debug("nvavp_service NVE276_OS_INTERRUPT_AUDIO_IDLE\n");
 	}
 #endif
@@ -710,8 +717,10 @@ static int nvavp_pushbuffer_update(struct nvavp_info *nvavp, u32 phys_addr,
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 		if (IS_AUDIO_CHANNEL_ID(channel_id)) {
 			pr_debug("Wake up Audio Channel\n");
-			if (pm_runtime_suspended(&nvavp->nvhost_dev->dev))
+			if (!audio_enabled) {
 				pm_runtime_get_sync(&nvavp->nvhost_dev->dev);
+				audio_enabled = true;
+			}
 			ret = nvavp_outbox_write(0xA0000002);
 			if (ret < 0)
 				goto err_exit;
