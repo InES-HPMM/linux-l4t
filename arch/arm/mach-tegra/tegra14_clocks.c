@@ -5981,15 +5981,13 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("i2s2",	"tegra30-i2s.2",	NULL,	18,	0x104,	24576000,  mux_pllaout0_audio2_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2s3",	"tegra30-i2s.3",	NULL,	101,	0x3bc,	24576000,  mux_pllaout0_audio3_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("i2s4",	"tegra30-i2s.4",	NULL,	102,	0x3c0,	24576000,  mux_pllaout0_audio4_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("dmic0",	"tegra30-i2s.0",	NULL,	160,	0x64c,	24576000,  mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("dmic1",	"tegra30-i2s.0",	NULL,	161,	0x650,	24576000,  mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("dmic0",	"tegra30-i2s.0",	NULL,	161,	0x64c,	24576000,  mux_pllaout0_audio0_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
+	PERIPH_CLK("dmic1",	"tegra30-i2s.0",	NULL,	162,	0x650,	24576000,  mux_pllaout0_audio1_dmic_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("pwm",	"tegra-pwm",		NULL,	17,	0x110,	48000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("d_audio",	"tegra30-ahub",		"d_audio",	106,	0x3d0,	48000000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam0",	"tegra30-dam.0",	NULL,	108,	0x3d8,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam1",	"tegra30-dam.1",	NULL,	109,	0x3dc,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
 	D_AUDIO_CLK("dam2",	"tegra30-dam.2",	NULL,	110,	0x3e0,	19910000,  mux_d_audio_clk,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("dmic0",	"tegra-dmic.0",		NULL,	161,	0x64c,	12288000,  mux_pllaout0_audio0_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
-	PERIPH_CLK("dmic1",	"tegra-dmic.1",		NULL,	162,	0x650,	12288000,  mux_pllaout0_audio0_2x_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("adx",	"adx",			NULL,   154,	0x638,	19910000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("amx",	"amx",			NULL,   153,	0x63c,	19910000,  mux_plla_pllc_pllp_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("hda",	"tegra30-hda",		"hda",		125,	0x428,	48000000,  mux_pllp_pllc_pllm_clkm,	MUX | DIV_U71 | PERIPH_ON_APB),
@@ -6214,6 +6212,8 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("msenc", "tegra_msenc", "msenc"),
 	CLK_DUPLICATE("tsec", "tegra_tsec", "tsec"),
 	CLK_DUPLICATE("csus", "touch_clk", "e1680_ts_clk_con"),
+	CLK_DUPLICATE("dmic0", "tegra-dmic.0", NULL),
+	CLK_DUPLICATE("dmic1", "tegra-dmic.1", NULL),
 };
 
 struct clk *tegra_ptr_clks[] = {
