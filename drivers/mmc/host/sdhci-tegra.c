@@ -522,11 +522,20 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 			~SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK;
 	}
 	if (soc_data->nvquirks & NVQUIRK_SET_TAP_DELAY) {
-		if (plat->tap_delay) {
+		if ((tegra_host->tuning_status == TUNING_STATUS_DONE) &&
+			(host->mmc->pm_flags & MMC_PM_KEEP_POWER)) {
 			vendor_ctrl &= ~(0xFF <<
-			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
-			vendor_ctrl |= (plat->tap_delay <<
-			SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+			vendor_ctrl |=
+				(tegra_host->tuning_data.best_tap_value
+				<< SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+		} else {
+			if (plat->tap_delay) {
+				vendor_ctrl &= ~(0xFF <<
+				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+				vendor_ctrl |= (plat->tap_delay <<
+				SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT);
+			}
 		}
 	}
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
