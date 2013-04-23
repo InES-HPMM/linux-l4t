@@ -1113,7 +1113,6 @@ static int akm_remove(struct i2c_client *client)
 		akm_pm_exit(inf);
 		if (&inf->mutex_data)
 			mutex_destroy(&inf->mutex_data);
-		kfree(inf);
 	}
 	dev_info(&client->dev, "%s\n", __func__);
 	return 0;
@@ -1173,7 +1172,7 @@ static int akm_probe(struct i2c_client *client,
 	int err;
 
 	dev_info(&client->dev, "%s\n", __func__);
-	inf = kzalloc(sizeof(*inf), GFP_KERNEL);
+	inf = devm_kzalloc(&client->dev, sizeof(*inf), GFP_KERNEL);
 	if (!inf) {
 		dev_err(&client->dev, "%s kzalloc ERR\n", __func__);
 		return -ENOMEM;
@@ -1187,10 +1186,8 @@ static int akm_probe(struct i2c_client *client,
 	else
 		pd = (struct mpu_platform_data *)dev_get_platdata(&client->dev);
 
-	if (!pd || IS_ERR(pd)) {
-		kfree(inf);
+	if (!pd || IS_ERR(pd))
 		return -EINVAL;
-	}
 
 	inf->pdata = *pd;
 
