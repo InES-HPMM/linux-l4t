@@ -59,7 +59,7 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 #define TPS65090_CHARGER_INT	TEGRA_GPIO_PJ0
-#define POWER_CONFIG2	0x01
+#define POWER_CONFIG2	0x02
 
 /*TPS65090 consumer rails */
 static struct regulator_consumer_supply tps65090_dcdc1_supply[] = {
@@ -606,12 +606,25 @@ static struct regulator_consumer_supply palmas_ldoln_supply[] = {
 	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 };
 
+static struct regulator_consumer_supply palmas_ldoln_fab05_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
+};
+
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
+};
+
+static struct regulator_consumer_supply palmas_ldousb_fab05_supply[] = {
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 };
 
 PALMAS_REGS_PDATA(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0, NORMAL,
@@ -631,7 +644,7 @@ PALMAS_REGS_PDATA(smps9, 2800,  2800, tps65090_rails(DCDC2), 1, 0, 0, NORMAL,
 PALMAS_REGS_PDATA(ldo1, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo1_config2, 1200,  1200, tps65090_rails(DCDC2), 0, 0, 1, 0,
-	0, 0, 0, 0, 0);
+	1, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2_config2, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0,
@@ -652,7 +665,11 @@ PALMAS_REGS_PDATA(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1, 0,
 	1, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldoln, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldoln_fab05, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(ldousb_fab05, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
@@ -956,6 +973,19 @@ static struct platform_device *fixed_reg_devs_dalmore_config2[] = {
 	DALMORE_POWER_CONFIG_2
 };
 
+static void set_dalmore_power_fab05(void)
+{
+	dalmore_e1611_reg_data[PALMAS_REG_LDOLN] =
+				PALMAS_REG_PDATA(ldoln_fab05);
+	dalmore_e1611_reg_init[PALMAS_REG_LDOLN] =
+				PALMAS_REG_INIT_DATA(ldoln_fab05);
+	dalmore_e1611_reg_data[PALMAS_REG_LDOUSB] =
+				PALMAS_REG_PDATA(ldousb_fab05);
+	dalmore_e1611_reg_init[PALMAS_REG_LDOUSB] =
+				PALMAS_REG_INIT_DATA(ldousb_fab05);
+	return;
+}
+
 static void set_dalmore_power_config2(void)
 {
 	dalmore_e1611_reg_data[PALMAS_REG_SMPS8] =
@@ -982,7 +1012,10 @@ int __init dalmore_palmas_regulator_init(void)
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
 	u8 power_config;
+	struct board_info board_info;
 	int i;
+
+	tegra_get_board_info(&board_info);
 
 	/* TPS65913: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -997,8 +1030,12 @@ int __init dalmore_palmas_regulator_init(void)
 			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 
 	power_config = get_power_config();
-	if (power_config & POWER_CONFIG2)
+	if (board_info.fab == BOARD_FAB_A05) {
 		set_dalmore_power_config2();
+		set_dalmore_power_fab05();
+	} else if (power_config & POWER_CONFIG2) {
+		set_dalmore_power_config2();
+	}
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = dalmore_e1611_reg_data[i];
@@ -1166,7 +1203,8 @@ static int __init dalmore_fixed_regulator_init(void)
 	power_config = get_power_config();
 	tegra_get_board_info(&board_info);
 
-	if (power_config & POWER_CONFIG2)
+	/* Fab05 and power-type2 have the same fixed regs */
+	if (board_info.fab == BOARD_FAB_A05 || power_config & POWER_CONFIG2)
 		platform_add_devices(fixed_reg_devs_dalmore_config2,
 				ARRAY_SIZE(fixed_reg_devs_dalmore_config2));
 
