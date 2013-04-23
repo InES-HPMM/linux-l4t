@@ -66,8 +66,8 @@ struct max77660_chg_extcon {
 	struct regulator_dev		*chg_rdev;
 	struct regulator_dev		*rdev;
 	struct max77660_charger		*charger;
-	int				irq;
-	int				wdt_irq;
+	int				chg_irq;
+	int				chg_wdt_irq;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
 };
@@ -421,6 +421,12 @@ static int max77660_charger_wdt(struct max77660_chg_extcon *chip)
 			break;
 	}
 
+	if (i == ARRAY_SIZE(max77660_chrg_wdt)) {
+		dev_err(chip->dev, "Charger WDT %d sec is not supported\n",
+			charger->wdt_timeout);
+		return -EINVAL;
+	}
+
 	ret = max77660_reg_update(chip->parent, MAX77660_PWR_SLAVE,
 			  MAX77660_REG_GLOBAL_CFG2,
 			  MAX77660_GLBLCNFG2_TWD_CHG_MASK,
@@ -622,9 +628,9 @@ static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 	chg_extcon->parent = pdev->dev.parent;
 	dev_set_drvdata(&pdev->dev, chg_extcon);
 
-	chg_extcon->irq = platform_get_irq(pdev, 0);
+	chg_extcon->chg_irq = platform_get_irq(pdev, 0);
 
-	chg_extcon->wdt_irq = platform_get_irq(pdev, 1);
+	chg_extcon->chg_wdt_irq = platform_get_irq(pdev, 1);
 	max77660_ext = chg_extcon;
 
 	ret = extcon_dev_register(chg_extcon->edev, NULL);
@@ -640,23 +646,23 @@ static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	ret = request_threaded_irq(chg_extcon->irq, NULL,
+	ret = request_threaded_irq(chg_extcon->chg_irq, NULL,
 		max77660_chg_extcon_irq,
-		IRQF_ONESHOT | IRQF_EARLY_RESUME, dev_name(chg_extcon->dev),
+		IRQF_ONESHOT | IRQF_EARLY_RESUME, "max77660-charger",
 		chg_extcon);
 	if (ret < 0) {
 		dev_err(chg_extcon->dev,
-			"request irq %d failed: %dn", chg_extcon->irq, ret);
+			"request irq %d failed: %dn", chg_extcon->chg_irq, ret);
 		goto out;
 	}
 
-	ret = request_threaded_irq(chg_extcon->wdt_irq, NULL,
+	ret = request_threaded_irq(chg_extcon->chg_wdt_irq, NULL,
 		max77660_chg_wdt_irq,
-		IRQF_ONESHOT, dev_name(chg_extcon->dev),
+		IRQF_ONESHOT | IRQF_EARLY_RESUME, "max77660-charger-wdt",
 		chg_extcon);
 	if (ret < 0) {
-		dev_err(chg_extcon->dev,
-			"request irq %d failed: %dn", chg_extcon->irq, ret);
+		dev_err(chg_extcon->dev, "request irq %d failed: %d\n",
+			chg_extcon->chg_wdt_irq, ret);
 		goto chg_irq_free;
 	}
 
@@ -690,28 +696,30 @@ static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"Charger power supply init failed %d\n", ret);
-		goto chg_reg_err;
+		goto psy_reg_err;
 	}
 
 	ret = max77660_charger_wdt(chg_extcon);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"Charger watchdog timer init failed %d\n", ret);
-		goto chg_reg_err;
+		goto chg_wdt_err;
 	}
-
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
-chg_reg_err:
+chg_wdt_err:
+	power_supply_unregister(&charger->dc_psy);
+	power_supply_unregister(&charger->usb_psy);
+psy_reg_err:
 	regulator_unregister(chg_extcon->chg_rdev);
 vbus_reg_err:
 	regulator_unregister(chg_extcon->rdev);
 wdt_irq_free:
-	free_irq(chg_extcon->wdt_irq, chg_extcon);
+	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
 chg_irq_free:
-	free_irq(chg_extcon->irq, chg_extcon);
+	free_irq(chg_extcon->chg_irq, chg_extcon);
 out:
 	extcon_dev_unregister(chg_extcon->edev);
 	return ret;
@@ -722,7 +730,10 @@ static int __devexit max77660_chg_extcon_remove(struct platform_device *pdev)
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(&pdev->dev);
 
 	extcon_dev_unregister(chg_extcon->edev);
-	free_irq(chg_extcon->irq, chg_extcon);
+	power_supply_unregister(&chg_extcon->charger->dc_psy);
+	power_supply_unregister(&chg_extcon->charger->usb_psy);
+	free_irq(chg_extcon->chg_irq, chg_extcon);
+	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
 	regulator_unregister(chg_extcon->rdev);
 	return 0;
 }
@@ -732,8 +743,10 @@ static int max77660_chg_extcon_suspend(struct device *dev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(dev))
-		enable_irq_wake(chg_extcon->irq);
+	if (device_may_wakeup(dev)) {
+		enable_irq_wake(chg_extcon->chg_irq);
+		enable_irq_wake(chg_extcon->chg_wdt_irq);
+	}
 	return 0;
 }
 
@@ -741,8 +754,10 @@ static int max77660_chg_extcon_resume(struct device *dev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(dev))
-		disable_irq_wake(chg_extcon->irq);
+	if (device_may_wakeup(dev)) {
+		disable_irq_wake(chg_extcon->chg_irq);
+		disable_irq_wake(chg_extcon->chg_wdt_irq);
+	}
 	return 0;
 };
 #endif
