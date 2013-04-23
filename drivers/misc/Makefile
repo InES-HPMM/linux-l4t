@@ -65,6 +65,7 @@ obj-$(CONFIG_TEGRA_CEC_SUPPORT)	+= tegra-cec/
 obj-$(CONFIG_MAX1749_VIBRATOR)	+= max1749.o
 obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_THERM_EST)		+= therm_est.o
+CFLAGS_tegra-throughput.o	 = -Werror
 obj-$(CONFIG_TEGRA_THROUGHPUT)	+= tegra-throughput.o
 obj-$(CONFIG_SND_SOC_TEGRA_CS42L73)	+= a2220.o
 obj-$(CONFIG_SND_SOC_TEGRA_RT5640)	+= tfa9887.o
