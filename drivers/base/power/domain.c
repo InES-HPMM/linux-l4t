@@ -2216,6 +2216,7 @@ static int pm_genpd_default_thaw(struct device *dev)
 	return cb ? cb(dev) : pm_generic_thaw(dev);
 }
 
+#ifdef CONFIG_PM_RUNTIME
 static int pm_genpd_suspend_notifier(struct notifier_block *notifier,
 	unsigned long pm_event, void *unused)
 {
@@ -2245,6 +2246,7 @@ static int pm_genpd_suspend_notifier(struct notifier_block *notifier,
 
 	return NOTIFY_DONE;
 }
+#endif
 
 #else /* !CONFIG_PM_SLEEP */
 
