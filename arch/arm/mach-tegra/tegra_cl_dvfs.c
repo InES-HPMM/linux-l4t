@@ -1068,25 +1068,25 @@ void tegra_cl_dvfs_resume(struct tegra_cl_dvfs *cld)
 }
 
 #ifdef CONFIG_THERMAL
-/* cl_dvfs cooling device */
-static int tegra_cl_dvfs_get_cdev_max_state(struct thermal_cooling_device *cdev,
-					    unsigned long *max_state)
+/* cl_dvfs vmin cooling device */
+static int tegra_cl_dvfs_get_vmin_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
 {
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
 	*max_state = cld->vmin_cdev->trip_temperatures_num;
 	return 0;
 }
 
-static int tegra_cl_dvfs_get_cdev_cur_state(struct thermal_cooling_device *cdev,
-					    unsigned long *cur_state)
+static int tegra_cl_dvfs_get_vmin_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
 {
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
 	*cur_state = cld->therm_floor_idx;
 	return 0;
 }
 
-static int tegra_cl_dvfs_set_cdev_state(struct thermal_cooling_device *cdev,
-					unsigned long cur_state)
+static int tegra_cl_dvfs_set_vmin_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
 {
 	unsigned long flags;
 	struct tegra_cl_dvfs *cld = (struct tegra_cl_dvfs *)cdev->devdata;
@@ -1106,9 +1106,9 @@ static int tegra_cl_dvfs_set_cdev_state(struct thermal_cooling_device *cdev,
 }
 
 static struct thermal_cooling_device_ops tegra_cl_dvfs_cooling_ops = {
-	.get_max_state = tegra_cl_dvfs_get_cdev_max_state,
-	.get_cur_state = tegra_cl_dvfs_get_cdev_cur_state,
-	.set_cur_state = tegra_cl_dvfs_set_cdev_state,
+	.get_max_state = tegra_cl_dvfs_get_vmin_cdev_max_state,
+	.get_cur_state = tegra_cl_dvfs_get_vmin_cdev_cur_state,
+	.set_cur_state = tegra_cl_dvfs_set_vmin_cdev_state,
 };
 
 static void tegra_cl_dvfs_init_cdev(struct work_struct *work)

@@ -873,7 +873,7 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 
 #ifdef CONFIG_THERMAL
 /* Cooling device limits minimum rail voltage at cold temperature in pll mode */
-static int tegra_dvfs_rail_get_cdev_max_state(
+static int tegra_dvfs_rail_get_vmin_cdev_max_state(
 	struct thermal_cooling_device *cdev, unsigned long *max_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
@@ -881,7 +881,7 @@ static int tegra_dvfs_rail_get_cdev_max_state(
 	return 0;
 }
 
-static int tegra_dvfs_rail_get_cdev_cur_state(
+static int tegra_dvfs_rail_get_vmin_cdev_cur_state(
 	struct thermal_cooling_device *cdev, unsigned long *cur_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
@@ -889,7 +889,7 @@ static int tegra_dvfs_rail_get_cdev_cur_state(
 	return 0;
 }
 
-static int tegra_dvfs_rail_set_cdev_state(
+static int tegra_dvfs_rail_set_vmin_cdev_state(
 	struct thermal_cooling_device *cdev, unsigned long cur_state)
 {
 	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
@@ -904,9 +904,9 @@ static int tegra_dvfs_rail_set_cdev_state(
 }
 
 static struct thermal_cooling_device_ops tegra_dvfs_rail_cooling_ops = {
-	.get_max_state = tegra_dvfs_rail_get_cdev_max_state,
-	.get_cur_state = tegra_dvfs_rail_get_cdev_cur_state,
-	.set_cur_state = tegra_dvfs_rail_set_cdev_state,
+	.get_max_state = tegra_dvfs_rail_get_vmin_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_vmin_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_vmin_cdev_state,
 };
 
 static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
