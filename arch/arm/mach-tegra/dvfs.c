@@ -68,6 +68,15 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 /* Make sure there is a matching cooling device for thermal limit profile. */
 static void dvfs_validate_cdevs(struct dvfs_rail *rail)
 {
+	if (!rail->therm_mv_caps != !rail->therm_mv_caps_num) {
+		rail->therm_mv_caps_num = 0;
+		rail->therm_mv_caps = NULL;
+		WARN(1, "%s: not matching thermal caps/num\n", rail->reg_id);
+	}
+
+	if (rail->therm_mv_caps && !rail->vmax_cdev)
+		WARN(1, "%s: missing vmax cooling device\n", rail->reg_id);
+
 	if (!rail->therm_mv_floors != !rail->therm_mv_floors_num) {
 		rail->therm_mv_floors_num = 0;
 		rail->therm_mv_floors = NULL;
@@ -855,6 +864,13 @@ int tegra_dvfs_dfll_mode_clear(struct dvfs *d, unsigned long rate)
 	}
 	mutex_unlock(&dvfs_lock);
 	return ret;
+}
+
+struct tegra_cooling_device *tegra_dvfs_get_cpu_vmax_cdev(void)
+{
+	if (tegra_cpu_rail)
+		return tegra_cpu_rail->vmax_cdev;
+	return NULL;
 }
 
 struct tegra_cooling_device *tegra_dvfs_get_cpu_vmin_cdev(void)
