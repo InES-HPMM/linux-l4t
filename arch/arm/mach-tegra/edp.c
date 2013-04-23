@@ -380,6 +380,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			  {   0,   -2416618,   11593,	  62, },
 			},
 		 },
+		/* .volt_temp_cap = { 70, 1240 }, - TODO for T148 */
 	},
 };
 #else
@@ -527,8 +528,10 @@ static unsigned int edp_calculate_maxf(
 		freq_KHz = freq_voltage_lut[f].freq / 1000;
 		voltage_mV = freq_voltage_lut[f].voltage_mV;
 
-		/* Constrain Volt-Temp. Eg. at Tj >= 70C, no VDD_CPU > 1.24V */
-		if (temp_C >= params->volt_temp_cap.temperature &&
+		/* Constrain Volt-Temp */
+		if (params->volt_temp_cap.temperature &&
+		    temp_C > params->volt_temp_cap.temperature &&
+		    params->volt_temp_cap.voltage_limit_mV &&
 		    voltage_mV > params->volt_temp_cap.voltage_limit_mV)
 			continue;
 
