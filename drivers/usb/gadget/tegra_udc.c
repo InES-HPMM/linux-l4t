@@ -373,7 +373,8 @@ static void dr_controller_run(struct tegra_udc *udc)
 		temp &= ~USB_SYS_VBUS_ASESSION_CHANGED;
 		udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
 #endif
-	}
+	} else
+		udc_writel(udc, 0, VBUS_SENSOR_REG_OFFSET);
 	/* Enable DR irq reg */
 	temp = USB_INTR_INT_EN | USB_INTR_ERR_INT_EN
 		| USB_INTR_PTC_DETECT_EN | USB_INTR_RESET_EN
