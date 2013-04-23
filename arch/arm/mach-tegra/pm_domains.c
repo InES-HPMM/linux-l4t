@@ -195,11 +195,9 @@ static int __init tegra_init_pm_domain(void)
 {
 	pm_genpd_init(&tegra_mc_clk.gpd, &simple_qos_governor, false);
 
-	tegra_mc_chain_a.clk = clk_get_sys("mc_capa", "mc_capa");
 	pm_genpd_init(&tegra_mc_chain_a.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_mc_clk, &tegra_mc_chain_a.gpd);
 
-	tegra_mc_chain_b.clk = clk_get_sys("mc_cbpa", "mc_cbpa");
 	pm_genpd_init(&tegra_mc_chain_b.gpd, &simple_qos_governor, false);
 	tegra_pd_add_sd(&tegra_mc_chain_a, &tegra_mc_chain_b.gpd);
 
