@@ -2322,7 +2322,7 @@ void pm_genpd_init(struct generic_pm_domain *genpd,
 	genpd->dev_ops.freeze_late = pm_genpd_default_freeze_late;
 	genpd->dev_ops.thaw_early = pm_genpd_default_thaw_early;
 	genpd->dev_ops.thaw = pm_genpd_default_thaw;
-#ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_PM_RUNTIME)
 	genpd->system_suspend_notifier.notifier_call =
 		pm_genpd_suspend_notifier;
 	register_pm_notifier(&genpd->system_suspend_notifier);
