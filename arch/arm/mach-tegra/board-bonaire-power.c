@@ -25,6 +25,7 @@
 #include <linux/gpio.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/gpio-regulator.h>
+#include <linux/regulator/fixed.h>
 
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
@@ -131,6 +132,57 @@ static struct platform_device bonaire_pda_power_device = {
 	},
 };
 
+static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
+	REGULATOR_SUPPLY("vpp_fuse", NULL),
+};
+
+#define FIXED_SUPPLY(_name) "fixed_reg_en"#_name
+#define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
+	_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts,	\
+	_sdelay)							\
+	static struct regulator_init_data ri_data_##_var =		\
+	{								\
+		.supply_regulator = _in_supply,				\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(fixed_reg_en_##_name##_supply),	\
+		.consumer_supplies = fixed_reg_en_##_name##_supply,	\
+		.constraints = {					\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+			.always_on = _always_on,			\
+			.boot_on = _boot_on,				\
+		},							\
+	};								\
+	static struct fixed_voltage_config fixed_reg_en_##_var##_pdata = \
+	{								\
+		.supply_name = FIXED_SUPPLY(_name),			\
+		.microvolts = _millivolts * 1000,			\
+		.gpio = _gpio_nr,					\
+		.gpio_is_open_drain = _open_drain,			\
+		.enable_high = _active_high,				\
+		.enabled_at_boot = _boot_state,				\
+		.init_data = &ri_data_##_var,				\
+		.startup_delay = _sdelay				\
+	};								\
+	static struct platform_device fixed_reg_en_##_var##_dev = {	\
+		.name = "reg-fixed-voltage",				\
+		.id = _id,						\
+		.dev = {						\
+			.platform_data = &fixed_reg_en_##_var##_pdata,	\
+		},							\
+	}
+
+FIXED_REG(0,	battery,	battery,
+	NULL,	0,	0,
+	-1,	false, true,	0,	3300,	0);
+
+static struct platform_device *pfixed_reg_devs[] = {
+	&fixed_reg_en_battery_dev,
+};
+
 static struct tegra_suspend_platform_data bonaire_suspend_data = {
 	.cpu_timer	= 2000,
 	.cpu_off_timer	= 0,
@@ -144,6 +196,7 @@ static struct tegra_suspend_platform_data bonaire_suspend_data = {
 int __init bonaire_regulator_init(void)
 {
 	platform_device_register(&bonaire_pda_power_device);
+	platform_add_devices(pfixed_reg_devs, ARRAY_SIZE(pfixed_reg_devs));
 	return platform_add_devices(gpio_regs_devices,
 		ARRAY_SIZE(gpio_regs_devices));
 }
