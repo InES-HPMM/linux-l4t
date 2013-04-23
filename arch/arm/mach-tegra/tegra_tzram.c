@@ -24,7 +24,7 @@
 #include "common.h"
 
 #if defined(CONFIG_PLATFORM_ENABLE_IOMMU)
-static struct platform_device tegra_tzram_device __initdata = {
+static struct platform_device tegra_tzram_device = {
 	.name   = "tegra-tzram",
 	.id     = -1,
 };
