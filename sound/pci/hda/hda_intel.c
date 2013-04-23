@@ -69,6 +69,7 @@
 #endif
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #include <mach/powergate.h>
+#include <mach/pm_domains.h>
 #endif
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
@@ -1517,6 +1518,7 @@ static void azx_platform_enable_clocks(struct azx *chip)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	pm_runtime_get_sync(&chip->pdev->dev);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
 #endif
 #endif
@@ -1541,6 +1543,7 @@ static void azx_platform_disable_clocks(struct azx *chip)
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
+	pm_runtime_put(&chip->pdev->dev);
 #endif
 #endif
 
@@ -4195,6 +4198,11 @@ static int azx_probe_continue(struct azx *chip)
 	err = snd_card_register(chip->card);
 	if (err < 0)
 		goto out_free;
+
+#ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
+	pm_runtime_enable(&pdev->dev);
+	tegra_pd_add_device(&tegra_mc_chain_a, &pdev->dev);
+#endif
 
 	chip->running = 1;
 	power_down_all_codecs(chip);
