@@ -522,14 +522,16 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 		return ret;
 	}
 
-	/* start dma transfer */
-	ret = try_start_fill_buf(&dtv_ctx->stream, size);
-	if (ret < 0 && ret != -EALREADY) {
-		pr_err("%s: could not start recording.\n", __func__);
-		mutex_unlock(&dtv_ctx->stream.mtx);
-		return ret;
+	/* start dma transfer it was not started yet */
+	if (!dtv_ctx->stream.xferring) {
+		ret = try_start_fill_buf(&dtv_ctx->stream, size);
+		if (ret < 0 && ret != -EALREADY) {
+			pr_err("%s: could not start recording.\n", __func__);
+			mutex_unlock(&dtv_ctx->stream.mtx);
+			return ret;
+		}
+		dtv_ctx->stream.xferring = true;
 	}
-	dtv_ctx->stream.xferring = true;
 
 	buf_no = (dtv_ctx->stream.last_queued + 1) % dtv_ctx->stream.num_bufs;
 	pr_debug("%s: buf_no = %d\n", __func__, buf_no);
