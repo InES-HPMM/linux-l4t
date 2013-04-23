@@ -116,6 +116,12 @@ static void usb_host_vbus_enable(struct tegra_usb_phy *phy, bool enable)
 	}
 }
 
+void tegra_usb_enable_vbus(struct tegra_usb_phy *phy, bool enable)
+{
+	usb_host_vbus_enable(phy, enable);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_enable_vbus);
+
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,
 					u32 result, u32 timeout)
 {
