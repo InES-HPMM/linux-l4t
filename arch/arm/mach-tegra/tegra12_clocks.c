@@ -2352,9 +2352,9 @@ static void tegra12_pllcx_clk_init(struct clk *c)
 	 */
 	m = PLL_FIXED_MDIV(c, input_rate);
 	n = m * c->u.pll.vco_min / input_rate;
-	p = pllcx_p[1];
+	p = pllcx_p[2];
 	val = (m << PLL_BASE_DIVM_SHIFT) | (n << PLL_BASE_DIVN_SHIFT) |
-		(1 << PLL_BASE_DIVP_SHIFT);
+		(2 << PLL_BASE_DIVP_SHIFT);
 	clk_writel(val, c->reg + PLL_BASE);	/* PLL disabled */
 
 	pllcx_set_defaults(c, input_rate, n);
