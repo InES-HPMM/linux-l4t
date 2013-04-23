@@ -747,4 +747,4 @@ MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MAX77660 Multi Function Device Core Driver");
 MODULE_VERSION("1.0");
 MODULE_AUTHOR("Maxim Integrated");
-MODULE_ALIAS("platform:max77660-core");
+MODULE_ALIAS("i2c:max77660-core");
