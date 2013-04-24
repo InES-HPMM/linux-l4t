@@ -410,10 +410,25 @@ static __devinit void get_states(struct tegra_sysedp_platform_data *pdata,
 	}
 }
 
+static __devinit unsigned int initial_req(struct edp_client *client,
+		unsigned int watts)
+{
+	int i;
+
+	for (i = 0; i < client->num_states; i++) {
+		if (client->states[i] == watts)
+			return i;
+	}
+
+	WARN_ON(1);
+	return 0;
+}
+
 static __devinit int init_client(struct tegra_sysedp_platform_data *pdata)
 {
 	struct edp_manager *m;
 	unsigned int cnt;
+	unsigned int ei;
 	int r;
 
 	m = edp_get_manager("battery");
@@ -439,7 +454,8 @@ static __devinit int init_client(struct tegra_sysedp_platform_data *pdata)
 	if (r)
 		goto fail;
 
-	r = edp_update_client_request(&core_client, 0, &core_state);
+	ei = initial_req(&core_client, pdata->init_req_watts);
+	r = edp_update_client_request(&core_client, ei, &core_state);
 	if (r)
 		return r;
 
