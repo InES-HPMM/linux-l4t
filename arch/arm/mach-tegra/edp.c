@@ -827,7 +827,8 @@ static int __init init_cpu_edp_limits_lookup(void)
 
 void tegra_recalculate_cpu_edp_limits(void)
 {
-	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
+	    tegra_chip_id == TEGRA_CHIPID_TEGRA14)
 		init_cpu_edp_limits_calculated();
 }
 
