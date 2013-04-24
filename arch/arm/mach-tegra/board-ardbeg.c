@@ -27,8 +27,11 @@
 #include <linux/of_platform.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
+#include <linux/tegra_uart.h>
+#include <linux/serial_tegra.h>
 
 #include <mach/irqs.h>
+#include <mach/tegra_fiq_debugger.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -123,6 +126,62 @@ static void ardbeg_i2c_init(void)
 #endif
 }
 
+static struct platform_device *ardbeg_uart_devices[] __initdata = {
+	&tegra_uarta_device,
+	&tegra_uartb_device,
+	&tegra_uartc_device,
+	&tegra_uartd_device,
+};
+
+static struct tegra_serial_platform_data ardbeg_uarta_pdata = {
+	.dma_req_selector = 8,
+	.modem_interrupt = false,
+};
+
+static struct tegra_serial_platform_data ardbeg_uartb_pdata = {
+	.dma_req_selector = 9,
+	.modem_interrupt = false,
+};
+
+static struct tegra_serial_platform_data ardbeg_uartc_pdata = {
+	.dma_req_selector = 10,
+	.modem_interrupt = false,
+};
+
+static struct tegra_serial_platform_data ardbeg_uartd_pdata = {
+	.dma_req_selector = 19,
+	.modem_interrupt = false,
+};
+
+static struct tegra_uart_platform_data ardbeg_loopback_uart_pdata;
+
+static void __init uart_debug_init(void)
+{
+	int debug_port_id;
+
+	debug_port_id = uart_console_debug_init(3);
+	if (debug_port_id < 0)
+		return;
+
+	ardbeg_uart_devices[debug_port_id] = uart_console_debug_device;
+}
+
+static void __init ardbeg_uart_init(void)
+{
+	ardbeg_loopback_uart_pdata.is_loopback = true;
+	tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
+	tegra_uartb_device.dev.platform_data = &ardbeg_uartb_pdata;
+	tegra_uartc_device.dev.platform_data = &ardbeg_uartc_pdata;
+	tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
+
+	/* Register low speed only if it is selected */
+	if (!is_tegra_debug_uartport_hs())
+		uart_debug_init();
+
+	platform_add_devices(ardbeg_uart_devices,
+			ARRAY_SIZE(ardbeg_uart_devices));
+}
+
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_rtc_device,
@@ -161,12 +220,14 @@ static void __init tegra_ardbeg_init(void)
 	ardbeg_pinmux_init();
 	tegra_soc_device_init("ardbeg");
 	ardbeg_i2c_init();
+	ardbeg_uart_init();
 	ardbeg_kbc_init();
 	ardbeg_sdhci_init();
 	ardbeg_panel_init();
 	ardbeg_sensors_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	tegra_register_fuse();
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_ardbeg_dt_init(void)
