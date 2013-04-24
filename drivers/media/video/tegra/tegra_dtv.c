@@ -206,16 +206,16 @@ static void tegra_dtv_rx_dma_complete(struct tegra_dma_req *req)
 
 	pr_debug("%s called.\n", __func__);
 
-	/* debug only */
 	req_num = buf - s->bufs;
 	pr_debug("%s: complete buffer %d size %d bytes\n",
 		 __func__, req_num, req->bytes_transferred);
 	BUG_ON(req_num >= s->num_bufs);
 
-	complete(&buf->comp);
+	if (req->bytes_transferred > s->buf_size)
+		pr_warn("%s: DMA transferring overlapped. bufno = %d  transferred = %d bytes\n",
+			__func__, req_num, req->bytes_transferred);
 
-	if (!are_xfers_pending(s))
-		pr_warn("%s: overflow.\n", __func__);
+	complete(&buf->comp);
 
 	spin_unlock_irqrestore(&s->dma_req_lock, flags);
 }
