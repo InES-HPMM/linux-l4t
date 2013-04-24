@@ -34,7 +34,6 @@ struct tegra_sysedp_devcap {
 
 struct tegra_sysedp_corecap {
 	unsigned int power;
-	unsigned int loan;
 	struct tegra_sysedp_devcap cpupri;
 	struct tegra_sysedp_devcap gpupri;
 };

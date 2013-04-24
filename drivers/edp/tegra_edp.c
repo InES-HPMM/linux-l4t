@@ -177,11 +177,12 @@ static void update_cur_corecap(void)
 		return;
 
 	power = core_edp_states[core_state] * gain_factor / 100;
+	power += core_loan;
 	i = core_platdata->corecap_size - 1;
 	cap = core_platdata->corecap + i;
 
 	for (; i >= 0; i--, cap--) {
-		if (cap->power <= power && cap->loan <= core_loan) {
+		if (cap->power <= power) {
 			cur_corecap = cap;
 			return;
 		}
