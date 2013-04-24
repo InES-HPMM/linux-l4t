@@ -300,7 +300,7 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "csite",      NULL,           0,              true },
 #endif
 	{ "pll_u",	NULL,		480000000,	true },
-	{ "pll_re_vco",	NULL,		612000000,	false },
+	{ "pll_re_vco",	NULL,		612000000,	true },
 	{ "xusb_falcon_src",	"pll_p",	204000000,	false},
 	{ "xusb_host_src",	"pll_p",	102000000,	false},
 	{ "xusb_ss_src",	"pll_re_vco",	122400000,	false},
