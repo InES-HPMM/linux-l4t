@@ -37,8 +37,15 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra11 step */
 #define VDD_SAFE_STEP			100
 
-static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
+
+static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 70, };
+static int vdd_cpu_therm_caps_table[MAX_THERMAL_LIMITS] = { 1240, };
+
+static struct tegra_cooling_device cpu_vmax_cdev = {
+	.cdev_type = "cpu_hot",
+};
 
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
@@ -55,6 +62,7 @@ static struct dvfs_rail tegra11_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
+	.vmax_cdev = &cpu_vmax_cdev,
 };
 
 static struct dvfs_rail tegra11_dvfs_rail_vdd_core = {
@@ -410,41 +418,84 @@ module_param_cb(disable_cpu, &tegra_dvfs_disable_cpu_ops,
 	&tegra_dvfs_cpu_disabled, 0644);
 
 /*
- * Install rail thermal profile provided:
+ * Validate rail thermal profile, and get its size. Valid profile:
  * - voltage floors are descending with temperature increasing
- * - and the lowest floor is above rail minimum voltage in pll and
+ * - the lowest limit is above rail minimum voltage in pll and
  *   in dfll mode (if applicable)
+ * - the highest limit is below rail nominal voltage
  */
-static void __init init_rail_vmin_thermal_profile(
-	int *therm_trips_table, int *therm_floors_table,
+static int __init get_thermal_profile_size(
+	int *trips_table, int *limits_table,
 	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
 {
 	int i, min_mv;
 
 	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
-		if (!therm_floors_table[i+1])
+		if (!limits_table[i+1])
 			break;
 
-		if ((therm_trips_table[i] >= therm_trips_table[i+1]) ||
-		    (therm_floors_table[i] < therm_floors_table[i+1])) {
-			WARN(1, "%s: invalid thermal floors\n", rail->reg_id);
-			return;
+		if ((trips_table[i] >= trips_table[i+1]) ||
+		    (limits_table[i] < limits_table[i+1])) {
+			pr_warning("%s: not ordered profile\n", rail->reg_id);
+			return -EINVAL;
 		}
 	}
 
 	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
-	if (therm_floors_table[i] < min_mv) {
-		WARN(1, "%s: thermal floor below Vmin\n", rail->reg_id);
+	if (limits_table[i] < min_mv) {
+		pr_warning("%s: thermal profile below Vmin\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	if (limits_table[0] > rail->nominal_millivolts) {
+		pr_warning("%s: thermal profile above Vmax\n", rail->reg_id);
+		return -EINVAL;
+	}
+	return i + 1;
+}
+
+static void __init init_rail_vmax_thermal_profile(
+	int *therm_trips_table, int *therm_caps_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_caps_table, rail, d);
+	if (i <= 0) {
+		rail->vmax_cdev = NULL;
+		WARN(1, "%s: invalid Vmax thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal caps */
+	rail->therm_mv_caps = therm_caps_table;
+	rail->therm_mv_caps_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmax_cdev) {
+		rail->vmax_cdev->trip_temperatures_num = i;
+		rail->vmax_cdev->trip_temperatures = therm_trips_table;
+	}
+}
+
+static void __init init_rail_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_floors_table, rail, d);
+	if (i <= 0) {
+		rail->vmin_cdev = NULL;
+		WARN(1, "%s: invalid Vmin thermal profile\n", rail->reg_id);
 		return;
 	}
 
 	/* Install validated thermal floors */
 	rail->therm_mv_floors = therm_floors_table;
-	rail->therm_mv_floors_num = i + 1;
+	rail->therm_mv_floors_num = i;
 
 	/* Setup trip-points if applicable */
 	if (rail->vmin_cdev) {
-		rail->vmin_cdev->trip_temperatures_num = i + 1;
+		rail->vmin_cdev->trip_temperatures_num = i;
 		rail->vmin_cdev->trip_temperatures = therm_trips_table;
 	}
 }
@@ -756,11 +807,14 @@ void __init tegra11x_init_dvfs(void)
 	}
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
 
-	/* Init thermal floors */
+	/* Init thermal limits */
+	init_rail_vmax_thermal_profile(
+		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
+		&tegra11_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	init_rail_vmin_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra11_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
-	init_rail_vmin_thermal_profile(vdd_core_therm_trips_table,
+	init_rail_vmin_thermal_profile(vdd_core_vmin_trips_table,
 		vdd_core_therm_floors_table, &tegra11_dvfs_rail_vdd_core, NULL);
 
 	/* Init rail structures and dependencies */
