@@ -118,16 +118,4 @@ enum {
 	TEGRA_DTV_VALID_POLARITY_LOW,
 };
 
-#ifdef __KERNEL__
-enum {
-	TEGRA_DTV_CLK_POSEDGE,
-	TEGRA_DTV_CLK_NEGEDGE,
-};
-
-struct tegra_dtv_platform_data {
-	unsigned int dma_buf_size;
-	int clk_edge;
-};
-#endif /* __KERNEL__ */
-
 #endif /* __TEGRA_DTV_H__ */
