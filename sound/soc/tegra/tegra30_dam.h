@@ -123,7 +123,11 @@
 #define TEGRA30_CIF_BIT16				3
 #define TEGRA30_CIF_CH1					0
 #define TEGRA30_CIF_MONOCONV_COPY			(1<<0)
-#define TEGRA30_CIF_STEREOCONV_CH0			(0<<4)
+#define TEGRA30_CIF_STEREOCONV_SHIFT		4
+#define TEGRA30_CIF_STEREOCONV_MASK			(3 << TEGRA30_CIF_STEREOCONV_SHIFT)
+#define TEGRA30_CIF_STEREOCONV_CH0			(0 << TEGRA30_CIF_STEREOCONV_SHIFT)
+#define TEGRA30_CIF_STEREOCONV_CH1			(1 << TEGRA30_CIF_STEREOCONV_SHIFT)
+#define TEGRA30_CIF_STEREOCONV_AVG			(2 << TEGRA30_CIF_STEREOCONV_SHIFT)
 
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
 /* TEGRA30_DAM_CH0_BIQUAD_FIXED_COEF_0 */
@@ -185,6 +189,7 @@ int tegra30_dam_set_acif(int ifc, int chtype, unsigned int audio_channels,
 	unsigned int audio_bits, unsigned int client_channels,
 	unsigned int client_bits);
 void tegra30_dam_enable(int ifc, int on, int chtype);
+int tegra30_dam_set_acif_stereo_conv(int ifc, int chtype, int conv);
 #ifndef CONFIG_ARCH_TEGRA_3x_SOC
 void tegra30_dam_write_coeff_ram(int ifc, int fsin, int fsout);
 void tegra30_dam_set_farrow_param(int ifc, int fsin, int fsout);

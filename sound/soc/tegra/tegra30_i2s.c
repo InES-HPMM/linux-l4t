@@ -1143,6 +1143,10 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 			bb_info->rate, bb_info->sample_size, codec_info->channels,
 			codec_info->rate, codec_info->bitsize);
 
+		tegra30_dam_set_acif_stereo_conv(bb_i2s->dam_ifc,
+				TEGRA30_DAM_CHIN0_SRC,
+				TEGRA30_CIF_STEREOCONV_AVG);
+
 		/*make ahub connections*/
 
 		/*if this is the only user of i2s tx, make i2s rx connection*/

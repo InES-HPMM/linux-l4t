@@ -1026,6 +1026,42 @@ void tegra30_dam_enable_clip_counter(struct tegra30_dam_context *dam, int on)
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CLIP);
 }
 
+int tegra30_dam_set_acif_stereo_conv(int ifc, int chtype, int conv)
+{
+	unsigned int reg;
+	unsigned int val = 0;
+
+	if (ifc >= TEGRA30_NR_DAM_IFC)
+		return -EINVAL;
+
+	if ((conv != TEGRA30_CIF_STEREOCONV_CH0) &&
+		(conv != TEGRA30_CIF_STEREOCONV_CH1) &&
+		(conv != TEGRA30_CIF_STEREOCONV_AVG))
+			return -EINVAL;
+
+	switch (chtype) {
+	case dam_ch_out:
+		reg = TEGRA30_DAM_AUDIOCIF_OUT_CTRL;
+		break;
+	case dam_ch_in0:
+		reg = TEGRA30_DAM_AUDIOCIF_CH0_CTRL;
+		break;
+	case dam_ch_in1:
+		reg = TEGRA30_DAM_AUDIOCIF_CH1_CTRL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	val = tegra30_dam_readl(dams_cont_info[ifc], reg);
+	val &= ~TEGRA30_CIF_STEREOCONV_MASK;
+	val |= conv;
+
+	tegra30_dam_writel(dams_cont_info[ifc], val, reg);
+
+	return 0;
+}
+
 static int tegra30_dam_probe(struct platform_device *pdev)
 {
 	struct resource *res,  *region;
