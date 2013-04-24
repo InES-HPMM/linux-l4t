@@ -1608,14 +1608,14 @@ void __tegra_move_framebuffer(struct platform_device *pdev,
 		return;
 	}
 
-	if (pfn_valid(page_to_pfn(phys_to_page(from)))) {
+	if (from && pfn_valid(page_to_pfn(phys_to_page(from)))) {
 		for (i = 0 ; i < size; i += PAGE_SIZE) {
 			page = phys_to_page(from + i);
 			from_virt = kmap(page);
 			memcpy(to_io + i, from_virt, PAGE_SIZE);
 			kunmap(page);
 		}
-	} else {
+	} else if (from) {
 		void __iomem *from_io = ioremap(from, size);
 		if (!from_io) {
 			pr_err("%s: Failed to map source framebuffer\n",
