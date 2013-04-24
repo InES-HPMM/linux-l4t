@@ -434,7 +434,6 @@ ssize_t gpsdrv_read(struct file *file, char __user *data, size_t size,
 
 	/* Validate input parameters */
 	if ((NULL == file) || (((NULL == data) || (0 == size)))) {
-		GPSDRV_ERR("Invalid input params passed to %s", __func__);
 		return -EINVAL;
 	}
 
