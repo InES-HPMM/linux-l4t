@@ -34,7 +34,7 @@ struct freqcap {
 
 static unsigned int gpu_high_threshold = 500;
 static unsigned int gpu_window = 80;
-static unsigned int gain_factor = 100;
+static unsigned int gain_factor = 130;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int core_state;
