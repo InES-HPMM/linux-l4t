@@ -43,6 +43,7 @@ struct tegra_dtv_hw_config {
 					   const struct tegra_dtv_hw_config *)
 #define TEGRA_DTV_IOCTL_GET_HW_CONFIG  _IOR(TEGRA_DTV_MAGIC, 3,		\
 					   struct tegra_dtv_hw_config *)
+#define TEGRA_DTV_IOCTL_GET_BUFFER_SIZE _IOR(TEGRA_DTV_MAGIC, 4, int *)
 
 /**
  * clock edge settings for clk_edge

@@ -426,6 +426,13 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 			ret = -EFAULT;
 		break;
 	}
+	case TEGRA_DTV_IOCTL_GET_BUFFER_SIZE:
+	{
+		if (copy_to_user((void __user *) arg, &s->buf_size,
+				 sizeof(s->buf_size)))
+			ret = -EFAULT;
+		break;
+	}
 	default:
 		ret = -EINVAL;
 	}
