@@ -29,6 +29,7 @@
 #include <linux/seq_file.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <linux/irqdomain.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/uaccess.h>
@@ -483,6 +484,14 @@ static inline long temp_convert(int cap, int a, int b)
 #ifdef CONFIG_THERMAL
 static struct thermal_zone_device *thz[THERM_SIZE];
 #endif
+struct soctherm_oc_irq_chip_data {
+	int			irq_base;
+	struct mutex		irq_lock;
+	struct irq_chip		irq_chip;
+	struct irq_domain	*domain;
+	int			irq_enable;
+};
+static struct soctherm_oc_irq_chip_data soc_irq_cdata;
 
 static u32 fuse_calib_base_cp;
 static u32 fuse_calib_base_ft;
@@ -1409,6 +1418,26 @@ static irqreturn_t soctherm_edp_thread_func(int irq, void *arg)
 
 		if (oc5 && !soctherm_handle_alarm(THROTTLE_OC5))
 			soctherm_oc_intr_enable(THROTTLE_OC5, true);
+
+		if (oc1 && soc_irq_cdata.irq_enable & BIT(0))
+			handle_nested_irq(
+				irq_find_mapping(soc_irq_cdata.domain, 0));
+
+		if (oc2 && soc_irq_cdata.irq_enable & BIT(1))
+			handle_nested_irq(
+				irq_find_mapping(soc_irq_cdata.domain, 1));
+
+		if (oc3 && soc_irq_cdata.irq_enable & BIT(2))
+			handle_nested_irq(
+				irq_find_mapping(soc_irq_cdata.domain, 2));
+
+		if (oc4 && soc_irq_cdata.irq_enable & BIT(3))
+			handle_nested_irq(
+				irq_find_mapping(soc_irq_cdata.domain, 3));
+
+		if (oc5 && soc_irq_cdata.irq_enable & BIT(4))
+			handle_nested_irq(
+				irq_find_mapping(soc_irq_cdata.domain, 0));
 	}
 
 	if (st) {
@@ -1917,8 +1946,91 @@ static struct notifier_block soctherm_nb = {
 	.notifier_call = soctherm_pm_notify,
 };
 
+static void soctherm_oc_irq_lock(struct irq_data *data)
+{
+	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	mutex_lock(&d->irq_lock);
+}
+static void soctherm_oc_irq_sync_unlock(struct irq_data *data)
+{
+	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	mutex_unlock(&d->irq_lock);
+}
+static void soctherm_oc_irq_enable(struct irq_data *data)
+{
+	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	d->irq_enable |= BIT(data->hwirq);
+}
+
+static void soctherm_oc_irq_disable(struct irq_data *data)
+{
+	struct soctherm_oc_irq_chip_data *d = irq_data_get_irq_chip_data(data);
+
+	d->irq_enable &= ~BIT(data->hwirq);
+}
+
+static int soctherm_oc_irq_set_type(struct irq_data *data, unsigned int type)
+{
+	return 0;
+}
+
+static int soctherm_oc_irq_map(struct irq_domain *h, unsigned int virq,
+		irq_hw_number_t hw)
+{
+	struct soctherm_oc_irq_chip_data *data = h->host_data;
+
+	irq_set_chip_data(virq, data);
+	irq_set_chip(virq, &data->irq_chip);
+	irq_set_nested_thread(virq, 1);
+	set_irq_flags(virq, IRQF_VALID);
+	return 0;
+}
+
+static struct irq_domain_ops soctherm_oc_domain_ops = {
+	.map	= soctherm_oc_irq_map,
+	.xlate	= irq_domain_xlate_twocell,
+};
+
+static int tegra11_soctherem_oc_int_init(int irq_base, int num_irqs)
+{
+	if (irq_base <= 0 || !num_irqs) {
+		pr_info("%s(): OC interrupts are not enabled\n", __func__);
+		return 0;
+	}
+
+	mutex_init(&soc_irq_cdata.irq_lock);
+	soc_irq_cdata.irq_enable = 0;
+
+	soc_irq_cdata.irq_chip.name = "sco_therm_oc";
+	soc_irq_cdata.irq_chip.irq_bus_lock = soctherm_oc_irq_lock,
+	soc_irq_cdata.irq_chip.irq_bus_sync_unlock = soctherm_oc_irq_sync_unlock,
+	soc_irq_cdata.irq_chip.irq_disable = soctherm_oc_irq_disable,
+	soc_irq_cdata.irq_chip.irq_enable = soctherm_oc_irq_enable,
+	soc_irq_cdata.irq_chip.irq_set_type = soctherm_oc_irq_set_type,
+
+	irq_base = irq_alloc_descs(irq_base, 0, num_irqs, 0);
+	if (irq_base < 0) {
+		pr_err("%s: Failed to allocate IRQs: %d\n", __func__, irq_base);
+		return irq_base;
+	}
+
+	soc_irq_cdata.domain = irq_domain_add_legacy(NULL, num_irqs,
+			irq_base, 0, &soctherm_oc_domain_ops, &soc_irq_cdata);
+	if (!soc_irq_cdata.domain) {
+		pr_err("%s: Failed to create IRQ domain\n", __func__);
+		return -ENOMEM;
+	}
+	pr_info("%s(): OC interrupts enabled successful\n", __func__);
+	return 0;
+}
+
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
+	int ret;
+
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
 	      tegra_chip_id == TEGRA_CHIPID_TEGRA14)) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
@@ -1941,6 +2053,14 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 		return -1;
 
 	soctherm_init_platform_done = true;
+
+	ret = tegra11_soctherem_oc_int_init(data->oc_irq_base,
+			data->num_oc_irqs);
+	if (ret < 0) {
+		pr_err("soctherem_oc_int_init failed: %d\n", ret);
+		return ret;
+	}
+
 
 	/* enable threaded interrupts */
 	if (request_threaded_irq(INT_THERMAL, soctherm_thermal_isr,

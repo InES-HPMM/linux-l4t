@@ -58,6 +58,15 @@ enum soctherm_throttle_dev_id {
 	THROTTLE_DEV_SIZE,
 };
 
+enum soctherem_oc_irq_id {
+	TEGRA_SOC_OC_IRQ_1,
+	TEGRA_SOC_OC_IRQ_2,
+	TEGRA_SOC_OC_IRQ_3,
+	TEGRA_SOC_OC_IRQ_4,
+	TEGRA_SOC_OC_IRQ_5,
+	TEGRA_SOC_OC_IRQ_MAX,
+};
+
 struct soctherm_sensor {
 	bool sensor_enable;
 	bool zone_enable;
@@ -116,6 +125,8 @@ struct soctherm_tsensor_pmu_data {
 };
 
 struct soctherm_platform_data {
+	int oc_irq_base;
+	int num_oc_irqs;
 	unsigned long soctherm_clk_rate;
 	unsigned long tsensor_clk_rate;
 
