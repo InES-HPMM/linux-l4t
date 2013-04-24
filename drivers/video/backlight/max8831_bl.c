@@ -81,25 +81,39 @@ static int max8831_backlight_set_with_edp(struct backlight_device *bl,
 {
 	struct max8831_backlight_data *data = bl_get_data(bl);
 	struct device *dev = data->max8831_dev;
-	unsigned int approved;
+	unsigned int approved_state;
+	int unsigned approved_brightness;
 	int ret;
 	unsigned int edp_state;
+	unsigned int edp_brightness;
 	unsigned int i;
+
 	if (data->max8831_edp_client) {
 		for (i = 0; i < MAX8831_EDP_NUM_STATES; i++) {
-			if (brightness >= data->edp_brightness_states[i])
+			edp_brightness = data->edp_brightness_states[i];
+			if (brightness > edp_brightness) {
+				/* Choose the next higher EDP state */
+				if (i)
+					i--;
+				break;
+			} else if (brightness == edp_brightness)
 				break;
 		}
 		edp_state = i;
 		ret = edp_update_client_request(data->max8831_edp_client,
-							edp_state, &approved);
+			edp_state, &approved_state);
 		if (ret) {
 			dev_err(dev, "E state transition failed\n");
 			return ret;
 		}
+
+		approved_brightness =
+			data->edp_brightness_states[approved_state];
+		if (brightness > approved_brightness)
+			brightness = approved_brightness;
 	}
 
-	max8831_backlight_set(bl, data->edp_brightness_states[approved]);
+	max8831_backlight_set(bl, brightness);
 	return 0;
 }
 
