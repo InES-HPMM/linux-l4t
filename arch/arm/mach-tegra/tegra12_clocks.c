@@ -489,6 +489,9 @@
 /* PLLP default fixed rate in h/w controlled mode */
 #define PLLP_DEFAULT_FIXED_RATE		408000000
 
+/* Use PLL_RE as PLLE input (default - OSC via pll reference divider) */
+#define USE_PLLE_INPUT_PLLRE    0
+
 static bool tegra12_is_dyn_ramp(struct clk *c,
 				unsigned long rate, bool from_vco_min);
 static void tegra12_pllp_init_dependencies(unsigned long pllp_rate);
@@ -3190,10 +3193,27 @@ static u8 plle_p[PLLE_CMLDIV_MAX + 1] = {
 /* CMLDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
 /* p: */   1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
 
+static inline void select_pll_e_input(u32 aux_reg)
+{
+#if USE_PLLE_INPUT_PLLRE
+	aux_reg |= PLLE_AUX_PLLRE_SEL;
+#else
+	aux_reg &= ~(PLLE_AUX_PLLRE_SEL | PLLE_AUX_PLLP_SEL);
+#endif
+	clk_writel(aux_reg, PLLE_AUX);
+}
+
 static void tegra12_plle_clk_init(struct clk *c)
 {
 	u32 val, p;
-	struct clk *ref = tegra_get_clock_by_name("pll_re_vco");
+	struct clk *pll_ref = tegra_get_clock_by_name("pll_ref");
+	struct clk *re_vco = tegra_get_clock_by_name("pll_re_vco");
+	struct clk *pllp = tegra_get_clock_by_name("pllp");
+#if USE_PLLE_INPUT_PLLRE
+	struct clk *ref = re_vco;
+#else
+	struct clk *ref = pll_ref;
+#endif
 
 	val = clk_readl(c->reg + PLL_BASE);
 	c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
@@ -3203,18 +3223,15 @@ static void tegra12_plle_clk_init(struct clk *c)
 	c->div *= plle_p[p];
 
 	val = clk_readl(PLLE_AUX);
-	c->parent = (val & PLLE_AUX_PLLRE_SEL) ? ref :
-			(val & PLLE_AUX_PLLP_SEL) ?
-				tegra_get_clock_by_name("pll_p") :
-				tegra_get_clock_by_name("pll_ref");
+	c->parent = (val & PLLE_AUX_PLLRE_SEL) ? re_vco :
+		(val & PLLE_AUX_PLLP_SEL) ? pllp : pll_ref;
 	if (c->parent != ref) {
 		if (c->state == ON) {
 			WARN(1, "%s: pll_e is left enabled with %s input\n",
 			     __func__, c->parent->name);
 		} else {
 			c->parent = ref;
-			val |= PLLE_AUX_PLLRE_SEL;
-			clk_writel(val, PLLE_AUX);
+			select_pll_e_input(val);
 		}
 	}
 }
@@ -3319,6 +3336,19 @@ static int tegra12_plle_clk_enable(struct clk *c)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_SLEEP
+static void tegra12_plle_clk_resume(struct clk *c)
+{
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	if (val & PLL_BASE_ENABLE)
+		return;		/* already resumed */
+
+	/* Restore parent */
+	val = clk_readl(PLLE_AUX);
+	select_pll_e_input(val);
+}
+#endif
 
 static struct clk_ops tegra_plle_ops = {
 	.init			= tegra12_plle_clk_init,
@@ -7385,6 +7415,7 @@ static void tegra12_clk_resume(void)
 	tegra_emc_timing_invalidate();
 
 	tegra12_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
+	tegra12_plle_clk_resume(&tegra_pll_e); /* Restore plle parent as pll_re_vco */
 	tegra12_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
 }
 
