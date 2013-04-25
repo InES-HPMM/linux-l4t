@@ -387,7 +387,7 @@ static struct platform_device tegra_camera = {
 };
 
 
-static struct issp_platform_data roth_issp_pdata = {
+static struct issp_platform_data roth_issp_pdata_p2454 = {
 	.reset_gpio	= TEGRA_GPIO_PH4,
 	.data_gpio	= TEGRA_GPIO_PH6,
 	.clk_gpio	= TEGRA_GPIO_PH7,
@@ -397,14 +397,43 @@ static struct issp_platform_data roth_issp_pdata = {
 	.blocks		= 128,
 	.security_size	= 64,
 	.version_addr	= 0x0286,
+	.force_update	= 1,
 };
 
-static struct platform_device roth_issp_device = {
+static struct platform_device roth_issp_device_p2454 = {
 	.name	= "issp",
 	.dev	= {
-		.platform_data = &roth_issp_pdata,
+		.platform_data = &roth_issp_pdata_p2454,
 	},
 };
+
+static struct issp_platform_data roth_issp_pdata_p2560 = {
+	.reset_gpio	= TEGRA_GPIO_PH4,
+	.data_gpio	= TEGRA_GPIO_PH6,
+	.clk_gpio	= TEGRA_GPIO_PH7,
+	.fw_name	= "p2560-uc.fw",
+	.si_id		= {0x00, 0xA2, 0x52, 0x21}, /* CY7C64345 */
+	.block_size	= 128,
+	.blocks		= 128,
+	.security_size	= 64,
+	.version_addr	= 0x0286,
+	.force_update	= 0,
+};
+
+static struct platform_device roth_issp_device_p2560 = {
+	.name	= "issp",
+	.dev	= {
+		.platform_data = &roth_issp_pdata_p2560,
+	},
+};
+
+static void __init roth_issp_init(void)
+{
+	if (system_rev == P2454)
+		platform_device_register(&roth_issp_device_p2454);
+	else
+		platform_device_register(&roth_issp_device_p2560);
+}
 
 static struct platform_device *roth_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -432,7 +461,6 @@ static struct platform_device *roth_devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
-	&roth_issp_device,
 };
 
 #ifdef CONFIG_USB_SUPPORT
@@ -695,6 +723,7 @@ static void __init tegra_roth_init(void)
 	roth_soctherm_init();
 	roth_fan_init();
 	tegra_register_fuse();
+	roth_issp_init();
 }
 
 static void __init roth_ramconsole_reserve(unsigned long size)
