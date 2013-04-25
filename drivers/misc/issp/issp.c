@@ -111,7 +111,10 @@ static int issp_need_update(struct issp_host *host, bool *update)
 			"Version Block is protected, force upgrade!\n");
 		*update = true;
 	} else if (ret == 1) {
-		*update = (ver_uc < host->version_fw);
+		*update = (ver_uc < host->version_fw) ||
+				((ver_uc != host->version_fw) &&
+				host->pdata->force_update);
+
 		if (*update)
 			dev_info(&host->pdev->dev, "firmware needs upgrade, "\
 				"version 0x%02x -> 0x%02x\n",
