@@ -2454,6 +2454,7 @@ struct platform_device tegra_tsensor_device = {
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static u64 tegra_se_dma_mask = DMA_BIT_MASK(32);
+static u64 tegra12_se_dma_mask = DMA_BIT_MASK(64);
 
 struct resource tegra_se_resources[] = {
 	[0] = {
@@ -2490,6 +2491,17 @@ struct platform_device tegra11_se_device = {
 	.dev = {
 		.coherent_dma_mask = DMA_BIT_MASK(32),
 		.dma_mask = &tegra_se_dma_mask,
+	},
+	.resource = tegra_se_resources,
+	.num_resources = ARRAY_SIZE(tegra_se_resources),
+};
+
+struct platform_device tegra12_se_device = {
+	.name = "tegra12-se",
+	.id = -1,
+	.dev = {
+		.coherent_dma_mask = DMA_BIT_MASK(64),
+		.dma_mask = &tegra12_se_dma_mask,
 	},
 	.resource = tegra_se_resources,
 	.num_resources = ARRAY_SIZE(tegra_se_resources),
