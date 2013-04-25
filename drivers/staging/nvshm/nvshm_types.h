@@ -15,6 +15,7 @@
 #ifndef _NVSHM_TYPES_H
 #define _NVSHM_TYPES_H
 
+#include <linux/workqueue.h>
 #include <linux/platform_data/nvshm.h> /* NVSHM_SERIAL_BYTE_SIZE */
 
 /* NVSHM common types */
@@ -153,6 +154,7 @@ struct nvshm_channel {
 	struct nvshm_if_operations *ops;
 	void *data;
 	int rate_counter;
+	struct work_struct start_tx_work;
 };
 
 

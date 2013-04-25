@@ -282,6 +282,17 @@ static void ipc_work(struct work_struct *work)
 	wake_unlock(&handle->dl_lock);
 }
 
+static void start_tx_worker(struct work_struct *work)
+{
+	struct nvshm_channel *chan = container_of(work,
+						  struct nvshm_channel,
+						  start_tx_work);
+
+	pr_warn("%s: start tx on chan %d\n", __func__, chan->index);
+	if (chan->ops)
+		chan->ops->start_tx(chan);
+}
+
 static void nvshm_ipc_handler(void *data)
 {
 	struct nvshm_handle *handle = (struct nvshm_handle *)data;
@@ -313,10 +324,15 @@ static enum hrtimer_restart nvshm_ipc_timer_func(struct hrtimer *timer)
 
 int nvshm_register_ipc(struct nvshm_handle *handle)
 {
+	int chan;
+
 	pr_debug("%s\n", __func__);
 	snprintf(handle->wq_name, 15, "nvshm_queue%d", handle->instance);
 	handle->nvshm_wq = create_singlethread_workqueue(handle->wq_name);
 	INIT_WORK(&handle->nvshm_work, ipc_work);
+
+	for (chan = 0; chan < NVSHM_MAX_CHANNELS; chan++)
+		INIT_WORK(&handle->chan[chan].start_tx_work, start_tx_worker);
 
 	hrtimer_init(&handle->wake_timer, CLOCK_REALTIME, HRTIMER_MODE_ABS);
 	handle->wake_timer.function = nvshm_ipc_timer_func;
