@@ -4,6 +4,7 @@
  * License terms:  GNU General Public License (GPL), version 2
  */
 
+#include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -37,10 +38,21 @@ struct pasr_info {
 
 static struct pasr_info __initdata pasr_info;
 static struct pasr_map pasr_map;
+unsigned long section_size;
+unsigned int section_bit;
 
 static void add_ddr_die(phys_addr_t addr, unsigned long size);
 static void add_interleaved_area(phys_addr_t a1,
 		phys_addr_t a2, unsigned long size);
+
+static int __init section_param(char *p)
+{
+	section_size = memparse(p, &p);
+	section_bit = ffs(section_size) - 1;
+
+	return 0;
+}
+early_param("section", section_param);
 
 static int __init ddr_die_param(char *p)
 {
@@ -211,11 +223,11 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 		}
 
 		/*  Check die is aligned on section boundaries */
-		if (((d1->addr & ~(PASR_SECTION_SZ - 1)) != d1->addr)
-			|| ((d1->size & ~(PASR_SECTION_SZ - 1)) != d1->size)) {
+		if (((d1->addr & ~(section_size - 1)) != d1->addr)
+			|| ((d1->size & ~(section_size - 1)) != d1->size)) {
 			pr_err("%s: DDR die at %#x (size %#lx) \
-				is not aligned on section boundaries %#x\n",
-				__func__, d1->addr, d1->size, PASR_SECTION_SZ);
+				is not aligned on section boundaries %#lx\n",
+				__func__, d1->addr, d1->size, section_size);
 			return -EINVAL;
 		}
 
@@ -251,13 +263,13 @@ static int __init pasr_info_sanity_check(struct pasr_info *info)
 		}
 
 		/* Check area is aligned on section boundaries */
-		if (((i1->addr1 & ~(PASR_SECTION_SZ - 1)) != i1->addr1)
-			|| ((i1->addr2 & ~(PASR_SECTION_SZ - 1)) != i1->addr2)
-			|| ((i1->size & ~(PASR_SECTION_SZ - 1)) != i1->size)) {
+		if (((i1->addr1 & ~(section_size - 1)) != i1->addr1)
+			|| ((i1->addr2 & ~(section_size - 1)) != i1->addr2)
+			|| ((i1->size & ~(section_size - 1)) != i1->size)) {
 			pr_err("%s: Interleaved area at %#x/%#x (size %#lx) \
-				is not aligned on section boundaries %#x\n",
+				is not aligned on section boundaries %#lx\n",
 				__func__, i1->addr1, i1->addr2, i1->size,
-				PASR_SECTION_SZ);
+				section_size);
 			return -EINVAL;
 		}
 
@@ -324,11 +336,11 @@ static int __init pasr_build_map(struct pasr_info *info, struct pasr_map *map)
 
 		die[i].start = addr;
 		die[i].idx = i;
-		die[i].nr_sections = info->die[i].size >> PASR_SECTION_SZ_BITS;
+		die[i].nr_sections = info->die[i].size >> section_bit;
 
 		for (j = 0; j < die[i].nr_sections; j++) {
 			section[j].start = addr;
-			addr += PASR_SECTION_SZ;
+			addr += section_size;
 			section[j].die = &die[i];
 		}
 	}
@@ -338,13 +350,13 @@ static int __init pasr_build_map(struct pasr_info *info, struct pasr_map *map)
 		struct pasr_section *s1, *s2;
 		unsigned long offset = 0;
 
-		for (j = 0; j < (ia->size >> PASR_SECTION_SZ_BITS); j++) {
+		for (j = 0; j < (ia->size >> section_bit); j++) {
 			s1 = pasr_addr2section(map, ia->addr1 + offset);
 			s2 = pasr_addr2section(map, ia->addr2 + offset);
 			if (!s1 || !s2)
 				return -EINVAL;
 
-			offset += PASR_SECTION_SZ;
+			offset += section_size;
 
 			s1->pair = s2;
 			s2->pair = s1;
@@ -372,7 +384,7 @@ static int pasr_print_meminfo(struct seq_file *s, void *data)
 			u64 percentage;
 
 			percentage = (u64)section->free_size * 100;
-			do_div(percentage, PASR_SECTION_SZ);
+			do_div(percentage, section_size);
 			seq_printf(s, "section %d %lu %llu\n", j, section->free_size,
 					percentage);
 		}

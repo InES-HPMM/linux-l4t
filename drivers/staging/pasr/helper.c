@@ -24,7 +24,7 @@ struct pasr_die *pasr_addr2die(struct pasr_map *map, phys_addr_t addr)
 		mid = (left + right) >> 1;
 
 		d = &map->die[mid];
-		start = addr & ~((PASR_SECTION_SZ * d->nr_sections) - 1);
+		start = addr & ~((section_size * d->nr_sections) - 1);
 
 		if (start == d->start)
 			return d;
@@ -57,7 +57,7 @@ struct pasr_section *pasr_addr2section(struct pasr_map *map
 	left = 0;
 	right = die->nr_sections;
 
-	addr &= ~(PASR_SECTION_SZ - 1);
+	addr &= ~(section_size - 1);
 
 	 while (left != right) {
 		struct pasr_section *s;

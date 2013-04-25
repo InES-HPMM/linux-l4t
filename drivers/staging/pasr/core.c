@@ -25,7 +25,7 @@ void pasr_update_mask(struct pasr_section *section, enum pasr_state state)
 {
 	struct pasr_die *die = section->die;
 	phys_addr_t addr = section->start - die->start;
-	u8 bit = addr >> PASR_SECTION_SZ_BITS;
+	u8 bit = addr >> section_bit;
 
 	if (state == PASR_REFRESH)
 		die->mem_reg &= ~(1 << bit);
@@ -60,22 +60,22 @@ void pasr_put(phys_addr_t paddr, unsigned long size)
 		if (!s)
 			goto out;
 
-		cur_sz = ((paddr + size) < (s->start + PASR_SECTION_SZ)) ?
-			size : s->start + PASR_SECTION_SZ - paddr;
+		cur_sz = ((paddr + size) < (s->start + section_size)) ?
+			size : s->start + section_size - paddr;
 
 		if (s->lock)
 			spin_lock_irqsave(s->lock, flags);
 
 		s->free_size += cur_sz;
 
-		if (s->free_size < PASR_SECTION_SZ)
+		if (s->free_size < section_size)
 			goto unlock;
 
-		BUG_ON(s->free_size > PASR_SECTION_SZ);
+		BUG_ON(s->free_size > section_size);
 
 		if (!s->pair)
 			pasr_update_mask(s, PASR_NO_REFRESH);
-		else if (s->pair->free_size == PASR_SECTION_SZ) {
+		else if (s->pair->free_size == section_size) {
 			pasr_update_mask(s, PASR_NO_REFRESH);
 			pasr_update_mask(s->pair, PASR_NO_REFRESH);
 		}
@@ -110,13 +110,13 @@ void pasr_get(phys_addr_t paddr, unsigned long size)
 		if (!s)
 			goto out;
 
-		cur_sz = ((paddr + size) < (s->start + PASR_SECTION_SZ)) ?
-			size : s->start + PASR_SECTION_SZ - paddr;
+		cur_sz = ((paddr + size) < (s->start + section_size)) ?
+			size : s->start + section_size - paddr;
 
 		if (s->lock)
 			spin_lock_irqsave(s->lock, flags);
 
-		if (s->free_size < PASR_SECTION_SZ)
+		if (s->free_size < section_size)
 			goto unlock;
 
 		if (!s->pair) {

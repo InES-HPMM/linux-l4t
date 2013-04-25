@@ -14,8 +14,9 @@
 
 #define PASR_MAX_SECTION_NR_PER_DIE	8
 #define PASR_MAX_DIE_NR			4
-#define PASR_SECTION_SZ_BITS		27
-#define PASR_SECTION_SZ			(1 << PASR_SECTION_SZ_BITS)
+
+extern unsigned long section_size;
+extern unsigned int section_bit;
 
 /**
  * struct pasr_section - Represent either a DDR Bank or Segment depending on
