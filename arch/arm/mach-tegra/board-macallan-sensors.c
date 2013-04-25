@@ -359,11 +359,6 @@ static struct imx091_platform_data imx091_pdata = {
 	.power_off		= macallan_imx091_power_off,
 };
 
-static struct sbs_platform_data sbs_pdata = {
-	.poll_retry_count = 100,
-	.i2c_retry_count = 2,
-};
-
 static int macallan_ov9772_power_on(struct ov9772_power_rail *pw)
 {
 	int err;
@@ -643,13 +638,6 @@ static int macallan_nct1008_init(void)
 	return ret;
 }
 
-static struct i2c_board_info __initdata bq20z45_pdata[] = {
-	{
-		I2C_BOARD_INFO("sbs-battery", 0x0B),
-		.platform_data = &sbs_pdata,
-	},
-};
-
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 static struct thermal_trip_info skin_trips[] = {
 	{
@@ -796,9 +784,6 @@ int __init macallan_sensors_init(void)
 
 	i2c_register_board_info(0, macallan_i2c0_board_info_cm3217,
 				ARRAY_SIZE(macallan_i2c0_board_info_cm3217));
-
-	i2c_register_board_info(0, bq20z45_pdata,
-		ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }
