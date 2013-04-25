@@ -299,9 +299,9 @@ PALMAS_REGS_PDATA(smps10, 5000,  5000, NULL, 0, 0, 0, 0,
 PALMAS_REGS_PDATA(ldo1, 1050,  1050, palmas_rails(smps7), 1, 0, 1, 0,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2, 1200,  1200, palmas_rails(smps7), 0, 1, 1, 0,
-	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1800,  1800, NULL, 0, 0, 0, 0,
-	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo4, 1200,  1200, palmas_rails(smps8), 0, 0, 0, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo5, 2700,  2700, palmas_rails(smps9), 0, 0, 1, 0,
@@ -313,9 +313,9 @@ PALMAS_REGS_PDATA(ldo7, 2700,  2700, palmas_rails(smps9), 0, 0, 1, 0,
 PALMAS_REGS_PDATA(ldo8, 950,  950, NULL, 1, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo9, 1800,  2900, palmas_rails(smps9), 0, 0, 1, 0,
-	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldoln, 3300,   3300, NULL, 0, 0, 1, 0,
-	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb, 3300,  3300, NULL, 0, 0, 1, 0,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(regen1, 4200,  4200, NULL, 0, 0, 0, 0,
