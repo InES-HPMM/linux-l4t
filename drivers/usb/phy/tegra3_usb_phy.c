@@ -1746,6 +1746,8 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 {
 	int status = 0;
 	unsigned long val;
+	int port_connected = 0;
+	int is_lp0;
 	void __iomem *base = phy->regs;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
@@ -1754,11 +1756,18 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 			!phy->pdata->u_data.host.power_off_on_suspend)
 			return 0;
 
-		if (phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) {
+		val = readl(base + USB_PORTSC);
+		port_connected = val & USB_PORTSC_CCS;
+		is_lp0 = !(readl(base + USB_ASYNCLISTADDR));
+
+		if ((phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) &&
+			(port_connected ^ is_lp0)) {
 			utmi_phy_restore_start(phy);
 			usb_phy_bringup_host_controller(phy);
 			utmi_phy_restore_end(phy);
 		} else {
+			utmip_phy_disable_pmc_bus_ctrl(phy);
+
 			/* device is plugged in when system is in LP0 */
 			/* bring up the controller from LP0*/
 			val = readl(base + USB_USBCMD);
