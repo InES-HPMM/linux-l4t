@@ -1891,10 +1891,8 @@ static int soctherm_init_platform_data(void)
 	return 0;
 }
 
-static int soctherm_suspend(void)
+static void soctherm_suspend_locked(void)
 {
-	mutex_lock(&soctherm_suspend_resume_lock);
-
 	if (!soctherm_suspended) {
 		soctherm_writel((u32)-1, TH_INTR_DISABLE);
 		soctherm_writel((u32)-1, OC_INTR_DISABLE);
@@ -1904,15 +1902,18 @@ static int soctherm_suspend(void)
 		soctherm_init_platform_done = false;
 		soctherm_suspended = true;
 	}
+}
 
+static int soctherm_suspend(void)
+{
+	mutex_lock(&soctherm_suspend_resume_lock);
+	soctherm_suspend_locked();
 	mutex_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
 
-static int soctherm_resume(void)
+static void soctherm_resume_locked(void)
 {
-	mutex_lock(&soctherm_suspend_resume_lock);
-
 	if (soctherm_suspended) {
 		soctherm_suspended = false;
 		soctherm_clk_enable(true);
@@ -1922,10 +1923,31 @@ static int soctherm_resume(void)
 		enable_irq(INT_THERMAL);
 		enable_irq(INT_EDP);
 	}
+}
+
+static int soctherm_resume(void)
+{
+	mutex_lock(&soctherm_suspend_resume_lock);
+	soctherm_resume_locked();
+	mutex_unlock(&soctherm_suspend_resume_lock);
+	return 0;
+}
+
+static int soctherm_sync(void)
+{
+	mutex_lock(&soctherm_suspend_resume_lock);
+
+	if (soctherm_suspended) {
+		soctherm_resume_locked();
+		soctherm_suspend_locked();
+	} else {
+		soctherm_update();
+	}
 
 	mutex_unlock(&soctherm_suspend_resume_lock);
 	return 0;
 }
+late_initcall_sync(soctherm_sync);
 
 static int soctherm_pm_notify(struct notifier_block *nb,
 				unsigned long event, void *data)
