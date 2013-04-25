@@ -111,12 +111,12 @@ static irqreturn_t max77660_sim_irq(int irq, void *data)
 
 	if (sim1 != sim->sim1_insert) {
 		sim->sim1_insert = sim1;
-		sysfs_notify(&sim->miscdev->kobj, NULL, "sim1_state");
+		sysfs_notify(&sim->miscdev->kobj, NULL, "sim1_inserted");
 		dev_dbg(sim->dev, "sim1(%s)\n", sim1 ? "insert" : "removal");
 	}
 	if (sim2 != sim->sim2_insert) {
 		sim->sim2_insert = sim2;
-		sysfs_notify(&sim->miscdev->kobj, NULL, "sim2_state");
+		sysfs_notify(&sim->miscdev->kobj, NULL, "sim2_inserted");
 		dev_dbg(sim->dev, "sim2(%s)\n", sim2 ? "insert" : "removal");
 	}
 
