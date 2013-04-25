@@ -7,5 +7,5 @@ obj-y			+= edp_fair.o
 obj-y			+= edp_overage.o
 obj-y			+= edp_priority.o
 obj-y			+= edp_temporal.o
-obj-y			+= sysfs.o
-obj-y			+= tegra_edp.o
+obj-y			+= edp_sysfs.o
+obj-y			+= tegra_core.o
