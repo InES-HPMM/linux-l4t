@@ -8705,7 +8705,8 @@ static struct tegra11_emc_pdata *dalmore_get_emc_data(void)
 		(tegra_sku_id == 0x3 || tegra_sku_id == 0x4))
 		return &e1611_h5tc4g63afr_rda_T40T_pdata;
 	/* load T40S Table */
-	else if (board_info.board_id == BOARD_E1611 && tegra_sku_id == 0x5) {
+	else if (board_info.board_id == BOARD_E1611 &&
+		(tegra_sku_id == 0x5 || tegra_sku_id == 0x20)) {
 		if (tegra_get_memory_type())
 			return &e1611_h5tc4g63afr_rda_T40S_pdata;
 		else
