@@ -40,6 +40,7 @@ static int core_process_id;
 static int cpu_speedo_id;
 static int cpu_speedo_value;
 static int soc_speedo_id;
+static int gpu_speedo_id;
 static int package_id;
 static int cpu_iddq_value;
 
@@ -49,8 +50,8 @@ void tegra_init_speedo_data(void)
 {
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 
-	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d",
-		cpu_speedo_id, soc_speedo_id);
+	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
+		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
 }
 
 int tegra_cpu_process_id(void)
@@ -71,6 +72,11 @@ int tegra_cpu_speedo_id(void)
 int tegra_soc_speedo_id(void)
 {
 	return soc_speedo_id;
+}
+
+int tegra_gpu_speedo_id(void)
+{
+	return gpu_speedo_id;
 }
 
 int tegra_package_id(void)
@@ -102,6 +108,12 @@ int tegra_core_speedo_mv(void)
 	default:
 		BUG();
 	}
+}
+
+int tegra_gpu_speedo_mv(void)
+{
+	/* TBD: fill in actual number */
+	return 1100;
 }
 
 int tegra_get_cpu_iddq_value()

@@ -287,6 +287,7 @@ int tegra_soc_speedo_id(void);
 void tegra_init_speedo_data(void);
 int tegra_cpu_process_id(void);
 int tegra_core_process_id(void);
+int tegra_gpu_process_id(void);
 int tegra_get_age(void);
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -295,6 +296,8 @@ int tegra_cpu_speedo_id(void);
 int tegra_cpu_speedo_mv(void);
 int tegra_cpu_speedo_value(void);
 int tegra_core_speedo_mv(void);
+int tegra_gpu_speedo_id(void);
+int tegra_gpu_speedo_mv(void);
 int tegra_get_sku_override(void);
 int tegra_get_cpu_iddq_value(void);
 #else
@@ -314,6 +317,7 @@ int tegra_core_speedo_value(void);
 
 static inline int tegra_cpu_process_id(void) { return 0; }
 static inline int tegra_core_process_id(void) { return 0; }
+static inline int tegra_gpu_process_id(void) { return 0; }
 static inline int tegra_cpu_speedo_id(void) { return 0; }
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 static inline int tegra_cpu_speedo_value(void) { return 2109; }
@@ -324,6 +328,9 @@ static inline int tegra_soc_speedo_id(void) { return 0; }
 static inline int tegra_package_id(void) { return -1; }
 static inline int tegra_cpu_speedo_mv(void) { return 1250; }
 static inline int tegra_core_speedo_mv(void) { return 1100; }
+/* TBD: fill in actual number for gpu */
+static inline int tegra_gpu_speedo_id(void) { return 0; }
+static inline int tegra_gpu_speedo_mv(void) { return 1100; }
 static inline void tegra_init_speedo_data(void) { }
 
 #endif /* CONFIG_TEGRA_SILICON_PLATFORM */
