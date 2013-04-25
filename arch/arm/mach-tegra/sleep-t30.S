@@ -397,8 +397,14 @@ ENTRY(tegra3_lp1_reset)
 	ldr	r8, [r12, #RESET_DATA(MASK_MC_CLK)]
 	tst	r8, r11		@ if memory clock stopped
 	mov32	r2, TEGRA_PMC_BASE
-	bne	emc_exit_selfrefresh
+	beq	resume_lp1
 
+	mov32	r0, TEGRA_CLK_RESET_BASE
+	mov	r1, #(1 << 25)
+	str	r1, [r0, #CLK_RESET_CLK_ENB_H_SET]
+	b	emc_exit_selfrefresh
+
+resume_lp1:
 	mov32	r0, TEGRA_CLK_RESET_BASE
 #if !defined(CONFIG_TEGRA_USE_SECURE_KERNEL)
 	/* secure code handles 32KHz to CLKM/OSC clock switch */
@@ -924,6 +930,8 @@ tegra3_lp0_tear_down_core:
 
 tegra3_stop_mc_clk:
 	bl	tegra3_sdram_self_refresh
+	mov	r1, #(1 << 25)
+	str	r1, [r5, #CLK_RESET_CLK_ENB_H_CLR]
 	b	tegra3_enter_sleep
 
 /*
