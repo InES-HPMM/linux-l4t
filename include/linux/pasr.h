@@ -8,7 +8,6 @@
 
 #include <linux/mm.h>
 #include <linux/spinlock.h>
-#include <mach/memory.h>
 
 #ifdef CONFIG_PASR
 
