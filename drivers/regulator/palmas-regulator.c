@@ -534,7 +534,7 @@ static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
 
 	/* ES2.1, have the 1.5X slower slew rate than configured */
 	if (palmas_is_es_version_or_less(pmic->palmas, 2, 1))
-		ramp_delay = (ramp_delay * 15)/10;
+		ramp_delay = (ramp_delay * 10)/15;
 
 	if (!ramp_delay)
 		return 0;
