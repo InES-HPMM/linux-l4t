@@ -530,7 +530,7 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 	}
 
 	/* start dma transfer it was not started yet */
-	if (!dtv_ctx->stream.xferring) {
+	if (unlikely(!dtv_ctx->stream.xferring)) {
 		ret = try_start_fill_buf(&dtv_ctx->stream, size);
 		if (ret < 0 && ret != -EALREADY) {
 			pr_err("%s: could not start recording.\n", __func__);
