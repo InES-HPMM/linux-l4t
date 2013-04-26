@@ -92,7 +92,7 @@ static int palmas_rtc_alarm_irq_enable(struct device *dev, unsigned enabled)
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
 	u8 val = 0;
 
-	dev_info(dev, "%s(): enabled %u\n", __func__, enabled);
+	dev_dbg(dev, "%s(): enabled %u\n", __func__, enabled);
 
 	if (enabled)
 		val = PALMAS_RTC_INTERRUPTS_REG_IT_ALARM;
@@ -138,7 +138,7 @@ static int palmas_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_mon = bcd2bin(rtc_data[4]) - 1;
 	tm->tm_year = bcd2bin(rtc_data[5]) + 100;
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
 		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
 		tm->tm_hour, tm->tm_min, tm->tm_sec);
 	return ret;
@@ -157,7 +157,7 @@ static int palmas_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	rtc_data[4] = bin2bcd(tm->tm_mon + 1);
 	rtc_data[5] = bin2bcd(tm->tm_year - 100);
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
 		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
 		tm->tm_hour, tm->tm_min, tm->tm_sec);
 
@@ -210,7 +210,7 @@ static int palmas_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	alm->time.tm_mon = bcd2bin(alarm_data[4]) - 1;
 	alm->time.tm_year = bcd2bin(alarm_data[5]) + 100;
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
 		alm->time.tm_year, alm->time.tm_mon, alm->time.tm_mday,
 		alm->time.tm_hour, alm->time.tm_min, alm->time.tm_sec);
 
@@ -231,7 +231,7 @@ static int palmas_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
 	int ret;
 
-	dev_info(dev, "%s()\n", __func__);
+	dev_dbg(dev, "%s()\n", __func__);
 	ret = palmas_rtc_alarm_irq_enable(dev, 0);
 	if (ret)
 		return ret;
@@ -243,7 +243,7 @@ static int palmas_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	alarm_data[4] = bin2bcd(alm->time.tm_mon + 1);
 	alarm_data[5] = bin2bcd(alm->time.tm_year - 100);
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
 		alm->time.tm_year, alm->time.tm_mon, alm->time.tm_mday,
 		alm->time.tm_hour, alm->time.tm_min, alm->time.tm_sec);
 
@@ -270,14 +270,14 @@ static irqreturn_t palmas_rtc_interrupt(int irq, void *rtc)
 	int ret;
 	u32 rtc_reg;
 
-	dev_info(dev, "RTC ISR\n");
+	dev_dbg(dev, "RTC ISR\n");
 
 	ret = palmas_rtc_read(palmas, PALMAS_RTC_STATUS_REG,
 		&rtc_reg);
 	if (ret)
 		return IRQ_NONE;
 
-	dev_info(dev, "RTC ISR status 0x%02x\n", rtc_reg);
+	dev_dbg(dev, "RTC ISR status 0x%02x\n", rtc_reg);
 
 	if (rtc_reg & PALMAS_RTC_STATUS_REG_ALARM)
 		events = RTC_IRQF | RTC_AF;
@@ -388,7 +388,7 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
 	}
 
 	palmas_rtc->irq = platform_get_irq(pdev, 0);
-	dev_info(&pdev->dev, "RTC interrupt %d\n", palmas_rtc->irq);
+	dev_dbg(&pdev->dev, "RTC interrupt %d\n", palmas_rtc->irq);
 	ret = request_threaded_irq(palmas_rtc->irq, NULL,
 		palmas_rtc_interrupt, IRQF_TRIGGER_LOW | IRQF_ONESHOT |
 		IRQF_EARLY_RESUME,
@@ -433,8 +433,19 @@ static int palmas_rtc_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev)) {
+		int ret;
+		struct rtc_wkalrm alm;
+
 		enable_irq_wake(palmas->rtc->irq);
+		ret = palmas_rtc_read_alarm(dev, &alm);
+		if (!ret)
+			dev_info(dev, "%s() alrm %d time %d %d %d %d %d %d\n",
+				__func__, alm.enabled,
+				alm.time.tm_year, alm.time.tm_mon,
+				alm.time.tm_mday, alm.time.tm_hour,
+				alm.time.tm_min, alm.time.tm_sec);
+	}
 
 	return 0;
 }
@@ -444,8 +455,17 @@ static int palmas_rtc_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 
-	if (device_may_wakeup(dev))
+	if (device_may_wakeup(dev)) {
+		struct rtc_time tm;
+		int ret;
+
 		disable_irq_wake(palmas->rtc->irq);
+		ret = palmas_rtc_read_time(dev, &tm);
+		if (!ret)
+			dev_info(dev, "%s() %d %d %d %d %d %d\n",
+				__func__, tm.tm_year, tm.tm_mon, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec);
+	}
 
 	return 0;
 }
