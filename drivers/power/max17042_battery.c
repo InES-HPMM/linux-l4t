@@ -33,7 +33,6 @@
 #include <linux/pm.h>
 #include <linux/jiffies.h>
 #include <linux/math64.h>
-#include <linux/edp.h>
 #include <linux/mod_devicetable.h>
 #include <linux/power_supply.h>
 #include <linux/power/max17042_battery.h>
@@ -71,15 +70,6 @@
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 #define MAX17047_DELAY		1000
 
-/* Battery depletion constants */
-#define DEPL_INTERVAL	60000
-#define VSYS_MIN	3250000
-#define R_CONTACTS	20000
-#define R_BOARD		30000
-#define R_PASSFET	30000
-#define IBAT_NOMINAL	3000
-#define OCV_NOMINAL	4200000
-
 struct max17042_chip {
 	struct i2c_client *client;
 	struct power_supply battery;
@@ -87,13 +77,9 @@ struct max17042_chip {
 	struct max17042_platform_data *pdata;
 	struct delayed_work work;
 	int    init_complete;
-	unsigned int edp_req;
-	struct delayed_work depl_work;
 	int shutdown_complete;
 	int status;
 	int cap;
-	int chgin_ilim;
-	struct edp_manager *edp_manager;
 };
 struct max17042_chip *tmp_chip;
 struct i2c_client *temp_client;
@@ -187,12 +173,6 @@ void max17042_update_status(int status)
 
 	tmp_chip->status = status;
 	power_supply_changed(&tmp_chip->battery);
-	if (IS_ENABLED(CONFIG_EDP_FRAMEWORK) &&
-			tmp_chip->chgin_ilim != status) {
-		tmp_chip->chgin_ilim = status;
-		schedule_delayed_work(&tmp_chip->depl_work, 0);
-		flush_delayed_work(&tmp_chip->depl_work);
-	}
 }
 EXPORT_SYMBOL_GPL(max17042_update_status);
 
@@ -723,218 +703,6 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_EDP_FRAMEWORK
-static int max17042_get_bat_vars(struct max17042_chip *chip, s64 *avgcurrent,
-		s64 *vfocv, unsigned int *capacity)
-{
-	struct power_supply *psy;
-	union power_supply_propval pv;
-
-	psy = &chip->battery;
-
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_CURRENT_AVG, &pv))
-		return -EFAULT;
-	*avgcurrent = -pv.intval;
-
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_OCV, &pv))
-		return -EFAULT;
-	*vfocv = pv.intval;
-
-	if (max17042_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &pv))
-		return -EFAULT;
-	*capacity = pv.intval;
-
-	return 0;
-}
-
-static inline unsigned int max17042_max_depletion(struct max17042_chip *chip)
-{
-	return chip->pdata->edp_client->states[0];
-}
-
-static int interpolate(int x, int x1, int y1, int x2, int y2)
-{
-	return x1 == x2 ? y1 : (y2 * (x - x1) - y1 * (x - x2)) / (x2 - x1);
-}
-
-static int max17042_rbat(struct max17042_chip *chip, unsigned int capacity)
-{
-	struct max17042_rbat_map *p;
-	struct max17042_rbat_map *q;
-	int rbat;
-
-	p = chip->pdata->rbat_map;
-
-	while (p->capacity > capacity)
-		p++;
-
-	if (p == chip->pdata->rbat_map)
-		return p->rbat;
-
-	q = p - 1;
-
-	rbat = interpolate(capacity, p->capacity, p->rbat,
-			q->capacity, q->rbat);
-	rbat += R_CONTACTS + R_BOARD + R_PASSFET;
-
-	return rbat;
-}
-
-static s64 max17042_ibat_possible(struct max17042_chip *chip, s64 avgcurrent,
-		s64 vfocv, s64 rbat)
-{
-	s64 ibat;
-
-	ibat = div64_s64(1000 * (vfocv - VSYS_MIN), rbat);
-	if (avgcurrent < 0)
-		ibat += chip->chgin_ilim;
-
-	return ibat;
-}
-
-static s64 max17042_pbat(s64 ocv, s64 ibat, s64 rbat)
-{
-	s64 pbat;
-	pbat = ocv - div64_s64(ibat * rbat, 1000);
-	pbat = div64_s64(pbat * ibat, 1000000);
-	return pbat;
-}
-
-static unsigned int max17042_depletion(struct max17042_chip *chip)
-{
-	s64 avgcurrent;
-	unsigned int capacity;
-	s64 vfocv;
-	s64 rbat;
-	s64 ibat_pos;
-	s64 ibat_lcm;
-	s64 pbat_lcm;
-	s64 pbat_nom;
-	s64 pbat_gain;
-	s64 depl;
-
-	if (max17042_get_bat_vars(chip, &avgcurrent, &vfocv, &capacity)) {
-		WARN_ON(1);
-		return max17042_max_depletion(chip);
-	}
-
-	rbat = max17042_rbat(chip, capacity);
-	ibat_pos = max17042_ibat_possible(chip, avgcurrent, vfocv, rbat);
-	ibat_lcm = min_t(s64, ibat_pos, IBAT_NOMINAL);
-	pbat_lcm = max17042_pbat(vfocv, ibat_lcm, rbat);
-	pbat_nom = max17042_pbat(OCV_NOMINAL, IBAT_NOMINAL, rbat);
-	pbat_gain = div64_s64(chip->edp_manager->max * 1000, pbat_nom);
-	depl = chip->edp_manager->max - div64_s64(pbat_gain * pbat_lcm, 1000);
-
-	if (IS_ENABLED(CONFIG_DEBUG_KERNEL)) {
-		printk(KERN_DEBUG "max17042\n");
-		printk(KERN_DEBUG "    AVERAGE_ICELL: %lld uA\n", avgcurrent);
-		printk(KERN_DEBUG "    VFOCV        : %lld uV\n", vfocv);
-		printk(KERN_DEBUG "    CAPACITY     : %u\n", capacity);
-		printk(KERN_DEBUG "    RBAT         : %lld\n", rbat);
-		printk(KERN_DEBUG "    CHGIN_ILIM   : %u\n", chip->chgin_ilim);
-		printk(KERN_DEBUG "    depletion    : %lld\n", depl);
-	}
-
-	depl = clamp_t(s64, depl, 0, max17042_max_depletion(chip));
-	return depl;
-}
-
-static void max17042_update_depletion(struct work_struct *work)
-{
-	struct max17042_chip *chip;
-	struct edp_client *c;
-	unsigned int depl;
-	unsigned int i;
-	int r;
-
-	chip = container_of(work, struct max17042_chip, depl_work.work);
-	c = chip->pdata->edp_client;
-	depl = max17042_depletion(chip);
-	i = c->num_states - 1;
-
-	while (i && c->states[i] < depl)
-		i--;
-
-	if (chip->edp_req != i) {
-		r = edp_update_client_request(c, i, NULL);
-		WARN_ON(r);
-		chip->edp_req = i;
-	}
-
-	schedule_delayed_work(to_delayed_work(work),
-			msecs_to_jiffies(DEPL_INTERVAL));
-}
-
-/* Nothing to do */
-static void max17042_throttle(unsigned int new_state, void *priv_data)
-{
-}
-
-static int max17042_init_depletion(struct max17042_chip *chip)
-{
-	struct edp_client *c;
-	int r;
-
-	chip->edp_manager = edp_get_manager("battery");
-	if (!chip->edp_manager) {
-		dev_err(&chip->client->dev,
-				"could not get the battery EDP manager\n");
-		return -ENODEV;
-	}
-
-	if (!chip->pdata->edp_client || !chip->pdata->rbat_map) {
-		dev_err(&chip->client->dev, "no edp platform data\n");
-		return -ENODEV;
-	}
-
-	c = chip->pdata->edp_client;
-	chip->edp_req = c->num_states;
-	chip->chgin_ilim = 0;
-
-	strncpy(c->name, chip->battery.name, EDP_NAME_LEN - 1);
-	c->name[EDP_NAME_LEN - 1] = 0;
-	c->throttle = max17042_throttle;
-
-	r = edp_register_client(chip->edp_manager, c);
-	if (r) {
-		dev_err(&chip->client->dev,
-				"failed to register depletion client (%d)\n",
-				r);
-		return r;
-	}
-
-	INIT_DEFERRABLE_WORK(&chip->depl_work, max17042_update_depletion);
-	schedule_delayed_work(&chip->depl_work, 0);
-	return 0;
-}
-
-static void max17042_suspend_depletion_mon(struct max17042_chip *chip)
-{
-	cancel_delayed_work_sync(&chip->depl_work);
-}
-
-static void max17042_resume_depletion_mon(struct max17042_chip *chip)
-{
-	schedule_delayed_work(&chip->depl_work, 0);
-}
-
-#else
-
-static inline int max17042_init_depletion(struct max17042_chip *chip)
-{
-	return 0;
-}
-
-static inline void max17042_suspend_depletion_mon(struct max17042_chip *chip)
-{
-}
-
-static inline void max17042_resume_depletion_mon(struct max17042_chip *chip)
-{
-}
-#endif
-
 static void max17042_init_worker(struct work_struct *work)
 {
 	struct max17042_chip *chip = container_of(work,
@@ -1082,12 +850,6 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = max17042_init_depletion(chip);
-	if (ret) {
-		dev_err(&client->dev, "failed to init depletion EDP client\n");
-		return ret;
-	}
-
 	INIT_DEFERRABLE_WORK(&chip->work, max17042_init_worker);
 	schedule_delayed_work(&chip->work, 0);
 
@@ -1121,8 +883,6 @@ static int max17042_suspend(struct device *dev)
 {
 	struct max17042_chip *chip = dev_get_drvdata(dev);
 
-	max17042_suspend_depletion_mon(chip);
-
 	/*
 	 * disable the irq and enable irq_wake
 	 * capability to the interrupt line.
@@ -1138,8 +898,6 @@ static int max17042_suspend(struct device *dev)
 static int max17042_resume(struct device *dev)
 {
 	struct max17042_chip *chip = dev_get_drvdata(dev);
-
-	max17042_resume_depletion_mon(chip);
 
 	if (chip->client->irq) {
 		disable_irq_wake(chip->client->irq);

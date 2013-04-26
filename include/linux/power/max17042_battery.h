@@ -201,11 +201,6 @@ struct max17042_config_data {
 	u16	cell_char_tbl[MAX17042_CHARACTERIZATION_DATA_SIZE];
 } __packed;
 
-struct max17042_rbat_map {
-	unsigned int capacity;
-	unsigned int rbat;
-};
-
 struct max17042_platform_data {
 	struct max17042_reg_data *init_data;
 	struct max17042_config_data *config_data;
@@ -219,9 +214,6 @@ struct max17042_platform_data {
 	 * the datasheet although it can be changed by board designers.
 	 */
 	unsigned int r_sns;
-
-	struct max17042_rbat_map *rbat_map;
-	struct edp_client *edp_client;
 };
 
 #ifdef CONFIG_BATTERY_MAX17042
