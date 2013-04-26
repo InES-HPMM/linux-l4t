@@ -51,7 +51,7 @@
 #include <mach/irqs.h>
 #include <mach/hardware.h>
 
-#include <trace/events/power.h>
+#include <trace/events/nvpower.h>
 
 #include "clock.h"
 #include "cpuidle.h"
@@ -310,6 +310,8 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		(request > tegra_mc_clk_stop_min_residency())) {
 		flag |= TEGRA_POWER_STOP_MC_CLK;
 
+		trace_nvmc_clk_stop_rcuidle(NVPOWER_MC_CLK_STOP_ENTRY,
+						sleep_time);
 		idle_stats.mc_clk_stop_count++;
 		idle_stats.mc_clk_stop_bin[bin]++;
 
@@ -365,6 +367,8 @@ static bool tegra_cpu_cluster_power_down(struct cpuidle_device *dev,
 		smp_wmb();
 
 		if (flag & TEGRA_POWER_STOP_MC_CLK) {
+			trace_nvmc_clk_stop_rcuidle(NVPOWER_MC_CLK_STOP_EXIT,
+							sleep_time);
 			idle_stats.mc_clk_stop_done_count++;
 			idle_stats.mc_clk_stop_done_count_bin[bin]++;
 		} else if (flag & TEGRA_POWER_CLUSTER_PART_CRAIL) {
