@@ -1435,6 +1435,7 @@ static void __init tegra_pluto_late_init(void)
 	pluto_soctherm_init();
 	tegra_register_fuse();
 	pluto_sysedp_core_init();
+	pluto_sysedp_psydepl_init();
 }
 
 static void __init pluto_ramconsole_reserve(unsigned long size)

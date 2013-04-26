@@ -30,6 +30,8 @@
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/machine.h>
 #include <linux/irq.h>
+#include <linux/edp.h>
+#include <linux/edpdev.h>
 #include <linux/platform_data/tegra_edp.h>
 
 #include <asm/mach-types.h>
@@ -896,6 +898,60 @@ void __init pluto_sysedp_init(void)
 		return;
 
 	r = edp_set_governor(&pluto_sysedp_manager, g);
+	WARN_ON(r);
+}
+
+static unsigned int pluto_psydepl_states[] = {
+	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
+	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
+	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
+	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
+	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
+	1300, 1200, 1100, 1000,  900,  800,  700,  600,
+	 500,  400,  300,  200,  100,    0
+};
+
+/* Temperature in deci-celcius */
+static struct psy_depletion_ibat_lut pluto_ibat_lut[] = {
+	{  600,  500 },
+	{  400, 3000 },
+	{    0, 3000 },
+	{ -300,    0 }
+};
+
+static struct psy_depletion_rbat_lut pluto_rbat_lut[] = {
+	{ 100,  43600 },
+	{  80, 104000 },
+	{  60, 102000 },
+	{  40, 113600 },
+	{  20, 124000 },
+	{   0, 150000 }
+};
+
+static struct psy_depletion_platform_data pluto_psydepl_pdata = {
+	.power_supply = "max170xx_battery",
+	.states = pluto_psydepl_states,
+	.num_states = ARRAY_SIZE(pluto_psydepl_states),
+	.e0_index = 16,
+	.r_const = 80000,
+	.vsys_min = 3250000,
+	.vcharge = 4200000,
+	.ibat_nom = 3000,
+	.ibat_lut = pluto_ibat_lut,
+	.rbat_lut = pluto_rbat_lut
+};
+
+static struct platform_device pluto_psydepl_device = {
+	.name = "psy_depletion",
+	.id = -1,
+	.dev = { .platform_data = &pluto_psydepl_pdata }
+};
+
+void __init pluto_sysedp_psydepl_init(void)
+{
+	int r;
+
+	r = platform_device_register(&pluto_psydepl_device);
 	WARN_ON(r);
 }
 
