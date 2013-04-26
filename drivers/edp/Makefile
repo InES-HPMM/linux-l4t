@@ -8,4 +8,5 @@ obj-y			+= edp_overage.o
 obj-y			+= edp_priority.o
 obj-y			+= edp_temporal.o
 obj-y			+= edp_sysfs.o
+obj-y			+= psy_depletion.o
 obj-y			+= tegra_core.o
