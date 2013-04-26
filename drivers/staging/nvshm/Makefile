@@ -12,5 +12,3 @@ nvshm-objs += nvshm_rpc_utils.o
 nvshm-objs += nvshm_rpc_dispatcher.o
 
 obj-$(CONFIG_NVSHM) += nvshm.o
-obj-$(CONFIG_NVSHM_RPC_TEST) += nvshm_rpc_functions.o
-
