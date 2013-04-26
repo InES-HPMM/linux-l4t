@@ -1826,12 +1826,38 @@ static void uhsic_phy_close(struct tegra_usb_phy *phy)
 
 static int uhsic_phy_irq(struct tegra_usb_phy *phy)
 {
+	unsigned long val;
+	void __iomem *base = phy->regs;
+	int irq_status = IRQ_HANDLED;
+
 	/* check if there is any remote wake event */
 	if (!phy->pdata->unaligned_dma_buf_supported)
 		usb_phy_fence_read(phy);
 	if (uhsic_phy_remotewake_detected(phy))
 		DBG("%s: uhsic remote wake detected\n", __func__);
-	return IRQ_HANDLED;
+
+	val = readl(base + USB_SUSP_CTRL);
+	if ((val  & USB_PHY_CLK_VALID_INT_STS) &&
+		(val  & USB_PHY_CLK_VALID_INT_ENB)) {
+		val &= ~USB_PHY_CLK_VALID_INT_ENB |
+				USB_PHY_CLK_VALID_INT_STS;
+		writel(val , (base + USB_SUSP_CTRL));
+
+		val = readl(base + USB_USBSTS);
+		if (!(val  & USB_USBSTS_PCI)) {
+			irq_status = IRQ_NONE;
+			goto exit;
+		}
+
+		val = readl(base + USB_PORTSC);
+		if (val & USB_PORTSC_CCS)
+			val &= ~USB_PORTSC_WKCN;
+		val &= ~USB_PORTSC_RWC_BITS;
+		writel(val , (base + USB_PORTSC));
+		irq_status = IRQ_HANDLED;
+	}
+exit:
+	return irq_status;
 }
 
 static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
@@ -1947,7 +1973,7 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + HOSTPC1_DEVLC);
 
 	val = readl(base + USB_PORTSC);
-	val &= ~(USB_PORTSC_WKOC | USB_PORTSC_WKDS | USB_PORTSC_WKCN);
+	val &= ~(USB_PORTSC_WKOC | USB_PORTSC_WKDS);
 	writel(val, base + USB_PORTSC);
 
 	val = readl(base + UHSIC_PADS_CFG0);
