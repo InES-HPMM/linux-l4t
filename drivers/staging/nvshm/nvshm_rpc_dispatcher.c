@@ -31,14 +31,23 @@ struct work_data {
 	struct work_struct work;
 };
 
-static void handle_work(struct work_struct *work);
 static struct global_data global;
+
+/* Meaningful Sun RPC protocol errors */
+static const char * const protocol_errors[] = {
+	"success",
+	"program unavailable",
+	"program version mismatch",
+	"procedure unavailable",
+	"garbage arguments",
+	"system error",
+};
 
 /*
  * This function is called in a dedicated thread and calls the function
  * managers, which in turn call the real function.
  */
-static void handle_work(struct work_struct *work)
+static void nvshm_rpc_dispatcher(struct work_struct *work)
 {
 	struct work_data *data = container_of(work, struct work_data, work);
 	struct nvshm_rpc_message *request = data->request;
@@ -78,7 +87,6 @@ static void handle_work(struct work_struct *work)
 	}
 	rc = function(procedure.version, request, &response);
 done:
-	nvshm_rpc_free(request);
 	/* Check we still have someone to reply to */
 	if (!global.cleaning_up) {
 		if (rc == RPC_PROG_MISMATCH) {
@@ -90,9 +98,9 @@ done:
 			u32 n = ARRAY_SIZE(vers);
 			int length;
 
-			pr_err("failed to reply to %d:%d:%d, error %d\n",
+			pr_err("failed to reply to %d:%d:%d: %s\n",
 			       procedure.program, procedure.version,
-			       procedure.procedure, rc);
+			       procedure.procedure, protocol_errors[rc]);
 			length = nvshm_rpc_utils_encode_size(true, vers, n);
 			response = nvshm_rpc_allocresponse(length, request);
 			nvshm_rpc_utils_encode_response(rc, vers, n, response);
@@ -100,9 +108,9 @@ done:
 			/* Create other error message */
 			int length;
 
-			pr_err("failed to reply to %d:%d:%d, error %d\n",
+			pr_err("failed to reply to %d:%d:%d: %s\n",
 			       procedure.program, procedure.version,
-			       procedure.procedure, rc);
+			       procedure.procedure, protocol_errors[rc]);
 			length = nvshm_rpc_utils_encode_size(true, NULL, 0);
 			response = nvshm_rpc_allocresponse(length, request);
 			nvshm_rpc_utils_encode_response(rc, NULL, 0, response);
@@ -113,6 +121,7 @@ done:
 		}
 	} else if (response)
 		nvshm_rpc_free(response);
+	nvshm_rpc_free(request);
 	kfree(data);
 }
 
@@ -125,7 +134,7 @@ static void nvshm_rpc_dispatch(struct nvshm_rpc_message *request, void *context)
 
 	data = kmalloc(sizeof(struct work_data), GFP_KERNEL);
 	data->request = request;
-	INIT_WORK(&data->work, handle_work);
+	INIT_WORK(&data->work, nvshm_rpc_dispatcher);
 	queue_work(global.wq, &data->work);
 }
 
