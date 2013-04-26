@@ -644,7 +644,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 		udelay(pre_wait);
 	}
 
-	/* 3. disable auto-cal if vref mode is switching - removed */
+	/* 3. For t148, leave auto cal alone. */
 
 	/* 4. program burst shadow registers */
 	for (i = 0; i < next_timing->burst_regs_num; i++) {
@@ -725,7 +725,9 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 		wmb();
 	}
 
-	/* 15. restore auto-cal - removed */
+	/* 15. restore auto-cal. On t148, this is just a reprogramming - its
+	   already enabled during the clock change itself. */
+	emc_writel(next_timing->emc_acal_interval, EMC_AUTO_CAL_INTERVAL);
 
 	/* 16. restore dynamic self-refresh - for t148 if requested, we will
 	   leave DSR disabled. Otherwise just follow the table entry. */
@@ -1233,6 +1235,11 @@ static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
 	reg |= ((dram_type == DRAM_TYPE_LPDDR2) ? EMC_CFG_2_PD_MODE :
 		EMC_CFG_2_SREF_MODE) << EMC_CFG_2_MODE_SHIFT;
 	emc_writel(reg, EMC_CFG_2);
+
+#if defined(CONFIG_TEGRA_ERRATA_1252872)
+	emc_writel(tegra_emc_table->emc_acal_interval, EMC_AUTO_CAL_INTERVAL);
+	emc_timing_update();
+#endif
 	return 0;
 }
 
