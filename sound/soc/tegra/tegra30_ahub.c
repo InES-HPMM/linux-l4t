@@ -1,7 +1,7 @@
 /*
  * tegra30_ahub.c - Tegra30 AHUB driver
  *
- * Copyright (c) 2011,2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -103,6 +103,28 @@ void tegra30_ahub_clock_set_rate(int rate)
 	clk_set_rate(ahub->clk_d_audio, rate);
 }
 
+static int tegra30_ahub_soft_reset_rx_channel(int channel)
+{
+	u32 reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = TEGRA30_AHUB_CHANNEL_CLEAR_RX_SOFT_RESET;
+	tegra30_apbif_write(reg, val);
+	return 0;
+}
+
+static int tegra30_ahub_soft_reset_tx_channel(int channel)
+{
+	u32 reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = TEGRA30_AHUB_CHANNEL_CLEAR_TX_SOFT_RESET;
+	tegra30_apbif_write(reg, val);
+	return 0;
+}
+
 int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 				  unsigned long *fiforeg,
 				  unsigned long *reqsel)
@@ -121,6 +143,8 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	*fiforeg = ahub->apbif_addr + TEGRA30_AHUB_CHANNEL_RXFIFO +
 		   (channel * TEGRA30_AHUB_CHANNEL_RXFIFO_STRIDE);
 	*reqsel = ahub->dma_sel + channel;
+
+	tegra30_ahub_soft_reset_rx_channel(channel);
 
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
@@ -361,6 +385,8 @@ int tegra30_ahub_allocate_tx_fifo(enum tegra30_ahub_txcif *txcif,
 	*fiforeg = ahub->apbif_addr + TEGRA30_AHUB_CHANNEL_TXFIFO +
 		   (channel * TEGRA30_AHUB_CHANNEL_TXFIFO_STRIDE);
 	*reqsel = ahub->dma_sel + channel;
+
+	tegra30_ahub_soft_reset_tx_channel(channel);
 
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
