@@ -545,9 +545,9 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 	dtv_buf = &dtv_ctx->stream.bufs[buf_no];
 
 	/* Wait for the buffers to be filled up. The maximum timeout
-	  *value should be caculated dynamically based on
+	 * value should be caculated dynamically based on
 	 * buf_size(dtv_ctx->stream).buf_size. For isdb-t 1seg signal,
-	  *it bit rate is 300 - 456 kpbs, if buf_size = 4096 bytes, then
+	 * it bit rate is 300 - 456 kpbs, if buf_size = 4096 bytes, then
 	 * to fill up one buffer takes ~77ms.
 	 */
 	ret = wait_for_completion_interruptible_timeout(&dtv_buf->comp, HZ);
