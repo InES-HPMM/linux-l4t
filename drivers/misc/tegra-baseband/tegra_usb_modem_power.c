@@ -47,7 +47,9 @@ struct tegra_usb_modem {
 	struct platform_device *pdev;
 	unsigned int wake_cnt;	/* remote wakeup counter */
 	unsigned int wake_irq;	/* remote wakeup irq */
+	bool wake_irq_wakeable; /* LP0 wakeable */
 	unsigned int boot_irq;	/* modem boot irq */
+	bool boot_irq_wakeable; /* LP0 wakeable */
 	struct mutex lock;
 	struct wake_lock wake_lock;	/* modem wake lock */
 	unsigned int vid;	/* modem vendor id */
@@ -188,13 +190,13 @@ static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 
 	mutex_lock(&modem->lock);
 	if (modem->udev && modem->udev->state != USB_STATE_NOTATTACHED) {
+		wake_lock_timeout(&modem->wake_lock,
+				  WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
+
 		dev_info(&modem->pdev->dev, "remote wake (%u)\n",
 			 ++(modem->wake_cnt));
 
 		if (!modem->system_suspend) {
-			wake_lock_timeout(&modem->wake_lock,
-					  WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE);
-
 			usb_lock_device(modem->udev);
 			if (usb_autopm_get_interface(modem->intf) == 0)
 				usb_autopm_put_interface_async(modem->intf);
@@ -410,11 +412,13 @@ static int mdm_pm_notifier(struct notifier_block *notifier,
 	return NOTIFY_DONE;
 }
 
-static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
-				    irq_handler_t thread_fn,
-				    unsigned int irq_gpio,
-				    unsigned long irq_flags,
-				    const char *label, unsigned int *irq)
+static int mdm_request_irq(struct tegra_usb_modem *modem,
+			   irq_handler_t thread_fn,
+			   unsigned int irq_gpio,
+			   unsigned long irq_flags,
+			   const char *label,
+			   unsigned int *irq,
+			   bool *is_wakeable)
 {
 	int ret;
 
@@ -432,12 +436,9 @@ static int mdm_request_wakeable_irq(struct tegra_usb_modem *modem,
 		return ret;
 
 	ret = enable_irq_wake(*irq);
-	if (ret) {
-		free_irq(*irq, modem);
-		return ret;
-	}
+	*is_wakeable = (ret) ? false : true;
 
-	return ret;
+	return 0;
 }
 
 /* load USB host controller */
@@ -768,18 +769,44 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	/* get modem operations from platform data */
 	modem->ops = (const struct tegra_modem_operations *)pdata->ops;
 
-	if (modem->ops) {
-		/* modem init */
-		if (modem->ops->init) {
-			ret = modem->ops->init();
-			if (ret)
-				return ret;
-		}
-
-		/* start modem */
-		if (modem->ops->start)
-			modem->ops->start();
+	/* modem init */
+	if (modem->ops && modem->ops->init) {
+		ret = modem->ops->init();
+		if (ret)
+			return ret;
 	}
+
+	/* if wake gpio is not specified we rely on native usb remote wake */
+	if (gpio_is_valid(pdata->wake_gpio)) {
+		/* request remote wakeup irq from platform data */
+		ret = mdm_request_irq(modem,
+				      tegra_usb_modem_wake_thread,
+				      pdata->wake_gpio,
+				      pdata->wake_irq_flags,
+				      "mdm_wake",
+				      &modem->wake_irq,
+				      &modem->wake_irq_wakeable);
+		if (ret) {
+			dev_err(&pdev->dev, "request wake irq error\n");
+			goto error;
+		}
+	}
+
+	if (gpio_is_valid(pdata->boot_gpio)) {
+		/* request boot irq from platform data */
+		ret = mdm_request_irq(modem,
+				      tegra_usb_modem_boot_thread,
+				      pdata->boot_gpio,
+				      pdata->boot_irq_flags,
+				      "mdm_boot",
+				      &modem->boot_irq,
+				      &modem->boot_irq_wakeable);
+		if (ret) {
+			dev_err(&pdev->dev, "request boot irq error\n");
+			goto error;
+		}
+	} else
+		dev_warn(&pdev->dev, "boot irq not specified\n");
 
 	/* create sysfs node to load/unload host controller */
 	ret = device_create_file(&pdev->dev, &dev_attr_load_host);
@@ -808,41 +835,15 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	pm_qos_add_request(&modem->cpu_boost_req, PM_QOS_CPU_FREQ_MIN,
 			   PM_QOS_DEFAULT_VALUE);
 
-	/* if wake gpio is not specified we rely on native usb remote wake */
-	if (gpio_is_valid(pdata->wake_gpio)) {
-		/* request remote wakeup irq from platform data */
-		ret = mdm_request_wakeable_irq(modem,
-					       tegra_usb_modem_wake_thread,
-					       pdata->wake_gpio,
-					       pdata->wake_irq_flags,
-					       "mdm_wake", &modem->wake_irq);
-		if (ret) {
-			dev_err(&pdev->dev, "request wake irq error\n");
-			goto error;
-		}
-	}
-
-	if (gpio_is_valid(pdata->boot_gpio)) {
-		/* request boot irq from platform data */
-		ret = mdm_request_wakeable_irq(modem,
-					       tegra_usb_modem_boot_thread,
-					       pdata->boot_gpio,
-					       pdata->boot_irq_flags,
-					       "mdm_boot", &modem->boot_irq);
-		if (ret) {
-			dev_err(&pdev->dev, "request boot irq error\n");
-			goto error;
-		}
-	} else {
-		dev_err(&pdev->dev, "boot irq not specified\n");
-		goto error;
-	}
-
 	modem->pm_notifier.notifier_call = mdm_pm_notifier;
 	modem->usb_notifier.notifier_call = mdm_usb_notifier;
 
 	usb_register_notify(&modem->usb_notifier);
 	register_pm_notifier(&modem->pm_notifier);
+
+	/* start modem */
+	if (modem->ops && modem->ops->start)
+		modem->ops->start();
 
 	return ret;
 error:
@@ -850,12 +851,14 @@ error:
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
 
 	if (modem->wake_irq) {
-		disable_irq_wake(modem->wake_irq);
+		if (modem->wake_irq_wakeable)
+			disable_irq_wake(modem->wake_irq);
 		free_irq(modem->wake_irq, modem);
 	}
 
 	if (modem->boot_irq) {
-		disable_irq_wake(modem->boot_irq);
+		if (modem->boot_irq_wakeable)
+			disable_irq_wake(modem->boot_irq);
 		free_irq(modem->boot_irq, modem);
 	}
 
