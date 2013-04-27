@@ -49,6 +49,11 @@ static int enable_app_profiles;
 void tegra_init_speedo_data(void)
 {
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
+	cpu_process_id = -1;
+	core_process_id = -1;
+	cpu_speedo_id = -1;
+	soc_speedo_id = -1;
+	gpu_speedo_id = -1;
 
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
