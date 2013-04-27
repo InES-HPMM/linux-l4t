@@ -1,7 +1,7 @@
 /*
  * include/linux/platform_data/ina230.h
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ struct ina230_platform_data {
 	u16 divisor;
 	u32 shunt_resistor;
 	u32 precision_multiplier;
+	int shunt_polarity_inverted; /* 0: not invert, 1: inverted */
 };
 
 #endif /* _INA230_H */

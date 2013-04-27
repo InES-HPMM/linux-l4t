@@ -3,7 +3,7 @@
  * monitor sensor
  *
  *
- * Copyright (c) 2011-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2009-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -188,6 +188,7 @@ static s32 power_down_ina230(struct i2c_client *client)
 static s32 __locked_start_current_mon(struct i2c_client *client)
 {
 	s32 retval;
+	s16 shunt_uV;
 	s16 shunt_limit;
 	s16 alert_mask;
 	struct ina230_data *data = i2c_get_clientdata(client);
@@ -205,8 +206,11 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 		return retval;
 	}
 
-	shunt_limit = uv_to_alert_register(data->pdata->resistor *
-					   data->pdata->current_threshold);
+	shunt_uV = data->pdata->resistor * data->pdata->current_threshold;
+	if (data->pdata->shunt_polarity_inverted)
+		shunt_uV *= -1;
+
+	shunt_limit = uv_to_alert_register(shunt_uV);
 
 	retval = i2c_smbus_write_word_data(client, INA230_ALERT,
 					   cpu_to_be16(shunt_limit));
@@ -449,6 +453,9 @@ static s32 show_current(struct device *dev,
 
 	ensure_enabled_end(client);
 	mutex_unlock(&data->mutex);
+
+	if (data->pdata->shunt_polarity_inverted)
+		current_mA = (s16)current_mA * -1;
 
 	current_mA =
 		(current_mA * data->pdata->power_lsb) / data->pdata->divisor;
