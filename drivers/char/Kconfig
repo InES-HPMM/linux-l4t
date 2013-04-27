@@ -642,4 +642,12 @@ config TEGRA_GMI_CHAR
 	depends on  ARCH_TEGRA
 	help
 	Enable tegra GMI char driver for Nvidia's board.
+
+config TEGRA_PFLASH
+	bool "Character-device interface for pflash"
+	depends on  ARCH_TEGRA
+	default n
+	help
+	Enable tegra pflash helper driver for Nvidia's board.
+
 endmenu

@@ -23,6 +23,13 @@
  * MTD mapping driver for the internal SNOR controller in Tegra SoCs
  *
  */
+
+#ifndef TEGRA_SNOR
+#define TGERA_SNOR
+
+#include<linux/mtd/map.h>
+
+
 #define __BITMASK0(len)                 (BIT(len) - 1)
 #define REG_FIELD(val, start, len)      (((val) & __BITMASK0(len)) << (start))
 #define REG_GET_FIELD(val, start, len)  (((val) >> (start)) & __BITMASK0(len))
@@ -93,6 +100,12 @@
 
 void tegra_nor_copy_from(struct map_info *map, void *to,
 		unsigned long from, ssize_t len);
+void tegra_nor_write(struct map_info *map,
+				map_word datum, unsigned long ofs);
+map_word tegra_nor_read(struct map_info *map,
+				unsigned long ofs);
 struct map_info *get_map_info(unsigned int bank_index);
 int get_maps_no(void);
 unsigned long long getflashsize(void);
+
+#endif

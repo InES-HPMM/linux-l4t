@@ -332,7 +332,7 @@ void tegra_nor_copy_from(struct map_info *map,
 
 }
 
-static map_word tegra_nor_read(struct map_info *map,
+map_word tegra_nor_read(struct map_info *map,
 				unsigned long ofs)
 {
 	map_word ret;
@@ -354,7 +354,7 @@ static map_word tegra_nor_read(struct map_info *map,
 	return ret;
 }
 
-static void tegra_nor_write(struct map_info *map,
+void tegra_nor_write(struct map_info *map,
 				map_word datum, unsigned long ofs)
 {
 
