@@ -54,12 +54,10 @@ static void __iomem *timer_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static void __iomem *rtc_base = IO_ADDRESS(TEGRA_RTC_BASE);
 
 #ifdef CONFIG_ARM_ARCH_TIMER
-static u32 arch_timer_ns_mult, arch_timer_ns_shift;
 static u32 arch_timer_us_mult, arch_timer_us_shift;
-#else
+#endif
 static u64 persistent_ms, last_persistent_ms;
 static struct timespec persistent_ts;
-#endif
 static u32 usec_config;
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
@@ -136,25 +134,6 @@ u64 tegra_rtc_read_ms(void)
 	return (u64)s * MSEC_PER_SEC + ms;
 }
 
-#ifdef CONFIG_ARM_ARCH_TIMER
-
-/*
- * tegra_read_persistent_clock -  Return time from a persistent clock.
- *
- * For systems with arch timer, TSC runs even during suspend
- */
-void tegra_read_persistent_clock(struct timespec *ts)
-{
-	u32 cvalh, cvall;
-	s64 ns;
-
-	asm volatile("mrrc p15, 1, %0, %1, c14" : "=r" (cvall), "=r" (cvalh));
-
-	ns = ((u64)cvalh * arch_timer_ns_mult) << (32 - arch_timer_ns_shift);
-	ns += ((u64)cvall * arch_timer_ns_mult >> arch_timer_ns_shift);
-	*ts = ns_to_timespec(ns);
-}
-#else
 /*
  * tegra_read_persistent_clock -  Return time from a persistent clock.
  *
@@ -177,7 +156,6 @@ static void tegra_read_persistent_clock(struct timespec *ts)
 	timespec_add_ns(tsp, delta * NSEC_PER_MSEC);
 	*ts = *tsp;
 }
-#endif
 
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 {
@@ -321,8 +299,6 @@ void __init tegra_cpu_timer_init(void)
 		pr_info("fake tsc_ref_req=%d in QT\n", tsc_ref_freq);
 	}
 
-	clocks_calc_mult_shift(&arch_timer_ns_mult, &arch_timer_ns_shift,
-				tsc_ref_freq, NSEC_PER_SEC, 0);
 	clocks_calc_mult_shift(&arch_timer_us_mult, &arch_timer_us_shift,
 				tsc_ref_freq, USEC_PER_SEC, 0);
 	return;
