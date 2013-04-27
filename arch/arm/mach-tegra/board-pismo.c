@@ -55,7 +55,7 @@
 #include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
-#include <mach/pinmux-tegra30.h>
+#include <mach/pinmux-t11.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
