@@ -259,9 +259,9 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_set_nontristate[] =
 	DEFAULT_PINMUX(KB_ROW8,         KBC,    PULL_UP,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(CLK3_REQ,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU4,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU5,        RSVD3,  NORMAL,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PU6,        RSVD3,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU4,        PWM1,  NORMAL,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU5,        PWM2,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU6,        PWM3,  NORMAL,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
 

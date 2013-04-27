@@ -30,6 +30,11 @@ int ardbeg_kbc_init(void);
 int ardbeg_sdhci_init(void);
 int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
+int ardbeg_suspend_init(void);
+
+#define UTMI1_PORT_OWNER_XUSB   0x1
+#define UTMI2_PORT_OWNER_XUSB   0x2
+#define HSIC1_PORT_OWNER_XUSB   0x4
 
 #define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS

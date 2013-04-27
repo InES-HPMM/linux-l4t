@@ -617,6 +617,24 @@ static struct i2c_board_info palma_device[] = {
 	},
 };
 
+static struct tegra_suspend_platform_data ardbeg_suspend_data = {
+	.cpu_timer      = 500,
+	.cpu_off_timer  = 300,
+	.suspend_mode   = TEGRA_SUSPEND_LP0,
+	.core_timer     = 0x157e,
+	.core_off_timer = 2000,
+	.corereq_high   = true,
+	.sysclkreq_high = true,
+	.cpu_lp2_min_residency = 1000,
+	.min_residency_crail = 20000,
+};
+
+int __init ardbeg_suspend_init(void)
+{
+	tegra_init_suspend(&ardbeg_suspend_data);
+	return 0;
+}
+
 int __init ardbeg_regulator_init(void)
 {
 	int i;

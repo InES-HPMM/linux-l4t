@@ -285,12 +285,10 @@ subsys_initcall_sync(ardbeg_wifi_prepower);
 
 int __init ardbeg_sdhci_init(void)
 {
+	/* FIXME: Disabled SDMMC1 and WiFi */
+#ifndef CONFIG_USE_OF
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
-
-	/* Disable SDMMC1 and WiFi
-	 * platform_device_register(&tegra_sdhci_device0);
-	 * ardbeg_wifi_init();
-	 */
+#endif
 	return 0;
 }
