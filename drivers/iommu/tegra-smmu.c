@@ -37,6 +37,7 @@
 #include <linux/of_iommu.h>
 #include <linux/tegra-ahb.h>
 #include <linux/dma-mapping.h>
+#include <linux/bitops.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -72,11 +73,11 @@ enum {
 
 #define SMMU_TLB_CONFIG_HIT_UNDER_MISS__ENABLE	(1 << 29)
 #define SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE	0x10
-#define SMMU_TLB_CONFIG_RESET_VAL		0x20000010
+#define SMMU_TLB_CONFIG_RESET_VAL		0x30000010
 
 #define SMMU_PTC_CONFIG_CACHE__ENABLE		(1 << 29)
 #define SMMU_PTC_CONFIG_INDEX_MAP__PATTERN	0x3f
-#define SMMU_PTC_CONFIG_RESET_VAL		0x2000003f
+#define SMMU_PTC_CONFIG_RESET_VAL		0x2800003f
 
 #define SMMU_PTB_ASID				0x1c
 #define SMMU_PTB_ASID_CURRENT_SHIFT		0
@@ -91,12 +92,15 @@ enum {
 #define SMMU_TLB_FLUSH_VA_MATCH_ALL		0
 #define SMMU_TLB_FLUSH_VA_MATCH_SECTION		2
 #define SMMU_TLB_FLUSH_VA_MATCH_GROUP		3
-#define SMMU_TLB_FLUSH_ASID_SHIFT		29
+#define SMMU_TLB_FLUSH_ASID_SHIFT_BASE		31
 #define SMMU_TLB_FLUSH_ASID_MATCH_DISABLE	0
 #define SMMU_TLB_FLUSH_ASID_MATCH_ENABLE	1
 #define SMMU_TLB_FLUSH_ASID_MATCH_SHIFT		31
 #define SMMU_TLB_FLUSH_ASID_ENABLE					\
 	(SMMU_TLB_FLUSH_ASID_MATCH_ENABLE << SMMU_TLB_FLUSH_ASID_MATCH_SHIFT)
+
+#define SMMU_TLB_FLUSH_ASID_SHIFT(as)		\
+	(SMMU_TLB_FLUSH_ASID_SHIFT_BASE - __ffs((as)->smmu->num_as))
 
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
@@ -113,6 +117,7 @@ enum {
 #define SMMU_TRANSLATION_ENABLE_0		0x228
 #define SMMU_TRANSLATION_ENABLE_1		0x22c
 #define SMMU_TRANSLATION_ENABLE_2		0x230
+#define SMMU_TRANSLATION_ENABLE_3		0x234
 
 #define SMMU_AFI_ASID	0x238   /* PCIE */
 
@@ -128,6 +133,7 @@ enum {
 #define AHB_XBAR_CTRL_SMMU_INIT_DONE_SHIFT	17
 
 #define SMMU_NUM_ASIDS				4
+#define SMMU_NUM_ASIDS_TEGRA12			128
 #define SMMU_TLB_FLUSH_VA_SECTION__MASK		0xffc00000
 #define SMMU_TLB_FLUSH_VA_SECTION__SHIFT	12 /* right shift */
 #define SMMU_TLB_FLUSH_VA_GROUP__MASK		0xffffc000
@@ -266,6 +272,7 @@ struct smmu_device {
 	unsigned long translation_enable_0;
 	unsigned long translation_enable_1;
 	unsigned long translation_enable_2;
+	unsigned long translation_enable_3;
 	unsigned long asid_security;
 
 	struct dentry *debugfs_root;
@@ -432,6 +439,7 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	smmu_write(smmu, smmu->translation_enable_0, SMMU_TRANSLATION_ENABLE_0);
 	smmu_write(smmu, smmu->translation_enable_1, SMMU_TRANSLATION_ENABLE_1);
 	smmu_write(smmu, smmu->translation_enable_2, SMMU_TRANSLATION_ENABLE_2);
+	smmu_write(smmu, smmu->translation_enable_3, SMMU_TRANSLATION_ENABLE_3);
 	smmu_write(smmu, smmu->asid_security, SMMU_ASID_SECURITY);
 	smmu_write(smmu, SMMU_TLB_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_TLB));
 	smmu_write(smmu, SMMU_PTC_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_PTC));
@@ -606,7 +614,7 @@ static void __smmu_flush_tlb_as(struct smmu_as *as)
 	struct smmu_device *smmu = as->smmu;
 
 	val = SMMU_TLB_FLUSH_ASID_ENABLE |
-		as->asid << SMMU_TLB_FLUSH_ASID_SHIFT;
+		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
 }
@@ -783,7 +791,7 @@ static int alloc_pdir(struct smmu_as *as)
 	FLUSH_SMMU_REGS(as->smmu);
 	val = SMMU_TLB_FLUSH_VA_MATCH_ALL |
 		SMMU_TLB_FLUSH_ASID_MATCH__ENABLE |
-		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT);
+		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(as->smmu);
 
@@ -1500,6 +1508,7 @@ static int tegra_smmu_suspend(struct device *dev)
 	smmu->translation_enable_0 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_0);
 	smmu->translation_enable_1 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_1);
 	smmu->translation_enable_2 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_2);
+	smmu->translation_enable_3 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_3);
 	smmu->asid_security = smmu_read(smmu, SMMU_ASID_SECURITY);
 	return 0;
 }
@@ -1545,6 +1554,10 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 
 	smmu->dev = dev;
 	smmu->num_as = SMMU_NUM_ASIDS;
+
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)
+		smmu->num_as = SMMU_NUM_ASIDS_TEGRA12;
+
 	smmu->iovmm_base = (unsigned long)window->start;
 	smmu->page_count = resource_size(window) >> SMMU_PAGE_SHIFT;
 	smmu->regs = devm_ioremap(dev, regs->start, resource_size(regs));
@@ -1571,6 +1584,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu->translation_enable_0 = ~0;
 	smmu->translation_enable_1 = ~0;
 	smmu->translation_enable_2 = ~0;
+	smmu->translation_enable_3 = ~0;
 	smmu->asid_security = 0;
 
 	for (i = 0; i < smmu->num_as; i++) {
