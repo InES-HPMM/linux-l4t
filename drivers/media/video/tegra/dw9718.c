@@ -84,7 +84,6 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/i2c.h>
-#include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
@@ -113,21 +112,21 @@
 /* define dw9718_VCM_THRESHOLD	20 */
 
 struct dw9718_info {
-	atomic_t in_use;
 	struct i2c_client *i2c_client;
 	struct dw9718_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct list_head list;
-	int pwr_dev;
 	struct dw9718_power_rail power;
-	int status;
-	u32 cur_pos;
-	u8 s_mode;
-	bool reset_flag;
 	struct dw9718_info *s_info;
 	struct nvc_focus_nvc nvc;
 	struct nvc_focus_cap cap;
 	struct nv_focuser_config nv_config;
+	atomic_t in_use;
+	bool reset_flag;
+	int pwr_dev;
+	int status;
+	u32 cur_pos;
+	u8 s_mode;
 };
 
 /**
@@ -186,6 +185,26 @@ static int dw9718_i2c_wr16(struct dw9718_info *info, u8 reg, u16 val)
 	msg.buf = &buf[0];
 	if (i2c_transfer(info->i2c_client->adapter, &msg, 1) != 1)
 		return -EIO;
+	return 0;
+}
+
+static int dw9718_i2c_rd8(struct dw9718_info *info, u8 reg, u8 *val)
+{
+	struct i2c_msg msg[2];
+	u8 buf[2];
+	buf[0] = reg;
+	msg[0].addr = info->i2c_client->addr;
+	msg[1].addr = info->i2c_client->addr;
+	msg[0].flags = 0;
+	msg[0].len = 1;
+	msg[0].buf = &buf[0];
+	msg[1].flags = I2C_M_RD;
+	msg[1].len = 1;
+	msg[1].buf = &buf[1];
+	*val = 0;
+	if (i2c_transfer(info->i2c_client->adapter, msg, 2) != 2)
+		return -EIO;
+	*val = buf[1];
 	return 0;
 }
 
@@ -359,6 +378,17 @@ static int dw9718_reset(struct dw9718_info *info, u32 level)
 	} else
 		err = dw9718_pm_wr(info, NVC_PWR_OFF_FORCE);
 
+	return err;
+}
+
+static int dw9718_detect(struct dw9718_info *info)
+{
+	u8 val = 0;
+	int err;
+
+	dw9718_pm_dev_wr(info, NVC_PWR_COMM);
+	err = dw9718_i2c_rd8(info, 0, &val);
+	dw9718_pm_dev_wr(info, NVC_PWR_OFF);
 	return err;
 }
 
@@ -846,7 +876,7 @@ static int dw9718_probe(
 {
 	struct dw9718_info *info;
 	char dname[16];
-
+	int err;
 	dev_dbg(&client->dev, "%s\n", __func__);
 	pr_info("dw9718: probing focuser.\n");
 
@@ -871,6 +901,29 @@ static int dw9718_probe(
 	spin_unlock(&dw9718_spinlock);
 	dw9718_power_get(info);
 	dw9718_sdata_init(info);
+	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
+		err = dw9718_detect(info);
+		if (err < 0) {
+			dev_err(&client->dev, "%s device not found\n",
+				__func__);
+			dw9718_pm_wr(info, NVC_PWR_OFF);
+			if (info->pdata->cfg & NVC_CFG_NODEV) {
+				dw9718_del(info);
+				return -ENODEV;
+			}
+		} else {
+			dev_dbg(&client->dev, "%s device found\n", __func__);
+			if (info->pdata->cfg & NVC_CFG_BOOT_INIT) {
+				/* initial move causes full initialization */
+				dw9718_pm_dev_wr(info, NVC_PWR_ON);
+				dw9718_position_wr(
+					info, info->cap.focus_infinity);
+				dw9718_pm_dev_wr(info, NVC_PWR_OFF);
+			}
+			if (info->pdata->detect)
+				info->pdata->detect(NULL, 0);
+		}
+	}
 
 	if (info->pdata->dev_name != 0)
 		strcpy(dname, info->pdata->dev_name);

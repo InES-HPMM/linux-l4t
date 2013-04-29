@@ -17,6 +17,7 @@
 #ifndef __DW9718_H__
 #define __DW9718_H__
 
+#include <linux/miscdevice.h>
 #include <media/nvc_focus.h>
 #include <media/nvc.h>
 
@@ -36,6 +37,7 @@ struct dw9718_platform_data {
 	struct nvc_gpio_pdata *gpio;
 	int (*power_on)(struct dw9718_power_rail *pw);
 	int (*power_off)(struct dw9718_power_rail *pw);
+	int (*detect)(void *buf, size_t size);
 };
 
 /* Register Definitions */
