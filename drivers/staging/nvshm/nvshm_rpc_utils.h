@@ -23,19 +23,24 @@
 #define NVSHM_RPC_IN_SINT(data) { TYPE_SINT, 0, .d.sint_data = (data) }
 #define NVSHM_RPC_IN_STRING(data) { TYPE_STRING, 0, .d.string_data = (data) }
 #define NVSHM_RPC_IN_BLOB(data, len) { TYPE_BLOB, (len), .d.blob_data = (data) }
+#define NVSHM_RPC_IN_ARRAY(type, len, data) \
+	{ TYPE_ARRAY_FLAG|type, (len), .d.blob_data = (data) }
 
 #define NVSHM_RPC_OUT_UINT(data) { TYPE_UINT, 0, .d.uint_data = (data) }
 #define NVSHM_RPC_OUT_SINT(data) { TYPE_SINT, 0, .d.sint_data = (data) }
 #define NVSHM_RPC_OUT_STRING(data) { TYPE_STRING, 0, .d.string_data = (data) }
-#define NVSHM_RPC_OUT_BLOB(data, len) \
-				 { TYPE_BLOB, &(len), .d.blob_data = (data) }
+#define NVSHM_RPC_OUT_BLOB(data, len_p) \
+	{ TYPE_BLOB, (len_p), .d.blob_data = (data) }
+#define NVSHM_RPC_OUT_ARRAY(type, len_p, data) \
+	{ TYPE_ARRAY_FLAG|type, (len_p), .d.blob_data = (const void **)(data) }
 
 /** Known types of data */
 enum nvshm_rpc_datumtype {
-	TYPE_SINT,
-	TYPE_UINT,
-	TYPE_STRING,
-	TYPE_BLOB,
+	TYPE_SINT = 0,
+	TYPE_UINT = 1,
+	TYPE_STRING = 2,
+	TYPE_BLOB = 3,
+	TYPE_ARRAY_FLAG = 0x1000,
 };
 
 /**

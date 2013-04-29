@@ -49,26 +49,53 @@ static int nvshm_rpc_utils_encode_args(const struct nvshm_rpc_datum_in *data,
 
 	for (n = 0; n < number; ++n) {
 		const struct nvshm_rpc_datum_in *datum = &data[n];
-		switch (datum->type) {
-		case TYPE_SINT:
-			*writer++ = cpu_to_be32(datum->d.sint_data);
-			break;
-		case TYPE_UINT:
-			*writer++ = cpu_to_be32(datum->d.uint_data);
-			break;
-		case TYPE_STRING:
-			writer = xdr_encode_opaque(writer,
+
+		if ((datum->type & TYPE_ARRAY_FLAG) == 0) {
+			switch (datum->type) {
+			case TYPE_SINT:
+				*writer++ = cpu_to_be32(datum->d.sint_data);
+				break;
+			case TYPE_UINT:
+				*writer++ = cpu_to_be32(datum->d.uint_data);
+				break;
+			case TYPE_STRING:
+				writer = xdr_encode_opaque(writer,
 					datum->d.string_data,
 					strlen(datum->d.string_data) + 1);
-			break;
-		case TYPE_BLOB:
-			writer = xdr_encode_opaque(writer,
+				break;
+			case TYPE_BLOB:
+				writer = xdr_encode_opaque(writer,
 					datum->d.blob_data,
 					datum->length);
-			break;
-		default:
-			pr_err("unknown RPC type %d\n", datum->type);
-			return -EINVAL;
+				break;
+			default:
+				pr_err("unknown RPC type %d\n", datum->type);
+				return -EINVAL;
+			}
+		} else {
+			enum nvshm_rpc_datumtype type;
+
+			type = datum->type & ~TYPE_ARRAY_FLAG;
+			*writer++ = cpu_to_be32(datum->length);
+			if ((type == TYPE_SINT) || (type == TYPE_UINT)) {
+				const u32 *a;
+				u32 d;
+
+				a = (const u32 *) datum->d.blob_data;
+				for (d = 0; d < datum->length; ++d, ++a)
+					*writer++ = cpu_to_be32(*a);
+			} else if (type == TYPE_STRING) {
+				const char * const *a;
+				u32 d;
+
+				a = (const char * const *) datum->d.blob_data;
+				for (d = 0; d < datum->length; ++d, ++a)
+					writer = xdr_encode_opaque(writer, *a,
+								strlen(*a) + 1);
+			} else {
+				pr_err("invalid RPC type for array %d\n", type);
+				return -EINVAL;
+			}
 		}
 	}
 	return 0;
@@ -87,23 +114,48 @@ int nvshm_rpc_utils_encode_size(bool is_response,
 		quad_length = SUN_RPC_CALL_HDR_SIZE;
 	for (n = 0; n < number; ++n) {
 		const struct nvshm_rpc_datum_in *datum = &data[n];
-		switch (datum->type) {
-		case TYPE_SINT:
-		case TYPE_UINT:
+
+		if ((datum->type & TYPE_ARRAY_FLAG) == 0) {
+			switch (datum->type) {
+			case TYPE_SINT:
+			case TYPE_UINT:
+				++quad_length;
+				break;
+			case TYPE_STRING:
+				++quad_length;
+				quad_length += XDR_QUADLEN(
+					strlen(datum->d.string_data) + 1);
+				break;
+			case TYPE_BLOB:
+				++quad_length;
+				quad_length += XDR_QUADLEN(datum->length);
+				break;
+			default:
+				pr_err("unknown RPC type %d\n", datum->type);
+				return -EINVAL;
+			}
+		} else {
+			enum nvshm_rpc_datumtype type;
+
+			type = datum->type & ~TYPE_ARRAY_FLAG;
 			++quad_length;
-			break;
-		case TYPE_STRING:
-			++quad_length;
-			quad_length += XDR_QUADLEN(
-				strlen(datum->d.string_data) + 1);
-			break;
-		case TYPE_BLOB:
-			++quad_length;
-			quad_length += XDR_QUADLEN(datum->length);
-			break;
-		default:
-			pr_err("unknown RPC type %d\n", datum->type);
-			return -EINVAL;
+			if ((type == TYPE_SINT) || (type == TYPE_UINT)) {
+				quad_length += datum->length;
+			} else if (type == TYPE_STRING) {
+				const char * const *a;
+				u32 d;
+
+				a = (const char * const *) datum->d.blob_data;
+				for (d = 0; d < datum->length; ++d, ++a) {
+					u32 len = strlen(*a) + 1;
+
+					++quad_length;
+					quad_length += XDR_QUADLEN(len);
+				}
+			} else {
+				pr_err("invalid RPC type for array %d\n", type);
+				return -EINVAL;
+			}
 		}
 	}
 	return quad_length << 2;
@@ -204,25 +256,70 @@ int nvshm_rpc_utils_decode_args(const struct nvshm_rpc_message *message,
 		/* There is always a number, either the data ot its length */
 		uint = be32_to_cpup((__be32 *) reader);
 		++reader;
-		switch (datum->type) {
-		case TYPE_SINT:
-			*datum->d.sint_data = (s32) uint;
-			break;
-		case TYPE_UINT:
-			*datum->d.uint_data = uint;
-			break;
-		case TYPE_STRING:
-			*datum->d.string_data = (const char *) reader;
-			reader += XDR_QUADLEN(uint);
-			break;
-		case TYPE_BLOB:
+		if ((datum->type & TYPE_ARRAY_FLAG) == 0) {
+			switch (datum->type) {
+			case TYPE_SINT:
+				*datum->d.sint_data = (s32) uint;
+				break;
+			case TYPE_UINT:
+				*datum->d.uint_data = uint;
+				break;
+			case TYPE_STRING:
+				*datum->d.string_data = (const char *) reader;
+				reader += XDR_QUADLEN(uint);
+				break;
+			case TYPE_BLOB:
+				*datum->length = uint;
+				*datum->d.blob_data = reader;
+				reader += XDR_QUADLEN(uint);
+				break;
+			default:
+				pr_err("unknown RPC type %d\n", datum->type);
+				return -EINVAL;
+			}
+		} else {
+			enum nvshm_rpc_datumtype type;
+
+			type = datum->type & ~TYPE_ARRAY_FLAG;
 			*datum->length = uint;
-			*datum->d.blob_data = reader;
-			reader += XDR_QUADLEN(uint);
-			break;
-		default:
-			pr_err("unknown RPC type %d\n", datum->type);
-			return -EINVAL;
+			if ((type == TYPE_SINT) || (type == TYPE_UINT)) {
+				u32 *a;
+				u32 d;
+
+				a = kmalloc(uint * sizeof(u32), GFP_KERNEL);
+				if (!a) {
+					pr_err("kmalloc failed\n");
+					return -ENOMEM;
+				}
+
+				*datum->d.blob_data = a;
+				for (d = 0; d < uint; ++d, ++a) {
+					*a = be32_to_cpup((__be32 *) reader);
+					++reader;
+				}
+			} else if (type == TYPE_STRING) {
+				const char **a;
+				u32 d;
+
+				a = kmalloc(uint * sizeof(const char *),
+					    GFP_KERNEL);
+				if (!a) {
+					pr_err("kmalloc failed\n");
+					return -ENOMEM;
+				}
+
+				*datum->d.blob_data = a;
+				for (d = 0; d < uint; ++d, ++a) {
+					u32 len;
+					len = be32_to_cpup((__be32 *) reader);
+					++reader;
+					*a = (const char *) reader;
+					reader += XDR_QUADLEN(len);
+				}
+			} else {
+				pr_err("invalid RPC type for array %d\n", type);
+				return -EINVAL;
+			}
 		}
 	}
 	return 0;
