@@ -138,7 +138,7 @@ struct dvfs {
 	struct list_head reg_node;
 };
 
-struct cpu_cvb_dvfs_parameters {
+struct cvb_dvfs_parameters {
 	int	c0;
 	int	c1;
 	int	c2;
@@ -146,8 +146,8 @@ struct cpu_cvb_dvfs_parameters {
 
 struct cpu_cvb_dvfs_table {
 	unsigned long freq;
-	struct cpu_cvb_dvfs_parameters cvb_dfll_param;
-	struct cpu_cvb_dvfs_parameters cvb_pll_param;
+	struct cvb_dvfs_parameters cvb_dfll_param;
+	struct cvb_dvfs_parameters cvb_pll_param;
 };
 
 struct cpu_cvb_dvfs {
@@ -162,6 +162,21 @@ struct cpu_cvb_dvfs {
 	struct cpu_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
 	int therm_trips_table[MAX_THERMAL_LIMITS];
 	int therm_floors_table[MAX_THERMAL_LIMITS];
+};
+
+struct core_cvb_dvfs_table {
+	unsigned long freq;
+	struct cvb_dvfs_parameters cvb_param;
+};
+
+struct core_cvb_dvfs {
+	int speedo_id;
+	int process_id;
+
+	int freqs_mult;
+	int speedo_scale;
+	int voltage_scale;
+	struct core_cvb_dvfs_table cvb_table[MAX_DVFS_FREQS];
 };
 
 extern struct dvfs_rail *tegra_cpu_rail;

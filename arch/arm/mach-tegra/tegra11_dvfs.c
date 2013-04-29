@@ -591,7 +591,7 @@ static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
 
 /* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
 static inline int get_cvb_voltage(int speedo, int s_scale,
-				  struct cpu_cvb_dvfs_parameters *cvb)
+				  struct cvb_dvfs_parameters *cvb)
 {
 	/* apply only speedo scale: output mv = cvb_mv * v_scale */
 	int mv;
