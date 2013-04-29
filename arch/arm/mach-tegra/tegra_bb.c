@@ -37,6 +37,7 @@
 #include "clock.h"
 #include "iomap.h"
 #include "sleep.h"
+#include "tegra_emc.h"
 
 /* BB mailbox offset */
 #define TEGRA_BB_REG_MAILBOX (0x0)
@@ -889,6 +890,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 		/* going from 0 to high */
 		clk_prepare_enable(bb->emc_clk);
+		tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
 		clk_set_rate(bb->emc_clk, BBC_MC_MIN_FREQ);
 		pr_debug("bbc setting floor to %d\n", BBC_MC_MIN_FREQ/1000000);
 
@@ -903,6 +905,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		spin_unlock_irqrestore(&bb->lock, flags);
 
 		/* going from high to 0 */
+		tegra_emc_dsr_override(TEGRA_EMC_DSR_NORMAL);
 		clk_set_rate(bb->emc_clk, 0);
 		clk_disable_unprepare(bb->emc_clk);
 		pr_debug("bbc removing emc floor\n");
