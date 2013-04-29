@@ -97,6 +97,11 @@ int __attribute__((weak)) tegra_get_cvb_alignment_uV(void)
 	return 10000;
 }
 
+int __attribute__((weak)) tegra_get_core_cvb_alignment_uV(void)
+{
+	return  6250;
+}
+
 /* CPU DVFS tables */
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
@@ -210,13 +215,14 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("cpu_lp",  -1,  0, 1, KHZ,      249600, 364800, 460800, 556800, 633600, 691200, 729600, 768000, 768000, 768000),
 	CORE_DVFS("cpu_lp",  -1,  1, 1, KHZ,      307200, 393600, 489600, 556800, 652800, 729600, 768000, 806400, 806400, 806400),
 
+#ifndef CONFIG_TEGRA_DUAL_CBUS
 	CORE_DVFS("3d",      -1,  0, 1, KHZ,      153600, 230400, 307200, 422400, 499200, 556800, 595200, 652800, 691200, 710400),
 	CORE_DVFS("2d",      -1,  0, 1, KHZ,      153600, 230400, 307200, 422400, 499200, 556800, 595200, 652800, 691200, 710400),
 	CORE_DVFS("epp",     -1,  0, 1, KHZ,      153600, 230400, 307200, 422400, 499200, 556800, 595200, 652800, 691200, 710400),
 	CORE_DVFS("3d",      -1,  1, 1, KHZ,      192000, 268800, 345600, 384000, 499200, 556800, 595200, 672000, 710400, 748800),
 	CORE_DVFS("2d",      -1,  1, 1, KHZ,      192000, 268800, 345600, 384000, 499200, 556800, 595200, 672000, 710400, 748800),
 	CORE_DVFS("epp",     -1,  1, 1, KHZ,      192000, 268800, 345600, 384000, 499200, 556800, 595200, 672000, 710400, 748800),
-
+#endif
 	CORE_DVFS("se",      -1,  0, 1, KHZ,      115200, 192000, 249600, 326400, 364800, 441600, 480000, 518400, 518400, 518400),
 	CORE_DVFS("vde",     -1,  0, 1, KHZ,      115200, 192000, 249600, 326400, 364800, 441600, 480000, 518400, 518400, 518400),
 	CORE_DVFS("se",      -1,  1, 1, KHZ,      153600, 211200, 288000, 345600, 403200, 460800, 499200, 537600, 537600, 537600),
@@ -236,8 +242,6 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("emc",     -1, -1, 1, KHZ,           1,      1,      1,      1,      1,      1,1066000,1066000,1066000,1066000),
 
 #ifdef CONFIG_TEGRA_DUAL_CBUS
-	CORE_DVFS("c2bus",   -1,  0, 1, KHZ,      153600, 230400, 307200, 422400, 499200, 556800, 595200, 652800, 691200, 710400),
-	CORE_DVFS("c2bus",   -1,  1, 1, KHZ,      192000, 268800, 345600, 384000, 499200, 556800, 595200, 672000, 710400, 748800),
 	CORE_DVFS("c3bus",   -1,  0, 1, KHZ,      115200, 192000, 249600, 326400, 364800, 441600, 480000, 518400, 518400, 518400),
 	CORE_DVFS("c3bus",   -1,  1, 1, KHZ,      153600, 211200, 288000, 345600, 403200, 460800, 499200, 537600, 537600, 537600),
 #else
@@ -270,6 +274,60 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("disp1",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
 	CORE_DVFS("disp2",  -1, -1, 0, KHZ,        74250, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000, 165000),
 #endif
+};
+
+/* C2BUS dvfs tables */
+static struct core_cvb_dvfs c2bus_cvb_dvfs_table[] = {
+	{
+		.speedo_id = -1,
+		.process_id = 0,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f              c0,     c1,   c2 */
+			{ 153600, {  800000,      0,   0}, },
+			{ 230400, {  850000,      0,   0}, },
+			{ 307200, {  900000,      0,   0}, },
+			{ 422400, {  950000,      0,   0}, },
+			{ 499200, { 1000000,      0,   0}, },
+			{ 556800, { 1050000,      0,   0}, },
+			{ 595200, { 1100000,      0,   0}, },
+			{ 652800, { 1150000,      0,   0}, },
+			{ 691200, { 1200000,      0,   0}, },
+			{ 710400, { 1250000,      0,   0}, },
+			{      0, {      0,       0,   0}, },
+		},
+	},
+	{
+		.speedo_id = -1,
+		.process_id = 1,
+		.freqs_mult = KHZ,
+		.speedo_scale = 100,
+		.voltage_scale = 1000,
+		.cvb_table = {
+			/*f              c0,     c1,   c2 */
+			{ 192000, {  800000,      0,   0}, },
+			{ 268800, {  850000,      0,   0}, },
+			{ 345600, {  900000,      0,   0}, },
+			{ 384000, {  950000,      0,   0}, },
+			{ 499200, { 1000000,      0,   0}, },
+			{ 556800, { 1050000,      0,   0}, },
+			{ 595200, { 1100000,      0,   0}, },
+			{ 672000, { 1150000,      0,   0}, },
+			{ 710400, { 1200000,      0,   0}, },
+			{ 748800, { 1250000,      0,   0}, },
+			{      0, {      0,       0,   0}, },
+		},
+	},
+};
+
+static int c2bus_millivolts[MAX_DVFS_FREQS];
+static struct dvfs c2bus_dvfs_table[] = {
+	{ .clk_name = "3d", },
+	{ .clk_name = "2d", },
+	{ .clk_name = "epp", },
+	{ .clk_name = "c2bus", },	/* must be the last */
 };
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
@@ -414,6 +472,18 @@ static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
 	return true;
 }
 
+static bool __init match_core_cvb_one(struct core_cvb_dvfs *d,
+				      int speedo_id, int process_id)
+{
+	if ((d->process_id != -1 && d->process_id != process_id) ||
+	    (d->speedo_id != -1 && d->speedo_id != speedo_id)) {
+		pr_debug("tegra14_dvfs: rejected cpu cvb speedo %d,"
+			 " process %d\n", d->speedo_id, d->process_id);
+		return false;
+	}
+	return true;
+}
+
 /* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
 static inline int get_cvb_voltage(int speedo, int s_scale,
 				  struct cvb_dvfs_parameters *cvb)
@@ -429,6 +499,15 @@ static inline int round_cvb_voltage(int mv, int v_scale)
 {
 	/* combined: apply voltage scale and round to cvb alignment step */
 	int cvb_align_step_uv = tegra_get_cvb_alignment_uV();
+
+	return DIV_ROUND_UP(mv * 1000, v_scale * cvb_align_step_uv) *
+		cvb_align_step_uv / 1000;
+}
+
+static inline int round_core_cvb_voltage(int mv, int v_scale)
+{
+	/* combined: apply voltage scale and round to cvb alignment step */
+	int cvb_align_step_uv = tegra_get_core_cvb_alignment_uV();
 
 	return DIV_ROUND_UP(mv * 1000, v_scale * cvb_align_step_uv) *
 		cvb_align_step_uv / 1000;
@@ -544,6 +623,103 @@ static int __init set_cpu_dvfs_data(
 	return 0;
 }
 
+static int __init set_c2bus_dvfs_data(
+	struct core_cvb_dvfs *d, struct dvfs *c2bus_dvfs, int *max_freq_index)
+{
+	int i, j, mv, min_mv, max_mv;
+	struct core_cvb_dvfs_table *table = NULL;
+	int speedo = 0; /* FIXME: tegra_core_speedo_value(); */
+
+	min_mv = core_millivolts[0];
+	max_mv = tegra14_dvfs_rail_vdd_core.nominal_millivolts;
+
+	/*
+	 * Use CVB table to fill in c2bus dvfs frequencies and voltages. Each
+	 * CVB entry specifies c2bus frequency and CVB coefficients to calculate
+	 * the respective voltage.
+	 */
+	for (i = 0, j = 0; i < MAX_DVFS_FREQS; i++) {
+		table = &d->cvb_table[i];
+		if (!table->freq)
+			break;
+
+		mv = get_cvb_voltage(
+			speedo, d->speedo_scale, &table->cvb_param);
+		mv = round_core_cvb_voltage(mv, d->voltage_scale);
+
+		if (mv > max_mv)
+			break;
+
+		/* fill in c2bus dvfs tables */
+		mv = max(mv, min_mv);
+		if (!j || (mv > c2bus_millivolts[j - 1])) {
+			c2bus_millivolts[j] = mv;
+			c2bus_dvfs->freqs[j] = table->freq;
+			j++;
+		} else {
+			c2bus_dvfs->freqs[j - 1] = table->freq;
+		}
+	}
+	/* Table must not be empty, must have at least one entry above Vmin */
+	if (!i || !j) {
+		pr_err("tegra14_dvfs: invalid c2bus dvfs table\n");
+		return -ENOENT;
+	}
+
+	/* dvfs tables are successfully populated - fill in the c2bus dvfs */
+	c2bus_dvfs->speedo_id = d->speedo_id;
+	c2bus_dvfs->process_id = d->process_id;
+	c2bus_dvfs->freqs_mult = d->freqs_mult;
+	c2bus_dvfs->millivolts = c2bus_millivolts;
+	c2bus_dvfs->dvfs_rail = &tegra14_dvfs_rail_vdd_core;
+	c2bus_dvfs->auto_dvfs = 1;
+
+	*max_freq_index = j - 1;
+	return 0;
+}
+
+static int __init init_c2bus_cvb_dvfs(int soc_speedo_id, int core_process_id)
+{
+	int i, ret;
+	int max_freq_index = 0;
+	int n = ARRAY_SIZE(c2bus_cvb_dvfs_table);
+	int m = ARRAY_SIZE(c2bus_dvfs_table);
+	struct dvfs *bus_dvfs = &c2bus_dvfs_table[m - 1];
+
+	/*
+	 * Setup bus (last) entry in c2bus legacy dvfs table from cvb data;
+	 * determine maximum frequency index (cvb may devine for c2bus modules
+	 * number of frequencies, and voltage levels different from other core
+	 * dvfs modules). Error when c2bus legacy dvfs table can not be
+	 * constructed must never happen.
+	 */
+	for (ret = 0, i = 0; i < n; i++) {
+		struct core_cvb_dvfs *d = &c2bus_cvb_dvfs_table[i];
+		if (match_core_cvb_one(d, soc_speedo_id, core_process_id)) {
+			ret = set_c2bus_dvfs_data(d, bus_dvfs, &max_freq_index);
+			break;
+		}
+	}
+	BUG_ON((i == n) || ret);
+
+	/*
+	 * Copy bus dvfs entry across all entries in c2bus legacy devfs table,
+	 * and bind each entry to clock
+	 */
+	for (i = 0; i < m; i++) {
+		struct dvfs *d = &c2bus_dvfs_table[i];
+		if (d != bus_dvfs) {
+			const char *name = d->clk_name;
+			*d = *bus_dvfs;
+			d->clk_name = name;
+		}
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+		init_dvfs_one(d, max_freq_index);
+#endif
+	}
+	return 0;
+}
+
 static int __init get_core_nominal_mv_index(int speedo_id)
 {
 	int i;
@@ -598,7 +774,8 @@ void __init tegra14x_init_dvfs(void)
 #endif
 	/* Setup rail bins */
 	tegra14_dvfs_rail_vdd_cpu.stats.bin_uV = tegra_get_cvb_alignment_uV();
-	tegra14_dvfs_rail_vdd_core.stats.bin_uV = tegra_get_cvb_alignment_uV();
+	tegra14_dvfs_rail_vdd_core.stats.bin_uV =
+		tegra_get_core_cvb_alignment_uV();
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
@@ -639,6 +816,9 @@ void __init tegra14x_init_dvfs(void)
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra14_dvfs_rails,
 		ARRAY_SIZE(tegra14_dvfs_rails));
+
+	/* Init c2bus modules (a subset of core dvfs) that have cvb data */
+	init_c2bus_cvb_dvfs(soc_speedo_id, core_process_id);
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
