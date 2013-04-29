@@ -20,6 +20,8 @@
 #ifndef __TEGRA_EMC_H_
 #define __TEGRA_EMC_H_
 
+#define TEGRA_MAX_TABLE_ID_LEN	16
+
 #define TEGRA_EMC_NUM_REGS 46
 #define TEGRA30_EMC_NUM_REGS 110
 
@@ -109,6 +111,7 @@ struct tegra11_emc_pdata {
 
 struct tegra14_emc_table {
 	u8 rev;
+	char table_id[TEGRA_MAX_TABLE_ID_LEN];
 	unsigned long rate;
 	int emc_min_mv;
 	const char *src_name;

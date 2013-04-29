@@ -1212,6 +1212,10 @@ static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
 	switch (table[0].rev) {
 	case 0x50:
 	case 0x51:
+		pr_err("tegra: invalid EMC DFS table (0x%02x): too old.\n",
+		       table[0].rev);
+		break;
+	case 0x52:
 		start_timing.burst_regs_num = table[0].burst_regs_num;
 		break;
 	default:
@@ -1637,6 +1641,36 @@ static const struct file_operations emc_stats_fops = {
 	.release	= single_release,
 };
 
+static int emc_table_info_show(struct seq_file *s, void *data)
+{
+	int i;
+
+	seq_printf(s, "Table info:\n");
+	seq_printf(s, "  Rev: 0x%02x\n", tegra_emc_table->rev);
+	seq_printf(s, "  Table ID: %s\n", tegra_emc_table->table_id);
+	seq_printf(s, "  Possible rates (kHz):\n");
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_clk_sel[i].input == NULL)
+			continue;
+		seq_printf(s, "    %lu\n", tegra_emc_table[i].rate);
+	}
+
+	return 0;
+}
+
+static int emc_table_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, emc_table_info_show, inode->i_private);
+}
+
+static const struct file_operations emc_table_info_fops = {
+	.open		= emc_table_info_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int dram_temperature_get(void *data, u64 *val)
 {
 	*val = tegra_emc_get_dram_temperature();
@@ -1733,6 +1767,10 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_file("dsr_override", S_IRUGO | S_IWUSR,
 				 emc_debugfs_root, NULL, &dsr_override_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("table_info", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &emc_table_info_fops))
 		goto err_out;
 
 	if (tegra_emc_iso_usage_debugfs_init(emc_debugfs_root))
