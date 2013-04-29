@@ -24,6 +24,7 @@
 #include "tegra_emc.h"
 
 int tegra14_emc_init(void);
+extern u32 notrace tegra_read_usec_raw(void);
 
 enum {
 	DRAM_DEV_SEL_ALL = 0,

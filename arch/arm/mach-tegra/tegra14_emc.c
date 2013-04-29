@@ -636,8 +636,9 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	bool dyn_sref_enabled, zcal_long;
 
 	u32 dll_override, emc_cfg_dig_dll;
-	u32 emc_cfg_reg = emc_readl(EMC_CFG);
+	u32 t_start, t_diff;
 
+	u32 emc_cfg_reg = emc_readl(EMC_CFG);
 	u32 use_prelock = next_timing->emc_cfg_dig_dll & EMC_CFG_DIG_DLL_EN;
 
 	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
@@ -670,10 +671,8 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 		if (pre_wait < 30)
 			pre_wait = 30; /* (T148) 30us+ for dqs vref settled */
 	}
-	if (pre_wait) {
-		emc_timing_update();
-		udelay(pre_wait);
-	}
+	emc_timing_update();
+	t_start = tegra_read_usec_raw();
 
 	/* 3. For t148, leave auto cal alone. */
 
@@ -756,6 +755,14 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 			__raw_writel(next_timing->burst_up_down_regs[i],
 				burst_up_down_reg_addr[i]);
 		wmb();
+	}
+
+	/* 11.75 Wait what ever time is necessary to make sure pre_wait us
+	   have elapsed since programming vref mode. */
+	if (pre_wait) {
+		t_diff = tegra_read_usec_raw() - t_start;
+		if (t_diff <= pre_wait)
+			udelay(1 + pre_wait - t_diff);
 	}
 
 	/* 12-14. read any MC register to ensure the programming is done
