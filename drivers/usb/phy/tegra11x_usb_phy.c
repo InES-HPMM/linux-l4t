@@ -241,11 +241,13 @@
 
 #define UHSIC_PADS_CFG0				0xc1c
 #define   UHSIC_TX_RTUNEN			0xf000
-#define   UHSIC_TX_RTUNE(x)			(((x) & 0xf) << 12)
+#define   UHSIC_TX_RTUNEP			0xf00
+#define   UHSIC_TX_RTUNE_P(x)			(((x) & 0xf) << 8)
 #define   UHSIC_TX_SLEWP			(0xf << 16)
 #define   UHSIC_TX_SLEWN			(0xf << 20)
 
 #define UHSIC_PADS_CFG1				0xc20
+#define   UHSIC_AUTO_RTERM_EN			(1 << 0)
 #define   UHSIC_PD_BG				(1 << 2)
 #define   UHSIC_PD_TX				(1 << 3)
 #define   UHSIC_PD_TRK				(1 << 4)
@@ -1888,6 +1890,7 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + UHSIC_PADS_CFG1);
 
 	val |= (UHSIC_RX_SEL | UHSIC_PD_TX);
+	val |= UHSIC_AUTO_RTERM_EN;
 	writel(val, base + UHSIC_PADS_CFG1);
 
 	val = readl(base + USB_SUSP_CTRL);
@@ -1977,10 +1980,14 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	writel(val, base + USB_PORTSC);
 
 	val = readl(base + UHSIC_PADS_CFG0);
-	/* Clear RTUNEN, SLEWP & SLEWN bit fields */
-	val &= ~(UHSIC_TX_RTUNEN | UHSIC_TX_SLEWP | UHSIC_TX_SLEWN);
+	/* Clear RTUNEP, SLEWP & SLEWN bit fields */
+	val &= ~(UHSIC_TX_RTUNEP | UHSIC_TX_SLEWP | UHSIC_TX_SLEWN);
 	/* set Rtune impedance to 50 ohm */
-	val |= UHSIC_TX_RTUNE(0xC);
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+	val |= UHSIC_TX_RTUNE_P(0xD);
+#else
+	val |= UHSIC_TX_RTUNE_P(0xC);
+#endif
 	writel(val, base + UHSIC_PADS_CFG0);
 
 	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL,
