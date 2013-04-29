@@ -31,6 +31,8 @@
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 #define DC_N_WINDOWS		5
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define DC_N_WINDOWS		4
 #else
 #define DC_N_WINDOWS		3
 #endif
