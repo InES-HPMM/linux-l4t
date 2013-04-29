@@ -1119,9 +1119,7 @@ int t14x_make_voice_call_connections(struct codec_config *codec_info,
 	configure_baseband_i2s(codec_i2s, codec_info->is_i2smaster,
 		codec_info->i2s_mode, codec_info->channels,
 		codec_info->rate, codec_info->bitsize,
-		/* need to use bbc1 bit_clk here as we don't have separate
-		 * controller for bbc1 audio */
-		 bb_info->bit_clk);
+		 codec_info->bit_clk);
 
 	if (uses_voice_codec) {
 		/* The following two lines are a hack */
