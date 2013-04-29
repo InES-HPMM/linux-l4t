@@ -609,6 +609,7 @@ static void __init tegra_bonaire_init(void)
 	bonaire_touch_init();
 	bonaire_usb_init();
 	bonaire_panel_init();
+	bonaire_sensors_init();
 	bonaire_bt_rfkill();
 	bonaire_pcie_init();
 	tegra_register_fuse();
