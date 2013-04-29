@@ -420,7 +420,8 @@ static ssize_t iso_margin_store(struct device *dev,
 	unsigned int bw;
 	int ret;
 
-	sscanf(buf, "%u", &bw);
+	if (sscanf(buf, "%u", &bw) != 1)
+		return -EINVAL;
 
 	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
 		bw, true);
