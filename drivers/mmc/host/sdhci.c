@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (c) 2013, NVIDIA CORPORATION. All Rights Reserved.
+ *  Copyright (C) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -827,8 +827,25 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 				WARN_ON(1);
 				host->flags &= ~SDHCI_REQ_USE_DMA;
 			} else {
-				sdhci_writel(host, host->adma_addr,
+				sdhci_writel(host,
+					(host->adma_addr & 0xFFFFFFFF),
 					SDHCI_ADMA_ADDRESS);
+
+				if ((host->version >= SDHCI_SPEC_400) &&
+				    (host->quirks &
+				     SDHCI_QUIRK_SUPPORT_64BIT_DMA)) {
+					if (host->quirks &
+					    SDHCI_QUIRK_USE_64BIT_ADDR) {
+
+						sdhci_writel(host,
+						(host->adma_addr >> 32)
+							& 0xFFFFFFFF,
+						SDHCI_UPPER_ADMA_ADDRESS);
+					} else {
+						sdhci_writel(host, 0,
+						SDHCI_UPPER_ADMA_ADDRESS);
+					}
+				}
 			}
 		} else {
 			int sg_cnt;
@@ -2936,6 +2953,7 @@ int sdhci_add_host(struct sdhci_host *host)
 	int ret;
 	struct edp_manager *battery_manager = NULL;
 	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
+	u32 ctrl;
 
 	WARN_ON(host == NULL);
 	if (host == NULL)
@@ -3112,6 +3130,14 @@ int sdhci_add_host(struct sdhci_host *host)
 		DBG("%s: Auto-CMD23 available\n", mmc_hostname(mmc));
 	} else {
 		DBG("%s: Auto-CMD23 unavailable\n", mmc_hostname(mmc));
+	}
+
+	if (host->version >= SDHCI_SPEC_400) {
+		ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
+		ctrl |= SDHCI_HOST_VERSION_4_EN;
+		if (host->quirks & SDHCI_QUIRK_SUPPORT_64BIT_DMA)
+			ctrl |= SDHCI_ADDRESSING_64BIT_EN;
+		sdhci_writel(host, ctrl, SDHCI_ACMD12_ERR);
 	}
 
 	/*

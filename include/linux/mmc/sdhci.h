@@ -98,6 +98,10 @@ struct sdhci_host {
 #define SDHCI_QUIRK_DISABLE_CARD_CLOCK			(1ULL<<35)
 /* Do dummy write */
 #define SDHCI_QUIRK_DO_DUMMY_WRITE			(1ULL<<36)
+/* Controller supports 64 BIT DMA mode */
+#define SDHCI_QUIRK_SUPPORT_64BIT_DMA			(1ULL<<37)
+/* Use 64 BIT addressing */
+#define SDHCI_QUIRK_USE_64BIT_ADDR			(1ULL<<38)
 
 	unsigned int quirks2;	/* More deviations from spec. */
 
