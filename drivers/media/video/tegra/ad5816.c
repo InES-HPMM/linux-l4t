@@ -83,7 +83,6 @@
 
 #include <linux/fs.h>
 #include <linux/i2c.h>
-#include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
@@ -111,28 +110,24 @@
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define AD5816_VCM_THRESHOLD	20 */
 
-static u8 ad5816_ids[] = {
-	0x04,
-};
-
 struct ad5816_info {
-	atomic_t in_use;
 	struct i2c_client *i2c_client;
 	struct ad5816_platform_data *pdata;
 	struct miscdevice miscdev;
 	struct list_head list;
-	int pwr_dev;
 	struct ad5816_power_rail power;
-	int id_minor;
-	u32 pos;
-	u8 s_mode;
-	bool reset_flag;
 	struct ad5816_info *s_info;
 	struct nvc_focus_nvc nvc;
 	struct nvc_focus_cap cap;
 	struct nv_focuser_config nv_config;
 	struct ad5816_pdata_info config;
 	unsigned long ltv_ms;
+	atomic_t in_use;
+	bool reset_flag;
+	int pwr_dev;
+	u32 pos;
+	u16 dev_id;
+	u8 s_mode;
 };
 
 /**
@@ -398,7 +393,6 @@ static int ad5816_reset(struct ad5816_info *info, u32 level)
 static int ad5816_dev_id(struct ad5816_info *info)
 {
 	u16 val = 0;
-	unsigned i;
 	int err;
 
 	ad5816_pm_dev_wr(info, NVC_PWR_COMM);
@@ -406,15 +400,11 @@ static int ad5816_dev_id(struct ad5816_info *info)
 	if (!err) {
 		dev_dbg(&info->i2c_client->dev, "%s found devId: %x\n",
 			__func__, val);
-		info->id_minor = 0;
-		val = val & 0xff;
-		for (i = 0; i < ARRAY_SIZE(ad5816_ids); i++) {
-			if (val == ad5816_ids[i]) {
-				info->id_minor = val;
-				break;
-			}
+		info->dev_id = 0;
+		if ((val & 0xff00) == 0x2400) {
+			info->dev_id = val;
 		}
-		if (!info->id_minor) {
+		if (!info->dev_id) {
 			err = -ENODEV;
 			dev_dbg(&info->i2c_client->dev, "%s No devId match\n",
 				__func__);
@@ -1098,6 +1088,9 @@ static int ad5816_probe(
 					info->cap.focus_infinity);
 				ad5816_pm_dev_wr(info, NVC_PWR_OFF);
 			}
+			if (info->pdata->detect)
+				info->pdata->detect(
+					&info->dev_id, sizeof(info->dev_id));
 		}
 	}
 

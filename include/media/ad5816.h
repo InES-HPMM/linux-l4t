@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (c) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +19,7 @@
 #ifndef __AD5816_H__
 #define __AD5816_H__
 
+#include <linux/miscdevice.h>
 #include <media/nvc_focus.h>
 #include <media/nvc.h>
 
@@ -39,6 +40,7 @@ struct ad5816_platform_data {
 	struct nvc_gpio_pdata *gpio;
 	int (*power_on)(struct ad5816_power_rail *pw);
 	int (*power_off)(struct ad5816_power_rail *pw);
+	int (*detect)(void *buf, size_t size);
 };
 
 struct ad5816_pdata_info {
