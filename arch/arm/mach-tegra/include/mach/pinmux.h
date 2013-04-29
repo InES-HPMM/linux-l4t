@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-tegra/include/mach/pinmux.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -146,6 +146,14 @@
 	TEGRA_MUX(VIMCLK2_ALT_ALT) \
 	TEGRA_MUX(SOC_ALT)	\
 	/* End of Tegra148 MUX selectors */\
+	TEGRA_MUX(SYS) \
+	TEGRA_MUX(CCLA) \
+	TEGRA_MUX(TMDS) \
+	TEGRA_MUX(DP) \
+	TEGRA_MUX(PE) \
+	TEGRA_MUX(PE0) \
+	TEGRA_MUX(PE1) \
+	/* End of Tegra124 MUX selectors */\
 
 enum tegra_mux_func {
 #define TEGRA_MUX(mux) TEGRA_MUX_##mux,
@@ -229,6 +237,7 @@ enum tegra_vddio {
 	TEGRA_VDDIO_SDMMC1,
 	TEGRA_VDDIO_SDMMC3,
 	TEGRA_VDDIO_SDMMC4,
+	TEGRA_VDDIO_HV,
 };
 
 struct tegra_pingroup_config {
