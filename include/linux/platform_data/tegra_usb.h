@@ -112,6 +112,7 @@ struct tegra_usb_host_mode_data {
 	bool hot_plug;
 	bool remote_wakeup_supported;
 	bool power_off_on_suspend;
+	bool turn_off_vbus_on_lp0;
 };
 
 /**
