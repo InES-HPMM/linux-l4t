@@ -235,6 +235,8 @@ struct tegra_xhci_hcd {
 	struct clk *plle_clk;
 	struct clk *pll_u_480M;
 	struct clk *clk_m;
+	/* refPLLE clk */
+	struct clk *pll_re_vco_clk;
 	/*
 	 * XUSB/IPFS specific registers these need to be saved/restored in
 	 * addition to spec defined registers
@@ -534,11 +536,18 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 	struct platform_device *pdev = tegra->pdev;
 	int err = 0;
 
+	tegra->pll_re_vco_clk = devm_clk_get(&pdev->dev, "pll_re_vco");
+	if (IS_ERR(tegra->pll_re_vco_clk)) {
+		dev_err(&pdev->dev, "Failed to get refPLLE clock\n");
+		return PTR_ERR(tegra->pll_re_vco_clk);
+	}
+
 	/* get the clock handle of 120MHz clock source */
 	tegra->pll_u_480M = devm_clk_get(&pdev->dev, "pll_u_480M");
 	if (IS_ERR(tegra->pll_u_480M)) {
 		dev_err(&pdev->dev, "Failed to get pll_u_480M clk handle\n");
-		return PTR_ERR(tegra->pll_u_480M);
+		err = PTR_ERR(tegra->pll_u_480M);
+		goto get_pll_u_480M_failed;
 	}
 
 	/* get the clock handle of 12MHz clock source */
@@ -573,6 +582,11 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto get_ss_clk_failed;
 	}
 
+	err = clk_enable(tegra->pll_re_vco_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
+		goto enable_pll_re_vco_clk_failed;
+	}
 	/* enable ss clock */
 	err = clk_enable(tegra->host_clk);
 	if (err) {
@@ -592,6 +606,9 @@ eanble_ss_clk_failed:
 	clk_disable(tegra->host_clk);
 
 enable_host_clk_failed:
+	clk_disable(tegra->pll_re_vco_clk);
+
+enable_pll_re_vco_clk_failed:
 	tegra->ss_clk = NULL;
 
 get_ss_clk_failed:
@@ -606,6 +623,9 @@ get_ss_src_clk_failed:
 clk_get_clk_m_failed:
 	tegra->pll_u_480M = NULL;
 
+get_pll_u_480M_failed:
+	tegra->pll_re_vco_clk = NULL;
+
 	return err;
 }
 
@@ -613,11 +633,13 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 {
 	clk_disable(tegra->ss_clk);
 	clk_disable(tegra->host_clk);
+	clk_disable(tegra->pll_re_vco_clk);
 	tegra->ss_clk = NULL;
 	tegra->host_clk = NULL;
 	tegra->ss_src_clk = NULL;
 	tegra->clk_m = NULL;
 	tegra->pll_u_480M = NULL;
+	tegra->pll_re_vco_clk = NULL;
 }
 
 static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
@@ -1504,6 +1526,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	}
 	tegra->host_pwr_gated = true;
 
+	clk_disable(tegra->pll_re_vco_clk);
 	/* set port ownership to SNPS */
 	tegra_xhci_release_port_ownership(tegra, true);
 
@@ -1732,6 +1755,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	if (!tegra->hc_in_elpg)
 		return 0;
 
+	clk_enable(tegra->pll_re_vco_clk);
 	/* Step 2: Enable clock to host partition */
 	clk_enable(tegra->host_clk);
 
