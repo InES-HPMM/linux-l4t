@@ -784,7 +784,7 @@ static void tegra_aic325x_voice_call_shutdown(
 	machine->codec_info[HIFI_CODEC].rate = 0;
 	machine->codec_info[HIFI_CODEC].channels = 0;
 
-	machine->is_device_bt = 0;
+	return;
 }
 
 static int tegra_aic325x_bt_voice_call_hw_params(
@@ -837,7 +837,7 @@ static void tegra_aic325x_bt_voice_call_shutdown(
 	machine->codec_info[BT_SCO].rate = 0;
 	machine->codec_info[BT_SCO].channels = 0;
 
-	machine->is_device_bt = 0;
+	return;
 }
 
 static struct snd_soc_ops tegra_aic325x_hifi_ops = {
