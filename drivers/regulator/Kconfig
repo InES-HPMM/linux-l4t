@@ -96,12 +96,6 @@ config REGULATOR_ARIZONA
 	  Support for the regulators found on Wolfson Arizona class
 	  devices.
 
-config REGULATOR_BQ2419X
-	tristate "BQ24190, BQ24191, BQ24192 Charger VBUS regualtor"
-	depends on MFD_BQ2419X
-	help
-	  Say y here to support the VBUS regulator support from BQ2419X.
-
 config REGULATOR_DA903X
 	tristate "Dialog Semiconductor DA9030/DA9034 regulators"
 	depends on PMIC_DA903X

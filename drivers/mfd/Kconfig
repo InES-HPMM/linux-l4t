@@ -113,14 +113,6 @@ config MFD_ASIC3
 	  This driver supports the ASIC3 multifunction chip found on many
 	  PDAs (mainly iPAQ and HTC based ones)
 
-config MFD_BQ2419X
-	bool "Support for bq24190, bq24911, bq24192"
-	depends on I2C=y
-	select MFD_CORE
-	select REGMAP_I2C
-	help
-	  This supports the bq24190, bq24911, bq24192 drivers.
-
 config PMIC_DA903X
 	bool "Dialog Semiconductor DA9030/DA9034 PMIC Support"
 	depends on I2C=y
