@@ -5,7 +5,7 @@
  *	Colin Cross <ccross@android.com>
  *	Erik Gilling <ccross@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -868,6 +868,34 @@ struct platform_device tegra_nor_device = {
 };
 
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
+struct platform_device tegra_dtv_device = {
+	.name           = "tegra_dtv",
+	.id             = -1,
+	.resource       = dtv_resource,
+	.num_resources  = ARRAY_SIZE(dtv_resource),
+	.dev = {
+		.init_name = "dtv",
+		.coherent_dma_mask = 0xffffffff,
+	},
+};
+#endif
+
+
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+
+static struct resource dtv_resource[] = {
+	[0] = {
+		.start  = TEGRA_DTV_BASE,
+		.end    = TEGRA_DTV_BASE + TEGRA_DTV_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= TEGRA_DMA_REQ_SEL_DTV,
+		.end	= TEGRA_DMA_REQ_SEL_DTV,
+		.flags	= IORESOURCE_DMA
+	},
+};
+
 struct platform_device tegra_dtv_device = {
 	.name           = "tegra_dtv",
 	.id             = -1,

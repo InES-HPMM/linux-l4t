@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-pluto.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1419,6 +1419,11 @@ struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 };
 #endif
 
+static void __init pluto_dtv_init(void)
+{
+	platform_device_register(&tegra_dtv_device);
+}
+
 static void __init tegra_pluto_early_init(void)
 {
 	pluto_battery_edp_init();
@@ -1442,6 +1447,7 @@ static void __init tegra_pluto_late_init(void)
 	tegra_io_dpd_init();
 	pluto_sdhci_init();
 	pluto_regulator_init();
+	pluto_dtv_init();
 	pluto_suspend_init();
 	pluto_touch_init();
 	pluto_emc_init();
