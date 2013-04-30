@@ -822,6 +822,12 @@ static struct palmas_platform_data palmas_pdata = {
 	.rtc_pdata = &rtc_platform,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
+	#ifndef CONFIG_ANDROID
+	.long_press_delay = PALMAS_LONG_PRESS_KEY_TIME_8SECONDS,
+	#else
+	/* Retaining default value, 12 Seconds */
+	.long_press_delay = PALMAS_LONG_PRESS_KEY_TIME_DEFAULT,
+	#endif
 };
 
 static struct i2c_board_info palma_device[] = {
