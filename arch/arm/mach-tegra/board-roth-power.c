@@ -27,7 +27,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/mfd/palmas.h>
 #include <linux/regulator/tps51632-regulator.h>
-#include <linux/mfd/bq2419x.h>
+#include <linux/power/bq2419x-charger.h>
 #include <linux/gpio.h>
 #include <linux/regulator/userspace-consumer.h>
 
@@ -92,43 +92,35 @@ static struct i2c_board_info __initdata tps51632_boardinfo[] = {
 	},
 };
 
-
 /* BQ2419X VBUS regulator */
 static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 };
-static struct regulator_init_data bq2419x_init_data = {
-	.constraints = {
-		.name = "bq2419x_vbus",
-		.min_uV = 0,
-		.max_uV = 5000000,
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |
-					REGULATOR_MODE_STANDBY),
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |
-					REGULATOR_CHANGE_STATUS |
-					REGULATOR_CHANGE_VOLTAGE),
-	},
+
+static struct regulator_consumer_supply bq2419x_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
+static struct bq2419x_vbus_platform_data bq2419x_vbus_pdata = {
 	.num_consumer_supplies = ARRAY_SIZE(bq2419x_vbus_supply),
 	.consumer_supplies = bq2419x_vbus_supply,
 };
 
-static struct bq2419x_regulator_platform_data bq2419x_reg_pdata = {
-	.reg_init_data = &bq2419x_init_data,
-	.gpio_otg_iusb = TEGRA_GPIO_PI4,
-};
-
 struct bq2419x_charger_platform_data bq2419x_charger_pdata = {
-	.usb_in_current_limit = 400,
-	.ac_in_current_limit = 1000,
 	.use_usb = 1,
-	.gpio_interrupt = TEGRA_GPIO_PJ0,
-	.gpio_status = TEGRA_GPIO_PK0,
+	.use_mains = 1,
+	.max_charge_current_mA = 3000,
+	.charging_term_current_mA = 100,
+	.consumer_supplies = bq2419x_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq2419x_batt_supply),
+	.wdt_timeout    = 40,
+	.rtc_alarm_time = 3600,
+	.chg_restart_time = 1800,
 };
 
 struct bq2419x_platform_data bq2419x_pdata = {
-	.reg_pdata = &bq2419x_reg_pdata,
+	.vbus_pdata = &bq2419x_vbus_pdata,
 	.bcharger_pdata = &bq2419x_charger_pdata,
-	.disable_watchdog = true,
 };
 
 static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
