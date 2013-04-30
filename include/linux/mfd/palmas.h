@@ -21,6 +21,7 @@
 #include <linux/leds.h>
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
+#include <linux/power/bq2419x-charger.h>
 
 #define PALMAS_NUM_CLIENTS	4
 
@@ -523,6 +524,7 @@ struct palmas_platform_data {
 
 	struct palmas_pinctrl_platform_data *pinctrl_pdata;
 	struct palmas_extcon_platform_data *extcon_pdata;
+	struct bq2419x_platform_data *charger_pdata;
 
 	int watchdog_timer_initial_period;
 };
@@ -1681,6 +1683,7 @@ enum usb_irq_events {
 #define PALMAS_SW_REVISION					0x17
 #define PALMAS_EXT_CHRG_CTRL					0x18
 #define PALMAS_PMU_SECONDARY_INT2				0x19
+#define PALMAS_USB_CHGCTL1					0x1A
 
 /* Bit definitions for DEV_CTRL */
 #define PALMAS_DEV_CTRL_DEV_STATUS_MASK				0x0c
@@ -1905,6 +1908,9 @@ enum usb_irq_events {
 #define PALMAS_PMU_SECONDARY_INT2_DVFS2_MASK_SHIFT		1
 #define PALMAS_PMU_SECONDARY_INT2_DVFS1_MASK			0x01
 #define PALMAS_PMU_SECONDARY_INT2_DVFS1_MASK_SHIFT		0
+
+/* Bit definitions for USB_CHGCTL1 */
+#define PALMAS_USB_CHGCTL1_USB_SUSPEND				0x04
 
 /* Registers for function RESOURCE */
 #define PALMAS_CLK32KG_CTRL					0x0

@@ -23,10 +23,34 @@ config PDA_POWER
 	  backup batteries, and optional builtin charger.
 
 config CHARGER_BQ2419X
-	tristate "BQ2419X charger support"
-	depends on MFD_BQ2419X
+	tristate "BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver support"
+	depends on I2C
 	help
-	  Say Y here to enable support for TI BQ2419X charger.
+	  Say Y here to enable driver support for TI BQ24190/
+	  BQ24192/BQ24192i/BQ24193 Charger.
+
+choice
+	prompt "Support for TI BQ2419x charger driver"
+	depends on CHARGER_BQ2419X
+	default CHARGER_BQ2419X_I2C
+	help
+	 Option to choose between bq2419x charger i2c driver
+	 and bq2419x platform driver.
+
+config CHARGER_BQ2419X_I2C
+	bool "I2C driver"
+	depends on CHARGER_BQ2419X
+	help
+	  Say Y here to enable i2c driver support for TI BQ24190/
+	  BQ24192/BQ24192i/BQ24193 Charging module.
+
+config CHARGER_BQ2419X_PLATFORM
+	bool "platform driver"
+	depends on CHARGER_BQ2419X
+	help
+	  Say Y here to enable platform driver support for TI BQ24190/
+	  BQ24192/BQ24192i/BQ24193 Charger.
+endchoice
 
 config APM_POWER
 	tristate "APM emulation for class batteries"
