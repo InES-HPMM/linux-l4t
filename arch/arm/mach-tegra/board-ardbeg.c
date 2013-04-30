@@ -223,6 +223,7 @@ static void __init tegra_ardbeg_init(void)
 	ardbeg_uart_init();
 	ardbeg_kbc_init();
 	ardbeg_sdhci_init();
+	ardbeg_regulator_init();
 	ardbeg_panel_init();
 	ardbeg_sensors_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));

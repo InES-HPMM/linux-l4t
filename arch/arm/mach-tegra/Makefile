@@ -266,6 +266,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sensors.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-pinmux.o
+obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-power.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-wqxga-10-1.o

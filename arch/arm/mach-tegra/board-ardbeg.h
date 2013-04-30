@@ -20,6 +20,7 @@
 #ifndef _MACH_TEGRA_BOARD_ARDBEG_H
 #define _MACH_TEGRA_BOARD_ARDBEG_H
 
+#include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
 
@@ -28,5 +29,8 @@ int ardbeg_panel_init(void);
 int ardbeg_kbc_init(void);
 int ardbeg_sdhci_init(void);
 int ardbeg_sensors_init(void);
+int ardbeg_regulator_init(void);
 
+#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
+#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
 #endif
