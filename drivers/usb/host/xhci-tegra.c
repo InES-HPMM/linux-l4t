@@ -1738,10 +1738,10 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	if (clk_get_rate(tegra->ss_src_clk) == 12000000) {
 		clk_set_rate(tegra->ss_src_clk,  3000 * 1000);
 		clk_set_parent(tegra->ss_src_clk, tegra->pll_u_480M);
-
-		/* clear ovrd bits when SS freq is being increased */
-		tegra_xhci_rx_idle_mode_override(tegra, false);
 	}
+
+	/* clear ovrd bits */
+	tegra_xhci_rx_idle_mode_override(tegra, false);
 
 	/* Load firmware */
 	xhci_dbg(xhci, "%s: elpg_exit: loading firmware from pmc.\n"
