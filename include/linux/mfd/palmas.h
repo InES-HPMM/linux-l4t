@@ -527,6 +527,9 @@ struct palmas_platform_data {
 	struct bq2419x_platform_data *charger_pdata;
 
 	int watchdog_timer_initial_period;
+
+	/* Long press delay for hard shutdown */
+	int long_press_delay;
 };
 
 struct palmas_gpadc_calibration {
@@ -1763,6 +1766,13 @@ enum usb_irq_events {
 #define PALMAS_LONG_PRESS_KEY_LPK_TIME_SHIFT			2
 #define PALMAS_LONG_PRESS_KEY_PWRON_DEBOUNCE_MASK		0x03
 #define PALMAS_LONG_PRESS_KEY_PWRON_DEBOUNCE_SHIFT		0
+
+/* Register bit values for various Long_Press_key durations */
+#define PALMAS_LONG_PRESS_KEY_TIME_DEFAULT	-1
+#define PALMAS_LONG_PRESS_KEY_TIME_6SECONDS	0
+#define PALMAS_LONG_PRESS_KEY_TIME_8SECONDS	1
+#define PALMAS_LONG_PRESS_KEY_TIME_10SECONDS	2
+#define PALMAS_LONG_PRESS_KEY_TIME_12SECONDS	3
 
 /* Bit definitions for OSC_THERM_CTRL */
 #define PALMAS_OSC_THERM_CTRL_VANA_ON_IN_SLEEP			0x80

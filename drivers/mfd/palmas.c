@@ -1096,6 +1096,24 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			return ret;
 	}
 
+	/*
+	 * Programming the Long-Press shutdown delay register.
+	 * Using "slave" from previous assignment as this register
+	 * too belongs to PALMAS_PMU_CONTROL_BASE block.
+	 */
+	if (pdata->long_press_delay != PALMAS_LONG_PRESS_KEY_TIME_DEFAULT) {
+		ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+					PALMAS_LONG_PRESS_KEY,
+					PALMAS_LONG_PRESS_KEY_LPK_TIME_MASK,
+					pdata->long_press_delay <<
+					PALMAS_LONG_PRESS_KEY_LPK_TIME_SHIFT);
+		if (ret) {
+			dev_err(palmas->dev,
+				"Failed to update palmas long press delay"
+				"(hard shutdown delay), err: %d\n", ret);
+			goto err;
+		}
+	}
 
 	palmas_init_ext_control(palmas);
 
