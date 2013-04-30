@@ -40,7 +40,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/stat.h>
-
+#include <linux/pm_qos.h>
 #include <media/tegra_dtv.h>
 
 #include <linux/uaccess.h>
@@ -56,6 +56,9 @@
 #define DTV_MAX_BUF_SIZE                  (4 << DTV_BUF_SIZE_ORDER)
 #define DTV_NUM_BUFS                      4
 #define DTV_MAX_NUM_BUFS                  8
+
+#define DTV_CPU_BOOST_MHZ                 200
+#define DTV_TS_BITRATE                    (416 * 13)
 
 #define DTV_FIFO_ATN_LVL_LOW_GEAR         0
 #define DTV_FIFO_ATN_LVL_SECOND_GEAR      1
@@ -88,6 +91,9 @@ struct dtv_stream {
 	struct work_struct	work;
 	struct wake_lock	wake_lock;
 	char			wake_lock_name[16];
+
+	struct work_struct	cpu_boost_work;
+	int			cpu_boost_flag;
 };
 
 struct tegra_dtv_context {
@@ -108,12 +114,18 @@ struct tegra_dtv_context {
 	/* for refer back */
 	struct platform_device    *pdev;
 	struct miscdevice          miscdev;
+
+	struct pm_qos_request      min_cpufreq;
+	struct pm_qos_request      cpudma_lat;
 };
 
 /* assigned default values if no parameters were passed by insmod or boot
    cmdline */
 static unsigned int bufsize = DTV_BUF_SIZE;
 static unsigned int bufnum  = DTV_NUM_BUFS;
+/* PM QoS control parameters */
+static unsigned int cpuboost = DTV_CPU_BOOST_MHZ;
+static unsigned int tsbitrate = DTV_TS_BITRATE;
 
 static inline struct tegra_dtv_context *to_ctx(struct dtv_stream *s)
 {
@@ -145,11 +157,34 @@ static inline void prevent_suspend(struct dtv_stream *s)
 	wake_lock(&s->wake_lock);
 }
 
+static void dtv_cpu_boost_worker(struct work_struct *work)
+{
+	struct dtv_stream *s = container_of(
+		work, struct dtv_stream, cpu_boost_work);
+	struct tegra_dtv_context *dtv_ctx = to_ctx(s);
+
+	if (s->cpu_boost_flag) {
+		pr_info("%s: Boost CPU frequency to %dMHz.",
+			__func__, cpuboost);
+		pm_qos_update_request(&dtv_ctx->min_cpufreq,
+				      cpuboost * 1000);
+	} else {
+		pr_info("%s: Release CPU frequency boost.", __func__);
+		pm_qos_update_request(&dtv_ctx->min_cpufreq,
+				      PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+	}
+}
+
 static void tegra_dtv_worker(struct work_struct *w)
 {
 	struct dtv_stream *s = container_of(w, struct dtv_stream, work);
 	pr_debug("%s called.\n", __func__);
 	wake_unlock(&s->wake_lock);
+}
+
+static inline void dtv_boost_cpu(struct dtv_stream *s)
+{
+	schedule_work(&s->cpu_boost_work);
 }
 
 static inline void wakeup_suspend(struct dtv_stream *s)
@@ -211,11 +246,13 @@ static void tegra_dtv_rx_dma_complete(struct tegra_dma_req *req)
 		 __func__, req_num, req->bytes_transferred);
 	BUG_ON(req_num >= s->num_bufs);
 
-	if (req->bytes_transferred > s->buf_size)
-		pr_warn("%s: DMA transferring overlapped. bufno = %d  transferred = %d bytes\n",
-			__func__, req_num, req->bytes_transferred);
-
 	complete(&buf->comp);
+
+	if (req->bytes_transferred > s->buf_size
+	    && are_xfers_pending(s)) {
+		dtv_boost_cpu(s);
+		pr_warn("%s: DMA buffer overlapped", __func__);
+	}
 
 	spin_unlock_irqrestore(&s->dma_req_lock, flags);
 }
@@ -329,7 +366,17 @@ static int stop_xfer_unsafe(struct dtv_stream *s)
 	struct tegra_dtv_context *dtv_ctx = to_ctx(s);
 
 	pr_debug("%s called\n", __func__);
+
 	tegra_dma_cancel(s->dma_chan);
+
+	/* stop CPU boost */
+	s->cpu_boost_flag = 0;
+	schedule_work(&s->cpu_boost_work);
+
+	/* release restriction on CPU-DMA latency */
+	pm_qos_update_request(&dtv_ctx->cpudma_lat,
+			      PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE);
+
 	_dtv_disable_protocol(dtv_ctx);
 	while ((_dtv_get_status(dtv_ctx) & DTV_STATUS_RXF_FULL) &&
 	       spin < 100) {
@@ -461,6 +508,34 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 		buf->dma_req.size = size;
 		tegra_dma_enqueue_req(s->dma_chan, &buf->dma_req);
 	}
+
+	/* set boost cpu enabled */
+	s->cpu_boost_flag = 1;
+
+	/* set the bottom line of cpu-dma latency
+	 *
+	 * The value of this parameter is about cpu snooping on DMAed
+	 * memory. It means that CPU should keep snooping to mark
+	 * corresponding entries invalid in cache if any entry is
+	 * associated to DMAed memory.
+	 *
+	 * DTV device really doesn't like DMA snoopying takes longer
+	 * than
+	 *
+	 *  (bufsize / bitrate of signal) second
+	 *
+	 * . For example, if we have 4096 bytes available in each buffer
+	 * and capture ISDB-T full-seg data, latency should never be
+	 * longer than
+	 *
+	 *  4K bytes / (416 * 13)kbps ~= 6usec
+	 *
+	 * This will push a lot of pressure on DMA controller and CPU,
+	 * especially on Tegra 3 SoC. Please set buffer size to 8192
+	 * bytes at lease in this case.
+	 */
+	pm_qos_update_request(&dtv_ctx->cpudma_lat,
+			      s->buf_size / DTV_TS_BITRATE);
 
 	s->last_queued = s->num_bufs - 1;
 
@@ -920,6 +995,8 @@ static int setup_stream(struct dtv_stream *stream)
 	INIT_WORK(&stream->work, tegra_dtv_worker);
 	wake_lock_init(&stream->wake_lock, WAKE_LOCK_SUSPEND, "tegra_dtv");
 
+	INIT_WORK(&stream->cpu_boost_work, dtv_cpu_boost_worker);
+
 	return ret;
 }
 
@@ -978,6 +1055,12 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 		ret = -EIO;
 		goto fail_no_clk;
 	}
+
+	/* add PM QoS request but leave it as default value */
+	pm_qos_add_request(&dtv_ctx->min_cpufreq, PM_QOS_CPU_FREQ_MIN,
+			   PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+	pm_qos_add_request(&dtv_ctx->cpudma_lat, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE);
 
 	/* get resource */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1128,6 +1211,43 @@ static void __exit tegra_dtv_exit(void)
 {
 	platform_driver_unregister(&tegra_dtv_driver);
 }
+
+/* PM QoS parameters */
+static int ts_bitrate_set(const char *arg, const struct kernel_param *kp)
+{
+	param_set_int(arg, kp);
+
+	return 0;
+}
+
+static int ts_bitrate_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_uint(buffer, kp);
+}
+
+static struct kernel_param_ops ts_bitrate_ops = {
+	.set = ts_bitrate_set,
+	.get = ts_bitrate_get,
+};
+module_param_cb(tsbitrate, &ts_bitrate_ops, &tsbitrate, S_IRUGO|S_IWUSR);
+
+static int cpu_boost_set(const char *arg, const struct kernel_param *kp)
+{
+	param_set_int(arg, kp);
+
+	return 0;
+}
+
+static int cpu_boost_get(char *buffer, const struct kernel_param *kp)
+{
+	return param_get_uint(buffer, kp);
+}
+
+static struct kernel_param_ops cpu_boost_ops = {
+	.set = cpu_boost_set,
+	.get = cpu_boost_get,
+};
+module_param_cb(cpuboost, &cpu_boost_ops, &cpuboost, S_IRUGO|S_IWUSR);
 
 module_param(bufsize, uint, S_IRUGO);
 module_param(bufnum,  uint, S_IRUGO);
