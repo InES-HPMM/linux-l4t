@@ -693,6 +693,12 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 9. set dram mode registers */
 	set_dram_mode(next_timing, last_timing, dll_change);
 
+	/* 9.5 Update two fields in EMC_CFG that are not shadowed. */
+	emc_cfg_reg &= ~(EMC_CFG_MAN_PRE_WR | EMC_CFG_MAN_PRE_RD);
+	emc_cfg_reg |= next_timing->emc_cfg &
+		       (EMC_CFG_MAN_PRE_WR | EMC_CFG_MAN_PRE_RD);
+	ccfifo_writel(emc_cfg_reg, EMC_CFG);
+
 	/* 10. issue zcal command if turning zcal On */
 	if (zcal_long) {
 		ccfifo_writel(EMC_ZQ_CAL_LONG_CMD_DEV0, EMC_ZQ_CAL);

@@ -44,6 +44,8 @@ enum {
 #define EMC_CFG_DRAM_ACPD			(0x1 << 29)
 #define EMC_CFG_DYN_SREF_ENABLE			(0x1 << 28)
 #define EMC_CFG_PWR_MASK			(0xF << 28)
+#define EMC_CFG_MAN_PRE_WR			(0x1 << 23)
+#define EMC_CFG_MAN_PRE_RD			(0x1 << 22)
 #define EMC_CFG_PERIODIC_QRST			(0x1 << 21)
 #define EMC_CFG_EN_DYNAMIC_PUTERM		(0x1 << 20)
 #define EMC_CFG_DLY_WR_DQ_HALF_CLOCK		(0x1 << 19)
