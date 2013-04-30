@@ -1276,7 +1276,7 @@ static int tegra_aic325x_resume_pre(struct snd_soc_card *card)
 	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 
 	if (gpio_is_valid(gpio->gpio)) {
-		val = gpio_get_value(gpio->gpio);
+		val = gpio_get_value_cansleep(gpio->gpio);
 		val = gpio->invert ? !val : val;
 		snd_soc_jack_report(gpio->jack, val, gpio->report);
 		enable_irq(gpio_to_irq(gpio->gpio));
