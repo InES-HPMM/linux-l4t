@@ -386,9 +386,11 @@ static int __init dsi_s_1080p_5_register_bl_dev(void)
 {
 	int err = 0;
 	struct board_info bi;
+	struct board_info board_info;
 	tegra_get_display_board_info(&bi);
+	tegra_get_board_info(&board_info);
 
-	if (bi.board_id == BOARD_E1563) {
+	if ( (bi.board_id == BOARD_E1563) || (board_info.board_id == BOARD_E1740)) {
 		err = i2c_register_board_info(1,
 			&lm3528_dsi_s_1080p_5_i2c_led_info, 1);
 		dsi_s_1080p_5_bl_response_curve =
@@ -621,9 +623,11 @@ static void dsi_s_1080p_5_sd_settings_init
 (struct tegra_dc_sd_settings *settings)
 {
 	struct board_info bi;
+	struct board_info board_info;
 	tegra_get_display_board_info(&bi);
+	tegra_get_board_info(&board_info);
 
-	if (bi.board_id == BOARD_E1563)
+	if ((bi.board_id == BOARD_E1563) || (board_info.board_id == BOARD_E1740))
 		settings->bl_device_name = "lm3528_display_bl";
 	else
 		settings->bl_device_name = "max8831_display_bl";
