@@ -1,0 +1,36 @@
+NVIDIA TEGRA124 High Definition Multimedia Interface
+====================================================
+
+1) The hdmi node:
+ hdmi node must be contained in host1x parent node. This node represents NVIDIA TEGRA124
+ High Definition Multimedia Interface.
+
+ Required properties
+ - name: hdmi
+ - compatible: Should contain "nvidia,tegra124-hdmi".
+ - reg: Physical base address and length of the controller's registers.
+ - interrupts: The interrupt outputs from the controller.
+
+ Optional properties:
+ - nvidia,ddc-i2c-bus: phandle of an I2C controller used for DDC EDID probing
+ - nvidia,hpd-gpio: specifies a GPIO used for hotplug detection
+ - nvidia,edid: supplies a binary EDID blob
+ - nvidia,hotplug-report: With 1, it will have optional hotplug report callback
+   which does only set DDC_SDA and DDC_SCL pull downs to be active when hotplug
+   is detected, otherwise keep them disabled.
+
+ NOTE:
+ - regulator names for supply voltage, PLL and hdmi 5V source should be avdd_hdmi, avdd_hdmi_pll,
+   vdd_hdmi_5v0, respectively.
+
+Example
+	host1x {
+		hdmi {
+			compatible = "nvidia,tegra124-hdmi";
+			reg = <0x54280000 0x00040000>;
+			interrupts = <0 75 0x04>;
+			status = "okay";
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio 111 1>;
+		};
+	};
