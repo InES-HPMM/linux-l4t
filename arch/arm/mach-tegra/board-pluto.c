@@ -1110,6 +1110,9 @@ static void pluto_modem_init(void)
 				= MDM2_PWR_ON_FOR_PLUTO_A02;
 		}
 		/* baseband-power.ko will register ehci3 device */
+		if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
+			(tegra_revision == TEGRA_REVISION_A02))
+			tegra_hsic_pdata.unaligned_dma_buf_supported = true;
 		tegra_hsic_pdata.ops = &oem2_plat_ops;
 		tegra_hsic_pdata.u_data.host.remote_wakeup_supported = false;
 		tegra_hsic_pdata.u_data.host.power_off_on_suspend = false;
