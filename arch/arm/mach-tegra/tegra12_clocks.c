@@ -5634,6 +5634,9 @@ static struct clk_pll_freq_table tegra_pll_e_freq_table[] = {
 	/* PLLE special case: use cpcon field to store cml divider value */
 	{ 336000000, 100000000, 100, 21,  16, 11},
 	{ 312000000, 100000000, 200, 26,  24, 13},
+#ifndef CONFIG_TEGRA_SILICON_PLATFORM
+	{ 13000000,  100000000, 200, 1,  26, 13},
+#endif
 	{ 0, 0, 0, 0, 0, 0 },
 };
 

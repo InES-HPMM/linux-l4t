@@ -1169,7 +1169,6 @@ err_exit:
 
 static int tegra_pcie_power_regate(void)
 {
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	int err;
 
 	PR_FUNC_LINE;
@@ -1178,15 +1177,13 @@ static int tegra_pcie_power_regate(void)
 		pr_err("PCIE: powerup sequence failed: %d\n", err);
 		return err;
 	}
-#endif
+
 	tegra_periph_reset_assert(tegra_pcie.pcie_xclk);
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	err = clk_prepare_enable(tegra_pcie.pll_e);
 	if (err) {
 		pr_err("PCIE: plle clk enable failed: %d\n", err);
 		return err;
 	}
-#endif
 	return 0;
 }
 
