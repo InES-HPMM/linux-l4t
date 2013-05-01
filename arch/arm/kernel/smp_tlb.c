@@ -158,6 +158,17 @@ void flush_tlb_kernel_page(unsigned long kaddr)
 	broadcast_tlb_a15_erratum();
 }
 
+void flush_tlb_kernel_page_skip_errata_798181(unsigned long kaddr)
+{
+	if (tlb_ops_need_broadcast()) {
+		struct tlb_args ta;
+		ta.ta_start = kaddr;
+		on_each_cpu(ipi_flush_tlb_kernel_page, &ta, 1);
+	} else
+		local_flush_tlb_kernel_page(kaddr);
+	dummy_flush_tlb_a15_erratum();
+}
+
 void flush_tlb_range(struct vm_area_struct *vma,
                      unsigned long start, unsigned long end)
 {
