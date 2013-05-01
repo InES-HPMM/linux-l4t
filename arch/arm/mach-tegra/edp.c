@@ -415,7 +415,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			   {   15618709,   -4576116,   158401,  -1538, },
 			 },
 		 },
-		.volt_temp_cap = { 70, 1240 },
+		.volt_temp_cap = { 70, 1300 },
 	},
 	{
 		.cpu_speedo_id	    = 1, /* A01P+ CPU */
@@ -448,7 +448,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			 },
 		 },
 		.safety_cap = { 1810500, 1810500, 1606500, 1606500 },
-		.volt_temp_cap = { 70, 1240 },
+		.volt_temp_cap = { 70, 1300 },
 	},
 	{
 		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
@@ -481,7 +481,7 @@ static struct tegra_edp_cpu_leakage_params leakage_params[] = {
 			 },
 		 },
 		.safety_cap = { 1912500, 1912500, 1912500, 1912500 },
-		.volt_temp_cap = { 70, 1240 },
+		.volt_temp_cap = { 70, 1300 },
 	},
 };
 #endif
