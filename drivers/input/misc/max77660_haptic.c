@@ -295,6 +295,8 @@ static ssize_t max77660_haptic_show(struct device *dev,
 		var = chip->scf_val;
 	else if (strcmp(attr->attr.name, "pwm_divisor") == 0)
 		var = chip->pwm_divisor;
+	else if (strcmp(attr->attr.name, "vibrator_enable") == 0)
+		var = chip->enabled;
 
 	return sprintf(buf, "%d\n", var);
 }
@@ -326,7 +328,6 @@ static ssize_t max77660_haptic_store(struct device *dev,
 	return count;
 }
 
-
 static ssize_t max77660_haptic_vibrator_ctrl(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -355,7 +356,7 @@ static DEVICE_ATTR(scf_val, 0640, max77660_haptic_show,
 					max77660_haptic_store);
 static DEVICE_ATTR(pwm_divisor, 0640, max77660_haptic_show,
 					max77660_haptic_store);
-static DEVICE_ATTR(vibrator_enable, 0640, NULL,
+static DEVICE_ATTR(vibrator_enable, 0640, max77660_haptic_show,
 					max77660_haptic_vibrator_ctrl);
 
 static struct attribute *max77660_haptics_attr[] = {
