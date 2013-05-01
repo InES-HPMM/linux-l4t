@@ -6350,8 +6350,7 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_plla_pllc4[] = {
 	/* Skip C2(3) */
 	{ .input = &tegra_pll_p, .value = 4},
 	{ .input = &tegra_pll_a_out0, .value = 6},
-	/* FIXME: add PLLC4_OUT0 after NET13
-	{ .input = &tegra_pll_c4_out0, .value = 7}, */
+	{ .input = &tegra_pll_c4, .value = 7},
 	{ 0, 0},
 };
 
@@ -6362,8 +6361,7 @@ static struct clk_mux_sel mux_pllm_pllc_pllp_plla_clkm_pllc4[] = {
 	{ .input = &tegra_pll_a_out0, .value = 3},
 	/* Skip C2(4) & C3(5) */
 	{ .input = &tegra_clk_m, .value = 6},
-	/* FIXME: add PLLC4_OUT0 after NET13
-	{ .input = &tegra_pll_c4_out0, .value = 7}, */
+	{ .input = &tegra_pll_c4, .value = 7},
 	{ 0, 0},
 };
 
