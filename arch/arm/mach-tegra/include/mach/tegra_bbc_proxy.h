@@ -30,4 +30,12 @@ struct tegra_bbc_proxy_platform_data {
 	unsigned int i_thresh_3g_adjperiod;
 	unsigned int i_thresh_lte_adjperiod;
 };
-#endif /* __MAC_TEGRA_BBC_PROXY_H */
+
+int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
+				u32 *states);
+int tegra_bbc_proxy_edp_request(struct device *dev, u32 mode, u32 state,
+				u32 threshold);
+int tegra_bbc_proxy_bw_register(struct device *dev, u32 bw);
+int tegra_bbc_proxy_bw_request(struct device *dev, u32 mode, u32 bw, u32 lt,
+				u32 margin);
+#endif /* __MACH_TEGRA_BBC_PROXY_H */

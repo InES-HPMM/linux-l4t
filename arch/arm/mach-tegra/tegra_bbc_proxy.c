@@ -42,9 +42,18 @@ struct tegra_bbc_proxy {
 	unsigned int i_breach_ppm; /* percent time current exceeds i_thresh */
 	unsigned int i_thresh_3g_adjperiod; /* 3g i_thresh adj period */
 	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
+	unsigned int threshold; /* current edp threshold value */
+	unsigned int state; /* current edp state value */
 	struct work_struct edp_work;
-	struct mutex edp_lock;
+	struct mutex edp_lock; /* lock for edp operations */
+
 	tegra_isomgr_handle isomgr_handle;
+	unsigned int margin; /* current iso margin bw request */
+	unsigned int bw; /* current iso bandwidth request */
+	unsigned int lt; /* current iso latency tolerance for emc frequency
+			    switches */
+	struct mutex iso_lock; /* lock for iso operations */
+
 	struct regulator *sim0;
 	struct regulator *sim1;
 	struct regulator *rf1v7;
@@ -99,19 +108,54 @@ static ssize_t i_max_show(struct device *pdev, struct device_attribute *attr,
 static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 			   const char *buff, size_t size)
 {
-	struct tegra_bbc_proxy *bbc;
 	char *s, *state_i_max, buf[50];
+	unsigned int states[MAX_MODEM_EDP_STATES];
 	unsigned int num_states = 0;
-	struct edp_manager *mgr;
 	int ret;
 
-	bbc = (struct tegra_bbc_proxy *)dev_get_drvdata(pdev);
+	/* retrieve max current for supported states */
+	strlcpy(buf, buff, sizeof(buf));
+	s = strim(buf);
+	while (s && (num_states < MAX_MODEM_EDP_STATES)) {
+		state_i_max = strsep(&s, ",");
+		ret = kstrtoul(state_i_max, 10,
+			(unsigned long *)&states[num_states]);
+		if (ret) {
+			dev_err(pdev, "invalid bbc state-current setting\n");
+			goto done;
+		}
+		num_states++;
+	}
+
+	if (s && (num_states >= MAX_MODEM_EDP_STATES)) {
+		dev_err(pdev, "number of bbc EDP states exceeded max\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ret = tegra_bbc_proxy_edp_register(pdev, num_states, states);
+	if (ret)
+		goto done;
+
+	ret = size;
+done:
+	return ret;
+}
+static DEVICE_ATTR(i_max, S_IRUSR | S_IWUSR, i_max_show, i_max_store);
+
+int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
+				u32 *states)
+{
+	struct edp_manager *mgr;
+	int ret;
+	int i;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
 
 	mutex_lock(&bbc->edp_lock);
 
 	/* client should only be registered once per modem boot */
 	if (bbc->edp_client_registered) {
-		pr_err("bbc edp client already registered\n");
+		dev_err(dev, "bbc edp client already registered\n");
 		ret = -EBUSY;
 		goto done;
 	}
@@ -120,23 +164,9 @@ static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 	memset(&bbc->modem_edp_client, 0, sizeof(bbc->modem_edp_client));
 
 	/* retrieve max current for supported states */
-	strlcpy(buf, buff, sizeof(buf));
-	s = strim(buf);
-	while (s && (num_states < MAX_MODEM_EDP_STATES)) {
-		state_i_max = strsep(&s, ",");
-		ret = kstrtoul(state_i_max, 10,
-			(unsigned long *)&bbc->modem_edp_states[num_states]);
-		if (ret) {
-			pr_err("invalid bbc state-current setting\n");
-			goto done;
-		}
-		num_states++;
-	}
-
-	if (s && (num_states == MAX_MODEM_EDP_STATES)) {
-		pr_err("number of bbc EDP states exceeded max\n");
-		ret = -EINVAL;
-		goto done;
+	for (i = 0; i < num_states; i++) {
+		bbc->modem_edp_states[i] = *states;
+		states++;
 	}
 
 	strncpy(bbc->modem_edp_client.name, "bbc", EDP_NAME_LEN);
@@ -148,7 +178,7 @@ static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 
 	mgr = edp_get_manager(bbc->edp_manager_name);
 	if (!mgr) {
-		dev_err(pdev, "can't get edp manager\n");
+		dev_err(dev, "can't get edp manager\n");
 		ret = -EINVAL;
 		goto done;
 	}
@@ -156,7 +186,7 @@ static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 	/* register modem client */
 	ret = edp_register_client(mgr, &bbc->modem_edp_client);
 	if (ret) {
-		dev_err(pdev, "unable to register bbc edp client\n");
+		dev_err(dev, "unable to register bbc edp client\n");
 		goto done;
 	}
 	bbc->edp_client_registered = 1;
@@ -164,24 +194,73 @@ static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 	/* unregister modem_boot_client */
 	ret = edp_unregister_client(bbc->modem_boot_edp_client);
 	if (ret) {
-		dev_err(pdev, "unable to register bbc boot edp client\n");
+		dev_err(dev, "unable to register bbc boot edp client\n");
 		goto done;
 	}
 
 	bbc->edp_boot_client_registered = 0;
-	ret = size;
 
 done:
 	mutex_unlock(&bbc->edp_lock);
 	return ret;
 }
-static DEVICE_ATTR(i_max, S_IRUSR | S_IWUSR, i_max_show, i_max_store);
+EXPORT_SYMBOL(tegra_bbc_proxy_edp_register);
+
+static int bbc_edp_request_unlocked(struct device *dev, u32 mode, u32 state,
+				u32 threshold)
+{
+	int ret;
+	struct edp_client *c;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	if (!bbc->edp_client_registered)
+		return -EINVAL;
+
+	if (state != bbc->state) {
+		c = &bbc->modem_edp_client;
+		if (state >= c->num_states)
+			return -EINVAL;
+
+		ret = edp_update_client_request(c, state, NULL);
+		if (ret) {
+			dev_err(dev, "state update to %u failed\n", state);
+			return ret;
+		}
+		bbc->state = state;
+	}
+
+	if (threshold != bbc->threshold) {
+		ret = edp_update_loan_threshold(&bbc->modem_edp_client,
+						threshold);
+		if (ret) {
+			dev_err(dev, "threshold update to %u failed\n",
+				threshold);
+			return ret;
+		}
+		bbc->threshold = threshold;
+	}
+
+	return 0;
+}
+
+int tegra_bbc_proxy_edp_request(struct device *dev, u32 mode, u32 state,
+				u32 threshold)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	mutex_lock(&bbc->edp_lock);
+	ret = bbc_edp_request_unlocked(dev, mode, state, threshold);
+	mutex_unlock(&bbc->edp_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra_bbc_proxy_edp_request);
 
 static ssize_t request_store(struct device *pdev, struct device_attribute *attr,
 			     const char *buff, size_t size)
 {
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(pdev);
-	struct edp_client *c;
 	unsigned int id;
 	int ret;
 
@@ -191,17 +270,11 @@ static ssize_t request_store(struct device *pdev, struct device_attribute *attr,
 	if (!bbc->edp_client_registered)
 		return -EINVAL;
 
-	c = &bbc->modem_edp_client;
-	if (id >= c->num_states)
-		return -EINVAL;
+	mutex_lock(&bbc->edp_lock);
+	ret = bbc_edp_request_unlocked(pdev, 0, id, bbc->threshold);
+	mutex_unlock(&bbc->edp_lock);
 
-	ret = edp_update_client_request(c, id, NULL);
-	if (ret)
-		dev_err(pdev, "state update to %u failed\n", id);
-	else
-		ret = size;
-
-	return ret;
+	return ret ? ret : size;
 }
 static DEVICE_ATTR(request, S_IWUSR, NULL, request_store);
 
@@ -216,16 +289,11 @@ static ssize_t threshold_store(struct device *pdev,
 	if (sscanf(buff, "%u", &tv) != 1)
 		return -EINVAL;
 
-	if (!bbc->edp_client_registered)
-		return -EINVAL;
+	mutex_lock(&bbc->edp_lock);
+	ret = bbc_edp_request_unlocked(pdev, 0, bbc->state, tv);
+	mutex_unlock(&bbc->edp_lock);
 
-	ret = edp_update_loan_threshold(&bbc->modem_edp_client, tv);
-	if (ret)
-		dev_err(pdev, "threshold update to %u failed\n", tv);
-	else
-		ret = size;
-
-	return ret;
+	return ret ? ret : size;
 }
 static DEVICE_ATTR(threshold, S_IWUSR, NULL, threshold_store);
 
@@ -340,6 +408,64 @@ static ssize_t iso_realize_store(struct device *dev,
 	return size;
 }
 
+static int bbc_bw_request_unlocked(struct device *dev, u32 mode, u32 bw,
+				u32 lt, u32 margin)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	if (bw > MAX_ISO_BW_REQ)
+		return -EINVAL;
+
+	if (margin > MAX_ISO_BW_REQ)
+		return -EINVAL;
+
+	if (margin != bbc->margin) {
+		ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
+			margin, true);
+		if (ret) {
+			dev_err(dev, "can't margin for bbc bw\n");
+			return ret;
+		}
+
+		bbc->margin = margin;
+	}
+
+	if ((bw != bbc->bw) || (lt != bbc->lt)) {
+		ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, lt);
+		if (!ret) {
+			dev_err(dev, "can't reserve iso bw\n");
+			return ret;
+		}
+		bbc->bw = bw;
+
+		ret = tegra_isomgr_realize(bbc->isomgr_handle);
+		if (!ret) {
+			dev_err(dev, "can't realize iso bw\n");
+			return ret;
+		}
+		bbc->lt = lt;
+
+		tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
+		tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
+	}
+
+	return 0;
+}
+
+int tegra_bbc_proxy_bw_request(struct device *dev, u32 mode, u32 bw, u32 lt,
+			u32 margin)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	mutex_lock(&bbc->iso_lock);
+	ret = bbc_bw_request_unlocked(dev, mode, bw, lt, margin);
+	mutex_unlock(&bbc->iso_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra_bbc_proxy_bw_request);
 
 static ssize_t iso_res_realize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -372,48 +498,14 @@ static ssize_t iso_res_realize_store(struct device *dev,
 		}
 	}
 
-	if (bw > MAX_ISO_BW_REQ)
-		return -EINVAL;
+	mutex_lock(&bbc->iso_lock);
+	ret = bbc_bw_request_unlocked(dev, 0, bw, ult, bbc->margin);
+	mutex_unlock(&bbc->iso_lock);
 
-	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, ult);
-	if (!ret) {
-		dev_err(dev, "can't reserve iso bw\n");
-		return size;
-	}
-
-	ret = tegra_isomgr_realize(bbc->isomgr_handle);
-
-	if (!ret) {
-		dev_err(dev, "can't realize iso bw\n");
-		return size;
-	}
-
-	tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
-	tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
-
-	return size;
+	return ret ? ret : size;
 }
 
 static ssize_t iso_register_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-
-	unsigned int bw;
-	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
-
-	if (sscanf(buf, "%u", &bw) != 1)
-		return -EINVAL;
-
-	if (bbc->isomgr_handle)
-		tegra_isomgr_unregister(bbc->isomgr_handle);
-
-	bbc->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_BBC_0,
-		bw, NULL, NULL);
-
-	return size;
-}
-
-static ssize_t iso_margin_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 
@@ -423,12 +515,56 @@ static ssize_t iso_margin_store(struct device *dev,
 	if (sscanf(buf, "%u", &bw) != 1)
 		return -EINVAL;
 
+	ret = tegra_bbc_proxy_bw_register(dev, bw);
+
+	return ret ? ret : size;
+}
+
+int tegra_bbc_proxy_bw_register(struct device *dev, u32 bw)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	mutex_lock(&bbc->iso_lock);
+
+	if (bbc->isomgr_handle)
+		tegra_isomgr_unregister(bbc->isomgr_handle);
+
+	bbc->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_BBC_0,
+		bw, NULL, NULL);
+	ret = PTR_RET(bbc->isomgr_handle);
+	if (ret)
+		dev_err(dev, "error registering bbc with isomgr\n");
+
 	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
 		bw, true);
 	if (ret)
 		dev_err(dev, "can't margin for bbc bw\n");
+	else
+		bbc->margin = bw;
 
-	return size;
+	mutex_unlock(&bbc->iso_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra_bbc_proxy_bw_register);
+
+static ssize_t iso_margin_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+
+	unsigned int margin;
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	if (sscanf(buf, "%u", &margin) != 1)
+		return -EINVAL;
+
+	mutex_lock(&bbc->iso_lock);
+	ret = bbc_bw_request_unlocked(dev, 0, bbc->bw, bbc->lt, margin);
+	mutex_unlock(&bbc->iso_lock);
+
+	return ret ? ret : size;
 }
 
 
@@ -671,7 +807,8 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		bbc->edp_initialized = 1;
 	}
 
-	/* for bringup we will reserve/realize through sysfs */
+	mutex_init(&bbc->iso_lock);
+
 	bbc->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_BBC_0,
 		MAX_ISO_BW_REQ, NULL, NULL);
 	if (!bbc->isomgr_handle)
@@ -684,6 +821,8 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		MAX_ISO_BW_REQ, true);
 	if (ret)
 		dev_err(&pdev->dev, "can't margin for bbc bw\n");
+	else
+		bbc->margin = MAX_ISO_BW_REQ;
 
 	attrs = mc_attributes;
 	while ((attr = *attrs++)) {
