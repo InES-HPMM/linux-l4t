@@ -678,7 +678,7 @@ static struct tegra_dc_sd_settings roth_sd_settings = {
 	.use_auto_pwm = false,
 	.hw_update_delay = 0,
 	.bin_width = -1,
-	.aggressiveness = 5,
+	.aggressiveness = 1,
 	.use_vid_luma = false,
 	.phase_in_adjustments = 0,
 	.k_limit_enable = true,
@@ -688,7 +688,7 @@ static struct tegra_dc_sd_settings roth_sd_settings = {
 	/* Low soft clipping threshold to compensate for aggressive k_limit */
 	.soft_clipping_threshold = 128,
 	.smooth_k_enable = true,
-	.smooth_k_incr = 4,
+	.smooth_k_incr = 128,
 	/* Default video coefficients */
 	.coeff = {5, 9, 2},
 	.fc = {0, 0},
