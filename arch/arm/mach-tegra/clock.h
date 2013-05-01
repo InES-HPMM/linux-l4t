@@ -37,6 +37,8 @@
 #endif
 #endif
 
+#define RESET_PROPAGATION_DELAY	5
+
 #ifndef __ASSEMBLY__
 
 #include <linux/clk-provider.h>

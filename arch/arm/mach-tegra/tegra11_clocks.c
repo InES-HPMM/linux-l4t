@@ -4010,7 +4010,7 @@ static int tegra11_periph_clk_enable(struct clk *c)
 	clk_writel_delay(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_ENB_SET_REG(c));
 	if (!(c->flags & PERIPH_NO_RESET) && !(c->flags & PERIPH_MANUAL_RESET)) {
 		if (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c)) {
-			udelay(5);	/* reset propagation delay */
+			udelay(RESET_PROPAGATION_DELAY);
 			clk_writel(PERIPH_CLK_TO_BIT(c), PERIPH_CLK_TO_RST_CLR_REG(c));
 		}
 	}
@@ -7623,6 +7623,8 @@ static void tegra11_clk_resume(void)
 	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
 		off <= PERIPH_CLK_SOURCE_SOC_THERM; off += 4)
 		clk_writel(*ctx++, off);
+
+	udelay(RESET_PROPAGATION_DELAY);
 
 	clk_writel(*ctx++, RST_DEVICES_L);
 	clk_writel(*ctx++, RST_DEVICES_H);
