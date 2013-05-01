@@ -50,7 +50,11 @@ module_param(emc_enable, bool, 0644);
 
 static int pasr_enable;
 
-u8 tegra_emc_bw_efficiency = 100;
+u8 tegra_emc_bw_efficiency = 80;
+static struct emc_iso_usage tegra11_emc_iso_usage[] = {
+	{ BIT(EMC_USER_DC),			80 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
+};
 
 #define PLL_C_DIRECT_FLOOR		333500000
 #define EMC_STATUS_UPDATE_TIMEOUT	100
@@ -1531,11 +1535,6 @@ static struct platform_driver tegra11_emc_driver = {
 		.of_match_table = tegra11_emc_of_match,
 	},
 	.probe          = tegra11_emc_probe,
-};
-
-static struct emc_iso_usage tegra11_emc_iso_usage[] = {
-	{ BIT(EMC_USER_DC),			80 },
-	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
 };
 
 int __init tegra11_emc_init(void)
