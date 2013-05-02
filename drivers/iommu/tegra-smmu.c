@@ -457,21 +457,12 @@ static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
 static void smmu_flush_tlb(struct smmu_device *smmu, struct smmu_as *as,
 			   dma_addr_t iova, int is_pde)
 {
-	u32 val = SMMU_TLB_FLUSH_ALL;
+	u32 val;
 
-#if 0 /* Disabled temproary for reordering issue */
-	if (as) {
-		val |= SMMU_TLB_FLUSH_ASID_MATCH__ENABLE;
-		val |= as->asid << SMMU_TLB_FLUSH_ASID_SHIFT;
-	}
-#endif
-
-	if (iova) {
-		if (is_pde)
-			val |= SMMU_TLB_FLUSH_VA(iova, SECTION);
-		else
-			val |= SMMU_TLB_FLUSH_VA(iova, GROUP);
-	}
+	if (is_pde)
+		val = SMMU_TLB_FLUSH_VA(iova, SECTION);
+	else
+		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
 
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
@@ -485,16 +476,45 @@ static void flush_ptc_and_tlb(struct smmu_device *smmu,
 	smmu_flush_tlb(smmu, as, iova, is_pde);
 }
 
+/* Flush PTEs within the same L2 pagetable */
+static void __smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
+				   dma_addr_t end)
+{
+	size_t unit = SZ_16K;
+
+	iova = round_down(iova, unit);
+	while (iova < end) {
+		u32 val;
+
+		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
+		smmu_write(smmu, val, SMMU_TLB_FLUSH);
+		FLUSH_SMMU_REGS(smmu);
+
+		iova += unit;
+	}
+}
+
 static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 				    struct smmu_as *as, dma_addr_t iova,
 				    unsigned long *pte, struct page *page,
 				    size_t count)
 {
-	int i;
+	size_t unit = SZ_16K;
+	dma_addr_t end = iova + count * PAGE_SIZE;
 
-	for (i = 0; i < count; i++) {
-		smmu_flush_ptc(smmu, pte + i, page);
-		smmu_flush_tlb(smmu, as, iova + i * PAGE_SIZE, 0);
+	iova = round_down(iova, unit);
+	while (iova < end) {
+		u32 val;
+
+		val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
+		smmu_write(smmu, val, SMMU_PTC_FLUSH);
+		FLUSH_SMMU_REGS(smmu);
+		pte += unit / PAGE_SIZE;
+
+		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
+		smmu_write(smmu, val, SMMU_TLB_FLUSH);
+		FLUSH_SMMU_REGS(smmu);
+		iova += unit;
 	}
 }
 
