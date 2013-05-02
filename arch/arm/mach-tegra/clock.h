@@ -148,6 +148,7 @@ enum shared_bus_users_mode {
 	SHARED_AUTO,
 	SHARED_OVERRIDE,
 	SHARED_ISO_BW,
+	SHARED_CEILING_BUT_ISO,
 };
 
 struct clk {

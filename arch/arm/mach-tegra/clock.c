@@ -1280,11 +1280,14 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 		35 - level * 3, c->name,
 		c->cansleep ? '$' : ' ',
 		state, c->refcnt, div, rate);
-	if (c->parent && !list_empty(&c->parent->shared_bus_list))
+	if (c->parent && !list_empty(&c->parent->shared_bus_list)) {
+		enum shared_bus_users_mode mode = c->u.shared_bus_user.mode;
 		seq_printf(s, " (%lu%s)", c->u.shared_bus_user.rate,
-			   c->u.shared_bus_user.mode == SHARED_CEILING ? "^" :
-			   c->u.shared_bus_user.mode == SHARED_ISO_BW ? "+" :
-			   c->u.shared_bus_user.mode == SHARED_BW ? "+" : "");
+			   mode == SHARED_CEILING_BUT_ISO ? "^" :
+			   mode == SHARED_CEILING ? "^" :
+			   mode == SHARED_ISO_BW ? "+" :
+			   mode == SHARED_BW ? "+" : "");
+	}
 	seq_printf(s, "\n");
 
 	if (c->dvfs)
