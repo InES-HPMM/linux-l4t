@@ -227,7 +227,7 @@ static ssize_t threshold_store(struct device *pdev,
 
 	return ret;
 }
-DEVICE_ATTR(threshold, S_IWUSR, NULL, threshold_store);
+static DEVICE_ATTR(threshold, S_IWUSR, NULL, threshold_store);
 
 static struct device_attribute *edp_attributes[] = {
 	&dev_attr_i_breach_ppm,
