@@ -491,7 +491,7 @@ int tegra30_dam_allocate_channel(int ifc, int chid)
 	struct tegra30_dam_context *dam = NULL;
 
 	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
-		(chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
+		(chid < dam_ch_in0) || (chid > dam_ch_in1))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -509,7 +509,7 @@ int tegra30_dam_free_channel(int ifc, int chid)
 	struct tegra30_dam_context *dam = NULL;
 
 	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
-		(chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
+		(chid < dam_ch_in0) || (chid > dam_ch_in1))
 		return -EINVAL;
 
 	dam =  dams_cont_info[ifc];
@@ -542,10 +542,12 @@ int tegra30_dam_free_controller(int ifc)
 
 void tegra30_dam_set_samplerate(int ifc, int chid, int samplerate)
 {
-	struct tegra30_dam_context *dam = dams_cont_info[ifc];
+	struct tegra30_dam_context *dam;
 
 	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC))
 		return;
+
+	dam = dams_cont_info[ifc];
 
 	switch (chid) {
 	case dam_ch_in0:
@@ -935,7 +937,7 @@ void tegra30_dam_enable(int ifc, int on, int chid)
 	struct tegra30_dam_context *dam;
 
 	if ((ifc < 0) || (ifc >= TEGRA30_NR_DAM_IFC) ||
-	    (chid < dam_ch_in0) || (chid >= dam_ch_maxnum))
+	    (chid < dam_ch_in0) || (chid > dam_ch_in1))
 		return;
 
 	dam = dams_cont_info[ifc];
