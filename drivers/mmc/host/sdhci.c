@@ -1902,6 +1902,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		err = host->ops->execute_freq_tuning(host, opcode);
 		spin_unlock(&host->lock);
 		enable_irq(host->irq);
+		sdhci_runtime_pm_put(host);
 		return err;
 	}
 
