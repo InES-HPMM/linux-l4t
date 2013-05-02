@@ -1082,7 +1082,7 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 	cld->tune_delay = usecs_to_jiffies(CL_DVFS_TUNE_HIGH_DELAY);
 
 	/* init calibration timer */
-	init_timer(&cld->calibration_timer);
+	init_timer_deferrable(&cld->calibration_timer);
 	cld->calibration_timer.function = calibration_timer_cb;
 	cld->calibration_timer.data = (unsigned long)cld;
 	cld->calibration_delay = usecs_to_jiffies(CL_DVFS_CALIBR_TIME);
