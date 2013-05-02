@@ -31,6 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
+#include <linux/edp.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -776,4 +777,32 @@ int __init macallan_soctherm_init(void)
 
 
 	return tegra11_soctherm_init(&macallan_soctherm_data);
+}
+
+static struct edp_manager macallan_sysedp_manager = {
+	.name = "battery",
+	.max = 27300
+};
+
+void __init macallan_sysedp_init(void)
+{
+	struct edp_governor *g;
+	int r;
+
+	if (!IS_ENABLED(CONFIG_EDP_FRAMEWORK))
+		return;
+
+	r = edp_register_manager(&macallan_sysedp_manager);
+	WARN_ON(r);
+	if (r)
+		return;
+
+	/* start with priority governor */
+	g = edp_get_governor("priority");
+	WARN_ON(!g);
+	if (!g)
+		return;
+
+	r = edp_set_governor(&macallan_sysedp_manager, g);
+	WARN_ON(r);
 }

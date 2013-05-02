@@ -679,6 +679,7 @@ struct of_dev_auxdata macallan_auxdata_lookup[] __initdata = {
 
 static void __init tegra_macallan_early_init(void)
 {
+	macallan_sysedp_init();
 	tegra_clk_init_from_table(macallan_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("macallan");
