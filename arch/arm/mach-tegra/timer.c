@@ -40,6 +40,7 @@
 #include <asm/smp_twd.h>
 #include <asm/system.h>
 #include <asm/sched_clock.h>
+#include <asm/localtimer.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -70,6 +71,106 @@ static u32 system_timer = 0;
 	__raw_writel(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
 	__raw_readl(timer_reg_base + (reg))
+
+#if !defined(CONFIG_ARM_ARCH_TIMER) && !defined(CONFIG_HAVE_ARM_TWD)
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+
+#define TIMER3_OFFSET (TEGRA_TMR3_BASE-TEGRA_TMR1_BASE)
+#define TIMER4_OFFSET (TEGRA_TMR4_BASE-TEGRA_TMR1_BASE)
+#define TIMER5_OFFSET (TEGRA_TMR5_BASE-TEGRA_TMR1_BASE)
+#define TIMER6_OFFSET (TEGRA_TMR6_BASE-TEGRA_TMR1_BASE)
+
+struct tegra_clock_event_device {
+	struct clock_event_device *evt;
+	char name[15];
+};
+
+static u32 cpu_local_timers[] = {
+	TIMER3_OFFSET,
+#ifdef CONFIG_SMP
+	TIMER4_OFFSET,
+	TIMER5_OFFSET,
+	TIMER6_OFFSET,
+#endif
+};
+
+static irqreturn_t tegra_cputimer_interrupt(int irq, void *dev_id)
+{
+	struct tegra_clock_event_device *clkevt = dev_id;
+	struct clock_event_device *evt = clkevt->evt;
+	int base;
+	unsigned int cpu;
+
+	cpu = cpumask_first(evt->cpumask);
+	base = cpu_local_timers[cpu];
+	timer_writel(1<<30, base + TIMER_PCR);
+	evt->event_handler(evt);
+	return IRQ_HANDLED;
+}
+
+static int tegra_cputimer_set_next_event(unsigned long cycles,
+					 struct clock_event_device *evt)
+{
+	u32 reg;
+	int base;
+	unsigned int cpu;
+
+	cpu = cpumask_first(evt->cpumask);
+	base = cpu_local_timers[cpu];
+	reg = 0x80000000 | ((cycles > 1) ? (cycles-1) : 0);
+	timer_writel(reg, base + TIMER_PTV);
+
+	return 0;
+}
+
+static void tegra_cputimer_set_mode(enum clock_event_mode mode,
+				    struct clock_event_device *evt)
+{
+	u32 reg;
+	int base;
+	unsigned int cpu;
+
+	cpu = cpumask_first(evt->cpumask);
+	base = cpu_local_timers[cpu];
+	timer_writel(0, base + TIMER_PTV);
+
+	switch (mode) {
+	case CLOCK_EVT_MODE_PERIODIC:
+		reg = 0xC0000000 | ((1000000/HZ)-1);
+		timer_writel(reg, base + TIMER_PTV);
+		break;
+	case CLOCK_EVT_MODE_ONESHOT:
+		break;
+	case CLOCK_EVT_MODE_UNUSED:
+	case CLOCK_EVT_MODE_SHUTDOWN:
+	case CLOCK_EVT_MODE_RESUME:
+		break;
+	}
+}
+
+static struct clock_event_device tegra_cputimer_clockevent = {
+	.rating		= 450,
+	.features	= CLOCK_EVT_FEAT_ONESHOT | CLOCK_EVT_FEAT_PERIODIC,
+	.set_next_event	= tegra_cputimer_set_next_event,
+	.set_mode	= tegra_cputimer_set_mode,
+};
+
+#define CPU_TIMER_IRQ_ACTION(cpu, irqnum) {                     \
+	.name		= "local_tmr_cpu" __stringify(cpu),   \
+	.flags		= IRQF_TIMER | IRQF_IRQPOLL,		\
+	.handler	= tegra_cputimer_interrupt,              \
+	.irq		= irqnum }
+
+static struct irqaction tegra_cputimer_irq[] = {
+	CPU_TIMER_IRQ_ACTION(0, INT_TMR3),
+#ifdef CONFIG_SMP
+	CPU_TIMER_IRQ_ACTION(1, INT_TMR4),
+	CPU_TIMER_IRQ_ACTION(2, INT_TMR5),
+	CPU_TIMER_IRQ_ACTION(3, INT_TMR6),
+#endif
+};
+#endif
+#endif
 
 static int tegra_timer_set_next_event(unsigned long cycles,
 					 struct clock_event_device *evt)
@@ -269,6 +370,110 @@ static void __init tegra_init_late_timer(void)
 #define tegra_twd_get_state	do {} while(0)
 #define tegra_twd_suspend	do {} while(0)
 #define tegra_twd_resume	do {} while(0)
+
+#ifndef CONFIG_ARM_ARCH_TIMER
+
+static DEFINE_PER_CPU(struct tegra_clock_event_device, percpu_tegra_timer);
+
+static int __cpuinit tegra_local_timer_setup(struct clock_event_device *evt)
+{
+	unsigned int cpu = smp_processor_id();
+	struct tegra_clock_event_device *clkevt;
+	int ret;
+
+	clkevt = this_cpu_ptr(&percpu_tegra_timer);
+	clkevt->evt = evt;
+	sprintf(clkevt->name, "tegra_timer%d", cpu);
+	evt->name = clkevt->name;
+	evt->cpumask = cpumask_of(cpu);
+	evt->features = tegra_cputimer_clockevent.features;
+	evt->rating = tegra_cputimer_clockevent.rating;
+	evt->set_mode = tegra_cputimer_set_mode;
+	evt->set_next_event = tegra_cputimer_set_next_event;
+	clockevents_calc_mult_shift(evt, 1000000, 5);
+	evt->max_delta_ns =
+		clockevent_delta2ns(0x1fffffff, evt);
+	evt->min_delta_ns =
+		clockevent_delta2ns(0x1, evt);
+	tegra_cputimer_irq[cpu].dev_id = clkevt;
+	ret = setup_irq(tegra_cputimer_irq[cpu].irq, &tegra_cputimer_irq[cpu]);
+	if (ret) {
+		pr_err("Failed to register CPU timer IRQ for CPU %d: " \
+			"irq=%d, ret=%d\n", cpu,
+			tegra_cputimer_irq[cpu].irq, ret);
+		return ret;
+	}
+	evt->irq = tegra_cputimer_irq[cpu].irq;
+	ret = irq_set_affinity(tegra_cputimer_irq[cpu].irq, cpumask_of(cpu));
+	if (ret) {
+		pr_err("Failed to set affinity for CPU timer IRQ to " \
+			"CPU %d: irq=%d, ret=%d\n", cpu,
+			tegra_cputimer_irq[cpu].irq, ret);
+		return ret;
+	}
+	clockevents_register_device(evt);
+	enable_percpu_irq(evt->irq, IRQ_TYPE_LEVEL_HIGH);
+
+	return 0;
+}
+
+static void tegra_local_timer_stop(struct clock_event_device *evt)
+{
+	unsigned int cpu = smp_processor_id();
+
+	evt->set_mode(CLOCK_EVT_MODE_UNUSED, evt);
+	remove_irq(evt->irq, &tegra_cputimer_irq[cpu]);
+	disable_percpu_irq(evt->irq);
+}
+static struct local_timer_ops tegra_local_timer_ops __cpuinitdata = {
+	.setup  = tegra_local_timer_setup,
+	.stop   = tegra_local_timer_stop,
+};
+void __init tegra_cpu_timer_init(void)
+{
+	/* Use SOC timers as cpu timers */
+}
+void __init tegra30_init_timer(void)
+{
+}
+void tegra3_lp2_set_trigger(unsigned long cycles)
+{
+	unsigned int cpu = smp_processor_id();
+	int base;
+
+	base = cpu_local_timers[cpu];
+	if (cycles) {
+		timer_writel(0, base + TIMER_PTV);
+		if (cycles) {
+			u32 reg = 0x80000000 | ((cycles > 1) ? (cycles-1) : 0);
+			timer_writel(reg, base + TIMER_PTV);
+		}
+	}
+}
+
+unsigned long tegra3_lp2_timer_remain(void)
+{
+	unsigned int cpu = smp_processor_id();
+
+	return timer_readl(cpu_local_timers[cpu] + TIMER_PCR) & 0x1ffffffful;
+
+}
+
+int tegra3_is_cpu_wake_timer_ready(unsigned int cpu)
+{
+	return 1;
+}
+
+void tegra3_lp2_timer_cancel_secondary(void)
+{
+	/* Nothing needs to be done here */
+}
+
+static void __init tegra_init_late_timer(void)
+{
+	local_timer_register(&tegra_local_timer_ops);
+}
+#endif
 #endif
 
 #ifdef CONFIG_ARM_ARCH_TIMER
@@ -576,9 +781,7 @@ void __init tegra_init_timer(void)
 
 	register_syscore_ops(&tegra_timer_syscore_ops);
 
-#if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)
 	late_time_init = tegra_init_late_timer;
-#endif
 
 	register_persistent_clock(NULL, tegra_read_persistent_clock);
 
