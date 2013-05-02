@@ -1392,6 +1392,10 @@ static void handle_cmd_completion(struct xhci_hcd *xhci,
 		}
 	}
 
+	/* return if command ring is empty */
+	if (xhci->cmd_ring->dequeue == xhci->cmd_ring->enqueue)
+		return;
+
 	switch (le32_to_cpu(xhci->cmd_ring->dequeue->generic.field[3])
 		& TRB_TYPE_BITMASK) {
 	case TRB_TYPE(TRB_ENABLE_SLOT):

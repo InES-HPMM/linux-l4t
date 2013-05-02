@@ -2542,6 +2542,21 @@ static int xhci_reserve_bandwidth(struct xhci_hcd *xhci,
 	return -ENOMEM;
 }
 
+static int check_stop_cmd_completed(struct xhci_hcd *xhci)
+{
+	int timecount = 0;
+	while ((timecount < 10) &&
+			(xhci->cmd_ring_state != CMD_RING_STATE_RUNNING)) {
+		msleep(20);
+		timecount++;
+	}
+	if ((timecount == 10) &&
+			(xhci->cmd_ring_state != CMD_RING_STATE_RUNNING)) {
+		xhci_err(xhci, "Timeout waiting for stop cmd command\n");
+		return -ETIME;
+	}
+	return 0;
+}
 
 /* Issue a configure endpoint command or evaluate context command
  * and wait for it to finish.
@@ -2602,6 +2617,7 @@ static int xhci_configure_endpoint(struct xhci_hcd *xhci,
 		cmd_completion = &virt_dev->cmd_completion;
 		cmd_status = &virt_dev->cmd_status;
 	}
+	*cmd_status = 0;
 	init_completion(cmd_completion);
 
 	cmd_trb = xhci->cmd_ring->dequeue;
@@ -2637,7 +2653,17 @@ static int xhci_configure_endpoint(struct xhci_hcd *xhci,
 		ret = xhci_cancel_cmd(xhci, command, cmd_trb);
 		if (ret < 0)
 			return ret;
-		return -ETIME;
+		/*
+		 * 1. wait for stop cmd finish
+		 * 2. check cmd_status for configure ep command result
+		 * 2.a if cmd_status is not zero, then continue
+		 *     (if cmd_status is not zero indicate configure ep
+		 *     command finish before cmd abort/stop)
+		 * 2.b Else return with error, -ETIME
+		 * */
+		ret = check_stop_cmd_completed(xhci);
+		if ((ret < 0) || (*cmd_status == 0))
+			return -ETIME;
 	}
 
 	if (!ctx_change)
