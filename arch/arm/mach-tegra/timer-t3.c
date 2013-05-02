@@ -48,6 +48,8 @@
 #include "timer.h"
 #include "fuse.h"
 
+#if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)
+
 #define TEST_LP2_WAKE_TIMERS	0
 
 /*
@@ -293,4 +295,5 @@ static int __init hotplug_cpu_register(void)
 	return register_cpu_notifier(&hotplug_notifier_block);
 }
 early_initcall(hotplug_cpu_register);
+#endif
 #endif
