@@ -79,31 +79,35 @@ static struct tegra_kbc_platform_data ardbeg_kbc_platform_data = {
 #endif
 };
 
-#define GPIO_KEY(_id, _gpio, _iswake)           \
-	{                                       \
-		.code = _id,                    \
-		.gpio = TEGRA_GPIO_##_gpio,     \
-		.active_low = 1,                \
-		.desc = #_id,                   \
-		.type = EV_KEY,                 \
-		.wakeup = _iswake,              \
-		.debounce_interval = 10,        \
-	}
 */
 
-#define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
-	{					\
-		.code = _id,			\
-		.gpio = -1,			\
-		.irq = _irq,			\
-		.desc = #_id,			\
-		.type = EV_KEY,			\
-		.wakeup = _iswake,		\
-		.debounce_interval = _deb,	\
+#define GPIO_KCODE(_kcode, _key, _gpio, _irq, _iswake, _deb)	\
+	{						\
+		.code = _kcode,				\
+		.gpio = TEGRA_GPIO_##_gpio,		\
+		.irq = _irq,				\
+		.active_low = 1,			\
+		.desc = #_kcode,			\
+		.type = _key,				\
+		.wakeup = _iswake,			\
+		.debounce_interval = _deb,		\
 	}
+
+#define GPIO_KEY(_id, _gpio, _iswake)	\
+	GPIO_KCODE(_id, EV_KEY, _gpio, 0, _iswake, 10)
+
+#define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
+	GPIO_KCODE(_id, EV_KEY, INVALID, _irq, _iswake, _deb)
 
 static struct gpio_keys_button ardbeg_int_keys[] = {
 	/* FIXME: add ardbeg keys */
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, PQ6, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ7, 0),
+	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
+	[4] = GPIO_KEY(KEY_CAMERA, PV3, 0),
+	[5] = GPIO_KEY(KEY_CAMERA_FOCUS, PQ2, 0),
+	[6] = GPIO_KEY(KEY_MUTE, PQ2, 0),	/* FIX ME: RINGER/ROTATE_LOCK */
 };
 
 static struct gpio_keys_platform_data ardbeg_int_keys_pdata = {
