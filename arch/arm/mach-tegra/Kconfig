@@ -128,7 +128,6 @@ config ARCH_TEGRA_11x_SOC
 	select TEGRA_ERRATA_1157520
 	select TEGRA_ISOMGR
 	select TEGRA_ISOMGR_SYSFS
-	select TEGRA_ISOMGR_DEBUG
 	select TEGRA_LATENCY_ALLOWANCE
 	select TEGRA_LP2_CPU_TIMER if !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select TEGRA_MC_PTSA if !TEGRA_FPGA_PLATFORM
@@ -641,16 +640,6 @@ config TEGRA_ISOMGR_SYSFS
 	  This is used for visibility into isomgr state.  It could
 	  be useful in debug or in understanding performance on a
 	  running system.
-
-config TEGRA_ISOMGR_DEBUG
-	bool "Inject stimulus into Isochronous Bandwidth Manager "
-	depends on TEGRA_ISOMGR && TEGRA_ISOMGR_SYSFS
-	help
-	  When enabled, sysfs can be used to inject stimulus into isomgr.
-	  This is used to generate stimulus to isomgr for debug.  It's
-	  especially useful for contriving isomgr tests.  You can write
-	  user space tests that exercise isomgr in ways that drivers
-	  couldn't easily accommodate.
 
 config TEGRA_ISOMGR_MAX_ISO_BW_QUIRK
 	bool "Relax Max ISO Bw limit"
