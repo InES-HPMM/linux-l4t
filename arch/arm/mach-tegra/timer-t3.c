@@ -47,7 +47,6 @@
 #include "iomap.h"
 #include "timer.h"
 #include "fuse.h"
-enum tegra_revision tegra_get_revision(void); /* !!!FIXME!!! eliminate */
 
 #if defined(CONFIG_ARM_ARCH_TIMER) || defined(CONFIG_HAVE_ARM_TWD)
 
@@ -258,38 +257,6 @@ void tegra3_lp2_timer_cancel_secondary(void)
 
 void __init tegra30_init_timer(void)
 {
-	unsigned long rate = tegra_clk_measure_input_freq();
-
-	switch (rate) {
-	case 12000000:
-		timer_writel(0x000b, TIMERUS_USEC_CFG);
-		break;
-	case 13000000:
-		timer_writel(0x000c, TIMERUS_USEC_CFG);
-		break;
-	case 19200000:
-		timer_writel(0x045f, TIMERUS_USEC_CFG);
-		break;
-	case 26000000:
-		timer_writel(0x0019, TIMERUS_USEC_CFG);
-		break;
-	case 16800000:
-		timer_writel(0x0453, TIMERUS_USEC_CFG);
-		break;
-	case 38400000:
-		timer_writel(0x04BF, TIMERUS_USEC_CFG);
-		break;
-	case 48000000:
-		timer_writel(0x002F, TIMERUS_USEC_CFG);
-		break;
-	default:
-		if (tegra_platform_is_qt()) {
-			timer_writel(0x000c, TIMERUS_USEC_CFG);
-			break;
-		}
-		WARN(1, "Unknown clock rate");
-	}
-
 #ifdef CONFIG_PM_SLEEP
 	tegra3_register_wake_timer(0);
 #endif
