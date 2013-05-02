@@ -737,6 +737,7 @@ static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 		while (tegra30_ahub_tx_fifo_is_enabled(i2s->id) && dcnt--)
 			udelay(100);
 
+		dcnt = 10;
 		while (!tegra30_ahub_tx_fifo_is_empty(i2s->id) && dcnt--)
 			udelay(100);
 
@@ -751,7 +752,6 @@ static void tegra30_i2s_stop_playback(struct tegra30_i2s *i2s)
 				udelay(100);
 		}
 	}
-
 }
 
 static void tegra30_i2s_start_capture(struct tegra30_i2s *i2s)
@@ -772,6 +772,7 @@ static void tegra30_i2s_stop_capture(struct tegra30_i2s *i2s)
 		while (tegra30_ahub_rx_fifo_is_enabled(i2s->id) && dcnt--)
 			udelay(100);
 
+		dcnt = 10;
 		while (!tegra30_ahub_rx_fifo_is_empty(i2s->id) && dcnt--)
 			udelay(100);
 
