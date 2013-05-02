@@ -608,11 +608,13 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
 	} while (!(data & CL_DVFS_MONITOR_DATA_NEW));
 
-	/* Skip calibration if I2C transaction is pending */
+	/* Defer calibration if I2C transaction is pending */
 	/* FIXME: PWM output control */
 	val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
-	if (val & CL_DVFS_I2C_STS_I2C_REQ_PENDING)
+	if (val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) {
+		calibration_timer_update(cld);
 		return;
+	}
 
 	/* Adjust minimum rate */
 	data &= CL_DVFS_MONITOR_DATA_MASK;
