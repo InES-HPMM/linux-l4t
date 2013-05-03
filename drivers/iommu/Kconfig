@@ -177,6 +177,20 @@ config TEGRA_IOMMU_SMMU_LINEAR
 	  IOMMU'able bus. Otherwise DMA API should be used correctly
 	  in device drivers.
 
+config TEGRA_ERRATA_1053704
+	bool "Tegra errata: SMMU Hit-Under-Miss FIFO Out-of-Order"
+	depends on TEGRA_IOMMU_SMMU
+	depends on ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC
+	help
+	  SMMU TLB entry invalidate, while hit-under-miss(HUM) FIFO
+	  has pending transaction(s) based on the TLB entry, can cause
+	  violation of transactions ordering requirement at SMMU, if
+	  the subsequent transaction to the same IOVA address gets PTE
+	  into a different TLB entry. If this happens, The new
+	  transaction(s) can bypass pending transaction(s) and can
+	  lead to memory corruption. The workaround is not to flush
+	  TLB entry, which has pending transactions in HUM FIFO.
+
 config EXYNOS_IOMMU
 	bool "Exynos IOMMU Support"
 	depends on ARCH_EXYNOS && EXYNOS_DEV_SYSMMU
