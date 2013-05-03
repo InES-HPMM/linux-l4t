@@ -62,7 +62,7 @@ config TEGRA_MIPI_CAL
 
 config TEGRA_DC_SCAN_COLUMN
 	bool
-	default y if ARCH_TEGRA_11x_SOC
+	default y if ARCH_TEGRA_11x_SOC || ARCH_TEGRA_12x_SOC
 	default n
 
 config TEGRA_DC_BLENDER_GEN2
