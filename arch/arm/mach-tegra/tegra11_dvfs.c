@@ -616,7 +616,7 @@ static int __init set_cpu_dvfs_data(
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
-	struct cpu_cvb_dvfs_table *table = NULL;
+	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;

@@ -285,18 +285,18 @@ static struct core_cvb_dvfs c2bus_cvb_dvfs_table[] = {
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f              c0,     c1,   c2 */
-			{ 153600, {  800000,      0,   0}, },
-			{ 230400, {  850000,      0,   0}, },
-			{ 307200, {  900000,      0,   0}, },
-			{ 422400, {  950000,      0,   0}, },
-			{ 499200, { 1000000,      0,   0}, },
-			{ 556800, { 1050000,      0,   0}, },
-			{ 595200, { 1100000,      0,   0}, },
-			{ 652800, { 1150000,      0,   0}, },
-			{ 691200, { 1200000,      0,   0}, },
-			{ 710400, { 1250000,      0,   0}, },
-			{      0, {      0,       0,   0}, },
+			/*f       dfll  pll:   c0,     c1,   c2 */
+			{ 153600, {  }, {  800000,      0,   0}, },
+			{ 230400, {  }, {  850000,      0,   0}, },
+			{ 307200, {  }, {  900000,      0,   0}, },
+			{ 422400, {  }, {  950000,      0,   0}, },
+			{ 499200, {  }, { 1000000,      0,   0}, },
+			{ 556800, {  }, { 1050000,      0,   0}, },
+			{ 595200, {  }, { 1100000,      0,   0}, },
+			{ 652800, {  }, { 1150000,      0,   0}, },
+			{ 691200, {  }, { 1200000,      0,   0}, },
+			{ 710400, {  }, { 1250000,      0,   0}, },
+			{      0, {  }, {       0,      0,   0}, },
 		},
 	},
 	{
@@ -306,18 +306,18 @@ static struct core_cvb_dvfs c2bus_cvb_dvfs_table[] = {
 		.speedo_scale = 100,
 		.voltage_scale = 1000,
 		.cvb_table = {
-			/*f              c0,     c1,   c2 */
-			{ 192000, {  800000,      0,   0}, },
-			{ 268800, {  850000,      0,   0}, },
-			{ 345600, {  900000,      0,   0}, },
-			{ 384000, {  950000,      0,   0}, },
-			{ 499200, { 1000000,      0,   0}, },
-			{ 556800, { 1050000,      0,   0}, },
-			{ 595200, { 1100000,      0,   0}, },
-			{ 672000, { 1150000,      0,   0}, },
-			{ 710400, { 1200000,      0,   0}, },
-			{ 748800, { 1250000,      0,   0}, },
-			{      0, {      0,       0,   0}, },
+			/*f       dfll  pll:   c0,     c1,   c2 */
+			{ 192000, {  }, {  800000,      0,   0}, },
+			{ 268800, {  }, {  850000,      0,   0}, },
+			{ 345600, {  }, {  900000,      0,   0}, },
+			{ 384000, {  }, {  950000,      0,   0}, },
+			{ 499200, {  }, { 1000000,      0,   0}, },
+			{ 556800, {  }, { 1050000,      0,   0}, },
+			{ 595200, {  }, { 1100000,      0,   0}, },
+			{ 672000, {  }, { 1150000,      0,   0}, },
+			{ 710400, {  }, { 1200000,      0,   0}, },
+			{ 748800, {  }, { 1250000,      0,   0}, },
+			{      0, {  }, {      0,       0,   0}, },
 		},
 	},
 };
@@ -520,7 +520,7 @@ static int __init set_cpu_dvfs_data(
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
-	struct cpu_cvb_dvfs_table *table = NULL;
+	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
@@ -627,7 +627,7 @@ static int __init set_c2bus_dvfs_data(
 	struct core_cvb_dvfs *d, struct dvfs *c2bus_dvfs, int *max_freq_index)
 {
 	int i, j, mv, min_mv, max_mv;
-	struct core_cvb_dvfs_table *table = NULL;
+	struct cvb_dvfs_table *table = NULL;
 	int speedo = 0; /* FIXME: tegra_core_speedo_value(); */
 
 	min_mv = core_millivolts[0];
@@ -644,7 +644,7 @@ static int __init set_c2bus_dvfs_data(
 			break;
 
 		mv = get_cvb_voltage(
-			speedo, d->speedo_scale, &table->cvb_param);
+			speedo, d->speedo_scale, &table->cvb_pll_param);
 		mv = round_core_cvb_voltage(mv, d->voltage_scale);
 
 		if (mv > max_mv)
