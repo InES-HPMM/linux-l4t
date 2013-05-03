@@ -542,12 +542,10 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		}
 	}
 	if (soc_data->nvquirks & NVQUIRK_SET_TRIM_DELAY) {
-		if (plat->trim_delay) {
-			vendor_ctrl &= ~(0x1F <<
-			SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
-			vendor_ctrl |= (plat->trim_delay <<
-			SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
-		}
+		vendor_ctrl &= ~(0x1F <<
+		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+		vendor_ctrl |= (plat->trim_delay <<
+		SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 	}
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR50_TUNING)
 		vendor_ctrl |= SDHCI_VNDR_CLK_CTRL_SDR50_TUNING;
