@@ -34,6 +34,7 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
+#include <linux/pid_thermal_gov.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -1295,8 +1296,20 @@ int __init dalmore_edp_init(void)
 	return 0;
 }
 
+static struct pid_thermal_gov_params soctherm_pid_params = {
+	.max_err_temp = 9000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 20,
+	.down_compensation = 20,
+};
+
 static struct thermal_zone_params soctherm_tzp = {
 	.governor_name = "pid_thermal_gov",
+	.governor_params = &soctherm_pid_params,
 };
 
 static struct tegra_tsensor_pmu_data tpdata_palmas = {
