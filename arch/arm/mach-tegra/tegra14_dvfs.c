@@ -448,37 +448,14 @@ static void __init init_dvfs_one(struct dvfs *d, int max_freq_index)
 		pr_err("tegra14_dvfs: failed to enable dvfs on %s\n", c->name);
 }
 
-static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
+static bool __init match_dvfs_one(const char *name,
+	int dvfs_speedo_id, int dvfs_process_id,
+	int speedo_id, int process_id)
 {
-	if ((d->process_id != -1 && d->process_id != process_id) ||
-		(d->speedo_id != -1 && d->speedo_id != speedo_id)) {
-		pr_debug("tegra14_dvfs: rejected %s speedo %d,"
-			" process %d\n", d->clk_name, d->speedo_id,
-			d->process_id);
-		return false;
-	}
-	return true;
-}
-
-static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
-				     int speedo_id, int process_id)
-{
-	if ((d->process_id != -1 && d->process_id != process_id) ||
-	    (d->speedo_id != -1 && d->speedo_id != speedo_id)) {
-		pr_debug("tegra14_dvfs: rejected cpu cvb speedo %d,"
-			 " process %d\n", d->speedo_id, d->process_id);
-		return false;
-	}
-	return true;
-}
-
-static bool __init match_core_cvb_one(struct core_cvb_dvfs *d,
-				      int speedo_id, int process_id)
-{
-	if ((d->process_id != -1 && d->process_id != process_id) ||
-	    (d->speedo_id != -1 && d->speedo_id != speedo_id)) {
-		pr_debug("tegra14_dvfs: rejected cpu cvb speedo %d,"
-			 " process %d\n", d->speedo_id, d->process_id);
+	if ((dvfs_process_id != -1 && dvfs_process_id != process_id) ||
+		(dvfs_speedo_id != -1 && dvfs_speedo_id != speedo_id)) {
+		pr_debug("tegra14_dvfs: rejected %s speedo %d, process %d\n",
+			 name, dvfs_speedo_id, dvfs_process_id);
 		return false;
 	}
 	return true;
@@ -695,7 +672,8 @@ static int __init init_c2bus_cvb_dvfs(int soc_speedo_id, int core_process_id)
 	 */
 	for (ret = 0, i = 0; i < n; i++) {
 		struct core_cvb_dvfs *d = &c2bus_cvb_dvfs_table[i];
-		if (match_core_cvb_one(d, soc_speedo_id, core_process_id)) {
+		if (match_dvfs_one("c2bus cvb", d->speedo_id, d->process_id,
+				   soc_speedo_id, core_process_id)) {
 			ret = set_c2bus_dvfs_data(d, bus_dvfs, &max_freq_index);
 			break;
 		}
@@ -805,7 +783,8 @@ void __init tegra14x_init_dvfs(void)
 	 */
 	for (ret = 0, i = 0; i <  ARRAY_SIZE(cpu_cvb_dvfs_table); i++) {
 		struct cpu_cvb_dvfs *d = &cpu_cvb_dvfs_table[i];
-		if (match_cpu_cvb_one(d, cpu_speedo_id, cpu_process_id)) {
+		if (match_dvfs_one("cpu cvb", d->speedo_id, d->process_id,
+				   cpu_speedo_id, cpu_process_id)) {
 			ret = set_cpu_dvfs_data(
 				d, &cpu_dvfs, &cpu_max_freq_index);
 			break;
@@ -824,7 +803,8 @@ void __init tegra14x_init_dvfs(void)
 	   initialize dvfs-ed clocks */
 	for (i = 0; i <  ARRAY_SIZE(core_dvfs_table); i++) {
 		struct dvfs *d = &core_dvfs_table[i];
-		if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
+		if (!match_dvfs_one(d->clk_name, d->speedo_id, d->process_id,
+				    soc_speedo_id, core_process_id))
 			continue;
 		init_dvfs_one(d, core_nominal_mv_index);
 	}
