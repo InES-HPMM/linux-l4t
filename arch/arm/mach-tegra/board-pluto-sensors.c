@@ -114,6 +114,7 @@ static struct max17042_platform_data max17042_pdata = {
 	.enable_por_init = 1, /* Use POR init from Maxim appnote */
 	.enable_current_sense = 1,
 	.r_sns = 0,
+	.is_battery_present = false, /* False as default */
 };
 
 static struct i2c_board_info max17042_device[] = {
@@ -235,6 +236,7 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.cables = maxim_cable,
 	.extcon_name = "tegra-udc",
 	.update_status = max17042_update_status,
+	.is_battery_present = false, /* false as default */
 };
 
 static struct max77665_muic_platform_data max77665_muic = {
@@ -982,6 +984,10 @@ void __init max77665_init(void)
 {
 	int err;
 
+	/* For battery presence into charger driver */
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		max77665_charger.is_battery_present = true;
+
 	err = i2c_register_board_info(4, pluto_i2c_board_info_max77665,
 		ARRAY_SIZE(pluto_i2c_board_info_max77665));
 	if (err)
@@ -1012,6 +1018,9 @@ int __init pluto_sensors_init(void)
 
 	mpuirq_init();
 	max77665_init();
+
+	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY)
+		max17042_pdata.is_battery_present = true;
 
 	err = i2c_register_board_info(0, max17042_device,
 				ARRAY_SIZE(max17042_device));
