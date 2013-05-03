@@ -103,7 +103,7 @@
 
 #define TEGRA_FUSE_SUPPLY	"vpp_fuse"
 
-int fuse_pgm_cycles[] = {130, 168, 0, 0, 192, 384, 0, 0, 120, 480, 0, 0, 260};
+int fuse_pgm_cycles[] = {156, 202, 0, 0, 231, 461, 0, 0, 144, 576, 0, 0, 312};
 
 #define CHK_ERR(x) \
 { \
