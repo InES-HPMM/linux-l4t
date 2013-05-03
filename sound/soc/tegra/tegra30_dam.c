@@ -998,20 +998,24 @@ void tegra30_dam_enable(int ifc, int on, int chid)
 	}
 }
 
-void tegra30_dam_ch0_set_datasync(struct tegra30_dam_context *dam, int datasync)
+void tegra30_dam_ch0_set_datasync(int ifc, int datasync)
 {
 	u32 val;
+	struct tegra30_dam_context *dam = NULL;
 
+	dam =  dams_cont_info[ifc];
 	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH0_CTRL);
 	val &= ~TEGRA30_DAM_CH0_CTRL_DATA_SYNC_MASK;
 	val |= datasync << TEGRA30_DAM_DATA_SYNC_SHIFT;
 	tegra30_dam_writel(dam, val, TEGRA30_DAM_CH0_CTRL);
 }
 
-void tegra30_dam_ch1_set_datasync(struct tegra30_dam_context *dam, int datasync)
+void tegra30_dam_ch1_set_datasync(int ifc, int datasync)
 {
 	u32 val;
+	struct tegra30_dam_context *dam = NULL;
 
+	dam =  dams_cont_info[ifc];
 	val = tegra30_dam_readl(dam, TEGRA30_DAM_CH1_CTRL);
 	val &= ~TEGRA30_DAM_CH1_CTRL_DATA_SYNC_MASK;
 	val |= datasync << TEGRA30_DAM_DATA_SYNC_SHIFT;
