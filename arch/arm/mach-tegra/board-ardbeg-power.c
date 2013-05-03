@@ -153,6 +153,7 @@ static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("avdd_1v2_hsic_com", NULL),
+	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo10_supply[] = {
@@ -168,6 +169,8 @@ static struct regulator_consumer_supply palmas_ldo11_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo12_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_1v8b_dis", NULL),
+	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
+	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo13_supply[] = {
@@ -299,10 +302,10 @@ static struct i2c_board_info tps51632_gpu_boardinfo[] = {
 	}
 
 PALMAS_PDATA_INIT(smps12, 900, 1300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps3, 1000, 3300, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(smps3, 1000, 3300, NULL, 1, 1, 0);
 PALMAS_PDATA_INIT(smps6, 500, 1650, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(smps8, 1000, 3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(smps9, 1800, 1800, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(smps9, 1800, 1800, NULL, 1, 1, 0);
 PALMAS_PDATA_INIT(ldo1, 1050, 1050, palmas_rails(smps3), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo2, 2800, 3000, palmas_rails(smps6), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo3, 2800, 3000, NULL, 0, 0, 0);
@@ -311,13 +314,13 @@ PALMAS_PDATA_INIT(ldo5, 1100, 1100, palmas_rails(smps6), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo6, 2700, 2700, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo7, 2800, 2800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo8, 2800, 3000, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 0, 0, 0);
+PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 1, 1, 0);
 PALMAS_PDATA_INIT(ldo10, 1800, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo11, 3300, 3300, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo12, 2800, 3000, palmas_rails(smps9), 0, 0, 0);
-PALMAS_PDATA_INIT(ldo13, 2800, 3000, palmas_rails(smps9), 0, 0, 0);
+PALMAS_PDATA_INIT(ldo12, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
+PALMAS_PDATA_INIT(ldo13, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
 PALMAS_PDATA_INIT(ldo14, 2800, 3000, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldoln, 2800, 3000, NULL, 0, 0, 0);
+PALMAS_PDATA_INIT(ldoln, 2800, 3000, NULL, 1, 1, 0);
 PALMAS_PDATA_INIT(ldousb, 2800, 3000, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(regen1, 3300, 3300, NULL, 1, 0, 0);
 PALMAS_PDATA_INIT(regen2, 5000, 5000, NULL, 1, 0, 0);
@@ -500,6 +503,7 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_dis_3v3a_sw_supply[] = 
 	REGULATOR_SUPPLY("vdd_dis_3v3_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_dis_3v3_lvds", NULL),
 	REGULATOR_SUPPLY("avdd_usb", NULL),
+	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
@@ -516,7 +520,7 @@ FIXED_REG(1,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,
 	0);
 
 FIXED_REG(2,	vdd_lcd_1v2_dis,	vdd_lcd_1v2_dis,
-	palmas_rails(smps3),	0,	0,
+	palmas_rails(smps3),	1,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,	false, true,	0,	1200,
 	0);
 
@@ -531,7 +535,7 @@ FIXED_REG(4,	vdd_usb0_5v0,	vdd_usb0_5v0,
 	0);
 
 FIXED_REG(5,	vdd_dis_3v3a_sw,	vdd_dis_3v3a_sw,
-	NULL,	0,	0,
+	NULL,	1,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,	true, true,	0,	3300,
 	0);
 
