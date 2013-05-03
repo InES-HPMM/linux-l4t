@@ -178,9 +178,19 @@ enum tegra_cl_dvfs_ctrl_mode {
 	TEGRA_CL_DVFS_CLOSED_LOOP = 3,
 };
 
+/**
+ * enum tegra_cl_dvfs_tune_state - state of the voltage-regime switching code
+ * @TEGRA_CL_DVFS_TUNE_LOW: DFLL is in the low-voltage range (or open-loop mode)
+ * @TEGRA_CL_DVFS_TUNE_HIGH_REQUEST: waiting for DFLL I2C output to reach high
+ * @TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2: waiting for PMIC to react to DFLL output
+ * @TEGRA_CL_DVFS_TUNE_HIGH: DFLL in the high-voltage range
+ *
+ * These are software states, not hardware states.
+ */
 enum tegra_cl_dvfs_tune_state {
 	TEGRA_CL_DVFS_TUNE_LOW = 0,
 	TEGRA_CL_DVFS_TUNE_HIGH_REQUEST,
+	TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2,
 	TEGRA_CL_DVFS_TUNE_HIGH,
 };
 
@@ -857,6 +867,7 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 
 	case TEGRA_CL_DVFS_TUNE_HIGH:
 	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST:
+	case TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2:
 		if (cl_tune_target(cld, req->rate) == TEGRA_CL_DVFS_TUNE_LOW) {
 			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_LOW);
 			tune_low(cld);
@@ -977,13 +988,18 @@ static enum hrtimer_restart tune_timer_cb(struct hrtimer *timer)
 		if ((cld->tune_out_last == cld->num_voltages) &&
 		    (out_last >= cld->tune_high_out_min)  &&
 		    (out_min >= cld->tune_high_out_min)) {
-			udelay(CL_DVFS_OUTPUT_RAMP_DELAY);
-			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
-			tune_high(cld);
+			ktime_t ramp_delay =
+				ktime_set(0, CL_DVFS_OUTPUT_RAMP_DELAY * 1000);
+			set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2);
+			hrtimer_start(&cld->tune_timer, ramp_delay,
+				      HRTIMER_MODE_REL);
 		} else {
 			hrtimer_start(&cld->tune_timer, cld->tune_delay,
 				      HRTIMER_MODE_REL);
 		}
+	} else if (cld->tune_state == TEGRA_CL_DVFS_TUNE_HIGH_REQUEST_2) {
+		set_tune_state(cld, TEGRA_CL_DVFS_TUNE_HIGH);
+		tune_high(cld);
 	}
 	clk_unlock_restore(cld->dfll_clk, &flags);
 
