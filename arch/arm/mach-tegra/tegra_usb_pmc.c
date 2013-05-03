@@ -615,13 +615,8 @@ void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data)
 	pmc_data->pmc_ops.power_down_pmc = usb_phy_power_down_pmc;
 #endif
 	if (pmc_data->phy_type == TEGRA_USB_PHY_INTF_UTMI) {
-		if (pmc_data->instance == 0) {
-			utmip_rctrl_val = pmc_data->utmip_rctrl_val;
-			utmip_tctrl_val = pmc_data->utmip_tctrl_val;
-		} else {
-			pmc_data->utmip_rctrl_val = utmip_rctrl_val;
-			pmc_data->utmip_tctrl_val = utmip_tctrl_val;
-		}
+		utmip_rctrl_val = pmc_data->utmip_rctrl_val;
+		utmip_tctrl_val = pmc_data->utmip_tctrl_val;
 	}
 	pmc_data->pmc_ops = pmc_ops[pmc_data->phy_type];
 }

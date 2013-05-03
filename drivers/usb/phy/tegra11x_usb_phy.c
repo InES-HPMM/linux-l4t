@@ -578,8 +578,8 @@ static void utmi_phy_enable_trking_data(struct tegra_usb_phy *phy)
 
 	/* Read RCTRL and TCTRL from UTMIP space */
 	val = readl(base + UTMIP_BIAS_STS0);
-	pmc_data[phy->inst].utmip_rctrl_val = ffz(UTMIP_RCTRL_VAL(val));
-	pmc_data[phy->inst].utmip_tctrl_val = ffz(UTMIP_TCTRL_VAL(val));
+	pmc_data[phy->inst].utmip_rctrl_val = 0xf + ffz(UTMIP_RCTRL_VAL(val));
+	pmc_data[phy->inst].utmip_tctrl_val = 0xf + ffz(UTMIP_TCTRL_VAL(val));
 
 	/* PD_TRK=1 */
 	val = readl(base + UTMIP_BIAS_CFG1);
