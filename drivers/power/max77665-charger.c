@@ -30,12 +30,10 @@
 #include <linux/wakelock.h>
 #include <linux/mfd/max77665.h>
 #include <linux/max77665-charger.h>
-#include <linux/power/max17042_battery.h>
 #include <linux/interrupt.h>
 #include <linux/sysfs.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
-
 
 #define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS 500
 
@@ -670,7 +668,9 @@ static int max77665_update_charger_status(struct max77665_charger *charger)
 	ret = max77665_read_reg(charger, MAX77665_CHG_INT_OK, &read_val);
 	if (ret < 0)
 		goto error;
-	max77665_handle_charger_status(charger, read_val);
+
+	if (charger->plat_data->is_battery_present)
+		max77665_handle_charger_status(charger, read_val);
 
 error:
 	mutex_unlock(&charger->current_limit_mutex);
@@ -813,9 +813,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	uint8_t j;
-	uint32_t read_val;
 	struct max77665_charger *charger;
-	int temp;
 
 	charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
 	if (!charger) {
@@ -823,14 +821,6 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
-			"max77665-charger-wdt");
-	alarm_init(&charger->wdt_alarm, ALARM_BOOTTIME,
-			max77665_charger_wdt_timer);
-	INIT_DELAYED_WORK(&charger->wdt_ack_work,
-			max77665_charger_wdt_ack_work_handler);
-	INIT_DELAYED_WORK(&charger->set_max_current_work,
-			max77665_set_ideal_input_current_work);
 	mutex_init(&charger->current_limit_mutex);
 
 	charger->dev = &pdev->dev;
@@ -838,80 +828,77 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	charger->plat_data = pdev->dev.platform_data;
 	dev_set_drvdata(&pdev->dev, charger);
 
-	/* modify OTP setting of input current limit to 100ma */
-	ret = max77665_set_max_input_current(charger, 100);
-	if (ret < 0)
-		goto remove_charging;
+	if (charger->plat_data->is_battery_present) {
 
-	/* check for battery presence */
-	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &read_val);
-	if (ret < 0)
-		goto remove_charging;
-	if (BAT_DTLS_NO_BATTERY == BAT_DTLS_MASK(read_val)) {
-		dev_err(&pdev->dev, "Battery not detected, exiting driver\n");
-		goto remove_charging;
-	}
+		wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
+				"max77665-charger-wdt");
+		alarm_init(&charger->wdt_alarm, ALARM_BOOTTIME,
+				max77665_charger_wdt_timer);
+		INIT_DELAYED_WORK(&charger->wdt_ack_work,
+				max77665_charger_wdt_ack_work_handler);
+		INIT_DELAYED_WORK(&charger->set_max_current_work,
+				max77665_set_ideal_input_current_work);
 
-	/* differentiate between E1236 and E1587*/
-	ret = maxim_get_temp(&temp);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "failed in reading temperaure\n");
-		goto remove_charging;
-	} else if ((temp < MIN_TEMP) || (temp > MAX_TEMP)) {
-		dev_err(&pdev->dev, "E1236 detected exiting driver....\n");
-		goto remove_charging;
-	}
+		/* modify OTP setting of input current limit to 100ma */
+		ret = max77665_set_max_input_current(charger, 100);
+		if (ret < 0)
+			goto remove_charging;
 
-	charger->ac.name		= "ac";
-	charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
-	charger->ac.get_property	= max77665_charger_get_property;
-	charger->ac.set_property	= max77665_charger_set_property;
-	charger->ac.properties		= max77665_charger_props;
-	charger->ac.num_properties	= ARRAY_SIZE(max77665_charger_props);
-	charger->ac.property_is_writeable =
+		dev_info(&pdev->dev, "Initializing battery charger code\n");
+
+		charger->ac.name		= "ac";
+		charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
+		charger->ac.get_property	= max77665_charger_get_property;
+		charger->ac.set_property	= max77665_charger_set_property;
+		charger->ac.properties		= max77665_charger_props;
+		charger->ac.num_properties = ARRAY_SIZE(max77665_charger_props);
+		charger->ac.property_is_writeable =
 			max77665_charger_property_is_writeable;
-	ret = power_supply_register(charger->dev, &charger->ac);
-	if (ret) {
-		dev_err(charger->dev, "failed: power supply register\n");
-		return ret;
-	}
-
-	charger->usb = charger->ac;
-	charger->usb.name		= "usb";
-	charger->usb.type		= POWER_SUPPLY_TYPE_USB;
-	ret = power_supply_register(charger->dev, &charger->usb);
-	if (ret) {
-		dev_err(charger->dev, "failed: power supply register\n");
-		goto pwr_sply_error;
-	}
-
-	for (j = 0 ; j < charger->plat_data->num_cables; j++) {
-		struct max77665_charger_cable *cable =
-				&charger->plat_data->cables[j];
-		cable->extcon_dev =  devm_kzalloc(&pdev->dev,
-			sizeof(struct extcon_specific_cable_nb), GFP_KERNEL);
-		if (!cable->extcon_dev) {
-			dev_err(&pdev->dev, "failed to allocate memory for extcon dev\n");
-			goto chrg_error;
+		ret = power_supply_register(charger->dev, &charger->ac);
+		if (ret) {
+			dev_err(charger->dev, "failed: power supply register\n");
+			return ret;
 		}
 
-		INIT_DELAYED_WORK(&cable->extcon_notifier_work,
-			charger_extcon_handle_notifier);
+		charger->usb = charger->ac;
+		charger->usb.name		= "usb";
+		charger->usb.type		= POWER_SUPPLY_TYPE_USB;
+		ret = power_supply_register(charger->dev, &charger->usb);
+		if (ret) {
+			dev_err(charger->dev, "failed: power supply register\n");
+			goto pwr_sply_error;
+		}
 
-		cable->charger = charger;
-		cable->nb.notifier_call = charger_extcon_notifier;
+		for (j = 0 ; j < charger->plat_data->num_cables; j++) {
+			struct max77665_charger_cable *cable =
+				&charger->plat_data->cables[j];
+			cable->extcon_dev =  devm_kzalloc(&pdev->dev,
+					sizeof(struct extcon_specific_cable_nb),
+								GFP_KERNEL);
+			if (!cable->extcon_dev) {
+				dev_err(&pdev->dev, "failed to allocate memory for extcon dev\n");
+				goto chrg_error;
+			}
 
-		ret = extcon_register_interest(cable->extcon_dev,
-			charger->plat_data->extcon_name,
-			cable->name, &cable->nb);
-		if (ret < 0)
-			dev_err(charger->dev, "Cannot register for cable: %s\n",
-				cable->name);
+			INIT_DELAYED_WORK(&cable->extcon_notifier_work,
+					charger_extcon_handle_notifier);
+
+			cable->charger = charger;
+			cable->nb.notifier_call = charger_extcon_notifier;
+
+			ret = extcon_register_interest(cable->extcon_dev,
+					charger->plat_data->extcon_name,
+					cable->name, &cable->nb);
+			if (ret < 0)
+				dev_err(charger->dev, "Cannot register for cable: %s\n",
+						cable->name);
+		}
+
+		charger->edev = extcon_get_extcon_dev(charger->plat_data->extcon_name);
+		if (!charger->edev)
+			goto chrg_error;
+
 	}
-
-	charger->edev = extcon_get_extcon_dev(charger->plat_data->extcon_name);
-	if (!charger->edev)
-		goto chrg_error;
 
 	charger->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(charger->irq, NULL,
@@ -930,10 +917,12 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto free_irq;
 	}
 
-	ret = max77665_charger_init(charger);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to initialize charger\n");
-		goto remove_sysfs;
+	if (charger->plat_data->is_battery_present) {
+		ret = max77665_charger_init(charger);
+		if (ret < 0) {
+			dev_err(charger->dev, "failed to initialize charger\n");
+			goto remove_sysfs;
+		}
 	}
 
 	/* Set OC threshold to 3250mA */
@@ -945,10 +934,14 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto remove_sysfs;
 	}
 
-	/* reset the charging in case cable is already inserted */
-	ret = max77665_reset_charger(charger, charger->edev);
-	if (ret < 0)
-		goto chrg_error;
+	if (charger->plat_data->is_battery_present) {
+		/* reset the charging in case cable is already inserted */
+		ret = max77665_reset_charger(charger, charger->edev);
+		if (ret < 0)
+			goto chrg_error;
+	}
+
+	dev_info(&pdev->dev, "%s() get success\n", __func__);
 
 	return 0;
 
@@ -957,11 +950,14 @@ remove_sysfs:
 free_irq:
 	free_irq(charger->irq, charger);
 chrg_error:
+if (charger->plat_data->is_battery_present)
 	power_supply_unregister(&charger->usb);
 pwr_sply_error:
+if (charger->plat_data->is_battery_present)
 	power_supply_unregister(&charger->ac);
 remove_charging:
 	mutex_destroy(&charger->current_limit_mutex);
+if (charger->plat_data->is_battery_present)
 	wake_lock_destroy(&charger->wdt_wake_lock);
 	return ret;
 }
@@ -973,7 +969,9 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 	max77665_charger_disable_wdt(charger);
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
+if (charger->plat_data->is_battery_present)
 	power_supply_unregister(&charger->ac);
+if (charger->plat_data->is_battery_present)
 	power_supply_unregister(&charger->usb);
 
 	return 0;

@@ -157,6 +157,7 @@ struct max77665_charger_plat_data {
 	struct max77665_charger_cable *cables;
 	char *extcon_name;
 	void (*update_status)(int);
+	bool is_battery_present;
 };
 
 static inline bool charging_is_on(int val)
