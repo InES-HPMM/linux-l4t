@@ -321,6 +321,10 @@ int __init pluto_sdhci_init(void)
 		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
 			1000;
 	}
+	if ((tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
+		&& (!(tegra_sdhci_platform_data3.uhs_mask &
+		MMC_UHS_MASK_DDR50)))
+		tegra_sdhci_platform_data3.trim_delay = 0;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

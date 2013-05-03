@@ -276,6 +276,10 @@ subsys_initcall_sync(macallan_wifi_prepower);
 int __init macallan_sdhci_init(void)
 {
 #ifndef CONFIG_USE_OF
+	if ((tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
+		&& (!(tegra_sdhci_platform_data3.uhs_mask &
+		MMC_UHS_MASK_DDR50)))
+		tegra_sdhci_platform_data3.trim_delay = 0;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);
