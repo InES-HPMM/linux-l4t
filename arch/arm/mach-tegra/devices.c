@@ -33,6 +33,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <mach/tegra_smmu.h>
 #include <mach/tegra-swgid.h>
+#include <mach/hardware.h>
 
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 #include <asm/dma-iommu.h>
@@ -2094,7 +2095,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
 	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS), },
-	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
+	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB), },
 	{ .name = "tegra_bb",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra_dma",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS), },
@@ -2112,14 +2113,94 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tegra-udc",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS), },
 	{ .name = "tsec",	.swgids = SWGID(TSEC), },
-	/* vic must be before vi to prevent incorrect matching */
-	{ .name = "vic",	.swgids = SWGID(VIC), },
 	{ .name = "vi",	.swgids = SWGID(VI), },
 	{ .name = "therm_est",	.swgids = SWGID(PPCS), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif
+	{},
+};
+
+struct swgid_fixup tegra_swgid_fixup_t124[] = {
+	{ .name = "54200000.dc",	.swgids = SWGID(DC), },
+	{ .name = "54240000.dc",	.swgids = SWGID(DCB), },
+	{ .name = "dc",	.swgids = SWGID(DC) | SWGID(DCB) },
+	{ .name = "host1x",	.swgids = SWGID(HC) | SWGID(VDE) |
+	  SWGID(EPP) | SWGID(HDA), },
+	{ .name = "isp",	.swgids = SWGID(ISP2) | SWGID(ISP2B), },
+	{ .name = "max77660",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "max8831",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "msenc",	.swgids = SWGID(MSENC), },
+	{ .name = "mpe",	.swgids = SWGID(MPE), },
+	{ .name = "tegra-aes",	.swgids = SWGID(VDE), },
+	{ .name = "nvavp",	.swgids = SWGID(AVPC) | SWGID(A9AVP), },
+	{ .name = "sdhci-tegra.0",	.swgids = SWGID(SDMMC1A), },
+	{ .name = "sdhci-tegra.1",	.swgids = SWGID(SDMMC2A), },
+	{ .name = "sdhci-tegra.2",	.swgids = SWGID(SDMMC3A), },
+	{ .name = "sdhci-tegra.3",	.swgids = SWGID(SDMMC4A), },
+	{ .name = "serial8250",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "snd-soc-dummy",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "spdif-dit",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra11-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra11-spi",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra14-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-ahub",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-dam",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-hda",	.swgids = SWGID(HDA), },
+	{ .name = "tegra30-i2s",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra30-spdif",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegradc", .swgids = SWGID(DC) | SWGID(DCB) | SWGID(DC12), },
+	{ .name = "tegra_bb",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_dma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-ehci",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-fuse",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-i2c",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-nvmap",	.swgids = SWGID(HC) | SWGID(AVPC), },
+	{ .name = "tegra-otg",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-pcm-audio",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-rtc",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-sata",	.swgids = SWGID(SATA), },
+	{ .name = "tegra-se",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-snd",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-tzram",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_uart",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra-udc",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
+	{ .name = "tegra_usb_modem_power",	.swgids = SWGID(PPCS) |
+	  SWGID(PPCS1) | SWGID(PPCS2), },
+	{ .name = "tsec",	.swgids = SWGID(TSEC), },
+	/* vic must be before vi to prevent incorrect matching */
+	{ .name = "vic",	.swgids = SWGID(VIC), },
+	{ .name = "vi",	.swgids = SWGID(VI), },
+	{ .name = "therm_est",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
 	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
+	{ .name = "tegra124-apbdma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
+	  SWGID(PPCS2), },
 	{},
 };
 
@@ -2127,6 +2208,9 @@ u64 tegra_smmu_fixup_swgids(struct device *dev)
 {
 	const char *s;
 	struct swgid_fixup *table = tegra_swgid_fixup;
+
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)
+		table = tegra_swgid_fixup_t124;
 
 	while ((s = table->name) != NULL) {
 		if (!strncmp(s, dev_name(dev), strlen(s)))
