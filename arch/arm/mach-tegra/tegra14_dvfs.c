@@ -501,8 +501,8 @@ static int __init set_cpu_dvfs_data(
 	int speedo = tegra_cpu_speedo_value();
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
-	min_dfll_mv =  round_cvb_voltage((min_dfll_mv * d->voltage_scale),
-							d->voltage_scale);
+	min_dfll_mv =  round_cvb_voltage(min_dfll_mv * 1000, 1000);
+	d->max_mv = round_cvb_voltage(d->max_mv * 1000, 1000);
 	BUG_ON(min_dfll_mv < tegra14_dvfs_rail_vdd_cpu.min_millivolts);
 
 	/*
@@ -607,7 +607,7 @@ static int __init set_c2bus_dvfs_data(
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = 0; /* FIXME: tegra_core_speedo_value(); */
 
-	min_mv = core_millivolts[0];
+	min_mv = round_core_cvb_voltage(core_millivolts[0] * 1000, 1000);
 	max_mv = tegra14_dvfs_rail_vdd_core.nominal_millivolts;
 
 	/*
@@ -768,8 +768,8 @@ void __init tegra14x_init_dvfs(void)
 		tegra_dvfs_core_disabled = true;
 		core_nominal_mv_index = 0;
 	}
-	tegra14_dvfs_rail_vdd_core.nominal_millivolts =
-		core_millivolts[core_nominal_mv_index];
+	tegra14_dvfs_rail_vdd_core.nominal_millivolts = round_core_cvb_voltage(
+		core_millivolts[core_nominal_mv_index] * 1000, 1000);
 
 	/*
 	 * Setup cpu dvfs and dfll tables from cvb data, determine nominal
