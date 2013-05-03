@@ -752,7 +752,6 @@ static int max17042_probe(struct i2c_client *client,
 	struct max17042_chip *chip;
 	int ret;
 	int reg;
-	int temp;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
@@ -835,12 +834,7 @@ static int max17042_probe(struct i2c_client *client,
 		chip->init_complete = 1;
 	}
 
-	/* Check for battery presence */
-	ret = maxim_get_temp(&temp);
-	if (ret < 0) {
-		dev_err(&client->dev, "failed reading temperaure: %d\n", ret);
-		return -ENODEV;
-	} else if ((temp < MIN_TEMP) || (temp > MAX_TEMP)) {
+	if (!chip->pdata->is_battery_present) {
 		dev_err(&client->dev, "Battery not detected exiting driver\n");
 		return -ENODEV;
 	}
