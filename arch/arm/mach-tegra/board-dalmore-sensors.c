@@ -35,6 +35,7 @@
 #include <linux/gpio.h>
 #include <linux/therm_est.h>
 #include <linux/nct1008.h>
+#include <linux/pid_thermal_gov.h>
 #include <mach/edp.h>
 #include <linux/edp.h>
 #include <mach/gpio-tegra.h>
@@ -679,7 +680,7 @@ static struct i2c_board_info __initdata bq20z45_pdata[] = {
 static struct thermal_trip_info skin_trips[] = {
 	{
 		.cdev_type = "skin-balanced",
-		.trip_temp = 45000,
+		.trip_temp = 43000,
 		.trip_type = THERMAL_TRIP_PASSIVE,
 		.upper = THERMAL_NO_LIMIT,
 		.lower = THERMAL_NO_LIMIT,
@@ -710,6 +711,22 @@ static struct therm_est_subdevice skin_devs[] = {
 	},
 };
 
+static struct pid_thermal_gov_params skin_pid_params = {
+	.max_err_temp = 4000,
+	.max_err_gain = 1000,
+
+	.gain_p = 1000,
+	.gain_d = 0,
+
+	.up_compensation = 15,
+	.down_compensation = 15,
+};
+
+static struct thermal_zone_params skin_tzp = {
+	.governor_name = "pid_thermal_gov",
+	.governor_params = &skin_pid_params,
+};
+
 static struct therm_est_data skin_data = {
 	.num_trips = ARRAY_SIZE(skin_trips),
 	.trips = skin_trips,
@@ -720,6 +737,7 @@ static struct therm_est_data skin_data = {
 	.tc2 = 1,
 	.ndevs = ARRAY_SIZE(skin_devs),
 	.devs = skin_devs,
+	.tzp = &skin_tzp,
 };
 
 static struct throttle_table skin_throttle_table[] = {
