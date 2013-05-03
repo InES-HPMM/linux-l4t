@@ -225,6 +225,7 @@ struct thermal_bind_params {
 /* Structure to define Thermal Zone parameters */
 struct thermal_zone_params {
 	char governor_name[THERMAL_NAME_LENGTH];
+	void *governor_params;
 	int num_tbps;	/* Number of tbp entries */
 	struct thermal_bind_params *tbp;
 };
