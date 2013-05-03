@@ -1518,7 +1518,7 @@ static void azx_platform_enable_clocks(struct azx *chip)
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	pm_runtime_get_sync(&chip->pdev->dev);
+	pm_runtime_get_sync(chip->dev);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
 #endif
 #endif
@@ -1543,7 +1543,7 @@ static void azx_platform_disable_clocks(struct azx *chip)
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_powergate_partition(TEGRA_POWERGATE_DISB);
-	pm_runtime_put(&chip->pdev->dev);
+	pm_runtime_put(chip->dev);
 #endif
 #endif
 
@@ -4200,8 +4200,8 @@ static int azx_probe_continue(struct azx *chip)
 		goto out_free;
 
 #ifdef CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA
-	pm_runtime_enable(&pdev->dev);
-	tegra_pd_add_device(&pdev->dev);
+	pm_runtime_enable(chip->dev);
+	tegra_pd_add_device(chip->dev);
 #endif
 
 	chip->running = 1;
