@@ -462,9 +462,20 @@ config TEGRA_GADGET_BOOST_CPU_FREQ
 	help
 	  Devices need to boost frequency of CPU when they are connected
 	  to host pc through usb cable for better performance. This value
-	  is the amount of the frequency (in mhz) to be boosted. If it is
+	  is the amount of the frequency (in Mhz) to be boosted. If it is
 	  zero boosting frequency will not be enabled. This value will be
 	  used only by usb gadget driver.
+
+config TEGRA_EHCI_BOOST_CPU_FREQ
+        int "Boost cpu frequency(in Mhz) for tegra usb host"
+        range 0 1300 if ARCH_TEGRA_3x_SOC
+        range 0 1800 if ARCH_TEGRA_11x_SOC
+        range 0 2000 if ARCH_TEGRA_14x_SOC
+        default 0
+        help
+          This value is the amount of the cpu frequency (in Mhz)
+          to be boosted. If it is zero boosting frequency will not
+          be enabled. This value will be used only by usb ehci driver.
 
 config TEGRA_DYNAMIC_PWRDET
 	bool "Enable dynamic activation of IO level auto-detection"
