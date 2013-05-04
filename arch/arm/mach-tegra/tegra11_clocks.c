@@ -4196,6 +4196,118 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.reset			= &tegra11_periph_clk_reset,
 };
 
+/* x1 shared bus ops */
+static long tegra11_1xbus_round_updown(struct clk *c, unsigned long rate,
+					    bool up)
+{
+	int divider;
+	unsigned long source_rate, round_rate;
+	struct clk *new_parent;
+
+	rate = max(rate, c->min_rate);
+
+	new_parent = (rate <= c->u.periph.threshold) ?
+		c->u.periph.pll_low : c->u.periph.pll_high;
+	source_rate = clk_get_rate(new_parent);
+
+	divider = clk_div71_get_divider(source_rate, rate, c->flags,
+		up ? ROUND_DIVIDER_DOWN : ROUND_DIVIDER_UP);
+
+	if (divider < 0)
+		return c->min_rate;
+
+	round_rate = source_rate * 2 / (divider + 2);
+
+	if (round_rate > c->max_rate) {
+		divider += c->flags & DIV_U71_INT ? 2 : 1;
+#if !DIVIDER_1_5_ALLOWED
+		divider = max(2, divider);
+#endif
+		round_rate = source_rate * 2 / (divider + 2);
+	}
+
+	if (new_parent == c->u.periph.pll_high) {
+		/* Prevent oscillation across threshold */
+		if (round_rate <= c->u.periph.threshold)
+			round_rate = c->u.periph.threshold;
+	}
+	return round_rate;
+}
+
+static long tegra11_1xbus_round_rate(struct clk *c, unsigned long rate)
+{
+	return tegra11_1xbus_round_updown(c, rate, true);
+}
+
+static int tegra11_1xbus_set_rate(struct clk *c, unsigned long rate)
+{
+	/* Compensate rate truncating during rounding */
+	return tegra11_periph_clk_set_rate(c, rate + 1);
+}
+
+static int tegra11_clk_1xbus_update(struct clk *c)
+{
+	int ret;
+	struct clk *new_parent;
+	unsigned long rate, old_rate;
+
+	if (detach_shared_bus)
+		return 0;
+
+	rate = tegra11_clk_shared_bus_update(c, NULL, NULL, NULL);
+
+	old_rate = clk_get_rate_locked(c);
+	if (rate == old_rate)
+		return 0;
+
+	new_parent = (rate <= c->u.periph.threshold) ?
+		c->u.periph.pll_low : c->u.periph.pll_high;
+
+	/*
+	 * When changing parents to lower one, set 1st max possible rate to
+	 * avoid transition with dip.
+	 *
+	 * FIXME: the transition procedure below works for current Tegra11
+	 * clock limits. In general parent switch may fail because intermediate
+	 * rate violates max limit.
+	 */
+	if ((new_parent != c->parent) && (new_parent == c->u.periph.pll_low)) {
+		ret = clk_set_rate_locked(c, c->max_rate);
+		if (ret) {
+			pr_err("Failed to set %s rate to %lu\n",
+			       c->name, c->max_rate);
+			return ret;
+		}
+	}
+
+	if (new_parent != c->parent) {
+		ret = clk_set_parent_locked(c, new_parent);
+		if (ret) {
+			pr_err("Failed to set %s parent %s\n",
+			       c->name, new_parent->name);
+			return ret;
+		}
+	}
+
+	ret = clk_set_rate_locked(c, rate);
+	if (ret) {
+		pr_err("Failed to set %s rate to %lu\n", c->name, rate);
+		return ret;
+	}
+	return 0;
+
+}
+
+static struct clk_ops tegra_1xbus_clk_ops = {
+	.init			= &tegra11_periph_clk_init,
+	.enable			= &tegra11_periph_clk_enable,
+	.disable		= &tegra11_periph_clk_disable,
+	.set_parent		= &tegra11_periph_clk_set_parent,
+	.set_rate		= &tegra11_1xbus_set_rate,
+	.round_rate		= &tegra11_1xbus_round_rate,
+	.reset			= &tegra11_periph_clk_reset,
+	.shared_bus_update	= &tegra11_clk_1xbus_update,
+};
 
 #if !defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 /* msenc clock propagation WAR for bug 1005168 */
@@ -6479,6 +6591,28 @@ static struct clk tegra_clk_emc = {
 	.rate_change_nh = &emc_rate_change_nh,
 };
 
+static struct raw_notifier_head host1x_rate_change_nh;
+
+static struct clk tegra_clk_host1x = {
+	.name      = "host1x",
+	.ops       = &tegra_1xbus_clk_ops,
+	.reg       = 0x180,
+	.inputs    = mux_pllm_pllc_pllp_plla,
+	.flags     = MUX | DIV_U71 | DIV_U71_INT,
+	.max_rate  = 384000000,
+	.min_rate  = 12000000,
+	.u.periph = {
+		.clk_num   = 28,
+		.pll_low = &tegra_pll_p,
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		.pll_high = &tegra_pll_c,
+#else
+		.pll_high = &tegra_pll_m,
+#endif
+	},
+	.rate_change_nh = &host1x_rate_change_nh,
+};
+
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 
 static struct raw_notifier_head c2bus_rate_change_nh;
@@ -6722,7 +6856,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK_EX("msenc",	"msenc",		NULL,	91,	0x1f0,	600000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT, &tegra_msenc_clk_ops),
 #endif
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
-	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	384000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
 	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	297000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8 | DIV_U71),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
@@ -6841,6 +6974,8 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("battery.cbus", "battery_edp",	"gpu",	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
+	SHARED_CLK("nv_host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, 0,  0, 0),
+	SHARED_CLK("vi_host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, 0,  0, 0),
 };
 
 
@@ -6995,7 +7130,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("vde.cbus", "nvavp", "vde"),
 	CLK_DUPLICATE("i2c5", "tegra_cl_dvfs", "i2c"),
 	CLK_DUPLICATE("cpu_g", "tegra_cl_dvfs", "safe_dvfs"),
-	CLK_DUPLICATE("host1x", "tegra_host1x", "host1x"),
 	CLK_DUPLICATE("epp.cbus", "tegra_isp", "epp"),
 };
 
@@ -7047,6 +7181,7 @@ struct clk *tegra_ptr_clks[] = {
 	&tegra_clk_cop,
 	&tegra_clk_sbus_cmplx,
 	&tegra_clk_emc,
+	&tegra_clk_host1x,
 #ifdef CONFIG_TEGRA_DUAL_CBUS
 	&tegra_clk_c2bus,
 	&tegra_clk_c3bus,
@@ -7127,16 +7262,19 @@ static void tegra11_pllp_init_dependencies(unsigned long pllp_rate)
 		tegra_pll_p_out1.u.pll_div.default_rate = 28800000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 72000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 108000000;
+		tegra_clk_host1x.u.periph.threshold = 108000000;
 		break;
 	case 408000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 9600000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
+		tegra_clk_host1x.u.periph.threshold = 204000000;
 		break;
 	case 204000000:
 		tegra_pll_p_out1.u.pll_div.default_rate = 4800000;
 		tegra_pll_p_out3.u.pll_div.default_rate = 102000000;
 		tegra_clk_sbus_cmplx.u.system.threshold = 204000000;
+		tegra_clk_host1x.u.periph.threshold = 204000000;
 		break;
 	default:
 		pr_err("tegra: PLLP rate: %lu is not supported\n", pllp_rate);

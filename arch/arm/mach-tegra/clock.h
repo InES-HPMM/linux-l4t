@@ -197,6 +197,9 @@ struct clk {
 			unsigned int			clk_num;
 			u32				src_mask;
 			u32				src_shift;
+			struct clk			*pll_low;
+			struct clk			*pll_high;
+			unsigned long			threshold;
 		} periph;
 		struct {
 			unsigned long			input_min;
