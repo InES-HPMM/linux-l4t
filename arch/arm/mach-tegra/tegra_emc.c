@@ -29,6 +29,7 @@
 #include "tegra_emc.h"
 
 static u8 emc_iso_share = 100;
+static unsigned long emc_iso_allocation;
 
 static struct emc_iso_usage emc_usage_table[TEGRA_EMC_ISO_USE_CASES_MAX_NUM];
 
@@ -80,6 +81,7 @@ unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
 		iso_bw = (iso_bw < max_rate / 100) ?
 				(iso_bw * 100) : max_rate;
 	}
+	emc_iso_allocation = iso_bw;
 
 	efficiency = tegra_emc_bw_efficiency;
 	if (total_bw && efficiency && (efficiency < 100)) {
@@ -157,6 +159,8 @@ int __init tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root)
 
 	d = debugfs_create_u8("emc_iso_share", S_IRUGO, emc_debugfs_root,
 			      &emc_iso_share);
+	d = debugfs_create_u32("emc_iso_allocation", S_IRUGO, emc_debugfs_root,
+			      (u32 *)&emc_iso_allocation);
 	if (!d)
 		return -ENOMEM;
 
