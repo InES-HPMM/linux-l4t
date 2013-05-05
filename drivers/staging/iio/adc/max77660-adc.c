@@ -77,8 +77,6 @@ struct max77660_adc {
 
 static inline int max77660_is_valid_channel(struct  max77660_adc *adc, int chan)
 {
-	int minor, major;
-
 	/*
 	 * ES1.0: Do not convert ADC0 channel otherwise it will shutdown system.
 	 */
