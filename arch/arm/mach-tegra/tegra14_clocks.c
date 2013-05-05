@@ -4641,9 +4641,14 @@ static unsigned long tegra14_clk_shared_bus_update(struct clk *bus,
 		}
 	}
 
-	if (bus->flags & PERIPH_EMC_ENB)
+	if (bus->flags & PERIPH_EMC_ENB) {
+		unsigned long iso_bw_min;
 		bw = tegra_emc_apply_efficiency(
-			bw, iso_bw, bus->max_rate, usage_flags, NULL);
+			bw, iso_bw, bus->max_rate, usage_flags, &iso_bw_min);
+		if (bus->ops && bus->ops->round_rate)
+			iso_bw_min = bus->ops->round_rate(bus, iso_bw_min);
+		ceiling_but_iso = max(ceiling_but_iso, iso_bw_min);
+	}
 
 	rate = override_rate ? : max(rate, bw);
 	ceiling = min(ceiling, ceiling_but_iso);
@@ -6289,7 +6294,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("usb3.emc",	"tegra-ehci.2",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("mon.emc",	"tegra_actmon",		"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("cap.emc",	"cap.emc",		NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
-	SHARED_EMC_CLK("cap.throttle.emc", "cap_throttle",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING, 0),
+	SHARED_EMC_CLK("cap.throttle.emc", "cap_throttle",	NULL,	&tegra_clk_emc, NULL, 0, SHARED_CEILING_BUT_ISO, 0),
 	SHARED_EMC_CLK("3d.emc",	"tegra_gr3d",		"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
 	SHARED_EMC_CLK("2d.emc",	"tegra_gr2d",		"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_2D)),
 	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",		"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_MSENC)),
