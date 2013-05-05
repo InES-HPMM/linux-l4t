@@ -52,7 +52,8 @@ struct dentry;
 void tegra_emc_iso_usage_table_init(struct emc_iso_usage *table, int size);
 int  tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root);
 unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
-	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags);
+	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags,
+	unsigned long *iso_bw_min);
 void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 int tegra_emc_get_dram_temperature(void);

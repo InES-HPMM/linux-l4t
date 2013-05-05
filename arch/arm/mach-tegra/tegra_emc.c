@@ -73,7 +73,8 @@ static u8 tegra_emc_get_iso_share(u32 usage_flags)
 }
 
 unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
-	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags)
+	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags,
+	unsigned long *iso_bw_min)
 {
 	u8 efficiency = tegra_emc_get_iso_share(usage_flags);
 	if (iso_bw && efficiency && (efficiency < 100)) {
@@ -82,6 +83,8 @@ unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
 				(iso_bw * 100) : max_rate;
 	}
 	emc_iso_allocation = iso_bw;
+	if (iso_bw_min)
+		*iso_bw_min = iso_bw;
 
 	efficiency = tegra_emc_bw_efficiency;
 	if (total_bw && efficiency && (efficiency < 100)) {
