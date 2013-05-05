@@ -74,17 +74,20 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 	writel_relaxed(reg, reset);
 }
 
-static void __init tegra_init_cache(void)
+static void __init tegra_init_cache(u32 tag_latency, u32 data_latency)
 {
 #ifdef CONFIG_CACHE_L2X0
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl, cache_type;
 
+	writel_relaxed(tag_latency, p + L2X0_TAG_LATENCY_CTRL);
+	writel_relaxed(data_latency, p + L2X0_DATA_LATENCY_CTRL);
+
 	cache_type = readl(p + L2X0_CACHE_TYPE);
 	aux_ctrl = (cache_type & 0x700) << (17-8);
 	aux_ctrl |= 0x7C400001;
 
-	l2x0_of_init(aux_ctrl, 0x8200c3fe);
+	l2x0_init(p, aux_ctrl, 0x8200c3fe);
 #endif
 
 }
@@ -94,7 +97,7 @@ void __init tegra20_init_early(void)
 {
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache();
+	tegra_init_cache(0x331, 0x441);
 	tegra_powergate_init();
 	tegra20_hotplug_init();
 }
@@ -104,7 +107,7 @@ void __init tegra30_init_early(void)
 {
 	tegra_apb_io_init();
 	tegra_init_fuse();
-	tegra_init_cache();
+	tegra_init_cache(0x441, 0x551);
 	tegra_pmc_init();
 	tegra_powergate_init();
 	tegra30_hotplug_init();
