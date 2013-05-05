@@ -436,7 +436,7 @@ static int max17048_load_model_data(struct max17048_chip *chip)
 
 static int max17048_initialize(struct max17048_chip *chip)
 {
-	uint8_t ret, config;
+	uint8_t ret, config = 0;
 	struct i2c_client *client = chip->client;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
