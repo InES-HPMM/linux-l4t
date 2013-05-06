@@ -337,6 +337,7 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(USB_VBUS_EN1,	  PN5,		LCD,        USB,	RSVD1,	    RSVD2,	RSVD3,	     RSVD1,	INPUT,	0x33f8),\
 	PINGROUP(SDMMC3_CLK_LB_OUT,	  PEE4,		SDMMC3,        SDMMC3,	RSVD1,	    RSVD2,	RSVD3,	     RSVD1,	INPUT,	0x33fc),\
 	PINGROUP(SDMMC3_CLK_LB_IN,	  PEE5,		SDMMC3,        SDMMC3,	RSVD1,	    RSVD2,	RSVD3,	     RSVD1,	INPUT,	0x3400),\
+	PINGROUP(NAND_GMI_CLK_LB,	  INVALID,		GMI,        SDMMC2,	NAND,	    GMI,	RSVD3,	     RSVD3,	INPUT,	0x3404),\
 	PINGROUP(RESET_OUT_N,	  INVALID,	SYS,        RSVD0,	RSVD1,	    RSVD2,	RESET_OUT_N, RSVD0,	OUTPUT,	0x3408),
 
 const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
