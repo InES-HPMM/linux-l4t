@@ -35,6 +35,7 @@ enum mc_client {
 	MC_CLIENT_VIC		= 18,
 	MC_CLIENT_XUSB_HOST	= 19,
 	MC_CLIENT_XUSB_DEV	= 20,
+	MC_CLIENT_GPU		= 34,
 	MC_CLIENT_LAST		= -1,
 };
 
@@ -43,6 +44,12 @@ struct tegra12x_powergate_mc_client_info {
 };
 
 static struct tegra12x_powergate_mc_client_info tegra12x_pg_mc_info[] = {
+	[TEGRA_POWERGATE_GPU] = {
+		.hot_reset_clients = {
+			[0] = MC_CLIENT_GPU,
+			[1] = MC_CLIENT_LAST,
+		},
+	},
 	[TEGRA_POWERGATE_VDEC] = {
 		.hot_reset_clients = {
 			[0] = MC_CLIENT_VDE,
@@ -123,6 +130,12 @@ static struct tegra12x_powergate_mc_client_info tegra12x_pg_mc_info[] = {
 };
 
 static struct powergate_partition_info tegra12x_powergate_partition_info[] = {
+	[TEGRA_POWERGATE_GPU] = {
+		.name = "gpu",
+		.clk_info = {
+			[0] = { .clk_name = "gpu", .clk_type = CLK_AND_RST },
+		},
+	},
 	[TEGRA_POWERGATE_VDEC] = {
 		.name = "vde",
 		.clk_info = {
@@ -221,11 +234,15 @@ static atomic_t ref_count_b = ATOMIC_INIT(1); /* for TEGRA_POWERGATE_DISB */
 
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204
+#define MC_CLIENT_HOTRESET_CTRL_1	0x970
+#define MC_CLIENT_HOTRESET_STAT_1	0x974
+
+#define PMC_GPU_RG_CNTRL_0		0x2d4
 
 static DEFINE_SPINLOCK(tegra12x_powergate_lock);
 
 #define HOTRESET_READ_COUNT	5
-static bool tegra12x_stable_hotreset_check(u32 *stat)
+static bool tegra12x_stable_hotreset_check(u32 stat_reg, u32 *stat)
 {
 	int i;
 	u32 cur_stat;
@@ -233,9 +250,9 @@ static bool tegra12x_stable_hotreset_check(u32 *stat)
 	unsigned long flags;
 
 	spin_lock_irqsave(&tegra12x_powergate_lock, flags);
-	prv_stat = mc_read(MC_CLIENT_HOTRESET_STAT);
+	prv_stat = mc_read(stat_reg);
 	for (i = 0; i < HOTRESET_READ_COUNT; i++) {
-		cur_stat = mc_read(MC_CLIENT_HOTRESET_STAT);
+		cur_stat = mc_read(stat_reg);
 		if (cur_stat != prv_stat) {
 			spin_unlock_irqrestore(&tegra12x_powergate_lock, flags);
 			return false;
@@ -259,6 +276,7 @@ int tegra12x_powergate_mc_disable(int id)
 int tegra12x_powergate_mc_flush(int id)
 {
 	u32 idx, rst_ctrl, rst_stat;
+	u32 rst_ctrl_reg, rst_stat_reg;
 	enum mc_client mcClientBit;
 	unsigned long flags;
 	bool ret;
@@ -269,18 +287,27 @@ int tegra12x_powergate_mc_flush(int id)
 		if (mcClientBit == MC_CLIENT_LAST)
 			break;
 
+		if (mcClientBit < 32) {
+			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
+			rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
+		} else {
+			mcClientBit %= 32;
+			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
+			rst_stat_reg = MC_CLIENT_HOTRESET_STAT_1;
+		}
+
 		spin_lock_irqsave(&tegra12x_powergate_lock, flags);
 
-		rst_ctrl = mc_read(MC_CLIENT_HOTRESET_CTRL);
+		rst_ctrl = mc_read(rst_ctrl_reg);
 		rst_ctrl |= (1 << mcClientBit);
-		mc_write(rst_ctrl, MC_CLIENT_HOTRESET_CTRL);
+		mc_write(rst_ctrl, rst_ctrl_reg);
 
 		spin_unlock_irqrestore(&tegra12x_powergate_lock, flags);
 
 		do {
 			udelay(10);
 			rst_stat = 0;
-			ret = tegra12x_stable_hotreset_check(&rst_stat);
+			ret = tegra12x_stable_hotreset_check(rst_stat_reg, &rst_stat);
 			if (!ret)
 				continue;
 		} while (!(rst_stat & (1 << mcClientBit)));
@@ -291,7 +318,7 @@ int tegra12x_powergate_mc_flush(int id)
 
 int tegra12x_powergate_mc_flush_done(int id)
 {
-	u32 idx, rst_ctrl;
+	u32 idx, rst_ctrl, rst_ctrl_reg;
 	enum mc_client mcClientBit;
 	unsigned long flags;
 
@@ -301,11 +328,18 @@ int tegra12x_powergate_mc_flush_done(int id)
 		if (mcClientBit == MC_CLIENT_LAST)
 			break;
 
+		if (mcClientBit < 32)
+			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
+		else {
+			mcClientBit %= 32;
+			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
+		}
+
 		spin_lock_irqsave(&tegra12x_powergate_lock, flags);
 
-		rst_ctrl = mc_read(MC_CLIENT_HOTRESET_CTRL);
+		rst_ctrl = mc_read(rst_ctrl_reg);
 		rst_ctrl &= ~(1 << mcClientBit);
-		mc_write(rst_ctrl, MC_CLIENT_HOTRESET_CTRL);
+		mc_write(rst_ctrl, rst_ctrl_reg);
 
 		spin_unlock_irqrestore(&tegra12x_powergate_lock, flags);
 	}
@@ -313,6 +347,93 @@ int tegra12x_powergate_mc_flush_done(int id)
 	wmb();
 
 	return 0;
+}
+
+static int tegra12x_gpu_powergate(int id, struct powergate_partition_info *pg_info)
+{
+	int ret;
+
+	/* If first clk_ptr is null, fill clk info for the partition */
+	if (!pg_info->clk_info[0].clk_ptr)
+		get_clk_info(pg_info);
+
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		WARN(1, "Couldn't enable clock");
+
+	udelay(10);
+
+	tegra_powergate_mc_flush(id);
+
+	udelay(10);
+
+	/* enable clamp */
+	pmc_write(0x1, PMC_GPU_RG_CNTRL_0);
+
+	udelay(10);
+
+	powergate_partition_assert_reset(pg_info);
+
+	udelay(10);
+
+	/* Powergating is done only if refcnt of all clks is 0 */
+	partition_clk_disable(pg_info);
+
+	udelay(10);
+
+	/* TBD: call regulator api to turn off VDD_GPU */
+	if (0)
+		goto err_power_off;
+
+	return 0;
+
+err_power_off:
+	WARN(1, "Could not Railgate Partition %d", id);
+	return ret;
+}
+
+static int tegra12x_gpu_unpowergate(int id, struct powergate_partition_info *pg_info)
+{
+	int ret;
+
+	/* TBD: call regulator api to turn on VDD_GPU */
+	if (0)
+		goto err_power;
+
+	/* If first clk_ptr is null, fill clk info for the partition */
+	if (!pg_info->clk_info[0].clk_ptr)
+		get_clk_info(pg_info);
+
+	/* Un-Powergating fails if all clks are not enabled */
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		goto err_clk_on;
+
+	udelay(10);
+
+	/* disable clamp */
+	pmc_write(0, PMC_GPU_RG_CNTRL_0);
+
+	udelay(10);
+
+	powergate_partition_deassert_reset(pg_info);
+
+	udelay(10);
+
+	tegra_powergate_mc_flush_done(id);
+
+	udelay(10);
+
+	/* Disable all clks enabled earlier. Drivers should enable clks */
+	partition_clk_disable(pg_info);
+
+	return 0;
+
+err_clk_on:
+	powergate_module(id);
+err_power:
+	WARN(1, "Could not Un-Railgate %d", id);
+	return ret;
 }
 
 int tegra12x_powergate_partition(int id)
@@ -328,9 +449,14 @@ int tegra12x_powergate_partition(int id)
 		atomic_dec_return(&ref_count_b) != 0)
 		return 0;
 
-	/* call common power-gate API for t1xx */
-	ret = tegra1xx_powergate(id,
-		&tegra12x_powergate_partition_info[id]);
+	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
+		ret = tegra12x_gpu_powergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	} else {
+		/* call common power-gate API for t1xx */
+		ret = tegra1xx_powergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	}
 
 	return ret;
 }
@@ -348,20 +474,29 @@ int tegra12x_unpowergate_partition(int id)
 		atomic_inc_return(&ref_count_b) != 1)
 		return 0;
 
-	ret = tegra1xx_unpowergate(id,
-		&tegra12x_powergate_partition_info[id]);
+	if (TEGRA_IS_GPU_POWERGATE_ID(id)) {
+		ret = tegra12x_gpu_unpowergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	} else {
+		ret = tegra1xx_unpowergate(id,
+			&tegra12x_powergate_partition_info[id]);
+	}
 
 	return ret;
 }
 
 int tegra12x_powergate_partition_with_clk_off(int id)
 {
+	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
+
 	return tegraxx_powergate_partition_with_clk_off(id,
 		&tegra12x_powergate_partition_info[id]);
 }
 
 int tegra12x_unpowergate_partition_with_clk_on(int id)
 {
+	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
+
 	return tegraxx_unpowergate_partition_with_clk_on(id,
 		&tegra12x_powergate_partition_info[id]);
 }

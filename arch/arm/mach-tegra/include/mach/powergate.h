@@ -30,6 +30,7 @@
 #endif
 #define TEGRA_POWERGATE_3D	1
 #define TEGRA_POWERGATE_3D0	TEGRA_POWERGATE_3D
+#define TEGRA_POWERGATE_GPU	TEGRA_POWERGATE_3D
 #define TEGRA_POWERGATE_VENC	2
 #define TEGRA_POWERGATE_PCIE	3
 #define TEGRA_POWERGATE_VDEC	4
@@ -71,10 +72,10 @@
 #else
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TEGRA_NUM_POWERGATE	14
-#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
-#define TEGRA_NUM_POWERGATE	25
-#else
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #define TEGRA_NUM_POWERGATE	23
+#else
+#define TEGRA_NUM_POWERGATE	25
 #endif
 #define TEGRA_CPU_POWERGATE_ID(cpu)	((cpu == 0) ? TEGRA_POWERGATE_CPU0 : \
 						(cpu + TEGRA_POWERGATE_CPU1 - 1))
@@ -82,6 +83,7 @@
 					((id) == TEGRA_POWERGATE_CPU1) || \
 					((id) == TEGRA_POWERGATE_CPU2) || \
 					((id) == TEGRA_POWERGATE_CPU3))
+#define TEGRA_IS_GPU_POWERGATE_ID(id)  ((id) == TEGRA_POWERGATE_GPU)
 #endif
 
 int  __init tegra_powergate_init(void);
