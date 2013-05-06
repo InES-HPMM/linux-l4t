@@ -133,6 +133,16 @@ comment "I2C RTC drivers"
 
 if I2C
 
+config RTC_DRV_AS3722
+	tristate "ams AS3722"
+	depends on MFD_AS3722
+	help
+	  If you say Y here you will get support for the RTC feature
+	  of the ams AS3722 PMIC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-as3722.
+
 config RTC_DRV_88PM860X
 	tristate "Marvell 88PM860x"
 	depends on I2C && MFD_88PM860X
