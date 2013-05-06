@@ -693,9 +693,19 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 		unsigned long ptn = SMMU_ADDR_TO_PFN(iova);
 		unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 		struct page *page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
-		unsigned long *ptbl = page_address(page);
-		unsigned long *pte = &ptbl[ptn];
-		int count = min_t(unsigned long, SZ_1K - ptn, total);
+		unsigned long *ptbl;
+		unsigned long *pte;
+		int count;
+
+		if (!pfn_valid(page_to_pfn(page))) {
+			total -= SMMU_PDN_TO_ADDR(pdn + 1) - iova;
+			iova = SMMU_PDN_TO_ADDR(pdn + 1);
+			continue;
+		}
+
+		ptbl = page_address(page);
+		pte = &ptbl[ptn];
+		count = min_t(unsigned long, SMMU_PTBL_COUNT - ptn, total);
 
 		dev_dbg(as->smmu->dev, "unmapping %d pages at once\n", count);
 
