@@ -249,7 +249,7 @@ static int alarmtimer_suspend(struct device *dev)
 
 	if (ktime_to_ns(min) < 2 * NSEC_PER_SEC) {
 		__pm_wakeup_event(ws, 2 * MSEC_PER_SEC);
-		dev_err(dev, "RTC waketime %ll less than 2 sec\n",
+		dev_err(dev, "RTC waketime %lld less than 2 sec\n",
 			ktime_to_ns(min));
 		return -EBUSY;
 	}
