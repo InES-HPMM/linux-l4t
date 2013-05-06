@@ -32,6 +32,7 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/edp.h>
+#include <linux/edpdev.h>
 #include <linux/platform_data/tegra_edp.h>
 
 #include <asm/mach-types.h>
@@ -805,6 +806,54 @@ void __init macallan_sysedp_init(void)
 		return;
 
 	r = edp_set_governor(&macallan_sysedp_manager, g);
+	WARN_ON(r);
+}
+
+static unsigned int macallan_psydepl_states[] = {
+	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
+	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
+	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
+	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
+	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
+	1300, 1200, 1100, 1000,  900,  800,  700,  600,
+	 500,  400,  300,  200,  100,    0
+};
+
+static struct psy_depletion_ibat_lut macallan_ibat_lut[] = {
+	{  60,  500 },
+	{  40, 3900 },
+	{   0, 3900 },
+	{ -30,    0 }
+};
+
+static struct psy_depletion_rbat_lut macallan_rbat_lut[] = {
+	{ 0, 95000 }
+};
+
+static struct psy_depletion_platform_data macallan_psydepl_pdata = {
+	.power_supply = "battery",
+	.states = macallan_psydepl_states,
+	.num_states = ARRAY_SIZE(macallan_psydepl_states),
+	.e0_index = 16,
+	.r_const = 55000,
+	.vsys_min = 3250000,
+	.vcharge = 4200000,
+	.ibat_nom = 3900,
+	.ibat_lut = macallan_ibat_lut,
+	.rbat_lut = macallan_rbat_lut
+};
+
+static struct platform_device macallan_psydepl_device = {
+	.name = "psy_depletion",
+	.id = -1,
+	.dev = { .platform_data = &macallan_psydepl_pdata }
+};
+
+void __init macallan_sysedp_psydepl_init(void)
+{
+	int r;
+
+	r = platform_device_register(&macallan_psydepl_device);
 	WARN_ON(r);
 }
 

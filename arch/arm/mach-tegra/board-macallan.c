@@ -722,6 +722,7 @@ static void __init tegra_macallan_late_init(void)
 	macallan_soctherm_init();
 	tegra_register_fuse();
 	macallan_sysedp_core_init();
+	macallan_sysedp_psydepl_init();
 }
 
 static void __init macallan_ramconsole_reserve(unsigned long size)
