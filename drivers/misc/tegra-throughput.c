@@ -193,14 +193,14 @@ static struct miscdevice throughput_miscdev = {
 	.mode  = 0666,
 };
 
-static int fps_show(struct seq_file *s, void *unused)
+static ssize_t show_fps(struct kobject *kobj,
+	struct attribute *attr, char *buf)
 {
 	int frame_time_avg;
-	int fps;
 	ktime_t now;
 	long timediff;
+	int fps = 0;
 
-	fps = 0;
 	if (frame_time_sum_init)
 		goto DONE;
 
@@ -213,21 +213,11 @@ static int fps_show(struct seq_file *s, void *unused)
 	fps = frame_time_avg > 0 ? 1000000 / frame_time_avg : 0;
 
 DONE:
-	seq_printf(s, "%d\n", fps);
-	return 0;
+	return sprintf(buf, "%d\n", fps);
 }
 
-static int fps_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, fps_show, inode->i_private);
-}
-
-static const struct file_operations fps_fops = {
-	.open		= fps_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-};
+static struct global_attr fps_attr = __ATTR(fps, 0444,
+		show_fps, NULL);
 
 int __init throughput_init_miscdev(void)
 {
@@ -245,7 +235,10 @@ int __init throughput_init_miscdev(void)
 		return ret;
 	}
 
-	debugfs_create_file("fps", 0444, NULL, NULL, &fps_fops);
+	ret = sysfs_create_file(&throughput_miscdev.this_device->kobj,
+		&fps_attr.attr);
+	if (ret)
+		pr_err("%s: error %d creating sysfs node\n", __func__, ret);
 
 	tegra_dc_set_flip_callback(throughput_flip_callback);
 
@@ -261,6 +254,8 @@ void __exit throughput_exit_miscdev(void)
 	tegra_dc_unset_flip_callback();
 
 	cancel_work_sync(&work);
+
+	sysfs_remove_file(&throughput_miscdev.this_device->kobj, &fps_attr.attr);
 
 	misc_deregister(&throughput_miscdev);
 }
