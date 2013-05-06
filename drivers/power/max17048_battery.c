@@ -147,6 +147,27 @@ static int max17048_read_word(struct i2c_client *client, int reg)
 	}
 }
 
+/* Return value in uV */
+static int max17048_get_ocv(struct max17048_chip *chip)
+{
+	int r;
+	int reg;
+	int ocv;
+
+	r = max17048_write_word(chip->client, MAX17048_UNLOCK,
+			MAX17048_UNLOCK_VALUE);
+	if (r)
+		return r;
+
+	reg = max17048_read_word(chip->client, MAX17048_OCV);
+	ocv = (reg >> 4) * 1250;
+
+	r = max17048_write_word(chip->client, MAX17048_UNLOCK, 0);
+	WARN_ON(r);
+
+	return ocv;
+}
+
 static int max17048_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    union power_supply_propval *val)
@@ -169,6 +190,9 @@ static int max17048_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = chip->capacity_level;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
+		val->intval = max17048_get_ocv(chip);
 		break;
 	default:
 	return -EINVAL;
