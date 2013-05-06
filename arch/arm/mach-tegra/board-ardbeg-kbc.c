@@ -107,7 +107,7 @@ static struct gpio_keys_button ardbeg_int_keys[] = {
 	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
 	[4] = GPIO_KEY(KEY_CAMERA, PV3, 0),
 	[5] = GPIO_KEY(KEY_CAMERA_FOCUS, PQ2, 0),
-	[6] = GPIO_KEY(KEY_MUTE, PQ2, 0),	/* FIX ME: RINGER/ROTATE_LOCK */
+	[6] = GPIO_KEY(KEY_MUTE, PQ1, 0),
 };
 
 static struct gpio_keys_platform_data ardbeg_int_keys_pdata = {
