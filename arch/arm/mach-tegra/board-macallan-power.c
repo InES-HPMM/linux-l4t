@@ -775,6 +775,8 @@ static struct tegra_tsensor_pmu_data tpdata_palmas = {
 };
 
 static struct soctherm_platform_data macallan_soctherm_data = {
+	.oc_irq_base = TEGRA_SOC_OC_IRQ_BASE,
+	.num_oc_irqs = TEGRA_SOC_OC_NUM_IRQ,
 	.therm = {
 		[THERM_CPU] = {
 			.zone_enable = true,
@@ -845,6 +847,21 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
 					.enable = 1,
+				},
+			},
+		},
+		[THROTTLE_OC4] = {
+			.throt_mode = BRIEF,
+			.polarity = 1,
+			.intr = true,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 50,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.depth = 50,
 				},
 			},
 		},
