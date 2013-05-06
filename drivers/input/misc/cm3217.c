@@ -687,6 +687,11 @@ static int cm3217_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void cm3217_shutdown(struct i2c_client *client)
+{
+	cm3217_remove(client);
+}
+
 static int cm3217_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -749,7 +754,7 @@ static struct i2c_driver cm3217_driver = {
 		.name	= CM3217_NAME,
 		.owner	= THIS_MODULE,
 	},
-	.shutdown	= cm3217_remove,
+	.shutdown	= cm3217_shutdown,
 };
 
 static int __init cm3217_init(void)
