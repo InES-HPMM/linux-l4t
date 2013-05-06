@@ -425,7 +425,7 @@ static ssize_t iso_margin_store(struct device *dev,
 
 	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
 		bw, true);
-	if (!ret)
+	if (ret)
 		dev_err(dev, "can't margin for bbc bw\n");
 
 	return size;
@@ -682,7 +682,7 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 	/* statically margin for bbc bw */
 	ret = tegra_isomgr_set_margin(TEGRA_ISO_CLIENT_BBC_0,
 		MAX_ISO_BW_REQ, true);
-	if (!ret)
+	if (ret)
 		dev_err(&pdev->dev, "can't margin for bbc bw\n");
 
 	attrs = mc_attributes;
