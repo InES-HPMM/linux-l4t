@@ -266,6 +266,10 @@ static int macallan_imx091_power_on(struct nvc_regulator *vreg)
 	if (err)
 		goto imx091_avdd_fail;
 
+	err = regulator_enable(vreg[IMX091_VREG_DVDD].vreg);
+	if (err)
+		goto imx091_dvdd_fail;
+
 	err = regulator_enable(vreg[IMX091_VREG_IOVDD].vreg);
 	if (err)
 		goto imx091_iovdd_fail;
@@ -286,6 +290,9 @@ imx091_vcmvdd_fail:
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
 
 imx091_iovdd_fail:
+	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
+
+imx091_dvdd_fail:
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
 imx091_avdd_fail:
@@ -308,6 +315,7 @@ static int macallan_imx091_power_off(struct nvc_regulator *vreg)
 
 	regulator_disable(macallan_vcmvdd);
 	regulator_disable(vreg[IMX091_VREG_IOVDD].vreg);
+	regulator_disable(vreg[IMX091_VREG_DVDD].vreg);
 	regulator_disable(vreg[IMX091_VREG_AVDD].vreg);
 
 	return 1;
@@ -376,6 +384,10 @@ static int macallan_ov9772_power_on(struct ov9772_power_rail *pw)
 	if (unlikely(err))
 		goto ov9772_avdd_fail;
 
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto ov9772_dvdd_fail;
+
 	err = regulator_enable(pw->dovdd);
 	if (unlikely(err))
 		goto ov9772_dovdd_fail;
@@ -397,6 +409,9 @@ ov9772_vcmvdd_fail:
 	regulator_disable(pw->dovdd);
 
 ov9772_dovdd_fail:
+	regulator_disable(pw->dvdd);
+
+ov9772_dvdd_fail:
 	regulator_disable(pw->avdd);
 
 ov9772_avdd_fail:
@@ -421,6 +436,7 @@ static int macallan_ov9772_power_off(struct ov9772_power_rail *pw)
 
 	regulator_disable(macallan_vcmvdd);
 	regulator_disable(pw->dovdd);
+	regulator_disable(pw->dvdd);
 	regulator_disable(pw->avdd);
 
 	/* return 1 to skip the in-driver power_off sequence */
