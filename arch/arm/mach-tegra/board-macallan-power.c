@@ -32,6 +32,7 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/edp.h>
+#include <linux/platform_data/tegra_edp.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -804,5 +805,56 @@ void __init macallan_sysedp_init(void)
 		return;
 
 	r = edp_set_governor(&macallan_sysedp_manager, g);
+	WARN_ON(r);
+}
+
+static struct tegra_sysedp_corecap macallan_sysedp_corecap[] = {
+	{  1000, {  1000, 240, 204 }, {  1000, 240, 204 } },
+	{  2000, {  1000, 240, 204 }, {  1000, 240, 204 } },
+	{  3000, {  1000, 240, 204 }, {  1000, 240, 204 } },
+	{  4000, {  1000, 240, 204 }, {  1000, 240, 204 } },
+	{  5000, {  1000, 240, 204 }, {  1000, 240, 312 } },
+	{  6000, {  1679, 240, 312 }, {  1679, 240, 312 } },
+	{  7000, {  1843, 240, 624 }, {  1975, 324, 408 } },
+	{  8000, {  2843, 240, 624 }, {  2306, 420, 624 } },
+	{  9000, {  3843, 240, 624 }, {  2606, 420, 792 } },
+	{ 10000, {  4565, 240, 792 }, {  3398, 528, 792 } },
+	{ 11000, {  5565, 240, 792 }, {  4398, 528, 792 } },
+	{ 12000, {  6565, 240, 792 }, {  4277, 600, 792 } },
+	{ 13000, {  7565, 240, 792 }, {  5277, 600, 792 } },
+	{ 14000, {  8565, 240, 792 }, {  6277, 600, 792 } },
+	{ 15000, {  9565, 240, 792 }, {  7277, 600, 792 } },
+	{ 16000, { 10565, 240, 792 }, {  8277, 600, 792 } },
+	{ 17000, { 11565, 240, 792 }, {  9277, 600, 792 } },
+	{ 18000, { 12565, 240, 792 }, { 10277, 600, 792 } },
+	{ 19000, { 13565, 240, 792 }, { 11277, 600, 792 } },
+	{ 20000, { 14565, 240, 792 }, { 12277, 600, 792 } },
+	{ 23000, { 14565, 600, 792 }, { 14565, 600, 792 } },
+};
+
+static struct tegra_sysedp_platform_data macallan_sysedp_platdata = {
+	.corecap = macallan_sysedp_corecap,
+	.corecap_size = ARRAY_SIZE(macallan_sysedp_corecap),
+	.init_req_watts = 20000
+};
+
+static struct platform_device macallan_sysedp_device = {
+	.name = "tegra_sysedp",
+	.id = -1,
+	.dev = { .platform_data = &macallan_sysedp_platdata }
+};
+
+void __init macallan_sysedp_core_init(void)
+{
+	int r;
+
+	macallan_sysedp_platdata.cpufreq_lim = tegra_get_system_edp_entries(
+			&macallan_sysedp_platdata.cpufreq_lim_size);
+	if (!macallan_sysedp_platdata.cpufreq_lim) {
+		WARN_ON(1);
+		return;
+	}
+
+	r = platform_device_register(&macallan_sysedp_device);
 	WARN_ON(r);
 }
