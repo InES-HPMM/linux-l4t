@@ -718,7 +718,7 @@ retry:
 out:
 	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
-	return ret;
+	return 0;
 handle_unregistered:
 	isomgr_unlock();
 validation_fail:
