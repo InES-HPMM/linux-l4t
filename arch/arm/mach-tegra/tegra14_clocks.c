@@ -6316,6 +6316,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.c2bus",	"floor.c2bus",		NULL,	&tegra_clk_c2bus, NULL,  0, 0),
 	SHARED_CLK("override.c2bus",	"override.c2bus",	NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.c2bus",		"edp.c2bus",		NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.profile.c2bus",	"profile.c2bus",	NULL,	&tegra_clk_c2bus, NULL,  0, SHARED_CEILING),
 
 	DUAL_CBUS_CLK("vde.cbus",	"tegra-avp",		"vde",	  &tegra_clk_c3bus, "vde", 0, 0),
 	DUAL_CBUS_CLK("se.cbus",	"tegra11-se",		NULL,	  &tegra_clk_c3bus, "se",  0, 0),
@@ -6334,6 +6335,7 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("floor.cbus", "floor.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, 0),
 	SHARED_CLK("override.cbus", "override.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_OVERRIDE),
 	SHARED_CLK("edp.cbus",	"edp.cbus",		NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
+	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
 };
 
