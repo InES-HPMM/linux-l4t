@@ -1212,6 +1212,13 @@ static int dbg_pinmux_open(struct inode *inode, struct file *file)
 	return single_open(file, dbg_pinmux_show, &inode->i_private);
 }
 
+/*
+ * Changing pinmux configuration at runtime
+ *
+ * Usage: Feed "<PINGROUP> <FUNCTION> <E_INPUT> <PUPD> <TRISTATE>"
+ *        to tegra_pinmux
+ * ex) # echo "HDMI_CEC CEC OUTPUT NORMAL TRISTATE" > /d/tegra_pinmux
+ */
 #define DELIMITER " \n"
 static ssize_t dbg_pinmux_write(struct file *file,
 	const char __user *userbuf, size_t count, loff_t *ppos)
@@ -1377,7 +1384,7 @@ static const struct file_operations debug_drive_fops = {
 
 static int __init tegra_pinmux_debuginit(void)
 {
-	(void) debugfs_create_file("tegra_pinmux", S_IRUGO,
+	(void) debugfs_create_file("tegra_pinmux", S_IRUGO | S_IWUGO,
 					NULL, NULL, &debug_fops);
 	(void) debugfs_create_file("tegra_pinmux_drive", S_IRUGO,
 					NULL, NULL, &debug_drive_fops);
