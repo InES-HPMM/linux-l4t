@@ -871,6 +871,34 @@ int __init pluto_soctherm_init(void)
 	return tegra11_soctherm_init(&pluto_soctherm_data);
 }
 
+static struct edp_manager pluto_sysedp_manager = {
+	.name = "battery",
+	.max = 14000
+};
+
+void __init pluto_sysedp_init(void)
+{
+	struct edp_governor *g;
+	int r;
+
+	if (!IS_ENABLED(CONFIG_EDP_FRAMEWORK))
+		return;
+
+	r = edp_register_manager(&pluto_sysedp_manager);
+	WARN_ON(r);
+	if (r)
+		return;
+
+	/* start with priority governor */
+	g = edp_get_governor("priority");
+	WARN_ON(!g);
+	if (!g)
+		return;
+
+	r = edp_set_governor(&pluto_sysedp_manager, g);
+	WARN_ON(r);
+}
+
 static struct tegra_sysedp_corecap pluto_sysedp_corecap[] = {
 	{  1000, {  1000, 240, 204 }, {  1000, 240, 204 } },
 	{  2000, {  1000, 240, 204 }, {  1000, 240, 204 } },
@@ -907,15 +935,17 @@ static struct platform_device pluto_sysedp_device = {
 	.dev = { .platform_data = &pluto_sysedp_platdata }
 };
 
-static __init int pluto_sysedp_init(void)
+void __init pluto_sysedp_core_init(void)
 {
+	int r;
+
 	pluto_sysedp_platdata.cpufreq_lim = tegra_get_system_edp_entries(
 			&pluto_sysedp_platdata.cpufreq_lim_size);
 	if (!pluto_sysedp_platdata.cpufreq_lim) {
 		WARN_ON(1);
-		return -ENODEV;
+		return;
 	}
 
-	return platform_device_register(&pluto_sysedp_device);
+	r = platform_device_register(&pluto_sysedp_device);
+	WARN_ON(r);
 }
-late_initcall(pluto_sysedp_init);

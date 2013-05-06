@@ -50,7 +50,6 @@
 #include <linux/mfd/max8831.h>
 #include <linux/of_platform.h>
 #include <linux/a2220.h>
-#include <linux/edp.h>
 #include <linux/mfd/tlv320aic3262-registers.h>
 #include <linux/mfd/tlv320aic3xxx-core.h>
 #include <linux/usb/tegra_usb_phy.h>
@@ -1340,42 +1339,6 @@ static int __init pluto_touch_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_EDP_FRAMEWORK
-static struct edp_manager battery_edp_manager = {
-	.name = "battery",
-	.max = 14000
-};
-
-static void __init pluto_battery_edp_init(void)
-{
-	struct edp_governor *g;
-	int r;
-
-	r = edp_register_manager(&battery_edp_manager);
-	if (r)
-		goto err_ret;
-
-	/* start with priority governor */
-	g = edp_get_governor("priority");
-	if (!g) {
-		r = -EFAULT;
-		goto err_ret;
-	}
-
-	r = edp_set_governor(&battery_edp_manager, g);
-	if (r)
-		goto err_ret;
-
-	return;
-
-err_ret:
-	pr_err("Battery EDP init failed with error %d\n", r);
-	WARN_ON(1);
-}
-#else
-static inline void pluto_battery_edp_init(void) {}
-#endif
-
 #ifdef CONFIG_USE_OF
 struct of_dev_auxdata pluto_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-dma", NULL),
@@ -1426,7 +1389,7 @@ static void __init pluto_dtv_init(void)
 
 static void __init tegra_pluto_early_init(void)
 {
-	pluto_battery_edp_init();
+	pluto_sysedp_init();
 	tegra_clk_init_from_table(pluto_clk_init_table);
 	tegra_clk_verify_parents();
 	tegra_soc_device_init("tegra_pluto");
@@ -1471,6 +1434,7 @@ static void __init tegra_pluto_late_init(void)
 	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 	pluto_soctherm_init();
 	tegra_register_fuse();
+	pluto_sysedp_core_init();
 }
 
 static void __init pluto_ramconsole_reserve(unsigned long size)
