@@ -1537,18 +1537,24 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host)
 
 	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
+	/* wait for SATA_PADPLL_IDDQ2LANE_SLUMBER_DLY = 3 microseconds. */
+	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
+	val &= ~IDDQ2LANE_SLUMBER_DLY_MASK;
+	val |= IDDQ2LANE_SLUMBER_DLY_3MS;
+	clk_writel(val, CLK_RST_SATA_PLL_CFG1_REG);
+
 	/* get sata phy and pll out of iddq: */
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~PADPLL_IDDQ_OVERRIDE_VALUE_MASK;
-	val |= PADPLL_IDDQ_OVERRIDE_VALUE_OFF;
+	val &= ~(PADPLL_IDDQ_OVERRIDE_VALUE_MASK | PADPLL_IDDQ_SWCTL_MASK);
+	val |= (PADPLL_IDDQ_SWCTL_OFF | PADPLL_IDDQ_OVERRIDE_VALUE_OFF);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 	/* wait for delay of IDDQ2LAND_SLUMBER_DLY */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
 	dat = (val & IDDQ2LANE_SLUMBER_DLY_MASK) >> IDDQ2LANE_SLUMBER_DLY_SHIFT;
 	udelay(dat);
 	val = pmc_readl(APB_PMC_SATA_PWRGT_0_REG);
-	val &= ~PADPHY_IDDQ_OVERRIDE_VALUE_MASK;
-	val |= PADPHY_IDDQ_OVERRIDE_VALUE_OFF;
+	val &= ~(PADPHY_IDDQ_OVERRIDE_VALUE_MASK | PADPHY_IDDQ_SWCTL_MASK);
+	val |= (PADPHY_IDDQ_SWCTL_OFF | PADPHY_IDDQ_OVERRIDE_VALUE_OFF);
 	pmc_writel(val, APB_PMC_SATA_PWRGT_0_REG);
 
 	status = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_SATA);
