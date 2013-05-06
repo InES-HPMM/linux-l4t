@@ -96,6 +96,13 @@ config REGULATOR_ARIZONA
 	  Support for the regulators found on Wolfson Arizona class
 	  devices.
 
+config REGULATOR_AS3722
+	tristate "ams AS3722 PMIC regulators"
+	depends on MFD_AS3722
+	help
+	  This driver provides support for the voltage regulators of the
+	  ams AS3722 PMIC.
+
 config REGULATOR_DA903X
 	tristate "Dialog Semiconductor DA9030/DA9034 regulators"
 	depends on PMIC_DA903X
