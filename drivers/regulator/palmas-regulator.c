@@ -643,8 +643,19 @@ static int palmas_is_enabled_ldo(struct regulator_dev *dev)
 static int palmas_list_voltage_ldo(struct regulator_dev *dev,
 					unsigned selector)
 {
+	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
+	int id = rdev_get_id(dev);
+
 	if (!selector)
 		return 0;
+
+	if (pmic->palmas->id == TPS80036) {
+		if (id == PALMAS_REG_LDO4 || id == PALMAS_REG_LDO5 ||
+				id == PALMAS_REG_LDO9)
+			if (pmic->ldo_vref0p425)
+				return  (850000 + (selector * 50000)) / 2;
+
+	}
 
 	/* voltage is 0.85V + (selector * 0.05v) */
 	return  850000 + (selector * 50000);
@@ -1267,13 +1278,15 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 	palmas->pmic = pmic;
 	platform_set_drvdata(pdev, pmic);
 
-	/* Clearing VREF0P425 of LDO_CTRL register for TPS80036 */
+	/* Read VREF0P425 of LDO_CTRL register for TPS80036 */
 	if (palmas->id == TPS80036) {
-		ret = palmas_update_bits(palmas, PALMAS_LDO_BASE,
-			PALMAS_LDO_CTRL, PALMAS_LDO_CTRL_VREF_425,
-				~PALMAS_LDO_CTRL_VREF_425);
+		ret = palmas_read(palmas, PALMAS_LDO_BASE,
+			PALMAS_LDO_CTRL, &reg);
 		if (ret)
 			goto err_unregister_regulator;
+
+		palmas->pmic->ldo_vref0p425 = (reg & PALMAS_LDO_CTRL_VREF_425)
+						? 1 : 0;
 	}
 
 	ret = palmas_smps_read(palmas, PALMAS_SMPS_CTRL, &reg);
