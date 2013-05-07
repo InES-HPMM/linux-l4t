@@ -3,7 +3,7 @@
  *
  * Driver for MAX1749, vibrator motor driver.
  *
- * Copyright (c) 2011-2012 NVIDIA Corporation, All Rights Reserved.
+ * Copyright (c) 2011-2013 NVIDIA Corporation, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
