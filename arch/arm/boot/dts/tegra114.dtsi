@@ -37,6 +37,7 @@
 		vi {
 			compatible = "nvidia,tegra114-vi";
 			reg = <0x54080000 0x00040000>;
+			interrupts = <0 69 0x04>;
 			nvidia,memory-clients = <18>;
 		};
 
