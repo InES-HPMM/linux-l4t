@@ -112,6 +112,20 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 	int ret;
 	u8 read_val;
 
+	/* Enable USB suspend if 2mA is current configuration */
+	if (charger->in_current_lim == 2)
+		ret = max77660_reg_set_bits(chip->parent,
+				MAX77660_CHG_SLAVE,
+				MAX77660_CHARGER_USBCHGCTRL,
+				MAX77660_USBCHGCTRL_USB_SUSPEND);
+	else
+		ret = max77660_reg_clr_bits(chip->parent,
+				MAX77660_CHG_SLAVE,
+				MAX77660_CHARGER_USBCHGCTRL,
+				MAX77660_USBCHGCTRL_USB_SUSPEND);
+	if (ret < 0)
+		return ret;
+
 	charger->in_current_lim = fchg_current(charger->in_current_lim);
 
 	/* unlock charger protection */
@@ -187,6 +201,7 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
 		if (ret < 0)
 			return ret;
+
 	} else {
 		/* disable charge */
 		/* Clear top level charge */
@@ -263,6 +278,9 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 		} else if (charger->in_current_lim > 500) {
 			charger->ac_online = 1;
 			charger->usb_online = 0;
+		} else if (charger->in_current_lim == 2) {
+			charger->ac_online = 0;
+			charger->usb_online = 1;
 		}
 
 		ret = max77660_charger_init(chip, true);
