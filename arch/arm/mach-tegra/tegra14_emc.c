@@ -665,9 +665,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 4.1 On ddr3 when DLL is re-started predict MRS long wait count and
 	   overwrite DFS table setting - No DDR3 on t148. */
 
-	/* 5.2 disable auto-refresh to save time after clock change - might
-	   be removed. */
-	emc_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+	/* 5.2 disable auto-refresh to save time after clock change. */
 
 	/* 6. turn Off dll and enter self-refresh on DDR3 - No DDR3. */
 
@@ -718,7 +716,6 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	do_clock_change(clk_setting);
 
 	/* 14.1 re-enable auto-refresh */
-	emc_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
 	/* 14.2 program burst_up_down registers if emc rate is going up */
 	if (next_timing->rate > last_timing->rate) {
