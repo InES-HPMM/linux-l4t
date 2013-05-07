@@ -116,6 +116,8 @@
 #define SH532U_TIMEOUT_MS	200
 #define SH532U_POS_LOW_DEFAULT	0xA000
 #define SH532U_POS_HIGH_DEFAULT	0x6000
+#define SH532U_POS_PHYSICAL_MIN	(~0x7FFF)
+#define SH532U_POS_PHYSICAL_MAX	(0x7FFF)
 #define SH532U_SLEW_RATE			1
 #define SH532U_POS_TRANSLATE		0
 #define SH532U_POS_SIGN_CHANGER		(-1)
@@ -1376,10 +1378,8 @@ static void sh532u_get_focuser_capabilities(struct sh532u_info *info)
 	info->config.pos_working_low = AF_POS_INVALID_VALUE;
 	info->config.pos_working_high = AF_POS_INVALID_VALUE;
 
-	info->config.pos_actual_low = info->cfg.limit_high *
-							SH532U_POS_SIGN_CHANGER;
-	info->config.pos_actual_high = info->cfg.limit_low *
-							SH532U_POS_SIGN_CHANGER;
+	info->config.pos_actual_low = SH532U_POS_PHYSICAL_MIN;
+	info->config.pos_actual_high = SH532U_POS_PHYSICAL_MAX;
 	info->config.slew_rate = info->cap.slew_rate;
 	info->config.circle_of_confusion = -1;
 
