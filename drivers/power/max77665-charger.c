@@ -781,6 +781,7 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 {
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
+	max77665_charger_disable_wdt(charger);
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
 	power_supply_unregister(&charger->ac);
