@@ -706,11 +706,14 @@ int __init macallan_regulator_init(void)
 	macallan_palmas_regulator_init();
 
 	if (board_info.board_id == BOARD_E1569) {
-		i2c_register_board_info(0, macallan_max17048_boardinfo, 1);
-
-		/* Disable charger when adapter is power source. */
-		if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
+		if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY) {
+			/* Disable charger when adapter is power source. */
 			macallan_bq2419x_pdata.bcharger_pdata = NULL;
+		} else {
+			/* Only register fuel gauge when using battery. */
+			i2c_register_board_info(0, macallan_max17048_boardinfo,
+						1);
+		}
 	} else {
 		/* forced make null to prevent charging for E1545. */
 		macallan_bq2419x_pdata.bcharger_pdata = NULL;
