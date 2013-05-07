@@ -732,8 +732,8 @@ static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
 
 	/* dvco min rate is under-estimated - skewed range up */
-	cld->calibration_range_min = cld->dvco_rate_min - 2 * RATE_STEP(cld);
-	cld->calibration_range_max = cld->dvco_rate_min + 6 * RATE_STEP(cld);
+	cld->calibration_range_min = cld->dvco_rate_min - 4 * RATE_STEP(cld);
+	cld->calibration_range_max = cld->dvco_rate_min + 8 * RATE_STEP(cld);
 }
 
 static struct voltage_reg_map *find_vdd_map_entry(
