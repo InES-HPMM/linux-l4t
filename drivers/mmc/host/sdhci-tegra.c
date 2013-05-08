@@ -36,6 +36,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/reboot.h>
+#include <linux/devfreq.h>
 
 #include <mach/hardware.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
@@ -161,6 +162,27 @@ struct sdhci_tegra_sd_stats {
 	unsigned int cmd_to_count;
 };
 
+#ifdef CONFIG_MMC_FREQ_SCALING
+struct freq_gov_params {
+	u8	idle_mon_cycles;
+	u8	polling_interval_ms;
+	u8	active_load_threshold;
+};
+
+static struct freq_gov_params gov_params[3] = {
+	[MMC_TYPE_MMC] = {
+		.idle_mon_cycles = 3,
+		.polling_interval_ms = 50,
+		.active_load_threshold = 25,
+	},
+	[MMC_TYPE_SDIO] = {
+		.idle_mon_cycles = 3,
+		.polling_interval_ms = 50,
+		.active_load_threshold = 25,
+	},
+};
+#endif
+
 enum tegra_tuning_freq {
 	TUNING_LOW_FREQ,
 	TUNING_HIGH_FREQ,
@@ -201,6 +223,17 @@ struct tegra_tuning_data {
 	struct tap_window_data	*tap_data[TUNING_VOLTAGES_COUNT];
 };
 
+struct tegra_freq_gov_data {
+	unsigned int		curr_active_load;
+	unsigned int		avg_active_load;
+	unsigned int		act_load_high_threshold;
+	unsigned int		max_idle_monitor_cycles;
+	unsigned int		curr_freq;
+	unsigned int		freqs[TUNING_FREQ_COUNT];
+	unsigned int		freq_switch_count;
+	bool			monitor_idle_load;
+};
+
 struct sdhci_tegra {
 	const struct tegra_sdhci_platform_data *plat;
 	const struct sdhci_tegra_soc_data *soc_data;
@@ -239,12 +272,18 @@ struct sdhci_tegra {
 	/* Freq tuning information for each sampling clock freq */
 	struct tegra_tuning_data tuning_data;
 	unsigned int best_tap_values[TUNING_FREQ_COUNT];
+	struct tegra_freq_gov_data *gov_data;
 };
 
 static struct clk *pll_c;
 static struct clk *pll_p;
 static unsigned long pll_c_rate;
 static unsigned long pll_p_rate;
+
+static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
+	unsigned int tap_delay);
+static unsigned long get_nearest_clock_freq(unsigned long pll_rate,
+		unsigned long desired_rate);
 
 static int show_error_stats_dump(struct seq_file *s, void *data)
 {
@@ -263,10 +302,42 @@ static int show_error_stats_dump(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int show_dfs_stats_dump(struct seq_file *s, void *data)
+{
+	struct sdhci_host *host = s->private;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct tegra_freq_gov_data *gov_data = tegra_host->gov_data;
+
+	seq_printf(s, "DFS statistics:\n");
+
+	if (host->mmc->dev_stats != NULL)
+		seq_printf(s, "Polling_period: %d\n",
+			host->mmc->dev_stats->polling_interval);
+
+	if (gov_data != NULL) {
+		seq_printf(s, "cur_active_load: %d\n",
+			gov_data->curr_active_load);
+		seq_printf(s, "avg_active_load: %d\n",
+			gov_data->avg_active_load);
+		seq_printf(s, "act_load_high_threshold: %d\n",
+			gov_data->act_load_high_threshold);
+		seq_printf(s, "freq_switch_count: %d\n",
+			gov_data->freq_switch_count);
+	}
+	return 0;
+}
+
 static int sdhci_error_stats_dump(struct inode *inode, struct file *file)
 {
 	return single_open(file, show_error_stats_dump, inode->i_private);
 }
+
+static int sdhci_dfs_stats_dump(struct inode *inode, struct file *file)
+{
+	return single_open(file, show_dfs_stats_dump, inode->i_private);
+}
+
 
 static const struct file_operations sdhci_host_fops = {
 	.open		= sdhci_error_stats_dump,
@@ -274,6 +345,14 @@ static const struct file_operations sdhci_host_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+
+static const struct file_operations sdhci_host_dfs_fops = {
+	.open		= sdhci_dfs_stats_dump,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
 {
@@ -359,6 +438,186 @@ static void tegra_sdhci_writew(struct sdhci_host *host, u16 val, int reg)
 
 	writew(val, host->ioaddr + reg);
 }
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+/*
+ * Dynamic frequency calculation.
+ * The active load for the current period and the average active load
+ * are calculated at the end of each polling interval.
+ *
+ * If the current active load is greater than the threshold load, then the
+ * frequency is boosted(156MHz).
+ * If the active load is lower than the threshold, then the load is monitored
+ * for a max of three cycles before reducing the frequency(82MHz). If the
+ * average active load is lower, then the monitoring cycles is reduced.
+ *
+ * The active load threshold value for both eMMC and SDIO is set to 25 which
+ * is found to give the optimal power and performance. The polling interval is
+ * set to 50 msec.
+ *
+ * The polling interval and active load threshold values can be changed by
+ * the user through sysfs.
+*/
+static unsigned long calculate_mmc_target_freq(
+	struct tegra_freq_gov_data *gov_data)
+{
+	unsigned long desired_freq = gov_data->curr_freq;
+	unsigned int type = MMC_TYPE_MMC;
+
+	if (gov_data->curr_active_load >= gov_data->act_load_high_threshold) {
+		desired_freq = gov_data->freqs[TUNING_HIGH_FREQ];
+		gov_data->monitor_idle_load = false;
+		gov_data->max_idle_monitor_cycles =
+			gov_params[type].idle_mon_cycles;
+	} else {
+		if (gov_data->monitor_idle_load) {
+			if (!gov_data->max_idle_monitor_cycles) {
+				desired_freq = gov_data->freqs[TUNING_LOW_FREQ];
+				gov_data->max_idle_monitor_cycles =
+					gov_params[type].idle_mon_cycles;
+			} else {
+				gov_data->max_idle_monitor_cycles--;
+			}
+		} else {
+			gov_data->monitor_idle_load = true;
+			gov_data->max_idle_monitor_cycles *=
+				gov_data->avg_active_load;
+			gov_data->max_idle_monitor_cycles /= 100;
+		}
+	}
+
+	return desired_freq;
+}
+
+static unsigned long calculate_sdio_target_freq(
+	struct tegra_freq_gov_data *gov_data)
+{
+	unsigned long desired_freq = gov_data->curr_freq;
+	unsigned int type = MMC_TYPE_SDIO;
+
+	if (gov_data->curr_active_load >= gov_data->act_load_high_threshold) {
+		desired_freq = gov_data->freqs[TUNING_HIGH_FREQ];
+		gov_data->monitor_idle_load = false;
+		gov_data->max_idle_monitor_cycles =
+			gov_params[type].idle_mon_cycles;
+	} else {
+		if (gov_data->monitor_idle_load) {
+			if (!gov_data->max_idle_monitor_cycles) {
+				desired_freq = gov_data->freqs[TUNING_LOW_FREQ];
+				gov_data->max_idle_monitor_cycles =
+					gov_params[type].idle_mon_cycles;
+			} else {
+				gov_data->max_idle_monitor_cycles--;
+			}
+		} else {
+			gov_data->monitor_idle_load = true;
+			gov_data->max_idle_monitor_cycles *=
+				gov_data->avg_active_load;
+			gov_data->max_idle_monitor_cycles /= 100;
+		}
+	}
+
+	return desired_freq;
+}
+
+static unsigned long sdhci_tegra_get_target_freq(struct sdhci_host *sdhci,
+	struct devfreq_dev_status *dfs_stats)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct tegra_freq_gov_data *gov_data = tegra_host->gov_data;
+	unsigned long freq = sdhci->mmc->actual_clock;
+
+	if (!gov_data) {
+		dev_err(mmc_dev(sdhci->mmc),
+			"No gov data. Continue using current freq %ld", freq);
+		return freq;
+	}
+
+	/*
+	 * If clock gating is enabled and clock is currently disabled, then
+	 * return freq as 0.
+	 */
+	if (!tegra_host->clk_enabled)
+		return 0;
+
+	if (dfs_stats->total_time) {
+		gov_data->curr_active_load = (dfs_stats->busy_time * 100) /
+			dfs_stats->total_time;
+	} else {
+		gov_data->curr_active_load = 0;
+	}
+
+	gov_data->avg_active_load += gov_data->curr_active_load;
+	gov_data->avg_active_load >>= 1;
+
+	if (sdhci->mmc->card) {
+		if (sdhci->mmc->card->type == MMC_TYPE_SDIO)
+			freq = calculate_sdio_target_freq(gov_data);
+		else if (sdhci->mmc->card->type == MMC_TYPE_MMC)
+			freq = calculate_mmc_target_freq(gov_data);
+		if (gov_data->curr_freq != freq)
+			gov_data->freq_switch_count++;
+		gov_data->curr_freq = freq;
+	}
+
+	return freq;
+}
+
+static int sdhci_tegra_freq_gov_init(struct sdhci_host *sdhci)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	unsigned int i;
+	unsigned int freq;
+	unsigned int type;
+
+	if (!((sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR104) ||
+		(sdhci->mmc->ios.timing == MMC_TIMING_MMC_HS200))) {
+		dev_info(mmc_dev(sdhci->mmc),
+			"DFS not required for current operating mode\n");
+		return -EACCES;
+	}
+
+	if (!tegra_host->gov_data) {
+		tegra_host->gov_data = devm_kzalloc(mmc_dev(sdhci->mmc),
+			sizeof(struct tegra_freq_gov_data), GFP_KERNEL);
+		if (!tegra_host->gov_data) {
+			dev_err(mmc_dev(sdhci->mmc),
+				"Failed to allocate memory for dfs data\n");
+			return -ENOMEM;
+		}
+	}
+
+	/* Find the supported frequencies */
+	for (i = 0; i < TUNING_FREQ_COUNT; i++) {
+		freq = tuning_params[i].freq_hz;
+		/*
+		 * Check the nearest possible clock with pll_c and pll_p as
+		 * the clock sources. Choose the higher frequency.
+		 */
+		tegra_host->gov_data->freqs[i] =
+			get_nearest_clock_freq(pll_c_rate, freq);
+		freq = get_nearest_clock_freq(pll_p_rate, freq);
+		if (freq > tegra_host->gov_data->freqs[i])
+			tegra_host->gov_data->freqs[i] = freq;
+	}
+
+	tegra_host->gov_data->monitor_idle_load = false;
+	tegra_host->gov_data->curr_freq = sdhci->mmc->actual_clock;
+	if (sdhci->mmc->card) {
+		type = sdhci->mmc->card->type;
+		sdhci->mmc->dev_stats->polling_interval =
+			gov_params[type].polling_interval_ms;
+		tegra_host->gov_data->act_load_high_threshold =
+			gov_params[type].active_load_threshold;
+		tegra_host->gov_data->max_idle_monitor_cycles =
+			gov_params[type].idle_mon_cycles;
+	}
+
+	return 0;
+}
+#endif
 
 static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
 {
@@ -511,6 +770,10 @@ static void tegra_sdhci_reset_exit(struct sdhci_host *host, u8 mask)
 		tegra_host->sd_stat_head->data_to_count = 0;
 		tegra_host->sd_stat_head->cmd_to_count = 0;
 	}
+
+	if (tegra_host->gov_data != NULL)
+		tegra_host->gov_data->freq_switch_count = 0;
+
 	vendor_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
 	if (soc_data->nvquirks & NVQUIRK_ENABLE_PADPIPE_CLKEN) {
 		vendor_ctrl |=
@@ -747,6 +1010,19 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 	/* FPGA supports 26MHz of clock for SDMMC. */
 	if (tegra_platform_is_fpga())
 		sdhci->max_clk = 26000000;
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/* Set the tap delay if tuning is done and dfs is enabled */
+	if (sdhci->mmc->df &&
+		(tegra_host->tuning_status == TUNING_STATUS_DONE)) {
+		if (clock > tuning_params[TUNING_LOW_FREQ].freq_hz)
+			sdhci_tegra_set_tap_delay(sdhci,
+				tegra_host->best_tap_values[TUNING_HIGH_FREQ]);
+		else
+			sdhci_tegra_set_tap_delay(sdhci,
+				tegra_host->best_tap_values[TUNING_LOW_FREQ]);
+	}
+#endif
+
 }
 
 static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
@@ -991,17 +1267,8 @@ static int sdhci_tegra_sd_error_stats(struct sdhci_host *host, u32 int_status)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
-	struct platform_device *pdev = to_platform_device(mmc_dev(host->mmc));
-	struct sdhci_tegra_sd_stats *head;
+	struct sdhci_tegra_sd_stats *head = tegra_host->sd_stat_head;
 
-	if (tegra_host->sd_stat_head == NULL) {
-		tegra_host->sd_stat_head = devm_kzalloc(&pdev->dev, sizeof(
-						struct sdhci_tegra_sd_stats),
-						GFP_KERNEL);
-		if (tegra_host->sd_stat_head == NULL)
-			return -ENOMEM;
-	}
-	head = tegra_host->sd_stat_head;
 	if (int_status & SDHCI_INT_DATA_CRC)
 		head->data_crc_count++;
 	if (int_status & SDHCI_INT_CRC)
@@ -1388,6 +1655,7 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 	unsigned int voltage;
 #ifdef CONFIG_MMC_FREQ_SCALING
 	unsigned int dfs_freq = 0;
+	bool single_freq_tuning = false;
 #endif
 
 	/* Tuning is valid only in SDR104 and SDR50 modes */
@@ -1426,12 +1694,11 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 		goto set_best_tap;
 #ifdef CONFIG_MMC_FREQ_SCALING
 	for (dfs_freq = 0; dfs_freq < TUNING_FREQ_COUNT; dfs_freq++) {
-		if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
-			sdhci->max_clk = tuning_params[TUNING_LOW_FREQ].freq_hz;
+		if (sdhci->mmc->caps2 & MMC_CAP2_FREQ_SCALING)
+			tegra_sdhci_set_clk_rate(sdhci,
+				tuning_params[dfs_freq].freq_hz);
 		else
-			sdhci->max_clk =
-				tuning_params[TUNING_HIGH_FREQ].freq_hz;
-		tegra_sdhci_set_clk_rate(sdhci, sdhci->max_clk);
+			single_freq_tuning = true;
 #endif
 		if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
 			freq_band = TUNING_HIGH_FREQ;
@@ -1516,12 +1783,10 @@ set_best_tap:
 	else
 		tegra_host->tuning_status = TUNING_STATUS_DONE;
 #ifdef CONFIG_MMC_FREQ_SCALING
-	if (sdhci->max_clk > tuning_params[TUNING_LOW_FREQ].freq_hz)
-		tegra_host->best_tap_values[TUNING_HIGH_FREQ] =
+		tegra_host->best_tap_values[dfs_freq] =
 			tegra_host->tuning_data.best_tap_value;
-	else
-		tegra_host->best_tap_values[TUNING_LOW_FREQ] =
-			tegra_host->tuning_data.best_tap_value;
+		if (single_freq_tuning)
+			break;
 }
 #endif
 
@@ -1614,23 +1879,91 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	return 0;
 }
 
+static int show_polling_period(void *data, u64 *value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+
+	if (host->mmc->dev_stats != NULL)
+		*value = host->mmc->dev_stats->polling_interval;
+
+	return 0;
+}
+
+static int set_polling_period(void *data, u64 value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+
+	if (host->mmc->dev_stats != NULL) {
+		/* Limiting the maximum polling period to 1 sec */
+		if (value > 1000)
+			value = 1000;
+		host->mmc->dev_stats->polling_interval = value;
+	}
+
+	return 0;
+}
+static int show_active_load_high_threshold(void *data, u64 *value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct tegra_freq_gov_data *gov_data = tegra_host->gov_data;
+
+	if (gov_data != NULL)
+		*value = gov_data->act_load_high_threshold;
+
+	return 0;
+}
+
+static int set_active_load_high_threshold(void *data, u64 value)
+{
+	struct sdhci_host *host = (struct sdhci_host *)data;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	struct tegra_freq_gov_data *gov_data = tegra_host->gov_data;
+
+	if (gov_data != NULL) {
+		/* Maximum threshold load percentage is 100.*/
+		if (value > 100)
+			value = 100;
+		gov_data->act_load_high_threshold = value;
+	}
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_polling_period_fops, show_polling_period,
+		set_polling_period, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(sdhci_active_load_high_threshold_fops,
+		show_active_load_high_threshold,
+		set_active_load_high_threshold, "%llu\n");
+
 static void sdhci_tegra_error_stats_debugfs(struct sdhci_host *host)
 {
 	struct dentry *root;
+	struct dentry *dfs_root;
 
 	root = debugfs_create_dir(dev_name(mmc_dev(host->mmc)), NULL);
-	if (IS_ERR(root))
-		/* Don't complain -- debugfs just isn't enabled */
-		return;
-	if (!root)
-		/* Complain -- debugfs is enabled, but it failed to
-		 * create the directory. */
+	if (IS_ERR_OR_NULL(root))
 		goto err_root;
-
 	host->debugfs_root = root;
+
+	dfs_root = debugfs_create_dir("dfs_stats_dir", root);
+	if (IS_ERR_OR_NULL(dfs_root))
+		goto err_node;
 
 	if (!debugfs_create_file("error_stats", S_IRUSR, root, host,
 				&sdhci_host_fops))
+		goto err_node;
+	if (!debugfs_create_file("dfs_stats", S_IRUSR, dfs_root, host,
+				&sdhci_host_dfs_fops))
+		goto err_node;
+	if (!debugfs_create_file("polling_period", 0644, dfs_root, (void *)host,
+				&sdhci_polling_period_fops))
+		goto err_node;
+	if (!debugfs_create_file("active_load_high_threshold", 0644,
+				dfs_root, (void *)host,
+				&sdhci_active_load_high_threshold_fops))
 		goto err_node;
 	return;
 
@@ -1672,6 +2005,10 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 	.execute_freq_tuning	= sdhci_tegra_execute_tuning,
 	.sd_error_stats		= sdhci_tegra_sd_error_stats,
+#ifdef CONFIG_MMC_FREQ_SCALING
+	.dfs_gov_init		= sdhci_tegra_freq_gov_init,
+	.dfs_gov_get_target_freq	= sdhci_tegra_get_target_freq,
+#endif
 };
 
 static struct sdhci_pltfm_data sdhci_tegra20_pdata = {
@@ -1854,9 +2191,16 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 
 	tegra_host->plat = plat;
 	pdev->dev.platform_data = plat;
-	tegra_host->sd_stat_head = NULL;
-	tegra_host->soc_data = soc_data;
 
+	tegra_host->sd_stat_head = devm_kzalloc(&pdev->dev,
+		sizeof(struct sdhci_tegra_sd_stats), GFP_KERNEL);
+	if (!tegra_host->sd_stat_head) {
+		dev_err(mmc_dev(host->mmc), "failed to allocate sd_stat_head\n");
+		rc = -ENOMEM;
+		goto err_power_req;
+	}
+
+	tegra_host->soc_data = soc_data;
 	pltfm_host->priv = tegra_host;
 
 	pll_c = clk_get_sys(NULL, "pll_c");
@@ -2064,6 +2408,16 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
 	host->mmc->caps2 |= MMC_CAP2_PACKED_CMD;
+#endif
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/*
+	 * Enable dyamic frequency scaling support only if the platform clock
+	 * limit is higher than the lowest supported frequency by tuning.
+	 */
+	if (plat->en_freq_scaling && (plat->max_clk_limit >
+		tuning_params[TUNING_LOW_FREQ].freq_hz))
+		host->mmc->caps2 |= MMC_CAP2_FREQ_SCALING;
 #endif
 
 	if (plat->nominal_vcore_uV)

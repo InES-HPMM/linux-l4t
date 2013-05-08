@@ -54,6 +54,7 @@ struct tegra_sdhci_platform_data {
 	unsigned int base_clk;
 	struct mmc_platform_data mmc_data;
 	bool power_off_rail;
+	bool en_freq_scaling;
 };
 
 #endif
