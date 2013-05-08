@@ -151,6 +151,7 @@ static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 	REGULATOR_SUPPLY("avdd_1v2_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("avdd_1v2_hsic_com", NULL),
 };
 
