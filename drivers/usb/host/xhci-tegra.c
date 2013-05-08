@@ -1456,7 +1456,6 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 {
 	struct xhci_hcd *xhci = tegra->xhci;
 	struct usb_hcd *hcd = xhci_to_hcd(xhci);
-	u32 val;
 	u32 ret;
 	u32 portsc;
 
@@ -1494,10 +1493,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	else
 		pmc_data.port_speed = USB_PMC_PORT_SPEED_UNKNOWN;
 
-	/* FIXME: rctrl and tctrl currently returning zero */
-	val = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_1_0);
-	pmc_data.utmip_rctrl_val = RCTRL(val);
-	pmc_data.utmip_tctrl_val = TCTRL(val);
+	/* RCTRL and TCTRL is programmed in pmc_data.utmip_r/tctrl_val */
 	pmc_data.pmc_ops->setup_pmc_wake_detect(&pmc_data);
 
 	tegra_xhci_hs_wake_on_interrupts(tegra, true);
@@ -1708,6 +1704,16 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	utmip_rctrl_val = RCTRL(reg);
 	utmip_tctrl_val = TCTRL(reg);
 
+	/*
+	 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
+	 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
+	 */
+	pmc_data.utmip_rctrl_val = 0xf + ffz(utmip_rctrl_val);
+	pmc_data.utmip_tctrl_val = 0xf + ffz(utmip_tctrl_val);
+
+	xhci_dbg(tegra->xhci, "rctrl_val = 0x%x, tctrl_val = 0x%x\n",
+		pmc_data.utmip_rctrl_val, pmc_data.utmip_tctrl_val);
+
 	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 1 and
 	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
 	 */
@@ -1717,11 +1723,9 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 
 	/* Program these values into PMC regiseter and program the
 	 * PMC override
-	 * tctrl_val = 0x1f - (16 - ffz(utmip_tctrl_val)
-	 * rctrl_val = 0x1f - (16 - ffz(utmip_rctrl_val)
 	 */
-	reg = PMC_TCTRL_VAL(0xf + ffz(utmip_tctrl_val)) |
-		PMC_RCTRL_VAL(0xf + ffz(utmip_rctrl_val));
+	reg = PMC_TCTRL_VAL(pmc_data.utmip_tctrl_val) |
+		PMC_RCTRL_VAL(pmc_data.utmip_rctrl_val);
 	writel(reg, tegra->pmc_base + PMC_UTMIP_TERM_PAD_CFG);
 
 	reg = readl(tegra->pmc_base + PMC_SLEEP_CFG);
@@ -2615,6 +2619,10 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 
 	/* reset the pointer back to NULL. driver uses it */
 	/* platform_set_drvdata(pdev, NULL); */
+
+	/* calculate rctrl_val and tctrl_val once at boot time */
+	tegra_xhci_war_for_tctrl_rctrl(tegra);
+	pmc_init();
 
 	/* Program the XUSB pads to take ownership of ports */
 	tegra_xhci_padctl_portmap_and_caps(tegra);
