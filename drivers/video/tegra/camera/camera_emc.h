@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera_emc.h
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -20,8 +20,9 @@
 
 int tegra_camera_enable_emc(struct tegra_camera *camera);
 int tegra_camera_disable_emc(struct tegra_camera *camera);
-#if defined(CONFIG_TEGRA_ISOMGR)
 int tegra_camera_isomgr_request(struct tegra_camera *camera, unsigned long bw,
 				unsigned long lt);
-#endif
+int tegra_camera_isomgr_register(struct tegra_camera *camera);
+int tegra_camera_isomgr_unregister(struct tegra_camera *camera);
+
 #endif

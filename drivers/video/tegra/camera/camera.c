@@ -263,19 +263,9 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 			goto clk_get_fail;
 	}
 
-#if defined(CONFIG_TEGRA_ISOMGR)
-	/* Dedicated bw is what VI could ask for at most */
-	camera->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
-					/* dedicated bw, KBps*/
-					tegra_camera_get_max_bw(camera),
-					NULL,	/* tegra_isomgr_renegotiate */
-					NULL);	/* *priv */
-	if (!camera->isomgr_handle) {
-		dev_err(&ndev->dev, "%s: unable to register isomgr\n",
-					__func__);
+	ret = tegra_camera_isomgr_register(camera);
+	if (ret)
 		goto clk_get_fail;
-	}
-#endif
 
 	return camera;
 
@@ -300,25 +290,8 @@ int tegra_camera_unregister(struct tegra_camera *camera)
 	for (i = 0; i < CAMERA_CLK_MAX; i++)
 		clk_put(camera->clock[i].clk);
 
-#if defined(CONFIG_TEGRA_ISOMGR)
-	/*
-	 * Return memory bandwidth to isomgr.
-	 * If bandwidth is zero, then latency will be ignored
-	 * in tegra_isomgr_reserve().
-	 */
-	{
-		int ret = 0;
+	tegra_camera_isomgr_unregister(camera);
 
-		ret = tegra_isomgr_reserve(camera->isomgr_handle,
-					0,	/* KB/sec */
-					0);	/* usec */
-		if (!ret)
-			return -ENOMEM;
-
-		tegra_isomgr_unregister(camera->isomgr_handle);
-		camera->isomgr_handle = NULL;
-	}
-#endif
 	kfree(camera);
 
 	return 0;

@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/camera/camera_emc.c
  *
- * Copyright (C) 2013 Nvidia Corp
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,6 +14,7 @@
  *
  */
 
+#include "camera_clk.h"
 #include "camera_emc.h"
 
 int tegra_camera_enable_emc(struct tegra_camera *camera)
@@ -46,12 +47,37 @@ int tegra_camera_disable_emc(struct tegra_camera *camera)
 		}
 	}
 #endif
-
 	return tegra_emc_enable_eack();
 }
 
-
 #if defined(CONFIG_TEGRA_ISOMGR)
+int tegra_camera_isomgr_register(struct tegra_camera *camera)
+{
+	dev_dbg(camera->dev, "%s++\n", __func__);
+
+	/* Dedicated bw is what VI could ask for at most */
+	camera->isomgr_handle = tegra_isomgr_register(TEGRA_ISO_CLIENT_VI_0,
+					/* dedicated bw, KBps*/
+					tegra_camera_get_max_bw(camera),
+					NULL,	/* tegra_isomgr_renegotiate */
+					NULL);	/* *priv */
+	if (!camera->isomgr_handle) {
+		dev_err(camera->dev, "%s: unable to register isomgr\n",
+					__func__);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+int tegra_camera_isomgr_unregister(struct tegra_camera *camera)
+{
+	tegra_isomgr_unregister(camera->isomgr_handle);
+	camera->isomgr_handle = NULL;
+
+	return 0;
+}
+
 /*
  * bw: memory BW in KBps
  * lt: latency in usec
@@ -60,6 +86,8 @@ int tegra_camera_isomgr_request(struct tegra_camera *camera, unsigned long bw,
 				unsigned long lt)
 {
 	int ret = 0;
+
+	dev_dbg(camera->dev, "%s++ bw=%lu, lt=%lu\n", __func__, bw, lt);
 
 	/* return value of tegra_isomgr_reserve is dvfs latency in usec */
 	ret = tegra_isomgr_reserve(camera->isomgr_handle,
@@ -82,6 +110,22 @@ int tegra_camera_isomgr_request(struct tegra_camera *camera, unsigned long bw,
 		return -ENOMEM;
 	}
 
+	return 0;
+}
+#else
+int tegra_camera_isomgr_register(struct tegra_camera *camera)
+{
+	return 0;
+}
+
+int tegra_camera_isomgr_unregister(struct tegra_camera *camera)
+{
+	return 0;
+}
+
+int tegra_camera_isomgr_request(struct tegra_camera *camera, unsigned long bw,
+				unsigned long lt)
+{
 	return 0;
 }
 #endif
