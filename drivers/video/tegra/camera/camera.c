@@ -14,10 +14,14 @@
  *
  */
 
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
 #include "camera_priv_defs.h"
 #include "camera_clk.h"
 #include "camera_power.h"
 #include "camera_emc.h"
+#include "camera_irq.h"
 
 #define TEGRA_CAMERA_NAME "tegra_camera"
 
@@ -43,6 +47,88 @@ static struct clock_data clock_init[] = {
 #endif
 	{ CAMERA_SCLK, "sclk", true, 80000000},
 };
+
+static int vi_out0_show(struct seq_file *s, void *unused)
+{
+	struct tegra_camera *camera = s->private;
+
+	seq_printf(s, "overflow: %u\n",
+		atomic_read(&(camera->vi_out0.overflow)));
+
+	return 0;
+}
+
+static int vi_out0_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, vi_out0_show, inode->i_private);
+}
+
+static int vi_out1_show(struct seq_file *s, void *unused)
+{
+	struct tegra_camera *camera = s->private;
+	seq_printf(s, "overflow: %u\n",
+		atomic_read(&(camera->vi_out1.overflow)));
+
+	return 0;
+}
+
+static int vi_out1_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, vi_out1_show, inode->i_private);
+}
+
+static const struct file_operations vi_out0_fops = {
+	.open		= vi_out0_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static const struct file_operations vi_out1_fops = {
+	.open		= vi_out1_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static void tegra_camera_remove_debugfs(struct tegra_camera *camera)
+{
+	if (camera->debugdir)
+		debugfs_remove_recursive(camera->debugdir);
+	camera->debugdir = NULL;
+}
+
+static void tegra_camera_create_debugfs(struct tegra_camera *camera)
+{
+	struct dentry *ret;
+
+	camera->debugdir = debugfs_create_dir(TEGRA_CAMERA_NAME, NULL);
+	if (!camera->debugdir) {
+		dev_err(camera->dev, "%s: failed to create %s directory",
+			__func__, TEGRA_CAMERA_NAME);
+		goto create_debugfs_fail;
+	}
+
+	ret = debugfs_create_file("vi_out0", S_IRUGO,
+			camera->debugdir, camera, &vi_out0_fops);
+	if (!ret) {
+		dev_err(camera->dev, "%s: failed to create vi_out0", __func__);
+		goto create_debugfs_fail;
+	}
+
+	ret = debugfs_create_file("vi_out1", S_IRUGO,
+			camera->debugdir, camera, &vi_out1_fops);
+	if (!ret) {
+		dev_err(camera->dev, "%s: failed to create vi_out1", __func__);
+		goto create_debugfs_fail;
+	}
+
+	return;
+
+create_debugfs_fail:
+	dev_err(camera->dev, "%s: could not create debugfs", __func__);
+	tegra_camera_remove_debugfs(camera);
+}
 
 static long tegra_camera_ioctl(struct file *file,
 			       unsigned int cmd, unsigned long arg)
@@ -137,10 +223,16 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	if (ret)
 		goto enable_clk_fail;
 
+	ret = tegra_camera_enable_irq(camera);
+	if (ret)
+		goto enable_irq_fail;
+
 	mutex_unlock(&camera->tegra_camera_lock);
 
 	return 0;
 
+enable_irq_fail:
+	tegra_camera_disable_clk(camera);
 enable_clk_fail:
 	tegra_camera_disable_emc(camera);
 enable_emc_fail:
@@ -158,6 +250,10 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 	dev_info(camera->dev, "%s++\n", __func__);
 
 	mutex_lock(&camera->tegra_camera_lock);
+
+	ret = tegra_camera_disable_irq(camera);
+	if (ret)
+		goto release_exit;
 	/* disable HW clock */
 	ret = tegra_camera_disable_clk(camera);
 	if (ret)
@@ -267,8 +363,19 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 	if (ret)
 		goto clk_get_fail;
 
+	/* Init intterupt bottom half */
+	INIT_WORK(&camera->stats_work, tegra_camera_stats_worker);
+
+	ret = tegra_camera_intr_init(camera);
+	if (ret)
+		goto intr_init_fail;
+
+	tegra_camera_create_debugfs(camera);
+
 	return camera;
 
+intr_init_fail:
+	tegra_camera_isomgr_unregister(camera);
 clk_get_fail:
 	while (i--)
 		clk_put(camera->clock[clock_init[i].index].clk);
@@ -287,11 +394,12 @@ int tegra_camera_unregister(struct tegra_camera *camera)
 
 	dev_info(camera->dev, "%s: ++\n", __func__);
 
+	/* Free IRQ */
+	tegra_camera_intr_free(camera);
+
 	for (i = 0; i < CAMERA_CLK_MAX; i++)
 		clk_put(camera->clock[i].clk);
-
 	tegra_camera_isomgr_unregister(camera);
-
 	kfree(camera);
 
 	return 0;
