@@ -173,6 +173,28 @@
 		.is_input	= _is_input,	\
 		.value		= _value,	\
 	}
+#define GPIO_PINMUX(_pingroup, _pupd, _tri, _io, _od)   \
+	{                                                   \
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,       \
+		.func       = TEGRA_MUX_SAFE,                   \
+		.pupd       = TEGRA_PUPD_##_pupd,               \
+		.tristate   = TEGRA_TRI_##_tri,                 \
+		.io         = TEGRA_PIN_##_io,                  \
+		.lock       = TEGRA_PIN_LOCK_DEFAULT,           \
+		.od         = TEGRA_PIN_OD_##_od,               \
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,       \
+	}
+#define UNUSED_PINMUX(_pingroup)                    \
+	{                                               \
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,   \
+		.func       = TEGRA_MUX_SAFE,               \
+		.pupd       = TEGRA_PUPD_PULL_DOWN,         \
+		.tristate   = TEGRA_TRI_TRISTATE,           \
+		.io         = TEGRA_PIN_OUTPUT,             \
+		.lock       = TEGRA_PIN_LOCK_DEFAULT,       \
+		.od         = TEGRA_PIN_OD_DEFAULT,         \
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,   \
+	}
 
 static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
