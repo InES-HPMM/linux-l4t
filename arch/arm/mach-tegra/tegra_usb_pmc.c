@@ -232,10 +232,12 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	spin_lock_irqsave(&pmc_lock, flags);
 
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
-	val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
-		PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
-	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	if (pmc_data->utmip_tctrl_val | pmc_data->utmip_rctrl_val) {
+		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+		val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
+			PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
+		writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	}
 
 	/* Turn over pad configuration to PMC  for line wake events*/
 	val = readl(pmc_base + PMC_SLEEP_CFG);
@@ -274,8 +276,13 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
 
 	/* Disable PMC master mode by clearing MASTER_EN */
 	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~(UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst) |
-			UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
+	/* WAR for xusb */
+	if (pmc_data->controller_type == TEGRA_USB_3_0)
+		val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
+	else
+		val &= ~(UTMIP_RCTRL_USE_PMC(inst) |
+				UTMIP_TCTRL_USE_PMC(inst));
+	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
 	writel(val, pmc_base + PMC_SLEEP_CFG);
 
 	val = readl(pmc_base + PMC_TRIGGERS);
@@ -324,10 +331,12 @@ static void utmip_powerdown_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	writel(val, pmc_base + PMC_SLEEPWALK_REG(inst));
 
 	/* Program thermally encoded RCTRL_VAL, TCTRL_VAL into PMC space */
-	val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
-	val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
-		PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
-	writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	if (pmc_data->utmip_tctrl_val | pmc_data->utmip_rctrl_val) {
+		val = readl(pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+		val = PMC_TCTRL_VAL(pmc_data->utmip_tctrl_val) |
+			PMC_RCTRL_VAL(pmc_data->utmip_rctrl_val);
+		writel(val, pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	}
 
 	/* Turn over pad configuration to PMC */
 	val = readl(pmc_base + PMC_SLEEP_CFG);
@@ -351,8 +360,13 @@ static void utmip_powerup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 
 	/* Disable PMC master mode by clearing MASTER_EN */
 	val = readl(pmc_base + PMC_SLEEP_CFG);
-	val &= ~(UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst) |
-			UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
+	/* WAR for xusb */
+	if (pmc_data->controller_type == TEGRA_USB_3_0)
+		val |= UTMIP_RCTRL_USE_PMC(inst) | UTMIP_TCTRL_USE_PMC(inst);
+	else
+		val &= ~(UTMIP_RCTRL_USE_PMC(inst) |
+				UTMIP_TCTRL_USE_PMC(inst));
+	val &= ~(UTMIP_FSLS_USE_PMC(inst) | UTMIP_MASTER_ENABLE(inst));
 	writel(val, pmc_base + PMC_SLEEP_CFG);
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
