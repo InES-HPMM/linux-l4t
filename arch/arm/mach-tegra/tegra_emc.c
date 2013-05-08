@@ -162,6 +162,9 @@ int __init tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root)
 
 	d = debugfs_create_u8("emc_iso_share", S_IRUGO, emc_debugfs_root,
 			      &emc_iso_share);
+	if (!d)
+		return -ENOMEM;
+
 	d = debugfs_create_u32("emc_iso_allocation", S_IRUGO, emc_debugfs_root,
 			      (u32 *)&emc_iso_allocation);
 	if (!d)
