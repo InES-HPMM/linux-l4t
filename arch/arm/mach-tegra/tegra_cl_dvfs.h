@@ -37,6 +37,8 @@ enum tegra_cl_dvfs_pmu_if {
 /* CL DVFS plaform flags*/
 /* set if output to PMU can be disabled only between I2C transactions */
 #define TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET	(0x1UL << 0)
+/* dynamic output registers update is supported */
+#define TEGRA_CL_DVFS_DYN_OUTPUT_CFG		(0x1UL << 1)
 
 struct tegra_cl_dvfs_cfg_param {
 	unsigned long	sample_rate;

@@ -139,8 +139,6 @@
 
 #define CL_DVFS_TUNE_HIGH_MARGIN_MV	20
 
-#define CL_DVFS_DYNAMIC_OUTPUT_CFG	0
-
 enum tegra_cl_dvfs_ctrl_mode {
 	TEGRA_CL_DVFS_UNINITIALIZED = 0,
 	TEGRA_CL_DVFS_DISABLED = 1,
@@ -465,14 +463,14 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 		out_min = get_output_min(cld);
 		if (cld->lut_min != out_min) {
 			cld->lut_min = out_min;
-#if CL_DVFS_DYNAMIC_OUTPUT_CFG
-			val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-			val &= ~CL_DVFS_OUTPUT_CFG_MIN_MASK;
-			val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
-			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-#else
-			cl_dvfs_load_lut(cld);
-#endif
+			if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
+				val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+				val &= ~CL_DVFS_OUTPUT_CFG_MIN_MASK;
+				val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+				cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+			} else {
+				cl_dvfs_load_lut(cld);
+			}
 		}
 	}
 
@@ -485,9 +483,6 @@ static void set_ol_config(struct tegra_cl_dvfs *cld)
 
 static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 {
-#if CL_DVFS_DYNAMIC_OUTPUT_CFG
-	u32 val;
-#endif
 	u32 out_max, out_min;
 	u32 out_cap = get_output_cap(cld, req);
 
@@ -522,16 +517,16 @@ static void set_cl_config(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	if ((cld->lut_min != out_min) || (cld->lut_max != out_max)) {
 		cld->lut_min = out_min;
 		cld->lut_max = out_max;
-#if CL_DVFS_DYNAMIC_OUTPUT_CFG
-		val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-		val &= ~(CL_DVFS_OUTPUT_CFG_MAX_MASK |
-			 CL_DVFS_OUTPUT_CFG_MIN_MASK);
-		val |= out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
-		val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
-		cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
-#else
-		cl_dvfs_load_lut(cld);
-#endif
+		if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
+			u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+			val &= ~(CL_DVFS_OUTPUT_CFG_MAX_MASK |
+				 CL_DVFS_OUTPUT_CFG_MIN_MASK);
+			val |= out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT;
+			val |= out_min << CL_DVFS_OUTPUT_CFG_MIN_SHIFT;
+			cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+		} else {
+			cl_dvfs_load_lut(cld);
+		}
 	}
 }
 
@@ -938,28 +933,29 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	cld->therm_cap_idx = cld->therm_caps_num;
 	cld->therm_floor_idx = 0;
 	cl_dvfs_set_dvco_rate_min(cld);
-#if CL_DVFS_DYNAMIC_OUTPUT_CFG
-	/*
-	 * If h/w supports dynamic chanage of output register, limit LUT
-	 * index range using cl_dvfs h/w controls, and load full range LUT
-	 * table once.
-	 */
-	out_min = get_output_min(cld);
-	out_max = get_output_cap(cld, NULL);
-	cld->lut_min = 0;
-	cld->lut_max = cld->num_voltages - 1;
-#else
-	/*
-	 * Allow the entire range of LUT indexes, but limit output voltage in
-	 * LUT mapping (this "indirect" application of limits is used, because
-	 * h/w does not support dynamic change of index limits, but dynamic
-	 * reload of LUT is fine).
-	 */
-	out_min = 0;
-	out_max = cld->num_voltages - 1;
-	cld->lut_min = get_output_min(cld);
-	cld->lut_max = get_output_cap(cld, NULL);
-#endif
+
+	if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
+		/*
+		 * If h/w supports dynamic chanage of output register, limit
+		 * LUT * index range using cl_dvfs h/w controls, and load full
+		 * range LUT table once.
+		 */
+		out_min = get_output_min(cld);
+		out_max = get_output_cap(cld, NULL);
+		cld->lut_min = 0;
+		cld->lut_max = cld->num_voltages - 1;
+	} else {
+		/*
+		 * Allow the entire range of LUT indexes, but limit output
+		 * voltage in LUT mapping (this "indirect" application of limits
+		 * is used, because h/w does not support dynamic change of index
+		 * limits, but dynamic reload of LUT is fine).
+		 */
+		out_min = 0;
+		out_max = cld->num_voltages - 1;
+		cld->lut_min = get_output_min(cld);
+		cld->lut_max = get_output_cap(cld, NULL);
+	}
 
 	val = (cld->safe_output << CL_DVFS_OUTPUT_CFG_SAFE_SHIFT) |
 		(out_max << CL_DVFS_OUTPUT_CFG_MAX_SHIFT) |
@@ -974,12 +970,12 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 
 	/* fill in LUT table */
 	cl_dvfs_load_lut(cld);
-#if CL_DVFS_DYNAMIC_OUTPUT_CFG
-	/* dynamic update of output register allowed - no need to reload lut;
-	   then, use lut limits as output register setting shadow */
-	cld->lut_min = out_min;
-	cld->lut_max = out_max;
-#endif
+	if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
+		/* dynamic update of output register allowed - no need to reload
+		   lut - use lut limits as output register setting shadow */
+		cld->lut_min = out_min;
+		cld->lut_max = out_max;
+	}
 
 	/* configure transport */
 	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
