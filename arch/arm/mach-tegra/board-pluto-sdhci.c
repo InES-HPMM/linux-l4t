@@ -311,16 +311,25 @@ int __init pluto_sdhci_init(void)
 {
 #ifndef CONFIG_USE_OF
 	int nominal_core_mv;
+	int min_vcore_override_mv;
 
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv > 0) {
-		pluto_tegra_sdhci_platform_data0.nominal_vcore_uV =
-			nominal_core_mv * 1000;
-		tegra_sdhci_platform_data2.nominal_vcore_uV = nominal_core_mv *
-			1000;
-		tegra_sdhci_platform_data3.nominal_vcore_uV = nominal_core_mv *
-			1000;
+		pluto_tegra_sdhci_platform_data0.nominal_vcore_mv =
+			nominal_core_mv;
+		tegra_sdhci_platform_data2.nominal_vcore_mv = nominal_core_mv;
+		tegra_sdhci_platform_data3.nominal_vcore_mv = nominal_core_mv;
+	}
+	min_vcore_override_mv =
+		tegra_dvfs_rail_get_override_floor(tegra_core_rail);
+	if (min_vcore_override_mv) {
+		pluto_tegra_sdhci_platform_data0.min_vcore_override_mv =
+			min_vcore_override_mv;
+		tegra_sdhci_platform_data2.min_vcore_override_mv =
+			min_vcore_override_mv;
+		tegra_sdhci_platform_data3.min_vcore_override_mv =
+			min_vcore_override_mv;
 	}
 	if ((tegra_sdhci_platform_data3.uhs_mask & MMC_MASK_HS200)
 		&& (!(tegra_sdhci_platform_data3.uhs_mask &
