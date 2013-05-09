@@ -1579,6 +1579,24 @@ int tegra_get_commchip_id(void)
 
 __setup("commchip_id=", tegra_commchip_id);
 
+#ifdef CONFIG_ANDROID
+static bool androidboot_mode_charger;
+
+bool get_androidboot_mode_charger(void)
+{
+	return androidboot_mode_charger;
+}
+static int __init tegra_androidboot_mode(char *options)
+{
+	if (!strcmp(options, "charger"))
+		androidboot_mode_charger = true;
+	else
+		androidboot_mode_charger = false;
+	return 1;
+}
+__setup("androidboot.mode=", tegra_androidboot_mode);
+#endif
+
 /*
  * Tegra has a protected aperture that prevents access by most non-CPU
  * memory masters to addresses above the aperture value.  Enabling it

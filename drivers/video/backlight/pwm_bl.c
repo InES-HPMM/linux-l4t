@@ -33,6 +33,7 @@
 #include <linux/pwm.h>
 #include <linux/pwm_backlight.h>
 #include <linux/slab.h>
+#include "../../../arch/arm/mach-tegra/board.h"
 
 static int pwm_backlight_set(struct backlight_device *bl, int brightness)
 {
@@ -148,6 +149,13 @@ static int pwm_backlight_parse_dt(struct device *dev,
 
 		data->max_brightness = value;
 
+#ifdef CONFIG_ANDROID
+		if (get_androidboot_mode_charger())
+			ret = of_property_read_u32(bl_node,
+						   "default-charge-brightness",
+						   &value);
+		else
+#endif
 		ret = of_property_read_u32(bl_node, "default-brightness",
 					   &value);
 		if (ret < 0) {
