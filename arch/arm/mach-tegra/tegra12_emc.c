@@ -33,6 +33,8 @@ static struct clk *emc;
 
 struct tegra_emc_table;
 
+u8 tegra_emc_bw_efficiency = 80;
+
 static void __iomem *emc_base = IO_ADDRESS(TEGRA_EMC_BASE);
 static void __iomem *mc_base = IO_ADDRESS(TEGRA_MC_BASE);
 
