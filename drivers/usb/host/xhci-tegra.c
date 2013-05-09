@@ -1768,7 +1768,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	}
 
 	pmc_init();
-	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data);
+	pmc_data.pmc_ops->disable_pmc_bus_ctrl(&pmc_data, 0);
 
 	tegra->hc_in_elpg = false;
 	ret = xhci_resume(tegra->xhci, 0);

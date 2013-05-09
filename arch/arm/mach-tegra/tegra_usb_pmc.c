@@ -248,14 +248,24 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
 
-static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data)
+static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
+			int enable_sof)
 {
 	unsigned long val;
+	void __iomem *usb_base;
 	unsigned  int inst = pmc_data->instance;
+	usb_base = pmc_data->usb_base;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
+
+	if (pmc_data->controller_type == TEGRA_USB_2_0 && usb_base) {
+		/* disable PMC master control */
+		val = readl(usb_base + UTMIP_PMC_WAKEUP0);
+		val &= ~EVENT_INT_ENB;
+		writel(val, usb_base + UTMIP_PMC_WAKEUP0);
+	}
 
 	val = readl(pmc_base + PMC_SLEEP_CFG);
 	val &= ~UTMIP_WAKE_VAL(inst, 0xF);
@@ -282,6 +292,12 @@ static void utmip_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data)
 	val |= UTMIP_CLR_WAKE_ALARM(inst);
 	writel(val, pmc_base + PMC_TRIGGERS);
 
+	if (pmc_data->controller_type == TEGRA_USB_2_0 && enable_sof == 1 &&
+		usb_base) {
+		val = readl(usb_base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, usb_base + USB_USBCMD);
+	}
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
 
@@ -504,14 +520,24 @@ static void uhsic_setup_pmc_wake_detect(struct tegra_usb_pmc_data *pmc_data)
 	DBG("%s:PMC enabled for HSIC remote wakeup\n", __func__);
 }
 
-static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data)
+static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data,
+			int enable_sof)
 {
 	unsigned long val;
+	void __iomem *usb_base;
 	unsigned int inst = pmc_data->instance;
+	usb_base = pmc_data->usb_base;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, pmc_data->instance);
 
 	spin_lock_irqsave(&pmc_lock, flags);
+
+	if (pmc_data->controller_type == TEGRA_USB_2_0 && usb_base) {
+		/* disable PMC master control */
+		val = readl(usb_base + UTMIP_PMC_WAKEUP0);
+		val &= ~EVENT_INT_ENB;
+		writel(val, usb_base + UTMIP_PMC_WAKEUP0);
+	}
 
 	val = readl(pmc_base + PMC_UHSIC_SLEEP_CFG(inst));
 	val &= ~UHSIC_WAKE_VAL(inst, WAKE_VAL_ANY);
@@ -531,6 +557,13 @@ static void uhsic_phy_disable_pmc_bus_ctrl(struct tegra_usb_pmc_data *pmc_data)
 	val = readl(pmc_base + PMC_UHSIC_TRIGGERS(inst));
 	val |= (UHSIC_CLR_WALK_PTR(inst) | UHSIC_CLR_WAKE_ALARM(inst));
 	writel(val, pmc_base + PMC_UHSIC_TRIGGERS(inst));
+
+	if (pmc_data->controller_type == TEGRA_USB_2_0 && enable_sof == 1 &&
+		usb_base) {
+		val = readl(usb_base + USB_USBCMD);
+		val |= USB_USBCMD_RS;
+		writel(val, usb_base + USB_USBCMD);
+	}
 
 	spin_unlock_irqrestore(&pmc_lock, flags);
 }
