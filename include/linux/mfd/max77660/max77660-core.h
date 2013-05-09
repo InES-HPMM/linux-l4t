@@ -1226,7 +1226,6 @@ struct max77660_platform_data {
 
 	unsigned int flags;
 
-	bool en_buck2_ext_ctrl;
 	bool use_power_off;
 
 	int system_watchdog_timeout;

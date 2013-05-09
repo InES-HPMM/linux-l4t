@@ -262,29 +262,6 @@ static void max77660_power_off(void)
 			GLBLCNFG0_SFT_OFF_OFFRST_MASK);
 }
 
-static int max77660_sleep(struct max77660_chip *chip, bool on)
-{
-	int ret = 0;
-
-	/*
-	 * Enable sleep that AP can be placed into sleep mode
-	 * by pulling EN1 low
-	 */
-	ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG5,
-			on ? 0 : GLBLCNFG5_EN1_MASK_MASK,
-			GLBLCNFG5_EN1_MASK_MASK);
-	if (ret < 0)
-		return ret;
-
-	if (chip->pdata->en_buck2_ext_ctrl)
-		ret = max77660_reg_update(chip->dev, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG7,
-			on ? 0 : GLBLCNFG7_EN2_MASK_MASK,
-			GLBLCNFG7_EN2_MASK_MASK);
-	return ret;
-}
-
 static int max77660_32kclk_init(struct max77660_chip *chip,
 		struct max77660_platform_data *pdata)
 {
@@ -601,12 +578,6 @@ static int max77660_probe(struct i2c_client *client,
 		goto fail_client_reg;
 	}
 
-	ret = max77660_sleep(chip, false);
-	if (ret < 0) {
-		dev_err(&client->dev, "probe: Failed to disable sleep\n");
-		goto out_exit;
-	}
-
 	if (pdata->use_power_off && !pm_power_off) {
 		max77660_chip = chip;
 		pm_power_off = max77660_power_off;
@@ -660,71 +631,16 @@ static int __devexit max77660_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int max77660_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct max77660_chip *chip = i2c_get_clientdata(client);
-	int ret;
-
-	ret = max77660_sleep(chip, true);
-	if (ret < 0)
-		dev_err(dev, "suspend: Failed to enable sleep\n");
-
-	if (chip->pdata->en_buck2_ext_ctrl) {
-		ret = max77660_reg_clr_bits(chip->dev, MAX77660_PWR_SLAVE,
-				MAX77660_REG_BUCK_PWR_MODE1,
-				MAX77660_BUCK2_PWR_MODE_MASK);
-		if (ret < 0)
-			dev_err(dev, "Failed to disable buck2 ext ctrl\n");
-	}
-
-	return ret;
-}
-
-static int max77660_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct max77660_chip *chip = i2c_get_clientdata(client);
-	int ret;
-
-	if (chip->pdata->en_buck2_ext_ctrl) {
-		ret = max77660_reg_set_bits(chip->dev, MAX77660_PWR_SLAVE,
-				MAX77660_REG_BUCK_PWR_MODE1,
-				MAX77660_BUCK2_PWR_MODE_MASK);
-		if (ret < 0)
-			dev_err(dev, "Failed to enable buck2 ext ctrl\n");
-	}
-
-	ret = max77660_sleep(chip, false);
-	if (ret < 0) {
-		dev_err(dev, "resume: Failed to disable sleep\n");
-		return ret;
-	}
-
-	return 0;
-}
-#else
-#define max77660_suspend      NULL
-#define max77660_resume       NULL
-#endif /* CONFIG_PM_SLEEP */
-
 static const struct i2c_device_id max77660_id[] = {
 	{"max77660", 0},
 	{},
 };
 MODULE_DEVICE_TABLE(i2c, max77660_id);
 
-static const struct dev_pm_ops max77660_pm = {
-	.suspend = max77660_suspend,
-	.resume = max77660_resume,
-};
-
 static struct i2c_driver max77660_driver = {
 	.driver = {
 		.name = "max77660",
 		.owner = THIS_MODULE,
-		.pm = &max77660_pm,
 	},
 	.probe = max77660_probe,
 	.remove = __devexit_p(max77660_remove),
