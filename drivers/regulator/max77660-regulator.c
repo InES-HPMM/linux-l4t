@@ -369,6 +369,41 @@ static int max77660_regulator_get_voltage(struct regulator_dev *rdev)
 	return volt;
 }
 
+static int
+max77660_regulator_ext_control(struct max77660_regulator *reg, bool enable)
+{
+	struct max77660_regulator_platform_data *reg_pdata = reg->pdata;
+	u8 mask = 0;
+	int ret;
+
+	if (reg_pdata->flags & ENABLE_EN1 || reg_pdata->flags & ENABLE_EN2) {
+		ret = max77660_reg_update(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG5,
+				enable ? 0 : GLBLCNFG5_EN1_MASK_MASK,
+				GLBLCNFG5_EN1_MASK_MASK);
+		if (ret < 0) {
+			dev_err(reg->dev, "Failed to update GLBLCNFG5 reg");
+			return ret;
+		}
+	}
+
+	if (reg_pdata->flags & ENABLE_EN2)
+		mask |= GLBLCNFG7_EN2_MASK_MASK;
+	else if (reg_pdata->flags & ENABLE_EN3)
+		mask |= GLBLCNFG7_EN3_MASK_MASK;
+
+	ret = max77660_reg_update(to_max77660_chip(reg),
+				MAX77660_PWR_SLAVE, MAX77660_REG_GLOBAL_CFG7,
+				enable ? 0 : mask, mask);
+	if (ret < 0) {
+		dev_err(reg->dev, "Failed to update GLBLCNFG7 register");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int max77660_regulator_enable(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
@@ -376,8 +411,17 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
 	int power_mode = (pdata->flags & GLPM_ENABLE) ?
 			 POWER_MODE_GLPM : POWER_MODE_NORMAL;
-	u8 val;
 	int ret;
+
+	if (pdata->flags & ENABLE_EN) {
+		ret = max77660_regulator_ext_control(reg, true);
+		if (ret < 0) {
+			dev_err(reg->dev, "Failed to set external control");
+			return ret;
+		}
+		power_mode = POWER_MODE_DISABLE;
+		goto power_mode_done;
+	}
 
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "enable: Regulator %s using %s\n",
@@ -390,34 +434,7 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 			(reg->regulator_mode == REGULATOR_MODE_STANDBY))
 		power_mode = POWER_MODE_LPM;
 
-	if (pdata->flags & ENABLE_EN) {
-		ret = max77660_reg_read(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG7, &val);
-		if (ret < 0) {
-			dev_err(reg->dev, "preinit: Failed to get GLBLCNFG7 register 0x%x\n",
-				MAX77660_REG_GLOBAL_CFG7);
-			return ret;
-		}
-		/* if pdata->flags has enable_en3,
-		 * when regulator_enable for buck4 or ldo8,
-		 * en3 will be actually enabled. */
-		if (pdata->flags & ENABLE_EN3) {
-			val &= ~GLBLCNFG7_EN3_MASK_MASK;
-			power_mode = POWER_MODE_DISABLE;
-		}
-
-		ret = max77660_reg_write(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG7, val);
-		if (ret < 0) {
-			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
-				MAX77660_REG_GLOBAL_CFG7);
-			return ret;
-
-		}
-	}
-
+power_mode_done:
 	return max77660_regulator_set_power_mode(reg, power_mode);
 }
 
@@ -425,10 +442,17 @@ static int max77660_regulator_disable(struct regulator_dev *rdev)
 {
 	struct max77660_regulator *reg = rdev_get_drvdata(rdev);
 	struct max77660_regulator_platform_data *pdata = reg->pdata;
-	u8 val;
 	int ret;
 
 	int power_mode = POWER_MODE_DISABLE;
+
+	if (pdata->flags & ENABLE_EN) {
+		ret = max77660_regulator_ext_control(reg, false);
+		if (ret < 0) {
+			dev_err(reg->dev, "Failed to set external control");
+			return ret;
+		}
+	}
 
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "disable: Regulator %s using %s\n",
@@ -436,31 +460,6 @@ static int max77660_regulator_disable(struct regulator_dev *rdev)
 		return 0;
 	}
 
-	if (pdata->flags & ENABLE_EN) {
-		ret = max77660_reg_read(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG7, &val);
-		if (ret < 0) {
-			dev_err(reg->dev, "preinit: Failed to get GLBLCNFG7 register 0x%x\n",
-				MAX77660_REG_GLOBAL_CFG7);
-			return ret;
-		}
-		/* if pdata->flags has enable_en3,
-		 * when regulator_disable for buck4 or ldo8,
-		 * en3 will be actually disabled. */
-		if (pdata->flags & ENABLE_EN3)
-			val |= GLBLCNFG7_EN3_MASK_MASK;
-
-		ret = max77660_reg_write(to_max77660_chip(reg),
-				MAX77660_PWR_SLAVE,
-				MAX77660_REG_GLOBAL_CFG7, val);
-		if (ret < 0) {
-			dev_err(reg->dev, "preinit: Failed to set GLBLCNFG7 register 0x%x\n",
-				MAX77660_REG_GLOBAL_CFG7);
-			return ret;
-
-		}
-	}
 	return max77660_regulator_set_power_mode(reg, power_mode);
 }
 
@@ -688,12 +687,6 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		}
 	}
 
-	/* enable EN */
-	if (pdata->flags & ENABLE_EN) {
-		if (pdata->flags & ENABLE_EN3)
-			max77660_regulator_set_power_mode(reg,
-				POWER_MODE_DISABLE);
-	}
 	if (reg->rinfo->id == MAX77660_REGULATOR_ID_LDO15 ||
 		reg->rinfo->id == MAX77660_REGULATOR_ID_LDO16) {
 		mask = 0;
