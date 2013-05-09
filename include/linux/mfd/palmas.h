@@ -314,6 +314,11 @@ struct palmas_reg_init {
 	 */
 	u8 vsel;
 
+	/* enable_tracking will enable the tracking. */
+	bool enable_tracking;
+
+	/* tracking_regulator will tell which regulator will be tracked */
+	int tracking_regulator;
 };
 
 enum palmas_regulators {
@@ -1575,6 +1580,11 @@ enum usb_irq_events {
 /* Bit definitions for LDO_CTRL */
 #define PALMAS_LDO_CTRL_VREF_425				0x08
 #define PALMAS_LDO_CTRL_VREF_425_SHIFT				3
+#define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_MASK		0x6
+#define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_DISABLE		0x0
+#define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_SMPS12		0x2
+#define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_SMPS3		0x4
+#define PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_SMPS6		0x6
 #define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS			0x01
 #define PALMAS_LDO_CTRL_LDOUSB_ON_VBUS_VSYS_SHIFT		0
 
