@@ -44,6 +44,9 @@ struct tegra_bbc_proxy {
 	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
 	unsigned int threshold; /* current edp threshold value */
 	unsigned int state; /* current edp state value */
+	/* last iso settings with proxy driver */
+	unsigned int last_bw;
+	unsigned int last_ult;
 	struct work_struct edp_work;
 	struct mutex edp_lock; /* lock for edp operations */
 
@@ -389,6 +392,9 @@ static ssize_t iso_reserve_store(struct device *dev,
 	if (!ret)
 		dev_err(dev, "can't reserve iso bw\n");
 
+	bbc->last_bw = bw;
+	bbc->last_ult = ult;
+
 	tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
 	tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
 
@@ -460,12 +466,49 @@ int tegra_bbc_proxy_bw_request(struct device *dev, u32 mode, u32 bw, u32 lt,
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
 
 	mutex_lock(&bbc->iso_lock);
+	bbc->last_bw = bw;
+	bbc->last_ult = lt;
+
 	ret = bbc_bw_request_unlocked(dev, mode, bw, lt, margin);
 	mutex_unlock(&bbc->iso_lock);
 
 	return ret;
 }
 EXPORT_SYMBOL(tegra_bbc_proxy_bw_request);
+
+int tegra_bbc_proxy_restore_iso(struct device *dev)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	if (!bbc)
+		return -EINVAL;
+
+	mutex_lock(&bbc->iso_lock);
+	ret = bbc_bw_request_unlocked(dev, 0, bbc->last_bw,
+					bbc->last_ult, bbc->margin);
+	mutex_unlock(&bbc->iso_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_bbc_proxy_restore_iso);
+
+int tegra_bbc_proxy_clear_iso(struct device *dev)
+{
+	int ret;
+	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
+
+	if (!bbc)
+		return -EINVAL;
+
+	mutex_lock(&bbc->iso_lock);
+	ret = bbc_bw_request_unlocked(dev, 0, 0,
+					1000, bbc->margin);
+	mutex_unlock(&bbc->iso_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_bbc_proxy_clear_iso);
 
 static ssize_t iso_res_realize_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -499,6 +542,9 @@ static ssize_t iso_res_realize_store(struct device *dev,
 	}
 
 	mutex_lock(&bbc->iso_lock);
+	bbc->last_bw = bw;
+	bbc->last_ult = ult;
+
 	ret = bbc_bw_request_unlocked(dev, 0, bw, ult, bbc->margin);
 	mutex_unlock(&bbc->iso_lock);
 

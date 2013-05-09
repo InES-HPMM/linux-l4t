@@ -33,6 +33,7 @@
 
 #include <mach/clk.h>
 #include <mach/tegra_bb.h>
+#include <mach/tegra_bbc_proxy.h>
 #include <linux/platform_data/nvshm.h>
 
 #include "clock.h"
@@ -133,6 +134,7 @@ struct tegra_bb {
 	struct workqueue_struct *workqueue;
 	struct work_struct work;
 	struct clk *emc_clk;
+	struct device *proxy_dev;
 };
 
 static unsigned long emc_min_freq;
@@ -898,6 +900,9 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		clk_set_rate(bb->emc_clk, emc_min_freq);
 		pr_debug("bbc setting floor to %lu\n", emc_min_freq/1000000);
 
+		/* restore iso bw request*/
+		tegra_bbc_proxy_restore_iso(bb->proxy_dev);
+
 		/* reenable pmc_wake_det irq */
 		tegra_bb_enable_pmc_wake();
 		irq_set_irq_type(INT_PMC_WAKE_INT, IRQF_TRIGGER_HIGH);
@@ -910,6 +915,9 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		}
 		bb->prev_state = bb->state;
 		spin_unlock_irqrestore(&bb->lock, flags);
+
+		/* remove iso bandwitdh request from bbc */
+		tegra_bbc_proxy_clear_iso(bb->proxy_dev);
 
 		/* going from high to 0 */
 		if (emc_flags & EMC_DSR)
@@ -1188,6 +1196,15 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	INIT_WORK(&bb->work, tegra_bb_emc_dvfs);
 
 	tegra_bb_set_emc_floor(BBC_MC_MIN_FREQ, 0);
+
+	/* get bbc proxy device struct, it should be registered
+	 * before this driver.
+	 */
+	bb->proxy_dev = bus_find_device_by_name(&platform_bus_type,  NULL,
+				"tegra_bbc_proxy");
+	if (!bb->proxy_dev)
+		dev_warn(&pdev->dev, "%s: bbc proxy device not found!\n",
+				__func__);
 
 	ret = request_irq(bb->mem_req_soon, tegra_bb_mem_req_soon,
 			IRQF_TRIGGER_RISING, "bb_mem_req_soon", bb);
