@@ -40,7 +40,6 @@
 
 #include <mach/hardware.h>
 #include <linux/platform_data/mmc-sdhci-tegra.h>
-#include <mach/io_dpd.h>
 #include <mach/pinmux.h>
 #include <mach/pm_domains.h>
 
@@ -251,7 +250,6 @@ struct sdhci_tegra {
 	unsigned int max_clk_limit;
 	/* max ddr clk supported by the platform */
 	unsigned int ddr_clk_limit;
-	struct tegra_io_dpd *dpd;
 	bool card_present;
 	bool is_rail_enabled;
 	struct clk *emc_clk;
@@ -1036,14 +1034,6 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		mmc_hostname(sdhci->mmc), clock, tegra_host->clk_enabled);
 
 	if (clock) {
-		/* bring out sd instance from io dpd mode */
-		if (tegra_host->dpd) {
-			mutex_lock(&tegra_host->dpd->delay_lock);
-			cancel_delayed_work_sync(&tegra_host->dpd->delay_dpd);
-			tegra_io_dpd_disable(tegra_host->dpd);
-			mutex_unlock(&tegra_host->dpd->delay_lock);
-		}
-
 		if (!tegra_host->clk_enabled) {
 			pm_runtime_get_sync(&pdev->dev);
 			clk_prepare_enable(pltfm_host->clk);
@@ -1060,19 +1050,6 @@ static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned int clock)
 		clk_disable_unprepare(pltfm_host->clk);
 		pm_runtime_put_sync(&pdev->dev);
 		tegra_host->clk_enabled = false;
-		/* io dpd enable call for sd instance */
-
-		if (tegra_host->dpd) {
-			mutex_lock(&tegra_host->dpd->delay_lock);
-			if (tegra_host->dpd->need_delay_dpd) {
-				schedule_delayed_work(
-					&tegra_host->dpd->delay_dpd,
-					msecs_to_jiffies(100));
-			} else {
-				tegra_io_dpd_enable(tegra_host->dpd);
-			}
-			mutex_unlock(&tegra_host->dpd->delay_lock);
-		}
 	}
 }
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
@@ -1823,12 +1800,6 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		}
 	}
 
-	if (tegra_host->dpd) {
-		mutex_lock(&tegra_host->dpd->delay_lock);
-		tegra_host->dpd->need_delay_dpd = 1;
-		mutex_unlock(&tegra_host->dpd->delay_lock);
-	}
-
 	return 0;
 }
 
@@ -2378,7 +2349,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->max_clk_limit = plat->max_clk_limit;
 	tegra_host->ddr_clk_limit = plat->ddr_clk_limit;
 	tegra_host->instance = pdev->id;
-	tegra_host->dpd = tegra_io_dpd_get(mmc_dev(host->mmc));
 
 	host->mmc->pm_caps |= plat->pm_caps;
 	host->mmc->pm_flags |= plat->pm_flags;
