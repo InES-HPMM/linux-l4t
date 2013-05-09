@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1361,6 +1361,18 @@ static int ov5640_s_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int ov5640_s_power(struct v4l2_subdev *sd, int on)
+{
+	struct ov5640_priv *priv = to_ov5640(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
+
+	if (on)
+		ov5640_s_fmt(sd, &priv->mf);
+
+	return soc_camera_set_power(&client->dev, icl, on);
+}
+
 static int ov5640_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 			   enum v4l2_mbus_pixelcode *code)
 {
@@ -1452,8 +1464,10 @@ static struct v4l2_subdev_video_ops ov5640_video_ops = {
 	.g_crop			= ov5640_g_crop,
 };
 
+
 static struct v4l2_subdev_core_ops ov5640_core_ops = {
 	.g_chip_ident		= ov5640_g_chip_ident,
+	.s_power		= ov5640_s_power,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.g_register		= ov5640_get_register,
 	.s_register		= ov5640_set_register,
@@ -1472,19 +1486,14 @@ static int ov5640_probe(struct i2c_client *client,
 			const struct i2c_device_id *did)
 {
 	struct ov5640_priv *priv;
-	struct soc_camera_device *icd	= client->dev.platform_data;
 	struct soc_camera_link *icl;
 	u8 chip_id_hi, chip_id_lo;
 	int ret;
 
-	if (!icd) {
-		dev_err(&client->dev, "Missing soc-camera data!\n");
-		return -EINVAL;
-	}
-
-	icl = to_soc_camera_link(icd);
+	/* Checking soc-camera interface */
+	icl = soc_camera_i2c_to_link(client);
 	if (!icl) {
-		dev_err(&client->dev, "Missing platform_data for driver\n");
+		dev_err(&client->dev, "Missing soc_camera_link for driver\n");
 		return -EINVAL;
 	}
 
@@ -1504,6 +1513,7 @@ static int ov5640_probe(struct i2c_client *client,
 	/*
 	 * check and show product ID and manufacturer ID
 	 */
+	soc_camera_power_on(&client->dev, icl);
 	ret = ov5640_read_reg(client, 0x300A, &chip_id_hi);
 	if (ret < 0) {
 		dev_err(&client->dev, "Failure to read Chip ID (high byte)\n");
@@ -1524,6 +1534,7 @@ static int ov5640_probe(struct i2c_client *client,
 		ret = -ENODEV;
 		return ret;
 	}
+	soc_camera_power_off(&client->dev, icl);
 
 	ov5640_set_default_fmt(priv);
 
