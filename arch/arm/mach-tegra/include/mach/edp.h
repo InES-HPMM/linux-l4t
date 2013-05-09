@@ -150,4 +150,13 @@ static inline int tegra11x_select_core_edp_table(
 { return -ENOSYS; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+int tegra14x_select_core_edp_table(unsigned int regulator_mA,
+				   struct tegra_core_edp_limits *limits);
+#else
+static inline int tegra14x_select_core_edp_table(
+	unsigned int regulator_mA, struct tegra_core_edp_limits *limits)
+{ return -ENOSYS; }
+#endif
+
 #endif	/* __MACH_EDP_H */
