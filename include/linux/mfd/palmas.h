@@ -504,6 +504,7 @@ struct palmas_battery_platform_data {
 	/* Fuelgauge Config */
 	int current_avg_interval;
 	struct cell_config *cell_cfg;
+	int is_battery_present;
 };
 
 struct palmas_platform_data {

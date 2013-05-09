@@ -1503,10 +1503,15 @@ static __devinit int palmas_battery_probe(struct platform_device *pdev)
 
 	pdata = palmas_pdata->battery_pdata;
 
-	if (!palmas_pdata) {
+	if (!pdata) {
 		dev_err(di->dev, "Platform data not found\n");
 		ret = -EINVAL;
 		goto err;
+	}
+
+	if (!pdata->is_battery_present) {
+		dev_err(&pdev->dev, "Battery not detected! Exiting driver...\n");
+		return -ENODEV;
 	}
 
 	di = devm_kzalloc(&pdev->dev, sizeof(*di), GFP_KERNEL);
