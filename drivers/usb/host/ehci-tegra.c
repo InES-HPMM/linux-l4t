@@ -29,6 +29,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 
 #include <mach/pm_domains.h>
+#include <linux/pm_qos.h>
 
 /* HACK! This needs to come from DT */
 #include "../../../arch/arm/mach-tegra/iomap.h"
@@ -62,6 +63,11 @@ struct tegra_ehci_hcd {
 	bool bus_suspended_fail;
 	bool unaligned_dma_buf_supported;
 	bool has_hostpc;
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	bool cpu_boost_in_work;
+	struct delayed_work boost_cpu_freq_work;
+	struct pm_qos_request boost_cpu_freq_req;
+#endif
 };
 
 struct dma_align_buffer {
@@ -160,6 +166,17 @@ static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd,
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
 	free_align_buffer(urb, hcd);
 }
+
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+static void tegra_ehci_boost_cpu_frequency_work(struct work_struct *work)
+{
+	struct tegra_ehci_hcd *tegra = container_of(work,
+		struct tegra_ehci_hcd, boost_cpu_freq_work.work);
+	if (tegra->cpu_boost_in_work)
+		pm_qos_update_request(&tegra->boost_cpu_freq_req,
+		(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+}
+#endif
 
 static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 {
@@ -359,6 +376,13 @@ static int tegra_ehci_bus_suspend(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int err = 0;
 	EHCI_DBG("%s() BEGIN\n", __func__);
+
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+			PM_QOS_DEFAULT_VALUE);
+	tegra->cpu_boost_in_work = false;
+#endif
+
 	mutex_lock(&tegra->sync_lock);
 	tegra->bus_suspended_fail = false;
 	err = ehci_bus_suspend(hcd);
@@ -377,6 +401,13 @@ static int tegra_ehci_bus_resume(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	int err = 0;
 	EHCI_DBG("%s() BEGIN\n", __func__);
+
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+			(s32)CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ * 1000);
+	tegra->cpu_boost_in_work = false;
+
+#endif
 
 	mutex_lock(&tegra->sync_lock);
 	usb_phy_set_suspend(get_usb_phy(tegra->phy), 0);
@@ -581,6 +612,15 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	tegra_pd_add_device(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	INIT_DELAYED_WORK(&tegra->boost_cpu_freq_work,
+					tegra_ehci_boost_cpu_frequency_work);
+	pm_qos_add_request(&tegra->boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
+					PM_QOS_DEFAULT_VALUE);
+	schedule_delayed_work(&tegra->boost_cpu_freq_work, 4000);
+	tegra->cpu_boost_in_work = true;
+#endif
+
 	return err;
 
 fail_phy:
@@ -623,6 +663,13 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+
+#ifdef CONFIG_TEGRA_EHCI_BOOST_CPU_FREQ
+	cancel_delayed_work(&tegra->boost_cpu_freq_work);
+	pm_qos_update_request(&tegra->boost_cpu_freq_req,
+				PM_QOS_DEFAULT_VALUE);
+	tegra->cpu_boost_in_work = false;
+#endif
 
 	if (!IS_ERR(tegra->transceiver))
 		otg_set_host(tegra->transceiver->otg, NULL);
