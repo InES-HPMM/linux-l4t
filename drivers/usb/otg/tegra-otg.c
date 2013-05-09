@@ -115,7 +115,8 @@ static int otg_notifications(struct notifier_block *nb,
 	DBG("%s(%d) tegra->int_status = 0x%lx\n", __func__,
 				__LINE__, tegra->int_status);
 
-	schedule_work(&tegra->work);
+	if (!tegra->suspended)
+		schedule_work(&tegra->work);
 
 	DBG("%s(%d) End\n", __func__, __LINE__);
 	return NOTIFY_DONE;
