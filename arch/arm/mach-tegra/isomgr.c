@@ -99,6 +99,7 @@ static char *cname[] = {
 struct isoclient_info {
 	enum tegra_iso_client client;
 	char *name;
+	char *dev_name;
 	char *emc_clk_name;
 };
 
@@ -118,17 +119,20 @@ static struct isoclient_info tegra11x_isoclients[] = {
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_0,
 		.name = "disp_0",
-		.emc_clk_name = "tegradc.0",
+		.dev_name = "tegradc.0",
+		.emc_clk_name = "emc",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_1,
 		.name = "disp_1",
-		.emc_clk_name = "tegradc.1",
+		.dev_name = "tegradc.1",
+		.emc_clk_name = "emc",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
-		.emc_clk_name = "vi",
+		.dev_name = "vi",
+		.emc_clk_name = "emc",
 	},
 	/* This must be last entry*/
 	{
@@ -141,22 +145,26 @@ static struct isoclient_info tegra14x_isoclients[] = {
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_0,
 		.name = "disp_0",
-		.emc_clk_name = "tegradc.0",
+		.dev_name = "tegradc.0",
+		.emc_clk_name = "emc",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_DISP_1,
 		.name = "disp_1",
-		.emc_clk_name = "tegradc.1",
+		.dev_name = "tegradc.1",
+		.emc_clk_name = "emc",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_VI_0,
 		.name = "vi_0",
-		.emc_clk_name = "vi",
+		.dev_name = "vi",
+		.emc_clk_name = "emc",
 	},
 	{
 		.client = TEGRA_ISO_CLIENT_BBC_0,
 		.name = "bbc_0",
-		.emc_clk_name = "tegra_bb.0",
+		.dev_name = "tegra_bb.0",
+		.emc_clk_name = "emc_bw",
 	},
 	/* This must be last entry*/
 	{
@@ -1011,9 +1019,11 @@ int __init isomgr_init(void)
 		init_completion(&isomgr_clients[i].cmpl);
 		if (client_valid[i]) {
 			isomgr_clients[i].emc_clk = clk_get_sys(
-					isoclient_info[i].emc_clk_name, "emc");
+					isoclient_info[i].dev_name,
+					isoclient_info[i].emc_clk_name);
 			if (IS_ERR_OR_NULL(isomgr_clients[i].emc_clk)) {
-				pr_err("couldn't find %s emc clock",
+				pr_err("couldn't find %s %s clock",
+					isoclient_info[i].dev_name,
 					isoclient_info[i].emc_clk_name);
 				pr_err("disabling iso mgr");
 				test_mode = 1;
