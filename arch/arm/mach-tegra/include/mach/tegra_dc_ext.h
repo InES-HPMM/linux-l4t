@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_dc_ext.h
  *
- * Copyright (C) 2011-2013, NVIDIA Corporation
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  *
@@ -36,7 +36,8 @@ void tegra_dc_ext_enable(struct tegra_dc_ext *dc_ext);
 void tegra_dc_ext_disable(struct tegra_dc_ext *dc_ext);
 
 int tegra_dc_ext_process_hotplug(int output);
-int tegra_dc_ext_process_bandwidth_renegotiate(int output);
+int tegra_dc_ext_process_bandwidth_renegotiate(int output,
+					struct tegra_dc_bw_data *bw);
 
 #else /* CONFIG_TEGRA_DC_EXTENSIONS */
 

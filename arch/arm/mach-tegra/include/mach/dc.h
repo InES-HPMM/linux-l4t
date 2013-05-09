@@ -744,6 +744,12 @@ struct tegra_dc_platform_data {
 #endif
 };
 
+struct tegra_dc_bw_data {
+	u32	total_bw;
+	u32	avail_bw;
+	u32	resvd_bw;
+};
+
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
 #define TEGRA_DC_FLAG_CMU_DISABLE	(0 << 1)
 #define TEGRA_DC_FLAG_CMU_ENABLE	(1 << 1)
