@@ -13,7 +13,7 @@
 
 #include <linux/version.h>
 
-/* Controls detection mode, either AUTO1 or simplified auto */
+/* Controls detection mode, either DETECT0 or DETECT1 */
 #undef MAX97236_AUTOMODE1_JACK_DETECTION
 
 /* Define depending on the type of switch in the jack receptacle */
@@ -22,7 +22,10 @@
 /*
  * Driver major.minor.build number
  */
-#define MAX97236_REVISION			"0.00.0107"
+#define MAX97236_REVISION			"0.00.0328"
+
+/* EXTCLK frequency default value */
+#define EXTCLK_FREQUENCY			12288000
 
 /*
  * MAX97236 Register Definitions
@@ -36,7 +39,7 @@
 #define M97236_REG_07_LEFT_VOLUME			0x07
 #define M97236_REG_08_RIGHT_VOLUME			0x08
 #define M97236_REG_09_MICROPHONE			0x09
-#define M97236_REG_OB_REV_ID				0x0B
+#define M97236_REG_0B_REV_ID				0x0B
 #define M97236_REG_12_KEYSCAN_CLK_DIV_HI	0x12
 #define M97236_REG_13_KEYSCAN_CLK_DIV_LO	0x13
 #define M97236_REG_14_KEYSCAN_CLK_DIV_ADC	0x14
@@ -248,7 +251,7 @@
 
 
 /*
- * M97236_REG_OB_REV_ID
+ * M97236_REG_0B_REV_ID
  */
 #define M97236_ID_MASK			(15<<4)
 #define M97236_ID_SHIFT			4
@@ -422,11 +425,10 @@
 #define M97236_AUTO_MODE_2		2
 
 #define M97236_JACK_STATE_NONE	    0
-/* #define M97236_JACK_STATE_CABLE	    0x100 */
 #define M97236_JACK_STATE_UNKNOWN	0x00
 
 #define M97236_DEFAULT_JACK_DETECT_DELAY		250
-#define M97236_DEFAULT_RETRIES					15
+#define M97236_DEFAULT_RETRIES					10
 
 #define M97236_BYTE1(w) ((w >> 8) & 0xff)
 #define M97236_BYTE0(w) (w & 0xff)

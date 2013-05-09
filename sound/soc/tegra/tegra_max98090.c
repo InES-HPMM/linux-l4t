@@ -926,16 +926,8 @@ static const struct snd_soc_dapm_route tegra_max98090_audio_map[] = {
 	{"Headphone Jack", NULL, "HPL"},
 	{"Headphone Jack", NULL, "HPR"},
 
-	{"MAX97236_HPL", NULL, "HPL"},
-	{"MAX97236_HPR", NULL, "HPR"},
-	{"Headphone Jack", NULL, "MAX97236_JACK_LEFT_AUDIO"},
-	{"Headphone Jack", NULL, "MAX97236_JACK_RIGHT_AUDIO"},
+	{ "MIC2", NULL, "Mic Jack" },
 
-	{"MAX97236_JACK_MICROPHONE", NULL, "MAX97236_MIC_BIAS"},
-	{"MAX97236_JACK_MICROPHONE", NULL, "Mic Jack"},
-	{"MAX97236_JACK_MICROPHONE", NULL, "Mic Jack"},
-
-	{"MICBIAS", NULL, "MAX97236_MOUT"},
 	{"MICBIAS", NULL, "Int Mic"},
 	{"IN12", NULL, "MICBIAS"},
 	{"MICBIAS", NULL, "Ext Mic"},

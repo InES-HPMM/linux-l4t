@@ -24,6 +24,7 @@
 #include <sound/jack.h>
 #include <sound/max97236.h>
 #include "max97236.h"
+#include <linux/clk.h>
 
 #include <linux/version.h>
 
@@ -35,6 +36,12 @@
 static int verbosity;
 module_param(verbosity, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 MODULE_PARM_DESC(verbosity, "Control driver verbosity, 0=mute, 1=verbose");
+
+
+static int extclk_freq = EXTCLK_FREQUENCY;
+module_param(extclk_freq, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(extclk_freq, "EXTCLK frequency in hertz");
+struct clk *clk_cdev1;
 
 /* Allows for sparsely populated register maps */
 static struct reg_default max97236_reg[] = {
@@ -71,8 +78,10 @@ static bool max97236_volatile_register(struct device *dev, unsigned int reg)
 	case M97236_REG_00_STATUS1:
 	case M97236_REG_01_STATUS2:
 	case M97236_REG_02_STATUS3:
-	case M97236_REG_OB_REV_ID:
+	case M97236_REG_0B_REV_ID:
 	case M97236_REG_17_PASSIVE_MBH_KEYSCAN_DATA:
+	case M97236_REG_1D_ENABLE_1:
+	case M97236_REG_1E_ENABLE_2:
 	case M97236_REG_21_TEST_DATA_1:
 	case M97236_REG_23_TEST_DATA_3:
 		return true;
@@ -92,7 +101,7 @@ static bool max97236_readable_register(struct device *dev, unsigned int reg)
 	case M97236_REG_07_LEFT_VOLUME:
 	case M97236_REG_08_RIGHT_VOLUME:
 	case M97236_REG_09_MICROPHONE:
-	case M97236_REG_OB_REV_ID:
+	case M97236_REG_0B_REV_ID:
 	case M97236_REG_12_KEYSCAN_CLK_DIV_HI:
 	case M97236_REG_13_KEYSCAN_CLK_DIV_LO:
 	case M97236_REG_14_KEYSCAN_CLK_DIV_ADC:
@@ -202,7 +211,7 @@ static const struct snd_kcontrol_new max97236_snd_controls[] = {
 	SOC_SINGLE("MUTER", M97236_REG_08_RIGHT_VOLUME,
 		M97236_MUTER_SHIFT, M97236_MUTER_NUM - 1, 0),
 
-#if 0
+#if 1
 	SOC_ENUM("GND Enum", max97236_gnd_enum),
 	SOC_ENUM("MICR Enum", max97236_micr_enum),
 	SOC_ENUM("BIAS Enum", max97236_bias_enum),
@@ -295,7 +304,7 @@ static const struct snd_kcontrol_new max97236_snd_controls[] = {
 	SOC_SINGLE("IKEY", M97236_REG_05_IRQ_MASK2,
 		M97236_IKEY_SHIFT, M97236_IKEY_NUM - 1, 0),
 
-	SOC_SINGLE("ID", M97236_REG_OB_REV_ID,
+	SOC_SINGLE("ID", M97236_REG_0B_REV_ID,
 		M97236_ID_SHIFT, M97236_ID_NUM - 1, 0),
 
 	SOC_SINGLE("KEY_DIV_HIGH", M97236_REG_12_KEYSCAN_CLK_DIV_HI,
@@ -377,18 +386,6 @@ static const struct snd_soc_dapm_widget max97236_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route max97236_dapm_routes[] = {
-
-	{"MAX97236_JACK_LEFT_AUDIO", NULL, "MAX97236_HPL"},
-	{"MAX97236_JACK_RIGHT_AUDIO", NULL, "MAX97236_HPR"},
-	{"MAX97236_MOUT", NULL, "MAX97236_JACK_MICROPHONE"},
-
-	{"MAX97236_JACK_LEFT_AUDIO", NULL, "MAX97236_SHDN"},
-	{"MAX97236_JACK_RIGHT_AUDIO", NULL, "MAX97236_SHDN"},
-	{"MAX97236_MOUT", NULL, "MAX97236_SHDN"},
-
-	{"MAX97236_JACK_LEFT_AUDIO", NULL, "MAX97236_LFTEN"},
-	{"MAX97236_JACK_RIGHT_AUDIO", NULL, "MAX97236_RGHEN"},
-
 	{"MAX97236_MOUT", NULL, "MAX97236_MIC_BIAS"},
 	{"MAX97236_MOUT", NULL, "MAX97236_MIC_AMP"},
 
@@ -396,49 +393,9 @@ static const struct snd_soc_dapm_route max97236_dapm_routes[] = {
 
 static int max97236_add_widgets(struct snd_soc_codec *codec)
 {
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-
 	snd_soc_add_codec_controls(codec, max97236_snd_controls,
 		ARRAY_SIZE(max97236_snd_controls));
 
-	snd_soc_dapm_new_controls(dapm, max97236_dapm_widgets,
-		ARRAY_SIZE(max97236_dapm_widgets));
-
-/*
- *	snd_soc_dapm_add_routes(dapm, max97236_dapm_routes,
- *	ARRAY_SIZE(max97236_dapm_routes));
- */
-
-	return 0;
-}
-
-static int max97236_dai_hw_params(struct snd_pcm_substream *substream,
-				   struct snd_pcm_hw_params *params,
-				   struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static int max97236_dai_set_sysclk(struct snd_soc_dai *dai,
-				   int clk_id, unsigned int freq, int dir)
-{
-	return 0;
-}
-
-static int max97236_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
-{
-	return 0;
-}
-
-static int max97236_dai_set_fmt(struct snd_soc_dai *codec_dai,
-				 unsigned int fmt)
-{
-	return 0;
-}
-
-static int max97236_dai_set_tdm_slot(struct snd_soc_dai *codec_dai,
-	unsigned int tx_mask, unsigned int rx_mask, int slots, int slot_width)
-{
 	return 0;
 }
 
@@ -446,47 +403,26 @@ static int max97236_set_bias_level(struct snd_soc_codec *codec,
 				   enum snd_soc_bias_level level)
 {
 
-/*
- * Note: Mic bias goes here
- */
-	int ret;
-
+	struct max97236_priv *max97236 = snd_soc_codec_get_drvdata(codec);
 	switch (level) {
 	case SND_SOC_BIAS_ON:
-		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
-			ret = snd_soc_cache_sync(codec);
-
-			if (ret != 0) {
-				dev_err(codec->dev,
-					"Failed to sync cache: %d\n", ret);
-				return ret;
-			}
-		}
 		break;
 
 	case SND_SOC_BIAS_PREPARE:
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
+		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
+			regcache_cache_only(max97236->regmap, false);
+			regcache_sync(max97236->regmap);
+		}
+		break;
+
 	case SND_SOC_BIAS_OFF:
-		codec->cache_sync = 1;
 		break;
 	}
 	codec->dapm.bias_level = level;
 	return 0;
-}
-
-static int max97236_reset(struct max97236_priv *max97236)
-{
-	int ret;
-
-	ret  = regmap_update_bits(max97236->regmap, M97236_REG_1D_ENABLE_1,
-		M97236_RESET_MASK, M97236_RESET_MASK);
-	msleep(20);
-	ret |= regmap_update_bits(max97236->regmap, M97236_REG_1D_ENABLE_1,
-		M97236_RESET_MASK, 0);
-
-	return ret;
 }
 
 static void string_copy(char *dest, char *src, int length)
@@ -498,38 +434,49 @@ static void string_copy(char *dest, char *src, int length)
 static void max97236_keypress(struct max97236_priv *max97236,
 		unsigned int *status_reg)
 {
-	unsigned char keystr[MAX_STRING];
+	unsigned char keystr[MAX_STRING] = "";
 	unsigned int key = 0;
 	unsigned int reg;
+	int press;
 
 	regmap_read(max97236->regmap, M97236_REG_17_PASSIVE_MBH_KEYSCAN_DATA,
-			&reg);
+				&reg);
+	press = (reg & M97236_PRESS_MASK) == M97236_PRESS_MASK;
 
-	if (reg & M97236_PRESS_MASK) {
-		reg &= 0x3F;
-		if (reg < M97236_KEY_THRESH_0) {
+	if (press) {
+		if (status_reg[0] & M97236_MCSW_MASK) {
 			string_copy(keystr, "SND_JACK_BTN_0", MAX_STRING);
-			key |= SND_JACK_BTN_0;
-		} else if (reg < M97236_KEY_THRESH_1) {
-			string_copy(keystr, "SND_JACK_BTN_1", MAX_STRING);
-			key |= SND_JACK_BTN_1;
-		} else if (reg < M97236_KEY_THRESH_2) {
-			string_copy(keystr, "SND_JACK_BTN_2", MAX_STRING);
-			key |= SND_JACK_BTN_2;
-		} else if (reg < M97236_KEY_THRESH_3) {
-			string_copy(keystr, "SND_JACK_BTN_3", MAX_STRING);
-			key |= SND_JACK_BTN_3;
+			key = SND_JACK_BTN_0;
+		} else if (status_reg[1] & M97236_KEY_MASK) {
+			reg &= 0x3F;
+			if (reg < M97236_KEY_THRESH_1) {
+				string_copy(keystr, "SND_JACK_BTN_1",
+						MAX_STRING);
+				key = SND_JACK_BTN_1;
+			} else if (reg < M97236_KEY_THRESH_2) {
+				string_copy(keystr, "SND_JACK_BTN_2",
+						MAX_STRING);
+				key = SND_JACK_BTN_2;
+			} else if (reg < M97236_KEY_THRESH_3) {
+				string_copy(keystr, "SND_JACK_BTN_3",
+						MAX_STRING);
+				key = SND_JACK_BTN_3;
+			} else {
+				string_copy(keystr, "SND_JACK_BTN_4",
+						MAX_STRING);
+				key = SND_JACK_BTN_4;
+			}
 		} else {
-			string_copy(keystr, "SND_JACK_BTN_4", MAX_STRING);
-			key |= SND_JACK_BTN_4;
+			dev_err(max97236->codec->dev,
+				"Unknown key interrupt s1 %02X, s2 %02X\n",
+				status_reg[0], status_reg[1]);
 		}
-		if (verbosity)
-			dev_info(max97236->codec->dev, "key %s PRESS\n",
-						keystr);
-	} else {
-		if (verbosity)
-			dev_info(max97236->codec->dev, "key RELEASE\n");
 	}
+
+	if (verbosity)
+		dev_info(max97236->codec->dev, "%s %s\n",
+				press ? (char *) keystr : "BUTTON",
+				press ? "PRESS" : "RELEASE");
 
 	snd_soc_jack_report(max97236->jack, key, 0x7E00);
 }
@@ -571,9 +518,30 @@ static void max97236_report_jack_state(struct max97236_priv *max97236,
 	}
 }
 
+static void max97236_set_clk_dividers(struct max97236_priv *max97236)
+{
+	unsigned int clk_div;
+	unsigned int adc_div;
+
+	clk_div = extclk_freq / 2000;
+	adc_div = extclk_freq / 200000;
+
+	regmap_write(max97236->regmap,
+			M97236_REG_12_KEYSCAN_CLK_DIV_HI, clk_div >> 8);
+	regmap_write(max97236->regmap,
+			M97236_REG_13_KEYSCAN_CLK_DIV_LO, clk_div & 0xFF);
+	regmap_write(max97236->regmap,
+			M97236_REG_14_KEYSCAN_CLK_DIV_ADC, adc_div);
+}
+
 static void max97236_configure_for_detection(struct max97236_priv *max97236,
 					unsigned int mode)
 {
+	unsigned int reg;
+
+	regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &reg);
+	regmap_read(max97236->regmap, M97236_REG_01_STATUS2, &reg);
+
 	regmap_write(max97236->regmap, M97236_REG_09_MICROPHONE,
 		     M97236_BIAS_MASK);
 	regmap_write(max97236->regmap, M97236_REG_18_DC_TEST_SLEW_CONTROL,
@@ -583,12 +551,6 @@ static void max97236_configure_for_detection(struct max97236_priv *max97236,
 			M97236_VSENN_MASK | mode);
 
 	if (max97236->jack_state == SND_JACK_HEADSET) {
-		regmap_write(max97236->regmap,
-				M97236_REG_12_KEYSCAN_CLK_DIV_HI, 0x25);
-		regmap_write(max97236->regmap,
-				M97236_REG_13_KEYSCAN_CLK_DIV_LO, 0x80);
-		regmap_write(max97236->regmap,
-				M97236_REG_14_KEYSCAN_CLK_DIV_ADC, 0x60);
 		regmap_write(max97236->regmap,
 				M97236_REG_15_KEYSCAN_DEBOUNCE, 0x09);
 		regmap_write(max97236->regmap,
@@ -618,6 +580,18 @@ static int max97236_jacksw_active(struct max97236_priv *max97236)
 
 	regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &reg);
 	ret = (reg & M97236_JACKSW_MASK) == test_value;
+
+	return ret;
+}
+
+static int max97236_reset(struct max97236_priv *max97236)
+{
+	int ret;
+	ret  = regmap_update_bits(max97236->regmap, M97236_REG_1D_ENABLE_1,
+		M97236_RESET_MASK, M97236_RESET_MASK);
+	msleep(20);
+	ret |= regmap_update_bits(max97236->regmap, M97236_REG_1D_ENABLE_1,
+		M97236_RESET_MASK, 0);
 
 	return ret;
 }
@@ -687,7 +661,6 @@ max97236_jack_event_10:
 static void max97236_jack_plugged(struct max97236_priv *max97236)
 {
 	unsigned int status_reg[3];
-	int retries = M97236_DEFAULT_RETRIES;
 	int count;
 
 	if (!max97236_jacksw_active(max97236))
@@ -709,20 +682,14 @@ max97236_jack_plugged_10:
 	} while (((status_reg[0] & M97236_DDONE_MASK) != M97236_DDONE_MASK) &&
 			--count);
 
-
-/* pr_info("%s: DDONE 0x%02X, count %d\n", __func__, status_reg[0], count); */
-
-
 	regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &status_reg[0]);
 	regmap_read(max97236->regmap, M97236_REG_01_STATUS2, &status_reg[1]);
 	regmap_read(max97236->regmap, M97236_REG_02_STATUS3, &status_reg[2]);
 
 	max97236_report_jack_state(max97236, status_reg);
 
-	if (max97236->jack_state == M97236_JACK_STATE_NONE) {
-		if (--retries)
-			goto max97236_jack_plugged_10;
-	}
+	if (!max97236_jacksw_active(max97236))
+		goto max97236_jack_plugged_10;
 
 	if (max97236->jack_state == SND_JACK_HEADSET)
 		max97236->ignore_int = 1;
@@ -754,7 +721,8 @@ static void max97236_ignore_key_ints(struct max97236_priv *max97236)
 	return;
 }
 
-static void max97236_set_detected(unsigned int *status_reg, unsigned int *force)
+static void max97236_translate_detected(unsigned int *status_reg,
+			unsigned int *force)
 {
 	switch (status_reg[0]) {
 	case 0x01:
@@ -792,7 +760,7 @@ static void max97236_jack_event(struct max97236_priv *max97236)
 	regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &status_reg[0]);
 	regmap_read(max97236->regmap, M97236_REG_01_STATUS2, &status_reg[1]);
 
-	/* First check for a key press */
+	/* Key press or jack removal? */
 	if ((status_reg[0] & M97236_IMBH_MASK)      ||
 			(status_reg[0] & M97236_IMCSW_MASK) ||
 			(status_reg[1] & M97236_IKEY_MASK)) {
@@ -823,6 +791,28 @@ max97236_jack_event_10:
 	return;
 }
 
+static void max97236_begin_detect(struct max97236_priv *max97236)
+{
+	regmap_write(max97236->regmap, M97236_REG_19_STATE_FORCING,
+				M97236_FORCEN_MASK);
+	regmap_write(max97236->regmap, M97236_REG_20_TEST_ENABLE_2, 0x80);
+	regmap_write(max97236->regmap, M97236_REG_1F_TEST_ENABLE_1, 0x0D);
+	regmap_write(max97236->regmap, M97236_REG_23_TEST_DATA_3, 0x80);
+}
+
+static void max97236_end_detect(struct max97236_priv *max97236)
+{
+	regmap_write(max97236->regmap, M97236_REG_20_TEST_ENABLE_2, 0x00);
+	regmap_write(max97236->regmap, M97236_REG_23_TEST_DATA_3, 0x00);
+}
+
+static unsigned int max97236_get_detect_result(struct max97236_priv *max97236)
+{
+	unsigned int reg;
+	regmap_read(max97236->regmap, M97236_REG_21_TEST_DATA_1, &reg);
+	return reg;
+}
+
 static void max97236_jack_plugged(struct max97236_priv *max97236)
 {
 	unsigned int status_reg[3] = {0, 0, 0};
@@ -830,18 +820,26 @@ static void max97236_jack_plugged(struct max97236_priv *max97236)
 	int force_value = 0;
 	int count;
 
+	/* Check for spurious interrupt */
 	if (!max97236_jacksw_active(max97236))
-		goto max97236_jack_plugged_20;
+		goto max97236_jack_plugged_30;
 
-	regmap_write(max97236->regmap, M97236_REG_19_STATE_FORCING,
-				M97236_FORCEN_MASK);
-
+#if 1
+	/* Start debounce verifying jack presence periodically */
+	for (count = 0; count < 24; count++) {
+		msleep(20);
+		if (!max97236_jacksw_active(max97236))
+			goto max97236_jack_plugged_30;
+	}
+#else
 	msleep(750);
+#endif
 
 max97236_jack_plugged_10:
-	regmap_write(max97236->regmap, M97236_REG_20_TEST_ENABLE_2, 0x80);
-	regmap_write(max97236->regmap, M97236_REG_1F_TEST_ENABLE_1, 0x0D);
-	regmap_write(max97236->regmap, M97236_REG_23_TEST_DATA_3, 0x80);
+	if (!max97236_jacksw_active(max97236))
+		goto max97236_jack_plugged_30;
+
+	max97236_begin_detect(max97236);
 
 	count = 10;
 	do {
@@ -850,10 +848,9 @@ max97236_jack_plugged_10:
 				&status_reg[0]);
 	} while (((status_reg[0] & 0x40) != 0x40) && --count);
 
-	regmap_read(max97236->regmap, M97236_REG_21_TEST_DATA_1,
-		&status_reg[0]);
+	status_reg[0] = max97236_get_detect_result(max97236);
 
-	max97236_set_detected(status_reg, &force_value);
+	max97236_translate_detected(status_reg, &force_value);
 
 	if (status_reg[0] != 0) {
 		regmap_write(max97236->regmap, M97236_REG_20_TEST_ENABLE_2,
@@ -865,30 +862,35 @@ max97236_jack_plugged_10:
 		regmap_update_bits(max97236->regmap, M97236_REG_1D_ENABLE_1,
 			M97236_SHDNN_MASK, M97236_SHDNN_MASK);
 	} else {
-		if (--retries) {
-			regmap_write(max97236->regmap,
-				M97236_REG_20_TEST_ENABLE_2, 0x00);
-			regmap_write(max97236->regmap,
-				M97236_REG_19_STATE_FORCING, 0x20);
-			regmap_write(max97236->regmap,
-				M97236_REG_23_TEST_DATA_3, 0x00);
+		max97236_end_detect(max97236);
+		if (--retries)
 			goto max97236_jack_plugged_10;
-		}
 	}
 
+max97236_jack_plugged_20:
 	max97236_report_jack_state(max97236, status_reg);
+	max97236_configure_for_detection(max97236, M97236_AUTO_MODE_0);
 
 	if (max97236->jack_state == SND_JACK_HEADSET)
 		max97236_ignore_key_ints(max97236);
 
-	if (max97236->jack_state == M97236_JACK_STATE_UNKNOWN) {
+	if ((max97236->jack_state == M97236_JACK_STATE_NONE) ||
+			(max97236->jack_state == M97236_JACK_STATE_UNKNOWN)) {
 		if (verbosity)
 			pr_info("%s: M97236_STATE_FLOAT set\n", __func__);
 		regmap_write(max97236->regmap,
 			M97236_REG_19_STATE_FORCING, M97236_STATE_FLOAT);
+	} else {
+		if (!max97236_jacksw_active(max97236)) {
+			status_reg[0] = 0;
+			status_reg[1] = 0;
+			goto max97236_jack_plugged_20;
+		}
 	}
 
-max97236_jack_plugged_20:
+	return;
+
+max97236_jack_plugged_30:
 	max97236_configure_for_detection(max97236, M97236_AUTO_MODE_0);
 }
 
@@ -898,12 +900,21 @@ static void max97236_jack_work(struct work_struct *work)
 {
 	struct max97236_priv *max97236 =
 		container_of(work, struct max97236_priv, jack_work.work);
+	int ret;
+
+	ret = clk_enable(clk_cdev1);
+	if (ret)
+		pr_info("Can't enable clk extern1\n");
+
 
 	if ((max97236->jack_state == M97236_JACK_STATE_NONE) ||
 			(max97236->jack_state == M97236_JACK_STATE_UNKNOWN))
 		max97236_jack_plugged(max97236);
 	else
 		max97236_jack_event(max97236);
+
+	if (!ret)
+		clk_disable(clk_cdev1);
 }
 
 static irqreturn_t max97236_interrupt(int irq, void *data)
@@ -914,12 +925,9 @@ static irqreturn_t max97236_interrupt(int irq, void *data)
 	/* dev_info(codec->dev, "***** max97236_interrupt *****\n"); */
 
 	if (max97236->ignore_int) {
-		unsigned int keydata;
 		unsigned int reg1, reg2;
 		regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &reg1);
 		regmap_read(max97236->regmap, M97236_REG_01_STATUS2, &reg2);
-		regmap_read(max97236->regmap,
-			M97236_REG_17_PASSIVE_MBH_KEYSCAN_DATA, &keydata);
 		max97236->ignore_int = 0;
 	} else {
 		regmap_write(max97236->regmap, M97236_REG_04_IRQ_MASK1, 0x00);
@@ -931,15 +939,12 @@ static irqreturn_t max97236_interrupt(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-#define MAX97236_RATES SNDRV_PCM_RATE_8000_96000
-#define MAX97236_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
-
 static struct snd_soc_dai_ops max97236_dai_ops = {
-	.set_sysclk = max97236_dai_set_sysclk,
-	.set_fmt = max97236_dai_set_fmt,
-	.set_tdm_slot = max97236_dai_set_tdm_slot,
-	.hw_params = max97236_dai_hw_params,
-	.digital_mute = max97236_dai_digital_mute,
+	.set_sysclk = NULL,
+	.set_fmt = NULL,
+	.set_tdm_slot = NULL,
+	.hw_params = NULL,
+	.digital_mute = NULL,
 };
 
 static struct snd_soc_dai_driver max97236_dai[] = {
@@ -949,8 +954,8 @@ static struct snd_soc_dai_driver max97236_dai[] = {
 			.stream_name = "HiFi Playback",
 			.channels_min = 2,
 			.channels_max = 2,
-			.rates = MAX97236_RATES,
-			.formats = MAX97236_FORMATS,
+			.rates = 0,
+			.formats = 0,
 		},
 		.ops = &max97236_dai_ops,
 	}
@@ -975,17 +980,12 @@ int max97236_mic_detect(struct snd_soc_codec *codec,
 	int test_value;
 	int ret = -1;
 
-	dev_info(codec->dev, "%s enter\n", __func__);
+	/* dev_info(codec->dev, "%s enter\n", __func__); */
 
 	if (jack) {
 		max97236->jack = jack;
 		max97236->jack_state = M97236_JACK_STATE_NONE;
 
-		/* Send an initial empty report */
-		snd_soc_jack_report(max97236->jack, 0,
-		    SND_JACK_HEADSET | SND_JACK_LINEOUT | 0x7E00);
-
-#if 1
 		regmap_read(max97236->regmap, M97236_REG_00_STATUS1, &reg);
 #ifdef M97236_JACK_SWITCH_NORMALLY_CLOSED
 		test_value = 4;
@@ -993,9 +993,9 @@ int max97236_mic_detect(struct snd_soc_codec *codec,
 		test_value = 0;
 #endif
 
-		if ((reg & 0x04) == test_value) {
+		if ((reg & M97236_JACKSW_MASK) == test_value) {
 			schedule_delayed_work(&max97236->jack_work,
-				msecs_to_jiffies(100));
+				msecs_to_jiffies(250));
 		} else {
 			/* Clear any interrupts then enable jack detection */
 			regmap_read(max97236->regmap, M97236_REG_00_STATUS1,
@@ -1006,12 +1006,16 @@ int max97236_mic_detect(struct snd_soc_codec *codec,
 			max97236_configure_for_detection(max97236,
 				M97236_AUTO_MODE_1);
 #else
+			regmap_write(max97236->regmap,
+					M97236_REG_19_STATE_FORCING,
+					M97236_STATE_FLOAT);
+			if (verbosity)
+				pr_info("%s: M97236_STATE_FLOAT set\n",
+					__func__);
 			max97236_configure_for_detection(max97236,
 				M97236_AUTO_MODE_0);
 #endif
 		}
-
-#endif
 
 		ret = 0;
 	}
@@ -1027,13 +1031,11 @@ static int max97236_probe(struct snd_soc_codec *codec)
 	int ret;
 
 #ifdef MAX97236_AUTOMODE1_JACK_DETECTION
-	pr_info("%s: built on %s at %s, mode is AUTO1\n",
-		__func__,
+	dev_info(codec->dev, "built on %s at %s, mode is DETECT1\n",
 		__DATE__,
 		__TIME__);
 #else
-	pr_info("%s: built on %s at %s, mode is SIMPLE\n",
-		__func__,
+	dev_info(codec->dev, "built on %s at %s, mode is DETECT0\n",
 		__DATE__,
 		__TIME__);
 #endif
@@ -1045,20 +1047,22 @@ static int max97236_probe(struct snd_soc_codec *codec)
 	codec->dapm.idle_bias_off = 1;
 	codec->cache_sync = 1;
 	max97236->jack_state = M97236_JACK_STATE_UNKNOWN;
+	clk_cdev1 = clk_get_sys("extern1", NULL);
 
-	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_REGMAP);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
 		goto err_access;
 	}
 
-	/* disable all interrupts until we're ready to handle them */
+	/* Disable all interrupts until we're ready to handle them */
 	regmap_write(max97236->regmap, M97236_REG_04_IRQ_MASK1, 0x00);
 	regmap_write(max97236->regmap, M97236_REG_05_IRQ_MASK2, 0x00);
 	regmap_write(max97236->regmap, M97236_REG_09_MICROPHONE,
 		M97236_BIAS_MASK);
+	regmap_write(max97236->regmap, M97236_REG_16_KEYSCAN_DELAY, 0x18);
 
-	ret = regmap_read(max97236->regmap, M97236_REG_OB_REV_ID, &reg);
+	ret = regmap_read(max97236->regmap, M97236_REG_0B_REV_ID, &reg);
 	if (ret < 0) {
 		dev_err(codec->dev, "Cannot read device version: %d\n", ret);
 		goto err_access;
@@ -1074,6 +1078,9 @@ static int max97236_probe(struct snd_soc_codec *codec)
 		ret = -1;
 		goto err_access;
 	}
+
+	/* configure clock divider registers */
+	max97236_set_clk_dividers(max97236);
 
 	dev_info(codec->dev, "gpio = %d\n", max97236->irq);
 	/* Register for interrupts */
@@ -1138,8 +1145,23 @@ static int max97236_suspend(struct snd_soc_codec *codec)
 static int max97236_resume(struct snd_soc_codec *codec)
 {
 	struct max97236_priv *max97236 = snd_soc_codec_get_drvdata(codec);
+	unsigned int reg;
+
 	max97236_reset(max97236);
 	max97236_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+
+	/* Clear any interrupts then enable jack detection */
+	regmap_read(max97236->regmap, M97236_REG_00_STATUS1,
+			&reg);
+	regmap_read(max97236->regmap, M97236_REG_01_STATUS2,
+			&reg);
+#ifdef MAX97236_AUTOMODE1_JACK_DETECTION
+	max97236_configure_for_detection(max97236,
+			M97236_AUTO_MODE_1);
+#else
+	max97236_configure_for_detection(max97236,
+			M97236_AUTO_MODE_0);
+#endif
 	max97236_mic_detect(codec, max97236->jack);
 	if (gpio_is_valid(max97236->irq))
 		enable_irq(gpio_to_irq(max97236->irq));
@@ -1243,9 +1265,7 @@ static int max97236_runtime_resume(struct device *dev)
 	struct max97236_priv *max97236 = dev_get_drvdata(dev);
 
 	regcache_cache_only(max97236->regmap, false);
-
-	max97236_reset(max97236);
-
+	/* max97236_reset(max97236); */
 	regcache_sync(max97236->regmap);
 
 	return 0;
