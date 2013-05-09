@@ -86,6 +86,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 	case 0x10: /* Eng */
 	case 0x05: /* T40S */
 	case 0x06: /* AP40 */
+	case 0x20: /* T40DC */
 		if (!a01)
 			cpu_speedo_id = 1;
 		soc_speedo_id = 0;
