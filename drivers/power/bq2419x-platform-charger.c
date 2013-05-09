@@ -69,6 +69,16 @@ static int bq2419x_probe(struct platform_device *pdev)
 	bq2419x->palmas = dev_get_drvdata(pdev->dev.parent);
 	bq2419x->use_regmap     = 0;
 
+	if (!pdata->bcharger_pdata) {
+		dev_err(&pdev->dev, "No battery charger platform data\n");
+		return -ENODEV;
+	}
+
+	if (!pdata->bcharger_pdata->is_battery_present) {
+		dev_err(&pdev->dev, "Battery not detected! Exiting driver...\n");
+		return -ENODEV;
+	}
+
 	dev_set_drvdata(&pdev->dev, bq2419x);
 
 	ret = bq2419x_hw_init(bq2419x, pdata);
