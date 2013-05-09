@@ -105,6 +105,7 @@ static void __init tegra_laguna_init(void)
 	tegra_soc_device_init("laguna");
 	laguna_kbc_init();
 	laguna_sdhci_init();
+	laguna_regulator_init();
 	laguna_panel_init();
 	platform_add_devices(laguna_devices, ARRAY_SIZE(laguna_devices));
 	tegra_register_fuse();

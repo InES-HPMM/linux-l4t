@@ -278,6 +278,7 @@ obj-${CONFIG_MACH_LAGUNA}               += board-laguna-kbc.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-sdhci.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-panel.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-pinmux.o
+obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
