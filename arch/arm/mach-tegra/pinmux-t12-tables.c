@@ -521,10 +521,14 @@ const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
 
 #undef PINGROUP
 
+/* HACK to workaround -1 index (for INVALID index) */
+#undef TEGRA_GPIO_INVALID
+#define TEGRA_GPIO_INVALID	TEGRA_MAX_GPIO
+
 #define PINGROUP(pg_name, gpio_nr, vdd, f0, f1, f2, f3, fs, iod, reg)	\
 	[TEGRA_GPIO_##gpio_nr] =  TEGRA_PINGROUP_ ##pg_name\
 
-const int gpio_to_pingroup[TEGRA_MAX_GPIO] = {
+const int gpio_to_pingroup[TEGRA_MAX_GPIO + 1] = {
 	PINGROUPS
 
 };
