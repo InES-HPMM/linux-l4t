@@ -1,7 +1,7 @@
 /*
  * OmniVision OV5650 sensor driver
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -1146,13 +1146,13 @@ static int ov5650_s_fmt(struct v4l2_subdev *sd,
 static int ov5650_s_power(struct v4l2_subdev *sd, int on)
 {
 	struct ov5650_priv *priv = to_ov5650(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct soc_camera_link *icl = soc_camera_i2c_to_link(client);
 
 	if (on)
 		ov5650_s_fmt(sd, &priv->mf);
 
-	ov5650_s_stream(sd, on);
-
-	return 0;
+	return soc_camera_set_power(&client->dev, icl, on);
 }
 
 static int ov5650_try_fmt(struct v4l2_subdev *sd,
@@ -1254,20 +1254,14 @@ static int ov5650_probe(struct i2c_client *client,
 			 const struct i2c_device_id *did)
 {
 	struct ov5650_priv *priv;
-	struct soc_camera_device *icd	= client->dev.platform_data;
 	struct soc_camera_link *icl;
 	u8 chipid[2];
 	int ret;
 
 	/* Checking soc-camera interface */
-	if (!icd) {
-		dev_err(&client->dev, "Missing soc-camera data!\n");
-		return -EINVAL;
-	}
-
-	icl = to_soc_camera_link(icd);
+	icl = soc_camera_i2c_to_link(client);
 	if (!icl) {
-		dev_err(&client->dev, "Missing platform_data for driver\n");
+		dev_err(&client->dev, "Missing soc_camera_link for driver\n");
 		return -EINVAL;
 	}
 
@@ -1285,6 +1279,7 @@ static int ov5650_probe(struct i2c_client *client,
 	priv->ident = V4L2_IDENT_OV5650;
 
 	/* Detecting OV5650 sensor */
+	soc_camera_power_on(&client->dev, icl);
 	ret = ov5650_reg_read(client, 0x300A, &chipid[0]);
 	if (ret) {
 		dev_err(&client->dev, "Failure to read Chip ID (high byte)\n");
@@ -1307,6 +1302,8 @@ static int ov5650_probe(struct i2c_client *client,
 	}
 
 	priv->revision = (chipid[1] == 0x50) ? 0x1A : 0x1B;
+
+	soc_camera_power_off(&client->dev, icl);
 
 	priv->client = client;
 
