@@ -1590,6 +1590,26 @@ static struct imx135_reg *mode_table[] = {
 	[IMX135_MODE_QUALITY]  = mode_quality,
 };
 
+static struct imx135_reg flash_strobe_mod[] = {
+	{0x0800, 0x01},	/* flash strobe output enble on ERS mode */
+	{0x0801, 0x01},	/* reference dividor fron EXT CLK */
+	{0x0804, 0x04},	/* shutter sync mode */
+	{0x0806, 0x00},	/* ref point hi */
+	{0x0807, 0x00},	/* ref point lo */
+	{0x0808, 0x00},	/* latency hi from ref point */
+	{0x0809, 0x00},	/* latency lo from ref point */
+	{0x080A, 0x09},	/* high period of XHS for ERS hi */
+	{0x080B, 0x60},	/* high period of XHS for ERS lo */
+	{0x080C, 0x00},	/* low period of XHS for ERS hi */
+	{0x080D, 0x00},	/* low period of XHS for ERS lo */
+	{0x3100, 0x01},	/* XHS output control, 1 - FSTROBE enabled */
+	{0x3104, 0x00},	/* XHS driving capability, 0 - 2mA */
+	{0x3108, 0x00},	/* for 'sync to XVS' mode */
+	{0x3109, 0x00},	/* AE bracketing mode, 0 - normal */
+	{0x080E, 0x01},	/* num of ERS flash pulse */
+	{IMX135_TABLE_END, 0x00}
+};
+
 static inline void
 msleep_range(unsigned int delay_base)
 {
@@ -1738,6 +1758,48 @@ imx135_write_table(struct i2c_client *client,
 	return 0;
 }
 
+static int imx135_set_flash_output(struct imx135_info *info)
+{
+	struct imx135_flash_control *fctl;
+
+	if (!info->pdata)
+		return 0;
+
+	fctl = &info->pdata->flash_cap;
+	dev_dbg(&info->i2c_client->dev, "%s: %x\n", __func__, fctl->enable);
+	dev_dbg(&info->i2c_client->dev, "edg: %x, st: %x, rpt: %x, dly: %x\n",
+		fctl->edge_trig_en, fctl->start_edge,
+		fctl->repeat, fctl->delay_frm);
+	return imx135_write_table(info->i2c_client, flash_strobe_mod, NULL, 0);
+}
+
+static int imx135_get_flash_cap(struct imx135_info *info)
+{
+	struct imx135_flash_control *fctl;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %p\n", __func__, info->pdata);
+	if (info->pdata) {
+		fctl = &info->pdata->flash_cap;
+		dev_dbg(&info->i2c_client->dev,
+			"edg: %x, st: %x, rpt: %x, dl: %x\n",
+			fctl->edge_trig_en,
+			fctl->start_edge,
+			fctl->repeat,
+			fctl->delay_frm);
+
+		if (fctl->enable)
+			return 0;
+	}
+	return -ENODEV;
+}
+
+static inline int imx135_set_flash_control(
+	struct imx135_info *info, struct imx135_flash_control *fc)
+{
+	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
+	return imx135_write_reg(info->i2c_client, 0x0802, 0x01);
+}
+
 static int
 imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 {
@@ -1776,7 +1838,8 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 	imx135_get_frame_length_regs(reg_list, mode->frame_length);
 	imx135_get_coarse_time_regs(reg_list + 2, mode->coarse_time);
 	imx135_get_gain_reg(reg_list + 4, mode->gain);
-	if (mode->hdr_en == 1) {  /* if HDR is enabled */
+	/* if HDR is enabled */
+	if (mode->hdr_en == 1) {
 		imx135_get_gain_short_reg(reg_list + 5, mode->gain);
 		imx135_get_coarse_time_short_regs(
 			reg_list + 6, mode->coarse_time_short);
@@ -1797,6 +1860,8 @@ imx135_set_mode(struct imx135_info *info, struct imx135_mode *mode)
 				reg_list, 0);
 	if (err)
 		return err;
+
+	imx135_set_flash_output(info);
 
 	info->mode = sensor_mode;
 	pr_info("[IMX135]: stream on.\n");
@@ -2017,10 +2082,19 @@ static long
 imx135_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
 {
-	int err;
+	int err = 0;
 	struct imx135_info *info = file->private_data;
 
 	switch (cmd) {
+	case IMX135_IOCTL_SET_POWER:
+		if (!info->pdata)
+			break;
+		if (arg && info->pdata->power_on)
+			info->pdata->power_on(&info->power);
+		if (!arg && info->pdata->power_off)
+			info->pdata->power_off(&info->power);
+
+		break;
 	case IMX135_IOCTL_SET_MODE:
 	{
 		struct imx135_mode mode;
@@ -2070,7 +2144,7 @@ imx135_ioctl(struct file *file,
 	{
 		struct imx135_ae ae;
 		if (copy_from_user(&ae, (const void __user *)arg,
-				sizeof(struct imx135_ae))) {
+			sizeof(struct imx135_ae))) {
 			pr_info("%s:fail group hold\n", __func__);
 			return -EFAULT;
 		}
@@ -2091,11 +2165,30 @@ imx135_ioctl(struct file *file,
 		err = imx135_set_hdr_coarse_time(info, &values);
 		break;
 	}
+	case IMX135_IOCTL_SET_FLASH_MODE:
+	{
+		struct imx135_flash_control values;
+
+		dev_dbg(&info->i2c_client->dev,
+			"IMX135_IOCTL_SET_FLASH_MODE\n");
+		if (copy_from_user(&values,
+			(const void __user *)arg,
+			sizeof(struct imx135_flash_control))) {
+			err = -EFAULT;
+			break;
+		}
+		err = imx135_set_flash_control(info, &values);
+		break;
+	}
+	case IMX135_IOCTL_GET_FLASH_CAP:
+		err = imx135_get_flash_cap(info);
+		break;
 	default:
 		pr_err("%s:unknown cmd.\n", __func__);
-		return -EINVAL;
+		err = -EINVAL;
 	}
-	return 0;
+
+	return err;
 }
 
 static int imx135_debugfs_show(struct seq_file *s, void *unused)
@@ -2238,12 +2331,6 @@ imx135_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	if (info->pdata && info->pdata->power_on) {
-		info->pdata->power_on(&info->power);
-	} else {
-		pr_err("%s:no valid power_on function.\n", __func__);
-		return -EEXIST;
-	}
 	return 0;
 }
 
@@ -2252,8 +2339,6 @@ imx135_release(struct inode *inode, struct file *file)
 {
 	struct imx135_info *info = file->private_data;
 
-	if (info->pdata && info->pdata->power_off)
-		info->pdata->power_off(&info->power);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
