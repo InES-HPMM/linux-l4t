@@ -145,8 +145,8 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW8,       KBC,         PULL_UP,   NORMAL, INPUT),
 
 	/*Audio Codec*/
-	DEFAULT_PINMUX(DAP3_DIN,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
-	DEFAULT_PINMUX(DAP3_SCLK,     RSVD,   NORMAL,    TRISTATE,    OUTPUT),
+	DEFAULT_PINMUX(DAP3_DIN,      SAFE,   NORMAL,    TRISTATE,    OUTPUT),
+	DEFAULT_PINMUX(DAP3_SCLK,     SAFE,   NORMAL,    TRISTATE,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_PV0,      RSVD,   NORMAL,    TRISTATE,    OUTPUT),
 	DEFAULT_PINMUX(KB_ROW7,       RSVD,   PULL_UP,   NORMAL,      INPUT),
 
