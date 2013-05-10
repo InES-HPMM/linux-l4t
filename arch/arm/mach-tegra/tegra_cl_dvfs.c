@@ -326,7 +326,7 @@ static inline int output_disable_ol_prepare(struct tegra_cl_dvfs *cld)
 	 * in closed loop mode), and I2C bus integrity is guaranteed even in
 	 * case of flush timeout.
 	 */
-	if (!cld->p_data->out_quiet_then_disable) {
+	if (!(cld->p_data->flags & TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET)) {
 		int ret = output_disable_flush(cld);
 		if (ret)
 			pr_debug("cl_dvfs: I2C pending timeout ol_prepare\n");
@@ -344,7 +344,7 @@ static inline int output_disable_post_ol(struct tegra_cl_dvfs *cld)
 	 * mode, and I2C bus integrity is not guaranteed in case of flush
 	 * timeout
 	*/
-	if (cld->p_data->out_quiet_then_disable) {
+	if (cld->p_data->flags & TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET) {
 		int ret = output_flush_disable(cld);
 		if (ret)
 			pr_err("cl_dvfs: I2C pending timeout post_ol\n");
@@ -410,7 +410,8 @@ static inline void _load_lut(struct tegra_cl_dvfs *cld)
 static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
-	bool disable_out_for_load = !cld->p_data->out_quiet_then_disable &&
+	bool disable_out_for_load =
+		!(cld->p_data->flags & TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET) &&
 		(val & CL_DVFS_OUTPUT_CFG_I2C_ENABLE);
 
 	if (disable_out_for_load) {

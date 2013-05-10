@@ -662,7 +662,7 @@ static int __init roth_cl_dvfs_init(void)
 {
 	fill_reg_map();
 	if (tegra_revision < TEGRA_REVISION_A02)
-		roth_cl_dvfs_data.out_quiet_then_disable = true;
+		roth_cl_dvfs_data.flags = TEGRA_CL_DVFS_FLAGS_I2C_WAIT_QUIET;
 	tegra_cl_dvfs_device.dev.platform_data = &roth_cl_dvfs_data;
 	platform_device_register(&tegra_cl_dvfs_device);
 
