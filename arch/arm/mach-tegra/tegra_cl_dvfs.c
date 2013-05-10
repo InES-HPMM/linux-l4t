@@ -646,14 +646,28 @@ static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	force_val = force_val * coef / cld->p_data->cfg_param->cg;
 	force_val = clamp(force_val, FORCE_MIN, FORCE_MAX);
 
-	val = req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
+	/*
+	 * 1st set new frequency request and force values, then set force enable
+	 * bit (if not set already). Use same CL_DVFS_FREQ_REQ register read
+	 * (not other cl_dvfs register) plus explicit delay as a fence.
+	 */
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+	val &= CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+	val |= req->freq << CL_DVFS_FREQ_REQ_FREQ_SHIFT;
 	val |= req->scale << CL_DVFS_FREQ_REQ_SCALE_SHIFT;
 	val |= ((u32)force_val << CL_DVFS_FREQ_REQ_FORCE_SHIFT) &
 		CL_DVFS_FREQ_REQ_FORCE_MASK;
-	val |= CL_DVFS_FREQ_REQ_FREQ_VALID | CL_DVFS_FREQ_REQ_FORCE_ENABLE;
-
+	val |= CL_DVFS_FREQ_REQ_FREQ_VALID;
 	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
-	cl_dvfs_wmb(cld);
+	wmb();
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+
+	if (!(val & CL_DVFS_FREQ_REQ_FORCE_ENABLE)) {
+		udelay(1);  /* 1us (big margin) window for force value settle */
+		val |= CL_DVFS_FREQ_REQ_FORCE_ENABLE;
+		cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
+		cl_dvfs_wmb(cld);
+	}
 }
 
 static u8 find_mv_out_cap(struct tegra_cl_dvfs *cld, int mv)
