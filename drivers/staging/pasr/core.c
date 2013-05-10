@@ -60,7 +60,7 @@ void pasr_put(phys_addr_t paddr, unsigned long size)
 		if (!s)
 			goto out;
 
-		cur_sz = ((paddr + size) < (s->start + section_size)) ?
+		cur_sz = ((paddr + size - 1) < (s->start + section_size - 1)) ?
 			size : s->start + section_size - paddr;
 
 		if (s->lock)
@@ -110,7 +110,7 @@ void pasr_get(phys_addr_t paddr, unsigned long size)
 		if (!s)
 			goto out;
 
-		cur_sz = ((paddr + size) < (s->start + section_size)) ?
+		cur_sz = ((paddr + size - 1) < (s->start + section_size - 1)) ?
 			size : s->start + section_size - paddr;
 
 		if (s->lock)
