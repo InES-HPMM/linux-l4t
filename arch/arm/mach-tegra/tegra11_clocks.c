@@ -4196,7 +4196,7 @@ static struct clk_ops tegra_periph_clk_ops = {
 	.reset			= &tegra11_periph_clk_reset,
 };
 
-/* x1 shared bus ops */
+/* 1x shared bus ops */
 static long tegra11_1xbus_round_updown(struct clk *c, unsigned long rate,
 					    bool up)
 {
@@ -4257,36 +4257,69 @@ static int tegra11_clk_1xbus_update(struct clk *c)
 	rate = tegra11_clk_shared_bus_update(c, NULL, NULL, NULL);
 
 	old_rate = clk_get_rate_locked(c);
+	pr_debug("\n1xbus %s: rate %lu on parent %s: new request %lu\n",
+		 c->name, old_rate, c->parent->name, rate);
 	if (rate == old_rate)
 		return 0;
+
+	if (!c->u.periph.min_div_low || !c->u.periph.min_div_high) {
+		unsigned long r, m = c->max_rate;
+		r = clk_get_rate(c->u.periph.pll_low);
+		c->u.periph.min_div_low = DIV_ROUND_UP(r, m) * c->mul;
+		r = clk_get_rate(c->u.periph.pll_high);
+		c->u.periph.min_div_high = DIV_ROUND_UP(r, m) * c->mul;
+	}
 
 	new_parent = (rate <= c->u.periph.threshold) ?
 		c->u.periph.pll_low : c->u.periph.pll_high;
 
 	/*
-	 * When changing parents to lower one, set 1st max possible rate to
-	 * avoid transition with dip.
-	 *
-	 * FIXME: the transition procedure below works for current Tegra11
-	 * clock limits. In general parent switch may fail because intermediate
-	 * rate violates max limit.
+	 * The transition procedure below is guaranteed to switch to the target
+	 * parent/rate without violation of max clock limits. It would attempt
+	 * to switch without dip in bus rate if it is possible, but this cannot
+	 * be guaranteed (example: switch from 408 MHz : 1 to 624 MHz : 2 with
+	 * maximum bus limit 408 MHz will be executed as 408 => 204 => 312 MHz,
+	 * and there is no way to avoid rate dip in this case).
 	 */
-	if ((new_parent != c->parent) && (new_parent == c->u.periph.pll_low)) {
-		ret = clk_set_rate_locked(c, c->max_rate);
-		if (ret) {
-			pr_err("Failed to set %s rate to %lu\n",
-			       c->name, c->max_rate);
-			return ret;
-		}
-	}
-
 	if (new_parent != c->parent) {
+		int interim_div = 0;
+		/* Switching to pll_high may over-clock bus if current divider
+		   is too small - increase divider to safe value */
+		if ((new_parent == c->u.periph.pll_high) &&
+		    (c->div < c->u.periph.min_div_high))
+			interim_div = c->u.periph.min_div_high;
+
+		/* Switching to pll_low may dip down rate if current divider
+		   is too big - decrease divider as much as we can */
+		if ((new_parent == c->u.periph.pll_low) &&
+		    (c->div > c->u.periph.min_div_low))
+			interim_div = c->u.periph.min_div_low;
+
+		if (interim_div) {
+			u64 interim_rate = old_rate * c->div;
+			do_div(interim_rate, interim_div);
+			ret = clk_set_rate_locked(c, interim_rate);
+			if (ret) {
+				pr_err("Failed to set %s rate to %lu\n",
+				       c->name, (unsigned long)interim_rate);
+				return ret;
+			}
+			pr_debug("1xbus %s: rate %lu on parent %s\n", c->name,
+				 clk_get_rate_locked(c), c->parent->name);
+		}
+
 		ret = clk_set_parent_locked(c, new_parent);
 		if (ret) {
 			pr_err("Failed to set %s parent %s\n",
 			       c->name, new_parent->name);
 			return ret;
 		}
+
+		old_rate = clk_get_rate_locked(c);
+		pr_debug("1xbus %s: rate %lu on parent %s\n", c->name,
+			 old_rate, c->parent->name);
+		if (rate == old_rate)
+			return 0;
 	}
 
 	ret = clk_set_rate_locked(c, rate);
@@ -4294,6 +4327,8 @@ static int tegra11_clk_1xbus_update(struct clk *c)
 		pr_err("Failed to set %s rate to %lu\n", c->name, rate);
 		return ret;
 	}
+	pr_debug("1xbus %s: rate %lu on parent %s\n", c->name,
+		 clk_get_rate_locked(c), c->parent->name);
 	return 0;
 
 }

@@ -200,6 +200,8 @@ struct clk {
 			struct clk			*pll_low;
 			struct clk			*pll_high;
 			unsigned long			threshold;
+			int				min_div_low;
+			int				min_div_high;
 		} periph;
 		struct {
 			unsigned long			input_min;
