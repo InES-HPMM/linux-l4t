@@ -123,6 +123,8 @@ static void __iomem *tmrus_reg_base = IO_ADDRESS(TEGRA_TMR1_BASE);
 static int tegra_last_pclk;
 static u64 resume_time;
 static u64 resume_entry_time;
+static u64 suspend_time;
+static u64 suspend_entry_time;
 #endif
 
 struct suspend_context tegra_sctx;
@@ -248,6 +250,21 @@ void tegra_log_resume_time(void)
 	if (resume_entry_time > resume_end_time)
 		resume_end_time |= 1ull<<32;
 	resume_time = resume_end_time - resume_entry_time;
+}
+
+void tegra_log_suspend_time(void)
+{
+	suspend_entry_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+}
+
+static void tegra_get_suspend_time(void)
+{
+	u64 suspend_end_time;
+	suspend_end_time = readl(tmrus_reg_base + TIMERUS_CNTR_1US);
+
+	if (suspend_entry_time > suspend_end_time)
+		suspend_end_time |= 1ull<<32;
+	suspend_time = suspend_end_time - suspend_entry_time;
 }
 
 unsigned long tegra_cpu_power_good_time(void)
@@ -602,6 +619,7 @@ static void tegra_sleep_core(enum tegra_suspend_mode mode,
 
 	trace_smc_sleep_core(NVSEC_SMC_DONE);
 #endif
+	tegra_get_suspend_time();
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	cpu_suspend(v2p, tegra2_sleep_core_finish);
 #else
@@ -1373,6 +1391,16 @@ static ssize_t suspend_resume_time_show(struct kobject *kobj,
 static struct kobj_attribute suspend_resume_time_attribute =
 	__ATTR(resume_time, 0444, suspend_resume_time_show, 0);
 
+static ssize_t suspend_time_show(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	return sprintf(buf, "%ums\n", ((u32)suspend_time / 1000));
+}
+
+static struct kobj_attribute suspend_time_attribute =
+	__ATTR(suspend_time, 0444, suspend_time_show, 0);
+
 static struct kobject *suspend_kobj;
 
 static int tegra_pm_enter_suspend(void)
@@ -1577,6 +1605,10 @@ out:
 		if (sysfs_create_file(suspend_kobj, \
 					&suspend_resume_time_attribute.attr))
 			pr_err("%s: sysfs_create_file resume_time failed!\n",
+								__func__);
+		if (sysfs_create_file(suspend_kobj, \
+					&suspend_time_attribute.attr))
+			pr_err("%s: sysfs_create_file suspend_time failed!\n",
 								__func__);
 	}
 

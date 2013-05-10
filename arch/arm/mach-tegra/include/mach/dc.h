@@ -792,7 +792,9 @@ struct tegra_hdmi_out {
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_log_resume_time(void);
+void tegra_log_suspend_time(void);
 #else
 #define tegra_log_resume_time()
+#define tegra_log_suspend_time()
 #endif
 #endif
