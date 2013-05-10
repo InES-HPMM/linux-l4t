@@ -83,6 +83,25 @@ TRACE_EVENT(tegra_isomgr_unregister,
 	TP_printk("handle=%p %s", __entry->handle, __entry->name)
 );
 
+TRACE_EVENT(tegra_isomgr_unregister_iso_client,
+	TP_PROTO(char *name,
+		 char *msg),
+
+	TP_ARGS(name, msg),
+
+	TP_STRUCT__entry(
+		__field(char *, name)
+		__field(char *, msg)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->msg = msg;
+	),
+
+	TP_printk("%s %s", __entry->name, __entry->msg)
+);
+
 TRACE_EVENT(tegra_isomgr_reserve,
 	TP_PROTO(tegra_isomgr_handle handle,
 		 u32 bw,
@@ -213,6 +232,60 @@ TRACE_EVENT(tegra_isomgr_get_total_iso_bw,
 	),
 
 	TP_printk("bw=%dKB", __entry->bw)
+);
+
+TRACE_EVENT(tegra_isomgr_scavenge,
+	TP_PROTO(enum tegra_iso_client client,
+		 u32 avail_bw,
+		 char *name,
+		 char *msg),
+
+	TP_ARGS(client, avail_bw, name, msg),
+
+	TP_STRUCT__entry(
+		__field(enum tegra_iso_client, client)
+		__field(u32, avail_bw)
+		__field(char *, name)
+		__field(char *, msg)
+	),
+
+	TP_fast_assign(
+		__entry->client = client;
+		__entry->avail_bw = avail_bw;
+		__entry->name = name;
+		__entry->msg = msg;
+	),
+
+	TP_printk("client=%d, avail_bw=%dKB, %s %s",
+		__entry->client, __entry->avail_bw,
+		__entry->name, __entry->msg)
+);
+
+TRACE_EVENT(tegra_isomgr_scatter,
+	TP_PROTO(enum tegra_iso_client client,
+		 u32 avail_bw,
+		 char *name,
+		 char *msg),
+
+	TP_ARGS(client, avail_bw, name, msg),
+
+	TP_STRUCT__entry(
+		__field(enum tegra_iso_client, client)
+		__field(u32, avail_bw)
+		__field(char *, name)
+		__field(char *, msg)
+	),
+
+	TP_fast_assign(
+		__entry->client = client;
+		__entry->avail_bw = avail_bw;
+		__entry->name = name;
+		__entry->msg = msg;
+	),
+
+	TP_printk("client=%d, avail_bw=%dKB, %s %s",
+		__entry->client, __entry->avail_bw,
+		__entry->name, __entry->msg)
 );
 
 #endif /* _TRACE_ISOMGR_H */

@@ -339,6 +339,7 @@ static void unregister_iso_client(struct kref *kref)
 					struct isomgr_client, kref);
 	int client = cp - &isomgr_clients[0];
 
+	trace_tegra_isomgr_unregister_iso_client(cname[client], "enter");
 	isomgr_lock();
 	BUG_ON(cp->realize);
 
@@ -352,6 +353,7 @@ static void unregister_iso_client(struct kref *kref)
 	isomgr_unlock();
 
 	isomgr_scatter(client); /* share the excess */
+	trace_tegra_isomgr_unregister_iso_client(cname[client], "exit");
 }
 
 static void isomgr_scatter(int client)
@@ -359,14 +361,24 @@ static void isomgr_scatter(int client)
 	struct isomgr_client *cp;
 	int i;
 
+	trace_tegra_isomgr_scatter(client, 0, cname[client], "enter");
 	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
 		cp = &isomgr_clients[i];
 		if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
 			continue;
-		if (cp->renegotiate && i != client)
-			cp->renegotiate(cp->priv); /* poke flexibles */
+		if (cp->renegotiate && i != client) {
+			int avail_bw = cp->real_bw + isomgr.avail_bw -
+					isomgr.sleep_bw;
+			if (avail_bw > cp->dedi_bw) {
+				trace_tegra_isomgr_scatter(client, 0,
+					cname[client], "scatter");
+				/* poke flexibles */
+				cp->renegotiate(cp->priv, avail_bw);
+			}
+		}
 		kref_put(&cp->kref, unregister_iso_client);
 	}
+	trace_tegra_isomgr_scatter(client, 0, cname[client], "exit");
 }
 
 static void isomgr_scavenge(enum tegra_iso_client client)
@@ -374,6 +386,7 @@ static void isomgr_scavenge(enum tegra_iso_client client)
 	struct isomgr_client *cp;
 	int i;
 
+	trace_tegra_isomgr_scavenge(client, 0, cname[client], "enter");
 	/* ask flexible clients above dedicated BW levels to pitch in */
 	for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
 		cp = &isomgr_clients[i];
@@ -381,10 +394,18 @@ static void isomgr_scavenge(enum tegra_iso_client client)
 			continue;
 		if (cp->renegotiate)
 			if (cp->real_bw > cp->dedi_bw && i != client &&
-			    !cp->realize)
-				cp->renegotiate(cp->priv);
+			    !cp->realize) {
+				int avail_bw = cp->real_bw + isomgr.avail_bw -
+						isomgr.sleep_bw;
+				avail_bw = avail_bw < cp->dedi_bw ?
+					   cp->dedi_bw : avail_bw;
+				trace_tegra_isomgr_scavenge(client, 0,
+					cname[client], "renego");
+				cp->renegotiate(cp->priv, avail_bw);
+			}
 		kref_put(&cp->kref, unregister_iso_client);
 	}
+	trace_tegra_isomgr_scavenge(client, 0, cname[client], "exit");
 }
 
 static bool is_client_valid(enum tegra_iso_client client)
@@ -632,11 +653,14 @@ retry:
 		BUG_ON(isomgr.avail_bw < 0);
 		SANITY_CHECK_AVAIL_BW();
 	} else {
-		delta_bw = cp->rsvd_bw - cp->margin_bw;
-		SANITY_CHECK_AVAIL_BW();
-		isomgr.sleep_bw += delta_bw;
-		BUG_ON(cp->sleep_bw);
-		cp->sleep_bw += delta_bw;
+		/* Protection from first scavenge failure */
+		if (!cp->sleep_bw) {
+			delta_bw = cp->rsvd_bw - cp->margin_bw;
+			SANITY_CHECK_AVAIL_BW();
+			isomgr.sleep_bw += delta_bw;
+			BUG_ON(cp->sleep_bw);
+			cp->sleep_bw += delta_bw;
+		}
 		isomgr_unlock();
 		kref_put(&cp->kref, unregister_iso_client);
 		isomgr_scavenge(client);
@@ -723,10 +747,11 @@ retry:
 			goto out;
 		}
 	}
+	ret = 0;
 out:
 	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
-	return 0;
+	return ret;
 handle_unregistered:
 	isomgr_unlock();
 validation_fail:

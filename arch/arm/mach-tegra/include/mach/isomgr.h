@@ -32,7 +32,8 @@ enum tegra_iso_client {
 #define tegra_isomgr_handle void *
 
 /* callback to client to renegotiate ISO BW allocation */
-typedef void (*tegra_isomgr_renegotiate)(void *priv);
+typedef void (*tegra_isomgr_renegotiate)(void *priv,
+					 u32 avail_bw); /* KB/sec */
 
 #if defined(CONFIG_TEGRA_ISOMGR)
 /* Register an ISO BW client */
