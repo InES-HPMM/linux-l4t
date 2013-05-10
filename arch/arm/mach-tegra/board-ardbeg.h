@@ -32,6 +32,19 @@ int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
 
+/* Touchscreen definitions */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
+#define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
+#define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
+#define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
+#else
+#define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
+#define TOUCH_GPIO_RST_RAYDIUM_SPI	TEGRA_GPIO_PK4
+#define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
+#define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
+#endif
+
 #define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
 

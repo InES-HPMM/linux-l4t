@@ -174,7 +174,7 @@ static struct regulator_consumer_supply palmas_ldo12_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo13_supply[] = {
-	REGULATOR_SUPPLY("vdd_ts_1v8b_dis", NULL),
+	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldo14_supply[] = {
@@ -182,7 +182,7 @@ static struct regulator_consumer_supply palmas_ldo14_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldoln_supply[] = {
-	REGULATOR_SUPPLY("avdd_ts_dis", NULL),
+	REGULATOR_SUPPLY("avdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply palmas_ldousb_supply[] = {
@@ -318,9 +318,9 @@ PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 1, 1, 0);
 PALMAS_PDATA_INIT(ldo10, 1800, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo11, 3300, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo12, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
-PALMAS_PDATA_INIT(ldo13, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
+PALMAS_PDATA_INIT(ldo13, 1800, 1800, palmas_rails(smps9), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo14, 2800, 3000, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldoln, 2800, 3000, NULL, 1, 1, 0);
+PALMAS_PDATA_INIT(ldoln, 3300, 3300, NULL, 1, 1, 1);
 PALMAS_PDATA_INIT(ldousb, 2800, 3000, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(regen1, 3300, 3300, NULL, 1, 0, 0);
 PALMAS_PDATA_INIT(regen2, 5000, 5000, NULL, 1, 0, 0);
