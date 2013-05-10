@@ -134,6 +134,9 @@ struct tegra_bb {
 	struct clk *emc_clk;
 };
 
+static unsigned long emc_min_freq;
+static u32 emc_flags;
+
 static int tegra_bb_open(struct inode *inode, struct file *filp);
 static int tegra_bb_map(struct file *filp, struct vm_area_struct *vma);
 static int tegra_bb_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
@@ -890,9 +893,10 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 		/* going from 0 to high */
 		clk_prepare_enable(bb->emc_clk);
-		tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
-		clk_set_rate(bb->emc_clk, BBC_MC_MIN_FREQ);
-		pr_debug("bbc setting floor to %d\n", BBC_MC_MIN_FREQ/1000000);
+		if (emc_flags & EMC_DSR)
+			tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
+		clk_set_rate(bb->emc_clk, emc_min_freq);
+		pr_debug("bbc setting floor to %lu\n", emc_min_freq/1000000);
 
 		return;
 	case BBC_REMOVE_FLOOR:
@@ -905,7 +909,8 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		spin_unlock_irqrestore(&bb->lock, flags);
 
 		/* going from high to 0 */
-		tegra_emc_dsr_override(TEGRA_EMC_DSR_NORMAL);
+		if (emc_flags & EMC_DSR)
+			tegra_emc_dsr_override(TEGRA_EMC_DSR_NORMAL);
 		clk_set_rate(bb->emc_clk, 0);
 		clk_disable_unprepare(bb->emc_clk);
 		pr_debug("bbc removing emc floor\n");
@@ -918,6 +923,15 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 	return;
 }
+
+void tegra_bb_set_emc_floor(unsigned long freq, u32 flags)
+{
+	emc_min_freq = freq;
+	emc_flags = flags;
+	return;
+}
+EXPORT_SYMBOL(tegra_bb_set_emc_floor);
+
 #endif
 
 static int tegra_bb_probe(struct platform_device *pdev)
@@ -1166,6 +1180,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	INIT_WORK(&bb->work, tegra_bb_emc_dvfs);
+
+	tegra_bb_set_emc_floor(BBC_MC_MIN_FREQ, 0);
 
 	ret = request_irq(bb->mem_req_soon, tegra_bb_mem_req_soon,
 			IRQF_TRIGGER_RISING, "bb_mem_req_soon", bb);
