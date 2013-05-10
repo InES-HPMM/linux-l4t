@@ -720,8 +720,8 @@
 		status = "disable";
 	};
 
-	mipi_cal {
-		compatible = "nvidia,tegra114-mipi_cal";
+	mipical {
+		compatible = "nvidia,tegra114-mipical";
 		reg = <0x700e3000 0x00040000>;
 	};
 };
