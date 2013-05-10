@@ -907,17 +907,18 @@ static int max77660_pwm_dvfs_init(struct device *parent,
 	if (!dvfs_pd->en_pwm)
 		return 0;
 
-	val = DIV_ROUND_UP((dvfs_pd->default_voltage_uV - DVFS_BASE_VOLTAGE_UV),
-			DVFS_VOLTAGE_STEP_UV);
-	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_BUCK4_VSR, val);
-	if (ret < 0)
-		return ret;
-
 	ret = max77660_reg_update(parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_BUCK4_CNFG,
 			1 << MAX77660_BUCK4_DVFS_EN_SHIFT,
 			MAX77660_BUCK4_DVFS_EN_MASK);
+	if (ret < 0)
+		return ret;
+
+	/* VSR gets reset after DVFS_EN changes from 0 to 1 */
+	val = DIV_ROUND_UP((dvfs_pd->default_voltage_uV - DVFS_BASE_VOLTAGE_UV),
+			DVFS_VOLTAGE_STEP_UV);
+	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_BUCK4_VSR, val);
 	if (ret < 0)
 		return ret;
 
