@@ -459,10 +459,13 @@ static void sdhci_kunmap_atomic(void *buffer, unsigned long *flags)
 	local_irq_restore(*flags);
 }
 
-static void sdhci_set_adma_desc(u8 *desc, u32 addr, int len, unsigned cmd)
+static void sdhci_set_adma_desc(struct sdhci_host *host, u8 *desc, u32 addr,
+					int len, unsigned cmd)
 {
 	__le32 *dataddr = (__le32 __force *)(desc + 4);
+	__le64 *dataddr64 = (__le64 __force *)(desc + 4);
 	__le16 *cmdlen = (__le16 __force *)desc;
+	u32 ctrl;
 
 	/* SDHCI specification says ADMA descriptors should be 4 byte
 	 * aligned, so using 16 or 32bit operations should be safe. */
@@ -470,7 +473,11 @@ static void sdhci_set_adma_desc(u8 *desc, u32 addr, int len, unsigned cmd)
 	cmdlen[0] = cpu_to_le16(cmd);
 	cmdlen[1] = cpu_to_le16(len);
 
-	dataddr[0] = cpu_to_le32(addr);
+	ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
+	if (ctrl & SDHCI_ADDRESSING_64BIT_EN)
+		dataddr64[0] = cpu_to_le64(addr);
+	else
+		dataddr[0] = cpu_to_le32(addr);
 }
 
 static int sdhci_adma_table_pre(struct sdhci_host *host,
@@ -488,6 +495,8 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 	int i;
 	char *buffer;
 	unsigned long flags;
+	int next_desc;
+	u32 ctrl;
 
 	/*
 	 * The spec does not specify endianness of descriptor table.
@@ -520,6 +529,17 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 
 	align_addr = host->align_addr;
 
+	ctrl = sdhci_readl(host, SDHCI_ACMD12_ERR);
+	if (ctrl & SDHCI_ADDRESSING_64BIT_EN) {
+		if (ctrl & SDHCI_HOST_VERSION_4_EN)
+			next_desc = 16;
+		else
+			next_desc = 12;
+	} else {
+		/* 32 bit DMA mode supported */
+		next_desc = 8;
+	}
+
 	for_each_sg(data->sg, sg, host->sg_count, i) {
 		addr = sg_dma_address(sg);
 		len = sg_dma_len(sg);
@@ -541,14 +561,15 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 			}
 
 			/* tran, valid */
-			sdhci_set_adma_desc(desc, align_addr, offset, 0x21);
+			sdhci_set_adma_desc(host, desc, align_addr, offset,
+						0x21);
 
 			BUG_ON(offset > 65536);
 
 			align += 4;
 			align_addr += 4;
 
-			desc += 8;
+			desc += next_desc;
 
 			addr += offset;
 			len -= offset;
@@ -557,8 +578,8 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		BUG_ON(len > 65536);
 
 		/* tran, valid */
-		sdhci_set_adma_desc(desc, addr, len, 0x21);
-		desc += 8;
+		sdhci_set_adma_desc(host, desc, addr, len, 0x21);
+		desc += next_desc;
 
 		/*
 		 * If this triggers then we have a calculation bug
@@ -572,7 +593,7 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		* Mark the last descriptor as the terminating descriptor
 		*/
 		if (desc != host->adma_desc) {
-			desc -= 8;
+			desc -= next_desc;
 			desc[0] |= 0x2; /* end */
 		}
 	} else {
@@ -581,7 +602,7 @@ static int sdhci_adma_table_pre(struct sdhci_host *host,
 		*/
 
 		/* nop, end, valid */
-		sdhci_set_adma_desc(desc, 0, 0, 0x3);
+		sdhci_set_adma_desc(host, desc, 0, 0, 0x3);
 	}
 
 	/*
