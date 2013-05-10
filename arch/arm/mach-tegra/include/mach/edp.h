@@ -149,6 +149,16 @@ static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
 { return NULL; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+struct tegra_edp_vdd_cpu_entry *tegra3x_get_vdd_cpu_map(int *sz);
+struct tegra_system_edp_entry *tegra3x_get_system_edp_map(int *sz);
+#else
+static inline struct tegra_edp_vdd_cpu_entry *tegra3x_get_vdd_cpu_map(int *sz)
+{ return NULL; }
+static inline struct tegra_system_edp_entry *tegra3x_get_system_edp_map(int *sz)
+{ return NULL; }
+#endif
+
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 int tegra11x_select_core_edp_table(unsigned int regulator_mA,
 				   struct tegra_core_edp_limits *limits);
