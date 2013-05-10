@@ -6806,6 +6806,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("isp",	"vi",			"isp",	23,	0x144,	150000000, mux_pllm_pllc_pllp_plla_clkm_pllc4,	MUX | MUX8 | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("ispb",	"vi",			"ispb",	3,	0,	150000000, mux_clk_m,			0),
 	PERIPH_CLK("csus",	"vi",			"csus",	92,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
+	PERIPH_CLK("vim2_clk",	"vi",			"vim2_clk",171,	0,	150000000, mux_clk_m,			PERIPH_NO_RESET),
 	PERIPH_CLK("cilab",	"vi",			"cilab", 144,	0x614,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cilcd",	"vi",			"cilcd", 145,	0x618,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("cile",	"vi",			"cile",  146,	0x61c,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
