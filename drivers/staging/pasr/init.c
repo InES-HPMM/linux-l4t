@@ -365,7 +365,7 @@ static int __init pasr_build_map(struct pasr_info *info, struct pasr_map *map)
 	return 0;
 }
 
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG_FS
 static struct dentry *rootdir;
 
 static int pasr_print_meminfo(struct seq_file *s, void *data)
