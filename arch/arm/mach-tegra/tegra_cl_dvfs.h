@@ -80,6 +80,7 @@ struct tegra_cl_dvfs_platform_data {
 
 	struct voltage_reg_map	*vdd_map;
 	int			vdd_map_size;
+	int			pmu_undershoot_gb;
 
 	struct tegra_cl_dvfs_cfg_param		*cfg_param;
 };
