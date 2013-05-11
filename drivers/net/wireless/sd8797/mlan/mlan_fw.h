@@ -146,11 +146,11 @@ typedef enum _KEY_TYPE_ID
     /** Key type : WEP */
     KEY_TYPE_ID_WEP = 0,
     /** Key type : TKIP */
-    KEY_TYPE_ID_TKIP,
+    KEY_TYPE_ID_TKIP = 1,
     /** Key type : AES */
-    KEY_TYPE_ID_AES,
-    KEY_TYPE_ID_WAPI,
-    KEY_TYPE_ID_AES_CMAC,
+    KEY_TYPE_ID_AES = 2,
+    KEY_TYPE_ID_WAPI = 3,
+    KEY_TYPE_ID_AES_CMAC = 4,
 } KEY_TYPE_ID;
 
 /** Key Info flag for multicast key */
@@ -370,6 +370,12 @@ typedef enum _WLAN_802_11_WEP_STATUS
 #define TLV_TYPE_MGMT_IE             (PROPRIETARY_TLV_BASE_ID + 0x69)   // 0x0169
 /** TLV type: MAX_MGMT_IE */
 #define TLV_TYPE_MAX_MGMT_IE         (PROPRIETARY_TLV_BASE_ID + 0xaa)   // 0x01aa
+
+/** TLV type: key param v2 */
+#define TLV_TYPE_KEY_PARAM_V2        (PROPRIETARY_TLV_BASE_ID + 0x9C)   // 0x019C
+
+/** TLV type: hs wake hold off */
+#define TLV_TYPE_HS_WAKE_HOLDOFF     (PROPRIETARY_TLV_BASE_ID + 0xB6)   // 0x01b6
 
 /** TLV type : HT Capabilities */
 #define TLV_TYPE_HT_CAP                  (PROPRIETARY_TLV_BASE_ID + 0x4a)       // 0x014a
@@ -605,6 +611,25 @@ typedef enum _WLAN_802_11_WEP_STATUS
 #define GET_SECONDARYCHAN(Field2) (Field2 & (MBIT(0) | MBIT(1)))
 /** RadioType : Set secondary channel */
 #define SET_SECONDARYCHAN(RadioType, SECCHAN) (RadioType |= (SECCHAN << 4))
+
+/** ExtCap : Support for TDLS */
+#define ISSUPP_EXTCAP_TDLS(ext_cap) (ext_cap.TDLSSupport)
+/** ExtCap : Set support TDLS */
+#define SET_EXTCAP_TDLS(ext_cap) (ext_cap.TDLSSupport = 1)
+/** ExtCap : Reset support TDLS */
+#define RESET_EXTCAP_TDLS(ext_cap) (ext_cap.TDLSSupport = 0)
+/** ExtCap : Support for Interworking */
+#define ISSUPP_EXTCAP_INTERWORKING(ext_cap) (ext_cap.Interworking)
+/** ExtCap : Set support Interworking */
+#define SET_EXTCAP_INTERWORKING(ext_cap) (ext_cap.Interworking = 1)
+/** ExtCap : Reset support Interworking */
+#define RESET_EXTCAP_INTERWORKING(ext_cap) (ext_cap.Interworking = 0)
+/** ExtCap : Support for Operation Mode Notification */
+#define ISSUPP_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf)
+/** ExtCap : Set support Operation Mode Notification */
+#define SET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 1)
+/** ExtCap : Reset support Operation Mode Notification */
+#define RESET_EXTCAP_OPERMODENTF(ext_cap) (ext_cap.OperModeNtf = 0)
 
 /** LLC/SNAP header len   */
 #define LLC_SNAP_LEN    8
@@ -964,12 +989,12 @@ typedef enum _ENH_PS_MODES
 
 /** Buffer Constants */
 /** Number of command buffers */
-#define MRVDRV_NUM_OF_CMD_BUFFER        20
+#define MRVDRV_NUM_OF_CMD_BUFFER        30
 /** Size of command buffer */
 #define MRVDRV_SIZE_OF_CMD_BUFFER       (2 * 1024)
 
 /** Maximum number of BSS Descriptors */
-#define MRVDRV_MAX_BSSID_LIST           64
+#define MRVDRV_MAX_BSSID_LIST           128
 
 /** Host command flag in command */
 #define CMD_F_HOSTCMD           (1 << 0)
@@ -1047,6 +1072,8 @@ typedef enum _ENH_PS_MODES
 
 /** Card Event definition : BG scan report */
 #define EVENT_BG_SCAN_REPORT            0x00000018
+/** Card Event definition : BG scan stopped */
+#define EVENT_BG_SCAN_STOPPED		0x00000065
 
 /** Card Event definition : Beacon RSSI low */
 #define EVENT_RSSI_LOW                  0x00000019
@@ -1119,6 +1146,9 @@ typedef enum _ENH_PS_MODES
 
 /** Event definition:  Scan results through event */
 #define EVENT_EXT_SCAN_REPORT           0x00000058
+
+/** Event definition : FW debug information */
+#define EVENT_FW_DEBUG_INFO             0x00000063
 
 /** Event definition: RXBA_SYNC */
 #define EVENT_RXBA_SYNC                 0x00000059
@@ -1213,6 +1243,16 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_Data_t
     t_u8 data[1];
 } MLAN_PACK_END MrvlIEtypes_Data_t;
 
+#if defined(STA_SUPPORT)
+/** Pairwise Cipher Suite length */
+#define PAIRWISE_CIPHER_SUITE_LEN    4
+/** AKM Suite length */
+#define AKM_SUITE_LEN    4
+/** MFPC bit in RSN capability */
+#define MFPC_BIT    7
+/** MFPR bit in RSN capability */
+#define MFPR_BIT    6
+#endif
 /** Bit mask for TxPD status field for null packet */
 #define MRVDRV_TxPD_POWER_MGMT_NULL_PACKET 0x01
 /** Bit mask for TxPD status field for last packet */
@@ -1225,6 +1265,7 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_Data_t
 #define PKT_TYPE_AMSDU      0xE6
 /** Packet type: BAR */
 #define PKT_TYPE_BAR        0xE7
+
 /** Packet type: debugging */
 #define PKT_TYPE_DEBUG      0xEF
 
@@ -1746,38 +1787,112 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_RsnParamSet_t
     t_u8 rsn_ie[1];
 } MLAN_PACK_END MrvlIEtypes_RsnParamSet_t;
 
-/** Key_param_set fixed length */
-#define KEYPARAMSET_FIXED_LEN 6
-
+/** Key Info flag for multicast key */
+#define KEY_INFO_MCAST_KEY      0x01
+/** Key Info flag for unicast key */
+#define KEY_INFO_UCAST_KEY      0x02
+/** Key Info flag for enable key */
+#define KEY_INFO_ENABLE_KEY     0x04
+/** Key Info flag for default key */
+#define KEY_INFO_DEFAULT_KEY    0x08
+/** Key Info flag for TX key */
+#define KEY_INFO_TX_KEY         0x10
+/** Key Info flag for RX key */
+#define KEY_INFO_RX_KEY         0x20
+#define KEY_INFO_CMAC_AES_KEY   0x400
+/** PN size for WPA/WPA2 */
+#define WPA_PN_SIZE             8
 /** PN size for PMF IGTK */
 #define IGTK_PN_SIZE            8
-/** WPA AES IGTK key length */
-#define CMAC_AES_KEY_LEN        16
+/** WAPI KEY size */
+#define WAPI_KEY_SIZE           32
+/** key params fix size */
+#define KEY_PARAMS_FIXED_LEN    10
+/** key index mask */
+#define KEY_INDEX_MASK          0xf
+
+/** wep_param */
+typedef MLAN_PACK_START struct _wep_param_t
+{
+    /** key_len */
+    t_u16 key_len;
+    /** wep key */
+    t_u8 key[MAX_WEP_KEY_SIZE];
+} MLAN_PACK_END wep_param_t;
+
+/** tkip_param */
+typedef MLAN_PACK_START struct _tkip_param
+{
+    /** Rx packet num */
+    t_u8 pn[WPA_PN_SIZE];
+    /** key_len */
+    t_u16 key_len;
+    /** tkip key */
+    t_u8 key[WPA_TKIP_KEY_LEN];
+} MLAN_PACK_END tkip_param;
+
+/** aes_param */
+typedef MLAN_PACK_START struct _aes_param
+{
+    /** Rx packet num */
+    t_u8 pn[WPA_PN_SIZE];
+    /** key_len */
+    t_u16 key_len;
+    /** aes key */
+    t_u8 key[WPA_AES_KEY_LEN];
+} MLAN_PACK_END aes_param;
+
+/** wapi_param */
+typedef MLAN_PACK_START struct _wapi_param
+{
+    /** Rx packet num */
+    t_u8 pn[PN_SIZE];
+    /** key_len */
+    t_u16 key_len;
+    /** wapi key */
+    t_u8 key[WAPI_KEY_SIZE];
+} MLAN_PACK_END wapi_param;
+
 /** cmac_aes_param */
-typedef MLAN_PACK_START struct _cmac_param
+typedef MLAN_PACK_START struct _cmac_aes_param
 {
     /** IGTK pn */
     t_u8 ipn[IGTK_PN_SIZE];
+    /** key_len */
+    t_u16 key_len;
     /** aes key */
     t_u8 key[CMAC_AES_KEY_LEN];
-} MLAN_PACK_END cmac_param;
+} MLAN_PACK_END cmac_aes_param;
 
 /** MrvlIEtype_KeyParamSet_t */
-typedef MLAN_PACK_START struct _MrvlIEtype_KeyParamSet_t
+typedef MLAN_PACK_START struct _MrvlIEtype_KeyParamSetV2_t
 {
     /** Type ID */
     t_u16 type;
     /** Length of Payload */
     t_u16 length;
-    /** Type of Key: WEP=0, TKIP=1, AES=2 WAPI=3 AES_CMAC=4 */
-    t_u16 key_type_id;
+    /** mac address */
+    t_u8 mac_addr[MLAN_MAC_ADDR_LENGTH];
+    /** key index */
+    t_u8 key_idx;
+    /** Type of Key: WEP=0, TKIP=1, AES=2, WAPI=3 AES_CMAC=4 */
+    t_u8 key_type;
     /** Key Control Info specific to a key_type_id */
     t_u16 key_info;
-    /** Length of key */
-    t_u16 key_len;
-    /** Key material of size key_len */
-    t_u8 key[50];
-} MLAN_PACK_END MrvlIEtype_KeyParamSet_t;
+    union
+    {
+        /** wep key param */
+        wep_param_t wep;
+        /** tkip key param */
+        tkip_param tkip;
+        /** aes key param */
+        aes_param aes;
+        /** wapi key param */
+        wapi_param wapi;
+        /** IGTK key param */
+        cmac_aes_param cmac_aes;
+    } key_params;
+} MLAN_PACK_END MrvlIEtype_KeyParamSetV2_t;
 
 /** HostCmd_DS_802_11_KEY_MATERIAL */
 typedef MLAN_PACK_START struct _HostCmd_DS_802_11_KEY_MATERIAL
@@ -1785,7 +1900,7 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_KEY_MATERIAL
     /** Action */
     t_u16 action;
     /** Key parameter set */
-    MrvlIEtype_KeyParamSet_t key_param_set;
+    MrvlIEtype_KeyParamSetV2_t key_param_set;
 } MLAN_PACK_END HostCmd_DS_802_11_KEY_MATERIAL;
 
 /** Data structure of WMM QoS information */
@@ -2183,9 +2298,7 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_MAC_ADDRESS
 typedef MLAN_PACK_START struct _HostCmd_DS_MAC_CONTROL
 {
     /** Action */
-    t_u16 action;
-    /** Reserved field */
-    t_u16 reserved;
+    t_u32 action;
 } MLAN_PACK_END HostCmd_DS_MAC_CONTROL;
 
 /** HostCmd_DS_CMD_TX_DATA_PAUSE */
@@ -2411,6 +2524,10 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_GET_LOG
     t_u32 reserved;
     /** Number of WEP icv error for each key */
     t_u32 wep_icv_err_cnt[4];
+    /** Beacon received count */
+    t_u32 bcn_rcv_cnt;
+    /** Beacon missed count */
+    t_u32 bcn_miss_cnt;
 } MLAN_PACK_END HostCmd_DS_802_11_GET_LOG;
 
 /**_HostCmd_TX_RATE_QUERY */
@@ -3656,6 +3773,15 @@ typedef MLAN_PACK_START struct _HostCmd_DS_HS_WAKEUP_REASON
       * Others: reserved. (set to 0) */
     t_u16 wakeup_reason;
 } MLAN_PACK_END HostCmd_DS_HS_WAKEUP_REASON;
+
+/** MrvlIEtypes_HsWakeHoldoff_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_HsWakeHoldoff_t
+{
+    /** Header */
+    MrvlIEtypesHeader_t header;
+    /** Minimum delay between HsActive and HostWake (in msec) */
+    t_u16 min_wake_holdoff;
+} MLAN_PACK_END MrvlIEtypes_HsWakeHoldoff_t;
 
 /** HostCmd_DS_INACTIVITY_TIMEOUT_EXT */
 typedef MLAN_PACK_START struct _HostCmd_DS_INACTIVITY_TIMEOUT_EXT

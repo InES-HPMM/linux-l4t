@@ -82,11 +82,6 @@ wlan_reset_connect_state(pmlan_private priv, t_u8 drv_disconnect)
 
     ENTER();
 
-    if (priv->media_connected != MTRUE) {
-        LEAVE();
-        return;
-    }
-
     PRINTM(MINFO, "Handles disconnect event.\n");
 
     if (drv_disconnect) {
@@ -227,10 +222,18 @@ wlan_ops_sta_process_event(IN t_void * priv)
     t_u8 event_buf[100];
     t_u8 *evt_buf = MNULL;
     pmlan_buffer pmbuf = pmadapter->pmlan_buffer_event;
+    t_u16 reason_code;
     pmlan_callbacks pcb = &pmadapter->callbacks;
     mlan_event *pevent = (mlan_event *) event_buf;
 
     ENTER();
+
+    /* Event length check */
+    if ((pmbuf->data_len - sizeof(eventcause)) > MAX_EVENT_SIZE) {
+        pmbuf->status_code = MLAN_ERROR_PKT_SIZE_INVALID;
+        LEAVE();
+        return MLAN_STATUS_FAILURE;
+    }
 
     if (eventcause != EVENT_PS_SLEEP && eventcause != EVENT_PS_AWAKE &&
         pmbuf->data_len > sizeof(eventcause))
@@ -249,20 +252,27 @@ wlan_ops_sta_process_event(IN t_void * priv)
         break;
 
     case EVENT_DEAUTHENTICATED:
-        PRINTM(MEVENT, "EVENT: Deauthenticated\n");
+        reason_code =
+            *(t_u16 *) (pmbuf->pbuf + pmbuf->data_offset + sizeof(eventcause));
+        PRINTM(MMSG, "wlan: EVENT: Deauthenticated (reason 0x%x)\n",
+               reason_code);
         pmadapter->dbg.num_event_deauth++;
         wlan_handle_disconnect_event(pmpriv);
 
         break;
 
     case EVENT_DISASSOCIATED:
-        PRINTM(MEVENT, "EVENT: Disassociated\n");
+        reason_code =
+            *(t_u16 *) (pmbuf->pbuf + pmbuf->data_offset + sizeof(eventcause));
+        PRINTM(MMSG, "wlan: EVENT: Disassociated (reason 0x%x)\n", reason_code);
         pmadapter->dbg.num_event_disassoc++;
         wlan_handle_disconnect_event(pmpriv);
         break;
 
     case EVENT_LINK_LOST:
-        PRINTM(MEVENT, "EVENT: Link lost\n");
+        reason_code =
+            *(t_u16 *) (pmbuf->pbuf + pmbuf->data_offset + sizeof(eventcause));
+        PRINTM(MMSG, "wlan: EVENT: Link lost (reason 0x%x)\n", reason_code);
         pmadapter->dbg.num_event_link_lost++;
         wlan_handle_disconnect_event(pmpriv);
         break;
@@ -339,10 +349,33 @@ wlan_ops_sta_process_event(IN t_void * priv)
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_ADHOC_LINK_LOST, MNULL);
         break;
 
+    case EVENT_FW_DEBUG_INFO:
+        /* Allocate memory for event buffer */
+        ret = pcb->moal_malloc(pmadapter->pmoal_handle,
+                               MAX_EVENT_SIZE, MLAN_MEM_DEF, &evt_buf);
+        if ((ret == MLAN_STATUS_SUCCESS) && evt_buf) {
+            pevent = (pmlan_event) evt_buf;
+            pevent->bss_index = pmpriv->bss_index;
+            PRINTM(MEVENT, "EVENT: FW Debug Info\n");
+            pevent->event_id = MLAN_EVENT_ID_FW_DEBUG_INFO;
+            pevent->event_len = pmbuf->data_len - sizeof(eventcause);
+            memcpy(pmadapter,
+                   (t_u8 *) pevent->event_buf,
+                   pmbuf->pbuf + pmbuf->data_offset + sizeof(eventcause),
+                   pevent->event_len);
+            wlan_recv_event(pmpriv, pevent->event_id, pevent);
+            pcb->moal_mfree(pmadapter->pmoal_handle, evt_buf);
+        }
+        break;
+
     case EVENT_BG_SCAN_REPORT:
         PRINTM(MEVENT, "EVENT: BGS_REPORT\n");
         pmadapter->bgscan_reported = MTRUE;
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_BG_SCAN, MNULL);
+        break;
+    case EVENT_BG_SCAN_STOPPED:
+        PRINTM(MEVENT, "EVENT: BGS_STOPPED\n");
+        wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_BG_SCAN_STOPPED, MNULL);
         break;
 
     case EVENT_PORT_RELEASE:
@@ -429,7 +462,8 @@ wlan_ops_sta_process_event(IN t_void * priv)
         break;
     case EVENT_EXT_SCAN_REPORT:
         PRINTM(MEVENT, "EVENT: EXT_SCAN Report (%#x)\n", eventcause);
-        ret = wlan_handle_event_ext_scan_report(priv, pmbuf);
+        if (pmadapter->pext_scan_ioctl_req)
+            ret = wlan_handle_event_ext_scan_report(priv, pmbuf);
         break;
     case EVENT_MEAS_REPORT_RDY:
         PRINTM(MEVENT, "EVENT: Measurement Report Ready (%#x)\n", eventcause);
@@ -619,6 +653,7 @@ wlan_ops_sta_process_event(IN t_void * priv)
                    pEvtDat[3]);
         }
         break;
+
     default:
         PRINTM(MEVENT, "EVENT: unknown event id: %#x\n", eventcause);
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_UNKNOWN, MNULL);

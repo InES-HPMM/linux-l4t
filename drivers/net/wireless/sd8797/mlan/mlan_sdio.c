@@ -138,7 +138,7 @@ wlan_write_data_sync(mlan_adapter * pmadapter, mlan_buffer * pmbuf, t_u32 port)
                    ret);
             if (MLAN_STATUS_SUCCESS !=
                 pcb->moal_write_reg(pmadapter->pmoal_handle,
-                                    HOST_TO_CARD_EVENT_REG, 0x04)) {
+                                    HOST_TO_CARD_EVENT_REG, HOST_TERM_CMD53)) {
                 PRINTM(MERROR, "write CFG reg failed\n");
             }
             ret = MLAN_STATUS_FAILURE;
@@ -588,7 +588,7 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
                    i, offset);
             if (pcb->
                 moal_write_reg(pmadapter->pmoal_handle, HOST_TO_CARD_EVENT_REG,
-                               0x04) != MLAN_STATUS_SUCCESS) {
+                               HOST_TERM_CMD53) != MLAN_STATUS_SUCCESS) {
                 PRINTM(MERROR, "write CFG reg failed\n");
             }
             ret = MLAN_STATUS_FAILURE;
@@ -1186,7 +1186,6 @@ wlan_interrupt(pmlan_adapter pmadapter)
     t_u32 sdio_ireg = 0;
 
     ENTER();
-
     memset(pmadapter, &mbuf, 0, sizeof(mlan_buffer));
     mbuf.pbuf = pmadapter->mp_regs;
     mbuf.data_len = MAX_MP_REGS;

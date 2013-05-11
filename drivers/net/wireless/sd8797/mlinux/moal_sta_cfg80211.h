@@ -26,7 +26,6 @@
 #define RSSI_DBM_TO_MDM(x)     		((x) * 100)
 
 mlan_status woal_register_sta_cfg80211(struct net_device *dev, t_u8 bss_type);
-mlan_status woal_cfg80211_sta_init_wiphy(moal_private * priv, t_u8 wait_option);
 
 mlan_status
 woal_cfg80211_set_key(moal_private * priv, t_u8 is_enable_wep,

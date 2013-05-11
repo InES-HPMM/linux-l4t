@@ -212,9 +212,12 @@ wlan_send_null_packet(pmlan_private priv, t_u8 flags)
 
     switch (ret) {
     case MLAN_STATUS_RESOURCE:
-        pmadapter->data_sent = MTRUE;
-        /* Fall through FAILURE handling */
+        wlan_free_mlan_buffer(pmadapter, pmbuf);
+        PRINTM(MERROR, "STA Tx Error: Failed to send NULL packet!\n");
+        pmadapter->dbg.num_tx_host_to_card_failure++;
+        goto done;
     case MLAN_STATUS_FAILURE:
+        pmadapter->data_sent = MFALSE;
         wlan_free_mlan_buffer(pmadapter, pmbuf);
         PRINTM(MERROR, "STA Tx Error: Failed to send NULL packet!\n");
         pmadapter->dbg.num_tx_host_to_card_failure++;
@@ -225,6 +228,8 @@ wlan_send_null_packet(pmlan_private priv, t_u8 flags)
         pmadapter->tx_lock_flag = MTRUE;
         break;
     case MLAN_STATUS_PENDING:
+        pmadapter->data_sent = MFALSE;
+        pmadapter->tx_lock_flag = MTRUE;
         break;
     default:
         break;

@@ -43,6 +43,7 @@ mlan_status moal_free_mlan_buffer(IN t_void * pmoal_handle,
 mlan_status moal_send_packet_complete(IN t_void * pmoal_handle,
                                       IN pmlan_buffer pmbuf,
                                       IN mlan_status status);
+
 /** moal_write_reg */
 mlan_status moal_write_reg(IN t_void * pmoal_handle,
                            IN t_u32 reg, IN t_u32 data);
@@ -60,6 +61,9 @@ mlan_status moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent);
 mlan_status moal_malloc(IN t_void * pmoal_handle,
                         IN t_u32 size, IN t_u32 flag, OUT t_u8 ** ppbuf);
 mlan_status moal_mfree(IN t_void * pmoal_handle, IN t_u8 * pbuf);
+mlan_status moal_vmalloc(IN t_void * pmoal_handle,
+                         IN t_u32 size, OUT t_u8 ** ppbuf);
+mlan_status moal_vfree(IN t_void * pmoal_handle, IN t_u8 * pbuf);
 t_void *moal_memset(IN t_void * pmoal_handle,
                     IN t_void * pmem, IN t_u8 byte, IN t_u32 num);
 t_void *moal_memcpy(IN t_void * pmoal_handle,
@@ -77,7 +81,7 @@ mlan_status moal_init_lock(IN t_void * pmoal_handle, OUT t_void ** pplock);
 mlan_status moal_free_lock(IN t_void * pmoal_handle, IN t_void * plock);
 mlan_status moal_spin_lock(IN t_void * pmoal_handle, IN t_void * plock);
 mlan_status moal_spin_unlock(IN t_void * pmoal_handle, IN t_void * plock);
-t_void moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN t_s8 * pformat,
+t_void moal_print(IN t_void * pmoal_handle, IN t_u32 level, IN char *pformat,
                   IN ...);
 t_void moal_print_netintf(IN t_void * pmoal_handle, IN t_u32 bss_index,
                           IN t_u32 level);

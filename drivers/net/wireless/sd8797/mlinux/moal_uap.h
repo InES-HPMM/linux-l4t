@@ -343,6 +343,25 @@ typedef struct _snmp_mib_para
 /** Oid for 802.11H enable/disable */
 #define OID_80211H_ENABLE           0x000a
 
+#ifdef DFS_TESTING_SUPPORT
+/** dfs_testing parameters */
+typedef struct _dfs_testing_param
+{
+    /** subcmd */
+    t_u32 subcmd;
+    /** Set/Get */
+    t_u32 action;
+    /** user CAC period (msec) */
+    t_u16 usr_cac_period;
+    /** user NOP period (sec) */
+    t_u16 usr_nop_period;
+    /** don't change channel on radar */
+    t_u8 no_chan_change;
+    /** fixed channel to change to on radar */
+    t_u8 fixed_new_chan;
+} dfs_testing_para;
+#endif
+
 /** domain_info parameters */
 typedef struct _domain_info_param
 {
@@ -363,29 +382,12 @@ typedef struct _domain_info_param
 #define MAX_DOMAIN_TLV_LEN      (TLV_HEADER_LEN + COUNTRY_CODE_LEN \
                                  + (SUB_BAND_LEN * MAX_SUB_BANDS))
 
-#ifdef DFS_TESTING_SUPPORT
-/** dfs_testing parameters */
-typedef struct _dfs_testing_param
-{
-    /** subcmd */
-    t_u32 subcmd;
-    /** Set/Get */
-    t_u32 action;
-    /** user CAC period (msec) */
-    t_u16 usr_cac_period;
-    /** user NOP period (sec) */
-    t_u16 usr_nop_period;
-    /** don't change channel on radar */
-    t_u8 no_chan_change;
-    /** fixed channel to change to on radar */
-    t_u8 fixed_new_chan;
-} dfs_testing_para;
-#endif
-
 void woal_uap_set_multicast_list(struct net_device *dev);
 int woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);
 int woal_uap_bss_ctrl(moal_private * priv, t_u8 wait_option, int data);
+#ifdef CONFIG_PROC_FS
 void woal_uap_get_version(moal_private * priv, char *version, int max_len);
+#endif
 mlan_status woal_uap_get_stats(moal_private * priv, t_u8 wait_option,
                                mlan_ds_uap_stats * ustats);
 #if defined(UAP_WEXT) || defined(UAP_CFG80211)

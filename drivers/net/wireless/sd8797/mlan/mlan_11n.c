@@ -61,7 +61,6 @@ wlan_11n_ioctl_max_tx_buf_size(IN pmlan_adapter pmadapter,
     mlan_ds_11n_cfg *cfg = MNULL;
 
     ENTER();
-
     cfg = (mlan_ds_11n_cfg *) pioctl_req->pbuf;
     cfg->param.tx_buf_size = (t_u32) pmadapter->max_tx_buf_size;
     pioctl_req->data_read_written = sizeof(t_u32) + MLAN_SUB_COMMAND_SIZE;
@@ -405,6 +404,45 @@ wlan_11n_ioctl_addba_param(IN pmlan_adapter pmadapter,
     return ret;
 }
 
+/**
+ *  @brief This function send delba to specific tid
+ *  
+ *  @param priv         A pointer to mlan_priv
+ *  @param tid          tid 
+ *  @return 	        N/A
+ */
+void
+wlan_11n_delba(mlan_private * priv, int tid)
+{
+    RxReorderTbl *rx_reor_tbl_ptr;
+
+    ENTER();
+
+    if (!
+        (rx_reor_tbl_ptr =
+         (RxReorderTbl *) util_peek_list(priv->adapter->pmoal_handle,
+                                         &priv->rx_reorder_tbl_ptr,
+                                         priv->adapter->callbacks.
+                                         moal_spin_lock,
+                                         priv->adapter->callbacks.
+                                         moal_spin_unlock))) {
+        LEAVE();
+        return;
+    }
+
+    while (rx_reor_tbl_ptr != (RxReorderTbl *) & priv->rx_reorder_tbl_ptr) {
+        if (rx_reor_tbl_ptr->tid == tid) {
+            PRINTM(MIOCTL, "Send delba to tid=%d, " MACSTR "\n", tid,
+                   MAC2STR(rx_reor_tbl_ptr->ta));
+            wlan_send_delba(priv, MNULL, tid, rx_reor_tbl_ptr->ta, 0);
+        }
+        rx_reor_tbl_ptr = rx_reor_tbl_ptr->pnext;
+    }
+
+    LEAVE();
+    return;
+}
+
 /** 
  *  @brief Set/get addba reject set 
  *
@@ -432,13 +470,14 @@ wlan_11n_ioctl_addba_reject(IN pmlan_adapter pmadapter,
                MAX_NUM_TID);
     } else {
         if (pmpriv->media_connected == MTRUE) {
-            PRINTM(MERROR, "Can not set aggr priority table in connected"
-                   " state\n");
-            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
-            LEAVE();
-            return MLAN_STATUS_FAILURE;
+            for (i = 0; i < MAX_NUM_TID; i++) {
+                if (cfg->param.addba_reject[i] == ADDBA_RSP_STATUS_REJECT) {
+                    PRINTM(MIOCTL, "Receive addba reject: tid=%d\n", i);
+                    wlan_11n_delba(pmpriv, i);
+                }
+            }
+            wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_DEFER_HANDLING, MNULL);
         }
-
         for (i = 0; i < MAX_NUM_TID; i++) {
             /* For AMPDU */
             if (cfg->param.addba_reject[i] > ADDBA_RSP_STATUS_REJECT) {
@@ -605,10 +644,8 @@ wlan_11n_ioctl_delba(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     tid = cfg->param.del_ba.tid;
     peer_address = cfg->param.del_ba.peer_mac_addr;
 
-    PRINTM(MINFO,
-           "DelBA: direction %d, TID %d, peer address %02x:%02x:%02x:%02x:%02x:%02x\n",
-           cfg->param.del_ba.direction, tid, peer_address[0], peer_address[1],
-           peer_address[2], peer_address[3], peer_address[4], peer_address[5]);
+    PRINTM(MINFO, "DelBA: direction %d, TID %d, peer address " MACSTR "\n",
+           cfg->param.del_ba.direction, tid, MAC2STR(peer_address));
 
     if (cfg->param.del_ba.direction & DELBA_RX) {
         rx_reor_tbl_ptr =
@@ -730,6 +767,51 @@ wlan_11n_ioctl_rejectaddbareq(IN pmlan_adapter pmadapter,
     return ret;
 }
 
+/**
+ *  @brief This function will send DELBA to entries in the priv's
+ *          Tx BA stream table
+ *  
+ *  @param priv                 A pointer to mlan_private
+ *  @param tid                  TID
+ *
+ *  @return		 N/A
+ */
+static void
+wlan_send_delba_txbastream_tbl(pmlan_private priv, t_u8 tid)
+{
+    pmlan_adapter pmadapter = priv->adapter;
+    TxBAStreamTbl *tx_ba_stream_tbl_ptr;
+
+    ENTER();
+
+    if (!
+        (tx_ba_stream_tbl_ptr =
+         (TxBAStreamTbl *) util_peek_list(pmadapter->pmoal_handle,
+                                          &priv->tx_ba_stream_tbl_ptr,
+                                          pmadapter->callbacks.moal_spin_lock,
+                                          pmadapter->callbacks.
+                                          moal_spin_unlock))) {
+        LEAVE();
+        return;
+    }
+
+    while (tx_ba_stream_tbl_ptr !=
+           (TxBAStreamTbl *) & priv->tx_ba_stream_tbl_ptr) {
+        if (tx_ba_stream_tbl_ptr->ba_status == BA_STREAM_SETUP_COMPLETE) {
+            if (tid == tx_ba_stream_tbl_ptr->tid) {
+                PRINTM(MIOCTL, "Tx:Send delba to tid=%d, " MACSTR "\n", tid,
+                       MAC2STR(tx_ba_stream_tbl_ptr->ra));
+                wlan_send_delba(priv, MNULL, tx_ba_stream_tbl_ptr->tid,
+                                tx_ba_stream_tbl_ptr->ra, 1);
+            }
+        }
+        tx_ba_stream_tbl_ptr = tx_ba_stream_tbl_ptr->pnext;
+    }
+
+    LEAVE();
+    return;
+}
+
 /** 
  *  @brief Set/get aggr_prio_tbl 
  *
@@ -759,11 +841,14 @@ wlan_11n_ioctl_aggr_prio_tbl(IN pmlan_adapter pmadapter,
         }
     } else {
         if (pmpriv->media_connected == MTRUE) {
-            PRINTM(MERROR, "Can not set aggr priority table in connected"
-                   " state\n");
-            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
-            LEAVE();
-            return MLAN_STATUS_FAILURE;
+            for (i = 0; i < MAX_NUM_TID; i++) {
+                if (cfg->param.aggr_prio_tbl.ampdu[i] == BA_STREAM_NOT_ALLOWED) {
+                    PRINTM(MIOCTL,
+                           "Receive aggrpriotbl: BA not allowed tid=%d\n", i);
+                    wlan_send_delba_txbastream_tbl(pmpriv, i);
+                }
+            }
+            wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_DEFER_HANDLING, MNULL);
         }
 
         for (i = 0; i < MAX_NUM_TID; i++) {
@@ -1233,11 +1318,8 @@ wlan_ret_11n_addba_req(mlan_private * priv, HostCmd_DS_COMMAND * resp)
                                                       padd_ba_rsp->
                                                       peer_mac_addr))) {
             PRINTM(MCMND,
-                   "ADDBA REQ: %02x:%02x:%02x:%02x:%02x:%02x tid=%d ssn=%d win_size=%d,amsdu=%d\n",
-                   padd_ba_rsp->peer_mac_addr[0], padd_ba_rsp->peer_mac_addr[1],
-                   padd_ba_rsp->peer_mac_addr[2], padd_ba_rsp->peer_mac_addr[3],
-                   padd_ba_rsp->peer_mac_addr[4], padd_ba_rsp->peer_mac_addr[5],
-                   tid, padd_ba_rsp->ssn,
+                   "ADDBA REQ: " MACSTR " tid=%d ssn=%d win_size=%d,amsdu=%d\n",
+                   MAC2STR(padd_ba_rsp->peer_mac_addr), tid, padd_ba_rsp->ssn,
                    ((padd_ba_rsp->
                      block_ack_param_set & BLOCKACKPARAM_WINSIZE_MASK) >>
                     BLOCKACKPARAM_WINSIZE_POS),
@@ -1797,6 +1879,10 @@ wlan_cmd_append_11n_tlv(IN mlan_private * pmpriv,
         memcpy(pmadapter, (t_u8 *) pext_cap + sizeof(MrvlIEtypesHeader_t),
                (t_u8 *) pbss_desc->pext_cap + sizeof(IEEEtypes_Header_t),
                pbss_desc->pext_cap->ieee_hdr.len);
+        if (!ISSUPP_EXTCAP_TDLS(pmpriv->ext_cap))
+            RESET_EXTCAP_TDLS(pext_cap->ext_cap);
+        if (!ISSUPP_EXTCAP_INTERWORKING(pmpriv->ext_cap))
+            RESET_EXTCAP_INTERWORKING(pext_cap->ext_cap);
         HEXDUMP("Extended Capabilities IE", (t_u8 *) pext_cap,
                 sizeof(MrvlIETypes_ExtCap_t));
         *ppbuffer += sizeof(MrvlIETypes_ExtCap_t);

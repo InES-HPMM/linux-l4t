@@ -32,7 +32,6 @@ Change log:
 #include "mlan_wmm.h"
 #include "mlan_11n.h"
 #include "mlan_11h.h"
-
 #include "mlan_sdio.h"
 #include "mlan_meas.h"
 
@@ -95,6 +94,9 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     case HostCmd_CMD_MAC_CONTROL:
         break;
 
+    case HostCmd_CMD_802_11_ASSOCIATE:
+        wlan_reset_connect_state(pmpriv, MTRUE);
+        break;
     default:
         break;
     }
@@ -128,6 +130,8 @@ wlan_ret_802_11_rssi_info(IN pmlan_private pmpriv,
     HostCmd_DS_802_11_RSSI_INFO_RSP *prssi_info_rsp =
         &resp->params.rssi_info_rsp;
     mlan_ds_get_info *pget_info = MNULL;
+    BSSDescriptor_t *pbss_desc;
+    t_s32 tbl_idx = 0;
 
     ENTER();
 
@@ -142,6 +146,16 @@ wlan_ret_802_11_rssi_info(IN pmlan_private pmpriv,
 
     pmpriv->bcn_rssi_avg = wlan_le16_to_cpu(prssi_info_rsp->bcn_rssi_avg);
     pmpriv->bcn_nf_avg = wlan_le16_to_cpu(prssi_info_rsp->bcn_nf_avg);
+
+    /* Get current BSS info */
+    pbss_desc = &pmpriv->curr_bss_params.bss_descriptor;
+    tbl_idx =
+        wlan_find_ssid_in_list(pmpriv, &pbss_desc->ssid, pbss_desc->mac_address,
+                               pmpriv->bss_mode);
+    if (tbl_idx >= 0) {
+        pbss_desc = &pmpriv->adapter->pscan_table[tbl_idx];
+        pbss_desc->rssi = -pmpriv->bcn_rssi_avg;
+    }
 
     /* Need to indicate IOCTL complete */
     if (pioctl_buf != MNULL) {
@@ -177,25 +191,6 @@ wlan_ret_802_11_rssi_info(IN pmlan_private pmpriv,
         pioctl_buf->data_read_written = sizeof(mlan_ds_get_info);
     }
 
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/** 
- *  @brief This function handles the command response of mac_control
- *  
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *
- *  @return             MLAN_STATUS_SUCCESS
- */
-static mlan_status
-wlan_ret_mac_control(IN pmlan_private pmpriv,
-                     IN HostCmd_DS_COMMAND * resp,
-                     IN mlan_ioctl_req * pioctl_buf)
-{
-    ENTER();
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
@@ -325,6 +320,7 @@ wlan_ret_get_log(IN pmlan_private pmpriv,
     mlan_ds_get_info *pget_info = MNULL;
 
     ENTER();
+
     if (pioctl_buf) {
         pget_info = (mlan_ds_get_info *) pioctl_buf->pbuf;
         pget_info->param.stats.mcast_tx_frame =
@@ -355,6 +351,10 @@ wlan_ret_get_log(IN pmlan_private pmpriv,
             wlan_le32_to_cpu(pget_log->wep_icv_err_cnt[2]);
         pget_info->param.stats.wep_icv_error[3] =
             wlan_le32_to_cpu(pget_log->wep_icv_err_cnt[3]);
+        pget_info->param.stats.bcn_rcv_cnt =
+            wlan_le32_to_cpu(pget_log->bcn_rcv_cnt);
+        pget_info->param.stats.bcn_miss_cnt =
+            wlan_le32_to_cpu(pget_log->bcn_miss_cnt);
         /* Indicate ioctl complete */
         pioctl_buf->data_read_written = sizeof(mlan_ds_get_info);
     }
@@ -666,9 +666,7 @@ wlan_ret_802_11_mac_address(IN pmlan_private pmpriv,
     memcpy(pmpriv->adapter, pmpriv->curr_addr, pmac_addr->mac_addr,
            MLAN_MAC_ADDR_LENGTH);
 
-    PRINTM(MINFO, "MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           pmpriv->curr_addr[0], pmpriv->curr_addr[1], pmpriv->curr_addr[2],
-           pmpriv->curr_addr[3], pmpriv->curr_addr[4], pmpriv->curr_addr[5]);
+    PRINTM(MINFO, "MAC address: " MACSTR "\n", MAC2STR(pmpriv->curr_addr));
     if (pioctl_buf) {
         bss = (mlan_ds_bss *) pioctl_buf->pbuf;
         memcpy(pmpriv->adapter, &bss->param.mac_addr, pmpriv->curr_addr,
@@ -791,44 +789,66 @@ wlan_ret_802_11_key_material(IN pmlan_private pmpriv,
     } else {
         if (pioctl_buf &&
             (wlan_le16_to_cpu(pkey->key_param_set.type) ==
-             TLV_TYPE_KEY_MATERIAL)) {
-            PRINTM(MIOCTL, "key_type_id=%d, key_len=%d, key_info=0x%x\n",
-                   wlan_le16_to_cpu(pkey->key_param_set.key_type_id),
-                   wlan_le16_to_cpu(pkey->key_param_set.key_len),
-                   wlan_le16_to_cpu(pkey->key_param_set.key_info));
+             TLV_TYPE_KEY_PARAM_V2)) {
             sec = (mlan_ds_sec_cfg *) pioctl_buf->pbuf;
-#define WAPI_KEY_SIZE 32
-            switch (wlan_le16_to_cpu(pkey->key_param_set.key_type_id)) {
-            case KEY_TYPE_ID_WEP:
-                sec->param.encrypt_key.key_index = pkey->key_param_set.key[0];
+            memcpy(pmpriv->adapter, sec->param.encrypt_key.mac_addr,
+                   pkey->key_param_set.mac_addr, MLAN_MAC_ADDR_LENGTH);
+            sec->param.encrypt_key.key_index = pkey->key_param_set.key_idx;
+            PRINTM(MIOCTL,
+                   "key_type=%d, key_index=%d, key_info=0x%x " MACSTR "\n",
+                   pkey->key_param_set.key_type, pkey->key_param_set.key_idx,
+                   wlan_le16_to_cpu(pkey->key_param_set.key_info),
+                   MAC2STR(sec->param.encrypt_key.mac_addr));
+            switch (pkey->key_param_set.key_type) {
+            case KEY_TYPE_ID_WAPI:
+                sec->param.encrypt_key.is_wapi_key = MTRUE;
                 sec->param.encrypt_key.key_len =
-                    wlan_le16_to_cpu(pkey->key_param_set.key_len);
+                    wlan_le16_to_cpu(pkey->key_param_set.key_params.wapi.
+                                     key_len);
                 memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
-                       &pkey->key_param_set.key[2],
+                       pkey->key_param_set.key_params.wapi.key,
                        sec->param.encrypt_key.key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.pn,
+                       pkey->key_param_set.key_params.wapi.pn, PN_SIZE);
                 break;
             case KEY_TYPE_ID_TKIP:
                 sec->param.encrypt_key.key_len =
-                    wlan_le16_to_cpu(pkey->key_param_set.key_len);
+                    wlan_le16_to_cpu(pkey->key_param_set.key_params.tkip.
+                                     key_len);
                 memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
-                       pkey->key_param_set.key, sec->param.encrypt_key.key_len);
-                break;
-            case KEY_TYPE_ID_AES:
-            case KEY_TYPE_ID_AES_CMAC:
-                sec->param.encrypt_key.key_len =
-                    wlan_le16_to_cpu(pkey->key_param_set.key_len);
-                memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
-                       pkey->key_param_set.key, sec->param.encrypt_key.key_len);
-                break;
-            case KEY_TYPE_ID_WAPI:
-                sec->param.encrypt_key.is_wapi_key = MTRUE;
-                sec->param.encrypt_key.key_index = pkey->key_param_set.key[0];
-                sec->param.encrypt_key.key_len = WAPI_KEY_SIZE;
-                memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
-                       &pkey->key_param_set.key[2],
+                       pkey->key_param_set.key_params.tkip.key,
                        sec->param.encrypt_key.key_len);
                 memcpy(pmpriv->adapter, sec->param.encrypt_key.pn,
-                       &pkey->key_param_set.key[2 + WAPI_KEY_SIZE], PN_SIZE);
+                       pkey->key_param_set.key_params.tkip.pn, WPA_PN_SIZE);
+                break;
+            case KEY_TYPE_ID_AES:
+                sec->param.encrypt_key.key_len =
+                    wlan_le16_to_cpu(pkey->key_param_set.key_params.aes.
+                                     key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
+                       pkey->key_param_set.key_params.aes.key,
+                       sec->param.encrypt_key.key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.pn,
+                       pkey->key_param_set.key_params.aes.pn, WPA_PN_SIZE);
+                break;
+            case KEY_TYPE_ID_AES_CMAC:
+                sec->param.encrypt_key.key_len =
+                    wlan_le16_to_cpu(pkey->key_param_set.key_params.cmac_aes.
+                                     key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
+                       pkey->key_param_set.key_params.cmac_aes.key,
+                       sec->param.encrypt_key.key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.pn,
+                       pkey->key_param_set.key_params.cmac_aes.ipn,
+                       IGTK_PN_SIZE);
+                break;
+            case KEY_TYPE_ID_WEP:
+                sec->param.encrypt_key.key_len =
+                    wlan_le16_to_cpu(pkey->key_param_set.key_params.wep.
+                                     key_len);
+                memcpy(pmpriv->adapter, sec->param.encrypt_key.key_material,
+                       pkey->key_param_set.key_params.wep.key,
+                       sec->param.encrypt_key.key_len);
                 break;
             }
         }
@@ -1072,10 +1092,7 @@ wlan_ret_ibss_coalescing_status(IN pmlan_private pmpriv,
         return MLAN_STATUS_SUCCESS;
     }
 
-    PRINTM(MINFO, "New BSSID %02x:%02x:%02x:%02x:%02x:%02x\n",
-           pibss_coal_resp->bssid[0], pibss_coal_resp->bssid[1],
-           pibss_coal_resp->bssid[2], pibss_coal_resp->bssid[3],
-           pibss_coal_resp->bssid[4], pibss_coal_resp->bssid[5]);
+    PRINTM(MINFO, "New BSSID " MACSTR "\n", MAC2STR(pibss_coal_resp->bssid));
 
     /* If rsp has MNULL BSSID, Just return..... No Action */
     if (!memcmp
@@ -1338,6 +1355,7 @@ wlan_ret_otp_user_data(IN pmlan_private pmpriv,
 /********************************************************
                 Global Functions
 ********************************************************/
+
 /** 
  *  @brief This function handles the station command response
  *  
@@ -1357,6 +1375,7 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
     mlan_private *pmpriv = (mlan_private *) priv;
     HostCmd_DS_COMMAND *resp = (HostCmd_DS_COMMAND *) pcmd_buf;
     mlan_ioctl_req *pioctl_buf = (mlan_ioctl_req *) pioctl;
+
     mlan_adapter *pmadapter = pmpriv->adapter;
     int ctr;
 
@@ -1404,6 +1423,7 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
         break;
     case HostCmd_CMD_802_11_BG_SCAN_QUERY:
         ret = wlan_ret_802_11_bgscan_query(pmpriv, resp, pioctl_buf);
+        wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_BGSCAN_RESULT, MNULL);
         PRINTM(MINFO, "CMD_RESP: BG_SCAN result is ready!\n");
         break;
     case HostCmd_CMD_TXPWR_CFG:
@@ -1598,6 +1618,7 @@ wlan_ops_sta_process_cmdresp(IN t_void * priv,
     case HostCmd_CMD_REJECT_ADDBA_REQ:
         ret = wlan_ret_reject_addba_req(pmpriv, resp, pioctl_buf);
         break;
+
     default:
         PRINTM(MERROR, "CMD_RESP: Unknown command response %#x\n",
                resp->command);

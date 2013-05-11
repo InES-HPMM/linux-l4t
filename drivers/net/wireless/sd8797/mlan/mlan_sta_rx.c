@@ -100,7 +100,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
         if (dbgType == DBG_TYPE_SMALL) {
             PRINTM(MFW_D, "\n");
             DBG_HEXDUMP(MFW_D, "FWDBG",
-                        (t_s8 *) ((t_u8 *) & prx_pkt->eth803_hdr +
+                        (char *) ((t_u8 *) & prx_pkt->eth803_hdr +
                                   SIZE_OF_DBG_STRUCT), prx_pd->rx_pkt_length);
             PRINTM(MFW_D, "FWDBG::\n");
         }
@@ -167,8 +167,8 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
                 MIN(prx_pd->rx_pkt_length, MAX_DATA_DUMP_LEN));
 
     priv->rxpd_rate = prx_pd->rx_rate;
-
     priv->rxpd_htinfo = prx_pd->ht_info;
+
     pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
                                               &pmbuf->out_ts_sec,
                                               &pmbuf->out_ts_usec);

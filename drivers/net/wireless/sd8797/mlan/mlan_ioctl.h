@@ -31,196 +31,204 @@ enum _mlan_ioctl_req_id
 {
     /* Scan Group */
     MLAN_IOCTL_SCAN = 0x00010000,
-    MLAN_OID_SCAN_NORMAL,
-    MLAN_OID_SCAN_SPECIFIC_SSID,
-    MLAN_OID_SCAN_USER_CONFIG,
-    MLAN_OID_SCAN_CONFIG,
-    MLAN_OID_SCAN_GET_CURRENT_BSS,
-    MLAN_OID_SCAN_CANCEL,
-    MLAN_OID_SCAN_TABLE_FLUSH,
-    MLAN_OID_SCAN_BGSCAN_CONFIG,
+    MLAN_OID_SCAN_NORMAL = 0x00010001,
+    MLAN_OID_SCAN_SPECIFIC_SSID = 0x00010002,
+    MLAN_OID_SCAN_USER_CONFIG = 0x00010003,
+    MLAN_OID_SCAN_CONFIG = 0x00010004,
+    MLAN_OID_SCAN_GET_CURRENT_BSS = 0x00010005,
+    MLAN_OID_SCAN_CANCEL = 0x00010006,
+    MLAN_OID_SCAN_TABLE_FLUSH = 0x0001000A,
+    MLAN_OID_SCAN_BGSCAN_CONFIG = 0x0001000B,
     /* BSS Configuration Group */
     MLAN_IOCTL_BSS = 0x00020000,
-    MLAN_OID_BSS_START,
-    MLAN_OID_BSS_STOP,
-    MLAN_OID_BSS_MODE,
-    MLAN_OID_BSS_CHANNEL,
-    MLAN_OID_BSS_CHANNEL_LIST,
-    MLAN_OID_BSS_MAC_ADDR,
-    MLAN_OID_BSS_MULTICAST_LIST,
-    MLAN_OID_BSS_FIND_BSS,
-    MLAN_OID_IBSS_BCN_INTERVAL,
-    MLAN_OID_IBSS_ATIM_WINDOW,
-    MLAN_OID_IBSS_CHANNEL,
+    MLAN_OID_BSS_START = 0x00020001,
+    MLAN_OID_BSS_STOP = 0x00020002,
+    MLAN_OID_BSS_MODE = 0x00020003,
+    MLAN_OID_BSS_CHANNEL = 0x00020004,
+    MLAN_OID_BSS_CHANNEL_LIST = 0x00020005,
+    MLAN_OID_BSS_MAC_ADDR = 0x00020006,
+    MLAN_OID_BSS_MULTICAST_LIST = 0x00020007,
+    MLAN_OID_BSS_FIND_BSS = 0x00020008,
+    MLAN_OID_IBSS_BCN_INTERVAL = 0x00020009,
+    MLAN_OID_IBSS_ATIM_WINDOW = 0x0002000A,
+    MLAN_OID_IBSS_CHANNEL = 0x0002000B,
 #ifdef UAP_SUPPORT
-    MLAN_OID_UAP_BSS_CONFIG,
-    MLAN_OID_UAP_DEAUTH_STA,
-    MLAN_OID_UAP_BSS_RESET,
+    MLAN_OID_UAP_BSS_CONFIG = 0x0002000C,
+    MLAN_OID_UAP_DEAUTH_STA = 0x0002000D,
+    MLAN_OID_UAP_BSS_RESET = 0x0002000E,
 #endif
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-    MLAN_OID_BSS_ROLE,
+    MLAN_OID_BSS_ROLE = 0x0002000F,
 #endif
 #ifdef WIFI_DIRECT_SUPPORT
-    MLAN_OID_WIFI_DIRECT_MODE,
+    MLAN_OID_WIFI_DIRECT_MODE = 0x00020010,
 #endif
 #ifdef STA_SUPPORT
-    MLAN_OID_BSS_LISTEN_INTERVAL,
+    MLAN_OID_BSS_LISTEN_INTERVAL = 0x00020011,
 #endif
+    MLAN_OID_BSS_REMOVE = 0x00020014,
 
     /* Radio Configuration Group */
     MLAN_IOCTL_RADIO_CFG = 0x00030000,
-    MLAN_OID_RADIO_CTRL,
-    MLAN_OID_BAND_CFG,
-    MLAN_OID_ANT_CFG,
+    MLAN_OID_RADIO_CTRL = 0x00030001,
+    MLAN_OID_BAND_CFG = 0x00030002,
+    MLAN_OID_ANT_CFG = 0x00030003,
 #ifdef WIFI_DIRECT_SUPPORT
-    MLAN_OID_REMAIN_CHAN_CFG,
+    MLAN_OID_REMAIN_CHAN_CFG = 0x00030004,
 #endif
 
     /* SNMP MIB Group */
     MLAN_IOCTL_SNMP_MIB = 0x00040000,
-    MLAN_OID_SNMP_MIB_RTS_THRESHOLD,
-    MLAN_OID_SNMP_MIB_FRAG_THRESHOLD,
-    MLAN_OID_SNMP_MIB_RETRY_COUNT,
+    MLAN_OID_SNMP_MIB_RTS_THRESHOLD = 0x00040001,
+    MLAN_OID_SNMP_MIB_FRAG_THRESHOLD = 0x00040002,
+    MLAN_OID_SNMP_MIB_RETRY_COUNT = 0x00040003,
 #if defined(UAP_SUPPORT)
-    MLAN_OID_SNMP_MIB_DOT11D,
-    MLAN_OID_SNMP_MIB_DOT11H,
+    MLAN_OID_SNMP_MIB_DOT11D = 0x00040004,
+    MLAN_OID_SNMP_MIB_DOT11H = 0x00040005,
 #endif
-    MLAN_OID_SNMP_MIB_DTIM_PERIOD,
+    MLAN_OID_SNMP_MIB_DTIM_PERIOD = 0x00040006,
 
     /* Status Information Group */
     MLAN_IOCTL_GET_INFO = 0x00050000,
-    MLAN_OID_GET_STATS,
-    MLAN_OID_GET_SIGNAL,
-    MLAN_OID_GET_FW_INFO,
-    MLAN_OID_GET_VER_EXT,
-    MLAN_OID_GET_BSS_INFO,
-    MLAN_OID_GET_DEBUG_INFO,
+    MLAN_OID_GET_STATS = 0x00050001,
+    MLAN_OID_GET_SIGNAL = 0x00050002,
+    MLAN_OID_GET_FW_INFO = 0x00050003,
+    MLAN_OID_GET_VER_EXT = 0x00050004,
+    MLAN_OID_GET_BSS_INFO = 0x00050005,
+    MLAN_OID_GET_DEBUG_INFO = 0x00050006,
 #ifdef UAP_SUPPORT
-    MLAN_OID_UAP_STA_LIST,
+    MLAN_OID_UAP_STA_LIST = 0x00050007,
 #endif
 
     /* Security Configuration Group */
     MLAN_IOCTL_SEC_CFG = 0x00060000,
-    MLAN_OID_SEC_CFG_AUTH_MODE,
-    MLAN_OID_SEC_CFG_ENCRYPT_MODE,
-    MLAN_OID_SEC_CFG_WPA_ENABLED,
-    MLAN_OID_SEC_CFG_ENCRYPT_KEY,
-    MLAN_OID_SEC_CFG_PASSPHRASE,
-    MLAN_OID_SEC_CFG_EWPA_ENABLED,
-    MLAN_OID_SEC_CFG_ESUPP_MODE,
-    MLAN_OID_SEC_CFG_WAPI_ENABLED,
-    MLAN_OID_SEC_CFG_PORT_CTRL_ENABLED,
+    MLAN_OID_SEC_CFG_AUTH_MODE = 0x00060001,
+    MLAN_OID_SEC_CFG_ENCRYPT_MODE = 0x00060002,
+    MLAN_OID_SEC_CFG_WPA_ENABLED = 0x00060003,
+    MLAN_OID_SEC_CFG_ENCRYPT_KEY = 0x00060004,
+    MLAN_OID_SEC_CFG_PASSPHRASE = 0x00060005,
+    MLAN_OID_SEC_CFG_EWPA_ENABLED = 0x00060006,
+    MLAN_OID_SEC_CFG_ESUPP_MODE = 0x00060007,
+    MLAN_OID_SEC_CFG_WAPI_ENABLED = 0x00060009,
+    MLAN_OID_SEC_CFG_PORT_CTRL_ENABLED = 0x0006000A,
 
     /* Rate Group */
     MLAN_IOCTL_RATE = 0x00070000,
-    MLAN_OID_RATE_CFG,
-    MLAN_OID_GET_DATA_RATE,
-    MLAN_OID_SUPPORTED_RATES,
+    MLAN_OID_RATE_CFG = 0x00070001,
+    MLAN_OID_GET_DATA_RATE = 0x00070002,
+    MLAN_OID_SUPPORTED_RATES = 0x00070003,
 
     /* Power Configuration Group */
     MLAN_IOCTL_POWER_CFG = 0x00080000,
-    MLAN_OID_POWER_CFG,
-    MLAN_OID_POWER_CFG_EXT,
+    MLAN_OID_POWER_CFG = 0x00080001,
+    MLAN_OID_POWER_CFG_EXT = 0x00080002,
 
     /* Power Management Configuration Group */
     MLAN_IOCTL_PM_CFG = 0x00090000,
-    MLAN_OID_PM_CFG_IEEE_PS,
-    MLAN_OID_PM_CFG_HS_CFG,
-    MLAN_OID_PM_CFG_INACTIVITY_TO,
-    MLAN_OID_PM_CFG_DEEP_SLEEP,
-    MLAN_OID_PM_CFG_SLEEP_PD,
-    MLAN_OID_PM_CFG_PS_CFG,
-    MLAN_OID_PM_CFG_SLEEP_PARAMS,
+    MLAN_OID_PM_CFG_IEEE_PS = 0x00090001,
+    MLAN_OID_PM_CFG_HS_CFG = 0x00090002,
+    MLAN_OID_PM_CFG_INACTIVITY_TO = 0x00090003,
+    MLAN_OID_PM_CFG_DEEP_SLEEP = 0x00090004,
+    MLAN_OID_PM_CFG_SLEEP_PD = 0x00090005,
+    MLAN_OID_PM_CFG_PS_CFG = 0x00090006,
+    MLAN_OID_PM_CFG_SLEEP_PARAMS = 0x00090008,
 #ifdef UAP_SUPPORT
-    MLAN_OID_PM_CFG_PS_MODE,
+    MLAN_OID_PM_CFG_PS_MODE = 0x00090009,
 #endif /* UAP_SUPPORT */
-    MLAN_OID_PM_INFO,
-    MLAN_OID_PM_HS_WAKEUP_REASON,
+    MLAN_OID_PM_INFO = 0x0009000A,
+    MLAN_OID_PM_HS_WAKEUP_REASON = 0x0009000B,
 
     /* WMM Configuration Group */
     MLAN_IOCTL_WMM_CFG = 0x000A0000,
-    MLAN_OID_WMM_CFG_ENABLE,
-    MLAN_OID_WMM_CFG_QOS,
-    MLAN_OID_WMM_CFG_ADDTS,
-    MLAN_OID_WMM_CFG_DELTS,
-    MLAN_OID_WMM_CFG_QUEUE_CONFIG,
-    MLAN_OID_WMM_CFG_QUEUE_STATS,
-    MLAN_OID_WMM_CFG_QUEUE_STATUS,
-    MLAN_OID_WMM_CFG_TS_STATUS,
+    MLAN_OID_WMM_CFG_ENABLE = 0x000A0001,
+    MLAN_OID_WMM_CFG_QOS = 0x000A0002,
+    MLAN_OID_WMM_CFG_ADDTS = 0x000A0003,
+    MLAN_OID_WMM_CFG_DELTS = 0x000A0004,
+    MLAN_OID_WMM_CFG_QUEUE_CONFIG = 0x000A0005,
+    MLAN_OID_WMM_CFG_QUEUE_STATS = 0x000A0006,
+    MLAN_OID_WMM_CFG_QUEUE_STATUS = 0x000A0007,
+    MLAN_OID_WMM_CFG_TS_STATUS = 0x000A0008,
 
     /* WPS Configuration Group */
     MLAN_IOCTL_WPS_CFG = 0x000B0000,
-    MLAN_OID_WPS_CFG_SESSION,
+    MLAN_OID_WPS_CFG_SESSION = 0x000B0001,
 
     /* 802.11n Configuration Group */
     MLAN_IOCTL_11N_CFG = 0x000C0000,
-    MLAN_OID_11N_CFG_TX,
-    MLAN_OID_11N_HTCAP_CFG,
-    MLAN_OID_11N_CFG_ADDBA_REJECT,
-    MLAN_OID_11N_CFG_AGGR_PRIO_TBL,
-    MLAN_OID_11N_CFG_ADDBA_PARAM,
-    MLAN_OID_11N_CFG_MAX_TX_BUF_SIZE,
-    MLAN_OID_11N_CFG_AMSDU_AGGR_CTRL,
-    MLAN_OID_11N_CFG_SUPPORTED_MCS_SET,
-    MLAN_OID_11N_CFG_TX_BF_CAP,
-    MLAN_OID_11N_CFG_TX_BF_CFG,
-    MLAN_OID_11N_CFG_STREAM_CFG,
-    MLAN_OID_11N_CFG_DELBA,
-    MLAN_OID_11N_CFG_REJECT_ADDBA_REQ,
+    MLAN_OID_11N_CFG_TX = 0x000C0001,
+    MLAN_OID_11N_HTCAP_CFG = 0x000C0002,
+    MLAN_OID_11N_CFG_ADDBA_REJECT = 0x000C0003,
+    MLAN_OID_11N_CFG_AGGR_PRIO_TBL = 0x000C0004,
+    MLAN_OID_11N_CFG_ADDBA_PARAM = 0x000C0005,
+    MLAN_OID_11N_CFG_MAX_TX_BUF_SIZE = 0x000C0006,
+    MLAN_OID_11N_CFG_AMSDU_AGGR_CTRL = 0x000C0007,
+    MLAN_OID_11N_CFG_SUPPORTED_MCS_SET = 0x000C0008,
+    MLAN_OID_11N_CFG_TX_BF_CAP = 0x000C0009,
+    MLAN_OID_11N_CFG_TX_BF_CFG = 0x000C000A,
+    MLAN_OID_11N_CFG_STREAM_CFG = 0x000C000B,
+    MLAN_OID_11N_CFG_DELBA = 0x000C000C,
+    MLAN_OID_11N_CFG_REJECT_ADDBA_REQ = 0x000C000D,
 
     /* 802.11d Configuration Group */
     MLAN_IOCTL_11D_CFG = 0x000D0000,
 #ifdef STA_SUPPORT
-    MLAN_OID_11D_CFG_ENABLE,
-    MLAN_OID_11D_CLR_CHAN_TABLE,
+    MLAN_OID_11D_CFG_ENABLE = 0x000D0001,
+    MLAN_OID_11D_CLR_CHAN_TABLE = 0x000D0002,
 #endif /* STA_SUPPORT */
-    MLAN_OID_11D_DOMAIN_INFO,
+    MLAN_OID_11D_DOMAIN_INFO = 0x000D0003,
 
     /* Register Memory Access Group */
     MLAN_IOCTL_REG_MEM = 0x000E0000,
-    MLAN_OID_REG_RW,
-    MLAN_OID_EEPROM_RD,
-    MLAN_OID_MEM_RW,
+    MLAN_OID_REG_RW = 0x000E0001,
+    MLAN_OID_EEPROM_RD = 0x000E0002,
+    MLAN_OID_MEM_RW = 0x000E0003,
 
     /* Multi-Radio Configuration Group */
     MLAN_IOCTL_MFR_CFG = 0x00100000,
 
     /* 802.11h Configuration Group */
     MLAN_IOCTL_11H_CFG = 0x00110000,
-    MLAN_OID_11H_CHANNEL_CHECK,
-    MLAN_OID_11H_LOCAL_POWER_CONSTRAINT,
+    MLAN_OID_11H_CHANNEL_CHECK = 0x00110001,
+    MLAN_OID_11H_LOCAL_POWER_CONSTRAINT = 0x00110002,
 #if defined(DFS_TESTING_SUPPORT)
-    MLAN_OID_11H_DFS_TESTING,
+    MLAN_OID_11H_DFS_TESTING = 0x00110003,
 #endif
 
     /* Miscellaneous Configuration Group */
     MLAN_IOCTL_MISC_CFG = 0x00200000,
-    MLAN_OID_MISC_GEN_IE,
-    MLAN_OID_MISC_REGION,
-    MLAN_OID_MISC_WARM_RESET,
+    MLAN_OID_MISC_GEN_IE = 0x00200001,
+    MLAN_OID_MISC_REGION = 0x00200002,
+    MLAN_OID_MISC_WARM_RESET = 0x00200003,
 #if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
-    MLAN_OID_MISC_SDIO_MPA_CTRL,
+    MLAN_OID_MISC_SDIO_MPA_CTRL = 0x00200006,
 #endif
-    MLAN_OID_MISC_HOST_CMD,
-    MLAN_OID_MISC_SYS_CLOCK,
-    MLAN_OID_MISC_SOFT_RESET,
-    MLAN_OID_MISC_WWS,
-    MLAN_OID_MISC_INIT_SHUTDOWN,
-    MLAN_OID_MISC_CUSTOM_IE,
-    MLAN_OID_MISC_TX_DATAPAUSE,
-    MLAN_OID_MISC_IP_ADDR,
-    MLAN_OID_MISC_MAC_CONTROL,
-    MLAN_OID_MISC_MEF_CFG,
-    MLAN_OID_MISC_CFP_CODE,
-    MLAN_OID_MISC_COUNTRY_CODE,
-    MLAN_OID_MISC_THERMAL,
-    MLAN_OID_MISC_RX_MGMT_IND,
-    MLAN_OID_MISC_SUBSCRIBE_EVENT,
+    MLAN_OID_MISC_HOST_CMD = 0x00200007,
+    MLAN_OID_MISC_SYS_CLOCK = 0x00200009,
+    MLAN_OID_MISC_SOFT_RESET = 0x0020000A,
+    MLAN_OID_MISC_WWS = 0x0020000B,
+    MLAN_OID_MISC_ASSOC_RSP = 0x0020000C,
+    MLAN_OID_MISC_INIT_SHUTDOWN = 0x0020000D,
+    MLAN_OID_MISC_CUSTOM_IE = 0x0020000F,
+    MLAN_OID_MISC_TX_DATAPAUSE = 0x00200012,
+    MLAN_OID_MISC_IP_ADDR = 0x00200013,
+    MLAN_OID_MISC_MAC_CONTROL = 0x00200014,
+    MLAN_OID_MISC_MEF_CFG = 0x00200015,
+    MLAN_OID_MISC_CFP_CODE = 0x00200016,
+    MLAN_OID_MISC_COUNTRY_CODE = 0x00200017,
+    MLAN_OID_MISC_THERMAL = 0x00200018,
+    MLAN_OID_MISC_RX_MGMT_IND = 0x00200019,
+    MLAN_OID_MISC_SUBSCRIBE_EVENT = 0x0020001A,
 #ifdef DEBUG_LEVEL1
-    MLAN_OID_MISC_DRVDBG,
+    MLAN_OID_MISC_DRVDBG = 0x0020001B,
 #endif
-    MLAN_OID_MISC_OTP_USER_DATA,
-    MLAN_OID_MISC_TXCONTROL,
+    MLAN_OID_MISC_OTP_USER_DATA = 0x0020001D,
+    MLAN_OID_MISC_TXCONTROL = 0x00200020,
+#ifdef STA_SUPPORT
+    MLAN_OID_MISC_EXT_CAP_CFG = 0x00200021,
+#endif
+#if defined(STA_SUPPORT)
+    MLAN_OID_MISC_PMFCFG = 0x00200022,
+#endif
 };
 
 /** Sub command size */
@@ -520,6 +528,8 @@ typedef struct _mlan_ssid_bssid
     mlan_802_11_mac_addr bssid;
     /** index in BSSID list, start from 1 */
     t_u32 idx;
+    /** Receive signal strength in dBm */
+    t_s32 rssi;
 } mlan_ssid_bssid;
 
 #ifdef UAP_SUPPORT
@@ -610,6 +620,8 @@ typedef struct _mlan_ssid_bssid
 #define KEY_MGMT_PSK    0x02
 /** Key_mgmt_eap  */
 #define KEY_MGMT_EAP    0x01
+/** Key_mgmt_psk_sha256 */
+#define KEY_MGMT_PSK_SHA256     0x100
 
 /** TKIP */
 #define CIPHER_TKIP                 0x04
@@ -978,6 +990,11 @@ enum _mlan_band_def
 #define CHANNEL_BW_40MHZ_ABOVE       1
 #define CHANNEL_BW_40MHZ_BELOW       3
 
+/** RF antenna selection */
+#define RF_ANTENNA_MASK(n)	((1<<(n))-1)
+/** RF antenna auto select */
+#define RF_ANTENNA_AUTO		0xFFFF
+
 /** Type definition of mlan_ds_band_cfg for MLAN_OID_BAND_CFG */
 typedef struct _mlan_ds_band_cfg
 {
@@ -1110,6 +1127,10 @@ typedef struct _mlan_ds_get_stats
     t_u32 tx_frame;
     /** WEP ICV error count */
     t_u32 wep_icv_error[4];
+    /** beacon recv count */
+    t_u32 bcn_rcv_cnt;
+    /** beacon miss count */
+    t_u32 bcn_miss_cnt;
 } mlan_ds_get_stats, *pmlan_ds_get_stats;
 
 /** Type definition of mlan_ds_uap_stats for MLAN_OID_GET_STATS */
@@ -1340,7 +1361,7 @@ typedef struct
 } tx_ba_stream_tbl;
 
 /** Debug command number */
-#define DBG_CMD_NUM	5
+#define DBG_CMD_NUM	10
 
 /** mlan_debug_info data structure for MLAN_OID_GET_DEBUG_INFO */
 typedef struct _mlan_debug_info
@@ -1393,6 +1414,8 @@ typedef struct _mlan_debug_info
     t_u8 tx_lock_flag;
     /** Corresponds to port_open member of mlan_private */
     t_u8 port_open;
+    /** bypass pkt count */
+    t_u16 bypass_pkt_count;
     /** Corresponds to scan_processing member of mlan_adapter */
     t_u32 scan_processing;
     /** Number of host to card command failures */
@@ -1443,7 +1466,8 @@ typedef struct _mlan_debug_info
     t_u16 last_event[DBG_CMD_NUM];
     /** Last event index */
     t_u16 last_event_index;
-
+    /** Number of no free command node */
+    t_u16 num_no_cmd_node;
     /** Corresponds to data_sent member of mlan_adapter */
     t_u8 data_sent;
     /** Corresponds to cmd_sent member of mlan_adapter */
@@ -1716,7 +1740,8 @@ typedef struct _mlan_ds_sec_cfg
 enum _mlan_rate_type
 {
     MLAN_RATE_INDEX,
-    MLAN_RATE_VALUE
+    MLAN_RATE_VALUE,
+    MLAN_RATE_BITMAP
 };
 
 /** Enumeration for rate format */
@@ -1734,7 +1759,7 @@ typedef struct _mlan_rate_cfg_t
 {
     /** Fixed rate: 0, auto rate: 1 */
     t_u32 is_rate_auto;
-    /** Rate type. 0: index; 1: valude  */
+    /** Rate type. 0: index; 1: value; 2: bitmap */
     t_u32 rate_type;
     /** Rate/MCS index or rate value if fixed rate */
     t_u32 rate;
@@ -1858,6 +1883,8 @@ typedef struct _mlan_ds_power_cfg
 #define HOST_SLEEP_COND_MAC_EVENT       MBIT(2)
 /** Host sleep config condition: multicast data */
 #define HOST_SLEEP_COND_MULTICAST_DATA  MBIT(3)
+/** Host sleep config condition: IPV6 packet */
+#define HOST_SLEEP_COND_IPV6_PACKET     MBIT(31)
 
 /** Host sleep config conditions: Default */
 #define HOST_SLEEP_DEF_COND     (HOST_SLEEP_COND_BROADCAST_DATA | HOST_SLEEP_COND_UNICAST_DATA | HOST_SLEEP_COND_MAC_EVENT)
@@ -1865,6 +1892,8 @@ typedef struct _mlan_ds_power_cfg
 #define HOST_SLEEP_DEF_GPIO     0xff
 /** Host sleep config gap : Default */
 #define HOST_SLEEP_DEF_GAP      200
+/** Host sleep config min wake holdoff */
+#define HOST_SLEEP_DEF_WAKE_HOLDOFF 0;
 
 /** Type definition of mlan_ds_hs_cfg for MLAN_OID_PM_CFG_HS_CFG */
 typedef struct _mlan_ds_hs_cfg
@@ -2807,6 +2836,18 @@ typedef struct _mlan_ds_misc_sys_clock
     t_u16 sys_clk[MLAN_MAX_CLK_NUM];
 } mlan_ds_misc_sys_clock;
 
+/** Maximum response buffer length */
+#define ASSOC_RSP_BUF_SIZE 500
+
+/** Type definition of mlan_ds_misc_assoc_rsp for MLAN_OID_MISC_ASSOC_RSP */
+typedef struct _mlan_ds_misc_assoc_rsp
+{
+    /** Associate response buffer */
+    t_u8 assoc_resp_buf[ASSOC_RSP_BUF_SIZE];
+    /** Response buffer length */
+    t_u32 assoc_resp_len;
+} mlan_ds_misc_assoc_rsp;
+
 /** Enumeration for function init/shutdown */
 enum _mlan_func_cmd
 {
@@ -2827,6 +2868,8 @@ typedef struct _mlan_ds_misc_tx_datapause
 #define IPADDR_LEN                  (16)
 /** Max number of ip */
 #define MAX_IPADDR                  (4)
+/** IP address type - NONE*/
+#define IPADDR_TYPE_NONE            (0)
 /** IP address type - IPv4*/
 #define IPADDR_TYPE_IPV4            (1)
 /** IP operation remove */
@@ -2887,6 +2930,10 @@ typedef struct _mlan_ds_misc_country_code
     t_u8 country_code[COUNTRY_CODE_LEN];
 } mlan_ds_misc_country_code;
 
+/** action for set */
+#define SUBSCRIBE_EVT_ACT_BITWISE_SET         0x0002
+/** action for clear */
+#define SUBSCRIBE_EVT_ACT_BITWISE_CLR         0x0003
 /** BITMAP for subscribe event rssi low */
 #define SUBSCRIBE_EVT_RSSI_LOW  		MBIT(0)
 /** BITMAP for subscribe event snr low */
@@ -2917,6 +2964,8 @@ typedef struct _mlan_ds_misc_country_code
 /** Type definition of mlan_ds_subscribe_evt for MLAN_OID_MISC_CFP_CODE */
 typedef struct _mlan_ds_subscribe_evt
 {
+    /** evt action */
+    t_u16 evt_action;
     /** bitmap for subscribe event */
     t_u16 evt_bitmap;
     /** Absolute value of RSSI threshold value (dBm) */
@@ -2989,6 +3038,16 @@ typedef struct _mlan_ds_misc_otp_user_data
     t_u8 user_data[MAX_OTP_USER_DATA_LEN];
 } mlan_ds_misc_otp_user_data;
 
+#if defined(STA_SUPPORT)
+typedef struct _mlan_ds_misc_pmfcfg
+{
+    /** Management Frame Protection Capable */
+    t_u8 mfpc;
+    /** Management Frame Protection Required */
+    t_u8 mfpr;
+} mlan_ds_misc_pmfcfg;
+#endif
+
 /** Type definition of mlan_ds_misc_cfg for MLAN_IOCTL_MISC_CFG */
 typedef struct _mlan_ds_misc_cfg
 {
@@ -3011,6 +3070,8 @@ typedef struct _mlan_ds_misc_cfg
         mlan_ds_misc_sys_clock sys_clock;
         /** WWS set/get for MLAN_OID_MISC_WWS */
         t_u32 wws_cfg;
+        /** Get associate response for MLAN_OID_MISC_ASSOC_RSP */
+        mlan_ds_misc_assoc_rsp assoc_resp;
         /** Function init/shutdown for MLAN_OID_MISC_INIT_SHUTDOWN */
         t_u32 func_init_shutdown;
         /** Custom IE for MLAN_OID_MISC_CUSTOM_IE */
@@ -3037,9 +3098,15 @@ typedef struct _mlan_ds_misc_cfg
         /** Driver debug bit masks */
         t_u32 drvdbg;
 #endif
+#ifdef STA_SUPPORT
+        t_u8 ext_cap[8];
+#endif
         mlan_ds_misc_otp_user_data otp_user_data;
         /** Tx control */
         t_u32 tx_control;
+#if defined(STA_SUPPORT)
+        mlan_ds_misc_pmfcfg pmfcfg;
+#endif
     } param;
 } mlan_ds_misc_cfg, *pmlan_ds_misc_cfg;
 

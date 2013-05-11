@@ -169,10 +169,15 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 #ifdef STA_SUPPORT
     /* Allocate buffer to store the BSSID list */
     buf_size = sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST;
-    ret =
-        pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle, buf_size,
-                                         MLAN_MEM_DEF,
-                                         (t_u8 **) & ptemp_scan_table);
+    if (pmadapter->callbacks.moal_vmalloc && pmadapter->callbacks.moal_vfree)
+        ret =
+            pmadapter->callbacks.moal_vmalloc(pmadapter->pmoal_handle, buf_size,
+                                              (t_u8 **) & ptemp_scan_table);
+    else
+        ret =
+            pmadapter->callbacks.moal_malloc(pmadapter->pmoal_handle, buf_size,
+                                             MLAN_MEM_DEF,
+                                             (t_u8 **) & ptemp_scan_table);
     if (ret != MLAN_STATUS_SUCCESS || !ptemp_scan_table) {
         PRINTM(MERROR, "Failed to allocate scan table\n");
         LEAVE();
@@ -281,7 +286,7 @@ wlan_init_priv(pmlan_private priv)
 
     wlan_11d_priv_init(priv);
     wlan_11h_priv_init(priv);
-#if defined(UAP_SUPPORT)
+#ifdef UAP_SUPPORT
     priv->uap_bss_started = MFALSE;
     memset(pmadapter, &priv->uap_state_chan_cb, 0,
            sizeof(priv->uap_state_chan_cb));
@@ -320,6 +325,10 @@ wlan_init_priv(pmlan_private priv)
     memset(pmadapter, &priv->aes_key, 0, sizeof(priv->aes_key));
     priv->wpa_ie_len = 0;
     priv->wpa_is_gtk_set = MFALSE;
+#if defined(STA_SUPPORT)
+    priv->pmfcfg.mfpc = 0;
+    priv->pmfcfg.mfpr = 0;
+#endif
     priv->sec_info.wapi_enabled = MFALSE;
     priv->wapi_ie_len = 0;
     priv->sec_info.wapi_key_on = MFALSE;
@@ -336,6 +345,7 @@ wlan_init_priv(pmlan_private priv)
 #ifdef STA_SUPPORT
     priv->pcurr_bcn_buf = MNULL;
     priv->curr_bcn_size = 0;
+    memset(pmadapter, &priv->ext_cap, 0, sizeof(priv->ext_cap));
 #endif /* STA_SUPPORT */
 
     for (i = 0; i < MAX_NUM_TID; i++)
@@ -367,7 +377,6 @@ t_void
 wlan_init_adapter(pmlan_adapter pmadapter)
 {
     opt_sleep_confirm_buffer *sleep_cfm_buf = MNULL;
-
     ENTER();
 
     sleep_cfm_buf = (opt_sleep_confirm_buffer *) (pmadapter->psleep_cfm->pbuf +
@@ -508,6 +517,7 @@ wlan_init_adapter(pmlan_adapter pmadapter)
     pmadapter->hs_cfg.gpio = HOST_SLEEP_DEF_GPIO;
     pmadapter->hs_cfg.gap = HOST_SLEEP_DEF_GAP;
     pmadapter->hs_activated = MFALSE;
+    pmadapter->min_wake_holdoff = HOST_SLEEP_DEF_WAKE_HOLDOFF;
 
     memset(pmadapter, pmadapter->event_body, 0, sizeof(pmadapter->event_body));
     pmadapter->hw_dot_11n_dev_cap = 0;
@@ -526,7 +536,7 @@ wlan_init_adapter(pmlan_adapter pmadapter)
     wlan_11h_init(pmadapter);
 
     wlan_wmm_init(pmadapter);
-
+    pmadapter->bypass_pkt_count = 0;
     if (pmadapter->psleep_cfm) {
         pmadapter->psleep_cfm->buf_type = MLAN_BUF_TYPE_CMD;
         pmadapter->psleep_cfm->data_len = sizeof(OPT_Confirm_Sleep);
@@ -642,10 +652,6 @@ wlan_init_lock_list(IN pmlan_adapter pmadapter)
         }
     }
 
-    /* Initialize bypass_txq */
-    util_init_list_head((t_void *) pmadapter->pmoal_handle,
-                        &pmadapter->bypass_txq, MTRUE,
-                        pmadapter->callbacks.moal_init_lock);
     /* Initialize cmd_free_q */
     util_init_list_head((t_void *) pmadapter->pmoal_handle,
                         &pmadapter->cmd_free_q, MTRUE,
@@ -690,6 +696,10 @@ wlan_init_lock_list(IN pmlan_adapter pmadapter)
                              pmadapter->callbacks.moal_init_lock);
             util_init_list_head((t_void *) pmadapter->pmoal_handle,
                                 &priv->sta_list, MTRUE,
+                                pmadapter->callbacks.moal_init_lock);
+            /* Initialize bypass_txq */
+            util_init_list_head((t_void *) pmadapter->pmoal_handle,
+                                &priv->bypass_txq, MTRUE,
                                 pmadapter->callbacks.moal_init_lock);
         }
     }
@@ -745,9 +755,6 @@ wlan_free_lock_list(IN pmlan_adapter pmadapter)
 
     /* Free lists */
     util_free_list_head((t_void *) pmadapter->pmoal_handle,
-                        &pmadapter->bypass_txq,
-                        pmadapter->callbacks.moal_free_lock);
-    util_free_list_head((t_void *) pmadapter->pmoal_handle,
                         &pmadapter->cmd_free_q,
                         pmadapter->callbacks.moal_free_lock);
 
@@ -770,6 +777,9 @@ wlan_free_lock_list(IN pmlan_adapter pmadapter)
             util_free_list_head((t_void *) pmadapter->pmoal_handle,
                                 &priv->sta_list,
                                 priv->adapter->callbacks.moal_free_lock);
+            util_free_list_head((t_void *) pmadapter->pmoal_handle,
+                                &priv->bypass_txq,
+                                pmadapter->callbacks.moal_free_lock);
 
             for (j = 0; j < MAX_NUM_TID; ++j)
                 util_free_list_head((t_void *) priv->adapter->pmoal_handle,
@@ -808,7 +818,6 @@ wlan_init_timer(IN pmlan_adapter pmadapter)
 {
     mlan_status ret = MLAN_STATUS_SUCCESS;
     pmlan_callbacks pcb = &pmadapter->callbacks;
-
     ENTER();
 
     if (pcb->
@@ -835,7 +844,6 @@ t_void
 wlan_free_timer(IN pmlan_adapter pmadapter)
 {
     pmlan_callbacks pcb = &pmadapter->callbacks;
-
     ENTER();
 
     if (pmadapter->pmlan_cmd_timer)
@@ -917,7 +925,6 @@ t_void
 wlan_free_adapter(pmlan_adapter pmadapter)
 {
     mlan_callbacks *pcb = (mlan_callbacks *) & pmadapter->callbacks;
-
     ENTER();
 
     if (!pmadapter) {
@@ -940,8 +947,12 @@ wlan_free_adapter(pmlan_adapter pmadapter)
 #ifdef STA_SUPPORT
     PRINTM(MINFO, "Free ScanTable\n");
     if (pmadapter->pscan_table) {
-        pcb->moal_mfree(pmadapter->pmoal_handle,
-                        (t_u8 *) pmadapter->pscan_table);
+        if (pcb->moal_vmalloc && pcb->moal_vfree) {
+            pcb->moal_vfree(pmadapter->pmoal_handle,
+                            (t_u8 *) pmadapter->pscan_table);
+        } else
+            pcb->moal_mfree(pmadapter->pmoal_handle,
+                            (t_u8 *) pmadapter->pscan_table);
         pmadapter->pscan_table = MNULL;
     }
     if (pmadapter->bcn_buf) {

@@ -426,10 +426,9 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
     if ((rx_reor_tbl_ptr = wlan_11n_get_rxreorder_tbl(priv, tid, ta))) {
         wlan_11n_dispatch_pkt_until_start_win(priv, rx_reor_tbl_ptr, seq_num);
     } else {
-        PRINTM(MDAT_D, "%s: seq_num %d, tid %d, ta %02x:%02x:%02x:%02x:"
-               "%02x:%02x, win_size %d\n", __FUNCTION__,
-               seq_num, tid, ta[0], ta[1], ta[2], ta[3],
-               ta[4], ta[5], win_size);
+        PRINTM(MDAT_D, "%s: seq_num %d, tid %d, ta " MACSTR
+               ", win_size %d\n", __FUNCTION__,
+               seq_num, tid, MAC2STR(ta), win_size);
         if (pmadapter->callbacks.
             moal_malloc(pmadapter->pmoal_handle, sizeof(RxReorderTbl),
                         MLAN_MEM_DEF, (t_u8 **) & new_node)) {
@@ -453,13 +452,10 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
         } else {
             last_seq = priv->rx_seq[tid];
         }
-        if ((last_seq != DEFAULT_SEQ_NUM) && (last_seq >= new_node->start_win)) {
-            PRINTM(MDAT_D, "Update start_win: last_seq=%d, start_win=%d\n",
-                   last_seq, new_node->start_win);
-            new_node->start_win = last_seq + 1;
-        }
+        new_node->last_seq = last_seq;
         new_node->win_size = win_size;
         new_node->force_no_drop = MFALSE;
+        new_node->check_start_win = MTRUE;
 
         if (pmadapter->callbacks.
             moal_malloc(pmadapter->pmoal_handle, sizeof(t_void *) * win_size,
@@ -471,7 +467,8 @@ wlan_11n_create_rxreorder_tbl(mlan_private * priv, t_u8 * ta, int tid,
             return;
         }
 
-        PRINTM(MDAT_D, "Create ReorderPtr: %p\n", new_node);
+        PRINTM(MDAT_D, "Create ReorderPtr: %p start_win=%d last_seq=%d\n",
+               new_node, new_node->start_win, last_seq);
         new_node->timer_context.ptr = new_node;
         new_node->timer_context.priv = priv;
         new_node->timer_context.timer_is_set = MFALSE;
@@ -731,13 +728,41 @@ mlan_11n_rxreorder_pkt(void *priv, t_u16 seq_num, t_u16 tid,
         if (pkt_type == PKT_TYPE_AMSDU)
             PRINTM(MDAT_D, "AMSDU ");
 
+        if (rx_reor_tbl_ptr->check_start_win) {
+            rx_reor_tbl_ptr->check_start_win = MFALSE;
+            if ((seq_num != rx_reor_tbl_ptr->start_win) &&
+                (rx_reor_tbl_ptr->last_seq != DEFAULT_SEQ_NUM)) {
+                end_win =
+                    (rx_reor_tbl_ptr->start_win + rx_reor_tbl_ptr->win_size -
+                     1) & (MAX_TID_VALUE - 1);
+                if (((end_win > rx_reor_tbl_ptr->start_win)
+                     && (rx_reor_tbl_ptr->last_seq >=
+                         rx_reor_tbl_ptr->start_win)
+                     && (rx_reor_tbl_ptr->last_seq < end_win)) ||
+                    ((end_win < rx_reor_tbl_ptr->start_win) &&
+                     ((rx_reor_tbl_ptr->last_seq >= rx_reor_tbl_ptr->start_win)
+                      || (rx_reor_tbl_ptr->last_seq < end_win)))) {
+                    PRINTM(MDAT_D,
+                           "Update start_win: last_seq=%d, start_win=%d seq_num=%d\n",
+                           rx_reor_tbl_ptr->last_seq,
+                           rx_reor_tbl_ptr->start_win, seq_num);
+                    rx_reor_tbl_ptr->start_win = rx_reor_tbl_ptr->last_seq + 1;
+                } else if ((seq_num < rx_reor_tbl_ptr->start_win) &&
+                           (seq_num > rx_reor_tbl_ptr->last_seq)) {
+                    PRINTM(MDAT_D,
+                           "Update start_win: last_seq=%d, start_win=%d seq_num=%d\n",
+                           rx_reor_tbl_ptr->last_seq,
+                           rx_reor_tbl_ptr->start_win, seq_num);
+                    rx_reor_tbl_ptr->start_win = rx_reor_tbl_ptr->last_seq + 1;
+                }
+            }
+        }
+
         prev_start_win = start_win = rx_reor_tbl_ptr->start_win;
         win_size = rx_reor_tbl_ptr->win_size;
         end_win = ((start_win + win_size) - 1) & (MAX_TID_VALUE - 1);
 
-        PRINTM(MDAT_D,
-               "TID %d, TA %02x:%02x:%02x:%02x:%02x:%02x\n",
-               tid, ta[0], ta[1], ta[2], ta[3], ta[4], ta[5]);
+        PRINTM(MDAT_D, "TID %d, TA " MACSTR "\n", tid, MAC2STR(ta));
         PRINTM(MDAT_D,
                "1:seq_num %d start_win %d win_size %d end_win %d\n",
                seq_num, start_win, win_size, end_win);
@@ -864,10 +889,8 @@ mlan_11n_delete_bastream_tbl(mlan_private * priv, int tid,
     else
         cleanup_rx_reorder_tbl = (initiator) ? MFALSE : MTRUE;
 
-    PRINTM(MEVENT, "DELBA: %02x:%02x:%02x:%02x:%02x:%02x tid=%d,"
-           "initiator=%d\n", peer_mac[0],
-           peer_mac[1], peer_mac[2],
-           peer_mac[3], peer_mac[4], peer_mac[5], tid, initiator);
+    PRINTM(MEVENT, "DELBA: " MACSTR " tid=%d,"
+           "initiator=%d\n", MAC2STR(peer_mac), tid, initiator);
 
     if (cleanup_rx_reorder_tbl) {
         if (!(rx_reor_tbl_ptr = wlan_11n_get_rxreorder_tbl(priv, tid,
@@ -920,11 +943,8 @@ wlan_ret_11n_addba_resp(mlan_private * priv, HostCmd_DS_COMMAND * resp)
     /* Check if we had rejected the ADDBA, if yes then do not create the stream */
     if (padd_ba_rsp->status_code == BA_RESULT_SUCCESS) {
         PRINTM(MCMND,
-               "ADDBA RSP: %02x:%02x:%02x:%02x:%02x:%02x tid=%d ssn=%d win_size=%d,amsdu=%d\n",
-               padd_ba_rsp->peer_mac_addr[0], padd_ba_rsp->peer_mac_addr[1],
-               padd_ba_rsp->peer_mac_addr[2], padd_ba_rsp->peer_mac_addr[3],
-               padd_ba_rsp->peer_mac_addr[4], padd_ba_rsp->peer_mac_addr[5],
-               tid, padd_ba_rsp->ssn,
+               "ADDBA RSP: " MACSTR " tid=%d ssn=%d win_size=%d,amsdu=%d\n",
+               MAC2STR(padd_ba_rsp->peer_mac_addr), tid, padd_ba_rsp->ssn,
                ((padd_ba_rsp->block_ack_param_set & BLOCKACKPARAM_WINSIZE_MASK)
                 >> BLOCKACKPARAM_WINSIZE_POS),
                padd_ba_rsp->
@@ -943,15 +963,11 @@ wlan_ret_11n_addba_resp(mlan_private * priv, HostCmd_DS_COMMAND * resp)
                 rx_reor_tbl_ptr->amsdu = MFALSE;
         }
     } else {
-        PRINTM(MERROR,
-               "ADDBA RSP: Failed(%02x:%02x:%02x:%02x:%02x:%02x tid=%d)\n",
-               padd_ba_rsp->peer_mac_addr[0], padd_ba_rsp->peer_mac_addr[1],
-               padd_ba_rsp->peer_mac_addr[2], padd_ba_rsp->peer_mac_addr[3],
-               padd_ba_rsp->peer_mac_addr[4], padd_ba_rsp->peer_mac_addr[5],
-               tid);
-        if ((rx_reor_tbl_ptr =
-             wlan_11n_get_rxreorder_tbl(priv, tid,
-                                        padd_ba_rsp->peer_mac_addr))) {
+        PRINTM(MERROR, "ADDBA RSP: Failed(" MACSTR " tid=%d)\n",
+               MAC2STR(padd_ba_rsp->peer_mac_addr), tid);
+        if ((rx_reor_tbl_ptr = wlan_11n_get_rxreorder_tbl(priv, tid,
+                                                          padd_ba_rsp->
+                                                          peer_mac_addr))) {
             wlan_11n_delete_rxreorder_tbl_entry(priv, rx_reor_tbl_ptr);
         }
     }
@@ -1047,11 +1063,9 @@ wlan_11n_rxba_sync_event(mlan_private * priv, t_u8 * event_buf, t_u16 len)
         }
         tlv_rxba->seq_num = wlan_le16_to_cpu(tlv_rxba->seq_num);
         tlv_rxba->bitmap_len = wlan_le16_to_cpu(tlv_rxba->bitmap_len);
-        PRINTM(MEVENT,
-               "%02x:%02x:%02x:%02x:%02x:%02x tid=%d seq_num=%d bitmap_len=%d\n",
-               tlv_rxba->mac[0], tlv_rxba->mac[1], tlv_rxba->mac[2],
-               tlv_rxba->mac[3], tlv_rxba->mac[4], tlv_rxba->mac[5],
-               tlv_rxba->tid, tlv_rxba->seq_num, tlv_rxba->bitmap_len);
+        PRINTM(MEVENT, MACSTR " tid=%d seq_num=%d bitmap_len=%d\n",
+               MAC2STR(tlv_rxba->mac), tlv_rxba->tid, tlv_rxba->seq_num,
+               tlv_rxba->bitmap_len);
         rx_reor_tbl_ptr =
             wlan_11n_get_rxreorder_tbl(priv, tlv_rxba->tid, tlv_rxba->mac);
         if (!rx_reor_tbl_ptr) {

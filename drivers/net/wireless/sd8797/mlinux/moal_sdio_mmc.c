@@ -47,10 +47,13 @@ extern int pm_keep_power;
 
 /** Device ID for SD8797 */
 #define SD_DEVICE_ID_8797   (0x9129)
+/** Device ID for SD8782 */
+#define SD_DEVICE_ID_8782   (0x9121)
 
 /** WLAN IDs */
 static const struct sdio_device_id wlan_ids[] = {
     {SDIO_DEVICE(MARVELL_VENDOR_ID, SD_DEVICE_ID_8797)},
+    {SDIO_DEVICE(MARVELL_VENDOR_ID, SD_DEVICE_ID_8782)},
     {},
 };
 
@@ -75,7 +78,7 @@ static struct sdio_driver REFDATA wlan_sdio = {
     .id_table = wlan_ids,
     .probe = woal_sdio_probe,
     .remove = woal_sdio_remove,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
     .drv = {
             .owner = THIS_MODULE,
 #ifdef SDIO_SUSPEND_RESUME
@@ -107,36 +110,49 @@ void
 woal_dump_sdio_reg(moal_handle * handle)
 {
     int ret = 0;
-    t_u8 data;
-    data =
-        sdio_f0_readb(((struct sdio_mmc_card *) handle->card)->func, 0x05,
-                      &ret);
-    PRINTM(MMSG, "fun0: reg 0x05=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_f0_readb(((struct sdio_mmc_card *) handle->card)->func, 0x04,
-                      &ret);
-    PRINTM(MMSG, "fun0: reg 0x04=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_readb(((struct sdio_mmc_card *) handle->card)->func, 0x03, &ret);
-    PRINTM(MMSG, "fun1: reg 0x03=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_readb(((struct sdio_mmc_card *) handle->card)->func, 0x04, &ret);
-    PRINTM(MMSG, "fun1: reg 0x04=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_readb(((struct sdio_mmc_card *) handle->card)->func, 0x05, &ret);
-    PRINTM(MMSG, "fun1: reg 0x05=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_readb(((struct sdio_mmc_card *) handle->card)->func, 0x60, &ret);
-    PRINTM(MMSG, "fun1: reg 0x60=0x%x ret=%d\n", data, ret);
-    data =
-        sdio_readb(((struct sdio_mmc_card *) handle->card)->func, 0x61, &ret);
-    PRINTM(MMSG, "fun1: reg 0x61=0x%x ret=%d\n", data, ret);
+    t_u8 data, i, len;
+    int fun0_reg[] = { 0x05, 0x04 };
+    int fun1_reg[] = { 0x03, 0x04, 0x05, 0x60, 0x61 };
+
+    len = sizeof(fun0_reg) / sizeof(fun0_reg[0]);
+    for (i = 0; i < len; i++) {
+        data = sdio_f0_readb(((struct sdio_mmc_card *) handle->card)->func,
+                             fun0_reg[i], &ret);
+        PRINTM(MMSG, "fun0: reg 0x%02x=0x%02x ret=%d\n", fun0_reg[i], data,
+               ret);
+    }
+
+    len = sizeof(fun1_reg) / sizeof(fun1_reg[0]);
+    for (i = 0; i < len; i++) {
+        data = sdio_readb(((struct sdio_mmc_card *) handle->card)->func,
+                          fun1_reg[i], &ret);
+        PRINTM(MMSG, "fun1: reg 0x%02x=0x%02x ret=%d\n", fun1_reg[i], data,
+               ret);
+    }
     return;
 }
 
 /********************************************************
 		Global Functions
 ********************************************************/
+/**  @brief This function updates the SDIO card types
+ *  
+ *  @param handle  A Pointer to the moal_handle structure
+ *  @param card    A Pointer to card
+ *
+ *  @return 	   N/A
+ */
+t_void
+woal_sdio_update_card_type(moal_handle * handle, t_void * card)
+{
+    struct sdio_mmc_card *cardp = (struct sdio_mmc_card *) card;
+
+    /* Update card type */
+    if (cardp->func->device == SD_DEVICE_ID_8797)
+        handle->card_type = CARD_TYPE_SD8797;
+    else if (cardp->func->device == SD_DEVICE_ID_8782)
+        handle->card_type = CARD_TYPE_SD8782;
+}
 
 /** 
  *  @brief This function handles the interrupt.
@@ -182,7 +198,7 @@ woal_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 
     ENTER();
 
-    PRINTM(MINFO, "vendor=0x%4.04X device=0x%4.04X class=%d function=%d\n",
+    PRINTM(MMSG, "vendor=0x%4.04X device=0x%4.04X class=%d function=%d\n",
            func->vendor, func->device, func->class, func->num);
 
     card = kzalloc(sizeof(struct sdio_mmc_card), GFP_KERNEL);
@@ -292,24 +308,18 @@ woal_sdio_suspend(struct device *dev)
 
     ENTER();
     PRINTM(MCMND, "<--- Enter woal_sdio_suspend --->\n");
-    if (func) {
-        pm_flags = sdio_get_host_pm_caps(func);
-        PRINTM(MCMND, "%s: suspend: PM flags = 0x%x\n", sdio_func_id(func),
-               pm_flags);
-        if (!(pm_flags & MMC_PM_KEEP_POWER)) {
-            PRINTM(MERROR, "%s: cannot remain alive while host is suspended\n",
-                   sdio_func_id(func));
-            LEAVE();
-            return -ENOSYS;
-        }
-        cardp = sdio_get_drvdata(func);
-        if (!cardp || !cardp->handle) {
-            PRINTM(MERROR, "Card or moal_handle structure is not valid\n");
-            LEAVE();
-            return MLAN_STATUS_SUCCESS;
-        }
-    } else {
-        PRINTM(MERROR, "sdio_func is not specified\n");
+    pm_flags = sdio_get_host_pm_caps(func);
+    PRINTM(MCMND, "%s: suspend: PM flags = 0x%x\n", sdio_func_id(func),
+           pm_flags);
+    if (!(pm_flags & MMC_PM_KEEP_POWER)) {
+        PRINTM(MERROR, "%s: cannot remain alive while host is suspended\n",
+               sdio_func_id(func));
+        LEAVE();
+        return -ENOSYS;
+    }
+    cardp = sdio_get_drvdata(func);
+    if (!cardp || !cardp->handle) {
+        PRINTM(MERROR, "Card or moal_handle structure is not valid\n");
         LEAVE();
         return MLAN_STATUS_SUCCESS;
     }
@@ -355,6 +365,9 @@ woal_sdio_suspend(struct device *dev)
 #endif
         } else {
             PRINTM(MMSG, "HS not actived, suspend fail!");
+            handle->suspend_fail = MTRUE;
+            for (i = 0; i < handle->priv_num; i++)
+                netif_device_attach(handle->priv[i]->netdev);
             ret = -EBUSY;
             goto done;
         }
@@ -384,18 +397,12 @@ woal_sdio_resume(struct device *dev)
 
     ENTER();
     PRINTM(MCMND, "<--- Enter woal_sdio_resume --->\n");
-    if (func) {
-        pm_flags = sdio_get_host_pm_caps(func);
-        PRINTM(MCMND, "%s: resume: PM flags = 0x%x\n", sdio_func_id(func),
-               pm_flags);
-        cardp = sdio_get_drvdata(func);
-        if (!cardp || !cardp->handle) {
-            PRINTM(MERROR, "Card or moal_handle structure is not valid\n");
-            LEAVE();
-            return MLAN_STATUS_SUCCESS;
-        }
-    } else {
-        PRINTM(MERROR, "sdio_func is not specified\n");
+    pm_flags = sdio_get_host_pm_caps(func);
+    PRINTM(MCMND, "%s: resume: PM flags = 0x%x\n", sdio_func_id(func),
+           pm_flags);
+    cardp = sdio_get_drvdata(func);
+    if (!cardp || !cardp->handle) {
+        PRINTM(MERROR, "Card or moal_handle structure is not valid\n");
         LEAVE();
         return MLAN_STATUS_SUCCESS;
     }

@@ -571,7 +571,7 @@ wlan_send_wmmac_host_event(pmlan_private priv,
 
     pevent->bss_index = priv->bss_index;
     pevent->event_id = MLAN_EVENT_ID_DRV_REPORT_STRING;
-    pevent->event_len = wlan_strlen((const t_s8 *) (pevent->event_buf));
+    pevent->event_len = wlan_strlen((const char *) (pevent->event_buf));
 
     wlan_recv_event(priv, MLAN_EVENT_ID_DRV_REPORT_STRING, pevent);
     LEAVE();
@@ -702,6 +702,7 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
             if ((bssprio_node = bssprio_node->pnext) == (mlan_bssprio_node *)
                 & pmadapter->bssprio_tbl[j].bssprio_head)
                 bssprio_node = bssprio_node->pnext;
+            pmadapter->bssprio_tbl[j].bssprio_cur = bssprio_node;
         } while (bssprio_node != bssprio_head);
     }
 
@@ -1033,7 +1034,7 @@ wlan_dequeue_tx_packet(pmlan_adapter pmadapter)
  *  @return           N/A
  */
 t_void
-wlan_updata_ralist_tx_pause(pmlan_private priv, t_u8 * mac, t_u8 tx_pause)
+wlan_update_ralist_tx_pause(pmlan_private priv, t_u8 * mac, t_u8 tx_pause)
 {
     raListTbl *ra_list;
     int i;
@@ -1128,9 +1129,7 @@ wlan_clean_txrx(pmlan_private priv)
 
     ENTER();
 
-    if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
-        wlan_cleanup_bypass_txq(pmadapter);
-    }
+    wlan_cleanup_bypass_txq(priv);
 
     wlan_11n_cleanup_reorder_tbl(priv);
 
@@ -1161,9 +1160,6 @@ wlan_clean_txrx(pmlan_private priv)
     }
 
     MP_TX_AGGR_BUF_RESET(priv->adapter);
-#endif
-#ifdef SDIO_MULTI_PORT_RX_AGGR
-    MP_RX_AGGR_BUF_RESET(priv->adapter);
 #endif
     wlan_wmm_delete_all_ralist(priv);
     memcpy(pmadapter, tos_to_tid, ac_to_tid, sizeof(tos_to_tid));
@@ -1384,15 +1380,8 @@ wlan_wmm_init(pmlan_adapter pmadapter)
         if ((priv = pmadapter->priv[j])) {
             for (i = 0; i < MAX_NUM_TID; ++i) {
                 priv->aggr_prio_tbl[i].amsdu = BA_STREAM_NOT_ALLOWED;
-#ifdef WIFI_DIRECT_SUPPORT
-                if (priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT)
-                    priv->aggr_prio_tbl[i].ampdu_ap =
-                        priv->aggr_prio_tbl[i].ampdu_user =
-                        BA_STREAM_NOT_ALLOWED;
-                else
-#endif
-                    priv->aggr_prio_tbl[i].ampdu_ap =
-                        priv->aggr_prio_tbl[i].ampdu_user = tos_to_tid_inv[i];
+                priv->aggr_prio_tbl[i].ampdu_ap =
+                    priv->aggr_prio_tbl[i].ampdu_user = tos_to_tid_inv[i];
                 priv->wmm.pkts_queued[i] = 0;
                 priv->wmm.tid_tbl_ptr[i].ra_list_curr = MNULL;
             }
@@ -1606,13 +1595,9 @@ wlan_ralist_update(mlan_private * priv, t_u8 * old_ra, t_u8 * new_ra)
             ra_list->packet_count = 0;
             ra_list->ba_packet_threshold =
                 wlan_get_random_ba_threshold(priv->adapter);
-            PRINTM(MINFO,
-                   "ralist_update: %p, %d, %02x:%02x:%02x:%02x:%02x:%02x-->"
-                   "%02x:%02x:%02x:%02x:%02x:%02x\n", ra_list,
-                   ra_list->is_11n_enabled, ra_list->ra[0], ra_list->ra[1],
-                   ra_list->ra[2], ra_list->ra[3], ra_list->ra[4],
-                   ra_list->ra[5], new_ra[0], new_ra[1], new_ra[2], new_ra[3],
-                   new_ra[4], new_ra[5]);
+            PRINTM(MINFO, "ralist_update: %p, %d, " MACSTR "-->" MACSTR "\n",
+                   ra_list, ra_list->is_11n_enabled, MAC2STR(ra_list->ra),
+                   MAC2STR(new_ra));
 
             memcpy(priv->adapter, ra_list->ra, new_ra, MLAN_MAC_ADDR_LENGTH);
         }
@@ -2065,11 +2050,9 @@ wlan_del_tx_pkts_in_ralist(pmlan_private priv,
                                                   &ra_list->buf_head, MNULL,
                                                   MNULL))) {
                 PRINTM(MDATA,
-                       "Drop pkts: tid=%d tx_pause=%d pkts=%d brd_pkts=%d %02x:%02x:%02x:%02x:%02x:%02x\n",
-                       tid, ra_list->tx_pause, ra_list->total_pkts,
-                       pmadapter->pending_bridge_pkts, ra_list->ra[0],
-                       ra_list->ra[1], ra_list->ra[2], ra_list->ra[3],
-                       ra_list->ra[4], ra_list->ra[5]);
+                       "Drop pkts: tid=%d tx_pause=%d pkts=%d brd_pkts=%d "
+                       MACSTR "\n", tid, ra_list->tx_pause, ra_list->total_pkts,
+                       pmadapter->pending_bridge_pkts, MAC2STR(ra_list->ra));
                 wlan_write_data_complete(pmadapter, pmbuf, MLAN_STATUS_FAILURE);
                 priv->wmm.pkts_queued[tid]--;
                 priv->num_drop_pkts++;
@@ -2344,70 +2327,6 @@ wlan_ret_wmm_delts_req(IN pmlan_private pmpriv,
 }
 
 /**
- *  @brief This function prepares the command of WMM_QUEUE_CONFIG
- *
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
- *  @param pdata_buf    A pointer to data buffer
- *  @return             MLAN_STATUS_SUCCESS
- */
-mlan_status
-wlan_cmd_wmm_queue_config(IN pmlan_private pmpriv,
-                          OUT HostCmd_DS_COMMAND * cmd, IN t_void * pdata_buf)
-{
-    mlan_ds_wmm_queue_config *pqcfg = (mlan_ds_wmm_queue_config *) pdata_buf;
-    HostCmd_DS_WMM_QUEUE_CONFIG *pcmd_qcfg = &cmd->params.queue_config;
-
-    ENTER();
-
-    cmd->command = wlan_cpu_to_le16(HostCmd_CMD_WMM_QUEUE_CONFIG);
-    cmd->size = wlan_cpu_to_le16(sizeof(pcmd_qcfg->action)
-                                 + sizeof(pcmd_qcfg->access_category)
-                                 + sizeof(pcmd_qcfg->msdu_lifetime_expiry)
-                                 + S_DS_GEN);
-    cmd->result = 0;
-
-    pcmd_qcfg->action = pqcfg->action;
-    pcmd_qcfg->access_category = pqcfg->access_category;
-    pcmd_qcfg->msdu_lifetime_expiry =
-        wlan_cpu_to_le16(pqcfg->msdu_lifetime_expiry);
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
- *  @brief This function handles the command response of WMM_QUEUE_CONFIG
- *
- *  @param pmpriv       A pointer to mlan_private structure
- *  @param resp         A pointer to HostCmd_DS_COMMAND
- *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *
- *  @return             MLAN_STATUS_SUCCESS
- */
-mlan_status
-wlan_ret_wmm_queue_config(IN pmlan_private pmpriv,
-                          const IN HostCmd_DS_COMMAND * resp,
-                          OUT mlan_ioctl_req * pioctl_buf)
-{
-    mlan_ds_wmm_cfg *pwmm = MNULL;
-    const HostCmd_DS_WMM_QUEUE_CONFIG *presp_qcfg = &resp->params.queue_config;
-
-    ENTER();
-
-    if (pioctl_buf) {
-        pwmm = (mlan_ds_wmm_cfg *) pioctl_buf->pbuf;
-        pwmm->param.q_cfg.action = presp_qcfg->action;
-        pwmm->param.q_cfg.access_category = presp_qcfg->access_category;
-        pwmm->param.q_cfg.msdu_lifetime_expiry =
-            wlan_le16_to_cpu(presp_qcfg->msdu_lifetime_expiry);
-    }
-
-    LEAVE();
-    return MLAN_STATUS_SUCCESS;
-}
-
-/**
  *  @brief This function prepares the command of WMM_QUEUE_STATS
  *
  *  @param pmpriv       A pointer to mlan_private structure
@@ -2552,4 +2471,381 @@ wlan_ret_wmm_ts_status(IN pmlan_private pmpriv,
     LEAVE();
     return MLAN_STATUS_SUCCESS;
 }
+
+/** 
+ *  @brief Set/Get WMM status
+ *
+ *  @param pmadapter   A pointer to mlan_adapter structure
+ *  @param pioctl_req A pointer to ioctl request buffer
+ *
+ *  @return     MLAN_STATUS_SUCCESS --success
+ */
+static mlan_status
+wlan_wmm_ioctl_enable(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *wmm = MNULL;
+    ENTER();
+    wmm = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_GET)
+        wmm->param.wmm_enable = (t_u32) pmpriv->wmm_required;
+    else
+        pmpriv->wmm_required = (t_u8) wmm->param.wmm_enable;
+    pioctl_req->data_read_written = sizeof(t_u32) + MLAN_SUB_COMMAND_SIZE;
+    LEAVE();
+    return ret;
+}
+
+/** 
+ *  @brief Set/Get WMM QoS configuration
+ *
+ *  @param pmadapter   A pointer to mlan_adapter structure
+ *  @param pioctl_req A pointer to ioctl request buffer
+ *
+ *  @return     MLAN_STATUS_SUCCESS --success
+ */
+static mlan_status
+wlan_wmm_ioctl_qos(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *wmm = MNULL;
+
+    ENTER();
+
+    wmm = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    if (pioctl_req->action == MLAN_ACT_GET)
+        wmm->param.qos_cfg = pmpriv->wmm_qosinfo;
+    else {
+        pmpriv->wmm_qosinfo = wmm->param.qos_cfg;
+    }
+
+    pioctl_req->data_read_written = sizeof(t_u8) + MLAN_SUB_COMMAND_SIZE;
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Request for add a TSPEC
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+static mlan_status
+wlan_wmm_ioctl_addts_req(IN pmlan_adapter pmadapter,
+                         IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+
+    ENTER();
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_WMM_ADDTS_REQ,
+                           0, 0, (t_void *) pioctl_req,
+                           (t_void *) & cfg->param.addts);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Request for delete a TSPEC
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+static mlan_status
+wlan_wmm_ioctl_delts_req(IN pmlan_adapter pmadapter,
+                         IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+
+    ENTER();
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_WMM_DELTS_REQ,
+                           0, 0, (t_void *) pioctl_req,
+                           (t_void *) & cfg->param.delts);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief To get and start/stop queue stats on a WMM AC
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+static mlan_status
+wlan_wmm_ioctl_queue_stats(IN pmlan_adapter pmadapter,
+                           IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+
+    ENTER();
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_WMM_QUEUE_STATS,
+                           0, 0, (t_void *) pioctl_req,
+                           (t_void *) & cfg->param.q_stats);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Get the status of the WMM AC queues
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS --success
+ */
+static mlan_status
+wlan_wmm_ioctl_queue_status(IN pmlan_adapter pmadapter,
+                            IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+    mlan_ds_wmm_queue_status *pqstatus = MNULL;
+    WmmAcStatus_t *pac_status = MNULL;
+    mlan_wmm_ac_e ac_idx;
+
+    ENTER();
+
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+    pqstatus = (mlan_ds_wmm_queue_status *) & cfg->param.q_status;
+
+    for (ac_idx = WMM_AC_BK; ac_idx <= WMM_AC_VO; ac_idx++) {
+        pac_status = &pmpriv->wmm.ac_status[ac_idx];
+
+        /* Firmware status */
+        pqstatus->ac_status[ac_idx].flow_required = pac_status->flow_required;
+        pqstatus->ac_status[ac_idx].flow_created = pac_status->flow_created;
+        pqstatus->ac_status[ac_idx].disabled = pac_status->disabled;
+
+        /* ACM bit reflected in firmware status (redundant) */
+        pqstatus->ac_status[ac_idx].wmm_acm = pac_status->flow_required;
+    }
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Get the status of the WMM Traffic Streams
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+static mlan_status
+wlan_wmm_ioctl_ts_status(IN pmlan_adapter pmadapter,
+                         IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+
+    ENTER();
+
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_WMM_TS_STATUS,
+                           0, 0, (t_void *) pioctl_req,
+                           (t_void *) & cfg->param.ts_status);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
 #endif /* STA_SUPPORT */
+
+/**
+ *  @brief This function prepares the command of WMM_QUEUE_CONFIG
+ *
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param cmd          A pointer to HostCmd_DS_COMMAND structure
+ *  @param pdata_buf    A pointer to data buffer
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_cmd_wmm_queue_config(IN pmlan_private pmpriv,
+                          OUT HostCmd_DS_COMMAND * cmd, IN t_void * pdata_buf)
+{
+    mlan_ds_wmm_queue_config *pqcfg = (mlan_ds_wmm_queue_config *) pdata_buf;
+    HostCmd_DS_WMM_QUEUE_CONFIG *pcmd_qcfg = &cmd->params.queue_config;
+
+    ENTER();
+
+    cmd->command = wlan_cpu_to_le16(HostCmd_CMD_WMM_QUEUE_CONFIG);
+    cmd->size = wlan_cpu_to_le16(sizeof(pcmd_qcfg->action)
+                                 + sizeof(pcmd_qcfg->access_category)
+                                 + sizeof(pcmd_qcfg->msdu_lifetime_expiry)
+                                 + S_DS_GEN);
+    cmd->result = 0;
+
+    pcmd_qcfg->action = pqcfg->action;
+    pcmd_qcfg->access_category = pqcfg->access_category;
+    pcmd_qcfg->msdu_lifetime_expiry =
+        wlan_cpu_to_le16(pqcfg->msdu_lifetime_expiry);
+
+    LEAVE();
+    return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief This function handles the command response of WMM_QUEUE_CONFIG
+ *
+ *  @param pmpriv       A pointer to mlan_private structure
+ *  @param resp         A pointer to HostCmd_DS_COMMAND
+ *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
+ *
+ *  @return             MLAN_STATUS_SUCCESS
+ */
+mlan_status
+wlan_ret_wmm_queue_config(IN pmlan_private pmpriv,
+                          const IN HostCmd_DS_COMMAND * resp,
+                          OUT mlan_ioctl_req * pioctl_buf)
+{
+    mlan_ds_wmm_cfg *pwmm = MNULL;
+    const HostCmd_DS_WMM_QUEUE_CONFIG *presp_qcfg = &resp->params.queue_config;
+
+    ENTER();
+
+    if (pioctl_buf) {
+        pwmm = (mlan_ds_wmm_cfg *) pioctl_buf->pbuf;
+        pwmm->param.q_cfg.action = presp_qcfg->action;
+        pwmm->param.q_cfg.access_category = presp_qcfg->access_category;
+        pwmm->param.q_cfg.msdu_lifetime_expiry =
+            wlan_le16_to_cpu(presp_qcfg->msdu_lifetime_expiry);
+    }
+
+    LEAVE();
+    return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief Set/Get a specified AC Queue's parameters
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+static mlan_status
+wlan_wmm_ioctl_queue_config(IN pmlan_adapter pmadapter,
+                            IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_wmm_cfg *cfg = MNULL;
+
+    ENTER();
+    cfg = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+
+    /* Send request to firmware */
+    ret = wlan_prepare_cmd(pmpriv, HostCmd_CMD_WMM_QUEUE_CONFIG,
+                           0, 0, (t_void *) pioctl_req,
+                           (t_void *) & cfg->param.q_cfg);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
+}
+
+/** 
+ *  @brief WMM configuration handler
+ *
+ *  @param pmadapter   A pointer to mlan_adapter structure
+ *  @param pioctl_req A pointer to ioctl request buffer
+ *
+ *  @return     MLAN_STATUS_SUCCESS --success, otherwise fail
+ */
+mlan_status
+wlan_wmm_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status status = MLAN_STATUS_SUCCESS;
+    mlan_ds_wmm_cfg *wmm = MNULL;
+
+    ENTER();
+
+    if (pioctl_req->buf_len < sizeof(mlan_ds_wmm_cfg)) {
+        PRINTM(MWARN, "MLAN bss IOCTL length is too short.\n");
+        pioctl_req->data_read_written = 0;
+        pioctl_req->buf_len_needed = sizeof(mlan_ds_wmm_cfg);
+        pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+        LEAVE();
+        return MLAN_STATUS_RESOURCE;
+    }
+    wmm = (mlan_ds_wmm_cfg *) pioctl_req->pbuf;
+    switch (wmm->sub_command) {
+#ifdef STA_SUPPORT
+    case MLAN_OID_WMM_CFG_ENABLE:
+        status = wlan_wmm_ioctl_enable(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_QOS:
+        status = wlan_wmm_ioctl_qos(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_ADDTS:
+        status = wlan_wmm_ioctl_addts_req(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_DELTS:
+        status = wlan_wmm_ioctl_delts_req(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_QUEUE_STATS:
+        status = wlan_wmm_ioctl_queue_stats(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_QUEUE_STATUS:
+        status = wlan_wmm_ioctl_queue_status(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_WMM_CFG_TS_STATUS:
+        status = wlan_wmm_ioctl_ts_status(pmadapter, pioctl_req);
+        break;
+#endif
+    case MLAN_OID_WMM_CFG_QUEUE_CONFIG:
+        status = wlan_wmm_ioctl_queue_config(pmadapter, pioctl_req);
+        break;
+    default:
+        pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+        status = MLAN_STATUS_FAILURE;
+        break;
+    }
+    LEAVE();
+    return status;
+}

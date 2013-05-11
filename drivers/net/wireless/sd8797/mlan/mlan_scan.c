@@ -97,19 +97,25 @@ typedef union
 /** Cipher suite definition */
 enum cipher_suite
 {
+    CIPHER_SUITE_WEP40,
     CIPHER_SUITE_TKIP,
     CIPHER_SUITE_CCMP,
+    CIPHER_SUITE_WEP104,
     CIPHER_SUITE_MAX
 };
 
 static t_u8 wpa_oui[CIPHER_SUITE_MAX][4] = {
+    {0x00, 0x50, 0xf2, 0x01},   /* WEP40 */
     {0x00, 0x50, 0xf2, 0x02},   /* TKIP */
     {0x00, 0x50, 0xf2, 0x04},   /* AES */
+    {0x00, 0x50, 0xf2, 0x05},   /* WEP104 */
 };
 
 static t_u8 rsn_oui[CIPHER_SUITE_MAX][4] = {
+    {0x00, 0x0f, 0xac, 0x01},   /* WEP40 */
     {0x00, 0x0f, 0xac, 0x02},   /* TKIP */
     {0x00, 0x0f, 0xac, 0x04},   /* AES */
+    {0x00, 0x0f, 0xac, 0x05},   /* WEP104 */
 };
 
 /**
@@ -839,6 +845,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
     MrvlIEtypes_NumProbes_t *pnum_probes_tlv;
     MrvlIEtypes_WildCardSsIdParamSet_t *pwildcard_ssid_tlv;
     MrvlIEtypes_RatesParamSet_t *prates_tlv;
+
     const t_u8 zero_mac[MLAN_MAC_ADDR_LENGTH] = { 0, 0, 0, 0, 0, 0 };
     t_u8 *ptlv_pos;
     t_u32 num_probes;
@@ -888,7 +895,6 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
         /* Set the number of probes to send, use Adapter setting if unset */
         num_probes = (puser_scan_in->num_probes ? puser_scan_in->num_probes :
                       pmadapter->scan_probes);
-
         /* 
          * Set the BSSID filter to the incoming configuration,
          *   if non-zero.  If not set, it will remain disabled (all zeros).
@@ -903,7 +909,7 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
              ssid_idx++) {
 
             ssid_len =
-                wlan_strlen((t_s8 *) puser_scan_in->ssid_list[ssid_idx].ssid);
+                wlan_strlen((char *) puser_scan_in->ssid_list[ssid_idx].ssid);
 
             pwildcard_ssid_tlv
                 = (MrvlIEtypes_WildCardSsIdParamSet_t *) ptlv_pos;
@@ -1008,6 +1014,8 @@ wlan_scan_setup_scan_config(IN mlan_private * pmpriv,
         pht_cap->header.len = wlan_cpu_to_le16(pht_cap->header.len);
     }
 
+    if (wlan_is_ext_capa_support(pmpriv))
+        wlan_add_ext_capa_info_ie(pmpriv, &ptlv_pos);
     wlan_add_wps_probe_request_ie(pmpriv, &ptlv_pos);
 
     /* 
@@ -1271,10 +1279,8 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
 
     memcpy(pmadapter, pbss_entry->mac_address, pcurrent_ptr,
            MLAN_MAC_ADDR_LENGTH);
-    PRINTM(MINFO, "InterpretIE: AP MAC Addr-%02x:%02x:%02x:%02x:%02x:%02x\n",
-           pbss_entry->mac_address[0], pbss_entry->mac_address[1],
-           pbss_entry->mac_address[2], pbss_entry->mac_address[3],
-           pbss_entry->mac_address[4], pbss_entry->mac_address[5]);
+    PRINTM(MINFO, "InterpretIE: AP MAC Addr-" MACSTR "\n",
+           MAC2STR(pbss_entry->mac_address));
 
     pcurrent_ptr += MLAN_MAC_ADDR_LENGTH;
     bytes_left_for_current_beacon -= MLAN_MAC_ADDR_LENGTH;
@@ -1595,7 +1601,7 @@ wlan_interpret_bss_desc_with_ie(IN pmlan_adapter pmadapter,
                 (IEEEtypes_OverlapBSSScanParam_t *) pcurrent_ptr;
             pbss_entry->overlap_bss_offset =
                 (t_u16) (pcurrent_ptr - pbss_entry->pbeacon_buf);
-            HEXDUMP("InterpretIE: Resp HTCAP_IE",
+            HEXDUMP("InterpretIE: Resp OBSS_IE",
                     (t_u8 *) pbss_entry->poverlap_bss_scan_param,
                     (*(pbss_entry->poverlap_bss_scan_param)).ieee_hdr.len +
                     sizeof(IEEEtypes_Header_t));
@@ -1974,11 +1980,9 @@ wlan_ret_802_11_scan_store_beacon(IN mlan_private * pmpriv,
              * No space for new beacon
              */
             PRINTM(MCMND, "AppControl: No space beacon (%d): "
-                   "%02x:%02x:%02x:%02x:%02x:%02x; sz=%03d, left=%03d\n",
+                   MACSTR "; sz=%03d, left=%03d\n",
                    beacon_idx,
-                   pnew_beacon->mac_address[0], pnew_beacon->mac_address[1],
-                   pnew_beacon->mac_address[2], pnew_beacon->mac_address[3],
-                   pnew_beacon->mac_address[4], pnew_beacon->mac_address[5],
+                   MAC2STR(pnew_beacon->mac_address),
                    pnew_beacon->beacon_buf_size,
                    (pmadapter->bcn_buf_size -
                     (pmadapter->pbcn_buf_end - pmadapter->bcn_buf)));
@@ -2138,15 +2142,10 @@ wlan_scan_process_results(IN mlan_private * pmpriv)
     }
 
     for (i = 0; i < pmadapter->num_in_scan_table; i++)
-        PRINTM(MINFO, "Scan:(%02d) %02x:%02x:%02x:%02x:%02x:%02x, "
+        PRINTM(MINFO, "Scan:(%02d) " MACSTR ", "
                "RSSI[%03d], SSID[%s]\n",
                i,
-               pmadapter->pscan_table[i].mac_address[0],
-               pmadapter->pscan_table[i].mac_address[1],
-               pmadapter->pscan_table[i].mac_address[2],
-               pmadapter->pscan_table[i].mac_address[3],
-               pmadapter->pscan_table[i].mac_address[4],
-               pmadapter->pscan_table[i].mac_address[5],
+               MAC2STR(pmadapter->pscan_table[i].mac_address),
                (t_s32) pmadapter->pscan_table[i].rssi,
                pmadapter->pscan_table[i].ssid.ssid);
 
@@ -2473,6 +2472,25 @@ wlan_is_network_compatible(IN mlan_private * pmpriv,
             /* Static WEP enabled */
             PRINTM(MINFO, "Disable 11n in WEP mode\n");
             pbss_desc->disable_11n = MTRUE;
+            /* Reject the following cases: */
+            /* case 1: RSN IE w/o WEP OUI and WPA IE w/o WEP OUI case 2: RSN IE 
+               w/o WEP OUI and No WPA IE case 3: WPA IE w/o WEP OUI and No RSN
+               IE * */
+            if (((pbss_desc->prsn_ie) &&
+                 ((*(pbss_desc->prsn_ie)).ieee_hdr.element_id == RSN_IE)) ||
+                ((pbss_desc->pwpa_ie) &&
+                 ((*(pbss_desc->pwpa_ie)).vend_hdr.element_id == WPA_IE))) {
+                if (!is_rsn_oui_present
+                    (pmpriv->adapter, pbss_desc, CIPHER_SUITE_WEP40) &&
+                    !is_rsn_oui_present(pmpriv->adapter, pbss_desc,
+                                        CIPHER_SUITE_WEP104) &&
+                    !is_wpa_oui_present(pmpriv->adapter, pbss_desc,
+                                        CIPHER_SUITE_WEP40) &&
+                    !is_wpa_oui_present(pmpriv->adapter, pbss_desc,
+                                        CIPHER_SUITE_WEP104))
+                    index = -1;
+            }
+
             LEAVE();
             return index;
         } else if (pmpriv->sec_info.wep_status == Wlan802_11WEPDisabled
@@ -2967,11 +2985,8 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
                                             &pbss_info,
                                             &bytes_left) ==
             MLAN_STATUS_SUCCESS) {
-            PRINTM(MINFO, "SCAN_RESP: BSSID = %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   bss_new_entry->mac_address[0], bss_new_entry->mac_address[1],
-                   bss_new_entry->mac_address[2], bss_new_entry->mac_address[3],
-                   bss_new_entry->mac_address[4],
-                   bss_new_entry->mac_address[5]);
+            PRINTM(MINFO, "SCAN_RESP: BSSID = " MACSTR "\n",
+                   MAC2STR(bss_new_entry->mac_address));
 
             band = BAND_G;
             if (pchan_band_tlv) {
@@ -3021,6 +3036,7 @@ wlan_ret_802_11_scan(IN mlan_private * pmpriv,
                                     bss_new_entry->ssid.ssid_len))) {
                         PRINTM(MINFO, "SCAN_RESP: Duplicate of index: %d\n",
                                bss_idx);
+
                         break;
                     }
                     /* 
@@ -3357,11 +3373,8 @@ wlan_parse_ext_scan_result(IN mlan_private * pmpriv,
                                             &pbss_info,
                                             &bytes_left) ==
             MLAN_STATUS_SUCCESS) {
-            PRINTM(MINFO, "EXT_SCAN: BSSID = %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   bss_new_entry->mac_address[0], bss_new_entry->mac_address[1],
-                   bss_new_entry->mac_address[2], bss_new_entry->mac_address[3],
-                   bss_new_entry->mac_address[4],
-                   bss_new_entry->mac_address[5]);
+            PRINTM(MINFO, "EXT_SCAN: BSSID = " MACSTR "\n",
+                   MAC2STR(bss_new_entry->mac_address));
 
             band = BAND_G;
             /* 
@@ -3847,7 +3860,7 @@ wlan_cmd_bgscan_config(IN mlan_private * pmpriv,
                         && (*bg_scan_in->ssid_list[ssid_idx].ssid ||
                             bg_scan_in->ssid_list[ssid_idx].max_len));
          ssid_idx++) {
-        ssid_len = wlan_strlen((t_s8 *) bg_scan_in->ssid_list[ssid_idx].ssid);
+        ssid_len = wlan_strlen((char *) bg_scan_in->ssid_list[ssid_idx].ssid);
         pwildcard_ssid_tlv = (MrvlIEtypes_WildCardSsIdParamSet_t *) tlv;
         pwildcard_ssid_tlv->header.type =
             wlan_cpu_to_le16(TLV_TYPE_WILDCARDSSID);
@@ -4058,15 +4071,10 @@ wlan_find_ssid_in_list(IN mlan_private * pmpriv,
              || !memcmp(pmadapter, pmadapter->pscan_table[i].mac_address, bssid,
                         MLAN_MAC_ADDR_LENGTH))) {
 
-            if (((mode == MLAN_BSS_MODE_INFRA) &&
-                 !wlan_is_band_compatible(pmpriv->config_bands,
-                                          pmadapter->pscan_table[i].bss_band))
-                ||
-                (wlan_find_cfp_by_band_and_channel
-                 (pmadapter, (t_u8) pmadapter->pscan_table[i].bss_band,
-                  (t_u16) pmadapter->pscan_table[i].channel) == MNULL)) {
+            if ((mode == MLAN_BSS_MODE_INFRA) &&
+                !wlan_is_band_compatible(pmpriv->config_bands,
+                                         pmadapter->pscan_table[i].bss_band))
                 continue;
-            }
 
             switch (mode) {
             case MLAN_BSS_MODE_INFRA:
@@ -4142,15 +4150,10 @@ wlan_find_bssid_in_list(IN mlan_private * pmpriv,
         if (!memcmp
             (pmadapter, pmadapter->pscan_table[i].mac_address, bssid,
              MLAN_MAC_ADDR_LENGTH)) {
-            if (((mode == MLAN_BSS_MODE_INFRA) &&
-                 !wlan_is_band_compatible(pmpriv->config_bands,
-                                          pmadapter->pscan_table[i].bss_band))
-                ||
-                (wlan_find_cfp_by_band_and_channel
-                 (pmadapter, (t_u8) pmadapter->pscan_table[i].bss_band,
-                  (t_u16) pmadapter->pscan_table[i].channel) == MNULL)) {
+            if ((mode == MLAN_BSS_MODE_INFRA) &&
+                !wlan_is_band_compatible(pmpriv->config_bands,
+                                         pmadapter->pscan_table[i].bss_band))
                 continue;
-            }
             switch (mode) {
             case MLAN_BSS_MODE_INFRA:
             case MLAN_BSS_MODE_IBSS:
@@ -4262,11 +4265,8 @@ wlan_find_best_network(IN mlan_private * pmpriv,
     }
 
     PRINTM(MINFO, "Best network found = [%s], "
-           "[%02x:%02x:%02x:%02x:%02x:%02x]\n",
-           preq_ssid_bssid->ssid.ssid,
-           preq_ssid_bssid->bssid[0], preq_ssid_bssid->bssid[1],
-           preq_ssid_bssid->bssid[2], preq_ssid_bssid->bssid[3],
-           preq_ssid_bssid->bssid[4], preq_ssid_bssid->bssid[5]);
+           "[" MACSTR "]\n",
+           preq_ssid_bssid->ssid.ssid, MAC2STR(preq_ssid_bssid->bssid));
 
   done:
     LEAVE();

@@ -34,6 +34,7 @@ Change log:
                 Local Variables
 ********************************************************/
 
+#ifdef STA_SUPPORT
 /** Region code mapping */
 typedef struct _region_code_mapping
 {
@@ -59,7 +60,6 @@ static region_code_mapping_t region_code_mapping[] = {
     {"JP ", 0xFF},              /* Japan special */
 };
 
-#ifdef STA_SUPPORT
 /** Default Tx power */
 #define TX_PWR_DEFAULT  10
 
@@ -133,38 +133,6 @@ channels for 11J JP 10M channel gap */
 /********************************************************
                 Local Functions
 ********************************************************/
-
-/**
- *  @brief This function converts region string to integer code
- *
- *  @param pmadapter    A pointer to mlan_adapter structure
- *  @param region       Region string
- *  @param code         [output] Region code
- *
- *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
- */
-static mlan_status
-wlan_11d_region_2_code(pmlan_adapter pmadapter, t_u8 * region, OUT t_u8 * code)
-{
-    t_u8 i;
-    t_u8 size = sizeof(region_code_mapping) / sizeof(region_code_mapping_t);
-
-    ENTER();
-
-    /* Look for code in mapping table */
-    for (i = 0; i < size; i++) {
-        if (!memcmp(pmadapter, region_code_mapping[i].region,
-                    region, COUNTRY_CODE_LEN)) {
-            *code = region_code_mapping[i].code;
-            LEAVE();
-            return MLAN_STATUS_SUCCESS;
-        }
-    }
-
-    LEAVE();
-    return MLAN_STATUS_FAILURE;
-}
-
 #ifdef STA_SUPPORT
 /**
  *  @brief This function converts integer code to region string
@@ -1434,22 +1402,14 @@ wlan_11d_cfg_domain_info(IN pmlan_adapter pmadapter,
     mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
     mlan_ds_11d_domain_info *domain_info = MNULL;
     mlan_ds_11d_cfg *cfg_11d = MNULL;
-    t_u8 region_code = 0;
+    t_u8 cfp_bg = 0, cfp_a = 0;
 
     ENTER();
 
     cfg_11d = (mlan_ds_11d_cfg *) pioctl_req->pbuf;
     domain_info = &cfg_11d->param.domain_info;
-
-    /* Update region code and table based on country code */
-    if (wlan_11d_region_2_code(pmadapter, domain_info->country_code,
-                               &region_code) == MLAN_STATUS_SUCCESS) {
-        pmadapter->region_code = region_code;
-        ret = wlan_set_regiontable(pmpriv, region_code, pmadapter->fw_bands);
-        if (ret != MLAN_STATUS_SUCCESS)
-            goto done;
-    }
-
+    memcpy(pmadapter, pmadapter->country_code, domain_info->country_code,
+           COUNTRY_CODE_LEN);
     wlan_11d_set_domain_info(pmpriv, domain_info->band,
                              domain_info->country_code,
                              domain_info->no_of_sub_band,
@@ -1459,6 +1419,26 @@ wlan_11d_cfg_domain_info(IN pmlan_adapter pmadapter,
     if (ret == MLAN_STATUS_SUCCESS)
         ret = MLAN_STATUS_PENDING;
 
+    /* Update region code and table based on country code */
+    if (wlan_misc_country_2_cfp_table_code(pmadapter,
+                                           domain_info->country_code, &cfp_bg,
+                                           &cfp_a)) {
+        PRINTM(MIOCTL, "Country code %c%c not found!\n",
+               domain_info->country_code[0], domain_info->country_code[1]);
+        goto done;
+    }
+    pmadapter->cfp_code_bg = cfp_bg;
+    pmadapter->cfp_code_a = cfp_a;
+    if (cfp_bg && cfp_a && (cfp_bg == cfp_a))
+        pmadapter->region_code = cfp_a;
+    else
+        pmadapter->region_code = 0;
+    if (wlan_set_regiontable(pmpriv, pmadapter->region_code,
+                             pmadapter->config_bands | pmadapter->
+                             adhoc_start_band)) {
+        PRINTM(MIOCTL, "Fail to set regiontabl\n");
+        goto done;
+    }
   done:
     LEAVE();
     return ret;
@@ -1486,21 +1466,35 @@ wlan_11d_handle_uap_domain_info(mlan_private * pmpriv,
     mlan_adapter *pmadapter = pmpriv->adapter;
     MrvlIEtypes_DomainParamSet_t *pdomain_tlv;
     t_u8 num_sub_band = 0;
-    t_u8 region_code = 0;
+    t_u8 cfp_bg = 0, cfp_a = 0;
 
     ENTER();
 
     pdomain_tlv = (MrvlIEtypes_DomainParamSet_t *) domain_tlv;
 
     // update region code & table based on country string
-    if (wlan_11d_region_2_code(pmadapter, pdomain_tlv->country_code,
-                               &region_code) == MLAN_STATUS_SUCCESS) {
-        pmadapter->region_code = region_code;
-        ret = wlan_set_regiontable(pmpriv, region_code, pmadapter->fw_bands);
+    if (wlan_misc_country_2_cfp_table_code(pmadapter,
+                                           pdomain_tlv->country_code, &cfp_bg,
+                                           &cfp_a) == MLAN_STATUS_SUCCESS) {
+        pmadapter->cfp_code_bg = cfp_bg;
+        pmadapter->cfp_code_a = cfp_a;
+        if (cfp_bg && cfp_a && (cfp_bg == cfp_a))
+            pmadapter->region_code = cfp_a;
+        else
+            pmadapter->region_code = 0;
+        if (wlan_set_regiontable(pmpriv, pmadapter->region_code,
+                                 pmadapter->config_bands | pmadapter->
+                                 adhoc_start_band)) {
+            ret = MLAN_STATUS_FAILURE;
+            goto done;
+        }
     }
 
-    num_sub_band = ((pdomain_tlv->header.len - COUNTRY_CODE_LEN) /
-                    sizeof(IEEEtypes_SubbandSet_t));
+    memcpy(pmadapter, pmadapter->country_code, pdomain_tlv->country_code,
+           COUNTRY_CODE_LEN);
+    num_sub_band =
+        ((pdomain_tlv->header.len -
+          COUNTRY_CODE_LEN) / sizeof(IEEEtypes_SubbandSet_t));
 
     // TODO: don't just clobber pmadapter->domain_reg.
     // Add some checking or merging between STA & UAP domain_info
@@ -1509,6 +1503,7 @@ wlan_11d_handle_uap_domain_info(mlan_private * pmpriv,
                              num_sub_band, pdomain_tlv->sub_band);
     ret = wlan_11d_send_domain_info(pmpriv, pioctl_buf);
 
+  done:
     LEAVE();
     return ret;
 }

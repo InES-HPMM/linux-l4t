@@ -100,6 +100,9 @@ static struct debug_data items[] = {
     ,
     {"port_open", item_size(port_open), item_addr(port_open)}
     ,
+    {"bypass_pkt_count", item_size(bypass_pkt_count),
+     item_addr(bypass_pkt_count)}
+    ,
     {"scan_processing", item_size(scan_processing), item_addr(scan_processing)}
     ,
     {"num_tx_timeout", item_size(num_tx_timeout), item_addr(num_tx_timeout)}
@@ -126,6 +129,8 @@ static struct debug_data items[] = {
     ,
     {"last_event_index", item_size(last_event_index),
      item_addr(last_event_index)}
+    ,
+    {"num_no_cmd_node", item_size(num_no_cmd_node), item_addr(num_no_cmd_node)}
     ,
     {"num_cmd_h2c_fail", item_size(num_cmd_host_to_card_failure),
      item_addr(num_cmd_host_to_card_failure)}
@@ -194,6 +199,9 @@ static struct debug_data items[] = {
     {"malloc_count", item_handle_size(malloc_count),
      item_handle_addr(malloc_count)}
     ,
+    {"vmalloc_count", item_handle_size(vmalloc_count),
+     item_handle_addr(vmalloc_count)}
+    ,
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
      item_handle_addr(mbufalloc_count)}
     ,
@@ -253,6 +261,9 @@ static struct debug_data uap_items[] = {
     ,
     {"tx_pkts_queued", item_size(tx_pkts_queued), item_addr(tx_pkts_queued)}
     ,
+    {"bypass_pkt_count", item_size(bypass_pkt_count),
+     item_addr(bypass_pkt_count)}
+    ,
     {"num_bridge_pkts", item_size(num_bridge_pkts), item_addr(num_bridge_pkts)}
     ,
     {"num_drop_pkts", item_size(num_drop_pkts), item_addr(num_drop_pkts)}
@@ -281,6 +292,8 @@ static struct debug_data uap_items[] = {
     ,
     {"last_event_index", item_size(last_event_index),
      item_addr(last_event_index)}
+    ,
+    {"num_no_cmd_node", item_size(num_no_cmd_node), item_addr(num_no_cmd_node)}
     ,
     {"num_cmd_h2c_fail", item_size(num_cmd_host_to_card_failure),
      item_addr(num_cmd_host_to_card_failure)}
@@ -332,6 +345,9 @@ static struct debug_data uap_items[] = {
     ,
     {"malloc_count", item_handle_size(malloc_count),
      item_handle_addr(malloc_count)}
+    ,
+    {"vmalloc_count", item_handle_size(vmalloc_count),
+     item_handle_addr(vmalloc_count)}
     ,
     {"mbufalloc_count", item_handle_size(mbufalloc_count),
      item_handle_addr(mbufalloc_count)}
@@ -417,6 +433,11 @@ woal_debug_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
         else
             p += sprintf(p, "%s=%d\n", d[i].name, val);
     }
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
+    for (i = 0; i < 4; i++)
+        p += sprintf(p, "wmm_tx_pending[%d]:%d\n", i,
+                     atomic_read(&priv->wmm_tx_pending[i]));
+#endif
     if (info.tx_tbl_num) {
         p += sprintf(p, "Tx BA stream table:\n");
         for (i = 0; i < info.tx_tbl_num; i++) {
@@ -490,12 +511,13 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
         return MLAN_STATUS_FAILURE;
     }
 
-    pdata = (char *) kmalloc(cnt, GFP_KERNEL);
+    pdata = (char *) kmalloc(cnt + 1, GFP_KERNEL);
     if (pdata == NULL) {
         MODULE_PUT;
         LEAVE();
         return 0;
     }
+    memset(pdata, 0, cnt + 1);
 
     if (copy_from_user(pdata, buf, cnt)) {
         PRINTM(MERROR, "Copy from user failed\n");
@@ -539,8 +561,9 @@ woal_debug_write(struct file *f, const char *buf, unsigned long cnt, void *data)
     kfree(pdata);
 
 #ifdef DEBUG_LEVEL1
-    if (last_drvdbg != drvdbg)
+    if (last_drvdbg != drvdbg) {
         woal_set_drvdbg(priv, drvdbg);
+    }
 #endif
 
     /* Set debug information */
@@ -607,7 +630,7 @@ woal_debug_entry(moal_private * priv)
 #endif
 
     priv->items_priv.priv = priv;
-    handle_items = 7;
+    handle_items = 8;
 #ifdef SDIO_MMC_DEBUG
     handle_items += 2;
 #endif

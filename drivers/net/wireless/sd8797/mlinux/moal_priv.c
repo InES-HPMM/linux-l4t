@@ -27,9 +27,6 @@ Change log:
 #include	"moal_main.h"
 #include	"moal_sdio.h"
 
-#if defined(STA_CFG80211) && defined(UAP_CFG80211)
-#include    "moal_cfg80211.h"
-#endif
 #include    "moal_eth_ioctl.h"
 
 /********************************************************
@@ -62,6 +59,97 @@ extern int cfg80211_wext;
 /********************************************************
 		Local Functions
 ********************************************************/
+
+/**
+ * @brief Associated to a specific indexed entry in the ScanTable
+ *
+ * @param priv         A pointer to moal_private structure
+ * @param req          A pointer to ifreq structure
+ *
+ * @return             0 --success, otherwise fail  
+ */
+static int
+woal_associate_ssid_bssid(moal_private * priv, struct iwreq *wrq)
+{
+    mlan_ssid_bssid ssid_bssid;
+#ifdef REASSOCIATION
+    mlan_bss_info bss_info;
+#endif
+    char buf[64];
+    t_u8 buflen;
+    t_u8 mac_idx;
+    t_u8 i;
+
+    ENTER();
+
+    mac_idx = 0;
+    buflen = MIN(wrq->u.data.length, (sizeof(buf) - 1));
+    memset(buf, 0, sizeof(buf));
+
+    if (buflen < (3 * ETH_ALEN) + 2) {
+        PRINTM(MERROR, "Associate: Insufficient length in IOCTL input\n");
+
+        /* buffer should be at least 3 characters per BSSID octet "00:" ** plus 
+           a space separater and at least 1 char in the SSID */
+        LEAVE();
+        return -EINVAL;
+    }
+
+    if (copy_from_user(buf, wrq->u.data.pointer, buflen) != 0) {
+        /* copy_from_user failed */
+        PRINTM(MERROR, "Associate: copy from user failed\n");
+        LEAVE();
+        return -EINVAL;
+    }
+
+    for (i = 0; (i < buflen) && (buf[i] == ' '); i++) {
+        /* Skip white space */
+    }
+
+    /* Copy/Convert the BSSID */
+    for (; (i < buflen) && (mac_idx < ETH_ALEN) && (buf[i] != ' '); i++) {
+        if (buf[i] == ':') {
+            mac_idx++;
+        } else {
+            ssid_bssid.bssid[mac_idx] = (t_u8) woal_atox(buf + i);
+
+            while ((isxdigit(buf[i + 1]) && (i < buflen))) {
+                /* Skip entire hex value */
+                i++;
+            }
+        }
+    }
+
+    /* Skip one space between the BSSID and start of the SSID */
+    i++;
+
+    /* Copy the SSID */
+    ssid_bssid.ssid.ssid_len = buflen - i - 1;
+    memcpy(ssid_bssid.ssid.ssid, buf + i, sizeof(ssid_bssid.ssid.ssid));
+
+    PRINTM(MCMND, "iwpriv assoc: AP=[" MACSTR "], ssid(%d)=[%s]\n",
+           MAC2STR(ssid_bssid.bssid),
+           (int) ssid_bssid.ssid.ssid_len, ssid_bssid.ssid.ssid);
+
+    if (MLAN_STATUS_SUCCESS != woal_bss_start(priv,
+                                              MOAL_IOCTL_WAIT, &ssid_bssid)) {
+        LEAVE();
+        return -EFAULT;
+    }
+#ifdef REASSOCIATION
+    memset(&bss_info, 0x00, sizeof(bss_info));
+    if (MLAN_STATUS_SUCCESS == woal_get_bss_info(priv,
+                                                 MOAL_IOCTL_WAIT, &bss_info)) {
+        memcpy(&priv->prev_ssid_bssid.ssid,
+               &bss_info.ssid, sizeof(mlan_802_11_ssid));
+        memcpy(&priv->prev_ssid_bssid.bssid,
+               &bss_info.bssid, MLAN_MAC_ADDR_LENGTH);
+    }
+#endif /* REASSOCIATION */
+
+    LEAVE();
+    return 0;
+}
 
 /** 
  *  @brief Copy Rates
@@ -369,15 +457,18 @@ static int
 woal_deep_sleep_ioctl(moal_private * priv, struct iwreq *wrq)
 {
     int ret = 0;
+    int user_data_len;
     t_u32 deep_sleep = DEEP_SLEEP_OFF;
     t_u32 data[2];
+    int copy_len;
     t_u16 idletime = DEEP_SLEEP_IDLE_TIME;
 
     ENTER();
 
-    if (wrq->u.data.length == 1 || wrq->u.data.length == 2) {
-        if (copy_from_user
-            (&data, wrq->u.data.pointer, wrq->u.data.length * sizeof(int))) {
+    user_data_len = wrq->u.data.length;
+    copy_len = MIN(sizeof(data), sizeof(int) * user_data_len);
+    if (user_data_len == 1 || user_data_len == 2) {
+        if (copy_from_user(&data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             LEAVE();
             return -EFAULT;
@@ -392,7 +483,7 @@ woal_deep_sleep_ioctl(moal_private * priv, struct iwreq *wrq)
             }
         } else if (deep_sleep == DEEP_SLEEP_ON) {
             PRINTM(MINFO, "Enter Deep Sleep Mode\n");
-            if (wrq->u.data.length == 2)
+            if (user_data_len == 2)
                 idletime = data[1];
             else
                 idletime = 0;
@@ -406,8 +497,8 @@ woal_deep_sleep_ioctl(moal_private * priv, struct iwreq *wrq)
             LEAVE();
             return -EINVAL;
         }
-    } else if (wrq->u.data.length > 2) {
-        PRINTM(MERROR, "Invalid number of arguments %d\n", wrq->u.data.length);
+    } else if (user_data_len > 2) {
+        PRINTM(MERROR, "Invalid number of arguments %d\n", user_data_len);
         LEAVE();
         return -EINVAL;
     } else {                    /* Display Deep Sleep settings */
@@ -445,7 +536,7 @@ woal_deep_sleep_ioctl(moal_private * priv, struct iwreq *wrq)
 static int
 woal_11n_htcap_cfg(moal_private * priv, struct iwreq *wrq)
 {
-    int data[2];
+    int data[2], copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
     int ret = 0;
@@ -468,13 +559,13 @@ woal_11n_htcap_cfg(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_HTCAP_CFG;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     if (data_length == 0) {
         /* Get 11n tx parameters from MLAN */
         req->action = MLAN_ACT_GET;
         cfg_11n->param.htcap_cfg.misc_cfg = BAND_SELECT_BG;
     } else {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, data_length * sizeof(int))) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -547,18 +638,20 @@ woal_11n_htcap_cfg(moal_private * priv, struct iwreq *wrq)
 static int
 woal_11n_amsdu_aggr_ctrl(moal_private * priv, struct iwreq *wrq)
 {
-    int data[2];
+    int data[2], copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
     int ret = 0;
+    int data_length = wrq->u.data.length;
 
     ENTER();
 
-    if ((wrq->u.data.length != 0) && (wrq->u.data.length != 1)) {
+    if ((data_length != 0) && (data_length != 1)) {
         PRINTM(MERROR, "Invalid number of arguments\n");
         ret = -EINVAL;
         goto done;
     }
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11n_cfg));
     if (req == NULL) {
         ret = -ENOMEM;
@@ -569,12 +662,11 @@ woal_11n_amsdu_aggr_ctrl(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_CFG_AMSDU_AGGR_CTRL;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         /* Get 11n tx parameters from MLAN */
         req->action = MLAN_ACT_GET;
-    } else if (wrq->u.data.length == 1) {
-        if (copy_from_user(data, wrq->u.data.pointer,
-                           wrq->u.data.length * sizeof(int))) {
+    } else if (data_length == 1) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -614,7 +706,7 @@ woal_11n_amsdu_aggr_ctrl(moal_private * priv, struct iwreq *wrq)
 static int
 woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
 {
-    int data[2];
+    int data[2], copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
     int ret = 0;
@@ -627,6 +719,7 @@ woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11n_cfg));
     if (req == NULL) {
         ret = -ENOMEM;
@@ -637,13 +730,12 @@ woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_CFG_TX;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         /* Get 11n tx parameters from MLAN */
         req->action = MLAN_ACT_GET;
         cfg_11n->param.tx_cfg.misc_cfg = BAND_SELECT_BG;
     } else {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, data_length * sizeof(int))) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -714,10 +806,11 @@ woal_11n_tx_cfg(moal_private * priv, struct iwreq *wrq)
 static int
 woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
 {
-    int data[MAX_NUM_TID * 2], i, j;
+    int data[MAX_NUM_TID * 2], i, j, copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
     int ret = 0;
+    int data_length = wrq->u.data.length;
 
     ENTER();
 
@@ -725,6 +818,7 @@ woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
         LEAVE();
         return -EINVAL;
     }
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11n_cfg));
     if (req == NULL) {
@@ -735,7 +829,7 @@ woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_CFG_AGGR_PRIO_TBL;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         /* Get aggr priority table from MLAN */
         req->action = MLAN_ACT_GET;
         if (MLAN_STATUS_SUCCESS !=
@@ -755,14 +849,13 @@ woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
             ret = -EFAULT;
             goto error;
         }
-    } else if (wrq->u.data.length == 16) {
-        if (copy_from_user(data, wrq->u.data.pointer,
-                           sizeof(int) * wrq->u.data.length)) {
+    } else if (data_length == 16) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto error;
         }
-        for (i = 0, j = 0; i < (wrq->u.data.length); i = i + 2, ++j) {
+        for (i = 0, j = 0; i < (data_length); i = i + 2, ++j) {
             if ((data[i] > 7 && data[i] != 0xff) ||
                 (data[i + 1] > 7 && data[i + 1] != 0xff)) {
                 PRINTM(MERROR, "Invalid priority, valid value 0-7 or 0xff.\n");
@@ -805,12 +898,13 @@ woal_11n_prio_tbl(moal_private * priv, struct iwreq *wrq)
 static int
 woal_addba_reject(moal_private * priv, struct iwreq *wrq)
 {
-    int data[MAX_NUM_TID], ret = 0, i;
+    int data[MAX_NUM_TID], ret = 0, i, copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
-
+    int data_length = wrq->u.data.length;
     ENTER();
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11n_cfg));
     if (req == NULL) {
         LEAVE();
@@ -820,7 +914,7 @@ woal_addba_reject(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_CFG_ADDBA_REJECT;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         PRINTM(MERROR, "Addba reject moal\n");
         /* Get aggr priority table from MLAN */
         req->action = MLAN_ACT_GET;
@@ -841,14 +935,13 @@ woal_addba_reject(moal_private * priv, struct iwreq *wrq)
             ret = -EFAULT;
             goto error;
         }
-    } else if (wrq->u.data.length == 8) {
-        if (copy_from_user(data, wrq->u.data.pointer,
-                           sizeof(int) * wrq->u.data.length)) {
+    } else if (data_length == 8) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto error;
         }
-        for (i = 0; i < (wrq->u.data.length); ++i) {
+        for (i = 0; i < (data_length); ++i) {
             if (data[i] != 0 && data[i] != 1) {
                 PRINTM(MERROR, "addba reject only takes argument as 0 or 1\n");
                 ret = -EFAULT;
@@ -888,12 +981,14 @@ woal_addba_reject(moal_private * priv, struct iwreq *wrq)
 static int
 woal_addba_para_updt(moal_private * priv, struct iwreq *wrq)
 {
-    int data[5], ret = 0;
+    int data[5], ret = 0, copy_len;
     mlan_ioctl_req *req = NULL;
     mlan_ds_11n_cfg *cfg_11n = NULL;
+    int data_length = wrq->u.data.length;
 
     ENTER();
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11n_cfg));
     if (req == NULL) {
         LEAVE();
@@ -903,7 +998,7 @@ woal_addba_para_updt(moal_private * priv, struct iwreq *wrq)
     cfg_11n->sub_command = MLAN_OID_11N_CFG_ADDBA_PARAM;
     req->req_id = MLAN_IOCTL_11N_CFG;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         /* Get Add BA parameters from MLAN */
         req->action = MLAN_ACT_GET;
         if (MLAN_STATUS_SUCCESS !=
@@ -926,9 +1021,8 @@ woal_addba_para_updt(moal_private * priv, struct iwreq *wrq)
             ret = -EFAULT;
             goto error;
         }
-    } else if (wrq->u.data.length == 5) {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, wrq->u.data.length * sizeof(int))) {
+    } else if (data_length == 5) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto error;
@@ -1043,7 +1137,7 @@ woal_txbuf_cfg(moal_private * priv, struct iwreq *wrq)
 static int
 woal_hs_cfg(moal_private * priv, struct iwreq *wrq, BOOLEAN invoke_hostcmd)
 {
-    int data[3];
+    int data[3], copy_len;
     int ret = 0;
     mlan_ds_hs_cfg hscfg;
     t_u16 action;
@@ -1054,14 +1148,14 @@ woal_hs_cfg(moal_private * priv, struct iwreq *wrq, BOOLEAN invoke_hostcmd)
 
     memset(data, 0, sizeof(data));
     memset(&hscfg, 0, sizeof(mlan_ds_hs_cfg));
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     if (data_length == 0) {
         action = MLAN_ACT_GET;
     } else {
         action = MLAN_ACT_SET;
         if (data_length >= 1 && data_length <= 3) {
-            if (copy_from_user
-                (data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+            if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
                 PRINTM(MERROR, "Copy from user failed\n");
                 ret = -EFAULT;
                 goto done;
@@ -1171,7 +1265,7 @@ woal_hs_setpara(moal_private * priv, struct iwreq *wrq)
 static int
 woal_inactivity_timeout_ext(moal_private * priv, struct iwreq *wrq)
 {
-    int data[4];
+    int data[4], copy_len;
     int ret = 0;
     mlan_ioctl_req *req = NULL;
     mlan_ds_pm_cfg *pmcfg = NULL;
@@ -1180,6 +1274,7 @@ woal_inactivity_timeout_ext(moal_private * priv, struct iwreq *wrq)
 
     ENTER();
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     memset(data, 0, sizeof(data));
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
     if (req == NULL) {
@@ -1201,8 +1296,7 @@ woal_inactivity_timeout_ext(moal_private * priv, struct iwreq *wrq)
 
     req->action = MLAN_ACT_GET;
     if (data_length) {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -1253,7 +1347,7 @@ woal_inactivity_timeout_ext(moal_private * priv, struct iwreq *wrq)
 static int
 woal_ecl_sys_clock(moal_private * priv, struct iwreq *wrq)
 {
-    int data[64];
+    int data[64], copy_len;
     int ret = 0;
     mlan_ioctl_req *req = NULL;
     mlan_ds_misc_cfg *cfg = NULL;
@@ -1263,6 +1357,7 @@ woal_ecl_sys_clock(moal_private * priv, struct iwreq *wrq)
     ENTER();
 
     memset(data, 0, sizeof(data));
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
     if (req == NULL) {
@@ -1278,8 +1373,7 @@ woal_ecl_sys_clock(moal_private * priv, struct iwreq *wrq)
         req->action = MLAN_ACT_GET;
     else if (data_length <= MLAN_MAX_CLK_NUM) {
         req->action = MLAN_ACT_SET;
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -1371,7 +1465,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
     int ret = 0;
     unsigned int i;
     int data[4];
-    int user_data_len = wrq->u.data.length;
+    int user_data_len = wrq->u.data.length, copy_len;
     t_u32 infra_band = 0;
     t_u32 adhoc_band = 0;
     t_u32 adhoc_channel = 0;
@@ -1394,6 +1488,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
         }
     }
 
+    copy_len = MIN(sizeof(data), sizeof(int) * user_data_len);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_radio_cfg));
     if (req == NULL) {
         ret = -ENOMEM;
@@ -1429,8 +1524,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
             goto error;
         }
     } else {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * user_data_len)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto error;
@@ -1517,7 +1611,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
 static int
 woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
 {
-    int data[3];
+    int data[3], copy_len;
     int ret = 0;
     mlan_ioctl_req *req = NULL;
     mlan_ds_reg_mem *reg = NULL;
@@ -1526,6 +1620,7 @@ woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
     ENTER();
 
     memset(data, 0, sizeof(data));
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_reg_mem));
     if (req == NULL) {
@@ -1545,7 +1640,7 @@ woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
-    if (copy_from_user(data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+    if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
         PRINTM(MERROR, "Copy from user failed\n");
         ret = -EFAULT;
         goto done;
@@ -1588,7 +1683,7 @@ woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
 static int
 woal_read_eeprom(moal_private * priv, struct iwreq *wrq)
 {
-    int data[2];
+    int data[2], copy_len;
     int ret = 0;
     mlan_ioctl_req *req = NULL;
     mlan_ds_reg_mem *reg = NULL;
@@ -1597,6 +1692,7 @@ woal_read_eeprom(moal_private * priv, struct iwreq *wrq)
     ENTER();
 
     memset(data, 0, sizeof(data));
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_reg_mem));
     if (req == NULL) {
@@ -1614,7 +1710,7 @@ woal_read_eeprom(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
-    if (copy_from_user(data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+    if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
         PRINTM(MERROR, "Copy from user failed\n");
         ret = -EFAULT;
         goto done;
@@ -1661,11 +1757,12 @@ woal_mem_read_write(moal_private * priv, struct iwreq *wrq)
     int ret = 0;
     mlan_ioctl_req *req = NULL;
     mlan_ds_reg_mem *reg_mem = NULL;
-    int data_length = wrq->u.data.length;
+    int data_length = wrq->u.data.length, copy_len;
 
     ENTER();
 
     memset(data, 0, sizeof(data));
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_reg_mem));
     if (req == NULL) {
@@ -1687,7 +1784,7 @@ woal_mem_read_write(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
-    if (copy_from_user(data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+    if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
         PRINTM(MERROR, "Copy from user failed\n");
         ret = -EFAULT;
         goto done;
@@ -1770,7 +1867,9 @@ woal_get_log(moal_private * priv, struct iwreq *wrq)
                 "wepicverrcnt-1   %u\n"
                 "wepicverrcnt-2   %u\n"
                 "wepicverrcnt-3   %u\n"
-                "wepicverrcnt-4   %u\n",
+                "wepicverrcnt-4   %u\n"
+                "beacon_rcnt      %u\n"
+                "beacon_mcnt      %u\n",
                 stats.mcast_tx_frame,
                 stats.failed,
                 stats.retry,
@@ -1785,7 +1884,8 @@ woal_get_log(moal_private * priv, struct iwreq *wrq)
                 stats.tx_frame,
                 stats.wep_icv_error[0],
                 stats.wep_icv_error[1],
-                stats.wep_icv_error[2], stats.wep_icv_error[3]);
+                stats.wep_icv_error[2],
+                stats.wep_icv_error[3], stats.bcn_rcv_cnt, stats.bcn_miss_cnt);
         wrq->u.data.length = strlen(buf) + 1;
         if (copy_to_user(wrq->u.data.pointer, buf, wrq->u.data.length)) {
             PRINTM(MERROR, "Copy to user failed\n");
@@ -1846,7 +1946,7 @@ woal_deauth(moal_private * priv, struct iwreq *wrq)
 static int
 woal_tx_power_cfg(moal_private * priv, struct iwreq *wrq)
 {
-    int data[5], user_data_len;
+    int data[5], user_data_len, copy_len;
     int ret = 0;
     mlan_bss_info bss_info;
     mlan_ds_power_cfg *pcfg = NULL;
@@ -1858,6 +1958,7 @@ woal_tx_power_cfg(moal_private * priv, struct iwreq *wrq)
 
     memset(data, 0, sizeof(data));
     user_data_len = wrq->u.data.length;
+    copy_len = MIN(sizeof(data), sizeof(int) * user_data_len);
 
     if (user_data_len) {
         if (sizeof(int) * user_data_len > sizeof(data)) {
@@ -1865,8 +1966,7 @@ woal_tx_power_cfg(moal_private * priv, struct iwreq *wrq)
             ret = -EINVAL;
             goto done;
         }
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * user_data_len)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -2381,12 +2481,13 @@ woal_set_get_radio(moal_private * priv, struct iwreq *wrq)
 static int
 woal_drv_dbg(moal_private * priv, struct iwreq *wrq)
 {
-    int data[4];
+    int data[4], copy_len;
     int ret = 0;
-
+    int data_length = wrq->u.data.length;
     ENTER();
 
-    if (!wrq->u.data.length) {
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
+    if (!data_length) {
         data[0] = drvdbg;
         /* Return the current driver debug bit masks */
         if (copy_to_user(wrq->u.data.pointer, data, sizeof(int))) {
@@ -2395,10 +2496,9 @@ woal_drv_dbg(moal_private * priv, struct iwreq *wrq)
             goto drvdbgexit;
         }
         wrq->u.data.length = 1;
-    } else if (wrq->u.data.length < 3) {
+    } else if (data_length < 3) {
         /* Get the driver debug bit masks from user */
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * wrq->u.data.length)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto drvdbgexit;
@@ -2637,7 +2737,8 @@ woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
     mlan_ioctl_req *req = NULL;
     mlan_ds_pm_cfg *pm = NULL;
     mlan_ds_sleep_params *psleep_params = NULL;
-    int data[6] = { 0 }, i;
+    int data[6] = { 0 }, i, copy_len;
+    int data_length = wrq->u.data.length;
 #ifdef DEBUG_LEVEL1
     char err_str[][35] = { {"sleep clock error in ppm"},
     {"wakeup offset in usec"},
@@ -2648,6 +2749,7 @@ woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
 
     ENTER();
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
     if (req == NULL) {
         LEAVE();
@@ -2659,11 +2761,10 @@ woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
     req->req_id = MLAN_IOCTL_PM_CFG;
     psleep_params = (pmlan_ds_sleep_params) & pm->param.sleep_params;
 
-    if (wrq->u.data.length == 0) {
+    if (data_length == 0) {
         req->action = MLAN_ACT_GET;
-    } else if (wrq->u.data.length == 6) {
-        if (copy_from_user(data, wrq->u.data.pointer, sizeof(int) *
-                           wrq->u.data.length)) {
+    } else if (data_length == 6) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             /* copy_from_user failed */
             PRINTM(MERROR, "S_PARAMS: copy from user failed\n");
             LEAVE();
@@ -3264,28 +3365,30 @@ static int
 woal_passphrase(moal_private * priv, struct iwreq *wrq)
 {
     t_u16 len = 0;
-    static char buf[256];
+    char buf[256];
     char *begin, *end, *opt;
     int ret = 0, action = -1, i;
     mlan_ds_sec_cfg *sec = NULL;
     mlan_ioctl_req *req = NULL;
     t_u8 zero_mac[] = { 0, 0, 0, 0, 0, 0 };
     t_u8 *mac = NULL;
+    int data_length = wrq->u.data.length, copy_len;
 
     ENTER();
 
-    if (!wrq->u.data.length || wrq->u.data.length >= sizeof(buf)) {
+    if (!data_length || data_length >= sizeof(buf)) {
         PRINTM(MERROR, "Argument missing or too long for setpassphrase\n");
         ret = -EINVAL;
         goto done;
     }
+    memset(buf, 0, sizeof(buf));
+    copy_len = data_length;
 
-    if (copy_from_user(buf, wrq->u.data.pointer, wrq->u.data.length)) {
+    if (copy_from_user(buf, wrq->u.data.pointer, copy_len)) {
         PRINTM(MERROR, "Copy from user failed\n");
         ret = -EFAULT;
         goto done;
     }
-    buf[wrq->u.data.length] = '\0';
 
     /* Parse the buf to get the cmd_action */
     begin = buf;
@@ -3347,8 +3450,8 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
                 break;
             }
             sec->param.passphrase.psk_type = MLAN_PSK_PASSPHRASE;
-            strncpy(sec->param.passphrase.psk.passphrase.passphrase, end,
-                    sizeof(sec->param.passphrase.psk.passphrase.passphrase));
+            memcpy(sec->param.passphrase.psk.passphrase.passphrase, end,
+                   sizeof(sec->param.passphrase.psk.passphrase.passphrase));
             sec->param.passphrase.psk.passphrase.passphrase_len = strlen(end);
             PRINTM(MINFO, "passphrase=%s, len=%d\n",
                    sec->param.passphrase.psk.passphrase.passphrase,
@@ -3483,11 +3586,12 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
     mlan_ds_sec_cfg *sec = NULL;
     mlan_ioctl_req *req = NULL;
     t_u8 bcast_addr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-
+    int data_length = wrq->u.data.length, copy_len;
     ENTER();
 
     memset(key_ascii, 0x00, sizeof(key_ascii));
     memset(key_hex, 0x00, sizeof(key_hex));
+    memset(buf, 0x00, sizeof(buf));
 
     /* Get current BSS information */
     memset(&bss_info, 0, sizeof(bss_info));
@@ -3504,21 +3608,21 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
         ret = -ENOMEM;
         goto done;
     }
+    copy_len = data_length;
 
-    if (wrq->u.data.length) {
-        if (wrq->u.data.length >= sizeof(buf)) {
+    if (data_length) {
+        if (data_length >= sizeof(buf)) {
             PRINTM(MERROR, "Too many arguments\n");
             ret = -EINVAL;
             goto done;
         }
-        if (copy_from_user(buf, wrq->u.data.pointer, wrq->u.data.length)) {
+        if (copy_from_user(buf, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
         }
-        buf[wrq->u.data.length] = '\0';
 
-        if (wrq->u.data.length == 1) {
+        if (data_length == 1) {
             /* Get Adhoc AES Key */
             req->req_id = MLAN_IOCTL_SEC_CFG;
             req->action = MLAN_ACT_GET;
@@ -3541,7 +3645,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
             tmp = key_ascii;
             for (i = 0; i < sizeof(key_hex); i++)
                 tmp += sprintf((char *) tmp, "%02x", key_hex[i]);
-        } else if (wrq->u.data.length >= 2) {
+        } else if (data_length >= 2) {
             /* Parse the buf to get the cmd_action */
             action = woal_atox(&buf[0]);
             if (action < 1 || action > 2) {
@@ -3575,7 +3679,7 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
                     ret = -EFAULT;
                     goto done;
                 }
-            } else if (action == 2) {
+            } else {
                 /* Clear Adhoc AES Key */
                 sec->param.encrypt_key.key_len = AES_KEY_LEN;
                 sec->param.encrypt_key.key_index = MLAN_KEY_INDEX_UNICAST;
@@ -3590,10 +3694,6 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
                     ret = -EFAULT;
                     goto done;
                 }
-            } else {
-                PRINTM(MERROR, "Invalid argument\n");
-                ret = -EINVAL;
-                goto done;
             }
         }
 
@@ -3630,9 +3730,12 @@ woal_arp_filter(moal_private * priv, struct iwreq *wrq)
     int ret = 0;
     mlan_ds_misc_cfg *misc = NULL;
     mlan_ioctl_req *req = NULL;
+    int data_length = wrq->u.data.length, copy_len;
 
     ENTER();
 
+    copy_len =
+        MIN(sizeof(misc->param.gen_ie.ie_data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
     if (req == NULL) {
         ret = -ENOMEM;
@@ -3643,11 +3746,11 @@ woal_arp_filter(moal_private * priv, struct iwreq *wrq)
     req->req_id = MLAN_IOCTL_MISC_CFG;
     req->action = MLAN_ACT_SET;
     misc->param.gen_ie.type = MLAN_IE_TYPE_ARP_FILTER;
-    misc->param.gen_ie.len = wrq->u.data.length;
+    misc->param.gen_ie.len = data_length;
 
     /* get the whole command from user */
     if (copy_from_user
-        (misc->param.gen_ie.ie_data, wrq->u.data.pointer, wrq->u.data.length)) {
+        (misc->param.gen_ie.ie_data, wrq->u.data.pointer, copy_len)) {
         PRINTM(MERROR, "copy from user failed\n");
         ret = -EFAULT;
         goto done;
@@ -3693,7 +3796,7 @@ woal_set_get_ip_addr(moal_private * priv, struct iwreq *wrq)
         ioctl_req->action = MLAN_ACT_GET;
     } else {
         if (copy_from_user(buf, wrq->u.data.pointer,
-                           MIN(IPADDR_MAX_BUF - 1, wrq->u.data.length))) {
+                           MIN(IPADDR_MAX_BUF - 1, data_length))) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -3709,7 +3812,7 @@ woal_set_get_ip_addr(moal_private * priv, struct iwreq *wrq)
         ioctl_req->action = MLAN_ACT_SET;
         /* only one IP is supported in current firmware */
         memset(misc->param.ipaddr_cfg.ip_addr[0], 0, IPADDR_LEN);
-        in4_pton(&buf[2], MIN((IPADDR_MAX_BUF - 3), (wrq->u.data.length - 2)),
+        in4_pton(&buf[2], MIN((IPADDR_MAX_BUF - 3), (data_length - 2)),
                  misc->param.ipaddr_cfg.ip_addr[0], ' ', NULL);
         /* only one IP is supported in current firmware */
         misc->param.ipaddr_cfg.ip_addr_num = 1;
@@ -4538,7 +4641,7 @@ woal_cmd53rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
         pattern_len = wrq->u.data.length - 11;
         if (pattern_len > total_len)
             pattern_len = total_len;
-        memset(data, 0, sizeof(data));
+        memset(data, 0, WOAL_2K_BYTES);
 
         /* Copy/duplicate the pattern to data buffer */
         for (pos = 0; pos < total_len; pos++)
@@ -4573,7 +4676,7 @@ woal_cmd53rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
 static int
 woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
 {
-    int data[6], data_length = wrq->u.data.length;
+    int data[6], data_length = wrq->u.data.length, copy_len;
     int ret = 0;
     mlan_ds_misc_cfg *misc = NULL;
     mlan_ioctl_req *req = NULL;
@@ -4585,6 +4688,7 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
     if (req == NULL) {
@@ -4627,13 +4731,10 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
         goto done;
     }
 
-    if (sizeof(data) >= sizeof(int) * data_length) {
-        if (copy_from_user(data, wrq->u.data.pointer,
-                           sizeof(int) * data_length)) {
-            PRINTM(MINFO, "Copy from user failed\n");
-            ret = -EFAULT;
-            goto done;
-        }
+    if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
+        PRINTM(MINFO, "Copy from user failed\n");
+        ret = -EFAULT;
+        goto done;
     }
 
     switch (data_length) {
@@ -4690,17 +4791,19 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 {
     int ret = 0;
     int arg_len = 7;
-    int data[arg_len];
+    int data[arg_len], copy_len;
     mlan_ds_scan *scan = NULL;
     mlan_ioctl_req *req = NULL;
+    int data_length = wrq->u.data.length;
 
     ENTER();
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_scan));
     if (req == NULL) {
         ret = -ENOMEM;
         goto done;
     }
-    if (wrq->u.data.length > arg_len) {
+    if (data_length > arg_len) {
         ret = -EINVAL;
         goto done;
     }
@@ -4708,9 +4811,9 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
     scan->sub_command = MLAN_OID_SCAN_CONFIG;
     req->req_id = MLAN_IOCTL_SCAN;
     memset(data, 0, sizeof(data));
-    if (wrq->u.data.length) {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, (wrq->u.data.length * sizeof(int)))) {
+
+    if (data_length) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -4750,7 +4853,7 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
         ret = -EFAULT;
         goto done;
     }
-    if (!wrq->u.data.length) {
+    if (!data_length) {
         memcpy(data, &scan->param.scan_cfg, sizeof(data));
         if (copy_to_user(wrq->u.data.pointer, data, sizeof(data))) {
             ret = -EFAULT;
@@ -4776,24 +4879,26 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 static int
 woal_set_get_ps_cfg(moal_private * priv, struct iwreq *wrq)
 {
-    int data[7], ret = 0;
+    int data[7], copy_len, ret = 0;
     mlan_ds_pm_cfg *pm_cfg = NULL;
     mlan_ioctl_req *req = NULL;
     int allowed = 3;
     int i = 3;
+    int data_length = wrq->u.data.length;
 
     ENTER();
 
     allowed++;                  /* For ad-hoc awake period parameter */
     allowed++;                  /* For beacon missing timeout parameter */
     allowed += 2;               /* For delay to PS and PS mode parameters */
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
     if (req == NULL) {
         ret = -ENOMEM;
         goto done;
     }
-    if (wrq->u.data.length > allowed) {
+    if (data_length > allowed) {
         ret = -EINVAL;
         goto done;
     }
@@ -4801,9 +4906,9 @@ woal_set_get_ps_cfg(moal_private * priv, struct iwreq *wrq)
     pm_cfg->sub_command = MLAN_OID_PM_CFG_PS_CFG;
     req->req_id = MLAN_IOCTL_PM_CFG;
     memset(data, 0, sizeof(data));
-    if (wrq->u.data.length) {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, (wrq->u.data.length * sizeof(int)))) {
+
+    if (data_length) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -4844,7 +4949,7 @@ woal_set_get_ps_cfg(moal_private * priv, struct iwreq *wrq)
             goto done;
         }
         i++;
-        if (wrq->u.data.length < allowed - 1)
+        if (data_length < allowed - 1)
             data[i] = DELAY_TO_PS_UNCHANGED;
         else if ((data[i] < MIN_DELAY_TO_PS) || (data[i] > MAX_DELAY_TO_PS)) {
             PRINTM(MERROR, "Invalid argument for delay to PS\n");
@@ -5542,10 +5647,11 @@ woal_dfs_testing(moal_private * priv, struct iwreq *wrq)
     mlan_ioctl_req *req = NULL;
     mlan_ds_11h_cfg *ds_11hcfg = NULL;
     int ret = 0;
-    int data[4];
+    int data[4], copy_len;
     int data_length = wrq->u.data.length;
     ENTER();
 
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
     /* Allocate an IOCTL request buffer */
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_11h_cfg));
     if (req == NULL) {
@@ -5561,8 +5667,7 @@ woal_dfs_testing(moal_private * priv, struct iwreq *wrq)
     if (!data_length) {
         req->action = MLAN_ACT_GET;
     } else if (data_length == 4) {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -5701,7 +5806,7 @@ static int
 woal_cfp_code(moal_private * priv, struct iwreq *wrq)
 {
     int ret = 0;
-    int data[2];
+    int data[2], copy_len;
     int data_length = wrq->u.data.length;
     mlan_ioctl_req *req = NULL;
     mlan_ds_misc_cfg *misc_cfg = NULL;
@@ -5714,6 +5819,7 @@ woal_cfp_code(moal_private * priv, struct iwreq *wrq)
         ret = -EINVAL;
         goto done;
     }
+    copy_len = MIN(sizeof(data), sizeof(int) * data_length);
 
     /* Allocate an IOCTL request buffer */
     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
@@ -5731,8 +5837,7 @@ woal_cfp_code(moal_private * priv, struct iwreq *wrq)
     if (!data_length) {
         req->action = MLAN_ACT_GET;
     } else {
-        if (copy_from_user
-            (data, wrq->u.data.pointer, sizeof(int) * data_length)) {
+        if (copy_from_user(data, wrq->u.data.pointer, copy_len)) {
             PRINTM(MERROR, "Copy from user failed\n");
             ret = -EFAULT;
             goto done;
@@ -6065,6 +6170,9 @@ woal_wext_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
         case WOAL_ADHOC_AES:
             ret = woal_adhoc_aes_ioctl(priv, wrq);
             break;
+        case WOAL_ASSOCIATE:
+            ret = woal_associate_ssid_bssid(priv, wrq);
+            break;
         case WOAL_WMM_QUEUE_STATUS:
             ret = woal_wmm_queue_status_ioctl(priv, wrq);
             break;
@@ -6200,54 +6308,6 @@ woal_wext_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 
     LEAVE();
     return ret;
-}
-
-/** 
- *  @brief Get statistics information
- *
- *  @param priv         A pointer to moal_private structure
- *  @param wait_option  Wait option
- *  @param stats        A pointer to mlan_ds_get_stats structure
- *
- *  @return             MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
- */
-mlan_status
-woal_get_stats_info(moal_private * priv, t_u8 wait_option,
-                    mlan_ds_get_stats * stats)
-{
-    int ret = 0;
-    mlan_ds_get_info *info = NULL;
-    mlan_ioctl_req *req = NULL;
-    mlan_status status = MLAN_STATUS_SUCCESS;
-    ENTER();
-
-    /* Allocate an IOCTL request buffer */
-    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_get_info));
-    if (req == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-
-    /* Fill request buffer */
-    info = (mlan_ds_get_info *) req->pbuf;
-    info->sub_command = MLAN_OID_GET_STATS;
-    req->req_id = MLAN_IOCTL_GET_INFO;
-    req->action = MLAN_ACT_GET;
-
-    /* Send IOCTL request to MLAN */
-    status = woal_request_ioctl(priv, req, wait_option);
-    if (status == MLAN_STATUS_SUCCESS) {
-        if (stats)
-            memcpy(stats, &info->param.stats, sizeof(mlan_ds_get_stats));
-        priv->w_stats.discard.fragment = info->param.stats.fcs_error;
-        priv->w_stats.discard.retries = info->param.stats.retry;
-        priv->w_stats.discard.misc = info->param.stats.ack_failure;
-    }
-  done:
-    if (req && (status != MLAN_STATUS_PENDING))
-        kfree(req);
-    LEAVE();
-    return status;
 }
 
 /** 

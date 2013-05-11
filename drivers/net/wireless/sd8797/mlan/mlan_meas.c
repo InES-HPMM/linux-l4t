@@ -85,12 +85,8 @@ wlan_meas_dump_meas_req(const HostCmd_DS_MEASUREMENT_REQUEST * pmeas_req)
 
     PRINTM(MINFO, "Meas: Req: ------------------------------\n");
 
-    PRINTM(MINFO, "Meas: Req: mac_addr: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           pmeas_req->mac_addr[0],
-           pmeas_req->mac_addr[1],
-           pmeas_req->mac_addr[2],
-           pmeas_req->mac_addr[3],
-           pmeas_req->mac_addr[4], pmeas_req->mac_addr[5]);
+    PRINTM(MINFO, "Meas: Req: mac_addr: " MACSTR "\n",
+           MAC2STR(pmeas_req->mac_addr));
 
     PRINTM(MINFO, "Meas: Req:  dlgTkn: %d\n", pmeas_req->dialog_token);
     PRINTM(MINFO, "Meas: Req:    mode: dm[%c] rpt[%c] req[%c]\n",
@@ -136,12 +132,8 @@ wlan_meas_dump_meas_rpt(const HostCmd_DS_MEASUREMENT_REPORT * pmeas_rpt)
     ENTER();
 
     PRINTM(MINFO, "Meas: Rpt: ------------------------------\n");
-    PRINTM(MINFO, "Meas: Rpt: mac_addr: %02x:%02x:%02x:%02x:%02x:%02x\n",
-           pmeas_rpt->mac_addr[0],
-           pmeas_rpt->mac_addr[1],
-           pmeas_rpt->mac_addr[2],
-           pmeas_rpt->mac_addr[3],
-           pmeas_rpt->mac_addr[4], pmeas_rpt->mac_addr[5]);
+    PRINTM(MINFO, "Meas: Rpt: mac_addr: " MACSTR "\n",
+           MAC2STR(pmeas_rpt->mac_addr));
 
     PRINTM(MINFO, "Meas: Rpt:  dlgTkn: %d\n", pmeas_rpt->dialog_token);
 

@@ -255,10 +255,8 @@ woal_set_wap(struct net_device *dev, struct iw_request_info *info,
         goto done;
     }
 
-    PRINTM(MINFO, "ASSOC: WAP: uAP bss : %02x:%02x:%02x:%02x:%02x:%02x\n",
-           (t_u8) awrq->sa_data[0], (t_u8) awrq->sa_data[1],
-           (t_u8) awrq->sa_data[2], (t_u8) awrq->sa_data[3],
-           (t_u8) awrq->sa_data[4], (t_u8) awrq->sa_data[5]);
+    PRINTM(MINFO, "ASSOC: WAP: uAP bss : " MACSTR "\n",
+           MAC2STR((t_u8 *) awrq->sa_data));
 
     /* 
      * Using this ioctl to start/stop the BSS, return if bss
@@ -481,7 +479,7 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
 
     /* Check index */
     key_index = (dwrq->flags & IW_ENCODE_INDEX) - 1;
-    if (key_index > 3) {
+    if ((key_index > 3) || (key_index < 0)) {
         PRINTM(MERROR, "Key index #%d out of range\n", key_index);
         ret = -EINVAL;
         goto done;
@@ -516,16 +514,14 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
     sys_cfg->wep_cfg.key2.key_index = 2;
     sys_cfg->wep_cfg.key3.key_index = 3;
 
-    if (key_index >= 0 && key_index <= 3) {
-        if (key_index == 0)
-            pkey = &sys_cfg->wep_cfg.key0;
-        else if (key_index == 1)
-            pkey = &sys_cfg->wep_cfg.key1;
-        else if (key_index == 2)
-            pkey = &sys_cfg->wep_cfg.key2;
-        else if (key_index == 3)
-            pkey = &sys_cfg->wep_cfg.key3;
-    }
+    if (key_index == 0)
+        pkey = &sys_cfg->wep_cfg.key0;
+    else if (key_index == 1)
+        pkey = &sys_cfg->wep_cfg.key1;
+    else if (key_index == 2)
+        pkey = &sys_cfg->wep_cfg.key2;
+    else if (key_index == 3)
+        pkey = &sys_cfg->wep_cfg.key3;
 
     if (!(dwrq->flags & IW_ENCODE_NOKEY) && dwrq->length) {
         if (dwrq->length > MAX_WEP_KEY_SIZE) {
@@ -533,18 +529,6 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
             ret = -E2BIG;
             goto done;
         }
-        if (key_index < 0) {
-            /* Get current default key index */
-            if (ap_cfg->wep_cfg.key0.is_default)
-                pkey = &sys_cfg->wep_cfg.key0;
-            if (ap_cfg->wep_cfg.key1.is_default)
-                pkey = &sys_cfg->wep_cfg.key1;
-            if (ap_cfg->wep_cfg.key2.is_default)
-                pkey = &sys_cfg->wep_cfg.key2;
-            if (ap_cfg->wep_cfg.key3.is_default)
-                pkey = &sys_cfg->wep_cfg.key3;
-        }
-
         sys_cfg->protocol = PROTOCOL_STATIC_WEP;
         memcpy(pkey->key, extra, dwrq->length);
         /* Set the length */
@@ -881,7 +865,7 @@ woal_set_encode_ext(struct net_device *dev,
     ENTER();
 
     key_index = (dwrq->flags & IW_ENCODE_INDEX) - 1;
-    if (key_index < 0 || key_index > 3) {
+    if (key_index < 0 || key_index > 5) {
         ret = -EINVAL;
         goto done;
     }
@@ -915,10 +899,12 @@ woal_set_encode_ext(struct net_device *dev,
             pwep_key = &sys_cfg.wep_cfg.key3;
             break;
         }
-        pwep_key->key_index = key_index;
-        pwep_key->is_default = MTRUE;
-        pwep_key->length = ext->key_len;
-        memcpy(pwep_key->key, pkey_material, ext->key_len);
+        if (pwep_key) {
+            pwep_key->key_index = key_index;
+            pwep_key->is_default = MTRUE;
+            pwep_key->length = ext->key_len;
+            memcpy(pwep_key->key, pkey_material, ext->key_len);
+        }
     } else {
         /* Set GTK/PTK key */
         req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_sec_cfg));
@@ -949,16 +935,14 @@ woal_set_encode_ext(struct net_device *dev,
                         SEQ_MAX_SIZE);
         }
         PRINTM(MIOCTL,
-               "set uap wpa key key_index=%d, key_len=%d key_flags=0x%x %02x:%02x:%02x:%02x:%02x:%02x\n",
-               key_index, ext->key_len, sec->param.encrypt_key.key_flags,
-               sec->param.encrypt_key.mac_addr[0],
-               sec->param.encrypt_key.mac_addr[1],
-               sec->param.encrypt_key.mac_addr[2],
-               sec->param.encrypt_key.mac_addr[3],
-               sec->param.encrypt_key.mac_addr[4],
-               sec->param.encrypt_key.mac_addr[5]);
+               "set uap wpa key key_index=%d, key_len=%d key_flags=0x%x " MACSTR
+               "\n", key_index, ext->key_len, sec->param.encrypt_key.key_flags,
+               MAC2STR(sec->param.encrypt_key.mac_addr));
         DBG_HEXDUMP(MCMD_D, "uap wpa key", pkey_material, ext->key_len);
+#define IW_ENCODE_ALG_AES_CMAC	5
 
+        if (ext->alg == IW_ENCODE_ALG_AES_CMAC)
+            sec->param.encrypt_key.key_flags |= KEY_FLAG_AES_MCAST_IGTK;
         if (MLAN_STATUS_SUCCESS !=
             woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
             ret = -EFAULT;
@@ -1033,9 +1017,8 @@ woal_set_mlme(struct net_device *dev,
     memset(sta_addr, 0, ETH_ALEN);
     if ((mlme->cmd == IW_MLME_DEAUTH) || (mlme->cmd == IW_MLME_DISASSOC)) {
         memcpy(sta_addr, (t_u8 *) mlme->addr.sa_data, ETH_ALEN);
-        PRINTM(MIOCTL, "Deauth station: %02x:%02x:%02x:%02x:%02x:%02x, "
-               "reason=%d\n", sta_addr[0], sta_addr[1], sta_addr[2],
-               sta_addr[3], sta_addr[4], sta_addr[5], mlme->reason_code);
+        PRINTM(MIOCTL, "Deauth station: " MACSTR ", "
+               "reason=%d\n", MAC2STR(sta_addr), mlme->reason_code);
 
         /* FIXME: For flushing all stations we need to use zero MAC, but right
            now the FW does not support this. So, manually delete each one
@@ -1073,8 +1056,8 @@ woal_set_mlme(struct net_device *dev,
         }
         req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
         if (req == NULL) {
-            LEAVE();
-            return -ENOMEM;
+            ret = -ENOMEM;
+            goto done;
         }
         bss = (mlan_ds_bss *) req->pbuf;
         bss->sub_command = MLAN_OID_UAP_DEAUTH_STA;

@@ -1302,14 +1302,14 @@ woal_uap_ioctl(struct net_device *dev, struct ifreq *req)
     case UAP_SNMP_MIB:
         ret = woal_uap_snmp_mib(dev, req);
         break;
-    case UAP_DOMAIN_INFO:
-        ret = woal_uap_domain_info(dev, req);
-        break;
 #ifdef DFS_TESTING_SUPPORT
     case UAP_DFS_TESTING:
         ret = woal_uap_dfs_testing(dev, req);
         break;
 #endif
+    case UAP_DOMAIN_INFO:
+        ret = woal_uap_domain_info(dev, req);
+        break;
     case UAP_TX_BF_CFG:
         ret = woal_uap_tx_bf_cfg(dev, req);
         break;
@@ -1367,12 +1367,8 @@ woal_uap_sta_deauth_ioctl(struct net_device *dev, struct ifreq *req)
         goto done;
     }
 
-    PRINTM(MIOCTL,
-           "ioctl deauth station: %02x:%02x:%02x:%02x:%02x:%02x, reason=%d\n",
-           deauth_param.mac_addr[0], deauth_param.mac_addr[1],
-           deauth_param.mac_addr[2], deauth_param.mac_addr[3],
-           deauth_param.mac_addr[4], deauth_param.mac_addr[5],
-           deauth_param.reason_code);
+    PRINTM(MIOCTL, "ioctl deauth station: " MACSTR ", reason=%d\n",
+           MAC2STR(deauth_param.mac_addr), deauth_param.reason_code);
 
     ioctl_req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
     if (ioctl_req == NULL) {
@@ -2083,12 +2079,12 @@ woal_uap_set_11n_status(mlan_uap_bss_param * sys_cfg, t_u8 action)
  *  @return         0 --success, otherwise fail
  */
 int
-woal_uap_ap_cfg_parse_data(mlan_uap_bss_param * ap_cfg, t_s8 * buf)
+woal_uap_ap_cfg_parse_data(mlan_uap_bss_param * ap_cfg, char *buf)
 {
     int ret = 0, atoi_ret;
     int set_sec = 0, set_key = 0, set_chan = 0;
     int set_preamble = 0, set_scb = 0, set_ssid = 0;
-    t_s8 *begin = buf, *value = NULL, *opt = NULL;
+    char *begin = buf, *value = NULL, *opt = NULL;
 
     ENTER();
 
@@ -2282,7 +2278,7 @@ int
 woal_uap_set_ap_cfg(moal_private * priv, t_u8 * data, int len)
 {
     int ret = 0;
-    static t_s8 buf[MAX_BUF_LEN];
+    static char buf[MAX_BUF_LEN];
     mlan_uap_bss_param sys_config;
     int restart = 0;
 
@@ -2296,7 +2292,7 @@ woal_uap_set_ap_cfg(moal_private * priv, t_u8 * data, int len)
     }
 
     memset(buf, 0, MAX_BUF_LEN);
-    memcpy(buf, data, len);
+    memcpy(buf, data, MIN(len, (sizeof(buf) - 1)));
 
     /* Initialize the uap bss values which are uploaded from firmware */
     woal_uap_get_bss_param(priv, &sys_config, MOAL_IOCTL_WAIT);
@@ -2412,9 +2408,13 @@ woal_uap_bss_ctrl(moal_private * priv, t_u8 wait_option, int data)
         goto done;
     }
 
-    if (data == UAP_BSS_STOP || data == UAP_BSS_RESET)
+    if (data == UAP_BSS_STOP || data == UAP_BSS_RESET) {
         priv->bss_started = MFALSE;
-
+        woal_stop_queue(priv->netdev);
+        if (netif_carrier_ok(priv->netdev))
+            netif_carrier_off(priv->netdev);
+        woal_flush_tcp_sess_queue(priv);
+    }
   done:
     if (req)
         kfree(req);
@@ -2503,6 +2503,7 @@ woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
     return ret;
 }
 
+#ifdef CONFIG_PROC_FS
 /** 
  *  @brief Get version 
  *   
@@ -2536,7 +2537,7 @@ woal_uap_get_version(moal_private * priv, char *version, int max_len)
     if (status == MLAN_STATUS_SUCCESS) {
         PRINTM(MINFO, "MOAL UAP VERSION: %s\n",
                info->param.ver_ext.version_str);
-        snprintf(version, max_len, driver_version,
+        snprintf(version, max_len, priv->phandle->driver_version,
                  info->param.ver_ext.version_str);
     }
 
@@ -2546,6 +2547,7 @@ woal_uap_get_version(moal_private * priv, char *version, int max_len)
     LEAVE();
     return;
 }
+#endif
 
 /** 
  *  @brief Get uap statistics 

@@ -354,10 +354,8 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
     DBG_HEXDUMP(MDAT_D, "uap_recv_packet", pmbuf->pbuf + pmbuf->data_offset,
                 MIN(pmbuf->data_len, MAX_DATA_DUMP_LEN));
 
-    PRINTM(MDATA, "AMSDU dest %02x:%02x:%02x:%02x:%02x:%02x\n",
-           prx_pkt->eth803_hdr.dest_addr[0], prx_pkt->eth803_hdr.dest_addr[1],
-           prx_pkt->eth803_hdr.dest_addr[2], prx_pkt->eth803_hdr.dest_addr[3],
-           prx_pkt->eth803_hdr.dest_addr[4], prx_pkt->eth803_hdr.dest_addr[5]);
+    PRINTM(MDATA, "AMSDU dest " MACSTR "\n",
+           MAC2STR(prx_pkt->eth803_hdr.dest_addr));
 
     /* don't do packet forwarding in disconnected state */
     if ((priv->media_connected == MFALSE) ||
@@ -419,13 +417,8 @@ wlan_uap_recv_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
                    wlan_check_unicast_packet(priv,
                                              prx_pkt->eth803_hdr.dest_addr)) {
             /* drop packet */
-            PRINTM(MDATA, "Drop AMSDU dest %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   prx_pkt->eth803_hdr.dest_addr[0],
-                   prx_pkt->eth803_hdr.dest_addr[1],
-                   prx_pkt->eth803_hdr.dest_addr[2],
-                   prx_pkt->eth803_hdr.dest_addr[3],
-                   prx_pkt->eth803_hdr.dest_addr[4],
-                   prx_pkt->eth803_hdr.dest_addr[5]);
+            PRINTM(MDATA, "Drop AMSDU dest " MACSTR "\n",
+                   MAC2STR(prx_pkt->eth803_hdr.dest_addr));
             goto done;
         }
     }
@@ -469,10 +462,8 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
     PRINTM(MINFO, "RX Data: data_len - prx_pd->rx_pkt_offset = %d - %d = %d\n",
            pmbuf->data_len, prx_pd->rx_pkt_offset,
            pmbuf->data_len - prx_pd->rx_pkt_offset);
-    PRINTM(MDATA, "Rx dest %02x:%02x:%02x:%02x:%02x:%02x\n",
-           prx_pkt->eth803_hdr.dest_addr[0], prx_pkt->eth803_hdr.dest_addr[1],
-           prx_pkt->eth803_hdr.dest_addr[2], prx_pkt->eth803_hdr.dest_addr[3],
-           prx_pkt->eth803_hdr.dest_addr[4], prx_pkt->eth803_hdr.dest_addr[5]);
+    PRINTM(MDATA, "Rx dest " MACSTR "\n",
+           MAC2STR(prx_pkt->eth803_hdr.dest_addr));
 
     /* don't do packet forwarding in disconnected state */
     /* don't do packet forwarding when packet > 1514 */
@@ -521,18 +512,14 @@ wlan_process_uap_rx_packet(IN mlan_private * priv, IN pmlan_buffer pmbuf)
         } else if (MLAN_STATUS_FAILURE ==
                    wlan_check_unicast_packet(priv,
                                              prx_pkt->eth803_hdr.dest_addr)) {
-            PRINTM(MDATA, "Drop Pkts: Rx dest %02x:%02x:%02x:%02x:%02x:%02x\n",
-                   prx_pkt->eth803_hdr.dest_addr[0],
-                   prx_pkt->eth803_hdr.dest_addr[1],
-                   prx_pkt->eth803_hdr.dest_addr[2],
-                   prx_pkt->eth803_hdr.dest_addr[3],
-                   prx_pkt->eth803_hdr.dest_addr[4],
-                   prx_pkt->eth803_hdr.dest_addr[5]);
+            PRINTM(MDATA, "Drop Pkts: Rx dest " MACSTR "\n",
+                   MAC2STR(prx_pkt->eth803_hdr.dest_addr));
             pmbuf->status_code = MLAN_ERROR_PKT_INVALID;
             wlan_free_mlan_buffer(pmadapter, pmbuf);
             goto done;
         }
     }
+
   upload:
     /* Chop off RxPD */
     pmbuf->data_len -= prx_pd->rx_pkt_offset;

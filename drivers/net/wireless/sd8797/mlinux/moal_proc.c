@@ -95,7 +95,7 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     int mc_count = netdev_mc_count(netdev);
 #endif /* < 2.6.35 */
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
     int i = 0;
 #endif /* >= 2.6.29 */
 #endif
@@ -199,7 +199,7 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     p += sprintf(p, "num_rx_pkts_err = %lu\n", priv->stats.rx_errors);
     p += sprintf(p, "carrier %s\n",
                  ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,29)
     for (i = 0; i < netdev->num_tx_queues; i++) {
         p += sprintf(p, "tx queue %d:  %s\n", i,
                      ((netif_tx_queue_stopped(netdev_get_tx_queue(netdev, 0))) ?
@@ -268,7 +268,8 @@ parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
 
     string = (char *) kmalloc(CMD52_STR_LEN, GFP_KERNEL);
     memset(string, 0, CMD52_STR_LEN);
-    memcpy(string, buffer + strlen("sdcmd52rw="), len - strlen("sdcmd52rw="));
+    memcpy(string, buffer + strlen("sdcmd52rw="),
+           MIN((CMD52_STR_LEN - 1), (len - strlen("sdcmd52rw="))));
     string = strstrip(string);
 
     *func = -1;
@@ -316,6 +317,8 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
     t_u32 config_data = 0;
     moal_handle *handle = (moal_handle *) data;
     int func, reg, val;
+    int copy_len;
+    moal_private *priv = NULL;
 
     ENTER();
     if (!MODULE_GET) {
@@ -329,7 +332,8 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
         return (int) cnt;
     }
     memset(databuf, 0, sizeof(databuf));
-    if (copy_from_user(databuf, buf, cnt)) {
+    copy_len = MIN((sizeof(databuf) - 1), cnt);
+    if (copy_from_user(databuf, buf, copy_len)) {
         MODULE_PUT;
         LEAVE();
         return 0;
@@ -359,6 +363,14 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
         parse_cmd52_string(databuf, (size_t) cnt, &func, &reg, &val);
         woal_sdio_read_write_cmd52(handle, func, reg, val);
     }
+    if (!strncmp(databuf, "debug_dump", strlen("debug_dump"))) {
+        priv = woal_get_priv(handle, MLAN_BSS_ROLE_ANY);
+        if (priv) {
+            woal_mlan_debug_info(priv);
+            woal_moal_debug_info(priv, NULL, MFALSE);
+        }
+    }
+
     MODULE_PUT;
     LEAVE();
     return (int) cnt;

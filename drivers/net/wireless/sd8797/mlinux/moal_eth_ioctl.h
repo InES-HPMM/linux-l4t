@@ -54,6 +54,7 @@ Change log:
 #define PRIV_CMD_REJECTADDBAREQ  "rejectaddbareq"
 #define PRIV_CMD_DATARATE   "getdatarate"
 #define PRIV_CMD_TXRATECFG  "txratecfg"
+#define PRIV_CMD_GETLOG     "getlog"
 #define PRIV_CMD_ESUPPMODE  "esuppmode"
 #define PRIV_CMD_PASSPHRASE "passphrase"
 #define PRIV_CMD_DEAUTH     "deauth"
@@ -70,6 +71,7 @@ Change log:
 #ifdef STA_SUPPORT
 #define PRIV_CMD_GETSCANTABLE   "getscantable"
 #define PRIV_CMD_SETUSERSCAN    "setuserscan"
+#define PRIV_CMD_EXTCAPCFG		"extcapcfg"
 #endif
 #define PRIV_CMD_DEEPSLEEP      "deepsleep"
 #define PRIV_CMD_IPADDR         "ipaddr"
@@ -98,6 +100,7 @@ Change log:
 #define PRIV_CMD_SET_AUTH       "setauth"
 #define PRIV_CMD_GET_AP         "getap"
 #define PRIV_CMD_GET_POWER      "getpower"
+#define PRIV_CMD_PSMODE         "psmode"
 #endif
 #define PRIV_CMD_WARMRESET      "warmreset"
 #define PRIV_CMD_TXPOWERCFG     "txpowercfg"
@@ -110,6 +113,23 @@ Change log:
 #define PRIV_CMD_SDCMD52RW      "sdcmd52rw"
 #define PRIV_CMD_ARPFILTER      "arpfilter"
 #define PRIV_CMD_MGMT_FRAME_CTRL  "mgmtframectrl"
+#define PRIV_CMD_QCONFIG        "qconfig"
+#define PRIV_CMD_ADDTS          "addts"
+#define PRIV_CMD_DELTS          "delts"
+#define PRIV_CMD_QSTATUS        "qstatus"
+#define PRIV_CMD_TS_STATUS      "ts_status"
+#define PRIV_CMD_QOS_CFG        "qoscfg"
+#define PRIV_CMD_MAC_CTRL       "macctrl"
+#define PRIV_CMD_GETWAP         "getwap"
+#define PRIV_CMD_REGION_CODE    "regioncode"
+#define PRIV_CMD_FWMACADDR      "fwmacaddr"
+#if defined(WIFI_DIRECT_SUPPORT)
+#define PRIV_CMD_OFFCHANNEL     "offchannel"
+#endif
+#if defined(STA_SUPPORT)
+#define PRIV_CMD_PMFCFG         "pmfcfg"
+#endif
+#define PRIV_CMD_INACTIVITYTO   "inactivityto"
 
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)
@@ -162,6 +182,10 @@ typedef struct _android_wifi_priv_cmd
 #define MW_MODE_SECOND  5       /* Secondary master/repeater (backup) */
 #define MW_MODE_MONITOR 6       /* Passive monitor (listen only) */
 #define MW_MODE_MESH    7       /* Mesh (IEEE 802.11s) network */
+
+#define MW_POWER_TYPE       0xF000      /* Type of parameter */
+#define MW_POWER_PERIOD     0x1000      /* Value is a period/duration of */
+#define MW_POWER_TIMEOUT    0x2000      /* Value is a timeout (to go asleep) */
 
 #define MW_AUTH_INDEX       0x0FFF
 #define MW_AUTH_FLAGS       0xF000

@@ -944,17 +944,17 @@ wlan_misc_country_2_cfp_table_code(pmlan_adapter pmadapter, t_u8 * country_code,
 /** 
  *  @brief Use index to get the data rate
  *   
- *  @param pmadapter    A pointer to mlan_adapter structure
- *  @param index        The index of data rate
- *  @param ht_info      ht info
+ *  @param pmadapter   A pointer to mlan_adapter structure
+ *  @param index       The index of data rate
+ *  @param ht_info     HT info
  *
- *  @return                     Data rate or 0 
+ *  @return            Data rate or 0 
  */
-
 t_u32
 wlan_index_to_data_rate(pmlan_adapter pmadapter, t_u8 index, t_u8 ht_info)
 {
 #define MCS_NUM_SUPP    16
+    t_u16 mcs_num_supp = MCS_NUM_SUPP;
     t_u16 mcs_rate[4][MCS_NUM_SUPP] =
         { {0x1b, 0x36, 0x51, 0x6c, 0xa2, 0xd8, 0xf3, 0x10e, 0x36, 0x6c, 0xa2,
            0xd8, 0x144, 0x1b0, 0x1e6, 0x21c}
@@ -968,17 +968,19 @@ wlan_index_to_data_rate(pmlan_adapter pmadapter, t_u8 index, t_u8 ht_info)
     {0x0e, 0x1c, 0x2b, 0x39, 0x56, 0x73, 0x82, 0x90, 0x1c, 0x39, 0x56, 0x73,
      0xad, 0xe7, 0x104, 0x120}
     };                          /* SG 20M */
-
     t_u32 rate = 0;
+
     ENTER();
 
+    if (pmadapter->usr_dev_mcs_support == HT_STREAM_MODE_1X1)
+        mcs_num_supp = 8;
     if (ht_info & MBIT(0)) {
         if (index == MLAN_RATE_BITMAP_MCS0) {
             if (ht_info & MBIT(2))
                 rate = 0x0D;    /* MCS 32 SGI rate */
             else
                 rate = 0x0C;    /* MCS 32 LGI rate */
-        } else if (index < MCS_NUM_SUPP) {
+        } else if (index < mcs_num_supp) {
             if (ht_info & MBIT(1)) {
                 if (ht_info & MBIT(2))
                     rate = mcs_rate[1][index];  /* SGI, 40M */
@@ -1184,7 +1186,7 @@ wlan_get_cfp_by_band_and_channel(pmlan_adapter pmadapter,
     }
 
     if (!cfp && channel)
-        PRINTM(MERROR, "wlan_get_cfp_by_band_and_channel(): cannot find "
+        PRINTM(MCMND, "wlan_get_cfp_by_band_and_channel(): cannot find "
                "cfp by band %d & channel %d\n", band, channel);
 
     LEAVE();

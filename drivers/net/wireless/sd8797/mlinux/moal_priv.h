@@ -179,6 +179,7 @@ Change log:
 #define WOAL_PASSPHRASE             1
 /** Private command to get/set Ad-Hoc AES */
 #define WOAL_ADHOC_AES              2
+#define WOAL_ASSOCIATE              3
 /** Private command ID to get WMM queue status */
 #define WOAL_WMM_QUEUE_STATUS       4
 /** Private command ID to get Traffic stream status */
@@ -569,6 +570,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_CHAR | 256,
      IW_PRIV_TYPE_CHAR | 256,
      "adhocaes"},
+    {
+     WOAL_ASSOCIATE,
+     IW_PRIV_TYPE_CHAR | 256,
+     IW_PRIV_TYPE_CHAR | 256,
+     "associate"},
     {
      WOAL_WMM_QUEUE_STATUS,
      IW_PRIV_TYPE_CHAR | 256,

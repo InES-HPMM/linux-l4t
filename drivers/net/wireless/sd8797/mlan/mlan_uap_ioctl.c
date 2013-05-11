@@ -682,7 +682,7 @@ wlan_uap_sec_ioctl_set_encrypt_key(IN pmlan_adapter pmadapter,
         LEAVE();
         return MLAN_STATUS_FAILURE;
     }
-    if (!sec->param.encrypt_key.key_len) {
+    if (!sec->param.encrypt_key.key_remove && !sec->param.encrypt_key.key_len) {
         PRINTM(MCMND, "Skip set key with key_len = 0\n");
         LEAVE();
         return ret;
@@ -867,11 +867,18 @@ wlan_uap_callback_domain_info(IN t_void * priv)
     wlan_uap_get_info_cb_t *puap_state_chan_cb = &pmpriv->uap_state_chan_cb;
     mlan_ds_11d_cfg *cfg11d;
     t_u8 band;
+    pmlan_adapter pmadapter = pmpriv->adapter;
+    pmlan_callbacks pcb = &pmadapter->callbacks;
 
     ENTER();
     /* clear callback now that we're here */
     puap_state_chan_cb->get_chan_callback = MNULL;
 
+    if (!puap_state_chan_cb->pioctl_req_curr) {
+        PRINTM(MERROR, "pioctl_req_curr is null\n");
+        LEAVE();
+        return ret;
+    }
     cfg11d = (mlan_ds_11d_cfg *) puap_state_chan_cb->pioctl_req_curr->pbuf;
     band =
         (puap_state_chan_cb->band_config & BAND_CONFIG_5GHZ) ? BAND_A : BAND_B;
@@ -881,6 +888,12 @@ wlan_uap_callback_domain_info(IN t_void * priv)
                                         puap_state_chan_cb->pioctl_req_curr);
     if (ret == MLAN_STATUS_SUCCESS)
         ret = MLAN_STATUS_PENDING;
+    else {
+        puap_state_chan_cb->pioctl_req_curr->status_code = MLAN_STATUS_FAILURE;
+        pcb->moal_ioctl_complete(pmadapter->pmoal_handle,
+                                 puap_state_chan_cb->pioctl_req_curr,
+                                 MLAN_STATUS_FAILURE);
+    }
 
     puap_state_chan_cb->pioctl_req_curr = MNULL;        // prevent re-use
     LEAVE();
@@ -1248,8 +1261,8 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
     mlan_ds_misc_cfg *misc = MNULL;
     mlan_ds_sec_cfg *sec = MNULL;
     mlan_ds_pm_cfg *pm = MNULL;
-    mlan_ds_snmp_mib *snmp = MNULL;
     mlan_ds_11d_cfg *cfg11d = MNULL;
+    mlan_ds_snmp_mib *snmp = MNULL;
     mlan_ds_11h_cfg *cfg11h = MNULL;
     mlan_ds_radio_cfg *radiocfg = MNULL;
     mlan_ds_rate *rate = MNULL;
@@ -1281,6 +1294,8 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
         else if (bss->sub_command == MLAN_OID_WIFI_DIRECT_MODE)
             status = wlan_bss_ioctl_wifi_direct_mode(pmadapter, pioctl_req);
 #endif
+        else if (bss->sub_command == MLAN_OID_BSS_REMOVE)
+            status = wlan_bss_ioctl_bss_remove(pmadapter, pioctl_req);
         break;
     case MLAN_IOCTL_GET_INFO:
         pget_info = (mlan_ds_get_info *) pioctl_req->pbuf;
@@ -1329,6 +1344,8 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
 #endif
         if (misc->sub_command == MLAN_OID_MISC_TXCONTROL)
             status = wlan_misc_ioctl_txcontrol(pmadapter, pioctl_req);
+        if (misc->sub_command == MLAN_OID_MISC_MAC_CONTROL)
+            status = wlan_misc_ioctl_mac_control(pmadapter, pioctl_req);
         break;
     case MLAN_IOCTL_PM_CFG:
         pm = (mlan_ds_pm_cfg *) pioctl_req->pbuf;
@@ -1403,6 +1420,9 @@ wlan_ops_uap_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
             status = wlan_reg_mem_ioctl_read_eeprom(pmadapter, pioctl_req);
         else if (reg_mem->sub_command == MLAN_OID_MEM_RW)
             status = wlan_reg_mem_ioctl_mem_rw(pmadapter, pioctl_req);
+        break;
+    case MLAN_IOCTL_WMM_CFG:
+        status = wlan_wmm_cfg_ioctl(pmadapter, pioctl_req);
         break;
     default:
         pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;

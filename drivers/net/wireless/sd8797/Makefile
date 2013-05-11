@@ -18,31 +18,45 @@
 # ARE EXPRESSLY DISCLAIMED.  The License provides additional details about 
 # this warranty disclaimer.
 
-# Enable CFG80211 for STA
-ifeq ($(CONFIG_CFG80211),y)
-CONFIG_STA_CFG80211=y
-else
-ifeq ($(CONFIG_CFG80211),m)
-CONFIG_STA_CFG80211=y
-else
-CONFIG_STA_CFG80211=n
-endif
-endif
+CC=		$(CROSS_COMPILE)gcc
+LD=		$(CROSS_COMPILE)ld
+BACKUP=		/root/backup
+YMD=		`date +%Y%m%d%H%M`
 
-# Enable CFG80211 for uAP
-ifeq ($(CONFIG_CFG80211),y)
-CONFIG_UAP_CFG80211=y
-else
-ifeq ($(CONFIG_CFG80211),m)
-CONFIG_UAP_CFG80211=y
-else
-CONFIG_UAP_CFG80211=n
-endif
-endif
+#############################################################################
+# Configuration Options
+#############################################################################
+
+# Re-association in driver
+CONFIG_REASSOCIATION=y
+
+# Manufacturing firmware support
+CONFIG_MFG_CMD_SUPPORT=y
+
+# Big-endian platform
+CONFIG_BIG_ENDIAN=n
+
+# DFS testing support
+CONFIG_DFS_TESTING_SUPPORT=y
+
+# Use static link for app build
+export CONFIG_STATIC_LINK=y
+
+MODEXT = ko
 
 #############################################################################
 # Compiler Flags
 #############################################################################
+
+EXTRA_CFLAGS += -I$(KERNELDIR)/include
+
+EXTRA_CFLAGS += -Idrivers/net/wireless/sd8797/mlan
+EXTRA_CFLAGS += -DLINUX
+EXTRA_CFLAGS += -DFPNUM='"69"'
+EXTRA_CFLAGS += -DDEBUG_LEVEL1
+EXTRA_CFLAGS += -DPROC_DEBUG
+EXTRA_CFLAGS += -DSDIO_MULTI_PORT_TX_AGGR
+EXTRA_CFLAGS += -DSDIO_MULTI_PORT_RX_AGGR
 
 ifeq ($(CONFIG_DEBUG),1)
 	EXTRA_CFLAGS += -DDEBUG_LEVEL1
@@ -54,50 +68,26 @@ ifeq ($(CONFIG_DEBUG),2)
 	DBG=	-dbg
 endif
 
-EXTRA_CFLAGS += -Idrivers/net/wireless/sd8797/mlan
-EXTRA_CFLAGS += -DLINUX
-EXTRA_CFLAGS += -DFPNUM='"69"'
-EXTRA_CFLAGS += -DDEBUG_LEVEL1
-EXTRA_CFLAGS += -DPROC_DEBUG
-EXTRA_CFLAGS += -DSDIO_MULTI_PORT_TX_AGGR
-EXTRA_CFLAGS += -DSDIO_MULTI_PORT_RX_AGGR
-EXTRA_CFLAGS += -DSDIO_SUSPEND_RESUME
-EXTRA_CFLAGS += -DMMC_PM_KEEP_POWER
-EXTRA_CFLAGS += -DDFS_TESTING_SUPPORT
-EXTRA_CFLAGS += -DMFG_CMD_SUPPORT
-
 ifeq ($(CONFIG_64BIT), y)
 	EXTRA_CFLAGS += -DMLAN_64BIT
 endif
 
 ifeq ($(CONFIG_STA_SUPPORT),y)
 	EXTRA_CFLAGS += -DSTA_SUPPORT
+ifeq ($(CONFIG_REASSOCIATION),y)
 	EXTRA_CFLAGS += -DREASSOCIATION
-ifeq ($(CONFIG_STA_WEXT),y)
-	EXTRA_CFLAGS += -DSTA_WEXT
-endif
-ifeq ($(CONFIG_STA_CFG80211),y)
-	EXTRA_CFLAGS += -DSTA_CFG80211
 endif
 else
 CONFIG_WIFI_DIRECT_SUPPORT=n
 CONFIG_WIFI_DISPLAY_SUPPORT=n
-CONFIG_STA_WEXT=n
 CONFIG_STA_CFG80211=n
 endif
 
 ifeq ($(CONFIG_UAP_SUPPORT),y)
 	EXTRA_CFLAGS += -DUAP_SUPPORT
-ifeq ($(CONFIG_UAP_WEXT),y)
-	EXTRA_CFLAGS += -DUAP_WEXT
-endif
-ifeq ($(CONFIG_UAP_CFG80211),y)
-	EXTRA_CFLAGS += -DUAP_CFG80211
-endif
 else
 CONFIG_WIFI_DIRECT_SUPPORT=n
 CONFIG_WIFI_DISPLAY_SUPPORT=n
-CONFIG_UAP_WEXT=n
 CONFIG_UAP_CFG80211=n
 endif
 
@@ -108,13 +98,80 @@ ifeq ($(CONFIG_WIFI_DISPLAY_SUPPORT),y)
 	EXTRA_CFLAGS += -DWIFI_DISPLAY_SUPPORT
 endif
 
+ifeq ($(CONFIG_MFG_CMD_SUPPORT),y)
+	EXTRA_CFLAGS += -DMFG_CMD_SUPPORT
+endif
+
 ifeq ($(CONFIG_BIG_ENDIAN),y)
 	EXTRA_CFLAGS += -DBIG_ENDIAN_SUPPORT
+endif
+
+ifeq ($(CONFIG_DFS_TESTING_SUPPORT),y)
+	EXTRA_CFLAGS += -DDFS_TESTING_SUPPORT
 endif
 
 #############################################################################
 # Make Targets
 #############################################################################
+
+# Enable CFG80211 for STA
+ifeq ($(CONFIG_CFG80211),y)
+	CONFIG_STA_CFG80211=y
+else
+ifeq ($(CONFIG_CFG80211),m)
+	CONFIG_STA_CFG80211=y
+else
+	CONFIG_STA_CFG80211=n
+endif
+endif
+
+# Enable CFG80211 for uAP
+ifeq ($(CONFIG_CFG80211),y)
+	CONFIG_UAP_CFG80211=y
+else
+ifeq ($(CONFIG_CFG80211),m)
+	CONFIG_UAP_CFG80211=y
+else
+	CONFIG_UAP_CFG80211=n
+endif
+endif
+
+ifneq ($(CONFIG_STA_SUPPORT),y)
+	CONFIG_WIFI_DIRECT_SUPPORT=n
+	CONFIG_WIFI_DISPLAY_SUPPORT=n
+	CONFIG_STA_CFG80211=n
+endif
+
+ifneq ($(CONFIG_UAP_SUPPORT),y)
+	CONFIG_WIFI_DIRECT_SUPPORT=n
+	CONFIG_WIFI_DISPLAY_SUPPORT=n
+	CONFIG_UAP_CFG80211=n
+endif
+
+ifeq ($(CONFIG_STA_SUPPORT),y)
+ifeq ($(CONFIG_STA_CFG80211),y)
+	EXTRA_CFLAGS += -DSTA_CFG80211
+endif
+endif
+ifeq ($(CONFIG_UAP_SUPPORT),y)
+ifeq ($(CONFIG_UAP_CFG80211),y)
+	EXTRA_CFLAGS += -DUAP_CFG80211
+endif
+endif
+
+print:
+ifeq ($(CONFIG_STA_SUPPORT),y)
+ifeq ($(CONFIG_STA_CFG80211),n)
+	@echo "Can not build STA without WEXT or CFG80211"
+	exit 2
+endif
+endif
+ifeq ($(CONFIG_UAP_SUPPORT),y)
+ifeq ($(CONFIG_UAP_CFG80211),n)
+	@echo "Can not build UAP without WEXT or CFG80211"
+	exit 2
+endif
+endif
 
 MOALOBJS =	mlinux/moal_main.o \
 		mlinux/moal_ioctl.o \
@@ -176,11 +233,11 @@ MOALOBJS += mlinux/moal_proc.o
 MOALOBJS += mlinux/moal_debug.o
 endif
 
-obj-m := mlan.o
-mlan-objs := $(MLANOBJS)
+obj-m := sd8797mlan.o
+sd8797mlan-objs := $(MLANOBJS)
 MOALOBJS += mlinux/moal_sdio_mmc.o
-obj-m += sd8xxx.o
-sd8xxx-objs := $(MOALOBJS)
+obj-m += sd8797.o
+sd8797-objs := $(MOALOBJS)
 
 ###############################################################
 # End of file

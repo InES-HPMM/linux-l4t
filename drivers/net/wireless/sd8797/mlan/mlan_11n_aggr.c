@@ -182,11 +182,17 @@ static int
 wlan_11n_get_num_aggrpkts(t_u8 * data, int total_pkt_len)
 {
     int pkt_count = 0, pkt_len, pad;
+    t_u8 hdr_len = sizeof(Eth803Hdr_t);
 
     ENTER();
-    while (total_pkt_len > 0) {
+    while (total_pkt_len >= hdr_len) {
         /* Length will be in network format, change it to host */
         pkt_len = mlan_ntohs((*(t_u16 *) (data + (2 * MLAN_MAC_ADDR_LENGTH))));
+        if (pkt_len > total_pkt_len) {
+            PRINTM(MERROR, "Error in packet length.\n");
+            break;
+        }
+
         pad = (((pkt_len + sizeof(Eth803Hdr_t)) & 3)) ?
             (4 - ((pkt_len + sizeof(Eth803Hdr_t)) & 3)) : 0;
         data += pkt_len + pad + sizeof(Eth803Hdr_t);
@@ -224,6 +230,7 @@ wlan_11n_deaggregate_pkt(mlan_private * priv, pmlan_buffer pmbuf)
     t_u8 rfc1042_eth_hdr[MLAN_MAC_ADDR_LENGTH] = { 0xaa, 0xaa, 0x03,
         0x00, 0x00, 0x00
     };
+    t_u8 hdr_len = sizeof(Eth803Hdr_t);
 
     ENTER();
 
@@ -239,7 +246,7 @@ wlan_11n_deaggregate_pkt(mlan_private * priv, pmlan_buffer pmbuf)
 
     pmbuf->use_count = wlan_11n_get_num_aggrpkts(data, total_pkt_len);
 
-    while (total_pkt_len > 0) {
+    while (total_pkt_len >= hdr_len) {
         prx_pkt = (RxPacketHdr_t *) data;
         /* Length will be in network format, change it to host */
         pkt_len = mlan_ntohs((*(t_u16 *) (data + (2 * MLAN_MAC_ADDR_LENGTH))));
@@ -285,14 +292,16 @@ wlan_11n_deaggregate_pkt(mlan_private * priv, pmlan_buffer pmbuf)
                pkt_len);
 
 #ifdef UAP_SUPPORT
-        if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP)
+        if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_UAP) {
             ret = wlan_uap_recv_packet(priv, daggr_mbuf);
-        else
+        } else {
 #endif /* UAP_SUPPORT */
             ret =
                 pmadapter->callbacks.moal_recv_packet(pmadapter->pmoal_handle,
                                                       daggr_mbuf);
-
+#ifdef UAP_SUPPORT
+        }
+#endif /* UAP_SUPPORT */
         switch (ret) {
         case MLAN_STATUS_PENDING:
             break;
@@ -337,7 +346,7 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
     int pad = 0;
     mlan_status ret = MLAN_STATUS_SUCCESS;
 #ifdef DEBUG_LEVEL1
-    t_u32 sec, usec;
+    t_u32 sec = 0, usec = 0;
 #endif
     mlan_tx_param tx_param;
 #ifdef STA_SUPPORT
@@ -368,6 +377,8 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
         pmbuf_aggr->priority = pmbuf_src->priority;
         pmbuf_aggr->pbuf = data;
         pmbuf_aggr->data_offset = 0;
+        pmbuf_aggr->in_ts_sec = pmbuf_src->in_ts_sec;
+        pmbuf_aggr->in_ts_usec = pmbuf_src->in_ts_usec;
 
         /* Form AMSDU */
         wlan_11n_form_amsdu_txpd(priv, pmbuf_aggr);
