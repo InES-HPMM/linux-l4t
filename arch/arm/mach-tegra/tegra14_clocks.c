@@ -6875,6 +6875,10 @@ int tegra14_cpu_g_idle_rate_exchange(unsigned long *rate)
  * Sequence counter mechanism is used to make sure that cpufreq governor setting
  * that maybe changed concurrently with EMC rate update is not overwritten by
  * restoration procedure.
+ *
+ * - Called before/after LP CPU is clock- or power-gated. In this case there is
+ * no way for cpufreq governor setting to change concurrently, and sequence
+ * counter can be ignored.
  */
 static int cpu_lp_backup_boost_begin(unsigned long *rate, unsigned int *start)
 {
@@ -6911,6 +6915,12 @@ static void cpu_lp_backup_boost_end(unsigned long rate, unsigned int start)
 			clk_set_rate_locked(backup, rate);
 	}
 	clk_unlock_restore(backup, &flags);
+}
+
+int tegra14_cpu_lp_idle_rate_exchange(unsigned long *rate)
+{
+	unsigned int seqcnt;	/* ignored */
+	return cpu_lp_backup_boost_begin(rate, &seqcnt);
 }
 
 void tegra_edp_throttle_cpu_now(u8 factor)
