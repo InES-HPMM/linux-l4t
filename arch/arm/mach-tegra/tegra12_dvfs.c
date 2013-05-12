@@ -38,8 +38,8 @@ static bool tegra_dvfs_gpu_disabled;
 /* FIXME: need tegra12 step */
 #define VDD_SAFE_STEP			100
 
-static int vdd_core_therm_trips_table[MAX_THERMAL_FLOORS] = { 20, };
-static int vdd_core_therm_floors_table[MAX_THERMAL_FLOORS] = { 950, };
+static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 
 static struct tegra_cooling_device cpu_cdev = {
 	.cdev_type = "cpu_cold",
@@ -55,7 +55,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-	.pll_mode_cdev = &cpu_cdev,
+	.vmin_cdev = &cpu_cdev,
 };
 
 static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
@@ -63,7 +63,7 @@ static struct dvfs_rail tegra12_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
-	.pll_mode_cdev = &core_cdev,
+	.vmin_cdev = &core_cdev,
 };
 
 /* TBD: fill in actual hw number */
@@ -449,7 +449,7 @@ static void __init init_rail_thermal_profile(
 {
 	int i, min_mv;
 
-	for (i = 0; i < MAX_THERMAL_FLOORS - 1; i++) {
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
 		if (!therm_floors_table[i+1])
 			break;
 
@@ -471,11 +471,9 @@ static void __init init_rail_thermal_profile(
 	rail->therm_mv_floors_num = i + 1;
 
 	/* Setup trip-points, use the same trips in dfll mode (if applicable) */
-	if (rail->pll_mode_cdev) {
-		rail->pll_mode_cdev->trip_temperatures_num = i + 1;
-		rail->pll_mode_cdev->trip_temperatures = therm_trips_table;
-		if (d)
-			rail->dfll_mode_cdev = rail->pll_mode_cdev;
+	if (rail->vmin_cdev) {
+		rail->vmin_cdev->trip_temperatures_num = i + 1;
+		rail->vmin_cdev->trip_temperatures = therm_trips_table;
 	}
 }
 
@@ -570,7 +568,7 @@ static bool __init match_cpu_cvb_one(struct cpu_cvb_dvfs *d,
 
 /* cvb_mv = ((c2 * speedo / s_scale + c1) * speedo / s_scale + c0) / v_scale */
 static inline int get_cvb_voltage(int speedo, int s_scale,
-				  struct cpu_cvb_dvfs_parameters *cvb)
+				  struct cvb_dvfs_parameters *cvb)
 {
 	/* apply only speedo scale: output mv = cvb_mv * v_scale */
 	int mv;
@@ -595,7 +593,7 @@ static int __init set_cpu_dvfs_data(
 	unsigned long fmax_at_vmin = 0;
 	unsigned long fmax_pll_mode = 0;
 	unsigned long fmin_use_dfll = 0;
-	struct cpu_cvb_dvfs_table *table = NULL;
+	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
