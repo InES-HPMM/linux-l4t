@@ -6573,6 +6573,33 @@ static void tegra14_init_one_clock(struct clk *c)
 	clkdev_add(&c->lookup);
 }
 
+/*
+ * Direct access to DFLL for G CPU idle driver; called just before/after CPU is
+ * clock gated, provided no DFLL mode change is in progress.
+ */
+int tegra14_cpu_g_idle_rate_exchange(unsigned long *rate)
+{
+	int ret = 0;
+	struct clk *dfll = &tegra_dfll_cpu;
+	unsigned long old_rate, new_rate, flags;
+
+	if (!tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail))
+		return -EPERM;
+
+	/* Clip min to oscillator rate */
+	new_rate = max(*rate, tegra_osc.rate);
+
+	clk_lock_save(dfll, &flags);
+
+	old_rate = clk_get_rate_locked(dfll);
+	*rate = old_rate;
+	if (new_rate != old_rate)
+		ret = clk_set_rate_locked(dfll, new_rate);
+
+	clk_unlock_restore(dfll, &flags);
+	return ret;
+}
+
 void tegra_edp_throttle_cpu_now(u8 factor)
 {
 	/* empty definition for tegra14 */
