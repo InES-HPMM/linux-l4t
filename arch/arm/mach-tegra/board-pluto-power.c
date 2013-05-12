@@ -591,6 +591,7 @@ static struct tegra_cl_dvfs_platform_data pluto_cl_dvfs_data = {
 	},
 	.vdd_map = pmu_cpu_vdd_map,
 	.vdd_map_size = PMU_CPU_VDD_MAP_SIZE,
+	.pmu_undershoot_gb = 100,
 
 	.cfg_param = &pluto_cl_dvfs_param,
 };
