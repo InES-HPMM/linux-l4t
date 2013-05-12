@@ -232,6 +232,7 @@ struct clk {
 			struct clk			*backup;
 			struct clk			*dynamic;
 			unsigned long			backup_rate;
+			seqcount_t			backup_seqcnt;
 			enum cpu_mode			mode;
 		} cpu;
 		struct {

@@ -415,6 +415,8 @@ static unsigned long tegra14_clk_shared_bus_update(struct clk *bus,
 	struct clk **bus_top, struct clk **bus_slow, unsigned long *rate_cap);
 static unsigned long tegra14_clk_cap_shared_bus(struct clk *bus,
 	unsigned long rate, unsigned long ceiling);
+static int cpu_lp_backup_boost_begin(unsigned long *rate, unsigned int *start);
+static void cpu_lp_backup_boost_end(unsigned long rate, unsigned int start);
 
 static bool detach_shared_bus;
 module_param(detach_shared_bus, bool, 0644);
@@ -1195,6 +1197,7 @@ back_to_dfll:
 
 static int tegra14_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 {
+	int ret;
 	unsigned long old_rate = clk_get_rate_locked(c);
 	bool has_dfll = c->u.cpu.dynamic &&
 		(c->u.cpu.dynamic->state != UNINITIALIZED);
@@ -1220,7 +1223,11 @@ static int tegra14_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 		else if (is_dfll)
 			return tegra14_cpu_clk_dfll_off(c, rate, old_rate);
 	}
-	return tegra14_cpu_clk_set_plls(c, rate, old_rate);
+
+	write_seqcount_begin(&c->u.cpu.backup_seqcnt);
+	ret = tegra14_cpu_clk_set_plls(c, rate, old_rate);
+	write_seqcount_end(&c->u.cpu.backup_seqcnt);
+	return ret;
 }
 
 static long tegra14_cpu_clk_round_rate(struct clk *c, unsigned long rate)
@@ -4169,7 +4176,7 @@ static int tegra14_emc_clk_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
-static int tegra14_clk_emc_bus_update(struct clk *bus)
+static int emc_bus_update(struct clk *bus)
 {
 	struct clk *p = NULL;
 	unsigned long rate, old_rate, parent_rate, backup_rate;
@@ -4226,6 +4233,20 @@ static int tegra14_clk_emc_bus_update(struct clk *bus)
 	}
 
 	return clk_set_rate_locked(bus, rate);
+}
+
+static int tegra14_clk_emc_bus_update(struct clk *bus)
+{
+	unsigned int seqcnt;
+	unsigned long cpu_rate = ULONG_MAX;
+	int ret, status = -EPERM;
+
+	if (is_lp_cluster())
+		status = cpu_lp_backup_boost_begin(&cpu_rate, &seqcnt);
+	ret = emc_bus_update(bus);
+	if (!status)
+		cpu_lp_backup_boost_end(cpu_rate, seqcnt);
+	return ret;
 }
 
 static struct clk_ops tegra_emc_clk_ops = {
@@ -6845,6 +6866,51 @@ int tegra14_cpu_g_idle_rate_exchange(unsigned long *rate)
 
 	clk_unlock_restore(dfll, &flags);
 	return ret;
+}
+
+/*
+ * Direct access to LP CPU backup PLL.
+ *
+ * - Called before/after EMC bus update to boost/restore LP CPU backup rate.
+ * Sequence counter mechanism is used to make sure that cpufreq governor setting
+ * that maybe changed concurrently with EMC rate update is not overwritten by
+ * restoration procedure.
+ */
+static int cpu_lp_backup_boost_begin(unsigned long *rate, unsigned int *start)
+{
+	int ret;
+	unsigned long flags;
+	struct clk *backup = tegra_clk_virtual_cpu_lp.u.cpu.backup;
+	const seqcount_t *s = &tegra_clk_virtual_cpu_lp.u.cpu.backup_seqcnt;
+	unsigned long new_rate = min(
+		*rate, tegra_clk_virtual_cpu_lp.u.cpu.backup_rate);
+
+	clk_lock_save(backup, &flags);
+
+	*start = raw_seqcount_begin(s);
+	ret = read_seqcount_retry(s, *start) ? -EBUSY : 0;
+	if (!ret) {
+		*rate = clk_get_rate_locked(backup);
+		if (new_rate != (*rate))
+			ret = clk_set_rate_locked(backup, new_rate);
+	}
+	clk_unlock_restore(backup, &flags);
+	return ret;
+}
+
+static void cpu_lp_backup_boost_end(unsigned long rate, unsigned int start)
+{
+	unsigned long flags;
+	struct clk *backup = tegra_clk_virtual_cpu_lp.u.cpu.backup;
+	const seqcount_t *s = &tegra_clk_virtual_cpu_lp.u.cpu.backup_seqcnt;
+
+	clk_lock_save(backup, &flags);
+
+	if (!read_seqcount_retry(s, start)) {
+		if (rate != clk_get_rate_locked(backup))
+			clk_set_rate_locked(backup, rate);
+	}
+	clk_unlock_restore(backup, &flags);
 }
 
 void tegra_edp_throttle_cpu_now(u8 factor)
