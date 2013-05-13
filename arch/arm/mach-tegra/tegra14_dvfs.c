@@ -106,7 +106,7 @@ int __attribute__((weak)) tegra_get_core_cvb_alignment_uV(void)
 static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 	{
 		.speedo_id = 0,
-		.process_id = 0,
+		.process_id = -1,
 		.dfll_tune_data  = {
 			.tune0		= 0x0041061F,
 			.tune0_high_mv	= 0x0041001F,
@@ -135,14 +135,11 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1530000, { 2728076,  -133362,   2434}, { 1040706,    0,    0} },
 			{1632000, { 2788787,  -134692,   2434}, { 1072677,    0,    0} },
 			{1734000, { 2851134,  -136032,   2434}, { 1106216,    0,    0} },
-			{1836000, { 2915114,  -137372,   2434}, { 1141591,    0,    0} },
-			{1938000, { 2980727,  -138712,   2434}, { 1178803,    0,    0} },
-			{2014500, { 3030673,  -139702,   2434}, { 1207951,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
 	},
 	{
-		.speedo_id = 0,
+		.speedo_id = 1,
 		.process_id = 1,
 		.dfll_tune_data  = {
 			.tune0		= 0x0041061F,
