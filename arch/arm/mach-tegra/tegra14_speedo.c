@@ -54,21 +54,49 @@ static int enable_app_profiles;
 
 static const u32 cpu_process_speedos[][CPU_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,     1 */
-	{2162,     UINT_MAX}, /* [0]: threshold_index 0 */
+	{2070,     UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,        UINT_MAX}, /* [1]: threshold_index 1 */
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 /* proc_id  0,	1 */
-	{1301,	UINT_MAX}, /* [0]: threshold_index 0 */
+	{1295,	UINT_MAX}, /* [0]: threshold_index 0 */
 	{0,	UINT_MAX}, /* [1]: threshold_index 0 */
 };
+
+static void rev_sku_to_speedo_ids(int rev, int sku)
+{
+
+	switch (sku) {
+	case 0x00: /* Eng */
+	case 0x07: /* SL440 */
+		cpu_speedo_id = 0;
+		soc_speedo_id = 0;
+		threshold_index = 0;
+		break;
+
+	case 0x03: /* SL460 */
+		cpu_speedo_id = 1;
+		soc_speedo_id = 1;
+		threshold_index = 1;
+		break;
+
+	default:
+		pr_err("Tegra14 Unknown SKU %d\n", sku);
+		cpu_speedo_id = 0;
+		soc_speedo_id = 0;
+		threshold_index = 0;
+		break;
+	}
+}
 
 void tegra_init_speedo_data(void)
 {
 	int i;
 	cpu_speedo_value = 1024 + tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	core_speedo_value = tegra_fuse_readl(FUSE_CORE_SPEEDO_0);
+
+	rev_sku_to_speedo_ids(tegra_revision, tegra_sku_id);
 
 	for (i = 0; i < CPU_PROCESS_CORNERS_NUM; i++) {
 		if (cpu_speedo_value <
@@ -86,6 +114,7 @@ void tegra_init_speedo_data(void)
 
 	if (!cpu_iddq_value)
 		cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
+
 
 	for (i = 0; i < CORE_PROCESS_CORNERS_NUM; i++) {
 		if (core_speedo_value <
@@ -147,7 +176,9 @@ int tegra_core_speedo_mv(void)
 {
 	switch (soc_speedo_id) {
 	case 0:
-		return 1250;
+		return 1150;
+	case 1:
+		return 1230;
 	default:
 		BUG();
 	}
