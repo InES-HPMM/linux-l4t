@@ -1405,6 +1405,14 @@ static void tegra_detect_charging_type_is_cdp_or_dcp(struct tegra_udc *udc)
 
 	/* use spinlock to prevent kernel preemption here */
 	spin_lock_irqsave(&udc->lock, flags);
+	if (udc->support_pmu_vbus) {
+			temp = udc_readl(udc, VBUS_SENSOR_REG_OFFSET);
+			temp |= (USB_SYS_VBUS_A_VLD_SW_VALUE |
+					USB_SYS_VBUS_A_VLD_SW_EN |
+					USB_SYS_VBUS_ASESSION_VLD_SW_VALUE |
+					USB_SYS_VBUS_ASESSION_VLD_SW_EN);
+			udc_writel(udc, temp, VBUS_SENSOR_REG_OFFSET);
+	}
 
 	/* set controller to run which cause D+ pull high */
 	temp = udc_readl(udc, USB_CMD_REG_OFFSET);
