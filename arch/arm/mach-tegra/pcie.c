@@ -1506,8 +1506,8 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 
 	list_for_each_entry(bus, &tegra_pcie.busses, list) {
 		vunmap(bus->area->addr);
-		kfree(bus);
 	}
+	kfree(bus);
 	tegra_pcie_detach();
 	return 0;
 }
