@@ -41,6 +41,7 @@
 #include <linux/pm_qos.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/timer.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -106,6 +107,7 @@ static struct tegra_udc *the_udc;
 	static struct pm_qos_request boost_cpu_freq_req;
 	static u32 ep_queue_request_count;
 	static u8 boost_cpufreq_work_flag;
+	static struct timer_list boost_timer;
 #endif
 
 static char *const tegra_udc_extcon_cable[] = {
@@ -214,11 +216,8 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 
 	ep->stopped = 1;
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-	if (req->req.complete && req->req.length >= BOOST_TRIGGER_SIZE) {
+	if (req->req.complete && req->req.length >= BOOST_TRIGGER_SIZE)
 		ep_queue_request_count--;
-		if (!ep_queue_request_count)
-			schedule_work(&udc->boost_cpufreq_work);
-	}
 #endif
 
 	/* complete() is from gadget layer,
@@ -960,8 +959,7 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	if (req->req.length >= BOOST_TRIGGER_SIZE) {
 		ep_queue_request_count++;
-		if (ep_queue_request_count && boost_cpufreq_work_flag)
-			schedule_work(&udc->boost_cpufreq_work);
+		schedule_work(&udc->boost_cpufreq_work);
 	}
 #endif
 
@@ -2317,17 +2315,24 @@ static void tegra_udc_set_current_limit_work(struct work_struct *work)
 }
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
+void tegra_set_cpu_freq_normal(unsigned long data)
+{
+	pm_qos_update_request(&boost_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
+	boost_cpufreq_work_flag = 1;
+	DBG("%s(%d) set CPU frequency to normal\n", __func__, __LINE__);
+}
+
 static void tegra_udc_boost_cpu_frequency_work(struct work_struct *work)
 {
-	if (ep_queue_request_count && boost_cpufreq_work_flag) {
+	/* If CPU frequency is not boosted earlier boost it, otherwise
+	 * change timer expiry time to 2sec */
+	if (boost_cpufreq_work_flag) {
 		pm_qos_update_request(&boost_cpu_freq_req,
 			(s32)CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ * 1000);
 		boost_cpufreq_work_flag = 0;
-	} else if (!ep_queue_request_count && !boost_cpufreq_work_flag) {
-		pm_qos_update_request(&boost_cpu_freq_req,
-			PM_QOS_DEFAULT_VALUE);
-		boost_cpufreq_work_flag = 1;
+		DBG("%s(%d) boost CPU frequency\n", __func__, __LINE__);
 	}
+	mod_timer(&boost_timer, jiffies + msecs_to_jiffies(2000));
 }
 #endif
 
@@ -2862,6 +2867,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 					tegra_udc_boost_cpu_frequency_work);
 	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
 					PM_QOS_DEFAULT_VALUE);
+	setup_timer(&boost_timer, tegra_set_cpu_freq_normal, 0);
 #endif
 
 	/* Create work for controlling clocks to the phy if otg is disabled */
@@ -2972,6 +2978,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	cancel_work_sync(&udc->irq_work);
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	cancel_work_sync(&udc->boost_cpufreq_work);
+	del_timer(&boost_timer);
 #endif
 
 	if (udc->vbus_reg)
