@@ -39,6 +39,9 @@
 #include "devices.h"
 #include "iomap.h"
 
+#define PMC_CTRL                0x0
+#define PMC_CTRL_INTR_LOW       (1 << 17)
+
 
 /************************ ARDBEG based regulator *****************/
 static struct regulator_consumer_supply palmas_smps12_supply[] = {
@@ -303,7 +306,7 @@ PALMAS_PDATA_INIT(ldo1, 1050, 1050, palmas_rails(smps3), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo2, 2800, 3000, palmas_rails(smps6), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo3, 2800, 3000, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo4, 2800, 3000, palmas_rails(smps3), 0, 0, 0);
-PALMAS_PDATA_INIT(ldo5, 1100, 1100, palmas_rails(smps6), 1, 0, 0);
+PALMAS_PDATA_INIT(ldo5, 1100, 1100, palmas_rails(smps6), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo6, 2700, 2700, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo7, 2800, 2800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo8, 2800, 3000, NULL, 0, 0, 0);
@@ -369,7 +372,7 @@ static struct regulator_init_data *ardbeg_reg_data[PALMAS_NUM_REGS] = {
 		.vsel = _vsel,		\
 	}
 
-PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps12, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(smps45, 0, 0, 0, 0, 0);
@@ -383,7 +386,7 @@ PALMAS_REG_INIT(ldo1, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo2, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo3, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo4, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo5, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo5, 0, PALMAS_EXT_CONTROL_NSLEEP, 1, 0, 0);
 PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
@@ -553,8 +556,8 @@ static struct platform_device *pfixed_reg_devs[] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
+	.enable_ldo8_tracking = false,
+	.disabe_ldo8_tracking_suspend = false,
 };
 
 static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
@@ -617,6 +620,14 @@ static struct i2c_board_info palma_device[] = {
 int __init ardbeg_regulator_init(void)
 {
 	int i;
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 pmc_ctrl;
+
+	/* configure the power management controller to trigger PMU
+	 * interrupts when high */
+	pmc_ctrl = readl(pmc + PMC_CTRL);
+	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = ardbeg_reg_data[i];
@@ -627,6 +638,9 @@ int __init ardbeg_regulator_init(void)
 			ARRAY_SIZE(palma_device));
 	i2c_register_board_info(4, tps51632_cpu_boardinfo, 1);
 	i2c_register_board_info(4, tps51632_gpu_boardinfo, 1);
+	reg_init_data_ldo5.enable_tracking = true;
+	reg_init_data_ldo5.tracking_regulator = PALMAS_REG_SMPS12;
+
 	return 0;
 }
 
