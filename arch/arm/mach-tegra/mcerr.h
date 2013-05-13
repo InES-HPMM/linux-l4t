@@ -43,6 +43,10 @@
 #define MC_INT_MASK			0x4
 #define MC_ERROR_STATUS			0x8
 #define MC_ERROR_ADDRESS		0xC
+#define MC_ERR_VPR_STATUS		0x654
+#define MC_ERR_VPR_ADR			0x658
+#define MC_ERR_SEC_STATUS		0x67c
+#define MC_ERR_SEC_ADR			0x680
 
 #define MC_INT_EXT_INTR_IN			(1<<1)
 #define MC_INT_DECERR_EMEM			(1<<6)

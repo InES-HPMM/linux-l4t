@@ -182,15 +182,25 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	count = ++error_count;
 	spin_unlock(&mc_lock);
 
-	err = readl(err_mc + MC_ERROR_STATUS);
-	addr = readl(err_mc + MC_ERROR_ADDRESS);
+	if (stat & MC_INT_DECERR_VPR) {
+		err = readl(err_mc + MC_ERR_VPR_STATUS);
+		addr = readl(err_mc + MC_ERR_VPR_ADR);
+		mc_type = "VPR DECERR";
+	} else if (stat & MC_INT_SECERR_SEC) {
+		err = readl(err_mc + MC_ERR_SEC_STATUS);
+		addr = readl(err_mc + MC_ERR_SEC_ADR);
+		mc_type = "SEC SECERR";
+	} else {
+		err = readl(err_mc + MC_ERROR_STATUS);
+		addr = readl(err_mc + MC_ERROR_ADDRESS);
+		mc_type = chip_specific.mcerr_type(err);
+	}
 	is_write = err & (1 << 16);
 	is_secure = err & (1 << 17);
 	client_id = err & 0x7f;
 	client = &mc_clients[client_id <= mc_client_last
 			     ? client_id : mc_client_last];
 
-	mc_type = chip_specific.mcerr_type(err);
 	mc_info = chip_specific.mcerr_info(stat);
 	chip_specific.mcerr_info_update(client, stat);
 
