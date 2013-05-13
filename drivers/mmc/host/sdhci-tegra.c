@@ -2238,21 +2238,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 		tegra_host->card_present =
 			(gpio_get_value_cansleep(plat->cd_gpio) == 0);
 
-		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
-				 carddetect_irq,
-				 IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-				 mmc_hostname(host->mmc), host);
-
-		if (rc)	{
-			dev_err(mmc_dev(host->mmc), "request irq error\n");
-			goto err_cd_irq_req;
-		}
-		rc = enable_irq_wake(gpio_to_irq(plat->cd_gpio));
-		if (rc < 0)
-			dev_err(mmc_dev(host->mmc),
-				"SD card wake-up event registration"
-					"failed with eroor: %d\n", rc);
-
 	} else if (plat->mmc_data.register_status_notify) {
 		plat->mmc_data.register_status_notify(sdhci_status_notify_cb, host);
 	}
@@ -2415,10 +2400,25 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			host->edp_states[rc] = plat->edp_states[rc];
 
 	rc = sdhci_add_host(host);
-
-	sdhci_tegra_error_stats_debugfs(host);
 	if (rc)
 		goto err_add_host;
+
+	if (gpio_is_valid(plat->cd_gpio)) {
+		rc = request_threaded_irq(gpio_to_irq(plat->cd_gpio), NULL,
+			carddetect_irq,
+			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+			mmc_hostname(host->mmc), host);
+		if (rc) {
+			dev_err(mmc_dev(host->mmc), "request irq error\n");
+			goto err_cd_irq_req;
+		}
+		rc = enable_irq_wake(gpio_to_irq(plat->cd_gpio));
+		if (rc < 0)
+			dev_err(mmc_dev(host->mmc),
+				"SD card wake-up event registration"
+				"failed with error: %d\n", rc);
+	}
+	sdhci_tegra_error_stats_debugfs(host);
 
 	/* Enable async suspend/resume to reduce LP0 latency */
 	device_enable_async_suspend(&pdev->dev);
@@ -2430,6 +2430,9 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	}
 	return 0;
 
+err_cd_irq_req:
+	if (gpio_is_valid(plat->cd_gpio))
+		gpio_free(plat->cd_gpio);
 err_add_host:
 	clk_put(tegra_host->emc_clk);
 	clk_disable_unprepare(pltfm_host->clk);
@@ -2442,9 +2445,6 @@ err_clk_get:
 err_wp_req:
 	if (gpio_is_valid(plat->cd_gpio))
 		free_irq(gpio_to_irq(plat->cd_gpio), host);
-err_cd_irq_req:
-	if (gpio_is_valid(plat->cd_gpio))
-		gpio_free(plat->cd_gpio);
 err_cd_req:
 	if (gpio_is_valid(plat->power_gpio))
 		gpio_free(plat->power_gpio);
