@@ -330,6 +330,17 @@ static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
 	{ "csite",	NULL,		0,		true },
 	{ NULL,		NULL,		0,		0},
 };
+static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	250000000,	false },
+	{ "c3bus",	"pll_c3",	250000000,	false },
+	{ "pll_c",	NULL,		624000000,	false },
+#else
+	{ "cbus",	"pll_c",	250000000,	false },
+#endif
+	{ "pll_c_out1",	"pll_c",	150000000,	false },
+	{ NULL,		NULL,		0,		0},
+};
 #endif
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
@@ -398,17 +409,6 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 #if defined(CONFIG_TEGRA_SIMULATION_PLATFORM)
 	{ "vde",	"pll_c3",	48400000,	true},
 #endif
-	{ NULL,		NULL,		0,		0},
-};
-static __initdata struct tegra_clk_init_table tegra11x_cbus_init_table[] = {
-#ifdef CONFIG_TEGRA_DUAL_CBUS
-	{ "c2bus",	"pll_c2",	250000000,	false },
-	{ "c3bus",	"pll_c3",	250000000,	false },
-	{ "pll_c",	NULL,		624000000,	false },
-#else
-	{ "cbus",	"pll_c",	250000000,	false },
-#endif
-	{ "pll_c_out1",	"pll_c",	150000000,	false },
 	{ NULL,		NULL,		0,		0},
 };
 #endif
