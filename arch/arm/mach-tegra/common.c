@@ -1434,14 +1434,9 @@ __setup("commchip_id=", tegra_commchip_id);
  */
 void __init tegra_protected_aperture_init(unsigned long aperture)
 {
-#ifndef CONFIG_NVMAP_ALLOW_SYSMEM
 	void __iomem *mc_base = IO_ADDRESS(TEGRA_MC_BASE);
 	pr_info("Enabling Tegra protected aperture at 0x%08lx\n", aperture);
 	writel(aperture, mc_base + MC_SECURITY_CFG2);
-#else
-	pr_err("Tegra protected aperture disabled because nvmap is using "
-		"system memory\n");
-#endif
 }
 
 /*
