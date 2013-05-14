@@ -44,13 +44,12 @@ struct tegra_bbc_proxy {
 	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
 	unsigned int threshold; /* current edp threshold value */
 	unsigned int state; /* current edp state value */
-	/* last iso settings with proxy driver */
-	unsigned int last_bw;
-	unsigned int last_ult;
-	struct work_struct edp_work;
 	struct mutex edp_lock; /* lock for edp operations */
 
 	tegra_isomgr_handle isomgr_handle;
+	/* last iso settings with proxy driver */
+	unsigned int last_bw;
+	unsigned int last_ult;
 	unsigned int margin; /* current iso margin bw request */
 	unsigned int bw; /* current iso bandwidth request */
 	unsigned int lt; /* current iso latency tolerance for emc frequency
@@ -63,10 +62,6 @@ struct tegra_bbc_proxy {
 	struct regulator *rf2v65;
 };
 
-static void edp_work(struct work_struct *ws)
-{
-	return;
-}
 
 #define EDP_INT_ATTR(field)						\
 static ssize_t								\
@@ -85,28 +80,6 @@ static DEVICE_ATTR(field, S_IRUSR, field ## _show, NULL);
 EDP_INT_ATTR(i_breach_ppm);
 EDP_INT_ATTR(i_thresh_3g_adjperiod);
 EDP_INT_ATTR(i_thresh_lte_adjperiod);
-
-static ssize_t i_max_show(struct device *pdev, struct device_attribute *attr,
-			  char *buf)
-{
-	struct tegra_bbc_proxy *bbc = dev_get_drvdata(pdev);
-	int i = 0;
-	int count = 0;
-
-	mutex_lock(&bbc->edp_lock);
-	for (i = 0; i < MAX_MODEM_EDP_STATES; i++) {
-		if (bbc->modem_edp_states[i] <= 0)
-			break;
-
-		count += sprintf(&buf[count], "%d ",
-				 bbc->modem_edp_states[i]);
-	}
-	mutex_unlock(&bbc->edp_lock);
-
-	count += sprintf(&buf[count], "\n");
-
-	return count;
-}
 
 static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 			   const char *buff, size_t size)
@@ -144,7 +117,7 @@ static ssize_t i_max_store(struct device *pdev, struct device_attribute *attr,
 done:
 	return ret;
 }
-static DEVICE_ATTR(i_max, S_IRUSR | S_IWUSR, i_max_show, i_max_store);
+static DEVICE_ATTR(i_max, S_IWUSR, NULL, i_max_store);
 
 int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 				u32 *states)
@@ -336,80 +309,6 @@ static ssize_t la_bbcw_store(struct device *dev,
 		return -EINVAL;
 
 	tegra_set_latency_allowance(TEGRA_LA_BBCW, la_val);
-
-	return size;
-}
-
-static ssize_t la_bbcllr_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned int la_val;
-
-	if (sscanf(buf, "%u", &la_val) != 1)
-		return -EINVAL;
-	if (la_val > (MAX_ISO_BW_REQ / 1000))
-		return -EINVAL;
-
-	tegra_set_latency_allowance(TEGRA_LA_BBCLLR, la_val);
-
-	return size;
-}
-
-static ssize_t iso_reserve_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned int bw;
-	unsigned int ult = 4;
-	char buff[50];
-	char *val, *s;
-	int ret;
-	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
-
-	strlcpy(buff, buf, sizeof(buff));
-	s = strim(buff);
-
-	/* first param is bw */
-	val = strsep(&s, ",");
-	ret = kstrtouint(val, 10, &bw);
-	if (ret) {
-		pr_err("invalid bw setting\n");
-		return -EINVAL;
-	}
-
-	/* second param is latency */
-	if (s) {
-		ret = kstrtouint(s, 10, &ult);
-		if (ret) {
-			pr_err("invalid latency setting\n");
-			return -EINVAL;
-		}
-	}
-
-	if (bw > MAX_ISO_BW_REQ)
-		return -EINVAL;
-
-	ret = tegra_isomgr_reserve(bbc->isomgr_handle, bw, ult);
-	if (!ret)
-		dev_err(dev, "can't reserve iso bw\n");
-
-	bbc->last_bw = bw;
-	bbc->last_ult = ult;
-
-	tegra_set_latency_allowance(TEGRA_LA_BBCR, bw / 1000);
-	tegra_set_latency_allowance(TEGRA_LA_BBCW, bw / 1000);
-
-	return size;
-}
-
-static ssize_t iso_realize_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	int ret;
-	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
-
-	ret = tegra_isomgr_realize(bbc->isomgr_handle);
-	if (!ret)
-		dev_err(dev, "can't realize iso bw\n");
 
 	return size;
 }
@@ -616,9 +515,6 @@ static ssize_t iso_margin_store(struct device *dev,
 
 static DEVICE_ATTR(la_bbcr, S_IWUSR, NULL, la_bbcr_store);
 static DEVICE_ATTR(la_bbcw, S_IWUSR, NULL, la_bbcw_store);
-static DEVICE_ATTR(la_bbcllr, S_IWUSR, NULL, la_bbcllr_store);
-static DEVICE_ATTR(iso_reserve, S_IWUSR, NULL, iso_reserve_store);
-static DEVICE_ATTR(iso_realize, S_IWUSR, NULL, iso_realize_store);
 static DEVICE_ATTR(iso_reserve_realize, S_IWUSR, NULL, iso_res_realize_store);
 static DEVICE_ATTR(iso_register, S_IWUSR, NULL, iso_register_store);
 static DEVICE_ATTR(iso_margin, S_IWUSR, NULL, iso_margin_store);
@@ -627,9 +523,6 @@ static DEVICE_ATTR(iso_margin, S_IWUSR, NULL, iso_margin_store);
 static struct device_attribute *mc_attributes[] = {
 	&dev_attr_la_bbcr,
 	&dev_attr_la_bbcw,
-	&dev_attr_la_bbcllr,
-	&dev_attr_iso_reserve,
-	&dev_attr_iso_realize,
 	&dev_attr_iso_reserve_realize,
 	&dev_attr_iso_register,
 	&dev_attr_iso_margin,
@@ -848,8 +741,6 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 			}
 		}
 
-		INIT_WORK(&bbc->edp_work, edp_work);
-
 		bbc->edp_initialized = 1;
 	}
 
@@ -992,8 +883,6 @@ static int __exit tegra_bbc_proxy_remove(struct platform_device *pdev)
 	tegra_isomgr_unregister(bbc->isomgr_handle);
 
 	if (bbc->edp_initialized) {
-		cancel_work_sync(&bbc->edp_work);
-
 		attrs = edp_attributes;
 		while ((attr = *attrs++))
 			device_remove_file(&pdev->dev, attr);
