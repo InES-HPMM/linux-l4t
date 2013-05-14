@@ -272,7 +272,7 @@ void iotable_init(struct map_desc *io_desc, int nr)
 	vm = early_alloc(sizeof(*vm) * nr);
 
 	for (md = io_desc; nr; md++, nr--) {
-		create_mapping(__pfn_to_phys(md->pfn), md->virtual, md->length, 1);
+		create_mapping(__pfn_to_phys(md->pfn), md->virtual, md->length, true);
 		vm->addr = (void *)(md->virtual & PAGE_MASK);
 		vm->size = PAGE_ALIGN(md->length + (md->virtual & ~PAGE_MASK));
 		vm->phys_addr = __pfn_to_phys(md->pfn);
