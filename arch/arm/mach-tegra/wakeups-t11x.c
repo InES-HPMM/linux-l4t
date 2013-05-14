@@ -1,15 +1,17 @@
 /*
  * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -23,6 +25,17 @@
 #include "tegra-board-id.h"
 #include "gpio-names.h"
 #include "iomap.h"
+#include "pm-irq.h"
+
+/* Tegra USB1 wake source index */
+#define USB1_VBUS_WAKE 19
+#define USB1_ID_WAKE 21
+#define USB1_REM_WAKE 39
+
+/* constants for USB1 wake sources - VBUS and ID */
+#define USB1_IF_USB_PHY_VBUS_SENSORS_0 0x408
+#define VBUS_WAKEUP_STS_BIT 10
+#define ID_STS_BIT 2
 
 static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PO5,				/* wake0 */
@@ -149,6 +162,51 @@ static int tegra_wake_event_irq[] = {
 };
 
 static int last_gpio = -1;
+
+#ifdef CONFIG_TEGRA_INTERNAL_USB_CABLE_WAKE_SUPPORT
+/* USB1 VBUS and ID wake sources are handled as special case
+ * Note: SD card detect is an ANY wake source but is
+ * mostly a GPIO which can handle any edge wakeup.
+ */
+static u8 any_wake_t11x[] = {
+	/* DO NOT EDIT this list */
+	[ANY_WAKE_INDEX_VBUS] = USB1_VBUS_WAKE,
+	[ANY_WAKE_INDEX_ID] = USB1_ID_WAKE,
+};
+
+void tegra_get_internal_any_wake_list(u8 *wake_count, u8 **any_wake,
+	u8 *remote_usb)
+{
+	*wake_count = ARRAY_SIZE(any_wake_t11x);
+	*any_wake = any_wake_t11x;
+	*remote_usb = USB1_REM_WAKE;
+}
+
+/* Needed on dalmore today hence exposed this API */
+int get_vbus_id_cable_connect_state(bool *is_vbus_connected,
+		bool *is_id_connected)
+{
+	static void __iomem *usb1_base = IO_ADDRESS(TEGRA_USB_BASE);
+	u32 reg;
+
+	reg = readl(usb1_base + USB1_IF_USB_PHY_VBUS_SENSORS_0);
+
+	/* ID bit when 0 - ID cable connected */
+	*is_id_connected = (reg & (1 << ID_STS_BIT)) ? false : true;
+
+	/*
+	 * VBUS_WAKEUP_STS_BIT is also set when ID is connected
+	 * and we are supplying VBUS, hence below conditional assignment
+	 */
+	if (*is_id_connected)
+		*is_vbus_connected = false;
+	else
+		/* VBUS bit when 1 - VBUS cable connected */
+		*is_vbus_connected = (reg & (1 << VBUS_WAKEUP_STS_BIT)) ?
+			true : false;
+	return 0;
+}
+#endif
 
 int tegra_gpio_to_wake(int gpio)
 {

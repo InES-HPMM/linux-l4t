@@ -586,6 +586,16 @@ config TEGRA_WAKEUP_MONITOR
 	  send out wakeup source and uevents which indicate suspend_prepare and
 	  post_suspend.
 
+config TEGRA_INTERNAL_USB_CABLE_WAKE_SUPPORT
+	bool "Enable Tegra internal USB cable wake support"
+	depends on PM_SLEEP
+	default n
+	help
+	  Enables Tegra suspend wakeup with USB cable through Tegra
+	  integrated hardware. Enabled for selected Tegra chipsets.
+	  This feature allows wakeup from suspend using either
+	  device or host type USB cable.
+
 config TEGRA_BB_XMM_POWER
 	bool "Enable power driver for XMM modem"
 	default n

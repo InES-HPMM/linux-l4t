@@ -4,15 +4,19 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _MACH_TERA_PM_IRQ_H_
@@ -46,4 +50,24 @@ static inline int tegra_disable_wake_source(int wake)
 }
 #endif
 void tegra_set_usb_wake_source(void);
+
+/* tegra internal any polarity wake sources */
+enum {
+	ANY_WAKE_INDEX_VBUS = 0,
+	ANY_WAKE_INDEX_ID
+};
+
+/* get chip specific list of internal any polarity wake sources */
+void tegra_get_internal_any_wake_list(u8 *wake_count, u8 **any_wake,
+	u8 *remote_usb_wak_index);
+
+/*
+ * is_vbus_connected - true when VBUS cable is connected
+ * is_id_connected - true when ID cable is connected
+ * returns error if failed to read the status for a chip
+ * or if the API is not supported
+ */
+int get_vbus_id_cable_connect_state(bool *is_vbus_connected,
+		bool *is_id_connected);
+
 #endif
