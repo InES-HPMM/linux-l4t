@@ -54,7 +54,7 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 	}
 
 	buf->nvmap_ref = nvmap_alloc(conf->nvmap_client, size, 32,
-				     NVMAP_HANDLE_CACHEABLE, NVMAP_HEAP_SYSMEM);
+				     NVMAP_HANDLE_CACHEABLE, 0);
 	if (IS_ERR(buf->nvmap_ref)) {
 		dev_err(conf->dev, "nvmap_alloc failed\n");
 		ret = -ENOMEM;
