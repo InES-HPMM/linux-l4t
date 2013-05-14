@@ -423,6 +423,13 @@ static int max77660_regulator_enable(struct regulator_dev *rdev)
 		goto power_mode_done;
 	}
 
+	/* ES 1.1 suggest to keep BUCK3 and BUCK5 in GLPM */
+	if (max77660_is_es_1_1(reg->dev))
+		if (reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK3 ||
+			reg->rinfo->id == MAX77660_REGULATOR_ID_BUCK5)
+			max77660_regulator_set_power_mode(reg,
+					POWER_MODE_GLPM);
+
 	if (reg->fps_src != FPS_SRC_NONE) {
 		dev_dbg(&rdev->dev, "enable: Regulator %s using %s\n",
 			rdev->desc->name, fps_src_name(reg->fps_src));
@@ -751,7 +758,9 @@ static int max77660_regulator_preinit(struct max77660_regulator *reg)
 		} else if ((reg->rinfo->id >= MAX77660_REGULATOR_ID_BUCK6) &&
 			(reg->rinfo->id <= MAX77660_REGULATOR_ID_BUCK7)) {
 			mask |= MAX77660_BUCK6_7_CNFG_FPWM_MASK;
-			if (pdata->flags & SD_FORCED_PWM_MODE)
+			/* ES 1.1 suggest to remove all BUCKS from FPWM */
+			if ((pdata->flags & SD_FORCED_PWM_MODE) &&
+					!(max77660_is_es_1_1(reg->dev)))
 				val |= MAX77660_BUCK6_7_CNFG_FPWM_MASK;
 		}
 
