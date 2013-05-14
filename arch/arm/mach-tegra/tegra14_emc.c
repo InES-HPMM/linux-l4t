@@ -665,12 +665,18 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	/* 4.1 On ddr3 when DLL is re-started predict MRS long wait count and
 	   overwrite DFS table setting - No DDR3 on t148. */
 
-	/* 5.2 disable auto-refresh to save time after clock change. */
+	/* 5.2 Moved to ccfifo - see 6.1. */
 
 	/* 6. turn Off dll and enter self-refresh on DDR3 - No DDR3. */
 
+	/* 6.1 Disable auto-refresh right before clock change. */
+	ccfifo_writel(EMC_REFCTRL_DISABLE_ALL(dram_dev_num), EMC_REFCTRL);
+
 	/* 7. flow control marker 2 */
 	ccfifo_writel(1, EMC_STALL_THEN_EXE_AFTER_CLKCHANGE);
+
+	/* 7.05 Re-enable autorefresh with the CCFIFO. */
+	ccfifo_writel(EMC_REFCTRL_ENABLE_ALL(dram_dev_num), EMC_REFCTRL);
 
 	/* 7.1 Use the new override value. */
 	if (use_prelock) {
