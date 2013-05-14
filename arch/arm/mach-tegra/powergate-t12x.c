@@ -511,6 +511,30 @@ spinlock_t *tegra12x_get_powergate_lock(void)
 	return &tegra12x_powergate_lock;
 }
 
+bool tegra12x_powergate_skip(int id)
+{
+	switch (id) {
+	case TEGRA_POWERGATE_VDEC:
+	case TEGRA_POWERGATE_VENC:
+	case TEGRA_POWERGATE_DISA:
+	case TEGRA_POWERGATE_DISB:
+	case TEGRA_POWERGATE_XUSBA:
+	case TEGRA_POWERGATE_XUSBB:
+	case TEGRA_POWERGATE_XUSBC:
+#ifdef CONFIG_ARCH_TEGRA_HAS_PCIE
+	case TEGRA_POWERGATE_PCIE:
+#endif
+#ifdef CONFIG_ARCH_TEGRA_HAS_SATA
+	case TEGRA_POWERGATE_SATA:
+#endif
+	case TEGRA_POWERGATE_SOR:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 static struct powergate_ops tegra12x_powergate_ops = {
 	.soc_name = "tegra12x",
 
@@ -530,6 +554,8 @@ static struct powergate_ops tegra12x_powergate_ops = {
 
 	.powergate_mc_flush = tegra12x_powergate_mc_flush,
 	.powergate_mc_flush_done = tegra12x_powergate_mc_flush_done,
+
+	.powergate_skip = tegra12x_powergate_skip,
 };
 
 struct powergate_ops *tegra12x_powergate_init_chip_support(void)

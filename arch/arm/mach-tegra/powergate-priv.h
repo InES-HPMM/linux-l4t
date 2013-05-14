@@ -103,7 +103,10 @@ struct powergate_ops {
 	int (*powergate_mc_flush_done)(int id);
 
 	int (*powergate_init_refcount)(void);
+
 	bool (*powergate_check_clamping)(int id);
+
+	bool (*powergate_skip)(int id);
 };
 
 void get_clk_info(struct powergate_partition_info *pg_info);
