@@ -817,6 +817,7 @@ static void handle_sb_intr(void)
 	/* Handle sideband intr differently for T124 */
 	u32 mesg;
 
+	PR_FUNC_LINE;
 	mesg = afi_readl(AFI_MSG_0);
 
 	if (mesg & AFI_MSG_INTX_MASK)
@@ -843,7 +844,7 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 		"Target abort",
 		"Master abort",
 		"Invalid write",
-		""
+		"",
 		"Response decoding error",
 		"AXI response decoding error",
 		"Transcation timeout",
@@ -870,7 +871,7 @@ static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 	if (code == AFI_INTR_MASTER_ABORT)
 		pr_debug("PCIE: %s, signature: %08x\n",
 				err_msg[code], signature);
-	else
+	else if (code != AFI_INTR_LEGACY)
 		pr_err("PCIE: %s, signature: %08x\n", err_msg[code], signature);
 
 	return IRQ_HANDLED;
