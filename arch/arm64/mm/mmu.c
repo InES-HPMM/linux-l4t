@@ -168,7 +168,7 @@ static void __init *early_alloc(unsigned long sz)
 }
 
 static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
-				  unsigned long end, unsigned long pfn)
+				  unsigned long end, unsigned long pfn, int iomap)
 {
 	pte_t *pte;
 
@@ -180,13 +180,16 @@ static void __init alloc_init_pte(pmd_t *pmd, unsigned long addr,
 
 	pte = pte_offset_kernel(pmd, addr);
 	do {
-		set_pte(pte, pfn_pte(pfn, PAGE_KERNEL_EXEC));
+		if (iomap)
+			set_pte(pte, pfn_pte(pfn, PROT_DEVICE_nGnRE));
+		else
+			set_pte(pte, pfn_pte(pfn, PAGE_KERNEL_EXEC));
 		pfn++;
 	} while (pte++, addr += PAGE_SIZE, addr != end);
 }
 
 static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
-				  unsigned long end, phys_addr_t phys)
+				  unsigned long end, phys_addr_t phys, int iomap)
 {
 	pmd_t *pmd;
 	unsigned long next;
@@ -203,23 +206,27 @@ static void __init alloc_init_pmd(pud_t *pud, unsigned long addr,
 	do {
 		next = pmd_addr_end(addr, end);
 		/* try section mapping first */
-		if (((addr | next | phys) & ~SECTION_MASK) == 0)
-			set_pmd(pmd, __pmd(phys | prot_sect_kernel));
+		if (((addr | next | phys) & ~SECTION_MASK) == 0) {
+			if (iomap)
+				set_pmd(pmd, __pmd(phys | PROT_SECT_DEVICE_nGnRE));
+			else
+				set_pmd(pmd, __pmd(phys | prot_sect_kernel));
+		}
 		else
-			alloc_init_pte(pmd, addr, next, __phys_to_pfn(phys));
+			alloc_init_pte(pmd, addr, next, __phys_to_pfn(phys), iomap);
 		phys += next - addr;
 	} while (pmd++, addr = next, addr != end);
 }
 
 static void __init alloc_init_pud(pgd_t *pgd, unsigned long addr,
-				  unsigned long end, unsigned long phys)
+				  unsigned long end, unsigned long phys, int iomap)
 {
 	pud_t *pud = pud_offset(pgd, addr);
 	unsigned long next;
 
 	do {
 		next = pud_addr_end(addr, end);
-		alloc_init_pmd(pud, addr, next, phys);
+		alloc_init_pmd(pud, addr, next, phys, iomap);
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
 }
@@ -247,7 +254,7 @@ static void __init create_mapping(phys_addr_t phys, unsigned long virt,
 	end = addr + length;
 	do {
 		next = pgd_addr_end(addr, end);
-		alloc_init_pud(pgd, addr, next, phys);
+		alloc_init_pud(pgd, addr, next, phys, iomap);
 		phys += next - addr;
 	} while (pgd++, addr = next, addr != end);
 }
@@ -305,7 +312,7 @@ static void __init map_mem(void)
 		if (start >= end)
 			break;
 
-		create_mapping(start, __phys_to_virt(start), end - start);
+		create_mapping(start, __phys_to_virt(start), end - start, 0);
 	}
 }
 
