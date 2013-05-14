@@ -2163,10 +2163,16 @@ static int
 tegra12_plld_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 {
 	u32 val, mask, reg;
+	u32 clear = 0;
 
 	switch (p) {
 	case TEGRA_CLK_PLLD_CSI_OUT_ENB:
 		mask = PLLD_BASE_CSI_CLKENABLE | PLLD_BASE_CSI_CLKSOURCE;
+		reg = c->reg + PLL_BASE;
+		break;
+	case TEGRA_CLK_MIPI_CSI_OUT_ENB:
+		mask = PLLD_BASE_CSI_CLKENABLE;
+		clear = PLLD_BASE_CSI_CLKSOURCE;
 		reg = c->reg + PLL_BASE;
 		break;
 	case TEGRA_CLK_PLLD_DSI_OUT_ENB:
@@ -2182,9 +2188,10 @@ tegra12_plld_clk_cfg_ex(struct clk *c, enum tegra_clk_ex_param p, u32 setting)
 	}
 
 	val = clk_readl(reg);
-	if (setting)
+	if (setting) {
 		val |= mask;
-	else
+		val &= ~clear;
+	} else
 		val &= ~mask;
 	clk_writel(val, reg);
 	return 0;
