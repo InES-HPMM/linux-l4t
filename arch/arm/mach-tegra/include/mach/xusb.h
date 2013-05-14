@@ -56,7 +56,11 @@ struct tegra_xusb_platform_data {
 	u32 hs_iref_cap;
 	u32 hs_term_range_adj;
 	u32 hs_squelch_level;
+	/* chip specific */
+	unsigned long quirks;
 };
+
+#define TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR BIT(0)
 
 extern void tegra_xusb_init(struct tegra_xusb_board_data *bdata);
 #endif /* _XUSB_H */
