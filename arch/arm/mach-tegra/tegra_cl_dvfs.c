@@ -244,6 +244,14 @@ static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
 	cl_dvfs_readl(cld, CL_DVFS_CTRL);
 }
 
+static inline void invalidate_request(struct tegra_cl_dvfs *cld)
+{
+	u32 val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+	val &= ~CL_DVFS_FREQ_REQ_FREQ_VALID;
+	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
+	cl_dvfs_wmb(cld);
+}
+
 static inline int output_enable(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
@@ -648,7 +656,8 @@ static void set_request(struct tegra_cl_dvfs *cld, struct dfll_rate_req *req)
 	/* If going down apply force output floor */
 	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
 	f = (val & CL_DVFS_FREQ_REQ_FREQ_MASK) >> CL_DVFS_FREQ_REQ_FREQ_SHIFT;
-	if ((f > req->freq) &&  (cld->force_out_min > req->output))
+	if ((!(val & CL_DVFS_FREQ_REQ_FREQ_VALID) || (f > req->freq)) &&
+	    (cld->force_out_min > req->output))
 		force_val = cld->force_out_min - cld->safe_output;
 
 	force_val = force_val * coef / cld->p_data->cfg_param->cg;
@@ -1456,11 +1465,13 @@ void tegra_cl_dvfs_disable(struct tegra_cl_dvfs *cld)
 		output_disable_ol_prepare(cld);
 		set_mode(cld, TEGRA_CL_DVFS_DISABLED);
 		output_disable_post_ol(cld);
+		invalidate_request(cld);
 		cl_dvfs_disable_clocks(cld);
 		return;
 
 	case TEGRA_CL_DVFS_OPEN_LOOP:
 		set_mode(cld, TEGRA_CL_DVFS_DISABLED);
+		invalidate_request(cld);
 		cl_dvfs_disable_clocks(cld);
 		return;
 
