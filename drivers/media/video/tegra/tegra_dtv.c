@@ -1,3 +1,4 @@
+
 /*
  * tegra_dtv.c - Tegra DTV interface driver
  *
@@ -57,8 +58,9 @@
 #define DTV_NUM_BUFS                      4
 #define DTV_MAX_NUM_BUFS                  8
 
-#define DTV_CPU_BOOST_MHZ                 200
-#define DTV_TS_BITRATE                    (416 * 13)
+#define DTV_CPU_BOOST_MAX_MHZ             400
+#define DTV_TS_MIN_BITRATE                416
+#define DTV_TS_MAX_BITRATE                (416 * 13)
 
 #define DTV_FIFO_ATN_LVL_LOW_GEAR         0
 #define DTV_FIFO_ATN_LVL_SECOND_GEAR      1
@@ -98,6 +100,7 @@ struct dtv_stream {
 
 struct tegra_dtv_context {
 	struct tegra_dtv_hw_config config;
+	struct tegra_dtv_profile   profile;
 	struct clk                *clk;
 	int                        clk_enabled;
 
@@ -118,14 +121,6 @@ struct tegra_dtv_context {
 	struct pm_qos_request      min_cpufreq;
 	struct pm_qos_request      cpudma_lat;
 };
-
-/* assigned default values if no parameters were passed by insmod or boot
-   cmdline */
-static unsigned int bufsize = DTV_BUF_SIZE;
-static unsigned int bufnum  = DTV_NUM_BUFS;
-/* PM QoS control parameters */
-static unsigned int cpuboost = DTV_CPU_BOOST_MHZ;
-static unsigned int tsbitrate = DTV_TS_BITRATE;
 
 static inline struct tegra_dtv_context *to_ctx(struct dtv_stream *s)
 {
@@ -165,9 +160,9 @@ static void dtv_cpu_boost_worker(struct work_struct *work)
 
 	if (s->cpu_boost_flag) {
 		pr_info("%s: Boost CPU frequency to %dMHz.",
-			__func__, cpuboost);
+			__func__, dtv_ctx->profile.cpuboost);
 		pm_qos_update_request(&dtv_ctx->min_cpufreq,
-				      cpuboost * 1000);
+				      dtv_ctx->profile.cpuboost * 1000);
 	} else {
 		pr_info("%s: Release CPU frequency boost.", __func__);
 		pm_qos_update_request(&dtv_ctx->min_cpufreq,
@@ -359,6 +354,37 @@ static inline void _dtv_get_hw_params(struct tegra_dtv_context *dtv_ctx,
 	cfg->valid_pol = DTV_GET_REG_VAL(reg, DTV_CTRL, VALID_POLARITY);
 }
 
+static void dtv_debugfs_exit(struct tegra_dtv_context *dtv_ctx);
+static int reconfig_stream(struct tegra_dtv_context *dtv_ctx,
+			   struct tegra_dtv_profile *new);
+static void reconfig_pm_qos(struct tegra_dtv_context *dtv_ctx,
+			    struct tegra_dtv_profile *new);
+
+static int _dtv_set_profile(struct tegra_dtv_context *dtv_ctx,
+			    struct tegra_dtv_profile *new)
+{
+	int ret = 0;
+
+	if (dtv_ctx->profile.bufsize != new->bufsize ||
+	    dtv_ctx->profile.bufnum != new->bufnum) {
+		ret = reconfig_stream(dtv_ctx, new);
+		if (ret < 0) {
+			/* unregister misc device if failed */
+			dtv_debugfs_exit(dtv_ctx);
+			misc_deregister(&dtv_ctx->miscdev);
+		}
+		dtv_ctx->profile.bufsize = new->bufsize;
+		dtv_ctx->profile.bufnum = new->bufnum;
+	}
+
+	if (dtv_ctx->profile.cpuboost != new->cpuboost ||
+	    dtv_ctx->profile.bitrate != new->bitrate) {
+		reconfig_pm_qos(dtv_ctx, new);
+	}
+
+	return ret;
+}
+
 /* must call with stream->dma_req_lock held. */
 static int stop_xfer_unsafe(struct dtv_stream *s)
 {
@@ -473,11 +499,36 @@ static long tegra_dtv_ioctl(struct file *file, unsigned int cmd,
 			ret = -EFAULT;
 		break;
 	}
-	case TEGRA_DTV_IOCTL_GET_BUFFER_SIZE:
+	case TEGRA_DTV_IOCTL_GET_PROFILE:
 	{
-		if (copy_to_user((void __user *) arg, &s->buf_size,
-				 sizeof(s->buf_size)))
+		if (copy_to_user((void __user *) arg, &dtv_ctx->profile,
+				 sizeof(struct tegra_dtv_profile)))
 			ret = -EFAULT;
+		break;
+	}
+	case TEGRA_DTV_IOCTL_SET_PROFILE:
+	{
+		struct tegra_dtv_profile profile;
+
+		if (s->xferring) {
+			pr_err("%s: tranfering is in progress.\n", __func__);
+			ret = -EBUSY;
+			break;
+		}
+
+		if (copy_from_user(&profile, (const void __user *) arg,
+				   sizeof(profile))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		ret = _dtv_set_profile(dtv_ctx, &profile);
+		if (ret) {
+			pr_err("%s: reconfiguration failed. DTV is down\n",
+			       __func__);
+			ret = -ENODEV;
+			break;
+		}
 		break;
 	}
 	default:
@@ -511,6 +562,7 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 
 	/* set boost cpu enabled */
 	s->cpu_boost_flag = 1;
+	dtv_boost_cpu(s);
 
 	/* set the bottom line of cpu-dma latency
 	 *
@@ -535,7 +587,7 @@ static int start_xfer_unsafe(struct dtv_stream *s, size_t size)
 	 * bytes at lease in this case.
 	 */
 	pm_qos_update_request(&dtv_ctx->cpudma_lat,
-			      s->buf_size / DTV_TS_BITRATE);
+			      s->buf_size / dtv_ctx->profile.bitrate);
 
 	s->last_queued = s->num_bufs - 1;
 
@@ -587,7 +639,7 @@ static ssize_t tegra_dtv_read(struct file *file, char __user *buf,
 	mutex_lock(&dtv_ctx->stream.mtx);
 
 	if (!IS_ALIGNED(size, 4) || size < 4 ||
-	    size > dtv_ctx->stream.buf_size) {
+	    size != dtv_ctx->stream.buf_size) {
 		pr_err("%s: invalid user size %d\n", __func__, size);
 		ret = -EINVAL;
 		mutex_unlock(&dtv_ctx->stream.mtx);
@@ -877,8 +929,6 @@ static int setup_dma(struct tegra_dtv_context *dtv_ctx)
 		ret = -ENODEV;
 		/* release */
 		tear_down_dma(dtv_ctx);
-		tegra_dma_free_channel(stream->dma_chan);
-		dtv_ctx->stream.dma_chan = 0;
 
 		return ret;
 	}
@@ -959,7 +1009,8 @@ static void destroy_stream(struct dtv_stream *stream)
 	kfree(stream->bufs);
 }
 
-static int setup_stream(struct dtv_stream *stream)
+static int setup_stream(struct dtv_stream *stream,
+			struct tegra_dtv_profile *profile)
 {
 	int ret = 0;
 
@@ -972,10 +1023,13 @@ static int setup_stream(struct dtv_stream *stream)
 	stream->dma_chan = NULL;
 	stream->fifo_atn_level = DTV_FIFO_ATN_LVL_TOP_GEAR;
 
-	stream->buf_size = bufsize > DTV_MAX_BUF_SIZE ?
-		DTV_MAX_BUF_SIZE : bufsize;
-	stream->num_bufs = bufnum > DTV_MAX_NUM_BUFS ?
-		DTV_MAX_NUM_BUFS : bufnum;
+	stream->buf_size = profile->bufsize > DTV_MAX_BUF_SIZE ?
+		DTV_MAX_BUF_SIZE : profile->bufsize;
+	stream->num_bufs = profile->bufnum > DTV_MAX_NUM_BUFS ?
+		DTV_MAX_NUM_BUFS : profile->bufnum;
+
+	pr_info("%s: bufsize = %d, bufnum = %d", __func__,
+		stream->buf_size, stream->num_bufs);
 
 	/* init refs to buffers */
 	stream->bufs = kmalloc(stream->num_bufs * sizeof(struct dtv_buffer *),
@@ -998,6 +1052,51 @@ static int setup_stream(struct dtv_stream *stream)
 	INIT_WORK(&stream->cpu_boost_work, dtv_cpu_boost_worker);
 
 	return ret;
+}
+
+static int reconfig_stream(struct tegra_dtv_context *dtv_ctx,
+			   struct tegra_dtv_profile *new)
+{
+	int ret = 0;
+
+	destroy_stream(&dtv_ctx->stream);
+	tear_down_dma(dtv_ctx);
+
+	ret = setup_stream(&dtv_ctx->stream, new);
+	if (ret < 0)
+		goto fail_setup_stream;
+
+	ret = setup_dma(dtv_ctx);
+	if (ret < 0)
+		goto fail_setup_dma;
+
+	return ret;
+
+fail_setup_stream:
+	destroy_stream(&dtv_ctx->stream);
+fail_setup_dma:
+	tear_down_dma(dtv_ctx);
+
+	return ret;
+}
+
+static inline void reconfig_pm_qos(struct tegra_dtv_context *dtv_ctx,
+			   struct tegra_dtv_profile *new)
+{
+	if (new->cpuboost > DTV_CPU_BOOST_MAX_MHZ)
+		dtv_ctx->profile.cpuboost = DTV_CPU_BOOST_MAX_MHZ;
+	else
+		dtv_ctx->profile.cpuboost = new->cpuboost;
+
+	if (new->bitrate < DTV_TS_MIN_BITRATE)
+		dtv_ctx->profile.bitrate = DTV_TS_MIN_BITRATE;
+	else if (new->bitrate > DTV_TS_MAX_BITRATE)
+		dtv_ctx->profile.bitrate = DTV_TS_MAX_BITRATE;
+	else
+		dtv_ctx->profile.bitrate = new->bitrate;
+
+	pr_info("%s: cpuboost = %d, bitrate = %d", __func__,
+		dtv_ctx->profile.cpuboost, dtv_ctx->profile.bitrate);
 }
 
 static int tegra_dtv_probe(struct platform_device *pdev)
@@ -1085,7 +1184,12 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = setup_stream(&dtv_ctx->stream);
+	dtv_ctx->profile.bufsize = DTV_BUF_SIZE;
+	dtv_ctx->profile.bufnum = DTV_NUM_BUFS;
+	dtv_ctx->profile.cpuboost = PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE;
+	dtv_ctx->profile.bitrate = DTV_TS_MIN_BITRATE;
+
+	ret = setup_stream(&dtv_ctx->stream, &dtv_ctx->profile);
 	if (ret < 0)
 		goto fail_setup_stream;
 
@@ -1211,46 +1315,6 @@ static void __exit tegra_dtv_exit(void)
 {
 	platform_driver_unregister(&tegra_dtv_driver);
 }
-
-/* PM QoS parameters */
-static int ts_bitrate_set(const char *arg, const struct kernel_param *kp)
-{
-	param_set_int(arg, kp);
-
-	return 0;
-}
-
-static int ts_bitrate_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_uint(buffer, kp);
-}
-
-static struct kernel_param_ops ts_bitrate_ops = {
-	.set = ts_bitrate_set,
-	.get = ts_bitrate_get,
-};
-module_param_cb(tsbitrate, &ts_bitrate_ops, &tsbitrate, S_IRUGO|S_IWUSR);
-
-static int cpu_boost_set(const char *arg, const struct kernel_param *kp)
-{
-	param_set_int(arg, kp);
-
-	return 0;
-}
-
-static int cpu_boost_get(char *buffer, const struct kernel_param *kp)
-{
-	return param_get_uint(buffer, kp);
-}
-
-static struct kernel_param_ops cpu_boost_ops = {
-	.set = cpu_boost_set,
-	.get = cpu_boost_get,
-};
-module_param_cb(cpuboost, &cpu_boost_ops, &cpuboost, S_IRUGO|S_IWUSR);
-
-module_param(bufsize, uint, S_IRUGO);
-module_param(bufnum,  uint, S_IRUGO);
 
 module_init(tegra_dtv_init);
 module_exit(tegra_dtv_exit);
