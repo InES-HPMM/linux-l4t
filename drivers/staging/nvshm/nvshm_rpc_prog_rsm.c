@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <mach/tegra_bb.h>
 #include <mach/tegra_bbc_proxy.h>
 #include <nvshm_rpc_utils.h>
 #include <nvshm_rpc_dispatcher.h>
@@ -183,6 +184,7 @@ static enum rpc_accept_stat rpc_bbc_bw_request(
 
 	/* Call */
 	rc = tegra_bbc_proxy_bw_request(proxy_dev, mode, bw, lt, margin);
+	tegra_bb_set_emc_floor(freq_floor, flags);
 
 	/* Encode response */
 	{
