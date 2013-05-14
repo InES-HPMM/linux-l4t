@@ -233,6 +233,13 @@ static void tegra_cec_init(struct tegra_cec *cec)
 	   cec->cec_base + TEGRA_CEC_INT_MASK);
 }
 
+static void tegra_cec_init_worker(struct work_struct *work)
+{
+	struct tegra_cec *cec = container_of(work, struct tegra_cec, work);
+
+	tegra_cec_init(cec);
+}
+
 static int tegra_cec_probe(struct platform_device *pdev)
 {
 	struct tegra_cec *cec;
@@ -297,7 +304,8 @@ static int tegra_cec_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, cec);
 	/* clear out the hardware. */
 
-	tegra_cec_init(cec);
+	INIT_WORK(&cec->work, tegra_cec_init_worker);
+	schedule_work(&cec->work);
 
 	device_init_wakeup(&pdev->dev, 1);
 
@@ -339,6 +347,7 @@ static int tegra_cec_remove(struct platform_device *pdev)
 	clk_put(cec->clk);
 
 	misc_deregister(&cec->misc_dev);
+	cancel_work_sync(&cec->work);
 
 	return 0;
 }
@@ -355,10 +364,11 @@ static int tegra_cec_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int tegra_cec_resume(struct platform_device *pdev)
 {
-
 	struct tegra_cec *cec = platform_get_drvdata(pdev);
+
 	clk_enable(cec->clk);
-	tegra_cec_init(cec);
+	schedule_work(&cec->work);
+
 	return 0;
 }
 #endif
