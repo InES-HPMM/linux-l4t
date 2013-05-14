@@ -26,7 +26,7 @@
 
 #define MAX_DVFS_FREQS	40
 #define MAX_DVFS_TABLES	80
-#define DVFS_RAIL_STATS_TOP_BIN	60
+#define DVFS_RAIL_STATS_TOP_BIN	100
 #define MAX_THERMAL_LIMITS	8
 
 struct clk;
