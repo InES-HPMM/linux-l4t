@@ -71,6 +71,7 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
+obj-$(CONFIG_USB_SUPPORT)               += xusb.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pmc.o
 obj-$(CONFIG_USB_SUPPORT)               += tegra_usb_pad_ctrl.o
 
