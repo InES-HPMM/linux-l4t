@@ -1168,27 +1168,8 @@ static void pluto_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
-	if (usb_port_owner_info & UTMI1_PORT_OWNER_XUSB) {
-		u32 usb_calib0 = tegra_fuse_readl(FUSE_SKU_USB_CALIB_0);
-
-		pr_info("dalmore_xusb_init: usb_calib0 = 0x%08x\n", usb_calib0);
-		/*
-		 * read from usb_calib0 and pass to driver
-		 * set HS_CURR_LEVEL (PAD0)	= usb_calib0[5:0]
-		 * set TERM_RANGE_ADJ		= usb_calib0[10:7]
-		 * set HS_SQUELCH_LEVEL		= usb_calib0[12:11]
-		 * set HS_IREF_CAP		= usb_calib0[14:13]
-		 * set HS_CURR_LEVEL (PAD1)	= usb_calib0[20:15]
-		 */
-
-		xusb_padctl_data.hs_curr_level_pad0 = (usb_calib0 >> 0) & 0x3f;
-		xusb_padctl_data.hs_term_range_adj = (usb_calib0 >> 7) & 0xf;
-		xusb_padctl_data.hs_squelch_level = (usb_calib0 >> 11) & 0x3;
-		xusb_padctl_data.hs_iref_cap = (usb_calib0 >> 13) & 0x3;
-		xusb_padctl_data.hs_curr_level_pad1 = (usb_calib0 >> 15) & 0x3f;
-
+	if (usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)
 		tegra_xusb_init(&xusb_bdata);
-	}
 }
 #else
 static void pluto_usb_init(void) { }

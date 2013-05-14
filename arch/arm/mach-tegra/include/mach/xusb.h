@@ -51,6 +51,11 @@ struct tegra_xusb_board_data {
 
 struct tegra_xusb_platform_data {
 	struct tegra_xusb_board_data *bdata;
+	u32 hs_curr_level_pad0;
+	u32 hs_curr_level_pad1;
+	u32 hs_iref_cap;
+	u32 hs_term_range_adj;
+	u32 hs_squelch_level;
 };
 
 extern void tegra_xusb_init(struct tegra_xusb_board_data *bdata);

@@ -32,11 +32,6 @@ struct tegra_xusb_pad_data {
 	u32 dfe_cntl;
 	u32 hs_slew;
 	u32 ls_rslew;
-	u32 hs_curr_level_pad0;
-	u32 hs_curr_level_pad1;
-	u32 hs_iref_cap;
-	u32 hs_term_range_adj;
-	u32 hs_squelch_level;
 	u32 otg_pad0_ctl0;
 	u32 otg_pad1_ctl0;
 	u32 otg_pad0_ctl1;
