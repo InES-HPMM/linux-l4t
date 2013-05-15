@@ -441,6 +441,7 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 	INIT_LIST_HEAD(&inode_list);
 
 	/* step #1: find fsynced inode numbers */
+	sbi->por_doing = 1;
 	err = find_fsync_dnodes(sbi, &inode_list);
 	if (err) {
 		f2fs_msg(sbi->sb, KERN_INFO,
@@ -452,9 +453,7 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 		goto out;
 
 	/* step #2: recover data */
-	sbi->por_doing = 1;
 	err = recover_data(sbi, &inode_list, CURSEG_WARM_NODE);
-	sbi->por_doing = 0;
 	if (!list_empty(&inode_list)) {
 		f2fs_handle_error(sbi);
 		err = -EIO;
@@ -462,6 +461,7 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 out:
 	destroy_fsync_dnodes(sbi, &inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
+	sbi->por_doing = 0;
 	if (err)
 		f2fs_msg(sbi->sb, KERN_ERR, "recovery did not fully complete");
 	else {
