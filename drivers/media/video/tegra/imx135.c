@@ -31,6 +31,9 @@
 #include <linux/kernel.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_gpio.h>
 
 #include "nvc_utilities.h"
 
@@ -2354,6 +2357,95 @@ remove_debugfs:
 	imx135_remove_debugfs(dev);
 }
 
+static int imx135_get_extra_regulators(struct imx135_power_rail *pw)
+{
+	if (!pw->ext_reg1) {
+		pw->ext_reg1 = regulator_get(NULL, "imx135_reg1");
+		if (WARN_ON(IS_ERR(pw->ext_reg1))) {
+			pr_err("%s: can't get regulator imx135_reg1: %ld\n",
+				__func__, PTR_ERR(pw->ext_reg1));
+			pw->ext_reg1 = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+static int imx135_power_on(struct imx135_power_rail *pw)
+{
+	int err;
+	struct imx135_info *info = container_of(pw, struct imx135_info, power);
+
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	if (info->pdata->ext_reg) {
+		if (imx135_get_extra_regulators(pw))
+			goto imx135_poweron_fail;
+
+		err = regulator_enable(pw->ext_reg1);
+		if (unlikely(err))
+			goto imx135_ext_reg1_fail;
+
+	}
+
+	gpio_set_value(info->pdata->reset_gpio, 0);
+	gpio_set_value(info->pdata->af_gpio, 1);
+	gpio_set_value(info->pdata->cam1_gpio, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto imx135_avdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (err)
+		goto imx135_iovdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(info->pdata->reset_gpio, 1);
+	gpio_set_value(info->pdata->cam1_gpio, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+
+imx135_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+imx135_avdd_fail:
+	if (pw->ext_reg1)
+		regulator_disable(pw->ext_reg1);
+	gpio_set_value(info->pdata->af_gpio, 0);
+
+imx135_ext_reg1_fail:
+imx135_poweron_fail:
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int imx135_power_off(struct imx135_power_rail *pw)
+{
+	struct imx135_info *info = container_of(pw, struct imx135_info, power);
+
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	usleep_range(1, 2);
+	gpio_set_value(info->pdata->cam1_gpio, 0);
+	usleep_range(1, 2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->avdd);
+
+	if (info->pdata->ext_reg)
+		regulator_disable(pw->ext_reg1);
+
+	return 0;
+}
+
 static int
 imx135_open(struct inode *inode, struct file *file)
 {
@@ -2398,9 +2490,13 @@ static int imx135_power_put(struct imx135_power_rail *pw)
 	if (likely(pw->dvdd))
 		regulator_put(pw->dvdd);
 
+	if (likely(pw->ext_reg1))
+		regulator_put(pw->ext_reg1);
+
 	pw->avdd = NULL;
 	pw->iovdd = NULL;
 	pw->dvdd = NULL;
+	pw->ext_reg1 = NULL;
 
 	return 0;
 }
@@ -2450,6 +2546,43 @@ static struct miscdevice imx135_device = {
 	.fops = &imx135_fileops,
 };
 
+static struct of_device_id imx135_of_match[] = {
+	{ .compatible = "nvidia,imx135", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, imx135_of_match);
+
+static struct imx135_platform_data *imx135_parse_dt(struct i2c_client *client)
+{
+	struct device_node *np = client->dev.of_node;
+	struct imx135_platform_data *board_info_pdata;
+	const struct of_device_id *match;
+
+	match = of_match_device(imx135_of_match, &client->dev);
+	if (!match) {
+		dev_err(&client->dev, "Failed to find matching dt id\n");
+		return NULL;
+	}
+
+	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata),
+			GFP_KERNEL);
+	if (!board_info_pdata) {
+		dev_err(&client->dev, "Failed to allocate pdata\n");
+		return NULL;
+	}
+
+	board_info_pdata->cam1_gpio = of_get_named_gpio(np, "cam1-gpios", 0);
+	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
+	board_info_pdata->af_gpio = of_get_named_gpio(np, "af-gpios", 0);
+
+	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
+
+	board_info_pdata->power_on = imx135_power_on;
+	board_info_pdata->power_off = imx135_power_off;
+
+	return board_info_pdata;
+}
 
 static int
 imx135_probe(struct i2c_client *client,
@@ -2468,7 +2601,16 @@ imx135_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	info->pdata = client->dev.platform_data;
+	if (client->dev.of_node)
+		info->pdata = imx135_parse_dt(client);
+	else
+		info->pdata = client->dev.platform_data;
+
+	if (!info->pdata) {
+		pr_err("[IMX135]:%s:Unable to get platform data\n", __func__);
+		return -EFAULT;
+	}
+
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;
