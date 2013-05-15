@@ -534,7 +534,7 @@ FIXED_REG(6,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	TEGRA_GPIO_PH7,	true,	true,	0,	5000,	5000);
 
 /*
- * Creating the fixed regulator device tables
+ * Creating fixed regulator device tables
  */
 #define ADD_FIXED_REG(_name)    (&fixed_reg_en_##_name##_dev)
 
@@ -555,6 +555,16 @@ static struct platform_device *pfixed_reg_devs[] = {
 static struct palmas_pmic_platform_data pmic_platform = {
 	.enable_ldo8_tracking = true,
 	.disabe_ldo8_tracking_suspend = true,
+};
+
+static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
+	{
+		.clk32k_id = PALMAS_CLOCK32KG,
+		.enable = true,
+	}, {
+		.clk32k_id = PALMAS_CLOCK32KG_AUDIO,
+		.enable = true,
+	},
 };
 
 static struct palmas_pinctrl_config palmas_pincfg[] = {
@@ -589,6 +599,8 @@ static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
+	.clk32k_init_data =  palmas_clk32k_idata,
+	.clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.irq_flags = IRQ_TYPE_LEVEL_HIGH,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
