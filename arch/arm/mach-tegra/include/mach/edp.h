@@ -1,21 +1,19 @@
 /*
  * arch/arm/mach-tegra/include/mach/edp.h
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
+ * This program is distributed in the hope it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __MACH_EDP_H
@@ -46,9 +44,19 @@ struct tegra_edp_voltage_temp_constraint {
 
 struct tegra_edp_cpu_leakage_params {
 	int cpu_speedo_id;
-	int dyn_consts_n[4];	 /* pre-multiplied by 1,000,000 */
-	int leakage_consts_n[4];	 /* pre-multiplied by 1,000,000 */
-	int leakage_consts_ijk[4][4][4]; /* pre-multiplied by 100,000 */
+
+	unsigned int temp_scaled; /* 1x for T114, 10x for T148 */
+
+	unsigned int dyn_scaled;
+	int dyn_consts_n[4];	 /* pre-multiplied by 'scaled */
+
+	unsigned int consts_scaled;
+	int leakage_consts_n[4];	 /* pre-multiplied by 'scaled */
+
+	unsigned int ijk_scaled;
+	int leakage_consts_ijk[4][4][4]; /* pre-multiplied by 'scaled */
+	unsigned int leakage_min;	 /* minimum leakage current */
+
 	unsigned int safety_cap[4];
 	struct tegra_edp_voltage_temp_constraint volt_temp_cap;
 };
@@ -144,19 +152,27 @@ static inline struct tegra_cooling_device *tegra_core_edp_get_cdev(void)
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 int tegra11x_select_core_edp_table(unsigned int regulator_mA,
 				   struct tegra_core_edp_limits *limits);
+struct tegra_edp_cpu_leakage_params *tegra11x_get_leakage_params(int index,
+							unsigned int *sz);
 #else
 static inline int tegra11x_select_core_edp_table(
 	unsigned int regulator_mA, struct tegra_core_edp_limits *limits)
 { return -ENOSYS; }
+static inline struct tegra_edp_cpu_leakage_params *tegra11x_get_leakage_params
+(int index, unsigned int *sz) { return NULL; }
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 int tegra14x_select_core_edp_table(unsigned int regulator_mA,
 				   struct tegra_core_edp_limits *limits);
+struct tegra_edp_cpu_leakage_params *tegra14x_get_leakage_params(int index,
+							unsigned int *sz);
 #else
 static inline int tegra14x_select_core_edp_table(
 	unsigned int regulator_mA, struct tegra_core_edp_limits *limits)
 { return -ENOSYS; }
+static inline struct tegra_edp_cpu_leakage_params *tegra14x_get_leakage_params
+(int index, unsigned int *sz) { return NULL; }
 #endif
 
 #endif	/* __MACH_EDP_H */

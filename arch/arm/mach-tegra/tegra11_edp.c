@@ -1,17 +1,19 @@
 /*
  * arch/arm/mach-tegra/tegra11_edp.c
  *
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -111,6 +113,136 @@ static struct core_edp_entry core_edp_table[] = {
 		},
 	},
 };
+
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+static struct tegra_edp_cpu_leakage_params t11x_leakage_params[] = {
+	{
+		.cpu_speedo_id	    = 0, /* A01 CPU */
+
+		.dyn_scaled         = 1000000,
+		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
+
+		.consts_scaled      = 1000000,
+		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
+
+		.ijk_scaled         = 100000,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {  -42746668,   -5458429,   164998,  -1711, },
+			  {  178262421,   13375684,  -411791,   4590, },
+			  { -228866784,  -10482993,   331248,  -4062, },
+			  {   94301550,    2618719,   -85983,   1193, },
+			},
+			/* i = 1 */
+			{ { -256611791,   49677413, -1655785,  14917, },
+			  {  584675433, -132620939,  4541560, -41812, },
+			  { -398106336,  115987156, -4102328,  38737, },
+			  {   68897184,  -33030745,  1217839, -11801, },
+			},
+			/* i = 2 */
+			{ {  186324676,  -36019083,  1177969, -10669, },
+			  { -439237936,   98429131, -3276444,  30301, },
+			  {  315060898,  -88635036,  3004777, -28474, },
+			  {  -60854399,   26267188,  -907121,   8844, },
+			},
+			/* i = 3 */
+			{ {  -35432997,    6154621,  -202200,   1830, },
+			  {   87402153,  -16908683,   565152,  -5220, },
+			  {  -67775314,   15326770,  -521221,   4927, },
+			  {   15618709,   -4576116,   158401,  -1538, },
+			},
+		},
+		.volt_temp_cap = { 70, 1300 },
+	},
+	{
+		.cpu_speedo_id	    = 1, /* A01P+ CPU */
+
+		.dyn_scaled         = 1000000,
+		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
+
+		.consts_scaled      = 1000000,
+		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
+
+		.ijk_scaled         = 100000,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {  -42746668,   -5458429,   164998,  -1711, },
+			  {  178262421,   13375684,  -411791,   4590, },
+			  { -228866784,  -10482993,   331248,  -4062, },
+			  {   94301550,    2618719,   -85983,   1193, },
+			},
+			/* i = 1 */
+			{ { -256611791,   49677413, -1655785,  14917, },
+			  {  584675433, -132620939,  4541560, -41812, },
+			  { -398106336,  115987156, -4102328,  38737, },
+			  {   68897184,  -33030745,  1217839, -11801, },
+			},
+			/* i = 2 */
+			{ {  186324676,  -36019083,  1177969, -10669, },
+			  { -439237936,   98429131, -3276444,  30301, },
+			  {  315060898,  -88635036,  3004777, -28474, },
+			  {  -60854399,   26267188,  -907121,   8844, },
+			},
+			/* i = 3 */
+			{ {  -35432997,    6154621,  -202200,   1830, },
+			  {   87402153,  -16908683,   565152,  -5220, },
+			  {  -67775314,   15326770,  -521221,   4927, },
+			  {   15618709,   -4576116,   158401,  -1538, },
+			},
+		},
+		.safety_cap = { 1810500, 1810500, 1606500, 1606500 },
+		.volt_temp_cap = { 70, 1300 },
+	},
+	{
+		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
+
+		.dyn_scaled         = 1000000,
+		.dyn_consts_n       = { 1091747, 2035205, 2978661, 3922119 },
+
+		.consts_scaled      = 1000000,
+		.leakage_consts_n   = {  538991,  752463,  959441, 1150000 },
+
+		.ijk_scaled         = 100000,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {  -42746668,   -5458429,   164998,  -1711, },
+			  {  178262421,   13375684,  -411791,   4590, },
+			  { -228866784,  -10482993,   331248,  -4062, },
+			  {   94301550,    2618719,   -85983,   1193, },
+			},
+			/* i = 1 */
+			{ { -256611791,   49677413, -1655785,  14917, },
+			  {  584675433, -132620939,  4541560, -41812, },
+			  { -398106336,  115987156, -4102328,  38737, },
+			  {   68897184,  -33030745,  1217839, -11801, },
+			},
+			/* i = 2 */
+			{ {  186324676,  -36019083,  1177969, -10669, },
+			  { -439237936,   98429131, -3276444,  30301, },
+			  {  315060898,  -88635036,  3004777, -28474, },
+			  {  -60854399,   26267188,  -907121,   8844, },
+			},
+			/* i = 3 */
+			{ {  -35432997,    6154621,  -202200,   1830, },
+			  {   87402153,  -16908683,   565152,  -5220, },
+			  {  -67775314,   15326770,  -521221,   4927, },
+			  {   15618709,   -4576116,   158401,  -1538, },
+			},
+		},
+		.safety_cap = { 1912500, 1912500, 1912500, 1912500 },
+		.volt_temp_cap = { 70, 1300 },
+	},
+};
+
+struct tegra_edp_cpu_leakage_params *tegra11x_get_leakage_params(int index,
+							unsigned int *sz)
+{
+	BUG_ON(index >= ARRAY_SIZE(t11x_leakage_params));
+	if (sz)
+		*sz = ARRAY_SIZE(t11x_leakage_params);
+	return &t11x_leakage_params[index];
+}
+#endif
 
 static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
 {

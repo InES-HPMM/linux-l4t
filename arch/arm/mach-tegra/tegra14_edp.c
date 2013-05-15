@@ -1,17 +1,19 @@
 /*
  * arch/arm/mach-tegra/tegra14_edp.c
  *
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -191,6 +193,98 @@ static struct core_edp_entry core_edp_table[] = {
 		},
 	}
 };
+
+#ifdef CONFIG_TEGRA_EDP_LIMITS
+static struct tegra_edp_cpu_leakage_params t14x_leakage_params[] = {
+	{
+		.cpu_speedo_id	    = 0, /* A01 CPU */
+
+		.dyn_scaled         = 1000000,
+		.dyn_consts_n       = {  643724,  908655, 1173586, 1438517 },
+
+		.consts_scaled      = 1000000,
+		.leakage_consts_n   = {  524409,  699606,  874803, 1050000 },
+
+		.ijk_scaled         = 100000,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {   0,   -5346808,   97234,   -464, },
+			  {   0,   16803984, -307162,   1481, },
+			  {   0,  -17730060,  322460,  -1546, },
+			  {   0,    6489900, -118190,    564, },
+			},
+			/* i = 1 */
+			{ {   0,   -7166070,   16144,  -2495, },
+			  {   0,   22733881,  -62339,   7849, },
+			  {   0,  -22851718,   17626,  -7211, },
+			  {   0,    8845764,   -3232,	2668, },
+			},
+			/* i = 2 */
+			{ {   0,  -13755297,   88228,    194, },
+			  {   0,   43058825, -281494,	-604, },
+			  {   0,  -45854189,  328873,    337, },
+			  {   0,   17332703, -123100,	-128, },
+			},
+			/* i = 3 */
+			{ {   0,    1950888,   -8210,	 -62, },
+			  {   0,   -6086732,   26052,    197, },
+			  {   0,    6462190,  -32222,	-161, },
+			  {   0,   -2416618,   11593,	  62, },
+			},
+		},
+		.leakage_min = 30,
+		/* .volt_temp_cap = { 70, 1240 }, - TODO for T148 */
+	},
+	{
+		.cpu_speedo_id      = 1, /* SKU 0x3 CPU */
+
+		.dyn_scaled         = 1000000,
+		.dyn_consts_n       = {  376000,  638000,  916000, 1203000 },
+
+		.consts_scaled      = 1000000,
+		.leakage_consts_n   = {  489500,  730600,  867600, 1000000 },
+
+		.ijk_scaled         = 1000,
+		.leakage_consts_ijk = {
+			/* i = 0 */
+			{ {    564982,  -135347,    3093,    -21, },
+			  {  -1866916,   450093,  -10267,     69, },
+			  {   1965934,  -486976,   11077,    -74, },
+			  {   -637854,   171550,   -3889,     26, },
+			},
+			/* i = 1 */
+			{ {  -7341396,   770646,  -17297,    114, },
+			  {  24249928, -2517868,   56512,   -370, },
+			  { -26109261,  2679448,  -60185,    392, },
+			  {   9127986,  -928822,   20917,   -135, },
+			},
+			/* i = 2 */
+			{ {   9830061,  -944405,   20359,   -133, },
+			  { -31837469,  3041249, -655713,    428, },
+			  {  33645736, -3197481,   69332,   -452, },
+			  { -11561204,  1100025,  -23956,    156, },
+			},
+			/* i = 3 */
+			{ {  -2848862,   243774,   -5002,     31, },
+			  {   9160903,  -778559,   16052,   -101, },
+			  {  -9619266,   812425,  -16862,    106, },
+			  {   3291191,  -277715,    5811,    -37, },
+			},
+		},
+		.leakage_min = 30,
+		/* .volt_temp_cap = { 70, 1240 }, - TODO for T148 */
+	},
+};
+
+struct tegra_edp_cpu_leakage_params *tegra14x_get_leakage_params(int index,
+							unsigned int *sz)
+{
+	BUG_ON(index >= ARRAY_SIZE(t14x_leakage_params));
+	if (sz)
+		*sz = ARRAY_SIZE(t14x_leakage_params);
+	return &t14x_leakage_params[index];
+}
+#endif
 
 static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
 {
