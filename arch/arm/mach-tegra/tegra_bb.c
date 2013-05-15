@@ -25,6 +25,7 @@
 #include <linux/mm.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/delay.h>
 #include <asm/io.h>
 #include <linux/regulator/consumer.h>
@@ -230,10 +231,7 @@ void tegra_bb_generate_ipc(struct platform_device *pdev)
 #else
 	{
 		u32 sts = readl(flow + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-		sts |= 1 << FLOW_CTLR_IPC_FLOW_IPC_SET_0_AP2BB_INT0_STS_SHIFT |
-		(0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT);
-
-		/* unmask mem_req_soon interrupt */
+		sts |= 1 << FLOW_CTLR_IPC_FLOW_IPC_SET_0_AP2BB_INT0_STS_SHIFT;
 		writel(sts, flow + FLOW_CTLR_IPC_FLOW_IPC_SET_0);
 	}
 #endif
@@ -785,6 +783,7 @@ static irqreturn_t tegra_bb_mem_req_soon(int irq, void *data)
 		writel((0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT)
 				, fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
 
+		irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_RISING);
 		bb->state = BBC_SET_FLOOR;
 		queue_work(bb->workqueue, &bb->work);
 	}
@@ -827,8 +826,10 @@ static void tegra_bb_enable_pmc_wake(void)
 	reg &= ~(PMC_WAKE2_BB_MEM_REQ);
 	pmc_32kwritel(reg, PMC_WAKE2_LEVEL);
 
+	usleep_range(1000, 1100);
 	pmc_32kwritel(1, PMC_AUTO_WAKE_LVL);
 
+	usleep_range(1000, 1100);
 	reg = readl(pmc + PMC_WAKE2_MASK);
 	reg |= PMC_WAKE2_BB_MEM_REQ;
 	pmc_32kwritel(reg, PMC_WAKE2_MASK);
@@ -850,7 +851,7 @@ static irqreturn_t tegra_pmc_wake_intr(int irq, void *data)
 
 	spin_lock(&bb->lock);
 	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
-	mem_req = sts & (1 << APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT);
+	mem_req = (sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SHIFT) & 1;
 
 	/* clear interrupt */
 	lic = readl(tert_ictlr + TRI_ICTLR_VIRQ_CPU);
@@ -860,9 +861,8 @@ static irqreturn_t tegra_pmc_wake_intr(int irq, void *data)
 				tert_ictlr + TRI_ICTLR_CPU_IER_CLR);
 	}
 
+	irq_set_irq_type(INT_PMC_WAKE_INT, IRQF_TRIGGER_RISING);
 	if (!mem_req) {
-		/* reenable mem_req_soon irq */
-		tegra_bb_enable_mem_req_soon();
 
 		bb->state = BBC_REMOVE_FLOOR;
 		queue_work(bb->workqueue, &bb->work);
@@ -888,7 +888,6 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 	switch (bb->state) {
 	case BBC_SET_FLOOR:
-		tegra_bb_enable_pmc_wake();
 		bb->prev_state = bb->state;
 		spin_unlock_irqrestore(&bb->lock, flags);
 
@@ -899,6 +898,9 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		clk_set_rate(bb->emc_clk, emc_min_freq);
 		pr_debug("bbc setting floor to %lu\n", emc_min_freq/1000000);
 
+		/* reenable pmc_wake_det irq */
+		tegra_bb_enable_pmc_wake();
+		irq_set_irq_type(INT_PMC_WAKE_INT, IRQF_TRIGGER_HIGH);
 		return;
 	case BBC_REMOVE_FLOOR:
 		/* discard erroneous request */
@@ -916,6 +918,9 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		clk_disable_unprepare(bb->emc_clk);
 		pr_debug("bbc removing emc floor\n");
 
+		/* reenable mem_req_soon irq */
+		tegra_bb_enable_mem_req_soon();
+		irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_HIGH);
 		return;
 	default:
 		spin_unlock_irqrestore(&bb->lock, flags);
@@ -1201,7 +1206,6 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		kfree(bb);
 		return -EAGAIN;
 	}
-	tegra_bb_enable_pmc_wake();
 
 #endif
 	return 0;
@@ -1226,9 +1230,29 @@ static int tegra_bb_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int tegra_bb_resume(struct platform_device *pdev)
 {
-	dev_dbg(&pdev->dev, "%s\n", __func__);
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
+	struct tegra_bb *bb;
+	struct tegra_bb_platform_data *pdata;
+#endif
+	if (!pdev) {
+		pr_err("%s platform device is NULL!\n", __func__);
+		return -EINVAL;
+	}
+	dev_dbg(&pdev->dev, "%s\n", __func__);
+
+#ifndef CONFIG_TEGRA_BASEBAND_SIMU
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
+		return -EINVAL;
+	}
+	bb = (struct tegra_bb *)pdata->bb_handle;
+
 	tegra_bb_enable_mem_req_soon();
+	irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_HIGH);
+
+	tegra_bb_enable_pmc_wake();
+	irq_set_irq_type(INT_PMC_WAKE_INT, IRQF_TRIGGER_HIGH);
 #endif
 	return 0;
 }
