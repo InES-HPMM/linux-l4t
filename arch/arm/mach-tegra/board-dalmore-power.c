@@ -1050,6 +1050,8 @@ static struct tegra_suspend_platform_data dalmore_suspend_data = {
 	.lp1_core_volt_low = 0,
 	.lp1_core_volt_high = 0,
 #endif
+	.usb_vbus_internal_wake = true,
+	.usb_id_internal_wake = true,
 };
 #ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
 /* board parameters for cpu dfll */
@@ -1220,6 +1222,11 @@ int __init dalmore_regulator_init(void)
 int __init dalmore_suspend_init(void)
 {
 	tegra_init_suspend(&dalmore_suspend_data);
+	/* Enable dalmore USB wake for VBUS/ID without using PMIC */
+	tegra_set_usb_vbus_internal_wake(
+		dalmore_suspend_data.usb_vbus_internal_wake);
+	tegra_set_usb_id_internal_wake(
+		dalmore_suspend_data.usb_id_internal_wake);
 	return 0;
 }
 
