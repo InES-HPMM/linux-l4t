@@ -656,6 +656,11 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		unsigned int uhs)
 {
 	u16 clk, ctrl_2;
+	u32 vndr_ctrl;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct tegra_sdhci_platform_data *plat = tegra_host->plat;
+
 	ctrl_2 = sdhci_readw(host, SDHCI_HOST_CONTROL2);
 
 	/* Select Bus Speed Mode for host */
@@ -689,6 +694,16 @@ static int tegra_sdhci_set_uhs_signaling(struct sdhci_host *host,
 		clk &= ~(0xFF << SDHCI_DIVIDER_SHIFT);
 		clk |= 1 << SDHCI_DIVIDER_SHIFT;
 		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+
+		/* Set the ddr mode trim delay if required */
+		if (plat->ddr_trim_delay != -1) {
+			vndr_ctrl = sdhci_readl(host, SDHCI_VNDR_CLK_CTRL);
+			vndr_ctrl &= ~(0x1F <<
+				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+			vndr_ctrl |= (plat->ddr_trim_delay <<
+				SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
+			sdhci_writel(host, vndr_ctrl, SDHCI_VNDR_CLK_CTRL);
+		}
 	}
 	return 0;
 }
