@@ -1996,6 +1996,7 @@ arm_iommu_create_mapping(struct bus_type *bus, dma_addr_t base, size_t size,
 	if (!mapping->bitmap)
 		goto err2;
 
+	base = round_up(base, 1 << (order + PAGE_SHIFT));
 	mapping->base = base;
 	mapping->end = base + size;
 	mapping->bits = BITS_PER_BYTE * bitmap_size;
