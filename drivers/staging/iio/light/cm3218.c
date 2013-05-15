@@ -25,8 +25,6 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/regmap.h>
-#include <linux/delay.h>
-#include <linux/pm_runtime.h>
 #include <linux/notifier.h>
 #include <linux/regulator/consumer.h>
 #include <linux/iio/iio.h>
@@ -45,11 +43,8 @@
 
 #define I2C_MAX_TIMEOUT			msecs_to_jiffies(20) /* 20 mSec */
 
-#ifdef CONFIG_SENSORS_CM3218
-#define CONFIGURE_DEFAULT_VAL		0x0400
-#else
-#define CONFIGURE_DEFAULT_VAL		0x0000
-#endif
+#define CM3218_CONFIGURE_DEFAULT_VAL	0x0400
+#define CM32181_CONFIGURE_DEFAULT_VAL	0x0000
 
 #define CM3218_ALS_PEAK_VAL		0xFFFF
 #define CM3218_ALS_RESOLUTION		0
@@ -58,10 +53,16 @@
 #define CM3218_VENDOR			"Capella"
 #define CM3218_NAME			"cm3218"
 
-enum {
+enum als_state {
 	CHIP_POWER_OFF,
 	CHIP_POWER_ON_ALS_OFF,
 	CHIP_POWER_ON_ALS_ON,
+};
+
+enum i2c_state {
+	I2C_XFER_NOT_OK,
+	I2C_XFER_OK_REG_NOT_SYNC,
+	I2C_XFER_OK_REG_SYNC,
 };
 
 struct cm3218_chip {
@@ -69,16 +70,18 @@ struct cm3218_chip {
 	struct i2c_device_id		*id;
 	struct regulator_bulk_data	*consumers;
 	struct notifier_block		regulator_nb;
-	wait_queue_head_t		i2c_wait_queue;
-	int				i2c_xfer_ready;
+	int				i2c_xfer_state;
 	struct regmap			*regmap;
 
 	u8				als_state;
-	bool is_als_on_before_suspend;
 	int shutdown_complete;
 };
 
-/* regulators used by the device */
+/* regulators used by the device
+ * vdd_1v8b is used by cm32181 to select i2c address = 0x48
+ * Since, this is always enabled this does not require
+ * explicit handling in driver
+ */
 static struct regulator_bulk_data cm3218_consumers[] = {
 	{
 		.supply = "vdd",
@@ -92,9 +95,19 @@ bool cm3218_volatile_reg(struct device *dev, unsigned int reg)
 	return reg == CM3218_REG_ALS_DATA;
 }
 
-static const struct reg_default cm3218_reg_defaults = {
+bool cm3218_writeable_reg(struct device *dev, unsigned int reg)
+{
+	return reg == CM3218_REG_CONFIGURE;
+}
+
+bool cm3218_readable_reg(struct device *dev, unsigned int reg)
+{
+	return reg == CM3218_REG_ALS_DATA;
+}
+
+static struct reg_default cm3218_reg_defaults = {
 	.reg = CM3218_REG_CONFIGURE,
-	.def = CONFIGURE_DEFAULT_VAL,
+	.def = CM3218_CONFIGURE_DEFAULT_VAL,
 };
 
 /* TODO * in linux-next we have to add
@@ -104,7 +117,9 @@ static const struct reg_default cm3218_reg_defaults = {
 static const struct regmap_config cm3218_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 16,
-	.volatile_reg = &cm3218_volatile_reg,
+	.readable_reg = cm3218_readable_reg,
+	.writeable_reg = cm3218_writeable_reg,
+	.volatile_reg = cm3218_volatile_reg,
 	.max_register = CM3218_REG_MAX,
 	.reg_defaults = &cm3218_reg_defaults,
 	.num_reg_defaults = 1,
@@ -120,6 +135,35 @@ static void change_endianness_16(int *val)
 	buf[1] = temp;
 }
 
+/* cm3218 needs configure register to
+ * be set to this value on power-on
+ * to make regmap cache value in sync with hw
+ */
+static int cm3218_configure_sync(struct cm3218_chip *chip)
+{
+	int ret;
+	unsigned int val;
+
+	if (chip->i2c_xfer_state == I2C_XFER_OK_REG_SYNC)
+		return 0;
+
+	ret = regmap_read(chip->regmap, CM3218_REG_CONFIGURE, &val);
+	if (ret != 0)
+		return ret;
+
+	change_endianness_16(&val);
+	ret = i2c_smbus_write_word_data(chip->client,
+					CM3218_REG_CONFIGURE, val);
+	if (ret)
+		dev_err(&chip->client->dev,
+			"idname:%s func:%s line:%d i2c_write fails\n",
+			chip->id->name, __func__, __LINE__);
+	else
+		chip->i2c_xfer_state = I2C_XFER_OK_REG_SYNC;
+
+	return ret;
+}
+
 static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 {
 	int ret;
@@ -128,13 +172,11 @@ static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 	if (!chip->regmap)
 		return -ENODEV;
 
-	ret = wait_event_timeout(chip->i2c_wait_queue,
-					chip->i2c_xfer_ready, I2C_MAX_TIMEOUT);
-	if (!ret) {
+	if (chip->i2c_xfer_state ==  I2C_XFER_NOT_OK) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
-		return -ETIMEDOUT;
+		return -ENODEV;
 	}
 
 	mutex_lock(&indio_dev->mlock);
@@ -145,12 +187,6 @@ static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 			chip->id->name, __func__, __LINE__);
 
 	change_endianness_16(val);
-/*
-	temp = i2c_smbus_read_word_data(chip->client, CM3218_REG_ALS_DATA);
-	dev_err(&chip->client->dev, "idname:%s func:%s line:%d ""
-				"als_i2c_data = %d\n",
-				chip->id->name, __func__, __LINE__, temp);
-*/
 	mutex_unlock(&indio_dev->mlock);
 	return ret;
 }
@@ -164,17 +200,26 @@ static int _cm3218_register_write(struct cm3218_chip *chip, int reg, int mask,
 	if (!chip->regmap)
 		return -ENODEV;
 
-	ret = wait_event_timeout(chip->i2c_wait_queue,
-					chip->i2c_xfer_ready, I2C_MAX_TIMEOUT);
-	if (!ret) {
+	if (chip->i2c_xfer_state == I2C_XFER_NOT_OK) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
-		return -ETIMEDOUT;
+		return -ENODEV;
 	}
 
 	mutex_lock(&indio_dev->mlock);
+	change_endianness_16(&mask);
 	change_endianness_16(&val);
+
+	ret = cm3218_configure_sync(chip);
+	if (ret) {
+		dev_err(&chip->client->dev,
+			"idname:%s func:%s line:%d cm3218_sync fails\n",
+			chip->id->name, __func__, __LINE__);
+		mutex_unlock(&indio_dev->mlock);
+		return ret;
+	}
+
 	ret = regmap_update_bits(chip->regmap, reg, mask, val);
 	if (ret)
 		dev_err(&chip->client->dev,
@@ -194,22 +239,25 @@ static int _cm3218_register_sync(struct cm3218_chip *chip)
 	if (!chip->regmap)
 		return -ENODEV;
 
-	ret = wait_event_timeout(chip->i2c_wait_queue,
-					chip->i2c_xfer_ready, I2C_MAX_TIMEOUT);
-	if (!ret) {
+	if (chip->i2c_xfer_state == I2C_XFER_NOT_OK) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
-		return -ETIMEDOUT;
+		return -ENODEV;
 	}
 
 	mutex_lock(&indio_dev->mlock);
-	regcache_mark_dirty(chip->regmap);
-	ret = regcache_sync(chip->regmap);
-	if (ret)
+	/* regmap sync doesn't work for reg_defaults
+	 * hence fall back to i2c write
+	 */
+	ret = cm3218_configure_sync(chip);
+	if (ret) {
 		dev_err(&chip->client->dev,
-			"idname:%s func:%s line:%d regmap_write fails\n",
+			"idname:%s func:%s line:%d cm3218_sync fails\n",
 			chip->id->name, __func__, __LINE__);
+		mutex_unlock(&indio_dev->mlock);
+		return ret;
+	}
 	mutex_unlock(&indio_dev->mlock);
 
 	return ret;
@@ -418,11 +466,11 @@ static int cm3218_power_manager(struct notifier_block *regulator_nb,
 
 	if (event & (REGULATOR_EVENT_POST_ENABLE |
 			REGULATOR_EVENT_OUT_POSTCHANGE)) {
-		chip->i2c_xfer_ready = 1;
+		chip->i2c_xfer_state = I2C_XFER_OK_REG_NOT_SYNC;
 		cm3218_activate_standby_mode(chip);
 	} else if (event & (REGULATOR_EVENT_DISABLE |
 			REGULATOR_EVENT_FORCE_DISABLE)) {
-		chip->i2c_xfer_ready = 0;
+		chip->i2c_xfer_state = I2C_XFER_NOT_OK;
 	}
 	return NOTIFY_OK;
 }
@@ -528,6 +576,9 @@ static int cm3218_probe(struct i2c_client *client,
 		goto fail;
 	}
 
+	cm3218_reg_defaults.def = id->driver_data ?
+					CM32181_CONFIGURE_DEFAULT_VAL :
+					CM3218_CONFIGURE_DEFAULT_VAL;
 	regmap = devm_regmap_init_i2c(client, &cm3218_regmap_config);
 	if (IS_ERR_OR_NULL(regmap)) {
 		dev_err(&client->dev,
@@ -560,10 +611,9 @@ static int cm3218_probe(struct i2c_client *client,
 		}
 	}
 
-	init_waitqueue_head(&chip->i2c_wait_queue);
 	chip->als_state = 0;
 	if (regulator_is_enabled(chip->consumers[0].consumer)) {
-		chip->i2c_xfer_ready = 1;
+		chip->i2c_xfer_state = I2C_XFER_OK_REG_NOT_SYNC;
 		ret = cm3218_activate_standby_mode(chip);
 		if (ret) {
 			dev_err(&client->dev,
@@ -619,7 +669,7 @@ static struct i2c_driver cm3218_driver = {
 	.driver = {
 		.name = CM3218_NAME,
 		.owner = THIS_MODULE,
-		.of_match_table = cm3218_of_match,
+		.of_match_table = of_match_ptr(cm3218_of_match),
 		.pm = CM3218_PM_OPS,
 	},
 	.id_table = cm3218_id,
@@ -627,19 +677,7 @@ static struct i2c_driver cm3218_driver = {
 	.remove = cm3218_remove,
 	.shutdown = cm3218_shutdown,
 };
-
-static int __init cm3218_init(void)
-{
-	return i2c_add_driver(&cm3218_driver);
-}
-
-static void __exit cm3218_exit(void)
-{
-	i2c_del_driver(&cm3218_driver);
-}
-
-module_init(cm3218_init);
-module_exit(cm3218_exit);
+module_i2c_driver(cm3218_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("CM3218 Driver");
