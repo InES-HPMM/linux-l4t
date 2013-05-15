@@ -440,13 +440,6 @@ static void macallan_usb_init(void)
 	tegra_set_usb_wake_source();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-		    (tegra_revision == TEGRA_REVISION_A02)) {
-			tegra_ehci1_utmi_pdata \
-			.unaligned_dma_buf_supported = true;
-			tegra_udc_pdata \
-			.unaligned_dma_buf_supported = true;
-		}
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 		platform_device_register(&tegra_otg_device);
 		/* Setup the udc platform data */

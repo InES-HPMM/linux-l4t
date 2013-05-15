@@ -1032,13 +1032,6 @@ static void pluto_usb_init(void)
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
-		if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-			(tegra_revision == TEGRA_REVISION_A02)) {
-			tegra_ehci1_utmi_pdata \
-			.unaligned_dma_buf_supported = true;
-			tegra_udc_pdata \
-			.unaligned_dma_buf_supported = true;
-		}
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 		platform_device_register(&tegra_otg_device);
 
@@ -1058,22 +1051,12 @@ static void pluto_modem_init(void)
 
 	switch (modem_id) {
 	case TEGRA_BB_I500: /* on board i500 HSIC */
-		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
-			if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-				(tegra_revision == TEGRA_REVISION_A02))
-				tegra_ehci2_hsic_baseband_pdata \
-				.unaligned_dma_buf_supported = true;
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
 			platform_device_register(&icera_baseband_device);
-		}
 		break;
 	case TEGRA_BB_I500SWD: /* i500 SWD HSIC */
-		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)) {
-			if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-				(tegra_revision == TEGRA_REVISION_A02))
-				tegra_ehci3_hsic_baseband2_pdata \
-				.unaligned_dma_buf_supported = true;
+		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB))
 			platform_device_register(&icera_baseband2_device);
-		}
 		break;
 	case TEGRA_BB_OEM1:	/* OEM1 HSIC */
 		if ((board_info.board_id == BOARD_E1575) ||
@@ -1087,10 +1070,6 @@ static void pluto_modem_init(void)
 			tegra_hsic_pdata.ops = &oem1_hsic_pops;
 			tegra_ehci3_device.dev.platform_data
 				= &tegra_hsic_pdata;
-			if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-				(tegra_revision == TEGRA_REVISION_A02))
-				tegra_hsic_pdata \
-				.unaligned_dma_buf_supported = true;
 			platform_device_register(&tegra_bb_oem1);
 		}
 		break;
@@ -1110,9 +1089,6 @@ static void pluto_modem_init(void)
 				= MDM2_PWR_ON_FOR_PLUTO_A02;
 		}
 		/* baseband-power.ko will register ehci3 device */
-		if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-			(tegra_revision == TEGRA_REVISION_A02))
-			tegra_hsic_pdata.unaligned_dma_buf_supported = true;
 		tegra_hsic_pdata.ops = &oem2_plat_ops;
 		tegra_hsic_pdata.u_data.host.remote_wakeup_supported = false;
 		tegra_hsic_pdata.u_data.host.power_off_on_suspend = false;
@@ -1148,10 +1124,6 @@ static void pluto_modem_init(void)
 		break;
 	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
 		if (!(usb_port_owner_info & HSIC2_PORT_OWNER_XUSB)) {
-			if ((tegra_get_chipid() == TEGRA_CHIPID_TEGRA11) &&
-				(tegra_revision == TEGRA_REVISION_A02))
-				tegra_ehci3_hsic_smsc_hub_pdata \
-				.unaligned_dma_buf_supported = true;
 			tegra_ehci3_device.dev.platform_data =
 				&tegra_ehci3_hsic_smsc_hub_pdata;
 			platform_device_register(&tegra_ehci3_device);
