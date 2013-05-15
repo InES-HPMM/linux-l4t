@@ -1152,7 +1152,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	}
 
 	/* setup emc dvfs request framework */
-	bb->emc_clk = clk_get(&pdev->dev, "emc");
+	bb->emc_clk = clk_get(&pdev->dev, "emc_fl");
 	if (IS_ERR(bb->emc_clk)) {
 		dev_err(&pdev->dev, "can't get emc clock\n");
 		kfree(bb);
