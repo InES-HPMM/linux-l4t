@@ -183,6 +183,9 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_regen1_supply[] = {
+	REGULATOR_SUPPLY("vdd_com_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_nfc_3v3", NULL),
 };
 
 static struct regulator_consumer_supply palmas_regen2_supply[] = {
