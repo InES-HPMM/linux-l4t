@@ -33,8 +33,6 @@
 #define	TOTAL_CAPS (CORE_EDP_PROFILES_NUM * CORE_MODULES_STATES *\
 			TEMPERATURE_RANGES * CAP_CLKS_NUM)
 
-#define SKIP_CORE_EDP	1
-
 struct core_edp_entry {
 	int sku;
 	unsigned int cap_mA;
@@ -249,10 +247,6 @@ int __init tegra14x_select_core_edp_table(unsigned int regulator_mA,
 
 	BUG_ON(ARRAY_SIZE(temperatures) != TEMPERATURE_RANGES);
 	BUG_ON(ARRAY_SIZE(cap_clks_names) != CAP_CLKS_NUM);
-
-#if SKIP_CORE_EDP
-	return -ENODATA;
-#endif
 
 	for (i = 0; i < CAP_CLKS_NUM; i++) {
 		struct clk *c = tegra_get_clock_by_name(cap_clks_names[i]);
