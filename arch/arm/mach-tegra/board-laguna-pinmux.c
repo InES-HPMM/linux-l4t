@@ -173,6 +173,28 @@
 		.is_input	= _is_input,	\
 		.value		= _value,	\
 	}
+#define GPIO_PINMUX(_pingroup, _pupd, _tri, _io, _od)   \
+	{                                                   \
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,       \
+		.func       = TEGRA_MUX_SAFE,                   \
+		.pupd       = TEGRA_PUPD_##_pupd,               \
+		.tristate   = TEGRA_TRI_##_tri,                 \
+		.io         = TEGRA_PIN_##_io,                  \
+		.lock       = TEGRA_PIN_LOCK_DEFAULT,           \
+		.od         = TEGRA_PIN_OD_##_od,               \
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,       \
+	}
+#define UNUSED_PINMUX(_pingroup)                    \
+	{                                               \
+		.pingroup   = TEGRA_PINGROUP_##_pingroup,   \
+		.func       = TEGRA_MUX_SAFE,               \
+		.pupd       = TEGRA_PUPD_PULL_DOWN,         \
+		.tristate   = TEGRA_TRI_TRISTATE,           \
+		.io         = TEGRA_PIN_OUTPUT,             \
+		.lock       = TEGRA_PIN_LOCK_DEFAULT,       \
+		.od         = TEGRA_PIN_OD_DEFAULT,         \
+		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,   \
+	}
 
 static __initdata struct tegra_drive_pingroup_config laguna_drive_pinmux[] = {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -187,10 +209,18 @@ static __initdata struct tegra_drive_pingroup_config laguna_drive_pinmux[] = {
 	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
 								FASTEST, 1),
 #else
-	/* TODO: update for t124 laguna */
+	/* FIXME: update settings for t124 laguna */
+	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
+
+	/* SDMMC3 */
+	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 22, 36, FASTEST, FASTEST),
+
+	/* SDMMC4 */
+	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 1, FASTEST,
+								FASTEST, 1),
 #endif
 };
-
+#if 0
 /* Initially setting all used GPIO's to non-TRISTATE */
 static __initdata struct tegra_pingroup_config laguna_pinmux_set_nontristate[] = {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -251,9 +281,9 @@ static __initdata struct tegra_pingroup_config laguna_pinmux_set_nontristate[] =
 	DEFAULT_PINMUX(KB_ROW8,         KBC,    PULL_UP,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(CLK3_REQ,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU4,        RSVD3,  NORMAL,      NORMAL,    OUTPUT),
-	DEFAULT_PINMUX(GPIO_PU5,        RSVD3,  NORMAL,      NORMAL,    INPUT),
-	DEFAULT_PINMUX(GPIO_PU6,        RSVD3,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU4,        PWM1,  NORMAL,      NORMAL,    OUTPUT),
+	DEFAULT_PINMUX(GPIO_PU5,        PWM2,  NORMAL,      NORMAL,    INPUT),
+	DEFAULT_PINMUX(GPIO_PU6,        PWM3,  NORMAL,      NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
 
@@ -262,6 +292,7 @@ static __initdata struct tegra_pingroup_config laguna_pinmux_set_nontristate[] =
 	/* TODO: update for t124 laguna */
 #endif
 };
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #include "board-laguna-pinmux-t11x.h"
@@ -287,8 +318,10 @@ static void __init laguna_gpio_init_configure(void)
 
 int __init laguna_pinmux_init(void)
 {
+#if 0
 	tegra_pinmux_config_table(laguna_pinmux_set_nontristate,
 					ARRAY_SIZE(laguna_pinmux_set_nontristate));
+#endif
 	laguna_gpio_init_configure();
 
 	tegra_pinmux_config_table(laguna_pinmux_common, ARRAY_SIZE(laguna_pinmux_common));
