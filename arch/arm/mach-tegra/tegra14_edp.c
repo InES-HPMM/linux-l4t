@@ -33,15 +33,13 @@
 #define	TOTAL_CAPS (CORE_EDP_PROFILES_NUM * CORE_MODULES_STATES *\
 			TEMPERATURE_RANGES * CAP_CLKS_NUM)
 
-#define SKIP_CORE_EDP 1
+#define SKIP_CORE_EDP	1
 
 struct core_edp_entry {
 	int sku;
 	unsigned int cap_mA;
 	int mult;
-	unsigned long cap_scpu_on[CORE_EDP_PROFILES_NUM][
-		CORE_MODULES_STATES][TEMPERATURE_RANGES][CAP_CLKS_NUM];
-	unsigned long cap_scpu_off[CORE_EDP_PROFILES_NUM][
+	unsigned long cap_cpu[CORE_EDP_PROFILES_NUM][
 		CORE_MODULES_STATES][TEMPERATURE_RANGES][CAP_CLKS_NUM];
 };
 
@@ -59,68 +57,141 @@ static struct clk *cap_clks[CAP_CLKS_NUM];
  */
 static struct core_edp_entry core_edp_table[] = {
 	{
-		.sku		= 0x0,
-		.cap_mA		= 6000,		/* 6A cap */
+		.sku		= 0x7,		/* SL440 */
+		.cap_mA		= 3000,		/* 3A cap */
 		.mult		= 1000000,	/* MHZ */
-		.cap_scpu_on	= {
+		.cap_cpu	= {
 			/* favor emc */
 			{	/* core modules power state 0 (all ON) */
-				{{ 921, 749 },
-				 { 921, 749 },
-				 { 921, 711 },
-				 { 921, 672 },
-				 { 921, 672 },
+				{{ 921, 655 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 921, 557 },
 				},
 			},
 			/* balanced profile */
 			{	/* core modules power state 0 (all ON) */
-				{{ 788, 749 },
-				 { 788, 749 },
-				 { 788, 711 },
-				 { 788, 672 },
-				 { 788, 672 },
+				{{ 921, 655 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 788, 596 },
 				},
 			},
 			/* favor gpu */
 			{	/* core modules power state 0 (all ON) */
-				{{ 653, 749 },
-				 { 653, 749 },
-				 { 653, 711 },
-				 { 653, 672 },
-				 { 653, 672 },
-				}
-			},
-		},
-		.cap_scpu_off	= {
-			/* favor emc */
-			{	/* core modules power state 0 (all ON) */
-				{{ 921, 749 },
-				 { 921, 749 },
-				 { 921, 711 },
-				 { 921, 672 },
-				 { 921, 672 },
-				},
-			},
-			/* balanced profile */
-			{	/* core modules power state 0 (all ON) */
-				{{ 788, 749 },
-				 { 788, 749 },
-				 { 788, 711 },
-				 { 788, 672 },
-				 { 788, 672 },
-				},
-			},
-			/* favor gpu */
-			{	/* core modules power state 0 (all ON) */
-				{{ 653, 749 },
-				 { 653, 749 },
-				 { 653, 711 },
-				 { 653, 672 },
-				 { 653, 672 },
+				{{ 921, 655 },
+				 { 788, 655 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 788, 596 },
 				}
 			},
 		},
 	},
+	{
+		.sku		= 0x3,		/* SL460 */
+		.cap_mA		= 3000,		/* 3A cap */
+		.mult		= 1000000,	/* MHZ */
+		.cap_cpu	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 672 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 921, 557 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 672 },
+				 { 788, 672 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 788, 596 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 672 },
+				 { 788, 672 },
+				 { 921, 596 },
+				 { 921, 596 },
+				 { 788, 596 },
+				}
+			},
+		},
+	},
+	{
+		.sku		= 0x3,		/* SL460 */
+		.cap_mA		= 3500,		/* 3.5A cap */
+		.mult		= 1000000,	/* MHZ */
+		.cap_cpu	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 711 },
+				 { 921, 711 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 788, 749 },
+				 { 921, 711 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 788, 749 },
+				 { 921, 711 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				}
+			},
+		},
+	},
+	{
+		.sku		= 0x3,		/* SL460 */
+		.cap_mA		= 4000,		/* 4A cap */
+		.mult		= 1000000,	/* MHZ */
+		.cap_cpu	= {
+			/* favor emc */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 749 },
+				 { 921, 749 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				},
+			},
+			/* balanced profile */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 749 },
+				 { 921, 749 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				},
+			},
+			/* favor gpu */
+			{	/* core modules power state 0 (all ON) */
+				{{ 921, 749 },
+				 { 921, 749 },
+				 { 921, 711 },
+				 { 921, 672 },
+				 { 921, 672 },
+				}
+			},
+		},
+	}
 };
 
 static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
@@ -193,6 +264,15 @@ int __init tegra14x_select_core_edp_table(unsigned int regulator_mA,
 		cap_clks[i] = c;
 	}
 
+	if (sku == 0x0)
+		sku = 0x7;
+
+	if ((sku == 0x7) && (regulator_mA >= 3500)) {
+		pr_info("%s: no core edp capping for sku %d, %d mA\n",
+		       __func__, sku, regulator_mA);
+		return -ENODATA;
+	}
+
 	edp_entry = find_edp_entry(sku, regulator_mA);
 	if (!edp_entry) {
 		pr_info("%s: no core edp table for sku %d, %d mA\n",
@@ -207,14 +287,8 @@ int __init tegra14x_select_core_edp_table(unsigned int regulator_mA,
 	limits->temperature_ranges = TEMPERATURE_RANGES;
 	limits->core_modules_states = CORE_MODULES_STATES;
 
-	cap_rates = &edp_entry->cap_scpu_on[0][0][0][0];
+	cap_rates = &edp_entry->cap_cpu[0][0][0][0];
 	limits->cap_rates_scpu_on = cap_rates;
-	for (i = 0; i < TOTAL_CAPS; i++, cap_rates++) {
-		unsigned long rate = *cap_rates * edp_entry->mult;
-		*cap_rates = clip_cap_rate(cap_clks[i % CAP_CLKS_NUM], rate);
-	}
-
-	cap_rates = &edp_entry->cap_scpu_off[0][0][0][0];
 	limits->cap_rates_scpu_off = cap_rates;
 	for (i = 0; i < TOTAL_CAPS; i++, cap_rates++) {
 		unsigned long rate = *cap_rates * edp_entry->mult;
