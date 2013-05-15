@@ -151,7 +151,7 @@ static void mcerr_t12x_print(const char *mc_type, u32 err, u32 addr,
 {
 	u64 hi_addr = err & 0x300000;
 	u64 fin_addr = (addr | ((hi_addr >> 20) << 32));
-	pr_err("%s [0x%llx] %s (%s %s %s), %llx\n", mc_type,
+	pr_err("%s [0x%llx] %s (%s %s %s), %lx\n", mc_type,
 	       fin_addr,
 	       (client) ? client->name : "unknown",
 	       (is_secure) ? "secure" : "non-secure",
