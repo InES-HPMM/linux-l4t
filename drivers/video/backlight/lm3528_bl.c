@@ -108,9 +108,6 @@ static int lm3528_backlight_update_status(struct backlight_device *bl)
 	struct lm3528_backlight_data *data = bl_get_data(bl);
 	int brightness = bl->props.brightness;
 
-	if (data->notify)
-		brightness = data->notify(data->lm3528_dev, brightness);
-
 	return lm3528_backlight_set(bl, brightness);
 }
 
