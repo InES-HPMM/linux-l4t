@@ -25,11 +25,14 @@
 #include <linux/gpio.h>
 #include <linux/memblock.h>
 #include <linux/of_platform.h>
+#include <linux/tegra_uart.h>
+#include <linux/serial_tegra.h>
 
 #include <asm/hardware/gic.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/tegra_fiq_debugger.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -40,6 +43,61 @@
 #include "clock.h"
 #include "devices.h"
 #include "common.h"
+
+#ifdef CONFIG_USE_OF
+struct of_dev_auxdata laguna_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000600, "sdhci-tegra.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000400, "sdhci-tegra.2",
+				NULL),
+#if 0
+	OF_DEV_AUXDATA("nvidia,tegra114-sdhci", 0x78000000, "sdhci-tegra.0",
+				&laguna_tegra_sdhci_platform_data0),
+	OF_DEV_AUXDATA("nvidia,tegra114-camera", 0x0, "tegra_camera",
+				NULL),
+#endif
+	OF_DEV_AUXDATA("nvidia,tegra114-host1x", TEGRA_HOST1X_BASE, "host1x",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr3d", TEGRA_GR3D_BASE, "gr3d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-gr2d", TEGRA_GR2D_BASE, "gr2d",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-msenc", TEGRA_MSENC_BASE, "msenc",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-vi", TEGRA_VI_BASE, "vi",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-isp", TEGRA_ISP_BASE, "isp",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
+				NULL),
+
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c500, "tegra11-i2c.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c700, "tegra11-i2c.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000d000, "tegra11-i2c.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d400, "spi-tegra114.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d600, "spi-tegra114.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000d800, "spi-tegra114.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000da00, "spi-tegra114.3",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000dc00, "spi-tegra114.4",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
+				NULL),
+	{}
+};
+#endif
 
 static struct resource tegra_rtc_resources[] = {
 	[0] = {
@@ -99,28 +157,44 @@ static __initdata struct tegra_clk_init_table laguna_clk_init_table[] = {
 
 static void __init tegra_laguna_init(void)
 {
-	tegra_clk_init_from_table(laguna_clk_init_table);
 	tegra_enable_pinmux();
 	laguna_pinmux_init();
-	tegra_soc_device_init("laguna");
+	platform_add_devices(laguna_devices, ARRAY_SIZE(laguna_devices));
 	laguna_kbc_init();
 	laguna_sdhci_init();
 	laguna_regulator_init();
 	laguna_panel_init();
-	platform_add_devices(laguna_devices, ARRAY_SIZE(laguna_devices));
+	tegra_release_bootloader_fb();
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
+	tegra_ram_console_debug_init();
 	tegra_register_fuse();
+}
+
+static void __init laguna_ramconsole_reserve(unsigned long size)
+{
+	tegra_ram_console_debug_reserve(SZ_1M);
 }
 
 static void __init tegra_laguna_dt_init(void)
 {
-	tegra_laguna_init();
-
+	tegra_clk_init_from_table(laguna_clk_init_table);
+	tegra_soc_device_init("laguna");
+	tegra_clk_verify_parents();
 	of_platform_populate(NULL,
-		of_default_bus_match_table, NULL, NULL);
+		of_default_bus_match_table, laguna_auxdata_lookup,
+		&platform_bus);
+	tegra_laguna_init();
 }
 
 static void __init tegra_laguna_reserve(void)
 {
+#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
+	/* 1920*1200*4*2 = 18432000 bytes */
+	tegra_reserve(0, SZ_16M + SZ_2M, SZ_16M);
+#else
+	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+#endif
+	laguna_ramconsole_reserve(SZ_1M);
 }
 
 static const char * const laguna_dt_board_compat[] = {
@@ -129,8 +203,8 @@ static const char * const laguna_dt_board_compat[] = {
 };
 
 DT_MACHINE_START(LAGUNA, "laguna")
-	.atag_offset	= 0x100,
-	.soc			= &tegra_soc_desc,
+	.atag_offset		= 0x100,
+	.smp			= smp_ops(tegra_smp_ops),
 	.map_io			= tegra_map_common_io,
 	.reserve		= tegra_laguna_reserve,
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC

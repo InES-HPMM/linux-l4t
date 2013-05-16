@@ -286,9 +286,10 @@ subsys_initcall_sync(laguna_wifi_prepower);
 
 int __init laguna_sdhci_init(void)
 {
+#ifndef CONFIG_USE_OF
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
-
+#endif
 	/* Disable SDMMC1 and WiFi
 	 * platform_device_register(&tegra_sdhci_device0);
 	 * laguna_wifi_init();
