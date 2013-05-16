@@ -646,15 +646,19 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	int err;
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	int err;
+
 	/* bus suspend could have failed because of remote wakeup resume */
 	if (tegra->bus_suspended_fail)
 		return -EBUSY;
 	else {
 		err = usb_phy_set_suspend(get_usb_phy(tegra->phy), 1);
-		if (pdata->u_data.host.turn_off_vbus_on_lp0 && pdata->port_otg)
+		if (pdata->u_data.host.turn_off_vbus_on_lp0 &&
+			pdata->port_otg) {
 			tegra_usb_enable_vbus(tegra->phy, false);
+			tegra_usb_phy_pmc_disable(tegra->phy);
+		}
 		return err;
 	}
 }
