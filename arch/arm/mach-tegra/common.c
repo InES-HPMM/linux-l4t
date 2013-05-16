@@ -41,9 +41,12 @@
 #include <linux/bootmem.h>
 #include <trace/events/nvsecurity.h>
 
-#include <asm/hardware/cache-l2x0.h>
+#ifdef CONFIG_ARM64
+#include <linux/irqchip/gic.h>
+#else
 #include <asm/system.h>
 #include <asm/hardware/cache-l2x0.h>
+#endif
 #include <asm/dma-mapping.h>
 
 #include <mach/hardware.h>
@@ -637,6 +640,15 @@ static void __init tegra_perf_init(void)
 {
 	u32 reg;
 
+#ifdef CONFIG_ARM64
+	asm volatile("mrs %0, PMCR_EL0" : "=r"(reg));
+	reg >>= 11;
+	reg = (1 << (reg & 0x1f))-1;
+	reg |= 0x80000000;
+	asm volatile("msr PMINTENCLR_EL1, %0" : : "r"(reg));
+	reg = 1;
+	asm volatile("msr PMUSERENR_EL0, %0" : : "r"(reg));
+#else
 	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(reg));
 	reg >>= 11;
 	reg = (1 << (reg & 0x1f))-1;
@@ -644,6 +656,7 @@ static void __init tegra_perf_init(void)
 	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r"(reg));
 	reg = 1;
 	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r"(reg));
+#endif
 }
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
@@ -1366,16 +1379,30 @@ void tegra_get_board_info(struct board_info *bi)
 			pr_err("failed to read /chosen/board_info/minor_revision\n");
 		else
 			bi->minor_revision = prop_val;
+#ifndef CONFIG_ARM64
 		system_serial_high = (bi->board_id << 16) | bi->sku;
 		system_serial_low = (bi->fab << 24) |
 			(bi->major_revision << 16) | (bi->minor_revision << 8);
+#endif
 	} else {
 #endif
+#ifdef CONFIG_ARM64
+		/* FIXME:
+		 * use dummy values for now as system_serial_high/low
+		 * are gone in arm64.
+		 */
+		bi->board_id = 0xDEAD;
+		bi->sku = 0xDEAD;
+		bi->fab = 0xDD;
+		bi->major_revision = 0xDD;
+		bi->minor_revision = 0xDD;
+#else
 		bi->board_id = (system_serial_high >> 16) & 0xFFFF;
 		bi->sku = (system_serial_high) & 0xFFFF;
 		bi->fab = (system_serial_low >> 24) & 0xFF;
 		bi->major_revision = (system_serial_low >> 16) & 0xFF;
 		bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+#endif
 #ifdef CONFIG_OF
 	}
 #endif
@@ -1635,8 +1662,12 @@ void __tegra_move_framebuffer(struct platform_device *pdev,
 	if (!pdev)
 		goto out;
 
+#ifdef CONFIG_ARM64
+	BUG(); /* ARM64 doesn't support dma_map_linear yet!!! */
+#else
 	for (i = 0; i < ARRAY_SIZE(addr); i++)
 		dma_map_linear(&pdev->dev, addr[i], size, DMA_TO_DEVICE);
+#endif
 out:
 	iounmap(to_io);
 }
@@ -1667,7 +1698,9 @@ void __tegra_clear_framebuffer(struct platform_device *pdev,
 	if (!pdev)
 		goto out;
 
+#ifndef CONFIG_ARM64 /* FIXME */
 	dma_map_linear(&pdev->dev, to, size, DMA_TO_DEVICE);
+#endif
 out:
 	iounmap(to_io);
 }
