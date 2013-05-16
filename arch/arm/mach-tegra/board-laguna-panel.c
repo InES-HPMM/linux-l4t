@@ -377,7 +377,7 @@ static void laguna_panel_select(void)
 	switch (board.board_id) {
 	/* fall through */
 	default:
-		panel = &dsi_p_wuxga_10_1;
+		panel = &dsi_a_1080p_14_0;
 		dsi_instance = DSI_INSTANCE_0;
 		break;
 	}
