@@ -69,8 +69,13 @@
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START	0x80000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE	0x20000000
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT	0x8
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x1
+#define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x1
+#else
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET	0x70
 #define SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET	0x62
+#endif
 
 #define SDMMC_AUTO_CAL_STATUS	0x1EC
 #define SDMMC_AUTO_CAL_STATUS_AUTO_CAL_ACTIVE	0x80000000
@@ -1122,6 +1127,14 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_ENABLE;
 	val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
 	if (unlikely(soc_data->nvquirks & NVQUIRK_SET_CALIBRATION_OFFSETS)) {
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+		/*
+		 * Based on characterization results for T14x platforms,
+		 * calibration offsets should be set only sdmmc4.
+		 */
+		if (tegra_host->instance != 3)
+			goto skip_setting_calib_offsets;
+#endif
 		/* Program Auto cal PD offset(bits 8:14) */
 		val &= ~(0x7F <<
 			SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PD_OFFSET_SHIFT);
@@ -1131,6 +1144,9 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci)
 		val &= ~0x7F;
 		val |= SDMMC_AUTO_CAL_CONFIG_AUTO_CAL_PU_OFFSET;
 	}
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+skip_setting_calib_offsets:
+#endif
 	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
 
 	/* Wait until the calibration is done */
@@ -2066,8 +2082,9 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 		    NVQUIRK_ENABLE_SD_3_0 |
+#elif defined(CONFIG_ARCH_TEGRA_3x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+		    NVQUIRK_SET_CALIBRATION_OFFSETS |
 #else
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
