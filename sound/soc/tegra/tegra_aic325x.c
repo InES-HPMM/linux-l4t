@@ -1258,20 +1258,36 @@ static int tegra_aic325x_suspend_post(struct snd_soc_card *card)
 	struct snd_soc_jack_gpio *gpio = &tegra_aic325x_hp_jack_gpio;
 	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	int val;
+	int i, suspend_allowed = 1;
 
-	if (gpio_is_valid(gpio->gpio))
-		disable_irq(gpio_to_irq(gpio->gpio));
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
+	}
 
-	if (machine->clock_enabled) {
-		machine->clock_enabled = 0;
-		tegra_asoc_utils_clk_disable(&machine->util_data);
+	if (suspend_allowed) {
+		if (gpio_is_valid(gpio->gpio))
+			disable_irq(gpio_to_irq(gpio->gpio));
 
-		if (machine->tpa2054d4a_client) {
-			tpa2054d4a_i2c_read_device(machine->tpa2054d4a_client,
-					TPA2054D4A_POWER_MGMT_REG, 1, &val);
-			val |= TPA2054D4A_SWS;
-			tpa2054d4a_i2c_write_device(machine->tpa2054d4a_client,
-					TPA2054D4A_POWER_MGMT_REG, 1, &val);
+		if (machine->clock_enabled) {
+			machine->clock_enabled = 0;
+			tegra_asoc_utils_clk_disable(&machine->util_data);
+
+			if (machine->tpa2054d4a_client) {
+				tpa2054d4a_i2c_read_device(
+						machine->tpa2054d4a_client,
+						TPA2054D4A_POWER_MGMT_REG,
+						1,
+						&val);
+				val |= TPA2054D4A_SWS;
+				tpa2054d4a_i2c_write_device(
+						machine->tpa2054d4a_client,
+						TPA2054D4A_POWER_MGMT_REG,
+						1,
+						&val);
+			}
 		}
 	}
 
@@ -1283,23 +1299,39 @@ static int tegra_aic325x_resume_pre(struct snd_soc_card *card)
 	struct snd_soc_jack_gpio *gpio = &tegra_aic325x_hp_jack_gpio;
 	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	int val;
+	int i, suspend_allowed = 1;
 
-	if (gpio_is_valid(gpio->gpio)) {
-		val = gpio_get_value_cansleep(gpio->gpio);
-		val = gpio->invert ? !val : val;
-		snd_soc_jack_report(gpio->jack, val, gpio->report);
-		enable_irq(gpio_to_irq(gpio->gpio));
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
 	}
 
-	if (!machine->clock_enabled) {
-		machine->clock_enabled = 1;
-		tegra_asoc_utils_clk_enable(&machine->util_data);
-		if (machine->tpa2054d4a_client) {
-			tpa2054d4a_i2c_read_device(machine->tpa2054d4a_client,
-					TPA2054D4A_POWER_MGMT_REG, 1, &val);
-			val &= ~TPA2054D4A_SWS;
-			tpa2054d4a_i2c_write_device(machine->tpa2054d4a_client,
-					TPA2054D4A_POWER_MGMT_REG, 1, &val);
+	if (suspend_allowed) {
+		if (gpio_is_valid(gpio->gpio)) {
+			val = gpio_get_value_cansleep(gpio->gpio);
+			val = gpio->invert ? !val : val;
+			snd_soc_jack_report(gpio->jack, val, gpio->report);
+			enable_irq(gpio_to_irq(gpio->gpio));
+		}
+
+		if (!machine->clock_enabled) {
+			machine->clock_enabled = 1;
+			tegra_asoc_utils_clk_enable(&machine->util_data);
+			if (machine->tpa2054d4a_client) {
+				tpa2054d4a_i2c_read_device(
+						machine->tpa2054d4a_client,
+						TPA2054D4A_POWER_MGMT_REG,
+						1,
+						&val);
+				val &= ~TPA2054D4A_SWS;
+				tpa2054d4a_i2c_write_device(
+						machine->tpa2054d4a_client,
+						TPA2054D4A_POWER_MGMT_REG,
+						1,
+						&val);
+			}
 		}
 	}
 
