@@ -445,13 +445,13 @@ static tegra_isomgr_handle __tegra_isomgr_register(
 				   isomgr.max_iso_bw;
 		isomgr.max_iso_bw = dedi_bw + isomgr.dedi_bw;
 		pr_info("ISO BW usage:");
-		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; ++i) {
-			if (!client_valid[client])
+		for (i = 0; i < TEGRA_ISO_CLIENT_COUNT; i++) {
+			if (!client_valid[i])
 				continue;
 			pr_info("client=%s, iso dedi bw=%dKB",
-				cname[client],
+				cname[i],
 				(client == i) ? dedi_bw :
-				isomgr_clients[client].dedi_bw);
+				isomgr_clients[i].dedi_bw);
 		}
 		pr_info("revisit BW usage of iso clients");
 #else
