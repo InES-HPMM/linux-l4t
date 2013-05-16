@@ -101,14 +101,20 @@
 #define AD5816_FNUMBER				(0x40333333) /* 2.8f */
 #define AD5816_SLEW_RATE		1
 #define AD5816_ACTUATOR_RANGE		1023
-#define AD5816_SETTLETIME		30
-#define AD5816_FOCUS_MACRO		620
-#define AD5816_FOCUS_INFINITY		70
+#define AD5816_SETTLETIME		20
+#define AD5816_FOCUS_MACRO		510
+#define AD5816_FOCUS_INFINITY		220
 #define AD5816_POS_LOW_DEFAULT		0
 #define AD5816_POS_HIGH_DEFAULT		1023
 #define AD5816_POS_CLAMP		0x03ff
 /* Need to decide exact value of VCM_THRESHOLD and its use */
 /* define AD5816_VCM_THRESHOLD	20 */
+
+/* Registers values */
+#define SCL_LOW_REG_VAL			0xB6
+#define CONTROL_REG_VAL			0x02
+#define MODE_REG_VAL			0x42
+#define VCM_FREQ_REG_VAL		0x54
 
 struct ad5816_info {
 	struct i2c_client *i2c_client;
@@ -243,25 +249,25 @@ void ad5816_set_arc_mode(struct ad5816_info *info)
 	int err;
 
 	/* disable SCL low detection */
-	err = ad5816_i2c_wr8(info, SCL_LOW_DETECTION, 0xB6);
+	err = ad5816_i2c_wr8(info, SCL_LOW_DETECTION, SCL_LOW_REG_VAL);
 	if (err)
 		dev_err(&info->i2c_client->dev, "%s: Low detect write failed\n",
 			__func__);
 
 	/* set ARC enable */
-	err = ad5816_i2c_wr8(info, CONTROL, 0x0A);
+	err = ad5816_i2c_wr8(info, CONTROL, CONTROL_REG_VAL);
 	if (err)
 		dev_err(&info->i2c_client->dev,
 		"%s: CONTROL reg write failed\n", __func__);
 
 	/* set the ARC RES2 */
-	err = ad5816_i2c_wr8(info, MODE, 0x42);
+	err = ad5816_i2c_wr8(info, MODE, MODE_REG_VAL);
 	if (err)
 		dev_err(&info->i2c_client->dev,
 		"%s: MODE reg write failed\n", __func__);
 
-	/* set the VCM_FREQ to 12.8mS */
-	err = ad5816_i2c_wr8(info, VCM_FREQ, 0x4B);
+	/* set the VCM_FREQ : Tres = 10.86ms fres = 92Hz */
+	err = ad5816_i2c_wr8(info, VCM_FREQ, VCM_FREQ_REG_VAL);
 	if (err)
 		dev_err(&info->i2c_client->dev,
 		"%s: VCM_FREQ reg write failed\n", __func__);
