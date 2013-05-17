@@ -893,15 +893,20 @@ tegra_xhci_ss_vcore(struct tegra_xhci_hcd *tegra, bool enable)
 {
 	u32 elpg_program0;
 
-
 	/* Assert vcore_off signal */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
 
-	if (enable)
-		elpg_program0 |= (SSP0_ELPG_VCORE_DOWN|SSP1_ELPG_VCORE_DOWN);
-	else
-		elpg_program0 &= ~(SSP0_ELPG_VCORE_DOWN|SSP1_ELPG_VCORE_DOWN);
-
+	if (enable) {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_VCORE_DOWN;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_VCORE_DOWN;
+	} else {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_VCORE_DOWN;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_VCORE_DOWN;
+	}
 	writel(elpg_program0, tegra->padctl_base + ELPG_PROGRAM_0);
 }
 
