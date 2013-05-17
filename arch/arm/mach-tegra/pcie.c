@@ -723,18 +723,22 @@ static void __init tegra_pcie_hotplug_init(void)
 }
 #endif
 #endif
-static void tegra_pcie_attach(void)
+static int tegra_pcie_attach(void)
 {
+	int err = 0;
 #ifdef CONFIG_PM
-	tegra_pcie_resume(NULL);
+	err =  tegra_pcie_resume(NULL);
 #endif
+	return err;
 }
 
-static void tegra_pcie_detach(void)
+static int tegra_pcie_detach(void)
 {
+	int err = 0;
 #ifdef CONFIG_PM
-	tegra_pcie_suspend(NULL);
+	err =  tegra_pcie_suspend(NULL);
 #endif
+	return err;
 }
 
 static void __init work_hotplug_handler(struct work_struct *work)
@@ -1504,12 +1508,11 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 {
 	struct tegra_pcie_bus *bus;
 
-	list_for_each_entry(bus, &tegra_pcie.busses, list) {
+	list_for_each_entry(bus, &tegra_pcie.busses, list)
 		vunmap(bus->area->addr);
-	}
 	kfree(bus);
-	tegra_pcie_detach();
-	return 0;
+
+	return tegra_pcie_detach();
 }
 
 #ifdef CONFIG_PM
