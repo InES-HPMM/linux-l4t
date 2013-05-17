@@ -136,7 +136,16 @@
 #define AFI_INTR_EN_FPCI_TIMEOUT					(1 << 7)
 #define AFI_INTR_EN_PRSNT_SENSE					(1 << 8)
 
-#define AFI_PCIE_CONFIG							0x0f8
+#define AFI_PCIE_PME						0x0f0
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+#define AFI_PCIE_PME_TURN_OFF					0x10101
+#define AFI_PCIE_PME_ACK					0x40420
+#else
+#define AFI_PCIE_PME_TURN_OFF					0x101
+#define AFI_PCIE_PME_ACK					0x420
+#endif
+
+#define AFI_PCIE_CONFIG						0x0f8
 #define AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE			(1 << 1)
 #define AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE			(1 << 2)
 #define AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE			(1 << 3)
@@ -213,7 +222,8 @@
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
 
 #define NV_PCIE2_RP_PRIV_MISC					0x00000FE0
-#define PCIE2_RP_PRIV_MISC_PRSNT_MAP				(0xE << 0)
+#define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT			(0xE << 0)
+#define PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT			(0xF << 0)
 #define PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD		(0xF << 16)
 #define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		(1 << 23)
 #define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_THRESHOLD		(0xF << 24)
@@ -363,6 +373,10 @@ static bool msi_enable;
 /* this flag is used for enumeration by hotplug */
 /* when dock is not connected while system boot */
 static bool is_dock_conn_at_boot = true;
+/* used to identify if init is through boot or resume path */
+static bool is_resume_path;
+/* used to avoid successive hotplug disconnect or connect */
+static bool hotplug_event;
 
 static inline void afi_writel(u32 value, unsigned long offset)
 {
@@ -763,20 +777,47 @@ static void __init tegra_pcie_hotplug_init(void)
 static int tegra_pcie_attach(void)
 {
 	int err = 0;
+
+	if (!hotplug_event)
+		return err;
 #ifdef CONFIG_PM
 	err =  tegra_pcie_resume(NULL);
 #endif
+	hotplug_event = false;
 	return err;
 }
 
 static int tegra_pcie_detach(void)
 {
 	int err = 0;
+
+	if (hotplug_event)
+		return err;
 #ifdef CONFIG_PM
 	err =  tegra_pcie_suspend(NULL);
 #endif
+	hotplug_event = true;
 	return err;
 }
+
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+static void tegra_pcie_prsnt_map_override(bool prsnt)
+{
+	unsigned int data;
+
+	if (hotplug_event)
+		return;
+	/* currently only hotplug on root port 0 supported */
+	PR_FUNC_LINE;
+	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, 0);
+	data &= ~PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
+	if (prsnt)
+		data |= PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT;
+	else
+		data |= PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_ABSNT;
+	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, 0);
+}
+#endif
 
 static void __init work_hotplug_handler(struct work_struct *work)
 {
@@ -784,6 +825,7 @@ static void __init work_hotplug_handler(struct work_struct *work)
 		container_of(work, struct tegra_pcie_info, hotplug_detect);
 	int val;
 
+	PR_FUNC_LINE;
 	if (pcie_driver->plat_data->gpio == -1)
 		return;
 	val = gpio_get_value(pcie_driver->plat_data->gpio);
@@ -792,12 +834,16 @@ static void __init work_hotplug_handler(struct work_struct *work)
 		tegra_pcie_attach();
 	} else {
 		pr_info("Pcie Dock DisConnected\n");
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+		tegra_pcie_prsnt_map_override(false);
+#endif
 		tegra_pcie_detach();
 	}
 }
 
 static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
 {
+	PR_FUNC_LINE;
 	schedule_work(&tegra_pcie.hotplug_detect);
 	return IRQ_HANDLED;
 }
@@ -1142,7 +1188,6 @@ static int tegra_pcie_enable_regulators(void)
 
 	return 0;
 }
-#endif
 
 static int tegra_pcie_disable_regulators(void)
 {
@@ -1167,6 +1212,7 @@ static int tegra_pcie_disable_regulators(void)
 err_exit:
 	return err;
 }
+#endif
 
 static int tegra_pcie_power_regate(void)
 {
@@ -1209,6 +1255,47 @@ void tegra_pcie_unmap_resources(void)
 		tegra_pcie.regs = 0;
 	}
 }
+
+static void tegra_pcie_pme_turnoff(void)
+{
+	unsigned int data;
+
+	data = afi_readl(AFI_PCIE_PME);
+	data |= AFI_PCIE_PME_TURN_OFF;
+	afi_writel(data, AFI_PCIE_PME);
+	do {
+		data = afi_readl(AFI_PCIE_PME);
+	} while (!(data & AFI_PCIE_PME_ACK));
+}
+
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static int tegra_pcie_fpga_phy_init(void)
+{
+#define CLK_RST_BOND_OUT_REG		0x60006078
+#define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
+#define FPGA_GEN2_SPEED_SUPPORT		0x90000001
+	int val = 0;
+
+	PR_FUNC_LINE;
+	val = readl(IO_ADDRESS(CLK_RST_BOND_OUT_REG));
+	/* return if current netlist does not contain PCIE */
+	if (val & CLK_RST_BOND_OUT_REG_PCIE)
+		return -ENODEV;
+
+	/* Do reset for FPGA pcie phy */
+	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+	udelay(10);
+	afi_writel(AFI_WR_SCRATCH_0_DEFAULT_VAL, AFI_WR_SCRATCH_0);
+	udelay(10);
+	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
+
+	/* required for gen2 speed support on FPGA */
+	rp_writel(FPGA_GEN2_SPEED_SUPPORT, RP_VEND_XP_BIST, 0);
+
+	return 0;
+}
+#endif
+
 static int tegra_pcie_power_off(void);
 
 static int tegra_pcie_power_on(void)
@@ -1238,6 +1325,13 @@ static int tegra_pcie_power_on(void)
 		pr_err("PCIE: Failed to map resources\n");
 		goto err_exit;
 	}
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+	err = tegra_pcie_fpga_phy_init();
+	if (err) {
+		pr_err("PCIE: Failed to initialize FPGA Phy\n");
+		goto err_exit;
+	}
+#endif
 
 err_exit:
 	if (err)
@@ -1254,6 +1348,7 @@ static int tegra_pcie_power_off(void)
 		pr_debug("PCIE: Already powered off");
 		goto err_exit;
 	}
+	tegra_pcie_pme_turnoff();
 	tegra_pcie_unmap_resources();
 	if (tegra_pcie.pll_e)
 		clk_disable_unprepare(tegra_pcie.pll_e);
@@ -1262,8 +1357,11 @@ static int tegra_pcie_power_off(void)
 	if (err)
 		goto err_exit;
 
+#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 	err = tegra_pcie_disable_regulators();
-
+	if (err)
+		goto err_exit;
+#endif
 	tegra_pcie.pcie_power_enabled = 0;
 err_exit:
 	return err;
@@ -1399,7 +1497,8 @@ static void tegra_pcie_enable_clock_clamp(int index)
 	/* Power mangagement settings */
 	/* Enable clock clamping by default */
 	data = PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE |
-		PCIE2_RP_PRIV_MISC_PRSNT_MAP | PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD |
+		PCIE2_RP_PRIV_MISC_PRSNT_MAP_EP_PRSNT |
+		PCIE2_RP_PRIV_MISC_CTRL_CLK_CLAMP_THRESHOLD |
 		PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE;
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
 }
@@ -1462,38 +1561,10 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	tegra_pcie.num_ports++;
 	pp->index = index;
 	/* don't initialize root bus in resume path but boot path only */
-	if (!msi_enable)
+	if (!is_resume_path)
 		pp->root_bus_nr = -1;
 	memset(pp->res, 0, sizeof(pp->res));
 }
-
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-static int tegra_pcie_fpga_phy_init(void)
-{
-#define CLK_RST_BOND_OUT_REG		0x60006078
-#define CLK_RST_BOND_OUT_REG_PCIE	(1 << 6)
-#define FPGA_GEN2_SPEED_SUPPORT		0x90000001
-	int val = 0;
-
-	PR_FUNC_LINE;
-	val = readl(IO_ADDRESS(CLK_RST_BOND_OUT_REG));
-	/* return if current netlist does not contain PCIE */
-	if (val & CLK_RST_BOND_OUT_REG_PCIE)
-		return -ENODEV;
-
-	/* Do reset for FPGA pcie phy */
-	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
-	udelay(10);
-	afi_writel(AFI_WR_SCRATCH_0_DEFAULT_VAL, AFI_WR_SCRATCH_0);
-	udelay(10);
-	afi_writel(AFI_WR_SCRATCH_0_RESET_VAL, AFI_WR_SCRATCH_0);
-
-	/* required for gen2 speed support on FPGA */
-	rp_writel(FPGA_GEN2_SPEED_SUPPORT, RP_VEND_XP_BIST, 0);
-
-	return 0;
-}
-#endif
 
 static int tegra_pcie_change_link_speed(struct pci_dev *pdev, bool isGen2)
 {
@@ -1588,11 +1659,6 @@ static int __init tegra_pcie_init(void)
 	if (err)
 		return err;
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	err = tegra_pcie_fpga_phy_init();
-	if (err)
-		return err;
-#endif
 	err = tegra_pcie_enable_controller();
 	if (err)
 		return err;
@@ -1722,6 +1788,7 @@ static int tegra_pcie_resume(struct device *dev)
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 
+	is_resume_path = true;
 	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
 		ctrl_offset += (port * 8);
 		rp_offset = (rp_offset + 0x1000) * port;

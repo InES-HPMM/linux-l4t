@@ -50,7 +50,7 @@ static __initdata struct tegra_drive_pingroup_config bonaire_drive_pinmux[] = {
 
 /* !!!FIXME!!!! POPULATE THIS TABLE */
 static __initdata struct tegra_pingroup_config bonaire_pinmux[] = {
-	DEFAULT_PINMUX(ULPI_DATA0,      SPI3,            NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(ULPI_DATA0,      SPI3,            NORMAL,    NORMAL,   INPUT),
 	DEFAULT_PINMUX(ULPI_DATA1,      SPI3,            NORMAL,    TRISTATE,   INPUT),
 	DEFAULT_PINMUX(ULPI_DATA2,      ULPI,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(ULPI_DATA3,      ULPI,            NORMAL,    NORMAL,     INPUT),
