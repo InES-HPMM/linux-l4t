@@ -173,90 +173,90 @@ static struct kobj_attribute cluster_debug_attr =
 
 typedef enum
 {
-	ClusterAttr_Invalid = 0,
-	ClusterAttr_Active,
-	ClusterAttr_Immediate,
-	ClusterAttr_Force,
-	ClusterAttr_WakeMs,
+	CLUSTER_ATTR_INVALID = 0,
+	CLUSTER_ATTR_ACTIVE,
+	CLUSTER_ATTR_IMME,
+	CLUSTER_ATTR_FORCE,
+	CLUSTER_ATTR_WAKEMS,
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
-	ClusterAttr_PowerMode,
+	CLUSTER_ATTR_POWERMODE,
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	ClusterAttr_PowerGate,
+	CLUSTER_ATTR_POWERGATE,
 #endif
 #if DEBUG_CLUSTER_SWITCH
-	ClusterAttr_Debug
+	CLUSTER_ATTR_DEBUG
 #endif
-} ClusterAttr;
+} cpu_cluster_attr;
 
-static ClusterAttr GetClusterAttr(const char *name)
+static cpu_cluster_attr cpu_cluster_get_attr(const char *name)
 {
 	if (!strcmp(name, "active"))
-		return ClusterAttr_Active;
+		return CLUSTER_ATTR_ACTIVE;
 	if (!strcmp(name, "immediate"))
-		return ClusterAttr_Immediate;
+		return CLUSTER_ATTR_IMME;
 	if (!strcmp(name, "force"))
-		return ClusterAttr_Force;
+		return CLUSTER_ATTR_FORCE;
 	if (!strcmp(name, "wake_ms"))
-		return ClusterAttr_WakeMs;
+		return CLUSTER_ATTR_WAKEMS;
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
 	if (!strcmp(name, "power_mode"))
-		return ClusterAttr_PowerMode;
+		return CLUSTER_ATTR_POWERMODE;
 #endif
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	if (!strcmp(name, "power_gate"))
-		return ClusterAttr_PowerGate;
+		return CLUSTER_ATTR_POWERGATE;
 #endif
 #if DEBUG_CLUSTER_SWITCH
 	if (!strcmp(name, "debug"))
-		return ClusterAttr_Debug;
+		return CLUSTER_ATTR_DEBUG;
 #endif
-	TRACE_CLUSTER(("GetClusterAttr(%s): invalid\n", name));
-	return ClusterAttr_Invalid;
+	TRACE_CLUSTER(("cpu_cluster_get_attr(%s): invalid\n", name));
+	return CLUSTER_ATTR_INVALID;
 }
 
 static ssize_t sysfscluster_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	ClusterAttr type;
+	cpu_cluster_attr type;
 	ssize_t len;
 
 	TRACE_CLUSTER(("+sysfscluster_show\n"));
 
-	type = GetClusterAttr(attr->attr.name);
+	type = cpu_cluster_get_attr(attr->attr.name);
 	switch (type) {
-	case ClusterAttr_Active:
+	case CLUSTER_ATTR_ACTIVE:
 		len = sprintf(buf, "%s\n", is_lp_cluster() ? "LP" : "G");
 		break;
 
-	case ClusterAttr_Immediate:
+	case CLUSTER_ATTR_IMME:
 		len = sprintf(buf, "%d\n",
 			      ((flags & TEGRA_POWER_CLUSTER_IMMEDIATE) != 0));
 		break;
 
-	case ClusterAttr_Force:
+	case CLUSTER_ATTR_FORCE:
 		len = sprintf(buf, "%d\n",
 			      ((flags & TEGRA_POWER_CLUSTER_FORCE) != 0));
 		break;
 
-	case ClusterAttr_WakeMs:
+	case CLUSTER_ATTR_WAKEMS:
 		len = sprintf(buf, "%d\n", wake_ms);
 		break;
 
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
-	case ClusterAttr_PowerMode:
+	case CLUSTER_ATTR_POWERMODE:
 		len = sprintf(buf, "%d\n", power_mode);
 		break;
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	case ClusterAttr_PowerGate:
+	case CLUSTER_ATTR_POWERGATE:
 		len = sprintf(buf, "%s\n", decode_power_gate(power_gate));
 		break;
 #endif
 
 #if DEBUG_CLUSTER_SWITCH
-	case ClusterAttr_Debug:
+	case CLUSTER_ATTR_DEBUG:
 		len = sprintf(buf, "%d\n", tegra_cluster_debug);
 		break;
 #endif
@@ -273,7 +273,7 @@ static ssize_t sysfscluster_show(struct kobject *kobj,
 static ssize_t sysfscluster_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
-	ClusterAttr type;
+	cpu_cluster_attr type;
 	ssize_t ret = count--;
 	unsigned request;
 	int e;
@@ -297,12 +297,12 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		goto fail;
 	}
 
-	type = GetClusterAttr(attr->attr.name);
+	type = cpu_cluster_get_attr(attr->attr.name);
 
 	spin_lock(&cluster_lock);
 
 	switch (type) {
-	case ClusterAttr_Active:
+	case CLUSTER_ATTR_ACTIVE:
 		if (!strncasecmp(buf, "g", count)) {
 			flags &= ~TEGRA_POWER_CLUSTER_MASK;
 			flags |= TEGRA_POWER_CLUSTER_G;
@@ -339,7 +339,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			cpu_lp_clk : cpu_g_clk;
 		break;
 
-	case ClusterAttr_Immediate:
+	case CLUSTER_ATTR_IMME:
 		if ((count == 1) && (*buf == '0'))
 			flags &= ~TEGRA_POWER_CLUSTER_IMMEDIATE;
 		else if ((count == 1) && *buf == '1')
@@ -354,7 +354,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			(flags & TEGRA_POWER_CLUSTER_IMMEDIATE) ? '1' : '0'));
 		break;
 
-	case ClusterAttr_Force:
+	case CLUSTER_ATTR_FORCE:
 		if ((count == 1) && (*buf == '0'))
 			flags &= ~TEGRA_POWER_CLUSTER_FORCE;
 		else if ((count == 1) && (*buf == '1'))
@@ -369,7 +369,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 			(flags & TEGRA_POWER_CLUSTER_FORCE) ? '1' : '0'));
 		break;
 
-	case ClusterAttr_WakeMs:
+	case CLUSTER_ATTR_WAKEMS:
 		tmp = 0;
 		cnt = sscanf(buf, "%d\n", &tmp);
 		if ((cnt != 1) || (tmp < 0)) {
@@ -383,7 +383,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 		break;
 
 #if defined(CONFIG_PM_SLEEP) && SYSFS_CLUSTER_POWER_MODE
-	case ClusterAttr_PowerMode:
+	case CLUSTER_ATTR_POWERMODE:
 		if ((count == 1) && (*buf == '2'))
 			power_mode = 2;
 		else if ((count == 1) && *buf == '1')
@@ -399,7 +399,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 #endif
 
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
-	case ClusterAttr_PowerGate:
+	case CLUSTER_ATTR_POWERGATE:
 		if (!strncasecmp(buf, "crail", count))
 			power_gate = TEGRA_POWER_CLUSTER_PART_CRAIL;
 		else if (!strncasecmp(buf, "noncpu", count))
@@ -419,7 +419,7 @@ static ssize_t sysfscluster_store(struct kobject *kobj,
 #endif
 
 #if DEBUG_CLUSTER_SWITCH
-	case ClusterAttr_Debug:
+	case CLUSTER_ATTR_DEBUG:
 		if ((count == 1) && (*buf == '0'))
 			tegra_cluster_debug = 0;
 		else if ((count == 1) && (*buf == '1'))
