@@ -859,12 +859,17 @@ tegra_xhci_ss_wake_signal(struct tegra_xhci_hcd *tegra, bool enable)
 
 	/* Assert/Deassert clamp_en_early signals to SSP0/1 */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
-	if (enable)
-		elpg_program0 |= (SSP0_ELPG_CLAMP_EN_EARLY |
-				SSP1_ELPG_CLAMP_EN_EARLY);
-	else
-		elpg_program0 &= ~(SSP0_ELPG_CLAMP_EN_EARLY |
-				SSP1_ELPG_CLAMP_EN_EARLY);
+	if (enable) {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_CLAMP_EN_EARLY;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_CLAMP_EN_EARLY;
+	} else {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN_EARLY;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN_EARLY;
+	}
 	writel(elpg_program0, tegra->padctl_base + ELPG_PROGRAM_0);
 
 	/*
@@ -876,10 +881,17 @@ tegra_xhci_ss_wake_signal(struct tegra_xhci_hcd *tegra, bool enable)
 	/* Assert/Deassert clam_en signal */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
 
-	if (enable)
-		elpg_program0 |= (SSP0_ELPG_CLAMP_EN | SSP1_ELPG_CLAMP_EN);
-	else
-		elpg_program0 &= ~(SSP0_ELPG_CLAMP_EN | SSP1_ELPG_CLAMP_EN);
+	if (enable) {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_CLAMP_EN;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_CLAMP_EN;
+	} else {
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN;
+	}
 
 	writel(elpg_program0, tegra->padctl_base + ELPG_PROGRAM_0);
 
