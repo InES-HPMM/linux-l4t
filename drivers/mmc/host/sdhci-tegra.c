@@ -212,7 +212,7 @@ static struct freq_tuning_params tuning_params[TUNING_FREQ_COUNT] = {
 	[TUNING_LOW_FREQ] = {
 		.freq_hz = 82000000,
 		.nr_voltages = 1,
-		.voltages = {ULONG_MAX},
+		.voltages = {UINT_MAX},
 	},
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 	[TUNING_HIGH_FREQ] = {
@@ -224,7 +224,7 @@ static struct freq_tuning_params tuning_params[TUNING_FREQ_COUNT] = {
 	[TUNING_HIGH_FREQ] = {
 		.freq_hz = 156000000,
 		.nr_voltages = 2,
-		.voltages = {ULONG_MAX, 1100000},
+		.voltages = {UINT_MAX, 1100000},
 	},
 #endif
 };
