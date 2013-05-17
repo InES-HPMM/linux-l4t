@@ -803,22 +803,26 @@ tegra_xhci_ss_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
 {
 	u32 elpg_program0;
 
+	/* clear any event */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
 	elpg_program0 |= (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT);
-
 	writel(elpg_program0, tegra->padctl_base + ELPG_PROGRAM_0);
 
-	/* Enable ss wake interrupts */
+	/* enable ss wake interrupts */
 	elpg_program0 = readl(tegra->padctl_base + ELPG_PROGRAM_0);
 
 	if (enable) {
 		/* enable interrupts */
-		elpg_program0 |= (SS_PORT0_WAKE_INTERRUPT_ENABLE |
-				SS_PORT1_WAKE_INTERRUPT_ENABLE);
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SS_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SS_PORT1_WAKE_INTERRUPT_ENABLE;
 	} else {
 		/* disable interrupts */
-		elpg_program0 &= ~(SS_PORT0_WAKE_INTERRUPT_ENABLE |
-				SS_PORT1_WAKE_INTERRUPT_ENABLE);
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SS_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SS_PORT1_WAKE_INTERRUPT_ENABLE;
 	}
 	writel(elpg_program0, tegra->padctl_base + ELPG_PROGRAM_0);
 }
