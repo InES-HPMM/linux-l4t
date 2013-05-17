@@ -405,12 +405,12 @@ static inline bool dqs_preset(const struct tegra14_emc_table *next_timing,
 		       EMC_##reg##_##bit##_ENABLE)))   {		\
 			emc_writel(last_timing->burst_regs[EMC_##reg##_INDEX] \
 				   | EMC_##reg##_##bit##_ENABLE, EMC_##reg); \
-			pr_debug("dqs preset: presetting rx_ft_rec\n");	\
 			ret = true;					\
 		}							\
 	} while (0)
 
 	DQS_SET(XM2DQSPADCTRL2, RX_FT_REC);
+	DQS_SET(XM2DQSPADCTRL2, VREF_DQ);
 
 	return ret;
 }
