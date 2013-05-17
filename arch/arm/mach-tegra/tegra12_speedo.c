@@ -37,6 +37,7 @@ static int threshold_index;
 
 static int cpu_process_id;
 static int core_process_id;
+static int gpu_process_id;
 static int cpu_speedo_id;
 static int cpu_speedo_value;
 static int soc_speedo_id;
@@ -51,6 +52,7 @@ void tegra_init_speedo_data(void)
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 	cpu_process_id = -1;
 	core_process_id = -1;
+	gpu_process_id = -1;
 	cpu_speedo_id = -1;
 	soc_speedo_id = -1;
 	gpu_speedo_id = -1;
@@ -67,6 +69,11 @@ int tegra_cpu_process_id(void)
 int tegra_core_process_id(void)
 {
 	return core_process_id;
+}
+
+int tegra_gpu_process_id(void)
+{
+	return gpu_process_id;
 }
 
 int tegra_cpu_speedo_id(void)

@@ -2,7 +2,8 @@
  * tegra_asoc_utils.c - Harmony machine ASoC driver
  *
  * Author: Stephen Warren <swarren@nvidia.com>
- * Copyright (c) 2010-12, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
@@ -36,6 +37,9 @@
 #endif
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #include <mach/pinmux-t11.h>
+#endif
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#include <mach/pinmux-t12.h>
 #endif
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #include <mach/pinmux-t14.h>

@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/gpio-names.h
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (C) 2011-2012 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
@@ -279,7 +279,7 @@
 #define TEGRA_GPIO_PFF4		252
 #define TEGRA_GPIO_PFF5		253
 #define TEGRA_GPIO_PFF6		254
-#define TEGRA_GPIO_PFF7		256
+#define TEGRA_GPIO_PFF7		255
 #endif
 #define TEGRA_MAX_GPIO		TEGRA_NR_GPIOS
 #endif
