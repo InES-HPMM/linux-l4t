@@ -49,8 +49,10 @@
 #define TEGRA_BB_STATUS_MASK  (0xffff)
 #define TEGRA_BB_IPC_COLDBOOT  (0x0001)
 #define TEGRA_BB_IPC_READY  (0x0005)
+#define TEGRA_BB_BOOT_RESTART_FW_REQ	(0x0003)
 
 #define BBC_MC_MIN_FREQ		600000000
+#define BBC_MC_MAX_FREQ		700000000
 
 #define APBDEV_PMC_EVENT_COUNTER_0	(0x44c)
 #define APBDEV_PMC_EVENT_COUNTER_0_EN_MASK	(1<<20)
@@ -101,6 +103,7 @@
 enum bbc_pm_state {
 	BBC_REMOVE_FLOOR = 1,
 	BBC_SET_FLOOR,
+	BBC_CRASHDUMP_FLOOR,
 };
 
 struct tegra_bb {
@@ -289,6 +292,19 @@ static int tegra_bb_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		(unsigned int)vma->vm_pgoff);
 	vmf = vmf;
 	return VM_FAULT_NOPAGE;
+}
+
+static inline void tegra_bb_enable_mem_req_soon(void)
+{
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+	int val = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+
+	/* AP2BB_MSC_STS[3] is to mask or unmask
+	 * mem_req_soon interrupt to interrupt controller */
+	val = val | (0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT);
+	writel(val, fctrl + FLOW_CTLR_IPC_FLOW_IPC_SET_0);
+
+	pr_debug("%s: fctrl ipc_sts = %x\n", __func__, val);
 }
 
 static int tegra_bb_map(struct file *filp, struct vm_area_struct *vma)
@@ -577,6 +593,9 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 
 			regulator_status = false;
 		}
+
+		bb->state = BBC_REMOVE_FLOOR;
+		queue_work(bb->workqueue, &bb->work);
 	} else {
 		/* power on bbc rails */
 		if (bb->vdd_bb_core && bb->vdd_bb_pll &&
@@ -589,8 +608,9 @@ static ssize_t store_tegra_bb_reset(struct device *dev,
 			regulator_set_voltage(bb->vdd_bb_pll, 1100000,
 							1100000);
 			regulator_enable(bb->vdd_bb_pll);
-
 			regulator_status = true;
+
+			tegra_bb_enable_mem_req_soon();
 		}
 
 		writel(1 << APBDEV_PMC_IPC_PMC_IPC_SET_0_AP2BB_RESET_SHIFT |
@@ -766,6 +786,13 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 		pr_debug("%s: notify sysfs status %d\n", __func__, sts);
 		sysfs_notify_dirent(bb->sd);
 	}
+
+	if (sts == TEGRA_BB_BOOT_RESTART_FW_REQ) {
+		pr_debug("%s: boot_restart_fw_req\n", __func__);
+		bb->state = BBC_CRASHDUMP_FLOOR;
+		queue_work(bb->workqueue, &bb->work);
+	}
+
 	bb->status = sts;
 	return IRQ_HANDLED;
 }
@@ -792,19 +819,6 @@ static irqreturn_t tegra_bb_mem_req_soon(int irq, void *data)
 	spin_unlock(&bb->lock);
 
 	return IRQ_HANDLED;
-}
-
-static inline void tegra_bb_enable_mem_req_soon(void)
-{
-	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
-	int val = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-
-	/* AP2BB_MSC_STS[3] is to mask or unmask
-	 * mem_req_soon interrupt to interrupt controller */
-	val = val | (0x8 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_AP2BB_MSC_STS_SHIFT);
-	writel(val, fctrl + FLOW_CTLR_IPC_FLOW_IPC_SET_0);
-
-	pr_debug("%s: fctrl ipc_sts = %x\n", __func__, val);
 }
 
 static inline void pmc_32kwritel(u32 val, unsigned long offs)
@@ -930,6 +944,19 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		/* reenable mem_req_soon irq */
 		tegra_bb_enable_mem_req_soon();
 		irq_set_irq_type(bb->mem_req_soon, IRQF_TRIGGER_HIGH);
+		return;
+
+	case BBC_CRASHDUMP_FLOOR:
+		/* BBC is crashed and ready to send coredump.
+		 * do not store prev_state */
+		spin_unlock_irqrestore(&bb->lock, flags);
+
+		pr_info("%s: bbc crash detected, set EMC to max\n", __func__);
+		if (bb->prev_state != BBC_SET_FLOOR)
+			clk_prepare_enable(bb->emc_clk);
+
+		tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
+		clk_set_rate(bb->emc_clk, BBC_MC_MAX_FREQ);
 		return;
 	default:
 		spin_unlock_irqrestore(&bb->lock, flags);
