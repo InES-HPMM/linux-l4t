@@ -1219,7 +1219,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	struct nvavp_pushbuffer_submit_hdr hdr;
 	u32 *cmdbuf_data;
-	struct nvmap_handle *cmdbuf_handle = NULL;
+	ulong cmdbuf_handle_id;
 	struct nvmap_handle_ref *cmdbuf_dupe;
 	int ret = 0, i;
 	unsigned long phys_addr;
@@ -1245,9 +1245,9 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return -EFAULT;
 	}
 
-	cmdbuf_handle = nvmap_get_handle_user_id(clientctx->nvmap,
+	cmdbuf_handle_id = nvmap_get_handle_user_id(clientctx->nvmap,
 						hdr.cmdbuf.mem);
-	if (cmdbuf_handle == NULL) {
+	if (cmdbuf_handle_id == 0) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmd buffer handle %08x\n", hdr.cmdbuf.mem);
 		return -EPERM;
@@ -1255,7 +1255,7 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 
 	cmdbuf_dupe = nvmap_duplicate_handle_user_id(clientctx->nvmap,
 						hdr.cmdbuf.mem);
-	nvmap_handle_put(cmdbuf_handle);
+	nvmap_put_handle_user_id(cmdbuf_handle_id);
 
 	if (IS_ERR(cmdbuf_dupe)) {
 		dev_err(&nvavp->nvhost_dev->dev,
