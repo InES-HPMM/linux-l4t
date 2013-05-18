@@ -22,13 +22,15 @@
 #ifndef _MACH_TERA_PM_IRQ_H_
 #define _MACH_TERA_PM_IRQ_H_
 
+#define PMC_MAX_WAKE_COUNT 64
+
 #ifdef CONFIG_PM_SLEEP
 u64 tegra_read_pmc_wake_status(void);
 int tegra_pm_irq_set_wake(int wake, int enable);
 int tegra_pm_irq_set_wake_type(int wake, int flow_type);
 bool tegra_pm_irq_lp0_allowed(void);
 int tegra_gpio_to_wake(int gpio);
-int tegra_irq_to_wake(int irq);
+void tegra_irq_to_wake(int irq, int *wak_list, int *wak_size);
 int tegra_wake_to_irq(int wake);
 int tegra_disable_wake_source(int wake);
 #else
@@ -40,9 +42,11 @@ static inline int tegra_gpio_to_wake(int gpio)
 {
 	return 0;
 }
-static inline int tegra_irq_to_wake(int irq)
+static inline
+void tegra_irq_to_wake(int irq, int *wak_list, int *wak_size)
 {
-	return 0;
+	*wak_size = 0;
+	return;
 }
 static inline int tegra_disable_wake_source(int wake)
 {

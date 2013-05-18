@@ -235,18 +235,20 @@ void tegra_set_usb_wake_source(void)
 	}
 }
 
-int tegra_irq_to_wake(int irq)
+void tegra_irq_to_wake(int irq, int *wak_list, int *wak_size)
 {
 	int i;
-	int ret = -EINVAL;
 
+	*wak_size = 0;
 	for (i = 0; i < ARRAY_SIZE(tegra_wake_event_irq); i++) {
 		if (tegra_wake_event_irq[i] == irq) {
 			pr_info("Wake%d for irq=%d\n", i, irq);
-			ret = i;
-			goto out;
+			wak_list[*wak_size] = i;
+			*wak_size = *wak_size + 1;
 		}
 	}
+	if (*wak_size)
+		goto out;
 
 	/* The gpio set_wake code bubbles the set_wake call up to the irq
 	 * set_wake code. This insures that the nested irq set_wake call
@@ -261,11 +263,12 @@ int tegra_irq_to_wake(int irq)
 
 	if (tegra_gpio_get_bank_int_nr(tegra_gpio_wakes[last_gpio]) == irq) {
 		pr_info("gpio bank wake found: wake%d for irq=%d\n", i, irq);
-		ret = last_gpio;
+		wak_list[*wak_size] = last_gpio;
+		*wak_size = 1;
 	}
 
 out:
-	return ret;
+	return;
 }
 
 int tegra_wake_to_irq(int wake)

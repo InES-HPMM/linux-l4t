@@ -4,17 +4,19 @@
  * Author:
  *	Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2012, NVIDIA Corporation
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -156,9 +158,24 @@ static int tegra_retrigger(struct irq_data *d)
 
 static int tegra_set_type(struct irq_data *d, unsigned int flow_type)
 {
-	int wake = tegra_irq_to_wake(d->irq);
+	int wake_size;
+	int wake_list[PMC_MAX_WAKE_COUNT];
+	int i;
+	int err = 0;
+	int ret;
 
-	return tegra_pm_irq_set_wake_type(wake, flow_type);
+	tegra_irq_to_wake(d->irq, wake_list, &wake_size);
+
+	for (i = 0; i < wake_size; i++) {
+		ret = tegra_pm_irq_set_wake_type(wake_list[i], flow_type);
+		if (ret < 0) {
+			pr_err("Set lp0 wake type=%d fail for irq=%d, wake%d ret=%d\n",
+				flow_type, d->irq, wake_list[i], ret);
+			if (!err)
+				err = ret;
+		}
+	}
+	return err;
 }
 
 
@@ -169,14 +186,25 @@ static int tegra_set_type(struct irq_data *d, unsigned int flow_type)
  */
 static int tegra_set_wake(struct irq_data *d, unsigned int enable)
 {
-	int wake = tegra_irq_to_wake(d->irq);
 	int ret;
+	int wake_size;
+	int wake_list[PMC_MAX_WAKE_COUNT];
+	int i;
+	int err = 0;
 
-	/* pmc lp0 wake enable for non-gpio wake sources */
-	ret = tegra_pm_irq_set_wake(wake, enable);
-	if (ret)
-		pr_err("Failed lp0 wake %s for irq=%d\n",
-			(enable ? "enable" : "disable"), d->irq);
+	tegra_irq_to_wake(d->irq, wake_list, &wake_size);
+
+	for (i = 0; i < wake_size; i++) {
+		/* pmc lp0 wake enable for non-gpio wake sources */
+		ret = tegra_pm_irq_set_wake(wake_list[i], enable);
+		if (ret < 0) {
+			pr_err("Failed lp0 wake %s for irq=%d, wake%d ret=%d\n",
+				(enable ? "enable" : "disable"), d->irq,
+				wake_list[i], ret);
+			if (!err)
+				err = ret;
+		}
+	}
 
 	/* lp1 wake enable for wake sources */
 	ret = tegra_update_lp1_irq_wake(d->irq, enable);
