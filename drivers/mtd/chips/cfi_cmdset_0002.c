@@ -365,8 +365,8 @@ static void fixup_msp14lv320(struct mtd_info *mtd)
 	struct map_info *map = mtd->priv;
 	struct cfi_private *cfi = map->fldrv_priv;
 	cfi->cfiq->MaxBufWriteSize = 8;
-	cfi->cfiq->WordWriteTimeoutTyp = 9;
-	cfi->cfiq->BufWriteTimeoutTyp = 9;
+	cfi->cfiq->WordWriteTimeoutTyp = 10;
+	cfi->cfiq->BufWriteTimeoutTyp = 10;
 	cfi->cfiq->BlockEraseTimeoutTyp = 12;
 	mtd->_write = cfi_amdstd_write_buffers;
 }
