@@ -59,6 +59,16 @@ struct imx135_info {
 
 #define IMX135_4208x3120_HDR
 
+#define MAX_BUFFER_SIZE 32
+#define IMX135_FRAME_LENGTH_ADDR_MSB 0x0340
+#define IMX135_FRAME_LENGTH_ADDR_LSB 0x0341
+#define IMX135_COARSE_TIME_ADDR_MSB 0x0202
+#define IMX135_COARSE_TIME_ADDR_LSB 0x0203
+#define IMX135_COARSE_TIME_SHORT_ADDR_MSB 0x0230
+#define IMX135_COARSE_TIME_SHORT_ADDR_LSB 0x0231
+#define IMX135_GAIN_ADDR 0x0205
+#define IMX135_GAIN_SHORT_ADDR 0x0233
+
 #ifdef IMX135_4208x3120_HDR
 /* HDR */
 static struct imx135_reg mode_4208x3120[] = {
@@ -1623,41 +1633,41 @@ msleep_range(unsigned int delay_base)
 static inline void
 imx135_get_frame_length_regs(struct imx135_reg *regs, u32 frame_length)
 {
-	regs->addr = 0x0340;
+	regs->addr = IMX135_FRAME_LENGTH_ADDR_MSB;
 	regs->val = (frame_length >> 8) & 0xff;
-	(regs + 1)->addr = 0x0341;
+	(regs + 1)->addr = IMX135_FRAME_LENGTH_ADDR_LSB;
 	(regs + 1)->val = (frame_length) & 0xff;
 }
 
 static inline void
 imx135_get_coarse_time_regs(struct imx135_reg *regs, u32 coarse_time)
 {
-	regs->addr = 0x202;
+	regs->addr = IMX135_COARSE_TIME_ADDR_MSB;
 	regs->val = (coarse_time >> 8) & 0xff;
-	(regs + 1)->addr = 0x203;
+	(regs + 1)->addr = IMX135_COARSE_TIME_ADDR_LSB;
 	(regs + 1)->val = (coarse_time) & 0xff;
 }
 
 static inline void
 imx135_get_coarse_time_short_regs(struct imx135_reg *regs, u32 coarse_time)
 {
-	regs->addr = 0x230;
+	regs->addr = IMX135_COARSE_TIME_SHORT_ADDR_MSB;
 	regs->val = (coarse_time >> 8) & 0xff;
-	(regs + 1)->addr = 0x231;
+	(regs + 1)->addr = IMX135_COARSE_TIME_SHORT_ADDR_LSB;
 	(regs + 1)->val = (coarse_time) & 0xff;
 }
 
 static inline void
 imx135_get_gain_reg(struct imx135_reg *regs, u16 gain)
 {
-	regs->addr = 0x205;
+	regs->addr = IMX135_GAIN_ADDR;
 	regs->val = gain;
 }
 
 static inline void
 imx135_get_gain_short_reg(struct imx135_reg *regs, u16 gain)
 {
-	regs->addr = 0x233;
+	regs->addr = IMX135_GAIN_SHORT_ADDR;
 	regs->val = gain;
 }
 
@@ -2016,7 +2026,7 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 {
 	int ret;
 	int count = 0;
-	bool groupHoldEnabled = false;
+	bool group_hold_enabled = false;
 	struct imx135_hdr values;
 
 	values.coarse_time_long = ae->coarse_time;
@@ -2029,9 +2039,9 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 	if (ae->frame_length_enable)
 		count++;
 	if (count >= 2)
-		groupHoldEnabled = true;
+		group_hold_enabled = true;
 
-	if (groupHoldEnabled) {
+	if (group_hold_enabled) {
 		ret = imx135_write_reg(info->i2c_client, 0x104, 0x1);
 		if (ret)
 			return ret;
@@ -2044,7 +2054,7 @@ imx135_set_group_hold(struct imx135_info *info, struct imx135_ae *ae)
 	if (ae->frame_length_enable)
 		imx135_set_frame_length(info, ae->frame_length, false);
 
-	if (groupHoldEnabled) {
+	if (group_hold_enabled) {
 		ret = imx135_write_reg(info->i2c_client, 0x104, 0x0);
 		if (ret)
 			return ret;
@@ -2068,9 +2078,8 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 
 	ret |= imx135_write_reg(info->i2c_client, 0x3B02, 0x00);
 	ret |= imx135_write_reg(info->i2c_client, 0x3B00, 0x01);
-	for (i = 0; i < 8 ; i++) {
-		ret |= imx135_read_reg(info->i2c_client,
-			0x3B24 + i, &bak);
+	for (i = 0; i < 9 ; i++) {
+		ret |= imx135_read_reg(info->i2c_client, 0x3B24 + i, &bak);
 		info->sensor_data.fuse_id[i] = bak;
 	}
 
@@ -2243,7 +2252,7 @@ static ssize_t imx135_debugfs_write(
 			((struct seq_file *)file->private_data)->private;
 	struct i2c_client *i2c_client = dev->i2c_client;
 	int ret = 0;
-	char buffer[24];
+	char buffer[MAX_BUFFER_SIZE];
 	u32 address;
 	u32 data;
 	u8 readback;
@@ -2315,8 +2324,7 @@ static void imx135_remove_debugfs(struct imx135_info *dev)
 
 	dev_dbg(&i2c_client->dev, "%s: ++\n", __func__);
 
-	if (dev->debugdir)
-		debugfs_remove_recursive(dev->debugdir);
+	debugfs_remove_recursive(dev->debugdir);
 	dev->debugdir = NULL;
 }
 
