@@ -104,8 +104,8 @@
 #define TUNING_VOLTAGES_COUNT	2
 
 #define TUNING_RETRIES	1
-#define SDMMC_AHB_MAX_FREQ	80000000
-#define SDMMC_EMC_MAX_FREQ	100000000
+#define SDMMC_AHB_MAX_FREQ	150000000
+#define SDMMC_EMC_MAX_FREQ	150000000
 
 static unsigned int uhs_max_freq_MHz[] = {
 	[MMC_TIMING_UHS_SDR50] = 100,
@@ -2395,22 +2395,19 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	if (rc != 0)
 		goto err_clk_put;
 
-	if (!strcmp(dev_name(mmc_dev(host->mmc)), "sdhci-tegra.3")) {
-		tegra_host->emc_clk = clk_get(mmc_dev(host->mmc), "emc");
-		if (IS_ERR(tegra_host->emc_clk)) {
-			dev_err(mmc_dev(host->mmc), "Can't get emc clk\n");
-			rc = PTR_ERR(tegra_host->emc_clk);
-			goto err_clk_put;
-		}
+	tegra_host->emc_clk = devm_clk_get(mmc_dev(host->mmc), "emc");
+	if (IS_ERR_OR_NULL(tegra_host->emc_clk)) {
+		dev_err(mmc_dev(host->mmc), "Can't get emc clk\n");
+		tegra_host->emc_clk = NULL;
+	} else {
 		tegra_host->emc_max_clk =
 			clk_round_rate(tegra_host->emc_clk, ULONG_MAX);
 		clk_set_rate(tegra_host->emc_clk, SDMMC_EMC_MAX_FREQ);
 	}
 
-	tegra_host->sclk = clk_get(mmc_dev(host->mmc), "sclk");
+	tegra_host->sclk = devm_clk_get(mmc_dev(host->mmc), "sclk");
 	if (IS_ERR_OR_NULL(tegra_host->sclk)) {
 		dev_err(mmc_dev(host->mmc), "Can't get sclk clock\n");
-		clk_put(tegra_host->sclk);
 		tegra_host->sclk = NULL;
 	} else {
 		clk_set_rate(tegra_host->sclk, SDMMC_AHB_MAX_FREQ);
@@ -2505,7 +2502,6 @@ err_cd_irq_req:
 	if (gpio_is_valid(plat->cd_gpio))
 		gpio_free(plat->cd_gpio);
 err_add_host:
-	clk_put(tegra_host->emc_clk);
 	clk_disable_unprepare(pltfm_host->clk);
 	pm_runtime_put_sync(&pdev->dev);
 err_clk_put:
@@ -2564,16 +2560,10 @@ static int sdhci_tegra_remove(struct platform_device *pdev)
 	}
 	clk_put(pltfm_host->clk);
 
-	if (tegra_host->emc_clk) {
-		if (tegra_host->is_sdmmc_emc_clk_on)
-			clk_disable_unprepare(tegra_host->emc_clk);
-		clk_put(tegra_host->emc_clk);
-	}
-	if (tegra_host->sclk) {
-		if (tegra_host->is_sdmmc_sclk_on)
-			clk_disable_unprepare(tegra_host->sclk);
-		clk_put(tegra_host->sclk);
-	}
+	if (tegra_host->emc_clk && tegra_host->is_sdmmc_emc_clk_on)
+		clk_disable_unprepare(tegra_host->emc_clk);
+	if (tegra_host->sclk && tegra_host->is_sdmmc_sclk_on)
+		clk_disable_unprepare(tegra_host->sclk);
 	if (plat->power_off_rail)
 		unregister_reboot_notifier(&tegra_host->reboot_notify);
 
