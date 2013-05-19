@@ -7009,8 +7009,9 @@ struct clk tegra_list_clks[] = {
 	SHARED_CLK("battery.cbus", "battery_edp",	"gpu",	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 	SHARED_CLK("cap.profile.cbus", "profile.cbus",	NULL,	&tegra_clk_cbus, NULL,  0, SHARED_CEILING),
 #endif
-	SHARED_CLK("nv_host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, 0,  0, 0),
-	SHARED_CLK("vi_host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, 0,  0, 0),
+	SHARED_CLK("nv.host1x",	"tegra_host1x",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
+	SHARED_CLK("vi.host1x",	"tegra_vi",		"host1x", &tegra_clk_host1x, NULL,  0, 0),
+	SHARED_CLK("override.host1x", "override.host1x", NULL,    &tegra_clk_host1x, NULL,  0, SHARED_OVERRIDE),
 };
 
 
