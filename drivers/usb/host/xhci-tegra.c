@@ -34,6 +34,7 @@
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/pm_domains.h>
+#include <mach/mc.h>
 
 #include "../../../arch/arm/mach-tegra/iomap.h" /* HACK -- remove */
 #include "xhci-tegra.h"
@@ -537,10 +538,17 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 	struct platform_device *pdev = tegra->pdev;
 	int err = 0;
 
+	tegra->emc_clk = devm_clk_get(&pdev->dev, "emc");
+	if (IS_ERR(tegra->emc_clk)) {
+		dev_err(&pdev->dev, "Failed to get xusb.emc clock\n");
+		return PTR_ERR(tegra->emc_clk);
+	}
+
 	tegra->pll_re_vco_clk = devm_clk_get(&pdev->dev, "pll_re_vco");
 	if (IS_ERR(tegra->pll_re_vco_clk)) {
 		dev_err(&pdev->dev, "Failed to get refPLLE clock\n");
-		return PTR_ERR(tegra->pll_re_vco_clk);
+		err = PTR_ERR(tegra->pll_re_vco_clk);
+		goto get_emc_clk_failed;
 	}
 
 	/* get the clock handle of 120MHz clock source */
@@ -601,7 +609,16 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto eanble_ss_clk_failed;
 	}
 
+	err = clk_enable(tegra->emc_clk);
+	if (err) {
+		dev_err(&pdev->dev, "Failed to enable xusb.emc clk\n");
+		goto eanble_emc_clk_failed;
+	}
+
 	return 0;
+
+eanble_emc_clk_failed:
+	clk_disable(tegra->ss_clk);
 
 eanble_ss_clk_failed:
 	clk_disable(tegra->host_clk);
@@ -626,6 +643,9 @@ clk_get_clk_m_failed:
 
 get_pll_u_480M_failed:
 	tegra->pll_re_vco_clk = NULL;
+
+get_emc_clk_failed:
+	tegra->emc_clk = NULL;
 
 	return err;
 }
@@ -1524,6 +1544,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	tegra->host_pwr_gated = true;
 
 	clk_disable(tegra->pll_re_vco_clk);
+	clk_disable(tegra->emc_clk);
 	/* set port ownership to SNPS */
 	tegra_xhci_release_port_ownership(tegra, true);
 
@@ -1760,6 +1781,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	if (!tegra->hc_in_elpg)
 		return 0;
 
+	clk_enable(tegra->emc_clk);
 	clk_enable(tegra->pll_re_vco_clk);
 	/* Step 2: Enable clock to host partition */
 	clk_enable(tegra->host_clk);
@@ -1909,6 +1931,8 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	struct tegra_xhci_hcd *tegra = container_of(work, struct tegra_xhci_hcd,
 					mbox_work);
 	struct xhci_hcd *xhci = tegra->xhci;
+	unsigned int freq_khz;
+	bool send_ack_to_fw = true;
 
 	mutex_lock(&tegra->mbox_lock);
 
@@ -1957,17 +1981,14 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 				__func__);
 		goto send_sw_response;
 	case MBOX_CMD_SET_BW:
-		/* make sure mem bandwidth
-		 * is requested in MB/s
-		 */
-		ret = tegra_xusb_request_clk_rate(
-				tegra,
-				tegra->emc_clk,
-				tegra->cmd_data,
-				&sw_resp);
-		if (ret)
-			xhci_err(xhci, "%s: could not set required mem bw.\n",
-				__func__);
+		/* fw sends BW request in MByte/sec */
+		freq_khz = tegra_emc_bw_to_freq_req(tegra->cmd_data << 10);
+		clk_set_rate(tegra->emc_clk, freq_khz * 1000);
+
+		/* clear mbox owner as ACK will not be sent for this request */
+		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
+		send_ack_to_fw = false;
+
 		goto send_sw_response;
 	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
 		tegra_xhci_save_dfe_ctle_context(tegra);
@@ -1990,11 +2011,12 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	return;
 
 send_sw_response:
-	writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
-
-	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-	cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
-	writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	if (send_ack_to_fw) {
+		writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
+		cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+		cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
+		writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	}
 
 	mutex_unlock(&tegra->mbox_lock);
 }
