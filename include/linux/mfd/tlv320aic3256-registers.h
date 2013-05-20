@@ -191,6 +191,17 @@
 /*HPR Driver Gain*/
 #define	AIC3256_HPR_GAIN			MAKE_REG(1, 17)
 
+/*HPL Driver Mute Control*/
+#define AIC3256_HPL_MUTE_CTRL			MAKE_REG(1, 16)
+/*HPR Driver Mute Control*/
+#define AIC3256_HPR_MUTE_CTRL			MAKE_REG(1, 17)
+/*HP Driver Mute Mask*/
+#define AIC3256_HP_MUTE_MASK			(1 << 6)
+/*HP Driver Mute Enable*/
+#define AIC3256_HP_MUTE_ENABLE			(1 << 6)
+/*HP Driver Mute Disable*/
+#define AIC3256_HP_MUTE_DISABLE			(0 << 6)
+
 #ifndef AIC3253_CODEC_SUPPORT
 /*LOL Driver Gain*/
 #define	AIC3256_LOL_GAIN			MAKE_REG(1, 18)

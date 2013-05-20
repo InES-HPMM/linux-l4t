@@ -463,7 +463,8 @@ static const struct snd_soc_dapm_widget aic325x_dapm_widgets[] = {
 
 	/* dapm widget for Left Head phone Power */
 	SND_SOC_DAPM_PGA_E("HPL PGA", AIC3256_OUT_PWR_CTRL, 5, 0, NULL, 0,
-				aic325x_hp_event, SND_SOC_DAPM_PRE_PMU),
+				aic325x_hp_event, SND_SOC_DAPM_PRE_PMU |
+				SND_SOC_DAPM_PRE_PMD),
 
 	/* dapm widget (path domain) for Left Line-out Output Mixer */
 	SND_SOC_DAPM_MIXER("LOL Output Mixer", SND_SOC_NOPM, 0, 0,
@@ -477,7 +478,8 @@ static const struct snd_soc_dapm_widget aic325x_dapm_widgets[] = {
 
 	/* dapm widget for Right Head phone Power */
 	SND_SOC_DAPM_PGA_E("HPR PGA", AIC3256_OUT_PWR_CTRL, 4, 0, NULL, 0,
-				aic325x_hp_event, SND_SOC_DAPM_POST_PMU),
+				aic325x_hp_event, SND_SOC_DAPM_POST_PMU |
+				SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
 
 	/* dapm widget for (path domain) Right Line-out Output Mixer */
 	SND_SOC_DAPM_MIXER("LOR Output Mixer", SND_SOC_NOPM, 0, 0,
@@ -919,6 +921,39 @@ static int aic325x_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, AIC3256_CM_CTRL_REG,
 					GCHP_HPL_STATUS, 0x0);
 	}
+
+	/* UnMute HP when HP powerup */
+	if (event & SND_SOC_DAPM_PRE_PMU) {
+		/* HPL */
+		if (w->shift == 5) {
+			snd_soc_update_bits(codec, AIC3256_HPL_MUTE_CTRL,
+						AIC3256_HP_MUTE_MASK,
+						AIC3256_HP_MUTE_DISABLE);
+		}
+		/* HPR */
+		if (w->shift == 4) {
+			snd_soc_update_bits(codec, AIC3256_HPR_MUTE_CTRL,
+						AIC3256_HP_MUTE_MASK,
+						AIC3256_HP_MUTE_DISABLE);
+		}
+	}
+
+	/* Mute HP when power down */
+	if (event & SND_SOC_DAPM_PRE_PMD) {
+		/* HPL */
+		if (w->shift == 5) {
+			snd_soc_update_bits(codec, AIC3256_HPL_MUTE_CTRL,
+						AIC3256_HP_MUTE_MASK,
+						AIC3256_HP_MUTE_ENABLE);
+		}
+		/* HPR */
+		if (w->shift == 4) {
+			snd_soc_update_bits(codec, AIC3256_HPR_MUTE_CTRL,
+						AIC3256_HP_MUTE_MASK,
+						AIC3256_HP_MUTE_ENABLE);
+		}
+	}
+
 	/* Wait for HP power on */
 	if (event & SND_SOC_DAPM_POST_PMU) {
 
