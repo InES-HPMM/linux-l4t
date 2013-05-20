@@ -2887,6 +2887,25 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	setup_timer(&boost_timer, tegra_udc_set_cpu_freq_normal, 0);
 #endif
 
+#ifdef CONFIG_EXTCON
+	/* External connector */
+	udc->edev = kzalloc(sizeof(struct extcon_dev), GFP_KERNEL);
+	if (!udc->edev) {
+		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
+		err = -ENOMEM;
+		goto err_del_udc;
+	}
+
+	udc->edev->name = driver_name;
+	udc->edev->supported_cable = (const char **) tegra_udc_extcon_cable;
+	err = extcon_dev_register(udc->edev, &pdev->dev);
+	if (err) {
+		dev_err(&pdev->dev, "failed to register extcon device\n");
+		kfree(udc->edev);
+		udc->edev = NULL;
+	}
+#endif
+
 	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
 	INIT_DELAYED_WORK(&udc->non_std_charger_work,
@@ -2923,23 +2942,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		tegra_usb_phy_power_off(udc->phy);
 #endif
 
-#ifdef CONFIG_EXTCON
-	/* External connector */
-	udc->edev = kzalloc(sizeof(struct extcon_dev), GFP_KERNEL);
-	if (!udc->edev) {
-		dev_err(&pdev->dev, "failed to allocate memory for extcon\n");
-		err = -ENOMEM;
-		goto err_del_udc;
-	}
-	udc->edev->name = driver_name;
-	udc->edev->supported_cable = (const char **) tegra_udc_extcon_cable;
-	err = extcon_dev_register(udc->edev, &pdev->dev);
-	if (err) {
-		dev_err(&pdev->dev, "failed to register extcon device\n");
-		kfree(udc->edev);
-		udc->edev = NULL;
-	}
-#endif
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
