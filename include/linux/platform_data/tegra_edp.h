@@ -43,6 +43,7 @@ struct tegra_sysedp_platform_data {
 	unsigned int cpufreq_lim_size;
 	struct tegra_sysedp_corecap *corecap;
 	unsigned int corecap_size;
+	unsigned int core_gain;
 	unsigned int init_req_watts;
 };
 
