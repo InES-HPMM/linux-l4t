@@ -92,6 +92,10 @@
 #define MPU_COMPASS_BUS_NUM     0
 #define MPU_COMPASS_ORIENTATION { 0, 1, 0, -1, 0, 0, 0, 0, 1 }
 
+enum {
+	P2454 = 1,
+	P2560,
+};
 
 int roth_regulator_init(void);
 int roth_suspend_init(void);
