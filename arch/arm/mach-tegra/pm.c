@@ -973,9 +973,12 @@ static void tegra_pm_set(enum tegra_suspend_mode mode)
 		/* Enable DPD sample to trigger sampling pads data and direction
 		 * in which pad will be driven during lp0 mode*/
 		writel(0x1, pmc + PMC_DPD_SAMPLE);
-#if !defined(CONFIG_ARCH_TEGRA_3x_SOC) && !defined(CONFIG_ARCH_TEGRA_2x_SOC) &&\
-					 !defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 		writel(0x800fdfff, pmc + PMC_IO_DPD_REQ);
+#else
+		writel(0x800fffff, pmc + PMC_IO_DPD_REQ);
+#endif
 		writel(0x80001fff, pmc + PMC_IO_DPD2_REQ);
 #endif
 

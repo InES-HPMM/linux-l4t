@@ -36,6 +36,10 @@
 #include "gpio-names.h"
 #include "iomap.h"
 
+#define PMC_DPD_SAMPLE		0x20
+#define PMC_IO_DPD_REQ		0x1B8
+#define PMC_IO_DPD2_REQ		0x1C0
+
 #define PINGROUP_REG_A	0x868
 #define MUXCTL_REG_A	0x3000
 
@@ -569,12 +573,9 @@ static int tegra12x_pinmux_suspend(void)
 	return 0;
 }
 
-#define PMC_IO_DPD_REQ		0x1B8
-#define PMC_IO_DPD2_REQ		0x1C0
-
 static void tegra12x_pinmux_resume(void)
 {
-	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+	static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
 	u32 *tmp = pinmux_reg;
@@ -587,8 +588,8 @@ static void tegra12x_pinmux_resume(void)
 			tegra_soc_pingroups[i].mux_reg);
 	}
 
-	writel(0x400fffff, pmc_base + PMC_IO_DPD_REQ);
-	writel(0x40001fff, pmc_base + PMC_IO_DPD2_REQ);
+	writel(0x400fffff, pmc + PMC_IO_DPD_REQ);
+	writel(0x40001fff, pmc + PMC_IO_DPD2_REQ);
 
 	for (i = 0; i < TEGRA_MAX_PINGROUP; i++)
 		pg_writel(*ctx++, tegra_soc_pingroups[i].mux_bank,
@@ -597,6 +598,9 @@ static void tegra12x_pinmux_resume(void)
 	for (i = 0; i < ARRAY_SIZE(tegra_soc_drive_pingroups); i++)
 		pg_writel(*ctx++, tegra_soc_drive_pingroups[i].reg_bank,
 			tegra_soc_drive_pingroups[i].reg);
+
+	/* Clear DPD sample */
+	writel(0x0, pmc + PMC_DPD_SAMPLE);
 }
 
 static struct syscore_ops tegra_pinmux_syscore_ops = {
