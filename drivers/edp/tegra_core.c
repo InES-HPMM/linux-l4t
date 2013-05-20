@@ -120,8 +120,8 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 
 	core_policy.cpu = get_cpufreq_lim(devcap->cpu_power +
 			cpu_power_offset);
-	core_policy.gpu = devcap->gpufreq * 1000;
-	core_policy.emc = devcap->emcfreq * 1000;
+	core_policy.gpu = devcap->gpufreq;
+	core_policy.emc = devcap->emcfreq;
 
 	new.cpu = forced_caps.cpu ?: core_policy.cpu;
 	new.gpu = forced_caps.gpu ?: core_policy.gpu;
