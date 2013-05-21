@@ -1223,13 +1223,13 @@ static int ar0833_remove(struct i2c_client *client)
 	struct ar0833_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&info->miscdev_info);
-	kfree(info);
 
 #ifdef CONFIG_DEBUG_FS
 	if (info->debugfs_root)
 		debugfs_remove_recursive(info->debugfs_root);
 #endif
 
+	kfree(info);
 	return 0;
 }
 
