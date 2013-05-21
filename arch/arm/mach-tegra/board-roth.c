@@ -617,7 +617,7 @@ static __initdata struct tegra_clk_init_table touch_clk_init_table[] = {
 struct rm_spi_ts_platform_data rm31080ts_roth_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
-	.platform_id = RM_PLATFORM_D010,
+	.platform_id = RM_PLATFORM_R005,
 	.name_of_clock = "clk_out_2",
 	.name_of_clock_con = "extern2",
 };
@@ -641,8 +641,35 @@ struct spi_board_info rm31080a_roth_spi_board[1] = {
 
 static int __init roth_touch_init(void)
 {
-	tegra_clk_init_from_table(touch_clk_init_table);
-	rm31080ts_roth_data.platform_id = RM_PLATFORM_R005;
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_P2560) {
+		int touch_panel_id = tegra_get_touch_panel_id();
+		if (touch_panel_id == PANEL_TPK ||
+				touch_panel_id == PANEL_WINTEK) {
+			int err;
+			err = gpio_request(TOUCH_GPIO_CLK, "touch-gpio-clk");
+			if (err < 0)
+				pr_err("%s: gpio_request failed %d\n",
+					__func__, err);
+			else {
+				err = gpio_direction_output(TOUCH_GPIO_CLK, 0);
+				if (err < 0)
+					pr_err("%s: set output failed %d\n",
+					__func__, err);
+				gpio_free(TOUCH_GPIO_CLK);
+			}
+			tegra_pinmux_set_pullupdown(TOUCH_GPIO_CLK_PG,
+							TEGRA_PUPD_NORMAL);
+			tegra_pinmux_set_tristate(TOUCH_GPIO_CLK_PG,
+							TEGRA_TRI_TRISTATE);
+			rm31080ts_roth_data.name_of_clock = NULL;
+			rm31080ts_roth_data.name_of_clock_con = NULL;
+		} else
+			tegra_clk_init_from_table(touch_clk_init_table);
+	} else
+		tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080a_roth_spi_board[0].irq =
 		gpio_to_irq(TOUCH_GPIO_IRQ_RAYDIUM_SPI);
 	touch_init_raydium(TOUCH_GPIO_IRQ_RAYDIUM_SPI,

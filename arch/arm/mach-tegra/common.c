@@ -140,7 +140,8 @@ static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
 static struct board_info camera_board_info;
-static int touch_id;
+static int touch_vendor_id;
+static int touch_panel_id;
 static struct board_info io_board_info;
 static struct board_info button_board_info;
 static struct board_info joystick_board_info;
@@ -995,18 +996,23 @@ static int __init tegra_board_panel_id(char *options)
 }
 __setup("display_panel=", tegra_board_panel_id);
 
-int tegra_get_touch_id(void)
+int tegra_get_touch_vendor_id(void)
 {
-	return touch_id;
+	return touch_vendor_id;
+}
+int tegra_get_touch_panel_id(void)
+{
+	return touch_panel_id;
 }
 static int __init tegra_touch_id(char *options)
 {
 	char *p = options;
-	touch_id = memparse(p, &p);
-	return touch_id;
+	touch_vendor_id = memparse(p, &p);
+	if (*p == '@')
+		touch_panel_id = memparse(p+1, &p);
+	return 1;
 }
-__setup("touch_type=", tegra_touch_id);
-
+__setup("touch_id=", tegra_touch_id);
 
 u8 get_power_config(void)
 {

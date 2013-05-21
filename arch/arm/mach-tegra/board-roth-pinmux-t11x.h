@@ -86,7 +86,7 @@ static __initdata struct tegra_pingroup_config roth_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_AD6,       SPI4,        PULL_UP,   NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_AD7,       SPI4,        PULL_UP,   NORMAL,   INPUT),
 	DEFAULT_PINMUX(GMI_AD12,      RSVD1,       NORMAL,    NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(GMI_CS6_N,     SPI4,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(GMI_CS6_N,     NAND,        NORMAL,    TRISTATE,   OUTPUT),
 	DEFAULT_PINMUX(GMI_WR_N,      SPI4,        NORMAL,    NORMAL,   INPUT),
 
 	/* PWM1 pinmux */
