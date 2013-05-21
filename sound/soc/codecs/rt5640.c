@@ -2458,25 +2458,40 @@ static int rt5640_pll_calc(const unsigned int freq_in,
 	const unsigned int freq_out, struct rt5640_pll_code *pll_code)
 {
 	int max_n = RT5640_PLL_N_MAX, max_m = RT5640_PLL_M_MAX;
-	int n, m, red, n_t, m_t, in_t, out_t, red_t = abs(freq_out - freq_in);
+	int k, n = 0, m = 0, red, n_t, m_t, pll_out, in_t, out_t;
+	int red_t = abs(freq_out - freq_in);
 	bool bypass = false;
 
 	if (RT5640_PLL_INP_MAX < freq_in || RT5640_PLL_INP_MIN > freq_in)
 		return -EINVAL;
 
+	k = 100000000 / freq_out - 2;
+	if (k > RT5640_PLL_K_MAX)
+		k = RT5640_PLL_K_MAX;
 	for (n_t = 0; n_t <= max_n; n_t++) {
-		in_t = (freq_in >> 1) + (freq_in >> 2) * n_t;
+		in_t = freq_in / (k + 2);
+		pll_out = freq_out / (n_t + 2);
 		if (in_t < 0)
 			continue;
-		if (in_t == freq_out) {
+		if (in_t == pll_out) {
 			bypass = true;
 			n = n_t;
 			goto code_find;
 		}
+		red = abs(in_t - pll_out);
+		if (red < red_t) {
+			bypass = true;
+			n = n_t;
+			m = m_t;
+			if (red == 0)
+				goto code_find;
+			red_t = red;
+		}
 		for (m_t = 0; m_t <= max_m; m_t++) {
 			out_t = in_t / (m_t + 2);
-			red = abs(out_t - freq_out);
+			red = abs(out_t - pll_out);
 			if (red < red_t) {
+				bypass = false;
 				n = n_t;
 				m = m_t;
 				if (red == 0)
@@ -2492,7 +2507,7 @@ code_find:
 	pll_code->m_bp = bypass;
 	pll_code->m_code = m;
 	pll_code->n_code = n;
-	pll_code->k_code = 2;
+	pll_code->k_code = k;
 	return 0;
 }
 
@@ -2568,8 +2583,9 @@ static int rt5640_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
 		return ret;
 	}
 
-	dev_dbg(codec->dev, "bypass=%d m=%d n=%d k=2\n", pll_code.m_bp,
-		(pll_code.m_bp ? 0 : pll_code.m_code), pll_code.n_code);
+	dev_dbg(codec->dev, "bypass=%d m=%d n=%d k=%d\n", pll_code.m_bp,
+		(pll_code.m_bp ? 0 : pll_code.m_code),
+		pll_code.n_code, pll_code.k_code);
 
 	snd_soc_write(codec, RT5640_PLL_CTRL1,
 		pll_code.n_code << RT5640_PLL_N_SFT | pll_code.k_code);
