@@ -31,6 +31,14 @@ int ardbeg_sdhci_init(void);
 int ardbeg_sensors_init(void);
 int ardbeg_regulator_init(void);
 int ardbeg_suspend_init(void);
+int ardbeg_pmon_init(void);
+
+/* PCA954x I2C bus expander bus addresses */
+#define PCA954x_I2C_BUS_BASE    6
+#define PCA954x_I2C_BUS0        (PCA954x_I2C_BUS_BASE + 0)
+#define PCA954x_I2C_BUS1        (PCA954x_I2C_BUS_BASE + 1)
+#define PCA954x_I2C_BUS2        (PCA954x_I2C_BUS_BASE + 2)
+#define PCA954x_I2C_BUS3        (PCA954x_I2C_BUS_BASE + 3)
 
 /* Touchscreen definitions */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC

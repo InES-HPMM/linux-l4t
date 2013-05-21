@@ -658,9 +658,7 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_touch_init();
 	ardbeg_panel_init();
 	ardbeg_kbc_init();
-#if 0
 	ardbeg_pmon_init();
-#endif
 	tegra_release_bootloader_fb();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
