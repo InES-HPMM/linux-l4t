@@ -97,12 +97,6 @@ int __init register_persistent_clock(clock_access_fn read_boot,
 	return -EINVAL;
 }
 
-int read_current_timer(unsigned long *timer_value)
-{
-	*timer_value = arch_timer_read_counter();
-	return 0;
-}
-
 void __init time_init(void)
 {
 	u32 arch_timer_rate;
