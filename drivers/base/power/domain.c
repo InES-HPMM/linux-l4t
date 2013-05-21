@@ -55,6 +55,44 @@ static DEFINE_MUTEX(gpd_list_lock);
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *rootdir;
 
+static char *genpd_get_device_status(struct device *dev)
+{
+	enum rpm_status status = dev->power.runtime_status;
+
+	switch (status) {
+	case RPM_ACTIVE:
+		return "active";
+	case RPM_RESUMING:
+		return "resuming";
+	case RPM_SUSPENDED:
+		return "suspended";
+	case RPM_SUSPENDING:
+		return "suspending";
+	default:
+		return "invalid";
+	}
+	return NULL;
+}
+
+static char *genpd_get_status(enum gpd_status status)
+{
+	switch (status) {
+	case GPD_STATE_ACTIVE:
+		return "on";
+	case GPD_STATE_WAIT_MASTER:
+		return "wait-master";
+	case GPD_STATE_BUSY:
+		return "busy";
+	case GPD_STATE_REPEAT:
+		return "repeat";
+	case GPD_STATE_POWER_OFF:
+		return "off";
+	default:
+		return "invalid";
+	}
+	return NULL;
+}
+
 static int genpd_summary_show(struct seq_file *s, void *data)
 {
 	struct generic_pm_domain *gpd, *slave;
@@ -65,19 +103,16 @@ static int genpd_summary_show(struct seq_file *s, void *data)
 
 	list_for_each_entry_reverse(gpd, &gpd_list, gpd_list_node) {
 		seq_printf(s, "%*s%-*s %-11s\n", 1, "", 27, gpd->name,
-				(gpd->status == GPD_STATE_POWER_OFF) ?
-				"off" : "on");
+			genpd_get_status(gpd->status));
 		list_for_each_entry(link, &gpd->master_links, master_node) {
 			slave = link->slave;
 			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24, slave->name,
-					(slave->status ==
-					GPD_STATE_POWER_OFF) ? "off" : "on");
+				genpd_get_status(slave->status));
 		}
 		list_for_each_entry(pdd, &gpd->dev_list, list_node)
 			seq_printf(s, "%*s%-*s %-11s\n", 7, "", 24,
-					dev_name(pdd->dev),
-					pm_runtime_suspended(pdd->dev) ?
-					"suspended" : "active");
+				dev_name(pdd->dev),
+				genpd_get_device_status(pdd->dev));
 	}
 
 	mutex_unlock(&gpd_list_lock);
@@ -89,6 +124,7 @@ static int genpd_summary_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, genpd_summary_show, inode->i_private);
 }
+
 static const struct file_operations genpd_summary_fops = {
 	.open		= genpd_summary_open,
 	.read		= seq_read,
