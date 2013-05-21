@@ -65,7 +65,7 @@ static struct tegra_cooling_device core_cdev = {
 static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 	.max_millivolts = 1400,
-	.min_millivolts = 730,
+	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 #if THERMAL_DVFS_ENABLE
@@ -113,7 +113,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune1		= 0x00000007,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 730,
+			.min_millivolts = 800,
 		},
 		.max_mv = 1250,
 		.freqs_mult = KHZ,
@@ -147,7 +147,7 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			.tune1		= 0x00000007,
 			.droop_rate_min = 1000000,
 			.tune_high_min_millivolts = 900,
-			.min_millivolts = 730,
+			.min_millivolts = 800,
 		},
 		.max_mv = 1250,
 		.freqs_mult = KHZ,
