@@ -106,7 +106,7 @@ static struct tegra_udc *the_udc;
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
 	static struct pm_qos_request boost_cpu_freq_req;
 	static u32 ep_queue_request_count;
-	static u8 boost_cpufreq_work_flag;
+	static u8 boost_cpufreq_work_flag, set_cpufreq_normal_flag;
 	static struct timer_list boost_timer;
 #endif
 
@@ -2323,17 +2323,26 @@ static void tegra_udc_set_current_limit_work(struct work_struct *work)
 }
 
 #ifdef CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ
-void tegra_set_cpu_freq_normal(unsigned long data)
+void tegra_udc_set_cpu_freq_normal(unsigned long data)
 {
-	pm_qos_update_request(&boost_cpu_freq_req, PM_QOS_DEFAULT_VALUE);
-	boost_cpufreq_work_flag = 1;
-	DBG("%s(%d) set CPU frequency to normal\n", __func__, __LINE__);
+	set_cpufreq_normal_flag = 1;
+	schedule_work(&the_udc->boost_cpufreq_work);
 }
 
 static void tegra_udc_boost_cpu_frequency_work(struct work_struct *work)
 {
-	/* If CPU frequency is not boosted earlier boost it, otherwise
-	 * change timer expiry time to 2sec */
+	if (set_cpufreq_normal_flag) {
+		pm_qos_update_request(&boost_cpu_freq_req,
+					PM_QOS_DEFAULT_VALUE);
+		boost_cpufreq_work_flag = 1;
+		set_cpufreq_normal_flag = 0;
+		DBG("%s(%d) set CPU frequency to normal\n", __func__,
+							__LINE__);
+		return ;
+	}
+
+	/* If CPU frequency is not boosted earlier boost it, and modify
+	 * timer expiry time to 2sec */
 	if (boost_cpufreq_work_flag) {
 		pm_qos_update_request(&boost_cpu_freq_req,
 			(s32)CONFIG_TEGRA_GADGET_BOOST_CPU_FREQ * 1000);
@@ -2875,7 +2884,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 					tegra_udc_boost_cpu_frequency_work);
 	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
 					PM_QOS_DEFAULT_VALUE);
-	setup_timer(&boost_timer, tegra_set_cpu_freq_normal, 0);
+	setup_timer(&boost_timer, tegra_udc_set_cpu_freq_normal, 0);
 #endif
 
 	/* Create work for controlling clocks to the phy if otg is disabled */
