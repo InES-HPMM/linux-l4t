@@ -37,28 +37,21 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra14 step */
 #define VDD_SAFE_STEP			100
 
-/* FIXME: need to clean-up, once thermal DVFS working */
+/* Clean this switch once thermal Core DVFS working */
 #define THERMAL_DVFS_ENABLE 0
 
 #if THERMAL_DVFS_ENABLE
-static int dvfs_temperatures[] = { 20, };
+static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
+#endif
 
-static struct tegra_cooling_device cpu_dfll_cdev = {
-	.cdev_type = "cpu_dfll",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+static struct tegra_cooling_device cpu_cdev = {
+	.cdev_type = "cpu_cold",
 };
 
-static struct tegra_cooling_device cpu_pll_cdev = {
-	.cdev_type = "cpu_pll",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
-};
-
-static struct tegra_cooling_device core_cdev = {
-	.cdev_type = "core",
-	.trip_temperatures = dvfs_temperatures,
-	.trip_temperatures_num = ARRAY_SIZE(dvfs_temperatures),
+#if THERMAL_DVFS_ENABLE
+static struct tegra_cooling_device core_vmin_cdev = {
+	.cdev_type = "core_cold",
 };
 #endif
 
@@ -68,11 +61,7 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-#if THERMAL_DVFS_ENABLE
-	.min_millivolts_cold = 1000,
-	.dfll_mode_cdev = &cpu_dfll_cdev,
-	.pll_mode_cdev = &cpu_pll_cdev,
-#endif
+	.vmin_cdev = &cpu_cdev,
 };
 
 static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
@@ -81,8 +70,7 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 #if THERMAL_DVFS_ENABLE
-	.min_millivolts_cold = 950,
-	.pll_mode_cdev = &core_cdev,
+	.vmin_cdev = &core_vmin_cdev,
 #endif
 };
 
@@ -137,6 +125,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{1734000, { 2851134,  -136032,   2434}, { 1106216,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
+		.therm_trips_table = { 20 },
+		.therm_floors_table = { 850 },
 	},
 	{
 		.speedo_id = 1,
@@ -175,6 +165,8 @@ static struct cpu_cvb_dvfs cpu_cvb_dvfs_table[] = {
 			{2116500, { 3099135,  -141042,   2434}, { 1248368,    0,    0} },
 			{      0, {      0,      0,   0}, {      0,    0,    0} },
 		},
+		.therm_trips_table = { 20 },
+		.therm_floors_table = { 850 },
 	},
 };
 
@@ -425,6 +417,65 @@ module_param_cb(disable_core, &tegra_dvfs_disable_core_ops,
 module_param_cb(disable_cpu, &tegra_dvfs_disable_cpu_ops,
 	&tegra_dvfs_cpu_disabled, 0644);
 
+/*
+ * Validate rail thermal profile, and get its size. Valid profile:
+ * - voltage floors are descending with temperature increasing
+ * - the lowest limit is above rail minimum voltage in pll and
+ *   in dfll mode (if applicable)
+ * - the highest limit is below rail nominal voltage
+ */
+static int __init get_thermal_profile_size(
+	int *trips_table, int *limits_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i, min_mv;
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (!limits_table[i+1])
+			break;
+
+		if ((trips_table[i] >= trips_table[i+1]) ||
+		    (limits_table[i] < limits_table[i+1])) {
+			pr_warning("%s: not ordered profile\n", rail->reg_id);
+			return -EINVAL;
+		}
+	}
+
+	min_mv = max(rail->min_millivolts, d ? d->min_millivolts : 0);
+	if (limits_table[i] < min_mv) {
+		pr_warning("%s: thermal profile below Vmin\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	if (limits_table[0] > rail->nominal_millivolts) {
+		pr_warning("%s: thermal profile above Vmax\n", rail->reg_id);
+		return -EINVAL;
+	}
+	return i + 1;
+}
+
+static void __init init_rail_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_floors_table, rail, d);
+	if (i <= 0) {
+		rail->vmin_cdev = NULL;
+		WARN(1, "%s: invalid Vmin thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal floors */
+	rail->therm_mv_floors = therm_floors_table;
+	rail->therm_mv_floors_num = i + 1;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmin_cdev) {
+		rail->vmin_cdev->trip_temperatures_num = i + 1;
+		rail->vmin_cdev->trip_temperatures = therm_trips_table;
+	}
+}
 
 static bool __init can_update_max_rate(struct clk *c, struct dvfs *d)
 {
@@ -834,6 +885,15 @@ void __init tegra14x_init_dvfs(void)
 		}
 	}
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
+
+	/* Init thermal limits */
+	init_rail_vmin_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
+		cpu_cvb_dvfs_table[i].therm_floors_table,
+		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
+#if THERMAL_DVFS_ENABLE
+	init_rail_vmin_thermal_profile(vdd_core_vmin_trips_table,
+		vdd_core_therm_floors_table, &tegra14_dvfs_rail_vdd_core, NULL);
+#endif
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra14_dvfs_rails,
