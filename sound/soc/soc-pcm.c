@@ -757,7 +757,7 @@ static void dpcm_be_reparent(struct snd_soc_pcm_runtime *fe,
 }
 
 /* disconnect a BE and FE */
-static void dpcm_be_disconnect(struct snd_soc_pcm_runtime *fe, int stream)
+void dpcm_be_disconnect(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm, *d;
 
@@ -853,7 +853,7 @@ static int widget_in_list(struct snd_soc_dapm_widget_list *list,
 	return 0;
 }
 
-static int dpcm_path_get(struct snd_soc_pcm_runtime *fe,
+int dpcm_path_get(struct snd_soc_pcm_runtime *fe,
 	int stream, struct snd_soc_dapm_widget_list **list_)
 {
 	struct snd_soc_dai *cpu_dai = fe->cpu_dai;
@@ -873,11 +873,6 @@ static int dpcm_path_get(struct snd_soc_pcm_runtime *fe,
 
 	*list_ = list;
 	return paths;
-}
-
-static inline void dpcm_path_put(struct snd_soc_dapm_widget_list **list)
-{
-	kfree(*list);
 }
 
 static int dpcm_prune_paths(struct snd_soc_pcm_runtime *fe, int stream,
@@ -974,7 +969,7 @@ static int dpcm_add_paths(struct snd_soc_pcm_runtime *fe, int stream,
  * Find the corresponding BE DAIs that source or sink audio to this
  * FE substream.
  */
-static int dpcm_process_paths(struct snd_soc_pcm_runtime *fe,
+int dpcm_process_paths(struct snd_soc_pcm_runtime *fe,
 	int stream, struct snd_soc_dapm_widget_list **list, int new)
 {
 	if (new)
@@ -983,7 +978,7 @@ static int dpcm_process_paths(struct snd_soc_pcm_runtime *fe,
 		return dpcm_prune_paths(fe, stream, list);
 }
 
-static void dpcm_clear_pending_state(struct snd_soc_pcm_runtime *fe, int stream)
+void dpcm_clear_pending_state(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 
@@ -992,7 +987,7 @@ static void dpcm_clear_pending_state(struct snd_soc_pcm_runtime *fe, int stream)
 						SND_SOC_DPCM_UPDATE_NO;
 }
 
-static void dpcm_be_dai_startup_unwind(struct snd_soc_pcm_runtime *fe,
+void dpcm_be_dai_startup_unwind(struct snd_soc_pcm_runtime *fe,
 	int stream)
 {
 	struct snd_soc_dpcm *dpcm;
@@ -1021,7 +1016,7 @@ static void dpcm_be_dai_startup_unwind(struct snd_soc_pcm_runtime *fe,
 	}
 }
 
-static int dpcm_be_dai_startup(struct snd_soc_pcm_runtime *fe, int stream)
+int dpcm_be_dai_startup(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 	int err, count = 0;
@@ -1163,7 +1158,7 @@ be_err:
 	return ret;
 }
 
-static int dpcm_be_dai_shutdown(struct snd_soc_pcm_runtime *fe, int stream)
+int dpcm_be_dai_shutdown(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 
@@ -1224,7 +1219,7 @@ static int dpcm_fe_dai_shutdown(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int dpcm_be_dai_hw_free(struct snd_soc_pcm_runtime *fe, int stream)
+int dpcm_be_dai_hw_free(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 
@@ -1289,7 +1284,7 @@ static int dpcm_fe_dai_hw_free(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int dpcm_be_dai_hw_params(struct snd_soc_pcm_runtime *fe, int stream)
+int dpcm_be_dai_hw_params(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 	int ret;
@@ -1419,7 +1414,7 @@ static int dpcm_do_trigger(struct snd_soc_dpcm *dpcm,
 	return ret;
 }
 
-static int dpcm_be_dai_trigger(struct snd_soc_pcm_runtime *fe, int stream,
+int dpcm_be_dai_trigger(struct snd_soc_pcm_runtime *fe, int stream,
 			       int cmd)
 {
 	struct snd_soc_dpcm *dpcm;
@@ -1587,7 +1582,7 @@ out:
 	return ret;
 }
 
-static int dpcm_be_dai_prepare(struct snd_soc_pcm_runtime *fe, int stream)
+int dpcm_be_dai_prepare(struct snd_soc_pcm_runtime *fe, int stream)
 {
 	struct snd_soc_dpcm *dpcm;
 	int ret = 0;
@@ -1645,11 +1640,13 @@ static int dpcm_fe_dai_prepare(struct snd_pcm_substream *substream)
 		goto out;
 
 	/* call prepare on the frontend */
-	ret = soc_pcm_prepare(substream);
-	if (ret < 0) {
-		dev_err(fe->dev,"ASoC: prepare FE %s failed\n",
-			fe->dai_link->name);
-		goto out;
+	if (!fe->fe_compr) {
+		ret = soc_pcm_prepare(substream);
+		if (ret < 0) {
+			dev_err(fe->dev, "ASoC: prepare FE %s failed\n",
+				fe->dai_link->name);
+			goto out;
+		}
 	}
 
 	/* run the stream event for each BE */
