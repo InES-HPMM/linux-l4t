@@ -309,7 +309,7 @@ static struct nvmap_platform_data ardbeg_nvmap_data = {
 	.carveouts	= ardbeg_carveouts,
 	.nr_carveouts	= ARRAY_SIZE(ardbeg_carveouts),
 };
-static struct platform_device ardbeg_nvmap_device __initdata = {
+static struct platform_device ardbeg_nvmap_device  = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {

@@ -309,7 +309,7 @@ static struct nvmap_platform_data laguna_nvmap_data = {
 	.carveouts	= laguna_carveouts,
 	.nr_carveouts	= ARRAY_SIZE(laguna_carveouts),
 };
-static struct platform_device laguna_nvmap_device __initdata = {
+static struct platform_device laguna_nvmap_device  = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
 	.dev	= {
