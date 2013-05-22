@@ -976,6 +976,7 @@ static struct tegra_sysedp_corecap macallan_sysedp_corecap[] = {
 static struct tegra_sysedp_platform_data macallan_sysedp_platdata = {
 	.corecap = macallan_sysedp_corecap,
 	.corecap_size = ARRAY_SIZE(macallan_sysedp_corecap),
+	.core_gain = 130,
 	.init_req_watts = 20000
 };
 

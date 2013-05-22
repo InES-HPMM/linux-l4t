@@ -1044,6 +1044,7 @@ static struct tegra_sysedp_corecap pluto_sysedp_corecap[] = {
 static struct tegra_sysedp_platform_data pluto_sysedp_platdata = {
 	.corecap = pluto_sysedp_corecap,
 	.corecap_size = ARRAY_SIZE(pluto_sysedp_corecap),
+	.core_gain = 130,
 	.init_req_watts = 20000
 };
 
