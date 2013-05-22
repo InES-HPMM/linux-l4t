@@ -47,8 +47,6 @@ static void emc_mr4_poll(unsigned long nothing)
 {
 	int dram_temp;
 
-	pr_info("[dram-therm] (polling)\n");
-
 	if (!test_mode)
 		dram_temp = tegra_emc_get_dram_temperature();
 	else
@@ -224,7 +222,8 @@ static int __init tegra_dram_therm_init(void)
 {
 	void *ret;
 
-	ret = thermal_cooling_device_register("dram", NULL, &emc_dram_cd_ops);
+	ret = thermal_cooling_device_register("tegra-dram", NULL,
+					      &emc_dram_cd_ops);
 	if (IS_ERR(ret))
 		return PTR_ERR(ret);
 	if (ret == NULL)
