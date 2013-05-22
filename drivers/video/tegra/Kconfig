@@ -298,11 +298,38 @@ config TEGRA_GK20A_PMU
 	help
 	  Say Y here to enable GK20A PMU features.
 
+choice
+	depends on TEGRA_GK20A
+	prompt "Enable GK20A frequency scaling"
+	default TEGRA_GK20A_PERFMON
+	optional
+	help
+		Select this entry to enable gk20a scaling
+
+config TEGRA_GK20A_PERFMON
+	bool "Use Perfmon"
+	help
+	  Select this to enable built-in perfmon scaling.
+	  The built-in scaling option uses simplistic
+	  scaling mechanism (if busy, increase frequency and
+	  decrease frequency if idle).
+
+config TEGRA_GK20A_DEVFREQ
+	bool "Use Devfreq"
+	help
+	  Select this to use devfreq based scaling.
+	  Devfreq is a common framework that allows using
+	  variety of different governors and changing
+	  between governors on the fly. By default, no
+	  governor is selected.
+
+endchoice
+
 config TEGRA_GPU_CYCLE_STATS
 	bool "Support GK20A GPU CYCLE STATS"
 	default n
 	help
-		Say Y here to enable the cycle stats debugging features.
+	  Say Y here to enable the cycle stats debugging features.
 
 endif
 
