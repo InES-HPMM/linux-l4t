@@ -31,7 +31,7 @@
  * int bbc_bw_request(u32 mode, u32 bw, u32 lt)
  */
 
-static struct device *proxy_dev;
+static struct device *proxy_dev, *tegra_bb;
 
 static enum rpc_accept_stat rpc_bbc_edp_request(
 	u32 version,
@@ -184,7 +184,7 @@ static enum rpc_accept_stat rpc_bbc_bw_request(
 
 	/* Call */
 	rc = tegra_bbc_proxy_bw_request(proxy_dev, mode, bw, lt, margin);
-	tegra_bb_set_emc_floor(freq_floor, flags);
+	tegra_bb_set_emc_floor(tegra_bb, freq_floor, flags);
 
 	/* Encode response */
 	{
@@ -225,7 +225,14 @@ static int __init prog_rsm_init(void)
 	proxy_dev = bus_find_device_by_name(&platform_bus_type, NULL,
 					"tegra_bbc_proxy");
 	if (!proxy_dev) {
-		pr_err("%s failed to get proxy device pointer\n", __func__);
+		pr_err("failed to get proxy device pointer\n");
+		return -ENXIO;
+	}
+
+	tegra_bb = bus_find_device_by_name(&platform_bus_type, NULL,
+					"tegra_bb.0");
+	if (!tegra_bb) {
+		pr_err("failed to get tegra_bb device pointer\n");
 		return -ENXIO;
 	}
 

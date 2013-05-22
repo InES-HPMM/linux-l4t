@@ -76,6 +76,6 @@ void tegra_bb_set_ipc_serial(struct platform_device *pdev, char *serial);
  * @param unsigned int frequency
  * @return none
  */
-void tegra_bb_set_emc_floor(unsigned long freq, u32 flags);
+void tegra_bb_set_emc_floor(struct device *dev, unsigned long freq, u32 flags);
 
 #endif

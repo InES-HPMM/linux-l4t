@@ -117,6 +117,8 @@ struct tegra_bb {
 	unsigned long priv_size;
 	unsigned long ipc_size;
 	unsigned long ipc_irq;
+	unsigned long emc_min_freq;
+	u32 emc_flags;
 	char ipc_serial[NVSHM_SERIAL_BYTE_SIZE];
 	unsigned int irq;
 	unsigned int mem_req_soon;
@@ -137,8 +139,6 @@ struct tegra_bb {
 	struct device *proxy_dev;
 };
 
-static unsigned long emc_min_freq;
-static u32 emc_flags;
 
 static int tegra_bb_open(struct inode *inode, struct file *filp);
 static int tegra_bb_map(struct file *filp, struct vm_area_struct *vma);
@@ -895,10 +895,11 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 
 		/* going from 0 to high */
 		clk_prepare_enable(bb->emc_clk);
-		if (emc_flags & EMC_DSR)
+		if (bb->emc_flags & EMC_DSR)
 			tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
-		clk_set_rate(bb->emc_clk, emc_min_freq);
-		pr_debug("bbc setting floor to %lu\n", emc_min_freq/1000000);
+		clk_set_rate(bb->emc_clk, bb->emc_min_freq);
+		pr_debug("bbc setting floor to %lu\nMHz",
+						bb->emc_min_freq/1000000);
 
 		/* restore iso bw request*/
 		tegra_bbc_proxy_restore_iso(bb->proxy_dev);
@@ -920,7 +921,7 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		tegra_bbc_proxy_clear_iso(bb->proxy_dev);
 
 		/* going from high to 0 */
-		if (emc_flags & EMC_DSR)
+		if (bb->emc_flags & EMC_DSR)
 			tegra_emc_dsr_override(TEGRA_EMC_DSR_NORMAL);
 		clk_set_rate(bb->emc_clk, 0);
 		clk_disable_unprepare(bb->emc_clk);
@@ -938,10 +939,36 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 	return;
 }
 
-void tegra_bb_set_emc_floor(unsigned long freq, u32 flags)
+void tegra_bb_set_emc_floor(struct device *dev, unsigned long freq, u32 flags)
 {
-	emc_min_freq = freq;
-	emc_flags = flags;
+	struct platform_device *pdev = container_of(dev, struct platform_device,
+						    dev);
+	struct tegra_bb_platform_data *pdata;
+	struct tegra_bb *bb;
+
+	if (!pdev) {
+		dev_err(dev, "%s platform device is NULL\n", __func__);
+		return;
+	}
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		dev_err(&pdev->dev, "%s platform data not found\n", __func__);
+		return;
+	}
+
+	bb = (struct tegra_bb *)pdata->bb_handle;
+	if (!bb) {
+		dev_err(&pdev->dev, "%s tegra_bb not found!\n", __func__);
+		return;
+	}
+
+	if (bb->emc_min_freq != freq) {
+		bb->emc_min_freq = freq;
+		clk_set_rate(bb->emc_clk, bb->emc_min_freq);
+	}
+
+	bb->emc_flags = flags;
 	return;
 }
 EXPORT_SYMBOL(tegra_bb_set_emc_floor);
@@ -1195,7 +1222,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	}
 	INIT_WORK(&bb->work, tegra_bb_emc_dvfs);
 
-	tegra_bb_set_emc_floor(BBC_MC_MIN_FREQ, 0);
+	bb->emc_min_freq = BBC_MC_MIN_FREQ;
+	bb->emc_flags = EMC_DSR;
 
 	/* get bbc proxy device struct, it should be registered
 	 * before this driver.
