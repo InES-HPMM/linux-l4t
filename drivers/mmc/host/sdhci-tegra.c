@@ -2481,11 +2481,13 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			dev_err(mmc_dev(host->mmc), "request irq error\n");
 			goto err_cd_irq_req;
 		}
-		rc = enable_irq_wake(gpio_to_irq(plat->cd_gpio));
-		if (rc < 0)
-			dev_err(mmc_dev(host->mmc),
-				"SD card wake-up event registration"
-				"failed with error: %d\n", rc);
+		if (!plat->cd_wakeup_incapable) {
+			rc = enable_irq_wake(gpio_to_irq(plat->cd_gpio));
+			if (rc < 0)
+				dev_err(mmc_dev(host->mmc),
+					"SD card wake-up event registration "
+					"failed with error: %d\n", rc);
+		}
 	}
 	sdhci_tegra_error_stats_debugfs(host);
 

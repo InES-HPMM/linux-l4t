@@ -58,6 +58,7 @@ struct tegra_sdhci_platform_data {
 	bool en_freq_scaling;
 	bool edp_support;
 	unsigned int edp_states[SD_EDP_NUM_STATES];
+	bool cd_wakeup_incapable;
 };
 
 #endif
