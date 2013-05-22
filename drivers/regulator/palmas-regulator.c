@@ -1120,6 +1120,35 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	return;
 }
 
+static ssize_t palmas_show_dvfs_data(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
+	struct palmas_dvfs_init_data *dvfs_idata = pdata->dvfs_init_data;
+	int data_size = pdata->dvfs_init_data_size;
+	int i;
+	int count = 0;
+
+	if (!dvfs_idata || !data_size)
+		return 0;
+
+	for (i = 0; i < data_size; i++) {
+		struct palmas_dvfs_init_data *dvfs_pd =  &dvfs_idata[i];
+		if (!dvfs_pd->en_pwm)
+			continue;
+
+		count += sprintf(buf+count, "base_voltage:%d\n",
+				dvfs_pd->base_voltage_uV);
+		count += sprintf(buf+count, "step_size:%d\n",
+				dvfs_pd->step_20mV ? 20000 : 10000);
+		count += sprintf(buf+count, "max_voltage:%d\n",
+				dvfs_pd->max_voltage_uV);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(dvfs_data, 0444, palmas_show_dvfs_data, NULL);
+
 static void palmas_dvfs_init(struct palmas *palmas,
 			struct palmas_pmic_platform_data *pdata)
 {
@@ -1190,6 +1219,16 @@ static void palmas_dvfs_init(struct palmas *palmas,
 			goto  err;
 
 	}
+
+	ret = device_create_file(palmas->pmic->dev, &dev_attr_dvfs_data);
+	if (ret)
+		dev_warn(palmas->pmic->dev,
+				"Can't register dvfs sysfs attribute\n");
+
+	ret = sysfs_create_link(kernel_kobj, &(palmas->pmic->dev->kobj),
+				"pmic");
+	if (ret)
+		dev_warn(palmas->pmic->dev, "Can't create sysfs link\n");
 
 	return;
 err:
