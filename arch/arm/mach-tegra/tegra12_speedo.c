@@ -33,7 +33,16 @@
 
 #define TEGRA124_CPU_SPEEDO 17777 /* FIXME: Get Correct Value */
 
-static int threshold_index;
+#define FUSE_CPU_SPEEDO_0	0x114
+#define FUSE_CPU_SPEEDO_1	0x12c
+#define FUSE_CPU_SPEEDO_2	0x130
+#define FUSE_SOC_SPEEDO_0	0x134
+#define FUSE_SOC_SPEEDO_1	0x138
+#define FUSE_SOC_SPEEDO_2	0x13c
+#define FUSE_CPU_IDDQ		0x118
+#define FUSE_SOC_IDDQ		0x140
+#define FUSE_GPU_IDDQ		0x228
+#define FUSE_FT_REV		0x128
 
 static int cpu_process_id;
 static int core_process_id;
@@ -44,18 +53,40 @@ static int soc_speedo_id;
 static int gpu_speedo_id;
 static int package_id;
 static int cpu_iddq_value;
+static int gpu_iddq_value;
+static int soc_iddq_value;
+
+static int cpu_speedo_0_value;
+static int cpu_speedo_1_value;
+static int cpu_speedo_2_value;
+static int soc_speedo_0_value;
+static int soc_speedo_1_value;
+static int soc_speedo_2_value;
 
 static int enable_app_profiles;
 
 void tegra_init_speedo_data(void)
 {
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
-	cpu_process_id = -1;
+
+	cpu_process_id  = -1;
 	core_process_id = -1;
-	gpu_process_id = -1;
-	cpu_speedo_id = -1;
-	soc_speedo_id = -1;
-	gpu_speedo_id = -1;
+	gpu_process_id  = -1;
+	cpu_speedo_id   = -1;
+	soc_speedo_id   = -1;
+	gpu_speedo_id   = -1;
+
+	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
+	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
+	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
+
+	soc_speedo_0_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_0);
+	soc_speedo_1_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_1);
+	soc_speedo_2_value = tegra_fuse_readl(FUSE_SOC_SPEEDO_2);
+
+	cpu_iddq_value = tegra_fuse_readl(FUSE_CPU_IDDQ);
+	soc_iddq_value = tegra_fuse_readl(FUSE_SOC_IDDQ);
+	gpu_iddq_value = tegra_fuse_readl(FUSE_GPU_IDDQ);
 
 	pr_info("Tegra12: CPU Speedo ID %d, Soc Speedo ID %d, Gpu Speedo ID %d",
 		cpu_speedo_id, soc_speedo_id, gpu_speedo_id);
@@ -101,6 +132,35 @@ int tegra_cpu_speedo_value(void)
 	return cpu_speedo_value;
 }
 
+int tegra_cpu_speedo_0_value(void)
+{
+	return cpu_speedo_0_value;
+}
+
+int tegra_cpu_speedo_1_value(void)
+{
+	return cpu_speedo_1_value;
+}
+
+int tegra_cpu_speedo_2_value(void)
+{
+	return cpu_speedo_2_value;
+}
+
+int tegra_soc_speedo_0_value(void)
+{
+	return soc_speedo_0_value;
+}
+
+int tegra_soc_speedo_1_value(void)
+{
+	return soc_speedo_1_value;
+}
+
+int tegra_soc_speedo_2_value(void)
+{
+	return soc_speedo_2_value;
+}
 /*
  * CPU and core nominal voltage levels as determined by chip SKU and speedo
  * (not final - can be lowered by dvfs tables and rail dependencies; the
@@ -128,9 +188,19 @@ int tegra_gpu_speedo_mv(void)
 	return 1100;
 }
 
-int tegra_get_cpu_iddq_value()
+int tegra_get_cpu_iddq_value(void)
 {
 	return cpu_iddq_value;
+}
+
+int tegra_get_soc_iddq_value(void)
+{
+	return soc_iddq_value;
+}
+
+int tegra_get_gpu_iddq_value(void)
+{
+	return gpu_iddq_value;
 }
 
 static int get_enable_app_profiles(char *val, const struct kernel_param *kp)
