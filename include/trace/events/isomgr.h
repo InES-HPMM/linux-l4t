@@ -156,24 +156,27 @@ TRACE_EVENT(tegra_isomgr_realize,
 TRACE_EVENT(tegra_isomgr_set_margin,
 	TP_PROTO(enum tegra_iso_client client,
 		 u32 bw,
-		 bool wait),
+		 bool wait,
+		 char *msg),
 
-	TP_ARGS(client, bw, wait),
+	TP_ARGS(client, bw, wait, msg),
 
 	TP_STRUCT__entry(
 		__field(enum tegra_iso_client, client)
 		__field(u32, bw)
 		__field(bool, wait)
+		__field(char *, msg)
 	),
 
 	TP_fast_assign(
 		__entry->client = client;
 		__entry->bw = bw;
 		__entry->wait = wait;
+		__entry->msg = msg;
 	),
 
-	TP_printk("client=%d, bw=%dKB, wait=%d",
-		__entry->client, __entry->bw, __entry->wait)
+	TP_printk("client=%d, bw=%dKB, wait=%d %s",
+		__entry->client, __entry->bw, __entry->wait, __entry->msg)
 );
 
 TRACE_EVENT(tegra_isomgr_get_imp_time,

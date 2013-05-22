@@ -551,11 +551,18 @@ static u32 __tegra_isomgr_reserve(tegra_isomgr_handle handle,
 	int client = cp - &isomgr_clients[0];
 
 	VALIDATE_HANDLE();
-	trace_tegra_isomgr_reserve(handle, ubw, ult, cname[client], "enter");
 
 	isomgr_lock();
 	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
 		goto handle_unregistered;
+
+	if (cp->rsvd_bw == ubw && cp->lti == ult) {
+		kref_put(&cp->kref, unregister_iso_client);
+		isomgr_unlock();
+		return cp->lto;
+	}
+
+	trace_tegra_isomgr_reserve(handle, ubw, ult, cname[client], "enter");
 
 	if (unlikely(cp->realize))
 		goto out;
@@ -581,8 +588,8 @@ skip_bw_check:
 	cp->rsvd_mf = mf;	/* remember associated min freq */
 	cp->rsvd_bw = bw;
 out:
-	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
+	isomgr_unlock();
 	trace_tegra_isomgr_reserve(handle, ubw, ult, cname[client],
 		dvfs_latency ? "exit" : "rsrv_fail_exit");
 	return dvfs_latency;
@@ -617,19 +624,27 @@ EXPORT_SYMBOL(tegra_isomgr_reserve);
 
 static u32 __tegra_isomgr_realize(tegra_isomgr_handle handle)
 {
+	bool retry = false;
 	u32 dvfs_latency = 0;
 	s32 delta_bw = 0;
 	struct isomgr_client *cp = (struct isomgr_client *) handle;
 	int client = cp - &isomgr_clients[0];
 
 	VALIDATE_HANDLE();
-	trace_tegra_isomgr_realize(handle, cname[client], "enter");
 
 retry:
 	isomgr_lock();
 	if (unlikely(!atomic_inc_not_zero(&cp->kref.refcount)))
 		goto handle_unregistered;
 
+	if (cp->rsvd_bw == cp->real_bw && cp->rsvd_mf == cp->real_mf) {
+		kref_put(&cp->kref, unregister_iso_client);
+		isomgr_unlock();
+		return cp->lto;
+	}
+
+	if (!retry)
+		trace_tegra_isomgr_realize(handle, cname[client], "enter");
 	if (cp->margin_bw < cp->real_bw)
 		isomgr.avail_bw += cp->real_bw - cp->margin_bw;
 	cp->real_bw = 0;
@@ -661,9 +676,10 @@ retry:
 			BUG_ON(cp->sleep_bw);
 			cp->sleep_bw += delta_bw;
 		}
-		isomgr_unlock();
 		kref_put(&cp->kref, unregister_iso_client);
+		isomgr_unlock();
 		isomgr_scavenge(client);
+		retry = true;
 		goto retry;
 	}
 
@@ -671,8 +687,8 @@ retry:
 	cp->realize = false;
 	update_mc_clock();
 
-	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
+	isomgr_unlock();
 	trace_tegra_isomgr_realize(handle, cname[client],
 		dvfs_latency ? "exit" : "real_fail_exit");
 	return dvfs_latency;
@@ -708,7 +724,7 @@ static int __tegra_isomgr_set_margin(enum tegra_iso_client client,
 	s32 high_bw;
 	struct isomgr_client *cp = NULL;
 
-	trace_tegra_isomgr_set_margin(client, bw, wait);
+	trace_tegra_isomgr_set_margin(client, bw, wait, "enter");
 	VALIDATE_CLIENT();
 
 retry:
@@ -737,8 +753,8 @@ retry:
 			cp->margin_bw = bw;
 		} else {
 			if (wait) {
-				isomgr_unlock();
 				kref_put(&cp->kref, unregister_iso_client);
+				isomgr_unlock();
 				wait = false;
 				isomgr_scavenge(client);
 				goto retry;
@@ -749,12 +765,15 @@ retry:
 	}
 	ret = 0;
 out:
-	isomgr_unlock();
 	kref_put(&cp->kref, unregister_iso_client);
+	isomgr_unlock();
+	trace_tegra_isomgr_set_margin(client, bw, wait,
+					ret ? "fail_exit" : "exit");
 	return ret;
 handle_unregistered:
 	isomgr_unlock();
 validation_fail:
+	trace_tegra_isomgr_set_margin(client, bw, wait, "inv_arg_fail");
 	return ret;
 }
 
