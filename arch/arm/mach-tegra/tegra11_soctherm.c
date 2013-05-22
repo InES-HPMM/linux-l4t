@@ -696,11 +696,11 @@ static void soctherm_set_limits(enum soctherm_therm_id therm,
 		r = REG_SET(0, TH_INTR_POS_GD0, 1);
 		r = REG_SET(r, TH_INTR_POS_GU0, 1);
 		break;
-	case THERM_MEM:
+	case THERM_PLL:
 		r = REG_SET(0, TH_INTR_POS_PD0, 1);
 		r = REG_SET(r, TH_INTR_POS_PU0, 1);
 		break;
-	case THERM_PLL:
+	case THERM_MEM:
 		r = REG_SET(0, TH_INTR_POS_MD0, 1);
 		r = REG_SET(r, TH_INTR_POS_MU0, 1);
 		break;
@@ -1255,7 +1255,7 @@ static void soctherm_update(void)
 
 static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 {
-	u32 st, ex = 0, cp = 0, gp = 0;
+	u32 st, ex = 0, cp = 0, gp = 0, pl = 0;
 
 	st = soctherm_readl(TH_INTR_STATUS);
 
@@ -1268,6 +1268,10 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 	gp |= REG_GET_BIT(st, TH_INTR_POS_GU0);
 	ex |= gp;
 
+	pl |= REG_GET_BIT(st, TH_INTR_POS_PD0);
+	pl |= REG_GET_BIT(st, TH_INTR_POS_PU0);
+	ex |= pl;
+
 	if (ex) {
 		soctherm_writel(ex, TH_INTR_STATUS);
 		st &= ~ex;
@@ -1275,12 +1279,11 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 			soctherm_update_zone(THERM_CPU);
 		if (gp)
 			soctherm_update_zone(THERM_GPU);
-
+		if (pl)
+			soctherm_update_zone(THERM_PLL);
 	}
 
 	/* deliberately ignore expected interrupts NOT handled in SW */
-	ex |= REG_GET_BIT(st, TH_INTR_POS_PD0);
-	ex |= REG_GET_BIT(st, TH_INTR_POS_PU0);
 	ex |= REG_GET_BIT(st, TH_INTR_POS_MD0);
 	ex |= REG_GET_BIT(st, TH_INTR_POS_MU0);
 
