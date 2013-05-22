@@ -253,6 +253,8 @@ static int ad5823_probe(struct i2c_client *client,
 		goto ERROR_RET;
 	}
 
+	if (info->regulator)
+		regulator_disable(info->regulator);
 
 	info->i2c_client		= client;
 	info->config.settle_time	= SETTLETIME_MS;
