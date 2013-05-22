@@ -1035,6 +1035,7 @@ struct max77660_sim_reg_data {
 	unsigned int det_debouncecnt:5;
 	unsigned int auto_pwrdn_en:1;
 	unsigned int inst_pol:1;
+	unsigned int sim_puen:1;
 	unsigned int pwrdn_debouncecnt:5;
 };
 

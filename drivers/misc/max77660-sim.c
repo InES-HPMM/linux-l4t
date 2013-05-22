@@ -133,7 +133,6 @@ static int max77660_sim_probe(struct platform_device *pdev)
 	struct max77660_platform_data *pdata;
 	struct max77660_sim *sim;
 	int ret, val;
-	u8 readreg;
 	int sim_irq;
 	struct max77660_sim_platform_data *sim_pdata;
 	struct platform_device *misc_pdev;
@@ -175,18 +174,14 @@ static int max77660_sim_probe(struct platform_device *pdev)
 		goto err_reg_access;
 
 	/* SIM1 config2 */
-	ret = max77660_reg_read(pdev->dev.parent, MAX77660_PWR_SLAVE,
-				MAX77660_REG_SIM1CNFG2, &readreg);
-	if (ret < 0)
-		goto err_reg_access;
-
 	val = sim_pdata->sim_reg[0].auto_pwrdn_en <<
 		SIM_SIM1_2_CNFG1_SIM_PWRDEN_SHIFT;
 	val |= sim_pdata->sim_reg[0].inst_pol <<
 		SIM_SIM1_2_CNFG1_SIMAH_SHIFT;
 	val |= sim_pdata->sim_reg[0].pwrdn_debouncecnt <<
 		SIM_SIM1_2_CNFG1_SIMPWRDNCNT_SHIFT;
-	val |= readreg & (1 << SIM_SIM1_2_CNFG1_SIM_PUEN_SHIFT);
+	val |= (sim_pdata->sim_reg[0].sim_puen <<
+		SIM_SIM1_2_CNFG1_SIM_PUEN_SHIFT);
 	ret = max77660_reg_write(pdev->dev.parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_SIM1CNFG2, val);
 	if (ret < 0)
@@ -204,18 +199,14 @@ static int max77660_sim_probe(struct platform_device *pdev)
 		goto err_reg_access;
 
 	/* SIM2 config2 */
-	ret = max77660_reg_read(pdev->dev.parent, MAX77660_PWR_SLAVE,
-				MAX77660_REG_SIM2CNFG2, &readreg);
-	if (ret < 0)
-		goto err_reg_access;
-
 	val = sim_pdata->sim_reg[1].auto_pwrdn_en <<
 		SIM_SIM1_2_CNFG1_SIM_PWRDEN_SHIFT;
 	val |= sim_pdata->sim_reg[1].inst_pol <<
 		SIM_SIM1_2_CNFG1_SIMAH_SHIFT;
 	val |= sim_pdata->sim_reg[1].pwrdn_debouncecnt <<
 		SIM_SIM1_2_CNFG1_SIMPWRDNCNT_SHIFT;
-	val |= readreg & (1 << SIM_SIM1_2_CNFG1_SIM_PUEN_SHIFT);
+	val |= (sim_pdata->sim_reg[1].sim_puen <<
+		SIM_SIM1_2_CNFG1_SIM_PUEN_SHIFT);
 	ret = max77660_reg_write(pdev->dev.parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_SIM2CNFG2, val);
 	if (ret < 0)
