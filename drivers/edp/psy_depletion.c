@@ -31,6 +31,7 @@ struct depl_driver {
 	struct delayed_work work;
 	struct edp_manager *manager;
 	struct power_supply *psy;
+	int (*get_ocv)(struct depl_driver *drv, unsigned int capacity);
 };
 
 static int depl_psy_get_property(struct depl_driver *drv,
@@ -40,11 +41,13 @@ static int depl_psy_get_property(struct depl_driver *drv,
 
 	if (drv->psy->get_property(drv->psy, psp, &pv))
 		return -EFAULT;
-	*val = pv.intval;
+	if (val)
+		*val = pv.intval;
 	return 0;
 }
 
-static int depl_psy_ocv(struct depl_driver *drv)
+static int depl_psy_ocv_from_chip(struct depl_driver *drv,
+		unsigned int capacity)
 {
 	int val;
 	if (depl_psy_get_property(drv, POWER_SUPPLY_PROP_VOLTAGE_OCV, &val))
@@ -81,15 +84,33 @@ static int depl_interpolate(int x, int x1, int y1, int x2, int y2)
 	return (y2 * (x - x1) - y1 * (x - x2)) / (x2 - x1);
 }
 
+static int depl_psy_ocv_from_lut(struct depl_driver *drv,
+		unsigned int capacity)
+{
+	struct psy_depletion_ocv_lut *p;
+	struct psy_depletion_ocv_lut *q;
+
+	p = drv->pdata->ocv_lut;
+
+	while (p->capacity > capacity)
+		p++;
+
+	if (p == drv->pdata->ocv_lut)
+		return p->ocv;
+
+	q = p - 1;
+
+	return depl_interpolate(capacity, p->capacity, p->ocv, q->capacity,
+			q->ocv);
+}
+
 /* Calc RBAT for current capacity (SOC) */
-static int depl_rbat(struct depl_driver *drv)
+static int depl_rbat(struct depl_driver *drv, unsigned int capacity)
 {
 	struct psy_depletion_rbat_lut *p;
 	struct psy_depletion_rbat_lut *q;
-	unsigned int capacity;
 	int rbat;
 
-	capacity = depl_psy_capacity(drv);
 	p = drv->pdata->rbat_lut;
 
 	while (p->capacity > capacity)
@@ -103,9 +124,6 @@ static int depl_rbat(struct depl_driver *drv)
 	rbat = depl_interpolate(capacity, p->capacity, p->rbat,
 			q->capacity, q->rbat);
 	rbat += drv->pdata->r_const;
-
-	pr_debug("capacity : %u\n", capacity);
-	pr_debug("rbat     : %d\n", rbat);
 
 	return rbat;
 }
@@ -132,9 +150,6 @@ static int depl_ibat(struct depl_driver *drv, unsigned int temp)
 	q = p - 1;
 	ibat = depl_interpolate(temp, p->temp, p->ibat, q->temp, q->ibat);
 
-	pr_debug("temp     : %d\n", temp);
-	pr_debug("ibat     : %d\n", ibat);
-
 	return ibat;
 }
 
@@ -148,6 +163,7 @@ static s64 depl_pbat(s64 ocv, s64 ibat, s64 rbat)
 
 static unsigned int depl_calc(struct depl_driver *drv)
 {
+	unsigned int capacity;
 	s64 ocv;
 	s64 rbat;
 	s64 ibat_pos;
@@ -158,8 +174,9 @@ static unsigned int depl_calc(struct depl_driver *drv)
 	s64 pbat_gain;
 	s64 depl;
 
-	ocv = depl_psy_ocv(drv);
-	rbat = depl_rbat(drv);
+	capacity = depl_psy_capacity(drv);
+	ocv = drv->get_ocv(drv, capacity);
+	rbat = depl_rbat(drv, capacity);
 
 	ibat_pos = depl_ibat_possible(drv, ocv, rbat);
 	ibat_tbat = depl_ibat(drv, depl_psy_temp(drv));
@@ -171,7 +188,9 @@ static unsigned int depl_calc(struct depl_driver *drv)
 
 	depl = drv->manager->max - div64_s64(pbat_gain * pbat_lcm, 1000);
 
+	pr_debug("capacity : %u\n", capacity);
 	pr_debug("ocv      : %lld\n", ocv);
+	pr_debug("rbat     : %lld\n", rbat);
 	pr_debug("ibat_pos : %lld\n", ibat_pos);
 	pr_debug("ibat_tbat: %lld\n", ibat_tbat);
 	pr_debug("ibat_lcm : %lld\n", ibat_lcm);
@@ -229,6 +248,19 @@ static int depl_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static __devinit int depl_init_ocv_reader(struct depl_driver *drv)
+{
+	if (drv->pdata->ocv_lut)
+		drv->get_ocv = depl_psy_ocv_from_lut;
+	else if (!depl_psy_get_property(drv,
+				POWER_SUPPLY_PROP_VOLTAGE_OCV, NULL))
+		drv->get_ocv = depl_psy_ocv_from_chip;
+	else
+		return -ENODEV;
+
+	return 0;
+}
+
 static __devinit int depl_probe(struct platform_device *pdev)
 {
 	struct depl_driver *drv;
@@ -253,6 +285,10 @@ static __devinit int depl_probe(struct platform_device *pdev)
 	drv->manager = m;
 	drv->psy = power_supply_get_by_name(drv->pdata->power_supply);
 	if (!drv->psy)
+		goto fail;
+
+	r = depl_init_ocv_reader(drv);
+	if (r)
 		goto fail;
 
 	c = &drv->client;

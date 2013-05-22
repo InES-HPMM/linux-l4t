@@ -41,6 +41,18 @@ struct psy_depletion_rbat_lut {
 	unsigned int rbat;
 };
 
+/*
+ * Capacity -> OCV LUT
+ * Should be descending wrt capacity
+ * { .capacity = 0, ... } must be the last entry
+ * @capacity: battery capacity in percents
+ * @ocv: OCV in uV
+ */
+struct psy_depletion_ocv_lut {
+	unsigned int capacity;
+	unsigned int ocv;
+};
+
 /* Power supply depletion EDP client */
 struct psy_depletion_platform_data {
 	char *power_supply;
@@ -53,6 +65,7 @@ struct psy_depletion_platform_data {
 	unsigned int ibat_nom;
 	struct psy_depletion_ibat_lut *ibat_lut;
 	struct psy_depletion_rbat_lut *rbat_lut;
+	struct psy_depletion_ocv_lut *ocv_lut;
 };
 
 #endif
