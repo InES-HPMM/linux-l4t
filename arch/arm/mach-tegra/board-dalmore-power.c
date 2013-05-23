@@ -1403,6 +1403,10 @@ static struct soctherm_platform_data dalmore_soctherm_data = {
 					.enable = true,
 					.depth = 80,
 				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.depth = 80,
+				},
 			},
 		},
 	},

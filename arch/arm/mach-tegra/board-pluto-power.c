@@ -907,6 +907,10 @@ static struct soctherm_platform_data pluto_soctherm_data = {
 					.enable = true,
 					.depth = 80,
 				},
+				[THROTTLE_DEV_GPU] = {
+					.depth = 80,
+					.enable = true,
+				},
 			},
 		},
 		[THROTTLE_OC4] = {
