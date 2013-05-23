@@ -57,7 +57,7 @@ static struct rt5645_init_reg init_list[] = {
 	{ RT5645_PRIV_INDEX	, 0x003d },
 	{ RT5645_PRIV_DATA	, 0x3600 },
 	{ RT5645_A_JD_CTRL1	, 0x0202 },/* for combo jack 1.8v */
-	{ RT5645_CJ_CTRL2	, 0x08a7 },
+	{ RT5645_CJ_CTRL2	, 0x0827 },
 	/* playback */
 	{ RT5645_STO_DAC_MIXER	, 0x1616 },/* Dig inf 1 -> Sto DAC mixer -> DACL */
 	{ RT5645_OUT_L1_MIXER	, 0x01fe },/* DACL1 -> OUTMIXL */
@@ -695,8 +695,10 @@ int rt5645_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			jack_type = RT5645_HEADPHO_DET;
 			break;
 		}
-		snd_soc_update_bits(codec, RT5645_CJ_CTRL2,
-			RT5645_CBJ_DET_MODE, RT5645_CBJ_DET_MODE);
+		if (jack_type != RT5645_HEADSET_DET) {
+			snd_soc_update_bits(codec, RT5645_CJ_CTRL2,
+				RT5645_CBJ_DET_MODE, RT5645_CBJ_DET_MODE);
+		}
 		snd_soc_update_bits(codec, RT5645_PWR_VOL,
 			RT5645_PWR_MIC_DET, 0);
 		snd_soc_write(codec, RT5645_DIG_MISC, regfa);
@@ -734,7 +736,7 @@ int rt5645_button_detect(struct snd_soc_codec *codec)
 #else
 	snd_soc_write(codec, RT5645_JD_CTRL3, 0x00c8);
 
-	snd_soc_write(codec, RT5645_CJ_CTRL2,0x1827);
+	snd_soc_write(codec, RT5645_CJ_CTRL2, 0x0827);
 	snd_soc_write(codec, RT5645_CJ_CTRL2,0x0827);
 	snd_soc_write(codec, RT5645_CJ_CTRL1,0x0005);
 #endif
@@ -1624,8 +1626,8 @@ static void hp_amp_power(struct snd_soc_codec *codec, int on)
 				RT5645_PWR_FV1 | RT5645_PWR_FV2,
 				RT5645_PWR_FV1 | RT5645_PWR_FV2);
 
-			snd_soc_update_bits(codec, RT5645_CHARGE_PUMP,
-				RT5645_PM_HP_MASK, RT5645_PM_HP_HV);
+			/*snd_soc_update_bits(codec, RT5645_CHARGE_PUMP,
+				RT5645_PM_HP_MASK, RT5645_PM_HP_HV);*/
 			snd_soc_update_bits(codec, RT5645_DEPOP_M1,
 				RT5645_HP_CO_MASK | RT5645_HP_SG_MASK,
 				RT5645_HP_CO_EN | RT5645_HP_SG_EN);
@@ -1876,9 +1878,9 @@ static int rt5645_bst1_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		snd_soc_update_bits(codec,RT5645_CHARGE_PUMP,
+		/*snd_soc_update_bits(codec,RT5645_CHARGE_PUMP,
 			RT5645_OSW_L_MASK | RT5645_OSW_R_MASK,
-			RT5645_OSW_L_DIS | RT5645_OSW_R_DIS);
+			RT5645_OSW_L_DIS | RT5645_OSW_R_DIS);*/
 		if (rt5645->combo_jack_en) {
 			//snd_soc_update_bits(codec, RT5645_PWR_VOL,
 			//	RT5645_PWR_MIC_DET, RT5645_PWR_MIC_DET);
@@ -1896,8 +1898,8 @@ static int rt5645_bst1_event(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec, RT5645_CJ_CTRL1,
 				RT5645_CBJ_BST1_EN, RT5645_CBJ_BST1_EN);
 			*/
-			snd_soc_update_bits(codec, RT5645_CJ_CTRL2,
-				RT5645_CAPLESS_EN | RT5645_CBJ_DET_MODE, 0);
+			/*snd_soc_update_bits(codec, RT5645_CJ_CTRL2,
+				RT5645_CAPLESS_EN | RT5645_CBJ_DET_MODE, 0);*/
 			snd_soc_write(codec, RT5645_JD_CTRL3, 0x0088);
 			snd_soc_write(codec, RT5645_JD_CTRL3, 0x00c8);
 #endif
@@ -3453,9 +3455,9 @@ static int rt5645_set_bias_level(struct snd_soc_codec *codec,
 		break;
 
 	case SND_SOC_BIAS_PREPARE:
-		snd_soc_update_bits(codec, RT5645_CHARGE_PUMP,
+		/*snd_soc_update_bits(codec, RT5645_CHARGE_PUMP,
 			RT5645_OSW_L_MASK | RT5645_OSW_R_MASK,
-			RT5645_OSW_L_DIS | RT5645_OSW_R_DIS);
+			RT5645_OSW_L_DIS | RT5645_OSW_R_DIS);*/
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
