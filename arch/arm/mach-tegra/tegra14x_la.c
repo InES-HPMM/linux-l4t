@@ -488,6 +488,10 @@ static int t14x_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 	ci = &cs->la_info_array[idx];
 	fifo_size_in_atoms = ci->fifo_size_in_atoms;
 
+#ifdef CONFIG_TEGRA_DISABLE_BBC_LATENCY_ALLOWANCE
+	if (id == TEGRA_LA_BBCR || id == TEGRA_LA_BBCW)
+		return 0;
+#endif
 	if (id >= TEGRA_LA_DISPLAY_0A && id <= TEGRA_LA_DISPLAYD) {
 		cs->disp_bw_array[id - TEGRA_LA_DISPLAY_0A] = bw_mbps;
 		if (cs->update_display_ptsa_rate)
