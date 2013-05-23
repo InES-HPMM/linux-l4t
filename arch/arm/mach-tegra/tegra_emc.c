@@ -28,7 +28,7 @@
 
 #include "tegra_emc.h"
 
-static u8 emc_iso_share = 100;
+u8 tegra_emc_iso_share = 100;
 static unsigned long emc_iso_allocation;
 static unsigned long last_iso_bw;
 
@@ -72,7 +72,7 @@ static u8 tegra_emc_get_iso_share(u32 usage_flags, unsigned long iso_bw)
 		}
 	}
 	last_iso_bw = iso_bw;
-	emc_iso_share = iso_share;
+	tegra_emc_iso_share = iso_share;
 	return iso_share;
 }
 
@@ -174,7 +174,7 @@ int __init tegra_emc_iso_usage_debugfs_init(struct dentry *emc_debugfs_root)
 		return -ENOMEM;
 
 	d = debugfs_create_u8("emc_iso_share", S_IRUGO, emc_debugfs_root,
-			      &emc_iso_share);
+			      &tegra_emc_iso_share);
 	if (!d)
 		return -ENOMEM;
 

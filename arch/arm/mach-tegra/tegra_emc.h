@@ -24,6 +24,7 @@
 #define TEGRA_EMC_ISO_USE_CASES_MAX_NUM		8
 
 extern u8 tegra_emc_bw_efficiency;
+extern u8 tegra_emc_iso_share;
 
 enum {
 	DRAM_OVER_TEMP_NONE = 0,

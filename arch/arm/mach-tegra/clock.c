@@ -45,6 +45,7 @@
 #include "dvfs.h"
 #include "iomap.h"
 #include "timer.h"
+#include "tegra_emc.h"
 
 /* Global data of Tegra CPU CAR ops */
 struct tegra_cpu_car_ops *tegra_cpu_car_ops;
@@ -1321,11 +1322,26 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 		state, c->refcnt, div, rate);
 	if (c->parent && !list_empty(&c->parent->shared_bus_list)) {
 		enum shared_bus_users_mode mode = c->u.shared_bus_user.mode;
-		seq_printf(s, " (%lu%s)", c->u.shared_bus_user.rate,
-			   mode == SHARED_CEILING_BUT_ISO ? "^" :
-			   mode == SHARED_CEILING ? "^" :
-			   mode == SHARED_ISO_BW ? "+" :
-			   mode == SHARED_BW ? "+" : "");
+		unsigned long request = c->u.shared_bus_user.rate;
+		seq_printf(s, " (%lu", request);
+
+		switch (mode) {
+		case SHARED_BW:
+			seq_printf(s, " / %lu+)",
+				   request / tegra_emc_bw_efficiency * 100);
+			break;
+		case SHARED_ISO_BW:
+			seq_printf(s, " / %lu / %lu+)",
+				   request / tegra_emc_bw_efficiency * 100,
+				   request / tegra_emc_iso_share * 100);
+			break;
+		case SHARED_CEILING_BUT_ISO:
+		case SHARED_CEILING:
+			seq_printf(s, "%s)", "^");
+			break;
+		default:
+			seq_printf(s, ")");
+		}
 	}
 	seq_printf(s, "\n");
 
@@ -1343,8 +1359,8 @@ static void clock_tree_show_one(struct seq_file *s, struct clk *c, int level)
 static int clock_tree_show(struct seq_file *s, void *data)
 {
 	struct clk *c;
-	seq_printf(s, "   clock                               state  ref div      rate       (shared rate)\n");
-	seq_printf(s, "-----------------------------------------------------------------------------------\n");
+	seq_printf(s, "   clock                               state  ref div      rate       (shared req / bw_margin / iso_margin)\n");
+	seq_printf(s, "-----------------------------------------------------------------------------------------------------------\n");
 
 	mutex_lock(&clock_list_lock);
 	if (!tegra_platform_is_fpga())
