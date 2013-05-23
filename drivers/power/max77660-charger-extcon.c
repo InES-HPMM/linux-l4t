@@ -455,8 +455,12 @@ static int max77660_charger_wdt(struct max77660_chg_extcon *chip)
 		return ret;
 	}
 
-	ret = max77660_reg_set_bits(chip->parent, MAX77660_PWR_SLAVE,
-		MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
+	if (charger->wdt_timeout)
+		ret = max77660_reg_set_bits(chip->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
+	else
+		ret = max77660_reg_clr_bits(chip->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
 	if (ret < 0) {
 		dev_err(chip->dev,
 			"GLBLCNFG1_ENCHGTL update failed: %d\n", ret);
@@ -760,10 +764,23 @@ static int __devexit max77660_chg_extcon_remove(struct platform_device *pdev)
 static int max77660_chg_extcon_suspend(struct device *dev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(dev);
+	int ret;
 
 	if (device_may_wakeup(dev)) {
 		enable_irq_wake(chg_extcon->chg_irq);
-		enable_irq_wake(chg_extcon->chg_wdt_irq);
+		if (chg_extcon->charger->wdt_timeout)
+			enable_irq_wake(chg_extcon->chg_wdt_irq);
+	} else {
+		if (chg_extcon->charger->wdt_timeout) {
+			ret = max77660_reg_clr_bits(chg_extcon->parent,
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG1,
+				MAX77660_GLBLCNFG1_ENCHGTL);
+			if (ret < 0)
+				dev_err(chg_extcon->dev,
+					"GLBLCNFG1_ENCHGTL update failed: %d\n",
+					 ret);
+		}
 	}
 	return 0;
 }
@@ -771,10 +788,23 @@ static int max77660_chg_extcon_suspend(struct device *dev)
 static int max77660_chg_extcon_resume(struct device *dev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(dev);
+	int ret;
 
 	if (device_may_wakeup(dev)) {
 		disable_irq_wake(chg_extcon->chg_irq);
-		disable_irq_wake(chg_extcon->chg_wdt_irq);
+		if (chg_extcon->charger->wdt_timeout)
+			disable_irq_wake(chg_extcon->chg_wdt_irq);
+	} else {
+		if (chg_extcon->charger->wdt_timeout) {
+			ret = max77660_reg_set_bits(chg_extcon->parent,
+				MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG1,
+				MAX77660_GLBLCNFG1_ENCHGTL);
+			if (ret < 0)
+				dev_err(chg_extcon->dev,
+					"GLBLCNFG1_ENCHGTL update failed: %d\n",
+					 ret);
+		}
 	}
 	return 0;
 };
