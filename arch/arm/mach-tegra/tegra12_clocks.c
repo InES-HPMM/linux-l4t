@@ -4294,6 +4294,13 @@ static void tegra12_periph_clk_init(struct clk *c)
 		c->parent = c->inputs[0].input;
 	}
 
+	/* if peripheral is left under reset - enforce safe rate */
+	if (!(c->flags & PERIPH_NO_RESET) &&
+	    (clk_readl(PERIPH_CLK_TO_RST_REG(c)) & PERIPH_CLK_TO_BIT(c))) {
+		tegra_periph_clk_safe_rate_init(c);
+		 val = clk_readl(c->reg);
+	}
+
 	if (c->flags & DIV_U71) {
 		u32 divu71 = val & PERIPH_CLK_SOURCE_DIVU71_MASK;
 		if (c->flags & DIV_U71_IDLE) {
