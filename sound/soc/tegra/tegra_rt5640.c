@@ -2,7 +2,7 @@
  * tegra_rt5640.c - Tegra machine ASoC driver for boards using ALC5640 codec.
  *
  * Author: Johnny Qiu <joqiu@nvidia.com>
- * Copyright (C) 2011-2012, NVIDIA, Inc.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Based on code copyright/by:
  *
@@ -549,14 +549,14 @@ static int tegra_rt5640_event_ext_mic(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static const struct snd_soc_dapm_widget cardhu_dapm_widgets[] = {
+static const struct snd_soc_dapm_widget tegra_rt5640_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_rt5640_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone Jack", tegra_rt5640_event_hp),
 	SND_SOC_DAPM_MIC("Mic Jack", tegra_rt5640_event_ext_mic),
 	SND_SOC_DAPM_MIC("Int Mic", tegra_rt5640_event_int_mic),
 };
 
-static const struct snd_soc_dapm_route cardhu_audio_map[] = {
+static const struct snd_soc_dapm_route tegra_rt5640_audio_map[] = {
 	{"Headphone Jack", NULL, "HPOR"},
 	{"Headphone Jack", NULL, "HPOL"},
 	{"Int Spk", NULL, "SPORP"},
@@ -574,7 +574,22 @@ static const struct snd_soc_dapm_route cardhu_audio_map[] = {
 	{"DMIC R2", NULL, "Int Mic"},
 };
 
-static const struct snd_kcontrol_new cardhu_controls[] = {
+static const struct snd_soc_dapm_route tegra_rt5640_no_micbias_audio_map[] = {
+	{"Headphone Jack", NULL, "HPOR"},
+	{"Headphone Jack", NULL, "HPOL"},
+	{"Int Spk", NULL, "SPORP"},
+	{"Int Spk", NULL, "SPORN"},
+	{"Int Spk", NULL, "SPOLP"},
+	{"Int Spk", NULL, "SPOLN"},
+	{"micbias1", NULL, "Mic Jack"},
+	{"IN2P", NULL, "micbias1"},
+	{"DMIC L1", NULL, "Int Mic"},
+	{"DMIC L2", NULL, "Int Mic"},
+	{"DMIC R1", NULL, "Int Mic"},
+	{"DMIC R2", NULL, "Int Mic"},
+};
+
+static const struct snd_kcontrol_new tegra_rt5640_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
@@ -755,12 +770,12 @@ static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.resume_pre = tegra_rt5640_resume_pre,
 	.set_bias_level = tegra_rt5640_set_bias_level,
 	.set_bias_level_post = tegra_rt5640_set_bias_level_post,
-	.controls = cardhu_controls,
-	.num_controls = ARRAY_SIZE(cardhu_controls),
-	.dapm_widgets = cardhu_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(cardhu_dapm_widgets),
-	.dapm_routes = cardhu_audio_map,
-	.num_dapm_routes = ARRAY_SIZE(cardhu_audio_map),
+	.controls = tegra_rt5640_controls,
+	.num_controls = ARRAY_SIZE(tegra_rt5640_controls),
+	.dapm_widgets = tegra_rt5640_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(tegra_rt5640_dapm_widgets),
+	.dapm_routes = tegra_rt5640_audio_map,
+	.num_dapm_routes = ARRAY_SIZE(tegra_rt5640_audio_map),
 	.fully_routed = true,
 };
 
@@ -816,6 +831,14 @@ static int tegra_rt5640_driver_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No platform data supplied\n");
 		return -EINVAL;
 	}
+
+	if (pdata->micbias_gpio_absent) {
+		card->dapm_routes =
+			tegra_rt5640_no_micbias_audio_map;
+		card->num_dapm_routes =
+			ARRAY_SIZE(tegra_rt5640_no_micbias_audio_map);
+	}
+
 	if (pdata->codec_name)
 		card->dai_link->codec_name = pdata->codec_name;
 
