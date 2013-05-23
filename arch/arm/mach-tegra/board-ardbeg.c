@@ -653,7 +653,11 @@ DT_MACHINE_START(ARDBEG, "ardbeg")
 	.smp		= smp_ops(tegra_smp_ops),
 	.map_io		= tegra_map_common_io,
 	.reserve	= tegra_ardbeg_reserve,
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	.init_early	= tegra12x_init_early,
+#else
 	.init_early	= tegra11x_init_early,
+#endif
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_init_timer,
 	.init_machine	= tegra_ardbeg_dt_init,
