@@ -500,7 +500,9 @@ retry:
 		}
 	}
 	list_add_tail(&new->list, head);
+#ifdef CONFIG_F2FS_STAT_FS
 	sbi->n_dirty_dirs++;
+#endif
 
 	BUG_ON(!S_ISDIR(inode->i_mode));
 out:
@@ -530,7 +532,9 @@ void remove_dirty_dir_inode(struct inode *inode)
 		if (entry->inode == inode) {
 			list_del(&entry->list);
 			kmem_cache_free(inode_entry_slab, entry);
+#ifdef CONFIG_F2FS_STAT_FS
 			sbi->n_dirty_dirs--;
+#endif
 			break;
 		}
 	}
