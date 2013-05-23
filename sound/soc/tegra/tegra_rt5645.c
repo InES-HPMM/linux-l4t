@@ -139,6 +139,28 @@ static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
 
 	rate = clk_get_rate(machine->util_data.clk_cdev1);
 
+	if (pdata->i2s_param[HIFI_CODEC].is_i2s_master) {
+		err = snd_soc_dai_set_sysclk(codec_dai, RT5645_SCLK_S_MCLK,
+				rate, SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
+	} else {
+		err = snd_soc_dai_set_pll(codec_dai, 0, RT5645_PLL1_S_MCLK,
+				rate, 512*srate);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai pll not set\n");
+			return err;
+		}
+		err = snd_soc_dai_set_sysclk(codec_dai, RT5645_SCLK_S_PLL1,
+				512*srate, SND_SOC_CLOCK_IN);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai clock not set\n");
+			return err;
+		}
+	}
+
 	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
@@ -148,12 +170,6 @@ static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
 	err = snd_soc_dai_set_fmt(cpu_dai, i2s_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "cpu_dai fmt not set\n");
-		return err;
-	}
-
-	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai clock not set\n");
 		return err;
 	}
 
@@ -500,15 +516,14 @@ static const struct snd_soc_dapm_route ardbeg_audio_map[] = {
 	{"micbias2", NULL, "Mic Jack"},
 	{"IN1P", NULL, "micbias2"},
 	{"IN1N", NULL, "micbias2"},
+#ifdef USE_DMIC
+	{"DMIC L1", NULL, "Int Mic"},
+	{"DMIC R1", NULL, "Int Mic"},
+#else
 	{"micbias1", NULL, "Int Mic"},
 	{"IN2P", NULL, "micbias1"},
 	{"IN2N", NULL, "micbias1"},
-/*
-	{"DMIC L1", NULL, "Int Mic"},
-	{"DMIC L2", NULL, "Int Mic"},
-	{"DMIC R1", NULL, "Int Mic"},
-	{"DMIC R2", NULL, "Int Mic"},
-*/
+#endif
 };
 
 static const struct snd_kcontrol_new cardhu_controls[] = {
