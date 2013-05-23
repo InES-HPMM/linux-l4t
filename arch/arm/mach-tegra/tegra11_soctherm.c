@@ -72,10 +72,12 @@ static const int precision; /* default 0 -> low precision */
 #define CTL_LVL0_CPU0_DN_THRESH_MASK	0xff
 #define CTL_LVL0_CPU0_EN_SHIFT		8
 #define CTL_LVL0_CPU0_EN_MASK		0x1
+#define CTL_LVL0_CPU0_DEV_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_DEV_THROT_HEAVY	0x2
 #define CTL_LVL0_CPU0_CPU_THROT_SHIFT	5
 #define CTL_LVL0_CPU0_CPU_THROT_MASK	0x3
-#define CTL_LVL0_CPU0_CPU_THROT_LIGHT	0x1
-#define CTL_LVL0_CPU0_CPU_THROT_HEAVY	0x2
+#define CTL_LVL0_CPU0_GPU_THROT_SHIFT	3
+#define CTL_LVL0_CPU0_GPU_THROT_MASK	0x3
 #define CTL_LVL0_CPU0_MEM_THROT_SHIFT	2
 #define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
@@ -660,13 +662,16 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 
 	r = soctherm_readl(reg_off);
 	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, trip_temp);
-
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
 	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
 		    throt == THROTTLE_HEAVY ?
-		    CTL_LVL0_CPU0_CPU_THROT_HEAVY :
-		    CTL_LVL0_CPU0_CPU_THROT_LIGHT);
+		    CTL_LVL0_CPU0_DEV_THROT_HEAVY :
+		    CTL_LVL0_CPU0_DEV_THROT_LIGHT);
+	r = REG_SET(r, CTL_LVL0_CPU0_GPU_THROT,
+		    throt == THROTTLE_HEAVY ?
+		    CTL_LVL0_CPU0_DEV_THROT_HEAVY :
+		    CTL_LVL0_CPU0_DEV_THROT_LIGHT);
 
 	soctherm_writel(r, reg_off);
 }
@@ -2264,10 +2269,16 @@ static int regs_show(struct seq_file *s, void *data)
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
 			state = REG_GET(r, CTL_LVL0_CPU0_CPU_THROT);
-			seq_printf(s, "Throt");
+			seq_printf(s, "Throt-CPU");
 			seq_printf(s, "(%s) ", state ?
-				state == CTL_LVL0_CPU0_CPU_THROT_LIGHT ? "L" :
-				state == CTL_LVL0_CPU0_CPU_THROT_HEAVY ? "H" :
+				state == CTL_LVL0_CPU0_DEV_THROT_LIGHT ? "L" :
+				state == CTL_LVL0_CPU0_DEV_THROT_HEAVY ? "H" :
+				"H+L" : "none");
+			state = REG_GET(r, CTL_LVL0_CPU0_GPU_THROT);
+			seq_printf(s, "Throt-GPU");
+			seq_printf(s, "(%s) ", state ?
+				state == CTL_LVL0_CPU0_DEV_THROT_LIGHT ? "L" :
+				state == CTL_LVL0_CPU0_DEV_THROT_HEAVY ? "H" :
 				"H+L" : "none");
 			state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
 			seq_printf(s, "Status(%s)\n",
