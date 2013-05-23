@@ -1057,11 +1057,13 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 	val |= (param->droop_restore_ramp << CL_DVFS_DROOP_CTRL_RAMP_SHIFT);
 	cl_dvfs_writel(cld, val, CL_DVFS_DROOP_CTRL);
 
+	val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ) &
+		CL_DVFS_FREQ_REQ_SCALE_MASK;
+	cld->last_req.scale = val >> CL_DVFS_FREQ_REQ_SCALE_SHIFT;
 	cld->last_req.cap = 0;
 	cld->last_req.freq = 0;
 	cld->last_req.output = 0;
-	cld->last_req.scale = SCALE_MAX - 1;
-	cl_dvfs_writel(cld, CL_DVFS_FREQ_REQ_SCALE_MASK, CL_DVFS_FREQ_REQ);
+	cl_dvfs_writel(cld, val, CL_DVFS_FREQ_REQ);
 	cl_dvfs_writel(cld, param->scale_out_ramp, CL_DVFS_SCALE_RAMP);
 
 	/* select frequency for monitoring */
