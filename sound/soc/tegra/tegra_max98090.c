@@ -1117,7 +1117,6 @@ static int tegra_max98090_set_bias_level(struct snd_soc_card *card,
 	if (machine->bias_level == SND_SOC_BIAS_OFF &&
 		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
 		machine->clock_enabled = 1;
-		tegra_asoc_utils_clk_enable(&machine->util_data);
 		machine->bias_level = level;
 	}
 
@@ -1133,7 +1132,6 @@ static int tegra_max98090_set_bias_level_post(struct snd_soc_card *card,
 	if (machine->bias_level != SND_SOC_BIAS_OFF &&
 		level == SND_SOC_BIAS_OFF && (machine->clock_enabled)) {
 		machine->clock_enabled = 0;
-		tegra_asoc_utils_clk_disable(&machine->util_data);
 	}
 
 	machine->bias_level = level;
