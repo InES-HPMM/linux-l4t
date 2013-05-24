@@ -933,6 +933,10 @@ static void palmas_power_off(void)
 {
 	if (!palmas_dev)
 		return;
+	if (palmas_dev->id == TPS80036)
+		palmas_update_bits(palmas_dev, PALMAS_INTERRUPT_BASE,
+					PALMAS_INT4_MASK_GPIO_4,
+					PALMAS_INT4_MASK, 0xff);
 
 	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
 }
