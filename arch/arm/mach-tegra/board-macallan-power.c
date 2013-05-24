@@ -844,7 +844,7 @@ int __init macallan_soctherm_init(void)
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_platform_edp_init(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips,
-			8000);
+			6000); /* edp temperature margin */
 	tegra_add_tj_trips(macallan_soctherm_data.therm[THERM_CPU].trips,
 			&macallan_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_vc_trips(macallan_soctherm_data.therm[THERM_CPU].trips,

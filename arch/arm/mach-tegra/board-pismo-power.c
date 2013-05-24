@@ -908,7 +908,7 @@ int __init pismo_soctherm_init(void)
 {
 	tegra_platform_edp_init(pismo_soctherm_data.therm[THERM_CPU].trips,
 			&pismo_soctherm_data.therm[THERM_CPU].num_trips,
-			8000); /* edp temperature margin */
+			6000); /* edp temperature margin */
 	tegra_add_tj_trips(pismo_soctherm_data.therm[THERM_CPU].trips,
 			&pismo_soctherm_data.therm[THERM_CPU].num_trips);
 
