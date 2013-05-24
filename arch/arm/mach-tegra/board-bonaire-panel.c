@@ -32,6 +32,7 @@
 #include <mach/iomap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "board-bonaire.h"
@@ -208,6 +209,25 @@ static int bonaire_panel_disable(void)
 	return 0;
 }
 
+static struct tegra_dc_out_pin edp_out_pins[] = {
+	{
+		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_PIXEL_CLOCK,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name   = TEGRA_DC_OUT_PIN_DATA_ENABLE,
+		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+};
+
 static struct resource bonaire_disp1_resources[] = {
 	{
 		.name	= "irq",
@@ -260,24 +280,77 @@ static struct resource bonaire_disp1_resources[] = {
 #endif
 };
 
+static struct resource bonaire_disp2_resources[] = {
+	{
+		.name	= "irq",
+		.start	= INT_DISPLAY_B_GENERAL,
+		.end	= INT_DISPLAY_B_GENERAL,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "regs",
+		.start	= TEGRA_DISPLAY2_BASE,
+		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "fbmem",
+		.start	= 0,	/* Filled in by bonaire_panel_init() */
+		.end	= 0,	/* Filled in by bonaire_panel_init() */
+		.flags	= IORESOURCE_MEM,
+	},
+#ifdef CONFIG_TEGRA_DSI_INSTANCE_1
+	{
+		.name	= "dsi_regs",
+		.start	= TEGRA_DSIB_BASE,
+		.end	= TEGRA_DSIB_BASE + TEGRA_DSIB_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#else
+	{
+		.name	= "dsi_regs",
+		.start	= TEGRA_DSI_BASE,
+		.end	= TEGRA_DSI_BASE + TEGRA_DSI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
+#if defined(CONFIG_TEGRA_DP) || defined(CONFIG_TEGRA_LVDS)
+	{
+		.name	= "sor",
+		.start	= TEGRA_SOR_BASE,
+		.end	= TEGRA_SOR_BASE + TEGRA_SOR_SIZE - 1,
+
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
+#if defined(CONFIG_TEGRA_DP)
+	{
+		.name	= "dpaux",
+		.start	= TEGRA_DPAUX_BASE,
+		.end	= TEGRA_DPAUX_BASE + TEGRA_DPAUX_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#endif
+};
+
 static struct tegra_dc_mode bonaire_panel_modes[] = {
 	{
-		.pclk = 18000000,
-		.h_ref_to_sync = 8,
-		.v_ref_to_sync = 2,
-		.h_sync_width = 4,
-		.v_sync_width = 1,
-		.h_back_porch = 20,
-		.v_back_porch = 7,
+		.pclk = 27000000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 34,
+		.v_sync_width = 6,
+		.h_back_porch = 64,
+		.v_back_porch = 4,
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 		.h_active = 120,
 		.v_active = 160,
 #else
-		.h_active = 480,
-		.v_active = 640,
+		.h_active = 1366,
+		.v_active = 768,
 #endif
-		.h_front_porch = 8,
-		.v_front_porch = 8,
+		.h_front_porch = 16,
+		.v_front_porch = 2,
 	},
 };
 
@@ -289,9 +362,9 @@ static struct tegra_fb_data bonaire_fb_data = {
 	.bits_per_pixel	= 16,
 	.flags		= 0,
 #else
-	.xres		= 480,
-	.yres		= 640,
-	.bits_per_pixel	= 32,
+	.xres		= 1366,
+	.yres		= 768,
+	.bits_per_pixel	= 16,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 #endif
 };
@@ -549,9 +622,10 @@ static struct tegra_fb_data bonaire_dsi_fb_data = {
 #endif
 };
 
-static struct tegra_dc_out bonaire_disp1_out = {
+static struct tegra_dc_out bonaire_disp_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.flags		= TEGRA_DC_OUT_CONTINUOUS_MODE,
 #if defined (CONFIG_TEGRA_DC_TEMPORAL_DITHER) /* mds hack */
 	.dither		= TEGRA_DC_TEMPORAL_DITHER,
 #endif
@@ -561,6 +635,8 @@ static struct tegra_dc_out bonaire_disp1_out = {
 
 	.modes		= bonaire_panel_modes,
 	.n_modes	= ARRAY_SIZE(bonaire_panel_modes),
+	.out_pins       = edp_out_pins,
+	.n_out_pins     = ARRAY_SIZE(edp_out_pins),
 #elif defined(CONFIG_TEGRA_LVDS)
 	.type		= TEGRA_DC_OUT_LVDS,
 
@@ -588,9 +664,9 @@ static struct tegra_dc_out bonaire_disp1_out = {
 #endif
 };
 
-static struct tegra_dc_platform_data bonaire_disp1_pdata = {
+static struct tegra_dc_platform_data bonaire_disp_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
-	.default_out	= &bonaire_disp1_out,
+	.default_out	= &bonaire_disp_out,
 	.emc_clk_rate	= 300000000,
 #ifndef CONFIG_TEGRA_BONAIRE_DSI
 	.fb		= &bonaire_fb_data,
@@ -605,7 +681,17 @@ static struct platform_device bonaire_disp1_device = {
 	.resource	= bonaire_disp1_resources,
 	.num_resources	= ARRAY_SIZE(bonaire_disp1_resources),
 	.dev = {
-		.platform_data = &bonaire_disp1_pdata,
+		.platform_data = &bonaire_disp_pdata,
+	},
+};
+
+static struct platform_device bonaire_disp2_device = {
+	.name		= "tegradc",
+	.id		= 1,
+	.resource	= bonaire_disp2_resources,
+	.num_resources	= ARRAY_SIZE(bonaire_disp2_resources),
+	.dev = {
+		.platform_data = &bonaire_disp_pdata,
 	},
 };
 
@@ -679,22 +765,43 @@ int __init bonaire_panel_init(void)
 #endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
-	res = platform_get_resource_byname(&bonaire_disp1_device,
-					 IORESOURCE_MEM, "fbmem");
-	res->start = tegra_fb_start;
-	res->end = tegra_fb_start + tegra_fb_size - 1;
+	if (!tegra_platform_is_fpga()) {
+		res = platform_get_resource_byname(&bonaire_disp1_device,
+			IORESOURCE_MEM, "fbmem");
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
 
 #ifdef CONFIG_TEGRA_IOMMU_SMMU
-	/* Copy the bootloader fb to the fb. */
-	__tegra_move_framebuffer(&bonaire_nvmap_device,
+		/* Copy the bootloader fb to the fb. */
+		__tegra_move_framebuffer(&bonaire_nvmap_device,
 			tegra_fb_start, tegra_bootloader_fb_start,
 			tegra_fb_size);
 #endif
 
-	if (!err) {
-		bonaire_disp1_device.dev.parent = &phost1x->dev;
-		err = platform_device_register(&bonaire_disp1_device);
+		if (!err) {
+			bonaire_disp1_device.dev.parent = &phost1x->dev;
+			err = platform_device_register(&bonaire_disp1_device);
+		}
+	} else {
+		/* FPGA only has disp2 support */
+		res = platform_get_resource_byname(&bonaire_disp2_device,
+			IORESOURCE_MEM, "fbmem");
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+
+#ifdef CONFIG_TEGRA_IOMMU_SMMU
+		/* Copy the bootloader fb to the fb. */
+		__tegra_move_framebuffer(&bonaire_nvmap_device,
+			tegra_fb_start, tegra_bootloader_fb_start,
+			tegra_fb_size);
+#endif
+
+		if (!err) {
+			bonaire_disp2_device.dev.parent = &phost1x->dev;
+			err = platform_device_register(&bonaire_disp2_device);
+		}
 	}
+
 #endif
 
 #ifdef CONFIG_TEGRA_NVAVP
