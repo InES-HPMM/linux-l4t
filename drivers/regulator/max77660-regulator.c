@@ -890,11 +890,36 @@ static struct max77660_regulator_info
 	REGULATOR_SW(SW5, 3),
 };
 
-static int max77660_pwm_dvfs_init(struct device *parent,
+static ssize_t max77660_show_dvfs_data(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct max77660_platform_data *pdata =
+					dev_get_platdata(dev->parent);
+	struct max77660_pwm_dvfs_init_data *dvfs_pd = &pdata->dvfs_pd;
+	int count = 0;
+
+	if (!dvfs_pd->en_pwm)
+		return 0;
+
+	count += sprintf(buf+count, "base_voltage:%d\n",
+			dvfs_pd->base_voltage_uV);
+	count += sprintf(buf+count, "step_size:%d\n",
+			dvfs_pd->step_voltage_uV);
+	count += sprintf(buf+count, "max_voltage:%d\n",
+			dvfs_pd->max_voltage_uV);
+	count += sprintf(buf+count, "default_voltage:%d\n",
+			dvfs_pd->default_voltage_uV);
+
+	return count;
+}
+static DEVICE_ATTR(dvfs_data, 0444, max77660_show_dvfs_data, NULL);
+
+static int max77660_pwm_dvfs_init(struct device *max77660_pmic_dev,
 					struct max77660_platform_data *pdata)
 {
 	u8 val = 0;
 	int ret;
+	struct device *parent = max77660_pmic_dev->parent;
 	struct max77660_pwm_dvfs_init_data *dvfs_pd = &pdata->dvfs_pd;
 
 	if (!dvfs_pd->en_pwm)
@@ -941,8 +966,20 @@ static int max77660_pwm_dvfs_init(struct device *parent,
 			DVFS_VOLTAGE_STEP_UV);
 	ret = max77660_reg_write(parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_BUCK4_MVR, val);
-	return ret;
+	if (ret < 0)
+		return ret;
 
+	ret = device_create_file(max77660_pmic_dev, &dev_attr_dvfs_data);
+	if (ret)
+		dev_warn(max77660_pmic_dev,
+				"Can't register dvfs sysfs attribute\n");
+
+	ret = sysfs_create_link(kernel_kobj, &(max77660_pmic_dev->kobj),
+				"pmic");
+	if (ret)
+		dev_warn(max77660_pmic_dev, "Can't create sysfs link\n");
+
+	return ret;
 }
 
 static int max77660_regulator_probe(struct platform_device *pdev)
@@ -1027,7 +1064,7 @@ static int max77660_regulator_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = max77660_pwm_dvfs_init(pdev->dev.parent, pdata);
+	ret = max77660_pwm_dvfs_init(&pdev->dev, pdata);
 	if (ret)
 		dev_err(&pdev->dev, "Failed to initialize BUCK4 dvfs");
 
