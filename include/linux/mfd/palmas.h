@@ -660,6 +660,7 @@ struct palmas_pmic {
 
 	int range[PALMAS_REG_SMPS10];
 	unsigned int ramp_delay[PALMAS_REG_SMPS10];
+	bool ramp_delay_support[PALMAS_NUM_REGS];
 	unsigned int current_reg_mode[PALMAS_REG_SMPS10];
 };
 
@@ -997,6 +998,7 @@ enum usb_irq_events {
 #define PALMAS_SMPS12_FORCE					0x2
 #define PALMAS_SMPS12_VOLTAGE					0x3
 #define PALMAS_SMPS3_CTRL					0x4
+#define PALMAS_SMPS3_TSTEP					0x5
 #define PALMAS_SMPS3_FORCE					0x6
 #define PALMAS_SMPS3_VOLTAGE					0x7
 #define PALMAS_SMPS45_CTRL					0x8

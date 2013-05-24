@@ -60,6 +60,7 @@ static const struct regs_info palmas_regs_info[] = {
 		.sname		= "smps3-in",
 		.vsel_addr	= PALMAS_SMPS3_VOLTAGE,
 		.ctrl_addr	= PALMAS_SMPS3_CTRL,
+		.tstep_addr	= PALMAS_SMPS3_TSTEP,
 		.fvsel_addr	= PALMAS_SMPS3_FORCE,
 		.sleep_id	= PALMAS_SLEEP_REQSTR_ID_SMPS3,
 	},
@@ -532,6 +533,9 @@ static int palma_smps_set_voltage_smps_time_sel(struct regulator_dev *rdev,
 	int old_uv, new_uv;
 	unsigned int ramp_delay = pmic->ramp_delay[id];
 
+	if (!pmic->ramp_delay_support[id])
+		return 0;
+
 	/* ES2.1, have the 1.5X slower slew rate than configured */
 	if (palmas_is_es_version_or_less(pmic->palmas, 2, 1))
 		ramp_delay = (ramp_delay * 10)/15;
@@ -559,12 +563,8 @@ static int palmas_smps_set_ramp_delay(struct regulator_dev *rdev,
 	unsigned int addr = palmas_regs_info[id].tstep_addr;
 	int ret;
 
-	/* SMPS3 and SMPS7 do not have tstep_addr setting */
-	switch (id) {
-	case PALMAS_REG_SMPS3:
-	case PALMAS_REG_SMPS7:
+	if (!pmic->ramp_delay_support[id])
 		return 0;
-	}
 
 	if (ramp_delay <= 0)
 		reg = 0;
@@ -1396,6 +1396,11 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 				continue;
 			if (id == PALMAS_REG_SMPS12)
 				ramp_delay_support = true;
+
+			/* TPS80036 suports ramp delay on SMPS3 also */
+			if (palmas->id == TPS80036)
+				ramp_delay_support = true;
+
 			break;
 		case PALMAS_REG_SMPS123:
 			if (!pmic->smps123)
@@ -1419,6 +1424,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		if ((id == PALMAS_REG_SMPS6) || (id == PALMAS_REG_SMPS8))
 			ramp_delay_support = true;
 
+		pmic->ramp_delay_support[id] = ramp_delay_support;
 		if (ramp_delay_support) {
 			addr = palmas_regs_info[id].tstep_addr;
 			ret = palmas_smps_read(pmic->palmas, addr, &reg);
