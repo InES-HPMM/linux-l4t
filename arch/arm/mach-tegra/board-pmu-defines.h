@@ -53,6 +53,35 @@
 	.open_drain_state = PALMAS_PIN_CONFIG_OD_##_od,			\
 }
 
-
+#define PALMAS_REGS_PDATA(_name, _minmv, _maxmv, _supply_reg,		\
+	_always_on, _boot_on, _apply_uv, _init_mode,			\
+	_warm_reset, _roof_floor, _mode_sleep, _tstep, _vsel)		\
+	static struct regulator_init_data reg_idata_##_name = {		\
+		.constraints = {					\
+			.name = palmas_rails(_name),			\
+			.min_uV = (_minmv)*1000,			\
+			.max_uV = (_maxmv)*1000,			\
+			.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
+					REGULATOR_MODE_STANDBY),	\
+			.valid_ops_mask = (REGULATOR_CHANGE_MODE |	\
+					REGULATOR_CHANGE_STATUS |	\
+					REGULATOR_CHANGE_VOLTAGE),	\
+			.always_on = _always_on | (_roof_floor != 0),	\
+			.boot_on = _boot_on | (_roof_floor != 0),	\
+			.apply_uV = _apply_uv,				\
+			.initial_mode = REGULATOR_MODE_##_init_mode,	\
+		},							\
+		.num_consumer_supplies =				\
+			ARRAY_SIZE(palmas_##_name##_supply),		\
+		.consumer_supplies = palmas_##_name##_supply,		\
+		.supply_regulator = _supply_reg,			\
+	};								\
+	static struct palmas_reg_init reg_init_data_##_name = {		\
+		.warm_reset = _warm_reset,				\
+		.roof_floor = _roof_floor,				\
+		.mode_sleep = _mode_sleep,				\
+		.tstep = _tstep,					\
+		.vsel = _vsel,						\
+	}
 
 #endif
