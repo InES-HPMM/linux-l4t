@@ -240,17 +240,16 @@ static void ipc_work(struct work_struct *work)
 			nvshm_process_queue(handle);
 		} else {
 			if (ipc_readconfig(handle)) {
-				nvshm_unregister_ipc(handle);
+				enable_irq(handle->bb_irq);
+				wake_unlock(&handle->dl_lock);
 				return;
 			}
+
 			nvshm_iobuf_init(handle);
 			nvshm_init_queue(handle);
 			init_interfaces(handle);
 		}
-		handle->old_status = cmd;
-		enable_irq(handle->bb_irq);
-		wake_unlock(&handle->dl_lock);
-		return;
+		break;
 	case NVSHM_IPC_BOOT_FW_REQ:
 	case NVSHM_IPC_BOOT_RESTART_FW_REQ:
 		if (handle->configured) {
@@ -279,7 +278,6 @@ static void ipc_work(struct work_struct *work)
 	default:
 		pr_err("%s unknown IPC message found: msg=0x%x\n",
 		       __func__, new_state);
-		break;
 	}
 	handle->old_status = cmd;
 	enable_irq(handle->bb_irq);
