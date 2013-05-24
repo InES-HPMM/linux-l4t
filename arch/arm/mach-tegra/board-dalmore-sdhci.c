@@ -42,6 +42,7 @@
 #define DALMORE_WLAN_RST	TEGRA_GPIO_PX7
 #define DALMORE_WLAN_WOW	TEGRA_GPIO_PU5
 #define DALMORE_SD_CD		TEGRA_GPIO_PV2
+#define DALMORE_SD_WP		TEGRA_GPIO_PQ4
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int dalmore_wifi_status_register(void (*callback)(int , void *), void *);
@@ -154,7 +155,7 @@ static struct resource sdhci_resource3[] = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = DALMORE_SD_CD,
-	.wp_gpio = -1,
+	.wp_gpio = DALMORE_SD_WP,
 	.power_gpio = -1,
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
@@ -391,7 +392,7 @@ int __init dalmore_sdhci_init(void)
 {
 	int nominal_core_mv;
 	int min_vcore_override_mv;
-
+	struct board_info board_info;
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
@@ -414,7 +415,9 @@ int __init dalmore_sdhci_init(void)
 		&& (!(tegra_sdhci_platform_data3.uhs_mask &
 		MMC_UHS_MASK_DDR50)))
 		tegra_sdhci_platform_data3.trim_delay = 0;
-
+	tegra_get_board_info(&board_info);
+	if (board_info.fab == BOARD_FAB_A05)
+		tegra_sdhci_platform_data2.wp_gpio = -1;
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

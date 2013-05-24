@@ -37,6 +37,7 @@
 #include "iomap.h"
 
 #define MACALLAN_SD_CD	TEGRA_GPIO_PV2
+#define MACALLAN_SD_WP	TEGRA_GPIO_PQ4
 #define MACALLAN_WLAN_PWR	TEGRA_GPIO_PCC5
 #define MACALLAN_WLAN_RST	TEGRA_GPIO_PX7
 #define MACALLAN_WLAN_WOW	TEGRA_GPIO_PU5
@@ -135,7 +136,7 @@ static struct resource sdhci_resource3[] = {
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = MACALLAN_SD_CD,
-	.wp_gpio = -1,
+	.wp_gpio = MACALLAN_SD_WP,
 	.power_gpio = -1,
 	.tap_delay = 0x3,
 	.trim_delay = 0x3,
