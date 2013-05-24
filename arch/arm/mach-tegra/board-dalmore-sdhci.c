@@ -393,6 +393,7 @@ int __init dalmore_sdhci_init(void)
 	int nominal_core_mv;
 	int min_vcore_override_mv;
 	struct board_info board_info;
+
 	nominal_core_mv =
 		tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
 	if (nominal_core_mv) {
@@ -416,8 +417,11 @@ int __init dalmore_sdhci_init(void)
 		MMC_UHS_MASK_DDR50)))
 		tegra_sdhci_platform_data3.trim_delay = 0;
 	tegra_get_board_info(&board_info);
-	if (board_info.fab == BOARD_FAB_A05)
+	if (board_info.fab == BOARD_FAB_A05) {
 		tegra_sdhci_platform_data2.wp_gpio = -1;
+		tegra_sdhci_platform_data0.max_clk_limit = 156000000;
+		tegra_sdhci_platform_data2.max_clk_limit = 156000000;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

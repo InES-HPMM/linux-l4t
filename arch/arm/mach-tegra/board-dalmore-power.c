@@ -194,6 +194,7 @@ static struct tps65090_platform_data tps65090_pdata = {
 static struct regulator_consumer_supply max77663_sd0_supply[] = {
 	REGULATOR_SUPPLY("vdd_core", NULL),
 	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.0"),
+	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vdd_core", "sdhci-tegra.3"),
 };
 
