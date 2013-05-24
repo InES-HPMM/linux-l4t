@@ -30,6 +30,7 @@
 #include <asm/io.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
+#include <linux/suspend.h>
 #include <linux/pm_runtime.h>
 
 #include <mach/clk.h>
@@ -142,6 +143,7 @@ struct tegra_bb {
 	struct work_struct work;
 	struct clk *emc_clk;
 	struct device *proxy_dev;
+	struct notifier_block pm_notifier;
 };
 
 
@@ -1027,6 +1029,45 @@ EXPORT_SYMBOL(tegra_bb_set_emc_floor);
 
 #endif
 
+static int tegra_bb_pm_notifier_event(struct notifier_block *this,
+					unsigned long event, void *ptr)
+{
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	struct tegra_bb *bb = container_of(this, struct tegra_bb, pm_notifier);
+	int sts, mem_req_soon;
+
+	if (!bb) {
+		pr_err("tegra_bb not found!\n");
+		return NOTIFY_OK;
+	}
+
+	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
+	mem_req_soon = (sts >>
+			APBDEV_PMC_IPC_PMC_IPC_STS_0_BB2AP_MEM_REQ_SOON_SHIFT)
+		& 1;
+	sts = sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT;
+	sts &= APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK;
+
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		/* prepare for possible LP1BB state */
+		if (sts) {
+			pr_debug("prepare for lp1bb %lu\n", bb->emc_min_freq);
+			clk_set_rate(bb->emc_clk, BBC_MC_MIN_FREQ);
+		}
+		return NOTIFY_OK;
+
+	case PM_POST_SUSPEND:
+		if (sts && !mem_req_soon) {
+			pr_debug("bbc is inactive so remove floor\n");
+			clk_set_rate(bb->emc_clk, 0);
+		}
+		/* else, wait for IRQs to do the job */
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
 static int tegra_bb_probe(struct platform_device *pdev)
 {
 	struct tegra_bb *bb;
@@ -1305,6 +1346,8 @@ static int tegra_bb_probe(struct platform_device *pdev)
 		return -EAGAIN;
 	}
 
+	bb->pm_notifier.notifier_call = tegra_bb_pm_notifier_event;
+	register_pm_notifier(&bb->pm_notifier);
 #endif
 	return 0;
 }
