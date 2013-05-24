@@ -2,6 +2,7 @@
  * as3722.h definitions
  *
  * Copyright (C) 2013 ams
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * Author: Florian Lobmaier <florian.lobmaier@ams.com>
  *
@@ -382,6 +383,8 @@
 #define AS3722_RTC_ALARM_WAKEUP_EN_MASK        (1 << 1)
 #define AS3722_RTC_ON_MASK                     (1 << 2)
 #define AS3722_RTC_IRQMODE_MASK                (3 << 3)
+#define AS3722_RTC_32KCLK_MASK                 (1 << 5)
+#define AS3722_RTC_32KCLK_EN_VAL               (1 << 5)
 
 #define AS3722_WATCHDOG_TIMER_MAX              127
 #define AS3722_WATCHDOG_ON_MASK                (1<<0)
