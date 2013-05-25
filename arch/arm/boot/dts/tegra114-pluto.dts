@@ -1,6 +1,7 @@
 /dts-v1/;
 
 /include/ "tegra114.dtsi"
+/include/ "panel-l-720p-5.dts"
 
 / {
 	model = "NVIDIA Tegra114 pluto evaluation board";
@@ -8,6 +9,16 @@
 
 	gpio: gpio@6000d000 {
 		status = "okay";
+	};
+
+	host1x {
+		dsi {
+			nvidia,controller-vs = <1>;
+			nvidia,dsi-panel-rst-gpio = <&gpio 61 0>; /* PH5 */
+			nvidia,dsi-panel-bl-en-gpio = <&gpio 52 0>; /* PH2 */
+			nvidia,dsi-panel-bl-pwm-gpio = <&gpio 57 0>; /* PH1 */
+			status = "disabled";
+		};
 	};
 
 	pinmux {
