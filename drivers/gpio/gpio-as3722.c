@@ -118,9 +118,9 @@ static int as3722_gpio_set_config(struct as3722_gpio *as3722_gpio,
 
 	ret = as3722_reg_write(as3722, AS3722_GPIO0_CONTROL_REG + gpio, val);
 	if (ret != 0) {
-		dev_err(as3722->dev, "AS3722_GPIO%d_CTRL_REG write err,
-				ret: %d\n",
-				gpio, ret);
+		dev_err(as3722->dev,
+			"AS3722_GPIO%d_CTRL_REG write err, ret: %d\n",
+			gpio, ret);
 		return ret;
 	}
 
