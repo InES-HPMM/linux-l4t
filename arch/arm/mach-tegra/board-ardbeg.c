@@ -284,7 +284,12 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_avp_device,
 #endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	&tegra12_se_device,
+#endif
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	&tegra11_se_device,
+#endif
 #endif
 	&tegra_ahub_device,
 #if 0
