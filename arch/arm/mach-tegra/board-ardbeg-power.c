@@ -33,6 +33,7 @@
 
 #include "pm.h"
 #include "board.h"
+#include "tegra-board-id.h"
 #include "board-common.h"
 #include "board-ardbeg.h"
 #include "board-pmu-defines.h"
@@ -681,8 +682,15 @@ int __init ardbeg_regulator_init(void)
 
 static int __init ardbeg_fixed_regulator_init(void)
 {
-	return platform_add_devices(pfixed_reg_devs,
-			ARRAY_SIZE(pfixed_reg_devs));
+	struct board_info board_info;
+
+	if (!of_machine_is_compatible("nvidia,ardbeg"))
+		return 0;
+
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_E1780)
+		return platform_add_devices(pfixed_reg_devs,
+				ARRAY_SIZE(pfixed_reg_devs));
 }
 
 subsys_initcall_sync(ardbeg_fixed_regulator_init);

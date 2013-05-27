@@ -723,7 +723,7 @@ int __init pluto_regulator_init(void)
 
 static int __init pluto_fixed_regulator_init(void)
 {
-	if (!machine_is_tegra_pluto())
+	if (!of_machine_is_compatible("nvidia,pluto"))
 		return 0;
 
 	return platform_add_devices(pfixed_reg_devs,

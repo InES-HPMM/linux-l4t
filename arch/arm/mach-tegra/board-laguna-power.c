@@ -817,12 +817,17 @@ static struct platform_device *fixed_reg_devs_pm360[] = {
 
 static int __init laguna_fixed_regulator_init(void)
 {
+	struct board_info board_info;
 
 	if (!of_machine_is_compatible("nvidia,ardbeg"))
 		return 0;
 
-	return platform_add_devices(fixed_reg_devs_pm360,
-			ARRAY_SIZE(fixed_reg_devs_pm360));
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363)
+		return platform_add_devices(fixed_reg_devs_pm360,
+				ARRAY_SIZE(fixed_reg_devs_pm360));
 }
 
 subsys_initcall_sync(laguna_fixed_regulator_init);

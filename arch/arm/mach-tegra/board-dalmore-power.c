@@ -1193,7 +1193,7 @@ static int __init dalmore_fixed_regulator_init(void)
 	struct board_info board_info;
 	u8 power_config;
 
-	if (!machine_is_dalmore())
+	if (!of_machine_is_compatible("nvidia,dalmore"))
 		return 0;
 
 	power_config = get_power_config();

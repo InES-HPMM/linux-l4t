@@ -656,7 +656,7 @@ static int __init macallan_cl_dvfs_init(void)
 
 static int __init macallan_fixed_regulator_init(void)
 {
-	if (!machine_is_macallan())
+	if (!of_machine_is_compatible("nvidia,macallan"))
 		return 0;
 
 	return platform_add_devices(fixed_reg_devs,
