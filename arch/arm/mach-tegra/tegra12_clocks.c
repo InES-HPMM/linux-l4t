@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra12_clocks.c
  *
- * Copyright (C) 2011-2013 NVIDIA Corporation
+ * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6431,6 +6431,12 @@ static struct clk_mux_sel mux_pllp_pllc_pllm[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp_clkm1[] = {
+	{ .input = &tegra_pll_p, .value = 0},
+	{ .input = &tegra_clk_m, .value = 1},
+	{ 0, 0},
+};
+
 static struct clk_mux_sel mux_pllp_clkm[] = {
 	{ .input = &tegra_pll_p, .value = 0},
 	{ .input = &tegra_clk_m, .value = 3},
@@ -6812,6 +6818,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("cile",	"vi",			"cile",  146,	0x61c,	102000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
+	PERIPH_CLK("entropy",	"entropy",		NULL, 149,	0x628,	102000000, mux_pllp_clkm1,		MUX | DIV_U71),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
