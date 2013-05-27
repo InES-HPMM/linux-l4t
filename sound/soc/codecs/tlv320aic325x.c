@@ -1689,7 +1689,6 @@ static int aic325x_probe(struct snd_soc_codec *codec)
 		}
 	}
 
-	 codec->dapm.idle_bias_off = 1;
 
 	/* firmware load */
 	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
