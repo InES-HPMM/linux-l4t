@@ -42,7 +42,8 @@ static struct tegra_sysedp_corecap *cur_corecap;
 static struct clk *emc_cap_clk;
 static struct clk *gpu_cap_clk;
 static struct pm_qos_request cpufreq_qos;
-static unsigned int cpu_power_offset;
+static unsigned int cpu_power_offset = 499;
+static unsigned int cpu_power_balance;
 static unsigned int force_gpu_pri;
 static struct delayed_work core_work;
 static unsigned int *core_edp_states;
@@ -118,6 +119,7 @@ static void apply_caps(struct tegra_sysedp_devcap *devcap)
 	int r;
 
 	core_policy.cpu = get_cpufreq_lim(devcap->cpu_power +
+			cpu_power_balance +
 			cpu_power_offset);
 	core_policy.gpu = devcap->gpufreq;
 	core_policy.emc = devcap->emcfreq;
@@ -183,6 +185,7 @@ static void update_cur_corecap(void)
 	for (; i >= 0; i--, cap--) {
 		if (cap->power <= power) {
 			cur_corecap = cap;
+			cpu_power_balance = power - cap->power;
 			return;
 		}
 	}
