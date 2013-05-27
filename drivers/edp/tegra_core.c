@@ -34,6 +34,8 @@ struct freqcap {
 
 static unsigned int gpu_high_threshold = 500;
 static unsigned int gpu_window = 80;
+static unsigned int gpu_high_hist;
+static unsigned int gpu_high_count = 2;
 static unsigned int online_cpu_count;
 static bool gpu_busy;
 static unsigned int core_state;
@@ -225,12 +227,29 @@ static void core_worker(struct work_struct *work)
 		do_cap_control();
 }
 
+/*
+ * Return true if load was above threshold for at least
+ * gpu_high_count number of notifications
+ */
+static bool calc_gpu_busy(unsigned int load)
+{
+	unsigned int mask;
+
+	mask = (1 << gpu_high_count) - 1;
+
+	gpu_high_hist <<= 1;
+	if (load >= gpu_high_threshold)
+		gpu_high_hist |= 1;
+
+	return (gpu_high_hist & mask) == mask;
+}
+
 void tegra_edp_notify_gpu_load(unsigned int load)
 {
 	bool old;
 
 	old = gpu_busy;
-	gpu_busy = load >= gpu_high_threshold;
+	gpu_busy = calc_gpu_busy(load);
 
 	if (gpu_busy == old || force_gpu_pri || !core_platdata)
 		return;
@@ -359,6 +378,7 @@ static void init_debug(void)
 	create_attr("force_emc", core_client.dentry, &forced_caps.emc);
 	create_attr("gpu_window", core_client.dentry, &gpu_window);
 	create_attr("gain", core_client.dentry, &core_platdata->core_gain);
+	create_attr("gpu_high_count", core_client.dentry, &gpu_high_count);
 }
 #else
 static inline void init_debug(void) {}
