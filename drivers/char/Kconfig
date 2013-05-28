@@ -624,14 +624,14 @@ config TILE_SROM
 
 config TEGRA_EFS
 	bool "Character-device interface for efs file system"
-	depends on  ARCH_TEGRA
+	depends on  ARCH_TEGRA && MTD_NOR_TEGRA_GMI
 	default n
 	help
 	Enable tegra efs helper driver for Nvidia's board.
 
 config TEGRA_GMI_ACCESS_CONTROL
 	bool "Provides access control functionality for multiple devices connected on tegra GMI bus."
-	depends on ARCH_TEGRA
+	depends on ARCH_TEGRA && MTD_NOR_TEGRA_GMI
 	---help---
 	  This driver provides access control and priority support for
 	  tegra GMI bus. Nvidia Embedded entertainment boards support multiple
@@ -640,12 +640,13 @@ config TEGRA_GMI_ACCESS_CONTROL
 config TEGRA_GMI_CHAR
 	bool "Character-device interface for tegra GMI bus"
 	depends on  ARCH_TEGRA
+	select TEGRA_GMI
 	help
 	Enable tegra GMI char driver for Nvidia's board.
 
 config TEGRA_PFLASH
 	bool "Character-device interface for pflash"
-	depends on  ARCH_TEGRA
+	depends on  ARCH_TEGRA && MTD_NOR_TEGRA_GMI
 	default n
 	help
 	Enable tegra pflash helper driver for Nvidia's board.

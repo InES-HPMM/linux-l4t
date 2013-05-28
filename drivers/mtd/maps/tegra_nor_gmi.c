@@ -92,7 +92,9 @@ do {	\
 } while (0)
 
 
+#if defined(CONFIG_TEGRA_EFS) || defined(CONFIG_TEGRA_PFLASH)
 static struct map_info_list nor_gmi_map_list;
+#endif
 
 static inline unsigned long tegra_snor_readl(struct tegra_nor_info *tnor,
 					     unsigned long reg)
@@ -444,7 +446,7 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	return 0;
 }
 
-#ifdef CONFIG_TEGRA_EFS
+#if defined(CONFIG_TEGRA_EFS) || defined(CONFIG_TEGRA_PFLASH)
 struct map_info *get_map_info(unsigned int bank_index)
 {
 	struct map_info *map = &nor_gmi_map_list.map[bank_index];
@@ -512,7 +514,7 @@ static int flash_probe(struct tegra_nor_info *info)
 
 	info->concat_mtd->owner = THIS_MODULE;
 
-#ifdef CONFIG_TEGRA_EFS
+#if defined(CONFIG_TEGRA_EFS) || defined(CONFIG_TEGRA_PFLASH)
 	nor_gmi_map_list.totalflashsize = size;
 #endif
 
@@ -707,7 +709,7 @@ static int tegra_nor_probe(struct platform_device *pdev)
 	if (err)
 		goto out_dma_free_coherent;
 
-#ifdef CONFIG_TEGRA_EFS
+#if defined(CONFIG_TEGRA_EFS) || defined(CONFIG_TEGRA_PFLASH)
 	nor_gmi_map_list.map = info->map;
 	nor_gmi_map_list.n_maps = info->n_maps;
 #endif

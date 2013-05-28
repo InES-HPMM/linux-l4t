@@ -788,4 +788,7 @@ config TEGRA_VDD_CORE_OVERRIDE
 	  When enabled, core rail can be fixed and locked at specified voltage
 	  within override range, and core modules clocks are capped at rates
 	  safe at override level.
+
+config TEGRA_GMI
+	bool
 endif
