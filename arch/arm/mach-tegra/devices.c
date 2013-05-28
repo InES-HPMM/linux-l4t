@@ -1203,8 +1203,10 @@ static struct resource tegra_uarte_resources[] = {
 	},
 };
 
+#define TEGRA_UART_NAME "serial-tegra"
+
 struct platform_device tegra_uarta_device = {
-	.name	= "tegra_uart",
+	.name	= TEGRA_UART_NAME,
 	.id	= 0,
 	.num_resources	= ARRAY_SIZE(tegra_uarta_resources),
 	.resource	= tegra_uarta_resources,
@@ -1214,7 +1216,7 @@ struct platform_device tegra_uarta_device = {
 };
 
 struct platform_device tegra_uartb_device = {
-	.name	= "tegra_uart",
+	.name	= TEGRA_UART_NAME,
 	.id	= 1,
 	.num_resources	= ARRAY_SIZE(tegra_uartb_resources),
 	.resource	= tegra_uartb_resources,
@@ -1224,7 +1226,7 @@ struct platform_device tegra_uartb_device = {
 };
 
 struct platform_device tegra_uartc_device = {
-	.name	= "tegra_uart",
+	.name	= TEGRA_UART_NAME,
 	.id	= 2,
 	.num_resources	= ARRAY_SIZE(tegra_uartc_resources),
 	.resource	= tegra_uartc_resources,
@@ -1234,7 +1236,7 @@ struct platform_device tegra_uartc_device = {
 };
 
 struct platform_device tegra_uartd_device = {
-	.name	= "tegra_uart",
+	.name	= TEGRA_UART_NAME,
 	.id	= 3,
 	.num_resources	= ARRAY_SIZE(tegra_uartd_resources),
 	.resource	= tegra_uartd_resources,
@@ -1899,6 +1901,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "nvavp",	.swgids = SWGID(AVPC), },
 	{ .name = "sdhci-tegra",	.swgids = SWGID(PPCS), },
 	{ .name = "serial8250",	.swgids = SWGID(PPCS), },
+	{ .name = "serial-tegra",      .swgids = SWGID(PPCS), },
 	{ .name = "snd-soc-dummy",	.swgids = SWGID(PPCS), },
 	{ .name = "spdif-dit",	.swgids = SWGID(PPCS), },
 	{ .name = "tegra11-se",	.swgids = SWGID(PPCS), },
