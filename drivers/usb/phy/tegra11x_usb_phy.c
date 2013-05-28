@@ -1497,6 +1497,15 @@ NOT_NON_STD_CHARGER:
 
 }
 
+static void utmi_phy_pmc_disable(struct tegra_usb_phy *phy)
+{
+	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
+	if (phy->pdata->u_data.host.turn_off_vbus_on_lp0 &&
+					phy->pdata->port_otg) {
+		pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 0);
+		pmc->pmc_ops->powerdown_pmc_wake_detect(pmc);
+	}
+}
 static bool utmi_phy_nv_charger_detect(struct tegra_usb_phy *phy)
 {
 	int status1;
@@ -2736,6 +2745,7 @@ static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.resume	= utmi_phy_resume,
 	.charger_detect = utmi_phy_charger_detect,
 	.nv_charger_detect = utmi_phy_nv_charger_detect,
+	.pmc_disable = utmi_phy_pmc_disable,
 };
 
 static struct tegra_usb_phy_ops uhsic_phy_ops = {

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_usb_phy.h
  *
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -68,6 +68,7 @@ struct tegra_usb_phy_ops {
 	int (*power_on)(struct tegra_usb_phy *phy);
 	bool (*charger_detect)(struct tegra_usb_phy *phy);
 	bool (*nv_charger_detect)(struct tegra_usb_phy *phy);
+	void (*pmc_disable) (struct tegra_usb_phy *phy);
 };
 
 /**

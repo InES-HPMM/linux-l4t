@@ -808,3 +808,10 @@ fail_inval:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(tegra_usb_phy_open);
+
+void tegra_usb_phy_pmc_disable(struct tegra_usb_phy *phy)
+{
+	if (phy->ops && phy->ops->pmc_disable)
+		phy->ops->pmc_disable(phy);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_phy_pmc_disable);
