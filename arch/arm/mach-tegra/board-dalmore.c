@@ -34,6 +34,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/tegra_uart.h>
+#include <linux/serial_tegra.h>
 #include <linux/memblock.h>
 #include <linux/spi/spi-tegra.h>
 #include <linux/nfc/pn544.h>
@@ -219,6 +220,10 @@ static __initdata struct tegra_clk_init_table dalmore_clk_init_table[] = {
 	{ "sbc4",	"pll_p",	25000000,	false},
 	{ "sbc5",	"pll_p",	25000000,	false},
 	{ "sbc6",	"pll_p",	25000000,	false},
+	{ "uarta",	"pll_p",	408000000,	false},
+	{ "uartb",	"pll_p",	408000000,	false},
+	{ "uartc",	"pll_p",	408000000,	false},
+	{ "uartd",	"pll_p",	408000000,	false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -291,66 +296,28 @@ static void dalmore_i2c_init(void)
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 }
 
-static struct platform_device *dalmore_uart_devices[] __initdata = {
-	&tegra_uarta_device,
-	&tegra_uartb_device,
-	&tegra_uartc_device,
-	&tegra_uartd_device,
+static struct tegra_serial_platform_data dalmore_uartd_pdata = {
+	.dma_req_selector = 19,
+	.modem_interrupt = false,
 };
-static struct uart_clk_parent uart_parent_clk[] = {
-	[0] = {.name = "clk_m"},
-	[1] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
-	[2] = {.name = "pll_m"},
-#endif
-};
-
-static struct tegra_uart_platform_data dalmore_uart_pdata;
-static struct tegra_uart_platform_data dalmore_loopback_uart_pdata;
-
-static void __init uart_debug_init(void)
-{
-	int debug_port_id;
-
-	debug_port_id = uart_console_debug_init(3);
-	if (debug_port_id < 0)
-		return;
-
-	dalmore_uart_devices[debug_port_id] = uart_console_debug_device;
-}
 
 static void __init dalmore_uart_init(void)
 {
-	struct clk *c;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
-		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
-		if (IS_ERR_OR_NULL(c)) {
-			pr_err("Not able to get the clock for %s\n",
-						uart_parent_clk[i].name);
-			continue;
-		}
-		uart_parent_clk[i].parent_clk = c;
-		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
-	}
-	dalmore_uart_pdata.parent_clk_list = uart_parent_clk;
-	dalmore_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	dalmore_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
-	dalmore_loopback_uart_pdata.parent_clk_count =
-						ARRAY_SIZE(uart_parent_clk);
-	dalmore_loopback_uart_pdata.is_loopback = true;
-	tegra_uarta_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartb_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartc_device.dev.platform_data = &dalmore_uart_pdata;
-	tegra_uartd_device.dev.platform_data = &dalmore_uart_pdata;
+	int debug_port_id;
 
 	/* Register low speed only if it is selected */
-	if (!is_tegra_debug_uartport_hs())
-		uart_debug_init();
+	if (!is_tegra_debug_uartport_hs()) {
+		debug_port_id = uart_console_debug_init(3);
+		if (debug_port_id < 0)
+			return;
 
-	platform_add_devices(dalmore_uart_devices,
-				ARRAY_SIZE(dalmore_uart_devices));
+		platform_device_register(uart_console_debug_device);
+
+	} else {
+		tegra_uartd_device.dev.platform_data = &dalmore_uartd_pdata;
+		platform_device_register(&tegra_uartd_device);
+	}
+
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -757,6 +724,12 @@ struct of_dev_auxdata dalmore_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
 				NULL),
 	{}
 };
