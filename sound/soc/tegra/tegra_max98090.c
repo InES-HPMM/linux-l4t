@@ -337,7 +337,7 @@ static int tegra_max98090_hw_params(struct snd_pcm_substream *substream,
 	} else {
 		err = snd_soc_dai_set_tdm_slot(codec_dai, 3, 3, 2, sample_size);
 		if (err < 0) {
-			dev_err(card->dev, "cpu_dai tdm mode setting not done\n");
+			dev_err(card->dev, "codec_dai tdm mode not set\n");
 			return err;
 		}
 	}
@@ -629,7 +629,18 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_max98090 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int srate, mclk, i2s_daifmt;
-	int err, rate;
+	int err, rate, sample_size;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		sample_size = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		sample_size = 24;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	srate = params_rate(params);
 	switch (srate) {
@@ -692,10 +703,18 @@ static int tegra_voice_call_hw_params(struct snd_pcm_substream *substream,
 
 	rate = clk_get_rate(machine->util_data.clk_cdev1);
 
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
-	if (err < 0) {
-		dev_err(card->dev, "codec_dai fmt not set\n");
-		return err;
+	if (pdata->i2s_param[HIFI_CODEC].i2s_mode == TEGRA_DAIFMT_I2S) {
+		err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai fmt not set\n");
+			return err;
+		}
+	} else {
+		err = snd_soc_dai_set_tdm_slot(codec_dai, 3, 3, 2, sample_size);
+		if (err < 0) {
+			dev_err(card->dev, "codec_dai tdm mode not set\n");
+			return err;
+		}
 	}
 
 	err = snd_soc_dai_set_sysclk(codec_dai, 0, rate, SND_SOC_CLOCK_IN);
