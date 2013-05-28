@@ -323,9 +323,7 @@ static void tegra_ehci_shutdown(struct usb_hcd *hcd)
 	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	mutex_lock(&tegra->sync_lock);
 	if (tegra_usb_phy_hw_accessible(tegra->phy)) {
-		spin_lock_irq(&ehci->lock);
 		ehci_silence_controller(ehci);
-		spin_unlock_irq(&ehci->lock);
 	}
 	if (pdata->port_otg)
 		tegra_usb_enable_vbus(tegra->phy, false);
