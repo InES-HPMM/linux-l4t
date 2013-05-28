@@ -651,11 +651,15 @@ static struct page *alloc_ptbl(struct smmu_as *as, dma_addr_t iova, bool flush)
 	unsigned long addr = SMMU_PDN_TO_ADDR(pdn);
 	struct page *page;
 	unsigned long *ptbl;
+	gfp_t gfp = GFP_ATOMIC;
+
+	if (IS_ENABLED(CONFIG_PREEMPT) && !in_atomic())
+		gfp = GFP_KERNEL;
 
 	/* Vacant - allocate a new page table */
 	dev_dbg(as->smmu->dev, "New PTBL pdn: %lx\n", pdn);
 
-	page = alloc_page(GFP_ATOMIC);
+	page = alloc_page(gfp);
 	if (!page)
 		return NULL;
 
