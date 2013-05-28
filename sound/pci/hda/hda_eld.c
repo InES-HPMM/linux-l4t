@@ -438,6 +438,8 @@ int snd_hdmi_get_eld(struct hda_codec *codec, hda_nid_t nid,
 			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_AC3);
 		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_DTS) {
 			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_DTS);
+		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_EAC3) {
+			codec->recv_dec_cap |= (1 << AUDIO_CODING_TYPE_EAC3);
 		} else if (eld->sad[i].format == AUDIO_CODING_TYPE_LPCM) {
 			codec->max_pcm_channels =
 				eld->sad[i].channels > codec->max_pcm_channels ?
