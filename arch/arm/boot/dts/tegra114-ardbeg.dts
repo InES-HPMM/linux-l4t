@@ -717,9 +717,43 @@
 		status = "okay";
 	};
 
+	ahub {
+		i2s@70080300 {
+			status = "okay";
+		};
+		i2s@70080400 {
+			status = "okay";
+		};
+		i2s@70080500 {
+			status = "okay";
+		};
+		i2s@70080600 {
+			status = "okay";
+		};
+		i2s@70080700 {
+			status = "okay";
+		};
+		dam@70080800 {
+			status = "okay";
+		};
+		dam@70080900 {
+			status = "okay";
+		};
+		dam@70080A00 {
+			status = "okay";
+		};
+		spdif@70080B00 {
+			status = "okay";
+		};
+	};
+
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
+		rt5645: rt5645@1a {
+			compatible = "realtek,rt5645";
+			reg = <0x1a>;
+		};
 	};
 
 	i2c@7000c400 {
@@ -811,5 +845,13 @@
 
 	camera {
 		status = "okay";
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5645";
+		nvidia,ldo-gpios = <&gpio 171 0>;
+		nvidia,hp-det-gpios = <&gpio 143 0>;
+		nvidia,i2s-param-hifi = <1 1 2 16 48000 2 1536000>;
+		nvidia,i2s-param-bt = <3 1 0 16 8000 1 512000>;
 	};
 };

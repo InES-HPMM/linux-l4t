@@ -22,6 +22,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
@@ -1077,6 +1078,13 @@ static int tegra30_dam_probe(struct platform_device *pdev)
 	int i;
 #endif
 	int clkm_rate;
+	u32 val32;
+
+	if (pdev->dev.of_node) {
+		of_property_read_u32(pdev->dev.of_node, "nvidia,ahub-dam-id",
+			&val32);
+		pdev->id = (int)val32;
+	}
 
 	if ((pdev->id < 0) ||
 		(pdev->id >= TEGRA30_NR_DAM_IFC)) {

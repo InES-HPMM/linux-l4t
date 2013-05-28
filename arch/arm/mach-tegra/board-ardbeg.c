@@ -85,9 +85,12 @@
 
 static struct board_info board_info, display_board_info;
 
+/*use board file for T12x*/
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct i2c_board_info __initdata rt5645_board_info = {
 	I2C_BOARD_INFO("rt5645", 0x1a),
 };
+#endif
 
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -175,7 +178,10 @@ static void ardbeg_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 #endif
+/*use board file for T12x*/
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	i2c_register_board_info(0, &rt5645_board_info, 1);
+#endif
 }
 
 static struct platform_device *ardbeg_uart_devices[] __initdata = {
@@ -215,6 +221,8 @@ static struct uart_clk_parent uart_parent_clk[] = {
 
 static struct tegra_uart_platform_data ardbeg_uart_pdata;
 
+/*use board file for T12x*/
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
 	.gpio_spkr_en = TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
@@ -250,6 +258,7 @@ static struct platform_device ardbeg_audio_device = {
 		.platform_data = &ardbeg_audio_pdata,
 	},
 };
+#endif
 
 static struct tegra_uart_platform_data ardbeg_loopback_uart_pdata;
 
@@ -333,6 +342,8 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra11_se_device,
 #endif
 #endif
+/*use board file for T12x*/
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	&tegra_ahub_device,
 	&tegra_dam_device0,
 	&tegra_dam_device1,
@@ -342,9 +353,9 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_i2s_device4,
 	&ardbeg_audio_device,
 	&tegra_spdif_device,
+#endif
 	&spdif_dit_device,
 	&bluetooth_dit_device,
-	&tegra_pcm_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
@@ -560,6 +571,10 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-ahub", 0x70080000, "tegra30-ahub",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
+				NULL),
 	{}
 };
 #endif
@@ -625,7 +640,10 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_i2c_init();
 	ardbeg_spi_init();
 	ardbeg_uart_init();
+/*use board file for T12x*/
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	ardbeg_audio_init();
+#endif
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();

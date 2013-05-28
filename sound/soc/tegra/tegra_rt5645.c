@@ -19,12 +19,13 @@
  */
 
 #include <asm/mach-types.h>
-
+#include <linux/of.h>
 #include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 #ifdef CONFIG_SWITCH
@@ -501,7 +502,7 @@ static int tegra_rt5645_event_ext_mic(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static const struct snd_soc_dapm_widget cardhu_dapm_widgets[] = {
+static const struct snd_soc_dapm_widget ardbeg_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Int Spk", tegra_rt5645_event_int_spk),
 	SND_SOC_DAPM_HP("Headphone Jack", tegra_rt5645_event_hp),
 	SND_SOC_DAPM_MIC("Mic Jack", tegra_rt5645_event_ext_mic),
@@ -526,7 +527,7 @@ static const struct snd_soc_dapm_route ardbeg_audio_map[] = {
 #endif
 };
 
-static const struct snd_kcontrol_new cardhu_controls[] = {
+static const struct snd_kcontrol_new ardbeg_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
@@ -705,10 +706,10 @@ static struct snd_soc_card snd_soc_tegra_rt5645 = {
 	.resume_pre = tegra_rt5645_resume_pre,
 	.set_bias_level = tegra_rt5645_set_bias_level,
 	.set_bias_level_post = tegra_rt5645_set_bias_level_post,
-	.controls = cardhu_controls,
-	.num_controls = ARRAY_SIZE(cardhu_controls),
-	.dapm_widgets = cardhu_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(cardhu_dapm_widgets),
+	.controls = ardbeg_controls,
+	.num_controls = ARRAY_SIZE(ardbeg_controls),
+	.dapm_widgets = ardbeg_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(ardbeg_dapm_widgets),
 	.dapm_routes = ardbeg_audio_map,
 	.num_dapm_routes = ARRAY_SIZE(ardbeg_audio_map),
 	.fully_routed = true,
@@ -717,16 +718,59 @@ static struct snd_soc_card snd_soc_tegra_rt5645 = {
 static int tegra_rt5645_driver_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_tegra_rt5645;
+	struct device_node *np = pdev->dev.of_node;
 	struct tegra_rt5645 *machine;
-	struct tegra_asoc_platform_data *pdata;
+	struct tegra_asoc_platform_data *pdata = NULL;
 	int ret;
 	int codec_id;
+	u32 val32[7];
 
-	pdata = pdev->dev.platform_data;
+	if (!pdev->dev.platform_data && !pdev->dev.of_node) {
+		dev_err(&pdev->dev, "No platform data supplied\n");
+		return -EINVAL;
+	}
+	if (pdev->dev.platform_data) {
+		pdata = pdev->dev.platform_data;
+	} else if (np) {
+		pdata = kzalloc(sizeof(struct tegra_asoc_platform_data),
+			GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&pdev->dev, "Can't allocate tegra_asoc_platform_data struct\n");
+			return -ENOMEM;
+		}
+
+		pdata->gpio_ldo1_en = of_get_named_gpio(np,
+						"nvidia,ldo-gpios", 0);
+		if (pdata->gpio_ldo1_en == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+
+		pdata->gpio_hp_det = of_get_named_gpio(np,
+						"nvidia,hp-det-gpios", 0);
+		if (pdata->gpio_hp_det == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+
+		pdata->gpio_codec1 = pdata->gpio_codec2 = pdata->gpio_codec3 =
+		pdata->gpio_spkr_en = pdata->gpio_hp_mute =
+		pdata->gpio_int_mic_en = pdata->gpio_ext_mic_en = -1;
+
+		of_property_read_u32_array(np, "nvidia,i2s-param-hifi", val32,
+							   ARRAY_SIZE(val32));
+		pdata->i2s_param[HIFI_CODEC].audio_port_id = (int)val32[0];
+		pdata->i2s_param[HIFI_CODEC].is_i2s_master = (int)val32[1];
+		pdata->i2s_param[HIFI_CODEC].i2s_mode = (int)val32[2];
+
+		of_property_read_u32_array(np, "nvidia,i2s-param-bt", val32,
+							   ARRAY_SIZE(val32));
+		pdata->i2s_param[BT_SCO].audio_port_id = (int)val32[0];
+		pdata->i2s_param[BT_SCO].is_i2s_master = (int)val32[1];
+		pdata->i2s_param[BT_SCO].i2s_mode = (int)val32[2];
+	}
+
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data supplied\n");
 		return -EINVAL;
 	}
+
 	if (pdata->codec_name)
 		card->dai_link->codec_name = pdata->codec_name;
 
@@ -874,7 +918,11 @@ err_fini_utils:
 #endif
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
+	if (np)
+		kfree(machine->pdata);
+
 	kfree(machine);
+
 	return ret;
 }
 
@@ -883,6 +931,7 @@ static int tegra_rt5645_driver_remove(struct platform_device *pdev)
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct tegra_rt5645 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	struct device_node *np = pdev->dev.of_node;
 
 	if (machine->gpio_requested & GPIO_HP_DET)
 		snd_soc_jack_free_gpios(&tegra_rt5645_hp_jack,
@@ -920,16 +969,25 @@ static int tegra_rt5645_driver_remove(struct platform_device *pdev)
 #ifdef CONFIG_SWITCH
 	tegra_asoc_switch_unregister(&tegra_rt5645_headset_switch);
 #endif
+	if (np)
+		kfree(machine->pdata);
+
 	kfree(machine);
 
 	return 0;
 }
+
+static const struct of_device_id tegra_rt5645_of_match[] = {
+	{ .compatible = "nvidia,tegra-audio-rt5645", },
+	{},
+};
 
 static struct platform_driver tegra_rt5645_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
+		.of_match_table = tegra_rt5645_of_match,
 	},
 	.probe = tegra_rt5645_driver_probe,
 	.remove = tegra_rt5645_driver_remove,

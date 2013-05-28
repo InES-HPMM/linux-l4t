@@ -476,10 +476,16 @@ static int tegra30_spdif_platform_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id tegra30_spdif_of_match[] = {
+	{ .compatible = "nvidia,tegra30-spdif",},
+	{},
+};
+
 static struct platform_driver tegra30_spdif_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = tegra30_spdif_of_match,
 	},
 	.probe = tegra30_spdif_platform_probe,
 	.remove = tegra30_spdif_platform_remove,

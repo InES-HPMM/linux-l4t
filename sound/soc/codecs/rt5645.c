@@ -3745,10 +3745,16 @@ void rt5645_i2c_shutdown(struct i2c_client *client)
 		rt5645_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
+static const struct of_device_id rt5645_of_match[] = {
+	{ .compatible = "realtek,rt5645", },
+	{},
+};
+
 struct i2c_driver rt5645_i2c_driver = {
 	.driver = {
 		.name = "rt5645",
 		.owner = THIS_MODULE,
+		.of_match_table = rt5645_of_match,
 	},
 	.probe = rt5645_i2c_probe,
 	.remove   = rt5645_i2c_remove,

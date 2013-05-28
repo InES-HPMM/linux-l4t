@@ -492,6 +492,11 @@ struct of_dev_auxdata ahub_auxdata[] = {
 	OF_DEV_AUXDATA("nvidia,tegra30-i2s", 0x70080500, "tegra30-i2s.2", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-i2s", 0x70080600, "tegra30-i2s.3", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-i2s", 0x70080700, "tegra30-i2s.4", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-dam", 0x70080800, "tegra30-dam.0", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-dam", 0x70080900, "tegra30-dam.1", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-dam", 0x70080A00, "tegra30-dam.2", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra30-spdif", 0x70080B00, "tegra30-spdif",
+		NULL),
 	{}
 };
 
