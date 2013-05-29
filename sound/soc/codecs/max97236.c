@@ -1165,6 +1165,14 @@ static int max97236_resume(struct snd_soc_codec *codec)
 	max97236_mic_detect(codec, max97236->jack);
 	if (gpio_is_valid(max97236->irq))
 		enable_irq(gpio_to_irq(max97236->irq));
+
+	regmap_read(max97236->regmap, M97236_REG_07_LEFT_VOLUME, &reg);
+	regmap_write(max97236->regmap, M97236_REG_07_LEFT_VOLUME,
+			reg);
+	regmap_read(max97236->regmap, M97236_REG_08_RIGHT_VOLUME, &reg);
+	regmap_write(max97236->regmap, M97236_REG_08_RIGHT_VOLUME,
+			reg);
+
 	return 0;
 }
 #else
