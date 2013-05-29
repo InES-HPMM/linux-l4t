@@ -358,9 +358,9 @@ static const int precision; /* default 0 -> low precision */
 #define FUSE_TSENSOR_CALIB_BITS		13
 
 /* car register offsets needed for enabling HW throttling */
-#define CAR_SUPER_CCLK_DIVIDER		0x24
-#define CDIV_USE_THERM_CONTROLS_SHIFT	30
-#define CDIV_USE_THERM_CONTROLS_MASK	0x1
+#define CAR_SUPER_CCLKG_DIVIDER		0x36c
+#define CDIVG_USE_THERM_CONTROLS_SHIFT	30
+#define CDIVG_USE_THERM_CONTROLS_MASK	0x1
 
 /* pmc register offsets needed for powering off PMU */
 #define PMC_SCRATCH_WRITE_SHIFT			2
@@ -1926,9 +1926,9 @@ static int soctherm_init_platform_data(void)
 	/* Enable PMC to shutdown */
 	soctherm_therm_trip_init(plat_data.tshut_pmu_trip_data);
 
-	r = clk_reset_readl(CAR_SUPER_CCLK_DIVIDER);
-	r = REG_SET(r, CDIV_USE_THERM_CONTROLS, 1);
-	clk_reset_writel(r, CAR_SUPER_CCLK_DIVIDER);
+	r = clk_reset_readl(CAR_SUPER_CCLKG_DIVIDER);
+	r = REG_SET(r, CDIVG_USE_THERM_CONTROLS, 1);
+	clk_reset_writel(r, CAR_SUPER_CCLKG_DIVIDER);
 
 	/* Thermtrip */
 	for (i = 0; i < THERM_SIZE; i++) {
