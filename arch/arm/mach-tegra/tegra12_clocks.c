@@ -124,9 +124,9 @@
 
 #define PERIPH_CLK_SOURCE_I2S1		0x100
 #define PERIPH_CLK_SOURCE_EMC		0x19c
-#define PERIPH_CLK_SOURCE_OSC		0x1fc
+#define PERIPH_CLK_SOURCE_LA		0x1f8
 #define PERIPH_CLK_SOURCE_NUM1 \
-	((PERIPH_CLK_SOURCE_OSC - PERIPH_CLK_SOURCE_I2S1) / 4)
+	((PERIPH_CLK_SOURCE_LA - PERIPH_CLK_SOURCE_I2S1) / 4)
 
 #define PERIPH_CLK_SOURCE_MSELECT	0x3b4
 #define PERIPH_CLK_SOURCE_SE		0x42c
@@ -140,9 +140,9 @@
 
 #define SPARE_REG			0x55c
 #define PERIPH_CLK_SOURCE_XUSB_HOST	0x600
-#define PERIPH_CLK_SOURCE_SOC_THERM	0x644
+#define PERIPH_CLK_SOURCE_VIC		0x678
 #define PERIPH_CLK_SOURCE_NUM4 \
-	((PERIPH_CLK_SOURCE_SOC_THERM - PERIPH_CLK_SOURCE_XUSB_HOST) / 4 + 1)
+	((PERIPH_CLK_SOURCE_VIC - PERIPH_CLK_SOURCE_XUSB_HOST) / 4 + 1)
 
 #define PERIPH_CLK_SOURCE_NUM		(PERIPH_CLK_SOURCE_NUM1 + \
 					 PERIPH_CLK_SOURCE_NUM2 + \
@@ -7448,7 +7448,7 @@ static int tegra12_clk_suspend(void)
 	*ctx++ = clk_readl(tegra_clk_sclk.reg + SUPER_CLK_DIVIDER);
 	*ctx++ = clk_readl(tegra_clk_pclk.reg);
 
-	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_OSC;
+	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
 			off += 4) {
 		if (off == PERIPH_CLK_SOURCE_EMC)
 			continue;
@@ -7462,7 +7462,7 @@ static int tegra12_clk_suspend(void)
 		*ctx++ = clk_readl(off);
 	}
 	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
-		off <= PERIPH_CLK_SOURCE_SOC_THERM; off += 4)
+		off <= PERIPH_CLK_SOURCE_VIC; off += 4)
 		*ctx++ = clk_readl(off);
 
 	*ctx++ = clk_readl(RST_DEVICES_L);
@@ -7567,7 +7567,7 @@ static void tegra12_clk_resume(void)
 	clk_writel(CLK_OUT_ENB_X_RESET_MASK, CLK_OUT_ENB_X);
 	wmb();
 
-	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_OSC;
+	for (off = PERIPH_CLK_SOURCE_I2S1; off <= PERIPH_CLK_SOURCE_LA;
 			off += 4) {
 		if (off == PERIPH_CLK_SOURCE_EMC)
 			continue;
@@ -7581,7 +7581,7 @@ static void tegra12_clk_resume(void)
 		clk_writel(*ctx++, off);
 	}
 	for (off = PERIPH_CLK_SOURCE_XUSB_HOST;
-		off <= PERIPH_CLK_SOURCE_SOC_THERM; off += 4)
+		off <= PERIPH_CLK_SOURCE_VIC; off += 4)
 		clk_writel(*ctx++, off);
 
 	clk_writel(*ctx++, RST_DEVICES_L);
