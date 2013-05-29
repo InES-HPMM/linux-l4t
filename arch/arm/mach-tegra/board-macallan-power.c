@@ -885,6 +885,9 @@ void __init macallan_sysedp_init(void)
 	if (!IS_ENABLED(CONFIG_EDP_FRAMEWORK))
 		return;
 
+	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
+		macallan_sysedp_manager.max = INT_MAX;
+
 	r = edp_register_manager(&macallan_sysedp_manager);
 	WARN_ON(r);
 	if (r)
