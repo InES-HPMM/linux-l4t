@@ -43,8 +43,8 @@ struct platform_max8831_backlight_data {
 	unsigned int dft_brightness;
 	int (*notify)(struct device *dev, int brightness);
 	bool (*is_powered)(void);
-	unsigned int edp_states[MAX8831_EDP_NUM_STATES];
-	unsigned int edp_brightness[MAX8831_EDP_NUM_STATES];
+	unsigned int *edp_states;
+	unsigned int *edp_brightness;
 };
 
 #endif

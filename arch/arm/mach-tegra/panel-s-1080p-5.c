@@ -327,8 +327,6 @@ static struct platform_max8831_backlight_data dsi_s_1080p_5_max8831_bl_data = {
 	.dft_brightness	= 100,
 	.notify	= dsi_s_1080p_5_bl_notify,
 	.is_powered = dsi_s_1080p_5_check_bl_power,
-	.edp_states = { 1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0 },
-	.edp_brightness = {255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0},
 };
 
 static struct max8831_subdev_info dsi_s_1080p_5_max8831_subdevs[] = {
@@ -382,27 +380,66 @@ static __maybe_unused struct i2c_board_info
 	.platform_data	= &lm3528_pdata,
 };
 
+static unsigned int dsi_s_pluto_edp_states[] = {
+	1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0
+};
+static unsigned int dsi_s_pluto_edp_brightness[] = {
+	255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0
+};
+static unsigned int dsi_s_ceres_edp_states[] = {
+	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
+};
+static unsigned int dsi_s_ceres_edp_brightness[] = {
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+};
+static unsigned int dsi_s_atlantis_edp_states[] = {
+	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
+};
+static unsigned int dsi_s_atlantis_edp_brightness[] = {
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+};
+
 static int __init dsi_s_1080p_5_register_bl_dev(void)
 {
-	int err = 0;
-	struct board_info bi;
+	struct i2c_board_info *bl_info;
 	struct board_info board_info;
-	tegra_get_display_board_info(&bi);
 	tegra_get_board_info(&board_info);
 
-	if ( (bi.board_id == BOARD_E1563) || (board_info.board_id == BOARD_E1740)) {
-		err = i2c_register_board_info(1,
-			&lm3528_dsi_s_1080p_5_i2c_led_info, 1);
+	switch (board_info.board_id) {
+	case BOARD_E1670: /* Atlantis ERS */
+	case BOARD_E1671: /* Atlantis POP Socket */
+	case BOARD_E1740: /* Atlantis FFD */
+		lm3528_pdata.edp_states = dsi_s_atlantis_edp_states;
+		lm3528_pdata.edp_brightness = dsi_s_atlantis_edp_brightness;
+		bl_info = &lm3528_dsi_s_1080p_5_i2c_led_info;
 		dsi_s_1080p_5_bl_response_curve =
-			dsi_s_1080p_5_lm3528_bl_response_curve;
-	} else {
-		err = i2c_register_board_info(1,
-			&dsi_s_1080p_5_i2c_led_info, 1);
+				dsi_s_1080p_5_lm3528_bl_response_curve;
+		break;
+	case BOARD_E1680: /* Ceres ERS */
+	case BOARD_E1681: /* Ceres DSC Socket */
+	case BOARD_E1690: /* Ceres FFD */
+		dsi_s_1080p_5_max8831_bl_data.edp_states =
+			dsi_s_ceres_edp_states;
+		dsi_s_1080p_5_max8831_bl_data.edp_brightness =
+				dsi_s_ceres_edp_brightness;
+		bl_info = &dsi_s_1080p_5_i2c_led_info;
 		dsi_s_1080p_5_bl_response_curve =
-			dsi_s_1080p_5_max8831_bl_response_curve;
+				dsi_s_1080p_5_max8831_bl_response_curve;
+		break;
+	case BOARD_E1580: /* Pluto */
+	/* fall through */
+	default:
+		dsi_s_1080p_5_max8831_bl_data.edp_states =
+			dsi_s_pluto_edp_states;
+		dsi_s_1080p_5_max8831_bl_data.edp_brightness =
+				dsi_s_pluto_edp_brightness;
+		bl_info = &dsi_s_1080p_5_i2c_led_info;
+		dsi_s_1080p_5_bl_response_curve =
+				dsi_s_1080p_5_max8831_bl_response_curve;
+		break;
 	}
 
-	return err;
+	return i2c_register_board_info(1, bl_info, 1);
 }
 
 struct tegra_dc_mode dsi_s_1080p_5_modes[] = {
@@ -496,7 +533,6 @@ fail:
 static int dsi_s_1080p_5_enable(struct device *dev)
 {
 	int err = 0;
-
 	err = dsi_s_1080p_5_reg_get();
 	if (err < 0) {
 		pr_err("dsi regulator get failed\n");

@@ -327,8 +327,6 @@ static struct platform_max8831_backlight_data dsi_l_720p_5_max8831_bl_data = {
 	.dft_brightness	= 100,
 	.notify	= dsi_l_720p_5_bl_notify,
 	.is_powered = dsi_l_720p_5_check_bl_power,
-	.edp_states = { 1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0 },
-	.edp_brightness = {255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0},
 };
 
 static struct max8831_subdev_info dsi_l_720p_5_max8831_subdevs[] = {
@@ -372,6 +370,7 @@ static struct i2c_board_info dsi_l_720p_5_i2c_led_info = {
 static struct lm3528_platform_data lm3528_pdata = {
 	.dft_brightness	= 100,
 	.is_powered = dsi_l_720p_5_check_bl_power,
+	.notify	= dsi_l_720p_5_bl_notify,
 };
 
 static struct i2c_board_info lm3528_dsi_l_720p_5_i2c_led_info = {
@@ -379,23 +378,65 @@ static struct i2c_board_info lm3528_dsi_l_720p_5_i2c_led_info = {
 	.addr		= 0x36,
 	.platform_data	= &lm3528_pdata,
 };
+
+static unsigned int dsi_l_pluto_edp_states[] = {
+	1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0
+};
+static unsigned int dsi_l_pluto_edp_brightness[] = {
+	255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0
+};
+static unsigned int dsi_l_ceres_edp_states[] = {
+	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
+};
+static unsigned int dsi_l_ceres_edp_brightness[] = {
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+};
+static unsigned int dsi_l_atlantis_edp_states[] = {
+	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
+};
+static unsigned int dsi_l_atlantis_edp_brightness[] = {
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+};
+
 static int __init dsi_l_720p_5_register_bl_dev(void)
 {
-	int err = 0;
-	struct board_info bi;
-	tegra_get_display_board_info(&bi);
+	struct i2c_board_info *bl_info;
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
 
-	if (bi.board_id == BOARD_E1563) {
-		err = i2c_register_board_info(1, &lm3528_dsi_l_720p_5_i2c_led_info, 1);
+	switch (board_info.board_id) {
+	case BOARD_E1670: /* Atlantis ERS */
+	case BOARD_E1671: /* Atlantis POP Socket */
+		lm3528_pdata.edp_states = dsi_l_atlantis_edp_states;
+		lm3528_pdata.edp_brightness = dsi_l_atlantis_edp_brightness;
+		bl_info = &lm3528_dsi_l_720p_5_i2c_led_info;
 		dsi_l_720p_5_bl_response_curve =
 			dsi_l_720p_5_lm3528_bl_response_curve;
-	} else {
-		err = i2c_register_board_info(1, &dsi_l_720p_5_i2c_led_info, 1);
+		break;
+	case BOARD_E1680: /* Ceres ERS */
+	case BOARD_E1681: /* Ceres DSC Socket */
+		dsi_l_720p_5_max8831_bl_data.edp_states =
+			dsi_l_ceres_edp_states;
+		dsi_l_720p_5_max8831_bl_data.edp_brightness =
+				dsi_l_ceres_edp_brightness;
+		bl_info = &dsi_l_720p_5_i2c_led_info;
 		dsi_l_720p_5_bl_response_curve =
-			dsi_l_720p_5_max8831_bl_response_curve;
+				dsi_l_720p_5_max8831_bl_response_curve;
+		break;
+	case BOARD_E1580: /* Pluto */
+	/* fall through */
+	default:
+		dsi_l_720p_5_max8831_bl_data.edp_states =
+			dsi_l_pluto_edp_states;
+		dsi_l_720p_5_max8831_bl_data.edp_brightness =
+				dsi_l_pluto_edp_brightness;
+		bl_info = &dsi_l_720p_5_i2c_led_info;
+		dsi_l_720p_5_bl_response_curve =
+				dsi_l_720p_5_max8831_bl_response_curve;
+		break;
 	}
 
-	return err;
+	return i2c_register_board_info(1, bl_info, 1);
 }
 
 struct tegra_dc_mode dsi_l_720p_5_modes[] = {
