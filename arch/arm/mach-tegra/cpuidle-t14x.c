@@ -457,6 +457,13 @@ static bool tegra_cpu_core_power_down(struct cpuidle_device *dev,
 	tegra_cpu_wake_by_time[dev->cpu] = ktime_to_us(entry_time) + request;
 	smp_wmb();
 
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	if (dev->cpu == 0) {
+		tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE4,
+				(TEGRA_RESET_HANDLER_BASE +
+				tegra_cpu_reset_handler_offset));
+	}
+#endif
 	cpu_suspend(0, tegra3_sleep_cpu_secondary_finish);
 
 	tegra_cpu_wake_by_time[dev->cpu] = LLONG_MAX;
