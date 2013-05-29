@@ -1659,15 +1659,6 @@ static int aic325x_probe(struct snd_soc_codec *codec)
 		dprintk("#Completed adding DAPM routes = %d\n",
 			ARRAY_SIZE(aic325x_dapm_routes));
 
-	/* use switch-class based headset reporting if platform requires it */
-	jack = &aic325x->hs_jack;
-	jack->sdev.name = "h2w";
-	ret = switch_dev_register(&jack->sdev);
-	if (ret) {
-		dev_err(codec->dev, "error registering switch device %d\n",
-			ret);
-		goto jack_err;
-	}
 	if (control->irq) {
 		ret = aic325x_request_irq(codec->control_data,
 					  AIC3256_IRQ_HEADSET_DETECT,
@@ -1706,8 +1697,6 @@ firm_err:
 			 AIC3256_HEADSET_DETECT, codec);
 irq_err:
 	switch_dev_unregister(&jack->sdev);
-jack_err:
-	destroy_workqueue(aic325x->workqueue);
 work_err:
 	kfree(aic325x);
 	return ret;

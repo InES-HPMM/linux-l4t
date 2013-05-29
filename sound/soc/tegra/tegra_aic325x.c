@@ -884,11 +884,23 @@ static struct snd_soc_jack tegra_aic325x_hp_jack;
 
 #ifdef CONFIG_SWITCH
 /* Headset jack detection gpios */
+
+static struct switch_dev tegra_aic325x_headset_switch = {
+	.name = "h2w",
+};
+
 static struct snd_soc_jack_gpio tegra_aic325x_hp_jack_gpio = {
 	.name = "headphone detect",
 	.report = SND_JACK_HEADPHONE,
 	.debounce_time = 150,
 	.invert = 1,
+};
+
+/* These values are copied from WiredAccessoryObserver */
+enum headset_state {
+	BIT_NO_HEADSET = 0,
+	BIT_HEADSET = (1 << 0),
+	BIT_HEADSET_NO_MIC = (1 << 1),
 };
 
 
@@ -898,18 +910,29 @@ static int aic325x_headset_switch_notify(struct notifier_block *self,
 
 	struct snd_soc_jack *jack = (struct snd_soc_jack *)dev;
 	struct snd_soc_codec *codec = jack->codec;
-	struct aic325x_priv *aic325x = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_card *card = codec->card;
 	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	int state = BIT_NO_HEADSET;
 
 	gpio_direction_output(pdata->gpio_ext_mic_en, action);
 
-	/* Schedule the delayed work again after 250 ms */
-	aic325x->hs_half_insert_count = 0;
+	switch (action) {
+	case SND_JACK_HEADPHONE:
+	/*
+	 * FIX ME: For now force headset mic mode
+	 * Known HW issue Mic detection is not working
+	 */
+		state |= BIT_HEADSET;
+		break;
+	case SND_JACK_HEADSET:
+		state |= BIT_HEADSET;
+		break;
+	default:
+		state |= BIT_NO_HEADSET;
+	}
 
-	queue_delayed_work(aic325x->workqueue, &aic325x->delayed_work,
-	msecs_to_jiffies(250));
+	switch_set_state(&tegra_aic325x_headset_switch, state);
 
 	return NOTIFY_OK;
 }
@@ -1487,6 +1510,16 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 
 	card->dapm.idle_bias_off = 1;
 
+#ifdef CONFIG_SWITCH
+	/* Add h2w switch class support */
+	ret = tegra_asoc_switch_register(&tegra_aic325x_headset_switch);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "not able to register switch device\n");
+		goto err_switch_unregister;
+	}
+
+#endif
+
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
@@ -1512,6 +1545,10 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 
 err_unregister_card:
 	snd_soc_unregister_card(card);
+err_switch_unregister:
+#ifdef CONFIG_SWITCH
+	tegra_asoc_switch_unregister(&tegra_aic325x_headset_switch);
+#endif
 err_fini_utils:
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
@@ -1525,6 +1562,9 @@ static int __devexit tegra_aic325x_driver_remove(struct platform_device *pdev)
 	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
+#ifdef CONFIG_SWITCH
+	tegra_asoc_switch_unregister(&tegra_aic325x_headset_switch);
+#endif
 	if (machine->gpio_requested & GPIO_HP_DET)
 		snd_soc_jack_free_gpios(&tegra_aic325x_hp_jack,
 					1,
