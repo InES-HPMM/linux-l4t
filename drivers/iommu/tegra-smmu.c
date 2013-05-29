@@ -446,10 +446,14 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 
 	smmu_flush_regs(smmu, 1);
 
-	val = ahb_read(smmu, AHB_XBAR_CTRL);
-	val |= AHB_XBAR_CTRL_SMMU_INIT_DONE_DONE <<
-		AHB_XBAR_CTRL_SMMU_INIT_DONE_SHIFT;
-	ahb_write(smmu, val, AHB_XBAR_CTRL);
+	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
+			|| tegra_get_chipid() == TEGRA_CHIPID_TEGRA11
+			|| tegra_get_chipid() == TEGRA_CHIPID_TEGRA14) {
+		val = ahb_read(smmu, AHB_XBAR_CTRL);
+		val |= AHB_XBAR_CTRL_SMMU_INIT_DONE_DONE <<
+			AHB_XBAR_CTRL_SMMU_INIT_DONE_SHIFT;
+		ahb_write(smmu, val, AHB_XBAR_CTRL);
+	}
 }
 
 
