@@ -931,14 +931,47 @@ static void palmas_dt_to_pdata(struct i2c_client *i2c,
 static struct palmas *palmas_dev;
 static void palmas_power_off(void)
 {
+	unsigned int val;
+	struct palmas_irq_chip_data *d;
+	int i;
+	int ret;
+
 	if (!palmas_dev)
 		return;
-	if (palmas_dev->id == TPS80036)
-		palmas_update_bits(palmas_dev, PALMAS_INTERRUPT_BASE,
-					PALMAS_INT4_MASK_GPIO_4,
-					PALMAS_INT4_MASK, 0xff);
 
+	/* Mask all interrupts and clear any pending interrupt */
+	d = palmas_dev->irq_chip_data;
+	for (i = 0; i < d->num_mask_regs; i++) {
+		ret = palmas_write(d->palmas,
+				d->irq_regs->mask_reg[i].reg_base,
+				d->irq_regs->mask_reg[i].reg_add,
+				0xFF);
+		if (ret < 0)
+			dev_err(palmas_dev->dev,
+				"register 0x%02x write failed: %d\n",
+				d->irq_regs->mask_reg[i].reg_add, ret);
+
+		ret = palmas_read(d->palmas,
+				d->irq_regs->status_reg[i].reg_base,
+				d->irq_regs->status_reg[i].reg_add,
+				&val);
+		if (ret < 0)
+			dev_err(palmas_dev->dev,
+				"register 0x%02x read failed: %d\n",
+				d->irq_regs->mask_reg[i].reg_add, ret);
+	}
+
+	/* Mask all COLD RST condition */
+	palmas_write(palmas_dev, PALMAS_PMU_CONTROL_BASE,
+			PALMAS_SWOFF_COLDRST, 0x0);
+
+	dev_info(palmas_dev->dev, "Powering off the device\n");
+
+	/* Switch off the device */
 	palmas_control_update(palmas_dev, PALMAS_DEV_CTRL, 1, 0);
+
+	/* Do not expect control here */
+	dev_err(palmas_dev->dev, "Powering off of device failed\n");
 }
 
 static int palmas_read_version_information(struct palmas *palmas)
