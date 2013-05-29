@@ -35,7 +35,6 @@
  */
 
 struct nvshm_tty_line {
-	int use;
 	int nvshm_chan; /* nvshm channel */
 	int throttled;
 	struct tty_port port;
@@ -155,11 +154,20 @@ void nvshm_tty_rx_event(struct nvshm_channel *chan,
 			struct nvshm_iobuf *iob)
 {
 	struct nvshm_tty_line *line = chan->data;
-	struct tty_struct *tty;
+	struct tty_struct *tty = NULL;
 	struct nvshm_iobuf *_phy_iob, *tmp;
 	int len;
 
-	tty = tty_port_tty_get(&line->port);
+	/* line can be null if TTY install failed or not executed yet */
+	if (line)
+		tty = tty_port_tty_get(&line->port);
+
+	if (!tty) {
+		pr_warn("%s: data received on a closed/non-init TTY\n",
+			__func__);
+		nvshm_iobuf_free_cluster(iob);
+		return;
+	}
 
 	spin_lock(&line->lock);
 
@@ -257,20 +265,24 @@ static struct nvshm_if_operations nvshm_tty_ops = {
 
 static int nvshm_tty_open(struct tty_struct *tty, struct file *f)
 {
-	struct nvshm_tty_line *dev = tty->driver_data;
-	return tty_port_open(&dev->port, tty, f);
+	struct nvshm_tty_line *line = tty->driver_data;
+	if (line)
+		return tty_port_open(&line->port, tty, f);
+	return -EIO;
 }
 
 static void nvshm_tty_close(struct tty_struct *tty, struct file *f)
 {
-	struct nvshm_tty_line *dev = tty->driver_data;
-	return tty_port_close(&dev->port, tty, f);
+	struct nvshm_tty_line *line = tty->driver_data;
+	if (line)
+		tty_port_close(&line->port, tty, f);
 }
 
 static void nvshm_tty_hangup(struct tty_struct *tty)
 {
-	struct nvshm_tty_line *dev = tty->driver_data;
-	return tty_port_hangup(&dev->port);
+	struct nvshm_tty_line *line = tty->driver_data;
+	if (line)
+		tty_port_hangup(&line->port);
 }
 
 
@@ -323,10 +335,8 @@ static int nvshm_tty_write(struct tty_struct *tty, const unsigned char *buf,
 	}
 	ret = nvshm_write(tty_dev.line[idx].pchan, list);
 
-	if (ret == 1) {
-		pr_warn("%s rate limit hit on TTY %d\n", __func__, idx);
+	if (ret == 1)
 		tty_throttle(tty);
-	}
 
 	return len;
 }
@@ -364,9 +374,6 @@ static int  nvshm_tty_activate(struct tty_port *tport, struct tty_struct *tty)
 {
 	int idx = tty->index;
 
-	if (!tty_dev.up)
-		return -EIO;
-
 	/* Set TTY flags */
 	set_bit(TTY_IO_ERROR, &tty->flags);
 	set_bit(TTY_NO_WRITE_SPLIT, &tty->flags);
@@ -392,9 +399,11 @@ static void  nvshm_tty_shutdown(struct tty_port *tport)
 	struct nvshm_tty_line *line =
 			container_of(tport, struct nvshm_tty_line, port);
 
-	pr_debug("%s\n", __func__);
-	nvshm_close_channel(line->pchan);
-	line->pchan = NULL;
+	if (line) {
+		pr_debug("%s\n", __func__);
+		nvshm_close_channel(line->pchan);
+		line->pchan = NULL;
+	}
 }
 
 static int nvshm_tty_install(struct tty_driver *driver, struct tty_struct *tty)
