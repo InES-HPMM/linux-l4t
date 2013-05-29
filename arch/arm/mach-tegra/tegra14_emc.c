@@ -1536,6 +1536,11 @@ int tegra_emc_dsr_override(int override)
 		   rate already. */
 		tbl_timing = emc_timing;
 		if (!tbl_timing) {
+			/* Without the table, we can't do anything here. */
+			if (!tegra_emc_table) {
+				spin_unlock_irqrestore(&emc_access_lock, flags);
+				return -EINVAL;
+			}
 			rate = clk_get_rate(emc) / 1000;
 			for (i = 0; i < tegra_emc_table_size; i++) {
 				if (tegra_emc_table[i].rate == rate) {
