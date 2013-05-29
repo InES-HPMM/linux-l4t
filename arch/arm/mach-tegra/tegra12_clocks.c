@@ -6466,6 +6466,13 @@ static struct clk_mux_sel mux_clkm_pllre_clk32_480M_pllc_ref[] = {
 	{ 0, 0},
 };
 
+static struct clk_mux_sel mux_pllp3_pllc_clkm[] = {
+	{ .input = &tegra_pll_p_out3, .value = 0},
+	{ .input = &tegra_pll_c,  .value = 1},
+	{ .input = &tegra_clk_m,  .value = 3},
+	{ 0, 0},
+};
+
 /* Single clock source ("fake") muxes */
 static struct clk_mux_sel mux_clk_m[] = {
 	{ .input = &tegra_clk_m, .value = 0},
@@ -6791,6 +6798,8 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("entropy",	"entropy",		NULL, 149,	0x628,	102000000, mux_pllp_clkm1,		MUX | DIV_U71),
+	PERIPH_CLK("hdmi_audio", "hdmi_audio",		NULL, 176,	0x668,	26000000,  mux_pllp_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL, 177,	0x66c,	102000000, mux_pllp3_pllc_clkm,		MUX | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
 	PERIPH_CLK("actmon",	"actmon",		NULL,	119,	0x3e8,	216000000, mux_pllp_pllc_clk32_clkm,	MUX | DIV_U71),
