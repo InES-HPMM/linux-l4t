@@ -400,6 +400,13 @@ static void register_loan(void)
 	WARN_ON(r);
 }
 
+/* Power without gain */
+static unsigned int to_base_power(unsigned int power,
+		struct tegra_sysedp_platform_data *pdata)
+{
+	return (power * 100 + pdata->core_gain - 1) / pdata->core_gain;
+}
+
 static unsigned int get_num_states(
 		struct tegra_sysedp_platform_data *pdata)
 {
@@ -428,16 +435,19 @@ static void get_states(struct tegra_sysedp_platform_data *pdata,
 		if (pdata->corecap[i].power == power)
 			continue;
 
-		power = pdata->corecap[i].power;
+		power = to_base_power(pdata->corecap[i].power, pdata);
 		states[num - e0i - 1] = power;
 		e0i++;
 	}
 }
 
 static unsigned int initial_req(struct edp_client *client,
-		unsigned int watts)
+		struct tegra_sysedp_platform_data *pdata)
 {
 	int i;
+	unsigned int watts;
+
+	watts = to_base_power(pdata->init_req_watts, pdata);
 
 	for (i = 0; i < client->num_states; i++) {
 		if (client->states[i] == watts)
@@ -478,7 +488,7 @@ static int init_client(struct tegra_sysedp_platform_data *pdata)
 	if (r)
 		goto fail;
 
-	ei = initial_req(&core_client, pdata->init_req_watts);
+	ei = initial_req(&core_client, pdata);
 	r = edp_update_client_request(&core_client, ei, &core_state);
 	if (r)
 		return r;
