@@ -31,15 +31,13 @@ struct max17048_battery_model {
 };
 
 struct max17048_platform_data {
-	int use_ac;
-	int use_usb;
 	struct max17048_battery_model *model_data;
 };
 #ifdef CONFIG_BATTERY_MAX17048
-extern void max17048_battery_status(int status, int chrg_type);
+extern void max17048_battery_status(int status);
 extern int max17048_check_battery(void);
 #else
-static inline void max17048_battery_status(int status, int chrg_type) {}
+static inline void max17048_battery_status(int status) {}
 static inline int max17048_check_battery(void) { return -ENODEV; }
 #endif
 #endif /* __MAX17048_BATTERY_H_ */

@@ -76,8 +76,6 @@ static struct bq2419x_vbus_platform_data macallan_bq2419x_vbus_pdata = {
 };
 
 struct bq2419x_charger_platform_data macallan_bq2419x_charger_pdata = {
-	.use_usb = 1,
-	.use_mains = 1,
 	.max_charge_current_mA = 3000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = bq2419x_batt_supply,
@@ -113,8 +111,6 @@ struct max17048_battery_model macallan_max17048_mdata = {
 };
 
 struct max17048_platform_data macallan_max17048_pdata = {
-	.use_ac = 0,
-	.use_usb = 0,
 	.model_data = &macallan_max17048_mdata,
 };
 
