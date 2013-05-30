@@ -81,7 +81,15 @@ static void __init setup_core_count(void)
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	u32 l2ctlr;
 
-	unsigned int cpuid = (read_cpuid_id() >> 4) & 0xFFF;
+	unsigned int cpuid;
+
+	/* T40DC is a special case */
+	if (tegra_sku_id == 0x20) {
+		number_of_cores = 2;
+		return;
+	}
+
+	cpuid = (read_cpuid_id() >> 4) & 0xFFF;
 
 	/* Cortex-A15? */
 	if (cpuid == 0xC0F) {
