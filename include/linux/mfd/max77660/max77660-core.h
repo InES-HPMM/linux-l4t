@@ -1009,7 +1009,7 @@ struct max77660_charger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int max_charge_current_mA;
-	void (*update_status)(int, int);
+	void (*update_status)(int);
 };
 
 /*

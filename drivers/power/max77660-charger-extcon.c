@@ -47,15 +47,10 @@ static int max77660_chrg_wdt[] = {16, 32, 64, 128};
 struct max77660_charger {
 	struct max77660_charger_platform_data *pdata;
 	struct device *dev;
-	struct power_supply usb_psy;
-	struct power_supply dc_psy;
 	int irq;
-	int usb_online;
-	int ac_online;
-	int is_100ma;
 	int status;
 	int in_current_lim;
-	void (*update_status)(int, int);
+	void (*update_status)(int);
 	int wdt_timeout;
 };
 
@@ -246,54 +241,27 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 		return ret;
 	}
 	if (charger->in_current_lim == 0 &&
-			!(status & MAX77660_CHG_CHGINT_DC_UVP)) {
-		charger->is_100ma = 0;
+			!(status & MAX77660_CHG_CHGINT_DC_UVP))
 		return 0;
-	}
 
 	if (charger->in_current_lim == 0) {
-		charger->is_100ma = 0;
-		charger->usb_online = 0;
-		charger->ac_online = 0;
 		ret = max77660_charger_init(chip, false);
 		if (ret < 0)
 			goto error;
-		charger->status = 2;
 		if (charger->update_status)
 			charger->update_status
-				(charger->status, 2);
+				(charger->status);
 	} else {
-		if (charger->in_current_lim == 100) {
-			charger->is_100ma = 1;
-			charger->usb_online = 1;
-			charger->ac_online = 0;
-		}
-
 		charger->status = 1;
-		if (charger->in_current_lim == 500) {
-			if (!charger->is_100ma) {
-				charger->ac_online = 1;
-				charger->usb_online = 0;
-			}
-		} else if (charger->in_current_lim > 500) {
-			charger->ac_online = 1;
-			charger->usb_online = 0;
-		} else if (charger->in_current_lim == 2) {
-			charger->ac_online = 0;
-			charger->usb_online = 1;
-		}
-
 		ret = max77660_charger_init(chip, true);
 		if (ret < 0)
 			goto error;
 
 		if (charger->update_status)
 			charger->update_status
-				(charger->status, 1);
+				(charger->status);
 	}
 
-	power_supply_changed(&charger->usb_psy);
-	power_supply_changed(&charger->dc_psy);
 	return 0;
 error:
 	return ret;
@@ -351,36 +319,6 @@ static int max77660_init_charger_regulator(struct max77660_chg_extcon *chip,
 			"vbus-charger regulator register failed %d\n", ret);
 	}
 	return ret;
-}
-
-static int max77660_usb_get_property(struct power_supply *psy,
-		enum power_supply_property psp,
-		union power_supply_propval *val)
-{
-	 struct max77660_charger *chip;
-
-	 chip = container_of(psy, struct max77660_charger, usb_psy);
-
-	 if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = chip->usb_online;
-	 else
-		return -EINVAL;
-	 return 0;
-}
-
-static int max77660_ac_get_property(struct power_supply *psy,
-	enum power_supply_property psp,
-	union power_supply_propval *val)
-{
-	struct max77660_charger *chip;
-
-	chip = container_of(psy, struct max77660_charger, dc_psy);
-
-	if (psp == POWER_SUPPLY_PROP_ONLINE)
-		val->intval = chip->ac_online;
-	else
-		return -EINVAL;
-	return 0;
 }
 
 static int max77660_chg_extcon_cable_update(
@@ -512,6 +450,7 @@ static int max77660_vbus_enable(struct regulator_dev *rdev)
 			MAX77660_CHARGER_RBOOST,
 			MAX77660_RBOOST_RBOUT_VOUT(0x6),
 			MAX77660_RBOOST_RBOUT_MASK);
+
 	if (ret < 0) {
 		dev_err(chg_extcon->dev, "RBOOST update failed: %d\n", ret);
 		return ret;
@@ -549,50 +488,6 @@ static struct regulator_desc max77660_vbus_desc = {
 	 .type = REGULATOR_VOLTAGE,
 	 .owner = THIS_MODULE,
 };
-
-static enum power_supply_property charger_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
-};
-
-static int max77660_psy_init(struct max77660_chg_extcon *chg_extcon)
-{
-	struct max77660_charger *charger = chg_extcon->charger;
-	 int ret = 0;
-
-	charger->dc_psy.name		= "ac";
-	charger->dc_psy.type		= POWER_SUPPLY_TYPE_MAINS;
-	charger->dc_psy.get_property	= max77660_ac_get_property;
-	charger->dc_psy.properties	= charger_props;
-	charger->dc_psy.num_properties	= ARRAY_SIZE(charger_props);
-
-	ret = power_supply_register(chg_extcon->dev, &charger->dc_psy);
-	if (ret < 0) {
-		dev_err(chg_extcon->dev,
-			"power_supply_register dc failed rc = %d\n", ret);
-		 goto out;
-	}
-
-	charger->usb_psy.name		= "usb";
-	charger->usb_psy.type		= POWER_SUPPLY_TYPE_USB;
-	charger->usb_psy.get_property	= max77660_usb_get_property;
-	charger->usb_psy.properties	= charger_props;
-	charger->usb_psy.num_properties	= ARRAY_SIZE(charger_props);
-
-	ret = power_supply_register(chg_extcon->dev, &charger->usb_psy);
-
-	if (ret < 0) {
-		dev_err(chg_extcon->dev,
-			"power_supply_register usb failed rc = %d\n", ret);
-		goto ac_psy_err;
-	}
-
-	return 0;
-
-ac_psy_err:
-	power_supply_unregister(&charger->dc_psy);
-out:
-	return ret;
-}
 
 static int max77660_chg_extcon_probe(struct platform_device *pdev)
 {
@@ -632,10 +527,7 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 
 	charger = chg_extcon->charger;
-	charger->ac_online = 0;
-	charger->usb_online = 0;
 	charger->status = 0;
-	charger->is_100ma = 0;
 
 	chg_extcon->edev = edev;
 	chg_extcon->edev->name = (chg_pdata->ext_conn_name) ?
@@ -714,27 +606,17 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 		goto vbus_reg_err;
 	}
 
-	ret = max77660_psy_init(chg_extcon);
-	if (ret < 0) {
-		dev_err(&pdev->dev,
-			"Charger power supply init failed %d\n", ret);
-		goto psy_reg_err;
-	}
-
 	ret = max77660_charger_wdt(chg_extcon);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"Charger watchdog timer init failed %d\n", ret);
-		goto chg_wdt_err;
+		goto chg_reg_err;
 	}
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
-chg_wdt_err:
-	power_supply_unregister(&charger->dc_psy);
-	power_supply_unregister(&charger->usb_psy);
-psy_reg_err:
+chg_reg_err:
 	regulator_unregister(chg_extcon->chg_rdev);
 vbus_reg_err:
 	regulator_unregister(chg_extcon->rdev);
@@ -752,8 +634,6 @@ static int max77660_chg_extcon_remove(struct platform_device *pdev)
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(&pdev->dev);
 
 	extcon_dev_unregister(chg_extcon->edev);
-	power_supply_unregister(&chg_extcon->charger->dc_psy);
-	power_supply_unregister(&chg_extcon->charger->usb_psy);
 	free_irq(chg_extcon->chg_irq, chg_extcon);
 	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
 	regulator_unregister(chg_extcon->rdev);
