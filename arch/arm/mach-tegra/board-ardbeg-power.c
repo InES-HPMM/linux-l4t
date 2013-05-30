@@ -162,6 +162,9 @@ static struct regulator_consumer_supply palmas_ldo10_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo11_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_3v3_pex", NULL),
 	REGULATOR_SUPPLY("avdd_3v3_pex_pll", NULL),
@@ -478,6 +481,7 @@ static struct palmas_reg_init *ardbeg_reg_init[PALMAS_NUM_REGS] = {
 static struct regulator_consumer_supply fixed_reg_en_battery_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
 		REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+		REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_cdc_1v2_aud_supply[] = {
@@ -502,7 +506,6 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_usb0_5v0_supply[] = {
 static struct regulator_consumer_supply fixed_reg_en_vdd_dis_3v3a_sw_supply[] = {
 	REGULATOR_SUPPLY("vdd_dis_3v3_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_dis_3v3_lvds", NULL),
-	REGULATOR_SUPPLY("avdd_usb", NULL),
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
 
