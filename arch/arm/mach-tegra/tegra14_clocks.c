@@ -6401,9 +6401,9 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("uartd_dbg",	"serial8250.0",		"uartd", 65,	0x1c0,	408000000, mux_pllp_clkm,		MUX | DIV_U151 | DIV_U151_UART | PERIPH_ON_APB),
 	PERIPH_CLK("3d",	"3d",			NULL,	24,	0x158,	800000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE | PERIPH_MANUAL_RESET),
 	PERIPH_CLK("2d",	"2d",			NULL,	21,	0x15c,	800000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT | DIV_U71_IDLE),
-	PERIPH_CLK_EX("vi",	"vi",		"vi",	20,	0x148,	800000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
-	PERIPH_CLK("vi_sensor",	"vi",		"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
-	PERIPH_CLK("vi_sensor2",	"vi",		"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK_EX("vi",	"vi",			"vi",	20,	0x148,	800000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT, &tegra_vi_clk_ops),
+	PERIPH_CLK("vi_sensor",	NULL,			"vi_sensor",	164,	0x1a8,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("vi_sensor2",NULL,			"vi_sensor2",	165,	0x658,	150000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("epp",	"epp",			NULL,	19,	0x16c,	800000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 #ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 	PERIPH_CLK("msenc",	"msenc",		NULL,	60,	0x170,	600000000, mux_pllm_pllc_pllp_plla,	MUX | DIV_U71 | DIV_U71_INT),
@@ -6599,6 +6599,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("csus", "touch_clk", "e1680_ts_clk_con"),
 	CLK_DUPLICATE("dmic0", "tegra-dmic.0", NULL),
 	CLK_DUPLICATE("dmic1", "tegra-dmic.1", NULL),
+	CLK_DUPLICATE("vi_sensor2", NULL, "default_mclk"),
 };
 
 struct clk *tegra_ptr_clks[] = {
