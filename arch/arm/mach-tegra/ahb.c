@@ -55,7 +55,10 @@
 #define AHB_GIZMO_NAND			0x3c
 #define AHB_GIZMO_SDMMC4		0x44
 #define AHB_GIZMO_XIO			0x48
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#define AHB_GIZMO_SE			0x4c
 #define AHB_GIZMO_TZRAM			0x50
+#endif
 #define AHB_GIZMO_BSEV			0x60
 #define AHB_GIZMO_BSEA			0x70
 #define AHB_GIZMO_NOR			0x74
@@ -68,6 +71,10 @@
 #define AHB_GIZMO_SDMMC3		0x88
 #define AHB_MEM_PREFETCH_CFG_X		0xd8
 #define AHB_ARBITRATION_XBAR_CTRL	0xdc
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+#define AHB_MEM_PREFETCH_CFG5		0xc8
+#define AHB_MEM_PREFETCH_CFG6		0xcc
+#endif
 #define AHB_MEM_PREFETCH_CFG3		0xe0
 #define AHB_MEM_PREFETCH_CFG4		0xe4
 #define AHB_MEM_PREFETCH_CFG1		0xec
@@ -96,7 +103,11 @@ static inline void gizmo_writel(unsigned long value, unsigned long offset)
 
 #ifdef CONFIG_PM
 
-static u32 ahb_gizmo[30];
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+static u32 ahb_gizmo[33];
+#else
+static u32 ahb_gizmo[29];
+#endif
 
 int tegra_ahbgizmo_suspend(void)
 {
@@ -129,7 +140,12 @@ int tegra_ahbgizmo_suspend(void)
 	ahb_gizmo[26] = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
 	ahb_gizmo[27] = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
 	ahb_gizmo[28] = gizmo_readl(AHB_ARBITRATION_AHB_MEM_WRQUE_MST_ID);
-	ahb_gizmo[29] = gizmo_readl(AHB_GIZMO_TZRAM);
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	ahb_gizmo[29] = gizmo_readl(AHB_MEM_PREFETCH_CFG5);
+	ahb_gizmo[30] = gizmo_readl(AHB_MEM_PREFETCH_CFG6);
+	ahb_gizmo[31] = gizmo_readl(AHB_GIZMO_SE);
+	ahb_gizmo[32] = gizmo_readl(AHB_GIZMO_TZRAM);
+#endif
 	return 0;
 }
 
@@ -169,7 +185,12 @@ void tegra_ahbgizmo_resume(void)
 	ahb_gizmo_writel(ahb_gizmo[27],
 		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
 	gizmo_writel(ahb_gizmo[28], AHB_ARBITRATION_AHB_MEM_WRQUE_MST_ID);
-	gizmo_writel(ahb_gizmo[29], AHB_GIZMO_TZRAM);
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	gizmo_writel(ahb_gizmo[29], AHB_MEM_PREFETCH_CFG5);
+	gizmo_writel(ahb_gizmo[30], AHB_MEM_PREFETCH_CFG6);
+	gizmo_writel(ahb_gizmo[31], AHB_GIZMO_SE);
+	gizmo_writel(ahb_gizmo[32], AHB_GIZMO_TZRAM);
+#endif
 }
 #else
 #define tegra_ahbgizmo_suspend NULL
@@ -181,64 +202,10 @@ static struct syscore_ops tegra_ahbgizmo_syscore_ops = {
 	.resume = tegra_ahbgizmo_resume,
 };
 
-static int __init tegra_init_ahb_gizmo_settings(void)
+static int __init tegra_init_ahb_gizmo(void)
 {
-	unsigned long val;
-
-	val = gizmo_readl(AHB_GIZMO_AHB_MEM);
-	val |= ENB_FAST_REARBITRATE | IMMEDIATE | DONT_SPLIT_AHB_WR;
-
-	if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA11 &&
-		tegra_revision == TEGRA_REVISION_A02)
-		val |= WR_WAIT_COMMIT_ON_1K;
-#ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	val |= WR_WAIT_COMMIT_ON_1K | EN_USB_WAIT_COMMIT_ON_1K_STALL;
-#endif
-	gizmo_writel(val, AHB_GIZMO_AHB_MEM);
-
-	val = gizmo_readl(AHB_GIZMO_USB);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_USB);
-
-	val = gizmo_readl(AHB_GIZMO_USB2);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_USB2);
-
-	val = gizmo_readl(AHB_GIZMO_USB3);
-	val |= IMMEDIATE;
-	gizmo_writel(val, AHB_GIZMO_USB3);
-
-	val = gizmo_readl(AHB_ARBITRATION_PRIORITY_CTRL);
-	val |= PRIORITY_SELECT_USB | PRIORITY_SELECT_USB2 | PRIORITY_SELECT_USB3
-				| AHB_PRIORITY_WEIGHT(7);
-	gizmo_writel(val, AHB_ARBITRATION_PRIORITY_CTRL);
-
-	val = gizmo_readl(AHB_MEM_PREFETCH_CFG1);
-	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | AHBDMA_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	ahb_gizmo_writel(val,
-		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG1));
-
-	val = gizmo_readl(AHB_MEM_PREFETCH_CFG2);
-	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	ahb_gizmo_writel(val,
-		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG2));
-
-	val = gizmo_readl(AHB_MEM_PREFETCH_CFG3);
-	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB3_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	ahb_gizmo_writel(val,
-		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG3));
-
-	val = gizmo_readl(AHB_MEM_PREFETCH_CFG4);
-	val &= ~MST_ID(~0);
-	val |= PREFETCH_ENB | USB2_MST_ID | ADDR_BNDRY(0xc) | INACTIVITY_TIMEOUT(0x1000);
-	ahb_gizmo_writel(val,
-		IO_ADDRESS(TEGRA_AHB_GIZMO_BASE + AHB_MEM_PREFETCH_CFG4));
-
 	register_syscore_ops(&tegra_ahbgizmo_syscore_ops);
 
 	return 0;
 }
-postcore_initcall(tegra_init_ahb_gizmo_settings);
+postcore_initcall(tegra_init_ahb_gizmo);
