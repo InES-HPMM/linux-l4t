@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_os.h
  *
- * Copyright (C) 2011 NVIDIA Corp.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -26,7 +26,8 @@ struct nv_e276_control {
 	u32 put;
 	u32 reserved03[15];
 	u32 get;
-	u32 reserved04[10];
+	u32 reserved04[9];
+	u32 sync_pt_incr_trap_enable;
 	u32 watchdog_timeout;
 	u32 idle_notify_enable;
 	u32 idle_notify_delay;
@@ -76,8 +77,12 @@ struct nv_e276_control {
 #define NVE276_OS_INTERRUPT_APP_NOTIFY		(0x00000020)
 #define NVE276_OS_INTERRUPT_VIDEO_IDLE		(0x00000040)
 #define NVE276_OS_INTERRUPT_AUDIO_IDLE		(0x00000080)
+#define NVE276_OS_INTERRUPT_SYNCPT_INCR_TRAP	(0x00002000)
 #define NVE276_OS_INTERRUPT_AVP_BREAKPOINT	(0x00800000)
 #define NVE276_OS_INTERRUPT_AVP_FATAL_ERROR	(0x01000000)
+
+/* Get sync point id from avp->cpu data */
+#define NVE276_OS_SYNCPT_INCR_TRAP_GET_SYNCPT(x)	(((x)>>14)&0x1f)
 
 struct nvavp_os_info {
 	u32			entry_offset;

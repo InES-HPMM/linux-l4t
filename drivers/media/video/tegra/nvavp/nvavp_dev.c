@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -240,6 +240,12 @@ static void nvavp_set_channel_control_area(struct nvavp_info *nvavp, int channel
 	writel(0x1, &control->idle_notify_enable);
 	writel(NVAVP_OS_IDLE_TIMEOUT, &control->idle_notify_delay);
 
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	/* enable sync pt trap enable for avp */
+	if (IS_VIDEO_CHANNEL_ID(channel_id))
+		writel(0x1, &control->sync_pt_incr_trap_enable);
+#endif
+
 	/* init dma start and end pointers */
 	writel(channel_info->pushbuf_phys, &control->dma_start);
 	writel((channel_info->pushbuf_phys + NVAVP_PUSHBUFFER_SIZE),
@@ -383,6 +389,13 @@ static int nvavp_service(struct nvavp_info *nvavp)
 
 	if (inbox & NVE276_OS_INTERRUPT_VIDEO_IDLE)
 		schedule_work(&nvavp->clock_disable_work);
+
+	if (inbox & NVE276_OS_INTERRUPT_SYNCPT_INCR_TRAP) {
+		/* sync pnt incr */
+		if (nvavp->syncpt_id == NVE276_OS_SYNCPT_INCR_TRAP_GET_SYNCPT(inbox))
+			nvhost_syncpt_cpu_incr_ext(
+				nvavp->nvhost_dev, nvavp->syncpt_id);
+	}
 
 #if defined(CONFIG_TEGRA_NVAVP_AUDIO)
 	if (inbox & NVE276_OS_INTERRUPT_AUDIO_IDLE) {
