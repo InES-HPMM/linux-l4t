@@ -1,23 +1,17 @@
 /*
  * arch/arm/mach-tegra/cpuidle-t14x.c
  *
- * CPU idle driver for Tegra14x CPUs
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
- * Copyright (c) 2012-2013, NVIDIA Corporation.
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #include <linux/kernel.h>
@@ -120,6 +114,7 @@ static struct {
 	unsigned int mc_clk_stop_done_count_bin[32];
 	unsigned int pd_int_count[NR_IRQS];
 	unsigned int last_pd_int_count[NR_IRQS];
+	unsigned int clk_gating_vmin;
 } idle_stats;
 
 static inline unsigned int time_to_bin(unsigned int time)
@@ -506,7 +501,10 @@ bool tegra14x_idle_power_down(struct cpuidle_device *dev,
 {
 	bool power_down;
 	bool cpu_gating_only = false;
+	bool clkgt_at_vmin = false;
 	bool power_gating_cpu_only = true;
+	unsigned long rate;
+	int status = -1;
 	s64 request = ktime_to_us(tick_nohz_get_sleep_length());
 
 	tegra_set_cpu_in_pd(dev->cpu);
@@ -520,19 +518,63 @@ bool tegra14x_idle_power_down(struct cpuidle_device *dev,
 				power_gating_cpu_only = false;
 		else
 			power_gating_cpu_only = true;
-	} else if (!cpu_gating_only &&
-		(dev->cpu == 0) &&
-		(num_online_cpus() == 1) &&
-		tegra_rail_off_is_allowed() &&
-		(request > tegra_min_residency_ncpu()))
-			power_gating_cpu_only = false;
-	else
-		power_gating_cpu_only = true;
+	} else {
+		if (num_online_cpus() > 1)
+			power_gating_cpu_only = true;
+		else {
+			if (tegra_dvfs_rail_updating(cpu_clk_for_dvfs))
+				clkgt_at_vmin = false;
+			else if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_DO_CLKGT_VMIN)
+				clkgt_at_vmin = true;
+			else if (tegra_force_clkgt_at_vmin ==
+					TEGRA_CPUIDLE_FORCE_NO_CLKGT_VMIN)
+				clkgt_at_vmin = false;
+			else if ((request >= tegra_min_residency_vmin_fmin()) &&
+				 ((request < tegra_min_residency_ncpu()) ||
+				   cpu_gating_only))
+				clkgt_at_vmin = true;
 
-	if (power_gating_cpu_only)
+			if (!cpu_gating_only && tegra_rail_off_is_allowed()) {
+				if (fast_cluster_power_down_mode &
+						TEGRA_POWER_CLUSTER_FORCE_MASK)
+					power_gating_cpu_only = false;
+				else if (request >
+						tegra_min_residency_ncpu())
+					power_gating_cpu_only = false;
+				else
+					power_gating_cpu_only = true;
+			} else
+				power_gating_cpu_only = true;
+		}
+	}
+
+	if (clkgt_at_vmin) {
+		rate = 0;
+		status = tegra_cpu_g_idle_rate_exchange(&rate);
+		if (!status) {
+			idle_stats.clk_gating_vmin++;
+			cpu_do_idle();
+			tegra_cpu_g_idle_rate_exchange(&rate);
+			power_down = true;
+		} else {
+			power_down = tegra_cpu_core_power_down(dev, state,
+							       request);
+		}
+	} else if (power_gating_cpu_only)
 		power_down = tegra_cpu_core_power_down(dev, state, request);
-	else
+	else {
+		if (is_lp_cluster()) {
+			rate = ULONG_MAX;
+			status = tegra_cpu_lp_idle_rate_exchange(&rate);
+		}
+
 		power_down = tegra_cpu_cluster_power_down(dev, state, request);
+
+		/* restore cpu clock after cluster power ungating */
+		if (status == 0)
+			tegra_cpu_lp_idle_rate_exchange(&rate);
+	}
 
 	tegra_clear_cpu_in_pd(dev->cpu);
 
@@ -561,6 +603,8 @@ int tegra14x_pd_debug_show(struct seq_file *s, void *data)
 		idle_stats.tear_down_count[2],
 		idle_stats.tear_down_count[3],
 		idle_stats.tear_down_count[4]);
+	seq_printf(s, "clk gating @ Vmin count:      %8u\n",
+		idle_stats.clk_gating_vmin);
 	seq_printf(s, "rail gating count:      %8u\n",
 		idle_stats.rail_gating_count);
 	seq_printf(s, "rail gating completed:  %8u %7u%%\n",
@@ -689,6 +733,7 @@ int tegra14x_pd_debug_show(struct seq_file *s, void *data)
 			idle_stats.c1nc_gating_done_count_bin[bin] * 100 /
 				idle_stats.c1nc_gating_bin[bin]);
 	}
+	seq_printf(s, "\n");
 
 	seq_printf(s, "%19s %8s %8s %8s\n", "", "mc clk stop", "comp", "%");
 	seq_printf(s, "-------------------------------------------------\n");
