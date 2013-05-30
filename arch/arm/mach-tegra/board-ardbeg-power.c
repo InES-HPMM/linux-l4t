@@ -148,6 +148,7 @@ static struct regulator_consumer_supply palmas_ldo8_supply[] = {
 	REGULATOR_SUPPLY("vdd_snsr_temp", NULL),
 	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd_snsr_pm", NULL),
+	REGULATOR_SUPPLY("vdd_pca", "1-0071"),
 };
 
 static struct regulator_consumer_supply palmas_ldo9_supply[] = {
