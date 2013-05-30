@@ -294,41 +294,40 @@ static struct regulator_init_data *roth_reg_data[PALMAS_NUM_REGS] = {
 };
 
 #define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep,	\
-		_tstep, _vsel)						\
+		_vsel)							\
 	static struct palmas_reg_init reg_init_data_##_name = {		\
 		.warm_reset = _warm_reset,				\
 		.roof_floor =	_roof_floor,				\
 		.mode_sleep = _mode_sleep,				\
-		.tstep = _tstep,					\
 		.vsel = _vsel,						\
 	}
 
-PALMAS_REG_INIT(smps12, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(smps457, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps10, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo2, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo4, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo5, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(regen1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(regen2, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(regen3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(sysen1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(sysen2, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps12, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps123, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps3, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
+PALMAS_REG_INIT(smps457, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
+PALMAS_REG_INIT(smps6, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps7, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps8, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps9, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps10, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo1, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo2, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo3, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo4, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo5, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo6, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo7, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo8, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo9, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldoln, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldousb, 0, 0, 0, 0);
+PALMAS_REG_INIT(regen1, 0, 0, 0, 0);
+PALMAS_REG_INIT(regen2, 0, 0, 0, 0);
+PALMAS_REG_INIT(regen3, 0, 0, 0, 0);
+PALMAS_REG_INIT(sysen1, 0, 0, 0, 0);
+PALMAS_REG_INIT(sysen2, 0, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
 static struct palmas_reg_init *roth_reg_init[PALMAS_NUM_REGS] = {

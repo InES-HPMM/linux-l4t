@@ -55,7 +55,7 @@
 
 #define PALMAS_REGS_PDATA(_name, _minmv, _maxmv, _supply_reg,		\
 	_always_on, _boot_on, _apply_uv, _init_mode,			\
-	_warm_reset, _roof_floor, _mode_sleep, _tstep, _vsel)		\
+	_warm_reset, _roof_floor, _mode_sleep, _ramp_us, _vsel)		\
 	static struct regulator_init_data reg_idata_##_name = {		\
 		.constraints = {					\
 			.name = palmas_rails(_name),			\
@@ -70,6 +70,7 @@
 			.boot_on = _boot_on | (_roof_floor != 0),	\
 			.apply_uV = _apply_uv,				\
 			.initial_mode = REGULATOR_MODE_##_init_mode,	\
+			.ramp_delay = _ramp_us,				\
 		},							\
 		.num_consumer_supplies =				\
 			ARRAY_SIZE(palmas_##_name##_supply),		\
@@ -80,7 +81,6 @@
 		.warm_reset = _warm_reset,				\
 		.roof_floor = _roof_floor,				\
 		.mode_sleep = _mode_sleep,				\
-		.tstep = _tstep,					\
 		.vsel = _vsel,						\
 	}
 
