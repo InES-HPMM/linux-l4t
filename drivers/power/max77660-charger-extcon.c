@@ -74,6 +74,17 @@ const char *max77660_excon_cable[] = {
 	NULL,
 };
 
+/* IRQ definitions */
+enum {
+	MAX77660_CHG_BAT_I = 0,
+	MAX77660_CHG_CHG_I,
+	MAX77660_CHG_DC_UVP,
+	MAX77660_CHG_DC_OVP,
+	MAX77660_CHG_DC_I,
+	MAX77660_CHG_DC_V,
+	MAX77660_CHG_NR_IRQS,
+};
+
 static inline int fchg_current(int x)
 {
 	if (x >= 1620)
@@ -345,25 +356,168 @@ static int max77660_chg_extcon_cable_update(
 	return 0;
 }
 
+static int max77660_charger_detail_irq(int irq, void *data, u8 *val)
+{
+	struct max77660_chg_extcon *chip = (struct max77660_chg_extcon *)data;
+	u8 reg_val = 0;
+
+	switch (irq) {
+	case MAX77660_CHG_BAT_I:
+		switch ((val[2] & MAX77660_BAT_DTLS_MASK)
+					>>MAX77660_BAT_DTLS_SHIFT) {
+		case MAX77660_BAT_DTLS_BATDEAD:
+			dev_info(chip->dev,
+				"Battery Interrupt: Battery Dead\n");
+			break;
+		case MAX77660_BAT_DTLS_TIMER_FAULT:
+			dev_info(chip->dev,
+			"Battery Interrupt: Charger Watchdog Timer fault\n");
+			break;
+		case MAX77660_BAT_DTLS_BATOK:
+			dev_info(chip->dev,
+					"Battery Interrupt: Battery Ok\n");
+			break;
+		case MAX77660_BAT_DTLS_GTBATOVF:
+			dev_info(chip->dev,
+				"Battery Interrupt: GTBATOVF\n");
+			break;
+		default:
+			dev_info(chip->dev,
+				"Battery Interrupt: details-0x%x\n",
+					(val[2] & MAX77660_BAT_DTLS_MASK));
+			break;
+		}
+		break;
+
+	case MAX77660_CHG_CHG_I:
+		switch (val[2] & MAX77660_CHG_DTLS_MASK) {
+		case MAX77660_CHG_DTLS_DEAD_BAT:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: Dead Battery\n");
+
+			break;
+		case MAX77660_CHG_DTLS_PREQUAL:
+			dev_info(chip->dev,
+				"Fast Charge current Interrupt: PREQUAL\n");
+
+			break;
+		case MAX77660_CHG_DTLS_FAST_CHARGE_CC:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: FAST_CHARGE_CC\n");
+
+			break;
+		case MAX77660_CHG_DTLS_FAST_CHARGE_CV:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: FAST_CHARGE_CV\n");
+
+			break;
+		case MAX77660_CHG_DTLS_TOP_OFF:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: TOP_OFF\n");
+
+			break;
+		case MAX77660_CHG_DTLS_DONE:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: DONE\n");
+
+			break;
+		case MAX77660_CHG_DTLS_DONE_QBAT_ON:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: DONE_QBAT_ON\n");
+
+			break;
+		case MAX77660_CHG_DTLS_TIMER_FAULT:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: TIMER_FAULT\n");
+
+			break;
+		case MAX77660_CHG_DTLS_DC_INVALID:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: DC_INVALID\n");
+
+			break;
+		case MAX77660_CHG_DTLS_THERMAL_LOOP_ACTIVE:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt:"
+					"THERMAL_LOOP_ACTIVE\n");
+
+			break;
+		case MAX77660_CHG_DTLS_CHG_OFF:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: CHG_OFF\n");
+
+			break;
+		default:
+			dev_info(chip->dev,
+			"Fast Charge current Interrupt: details-0x%x\n",
+					(val[2] & MAX77660_CHG_DTLS_MASK));
+			break;
+		}
+		break;
+
+	case MAX77660_CHG_DC_UVP:
+		max77660_chg_extcon_cable_update(chip);
+		break;
+
+	case MAX77660_CHG_DC_OVP:
+		if ((val[1] & MAX77660_DC_OVP_MASK) == MAX77660_DC_OVP_MASK) {
+			dev_info(chip->dev,
+			"DC Over voltage Interrupt: VDC > VDC_OVLO\n");
+
+			/*  VBUS is invalid. VDC > VDC_OVLO  */
+			max77660_charger_init(chip, 0);
+		} else if ((val[1] & MAX77660_DC_OVP_MASK) == 0) {
+			dev_info(chip->dev,
+			"DC Over voltage Interrupt: VDC < VDC_OVLO\n");
+
+			/*  VBUS is valid. VDC < VDC_OVLO  */
+			max77660_charger_init(chip, 1);
+		}
+		break;
+
+	case MAX77660_CHG_DC_I:
+		dev_info(chip->dev,
+		"DC Input Current Limit Interrupt: details-0x%x\n",
+				(val[1] & MAX77660_DC_I_MASK));
+		break;
+
+	case MAX77660_CHG_DC_V:
+		dev_info(chip->dev,
+			"DC Input Voltage Limit Interrupt: details-0x%x\n",
+					(val[1] & MAX77660_DC_V_MASK));
+		break;
+
+	}
+	return 0;
+}
+
+
 static irqreturn_t max77660_chg_extcon_irq(int irq, void *data)
 {
 	struct max77660_chg_extcon *chg_extcon = data;
-	u8 status;
+	int irq_val, irq_mask, irq_name;
+	u8 val[3];
 	int ret;
 
 	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
-			MAX77660_CHARGER_CHGINT, &status);
-	if (ret < 0) {
-		dev_err(chg_extcon->dev, "CHGSTAT read failed: %d\n", ret);
-		goto out;
+					MAX77660_CHARGER_CHGINT, &irq_val);
+	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_CHGINTM, &irq_mask);
+
+	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_CHGSTAT, &val[0]);
+	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_DETAILS1, &val[1]);
+	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
+					MAX77660_CHARGER_DETAILS2, &val[2]);
+
+	for (irq_name = MAX77660_CHG_BAT_I; irq_name < MAX77660_CHG_NR_IRQS;
+								irq_name++) {
+		if ((irq_val & (0x01<<(irq_name+2))) &&
+				!(irq_mask & (0x01<<(irq_name+2))))
+			max77660_charger_detail_irq(irq_name, data, val);
 	}
 
-	if (status & MAX77660_CHG_CHGINT_DC_UVP)
-		max77660_chg_extcon_cable_update(chg_extcon);
-	else
-		dev_err(chg_extcon->dev, "CHG-IRQ for unknown reason, 0x%02x\n",
-			status);
-out:
 	return IRQ_HANDLED;
 }
 
