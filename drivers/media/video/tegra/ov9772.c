@@ -132,6 +132,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -141,7 +142,7 @@
 #include <linux/module.h>
 
 #include <media/ov9772.h>
-#include <media/nvc.h>
+#include "nvc_utilities.h"
 
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
@@ -192,6 +193,7 @@ struct ov9772_info {
 	struct list_head list;
 	int pwr_api;
 	int pwr_dev;
+	struct clk *mclk;
 	struct nvc_gpio gpio[ARRAY_SIZE(ov9772_gpio)];
 	struct ov9772_power_rail regulators;
 	bool power_on;
@@ -1053,6 +1055,9 @@ static int ov9772_power_off(struct ov9772_info *info)
 	if (!info->power_on)
 		goto ov9772_poweroff_skip;
 
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+
 	if (info->pdata && info->pdata->power_off)
 		err = info->pdata->power_off(pw);
 	/* if customized design handles the power off process specifically,
@@ -1089,9 +1094,19 @@ static int ov9772_power_on(struct ov9772_info *info, bool standby)
 {
 	struct ov9772_power_rail *pw = &info->regulators;
 	int err = 0;
+	unsigned long mclk_init_rate;
 
 	if (info->power_on)
 		goto ov9772_poweron_skip;
+
+	mclk_init_rate = nvc_imager_get_mclk(info->cap, &ov9772_dflt_cap, 0);
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	if (err)
+		goto ov9772_poweron_fail;
 
 	if (info->pdata && info->pdata->power_on)
 		err = info->pdata->power_on(pw);
@@ -1113,7 +1128,7 @@ static int ov9772_power_on(struct ov9772_info *info, bool standby)
 		ov9772_gpio_pwrdn(info, 0); /* PWRDN off to access I2C */
 	}
 	if (IS_ERR_VALUE(err))
-		return err;
+		goto ov9772_poweron_seq_fail;
 	info->power_on = true;
 	err = 0;
 
@@ -1130,6 +1145,12 @@ ov9772_poweron_skip:
 		err |= ov9772_i2c_wr8(info->i2c_client, 0x4815, 0x20);
 	}
 
+	return err;
+
+ov9772_poweron_seq_fail:
+	clk_disable_unprepare(info->mclk);
+ov9772_poweron_fail:
+	pr_err("%s FAILED\n", __func__);
 	return err;
 }
 
@@ -1316,7 +1337,7 @@ static int ov9772_dev_id(struct ov9772_info *info)
 	return err;
 }
 
-static int ov9772_mode_able(struct ov9772_info *info, bool mode_enable)
+static int ov9772_mode_enable(struct ov9772_info *info, bool mode_enable)
 {
 	u8 val;
 	int err;
@@ -1407,7 +1428,7 @@ static int ov9772_mode_wr(struct ov9772_info *info,
 			return err;
 		} else {
 			/* turn off streaming */
-			err = ov9772_mode_able(info, false);
+			err = ov9772_mode_enable(info, false);
 			return err;
 		}
 	}
@@ -1422,7 +1443,7 @@ static int ov9772_mode_wr(struct ov9772_info *info,
 		goto ov9772_mode_wr_err;
 	}
 
-	err = ov9772_mode_able(info, true);
+	err = ov9772_mode_enable(info, true);
 	if (err < 0)
 		goto ov9772_mode_wr_err;
 
@@ -2214,6 +2235,7 @@ static int ov9772_probe(
 	struct ov9772_info *info;
 	char dname[16];
 	unsigned long clock_probe_rate;
+	const char *mclk_name;
 	int err;
 
 	dev_dbg(&client->dev, "%s\n", __func__);
@@ -2235,6 +2257,16 @@ static int ov9772_probe(
 		info->cap = info->pdata->cap;
 	else
 		info->cap = &ov9772_dflt_cap;
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
+
 	i2c_set_clientdata(client, info);
 	INIT_LIST_HEAD(&info->list);
 	spin_lock(&ov9772_spinlock);

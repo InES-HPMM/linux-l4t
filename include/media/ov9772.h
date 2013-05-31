@@ -46,6 +46,7 @@ struct ov9772_platform_data {
 	unsigned lens_fnumber; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
+	const char *mclk_name;
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct ov9772_power_rail *);
 	int (*power_off)(struct ov9772_power_rail *);
