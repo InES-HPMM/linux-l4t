@@ -16,14 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
-#include <media/nvc.h>
-#include <media/nvc_image.h>
+#include <linux/string.h>
+#include "nvc_utilities.h"
 
-
-int parse_nvc_imager_caps(struct device_node *np,
+int nvc_imager_parse_caps(struct device_node *np,
 		struct nvc_imager_cap *imager_cap)
 {
 	const char *cap_identifier = NULL;
@@ -83,3 +81,36 @@ int parse_nvc_imager_caps(struct device_node *np,
 
 	return 0;
 }
+
+unsigned long nvc_imager_get_mclk(const struct nvc_imager_cap *cap,
+				  const struct nvc_imager_cap *cap_default,
+				  int profile)
+{
+	unsigned long mclk_freq_khz = 0;
+
+	if (profile < 0) { /* initial rate */
+		if (cap)
+			mclk_freq_khz = cap->initial_clock_rate_khz;
+
+		if (mclk_freq_khz == 0 && cap_default)
+			mclk_freq_khz = cap_default->initial_clock_rate_khz;
+
+		if (mclk_freq_khz == 0)
+			mclk_freq_khz = 6000;
+
+	} else { /* rate from clock profile N */
+		if (cap)
+			mclk_freq_khz = cap->clock_profiles[profile]
+					.external_clock_khz;
+
+		if (mclk_freq_khz == 0 && cap_default)
+			mclk_freq_khz = cap_default->clock_profiles[profile]
+					.external_clock_khz;
+
+		if (mclk_freq_khz == 0)
+			mclk_freq_khz = 24000;
+	}
+
+	return mclk_freq_khz * 1000;
+}
+

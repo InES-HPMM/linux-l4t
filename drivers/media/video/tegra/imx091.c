@@ -18,6 +18,7 @@
 
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
@@ -33,7 +34,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 
-#include "nvc_utilities.c"
+#include "nvc_utilities.h"
 
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
@@ -84,6 +85,7 @@ struct imx091_info {
 	struct nvc_imager_cap *cap;
 	struct miscdevice miscdev;
 	struct list_head list;
+	struct clk *mclk;
 	struct nvc_gpio gpio[ARRAY_SIZE(imx091_gpios)];
 	struct nvc_regulator vreg[ARRAY_SIZE(imx091_vregs)];
 	struct edp_client *edpc;
@@ -1762,20 +1764,58 @@ static void imx091_gpio_init(struct imx091_info *info)
 	}
 }
 
+static void imx091_mclk_disable(struct imx091_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int imx091_mclk_enable(struct imx091_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate =
+		nvc_imager_get_mclk(info->cap, &imx091_dflt_cap, 0);
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+
+	return err;
+}
+
 static int imx091_vreg_dis_all(struct imx091_info *info)
 {
+	int err;
+
 	if (!info->pdata || !info->pdata->power_off)
 		return -EFAULT;
 
-	return info->pdata->power_off(info->vreg);
+	err = info->pdata->power_off(info->vreg);
+
+	imx091_mclk_disable(info);
+
+	return err;
 }
 
 static int imx091_vreg_en_all(struct imx091_info *info)
 {
+	int err;
+
 	if (!info->pdata || !info->pdata->power_on)
 		return -EFAULT;
 
-	return info->pdata->power_on(info->vreg);
+	err = imx091_mclk_enable(info);
+	if (err)
+		return err;
+
+	err = info->pdata->power_on(info->vreg);
+	if (err < 0)
+		imx091_mclk_disable(info);
+
+	return err;
 }
 
 static void imx091_vreg_exit(struct imx091_info *info)
@@ -1994,7 +2034,7 @@ static int imx091_dev_id(struct imx091_info *info)
 	return err;
 }
 
-static int imx091_mode_able(struct imx091_info *info, bool mode_enable)
+static int imx091_mode_enable(struct imx091_info *info, bool mode_enable)
 {
 	u8 val;
 	int err;
@@ -2090,7 +2130,7 @@ static int imx091_mode_wr(struct imx091_info *info,
 			return err;
 		} else {
 			/* turn off streaming */
-			err = imx091_mode_able(info, false);
+			err = imx091_mode_enable(info, false);
 			return err;
 		}
 	}
@@ -2107,7 +2147,7 @@ static int imx091_mode_wr(struct imx091_info *info,
 
 	err = imx091_set_flash_output(info);
 
-	err |= imx091_mode_able(info, true);
+	err |= imx091_mode_enable(info, true);
 	if (err < 0)
 		goto imx091_mode_wr_err;
 
@@ -2963,7 +3003,6 @@ static int imx091_get_extra_regulators(struct imx091_info *info)
 
 static int imx091_power_on(struct nvc_regulator *vreg)
 {
-
 	int err;
 	struct imx091_info *info = container_of(vreg, struct imx091_info,
 						vreg[0]);
@@ -3009,7 +3048,6 @@ static int imx091_power_on(struct nvc_regulator *vreg)
 
 	usleep_range(1, 2);
 	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 1);
-
 	usleep_range(300, 310);
 
 	return 1;
@@ -3045,7 +3083,6 @@ static int imx091_power_off(struct nvc_regulator *vreg)
 		return -EFAULT;
 
 	usleep_range(1, 2);
-
 	imx091_gpio_wr(info, IMX091_GPIO_PWDN, 0);
 	usleep_range(1, 2);
 
@@ -3125,6 +3162,10 @@ static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
 	board_info_pdata->vcm_vdd = of_property_read_bool(np, "nvidia,vcm_vdd");
 	board_info_pdata->i2c_vdd = of_property_read_bool(np, "nvidia,i2c_vdd");
 
+	/* MCLK clock info */
+	of_property_read_string(np, "nvidia,mclk_name",
+				&board_info_pdata->mclk_name);
+
 	/* generic info */
 	of_property_read_u32(np, "nvidia,num", &board_info_pdata->num);
 	of_property_read_u32(np, "nvidia,sync", &board_info_pdata->sync);
@@ -3166,7 +3207,7 @@ static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
 	board_info_pdata->gpio = gpio_pdata;
 
 	/* imx091 caps */
-	parse_nvc_imager_caps(np, imx091_cap);
+	nvc_imager_parse_caps(np, imx091_cap);
 	imx091_cap->focuser_guid = NVC_FOCUS_GUID(0);
 	imx091_cap->torch_guid = NVC_TORCH_GUID(0);
 	imx091_cap->cap_version = NVC_IMAGER_CAPABILITIES_VERSION2;
@@ -3211,6 +3252,7 @@ static int imx091_probe(
 	char dname[16];
 	unsigned long clock_probe_rate;
 	int err;
+	const char *mclk_name;
 
 	dev_dbg(&client->dev, "%s +++++\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -3234,6 +3276,15 @@ static int imx091_probe(
 	if (!info->pdata) {
 		dev_err(&client->dev, "%s: Platform data error.\n", __func__);
 		return -EINVAL;
+	}
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
 	}
 
 	i2c_set_clientdata(client, info);

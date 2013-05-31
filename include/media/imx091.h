@@ -54,6 +54,7 @@ struct imx091_platform_data {
 	struct edp_client edpc_config;
 	bool vcm_vdd;
 	bool i2c_vdd;
+	const char *mclk_name; /* NULL for default default_mclk */
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct nvc_regulator *);
 	int (*power_off)(struct nvc_regulator *);
