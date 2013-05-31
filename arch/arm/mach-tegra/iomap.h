@@ -251,7 +251,8 @@
 #define TEGRA_AHB_DMA_CH0_BASE		0x60009000
 #define TEGRA_AHB_DMA_CH0_SIZE		32
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC) \
+	&& !defined(CONFIG_ARCH_TEGRA_11x_SOC)
 
 #define TEGRA_APB_DMA_BASE		0x60020000
 #define TEGRA_APB_DMA_SIZE		SZ_4K
@@ -785,7 +786,8 @@
 
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC) \
+	&& !defined(CONFIG_ARCH_TEGRA_11x_SOC)
 
 #define TEGRA_I2C6_BASE			0x7000d100
 #define TEGRA_I2C6_SIZE			SZ_512
