@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -30,6 +31,8 @@
 #include <linux/kernel.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+
+#include "nvc_utilities.h"
 
 struct imx135_reg {
 	u16 addr;
@@ -43,6 +46,7 @@ struct imx135_info {
 	struct imx135_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
 	struct imx135_platform_data	*pdata;
+	struct clk			*mclk;
 	struct mutex			imx135_camera_lock;
 	struct dentry			*debugdir;
 	atomic_t			in_use;
@@ -2078,6 +2082,26 @@ static int imx135_get_sensor_id(struct imx135_info *info)
 	return ret;
 }
 
+static void imx135_mclk_disable(struct imx135_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int imx135_mclk_enable(struct imx135_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static long
 imx135_ioctl(struct file *file,
 			 unsigned int cmd, unsigned long arg)
@@ -2089,11 +2113,17 @@ imx135_ioctl(struct file *file,
 	case IMX135_IOCTL_SET_POWER:
 		if (!info->pdata)
 			break;
-		if (arg && info->pdata->power_on)
-			info->pdata->power_on(&info->power);
-		if (!arg && info->pdata->power_off)
+		if (arg && info->pdata->power_on) {
+			err = imx135_mclk_enable(info);
+			if (!err)
+				err = info->pdata->power_on(&info->power);
+			if (err < 0)
+				imx135_mclk_disable(info);
+		}
+		if (!arg && info->pdata->power_off) {
 			info->pdata->power_off(&info->power);
-
+			imx135_mclk_disable(info);
+		}
 		break;
 	case IMX135_IOCTL_SET_MODE:
 	{
@@ -2419,6 +2449,7 @@ imx135_probe(struct i2c_client *client,
 {
 	struct imx135_info *info;
 	int err;
+	const char *mclk_name;
 
 	pr_info("[IMX135]: probing sensor.\n");
 
@@ -2433,6 +2464,15 @@ imx135_probe(struct i2c_client *client,
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
 
 	imx135_power_get(info);
 
