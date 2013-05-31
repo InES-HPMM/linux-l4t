@@ -72,8 +72,8 @@ mutex_unlock(&a->mutex); return -ENODEV; } }
 	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | \
 		  SNDRV_CTL_ELEM_ACCESS_READWRITE, \
 	.tlv.p = (tlv_array), \
-	.info = snd_soc_info_volsw_2r_sx, \
-	.get = snd_soc_get_volsw_2r_sx, \
+	.info = snd_soc_info_volsw, \
+	.get = snd_soc_get_volsw_sx, \
 	.put = snd_soc_put_volsw_2r_sx_aic3262, \
 	.private_value = (unsigned long)&(struct soc_mixer_control) \
 		{.reg = xreg_left, \
