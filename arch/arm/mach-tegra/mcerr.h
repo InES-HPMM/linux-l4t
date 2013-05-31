@@ -32,8 +32,11 @@
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #include "tegra3_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AFI
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
 #include "tegra11_emc.h"
+#define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
+#elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
+#include "tegra14_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #endif
 
