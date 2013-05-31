@@ -85,6 +85,10 @@
 
 static struct board_info board_info, display_board_info;
 
+static struct i2c_board_info __initdata rt5645_board_info = {
+	I2C_BOARD_INFO("rt5645", 0x1a),
+};
+
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",	NULL,		0,		false},
@@ -171,6 +175,7 @@ static void ardbeg_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 #endif
+	i2c_register_board_info(0, &rt5645_board_info, 1);
 }
 
 static struct platform_device *ardbeg_uart_devices[] __initdata = {
@@ -209,6 +214,43 @@ static struct uart_clk_parent uart_parent_clk[] = {
 };
 
 static struct tegra_uart_platform_data ardbeg_uart_pdata;
+
+static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
+	.gpio_spkr_en = TEGRA_GPIO_SPKR_EN,
+	.gpio_hp_det = TEGRA_GPIO_HP_DET,
+	.gpio_hp_mute = -1,
+	.gpio_int_mic_en = TEGRA_GPIO_INT_MIC_EN,
+	.gpio_ext_mic_en = TEGRA_GPIO_EXT_MIC_EN,
+	.gpio_ldo1_en = TEGRA_GPIO_LDO1_EN,
+	.gpio_codec1 = TEGRA_GPIO_CODEC1_EN,
+	.gpio_codec2 = TEGRA_GPIO_CODEC2_EN,
+	.gpio_codec3 = TEGRA_GPIO_CODEC3_EN,
+	.i2s_param[HIFI_CODEC]       = {
+		.audio_port_id = 1,
+		.is_i2s_master = 1,
+		.i2s_mode = TEGRA_DAIFMT_I2S,
+	},
+	.i2s_param[BT_SCO] = {
+		.audio_port_id = 3,
+		.is_i2s_master = 1,
+		.i2s_mode = TEGRA_DAIFMT_DSP_A,
+	},
+};
+
+static void ardbeg_audio_init(void)
+{
+	ardbeg_audio_pdata.codec_name = "rt5645.0-001a";
+	ardbeg_audio_pdata.codec_dai_name = "rt5645-aif1";
+}
+
+static struct platform_device ardbeg_audio_device = {
+	.name       = "tegra-snd-rt5645",
+	.id       = 0,
+	.dev       = {
+		.platform_data = &ardbeg_audio_pdata,
+	},
+};
+
 static struct tegra_uart_platform_data ardbeg_loopback_uart_pdata;
 
 static void __init uart_debug_init(void)
@@ -292,20 +334,18 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 #endif
 #endif
 	&tegra_ahub_device,
-#if 0
 	&tegra_dam_device0,
 	&tegra_dam_device1,
 	&tegra_dam_device2,
 	&tegra_i2s_device1,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
+	&ardbeg_audio_device,
 	&tegra_spdif_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&tegra_pcm_device,
-	&ardbeg_audio_device,
 	&tegra_hda_device,
-#endif
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
@@ -585,6 +625,7 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_i2c_init();
 	ardbeg_spi_init();
 	ardbeg_uart_init();
+	ardbeg_audio_init();
 	platform_add_devices(ardbeg_devices, ARRAY_SIZE(ardbeg_devices));
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();

@@ -182,8 +182,8 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	struct snd_soc_pcm_runtime *rtd;
 	struct snd_pcm_substream *substream;
 	struct tegra_runtime_data *prtd;
+	struct dma_chan *chan;
 
-	ucontrol->value.integer.value[0] = -1;
 	if (data->avp_device_id < 0)
 		return 0;
 
@@ -192,10 +192,15 @@ static int tegra_get_dma_ch_id(struct snd_kcontrol *kcontrol,
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
-	if (!prtd || !prtd->dma_chan)
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
+
+	if (!prtd)
 		return 0;
 
+	chan = snd_dmaengine_pcm_get_chan(substream);
+
+	ucontrol->value.integer.value[0] = -1;
 	ucontrol->value.integer.value[0] =
 		tegra_dma_get_channel_id(prtd->dma_chan);
 	return 0;
@@ -213,17 +218,22 @@ static int tegra_set_dma_addr(struct snd_kcontrol *kcontrol,
 	if (data->avp_device_id < 0)
 		return 0;
 
-	data->avp_dma_addr = ucontrol->value.integer.value[0];
+	rtd = &card->rtd[data->avp_device_id];
+	substream =
+	rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 
 	rtd = &card->rtd[data->avp_device_id];
 	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
+
 	if (!prtd)
 		return 0;
 
+	data->avp_dma_addr = (dma_addr_t)ucontrol->value.integer.value[0];
 	prtd->avp_dma_addr = data->avp_dma_addr;
 	return 1;
 }
@@ -237,19 +247,22 @@ static int tegra_get_dma_addr(struct snd_kcontrol *kcontrol,
 	struct snd_pcm_substream *substream;
 	struct tegra_runtime_data *prtd;
 
-	ucontrol->value.integer.value[0] = 0;
 	if (data->avp_device_id < 0)
 		return 0;
 
 	rtd = &card->rtd[data->avp_device_id];
 	substream = rtd->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+
 	if (!substream || !substream->runtime)
 		return 0;
 
-	prtd = substream->runtime->private_data;
-	if (!prtd || !prtd->dma_chan)
+	prtd = (struct tegra_runtime_data *)
+		snd_dmaengine_pcm_get_data(substream);
+
+	if (!prtd)
 		return 0;
 
+	ucontrol->value.integer.value[0] = 0;
 	ucontrol->value.integer.value[0] = prtd->avp_dma_addr ?
 					   prtd->avp_dma_addr :
 					   substream->runtime->dma_addr;
@@ -412,8 +425,8 @@ EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_disable);
 
 int tegra_asoc_utils_register_ctls(struct tegra_asoc_utils_data *data)
 {
-	int i;
 	int ret = 0;
+	int i;
 
 	/* Add AVP related alsa controls */
 	data->avp_device_id = -1;
