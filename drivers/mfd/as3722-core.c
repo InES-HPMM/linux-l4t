@@ -116,7 +116,6 @@ static struct regmap_irq_chip as3722_irq_chip = {
 	.num_regs = 4,
 	.status_base = AS3722_INTERRUPTSTATUS1_REG,
 	.mask_base = AS3722_INTERRUPTMASK1_REG,
-	.wake_base = 1,
 };
 
 static void as3722_reg_init(struct as3722 *as3722,
