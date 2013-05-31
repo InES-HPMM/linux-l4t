@@ -1610,8 +1610,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			goto err_unregister_regulator;
 		}
 
-		if (reg_init && pdata->reg_data[id])
+		if (reg_init && pdata->reg_data[id]) {
 			pmic->roof_floor[id] = reg_init->roof_floor;
+			pmic->config_flags[id] = reg_init->config_flags;
+		}
 
 		/* Save regulator for cleanup */
 		pmic->rdev[id] = rdev;
@@ -1696,6 +1698,7 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 		if (pdata && (id != PALMAS_REG_CHARGER_PUMP)) {
 			reg_init = pdata->reg_init[id];
 			if (reg_init) {
+				pmic->config_flags[id] = reg_init->config_flags;
 				if (id < PALMAS_REG_REGEN1)
 					ret = palmas_ldo_init(palmas,
 							id, reg_init);
@@ -1755,6 +1758,7 @@ static int palmas_suspend(struct device *dev)
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
 	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
+	int id;
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
@@ -1763,6 +1767,14 @@ static int palmas_suspend(struct device *dev)
 	if (pdata->disable_smps10_boost_suspend &&
 			!pmic->smps10_regulator_enabled)
 		palmas_disable_smps10_boost(palmas);
+
+	for (id = 0; id < PALMAS_NUM_REGS; id++) {
+		if (pmic->config_flags[id] &
+			PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF) {
+			if (pmic->desc[id].ops->disable)
+				pmic->desc[id].ops->disable(pmic->rdev[id]);
+		}
+	}
 	return 0;
 }
 
@@ -1771,6 +1783,7 @@ static int palmas_resume(struct device *dev)
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
 	struct palmas_pmic *pmic = dev_get_drvdata(dev);
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
+	int id;
 
 	/* Check if LDO8 is in tracking mode disable in suspend or not */
 	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
@@ -1779,6 +1792,14 @@ static int palmas_resume(struct device *dev)
 	if (pdata->disable_smps10_boost_suspend &&
 			!pmic->smps10_regulator_enabled)
 		palmas_enable_smps10_boost(palmas);
+
+	for (id = 0; id < PALMAS_NUM_REGS; id++) {
+		if (pmic->config_flags[id] &
+			PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF) {
+			if (pmic->desc[id].ops->enable)
+				pmic->desc[id].ops->enable(pmic->rdev[id]);
+		}
+	}
 	return 0;
 }
 #endif

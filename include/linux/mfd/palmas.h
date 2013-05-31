@@ -319,6 +319,9 @@ struct palmas_reg_init {
 
 	/* tracking_regulator will tell which regulator will be tracked */
 	int tracking_regulator;
+
+	/* Configuration flags */
+	unsigned int config_flags;
 };
 
 enum palmas_regulators {
@@ -634,6 +637,7 @@ struct palmas_pmic {
 	bool ramp_delay_support[PALMAS_NUM_REGS];
 	unsigned int current_reg_mode[PALMAS_REG_SMPS10];
 	unsigned long roof_floor[PALMAS_NUM_REGS];
+	unsigned long config_flags[PALMAS_NUM_REGS];
 };
 
 struct palmas_resource {
@@ -3883,6 +3887,14 @@ enum {
 	PALMAS_EXT_CONTROL_ENABLE1	= 0x1,
 	PALMAS_EXT_CONTROL_ENABLE2	= 0x2,
 	PALMAS_EXT_CONTROL_NSLEEP	= 0x4,
+};
+
+/**
+ * Palmas regulator configs
+ * PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF: Force off on suspend
+ */
+enum {
+	PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF = 0x1,
 };
 
 /*
