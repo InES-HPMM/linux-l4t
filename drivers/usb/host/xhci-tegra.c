@@ -2343,6 +2343,8 @@ done:
 	if (xhci->main_hcd == hcd) {
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
+		/* set port ownership to SNPS to save power */
+		tegra_xhci_release_port_ownership(tegra, true);
 	} else if (xhci->shared_hcd == hcd) {
 		/* save leakage power when SS not in use.
 		 * This is also done when fw mbox message is received for freq
@@ -2389,6 +2391,7 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
 		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
+		tegra_xhci_release_port_ownership(tegra, false);
 	} else if (xhci->shared_hcd == hcd && tegra->usb3_rh_suspend) {
 		/* clear ovrd bits */
 		tegra_xhci_rx_idle_mode_override(tegra, false);
