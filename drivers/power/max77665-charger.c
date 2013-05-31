@@ -37,8 +37,6 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 
-#define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS 500
-
 /* fast charge current in mA */
 static const uint32_t chg_cc[]  = {
 	0, 33, 66, 99, 133, 166, 199, 233, 266, 299,
@@ -75,26 +73,15 @@ struct max77665_charger {
 	enum max77665_mode mode;
 	struct device		*dev;
 	int			irq;
-	struct power_supply	ac;
-	struct power_supply	usb;
 	struct max77665_charger_plat_data *plat_data;
 	struct mutex current_limit_mutex;
 	int max_current_mA;
-	uint8_t ac_online;
-	uint8_t usb_online;
-	uint8_t num_cables;
-	struct extcon_dev *edev;
 	struct alarm wdt_alarm;
 	struct delayed_work wdt_ack_work;
 	struct delayed_work set_max_current_work;
 	struct wake_lock wdt_wake_lock;
 	unsigned int oc_count;
 	struct max77665_regulator_info reg_info;
-};
-
-static enum power_supply_property max77665_charger_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
-	POWER_SUPPLY_PROP_CURRENT_MAX,
 };
 
 static int max77665_write_reg(struct max77665_charger *charger,
@@ -183,59 +170,6 @@ int max77665_get_max_input_current(struct max77665_charger *charger, int *mA)
 	val &= 0x7F;
 	*mA = max_t(int, MIN_CURRENT_LIMIT_mA, val * CURRENT_STEP_mA);
 	return ret;
-}
-
-static int max77665_charger_set_property(struct power_supply *psy,
-		enum power_supply_property psp,
-		const union power_supply_propval *val)
-{
-	struct max77665_charger *chip = container_of(psy,
-				struct max77665_charger, ac);
-
-	if (psp == POWER_SUPPLY_PROP_CURRENT_MAX)
-		/* passed value is uA */
-		return max77665_set_max_input_current(chip, val->intval / 1000);
-
-	return -EINVAL;
-}
-
-static int max77665_charger_get_property(struct power_supply *psy,
-		enum power_supply_property psp, union power_supply_propval *val)
-{
-	int online;
-	int ret;
-	struct max77665_charger *charger;
-
-	if (psy->type == POWER_SUPPLY_TYPE_MAINS) {
-		charger = container_of(psy, struct max77665_charger, ac);
-		online = charger->ac_online;
-	} else if (psy->type == POWER_SUPPLY_TYPE_USB) {
-		charger = container_of(psy, struct max77665_charger, usb);
-		online = charger->usb_online;
-	} else {
-		return -EINVAL;
-	}
-
-	ret = 0;
-	switch (psp) {
-	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = online;
-		break;
-	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		ret = max77665_get_max_input_current(charger, &val->intval);
-		break;
-	default:
-		return -EINVAL;
-	}
-	return ret;
-}
-
-static int max77665_charger_property_is_writeable(struct power_supply *psy,
-						enum power_supply_property psp)
-{
-	if (psp == POWER_SUPPLY_PROP_CURRENT_MAX)
-		return 1;
-	return 0;
 }
 
 static int max77665_enable_write(struct max77665_charger *charger, bool access)
@@ -553,85 +487,6 @@ static int max77665_charging_enable(struct max77665_charger *charger)
 	return ret;
 }
 
-static int max77665_disable_charger(struct max77665_charger *charger,
-		struct extcon_dev *edev)
-{
-	int ret;
-
-	charger->max_current_mA = 0;
-	ret  = max77665_charging_disable(charger);
-
-	charger->ac_online = 0;
-	charger->usb_online = 0;
-	power_supply_changed(&charger->usb);
-	power_supply_changed(&charger->ac);
-
-	return ret;
-}
-
-static int max77665_enable_charger(struct max77665_charger *charger,
-		struct extcon_dev *edev)
-{
-	int ret = 0;
-	int ilim;
-	enum max77665_mode mode;
-
-	charger->usb_online = 0;
-	charger->ac_online = 0;
-
-	if (charger->plat_data->update_status)
-		charger->plat_data->update_status(0);
-
-	mode = CHARGER;
-	if (true == extcon_get_cable_state(edev, "USB-Host")) {
-		mode = OTG;
-		charger->max_current_mA = 0;
-	} else if (true == extcon_get_cable_state(edev, "USB")) {
-		charger->usb_online = 1;
-		charger->max_current_mA = 500;
-	} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
-		charger->usb_online = 1;
-		charger->max_current_mA = 1500;
-	} else if (true == extcon_get_cable_state(edev, "TA")) {
-		charger->ac_online = 1;
-		charger->max_current_mA = 2000;
-	} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
-		charger->ac_online = 1;
-		charger->max_current_mA = 2200;
-	} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
-		charger->ac_online = 1;
-		charger->max_current_mA = 500;
-	} else {
-		/* no cable connected */
-		goto done;
-	}
-
-	ret = max77665_set_charger_mode(charger, mode);
-	if (ret < 0) {
-		dev_err(charger->dev, "failed to set device to charger mode\n");
-		goto done;
-	}
-
-	/* set the charging watchdog timer */
-	alarm_start(&charger->wdt_alarm, ktime_add(ktime_get_boottime(),
-			ktime_set(MAX77665_WATCHDOG_TIMER_PERIOD_S / 2, 0)));
-
-	if (charger->plat_data->update_status) {
-		ret = max77665_get_max_input_current(charger, &ilim);
-		if (0 > ret)
-			goto done;
-		charger->plat_data->update_status(ilim);
-	}
-
-done:
-	if (charger->usb_online)
-		power_supply_changed(&charger->usb);
-	if (charger->ac_online)
-		power_supply_changed(&charger->ac);
-
-	return ret;
-}
-
 static int max77665_set_charging_current(struct regulator_dev *rdev,
 		int min_uA, int max_uA)
 {
@@ -736,56 +591,6 @@ static int max77665_charger_regulator_init(
 	return 0;
 }
 
-static void charger_extcon_handle_notifier(struct work_struct *w)
-{
-	struct max77665_charger_cable *cable = container_of(to_delayed_work(w),
-			struct max77665_charger_cable, extcon_notifier_work);
-	struct max77665_charger *charger = cable->charger;
-	int val;
-
-	mutex_lock(&charger->current_limit_mutex);
-	if (0 > max77665_read_reg(cable->charger, MAX77665_CHG_DTLS_01, &val))
-		goto error;
-
-	dev_dbg(charger->dev, "cable is %s, charging is %s\n",
-			cable->event ? "attached" : "disconnected",
-			charging_is_on(val) ? "on" : "off");
-	/*
-	 * For high current charging, max77665 might cut off the VBUS_SAFE_OUT
-	 * to AP if input voltage is below VCHIN_UVLO (in voltage regulation
-	 * mode). If that happens, the charging might is still on when AP
-	 * send cable unplugged event. We need check this conditon by reading
-	 * the CHG_DTLS_01 register.
-	 */
-	if (cable->event == 0 && !charging_is_on(val))
-		max77665_disable_charger(charger, cable->extcon_dev->edev);
-	else if (cable->event == 1 && !charging_is_on(val))
-		max77665_enable_charger(charger, cable->extcon_dev->edev);
-
-error:
-	mutex_unlock(&charger->current_limit_mutex);
-
-}
-
-static int max77665_reset_charger(struct max77665_charger *charger,
-		struct extcon_dev *edev)
-{
-	int ret;
-
-	mutex_lock(&charger->current_limit_mutex);
-
-	ret = max77665_disable_charger(charger, charger->edev);
-	if (ret < 0)
-		goto error;
-
-	ret = max77665_enable_charger(charger, charger->edev);
-	if (ret < 0)
-		goto error;
-error:
-	mutex_unlock(&charger->current_limit_mutex);
-	return 0;
-}
-
 static void max77665_charger_wdt_ack_work_handler(struct work_struct *w)
 {
 	struct max77665_charger *charger = container_of(to_delayed_work(w),
@@ -808,20 +613,6 @@ static enum alarmtimer_restart max77665_charger_wdt_timer(struct alarm *alarm,
 	wake_lock(&charger->wdt_wake_lock);
 	schedule_delayed_work(&charger->wdt_ack_work, 0);
 	return ALARMTIMER_NORESTART;
-}
-
-static int charger_extcon_notifier(struct notifier_block *self,
-		unsigned long event, void *ptr)
-{
-	struct max77665_charger_cable *cable = container_of(self,
-		struct max77665_charger_cable, nb);
-
-	cable->event = event;
-	cancel_delayed_work(&cable->extcon_notifier_work);
-	schedule_delayed_work(&cable->extcon_notifier_work,
-		msecs_to_jiffies(CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS));
-
-	return NOTIFY_DONE;
 }
 
 static int max77665_update_charger_status(struct max77665_charger *charger)
@@ -983,7 +774,6 @@ static void max77665_remove_sysfs_entry(struct device *dev)
 static __devinit int max77665_battery_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	uint8_t j;
 	struct max77665_charger *charger;
 
 	charger = devm_kzalloc(&pdev->dev, sizeof(*charger), GFP_KERNEL);
@@ -1013,67 +803,13 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		/* modify OTP setting of input current limit to 100ma */
 		ret = max77665_set_max_input_current(charger, 100);
 		if (ret < 0)
-			goto remove_charging;
-
-		dev_info(&pdev->dev, "Initializing battery charger code\n");
-
-		charger->ac.name		= "ac";
-		charger->ac.type		= POWER_SUPPLY_TYPE_MAINS;
-		charger->ac.get_property	= max77665_charger_get_property;
-		charger->ac.set_property	= max77665_charger_set_property;
-		charger->ac.properties		= max77665_charger_props;
-		charger->ac.num_properties = ARRAY_SIZE(max77665_charger_props);
-		charger->ac.property_is_writeable =
-			max77665_charger_property_is_writeable;
-		ret = power_supply_register(charger->dev, &charger->ac);
-		if (ret) {
-			dev_err(charger->dev, "failed: power supply register\n");
-			return ret;
-		}
-
-		charger->usb = charger->ac;
-		charger->usb.name		= "usb";
-		charger->usb.type		= POWER_SUPPLY_TYPE_USB;
-		ret = power_supply_register(charger->dev, &charger->usb);
-		if (ret) {
-			dev_err(charger->dev, "failed: power supply register\n");
-			goto pwr_sply_error;
-		}
-
-		for (j = 0 ; j < charger->plat_data->num_cables; j++) {
-			struct max77665_charger_cable *cable =
-				&charger->plat_data->cables[j];
-			cable->extcon_dev =  devm_kzalloc(&pdev->dev,
-					sizeof(struct extcon_specific_cable_nb),
-								GFP_KERNEL);
-			if (!cable->extcon_dev) {
-				dev_err(&pdev->dev, "failed to allocate memory for extcon dev\n");
-				goto chrg_error;
-			}
-
-			INIT_DELAYED_WORK(&cable->extcon_notifier_work,
-					charger_extcon_handle_notifier);
-
-			cable->charger = charger;
-			cable->nb.notifier_call = charger_extcon_notifier;
-
-			ret = extcon_register_interest(cable->extcon_dev,
-					charger->plat_data->extcon_name,
-					cable->name, &cable->nb);
-			if (ret < 0)
-				dev_err(charger->dev, "Cannot register for cable: %s\n",
-						cable->name);
-		}
-
-		charger->edev = extcon_get_extcon_dev(charger->plat_data->extcon_name);
-		if (!charger->edev)
-			goto chrg_error;
+			goto free_lock;
 
 		ret = max77665_charger_regulator_init(charger,
 							charger->plat_data);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "Charger regulator init failed\n");
-			goto chrg_error;
+			goto free_lock;
 		}
 	}
 
@@ -1112,10 +848,11 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	}
 
 	if (charger->plat_data->is_battery_present) {
-		/* reset the charging in case cable is already inserted */
-		ret = max77665_reset_charger(charger, charger->edev);
-		if (ret < 0)
+		ret = max77665_charging_disable(charger);
+		if (ret < 0) {
+			dev_err(charger->dev, "Disable charging failed\n");
 			goto remove_sysfs;
+		}
 	}
 
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
@@ -1128,16 +865,10 @@ free_irq:
 reg_err:
 	if (charger->plat_data->is_battery_present)
 		regulator_unregister(charger->reg_info.rdev);
-chrg_error:
+free_lock:
 	if (charger->plat_data->is_battery_present)
-		power_supply_unregister(&charger->usb);
-pwr_sply_error:
-	if (charger->plat_data->is_battery_present)
-		power_supply_unregister(&charger->ac);
-remove_charging:
+		wake_lock_destroy(&charger->wdt_wake_lock);
 	mutex_destroy(&charger->current_limit_mutex);
-if (charger->plat_data->is_battery_present)
-	wake_lock_destroy(&charger->wdt_wake_lock);
 	return ret;
 }
 
@@ -1151,10 +882,8 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
 	if (charger->plat_data->is_battery_present)
-		power_supply_unregister(&charger->ac);
-	if (charger->plat_data->is_battery_present)
-		power_supply_unregister(&charger->usb);
-
+		wake_lock_destroy(&charger->wdt_wake_lock);
+	mutex_destroy(&charger->current_limit_mutex);
 	return 0;
 }
 #ifdef CONFIG_PM_SLEEP
@@ -1203,7 +932,7 @@ static void __exit max77665_battery_exit(void)
 	platform_driver_unregister(&max77665_battery_driver);
 }
 
-late_initcall(max77665_battery_init);
+subsys_initcall_sync(max77665_battery_init);
 module_exit(max77665_battery_exit);
 
 MODULE_DESCRIPTION("MAXIM MAX77665 battery charging driver");

@@ -24,6 +24,7 @@
 #include <linux/mfd/max77665.h>
 #include <linux/input/max77665-haptic.h>
 #include <linux/power/max17042_battery.h>
+#include <linux/power/power_supply_extcon.h>
 #include <linux/nct1008.h>
 #include <linux/io.h>
 #include <linux/interrupt.h>
@@ -237,6 +238,19 @@ static struct i2c_board_info pluto_i2c_board_info_max77665[] = {
 		.irq = (TEGRA_SOC_OC_IRQ_BASE + TEGRA_SOC_OC_IRQ_4),
 	},
 };
+
+static struct power_supply_extcon_plat_data psy_extcon_pdata = {
+	.extcon_name = "tegra-udc",
+};
+
+static struct platform_device psy_extcon_device = {
+	.name = "power-supply-extcon",
+	.id = -1,
+	.dev = {
+		.platform_data = &psy_extcon_pdata,
+	},
+};
+
 
 /* isl29029 support is provided by isl29028*/
 static struct i2c_board_info pluto_i2c1_isl_board_info[] = {
@@ -983,6 +997,8 @@ void __init max77665_init(void)
 		ARRAY_SIZE(pluto_i2c_board_info_max77665));
 	if (err)
 		pr_err("%s: max77665 device register failed.\n", __func__);
+
+	platform_device_register(&psy_extcon_device);
 
 	return;
 }
