@@ -516,6 +516,33 @@ static s32 show_power(struct device *dev,
 	return sprintf(buf, "%d mW\n", power_mW);
 }
 
+static s32 show_alert_flag(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct ina230_data *data = i2c_get_clientdata(client);
+	int retval;
+	s32 alert_flag;
+
+	mutex_lock(&data->mutex);
+	retval = ensure_enabled_start(client);
+	if (retval < 0) {
+		mutex_unlock(&data->mutex);
+		return retval;
+	}
+
+	alert_flag = be16_to_cpu(i2c_smbus_read_word_data(client,
+							  INA230_MASK));
+
+	ensure_enabled_end(client);
+	mutex_unlock(&data->mutex);
+
+	alert_flag = (alert_flag >> 4) & 0x1;
+	return sprintf(buf, "%d\n", alert_flag);
+}
+
+
 static int ina230_hotplug_notify(struct notifier_block *nb, unsigned long event,
 				void *hcpu)
 {
@@ -541,6 +568,7 @@ static struct sensor_device_attribute ina230[] = {
 	SENSOR_ATTR(in1_input, S_IRUGO, show_bus_voltage, NULL, 0),
 #endif
 	SENSOR_ATTR(power1_input, S_IRUGO, show_power, NULL, 0),
+	SENSOR_ATTR(alert_flag, S_IRUGO, show_alert_flag, NULL, 0),
 };
 
 
