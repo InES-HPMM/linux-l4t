@@ -764,8 +764,6 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[PALMAS_NUM_REGS] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
 	.disable_smps10_boost_suspend = false,
 };
 
@@ -1028,6 +1026,11 @@ int __init dalmore_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Tracking configuration */
+	reg_init_data_ldo8.config_flags =
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
+			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 
 	power_config = get_power_config();
 	if (power_config & POWER_CONFIG2)

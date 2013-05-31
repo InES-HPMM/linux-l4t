@@ -855,130 +855,6 @@ static struct regulator_ops palmas_ops_chargepump = {
 	.get_voltage		= palmas_getvoltage_chargepump,
 };
 
-/*
- * setup the hardware based sleep configuration of the SMPS/LDO regulators
- * from the platform data. This is different to the software based control
- * supported by the regulator framework as it is controlled by toggling
- * pins on the PMIC such as PREQ, SYSEN, ...
- */
-static int palmas_smps_init(struct palmas *palmas, int id,
-		struct palmas_reg_init *reg_init)
-{
-	unsigned int reg;
-	unsigned int addr;
-	int ret;
-
-	addr = palmas_regs_info[id].ctrl_addr;
-
-	ret = palmas_smps_read(palmas, addr, &reg);
-	if (ret)
-		return ret;
-
-	switch (id) {
-	case PALMAS_REG_SMPS10:
-		reg &= ~PALMAS_SMPS10_CTRL_MODE_SLEEP_MASK;
-		if (reg_init->mode_sleep)
-			reg |= reg_init->mode_sleep <<
-					PALMAS_SMPS10_CTRL_MODE_SLEEP_SHIFT;
-		break;
-	default:
-		if (reg_init->warm_reset)
-			reg |= PALMAS_SMPS12_CTRL_WR_S;
-		else
-			reg &= ~PALMAS_SMPS12_CTRL_WR_S;
-
-		if (reg_init->roof_floor)
-			reg |= PALMAS_SMPS12_CTRL_ROOF_FLOOR_EN;
-		else
-			reg &= ~PALMAS_SMPS12_CTRL_ROOF_FLOOR_EN;
-
-		reg &= ~PALMAS_SMPS12_CTRL_MODE_SLEEP_MASK;
-		if (reg_init->mode_sleep)
-			reg |= reg_init->mode_sleep <<
-					PALMAS_SMPS12_CTRL_MODE_SLEEP_SHIFT;
-	}
-
-	ret = palmas_smps_write(palmas, addr, reg);
-	if (ret)
-		return ret;
-
-	if ((id != PALMAS_REG_SMPS10) && reg_init->roof_floor) {
-		int sleep_id = palmas_regs_info[id].sleep_id;
-		ret = palmas_ext_power_req_config(palmas, sleep_id,
-					reg_init->roof_floor, true);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"Error in configuring external control\n");
-			return ret;
-		}
-
-		if (id == PALMAS_REG_SMPS123) {
-			ret = palmas_ext_power_req_config(palmas,
-					PALMAS_SLEEP_REQSTR_ID_SMPS3,
-					reg_init->roof_floor, true);
-			if (ret < 0) {
-				dev_err(palmas->dev,
-					"Error in configuring ext control\n");
-				return ret;
-			}
-		}
-	}
-
-	if (palmas_regs_info[id].vsel_addr && reg_init->vsel) {
-		addr = palmas_regs_info[id].vsel_addr;
-
-		reg = reg_init->vsel;
-
-		ret = palmas_smps_write(palmas, addr, reg);
-		if (ret)
-			return ret;
-	}
-
-
-	return 0;
-}
-
-static int palmas_ldo_init(struct palmas *palmas, int id,
-		struct palmas_reg_init *reg_init)
-{
-	unsigned int reg;
-	unsigned int addr;
-	int ret;
-
-	addr = palmas_regs_info[id].ctrl_addr;
-
-	ret = palmas_ldo_read(palmas, addr, &reg);
-	if (ret)
-		return ret;
-
-	if (reg_init->warm_reset)
-		reg |= PALMAS_LDO1_CTRL_WR_S;
-	else
-		reg &= ~PALMAS_LDO1_CTRL_WR_S;
-
-	if (reg_init->mode_sleep)
-		reg |= PALMAS_LDO1_CTRL_MODE_SLEEP;
-	else
-		reg &= ~PALMAS_LDO1_CTRL_MODE_SLEEP;
-
-	ret = palmas_ldo_write(palmas, addr, reg);
-	if (ret)
-		return ret;
-
-	if (reg_init->roof_floor) {
-		int sleep_id = palmas_regs_info[id].sleep_id;
-
-		ret = palmas_ext_power_req_config(palmas, sleep_id,
-			reg_init->roof_floor, true);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"Error in configuring external control\n");
-			return ret;
-		}
-	}
-	return 0;
-}
-
 static int palmas_ldo5_tracking_init(struct palmas *palmas,
 		struct palmas_reg_init *reg_init,
 		struct regulator_dev *rdev)
@@ -990,7 +866,7 @@ static int palmas_ldo5_tracking_init(struct palmas *palmas,
 	if (ret < 0)
 		return ret;
 	reg = reg & ~PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_MASK;
-	if (reg_init->enable_tracking) {
+	if (reg_init->config_flags & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE) {
 		if (reg_init->tracking_regulator == PALMAS_REG_SMPS12)
 			reg |= PALMAS_LDO_CTRL_LDO5_BYPASS_SRC_SEL_SMPS12;
 		else if (reg_init->tracking_regulator == PALMAS_REG_SMPS3)
@@ -1002,44 +878,10 @@ static int palmas_ldo5_tracking_init(struct palmas *palmas,
 	if (ret < 0)
 		return ret;
 
-	if (reg_init->enable_tracking) {
-		ret = regulator_disable_regmap(rdev);
+	if (reg_init->config_flags & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE) {
+		ret = palmas_disable_ldo(rdev);
 		if (ret < 0)
 		return ret;
-	}
-	return 0;
-}
-
-static int palmas_extreg_init(struct palmas *palmas, int id,
-		struct palmas_reg_init *reg_init)
-{
-	unsigned int addr;
-	int ret;
-	unsigned int val = 0;
-
-	addr = palmas_regs_info[id].ctrl_addr;
-
-	if (reg_init->mode_sleep)
-		val = PALMAS_REGEN1_CTRL_MODE_SLEEP;
-
-	ret = palmas_update_bits(palmas, PALMAS_RESOURCE_BASE,
-			addr, PALMAS_REGEN1_CTRL_MODE_SLEEP, val);
-	if (ret < 0) {
-		dev_err(palmas->dev, "Resource reg 0x%02x update failed %d\n",
-			addr, ret);
-		return ret;
-	}
-
-	if (reg_init->roof_floor) {
-		int sleep_id = palmas_regs_info[id].sleep_id;
-
-		ret = palmas_ext_power_req_config(palmas, sleep_id,
-			reg_init->roof_floor, true);
-		if (ret < 0) {
-			dev_err(palmas->dev,
-				"Error in configuring external control\n");
-			return ret;
-		}
 	}
 	return 0;
 }
@@ -1209,6 +1051,187 @@ static void palmas_disable_ldo8_track(struct palmas *palmas)
 	}
 
 	return;
+}
+
+/*
+ * setup the hardware based sleep configuration of the SMPS/LDO regulators
+ * from the platform data. This is different to the software based control
+ * supported by the regulator framework as it is controlled by toggling
+ * pins on the PMIC such as PREQ, SYSEN, ...
+ */
+static int palmas_smps_init(struct palmas *palmas, int id,
+		struct palmas_reg_init *reg_init)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+
+	addr = palmas_regs_info[id].ctrl_addr;
+
+	ret = palmas_smps_read(palmas, addr, &reg);
+	if (ret)
+		return ret;
+
+	switch (id) {
+	case PALMAS_REG_SMPS10:
+		reg &= ~PALMAS_SMPS10_CTRL_MODE_SLEEP_MASK;
+		if (reg_init->mode_sleep)
+			reg |= reg_init->mode_sleep <<
+					PALMAS_SMPS10_CTRL_MODE_SLEEP_SHIFT;
+		break;
+	default:
+		if (reg_init->warm_reset)
+			reg |= PALMAS_SMPS12_CTRL_WR_S;
+		else
+			reg &= ~PALMAS_SMPS12_CTRL_WR_S;
+
+		if (reg_init->roof_floor)
+			reg |= PALMAS_SMPS12_CTRL_ROOF_FLOOR_EN;
+		else
+			reg &= ~PALMAS_SMPS12_CTRL_ROOF_FLOOR_EN;
+
+		reg &= ~PALMAS_SMPS12_CTRL_MODE_SLEEP_MASK;
+		if (reg_init->mode_sleep)
+			reg |= reg_init->mode_sleep <<
+					PALMAS_SMPS12_CTRL_MODE_SLEEP_SHIFT;
+	}
+
+	ret = palmas_smps_write(palmas, addr, reg);
+	if (ret)
+		return ret;
+
+	if ((id != PALMAS_REG_SMPS10) && reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+					reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
+
+		if (id == PALMAS_REG_SMPS123) {
+			ret = palmas_ext_power_req_config(palmas,
+					PALMAS_SLEEP_REQSTR_ID_SMPS3,
+					reg_init->roof_floor, true);
+			if (ret < 0) {
+				dev_err(palmas->dev,
+					"Error in configuring ext control\n");
+				return ret;
+			}
+		}
+	}
+
+	if (palmas_regs_info[id].vsel_addr && reg_init->vsel) {
+		addr = palmas_regs_info[id].vsel_addr;
+
+		reg = reg_init->vsel;
+
+		ret = palmas_smps_write(palmas, addr, reg);
+		if (ret)
+			return ret;
+	}
+
+
+	return 0;
+}
+
+static int palmas_ldo_init(struct palmas *palmas, int id,
+		struct palmas_reg_init *reg_init)
+{
+	unsigned int reg;
+	unsigned int addr;
+	int ret;
+
+	addr = palmas_regs_info[id].ctrl_addr;
+
+	ret = palmas_ldo_read(palmas, addr, &reg);
+	if (ret)
+		return ret;
+
+	if (reg_init->warm_reset)
+		reg |= PALMAS_LDO1_CTRL_WR_S;
+	else
+		reg &= ~PALMAS_LDO1_CTRL_WR_S;
+
+	if (reg_init->mode_sleep)
+		reg |= PALMAS_LDO1_CTRL_MODE_SLEEP;
+	else
+		reg &= ~PALMAS_LDO1_CTRL_MODE_SLEEP;
+
+	ret = palmas_ldo_write(palmas, addr, reg);
+	if (ret)
+		return ret;
+
+	if (reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+			reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
+	}
+
+	/* Rail specific configuration */
+	switch (id) {
+	case PALMAS_REG_LDO5:
+		ret = palmas_ldo5_tracking_init(palmas, reg_init,
+					palmas->pmic->rdev[id]);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"tracking mode init for rail %d failed: %d\n",
+				id, ret);
+			return ret;
+		}
+		break;
+
+	case PALMAS_REG_LDO8:
+		if (reg_init->config_flags &
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE)
+			palmas_enable_ldo8_track(palmas);
+		break;
+
+	default:
+		break;
+	}
+	return 0;
+}
+
+static int palmas_extreg_init(struct palmas *palmas, int id,
+		struct palmas_reg_init *reg_init)
+{
+	unsigned int addr;
+	int ret;
+	unsigned int val = 0;
+
+	addr = palmas_regs_info[id].ctrl_addr;
+
+	if (reg_init->mode_sleep)
+		val = PALMAS_REGEN1_CTRL_MODE_SLEEP;
+
+	ret = palmas_update_bits(palmas, PALMAS_RESOURCE_BASE,
+			addr, PALMAS_REGEN1_CTRL_MODE_SLEEP, val);
+	if (ret < 0) {
+		dev_err(palmas->dev, "Resource reg 0x%02x update failed %d\n",
+			addr, ret);
+		return ret;
+	}
+
+	if (reg_init->roof_floor) {
+		int sleep_id = palmas_regs_info[id].sleep_id;
+
+		ret = palmas_ext_power_req_config(palmas, sleep_id,
+			reg_init->roof_floor, true);
+		if (ret < 0) {
+			dev_err(palmas->dev,
+				"Error in configuring external control\n");
+			return ret;
+		}
+	}
+	return 0;
 }
 
 static ssize_t palmas_show_dvfs_data(struct device *dev,
@@ -1657,7 +1680,6 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 			/* Check if LDO8 is in tracking mode or not */
 			if (pdata && (id == PALMAS_REG_LDO8) &&
 					pdata->enable_ldo8_tracking) {
-				palmas_enable_ldo8_track(palmas);
 				pmic->desc[id].min_uV = 450000;
 				pmic->desc[id].uV_step = 25000;
 			}
@@ -1710,17 +1732,10 @@ static int palmas_regulators_probe(struct platform_device *pdev)
 					goto err_unregister_regulator;
 				}
 			
-				if (id == PALMAS_REG_LDO5) {
-					ret = palmas_ldo5_tracking_init(
-							palmas, reg_init, rdev);
-					if (ret)
-						goto err_unregister_regulator;
-				}
 				pmic->roof_floor[id] = reg_init->roof_floor;
 			}
 		}
 	}
-
 
 	palmas_dvfs_init(palmas, pdata);
 	return 0;
@@ -1760,15 +1775,19 @@ static int palmas_suspend(struct device *dev)
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 	int id;
 
-	/* Check if LDO8 is in tracking mode disable in suspend or not */
-	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
-		palmas_disable_ldo8_track(palmas);
-
 	if (pdata->disable_smps10_boost_suspend &&
 			!pmic->smps10_regulator_enabled)
 		palmas_disable_smps10_boost(palmas);
 
 	for (id = 0; id < PALMAS_NUM_REGS; id++) {
+		unsigned int cf = pmic->config_flags[id];
+
+		if ((cf & PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE) &&
+			(cf & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE)) {
+			if (id == PALMAS_REG_LDO8)
+				palmas_disable_ldo8_track(palmas);
+		}
+
 		if (pmic->config_flags[id] &
 			PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF) {
 			if (pmic->desc[id].ops->disable)
@@ -1785,15 +1804,19 @@ static int palmas_resume(struct device *dev)
 	struct palmas_pmic_platform_data *pdata = dev_get_platdata(dev);
 	int id;
 
-	/* Check if LDO8 is in tracking mode disable in suspend or not */
-	if (pdata->enable_ldo8_tracking && pdata->disabe_ldo8_tracking_suspend)
-		palmas_enable_ldo8_track(palmas);
-
 	if (pdata->disable_smps10_boost_suspend &&
 			!pmic->smps10_regulator_enabled)
 		palmas_enable_smps10_boost(palmas);
 
 	for (id = 0; id < PALMAS_NUM_REGS; id++) {
+		unsigned int cf = pmic->config_flags[id];
+
+		if ((cf & PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE) &&
+			(cf & PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE)) {
+			if (id == PALMAS_REG_LDO8)
+				palmas_enable_ldo8_track(palmas);
+		}
+
 		if (pmic->config_flags[id] &
 			PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF) {
 			if (pmic->desc[id].ops->enable)

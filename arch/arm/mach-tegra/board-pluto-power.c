@@ -622,8 +622,6 @@ static struct palmas_dvfs_init_data palmas_dvfs_idata[] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
 	.dvfs_init_data = palmas_dvfs_idata,
 	.dvfs_init_data_size = ARRAY_SIZE(palmas_dvfs_idata),
 };
@@ -693,6 +691,11 @@ int __init pluto_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Tracking configuration */
+	reg_init_data_ldo8.config_flags =
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
+			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 
 	if (get_power_config() & PLUTO_4K_REWORKED) {
 		/* Account for the change of avdd_hdmi_pll from ldo1 to ldo4 */

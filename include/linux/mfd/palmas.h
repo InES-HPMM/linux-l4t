@@ -314,14 +314,15 @@ struct palmas_reg_init {
 	 */
 	u8 vsel;
 
-	/* enable_tracking will enable the tracking. */
-	bool enable_tracking;
-
-	/* tracking_regulator will tell which regulator will be tracked */
-	int tracking_regulator;
-
 	/* Configuration flags */
 	unsigned int config_flags;
+
+	/*
+	 * tracking_regulator will tell which regulator will be tracked
+	 * This will be used when regulator tracking is enabled and
+	 * device supports.
+	 */
+	int tracking_regulator;
 };
 
 enum palmas_regulators {
@@ -417,9 +418,6 @@ struct palmas_pmic_platform_data {
 	/* use LDO6 for vibrator control */
 	int ldo6_vibrator;
 
-	/* Enable tracking mode of LDO8 */
-	bool enable_ldo8_tracking;
-	bool disabe_ldo8_tracking_suspend;
 	bool disable_smps10_boost_suspend;
 };
 
@@ -3892,9 +3890,14 @@ enum {
 /**
  * Palmas regulator configs
  * PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF: Force off on suspend
+ * PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE: Enable tracking of regualtor.
+ * PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE: Disable tracking in
+		suspend.
  */
 enum {
-	PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF = 0x1,
+	PALMAS_REGULATOR_CONFIG_SUSPEND_FORCE_OFF		= 0x1,
+	PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE			= 0x2,
+	PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE	= 0x4,
 };
 
 /*

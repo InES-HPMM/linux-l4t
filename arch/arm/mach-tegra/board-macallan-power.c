@@ -384,8 +384,6 @@ static struct palmas_reg_init *macallan_reg_init[PALMAS_NUM_REGS] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
 	.disable_smps10_boost_suspend = true,
 };
 
@@ -556,6 +554,11 @@ int __init macallan_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Tracking configuration */
+	reg_init_data_ldo8.config_flags =
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
+			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
 
 	tegra_get_board_info(&board_info);
 	if (board_info.board_id == BOARD_E1569) {

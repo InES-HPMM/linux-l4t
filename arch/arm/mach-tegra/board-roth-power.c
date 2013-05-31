@@ -365,8 +365,6 @@ static struct palmas_reg_init *roth_reg_init[PALMAS_NUM_REGS] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
 };
 
 static struct palmas_pinctrl_config palmas_pincfg[] = {
@@ -560,6 +558,12 @@ int __init roth_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Tracking configuration */
+	reg_init_data_ldo8.config_flags =
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
+			PALMAS_REGULATOR_CONFIG_SUSPEND_TRACKING_DISABLE;
+
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = roth_reg_data[i];
 		pmic_platform.reg_init[i] = roth_reg_init[i];
