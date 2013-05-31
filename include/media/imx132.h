@@ -58,6 +58,7 @@ struct imx132_power_rail {
 struct imx132_platform_data {
 	unsigned int cam2_gpio;
 	bool ext_reg;
+	const char *mclk_name; /* NULL for default */
 	int (*power_on)(struct imx132_power_rail *pw);
 	int (*power_off)(struct imx132_power_rail *pw);
 };

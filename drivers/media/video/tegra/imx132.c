@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -31,6 +32,7 @@
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include "nvc_utilities.h"
 
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
@@ -51,6 +53,7 @@ struct imx132_info {
 	struct i2c_client		*i2c_client;
 	struct imx132_platform_data	*pdata;
 	atomic_t			in_use;
+	struct clk			*mclk;
 #ifdef CONFIG_DEBUG_FS
 	struct nvc_debugfs_info debugfs_info;
 #endif
@@ -766,6 +769,26 @@ static int imx132_get_extra_regulators(void)
 	return 0;
 }
 
+static void imx132_mclk_disable(struct imx132_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int imx132_mclk_enable(struct imx132_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int imx132_power_on(struct imx132_info *info)
 {
 	int err;
@@ -855,6 +878,7 @@ static int imx132_power_off(struct imx132_info *info)
 static int
 imx132_open(struct inode *inode, struct file *file)
 {
+	int err;
 	struct miscdevice	*miscdev = file->private_data;
 	struct imx132_info	*info;
 
@@ -867,19 +891,29 @@ imx132_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
+	err = imx132_mclk_enable(info);
+	if (err < 0)
+		return err;
+
 	if (info->i2c_client->dev.of_node) {
-		imx132_power_on(info);
+		err = imx132_power_on(info);
 	} else {
 		if (info->pdata && info->pdata->power_on)
-			info->pdata->power_on(&info->power);
+			err = info->pdata->power_on(&info->power);
 		else {
 			dev_err(&info->i2c_client->dev,
 				"%s:no valid power_on function.\n", __func__);
-			return -EEXIST;
+			err = -EEXIST;
 		}
 	}
+	if (err < 0)
+		goto imx132_open_fail;
 
 	return 0;
+
+imx132_open_fail:
+	imx132_mclk_disable(info);
+	return err;
 }
 
 static int
@@ -893,6 +927,8 @@ imx132_release(struct inode *inode, struct file *file)
 		if (info->pdata && info->pdata->power_off)
 			info->pdata->power_off(&info->power);
 	}
+
+	imx132_mclk_disable(info);
 
 	file->private_data = NULL;
 
@@ -1009,6 +1045,7 @@ imx132_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct imx132_info *info;
+	const char *mclk_name;
 	int err = 0;
 
 	pr_info("[imx132]: probing sensor.\n");
@@ -1033,6 +1070,15 @@ imx132_probe(struct i2c_client *client,
 	info->i2c_client = client;
 	atomic_set(&info->in_use, 0);
 	info->mode = -1;
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
 
 	i2c_set_clientdata(client, info);
 
