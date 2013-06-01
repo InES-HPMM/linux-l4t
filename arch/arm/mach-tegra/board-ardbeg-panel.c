@@ -379,6 +379,10 @@ static void ardbeg_panel_select(void)
 		panel = &dsi_s_wqxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
 		break;
+	case BOARD_PM354:
+		panel = &dsi_a_1080p_14_0;
+		dsi_instance = DSI_INSTANCE_0;
+		break;
 	case BOARD_E1627:
 	/* fall through */
 	default:

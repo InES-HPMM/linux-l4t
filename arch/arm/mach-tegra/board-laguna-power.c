@@ -44,7 +44,7 @@
 #include "board.h"
 #include "gpio-names.h"
 #include "board-common.h"
-#include "board-laguna.h"
+#include "board-ardbeg.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
 #include "tegra11_soctherm.h"

@@ -21,7 +21,7 @@
 #include <mach/gpio-tegra.h>
 
 #include "board.h"
-#include "board-laguna.h"
+#include "board-ardbeg.h"
 #include "devices.h"
 #include "gpio-names.h"
 

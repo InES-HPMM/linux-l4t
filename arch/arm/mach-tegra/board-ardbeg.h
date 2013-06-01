@@ -20,6 +20,7 @@
 #ifndef _MACH_TEGRA_BOARD_ARDBEG_H
 #define _MACH_TEGRA_BOARD_ARDBEG_H
 
+#include <linux/mfd/as3722-reg.h>
 #include <mach/gpio-tegra.h>
 #include <mach/irqs.h>
 #include "gpio-names.h"
@@ -89,5 +90,43 @@ enum tegra_bb_type {
 #define TEGRA_GPIO_SPKR_EN    -1
 #define TEGRA_GPIO_EXT_MIC_EN -1
 #endif
+
+
+/* Laguna specific */
+/* External peripheral act as gpio */
+/* AS3720 GPIO */
+#define AS3722_GPIO_BASE        TEGRA_NR_GPIOS
+#define AS3722_GPIO_END         (AS3722_GPIO_BASE + AS3722_NUM_GPIO)
+/* PMU_TCA6416 GPIOs */
+#define PMU_TCA6416_GPIO_BASE   (AS3722_GPIO_END)
+/* External peripheral act as interrupt controller */
+/* AS3720 IRQs */
+#define AS3722_IRQ_BASE         TEGRA_NR_IRQS
+
+int laguna_pinmux_init(void);
+int laguna_regulator_init(void);
+
+
+/* Display related GPIO */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
+#define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
+#define LCD_LR                  TEGRA_GPIO_PH6 /* GMI_AD14 */
+#define LCD_TE                  TEGRA_GPIO_PI4 /* GMI_RST_N */
+#define DSI_PANEL_BL_PWM        TEGRA_GPIO_PH1 /*GMI_AD9 */
+#define en_vdd_bl       TEGRA_GPIO_PP2 /* DAP3_DOUT */
+#define lvds_en         TEGRA_GPIO_PI0 /* GMI_WR_N */
+#define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
+#else
+#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
+#define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
+#define LCD_LR                  TEGRA_GPIO_PH6 /* GMI_AD14 */
+#define LCD_TE                  TEGRA_GPIO_PI4 /* GMI_RST_N */
+#define DSI_PANEL_BL_PWM        TEGRA_GPIO_PH1 /*GMI_AD9 */
+#define en_vdd_bl       TEGRA_GPIO_PP2 /* DAP3_DOUT */
+#define lvds_en         TEGRA_GPIO_PI0 /* GMI_WR_N */
+#define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
+#endif
+
 
 #endif

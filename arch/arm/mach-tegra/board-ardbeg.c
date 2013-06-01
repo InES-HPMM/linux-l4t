@@ -633,8 +633,19 @@ static void __init tegra_ardbeg_early_init(void)
 
 static void __init tegra_ardbeg_late_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	pr_info("board_info: id:sku:fab:major:minor = 0x%04x:0x%04x:0x%02x:0x%02x:0x%02x\n",
+		board_info.board_id, board_info.sku,
+		board_info.fab, board_info.major_revision,
+		board_info.minor_revision);
 	platform_device_register(&tegra_pinmux_device);
-	ardbeg_pinmux_init();
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363)
+		laguna_pinmux_init();
+	else
+		ardbeg_pinmux_init();
 	ardbeg_usb_init();
 	ardbeg_modem_init();
 	ardbeg_i2c_init();
@@ -648,7 +659,12 @@ static void __init tegra_ardbeg_late_init(void)
 	//tegra_ram_console_debug_init();
 	tegra_io_dpd_init();
 	ardbeg_sdhci_init();
-	ardbeg_regulator_init();
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363)
+		laguna_regulator_init();
+	else
+		ardbeg_regulator_init();
 	ardbeg_suspend_init();
 #if 0
 	ardbeg_emc_init();
