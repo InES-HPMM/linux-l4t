@@ -1380,6 +1380,7 @@ static void tegra_xhci_enable_fw_message(struct tegra_xhci_hcd *tegra)
 
 	if ((timeout == 0) && (reg != MBOX_OWNER_SW)) {
 		dev_err(&pdev->dev, "Failed to set mbox message owner ID\n");
+		mutex_unlock(&tegra->mbox_lock);
 		return;
 	}
 
@@ -2034,7 +2035,6 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 					mbox_work);
 	struct xhci_hcd *xhci = tegra->xhci;
 	unsigned int freq_khz;
-	bool send_ack_to_fw = true;
 
 	mutex_lock(&tegra->mbox_lock);
 
@@ -2087,11 +2087,14 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		freq_khz = tegra_emc_bw_to_freq_req(tegra->cmd_data << 10);
 		clk_set_rate(tegra->emc_clk, freq_khz * 1000);
 
+		/* clear MBOX_SMI_INT_EN bit */
+		cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+		cmd &= ~MBOX_SMI_INT_EN;
+		writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+
 		/* clear mbox owner as ACK will not be sent for this request */
 		writel(0, tegra->fpci_base + XUSB_CFG_ARU_MBOX_OWNER);
-		send_ack_to_fw = false;
-
-		goto send_sw_response;
+		break;
 	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
 		tegra_xhci_save_dfe_ctle_context(tegra, tegra->cmd_data);
 		tegra_xhci_restore_dfe_ctle_context(tegra, tegra->cmd_data);
@@ -2113,12 +2116,10 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	return;
 
 send_sw_response:
-	if (send_ack_to_fw) {
-		writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
-		cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-		cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
-		writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
-	}
+	writel(sw_resp, tegra->fpci_base + XUSB_CFG_ARU_MBOX_DATA_IN);
+	cmd = readl(tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
+	cmd |= MBOX_INT_EN | MBOX_FALC_INT_EN;
+	writel(cmd, tegra->fpci_base + XUSB_CFG_ARU_MBOX_CMD);
 
 	mutex_unlock(&tegra->mbox_lock);
 }
