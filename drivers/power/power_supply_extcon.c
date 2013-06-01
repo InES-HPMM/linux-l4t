@@ -241,6 +241,7 @@ static int psy_extcon_probe(struct platform_device *pdev)
 	if (!psy_extcon->edev)
 			goto econ_err;
 
+	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
 	return 0;
 
