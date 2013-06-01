@@ -3,19 +3,19 @@
  *  @brief This file contains related macros, enum, and struct
  *  of 11n RxReordering functionalities
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2011, Marvell International Ltd.
  *
- *  This software file (the "File") is distributed by Marvell International 
- *  Ltd. under the terms of the GNU General Public License Version 2, June 1991 
- *  (the "License").  You may use, redistribute and/or modify this File in 
- *  accordance with the terms and conditions of the License, a copy of which 
+ *  This software file (the "File") is distributed by Marvell International
+ *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
+ *  (the "License").  You may use, redistribute and/or modify this File in
+ *  accordance with the terms and conditions of the License, a copy of which
  *  is available by writing to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
  *  worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
  *
- *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE 
- *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE 
- *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about 
+ *  THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
+ *  IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
+ *  ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
  *  this warranty disclaimer.
  */
 
@@ -75,23 +75,23 @@ Change log:
 #define RX_PKT_DROPPED_IN_FW             0xffffffff
 
 mlan_status mlan_11n_rxreorder_pkt(void *priv, t_u16 seqNum, t_u16 tid,
-                                   t_u8 * ta, t_u8 pkttype, void *payload);
+				   t_u8 * ta, t_u8 pkttype, void *payload);
 void mlan_11n_delete_bastream_tbl(mlan_private * priv, int Tid,
-                                  t_u8 * PeerMACAddr, t_u8 type, int initiator);
+				  t_u8 * PeerMACAddr, t_u8 type, int initiator);
 void wlan_11n_ba_stream_timeout(mlan_private * priv,
-                                HostCmd_DS_11N_BATIMEOUT * event);
+				HostCmd_DS_11N_BATIMEOUT * event);
 mlan_status wlan_ret_11n_addba_resp(mlan_private * priv,
-                                    HostCmd_DS_COMMAND * resp);
+				    HostCmd_DS_COMMAND * resp);
 mlan_status wlan_cmd_11n_delba(mlan_private * priv, HostCmd_DS_COMMAND * cmd,
-                               void *pdata_buf);
+			       void *pdata_buf);
 mlan_status wlan_cmd_11n_addba_rspgen(mlan_private * priv,
-                                      HostCmd_DS_COMMAND * cmd,
-                                      void *pdata_buf);
+				      HostCmd_DS_COMMAND * cmd,
+				      void *pdata_buf);
 mlan_status wlan_cmd_11n_addba_req(mlan_private * priv,
-                                   HostCmd_DS_COMMAND * cmd, void *pdata_buf);
+				   HostCmd_DS_COMMAND * cmd, void *pdata_buf);
 void wlan_11n_cleanup_reorder_tbl(mlan_private * priv);
 RxReorderTbl *wlan_11n_get_rxreorder_tbl(mlan_private * priv, int tid,
-                                         t_u8 * ta);
+					 t_u8 * ta);
 void wlan_11n_rxba_sync_event(mlan_private * priv, t_u8 * event_buf, t_u16 len);
 void wlan_update_rxreorder_tbl(pmlan_adapter pmadapter, t_u8 flag);
 

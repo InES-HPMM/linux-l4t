@@ -56,103 +56,106 @@ Change log:
 int
 woal_uap_do_priv_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 {
-    moal_private *priv = (moal_private *) netdev_priv(dev);
-    struct iwreq *wrq = (struct iwreq *) req;
-    int ret = 0;
+	moal_private *priv = (moal_private *) netdev_priv(dev);
+	struct iwreq *wrq = (struct iwreq *)req;
+	int ret = 0;
 
-    ENTER();
+	ENTER();
 
-    switch (cmd) {
-    case WOAL_UAP_SETNONE_GETNONE:
-        switch (wrq->u.data.flags) {
-        case WOAL_UAP_START:
-            break;
-        case WOAL_UAP_STOP:
-            ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
-            break;
-        case WOAL_AP_BSS_START:
-            ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_START);
-            break;
-        case WOAL_AP_BSS_STOP:
-            ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
-            break;
-        default:
-            ret = -EINVAL;
-            break;
-        }
-        break;
-    case WOAL_UAP_SETONEINT_GETWORDCHAR:
-        switch (wrq->u.data.flags) {
-        case WOAL_UAP_VERSION:
-            ret = woal_get_driver_version(priv, req);
-            break;
-        case WOAL_UAP_VEREXT:
-            ret = woal_get_driver_verext(priv, req);
-            break;
-        default:
-            ret = -EOPNOTSUPP;
-            break;
-        }
-        break;
-    case WOAL_UAP_SET_GET_256_CHAR:
-        switch (wrq->u.data.flags) {
-        case WOAL_WL_FW_RELOAD:
-            break;
-        case WOAL_AP_SET_CFG:
-            ret = woal_uap_set_ap_cfg(priv, wrq->u.data.pointer,
-                                      wrq->u.data.length);
-            break;
-        default:
-            ret = -EINVAL;
-            break;
-        }
-        break;
+	switch (cmd) {
+	case WOAL_UAP_SETNONE_GETNONE:
+		switch (wrq->u.data.flags) {
+		case WOAL_UAP_START:
+			break;
+		case WOAL_UAP_STOP:
+			ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT,
+						UAP_BSS_STOP);
+			break;
+		case WOAL_AP_BSS_START:
+			ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT,
+						UAP_BSS_START);
+			break;
+		case WOAL_AP_BSS_STOP:
+			ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT,
+						UAP_BSS_STOP);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+		break;
+	case WOAL_UAP_SETONEINT_GETWORDCHAR:
+		switch (wrq->u.data.flags) {
+		case WOAL_UAP_VERSION:
+			ret = woal_get_driver_version(priv, req);
+			break;
+		case WOAL_UAP_VEREXT:
+			ret = woal_get_driver_verext(priv, req);
+			break;
+		default:
+			ret = -EOPNOTSUPP;
+			break;
+		}
+		break;
+	case WOAL_UAP_SET_GET_256_CHAR:
+		switch (wrq->u.data.flags) {
+		case WOAL_WL_FW_RELOAD:
+			break;
+		case WOAL_AP_SET_CFG:
+			ret = woal_uap_set_ap_cfg(priv, wrq->u.data.pointer,
+						  wrq->u.data.length);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+		break;
 #if defined(WIFI_DIRECT_SUPPORT)
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-    case WOAL_UAP_SETONEINT_GETONEINT:
-        switch (wrq->u.data.flags) {
-        case WOAL_UAP_SET_GET_BSS_ROLE:
-            ret = woal_set_get_bss_role(priv, wrq);
-            break;
-        default:
-            ret = -EINVAL;
-            break;
-        }
-        break;
+	case WOAL_UAP_SETONEINT_GETONEINT:
+		switch (wrq->u.data.flags) {
+		case WOAL_UAP_SET_GET_BSS_ROLE:
+			ret = woal_set_get_bss_role(priv, wrq);
+			break;
+		default:
+			ret = -EINVAL;
+			break;
+		}
+		break;
 #endif
 #endif
-    case WOAL_UAP_HOST_CMD:
-        ret = woal_host_command(priv, wrq);
-        break;
-    case WOAL_UAP_FROYO_START:
-        break;
-    case WOAL_UAP_FROYO_STOP:
-        ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
-        break;
-    case WOAL_UAP_FROYO_AP_BSS_START:
-        ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_START);
-        break;
-    case WOAL_UAP_FROYO_AP_BSS_STOP:
-        ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
-        break;
-    case WOAL_UAP_FROYO_WL_FW_RELOAD:
-        break;
-    case WOAL_UAP_FROYO_AP_SET_CFG:
-        ret = woal_uap_set_ap_cfg(priv, wrq->u.data.pointer,
-                                  wrq->u.data.length);
-        break;
-    default:
-        ret = -EINVAL;
-        break;
-    }
+	case WOAL_UAP_HOST_CMD:
+		ret = woal_host_command(priv, wrq);
+		break;
+	case WOAL_UAP_FROYO_START:
+		break;
+	case WOAL_UAP_FROYO_STOP:
+		ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
+		break;
+	case WOAL_UAP_FROYO_AP_BSS_START:
+		ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_START);
+		break;
+	case WOAL_UAP_FROYO_AP_BSS_STOP:
+		ret = woal_uap_bss_ctrl(priv, MOAL_IOCTL_WAIT, UAP_BSS_STOP);
+		break;
+	case WOAL_UAP_FROYO_WL_FW_RELOAD:
+		break;
+	case WOAL_UAP_FROYO_AP_SET_CFG:
+		ret = woal_uap_set_ap_cfg(priv, wrq->u.data.pointer,
+					  wrq->u.data.length);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
 
-    LEAVE();
-    return ret;
+	LEAVE();
+	return ret;
 }
 
-/** 
+/**
  *  @brief Handle get info resp
- *   
+ *
  *  @param priv 	Pointer to moal_private structure
  *  @param info 	Pointer to mlan_ds_get_info structure
  *
@@ -161,15 +164,17 @@ woal_uap_do_priv_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
 void
 woal_ioctl_get_uap_info_resp(moal_private * priv, mlan_ds_get_info * info)
 {
-    ENTER();
-    switch (info->sub_command) {
-    case MLAN_OID_GET_STATS:
-        priv->w_stats.discard.fragment = info->param.ustats.fcs_error_count;
-        priv->w_stats.discard.retries = info->param.ustats.retry_count;
-        priv->w_stats.discard.misc = info->param.ustats.ack_failure_count;
-        break;
-    default:
-        break;
-    }
-    LEAVE();
+	ENTER();
+	switch (info->sub_command) {
+	case MLAN_OID_GET_STATS:
+		priv->w_stats.discard.fragment =
+			info->param.ustats.fcs_error_count;
+		priv->w_stats.discard.retries = info->param.ustats.retry_count;
+		priv->w_stats.discard.misc =
+			info->param.ustats.ack_failure_count;
+		break;
+	default:
+		break;
+	}
+	LEAVE();
 }

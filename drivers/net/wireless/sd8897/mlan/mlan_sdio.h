@@ -1,21 +1,21 @@
 /** @file mlan_sdio.h
-  * 
-  * @brief This file contains definitions for SDIO interface.
-  * driver. 
   *
-  * Copyright (C) 2008-2011, Marvell International Ltd. 
-  * 
-  * This software file (the "File") is distributed by Marvell International 
-  * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
-  * (the "License").  You may use, redistribute and/or modify this File in 
-  * accordance with the terms and conditions of the License, a copy of which 
+  * @brief This file contains definitions for SDIO interface.
+  * driver.
+  *
+  * Copyright (C) 2008-2011, Marvell International Ltd.
+  *
+  * This software file (the "File") is distributed by Marvell International
+  * Ltd. under the terms of the GNU General Public License Version 2, June 1991
+  * (the "License").  You may use, redistribute and/or modify this File in
+  * accordance with the terms and conditions of the License, a copy of which
   * is available by writing to the Free Software Foundation, Inc.,
   * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
   * worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
   *
-  * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE 
-  * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE 
-  * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about 
+  * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
+  * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
   * this warranty disclaimer.
   *
   */
@@ -291,7 +291,7 @@ Change log:
 /** SDIO Tx aggregation port limit ? */
 /** this is for test only, because port 0 is reserved for control port */
 //#define MP_TX_AGGR_PORT_LIMIT_REACHED(a) (a->curr_wr_port == 1)
-/* tx packets aggregated until a half of mp_end_port is reached 
+/* tx packets aggregated until a half of mp_end_port is reached
  * This port limination may be relaxed */
 /* hw tx wraps round only after port 31 */
 #define MP_TX_AGGR_PORT_LIMIT_REACHED(a) \
@@ -333,7 +333,8 @@ Change log:
 #define MP_RX_AGGR_IN_PROGRESS(a) (a->mpa_rx.pkt_cnt>0)
 
 /** SDIO Rx aggregation buffer room for next packet ? */
-#define MP_RX_AGGR_BUF_HAS_ROOM(a,rx_len)   ((a->mpa_rx.buf_len+rx_len)<=a->mpa_rx.buf_size)
+#define MP_RX_AGGR_BUF_HAS_ROOM(a,rx_len)   \
+    ((a->mpa_rx.buf_len+rx_len)<=a->mpa_rx.buf_size)
 
 /** Prepare to copy current packet from card to SDIO Rx aggregation buffer */
 #define MP_RX_AGGR_SETUP(a, mbuf, port, rx_len) do{    \
@@ -371,10 +372,10 @@ t_void wlan_interrupt(pmlan_adapter pmadapter);
 mlan_status wlan_process_int_status(mlan_adapter * pmadapter);
 /** Transfer data to card */
 mlan_status wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type,
-                                   mlan_buffer * mbuf,
-                                   mlan_tx_param * tx_param);
+				   mlan_buffer * mbuf,
+				   mlan_tx_param * tx_param);
 mlan_status wlan_set_sdio_gpio_int(IN pmlan_private priv);
 mlan_status wlan_cmd_sdio_gpio_int(pmlan_private pmpriv,
-                                   IN HostCmd_DS_COMMAND * cmd,
-                                   IN t_u16 cmd_action, IN t_void * pdata_buf);
+				   IN HostCmd_DS_COMMAND * cmd,
+				   IN t_u16 cmd_action, IN t_void * pdata_buf);
 #endif /* _MLAN_SDIO_H */

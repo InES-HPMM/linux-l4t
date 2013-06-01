@@ -1,8 +1,8 @@
 /** @file mlan_11ac.h
- *  
+ *
  *  @brief This file contains the functions for station ioctl.
  *
- *  Copyright (C) 2011-2012, Marvell International Ltd. 
+ *  Copyright (C) 2011-2012, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -28,23 +28,23 @@
 void wlan_show_dot11acdevcap(pmlan_adapter pmadapter, t_u32 cap);
 void wlan_show_dot11acmcssupport(pmlan_adapter pmadapter, t_u32 support);
 t_u16 wlan_convert_mcsmap_to_maxrate(mlan_private * priv, t_u8 bands,
-                                     t_u16 mcs_map);
+				     t_u16 mcs_map);
 void wlan_fill_vht_cap_tlv(mlan_private * priv, MrvlIETypes_VHTCap_t * pvht_cap,
-                           t_u8 bands);
+			   t_u8 bands);
 int wlan_cmd_append_11ac_tlv(mlan_private * pmpriv, BSSDescriptor_t * pbss_desc,
-                             t_u8 ** ppbuffer);
+			     t_u8 ** ppbuffer);
 mlan_status wlan_11ac_cfg_ioctl(pmlan_adapter pmadapter,
-                                pmlan_ioctl_req pioctl_req);
+				pmlan_ioctl_req pioctl_req);
 
 mlan_status wlan_cmd_11ac_cfg(IN pmlan_private pmpriv,
-                              IN HostCmd_DS_COMMAND * cmd,
-                              IN t_u16 cmd_action, IN t_void * pdata_buf);
+			      IN HostCmd_DS_COMMAND * cmd,
+			      IN t_u16 cmd_action, IN t_void * pdata_buf);
 
 mlan_status wlan_ret_11ac_cfg(IN pmlan_private pmpriv,
-                              IN HostCmd_DS_COMMAND * resp,
-                              IN mlan_ioctl_req * pioctl_buf);
+			      IN HostCmd_DS_COMMAND * resp,
+			      IN mlan_ioctl_req * pioctl_buf);
 
 t_u8 wlan_get_center_freq_idx(IN mlan_private * pmpriv,
-                              IN t_u8 band, IN t_u32 pri_chan, IN t_u8 chan_bw);
+			      IN t_u8 band, IN t_u32 pri_chan, IN t_u8 chan_bw);
 
 #endif /* _MLAN_11AC_H_ */

@@ -1,20 +1,20 @@
 /** @file moal_eth_ioctl.h
  *
  * @brief This file contains definition for private IOCTL call.
- *  
- * Copyright (C) 2012, Marvell International Ltd.  
  *
- * This software file (the "File") is distributed by Marvell International 
- * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
- * (the "License").  You may use, redistribute and/or modify this File in 
- * accordance with the terms and conditions of the License, a copy of which 
+ * Copyright (C) 2012, Marvell International Ltd.
+ *
+ * This software file (the "File") is distributed by Marvell International
+ * Ltd. under the terms of the GNU General Public License Version 2, June 1991
+ * (the "License").  You may use, redistribute and/or modify this File in
+ * accordance with the terms and conditions of the License, a copy of which
  * is available by writing to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
  * worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
  *
- * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE 
- * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about 
+ * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
+ * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
  * this warranty disclaimer.
  *
  */
@@ -128,10 +128,13 @@ Change log:
 #if defined(WIFI_DIRECT_SUPPORT)
 #define PRIV_CMD_OFFCHANNEL     "offchannel"
 #endif
+/** Private command: Verext */
+#define PRIV_CMD_VEREXT    	    "verext"
 #if defined(STA_SUPPORT)
 #define PRIV_CMD_PMFCFG         "pmfcfg"
 #endif
 #define PRIV_CMD_INACTIVITYTO   "inactivityto"
+#define PRIV_CMD_SYSCLOCK       "sysclock"
 
 /** Private command ID for Android default commands */
 #define	WOAL_ANDROID_DEF_CMD        (SIOCDEVPRIVATE + 1)
@@ -161,11 +164,11 @@ int woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);
 typedef struct _android_wifi_priv_cmd
 {
     /** Buffer pointer */
-    char *buf;
+	char *buf;
     /** buffer updated by driver */
-    int used_len;
+	int used_len;
     /** buffer sent by application */
-    int total_len;
+	int total_len;
 } android_wifi_priv_cmd;
 
 #ifndef IFNAMSIZ
@@ -176,18 +179,18 @@ typedef struct _android_wifi_priv_cmd
 #define MW_ESSID_MAX_SIZE   32
 
 /* Modes of operation */
-#define MW_MODE_AUTO    0       /* Let the driver decides */
-#define MW_MODE_ADHOC   1       /* Single cell network */
-#define MW_MODE_INFRA   2       /* Multi cell network, roaming, ... */
-#define MW_MODE_MASTER  3       /* Synchronisation master or Access Point */
-#define MW_MODE_REPEAT  4       /* Wireless Repeater (forwarder) */
-#define MW_MODE_SECOND  5       /* Secondary master/repeater (backup) */
-#define MW_MODE_MONITOR 6       /* Passive monitor (listen only) */
-#define MW_MODE_MESH    7       /* Mesh (IEEE 802.11s) network */
+#define MW_MODE_AUTO    0	/* Let the driver decides */
+#define MW_MODE_ADHOC   1	/* Single cell network */
+#define MW_MODE_INFRA   2	/* Multi cell network, roaming, ... */
+#define MW_MODE_MASTER  3	/* Synchronisation master or Access Point */
+#define MW_MODE_REPEAT  4	/* Wireless Repeater (forwarder) */
+#define MW_MODE_SECOND  5	/* Secondary master/repeater (backup) */
+#define MW_MODE_MONITOR 6	/* Passive monitor (listen only) */
+#define MW_MODE_MESH    7	/* Mesh (IEEE 802.11s) network */
 
-#define MW_POWER_TYPE       0xF000      /* Type of parameter */
-#define MW_POWER_PERIOD     0x1000      /* Value is a period/duration of */
-#define MW_POWER_TIMEOUT    0x2000      /* Value is a timeout (to go asleep) */
+#define MW_POWER_TYPE       0xF000	/* Type of parameter */
+#define MW_POWER_PERIOD     0x1000	/* Value is a period/duration of */
+#define MW_POWER_TIMEOUT    0x2000	/* Value is a timeout (to go asleep) */
 
 #define MW_AUTH_INDEX       0x0FFF
 #define MW_AUTH_FLAGS       0xF000
@@ -219,88 +222,88 @@ typedef struct _android_wifi_priv_cmd
 /* Generic format for most parameters that fit in an int */
 struct mw_param
 {
-    t_s32 value;                /* The value of the parameter itself */
-    t_u8 fixed;                 /* Hardware should not use auto select */
-    t_u8 disabled;              /* Disable the feature */
-    t_u16 flags;                /* Various specifc flags (if any) */
+	t_s32 value;		/* The value of the parameter itself */
+	t_u8 fixed;		/* Hardware should not use auto select */
+	t_u8 disabled;		/* Disable the feature */
+	t_u16 flags;		/* Various specifc flags (if any) */
 };
 
-/*  
+/*
  *  For all data larger than 16 octets, we need to use a
  *  pointer to memory allocated in user space.
  */
 struct mw_point
 {
-    t_u8 *pointer;              /* Pointer to the data (in user space) */
-    t_u16 length;               /* number of fields or size in bytes */
-    t_u16 flags;                /* Optional params */
+	t_u8 *pointer;		/* Pointer to the data (in user space) */
+	t_u16 length;		/* number of fields or size in bytes */
+	t_u16 flags;		/* Optional params */
 };
 
 /*
- * This structure defines the payload of an ioctl, and is used 
+ * This structure defines the payload of an ioctl, and is used
  * below.
  */
 union mwreq_data
 {
-    /* Config - generic */
-    char name[IFNAMSIZ];
+	/* Config - generic */
+	char name[IFNAMSIZ];
 
-    struct mw_point essid;      /* Extended network name */
-    t_u32 mode;                 /* Operation mode */
-    struct mw_param power;      /* PM duration/timeout */
-    struct sockaddr ap_addr;    /* Access point address */
-    struct mw_param param;      /* Other small parameters */
-    struct mw_point data;       /* Other large parameters */
+	struct mw_point essid;	/* Extended network name */
+	t_u32 mode;		/* Operation mode */
+	struct mw_param power;	/* PM duration/timeout */
+	struct sockaddr ap_addr;	/* Access point address */
+	struct mw_param param;	/* Other small parameters */
+	struct mw_point data;	/* Other large parameters */
 };
 
  /* The structure to exchange data for ioctl */
 struct mwreq
 {
-    union
-    {
-        char ifrn_name[IFNAMSIZ];       /* if name, e.g. "eth0" */
-    } ifr_ifrn;
+	union
+	{
+		char ifrn_name[IFNAMSIZ];	/* if name, e.g. "eth0" */
+	} ifr_ifrn;
 
-    /* Data part */
-    union mwreq_data u;
+	/* Data part */
+	union mwreq_data u;
 };
 
 typedef struct woal_priv_ht_cap_info
 {
-    t_u32 ht_cap_info_bg;
-    t_u32 ht_cap_info_a;
+	t_u32 ht_cap_info_bg;
+	t_u32 ht_cap_info_a;
 } woal_ht_cap_info;
 
 typedef struct woal_priv_addba
 {
-    t_u32 time_out;
-    t_u32 tx_win_size;
-    t_u32 rx_win_size;
-    t_u32 tx_amsdu;
-    t_u32 rx_amsdu;
+	t_u32 time_out;
+	t_u32 tx_win_size;
+	t_u32 rx_win_size;
+	t_u32 tx_amsdu;
+	t_u32 rx_amsdu;
 } woal_addba;
 
 /** data structure for cmd txratecfg */
 typedef struct woal_priv_tx_rate_cfg
 {
-    /* LG rate: 0, HT rate: 1, VHT rate: 2 */
-    t_u32 rate_format;
+	/* LG rate: 0, HT rate: 1, VHT rate: 2 */
+	t_u32 rate_format;
     /** Rate/MCS index (0xFF: auto) */
-    t_u32 rate_index;
+	t_u32 rate_index;
     /** Data rate */
-    t_u32 rate;
+	t_u32 rate;
     /** NSS */
-    t_u32 nss;
+	t_u32 nss;
 } woal_tx_rate_cfg;
 
 typedef struct woal_priv_esuppmode_cfg
 {
-    /* RSN mode */
-    t_u16 rsn_mode;
-    /* Pairwise cipher */
-    t_u8 pairwise_cipher;
-    /* Group cipher */
-    t_u8 group_cipher;
+	/* RSN mode */
+	t_u16 rsn_mode;
+	/* Pairwise cipher */
+	t_u8 pairwise_cipher;
+	/* Group cipher */
+	t_u8 group_cipher;
 } woal_esuppmode_cfg;
 
 mlan_status woal_set_ap_wps_p2p_ie(moal_private * priv, t_u8 * ie, size_t len);
