@@ -30,12 +30,12 @@
 #include <linux/tegra-timer.h>
 #include <linux/tegra-soc.h>
 #include <linux/of_address.h>
+#include <linux/sched_clock.h>
 
 #include <asm/mach/time.h>
 #include <asm/cputype.h>
 #include <asm/system.h>
 #include <asm/arch_timer.h>
-#include <asm/sched_clock.h>
 #include <asm/delay.h>
 
 #include "../../arch/arm/mach-tegra/clock.h"

@@ -36,11 +36,11 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-timer.h>
 #include <linux/delay.h>
+#include <linux/sched_clock.h>
 
 #include <asm/mach/time.h>
 #include <asm/delay.h>
 #ifndef CONFIG_ARM64
-#include <asm/sched_clock.h>
 #include <asm/localtimer.h>
 #endif
 
