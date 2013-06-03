@@ -120,7 +120,7 @@ static struct regulator_consumer_supply tps65090_fet6_supply[] = {
 
 static struct regulator_consumer_supply tps65090_fet7_supply[] = {
 	REGULATOR_SUPPLY("avdd", "bcm4329_wlan.1"),
-	REGULATOR_SUPPLY("vdd_gps_3v3", "reg-userspace-consumer.2"),
+	REGULATOR_SUPPLY("avdd", "reg-userspace-consumer.2"),
 	REGULATOR_SUPPLY("avdd", "bluedroid_pm.0"),
 };
 
@@ -238,7 +238,7 @@ static struct regulator_consumer_supply max77663_sd2_supply[] = {
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_com_1v8", NULL),
 	REGULATOR_SUPPLY("dvdd", "bcm4329_wlan.1"),
-	REGULATOR_SUPPLY("vdd_gps_1v8", "reg-userspace-consumer.2"),
+	REGULATOR_SUPPLY("dvdd", "reg-userspace-consumer.2"),
 	REGULATOR_SUPPLY("dvdd", "bluedroid_pm.0"),
 	REGULATOR_SUPPLY("vdd_dtv_1v8", NULL),
 	REGULATOR_SUPPLY("vlogic", "0-0069"),
@@ -1168,10 +1168,10 @@ static int __init dalmore_max77663_regulator_init(void)
 
 static struct regulator_bulk_data dalmore_gps_regulator_supply[] = {
 	[0] = {
-		.supply	= "vdd_gps_3v3",
+		.supply	= "avdd",
 	},
 	[1] = {
-		.supply	= "vdd_gps_1v8",
+		.supply	= "dvdd",
 	},
 };
 
