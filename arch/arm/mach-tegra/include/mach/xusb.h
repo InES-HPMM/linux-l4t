@@ -19,8 +19,6 @@
 #ifndef _XUSB_H
 #define _XUSB_H
 
-#include <linux/platform_data/tegra_xusb.h>
-
 /*
  * BIT0 - BIT7 : SS ports
  * BIT8 - BIT15 : USB2 UTMI ports
@@ -38,6 +36,8 @@
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P1 (0x1)
 #define TEGRA_XUSB_SS0_PORT_MAP	(0xf)
 #define TEGRA_XUSB_SS1_PORT_MAP	(0xf0)
+#define TEGRA_XUSB_ULPI_PORT_CAP_MASTER	(0x0)
+#define TEGRA_XUSB_ULPI_PORT_CAP_PHY	(0x1)
 
 struct tegra_xusb_board_data {
 	u32	portmap;
@@ -46,7 +46,7 @@ struct tegra_xusb_board_data {
 	 * ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map
 	 */
 	u8	ss_portmap;
-	struct tegra_xusb_pad_data *padctl_data;
+	u8	ulpicap;
 };
 
 struct tegra_xusb_platform_data {
@@ -56,6 +56,13 @@ struct tegra_xusb_platform_data {
 	u32 hs_iref_cap;
 	u32 hs_term_range_adj;
 	u32 hs_squelch_level;
+	u32 rx_wander;
+	u32 rx_eq;
+	u32 cdr_cntl;
+	u32 dfe_cntl;
+	u32 hs_slew;
+	u32 ls_rslew;
+	u32 hs_disc_lvl;
 	/* chip specific */
 	unsigned long quirks;
 };

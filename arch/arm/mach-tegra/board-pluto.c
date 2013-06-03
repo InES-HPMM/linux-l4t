@@ -31,7 +31,6 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/platform_data/tegra_usb.h>
-#include <linux/platform_data/tegra_xusb.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/rm31080a_ts.h>
 #include <linux/tegra_uart.h>
@@ -1135,30 +1134,7 @@ static void pluto_modem_init(void)
 	}
 }
 
-static struct tegra_xusb_pad_data xusb_padctl_data = {
-	.pad_mux = (0x1 << 0),
-	.port_cap = (0x1 << 0),
-	.snps_oc_map = (0x1ff << 0),
-	.usb2_oc_map = (0x3c << 0),
-	.ss_port_map = (0x0 << 0),
-	.oc_det = (0x3f << 10),
-	.rx_wander = (0xf << 4),
-	.rx_eq = (0x3070 << 8),
-	.cdr_cntl = (0x26 << 24),
-	.dfe_cntl = 0x002008EE,
-	.hs_slew = (0xE << 6),
-	.ls_rslew = (0x3 << 14),
-	.otg_pad0_ctl0 = (0x0 << 19),
-	.otg_pad1_ctl0 = (0x7 << 19),
-	.otg_pad0_ctl1 = (0x0 << 0),
-	.otg_pad1_ctl1 = (0x0 << 0),
-	.hs_disc_lvl = (0x5 << 2),
-	.hsic_pad0_ctl0 = (0x00 << 8),
-	.hsic_pad0_ctl1 = (0x00 << 8),
-};
-
 static struct tegra_xusb_board_data xusb_bdata = {
-	.padctl_data = &xusb_padctl_data,
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0,
 	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
