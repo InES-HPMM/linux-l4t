@@ -122,7 +122,7 @@ static struct regulator_consumer_supply as3720_sd3_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
-	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd", "reg-userspace-consumer.1"),
 	REGULATOR_SUPPLY("dvdd", "bcm4329_wlan.1"),
 	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
 };
@@ -149,7 +149,7 @@ static struct regulator_consumer_supply as3720_sd5_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("pwrdet_hv", NULL),
-	REGULATOR_SUPPLY("vdd_bt_3v3", NULL),
+	REGULATOR_SUPPLY("avdd", "reg-userspace-consumer.1"),
 	REGULATOR_SUPPLY("avdd", "bcm4329_wlan.1"),
 };
 
@@ -654,10 +654,10 @@ static struct platform_device pismo_gps_regulator_device = {
 
 static struct regulator_bulk_data pismo_bt_regulator_supply[] = {
 	[0] = {
-		.supply	= "vdd_bt_3v3",
+		.supply	= "avdd",
 	},
 	[1] = {
-		.supply	= "vddio_bt_1v8",
+		.supply	= "dvdd",
 	},
 };
 

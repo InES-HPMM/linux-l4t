@@ -425,14 +425,14 @@ static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 /* VDD_3V3_COM controled by Wifi */
 static struct regulator_consumer_supply fixed_reg_com_3v3_supply[] = {
 	REGULATOR_SUPPLY("avdd", "bcm4329_wlan.1"),
-	REGULATOR_SUPPLY("vdd_bt_3v3", "bluedroid_pm.0"),
+	REGULATOR_SUPPLY("avdd", "bluedroid_pm.0"),
 	REGULATOR_SUPPLY("vdd_wl_pa", "reg-userspace-consumer.2"),
 };
 
 /* VDD_1v8_COM controled by Wifi */
 static struct regulator_consumer_supply fixed_reg_com_1v8_supply[] = {
 	REGULATOR_SUPPLY("dvdd", "bcm4329_wlan.1"),
-	REGULATOR_SUPPLY("vddio_bt_1v8", "bluedroid_pm.0"),
+	REGULATOR_SUPPLY("dvdd", "bluedroid_pm.0"),
 	REGULATOR_SUPPLY("vddio", "reg-userspace-consumer.2"),
 };
 

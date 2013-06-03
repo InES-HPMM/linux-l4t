@@ -123,14 +123,14 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 	if (!bluedroid_pm)
 		return -ENOMEM;
 
-	bluedroid_pm->vdd_3v3 = regulator_get(&pdev->dev, "vdd_bt_3v3");
-	if (IS_ERR_OR_NULL(bluedroid_pm->vdd_3v3)) {
-		pr_warn("%s: regulator vdd_bt_3v3 not available\n", __func__);
+	bluedroid_pm->vdd_3v3 = regulator_get(&pdev->dev, "avdd");
+	if (IS_ERR(bluedroid_pm->vdd_3v3)) {
+		pr_warn("%s: regulator avdd not available\n", __func__);
 		bluedroid_pm->vdd_3v3 = NULL;
 	}
-	bluedroid_pm->vdd_1v8 = regulator_get(&pdev->dev, "vddio_bt_1v8");
-	if (IS_ERR_OR_NULL(bluedroid_pm->vdd_1v8)) {
-		pr_warn("%s: regulator vddio_bt_1v8 not available\n", __func__);
+	bluedroid_pm->vdd_1v8 = regulator_get(&pdev->dev, "dvdd");
+	if (IS_ERR(bluedroid_pm->vdd_1v8)) {
+		pr_warn("%s: regulator dvdd not available\n", __func__);
 		bluedroid_pm->vdd_1v8 = NULL;
 	}
 
