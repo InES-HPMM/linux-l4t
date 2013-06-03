@@ -42,6 +42,12 @@ struct tegra_edp_voltage_temp_constraint {
 	unsigned int voltage_limit_mV;
 };
 
+struct tegra_edp_maximum_current_constraint {
+	unsigned int max_cur;
+	unsigned int max_temp;
+	unsigned int max_freq[4]; /* KHz */
+};
+
 struct tegra_edp_cpu_leakage_params {
 	int cpu_speedo_id;
 
@@ -58,6 +64,7 @@ struct tegra_edp_cpu_leakage_params {
 	unsigned int leakage_min;	 /* minimum leakage current */
 
 	unsigned int safety_cap[4];
+	struct tegra_edp_maximum_current_constraint max_current_cap[9];
 	struct tegra_edp_voltage_temp_constraint volt_temp_cap;
 };
 

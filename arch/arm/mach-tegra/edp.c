@@ -91,6 +91,38 @@ static inline s64 edp_pow(s64 val, int pwr)
 	return retval;
 }
 
+
+#ifdef CONFIG_TEGRA_CPU_EDP_FIXED_LIMITS
+static inline unsigned int edp_apply_fixed_limits(
+				unsigned int in_freq_KHz,
+				struct tegra_edp_cpu_leakage_params *params,
+				unsigned int cur_effective,
+				int temp_C, int n_cores_idx)
+{
+	unsigned int out_freq_KHz = in_freq_KHz;
+	unsigned int max_cur, max_temp, max_freq;
+	int i;
+
+	/* Apply any additional fixed limits */
+	for (i = 0; i < 8; i++) {
+		max_cur = params->max_current_cap[i].max_cur;
+		if (max_cur != 0 && cur_effective <= max_cur) {
+			max_temp = params->max_current_cap[i].max_temp;
+			if (max_temp != 0 && temp_C > max_temp) {
+				max_freq = params->max_current_cap[i].
+					max_freq[n_cores_idx];
+				if (max_freq && max_freq < out_freq_KHz)
+					out_freq_KHz = max_freq;
+			}
+		}
+	}
+
+	return out_freq_KHz;
+}
+#else
+#define edp_apply_fixed_limits(freq, unused...)	(freq)
+#endif
+
 /*
  * Find the maximum frequency that results in dynamic and leakage current that
  * is less than the regulator current limit.
@@ -103,9 +135,9 @@ static unsigned int edp_calculate_maxf(
 				int iddq_mA,
 				int n_cores_idx)
 {
-	unsigned int voltage_mV, freq_KHz;
+	unsigned int voltage_mV, freq_KHz = 0;
 	unsigned int cur_effective = regulator_cur - edp_reg_override_mA;
-	int f, i, j, k;
+	int f, i, j, k, r = 0;
 	s64 leakage_mA, dyn_mA, leakage_calc_step;
 	s64 leakage_mW, dyn_mW;
 
@@ -175,12 +207,19 @@ static unsigned int edp_calculate_maxf(
 			leakage_mW = leakage_mA * voltage_mV;
 			dyn_mW = dyn_mA * voltage_mV;
 			if (div64_s64(leakage_mW + dyn_mW, 1000) <= power_mW)
-				return freq_KHz;
+				goto end;
 		} else if ((leakage_mA + dyn_mA) <= cur_effective) {
-			return freq_KHz;
+			goto end;
 		}
+		freq_KHz = 0;
 	}
-	return -EINVAL;
+
+ end:
+	if (r != 0)
+		return r;
+
+	return edp_apply_fixed_limits(freq_KHz, params,
+					cur_effective, temp_C, n_cores_idx);
 }
 
 static int edp_relate_freq_voltage(struct clk *clk_cpu_g,

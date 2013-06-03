@@ -157,16 +157,76 @@ static struct core_edp_entry core_edp_table[] = {
 static struct tegra_edp_cpu_leakage_params t11x_leakage_params[] = {
 	{
 		.cpu_speedo_id	    = 0, /* A01 CPU */
+		.max_current_cap = { /* values are from tegra4 datasheet */
+			{ .max_cur = 9000, .max_temp = 60,
+				{ 1900000, 1900000, 1600000, 1600000 }
+			},
+			{ .max_cur = 9000, .max_temp = 75,
+				{ 1900000, 1900000, 1530000, 1530000 }
+			},
+			{ .max_cur = 9000, .max_temp = 90,
+				{ 1900000, 1900000, 1500000, 1500000 }
+			},
+			{ .max_cur = 12000, .max_temp = 90,
+				{ 1900000, 1900000, 1700000, 1700000 }
+			},
+			{ .max_cur = 15000, .max_temp = 90,
+				{ 1900000, 1900000, 1900000, 1900000 }
+			},
+		},
 		LEAKAGE_PARAMS_COMMON_PART,
 	},
 	{
 		.cpu_speedo_id	    = 1, /* A01P+ CPU */
 		.safety_cap         = { 1810500, 1810500, 1606500, 1606500 },
+		.max_current_cap = { /* values are from tegra4 datasheet */
+			{ .max_cur = 7500, .max_temp = 90,
+				{ 1800000, 1700000, 1320000, 1320000 }
+			},
+			{ .max_cur = 7500, .max_temp = 75,
+				{ 1800000, 1700000, 1420000, 1420000 }
+			},
+			{ .max_cur = 7500, .max_temp = 60,
+				{ 1800000, 1800000, 1420000, 1420000 }
+			},
+			{ .max_cur = 7500, .max_temp = 45,
+				{ 1800000, 1800000, 1530000, 1530000 }
+			},
+			{ .max_cur = 9000, .max_temp = 90,
+				{ 1800000, 1800000, 1500000, 1500000 }
+			},
+			{ .max_cur = 9000, .max_temp = 75,
+				{ 1800000, 1800000, 1530000, 1530000 }
+			},
+			{ .max_cur = 9000, .max_temp = 60,
+				{ 1800000, 1800000, 1600000, 1600000 }
+			},
+			{ .max_cur = 12000, .max_temp = 45,
+				{ 1800000, 1800000, 1600000, 1600000 }
+			},
+		},
 		LEAKAGE_PARAMS_COMMON_PART,
 	},
 	{
 		.cpu_speedo_id	    = 2, /* A01P+ fast CPU */
 		.safety_cap         = { 1912500, 1912500, 1912500, 1912500 },
+		.max_current_cap = { /* values are from tegra4 datasheet */
+			{ .max_cur = 9000, .max_temp = 90,
+				{ 1900000, 1900000, 1500000, 1500000 }
+			},
+			{ .max_cur = 9000, .max_temp = 75,
+				{ 1900000, 1900000, 1530000, 1530000 }
+			},
+			{ .max_cur = 9000, .max_temp = 60,
+				{ 1900000, 1900000, 1600000, 1600000 }
+			},
+			{ .max_cur = 12000, .max_temp = 90,
+				{ 1900000, 1900000, 1700000, 1700000 }
+			},
+			{ .max_cur = 15000, .max_temp = 90,
+				{ 1900000, 1900000, 1900000, 1900000 }
+			},
+		},
 		LEAKAGE_PARAMS_COMMON_PART,
 	},
 };
