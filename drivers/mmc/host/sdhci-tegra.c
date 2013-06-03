@@ -90,10 +90,6 @@
 #define SDHOST_LOW_VOLT_MAX	1800000
 #define SDHOST_HIGH_VOLT_3V2	3200000
 
-#define TEGRA_SDHOST_MIN_FREQ	50000000
-#define TEGRA2_SDHOST_STD_FREQ	50000000
-#define TEGRA3_SDHOST_STD_FREQ	104000000
-
 #define MAX_DIVISOR_VALUE	128
 #define DEFAULT_SDHOST_FREQ	50000000
 
@@ -113,9 +109,6 @@ static unsigned int uhs_max_freq_MHz[] = {
 	[MMC_TIMING_MMC_HS200] = 200,
 };
 
-
-static unsigned int tegra_sdhost_min_freq;
-static unsigned int tegra_sdhost_std_freq;
 
 /* Erratum: Version register is invalid in HW */
 #define NVQUIRK_FORCE_SDHCI_SPEC_200		BIT(0)
@@ -155,6 +148,11 @@ static unsigned int tegra_sdhost_std_freq;
 #define NVQUIRK_DISABLE_AUTO_CMD23		BIT(17)
 /* Shadow write xfer mode reg and write it alongwith CMD register */
 #define NVQUIRK_SHADOW_XFER_MODE_REG		BIT(18)
+/* In SDR50 mode, run the sdmmc controller at freq greater than
+ * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
+ * is below 1.2V, CRC errors would occur during data transfers
+ */
+#define NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK	BIT(19)
 
 struct sdhci_tegra_soc_data {
 	struct sdhci_pltfm_data *pdata;
@@ -996,6 +994,7 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	const struct sdhci_tegra_soc_data *soc_data = tegra_host->soc_data;
 	unsigned int clk_rate;
 	unsigned int emc_clk;
 
@@ -1014,22 +1013,13 @@ static void tegra_sdhci_set_clk_rate(struct sdhci_host *sdhci,
 		} else {
 			clk_rate = clock * 2;
 		}
-	} else 	if (sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) {
-		/*
-		 * In SDR50 mode, run the sdmmc controller at freq greater than
-		 * 104MHz to ensure the core voltage is at 1.2V. If the core voltage
-		 * is below 1.2V, CRC errors would occur during data transfers.
-		 */
-		clk_rate = clock * 2;
 	} else {
-		if (clock <= tegra_sdhost_min_freq)
-			clk_rate = tegra_sdhost_min_freq;
-		else if (clock <= tegra_sdhost_std_freq)
-			clk_rate = tegra_sdhost_std_freq;
+		if ((sdhci->mmc->ios.timing == MMC_TIMING_UHS_SDR50) &&
+		(soc_data->nvquirks & NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK))
+			clk_rate = clock * 2;
 		else
 			clk_rate = clock;
 	}
-
 	if (tegra_host->max_clk_limit &&
 		(clk_rate > tegra_host->max_clk_limit))
 		clk_rate = tegra_host->max_clk_limit;
@@ -2086,6 +2076,7 @@ static struct sdhci_tegra_soc_data soc_data_tegra20 = {
 		    NVQUIRK_DISABLE_AUTO_CALIBRATION |
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 		    NVQUIRK_ENABLE_SD_3_0 |
+		    NVQUIRK_BROKEN_SDR50_CONTROLLER_CLOCK |
 #else
 		    NVQUIRK_SET_TRIM_DELAY |
 		    NVQUIRK_ENABLE_DDR50 |
@@ -2440,13 +2431,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	/* disable access to boot partitions */
 	host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC;
 
-	tegra_sdhost_min_freq = TEGRA_SDHOST_MIN_FREQ;
-#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	tegra_sdhost_std_freq = TEGRA2_SDHOST_STD_FREQ;
-#elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
-	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
-#else
-	tegra_sdhost_std_freq = TEGRA3_SDHOST_STD_FREQ;
+#if !defined(CONFIG_ARCH_TEGRA_2x_SOC) && !defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	host->mmc->caps2 |= MMC_CAP2_HS200;
 	host->mmc->caps2 |= MMC_CAP2_CACHE_CTRL;
 	host->mmc->caps |= MMC_CAP_CMD23;
