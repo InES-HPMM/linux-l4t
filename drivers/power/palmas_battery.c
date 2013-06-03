@@ -536,7 +536,7 @@ static void palmas_battery_current_now(struct palmas_battery_info *di)
 {
 	struct palmas *palmas = di->palmas;
 	int ret = 0;
-	unsigned int reg, addr;
+	unsigned int reg;
 	s16 temp = 0;
 	int current_now = 0;
 
@@ -608,7 +608,6 @@ static int palmas_gpadc_conversion(char *channel_name)
 
 static void palmas_battery_voltage_now(struct palmas_battery_info *di)
 {
-	struct palmas *palmas = di->palmas;
 	int ret;
 
 	ret = palmas_gpadc_conversion(VBAT_CHANNEL);
@@ -620,7 +619,6 @@ static void palmas_battery_voltage_now(struct palmas_battery_info *di)
 
 static void palmas_battery_temperature(struct palmas_battery_info *di)
 {
-	struct palmas *palmas = di->palmas;
 	int temp, adc_code, ret;
 
 	ret = palmas_gpadc_conversion(TEMP_CHANNEL);
@@ -1221,7 +1219,7 @@ void palmas_process(struct cell_state *cell, short delta_q, short voltage,
 static void palmas_gasgauge_calibrate(struct palmas_battery_info *di)
 {
 	struct palmas *palmas = di->palmas;
-	int ret, addr;
+	int ret;
 
 	ret = palmas_update_bits(palmas, PALMAS_FUEL_GAUGE_BASE,
 		PALMAS_FG_REG_00, PALMAS_FG_REG_00_CC_AUTOCLEAR,
@@ -1307,7 +1305,6 @@ static void palmas_battery_current_avg(struct work_struct *work)
 	struct palmas *palmas = di->palmas;
 	s32 samples = 0;
 	s16 cc_offset = 0;
-	unsigned int addr;
 	int current_avg_uA = 0, ret;
 	u8 temp[4];
 
@@ -1409,7 +1406,7 @@ static int palmas_current_setup(struct palmas_battery_info *di,
 {
 	struct palmas *palmas = di->palmas;
 	int ret = 0;
-	unsigned int addr, reg = 0;
+	unsigned int reg = 0;
 	u8 temp[4];
 
 	/*
@@ -1494,19 +1491,15 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	int ret;
 
 	palmas_pdata = dev_get_platdata(pdev->dev.parent);
-
 	if (!palmas_pdata) {
-		dev_err(di->dev, "Parent platform data not found\n");
-		ret = -EINVAL;
-		goto err;
+		dev_err(&pdev->dev, "Parent platform data not found\n");
+		return -EINVAL;
 	}
 
 	pdata = palmas_pdata->battery_pdata;
-
 	if (!pdata) {
-		dev_err(di->dev, "Platform data not found\n");
-		ret = -EINVAL;
-		goto err;
+		dev_err(&pdev->dev, "Platform data not found\n");
+		return -EINVAL;
 	}
 
 	if (!pdata->is_battery_present) {
@@ -1515,19 +1508,15 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	}
 
 	di = devm_kzalloc(&pdev->dev, sizeof(*di), GFP_KERNEL);
-	if (!di) {
-		ret = -ENOMEM;
-		goto err;
-	}
+	if (!di)
+		return -ENOMEM;
 
 	di->battery_temperature_chart = devm_kzalloc(&pdev->dev,
 			sizeof(int) * pdata->battery_temperature_chart_size,
 					GFP_KERNEL);
 
-	if (!di->battery_temperature_chart) {
-		ret = -ENOMEM;
-		goto err_batt_info;
-	}
+	if (!di->battery_temperature_chart)
+		return -ENOMEM;
 
 	memcpy(di->battery_temperature_chart, pdata->battery_temperature_chart,
 			sizeof(int) * pdata->battery_temperature_chart_size);
@@ -1537,17 +1526,16 @@ static int palmas_battery_probe(struct platform_device *pdev)
 
 	di->cell.config = devm_kzalloc(&pdev->dev, sizeof(*di->cell.config),
 						GFP_KERNEL);
+	if (!di->cell.config)
+		return -ENOMEM;
 
 	memcpy(di->cell.config, pdata->cell_cfg, sizeof(*di->cell.config));
 
 	di->cell.config->ocv = devm_kzalloc(&pdev->dev,
 					sizeof(*di->cell.config->ocv),
 					GFP_KERNEL);
-
-	if (!di->cell.config->ocv) {
-		ret = -ENOMEM;
-		goto err_batt_temp;
-	}
+	if (!di->cell.config->ocv)
+		return -ENOMEM;
 
 	memcpy(di->cell.config->ocv, pdata->cell_cfg->ocv,
 					sizeof(*di->cell.config->ocv));
@@ -1555,11 +1543,8 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	di->cell.config->edv = devm_kzalloc(&pdev->dev,
 					sizeof(*di->cell.config->edv),
 					GFP_KERNEL);
-
-	if (!di->cell.config->edv) {
-		ret = -ENOMEM;
-		goto err_cell_ocv;
-	}
+	if (!di->cell.config->edv)
+		return -ENOMEM;
 
 	memcpy(di->cell.config->edv, pdata->cell_cfg->edv,
 					sizeof(*di->cell.config->edv));
@@ -1577,6 +1562,7 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	/* calculate current max scale from sense */
 	di->current_max_scale = (62000) / di->cell.config->r_sense;
 
+	retry_count = 0;
 	/* Initial boot voltage */
 	while (di->battery_voltage_uV <= 0
 		&& retry_count < pdata->gpadc_retry_count) {
@@ -1586,14 +1572,13 @@ static int palmas_battery_probe(struct platform_device *pdev)
 
 	if (retry_count == pdata->gpadc_retry_count) {
 		dev_err(di->dev, "Gpadc read error. Aborting.\n");
-		ret = -ENODEV;
-		goto err_cell_edv;
+		return -ENODEV;
 	}
 
 	ret = palmas_current_setup(di, pdata);
 	if (ret < 0) {
 		dev_err(di->dev, "Current setup failed. Aborting.\n");
-		goto err_cell_edv;
+		return ret;
 	}
 
 	di->battery.name = "palmas-battery";
@@ -1603,46 +1588,25 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	di->battery.get_property = palmas_battery_get_props;
 	di->battery.external_power_changed = NULL;
 
-	retry_count = 0;
-
-
 	/* Initialise the Fuel Guage */
 	palmas_fg_init(&di->cell, di->battery_voltage_uV / 1000);
 
 	ret = power_supply_register(di->dev, &di->battery);
-	if (ret) {
+	if (ret < 0) {
 		dev_err(di->dev, "failed to register battery: %d\n", ret);
-		goto err_cell_edv;
+		return ret;
 	}
 
 	return 0;
-
-
-err_cell_edv:
-	kfree(di->cell.config->edv);
-err_cell_ocv:
-	kfree(di->cell.config->ocv);
-err_batt_temp:
-	kfree(di->battery_temperature_chart);
-err_batt_info:
-	kfree(di);
-err:
-	return ret;
 }
 
 static int palmas_battery_remove(struct platform_device *pdev)
 {
 	struct palmas_battery_info *di = platform_get_drvdata(pdev);
-	struct palmas *palmas = di->palmas;
 
 	cancel_delayed_work(&di->battery_current_avg_work);
 	flush_scheduled_work();
 	power_supply_unregister(&di->battery);
-	kfree(di->cell.config->edv);
-	kfree(di->cell.config->ocv);
-	kfree(di->battery_temperature_chart);
-	kfree(di);
-
 	return 0;
 }
 
