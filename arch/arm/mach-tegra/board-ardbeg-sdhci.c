@@ -37,14 +37,9 @@
 #include "board-ardbeg.h"
 #include "iomap.h"
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#define ARDBEG_WLAN_PWR	TEGRA_GPIO_PCC5
+#define ARDBEG_WLAN_RST	TEGRA_GPIO_PCC5
+#define ARDBEG_WLAN_PWR	TEGRA_GPIO_PX7
 #define ARDBEG_WLAN_WOW	TEGRA_GPIO_PU5
-#else
-/* FIXME: update GPIO's for 124 */
-#define ARDBEG_WLAN_PWR  TEGRA_GPIO_PL7
-#define ARDBEG_WLAN_WOW  TEGRA_GPIO_PO2
-#endif
 
 #define ARDBEG_SD_CD	(MAX77660_GPIO_BASE + MAX77660_GPIO9)
 
@@ -234,6 +229,7 @@ static int ardbeg_wifi_power(int on)
 	pr_err("%s: %d\n", __func__, on);
 
 	gpio_set_value(ARDBEG_WLAN_PWR, on);
+	gpio_set_value(ARDBEG_WLAN_RST, on);
 	mdelay(100);
 
 	return 0;
@@ -252,6 +248,9 @@ static int __init ardbeg_wifi_init(void)
 	rc = gpio_request(ARDBEG_WLAN_PWR, "wlan_power");
 	if (rc)
 		pr_err("WLAN_PWR gpio request failed:%d\n", rc);
+	rc = gpio_request(ARDBEG_WLAN_RST, "wlan_rst");
+	if (rc)
+		pr_err("WLAN_RST gpio request failed:%d\n", rc);
 	rc = gpio_request(ARDBEG_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
@@ -259,6 +258,10 @@ static int __init ardbeg_wifi_init(void)
 	rc = gpio_direction_output(ARDBEG_WLAN_PWR, 0);
 	if (rc)
 		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
+	rc = gpio_direction_output(ARDBEG_WLAN_RST, 0);
+	if (rc)
+		pr_err("WLAN_RST gpio direction configuration failed:%d\n", rc);
+
 	rc = gpio_direction_input(ARDBEG_WLAN_WOW);
 	if (rc)
 		pr_err("WLAN_WOW gpio direction configuration failed:%d\n", rc);
@@ -290,5 +293,8 @@ int __init ardbeg_sdhci_init(void)
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 #endif
+	platform_device_register(&tegra_sdhci_device0);
+	ardbeg_wifi_init();
+
 	return 0;
 }
