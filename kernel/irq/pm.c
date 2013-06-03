@@ -13,6 +13,8 @@
 
 #include "internals.h"
 
+static bool early_resume_irq_suspended;
+
 /**
  * suspend_device_irqs - disable all currently enabled interrupt lines
  *
@@ -37,6 +39,7 @@ void suspend_device_irqs(void)
 	for_each_irq_desc(irq, desc)
 		if (desc->istate & IRQS_SUSPENDED)
 			synchronize_irq(irq);
+	early_resume_irq_suspended = true;
 }
 EXPORT_SYMBOL_GPL(suspend_device_irqs);
 
@@ -67,6 +70,7 @@ static void resume_irqs(bool want_early)
 static void irq_pm_syscore_resume(void)
 {
 	resume_irqs(true);
+	early_resume_irq_suspended = false;
 }
 
 static struct syscore_ops irq_pm_syscore_ops = {
@@ -87,9 +91,15 @@ device_initcall(irq_pm_init_ops);
  * Enable all non-%IRQF_EARLY_RESUME interrupt lines previously
  * disabled by suspend_device_irqs() that have the IRQS_SUSPENDED flag
  * set as well as those with %IRQF_FORCE_RESUME.
+ * Also enable IRQF_EARLY_RESUME irqs if it is not enabled by syscore_ops
+ * resume path.
  */
 void resume_device_irqs(void)
 {
+	if (early_resume_irq_suspended) {
+		pr_err("%s: Resuming IRQF_EARLY_RESUME forcefully\n", __func__);
+		irq_pm_syscore_resume();
+	}
 	resume_irqs(false);
 }
 EXPORT_SYMBOL_GPL(resume_device_irqs);
