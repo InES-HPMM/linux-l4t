@@ -31,6 +31,13 @@ config PDA_POWER
 	  one or two external power supplies (AC/USB) connected to main and
 	  backup batteries, and optional builtin charger.
 
+config CHARGER_PALMAS
+	tristate "Palmas charger driver support"
+	depends on MFD_PALMAS
+	help
+	  Say Y here to enable charger driver support
+	  for the palmas series of chipsets from TI
+
 config CHARGER_BQ2419X
 	tristate "BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver support"
 	depends on I2C

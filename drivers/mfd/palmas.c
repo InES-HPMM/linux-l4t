@@ -180,7 +180,7 @@ static const struct regmap_config palmas_regmap_config[PALMAS_NUM_CLIENTS] = {
 		.reg_bits = 8,
 		.val_bits = 8,
 		.max_register =	PALMAS_BASE_TO_REG(PALMAS_CHARGER_BASE,
-					PALMAS_REG10),
+					PALMAS_CHARGER_REG10),
 	},
 };
 

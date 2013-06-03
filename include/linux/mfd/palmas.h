@@ -21,7 +21,8 @@
 #include <linux/leds.h>
 #include <linux/regmap.h>
 #include <linux/regulator/driver.h>
-#include <linux/power/bq2419x-charger.h>
+#include <linux/regulator/machine.h>
+#include <linux/kthread.h>
 
 #define PALMAS_NUM_CLIENTS	4
 
@@ -217,6 +218,7 @@ struct palmas_resource;
 struct palmas_usb;
 struct palmas_rtc;
 struct palmas_battery_info;
+struct palmas_charger_chip;
 
 #define palmas_rails(_name) "palmas_"#_name
 
@@ -272,6 +274,40 @@ struct palmas_gpadc_platform_data {
 	/* Sets the START_POLARITY bit in the RT_CTRL register */
 	int start_polarity;
 };
+
+struct palmas_charger_chip {
+	struct device                   *dev;
+	struct regmap                   *regmap;
+	int                             irq;
+	int                             gpio_otg_iusb;
+	int                             wdt_refresh_timeout;
+	int                             wdt_time_sec;
+
+	struct mutex                    mutex;
+	int                             in_current_limit;
+	int                             rtc_alarm_time;
+	void                            (*update_status)(int);
+
+	struct regulator_dev            *chg_rdev;
+	struct regulator_desc           chg_reg_desc;
+	struct regulator_init_data      chg_reg_init_data;
+
+	struct regulator_dev            *vbus_rdev;
+	struct regulator_desc           vbus_reg_desc;
+	struct regulator_init_data      vbus_reg_init_data;
+
+	struct kthread_worker           bq_kworker;
+	struct task_struct              *bq_kworker_task;
+	struct kthread_work             bq_wdt_work;
+	struct rtc_device               *rtc;
+	int                             stop_thread;
+	int                             suspended;
+	int                             chg_restart_timeout;
+	int                             chg_restart_time;
+	int                             use_regmap;
+	struct palmas                   *palmas;
+};
+
 
 struct palmas_reg_init {
 	/* warm_rest controls the voltage levels after a warm reset
@@ -472,6 +508,33 @@ struct palmas_clk_platform_data {
 	int clk32kgaudio_mode_sleep;
 };
 
+struct palmas_vbus_platform_data {
+	int gpio_otg_iusb;
+	int num_consumer_supplies;
+	struct regulator_consumer_supply *consumer_supplies;
+};
+
+struct palmas_bcharger_platform_data {
+	void (*update_status)(int);
+	int (*battery_check)(void);
+
+	int max_charge_volt_mV;
+	int max_charge_current_mA;
+	int charging_term_current_mA;
+	int wdt_timeout;
+	int rtc_alarm_time;
+	int num_consumer_supplies;
+	struct regulator_consumer_supply *consumer_supplies;
+	int chg_restart_time;
+	int is_battery_present;
+};
+
+struct palmas_charger_platform_data {
+	struct palmas_vbus_platform_data *vbus_pdata;
+	struct palmas_bcharger_platform_data *bcharger_pdata;
+};
+
+
 struct palmas_rtc_platform_data {
 	unsigned enable_charging:1;
 	unsigned charging_current_ua;
@@ -549,7 +612,7 @@ struct palmas_platform_data {
 
 	struct palmas_pinctrl_platform_data *pinctrl_pdata;
 	struct palmas_extcon_platform_data *extcon_pdata;
-	struct bq2419x_platform_data *charger_pdata;
+	struct palmas_charger_platform_data *charger_pdata;
 
 	int watchdog_timer_initial_period;
 
@@ -1722,6 +1785,7 @@ enum usb_irq_events {
 #define PALMAS_EXT_CHRG_CTRL					0x18
 #define PALMAS_PMU_SECONDARY_INT2				0x19
 #define PALMAS_USB_CHGCTL1					0x1A
+#define PALMAS_USB_CHGCTL2					0x1B
 
 /* Bit definitions for DEV_CTRL */
 #define PALMAS_DEV_CTRL_DEV_STATUS_MASK				0x0c
@@ -1956,6 +2020,9 @@ enum usb_irq_events {
 
 /* Bit definitions for USB_CHGCTL1 */
 #define PALMAS_USB_CHGCTL1_USB_SUSPEND				0x04
+
+/* Bit definitions for USB_CHGCTL2 */
+#define PALMAS_USB_CHGCTL2_BOOST_EN				0x08
 
 /* Registers for function RESOURCE */
 #define PALMAS_CLK32KG_CTRL					0x0
@@ -3738,7 +3805,66 @@ enum usb_irq_events {
 #define PALMAS_GPADC_TRIMINVALID				-1
 
 /* Registers for function BQ24192 */
-#define PALMAS_REG10                                            0xA
+#define PALMAS_CHARGER_REG00					0x00
+#define PALMAS_CHARGER_REG01					0x01
+#define PALMAS_CHARGER_REG02					0x02
+#define PALMAS_CHARGER_REG03					0x03
+#define PALMAS_CHARGER_REG04					0x04
+#define PALMAS_CHARGER_REG05					0x05
+#define PALMAS_CHARGER_REG06					0x06
+#define PALMAS_CHARGER_REG07					0x07
+#define PALMAS_CHARGER_REG08					0x08
+#define PALMAS_CHARGER_REG09					0x09
+#define PALMAS_CHARGER_REG10					0x0a
+
+#define BQ24190_IC_VER                  0x40
+#define BQ24192_IC_VER                  0x28
+#define BQ24192i_IC_VER                 0x18
+
+#define PALMAS_ENABLE_CHARGE_MASK      0x30
+#define PALMAS_ENABLE_CHARGE           0x10
+#define PALMAS_ENABLE_VBUS             0x20
+
+#define PALMAS_REG0                    0x0
+#define PALMAS_EN_HIZ                  BIT(7)
+
+#define PALMAS_CHRG_CTRL_REG_3A        0xC0
+#define PALMAS_OTP_CURRENT_500MA       0x32
+
+#define PALMAS_WD                      0x5
+#define PALMAS_WD_MASK                 0x30
+#define PALMAS_WD_DISABLE              0x00
+#define PALMAS_WD_40ms                 0x10
+#define PALMAS_WD_80ms                 0x20
+#define PALMAS_WD_160ms                0x30
+
+#define PALMAS_VBUS_STAT               0xc0
+#define PALMAS_VBUS_UNKNOWN            0x00
+#define PALMAS_VBUS_USB                0x40
+#define PALMAS_VBUS_AC                 0x80
+
+#define PALMAS_CHRG_STATE_MASK                 0x30
+#define PALMAS_CHRG_STATE_NOTCHARGING          0x00
+#define PALMAS_CHRG_STATE_PRE_CHARGE           0x10
+#define PALMAS_CHRG_STATE_POST_CHARGE          0x20
+#define PALMAS_CHRG_STATE_CHARGE_DONE          0x30
+
+#define PALMAS_FAULT_WATCHDOG_FAULT            BIT(7)
+#define PALMAS_FAULT_BOOST_FAULT               BIT(6)
+#define PALMAS_FAULT_CHRG_FAULT_MASK           0x30
+#define PALMAS_FAULT_CHRG_NORMAL               0x00
+#define PALMAS_FAULT_CHRG_INPUT                0x10
+#define PALMAS_FAULT_CHRG_THERMAL              0x20
+#define PALMAS_FAULT_CHRG_SAFTY                0x30
+
+#define PALMAS_FAULT_NTC_FAULT                 0x07
+
+#define PALMAS_CONFIG_MASK             0x7
+#define PALMAS_INPUT_VOLTAGE_MASK      0x78
+#define PALMAS_NVCHARGER_INPUT_VOL_SEL 0x40
+#define PALMAS_DEFAULT_INPUT_VOL_SEL   0x30
+
+#define PALMAS_MAX_REGS                (PALMAS_REVISION_REG + 1)
 
 /* Registers for function FUEL_GAUGE */
 #define PALMAS_FG_REG_00                                      0x0
@@ -4137,4 +4263,5 @@ static inline int palmas_is_es_version_or_less(struct palmas *palmas,
 
 	return false;
 }
+
 #endif /*  __LINUX_MFD_PALMAS_H */
