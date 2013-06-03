@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -976,9 +976,6 @@ static int tegra_camera_capture_stop(struct tegra_camera_dev *pcdev)
 
 static void tegra_camera_activate(struct tegra_camera_dev *pcdev)
 {
-	if (pcdev->pdata->enable_camera)
-		pcdev->pdata->enable_camera(pcdev->ndev);
-
 	nvhost_module_busy_ext(pcdev->ndev);
 
 	/* Enable external power */
@@ -1033,9 +1030,6 @@ static void tegra_camera_deactivate(struct tegra_camera_dev *pcdev)
 	regulator_disable(pcdev->reg);
 
 	nvhost_module_idle_ext(pcdev->ndev);
-
-	if (pcdev->pdata->disable_camera)
-		pcdev->pdata->disable_camera(pcdev->ndev);
 }
 
 static int tegra_camera_capture_frame(struct tegra_camera_dev *pcdev)
@@ -1433,8 +1427,18 @@ static int tegra_camera_add_device(struct soc_camera_device *icd)
 	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct tegra_camera_dev *pcdev = ici->priv;
 
-	if (pcdev->icd)
-		return -EBUSY;
+	pcdev->pdata = icd->link->priv;
+	if (!pcdev->pdata) {
+		dev_err(icd->parent, "No platform data!\n");
+		return -EINVAL;
+	}
+
+	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
+		dev_err(icd->parent,
+			"Invalid camera port %d in platform data\n",
+			pcdev->pdata->port);
+		return -EINVAL;
+	}
 
 	pm_runtime_get_sync(ici->v4l2_dev.dev);
 
@@ -1696,11 +1700,11 @@ static struct soc_camera_host_ops tegra_soc_camera_host_ops = {
 
 static struct of_device_id tegra_vi_of_match[] = {
 	{ .compatible = "nvidia,tegra20-vi",
-		.data = (struct nvhost_device_data *)&t20_camera_info },
+		.data = (struct nvhost_device_data *)&t20_vi_info },
 	{ .compatible = "nvidia,tegra30-vi",
-		.data = (struct nvhost_device_data *)&t30_camera_info },
+		.data = (struct nvhost_device_data *)&t30_vi_info },
 	{ .compatible = "nvidia,tegra114-vi",
-		.data = (struct nvhost_device_data *)&t11_camera_info },
+		.data = (struct nvhost_device_data *)&t11_vi_info },
 	{ },
 };
 
@@ -1733,12 +1737,6 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	}
 
 	pcdev->ndata = ndata;
-	pcdev->pdata = ndata->private_data;
-	if (!pcdev->pdata) {
-		dev_err(&pdev->dev, "No platform data!\n");
-		err = -EINVAL;
-		goto exit_free_pcdev;
-	}
 	pcdev->ndev = pdev;
 
 	pcdev->ici.priv = pcdev;
@@ -1751,12 +1749,6 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	INIT_WORK(&pcdev->work, tegra_camera_work);
 	spin_lock_init(&pcdev->videobuf_queue_lock);
 	mutex_init(&pcdev->work_mutex);
-
-	if (!tegra_camera_port_is_valid(pcdev->pdata->port)) {
-		dev_err(&pdev->dev, "Invalid camera port %d in platform data\n",
-			pcdev->pdata->port);
-		goto exit_free_pcdev;
-	}
 
 	pcdev->clk_vi = clk_get(&pdev->dev, "vi");
 	if (IS_ERR_OR_NULL(pcdev->clk_vi)) {
@@ -1926,9 +1918,6 @@ static int tegra_camera_suspend(struct platform_device *pdev,
 		/* Suspend the camera sensor. */
 		WARN_ON(!pcdev->icd->ops->suspend);
 		pcdev->icd->ops->suspend(pcdev->icd, state);
-
-		/* Power off the camera subsystem. */
-		pcdev->pdata->disable_camera(pcdev->ndev);
 	}
 
 	return 0;
@@ -1942,9 +1931,6 @@ static int tegra_camera_resume(struct platform_device *pdev)
 
 	/* We only need to do something if a camera sensor is attached. */
 	if (pcdev->icd) {
-		/* Power on the camera subsystem. */
-		pcdev->pdata->enable_camera(pcdev->ndev);
-
 		/* Resume the camera host. */
 		tegra_camera_save_syncpts(pcdev);
 		tegra_camera_capture_setup(pcdev);
