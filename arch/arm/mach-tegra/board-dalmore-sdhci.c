@@ -232,8 +232,8 @@ static int dalmore_wifi_set_carddetect(int val)
 
 static struct regulator *dalmore_vdd_com_3v3;
 static struct regulator *dalmore_vddio_com_1v8;
-#define DALMORE_VDD_WIFI_3V3 "vdd_wifi_3v3"
-#define DALMORE_VDD_WIFI_1V8 "vddio_wifi_1v8"
+#define DALMORE_VDD_WIFI_3V3 "avdd"
+#define DALMORE_VDD_WIFI_1V8 "dvdd"
 
 static int dalmore_wifi_regulator_enable(void)
 {

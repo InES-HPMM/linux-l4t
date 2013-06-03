@@ -233,8 +233,8 @@ static int roth_wifi_set_carddetect(int val)
 
 static struct regulator *roth_vdd_com_3v3;
 static struct regulator *roth_vddio_com_1v8;
-#define ROTH_VDD_WIFI_3V3 "vdd_wl_pa"
-#define ROTH_VDD_WIFI_1V8 "vddio"
+#define ROTH_VDD_WIFI_3V3 "avdd"
+#define ROTH_VDD_WIFI_1V8 "dvdd"
 
 
 static int roth_wifi_regulator_enable(void)

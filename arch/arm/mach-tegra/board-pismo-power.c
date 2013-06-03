@@ -123,7 +123,7 @@ static struct regulator_consumer_supply as3720_sd3_supply[] = {
 	REGULATOR_SUPPLY("pwrdet_sdmmc4", NULL),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 	REGULATOR_SUPPLY("vddio_bt_1v8", NULL),
-	REGULATOR_SUPPLY("vddio_wifi_1v8", NULL),
+	REGULATOR_SUPPLY("dvdd", "bcm4329_wlan.1"),
 	REGULATOR_SUPPLY("vdd_gps_1v8", NULL),
 };
 
@@ -150,7 +150,7 @@ static struct regulator_consumer_supply as3720_sd5_supply[] = {
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 	REGULATOR_SUPPLY("vdd_bt_3v3", NULL),
-	REGULATOR_SUPPLY("vdd_wifi_3v3", NULL),
+	REGULATOR_SUPPLY("avdd", "bcm4329_wlan.1"),
 };
 
 static struct regulator_consumer_supply as3720_sd6_supply[] = {

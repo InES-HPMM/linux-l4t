@@ -227,8 +227,8 @@ static int pismo_wifi_set_carddetect(int val)
 
 static struct regulator *pismo_vdd_com_3v3;
 static struct regulator *pismo_vddio_com_1v8;
-#define PISMO_VDD_WIFI_3V3 "vdd_wifi_3v3"
-#define PISMO_VDD_WIFI_1V8 "vddio_wifi_1v8"
+#define PISMO_VDD_WIFI_3V3 "avdd"
+#define PISMO_VDD_WIFI_1V8 "dvdd"
 
 static int pismo_wifi_regulator_enable(void)
 {
