@@ -461,6 +461,35 @@ static struct uac2_output_terminal_descriptor *
 	return NULL;
 }
 
+static int usb_device_sample_rate_info(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 2;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 192000;
+	return 0;
+}
+
+static int usb_device_sample_rate_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct audioformat *fp = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[0] = fp->rate_min;
+	ucontrol->value.integer.value[1] = fp->rate_max;
+
+	return 0;
+}
+
+struct snd_kcontrol_new usb_device_sample_rate_control = {
+	.access = SNDRV_CTL_ELEM_ACCESS_READ,
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "USB Device Sample Rate",
+	.info = usb_device_sample_rate_info,
+	.get = usb_device_sample_rate_get,
+};
+
 int snd_usb_parse_audio_interface(struct snd_usb_audio *chip, int iface_no)
 {
 	struct usb_device *dev;
@@ -697,6 +726,11 @@ int snd_usb_parse_audio_interface(struct snd_usb_audio *chip, int iface_no)
 		snd_usb_init_pitch(chip, iface_no, alts, fp);
 		snd_usb_init_sample_rate(chip, iface_no, alts, fp, fp->rate_max);
 	}
+
+	/* Add usb device sample rate control */
+	snd_ctl_add(chip->card,
+		snd_ctl_new1(&usb_device_sample_rate_control, fp));
+
 	return 0;
 }
 
