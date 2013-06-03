@@ -879,15 +879,15 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		}
 	}
 
-	bbc->sim0 = regulator_get(NULL, "vddio_sim0");
-	if (IS_ERR_OR_NULL(bbc->sim0)) {
+	bbc->sim0 = regulator_get(&pdev->dev, "vddio_sim0");
+	if (IS_ERR(bbc->sim0)) {
 		dev_err(&pdev->dev, "vddio_sim0 regulator get failed\n");
 		bbc->sim0 = NULL;
 		goto sim_error;
 	}
 
-	bbc->sim1 = regulator_get(NULL, "vddio_sim1");
-	if (IS_ERR_OR_NULL(bbc->sim1)) {
+	bbc->sim1 = regulator_get(&pdev->dev, "vddio_sim1");
+	if (IS_ERR(bbc->sim1)) {
 		dev_err(&pdev->dev, "vddio_sim1 regulator get failed\n");
 		bbc->sim1 = NULL;
 		goto sim_error;
@@ -902,15 +902,15 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		}
 	}
 
-	bbc->rf1v7 = regulator_get(NULL, "vdd_1v7_rf");
-	if (IS_ERR_OR_NULL(bbc->rf1v7)) {
+	bbc->rf1v7 = regulator_get(&pdev->dev, "vdd_1v7_rf");
+	if (IS_ERR(bbc->rf1v7)) {
 		dev_info(&pdev->dev,
 			 "vdd_1v7_rf regulator not available\n");
 		bbc->rf1v7 = NULL;
 	}
 
-	bbc->rf2v65 = regulator_get(NULL, "vdd_2v65_rf");
-	if (IS_ERR_OR_NULL(bbc->rf2v65)) {
+	bbc->rf2v65 = regulator_get(&pdev->dev, "vdd_2v65_rf");
+	if (IS_ERR(bbc->rf2v65)) {
 		dev_info(&pdev->dev,
 			 "vdd_2v65_rf regulator not available\n");
 		bbc->rf2v65 = NULL;
