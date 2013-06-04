@@ -78,6 +78,12 @@ struct as3722_rtc_platform_data {
 	bool enable_clk32k;
 };
 
+struct as3722_pinctrl_init_data {
+	int pin_id;
+	int usage;
+	int mode;
+};
+
 struct as3722_platform_data {
 	struct regulator_init_data *reg_init[AS3722_NUM_REGULATORS];
 
@@ -91,6 +97,8 @@ struct as3722_platform_data {
 	int num_gpio_cfgs;
 	struct as3722_gpio_config *gpio_cfgs;
 	struct as3722_rtc_platform_data *rtc_pdata;
+	struct as3722_pinctrl_init_data *pinctrl_pdata;
+	int pinctrl_init_data_size;
 };
 
 static inline int as3722_reg_read(struct as3722 *as3722, u32 reg, u32 *dest)

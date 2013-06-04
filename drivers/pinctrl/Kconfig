@@ -249,6 +249,12 @@ config PINCTRL_XWAY
 	depends on SOC_TYPE_XWAY
 	depends on PINCTRL_LANTIQ
 
+config PINCTRL_AS3722
+	tristate "AS3722 Pincontrol support"
+	depends on MFD_AS3722
+	help
+	  AS3722 is a PMIC from AMS for smartphone and tablets.
+
 endmenu
 
 endif

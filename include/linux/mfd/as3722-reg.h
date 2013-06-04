@@ -96,6 +96,23 @@
 #define AS3722_GPIO_MODE_IO_OPEN_DRAIN_PULLUP  6
 #define AS3722_GPIO_MODE_OUTPUT_VDDL           7
 
+/* GPIO usage */
+#define AS3722_GPIO_USAGE_MASK                          0x78
+#define AS3722_GPIO_USAGE_IO_OPERATION                  0
+#define AS3722_GPIO_USAGE_INTERRUPT_OUTPUT              1
+#define AS3722_GPIO_USAGE_VSUB_VBAT_LOW_UNDERBOUNCED    2
+#define AS3722_GPIO_USAGE_GPIO_INTERRUPT_INPUT          3
+#define AS3722_GPIO_USAGE_PWM_INPUT                     4
+#define AS3722_GPIO_USAGE_VOLTAGE_STBY                  5
+#define AS3722_GPIO_USAGE_OC_PG_SD0                     6
+#define AS3722_GPIO_USAGE_PWR_GOOD                      7
+#define AS3722_GPIO_USAGE_32K_OUTPUT                    8
+#define AS3722_GPIO_USAGE_WATCHDOG_INPUT                9
+#define AS3722_GPIO_USAGE_SOFT_RESET_INPUT              0xB
+#define AS3722_GPIO_USAGE_PWM_OUTPUT                    0xC
+#define AS3722_GPIO_USAGE_VSUP_VBAT_LOW_DEBOUNCED       0xD
+#define AS3722_GPIO_USAGE_OC_PG_SD6                     0xE
+
 /* Interrupt IDs */
 #define AS3722_IRQ_MAX_HANDLER                 11
 #define AS3722_IRQ_LID                         0
