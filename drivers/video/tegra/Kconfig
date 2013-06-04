@@ -210,6 +210,16 @@ config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	  Say Y here to force to convert carveout memory requests to
 	  I/O virtual memory requests.
 
+config NVMAP_HANDLE_MARSHAL
+	bool "Marshal nvmap handle id"
+	depends on TEGRA_NVMAP
+	help
+	  Enables nvmap handle id marshalling. Marshalling converts
+	  the nvmap handle id into an unique number before passing
+	  the handle id to user/kernel clients. The marshalling
+	  would allow sharing a 64-bit handle id as 32-bit id to
+	  user space when kernel is 64-bit and user space is 32-bit.
+
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
 	default n
