@@ -661,6 +661,11 @@ static struct regulator_ops palmas_ops_smps10 = {
 	.map_voltage		= regulator_map_voltage_linear,
 };
 
+static int palmas_ldo_enable_time(struct regulator_dev *dev)
+{
+	return 500;
+}
+
 static int palmas_is_enabled_ldo(struct regulator_dev *dev)
 {
 	struct palmas_pmic *pmic = rdev_get_drvdata(dev);
@@ -741,6 +746,7 @@ static int palmas_map_voltage_ldo(struct regulator_dev *rdev,
 }
 
 static struct regulator_ops palmas_ops_ldo = {
+	.enable_time		= palmas_ldo_enable_time,
 	.is_enabled		= palmas_is_enabled_ldo,
 	.enable			= palmas_enable_ldo,
 	.disable		= palmas_disable_ldo,
