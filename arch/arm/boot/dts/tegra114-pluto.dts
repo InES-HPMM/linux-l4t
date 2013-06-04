@@ -860,6 +860,21 @@
 		status = "disable";
 	};
 
+	serial@70006000 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006040 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
+	serial@70006200 {
+		compatible = "nvidia,tegra114-hsuart";
+		status = "okay";
+	};
+
 	i2c@7000c500 {
 		status = "okay";
 		clock-frequency = <100000>;
