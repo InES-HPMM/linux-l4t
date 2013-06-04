@@ -458,21 +458,22 @@ static s32 show_current(struct device *dev,
 	}
 
 	/* getting current readings in milli amps*/
-	current_mA = be16_to_cpu(i2c_smbus_read_word_data(client,
-		INA230_CURRENT));
-	if (current_mA < 0) {
+	retval = i2c_smbus_read_word_data(client, INA230_CURRENT);
+	if (retval < 0) {
 		mutex_unlock(&data->mutex);
-		return -EINVAL;
+		return retval;
 	}
+	current_mA = (s16) be16_to_cpu(retval);
 
 	ensure_enabled_end(client);
 	mutex_unlock(&data->mutex);
 
 	if (data->pdata->shunt_polarity_inverted)
-		current_mA = (s16)current_mA * -1;
+		current_mA *= -1;
 
-	current_mA =
-		(current_mA * data->pdata->power_lsb) / data->pdata->divisor;
+	current_mA *= (s16) data->pdata->power_lsb;
+	if (data->pdata->divisor)
+		current_mA /= (s16) data->pdata->divisor;
 	if (data->pdata->precision_multiplier)
 		current_mA /= (s16) data->pdata->precision_multiplier;
 
