@@ -35,6 +35,7 @@
 #include <mach/tegra_usb_pmc.h>
 #include <mach/pm_domains.h>
 
+#include "../../../arch/arm/mach-tegra/iomap.h" /* HACK -- remove */
 #include "xhci-tegra.h"
 #include "xhci.h"
 
