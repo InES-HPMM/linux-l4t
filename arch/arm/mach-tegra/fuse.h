@@ -302,6 +302,10 @@ static inline int tegra_core_speedo_mv(void) { return 1200; }
 static inline int tegra_get_cpu_iddq_value(void) { return 0; }
 #endif /* CONFIG_ARCH_TEGRA_2x_SOC */
 
+#ifdef CONFIG_ARCH_TEGRA_14x_SOC
+int tegra_core_speedo_value(void);
+#endif
+
 #else
 
 static inline int tegra_cpu_process_id(void) { return 0; }

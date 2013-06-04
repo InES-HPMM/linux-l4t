@@ -161,6 +161,11 @@ int tegra_cpu_speedo_value(void)
 	return cpu_speedo_value;
 }
 
+int tegra_core_speedo_value(void)
+{
+	return core_speedo_value;
+}
+
 /*
  * CPU and core nominal voltage levels as determined by chip SKU and speedo
  * (not final - can be lowered by dvfs tables and rail dependencies; the
