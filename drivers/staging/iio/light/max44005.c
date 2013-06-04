@@ -36,7 +36,6 @@
 #define PROX_CONF_REG_ADDR	0x03
 #define AMB_CLEAR_HIGH_ADDR	0x04
 #define PROX_HIGH_ADDR		0x10
-#define AMB_TEMP_HIGH_ADDR	0x12
 
 #define MAX_SHDN_ENABLE		0x08
 #define MAX_SHDN_DISABLE	0x00
@@ -50,8 +49,6 @@
 #define MODE_PROX_ONLY		0x5
 
 #define COMP_ENABLE		0x40
-#define TEMP_ENABLE		0x20
-#define TEMP_DISABLE		0xDF
 
 #define AMB_PGA_1x		0x00
 #define AMB_PGA_4x		0x01
@@ -79,14 +76,10 @@
 		return sprintf(buf, "%d", value);			 \
 	} while (0);							 \
 
-/* clear is needed for both temp and clear */
-#define CLEAR_ENABLED		(chip->using_temp || chip->using_als)
-
-#define USING_CLEAR		(chip->using_als)
+#define CLEAR_ENABLED		(chip->using_als)
 
 #define PROXIMITY_ENABLED	(chip->using_proximity)
 
-#define TEMP_ENABLED		(chip->using_temp)
 
 enum {
 	CHIP = 0,
@@ -104,7 +97,6 @@ struct max44005_chip {
 
 	bool			using_als;
 	bool			using_proximity;
-	bool			using_temp;
 
 	bool			is_standby;
 	int			shutdown_complete;
@@ -203,26 +195,6 @@ finish:
 	return max44005_write(chip, 0xA1, PROX_CONF_REG_ADDR) == 0;
 }
 
-/* assumes power is on */
-static bool enable_temp_channel(struct max44005_chip *chip, int enable_temp)
-{
-	int ret = 0;
-
-	if (enable_temp) {
-		/* if LED is not used, then clear is enabled */
-		if (!CLEAR_ENABLED && PROXIMITY_ENABLED)
-			set_main_conf(chip, MODE_CLEAR_PROX);
-		ret = max44005_write(chip, TEMP_ENABLE | COMP_ENABLE |
-					AMB_PGA_256x, AMB_CONF_REG_ADDR);
-	} else {
-		ret = max44005_write(chip, TEMP_DISABLE &
-					(COMP_ENABLE | AMB_PGA_256x),
-					AMB_CONF_REG_ADDR);
-	}
-
-	return ret == 0;
-}
-
 static bool max44005_power(struct max44005_chip *chip, int power_on)
 {
 	int was_regulator_already_on = false;
@@ -289,8 +261,6 @@ static bool max44005_restore_state(struct max44005_chip *chip)
 		break;
 	}
 
-	if (ret)
-		return enable_temp_channel(chip, TEMP_ENABLED);
 	return false;
 }
 */
@@ -329,17 +299,10 @@ static ssize_t amb_clear_enable(struct device *dev,
 		return count;
 
 	mutex_lock(&chip->lock);
-	/* if clear channel is being used by temp */
-	if (TEMP_ENABLED)
-		goto success;
 
 	if (lval) {
 		if (!max44005_power(chip, true))
 			goto fail;
-		/* enabling clear also enabled temp channel
-		 * although there are no users for it,
-		 * so disable it explicitly */
-		enable_temp_channel(chip, false);
 
 		if (!PROXIMITY_ENABLED)
 			goto success;
@@ -431,82 +394,17 @@ fail:
 }
 /* amb LED end */
 
-/* amb TEMP begin */
-static ssize_t show_amb_temp_value(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	MAX44005_SYSFS_SHOW(AMB_TEMP_HIGH_ADDR, 2);
-}
-
-static ssize_t amb_temp_enable(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	u32 lval;
-	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-	struct max44005_chip *chip = iio_priv(indio_dev);
-
-	if (kstrtou32(buf, 10, &lval))
-		return -EINVAL;
-
-	if (lval && (lval != 1))
-		return -EINVAL;
-
-	if (lval == TEMP_ENABLED)
-		return count;
-
-	mutex_lock(&chip->lock);
-	if (lval) {
-		if (!max44005_power(chip, true))
-			goto fail;
-
-		if (PROXIMITY_ENABLED && !USING_CLEAR &&
-				!set_main_conf(chip, MODE_CLEAR_PROX))
-			goto fail;
-
-		if (enable_temp_channel(chip, true))
-			goto success;
-
-		goto fail;
-	} else {
-		if (!USING_CLEAR && !PROXIMITY_ENABLED &&
-			max44005_power(chip, false))
-			goto success;
-
-		if (!USING_CLEAR && PROXIMITY_ENABLED &&
-			set_main_conf(chip, MODE_PROX_ONLY) &&
-			enable_temp_channel(chip, false))
-			goto success;
-
-		if (USING_CLEAR && enable_temp_channel(chip, false))
-			goto success;
-
-		goto fail;
-	}
-
-success:
-	chip->using_temp = lval;
-	mutex_unlock(&chip->lock);
-	return count;
-fail:
-	mutex_unlock(&chip->lock);
-	return -EBUSY;
-}
-/* amb TEMP end */
-
 static IIO_DEVICE_ATTR(name, S_IRUGO, show_name, NULL, 0);
 static IIO_DEVICE_ATTR(amb_clear, S_IRUGO | S_IWUSR, show_amb_clear_value,
 			amb_clear_enable, 0);
 static IIO_DEVICE_ATTR(proximity, S_IRUGO | S_IWUSR, show_prox_value,
 			prox_enable, 0);
-static IIO_DEVICE_ATTR(amb_temp, S_IRUGO | S_IWUSR, show_amb_temp_value,
-			amb_temp_enable, 0);
 
 /* sysfs attr */
 static struct attribute *max44005_iio_attr[] = {
 	&iio_dev_attr_name.dev_attr.attr,
 	&iio_dev_attr_amb_clear.dev_attr.attr,
 	&iio_dev_attr_proximity.dev_attr.attr,
-	&iio_dev_attr_amb_temp.dev_attr.attr,
 	NULL
 };
 
@@ -597,7 +495,6 @@ static int max44005_probe(struct i2c_client *client,
 
 	chip->using_als = false;
 	chip->using_proximity = false;
-	chip->using_temp = false;
 	chip->shutdown_complete = 0;
 	dev_info(&client->dev, "%s() success\n", __func__);
 	return 0;
