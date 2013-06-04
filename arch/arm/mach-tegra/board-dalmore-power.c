@@ -685,7 +685,7 @@ PALMAS_REGS_PDATA(ldo7, 2800,  2800, tps65090_rails(DCDC2), 0, 0, 1, 0,
 PALMAS_REGS_PDATA(ldo8, 900,  900, tps65090_rails(DCDC3), 1, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1, 0,
-	0, 0, 0, 0, 0);
+	1, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldoln, 3300, 3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
