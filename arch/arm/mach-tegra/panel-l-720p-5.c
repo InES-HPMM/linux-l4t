@@ -537,12 +537,22 @@ static int dsi_l_720p_5_enable(struct device *dev)
 		goto fail;
 	}
 
-	err = dsi_l_720p_5_gpio_get();
+	err = tegra_panel_gpio_get_dt("lg,720p-5", &panel_of);
 	if (err < 0) {
-		pr_err("dsi gpio request failed\n");
-		goto fail;
+		/* try to request gpios from board file */
+		err = dsi_l_720p_5_gpio_get();
+		if (err < 0) {
+			pr_err("dsi gpio request failed\n");
+			goto fail;
+		}
 	}
-	gpio_direction_output(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
+
+	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_RESET]))
+		gpio_direction_output(
+			panel_of.panel_gpio[TEGRA_GPIO_RESET], 0);
+	else
+		gpio_direction_output(
+			dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
 
 	if (avdd_lcd_3v0_2v8) {
 		err = regulator_enable(avdd_lcd_3v0_2v8);
@@ -574,15 +584,24 @@ static int dsi_l_720p_5_enable(struct device *dev)
 	usleep_range(3000, 5000);
 
 #if DSI_PANEL_RESET
-	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
-	usleep_range(1000, 5000);
-	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
-	msleep(20);
+	err = tegra_panel_reset(&panel_of, 20);
+	if (err < 0) {
+		/* use platform data */
+		gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
+		usleep_range(1000, 5000);
+		gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
+		usleep_range(1000, 5000);
+		gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 1);
+		msleep(20);
+	}
 #endif
+	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_BL_ENABLE]))
+		gpio_direction_output(
+			panel_of.panel_gpio[TEGRA_GPIO_BL_ENABLE], 1);
+	else
+		gpio_direction_output(
+			dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 1);
 
-	gpio_direction_output(dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 1);
 	is_bl_powered = true;
 	return 0;
 fail:
@@ -704,9 +723,21 @@ static struct tegra_dsi_out dsi_l_720p_5_pdata = {
 
 static int dsi_l_720p_5_disable(void)
 {
-	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 0);
+	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_BL_ENABLE]))
+		gpio_direction_output(
+			panel_of.panel_gpio[TEGRA_GPIO_BL_ENABLE], 0);
+	else
+		gpio_direction_output(
+			dsi_l_720p_5_pdata.dsi_panel_bl_en_gpio, 0);
+
 	is_bl_powered = false;
-	gpio_set_value(dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
+
+	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_RESET]))
+		gpio_direction_output(
+			panel_of.panel_gpio[TEGRA_GPIO_RESET], 0);
+	else
+		gpio_direction_output(
+			dsi_l_720p_5_pdata.dsi_panel_rst_gpio, 0);
 
 	if (vdd_sys_bl_3v7)
 		regulator_disable(vdd_sys_bl_3v7);
