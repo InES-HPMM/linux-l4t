@@ -1,7 +1,7 @@
 /*
  * ov2710.c - ov2710 sensor driver
  *
- * Copyright (c) 2011, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION, All Rights Reserved.
  *
  * Contributors:
  *      erik lilliebjerg <elilliebjerg@nvidia.com>
@@ -16,6 +16,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -35,6 +36,7 @@ struct ov2710_info {
 	int mode;
 	struct i2c_client *i2c_client;
 	struct ov2710_platform_data *pdata;
+	struct clk *mclk;
 	u8 i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
 	struct nvc_fuseid fuse_id;
 };
@@ -747,21 +749,49 @@ static long ov2710_ioctl(struct file *file,
 
 static struct ov2710_info *info;
 
+static void ov2710_mclk_disable(struct ov2710_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov2710_mclk_enable(struct ov2710_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ov2710_open(struct inode *inode, struct file *file)
 {
+	int err = 0;
 	u8 status;
 
 	file->private_data = info;
-	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->i2c_client->dev);
+	if (info->pdata && info->pdata->power_on) {
+		int err = ov2710_mclk_enable(info);
+		if (!err)
+			err = info->pdata->power_on(&info->i2c_client->dev);
+		if (err < 0)
+			ov2710_mclk_disable(info);
+	}
 	ov2710_get_status(info, &status);
-	return 0;
+	return err;
 }
 
 int ov2710_release(struct inode *inode, struct file *file)
 {
-	if (info->pdata && info->pdata->power_off)
+	if (info->pdata && info->pdata->power_off) {
 		info->pdata->power_off(&info->i2c_client->dev);
+		ov2710_mclk_disable(info);
+	}
 	file->private_data = NULL;
 	return 0;
 }
@@ -784,24 +814,34 @@ static int ov2710_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int err;
+	const char *mclk_name;
 
 	pr_info("ov2710: probing sensor.\n");
 
-	info = kzalloc(sizeof(struct ov2710_info), GFP_KERNEL);
+	info = devm_kzalloc(&client->dev,
+			sizeof(struct ov2710_info), GFP_KERNEL);
 	if (!info) {
 		pr_err("ov2710: Unable to allocate memory!\n");
 		return -ENOMEM;
 	}
 
+	info->pdata = client->dev.platform_data;
+	info->i2c_client = client;
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
+
 	err = misc_register(&ov2710_device);
 	if (err) {
 		pr_err("ov2710: Unable to register misc device!\n");
-		kfree(info);
 		return err;
 	}
-
-	info->pdata = client->dev.platform_data;
-	info->i2c_client = client;
 
 	i2c_set_clientdata(client, info);
 	return 0;
@@ -812,7 +852,6 @@ static int ov2710_remove(struct i2c_client *client)
 	struct ov2710_info *info;
 	info = i2c_get_clientdata(client);
 	misc_deregister(&ov2710_device);
-	kfree(info);
 	return 0;
 }
 

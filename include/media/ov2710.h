@@ -49,6 +49,7 @@ struct ov2710_ae {
 
 #ifdef __KERNEL__
 struct ov2710_platform_data {
+	const char *mclk_name;
 	int (*power_on)(struct device *);
 	int (*power_off)(struct device *);
 
