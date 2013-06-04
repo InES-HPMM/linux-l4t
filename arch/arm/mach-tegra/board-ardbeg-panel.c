@@ -90,6 +90,8 @@ struct platform_device * __init ardbeg_host1x_init(void)
 #endif
 
 /* hdmi related regulators */
+static struct regulator *ardbeg_hdmi_reg;
+static struct regulator *ardbeg_hdmi_pll;
 static struct regulator *ardbeg_hdmi_vddio;
 
 static struct resource ardbeg_disp1_resources[] = {
@@ -174,13 +176,51 @@ static struct tegra_dc_out ardbeg_disp1_out = {
 
 static int ardbeg_hdmi_enable(struct device *dev)
 {
-	/* TODO */
+	int ret;
+	if (!ardbeg_hdmi_reg) {
+		ardbeg_hdmi_reg = regulator_get(dev, "avdd_hdmi");
+		if (IS_ERR_OR_NULL(ardbeg_hdmi_reg)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
+			ardbeg_hdmi_reg = NULL;
+			return PTR_ERR(ardbeg_hdmi_reg);
+		}
+	}
+	ret = regulator_enable(ardbeg_hdmi_reg);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi\n");
+		return ret;
+	}
+	if (!ardbeg_hdmi_pll) {
+		ardbeg_hdmi_pll = regulator_get(dev, "avdd_hdmi_pll");
+		if (IS_ERR_OR_NULL(ardbeg_hdmi_pll)) {
+			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
+			ardbeg_hdmi_pll = NULL;
+			regulator_put(ardbeg_hdmi_reg);
+			ardbeg_hdmi_reg = NULL;
+			return PTR_ERR(ardbeg_hdmi_pll);
+		}
+	}
+	ret = regulator_enable(ardbeg_hdmi_pll);
+	if (ret < 0) {
+		pr_err("hdmi: couldn't enable regulator avdd_hdmi_pll\n");
+		return ret;
+	}
 	return 0;
 }
 
 static int ardbeg_hdmi_disable(void)
 {
-	/* TODO */
+	if (ardbeg_hdmi_reg) {
+		regulator_disable(ardbeg_hdmi_reg);
+		regulator_put(ardbeg_hdmi_reg);
+		ardbeg_hdmi_reg = NULL;
+	}
+
+	if (ardbeg_hdmi_pll) {
+		regulator_disable(ardbeg_hdmi_pll);
+		regulator_put(ardbeg_hdmi_pll);
+		ardbeg_hdmi_pll = NULL;
+	}
 	return 0;
 }
 

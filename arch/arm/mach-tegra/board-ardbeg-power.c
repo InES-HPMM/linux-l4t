@@ -552,7 +552,7 @@ FIXED_REG(5,	vdd_dis_3v3a_sw,	vdd_dis_3v3a_sw,
 
 FIXED_REG(6,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
-	TEGRA_GPIO_PH7,	true,	true,	0,	5000,	5000);
+	TEGRA_GPIO_PH7,	false,	true,	0,	5000,	5000);
 
 /*
  * Creating fixed regulator device tables
