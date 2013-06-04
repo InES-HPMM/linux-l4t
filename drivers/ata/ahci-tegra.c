@@ -93,6 +93,7 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define FUSE_SATA_CALIB_MASK			0x3
 
 #define T_SATA0_CFG_PHY_REG			0x120
+#define T_SATA0_CFG_PHY_SQUELCH_MASK		(1 << 24)
 #define PHY_USE_7BIT_ALIGN_DET_FOR_SPD_MASK	(1 << 11)
 
 #define T_SATA0_CFG_POWER_GATE			0x4ac
@@ -286,6 +287,15 @@ static u32 tegra_ahci_idle_time = TEGRA_AHCI_DEFAULT_IDLE_TIME;
 #define PLLE_BYPASS_SS				(1 << 10)
 #define PLLE_SSCBYP				(1 << 12)
 #define PLLE_INTERP_RESET			(1 << 11)
+
+#define SATA_AUX_RX_STAT_INT_0			0x110c
+#define SATA_RX_STAT_INT_DISABLE		(1 << 2)
+
+#define T_SATA0_NVOOB				0x114
+#define T_SATA0_NVOOB_SQUELCH_FILTER_MODE_SHIFT	24
+#define T_SATA0_NVOOB_SQUELCH_FILTER_MODE_MASK	(3 << 24)
+#define T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_SHIFT	26
+#define T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_MASK	(3 << 26)
 
 #ifdef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 
@@ -989,7 +999,13 @@ static int tegra_ahci_controller_init(struct tegra_ahci_host_priv *tegra_hpriv,
 	 */
 	val = scfg_readl(T_SATA0_CFG_PHY_REG);
 	val &= ~PHY_USE_7BIT_ALIGN_DET_FOR_SPD_MASK;
+	val |= T_SATA0_CFG_PHY_SQUELCH_MASK;
 	scfg_writel(val, T_SATA0_CFG_PHY_REG);
+
+	val = scfg_readl(T_SATA0_NVOOB);
+	val |= (1 << T_SATA0_NVOOB_SQUELCH_FILTER_MODE_SHIFT);
+	val |= (3 << T_SATA0_NVOOB_SQUELCH_FILTER_LENGTH_SHIFT);
+	scfg_writel(val, T_SATA0_NVOOB);
 
 	/*
 	 * WAR: Before enabling SATA PLL shutdown, lockdet needs to be ignored.
@@ -1203,6 +1219,7 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
+	u32 val;
 
 	dev_dbg(host->dev, "** entering %s: **\n", __func__);
 	rc = tegra_ahci_controller_resume(pdev);
@@ -1219,6 +1236,12 @@ static int tegra_ahci_resume(struct platform_device *pdev)
 		rc = ahci_reset_controller(host);
 		if (rc)
 			return rc;
+
+		val = misc_readl(SATA_AUX_RX_STAT_INT_0);
+		if (val && SATA_RX_STAT_INT_DISABLE) {
+			val &= ~SATA_RX_STAT_INT_DISABLE;
+			misc_writel(val, SATA_AUX_RX_STAT_INT_0);
+		}
 
 		ahci_init_controller(host);
 	}
@@ -2228,6 +2251,13 @@ static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
 static irqreturn_t tegra_ahci_interrupt(int irq, void *dev_instance)
 {
 	irqreturn_t irq_retval;
+	u32 val;
+
+	val = misc_readl(SATA_AUX_RX_STAT_INT_0);
+	if (!(val && SATA_RX_STAT_INT_DISABLE)) {
+		val |= SATA_RX_STAT_INT_DISABLE;
+		misc_writel(val, SATA_AUX_RX_STAT_INT_0);
+	}
 
 	irq_retval = ahci_interrupt(irq, dev_instance);
 	if (irq_retval == IRQ_NONE)
