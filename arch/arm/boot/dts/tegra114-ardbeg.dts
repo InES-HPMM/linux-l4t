@@ -718,6 +718,7 @@
 	};
 
 	ahub {
+		status = "okay";
 		i2s@70080300 {
 			status = "okay";
 		};
