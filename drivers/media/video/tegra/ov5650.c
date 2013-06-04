@@ -2,6 +2,7 @@
  * ov5650.c - ov5650 sensor driver
  *
  * Copyright (C) 2011 Google Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION, All Rights Reserved.
  *
  * Contributors:
  *      Rebecca Schultz Zavin <rebecca@android.com>
@@ -16,6 +17,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -40,6 +42,7 @@ struct ov5650_sensor {
 struct ov5650_info {
 	int mode;
 	enum StereoCameraMode camera_mode;
+	struct clk *mclk;
 	struct ov5650_sensor left;
 	struct ov5650_sensor right;
 	struct nvc_fuseid fuse_id;
@@ -1273,10 +1276,35 @@ static int set_power_helper(struct ov5650_platform_data *pdata,
 	return 0;
 }
 
+static void ov5650_mclk_disable(struct ov5650_info *info)
+{
+	pr_info("%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov5650_mclk_enable(struct ov5650_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	pr_info("%s: enable MCLK with %lu Hz\n", __func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 {
 	pr_info("%s: powerLevel=%d camera mode=%d\n", __func__, powerLevel,
 			info->camera_mode);
+
+	if (powerLevel) {
+		int err = ov5650_mclk_enable(info);
+		if (err < 0)
+			return err;
+	}
 
 	if (StereoCameraMode_Left & info->camera_mode) {
 		mutex_lock(&info->mutex_le);
@@ -1291,6 +1319,9 @@ static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 			powerLevel, &info->power_refcnt_ri);
 		mutex_unlock(&info->mutex_ri);
 	}
+
+	if (!powerLevel)
+		ov5650_mclk_disable(info);
 
 	return 0;
 }
@@ -1448,7 +1479,7 @@ static struct miscdevice ov5650_device = {
 	.fops = &ov5650_fileops,
 };
 
-static int ov5650_probe_common(void)
+static int ov5650_probe_common(struct i2c_client *client)
 {
 	int err;
 
@@ -1458,6 +1489,14 @@ static int ov5650_probe_common(void)
 		if (!stereo_ov5650_info) {
 			pr_err("ov5650: Unable to allocate memory!\n");
 			return -ENOMEM;
+		}
+
+		stereo_ov5650_info->mclk = devm_clk_get(&client->dev,
+			"default_mclk");
+		if (IS_ERR(stereo_ov5650_info->mclk)) {
+			dev_err(&client->dev, "%s: unable to get mclk\n",
+				__func__);
+			return PTR_ERR(stereo_ov5650_info->mclk);
 		}
 
 		err = misc_register(&ov5650_device);
@@ -1489,7 +1528,7 @@ static int left_ov5650_probe(struct i2c_client *client,
 	int err;
 	pr_info("%s: probing sensor.\n", __func__);
 
-	err = ov5650_probe_common();
+	err = ov5650_probe_common(client);
 	if (err)
 		return err;
 
@@ -1534,7 +1573,7 @@ static int right_ov5650_probe(struct i2c_client *client,
 	int err;
 	pr_info("%s: probing sensor.\n", __func__);
 
-	err = ov5650_probe_common();
+	err = ov5650_probe_common(client);
 	if (err)
 		return err;
 
