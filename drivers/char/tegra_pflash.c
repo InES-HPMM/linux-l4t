@@ -210,8 +210,8 @@ static long parallel_flash_writer_ioctl(struct file *filep,
 				if (!pdata.chip_erase[chip_no])
 					continue;
 
-				/* timeout is 2 seconds */
-				timeout = jiffies + 2 * HZ;
+				/* timeout is 4 seconds */
+				timeout = jiffies + 4 * HZ;
 				do {
 					loc = blk_no + pdata.chip_ofs[chip_no];
 					status = cfi2_chip_ready(chip_no,
@@ -267,7 +267,7 @@ static long parallel_flash_writer_ioctl(struct file *filep,
 					}
 				/* Giving delay of more than 340us for
 							program to complete */
-				cfi_udelay(1000);
+				cfi_udelay(1500);
 
 				pr_debug("Program commands sent." \
 					"Checking whether chip is ready\n");
@@ -278,8 +278,8 @@ static long parallel_flash_writer_ioctl(struct file *filep,
 					if (!pdata.start_prog[chip_no])
 						continue;
 
-					/* Timeout set to 2 second */
-					timeout = jiffies + 2 * HZ;
+					/* Timeout set to 4 second */
+					timeout = jiffies + 4 * HZ;
 					do {
 						loc = pdata.chip_ofs[chip_no] +
 							blk_no + buf_no;
@@ -301,8 +301,8 @@ static long parallel_flash_writer_ioctl(struct file *filep,
 					if (!pdata.start_prog[chip_no])
 						continue;
 
-					/* Timeout set to 3 second */
-					timeout = jiffies + 5 * HZ;
+					/* Timeout set to 7 second */
+					timeout = jiffies + 7 * HZ;
 					do {
 						unsigned long data;
 						loc = blk_no + buf_no;
