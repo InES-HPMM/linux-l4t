@@ -144,7 +144,8 @@ void check_host_cable_connection(struct tegra_otg *tegra)
 				__LINE__, tegra->int_status);
 
 	mutex_lock(&tegra->irq_work_mutex);
-	schedule_work(&tegra->work);
+	if (!tegra->suspended)
+		schedule_work(&tegra->work);
 	mutex_unlock(&tegra->irq_work_mutex);
 }
 
