@@ -267,6 +267,24 @@ static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 #endif
 
+static bool is_any_hs_connected(struct xhci_hcd *xhci)
+{
+	__le32 __iomem *addr;
+	int i;
+	int ports;
+	u32 portsc;
+
+	ports = HCS_MAX_PORTS(xhci->hcs_params1);
+	addr = &xhci->op_regs->port_status_base;
+	for (i = 0; i < ports; i++) {
+		portsc = xhci_readl(xhci, addr);
+		if ((portsc & PORT_CONNECT) && DEV_HIGHSPEED(portsc))
+			return true;
+		addr += NUM_PORT_REGS;
+	}
+	return false;
+}
+
 static void debug_print_portsc(struct xhci_hcd *xhci)
 {
 	__le32 __iomem *addr;
@@ -2344,8 +2362,9 @@ done:
 	if (xhci->main_hcd == hcd) {
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
-		/* set port ownership to SNPS to save power */
-		tegra_xhci_release_port_ownership(tegra, true);
+		/* port ownership to SNPS when no HS connected to save power */
+		if (!is_any_hs_connected(xhci))
+			tegra_xhci_release_port_ownership(tegra, true);
 	} else if (xhci->shared_hcd == hcd) {
 		/* save leakage power when SS not in use.
 		 * This is also done when fw mbox message is received for freq
