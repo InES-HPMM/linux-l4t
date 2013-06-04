@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-macallan-panel.c
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -385,7 +385,7 @@ static void macallan_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info board;
-	u8 dsi_instance;
+	u8 dsi_instance = DSI_INSTANCE_0;
 
 	tegra_get_display_board_info(&board);
 
@@ -395,7 +395,6 @@ static void macallan_panel_select(void)
 		break;
 	default:
 		panel = &dsi_p_wuxga_10_1;
-		dsi_instance = DSI_INSTANCE_0;
 		break;
 	}
 	if (panel) {
