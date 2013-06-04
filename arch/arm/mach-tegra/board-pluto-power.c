@@ -266,25 +266,25 @@ PALMAS_REGS_PDATA(smps10, 5000,  5000, NULL, 0, 0, 0, 0,
 PALMAS_REGS_PDATA(ldo1, 1050,  1050, palmas_rails(smps7), 0, 0, 1, 0,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo2, 2800,  3000, NULL, 0, 0, 0, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1200,  1200, palmas_rails(smps8), 0, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo4, 1200,  1200, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo5, 2700,  2700, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo6, 3000,  3000, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo7, 2800,  2800, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo8, 900,  900, NULL, 1, 1, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo9, 1800,  3300, palmas_rails(smps9), 0, 0, 1, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldoln, 2700, 2700, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb, 3300,  3300, NULL, 0, 0, 1, 0,
-		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
+		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(regen1, 4300,  4300, NULL, 0, 0, 0, 0,
 		0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(regen2, 4300,  4300, palmas_rails(smps8), 0, 0, 0, 0,
@@ -689,6 +689,9 @@ int __init pluto_regulator_init(void)
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl & ~PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
 
+	/* Enable full constraints */
+	regulator_has_full_constraints();
+
 	/* Tracking configuration */
 	reg_init_data_ldo8.config_flags =
 			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE |
@@ -702,6 +705,9 @@ int __init pluto_regulator_init(void)
 		reg_idata_ldo4.consumer_supplies = palmas_ldo4_4K_supply;
 		reg_idata_ldo4.num_consumer_supplies =
 			ARRAY_SIZE(palmas_ldo4_4K_supply);
+		reg_init_data_ldo4.roof_floor = PALMAS_EXT_CONTROL_NSLEEP;
+		reg_idata_ldo4.constraints.always_on = 1;
+		reg_idata_ldo4.constraints.boot_on = 1;
 	}
 
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
