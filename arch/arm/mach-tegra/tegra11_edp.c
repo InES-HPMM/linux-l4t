@@ -37,6 +37,7 @@
 
 struct core_edp_entry {
 	int sku;
+	int process_id;
 	unsigned int cap_mA;
 	int mult;
 	unsigned long cap_scpu_on[CORE_EDP_PROFILES_NUM][
@@ -56,7 +57,8 @@ static struct clk *cap_clks[CAP_CLKS_NUM];
 
 static struct core_edp_entry core_edp_table[] = {
 	{
-		.sku		= 0x3,		/* SKU = 4 - T40X */
+		.sku		= 0x3,		/* SKU = 3 - T40X */
+		.process_id	= -1,		/* any process id */
 		.cap_mA		= 6000,		/* 6A cap */
 		.mult		= 1000000,	/* MHZ */
 		.cap_scpu_on	= {
@@ -244,10 +246,12 @@ struct tegra_edp_cpu_leakage_params *tegra11x_get_leakage_params(int index,
 static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
 {
 	int i;
+	int pid = tegra_core_process_id();
 
 	for (i = 0; i < ARRAY_SIZE(core_edp_table); i++) {
 		struct core_edp_entry *entry = &core_edp_table[i];
-		if ((entry->sku == sku) && (entry->cap_mA == regulator_mA))
+		if ((entry->sku == sku) && (entry->cap_mA == regulator_mA) &&
+		    ((entry->process_id == -1) || (entry->process_id == pid)))
 			return entry;
 	}
 	return NULL;
