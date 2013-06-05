@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,6 +41,7 @@ struct ov14810_platform_data {
 	int (*power_on)(struct device *);
 	int (*power_off)(struct device *);
 	void (*synchronize_sensors)(void);
+	const char *mclk_name;
 };
 #endif /* __KERNEL__ */
 

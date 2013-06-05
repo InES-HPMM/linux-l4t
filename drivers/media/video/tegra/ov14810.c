@@ -1,7 +1,7 @@
 /*
  * ov14810.c - ov14810 sensor driver
  *
- * Copyright (c) 2011-2012, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *	  Krupal Divvela <kdivvela@nvidia.com>
@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -561,6 +562,7 @@ struct ov14810_reg {
 struct ov14810_sensor {
 	struct i2c_client *i2c_client;
 	struct ov14810_platform_data *pdata;
+	struct clk *mclk;
 };
 
 struct ov14810_info {
@@ -1072,21 +1074,53 @@ static int ov14810_set_gain(struct ov14810_info *info, u16 gain)
 	return ret;
 }
 
+static void ov14810_mclk_disable(struct ov14810_info *info)
+{
+	dev_dbg(&info->sensor.i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->sensor.mclk);
+}
+
+static int ov14810_mclk_enable(struct ov14810_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->sensor.i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->sensor.mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->sensor.mclk);
+
+	return err;
+}
+
 static int ov14810_set_power(int powerLevel)
 {
-	pr_info("%s: powerLevel=%d \n", __func__, powerLevel);
+	int err = 0;
+	pr_info("%s: powerLevel=%d\n", __func__, powerLevel);
 
-	if (info->sensor.pdata) {
-		if (powerLevel && info->sensor.pdata->power_on) {
-			info->sensor.pdata->power_on(&info->sensor.i2c_client->dev);
+	if (powerLevel) {
+		err = ov14810_mclk_enable(info);
+		if (!err && info->sensor.pdata &&
+			    info->sensor.pdata->power_on) {
+
+			err = info->sensor.pdata->power_on(
+				&info->sensor.i2c_client->dev);
+
+			if (err < 0)
+				ov14810_mclk_disable(info);
+
 			msleep(1000);
 		}
-		else if (info->sensor.pdata->power_off) {
-			info->sensor.pdata->power_off(&info->sensor.i2c_client->dev);
-		}
+	} else {
+		if (info->sensor.pdata && info->sensor.pdata->power_off)
+			info->sensor.pdata->power_off(
+				&info->sensor.i2c_client->dev);
+		ov14810_mclk_disable(info);
 	}
 
-	return 0;
+	return err;
 }
 
 static long ov14810_ioctl(struct file *file,
@@ -1172,13 +1206,13 @@ static int ov14810uC_open(void)
 	int i;
 	int err = 0;
 
-	pr_info("ov14810uC programmming started \n");
+	pr_info("ov14810uC programmming started\n");
 
 	for (i = 0; i < sizeof(uCProgram); i++) {
 		ov14810_write16(info->uC.i2c_client,
 			( ( (i & 0xff) << 8) | ( (i & 0xff00) >> 8) ), uCProgram[i]);
 	}
-	pr_info("ov14810uC programmming finished \n");
+	pr_info("ov14810uC programmming finished\n");
 
 	err = ov14810_slavedev_reset();
 
@@ -1235,6 +1269,7 @@ static int ov14810_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int err = 0;
+	const char *mclk_name;
 	pr_info("%s: probing sensor.\n", __func__);
 
 	if (!info) {
@@ -1245,15 +1280,25 @@ static int ov14810_probe(struct i2c_client *client,
 		}
 	}
 
+	info->sensor.pdata = client->dev.platform_data;
+	info->sensor.i2c_client = client;
+
+	mclk_name = info->sensor.pdata && info->sensor.pdata->mclk_name ?
+		    info->sensor.pdata->mclk_name : "default_mclk";
+	info->sensor.mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->sensor.mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		kfree(info);
+		return PTR_ERR(info->sensor.mclk);
+	}
+
 	err = misc_register(&ov14810_device);
 	if (err) {
 		pr_err("ov14810: Unable to register misc device!\n");
 		kfree(info);
 		return err;
 	}
-
-	info->sensor.pdata = client->dev.platform_data;
-	info->sensor.i2c_client = client;
 
 	return 0;
 }
