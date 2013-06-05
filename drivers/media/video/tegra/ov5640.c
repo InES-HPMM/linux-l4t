@@ -1,7 +1,7 @@
 /*
  * ov5640.c - ov5640 sensor driver
  *
- * Copyright (c) 2011 - 2012, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *      Abhinav Sinha <absinha@nvidia.com>
@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -68,6 +69,7 @@ struct ov5640_info {
 	int mode;
 	struct miscdevice miscdev_info;
 	struct i2c_client *i2c_client;
+	struct clk *mclk;
 	struct ov5640_platform_data *pdata;
 	struct ov5640_config focuser;
 	int af_fw_loaded;
@@ -278,6 +280,26 @@ static int ov5640_get_af_status(struct ov5640_info *info, u8 *val)
 	return 0;
 }
 
+static void ov5640_mclk_disable(struct ov5640_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov5640_mclk_enable(struct ov5640_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ov5640_set_position(struct ov5640_info *info, u32 position)
 {
 	u8 data[4];
@@ -295,24 +317,33 @@ static int ov5640_set_position(struct ov5640_info *info, u32 position)
 
 static int ov5640_set_power(struct ov5640_info *info, u32 level)
 {
+	int err = 0;
 	switch (level) {
 	case OV5640_POWER_LEVEL_OFF:
 	case OV5640_POWER_LEVEL_SUS:
 		if (info->pdata && info->pdata->power_off)
 			info->pdata->power_off(&info->i2c_client->dev);
+		ov5640_mclk_disable(info);
 		info->af_fw_loaded = 0;
 		info->mode = 0;
 		break;
 	case OV5640_POWER_LEVEL_ON:
-		if (info->pdata && info->pdata->power_on)
-			info->pdata->power_on(&info->i2c_client->dev);
+		if (info->pdata && info->pdata->power_on) {
+			err = ov5640_mclk_enable(info);
+			if (!err) {
+				err = info->
+					pdata->power_on(&info->i2c_client->dev);
+				if (err < 0)
+					ov5640_mclk_disable(info);
+			}
+		}
 		break;
 	default:
 		dev_err(info->dev, "unknown power level %d.\n", level);
 		return -EINVAL;
 	}
 
-	return 0;
+	return err;
 }
 
 static int ov5640_set_wb(struct ov5640_info *info, u8 val)
@@ -461,6 +492,7 @@ static int ov5640_probe(struct i2c_client *client,
 {
 	struct ov5640_info *info;
 	int err;
+	const char *mclk_name;
 
 	dev_info(&client->dev, "ov5640: probing sensor.\n");
 
@@ -493,6 +525,16 @@ static int ov5640_probe(struct i2c_client *client,
 	info->focuser.pos_high = POS_HIGH;
 
 	i2c_set_clientdata(client, info);
+
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
+
 	return 0;
 }
 
