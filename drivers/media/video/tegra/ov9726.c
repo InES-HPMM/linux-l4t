@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/io.h>
@@ -38,6 +39,7 @@ struct ov9726_devinfo {
 	struct miscdevice		miscdev_info;
 	struct i2c_client		*i2c_client;
 	struct ov9726_platform_data	*pdata;
+	struct clk			*mclk;
 	struct ov9726_power_rail	power_rail;
 	atomic_t			in_use;
 	__u32				mode;
@@ -266,6 +268,26 @@ msleep_range(unsigned int delay_base)
 	usleep_range(delay_base*1000, delay_base*1000 + 500);
 }
 
+static void ov9726_mclk_disable(struct ov9726_devinfo *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov9726_mclk_enable(struct ov9726_devinfo *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static inline int
 ov9726_power_init(struct ov9726_devinfo *dev)
 {
@@ -312,6 +334,13 @@ ov9726_power(struct ov9726_devinfo *dev, bool pwr_on)
 	dev_info(&i2c_client->dev, "%s %s\n", __func__, pwr_on ? "on" : "off");
 
 	if (pwr_on) {
+		ret = ov9726_mclk_enable(dev);
+		if (ret) {
+			dev_err(&i2c_client->dev, "%s: failed to enable mclk\n",
+				__func__);
+			goto fail_mclk;
+		}
+
 		/* pull low the RST pin of ov9726 first */
 		gpio_set_value(dev->pdata->gpio_rst, rst_active_state);
 		msleep_range(1);
@@ -356,6 +385,7 @@ ov9726_power(struct ov9726_devinfo *dev, bool pwr_on)
 
 		/* Board specific power-down sequence */
 		dev->pdata->power_off(&i2c_client->dev);
+		ov9726_mclk_disable(dev);
 	}
 
 	return 0;
@@ -367,6 +397,7 @@ fail_regulator_2v8_reg:
 fail_regulator_1v8_reg:
 	regulator_put(dev->power_rail.sen_1v8_reg);
 	dev->power_rail.sen_1v8_reg = NULL;
+fail_mclk:
 	return ret;
 }
 
@@ -859,10 +890,12 @@ ov9726_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct ov9726_devinfo	*dev;
 	int			err = 0;
+	const char		*mclk_name;
 
 	dev_info(&client->dev, "ov9726: probing sensor.\n");
 
-	dev = kzalloc(sizeof(struct ov9726_devinfo), GFP_KERNEL);
+	dev = devm_kzalloc(&client->dev,
+		sizeof(struct ov9726_devinfo), GFP_KERNEL);
 	if (!dev) {
 		dev_err(&client->dev, "ov9726: Unable to allocate memory!\n");
 		err = -ENOMEM;
@@ -881,16 +914,25 @@ ov9726_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	dev->pdata = client->dev.platform_data;
 	dev->i2c_client = client;
+
+	mclk_name = dev->pdata->mclk_name ?
+		    dev->pdata->mclk_name : "default_mclk";
+	dev->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(dev->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		err = PTR_ERR(dev->mclk);
+		goto probe_end;
+	}
+
 	atomic_set(&dev->in_use, 0);
 	i2c_set_clientdata(client, dev);
 
 	err = ov9726_power_init(dev);
 
 probe_end:
-	if (err) {
-		kfree(dev);
+	if (err)
 		dev_err(&client->dev, "failed.\n");
-	}
 
 	return err;
 }
@@ -903,7 +945,6 @@ static int ov9726_remove(struct i2c_client *client)
 	i2c_set_clientdata(client, NULL);
 	misc_deregister(&ov9726_device);
 	ov9726_power_release(dev);
-	kfree(dev);
 
 	return 0;
 }

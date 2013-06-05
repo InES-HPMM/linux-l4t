@@ -62,6 +62,7 @@ struct ov9726_reg {
 struct ov9726_platform_data {
 	int	(*power_on)(struct device *);
 	int	(*power_off)(struct device *);
+	const char *mclk_name;
 	unsigned    gpio_rst;
 	bool        rst_low_active;
 	unsigned    gpio_pwdn;
