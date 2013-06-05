@@ -100,8 +100,7 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 		}
 		break;
 	case TEGRA_CAMERA_VI_SENSOR_CLK:
-		clk = camera->clock[CAMERA_VI_SENSOR_CLK].clk;
-		break;
+		return 0; /* legacy, ignore */
 	case TEGRA_CAMERA_EMC_CLK:
 		clk = camera->clock[CAMERA_EMC_CLK].clk;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC

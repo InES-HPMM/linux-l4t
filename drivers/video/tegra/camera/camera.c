@@ -29,10 +29,7 @@ static struct clock_data clock_init[] = {
 	{ CAMERA_ISP_CLK, "isp", true, 0},
 	{ CAMERA_VI_CLK, "vi", true, 0},
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor2", true, 0},
 	{ CAMERA_VIM2CLK_CLK, "vim2_clk", true, 0},
-#else
-	{ CAMERA_VI_SENSOR_CLK, "vi_sensor", true, 0},
 #endif
 	{ CAMERA_CSUS_CLK, "csus", true, 0},
 	{ CAMERA_CSI_CLK, "csi", true, 0},
@@ -352,7 +349,7 @@ struct tegra_camera *tegra_camera_register(struct platform_device *ndev)
 		goto misc_register_fail;
 	}
 
-	for (i = 0; i < CAMERA_CLK_MAX; i++) {
+	for (i = 0; i < ARRAY_SIZE(clock_init); i++) {
 		ret = tegra_camera_clk_get(ndev, clock_init[i].name,
 				&camera->clock[clock_init[i].index].clk);
 		if (ret)
