@@ -60,12 +60,14 @@
 
 #define POWER_ON_DELAY		20 /* 20ms */
 
-#define MAX44005_SYSFS_SHOW(reg_addr, nbytes)				 \
+#define MAX44005_SYSFS_SHOW(en, reg_addr, nbytes)			 \
 	do {								 \
 		int ret;						 \
 		int value;						 \
 		struct iio_dev *indio_dev = dev_to_iio_dev(dev);	 \
 		struct max44005_chip *chip = iio_priv(indio_dev);	 \
+		if (!en)						 \
+			return sprintf(buf, "-1");			 \
 		mutex_lock(&chip->lock);				 \
 		ret = max44005_read(chip, &value, reg_addr, nbytes);	 \
 		if (ret < 0) {						 \
@@ -279,7 +281,7 @@ static ssize_t show_name(struct device *dev,
 static ssize_t show_amb_clear_value(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	MAX44005_SYSFS_SHOW(AMB_CLEAR_HIGH_ADDR, 2);
+	MAX44005_SYSFS_SHOW(CLEAR_ENABLED, AMB_CLEAR_HIGH_ADDR, 2);
 }
 
 static ssize_t amb_clear_enable(struct device *dev,
@@ -338,7 +340,7 @@ fail:
 static ssize_t show_prox_value(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	MAX44005_SYSFS_SHOW(PROX_HIGH_ADDR, 2);
+	MAX44005_SYSFS_SHOW(PROXIMITY_ENABLED, PROX_HIGH_ADDR, 2);
 }
 
 static ssize_t prox_enable(struct device *dev,
