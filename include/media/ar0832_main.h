@@ -94,6 +94,7 @@ struct ar0832_platform_data {
 	int (*power_on)(struct device *, int is_stereo);
 	int (*power_off)(struct device *, int is_stereo);
 	char *id;
+	const char *mclk_name;
 };
 #endif /* __KERNEL__ */
 

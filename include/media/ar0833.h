@@ -99,6 +99,7 @@ struct ar0833_power_rail {
 struct ar0833_platform_data {
 	int (*power_on)(struct ar0833_power_rail *pw);
 	int (*power_off)(struct ar0833_power_rail *pw);
+	const char *mclk_name;
 };
 #endif /* __KERNEL__ */
 

@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -55,6 +56,7 @@ struct ar0832_dev {
 	struct ar0832_focuser_info *focuser_info;
 	struct ar0832_platform_data *pdata;
 	struct i2c_client *i2c_client;
+	struct clk *mclk;
 	struct mutex ar0832_camera_lock;
 	struct miscdevice misc_dev;
 	struct ar0832_power_rail power_rail;
@@ -1854,6 +1856,26 @@ static int ar0832_set_alternate_addr(struct i2c_client *client)
 	return ret;
 }
 
+static void ar0832_mclk_disable(struct ar0832_dev *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ar0832_mclk_enable(struct ar0832_dev *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ar0832_power_on(struct ar0832_dev *dev)
 {
 	struct i2c_client *i2c_client = dev->i2c_client;
@@ -1866,6 +1888,11 @@ static int ar0832_power_on(struct ar0832_dev *dev)
 	/* Board specific power-on sequence */
 	mutex_lock(&dev->ar0832_camera_lock);
 	if (dev->brd_power_cnt == 0) {
+
+		ret = ar0832_mclk_enable(dev);
+		if (ret < 0)
+			goto fail_mclk;
+
 		/* Plug 1.8V and 2.8V power to sensor */
 		if (dev->power_rail.sen_1v8_reg) {
 			ret = regulator_enable(dev->power_rail.sen_1v8_reg);
@@ -1905,6 +1932,8 @@ fail_regulator_2v8_reg:
 fail_regulator_1v8_reg:
 	regulator_put(dev->power_rail.sen_1v8_reg);
 	dev->power_rail.sen_1v8_reg = NULL;
+	ar0832_mclk_disable(dev);
+fail_mclk:
 	mutex_unlock(&dev->ar0832_camera_lock);
 	return ret;
 }
@@ -1927,6 +1956,7 @@ static void ar0832_power_off(struct ar0832_dev *dev)
 		if (dev->power_rail.sen_1v8_reg)
 			regulator_disable(dev->power_rail.sen_1v8_reg);
 		dev->pdata->power_off(&i2c_client->dev, dev->is_stereo);
+		ar0832_mclk_disable(dev);
 	}
 
 ar0832_pwdn_exit:
@@ -2574,6 +2604,7 @@ static int ar0832_probe(struct i2c_client *client,
 	int err;
 	struct ar0832_dev *dev = NULL;
 	int ret;
+	const char *mclk_name;
 
 	dev_info(&client->dev, "ar0832: probing sensor.(id:%s)\n",
 		id->name);
@@ -2620,6 +2651,16 @@ static int ar0832_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, dev);
 	mutex_init(&dev->ar0832_camera_lock);
+
+	mclk_name = dev->pdata->mclk_name ?
+		    dev->pdata->mclk_name : "default_mclk";
+	dev->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(dev->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		ret = PTR_ERR(dev->mclk);
+		goto probe_fail_free;
+	}
 
 	dev->power_rail.sen_1v8_reg = regulator_get(&client->dev, "vdd");
 	if (IS_ERR_OR_NULL(dev->power_rail.sen_1v8_reg)) {

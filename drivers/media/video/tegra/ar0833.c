@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -52,6 +53,7 @@ struct ar0833_info {
 	struct ar0833_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
 	struct ar0833_platform_data	*pdata;
+	struct clk			*mclk;
 	atomic_t			in_use;
 	const struct ar0833_reg		*mode;
 #ifdef CONFIG_DEBUG_FS
@@ -518,8 +520,29 @@ static int ar0833_get_status(struct ar0833_info *info, u8 *status)
 	return err;
 }
 
+static void ar0833_mclk_disable(struct ar0833_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ar0833_mclk_enable(struct ar0833_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ar0833_open(struct inode *inode, struct file *file)
 {
+	int err;
 	struct miscdevice	*miscdev = file->private_data;
 	struct ar0833_info	*info;
 
@@ -532,14 +555,22 @@ static int ar0833_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
+	err = ar0833_mclk_enable(info);
+	if (err)
+		return err;
+
 	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->power);
+		err = info->pdata->power_on(&info->power);
 	else {
 		dev_err(&info->i2c_client->dev,
 			"%s:no valid power_on function.\n", __func__);
-		return -EEXIST;
+		err = -EEXIST;
 	}
-	return 0;
+
+	if (err < 0)
+		ar0833_mclk_disable(info);
+
+	return err;
 }
 
 int ar0833_release(struct inode *inode, struct file *file)
@@ -548,6 +579,9 @@ int ar0833_release(struct inode *inode, struct file *file)
 
 	if (info->pdata && info->pdata->power_off)
 		info->pdata->power_off(&info->power);
+
+	ar0833_mclk_disable(info);
+
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -1181,6 +1215,7 @@ static int ar0833_probe(struct i2c_client *client,
 {
 	int err;
 	struct ar0833_info *info;
+	const char *mclk_name;
 	dev_info(&client->dev, "ar0833: probing sensor.\n");
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -1196,6 +1231,15 @@ static int ar0833_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, info);
 
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
+
 	ar0833_power_get(info);
 	ar0833_mode_info_init(info);
 
@@ -1207,14 +1251,12 @@ static int ar0833_probe(struct i2c_client *client,
 	if (err) {
 		dev_err(&info->i2c_client->dev,
 				"ar0833: Unable to register misc device!\n");
-		kfree(info);
 		return err;
 	}
 #ifdef CONFIG_DEBUG_FS
 	ar0833_debug_init(info);
 	info->enableDCBLC = 0;
 #endif
-
 	return 0;
 }
 
@@ -1228,8 +1270,6 @@ static int ar0833_remove(struct i2c_client *client)
 	if (info->debugfs_root)
 		debugfs_remove_recursive(info->debugfs_root);
 #endif
-
-	kfree(info);
 	return 0;
 }
 
