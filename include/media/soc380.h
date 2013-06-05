@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -51,7 +51,7 @@ struct soc380_status {
 struct soc380_platform_data {
 	int (*power_on)(struct device *);
 	int (*power_off)(struct device *);
-
+	const char *mclk_name;
 };
 #endif /* __KERNEL__ */
 

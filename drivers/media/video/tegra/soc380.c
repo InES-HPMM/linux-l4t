@@ -1,7 +1,7 @@
 /*
  * soc380.c - soc380 sensor driver
  *
- * Copyright (c) 2011, NVIDIA, All Rights Reserved.
+ * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Contributors:
  *      Abhinav Sinha <absinha@nvidia.com>
@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -38,6 +39,7 @@ struct soc380_info {
 	int mode;
 	struct i2c_client *i2c_client;
 	struct soc380_platform_data *pdata;
+	struct clk *mclk;
 };
 
 #define SOC380_TABLE_WAIT_MS 0
@@ -371,25 +373,65 @@ static long soc380_ioctl(struct file *file,
 
 static struct soc380_info *info;
 
-static int soc380_open(struct inode *inode, struct file *file)
+static void soc380_mclk_disable(struct soc380_info *info)
 {
-	struct soc380_status dev_status;
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int soc380_mclk_enable(struct soc380_info *info)
+{
 	int err;
+	unsigned long mclk_init_rate = 24000000;
 
-	file->private_data = info;
-	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->i2c_client->dev);
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
 
-	dev_status.data = 0;
-	dev_status.status = 0;
-	err = soc380_get_status(info, &dev_status);
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
 	return err;
 }
 
-int soc380_release(struct inode *inode, struct file *file)
+static int soc380_open(struct inode *inode, struct file *file)
+{
+	struct soc380_status dev_status;
+	int err = soc380_mclk_enable(info);
+	if (err < 0)
+		goto fail_mclk;
+
+	file->private_data = info;
+
+	if (info->pdata && info->pdata->power_on) {
+		err = info->pdata->power_on(&info->i2c_client->dev);
+		if (err < 0)
+			goto fail_power_on;
+	}
+
+	dev_status.data = 0;
+	dev_status.status = 0;
+
+	err = soc380_get_status(info, &dev_status);
+	if (err < 0)
+		goto fail_status;
+
+	return 0;
+
+fail_status:
+	if (info->pdata && info->pdata->power_off)
+		info->pdata->power_off(&info->i2c_client->dev);
+fail_power_on:
+	soc380_mclk_disable(info);
+fail_mclk:
+	file->private_data = NULL;
+	return err;
+}
+
+static int soc380_release(struct inode *inode, struct file *file)
 {
 	if (info->pdata && info->pdata->power_off)
 		info->pdata->power_off(&info->i2c_client->dev);
+	soc380_mclk_disable(info);
 	file->private_data = NULL;
 	return 0;
 }
@@ -411,6 +453,7 @@ static int soc380_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int err;
+	const char *mclk_name;
 
 	pr_info("soc380: probing sensor.\n");
 
@@ -420,6 +463,21 @@ static int soc380_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	info->pdata = client->dev.platform_data;
+	info->i2c_client = client;
+
+	mclk_name = info->pdata && info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		kfree(info);
+		return PTR_ERR(info->mclk);
+	}
+
+	i2c_set_clientdata(client, info);
+
 	err = misc_register(&soc380_device);
 	if (err) {
 		pr_err("soc380: Unable to register misc device!\n");
@@ -427,10 +485,6 @@ static int soc380_probe(struct i2c_client *client,
 		return err;
 	}
 
-	info->pdata = client->dev.platform_data;
-	info->i2c_client = client;
-
-	i2c_set_clientdata(client, info);
 	return 0;
 }
 
