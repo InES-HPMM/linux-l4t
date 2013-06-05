@@ -207,6 +207,8 @@ int regulator_allow_bypass(struct regulator *regulator, bool allow);
 int regulator_set_control_mode(struct regulator *regulator, unsigned int mode);
 unsigned int regulator_get_control_mode(struct regulator *regulator);
 
+int regulator_set_ramp_delay(struct regulator *regulator, int ramp_delay_uV);
+
 /* regulator notifier block */
 int regulator_register_notifier(struct regulator *regulator,
 			      struct notifier_block *nb);

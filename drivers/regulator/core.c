@@ -3278,6 +3278,34 @@ out:
 EXPORT_SYMBOL_GPL(regulator_get_control_mode);
 
 /**
+ * regulator_set_ramp_delay - set regulator ramp delay
+ * @regulator: regulator source
+ * @ramp_delay_uV: Ramp delay uV/us.
+ *
+ * Set regulator ramp delay if regulator driver provided the
+ * callback API.
+ */
+int regulator_set_ramp_delay(struct regulator *regulator, int ramp_delay_uV)
+{
+	struct regulator_dev *rdev = regulator->rdev;
+	int ret;
+
+	mutex_lock(&rdev->mutex);
+
+	/* sanity check */
+	if (!rdev->desc->ops->set_ramp_delay) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = rdev->desc->ops->set_ramp_delay(rdev, ramp_delay_uV);
+out:
+	mutex_unlock(&rdev->mutex);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(regulator_set_ramp_delay);
+
+/**
  * regulator_register_notifier - register regulator event notifier
  * @regulator: regulator source
  * @nb: notifier block
