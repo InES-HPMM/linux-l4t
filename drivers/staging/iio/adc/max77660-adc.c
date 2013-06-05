@@ -454,7 +454,18 @@ static struct platform_driver max77660_adc_driver = {
 	},
 };
 
-module_platform_driver(max77660_adc_driver);
+static int __init max77660_adc_driver_init(void)
+{
+	return platform_driver_register(&max77660_adc_driver);
+}
+subsys_initcall_sync(max77660_adc_driver_init);
+
+static void __exit max77660_adc_driver_exit(void)
+{
+	platform_driver_unregister(&max77660_adc_driver);
+}
+module_exit(max77660_adc_driver_exit);
+
 
 MODULE_DESCRIPTION("max77660 ADC driver");
 MODULE_AUTHOR("Laxman Dewangan<ldewangan@nvidia.com>");
