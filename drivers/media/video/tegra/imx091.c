@@ -2238,8 +2238,7 @@ static int imx091_mode_wr_full(struct imx091_info *info, u32 mode_index)
 {
 	int err;
 
-	/* the state num is temporary assigned, should be updated later as
-	per-mode basis */
+	/* request highest edp state */
 	err = imx091_edp_req(info, 0);
 	if (err) {
 		dev_err(&info->i2c_client->dev,
