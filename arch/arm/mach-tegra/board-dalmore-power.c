@@ -627,7 +627,13 @@ static struct regulator_consumer_supply palmas_ldousb_fab05_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
 };
 
-PALMAS_REGS_PDATA(smps12, 1350,  1350, tps65090_rails(DCDC3), 0, 0, 0, NORMAL,
+static struct regulator_consumer_supply palmas_regen1_supply[] = {
+};
+
+static struct regulator_consumer_supply palmas_regen2_supply[] = {
+};
+
+PALMAS_REGS_PDATA(smps12, 1350,  1350, tps65090_rails(DCDC3), 1, 1, 0, NORMAL,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(smps3, 1800,  1800, tps65090_rails(DCDC3), 0, 0, 0, NORMAL,
 	0, 0, 0, 0, 0);
@@ -671,6 +677,10 @@ PALMAS_REGS_PDATA(ldousb, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldousb_fab05, 3300,  3300, tps65090_rails(DCDC1), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(regen1, 3300,  3300, NULL, 1, 1, 0, 0,
+	0, 0, 0, 0, 0);
+PALMAS_REGS_PDATA(regen2, 5000,  5000, NULL, 1, 1, 0, 0,
+	0, 0, 0, 0, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 
@@ -701,8 +711,8 @@ static struct regulator_init_data *dalmore_e1611_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_PDATA(ldoln),
 	PALMAS_REG_PDATA(ldousb),
-	NULL,
-	NULL,
+	PALMAS_REG_PDATA(regen1),
+	PALMAS_REG_PDATA(regen2),
 	NULL,
 	NULL,
 	NULL,
@@ -736,8 +746,8 @@ static struct palmas_reg_init *dalmore_e1611_reg_init[PALMAS_NUM_REGS] = {
 	NULL,
 	PALMAS_REG_INIT_DATA(ldoln),
 	PALMAS_REG_INIT_DATA(ldousb),
-	NULL,
-	NULL,
+	PALMAS_REG_INIT_DATA(regen1),
+	PALMAS_REG_INIT_DATA(regen2),
 	NULL,
 	NULL,
 	NULL,
@@ -1023,6 +1033,9 @@ int __init dalmore_palmas_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
+
+	/* Enable regulator full constraints */
+	regulator_has_full_constraints();
 
 	/* Tracking configuration */
 	reg_init_data_ldo8.config_flags =
