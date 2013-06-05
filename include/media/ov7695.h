@@ -219,6 +219,7 @@ struct ov7695_power_rail {
 struct ov7695_platform_data {
 	int (*power_on)(struct ov7695_power_rail *pw);
 	int (*power_off)(struct ov7695_power_rail *pw);
+	const char *mclk_name;
 };
 #endif /* __KERNEL__ */
 

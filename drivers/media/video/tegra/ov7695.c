@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -176,6 +177,7 @@ struct ov7695_info {
 	struct ov7695_power_rail	power;
 	struct ov7695_sensordata	sensor_data;
 	struct i2c_client		*i2c_client;
+	struct clk			*mclk;
 	struct ov7695_platform_data	*pdata;
 	atomic_t			in_use;
 	const struct ov7695_reg		*mode;
@@ -330,8 +332,29 @@ static int ov7695_write_table(
 	return 0;
 }
 
+static void ov7695_mclk_disable(struct ov7695_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov7695_mclk_enable(struct ov7695_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+	return err;
+}
+
 static int ov7695_open(struct inode *inode, struct file *file)
 {
+	int err = 0;
 	struct miscdevice	*miscdev = file->private_data;
 	struct ov7695_info *info = dev_get_drvdata(miscdev->parent);
 
@@ -345,14 +368,17 @@ static int ov7695_open(struct inode *inode, struct file *file)
 
 	file->private_data = info;
 
-	if (info->pdata && info->pdata->power_on)
-		info->pdata->power_on(&info->power);
-	else {
+	err = ov7695_mclk_enable(info);
+	if (!err && info->pdata && info->pdata->power_on) {
+		err = info->pdata->power_on(&info->power);
+	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s:no valid power_on function.\n", __func__);
-		return -EFAULT;
+		err = -EFAULT;
 	}
-	return 0;
+	if (err < 0)
+		ov7695_mclk_disable(info);
+	return err;
 }
 
 int ov7695_release(struct inode *inode, struct file *file)
@@ -361,6 +387,7 @@ int ov7695_release(struct inode *inode, struct file *file)
 
 	if (info->pdata && info->pdata->power_off)
 		info->pdata->power_off(&info->power);
+	ov7695_mclk_disable(info);
 	file->private_data = NULL;
 
 	/* warn if device is already released */
@@ -665,6 +692,7 @@ static int ov7695_probe(struct i2c_client *client,
 {
 	int err;
 	struct ov7695_info *info;
+	const char *mclk_name;
 	dev_dbg(&client->dev, "ov7695: probing sensor.\n");
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -698,6 +726,16 @@ static int ov7695_probe(struct i2c_client *client,
 			"ov7695: Unable to register misc device!\n");
 		return err;
 	}
+
+	mclk_name = info->pdata && info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
+
 #ifdef CONFIG_DEBUG_FS
 	ov7695_debug_init(info);
 #endif
