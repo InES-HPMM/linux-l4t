@@ -550,6 +550,16 @@ config TEGRA_EDP_LIMITS
 	  of on-line CPUs to keep CPU rail current within power supply
 	  capabilities.
 
+config TEGRA_CPU_EDP_FIXED_LIMITS
+	bool "Enforce fixed EDP limits on CPU rail per chip SKU"
+	depends on ARCH_TEGRA_11x_SOC
+	depends on TEGRA_EDP_LIMITS
+	default n
+	help
+	  Enforce CPU EDP frequency limits which are fixed for a given
+	  chip SKU. By default, the max frequency is determined optimally
+	  for each individual chip.
+
 config TEGRA_EMC_TO_DDR_CLOCK
 	int "EMC to DDR clocks ratio"
 	default "2" if ARCH_TEGRA_2x_SOC
