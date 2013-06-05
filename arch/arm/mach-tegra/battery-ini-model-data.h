@@ -21,12 +21,14 @@
 #define _MACH_TEGRA_BATTERY_INI_MODEL_DATA_H
 
 #include <linux/max17048_battery.h>
+#include <linux/power/max17042_battery.h>
 
 /*
  * Battery model data for YOKU 4100mA for MAX17048 for Macallan.
  * INI Files: 1283683
  */
-static struct max17048_battery_model macallan_yoku_4100mA_max17048_battery = {
+static struct max17048_battery_model __maybe_unused
+			macallan_yoku_4100mA_max17048_battery = {
 	.rcomp		= 57,
 	.soccheck_A	= 119,
 	.soccheck_B	= 121,
@@ -51,4 +53,56 @@ static struct max17048_battery_model macallan_yoku_4100mA_max17048_battery = {
 	},
 };
 
+/*
+ * Battery model data for YOKU 2000mA for MAX17042 for Pluto.
+ * INI Files: 1264825
+ */
+static struct max17042_config_data __maybe_unused
+			pluto_yoku_2000mA_max17042_battery = {
+	.valrt_thresh = 0xff00,
+	.talrt_thresh = 0xff00,
+	.soc_alrt_thresh = 0xff00,
+	.shdntimer = 0xe000,
+	.design_cap = 0x1085,
+	.at_rate = 0x0000,
+	.tgain = 0xBC94,
+	.toff = 0x84BA,
+	.vempty = 0x93DA,
+	.qrtbl00 = 0x2184,
+	.qrtbl10 = 0x1300,
+	.qrtbl20 = 0x0c00,
+	.qrtbl30 = 0x0880,
+	.full_soc_thresh = 0x5A00,
+	.rcomp0 = 0x0052,
+	.tcompc0 = 0x1F2D,
+	.ichgt_term = 0x0140,
+	.temp_nom = 0x1400,
+	.temp_lim = 0x2305,
+	.filter_cfg = 0x87A4,
+	.config = 0x2210,
+	.learn_cfg = 0x2606,
+	.misc_cfg = 0x0810,
+	.fullcap =  0x1085,
+	.fullcapnom = 0x1085,
+	.lavg_empty = 0x1000,
+	.dqacc = 0x01f4,
+	.dpacc = 0x3200,
+	.fctc = 0x05e0,
+	.kempty0 = 0x0600,
+	.cell_technology = POWER_SUPPLY_TECHNOLOGY_LION,
+	.cell_char_tbl = {
+		/* Data to be written from 0x80h */
+		0x9380, 0xAB70, 0xAFA0, 0xB3E0, 0xB790, 0xBB40,
+		0xBBD0, 0xBC70, 0xBD90, 0xBE30, 0xC0F0, 0xC380,
+		0xC710, 0xCA90, 0xCF70, 0xD480,
+		/* Data to be written from 0x90h */
+		0x00B0, 0x0610, 0x0600, 0x06F0, 0x0700, 0x2410,
+		0x2040, 0x2460, 0x1CE0, 0x09F0, 0x0AB0, 0x08E0,
+		0x0880, 0x06F0, 0x05D0, 0x05D0,
+		/* Data to be written from 0xA0h */
+		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
+		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
+		0x0100, 0x0100, 0x0100, 0x0100,
+	},
+};
 #endif

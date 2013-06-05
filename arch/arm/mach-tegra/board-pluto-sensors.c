@@ -49,9 +49,7 @@
 #include "tegra-board-id.h"
 #include "dvfs.h"
 #include "pm.h"
-
-#define NTC_10K_TGAIN   0xE6A2
-#define NTC_10K_TOFF    0x2694
+#include "battery-ini-model-data.h"
 
 #ifndef CONFIG_OF
 static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
@@ -62,56 +60,9 @@ static struct nvc_gpio_pdata imx091_gpio_pdata[] = {
 #endif
 
 static struct board_info board_info;
-static struct max17042_config_data conf_data = {
-	.valrt_thresh = 0xff00,
-	.talrt_thresh = 0xff00,
-	.soc_alrt_thresh = 0xff00,
-	.shdntimer = 0xe000,
-	.design_cap = 0x1085,
-	.at_rate = 0x0000,
-	.tgain = NTC_10K_TGAIN,
-	.toff = NTC_10K_TOFF,
-	.vempty = 0x93DA,
-	.qrtbl00 = 0x2184,
-	.qrtbl10 = 0x1300,
-	.qrtbl20 = 0x0c00,
-	.qrtbl30 = 0x0880,
-	.full_soc_thresh = 0x5A00,
-	.rcomp0 = 0x0052,
-	.tcompc0 = 0x1F2D,
-	.ichgt_term = 0x0140,
-	.temp_nom = 0x1400,
-	.temp_lim = 0x2305,
-	.filter_cfg = 0x87A4,
-	.config = 0x2210,
-	.learn_cfg = 0x2606,
-	.misc_cfg = 0x0810,
-	.fullcap =  0x1085,
-	.fullcapnom = 0x1085,
-	.lavg_empty = 0x1000,
-	.dqacc = 0x01f4,
-	.dpacc = 0x3200,
-	.fctc = 0x05e0,
-	.kempty0 = 0x0600,
-	.cell_technology = POWER_SUPPLY_TECHNOLOGY_LION,
-	.cell_char_tbl = {
-		/* Data to be written from 0x80h */
-		0x9380, 0xAB70, 0xAFA0, 0xB3E0, 0xB790, 0xBB40,
-		0xBBD0, 0xBC70, 0xBD90, 0xBE30, 0xC0F0, 0xC380,
-		0xC710, 0xCA90, 0xCF70, 0xD480,
-		/* Data to be written from 0x90h */
-		0x00B0, 0x0610, 0x0600, 0x06F0, 0x0700, 0x2410,
-		0x2040, 0x2460, 0x1CE0, 0x09F0, 0x0AB0, 0x08E0,
-		0x0880, 0x06F0, 0x05D0, 0x05D0,
-		/* Data to be written from 0xA0h */
-		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
-		0x0100, 0x0100, 0x0100, 0x0100, 0x0100, 0x0100,
-		0x0100, 0x0100, 0x0100, 0x0100,
-	},
-};
 
 static struct max17042_platform_data max17042_pdata = {
-	.config_data = &conf_data,
+	.config_data = &pluto_yoku_2000mA_max17042_battery,
 	.init_data  = NULL,
 	.num_init_data = 0,
 	.enable_por_init = 1, /* Use POR init from Maxim appnote */
