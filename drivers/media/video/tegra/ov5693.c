@@ -17,6 +17,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -52,6 +53,7 @@ struct ov5693_info {
 	atomic_t in_use;
 	struct i2c_client *i2c_client;
 	struct ov5693_platform_data *pdata;
+	struct clk *mclk;
 	struct miscdevice miscdev;
 	int pwr_api;
 	int pwr_dev;
@@ -1509,6 +1511,27 @@ static void ov5693_gpio_init(struct ov5693_info *info)
 	}
 }
 
+static void ov5693_mclk_disable(struct ov5693_info *info)
+{
+	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
+	clk_disable_unprepare(info->mclk);
+}
+
+static int ov5693_mclk_enable(struct ov5693_info *info)
+{
+	int err;
+	unsigned long mclk_init_rate = 24000000;
+
+	dev_dbg(&info->i2c_client->dev, "%s: enable MCLK with %lu Hz\n",
+		__func__, mclk_init_rate);
+
+	err = clk_set_rate(info->mclk, mclk_init_rate);
+	if (!err)
+		err = clk_prepare_enable(info->mclk);
+
+	return err;
+}
+
 static int ov5693_power_off(struct ov5693_info *info)
 {
 	struct ov5693_power_rail *pw = &info->regulators;
@@ -1523,6 +1546,7 @@ static int ov5693_power_off(struct ov5693_info *info)
 			return err;
 		info->power_on = false;
 		ov5693_gpio_pwrdn(info, 1);
+		ov5693_mclk_disable(info);
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_off function\n", __func__);
@@ -1539,18 +1563,26 @@ static int ov5693_power_on(struct ov5693_info *info, bool standby)
 	if (true == info->power_on)
 		return 0;
 
+	err = ov5693_mclk_enable(info);
+	if (err)
+		return err;
+
 	if (info->pdata && info->pdata->power_on) {
 		err = info->pdata->power_on(pw);
-		if (0 > err)
-			return err;
-		info->power_on = true;
-		ov5693_gpio_pwrdn(info, standby ? 1 : 0);
-		msleep(100);
+		if (err >= 0) {
+			info->power_on = true;
+			ov5693_gpio_pwrdn(info, standby ? 1 : 0);
+			msleep(100);
+		}
 	} else {
 		dev_err(&info->i2c_client->dev,
 			"%s ERR: has no power_on function\n", __func__);
 		err = -EINVAL;
 	}
+
+	if (err < 0)
+		ov5693_mclk_disable(info);
+
 	return err;
 }
 
@@ -2014,6 +2046,10 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 				&gpio_pdata[pdata->gpio_count]);
 	pdata->gpio = gpio_pdata;
 
+	/* MCLK clock info */
+	of_property_read_string(np, "nvidia,mclk_name",
+				&pdata->mclk_name);
+
 	/* ov5693 power functions */
 	pdata->power_on = ov5693_platform_power_on;
 	pdata->power_off = ov5693_platform_power_off;
@@ -2029,6 +2065,7 @@ static int ov5693_probe(
 	char dname[16];
 	unsigned long clock_probe_rate;
 	int err;
+	const char *mclk_name;
 	static struct regmap_config ad5823_regmap_config = {
 		.reg_bits = 16,
 		.val_bits = 8,
@@ -2079,6 +2116,14 @@ static int ov5693_probe(
 		return err;
 	}
 
+	mclk_name = info->pdata->mclk_name ?
+		    info->pdata->mclk_name : "default_mclk";
+	info->mclk = devm_clk_get(&client->dev, mclk_name);
+	if (IS_ERR(info->mclk)) {
+		dev_err(&client->dev, "%s: unable to get clock %s\n",
+			__func__, mclk_name);
+		return PTR_ERR(info->mclk);
+	}
 
 	i2c_set_clientdata(client, info);
 	ov5693_pm_init(info);
