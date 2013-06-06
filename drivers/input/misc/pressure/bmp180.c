@@ -18,44 +18,79 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/regulator/consumer.h>
+#include <asm/div64.h>
 #include <linux/mpu.h>
 
 
+#define BMP180_RANGE_DFLT		(0)
+/* until OSS is supported in the pressure calculation, this defaults to 5 */
+#define BMP280_RANGE_DFLT		(5)
+
+#define BMPX80_NAME			"bmpX80"
 #define BMP180_NAME			"bmp180"
-#define BMP180_I2C_ADDR			(0x77)
-#define BMP180_HW_DELAY_MS		(10)
+#define BMP280_NAME			"bmp280"
+#define BMP180_I2C_ADDR0		(0x76)
+#define BMP180_I2C_ADDR1		(0x77)
+#define BMPX80_HW_DELAY_POR_MS		(10)
 #define BMP180_POLL_DELAY_MS_DFLT	(200)
 #define BMP180_MPU_RETRY_COUNT		(20)
-#define BMP180_MPU_RETRY_DELAY_MS	(20)
+#define BMP180_MPU_RETRY_DELAY_MS	(100)
 #define BMP180_ERR_CNT_MAX		(20)
 /* sampling delays */
-#define BMP180_DELAY_ULP		(5)
-#define	BMP180_DELAY_ST			(8)
-#define	BMP180_DELAY_HIGH_RES		(14)
-#define	BMP180_DELAY_UHIGH_RES		(26)
+#define BMP180_DELAY_MS_ULP		(5)
+#define BMP180_DELAY_MS_ST		(8)
+#define BMP180_DELAY_MS_HIGH_RES	(14)
+#define BMP180_DELAY_MS_UHIGH_RES	(26)
+#define BMP280_DELAY_MS_ULP		(9)
+#define BMP280_DELAY_MS_LP		(12)
+#define BMP280_DELAY_MS_ST		(18)
+#define BMP280_DELAY_MS_HIGH_RES	(30)
+#define BMP280_DELAY_MS_UHIGH_RES	(57)
 /* input poll values*/
 #define BMP180_INPUT_RESOLUTION		(1)
 #define BMP180_INPUT_DIVISOR		(100)
-#define BMP180_INPUT_DELAY_MS_MIN	(BMP180_DELAY_UHIGH_RES)
+#define BMP280_INPUT_DIVISOR		(256)
+#define BMP180_INPUT_DELAY_MS_MIN	(BMP180_DELAY_MS_UHIGH_RES)
 #define BMP180_INPUT_POWER_UA		(12)
 #define BMP180_PRESSURE_MIN		(30000)
 #define BMP180_PRESSURE_MAX		(110000)
 #define BMP180_PRESSURE_FUZZ		(5)
 #define BMP180_PRESSURE_FLAT		(5)
-/* BMP180 registers */
-#define BMP180_REG_ID			(0xD0)
-#define BMP180_REG_ID_VAL		(0x55)
-#define BMP180_REG_RESET		(0xE0)
-#define BMP180_REG_RESET_VAL		(0xB6)
-#define BMP180_REG_CTRL			(0xF4)
+/* BMPX80 registers */
+#define BMPX80_REG_ID			(0xD0)
+#define BMPX80_REG_ID_BMP180		(0x55)
+#define BMPX80_REG_ID_BMP280		(0x56)
+#define BMPX80_REG_RESET		(0xE0)
+#define BMPX80_REG_RESET_VAL		(0xB6)
+#define BMPX80_REG_CTRL			(0xF4)
 #define BMP180_REG_CTRL_MODE_MASK	(0x1F)
 #define BMP180_REG_CTRL_MODE_PRES	(0x34)
 #define BMP180_REG_CTRL_MODE_TEMP	(0x2E)
-#define BMP180_REG_CTRL_OSS		(6)
 #define BMP180_REG_CTRL_SCO		(5)
+#define BMP180_REG_CTRL_OSS		(6)
+#define BMP280_REG_CTRL_MODE_MASK	(0x03)
+#define BMP280_REG_CTRL_MODE_SLEEP	(0)
+#define BMP280_REG_CTRL_MODE_FORCED1	(1)
+#define BMP280_REG_CTRL_MODE_FORCED2	(2)
+#define BMP280_REG_CTRL_MODE_NORMAL	(3)
+#define BMP280_REG_CTRL_OSRS_P		(2)
+#define BMP280_REG_CTRL_OSRS_P_MASK	(0x1C)
+#define BMP280_REG_CTRL_OSRS_T		(5)
+#define BMP280_REG_CTRL_OSRS_T_MASK	(0xE0)
 #define BMP180_REG_OUT_MSB		(0xF6)
 #define BMP180_REG_OUT_LSB		(0xF7)
 #define BMP180_REG_OUT_XLSB		(0xF8)
+#define BMP280_REG_STATUS		(0xF3)
+#define BMP280_REG_STATUS_MEASURING	(3)
+#define BMP280_REG_STATUS_IM_UPDATE	(0)
+#define BMP280_REG_CONFIG		(0xF5)
+#define BMP280_REG_PRESS_MSB		(0xF7)
+#define BMP280_REG_PRESS_LSB		(0xF8)
+#define BMP280_REG_PRESS_XLSB		(0xF9)
+#define BMP280_REG_TEMP_MSB		(0xFA)
+#define BMP280_REG_TEMP_LSB		(0xFB)
+#define BMP280_REG_TEMP_XLSB		(0xFC)
+
 /* ROM registers */
 #define BMP180_REG_AC1			(0xAA)
 #define BMP180_REG_AC2			(0xAC)
@@ -68,73 +103,150 @@
 #define BMP180_REG_MB			(0xBA)
 #define BMP180_REG_MC			(0xBC)
 #define BMP180_REG_MD			(0xBE)
+#define BMP280_REG_CWORD00		(0x88)
+#define BMP280_REG_CWORD01		(0x8A)
+#define BMP280_REG_CWORD02		(0x8C)
+#define BMP280_REG_CWORD03		(0x8E)
+#define BMP280_REG_CWORD04		(0x90)
+#define BMP280_REG_CWORD05		(0x92)
+#define BMP280_REG_CWORD06		(0x94)
+#define BMP280_REG_CWORD07		(0x96)
+#define BMP280_REG_CWORD08		(0x98)
+#define BMP280_REG_CWORD09		(0x9A)
+#define BMP280_REG_CWORD10		(0x9C)
+#define BMP280_REG_CWORD11		(0x9E)
+#define BMP280_REG_CWORD12		(0xA0)
 
 #define WR				(0)
 #define RD				(1)
 
+enum BMP_DATA_INFO {
+	BMP_DATA_INFO_PRESSURE = 0,
+	BMP_DATA_INFO_TEMPERATURE,
+	BMP_DATA_INFO_PRESSURE_RAW,
+	BMP_DATA_INFO_TEMPERATURE_RAW,
+	BMP_DATA_INFO_TEMPERATURE_FINE,
+	BMP_DATA_INFO_CALIBRATION,
+	BMP_DATA_INFO_RESET,
+	BMP_DATA_INFO_REGISTERS,
+	BMP_DATA_INFO_LIMIT_MAX,
+};
+
+
+static u8 bmp_ids[] = {
+	BMPX80_REG_ID_BMP180,
+	BMPX80_REG_ID_BMP280,
+};
 
 /* regulator names in order of powering on */
-static char *bmp180_vregs[] = {
+static char *bmp_vregs[] = {
 	"vdd",
 	"vddio",
 };
 
+static char *bmp_configs[] = {
+	"auto",
+	"mpu",
+	"host",
+};
+
 static unsigned long bmp180_delay_ms_tbl[] = {
-	BMP180_DELAY_ULP,
-	BMP180_DELAY_ST,
-	BMP180_DELAY_HIGH_RES,
-	BMP180_DELAY_UHIGH_RES,
+	BMP180_DELAY_MS_ULP,
+	BMP180_DELAY_MS_ST,
+	BMP180_DELAY_MS_HIGH_RES,
+	BMP180_DELAY_MS_UHIGH_RES,
 };
 
-
-struct bmp180_rom {
-	s16 ac1;
-	s16 ac2;
-	s16 ac3;
-	u16 ac4;
-	u16 ac5;
-	u16 ac6;
-	s16 b1;
-	s16 b2;
-	s16 mb;
-	s16 mc;
-	s16 md;
+static unsigned long bmp280_delay_ms_tbl[] = {
+	BMP280_DELAY_MS_ULP,
+	BMP280_DELAY_MS_LP,
+	BMP280_DELAY_MS_ST,
+	BMP280_DELAY_MS_HIGH_RES,
+	BMP280_DELAY_MS_UHIGH_RES,
 };
 
-struct bmp180_inf {
+union bmp_rom {
+	struct bmp180_rom {
+		s16 ac1;
+		s16 ac2;
+		s16 ac3;
+		u16 ac4;
+		u16 ac5;
+		u16 ac6;
+		s16 b1;
+		s16 b2;
+		s16 mb;
+		s16 mc;
+		s16 md;
+	} bmp180;
+	struct bmp280_rom {
+		u16 dig_T1;
+		s16 dig_T2;
+		s16 dig_T3;
+		u16 dig_P1;
+		s16 dig_P2;
+		s16 dig_P3;
+		s16 dig_P4;
+		s16 dig_P5;
+		s16 dig_P6;
+		s16 dig_P7;
+		s16 dig_P8;
+		s16 dig_P9;
+		s16 reserved;
+	} bmp280;
+} rom;
+
+struct bmp_inf {
 	struct i2c_client *i2c;
 	struct input_dev *idev;
 	struct workqueue_struct *wq;
 	struct delayed_work dw;
-	struct regulator_bulk_data vreg[ARRAY_SIZE(bmp180_vregs)];
+	struct regulator_bulk_data vreg[ARRAY_SIZE(bmp_vregs)];
 	struct mpu_platform_data pdata;
-	struct bmp180_rom rom;		/* data for calibration */
-	unsigned long poll_delay_us;	/* requested sampling delay (us) */
+	struct bmp_hal *hal;		/* Hardware Abstaction Layer */
+	union bmp_rom rom;		/* calibration data */
+	unsigned int poll_delay_us;	/* requested sampling delay (us) */
+	unsigned int range_user;	/* user oversampling value */
+	unsigned int range_i;		/* oversampling value */
 	unsigned int resolution;	/* report when new data outside this */
+	unsigned int data_info;		/* data info to return */
+	unsigned int dev_id;		/* device ID */
 	bool use_mpu;			/* if device behind MPU */
 	bool initd;			/* set if initialized */
 	bool enable;			/* requested enable value */
+	bool fifo_enable;		/* MPU FIFO enable */
 	bool report;			/* used to report first valid sample */
 	bool port_en[2];		/* enable status of MPU write port */
 	int port_id[2];			/* MPU port ID */
-	u8 data_out;			/* write value to trigger a sample */
-	u8 range_index;			/* oversampling value */
+	u8 data_out;			/* write value to mode register */
 	long UT;			/* uncompensated temperature */
 	long UP;			/* uncompensated pressure */
+	s32 t_fine;			/* temperature used in pressure calc */
 	long temperature;		/* true temperature */
 	int pressure;			/* true pressure hPa/100 Pa/1 mBar */
 };
 
+struct bmp_hal {
+	u8 rom_addr_start;
+	u8 rom_size;
+	unsigned long *bmp_delay_ms_tbl;
+	unsigned int divisor;
+	unsigned int range_limit;
+	unsigned int range_dflt;
+	int (*bmp_read)(struct bmp_inf *inf);
+	int (*bmp_mode_wr_mpu)(struct bmp_inf *inf, u8 mode);
+};
 
-static int bmp180_i2c_rd(struct bmp180_inf *inf, u8 reg, u16 len, u8 *val)
+
+static int bmp_i2c_rd(struct bmp_inf *inf, u8 reg, u16 len, u8 *val)
 {
 	struct i2c_msg msg[2];
 
-	msg[0].addr = BMP180_I2C_ADDR;
+	msg[0].addr = inf->i2c->addr;
 	msg[0].flags = 0;
 	msg[0].len = 1;
 	msg[0].buf = &reg;
-	msg[1].addr = BMP180_I2C_ADDR;
+	msg[1].addr = inf->i2c->addr;
 	msg[1].flags = I2C_M_RD;
 	msg[1].len = len;
 	msg[1].buf = val;
@@ -144,14 +256,14 @@ static int bmp180_i2c_rd(struct bmp180_inf *inf, u8 reg, u16 len, u8 *val)
 	return 0;
 }
 
-static int bmp180_i2c_wr(struct bmp180_inf *inf, u8 reg, u8 val)
+static int bmp_i2c_wr(struct bmp_inf *inf, u8 reg, u8 val)
 {
 	struct i2c_msg msg;
 	u8 buf[2];
 
 	buf[0] = reg;
 	buf[1] = val;
-	msg.addr = BMP180_I2C_ADDR;
+	msg.addr = inf->i2c->addr;
 	msg.flags = 0;
 	msg.len = 2;
 	msg.buf = buf;
@@ -161,7 +273,7 @@ static int bmp180_i2c_wr(struct bmp180_inf *inf, u8 reg, u8 val)
 	return 0;
 }
 
-static int bmp180_vreg_dis(struct bmp180_inf *inf, int i)
+static int bmp_vreg_dis(struct bmp_inf *inf, int i)
 {
 	int err = 0;
 
@@ -178,17 +290,17 @@ static int bmp180_vreg_dis(struct bmp180_inf *inf, int i)
 	return err;
 }
 
-static int bmp180_vreg_dis_all(struct bmp180_inf *inf)
+static int bmp_vreg_dis_all(struct bmp_inf *inf)
 {
 	unsigned int i;
 	int err = 0;
 
-	for (i = ARRAY_SIZE(bmp180_vregs); i > 0; i--)
-		err |= bmp180_vreg_dis(inf, (i - 1));
+	for (i = ARRAY_SIZE(bmp_vregs); i > 0; i--)
+		err |= bmp_vreg_dis(inf, (i - 1));
 	return err;
 }
 
-static int bmp180_vreg_en(struct bmp180_inf *inf, int i)
+static int bmp_vreg_en(struct bmp_inf *inf, int i)
 {
 	int err = 0;
 
@@ -207,21 +319,21 @@ static int bmp180_vreg_en(struct bmp180_inf *inf, int i)
 	return err;
 }
 
-static int bmp180_vreg_en_all(struct bmp180_inf *inf)
+static int bmp_vreg_en_all(struct bmp_inf *inf)
 {
 	int i;
 	int err = 0;
 
-	for (i = 0; i < ARRAY_SIZE(bmp180_vregs); i++)
-		err |= bmp180_vreg_en(inf, i);
+	for (i = 0; i < ARRAY_SIZE(bmp_vregs); i++)
+		err |= bmp_vreg_en(inf, i);
 	return err;
 }
 
-static void bmp180_vreg_exit(struct bmp180_inf *inf)
+static void bmp_vreg_exit(struct bmp_inf *inf)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(bmp180_vregs); i++) {
+	for (i = 0; i < ARRAY_SIZE(bmp_vregs); i++) {
 		if (inf->vreg[i].consumer != NULL) {
 			devm_regulator_put(inf->vreg[i].consumer);
 			inf->vreg[i].consumer = NULL;
@@ -231,13 +343,13 @@ static void bmp180_vreg_exit(struct bmp180_inf *inf)
 	}
 }
 
-static int bmp180_vreg_init(struct bmp180_inf *inf)
+static int bmp_vreg_init(struct bmp_inf *inf)
 {
 	unsigned int i;
 	int err = 0;
 
-	for (i = 0; i < ARRAY_SIZE(bmp180_vregs); i++) {
-		inf->vreg[i].supply = bmp180_vregs[i];
+	for (i = 0; i < ARRAY_SIZE(bmp_vregs); i++) {
+		inf->vreg[i].supply = bmp_vregs[i];
 		inf->vreg[i].ret = 0;
 		inf->vreg[i].consumer = devm_regulator_get(&inf->i2c->dev,
 							  inf->vreg[i].supply);
@@ -254,16 +366,16 @@ static int bmp180_vreg_init(struct bmp180_inf *inf)
 	return err;
 }
 
-static int bmp180_pm(struct bmp180_inf *inf, bool enable)
+static int bmp_pm(struct bmp_inf *inf, bool enable)
 {
 	int err;
 
 	if (enable) {
-		err = bmp180_vreg_en_all(inf);
+		err = bmp_vreg_en_all(inf);
 		if (err)
-			mdelay(BMP180_HW_DELAY_MS);
+			mdelay(BMPX80_HW_DELAY_POR_MS);
 	} else {
-		err = bmp180_vreg_dis_all(inf);
+		err = bmp_vreg_dis_all(inf);
 	}
 	if (err > 0)
 		err = 0;
@@ -276,7 +388,7 @@ static int bmp180_pm(struct bmp180_inf *inf, bool enable)
 	return err;
 }
 
-static int bmp180_port_free(struct bmp180_inf *inf, int port)
+static int bmp_port_free(struct bmp_inf *inf, int port)
 {
 	int err = 0;
 
@@ -288,41 +400,41 @@ static int bmp180_port_free(struct bmp180_inf *inf, int port)
 	return err;
 }
 
-static int bmp180_ports_free(struct bmp180_inf *inf)
+static int bmp_ports_free(struct bmp_inf *inf)
 {
 	int err;
 
-	err = bmp180_port_free(inf, WR);
-	err |= bmp180_port_free(inf, RD);
+	err = bmp_port_free(inf, WR);
+	err |= bmp_port_free(inf, RD);
 	return err;
 }
 
-static void bmp180_pm_exit(struct bmp180_inf *inf)
+static void bmp_pm_exit(struct bmp_inf *inf)
 {
-	bmp180_ports_free(inf);
-	bmp180_pm(inf, false);
-	bmp180_vreg_exit(inf);
+	bmp_ports_free(inf);
+	bmp_pm(inf, false);
+	bmp_vreg_exit(inf);
 }
 
-static int bmp180_pm_init(struct bmp180_inf *inf)
+static int bmp_pm_init(struct bmp_inf *inf)
 {
 	int err;
 
 	inf->initd = false;
 	inf->enable = false;
+	inf->fifo_enable = false; /* DON'T ENABLE: MPU FIFO HW BROKEN */
 	inf->port_en[WR] = false;
 	inf->port_en[RD] = false;
 	inf->port_id[WR] = -1;
 	inf->port_id[RD] = -1;
 	inf->resolution = 0;
-	inf->range_index = 0;
 	inf->poll_delay_us = (BMP180_POLL_DELAY_MS_DFLT * 1000);
-	bmp180_vreg_init(inf);
-	err = bmp180_pm(inf, true);
+	bmp_vreg_init(inf);
+	err = bmp_pm(inf, true);
 	return err;
 }
 
-static int bmp180_nvi_mpu_bypass_request(struct bmp180_inf *inf)
+static int bmp_nvi_mpu_bypass_request(struct bmp_inf *inf)
 {
 	int i;
 	int err = 0;
@@ -341,7 +453,7 @@ static int bmp180_nvi_mpu_bypass_request(struct bmp180_inf *inf)
 	return err;
 }
 
-static int bmp180_nvi_mpu_bypass_release(struct bmp180_inf *inf)
+static int bmp_nvi_mpu_bypass_release(struct bmp_inf *inf)
 {
 	int err = 0;
 
@@ -350,127 +462,220 @@ static int bmp180_nvi_mpu_bypass_release(struct bmp180_inf *inf)
 	return err;
 }
 
-static int bmp180_wr(struct bmp180_inf *inf, u8 reg, u8 val)
+static int bmp_wr(struct bmp_inf *inf, u8 reg, u8 val)
 {
 	int err = 0;
 
-	err = bmp180_nvi_mpu_bypass_request(inf);
+	err = bmp_nvi_mpu_bypass_request(inf);
 	if (!err) {
-		err = bmp180_i2c_wr(inf, reg, val);
-		bmp180_nvi_mpu_bypass_release(inf);
+		err = bmp_i2c_wr(inf, reg, val);
+		bmp_nvi_mpu_bypass_release(inf);
 	}
 	return err;
 }
 
-static int bmp180_port_enable(struct bmp180_inf *inf, int port, bool enable)
+static int bmp_port_enable(struct bmp_inf *inf, int port, bool enable)
 {
 	int err = 0;
 
 	if (enable != inf->port_en[port]) {
-		err = nvi_mpu_enable(inf->port_id[port], enable, false);
+		err = nvi_mpu_enable(inf->port_id[port],
+				     enable, inf->fifo_enable);
 		if (!err)
 			inf->port_en[port] = enable;
 	}
 	return err;
 }
 
-static int bmp180_ports_enable(struct bmp180_inf *inf, bool enable)
+static int bmp_ports_enable(struct bmp_inf *inf, bool enable)
 {
 	int err;
 
-	err = bmp180_port_enable(inf, WR, enable);
-	err |= bmp180_port_enable(inf, RD, enable);
+	err = bmp_port_enable(inf, WR, enable);
+	err |= bmp_port_enable(inf, RD, enable);
 	return err;
 }
 
-static int bmp180_reset(struct bmp180_inf *inf)
+static int bmp180_mode_wr_mpu(struct bmp_inf *inf, u8 mode)
 {
 	int err = 0;
 
+	if (mode) {
+		err = nvi_mpu_data_out(inf->port_id[WR], mode);
+		err |= bmp_ports_enable(inf, true);
+	}
+	return err;
+}
+
+static int bmp280_mode_wr_mpu(struct bmp_inf *inf, u8 mode)
+{
+	u8 mode_old;
+	u8 mode_new;
+	int err = 0;
+
+	mode_old = inf->data_out & BMP280_REG_CTRL_MODE_MASK;
+	mode_new = mode & BMP280_REG_CTRL_MODE_MASK;
+	switch (mode_new) {
+	case BMP280_REG_CTRL_MODE_SLEEP:
+		if (mode_old == BMP280_REG_CTRL_MODE_NORMAL)
+			err = bmp_wr(inf, BMPX80_REG_CTRL, mode_new);
+		break;
+
+	case BMP280_REG_CTRL_MODE_FORCED1:
+		if (mode_old == BMP280_REG_CTRL_MODE_NORMAL)
+			err = bmp_wr(inf, BMPX80_REG_CTRL,
+				     BMP280_REG_CTRL_MODE_SLEEP);
+		err |= nvi_mpu_data_out(inf->port_id[WR], mode);
+		err |= bmp_ports_enable(inf, true);
+		break;
+
+	case BMP280_REG_CTRL_MODE_FORCED2:
+		if (mode_old == BMP280_REG_CTRL_MODE_NORMAL)
+			err = bmp_wr(inf, BMPX80_REG_CTRL,
+				     BMP280_REG_CTRL_MODE_SLEEP);
+		err |= nvi_mpu_data_out(inf->port_id[WR], mode);
+		err |= bmp_ports_enable(inf, true);
+		break;
+
+	case BMP280_REG_CTRL_MODE_NORMAL:
+		err = bmp_wr(inf, BMPX80_REG_CTRL, mode);
+		err |= bmp_port_enable(inf, RD, true);
+		break;
+
+	default:
+		err = -EINVAL;
+		break;
+	}
+
+	return err;
+}
+
+static int bmp_mode_wr(struct bmp_inf *inf, bool reset, bool enable)
+{
+	u8 mode_new;
+	int err = 0;
+
+	if (inf->dev_id == BMPX80_REG_ID_BMP280) {
+		if (enable) {
+			mode_new = inf->range_i + 1;
+			mode_new = (mode_new << BMP280_REG_CTRL_OSRS_T) |
+				   (mode_new << BMP280_REG_CTRL_OSRS_P);
+			mode_new |= BMP280_REG_CTRL_MODE_FORCED1;
+		} else {
+			mode_new = BMP280_REG_CTRL_MODE_SLEEP;
+		}
+	} else {
+		if (enable) {
+			mode_new = inf->range_i << BMP180_REG_CTRL_OSS;
+			mode_new |= BMP180_REG_CTRL_MODE_TEMP;
+		} else {
+			mode_new = 0;
+		}
+	}
+	if ((mode_new == inf->data_out) && (!reset))
+		return err;
+
 	if (inf->use_mpu)
-		err = bmp180_ports_enable(inf, false);
+		err = bmp_ports_enable(inf, false);
 	else
 		cancel_delayed_work_sync(&inf->dw);
 	if (err)
 		return err;
 
-	err = bmp180_wr(inf, BMP180_REG_RESET, BMP180_REG_RESET_VAL);
-	if (!err)
-		mdelay(BMP180_HW_DELAY_MS);
+	if (reset) {
+		err = bmp_wr(inf, BMPX80_REG_RESET, BMPX80_REG_RESET_VAL);
+		if (!err)
+			mdelay(BMPX80_HW_DELAY_POR_MS);
+	}
 	if (inf->use_mpu) {
-		err |= nvi_mpu_data_out(inf->port_id[WR],
-					BMP180_REG_CTRL_MODE_TEMP);
-		err |= bmp180_ports_enable(inf, true);
+		inf->hal->bmp_mode_wr_mpu(inf, mode_new);
 	} else {
-		err = bmp180_wr(inf, BMP180_REG_CTRL,
-				BMP180_REG_CTRL_MODE_TEMP);
-		queue_delayed_work(inf->wq, &inf->dw,
-				   usecs_to_jiffies(inf->poll_delay_us));
+		err = bmp_i2c_wr(inf, BMPX80_REG_CTRL, mode_new);
+		if (enable)
+			queue_delayed_work(inf->wq, &inf->dw,
+					 usecs_to_jiffies(inf->poll_delay_us));
 	}
+	if (!err)
+		inf->data_out = mode_new;
 	return err;
 }
 
-static int bmp180_delay(struct bmp180_inf *inf, unsigned long delay_us)
+static int bmp_delay(struct bmp_inf *inf,
+		     unsigned int delay_us, unsigned int range_user)
 {
-	int err = 0;
+	unsigned int i;
+	int err;
+	int err_t = 0;
 
-	if (inf->use_mpu)
-		err = nvi_mpu_delay_us(inf->port_id[RD], delay_us);
-	return err;
+	if (!range_user) {
+		for (i = (inf->hal->range_limit - 1); i > 0; i--) {
+			if (delay_us >= (inf->hal->bmp_delay_ms_tbl[i] * 1000))
+				break;
+		}
+	} else {
+		i = (range_user - 1);
+	}
+	if (i != inf->range_i) {
+		err = 0;
+		if (inf->use_mpu)
+			err = nvi_mpu_delay_ms(inf->port_id[WR],
+					       inf->hal->bmp_delay_ms_tbl[i]);
+		if (err < 0)
+			err_t |= err;
+		else
+			inf->range_i = i;
+	}
+	if (delay_us < (inf->hal->bmp_delay_ms_tbl[inf->range_i] * 1000))
+		delay_us = (inf->hal->bmp_delay_ms_tbl[inf->range_i] * 1000);
+	if (delay_us != inf->poll_delay_us) {
+		err = 0;
+		if (inf->use_mpu)
+			err = nvi_mpu_delay_us(inf->port_id[RD],
+					       (unsigned long)delay_us);
+		if (err)
+			err_t |= err;
+		else
+			inf->poll_delay_us = delay_us;
+	}
+	return err_t;
 }
 
-static int bmp180_init_hw(struct bmp180_inf *inf)
+static s64 bmp_timestamp_ns(void)
 {
-	u8 *p_rom1;
-	u8 *p_rom2;
-	u8 tmp;
-	int i;
-	int err = 0;
+	struct timespec ts;
+	s64 ns;
 
-	inf->UT = 0;
-	inf->UP = 0;
-	inf->temperature = 0;
-	inf->pressure = 0;
-	p_rom1 = (u8 *)&inf->rom.ac1;
-	err = bmp180_nvi_mpu_bypass_request(inf);
-	if (!err) {
-		err = bmp180_i2c_rd(inf, BMP180_REG_AC1, 22, p_rom1);
-		bmp180_nvi_mpu_bypass_release(inf);
-	}
-	if (err)
-		return err;
-
-	for (i = 0; i < 11; i++) {
-		p_rom2 = p_rom1;
-		tmp = *p_rom1;
-		*p_rom1++ = *++p_rom2;
-		*p_rom2 = tmp;
-		p_rom1++;
-	}
-	inf->initd = true;
-	return err;
+	ktime_get_ts(&ts);
+	ns = timespec_to_ns(&ts);
+	return ns;
 }
 
-static void bmp180_calc(struct bmp180_inf *inf)
+static void bmp_report(struct bmp_inf *inf, s64 ts)
+{
+	input_report_abs(inf->idev, ABS_PRESSURE, inf->pressure);
+	input_sync(inf->idev);
+}
+
+static void bmp180_calc(struct bmp_inf *inf)
 {
 	long X1, X2, X3, B3, B5, B6, p;
 	unsigned long B4, B7;
 	long pressure;
 
-	X1 = ((inf->UT - inf->rom.ac6) * inf->rom.ac5) >> 15;
-	X2 = inf->rom.mc * (1 << 11) / (X1 + inf->rom.md);
+	X1 = ((inf->UT - inf->rom.bmp180.ac6) * inf->rom.bmp180.ac5) >> 15;
+	X2 = inf->rom.bmp180.mc * (1 << 11) / (X1 + inf->rom.bmp180.md);
 	B5 = X1 + X2;
 	inf->temperature = (B5 + 8) >> 4;
 	B6 = B5 - 4000;
-	X1 = (inf->rom.b2 * ((B6 * B6) >> 12)) >> 11;
-	X2 = (inf->rom.ac2 * B6) >> 11;
+	X1 = (inf->rom.bmp180.b2 * ((B6 * B6) >> 12)) >> 11;
+	X2 = (inf->rom.bmp180.ac2 * B6) >> 11;
 	X3 = X1 + X2;
-	B3 = ((((inf->rom.ac1 << 2) + X3) << inf->range_index) + 2) >> 2;
-	X1 = (inf->rom.ac3 * B6) >> 13;
-	X2 = (inf->rom.b1 * ((B6 * B6) >> 12)) >> 16;
+	B3 = ((((inf->rom.bmp180.ac1 << 2) + X3) << inf->range_i) + 2) >> 2;
+	X1 = (inf->rom.bmp180.ac3 * B6) >> 13;
+	X2 = (inf->rom.bmp180.b1 * ((B6 * B6) >> 12)) >> 16;
 	X3 = ((X1 + X2) + 2) >> 2;
-	B4 = (inf->rom.ac4 * (unsigned long)(X3 + 32768)) >> 15;
-	B7 = ((unsigned long)inf->UP - B3) * (50000 >> inf->range_index);
+	B4 = (inf->rom.bmp180.ac4 * (unsigned long)(X3 + 32768)) >> 15;
+	B7 = ((unsigned long)inf->UP - B3) * (50000 >> inf->range_i);
 	if (B7 < 0x80000000)
 		p = (B7 << 1) / B4;
 	else
@@ -482,13 +687,7 @@ static void bmp180_calc(struct bmp180_inf *inf)
 	inf->pressure = (int)pressure;
 }
 
-static void bmp180_report(struct bmp180_inf *inf, u8 *data, s64 ts)
-{
-	input_report_abs(inf->idev, ABS_PRESSURE, inf->pressure);
-	input_sync(inf->idev);
-}
-
-static int bmp180_read_sts(struct bmp180_inf *inf, u8 *data)
+static int bmp180_read_sts(struct bmp_inf *inf, u8 *data)
 {
 	long val;
 	int limit_lo;
@@ -504,10 +703,10 @@ static int bmp180_read_sts(struct bmp180_inf *inf, u8 *data)
 		if (data[0] == 0x0A) { /* temperature */
 			inf->UT = ((data[2] << 8) + data[3]);
 			inf->data_out = BMP180_REG_CTRL_MODE_PRES |
-				     (inf->range_index << BMP180_REG_CTRL_OSS);
+					(inf->range_i << BMP180_REG_CTRL_OSS);
 		} else { /* pressure */
-			val = ((data[2] << 16) + (data[3] << 8) + data[4]) >>
-							(8 - inf->range_index);
+			val = ((data[2] << 16) + (data[3] << 8) +
+						data[4]) >> (8 - inf->range_i);
 			inf->data_out = BMP180_REG_CTRL_MODE_TEMP;
 			if (inf->resolution && (!inf->report)) {
 				if (inf->UP == val)
@@ -540,26 +739,16 @@ static int bmp180_read_sts(struct bmp180_inf *inf, u8 *data)
 	return err;
 }
 
-static s64 bmp180_timestamp_ns(void)
-{
-	struct timespec ts;
-	s64 ns;
-
-	ktime_get_ts(&ts);
-	ns = timespec_to_ns(&ts);
-	return ns;
-}
-
-static int bmp180_read(struct bmp180_inf *inf)
+static int bmp180_read(struct bmp_inf *inf)
 {
 	long long timestamp1;
 	long long timestamp2;
 	u8 data[5];
 	int err;
 
-	timestamp1 = bmp180_timestamp_ns();
-	err = bmp180_i2c_rd(inf, BMP180_REG_CTRL, 5, data);
-	timestamp2 = bmp180_timestamp_ns();
+	timestamp1 = bmp_timestamp_ns();
+	err = bmp_i2c_rd(inf, BMPX80_REG_CTRL, 5, data);
+	timestamp2 = bmp_timestamp_ns();
 	if (err)
 		return err;
 
@@ -567,24 +756,24 @@ static int bmp180_read(struct bmp180_inf *inf)
 	if (err > 0) {
 		timestamp2 = (timestamp2 - timestamp1) / 2;
 		timestamp1 += timestamp2;
-		bmp180_report(inf, data, timestamp1);
-		bmp180_i2c_wr(inf, BMP180_REG_CTRL, inf->data_out);
+		bmp_report(inf, timestamp1);
+		bmp_i2c_wr(inf, BMPX80_REG_CTRL, inf->data_out);
 	} else if (err < 0) {
-		bmp180_i2c_wr(inf, BMP180_REG_CTRL, inf->data_out);
+		bmp_i2c_wr(inf, BMPX80_REG_CTRL, inf->data_out);
 	}
-	return err;
+	return 0;
 }
 
 static void bmp180_mpu_handler(u8 *data, unsigned int len, s64 ts, void *p_val)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 	int err;
 
-	inf = (struct bmp180_inf *)p_val;
+	inf = (struct bmp_inf *)p_val;
 	if (inf->enable) {
 		err = bmp180_read_sts(inf, data);
 		if (err > 0) {
-			bmp180_report(inf, data, ts);
+			bmp_report(inf, ts);
 			nvi_mpu_data_out(inf->port_id[WR], inf->data_out);
 		} else if (err < 0) {
 			nvi_mpu_data_out(inf->port_id[WR], inf->data_out);
@@ -592,111 +781,184 @@ static void bmp180_mpu_handler(u8 *data, unsigned int len, s64 ts, void *p_val)
 	}
 }
 
-static int bmp180_id(struct bmp180_inf *inf)
+static void bmp280_calc_temp(struct bmp_inf *inf)
 {
-	struct nvi_mpu_port nmp;
-	u8 config_boot;
-	u8 val = 0;
-	int err;
+	s32 adc_T;
+	s32 var1;
+	s32 var2;
 
-	config_boot = inf->pdata.config & NVI_CONFIG_BOOT_MASK;
-	if (config_boot == NVI_CONFIG_BOOT_AUTO) {
-		nmp.addr = BMP180_I2C_ADDR | 0x80;
-		nmp.reg = BMP180_REG_ID;
-		nmp.ctrl = 1;
-		err = nvi_mpu_dev_valid(&nmp, &val);
-		/* see mpu.h for possible return values */
-		if ((err == -EAGAIN) || (err == -EBUSY))
-			return -EAGAIN;
-
-		if (((!err) && (val == BMP180_REG_ID_VAL)) || (err == -EIO))
-			config_boot = NVI_CONFIG_BOOT_MPU;
-	}
-	if (config_boot == NVI_CONFIG_BOOT_MPU) {
-		inf->use_mpu = true;
-		nmp.addr = BMP180_I2C_ADDR | 0x80;
-		nmp.reg = BMP180_REG_CTRL;
-		nmp.ctrl = 5;
-		nmp.data_out = 0;
-		nmp.delay_ms = 0;
-		nmp.delay_us = inf->poll_delay_us;
-		nmp.shutdown_bypass = false;
-		nmp.handler = &bmp180_mpu_handler;
-		nmp.ext_driver = (void *)inf;
-		err = nvi_mpu_port_alloc(&nmp);
-		if (err < 0)
-			return err;
-
-		inf->port_id[RD] = err;
-		nmp.addr = BMP180_I2C_ADDR;
-		nmp.reg = BMP180_REG_CTRL;
-		nmp.ctrl = 1;
-		nmp.data_out = BMP180_REG_CTRL_MODE_TEMP;
-		nmp.delay_ms = bmp180_delay_ms_tbl[inf->range_index];
-		nmp.delay_us = 0;
-		nmp.shutdown_bypass = false;
-		nmp.handler = NULL;
-		nmp.ext_driver = NULL;
-		err = nvi_mpu_port_alloc(&nmp);
-		if (err < 0) {
-			bmp180_ports_free(inf);
-			dev_err(&inf->i2c->dev, "%s ERR %d", __func__, err);
-		} else {
-			inf->port_id[WR] = err;
-			err = 0;
-		}
-		return err;
-	}
-
-	/* NVI_CONFIG_BOOT_EXTERNAL */
-	inf->use_mpu = false;
-	err = bmp180_i2c_rd(inf, BMP180_REG_ID, 1, &val);
-	if ((!err) && (val == BMP180_REG_ID_VAL))
-		return 0;
-
-	return -ENODEV;
+	adc_T = (s32)inf->UT;
+	adc_T <<= inf->range_i;
+	adc_T >>= 4;
+	var1 = ((((adc_T >> 3) - ((s32)inf->rom.bmp280.dig_T1 << 1))) *
+					  ((s32)inf->rom.bmp280.dig_T2)) >> 11;
+	var2 = (((((adc_T >> 4) - ((s32)inf->rom.bmp280.dig_T1)) *
+		  ((adc_T >> 4) - ((s32)inf->rom.bmp280.dig_T1))) >> 12) *
+		((s32)inf->rom.bmp280.dig_T3)) >> 14;
+	inf->t_fine = var1 + var2;
+	inf->temperature = (inf->t_fine * 5 + 128) >> 8;
 }
 
-static void bmp180_work(struct work_struct *ws)
+static void bmp280_calc_pres(struct bmp_inf *inf)
 {
-	struct bmp180_inf *inf;
+	s32 adc_P;
+	s64 var1;
+	s64 var2;
+	s64 p;
 
-	inf = container_of(ws, struct bmp180_inf, dw.work);
-	bmp180_read(inf);
+	adc_P = (s32)inf->UP;
+	adc_P <<= inf->range_i;
+	adc_P >>= 4;
+	var1 = ((s64)inf->t_fine) - 128000;
+	var2 = var1 * var1 * (s64)inf->rom.bmp280.dig_P6;
+	var2 += ((var1 * (s64)inf->rom.bmp280.dig_P5) << 17);
+	var2 += (((s64)inf->rom.bmp280.dig_P4) << 35);
+	var1 = ((var1 * var1 * (s64)inf->rom.bmp280.dig_P3) >> 8) +
+		((var1 * (s64)inf->rom.bmp280.dig_P2) << 12);
+	var1 = (((((s64)1) << 47) + var1) *
+		((s64)inf->rom.bmp280.dig_P1)) >> 33;
+	if (var1) { /* avoid division by zero */
+		p = 1048576 - adc_P;
+		p = ((p << 31) - var2) * 3125;
+		p = do_div(p, var1);
+		var1 = (((s64)inf->rom.bmp280.dig_P9) *
+			(p >> 13) * (p >> 13)) >> 25;
+		var2 = (((s64)inf->rom.bmp280.dig_P8) * p) >> 19;
+		p = ((p + var1 + var2) >> 8) +
+			(((s64)inf->rom.bmp280.dig_P7) << 4);
+	} else {
+		p = 0;
+	}
+	inf->pressure = (int)p;
+}
+
+static int bmp280_read_sts(struct bmp_inf *inf, u8 *data)
+{
+	u8 sts;
+	int val;
+
+	sts = data[1] & BMP280_REG_CTRL_MODE_MASK;
+	if ((sts == BMP280_REG_CTRL_MODE_FORCED1) ||
+					 (sts == BMP280_REG_CTRL_MODE_FORCED2))
+		return 0;
+
+	val = (data[4] << 12) | (data[5] << 4) | (data[6] >> 4);
+	inf->UP = val;
+	val = (data[7] << 12) | (data[8] << 4) | (data[9] >> 4);
+	inf->UT = val;
+	bmp280_calc_temp(inf);
+	bmp280_calc_pres(inf);
+	return 1;
+}
+
+static int bmp280_read(struct bmp_inf *inf)
+{
+	long long timestamp1;
+	long long timestamp2;
+	u8 data[10];
+	int err;
+
+	timestamp1 = bmp_timestamp_ns();
+	err = bmp_i2c_rd(inf, BMP280_REG_STATUS, 10, data);
+	timestamp2 = bmp_timestamp_ns();
+	if (err)
+		return err;
+
+	err = bmp180_read_sts(inf, data);
+	if (err > 0) {
+		timestamp2 = (timestamp2 - timestamp1) >> 1;
+		timestamp1 += timestamp2;
+		bmp_report(inf, timestamp1);
+		bmp_i2c_wr(inf, BMPX80_REG_CTRL, inf->data_out);
+	}
+	return 0;
+}
+
+static void bmp280_mpu_handler(u8 *data, unsigned int len, s64 ts, void *p_val)
+{
+	struct bmp_inf *inf;
+	int err;
+
+	inf = (struct bmp_inf *)p_val;
+	if (inf->enable) {
+		err = bmp280_read_sts(inf, data);
+		if (!err)
+			bmp_report(inf, ts);
+	}
+}
+
+static void bmp_work(struct work_struct *ws)
+{
+	struct bmp_inf *inf;
+
+	inf = container_of(ws, struct bmp_inf, dw.work);
+	inf->hal->bmp_read(inf);
 	queue_delayed_work(inf->wq, &inf->dw,
 			   usecs_to_jiffies(inf->poll_delay_us));
 }
 
-static int bmp180_enable(struct bmp180_inf *inf, bool enable)
+static int bmp_init_hw(struct bmp_inf *inf)
+{
+	u8 *p_rom8;
+	u16 *p_rom16;
+	int i;
+	int err = 0;
+
+	inf->UT = 0;
+	inf->UP = 0;
+	inf->temperature = 0;
+	inf->pressure = 0;
+	p_rom8 = (u8 *)&inf->rom;
+	err = bmp_nvi_mpu_bypass_request(inf);
+	if (!err) {
+		err = bmp_i2c_rd(inf, inf->hal->rom_addr_start,
+				 inf->hal->rom_size, p_rom8);
+		bmp_nvi_mpu_bypass_release(inf);
+	}
+	if (err)
+		return err;
+
+	p_rom16 = (u16 *)&inf->rom;
+	for (i = 0; i < (inf->hal->rom_size / 2); i++) {
+		*p_rom16 = be16_to_cpup(p_rom16);
+		p_rom16++;
+	}
+	inf->initd = true;
+	return err;
+}
+
+static int bmp_enable(struct bmp_inf *inf, bool enable)
 {
 	int err = 0;
 
-	bmp180_pm(inf, true);
+	bmp_pm(inf, true);
 	if (!inf->initd)
-		err = bmp180_init_hw(inf);
-	if (enable) {
-		inf->report = true;
-		err |= bmp180_delay(inf, inf->poll_delay_us);
-		err |= bmp180_reset(inf);
-		if (!err)
-			inf->enable = true;
+		err = bmp_init_hw(inf);
+	if (!err) {
+		if (enable) {
+			inf->report = true;
+			err |= bmp_delay(inf, inf->poll_delay_us,
+					 inf->range_user);
+			err |= bmp_mode_wr(inf, true, true);
+			if (!err)
+				inf->enable = true;
+		} else {
+			inf->enable = false;
+			err = bmp_mode_wr(inf, false, false);
+			if (!err)
+				bmp_pm(inf, false);
+		}
 	} else {
-		inf->enable = false;
-		if (inf->use_mpu)
-			err = bmp180_ports_enable(inf, false);
-		else
-			cancel_delayed_work_sync(&inf->dw);
-		if (!err)
-			bmp180_pm(inf, false);
+		bmp_pm(inf, false);
 	}
 	return err;
 }
 
-static ssize_t bmp180_enable_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
+static ssize_t bmp_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 	unsigned int enable;
 	bool en;
 	int err;
@@ -710,54 +972,52 @@ static ssize_t bmp180_enable_store(struct device *dev,
 		en = true;
 	else
 		en = false;
-	dev_dbg(&inf->i2c->dev, "%s: %x", __func__, en);
-	err = bmp180_enable(inf, en);
+	dev_dbg(&inf->i2c->dev, "%s: %x\n", __func__, en);
+	err = bmp_enable(inf, en);
 	if (err) {
-		dev_err(&inf->i2c->dev, "%s: %x ERR=%d", __func__, en, err);
+		dev_err(&inf->i2c->dev, "%s: %x ERR=%d\n", __func__, en, err);
 		return err;
 	}
 
 	return count;
 }
 
-static ssize_t bmp180_enable_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
+static ssize_t bmp_enable_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
 {
-	struct bmp180_inf *inf;
-	unsigned int enable = 0;
+	struct bmp_inf *inf;
+	unsigned int enable;
 
 	inf = dev_get_drvdata(dev);
 	if (inf->enable)
 		enable = 1;
+	else
+		enable = 0;
 	return sprintf(buf, "%u\n", enable);
 }
 
-static ssize_t bmp180_delay_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
+static ssize_t bmp_delay_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
-	unsigned long delay_us;
+	struct bmp_inf *inf;
+	unsigned int delay_us;
 	int err;
 
 	inf = dev_get_drvdata(dev);
-	err = kstrtoul(buf, 10, &delay_us);
+	err = kstrtouint(buf, 10, &delay_us);
 	if (err)
 		return -EINVAL;
 
-	dev_dbg(&inf->i2c->dev, "%s: %lu\n", __func__, delay_us);
-	/* since we rotate between acquiring data for pressure and temperature
-	 * we need to go twice as fast.
-	 */
-	delay_us >>= 1;
-	if (delay_us < (bmp180_delay_ms_tbl[inf->range_index] * 1000))
-		delay_us = (bmp180_delay_ms_tbl[inf->range_index] * 1000);
-	if (inf->enable && (delay_us != inf->poll_delay_us))
-		err = bmp180_delay(inf, delay_us);
-	if (!err) {
-		inf->poll_delay_us = delay_us;
-	} else {
-		dev_err(&inf->i2c->dev, "%s: %lu ERR=%d\n",
+	dev_dbg(&inf->i2c->dev, "%s: %u\n", __func__, delay_us);
+	if (inf->dev_id == BMPX80_REG_ID_BMP180)
+		/* since we rotate between acquiring data for pressure and
+		 * temperature on the BMP180 we need to go twice as fast.
+		 */
+		delay_us >>= 1;
+	err = bmp_delay(inf, delay_us, inf->range_user);
+	if (err) {
+		dev_err(&inf->i2c->dev, "%s: %u ERR=%d\n",
 			__func__, delay_us, err);
 		return err;
 	}
@@ -765,25 +1025,25 @@ static ssize_t bmp180_delay_store(struct device *dev,
 	return count;
 }
 
-static ssize_t bmp180_delay_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
+static ssize_t bmp_delay_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
 {
-	struct bmp180_inf *inf;
-	unsigned long delay_us;
+	struct bmp_inf *inf;
+	unsigned int delay_us;
 
 	inf = dev_get_drvdata(dev);
 	if (inf->enable)
 		delay_us = inf->poll_delay_us;
 	else
-		delay_us = bmp180_delay_ms_tbl[inf->range_index] * 1000;
-	return sprintf(buf, "%lu\n", delay_us);
+		delay_us = inf->hal->bmp_delay_ms_tbl[inf->range_i] * 1000;
+	return sprintf(buf, "%u\n", delay_us);
 }
 
-static ssize_t bmp180_resolution_store(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t count)
+static ssize_t bmp_resolution_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 	unsigned int resolution;
 
 	inf = dev_get_drvdata(dev);
@@ -795,10 +1055,10 @@ static ssize_t bmp180_resolution_store(struct device *dev,
 	return count;
 }
 
-static ssize_t bmp180_resolution_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
+static ssize_t bmp_resolution_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 	unsigned int resolution;
 
 	inf = dev_get_drvdata(dev);
@@ -809,137 +1069,276 @@ static ssize_t bmp180_resolution_show(struct device *dev,
 	return sprintf(buf, "%u\n", resolution);
 }
 
-static ssize_t bmp180_max_range_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
+static ssize_t bmp_max_range_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
-	u8 range_index;
+	struct bmp_inf *inf;
+	unsigned int range_user;
 	int err;
 
 	inf = dev_get_drvdata(dev);
-	err = kstrtou8(buf, 10, &range_index);
+	err = kstrtouint(buf, 10, &range_user);
 	if (err)
 		return -EINVAL;
 
-	if (range_index > 3)
+	if (range_user > inf->hal->range_limit)
 		return -EINVAL;
 
-	dev_dbg(&inf->i2c->dev, "%s %u", __func__, range_index);
-	inf->range_index = range_index;
-	nvi_mpu_delay_ms(inf->port_id[WR], bmp180_delay_ms_tbl[range_index]);
+	if (range_user != inf->range_user) {
+		dev_dbg(&inf->i2c->dev, "%s %u\n", __func__, range_user);
+		err = bmp_delay(inf, inf->poll_delay_us, range_user);
+		if (!err) {
+			inf->range_user = range_user;
+		} else {
+			dev_err(&inf->i2c->dev, "%s ERR %u\n",
+				__func__, range_user);
+			return err;
+		}
+	}
+
 	return count;
 }
 
-static ssize_t bmp180_max_range_show(struct device *dev,
-				     struct device_attribute *attr, char *buf)
+static ssize_t bmp_max_range_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 	unsigned int range;
 
 	inf = dev_get_drvdata(dev);
 	if (inf->enable)
-		range = inf->range_index;
+		range = inf->range_i;
 	else
-		range = (BMP180_PRESSURE_MAX * BMP180_INPUT_DIVISOR);
+		range = (BMP180_PRESSURE_MAX * inf->hal->divisor);
 	return sprintf(buf, "%u\n", range);
 }
 
-static ssize_t bmp180_divisor_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
+static ssize_t bmp_data_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
+	unsigned int data_info;
+	int err;
 
 	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", BMP180_INPUT_DIVISOR);
+	err = kstrtouint(buf, 10, &data_info);
+	if (err)
+		return -EINVAL;
+
+	if (data_info >= BMP_DATA_INFO_LIMIT_MAX)
+		return -EINVAL;
+
+	dev_dbg(&inf->i2c->dev, "%s %u\n", __func__, data_info);
+	inf->data_info = data_info;
+	return count;
 }
 
-static ssize_t bmp180_microamp_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
+static ssize_t bmp_data_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
+	u8 data[11];
+	long val = 0;
+	enum BMP_DATA_INFO data_info;
+	bool enable;
+	char const *info_str;
+	int err = 0;
 
 	inf = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", BMP180_INPUT_POWER_UA);
+	data_info = inf->data_info;
+	inf->data_info = BMP_DATA_INFO_PRESSURE;
+	enable = inf->enable;
+	info_str = "ERR: DISABLED";
+	switch (data_info) {
+	case BMP_DATA_INFO_PRESSURE:
+		val = (long)inf->pressure;
+		if (inf->enable)
+			info_str = "pressure";
+		break;
+
+	case BMP_DATA_INFO_TEMPERATURE:
+		val = inf->temperature;
+		if (inf->enable)
+			info_str = "temperature";
+		break;
+
+	case BMP_DATA_INFO_PRESSURE_RAW:
+		val = inf->UP;
+		if (inf->enable)
+			info_str = "pressure_raw";
+		break;
+
+	case BMP_DATA_INFO_TEMPERATURE_RAW:
+		val = inf->UT;
+		if (inf->enable)
+			info_str = "temperature_raw";
+		break;
+
+	case BMP_DATA_INFO_TEMPERATURE_FINE:
+		val = (long)inf->t_fine;
+		if (inf->enable)
+			info_str = "temperature_fine";
+		break;
+
+	case BMP_DATA_INFO_CALIBRATION:
+		err = 0;
+		if (!inf->initd)
+			err = bmp_enable(inf, enable);
+		if (err)
+			return sprintf(buf, "calibration ERR\n");
+
+		return sprintf(buf, "%x %x %x %x %x %x %x %x %x %x %x %x\n",
+			       inf->rom.bmp280.dig_T1,
+			       inf->rom.bmp280.dig_T2,
+			       inf->rom.bmp280.dig_T3,
+			       inf->rom.bmp280.dig_P1,
+			       inf->rom.bmp280.dig_P2,
+			       inf->rom.bmp280.dig_P3,
+			       inf->rom.bmp280.dig_P4,
+			       inf->rom.bmp280.dig_P5,
+			       inf->rom.bmp280.dig_P6,
+			       inf->rom.bmp280.dig_P7,
+			       inf->rom.bmp280.dig_P8,
+			       inf->rom.bmp280.dig_P9);
+
+	case BMP_DATA_INFO_RESET:
+		bmp_pm(inf, true);
+		err = bmp_mode_wr(inf, true, enable);
+		bmp_pm(inf, enable);
+		if (err)
+			return sprintf(buf, "reset ERR\n");
+		else
+			return sprintf(buf, "reset done\n");
+
+	case BMP_DATA_INFO_REGISTERS:
+		err = bmp_nvi_mpu_bypass_request(inf);
+		if (!err) {
+			err = bmp_i2c_rd(inf, BMPX80_REG_ID, 1, data);
+			err |= bmp_i2c_rd(inf, BMP280_REG_STATUS, 10, &data[1]);
+			bmp_nvi_mpu_bypass_release(inf);
+		}
+		if (err)
+			return sprintf(buf, "register read ERR\n");
+
+		return sprintf(buf, "%x %x %x %x %x %x %x %x %x %x %x\n",
+			       data[0], data[1], data[2], data[3], data[4],
+			       data[5], data[6], data[7], data[8], data[9],
+			       data[10]);
+
+	default:
+		return -EINVAL;
+	}
+
+	return sprintf(buf, "%s: %ld\n", info_str, val);
 }
 
-static ssize_t bmp180_pressure_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
+static ssize_t bmp_mpu_fifo_enable_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
+	unsigned int fifo_enable;
+	int err;
 
 	inf = dev_get_drvdata(dev);
-	if (inf->enable)
-		return sprintf(buf, "%d\n", inf->pressure);
+	err = kstrtouint(buf, 10, &fifo_enable);
+	if (err)
+		return -EINVAL;
 
-	return -EPERM;
+	if (!inf->use_mpu)
+		return -EINVAL;
+
+	if (fifo_enable)
+		inf->fifo_enable = true;
+	else
+		inf->fifo_enable = false;
+	dev_dbg(&inf->i2c->dev, "%s %x\n", __func__, inf->fifo_enable);
+	return count;
 }
 
-static ssize_t bmp180_temperature_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
+static ssize_t bmp_mpu_fifo_enable_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%x\n", inf->fifo_enable & inf->use_mpu);
+}
+
+static ssize_t bmp_divisor_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct bmp_inf *inf;
 
 	inf = dev_get_drvdata(dev);
-	if (inf->enable)
-		return sprintf(buf, "%ld\n", inf->temperature);
-
-	return -EPERM;
+	return sprintf(buf, "%u\n", inf->hal->divisor);
 }
 
-static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWOTH,
-		   bmp180_enable_show, bmp180_enable_store);
-static DEVICE_ATTR(delay, S_IRUGO | S_IWUSR | S_IWOTH,
-		   bmp180_delay_show, bmp180_delay_store);
-static DEVICE_ATTR(resolution, S_IRUGO | S_IWUSR | S_IWOTH,
-		   bmp180_resolution_show, bmp180_resolution_store);
-static DEVICE_ATTR(max_range, S_IRUGO | S_IWUSR | S_IWOTH,
-		   bmp180_max_range_show, bmp180_max_range_store);
+static ssize_t bmp_microamp_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct bmp_inf *inf;
+
+	inf = dev_get_drvdata(dev);
+	return sprintf(buf, "%u\n", BMP180_INPUT_POWER_UA);
+}
+
+
+static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_enable_show, bmp_enable_store);
+static DEVICE_ATTR(delay, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_delay_show, bmp_delay_store);
+static DEVICE_ATTR(resolution, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_resolution_show, bmp_resolution_store);
+static DEVICE_ATTR(max_range, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_max_range_show, bmp_max_range_store);
+static DEVICE_ATTR(mpu_fifo_en, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_mpu_fifo_enable_show, bmp_mpu_fifo_enable_store);
+static DEVICE_ATTR(data, S_IRUGO | S_IWUSR | S_IWGRP,
+		   bmp_data_show, bmp_data_store);
 static DEVICE_ATTR(divisor, S_IRUGO,
-		   bmp180_divisor_show, NULL);
+		   bmp_divisor_show, NULL);
 static DEVICE_ATTR(microamp, S_IRUGO,
-		   bmp180_microamp_show, NULL);
-static DEVICE_ATTR(pressure, S_IRUGO,
-		   bmp180_pressure_show, NULL);
-static DEVICE_ATTR(temperature, S_IRUGO,
-		   bmp180_temperature_show, NULL);
+		   bmp_microamp_show, NULL);
 
-static struct attribute *bmp180_attrs[] = {
+static struct attribute *bmp_attrs[] = {
 	&dev_attr_enable.attr,
 	&dev_attr_delay.attr,
 	&dev_attr_resolution.attr,
 	&dev_attr_max_range.attr,
 	&dev_attr_divisor.attr,
 	&dev_attr_microamp.attr,
-	&dev_attr_pressure.attr,
-	&dev_attr_temperature.attr,
+	&dev_attr_data.attr,
+	&dev_attr_mpu_fifo_en.attr,
 	NULL
 };
 
-static struct attribute_group bmp180_attr_group = {
-	.name = BMP180_NAME,
-	.attrs = bmp180_attrs
+static struct attribute_group bmp_attr_group = {
+	.name = BMPX80_NAME,
+	.attrs = bmp_attrs
 };
 
-static int bmp180_sysfs_create(struct bmp180_inf *inf)
+static int bmp_sysfs_create(struct bmp_inf *inf)
 {
 	int err;
 
-	err = sysfs_create_group(&inf->idev->dev.kobj, &bmp180_attr_group);
+	err = sysfs_create_group(&inf->idev->dev.kobj, &bmp_attr_group);
 	return err;
 }
 
-static void bmp180_input_close(struct input_dev *idev)
+static void bmp_input_close(struct input_dev *idev)
 {
-	struct bmp180_inf *inf;
+	struct bmp_inf *inf;
 
 	inf = input_get_drvdata(idev);
 	if (inf != NULL)
-		bmp180_enable(inf, false);
+		bmp_enable(inf, false);
 }
 
-static int bmp180_input_create(struct bmp180_inf *inf)
+static int bmp_input_create(struct bmp_inf *inf)
 {
 	int err;
 
@@ -950,9 +1349,9 @@ static int bmp180_input_create(struct bmp180_inf *inf)
 		return err;
 	}
 
-	inf->idev->name = BMP180_NAME;
+	inf->idev->name = BMPX80_NAME;
 	inf->idev->dev.parent = &inf->i2c->dev;
-	inf->idev->close = bmp180_input_close;
+	inf->idev->close = bmp_input_close;
 	input_set_drvdata(inf->idev, inf);
 	input_set_capability(inf->idev, EV_ABS, ABS_PRESSURE);
 	input_set_abs_params(inf->idev, ABS_PRESSURE,
@@ -966,9 +1365,177 @@ static int bmp180_input_create(struct bmp180_inf *inf)
 	return err;
 }
 
-static int bmp180_remove(struct i2c_client *client)
+static int bmp_id_compare(struct bmp_inf *inf, u8 val,
+			  const struct i2c_device_id *id)
 {
-	struct bmp180_inf *inf;
+	unsigned int i;
+	int err = 0;
+
+	for (i = 0; i < ARRAY_SIZE(bmp_ids); i++) {
+		if (val == bmp_ids[i]) {
+			if (inf->dev_id && (inf->dev_id != val))
+				dev_err(&inf->i2c->dev, "%s ERR: %x != %s\n",
+					__func__, inf->dev_id, id->name);
+			inf->dev_id = val;
+			break;
+		}
+	}
+	if (!inf->dev_id) {
+		err = -ENODEV;
+		dev_err(&inf->i2c->dev, "%s ERR: ID %x != %s\n",
+			__func__, val, id->name);
+	} else {
+		dev_dbg(&inf->i2c->dev, "%s using ID %x for %s\n",
+			__func__, inf->dev_id, id->name);
+	}
+	return err;
+}
+
+static struct bmp_hal bmp180_hal = {
+	.rom_addr_start		= BMP180_REG_AC1,
+	.rom_size		= 22,
+	.bmp_delay_ms_tbl	= bmp180_delay_ms_tbl,
+	.divisor		= BMP180_INPUT_DIVISOR,
+	.range_limit		= ARRAY_SIZE(bmp180_delay_ms_tbl),
+	.range_dflt		= BMP180_RANGE_DFLT,
+	.bmp_read		= &bmp180_read,
+	.bmp_mode_wr_mpu	= &bmp180_mode_wr_mpu
+};
+
+static struct bmp_hal bmp280_hal = {
+	.rom_addr_start		= BMP280_REG_CWORD00,
+	.rom_size		= 26,
+	.bmp_delay_ms_tbl	= bmp280_delay_ms_tbl,
+	.divisor		= BMP280_INPUT_DIVISOR,
+	.range_limit		= ARRAY_SIZE(bmp280_delay_ms_tbl),
+	.range_dflt		= BMP280_RANGE_DFLT,
+	.bmp_read		= &bmp280_read,
+	.bmp_mode_wr_mpu	= &bmp280_mode_wr_mpu
+};
+
+static int bmp_hal(struct bmp_inf *inf)
+{
+	int err = 0;
+
+	switch (inf->dev_id) {
+	case BMPX80_REG_ID_BMP280:
+		inf->hal = &bmp280_hal;
+		break;
+
+	case BMPX80_REG_ID_BMP180:
+		inf->hal = &bmp180_hal;
+		break;
+
+	default:
+		dev_err(&inf->i2c->dev, "%s ERR: Unknown device\n", __func__);
+		inf->hal = &bmp180_hal; /* to prevent NULL pointers */
+		err = -ENODEV;
+		break;
+	}
+
+	inf->range_user = inf->hal->range_dflt;
+	return err;
+}
+
+static int bmp_id(struct bmp_inf *inf, const struct i2c_device_id *id)
+{
+	struct nvi_mpu_port nmp;
+	u8 config_boot;
+	u8 val = 0;
+	int err;
+
+	config_boot = inf->pdata.config & NVI_CONFIG_BOOT_MASK;
+	if ((inf->i2c->addr != BMP180_I2C_ADDR0) ||
+					  (inf->i2c->addr != BMP180_I2C_ADDR1))
+		inf->i2c->addr = BMP180_I2C_ADDR1;
+	if (!strcmp(id->name, BMP180_NAME))
+		inf->dev_id = BMPX80_REG_ID_BMP180;
+	else if (!strcmp(id->name, BMP280_NAME))
+		inf->dev_id = BMPX80_REG_ID_BMP280;
+	if ((config_boot == NVI_CONFIG_BOOT_MPU) && (!inf->dev_id)) {
+		dev_err(&inf->i2c->dev, "%s ERR: NVI_CONFIG_BOOT_MPU && %s\n",
+			__func__, id->name);
+		config_boot = NVI_CONFIG_BOOT_AUTO;
+	}
+	if (config_boot == NVI_CONFIG_BOOT_AUTO) {
+		nmp.addr = inf->i2c->addr | 0x80;
+		nmp.reg = BMPX80_REG_ID;
+		nmp.ctrl = 1;
+		err = nvi_mpu_dev_valid(&nmp, &val);
+		dev_dbg(&inf->i2c->dev, "%s AUTO ID=%x err=%d\n",
+			__func__, val, err);
+		/* see mpu.h for possible return values */
+		if ((err == -EAGAIN) || (err == -EBUSY))
+			return -EAGAIN;
+
+		if (!err)
+			err = bmp_id_compare(inf, val, id);
+		if ((!err) || ((err == -EIO) && (inf->dev_id)))
+			config_boot = NVI_CONFIG_BOOT_MPU;
+	}
+	if (config_boot == NVI_CONFIG_BOOT_MPU) {
+		bmp_hal(inf);
+		inf->use_mpu = true;
+		nmp.addr = inf->i2c->addr | 0x80;
+		nmp.data_out = 0;
+		nmp.delay_ms = 0;
+		nmp.delay_us = inf->poll_delay_us;
+		nmp.shutdown_bypass = true;
+		nmp.ext_driver = (void *)inf;
+		if (inf->dev_id == BMPX80_REG_ID_BMP280) {
+			nmp.reg = BMP280_REG_STATUS;
+			nmp.ctrl = 10; /* MPU FIFO can't handle odd size */
+			nmp.handler = &bmp280_mpu_handler;
+		} else {
+			nmp.reg = BMPX80_REG_CTRL;
+			nmp.ctrl = 6; /* MPU FIFO can't handle odd size */
+			nmp.handler = &bmp180_mpu_handler;
+		}
+		err = nvi_mpu_port_alloc(&nmp);
+		dev_dbg(&inf->i2c->dev, "%s MPU port/err=%d\n",
+			__func__, err);
+		if (err < 0)
+			return err;
+
+		inf->port_id[RD] = err;
+		nmp.addr = inf->i2c->addr;
+		nmp.reg = BMPX80_REG_CTRL;
+		nmp.ctrl = 1;
+		nmp.data_out = inf->data_out;
+		nmp.delay_ms = inf->hal->bmp_delay_ms_tbl[inf->range_i];
+		nmp.delay_us = 0;
+		nmp.shutdown_bypass = false;
+		nmp.handler = NULL;
+		nmp.ext_driver = NULL;
+		err = nvi_mpu_port_alloc(&nmp);
+		dev_dbg(&inf->i2c->dev, "%s MPU port/err=%d\n",
+			__func__, err);
+		if (err < 0) {
+			bmp_ports_free(inf);
+			dev_err(&inf->i2c->dev, "%s ERR %d\n", __func__, err);
+		} else {
+			inf->port_id[WR] = err;
+			err = 0;
+		}
+		return err;
+	}
+
+	/* NVI_CONFIG_BOOT_HOST */
+	inf->use_mpu = false;
+	err = bmp_i2c_rd(inf, BMPX80_REG_ID, 1, &val);
+	dev_dbg(&inf->i2c->dev, "%s Host read ID=%x err=%d\n",
+		__func__, val, err);
+	if (!err) {
+		err = bmp_id_compare(inf, val, id);
+		if (!err)
+			err = bmp_hal(inf);
+	}
+	return err;
+}
+
+static int bmp_remove(struct i2c_client *client)
+{
+	struct bmp_inf *inf;
 
 	inf = i2c_get_clientdata(client);
 	if (inf != NULL) {
@@ -978,103 +1545,174 @@ static int bmp180_remove(struct i2c_client *client)
 		}
 		if (inf->wq)
 			destroy_workqueue(inf->wq);
-		bmp180_pm_exit(inf);
-		kfree(inf);
+		bmp_pm_exit(inf);
 	}
 	dev_info(&client->dev, "%s\n", __func__);
 	return 0;
 }
 
-static void bmp180_shutdown(struct i2c_client *client)
+static void bmp_shutdown(struct i2c_client *client)
 {
-	bmp180_remove(client);
+	bmp_remove(client);
 }
 
-static int bmp180_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static struct mpu_platform_data *bmp_parse_dt(struct i2c_client *client)
 {
-	struct bmp180_inf *inf;
+	struct mpu_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	char const *pchar;
+	u8 config;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "Can't allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	if (of_property_read_string(np, "config", &pchar)) {
+		dev_err(&client->dev, "Cannot read config property\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	for (config = 0; config < ARRAY_SIZE(bmp_configs); config++) {
+		if (!strcasecmp(pchar, bmp_configs[config])) {
+			pdata->config = config;
+			break;
+		}
+	}
+
+	if (config == ARRAY_SIZE(bmp_configs)) {
+		dev_err(&client->dev, "Invalid config value\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	return pdata;
+}
+
+static int bmp_probe(struct i2c_client *client,
+		     const struct i2c_device_id *id)
+{
+	struct bmp_inf *inf;
 	struct mpu_platform_data *pd;
 	int err;
 
 	dev_info(&client->dev, "%s\n", __func__);
-	inf = kzalloc(sizeof(*inf), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(inf)) {
+	inf = devm_kzalloc(&client->dev, sizeof(*inf), GFP_KERNEL);
+	if (!inf) {
 		dev_err(&client->dev, "%s kzalloc ERR\n", __func__);
 		return -ENOMEM;
 	}
 
 	inf->i2c = client;
 	i2c_set_clientdata(client, inf);
-	pd = (struct mpu_platform_data *)dev_get_platdata(&client->dev);
-	if (pd != NULL)
-		inf->pdata = *pd;
-	bmp180_pm_init(inf);
-	err = bmp180_id(inf);
-	bmp180_pm(inf, false);
+	if (client->dev.of_node) {
+		pd = bmp_parse_dt(client);
+		if (IS_ERR(pd))
+			return -EINVAL;
+		else
+			inf->pdata = *pd;
+	} else {
+		pd = (struct mpu_platform_data *)dev_get_platdata(&client->dev);
+		if (pd != NULL)
+			inf->pdata = *pd;
+	}
+
+	bmp_pm_init(inf);
+	err = bmp_id(inf, id);
+	bmp_pm(inf, false);
 	if (err == -EAGAIN)
-		goto bmp180_probe_again;
+		goto bmp_probe_again;
 	else if (err)
-		goto bmp180_probe_err;
+		goto bmp_probe_err;
 
-	err = bmp180_input_create(inf);
+	err = bmp_input_create(inf);
 	if (err)
-		goto bmp180_probe_err;
+		goto bmp_probe_err;
 
-	inf->wq = create_singlethread_workqueue(BMP180_NAME);
+	inf->wq = create_singlethread_workqueue(BMPX80_NAME);
 	if (!inf->wq) {
 		dev_err(&client->dev, "%s workqueue ERR\n", __func__);
 		err = -ENOMEM;
-		goto bmp180_probe_err;
+		goto bmp_probe_err;
 	}
 
-	INIT_DELAYED_WORK(&inf->dw, bmp180_work);
-	err = bmp180_sysfs_create(inf);
+	INIT_DELAYED_WORK(&inf->dw, bmp_work);
+	err = bmp_sysfs_create(inf);
 	if (err)
-		goto bmp180_probe_err;
+		goto bmp_probe_err;
 
 	return 0;
 
-bmp180_probe_err:
+bmp_probe_err:
 	dev_err(&client->dev, "%s ERR %d\n", __func__, err);
-bmp180_probe_again:
-	bmp180_remove(client);
+bmp_probe_again:
+	bmp_remove(client);
 	return err;
 }
 
-static const struct i2c_device_id bmp180_i2c_device_id[] = {
+static int bmp_suspend(struct device *dev)
+{
+	struct bmp_inf *inf;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	err = bmp_enable(inf, false);
+	if (err)
+		dev_err(dev, "%s ERR\n", __func__);
+	dev_info(dev, "%s done\n", __func__);
+	return 0;
+}
+
+static const struct dev_pm_ops bmp_pm_ops = {
+	.suspend	= bmp_suspend,
+};
+
+static const struct i2c_device_id bmp_i2c_device_id[] = {
+	{BMPX80_NAME, 0},
 	{BMP180_NAME, 0},
+	{BMP280_NAME, 0},
 	{}
 };
 
-MODULE_DEVICE_TABLE(i2c, bmp180_i2c_device_id);
+MODULE_DEVICE_TABLE(i2c, bmp_i2c_device_id);
 
-static struct i2c_driver bmp180_driver = {
-	.class		= I2C_CLASS_HWMON,
-	.probe		= bmp180_probe,
-	.remove		= bmp180_remove,
-	.driver = {
-		.name	= BMP180_NAME,
-		.owner	= THIS_MODULE,
-	},
-	.id_table	= bmp180_i2c_device_id,
-	.shutdown	= bmp180_shutdown,
+static const struct of_device_id bmp_of_match[] = {
+	{ .compatible = "bmp,bmpX80", },
+	{ .compatible = "bmp,bmp180", },
+	{ .compatible = "bmp,bmp280", },
+	{ },
 };
 
-static int __init bmp180_init(void)
+MODULE_DEVICE_TABLE(of, bmp_of_match);
+
+static struct i2c_driver bmp_driver = {
+	.class		= I2C_CLASS_HWMON,
+	.probe		= bmp_probe,
+	.remove		= bmp_remove,
+	.driver = {
+		.name	= BMPX80_NAME,
+		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(bmp_of_match),
+		.pm		= &bmp_pm_ops,
+	},
+	.id_table	= bmp_i2c_device_id,
+	.shutdown	= bmp_shutdown,
+};
+
+static int __init bmp_init(void)
 {
-	return i2c_add_driver(&bmp180_driver);
+	return i2c_add_driver(&bmp_driver);
 }
 
-static void __exit bmp180_exit(void)
+static void __exit bmp_exit(void)
 {
-	i2c_del_driver(&bmp180_driver);
+	i2c_del_driver(&bmp_driver);
 }
 
-module_init(bmp180_init);
-module_exit(bmp180_exit);
+module_init(bmp_init);
+module_exit(bmp_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("BMP180 driver");
-MODULE_AUTHOR("NVIDIA Corp");
+MODULE_DESCRIPTION("BMPX80 driver");
+MODULE_AUTHOR("NVIDIA Corporation");
 

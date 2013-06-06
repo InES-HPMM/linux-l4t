@@ -297,6 +297,57 @@ int mpu_memory_read(struct i2c_adapter *i2c_adap,
 	return 0;
 }
 
+int mpu_memory_read_6500(struct inv_gyro_state_s *st, u8 mpu_addr, u16 mem_addr,
+			 u32 len, u8 *data)
+{
+	u8 bank[2];
+	u8 addr[2];
+	u8 buf;
+
+	struct i2c_msg msgs[4];
+	int res;
+
+	if (!data || !st)
+		return -EINVAL;
+
+	bank[0] = REG_BANK_SEL;
+	bank[1] = mem_addr >> 8;
+
+	addr[0] = REG_MEM_START;
+	addr[1] = mem_addr & 0xFF;
+
+	buf = REG_MEM_RW;
+
+	/* write message */
+	msgs[0].addr = mpu_addr;
+	msgs[0].flags = 0;
+	msgs[0].buf = bank;
+	msgs[0].len = sizeof(bank);
+
+	msgs[1].addr = mpu_addr;
+	msgs[1].flags = 0;
+	msgs[1].buf = addr;
+	msgs[1].len = sizeof(addr);
+
+	msgs[2].addr = mpu_addr;
+	msgs[2].flags = 0;
+	msgs[2].buf = &buf;
+	msgs[2].len = 1;
+
+	msgs[3].addr = mpu_addr;
+	msgs[3].flags = I2C_M_RD;
+	msgs[3].buf = data;
+	msgs[3].len = len;
+
+	res = i2c_transfer(st->sl_handle, msgs, 4);
+	if (res != 4) {
+		if (res >= 0)
+			res = -EIO;
+	} else
+		res = 0;
+	return res;
+}
+
 /**
  *  @internal
  *  @brief  Inverse lookup of the index of an MPL product key .
@@ -313,6 +364,36 @@ static short index_of_key(unsigned short key)
 			return (short)i;
 
 	return -1;
+}
+
+int inv_get_silicon_rev_mpu6500(struct inv_gyro_state_s *st)
+{
+	struct inv_chip_info_s *chip_info = &st->chip_info;
+	int result;
+	u8 sw_rev;
+
+	/*memory read need more time after power up */
+	msleep(POWER_UP_TIME);
+	result = mpu_memory_read_6500(st, st->i2c_addr,
+			MPU6500_MEM_REV_ADDR, 1, &sw_rev);
+	if (sw_rev == 0) {
+		pr_warning("Rev 0 of MPU6500\n");
+		pr_warning("can't sit with other devices in same I2C bus\n");
+	}
+	if (result)
+		return result;
+	if (sw_rev > MPU6500_REV)
+		return -EINVAL;
+
+	/* these values are place holders and not real values */
+	chip_info->product_id = MPU6500_PRODUCT_REVISION;
+	chip_info->product_revision = MPU6500_PRODUCT_REVISION;
+	chip_info->silicon_revision = MPU6500_PRODUCT_REVISION;
+	chip_info->software_revision = sw_rev;
+	chip_info->gyro_sens_trim = DEFAULT_GYRO_TRIM;
+	chip_info->accl_sens_trim = DEFAULT_ACCL_TRIM;
+	chip_info->multi = 1;
+	return 0;
 }
 
 int inv_get_silicon_rev_mpu6050(struct inv_gyro_state_s *st)
@@ -619,18 +700,18 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 		return result;
 
 	result = inv_i2c_single_write(st, reg->sample_rate_div,
-		test_setup.sample_rate);
+				      test_setup.sample_rate);
 	if (result)
 		return result;
 
 	result = inv_i2c_single_write(st, reg->gyro_config,
-		self_test_flag | test_setup.gyro_fsr);
+				      self_test_flag | test_setup.gyro_fsr);
 	if (result)
 		return result;
 
 	if (has_accl) {
 		result = inv_i2c_single_write(st, reg->accl_config,
-			self_test_flag | test_setup.accl_fsr);
+					 self_test_flag | test_setup.accl_fsr);
 		if (result)
 			return result;
 	}
@@ -713,21 +794,10 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
  */
 static void inv_recover_setting(struct inv_gyro_state_s *st)
 {
-	struct inv_reg_map_s *reg;
-	int data;
-
-	reg = st->reg;
-	set_inv_enable(st, st->chip_config.enable);
-	inv_i2c_single_write(st, reg->gyro_config,
-			     st->chip_config.gyro_fsr<<3);
-	inv_i2c_single_write(st, reg->lpf, st->chip_config.lpf);
-	data = ONE_K_HZ/st->chip_config.fifo_rate - 1;
-	inv_i2c_single_write(st, reg->sample_rate_div, data);
-	if (INV_ITG3500 != st->chip_type) {
-		inv_i2c_single_write(st, reg->accl_config,
-			(st->chip_config.accl_fsr << 3)|0);
-	}
-	inv_set_power_state(st, 1);
+	nvi_gyro_enable(st, st->chip_config.gyro_enable,
+			st->chip_config.gyro_fifo_enable);
+	nvi_accl_enable(st, st->chip_config.accl_enable,
+			st->chip_config.accl_fifo_enable);
 }
 
 /**
@@ -745,8 +815,8 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 	accel_result = gyro_result = 0;
 	test_times = 2;
 	while (test_times > 0) {
-		result = inv_do_test(st, 0,  gyro_bias_regular,
-			accl_bias_regular);
+		result = inv_do_test(st, 0, gyro_bias_regular,
+				     accl_bias_regular);
 		if (result == -EAGAIN)
 			test_times--;
 		else
@@ -758,7 +828,7 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 	test_times = 2;
 	while (test_times > 0) {
 		result = inv_do_test(st, BITS_SELF_TEST_EN, gyro_bias_st,
-					accl_bias_st);
+				     accl_bias_st);
 		if (result == -EAGAIN)
 			test_times--;
 		else
@@ -769,16 +839,16 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 
 	if (st->chip_type == INV_ITG3500) {
 		gyro_result = !inv_check_3500_gyro_self_test(st,
-			gyro_bias_regular, gyro_bias_st);
+					      gyro_bias_regular, gyro_bias_st);
 	} else {
 		accel_result = !inv_check_accl_self_test(st,
-			accl_bias_regular, accl_bias_st);
+					      accl_bias_regular, accl_bias_st);
 		gyro_result = !inv_check_6050_gyro_self_test(st,
-			gyro_bias_regular, gyro_bias_st);
+					      gyro_bias_regular, gyro_bias_st);
 	}
 test_fail:
 	inv_recover_setting(st);
-	return (accel_result<<1) | gyro_result;
+	return (accel_result << 1) | gyro_result;
 }
 
 /**
