@@ -1092,7 +1092,7 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 		pdata->spi_max_frequency = be32_to_cpup(prop);
 
 	if (of_find_property(np, "nvidia,clock-always-on", NULL))
-		pdata->clock_always_on = true;
+		pdata->is_clkon_always = true;
 
 	return pdata;
 }
@@ -1151,7 +1151,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi = spi_master_get_devdata(master);
 	tspi->master = master;
 	tspi->dma_req_sel = pdata->dma_req_sel;
-	tspi->clock_always_on = pdata->clock_always_on;
+	tspi->clock_always_on = pdata->is_clkon_always;
 	tspi->dev = &pdev->dev;
 	spin_lock_init(&tspi->lock);
 
