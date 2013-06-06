@@ -65,6 +65,7 @@ static void throughput_flip_callback(void)
 		if (timediff <= 0) {
 			pr_warn("%s: flips %lld nsec apart\n",
 				__func__, now.tv64 - last_flip.tv64);
+			last_flip = now;
 			return;
 		}
 
