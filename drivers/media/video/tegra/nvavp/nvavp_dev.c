@@ -923,7 +923,8 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 		"using SMMU at %lx to load AVP kernel\n",
 		(unsigned long)nvavp->os_info.phys);
 	BUG_ON(nvavp->os_info.phys != 0xeff00000
-		&& nvavp->os_info.phys != 0x0ff00000);
+		&& nvavp->os_info.phys != 0x0ff00000
+		&& nvavp->os_info.phys != 0x8ff00000);
 	sprintf(fw_os_file, "nvavp_os_%08lx.bin",
 		(unsigned long)nvavp->os_info.phys);
 	nvavp->os_info.reset_addr = nvavp->os_info.phys;
@@ -1585,12 +1586,26 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
 
-		nvavp->os_info.phys = 0x0ff00000;
-		nvavp->os_info.data = dma_alloc_at_coherent(
-						&ndev->dev,
-						SZ_1M,
-						&nvavp->os_info.phys,
-						GFP_KERNEL);
+		iovmm_addr = 0x8ff00000;
+
+		nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
+						L1_CACHE_BYTES,
+						NVMAP_HANDLE_UNCACHEABLE,
+						iovmm_addr);
+		if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
+			iovmm_addr = 0x0ff00000;
+
+			nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
+							L1_CACHE_BYTES,
+							NVMAP_HANDLE_UNCACHEABLE,
+							iovmm_addr);
+			if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
+				dev_err(&ndev->dev,
+					"cannot map os handle\n");
+				ret = PTR_ERR(nvavp->os_info.handle);
+				goto err_nvmap_alloc;
+			}
+		}
 
 		if (!nvavp->os_info.data || nvavp->os_info.phys != 0x0ff00000) {
 			dev_err(&ndev->dev, "cannot allocate IOVA memory\n");
