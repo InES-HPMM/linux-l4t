@@ -445,19 +445,21 @@ static void cl_dvfs_load_lut(struct tegra_cl_dvfs *cld)
 
 static inline void tune_low(struct tegra_cl_dvfs *cld)
 {
-	if (cld->safe_dvfs->dfll_data.tune_trimmers)
-		cld->safe_dvfs->dfll_data.tune_trimmers(false);
+	/* a must order: 1st tune dfll low, then tune trimmers low */
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
 	cl_dvfs_wmb(cld);
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(false);
 }
 
 static inline void tune_high(struct tegra_cl_dvfs *cld)
 {
+	/* a must order: 1st tune trimmers high, then tune dfll high */
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(true);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0_high_mv,
 		       CL_DVFS_TUNE0);
 	cl_dvfs_wmb(cld);
-	if (cld->safe_dvfs->dfll_data.tune_trimmers)
-		cld->safe_dvfs->dfll_data.tune_trimmers(true);
 }
 
 static void set_ol_config(struct tegra_cl_dvfs *cld)
@@ -1053,10 +1055,11 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 		(param->cg_scale ? CL_DVFS_PARAMS_CG_SCALE : 0);
 	cl_dvfs_writel(cld, val, CL_DVFS_PARAMS);
 
-	if (cld->safe_dvfs->dfll_data.tune_trimmers)
-		cld->safe_dvfs->dfll_data.tune_trimmers(false);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune0, CL_DVFS_TUNE0);
 	cl_dvfs_writel(cld, cld->safe_dvfs->dfll_data.tune1, CL_DVFS_TUNE1);
+	cl_dvfs_wmb(cld);
+	if (cld->safe_dvfs->dfll_data.tune_trimmers)
+		cld->safe_dvfs->dfll_data.tune_trimmers(false);
 
 	/* configure droop (skipper 1) and scale (skipper 2) */
 	val = GET_DROOP_FREQ(cld->safe_dvfs->dfll_data.droop_rate_min,
