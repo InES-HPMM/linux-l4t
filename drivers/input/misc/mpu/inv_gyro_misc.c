@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2012 Invensense, Inc.
-* Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -529,6 +529,10 @@ static int inv_check_accl_self_test(struct inv_gyro_state_s *st,
 	test_setup.accl_sens[X] = (unsigned int)((1L << 15) * 1000 / fs);
 	test_setup.accl_sens[Y] = (unsigned int)((1L << 15) * 1000 / fs);
 	test_setup.accl_sens[Z] = (unsigned int)((1L << 15) * 1000 / fs);
+	dev_info(&st->i2c->dev,
+		"%s accel_sens[X] = %u; accl_sens[Y] = %u; accl_sens[Z] = %u\n",
+		__func__, test_setup.accl_sens[X], test_setup.accl_sens[Y],
+		test_setup.accl_sens[Z]);
 	if (MPL_PROD_KEY(st->chip_info.product_id,
 		st->chip_info.product_revision) ==
 		MPU_PRODUCT_KEY_B1_E1_5) {
@@ -540,11 +544,26 @@ static int inv_check_accl_self_test(struct inv_gyro_state_s *st,
 		test_setup.accl_sens[Y] /= st->chip_info.multi;
 		test_setup.accl_sens[Z] /= st->chip_info.multi;
 	}
+	dev_info(&st->i2c->dev,
+		"%s accel_sens[X] = %u; accl_sens[Y] = %u; accl_sens[Z] = %u\n",
+		__func__, test_setup.accl_sens[X], test_setup.accl_sens[Y],
+		test_setup.accl_sens[Z]);
 	gravity = test_setup.accl_sens[Z];
 	reg_z_avg = reg_avg[Z] - g_z_sign * gravity * DEF_GYRO_PRECISION;
 	read_accel_hw_self_test_prod_shift(st, st_shift_prod);
+	dev_info(&st->i2c->dev,
+		"gravity = %d; reg_z_avg = %d\n", gravity, reg_z_avg);
+	dev_info(&st->i2c->dev,
+			"accel average: reg=%d, %d, %d\n st=%d, %d, %d\n",
+			reg_avg[0], reg_avg[1], reg_avg[2],
+			st_avg[0], st_avg[1], st_avg[2]);
+	dev_info(&st->i2c->dev,
+		"accel prod: %d, %d, %d\n",
+		st_shift_prod[0], st_shift_prod[1], st_shift_prod[2]);
 	for (j = 0; j < 3; j++) {
 		st_shift_cust[j] = abs(reg_avg[j] - st_avg[j]);
+		dev_info(&st->i2c->dev,
+			"st_shift_cust[%d] = %d\n", j, st_shift_cust[j]);
 		if (st_shift_prod[j]) {
 			tmp1 = st_shift_prod[j]/1000;
 			st_shift_ratio[j] = st_shift_cust[j]/tmp1
@@ -561,6 +580,14 @@ static int inv_check_accl_self_test(struct inv_gyro_state_s *st,
 				DEF_ACCEL_ST_SHIFT_MAX*gravity)
 				ret_val |= 1 << j;
 		}
+		dev_info(&st->i2c->dev,
+			"st_shift_ratio[%d]: %d\n", j, st_shift_ratio[j]);
+	}
+
+	if (ret_val) {
+		dev_err(&st->i2c->dev,
+			"%s accl self test failed return value: %d",
+			__func__, ret_val);
 	}
 	return ret_val;
 }
@@ -576,14 +603,20 @@ static int inv_check_3500_gyro_self_test(struct inv_gyro_state_s *st,
 	for (i = 0; i < 3; i++)
 		gst[i] = st_avg[i] - reg_avg[i];
 	result = inv_i2c_read(st, REG_3500_OTP, 3, st_code);
-	if (result)
+	if (result) {
+		dev_err(&st->i2c->dev, "%s self test failed return value %d\n",
+			__func__, result);
 		return result;
-
+	}
 	gst_otp[0] = gst_otp[1] = gst_otp[2] = 0;
 	for (i = 0; i < 3; i++) {
 		if (st_code[i] != 0)
 			gst_otp[i] = gyro_3500_st_tb[st_code[i] - 1];
 	}
+
+	dev_info(&st->i2c->dev,
+		"gst_otp = %d %d %d\n", gst_otp[0], gst_otp[1], gst_otp[1]);
+
 	for (i = 0; i < 3; i++) {
 		if (gst_otp[i] == 0) {
 			if (abs(gst[i])*4 < 60*2*1000*131)
@@ -597,6 +630,10 @@ static int inv_check_3500_gyro_self_test(struct inv_gyro_state_s *st,
 		if (abs(reg_avg[i])*4 > 20*2*1000*131)
 			ret_val |= (1<<i);
 	}
+
+	if (ret_val)
+		dev_err(&st->i2c->dev, "%s self_test failed return value %d\n",
+			__func__, ret_val);
 
 	return ret_val;
 }
@@ -617,12 +654,25 @@ static int inv_check_6050_gyro_self_test(struct inv_gyro_state_s *st,
 	regs[X] &= 0x1f;
 	regs[Y] &= 0x1f;
 	regs[Z] &= 0x1f;
+
+	dev_info(&st->i2c->dev,
+		"%s regs[X] = %hhu regs[Y] = %hhu regs[Z] = %hhu\n",
+		__func__, regs[X], regs[Y], regs[Z]);
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0)
 			ct_shift_prod[i] = gyro_6050_st_tb[regs[i] - 1];
 		else
 			ct_shift_prod[i] = 0;
+		dev_info(&st->i2c->dev,
+			"ct_shift_prod[%d]= %d\n", i, ct_shift_prod[i]);
 	}
+	dev_info(&st->i2c->dev, "reg_avg: %d %d %d, st_avg: %d %d %d\n",
+		reg_avg[0], reg_avg[1], reg_avg[2],
+		st_avg[0], st_avg[1], st_avg[2]);
+
+	dev_info(&st->i2c->dev, "ct_shift_prod: %d %d %d\n",
+		ct_shift_prod[0], ct_shift_prod[1], ct_shift_prod[2]);
+
 	for (i = 0; i < 3; i++) {
 		st_shift_cust[i] = abs(reg_avg[i] - st_avg[i]);
 		if (ct_shift_prod[i]) {
@@ -640,11 +690,21 @@ static int inv_check_6050_gyro_self_test(struct inv_gyro_state_s *st,
 				test_setup.gyro_sens)
 				ret_val |= 1 << i;
 		}
+		dev_info(&st->i2c->dev,
+			"ct_shift_prod[%d] = %d, st_shift_ratio[%d] = %d,"
+			"st_shift_cust[%d] = %d\n", i, ct_shift_prod[i],
+			i, st_shift_ratio[i], i, st_shift_cust[i]);
 	}
 	for (i = 0; i < 3; i++) {
-		if (abs(reg_avg[i]) > 20*2*1000*131)
+		if (abs(reg_avg[i]) > 20*2*1000*131) {
+			dev_err(&st->i2c->dev,
+			"%s abs(reg_avg[%d]) = %lu above the range",
+			__func__, i, abs(reg_avg[i]));
 			ret_val |= (1<<i);
+		}
+		dev_info(&st->i2c->dev, "reg_avg[%d] = %d\n", i, reg_avg[i]);
 	}
+	dev_info(&st->i2c->dev, "ret_val for %s = %d\n", __func__, ret_val);
 	return ret_val;
 }
 
@@ -730,6 +790,9 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 		return result;
 
 	fifo_count = (data[0] << 8) + data[1];
+	dev_info(&st->i2c->dev,
+		"%s fifo count=%d, st_flag=%d\n",
+		__func__, fifo_count, self_test_flag);
 	packet_count = fifo_count / packet_size;
 	gyro_result[0] = gyro_result[1] = gyro_result[2] = 0;
 	accl_result[0] = accl_result[1] = accl_result[2] = 0;
@@ -762,6 +825,10 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 	} else {
 		return -EAGAIN;
 	}
+	dev_info(&st->i2c->dev, "gyro_rsult: %d, %d, %d\n",
+		gyro_result[0], gyro_result[1], gyro_result[2]);
+	dev_info(&st->i2c->dev, "acc_result: %d, %d, %d\n",
+		accl_result[0], accl_result[1], accl_result[2]);
 
 	gyro_result[0] = gyro_result[0] * DEF_GYRO_PRECISION / packet_count;
 	gyro_result[1] = gyro_result[1] * DEF_GYRO_PRECISION / packet_count;
@@ -777,6 +844,11 @@ static int inv_do_test(struct inv_gyro_state_s *st, int self_test_flag,
 	result = inv_i2c_read(st, st->reg->temperature, 2, data);
 	if (!result)
 		nvi_report_temp(st, data, nvi_ts_ns());
+
+	dev_info(&st->i2c->dev,
+		"%s after gyro_result %d %d %d accl_result %d %d %d\n",
+		__func__, gyro_result[0], gyro_result[1], gyro_result[2],
+		accl_result[0], accl_result[1], accl_result[2]);
 	return 0;
 }
 
@@ -824,8 +896,19 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 		else
 			test_times = 0;
 	}
-	if (result)
+	if (result) {
+		dev_err(&st->i2c->dev,
+			"%s Fetching bias_regular failed error code: %d\n",
+			__func__, result);
 		goto test_fail;
+	}
+
+	dev_info(&st->i2c->dev,
+		"%s gyro_bias_regular = %d %d %d\n"
+		"accl_bias_regular = %d %d %d\n", __func__,
+		gyro_bias_regular[0], gyro_bias_regular[1],
+		gyro_bias_regular[2], accl_bias_regular[0],
+		accl_bias_regular[1], accl_bias_regular[2]);
 
 	test_times = 2;
 	while (test_times > 0) {
@@ -836,8 +919,18 @@ int inv_hw_self_test(struct inv_gyro_state_s *st,
 		else
 			break;
 	}
-	if (result)
+	if (result) {
+		dev_err(&st->i2c->dev,
+			"%s Fetching bias_st failed error code: %d\n",
+			__func__, result);
 		goto test_fail;
+	}
+
+	dev_info(&st->i2c->dev,
+		"%s gyro_bias_st = %d %d %d\n"
+		"accl_bias_st = %d %d %d\n", __func__,
+		gyro_bias_st[0], gyro_bias_st[1], gyro_bias_st[2],
+		accl_bias_st[0], accl_bias_st[1], accl_bias_st[2]);
 
 	if (st->chip_type == INV_ITG3500) {
 		gyro_result = !inv_check_3500_gyro_self_test(st,
