@@ -152,6 +152,7 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avdd_pex_pll", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {
@@ -606,6 +607,7 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_pex_pll", NULL),
 	REGULATOR_SUPPLY("avddio_pex_pll", NULL),
 	REGULATOR_SUPPLY("dvddio_pex", NULL),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
@@ -643,6 +645,7 @@ static struct regulator_consumer_supply palmas_ldo8_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo9_supply[] = {
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
 	REGULATOR_SUPPLY("avdd_1v2_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
@@ -660,6 +663,7 @@ static struct regulator_consumer_supply palmas_ldo11_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_3v3_pex", NULL),
 	REGULATOR_SUPPLY("avdd_3v3_pex_pll", NULL),
@@ -1096,10 +1100,12 @@ static struct regulator_consumer_supply fixed_reg_en_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 };
 
 /* Gated by PMU_REGEN3 From AMS7230 GPIO3*/
@@ -1165,6 +1171,7 @@ static struct regulator_consumer_supply fixed_reg_en_battery_e1731_supply[] = {
 		REGULATOR_SUPPLY("vdd_sys_bl", NULL),
 		REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 		REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+		REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_cdc_1v2_supply[] = {
