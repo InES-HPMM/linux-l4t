@@ -43,6 +43,7 @@
 #include "iomap.h"
 #include "sleep.h"
 #include "tegra_emc.h"
+#include "pm.h"
 
 /* BB mailbox offset */
 #define TEGRA_BB_REG_MAILBOX (0x0)
@@ -1050,16 +1051,18 @@ static int tegra_bb_pm_notifier_event(struct notifier_block *this,
 
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
+		/* inform tegra_common_suspend about EMC requirement */
+		tegra_lp1bb_suspend_emc_rate(bb->emc_min_freq, BBC_MC_MIN_FREQ);
+
 		/* prepare for possible LP1BB state */
-		if (sts) {
-			pr_debug("prepare for lp1bb %lu\n", bb->emc_min_freq);
+		if (sts)
 			clk_set_rate(bb->emc_clk, BBC_MC_MIN_FREQ);
-		}
+
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
 		if (sts && !mem_req_soon) {
-			pr_debug("bbc is inactive so remove floor\n");
+			pr_debug("bbc is inactive, remove floor\n");
 			clk_set_rate(bb->emc_clk, 0);
 		}
 		/* else, wait for IRQs to do the job */

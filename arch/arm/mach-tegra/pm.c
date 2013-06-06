@@ -218,7 +218,7 @@ extern int tegra_smmu_suspend(struct device *dev);
 static struct clk *tegra_dfll;
 #endif
 static struct clk *tegra_pclk;
-static const struct tegra_suspend_platform_data *pdata;
+static struct tegra_suspend_platform_data *pdata;
 static enum tegra_suspend_mode current_suspend_mode = TEGRA_SUSPEND_NONE;
 
 #if defined(CONFIG_TEGRA_CLUSTER_CONTROL) && INSTRUMENT_CLUSTER_SWITCH
@@ -1703,6 +1703,12 @@ fail:
 		tegra_pd_in_idle(false);
 
 	current_suspend_mode = plat->suspend_mode;
+}
+
+void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max)
+{
+	pdata->lp1bb_emc_rate_min = emc_min;
+	pdata->lp1bb_emc_rate_max = emc_max;
 }
 
 unsigned long debug_uart_port_base = 0;

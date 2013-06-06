@@ -78,6 +78,9 @@ struct tegra_suspend_platform_data {
 	unsigned int lp1_core_volt_low;
 	unsigned int lp1_core_volt_high;
 #endif
+	unsigned int lp1bb_core_volt_min;
+	unsigned long lp1bb_emc_rate_min;
+	unsigned long lp1bb_emc_rate_max;
 #ifdef CONFIG_ARCH_TEGRA_HAS_SYMMETRIC_CPU_PWR_GATE
 	unsigned long min_residency_vmin_fmin;
 	unsigned long min_residency_ncpu_slow;
@@ -110,6 +113,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
 int tegra_is_lp1_suspend_mode(void);
 #endif
+void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max);
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #define FLOW_CTRL_CLUSTER_CONTROL \
