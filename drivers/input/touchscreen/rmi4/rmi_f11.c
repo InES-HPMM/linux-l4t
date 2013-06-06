@@ -2274,7 +2274,7 @@ static void f11_set_abs_params(struct rmi_function_dev *fn_dev, int index)
 		input_set_abs_params(input, ABS_MT_POSITION_Y,
 				y_min, y_max, 0, 0);
 	if (!sensor->type_a)
-		input_mt_init_slots(input, sensor->nbr_fingers);
+		input_mt_init_slots(input, sensor->nbr_fingers, 0);
 	if (IS_ENABLED(CONFIG_RMI4_F11_PEN) &&
 			sensor->sens_query.query9.has_pen)
 		input_set_abs_params(input, ABS_MT_TOOL_TYPE,
