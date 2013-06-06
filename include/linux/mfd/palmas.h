@@ -552,35 +552,6 @@ struct palmas_platform_data {
 	int long_press_delay;
 };
 
-struct palmas_gpadc_calibration {
-	s32 gain;
-	s32 gain_error;
-	s32 offset_error;
-};
-
-struct palmas_gpadc {
-	struct device *dev;
-	struct palmas *palmas;
-
-	int ch3_current;
-	int ch0_current;
-
-	int gpadc_force;
-
-	int bat_removal;
-
-	struct mutex reading_lock;
-	struct completion irq_complete;
-
-	int eoc_sw_irq;
-
-	struct palmas_gpadc_calibration *palmas_cal_tbl;
-
-	int conv0_channel;
-	int conv1_channel;
-	int rt_channel;
-};
-
 struct palmas_gpadc_result {
 	s32 raw_code;
 	s32 corrected_code;

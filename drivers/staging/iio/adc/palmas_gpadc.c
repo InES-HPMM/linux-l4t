@@ -374,11 +374,11 @@ static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
 	int ret, i;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
-	if (!pdata || !pdata->adc_pdata) {
+	if (!pdata || !pdata->gpadc_pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODEV;
 	}
-	adc_pdata = pdata->adc_pdata;
+	adc_pdata = pdata->gpadc_pdata;
 
 	iodev = iio_device_alloc(sizeof(*adc));
 	if (!iodev) {
