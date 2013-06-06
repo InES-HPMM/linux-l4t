@@ -363,8 +363,84 @@ static void create_attr(const char *name, struct dentry *parent,
 	WARN_ON(IS_ERR_OR_NULL(d));
 }
 
+static int cpucaps_show(struct seq_file *file, void *data)
+{
+	unsigned int i;
+	struct tegra_system_edp_entry *p;
+
+	if (core_platdata ? !core_platdata->cpufreq_lim : true)
+		return -ENODEV;
+
+	p = core_platdata->cpufreq_lim;
+
+	seq_printf(file, "%5s %10s %10s %10s %10s\n",
+			"Power", "1-core", "2-cores", "3-cores", "4-cores");
+
+	for (i = 0; i < core_platdata->cpufreq_lim_size; i++, p++) {
+		seq_printf(file, "%5d %10u %10u %10u %10u\n",
+				p->power_limit_100mW * 100,
+				p->freq_limits[0],
+				p->freq_limits[1],
+				p->freq_limits[2],
+				p->freq_limits[3]);
+	}
+
+	return 0;
+}
+
+static int cpucaps_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cpucaps_show, inode->i_private);
+}
+
+static const struct file_operations cpucaps_fops = {
+	.open = cpucaps_open,
+	.read = seq_read,
+};
+
+static int corecaps_show(struct seq_file *file, void *data)
+{
+	int i;
+	struct tegra_sysedp_corecap *p;
+	struct tegra_sysedp_devcap *c;
+	struct tegra_sysedp_devcap *g;
+
+	if (core_platdata ? !core_platdata->corecap : true)
+		return -ENODEV;
+
+	p = core_platdata->corecap;
+
+	seq_printf(file, "%s %s { %s %9s %9s } %s { %s %9s %9s }\n",
+			"E-state",
+			"CPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz",
+			"GPU-pri", "CPU-mW", "GPU-kHz", "EMC-kHz");
+
+	for (i = 0; i < core_platdata->corecap_size; i++, p++) {
+		c = &p->cpupri;
+		g = &p->gpupri;
+		seq_printf(file, "%7u %16u %9u %9u %18u %9u %9u\n",
+				p->power,
+				c->cpu_power, c->gpufreq, c->emcfreq,
+				g->cpu_power, g->gpufreq, g->emcfreq);
+	}
+
+	return 0;
+}
+
+static int corecaps_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, corecaps_show, inode->i_private);
+}
+
+static const struct file_operations corecaps_fops = {
+	.open = corecaps_open,
+	.read = seq_read,
+};
+
 static void init_debug(void)
 {
+	struct dentry *d;
+
 	if (!core_client.dentry) {
 		WARN_ON(1);
 		return;
@@ -379,6 +455,14 @@ static void init_debug(void)
 	create_attr("gpu_window", core_client.dentry, &gpu_window);
 	create_attr("gain", core_client.dentry, &core_platdata->core_gain);
 	create_attr("gpu_high_count", core_client.dentry, &gpu_high_count);
+
+	d = debugfs_create_file("corecaps", S_IRUGO, core_client.dentry, NULL,
+			&corecaps_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
+
+	d = debugfs_create_file("cpucaps", S_IRUGO, core_client.dentry, NULL,
+			&cpucaps_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
 }
 #else
 static inline void init_debug(void) {}
