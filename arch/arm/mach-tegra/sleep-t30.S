@@ -104,11 +104,6 @@
 #define CLK_RESET_CLK_RST_DEV_H_SET		0x308
 #define CLK_RESET_CLK_RST_DEV_H_CLR		0x30c
 
-#define CLK_RST_CONTROLLER_CLK_SOURCE_EMC	0x19c
-#define CLK_SOURCE_EMC_MASK			(0x3 << 29)
-#define CLK_SOURCE_EMC_BIT_OFFSET		29
-#define CLK_SOURCE_EMC_PLLP_OUT0		2
-
 #define I2C_CNFG	0x0
 #define I2C_ADDR0	0x4
 #define I2C_DATA1	0xc
@@ -1066,26 +1061,14 @@ powerdown_pll_pcx:
 	tst	r11, #TEGRA_POWER_LP1_AUDIO	@ check if voice call is going on
 	bne	powerdown_pll_cx		@ if yes, do not turn off pll-p/pll-a
 
-
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	ldr	r0, lp_enter_state
 	cmp	r0, #PMC_LP_STATE_LP1BB
-	bne	turn_off_pllp
-
-	/* If LP1BB, check if EMC is on PLLP */
-	ldr	r0, [r5, #CLK_RST_CONTROLLER_CLK_SOURCE_EMC]
-	and	r0, #CLK_SOURCE_EMC_MASK
-	mov	r0, r0, lsr #CLK_SOURCE_EMC_BIT_OFFSET
-	cmp	r0, #CLK_SOURCE_EMC_PLLP_OUT0
-	beq	skip_pllp_off
-
-turn_off_pllp:
+	beq	powerdown_pll_cx
 #endif
 	ldr	r0, [r5, #CLK_RESET_PLLP_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLP_BASE]
-
-skip_pllp_off:
 	ldr	r0, [r5, #CLK_RESET_PLLA_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLA_BASE]
