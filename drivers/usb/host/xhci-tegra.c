@@ -1864,7 +1864,7 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	 * XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD_TRK = 1
 	 */
 	reg = readl(tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
-	reg |= (1 << 12) | (1 << 13);
+	reg |= (1 << 13);
 	writel(reg, tegra->padctl_base + USB2_BIAS_PAD_CTL_0_0);
 
 	/* Program these values into PMC regiseter and program the
