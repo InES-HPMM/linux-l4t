@@ -479,16 +479,17 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 	tegra->xusb_hvdd_usb3_reg =
 			devm_regulator_get(&pdev->dev, "hvdd_usb");
 	if (IS_ERR(tegra->xusb_hvdd_usb3_reg)) {
-		dev_dbg(&pdev->dev, "hvdd_usb: regulator not found: %ld."
+		dev_err(&pdev->dev, "hvdd_usb: regulator not found: %ld."
 			, PTR_ERR(tegra->xusb_hvdd_usb3_reg));
 		err = PTR_ERR(tegra->xusb_hvdd_usb3_reg);
 		goto err_null_regulator;
-	}
-	err = regulator_enable(tegra->xusb_hvdd_usb3_reg);
-	if (err < 0) {
-		dev_err(&pdev->dev,
-			"hvdd_usb3: regulator enable failed:%d\n", err);
-		goto err_null_regulator;
+	} else {
+		err = regulator_enable(tegra->xusb_hvdd_usb3_reg);
+		if (err < 0) {
+			dev_err(&pdev->dev,
+				"hvdd_usb3: regulator enable failed:%d\n", err);
+			goto err_null_regulator;
+		}
 	}
 
 	tegra->xusb_vbus_reg = devm_regulator_get(&pdev->dev, "usb_vbus");
@@ -497,26 +498,29 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 			, PTR_ERR(tegra->xusb_vbus_reg));
 		err = PTR_ERR(tegra->xusb_vbus_reg);
 		goto err_put_hvdd_usb3;
-	}
-	err = regulator_enable(tegra->xusb_vbus_reg);
-	if (err < 0) {
-		dev_err(&pdev->dev, "vbus: regulator enable failed:%d\n", err);
-		goto err_put_hvdd_usb3;
+	} else {
+		err = regulator_enable(tegra->xusb_vbus_reg);
+		if (err < 0) {
+			dev_err(&pdev->dev,
+				"vbus: regulator enable failed:%d\n", err);
+			goto err_put_hvdd_usb3;
+		}
 	}
 
 	tegra->xusb_avdd_usb3_pll_reg =
 		devm_regulator_get(&pdev->dev, "avdd_usb_pll");
 	if (IS_ERR(tegra->xusb_avdd_usb3_pll_reg)) {
-		dev_dbg(&pdev->dev, "regulator not found: %ld."
+		dev_err(&pdev->dev, "avdd_usb3_pll regulator not found: %ld."
 			, PTR_ERR(tegra->xusb_avdd_usb3_pll_reg));
 		err = PTR_ERR(tegra->xusb_avdd_usb3_pll_reg);
 		goto err_put_vbus;
-	}
-	err = regulator_enable(tegra->xusb_avdd_usb3_pll_reg);
-	if (err < 0) {
-		dev_err(&pdev->dev,
+	} else {
+		err = regulator_enable(tegra->xusb_avdd_usb3_pll_reg);
+		if (err < 0) {
+			dev_err(&pdev->dev,
 			"avdd_usb3_pll: regulator enable failed:%d\n", err);
-		goto err_put_vbus;
+			goto err_put_vbus;
+		}
 	}
 
 	tegra->xusb_avddio_usb3_reg =
@@ -526,12 +530,13 @@ static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 			, PTR_ERR(tegra->xusb_avddio_usb3_reg));
 		err = PTR_ERR(tegra->xusb_avddio_usb3_reg);
 		goto err_put_usb3_pll;
-	}
-	err = regulator_enable(tegra->xusb_avddio_usb3_reg);
-	if (err < 0) {
-		dev_err(&pdev->dev,
+	} else {
+		err = regulator_enable(tegra->xusb_avddio_usb3_reg);
+		if (err < 0) {
+			dev_err(&pdev->dev,
 			"avddio_usb3: regulator enable failed:%d\n", err);
-		goto err_put_usb3_pll;
+			goto err_put_usb3_pll;
+		}
 	}
 
 	return err;
