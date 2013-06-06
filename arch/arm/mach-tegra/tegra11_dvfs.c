@@ -609,6 +609,16 @@ static inline int round_cvb_voltage(int mv, int v_scale)
 		cvb_align_step_uv / 1000;
 }
 
+static inline void override_dfll_min_millivolts(struct cpu_cvb_dvfs *d)
+{
+	/*
+	 * dfll min_millivolts for AP40 sku is different from all other skus
+	 * that have the same cvb tables
+	 */
+	if (tegra_sku_id == 0x06)
+		d->dfll_tune_data.min_millivolts = 900;
+}
+
 static int __init set_cpu_dvfs_data(
 	struct cpu_cvb_dvfs *d, struct dvfs *cpu_dvfs, int *max_freq_index)
 {
@@ -619,6 +629,7 @@ static int __init set_cpu_dvfs_data(
 	struct cvb_dvfs_table *table = NULL;
 	int speedo = tegra_cpu_speedo_value();
 
+	override_dfll_min_millivolts(d);
 	min_dfll_mv = d->dfll_tune_data.min_millivolts;
 	BUG_ON(min_dfll_mv < tegra11_dvfs_rail_vdd_cpu.min_millivolts);
 
