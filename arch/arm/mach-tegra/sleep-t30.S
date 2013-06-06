@@ -511,11 +511,11 @@ lp1_voltset:
 
 	wait_for_us r1, r7, r9
 	mov32 r3, 0x7D0   /* Wait for 2ms and try transaction again */
-	add r0, r1, r3
+	add r3, r1, r3
 loop_i2c_status_resume:
 	add r1, r1, #0xFA /* Check status every 250us */
 	wait_until r1, r7, r9
-	cmp r0, r1
+	cmp r3, r1
 	beq lp1_voltset
 
 	ldr r3, [r4, #I2C_STATUS]
@@ -524,8 +524,8 @@ loop_i2c_status_resume:
 
 lp1_voltskip_resume:
 	/* Disable the DVC-I2C Controller */
-	mov r0, #(1 << 15)
-	str r0, [r5, #CLK_RESET_CLK_ENB_H_CLR]
+	mov r1, #(1 << 15)
+	str r1, [r0, #CLK_RESET_CLK_ENB_H_CLR]
 #endif
 
 #if defined (CONFIG_CACHE_L2X0)
