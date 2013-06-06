@@ -3217,6 +3217,33 @@ static int tegra12_pllss_clk_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static void tegra12_pllss_clk_resume_enable(struct clk *c)
+{
+	unsigned long rate = clk_get_rate_all_locked(c->parent);
+	u32 val = clk_readl(c->reg + PLL_BASE);
+	enum clk_state state = c->state;
+
+	if (val & PLL_BASE_ENABLE)
+		return;		/* already resumed */
+
+	/* Restore input divider */
+	val &= ~PLLSS_BASE_DIVM_MASK;
+	val |= PLL_FIXED_MDIV(c, rate) << PLL_BASE_DIVM_SHIFT;
+	clk_writel(val, c->reg + PLL_BASE);
+
+	/* temporarily sync h/w and s/w states, final sync happens
+	   in tegra_clk_resume later */
+	c->state = OFF;
+	pllss_set_defaults(c, rate);
+
+	rate = clk_get_rate_all_locked(c) + 1;
+	tegra12_pllss_clk_set_rate(c, rate);
+	tegra12_pllss_clk_enable(c);
+	c->state = state;
+}
+#endif
+
 static struct clk_ops tegra_pllss_ops = {
 	.init			= tegra12_pllss_clk_init,
 	.enable			= tegra12_pllss_clk_enable,
@@ -7605,6 +7632,9 @@ static void tegra12_clk_resume(void)
 	pll_p_out34 = *ctx++;
 	clk_writel(pll_p_out34 | val, tegra_pll_p_out3.reg);
 
+	tegra12_pllss_clk_resume_enable(&tegra_pll_c4);
+	tegra12_pllss_clk_resume_enable(&tegra_pll_d2);
+	tegra12_pllss_clk_resume_enable(&tegra_pll_dp);
 	tegra12_pllcx_clk_resume_enable(&tegra_pll_c2);
 	tegra12_pllcx_clk_resume_enable(&tegra_pll_c3);
 	tegra12_pllxc_clk_resume_enable(&tegra_pll_c);
@@ -7705,6 +7735,15 @@ static void tegra12_clk_resume(void)
 	clk_writel(pll_p_out12, tegra_pll_p_out1.reg);
 	clk_writel(pll_p_out34, tegra_pll_p_out3.reg);
 
+	p = &tegra_pll_c4;
+	if (p->state == OFF)
+		tegra12_pllss_clk_disable(p);
+	p = &tegra_pll_d2;
+	if (p->state == OFF)
+		tegra12_pllss_clk_disable(p);
+	p = &tegra_pll_dp;
+	if (p->state == OFF)
+		tegra12_pllss_clk_disable(p);
 	p = &tegra_pll_c2;
 	if (p->state == OFF)
 		tegra12_pllcx_clk_disable(p);
