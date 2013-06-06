@@ -632,18 +632,6 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 			   edp_limits[i].freq_limits[3]);
 	}
 
-	seq_printf(s, "-- VDD_CPU Power EDP table --\n");
-	seq_printf(s, "%6s %10s %10s %10s %10s\n",
-		   " Power", "1-core", "2-cores", "3-cores", "4-cores");
-	for (i = 0; i < power_edp_limits_size; i++) {
-		seq_printf(s, "%5dmW: %10u %10u %10u %10u\n",
-			   power_edp_limits[i].power_limit_100mW * 100,
-			   power_edp_limits[i].freq_limits[0],
-			   power_edp_limits[i].freq_limits[1],
-			   power_edp_limits[i].freq_limits[2],
-			   power_edp_limits[i].freq_limits[3]);
-	}
-
 	if (system_edp_limits) {
 		seq_printf(s, "\n-- System EDP table --\n");
 		seq_printf(s, "%10u %10u %10u %10u\n",
