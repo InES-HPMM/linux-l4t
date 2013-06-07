@@ -1728,6 +1728,12 @@ static int soctherm_fuse_read_vsensor(void)
 	fuse_calib_base_cp = REG_GET(value, FUSE_BASE_CP);
 	fuse_calib_base_ft = REG_GET(value, FUSE_BASE_FT);
 
+	/* TSOSC base counts cannot be zero */
+	if (!fuse_calib_base_ft || !fuse_calib_base_cp) {
+		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
+		return -EINVAL;
+	}
+
 	/* Extract bits and convert to signed 2's complement */
 	calib_cp = REG_GET(value, FUSE_SHIFT_CP);
 	calib_cp = MAKE_SIGNED32(calib_cp, FUSE_SHIFT_CP_BITS);
@@ -1749,10 +1755,6 @@ static int soctherm_fuse_read_vsensor(void)
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
 	actual_temp_ft = 2 * nominal_calib_ft + calib_ft;
 
-	if (!actual_temp_ft || !actual_temp_cp) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
-		return -EINVAL;
-	}
 	return 0;
 }
 
@@ -1813,11 +1815,6 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 	calib = REG_GET(value, FUSE_TSENSOR_CALIB_CP);
 	calib = MAKE_SIGNED32(calib, FUSE_TSENSOR_CALIB_BITS);
 	actual_tsensor_cp = (fuse_calib_base_cp * 64) + calib;
-
-	if (!actual_tsensor_ft || !actual_tsensor_cp) {
-		pr_err("soctherm: ERROR: Improper FUSE. SOC_THERM disabled\n");
-		return -EINVAL;
-	}
 
 	mult = plat_data.sensor_data[sensor].pdiv *
 		plat_data.sensor_data[sensor].tsamp_ATE;
