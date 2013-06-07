@@ -657,13 +657,23 @@ static struct core_edp_entry *find_edp_entry(int sku, unsigned int regulator_mA)
 	int i;
 	int pid = tegra_core_process_id();
 
+	if ((sku == 0x5) || (sku == 0x6)) {
+		if (regulator_mA >= 8000)
+			return NULL;		/* no edp limits above 8A */
+	} else if (sku == 0x3) {
+		if (regulator_mA >= 8000)
+			regulator_mA = 8000;	/* apply 8A table above 8A */
+	} else {
+		return NULL;			/* no edp limits at all */
+	}
+
 	for (i = 0; i < ARRAY_SIZE(core_edp_table); i++) {
 		struct core_edp_entry *entry = &core_edp_table[i];
 		if ((entry->sku == sku) && (entry->cap_mA == regulator_mA) &&
 		    ((entry->process_id == -1) || (entry->process_id == pid)))
 			return entry;
 	}
-	return NULL;
+	return ERR_PTR(-ENOENT);
 }
 
 static unsigned long clip_cap_rate(struct clk *cap_clk, unsigned long rate)
@@ -724,6 +734,10 @@ int __init tegra11x_select_core_edp_table(unsigned int regulator_mA,
 		pr_info("%s: no core edp table for sku %d, %d mA\n",
 		       __func__, sku, regulator_mA);
 		return -ENODATA;
+	} else if (IS_ERR(edp_entry)) {
+		WARN(1, "%s: missing core edp table for sku %d, %d mA\n",
+		       __func__, sku, regulator_mA);
+		return PTR_ERR(edp_entry);
 	}
 
 	limits->sku = sku;
