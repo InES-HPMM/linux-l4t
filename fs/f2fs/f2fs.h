@@ -907,6 +907,7 @@ static inline int cond_clear_inode_flag(struct f2fs_inode_info *fi, int flag)
 int f2fs_sync_file(struct file *, loff_t, loff_t, int);
 void truncate_data_blocks(struct dnode_of_data *);
 void f2fs_truncate(struct inode *);
+int f2fs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
 int f2fs_setattr(struct dentry *, struct iattr *);
 int truncate_hole(struct inode *, pgoff_t, pgoff_t);
 int truncate_data_blocks_range(struct dnode_of_data *, int);
