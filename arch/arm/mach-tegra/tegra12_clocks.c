@@ -7248,6 +7248,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cml1", "tegra_sata_cml", NULL),
 	CLK_DUPLICATE("cml0", "tegra_pcie", "cml"),
 	CLK_DUPLICATE("pciex", "tegra_pcie", "pciex"),
+	CLK_DUPLICATE("clk_m", NULL, "apb_pclk"),
 	CLK_DUPLICATE("i2c1", "tegra-i2c-slave.0", NULL),
 	CLK_DUPLICATE("i2c2", "tegra-i2c-slave.1", NULL),
 	CLK_DUPLICATE("i2c3", "tegra-i2c-slave.2", NULL),
