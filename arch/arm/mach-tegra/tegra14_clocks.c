@@ -1384,8 +1384,8 @@ static int tegra14_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		ret = clk_set_rate(p_source, rate);
 		if (ret)
 			goto abort;
-	} else if ((p->parent->parent == dfll) || ((p->u.cpu.dynamic == dfll) &&
-			(dfll->state != UNINITIALIZED) && use_dfll)) {
+	} else if ((p->parent->parent == dfll) ||
+		   (p->dvfs && tegra_dvfs_is_dfll_range(p->dvfs, rate))) {
 		/* LP => G (DFLL selected as clock source) switch:
 		 * set DFLL rate ready (DFLL is still disabled)
 		 * (set target p_source as dfll, G source is already selected)
@@ -1447,11 +1447,9 @@ static int tegra14_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 
 	/*
 	 * Lock DFLL now (resume closed loop VDD_CPU control).
-	 * G CPU operations are always resumed on DFLL if it can be used, even
-	 * when autoswitch between PLL and DFLL is allowed, and resume rate is
-	 * low enough to run on PLL. This makes CPU clock source ready for
-	 * speedy ramp with cl_dvfs controlling volatge (and that ramp is the
-	 * most likely reason for going to G CPU in the 1st place)
+	 * G CPU operations are resumed on DFLL if it was the last G CPU
+	 * clock source, or if resume rate is in DFLL usage range in case
+	 * when auto-switch between PLL and DFLL is enabled.
 	 */
 	if (p_source == dfll) {
 		if (tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail)) {
