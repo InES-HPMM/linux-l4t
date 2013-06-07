@@ -145,6 +145,7 @@ struct tegra_bb {
 	struct clk *emc_clk;
 	struct device *proxy_dev;
 	struct notifier_block pm_notifier;
+	bool is_suspending;
 };
 
 
@@ -789,6 +790,10 @@ static irqreturn_t tegra_bb_isr_handler(int irq, void *data)
 	int sts;
 
 	disable_irq_nosync(irq);
+#ifdef CONFIG_PM
+	if (bb->is_suspending)
+		pm_wakeup_event(bb->dev, 0);
+#endif
 
 	spin_lock_irqsave(&bb->lock, irq_flags);
 	/* read/clear INT status */
@@ -1051,6 +1056,9 @@ static int tegra_bb_pm_notifier_event(struct notifier_block *this,
 
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
+		/* make sure IRQ will send a pm wake event */
+		bb->is_suspending = true;
+
 		/* inform tegra_common_suspend about EMC requirement */
 		tegra_lp1bb_suspend_emc_rate(bb->emc_min_freq, BBC_MC_MIN_FREQ);
 
@@ -1061,6 +1069,9 @@ static int tegra_bb_pm_notifier_event(struct notifier_block *this,
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
+		/* no need for IRQ to send a pm wake events anymore */
+		bb->is_suspending = false;
+
 		if (sts && !mem_req_soon) {
 			pr_debug("bbc is inactive, remove floor\n");
 			clk_set_rate(bb->emc_clk, 0);
@@ -1352,23 +1363,15 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->pm_notifier.notifier_call = tegra_bb_pm_notifier_event;
 	register_pm_notifier(&bb->pm_notifier);
 #endif
+	bb->is_suspending = false;
 	return 0;
 }
 
 #ifdef CONFIG_PM
 static int tegra_bb_suspend(struct device *dev)
 {
-	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
-	int sts;
-
 	dev_dbg(dev, "%s\n", __func__);
-	/* Be sure to ack any pending irq from BB */
 
-	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
-	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT)) {
-		writel(1 << FLOW_CTLR_IPC_FLOW_IPC_CLR_0_BB2AP_INT0_STS_SHIFT,
-		       fctrl + FLOW_CTLR_IPC_FLOW_IPC_CLR_0);
-	}
 	return 0;
 }
 
