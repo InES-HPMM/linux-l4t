@@ -172,7 +172,6 @@ static const int core_millivolts[MAX_DVFS_FREQS] = {
 static struct dvfs core_dvfs_table[] = {
 	/* Core voltages (mV):		         810,    860,    900,    990,    1080*/
 	/* Clock limits for internal blocks, PLLs */
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
 	CORE_DVFS("emc",    -1, -1, 1, KHZ,   264000, 348000, 384000, 528000,  924000),
 
 	CORE_DVFS("cpu_lp", -1, -1, 1, KHZ,   144000, 252000, 288000, 444000,  624000),
@@ -233,7 +232,6 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("xusb_ss_src",     -1, -1, 1, KHZ,   60000,  60000,  60000, 120000, 120000),
 	CORE_DVFS("xusb_fs_src",     -1, -1, 1, KHZ,       0,  48000,  48000,  48000,  48000),
 	CORE_DVFS("xusb_hs_src",     -1, -1, 1, KHZ,       0,  60000,  60000,  60000,  60000),
-#endif
 };
 
 /* TBD: fill in actual hw numbers */
@@ -702,6 +700,12 @@ void __init tegra12x_init_dvfs(void)
 #ifndef CONFIG_TEGRA_GPU_DVFS
 	tegra_dvfs_gpu_disabled = true;
 #endif
+#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
+	if (!tegra_platform_is_silicon()) {
+		tegra_dvfs_core_disabled = true;
+		tegra_dvfs_cpu_disabled = true;
+	}
+#endif
 
 	/*
 	 * Find nominal voltages for core (1st) and cpu rails before rail
@@ -765,13 +769,14 @@ void __init tegra12x_init_dvfs(void)
 
 	/* Search core dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
-	for (i = 0; i <  ARRAY_SIZE(core_dvfs_table); i++) {
-		struct dvfs *d = &core_dvfs_table[i];
-		if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
-			continue;
-		init_dvfs_one(d, core_nominal_mv_index);
+	if (!tegra_platform_is_linsim()) {
+		for (i = 0; i <  ARRAY_SIZE(core_dvfs_table); i++) {
+			struct dvfs *d = &core_dvfs_table[i];
+			if (!match_dvfs_one(d, soc_speedo_id, core_process_id))
+				continue;
+			init_dvfs_one(d, core_nominal_mv_index);
+		}
 	}
-
 	/* Search gpu dvfs table for speedo/process matching entries and
 	   initialize dvfs-ed clocks */
 	for (i = 0; i <  ARRAY_SIZE(gpu_dvfs_table); i++) {
