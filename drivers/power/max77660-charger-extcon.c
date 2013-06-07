@@ -135,12 +135,9 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 	charger->in_current_lim = fchg_current(charger->in_current_lim);
 
 	/* unlock charger protection */
-	reg_val = MAX77660_CHGPROT_UNLOCKED<<MAX77660_CHGPROT_SHIFT;
 	ret = max77660_reg_write(chip->parent, MAX77660_CHG_SLAVE,
 		MAX77660_CHARGER_CHGCTRL1,
-		MAX77660_CHARGER_CHGPROT_MASK |
-		MAX77660_CHARGER_BUCK_EN_MASK |
-		MAX77660_CHARGER_JEITA_EN_MASK);
+		MAX77660_CHGCC_MASK);
 	if (ret < 0)
 		return ret;
 
@@ -150,16 +147,14 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 		ret = max77660_reg_write(chip->parent,
 				MAX77660_CHG_SLAVE,
 				MAX77660_CHARGER_DCCRNT,
-				MAX77660_DCLIMIT_1A |
-				MAX77660_DC_WC_CNTL_DC);
+				MAX77660_DCILMT_CNTL);
 		if (ret < 0)
 			return ret;
 
 		/* Fast charge to 5 hours, fast charge current to 1.1A */
-		ret = max77660_reg_update(chip->parent,
+		ret = max77660_reg_write(chip->parent,
 				MAX77660_CHG_SLAVE, MAX77660_CHARGER_FCHGCRNT,
-				chip->charger->in_current_lim,
-				MAX77660_CHGCC_MASK);
+				MAX77660_FCHG_CRNT);
 		if (ret < 0)
 			return ret;
 
@@ -198,13 +193,35 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 				MAX77660_CHARGER_CHGCTRL2,
 				MAX77660_VSYSREG_3600MV |
 				MAX77660_CEN_MASK |
-				MAX77660_PREQ_CUR_MASK |
+				MAX77660_PREQ_CURNT |
 				MAX77660_DCILIM_EN_MASK);
 		if (ret < 0)
 			return ret;
+
+		/* Enable register settings for charging*/
+		ret = max77660_reg_write(chip->parent,
+				MAX77660_CHG_SLAVE,
+				MAX77660_CHARGER_CHGCCMAX,
+				MAX77660_CHGCCMAX_CRNT);
+
+		if (ret < 0)
+			return ret;
+
 		/* Enable top level charging */
-		ret = max77660_reg_set_bits(chip->parent, MAX77660_PWR_SLAVE,
-			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
+		ret = max77660_reg_write(chip->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG1,
+				MAX77660_GLBLCNFG1_MASK);
+		if (ret < 0)
+			return ret;
+		ret = max77660_reg_write(chip->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG4,
+				MAX77660_GLBLCNFG4_WDTC_SYS_CLR);
+		if (ret < 0)
+			return ret;
+
+		ret = max77660_reg_write(chip->parent, MAX77660_PWR_SLAVE,
+				MAX77660_REG_GLOBAL_CFG6,
+				MAX77660_GLBLCNFG6_MASK);
 		if (ret < 0)
 			return ret;
 
