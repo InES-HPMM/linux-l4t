@@ -30,6 +30,8 @@
 #include <linux/wakelock.h>
 #include <linux/mfd/max77665.h>
 #include <linux/max77665-charger.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
 #include <linux/interrupt.h>
 #include <linux/sysfs.h>
 #include <linux/mutex.h>
@@ -63,6 +65,11 @@ static int max77665_bat_to_sys_oc_thres[] = {
 	0, 3000, 3250, 3500, 3750, 4000, 4250, 4500
 };
 
+struct max77665_regulator_info {
+	struct regulator_dev *rdev;
+	struct regulator_desc reg_desc;
+	struct regulator_init_data reg_init_data;
+};
 
 struct max77665_charger {
 	enum max77665_mode mode;
@@ -82,6 +89,7 @@ struct max77665_charger {
 	struct delayed_work set_max_current_work;
 	struct wake_lock wdt_wake_lock;
 	unsigned int oc_count;
+	struct max77665_regulator_info reg_info;
 };
 
 static enum power_supply_property max77665_charger_props[] = {
@@ -385,6 +393,25 @@ static int max77665_handle_charger_status(struct max77665_charger *charger,
 	return 0;
 }
 
+static int max77665_set_input_charging_current(struct max77665_charger *charger,
+	int max_current_mA)
+{
+	int ret;
+
+	ret = max77665_enable_write(charger, true);
+	if (ret < 0) {
+		dev_err(charger->dev, "eanbling write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77665_set_max_input_current(charger, max_current_mA);
+	dev_info(charger->dev, "max input current %sset to %dmA\n",
+			(ret == 0) ? "" : "failed ", max_current_mA);
+
+	return max77665_enable_write(charger, false);
+}
+
+
 static int max77665_set_charger_mode(struct max77665_charger *charger,
 		enum max77665_mode mode)
 {
@@ -480,19 +507,59 @@ static void max77665_charger_disable_wdt(struct max77665_charger *charger)
 	alarm_cancel(&charger->wdt_alarm);
 }
 
+static int max77665_charging_disable(struct max77665_charger *charger)
+{
+	int ret;
+
+	dev_info(charger->dev, "Disabling charging\n");
+
+	ret = max77665_set_charger_mode(charger, OFF);
+	if (ret < 0)
+		dev_err(charger->dev, "failed to disable charging");
+
+	max77665_charger_disable_wdt(charger);
+
+	if (charger->plat_data->update_status)
+		charger->plat_data->update_status(0);
+	return ret;
+}
+
+static int max77665_charging_enable(struct max77665_charger *charger)
+{
+	int ret;
+
+	dev_info(charger->dev, "Enabling charging\n");
+
+	ret = max77665_set_charger_mode(charger, CHARGER);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to set device to charger mode\n");
+		return ret;
+	}
+
+	/* set the charging watchdog timer */
+	alarm_start(&charger->wdt_alarm, ktime_add(ktime_get_boottime(),
+			ktime_set(MAX77665_WATCHDOG_TIMER_PERIOD_S / 2, 0)));
+
+	if (charger->plat_data->update_status) {
+		int ilim;
+
+		ret = max77665_get_max_input_current(charger, &ilim);
+		if (ret < 0) {
+			dev_info(charger->dev, "Not able to get max current\n");
+			return ret;
+		}
+		charger->plat_data->update_status(ilim);
+	}
+	return ret;
+}
+
 static int max77665_disable_charger(struct max77665_charger *charger,
 		struct extcon_dev *edev)
 {
 	int ret;
 
 	charger->max_current_mA = 0;
-	ret = max77665_set_charger_mode(charger, OFF);
-	if (0 > ret)
-		dev_err(charger->dev, "failed to disable charging");
-	max77665_charger_disable_wdt(charger);
-
-	if (charger->plat_data->update_status)
-		charger->plat_data->update_status(0);
+	ret  = max77665_charging_disable(charger);
 
 	charger->ac_online = 0;
 	charger->usb_online = 0;
@@ -563,6 +630,110 @@ done:
 		power_supply_changed(&charger->ac);
 
 	return ret;
+}
+
+static int max77665_set_charging_current(struct regulator_dev *rdev,
+		int min_uA, int max_uA)
+{
+	struct max77665_charger *charger = rdev_get_drvdata(rdev);
+	uint32_t val;
+	int ret;
+
+	dev_info(charger->dev, "Requested max current: %duA\n", max_uA);
+	mutex_lock(&charger->current_limit_mutex);
+
+	charger->max_current_mA = max_uA/1000;
+
+	/*
+	 * For high current charging, max77665 might cut off the VBUS_SAFE_OUT
+	 * to AP if input voltage is below VCHIN_UVLO (in voltage regulation
+	 * mode). If that happens, the charging might is still on when AP
+	 * send cable unplugged event. We need check this conditon by reading
+	 * the CHG_DTLS_01 register.
+	 */
+	ret = max77665_read_reg(charger, MAX77665_CHG_DTLS_01, &val);
+	if (ret < 0) {
+		dev_err(charger->dev, "CHG_DTLS_01 read failed: %d\n", ret);
+		goto scrub;
+	}
+
+	if (charging_is_on(val)) {
+		dev_dbg(charger->dev, "%s() charging current %u is_on: %s\n",
+			__func__, max_uA, charging_is_on(val) ? "on" : "off");
+
+		ret = max77665_set_input_charging_current(charger,
+				charger->max_current_mA);
+		if (ret < 0)
+			dev_err(charger->dev,
+				"Setting input charging current failed: %d\n",
+				ret);
+		goto scrub;
+	}
+
+	if (charger->plat_data->update_status)
+		charger->plat_data->update_status(0);
+
+	if (charger->max_current_mA)
+		ret = max77665_charging_enable(charger);
+	else
+		ret = max77665_charging_disable(charger);
+scrub:
+	mutex_unlock(&charger->current_limit_mutex);
+	return ret;
+}
+
+static int max77665_get_charging_current(struct regulator_dev *rdev)
+{
+	struct max77665_charger *charger = rdev_get_drvdata(rdev);
+
+	return charger->max_current_mA * 1000;
+}
+
+static struct regulator_ops max77665_charge_regulator_ops = {
+	.set_current_limit = max77665_set_charging_current,
+	.get_current_limit = max77665_get_charging_current,
+};
+
+static int max77665_charger_regulator_init(
+		struct max77665_charger *charger,
+		struct max77665_charger_plat_data *pdata)
+{
+	struct max77665_regulator_info *reg = &charger->reg_info;
+	struct regulator_config config = { };
+
+	/* set up the current reg for charging */
+	reg->reg_desc.name = "vbus_reg";
+	reg->reg_desc.ops = &max77665_charge_regulator_ops;
+	reg->reg_desc.type = REGULATOR_CURRENT;
+	reg->reg_desc.owner = THIS_MODULE;
+
+	reg->reg_init_data.supply_regulator = NULL;
+	reg->reg_init_data.num_consumer_supplies = pdata->num_consumer_supplies;
+	reg->reg_init_data.consumer_supplies = pdata->consumer_supplies;
+	reg->reg_init_data.regulator_init = NULL;
+	reg->reg_init_data.driver_data = reg;
+	reg->reg_init_data.constraints.name = "vbus_reg";
+	reg->reg_init_data.constraints.min_uA = 0;
+	reg->reg_init_data.constraints.max_uA = pdata->curr_lim * 1000;
+	reg->reg_init_data.constraints.valid_modes_mask =
+						REGULATOR_MODE_NORMAL |
+						REGULATOR_MODE_STANDBY;
+	reg->reg_init_data.constraints.valid_ops_mask =
+						REGULATOR_CHANGE_MODE |
+						REGULATOR_CHANGE_STATUS |
+						REGULATOR_CHANGE_CURRENT;
+
+	config.dev = charger->dev;
+	config.init_data = &reg->reg_init_data;
+	config.driver_data = charger;
+
+	reg->rdev = regulator_register(&reg->reg_desc, &config);
+	if (IS_ERR(reg->rdev)) {
+		dev_err(charger->dev, "failed to register %s regulator\n",
+				reg->reg_desc.name);
+		return PTR_ERR(reg->rdev);
+	}
+	return 0;
 }
 
 static void charger_extcon_handle_notifier(struct work_struct *w)
@@ -898,6 +1069,12 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		if (!charger->edev)
 			goto chrg_error;
 
+		ret = max77665_charger_regulator_init(charger,
+							charger->plat_data);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Charger regulator init failed\n");
+			goto chrg_error;
+		}
 	}
 
 	charger->irq = platform_get_irq(pdev, 0);
@@ -906,7 +1083,7 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 			charger);
 	if (ret) {
 		dev_err(&pdev->dev, "failed: irq request error :%d)\n", ret);
-		goto chrg_error;
+		goto reg_err;
 	}
 	/* unmask all the interrupt */
 	max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0);
@@ -938,23 +1115,25 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		/* reset the charging in case cable is already inserted */
 		ret = max77665_reset_charger(charger, charger->edev);
 		if (ret < 0)
-			goto chrg_error;
+			goto remove_sysfs;
 	}
 
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
-
 	return 0;
 
 remove_sysfs:
 	max77665_remove_sysfs_entry(&pdev->dev);
 free_irq:
 	free_irq(charger->irq, charger);
+reg_err:
+	if (charger->plat_data->is_battery_present)
+		regulator_unregister(charger->reg_info.rdev);
 chrg_error:
-if (charger->plat_data->is_battery_present)
-	power_supply_unregister(&charger->usb);
+	if (charger->plat_data->is_battery_present)
+		power_supply_unregister(&charger->usb);
 pwr_sply_error:
-if (charger->plat_data->is_battery_present)
-	power_supply_unregister(&charger->ac);
+	if (charger->plat_data->is_battery_present)
+		power_supply_unregister(&charger->ac);
 remove_charging:
 	mutex_destroy(&charger->current_limit_mutex);
 if (charger->plat_data->is_battery_present)
@@ -967,12 +1146,14 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
 	max77665_charger_disable_wdt(charger);
+	if (charger->plat_data->is_battery_present)
+		regulator_unregister(charger->reg_info.rdev);
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
-if (charger->plat_data->is_battery_present)
-	power_supply_unregister(&charger->ac);
-if (charger->plat_data->is_battery_present)
-	power_supply_unregister(&charger->usb);
+	if (charger->plat_data->is_battery_present)
+		power_supply_unregister(&charger->ac);
+	if (charger->plat_data->is_battery_present)
+		power_supply_unregister(&charger->usb);
 
 	return 0;
 }
