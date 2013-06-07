@@ -789,29 +789,8 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 	charger->plat_data = pdev->dev.platform_data;
 	dev_set_drvdata(&pdev->dev, charger);
 
-	if (charger->plat_data->is_battery_present) {
-
-		wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
-				"max77665-charger-wdt");
-		alarm_init(&charger->wdt_alarm, ALARM_BOOTTIME,
-				max77665_charger_wdt_timer);
-		INIT_DELAYED_WORK(&charger->wdt_ack_work,
-				max77665_charger_wdt_ack_work_handler);
-		INIT_DELAYED_WORK(&charger->set_max_current_work,
-				max77665_set_ideal_input_current_work);
-
-		/* modify OTP setting of input current limit to 100ma */
-		ret = max77665_set_max_input_current(charger, 100);
-		if (ret < 0)
-			goto free_lock;
-
-		ret = max77665_charger_regulator_init(charger,
-							charger->plat_data);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "Charger regulator init failed\n");
-			goto free_lock;
-		}
-	}
+	/* unmask all the interrupt */
+	max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0);
 
 	charger->irq = platform_get_irq(pdev, 0);
 	ret = request_threaded_irq(charger->irq, NULL,
@@ -819,23 +798,13 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 			charger);
 	if (ret) {
 		dev_err(&pdev->dev, "failed: irq request error :%d)\n", ret);
-		goto reg_err;
+		goto free_mutex;
 	}
-	/* unmask all the interrupt */
-	max77665_write_reg(charger, MAX77665_CHG_INT_MASK, 0x0);
 
 	ret = max77665_add_sysfs_entry(&pdev->dev);
 	if (ret < 0) {
 		dev_err(charger->dev, "sysfs create failed %d\n", ret);
 		goto free_irq;
-	}
-
-	if (charger->plat_data->is_battery_present) {
-		ret = max77665_charger_init(charger);
-		if (ret < 0) {
-			dev_err(charger->dev, "failed to initialize charger\n");
-			goto remove_sysfs;
-		}
 	}
 
 	/* Set OC threshold to 3250mA */
@@ -847,27 +816,54 @@ static __devinit int max77665_battery_probe(struct platform_device *pdev)
 		goto remove_sysfs;
 	}
 
-	if (charger->plat_data->is_battery_present) {
-		ret = max77665_charging_disable(charger);
-		if (ret < 0) {
-			dev_err(charger->dev, "Disable charging failed\n");
-			goto remove_sysfs;
-		}
+	if (!charger->plat_data->is_battery_present)
+		goto skip_charger_init;
+
+	wake_lock_init(&charger->wdt_wake_lock, WAKE_LOCK_SUSPEND,
+				"max77665-charger-wdt");
+	alarm_init(&charger->wdt_alarm, ALARM_BOOTTIME,
+				max77665_charger_wdt_timer);
+	INIT_DELAYED_WORK(&charger->wdt_ack_work,
+				max77665_charger_wdt_ack_work_handler);
+	INIT_DELAYED_WORK(&charger->set_max_current_work,
+				max77665_set_ideal_input_current_work);
+
+	/* modify OTP setting of input current limit to 100ma */
+	ret = max77665_set_max_input_current(charger, 100);
+	if (ret < 0)
+		goto free_lock;
+
+	ret = max77665_charger_regulator_init(charger, charger->plat_data);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Charger regulator init failed\n");
+		goto free_lock;
 	}
 
+	ret = max77665_charger_init(charger);
+	if (ret < 0) {
+		dev_err(charger->dev, "failed to initialize charger\n");
+		goto free_reg;
+	}
+
+	ret = max77665_charging_disable(charger);
+	if (ret < 0) {
+		dev_err(charger->dev, "Disable charging failed\n");
+		goto free_reg;
+	}
+
+skip_charger_init:
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
 	return 0;
 
+free_reg:
+	regulator_unregister(charger->reg_info.rdev);
+free_lock:
+	wake_lock_destroy(&charger->wdt_wake_lock);
 remove_sysfs:
 	max77665_remove_sysfs_entry(&pdev->dev);
 free_irq:
 	free_irq(charger->irq, charger);
-reg_err:
-	if (charger->plat_data->is_battery_present)
-		regulator_unregister(charger->reg_info.rdev);
-free_lock:
-	if (charger->plat_data->is_battery_present)
-		wake_lock_destroy(&charger->wdt_wake_lock);
+free_mutex:
 	mutex_destroy(&charger->current_limit_mutex);
 	return ret;
 }
@@ -877,12 +873,12 @@ static int __devexit max77665_battery_remove(struct platform_device *pdev)
 	struct max77665_charger *charger = platform_get_drvdata(pdev);
 
 	max77665_charger_disable_wdt(charger);
-	if (charger->plat_data->is_battery_present)
-		regulator_unregister(charger->reg_info.rdev);
 	max77665_remove_sysfs_entry(&pdev->dev);
 	free_irq(charger->irq, charger);
-	if (charger->plat_data->is_battery_present)
+	if (charger->plat_data->is_battery_present) {
+		regulator_unregister(charger->reg_info.rdev);
 		wake_lock_destroy(&charger->wdt_wake_lock);
+	}
 	mutex_destroy(&charger->current_limit_mutex);
 	return 0;
 }
