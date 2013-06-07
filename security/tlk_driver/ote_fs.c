@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,69 +23,62 @@
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
 #include <linux/bitops.h>
+#include <linux/uaccess.h>
 
-#include <asm/uaccess.h>
+#include "ote_protocol.h"
 
-#include "tee_protocol.h"
+#define TE_SHMEM_FNAME_SZ	SZ_64
+#define TE_SHMEM_DATA_SZ	SZ_128K
+#define TE_FS_READY_BIT		1
 
-#define TEE_SHMEM_FNAME_SZ	SZ_64
-#define TEE_SHMEM_DATA_SZ	SZ_128K
-
-#define TEE_FS_READY_BIT	1
-
-struct tee_shmem {
-	char	file_name[TEE_SHMEM_FNAME_SZ];
-	char	file_data[TEE_SHMEM_DATA_SZ];
+struct te_file_req_shmem {
+	char	file_name[TE_SHMEM_FNAME_SZ];
+	char	file_data[TE_SHMEM_DATA_SZ];
 };
 
-struct list_head req_list;
-DECLARE_COMPLETION(req_ready);
-DECLARE_COMPLETION(req_complete);
+struct te_file_req_node {
+	struct list_head node;
+	struct te_file_req *req;
+};
+
+static struct list_head req_list;
+static DECLARE_COMPLETION(req_ready);
+static DECLARE_COMPLETION(req_complete);
 static unsigned long secure_error;
 static unsigned long fs_ready;
 
 static void indicate_complete(unsigned long ret)
 {
-	asm volatile (
-		"mov	r1, %0			\n"
-		"movw	r0, #0x1FFF		\n"
-		"movt	r0, #0xFFFF		\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec		\n"
-#endif
-		"smc	#0			\n"
-		: : "r" (ret)
-		: "r0", "r1"
-	);
+	tlk_generic_smc(0xFFFF1FFF, ret, 0);
 }
 
-int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
+int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 	unsigned long ioctl_param)
 {
-	TEEC_FileReq new_req, *ptr_user_req = NULL;
-	struct tee_file_req_node *req_node;
+	struct te_file_req new_req, *ptr_user_req = NULL;
+	struct te_file_req_node *req_node;
 
 	switch (ioctl_num) {
-	case TEE_IOCTL_FILE_NEW_REQ: /* new request */
+	case TE_IOCTL_FILE_NEW_REQ: /* new request */
 
-		ptr_user_req = (TEEC_FileReq *)ioctl_param;
+		ptr_user_req = (struct te_file_req *)ioctl_param;
 
 		set_freezable();
 
-		set_bit(TEE_FS_READY_BIT, &fs_ready);
+		set_bit(TE_FS_READY_BIT, &fs_ready);
 
 		/* wait for a new request */
 		while (wait_for_completion_interruptible(&req_ready))
 			try_to_freeze();
 
 		/* dequeue new request from the secure world */
-		req_node = list_first_entry(&req_list, struct tee_file_req_node,
+		req_node = list_first_entry(&req_list, struct te_file_req_node,
 				node);
 
 		/* populate request for the non-secure client */
 		if (req_node) {
 			if (copy_to_user(ptr_user_req, req_node->req,
-				sizeof(TEEC_FileReq))) {
+				sizeof(struct te_file_req))) {
 				pr_err("copy_to_user failed for new request\n");
 				return -EFAULT;
 			}
@@ -99,15 +92,15 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 
 		break;
 
-	case TEE_IOCTL_FILE_FILL_BUF: /* pass data to be written to the file */
+	case TE_IOCTL_FILE_FILL_BUF: /* pass data to be written to the file */
 
 		if (copy_from_user(&new_req, (void __user *)ioctl_param,
-			sizeof(TEEC_FileReq))) {
+			sizeof(struct te_file_req))) {
 			pr_err("copy_from_user failed for request\n");
 			return -EFAULT;
 		}
 
-		if (new_req.type != TEEC_FILE_REQ_WRITE)
+		if (new_req.type != OTE_FILE_REQ_WRITE)
 			return -EINVAL;
 
 		if (!new_req.kern_data_buf || !new_req.user_data_buf)
@@ -120,15 +113,15 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		}
 		break;
 
-	case TEE_IOCTL_FILE_REQ_COMPLETE: /* request complete */
+	case TE_IOCTL_FILE_REQ_COMPLETE: /* request complete */
 
 		if (copy_from_user(&new_req, (void __user *)ioctl_param,
-			sizeof(TEEC_FileReq))) {
+			sizeof(struct te_file_req))) {
 			pr_err("copy_from_user failed for request\n");
 			return -EFAULT;
 		}
 
-		if (new_req.type == TEEC_FILE_REQ_READ && !new_req.error) {
+		if (new_req.type == OTE_FILE_REQ_READ && !new_req.error) {
 			if (copy_from_user(new_req.kern_data_buf,
 				(void __user *)new_req.user_data_buf,
 				new_req.data_len)) {
@@ -138,7 +131,8 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		}
 
 		/* get error code */
-		secure_error = (new_req.error) ? TEEC_ERROR_NO_DATA : new_req.result;
+		secure_error = (new_req.error) ? OTE_ERROR_NO_DATA
+					       : new_req.result;
 
 		/* signal the producer */
 		complete(&req_complete);
@@ -148,25 +142,25 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 	return 0;
 }
 
-static void _tee_fs_file_operation(const char *name, void *buf, int len,
-		TEEC_FileReqType type)
+static void _te_fs_file_operation(const char *name, void *buf, int len,
+		enum te_file_req_type type)
 {
-	TEEC_FileReq *new_req;
-	struct tee_file_req_node *req_node;
+	struct te_file_req *new_req;
+	struct te_file_req_node *req_node;
 
-	if (!test_and_clear_bit(TEE_FS_READY_BIT, &fs_ready)) {
+	if (!test_and_clear_bit(TE_FS_READY_BIT, &fs_ready)) {
 		pr_err("%s: daemon not loaded yet\n", __func__);
-		secure_error = TEEC_ERROR_NO_DATA;
+		secure_error = OTE_ERROR_NO_DATA;
 		goto fail;
 	}
 
 	BUG_ON(!name);
 
-	if (type == TEEC_FILE_REQ_READ || type == TEEC_FILE_REQ_WRITE)
+	if (type == OTE_FILE_REQ_READ || type == OTE_FILE_REQ_WRITE)
 		BUG_ON(!buf);
 
-	/* allocate TEEC_FileReq structure */
-	new_req = kzalloc(sizeof(TEEC_FileReq), GFP_KERNEL);
+	/* allocate te_file_req structure */
+	new_req = kzalloc(sizeof(struct te_file_req), GFP_KERNEL);
 	BUG_ON(!new_req);
 
 	/* prepare a new request */
@@ -177,7 +171,7 @@ static void _tee_fs_file_operation(const char *name, void *buf, int len,
 	new_req->kern_data_buf = buf;
 	new_req->error = 0;
 
-	req_node = kzalloc(sizeof(struct tee_file_req_node), GFP_KERNEL);
+	req_node = kzalloc(sizeof(struct te_file_req_node), GFP_KERNEL);
 	BUG_ON(!req_node);
 
 	req_node->req = new_req;
@@ -200,29 +194,30 @@ fail:
 	indicate_complete(secure_error);
 }
 
-void nv_tee_fread(const char *name, void *buf, int len)
+void tlk_fread(const char *name, void *buf, int len)
 {
 	if (!buf)
-		_tee_fs_file_operation(name, buf, len, TEEC_FILE_REQ_SIZE);
+		_te_fs_file_operation(name, buf, len, OTE_FILE_REQ_SIZE);
 	else
-		_tee_fs_file_operation(name, buf, len, TEEC_FILE_REQ_READ);
+		_te_fs_file_operation(name, buf, len, OTE_FILE_REQ_READ);
 }
 
-void nv_tee_fwrite(const char *name, void *buf, int len)
+void tlk_fwrite(const char *name, void *buf, int len)
 {
-	_tee_fs_file_operation(name, buf, len, TEEC_FILE_REQ_WRITE);
+	_te_fs_file_operation(name, buf, len, OTE_FILE_REQ_WRITE);
 }
 
-void nv_tee_fdelete(const char *name)
+void tlk_fdelete(const char *name)
 {
-	_tee_fs_file_operation(name, NULL, 0, TEEC_FILE_REQ_DELETE);
+	_te_fs_file_operation(name, NULL, 0, OTE_FILE_REQ_DELETE);
 }
 
-static int __init nv_tee_fs_register_handlers(void)
+static int __init tlk_fs_register_handlers(void)
 {
-	struct tee_shmem *shmem_ptr;
+	struct te_file_req_shmem *shmem_ptr;
+	uint32_t smc_args[MAX_EXT_SMC_ARGS];
 
-	shmem_ptr = kzalloc(sizeof(struct tee_shmem), GFP_KERNEL);
+	shmem_ptr = kzalloc(sizeof(struct te_file_req_shmem), GFP_KERNEL);
 	if (!shmem_ptr) {
 		pr_err("%s: no memory available for fs operations\n", __func__);
 		return -ENOMEM;
@@ -232,24 +227,16 @@ static int __init nv_tee_fs_register_handlers(void)
 	init_completion(&req_ready);
 	init_completion(&req_complete);
 
-	asm volatile (
-		"movw	r0, #0x1FF2		\n"
-		"movt	r0, #0xFFFF		\n"
-		"mov	r1, %0			\n"
-		"mov	r2, %1			\n"
-		"mov	r3, %2			\n"
-		"mov	r4, %3			\n"
-		"mov	r5, %4			\n"
-#ifdef REQUIRES_SEC
-		".arch_extension sec		\n"
-#endif
-		"smc	#0			\n"
-		: : "r" (nv_tee_fread), "r" (nv_tee_fwrite), "r" (nv_tee_fdelete),
-		    "r" (shmem_ptr->file_name), "r" (shmem_ptr->file_data)
-		: "r0", "r1", "r2", "r3", "r4", "r13", "r14"
-	);
+	smc_args[0] = 0xFFFF1FF2;
+	smc_args[1] = (uint32_t)tlk_fread;
+	smc_args[2] = (uint32_t)tlk_fwrite;
+	smc_args[3] = (uint32_t)tlk_fdelete;
+	smc_args[4] = (uint32_t)shmem_ptr->file_name;
+	smc_args[5] = (uint32_t)shmem_ptr->file_data;
+
+	tlk_extended_smc(smc_args);
 
 	return 0;
 }
 
-arch_initcall(nv_tee_fs_register_handlers);
+arch_initcall(tlk_fs_register_handlers);

@@ -1,8 +1,0 @@
-config TRUSTED_LITTLE_KERNEL
-	bool "Enable NVIDIA Trusted Execution Environment driver"
-	select TEGRA_USE_SECURE_KERNEL
-	help
-	  This option adds kernel support for communication with the NVIDIA
-	  secure kernel.
-	  If you are unsure how to answer this question, answer N.
-

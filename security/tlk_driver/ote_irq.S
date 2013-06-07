@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (c) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,8 +14,8 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 
-ENTRY(nv_tee_irq_handler)
+ENTRY(tlk_irq_handler)
 	movw	r0, #0x1FF1
 	movt	r0, #0xFFFF
 	smc	#0
-ENDPROC(nv_tee_irq_handler)
+ENDPROC(tlk_irq_handler)
