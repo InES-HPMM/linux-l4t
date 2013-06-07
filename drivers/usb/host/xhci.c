@@ -2722,8 +2722,11 @@ int xhci_check_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 
 	/* Don't issue the command if there's no endpoints to update. */
 	if (ctrl_ctx->add_flags == cpu_to_le32(SLOT_FLAG) &&
-			ctrl_ctx->drop_flags == 0)
+			ctrl_ctx->drop_flags == 0) {
+		/* Clear add_flag, prevent misused in later drop_endpoint */
+		ctrl_ctx->add_flags = 0;
 		return 0;
+	}
 
 	xhci_dbg(xhci, "New Input Control Context:\n");
 	slot_ctx = xhci_get_slot_ctx(xhci, virt_dev->in_ctx);
