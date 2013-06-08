@@ -209,6 +209,7 @@ static int bonaire_panel_disable(void)
 	return 0;
 }
 
+#if defined(CONFIG_TEGRA_DP)
 static struct tegra_dc_out_pin edp_out_pins[] = {
 	{
 		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
@@ -227,6 +228,28 @@ static struct tegra_dc_out_pin edp_out_pins[] = {
 		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
 	},
 };
+#endif
+
+#if defined(CONFIG_TEGRA_LVDS)
+static struct tegra_dc_out_pin lvds_out_pins[] = {
+	{
+		.name	= TEGRA_DC_OUT_PIN_H_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_V_SYNC,
+		.pol	= TEGRA_DC_OUT_PIN_POL_LOW,
+	},
+	{
+		.name	= TEGRA_DC_OUT_PIN_PIXEL_CLOCK,
+		.pol	= TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+	{
+		.name   = TEGRA_DC_OUT_PIN_DATA_ENABLE,
+		.pol    = TEGRA_DC_OUT_PIN_POL_HIGH,
+	},
+};
+#endif
 
 static struct resource bonaire_disp1_resources[] = {
 	{
@@ -353,6 +376,24 @@ static struct tegra_dc_mode bonaire_panel_modes[] = {
 		.v_front_porch = 2,
 	},
 };
+
+#if defined(CONFIG_TEGRA_LVDS)
+static struct tegra_dc_mode bonaire_lvds_panel_modes[] = {
+	{
+		.pclk	       = 27000000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width  = 32,
+		.v_sync_width  = 5,
+		.h_back_porch  = 20,
+		.v_back_porch  = 12,
+		.h_active      = 1366,
+		.v_active      = 768,
+		.h_front_porch = 48,
+		.v_front_porch = 3,
+	},
+};
+#endif
 
 static struct tegra_fb_data bonaire_fb_data = {
 	.win		= 0,
@@ -640,8 +681,10 @@ static struct tegra_dc_out bonaire_disp_out = {
 #elif defined(CONFIG_TEGRA_LVDS)
 	.type		= TEGRA_DC_OUT_LVDS,
 
-	.modes	 	= bonaire_panel_modes,
-	.n_modes 	= ARRAY_SIZE(bonaire_panel_modes),
+	.modes	 	= bonaire_lvds_panel_modes,
+	.n_modes 	= ARRAY_SIZE(bonaire_lvds_panel_modes),
+	.out_pins       = lvds_out_pins,
+	.n_out_pins     = ARRAY_SIZE(lvds_out_pins),
 #elif defined(CONFIG_TEGRA_BONAIRE_DSI)
 	.type		= TEGRA_DC_OUT_DSI,
 
