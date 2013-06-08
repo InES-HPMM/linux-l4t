@@ -131,7 +131,7 @@ struct ad5816_info {
 	atomic_t in_use;
 	bool reset_flag;
 	int pwr_dev;
-	u32 pos;
+	s32 pos;
 	u16 dev_id;
 	u8 s_mode;
 };
