@@ -881,6 +881,7 @@ static struct core_dvfs_cap_table tegra11_core_cap_table[] = {
 #endif
 	{ .cap_name = "cap.sclk" },
 	{ .cap_name = "cap.emc" },
+	{ .cap_name = "cap.host1x" },
 };
 
 /*
