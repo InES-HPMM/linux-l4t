@@ -430,7 +430,7 @@ static void aic3xxx_cfw_dlcmds(struct cfw_state *ps, struct cfw_block *pb)
 		if (c->cid != CFW_CMD_BRANCH_IM &&
 		    c->cid != CFW_CMD_BRANCH_ID && c->cid != CFW_CMD_NOP)
 			cond = 0;
-		switch (c->cid) {
+		switch ((int)(c->cid)) {
 		case 0 ... (CFW_CMD_NOP - 1):
 			ps->ops->reg_write(ps->codec, c->reg.bpod,
 					   c->reg.data);
