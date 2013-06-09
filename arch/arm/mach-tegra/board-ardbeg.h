@@ -118,6 +118,7 @@ int laguna_regulator_init(void);
 #define en_vdd_bl       TEGRA_GPIO_PP2 /* DAP3_DOUT */
 #define lvds_en         TEGRA_GPIO_PI0 /* GMI_WR_N */
 #define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
+
 #else
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
 #define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
@@ -129,5 +130,8 @@ int laguna_regulator_init(void);
 #define refclk_en       TEGRA_GPIO_PG4 /* GMI_AD4 */
 #endif
 
+/* HID keyboard and trackpad irq same for interposer and t124 */
+#define I2C_KB_IRQ	TEGRA_GPIO_PC7
+#define I2C_TP_IRQ	TEGRA_GPIO_PW3
 
 #endif

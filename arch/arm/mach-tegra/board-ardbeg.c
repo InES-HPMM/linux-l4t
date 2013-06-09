@@ -25,6 +25,7 @@
 #include <linux/clk.h>
 #include <linux/serial_8250.h>
 #include <linux/i2c.h>
+#include <linux/i2c/i2c-hid.h>
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
 #include <linux/i2c-tegra.h>
@@ -213,8 +214,28 @@ static struct tegra_i2c_platform_data ardbeg_i2c5_platform_data = {
 };
 #endif
 
+static struct i2c_hid_platform_data i2c_keyboard_pdata = {
+	.hid_descriptor_address = 0x0,
+};
+
+static struct i2c_board_info __initdata i2c_keyboard_board_info = {
+	I2C_BOARD_INFO("hid", 0x3B),
+	.platform_data  = &i2c_keyboard_pdata,
+};
+
+static struct i2c_hid_platform_data i2c_touchpad_pdata = {
+	.hid_descriptor_address = 0x20,
+};
+
+static struct i2c_board_info __initdata i2c_touchpad_board_info = {
+	I2C_BOARD_INFO("hid", 0x2C),
+	.platform_data  = &i2c_touchpad_pdata,
+};
+
 static void ardbeg_i2c_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
 #ifndef CONFIG_USE_OF
 	tegra11_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
@@ -232,6 +253,15 @@ static void ardbeg_i2c_init(void)
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	i2c_register_board_info(0, &rt5645_board_info, 1);
 #endif
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363) {
+		i2c_keyboard_board_info.irq = gpio_to_irq(I2C_KB_IRQ);
+		i2c_register_board_info(1, &i2c_keyboard_board_info , 1);
+
+		i2c_touchpad_board_info.irq = gpio_to_irq(I2C_TP_IRQ);
+		i2c_register_board_info(1, &i2c_touchpad_board_info , 1);
+	}
 }
 
 static struct platform_device *ardbeg_uart_devices[] __initdata = {
