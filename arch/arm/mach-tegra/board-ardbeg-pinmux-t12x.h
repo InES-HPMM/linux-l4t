@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-pinmux-t12x.h
  *
- * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -186,8 +186,8 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_common[] = {
 	DDC_PINMUX(DDC_SDA, I2C4, NORMAL, NORMAL, INPUT, DEFAULT, HIGH),
 
 	/* USB pinmux */
-	USB_PINMUX(USB_VBUS_EN0, USB, NORMAL, NORMAL, INPUT, DEFAULT, DISABLE),
-	USB_PINMUX(USB_VBUS_EN1, USB, NORMAL, NORMAL, INPUT, DEFAULT, DISABLE),
+	USB_PINMUX(USB_VBUS_EN0, USB, NORMAL, NORMAL, INPUT, DEFAULT, ENABLE),
+	USB_PINMUX(USB_VBUS_EN1, USB, NORMAL, NORMAL, INPUT, DEFAULT, ENABLE),
 
 	/* GPIO pinmux */
 	GPIO_PINMUX(GPIO_X4_AUD, NORMAL, NORMAL, OUTPUT, DISABLE),
@@ -251,6 +251,7 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_common[] = {
 	GPIO_PINMUX(KB_ROW13, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW14, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW2, NORMAL, NORMAL, OUTPUT, DISABLE),
+	GPIO_PINMUX(KB_ROW4, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW5, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW7, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_ROW8, PULL_UP, NORMAL, INPUT, DISABLE),
@@ -286,7 +287,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(KB_COL3),
 	UNUSED_PINMUX(KB_ROW16),
 	UNUSED_PINMUX(KB_ROW17),
-	UNUSED_PINMUX(KB_ROW4),
 	UNUSED_PINMUX(OWR),
 };
 
@@ -352,6 +352,7 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR2, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR5, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS0, true, 0),
