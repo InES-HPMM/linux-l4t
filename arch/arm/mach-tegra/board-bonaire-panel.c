@@ -678,6 +678,7 @@ static struct tegra_dc_out bonaire_disp_out = {
 	.n_modes	= ARRAY_SIZE(bonaire_panel_modes),
 	.out_pins       = edp_out_pins,
 	.n_out_pins     = ARRAY_SIZE(edp_out_pins),
+	.depth		= 18,
 #elif defined(CONFIG_TEGRA_LVDS)
 	.type		= TEGRA_DC_OUT_LVDS,
 
