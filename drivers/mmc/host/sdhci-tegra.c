@@ -1984,6 +1984,15 @@ skip_vcore_override:
 		}
 
 		/*
+		 * If tuning is required only at nominal core voltage, set the
+		 * min override tuning as done to avoid unnecessary
+		 * vcore override settings.
+		 */
+		if ((tuning_params[freq_band].nr_voltages == 1) &&
+			tuning_data->nominal_vcore_tun_done)
+			tuning_data->override_vcore_tun_done = true;
+
+		/*
 		 * If setting min override voltage failed for the first time,
 		 * set nominal core voltage as override until retuning is done.
 		 */
