@@ -73,7 +73,6 @@
 .endm
 #else
 void tegra_resume(void);
-int tegra_sleep_cpu_finish(unsigned long);
 
 #ifdef CONFIG_HOTPLUG_CPU
 void tegra20_hotplug_init(void);
@@ -84,7 +83,6 @@ static inline void tegra30_hotplug_init(void) {}
 #endif
 
 int tegra30_sleep_cpu_secondary_finish(unsigned long);
-void tegra30_tear_down_cpu(void);
 
 #endif
 #endif
