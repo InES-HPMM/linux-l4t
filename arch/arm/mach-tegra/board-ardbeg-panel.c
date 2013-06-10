@@ -416,6 +416,7 @@ static void ardbeg_panel_select(void)
 
 	switch (board.board_id) {
 	case BOARD_E1639:
+	case BOARD_E1813:
 		panel = &dsi_s_wqxga_10_1;
 		dsi_instance = DSI_INSTANCE_0;
 		break;
