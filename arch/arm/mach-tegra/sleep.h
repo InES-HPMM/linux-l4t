@@ -82,7 +82,5 @@ static inline void tegra20_hotplug_init(void) {}
 static inline void tegra30_hotplug_init(void) {}
 #endif
 
-int tegra30_sleep_cpu_secondary_finish(unsigned long);
-
 #endif
 #endif
