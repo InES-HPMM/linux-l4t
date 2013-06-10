@@ -95,8 +95,9 @@ static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *card = codec->card;
 	struct tegra_rt5645 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
-	int srate, mclk, i2s_daifmt;
-	int err, rate;
+	int srate, mclk, i2s_daifmt, codec_daifmt;
+	int err, rate, sample_size;
+	unsigned int i2sclock;
 
 	srate = params_rate(params);
 	mclk = 256 * srate;
@@ -104,6 +105,23 @@ static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
 	i2s_daifmt = SND_SOC_DAIFMT_NB_NF;
 	i2s_daifmt |= pdata->i2s_param[HIFI_CODEC].is_i2s_master ?
 			SND_SOC_DAIFMT_CBS_CFS : SND_SOC_DAIFMT_CBM_CFM;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S8:
+		sample_size = 8;
+		break;
+	case SNDRV_PCM_FORMAT_S16_LE:
+		sample_size = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		sample_size = 24;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		sample_size = 32;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	switch (pdata->i2s_param[HIFI_CODEC].i2s_mode) {
 	case TEGRA_DAIFMT_I2S:
@@ -162,7 +180,36 @@ static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
 		}
 	}
 
-	err = snd_soc_dai_set_fmt(codec_dai, i2s_daifmt);
+	/*for 24 bit audio we support only S24_LE (S24_3LE is not supported)
+	which is rendered on bus in 32 bits packet so consider as 32 bit
+	depth in clock calculations, extra 4 is required by codec,
+	God knows why ?*/
+	if (sample_size == 24)
+		i2sclock = srate * params_channels(params) * 32 * 4;
+	else
+		i2sclock = 0;
+
+	err = snd_soc_dai_set_sysclk(cpu_dai, 0,
+			i2sclock, SND_SOC_CLOCK_OUT);
+	if (err < 0) {
+		dev_err(card->dev, "cpu_dai clock not set\n");
+		return err;
+	}
+
+	codec_daifmt = i2s_daifmt;
+
+	/*invert the codec bclk polarity when codec is master
+	in DSP mode this is done to match with the negative
+	edge settings of tegra i2s*/
+	if (((i2s_daifmt & SND_SOC_DAIFMT_FORMAT_MASK)
+		== SND_SOC_DAIFMT_DSP_A) &&
+		((i2s_daifmt & SND_SOC_DAIFMT_MASTER_MASK)
+		== SND_SOC_DAIFMT_CBM_CFM)) {
+		codec_daifmt &= ~(SND_SOC_DAIFMT_INV_MASK);
+		codec_daifmt |= SND_SOC_DAIFMT_IB_NF;
+	}
+
+	err = snd_soc_dai_set_fmt(codec_dai, codec_daifmt);
 	if (err < 0) {
 		dev_err(card->dev, "codec_dai fmt not set\n");
 		return err;
