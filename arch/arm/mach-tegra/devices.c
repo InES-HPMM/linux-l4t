@@ -1223,7 +1223,7 @@ static struct resource tegra_usb3_resources[] = {
 	},
 };
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 static struct resource tegra_xusb_resources[] = {
 	[0] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_HOST_BASE, TEGRA_XUSB_HOST_SIZE,
 			"host"),

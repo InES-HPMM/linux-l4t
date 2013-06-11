@@ -619,8 +619,8 @@
 #define INT_UARTA			(INT_SEC_BASE + 4)
 #define INT_UARTB			(INT_SEC_BASE + 5)
 #define INT_I2C				(INT_SEC_BASE + 6)
-#define INT_USB3_HOST_INT		(INT_SEC_BASE + 7)
-#define INT_USB3_NOT_SMI		(INT_SEC_BASE + 8)
+#define INT_XUSB_HOST_INT		(INT_SEC_BASE + 7)
+#define INT_XUSB_HOST_SMI		(INT_SEC_BASE + 8)
 #define INT_TMR3			(INT_SEC_BASE + 9)
 #define INT_TMR4			(INT_SEC_BASE + 10)
 #define INT_USB3_HOST_PME		(INT_SEC_BASE + 11)
@@ -632,7 +632,7 @@
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 #define IRQ_ETH				(INT_SEC_BASE + 16)
 #endif
-/* unused				(INT_SEC_BASE + 17) */
+#define INT_XUSB_PADCTL			(INT_SEC_BASE + 17)
 #define INT_TSEC			(INT_SEC_BASE + 18)
 #define INT_EDP				(INT_SEC_BASE + 19)
 #define INT_VFIR			(INT_SEC_BASE + 20)

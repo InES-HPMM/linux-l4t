@@ -21,7 +21,7 @@
 #include "devices.h"
 #include "fuse.h"
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 static struct tegra_xusb_platform_data tegra_xusb_plat_data = {};
 
 static void tegra_xusb_read_usb_calib(void)
@@ -49,6 +49,14 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	tegra_xusb_plat_data.quirks |= TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR;
+	tegra_xusb_plat_data.rx_wander = (0xf << 4);
+	tegra_xusb_plat_data.rx_eq = (0x3070 << 8);
+	tegra_xusb_plat_data.cdr_cntl = (0x26 << 24);
+	tegra_xusb_plat_data.dfe_cntl = 0x002008EE;
+	tegra_xusb_plat_data.hs_slew = (0xE << 6);
+	tegra_xusb_plat_data.ls_rslew = (0x3 << 14);
+	tegra_xusb_plat_data.hs_disc_lvl = (0x5 << 2);
+#elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	tegra_xusb_plat_data.rx_wander = (0xf << 4);
 	tegra_xusb_plat_data.rx_eq = (0x3070 << 8);
 	tegra_xusb_plat_data.cdr_cntl = (0x26 << 24);
