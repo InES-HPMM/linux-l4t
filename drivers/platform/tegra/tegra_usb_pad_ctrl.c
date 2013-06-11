@@ -331,6 +331,47 @@ int usb3_phy_pad_enable(u8 lane_owner)
 }
 EXPORT_SYMBOL_GPL(usb3_phy_pad_enable);
 
+void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	u32 reg;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	reg = readl(pad_base + reg_offset);
+	reg &= ~mask;
+	reg |= val;
+	writel(reg, pad_base + reg_offset);
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_update);
+
+u32 tegra_usb_pad_reg_read(u32 reg_offset)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	u32 reg;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	reg = readl(pad_base + reg_offset);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+
+	return reg;
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_read);
+
+void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	unsigned long flags;
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	writel(val, pad_base + reg_offset);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
+
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 int pcie_phy_pad_enable(int lane_owner)
 {

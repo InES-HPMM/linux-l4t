@@ -99,4 +99,7 @@ int pcie_phy_pad_enable(int lane_owner);
 #endif
 
 int utmi_phy_iddq_override(bool set);
+void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val);
+u32 tegra_usb_pad_reg_read(u32 reg_offset);
+void tegra_usb_pad_reg_write(u32 reg_offset, u32 val);
 #endif

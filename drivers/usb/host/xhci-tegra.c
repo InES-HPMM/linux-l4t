@@ -2237,18 +2237,15 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 	tegra->last_jiffies = jiffies;
 
 	/* Check the intr cause. Could be  USB2 or HSIC or SS wake events */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
+	elpg_program0 = tegra_usb_pad_reg_read(padregs->elpg_program_0);
 
 	/* Clear the interrupt cause. We already read the intr status. */
 	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, false);
 	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, false);
 
-	xhci_dbg(xhci, "%s: elpg_program0 = %x\n",
-		__func__, elpg_program0);
+	xhci_dbg(xhci, "%s: elpg_program0 = %x\n", __func__, elpg_program0);
 	xhci_dbg(xhci, "%s: PMC REGISTER = %x\n", __func__,
 		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
-	xhci_dbg(xhci, "%s: elpg_program0 = %x\n",
-		__func__, readl(tegra->padctl_base + padregs->elpg_program_0));
 	xhci_dbg(xhci, "%s: OC_DET Register = %x\n",
 		__func__, readl(tegra->padctl_base + padregs->oc_det_0));
 	xhci_dbg(xhci, "%s: usb2_bchrg_otgpad0_ctl0_0 Register = %x\n",
@@ -2279,8 +2276,7 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 		}
 	} else {
 		xhci_err(xhci, "error: wake due to no hs/ss event\n");
-		writel(0xffffffff, tegra->padctl_base +
-			padregs->elpg_program_0);
+		tegra_usb_pad_reg_write(padregs->elpg_program_0, 0xffffffff);
 	}
 	spin_unlock(&tegra->lock);
 	return IRQ_HANDLED;
