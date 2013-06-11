@@ -197,7 +197,6 @@ struct tegra_xhci_hcd {
 	unsigned long host_phy_base;
 	void __iomem *host_phy_virt_base;
 
-	void __iomem *pmc_base;
 	void __iomem *padctl_base;
 	void __iomem *fpci_base;
 	void __iomem *ipfs_base;
@@ -1639,7 +1638,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 
 	tegra_xhci_hs_wake_on_interrupts(tegra, true);
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
-		readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0));
+		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
 	/* STEP 4: Assert reset to host clk and disable host clk */
 	tegra_periph_reset_assert(tegra->host_clk);
@@ -1669,7 +1668,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	tegra_xhci_release_port_ownership(tegra, true);
 
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
-		readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0));
+		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
 	xhci_info(xhci, "%s: elpg_entry: completed\n", __func__);
 	xhci_dbg(xhci, "%s: HOST POWER STATUS = %d\n",
@@ -1760,13 +1759,13 @@ static void update_remote_wakeup_ports_pmc(struct tegra_xhci_hcd *tegra)
 #define PMC_WAKE2_STATUS	0x168
 #define PADCTL_WAKE		(1 << (58 - 32)) /* PADCTL is WAKE#58 */
 
-	wake2_status = ioread32(tegra->pmc_base + PMC_WAKE2_STATUS);
+	wake2_status = tegra_usb_pmc_reg_read(PMC_WAKE2_STATUS);
 
 	if (wake2_status & PADCTL_WAKE) {
 		/* FIXME: This is customized for Dalmore, find a generic way */
 		set_bit(0, &tegra->usb3_rh_remote_wakeup_ports);
 		/* clear wake status */
-		iowrite32(PADCTL_WAKE, tegra->pmc_base + PMC_WAKE2_STATUS);
+		tegra_usb_pmc_reg_write(PMC_WAKE2_STATUS, PADCTL_WAKE);
 	}
 
 	xhci_dbg(xhci, "%s: usb3 roothub remote_wakeup_ports 0x%lx\n",
@@ -1868,11 +1867,10 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	 */
 	reg = PMC_TCTRL_VAL(pmc_data.utmip_tctrl_val) |
 		PMC_RCTRL_VAL(pmc_data.utmip_rctrl_val);
-	writel(reg, tegra->pmc_base + PMC_UTMIP_TERM_PAD_CFG);
+	tegra_usb_pmc_reg_update(PMC_UTMIP_TERM_PAD_CFG, 0xffffffff, reg);
 
-	reg = readl(tegra->pmc_base + PMC_SLEEP_CFG);
-	reg |= UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
-	writel(reg, tegra->pmc_base + PMC_SLEEP_CFG);
+	reg = UTMIP_RCTRL_USE_PMC_P2 | UTMIP_TCTRL_USE_PMC_P2;
+	tegra_usb_pmc_reg_update(PMC_SLEEP_CFG, reg, reg);
 
 	/* Restore correct port ownership in padctl */
 	reg = readl(tegra->padctl_base + USB2_PAD_MUX_0);
@@ -2170,8 +2168,8 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 
 	xhci_dbg(xhci, "%s: elpg_program0 = %x\n",
 		__func__, elpg_program0);
-	xhci_dbg(xhci, "%s: PMC REGISTER = %x\n",
-		__func__, readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0));
+	xhci_dbg(xhci, "%s: PMC REGISTER = %x\n", __func__,
+		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 	xhci_dbg(xhci, "%s: PAD ELPG_PROGRAM_0 INTERRUPT REGISTER = %x\n",
 		__func__, readl(tegra->padctl_base + ELPG_PROGRAM_0));
 	xhci_dbg(xhci, "%s: OC_DET Register = %x\n",
@@ -2603,7 +2601,7 @@ static int init_bootloader_firmware(struct tegra_xhci_hcd *tegra)
 #endif
 
 	/* bootloader saved firmware memory address in PMC SCRATCH34 register */
-	fw_mem_phy_addr = ioread32(tegra->pmc_base + PMC_SCRATCH34);
+	fw_mem_phy_addr = tegra_usb_pmc_reg_read(PMC_SCRATCH34);
 
 	fw_mmio_base = devm_ioremap_nocache(&pdev->dev,
 			fw_mem_phy_addr, sizeof(struct cfgtbl));
@@ -2704,12 +2702,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	tegra->pdev = pdev;
-
-	ret = tegra_xhci_request_mem_region(pdev, "pmc", &tegra->pmc_base);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to map pmc\n");
-		return ret;
-	}
 
 	ret = tegra_xhci_request_mem_region(pdev, "padctl",
 			&tegra->padctl_base);
@@ -2924,12 +2916,12 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra->dfe_ctle_ctx_saved = false;
 
 	/* reset wake event to NONE */
-	pmc_reg = readl(tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0);
+	pmc_reg = tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0);
 	pmc_reg |= UTMIP_WAKE_VAL(0, WAKE_VAL_NONE);
 	pmc_reg |= UTMIP_WAKE_VAL(1, WAKE_VAL_NONE);
 	pmc_reg |= UTMIP_WAKE_VAL(2, WAKE_VAL_NONE);
 	pmc_reg |= UTMIP_WAKE_VAL(3, WAKE_VAL_NONE);
-	writel(pmc_reg, tegra->pmc_base + PMC_UTMIP_UHSIC_SLEEP_CFG_0);
+	tegra_usb_pmc_reg_write(PMC_UTMIP_UHSIC_SLEEP_CFG_0, pmc_reg);
 
 	tegra_xhci_debug_read_pads(tegra);
 	utmi_phy_pad_enable();

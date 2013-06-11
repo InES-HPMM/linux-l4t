@@ -621,3 +621,47 @@ void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data)
 	pmc_data->pmc_ops = pmc_ops[pmc_data->phy_type];
 }
 EXPORT_SYMBOL_GPL(tegra_usb_pmc_init);
+
+void tegra_usb_pmc_reg_update(u32 reg_offset, u32 mask, u32 val)
+{
+	u32 reg;
+
+	if (!pmc_base)
+		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	spin_lock_irqsave(&pmc_lock, flags);
+
+	reg = readl(pmc_base + reg_offset);
+	reg &= ~mask;
+	reg |= val;
+	writel(reg, pmc_base + reg_offset);
+
+	spin_unlock_irqrestore(&pmc_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pmc_reg_update);
+
+u32 tegra_usb_pmc_reg_read(u32 reg_offset)
+{
+	u32 reg;
+
+	if (!pmc_base)
+		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	spin_lock_irqsave(&pmc_lock, flags);
+	reg = readl(pmc_base + reg_offset);
+	spin_unlock_irqrestore(&pmc_lock, flags);
+
+	return reg;
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pmc_reg_read);
+
+void tegra_usb_pmc_reg_write(u32 reg_offset, u32 val)
+{
+	if (!pmc_base)
+		pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+
+	spin_lock_irqsave(&pmc_lock, flags);
+	writel(val, pmc_base + reg_offset);
+	spin_unlock_irqrestore(&pmc_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_usb_pmc_reg_write);

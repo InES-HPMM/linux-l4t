@@ -1233,11 +1233,10 @@ static struct resource tegra_xusb_resources[] = {
 			"ipfs"),
 	[3] = DEFINE_RES_MEM_NAMED(TEGRA_XUSB_PADCTL_BASE,
 			TEGRA_XUSB_PADCTL_SIZE, "padctl"),
-	[4] = DEFINE_RES_MEM_NAMED(TEGRA_PMC_BASE, TEGRA_PMC_SIZE, "pmc"),
-	[5] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_INT, "host"),
-	[6] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_SMI, "host-smi"),
-	[7] = DEFINE_RES_IRQ_NAMED(INT_XUSB_PADCTL, "padctl"),
-	[8] = DEFINE_RES_IRQ_NAMED(INT_USB3, "usb3"),
+	[4] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_INT, "host"),
+	[5] = DEFINE_RES_IRQ_NAMED(INT_XUSB_HOST_SMI, "host-smi"),
+	[6] = DEFINE_RES_IRQ_NAMED(INT_XUSB_PADCTL, "padctl"),
+	[7] = DEFINE_RES_IRQ_NAMED(INT_USB3, "usb3"),
 };
 
 static u64 tegra_xusb_dmamask = DMA_BIT_MASK(64);

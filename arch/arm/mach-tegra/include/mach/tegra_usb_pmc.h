@@ -264,5 +264,8 @@ struct tegra_usb_pmc_data {
 };
 
 void tegra_usb_pmc_init(struct tegra_usb_pmc_data *pmc_data);
+void tegra_usb_pmc_reg_update(u32 reg_offset, u32 mask, u32 val);
+u32 tegra_usb_pmc_reg_read(u32 reg_offset);
+void tegra_usb_pmc_reg_write(u32 reg_offset, u32 val);
 
 #endif
