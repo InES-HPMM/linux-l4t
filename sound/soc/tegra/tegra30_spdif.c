@@ -2,11 +2,10 @@
  * tegra30_spdif.c - Tegra30 SPDIF driver
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
- * Copyright (C) 2011 - NVIDIA, Inc.
  *
  * Based on code copyright/by:
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2013 NVIDIA Corporation.  All Rights Reserved.
  * Scott Peterson <speterson@nvidia.com>
  *
  * Copyright (C) 2010 Google, Inc.
@@ -36,8 +35,10 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 #include <mach/iomap.h>
 #include <mach/hdmi-audio.h>
+#include <mach/clk.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -304,6 +305,25 @@ static int tegra30_spdif_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void tegra30_spdif_reset(struct tegra30_spdif *spdif)
+{
+#ifndef CONFIG_ARCH_TEGRA_11x_SOC
+	u32 val;
+	int dcnt = 10;
+
+	val = tegra30_spdif_read(spdif, TEGRA30_SPDIF_CTRL);
+	val |= TEGRA30_SPDIF_CTRL_SOFT_RESET_ENABLE;
+	tegra30_spdif_write(spdif, TEGRA30_SPDIF_CTRL, val);
+
+	while ((tegra30_spdif_read(spdif, TEGRA30_SPDIF_CTRL) &
+		    TEGRA30_SPDIF_CTRL_SOFT_RESET_ENABLE) && dcnt--)
+		udelay(100);
+#else
+	tegra_periph_reset_assert(spdif->clk_spdif_out);
+	tegra_periph_reset_deassert(spdif->clk_spdif_out);
+#endif
+}
+
 static void tegra30_spdif_start_playback(struct tegra30_spdif *spdif)
 {
 	tegra30_ahub_enable_tx_fifo(spdif->txcif);
@@ -318,6 +338,7 @@ static void tegra30_spdif_stop_playback(struct tegra30_spdif *spdif)
 	spdif->reg_ctrl &= ~(TEGRA30_SPDIF_CTRL_TX_EN_ENABLE |
 				TEGRA30_SPDIF_CTRL_TC_EN_ENABLE);
 	tegra30_spdif_write(spdif, TEGRA30_SPDIF_CTRL, spdif->reg_ctrl);
+	tegra30_spdif_reset(spdif);
 }
 
 static int tegra30_spdif_trigger(struct snd_pcm_substream *substream, int cmd,
