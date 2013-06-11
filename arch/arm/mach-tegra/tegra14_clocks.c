@@ -4249,6 +4249,77 @@ static int tegra14_clk_emc_bus_update(struct clk *bus)
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int emc_bus_set_rate(struct clk *bus, unsigned long rate)
+{
+	struct clk *p = NULL;
+	unsigned long parent_rate, backup_rate;
+
+	if (!tegra_emc_is_parent_ready(rate, &p, &parent_rate, &backup_rate)) {
+		if (bus->parent == p) {
+			/* need backup to re-lock current parent */
+			int ret;
+			if (IS_ERR_VALUE(backup_rate)) {
+				pr_err("%s: No backup for %s rate %lu\n",
+				       __func__, bus->name, rate);
+				return -EINVAL;
+			}
+
+			ret = bus->ops->set_rate(bus, backup_rate);
+			if (ret) {
+				pr_err("%s: Failed to backup %s for rate %lu\n",
+				       __func__, bus->name, rate);
+				return -EINVAL;
+			}
+		}
+		if (p->refcnt) {
+			pr_err("%s: %s has other than emc child\n",
+			       __func__, p->name);
+			return -EINVAL;
+		}
+
+		if (p->ops->set_rate(p, parent_rate)) {
+			pr_err("%s: Failed to set %s rate %lu\n",
+			       __func__, p->name, parent_rate);
+			return -EINVAL;
+		}
+	}
+
+	return bus->ops->set_rate(bus, rate);
+}
+
+static int tegra14_clk_emc_suspend(struct clk *c, u32 *ctx)
+{
+	unsigned long rate;
+	unsigned long old_rate = clk_get_rate_all_locked(c);
+	*ctx = old_rate;
+
+	rate = 204000000; /* FIXME: rate from suspend structure */
+
+	if (rate == old_rate)
+		return 0;
+
+	pr_debug("EMC rate change before suspend: %lu => %lu\n",
+		 old_rate, rate);
+
+	return emc_bus_set_rate(c, rate);
+}
+
+static void tegra14_clk_emc_resume(struct clk *c, const u32 *ctx)
+{
+	unsigned long rate = *ctx;
+	unsigned long old_rate = clk_get_rate_all_locked(c);
+
+	if (rate == old_rate)
+		return;
+
+	pr_debug("EMC rate change after suspend: %lu => %lu\n",
+		 old_rate, rate);
+
+	emc_bus_set_rate(c, rate);
+}
+#endif
+
 static struct clk_ops tegra_emc_clk_ops = {
 	.init			= &tegra14_emc_clk_init,
 	.enable			= &tegra14_periph_clk_enable,
@@ -7181,7 +7252,7 @@ int tegra_update_mselect_rate(unsigned long cpu_rate)
 
 #ifdef CONFIG_PM_SLEEP
 static u32 clk_rst_suspend[RST_DEVICES_NUM + CLK_OUT_ENB_NUM +
-			   PERIPH_CLK_SOURCE_NUM + 25];
+			   PERIPH_CLK_SOURCE_NUM + 26];
 
 static int tegra14_clk_suspend(void)
 {
@@ -7250,6 +7321,8 @@ static int tegra14_clk_suspend(void)
 	*ctx++ = clk_readl(SPARE_REG);
 	*ctx++ = clk_readl(MISC_CLK_ENB);
 	*ctx++ = clk_readl(CLK_MASK_ARM);
+
+	tegra14_clk_emc_suspend(&tegra_clk_emc, ctx++);
 
 	return 0;
 }
@@ -7433,6 +7506,8 @@ static void tegra14_clk_resume(void)
 
 	tegra14_pll_clk_init(&tegra_pll_u); /* Re-init utmi parameters */
 	tegra14_pllp_clk_resume(&tegra_pll_p); /* Fire a bug if not restored */
+
+	tegra14_clk_emc_resume(&tegra_clk_emc, ctx++);
 }
 
 static struct syscore_ops tegra_clk_syscore_ops = {

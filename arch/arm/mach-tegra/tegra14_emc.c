@@ -916,9 +916,12 @@ int tegra_emc_set_rate(unsigned long rate)
 
 	clk_setting = tegra_emc_clk_sel[i].value;
 
-	last_change_delay = ktime_us_delta(ktime_get(), clkchange_time);
-	if ((last_change_delay >= 0) && (last_change_delay < clkchange_delay))
-		udelay(clkchange_delay - (int)last_change_delay);
+	if (!timekeeping_suspended) {
+		last_change_delay = ktime_us_delta(ktime_get(), clkchange_time);
+		if ((last_change_delay >= 0) &&
+		    (last_change_delay < clkchange_delay))
+			udelay(clkchange_delay - (int)last_change_delay);
+	}
 
 	spin_lock_irqsave(&emc_access_lock, flags);
 	/* Pick from the EMC tables based on the status of the over temp state
