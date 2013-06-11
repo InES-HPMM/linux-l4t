@@ -1561,20 +1561,24 @@ static int __map_sg_chunk(struct device *dev, struct scatterlist *sg,
 	if (iova == DMA_ERROR_CODE)
 		return -ENOMEM;
 
+	if (is_coherent || dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+		goto skip_cmaint;
+
 	for (count = 0, s = sg; count < (size >> PAGE_SHIFT); s = sg_next(s)) {
-		phys_addr_t phys = page_to_phys(sg_page(s));
 		unsigned int len = PAGE_ALIGN(s->offset + s->length);
 
-		if (!is_coherent &&
-			!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
-			__dma_page_cpu_to_dev(sg_page(s), s->offset, s->length, dir);
+		__dma_page_cpu_to_dev(sg_page(s), s->offset, s->length, dir);
 
-		ret = iommu_map(mapping->domain, iova, phys, len, 0);
-		if (ret < 0)
-			goto fail;
 		count += len >> PAGE_SHIFT;
 		iova += len;
 	}
+
+skip_cmaint:
+	count = size >> PAGE_SHIFT;
+	ret = iommu_map_sg(mapping->domain, iova_base, sg, count, 0);
+	if (WARN_ON(ret < 0))
+		goto fail;
+
 	*handle = iova_base;
 
 	return 0;
