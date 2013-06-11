@@ -57,7 +57,7 @@ static struct clk *cap_clks[CAP_CLKS_NUM];
  */
 static struct core_edp_entry core_edp_table[] = {
 	{
-		.sku		= 0x7,		/* SL440 */
+		.sku		= 0x7,
 		.cap_mA		= 3000,		/* 3A cap */
 		.mult		= 1000000,	/* MHZ */
 		.cap_cpu	= {
@@ -91,7 +91,7 @@ static struct core_edp_entry core_edp_table[] = {
 		},
 	},
 	{
-		.sku		= 0x3,		/* SL460 */
+		.sku		= 0x3,
 		.cap_mA		= 3000,		/* 3A cap */
 		.mult		= 1000000,	/* MHZ */
 		.cap_cpu	= {

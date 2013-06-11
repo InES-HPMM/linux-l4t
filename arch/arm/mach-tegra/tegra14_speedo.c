@@ -69,13 +69,13 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 
 	switch (sku) {
 	case 0x00: /* Eng */
-	case 0x07: /* SL440 */
+	case 0x07:
 		cpu_speedo_id = 0;
 		soc_speedo_id = 0;
 		threshold_index = 0;
 		break;
 
-	case 0x03: /* SL460 */
+	case 0x03:
 		cpu_speedo_id = 1;
 		soc_speedo_id = 1;
 		threshold_index = 1;
