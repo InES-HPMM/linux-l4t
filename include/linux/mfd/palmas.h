@@ -90,6 +90,7 @@ struct edv_config {
 
 /* General Battery Cell Configuration */
 struct cell_config {
+	int technology;
 	bool cc_polarity;
 	bool cc_out;
 	bool ocv_below_edv1;

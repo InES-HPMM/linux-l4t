@@ -70,6 +70,7 @@ static unsigned short av_c_index;
 static const unsigned int fuelgauge_rate[4] = {1, 4, 16, 64};
 
 static enum power_supply_property palmas_battery_props[] = {
+	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -645,6 +646,9 @@ static int palmas_battery_get_props(struct power_supply *psy,
 		struct palmas_battery_info, battery);
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		val->intval = di->cell.config->technology;
+		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		if (di->battery_current_uA > 0)
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
