@@ -1469,8 +1469,11 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 			policy->cpu, target_freq, relation, old_target_freq);
 
-	if (target_freq == policy->cur)
+	if (target_freq == policy->cur) {
+		trace_cpu_scale(policy->cpu, target_freq,
+				POWER_CPU_SCALE_DONE);
 		return 0;
+	}
 
 	trace_cpu_scale(policy->cpu, policy->cur, POWER_CPU_SCALE_START);
 	if (cpufreq_driver->target)
