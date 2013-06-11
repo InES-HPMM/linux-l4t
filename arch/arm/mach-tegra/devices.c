@@ -2201,6 +2201,9 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 	{ .name = "gk20a",	.swgids = SWGID(GPU) | SWGID(GPUB), },
 	{ .name = "tegra124-apbdma",	.swgids = SWGID(PPCS) | SWGID(PPCS1) |
 	  SWGID(PPCS2), },
+#ifdef CONFIG_PLATFORM_ENABLE_IOMMU
+	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
+#endif
 	{},
 };
 
