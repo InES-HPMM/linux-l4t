@@ -573,6 +573,8 @@ static struct regulator_consumer_supply palmas_ldo2_config2_supply[] = {
 	REGULATOR_SUPPLY("avdd_2v8_cam_af", NULL),
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
 	REGULATOR_SUPPLY("vana", "2-0036"),
+	REGULATOR_SUPPLY("vana", "2-0010"),
+	REGULATOR_SUPPLY("vana_imx132", "2-0036"),
 	REGULATOR_SUPPLY("avdd", "2-0010"),
 };
 
