@@ -1003,6 +1003,83 @@ out:
 	return err;
 }
 
+static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
+			     struct scatterlist *sgl, int nents, int prot)
+{
+	unsigned int count;
+	struct scatterlist *s;
+	int err = 0;
+	bool flush_all = (nents * PAGE_SIZE > SZ_512) ? true : false;
+	struct smmu_as *as = domain->priv;
+	struct smmu_device *smmu = as->smmu;
+
+	for (count = 0, s = sgl; count < nents; s = sg_next(s)) {
+		phys_addr_t phys = page_to_phys(sg_page(s));
+		unsigned int len = PAGE_ALIGN(s->offset + s->length);
+		unsigned long flags;
+
+		spin_lock_irqsave(&as->lock, flags);
+
+		while (len) {
+			unsigned long pfn = __phys_to_pfn(phys);
+			unsigned long *pte;
+			unsigned long *pdir = page_address(as->pdir_page);
+			unsigned long ptn = SMMU_ADDR_TO_PTN(iova);
+			unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
+			unsigned long *ptbl;
+			struct page *tbl_page;
+			size_t num = min_t(unsigned long, SMMU_PTBL_COUNT - ptn,
+					   len >> PAGE_SHIFT);
+			int i;
+
+			if (pdir[pdn] != _PDE_VACANT(pdn)) {
+				tbl_page = SMMU_EX_PTBL_PAGE(pdir[pdn]);
+			} else {
+				tbl_page = alloc_ptbl(as, iova, !flush_all);
+				if (!tbl_page) {
+					err = -ENOMEM;
+					break;
+				}
+			}
+
+			if (WARN_ON(!pfn_valid(page_to_pfn(tbl_page))))
+				goto skip;
+
+			ptbl = page_address(tbl_page);
+			for (i = 0; i < num; i++) {
+				pte = &ptbl[ptn + i];
+				if (*pte == _PTE_VACANT(iova)) {
+					unsigned int *rest;
+
+					rest = &as->pte_count[pdn];
+					(*rest)++;
+				}
+
+				*pte = SMMU_PFN_TO_PTE(pfn + i, as->pte_attr);
+			}
+
+			pte = &ptbl[ptn];
+			FLUSH_CPU_DCACHE(pte, tbl_page, num * sizeof(*pte));
+			if (!flush_all)
+				flush_ptc_and_tlb_range(smmu, as, iova, pte,
+							tbl_page, num);
+
+skip:
+			iova += num * PAGE_SIZE;
+			phys += num * PAGE_SIZE;
+			len -= num * PAGE_SIZE;
+			count += num;
+		}
+
+		spin_unlock_irqrestore(&as->lock, flags);
+	}
+
+	if (flush_all)
+		flush_ptc_and_tlb_as(as, iova, iova + nents * PAGE_SIZE);
+
+	return err;
+}
+
 static int __smmu_iommu_unmap(struct smmu_as *as, dma_addr_t iova,
 	size_t bytes)
 {
@@ -1244,6 +1321,7 @@ static struct iommu_ops smmu_iommu_ops = {
 	.detach_dev	= smmu_iommu_detach_dev,
 	.map		= smmu_iommu_map,
 	.map_pages	= smmu_iommu_map_pages,
+	.map_sg		= smmu_iommu_map_sg,
 	.unmap		= smmu_iommu_unmap,
 	.iova_to_phys	= smmu_iommu_iova_to_phys,
 	.domain_has_cap	= smmu_iommu_domain_has_cap,
