@@ -22,6 +22,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/types.h>
+#include <linux/scatterlist.h>
 
 #define IOMMU_READ	(1)
 #define IOMMU_WRITE	(2)
@@ -92,6 +93,8 @@ struct iommu_ops {
 		   phys_addr_t paddr, size_t size, int prot);
 	int (*map_pages)(struct iommu_domain *domain, unsigned long iova,
 		    struct page **pages, size_t count, int prot);
+	int (*map_sg)(struct iommu_domain *domain, unsigned long iova,
+		    struct scatterlist *sgl, int nents, int prot);
 	size_t (*unmap)(struct iommu_domain *domain, unsigned long iova,
 		     size_t size);
 	phys_addr_t (*iova_to_phys)(struct iommu_domain *domain, dma_addr_t iova);
@@ -137,6 +140,8 @@ extern int iommu_map(struct iommu_domain *domain, unsigned long iova,
 		     phys_addr_t paddr, size_t size, int prot);
 extern int iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 		    struct page **pages, size_t count, int prot);
+extern int iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
+			struct scatterlist *sgl, int nents, int prot);
 extern size_t iommu_unmap(struct iommu_domain *domain, unsigned long iova,
 		       size_t size);
 extern phys_addr_t iommu_iova_to_phys(struct iommu_domain *domain, dma_addr_t iova);
