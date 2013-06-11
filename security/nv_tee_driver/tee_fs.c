@@ -21,6 +21,7 @@
 #include <linux/list.h>
 #include <linux/completion.h>
 #include <linux/workqueue.h>
+#include <linux/freezer.h>
 
 #include <asm/uaccess.h>
 
@@ -65,8 +66,11 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 
 		ptr_user_req = (TEEC_FileReq *)ioctl_param;
 
+		set_freezable();
+
 		/* wait for a new request */
-		wait_for_completion(&req_ready);
+		while (wait_for_completion_interruptible(&req_ready))
+			try_to_freeze();
 
 		/* dequeue new request from the secure world */
 		req_node = list_first_entry(&req_list, struct tee_file_req_node,
@@ -171,8 +175,11 @@ static void _tee_fs_file_operation(const char *name, void *buf, int len,
 	list_add_tail(&req_list, &req_node->node);
 	complete(&req_ready);
 
+	set_freezable();
+
 	/* wait for the consumer's signal */
-	wait_for_completion(&req_complete);
+	while (wait_for_completion_interruptible(&req_complete))
+		try_to_freeze();
 
 	kfree(new_req);
 
