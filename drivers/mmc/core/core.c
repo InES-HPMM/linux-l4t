@@ -2623,8 +2623,10 @@ static void mmc_update_devfreq(struct work_struct *work)
 		dfs_work.work);
 	unsigned long freq;
 
-	mmc_get_target_freq(host->df, &freq);
+	if (!host->df)
+		return;
 
+	mmc_get_target_freq(host->df, &freq);
 	/*
 	 * If the new frequency is not matching the previous frequency, call
 	 * update_freq to set the new frequency.
@@ -2646,14 +2648,12 @@ static int mmc_freq_gov_init(struct devfreq *df)
 		struct mmc_host, class_dev);
 	int err = 0;
 
-	if (!host->devfreq_stats) {
-		host->devfreq_stats = kzalloc(
+	host->devfreq_stats = devm_kzalloc(mmc_dev(host),
 			sizeof(struct devfreq_dev_status), GFP_KERNEL);
-		if (!host->devfreq_stats) {
-			dev_err(mmc_dev(host),
-				"Failed to initialize governor data\n");
-			return -ENOMEM;
-		}
+	if (!host->devfreq_stats) {
+		dev_err(mmc_dev(host),
+			"Failed to initialize governor data\n");
+		return -ENOMEM;
 	}
 
 	/* Set the default polling interval to 100 */
@@ -2682,7 +2682,6 @@ static int mmc_freq_gov_init(struct devfreq *df)
 		msecs_to_jiffies(host->dev_stats->polling_interval));
 
 err_governor_init:
-	kfree(host->devfreq_stats);
 	return err;
 }
 
@@ -2696,9 +2695,6 @@ static void mmc_freq_gov_exit(struct devfreq *df)
 
 	if (host->ops->dfs_governor_exit)
 		host->ops->dfs_governor_exit(host);
-
-	kfree(host->devfreq_stats);
-	host->devfreq_stats = NULL;
 }
 
 const struct devfreq_governor mmc_freq_governor = {
@@ -2788,7 +2784,6 @@ static struct devfreq_dev_profile mmc_df_profile = {
 int mmc_devfreq_init(struct mmc_host *host)
 {
 	struct devfreq *df;
-	int err;
 
 	/* Return if already registered for device frequency */
 	if (host->df) {
@@ -2798,23 +2793,24 @@ int mmc_devfreq_init(struct mmc_host *host)
 	}
 
 	/* Set the device profile */
-	host->df_profile = kzalloc(sizeof(struct devfreq_dev_profile),
-		GFP_KERNEL);
+	host->df_profile = devm_kzalloc(mmc_dev(host),
+			sizeof(struct devfreq_dev_profile), GFP_KERNEL);
 	if (!host->df_profile) {
 		dev_err(mmc_dev(host), "Failed to create devfreq structure\n");
 		return -ENOMEM;
 	}
-	host->df_profile = &mmc_df_profile;
+	host->df_profile->polling_ms = mmc_df_profile.polling_ms;
+	host->df_profile->target = mmc_df_profile.target;
+	host->df_profile->get_dev_status = mmc_df_profile.get_dev_status;
 	host->df_profile->initial_freq = host->actual_clock;
 
 	/* Initialize the device stats */
-	host->dev_stats = kzalloc(sizeof(struct mmc_dev_stats),
-		GFP_KERNEL);
+	host->dev_stats = devm_kzalloc(mmc_dev(host),
+			sizeof(struct mmc_dev_stats), GFP_KERNEL);
 	if (!host->dev_stats) {
 		dev_err(mmc_dev(host),
 			"Failed to initialize the device stats\n");
-		err = -ENOMEM;
-		goto err_dev_stats;
+		return -ENOMEM;
 	} else {
 		host->dev_stats->busy_time = 0;
 		host->dev_stats->t_interval = ktime_get();
@@ -2826,8 +2822,7 @@ int mmc_devfreq_init(struct mmc_host *host)
 		dev_err(mmc_dev(host),
 			"Failed to register with devfreq %ld\n", PTR_ERR(df));
 		df = NULL;
-		err = -ENODEV;
-		goto err_devfreq_add;
+		return -ENODEV;
 	}
 
 	/* Set the frequency constraints for the device */
@@ -2845,24 +2840,18 @@ int mmc_devfreq_init(struct mmc_host *host)
 	}
 
 	host->df = df;
-	return 0;
 
-err_devfreq_add:
-	kfree(host->dev_stats);
-err_dev_stats:
-	kfree(host->df_profile);
-	return err;
+	return 0;
 }
 
 int mmc_devfreq_deinit(struct mmc_host *host)
 {
 	int err = 0;
 
-	if (host->df)
+	if (host->df) {
 		err = devfreq_remove_device(host->df);
-
-	kfree(host->dev_stats);
-	kfree(host->df_profile);
+		host->df = NULL;
+	}
 
 	return err;
 }
