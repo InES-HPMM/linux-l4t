@@ -205,6 +205,11 @@ static struct freq_gov_params gov_params[3] = {
 		.polling_interval_ms = 50,
 		.active_load_threshold = 25,
 	},
+	[MMC_TYPE_SD] = {
+		.idle_mon_cycles = 3,
+		.polling_interval_ms = 50,
+		.active_load_threshold = 25,
+	},
 };
 #endif
 
@@ -558,6 +563,37 @@ static unsigned long calculate_sdio_target_freq(
 	return desired_freq;
 }
 
+static unsigned long calculate_sd_target_freq(
+	struct tegra_freq_gov_data *gov_data)
+{
+	unsigned long desired_freq = gov_data->curr_freq;
+	unsigned int type = MMC_TYPE_SD;
+
+	if (gov_data->curr_active_load >= gov_data->act_load_high_threshold) {
+		desired_freq = gov_data->freqs[TUNING_HIGH_FREQ];
+		gov_data->monitor_idle_load = false;
+		gov_data->max_idle_monitor_cycles =
+			gov_params[type].idle_mon_cycles;
+	} else {
+		if (gov_data->monitor_idle_load) {
+			if (!gov_data->max_idle_monitor_cycles) {
+				desired_freq = gov_data->freqs[TUNING_LOW_FREQ];
+				gov_data->max_idle_monitor_cycles =
+					gov_params[type].idle_mon_cycles;
+			} else {
+				gov_data->max_idle_monitor_cycles--;
+			}
+		} else {
+			gov_data->monitor_idle_load = true;
+			gov_data->max_idle_monitor_cycles *=
+				gov_data->avg_active_load;
+			gov_data->max_idle_monitor_cycles /= 100;
+		}
+	}
+
+	return desired_freq;
+}
+
 static unsigned long sdhci_tegra_get_target_freq(struct sdhci_host *sdhci,
 	struct devfreq_dev_status *dfs_stats)
 {
@@ -594,6 +630,8 @@ static unsigned long sdhci_tegra_get_target_freq(struct sdhci_host *sdhci,
 			freq = calculate_sdio_target_freq(gov_data);
 		else if (sdhci->mmc->card->type == MMC_TYPE_MMC)
 			freq = calculate_mmc_target_freq(gov_data);
+		else if (sdhci->mmc->card->type == MMC_TYPE_SD)
+			freq = calculate_sd_target_freq(gov_data);
 		if (gov_data->curr_freq != freq)
 			gov_data->freq_switch_count++;
 		gov_data->curr_freq = freq;
@@ -655,6 +693,7 @@ static int sdhci_tegra_freq_gov_init(struct sdhci_host *sdhci)
 
 	return 0;
 }
+
 #endif
 
 static unsigned int tegra_sdhci_get_cd(struct sdhci_host *sdhci)
