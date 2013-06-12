@@ -26,6 +26,7 @@
  */
 
 #define NVSHM_DEFAULT_OFFSET 32
+#define NVSHM_MAX_FREE_PENDING (16)
 
 struct nvshm_allocator {
 	spinlock_t lock;
@@ -36,6 +37,7 @@ struct nvshm_allocator {
 	struct nvshm_iobuf *bbc_pool_head;
 	struct nvshm_iobuf *bbc_pool_tail;
 	int nbuf;
+	int free_count;
 };
 
 static struct nvshm_allocator alloc;
@@ -44,12 +46,19 @@ static struct nvshm_allocator alloc;
 /* This saves a lot of CPU/memory cycles on both sides */
 static void bbc_free(struct nvshm_handle *handle, struct nvshm_iobuf *iob)
 {
+	unsigned long f;
+
+	spin_lock_irqsave(&alloc.lock, f);
+	alloc.free_count++;
 	if (alloc.bbc_pool_head) {
 		alloc.bbc_pool_tail->next = NVSHM_A2B(handle, iob);
 		alloc.bbc_pool_tail = iob;
 	} else {
 		alloc.bbc_pool_head = alloc.bbc_pool_tail = iob;
 	}
+	spin_unlock_irqrestore(&alloc.lock, f);
+	if (alloc.free_count > NVSHM_MAX_FREE_PENDING)
+		nvshm_iobuf_bbc_free(handle);
 }
 
 /* Effectively free all iobufs accumulated */
@@ -60,6 +69,7 @@ void nvshm_iobuf_bbc_free(struct nvshm_handle *handle)
 
 	spin_lock_irqsave(&alloc.lock, f);
 	if (alloc.bbc_pool_head) {
+		alloc.free_count = 0;
 		iob = alloc.bbc_pool_head;
 		alloc.bbc_pool_head = alloc.bbc_pool_tail = NULL;
 	}
@@ -226,8 +236,8 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			desc->next = NULL;
 			desc->length = 0;
 			desc->data_offset = 0;
-			bbc_free(priv, desc);
 			spin_unlock_irqrestore(&alloc.lock, f);
+			bbc_free(priv, desc);
 			return;
 		}
 	}
@@ -531,6 +541,7 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 		return -1;
 	}
 	alloc.nbuf = ndesc;
+	alloc.free_count = 0;
 	datasize =  handle->data_size / ndesc;
 	if (datasize < 2048) {
 		pr_err("%s: no enougth space for serious tests data size=%d\n",
