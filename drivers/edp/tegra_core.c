@@ -468,20 +468,22 @@ static void init_debug(void)
 static inline void init_debug(void) {}
 #endif
 
-/* Ignore missing modem */
-static void register_loan(void)
+static void register_loan(struct tegra_sysedp_platform_data *pdata)
 {
 	struct edp_client *c;
 	int r;
 
-	c = edp_get_client("modem");
+	if (!pdata->bbc)
+		return;
+
+	c = edp_get_client(pdata->bbc);
 	if (!c) {
 		pr_info("Could not access modem EDP client\n");
 		return;
 	}
 
 	r = edp_register_loan(c, &core_client);
-	WARN_ON(r);
+	WARN_ON(r && r != -EEXIST);
 }
 
 /* Power without gain */
@@ -577,7 +579,7 @@ static int init_client(struct tegra_sysedp_platform_data *pdata)
 	if (r)
 		return r;
 
-	register_loan();
+	register_loan(pdata);
 	return 0;
 
 fail:

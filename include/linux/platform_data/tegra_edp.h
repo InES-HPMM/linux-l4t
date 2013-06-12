@@ -45,6 +45,7 @@ struct tegra_sysedp_platform_data {
 	unsigned int corecap_size;
 	unsigned int core_gain;
 	unsigned int init_req_watts;
+	const char *bbc;
 };
 
 #ifdef CONFIG_EDP_FRAMEWORK
