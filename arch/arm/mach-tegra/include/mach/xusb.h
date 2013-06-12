@@ -29,15 +29,20 @@
 #define TEGRA_XUSB_SS_P1	(1 << 1)
 #define TEGRA_XUSB_USB2_P0	(1 << 8)
 #define TEGRA_XUSB_USB2_P1	(1 << 9)
+#define TEGRA_XUSB_USB2_P2	(1 << 10)
 #define TEGRA_XUSB_HSIC_P0	(1 << 16)
 #define TEGRA_XUSB_HSIC_P1	(1 << 17)
 #define TEGRA_XUSB_ULPI_P0	(1 << 24)
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P0 (0x0)
 #define TEGRA_XUSB_SS_PORT_MAP_USB2_P1 (0x1)
+#define TEGRA_XUSB_SS_PORT_MAP_USB2_P2 (0x2)
 #define TEGRA_XUSB_SS0_PORT_MAP	(0xf)
 #define TEGRA_XUSB_SS1_PORT_MAP	(0xf0)
 #define TEGRA_XUSB_ULPI_PORT_CAP_MASTER	(0x0)
 #define TEGRA_XUSB_ULPI_PORT_CAP_PHY	(0x1)
+#define TEGRA_XUSB_UTMIP_PMC_PORT0	(0x0)
+#define TEGRA_XUSB_UTMIP_PMC_PORT1	(0x1)
+#define TEGRA_XUSB_UTMIP_PMC_PORT2	(0x2)
 
 struct tegra_xusb_board_data {
 	u32	portmap;
@@ -63,6 +68,12 @@ struct tegra_xusb_platform_data {
 	u32 hs_slew;
 	u32 ls_rslew;
 	u32 hs_disc_lvl;
+	/*
+	 * BIT[0:3] = PMC port # for USB2_P0
+	 * BIT[4:7] = PMC port # for USB2_P1
+	 * BIT[8:11] = PMC port # for USB2_P2
+	 */
+	u32 pmc_portmap;
 	/* chip specific */
 	unsigned long quirks;
 };

@@ -426,24 +426,30 @@ static void pmc_init(struct tegra_xhci_hcd *tegra, bool setup_wake)
 
 	pmc_data.controller_type = TEGRA_USB_3_0;
 	if (portmap & TEGRA_XUSB_USB2_P0) {
-		pmc_data.instance = PMC_PORT_UTMIP_P0;
+		pmc_data.instance = (tegra->pdata->pmc_portmap >> 0) & 0xf;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
-		update_speed(tegra, PMC_PORT_UTMIP_P0);
+		update_speed(tegra, pmc_data.instance);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_USB2_P1) {
-		/* XUSB_USB2_P1 is PMC UTMI_P2 */
-		pmc_data.instance = PMC_PORT_UTMIP_P2;
+		pmc_data.instance = (tegra->pdata->pmc_portmap >> 4) & 0xf;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
-		update_speed(tegra, PMC_PORT_UTMIP_P2);
+		update_speed(tegra, pmc_data.instance);
+		tegra_usb_pmc_init(&pmc_data);
+		setup_wake_detect(setup_wake);
+	}
+	if (portmap & TEGRA_XUSB_USB2_P2) {
+		pmc_data.instance = (tegra->pdata->pmc_portmap >> 8) & 0xf;
+		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
+		update_speed(tegra, pmc_data.instance);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_HSIC_P0) {
 		pmc_data.instance = PMC_PORT_UHSIC_P0;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_HSIC;
-		update_speed(tegra, PMC_PORT_UHSIC_P0);
+		update_speed(tegra, pmc_data.instance);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
@@ -957,9 +963,11 @@ tegra_xhci_hs_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 
 	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-	elpg_program0 |= (USB2_PORT0_WAKEUP_EVENT | USB2_PORT1_WAKEUP_EVENT
-			| USB2_HSIC_PORT0_WAKEUP_EVENT
-			| USB2_HSIC_PORT1_WAKEUP_EVENT);
+	elpg_program0 |= (USB2_PORT0_WAKEUP_EVENT |
+			USB2_PORT1_WAKEUP_EVENT |
+			USB2_PORT2_WAKEUP_EVENT |
+			USB2_HSIC_PORT0_WAKEUP_EVENT |
+			USB2_HSIC_PORT1_WAKEUP_EVENT);
 	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
 
 	/* Enable the wake interrupts */
@@ -970,6 +978,8 @@ tegra_xhci_hs_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
 			elpg_program0 |= USB2_PORT0_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 			elpg_program0 |= USB2_PORT1_WAKE_INTERRUPT_ENABLE;
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+			elpg_program0 |= USB2_PORT2_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P0)
 			elpg_program0 |= USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P1)
@@ -979,6 +989,8 @@ tegra_xhci_hs_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
 			elpg_program0 &= ~USB2_PORT0_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 			elpg_program0 &= ~USB2_PORT1_WAKE_INTERRUPT_ENABLE;
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+			elpg_program0 &= ~USB2_PORT2_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P0)
 			elpg_program0 &= ~USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
 		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P1)
@@ -1222,6 +1234,9 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	else if (port == 1)
 		reg |= SNPS_OC_MAP_CTRL2 | SNPS_OC_MAP_CTRL3 |
 			SNPS_CTRL1_OC_DETECTED_VBUS_PAD0;
+	else if (port == 2) /* FIXME: Review when BCT available */
+		reg |= SNPS_OC_MAP_CTRL1 | SNPS_OC_MAP_CTRL3 |
+			SNPS_CTRL1_OC_DETECTED_VBUS_PAD0;
 	writel(reg, tegra->padctl_base + padregs->snps_oc_map_0);
 	reg = readl(tegra->padctl_base + padregs->snps_oc_map_0);
 
@@ -1229,6 +1244,9 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	if (port == 0)
 		reg |= OC_DET_VBUS_ENABLE0_OC_MAP | OC_DET_VBUS_ENABLE1_OC_MAP;
 	else if (port == 1)
+		reg |= OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0
+			| OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1;
+	else if (port == 2) /* FIXME: Review when BCT available */
 		reg |= OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0
 			| OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1;
 	writel(reg, tegra->padctl_base + padregs->oc_det_0);
@@ -1240,12 +1258,17 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	else if (port == 1)
 		reg |= USB2_OC_MAP_PORT0
 			| USB2_OC_MAP_PORT1_OC_DETECTED_VBUS_PAD1;
+	else if (port == 2) /* FIXME: Review when BCT available */
+		reg |= USB2_OC_MAP_PORT0
+			| USB2_OC_MAP_PORT1_OC_DETECTED_VBUS_PAD1;
 	writel(reg, tegra->padctl_base + padregs->usb2_oc_map_0);
 
-	ctl0_offset = port ? padregs->usb2_otg_pad1_ctl0_0 :
-			padregs->usb2_otg_pad0_ctl0_0;
-	ctl1_offset = port ? padregs->usb2_otg_pad1_ctl1_0 :
-			padregs->usb2_otg_pad0_ctl1_0;
+	ctl0_offset = (port == 2) ? padregs->usb2_otg_pad2_ctl0_0 :
+			port ? padregs->usb2_otg_pad1_ctl0_0 :
+				padregs->usb2_otg_pad0_ctl0_0;
+	ctl1_offset = (port == 2) ? padregs->usb2_otg_pad2_ctl1_0 :
+			port ? padregs->usb2_otg_pad1_ctl1_0 :
+				padregs->usb2_otg_pad0_ctl1_0;
 
 	reg = readl(tegra->padctl_base + ctl0_offset);
 	reg &= ~(USB2_OTG_HS_CURR_LVL | USB2_OTG_HS_SLEW |
@@ -1344,6 +1367,8 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 		tegra_xhci_program_utmip_pad(tegra, 0);
 	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 		tegra_xhci_program_utmip_pad(tegra, 1);
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+		tegra_xhci_program_utmip_pad(tegra, 2);
 
 	if (tegra->bdata->portmap & TEGRA_XUSB_ULPI_P0)
 		tegra_xhci_program_ulpi_pad(tegra, 0);
@@ -1663,13 +1688,16 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 	u32 reg;
 
 	reg = readl(tegra->padctl_base + padregs->usb2_pad_mux_0);
-	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1));
+	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1) |
+			USB2_OTG_PAD_PORT_MASK(2));
 
 	if (!release) {
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
 			reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0);
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 			reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(1);
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+			reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(2);
 	}
 
 	writel(reg, tegra->padctl_base + padregs->usb2_pad_mux_0);
@@ -1951,11 +1979,12 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg, utmip_rctrl_val, utmip_tctrl_val;
 
-	/* Program XUSB as port owner for both Port 0 and port 1 */
+	/* Program XUSB as port owner for all usb2 ports */
 	reg = readl(tegra->padctl_base + padregs->usb2_pad_mux_0);
-	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1));
+	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1) |
+			USB2_OTG_PAD_PORT_MASK(2));
 	reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0) |
-		USB2_OTG_PAD_PORT_OWNER_XUSB(1);
+		USB2_OTG_PAD_PORT_OWNER_XUSB(1) | USB2_OTG_PAD_PORT_MASK(2);
 	writel(reg, tegra->padctl_base + padregs->usb2_pad_mux_0);
 
 	/* XUSB_PADCTL_USB2_BIAS_PAD_CTL_0_0::PD = 0 and
@@ -2004,11 +2033,14 @@ static void tegra_xhci_war_for_tctrl_rctrl(struct tegra_xhci_hcd *tegra)
 
 	/* Restore correct port ownership in padctl */
 	reg = readl(tegra->padctl_base + padregs->usb2_pad_mux_0);
-	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1));
+	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1) |
+			USB2_OTG_PAD_PORT_MASK(2));
 	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
 		reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(0);
 	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
 		reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(1);
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+		reg |= USB2_OTG_PAD_PORT_OWNER_XUSB(2);
 	writel(reg, tegra->padctl_base + padregs->usb2_pad_mux_0);
 }
 

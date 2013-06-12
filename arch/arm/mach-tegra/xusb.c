@@ -48,6 +48,8 @@ static void tegra_xusb_read_usb_calib(void)
 void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	tegra_xusb_plat_data.pmc_portmap = (TEGRA_XUSB_UTMIP_PMC_PORT0 << 0) |
+			(TEGRA_XUSB_UTMIP_PMC_PORT2 << 4);
 	tegra_xusb_plat_data.quirks |= TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR;
 	tegra_xusb_plat_data.rx_wander = (0xf << 4);
 	tegra_xusb_plat_data.rx_eq = (0x3070 << 8);
@@ -57,6 +59,9 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 	tegra_xusb_plat_data.ls_rslew = (0x3 << 14);
 	tegra_xusb_plat_data.hs_disc_lvl = (0x5 << 2);
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	tegra_xusb_plat_data.pmc_portmap = (TEGRA_XUSB_UTMIP_PMC_PORT0 << 0) |
+			(TEGRA_XUSB_UTMIP_PMC_PORT1 << 4) |
+			(TEGRA_XUSB_UTMIP_PMC_PORT2 << 8);
 	tegra_xusb_plat_data.rx_wander = (0xf << 4);
 	tegra_xusb_plat_data.rx_eq = (0x3070 << 8);
 	tegra_xusb_plat_data.cdr_cntl = (0x26 << 24);
