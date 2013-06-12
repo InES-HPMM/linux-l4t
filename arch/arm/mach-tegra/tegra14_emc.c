@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_emc.c
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -545,6 +545,10 @@ skip_dll_disable:
 	emc_cfg_dig_dll &= ~(EMC_CFG_DIG_DLL_UDSET_MASK <<
 			     EMC_CFG_DIG_DLL_UDSET_SHIFT);
 	emc_cfg_dig_dll |= (0x2 << EMC_CFG_DIG_DLL_UDSET_SHIFT);
+	emc_cfg_dig_dll &= ~(EMC_CFG_DIG_DLL_LOCK_LIMIT_MASK <<
+			     EMC_CFG_DIG_DLL_LOCK_LIMIT_SHIFT);
+	emc_cfg_dig_dll |= (next_timing->emc_cfg_dig_dll &
+			    (3 << EMC_CFG_DIG_DLL_LOCK_LIMIT_SHIFT));
 	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
 	emc_timing_update();
 
@@ -576,10 +580,12 @@ skip_dll_disable:
 	fbio_spare_new = fbio_spare_old | FBIO_SPARE_CFG_SW_DLL_RST_CTRL_N;
 
 	emc_writel(fbio_spare_new, EMC_FBIO_SPARE);
+	emc_timing_update();
 	emc_writel(fbio_spare_old, EMC_FBIO_SPARE);
+	emc_timing_update();
 
 	emc_cfg_dig_dll = emc_readl(EMC_CFG_DIG_DLL);
-	emc_cfg_dig_dll |= (EMC_CFG_DIG_DLL_EN | EMC_CFG_DIG_DLL_RESET);
+	emc_cfg_dig_dll |= (EMC_CFG_DIG_DLL_EN);
 	emc_writel(emc_cfg_dig_dll, EMC_CFG_DIG_DLL);
 	emc_timing_update();
 	udelay(1);
