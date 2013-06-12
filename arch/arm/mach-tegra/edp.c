@@ -261,6 +261,7 @@ static int edp_find_speedo_idx(int cpu_speedo_id, unsigned int *cpu_speedo_idx)
 
 static int init_cpu_edp_limits_calculated(void)
 {
+	unsigned int max_nr_cpus = num_possible_cpus();
 	unsigned int temp_idx, n_cores_idx, pwr_idx;
 	unsigned int cpu_g_minf, cpu_g_maxf;
 	unsigned int iddq_mA;
@@ -342,7 +343,7 @@ static int init_cpu_edp_limits_calculated(void)
 			freq_voltage_lut_size);
 
 	/* Calculate EDP table */
-	for (n_cores_idx = 0; n_cores_idx < NR_CPUS; n_cores_idx++) {
+	for (n_cores_idx = 0; n_cores_idx < max_nr_cpus; n_cores_idx++) {
 		for (temp_idx = 0;
 		     temp_idx < ARRAY_SIZE(temperatures); temp_idx++) {
 			edp_calculated_limits[temp_idx].temperature =
@@ -502,19 +503,10 @@ static int edp_limit_debugfs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
-static int edp_debugfs_show(struct seq_file *s, void *data)
+static inline void edp_show_4core_edp_table(struct seq_file *s, int th_idx)
 {
-	int i, th_idx;
+	int i;
 
-#ifdef CONFIG_CPU_FREQ
-	tegra_get_edp_limit(&th_idx);
-#else
-	th_idx = 0;
-#endif
-	seq_printf(s, "-- VDD_CPU %sEDP table (%umA = %umA - %umA) --\n",
-		   edp_limits == edp_default_limits ? "default " : "",
-		   regulator_cur - edp_reg_override_mA,
-		   regulator_cur, edp_reg_override_mA);
 	seq_printf(s, "%6s %10s %10s %10s %10s\n",
 		   " Temp.", "1-core", "2-cores", "3-cores", "4-cores");
 	for (i = 0; i < edp_limits_size; i++) {
@@ -526,14 +518,71 @@ static int edp_debugfs_show(struct seq_file *s, void *data)
 			   edp_limits[i].freq_limits[2],
 			   edp_limits[i].freq_limits[3]);
 	}
+}
+
+static inline void edp_show_2core_edp_table(struct seq_file *s, int th_idx)
+{
+	int i;
+
+	seq_printf(s, "%6s %10s %10s\n",
+		   " Temp.", "1-core", "2-cores");
+	for (i = 0; i < edp_limits_size; i++) {
+		seq_printf(s, "%c%3dC: %10u %10u\n",
+			   i == th_idx ? '>' : ' ',
+			   edp_limits[i].temperature,
+			   edp_limits[i].freq_limits[0],
+			   edp_limits[i].freq_limits[1]);
+	}
+}
+
+static inline void edp_show_2core_system_table(struct seq_file *s)
+{
+	seq_printf(s, "%10u %10u\n",
+		   system_edp_limits[0],
+		   system_edp_limits[1]);
+}
+
+static inline void edp_show_4core_system_table(struct seq_file *s)
+{
+	seq_printf(s, "%10u %10u %10u %10u\n",
+		   system_edp_limits[0],
+		   system_edp_limits[1],
+		   system_edp_limits[2],
+		   system_edp_limits[3]);
+}
+
+static int edp_debugfs_show(struct seq_file *s, void *data)
+{
+	unsigned int max_nr_cpus = num_possible_cpus();
+	int th_idx;
+
+	if (max_nr_cpus != 2 && max_nr_cpus != 4) {
+		seq_printf(s, "Unsupported number of CPUs\n");
+		return 0;
+	}
+
+#ifdef CONFIG_CPU_FREQ
+	tegra_get_edp_limit(&th_idx);
+#else
+	th_idx = 0;
+#endif
+
+	seq_printf(s, "-- VDD_CPU %sEDP table (%umA = %umA - %umA) --\n",
+		   edp_limits == edp_default_limits ? "**default** " : "",
+		   regulator_cur - edp_reg_override_mA,
+		   regulator_cur, edp_reg_override_mA);
+
+	if (max_nr_cpus == 2)
+		edp_show_2core_edp_table(s, th_idx);
+	else if (max_nr_cpus == 4)
+		edp_show_4core_edp_table(s, th_idx);
 
 	if (system_edp_limits) {
 		seq_printf(s, "\n-- System EDP table --\n");
-		seq_printf(s, "%10u %10u %10u %10u\n",
-			   system_edp_limits[0],
-			   system_edp_limits[1],
-			   system_edp_limits[2],
-			   system_edp_limits[3]);
+		if (max_nr_cpus == 2)
+			edp_show_2core_system_table(s);
+		else if (max_nr_cpus == 4)
+			edp_show_4core_system_table(s);
 	}
 
 	return 0;
