@@ -152,6 +152,11 @@ static inline bool gpu_priority(void)
 	return gpu_busy || force_gpu_pri;
 }
 
+static inline struct tegra_sysedp_devcap *get_devcap(void)
+{
+	return gpu_priority() ? &cur_corecap->gpupri : &cur_corecap->cpupri;
+}
+
 static void __do_cap_control(void)
 {
 	struct tegra_sysedp_devcap *cap;
@@ -159,7 +164,7 @@ static void __do_cap_control(void)
 	if (!cur_corecap)
 		return;
 
-	cap = gpu_priority() ? &cur_corecap->gpupri : &cur_corecap->cpupri;
+	cap = get_devcap();
 	apply_caps(cap);
 }
 
@@ -416,6 +421,28 @@ static int corecaps_show(struct seq_file *file, void *data)
 	return 0;
 }
 
+static int status_show(struct seq_file *file, void *data)
+{
+	mutex_lock(&core_lock);
+
+	seq_printf(file, "cpus online : %u\n", online_cpu_count);
+	seq_printf(file, "gpu priority: %u\n", gpu_priority());
+	seq_printf(file, "E-state     : %u\n", core_edp_states[core_state]);
+	seq_printf(file, "gain        : %u\n", core_platdata->core_gain);
+	seq_printf(file, "loan        : %u\n", core_loan);
+	seq_printf(file, "core cap    : %u\n", cur_corecap->power);
+	seq_printf(file, "cpu balance : %u\n", cpu_power_balance);
+	seq_printf(file, "cpu offset  : %u\n", cpu_power_offset);
+	seq_printf(file, "cpu power   : %u\n", get_devcap()->cpu_power +
+			cpu_power_balance + cpu_power_offset);
+	seq_printf(file, "cpu cap     : %u kHz\n", cur_caps.cpu);
+	seq_printf(file, "gpu cap     : %u kHz\n", cur_caps.gpu);
+	seq_printf(file, "emc cap     : %u kHz\n", cur_caps.emc);
+
+	mutex_unlock(&core_lock);
+	return 0;
+}
+
 static int longattr_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, inode->i_private, NULL);
@@ -455,6 +482,7 @@ static void init_debug(void)
 
 	create_longattr("corecaps", corecaps_show);
 	create_longattr("cpucaps", cpucaps_show);
+	create_longattr("status", status_show);
 }
 #else
 static inline void init_debug(void) {}
