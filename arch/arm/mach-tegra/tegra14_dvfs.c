@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra14_dvfs.c
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -45,7 +45,7 @@ static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
 #endif
 
-static struct tegra_cooling_device cpu_cdev = {
+static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
 };
 
@@ -61,7 +61,7 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
-	.vmin_cdev = &cpu_cdev,
+	.vmin_cdev = &cpu_vmin_cdev,
 };
 
 static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
@@ -468,11 +468,11 @@ static void __init init_rail_vmin_thermal_profile(
 
 	/* Install validated thermal floors */
 	rail->therm_mv_floors = therm_floors_table;
-	rail->therm_mv_floors_num = i + 1;
+	rail->therm_mv_floors_num = i;
 
 	/* Setup trip-points if applicable */
 	if (rail->vmin_cdev) {
-		rail->vmin_cdev->trip_temperatures_num = i + 1;
+		rail->vmin_cdev->trip_temperatures_num = i;
 		rail->vmin_cdev->trip_temperatures = therm_trips_table;
 	}
 }
