@@ -44,6 +44,13 @@ config TEGRA_GRHOST_SYNC
 	  Add tegra host backend for the cross driver synchronization framework.
 	  Allows creating sync fence file descriptors from Tegra host syncpoints.
 
+config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
+	bool "Use physical addressing for gk20a page tables"
+	default y if TEGRA_SIMULATION_PLATFORM
+	help
+	  Use physical addressing for gk20a page tables. If this is off, we
+	  use SMMU translation.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
