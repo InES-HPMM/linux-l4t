@@ -35,6 +35,8 @@ struct as3722_register_mapping {
 	u8 reg_vsel;
 	u32 reg_enable;
 	u8 enable_bit;
+	u32 sleep_ctrl_reg;
+	u8 sleep_ctrl_bit_mask_mask;
 };
 
 struct as3722_register_mapping as3722_reg_lookup[] = {
@@ -43,108 +45,144 @@ struct as3722_register_mapping as3722_reg_lookup[] = {
 		.reg_vsel = AS3722_SD0_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD0_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD0_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD1,
 		.reg_vsel = AS3722_SD1_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD1_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD1_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD2,
 		.reg_vsel = AS3722_SD2_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD2_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD2_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD3,
 		.reg_vsel = AS3722_SD3_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD3_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL1,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD3_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD4,
 		.reg_vsel = AS3722_SD4_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD4_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD4_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD5,
 		.reg_vsel = AS3722_SD5_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD5_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD5_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_SD6,
 		.reg_vsel = AS3722_SD6_VOLTAGE_REG,
 		.reg_enable = AS3722_SD_CONTROL_REG,
 		.enable_bit = AS3722_SD6_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL2,
+		.sleep_ctrl_bit_mask_mask = AS3722_SD6_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO0,
 		.reg_vsel = AS3722_LDO0_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO0_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO0_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO1,
 		.reg_vsel = AS3722_LDO1_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO1_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO1_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO2,
 		.reg_vsel = AS3722_LDO2_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO2_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO2_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO3,
 		.reg_vsel = AS3722_LDO3_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO3_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL3,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO3_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO4,
 		.reg_vsel = AS3722_LDO4_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO4_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO4_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO5,
 		.reg_vsel = AS3722_LDO5_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO5_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO5_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO6,
 		.reg_vsel = AS3722_LDO6_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO6_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO6_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO7,
 		.reg_vsel = AS3722_LDO7_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL0_REG,
 		.enable_bit = AS3722_LDO7_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL4,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO7_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO9,
 		.reg_vsel = AS3722_LDO9_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL1_REG,
 		.enable_bit = AS3722_LDO9_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO9_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO10,
 		.reg_vsel = AS3722_LDO10_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL1_REG,
 		.enable_bit = AS3722_LDO10_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO10_EXTERNAL_ENABLE_MASK,
 	},
 	{
 		.reg_id = AS3722_LDO11,
 		.reg_vsel = AS3722_LDO11_VOLTAGE_REG,
 		.reg_enable = AS3722_LDOCONTROL1_REG,
 		.enable_bit = AS3722_LDO11_ON,
+		.sleep_ctrl_reg = AS3722_EXTERNAL_ENABLE_CTRL5,
+		.sleep_ctrl_bit_mask_mask = AS3722_LDO11_EXTERNAL_ENABLE_MASK,
 	},
 };
 
@@ -981,6 +1019,38 @@ static struct regulator_desc regulators[] = {
 	},
 };
 
+static int as3722_extreg_init(struct as3722 *as3722, int id, int ext_pwr_ctrl)
+{
+	int ret;
+	u32 reg = 0;
+	u32 mask_val = 0;
+
+	if ((ext_pwr_ctrl < AS3722_EXT_CONTROL_ENABLE1) ||
+		(ext_pwr_ctrl > AS3722_EXT_CONTROL_ENABLE3))
+		return -EINVAL;
+
+	ret = as3722_set_bits(as3722, as3722_reg_lookup[id].sleep_ctrl_reg,
+			as3722_reg_lookup[id].sleep_ctrl_bit_mask_mask,
+			ext_pwr_ctrl);
+	if (ret < 0)
+		return ret;
+
+	if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE1) {
+		reg = AS3722_INTERRUPTMASK1_REG;
+		mask_val = 0x4;
+	} else if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE2) {
+		reg = AS3722_INTERRUPTMASK2_REG;
+		mask_val = 0x20;
+	} else if (ext_pwr_ctrl == AS3722_EXT_CONTROL_ENABLE1) {
+		reg = AS3722_INTERRUPTMASK3_REG;
+		mask_val = 0x80;
+	}
+	ret = as3722_set_bits(as3722, reg, mask_val, 0);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
 static int as3722_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
@@ -988,6 +1058,8 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	struct as3722 *as3722 = dev_get_drvdata(pdev->dev.parent);
 	struct as3722_platform_data *pdata = as3722->dev->platform_data;
 	int regulator;
+	int ret;
+	int ext_control_num;
 
 	if (WARN_ON(pdev->id < 0 || pdev->id >= AS3722_NUM_REGULATORS))
 		return -EINVAL;
@@ -997,18 +1069,26 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 	config.regmap = as3722->regmap;
 
 	for (regulator = 0; regulator < AS3722_NUM_REGULATORS; regulator++) {
-		if (pdata->reg_init[regulator]) {
-			config.init_data = pdata->reg_init[regulator];
-			rdev = regulator_register(&regulators[regulator],
-					&config);
-			if (IS_ERR(rdev)) {
-				dev_err(&pdev->dev,
-					"as3722 register"
-					"regulator nr %d err\n",
-					regulator);
-				return PTR_ERR(rdev);
+		if (!(pdata->reg_pdata[regulator] &&
+			pdata->reg_pdata[regulator]->reg_init))
+			continue;
+		config.init_data = pdata->reg_pdata[regulator]->reg_init;
+		rdev = regulator_register(&regulators[regulator],
+				&config);
+		if (IS_ERR(rdev)) {
+			dev_err(&pdev->dev, "as3722 register"
+				"regulator nr %d err\n", regulator);
+			return PTR_ERR(rdev);
+		}
+		as3722->rdevs[regulator] = rdev;
+		ext_control_num = pdata->reg_pdata[regulator]->ext_control;
+		if (ext_control_num) {
+			ret = as3722_extreg_init(as3722, regulator, ext_control_num);
+			if (ret < 0) {
+				dev_err(&pdev->dev, "as3722 external reg init "
+					"failed for regulator nr %d err\n", regulator);
+				return ret;
 			}
-			as3722->rdevs[regulator] = rdev;
 		}
 	}
 	return 0;

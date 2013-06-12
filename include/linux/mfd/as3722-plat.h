@@ -84,8 +84,13 @@ struct as3722_pinctrl_init_data {
 	int mode;
 };
 
+struct as3722_regulator_platform_data {
+	struct regulator_init_data *reg_init;
+	int ext_control;
+};
+
 struct as3722_platform_data {
-	struct regulator_init_data *reg_init[AS3722_NUM_REGULATORS];
+	struct as3722_regulator_platform_data *reg_pdata[AS3722_NUM_REGULATORS];
 
 	/* register initialisation */
 	struct as3722_reg_init *core_init_data;
