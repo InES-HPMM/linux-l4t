@@ -22,6 +22,7 @@
 #include <linux/completion.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
+#include <linux/bitops.h>
 
 #include <asm/uaccess.h>
 
@@ -29,6 +30,8 @@
 
 #define TEE_SHMEM_FNAME_SZ	SZ_64
 #define TEE_SHMEM_DATA_SZ	SZ_128K
+
+#define TEE_FS_READY_BIT	1
 
 struct tee_shmem {
 	char	file_name[TEE_SHMEM_FNAME_SZ];
@@ -39,6 +42,7 @@ struct list_head req_list;
 DECLARE_COMPLETION(req_ready);
 DECLARE_COMPLETION(req_complete);
 static unsigned long secure_error;
+static unsigned long fs_ready;
 
 static void indicate_complete(unsigned long ret)
 {
@@ -67,6 +71,8 @@ int tee_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 		ptr_user_req = (TEEC_FileReq *)ioctl_param;
 
 		set_freezable();
+
+		set_bit(TEE_FS_READY_BIT, &fs_ready);
 
 		/* wait for a new request */
 		while (wait_for_completion_interruptible(&req_ready))
@@ -148,6 +154,12 @@ static void _tee_fs_file_operation(const char *name, void *buf, int len,
 	TEEC_FileReq *new_req;
 	struct tee_file_req_node *req_node;
 
+	if (!test_and_clear_bit(TEE_FS_READY_BIT, &fs_ready)) {
+		pr_err("%s: daemon not loaded yet\n", __func__);
+		secure_error = TEEC_ERROR_NO_DATA;
+		goto fail;
+	}
+
 	BUG_ON(!name);
 
 	if (type == TEEC_FILE_REQ_READ || type == TEEC_FILE_REQ_WRITE)
@@ -183,6 +195,7 @@ static void _tee_fs_file_operation(const char *name, void *buf, int len,
 
 	kfree(new_req);
 
+fail:
 	/* signal completion to the secure world */
 	indicate_complete(secure_error);
 }
