@@ -353,13 +353,12 @@ static int core_get(void *data, u64 *val)
 
 DEFINE_SIMPLE_ATTRIBUTE(core_fops, core_get, core_set, "%lld\n");
 
-static void create_attr(const char *name, struct dentry *parent,
-		unsigned int *data)
+static void create_attr(const char *name, unsigned int *data)
 {
 	struct dentry *d;
 
-	d = debugfs_create_file(name, S_IRUGO | S_IWUSR, parent, data,
-			&core_fops);
+	d = debugfs_create_file(name, S_IRUGO | S_IWUSR, core_client.dentry,
+			data, &core_fops);
 	WARN_ON(IS_ERR_OR_NULL(d));
 }
 
@@ -387,16 +386,6 @@ static int cpucaps_show(struct seq_file *file, void *data)
 
 	return 0;
 }
-
-static int cpucaps_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cpucaps_show, inode->i_private);
-}
-
-static const struct file_operations cpucaps_fops = {
-	.open = cpucaps_open,
-	.read = seq_read,
-};
 
 static int corecaps_show(struct seq_file *file, void *data)
 {
@@ -427,42 +416,45 @@ static int corecaps_show(struct seq_file *file, void *data)
 	return 0;
 }
 
-static int corecaps_open(struct inode *inode, struct file *file)
+static int longattr_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, corecaps_show, inode->i_private);
+	return single_open(file, inode->i_private, NULL);
 }
 
-static const struct file_operations corecaps_fops = {
-	.open = corecaps_open,
+static const struct file_operations longattr_fops = {
+	.open = longattr_open,
 	.read = seq_read,
 };
 
-static void init_debug(void)
+static void create_longattr(const char *name,
+		int (*show)(struct seq_file *, void *))
 {
 	struct dentry *d;
 
+	d = debugfs_create_file(name, S_IRUGO, core_client.dentry, show,
+			&longattr_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
+}
+
+static void init_debug(void)
+{
 	if (!core_client.dentry) {
 		WARN_ON(1);
 		return;
 	}
 
-	create_attr("cpu_offset", core_client.dentry, &cpu_power_offset);
-	create_attr("favor_gpu", core_client.dentry, &force_gpu_pri);
-	create_attr("gpu_threshold", core_client.dentry, &gpu_high_threshold);
-	create_attr("force_cpu", core_client.dentry, &forced_caps.cpu);
-	create_attr("force_gpu", core_client.dentry, &forced_caps.gpu);
-	create_attr("force_emc", core_client.dentry, &forced_caps.emc);
-	create_attr("gpu_window", core_client.dentry, &gpu_window);
-	create_attr("gain", core_client.dentry, &core_platdata->core_gain);
-	create_attr("gpu_high_count", core_client.dentry, &gpu_high_count);
+	create_attr("cpu_offset", &cpu_power_offset);
+	create_attr("favor_gpu", &force_gpu_pri);
+	create_attr("gpu_threshold", &gpu_high_threshold);
+	create_attr("force_cpu", &forced_caps.cpu);
+	create_attr("force_gpu", &forced_caps.gpu);
+	create_attr("force_emc", &forced_caps.emc);
+	create_attr("gpu_window", &gpu_window);
+	create_attr("gain", &core_platdata->core_gain);
+	create_attr("gpu_high_count", &gpu_high_count);
 
-	d = debugfs_create_file("corecaps", S_IRUGO, core_client.dentry, NULL,
-			&corecaps_fops);
-	WARN_ON(IS_ERR_OR_NULL(d));
-
-	d = debugfs_create_file("cpucaps", S_IRUGO, core_client.dentry, NULL,
-			&cpucaps_fops);
-	WARN_ON(IS_ERR_OR_NULL(d));
+	create_longattr("corecaps", corecaps_show);
+	create_longattr("cpucaps", cpucaps_show);
 }
 #else
 static inline void init_debug(void) {}
