@@ -49,24 +49,26 @@
 #define AS3722_REG_INIT_TERMINATE              0xFF
 
 /* regulator IDs */
-#define AS3722_LDO0                            0
-#define AS3722_LDO1                            1
-#define AS3722_LDO2                            2
-#define AS3722_LDO3                            3
-#define AS3722_LDO4                            4
-#define AS3722_LDO5                            5
-#define AS3722_LDO6                            6
-#define AS3722_LDO7                            7
-#define AS3722_LDO9                            8
-#define AS3722_LDO10                           9
-#define AS3722_LDO11                           10
-#define AS3722_SD0                             11
-#define AS3722_SD1                             12
-#define AS3722_SD2                             13
-#define AS3722_SD3                             14
-#define AS3722_SD4                             15
-#define AS3722_SD5                             16
-#define AS3722_SD6                             17
+enum as3722_regulators{
+AS3722_SD0,
+AS3722_SD1,
+AS3722_SD2,
+AS3722_SD3,
+AS3722_SD4,
+AS3722_SD5,
+AS3722_SD6,
+AS3722_LDO0,
+AS3722_LDO1,
+AS3722_LDO2,
+AS3722_LDO3,
+AS3722_LDO4,
+AS3722_LDO5,
+AS3722_LDO6,
+AS3722_LDO7,
+AS3722_LDO9,
+AS3722_LDO10,
+AS3722_LDO11,
+};
 
 /* AS3722 ASIC ID */
 #define AS3722_ADDR_ASIC_ID1                   0x90
