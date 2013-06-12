@@ -1,3 +1,19 @@
+/*
+ * drivers/misc/tfa9887.c
+ *
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/err.h>
@@ -1628,4 +1644,8 @@ static void __exit tfa9887_exit(void)
 	 i2c_del_driver(&tfa9887L_i2c_driver);
 }
 module_exit(tfa9887_exit);
+
+MODULE_AUTHOR("Vinod Subbarayalu <vsubbarayalu@nvidia.com>, Scott Peterson <speterson@nvidia.com>");
+MODULE_DESCRIPTION("TFA9887 Audio Codec driver");
+MODULE_LICENSE("GPL");
 
