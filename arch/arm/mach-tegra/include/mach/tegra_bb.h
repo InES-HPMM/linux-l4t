@@ -65,6 +65,13 @@ void tegra_bb_clear_ipc(struct platform_device *dev);
 int tegra_bb_check_ipc(struct platform_device *dev);
 
 /*
+ * tegra_bb_check_bb2ap_ipc: check if BB IPC IRQ is pending
+ * @param none
+ * @return 1 if IRQ is pending - 0 otherwise
+ */
+int tegra_bb_check_bb2ap_ipc(void);
+
+/*
  * tegra_bb_set_ipc_serial: store SHM serial number for sysfs access
  * @param struct tegra_bb device pointer
  * @param serial pointer to SHM serial

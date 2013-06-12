@@ -277,6 +277,25 @@ int tegra_bb_check_ipc(struct platform_device *dev)
 }
 EXPORT_SYMBOL_GPL(tegra_bb_check_ipc);
 
+int tegra_bb_check_bb2ap_ipc(void)
+{
+	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	int sts;
+
+	sts = readl(pmc + APBDEV_PMC_IPC_PMC_IPC_STS_0);
+	sts = sts >> APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_SHIFT;
+	sts &= APBDEV_PMC_IPC_PMC_IPC_STS_0_AP2BB_RESET_DEFAULT_MASK;
+	if (!sts)
+		return 0;
+
+	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
+	if (sts & (1 << FLOW_CTLR_IPC_FLOW_IPC_STS_0_BB2AP_INT0_STS_SHIFT))
+		return 1;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra_bb_check_bb2ap_ipc);
+
 static int tegra_bb_open(struct inode *inode, struct file *filp)
 {
 	int ret;
@@ -1291,12 +1310,12 @@ static int tegra_bb_probe(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int tegra_bb_suspend(struct platform_device *pdev, pm_message_t state)
+static int tegra_bb_suspend(struct device *dev)
 {
 	void __iomem *fctrl = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE);
 	int sts;
 
-	dev_dbg(&pdev->dev, "%s\n", __func__);
+	dev_dbg(dev, "%s\n", __func__);
 	/* Be sure to ack any pending irq from BB */
 
 	sts = readl(fctrl + FLOW_CTLR_IPC_FLOW_IPC_STS_0);
@@ -1307,22 +1326,18 @@ static int tegra_bb_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int tegra_bb_resume(struct platform_device *pdev)
+static int tegra_bb_resume(struct device *dev)
 {
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	struct tegra_bb *bb;
 	struct tegra_bb_platform_data *pdata;
 #endif
-	if (!pdev) {
-		pr_err("%s platform device is NULL!\n", __func__);
-		return -EINVAL;
-	}
-	dev_dbg(&pdev->dev, "%s\n", __func__);
+	dev_dbg(dev, "%s\n", __func__);
 
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
-	pdata = pdev->dev.platform_data;
+	pdata = dev->platform_data;
 	if (!pdata) {
-		dev_err(&pdev->dev, "%s platform dev not found!\n", __func__);
+		dev_err(dev, "%s platform dev not found!\n", __func__);
 		return -EINVAL;
 	}
 	bb = (struct tegra_bb *)pdata->bb_handle;
@@ -1335,18 +1350,39 @@ static int tegra_bb_resume(struct platform_device *pdev)
 #endif
 	return 0;
 }
+
+static int tegra_bb_suspend_noirq(struct device *dev)
+{
+	dev_dbg(dev, "%s\n", __func__);
+
+	/* abort suspend if IPC interrupt is pending*/
+	if (tegra_bb_check_bb2ap_ipc())
+		return -EBUSY;
+	return 0;
+}
+
+static int tegra_bb_resume_noirq(struct device *dev)
+{
+	return 0;
+}
+
+static const struct dev_pm_ops tegra_bb_pm_ops = {
+	.suspend_noirq = tegra_bb_suspend_noirq,
+	.resume_noirq = tegra_bb_resume_noirq,
+	.suspend = tegra_bb_suspend,
+	.resume = tegra_bb_resume,
+};
 #endif
 
 static struct platform_driver tegra_bb_driver = {
 	.driver = {
 		.name = "tegra_bb",
 		.owner = THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm = &tegra_bb_pm_ops,
+#endif
 	},
 	.probe = tegra_bb_probe,
-#ifdef CONFIG_PM
-	.suspend = tegra_bb_suspend,
-	.resume = tegra_bb_resume,
-#endif
 };
 
 static int __init tegra_bb_init(void)
