@@ -46,7 +46,7 @@ static void update_loans(struct edp_client *client)
 	struct edp_governor *gov;
 	gov = client->manager ? client->manager->gov : NULL;
 	if (gov && client->cur && !list_empty(&client->borrowers)) {
-		if (gov->update_loans && *client->cur > client->ithreshold)
+		if (gov->update_loans)
 			gov->update_loans(client);
 	}
 }
@@ -54,6 +54,7 @@ static void update_loans(struct edp_client *client)
 static void promote(struct work_struct *work)
 {
 	unsigned int prev_denied;
+	struct edp_client *c;
 	struct edp_manager *m = container_of(work, struct edp_manager, work);
 
 	mutex_lock(&edp_lock);
@@ -63,6 +64,8 @@ static void promote(struct work_struct *work)
 		m->gov->promote(m);
 		if (prev_denied != m->num_denied)
 			sysfs_notify(m->kobj, NULL, "denied");
+		list_for_each_entry(c, &m->clients, link)
+			update_loans(c);
 	}
 
 	mutex_unlock(&edp_lock);
@@ -312,8 +315,12 @@ void edp_default_update_request(struct edp_client *client,
 /* generic default implementation */
 void edp_default_update_loans(struct edp_client *lender)
 {
-	unsigned int size = *lender->cur - lender->ithreshold;
+	unsigned int size;
+	unsigned int cur;
 	struct loan_client *p;
+
+	cur = cur_level(lender);
+	size = cur > lender->ithreshold ? cur - lender->ithreshold : 0;
 
 	list_for_each_entry(p, &lender->borrowers, link) {
 		if (size != p->size) {
@@ -323,8 +330,6 @@ void edp_default_update_loans(struct edp_client *lender)
 		}
 
 		size -= min(p->size, size);
-		if (!size)
-			return;
 	}
 }
 
