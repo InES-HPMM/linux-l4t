@@ -131,9 +131,9 @@ static struct regulator_consumer_supply palmas_smps9_supply[] = {
 static struct regulator_consumer_supply palmas_smps10_supply[] = {
 	REGULATOR_SUPPLY("unused_smps10", NULL),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
-
 	REGULATOR_SUPPLY("vdd_lcd", NULL),
 };
 

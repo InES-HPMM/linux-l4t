@@ -692,6 +692,7 @@ static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
 /* Not gated */
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 /* Not Gated */

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-roth-power.c
  *
- * Copyright (c) 2012 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -96,6 +96,7 @@ static struct i2c_board_info __initdata tps51632_boardinfo[] = {
 /* BQ2419X VBUS regulator */
 static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 static struct regulator_consumer_supply bq2419x_batt_supply[] = {

@@ -812,6 +812,7 @@ static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 /* EN_USB1_VBUS From TEGRA GPIO PN4 PR3(T30) */
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 /* EN_3V3_FUSE From TEGRA GPIO PX4 */
