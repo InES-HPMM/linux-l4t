@@ -39,6 +39,7 @@ struct tegra_bbc_proxy {
 	int edp_boot_client_registered;
 	int edp_initialized;
 	char *edp_manager_name;
+	char *ap_name;
 	unsigned int i_breach_ppm; /* percent time current exceeds i_thresh */
 	unsigned int i_thresh_3g_adjperiod; /* 3g i_thresh adj period */
 	unsigned int i_thresh_lte_adjperiod; /* lte i_thresh adj period */
@@ -123,6 +124,7 @@ int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 				u32 *states)
 {
 	struct edp_manager *mgr;
+	struct edp_client *ap;
 	int ret;
 	int i;
 	struct tegra_bbc_proxy *bbc = dev_get_drvdata(dev);
@@ -150,6 +152,7 @@ int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 	bbc->modem_edp_client.states = bbc->modem_edp_states;
 	bbc->modem_edp_client.num_states = num_states;
 	bbc->modem_edp_client.e0_index = 0;
+	bbc->modem_edp_client.max_borrowers = 1;
 	bbc->modem_edp_client.priority = EDP_MAX_PRIO;
 
 	mgr = edp_get_manager(bbc->edp_manager_name);
@@ -175,6 +178,18 @@ int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 	}
 
 	bbc->edp_boot_client_registered = 0;
+
+	ap = edp_get_client(bbc->ap_name);
+	if (!ap) {
+		dev_err(dev, "can't get ap client\n");
+		goto done;
+	}
+
+	ret = edp_register_loan(&bbc->modem_edp_client, ap);
+	if (ret && ret != -EEXIST) {
+		dev_err(dev, "unable to register bbc loan to ap\n");
+		goto done;
+	}
 
 done:
 	mutex_unlock(&bbc->edp_lock);
@@ -742,6 +757,7 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		}
 
 		bbc->edp_initialized = 1;
+		bbc->ap_name = pdata->ap_name;
 	}
 
 	mutex_init(&bbc->iso_lock);
