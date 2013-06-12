@@ -41,6 +41,16 @@ static struct edp_manager *find_manager(const char *name)
 	return NULL;
 }
 
+static void update_loans(struct edp_client *client)
+{
+	struct edp_governor *gov;
+	gov = client->manager ? client->manager->gov : NULL;
+	if (gov && client->cur && !list_empty(&client->borrowers)) {
+		if (gov->update_loans && *client->cur > client->ithreshold)
+			gov->update_loans(client);
+	}
+}
+
 static void promote(struct work_struct *work)
 {
 	unsigned int prev_denied;
@@ -270,16 +280,6 @@ int edp_register_client(struct edp_manager *mgr, struct edp_client *client)
 	return r;
 }
 EXPORT_SYMBOL(edp_register_client);
-
-static void update_loans(struct edp_client *client)
-{
-	struct edp_governor *gov;
-	gov = client->manager ? client->manager->gov : NULL;
-	if (gov && client->cur && !list_empty(&client->borrowers)) {
-		if (gov->update_loans && *client->cur > client->ithreshold)
-			gov->update_loans(client);
-	}
-}
 
 /* generic default implementation */
 void edp_default_update_request(struct edp_client *client,
