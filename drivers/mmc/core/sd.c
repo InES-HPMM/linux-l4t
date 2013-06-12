@@ -5,6 +5,8 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
  *
+ *  Copyright (c) 2013, NVIDIA CORPORATION. All rights reserved.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -1025,6 +1027,25 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	}
 
 	host->card = card;
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+	/*
+	 * This implementation is still in experimental phase. So, don't fail
+	 * enumeration even if dev freq init fails.
+	 */
+	if (!oldcard && host->ios.timing == MMC_TIMING_UHS_SDR104)
+		if (host->caps2 & MMC_CAP2_FREQ_SCALING) {
+			err = mmc_devfreq_init(host);
+			if (err)
+				dev_info(mmc_dev(host),
+					"Devfreq scaling init failed %d\n",
+					err);
+			else
+				dev_info(mmc_dev(host),
+					"DFS is enabled successfully\n");
+		}
+#endif
+
 	return 0;
 
 free_card:
@@ -1041,6 +1062,10 @@ static void mmc_sd_remove(struct mmc_host *host)
 {
 	BUG_ON(!host);
 	BUG_ON(!host->card);
+
+#ifdef CONFIG_MMC_FREQ_SCALING
+	mmc_devfreq_deinit(host);
+#endif
 
 	mmc_remove_card(host->card);
 	host->card = NULL;
