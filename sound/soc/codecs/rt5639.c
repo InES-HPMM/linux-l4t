@@ -1850,6 +1850,8 @@ static int rt5639_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 	bclk_ms = frame_size > 32 ? 1 : 0;
+	/*Tegra requires 64*fs as bitclk in slave mode*/
+	bclk_ms = 1;
 	rt5639->bclk[dai->id] = rt5639->lrck[dai->id] * (32 << bclk_ms);
 
 	dev_dbg(dai->dev, "bclk is %dHz and lrck is %dHz\n",
@@ -2469,10 +2471,16 @@ static int rt5639_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static const struct of_device_id rt5639_of_match[] = {
+	{ .compatible = "realtek,rt5639", },
+	{},
+};
+
 struct i2c_driver rt5639_i2c_driver = {
 	.driver = {
 		.name = "rt5639",
 		.owner = THIS_MODULE,
+		.of_match_table = rt5639_of_match,
 	},
 	.probe = rt5639_i2c_probe,
 	.remove   = rt5639_i2c_remove,

@@ -132,11 +132,18 @@ static noinline void __init ardbeg_setup_bluedroid_pm(void)
 	platform_device_register(&ardbeg_bluedroid_pm_device);
 }
 
+/*#define USED_AUDIO_RT5639 1*/
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
+#ifdef USED_AUDIO_RT5639
+static struct i2c_board_info __initdata rt5639_board_info = {
+	I2C_BOARD_INFO("rt5639", 0x1c),
+};
+#else
 static struct i2c_board_info __initdata rt5645_board_info = {
 	I2C_BOARD_INFO("rt5645", 0x1a),
 };
+#endif
 #endif
 
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
@@ -251,8 +258,13 @@ static void ardbeg_i2c_init(void)
 #endif
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
+#ifdef USED_AUDIO_RT5639
+	i2c_register_board_info(0, &rt5639_board_info, 1);
+#else
 	i2c_register_board_info(0, &rt5645_board_info, 1);
 #endif
+#endif
+
 	if (board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
@@ -327,14 +339,23 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
 
 static void ardbeg_audio_init(void)
 {
+#ifdef USED_AUDIO_RT5639
+	ardbeg_audio_pdata.codec_name = "rt5639.0-001c";
+	ardbeg_audio_pdata.codec_dai_name = "rt5639-aif1";
+#else
 	ardbeg_audio_pdata.codec_name = "rt5645.0-001a";
 	ardbeg_audio_pdata.codec_dai_name = "rt5645-aif1";
+#endif
 }
 
 static struct platform_device ardbeg_audio_device = {
-	.name       = "tegra-snd-rt5645",
-	.id       = 0,
-	.dev       = {
+#ifdef USED_AUDIO_RT5639
+	.name = "tegra-snd-rt5639",
+#else
+	.name = "tegra-snd-rt5645",
+#endif
+	.id = 0,
+	.dev = {
 		.platform_data = &ardbeg_audio_pdata,
 	},
 };
@@ -654,6 +675,8 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra30-ahub", 0x70080000, "tegra30-ahub",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
 				NULL),
 	{}
 };
