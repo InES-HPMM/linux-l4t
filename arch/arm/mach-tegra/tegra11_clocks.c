@@ -7898,21 +7898,22 @@ static void tegra11_clk_resume(void)
 	p = tegra_clk_emc.parent;
 	tegra11_periph_clk_init(&tegra_clk_emc);
 
+	/* Turn Off pll_m if it was OFF before suspend, and emc was not switched
+	   to pll_m across suspend; re-init pll_m to sync s/w and h/w states */
+	if ((tegra_pll_m.state == OFF) &&
+	    (&tegra_pll_m != tegra_clk_emc.parent))
+		tegra11_pllm_clk_disable(&tegra_pll_m);
+	tegra11_pllm_clk_init(&tegra_pll_m);
+
 	if (p != tegra_clk_emc.parent) {
-		/* FIXME: old parent is left enabled here even if EMC was its
-		   only child before suspend (may happen on Tegra11 !!) */
 		pr_debug("EMC parent(refcount) across suspend: %s(%d) : %s(%d)",
 			p->name, p->refcnt, tegra_clk_emc.parent->name,
 			tegra_clk_emc.parent->refcnt);
 
-		BUG_ON(!p->refcnt);
-		p->refcnt--;
-
-		/* the new parent is enabled by low level code, but ref count
-		   need to be updated up to the root */
-		p = tegra_clk_emc.parent;
-		while (p && ((p->refcnt++) == 0))
-			p = p->parent;
+		/* emc switched to the new parent by low level code, but ref
+		   count and s/w state need to be updated */
+		clk_disable(p);
+		clk_enable(tegra_clk_emc.parent);
 	}
 	tegra_emc_timing_invalidate();
 
