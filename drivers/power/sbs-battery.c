@@ -30,6 +30,7 @@
 #include <linux/of.h>
 
 #include <linux/power/sbs-battery.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 enum {
 	REG_MANUFACTURER_DATA,
@@ -145,6 +146,7 @@ struct sbs_info {
 	struct i2c_client		*client;
 	struct power_supply		power_supply;
 	struct sbs_platform_data	plat_data;
+	struct battery_gauge_dev	*bg_dev;
 	bool				is_present;
 	bool				gpio_detect;
 	bool				enable_detection;
@@ -615,6 +617,45 @@ void sbs_update(void)
 }
 EXPORT_SYMBOL_GPL(sbs_update);
 
+static int sbs_update_battery_status(struct battery_gauge_dev *bg_dev,
+	enum battery_charger_status status)
+{
+	struct sbs_info *binfo = battery_gauge_get_drvdata(bg_dev);
+	int ret;
+
+	ret = sbs_read_word_data(binfo->client, sbs_data[REG_STATUS].addr);
+	/* if the read failed, give up on this work */
+	if (ret < 0) {
+		binfo->poll_time = 0;
+		return ret;
+	}
+
+	if (ret & BATTERY_FULL_CHARGED)
+		ret = POWER_SUPPLY_STATUS_FULL;
+	else if (ret & BATTERY_FULL_DISCHARGED)
+		ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
+	else if (ret & BATTERY_DISCHARGING)
+		ret = POWER_SUPPLY_STATUS_DISCHARGING;
+	else
+		ret = POWER_SUPPLY_STATUS_CHARGING;
+
+	if (binfo->last_state != ret) {
+		binfo->poll_time = 0;
+		power_supply_changed(&binfo->power_supply);
+		return 0;
+	}
+	return 0;
+}
+
+static struct battery_gauge_ops sbs_bg_ops = {
+	.update_battery_status = sbs_update_battery_status,
+};
+
+static struct battery_gauge_info sbs_bgi = {
+	.cell_id = 0,
+	.bg_ops = &sbs_bg_ops,
+};
+
 static void sbs_delayed_work(struct work_struct *work)
 {
 	struct sbs_info *chip;
@@ -819,6 +860,15 @@ skip_gpio:
 		goto exit_psupply;
 	}
 
+	chip->bg_dev = battery_gauge_register(&client->dev, &sbs_bgi);
+	if (IS_ERR(chip->bg_dev)) {
+		rc = PTR_ERR(chip->bg_dev);
+		dev_err(&client->dev, "battery gauge register failed: %d\n",
+			rc);
+		goto bg_err;
+	}
+	battery_gauge_set_drvdata(chip->bg_dev, chip);
+
 	dev_info(&client->dev,
 		"%s: battery gas gauge device registered\n", client->name);
 
@@ -828,7 +878,8 @@ skip_gpio:
 	chip->enable_detection = true;
 
 	return 0;
-
+bg_err:
+	power_supply_unregister(&chip->power_supply);
 exit_psupply:
 	if (chip->irq)
 		free_irq(chip->irq, &chip->power_supply);
@@ -853,6 +904,7 @@ static int sbs_remove(struct i2c_client *client)
 	if (chip->gpio_detect)
 		gpio_free(chip->plat_data.battery_detect);
 
+	battery_gauge_unregister(chip->bg_dev);
 	power_supply_unregister(&chip->power_supply);
 
 	cancel_delayed_work_sync(&chip->work);

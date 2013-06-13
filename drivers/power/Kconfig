@@ -210,6 +210,7 @@ config BATTERY_WM97XX
 config BATTERY_SBS
         tristate "SBS Compliant gas gauge"
         depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
         help
 	  Say Y to include support for SBS battery driver for SBS-compliant
 	  gas gauges.
