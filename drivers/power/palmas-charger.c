@@ -42,6 +42,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 #define VBUS_REGULATOR_ENABLE_TIME	500000
 #define NV_CHARGER_CURRENT_LIMIT	2000
@@ -321,12 +322,11 @@ int palmas_set_charging_current(struct regulator_dev *rdev,
 	struct palmas_charger_chip *bq_charger = rdev_get_drvdata(rdev);
 	int ret = 0;
 	int val;
-	int status;
 
 	dev_info(bq_charger->dev, "Setting charging current %d\n", max_uA/1000);
 	/* System status register gets updated after a delay of about 200ms*/
 
-	status = 0;
+	bq_charger->chg_status = BATTERY_DISCHARGING;
 	msleep(200);
 
 	ret = palmas_charger_enable(bq_charger);
@@ -353,17 +353,15 @@ int palmas_set_charging_current(struct regulator_dev *rdev,
 		ret = palmas_init(bq_charger);
 		if (ret < 0)
 			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status
-				(status);
+		battery_charging_status_update(bq_charger->bc_dev,
+					BATTERY_DISCHARGING);
 	} else {
-		status = 1;
+		bq_charger->chg_status = BATTERY_CHARGING;
 		ret = palmas_init(bq_charger);
 		if (ret < 0)
 			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status
-				(status);
+		battery_charging_status_update(bq_charger->bc_dev,
+				BATTERY_CHARGING);
 	}
 	return 0;
 error:
@@ -749,7 +747,6 @@ int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
 {
 	int ret = 0;
 
-	palmas_chip->update_status =  pdata->bcharger_pdata->update_status;
 	palmas_chip->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
 	palmas_chip->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	palmas_chip->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
@@ -863,6 +860,21 @@ int palmas_resource_cleanup(struct palmas_charger_chip *palmas_chip)
 	return 0;
 }
 
+static int palmas_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct palmas_charger_chip *chip = battery_charger_get_drvdata(bc_dev);
+
+	return chip->chg_status;
+}
+
+static struct battery_charging_ops palmas_charger_bci_ops = {
+	.get_charging_status = palmas_charger_get_status,
+};
+
+static struct battery_charger_info palmas_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &palmas_charger_bci_ops,
+};
 
 static int palmas_probe(struct platform_device *pdev)
 {
@@ -902,17 +914,32 @@ static int palmas_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, palmas_chip);
 
+	palmas_chip->bc_dev = battery_charger_register(&pdev->dev,
+					&palmas_charger_bci);
+	if (IS_ERR(palmas_chip->bc_dev)) {
+		ret = PTR_ERR(palmas_chip->bc_dev);
+		dev_err(&pdev->dev, "battery charger register failed: %d\n",
+			ret);
+		return ret;
+	}
+	battery_charger_set_drvdata(palmas_chip->bc_dev, palmas_chip);
+
 	ret = palmas_hw_init(palmas_chip, pdata);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "hw init failed %d\n", ret);
-		return ret;
+		goto err;
 	}
+	return ret;
+err:
+	battery_charger_unregister(palmas_chip->bc_dev);
 	return ret;
 }
 
 static int palmas_remove(struct platform_device *pdev)
 {
 	struct palmas_charger_chip *palmas_chip = dev_get_drvdata(&pdev->dev);
+
+	battery_charger_unregister(palmas_chip->bc_dev);
 	palmas_resource_cleanup(palmas_chip);
 	return 0;
 }

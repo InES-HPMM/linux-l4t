@@ -219,6 +219,7 @@ struct palmas_usb;
 struct palmas_rtc;
 struct palmas_battery_info;
 struct palmas_charger_chip;
+struct battery_charger_dev;
 
 #define palmas_rails(_name) "palmas_"#_name
 
@@ -286,7 +287,6 @@ struct palmas_charger_chip {
 	struct mutex                    mutex;
 	int                             in_current_limit;
 	int                             rtc_alarm_time;
-	void                            (*update_status)(int);
 
 	struct regulator_dev            *chg_rdev;
 	struct regulator_desc           chg_reg_desc;
@@ -295,6 +295,8 @@ struct palmas_charger_chip {
 	struct regulator_dev            *vbus_rdev;
 	struct regulator_desc           vbus_reg_desc;
 	struct regulator_init_data      vbus_reg_init_data;
+
+	struct battery_charger_dev	*bc_dev;
 
 	struct kthread_worker           bq_kworker;
 	struct task_struct              *bq_kworker_task;
@@ -305,6 +307,7 @@ struct palmas_charger_chip {
 	int                             chg_restart_timeout;
 	int                             chg_restart_time;
 	int                             use_regmap;
+	int				chg_status;
 	struct palmas                   *palmas;
 };
 

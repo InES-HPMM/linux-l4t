@@ -34,6 +34,7 @@ config PDA_POWER
 config CHARGER_PALMAS
 	tristate "Palmas charger driver support"
 	depends on MFD_PALMAS
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  Say Y here to enable charger driver support
 	  for the palmas series of chipsets from TI
