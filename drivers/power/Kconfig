@@ -42,6 +42,7 @@ config CHARGER_PALMAS
 config CHARGER_BQ2419X
 	tristate "BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver support"
 	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  Say Y here to enable driver support for TI BQ24190/
 	  BQ24192/BQ24192i/BQ24193 Charger.
@@ -57,6 +58,7 @@ choice
 config CHARGER_BQ2419X_I2C
 	bool "I2C driver"
 	depends on CHARGER_BQ2419X
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  Say Y here to enable i2c driver support for TI BQ24190/
 	  BQ24192/BQ24192i/BQ24193 Charging module.
@@ -64,6 +66,7 @@ config CHARGER_BQ2419X_I2C
 config CHARGER_BQ2419X_PLATFORM
 	bool "platform driver"
 	depends on CHARGER_BQ2419X
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  Say Y here to enable platform driver support for TI BQ24190/
 	  BQ24192/BQ24192i/BQ24193 Charger.

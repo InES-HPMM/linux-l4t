@@ -36,6 +36,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 /* Register definitions */
 #define BQ2419X_INPUT_SRC_REG		0x00
@@ -157,7 +158,6 @@ struct bq2419x_chip {
 	unsigned                        use_mains:1;
 	unsigned                        use_usb:1;
 	int                             rtc_alarm_time;
-	void                            (*update_status)(int, int);
 
 	struct regulator_dev            *chg_rdev;
 	struct regulator_desc           chg_reg_desc;
@@ -166,6 +166,9 @@ struct bq2419x_chip {
 	struct regulator_dev            *vbus_rdev;
 	struct regulator_desc           vbus_reg_desc;
 	struct regulator_init_data      vbus_reg_init_data;
+
+	struct battery_charger_dev	*bc_dev;
+	int				chg_status;
 
 	struct kthread_worker           bq_kworker;
 	struct task_struct              *bq_kworker_task;

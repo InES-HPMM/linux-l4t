@@ -376,27 +376,27 @@ int bq2419x_set_charging_current(struct regulator_dev *rdev,
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status
-				(status, 0);
+		bq_charger->chg_status = BATTERY_DISCHARGING;
+		battery_charging_status_update(bq_charger->bc_dev,
+					bq_charger->chg_status);
 	} else if (bq_charger->in_current_limit == 500) {
 		status = 1;
 		bq_charger->usb_online = 1;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status
-				(status, 2);
+		bq_charger->chg_status = BATTERY_CHARGING;
+		battery_charging_status_update(bq_charger->bc_dev,
+					bq_charger->chg_status);
 	} else {
 		status = 1;
 		bq_charger->ac_online = 1;
 		ret = bq2419x_init(bq_charger);
 		if (ret < 0)
 			goto error;
-		if (bq_charger->update_status)
-			bq_charger->update_status
-				(status, 1);
+		bq_charger->chg_status = BATTERY_CHARGING;
+		battery_charging_status_update(bq_charger->bc_dev,
+					bq_charger->chg_status);
 	}
 	if (ret == 0) {
 		if (bq_charger->use_mains)
@@ -805,6 +805,22 @@ int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
+static int bq2419x_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+
+	return bq2419x->chg_status;
+}
+
+static struct battery_charging_ops bq2419x_charger_bci_ops = {
+	.get_charging_status = bq2419x_charger_get_status,
+};
+
+static struct battery_charger_info bq2419x_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &bq2419x_charger_bci_ops,
+};
+
 int bq2419x_hw_init(struct bq2419x_chip *bq2419x,
 		struct bq2419x_platform_data *pdata)
 {
@@ -812,7 +828,6 @@ int bq2419x_hw_init(struct bq2419x_chip *bq2419x,
 
 	bq2419x->use_usb = pdata->bcharger_pdata->use_usb;
 	bq2419x->use_mains =  pdata->bcharger_pdata->use_mains;
-	bq2419x->update_status =  pdata->bcharger_pdata->update_status;
 	bq2419x->rtc_alarm_time =  pdata->bcharger_pdata->rtc_alarm_time;
 	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	bq2419x->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
@@ -847,11 +862,21 @@ int bq2419x_hw_init(struct bq2419x_chip *bq2419x,
 				goto scrub_chg_reg;
 	}
 
+	bq2419x->bc_dev = battery_charger_register(bq2419x->dev,
+			&bq2419x_charger_bci);
+	if (IS_ERR(bq2419x->bc_dev)) {
+		ret = PTR_ERR(bq2419x->bc_dev);
+		dev_err(bq2419x->dev, "battery charger register failed: %d\n",
+			ret);
+		goto scrub_psy;
+	}
+	battery_charger_set_drvdata(bq2419x->bc_dev, bq2419x);
+
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {
 		dev_err(bq2419x->dev,
 			"VBUS regualtor init failed %d\n", ret);
-		goto scrub_psy;
+		goto scrub_bc;
 	}
 
 	init_kthread_worker(&bq2419x->bq_kworker);
@@ -911,6 +936,8 @@ scrub_kthread:
 	kthread_stop(bq2419x->bq_kworker_task);
 scrub_vbus_reg:
 	regulator_unregister(bq2419x->vbus_rdev);
+scrub_bc:
+	battery_charger_unregister(bq2419x->bc_dev);
 scrub_psy:
 	if (bq2419x->use_usb)
 		power_supply_unregister(&bq2419x->usb);
@@ -924,6 +951,7 @@ scrub_chg_reg:
 
 int bq2419x_resource_cleanup(struct bq2419x_chip *bq2419x)
 {
+	battery_charger_unregister(bq2419x->bc_dev);
 	free_irq(bq2419x->irq, bq2419x);
 	bq2419x->stop_thread = true;
 	flush_kthread_worker(&bq2419x->bq_kworker);
