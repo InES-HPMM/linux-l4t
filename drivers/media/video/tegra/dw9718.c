@@ -909,7 +909,6 @@ static int dw9718_probe(
 		if (err < 0) {
 			dev_err(&client->dev, "%s device not found\n",
 				__func__);
-			dw9718_pm_wr(info, NVC_PWR_OFF);
 			if (info->pdata->cfg & NVC_CFG_NODEV) {
 				dw9718_del(info);
 				return -ENODEV;
