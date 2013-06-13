@@ -7899,6 +7899,8 @@ static void tegra11_clk_resume(void)
 		   count and s/w state need to be updated */
 		clk_disable(p);
 		clk_enable(tegra_clk_emc.parent);
+		tegra_dvfs_set_rate(&tegra_clk_emc,
+				    clk_get_rate_all_locked(&tegra_clk_emc));
 	}
 	tegra_emc_timing_invalidate();
 
