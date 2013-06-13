@@ -109,13 +109,13 @@ static void hp_init_stats(void)
 
 	mutex_lock(&tegra_cpq_lock_stats);
 
-	for (i = 0; i <= CONFIG_NR_CPUS; i++) {
+	for (i = 0; i <= nr_cpu_ids; i++) {
 		hp_stats[i].time_up_total = 0;
 		hp_stats[i].last_update = cur_jiffies;
 
 		hp_stats[i].up_down_count = 0;
 		if (is_lp_cluster()) {
-			if (i == CONFIG_NR_CPUS)
+			if (i == nr_cpu_ids)
 				hp_stats[i].up_down_count = 1;
 		} else {
 			if ((i < nr_cpu_ids) && cpu_online(i))
@@ -144,8 +144,8 @@ static void __hp_stats_update(unsigned int cpu, bool up)
 		if ((hp_stats[cpu].up_down_count & 0x1) != up) {
 			/* FIXME: sysfs user space CPU control breaks stats */
 			pr_err("tegra hotplug stats out of sync with %s CPU%d",
-			       (cpu < CONFIG_NR_CPUS) ? "G" : "LP",
-			       (cpu < CONFIG_NR_CPUS) ?  cpu : 0);
+			       (cpu < nr_cpu_ids) ? "G" : "LP",
+			       (cpu < nr_cpu_ids) ?  cpu : 0);
 			hp_stats[cpu].up_down_count ^=  0x1;
 		}
 	}
@@ -265,7 +265,7 @@ static int __apply_cluster_config(int state, int target_state)
 			tegra_update_cpu_speed(speed);
 
 			if (!tegra_cluster_switch(cpu_clk, cpu_g_clk)) {
-				hp_stats_update(CONFIG_NR_CPUS, false);
+				hp_stats_update(nr_cpu_ids, false);
 				hp_stats_update(0, true);
 				new_state = TEGRA_CPQ_G;
 			}
@@ -278,7 +278,7 @@ static int __apply_cluster_config(int state, int target_state)
 		tegra_update_cpu_speed(speed);
 
 		if (!tegra_cluster_switch(cpu_clk, cpu_lp_clk)) {
-			hp_stats_update(CONFIG_NR_CPUS, true);
+			hp_stats_update(nr_cpu_ids, true);
 			hp_stats_update(0, false);
 			new_state = TEGRA_CPQ_LP;
 		}
@@ -683,7 +683,7 @@ static int hp_stats_show(struct seq_file *s, void *data)
 	mutex_lock(&tegra_cpq_lock_stats);
 
 	if (cpq_state != TEGRA_CPQ_DISABLED) {
-		for (i = 0; i <= CONFIG_NR_CPUS; i++) {
+		for (i = 0; i <= nr_cpu_ids; i++) {
 			bool was_up = (hp_stats[i].up_down_count & 0x1);
 			__hp_stats_update(i, was_up);
 		}
@@ -693,17 +693,17 @@ static int hp_stats_show(struct seq_file *s, void *data)
 	mutex_unlock(tegra_cpu_lock);
 
 	seq_printf(s, "%-15s ", "cpu:");
-	for (i = 0; i < CONFIG_NR_CPUS; i++)
+	for (i = 0; i < nr_cpu_ids; i++)
 		seq_printf(s, "G%-9d ", i);
 	seq_printf(s, "LP\n");
 
 	seq_printf(s, "%-15s ", "transitions:");
-	for (i = 0; i <= CONFIG_NR_CPUS; i++)
+	for (i = 0; i <= nr_cpu_ids; i++)
 		seq_printf(s, "%-10u ", hp_stats[i].up_down_count);
 	seq_printf(s, "\n");
 
 	seq_printf(s, "%-15s ", "time plugged:");
-	for (i = 0; i <= CONFIG_NR_CPUS; i++) {
+	for (i = 0; i <= nr_cpu_ids; i++) {
 		seq_printf(s, "%-10llu ",
 			   cputime64_to_clock_t(hp_stats[i].time_up_total));
 	}
