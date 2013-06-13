@@ -1,18 +1,22 @@
 /*
  * Driver for the Palmas Embedded fuel gauge
  *
- * Copyright (C) 2012-2013 NVIDIA Corporation
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Darbha Sriharsha <dsriharsha@nvidia.com>
  * Author: Syed Rafiuddin <srafiuddin@nvidia.com>
  *
- * This package is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
-
- * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
- * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/init.h>
@@ -1622,7 +1626,19 @@ static struct platform_driver palmas_battery_driver = {
 		.owner = THIS_MODULE,
 	},
 };
-module_platform_driver(palmas_battery_driver);
+
+static int __init palmas_battery_init(void)
+{
+	return platform_driver_register(&palmas_battery_driver);
+}
+
+static void __exit palmas_battery_exit(void)
+{
+	platform_driver_unregister(&palmas_battery_driver);
+}
+
+subsys_initcall(palmas_battery_init);
+module_exit(palmas_battery_exit);
 
 MODULE_AUTHOR("Darbha Sriharsha <dsriharsha@nvidia.com>");
 MODULE_AUTHOR("Syed Rafiuddin <srafiuddin@nvidia.com>");
