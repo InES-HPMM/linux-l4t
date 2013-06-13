@@ -72,6 +72,7 @@
 
 /* Nvidia Cfg Registers */
 
+#define XUSB_CFG_0					0x00000000
 #define XUSB_CFG_1					0x00000004
 #define XUSB_CFG_4					0x00000010
 #define XUSB_CFG_16					0x00000040
@@ -90,6 +91,9 @@
 #define XUSB_CFG_ARU_CONTEXT_HSFS_SPEED			0x00000480
 #define XUSB_CFG_ARU_CONTEXT_HSFS_PP			0x00000484
 #define XUSB_CFG_CSB_BASE_ADDR				0x00000800
+
+#define XUSB_DEVICE_ID_T114				0x0E16
+#define XUSB_DEVICE_ID_T124				0x0FA3
 
 /* TODO: Do not have the definitions of below
  * registers.
