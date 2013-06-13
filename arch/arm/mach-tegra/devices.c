@@ -2235,15 +2235,28 @@ u64 tegra_smmu_fixup_swgids(struct device *dev)
 enum {
 	SYSTEM_DEFAULT,
 	SYSTEM_PROTECTED,
+	SYSTEM_GK20A,
+	NUM_ASIDS,
 };
 
-static struct dma_iommu_mapping *smmu_default_map[2];
+struct tegra_iommu_mapping {
+	dma_addr_t base;
+	size_t size;
+	struct dma_iommu_mapping *map;
+};
+
+static struct tegra_iommu_mapping smmu_default_map[] = {
+	[SYSTEM_DEFAULT] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[SYSTEM_PROTECTED] = {TEGRA_IOMMU_BASE, TEGRA_IOMMU_SIZE},
+	[SYSTEM_GK20A] = {0, (u32)~0},
+};
 
 static void tegra_smmu_map_init(struct platform_device *pdev)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(smmu_default_map); i++) {
+		struct tegra_iommu_mapping *m = &smmu_default_map[i];
 		struct dma_iommu_mapping *map;
 		int order = 0;
 
@@ -2251,19 +2264,19 @@ static void tegra_smmu_map_init(struct platform_device *pdev)
 			order = get_order(SZ_16K);
 
 		map = arm_iommu_create_mapping(&platform_bus_type,
-					       TEGRA_IOMMU_BASE,
-					       TEGRA_IOMMU_SIZE, order);
+					       m->base, m->size, 0);
+
 		if (IS_ERR(map))
 			dev_err(&pdev->dev,
 				"Failed create IOVA map for ASID[%d]\n", i);
 
-		smmu_default_map[i] = map;
+		m->map = map;
 	}
 }
 
 void tegra_smmu_map_misc_device(struct device *dev)
 {
-	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED];
+	struct dma_iommu_mapping *map = smmu_default_map[SYSTEM_PROTECTED].map;
 	if (!strncmp(dummy_name, DUMMY_DEV_NAME, strlen(dummy_name))) {
 		strncpy(dummy_name, dev_name(dev),
 			DUMMY_DEV_MAX_NAME_SIZE);
@@ -2297,9 +2310,12 @@ struct dma_iommu_mapping *tegra_smmu_get_map(struct device *dev, u64 swgids)
 		return NULL;
 
 	if (swgids & SWGID(PPCS))
-		return smmu_default_map[SYSTEM_PROTECTED];
+		return smmu_default_map[SYSTEM_PROTECTED].map;
 
-	return smmu_default_map[SYSTEM_DEFAULT];
+	if (swgids & SWGID(GPUB))
+		return smmu_default_map[SYSTEM_GK20A].map;
+
+	return smmu_default_map[SYSTEM_DEFAULT].map;
 }
 #else
 static inline void tegra_smmu_map_init(struct platform_device *pdev)
