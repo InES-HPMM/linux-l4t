@@ -2115,6 +2115,7 @@ struct swgid_fixup tegra_swgid_fixup[] = {
 	{ .name = "tsec",	.swgids = SWGID(TSEC), },
 	{ .name = "vi",	.swgids = SWGID(VI), },
 	{ .name = "therm_est",	.swgids = SWGID(PPCS), },
+	{ .name = "tegra-xhci",	.swgids = SWGID(XUSB_HOST), },
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif
@@ -2204,6 +2205,7 @@ struct swgid_fixup tegra_swgid_fixup_t124[] = {
 #ifdef CONFIG_PLATFORM_ENABLE_IOMMU
 	{ .name = dummy_name,	.swgids = SWGID(PPCS) },
 #endif
+	{ .name = "tegra-xhci",	.swgids = SWGID(XUSB_HOST), },
 	{},
 };
 
