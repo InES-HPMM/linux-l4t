@@ -169,6 +169,7 @@ AS3722_LDO11,
 #define AS3722_SD5_CONTROL_REG                 0x2E
 #define AS3722_SD6_CONTROL_REG                 0x2F
 
+#define AS3722_RESET_CONTROL_REG               0x36
 #define AS3722_WATCHDOG_CONTROL_REG            0x38
 #define AS3722_WATCHDOG_TIMER_REG              0x46
 #define AS3722_WATCHDOG_SOFTWARE_SIGNAL_REG    0x48
@@ -342,6 +343,7 @@ AS3722_LDO11,
 #define AS3722_SD6_MODE_NORMAL                 (0 << 4)
 #define AS3722_SD6_MODE_MASK                   (1 << 4)
 
+#define AS3722_POWER_OFF_MASK                  (1 << 1)
 #define AS3722_IRQ_MASK_LID                    (1 << 0)
 #define AS3722_IRQ_MASK_ACOK                   (1 << 1)
 #define AS3722_IRQ_MASK_CORE_PWRREQ            (1 << 2)

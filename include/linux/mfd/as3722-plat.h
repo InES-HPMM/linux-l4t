@@ -100,6 +100,7 @@ struct as3722_platform_data {
 	int use_internal_int_pullup;
 	int use_internal_i2c_pullup;
 	int num_gpio_cfgs;
+	bool use_power_off;
 	struct as3722_gpio_config *gpio_cfgs;
 	struct as3722_rtc_platform_data *rtc_pdata;
 	struct as3722_pinctrl_init_data *pinctrl_pdata;

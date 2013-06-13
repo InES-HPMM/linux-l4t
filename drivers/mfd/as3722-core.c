@@ -2,6 +2,7 @@
  * as3722-core.c - core driver for AS3722 PMICs
  *
  * Copyright (C) 2013 ams AG
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * Author: Florian Lobmaier <florian.lobmaier@ams.com>
  *
@@ -250,6 +251,16 @@ const struct regmap_config as3722_regmap_config = {
 	.volatile_reg = as3722_volatile,
 };
 
+static struct as3722 *as3722_dev;
+static void as3722_power_off(void)
+{
+	if (!as3722_dev)
+		return;
+
+	as3722_set_bits(as3722_dev, AS3722_RESET_CONTROL_REG,
+		AS3722_POWER_OFF_MASK, 1);
+}
+
 static int as3722_i2c_probe(struct i2c_client *i2c,
 		const struct i2c_device_id *id) {
 	struct as3722 *as3722;
@@ -305,6 +316,10 @@ static int as3722_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
+	if (pdata->use_power_off && !pm_power_off)
+		pm_power_off = as3722_power_off;
+
+	as3722_dev = as3722;
 	dev_info(as3722->dev,
 			"AS3722 core driver %s initialized successfully\n",
 			AS3722_DRIVER_VERSION);
