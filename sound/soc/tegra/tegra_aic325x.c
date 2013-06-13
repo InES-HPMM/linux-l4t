@@ -112,7 +112,6 @@ const char *tegra_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 struct tegra_aic325x {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_asoc_platform_data *pdata;
-	struct regulator *audio_reg;
 	int gpio_requested;
 	bool init_done;
 	int is_call_mode;
@@ -124,9 +123,8 @@ struct tegra_aic325x {
 	struct codec_config codec_info[NUM_I2S_DEVICES];
 	struct ahub_bbc1_config ahub_bbc1_info;
 	struct snd_soc_card *pcard;
-	struct regulator *dmic_reg;
-	struct regulator *dmic_1v8_reg;
-	struct regulator *hmic_reg;
+	struct regulator *vdd_aud_dgtl;
+	struct regulator *avdd_aud;
 	enum snd_soc_bias_level bias_level;
 	int clock_enabled;
 };
@@ -973,8 +971,13 @@ static struct snd_soc_jack_pin tegra_aic325x_hp_jack_pins[] = {
 static int tpa_hp_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	int val;
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		if (machine->avdd_aud)
+			regulator_enable(machine->avdd_aud);
 		val = 0x00;
 		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
 			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
@@ -982,6 +985,8 @@ static int tpa_hp_event(struct snd_soc_dapm_widget *w,
 		val = 0x1f;
 		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
 			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
+		if (machine->avdd_aud)
+			regulator_disable(machine->avdd_aud);
 	}
 	return 0;
 
@@ -999,8 +1004,13 @@ static int tpa_hp_event(struct snd_soc_dapm_widget *w,
 static int tpa_spk_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+	struct tegra_aic325x *machine = snd_soc_card_get_drvdata(card);
 	int val;
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		if (machine->avdd_aud)
+			regulator_enable(machine->avdd_aud);
 		val = 0x1f;
 		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
 			TPA2054D4A_HP_OUTPUT_CNTRL_REG, 1, &val);
@@ -1014,6 +1024,8 @@ static int tpa_spk_event(struct snd_soc_dapm_widget *w,
 		val = TPA2054D4A_HPR_EN | TPA2054D4A_HPL_EN;
 		tpa2054d4a_i2c_write_device(tpa2054d4a_client,
 			TPA2054D4A_POWER_MGMT_REG, 1, &val);
+		if (machine->avdd_aud)
+			regulator_disable(machine->avdd_aud);
 	}
 	return 0;
 }
@@ -1323,6 +1335,8 @@ static int tegra_aic325x_suspend_post(struct snd_soc_card *card)
 						&val);
 			}
 		}
+		if (machine->vdd_aud_dgtl)
+			regulator_disable(machine->vdd_aud_dgtl);
 	}
 
 	return 0;
@@ -1367,6 +1381,8 @@ static int tegra_aic325x_resume_pre(struct snd_soc_card *card)
 						&val);
 			}
 		}
+		if (machine->vdd_aud_dgtl)
+			regulator_enable(machine->vdd_aud_dgtl);
 	}
 
 	return 0;
@@ -1461,22 +1477,19 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_machine;
 
-	machine->dmic_reg = regulator_get(&pdev->dev, "vdd_mic");
-	if (IS_ERR(machine->dmic_reg)) {
-		dev_info(&pdev->dev, "No digital mic regulator found\n");
-		machine->dmic_reg = 0;
+	machine->vdd_aud_dgtl = regulator_get(&pdev->dev, "vdd_aud_dgtl");
+	if (IS_ERR(machine->vdd_aud_dgtl)) {
+		dev_info(&pdev->dev, "No vdd_aud_dgtl regulator found\n");
+		machine->vdd_aud_dgtl = 0;
 	}
 
-	machine->dmic_1v8_reg = regulator_get(&pdev->dev, "vdd_1v8_mic");
-	if (IS_ERR(machine->dmic_1v8_reg)) {
-		dev_info(&pdev->dev, "No digital mic regulator found\n");
-		machine->dmic_1v8_reg = 0;
-	}
+	if (machine->vdd_aud_dgtl)
+		regulator_enable(machine->vdd_aud_dgtl);
 
-	machine->hmic_reg = regulator_get(&pdev->dev, "mic_ventral");
-	if (IS_ERR(machine->hmic_reg)) {
-		dev_info(&pdev->dev, "No headset mic regulator found\n");
-		machine->hmic_reg = 0;
+	machine->avdd_aud = regulator_get(NULL, "avdd_aud");
+	if (IS_ERR(machine->avdd_aud)) {
+		dev_info(&pdev->dev, "No avdd_aud regulator found\n");
+		machine->avdd_aud = 0;
 	}
 
 	card->dev = &pdev->dev;
@@ -1598,6 +1611,12 @@ static int __devexit tegra_aic325x_driver_remove(struct platform_device *pdev)
 		gpio_free(pdata->gpio_int_mic_en);
 	if (machine->gpio_requested & GPIO_SPKR_EN)
 		gpio_free(pdata->gpio_spkr_en);
+
+	if (machine->vdd_aud_dgtl)
+		regulator_put(machine->vdd_aud_dgtl);
+
+	if (machine->avdd_aud)
+		regulator_put(machine->avdd_aud);
 
 	kfree(machine);
 

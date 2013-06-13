@@ -1516,16 +1516,11 @@ static int __devexit tegra_max98090_driver_remove(struct platform_device *pdev)
 
 	machine->gpio_requested = 0;
 
-	if (machine->avdd_aud_reg) {
+	if (machine->avdd_aud_reg)
 		regulator_put(machine->avdd_aud_reg);
-		regulator_disable(machine->avdd_aud_reg);
-		machine->avdd_aud_reg = 0;
-	}
-	if (machine->vdd_sw_1v8_reg) {
+
+	if (machine->vdd_sw_1v8_reg)
 		regulator_put(machine->vdd_sw_1v8_reg);
-		regulator_disable(machine->vdd_sw_1v8_reg);
-		machine->vdd_sw_1v8_reg = 0;
-	}
 
 	snd_soc_unregister_card(card);
 
