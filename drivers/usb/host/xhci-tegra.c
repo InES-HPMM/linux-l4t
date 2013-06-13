@@ -1622,13 +1622,15 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-	u32 ctl2_offset, ctl4_offset;
+	u32 ctl2_offset, ctl4_offset, ctl5_offset;
 	u32 reg;
 
 	ctl2_offset = port ? padregs->iophy_usb3_pad1_ctl2_0 :
 			padregs->iophy_usb3_pad0_ctl2_0;
 	ctl4_offset = port ? padregs->iophy_usb3_pad1_ctl4_0 :
 			padregs->iophy_usb3_pad0_ctl4_0;
+	ctl5_offset = port ? padregs->iophy_misc_pad_p1_ctl5_0 :
+			padregs->iophy_misc_pad_p0_ctl5_0;
 
 	reg = readl(tegra->padctl_base + ctl2_offset);
 	reg &= ~(IOPHY_USB3_RXWANDER | IOPHY_USB3_RXEQ |
@@ -1640,6 +1642,10 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	reg = readl(tegra->padctl_base + ctl4_offset);
 	reg = tegra->pdata->dfe_cntl;
 	writel(reg, tegra->padctl_base + ctl4_offset);
+
+	reg = readl(tegra->padctl_base + ctl5_offset);
+	reg |= RX_QEYE_EN;
+	writel(reg, tegra->padctl_base + ctl5_offset);
 
 	reg = readl(tegra->padctl_base + padregs->ss_port_map_0);
 	reg &= ~(port ? SS_PORT_MAP_P1 : SS_PORT_MAP_P0);
