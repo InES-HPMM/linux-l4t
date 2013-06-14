@@ -1,3 +1,4 @@
+/include/ "denver.dtsi"
 /include/ "tegra124-soc.dtsi"
 
 / {
@@ -16,6 +17,7 @@
 			reg = <0x0 0x0>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0x0 0x8000fff8>;
+			power-states = <&power_states>;
 		};
 
 		cpu@1 {
@@ -24,6 +26,7 @@
 			reg = <0x0 0x1>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0x0 0x8000fff8>;
+			power-states = <&power_states>;
 		};
 	};
 
