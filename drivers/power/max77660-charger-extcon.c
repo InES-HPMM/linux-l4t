@@ -148,7 +148,7 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 		ret = max77660_reg_write(chip->parent,
 				MAX77660_CHG_SLAVE,
 				MAX77660_CHARGER_DCCRNT,
-				MAX77660_DCILMT_CNTL);
+				charger->in_current_lim);
 		if (ret < 0)
 			return ret;
 
