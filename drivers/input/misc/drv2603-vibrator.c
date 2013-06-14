@@ -126,9 +126,15 @@ static int drv2603_haptic_play_effect(struct input_dev *dev, void *data,
 					struct ff_effect *effect)
 {
 	struct drv2603_chip *chip = input_get_drvdata(dev);
+	int magnitude = effect->u.rumble.strong_magnitude;
+	if (!magnitude)
+		magnitude = effect->u.rumble.weak_magnitude;
 
-	if (chip->state == VIBRATOR_OFF) {
+	if (magnitude && chip->state == VIBRATOR_OFF) {
 		chip->state = VIBRATOR_ON;
+		schedule_work(&chip->work);
+	} else if (!magnitude && chip->state == VIBRATOR_ON) {
+		chip->state = VIBRATOR_OFF;
 		schedule_work(&chip->work);
 	}
 	return 0;
