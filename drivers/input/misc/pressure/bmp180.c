@@ -864,7 +864,7 @@ static int bmp280_read(struct bmp_inf *inf)
 	if (err)
 		return err;
 
-	err = bmp180_read_sts(inf, data);
+	err = bmp280_read_sts(inf, data);
 	if (err > 0) {
 		timestamp2 = (timestamp2 - timestamp1) >> 1;
 		timestamp1 += timestamp2;
@@ -882,7 +882,7 @@ static void bmp280_mpu_handler(u8 *data, unsigned int len, s64 ts, void *p_val)
 	inf = (struct bmp_inf *)p_val;
 	if (inf->enable) {
 		err = bmp280_read_sts(inf, data);
-		if (!err)
+		if (err > 0)
 			bmp_report(inf, ts);
 	}
 }
