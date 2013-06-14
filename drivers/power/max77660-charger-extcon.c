@@ -229,7 +229,7 @@ static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 	} else {
 		/* disable charge */
 		/* Clear top level charge */
-		ret = max77660_reg_set_bits(chip->parent, MAX77660_PWR_SLAVE,
+		ret = max77660_reg_clr_bits(chip->parent, MAX77660_PWR_SLAVE,
 			MAX77660_REG_GLOBAL_CFG1, MAX77660_GLBLCNFG1_ENCHGTL);
 		if (ret < 0)
 			return ret;
