@@ -1298,7 +1298,8 @@ static int tegra12_cpu_clk_set_rate(struct clk *c, unsigned long rate)
 	if (c->dvfs && tegra_platform_is_silicon()) {
 		if (!c->dvfs->dvfs_rail)
 			return -ENOSYS;
-		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate < rate)) {
+		else if ((!c->dvfs->dvfs_rail->reg) && (old_rate < rate) &&
+			 (c->boot_rate < rate)) {
 			WARN(1, "Increasing CPU rate while regulator is not"
 				" ready is not allowed\n");
 			return -ENOSYS;
