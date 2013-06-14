@@ -252,6 +252,12 @@ config SYSVIPC_COMPAT
 
 endmenu
 
+menu "Power management options"
+
+source "drivers/cpuidle/Kconfig"
+
+endmenu
+
 source "net/Kconfig"
 
 source "drivers/Kconfig"
