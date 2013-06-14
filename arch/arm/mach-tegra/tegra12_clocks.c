@@ -3018,6 +3018,23 @@ static void tegra12_pllm_clk_init(struct clk *c)
 	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
 		c->state = (val & PMC_PLLP_WB0_OVERRIDE_PLLM_ENABLE) ? ON : OFF;
+
+		/* Tegra12 has bad default value of PMC_PLLM_WB0_OVERRIDE.
+		 * If bootloader does not initialize PLLM, kernel has to
+		 * initialize the register with sane value. */
+		if (c->state == OFF) {
+			val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
+			m = (val & PLLM_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
+			if (m != PLL_FIXED_MDIV(c, input_rate)) {
+				/* Copy DIVM and DIVN from PLLM_BASE */
+				pr_info("%s: Fixing DIVM and DIVN\n", __func__);
+				val = clk_readl(c->reg + PLL_BASE);
+				val &= (PLLM_BASE_DIVM_MASK
+					| PLLM_BASE_DIVN_MASK);
+				pmc_writel(val, PMC_PLLM_WB0_OVERRIDE);
+			}
+		}
+
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
 		p = (val & PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) ? 2 : 1;
 
