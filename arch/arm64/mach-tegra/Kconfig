@@ -7,6 +7,7 @@ config ARCH_TEGRA_13x_SOC
 	depends on !ARCH_TEGRA_14x_SOC
 	select ARCH_TEGRA_HAS_PCIE
 	select CPU_V8
+	select DENVER_CPU
 	select ARM_GIC
 	select ARCH_REQUIRE_GPIOLIB
 	select USB_ARCH_HAS_EHCI if USB_SUPPORT
@@ -33,3 +34,8 @@ config MACH_EXUMA
 	select TEGRA_FPGA_PLATFORM
 	help
 	  Support for NVIDIA Exuma FPGA development platform
+
+config DENVER_CPU
+	bool "Denver CPU"
+	help
+	  Support for NVIDIA Denver CPU
