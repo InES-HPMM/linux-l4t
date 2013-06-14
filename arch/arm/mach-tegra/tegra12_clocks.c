@@ -327,10 +327,14 @@
 #define PLLC_MISC1_DYNRAMP_DONE		(0x1 << 0)
 
 /* PLLM */
-#define PLLM_BASE_DIVP_MASK		(0x1 << PLL_BASE_DIVP_SHIFT)
+#define PLLM_BASE_DIVP_MASK		(0xF << PLL_BASE_DIVP_SHIFT)
 #define PLLM_BASE_DIVN_MASK		(0xFF << PLL_BASE_DIVN_SHIFT)
 #define PLLM_BASE_DIVM_MASK		(0xFF << PLL_BASE_DIVM_SHIFT)
-#define PLLM_PDIV_MAX			1
+
+/* PLLM has 4-bit PDIV, but entry 15 is not allowed in h/w,
+   and s/w usage is limited to 5 */
+#define PLLM_PDIV_MAX			14
+#define PLLM_SW_PDIV_MAX		5
 
 #define PLLM_MISC_FSM_SW_OVERRIDE	(0x1 << 10)
 #define PLLM_MISC_IDDQ			(0x1 << 5)
@@ -345,7 +349,8 @@
 #define PMC_PLLM_WB0_OVERRIDE			0x1dc
 
 #define PMC_PLLM_WB0_OVERRIDE_2			0x2b0
-#define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0x1 << 27)
+#define PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT	27
+#define PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK	(0xF << 27)
 
 /* PLLSS */
 #define PLLSS_CFG(c)	((c)->u.pll.misc1 + 0)
@@ -3012,9 +3017,14 @@ static struct clk_ops tegra_pllxc_ops = {
 
 /* FIXME: pllm suspend/resume */
 
+/* non-monotonic mapping below is not a typo */
+static u8 pllm_p[PLLM_PDIV_MAX + 1] = {
+/* PDIV: 0, 1, 2, 3, 4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14 */
+/* p: */ 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 12, 16, 20, 24, 32 };
+
 static u32 pllm_round_p_to_pdiv(u32 p, u32 *pdiv)
 {
-	if (!p || (p > 2))
+	if (!p || (p > PLLM_SW_PDIV_MAX + 1))
 		return -EINVAL;
 
 	if (pdiv)
@@ -3051,7 +3061,7 @@ static void tegra12_pllm_clk_init(struct clk *c)
 	c->u.pll.vco_min =
 		DIV_ROUND_UP(c->u.pll.vco_min, input_rate) * input_rate;
 	c->min_rate =
-		DIV_ROUND_UP(c->u.pll.vco_min, 2);
+		DIV_ROUND_UP(c->u.pll.vco_min, pllm_p[PLLM_SW_PDIV_MAX]);
 
 	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
@@ -3074,19 +3084,20 @@ static void tegra12_pllm_clk_init(struct clk *c)
 		}
 
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
-		p = (val & PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) ? 2 : 1;
+		p = (val & PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) >>
+			PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT;
 
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
 	} else {
 		val = clk_readl(c->reg + PLL_BASE);
 		c->state = (val & PLL_BASE_ENABLE) ? ON : OFF;
-		p = (val & PLLM_BASE_DIVP_MASK) ? 2 : 1;
+		p = (val & PLLM_BASE_DIVP_MASK) >> PLL_BASE_DIVP_SHIFT;
 	}
 
 	m = (val & PLLM_BASE_DIVM_MASK) >> PLL_BASE_DIVM_SHIFT;
 	BUG_ON(m != PLL_FIXED_MDIV(c, input_rate)
 			 && tegra_platform_is_silicon());
-	c->div = m * p;
+	c->div = m * pllm_p[p];
 	c->mul = (val & PLLM_BASE_DIVN_MASK) >> PLL_BASE_DIVN_SHIFT;
 
 	pllm_set_defaults(c, input_rate);
@@ -3160,8 +3171,8 @@ static int tegra12_pllm_clk_set_rate(struct clk *c, unsigned long rate)
 	val = pmc_readl(PMC_PLLP_WB0_OVERRIDE);
 	if (val & PMC_PLLP_WB0_OVERRIDE_PLLM_OVERRIDE) {
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE_2);
-		val = pdiv ? (val | PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK) :
-			(val & ~PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK);
+		val &= ~PMC_PLLM_WB0_OVERRIDE_2_DIVP_MASK;
+		val |= pdiv << PMC_PLLM_WB0_OVERRIDE_2_DIVP_SHIFT;
 		pmc_writel(val, PMC_PLLM_WB0_OVERRIDE_2);
 
 		val = pmc_readl(PMC_PLLM_WB0_OVERRIDE);
@@ -3175,7 +3186,7 @@ static int tegra12_pllm_clk_set_rate(struct clk *c, unsigned long rate)
 			 PLLM_BASE_DIVP_MASK);
 		val |= (sel->m << PLL_BASE_DIVM_SHIFT) |
 			(sel->n << PLL_BASE_DIVN_SHIFT) |
-			(pdiv ? PLLM_BASE_DIVP_MASK : 0);
+			(pdiv << PLL_BASE_DIVP_SHIFT);
 		clk_writel(val, c->reg + PLL_BASE);
 	}
 
@@ -5788,7 +5799,7 @@ static struct clk tegra_pll_m = {
 		.input_max = 500000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 50 MHz */
-		.vco_min   = 400000000,
+		.vco_min   = 500000000,
 		.vco_max   = 1066000000,
 		.freq_table = tegra_pll_m_freq_table,
 		.lock_delay = 300,
