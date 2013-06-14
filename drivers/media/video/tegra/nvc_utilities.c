@@ -19,6 +19,8 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/string.h>
+#include <linux/export.h>
+
 #include "nvc_utilities.h"
 
 int nvc_imager_parse_caps(struct device_node *np,
@@ -81,6 +83,7 @@ int nvc_imager_parse_caps(struct device_node *np,
 
 	return 0;
 }
+EXPORT_SYMBOL(nvc_imager_parse_caps);
 
 unsigned long nvc_imager_get_mclk(const struct nvc_imager_cap *cap,
 				  const struct nvc_imager_cap *cap_default,
@@ -113,4 +116,4 @@ unsigned long nvc_imager_get_mclk(const struct nvc_imager_cap *cap,
 
 	return mclk_freq_khz * 1000;
 }
-
+EXPORT_SYMBOL(nvc_imager_get_mclk);
