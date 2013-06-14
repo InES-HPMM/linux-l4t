@@ -35,7 +35,7 @@
 #include <linux/regulator/machine.h>
 
 #define AS3722_DEVICE_ID       0x0C
-#define AS3722_REGISTER_COUNT                  0x92
+#define AS3722_MAX_REGISTER                  0xf3
 #define AS3722_NUM_REGULATORS                  18
 #define AS3722_NUM_STEPDOWN_REGULATORS         7
 

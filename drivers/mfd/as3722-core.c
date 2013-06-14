@@ -190,6 +190,66 @@ static int as3722_init(struct as3722 *as3722,
 	return 0;
 }
 
+static bool as3722_readable(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case 0x00 ... 0x06:
+	case 0x08 ... 0x17:
+	case 0x19 ... 0x24:
+	case 0x27 ... 0x42:
+	case 0x46:
+	case 0x48 ... 0x4A:
+	case 0x4D ... 0x55:
+	case 0x57 ... 0x6D:
+	case 0x73 ... 0x7D:
+	case 0x80 ... 0x8A:
+	case 0x90 ... 0x91:
+	case 0xA7 ... 0xF3:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool as3722_writeable(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case 0x00 ... 0x06:
+	case 0x08 ... 0x17:
+	case 0x19 ... 0x20:
+	case 0x22 ... 0x24:
+	case 0x27 ... 0x42:
+	case 0x46:
+	case 0x48 ... 0x4A:
+	case 0x4D ... 0x55:
+	case 0x57 ... 0x6D:
+	case 0x74 ... 0x7D:
+	case 0x80 ... 0x81:
+	case 0x86 ... 0x8A:
+	case 0xA7 ... 0xF3:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool as3722_volatile(struct device *dev, unsigned int reg)
+{
+	return false;
+}
+
+const struct regmap_config as3722_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+
+	.cache_type = REGCACHE_RBTREE,
+
+	.max_register = AS3722_MAX_REGISTER,
+	.readable_reg = as3722_readable,
+	.writeable_reg = as3722_writeable,
+	.volatile_reg = as3722_volatile,
+};
+
 static int as3722_i2c_probe(struct i2c_client *i2c,
 		const struct i2c_device_id *id) {
 	struct as3722 *as3722;
