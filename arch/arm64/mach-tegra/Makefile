@@ -21,5 +21,9 @@ obj-${CONFIG_MACH_EXUMA}              += board-exuma-power.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-sdhci.o
 obj-${CONFIG_MACH_EXUMA}              += board-exuma-sensors.o
 
+ifeq ($(CONFIG_HOTPLUG_CPU),y)
+obj-$(CONFIG_DENVER_CPU)              += hotplug-denver.o
+endif
+
 # To override the "-march=armv7-xxx" in arm/mach-tegra/Makefile
 AFLAGS_sleep.o :=

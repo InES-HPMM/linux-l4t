@@ -40,4 +40,7 @@ static void __init tegra_smp_prepare_cpus(unsigned int max_cpus)
 
 struct smp_operations tegra_smp_ops __initdata = {
 	.smp_prepare_cpus	= tegra_smp_prepare_cpus,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_die		= tegra_cpu_die,
+#endif
 };
