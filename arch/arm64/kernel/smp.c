@@ -125,6 +125,11 @@ static int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 */
 	sev();
 
+	/*
+	 * Wake up secondaries stuck at WFI
+	 */
+	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
+
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
 		if (secondary_holding_pen_release == INVALID_HWID)
