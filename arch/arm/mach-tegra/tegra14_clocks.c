@@ -4290,11 +4290,16 @@ static int emc_bus_set_rate(struct clk *bus, unsigned long rate)
 
 static int tegra14_clk_emc_suspend(struct clk *c, u32 *ctx)
 {
-	unsigned long rate;
+	int mv;
+	unsigned long rate = tegra_lp1bb_emc_min_rate_get();
 	unsigned long old_rate = clk_get_rate_all_locked(c);
 	*ctx = old_rate;
 
-	rate = 204000000; /* FIXME: rate from suspend structure */
+	rate = tegra14_emc_clk_round_rate(c, rate);
+
+	mv = tegra_dvfs_predict_millivolts(c, rate);
+	tegra_lp1bb_suspend_mv_set(mv);
+	pr_debug("EMC voltage requested before suspend: %d\n", mv);
 
 	if (rate == old_rate)
 		return 0;

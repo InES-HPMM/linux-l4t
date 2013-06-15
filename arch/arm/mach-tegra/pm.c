@@ -1723,6 +1723,22 @@ void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max)
 	pdata->lp1bb_emc_rate_max = emc_max;
 }
 
+void tegra_lp1bb_suspend_mv_set(int mv)
+{
+	if (WARN_ON_ONCE(!pdata))
+		return;
+
+	pdata->lp1bb_core_volt_min = mv;
+}
+
+unsigned long tegra_lp1bb_emc_min_rate_get(void)
+{
+	if (WARN_ON_ONCE(!pdata) || !pdata->lp1bb_emc_rate_min)
+		return 204000000;
+
+	return pdata->lp1bb_emc_rate_min;
+}
+
 unsigned long debug_uart_port_base = 0;
 EXPORT_SYMBOL(debug_uart_port_base);
 

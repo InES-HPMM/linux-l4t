@@ -117,6 +117,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 int tegra_is_lp1_suspend_mode(void);
 #endif
 void tegra_lp1bb_suspend_emc_rate(unsigned long emc_min, unsigned long emc_max);
+void tegra_lp1bb_suspend_mv_set(int mv);
+unsigned long tegra_lp1bb_emc_min_rate_get(void);
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #define FLOW_CTRL_CLUSTER_CONTROL \
