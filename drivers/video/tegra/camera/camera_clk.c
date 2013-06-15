@@ -14,8 +14,14 @@
  *
  */
 
+#include <mach/latency_allowance.h>
 #include "camera_clk.h"
 #include "camera_emc.h"
+
+#define BPP_YUV422 16UL
+#define BPP_YUV420_Y 8UL
+#define BPP_YUV420_U 2UL
+#define BPP_YUV420_V 2UL
 
 int tegra_camera_enable_clk(struct tegra_camera *camera)
 {
@@ -38,7 +44,7 @@ int tegra_camera_disable_clk(struct tegra_camera *camera)
 }
 
 int tegra_camera_init_clk(struct tegra_camera *camera,
-		struct clock_data *clock_init)
+	struct clock_data *clock_init)
 {
 	int i;
 	for (i = 0; i < CAMERA_CLK_MAX; i++) {
@@ -212,6 +218,7 @@ int tegra_camera_clk_set_rate(struct tegra_camera *camera)
 			tegra_clk_cfg_ex(camera->clock[CAMERA_PLL_D2_CLK].clk,
 						TEGRA_CLK_PLLD_DSI_OUT_ENB, 0);
 		}
+		tegra_camera_set_latency_allowance(camera, parent_div_rate_pre);
 #endif
 	}
 
@@ -242,4 +249,29 @@ unsigned int tegra_camera_get_max_bw(struct tegra_camera *camera)
 	dev_dbg(camera->dev, "%s: max_bw = %lu", __func__, max_bw);
 
 	return (unsigned int)max_bw;
+}
+
+int tegra_camera_set_latency_allowance(struct tegra_camera *camera,
+	unsigned long vi_freq)
+{
+	/*
+	 * Assumption is that preview port has YUV422 and video port has
+	 * YUV420. Preview port may have Bayer format which has 10 bit per
+	 * pixel. Even if preview port has Bayer format, setting latency
+	 * allowance with YUV422 format should be OK because BPP of YUV422 is
+	 * higher than BPP of Bayer.
+	 * When this function gets called, video format is not programmed yet.
+	 * That's why we have to assume video format here rather than reading
+	 * them from registers.
+	 */
+	tegra_set_latency_allowance(TEGRA_LA_VI_WSB,
+		((vi_freq / 1000000UL) * BPP_YUV422) / 8UL);
+	tegra_set_latency_allowance(TEGRA_LA_VI_WU,
+		((vi_freq / 1000000UL) * BPP_YUV420_U) / 8UL);
+	tegra_set_latency_allowance(TEGRA_LA_VI_WV,
+		((vi_freq / 1000000UL) * BPP_YUV420_V) / 8UL);
+	tegra_set_latency_allowance(TEGRA_LA_VI_WY,
+		((vi_freq / 1000000UL) * BPP_YUV420_Y) / 8UL);
+
+	return 0;
 }
