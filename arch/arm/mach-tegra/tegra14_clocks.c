@@ -35,6 +35,7 @@
 #include <mach/edp.h>
 #include <mach/hardware.h>
 #include <mach/mc.h>
+#include <mach/tegra_bb.h>
 
 #include "clock.h"
 #include "fuse.h"
@@ -4294,6 +4295,15 @@ static int tegra14_clk_emc_suspend(struct clk *c, u32 *ctx)
 	unsigned long rate = tegra_lp1bb_emc_min_rate_get();
 	unsigned long old_rate = clk_get_rate_all_locked(c);
 	*ctx = old_rate;
+
+	if (tegra_bb_check_bb2ap_ipc()) {
+		/* pending BB interrupt - keep EMC rate, request max voltage */
+		mv = tegra_dvfs_rail_get_nominal_millivolts(tegra_core_rail);
+		tegra_lp1bb_suspend_mv_set(mv);
+		pr_debug("EMC suspend: BB IPC pending: voltage %d rate %lu\n",
+			 mv, old_rate);
+		return 0;
+	}
 
 	rate = tegra14_emc_clk_round_rate(c, rate);
 
