@@ -870,6 +870,22 @@ static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
 		}
 		writel(reg, tegra->padctl_base +
 			padregs->iophy_misc_pad_p1_ctl3_0);
+
+		/* SATA lane also if USB3_SS port1 mapped to it */
+		if (XUSB_DEVICE_ID_T124 == tegra->device_id &&
+				tegra->bdata->lane_owner & BIT(0)) {
+			reg = readl(tegra->padctl_base +
+				padregs->iophy_misc_pad_s0_ctl3_0);
+			if (enable) {
+				reg &= ~RX_IDLE_MODE;
+				reg |= RX_IDLE_MODE_OVRD;
+			} else {
+				reg |= RX_IDLE_MODE;
+				reg &= ~RX_IDLE_MODE_OVRD;
+			}
+			writel(reg, tegra->padctl_base +
+				padregs->iophy_misc_pad_s0_ctl3_0);
+		}
 	}
 }
 
@@ -1091,7 +1107,10 @@ static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 
 	xhci_info(xhci, "saving dfe_cntl and ctle context for port %d\n", port);
 
-	offset = port ? padregs->iophy_misc_pad_p1_ctl6_0 :
+	if (port == 3 /* SATA pad */)
+		offset = padregs->iophy_misc_pad_s0_ctl6_0;
+	else
+		offset = port ? padregs->iophy_misc_pad_p1_ctl6_0 :
 				padregs->iophy_misc_pad_p0_ctl6_0;
 
 	/* save tap1_val[] for the port for dfe_cntl */
@@ -1144,10 +1163,15 @@ static void tegra_xhci_restore_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 	if (tegra->dfe_ctle_ctx_saved == false)
 		return;
 
-	ctl4_offset = port ? padregs->iophy_usb3_pad1_ctl4_0 :
+	if (port == 3 /* SATA pad */) {
+		ctl4_offset = padregs->iophy_misc_pad_s0_ctl4_0;
+		ctl2_offset = padregs->iophy_misc_pad_s0_ctl2_0;
+	} else {
+		ctl4_offset = port ? padregs->iophy_usb3_pad1_ctl4_0 :
 				padregs->iophy_usb3_pad0_ctl4_0;
-	ctl2_offset = port ? padregs->iophy_usb3_pad1_ctl2_0 :
+		ctl2_offset = port ? padregs->iophy_usb3_pad1_ctl2_0 :
 				padregs->iophy_usb3_pad0_ctl2_0;
+	}
 
 	xhci_info(xhci, "restoring dfe_cntl/ctle context of port %d\n", port);
 
@@ -1328,6 +1352,10 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 	writel(reg, tegra->padctl_base + padregs->ss_port_map_0);
 
 	tegra_xhci_restore_dfe_ctle_context(tegra, port);
+	/* SATA also if USB3_SS port1 mapped to it */
+	if ((port == 1) && (XUSB_DEVICE_ID_T124 == tegra->device_id) &&
+			(tegra->bdata->lane_owner & BIT(0)))
+		tegra_xhci_restore_dfe_ctle_context(tegra, 3);
 }
 
 /* This function assigns the USB ports to the controllers,
@@ -1408,7 +1436,21 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 		reg |= RX_IDLE_MODE_OVRD;
 		writel(reg, tegra->padctl_base +
 			padregs->iophy_misc_pad_p1_ctl3_0);
+
+		/* SATA lane also if USB3_SS port1 mapped to it but unused */
+		if (XUSB_DEVICE_ID_T124 == tegra->device_id &&
+				tegra->bdata->lane_owner & BIT(0)) {
+			reg = readl(tegra->padctl_base +
+				padregs->iophy_misc_pad_s0_ctl3_0);
+			reg &= ~RX_IDLE_MODE;
+			reg |= RX_IDLE_MODE_OVRD;
+			writel(reg, tegra->padctl_base +
+				padregs->iophy_misc_pad_s0_ctl3_0);
+		}
 	}
+	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+		usb3_phy_pad_enable(tegra->bdata->lane_owner);
+
 }
 
 /* This function read XUSB registers and stores in device context */
@@ -2287,6 +2329,14 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 	case MBOX_CMD_SAVE_DFE_CTLE_CTX:
 		tegra_xhci_save_dfe_ctle_context(tegra, tegra->cmd_data);
 		tegra_xhci_restore_dfe_ctle_context(tegra, tegra->cmd_data);
+		/* SATA lane also if USB3_SS port1 mapped to it */
+		if (tegra->cmd_data == 0x1 &&
+			XUSB_DEVICE_ID_T124 == tegra->device_id &&
+				tegra->bdata->lane_owner & BIT(0)) {
+			tegra_xhci_save_dfe_ctle_context(tegra, 3);
+			tegra_xhci_restore_dfe_ctle_context(tegra, 3);
+		}
+
 		sw_resp |= (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
 		goto send_sw_response;
 	case MBOX_CMD_ACK:

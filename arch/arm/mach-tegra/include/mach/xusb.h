@@ -52,6 +52,7 @@ struct tegra_xusb_board_data {
 	 */
 	u8	ss_portmap;
 	u8	ulpicap;
+	u8	lane_owner;
 };
 
 struct tegra_xusb_platform_data {

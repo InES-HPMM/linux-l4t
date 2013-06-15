@@ -670,6 +670,8 @@ static void ardbeg_xusb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
 
+	xusb_bdata.lane_owner = (u8) tegra_get_lane_owner_info();
+
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 		xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P0);
 

@@ -107,6 +107,71 @@ out:
 }
 EXPORT_SYMBOL_GPL(utmi_phy_pad_disable);
 
+int usb3_phy_pad_enable(u8 lane_owner)
+{
+	unsigned long val, flags;
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	/*
+	 * program ownership of lanes owned by USB3 based on odmdata[28:30]
+	 * odmdata[28] = 0 (SATA lane owner = SATA),
+	 * odmdata[28] = 1 (SATA lane owner = USB3_SS port1)
+	 * odmdata[29] = 0 (PCIe lane1 owner = PCIe),
+	 * odmdata[29] = 1 (PCIe lane1 owner = USB3_SS port1)
+	 * odmdata[30] = 0 (PCIe lane0 owner = PCIe),
+	 * odmdata[30] = 1 (PCIe lane0 owner = USB3_SS port0)
+	 * FIXME: Check any GPIO settings needed ?
+	 */
+	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
+	/* USB3_SS port1 can either be mapped to SATA lane or PCIe lane1 */
+	if (lane_owner & BIT(0)) {
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_SATA_PAD_LANE0;
+		val |= XUSB_PADCTL_USB3_PAD_MUX_SATA_PAD_LANE0_OWNER_USB3_SS;
+	} else if (lane_owner & BIT(1)) {
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1;
+		val |= XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1_OWNER_USB3_SS;
+	}
+	/* USB_SS port0 is alwasy mapped to PCIe lane0 */
+	if (lane_owner & BIT(2)) {
+		val &= ~XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0;
+		val |= XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0_OWNER_USB3_SS;
+	}
+	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
+
+	/* Bring enabled lane out of IDDQ */
+	val = readl(pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
+	if (lane_owner & BIT(0))
+		val |= XUSB_PADCTL_USB3_PAD_MUX_FORCE_SATA_PAD_IDDQ_DISABLE_MASK0;
+	else if (lane_owner & BIT(1))
+		val |= XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK1;
+	if (lane_owner & BIT(2))
+		val |= XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0;
+	writel(val, pad_base + XUSB_PADCTL_USB3_PAD_MUX_0);
+
+	udelay(1);
+
+	/* clear AUX_MUX_LP0 related bits in ELPG_PROGRAM */
+	val = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	udelay(100);
+
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN_EARLY;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	udelay(100);
+
+	val &= ~XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN;
+	writel(val, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(usb3_phy_pad_enable);
+
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 int pcie_phy_pad_enable(int lane_owner)
 {
