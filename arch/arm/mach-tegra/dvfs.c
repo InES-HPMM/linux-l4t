@@ -107,6 +107,8 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 		rails[i]->new_millivolts = rails[i]->nominal_millivolts;
 		if (!rails[i]->step)
 			rails[i]->step = rails[i]->max_millivolts;
+		if (!rails[i]->step_up)
+			rails[i]->step_up = rails[i]->step;
 
 		list_add_tail(&rails[i]->node, &dvfs_rail_list);
 
@@ -231,7 +233,7 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 {
 	int ret = 0;
 	struct dvfs_relationship *rel;
-	int step = (millivolts > rail->millivolts) ? rail->step : -rail->step;
+	int step, offset;
 	int i;
 	int steps;
 	bool jmp_to_zero;
@@ -241,6 +243,14 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 			return 0;
 		else
 			return -EINVAL;
+	}
+
+	if (millivolts > rail->millivolts) {
+		step = rail->step_up;
+		offset = step;
+	} else {
+		step = rail->step;
+		offset = -step;
 	}
 
 	/*
@@ -260,12 +270,12 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 	jmp_to_zero = rail->jmp_to_zero &&
 			((millivolts == 0) || (rail->millivolts == 0));
 	steps = jmp_to_zero ? 1 :
-		DIV_ROUND_UP(abs(millivolts - rail->millivolts), rail->step);
+		DIV_ROUND_UP(abs(millivolts - rail->millivolts), step);
 
 	for (i = 0; i < steps; i++) {
 		if (!jmp_to_zero &&
-		    (abs(millivolts - rail->millivolts) > rail->step))
-			rail->new_millivolts = rail->millivolts + step;
+		    (abs(millivolts - rail->millivolts) > step))
+			rail->new_millivolts = rail->millivolts + offset;
 		else
 			rail->new_millivolts = millivolts;
 
