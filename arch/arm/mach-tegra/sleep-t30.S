@@ -472,6 +472,12 @@ resume_lp1:
 	str	r4, [r0, #CLK_RESET_CLK_ENB_W_SET]
 #endif
 
+#if !defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	/* re-enable cl_dvfs logic clock (if dfll running, it's in open loop) */
+	mov	r4, #(1 << 27)
+	str	r4, [r0, #CLK_RESET_CLK_ENB_W_SET]
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
 defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	add	r5, pc, #tegra3_sdram_pad_save-(.+8)	@ r5 --> saved data
