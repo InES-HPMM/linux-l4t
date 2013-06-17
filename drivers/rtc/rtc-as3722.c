@@ -95,10 +95,11 @@ static int as3722_rtc_settime(struct device *dev, struct rtc_time *tm)
 			+ (tm->tm_mday % 10);
 	as_time_array[4] = ((tm->tm_mon / 10) << 4)
 			+ (tm->tm_mon % 10);
-	if (tm->tm_year > AS3722_RTC_START_YEAR)
-		as_time_array[5] = (((tm->tm_year - AS3722_RTC_START_YEAR)
-				/ 10) << 4)
-				+ ((tm->tm_year - AS3722_RTC_START_YEAR) % 10);
+	if (tm->tm_year >= (AS3722_RTC_START_YEAR - 1900))
+		as_time_array[5] = (((tm->tm_year
+				- (AS3722_RTC_START_YEAR - 1900)) / 10) << 4)
+				+ ((tm->tm_year
+				- (AS3722_RTC_START_YEAR - 1900)) % 10);
 	else
 		return -1;
 
@@ -156,11 +157,11 @@ static int as3722_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 			+ (alrm->time.tm_mday % 10);
 	as_time_array[4] = ((alrm->time.tm_mon / 10) << 4)
 			+ (alrm->time.tm_mon % 10);
-	if (alrm->time.tm_year > AS3722_RTC_START_YEAR)
-		as_time_array[5] =
-			(((alrm->time.tm_year - AS3722_RTC_START_YEAR)
-			/ 10) << 4)
-			+ ((alrm->time.tm_year - AS3722_RTC_START_YEAR) % 10);
+	if (alrm->time.tm_year >= (AS3722_RTC_START_YEAR - 1900))
+		as_time_array[5] = (((alrm->time.tm_year
+				- (AS3722_RTC_START_YEAR - 1900)) / 10) << 4)
+				+ ((alrm->time.tm_year
+				- (AS3722_RTC_START_YEAR - 1900)) % 10);
 	else
 		return -1;
 
