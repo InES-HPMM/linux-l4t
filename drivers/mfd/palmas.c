@@ -31,6 +31,15 @@
 			PALMAS_EXT_CONTROL_ENABLE2 |	\
 			PALMAS_EXT_CONTROL_NSLEEP)
 
+static const struct resource charger_resource[] = {
+	{
+		.name = "PALMAS-CHARGER",
+		.start = PALMAS_CHARGER_IRQ,
+		.end = PALMAS_CHARGER_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 enum palmas_ids {
 	PALMAS_PIN_MUX_ID = 0,
 	PALMAS_PMIC_ID,
@@ -140,6 +149,8 @@ static const struct mfd_cell palmas_children[] = {
 	{
 		.name = "palmas-charger",
 		.id = PALMAS_CHARGER_ID,
+		.num_resources = ARRAY_SIZE(charger_resource),
+		.resources = charger_resource,
 	},
 	{
 		.name = "palmas-sim",
