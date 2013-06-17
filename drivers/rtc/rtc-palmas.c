@@ -196,7 +196,7 @@ static int palmas_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	struct palmas *palmas = dev_get_drvdata(dev->parent);
 	int ret;
 
-	ret = palmas_rtc_bulk_read(palmas, PALMAS_SECONDS_REG,
+	ret = palmas_rtc_bulk_read(palmas, PALMAS_ALARM_SECONDS_REG,
 		alarm_data, NUM_TIME_REGS);
 	if (ret < 0) {
 		dev_err(dev, "rtc_read_alarm error %d\n", ret);
