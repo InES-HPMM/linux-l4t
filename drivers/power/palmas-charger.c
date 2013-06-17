@@ -1,5 +1,5 @@
 /*
- * palmas-charger.c -- BQ24190/BQ24192/BQ24192i/BQ24193 Charger driver
+ * palmas-charger.c -- Palmas TPS80036 Charger driver
  *
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -30,7 +30,6 @@
 #include <linux/sched.h>
 #include <linux/time.h>
 #include <linux/timer.h>
-#include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -626,7 +625,6 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 		return 0;
 	}
 
-	palmas_chip->gpio_otg_iusb = pdata->vbus_pdata->gpio_otg_iusb;
 	palmas_chip->vbus_reg_desc.name = "palmas-vbus";
 	palmas_chip->vbus_reg_desc.ops = &palmas_vbus_ops;
 	palmas_chip->vbus_reg_desc.type = REGULATOR_VOLTAGE;
@@ -651,15 +649,14 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 					REGULATOR_CHANGE_STATUS |
 					REGULATOR_CHANGE_VOLTAGE;
 
-	if (gpio_is_valid(palmas_chip->gpio_otg_iusb)) {
-		ret = gpio_request_one(palmas_chip->gpio_otg_iusb,
-				GPIOF_OUT_INIT_HIGH,
-				dev_name(palmas_chip->dev));
-		if (ret < 0) {
-			dev_err(palmas_chip->dev,
-				"gpio request failed  %d\n", ret);
+	/* Enable boost mode */
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_PMU_CONTROL_BASE,
+			PALMAS_USB_CHGCTL2, PALMAS_USB_CHGCTL2_BOOST_EN,
+			PALMAS_USB_CHGCTL2_BOOST_EN);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"USB_CHGCTL2 update failed: %d\n", ret);
 			return ret;
-		}
 	}
 
 	/* Register the regulators */
@@ -673,7 +670,7 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 		ret = PTR_ERR(palmas_chip->vbus_rdev);
 		dev_err(palmas_chip->dev,
 			"VBUS regulator register failed %d\n", ret);
-		goto scrub;
+		return ret;
 	}
 
 	/* Disable the VBUS regulator and enable charging */
@@ -687,9 +684,6 @@ int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 scrub_reg:
 	regulator_unregister(palmas_chip->vbus_rdev);
 	palmas_chip->vbus_rdev = NULL;
-scrub:
-	if (gpio_is_valid(palmas_chip->gpio_otg_iusb))
-		gpio_free(palmas_chip->gpio_otg_iusb);
 	return ret;
 }
 
