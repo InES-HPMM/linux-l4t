@@ -60,6 +60,7 @@ struct tegra_utmi_config {
 	u8 xcvr_use_lsb;
 	u8 xcvr_use_fuses;
 	u8 vbus_oc_map;
+	unsigned char xcvr_hsslew_lsb:2;
 };
 
 /**
