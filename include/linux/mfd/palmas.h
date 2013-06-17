@@ -280,7 +280,6 @@ struct palmas_charger_chip {
 	struct device                   *dev;
 	struct regmap                   *regmap;
 	int                             irq;
-	int                             gpio_otg_iusb;
 	int                             wdt_refresh_timeout;
 	int                             wdt_time_sec;
 
@@ -512,7 +511,6 @@ struct palmas_clk_platform_data {
 };
 
 struct palmas_vbus_platform_data {
-	int gpio_otg_iusb;
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 };
