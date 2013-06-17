@@ -207,7 +207,6 @@ int __init bonaire_suspend_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
 
 #define COSIM_SHUTDOWN_REG         0x538f0ffc
 
@@ -224,4 +223,3 @@ int __init bonaire_power_off_init(void)
 	pm_power_off = bonaire_power_off;
 	return 0;
 }
-#endif

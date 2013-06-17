@@ -48,6 +48,7 @@
 #include <mach/powergate.h>
 #include <mach/pci.h>
 #include <mach/tegra_usb_pad_ctrl.h>
+#include <mach/hardware.h>
 
 #include "board.h"
 #include "iomap.h"
@@ -1012,41 +1013,45 @@ static int tegra_pcie_enable_controller(void)
 	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	/* FPGA supports only x2_x1 bar config */
-	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
-#else
-	/* Extract 2 upper bits from odmdata[28:30] and */
-	/* configure T124 pcie lanes in X2_X1/X4_X1 config based on them */
-	lane_owner = tegra_get_lane_owner_info() >> 1;
-	if (lane_owner == PCIE_LANES_X2_X1)
+	if (tegra_platform_is_fpga()) {
+		/* FPGA supports only x2_x1 bar config */
 		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
-	else {
+	} else {
+		/* Extract 2 upper bits from odmdata[28:30] and configure */
+		/* T124 pcie lanes in X2_X1/X4_X1 config based on them */
+		lane_owner = tegra_get_lane_owner_info() >> 1;
+		if (lane_owner == PCIE_LANES_X2_X1)
+			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
+		else {
 #define BOARD_PM359	0x0167
-		int err = 0;
-		struct board_info board_info;
+			int err = 0;
+			struct board_info board_info;
 
-		tegra_get_board_info(&board_info);
-		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
-		if ((board_info.board_id == BOARD_PM359) &&
-			(lane_owner == PCIE_LANES_X4_X1)) {
-			/* X1 works only on ERS-S board with X4_X1 config */
-			val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
-			/* enable x1 slot for ERS-S if all lanes are config'd for PCIe */
-			err = gpio_request(tegra_pcie.plat_data->gpio_x1_slot,
-					"pcie_x1_slot");
-			if (err < 0)
-				pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
-					__func__, err);
-			err = gpio_direction_output(
+			tegra_get_board_info(&board_info);
+			val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
+			if ((board_info.board_id == BOARD_PM359) &&
+					(lane_owner == PCIE_LANES_X4_X1)) {
+				/* X1 works only on ERS-S board
+				   with X4_X1 config */
+				val &= ~AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE;
+				/* enable x1 slot for ERS-S if all lanes
+				   are config'd for PCIe */
+				err = gpio_request(
+				      tegra_pcie.plat_data->gpio_x1_slot,
+				      "pcie_x1_slot");
+				if (err < 0)
+					pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
+							__func__, err);
+				err = gpio_direction_output(
 					tegra_pcie.plat_data->gpio_x1_slot, 1);
-			if (err < 0)
-				pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
-					__func__, err);
-			gpio_set_value_cansleep(tegra_pcie.plat_data->gpio_x1_slot, 1);
+				if (err < 0)
+					pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
+							__func__, err);
+				gpio_set_value_cansleep(
+					tegra_pcie.plat_data->gpio_x1_slot, 1);
+			}
 		}
 	}
-#endif
 #else
 	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
 	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
@@ -1058,65 +1063,67 @@ static int tegra_pcie_enable_controller(void)
 	afi_writel(val, AFI_FUSE);
 
 	timeout = 0;
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
+	if (!tegra_platform_is_fpga()) {
 #ifndef CONFIG_ARCH_TEGRA_12x_SOC
-	/* override IDDQ to 1 on all 4 lanes */
-	val = pads_readl(PADS_CTL) | PADS_CTL_IDDQ_1L;
-	pads_writel(val, PADS_CTL);
+		/* override IDDQ to 1 on all 4 lanes */
+		val = pads_readl(PADS_CTL) | PADS_CTL_IDDQ_1L;
+		pads_writel(val, PADS_CTL);
 
-	/*
-	 * set up PHY PLL inputs select PLLE output as refclock,
-	 * set pll TX clock ref to div10 (not div5)
-	 * set pll ref clock buf to enable.
-	 */
-	val = pads_readl(PADS_PLL_CTL);
-	val &= ~(PADS_PLL_CTL_REFCLK_MASK | PADS_PLL_CTL_TXCLKREF_MASK);
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML | PADS_PLL_CTL_TXCLKREF_DIV10);
-#else
-	val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML | PADS_PLL_CTL_TXCLKREF_BUF_EN);
-#endif
-	val |= PADS_PLL_CTL_RST_B4SM;
-	pads_writel(val, PADS_PLL_CTL);
-
-	/* put PLL into reset  */
-	val = pads_readl(PADS_PLL_CTL) & ~PADS_PLL_CTL_RST_B4SM;
-	pads_writel(val, PADS_PLL_CTL);
-
-	/* take PLL out of reset  */
-	val = pads_readl(PADS_PLL_CTL) | PADS_PLL_CTL_RST_B4SM;
-	pads_writel(val, PADS_PLL_CTL);
-
-	/*
-	 * Hack, set the clock voltage to the DEFAULT provided by hw folks.
-	 * This doesn't exist in the documentation
-	 */
-	pads_writel(0xfa5cfa5c, 0xc8);
-	pads_writel(0x0000FA5C, PADS_REFCLK_CFG1);
-
-	/* Wait for the PLL to lock */
-	timeout = 300;
-	do {
+		/*
+		 * set up PHY PLL inputs select PLLE output as refclock,
+		 * set pll TX clock ref to div10 (not div5)
+		 * set pll ref clock buf to enable.
+		 */
 		val = pads_readl(PADS_PLL_CTL);
-		usleep_range(1000, 1000);
-		if (--timeout == 0) {
-			pr_err("Tegra PCIe error: timeout waiting for PLL\n");
-			return -EBUSY;
-		}
-	} while (!(val & PADS_PLL_CTL_LOCKDET));
-
-	/* turn off IDDQ override */
-	val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
-	pads_writel(val, PADS_CTL);
+		val &= ~(PADS_PLL_CTL_REFCLK_MASK | PADS_PLL_CTL_TXCLKREF_MASK);
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+		val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML
+				 | PADS_PLL_CTL_TXCLKREF_DIV10);
 #else
-	/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
-	ret = pcie_phy_pad_enable(lane_owner);
-	if (ret) {
-		pr_err("%s unable to initalize pads\n", __func__);
-		return ret;
+		val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML
+				 | PADS_PLL_CTL_TXCLKREF_BUF_EN);
+#endif
+		val |= PADS_PLL_CTL_RST_B4SM;
+		pads_writel(val, PADS_PLL_CTL);
+
+		/* put PLL into reset  */
+		val = pads_readl(PADS_PLL_CTL) & ~PADS_PLL_CTL_RST_B4SM;
+		pads_writel(val, PADS_PLL_CTL);
+
+		/* take PLL out of reset  */
+		val = pads_readl(PADS_PLL_CTL) | PADS_PLL_CTL_RST_B4SM;
+		pads_writel(val, PADS_PLL_CTL);
+
+		/*
+		 * Hack, set the clock voltage to the DEFAULT provided
+		 * by hw folks. This doesn't exist in the documentation
+		 */
+		pads_writel(0xfa5cfa5c, 0xc8);
+		pads_writel(0x0000FA5C, PADS_REFCLK_CFG1);
+
+		/* Wait for the PLL to lock */
+		timeout = 300;
+		do {
+			val = pads_readl(PADS_PLL_CTL);
+			usleep_range(1000, 1000);
+			if (--timeout == 0) {
+				pr_err("Tegra PCIe error: timeout waiting for PLL\n");
+				return -EBUSY;
+			}
+		} while (!(val & PADS_PLL_CTL_LOCKDET));
+
+		/* turn off IDDQ override */
+		val = pads_readl(PADS_CTL) & ~PADS_CTL_IDDQ_1L;
+		pads_writel(val, PADS_CTL);
+#else
+		/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
+		ret = pcie_phy_pad_enable(lane_owner);
+		if (ret) {
+			pr_err("%s unable to initalize pads\n", __func__);
+			return ret;
+		}
+#endif
 	}
-#endif
-#endif
 
 	/* Take the PCIe interface module out of reset */
 	tegra_periph_reset_deassert(tegra_pcie.pcie_xclk);
@@ -1146,7 +1153,6 @@ static int tegra_pcie_enable_controller(void)
 	return ret;
 }
 
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
 static int tegra_pcie_enable_regulators(void)
 {
 	PR_FUNC_LINE;
@@ -1236,7 +1242,6 @@ static int tegra_pcie_disable_regulators(void)
 err_exit:
 	return err;
 }
-#endif
 
 static int tegra_pcie_power_regate(void)
 {
@@ -1280,7 +1285,6 @@ void tegra_pcie_unmap_resources(void)
 	}
 }
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 static bool tegra_pcie_is_fpga_pcie(void)
 {
 #define CLK_RST_BOND_OUT_REG		0x60006078
@@ -1315,17 +1319,14 @@ static int tegra_pcie_fpga_phy_init(void)
 
 	return 0;
 }
-#endif
 
 static void tegra_pcie_pme_turnoff(void)
 {
 	unsigned int data;
 
 	PR_FUNC_LINE;
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	if (!tegra_pcie_is_fpga_pcie())
+	if (tegra_platform_is_fpga() && !tegra_pcie_is_fpga_pcie())
 		return;
-#endif
 	data = afi_readl(AFI_PCIE_PME);
 	data |= AFI_PCIE_PME_TURN_OFF;
 	afi_writel(data, AFI_PCIE_PME);
@@ -1344,13 +1345,13 @@ static int tegra_pcie_power_on(void)
 		goto err_exit;
 	}
 	tegra_pcie.pcie_power_enabled = 1;
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
-	err = tegra_pcie_enable_regulators();
-	if (err) {
-		pr_err("PCIE: Failed to enable regulators\n");
-		goto err_exit;
+	if (!tegra_platform_is_fpga()) {
+		err = tegra_pcie_enable_regulators();
+		if (err) {
+			pr_err("PCIE: Failed to enable regulators\n");
+			goto err_exit;
+		}
 	}
-#endif
 	err = tegra_pcie_power_regate();
 	if (err) {
 		pr_err("PCIE: Failed to power regate\n");
@@ -1361,13 +1362,13 @@ static int tegra_pcie_power_on(void)
 		pr_err("PCIE: Failed to map resources\n");
 		goto err_exit;
 	}
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	err = tegra_pcie_fpga_phy_init();
-	if (err) {
-		pr_err("PCIE: Failed to initialize FPGA Phy\n");
-		goto err_exit;
+	if (tegra_platform_is_fpga()) {
+		err = tegra_pcie_fpga_phy_init();
+		if (err) {
+			pr_err("PCIE: Failed to initialize FPGA Phy\n");
+			goto err_exit;
+		}
 	}
-#endif
 
 err_exit:
 	return err;
@@ -1394,11 +1395,11 @@ static int tegra_pcie_power_off(void)
 	if (err)
 		goto err_exit;
 
-#ifndef CONFIG_TEGRA_FPGA_PLATFORM
-	err = tegra_pcie_disable_regulators();
-	if (err)
-		goto err_exit;
-#endif
+	if (!tegra_platform_is_fpga()) {
+		err = tegra_pcie_disable_regulators();
+		if (err)
+			goto err_exit;
+	}
 	tegra_pcie.pcie_power_enabled = 0;
 err_exit:
 	return err;
@@ -1901,6 +1902,8 @@ static struct platform_driver __initdata tegra_pcie_driver = {
 
 static int __init tegra_pcie_init_driver(void)
 {
+	if (tegra_cpu_is_asim())
+		return 0;
 	return platform_driver_register(&tegra_pcie_driver);
 }
 

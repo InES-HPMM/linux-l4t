@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-bonaire.c
  *
- * Copyright (c) 2013, NVIDIA Corporation.
+ * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -589,17 +589,14 @@ static void __init tegra_bonaire_init(void)
 	tegra_soc_device_init("bonaire");
 	bonaire_apbdma_init();
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	if (tegra_platform_is_qt())
+	if (tegra_platform_is_fpga() && tegra_platform_is_qt())
 		debug_uart_platform_data[0].uartclk =
 						tegra_clk_measure_input_freq();
-#endif
 
 	platform_add_devices(bonaire_devices, ARRAY_SIZE(bonaire_devices));
 
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	bonaire_power_off_init();
-#endif
+	if (tegra_cpu_is_asim())
+		bonaire_power_off_init();
 	tegra_io_dpd_init();
 	bonaire_hs_uart_init();
 	bonaire_sdhci_init();

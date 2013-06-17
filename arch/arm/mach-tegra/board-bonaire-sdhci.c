@@ -29,7 +29,7 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/sdhci.h>
-
+#include <mach/hardware.h>
 #include "gpio-names.h"
 #include "board.h"
 
@@ -92,11 +92,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.mmc_data = {
-		.built_in = 1,
-	}
-#endif
 /*	.max_clk = 12000000, */
 };
 
@@ -104,11 +99,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.mmc_data = {
-		.built_in = 1,
-	}
-#endif
 /*	.max_clk = 12000000, */
 };
 
@@ -116,11 +106,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = BONAIRE_SD_CD,
 	.wp_gpio = BONAIRE_SD_WP,
 	.power_gpio = -1,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.mmc_data = {
-		.built_in = 1,
-	}
-#endif
 /*	.max_clk = 12000000, */
 };
 
@@ -129,11 +114,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 1,
-#ifdef CONFIG_TEGRA_SIMULATION_PLATFORM
-	.mmc_data = {
-		.built_in = 1,
-	}
-#endif
 /*	.max_clk = 12000000, */
 };
 
@@ -179,6 +159,12 @@ static struct platform_device tegra_sdhci_device3 = {
 
 int __init bonaire_sdhci_init(void)
 {
+	if (tegra_cpu_is_asim()) {
+		tegra_sdhci_platform_data0.mmc_data.built_in = 1;
+		tegra_sdhci_platform_data1.mmc_data.built_in = 1;
+		tegra_sdhci_platform_data2.mmc_data.built_in = 1;
+		tegra_sdhci_platform_data3.mmc_data.built_in = 1;
+	}
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 

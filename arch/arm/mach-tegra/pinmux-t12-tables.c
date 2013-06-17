@@ -32,7 +32,7 @@
 
 #include <mach/pinmux.h>
 #include <mach/pinmux-t12.h>
-
+#include <mach/hardware.h>
 #include "gpio-names.h"
 #include "iomap.h"
 
@@ -144,9 +144,8 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 		.ioreset_bit = 8,				\
 	}
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 /* !!!FIXME!!! FILL IN fSafe COLUMN IN TABLE ....... */
-#define PINGROUPS	\
+#define PINGROUPS_FPGA	\
 	/*       NAME		  GPIO		VDD	    f0		f1          f2          f3          fSafe       io	reg */\
 	PINGROUP(ULPI_DATA0,	  PO1,		BB,	    SPI3,	HSI,	    UARTA,	ULPI,	    RSVD,	INPUT,	0x3000),\
 	PINGROUP(ULPI_DATA1,	  PO2,		BB,	    SPI3,	HSI,	    UARTA,	ULPI,	    RSVD,	INPUT,	0x3004),\
@@ -323,7 +322,6 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(USB_VBUS_EN0,	  PN4,		SYS,        RSVD,	RSVD,	    RSVD,	RSVD,	    RSVD,	INPUT,	0x33f4),\
 	PINGROUP(USB_VBUS_EN1,	  PM5,		SYS,        RSVD,	RSVD,	    RSVD,	RSVD,	    RSVD,	INPUT,	0x33f8),\
 
-#else
 
 /* !!!FIXME!!! FILL IN fSafe COLUMN IN TABLE ....... */
 #define PINGROUPS	\
@@ -520,13 +518,16 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 	PINGROUP(GPIO_PFF2,	PFF2,	PEXCTL,	SATA,		RSVD1,		RSVD2,		RSVD3,		RSVD1,		INPUT,	0x3418),\
 	PINGROUP(DP_HPD,	PFF0,	HV,	DP,		RSVD1,		RSVD2,		RSVD3,		RSVD,		INPUT,	0x3430),\
 
-#endif
 
-const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
+const struct tegra_pingroup_desc soc_pingroups_fpga[TEGRA_MAX_PINGROUP] = {
+	PINGROUPS_FPGA
+};
+
+const struct tegra_pingroup_desc soc_pingroups_non_fpga[TEGRA_MAX_PINGROUP] = {
 	PINGROUPS
 };
 
-
+const struct tegra_pingroup_desc *tegra_soc_pingroups;
 #undef PINGROUP
 
 /* HACK to workaround -1 index (for INVALID index) */
@@ -536,11 +537,13 @@ const struct tegra_pingroup_desc tegra_soc_pingroups[TEGRA_MAX_PINGROUP] = {
 #define PINGROUP(pg_name, gpio_nr, vdd, f0, f1, f2, f3, fs, iod, reg)	\
 	[TEGRA_GPIO_##gpio_nr] =  TEGRA_PINGROUP_ ##pg_name\
 
-const int gpio_to_pingroup[TEGRA_MAX_GPIO + 1] = {
-	PINGROUPS
-
+const int gpio_to_pingroup_fpga[TEGRA_MAX_GPIO + 1] = {
+	PINGROUPS_FPGA
 };
 
+const int gpio_to_pingroup_non_fpga[TEGRA_MAX_GPIO + 1] = {
+	PINGROUPS
+};
 #define SET_DRIVE(_name, _hsm, _schmitt, _drive, _pulldn_drive, _pullup_drive, _pulldn_slew, _pullup_slew) \
 	{							\
 		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
@@ -617,11 +620,18 @@ void tegra12x_pinmux_init(const struct tegra_pingroup_desc **pg,
 		int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
 		int *pgdrive_max, const int **gpiomap, int *gpiomap_max)
 {
-	*pg = tegra_soc_pingroups;
+	if (tegra_platform_is_fpga()) {
+		*pg = soc_pingroups_fpga;
+		*gpiomap = gpio_to_pingroup_fpga;
+		tegra_soc_pingroups = soc_pingroups_fpga;
+	} else {
+		*pg = soc_pingroups_non_fpga;
+		*gpiomap = gpio_to_pingroup_non_fpga;
+		tegra_soc_pingroups = soc_pingroups_non_fpga;
+	}
 	*pg_max = TEGRA_MAX_PINGROUP;
 	*pgdrive = tegra_soc_drive_pingroups;
 	*pgdrive_max = TEGRA_MAX_DRIVE_PINGROUP;
-	*gpiomap = gpio_to_pingroup;
 	*gpiomap_max = TEGRA_MAX_GPIO;
 
 #ifdef CONFIG_PM_SLEEP
