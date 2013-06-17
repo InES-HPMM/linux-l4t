@@ -45,7 +45,6 @@
 #include <mach/hardware.h>
 #include <mach/powergate.h>
 #include <mach/tegra_smmu.h>
-#include <mach/gpio-tegra.h>
 #include <mach/nct.h>
 
 #include "apbio.h"
@@ -709,7 +708,6 @@ void __init tegra20_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
-	tegra_gpio_resume_init();
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
@@ -756,7 +754,6 @@ void __init tegra30_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
-	tegra_gpio_resume_init();
 	tegra_ram_console_debug_reserve(SZ_1M);
 
 	init_dma_coherent_pool_size(SZ_1M);
@@ -787,7 +784,6 @@ void __init tegra11x_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
-	tegra_gpio_resume_init();
 
 	init_dma_coherent_pool_size(SZ_2M);
 }
@@ -825,7 +821,6 @@ void __init tegra14x_init_early(void)
 	tegra_init_power();
 	tegra_init_ahb_gizmo_settings();
 	tegra_init_debug_uart_rate();
-	tegra_gpio_resume_init();
 	tegra_ram_console_debug_reserve(SZ_1M);
 }
 #endif
