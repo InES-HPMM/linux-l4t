@@ -44,6 +44,7 @@
 #include "board.h"
 #include "gpio-names.h"
 #include "board-common.h"
+#include "board-pmu-defines.h"
 #include "board-ardbeg.h"
 #include "tegra_cl_dvfs.h"
 #include "devices.h"
@@ -52,6 +53,7 @@
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
+#define AS3722_SUPPLY(_name) "as3722_"#_name
 
 static struct regulator_consumer_supply as3722_ldo0_supply[] = {
 	REGULATOR_SUPPLY("avdd_pll_m", NULL),
@@ -66,15 +68,21 @@ static struct regulator_consumer_supply as3722_ldo0_supply[] = {
 };
 
 static struct regulator_consumer_supply as3722_ldo1_supply[] = {
-	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
-	REGULATOR_SUPPLY("vdd_cam1_1v8_cam", NULL),
-	REGULATOR_SUPPLY("vdd_cam2_1v8_cam", NULL),
+	REGULATOR_SUPPLY("vddio_cam", "vi"),
+	REGULATOR_SUPPLY("vdd_cam_1v8_cam", NULL),
+	REGULATOR_SUPPLY("vif", "2-0010"),
+	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 };
 
 static struct regulator_consumer_supply as3722_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
+	REGULATOR_SUPPLY("avdd_hsic_com", NULL),
+	REGULATOR_SUPPLY("avdd_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply as3722_ldo3_supply[] = {
@@ -83,13 +91,13 @@ static struct regulator_consumer_supply as3722_ldo3_supply[] = {
 
 static struct regulator_consumer_supply as3722_ldo4_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v7_hv", NULL),
-	REGULATOR_SUPPLY("avdd_cam1_cam", NULL),
 	REGULATOR_SUPPLY("avdd_cam2_cam", NULL),
-	REGULATOR_SUPPLY("avdd_cam3_cam", NULL),
+	REGULATOR_SUPPLY("vana", "2-0010"),
 };
 
 static struct regulator_consumer_supply as3722_ldo5_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v2_cam", NULL),
+	REGULATOR_SUPPLY("vdig", "2-0010"),
 };
 
 static struct regulator_consumer_supply as3722_ldo6_supply[] = {
@@ -107,6 +115,9 @@ static struct regulator_consumer_supply as3722_ldo9_supply[] = {
 
 static struct regulator_consumer_supply as3722_ldo10_supply[] = {
 	REGULATOR_SUPPLY("avdd_af1_cam", NULL),
+	REGULATOR_SUPPLY("avdd_cam1_cam", NULL),
+	REGULATOR_SUPPLY("imx135_reg1", NULL),
+	REGULATOR_SUPPLY("vdd", "2-000e"),
 };
 
 static struct regulator_consumer_supply as3722_ldo11_supply[] = {
@@ -135,10 +146,6 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avdd_sata", NULL),
 	REGULATOR_SUPPLY("vdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {
@@ -158,379 +165,23 @@ static struct regulator_consumer_supply as3722_sd6_supply[] = {
 	REGULATOR_SUPPLY("vdd_gpu", NULL),
 };
 
-static struct regulator_init_data as3722_ldo0 = {
-	.constraints = {
-		.min_uV = 1050000,
-		.max_uV = 1250000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo0_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo0_supply),
-};
-
-static struct as3722_regulator_platform_data ldo0_reg_data = {
-	.reg_init = &as3722_ldo0,
-};
-
-static struct regulator_init_data as3722_ldo1 = {
-	.constraints = {
-		.min_uV = 1800000,
-		.max_uV = 1800000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo1_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo1_supply),
-};
-
-static struct as3722_regulator_platform_data ldo1_reg_data = {
-	.reg_init = &as3722_ldo1,
-};
-
-static struct regulator_init_data as3722_ldo2 = {
-	.constraints = {
-		.min_uV = 1200000,
-		.max_uV = 1200000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo2_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo2_supply),
-};
-
-static struct as3722_regulator_platform_data ldo2_reg_data = {
-	.reg_init = &as3722_ldo2,
-};
-
-static struct regulator_init_data as3722_ldo3 = {
-	.constraints = {
-		.min_uV = 1000000,
-		.max_uV = 1000000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo3_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo3_supply),
-};
-
-static struct as3722_regulator_platform_data ldo3_reg_data = {
-	.reg_init = &as3722_ldo3,
-};
-
-static struct regulator_init_data as3722_ldo4 = {
-	.constraints = {
-		.min_uV = 2700000,
-		.max_uV = 2700000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo4_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo4_supply),
-};
-
-static struct as3722_regulator_platform_data ldo4_reg_data = {
-	.reg_init = &as3722_ldo4,
-};
-
-static struct regulator_init_data as3722_ldo5 = {
-	.constraints = {
-		.min_uV = 1200000,
-		.max_uV = 1200000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo5_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo5_supply),
-};
-
-static struct as3722_regulator_platform_data ldo5_reg_data = {
-	.reg_init = &as3722_ldo5,
-};
-
-static struct regulator_init_data as3722_ldo6 = {
-	.constraints = {
-		.min_uV = 3300000,
-		.max_uV = 3300000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo6_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo6_supply),
-};
-
-static struct as3722_regulator_platform_data ldo6_reg_data = {
-	.reg_init = &as3722_ldo6,
-};
-
-static struct regulator_init_data as3722_ldo7 = {
-	.constraints = {
-		.min_uV = 1050000,
-		.max_uV = 1050000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo7_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo7_supply),
-};
-
-static struct as3722_regulator_platform_data ldo7_reg_data = {
-	.reg_init = &as3722_ldo7,
-};
-
-static struct regulator_init_data as3722_ldo9 = {
-	.constraints = {
-		.min_uV = 3300000,
-		.max_uV = 3300000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo9_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo9_supply),
-};
-
-static struct as3722_regulator_platform_data ldo9_reg_data = {
-	.reg_init = &as3722_ldo9,
-};
-
-static struct regulator_init_data as3722_ldo10 = {
-	.constraints = {
-		.min_uV = 2700000,
-		.max_uV = 2700000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo10_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo10_supply),
-};
-
-static struct as3722_regulator_platform_data ldo10_reg_data = {
-	.reg_init = &as3722_ldo10,
-};
-
-static struct regulator_init_data as3722_ldo11 = {
-	.constraints = {
-		.min_uV = 1800000,
-		.max_uV = 1800000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_CURRENT,
-		.always_on = false,
-		.boot_on = 0,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_ldo11_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo11_supply),
-};
-
-static struct as3722_regulator_platform_data ldo11_reg_data = {
-	.reg_init = &as3722_ldo11,
-};
-
-static struct regulator_init_data as3722_sd0 = {
-	.constraints = {
-		.min_uV = 1000000,
-		.max_uV = 1000000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_sd0_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd0_supply),
-};
-
-static struct as3722_regulator_platform_data sd0_reg_data = {
-	.reg_init = &as3722_sd0,
-};
-
-static struct regulator_init_data as3722_sd1 = {
-	.constraints = {
-		.min_uV = 1000000,
-		.max_uV = 1000000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 0,
-	},
-	.consumer_supplies = as3722_sd1_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd1_supply),
-};
-
-static struct as3722_regulator_platform_data sd1_reg_data = {
-	.reg_init = &as3722_sd1,
-};
-
-static struct regulator_init_data as3722_sd2 = {
-	.constraints = {
-		.min_uV = 1350000,
-		.max_uV = 1350000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_sd2_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd2_supply),
-};
-
-static struct as3722_regulator_platform_data sd2_reg_data = {
-	.reg_init = &as3722_sd2,
-};
-
-static struct regulator_init_data as3722_sd4 = {
-	.constraints = {
-		.min_uV = 1050000,
-		.max_uV = 1050000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = false,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_sd4_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd4_supply),
-};
-
-static struct as3722_regulator_platform_data sd4_reg_data = {
-	.reg_init = &as3722_sd4,
-};
-
-static struct regulator_init_data as3722_sd5 = {
-	.constraints = {
-		.min_uV = 1800000,
-		.max_uV = 1800000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_sd5_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd5_supply),
-};
-
-static struct as3722_regulator_platform_data sd5_reg_data = {
-	.reg_init = &as3722_sd5,
-};
-
-static struct regulator_init_data as3722_sd6 = {
-	.constraints = {
-		.min_uV = 1000000,
-		.max_uV = 1000000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL
-			| REGULATOR_MODE_FAST,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS
-			| REGULATOR_CHANGE_VOLTAGE
-			| REGULATOR_CHANGE_MODE,
-		.always_on = true,
-		.boot_on = 1,
-		.apply_uV = 1,
-	},
-	.consumer_supplies = as3722_sd6_supply,
-	.num_consumer_supplies = ARRAY_SIZE(as3722_sd6_supply),
-};
-
-static struct as3722_regulator_platform_data sd6_reg_data = {
-	.reg_init = &as3722_sd6,
-};
-
-static struct as3722_reg_init as3722_core_init_data[] = {
-	/* disable all regulators */
-#if 0
-	AS3722_REG_INIT(AS3722_SD_CONTROL_REG, 0x00),
-	AS3722_REG_INIT(AS3722_LDOCONTROL0_REG, 0x00),
-	AS3722_REG_INIT(AS3722_LDOCONTROL1_REG, 0x00),
-	/* set to lowest voltage output */
-	AS3722_REG_INIT(AS3722_SD0_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD1_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD2_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD3_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD4_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD5_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_SD6_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO0_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO1_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO2_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO3_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO4_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO5_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO6_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO7_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO9_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO10_VOLTAGE_REG, 0x01),
-	AS3722_REG_INIT(AS3722_LDO11_VOLTAGE_REG, 0x01),
-#endif
-	{.reg = AS3722_REG_INIT_TERMINATE},
-};
+AMS_PDATA_INIT(sd0, NULL, 700000, 1350000, 1, 1, 1);
+AMS_PDATA_INIT(sd1, NULL, 700000, 1350000, 1, 1, 1);
+AMS_PDATA_INIT(sd2, NULL, 1350000, 1350000, 1, 1, 1);
+AMS_PDATA_INIT(sd4, NULL, 1050000, 1050000, 0, 1, 1);
+AMS_PDATA_INIT(sd5, NULL, 1800000, 1800000, 1, 1, 1);
+AMS_PDATA_INIT(sd6, NULL, 900000, 1400000, 1, 1, 1);
+AMS_PDATA_INIT(ldo0, AS3722_SUPPLY(sd2), 1050000, 1250000, 1, 1, 1);
+AMS_PDATA_INIT(ldo1, NULL, 1800000, 1800000, 0, 1, 1);
+AMS_PDATA_INIT(ldo2, AS3722_SUPPLY(sd5), 1200000, 1200000, 0, 1, 1);
+AMS_PDATA_INIT(ldo3, NULL, 1000000, 1000000, 1, 1, 1);
+AMS_PDATA_INIT(ldo4, NULL, 2700000, 2700000, 0, 0, 1);
+AMS_PDATA_INIT(ldo5, AS3722_SUPPLY(sd5), 1200000, 1200000, 0, 0, 1);
+AMS_PDATA_INIT(ldo6, NULL, 3300000, 3300000, 0, 0, 1);
+AMS_PDATA_INIT(ldo7, AS3722_SUPPLY(sd5), 1050000, 1050000, 0, 0, 1);
+AMS_PDATA_INIT(ldo9, NULL, 3300000, 3300000, 0, 1, 1);
+AMS_PDATA_INIT(ldo10, NULL, 2700000, 2700000, 0, 0, 1);
+AMS_PDATA_INIT(ldo11, NULL, 1800000, 1800000, 0, 0, 1);
 
 /* config settings are OTP plus initial state
  * GPIOsignal_out at 20h not configurable through OTP and is initialized to
@@ -601,36 +252,35 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	{
 		/* otp = 0x81  1.6V LP0*/
 		.gpio       = AS3722_GPIO7,
-		.invert     = AS3722_GPIO_CFG_INVERT,
+		.invert     = AS3722_GPIO_CFG_NO_INVERT,
 		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
 		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
 	},
 };
 
 static struct as3722_platform_data as3722_pdata = {
-	.reg_pdata[AS3722_LDO0] = &ldo0_reg_data,
-	.reg_pdata[AS3722_LDO1] = &ldo1_reg_data,
-	.reg_pdata[AS3722_LDO2] = &ldo2_reg_data,
-	.reg_pdata[AS3722_LDO3] = &ldo3_reg_data,
-	.reg_pdata[AS3722_LDO4] = &ldo4_reg_data,
-	.reg_pdata[AS3722_LDO5] = &ldo5_reg_data,
-	.reg_pdata[AS3722_LDO6] = &ldo6_reg_data,
-	.reg_pdata[AS3722_LDO7] = &ldo7_reg_data,
-	.reg_pdata[AS3722_LDO9] = &ldo9_reg_data,
-	.reg_pdata[AS3722_LDO10] = &ldo10_reg_data,
-	.reg_pdata[AS3722_LDO11] = &ldo11_reg_data,
+	.reg_pdata[AS3722_LDO0] = &as3722_ldo0_reg_pdata,
+	.reg_pdata[AS3722_LDO1] = &as3722_ldo1_reg_pdata,
+	.reg_pdata[AS3722_LDO2] = &as3722_ldo2_reg_pdata,
+	.reg_pdata[AS3722_LDO3] = &as3722_ldo3_reg_pdata,
+	.reg_pdata[AS3722_LDO4] = &as3722_ldo4_reg_pdata,
+	.reg_pdata[AS3722_LDO5] = &as3722_ldo5_reg_pdata,
+	.reg_pdata[AS3722_LDO6] = &as3722_ldo6_reg_pdata,
+	.reg_pdata[AS3722_LDO7] = &as3722_ldo7_reg_pdata,
+	.reg_pdata[AS3722_LDO9] = &as3722_ldo9_reg_pdata,
+	.reg_pdata[AS3722_LDO10] = &as3722_ldo10_reg_pdata,
+	.reg_pdata[AS3722_LDO11] = &as3722_ldo11_reg_pdata,
 
-	.reg_pdata[AS3722_SD0] = &sd0_reg_data,
-	.reg_pdata[AS3722_SD1] = &sd1_reg_data,
-	.reg_pdata[AS3722_SD2] = &sd2_reg_data,
-	.reg_pdata[AS3722_SD4] = &sd4_reg_data,
-	.reg_pdata[AS3722_SD5] = &sd5_reg_data,
-	.reg_pdata[AS3722_SD6] = &sd6_reg_data,
+	.reg_pdata[AS3722_SD0] = &as3722_sd0_reg_pdata,
+	.reg_pdata[AS3722_SD1] = &as3722_sd1_reg_pdata,
+	.reg_pdata[AS3722_SD2] = &as3722_sd2_reg_pdata,
+	.reg_pdata[AS3722_SD4] = &as3722_sd4_reg_pdata,
+	.reg_pdata[AS3722_SD5] = &as3722_sd5_reg_pdata,
+	.reg_pdata[AS3722_SD6] = &as3722_sd6_reg_pdata,
 
-	.core_init_data = &as3722_core_init_data[0],
+	.core_init_data = NULL,
 	.gpio_base = AS3722_GPIO_BASE,
 	.irq_base = AS3722_IRQ_BASE,
-	/* .irq_type = IRQF_TRIGGER_FALLING, */
 	.use_internal_int_pullup = 0,
 	.use_internal_i2c_pullup = 0,
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
@@ -648,7 +298,6 @@ static const struct i2c_board_info tca6416_expander[] = {
 	},
 };
 
-
 static struct i2c_board_info __initdata as3722_regulators[] = {
 	{
 		I2C_BOARD_INFO("as3722", 0x40),
@@ -662,7 +311,9 @@ int __init laguna_as3722_regulator_init(void)
 {
 	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	u32 pmc_ctrl;
+	struct board_info board_info;
 
+	tegra_get_board_info(&board_info);
 
 	/* AS3722: Normal state of INT request line is LOW.
 	 * configure the power management controller to trigger PMU
@@ -670,13 +321,15 @@ int __init laguna_as3722_regulator_init(void)
 	 */
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
+	regulator_has_full_constraints();
 	printk(KERN_INFO "%s: i2c_register_board_info\n",
 			__func__);
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
-	i2c_register_board_info(0, tca6416_expander,
-			ARRAY_SIZE(tca6416_expander));
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358)
+		i2c_register_board_info(0, tca6416_expander,
+				ARRAY_SIZE(tca6416_expander));
 	return 0;
 }
 
@@ -749,42 +402,73 @@ static struct regulator_consumer_supply fixed_reg_battery_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_bl", NULL),
 };
 
+/* Always ON 1.8v */
+static struct regulator_consumer_supply fixed_reg_aon_1v8_supply[] = {
+	REGULATOR_SUPPLY("vdd_1v8_emmc", NULL),
+	REGULATOR_SUPPLY("vdd_1v8b_com_f", NULL),
+	REGULATOR_SUPPLY("vdd_1v8b_gps_f", NULL),
+};
+
+/* Always ON 3.3v */
+static struct regulator_consumer_supply fixed_reg_aon_3v3_supply[] = {
+	REGULATOR_SUPPLY("vdd_3v3_emmc", NULL),
+	REGULATOR_SUPPLY("vdd_com_3v3", NULL),
+};
+
+/* Always ON 1v2 */
+static struct regulator_consumer_supply fixed_reg_aon_1v2_supply[] = {
+	REGULATOR_SUPPLY("vdd_1v2_bb_hsic", NULL),
+};
+
 /* EN_USB1_VBUS From TEGRA GPIO PN4 */
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+
 };
 
-/* EN_USB3_VBUS From TEGRA GPIO PK6 */
+/* EN_USB2_3_VBUS From TEGRA GPIO PN5 */
 static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
 };
 
 
-/* Gated by PMU_REGEN3 From AMS7230 GPIO3*/
+/* Gated by GPIO_PK6  in FAB B and further*/
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
 	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
+/* Gated by GPIO_PH7  in FAB B and further*/
+static struct regulator_consumer_supply fixed_reg_vdd_hdmi_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi", "NULL"),
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
+};
 /* LCD_BL_EN GMI_AD10 */
 static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
-/* GPIO ?*/
+/* AS3722 GPIO1*/
 static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("avdd_hdmi", "NULL"),
-	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_3v3_pex", NULL),
-	REGULATOR_SUPPLY("avdd_3v3_pex_pll", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("vddio_hv", "NULL"),
-	REGULATOR_SUPPLY("hvdd_sata", NULL),
-	REGULATOR_SUPPLY("avdd_lcd", NULL),
+	REGULATOR_SUPPLY("hvdd_pex", NULL),
+	REGULATOR_SUPPLY("hvdd_pex_pll", NULL),
+	REGULATOR_SUPPLY("vdd_sys_cam_3v3", NULL),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_nfc_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_3v3_sensor", NULL),
+	REGULATOR_SUPPLY("vdd_kp_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_tp_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_dtv_3v3", NULL),
+	REGULATOR_SUPPLY("vdd_modem_3v3", NULL),
+};
+
+/* AS3722 GPIO1*/
+static struct regulator_consumer_supply fixed_reg_5v0_supply[] = {
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("vdd_5v0_sensor", NULL),
 };
 
 static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
@@ -792,22 +476,68 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_utmip_pll", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("vdd_1v8b_nfc", NULL),
+	REGULATOR_SUPPLY("vdd_1v8_sensor", NULL),
+	REGULATOR_SUPPLY("vdd_1v8_sdmmc", NULL),
+	REGULATOR_SUPPLY("vdd_kp_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_tp_1v8", NULL),
+	REGULATOR_SUPPLY("vdd_modem_1v8", NULL),
 };
 
-/* gated by GPIO EXP GPIO0 */
+/* gated by TCA6416 GPIO EXP GPIO0 */
 static struct regulator_consumer_supply fixed_reg_dcdc_1v2_supply[] = {
-	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
+	REGULATOR_SUPPLY("vdd_1v2_en", NULL),
 };
 
+/* AMS GPIO2 */
+static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
+	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
+	REGULATOR_SUPPLY("vddio_hv", "NULL"),
+	REGULATOR_SUPPLY("hvdd_sata", NULL),
+};
 
+/* gated by AS3722 GPIO4 */
+static struct regulator_consumer_supply fixed_reg_lcd_supply[] = {
+	REGULATOR_SUPPLY("avdd_lcd", NULL),
+};
+
+/* gated by GPIO_PR0 */
+static struct regulator_consumer_supply fixed_reg_sdmmc_en_supply[] = {
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.1"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
+};
+
+/* only adding for PM358 */
+static struct regulator_consumer_supply fixed_reg_vdd_cdc_1v2_aud_supply[] = {
+	REGULATOR_SUPPLY("ldoen", "tegra-snd-rt5639"),
+};
+
+static struct regulator_consumer_supply fixed_reg_vdd_amp_shut_aud_supply[] = {
+	REGULATOR_SUPPLY("epamp", "tegra-snd-rt5645"),
+};
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
-#define FIXED_REG(_id, _var, _name, _always_on, _boot_on,	\
+#define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,		\
 		_gpio_nr, _open_drain, _active_high, _boot_state, _millivolts)	\
 static struct regulator_init_data ri_data_##_var =		\
 {								\
+	.supply_regulator = _in_supply,				\
 	.num_consumer_supplies =				\
-	ARRAY_SIZE(fixed_reg_##_name##_supply),		\
+	ARRAY_SIZE(fixed_reg_##_name##_supply),			\
 	.consumer_supplies = fixed_reg_##_name##_supply,	\
 	.constraints = {					\
 		.valid_modes_mask = (REGULATOR_MODE_NORMAL |	\
@@ -837,29 +567,60 @@ static struct platform_device fixed_reg_##_var##_dev = {	\
 	},							\
 }
 
-FIXED_REG(0,	battery,	battery,	0,	0,
+FIXED_REG(0,	battery,	battery,	NULL,	0,	0,
 		-1,	false, true,	0,	8400);
 
-FIXED_REG(1,	vdd_hdmi_5v0,	vdd_hdmi_5v0,	0,	0,
-		TEGRA_GPIO_PK1,	false,	true,	0,	5000);
+FIXED_REG(1,	aon_1v8,	aon_1v8,	NULL,	0,	0,
+		-1,	false, true,	0,	1800);
 
-FIXED_REG(2,	usb1_vbus,	usb1_vbus,	0,	0,
+FIXED_REG(2,	aon_3v3,	aon_3v3,	NULL,	0,	0,
+		-1,	false, true,	0,	3300);
+
+FIXED_REG(3,	aon_1v2,	aon_1v2,	NULL,	0,	0,
+		-1,	false, true,	0,	1200);
+
+FIXED_REG(4,	vdd_hdmi_5v0,	vdd_hdmi_5v0,	NULL,	0,	0,
+		TEGRA_GPIO_PK6,	false,	true,	0,	5000);
+
+FIXED_REG(5,	vdd_hdmi,	vdd_hdmi,	AS3722_SUPPLY(sd4),
+		0,	0,
+		TEGRA_GPIO_PH7,	false,	true,	0,	3300);
+
+FIXED_REG(6,	usb1_vbus,	usb1_vbus,	NULL,	0,	0,
 		TEGRA_GPIO_PN4,	true,	true,	0,	5000);
 
-FIXED_REG(3,	usb3_vbus,	usb3_vbus,	0,	0,
-		TEGRA_GPIO_PK6,	true,	true,	0,	5000);
+FIXED_REG(7,	usb3_vbus,	usb3_vbus,	NULL,	0,	0,
+		TEGRA_GPIO_PN5,	true,	true,	0,	5000);
 
-FIXED_REG(4,	lcd_bl_en,	lcd_bl_en,	0,	0,
+FIXED_REG(8,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
 		TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
-FIXED_REG(5,	3v3,		3v3,		0,	0,
+FIXED_REG(9,	3v3,		3v3,		NULL,	0,	0,
 		-1,	false,	true,	0,	3300);
 
-FIXED_REG(6,	dcdc_1v8,	dcdc_1v8,	0,	0,
+FIXED_REG(10,	5v0,		5v0,		NULL,	0,	0,
+		-1,	false,	true,	0,	5000);
+
+FIXED_REG(11,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
 		-1,	false,	true,	0,	1800);
 
-FIXED_REG(7,    dcdc_1v2,       dcdc_1v2,       0,      0,
+FIXED_REG(12,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
 		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200);
+
+FIXED_REG(13,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
+		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,	3300);
+
+FIXED_REG(14,	lcd,		lcd,		NULL,	0,	0,
+		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,	3300);
+
+FIXED_REG(15,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
+		TEGRA_GPIO_PR0,		false,	true,	0,	3300);
+
+FIXED_REG(16,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
+		PMU_TCA6416_GPIO(2),	false,	true,	0,	1200);
+
+FIXED_REG(17,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
+		PMU_TCA6416_GPIO(3),	false,	true,	0,	1200);
 /*
  * Creating the fixed regulator device tables
  */
@@ -868,19 +629,47 @@ FIXED_REG(7,    dcdc_1v2,       dcdc_1v2,       0,      0,
 
 #define LAGUNA_COMMON_FIXED_REG			\
 	ADD_FIXED_REG(battery),			\
+	ADD_FIXED_REG(aon_1v8),			\
+	ADD_FIXED_REG(aon_3v3),			\
+	ADD_FIXED_REG(aon_1v2),			\
 	ADD_FIXED_REG(vdd_hdmi_5v0),		\
+	ADD_FIXED_REG(vdd_hdmi),		\
 	ADD_FIXED_REG(usb1_vbus),		\
 	ADD_FIXED_REG(usb3_vbus),		\
 	ADD_FIXED_REG(lcd_bl_en),		\
 	ADD_FIXED_REG(3v3),			\
+	ADD_FIXED_REG(5v0),			\
 	ADD_FIXED_REG(dcdc_1v8),		\
-	ADD_FIXED_REG(dcdc_1v2),
+	ADD_FIXED_REG(as3722_gpio2),		\
+	ADD_FIXED_REG(lcd),			\
+	ADD_FIXED_REG(sdmmc_en)
 
-/* Gpio switch regulator platform data for laguna */
-static struct platform_device *fixed_reg_devs_pm360[] = {
-	LAGUNA_COMMON_FIXED_REG
+#define LAGUNA_PM358_FIXED_REG		\
+	ADD_FIXED_REG(dcdc_1v2),	\
+	ADD_FIXED_REG(vdd_cdc_1v2_aud),	\
+	ADD_FIXED_REG(vdd_amp_shut_aud)
+
+#define LAGUNA_PM359_FIXED_REG		\
+	ADD_FIXED_REG(dcdc_1v2),	\
+	ADD_FIXED_REG(vdd_cdc_1v2_aud)
+
+
+/* Gpio switch regulator platform data for laguna pm358 ERS*/
+static struct platform_device *fixed_reg_devs_pm358[] = {
+	LAGUNA_COMMON_FIXED_REG,
+	LAGUNA_PM358_FIXED_REG
 };
 
+/* Gpio switch regulator platform data for laguna pm359 ERS-S*/
+static struct platform_device *fixed_reg_devs_pm359[] = {
+	LAGUNA_COMMON_FIXED_REG,
+	LAGUNA_PM359_FIXED_REG
+};
+
+/* Gpio switch regulator platform data for laguna pm363 FFD*/
+static struct platform_device *fixed_reg_devs_pm363[] = {
+	LAGUNA_COMMON_FIXED_REG
+};
 
 static int __init laguna_fixed_regulator_init(void)
 {
@@ -890,11 +679,15 @@ static int __init laguna_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_PM359 ||
-			board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363)
-		return platform_add_devices(fixed_reg_devs_pm360,
-				ARRAY_SIZE(fixed_reg_devs_pm360));
+	if (board_info.board_id == BOARD_PM358)
+		return platform_add_devices(fixed_reg_devs_pm358,
+				ARRAY_SIZE(fixed_reg_devs_pm358));
+	else if (board_info.board_id == BOARD_PM359)
+		return platform_add_devices(fixed_reg_devs_pm359,
+				ARRAY_SIZE(fixed_reg_devs_pm359));
+	else
+		return platform_add_devices(fixed_reg_devs_pm363,
+				ARRAY_SIZE(fixed_reg_devs_pm363));
 }
 
 subsys_initcall_sync(laguna_fixed_regulator_init);

@@ -46,10 +46,14 @@ int ardbeg_pmon_init(void);
 #define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
 #define AS3722_GPIO_BASE	TEGRA_NR_GPIOS
 #define AS3722_GPIO_END	(AS3722_GPIO_BASE + AS3722_NUM_GPIO)
-#define AS3722_IRQ_BASE	TEGRA_NR_IRQS
 
 /* PMU_TCA6416 GPIOs */
-#define PMU_TCA6416_GPIO_BASE	(AS3722_GPIO_END)
+#define PMU_TCA6416_GPIO_BASE   (AS3722_GPIO_END)
+#define PMU_TCA6416_GPIO(x)     (PMU_TCA6416_GPIO_BASE + x)
+#define PMU_TCA6416_NR_GPIOS    18
+/* External peripheral act as interrupt controller */
+/* AS3720 IRQs */
+#define AS3722_IRQ_BASE         TEGRA_NR_IRQS
 
 /* Baseband IDs */
 enum tegra_bb_type {
