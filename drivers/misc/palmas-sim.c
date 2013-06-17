@@ -141,7 +141,7 @@ static struct miscdevice sim_miscdev = {
 	.name = "sim",
 };
 
-static int __devinit palmas_sim_probe(struct platform_device *pdev)
+static int palmas_sim_probe(struct platform_device *pdev)
 {
 	struct palmas_platform_data *pdata;
 	struct palmas_sim *sim;
@@ -309,7 +309,7 @@ err_reg_access:
 	return ret;
 }
 
-static int __devexit palmas_sim_remove(struct platform_device *pdev)
+static int palmas_sim_remove(struct platform_device *pdev)
 {
 	struct palmas_sim *sim = platform_get_drvdata(pdev);
 
@@ -325,7 +325,7 @@ static struct platform_driver palmas_sim_driver = {
 	.driver.name	= "palmas-sim",
 	.driver.owner	= THIS_MODULE,
 	.probe		= palmas_sim_probe,
-	.remove		= __devexit_p(palmas_sim_remove),
+	.remove		= palmas_sim_remove,
 };
 
 static int __init palmas_sim_init(void)

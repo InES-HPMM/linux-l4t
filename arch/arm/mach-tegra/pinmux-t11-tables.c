@@ -451,7 +451,7 @@ static struct syscore_ops tegra_pinmux_syscore_ops = {
 };
 #endif
 
-void __devinit tegra11x_pinmux_init(const struct tegra_pingroup_desc **pg,
+void tegra11x_pinmux_init(const struct tegra_pingroup_desc **pg,
 		int *pg_max, const struct tegra_drive_pingroup_desc **pgdrive,
 		int *pgdrive_max, const int **gpiomap, int *gpiomap_max)
 {

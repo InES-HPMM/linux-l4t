@@ -1081,7 +1081,7 @@ static int tegra_pinmux_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_device_id __devinitdata tegra_pinmux_id[] = {
+static struct platform_device_id tegra_pinmux_id[] = {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	{ .name = "tegra20-pinmux-ctl",
 	  .driver_data = (kernel_ulong_t)tegra20_pinmux_init, },

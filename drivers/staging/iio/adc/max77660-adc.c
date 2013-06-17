@@ -325,7 +325,7 @@ static const struct iio_chan_spec max77660_adc_iio_channel[] = {
 	MAX77660_ADC_CHAN_IIO(ADC3),
 };
 
-static int __devinit max77660_adc_probe(struct platform_device *pdev)
+static int max77660_adc_probe(struct platform_device *pdev)
 {
 	struct max77660_adc *adc;
 	struct max77660_platform_data *pdata;
@@ -406,7 +406,7 @@ out:
 	return ret;
 }
 
-static int __devexit max77660_adc_remove(struct platform_device *pdev)
+static int max77660_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(&pdev->dev);
 	struct max77660_adc *adc = iio_priv(iodev);
@@ -446,7 +446,7 @@ static const struct dev_pm_ops max77660_pm_ops = {
 
 static struct platform_driver max77660_adc_driver = {
 	.probe = max77660_adc_probe,
-	.remove = __devexit_p(max77660_adc_remove),
+	.remove = max77660_adc_remove,
 	.driver = {
 		.name = "max77660-adc",
 		.owner = THIS_MODULE,

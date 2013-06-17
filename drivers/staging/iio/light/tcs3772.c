@@ -639,7 +639,7 @@ static void tcs3772_shutdown(struct i2c_client *client)
 	mutex_unlock(&chip->lock);
 }
 
-static int __devexit tcs3772_remove(struct i2c_client *client)
+static int tcs3772_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct tcs3772_chip *chip = iio_priv(indio_dev);
@@ -672,7 +672,7 @@ static struct i2c_driver tcs3772_driver = {
 	},
 	.id_table = tcs3772_id,
 	.probe = tcs3772_probe,
-	.remove = __devexit_p(tcs3772_remove),
+	.remove = tcs3772_remove,
 	.shutdown = tcs3772_shutdown,
 };
 

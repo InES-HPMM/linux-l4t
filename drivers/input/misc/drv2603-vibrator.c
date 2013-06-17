@@ -214,7 +214,7 @@ static const struct attribute_group drv2603_vibrator_attr_group = {
 	.attrs = drv2603_vibrator_attr,
 };
 
-static int __devinit drv2603_probe(struct platform_device *pdev)
+static int drv2603_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -364,7 +364,7 @@ err_regulator:
 	return ret;
 }
 
-static int __devexit drv2603_remove(struct platform_device *pdev)
+static int drv2603_remove(struct platform_device *pdev)
 {
 	struct drv2603_chip *chip = dev_get_drvdata(&pdev->dev);
 
@@ -402,7 +402,7 @@ static SIMPLE_DEV_PM_OPS(drv2603_pm_ops, drv2603_suspend, drv2603_resume);
 
 static struct platform_driver drv2603_driver = {
 	.probe = drv2603_probe,
-	.remove = __devexit_p(drv2603_remove),
+	.remove = drv2603_remove,
 	.driver = {
 		.name = "drv2603-vibrator",
 		.owner = THIS_MODULE,

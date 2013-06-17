@@ -68,7 +68,7 @@ static struct mfd_cell max8831_mfd_cells[] = {
 	},
 };
 
-static int __devinit max8831_probe(struct i2c_client *client,
+static int max8831_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	struct max8831_platform_data *pdata = client->dev.platform_data;
@@ -114,7 +114,7 @@ failed:
 	return ret;
 }
 
-static int __devexit max8831_remove(struct i2c_client *client)
+static int max8831_remove(struct i2c_client *client)
 {
 	struct max8831_chip *chip = i2c_get_clientdata(client);
 	mfd_remove_devices(chip->dev);
@@ -127,7 +127,7 @@ static struct i2c_driver max8831_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe	= max8831_probe,
-	.remove	= __devexit_p(max8831_remove),
+	.remove	= max8831_remove,
 	.id_table = max8831_id,
 };
 module_i2c_driver(max8831_driver);

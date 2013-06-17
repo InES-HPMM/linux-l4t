@@ -248,7 +248,7 @@ static int depl_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static __devinit int depl_init_ocv_reader(struct depl_driver *drv)
+static int depl_init_ocv_reader(struct depl_driver *drv)
 {
 	if (drv->pdata->ocv_lut)
 		drv->get_ocv = depl_psy_ocv_from_lut;
@@ -261,7 +261,7 @@ static __devinit int depl_init_ocv_reader(struct depl_driver *drv)
 	return 0;
 }
 
-static __devinit int depl_probe(struct platform_device *pdev)
+static int depl_probe(struct platform_device *pdev)
 {
 	struct depl_driver *drv;
 	struct edp_manager *m;

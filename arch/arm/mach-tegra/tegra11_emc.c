@@ -1524,7 +1524,7 @@ static struct kernel_param_ops tegra11_pasr_enable_ops = {
 module_param_cb(pasr_enable, &tegra11_pasr_enable_ops, &pasr_enable, 0644);
 #endif
 
-static int __devinit tegra11_emc_probe(struct platform_device *pdev)
+static int tegra11_emc_probe(struct platform_device *pdev)
 {
 	struct tegra11_emc_pdata *pdata;
 	struct resource *res;
@@ -1553,7 +1553,7 @@ static int __devinit tegra11_emc_probe(struct platform_device *pdev)
 	return init_emc_table(pdata->tables, pdata->num_tables);
 }
 
-static struct of_device_id tegra11_emc_of_match[] __devinitdata = {
+static struct of_device_id tegra11_emc_of_match[] = {
 	{ .compatible = "nvidia,tegra11-emc", },
 	{ },
 };

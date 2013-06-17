@@ -1376,7 +1376,7 @@ static struct kernel_param_ops tegra14_pasr_enable_ops = {
 module_param_cb(pasr_enable, &tegra14_pasr_enable_ops, &pasr_enable, 0644);
 #endif
 
-static int __devinit tegra14_emc_probe(struct platform_device *pdev)
+static int tegra14_emc_probe(struct platform_device *pdev)
 {
 	struct tegra14_emc_pdata *pdata;
 	struct resource *res;

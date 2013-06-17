@@ -594,7 +594,7 @@ out:
 	return ret;
 }
 
-static int __devinit max77660_chg_extcon_probe(struct platform_device *pdev)
+static int max77660_chg_extcon_probe(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon;
 	struct max77660_platform_data *pdata;
@@ -747,7 +747,7 @@ out:
 	return ret;
 }
 
-static int __devexit max77660_chg_extcon_remove(struct platform_device *pdev)
+static int max77660_chg_extcon_remove(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(&pdev->dev);
 
@@ -817,7 +817,7 @@ static const struct dev_pm_ops max77660_pm_ops = {
 
 static struct platform_driver max77660_chg_extcon_driver = {
 	.probe = max77660_chg_extcon_probe,
-	.remove = __devexit_p(max77660_chg_extcon_remove),
+	.remove = max77660_chg_extcon_remove,
 	.driver = {
 		.name = "max77660-charger-extcon",
 		.owner = THIS_MODULE,

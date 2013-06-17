@@ -562,7 +562,7 @@ static int max77663_gpio_init_regs(struct max77663_gpio *max77663_gpio,
 	return 0;
 }
 
-static int __devinit max77663_gpio_probe(struct platform_device *pdev)
+static int max77663_gpio_probe(struct platform_device *pdev)
 {
 	struct max77663_platform_data *pdata;
 	struct max77663_gpio *max77663_gpio;
@@ -639,7 +639,7 @@ fail:
 	return ret;
 }
 
-static int __devexit max77663_gpio_remove(struct platform_device *pdev)
+static int max77663_gpio_remove(struct platform_device *pdev)
 {
 	struct max77663_gpio *max77663_gpio = platform_get_drvdata(pdev);
 
@@ -653,7 +653,7 @@ static struct platform_driver max77663_gpio_driver = {
 	.driver.name	= "max77663-gpio",
 	.driver.owner	= THIS_MODULE,
 	.probe		= max77663_gpio_probe,
-	.remove		= __devexit_p(max77663_gpio_remove),
+	.remove		= max77663_gpio_remove,
 };
 
 static int __init max77663_gpio_init(void)

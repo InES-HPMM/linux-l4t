@@ -127,7 +127,7 @@ static irqreturn_t palmas_extcon_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int __devinit palmas_extcon_probe(struct platform_device *pdev)
+static int palmas_extcon_probe(struct platform_device *pdev)
 {
 	struct palmas_platform_data *pdata;
 	struct palmas_extcon_platform_data *epdata = NULL;
@@ -233,7 +233,7 @@ out:
 	return ret;
 }
 
-static int __devexit palmas_extcon_remove(struct platform_device *pdev)
+static int palmas_extcon_remove(struct platform_device *pdev)
 {
 	struct palmas_extcon *palma_econ = dev_get_drvdata(&pdev->dev);
 
@@ -280,7 +280,7 @@ static const struct dev_pm_ops palmas_pm_ops = {
 
 static struct platform_driver palmas_extcon_driver = {
 	.probe = palmas_extcon_probe,
-	.remove = __devexit_p(palmas_extcon_remove),
+	.remove = palmas_extcon_remove,
 	.driver = {
 		.name = "palmas-extcon",
 		.owner = THIS_MODULE,

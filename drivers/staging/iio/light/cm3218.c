@@ -522,7 +522,7 @@ static void cm3218_shutdown(struct i2c_client *client)
 	mutex_unlock(&chip->lock);
 }
 
-static int __devexit cm3218_remove(struct i2c_client *client)
+static int cm3218_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct cm3218_chip *chip = iio_priv(indio_dev);
@@ -555,7 +555,7 @@ static struct i2c_driver cm3218_driver = {
 	},
 	.id_table = cm3218_id,
 	.probe = cm3218_probe,
-	.remove = __devexit_p(cm3218_remove),
+	.remove = cm3218_remove,
 	.shutdown = cm3218_shutdown,
 };
 

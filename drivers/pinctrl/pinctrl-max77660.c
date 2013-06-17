@@ -95,7 +95,7 @@ static int max77660_init_pin_gpio_mode(struct device *dev,
 	return ret;
 }
 
-static int __devinit max77660_pinctrl_probe(struct platform_device *pdev)
+static int max77660_pinctrl_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *pdata;
 	struct device *parent = pdev->dev.parent;

@@ -1096,7 +1096,7 @@ static int max77660_regulator_remove(struct platform_device *pdev)
 
 static struct platform_driver max77660_regulator_driver = {
 	.probe = max77660_regulator_probe,
-	.remove = __devexit_p(max77660_regulator_remove),
+	.remove = max77660_regulator_remove,
 	.driver = {
 		.name = "max77660-pmic",
 		.owner = THIS_MODULE,

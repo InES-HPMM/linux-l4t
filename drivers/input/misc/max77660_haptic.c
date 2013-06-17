@@ -373,7 +373,7 @@ static const struct attribute_group max77660_haptics_attr_group = {
 	.attrs = max77660_haptics_attr,
 };
 
-static int __devinit max77660_haptic_probe(struct platform_device *pdev)
+static int max77660_haptic_probe(struct platform_device *pdev)
 {
 	/* we register the parent platform data */
 	struct max77660_platform_data *parent_pdata;
@@ -538,7 +538,7 @@ err_input_alloc:
 	return ret;
 }
 
-static int __devexit max77660_haptic_remove(struct platform_device *pdev)
+static int max77660_haptic_remove(struct platform_device *pdev)
 {
 	struct max77660_haptic *chip = platform_get_drvdata(pdev);
 
@@ -588,7 +588,7 @@ static struct platform_driver max77660_haptic_driver = {
 		.pm	= &max77660_haptic_pm_ops,
 	},
 	.probe		= max77660_haptic_probe,
-	.remove		= __devexit_p(max77660_haptic_remove),
+	.remove		= max77660_haptic_remove,
 	.id_table	= max77660_haptic_id,
 };
 

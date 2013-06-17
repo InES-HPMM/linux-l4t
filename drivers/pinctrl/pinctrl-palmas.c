@@ -421,7 +421,7 @@ static int palmas_set_dvfs2(struct palmas_pinctrl *pinctrl, bool enable)
 	return ret;
 }
 
-static int __devinit palmas_pinctrl_probe(struct platform_device *pdev)
+static int palmas_pinctrl_probe(struct platform_device *pdev)
 {
 	struct palmas_platform_data *pdata;
 	struct palmas_pinctrl_platform_data *pctrl_pdata;

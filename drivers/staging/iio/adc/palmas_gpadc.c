@@ -365,7 +365,7 @@ static struct iio_map palmas_iio_map[] = {
 	PALMAS_GPADC_IIO_MAP(IN6, "palmas-battery", "vbat_channel"),
 };
 
-static int __devinit palmas_gpadc_probe(struct platform_device *pdev)
+static int palmas_gpadc_probe(struct platform_device *pdev)
 {
 	struct palmas_gpadc *adc;
 	struct palmas_platform_data *pdata;
@@ -456,7 +456,7 @@ out:
 	return ret;
 }
 
-static int __devexit palmas_gpadc_remove(struct platform_device *pdev)
+static int palmas_gpadc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(&pdev->dev);
 	struct palmas_gpadc *adc = iio_priv(iodev);
@@ -496,7 +496,7 @@ static const struct dev_pm_ops palmas_pm_ops = {
 
 static struct platform_driver palmas_gpadc_driver = {
 	.probe = palmas_gpadc_probe,
-	.remove = __devexit_p(palmas_gpadc_remove),
+	.remove = palmas_gpadc_remove,
 	.driver = {
 		.name = MOD_NAME,
 		.owner = THIS_MODULE,

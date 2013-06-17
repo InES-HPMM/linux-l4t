@@ -1483,7 +1483,7 @@ static int palmas_current_setup(struct palmas_battery_info *di,
 	return ret;
 }
 
-static __devinit int palmas_battery_probe(struct platform_device *pdev)
+static int palmas_battery_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_platform_data *palmas_pdata;
@@ -1630,7 +1630,7 @@ err:
 	return ret;
 }
 
-static int __devexit palmas_battery_remove(struct platform_device *pdev)
+static int palmas_battery_remove(struct platform_device *pdev)
 {
 	struct palmas_battery_info *di = platform_get_drvdata(pdev);
 	struct palmas *palmas = di->palmas;
@@ -1648,7 +1648,7 @@ static int __devexit palmas_battery_remove(struct platform_device *pdev)
 
 static struct platform_driver palmas_battery_driver = {
 	.probe = palmas_battery_probe,
-	.remove = __devexit_p(palmas_battery_remove),
+	.remove = palmas_battery_remove,
 	.driver = {
 		.name = "palmas-battery-gauge",
 		.owner = THIS_MODULE,

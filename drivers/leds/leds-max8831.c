@@ -146,7 +146,7 @@ static int max8831_led_set_blink(struct led_classdev *led_cdev,
 	return 0;
 }
 
-static int __devinit max8831_led_probe(struct platform_device *pdev)
+static int max8831_led_probe(struct platform_device *pdev)
 {
 	struct led_info *pdata = pdev->dev.platform_data;
 	struct max8831_led *led;
@@ -182,7 +182,7 @@ static int __devinit max8831_led_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit max8831_led_remove(struct platform_device *pdev)
+static int max8831_led_remove(struct platform_device *pdev)
 {
 	struct max8831_led *led = platform_get_drvdata(pdev);
 	led_classdev_unregister(&led->cdev);
@@ -196,7 +196,7 @@ static struct platform_driver max8831_led_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe	= max8831_led_probe,
-	.remove	= __devexit_p(max8831_led_remove),
+	.remove	= max8831_led_remove,
 };
 module_platform_driver(max8831_led_driver);
 

@@ -132,7 +132,7 @@ static const struct watchdog_ops palmas_wdt_ops = {
 	.set_timeout = palmas_wdt_set_timeout,
 };
 
-static int __devinit palmas_wdt_probe(struct platform_device *pdev)
+static int palmas_wdt_probe(struct platform_device *pdev)
 {
 	struct palmas_platform_data *pdata;
 	struct palmas_wdt *wdt;
@@ -230,7 +230,7 @@ scrub:
 	return ret;
 }
 
-static int __devexit palmas_wdt_remove(struct platform_device *pdev)
+static int palmas_wdt_remove(struct platform_device *pdev)
 {
 	struct palmas_wdt *wdt = platform_get_drvdata(pdev);
 
@@ -283,7 +283,7 @@ static struct platform_driver palmas_wdt_driver = {
 		.pm = &palmas_wdt_pm_ops,
 	},
 	.probe	= palmas_wdt_probe,
-	.remove	= __devexit_p(palmas_wdt_remove),
+	.remove	= palmas_wdt_remove,
 };
 
 static int __init palmas_wdt_init(void)

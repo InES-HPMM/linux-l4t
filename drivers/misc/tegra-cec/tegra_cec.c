@@ -236,7 +236,7 @@ static void tegra_cec_init(struct tegra_cec *cec)
 	   cec->cec_base + TEGRA_CEC_INT_MASK);
 }
 
-static int __devinit tegra_cec_probe(struct platform_device *pdev)
+static int tegra_cec_probe(struct platform_device *pdev)
 {
 	struct tegra_cec *cec;
 	struct resource *res;

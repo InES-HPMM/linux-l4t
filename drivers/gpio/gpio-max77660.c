@@ -287,7 +287,7 @@ static void max77660_gpio_irq_remove(struct max77660_gpio *max77660_gpio)
 	chip->gpio_irq_data = NULL;
 }
 
-static int __devinit max77660_gpio_probe(struct platform_device *pdev)
+static int max77660_gpio_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *pdata;
 	struct max77660_gpio *max77660_gpio;
@@ -355,7 +355,7 @@ fail:
 	return ret;
 }
 
-static int __devexit max77660_gpio_remove(struct platform_device *pdev)
+static int max77660_gpio_remove(struct platform_device *pdev)
 {
 	struct max77660_gpio *max77660_gpio = platform_get_drvdata(pdev);
 	int ret;
@@ -373,7 +373,7 @@ static struct platform_driver max77660_gpio_driver = {
 	.driver.name	= "max77660-gpio",
 	.driver.owner	= THIS_MODULE,
 	.probe		= max77660_gpio_probe,
-	.remove		= __devexit_p(max77660_gpio_remove),
+	.remove		= max77660_gpio_remove,
 };
 
 static int __init max77660_gpio_init(void)

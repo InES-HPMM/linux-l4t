@@ -295,7 +295,7 @@ static int max77660_rtc_preinit(struct max77660_rtc *rtc)
 	return 0;
 }
 
-static int __devinit max77660_rtc_probe(struct platform_device *pdev)
+static int max77660_rtc_probe(struct platform_device *pdev)
 {
 	static struct max77660_rtc *rtc;
 	int ret;
@@ -344,7 +344,7 @@ out:
 	return ret;
 }
 
-static int __devexit max77660_rtc_remove(struct platform_device *pdev)
+static int max77660_rtc_remove(struct platform_device *pdev)
 {
 	struct max77660_rtc *rtc = dev_get_drvdata(&pdev->dev);
 
@@ -405,7 +405,7 @@ static const struct dev_pm_ops max77660_pm_ops = {
 
 static struct platform_driver max77660_rtc_driver = {
 	.probe = max77660_rtc_probe,
-	.remove = __devexit_p(max77660_rtc_remove),
+	.remove = max77660_rtc_remove,
 	.driver = {
 		.name = "max77660-rtc",
 		.owner = THIS_MODULE,

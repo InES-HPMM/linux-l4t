@@ -164,7 +164,7 @@ error:
 	return IRQ_HANDLED;
 }
 
-static __devinit int tps65090_charger_probe(struct platform_device *pdev)
+static int tps65090_charger_probe(struct platform_device *pdev)
 {
 	uint8_t retval = 0;
 	int ret;
@@ -260,7 +260,7 @@ fail_suppy_reg:
 	return ret;
 }
 
-static int __devexit tps65090_charger_remove(struct platform_device *pdev)
+static int tps65090_charger_remove(struct platform_device *pdev)
 {
 	struct tps65090_charger *charger = dev_get_drvdata(&pdev->dev);
 
@@ -275,7 +275,7 @@ static struct platform_driver tps65090_charger_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe	= tps65090_charger_probe,
-	.remove = __devexit_p(tps65090_charger_remove),
+	.remove = tps65090_charger_remove,
 };
 
 module_platform_driver(tps65090_charger_driver);

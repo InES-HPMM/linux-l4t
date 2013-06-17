@@ -301,7 +301,7 @@ static struct rtc_class_ops palmas_rtc_ops = {
 	.alarm_irq_enable = palmas_rtc_alarm_irq_enable,
 };
 
-static int __devinit palmas_rtc_probe(struct platform_device *pdev)
+static int palmas_rtc_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = NULL;
 	struct palmas_rtc *palmas_rtc = NULL;
@@ -416,7 +416,7 @@ static int __devinit palmas_rtc_probe(struct platform_device *pdev)
  * Disable all palmas RTC module interrupts.
  * Sets status flag to free.
  */
-static int __devexit palmas_rtc_remove(struct platform_device *pdev)
+static int palmas_rtc_remove(struct platform_device *pdev)
 {
 	/* leave rtc running, but disable irqs */
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
@@ -482,7 +482,7 @@ static const struct dev_pm_ops palmas_rtc_pm_ops = {
 
 static struct platform_driver palmas_rtc_driver = {
 	.probe		= palmas_rtc_probe,
-	.remove		= __devexit_p(palmas_rtc_remove),
+	.remove		= palmas_rtc_remove,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "palmas-rtc",

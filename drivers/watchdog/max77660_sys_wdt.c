@@ -179,7 +179,7 @@ static const struct watchdog_ops max77660_sys_wdt_ops = {
 	.set_timeout = max77660_sys_wdt_set_timeout,
 };
 
-static int __devinit max77660_sys_wdt_probe(struct platform_device *pdev)
+static int max77660_sys_wdt_probe(struct platform_device *pdev)
 {
 	struct max77660_platform_data *pdata;
 	struct max77660_sys_wdt *wdt;
@@ -289,7 +289,7 @@ scrub:
 	return ret;
 }
 
-static int __devexit max77660_sys_wdt_remove(struct platform_device *pdev)
+static int max77660_sys_wdt_remove(struct platform_device *pdev)
 {
 	struct max77660_sys_wdt *wdt = platform_get_drvdata(pdev);
 
@@ -355,7 +355,7 @@ static struct platform_driver max77660_sys_wdt_driver = {
 		.pm = &max77660_sys_wdt_pm_ops,
 	},
 	.probe	= max77660_sys_wdt_probe,
-	.remove	= __devexit_p(max77660_sys_wdt_remove),
+	.remove	= max77660_sys_wdt_remove,
 };
 
 static int __init max77660_sys_wdt_init(void)

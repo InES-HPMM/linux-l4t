@@ -166,7 +166,7 @@ static int lm3528_bl_probe(struct i2c_client *i2c,
 	return 0;
 }
 
-static int __devexit lm3528_bl_remove(struct i2c_client *cl)
+static int lm3528_bl_remove(struct i2c_client *cl)
 {
 	struct lm3528_backlight_data *data = i2c_get_clientdata(cl);
 	data->bl->props.brightness = 0;
@@ -211,7 +211,7 @@ static struct i2c_driver lm3528_bl_driver = {
 	},
 	.id_table = lm3528_id,
 	.probe	= lm3528_bl_probe,
-	.remove	= __devexit_p(lm3528_bl_remove),
+	.remove	= lm3528_bl_remove,
 };
 module_i2c_driver(lm3528_bl_driver);
 

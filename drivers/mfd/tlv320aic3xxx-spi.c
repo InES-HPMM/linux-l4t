@@ -38,7 +38,7 @@ static int aic3xxx_resume(struct device *dev)
 #endif
 
 
-static int __devinit tlv320aic3xxx_spi_probe(struct spi_device *spi)
+static int tlv320aic3xxx_spi_probe(struct spi_device *spi)
 {
 	const struct spi_device_id *id = spi_get_device_id(spi);
 	struct aic3xxx *tlv320aic3xxx;
@@ -80,7 +80,7 @@ static int __devinit tlv320aic3xxx_spi_probe(struct spi_device *spi)
 	return aic3xxx_device_init(tlv320aic3xxx, tlv320aic3xxx->irq);
 }
 
-static int __devexit tlv320aic3xxx_spi_remove(struct spi_device *spi)
+static int tlv320aic3xxx_spi_remove(struct spi_device *spi)
 {
 	struct aic3xxx *tlv320aic3xxx = dev_get_drvdata(&spi->dev);
 	aic3xxx_device_exit(tlv320aic3xxx);
@@ -105,7 +105,7 @@ static struct spi_driver tlv320aic3xxx_spi_driver = {
 		.pm	= &aic3xxx_pm_ops,
 	},
 	.probe		= tlv320aic3xxx_spi_probe,
-	.remove		= __devexit_p(tlv320aic3xxx_spi_remove),
+	.remove		= tlv320aic3xxx_spi_remove,
 	.id_table	= aic3xxx_spi_ids,
 };
 

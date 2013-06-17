@@ -214,7 +214,7 @@ static struct gpio_chip palmas_gpio_chip = {
 	.ngpio			= 8,
 };
 
-static int __devinit palmas_gpio_probe(struct platform_device *pdev)
+static int palmas_gpio_probe(struct platform_device *pdev)
 {
 	struct palmas *palmas = dev_get_drvdata(pdev->dev.parent);
 	struct palmas_platform_data *pdata = palmas->dev->platform_data;
@@ -252,7 +252,7 @@ err:
 	return ret;
 }
 
-static int __devexit palmas_gpio_remove(struct platform_device *pdev)
+static int palmas_gpio_remove(struct platform_device *pdev)
 {
 	struct palmas_gpio *gpio = platform_get_drvdata(pdev);
 	int ret;
@@ -268,7 +268,7 @@ static struct platform_driver palmas_gpio_driver = {
 	.driver.name	= "palmas-gpio",
 	.driver.owner	= THIS_MODULE,
 	.probe		= palmas_gpio_probe,
-	.remove		= __devexit_p(palmas_gpio_remove),
+	.remove		= palmas_gpio_remove,
 };
 
 static int __init palmas_gpio_init(void)

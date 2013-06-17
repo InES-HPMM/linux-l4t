@@ -1088,7 +1088,7 @@ static void __init ricoh583_debuginit(struct ricoh583 *tpsi)
 }
 #endif
 
-static int __devinit ricoh583_i2c_probe(struct i2c_client *i2c,
+static int ricoh583_i2c_probe(struct i2c_client *i2c,
 			      const struct i2c_device_id *id)
 {
 	struct ricoh583 *ricoh583;

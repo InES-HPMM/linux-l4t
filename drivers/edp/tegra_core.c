@@ -341,7 +341,7 @@ static void create_attr(const char *name, struct dentry *parent,
 	WARN_ON(IS_ERR_OR_NULL(d));
 }
 
-static __devinit void init_debug(void)
+static void init_debug(void)
 {
 	if (!core_client.dentry) {
 		WARN_ON(1);
@@ -362,7 +362,7 @@ static inline void init_debug(void) {}
 #endif
 
 /* Ignore missing modem */
-static __devinit void register_loan(void)
+static void register_loan(void)
 {
 	struct edp_client *c;
 	int r;
@@ -377,7 +377,7 @@ static __devinit void register_loan(void)
 	WARN_ON(r);
 }
 
-static __devinit unsigned int get_num_states(
+static unsigned int get_num_states(
 		struct tegra_sysedp_platform_data *pdata)
 {
 	unsigned int power = 0;
@@ -394,7 +394,7 @@ static __devinit unsigned int get_num_states(
 	return num;
 }
 
-static __devinit void get_states(struct tegra_sysedp_platform_data *pdata,
+static void get_states(struct tegra_sysedp_platform_data *pdata,
 		unsigned int num, unsigned int *states)
 {
 	unsigned int power = 0;
@@ -411,7 +411,7 @@ static __devinit void get_states(struct tegra_sysedp_platform_data *pdata,
 	}
 }
 
-static __devinit unsigned int initial_req(struct edp_client *client,
+static unsigned int initial_req(struct edp_client *client,
 		unsigned int watts)
 {
 	int i;
@@ -425,7 +425,7 @@ static __devinit unsigned int initial_req(struct edp_client *client,
 	return 0;
 }
 
-static __devinit int init_client(struct tegra_sysedp_platform_data *pdata)
+static int init_client(struct tegra_sysedp_platform_data *pdata)
 {
 	struct edp_manager *m;
 	unsigned int cnt;
@@ -469,7 +469,7 @@ fail:
 	return r;
 }
 
-static __devinit int init_clks(void)
+static int init_clks(void)
 {
 	emc_cap_clk = clk_get_sys("battery_edp", "emc");
 	if (IS_ERR(emc_cap_clk))
@@ -484,7 +484,7 @@ static __devinit int init_clks(void)
 	return 0;
 }
 
-static __devinit int tegra_sysedp_probe(struct platform_device *pdev)
+static int tegra_sysedp_probe(struct platform_device *pdev)
 {
 	int r;
 

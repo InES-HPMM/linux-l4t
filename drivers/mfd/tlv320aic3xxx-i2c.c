@@ -56,7 +56,7 @@ static int aic3xxx_resume(struct device *dev)
 }
 #endif
 
-static __devinit int aic3xxx_i2c_probe(struct i2c_client *i2c,
+static int aic3xxx_i2c_probe(struct i2c_client *i2c,
 					  const struct i2c_device_id *id)
 {
 	struct aic3xxx *aicxxx;
@@ -98,7 +98,7 @@ static __devinit int aic3xxx_i2c_probe(struct i2c_client *i2c,
 	return aic3xxx_device_init(aicxxx, aicxxx->irq);
 }
 
-static int __devexit aic3xxx_i2c_remove(struct i2c_client *i2c)
+static int aic3xxx_i2c_remove(struct i2c_client *i2c)
 {
 	struct aic3xxx *aicxxx = dev_get_drvdata(&i2c->dev);
 	aic3xxx_device_exit(aicxxx);
@@ -130,7 +130,7 @@ static struct i2c_driver aic3xxx_i2c_driver = {
 		.pm	= &aic3xxx_pm_ops,
 	},
 	.probe		= aic3xxx_i2c_probe,
-	.remove		= __devexit_p(aic3xxx_i2c_remove),
+	.remove		= aic3xxx_i2c_remove,
 	.id_table	= aic3xxx_i2c_id,
 	.shutdown	= aic3xxx_i2c_shutdown,
 };

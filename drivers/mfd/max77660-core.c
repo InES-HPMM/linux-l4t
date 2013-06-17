@@ -613,7 +613,7 @@ fail_client_reg:
 	return ret;
 }
 
-static int __devexit max77660_remove(struct i2c_client *client)
+static int max77660_remove(struct i2c_client *client)
 {
 	struct max77660_chip *chip = i2c_get_clientdata(client);
 	struct max77660_platform_data *pdata = client->dev.platform_data;
@@ -643,7 +643,7 @@ static struct i2c_driver max77660_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = max77660_probe,
-	.remove = __devexit_p(max77660_remove),
+	.remove = max77660_remove,
 	.id_table = max77660_id,
 };
 
