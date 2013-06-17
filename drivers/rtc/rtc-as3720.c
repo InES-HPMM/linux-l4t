@@ -292,7 +292,7 @@ static int as3720_rtc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit as3720_rtc_remove(struct platform_device *pdev)
+static int as3720_rtc_remove(struct platform_device *pdev)
 {
 	struct as3720 *as3720 = platform_get_drvdata(pdev);
 	struct as3720_rtc *rtc = &as3720->rtc;
@@ -309,7 +309,7 @@ static const struct dev_pm_ops as3720_rtc_pm_ops = {
 
 static struct platform_driver as3720_rtc_driver = {
 	.probe = as3720_rtc_probe,
-	.remove = __devexit_p(as3720_rtc_remove),
+	.remove = as3720_rtc_remove,
 	.driver = {
 		.name = "as3720-rtc",
 		.pm = DEV_PM_OPS,
