@@ -174,6 +174,10 @@ static struct regulator_init_data as3722_ldo0 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo0_supply),
 };
 
+static struct as3722_regulator_platform_data ldo0_reg_data = {
+	.reg_init = &as3722_ldo0,
+};
+
 static struct regulator_init_data as3722_ldo1 = {
 	.constraints = {
 		.min_uV = 1800000,
@@ -188,6 +192,10 @@ static struct regulator_init_data as3722_ldo1 = {
 	},
 	.consumer_supplies = as3722_ldo1_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo1_supply),
+};
+
+static struct as3722_regulator_platform_data ldo1_reg_data = {
+	.reg_init = &as3722_ldo1,
 };
 
 static struct regulator_init_data as3722_ldo2 = {
@@ -206,6 +214,10 @@ static struct regulator_init_data as3722_ldo2 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo2_supply),
 };
 
+static struct as3722_regulator_platform_data ldo2_reg_data = {
+	.reg_init = &as3722_ldo2,
+};
+
 static struct regulator_init_data as3722_ldo3 = {
 	.constraints = {
 		.min_uV = 1000000,
@@ -219,6 +231,10 @@ static struct regulator_init_data as3722_ldo3 = {
 	},
 	.consumer_supplies = as3722_ldo3_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo3_supply),
+};
+
+static struct as3722_regulator_platform_data ldo3_reg_data = {
+	.reg_init = &as3722_ldo3,
 };
 
 static struct regulator_init_data as3722_ldo4 = {
@@ -237,6 +253,10 @@ static struct regulator_init_data as3722_ldo4 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo4_supply),
 };
 
+static struct as3722_regulator_platform_data ldo4_reg_data = {
+	.reg_init = &as3722_ldo4,
+};
+
 static struct regulator_init_data as3722_ldo5 = {
 	.constraints = {
 		.min_uV = 1200000,
@@ -251,6 +271,10 @@ static struct regulator_init_data as3722_ldo5 = {
 	},
 	.consumer_supplies = as3722_ldo5_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo5_supply),
+};
+
+static struct as3722_regulator_platform_data ldo5_reg_data = {
+	.reg_init = &as3722_ldo5,
 };
 
 static struct regulator_init_data as3722_ldo6 = {
@@ -269,6 +293,10 @@ static struct regulator_init_data as3722_ldo6 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo6_supply),
 };
 
+static struct as3722_regulator_platform_data ldo6_reg_data = {
+	.reg_init = &as3722_ldo6,
+};
+
 static struct regulator_init_data as3722_ldo7 = {
 	.constraints = {
 		.min_uV = 1050000,
@@ -283,6 +311,10 @@ static struct regulator_init_data as3722_ldo7 = {
 	},
 	.consumer_supplies = as3722_ldo7_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo7_supply),
+};
+
+static struct as3722_regulator_platform_data ldo7_reg_data = {
+	.reg_init = &as3722_ldo7,
 };
 
 static struct regulator_init_data as3722_ldo9 = {
@@ -301,6 +333,10 @@ static struct regulator_init_data as3722_ldo9 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo9_supply),
 };
 
+static struct as3722_regulator_platform_data ldo9_reg_data = {
+	.reg_init = &as3722_ldo9,
+};
+
 static struct regulator_init_data as3722_ldo10 = {
 	.constraints = {
 		.min_uV = 2700000,
@@ -315,6 +351,10 @@ static struct regulator_init_data as3722_ldo10 = {
 	},
 	.consumer_supplies = as3722_ldo10_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo10_supply),
+};
+
+static struct as3722_regulator_platform_data ldo10_reg_data = {
+	.reg_init = &as3722_ldo10,
 };
 
 static struct regulator_init_data as3722_ldo11 = {
@@ -333,6 +373,9 @@ static struct regulator_init_data as3722_ldo11 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_ldo11_supply),
 };
 
+static struct as3722_regulator_platform_data ldo11_reg_data = {
+	.reg_init = &as3722_ldo11,
+};
 
 static struct regulator_init_data as3722_sd0 = {
 	.constraints = {
@@ -349,6 +392,10 @@ static struct regulator_init_data as3722_sd0 = {
 	},
 	.consumer_supplies = as3722_sd0_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd0_supply),
+};
+
+static struct as3722_regulator_platform_data sd0_reg_data = {
+	.reg_init = &as3722_sd0,
 };
 
 static struct regulator_init_data as3722_sd1 = {
@@ -368,6 +415,10 @@ static struct regulator_init_data as3722_sd1 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd1_supply),
 };
 
+static struct as3722_regulator_platform_data sd1_reg_data = {
+	.reg_init = &as3722_sd1,
+};
+
 static struct regulator_init_data as3722_sd2 = {
 	.constraints = {
 		.min_uV = 1350000,
@@ -383,6 +434,10 @@ static struct regulator_init_data as3722_sd2 = {
 	},
 	.consumer_supplies = as3722_sd2_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd2_supply),
+};
+
+static struct as3722_regulator_platform_data sd2_reg_data = {
+	.reg_init = &as3722_sd2,
 };
 
 static struct regulator_init_data as3722_sd4 = {
@@ -402,6 +457,10 @@ static struct regulator_init_data as3722_sd4 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd4_supply),
 };
 
+static struct as3722_regulator_platform_data sd4_reg_data = {
+	.reg_init = &as3722_sd4,
+};
+
 static struct regulator_init_data as3722_sd5 = {
 	.constraints = {
 		.min_uV = 1800000,
@@ -419,6 +478,10 @@ static struct regulator_init_data as3722_sd5 = {
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd5_supply),
 };
 
+static struct as3722_regulator_platform_data sd5_reg_data = {
+	.reg_init = &as3722_sd5,
+};
+
 static struct regulator_init_data as3722_sd6 = {
 	.constraints = {
 		.min_uV = 1000000,
@@ -434,6 +497,10 @@ static struct regulator_init_data as3722_sd6 = {
 	},
 	.consumer_supplies = as3722_sd6_supply,
 	.num_consumer_supplies = ARRAY_SIZE(as3722_sd6_supply),
+};
+
+static struct as3722_regulator_platform_data sd6_reg_data = {
+	.reg_init = &as3722_sd6,
 };
 
 static struct as3722_reg_init as3722_core_init_data[] = {
@@ -541,24 +608,24 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 };
 
 static struct as3722_platform_data as3722_pdata = {
-	.reg_init[AS3722_LDO0] = &as3722_ldo0,
-	.reg_init[AS3722_LDO1] = &as3722_ldo1,
-	.reg_init[AS3722_LDO2] = &as3722_ldo2,
-	.reg_init[AS3722_LDO3] = &as3722_ldo3,
-	.reg_init[AS3722_LDO4] = &as3722_ldo4,
-	.reg_init[AS3722_LDO5] = &as3722_ldo5,
-	.reg_init[AS3722_LDO6] = &as3722_ldo6,
-	.reg_init[AS3722_LDO7] = &as3722_ldo7,
-	.reg_init[AS3722_LDO9] = &as3722_ldo9,
-	.reg_init[AS3722_LDO10] = &as3722_ldo10,
-	.reg_init[AS3722_LDO11] = &as3722_ldo11,
+	.reg_pdata[AS3722_LDO0] = &ldo0_reg_data,
+	.reg_pdata[AS3722_LDO1] = &ldo1_reg_data,
+	.reg_pdata[AS3722_LDO2] = &ldo2_reg_data,
+	.reg_pdata[AS3722_LDO3] = &ldo3_reg_data,
+	.reg_pdata[AS3722_LDO4] = &ldo4_reg_data,
+	.reg_pdata[AS3722_LDO5] = &ldo5_reg_data,
+	.reg_pdata[AS3722_LDO6] = &ldo6_reg_data,
+	.reg_pdata[AS3722_LDO7] = &ldo7_reg_data,
+	.reg_pdata[AS3722_LDO9] = &ldo9_reg_data,
+	.reg_pdata[AS3722_LDO10] = &ldo10_reg_data,
+	.reg_pdata[AS3722_LDO11] = &ldo11_reg_data,
 
-	.reg_init[AS3722_SD0] = &as3722_sd0,
-	.reg_init[AS3722_SD1] = &as3722_sd1,
-	.reg_init[AS3722_SD2] = &as3722_sd2,
-	.reg_init[AS3722_SD4] = &as3722_sd4,
-	.reg_init[AS3722_SD5] = &as3722_sd5,
-	.reg_init[AS3722_SD6] = &as3722_sd6,
+	.reg_pdata[AS3722_SD0] = &sd0_reg_data,
+	.reg_pdata[AS3722_SD1] = &sd1_reg_data,
+	.reg_pdata[AS3722_SD2] = &sd2_reg_data,
+	.reg_pdata[AS3722_SD4] = &sd4_reg_data,
+	.reg_pdata[AS3722_SD5] = &sd5_reg_data,
+	.reg_pdata[AS3722_SD6] = &sd6_reg_data,
 
 	.core_init_data = &as3722_core_init_data[0],
 	.gpio_base = AS3722_GPIO_BASE,

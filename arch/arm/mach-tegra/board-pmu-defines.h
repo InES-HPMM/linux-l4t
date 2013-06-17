@@ -84,4 +84,32 @@
 		.vsel = _vsel,						\
 	}
 
+#define AS3722_SUPPLY(_name) "as3722_"#_name
+#define AMS_PDATA_INIT(_name, _supply_reg, _min_uV, _max_uV, _always_on,\
+			 _boot_on, _apply_uV)				\
+static struct regulator_init_data as3722_##_name##_reg_idata =		\
+{									\
+	.supply_regulator = _supply_reg,				\
+	.constraints = {						\
+		.name = AS3722_SUPPLY(_name),				\
+		.min_uV = _min_uV,					\
+		.max_uV = _max_uV,					\
+		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		\
+				     REGULATOR_MODE_STANDBY),		\
+		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		\
+				   REGULATOR_CHANGE_STATUS |		\
+				   REGULATOR_CHANGE_VOLTAGE),		\
+		.always_on = _always_on,				\
+		.boot_on = _boot_on,					\
+		.apply_uV = _apply_uV,					\
+	},								\
+	.num_consumer_supplies =					\
+		ARRAY_SIZE(as3722_##_name##_supply),			\
+	.consumer_supplies = as3722_##_name##_supply,			\
+};									\
+static struct as3722_regulator_platform_data as3722_##_name##_reg_pdata =	\
+{									\
+	.reg_init = &as3722_##_name##_reg_idata,			\
+}									\
+
 #endif

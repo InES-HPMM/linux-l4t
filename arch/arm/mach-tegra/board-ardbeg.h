@@ -41,6 +41,26 @@ int ardbeg_pmon_init(void);
 #define PCA954x_I2C_BUS2        (PCA954x_I2C_BUS_BASE + 2)
 #define PCA954x_I2C_BUS3        (PCA954x_I2C_BUS_BASE + 3)
 
+
+#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
+#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
+#define AS3722_GPIO_BASE	TEGRA_NR_GPIOS
+#define AS3722_GPIO_END	(AS3722_GPIO_BASE + AS3722_NUM_GPIO)
+#define AS3722_IRQ_BASE	TEGRA_NR_IRQS
+
+/* PMU_TCA6416 GPIOs */
+#define PMU_TCA6416_GPIO_BASE	(AS3722_GPIO_END)
+
+/* Baseband IDs */
+enum tegra_bb_type {
+	TEGRA_BB_NEMO = 1,
+	TEGRA_BB_HSIC_HUB = 6,
+};
+
+#define UTMI1_PORT_OWNER_XUSB   0x1
+#define UTMI2_PORT_OWNER_XUSB   0x2
+#define HSIC1_PORT_OWNER_XUSB   0x4
+
 /* Touchscreen definitions */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define TOUCH_GPIO_IRQ_RAYDIUM_SPI	TEGRA_GPIO_PK2
@@ -53,19 +73,6 @@ int ardbeg_pmon_init(void);
 #define TOUCH_SPI_ID			0	/*SPI 1 on ardbeg_interposer*/
 #define TOUCH_SPI_CS			0	/*CS  0 on ardbeg_interposer*/
 #endif
-
-#define PALMAS_TEGRA_GPIO_BASE	TEGRA_NR_GPIOS
-#define PALMAS_TEGRA_IRQ_BASE	TEGRA_NR_IRQS
-
-/* Baseband IDs */
-enum tegra_bb_type {
-	TEGRA_BB_NEMO = 1,
-	TEGRA_BB_HSIC_HUB = 6,
-};
-
-#define UTMI1_PORT_OWNER_XUSB   0x1
-#define UTMI2_PORT_OWNER_XUSB   0x2
-#define HSIC1_PORT_OWNER_XUSB   0x4
 
 /* Audio-related GPIOs */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
@@ -91,23 +98,13 @@ enum tegra_bb_type {
 #define TEGRA_GPIO_EXT_MIC_EN -1
 #endif
 
-
 /* Laguna specific */
-/* External peripheral act as gpio */
-/* AS3720 GPIO */
-#define AS3722_GPIO_BASE        TEGRA_NR_GPIOS
-#define AS3722_GPIO_END         (AS3722_GPIO_BASE + AS3722_NUM_GPIO)
-/* PMU_TCA6416 GPIOs */
-#define PMU_TCA6416_GPIO_BASE   (AS3722_GPIO_END)
-/* External peripheral act as interrupt controller */
-/* AS3720 IRQs */
-#define AS3722_IRQ_BASE         TEGRA_NR_IRQS
 
 int laguna_pinmux_init(void);
 int laguna_regulator_init(void);
 
 
-/* Display related GPIO */
+/* AUO Display related GPIO */
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3 /* GMI_AD11 */
 #define LCD_RST_L               TEGRA_GPIO_PH5 /* GMI_AD13 */
