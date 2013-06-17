@@ -969,7 +969,7 @@ static struct regulator_desc regulators[] = {
 	 },
 };
 
-static int __devinit as3720_regulator_probe(struct platform_device *pdev)
+static int as3720_regulator_probe(struct platform_device *pdev)
 {
 	int regulator;
 	struct regulator_dev *rdev;
@@ -997,7 +997,7 @@ static int __devinit as3720_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit as3720_regulator_remove(struct platform_device *pdev)
+static int as3720_regulator_remove(struct platform_device *pdev)
 {
 	struct as3720 *as3720 = dev_get_drvdata(&pdev->dev);
 	int regulator;
@@ -1013,7 +1013,7 @@ static struct platform_driver as3720_regulator_driver = {
 		   .owner = THIS_MODULE,
 		   },
 	.probe = as3720_regulator_probe,
-	.remove = __devexit_p(as3720_regulator_remove),
+	.remove = as3720_regulator_remove,
 };
 
 static int __init as3720_regulator_init(void)
