@@ -44,8 +44,8 @@
 #define USB_CHARGING_NV_CHARGER_CURRENT_LIMIT_UA 2000000u
 #define USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA 500000u
 
- /* 4 sec wait time for non-std charger detection after vbus is detected */
-#define NON_STD_CHARGER_DET_TIME_MS 4000
+ /* 7 sec wait time for non-std charger detection after vbus is detected */
+#define NON_STD_CHARGER_DET_TIME_MS 7000
 #define BOOST_TRIGGER_SIZE 4096
 
 #define UDC_RESET_TIMEOUT_MS 1000
