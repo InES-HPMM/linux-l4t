@@ -950,153 +950,6 @@ tegra_xusb_request_clk_rate(struct tegra_xhci_hcd *tegra,
 	return ret;
 }
 
-static void
-tegra_xhci_ss_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
-{
-	u32 elpg_program0;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-
-	/* clear any event */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-	elpg_program0 |= (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT);
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-
-	/* enable ss wake interrupts */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-
-	if (enable) {
-		/* enable interrupts */
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 |= SS_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 |= SS_PORT1_WAKE_INTERRUPT_ENABLE;
-	} else {
-		/* disable interrupts */
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 &= ~SS_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 &= ~SS_PORT1_WAKE_INTERRUPT_ENABLE;
-	}
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-}
-
-static void
-tegra_xhci_hs_wake_on_interrupts(struct tegra_xhci_hcd *tegra, bool enable)
-{
-	u32 elpg_program0;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-	elpg_program0 |= (USB2_PORT0_WAKEUP_EVENT |
-			USB2_PORT1_WAKEUP_EVENT |
-			USB2_PORT2_WAKEUP_EVENT |
-			USB2_HSIC_PORT0_WAKEUP_EVENT |
-			USB2_HSIC_PORT1_WAKEUP_EVENT);
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-
-	/* Enable the wake interrupts */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-	if (enable) {
-		/* enable interrupts */
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
-			elpg_program0 |= USB2_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-			elpg_program0 |= USB2_PORT1_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
-			elpg_program0 |= USB2_PORT2_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P0)
-			elpg_program0 |= USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P1)
-			elpg_program0 |= USB2_HSIC_PORT1_WAKE_INTERRUPT_ENABLE;
-	} else {
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
-			elpg_program0 &= ~USB2_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
-			elpg_program0 &= ~USB2_PORT1_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
-			elpg_program0 &= ~USB2_PORT2_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P0)
-			elpg_program0 &= ~USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
-		if (tegra->bdata->portmap & TEGRA_XUSB_HSIC_P1)
-			elpg_program0 &= ~USB2_HSIC_PORT1_WAKE_INTERRUPT_ENABLE;
-	}
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-}
-
-static void
-tegra_xhci_ss_wake_signal(struct tegra_xhci_hcd *tegra, bool enable)
-{
-	u32 elpg_program0;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-
-	/* DO NOT COMBINE BELOW 2 WRITES */
-
-	/* Assert/Deassert clamp_en_early signals to SSP0/1 */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-	if (enable) {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 |= SSP0_ELPG_CLAMP_EN_EARLY;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 |= SSP1_ELPG_CLAMP_EN_EARLY;
-	} else {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN_EARLY;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN_EARLY;
-	}
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-
-	/*
-	 * Check the LP0 figure and leave gap bw writes to
-	 * clamp_en_early and clamp_en
-	 */
-	usleep_range(100, 200);
-
-	/* Assert/Deassert clam_en signal */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-
-	if (enable) {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 |= SSP0_ELPG_CLAMP_EN;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 |= SSP1_ELPG_CLAMP_EN;
-	} else {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN;
-	}
-
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-
-	/* wait for 250us for the writes to propogate */
-	if (enable)
-		usleep_range(250, 300);
-}
-
-static void
-tegra_xhci_ss_vcore(struct tegra_xhci_hcd *tegra, bool enable)
-{
-	u32 elpg_program0;
-	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-
-	/* Assert vcore_off signal */
-	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
-
-	if (enable) {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 |= SSP0_ELPG_VCORE_DOWN;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 |= SSP1_ELPG_VCORE_DOWN;
-	} else {
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0)
-			elpg_program0 &= ~SSP0_ELPG_VCORE_DOWN;
-		if (tegra->bdata->portmap & TEGRA_XUSB_SS_P1)
-			elpg_program0 &= ~SSP1_ELPG_VCORE_DOWN;
-	}
-	writel(elpg_program0, tegra->padctl_base + padregs->elpg_program_0);
-}
-
 static void tegra_xhci_save_dfe_ctle_context(struct tegra_xhci_hcd *tegra,
 	u8 port)
 {
@@ -1776,13 +1629,13 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	 * enable the XUSB wakeup interrupts for the SuperSpeed
 	 * and USB2.0 ports assigned to host.Section 4.1 Step 3
 	 */
-	tegra_xhci_ss_wake_on_interrupts(tegra, true);
+	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, true);
 
 	/* STEP 3: xHCI PEP driver initiates the signal sequence
 	 * to enable the XUSB SSwake detection logic for the
 	 * SuperSpeed ports assigned to host.Section 4.1 Step 4
 	 */
-	tegra_xhci_ss_wake_signal(tegra, true);
+	tegra_xhci_ss_wake_signal(tegra->bdata->portmap, true);
 
 	/* STEP 4: System Power Management driver asserts reset
 	 * to XUSB SuperSpeed partition then disables its clocks
@@ -1810,7 +1663,7 @@ static int tegra_xhci_ss_elpg_entry(struct tegra_xhci_hcd *tegra)
 	 * to enable the XUSB SSwake detection logic for the
 	 * SuperSpeed ports assigned to host.Section 4.1 Step 7
 	 */
-	tegra_xhci_ss_vcore(tegra, true);
+	tegra_xhci_ss_vcore(tegra->bdata->portmap, true);
 
 	return ret;
 }
@@ -1843,7 +1696,7 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 
 	pmc_init(tegra, 1);
 
-	tegra_xhci_hs_wake_on_interrupts(tegra, true);
+	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, true);
 	xhci_dbg(xhci, "%s: PMC_UTMIP_UHSIC_SLEEP_CFG_0 = %x\n", __func__,
 		tegra_usb_pmc_reg_read(PMC_UTMIP_UHSIC_SLEEP_CFG_0));
 
@@ -1928,16 +1781,16 @@ static int tegra_xhci_ss_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	clk_enable(tegra->ss_clk);
 
 	/* Step 4: Disable ss wake detection logic */
-	tegra_xhci_ss_wake_on_interrupts(tegra, false);
+	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, false);
 
 	/* Step 4.1: Disable ss wake detection logic */
-	tegra_xhci_ss_vcore(tegra, false);
+	tegra_xhci_ss_vcore(tegra->bdata->portmap, false);
 
 	/* wait 150us */
 	usleep_range(150, 200);
 
 	/* Step 4.2: Disable ss wake detection logic */
-	tegra_xhci_ss_wake_signal(tegra, false);
+	tegra_xhci_ss_wake_signal(tegra->bdata->portmap, false);
 
 	/* Step 6 Deassert reset for ss clks */
 	tegra_periph_reset_deassert(tegra->ss_clk);
@@ -2387,8 +2240,8 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 	elpg_program0 = readl(tegra->padctl_base + padregs->elpg_program_0);
 
 	/* Clear the interrupt cause. We already read the intr status. */
-	tegra_xhci_ss_wake_on_interrupts(tegra, false);
-	tegra_xhci_hs_wake_on_interrupts(tegra, false);
+	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, false);
+	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, false);
 
 	xhci_dbg(xhci, "%s: elpg_program0 = %x\n",
 		__func__, elpg_program0);
@@ -2576,8 +2429,8 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	}
 
 	/* At this point,ensure ss/hs intr enables are always on */
-	tegra_xhci_ss_wake_on_interrupts(tegra, true);
-	tegra_xhci_hs_wake_on_interrupts(tegra, true);
+	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, true);
+	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, true);
 
 done:
 	/* pads are disabled only if usb2 root hub in xusb is idle */
@@ -2767,8 +2620,8 @@ tegra_xhci_suspend(struct platform_device *pdev,
 	}
 	mutex_unlock(&tegra->sync_lock);
 
-	tegra_xhci_ss_wake_on_interrupts(tegra, false);
-	tegra_xhci_hs_wake_on_interrupts(tegra, false);
+	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, false);
+	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, false);
 
 	/* enable_irq_wake for ss ports */
 	ret = enable_irq_wake(tegra->padctl_irq);
@@ -3209,8 +3062,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	tegra_xhci_padctl_portmap_and_caps(tegra);
 
 	/* Release XUSB wake logic state latching */
-	tegra_xhci_ss_wake_signal(tegra, false);
-	tegra_xhci_ss_vcore(tegra, false);
+	tegra_xhci_ss_wake_signal(tegra->bdata->portmap, false);
+	tegra_xhci_ss_vcore(tegra->bdata->portmap, false);
 
 	/* Deassert reset to XUSB host, ss, dev clocks */
 	tegra_periph_reset_deassert(tegra->host_clk);

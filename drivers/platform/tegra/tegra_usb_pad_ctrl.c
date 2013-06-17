@@ -28,6 +28,165 @@ static struct clk *utmi_pad_clk;
 #define PLL_LOCK_MIN_TIME 100
 #define PLL_LOCK_MAX_TIME 1000
 
+void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 elpg_program0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	/* clear any event */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	elpg_program0 |= (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT);
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	/* enable ss wake interrupts */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	if (enable) {
+		/* enable interrupts */
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SS_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SS_PORT1_WAKE_INTERRUPT_ENABLE;
+	} else {
+		/* disable interrupts */
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SS_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SS_PORT1_WAKE_INTERRUPT_ENABLE;
+	}
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_xhci_ss_wake_on_interrupts);
+
+void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 elpg_program0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	elpg_program0 |= (USB2_PORT0_WAKEUP_EVENT |
+			USB2_PORT1_WAKEUP_EVENT |
+			USB2_PORT2_WAKEUP_EVENT |
+			USB2_HSIC_PORT0_WAKEUP_EVENT |
+			USB2_HSIC_PORT1_WAKEUP_EVENT);
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	/* Enable the wake interrupts */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	if (enable) {
+		/* enable interrupts */
+		if (portmap & TEGRA_XUSB_USB2_P0)
+			elpg_program0 |= USB2_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_USB2_P1)
+			elpg_program0 |= USB2_PORT1_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_USB2_P2)
+			elpg_program0 |= USB2_PORT2_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_HSIC_P0)
+			elpg_program0 |= USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_HSIC_P1)
+			elpg_program0 |= USB2_HSIC_PORT1_WAKE_INTERRUPT_ENABLE;
+	} else {
+		if (portmap & TEGRA_XUSB_USB2_P0)
+			elpg_program0 &= ~USB2_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_USB2_P1)
+			elpg_program0 &= ~USB2_PORT1_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_USB2_P2)
+			elpg_program0 &= ~USB2_PORT2_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_HSIC_P0)
+			elpg_program0 &= ~USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE;
+		if (portmap & TEGRA_XUSB_HSIC_P1)
+			elpg_program0 &= ~USB2_HSIC_PORT1_WAKE_INTERRUPT_ENABLE;
+	}
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_xhci_hs_wake_on_interrupts);
+
+void tegra_xhci_ss_wake_signal(u32 portmap, bool enable)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 elpg_program0;
+	unsigned long flags;
+
+	/* DO NOT COMBINE BELOW 2 WRITES */
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	/* Assert/Deassert clamp_en_early signals to SSP0/1 */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	if (enable) {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_CLAMP_EN_EARLY;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_CLAMP_EN_EARLY;
+	} else {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN_EARLY;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN_EARLY;
+	}
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	/*
+	 * Check the LP0 figure and leave gap bw writes to
+	 * clamp_en_early and clamp_en
+	 */
+	udelay(100);
+
+	/* Assert/Deassert clam_en signal */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	if (enable) {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_CLAMP_EN;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_CLAMP_EN;
+	} else {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_CLAMP_EN;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_CLAMP_EN;
+	}
+
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+
+	/* wait for 250us for the writes to propogate */
+	if (enable)
+		udelay(250);
+}
+EXPORT_SYMBOL_GPL(tegra_xhci_ss_wake_signal);
+
+void tegra_xhci_ss_vcore(u32 portmap, bool enable)
+{
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	u32 elpg_program0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+	/* Assert vcore_off signal */
+	elpg_program0 = readl(pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+
+	if (enable) {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 |= SSP0_ELPG_VCORE_DOWN;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 |= SSP1_ELPG_VCORE_DOWN;
+	} else {
+		if (portmap & TEGRA_XUSB_SS_P0)
+			elpg_program0 &= ~SSP0_ELPG_VCORE_DOWN;
+		if (portmap & TEGRA_XUSB_SS_P1)
+			elpg_program0 &= ~SSP1_ELPG_VCORE_DOWN;
+	}
+	writel(elpg_program0, pad_base + XUSB_PADCTL_ELPG_PROGRAM_0);
+	spin_unlock_irqrestore(&xusb_padctl_lock, flags);
+}
+EXPORT_SYMBOL_GPL(tegra_xhci_ss_vcore);
+
 int utmi_phy_iddq_override(bool set)
 {
 	unsigned long val, flags;

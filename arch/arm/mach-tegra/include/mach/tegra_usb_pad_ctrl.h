@@ -15,6 +15,8 @@
 #ifndef _TEGRA_USB_PAD_CTRL_INTERFACE_H_
 #define _TEGRA_USB_PAD_CTRL_INTERFACE_H_
 
+#include <mach/xusb.h>
+
 #define UTMIPLL_HW_PWRDN_CFG0			0x52c
 #define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE  (1<<1)
 #define   UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL     (1<<0)
@@ -46,6 +48,26 @@
 #define XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN	(1 << 24)
 #define XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_CLAMP_EN_EARLY	(1 << 25)
 #define XUSB_PADCTL_ELPG_PROGRAM_AUX_MUX_LP0_VCORE_DOWN	(1 << 26)
+#define USB2_PORT0_WAKE_INTERRUPT_ENABLE	(1 << 0)
+#define USB2_PORT1_WAKE_INTERRUPT_ENABLE	(1 << 1)
+#define USB2_PORT2_WAKE_INTERRUPT_ENABLE	(1 << 2)
+#define USB2_HSIC_PORT0_WAKE_INTERRUPT_ENABLE	(1 << 3)
+#define USB2_HSIC_PORT1_WAKE_INTERRUPT_ENABLE	(1 << 4)
+#define SS_PORT0_WAKE_INTERRUPT_ENABLE	(1 << 6)
+#define SS_PORT1_WAKE_INTERRUPT_ENABLE	(1 << 7)
+#define USB2_PORT0_WAKEUP_EVENT		(1 << 8)
+#define USB2_PORT1_WAKEUP_EVENT		(1 << 9)
+#define USB2_PORT2_WAKEUP_EVENT		(1 << 10)
+#define USB2_HSIC_PORT0_WAKEUP_EVENT	(1 << 11)
+#define USB2_HSIC_PORT1_WAKEUP_EVENT	(1 << 12)
+#define SS_PORT0_WAKEUP_EVENT		(1 << 14)
+#define SS_PORT1_WAKEUP_EVENT		(1 << 15)
+#define SSP0_ELPG_CLAMP_EN		(1 << 16)
+#define SSP0_ELPG_CLAMP_EN_EARLY	(1 << 17)
+#define SSP0_ELPG_VCORE_DOWN		(1 << 18)
+#define SSP1_ELPG_CLAMP_EN		(1 << 20)
+#define SSP1_ELPG_CLAMP_EN_EARLY	(1 << 21)
+#define SSP1_ELPG_VCORE_DOWN		(1 << 22)
 
 #define XUSB_PADCTL_USB3_PAD_MUX_0		0x134
 #define XUSB_PADCTL_USB3_PAD_MUX_FORCE_PCIE_PAD_IDDQ_DISABLE_MASK0	(1 << 1)
@@ -63,6 +85,11 @@
 #define XUSB_PADCTL_USB3_PAD_MUX_SATA_PAD_LANE0_OWNER_USB3_SS	(0x1 << 26)
 #define XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE0_OWNER_USB3_SS	(0x1 << 16)
 #define XUSB_PADCTL_USB3_PAD_MUX_PCIE_PAD_LANE1_OWNER_USB3_SS	(0x1 << 18)
+
+void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable);
+void tegra_xhci_hs_wake_on_interrupts(u32 portmap, bool enable);
+void tegra_xhci_ss_wake_signal(u32 portmap, bool enable);
+void tegra_xhci_ss_vcore(u32 portmap, bool enable);
 
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
