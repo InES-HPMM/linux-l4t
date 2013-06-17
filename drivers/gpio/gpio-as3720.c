@@ -238,7 +238,7 @@ static struct gpio_chip as3720_gpio_chip = {
 	.can_sleep		= 1,
 };
 
-static int __devinit as3720_gpio_probe(struct platform_device *pdev)
+static int as3720_gpio_probe(struct platform_device *pdev)
 {
 	struct as3720 *as3720 =  dev_get_drvdata(pdev->dev.parent);
 	struct as3720_platform_data *pdata = dev_get_platdata(pdev->dev.parent);
@@ -278,7 +278,7 @@ static int __devinit as3720_gpio_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit as3720_gpio_remove(struct platform_device *pdev)
+static int as3720_gpio_remove(struct platform_device *pdev)
 {
 	struct as3720_gpio *as3720_gpio = platform_get_drvdata(pdev);
 
@@ -289,7 +289,7 @@ static struct platform_driver as3720_gpio_driver = {
 	.driver.name	= "as3720-gpio",
 	.driver.owner	= THIS_MODULE,
 	.probe		= as3720_gpio_probe,
-	.remove		= __devexit_p(as3720_gpio_remove),
+	.remove		= as3720_gpio_remove,
 };
 
 static int __init as3720_gpio_init(void)
