@@ -23,7 +23,6 @@
 
 #include <linux/delay.h>
 #include <linux/err.h>
-#include <linux/i2c.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/kthread.h>
@@ -34,8 +33,6 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/palmas.h>
-#include <linux/power_supply.h>
-#include <linux/regmap.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/slab.h>
@@ -45,6 +42,40 @@
 
 #define VBUS_REGULATOR_ENABLE_TIME	500000
 #define NV_CHARGER_CURRENT_LIMIT	2000
+
+
+struct palmas_charger_chip {
+	struct device			*dev;
+	int				irq;
+	int				wdt_refresh_timeout;
+	int				wdt_time_sec;
+
+	struct mutex			mutex;
+	int				in_current_limit;
+	int				rtc_alarm_time;
+
+	struct regulator_dev		*chg_rdev;
+	struct regulator_desc		chg_reg_desc;
+	struct regulator_init_data	chg_reg_init_data;
+
+	struct regulator_dev		*vbus_rdev;
+	struct regulator_desc		vbus_reg_desc;
+	struct regulator_init_data	vbus_reg_init_data;
+
+	struct battery_charger_dev	*bc_dev;
+
+	struct kthread_worker		bq_kworker;
+	struct task_struct		*bq_kworker_task;
+	struct kthread_work		bq_wdt_work;
+	struct rtc_device		*rtc;
+	int				stop_thread;
+	int				suspended;
+	int				chg_restart_timeout;
+	int				chg_restart_time;
+	int				chg_status;
+	struct palmas			*palmas;
+	bool				battery_presense;
+};
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -56,7 +87,7 @@ struct sched_param palmas_param = {
 	.sched_priority = MAX_RT_PRIO - 1,
 };
 
-int current_to_reg(const unsigned int *tbl,
+static int current_to_reg(const unsigned int *tbl,
 			size_t size, unsigned int val)
 {
 	size_t i;
@@ -67,67 +98,40 @@ int current_to_reg(const unsigned int *tbl,
 	return i > 0 ? i - 1 : -EINVAL;
 }
 
-int palmas_charger_reg_read(struct palmas_charger_chip *palmas_chip,
-		unsigned int reg, unsigned int *val)
-{
-	if (palmas_chip->use_regmap)
-		return regmap_read(palmas_chip->regmap, reg, val);
-	else
-		return palmas_read(palmas_chip->palmas,
-		PALMAS_CHARGER_BASE,
-		reg, val);
-
-}
-
-int palmas_charger_reg_write(struct palmas_charger_chip *palmas_chip,
-unsigned int reg, unsigned int val)
-{
-	if (palmas_chip->use_regmap)
-		return regmap_write(palmas_chip->regmap, reg, val);
-	else
-		return palmas_write(palmas_chip->palmas,
-			PALMAS_CHARGER_BASE,
-			reg, val);
-}
-
-int palmas_charger_update_bits(struct palmas_charger_chip *palmas_chip,
-		unsigned int reg, unsigned int mask, unsigned int val)
-{
-	if (palmas_chip->use_regmap)
-		return regmap_update_bits(palmas_chip->regmap, reg, mask, val);
-	else
-		return palmas_update_bits(palmas_chip->palmas,
-			PALMAS_CHARGER_BASE,
-			reg, mask, val);
-}
-
-int palmas_charger_enable(struct palmas_charger_chip *palmas_chip)
+static int palmas_charger_enable(struct palmas_charger_chip *palmas_chip)
 {
 	int ret;
 
-	dev_info(palmas_chip->dev, "Charging enabled\n");
-	ret = palmas_charger_update_bits(palmas_chip, PALMAS_CHARGER_REG01,
+	if (palmas_chip->battery_presense) {
+		dev_info(palmas_chip->dev, "Charging enabled\n");
+		ret = palmas_update_bits(palmas_chip->palmas,
+			PALMAS_CHARGER_BASE, PALMAS_CHARGER_REG01,
 			PALMAS_ENABLE_CHARGE_MASK, PALMAS_ENABLE_CHARGE);
+	} else {
+		ret = palmas_update_bits(palmas_chip->palmas,
+			PALMAS_CHARGER_BASE, PALMAS_CHARGER_REG01,
+			PALMAS_ENABLE_CHARGE_MASK, PALMAS_DISABLE_CHARGE);
+	}
+
 	if (ret < 0)
 		dev_err(palmas_chip->dev,
 			"register update failed, err %d\n", ret);
 	return ret;
 }
 
-int palmas_vbus_regulator_enable_time(struct regulator_dev *rdev)
+static int palmas_vbus_regulator_enable_time(struct regulator_dev *rdev)
 {
 	return VBUS_REGULATOR_ENABLE_TIME;
 }
 
-int palmas_vbus_enable(struct regulator_dev *rdev)
+static int palmas_vbus_enable(struct regulator_dev *rdev)
 {
 	struct palmas_charger_chip *palmas_chip = rdev_get_drvdata(rdev);
 	int ret;
 
 	dev_info(palmas_chip->dev, "VBUS enabled, charging disabled\n");
-
-
-	ret = palmas_charger_update_bits(palmas_chip, PALMAS_CHARGER_REG01,
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG01,
 			PALMAS_ENABLE_CHARGE_MASK, PALMAS_ENABLE_VBUS);
 	if (ret < 0)
 		dev_err(palmas_chip->dev, "PWR_ON_REG update failed %d", ret);
@@ -135,7 +139,7 @@ int palmas_vbus_enable(struct regulator_dev *rdev)
 	return ret;
 }
 
-int palmas_vbus_disable(struct regulator_dev *rdev)
+static int palmas_vbus_disable(struct regulator_dev *rdev)
 {
 	struct palmas_charger_chip *palmas_chip = rdev_get_drvdata(rdev);
 	int ret;
@@ -150,13 +154,14 @@ int palmas_vbus_disable(struct regulator_dev *rdev)
 	return ret;
 }
 
-int palmas_vbus_is_enabled(struct regulator_dev *rdev)
+static int palmas_vbus_is_enabled(struct regulator_dev *rdev)
 {
 	struct palmas_charger_chip *palmas_chip = rdev_get_drvdata(rdev);
 	int ret;
 	unsigned int data;
 
-	ret = palmas_charger_reg_read(palmas_chip, PALMAS_CHARGER_REG01, &data);
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG01, &data);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "PWR_ON_REG read failed %d", ret);
 		return ret;
@@ -164,7 +169,7 @@ int palmas_vbus_is_enabled(struct regulator_dev *rdev)
 	return (data & PALMAS_ENABLE_CHARGE_MASK) == PALMAS_ENABLE_VBUS;
 }
 
-struct regulator_ops palmas_vbus_ops = {
+static struct regulator_ops palmas_vbus_ops = {
 	.enable         = palmas_vbus_enable,
 	.disable        = palmas_vbus_disable,
 	.is_enabled     = palmas_vbus_is_enabled,
@@ -179,12 +184,8 @@ static int palmas_set_usbsuspend(struct palmas_charger_chip *palmas_chip,
 	int reg;
 
 	reg = enable << 2;
-
-	ret = palmas_update_bits(palmas,
-			PALMAS_PMU_CONTROL_BASE,
-			PALMAS_USB_CHGCTL1,
-			PALMAS_USB_CHGCTL1_USB_SUSPEND, reg);
-
+	ret = palmas_update_bits(palmas, PALMAS_PMU_CONTROL_BASE,
+		PALMAS_USB_CHGCTL1, PALMAS_USB_CHGCTL1_USB_SUSPEND, reg);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "Unable to update usb suspend\n");
 		return ret;
@@ -193,12 +194,12 @@ static int palmas_set_usbsuspend(struct palmas_charger_chip *palmas_chip,
 	return 0;
 }
 
-int palmas_init(struct palmas_charger_chip *palmas_chip)
+static int palmas_init(struct palmas_charger_chip *palmas_chip)
 {
 	int val, ret = 0;
 
 	/* Clear EN_HIZ */
-	ret = palmas_charger_update_bits(palmas_chip,
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 			PALMAS_CHARGER_REG00, PALMAS_EN_HIZ, 0);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "error reading reg: 0x%x\n",
@@ -213,15 +214,16 @@ int palmas_init(struct palmas_charger_chip *palmas_chip)
 		return 0;
 
 	val &= ~(PALMAS_INPUT_VOLTAGE_MASK);
-	/* Configure inout voltage to 4.52 in case of NV
-	*  NV charger.
-	*/
+	/*
+	 * Configure inout voltage to 4.52 in case of NV
+	 * NV charger.
+	 */
 	if (palmas_chip->in_current_limit == 2000)
 		val |= PALMAS_NVCHARGER_INPUT_VOL_SEL;
 	else
 		val |= PALMAS_DEFAULT_INPUT_VOL_SEL;
 
-	ret = palmas_charger_update_bits(palmas_chip,
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 			PALMAS_CHARGER_REG00, PALMAS_CONFIG_MASK |
 			PALMAS_INPUT_VOLTAGE_MASK, val);
 	if (ret < 0)
@@ -229,17 +231,16 @@ int palmas_init(struct palmas_charger_chip *palmas_chip)
 			PALMAS_CHARGER_REG00);
 
 	palmas_set_usbsuspend(palmas_chip, 0);
-
 	return ret;
 }
 
-int palmas_charger_init(struct palmas_charger_chip *palmas_chip)
+static int palmas_charger_init(struct palmas_charger_chip *palmas_chip)
 {
 	int ret;
 
 	/* Configure Output Current Control to 3A*/
-	ret = palmas_charger_reg_write(palmas_chip, PALMAS_CHARGER_REG02,
-				PALMAS_CHRG_CTRL_REG_3A);
+	ret = palmas_write(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+				PALMAS_CHARGER_REG02, PALMAS_CHRG_CTRL_REG_3A);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
 			"CHRG_CTRL_REG write failed %d\n", ret);
@@ -250,8 +251,8 @@ int palmas_charger_init(struct palmas_charger_chip *palmas_chip)
 	 * Configure Input voltage limit reset to OTP value,
 	 * and charging current to 500mA.
 	 */
-	ret = palmas_charger_reg_write(palmas_chip, PALMAS_CHARGER_REG00,
-				PALMAS_OTP_CURRENT_500MA);
+	ret = palmas_write(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG00, PALMAS_OTP_CURRENT_500MA);
 	if (ret < 0)
 		dev_err(palmas_chip->dev,
 			"INPUT_SRC_REG write failed %d\n", ret);
@@ -267,7 +268,8 @@ int palmas_charger_init(struct palmas_charger_chip *palmas_chip)
 	return ret;
 }
 
-int palmas_reset_wdt(struct palmas_charger_chip *palmas_chip, const char *from)
+static int palmas_reset_wdt(struct palmas_charger_chip *palmas_chip,
+	const char *from)
 {
 	int ret = 0;
 	unsigned int reg01;
@@ -279,7 +281,7 @@ int palmas_reset_wdt(struct palmas_charger_chip *palmas_chip, const char *from)
 	dev_info(palmas_chip->dev, "%s() from %s()\n", __func__, from);
 
 	/* Clear EN_HIZ */
-	ret = palmas_charger_update_bits(palmas_chip,
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 			PALMAS_CHARGER_REG00, PALMAS_EN_HIZ, 0);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
@@ -287,7 +289,7 @@ int palmas_reset_wdt(struct palmas_charger_chip *palmas_chip, const char *from)
 		goto scrub;
 	}
 
-	ret = palmas_charger_reg_read(palmas_chip,
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 				PALMAS_CHARGER_REG01, &reg01);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "PWR_ON_REG read failed: %d\n", ret);
@@ -297,14 +299,15 @@ int palmas_reset_wdt(struct palmas_charger_chip *palmas_chip, const char *from)
 	reg01 |= BIT(6);
 
 	/* Write two times to make sure reset WDT */
-	ret = palmas_charger_reg_write(palmas_chip,
+	ret = palmas_write(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 				PALMAS_CHARGER_REG01, reg01);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
 			"PWR_ON_REG write failed: %d\n", ret);
 		goto scrub;
 	}
-	ret = palmas_charger_reg_write(palmas_chip, PALMAS_CHARGER_REG01, reg01);
+	ret = palmas_write(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG01, reg01);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "PWR_ON_REG write failed: %d\n", ret);
 		goto scrub;
@@ -315,69 +318,70 @@ scrub:
 	return ret;
 }
 
-int palmas_set_charging_current(struct regulator_dev *rdev,
+static int palmas_set_charging_current(struct regulator_dev *rdev,
 			int min_uA, int max_uA)
 {
-	struct palmas_charger_chip *bq_charger = rdev_get_drvdata(rdev);
+	struct palmas_charger_chip *palmas_chip = rdev_get_drvdata(rdev);
 	int ret = 0;
 	int val;
 
-	dev_info(bq_charger->dev, "Setting charging current %d\n", max_uA/1000);
+	dev_info(palmas_chip->dev, "Setting charging current %d uA\n", max_uA);
 	/* System status register gets updated after a delay of about 200ms*/
 
-	bq_charger->chg_status = BATTERY_DISCHARGING;
+	palmas_chip->chg_status = BATTERY_DISCHARGING;
 	msleep(200);
 
-	ret = palmas_charger_enable(bq_charger);
+	ret = palmas_charger_enable(palmas_chip);
 	if (ret < 0) {
-		dev_err(bq_charger->dev, "Charger enable failed %d", ret);
+		dev_err(palmas_chip->dev, "Charger enable failed %d", ret);
 		return ret;
 	}
 
-	ret = palmas_charger_reg_read(bq_charger, PALMAS_CHARGER_REG08, &val);
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG08, &val);
 	if (ret < 0) {
-		dev_err(bq_charger->dev, "error reading reg: 0x%x\n",
+		dev_err(palmas_chip->dev, "error reading reg: 0x%x\n",
 				PALMAS_CHARGER_REG08);
 	}
 
 	if (max_uA == 0 && val != 0) {
-		palmas_set_usbsuspend(bq_charger, 1);
+		palmas_set_usbsuspend(palmas_chip, 1);
 		return ret;
 	}
 
-	bq_charger->in_current_limit = max_uA/1000;
+	palmas_chip->in_current_limit = max_uA/1000;
 
 	if ((val & PALMAS_VBUS_STAT) == PALMAS_VBUS_UNKNOWN) {
-		bq_charger->in_current_limit = 500;
-		ret = palmas_init(bq_charger);
+		palmas_chip->in_current_limit = 500;
+		ret = palmas_init(palmas_chip);
 		if (ret < 0)
 			goto error;
-		battery_charging_status_update(bq_charger->bc_dev,
+		battery_charging_status_update(palmas_chip->bc_dev,
 					BATTERY_DISCHARGING);
 	} else {
-		bq_charger->chg_status = BATTERY_CHARGING;
-		ret = palmas_init(bq_charger);
+		palmas_chip->chg_status = BATTERY_CHARGING;
+		ret = palmas_init(palmas_chip);
 		if (ret < 0)
 			goto error;
-		battery_charging_status_update(bq_charger->bc_dev,
+		battery_charging_status_update(palmas_chip->bc_dev,
 				BATTERY_CHARGING);
 	}
 	return 0;
 error:
-	dev_err(bq_charger->dev, "Charger enable failed, err = %d\n", ret);
+	dev_err(palmas_chip->dev, "Charger enable failed, err = %d\n", ret);
 	return ret;
 }
 
-struct regulator_ops palmas_tegra_regulator_ops = {
+static struct regulator_ops palmas_tegra_regulator_ops = {
 	.set_current_limit = palmas_set_charging_current,
 };
 
-int palmas_fault_clear_sts(struct palmas_charger_chip *palmas_chip)
+static int palmas_fault_clear_sts(struct palmas_charger_chip *palmas_chip)
 {
 	int ret;
 	unsigned int reg09;
 
-	ret = palmas_charger_reg_read(palmas_chip,
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 				PALMAS_CHARGER_REG09, &reg09);
 	if (ret < 0)
 		dev_err(palmas_chip->dev, "FAULT_REG read failed: %d\n", ret);
@@ -385,16 +389,16 @@ int palmas_fault_clear_sts(struct palmas_charger_chip *palmas_chip)
 	return ret;
 }
 
-int palmas_watchdog_init(struct palmas_charger_chip *palmas_chip,
+static int palmas_watchdog_init(struct palmas_charger_chip *palmas_chip,
 			int timeout, const char *from)
 {
 	int ret, val;
 	unsigned int reg05;
 
 	if (!timeout) {
-		ret = palmas_charger_update_bits(palmas_chip,
-				PALMAS_CHARGER_REG05,
-				PALMAS_WD_MASK, 0);
+		ret = palmas_update_bits(palmas_chip->palmas,
+				PALMAS_CHARGER_BASE,
+				PALMAS_CHARGER_REG05, PALMAS_WD_MASK, 0);
 		if (ret < 0)
 			dev_err(palmas_chip->dev,
 				"TIME_CTRL_REG read failed: %d\n", ret);
@@ -417,7 +421,7 @@ int palmas_watchdog_init(struct palmas_charger_chip *palmas_chip,
 		palmas_chip->wdt_refresh_timeout = 105;
 	}
 
-	ret = palmas_charger_reg_read(palmas_chip,
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
 			PALMAS_CHARGER_REG05, &reg05);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
@@ -426,7 +430,8 @@ int palmas_watchdog_init(struct palmas_charger_chip *palmas_chip,
 	}
 
 	if ((reg05 & PALMAS_WD_MASK) != val) {
-		ret = palmas_charger_update_bits(palmas_chip,
+		ret = palmas_update_bits(palmas_chip->palmas,
+				PALMAS_CHARGER_BASE,
 				PALMAS_CHARGER_REG05,
 				PALMAS_WD_MASK, val);
 		if (ret < 0) {
@@ -443,7 +448,7 @@ int palmas_watchdog_init(struct palmas_charger_chip *palmas_chip,
 	return ret;
 }
 
-void palmas_work_thread(struct kthread_work *work)
+static void palmas_work_thread(struct kthread_work *work)
 {
 	struct palmas_charger_chip *palmas_chip = container_of(work,
 			struct palmas_charger_chip, bq_wdt_work);
@@ -477,13 +482,14 @@ void palmas_work_thread(struct kthread_work *work)
 	}
 }
 
-irqreturn_t palmas_irq(int irq, void *data)
+static irqreturn_t palmas_charger_irq(int irq, void *data)
 {
 	struct palmas_charger_chip *palmas_chip = data;
 	irqreturn_t ret;
 	unsigned int val;
 
-	ret = palmas_charger_reg_read(palmas_chip, PALMAS_CHARGER_REG09, &val);
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			 PALMAS_CHARGER_REG09, &val);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "FAULT_REG read failed %d\n", ret);
 		return ret;
@@ -491,6 +497,12 @@ irqreturn_t palmas_irq(int irq, void *data)
 
 	dev_info(palmas_chip->dev, "%s() Irq %d status 0x%02x\n",
 		__func__, irq, val);
+
+	if (val & PALMAS_FAULT_BOOST_FAULT)
+		dev_err(palmas_chip->dev, "Charging Fault: VBUS Overloaded\n");
+
+	if (!palmas_chip->battery_presense)
+		return IRQ_HANDLED;
 
 	if (val & PALMAS_FAULT_WATCHDOG_FAULT) {
 		dev_err(palmas_chip->dev,
@@ -518,8 +530,6 @@ irqreturn_t palmas_irq(int irq, void *data)
 		}
 	}
 
-	if (val & PALMAS_FAULT_BOOST_FAULT)
-		dev_err(palmas_chip->dev, "Charging Fault: VBUS Overloaded\n");
 
 	switch (val & PALMAS_FAULT_CHRG_FAULT_MASK) {
 	case PALMAS_FAULT_CHRG_INPUT:
@@ -551,7 +561,8 @@ irqreturn_t palmas_irq(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	ret = palmas_charger_reg_read(palmas_chip, PALMAS_CHARGER_REG08, &val);
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			 PALMAS_CHARGER_REG08, &val);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "SYS_STAT_REG read failed %d\n", ret);
 		return IRQ_NONE;
@@ -563,16 +574,12 @@ irqreturn_t palmas_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-int palmas_init_charger_regulator(struct palmas_charger_chip *palmas_chip,
+static int palmas_init_charger_regulator(
+		struct palmas_charger_chip *palmas_chip,
 		struct palmas_charger_platform_data *pdata)
 {
 	int ret = 0;
 	struct regulator_config rconfig = { };
-
-	if (!pdata->bcharger_pdata) {
-		dev_err(palmas_chip->dev, "No charger platform data\n");
-		return 0;
-	}
 
 	palmas_chip->chg_reg_desc.name  = "palmas-charger";
 	palmas_chip->chg_reg_desc.ops   = &palmas_tegra_regulator_ops;
@@ -614,7 +621,7 @@ int palmas_init_charger_regulator(struct palmas_charger_chip *palmas_chip,
 	return ret;
 }
 
-int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
+static int palmas_init_vbus_regulator(struct palmas_charger_chip *palmas_chip,
 		struct palmas_charger_platform_data *pdata)
 {
 	int ret = 0;
@@ -687,12 +694,14 @@ scrub_reg:
 	return ret;
 }
 
-int palmas_show_chip_version(struct palmas_charger_chip *palmas_chip)
+static int palmas_show_charger_chip_version(
+		struct palmas_charger_chip *palmas_chip)
 {
 	int ret;
 	unsigned int val;
 
-	ret = palmas_charger_reg_read(palmas_chip, PALMAS_CHARGER_REG10, &val);
+	ret = palmas_read(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+				 PALMAS_CHARGER_REG10, &val);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
 			"REVISION_REG read failed: %d\n", ret);
@@ -708,35 +717,7 @@ int palmas_show_chip_version(struct palmas_charger_chip *palmas_chip)
 	return 0;
 }
 
-int palmas_wakealarm(struct palmas_charger_chip *palmas_chip, int time_sec)
-{
-	int ret;
-	unsigned long now;
-	struct rtc_wkalrm alm;
-	int alarm_time = time_sec;
-
-	alm.enabled = true;
-	ret = rtc_read_time(palmas_chip->rtc, &alm.time);
-	if (ret < 0) {
-		dev_err(palmas_chip->dev, "RTC read time failed %d\n", ret);
-		return ret;
-	}
-	rtc_tm_to_time(&alm.time, &now);
-
-	if (!alarm_time)
-		alarm_time = 3600;
-	rtc_time_to_tm(now + alarm_time, &alm.time);
-	ret = rtc_set_alarm(palmas_chip->rtc, &alm);
-	if (ret < 0) {
-		dev_err(palmas_chip->dev, "RTC set alarm failed %d\n", ret);
-		alm.enabled = false;
-		return ret;
-	}
-	alm.enabled = false;
-	return 0;
-}
-
-int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
+static int palmas_bcharger_init(struct palmas_charger_chip *palmas_chip,
 		struct palmas_charger_platform_data *pdata)
 {
 	int ret = 0;
@@ -745,15 +726,8 @@ int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
 	palmas_chip->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
 	palmas_chip->chg_restart_time = pdata->bcharger_pdata->chg_restart_time;
 	palmas_chip->rtc = alarmtimer_get_rtcdev();
-	mutex_init(&palmas_chip->mutex);
 	palmas_chip->suspended = 0;
 	palmas_chip->chg_restart_timeout = 0;
-
-	ret = palmas_show_chip_version(palmas_chip);
-	if (ret < 0) {
-		dev_err(palmas_chip->dev, "version read failed %d\n", ret);
-		return ret;
-	}
 
 	ret = palmas_charger_init(palmas_chip);
 	if (ret < 0) {
@@ -768,13 +742,6 @@ int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
 		return ret;
 	}
 
-	ret = palmas_init_vbus_regulator(palmas_chip, pdata);
-	if (ret < 0) {
-		dev_err(palmas_chip->dev,
-			"VBUS regualtor init failed %d\n", ret);
-		goto scrub_chg_reg;
-	}
-
 	init_kthread_worker(&palmas_chip->bq_kworker);
 	palmas_chip->bq_kworker_task = kthread_run(kthread_worker_fn,
 			&palmas_chip->bq_kworker,
@@ -783,7 +750,7 @@ int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
 		ret = PTR_ERR(palmas_chip->bq_kworker_task);
 		dev_err(palmas_chip->dev,
 			"Kworker task creation failed %d\n", ret);
-		goto scrub_vbus_reg;
+		goto scrub_chg_reg;
 	}
 
 	init_kthread_work(&palmas_chip->bq_wdt_work, palmas_work_thread);
@@ -795,62 +762,30 @@ int palmas_hw_init(struct palmas_charger_chip *palmas_chip,
 			palmas_chip->wdt_time_sec, "PROBE");
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "BQWDT init failed %d\n", ret);
-		return ret;
-	}
-
-	ret = palmas_fault_clear_sts(palmas_chip);
-	if (ret < 0) {
-		dev_err(palmas_chip->dev,
-			"fault clear status failed %d\n", ret);
-		return ret;
-	}
-
-	if (palmas_chip->irq < 0)
-		ret = palmas_update_bits(palmas_chip->palmas,
-			PALMAS_INTERRUPT_BASE,
-			PALMAS_INT6_MASK, PALMAS_INT6_MASK_CHARGER,
-			PALMAS_INT6_MASK_CHARGER);
-
-	else {
-		ret = request_threaded_irq(palmas_chip->irq, NULL,
-			palmas_irq, IRQF_TRIGGER_FALLING,
-				dev_name(palmas_chip->dev), palmas_chip);
-		if (ret < 0) {
-			dev_err(palmas_chip->dev, "request IRQ %d fail, err = %d\n",
-					palmas_chip->irq, ret);
-			goto scrub_kthread;
-		}
+		goto scrub_kthread;
 	}
 
 	/* enable charging */
 	ret = palmas_charger_enable(palmas_chip);
 	if (ret < 0)
-		goto scrub_irq;
+		goto scrub_kthread;
 
 	return 0;
-scrub_irq:
-	free_irq(palmas_chip->irq, palmas_chip);
 scrub_kthread:
 	palmas_chip->stop_thread = true;
 	flush_kthread_worker(&palmas_chip->bq_kworker);
 	kthread_stop(palmas_chip->bq_kworker_task);
-scrub_vbus_reg:
-	regulator_unregister(palmas_chip->vbus_rdev);
 scrub_chg_reg:
 	regulator_unregister(palmas_chip->chg_rdev);
-	mutex_destroy(&palmas_chip->mutex);
 	return ret;
 }
 
-int palmas_resource_cleanup(struct palmas_charger_chip *palmas_chip)
+static int palmas_bcharger_deinit(struct palmas_charger_chip *palmas_chip)
 {
-	free_irq(palmas_chip->irq, palmas_chip);
 	palmas_chip->stop_thread = true;
 	flush_kthread_worker(&palmas_chip->bq_kworker);
 	kthread_stop(palmas_chip->bq_kworker_task);
-	regulator_unregister(palmas_chip->vbus_rdev);
 	regulator_unregister(palmas_chip->chg_rdev);
-	mutex_destroy(&palmas_chip->mutex);
 	return 0;
 }
 
@@ -878,7 +813,7 @@ static int palmas_probe(struct platform_device *pdev)
 	struct palmas_platform_data *palmas_pdata;
 
 	palmas_pdata = dev_get_platdata(pdev->dev.parent);
-	if (!palmas_pdata) {
+	if (!palmas_pdata || !palmas_pdata->charger_pdata) {
 		dev_err(&pdev->dev, "No platform data\n");
 		return -ENODEV;
 	}
@@ -894,19 +829,33 @@ static int palmas_probe(struct platform_device *pdev)
 	palmas_chip->dev = &pdev->dev;
 	palmas_chip->irq = platform_get_irq(pdev, 0);
 	palmas_chip->palmas = dev_get_drvdata(pdev->dev.parent);
-	palmas_chip->use_regmap     = 0;
+	mutex_init(&palmas_chip->mutex);
+	dev_set_drvdata(&pdev->dev, palmas_chip);
+
+	ret = palmas_show_charger_chip_version(palmas_chip);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev, "version read failed %d\n", ret);
+		goto scrub_mutex;
+	}
+
+	ret = palmas_init_vbus_regulator(palmas_chip, pdata);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"VBUS regualtor init failed %d\n", ret);
+		goto scrub_mutex;
+	}
 
 	if (!pdata->bcharger_pdata) {
-		dev_err(&pdev->dev, "No battery charger platform data\n");
-		return -ENODEV;
+		dev_info(&pdev->dev, "No battery charger supported\n");
+		goto skip_bcharger_init;
 	}
+	palmas_chip->battery_presense =  true;
 
-	if (!pdata->bcharger_pdata->is_battery_present) {
-		dev_err(&pdev->dev, "Battery not detected! Exiting driver...\n");
-		return -ENODEV;
+	ret = palmas_bcharger_init(palmas_chip, pdata);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev, "hw init failed %d\n", ret);
+		goto scrub_vbus_reg;
 	}
-
-	dev_set_drvdata(&pdev->dev, palmas_chip);
 
 	palmas_chip->bc_dev = battery_charger_register(&pdev->dev,
 					&palmas_charger_bci);
@@ -914,18 +863,47 @@ static int palmas_probe(struct platform_device *pdev)
 		ret = PTR_ERR(palmas_chip->bc_dev);
 		dev_err(&pdev->dev, "battery charger register failed: %d\n",
 			ret);
-		return ret;
+		goto scrub_bcharger_init;
 	}
 	battery_charger_set_drvdata(palmas_chip->bc_dev, palmas_chip);
 
-	ret = palmas_hw_init(palmas_chip, pdata);
+skip_bcharger_init:
+	ret = palmas_fault_clear_sts(palmas_chip);
 	if (ret < 0) {
-		dev_err(palmas_chip->dev, "hw init failed %d\n", ret);
-		goto err;
+		dev_err(palmas_chip->dev,
+			"fault clear status failed %d\n", ret);
+		goto scrub_bcharger_reg;
 	}
-	return ret;
-err:
-	battery_charger_unregister(palmas_chip->bc_dev);
+
+	ret = request_threaded_irq(palmas_chip->irq, NULL,
+			palmas_charger_irq, IRQF_TRIGGER_LOW | IRQF_ONESHOT |
+			IRQF_EARLY_RESUME, "palmas-charger", palmas_chip);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev, "request IRQ %d fail, err = %d\n",
+				palmas_chip->irq, ret);
+		goto scrub_bcharger_reg;
+	}
+
+	if (pdata->bcharger_pdata) {
+		/* enable charging */
+		ret = palmas_charger_enable(palmas_chip);
+		if (ret < 0)
+			goto scrub_irq;
+	}
+	return 0;
+
+scrub_irq:
+	free_irq(palmas_chip->irq, palmas_chip);
+scrub_bcharger_reg:
+	if (pdata->bcharger_pdata)
+		battery_charger_unregister(palmas_chip->bc_dev);
+scrub_bcharger_init:
+	if (pdata->bcharger_pdata)
+		palmas_bcharger_deinit(palmas_chip);
+scrub_vbus_reg:
+	regulator_unregister(palmas_chip->vbus_rdev);
+scrub_mutex:
+	mutex_destroy(&palmas_chip->mutex);
 	return ret;
 }
 
@@ -933,8 +911,13 @@ static int palmas_remove(struct platform_device *pdev)
 {
 	struct palmas_charger_chip *palmas_chip = dev_get_drvdata(&pdev->dev);
 
-	battery_charger_unregister(palmas_chip->bc_dev);
-	palmas_resource_cleanup(palmas_chip);
+	free_irq(palmas_chip->irq, palmas_chip);
+	if (palmas_chip->battery_presense) {
+		battery_charger_unregister(palmas_chip->bc_dev);
+		palmas_bcharger_deinit(palmas_chip);
+	}
+	regulator_unregister(palmas_chip->vbus_rdev);
+	mutex_destroy(&palmas_chip->mutex);
 	return 0;
 }
 

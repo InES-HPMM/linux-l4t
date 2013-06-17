@@ -218,8 +218,6 @@ struct palmas_resource;
 struct palmas_usb;
 struct palmas_rtc;
 struct palmas_battery_info;
-struct palmas_charger_chip;
-struct battery_charger_dev;
 
 #define palmas_rails(_name) "palmas_"#_name
 
@@ -275,41 +273,6 @@ struct palmas_gpadc_platform_data {
 	/* Sets the START_POLARITY bit in the RT_CTRL register */
 	int start_polarity;
 };
-
-struct palmas_charger_chip {
-	struct device                   *dev;
-	struct regmap                   *regmap;
-	int                             irq;
-	int                             wdt_refresh_timeout;
-	int                             wdt_time_sec;
-
-	struct mutex                    mutex;
-	int                             in_current_limit;
-	int                             rtc_alarm_time;
-
-	struct regulator_dev            *chg_rdev;
-	struct regulator_desc           chg_reg_desc;
-	struct regulator_init_data      chg_reg_init_data;
-
-	struct regulator_dev            *vbus_rdev;
-	struct regulator_desc           vbus_reg_desc;
-	struct regulator_init_data      vbus_reg_init_data;
-
-	struct battery_charger_dev	*bc_dev;
-
-	struct kthread_worker           bq_kworker;
-	struct task_struct              *bq_kworker_task;
-	struct kthread_work             bq_wdt_work;
-	struct rtc_device               *rtc;
-	int                             stop_thread;
-	int                             suspended;
-	int                             chg_restart_timeout;
-	int                             chg_restart_time;
-	int                             use_regmap;
-	int				chg_status;
-	struct palmas                   *palmas;
-};
-
 
 struct palmas_reg_init {
 	/* warm_rest controls the voltage levels after a warm reset
@@ -516,9 +479,6 @@ struct palmas_vbus_platform_data {
 };
 
 struct palmas_bcharger_platform_data {
-	void (*update_status)(int);
-	int (*battery_check)(void);
-
 	int max_charge_volt_mV;
 	int max_charge_current_mA;
 	int charging_term_current_mA;
@@ -527,7 +487,6 @@ struct palmas_bcharger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
-	int is_battery_present;
 };
 
 struct palmas_charger_platform_data {
@@ -3823,6 +3782,7 @@ enum usb_irq_events {
 #define BQ24192i_IC_VER                 0x18
 
 #define PALMAS_ENABLE_CHARGE_MASK      0x30
+#define PALMAS_DISABLE_CHARGE          0x00
 #define PALMAS_ENABLE_CHARGE           0x10
 #define PALMAS_ENABLE_VBUS             0x20
 
