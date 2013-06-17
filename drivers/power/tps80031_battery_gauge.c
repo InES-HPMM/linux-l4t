@@ -161,7 +161,7 @@ static int tps80031_battery_capacity(struct tps80031_device_info *di,
 	uint8_t hwsts;
 	int ret;
 
-	ret = tps80031_reg_read(di, SLAVE_ID2, LINEAR_CHARGE_STS, &hwsts);
+	ret = tps80031_reg_read(di, TPS80031_SLAVE_ID2, LINEAR_CHARGE_STS, &hwsts);
 	if (ret < 0)
 		return ret;
 
@@ -231,7 +231,7 @@ static int tps80031_battery_charge_counter(struct tps80031_device_info *di,
 		return 0;
 
 	/* get current accumlator */
-	ret = tps80031_reads(di->dev->parent, SLAVE_ID2, FG_REG_04, 4,
+	ret = tps80031_reads(di->dev->parent, TPS80031_SLAVE_ID2, FG_REG_04, 4,
 							(uint8_t *) &acc_byte);
 	if (ret < 0)
 		return ret;
@@ -239,7 +239,7 @@ static int tps80031_battery_charge_counter(struct tps80031_device_info *di,
 	retval = (int32_t) acc_byte / 18 * 5;
 
 	/* get counter */
-	ret = tps80031_reads(di->dev->parent, SLAVE_ID2, FG_REG_01, 3,
+	ret = tps80031_reads(di->dev->parent, TPS80031_SLAVE_ID2, FG_REG_01, 3,
 							(uint8_t *) &cnt_byte);
 	if (ret < 0)
 		return ret;
@@ -373,10 +373,10 @@ static irqreturn_t tps80031_fg_calibrated(int irq, void *data)
 	uint8_t acc_byte1;
 	int ret;
 
-	ret = tps80031_reg_read(di, SLAVE_ID2, FG_REG_08, &acc_byte0);
+	ret = tps80031_reg_read(di, TPS80031_SLAVE_ID2, FG_REG_08, &acc_byte0);
 	if (ret < 0)
 		return IRQ_HANDLED;
-	ret = tps80031_reg_read(di, SLAVE_ID2, FG_REG_09, &acc_byte1);
+	ret = tps80031_reg_read(di, TPS80031_SLAVE_ID2, FG_REG_09, &acc_byte1);
 	if (ret < 0)
 		return IRQ_HANDLED;
 	/* sign extension */
@@ -397,11 +397,11 @@ static int tps80031_fg_start_gas_gauge(struct tps80031_device_info *di)
 	di->fg_calib_intr = 0;
 
 	/* start gas gauge */
-	ret = tps80031_reg_write(di, SLAVE_ID2, TOGGLE1, 0x20);
+	ret = tps80031_reg_write(di, TPS80031_SLAVE_ID2, TOGGLE1, 0x20);
 	if (ret < 0)
 		return ret;
 	/* set ADC update time to 3.9ms and start calibration */
-	ret = tps80031_reg_write(di, SLAVE_ID2, FG_REG_00, FG_REG_00_CC_CAL_EN);
+	ret = tps80031_reg_write(di, TPS80031_SLAVE_ID2, FG_REG_00, FG_REG_00_CC_CAL_EN);
 	if (ret < 0)
 		return ret;
 	return ret;
@@ -416,7 +416,7 @@ void tps80031_battery_status(enum charging_states status, void *data)
 	if ((status == charging_state_charging_in_progress)) {
 		di->usb_status	= POWER_SUPPLY_STATUS_CHARGING;
 		di->health	= POWER_SUPPLY_HEALTH_GOOD;
-		ret = tps80031_reg_read(di, SLAVE_ID2,
+		ret = tps80031_reg_read(di, TPS80031_SLAVE_ID2,
 				CHARGERUSB_CINLIMIT, &retval);
 		if (ret < 0) {
 			di->ac_online = 0;
@@ -484,7 +484,7 @@ static int tps80031_battery_probe(struct platform_device *pdev)
 
 	di->dev =  &pdev->dev;
 
-	ret = tps80031_reg_read(di, SLAVE_ID2, CONTROLLER_STAT1, &retval);
+	ret = tps80031_reg_read(di, TPS80031_SLAVE_ID2, CONTROLLER_STAT1, &retval);
 	if (ret < 0)
 		return ret;
 

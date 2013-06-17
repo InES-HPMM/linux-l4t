@@ -262,10 +262,10 @@ static int tps80031_gpadc_channel_raw_read(struct tps80031_gpadc_data *gpadc)
 {
 	uint8_t msb, lsb;
 	int ret;
-	ret = tps80031_reg_read(gpadc, SLAVE_ID2, GPCH0_LSB, &lsb);
+	ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, GPCH0_LSB, &lsb);
 	if (ret < 0)
 		return ret;
-	ret = tps80031_reg_read(gpadc, SLAVE_ID2, GPCH0_MSB, &msb);
+	ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, GPCH0_MSB, &msb);
 	if (ret < 0)
 		return ret;
 
@@ -319,7 +319,7 @@ static int tps80031_gpadc_wait_conversion_ready(
 	timeout = jiffies + msecs_to_jiffies(timeout_ms);
 	do {
 		uint8_t reg;
-		ret = tps80031_reg_read(gpadc, SLAVE_ID2, CTRL_P1, &reg);
+		ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, CTRL_P1, &reg);
 		if (ret < 0)
 			return ret;
 		if (!(reg & GPADC_BUSY) &&
@@ -334,19 +334,19 @@ static inline int tps80031_gpadc_config
 {
 	int ret = 0;
 
-	ret = tps80031_reg_write(gpadc, SLAVE_ID2, TOGGLE1, TOGGLE1_GPADCR);
+	ret = tps80031_reg_write(gpadc, TPS80031_SLAVE_ID2, TOGGLE1, TOGGLE1_GPADCR);
 	if (ret < 0)
 		return ret;
 
-	ret = tps80031_reg_write(gpadc, SLAVE_ID2, GPSELECT_ISB, channel_no);
+	ret = tps80031_reg_write(gpadc, TPS80031_SLAVE_ID2, GPSELECT_ISB, channel_no);
 	if (ret < 0)
 		return ret;
 
-	ret = tps80031_reg_write(gpadc, SLAVE_ID2, GPADC_CTRL, 0xef);
+	ret = tps80031_reg_write(gpadc, TPS80031_SLAVE_ID2, GPADC_CTRL, 0xef);
 	if (ret < 0)
 		return ret;
 
-	ret = tps80031_reg_write(gpadc, SLAVE_ID1, MISC1, 0x02);
+	ret = tps80031_reg_write(gpadc, TPS80031_SLAVE_ID1, MISC1, 0x02);
 	if (ret < 0)
 		return ret;
 
@@ -365,7 +365,7 @@ int tps80031_gpadc_conversion(int channel_no)
 		goto err;
 
 	/* start ADC conversion */
-	ret = tps80031_reg_write(the_gpadc, SLAVE_ID2, CTRL_P1, CTRL_P1_SP1);
+	ret = tps80031_reg_write(the_gpadc, TPS80031_SLAVE_ID2, CTRL_P1, CTRL_P1_SP1);
 	if (ret < 0)
 		goto err;
 
@@ -546,11 +546,11 @@ static int tps80031_gpadc_probe(struct platform_device *pdev)
 			continue;
 
 		if (~scalar_bit_map & (1 << index)) {
-			ret = tps80031_reg_read(gpadc, SLAVE_ID2,
+			ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2,
 				tps80031_trim[index].delta1_addr, &l_scalar1);
 			if (ret < 0)
 				goto err;
-			ret = tps80031_reg_read(gpadc, SLAVE_ID2,
+			ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2,
 				tps80031_trim[index].delta2_addr, &l_scalar2);
 			if (ret < 0)
 				goto err;
@@ -569,15 +569,15 @@ static int tps80031_gpadc_probe(struct platform_device *pdev)
 			scalar_delta1 = 0;
 			scalar_delta2 = 0;
 		}
-		ret = tps80031_reg_read(gpadc, SLAVE_ID2, TPS80031_GPADC_TRIM5,
+		ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, TPS80031_GPADC_TRIM5,
 							&l_delta1);
 		if (ret < 0)
 			goto err;
-		ret = tps80031_reg_read(gpadc, SLAVE_ID2, TPS80031_GPADC_TRIM6,
+		ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, TPS80031_GPADC_TRIM6,
 							&l_delta2);
 		if (ret < 0)
 			goto err;
-		ret = tps80031_reg_read(gpadc, SLAVE_ID2, TPS80031_GPADC_TRIM19,
+		ret = tps80031_reg_read(gpadc, TPS80031_SLAVE_ID2, TPS80031_GPADC_TRIM19,
 							&h_delta2);
 		if (ret < 0)
 			goto err;

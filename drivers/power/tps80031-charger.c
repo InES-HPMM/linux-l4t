@@ -107,13 +107,13 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 		__func__, min_uA/1000, max_uA/1000);
 
 	if (!max_uA) {
-		ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+		ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 						CONTROLLER_CTRL1, 0x0);
 		if (ret < 0)
 			dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
 				__func__, CONTROLLER_CTRL1);
 
-		ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+		ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 						CONTROLLER_WDG, 0x0);
 		if (ret < 0)
 			dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -126,7 +126,7 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 	}
 
 	code = tps80031_get_vbus_input_current_limit_code(max_uA);
-	ret = tps80031_update(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_update(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_CINLIMIT, code, 0x3F);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -141,7 +141,7 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 		max_charge_current = (max_charge_current - 300)/50;
 	else
 		max_charge_current = (max_charge_current - 500) / 100 + 4;
-	ret = tps80031_update(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_update(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_VICHRG, (uint8_t)max_charge_current, 0xF);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -150,7 +150,7 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 	}
 
 	/* Enable watchdog timer */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 				CONTROLLER_WDG, charger->watch_time_sec);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -159,7 +159,7 @@ static int set_charge_current_limit(struct regulator_dev *rdev,
 	}
 
 	/* Enable the charging */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 				CONTROLLER_CTRL1, 0x30);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -197,7 +197,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	int term_current;
 
 	/* Disable watchdog timer */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 				CONTROLLER_WDG, 0x0);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -206,7 +206,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* Disable the charging if any */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 				CONTROLLER_CTRL1, 0x0);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -224,7 +224,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* Unlock value */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_CTRLLIMIT2, 0);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -239,7 +239,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	else
 		max_charge_current = (max_charge_current - 100)/100;
 	max_charge_current &= 0xF;
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 		CHARGERUSB_CTRLLIMIT2, (uint8_t)max_charge_current);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register "
@@ -252,7 +252,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	max_charge_volt = max(3500, max_charge_volt);
 	max_charge_volt -= 3500;
 	max_charge_volt = max_charge_volt/20;
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 		CHARGERUSB_CTRLLIMIT1, (uint8_t)max_charge_volt);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -261,7 +261,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* Lock value */
-	ret = tps80031_set_bits(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_set_bits(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_CTRLLIMIT2, (1 << 4));
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -270,7 +270,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	}
 
 	/* set Pre Charge current to 400mA */
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_VICHRG_PC, 0x3);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -284,7 +284,7 @@ static int configure_charging_parameter(struct tps80031_charger *charger)
 	else
 		term_current = (charger->charging_term_current_mA - 50)/50;
 	term_current = term_current << 5;
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CHARGERUSB_CTRL2, term_current);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -300,7 +300,7 @@ static bool tps80031_check_charging_completed(struct tps80031_charger *charger)
 	int ret;
 	uint8_t linch_status;
 
-	ret = tps80031_read(charger->dev->parent, SLAVE_ID2,
+	ret = tps80031_read(charger->dev->parent, TPS80031_SLAVE_ID2,
 			LINEAR_CHRG_STS, &linch_status);
 	if (ret < 0) {
 		dev_err(charger->dev, "%s(): Failed in reading register 0x%02x\n",
@@ -359,7 +359,7 @@ static irqreturn_t watchdog_expire_isr(int irq, void *dev_id)
 	}
 
 	/* Enable watchdog timer again*/
-	ret = tps80031_write(charger->dev->parent, SLAVE_ID2, CONTROLLER_WDG,
+	ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2, CONTROLLER_WDG,
 			charger->watch_time_sec);
 	if (ret < 0)
 		dev_err(charger->dev, "%s(): Failed in writing register 0x%02x\n",
@@ -367,7 +367,7 @@ static irqreturn_t watchdog_expire_isr(int irq, void *dev_id)
 
 	/* Rewrite to enable the charging */
 	if (!ret) {
-		ret = tps80031_write(charger->dev->parent, SLAVE_ID2,
+		ret = tps80031_write(charger->dev->parent, TPS80031_SLAVE_ID2,
 			CONTROLLER_CTRL1, 0x30);
 		if (ret < 0)
 			dev_err(charger->dev, "%s(): Failed in writing "

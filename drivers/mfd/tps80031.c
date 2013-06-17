@@ -247,10 +247,10 @@ static void tps80031_backup_battery_charger_control(struct tps80031 *tps80031,
 						    int enable)
 {
 	if (enable)
-		tps80031_update(tps80031->dev, SLAVE_ID1, TPS80031_BBSPOR_CFG,
+		tps80031_update(tps80031->dev, TPS80031_SLAVE_ID1, TPS80031_BBSPOR_CFG,
 				TPS80031_BBSPOR_CHG_EN, TPS80031_BBSPOR_CHG_EN);
 	else
-		tps80031_update(tps80031->dev, SLAVE_ID1, TPS80031_BBSPOR_CFG,
+		tps80031_update(tps80031->dev, TPS80031_SLAVE_ID1, TPS80031_BBSPOR_CFG,
 				0, TPS80031_BBSPOR_CHG_EN);
 }
 
