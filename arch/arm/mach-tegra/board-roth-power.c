@@ -78,11 +78,11 @@ static struct regulator_init_data tps51632_init_data = {
 };
 
 static struct tps51632_regulator_platform_data tps51632_pdata = {
-	.reg_init_data = &tps51632_init_data,		\
-	.enable_pwm = false,				\
-	.max_voltage_uV = 1520000,			\
-	.base_voltage_uV = 500000,			\
-	.slew_rate_uv_per_us = 6000,			\
+	.reg_init_data = &tps51632_init_data,
+	.enable_pwm_dvfs = false,
+	.max_voltage_uV = 1520000,
+	.base_voltage_uV = 500000,
+/*	.slew_rate_uv_per_us = 6000, */
 };
 
 static struct i2c_board_info __initdata tps51632_boardinfo[] = {
