@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #define pr_fmt(fmt) "%s:" fmt, __func__
@@ -202,6 +204,65 @@ int nvshm_rpc_utils_encode_response(enum rpc_accept_stat status,
 }
 EXPORT_SYMBOL_GPL(nvshm_rpc_utils_encode_response);
 
+int nvshm_rpc_utils_make_request(
+	const struct nvshm_rpc_procedure *procedure,
+	const struct nvshm_rpc_datum_in *data,
+	u32 number,
+	void (*callback)(struct nvshm_rpc_message *message, void *context),
+	void *context)
+{
+	int rc;
+	struct nvshm_rpc_message *request;
+	int length;
+
+	length = nvshm_rpc_utils_encode_size(false, data, number);
+	if (length < 0)
+		return length;
+
+	request = nvshm_rpc_allocrequest(length, callback, context);
+	if (!request)
+		return -ENOMEM;
+
+	rc = nvshm_rpc_utils_encode_request(procedure, data, number, request);
+	if (rc < 0)
+		goto error;
+
+	rc = nvshm_rpc_send(request);
+	if (rc < 0)
+		goto error;
+
+	return 0;
+error:
+	nvshm_rpc_free(request);
+	return rc;
+}
+EXPORT_SYMBOL_GPL(nvshm_rpc_utils_make_request);
+
+struct nvshm_rpc_message *nvshm_rpc_utils_prepare_response(
+	const struct nvshm_rpc_message *request,
+	enum rpc_accept_stat status,
+	const struct nvshm_rpc_datum_in *data,
+	u32 number)
+{
+	struct nvshm_rpc_message *response;
+	int length;
+
+	length = nvshm_rpc_utils_encode_size(true, data, number);
+	if (length < 0)
+		return NULL;
+
+	response = nvshm_rpc_allocresponse(length, request);
+	if (!response)
+		return NULL;
+
+	if (nvshm_rpc_utils_encode_response(status, data, number, response)) {
+		nvshm_rpc_free(response);
+		return NULL;
+	}
+	return response;
+}
+EXPORT_SYMBOL_GPL(nvshm_rpc_utils_prepare_response);
+
 void nvshm_rpc_utils_decode_procedure(const struct nvshm_rpc_message *request,
 				      struct nvshm_rpc_procedure *procedure)
 {
@@ -325,3 +386,23 @@ int nvshm_rpc_utils_decode_args(const struct nvshm_rpc_message *message,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nvshm_rpc_utils_decode_args);
+
+int nvshm_rpc_utils_decode_response(
+	const struct nvshm_rpc_message *response,
+	enum rpc_accept_stat *status,
+	struct nvshm_rpc_datum_out *data,
+	u32 number,
+	u32 *version_min,
+	u32 *version_max)
+{
+	int rc = 0;
+
+	*status = nvshm_rpc_utils_decode_status(response);
+	if (*status == RPC_SUCCESS)
+		rc = nvshm_rpc_utils_decode_args(response, true, data, number);
+	else if ((*status == RPC_PROG_MISMATCH) && version_min && version_max)
+		rc = nvshm_rpc_utils_decode_versions(response, version_min,
+						     version_max);
+	return rc;
+}
+EXPORT_SYMBOL_GPL(nvshm_rpc_utils_decode_response);

@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -65,7 +67,7 @@ static void nvshm_rpc_dispatcher(struct work_struct *work)
 		goto done;
 	}
 	program = global.programs[procedure.program];
-	if (program == NULL) {
+	if (!program) {
 		rc = RPC_PROG_UNAVAIL;
 		goto done;
 	}
@@ -81,7 +83,7 @@ static void nvshm_rpc_dispatcher(struct work_struct *work)
 		goto done;
 	}
 	function = program->procedures[procedure.procedure];
-	if (function == NULL) {
+	if (!function) {
 		rc = RPC_PROC_UNAVAIL;
 		goto done;
 	}
@@ -96,26 +98,21 @@ done:
 				NVSHM_RPC_IN_UINT(program->version_max),
 			};
 			u32 n = ARRAY_SIZE(vers);
-			int length;
 
 			pr_err("failed to reply to %d:%d:%d: %s\n",
 			       procedure.program, procedure.version,
 			       procedure.procedure, protocol_errors[rc]);
-			length = nvshm_rpc_utils_encode_size(true, vers, n);
-			response = nvshm_rpc_allocresponse(length, request);
-			nvshm_rpc_utils_encode_response(rc, vers, n, response);
+			response = nvshm_rpc_utils_prepare_response(request, rc,
+								    vers, n);
 		} else if (rc != RPC_SUCCESS) {
 			/* Create other error message */
-			int length;
-
 			pr_err("failed to reply to %d:%d:%d: %s\n",
 			       procedure.program, procedure.version,
 			       procedure.procedure, protocol_errors[rc]);
-			length = nvshm_rpc_utils_encode_size(true, NULL, 0);
-			response = nvshm_rpc_allocresponse(length, request);
-			nvshm_rpc_utils_encode_response(rc, NULL, 0, response);
+			response = nvshm_rpc_utils_prepare_response(request, rc,
+								    NULL, 0);
 		}
-		if (response != NULL) {
+		if (response) {
 			pr_debug("send response\n");
 			nvshm_rpc_send(response);
 		}
@@ -164,7 +161,7 @@ int nvshm_rpc_program_register(enum nvshm_rpc_programs index,
 {
 	if (index >= NVSHM_RPC_PROGRAMS_MAX)
 		return -EINVAL;
-	if (global.programs[index] != NULL)
+	if (global.programs[index])
 		return -EBUSY;
 	global.programs[index] = program;
 	pr_info("program #%d registered\n", index);

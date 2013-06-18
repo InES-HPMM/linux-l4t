@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -46,12 +48,12 @@ static enum rpc_accept_stat rpc_bbc_edp_request(
 		NVSHM_RPC_OUT_UINT(&state),
 		NVSHM_RPC_OUT_UINT(&threshold),
 	};
-	int length, rc;
+	int rc;
 
 	/* Decode request */
 	if (nvshm_rpc_utils_decode_args(req, false, req_data,
 					ARRAY_SIZE(req_data)) < 0)
-		goto failure;
+		return RPC_GARBAGE_ARGS;
 
 	/* Call */
 	rc = tegra_bbc_proxy_edp_request(proxy_dev, mode, state, threshold);
@@ -62,18 +64,10 @@ static enum rpc_accept_stat rpc_bbc_edp_request(
 			NVSHM_RPC_IN_SINT(rc),
 		};
 
-		length = nvshm_rpc_utils_encode_size(true, resp_data,
-			ARRAY_SIZE(resp_data));
-		*resp = nvshm_rpc_allocresponse(length, req);
-		if (!*resp)
-			goto failure;
-
-		nvshm_rpc_utils_encode_response(RPC_SUCCESS, resp_data,
-						ARRAY_SIZE(resp_data), *resp);
+		*resp = nvshm_rpc_utils_prepare_response(req, RPC_SUCCESS,
+				resp_data, ARRAY_SIZE(resp_data));
 	}
-	return RPC_SUCCESS;
-failure:
-	return RPC_SYSTEM_ERR;
+	return *resp ? RPC_SUCCESS : RPC_SYSTEM_ERR;
 }
 
 static enum rpc_accept_stat rpc_bbc_edp_register(
@@ -86,12 +80,12 @@ static enum rpc_accept_stat rpc_bbc_edp_register(
 	struct nvshm_rpc_datum_out req_data[] = {
 		NVSHM_RPC_OUT_ARRAY(TYPE_UINT, &num_states, &states),
 	};
-	int length, rc;
+	int rc;
 
 	/* Decode request */
 	if (nvshm_rpc_utils_decode_args(req, false, req_data,
 					ARRAY_SIZE(req_data)) < 0)
-		goto failure;
+		return RPC_GARBAGE_ARGS;
 
 	/* Call */
 	rc = tegra_bbc_proxy_edp_register(proxy_dev, num_states, states);
@@ -103,18 +97,10 @@ static enum rpc_accept_stat rpc_bbc_edp_register(
 			NVSHM_RPC_IN_SINT(rc),
 		};
 
-		length = nvshm_rpc_utils_encode_size(true, resp_data,
-						     ARRAY_SIZE(resp_data));
-		*resp = nvshm_rpc_allocresponse(length, req);
-		if (!*resp)
-			goto failure;
-
-		nvshm_rpc_utils_encode_response(RPC_SUCCESS, resp_data,
-						ARRAY_SIZE(resp_data), *resp);
+		*resp = nvshm_rpc_utils_prepare_response(req, RPC_SUCCESS,
+				resp_data, ARRAY_SIZE(resp_data));
 	}
-	return RPC_SUCCESS;
-failure:
-	return RPC_SYSTEM_ERR;
+	return *resp ? RPC_SUCCESS : RPC_SYSTEM_ERR;
 }
 
 static enum rpc_accept_stat rpc_bbc_bw_register(
@@ -126,12 +112,12 @@ static enum rpc_accept_stat rpc_bbc_bw_register(
 	struct nvshm_rpc_datum_out req_data[] = {
 		NVSHM_RPC_OUT_UINT(&bw),
 	};
-	int length, rc;
+	int rc;
 
 	/* Decode request */
 	if (nvshm_rpc_utils_decode_args(req, false, req_data,
-		ARRAY_SIZE(req_data)) < 0)
-		goto failure;
+					ARRAY_SIZE(req_data)) < 0)
+		return RPC_GARBAGE_ARGS;
 
 	/* Call */
 	rc = tegra_bbc_proxy_bw_register(proxy_dev, bw);
@@ -142,18 +128,10 @@ static enum rpc_accept_stat rpc_bbc_bw_register(
 			NVSHM_RPC_IN_SINT(rc),
 		};
 
-		length = nvshm_rpc_utils_encode_size(true, resp_data,
-						     ARRAY_SIZE(resp_data));
-		*resp = nvshm_rpc_allocresponse(length, req);
-		if (!*resp)
-			goto failure;
-
-		nvshm_rpc_utils_encode_response(RPC_SUCCESS, resp_data,
-						ARRAY_SIZE(resp_data), *resp);
+		*resp = nvshm_rpc_utils_prepare_response(req, RPC_SUCCESS,
+				resp_data, ARRAY_SIZE(resp_data));
 	}
-	return RPC_SUCCESS;
-failure:
-	return RPC_SYSTEM_ERR;
+	return *resp ? RPC_SUCCESS : RPC_SYSTEM_ERR;
 }
 
 static enum rpc_accept_stat rpc_bbc_bw_request(
@@ -175,12 +153,12 @@ static enum rpc_accept_stat rpc_bbc_bw_request(
 		NVSHM_RPC_OUT_UINT(&freq_floor),
 		NVSHM_RPC_OUT_UINT(&flags),
 	};
-	int length, rc;
+	int rc;
 
 	/* Decode request */
 	if (nvshm_rpc_utils_decode_args(req, false, req_data,
-		ARRAY_SIZE(req_data)) < 0)
-		goto failure;
+					ARRAY_SIZE(req_data)) < 0)
+		return RPC_GARBAGE_ARGS;
 
 	/* Call */
 	rc = tegra_bbc_proxy_bw_request(proxy_dev, mode, bw, lt, margin);
@@ -192,18 +170,10 @@ static enum rpc_accept_stat rpc_bbc_bw_request(
 			NVSHM_RPC_IN_SINT(rc),
 		};
 
-		length = nvshm_rpc_utils_encode_size(true, resp_data,
-						     ARRAY_SIZE(resp_data));
-		*resp = nvshm_rpc_allocresponse(length, req);
-		if (!*resp)
-			goto failure;
-
-		nvshm_rpc_utils_encode_response(RPC_SUCCESS, resp_data,
-						ARRAY_SIZE(resp_data), *resp);
+		*resp = nvshm_rpc_utils_prepare_response(req, RPC_SUCCESS,
+				resp_data, ARRAY_SIZE(resp_data));
 	}
-	return RPC_SUCCESS;
-failure:
-	return RPC_SYSTEM_ERR;
+	return *resp ? RPC_SUCCESS : RPC_SYSTEM_ERR;
 }
 
 static nvshm_rpc_function_t procedures[] = {

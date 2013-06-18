@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2013 NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __DRIVERS_STAGING_NVSHM_NVSHM_RPC_UTILS_H
@@ -151,6 +153,39 @@ int nvshm_rpc_utils_encode_response(
 	struct nvshm_rpc_message *response);
 
 /**
+ * Allocate, populate and send a request buffer given procedure, data and
+ * callback intormation
+ *
+ * @param procedure Unique ID of the procedure
+ * @param data Function parameters
+ * @param number Number of function parameters
+ * @param callback Callback to use to receive ASYNCHRONOUS responses
+ * @param context A user context to pass to the callback, if relevant
+ * @return 0 on success, negative on error
+ */
+int nvshm_rpc_utils_make_request(
+	const struct nvshm_rpc_procedure *procedure,
+	const struct nvshm_rpc_datum_in *data,
+	u32 number,
+	void (*callback)(struct nvshm_rpc_message *message, void *context),
+	void *context);
+
+/**
+ * Allocate and populate a response buffer given request, status and data
+ *
+ * @param request Request message as received
+ * @param status Accept status of the request
+ * @param data Function parameters
+ * @param number Number of function parameters
+ * @return a response to send, or NULL on error
+ */
+struct nvshm_rpc_message *nvshm_rpc_utils_prepare_response(
+	const struct nvshm_rpc_message *request,
+	enum rpc_accept_stat status,
+	const struct nvshm_rpc_datum_in *data,
+	u32 number);
+
+/**
  * Returns the procedure info from a request message
  *
  * NOTE: the return code is garbage if used on a response message
@@ -205,5 +240,27 @@ int nvshm_rpc_utils_decode_args(
 	bool is_response,
 	struct nvshm_rpc_datum_out *data,
 	u32 number);
+
+/**
+ * Decode response and return accept status
+ *
+ * NOTE: the min/max versions supported are only valid if the status is
+ * RPC_PROG_MISMATCH and version_min/version_max are non-NULL pointers.
+ *
+ * @param response Message to read from
+ * @param status Accept status of the request
+ * @param data Function parameters to be filled in
+ * @param number Number of possible function parameters
+ * @param version_min Minimum version supported by service for this program
+ * @param version_max Maximum version supported by service for this program
+ * @return 0 on success, negative on error
+ */
+int nvshm_rpc_utils_decode_response(
+	const struct nvshm_rpc_message *response,
+	enum rpc_accept_stat *status,
+	struct nvshm_rpc_datum_out *data,
+	u32 number,
+	u32 *version_min,
+	u32 *version_max);
 
 #endif /* #ifndef __DRIVERS_STAGING_NVSHM_NVSHM_RPC_UTILS_H */
