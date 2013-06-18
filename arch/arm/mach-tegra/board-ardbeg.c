@@ -702,14 +702,19 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-spi", 0x7000de00, "spi-tegra114.5",
 				NULL),
-	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
-				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-ahub", 0x70080000, "tegra30-ahub",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
 				NULL),
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	OF_DEV_AUXDATA("nvidia,tegra114-apbdma", 0x6000a000, "tegra-apbdma",
+				NULL),
+#else
+	OF_DEV_AUXDATA("nvidia,tegra124-apbdma", 0x60020000, "tegra-apbdma",
+				NULL),
+#endif
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
