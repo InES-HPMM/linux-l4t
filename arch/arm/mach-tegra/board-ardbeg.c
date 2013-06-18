@@ -316,15 +316,15 @@ static struct tegra_uart_platform_data ardbeg_uart_pdata;
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
-	.gpio_spkr_en = TEGRA_GPIO_SPKR_EN,
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
+	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
+	.gpio_spkr_en = -1,
+	.gpio_int_mic_en = -1,
+	.gpio_ext_mic_en = -1,
 	.gpio_hp_mute = -1,
-	.gpio_int_mic_en = TEGRA_GPIO_INT_MIC_EN,
-	.gpio_ext_mic_en = TEGRA_GPIO_EXT_MIC_EN,
-	.gpio_ldo1_en = TEGRA_GPIO_LDO1_EN,
-	.gpio_codec1 = TEGRA_GPIO_CODEC1_EN,
-	.gpio_codec2 = TEGRA_GPIO_CODEC2_EN,
-	.gpio_codec3 = TEGRA_GPIO_CODEC3_EN,
+	.gpio_codec1 = -1,
+	.gpio_codec2 = -1,
+	.gpio_codec3 = -1,
 	.i2s_param[HIFI_CODEC]       = {
 		.audio_port_id = 1,
 		.is_i2s_master = 1,
@@ -339,6 +339,23 @@ static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
 
 static void ardbeg_audio_init(void)
 {
+	struct board_info board_info;
+	tegra_get_board_info(&board_info);
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363) {
+		/*Laguna*/
+		ardbeg_audio_pdata.gpio_hp_det =
+			TEGRA_GPIO_HP_DET;
+		ardbeg_audio_pdata.gpio_ldo1_en = -1;
+	} else {
+		/*Ardbeg*/
+		ardbeg_audio_pdata.gpio_hp_det =
+			TEGRA_GPIO_HP_DET;
+		ardbeg_audio_pdata.gpio_ldo1_en =
+			TEGRA_GPIO_LDO_EN;
+	}
+
 #ifdef USED_AUDIO_RT5639
 	ardbeg_audio_pdata.codec_name = "rt5639.0-001c";
 	ardbeg_audio_pdata.codec_dai_name = "rt5639-aif1";

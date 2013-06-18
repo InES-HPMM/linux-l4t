@@ -73,17 +73,18 @@ const char *tegra_rt5645_i2s_dai_name[TEGRA30_NR_I2S_IFC] = {
 struct tegra_rt5645 {
 	struct tegra_asoc_utils_data util_data;
 	struct tegra_asoc_platform_data *pdata;
-	struct regulator *spk_reg;
-	struct regulator *dmic_reg;
-	struct regulator *cdc_en;
 	int gpio_requested;
 #ifdef CONFIG_SWITCH
 	int jack_status;
 #endif
 	enum snd_soc_bias_level bias_level;
 	int clock_enabled;
-	struct regulator *dbvdd;
-	struct regulator *avdd;
+	struct regulator *codec_reg;
+	struct regulator *digital_reg;
+	struct regulator *analog_reg;
+	struct regulator *spk_reg;
+	struct regulator *mic_reg;
+	struct regulator *dmic_reg;
 };
 
 static int tegra_rt5645_hw_params(struct snd_pcm_substream *substream,
@@ -518,12 +519,18 @@ static int tegra_rt5645_event_int_mic(struct snd_soc_dapm_widget *w,
 	struct tegra_rt5645 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 
+	/*
+	*enable the below code if we use onboard mic as DMIC
+	*currently its AMIC
+	*/
+#ifdef USE_DMIC
 	if (machine->dmic_reg) {
 		if (SND_SOC_DAPM_EVENT_ON(event))
 			regulator_enable(machine->dmic_reg);
 		else
 			regulator_disable(machine->dmic_reg);
 	}
+#endif
 
 	if (!(machine->gpio_requested & GPIO_INT_MIC_EN))
 		return 0;
@@ -591,52 +598,6 @@ static int tegra_rt5645_init(struct snd_soc_pcm_runtime *rtd)
 	struct tegra_rt5645 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_asoc_platform_data *pdata = machine->pdata;
 	int ret;
-
-	if (gpio_is_valid(pdata->gpio_spkr_en)) {
-		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get spkr_en gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_SPKR_EN;
-
-		gpio_direction_output(pdata->gpio_spkr_en, 0);
-	}
-
-	if (gpio_is_valid(pdata->gpio_hp_mute)) {
-		ret = gpio_request(pdata->gpio_hp_mute, "hp_mute");
-		if (ret) {
-			dev_err(card->dev, "cannot get hp_mute gpio\n");
-			return ret;
-		}
-		machine->gpio_requested |= GPIO_HP_MUTE;
-
-		gpio_direction_output(pdata->gpio_hp_mute, 0);
-	}
-
-	if (gpio_is_valid(pdata->gpio_int_mic_en)) {
-		ret = gpio_request(pdata->gpio_int_mic_en, "int_mic_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get int_mic_en gpio\n");
-		} else {
-			machine->gpio_requested |= GPIO_INT_MIC_EN;
-
-			/* Disable int mic; enable signal is active-high */
-			gpio_direction_output(pdata->gpio_int_mic_en, 0);
-		}
-	}
-
-	if (gpio_is_valid(pdata->gpio_ext_mic_en)) {
-		ret = gpio_request(pdata->gpio_ext_mic_en, "ext_mic_en");
-		if (ret) {
-			dev_err(card->dev, "cannot get ext_mic_en gpio\n");
-		} else {
-			machine->gpio_requested |= GPIO_EXT_MIC_EN;
-
-			/* Disable ext mic; enable signal is active-low */
-			gpio_direction_output(pdata->gpio_ext_mic_en, 1);
-		}
-	}
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		tegra_rt5645_hp_jack_gpio.gpio = pdata->gpio_hp_det;
@@ -796,13 +757,13 @@ static int tegra_rt5645_driver_probe(struct platform_device *pdev)
 
 		pdata->gpio_ldo1_en = of_get_named_gpio(np,
 						"nvidia,ldo-gpios", 0);
-		if (pdata->gpio_ldo1_en == -EPROBE_DEFER)
-			return -EPROBE_DEFER;
+		if (pdata->gpio_ldo1_en < 0)
+			dev_warn(&pdev->dev, "Failed to get LDO_EN GPIO\n");
 
 		pdata->gpio_hp_det = of_get_named_gpio(np,
 						"nvidia,hp-det-gpios", 0);
-		if (pdata->gpio_hp_det == -EPROBE_DEFER)
-			return -EPROBE_DEFER;
+		if (pdata->gpio_hp_det < 0)
+			dev_warn(&pdev->dev, "Failed to get HP Det GPIO\n");
 
 		pdata->gpio_codec1 = pdata->gpio_codec2 = pdata->gpio_codec3 =
 		pdata->gpio_spkr_en = pdata->gpio_hp_mute =
@@ -850,42 +811,6 @@ static int tegra_rt5645_driver_probe(struct platform_device *pdev)
 		msleep(200);
 	}
 
-	if (gpio_is_valid(pdata->gpio_codec1)) {
-		ret = gpio_request(pdata->gpio_codec1, "rt5645");
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC1\n");
-
-		ret = gpio_direction_output(pdata->gpio_codec1, 1);
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC1\n");
-
-		msleep(200);
-	}
-
-	if (gpio_is_valid(pdata->gpio_codec2)) {
-		ret = gpio_request(pdata->gpio_codec2, "rt5645");
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC2\n");
-
-		ret = gpio_direction_output(pdata->gpio_codec2, 1);
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC2\n");
-
-		msleep(200);
-	}
-
-	if (gpio_is_valid(pdata->gpio_codec3)) {
-		ret = gpio_request(pdata->gpio_codec3, "rt5645");
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_request GPIO_CODEC3\n");
-
-		ret = gpio_direction_output(pdata->gpio_codec3, 1);
-		if (ret)
-			dev_err(&pdev->dev, "Fail gpio_direction GPIO_CODEC3\n");
-
-		msleep(200);
-	}
-
 	machine->pdata = pdata;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
@@ -895,36 +820,67 @@ static int tegra_rt5645_driver_probe(struct platform_device *pdev)
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
 	machine->clock_enabled = 1;
 
+	/*
+	*codec_reg - its a GPIO (in the form of a fixed regulator) that enables
+	*the basic(I2C) power for the codec and must be ON always
+	*/
 	if (!gpio_is_valid(pdata->gpio_ldo1_en)) {
-		machine->cdc_en = regulator_get(&pdev->dev, "ldo1_en");
-		if (IS_ERR(machine->cdc_en)) {
-			dev_err(&pdev->dev, "ldo1_en regulator not found %ld\n",
-					PTR_ERR(machine->cdc_en));
-			machine->cdc_en = 0;
-		} else {
-			regulator_enable(machine->cdc_en);
-		}
+		machine->codec_reg = regulator_get(&pdev->dev, "ldoen");
+		if (IS_ERR(machine->codec_reg))
+			machine->codec_reg = 0;
+		else
+			regulator_enable(machine->codec_reg);
 	}
 
-	machine->spk_reg = regulator_get(&pdev->dev, "vdd_spk");
-	if (IS_ERR(machine->spk_reg)) {
-		dev_info(&pdev->dev, "No speaker regulator found\n");
+	/*
+	*digital_reg - provided the digital power for the codec and must be
+	*ON always
+	*/
+	machine->digital_reg = regulator_get(&pdev->dev, "dbvdd");
+	if (IS_ERR(machine->digital_reg))
+		machine->digital_reg = 0;
+	else
+		regulator_enable(machine->digital_reg);
+
+	/*
+	*analog_reg - provided the analog power for the codec and must be
+	*ON always
+	*/
+	machine->analog_reg = regulator_get(&pdev->dev, "avdd");
+	if (IS_ERR(machine->analog_reg))
+		machine->analog_reg = 0;
+	else
+		regulator_enable(machine->analog_reg);
+
+	/*
+	*mic_reg - provided the micbias power and jack detection power
+	*for the codec and must be ON always
+	*/
+	machine->mic_reg = regulator_get(&pdev->dev, "micvdd");
+	if (IS_ERR(machine->mic_reg))
+		machine->mic_reg = 0;
+	else
+		regulator_enable(machine->mic_reg);
+
+	/*
+	*spk_reg - provided the speaker power and can be turned ON
+	*on need basis, when required
+	*/
+	machine->spk_reg = regulator_get(&pdev->dev, "spkvdd");
+	if (IS_ERR(machine->spk_reg))
 		machine->spk_reg = 0;
-	}
-
-
-	machine->dbvdd = regulator_get(&pdev->dev, "vdd_aud_dgtl");
-	if (IS_ERR(machine->dbvdd))
-		machine->dbvdd = 0;
 	else
-		regulator_enable(machine->dbvdd);
+		regulator_disable(machine->spk_reg);
 
-
-	machine->avdd = regulator_get(&pdev->dev, "vdd_aud_anlg");
-	if (IS_ERR(machine->avdd))
-		machine->avdd = 0;
+	/*
+	*dmic_reg - provided the DMIC power and can be turned ON
+	*on need basis, when required
+	*/
+	machine->dmic_reg = regulator_get(&pdev->dev, "dmicvdd");
+	if (IS_ERR(machine->dmic_reg))
+		machine->dmic_reg = 0;
 	else
-		regulator_enable(machine->avdd);
+		regulator_disable(machine->dmic_reg);
 
 #ifdef CONFIG_SWITCH
 	/* Addd h2w swith class support */
@@ -1006,29 +962,19 @@ static int tegra_rt5645_driver_remove(struct platform_device *pdev)
 		snd_soc_jack_free_gpios(&tegra_rt5645_hp_jack,
 					1,
 					&tegra_rt5645_hp_jack_gpio);
-	if (machine->gpio_requested & GPIO_EXT_MIC_EN)
-		gpio_free(pdata->gpio_ext_mic_en);
-	if (machine->gpio_requested & GPIO_INT_MIC_EN)
-		gpio_free(pdata->gpio_int_mic_en);
-	if (machine->gpio_requested & GPIO_HP_MUTE)
-		gpio_free(pdata->gpio_hp_mute);
-	if (machine->gpio_requested & GPIO_SPKR_EN)
-		gpio_free(pdata->gpio_spkr_en);
-	machine->gpio_requested = 0;
 
+	if (machine->digital_reg)
+		regulator_put(machine->digital_reg);
+	if (machine->analog_reg)
+		regulator_put(machine->analog_reg);
+	if (machine->mic_reg)
+		regulator_put(machine->mic_reg);
 	if (machine->spk_reg)
 		regulator_put(machine->spk_reg);
 	if (machine->dmic_reg)
 		regulator_put(machine->dmic_reg);
-	if (machine->dbvdd)
-		regulator_put(machine->dbvdd);
-	if (machine->avdd)
-		regulator_put(machine->avdd);
-
-	if (machine->cdc_en) {
-		regulator_disable(machine->cdc_en);
-		regulator_put(machine->cdc_en);
-	}
+	if (machine->codec_reg)
+		regulator_put(machine->codec_reg);
 
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);
