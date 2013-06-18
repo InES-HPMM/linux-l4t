@@ -205,6 +205,7 @@ struct tegra_cl_dvfs {
 	u8				thermal_out_floors[MAX_THERMAL_LIMITS];
 	int				therm_caps_num;
 	int				therm_floors_num;
+	unsigned long			dvco_rate_floors[MAX_THERMAL_LIMITS+1];
 	unsigned long			dvco_rate_min;
 
 	u8				lut_min;
@@ -693,6 +694,8 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	u32 val;
 	ktime_t now;
 	unsigned long data;
+	unsigned long step = RATE_STEP(cld);
+	unsigned long rate_min = cld->dvco_rate_min;
 	u8 out_min = get_output_min(cld);
 
 	/*
@@ -702,7 +705,7 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	 *  - at least specified time after the last calibration attempt
 	 */
 	if ((cld->mode != TEGRA_CL_DVFS_CLOSED_LOOP) ||
-	    (cld->last_req.rate > cld->dvco_rate_min))
+	    (cld->last_req.rate > rate_min))
 		return;
 
 	now = ktime_get();
@@ -742,14 +745,16 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 	/* Adjust minimum rate */
 	data &= CL_DVFS_MONITOR_DATA_MASK;
 	data = GET_MONITORED_RATE(data, cld->ref_rate);
-	if ((val > out_min) || (data < (cld->dvco_rate_min - RATE_STEP(cld))))
-		cld->dvco_rate_min -= RATE_STEP(cld);
-	else if (data > (cld->dvco_rate_min + RATE_STEP(cld)))
-		cld->dvco_rate_min += RATE_STEP(cld);
-	else
+	if ((val > out_min) || (data < (rate_min - step)))
+		rate_min -= step;
+	else if (data > (cld->dvco_rate_min + step))
+		rate_min += (data - rate_min) / step * step;
+	else {
+		cld->dvco_rate_floors[cld->therm_floor_idx] = rate_min;
 		return;
+	}
 
-	cld->dvco_rate_min = clamp(cld->dvco_rate_min,
+	cld->dvco_rate_min = clamp(rate_min,
 			cld->calibration_range_min, cld->calibration_range_max);
 	calibration_timer_update(cld);
 	pr_debug("%s: calibrated dvco_rate_min %lu\n",
@@ -866,17 +871,24 @@ static unsigned long find_dvco_rate_min(struct tegra_cl_dvfs *cld, u8 out_min)
 
 static void cl_dvfs_set_dvco_rate_min(struct tegra_cl_dvfs *cld)
 {
-	unsigned long rate = cld->safe_dvfs->dfll_data.out_rate_min;
-	if (cld->therm_floor_idx < cld->therm_floors_num)
-		rate = find_dvco_rate_min(
-			cld, cld->thermal_out_floors[cld->therm_floor_idx]);
+	unsigned long rate = cld->dvco_rate_floors[cld->therm_floor_idx];
+	if (!rate) {
+		rate = cld->safe_dvfs->dfll_data.out_rate_min;
+		if (cld->therm_floor_idx < cld->therm_floors_num)
+			rate = find_dvco_rate_min(cld,
+				cld->thermal_out_floors[cld->therm_floor_idx]);
+	}
 
 	/* round minimum rate to request unit (ref_rate/2) boundary */
 	cld->dvco_rate_min = ROUND_MIN_RATE(rate, cld->ref_rate);
+	pr_debug("%s: calibrated dvco_rate_min %lu\n",
+		 __func__, cld->dvco_rate_min);
 
 	/* dvco min rate is under-estimated - skewed range up */
 	cld->calibration_range_min = cld->dvco_rate_min - 4 * RATE_STEP(cld);
-	cld->calibration_range_max = cld->dvco_rate_min + 8 * RATE_STEP(cld);
+	if (cld->calibration_range_min < cld->safe_dvfs->freqs[0])
+		cld->calibration_range_min = cld->safe_dvfs->freqs[0];
+	cld->calibration_range_max = cld->dvco_rate_min + 24 * RATE_STEP(cld);
 }
 
 static void cl_dvfs_set_force_out_min(struct tegra_cl_dvfs *cld)
