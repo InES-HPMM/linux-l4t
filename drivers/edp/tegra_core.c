@@ -367,15 +367,26 @@ static void create_attr(const char *name, unsigned int *data)
 	WARN_ON(IS_ERR_OR_NULL(d));
 }
 
-static int cpucaps_show(struct seq_file *file, void *data)
+static inline void edp_show_2core_cpucaps(struct seq_file *file)
 {
-	unsigned int i;
-	struct tegra_system_edp_entry *p;
+	int i;
+	struct tegra_system_edp_entry *p = core_platdata->cpufreq_lim;
 
-	if (core_platdata ? !core_platdata->cpufreq_lim : true)
-		return -ENODEV;
+	seq_printf(file, "%5s %10s %10s\n",
+			"Power", "1-core", "2-cores");
 
-	p = core_platdata->cpufreq_lim;
+	for (i = 0; i < core_platdata->cpufreq_lim_size; i++, p++) {
+		seq_printf(file, "%5d %10u %10u\n",
+				p->power_limit_100mW * 100,
+				p->freq_limits[0],
+				p->freq_limits[1]);
+	}
+}
+
+static inline void edp_show_4core_cpucaps(struct seq_file *file)
+{
+	int i;
+	struct tegra_system_edp_entry *p = core_platdata->cpufreq_lim;
 
 	seq_printf(file, "%5s %10s %10s %10s %10s\n",
 			"Power", "1-core", "2-cores", "3-cores", "4-cores");
@@ -388,6 +399,19 @@ static int cpucaps_show(struct seq_file *file, void *data)
 				p->freq_limits[2],
 				p->freq_limits[3]);
 	}
+}
+
+static int cpucaps_show(struct seq_file *file, void *data)
+{
+	unsigned int max_nr_cpus = num_possible_cpus();
+
+	if (core_platdata ? !core_platdata->cpufreq_lim : true)
+		return -ENODEV;
+
+	if (max_nr_cpus == 2)
+		edp_show_2core_cpucaps(file);
+	else if (max_nr_cpus == 4)
+		edp_show_4core_cpucaps(file);
 
 	return 0;
 }
