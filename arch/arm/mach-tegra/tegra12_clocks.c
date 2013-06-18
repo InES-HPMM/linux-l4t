@@ -143,6 +143,9 @@
 	((AUDIO_SYNC_CLK_SPDIF - AUDIO_DLY_CLK) / 4 + 1)
 
 #define SPARE_REG			0x55c
+#define SPARE_REG_CLK_M_DIVISOR_SHIFT	2
+#define SPARE_REG_CLK_M_DIVISOR_MASK	(3 << SPARE_REG_CLK_M_DIVISOR_SHIFT)
+
 #define PERIPH_CLK_SOURCE_XUSB_HOST	0x600
 #define PERIPH_CLK_SOURCE_VIC		0x678
 #define PERIPH_CLK_SOURCE_NUM4 \
@@ -746,47 +749,65 @@ static unsigned long tegra12_clk_m_autodetect_rate(struct clk *c)
 	u32 auto_clock_control = osc_ctrl & ~OSC_CTRL_OSC_FREQ_MASK;
 	u32 pll_ref_div = osc_ctrl & OSC_CTRL_PLL_REF_DIV_MASK;
 
+	u32 spare = clk_readl(SPARE_REG);
+	u32 divisor = (spare & SPARE_REG_CLK_M_DIVISOR_MASK)
+		>> SPARE_REG_CLK_M_DIVISOR_SHIFT;
+	u32 spare_update = spare & ~SPARE_REG_CLK_M_DIVISOR_MASK;
+
 	c->rate = tegra_clk_measure_input_freq();
 	switch (c->rate) {
 	case 12000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_12MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	case 13000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	case 19200000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_19_2MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	case 26000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_26MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	case 16800000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_16_8MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	case 38400000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_38_4MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_2);
+		BUG_ON(divisor != 1);
+		spare_update |= (1 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 48000000:
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_48MHZ;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_4);
+		BUG_ON(divisor != 3);
+		spare_update |= (3 << SPARE_REG_CLK_M_DIVISOR_SHIFT);
 		break;
 	case 115200:	/* fake 13M for QT */
 	case 230400:	/* fake 13M for QT */
 		auto_clock_control |= OSC_CTRL_OSC_FREQ_13MHZ;
 		c->rate = 13000000;
 		BUG_ON(pll_ref_div != OSC_CTRL_PLL_REF_DIV_1);
+		BUG_ON(divisor != 0);
 		break;
 	default:
 		pr_err("%s: Unexpected clock rate %ld", __func__, c->rate);
 		BUG();
 	}
+
 	clk_writel(auto_clock_control, OSC_CTRL);
+	clk_writel(spare_update, SPARE_REG);
+
 	return c->rate;
 }
 
