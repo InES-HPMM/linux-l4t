@@ -85,7 +85,28 @@ struct tegra_rt5639 {
 	struct regulator *spk_reg;
 	struct regulator *mic_reg;
 	struct regulator *dmic_reg;
+	struct snd_soc_card *pcard;
 };
+
+static int tegra_rt5639_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+
+	tegra_asoc_utils_tristate_dap(i2s->id, false);
+
+	return 0;
+}
+
+static void tegra_rt5639_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(cpu_dai);
+
+	tegra_asoc_utils_tristate_dap(i2s->id, true);
+}
 
 static int tegra_rt5639_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
@@ -361,11 +382,15 @@ static int tegra_hw_free(struct snd_pcm_substream *substream)
 static struct snd_soc_ops tegra_rt5639_ops = {
 	.hw_params = tegra_rt5639_hw_params,
 	.hw_free = tegra_hw_free,
+	.startup = tegra_rt5639_startup,
+	.shutdown = tegra_rt5639_shutdown,
 };
 
 static struct snd_soc_ops tegra_rt5639_bt_sco_ops = {
 	.hw_params = tegra_bt_sco_hw_params,
 	.hw_free = tegra_hw_free,
+	.startup = tegra_rt5639_startup,
+	.shutdown = tegra_rt5639_shutdown,
 };
 
 static struct snd_soc_ops tegra_spdif_ops = {
@@ -663,15 +688,68 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 	},
 };
 
+static int tegra_rt5639_suspend_post(struct snd_soc_card *card)
+{
+	struct snd_soc_jack_gpio *gpio = &tegra_rt5639_hp_jack_gpio;
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	int i, suspend_allowed = 1;
+
+	/*In Voice Call we ignore suspend..so check for that*/
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
+	}
+
+	if (suspend_allowed) {
+		/*Disable the irq so that device goes to suspend*/
+		if (gpio_is_valid(gpio->gpio))
+			disable_irq(gpio_to_irq(gpio->gpio));
+		/*This may be required if dapm setbias level is not called in
+		some cases, may be due to a wrong dapm map*/
+		if (machine->clock_enabled) {
+			machine->clock_enabled = 0;
+			tegra_asoc_utils_clk_disable(&machine->util_data);
+		}
+		/*TODO: Disable Audio Regulators*/
+	}
+
+	return 0;
+}
+
 static int tegra_rt5639_resume_pre(struct snd_soc_card *card)
 {
 	int val;
 	struct snd_soc_jack_gpio *gpio = &tegra_rt5639_hp_jack_gpio;
+	struct tegra_rt5639 *machine = snd_soc_card_get_drvdata(card);
+	int i, suspend_allowed = 1;
 
-	if (gpio_is_valid(gpio->gpio)) {
-		val = gpio_get_value(gpio->gpio);
-		val = gpio->invert ? !val : val;
-		snd_soc_jack_report(gpio->jack, val, gpio->report);
+	/*In Voice Call we ignore suspend..so check for that*/
+	for (i = 0; i < machine->pcard->num_links; i++) {
+		if (machine->pcard->dai_link[i].ignore_suspend) {
+			suspend_allowed = 0;
+			break;
+		}
+	}
+
+	if (suspend_allowed) {
+		/*Convey jack status after resume and
+		re-enable the interrupts*/
+		if (gpio_is_valid(gpio->gpio)) {
+			val = gpio_get_value(gpio->gpio);
+			val = gpio->invert ? !val : val;
+			snd_soc_jack_report(gpio->jack, val, gpio->report);
+			enable_irq(gpio_to_irq(gpio->gpio));
+		}
+		/*This may be required if dapm setbias level is not called in
+		some cases, may be due to a wrong dapm map*/
+		if (!machine->clock_enabled &&
+				machine->bias_level != SND_SOC_BIAS_OFF) {
+			machine->clock_enabled = 1;
+			tegra_asoc_utils_clk_enable(&machine->util_data);
+		}
+		/*TODO: Enable Audio Regulators*/
 	}
 
 	return 0;
@@ -713,6 +791,7 @@ static struct snd_soc_card snd_soc_tegra_rt5639 = {
 	.owner = THIS_MODULE,
 	.dai_link = tegra_rt5639_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5639_dai),
+	.suspend_post = tegra_rt5639_suspend_post,
 	.resume_pre = tegra_rt5639_resume_pre,
 	.set_bias_level = tegra_rt5639_set_bias_level,
 	.set_bias_level_post = tegra_rt5639_set_bias_level_post,
@@ -812,13 +891,13 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 	}
 
 	machine->pdata = pdata;
+	machine->pcard = card;
+	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
 	if (ret)
 		goto err_free_machine;
-
-	machine->bias_level = SND_SOC_BIAS_STANDBY;
-	machine->clock_enabled = 1;
 
 	/*
 	*codec_reg - its a GPIO (in the form of a fixed regulator) that enables

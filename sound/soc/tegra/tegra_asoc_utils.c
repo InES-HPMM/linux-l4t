@@ -91,6 +91,15 @@ static void tristate_dap_##n(bool tristate) \
 
 TRISTATE_DAP_PORT(1)
 TRISTATE_DAP_PORT(2)
+/*I2S2 and I2S3 for other chips do not map to DAP3 and DAP4 (also
+these pinmux dont exist for other chips), they map to some
+other pinmux*/
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)\
+		|| defined(CONFIG_ARCH_TEGRA_12x_SOC)\
+		|| defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	TRISTATE_DAP_PORT(3)
+	TRISTATE_DAP_PORT(4)
+#endif
 
 int tegra_asoc_utils_tristate_dap(int id, bool tristate)
 {
@@ -101,6 +110,19 @@ int tegra_asoc_utils_tristate_dap(int id, bool tristate)
 	case 1:
 		tristate_dap_2(tristate);
 		break;
+/*I2S2 and I2S3 for other chips do not map to DAP3 and DAP4 (also
+these pinmux dont exist for other chips), they map to some
+other pinmux*/
+#if defined(CONFIG_ARCH_TEGRA_11x_SOC)\
+	|| defined(CONFIG_ARCH_TEGRA_12x_SOC)\
+	|| defined(CONFIG_ARCH_TEGRA_3x_SOC)
+	case 2:
+		tristate_dap_3(tristate);
+		break;
+	case 3:
+		tristate_dap_4(tristate);
+		break;
+#endif
 	default:
 		pr_warn("Invalid DAP port\n");
 		break;

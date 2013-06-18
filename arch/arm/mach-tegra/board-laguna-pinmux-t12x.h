@@ -30,16 +30,17 @@ static __initdata struct tegra_pingroup_config laguna_pinmux_common[] = {
 	DEFAULT_PINMUX(DAP_MCLK1_REQ, SATA,        NORMAL,    NORMAL,   OUTPUT),
 
 	/* I2S0 pinmux */
-	DEFAULT_PINMUX(DAP1_DIN,      I2S0,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP1_DOUT,     I2S0,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP1_FS,       I2S0,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP1_SCLK,     I2S0,        NORMAL,    NORMAL,   INPUT),
+	DEFAULT_PINMUX(DAP1_DIN,      I2S0,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP1_DOUT,     I2S0,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP1_FS,       I2S0,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP1_SCLK,     I2S0,        NORMAL,    TRISTATE,   INPUT),
 
 	/* I2S1 pinmux */
-	DEFAULT_PINMUX(DAP2_DIN,      I2S1,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP2_DOUT,     I2S1,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP2_FS,       I2S1,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP2_SCLK,     I2S1,        NORMAL,    NORMAL,   INPUT),
+	/*Tristated by default, will be turned on/off as required by audio machine driver*/
+	DEFAULT_PINMUX(DAP2_DIN,      I2S1,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP2_DOUT,     I2S1,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP2_FS,       I2S1,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP2_SCLK,     I2S1,        NORMAL,    TRISTATE,   INPUT),
 
 	/* CLDVFS pinmux */
 	DEFAULT_PINMUX(DVFS_PWM,      CLDVFS,      NORMAL,    NORMAL,   OUTPUT),
@@ -164,10 +165,11 @@ static __initdata struct tegra_pingroup_config laguna_pinmux_common[] = {
 	DEFAULT_PINMUX(CLK3_OUT,      EXTPERIPH3,  NORMAL,    NORMAL,   OUTPUT),
 
 	/* I2S3 pinmux */
-	DEFAULT_PINMUX(DAP4_DIN,      I2S3,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP4_DOUT,     I2S3,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP4_FS,       I2S3,        NORMAL,    NORMAL,   INPUT),
-	DEFAULT_PINMUX(DAP4_SCLK,     I2S3,        NORMAL,    NORMAL,   INPUT),
+	/*Tristated by default, will be turned on/off as required by audio machine driver*/
+	DEFAULT_PINMUX(DAP4_DIN,      I2S3,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP4_DOUT,     I2S3,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP4_FS,       I2S3,        NORMAL,    TRISTATE,   INPUT),
+	DEFAULT_PINMUX(DAP4_SCLK,     I2S3,        NORMAL,    TRISTATE,   INPUT),
 
 	/* I2C1 pinmux */
 	I2C_PINMUX(GEN1_I2C_SCL, I2C1, NORMAL, NORMAL, INPUT, DISABLE, ENABLE),
