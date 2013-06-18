@@ -847,6 +847,12 @@ static int palmas_probe(struct platform_device *pdev)
 
 	if (!pdata->bcharger_pdata) {
 		dev_info(&pdev->dev, "No battery charger supported\n");
+		ret = palmas_watchdog_init(palmas_chip, 0, "PROBE");
+		if (ret < 0) {
+			dev_err(palmas_chip->dev,
+				"WDT disable failed: %d\n", ret);
+			goto scrub_mutex;
+		}
 		goto skip_bcharger_init;
 	}
 	palmas_chip->battery_presense =  true;
