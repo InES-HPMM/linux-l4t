@@ -156,12 +156,18 @@ void tegra_gpio_init_configure(unsigned gpio, bool is_input, int value)
 
 static int tegra_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
+#if 0
 	return pinctrl_request_gpio(offset);
+#else
+	return 0;
+#endif
 }
 
 static void tegra_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
+#if 0
 	pinctrl_free_gpio(offset);
+#endif
 	tegra_gpio_disable(offset);
 }
 
