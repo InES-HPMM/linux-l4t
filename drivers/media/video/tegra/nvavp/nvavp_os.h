@@ -89,19 +89,17 @@ struct nvavp_os_info {
 	u32			control_offset;
 	u32			debug_offset;
 
-	struct nvmap_handle_ref	*handle;
 	void			*data;
 	u32			size;
-	phys_addr_t		phys;
+	dma_addr_t		phys;
 	void			*os_bin;
-	phys_addr_t		reset_addr;
+	dma_addr_t		reset_addr;
 };
 
 struct nvavp_ucode_info {
-	struct nvmap_handle_ref	*handle;
 	void			*data;
 	u32			size;
-	phys_addr_t		phys;
+	dma_addr_t		phys;
 	void			*ucode_bin;
 };
 

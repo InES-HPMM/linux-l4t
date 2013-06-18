@@ -99,8 +99,7 @@ static bool audio_enabled;
 
 struct nvavp_channel {
 	struct mutex			pushbuffer_lock;
-	struct nvmap_handle_ref		*pushbuf_handle;
-	phys_addr_t			pushbuf_phys;
+	dma_addr_t			pushbuf_phys;
 	u8				*pushbuf_data;
 	u32				pushbuf_index;
 	u32				pushbuf_fence;
@@ -139,9 +138,6 @@ struct nvavp_info {
 
 	/* ucode information */
 	struct nvavp_ucode_info		ucode_info;
-
-	/* client for driver allocations, persistent */
-	struct nvmap_client		*nvmap;
 
 	struct nvavp_channel		channel_info[NVAVP_NUM_CHANNELS];
 	bool				pending;
@@ -546,42 +542,17 @@ static int nvavp_pushbuffer_alloc(struct nvavp_info *nvavp, int channel_id)
 	struct nvavp_channel *channel_info = nvavp_get_channel_info(
 							nvavp, channel_id);
 
-	channel_info->pushbuf_handle = nvmap_alloc(nvavp->nvmap,
-						NVAVP_PUSHBUFFER_SIZE,
-						SZ_1M, NVMAP_HANDLE_UNCACHEABLE,
-						0);
-	if (IS_ERR(channel_info->pushbuf_handle)) {
-		dev_err(&nvavp->nvhost_dev->dev,
-			"cannot create pushbuffer handle\n");
-		ret = PTR_ERR(channel_info->pushbuf_handle);
-		goto err_pushbuf_alloc;
-	}
-	channel_info->pushbuf_data = (u8 *)nvmap_mmap(
-						channel_info->pushbuf_handle);
+	channel_info->pushbuf_data = dma_zalloc_coherent(&nvavp->nvhost_dev->dev,
+							   NVAVP_PUSHBUFFER_SIZE,
+							   &channel_info->pushbuf_phys,
+							   GFP_KERNEL);
 
 	if (!channel_info->pushbuf_data) {
 		dev_err(&nvavp->nvhost_dev->dev,
-			"cannot map pushbuffer handle\n");
+			"cannot alloc pushbuffer memory\n");
 		ret = -ENOMEM;
-		goto err_pushbuf_mmap;
-	}
-	ret = nvmap_pin(nvavp->nvmap, channel_info->pushbuf_handle,
-			&channel_info->pushbuf_phys);
-	if (ret) {
-		dev_err(&nvavp->nvhost_dev->dev,
-			"cannot pin pushbuffer handle\n");
-		goto err_pushbuf_pin;
 	}
 
-	memset(channel_info->pushbuf_data, 0, NVAVP_PUSHBUFFER_SIZE);
-
-	return 0;
-
-err_pushbuf_pin:
-	nvmap_munmap(channel_info->pushbuf_handle, channel_info->pushbuf_data);
-err_pushbuf_mmap:
-	nvmap_free(nvavp->nvmap, channel_info->pushbuf_handle);
-err_pushbuf_alloc:
 	return ret;
 }
 
@@ -591,13 +562,10 @@ static void nvavp_pushbuffer_free(struct nvavp_info *nvavp)
 
 	for (channel_id = 0; channel_id < NVAVP_NUM_CHANNELS; channel_id++) {
 		if (nvavp->channel_info[channel_id].pushbuf_data) {
-			nvmap_unpin(nvavp->nvmap,
-				nvavp->channel_info[channel_id].pushbuf_handle);
-			nvmap_munmap(
-				nvavp->channel_info[channel_id].pushbuf_handle,
-				nvavp->channel_info[channel_id].pushbuf_data);
-			nvmap_free(nvavp->nvmap,
-				nvavp->channel_info[channel_id].pushbuf_handle);
+			dma_free_coherent(&nvavp->nvhost_dev->dev,
+					    NVAVP_PUSHBUFFER_SIZE,
+					    nvavp->channel_info[channel_id].pushbuf_data,
+					    nvavp->channel_info[channel_id].pushbuf_phys);
 		}
 	}
 }
@@ -753,9 +721,8 @@ err_exit:
 
 static void nvavp_unload_ucode(struct nvavp_info *nvavp)
 {
-	nvmap_unpin(nvavp->nvmap, nvavp->ucode_info.handle);
-	nvmap_munmap(nvavp->ucode_info.handle, nvavp->ucode_info.data);
-	nvmap_free(nvavp->nvmap, nvavp->ucode_info.handle);
+	dma_free_coherent(&nvavp->nvhost_dev->dev,  nvavp->ucode_info.size,
+			   nvavp->ucode_info.data, nvavp->ucode_info.phys);
 	kfree(nvavp->ucode_info.ucode_bin);
 }
 
@@ -812,28 +779,15 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 			goto err_ubin_alloc;
 		}
 
-		ucode_info->handle = nvmap_alloc(nvavp->nvmap,
-						nvavp->ucode_info.size,
-					SZ_1M, NVMAP_HANDLE_UNCACHEABLE, 0);
-		if (IS_ERR(ucode_info->handle)) {
-			dev_err(&nvavp->nvhost_dev->dev,
-				"cannot create ucode handle\n");
-			ret = PTR_ERR(ucode_info->handle);
-			goto err_ucode_alloc;
-		}
-		ucode_info->data = (u8 *)nvmap_mmap(ucode_info->handle);
+		ucode_info->data = dma_alloc_coherent(&nvavp->nvhost_dev->dev,
+						ucode_info->size,
+						&ucode_info->phys,
+						GFP_KERNEL);
 		if (!ucode_info->data) {
 			dev_err(&nvavp->nvhost_dev->dev,
-				"cannot map ucode handle\n");
+				"cannot alloc memory for ucode\n");
 			ret = -ENOMEM;
-			goto err_ucode_mmap;
-		}
-		ret = nvmap_pin(nvavp->nvmap, ucode_info->handle,
-				&ucode_info->phys);
-		if (ret) {
-			dev_err(&nvavp->nvhost_dev->dev,
-				"cannot pin ucode handle\n");
-			goto err_ucode_pin;
+			goto err_ucode_alloc;
 		}
 		memcpy(ucode_info->ucode_bin, ptr, ucode_info->size);
 		release_firmware(nvavp_ucode_fw);
@@ -842,10 +796,6 @@ static int nvavp_load_ucode(struct nvavp_info *nvavp)
 	memcpy(ucode_info->data, ucode_info->ucode_bin, ucode_info->size);
 	return 0;
 
-err_ucode_pin:
-	nvmap_munmap(ucode_info->handle, ucode_info->data);
-err_ucode_mmap:
-	nvmap_free(nvavp->nvmap, ucode_info->handle);
 err_ucode_alloc:
 	kfree(nvavp->ucode_info.ucode_bin);
 err_ubin_alloc:
@@ -856,13 +806,8 @@ err_req_ucode:
 
 static void nvavp_unload_os(struct nvavp_info *nvavp)
 {
-	nvmap_unpin(nvavp->nvmap, nvavp->os_info.handle);
-	nvmap_munmap(nvavp->os_info.handle, nvavp->os_info.data);
-#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
-	nvmap_free(nvavp->nvmap, nvavp->os_info.handle);
-#elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU)
-	nvmap_free_iovm(nvavp->nvmap, nvavp->os_info.handle);
-#endif
+	dma_free_coherent(&nvavp->nvhost_dev->dev, SZ_1M,
+		nvavp->os_info.data, nvavp->os_info.phys);
 	kfree(nvavp->os_info.os_bin);
 }
 
@@ -1613,7 +1558,6 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	struct nvavp_info *nvavp;
 	int irq;
 	unsigned int heap_mask;
-	u32 iovmm_addr;
 	int ret = 0, channel_id;
 
 	irq = platform_get_irq_byname(ndev, "mbox_from_nvavp_pending");
@@ -1630,13 +1574,6 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 
 	memset(nvavp, 0, sizeof(*nvavp));
 
-	nvavp->nvmap = nvmap_create_client(nvmap_dev, "nvavp_drv");
-	if (IS_ERR_OR_NULL(nvavp->nvmap)) {
-		dev_err(&ndev->dev, "cannot create nvmap client\n");
-		ret = PTR_ERR(nvavp->nvmap);
-		goto err_nvmap_create_drv_client;
-	}
-
 #if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU) /* Tegra2 with AVP MMU */
 	heap_mask = NVMAP_HEAP_CARVEOUT_GENERIC;
 #elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 with SMMU */
@@ -1647,60 +1584,32 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
 
-		iovmm_addr = 0x0ff00000;
+		nvavp->os_info.phys = 0x0ff00000;
+		nvavp->os_info.data = dma_alloc_at_coherent(
+						&ndev->dev,
+						SZ_1M,
+						&nvavp->os_info.phys,
+						GFP_KERNEL);
 
-		nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
-						L1_CACHE_BYTES,
-						NVMAP_HANDLE_UNCACHEABLE,
-						iovmm_addr);
-		if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
-			dev_err(&ndev->dev,
-				"cannot create os handle\n");
-			ret = PTR_ERR(nvavp->os_info.handle);
-			goto err_nvmap_alloc;
-		}
-
-		nvavp->os_info.data = nvmap_mmap(nvavp->os_info.handle);
-		if (!nvavp->os_info.data) {
-			dev_err(&ndev->dev,
-				"cannot map os handle\n");
+		if (!nvavp->os_info.data || nvavp->os_info.phys != 0x0ff00000) {
+			dev_err(&ndev->dev, "cannot allocate IOVA memory\n");
 			ret = -ENOMEM;
-			goto err_nvmap_mmap;
-		}
-
-		ret = nvmap_pin(nvavp->nvmap, nvavp->os_info.handle,
-				&nvavp->os_info.phys);
-		if (ret) {
-			dev_err(&ndev->dev,
-				"cannot pin os handle\n");
-			goto err_nvmap_pin;
 		}
 
 		dev_info(&ndev->dev,
-			"allocated IOVM at %lx for AVP os\n",
+			"allocated IOVA at %lx for AVP os\n",
 			(unsigned long)nvavp->os_info.phys);
 		break;
 	case NVMAP_HEAP_CARVEOUT_GENERIC:
-		nvavp->os_info.handle = nvmap_alloc(nvavp->nvmap, SZ_1M, SZ_1M,
-						NVMAP_HANDLE_UNCACHEABLE, 0);
-		if (IS_ERR_OR_NULL(nvavp->os_info.handle)) {
-			dev_err(&ndev->dev, "cannot create AVP os handle\n");
-			ret = PTR_ERR(nvavp->os_info.handle);
-			goto err_nvmap_alloc;
-		}
+		nvavp->os_info.data = dma_alloc_coherent(
+						&ndev->dev,
+						SZ_1M,
+						&nvavp->os_info.phys,
+						GFP_KERNEL);
 
-		nvavp->os_info.data = nvmap_mmap(nvavp->os_info.handle);
 		if (!nvavp->os_info.data) {
-			dev_err(&ndev->dev, "cannot map AVP os handle\n");
+			dev_err(&ndev->dev, "cannot allocate dma memory\n");
 			ret = -ENOMEM;
-			goto err_nvmap_mmap;
-		}
-
-		ret = nvmap_pin(nvavp->nvmap, nvavp->os_info.handle,
-				&nvavp->os_info.phys);
-		if (ret) {
-			dev_err(&ndev->dev, "cannot pin AVP os handle\n");
-			goto err_nvmap_pin;
 		}
 
 		dev_info(&ndev->dev,
@@ -1849,18 +1758,7 @@ err_get_bsev_clk:
 err_get_vde_clk:
 	clk_put(nvavp->cop_clk);
 err_get_cop_clk:
-	nvmap_unpin(nvavp->nvmap, nvavp->os_info.handle);
-err_nvmap_pin:
-	nvmap_munmap(nvavp->os_info.handle, nvavp->os_info.data);
-err_nvmap_mmap:
-#if defined(CONFIG_TEGRA_AVP_KERNEL_ON_MMU)
-	nvmap_free(nvavp->nvmap, nvavp->os_info.handle);
-#elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU)
-	nvmap_free_iovm(nvavp->nvmap, nvavp->os_info.handle);
-#endif
-err_nvmap_alloc:
-	nvmap_client_put(nvavp->nvmap);
-err_nvmap_create_drv_client:
+err_dma_alloc:
 err_get_syncpt:
 	kfree(nvavp);
 	return ret;
@@ -1898,8 +1796,6 @@ static int tegra_nvavp_remove(struct platform_device *ndev)
 
 	clk_put(nvavp->emc_clk);
 	clk_put(nvavp->sclk);
-
-	nvmap_client_put(nvavp->nvmap);
 
 	kfree(nvavp);
 	return 0;
