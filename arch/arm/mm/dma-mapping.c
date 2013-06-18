@@ -1306,14 +1306,19 @@ err:
  * Create a mapping in device IO address space for specified pages
  */
 static dma_addr_t
-__iommu_create_mapping(struct device *dev, struct page **pages, size_t size)
+____iommu_create_mapping(struct device *dev, dma_addr_t *req,
+			 struct page **pages, size_t size)
 {
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	unsigned int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	dma_addr_t dma_addr, iova;
 	int i, ret = DMA_ERROR_CODE;
 
-	dma_addr = __alloc_iova(mapping, size);
+	if (req)
+		dma_addr = __alloc_iova_at(mapping, req, size);
+	else
+		dma_addr = __alloc_iova(mapping, size);
+
 	if (dma_addr == DMA_ERROR_CODE)
 		return dma_addr;
 
@@ -1339,6 +1344,12 @@ fail:
 	iommu_unmap(mapping->domain, dma_addr, iova-dma_addr);
 	__free_iova(mapping, dma_addr, size);
 	return DMA_ERROR_CODE;
+}
+
+static dma_addr_t
+__iommu_create_mapping(struct device *dev, struct page **pages, size_t size)
+{
+	return ____iommu_create_mapping(dev, NULL, pages, size);
 }
 
 static int __iommu_remove_mapping(struct device *dev, dma_addr_t iova, size_t size)
@@ -1426,7 +1437,6 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 	 * platform--see CONFIG_HUGETLB_PAGE. */
 	gfp &= ~(__GFP_COMP);
 
-	*handle = DMA_ERROR_CODE;
 	size = PAGE_ALIGN(size);
 
 	if (gfp & GFP_ATOMIC)
@@ -1436,7 +1446,11 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 	if (!pages)
 		return NULL;
 
-	*handle = __iommu_create_mapping(dev, pages, size);
+	if (*handle == DMA_ERROR_CODE)
+		*handle = __iommu_create_mapping(dev, pages, size);
+	else
+		*handle = ____iommu_create_mapping(dev, handle, pages, size);
+
 	if (*handle == DMA_ERROR_CODE)
 		goto err_buffer;
 
