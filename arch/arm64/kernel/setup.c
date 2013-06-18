@@ -52,7 +52,7 @@
 #include <asm/tlbflush.h>
 #include <asm/traps.h>
 #include <asm/memblock.h>
-#include <asm/psci.h>
+#include <asm/mmu_context.h>
 
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
@@ -100,6 +100,7 @@ void __init early_print(const char *str, ...)
 static void __init setup_processor(void)
 {
 	struct cpu_info *cpu_info;
+	u64 reg_value;
 
 	/*
 	 * locate processor in the list of supported processor
@@ -120,6 +121,16 @@ static void __init setup_processor(void)
 
 	sprintf(init_utsname()->machine, "aarch64");
 	elf_hwcap = 0;
+
+	/* Read the number of ASID bits */
+	reg_value = read_cpuid(ID_AA64MMFR0_EL1) & 0xf0;
+	if (reg_value == 0x00)
+		max_asid_bits = 8;
+	else if (reg_value == 0x20)
+		max_asid_bits = 16;
+	else
+		BUG_ON(1);
+	cpu_last_asid = 1 << max_asid_bits;
 }
 
 static void __init setup_machine_fdt(phys_addr_t dt_phys)
