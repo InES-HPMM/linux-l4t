@@ -30,12 +30,21 @@
 	((MC_EMEM_ARB_TIMING_W2R - MC_EMEM_ARB_CFG) / 4 + 1)
 #define MC_TIMING_REG_NUM2					\
 	((MC_EMEM_ARB_MISC1 - MC_EMEM_ARB_DA_TURNS) / 4 + 1)
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define MC_TIMING_REG_NUM3	T12X_MC_LATENCY_ALLOWANCE_NUM_REGS
+#else
 #define MC_TIMING_REG_NUM3						\
 	((MC_LATENCY_ALLOWANCE_VI_2 - MC_LATENCY_ALLOWANCE_BASE) / 4 + 1)
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
 			  + MC_TIMING_REG_NUM3 + 4];
+
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+extern void tegra12_mc_latency_allowance_save(u32 **pctx);
+extern void tegra12_mc_latency_allowance_restore(u32 **pctx);
+#endif
 
 static void tegra_mc_timing_save(void)
 {
@@ -52,11 +61,15 @@ static void tegra_mc_timing_save(void)
 	*ctx++ = readl(mc + MC_EMEM_ARB_OVERRIDE);
 	*ctx++ = readl(mc + MC_RESERVED_RSV);
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	tegra12_mc_latency_allowance_save(&ctx);
+#else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
-		*ctx++ = readl(mc + off);
+		*ctx++ = readl(IOMEM(mc + off));
+#endif
 
-	*ctx++ = readl(mc + MC_INT_MASK);
+	*ctx++ = readl(IOMEM((uintptr_t)mc + MC_INT_MASK));
 }
 
 void tegra_mc_timing_restore(void)
@@ -74,12 +87,16 @@ void tegra_mc_timing_restore(void)
 	__raw_writel(*ctx++, mc + MC_EMEM_ARB_OVERRIDE);
 	__raw_writel(*ctx++, mc + MC_RESERVED_RSV);
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+	tegra12_mc_latency_allowance_restore(&ctx);
+#else
 	for (off = MC_LATENCY_ALLOWANCE_BASE; off <= MC_LATENCY_ALLOWANCE_VI_2;
 		off += 4)
-		__raw_writel(*ctx++, mc + off);
+		__raw_writel(*ctx++, IOMEM(mc + off));
+#endif
 
-	writel(*ctx++, mc + MC_INT_MASK);
-	off = readl(mc + MC_INT_MASK);
+	writel(*ctx++, IOMEM(mc + MC_INT_MASK));
+	off = readl(IOMEM(mc + MC_INT_MASK));
 
 	writel(0x1, mc + MC_TIMING_CONTROL);
 	off = readl(mc + MC_TIMING_CONTROL);

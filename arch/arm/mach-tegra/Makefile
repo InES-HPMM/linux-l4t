@@ -50,6 +50,10 @@ ifeq ($(CONFIG_ARCH_TEGRA_12x_SOC),y)
 obj-$(CONFIG_PM_SLEEP)			+= wakeups-t12x.o
 endif
 
+ifeq ($(CONFIG_PM_SLEEP),y)
+obj-$(CONFIG_ARCH_TEGRA_12x_SOC)        += mc-timing-t12x.o
+endif
+
 ifeq ($(CONFIG_CPU_IDLE),y)
 ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuidle-t3.o

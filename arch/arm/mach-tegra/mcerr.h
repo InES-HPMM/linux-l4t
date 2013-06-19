@@ -39,7 +39,7 @@
 #include "tegra14_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #elif defined(CONFIG_ARCH_TEGRA_12x_SOC)
-#include "tegra11_emc.h"
+#include "tegra12_emc.h"
 #define MC_LATENCY_ALLOWANCE_BASE	MC_LATENCY_ALLOWANCE_AVPC_0
 #endif
 
