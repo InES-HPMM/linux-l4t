@@ -48,7 +48,7 @@
 #define PALMAS_PINMUX(_pin, _mux, _pud, _od)				\
 {									\
 	.pin_name = PALMAS_PIN_NAME_##_pin,				\
-	.pin_mux_option = PALMAS_PINMUX_##_mux,			\
+	.pin_mux_option = PALMAS_PINMUX_##_mux,				\
 	.pin_pull_up_dn = PALMAS_PIN_CONFIG_##_pud,			\
 	.open_drain_state = PALMAS_PIN_CONFIG_OD_##_od,			\
 }
@@ -86,7 +86,7 @@
 
 #define AS3722_SUPPLY(_name) "as3722_"#_name
 #define AMS_PDATA_INIT(_name, _supply_reg, _min_uV, _max_uV, _always_on,\
-			 _boot_on, _apply_uV)				\
+			 _boot_on, _apply_uV, _ext_cntrl)		\
 static struct regulator_init_data as3722_##_name##_reg_idata =		\
 {									\
 	.supply_regulator = _supply_reg,				\
@@ -110,6 +110,7 @@ static struct regulator_init_data as3722_##_name##_reg_idata =		\
 static struct as3722_regulator_platform_data as3722_##_name##_reg_pdata =	\
 {									\
 	.reg_init = &as3722_##_name##_reg_idata,			\
+	.ext_control = _ext_cntrl					\
 }									\
 
 #endif
