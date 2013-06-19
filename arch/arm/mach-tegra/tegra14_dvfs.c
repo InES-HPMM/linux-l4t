@@ -37,23 +37,16 @@ static bool tegra_dvfs_core_disabled;
 /* FIXME: need tegra14 step */
 #define VDD_SAFE_STEP			100
 
-/* Clean this switch once thermal Core DVFS working */
-#define THERMAL_DVFS_ENABLE 0
-
-#if THERMAL_DVFS_ENABLE
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
-static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 950, };
-#endif
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
 
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
 };
 
-#if THERMAL_DVFS_ENABLE
 static struct tegra_cooling_device core_vmin_cdev = {
 	.cdev_type = "core_cold",
 };
-#endif
 
 static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -69,9 +62,7 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
 	.max_millivolts = 1400,
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
-#if THERMAL_DVFS_ENABLE
 	.vmin_cdev = &core_vmin_cdev,
-#endif
 };
 
 static struct dvfs_rail *tegra14_dvfs_rails[] = {
@@ -890,10 +881,8 @@ void __init tegra14x_init_dvfs(void)
 	init_rail_vmin_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
-#if THERMAL_DVFS_ENABLE
 	init_rail_vmin_thermal_profile(vdd_core_vmin_trips_table,
 		vdd_core_therm_floors_table, &tegra14_dvfs_rail_vdd_core, NULL);
-#endif
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra14_dvfs_rails,
