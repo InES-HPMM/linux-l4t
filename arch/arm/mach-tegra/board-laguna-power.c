@@ -467,6 +467,12 @@ static struct regulator_consumer_supply fixed_reg_vdd_hdmi_supply[] = {
 	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
+
+/* VDD_LCD_BL DAP3_DOUT */
+static struct regulator_consumer_supply fixed_reg_vdd_lcd_bl_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_bl", NULL),
+};
+
 /* LCD_BL_EN GMI_AD10 */
 static struct regulator_consumer_supply fixed_reg_lcd_bl_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
@@ -622,34 +628,37 @@ FIXED_REG(6,	usb1_vbus,	usb1_vbus,	NULL,	0,	0,
 FIXED_REG(7,	usb3_vbus,	usb3_vbus,	NULL,	0,	0,
 		TEGRA_GPIO_PN5,	true,	true,	0,	5000);
 
-FIXED_REG(8,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
+FIXED_REG(8,	vdd_lcd_bl,	vdd_lcd_bl,	NULL,	0,	0,
+		TEGRA_GPIO_PP2,	false,	true,	0,	3300);
+
+FIXED_REG(9,	lcd_bl_en,	lcd_bl_en,	NULL,	0,	0,
 		TEGRA_GPIO_PH2,	false,	true,	0,	5000);
 
-FIXED_REG(9,	3v3,		3v3,		NULL,	0,	0,
+FIXED_REG(10,	3v3,		3v3,		NULL,	0,	0,
 		-1,	false,	true,	0,	3300);
 
-FIXED_REG(10,	5v0,		5v0,		NULL,	0,	0,
+FIXED_REG(11,	5v0,		5v0,		NULL,	0,	0,
 		-1,	false,	true,	0,	5000);
 
-FIXED_REG(11,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
+FIXED_REG(12,	dcdc_1v8,	dcdc_1v8,	NULL,	0,	0,
 		-1,	false,	true,	0,	1800);
 
-FIXED_REG(12,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
+FIXED_REG(13,    dcdc_1v2, dcdc_1v2,	NULL,	0,      0,
 		PMU_TCA6416_GPIO_BASE,     false,  true,   0,      1200);
 
-FIXED_REG(13,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
+FIXED_REG(14,	as3722_gpio2,	as3722_gpio2,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO2,	false,	false,	0,	3300);
 
-FIXED_REG(14,	lcd,		lcd,		NULL,	0,	0,
+FIXED_REG(15,	lcd,		lcd,		NULL,	0,	0,
 		AS3722_GPIO_BASE + AS3722_GPIO4,	false,	true,	0,	3300);
 
-FIXED_REG(15,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
+FIXED_REG(16,	sdmmc_en,		sdmmc_en,	NULL,	0,	0,
 		TEGRA_GPIO_PR0,		false,	true,	0,	3300);
 
-FIXED_REG(16,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
+FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(2),	false,	true,	0,	1200);
 
-FIXED_REG(17,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
+FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(3),	false,	true,	0,	1200);
 /*
  * Creating the fixed regulator device tables
@@ -666,6 +675,7 @@ FIXED_REG(17,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
 	ADD_FIXED_REG(vdd_hdmi),		\
 	ADD_FIXED_REG(usb1_vbus),		\
 	ADD_FIXED_REG(usb3_vbus),		\
+	ADD_FIXED_REG(vdd_lcd_bl),		\
 	ADD_FIXED_REG(lcd_bl_en),		\
 	ADD_FIXED_REG(3v3),			\
 	ADD_FIXED_REG(5v0),			\

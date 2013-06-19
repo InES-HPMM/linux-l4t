@@ -277,6 +277,7 @@ obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-powermon.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_ARDBEG}               += panel-s-wqxga-10-1.o
+obj-${CONFIG_MACH_ARDBEG}               += panel-a-edp-1080p-14-0.o
 
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-kbc.o
@@ -289,6 +290,7 @@ obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-p-wuxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-s-wqxga-10-1.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-14-0.o
+obj-${CONFIG_MACH_LAGUNA}               += panel-a-edp-1080p-14-0.o
 
 obj-${CONFIG_TEGRA_BB_XMM_POWER}        += baseband-xmm-power.o
 obj-${CONFIG_TEGRA_BB_XMM_POWER2}       += baseband-xmm-power2.o
