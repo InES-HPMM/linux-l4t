@@ -194,7 +194,6 @@ static struct max77665_charger_plat_data max77665_charger = {
 	.num_cables = MAX_CABLES,
 	.cables = maxim_cable,
 	.extcon_name = "tegra-udc",
-	.update_status = max17042_update_status,
 	.is_battery_present = false, /* false as default */
 	.consumer_supplies = max77665_charger_supply,
 	.num_consumer_supplies = ARRAY_SIZE(max77665_charger_supply),

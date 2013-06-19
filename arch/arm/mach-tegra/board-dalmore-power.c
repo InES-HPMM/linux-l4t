@@ -168,7 +168,6 @@ TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 
 static struct tps65090_charger_data bcharger_pdata = {
 	.irq_base = TPS65090_TEGRA_IRQ_BASE,
-	.update_status = sbs_update,
 };
 
 #define ADD_TPS65090_REG(_name) (&tps65090_regulator_pdata_##_name)
