@@ -3167,6 +3167,10 @@ static int azx_resume(struct device *dev)
 		if (chip->msi)
 			if (pci_enable_msi(chip->pci) < 0)
 				chip->msi = 0;
+	} else if (chip->pdev) {
+		pm_runtime_disable(chip->dev);
+		pm_runtime_set_active(chip->dev);
+		pm_runtime_enable(chip->dev);
 	}
 
 	if (azx_acquire_irq(chip, 1) < 0)
@@ -4431,6 +4435,7 @@ static int azx_probe_platform(struct platform_device *pdev)
 
 static int azx_remove_platform(struct platform_device *pdev)
 {
+	pm_runtime_get_noresume(&pdev->dev);
 	return snd_card_free(dev_get_drvdata(&pdev->dev));
 }
 
