@@ -158,7 +158,6 @@ struct max77665_charger_plat_data {
 	char *extcon_name;
 	struct regulator_consumer_supply *consumer_supplies;
 	int num_consumer_supplies;
-	void (*update_status)(int);
 	bool is_battery_present;
 };
 
