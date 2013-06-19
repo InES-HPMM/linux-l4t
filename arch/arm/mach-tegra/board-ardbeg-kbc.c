@@ -1,8 +1,8 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-kbc.c
- * Keys configuration for Nvidia tegra3 ardbeg platform.
+ * Keys configuration for Nvidia tegra4 ardbeg platform.
  *
- * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -33,86 +33,55 @@
 #include "board-ardbeg.h"
 #include "devices.h"
 #include "iomap.h"
-
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #include "wakeups-t11x.h"
 #else
-/* FIXME: update with wakeups-t12x.h */
+#include "wakeups-t12x.h"
 #endif
 
-/*
-static const u32 kbd_keymap[] = {
-	KEY(0, 0, KEY_POWER),
-	KEY(0, 1, KEY_HOME),
 
-	KEY(1, 0, KEY_RESERVED),
-	KEY(1, 1, KEY_VOLUMEDOWN),
-
-	KEY(2, 0, KEY_CAMERA),
-	KEY(2, 1, KEY_VOLUMEUP),
-	KEY(2, 2, KEY_2),
-};
-
-static const struct matrix_keymap_data keymap_data = {
-	.keymap		= kbd_keymap,
-	.keymap_size	= ARRAY_SIZE(kbd_keymap),
-};
-
-static struct tegra_kbc_wake_key ardbeg_wake_cfg[] = {
-	[0] = {
-		.row = 0,
-		.col = 0,
-	},
-};
-
-static struct tegra_kbc_platform_data ardbeg_kbc_platform_data = {
-	.debounce_cnt = 20 * 32,
-	.repeat_cnt = 1,
-	.scan_count = 30,
-	.wakeup = true,
-	.keymap_data = &keymap_data,
-	.wake_cnt = 1,
-	.wake_cfg = &ardbeg_wake_cfg[0],
-	.wakeup_key = KEY_POWER,
-#ifdef CONFIG_ANDROID
-	.disable_ev_rep = true,
-#endif
-};
-
-*/
-
-#define GPIO_KCODE(_kcode, _key, _gpio, _irq, _iswake, _deb)	\
-	{						\
-		.code = _kcode,				\
-		.gpio = TEGRA_GPIO_##_gpio,		\
-		.irq = _irq,				\
-		.active_low = 1,			\
-		.desc = #_kcode,			\
-		.type = _key,				\
-		.wakeup = _iswake,			\
-		.debounce_interval = _deb,		\
+#define GPIO_KEY(_id, _gpio, _iswake)           \
+	{                                       \
+		.code = _id,                    \
+		.gpio = TEGRA_GPIO_##_gpio,     \
+		.active_low = 1,                \
+		.desc = #_id,                   \
+		.type = EV_KEY,                 \
+		.wakeup = _iswake,              \
+		.debounce_interval = 10,        \
 	}
 
-#define GPIO_KEY(_id, _gpio, _iswake)	\
-	GPIO_KCODE(_id, EV_KEY, _gpio, 0, _iswake, 10)
-
 #define GPIO_IKEY(_id, _irq, _iswake, _deb)	\
-	GPIO_KCODE(_id, EV_KEY, INVALID, _irq, _iswake, _deb)
+	{					\
+		.code = _id,			\
+		.gpio = -1,			\
+		.irq = _irq,			\
+		.desc = #_id,			\
+		.type = EV_KEY,			\
+		.wakeup = _iswake,		\
+		.debounce_interval = _deb,	\
+	}
+
+#define PMC_WAKE_STATUS         0x14
+#define TEGRA_WAKE_PWR_INT      (1UL << 18)
+
+static int ardbeg_wakeup_key(void);
 
 static struct gpio_keys_button ardbeg_int_keys[] = {
-	/* FIXME: add ardbeg keys */
-	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[0] = GPIO_IKEY(KEY_POWER, 0, 1, 10),
 	[1] = GPIO_KEY(KEY_VOLUMEUP, PQ6, 0),
 	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PQ7, 0),
 	[3] = GPIO_KEY(KEY_HOME, PI5, 0),
-	[4] = GPIO_KEY(KEY_CAMERA, PV3, 0),
-	[5] = GPIO_KEY(KEY_CAMERA_FOCUS, PQ2, 0),
-	[6] = GPIO_KEY(KEY_MUTE, PQ1, 0),
+	[4] = GPIO_KEY(KEY_CAMERA_FOCUS, PQ2, 0),
+#if 0
+	[5] = GPIO_KEY(KEY_CAMERA, PV3, 0),
+#endif
 };
 
 static struct gpio_keys_platform_data ardbeg_int_keys_pdata = {
 	.buttons	= ardbeg_int_keys,
 	.nbuttons	= ARRAY_SIZE(ardbeg_int_keys),
+	.wakeup_key	= ardbeg_wakeup_key,
 };
 
 static struct platform_device ardbeg_int_keys_device = {
@@ -123,10 +92,28 @@ static struct platform_device ardbeg_int_keys_device = {
 	},
 };
 
-int __init ardbeg_kbc_init(void)
+static int ardbeg_wakeup_key(void)
 {
-	platform_device_register(&ardbeg_int_keys_device);
+	u32 status;
+	status = __raw_readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
 
-	return 0;
+	pr_info("%s: Power key pressed\n", __func__);
+
+	return (status & TEGRA_WAKE_PWR_INT) ? KEY_POWER : KEY_RESERVED;
 }
 
+int __init ardbeg_kbc_init(void)
+{
+	struct board_info board_info;
+	int ret;
+
+	tegra_get_board_info(&board_info);
+	pr_info("Boardid:SKU = 0x%04x:0x%04x\n",
+			board_info.board_id, board_info.sku);
+
+	ardbeg_int_keys[0].gpio = TEGRA_GPIO_PQ0;
+	ardbeg_int_keys[0].active_low = 1;
+
+	ret = platform_device_register(&ardbeg_int_keys_device);
+	return ret;
+}
