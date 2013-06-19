@@ -289,16 +289,32 @@ static void tegra_otg_notify_event(struct tegra_otg *tegra, int event)
 	atomic_notifier_call_chain(&tegra->phy.notifier, event, tegra->phy.otg->gadget);
 }
 
+static void tegra_otg_vbus_enable(struct regulator *vbus_reg, int on)
+{
+	static int vbus_enable = 1;
+
+	if (vbus_reg == NULL)
+		return ;
+
+	if (on && vbus_enable) {
+		regulator_enable(vbus_reg);
+		vbus_enable = 0;
+	} else if (!on && !vbus_enable) {
+		regulator_disable(vbus_reg);
+		vbus_enable = 1;
+	}
+}
+
 static int tegra_otg_start_host(struct tegra_otg *tegra, int on)
 {
 	if (on) {
-		regulator_enable(tegra->vbus_reg);
+		tegra_otg_vbus_enable(tegra->vbus_reg, 1);
 		tegra_start_host(tegra);
 		tegra_otg_notify_event(tegra, USB_EVENT_ID);
 	} else {
 		tegra_stop_host(tegra);
 		tegra_otg_notify_event(tegra, USB_EVENT_NONE);
-		regulator_disable(tegra->vbus_reg);
+		tegra_otg_vbus_enable(tegra->vbus_reg, 0);
 	}
 	return 0;
 }
@@ -841,7 +857,7 @@ static int tegra_otg_suspend(struct device *dev)
 		tegra_change_otg_state(tegra, OTG_STATE_A_SUSPEND);
 
 	if (from == OTG_STATE_A_HOST && tegra->turn_off_vbus_on_lp0)
-		regulator_disable(tegra->vbus_reg);
+		tegra_otg_vbus_enable(tegra->vbus_reg, 0);
 
 	tegra->suspended = true;
 	DBG("%s(%d) END\n", __func__, __LINE__);
@@ -854,13 +870,10 @@ static void tegra_otg_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg *tegra = platform_get_drvdata(pdev);
-	enum usb_otg_state from = tegra->phy.state;
 	int val;
 	unsigned long flags;
 
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
-	if (from == OTG_STATE_A_HOST && tegra->turn_off_vbus_on_lp0)
-		regulator_enable(tegra->vbus_reg);
 
 	mutex_lock(&tegra->irq_work_mutex);
 	if (!tegra->suspended) {
