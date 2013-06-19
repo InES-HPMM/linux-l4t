@@ -219,7 +219,6 @@ struct max17042_platform_data {
 
 #ifdef CONFIG_BATTERY_MAX17042
 extern int maxim_get_temp(int *deci_celsius);
-extern void max17042_update_status(int status);
 #else
 static inline int maxim_get_temp(int *deci_celsius)
 {
@@ -227,6 +226,5 @@ static inline int maxim_get_temp(int *deci_celsius)
 	*deci_celsius = -2732;
 	return -ENODEV;
 }
-static inline void max17042_update_status(int status) {}
 #endif
 #endif /* __MAX17042_BATTERY_H_ */

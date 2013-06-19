@@ -84,7 +84,6 @@ struct max17042_chip {
 	int status;
 	int cap;
 };
-struct max17042_chip *tmp_chip;
 struct i2c_client *temp_client;
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
@@ -166,18 +165,6 @@ int maxim_get_temp(int *deci_celsius)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(maxim_get_temp);
-
-void max17042_update_status(int status)
-{
-	if (!tmp_chip) {
-		WARN_ON(1);
-		return;
-	}
-
-	tmp_chip->status = status;
-	power_supply_changed(&tmp_chip->battery);
-}
-EXPORT_SYMBOL_GPL(max17042_update_status);
 
 static int max17042_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
@@ -793,7 +780,6 @@ static int max17042_probe(struct i2c_client *client,
 		dev_err(&client->dev, "no platform data provided\n");
 		return -EINVAL;
 	}
-	tmp_chip = chip;
 	i2c_set_clientdata(client, chip);
 
 	ret = max17042_read_reg(chip->client, MAX17042_DevName);
