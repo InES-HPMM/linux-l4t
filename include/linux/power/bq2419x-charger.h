@@ -108,7 +108,6 @@ struct bq2419x_vbus_platform_data {
 struct bq2419x_charger_platform_data {
 	int use_usb;
 	int use_mains;
-	void (*update_status)(int, int);
 	int (*battery_check)(void);
 
 	int max_charge_volt_mV;
