@@ -343,13 +343,11 @@ static void pluto_i2c_init(void)
 #endif
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
-
-	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
-	i2c_register_board_info(0, &cs42l73_board_info, 1);
-	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
 	pluto_i2c_bus3_board_info[0].irq = gpio_to_irq(TEGRA_GPIO_PW2);
 	i2c_register_board_info(0, pluto_i2c_bus3_board_info, 1);
 	i2c_register_board_info(0, &pluto_codec_aic326x_info, 1);
+	i2c_register_board_info(0, &pluto_codec_a2220_info, 1);
+	i2c_register_board_info(0, &cs42l73_board_info, 1);
 }
 
 static struct platform_device *pluto_uart_devices[] __initdata = {
@@ -599,13 +597,13 @@ static struct platform_device *pluto_devices[] __initdata = {
 	&tegra_i2s_device4,
 	&tegra_spdif_device,
 	&spdif_dit_device,
+	&pluto_audio_aic326x_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
 #if defined(CONFIG_TEGRA_WAKEUP_MONITOR)
 	&pluto_tegra_wakeup_monitor_device,
 #endif
 	&pluto_audio_device,
-	&pluto_audio_aic326x_device,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
