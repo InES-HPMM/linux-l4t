@@ -39,5 +39,4 @@ struct sbs_platform_data {
 	int poll_retry_count;
 };
 extern int sbs_battery_detect(void);
-extern void sbs_update(void);
 #endif
