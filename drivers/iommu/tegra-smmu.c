@@ -1016,12 +1016,13 @@ static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
 }
 
 static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
-				 unsigned long pfn)
+				unsigned long pfn, int prot)
 {
 	struct smmu_device *smmu = as->smmu;
 	unsigned long *pte;
 	unsigned int *count;
 	struct page *page;
+	int attrs = as->pte_attr;
 
 	pte = locate_pte(as, iova, true, &page, &count);
 	if (WARN_ON(!pte))
@@ -1029,7 +1030,13 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 
 	if (*pte == _PTE_VACANT(iova))
 		(*count)++;
-	*pte = SMMU_PFN_TO_PTE(pfn, as->pte_attr);
+
+	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_WRITABLE;
+	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_READABLE;
+
+	*pte = SMMU_PFN_TO_PTE(pfn, attrs);
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(smmu, as, iova, pte, page, 0);
 	put_signature(as, iova, pfn);
@@ -1037,23 +1044,29 @@ static int __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 }
 
 static int __smmu_iommu_map_page(struct smmu_as *as, dma_addr_t iova,
-				 phys_addr_t pa)
+				 phys_addr_t pa, int prot)
 {
 	unsigned long pfn = __phys_to_pfn(pa);
 
-	return __smmu_iommu_map_pfn(as, iova, pfn);
+	return __smmu_iommu_map_pfn(as, iova, pfn, prot);
 }
 
 static int __smmu_iommu_map_largepage(struct smmu_as *as, dma_addr_t iova,
-				 phys_addr_t pa)
+				 phys_addr_t pa, int prot)
 {
 	unsigned long pdn = SMMU_ADDR_TO_PDN(iova);
 	unsigned long *pdir = (unsigned long *)page_address(as->pdir_page);
+	int attrs = _PDE_ATTR;
 
 	if (pdir[pdn] != _PDE_VACANT(pdn))
 		return -EINVAL;
 
-	pdir[pdn] = SMMU_ADDR_TO_PDN(pa) << 10 | _PDE_ATTR;
+	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_WRITABLE;
+	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_READABLE;
+
+	pdir[pdn] = SMMU_ADDR_TO_PDN(pa) << 10 | attrs;
 	FLUSH_CPU_DCACHE(&pdir[pdn], as->pdir_page, sizeof pdir[pdn]);
 	flush_ptc_and_tlb(as->smmu, as, iova, &pdir[pdn], as->pdir_page, 1);
 
@@ -1066,7 +1079,8 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	struct smmu_as *as = domain->priv;
 	unsigned long flags;
 	int err;
-	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa);
+	int (*fn)(struct smmu_as *as, dma_addr_t iova, phys_addr_t pa,
+		  int prot);
 
 	dev_dbg(as->smmu->dev, "[%d] %08lx:%llx\n", as->asid, iova, (u64)pa);
 
@@ -1083,7 +1097,7 @@ static int smmu_iommu_map(struct iommu_domain *domain, unsigned long iova,
 	}
 
 	spin_lock_irqsave(&as->lock, flags);
-	err = fn(as, iova, pa);
+	err = fn(as, iova, pa, prot);
 	spin_unlock_irqrestore(&as->lock, flags);
 	return err;
 }
@@ -1098,6 +1112,12 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 	int err = 0;
 	unsigned long iova_base = iova;
 	bool flush_all = (total > smmu_flush_all_th_pages) ? true : false;
+	int attrs = as->pte_attr;
+
+	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_WRITABLE;
+	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_READABLE;
 
 	spin_lock_irqsave(&as->lock, flags);
 
@@ -1132,8 +1152,7 @@ static int smmu_iommu_map_pages(struct iommu_domain *domain, unsigned long iova,
 			if (*pte == _PTE_VACANT(iova + i * PAGE_SIZE))
 				(*rest)++;
 
-			*pte = SMMU_PFN_TO_PTE(page_to_pfn(pages[i]),
-					       as->pte_attr);
+			*pte = SMMU_PFN_TO_PTE(page_to_pfn(pages[i]), attrs);
 		}
 
 		pte = &ptbl[ptn];
@@ -1167,6 +1186,12 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 	bool flush_all = (nents > smmu_flush_all_th_pages) ? true : false;
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
+	int attrs = as->pte_attr;
+
+	if (dma_get_attr(DMA_ATTR_READ_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_WRITABLE;
+	else if (dma_get_attr(DMA_ATTR_WRITE_ONLY, (struct dma_attrs *)prot))
+		attrs &= ~_READABLE;
 
 	for (count = 0, s = sgl; count < nents; s = sg_next(s)) {
 		phys_addr_t phys = page_to_phys(sg_page(s));
@@ -1210,7 +1235,7 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 					(*rest)++;
 				}
 
-				*pte = SMMU_PFN_TO_PTE(pfn + i, as->pte_attr);
+				*pte = SMMU_PFN_TO_PTE(pfn + i, attrs);
 			}
 
 			pte = &ptbl[ptn];
@@ -1369,7 +1394,7 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 		struct page *page;
 
 		page = as->smmu->avp_vector_page;
-		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page));
+		__smmu_iommu_map_pfn(as, 0, page_to_pfn(page), 0);
 
 		pr_debug("Reserve \"page zero\" \
 			for AVP vectors using a common dummy\n");
