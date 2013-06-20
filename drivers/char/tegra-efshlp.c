@@ -138,6 +138,7 @@ static int efs_handle_mmap_dma(struct efshlp_dma *pdma,
 	unsigned long curaddr, virtaddr, offset;
 	unsigned int i;
 	unsigned long kernvirtaddr;
+	long pdma_size = pdma->size;
 	struct map_info *map;
 
 	pr_debug("%s\n", __func__);
@@ -160,49 +161,40 @@ static int efs_handle_mmap_dma(struct efshlp_dma *pdma,
 	virtaddr = kernvirtaddr;
 	offset = pdma->offset;
 	map = get_map_info(pdma->bank);
-
-	if (pdma->size >= PAGE_SIZE) {
-
-		virtaddr = ((unsigned long)kernvirtaddr +
-				PAGE_SIZE) & ~(PAGE_SIZE-1);
+	if (pdma_size >= PAGE_SIZE) {
+		virtaddr = (unsigned long)(kernvirtaddr +
+				(PAGE_SIZE - (kernvirtaddr % PAGE_SIZE)));
 
 		tegra_nor_copy_from(map, (void *)(curaddr +
 				(kernvirtaddr % PAGE_SIZE)), pdma->offset,
 				PAGE_SIZE - (kernvirtaddr % PAGE_SIZE));
 
-		offset = pdma->offset + PAGE_SIZE - (kernvirtaddr % PAGE_SIZE);
+		pdma_size = pdma_size -
+			(PAGE_SIZE - (kernvirtaddr % PAGE_SIZE));
 
+		offset = pdma->offset + PAGE_SIZE - (kernvirtaddr % PAGE_SIZE);
 	}
 
-	for (i = PAGE_SIZE;
-		i < (pdma->size-PAGE_SIZE) && pdma->size > PAGE_SIZE;
-		i += PAGE_SIZE) {
+	for (i = 0; i < (pdma_size / PAGE_SIZE); i++) {
 
-			curaddr = virtaddr;
-			virtaddr += PAGE_SIZE;
-			map = get_map_info(pdma->bank);
+		curaddr = virtaddr;
+		virtaddr += PAGE_SIZE;
+		map = get_map_info(pdma->bank);
 
-			tegra_nor_copy_from(map, (void *)curaddr,
-					offset, PAGE_SIZE);
+		tegra_nor_copy_from(map, (void *)curaddr,
+				offset, PAGE_SIZE);
+		pdma_size = pdma_size - PAGE_SIZE;
 
-			offset += PAGE_SIZE;
+		offset += PAGE_SIZE;
 	}
 
 	curaddr = virtaddr;
 	map = get_map_info(pdma->bank);
 
-	if (PAGE_SIZE - (pdma->size % PAGE_SIZE ?
-			(pdma->size % PAGE_SIZE) : PAGE_SIZE) > 0
-			&& pdma->size >= PAGE_SIZE)
-
+	if (pdma_size > 0) {
 		tegra_nor_copy_from(map, (void *) curaddr, offset,
-				PAGE_SIZE - (pdma->size % PAGE_SIZE ?
-				(pdma->size % PAGE_SIZE) : PAGE_SIZE));
-
-	else
-		tegra_nor_copy_from(map, (void *) curaddr,
-				offset, pdma->size % PAGE_SIZE);
-
+				pdma_size);
+	}
 	return pdma->size;
 }
 
