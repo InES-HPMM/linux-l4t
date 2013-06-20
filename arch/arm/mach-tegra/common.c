@@ -168,9 +168,7 @@ static int pwr_i2c_clk = 400;
 static u8 power_config;
 static u8 display_config;
 
-#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 static int tegra_split_mem_set;
-#endif
 
 /*
  * Storage for debug-macro.S's state.
@@ -1883,81 +1881,83 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 			tegra_fb_size = fb_size;
 	}
 
-#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
-	if (tegra_split_mem_active()) {
-		tegra_fb_start = TEGRA_ASIM_QT_FB_START;
-		tegra_fb_size = TEGRA_ASIM_QT_FB_SIZE;
+	if (tegra_cpu_is_asim()) {
+		if (tegra_split_mem_active()) {
+			tegra_fb_start = TEGRA_ASIM_QT_FB_START;
+			tegra_fb_size = TEGRA_ASIM_QT_FB_SIZE;
 
-		if (tegra_vpr_size == 0) {
-			tegra_carveout_start =
-				TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_START;
-			tegra_carveout_size =
-				TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_SIZE;
-		} else if (
-			(tegra_vpr_start <
-				TEGRA_ASIM_QT_FB_START +
-				TEGRA_ASIM_QT_FB_SIZE) ||
-			(tegra_vpr_start + tegra_vpr_size - 1 >
-				TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
-				TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE - 1)) {
-			/*
-			 * On ASIM/ASIM + QT with
-			 * CONFIG_TEGRA_SIMULATION_SPLIT_MEM enabled, the VPR
-			 * region needs to be within the front door memory
-			 * region. Moreover, the VPR region can't exist where
-			 * the framebuffer resides.
-			 */
-			BUG();
-		} else if (
-			(tegra_vpr_start -
-			(TEGRA_ASIM_QT_FB_START +
-			TEGRA_ASIM_QT_FB_SIZE) <
-				TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE) &&
-			(TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
-			TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE -
-			(tegra_vpr_start + tegra_vpr_size) <
-				TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE)) {
-			/*
-			 * The tegra ASIM/QT carveout has a min size:-
-			 * TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE. All free regions in
-			 * front door mem are smaller than the min carveout
-			 * size. Therefore, we can't fit the carveout in front
-			 * door mem.
-			 */
-			BUG();
-		} else if (
-			(tegra_vpr_start -
-			(TEGRA_ASIM_QT_FB_START + TEGRA_ASIM_QT_FB_SIZE)) >=
-			(TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
-			TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE -
-			(tegra_vpr_start + tegra_vpr_size))) {
-			/*
-			 * Place the tegra ASIM/QT carveout between the
-			 * framebuffer and VPR.
-			 */
-			tegra_carveout_start =
-				TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_START;
-			tegra_carveout_size = tegra_vpr_start -
-						(TEGRA_ASIM_QT_FB_START +
-						TEGRA_ASIM_QT_FB_SIZE);
-		} else {
-			/*
-			 * Place the tegra ASIM/QT carveout after VPR.
-			 */
-			tegra_carveout_start = tegra_vpr_start + tegra_vpr_size;
-			tegra_carveout_size =
+			if (tegra_vpr_size == 0) {
+				tegra_carveout_start =
+				   TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_START;
+				tegra_carveout_size =
+				   TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_SIZE;
+			} else if (
+				    (tegra_vpr_start <
+				     TEGRA_ASIM_QT_FB_START +
+				     TEGRA_ASIM_QT_FB_SIZE) ||
+				     (tegra_vpr_start + tegra_vpr_size - 1 >
+				     TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
+				     TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE - 1)) {
+				/*
+				 * On ASIM/ASIM + QT with
+				 * CONFIG_TEGRA_SIMULATION_SPLIT_MEM enabled,
+				 * the VPR region needs to be within the front
+				 * door memory region. Moreover, the VPR region
+				 * can't exist where the framebuffer resides.
+				 */
+				BUG();
+			} else if (
+					(tegra_vpr_start -
+					 (TEGRA_ASIM_QT_FB_START +
+					  TEGRA_ASIM_QT_FB_SIZE) <
+					 TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE) &&
+					(TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
+					 TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE -
+					 (tegra_vpr_start + tegra_vpr_size) <
+					 TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE)) {
+				/*
+				 * The tegra ASIM/QT carveout has a min size:-
+				 * TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE. All free
+				 * regions in front door mem are smaller than
+				 * the min carveout size. Therefore, we can't
+				 * fit the carveout in front door mem.
+				 */
+				BUG();
+			} else if (
+					(tegra_vpr_start -
+					 (TEGRA_ASIM_QT_FB_START +
+					  TEGRA_ASIM_QT_FB_SIZE)) >=
+					(TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
+					 TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE -
+					 (tegra_vpr_start + tegra_vpr_size))) {
+				/*
+				 * Place the tegra ASIM/QT carveout between the
+				 * framebuffer and VPR.
+				 */
+				tegra_carveout_start =
+				  TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_START;
+				tegra_carveout_size = tegra_vpr_start -
+					(TEGRA_ASIM_QT_FB_START +
+					 TEGRA_ASIM_QT_FB_SIZE);
+			} else {
+				/*
+				 * Place the tegra ASIM/QT carveout after VPR.
+				 */
+				tegra_carveout_start = tegra_vpr_start +
+							 tegra_vpr_size;
+				tegra_carveout_size =
 					TEGRA_ASIM_QT_FRONT_DOOR_MEM_START +
 					TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE -
 					(tegra_vpr_start + tegra_vpr_size);
+			}
+		} else if (tegra_vpr_size != 0) {
+			/*
+			 * VPR cannot work on ASIM/ASIM + QT if split mem is not
+			 * enabled.
+			 */
+			BUG();
 		}
-	} else if (tegra_vpr_size != 0) {
-		/*
-		 * VPR cannot work on ASIM/ASIM + QT if split mem is not
-		 * enabled.
-		 */
-		BUG();
 	}
-#endif
 
 	if (tegra_fb_size)
 		tegra_grhost_aperture = tegra_fb_start;
@@ -2359,8 +2359,6 @@ static int __init enet_smsc911x_init(void)
 rootfs_initcall(enet_smsc911x_init);
 #endif
 
-#ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
-#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 int tegra_split_mem_active(void)
 {
 	return tegra_split_mem_set;
@@ -2372,5 +2370,3 @@ static int __init set_tegra_split_mem(char *options)
 	return 0;
 }
 early_param("tegra_split_mem", set_tegra_split_mem);
-#endif
-#endif

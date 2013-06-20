@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2013, NVIDIA Corporation.
+ * Copyright (C) 2011-2013, NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -749,7 +749,6 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_SIM_ETH_SIZE              SZ_64K
 #endif
 
-#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 #define TEGRA_ASIM_QT_FRONT_DOOR_MEM_START	0x81000000
 #define TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE	(SZ_256M - SZ_16M)
 #define TEGRA_ASIM_QT_FB_START		TEGRA_ASIM_QT_FRONT_DOOR_MEM_START
@@ -759,7 +758,6 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_ASIM_QT_CARVEOUT_VPR_DISABLED_SIZE \
 		(TEGRA_ASIM_QT_FRONT_DOOR_MEM_SIZE - TEGRA_ASIM_QT_FB_SIZE)
 #define TEGRA_ASIM_QT_CARVEOUT_MIN_SIZE		SZ_128M
-#endif
 
 #if defined(CONFIG_ARCH_TEGRA_2x_SOC)  || defined(CONFIG_ARCH_TEGRA_3x_SOC) || \
     defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_14x_SOC)

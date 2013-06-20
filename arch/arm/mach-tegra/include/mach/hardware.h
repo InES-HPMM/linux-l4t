@@ -61,9 +61,7 @@ extern enum tegra_revision tegra_revision;
 enum tegra_chipid tegra_get_chipid(void);
 unsigned int tegra_get_minor_rev(void);
 
-#ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 int tegra_split_mem_active(void);
-#endif
 
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 void tegra_get_netlist_revision(u32 *netlist, u32* patchid);

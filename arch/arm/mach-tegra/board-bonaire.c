@@ -641,11 +641,9 @@ static void __init tegra_bonaire_reserve(void)
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
 	tegra_reserve(0, SZ_16M + SZ_2M, SZ_16M);
 #else
-#if defined(CONFIG_TEGRA_SIMULATION_SPLIT_MEM)
-	if (tegra_split_mem_active())
+	if (tegra_cpu_is_asim() && tegra_split_mem_active())
 		tegra_reserve(0, 0, 0);
 	else
-#endif
 		tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_16M);
 #endif
 }
