@@ -460,7 +460,7 @@ static s32 show_current(struct device *dev,
 	current_mA =
 		(current_mA * data->pdata->power_lsb) / data->pdata->divisor;
 	if (data->pdata->precision_multiplier)
-		current_mA /= data->pdata->precision_multiplier;
+		current_mA /= (s16) data->pdata->precision_multiplier;
 
 	return sprintf(buf, "%d mA\n", current_mA);
 }
