@@ -1551,7 +1551,7 @@ int tegra_emc_dsr_override(int override)
 				spin_unlock_irqrestore(&emc_access_lock, flags);
 				return -EINVAL;
 			}
-			rate = clk_get_rate(emc) / 1000;
+			rate = clk_get_rate_all_locked(emc) / 1000;
 			for (i = 0; i < tegra_emc_table_size; i++) {
 				if (tegra_emc_table[i].rate == rate) {
 					tbl_timing = &tegra_emc_table[i];
