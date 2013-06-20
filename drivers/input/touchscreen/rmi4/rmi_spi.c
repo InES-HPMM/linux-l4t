@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011, 2012 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
+ * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -41,6 +42,10 @@ static char *spi_v2_proto_name = "spiv2";
 
 #define BUFFER_SIZE_INCREMENT 32
 
+#if NV_NOTIFY_OUT_OF_IDLE
+#define RMI_IDLE_PERIOD (msecs_to_jiffies(50))
+#endif
+
 struct rmi_spi_data {
 	struct mutex page_mutex;
 	int page;
@@ -60,6 +65,9 @@ struct rmi_spi_data {
 #ifdef CONFIG_RMI4_DEBUG
 	struct dentry *debugfs_comms;
 	struct dentry *debugfs_ff;
+#endif
+#if NV_NOTIFY_OUT_OF_IDLE
+	unsigned long last_irq_jiffies;
 #endif
 };
 
@@ -247,6 +255,25 @@ static void teardown_debugfs(struct rmi_spi_data *data)
 #define teardown_debugfs(data)
 #endif
 
+#if NV_NOTIFY_OUT_OF_IDLE
+static void rmi_spi_out_of_idle(struct rmi_driver_data *rmi_data)
+{
+	struct rmi_function_dev *fn_dev;
+	struct rmi_function_driver *fn_drv;
+
+	/* For now we don't care about to which function dev this irq
+	 * corresponds, call all registered out_of_idle handlers.
+	 */
+	list_for_each_entry(fn_dev, &rmi_data->rmi_functions.list, list) {
+		if (fn_dev && fn_dev->dev.driver) {
+			fn_drv = to_rmi_function_driver(fn_dev->dev.driver);
+			if (fn_drv->out_of_idle)
+				fn_drv->out_of_idle(fn_dev);
+		}
+	}
+}
+#endif
+
 #define COMMS_DEBUG(data) (IS_ENABLED(CONFIG_RMI4_DEBUG) && data->comms_debug)
 #define FF_DEBUG(data) (IS_ENABLED(CONFIG_RMI4_DEBUG) && data->ff_debug)
 #define IRQ_DEBUG(data) (IS_ENABLED(CONFIG_RMI4_DEBUG) && data->irq_debug)
@@ -271,6 +298,12 @@ static irqreturn_t rmi_spi_hard_irq(int irq, void *p)
 		complete(&data->irq_comp);
 		return IRQ_HANDLED;
 	}
+
+#if NV_NOTIFY_OUT_OF_IDLE
+	if (time_after(jiffies, data->last_irq_jiffies + RMI_IDLE_PERIOD))
+		rmi_spi_out_of_idle(rmi_data);
+	data->last_irq_jiffies = jiffies;
+#endif
 
 	return IRQ_WAKE_THREAD;
 }
@@ -805,6 +838,10 @@ static int rmi_spi_probe(struct spi_device *spi)
 
 	data->enabled = true;	/* We plan to come up enabled. */
 	data->phys = rmi_phys;
+
+#if NV_NOTIFY_OUT_OF_IDLE
+	data->last_irq_jiffies = jiffies;
+#endif
 
 	rmi_phys->data = data;
 	rmi_phys->dev = &spi->dev;

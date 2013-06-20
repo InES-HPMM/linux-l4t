@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011, 2012 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
+ * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -29,6 +30,13 @@ extern struct bus_type rmi_bus_type;
 extern struct device_type rmi_function_type;
 extern struct device_type rmi_sensor_type;
 
+/* When NV_NOTIFY_OUT_OF_IDLE is set no rmi spi interrupt for 50ms will be
+ * considered as idle. On first interrupt after idle miscellaneous input
+ * event MSC_ACTIVITY will be sent. This event will serve as early
+ * notification for actual input event and will allow cpu frequency governor
+ * to boost CPU clk early.
+ */
+#define NV_NOTIFY_OUT_OF_IDLE	1
 
 /* Permissions for sysfs attributes.  Since the permissions policy will change
  * on a global basis in the future, rather than edit all sysfs attrs everywhere
@@ -408,6 +416,9 @@ struct rmi_function_driver {
 	int (*early_suspend)(struct rmi_function_dev *fc);
 	int (*late_resume)(struct rmi_function_dev *fc);
 #endif
+#endif
+#ifdef NV_NOTIFY_OUT_OF_IDLE
+	int (*out_of_idle)(struct rmi_function_dev *fc);
 #endif
 };
 

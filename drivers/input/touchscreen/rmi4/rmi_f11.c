@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011,2012 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
+ * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -2493,6 +2494,9 @@ static int rmi_f11_register_devices(struct rmi_function_dev *fn_dev)
 		set_bit(EV_SYN, input_dev->evbit);
 		set_bit(EV_ABS, input_dev->evbit);
 		input_set_capability(input_dev, EV_KEY, BTN_TOUCH);
+#if NV_NOTIFY_OUT_OF_IDLE
+		input_set_capability(input_dev, EV_MSC, MSC_ACTIVITY);
+#endif
 
 		f11_set_abs_params(fn_dev, i);
 
@@ -2646,6 +2650,22 @@ int rmi_f11_attention(struct rmi_function_dev *fn_dev,
 	return 0;
 }
 
+#if NV_NOTIFY_OUT_OF_IDLE
+static int rmi_f11_out_of_idle(struct rmi_function_dev *fn_dev)
+{
+	struct f11_data *f11 = fn_dev->data;
+	struct f11_2d_sensor *sensor;
+	int i;
+
+	for (i = 0; i < f11->dev_query.nbr_of_sensors + 1; i++) {
+		sensor = &f11->sensors[i];
+		input_event(sensor->input, EV_MSC, MSC_ACTIVITY, 1);
+	}
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_PM
 static int rmi_f11_resume(struct rmi_function_dev *fn_dev)
 {
@@ -2713,10 +2733,13 @@ static struct rmi_function_driver function_driver = {
 	.config = rmi_f11_config,
 	.attention = rmi_f11_attention,
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	.late_resume = rmi_f11_resume
+	.late_resume = rmi_f11_resume,
 #elif defined(CONFIG_PM)
-	.resume = rmi_f11_resume
+	.resume = rmi_f11_resume,
 #endif  /* defined(CONFIG_HAS_EARLYSUSPEND) */
+#if NV_NOTIFY_OUT_OF_IDLE
+	.out_of_idle = rmi_f11_out_of_idle,
+#endif
 };
 
 static int __init rmi_f11_module_init(void)
