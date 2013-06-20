@@ -116,7 +116,7 @@ AS3722_LDO11,
 #define AS3722_GPIO_USAGE_OC_PG_SD6                     0xE
 
 /* Interrupt IDs */
-#define AS3722_IRQ_MAX_HANDLER                 11
+#define AS3722_IRQ_MAX_HANDLER                 16
 #define AS3722_IRQ_LID                         0
 #define AS3722_IRQ_ACOK                        1
 #define AS3722_IRQ_CORE_PWRREQ                 2
@@ -128,7 +128,12 @@ AS3722_LDO11,
 #define AS3722_IRQ_RTC_REP                     8
 #define AS3722_IRQ_RTC_ALARM                   9
 #define AS3722_IRQ_SD0                         10
-#define AS3722_IRQ_WATCHDOG                    11
+#define AS3722_IRQ_RTC_GPIO1                   11
+#define AS3722_IRQ_RTC_GPIO2                   12
+#define AS3722_IRQ_RTC_GPIO3                   13
+#define AS3722_IRQ_RTC_GPIO4                   14
+#define AS3722_IRQ_RTC_GPIO5                   15
+#define AS3722_IRQ_WATCHDOG                    16
 
 /* AS3722 registers */
 #define AS3722_SD0_VOLTAGE_REG                 0x00
@@ -357,7 +362,11 @@ AS3722_LDO11,
 
 #define AS3722_IRQ_MASK_RTC_REP                (1 << 7)
 #define AS3722_IRQ_MASK_RTC_ALARM              (1 << 0)
-
+#define AS3722_IRQ_MASK_GPIO_EDGE1             (1 << 1)
+#define AS3722_IRQ_MASK_GPIO_EDGE2             (1 << 2)
+#define AS3722_IRQ_MASK_GPIO_EDGE3             (1 << 3)
+#define AS3722_IRQ_MASK_GPIO_EDGE4             (1 << 4)
+#define AS3722_IRQ_MASK_GPIO_EDGE5             (1 << 5)
 #define AS3722_IRQ_MASK_WATCHDOG               (1 << 6)
 
 #define AS3722_IRQ_BIT_LID                     (1 << 0)

@@ -96,12 +96,44 @@ static const struct regmap_irq as3722_irqs[] = {
 	[AS3722_IRQ_LOWBAT] = {
 		.mask = AS3722_IRQ_MASK_LOWBAT,
 	},
+	/* INT2 IRQs */
 	[AS3722_IRQ_RTC_REP] = {
 		.mask = AS3722_IRQ_MASK_RTC_REP,
 		.reg_offset = 1,
 	},
+	/* INT3 IRQs */
 	[AS3722_IRQ_RTC_ALARM] = {
 		.mask = AS3722_IRQ_MASK_RTC_ALARM,
+		.reg_offset = 2,
+	},
+	[AS3722_IRQ_RTC_GPIO1] = {
+		.mask = AS3722_IRQ_MASK_GPIO_EDGE1,
+		.type_rising_mask = AS3722_IRQ_MASK_GPIO_EDGE1,
+		.type_falling_mask = AS3722_IRQ_MASK_GPIO_EDGE1,
+		.reg_offset = 2,
+	},
+	[AS3722_IRQ_RTC_GPIO2] = {
+		.mask = AS3722_IRQ_MASK_GPIO_EDGE2,
+		.type_rising_mask = AS3722_IRQ_MASK_GPIO_EDGE2,
+		.type_falling_mask = AS3722_IRQ_MASK_GPIO_EDGE2,
+		.reg_offset = 2,
+	},
+	[AS3722_IRQ_RTC_GPIO3] = {
+		.mask = AS3722_IRQ_MASK_GPIO_EDGE3,
+		.type_rising_mask = AS3722_IRQ_MASK_GPIO_EDGE3,
+		.type_falling_mask = AS3722_IRQ_MASK_GPIO_EDGE3,
+		.reg_offset = 2,
+	},
+	[AS3722_IRQ_RTC_GPIO4] = {
+		.mask = AS3722_IRQ_MASK_GPIO_EDGE4,
+		.type_rising_mask = AS3722_IRQ_MASK_GPIO_EDGE4,
+		.type_falling_mask = AS3722_IRQ_MASK_GPIO_EDGE4,
+		.reg_offset = 2,
+	},
+	[AS3722_IRQ_RTC_GPIO5] = {
+		.mask = AS3722_IRQ_MASK_GPIO_EDGE5,
+		.type_rising_mask = AS3722_IRQ_MASK_GPIO_EDGE5,
+		.type_falling_mask = AS3722_IRQ_MASK_GPIO_EDGE5,
 		.reg_offset = 2,
 	},
 	[AS3722_IRQ_WATCHDOG] = {
