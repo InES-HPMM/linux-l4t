@@ -171,17 +171,6 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 					int enable)
 {
 	int ret;
-	u8 current_val;
-
-	current_val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT)
-		| (adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
-
-	ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
-				PALMAS_GPADC_CTRL1, current_val);
-	if (ret < 0) {
-		dev_err(adc->dev, "CTRL1 write failed: %d\n", ret);
-		goto scrub;
-	}
 
 	if (enable)
 		ret = palmas_write(adc->palmas, PALMAS_GPADC_BASE,
@@ -192,7 +181,6 @@ static int palmas_gpadc_enable(struct palmas_gpadc *adc, int adc_chan,
 				PALMAS_GPADC_SW_SELECT, 0);
 	if (ret < 0)
 		dev_err(adc->dev, "SW_SELECT write failed: %d\n", ret);
-scrub:
 	return ret;
 }
 
@@ -372,6 +360,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 	struct palmas_gpadc_platform_data *adc_pdata;
 	struct iio_dev *iodev;
 	int ret, i;
+	unsigned int mask, val;
 
 	pdata = dev_get_platdata(pdev->dev.parent);
 	if (!pdata || !pdata->gpadc_pdata) {
@@ -421,6 +410,19 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
 		adc->ich3 = 2;
 	else
 		adc->ich3 = 3;
+
+	/* Update GPADC current source setting */
+	mask = PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_MASK |
+			PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_MASK;
+	val = (adc->ich0 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH0_SHIFT) |
+			(adc->ich3 << PALMAS_GPADC_CTRL1_CURRENT_SRC_CH3_SHIFT);
+	ret = palmas_update_bits(adc->palmas, PALMAS_GPADC_BASE,
+					PALMAS_GPADC_CTRL1, mask, val);
+	if (ret < 0) {
+		dev_err(adc->dev,
+			"Failed to update current setting: %d\n", ret);
+		goto out_irq_free;
+	}
 
 	iodev->name = MOD_NAME;
 	iodev->dev.parent = &pdev->dev;
