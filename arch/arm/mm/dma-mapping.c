@@ -1392,7 +1392,8 @@ err:
  */
 static dma_addr_t
 ____iommu_create_mapping(struct device *dev, dma_addr_t *req,
-			 struct page **pages, size_t size)
+			 struct page **pages, size_t size,
+			 struct dma_attrs *attrs)
 {
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	unsigned int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
@@ -1418,7 +1419,8 @@ ____iommu_create_mapping(struct device *dev, dma_addr_t *req,
 				break;
 
 		len = (j - i) << PAGE_SHIFT;
-		ret = pg_iommu_map(mapping->domain, iova, phys, len, 0);
+		ret = pg_iommu_map(mapping->domain, iova, phys, len,
+				   (int)attrs);
 		if (ret < 0)
 			goto fail;
 		iova += len;
@@ -1432,9 +1434,10 @@ fail:
 }
 
 static dma_addr_t
-__iommu_create_mapping(struct device *dev, struct page **pages, size_t size)
+__iommu_create_mapping(struct device *dev, struct page **pages, size_t size,
+		       struct dma_attrs *attrs)
 {
-	return ____iommu_create_mapping(dev, NULL, pages, size);
+	return ____iommu_create_mapping(dev, NULL, pages, size, attrs);
 }
 
 static int __iommu_remove_mapping(struct device *dev, dma_addr_t iova, size_t size)
@@ -1479,7 +1482,7 @@ static struct page **__iommu_get_pages(void *cpu_addr, struct dma_attrs *attrs)
 }
 
 static void *__iommu_alloc_atomic(struct device *dev, size_t size,
-				  dma_addr_t *handle)
+				  dma_addr_t *handle, struct dma_attrs *attrs)
 {
 	struct page *page;
 	void *addr;
@@ -1488,7 +1491,7 @@ static void *__iommu_alloc_atomic(struct device *dev, size_t size,
 	if (!addr)
 		return NULL;
 
-	*handle = __iommu_create_mapping(dev, &page, size);
+	*handle = __iommu_create_mapping(dev, &page, size, attrs);
 	if (*handle == DMA_ERROR_CODE)
 		goto err_mapping;
 
@@ -1525,16 +1528,18 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 	size = PAGE_ALIGN(size);
 
 	if (gfp & GFP_ATOMIC)
-		return __iommu_alloc_atomic(dev, size, handle);
+
+		return __iommu_alloc_atomic(dev, size, handle, attrs);
 
 	pages = __iommu_alloc_buffer(dev, size, gfp, attrs);
 	if (!pages)
 		return NULL;
 
 	if (*handle == DMA_ERROR_CODE)
-		*handle = __iommu_create_mapping(dev, pages, size);
+		*handle = __iommu_create_mapping(dev, pages, size, attrs);
 	else
-		*handle = ____iommu_create_mapping(dev, handle, pages, size);
+		*handle = ____iommu_create_mapping(dev, handle, pages, size,
+						   attrs);
 
 	if (*handle == DMA_ERROR_CODE)
 		goto err_buffer;
@@ -1660,7 +1665,8 @@ static int __map_sg_chunk(struct device *dev, struct scatterlist *sg,
 
 skip_cmaint:
 	count = size >> PAGE_SHIFT;
-	ret = pg_iommu_map_sg(mapping->domain, iova_base, sg, count, 0);
+	ret = pg_iommu_map_sg(mapping->domain, iova_base, sg, count,
+			      (int)attrs);
 	if (WARN_ON(ret < 0))
 		goto fail;
 
@@ -1864,7 +1870,7 @@ static dma_addr_t arm_coherent_iommu_map_page(struct device *dev, struct page *p
 		return dma_addr;
 
 	ret = pg_iommu_map(mapping->domain, dma_addr,
-			  page_to_phys(page), len, 0);
+			   page_to_phys(page), len, (int)attrs);
 	if (ret < 0)
 		goto fail;
 
@@ -1905,7 +1911,7 @@ static dma_addr_t arm_iommu_map_page_at(struct device *dev, struct page *page,
 		__dma_page_cpu_to_dev(page, offset, size, dir);
 
 	ret = pg_iommu_map(mapping->domain, dma_addr,
-			  page_to_phys(page), len, 0);
+			   page_to_phys(page), len, (int)attrs);
 	if (ret < 0)
 		return DMA_ERROR_CODE;
 
@@ -1927,7 +1933,8 @@ static dma_addr_t arm_iommu_map_pages(struct device *dev, struct page **pages,
 			__dma_page_cpu_to_dev(pages[i], 0, PAGE_SIZE, dir);
 	}
 
-	ret = pg_iommu_map_pages(mapping->domain, dma_handle, pages, count, 0);
+	ret = pg_iommu_map_pages(mapping->domain, dma_handle, pages, count,
+				 (int)attrs);
 	if (ret < 0)
 		return DMA_ERROR_CODE;
 
