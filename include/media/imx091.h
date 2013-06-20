@@ -58,6 +58,7 @@ struct imx091_platform_data {
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct nvc_regulator *);
 	int (*power_off)(struct nvc_regulator *);
+	int (*detect)(void *buf, size_t size);
 };
 
 #endif  /* __IMX091_H__ */

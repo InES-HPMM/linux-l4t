@@ -79,6 +79,7 @@ static struct nvc_regulator_init imx091_vregs[] = {
 };
 
 struct imx091_info {
+	u16 dev_id;
 	atomic_t in_use;
 	struct i2c_client *i2c_client;
 	struct imx091_platform_data *pdata;
@@ -2123,7 +2124,7 @@ static int imx091_pm_dev_wr(struct imx091_info *info, int pwr)
 
 static void imx091_pm_exit(struct imx091_info *info)
 {
-	imx091_pm_wr(info, NVC_PWR_OFF_FORCE);
+	imx091_pm_dev_wr(info, NVC_PWR_OFF_FORCE);
 	imx091_vreg_exit(info);
 	imx091_gpio_exit(info);
 }
@@ -3316,6 +3317,7 @@ static struct imx091_platform_data *imx091_parse_dt(struct i2c_client *client)
 
 	/* generic info */
 	of_property_read_u32(np, "nvidia,num", &board_info_pdata->num);
+	of_property_read_u32(np, "nvidia,cfg", &board_info_pdata->cfg);
 	of_property_read_u32(np, "nvidia,sync", &board_info_pdata->sync);
 	of_property_read_string(np, "nvidia,dev_name",
 				&board_info_pdata->dev_name);
@@ -3401,7 +3403,6 @@ static int imx091_probe(
 	unsigned long clock_probe_rate;
 	int err;
 	const char *mclk_name;
-
 	dev_dbg(&client->dev, "%s +++++\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (info == NULL) {
@@ -3443,6 +3444,7 @@ static int imx091_probe(
 	imx091_pm_init(info);
 	imx091_sdata_init(info);
 	imx091_get_flash_cap(info);
+	info->pwr_api = NVC_PWR_OFF;
 	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
 		if (info->pdata->probe_clock) {
 			if (info->cap->initial_clock_rate_khz)
@@ -3470,6 +3472,7 @@ static int imx091_probe(
 			if (info->pdata->cfg & NVC_CFG_BOOT_INIT)
 				imx091_mode_wr_full(info, info->cap->
 						    preferred_mode_index);
+			info->dev_id = info->sdata.sensor_id_minor;
 		}
 		imx091_pm_dev_wr(info, NVC_PWR_OFF);
 		if (info->pdata->probe_clock)
