@@ -1195,7 +1195,6 @@ static int __init soctherm_thermal_sys_init(void)
 	if (!soctherm_init_platform_done)
 		return 0;
 
-
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		if (plat_data.sensor_data[i].zone_enable) {
 			snprintf(name, THERMAL_NAME_LENGTH,
@@ -2533,6 +2532,59 @@ static int regs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int temp_log_show(struct seq_file *s, void *data)
+{
+	u32 r, state;
+	int i;
+	u64 ts;
+	u_long ns;
+	bool was_suspended = false;
+
+	ts = cpu_clock(0);
+	ns = do_div(ts, 1000000000);
+	seq_printf(s, "%6lu.%06lu", (u_long) ts, ns / 1000);
+
+	if (soctherm_suspended) {
+		mutex_lock(&soctherm_suspend_resume_lock);
+		soctherm_resume_locked();
+		was_suspended = true;
+	}
+
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+					TS_CPU0_CONFIG1, i));
+		state = REG_GET(r, TS_CPU0_CONFIG1_EN);
+		if (!state)
+			continue;
+
+		r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+					TS_CPU0_STATUS1, i));
+		if (!REG_GET(r, TS_CPU0_STATUS1_TEMP_VALID)) {
+			seq_printf(s, "\tINVALID");
+			continue;
+		}
+
+		if (read_hw_temp) {
+			state = REG_GET(r, TS_CPU0_STATUS1_TEMP);
+			seq_printf(s, "\t%ld", temp_translate(state));
+		} else {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET(
+						TS_CPU0_STATUS0, i));
+			state = REG_GET(r, TS_CPU0_STATUS0_CAPTURE);
+			seq_printf(s, "\t%ld", temp_convert(state,
+						sensor2therm_a[i],
+						sensor2therm_b[i]));
+		}
+	}
+	seq_printf(s, "\n");
+
+	if (was_suspended) {
+		soctherm_suspend_locked();
+		mutex_unlock(&soctherm_suspend_resume_lock);
+	}
+	return 0;
+}
+
 static int regs_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, regs_show, inode->i_private);
@@ -2650,6 +2702,17 @@ DEFINE_SIMPLE_ATTRIBUTE(plltemp_fops, plltemp_get, plltemp_set, "%llu\n");
 
 DEFINE_SIMPLE_ATTRIBUTE(tempoverride_fops, tempoverride_get, tempoverride_set, "%llu\n");
 
+static int temp_log_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, temp_log_show, inode->i_private);
+}
+static const struct file_operations temp_log_fops = {
+	.open		= temp_log_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init soctherm_debug_init(void)
 {
 	struct dentry *tegra_soctherm_root;
@@ -2669,6 +2732,8 @@ static int __init soctherm_debug_init(void)
 				NULL, &plltemp_fops);
 	debugfs_create_file("tempoverride", 0644, tegra_soctherm_root,
 				NULL, &tempoverride_fops);
+	debugfs_create_file("temp_log", 0644, tegra_soctherm_root,
+				NULL, &temp_log_fops);
 	return 0;
 }
 late_initcall(soctherm_debug_init);
