@@ -2827,7 +2827,7 @@ static int rt5640_remove(struct snd_soc_codec *codec)
 	return 0;
 }
 #ifdef CONFIG_PM
-static int rt5640_suspend(struct snd_soc_codec *codec, pm_message_t state)
+static int rt5640_suspend(struct snd_soc_codec *codec)
 {
 	rt5640_reset(codec);
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_OFF);
