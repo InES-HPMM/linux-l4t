@@ -660,10 +660,8 @@ static void ardbeg_usb_init(void)
 
 static struct tegra_xusb_board_data xusb_bdata = {
 	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 |
-			TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P1,
-	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
-	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4),
+			TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P1 |
+				TEGRA_XUSB_USB2_P2,
 	.uses_external_pmic = false,
 };
 
@@ -673,12 +671,38 @@ static void ardbeg_xusb_init(void)
 
 	xusb_bdata.lane_owner = (u8) tegra_get_lane_owner_info();
 
-	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-		xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P0);
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363) {
+		/* Laguna */
+		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
+			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4);
 
-	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-		xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P1);
+		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+				TEGRA_XUSB_SS_P0);
 
+		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+				TEGRA_XUSB_SS_P1);
+
+		/* FIXME Add for UTMIP2 when have odmdata assigend */
+	} else {
+		/* Ardbeg */
+		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
+			(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
+
+		/* FIXME remove below when T124 runs on Ardbeg */
+		xusb_bdata.portmap &= ~(TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P2);
+
+		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+				TEGRA_XUSB_SS_P0);
+
+		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1);
+		/* FIXME Add for UTMIP2 when have odmdata assigend */
+	}
 	tegra_xusb_init(&xusb_bdata);
 }
 
