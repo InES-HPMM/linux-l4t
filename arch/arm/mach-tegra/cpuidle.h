@@ -55,7 +55,8 @@ static inline int tegra_cpuidle_init_soc(struct tegra_cpuidle_ops *ops)
 	return tegra2_cpuidle_init_soc(ops);
 #elif defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	return tegra3_cpuidle_init_soc(ops);
-#elif defined(CONFIG_ARCH_TEGRA_11x_SOC)
+#elif defined(CONFIG_ARCH_TEGRA_11x_SOC) || \
+	defined(CONFIG_ARCH_TEGRA_12x_SOC)
 	return tegra11x_cpuidle_init_soc(ops);
 #elif defined(CONFIG_ARCH_TEGRA_14x_SOC)
 	return tegra14x_cpuidle_init_soc(ops);
