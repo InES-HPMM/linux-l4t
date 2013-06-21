@@ -1112,40 +1112,26 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	reg |= USB2_PORT_CAP_HOST(port);
 	writel(reg, tegra->padctl_base + padregs->usb2_port_cap_0);
 
-	reg = readl(tegra->padctl_base + padregs->snps_oc_map_0);
-	if (port == 0)
-		reg |= SNPS_OC_MAP_CTRL1 | SNPS_OC_MAP_CTRL2 |
-			SNPS_OC_MAP_CTRL3;
-	else if (port == 1)
-		reg |= SNPS_OC_MAP_CTRL2 | SNPS_OC_MAP_CTRL3 |
-			SNPS_CTRL1_OC_DETECTED_VBUS_PAD0;
-	else if (port == 2) /* FIXME: Review when BCT available */
-		reg |= SNPS_OC_MAP_CTRL1 | SNPS_OC_MAP_CTRL3 |
-			SNPS_CTRL1_OC_DETECTED_VBUS_PAD0;
-	writel(reg, tegra->padctl_base + padregs->snps_oc_map_0);
-	reg = readl(tegra->padctl_base + padregs->snps_oc_map_0);
-
+	/*
+	 * Modify only the bits which belongs to the port
+	 * and enable respective VBUS_PAD for the port
+	 */
 	reg = readl(tegra->padctl_base + padregs->oc_det_0);
-	if (port == 0)
-		reg |= OC_DET_VBUS_ENABLE0_OC_MAP | OC_DET_VBUS_ENABLE1_OC_MAP;
-	else if (port == 1)
-		reg |= OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0
-			| OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1;
-	else if (port == 2) /* FIXME: Review when BCT available */
-		reg |= OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0
-			| OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1;
+	reg &= ~(port == 2 ? OC_DET_VBUS_ENABLE2_OC_MAP :
+		port ? OC_DET_VBUS_ENABLE1_OC_MAP : OC_DET_VBUS_ENABLE0_OC_MAP);
+
+	reg |= (port == 2) ? OC_DET_VBUS_EN2_OC_DETECTED_VBUS_PAD2 :
+		port ? OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1 :
+			OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0;
 	writel(reg, tegra->padctl_base + padregs->oc_det_0);
 
+	/*
+	 * enable respective VBUS_PAD if port is mapped to any SS port
+	 */
 	reg = readl(tegra->padctl_base + padregs->usb2_oc_map_0);
-	if (port == 0)
-		reg |= USB2_OC_MAP_PORT1
-			| USB2_OC_MAP_PORT0_OC_DETECTED_VBUS_PAD0;
-	else if (port == 1)
-		reg |= USB2_OC_MAP_PORT0
-			| USB2_OC_MAP_PORT1_OC_DETECTED_VBUS_PAD1;
-	else if (port == 2) /* FIXME: Review when BCT available */
-		reg |= USB2_OC_MAP_PORT0
-			| USB2_OC_MAP_PORT1_OC_DETECTED_VBUS_PAD1;
+	reg &= ~((port == 2) ? USB2_OC_MAP_PORT2 :
+		port ? USB2_OC_MAP_PORT1 : USB2_OC_MAP_PORT0);
+	reg |= (0x4 | port) << (port * 3);
 	writel(reg, tegra->padctl_base + padregs->usb2_oc_map_0);
 
 	ctl0_offset = (port == 2) ? padregs->usb2_otg_pad2_ctl0_0 :
@@ -1159,9 +1145,13 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	reg &= ~(USB2_OTG_HS_CURR_LVL | USB2_OTG_HS_SLEW |
 		USB2_OTG_FS_SLEW | USB2_OTG_LS_RSLEW |
 		USB2_OTG_PD | USB2_OTG_PD2 | USB2_OTG_PD_ZI);
+
 	reg |= tegra->pdata->hs_slew;
-	reg |= port ? 0 : tegra->pdata->ls_rslew;
-	reg |= port ? tegra->pdata->hs_curr_level_pad1 :
+	reg |= (port == 2) ? tegra->pdata->ls_rslew_pad2 :
+			port ? tegra->pdata->ls_rslew_pad1 :
+			tegra->pdata->ls_rslew_pad0;
+	reg |= (port == 2) ? tegra->pdata->hs_curr_level_pad2 :
+			port ? tegra->pdata->hs_curr_level_pad1 :
 			tegra->pdata->hs_curr_level_pad0;
 	writel(reg, tegra->padctl_base + ctl0_offset);
 
@@ -1219,7 +1209,7 @@ void
 tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 {
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
-	u32 reg;
+	u32 reg, oc_bits = 0;
 
 	reg = readl(tegra->padctl_base + padregs->usb2_bias_pad_ctl0_0);
 	reg &= ~(USB2_BIAS_HS_SQUELCH_LEVEL | USB2_BIAS_HS_DISCON_LEVEL);
@@ -1227,29 +1217,40 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 	writel(reg, tegra->padctl_base + padregs->usb2_bias_pad_ctl0_0);
 
 	reg = readl(tegra->padctl_base + padregs->snps_oc_map_0);
-	reg &= ~(SNPS_OC_MAP_CTRL1 | SNPS_OC_MAP_CTRL2 | SNPS_OC_MAP_CTRL3);
+	reg |= SNPS_OC_MAP_CTRL1 | SNPS_OC_MAP_CTRL2 | SNPS_OC_MAP_CTRL3;
 	writel(reg, tegra->padctl_base + padregs->snps_oc_map_0);
 	reg = readl(tegra->padctl_base + padregs->snps_oc_map_0);
 
 	reg = readl(tegra->padctl_base + padregs->oc_det_0);
-	reg &= ~(OC_DET_VBUS_ENABLE0_OC_MAP | OC_DET_VBUS_ENABLE1_OC_MAP);
+	reg |= OC_DET_VBUS_ENABLE0_OC_MAP | OC_DET_VBUS_ENABLE1_OC_MAP;
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+		reg |= OC_DET_VBUS_ENABLE2_OC_MAP;
 	writel(reg, tegra->padctl_base + padregs->oc_det_0);
 
 	/* check if over current seen. Clear if present */
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
+		oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD0;
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
+		oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD1;
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+		oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD2;
+
 	reg = readl(tegra->padctl_base + padregs->oc_det_0);
-	if (reg & (0x3 << 20)) {
+	if (reg & oc_bits) {
 		xhci_info(tegra->xhci, "Over current detected. Clearing...\n");
 		writel(reg, tegra->padctl_base + padregs->oc_det_0);
 
 		usleep_range(100, 200);
 
 		reg = readl(tegra->padctl_base + padregs->oc_det_0);
-		if (reg & (0x3 << 20))
+		if (reg & oc_bits)
 			xhci_info(tegra->xhci, "Over current still present\n");
 	}
 
 	reg = readl(tegra->padctl_base + padregs->usb2_oc_map_0);
-	reg &= ~(USB2_OC_MAP_PORT0 | USB2_OC_MAP_PORT1);
+	reg = USB2_OC_MAP_PORT0 | USB2_OC_MAP_PORT1;
+	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+		reg |= USB2_OC_MAP_PORT2;
 	writel(reg, tegra->padctl_base + padregs->usb2_oc_map_0);
 
 	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
@@ -1976,20 +1977,27 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	clk_enable(tegra->host_clk);
 
 	if (tegra->lp0_exit) {
-		u32 reg;
+		u32 reg, oc_bits = 0;
 
 		tegra_xhci_war_for_tctrl_rctrl(tegra);
 		/* check if over current seen. Clear if present */
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
+			oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD0;
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P1)
+			oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD1;
+		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
+			oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD2;
+
 		reg = readl(tegra->padctl_base + padregs->oc_det_0);
 		xhci_dbg(xhci, "%s: oc_det_0=0x%x\n", __func__, reg);
-		if (reg & (0x3 << 20)) {
+		if (reg & oc_bits) {
 			xhci_info(xhci, "Over current detected. Clearing...\n");
 			writel(reg, tegra->padctl_base + padregs->oc_det_0);
 
 			usleep_range(100, 200);
 
 			reg = readl(tegra->padctl_base + padregs->oc_det_0);
-			if (reg & (0x3 << 20))
+			if (reg & oc_bits)
 				xhci_info(xhci, "Over current still present\n");
 		}
 		tegra_xhci_padctl_portmap_and_caps(tegra);

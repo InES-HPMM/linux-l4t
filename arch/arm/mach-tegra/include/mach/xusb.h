@@ -59,6 +59,7 @@ struct tegra_xusb_platform_data {
 	struct tegra_xusb_board_data *bdata;
 	u32 hs_curr_level_pad0;
 	u32 hs_curr_level_pad1;
+	u32 hs_curr_level_pad2;
 	u32 hs_iref_cap;
 	u32 hs_term_range_adj;
 	u32 hs_squelch_level;
@@ -67,7 +68,9 @@ struct tegra_xusb_platform_data {
 	u32 cdr_cntl;
 	u32 dfe_cntl;
 	u32 hs_slew;
-	u32 ls_rslew;
+	u32 ls_rslew_pad0;
+	u32 ls_rslew_pad1;
+	u32 ls_rslew_pad2;
 	u32 hs_disc_lvl;
 	/*
 	 * BIT[0:3] = PMC port # for USB2_P0
