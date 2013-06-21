@@ -73,6 +73,7 @@
 #define FLOW_IPC_STS_AP2BB_MSC_STS_0	(1 << 4)
 
 #define CLK_RESET_CCLK_BURST		0x20
+#define CCLK_BURST_PLLX_DIV2_BYPASS_LP	(1<<16)
 #define CLK_RESET_CCLK_DIVIDER		0x24
 #define CLK_RESET_SCLK_BURST		0x28
 #define CLK_RESET_SCLK_DIVIDER		0x2c
@@ -477,6 +478,18 @@ defined(CONFIG_ARCH_TEGRA_14x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	mov32	r4, ((1<<28) | (8))	@ burst policy is PLLX
 	str	r4, [r0, #CLK_RESET_CCLK_BURST]
+#else
+	/* first restore PLLX div2 state, 2us delay, then CPU clock source */
+	ldr	r4, [r5, #0x20]
+	tst	r4, #CCLK_BURST_PLLX_DIV2_BYPASS_LP
+	ldr	r1, [r0, #CLK_RESET_CCLK_BURST]
+	biceq	r1, r1, #CCLK_BURST_PLLX_DIV2_BYPASS_LP
+	orrne	r1, r1, #CCLK_BURST_PLLX_DIV2_BYPASS_LP
+	str	r1, [r0, #CLK_RESET_CCLK_BURST]
+	ldr	r1, [r7]
+	add	r1, r1, #2
+	wait_until r1, r7, r3
+	str	r4, [r0, #CLK_RESET_CCLK_BURST]
 #endif
 
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
@@ -731,6 +744,7 @@ tegra3_sdram_pad_save:
 	.word	0
 	.word	0
 	.word	0
+	.word	0
 
 tegra3_sdram_pad_address:
 	.word	TEGRA_EMC_BASE + EMC_CFG				@0x0
@@ -742,11 +756,13 @@ tegra3_sdram_pad_address:
 	.word	TEGRA_PMC_BASE + PMC_IO_DPD_STATUS			@0x18
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CLK_SOURCE_MSELECT	@0x1c
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_SCLK_BURST		@0x20
+	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CCLK_BURST		@0x24
 #endif
 #if defined(CONFIG_ARCH_TEGRA_11x_SOC)
 	.align	L1_CACHE_SHIFT
 	.type	tegra11_sdram_pad_save, %object
 tegra11_sdram_pad_save:
+	.word	0
 	.word	0
 	.word	0
 	.word	0
@@ -773,12 +789,13 @@ tegra11_sdram_pad_address:
 	.word	TEGRA_PMC_BASE + PMC_IO_DPD_STATUS			@0x18
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CLK_SOURCE_MSELECT	@0x1c
 	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_SCLK_BURST		@0x20
-	.word	TEGRA_EMC1_BASE + EMC_CFG				@0x24
-	.word	TEGRA_EMC1_BASE + EMC_ZCAL_INTERVAL			@0x28
-	.word	TEGRA_EMC1_BASE + EMC_AUTO_CAL_INTERVAL			@0x2c
-	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL			@0x30
-	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL2			@0x34
-	.word	TEGRA_EMC1_BASE + EMC_REFRESH				@0x38
+	.word	TEGRA_CLK_RESET_BASE + CLK_RESET_CCLK_BURST		@0x24
+	.word	TEGRA_EMC1_BASE + EMC_CFG				@0x28
+	.word	TEGRA_EMC1_BASE + EMC_ZCAL_INTERVAL			@0x2c
+	.word	TEGRA_EMC1_BASE + EMC_AUTO_CAL_INTERVAL			@0x30
+	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL			@0x34
+	.word	TEGRA_EMC1_BASE + EMC_XM2VTTGENPADCTRL2			@0x38
+	.word	TEGRA_EMC1_BASE + EMC_REFRESH				@0x3c
 #endif
 
 #ifdef CONFIG_TEGRA_LP1_LOW_COREVOLTAGE
