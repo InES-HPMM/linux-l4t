@@ -237,7 +237,7 @@ struct inv_chip_config_s {
 	unsigned int fifo_thr;
 	unsigned int  prog_start_addr;
 	unsigned long min_delay_us;
-	long long gyro_start_delay_ns;
+	s64 gyro_start_delay_ns;
 	unsigned int bypass_timeout_ms;
 	unsigned char is_asleep;
 };
@@ -453,11 +453,15 @@ struct inv_gyro_state_s {
 	u8 dbg_reg;
 #endif /* DEBUG_SYSFS_INTERFACE */
 	s64 temp_ts;
+	s64 last_1000;
 	s16 temp_val;
 	s16 gyro[3];
 	s16 accl[3];
 	s16 accl_raw[3];
 	u8 buf[NVI_FIFO_SAMPLE_SIZE_MAX * 2]; /* (* 2)=FIFO OVERFLOW OFFSET */
+	bool irq_disabled;
+	unsigned int num_int;
+	struct work_struct work_struct;
 };
 
 /* produces an unique identifier for each device based on the
