@@ -758,8 +758,7 @@ static noinline void emc_set_clock(const struct tegra11_emc_table *next_timing,
 	}
 
 	/* 17. set zcal wait count */
-	if (zcal_long)
-		emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
+	emc_writel(next_timing->emc_zcal_cnt_long, EMC_ZCAL_WAIT_CNT);
 
 	/* 18. update restored timing */
 	udelay(2);
