@@ -59,12 +59,11 @@
 #define PMC_CTRL_INTR_LOW       (1 << 17)
 
 #define PALMAS_REG_INIT(_name, _warm_reset, _roof_floor, _mode_sleep,	\
-		_tstep, _vsel)						\
+		_vsel)						\
 	static struct palmas_reg_init reg_init_data_##_name = {		\
 		.warm_reset = _warm_reset,				\
 		.roof_floor =	_roof_floor,				\
 		.mode_sleep = _mode_sleep,		\
-		.tstep = _tstep,			\
 		.vsel = _vsel,		\
 	}
 
@@ -516,23 +515,23 @@ static struct regulator_init_data *ardbeg_1735_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 };
 
-PALMAS_REG_INIT(ti913_smps123, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(ti913_smps6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_smps7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_smps9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo2, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo4, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo5, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldoln, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldousb, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_regen1, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_smps123, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_smps45, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
+PALMAS_REG_INIT(ti913_smps6, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_smps7, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_smps9, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo1, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo2, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo3, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo4, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo5, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo6, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo7, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldo9, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldoln, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_ldousb, 0, 0, 0, 0);
+PALMAS_REG_INIT(ti913_regen1, 0, 0, 0, 0);
 
 #define PALMAS_REG_INIT_DATA(_sname) &reg_init_data_##_sname
 static struct palmas_reg_init *ardbeg_1735_reg_init[PALMAS_NUM_REGS] = {
@@ -606,8 +605,6 @@ static struct palmas_pinctrl_platform_data palmas_ti913_pinctrl_pdata = {
 };
 
 static struct palmas_pmic_platform_data pmic_ti913_platform = {
-	.enable_ldo8_tracking = true,
-	.disabe_ldo8_tracking_suspend = true,
 };
 
 static struct palmas_platform_data palmas_ti913_pdata = {
@@ -980,32 +977,32 @@ static struct regulator_init_data *ardbeg_reg_data[PALMAS_NUM_REGS] = {
 	NULL,
 };
 
-PALMAS_REG_INIT(smps12, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
-PALMAS_REG_INIT(smps123, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps45, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps457, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(smps10, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo1, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo2, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo3, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo4, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo5, 0, PALMAS_EXT_CONTROL_NSLEEP, 1, 0, 0);
-PALMAS_REG_INIT(ldo6, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo8, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo9, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo10, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo11, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo12, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo13, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldo14, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldoln, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ldousb, 0, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps12, 0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0);
+PALMAS_REG_INIT(smps123, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps3, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps45, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps457, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps6, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps7, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps8, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps9, 0, 0, 0, 0);
+PALMAS_REG_INIT(smps10, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo1, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo2, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo3, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo4, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo5, 0, PALMAS_EXT_CONTROL_NSLEEP, 1, 0);
+PALMAS_REG_INIT(ldo6, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo7, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo8, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo9, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo10, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo11, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo12, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo13, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldo14, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldoln, 0, 0, 0, 0);
+PALMAS_REG_INIT(ldousb, 0, 0, 0, 0);
 
 static struct palmas_reg_init *ardbeg_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(smps12),
@@ -1037,8 +1034,6 @@ static struct palmas_reg_init *ardbeg_reg_init[PALMAS_NUM_REGS] = {
 };
 
 static struct palmas_pmic_platform_data pmic_platform = {
-	.enable_ldo8_tracking = false,
-	.disabe_ldo8_tracking_suspend = false,
 };
 
 static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
@@ -1166,7 +1161,9 @@ int __init ardbeg_regulator_init(void)
 				ARRAY_SIZE(palma_device));
 		i2c_register_board_info(4, tps51632_cpu_boardinfo, 1);
 		i2c_register_board_info(4, tps51632_gpu_boardinfo, 1);
-		reg_init_data_ldo5.enable_tracking = true;
+
+		reg_init_data_ldo5.config_flags =
+			PALMAS_REGULATOR_CONFIG_TRACKING_ENABLE;
 		reg_init_data_ldo5.tracking_regulator = PALMAS_REG_SMPS12;
 	} else if (pmu_board_info.board_id == BOARD_E1735) {
 		regulator_has_full_constraints();
