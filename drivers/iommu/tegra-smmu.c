@@ -656,6 +656,7 @@ static void flush_ptc_and_tlb(struct smmu_device *smmu,
 	FLUSH_SMMU_REGS(smmu);
 }
 
+#ifdef CONFIG_TEGRA_ERRATA_1053704
 /* Flush PTEs within the same L2 pagetable */
 static void ____smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 				   dma_addr_t end)
@@ -671,6 +672,7 @@ static void ____smmu_flush_tlb_range(struct smmu_device *smmu, dma_addr_t iova,
 		iova += unit;
 	}
 }
+#endif
 
 static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 				    struct smmu_as *as, dma_addr_t iova,
