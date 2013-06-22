@@ -5328,9 +5328,11 @@ static unsigned long tegra12_clk_shared_bus_update(struct clk *bus,
 		}
 	}
 
-	if (bus->flags & PERIPH_EMC_ENB)
+	if (bus->flags & PERIPH_EMC_ENB) {
+		unsigned long iso_bw_min;
 		bw = tegra_emc_apply_efficiency(
-			bw, iso_bw, bus->max_rate, usage_flags);
+			bw, iso_bw, bus->max_rate, usage_flags, &iso_bw_min);
+	}
 
 	rate = override_rate ? : max(rate, bw);
 	ceiling = override_rate ? bus->max_rate : ceiling;
