@@ -1063,6 +1063,11 @@ static int tegra_pcie_enable_controller(void)
 #else
 	val |= (PADS_PLL_CTL_REFCLK_INTERNAL_CML | PADS_PLL_CTL_TXCLKREF_BUF_EN);
 #endif
+	val |= PADS_PLL_CTL_RST_B4SM;
+	pads_writel(val, PADS_PLL_CTL);
+
+	/* put PLL into reset  */
+	val = pads_readl(PADS_PLL_CTL) & ~PADS_PLL_CTL_RST_B4SM;
 	pads_writel(val, PADS_PLL_CTL);
 
 	/* take PLL out of reset  */
