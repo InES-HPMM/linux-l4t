@@ -849,11 +849,17 @@ finish:
 	 * This implementation is still in experimental phase. So, don't fail
 	 * enumeration even if dev freq init fails.
 	 */
-	if (host->caps2 & MMC_CAP2_FREQ_SCALING) {
-		err = mmc_devfreq_init(host);
-		if (err)
-			dev_info(mmc_dev(host),
-				"Devfreq scaling init failed %d\n", err);
+	if (!oldcard && host->ios.timing == MMC_TIMING_UHS_SDR104) {
+		if (host->caps2 & MMC_CAP2_FREQ_SCALING) {
+			err = mmc_devfreq_init(host);
+			if (err)
+				dev_info(mmc_dev(host),
+					"Devfreq scaling init failed %d\n",
+					err);
+			else
+				dev_info(mmc_dev(host),
+					"DFS is enabled successfully\n");
+		}
 	}
 #endif
 	return 0;
