@@ -140,11 +140,14 @@ struct soctherm_platform_data {
 
 #ifdef CONFIG_TEGRA_SOCTHERM
 int __init tegra11_soctherm_init(struct soctherm_platform_data *data);
+void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range);
 #else
 static inline int tegra11_soctherm_init(struct soctherm_platform_data *data)
 {
 	return 0;
 }
+static inline void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
+{ }
 #endif
 
 #endif /* __MACH_TEGRA_11x_SOCTHERM_H */
