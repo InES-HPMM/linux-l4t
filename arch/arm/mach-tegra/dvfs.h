@@ -117,6 +117,7 @@ struct dvfs_dfll_data {
 	unsigned long	out_rate_min;
 	unsigned long	max_rate_boost;
 	int tune_high_min_millivolts;
+	int tune_high_margin_mv;
 	int min_millivolts;
 	enum dfll_range	range;
 	void (*tune_trimmers)(bool trim_high);

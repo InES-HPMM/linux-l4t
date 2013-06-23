@@ -991,9 +991,10 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 	cld->tune_high_out_start = cld->tune_high_out_min;
 	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
 	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
+		int margin = cld->safe_dvfs->dfll_data.tune_high_margin_mv ? :
+				CL_DVFS_TUNE_HIGH_MARGIN_MV;
 		u8 out_min = find_mv_out_cap(cld, mv);
-		u8 out_start = find_mv_out_cap(
-			cld, mv + CL_DVFS_TUNE_HIGH_MARGIN_MV);
+		u8 out_start = find_mv_out_cap(cld, mv + margin);
 		out_start = max(out_start, (u8)(out_min + 1));
 		if (out_start < get_output_top(cld)) {
 			cld->tune_high_out_min = out_min;
