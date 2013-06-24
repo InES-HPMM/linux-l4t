@@ -844,6 +844,10 @@ static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
+	/* Issue is only applicable for T114 */
+	if (XUSB_DEVICE_ID_T114 != tegra->device_id)
+		return;
+
 	if (tegra->bdata->portmap & TEGRA_XUSB_SS_P0) {
 		reg = readl(tegra->padctl_base +
 			padregs->iophy_misc_pad_p0_ctl3_0);
@@ -1593,6 +1597,10 @@ static void tegra_xhci_release_port_ownership(struct tegra_xhci_hcd *tegra,
 	struct tegra_xusb_padctl_regs *padregs = tegra->padregs;
 	u32 reg;
 
+	/* Issue is only applicable for T114 */
+	if (XUSB_DEVICE_ID_T114 != tegra->device_id)
+		return;
+
 	reg = readl(tegra->padctl_base + padregs->usb2_pad_mux_0);
 	reg &= ~(USB2_OTG_PAD_PORT_MASK(0) | USB2_OTG_PAD_PORT_MASK(1) |
 			USB2_OTG_PAD_PORT_MASK(2));
@@ -1981,7 +1989,9 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	if (tegra->lp0_exit) {
 		u32 reg, oc_bits = 0;
 
-		tegra_xhci_war_for_tctrl_rctrl(tegra);
+		/* Issue is only applicable for T114 */
+		if (XUSB_DEVICE_ID_T114 == tegra->device_id)
+			tegra_xhci_war_for_tctrl_rctrl(tegra);
 		/* check if over current seen. Clear if present */
 		if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P0)
 			oc_bits |= OC_DET_OC_DETECTED_VBUS_PAD0;
