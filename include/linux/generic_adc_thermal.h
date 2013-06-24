@@ -22,13 +22,17 @@
  * 02111-1307, USA
  */
 
-#ifndef GENERIC_ADC_THERMAL_H
-#define GENERIC_ADC_THERMAL_H
+#ifndef _LINUX_GENERIC_ADC_THERMAL_H
+#define _LINUX_GENERIC_ADC_THERMAL_H
 
 struct gadc_thermal_platform_data {
 	const char *iio_channel_name;
 	const char *tz_name;
 	int temp_offset; /* mC */
 	int (*adc_to_temp)(struct gadc_thermal_platform_data *pdata, int val);
+	int *adc_temp_lookup;
+	unsigned int lookup_table_size;
+	int first_index_temp;
+	int last_index_temp;
 };
-#endif /* GENERIC_ADC_THERMAL_H */
+#endif /* _LINUX_GENERIC_ADC_THERMAL_H */

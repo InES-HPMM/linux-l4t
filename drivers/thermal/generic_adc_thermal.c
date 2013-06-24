@@ -40,7 +40,53 @@ struct gadc_thermal_driver_data {
 	struct iio_channel *channel;
 	struct gadc_thermal_platform_data *pdata;
 	struct dentry *dentry;
+	int *adc_temp_lookup;
+	unsigned int lookup_table_size;
+	int first_index_temp;
+	int last_index_temp;
+	int temp_offset;
 };
+
+static int gadc_thermal_thermistor_adc_to_temp(
+	struct gadc_thermal_driver_data *drvdata, int adc_raw)
+{
+
+	int *lookup_table = drvdata->adc_temp_lookup;
+	int table_size = drvdata->lookup_table_size;
+	int first_index_temp = drvdata->first_index_temp;
+	int last_index_temp = drvdata->last_index_temp;
+	int i;
+	int temp, adc_low, adc_high, diff_temp;
+	int temp_decrement = (first_index_temp > last_index_temp);
+
+	for (i = 0; i < table_size - 1; ++i) {
+		if (temp_decrement) {
+			if (adc_raw <= lookup_table[i])
+				break;
+		} else {
+			if (adc_raw >= lookup_table[i])
+				break;
+		}
+	}
+
+	if (i == 0)
+		return first_index_temp;
+	if (i == table_size)
+		return last_index_temp;
+
+	/* Find temp with interpolate reading */
+	adc_low = lookup_table[i-1];
+	adc_high = lookup_table[i];
+	diff_temp = (adc_high - adc_low) * 1000;
+	if (temp_decrement) {
+		temp = (first_index_temp - i) * 1000;
+		temp += ((adc_high - adc_raw) * 1000) / (adc_high - adc_low);
+	} else {
+		temp = (first_index_temp + i - 1) * 1000;
+		temp += (adc_low - adc_raw) * 1000 / (adc_high - adc_low);
+	}
+	return temp;
+}
 
 static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 				 unsigned long *temp)
@@ -58,10 +104,12 @@ static int gadc_thermal_get_temp(struct thermal_zone_device *tz,
 
 	if (drvdata->pdata->adc_to_temp)
 		*temp = drvdata->pdata->adc_to_temp(drvdata->pdata, val);
+	else if (drvdata->pdata->adc_temp_lookup)
+		*temp = gadc_thermal_thermistor_adc_to_temp(drvdata, val);
 	else
 		*temp = val;
 
-	*temp += drvdata->pdata->temp_offset;
+	*temp += drvdata->temp_offset;
 	return 0;
 }
 
@@ -199,10 +247,24 @@ static int __devinit gadc_thermal_probe(struct platform_device *pdev)
 			__func__);
 		return -ENOMEM;
 	}
+	if (pdata->lookup_table_size) {
+		drvdata->adc_temp_lookup =  devm_kzalloc(&pdev->dev,
+				pdata->lookup_table_size * sizeof(unsigned int),
+				GFP_KERNEL);
+		if (!drvdata->adc_temp_lookup)
+			return -ENOMEM;
+	}
 
 	platform_set_drvdata(pdev, drvdata);
 	drvdata->dev = &pdev->dev;
 	drvdata->pdata = pdata;
+	drvdata->lookup_table_size = pdata->lookup_table_size;
+	drvdata->first_index_temp = pdata->first_index_temp;
+	drvdata->last_index_temp = pdata->last_index_temp;
+	drvdata->temp_offset = pdata->temp_offset;
+	if (drvdata->lookup_table_size)
+		memcpy(drvdata->adc_temp_lookup, pdata->adc_temp_lookup,
+			pdata->lookup_table_size * sizeof(unsigned int));
 
 	drvdata->channel = iio_st_channel_get(dev_name(&pdev->dev),
 					pdata->iio_channel_name);
@@ -252,17 +314,7 @@ static struct platform_driver gadc_thermal_driver = {
 	.remove = __devexit_p(gadc_thermal_remove),
 };
 
-static int gadc_thermal_init(void)
-{
-	return platform_driver_register(&gadc_thermal_driver);
-}
-late_initcall(gadc_thermal_init);
-
-static void gadc_thermal_exit(void)
-{
-	platform_driver_unregister(&gadc_thermal_driver);
-}
-module_exit(gadc_thermal_exit);
+module_platform_driver(gadc_thermal_driver);
 
 MODULE_AUTHOR("Jinyoung Park <jinyoungp@nvidia.com>");
 MODULE_DESCRIPTION("Generic ADC thermal driver using IIO framework");
