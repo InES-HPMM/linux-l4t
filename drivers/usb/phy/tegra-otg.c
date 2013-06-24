@@ -912,6 +912,9 @@ static void tegra_otg_resume(struct device *dev)
 		mutex_lock(&tegra->irq_work_mutex);
 	}
 
+	if (tegra->turn_off_vbus_on_lp0 && !(tegra->int_status & USB_ID_STATUS))
+		tegra_otg_vbus_enable(tegra->vbus_reg, 1);
+
 	/* Call work to set appropriate state */
 	schedule_work(&tegra->work);
 
