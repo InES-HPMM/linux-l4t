@@ -32,6 +32,7 @@ enum battery_charger_status {
 
 struct battery_gauge_dev;
 struct battery_charger_dev;
+struct battery_charger_thermal_dev;
 
 struct battery_gauge_ops {
 	int (*update_battery_status)(struct battery_gauge_dev *bg_device,
@@ -42,9 +43,22 @@ struct battery_charging_ops {
 	int (*get_charging_status)(struct battery_charger_dev *bc_dev);
 };
 
+struct battery_charger_thermal_ops {
+	int (*thermal_configure)(struct battery_charger_thermal_dev *bct_dev,
+		int temp, bool enable_charger, bool enable_charg_half_current,
+		int battery_voltage);
+};
+
 struct battery_charger_info {
 	int cell_id;
 	struct battery_charging_ops *bc_ops;
+};
+
+struct battery_charger_thermal_info {
+	int cell_id;
+	const char *tz_name;
+	int polling_time_sec;
+	struct battery_charger_thermal_ops *bct_ops;
 };
 
 struct battery_gauge_info {
@@ -56,6 +70,12 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 		struct battery_charger_info *bci);
 void battery_charger_unregister(struct battery_charger_dev *bc_dev);
 
+struct battery_charger_thermal_dev *battery_charger_thermal_register(
+	struct device *dev, struct battery_charger_thermal_info *bci,
+	void *drv_data);
+void battery_charger_thermal_unregister(
+	struct battery_charger_thermal_dev *bct_dev);
+
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 		struct battery_gauge_info *bgi);
 void battery_gauge_unregister(struct battery_gauge_dev *bg_dev);
@@ -66,6 +86,10 @@ int battery_charging_status_update(struct battery_charger_dev *bc_dev,
 void *battery_charger_get_drvdata(struct battery_charger_dev *bc_dev);
 void battery_charger_set_drvdata(struct battery_charger_dev *bc_dev,
 			void *data);
+void *battery_charger_thermal_get_drvdata(
+		struct battery_charger_thermal_dev *bct_dev);
+void battery_charger_thermal_set_drvdata(
+		struct battery_charger_thermal_dev *bct_dev, void *data);
 void *battery_gauge_get_drvdata(struct battery_gauge_dev *bg_dev);
 void battery_gauge_set_drvdata(struct battery_gauge_dev *bg_dev, void *data);
 #endif
