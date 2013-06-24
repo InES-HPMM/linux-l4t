@@ -385,19 +385,19 @@ static unsigned int dsi_s_pluto_edp_states[] = {
 	1130, 1017, 904, 791, 678, 565, 452, 339, 226, 113, 0
 };
 static unsigned int dsi_s_pluto_edp_brightness[] = {
-	255, 230, 204, 179, 153, 128, 102, 77, 51, 26, 0
+	255, 230, 204, 179, 153, 128, 102, 77, 51, 10, 0
 };
 static unsigned int dsi_s_ceres_edp_states[] = {
 	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
 };
 static unsigned int dsi_s_ceres_edp_brightness[] = {
-	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 10, 0
 };
 static unsigned int dsi_s_atlantis_edp_states[] = {
 	720, 644, 523, 490, 442, 427, 395, 363, 330, 299, 0
 };
 static unsigned int dsi_s_atlantis_edp_brightness[] = {
-	255, 230, 204, 170, 140, 128, 102, 77, 51, 26, 0
+	255, 230, 204, 170, 140, 128, 102, 77, 51, 10, 0
 };
 
 static int __init dsi_s_1080p_5_register_bl_dev(void)
