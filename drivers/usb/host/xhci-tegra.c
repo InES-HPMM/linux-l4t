@@ -1116,15 +1116,17 @@ static void tegra_xhci_program_utmip_pad(struct tegra_xhci_hcd *tegra,
 	 * Modify only the bits which belongs to the port
 	 * and enable respective VBUS_PAD for the port
 	 */
-	reg = readl(tegra->padctl_base + padregs->oc_det_0);
-	reg &= ~(port == 2 ? OC_DET_VBUS_ENABLE2_OC_MAP :
-		port ? OC_DET_VBUS_ENABLE1_OC_MAP : OC_DET_VBUS_ENABLE0_OC_MAP);
+	if (tegra->bdata->uses_external_pmic == false) {
+		reg = readl(tegra->padctl_base + padregs->oc_det_0);
+		reg &= ~(port == 2 ? OC_DET_VBUS_ENABLE2_OC_MAP :
+			port ? OC_DET_VBUS_ENABLE1_OC_MAP :
+				OC_DET_VBUS_ENABLE0_OC_MAP);
 
-	reg |= (port == 2) ? OC_DET_VBUS_EN2_OC_DETECTED_VBUS_PAD2 :
-		port ? OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1 :
-			OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0;
-	writel(reg, tegra->padctl_base + padregs->oc_det_0);
-
+		reg |= (port == 2) ? OC_DET_VBUS_EN2_OC_DETECTED_VBUS_PAD2 :
+			port ? OC_DET_VBUS_EN1_OC_DETECTED_VBUS_PAD1 :
+				OC_DET_VBUS_EN0_OC_DETECTED_VBUS_PAD0;
+		writel(reg, tegra->padctl_base + padregs->oc_det_0);
+	}
 	/*
 	 * enable respective VBUS_PAD if port is mapped to any SS port
 	 */

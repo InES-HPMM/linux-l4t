@@ -664,6 +664,7 @@ static struct tegra_xusb_board_data xusb_bdata = {
 	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
 			(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 4),
+	.uses_external_pmic = false,
 };
 
 static void ardbeg_xusb_init(void)
