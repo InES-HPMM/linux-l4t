@@ -364,7 +364,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 PALMAS_PDATA_INIT(ti913_smps123, 900, 1400, NULL, 1, 1, 1, NORMAL);
 PALMAS_PDATA_INIT(ti913_smps45, 900, 1400, NULL, 1, 1, 1, NORMAL);
 PALMAS_PDATA_INIT(ti913_smps6, 1800, 1800, NULL, 1, 1, 1, NORMAL);
-PALMAS_PDATA_INIT(ti913_smps7, 1350, 1350, NULL, 1, 1, 1, NORMAL);
+PALMAS_PDATA_INIT(ti913_smps7, 900, 1350, NULL, 1, 1, 1, NORMAL);
 PALMAS_PDATA_INIT(ti913_smps9, 1050, 1050, NULL, 0, 0, 0, NORMAL);
 PALMAS_PDATA_INIT(ti913_ldo1, 1050, 1250, palmas_rails(ti913_smps7),
 		1, 1, 1, 0);
@@ -376,12 +376,12 @@ PALMAS_PDATA_INIT(ti913_ldo4, 1200, 1200, palmas_rails(ti913_smps6),
 PALMAS_PDATA_INIT(ti913_ldo5, 2700, 2700, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo6, 1800, 1800, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo7, 2700, 2700, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_ldo8, 1000, 1000, NULL, 1, 1, 1, NORMAL);
+/* TODO PALMAS_PDATA_INIT(ti913_ldo8, 1000, 1100, NULL, 1, 1, 1, NORMAL);*/
 PALMAS_PDATA_INIT(ti913_ldo9, 1800, 3300, NULL, 0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldoln, 1050, 1050, palmas_rails(ti913_smps6),
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldousb, 1800, 1800, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_regen1, 3300, 3300, NULL, 1, 1, 1, 0);
+PALMAS_PDATA_INIT(ti913_regen1, 3000, 3300, NULL, 1, 1, 1, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 static struct regulator_init_data *ardbeg_1735_reg_data[PALMAS_NUM_REGS] = {
@@ -402,7 +402,7 @@ static struct regulator_init_data *ardbeg_1735_reg_data[PALMAS_NUM_REGS] = {
 	PALMAS_REG_PDATA(ti913_ldo5),
 	PALMAS_REG_PDATA(ti913_ldo6),
 	PALMAS_REG_PDATA(ti913_ldo7),
-	PALMAS_REG_PDATA(ti913_ldo8),
+	NULL, /* TODO PALMAS_REG_PDATA(ti913_ldo8),*/
 	PALMAS_REG_PDATA(ti913_ldo9),
 	NULL,
 	NULL,
@@ -430,7 +430,7 @@ PALMAS_REG_INIT(ti913_ldo4, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo5, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo7, 0, 0, 0, 0, 0);
-PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0, 0);
+/* TODO PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0, 0);*/
 PALMAS_REG_INIT(ti913_ldo9, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldoln, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldousb, 0, 0, 0, 0, 0);
@@ -455,7 +455,7 @@ static struct palmas_reg_init *ardbeg_1735_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(ti913_ldo5),
 	PALMAS_REG_INIT_DATA(ti913_ldo6),
 	PALMAS_REG_INIT_DATA(ti913_ldo7),
-	PALMAS_REG_INIT_DATA(ti913_ldo8),
+	NULL, /*PALMAS_REG_INIT_DATA(ti913_ldo8), */
 	PALMAS_REG_INIT_DATA(ti913_ldo9),
 	NULL,
 	NULL,

@@ -351,7 +351,12 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS4, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS5, false, 0),
+	/* KB_ROW13 GPIO should be set to high to tristate vid for vboot
+	voltage. SW has to drive it low to change RT8812 o/p voltage
+	depending on pwm duty cyle. With default setting of kb_row13
+	boot voltage is 1.0 V
+	*/
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS5, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PS6, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR2, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PR4, true, 0),

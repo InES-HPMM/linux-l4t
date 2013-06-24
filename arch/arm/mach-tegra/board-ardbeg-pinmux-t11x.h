@@ -244,6 +244,7 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_common[] = {
 	GPIO_PINMUX(KB_COL0, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL1, NORMAL, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL2, PULL_UP, NORMAL, INPUT, DISABLE),
+	GPIO_PINMUX(KB_COL3, NORMAL, NORMAL, OUTPUT, DISABLE),
 	GPIO_PINMUX(KB_COL5, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL6, PULL_UP, NORMAL, INPUT, DISABLE),
 	GPIO_PINMUX(KB_COL7, PULL_UP, NORMAL, INPUT, DISABLE),
@@ -276,7 +277,6 @@ static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	UNUSED_PINMUX(ULPI_DATA3),
 	UNUSED_PINMUX(GMI_OE_N),
 	UNUSED_PINMUX(GMI_RST_N),
-	UNUSED_PINMUX(KB_COL3),
 	UNUSED_PINMUX(KB_ROW4),
 	UNUSED_PINMUX(USB_VBUS_EN1),
 };
@@ -354,4 +354,10 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PU6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PN7, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5, false, 0),
+	/* KB_COL3 GPIO should be set to high to tristate vid for vboot
+	voltage. SW has to drive it low to change RT8812 o/p voltage
+	depending on pwm duty cyle. With default setting of kb_col3
+	boot voltage is 1.0 V
+	*/
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PQ3, false, 1),
 };

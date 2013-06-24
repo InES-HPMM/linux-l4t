@@ -67,6 +67,7 @@
 #define BOARD_E1733    0x6c5
 #define BOARD_E1734    0x6c6
 #define BOARD_E1735    0x6c7
+#define BOARD_E1736    0x6c8
 
 /* Board Fab version */
 #define BOARD_FAB_A00			0x0
