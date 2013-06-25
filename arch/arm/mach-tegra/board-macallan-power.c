@@ -882,7 +882,7 @@ int __init macallan_soctherm_init(void)
 
 static struct edp_manager macallan_sysedp_manager = {
 	.name = "battery",
-	.max = 27300
+	.max = 19000
 };
 
 void __init macallan_sysedp_init(void)
@@ -912,19 +912,20 @@ void __init macallan_sysedp_init(void)
 }
 
 static unsigned int macallan_psydepl_states[] = {
-	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
-	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
-	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
-	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
-	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
-	1300, 1200, 1100, 1000,  900,  800,  700,  600,
-	 500,  400,  300,  200,  100,    0
+	18000, 17000, 16000, 15000, 14000, 13000, 12000, 11000,
+	 9900,  9600,  9300,  9000,  8700,  8400,  8100,  7800,
+	 7500,  7200,  6900,  6600,  6300,  6000,  5800,  5600,
+	 5400,  5200,  5000,  4800,  4600,  4400,  4200,  4000,
+	 3800,  3600,  3400,  3200,  3000,  2800,  2600,  2400,
+	 2200,  2000,  1900,  1800,  1700,  1600,  1500,  1400,
+	 1300,  1200,  1100,  1000,   900,   800,   700,   600,
+	  500,   400,   300,   200,   100,     0
 };
 
 static struct psy_depletion_ibat_lut macallan_ibat_lut[] = {
 	{  60,  500 },
-	{  40, 3900 },
-	{   0, 3900 },
+	{  40, 6150 },
+	{   0, 6150 },
 	{ -30,    0 }
 };
 
@@ -940,7 +941,7 @@ static struct psy_depletion_platform_data macallan_psydepl_pdata = {
 	.r_const = 55000,
 	.vsys_min = 3250000,
 	.vcharge = 4200000,
-	.ibat_nom = 3900,
+	.ibat_nom = 6150,
 	.ibat_lut = macallan_ibat_lut,
 	.rbat_lut = macallan_rbat_lut
 };
