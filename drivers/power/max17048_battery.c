@@ -22,6 +22,7 @@
 #include <linux/power_supply.h>
 #include <linux/slab.h>
 #include <linux/max17048_battery.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -49,6 +50,7 @@ struct max17048_chip {
 	struct delayed_work		work;
 	struct power_supply		battery;
 	struct max17048_platform_data *pdata;
+	struct battery_gauge_dev	*bg_dev;
 
 	/* battery voltage */
 	int vcell;
@@ -586,6 +588,30 @@ static struct max17048_platform_data *max17048_parse_dt(struct device *dev)
 }
 #endif /* CONFIG_OF */
 
+static int max17048_update_battery_status(struct battery_gauge_dev *bg_dev,
+		enum battery_charger_status status)
+{
+	struct max17048_chip *chip = battery_gauge_get_drvdata(bg_dev);
+
+	if (status == BATTERY_CHARGING)
+		chip->status = POWER_SUPPLY_STATUS_CHARGING;
+	else
+		chip->status = POWER_SUPPLY_STATUS_DISCHARGING;
+
+	chip->lasttime_status = chip->status;
+	power_supply_changed(&chip->battery);
+	return 0;
+}
+
+static struct battery_gauge_ops max17048_bg_ops = {
+	.update_battery_status = max17048_update_battery_status,
+};
+
+static struct battery_gauge_info max17048_bgi = {
+	.cell_id = 0,
+	.bg_ops = &max17048_bg_ops,
+};
+
 static int max17048_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -640,10 +666,21 @@ static int max17048_probe(struct i2c_client *client,
 		goto error;
 	}
 
+	chip->bg_dev = battery_gauge_register(&client->dev, &max17048_bgi);
+	if (IS_ERR(chip->bg_dev)) {
+		ret = PTR_ERR(chip->bg_dev);
+		dev_err(&client->dev, "battery gauge register failed: %d\n",
+			ret);
+		goto bg_err;
+	}
+	battery_gauge_set_drvdata(chip->bg_dev, chip);
+
 	INIT_DEFERRABLE_WORK(&chip->work, max17048_work);
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
 
 	return 0;
+bg_err:
+	power_supply_unregister(&chip->battery);
 error:
 	mutex_destroy(&chip->mutex);
 
@@ -654,6 +691,7 @@ static int max17048_remove(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 
+	battery_gauge_unregister(chip->bg_dev);
 	power_supply_unregister(&chip->battery);
 	cancel_delayed_work_sync(&chip->work);
 	mutex_destroy(&chip->mutex);

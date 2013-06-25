@@ -296,6 +296,7 @@ config BATTERY_MAX17042
 config BATTERY_MAX17048
 	tristate "Maxim MAX17048/17049 Fuel Gauge"
 	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	  MAX17048 is fuel-gauge systems for lithium-ion (Li+) batteries
 	  in handheld and portable equipment. The MAX17048 is configured
