@@ -78,7 +78,7 @@ struct tegra_xusb_platform_data {
 	unsigned long quirks;
 };
 
-#define TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR BIT(0)
+#define TEGRA_XUSB_USE_HS_SRC_CLOCK2 BIT(0)
 
 extern void tegra_xusb_init(struct tegra_xusb_board_data *bdata);
 #endif /* _XUSB_H */

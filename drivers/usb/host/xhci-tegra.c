@@ -711,11 +711,13 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		return PTR_ERR(tegra->emc_clk);
 	}
 
-	tegra->pll_re_vco_clk = devm_clk_get(&pdev->dev, "pll_re_vco");
-	if (IS_ERR(tegra->pll_re_vco_clk)) {
-		dev_err(&pdev->dev, "Failed to get refPLLE clock\n");
-		err = PTR_ERR(tegra->pll_re_vco_clk);
-		goto get_emc_clk_failed;
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2) {
+		tegra->pll_re_vco_clk = devm_clk_get(&pdev->dev, "pll_re_vco");
+		if (IS_ERR(tegra->pll_re_vco_clk)) {
+			dev_err(&pdev->dev, "Failed to get refPLLE clock\n");
+			err = PTR_ERR(tegra->pll_re_vco_clk);
+			goto get_pll_re_vco_clk_failed;
+		}
 	}
 
 	/* get the clock handle of 120MHz clock source */
@@ -758,10 +760,12 @@ static int tegra_xusb_partitions_clk_init(struct tegra_xhci_hcd *tegra)
 		goto get_ss_clk_failed;
 	}
 
-	err = clk_enable(tegra->pll_re_vco_clk);
-	if (err) {
-		dev_err(&pdev->dev, "Failed to enable host partition clk\n");
-		goto enable_pll_re_vco_clk_failed;
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2) {
+		err = clk_enable(tegra->pll_re_vco_clk);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to enable refPLLE clk\n");
+			goto enable_pll_re_vco_clk_failed;
+		}
 	}
 	/* enable ss clock */
 	err = clk_enable(tegra->host_clk);
@@ -791,7 +795,8 @@ eanble_ss_clk_failed:
 	clk_disable(tegra->host_clk);
 
 enable_host_clk_failed:
-	clk_disable(tegra->pll_re_vco_clk);
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		clk_disable(tegra->pll_re_vco_clk);
 
 enable_pll_re_vco_clk_failed:
 	tegra->ss_clk = NULL;
@@ -809,9 +814,10 @@ clk_get_clk_m_failed:
 	tegra->pll_u_480M = NULL;
 
 get_pll_u_480M_failed:
-	tegra->pll_re_vco_clk = NULL;
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		tegra->pll_re_vco_clk = NULL;
 
-get_emc_clk_failed:
+get_pll_re_vco_clk_failed:
 	tegra->emc_clk = NULL;
 
 	return err;
@@ -821,13 +827,15 @@ static void tegra_xusb_partitions_clk_deinit(struct tegra_xhci_hcd *tegra)
 {
 	clk_disable(tegra->ss_clk);
 	clk_disable(tegra->host_clk);
-	clk_disable(tegra->pll_re_vco_clk);
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		clk_disable(tegra->pll_re_vco_clk);
 	tegra->ss_clk = NULL;
 	tegra->host_clk = NULL;
 	tegra->ss_src_clk = NULL;
 	tegra->clk_m = NULL;
 	tegra->pll_u_480M = NULL;
-	tegra->pll_re_vco_clk = NULL;
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		tegra->pll_re_vco_clk = NULL;
 }
 
 static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
@@ -878,7 +886,7 @@ tegra_xusb_request_clk_rate(struct tegra_xhci_hcd *tegra,
 	int fw_req_rate = rate, cur_rate;
 
 	/* Do not handle clock change as needed for HS disconnect issue */
-	if (tegra->pdata->quirks & TEGRA_XUSB_NEED_HS_DISCONNECT_SW_WAR) {
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2) {
 		*sw_resp = fw_req_rate | (MBOX_CMD_ACK << MBOX_CMD_SHIFT);
 		return ret;
 	}
@@ -1819,7 +1827,8 @@ static int tegra_xhci_host_elpg_entry(struct tegra_xhci_hcd *tegra)
 	}
 	tegra->host_pwr_gated = true;
 
-	clk_disable(tegra->pll_re_vco_clk);
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		clk_disable(tegra->pll_re_vco_clk);
 	clk_disable(tegra->emc_clk);
 	/* set port ownership to SNPS */
 	tegra_xhci_release_port_ownership(tegra, true);
@@ -2066,7 +2075,8 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 		return 0;
 
 	clk_enable(tegra->emc_clk);
-	clk_enable(tegra->pll_re_vco_clk);
+	if (tegra->pdata->quirks & TEGRA_XUSB_USE_HS_SRC_CLOCK2)
+		clk_enable(tegra->pll_re_vco_clk);
 	/* Step 2: Enable clock to host partition */
 	clk_enable(tegra->host_clk);
 
@@ -3049,6 +3059,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	tegra->pdev = pdev;
+	tegra->pdata = dev_get_platdata(&pdev->dev);
+	tegra->bdata = tegra->pdata->bdata;
 
 	ret = tegra_xhci_request_mem_region(pdev, "padctl",
 			&tegra->padctl_base);
@@ -3101,9 +3113,6 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 	ret = tegra_unpowergate_partition(TEGRA_POWERGATE_XUSBC);
 	if (ret)
 		dev_err(&pdev->dev, "could not unpowergate xusbc partition\n");
-
-	tegra->pdata = dev_get_platdata(&pdev->dev);
-	tegra->bdata = tegra->pdata->bdata;
 
 	/* reset the pointer back to NULL. driver uses it */
 	/* platform_set_drvdata(pdev, NULL); */
