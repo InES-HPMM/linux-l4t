@@ -57,6 +57,7 @@
 
 #include <mach/clk.h>
 #include <mach/irqs.h>
+#include <mach/pci.h>
 #include <mach/tegra_fiq_debugger.h>
 
 #include <mach/pinmux.h>
@@ -437,6 +438,29 @@ static struct platform_device tegra_rtc_device = {
 	.resource = tegra_rtc_resources,
 	.num_resources = ARRAY_SIZE(tegra_rtc_resources),
 };
+
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+static struct tegra_pci_platform_data laguna_pcie_platform_data = {
+	.port_status[0]	= 1,
+	.port_status[1]	= 1,
+	.use_dock_detect	= 1,
+	.gpio	= TEGRA_GPIO_PO1,
+};
+
+static void laguna_pcie_init(void)
+{
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+	/* root port 1(x1 slot) is supported only on of ERS-S board */
+	if (board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363)
+			laguna_pcie_platform_data.port_status[1] = 0;
+
+	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;
+	platform_device_register(&tegra_pci_device);
+}
+#endif
 
 static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_pmu_device,
@@ -831,6 +855,12 @@ static void __init tegra_ardbeg_late_init(void)
 	ardbeg_kbc_init();
 	ardbeg_pmon_init();
 	tegra_release_bootloader_fb();
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	if (board_info.board_id == BOARD_PM359 ||
+			board_info.board_id == BOARD_PM358 ||
+			board_info.board_id == BOARD_PM363)
+		laguna_pcie_init();
+#endif
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif

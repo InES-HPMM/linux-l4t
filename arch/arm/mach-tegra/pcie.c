@@ -1149,8 +1149,13 @@ static int tegra_pcie_enable_regulators(void)
 
 	if (tegra_pcie.regulator_pexio == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator pexio\n", __func__);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		tegra_pcie.regulator_pexio =
 			regulator_get(tegra_pcie.dev, "vdd_pexb");
+#else
+		tegra_pcie.regulator_pexio =
+			regulator_get(tegra_pcie.dev, "avdd_pex_pll");
+#endif
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_pexio)) {
 			pr_err("%s: unable to get pexio regulator\n", __func__);
 			tegra_pcie.regulator_pexio = 0;
@@ -1164,8 +1169,13 @@ static int tegra_pcie_enable_regulators(void)
 	if (tegra_pcie.regulator_avdd_plle == NULL) {
 		printk(KERN_INFO "PCIE.C: %s : regulator avdd_plle\n",
 				__func__);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
 						"avdd_plle");
+#else
+		tegra_pcie.regulator_avdd_plle = regulator_get(tegra_pcie.dev,
+						"avdd_pll_erefe");
+#endif
 		if (IS_ERR_OR_NULL(tegra_pcie.regulator_avdd_plle)) {
 			pr_err("%s: unable to get avdd_plle regulator\n",
 				__func__);
