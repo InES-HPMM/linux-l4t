@@ -485,4 +485,7 @@ config TEGRA_BPC_MGMT
 	  This driver reduces cpu frequency/voltage on gpio event from the
 	  battery current monitor device.
 
+config BATTERY_CHARGER_GAUGE_COMM
+	bool
+
 source "drivers/power/avs/Kconfig"
