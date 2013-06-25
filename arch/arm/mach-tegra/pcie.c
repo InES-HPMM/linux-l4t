@@ -297,22 +297,17 @@
 #endif
 
 #define PCIE_REGS_SZ		SZ_16M
-#define PCIE_CFG_OFF		PCIE_REGS_SZ
-#define PCIE_CFG_SZ		SZ_16M
-#define PCIE_EXT_CFG_OFF	(PCIE_CFG_SZ + PCIE_CFG_OFF)
-/* Extended config space is not supported as of now */
-#define PCIE_EXT_CFG_SZ	0
+#define PCIE_CFG_OFF		SZ_32M
+#define PCIE_CFG_SZ		SZ_64M
 /* During the boot only registers/config and extended config apertures are
  * mapped. Rest are mapped on demand by the PCI device drivers.
  */
-#define PCIE_IOMAP_SZ		(PCIE_REGS_SZ + PCIE_CFG_SZ)
-
-#define MMIO_BASE				(TEGRA_PCIE_BASE + PCIE_IOMAP_SZ)
-#define MMIO_SIZE				SZ_1M
-#define MEM_BASE_0				SZ_64M
-#define MEM_SIZE_0				(SZ_128M + SZ_64M)
-#define PREFETCH_MEM_BASE_0			SZ_256M
-#define PREFETCH_MEM_SIZE_0			(SZ_512M + SZ_256M)
+#define MMIO_BASE		(PCIE_CFG_OFF + PCIE_CFG_SZ)
+#define MMIO_SIZE		SZ_1M
+#define MEM_BASE_0		SZ_128M
+#define MEM_SIZE_0		SZ_256M
+#define PREFETCH_MEM_BASE_0	(MEM_BASE_0 + MEM_SIZE_0)
+#define PREFETCH_MEM_SIZE_0	(SZ_128M + SZ_512M)
 #endif
 
 #define DEBUG 0
@@ -933,53 +928,46 @@ static void tegra_pcie_setup_translations(void)
 	u32 axi_address;
 
 	PR_FUNC_LINE;
-	/* Bar 0: config Bar */
-	fpci_bar = ((u32)0xfdff << 16);
+	/* Bar 0: type 1 extended configuration space */
+	fpci_bar = 0xfe100000;
 	size = PCIE_CFG_SZ;
-	axi_address = TEGRA_PCIE_BASE + PCIE_CFG_OFF;
+	axi_address = PCIE_CFG_OFF;
 	afi_writel(axi_address, AFI_AXI_BAR0_START);
 	afi_writel(size >> 12, AFI_AXI_BAR0_SZ);
 	afi_writel(fpci_bar, AFI_FPCI_BAR0);
 
-	/* Bar 1: extended config Bar */
-	fpci_bar = ((u32)0xfe1 << 20);
-	size = PCIE_EXT_CFG_SZ;
-	axi_address = TEGRA_PCIE_BASE + PCIE_EXT_CFG_OFF;
+	/* Bar 1: downstream IO bar */
+	fpci_bar = 0xfdfc0000;
+	size = MMIO_SIZE;
+	axi_address = MMIO_BASE;
 	afi_writel(axi_address, AFI_AXI_BAR1_START);
 	afi_writel(size >> 12, AFI_AXI_BAR1_SZ);
 	afi_writel(fpci_bar, AFI_FPCI_BAR1);
 
-	/* Bar 2: downstream IO bar */
-	fpci_bar = ((__u32)0xfdfc << 16);
-	size = MMIO_SIZE;
-	axi_address = MMIO_BASE;
+	/* Bar 2: prefetchable memory BAR */
+	fpci_bar = (((PREFETCH_MEM_BASE_0 >> 12) & 0xfffff) << 4) | 0x1;
+	size =  PREFETCH_MEM_SIZE_0;
+	axi_address = PREFETCH_MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR2_START);
 	afi_writel(size >> 12, AFI_AXI_BAR2_SZ);
 	afi_writel(fpci_bar, AFI_FPCI_BAR2);
 
-	/* Bar 3: prefetchable memory BAR */
-	fpci_bar = (((PREFETCH_MEM_BASE_0 >> 12) & 0x0fffffff) << 4) | 0x1;
-	size =  PREFETCH_MEM_SIZE_0;
-	axi_address = PREFETCH_MEM_BASE_0;
+	/* Bar 3: non prefetchable memory BAR */
+	fpci_bar = (((MEM_BASE_0 >> 12) & 0xfffff) << 4) | 0x1;
+	size = MEM_SIZE_0;
+	axi_address = MEM_BASE_0;
 	afi_writel(axi_address, AFI_AXI_BAR3_START);
 	afi_writel(size >> 12, AFI_AXI_BAR3_SZ);
 	afi_writel(fpci_bar, AFI_FPCI_BAR3);
 
-	/* Bar 4: non prefetchable memory BAR */
-	fpci_bar = (((MEM_BASE_0 >> 12)	& 0x0FFFFFFF) << 4) | 0x1;
-	size = MEM_SIZE_0;
-	axi_address = MEM_BASE_0;
-	afi_writel(axi_address, AFI_AXI_BAR4_START);
-	afi_writel(size >> 12, AFI_AXI_BAR4_SZ);
-	afi_writel(fpci_bar, AFI_FPCI_BAR4);
+	/* NULL out the remaining BAR as it is not used */
+	afi_writel(0, AFI_AXI_BAR4_START);
+	afi_writel(0, AFI_AXI_BAR4_SZ);
+	afi_writel(0, AFI_FPCI_BAR4);
 
-	/* Bar 5: NULL out the remaining BAR as it is not used */
-	fpci_bar = 0;
-	size = 0;
-	axi_address = 0;
-	afi_writel(axi_address, AFI_AXI_BAR5_START);
-	afi_writel(size >> 12, AFI_AXI_BAR5_SZ);
-	afi_writel(fpci_bar, AFI_FPCI_BAR5);
+	afi_writel(0, AFI_AXI_BAR5_START);
+	afi_writel(0, AFI_AXI_BAR5_SZ);
+	afi_writel(0, AFI_FPCI_BAR5);
 
 	/* map all upstream transactions as uncached */
 	afi_writel(PHYS_OFFSET, AFI_CACHE_BAR0_ST);
@@ -1828,11 +1816,12 @@ static int tegra_pcie_remove(struct platform_device *pdev)
 {
 	struct tegra_pcie_bus *bus;
 
-	list_for_each_entry(bus, &tegra_pcie.busses, list)
+	list_for_each_entry(bus, &tegra_pcie.busses, list) {
 		vunmap(bus->area->addr);
-	kfree(bus);
-
-	return tegra_pcie_detach();
+		kfree(bus);
+	}
+	tegra_pcie_detach();
+	return 0;
 }
 
 #ifdef CONFIG_PM
