@@ -54,6 +54,8 @@ struct tegra_xusb_board_data {
 	u8	ulpicap;
 	u8	lane_owner;
 	bool uses_external_pmic;
+	bool gpio_controls_muxed_ss_lanes;
+	u32 gpio_ss1_sata;
 };
 
 struct tegra_xusb_platform_data {

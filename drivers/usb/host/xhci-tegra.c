@@ -27,6 +27,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/uaccess.h>
+#include <linux/gpio.h>
 
 #include <mach/powergate.h>
 #include <mach/clk.h>
@@ -359,6 +360,32 @@ static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 #else
 static inline void must_have_sync_lock(struct tegra_xhci_hcd *tegra)
 #endif
+
+static void tegra_xhci_setup_gpio_for_ss_lane(struct tegra_xhci_hcd *tegra)
+{
+	int err = 0;
+
+	if (!tegra->bdata->gpio_controls_muxed_ss_lanes)
+		return;
+
+	if (tegra->bdata->lane_owner & BIT(0)) {
+		/* USB3_SS port1 is using SATA lane so set (MUX_SATA)
+		 * GPIO P11 to '0'
+		 */
+		err = gpio_request((tegra->bdata->gpio_ss1_sata & 0xffff),
+			"gpio_ss1_sata");
+		if (err < 0)
+			pr_err("%s: gpio_ss1_sata gpio_request failed %d\n",
+				__func__, err);
+		err = gpio_direction_output((tegra->bdata->gpio_ss1_sata
+			& 0xffff), 1);
+		if (err < 0)
+			pr_err("%s: gpio_ss1_sata gpio_direction failed %d\n",
+				__func__, err);
+		__gpio_set_value((tegra->bdata->gpio_ss1_sata & 0xffff),
+				((tegra->bdata->gpio_ss1_sata >> 16)));
+	}
+}
 
 static bool is_any_hs_connected(struct xhci_hcd *xhci)
 {
@@ -1308,9 +1335,10 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 				padregs->iophy_misc_pad_s0_ctl3_0);
 		}
 	}
-	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+	if (XUSB_DEVICE_ID_T124 == tegra->device_id) {
+		tegra_xhci_setup_gpio_for_ss_lane(tegra);
 		usb3_phy_pad_enable(tegra->bdata->lane_owner);
-
+	}
 }
 
 /* This function read XUSB registers and stores in device context */
