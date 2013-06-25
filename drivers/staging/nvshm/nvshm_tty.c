@@ -488,7 +488,8 @@ int nvshm_tty_init(struct nvshm_handle *handle)
 		spin_lock_init(&tty_dev.line[tty_dev.nlines].lock);
 		tty_port_init(&tty_dev.line[chan].port);
 		tty_dev.line[chan].port.ops = &nvshm_tty_port_ops;
-		tty_register_device(tty_dev.tty_driver, chan, 0);
+		tty_port_register_device(&tty_dev.line[chan].port,
+					 tty_dev.tty_driver, chan, 0);
 	}
 
 	tty_dev.up = NVSHM_TTY_UP;
