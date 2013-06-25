@@ -133,18 +133,14 @@ static noinline void __init ardbeg_setup_bluedroid_pm(void)
 	platform_device_register(&ardbeg_bluedroid_pm_device);
 }
 
-/*#define USED_AUDIO_RT5639 1*/
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
-#ifdef USED_AUDIO_RT5639
 static struct i2c_board_info __initdata rt5639_board_info = {
 	I2C_BOARD_INFO("rt5639", 0x1c),
 };
-#else
 static struct i2c_board_info __initdata rt5645_board_info = {
 	I2C_BOARD_INFO("rt5645", 0x1a),
 };
-#endif
 #endif
 
 static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
@@ -259,11 +255,8 @@ static void ardbeg_i2c_init(void)
 #endif
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
-#ifdef USED_AUDIO_RT5639
 	i2c_register_board_info(0, &rt5639_board_info, 1);
-#else
 	i2c_register_board_info(0, &rt5645_board_info, 1);
-#endif
 #endif
 
 	if (board_info.board_id == BOARD_PM359 ||
@@ -316,7 +309,29 @@ static struct tegra_uart_platform_data ardbeg_uart_pdata;
 
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
-static struct tegra_asoc_platform_data ardbeg_audio_pdata = {
+static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5639 = {
+	.gpio_hp_det = TEGRA_GPIO_HP_DET,
+	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
+	.gpio_spkr_en = -1,
+	.gpio_int_mic_en = -1,
+	.gpio_ext_mic_en = -1,
+	.gpio_hp_mute = -1,
+	.gpio_codec1 = -1,
+	.gpio_codec2 = -1,
+	.gpio_codec3 = -1,
+	.i2s_param[HIFI_CODEC]       = {
+		.audio_port_id = 1,
+		.is_i2s_master = 1,
+		.i2s_mode = TEGRA_DAIFMT_I2S,
+	},
+	.i2s_param[BT_SCO] = {
+		.audio_port_id = 3,
+		.is_i2s_master = 1,
+		.i2s_mode = TEGRA_DAIFMT_DSP_A,
+	},
+};
+
+static struct tegra_asoc_platform_data ardbeg_audio_pdata_rt5645 = {
 	.gpio_hp_det = TEGRA_GPIO_HP_DET,
 	.gpio_ldo1_en = TEGRA_GPIO_LDO_EN,
 	.gpio_spkr_en = -1,
@@ -346,37 +361,45 @@ static void ardbeg_audio_init(void)
 			board_info.board_id == BOARD_PM358 ||
 			board_info.board_id == BOARD_PM363) {
 		/*Laguna*/
-		ardbeg_audio_pdata.gpio_hp_det =
+		ardbeg_audio_pdata_rt5645.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
-		ardbeg_audio_pdata.gpio_ldo1_en = -1;
+		ardbeg_audio_pdata_rt5645.gpio_ldo1_en = -1;
 	} else {
 		/*Ardbeg*/
-		ardbeg_audio_pdata.gpio_hp_det =
+		ardbeg_audio_pdata_rt5645.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
-		ardbeg_audio_pdata.gpio_ldo1_en =
+		ardbeg_audio_pdata_rt5645.gpio_ldo1_en =
 			TEGRA_GPIO_LDO_EN;
 	}
 
-#ifdef USED_AUDIO_RT5639
-	ardbeg_audio_pdata.codec_name = "rt5639.0-001c";
-	ardbeg_audio_pdata.codec_dai_name = "rt5639-aif1";
-#else
-	ardbeg_audio_pdata.codec_name = "rt5645.0-001a";
-	ardbeg_audio_pdata.codec_dai_name = "rt5645-aif1";
-#endif
+	ardbeg_audio_pdata_rt5639.gpio_hp_det =
+		ardbeg_audio_pdata_rt5645.gpio_hp_det;
+
+	ardbeg_audio_pdata_rt5639.gpio_ldo1_en =
+		ardbeg_audio_pdata_rt5645.gpio_ldo1_en;
+
+	ardbeg_audio_pdata_rt5639.codec_name = "rt5639.0-001c";
+	ardbeg_audio_pdata_rt5639.codec_dai_name = "rt5639-aif1";
+	ardbeg_audio_pdata_rt5645.codec_name = "rt5645.0-001a";
+	ardbeg_audio_pdata_rt5645.codec_dai_name = "rt5645-aif1";
 }
 
-static struct platform_device ardbeg_audio_device = {
-#ifdef USED_AUDIO_RT5639
-	.name = "tegra-snd-rt5639",
-#else
+static struct platform_device ardbeg_audio_device_rt5645 = {
 	.name = "tegra-snd-rt5645",
-#endif
 	.id = 0,
 	.dev = {
-		.platform_data = &ardbeg_audio_pdata,
+		.platform_data = &ardbeg_audio_pdata_rt5645,
 	},
 };
+
+static struct platform_device ardbeg_audio_device_rt5639 = {
+	.name = "tegra-snd-rt5639",
+	.id = 0,
+	.dev = {
+		.platform_data = &ardbeg_audio_pdata_rt5639,
+	},
+};
+
 #endif
 
 static struct tegra_uart_platform_data ardbeg_loopback_uart_pdata;
@@ -470,7 +493,8 @@ static struct platform_device *ardbeg_devices[] __initdata = {
 	&tegra_i2s_device1,
 	&tegra_i2s_device3,
 	&tegra_i2s_device4,
-	&ardbeg_audio_device,
+	&ardbeg_audio_device_rt5639,
+	&ardbeg_audio_device_rt5645,
 	&tegra_spdif_device,
 #endif
 	&spdif_dit_device,

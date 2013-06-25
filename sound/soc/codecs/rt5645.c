@@ -3523,7 +3523,10 @@ static int rt5645_probe(struct snd_soc_codec *codec)
 		return ret;
 	}
 
-	rt5645_reset(codec);
+	ret = rt5645_reset(codec);
+	if (ret < 0)
+		return -ENODEV;
+
 	snd_soc_update_bits(codec, RT5645_PWR_ANLG1,
 		RT5645_PWR_VREF1 | RT5645_PWR_MB |
 		RT5645_PWR_BG | RT5645_PWR_VREF2,
