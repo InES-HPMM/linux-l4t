@@ -191,27 +191,31 @@ static void te_unpin_temp_buffers(struct te_request *request,
 	}
 }
 
-uint32_t __naked tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+uint32_t tlk_generic_smc(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+	uint32_t saved_regs[9];
 	register uint32_t r0 asm("r0") = arg0;
 	register uint32_t r1 asm("r1") = arg1;
 	register uint32_t r2 asm("r2") = arg2;
+	register uint32_t r3 asm("r3") = (uint32_t)saved_regs;
 
 	asm volatile(
 		__asmeq("%0", "r0")
 		__asmeq("%1", "r0")
 		__asmeq("%2", "r1")
 		__asmeq("%3", "r2")
-		"stmfd	sp!, {r4-r12}	@ save reg state\n"
+		__asmeq("%4", "r3")
+		"stmia	r3, {r4-r12}	@ save reg state\n"
 #ifdef REQUIRES_SEC
 		".arch_extension sec\n"
 #endif
 		"smc	#0		@ switch to secure world\n"
-		"ldmfd	sp!, {r4-r12}	@ restore saved regs\n"
-		"bx	lr"
+		__asmeq("%4", "r3")
+		"ldmia	r3, {r4-r12}	@ restore saved regs\n"
 		: "=r" (r0)
-		: "r" (r0), "r" (r1), "r" (r2)
+		: "r" (r0), "r" (r1), "r" (r2), "r" (r3)
 	);
+
 	return r0;
 }
 
