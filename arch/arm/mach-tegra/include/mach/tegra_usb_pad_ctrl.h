@@ -26,6 +26,10 @@
 #define UTMIP_HSDISCON_LEVEL(x)	(((x) & 0x3) << 2)
 #define UTMIP_HSDISCON_LEVEL_MSB	(1 << 24)
 
+#define PCIE_LANES_X4_X1		0
+#define PCIE_LANES_X4_X0		2
+#define PCIE_LANES_X2_X1		3
+
 /* xusb padctl regs for pad programming of t124 pcie */
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0	0x40
 #define XUSB_PADCTL_IOPHY_PLL_P0_CTL1_REFCLK_SEL_MASK	(0xF << 12)
@@ -58,7 +62,7 @@
 int utmi_phy_pad_disable(void);
 int utmi_phy_pad_enable(void);
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
-int pcie_phy_pad_enable(void);
+int pcie_phy_pad_enable(int lane_owner);
 #endif
 
 int utmi_phy_iddq_override(bool set);

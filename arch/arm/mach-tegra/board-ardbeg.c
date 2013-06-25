@@ -445,6 +445,7 @@ static struct tegra_pci_platform_data laguna_pcie_platform_data = {
 	.port_status[1]	= 1,
 	.use_dock_detect	= 1,
 	.gpio	= TEGRA_GPIO_PO1,
+	.gpio_x1_slot	= PMU_TCA6416_GPIO(12),
 };
 
 static void laguna_pcie_init(void)
@@ -454,7 +455,7 @@ static void laguna_pcie_init(void)
 	tegra_get_board_info(&board_info);
 	/* root port 1(x1 slot) is supported only on of ERS-S board */
 	if (board_info.board_id == BOARD_PM358 ||
-			board_info.board_id == BOARD_PM363)
+		board_info.board_id == BOARD_PM363)
 			laguna_pcie_platform_data.port_status[1] = 0;
 
 	tegra_pci_device.dev.platform_data = &laguna_pcie_platform_data;

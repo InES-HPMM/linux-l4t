@@ -34,5 +34,6 @@ struct tegra_pci_platform_data {
 	int port_status[MAX_PCIE_SUPPORTED_PORTS];
 	bool use_dock_detect;
 	int gpio;
+	int gpio_x1_slot;
 };
 #endif

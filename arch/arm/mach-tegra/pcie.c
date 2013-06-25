@@ -150,8 +150,8 @@
 #define AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE			(1 << 2)
 #define AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE			(1 << 3)
 #define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK		(0xf << 20)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_SINGLE		(0x0 << 20)
-#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_DUAL		(0x1 << 20)
+#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1		(0x0 << 20)
+#define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1		(0x1 << 20)
 #define AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411			(0x2 << 20)
 
 #define AFI_FUSE							0x104
@@ -985,7 +985,7 @@ static void tegra_pcie_setup_translations(void)
 static int tegra_pcie_enable_controller(void)
 {
 	u32 val, reg;
-	int i, timeout, ret = 0;
+	int i, timeout, ret = 0, lane_owner;
 	void __iomem *reg_mselect_base;
 
 	PR_FUNC_LINE;
@@ -1008,6 +1008,7 @@ static int tegra_pcie_enable_controller(void)
 	}
 	afi_writel(0, AFI_PEXBIAS_CTRL_0);
 
+	lane_owner = 0;
 	/* Enable all PCIE controller and */
 	/* system management configuration of PCIE crossbar */
 	val = afi_readl(AFI_PCIE_CONFIG);
@@ -1017,9 +1018,38 @@ static int tegra_pcie_enable_controller(void)
 #ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
 	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
+#elif CONFIG_TEGRA_FPGA_PLATFORM
+	/* FPGA supports only x2_x1 bar config */
+	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
 #else
-	/* configure T124 pcie lanes in X2_X1 mode */
-	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_SINGLE;
+	/* Extract 2 upper bits from odmdata[28:30] and */
+	/* configure T124 pcie lanes in X2_X1/X4_X1 config based on them */
+	lane_owner = tegra_get_lane_owner_info() >> 1;
+	if (lane_owner == PCIE_LANES_X2_X1)
+		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
+	else {
+#define BOARD_PM359	0x0167
+		int err = 0;
+		struct board_info board_info;
+
+		tegra_get_board_info(&board_info);
+		val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X4_X1;
+		if ((board_info.board_id == BOARD_PM359) &&
+			(lane_owner == PCIE_LANES_X4_X1)) {
+			/* enable x1 slot for ERS-S if all lanes are config'd for PCIe */
+			err = gpio_request(tegra_pcie.plat_data->gpio_x1_slot,
+					"pcie_x1_slot");
+			if (err < 0)
+				pr_err("%s: pcie_x1_slot gpio_request failed %d\n",
+					__func__, err);
+			err = gpio_direction_output(
+					tegra_pcie.plat_data->gpio_x1_slot, 1);
+			if (err < 0)
+				pr_err("%s: pcie_x1_slot gpio_direction_output failed %d\n",
+					__func__, err);
+			__gpio_set_value(tegra_pcie.plat_data->gpio_x1_slot, 0);
+		}
+	}
 #endif
 	afi_writel(val, AFI_PCIE_CONFIG);
 
@@ -1085,7 +1115,7 @@ static int tegra_pcie_enable_controller(void)
 	pads_writel(val, PADS_CTL);
 #else
 	/* T124 PCIe pad programming is moved to XUSB_PADCTL space */
-	ret = pcie_phy_pad_enable();
+	ret = pcie_phy_pad_enable(lane_owner);
 	if (ret) {
 		pr_err("%s unable to initalize pads\n", __func__);
 		return ret;

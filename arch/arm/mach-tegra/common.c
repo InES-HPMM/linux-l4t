@@ -253,6 +253,7 @@ static int max_cpu_current;
 static int max_core_current;
 static int emc_max_dvfs;
 static int usb_port_owner_info;
+static int lane_owner_info;
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_clk_init_table tegra11x_clk_init_table[] = {
@@ -1580,6 +1581,21 @@ int tegra_get_usb_port_owner_info(void)
 }
 
 __setup("usb_port_owner_info=", tegra_usb_port_owner_info);
+
+static int __init tegra_lane_owner_info(char *id)
+{
+	char *p = id;
+
+	lane_owner_info = memparse(p, &p);
+	return 1;
+}
+
+int tegra_get_lane_owner_info(void)
+{
+	return lane_owner_info;
+}
+
+__setup("lane_owner_info=", tegra_lane_owner_info);
 
 static int __init tegra_commchip_id(char *id)
 {
