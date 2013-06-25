@@ -258,6 +258,10 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	},
 };
 
+static struct as3722_rtc_platform_data as3722_rtc_pdata = {
+	.enable_clk32k  = 1,
+};
+
 static struct as3722_platform_data as3722_pdata = {
 	.reg_pdata[AS3722_LDO0] = &as3722_ldo0_reg_pdata,
 	.reg_pdata[AS3722_LDO1] = &as3722_ldo1_reg_pdata,
@@ -285,6 +289,7 @@ static struct as3722_platform_data as3722_pdata = {
 	.use_internal_i2c_pullup = 0,
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
 	.gpio_cfgs     = as3722_gpio_cfgs,
+	.rtc_pdata	= &as3722_rtc_pdata,
 };
 
 static struct pca953x_platform_data tca6416_pdata = {
