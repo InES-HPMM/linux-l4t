@@ -56,6 +56,7 @@ enum soctherm_throttle_dev_id {
 	THROTTLE_DEV_CPU = 0,
 	THROTTLE_DEV_GPU,
 	THROTTLE_DEV_SIZE,
+	THROTTLE_DEV_NONE,
 };
 
 enum soctherem_oc_irq_id {
