@@ -52,10 +52,6 @@ static struct platform_device pwm_fan_therm_cooling_device = {
 	},
 };
 
-static struct platform_device *roth_fan_device[] = {
-	&tegra_pwfm_device,
-};
-
 int __init roth_fan_init(void)
 {
 	int err;
@@ -67,12 +63,5 @@ int __init roth_fan_init(void)
 	}
 	gpio_free(TEGRA_GPIO_PU3);
 	platform_device_register(&pwm_fan_therm_cooling_device);
-
-	err = platform_add_devices(roth_fan_device,
-				ARRAY_SIZE(roth_fan_device));
-	if (err < 0) {
-		pr_err("FAN:pwm fan device device registration failed\n");
-		return err;
-	}
 	return 0;
 }

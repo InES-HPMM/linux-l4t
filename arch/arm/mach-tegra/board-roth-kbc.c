@@ -56,12 +56,21 @@
 		.debounce_interval = _deb,	\
 	}
 
-/* Make KEY_POWER to index 0 only */
-static struct gpio_keys_button roth_p2454_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, PR0, 0),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, PR2, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, PR1, 0),
+static struct gpio_keys_button roth_gpio_keys[] = {
+	[0] = GPIO_KEY(KEY_POWER, PQ0, 1),
+	[1] = GPIO_KEY(KEY_BACK, PR2, 0),
+	[2] = GPIO_KEY(KEY_HOME, PR1, 0),
 	[3] = {
+		.code = KEY_WAKEUP,
+		.gpio = TEGRA_GPIO_PI5,
+		.irq = -1,
+		.type = EV_KEY,
+		.desc = "Controller",
+		.active_low = 0,
+		.wakeup = 1,
+		.debounce_interval = 10,
+	},
+	[4] = {
 		.code = SW_LID,
 		.gpio = TEGRA_GPIO_HALL,
 		.irq = -1,
@@ -80,33 +89,35 @@ static int roth_wakeup_key(void)
 		| (u64)readl(IO_ADDRESS(TEGRA_PMC_BASE)
 		+ PMC_WAKE2_STATUS) << 32;
 
-	if (status & ((u64)1 << TEGRA_WAKE_GPIO_PQ0))
+	if (status & (1ULL << TEGRA_WAKE_GPIO_PQ0))
 		wakeup_key = KEY_POWER;
-	else if (status & ((u64)1 << TEGRA_WAKE_GPIO_PS0))
+	else if (status & (1ULL << TEGRA_WAKE_GPIO_PI5))
+		wakeup_key = KEY_WAKEUP;
+	else if (status & (1ULL << TEGRA_WAKE_GPIO_PS0))
 		wakeup_key = SW_LID;
 	else
-		wakeup_key = KEY_RESERVED;
+		wakeup_key = -1;
 
 	return wakeup_key;
 }
 
-static struct gpio_keys_platform_data roth_p2454_keys_pdata = {
-	.buttons	= roth_p2454_keys,
-	.nbuttons	= ARRAY_SIZE(roth_p2454_keys),
+static struct gpio_keys_platform_data roth_gpio_keys_pdata = {
+	.buttons	= roth_gpio_keys,
+	.nbuttons	= ARRAY_SIZE(roth_gpio_keys),
 	.wakeup_key	= roth_wakeup_key,
 };
 
-static struct platform_device roth_p2454_keys_device = {
+static struct platform_device roth_gpio_keys_device = {
 	.name	= "gpio-keys",
 	.id	= 0,
 	.dev	= {
-		.platform_data  = &roth_p2454_keys_pdata,
+		.platform_data  = &roth_gpio_keys_pdata,
 	},
 };
 
 int __init roth_kbc_init(void)
 {
-	platform_device_register(&roth_p2454_keys_device);
+	platform_device_register(&roth_gpio_keys_device);
 	return 0;
 }
 

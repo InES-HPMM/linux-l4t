@@ -51,7 +51,7 @@
 #include <mach/clk.h>
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
-#include <mach/pinmux-tegra30.h>
+#include <mach/pinmux-t11.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/isomgr.h>
@@ -247,19 +247,10 @@ static struct i2c_board_info __initdata roth_codec_tfa9887R_info = {
 static struct i2c_board_info __initdata roth_codec_tfa9887L_info = {
 	I2C_BOARD_INFO("tfa9887L", 0x34),
 };
-
-/* On A01, Left Speaker is moved to 0x34 */
-static struct i2c_board_info __initdata roth_codec_tfa9887L_info_a01 = {
-	I2C_BOARD_INFO("tfa9887L", 0x34),
-};
 #endif
 
 static void roth_i2c_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
 	tegra11_i2c_device1.dev.platform_data = &roth_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &roth_i2c2_platform_data;
 	tegra11_i2c_device3.dev.platform_data = &roth_i2c3_platform_data;
@@ -274,11 +265,7 @@ static void roth_i2c_init(void)
 
 	i2c_register_board_info(0, &rt5640_board_info, 1);
 	i2c_register_board_info(0, &roth_codec_tfa9887R_info, 1);
-
-	if (board_info.fab >= BOARD_FAB_A01)
-		i2c_register_board_info(0, &roth_codec_tfa9887L_info_a01, 1);
-	else
-		i2c_register_board_info(0, &roth_codec_tfa9887L_info, 1);
+	i2c_register_board_info(0, &roth_codec_tfa9887L_info, 1);
 }
 
 static struct platform_device *roth_uart_devices[] __initdata = {
@@ -450,7 +437,6 @@ static struct platform_device *roth_devices[] __initdata = {
 	&tegra_aes_device,
 #endif
 
-	&tegra_pwfm_device,
 	&roth_leds_pwm_device,
 };
 
@@ -554,10 +540,6 @@ static void roth_usb_init(void) { }
 
 static void roth_audio_init(void)
 {
-	struct board_info board_info;
-
-	tegra_get_board_info(&board_info);
-
 	roth_audio_pdata.codec_name = "rt5640.0-001c";
 	roth_audio_pdata.codec_dai_name = "rt5640-aif1";
 }
@@ -643,30 +625,27 @@ static int __init roth_touch_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_P2560) {
-		int touch_panel_id = tegra_get_touch_panel_id();
-		if (touch_panel_id == PANEL_TPK ||
-				touch_panel_id == PANEL_WINTEK) {
-			int err;
-			err = gpio_request(TOUCH_GPIO_CLK, "touch-gpio-clk");
+	int touch_panel_id = tegra_get_touch_panel_id();
+	if (touch_panel_id == PANEL_TPK ||
+			touch_panel_id == PANEL_WINTEK) {
+		int err;
+		err = gpio_request(TOUCH_GPIO_CLK, "touch-gpio-clk");
+		if (err < 0)
+			pr_err("%s: gpio_request failed %d\n",
+				__func__, err);
+		else {
+			err = gpio_direction_output(TOUCH_GPIO_CLK, 0);
 			if (err < 0)
-				pr_err("%s: gpio_request failed %d\n",
-					__func__, err);
-			else {
-				err = gpio_direction_output(TOUCH_GPIO_CLK, 0);
-				if (err < 0)
-					pr_err("%s: set output failed %d\n",
-					__func__, err);
-				gpio_free(TOUCH_GPIO_CLK);
-			}
-			tegra_pinmux_set_pullupdown(TOUCH_GPIO_CLK_PG,
-							TEGRA_PUPD_NORMAL);
-			tegra_pinmux_set_tristate(TOUCH_GPIO_CLK_PG,
-							TEGRA_TRI_TRISTATE);
-			rm31080ts_roth_data.name_of_clock = NULL;
-			rm31080ts_roth_data.name_of_clock_con = NULL;
-		} else
-			tegra_clk_init_from_table(touch_clk_init_table);
+				pr_err("%s: set output failed %d\n",
+				__func__, err);
+			gpio_free(TOUCH_GPIO_CLK);
+		}
+		tegra_pinmux_set_pullupdown(TOUCH_GPIO_CLK_PG,
+						TEGRA_PUPD_NORMAL);
+		tegra_pinmux_set_tristate(TOUCH_GPIO_CLK_PG,
+						TEGRA_TRI_TRISTATE);
+		rm31080ts_roth_data.name_of_clock = NULL;
+		rm31080ts_roth_data.name_of_clock_con = NULL;
 	} else
 		tegra_clk_init_from_table(touch_clk_init_table);
 	rm31080a_roth_spi_board[0].irq =
@@ -676,18 +655,6 @@ static int __init roth_touch_init(void)
 				&rm31080ts_roth_data,
 				&rm31080a_roth_spi_board[0],
 				ARRAY_SIZE(rm31080a_roth_spi_board));
-	return 0;
-}
-
-static int __init roth_revision_init(void)
-{
-	struct board_info board_info;
-	tegra_get_board_info(&board_info);
-	system_rev = 0;
-	if (board_info.board_id == BOARD_P2454)
-		system_rev = P2454;
-	else
-		system_rev = P2560;
 	return 0;
 }
 
@@ -732,7 +699,6 @@ static void __init tegra_roth_init(void)
 	roth_soctherm_init();
 	roth_fan_init();
 	tegra_register_fuse();
-	roth_revision_init();
 }
 
 static void __init roth_ramconsole_reserve(unsigned long size)

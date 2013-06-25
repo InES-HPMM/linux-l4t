@@ -488,8 +488,6 @@ int __init roth_sensors_init(void)
 {
 	int err;
 
-	tegra_get_board_info(&board_info);
-
 	err = roth_nct1008_init();
 	if (err)
 		return err;
@@ -497,10 +495,6 @@ int __init roth_sensors_init(void)
 	mpuirq_init();
 
 	roth_fan_est_init();
-
-	if (0)
-		i2c_register_board_info(0, bq20z45_pdata,
-			ARRAY_SIZE(bq20z45_pdata));
 
 	return 0;
 }

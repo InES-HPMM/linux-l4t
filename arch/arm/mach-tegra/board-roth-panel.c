@@ -319,7 +319,7 @@ static u8 panel_disp_ctrl1[] = {0xb5, 0x34, 0x20, 0x40, 0x0, 0x20};
 static u8 panel_disp_ctrl2[] = {0xb6, 0x04, 0x74, 0x0f, 0x16, 0x13};
 static u8 panel_internal_clk[] = {0xc0, 0x01, 0x08};
 static u8 panel_pwr_ctrl3[] = {
-	0xc3, 0x0, 0x09, 0x10, 0x02, 0x0, 0x66, 0x20, 0x13, 0x0};
+	0xc3, 0x0, 0x09, 0x10, 0x02, 0x0, 0x66, 0x00, 0x13, 0x0};
 static u8 panel_pwr_ctrl4[] = {0xc4, 0x23, 0x24, 0x12, 0x12, 0x60};
 static u8 panel_positive_gamma_red[] = {
 	0xd0, 0x21, 0x25, 0x67, 0x36, 0x0a, 0x06, 0x61, 0x23, 0x03};
@@ -373,7 +373,7 @@ static struct tegra_dsi_cmd dsi_init_cmd[] = {
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_positive_gamma_blue),
 	DSI_CMD_LONG(DSI_GENERIC_LONG_WRITE, panel_negetive_gamma_blue),
 
-	DSI_CMD_SHORT(DSI_DCS_WRITE_1_PARAM, DSI_DCS_SET_ADDR_MODE, 0x08),
+	DSI_CMD_SHORT(DSI_DCS_WRITE_1_PARAM, DSI_DCS_SET_ADDR_MODE, 0x0B),
 
 	/* panel OTP 2 */
 	DSI_CMD_SHORT(DSI_GENERIC_SHORT_WRITE_2_PARAMS, 0xf9, 0x0),
@@ -624,11 +624,11 @@ static struct tegra_dc_mode roth_dsi_modes[] = {
 		.h_sync_width = 4,
 		.v_sync_width = 4,
 		.h_back_porch = 112,
-		.v_back_porch = 7,
+		.v_back_porch = 12,
 		.h_active = 720,
 		.v_active = 1280,
 		.h_front_porch = 12,
-		.v_front_porch = 20,
+		.v_front_porch = 8,
 	},
 };
 
