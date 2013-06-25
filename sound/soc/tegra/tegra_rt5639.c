@@ -477,10 +477,6 @@ static int tegra_rt5639_jack_notifier(struct notifier_block *self,
 		state = BIT_NO_HEADSET;
 	}
 
-	/*Headset Detection not working currently for RT5639
-	so report Headphone alway*/
-	state = BIT_HEADSET_NO_MIC;
-
 	switch_set_state(&tegra_rt5639_headset_switch, state);
 
 	return NOTIFY_OK;

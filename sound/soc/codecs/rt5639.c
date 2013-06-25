@@ -452,7 +452,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK | RT5639_MIC1_OVTH_MASK |
 			RT5639_PWR_CLK25M_MASK | RT5639_PWR_MB_MASK,
-			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_600UA |
+			RT5639_MIC1_OVCD_EN | RT5639_MIC1_OVTH_1500UA |
 			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5639_DUMMY1,
 			0x1, 0x1);
@@ -1190,11 +1190,16 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 			RT5639_PWR_CLS_D, RT5639_PWR_CLS_D);
 		rt5639_index_update_bits(codec, 0x1c, 0xf000, 0xf000);
 		//rt5639_index_write(codec,0x1c,0xfd21);
+		snd_soc_update_bits(codec, RT5639_SPK_VOL,
+			RT5639_L_MUTE | RT5639_R_MUTE, 0);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
 		printk("spk_event --SND_SOC_DAPM_POST_PMD\n");
 		//rt5639_index_write(codec,0x1c,0xfd00);
+		snd_soc_update_bits(codec, RT5639_SPK_VOL,
+			RT5639_L_MUTE | RT5639_R_MUTE,
+			RT5639_L_MUTE | RT5639_R_MUTE);
 		rt5639_index_update_bits(codec, 0x1c, 0xf000, 0x0000);
 		snd_soc_update_bits(codec,RT5639_PWR_DIG1,
 			RT5639_PWR_CLS_D, 0);
@@ -1210,13 +1215,20 @@ static int spk_event(struct snd_soc_dapm_widget *w,
 static int hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_codec *codec = w->codec;
+
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		printk("hp_event --SND_SOC_DAPM_POST_PMU\n");
+		snd_soc_update_bits(codec, RT5639_HP_VOL,
+			RT5639_L_MUTE | RT5639_R_MUTE, 0);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
 		printk("hp_event --SND_SOC_DAPM_POST_PMD\n");
+		snd_soc_update_bits(codec, RT5639_HP_VOL,
+			RT5639_L_MUTE | RT5639_R_MUTE,
+			RT5639_L_MUTE | RT5639_R_MUTE);
 		break;
 
 	default:
@@ -2194,12 +2206,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 {
 	switch (level) {
 	case SND_SOC_BIAS_ON:
-#ifdef RT5639_DEMO
-		snd_soc_update_bits(codec, RT5639_SPK_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, 0);
-		snd_soc_update_bits(codec, RT5639_HP_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, 0);
-#endif
 		break;
 
 	case SND_SOC_BIAS_PREPARE:
@@ -2223,11 +2229,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_STANDBY:
 #ifdef RT5639_DEMO
-		snd_soc_update_bits(codec, RT5639_SPK_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, RT5639_L_MUTE | RT5639_R_MUTE);
-		snd_soc_update_bits(codec, RT5639_HP_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, RT5639_L_MUTE | RT5639_R_MUTE);
-
 		snd_soc_update_bits(codec, RT5639_PWR_ANLG2,
 			RT5639_PWR_MB1 | RT5639_PWR_MB2,
 			0);
@@ -2251,10 +2252,6 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_OFF:
 #ifdef RT5639_DEMO
-		snd_soc_update_bits(codec, RT5639_SPK_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, RT5639_L_MUTE | RT5639_R_MUTE);
-		snd_soc_update_bits(codec, RT5639_HP_VOL,
-			RT5639_L_MUTE | RT5639_R_MUTE, RT5639_L_MUTE | RT5639_R_MUTE);
 		snd_soc_update_bits(codec, RT5639_OUTPUT,
 			RT5639_L_MUTE | RT5639_R_MUTE, RT5639_L_MUTE | RT5639_R_MUTE);
 		snd_soc_update_bits(codec, RT5639_MONO_OUT,
