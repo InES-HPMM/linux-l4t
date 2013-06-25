@@ -75,6 +75,10 @@ struct battery_charger_thermal_dev *battery_charger_thermal_register(
 	void *drv_data);
 void battery_charger_thermal_unregister(
 	struct battery_charger_thermal_dev *bct_dev);
+int battery_charger_thermal_start_monitoring(
+	struct battery_charger_thermal_dev *bct_dev);
+int battery_charger_thermal_stop_monitoring(
+	struct battery_charger_thermal_dev *bct_dev);
 
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 		struct battery_gauge_info *bgi);

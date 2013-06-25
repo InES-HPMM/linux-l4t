@@ -69,6 +69,7 @@ struct battery_charger_thermal_dev {
 	struct delayed_work			poll_temp_monitor_wq;
 	int					polling_time_sec;
 	struct thermal_zone_device		*battery_tz;
+	bool					start_monitoring;
 };
 
 static void battery_thermal_check_temperature(struct work_struct *work)
@@ -116,8 +117,9 @@ static void battery_thermal_check_temperature(struct work_struct *work)
 			charger_enable_state, charger_current_half,
 			battery_thersold_voltage);
 
-	schedule_delayed_work(&bct_dev->poll_temp_monitor_wq,
-		msecs_to_jiffies(bct_dev->polling_time_sec * HZ));
+	if (bct_dev->start_monitoring)
+		schedule_delayed_work(&bct_dev->poll_temp_monitor_wq,
+			msecs_to_jiffies(bct_dev->polling_time_sec * HZ));
 	return;
 }
 
@@ -175,6 +177,31 @@ void battery_charger_thermal_unregister(
 	kfree(bct_dev);
 }
 EXPORT_SYMBOL_GPL(battery_charger_thermal_unregister);
+
+int battery_charger_thermal_start_monitoring(
+	struct battery_charger_thermal_dev *bct_dev)
+{
+	if (!bct_dev)
+		return -EINVAL;
+
+	bct_dev->start_monitoring = true;
+	schedule_delayed_work(&bct_dev->poll_temp_monitor_wq,
+			msecs_to_jiffies(bct_dev->polling_time_sec * HZ));
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charger_thermal_start_monitoring);
+
+int battery_charger_thermal_stop_monitoring(
+	struct battery_charger_thermal_dev *bct_dev)
+{
+	if (!bct_dev)
+		return -EINVAL;
+
+	bct_dev->start_monitoring = false;
+	cancel_delayed_work(&bct_dev->poll_temp_monitor_wq);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charger_thermal_stop_monitoring);
 
 struct battery_charger_dev *battery_charger_register(struct device *dev,
 	struct battery_charger_info *bci)
@@ -258,7 +285,6 @@ int battery_charging_status_update(struct battery_charger_dev *bc_dev,
 	enum battery_charger_status status)
 {
 	struct battery_gauge_dev *node;
-	struct battery_charger_thermal_dev *nbct;
 	int ret = -EINVAL;
 
 	if (!bc_dev) {
@@ -273,13 +299,6 @@ int battery_charging_status_update(struct battery_charger_dev *bc_dev,
 			continue;
 		if (node->ops && node->ops->update_battery_status)
 			ret = node->ops->update_battery_status(node, status);
-	}
-
-	list_for_each_entry(nbct, &charger_thermal_map_list, list) {
-		if (nbct->cell_id != bc_dev->cell_id)
-			continue;
-		schedule_delayed_work(&nbct->poll_temp_monitor_wq,
-			msecs_to_jiffies(nbct->polling_time_sec * HZ));
 	}
 
 	mutex_unlock(&charger_gauge_list_mutex);
