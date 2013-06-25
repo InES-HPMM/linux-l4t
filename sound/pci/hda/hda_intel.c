@@ -3104,8 +3104,7 @@ static int azx_suspend(struct device *dev)
 	if (chip->disabled)
 		return 0;
 
-#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
-	defined(CONFIG_SND_HDA_POWER_SAVE)
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER)
 	if (chip->pdev)
 		azx_platform_enable_clocks(chip);
 #endif
@@ -3170,6 +3169,7 @@ static int azx_resume(struct device *dev)
 	} else if (chip->pdev) {
 		pm_runtime_disable(chip->dev);
 		pm_runtime_set_active(chip->dev);
+		pm_runtime_get_noresume(chip->dev);
 		pm_runtime_enable(chip->dev);
 	}
 
@@ -3188,12 +3188,6 @@ static int azx_resume(struct device *dev)
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
-
-#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
-	defined(CONFIG_SND_HDA_POWER_SAVE)
-	if (chip->pdev)
-		azx_platform_disable_clocks(chip);
-#endif
 
 	return 0;
 }
@@ -3259,8 +3253,7 @@ static int azx_halt(struct notifier_block *nb, unsigned long event, void *buf)
 {
 	struct azx *chip = container_of(nb, struct azx, reboot_notifier);
 
-#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
-	defined(CONFIG_SND_HDA_POWER_SAVE)
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER)
 	if (chip->pdev)
 		azx_platform_enable_clocks(chip);
 #endif
@@ -3268,8 +3261,7 @@ static int azx_halt(struct notifier_block *nb, unsigned long event, void *buf)
 	snd_hda_bus_reboot_notify(chip->bus);
 	azx_stop_chip(chip);
 
-#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER) && \
-	defined(CONFIG_SND_HDA_POWER_SAVE)
+#if defined(CONFIG_SND_HDA_PLATFORM_DRIVER)
 	if (chip->pdev)
 		azx_platform_disable_clocks(chip);
 #endif
