@@ -70,6 +70,11 @@ config TEGRA_DC_BLENDER_GEN2
     default n if ARCH_TEGRA_2x_SOC || ARCH_TEGRA_3x_SOC || ARCH_TEGRA_11x_SOC || ARCH_TEGRA_14x_SOC
     default y
 
+config TEGRA_DC_BLENDER_DEPTH
+    bool
+    default y if ARCH_TEGRA_12x_SOC
+    default n
+
 config TEGRA_DC_BLOCK_LINEAR
     bool
     default y if ARCH_TEGRA_12x_SOC
