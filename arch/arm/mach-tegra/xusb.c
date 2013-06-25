@@ -62,4 +62,6 @@ void tegra_xusb_init(struct tegra_xusb_board_data *bdata)
 	tegra_xhci_device.dev.platform_data = &tegra_xusb_plat_data;
 	platform_device_register(&tegra_xhci_device);
 }
+#else
+void tegra_xusb_init(struct tegra_xusb_board_data *bdata) {}
 #endif
