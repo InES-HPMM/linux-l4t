@@ -467,6 +467,7 @@ config BATTERY_GOLDFISH
 config CHARGER_EXTCON_MAX77660
 	tristate "MAX77660 battery charger and external connection support"
 	depends on MFD_MAX77660 && EXTCON && REGULATOR
+	select BATTERY_CHARGER_GAUGE_COMM
 	help
 	 MAX77660 is a pmic for smartphones and tablets which supports
 	 battery charging feature. It also detect the presence of HOST

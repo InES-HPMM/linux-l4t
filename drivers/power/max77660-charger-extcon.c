@@ -41,6 +41,7 @@
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/power_supply.h>
+#include <linux/power/battery-charger-gauge-comm.h>
 
 static int max77660_chrg_wdt[] = {16, 32, 64, 128};
 
@@ -50,7 +51,6 @@ struct max77660_charger {
 	int irq;
 	int status;
 	int in_current_lim;
-	void (*update_status)(int);
 	int wdt_timeout;
 };
 
@@ -65,6 +65,7 @@ struct max77660_chg_extcon {
 	int				chg_wdt_irq;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
+	struct battery_charger_dev	*bc_dev;
 };
 
 struct max77660_chg_extcon *max77660_ext;
@@ -260,7 +261,7 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 	}
 
 	charger->in_current_lim = max_uA/1000;
-	charger->status = 0;
+	charger->status = BATTERY_DISCHARGING;
 
 	ret = max77660_reg_read(chip->parent, MAX77660_CHG_SLAVE,
 			MAX77660_CHARGER_CHGSTAT, &status);
@@ -276,18 +277,15 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 		ret = max77660_charger_init(chip, false);
 		if (ret < 0)
 			goto error;
-		if (charger->update_status)
-			charger->update_status
-				(charger->status);
+		battery_charging_status_update(chip->bc_dev,
+					BATTERY_DISCHARGING);
 	} else {
-		charger->status = 1;
+		charger->status = BATTERY_CHARGING;
 		ret = max77660_charger_init(chip, true);
 		if (ret < 0)
 			goto error;
-
-		if (charger->update_status)
-			charger->update_status
-				(charger->status);
+		battery_charging_status_update(chip->bc_dev,
+					BATTERY_CHARGING);
 	}
 
 	return 0;
@@ -660,6 +658,23 @@ static struct regulator_desc max77660_vbus_desc = {
 	 .owner = THIS_MODULE,
 };
 
+static int max77660_charger_get_status(struct battery_charger_dev *bc_dev)
+{
+	struct max77660_chg_extcon *chip = battery_charger_get_drvdata(bc_dev);
+	struct max77660_charger *charger = chip->charger;
+
+	return charger->status;
+}
+
+static struct battery_charging_ops max77660_charger_bci_ops = {
+	.get_charging_status = max77660_charger_get_status,
+};
+
+static struct battery_charger_info max77660_charger_bci = {
+	.cell_id = 0,
+	.bc_ops = &max77660_charger_bci_ops,
+};
+
 static int max77660_chg_extcon_probe(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon;
@@ -698,7 +713,7 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 
 	charger = chg_extcon->charger;
-	charger->status = 0;
+	charger->status = BATTERY_DISCHARGING;
 
 	chg_extcon->edev = edev;
 	chg_extcon->edev->name = (chg_pdata->ext_conn_name) ?
@@ -706,7 +721,6 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev);
 	chg_extcon->edev->supported_cable = max77660_excon_cable;
 
-	charger->update_status =  chg_pdata->update_status;
 	charger->wdt_timeout = chg_pdata->wdt_timeout;
 
 	chg_extcon->dev = &pdev->dev;
@@ -784,6 +798,16 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 		goto chg_reg_err;
 	}
 
+	chg_extcon->bc_dev = battery_charger_register(&pdev->dev,
+						&max77660_charger_bci);
+	if (IS_ERR(chg_extcon->bc_dev)) {
+		ret = PTR_ERR(chg_extcon->bc_dev);
+		dev_err(&pdev->dev, "battery charger register failed: %d\n",
+			ret);
+		goto chg_reg_err;
+	}
+	battery_charger_set_drvdata(chg_extcon->bc_dev, chg_extcon);
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
@@ -804,6 +828,7 @@ static int max77660_chg_extcon_remove(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(&pdev->dev);
 
+	battery_charger_unregister(chg_extcon->bc_dev);
 	extcon_dev_unregister(chg_extcon->edev);
 	free_irq(chg_extcon->chg_irq, chg_extcon);
 	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
