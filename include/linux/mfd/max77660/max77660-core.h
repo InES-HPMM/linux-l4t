@@ -999,9 +999,7 @@ struct max77660_pinctrl_platform_data {
  * max77660_charger_platform_data: Platform data for charger.
  */
 
-struct max77660_charger_platform_data {
-	const char *ext_conn_name;
-	struct regulator_init_data *vbus_reg_init_data;
+struct max77660_bcharger_platform_data {
 	u8	chgcc;		/* Fast Charge Current */
 	u8	fchgtime;	/* Fast Charge Time  */
 	u8	chgrstrt;	/* Fast Charge Restart Threshold */
@@ -1016,6 +1014,17 @@ struct max77660_charger_platform_data {
 	struct regulator_consumer_supply *consumer_supplies;
 	int max_charge_current_mA;
 	void (*update_status)(int);
+};
+
+struct max77660_vbus_platform_data {
+	int num_consumer_supplies;
+	struct regulator_consumer_supply *consumer_supplies;
+};
+
+struct max77660_charger_platform_data {
+	const char *ext_conn_name;
+	struct max77660_bcharger_platform_data *bcharger_pdata;
+	struct max77660_vbus_platform_data *vbus_pdata;
 };
 
 /*

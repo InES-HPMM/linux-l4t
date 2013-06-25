@@ -46,7 +46,7 @@
 static int max77660_chrg_wdt[] = {16, 32, 64, 128};
 
 struct max77660_charger {
-	struct max77660_charger_platform_data *pdata;
+	struct max77660_bcharger_platform_data *bcharger_pdata;
 	struct device *dev;
 	int irq;
 	int status;
@@ -59,13 +59,20 @@ struct max77660_chg_extcon {
 	struct device			*parent;
 	struct extcon_dev		*edev;
 	struct regulator_dev		*chg_rdev;
-	struct regulator_dev		*rdev;
+
+	struct regulator_dev		*vbus_rdev;
+	struct regulator_desc		vbus_reg_desc;
+	struct regulator_init_data	vbus_reg_init_data;
+
 	struct max77660_charger		*charger;
 	int				chg_irq;
 	int				chg_wdt_irq;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
 	struct battery_charger_dev	*bc_dev;
+	int				charging_state;
+	int				cable_connected_state;
+	int				battery_present;
 };
 
 struct max77660_chg_extcon *max77660_ext;
@@ -115,9 +122,11 @@ static int max77660_battery_detect(struct max77660_chg_extcon *chip)
 static int max77660_charger_init(struct max77660_chg_extcon *chip, int enable)
 {
 	struct max77660_charger *charger = chip->charger;
-	u8 reg_val = 0;
 	int ret;
 	u8 read_val;
+
+	if (!chip->battery_present)
+		return 0;
 
 	/* Enable USB suspend if 2mA is current configuration */
 	if (charger->in_current_lim == 2)
@@ -298,12 +307,12 @@ static struct regulator_ops max77660_charger_ops = {
 };
 
 static int max77660_init_charger_regulator(struct max77660_chg_extcon *chip,
-	struct max77660_charger_platform_data *pdata)
+	struct max77660_bcharger_platform_data *bcharger_pdata)
 {
 	struct regulator_config config = { };
 	int ret = 0;
 
-	if (!pdata) {
+	if (!bcharger_pdata) {
 		dev_err(chip->dev, "No charger platform data\n");
 		return 0;
 	}
@@ -316,14 +325,14 @@ static int max77660_init_charger_regulator(struct max77660_chg_extcon *chip,
 	chip->chg_reg_init_data.supply_regulator     = NULL;
 	chip->chg_reg_init_data.regulator_init	= NULL;
 	chip->chg_reg_init_data.num_consumer_supplies =
-				pdata->num_consumer_supplies;
+				bcharger_pdata->num_consumer_supplies;
 	chip->chg_reg_init_data.consumer_supplies    =
-				pdata->consumer_supplies;
+				bcharger_pdata->consumer_supplies;
 	chip->chg_reg_init_data.driver_data	   = chip->charger;
 	chip->chg_reg_init_data.constraints.name     = "max77660-charger";
 	chip->chg_reg_init_data.constraints.min_uA   = 0;
 	chip->chg_reg_init_data.constraints.max_uA   =
-			pdata->max_charge_current_mA * 1000;
+			bcharger_pdata->max_charge_current_mA * 1000;
 
 	 chip->chg_reg_init_data.constraints.valid_modes_mask =
 						REGULATOR_MODE_NORMAL |
@@ -374,7 +383,6 @@ static int max77660_chg_extcon_cable_update(
 static int max77660_charger_detail_irq(int irq, void *data, u8 *val)
 {
 	struct max77660_chg_extcon *chip = (struct max77660_chg_extcon *)data;
-	u8 reg_val = 0;
 
 	switch (irq) {
 	case MAX77660_CHG_BAT_I:
@@ -510,9 +518,15 @@ static int max77660_charger_detail_irq(int irq, void *data, u8 *val)
 static irqreturn_t max77660_chg_extcon_irq(int irq, void *data)
 {
 	struct max77660_chg_extcon *chg_extcon = data;
-	int irq_val, irq_mask, irq_name;
+	u8 irq_val = 0;
+	u8 irq_mask = 0;
+	u8 irq_name = 0;
 	u8 val[3];
 	int ret;
+
+	val[0] = 0;
+	val[1] = 0;
+	val[2] = 0;
 
 	ret = max77660_reg_read(chg_extcon->parent, MAX77660_CHG_SLAVE,
 					MAX77660_CHARGER_CHGINT, &irq_val);
@@ -651,12 +665,55 @@ static struct regulator_ops max77660_vbus_ops = {
 	.enable_time	= max77660_vbus_enable_time,
 };
 
-static struct regulator_desc max77660_vbus_desc = {
-	 .name = "max77660-vbus",
-	 .ops = &max77660_vbus_ops,
-	 .type = REGULATOR_VOLTAGE,
-	 .owner = THIS_MODULE,
-};
+static int max77660_init_vbus_regulator(struct max77660_chg_extcon *chg_extcon,
+		struct max77660_vbus_platform_data *vbus_pdata)
+{
+	struct regulator_config rconfig = { };
+	int ret = 0;
+
+	if (!vbus_pdata) {
+		dev_err(chg_extcon->dev, "No vbus platform data\n");
+		return 0;
+	}
+
+	chg_extcon->vbus_reg_desc.name = "max77660-vbus";
+	chg_extcon->vbus_reg_desc.ops = &max77660_vbus_ops;
+	chg_extcon->vbus_reg_desc.type = REGULATOR_VOLTAGE;
+	chg_extcon->vbus_reg_desc.owner = THIS_MODULE;
+
+	chg_extcon->vbus_reg_init_data.supply_regulator    = NULL;
+	chg_extcon->vbus_reg_init_data.regulator_init      = NULL;
+	chg_extcon->vbus_reg_init_data.num_consumer_supplies       =
+					vbus_pdata->num_consumer_supplies;
+	chg_extcon->vbus_reg_init_data.consumer_supplies   =
+					vbus_pdata->consumer_supplies;
+	chg_extcon->vbus_reg_init_data.driver_data	 = chg_extcon;
+
+	chg_extcon->vbus_reg_init_data.constraints.name    = "max77660-vbus";
+	chg_extcon->vbus_reg_init_data.constraints.min_uV  = 0;
+	chg_extcon->vbus_reg_init_data.constraints.max_uV  = 5000000,
+	chg_extcon->vbus_reg_init_data.constraints.valid_modes_mask =
+					REGULATOR_MODE_NORMAL |
+					REGULATOR_MODE_STANDBY;
+	chg_extcon->vbus_reg_init_data.constraints.valid_ops_mask =
+					REGULATOR_CHANGE_MODE |
+					REGULATOR_CHANGE_STATUS |
+					REGULATOR_CHANGE_VOLTAGE;
+
+	rconfig.dev = chg_extcon->dev;
+	rconfig.of_node = NULL;
+	rconfig.init_data = &chg_extcon->vbus_reg_init_data;
+	rconfig.driver_data = chg_extcon;
+	chg_extcon->vbus_rdev = regulator_register(&chg_extcon->vbus_reg_desc,
+				&rconfig);
+	if (IS_ERR(chg_extcon->vbus_rdev)) {
+		ret = PTR_ERR(chg_extcon->vbus_rdev);
+		dev_err(chg_extcon->dev, "Failed to register VBUS regulator: %d\n",
+					ret);
+		return ret;
+	}
+	return ret;
+}
 
 static int max77660_charger_get_status(struct battery_charger_dev *bc_dev)
 {
@@ -680,8 +737,9 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	struct max77660_chg_extcon *chg_extcon;
 	struct max77660_platform_data *pdata;
 	struct max77660_charger_platform_data *chg_pdata;
+	struct max77660_bcharger_platform_data *bcharger_pdata;
+	struct max77660_vbus_platform_data *vbus_pdata;
 	struct extcon_dev *edev;
-	struct regulator_config config = { };
 	struct max77660_charger *charger;
 	int ret;
 
@@ -692,6 +750,8 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 
 	chg_pdata = pdata->charger_pdata;
+	bcharger_pdata = chg_pdata->bcharger_pdata;
+	vbus_pdata = chg_pdata->vbus_pdata;
 
 	chg_extcon = devm_kzalloc(&pdev->dev, sizeof(*chg_extcon), GFP_KERNEL);
 	if (!chg_extcon) {
@@ -721,7 +781,6 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev);
 	chg_extcon->edev->supported_cable = max77660_excon_cable;
 
-	charger->wdt_timeout = chg_pdata->wdt_timeout;
 
 	chg_extcon->dev = &pdev->dev;
 	chg_extcon->parent = pdev->dev.parent;
@@ -742,7 +801,14 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	ret = max77660_chg_extcon_cable_update(chg_extcon);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Cable init failed: %d\n", ret);
-		goto out;
+		goto extcon_free;
+	}
+
+	ret = max77660_reg_clr_bits(chg_extcon->parent, MAX77660_CHG_SLAVE,
+			MAX77660_CHARGER_CHGINTM, MAX77660_CHG_CHGINT_DC_UVP);
+	if (ret < 0) {
+		dev_err(chg_extcon->dev, "CHGINTM update failed: %d\n", ret);
+		goto extcon_free;
 	}
 
 	ret = request_threaded_irq(chg_extcon->chg_irq, NULL,
@@ -752,8 +818,22 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(chg_extcon->dev,
 			"request irq %d failed: %dn", chg_extcon->chg_irq, ret);
-		goto out;
+		goto extcon_free;
 	}
+
+	ret = max77660_init_vbus_regulator(chg_extcon, vbus_pdata);
+	if (ret < 0) {
+		dev_err(chg_extcon->dev, "Vbus regulator init failed %d\n", ret);
+		goto chg_irq_free;
+	}
+
+	if (!bcharger_pdata) {
+		dev_info(chg_extcon->dev,
+			"Battery not connected, charging not supported\n");
+		goto skip_bcharger_init;
+	}
+	chg_extcon->battery_present = true;
+	charger->wdt_timeout = bcharger_pdata->wdt_timeout;
 
 	ret = request_threaded_irq(chg_extcon->chg_wdt_irq, NULL,
 		max77660_chg_wdt_irq,
@@ -762,33 +842,14 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(chg_extcon->dev, "request irq %d failed: %d\n",
 			chg_extcon->chg_wdt_irq, ret);
-		goto chg_irq_free;
+		goto vbus_reg_err;
 	}
 
-	ret = max77660_reg_clr_bits(chg_extcon->parent, MAX77660_CHG_SLAVE,
-			MAX77660_CHARGER_CHGINTM, MAX77660_CHG_CHGINT_DC_UVP);
-	if (ret < 0) {
-		dev_err(chg_extcon->dev, "CHGINTM update failed: %d\n", ret);
-		goto wdt_irq_free;
-	}
-
-	config.dev = &pdev->dev;
-	config.init_data = chg_pdata->vbus_reg_init_data;
-	config.driver_data = chg_extcon;
-
-	chg_extcon->rdev = regulator_register(&max77660_vbus_desc, &config);
-	if (IS_ERR(chg_extcon->rdev)) {
-		ret = PTR_ERR(chg_extcon->rdev);
-		dev_err(&pdev->dev, "Failed to register VBUS regulator: %d\n",
-					ret);
-		goto wdt_irq_free;
-	}
-
-	ret = max77660_init_charger_regulator(chg_extcon, chg_pdata);
+	ret = max77660_init_charger_regulator(chg_extcon, bcharger_pdata);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register charger regulator: %d\n",
 					ret);
-		goto vbus_reg_err;
+		goto wdt_irq_free;
 	}
 
 	ret = max77660_charger_wdt(chg_extcon);
@@ -808,18 +869,19 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 	battery_charger_set_drvdata(chg_extcon->bc_dev, chg_extcon);
 
+skip_bcharger_init:
 	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
 chg_reg_err:
 	regulator_unregister(chg_extcon->chg_rdev);
-vbus_reg_err:
-	regulator_unregister(chg_extcon->rdev);
 wdt_irq_free:
 	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
+vbus_reg_err:
+	regulator_unregister(chg_extcon->vbus_rdev);
 chg_irq_free:
 	free_irq(chg_extcon->chg_irq, chg_extcon);
-out:
+extcon_free:
 	extcon_dev_unregister(chg_extcon->edev);
 	return ret;
 }
@@ -828,11 +890,13 @@ static int max77660_chg_extcon_remove(struct platform_device *pdev)
 {
 	struct max77660_chg_extcon *chg_extcon = dev_get_drvdata(&pdev->dev);
 
-	battery_charger_unregister(chg_extcon->bc_dev);
-	extcon_dev_unregister(chg_extcon->edev);
 	free_irq(chg_extcon->chg_irq, chg_extcon);
-	free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
-	regulator_unregister(chg_extcon->rdev);
+	regulator_unregister(chg_extcon->vbus_rdev);
+	if (chg_extcon->battery_present) {
+		battery_charger_unregister(chg_extcon->bc_dev);
+		extcon_dev_unregister(chg_extcon->edev);
+		free_irq(chg_extcon->chg_wdt_irq, chg_extcon);
+	}
 	return 0;
 }
 
@@ -844,10 +908,12 @@ static int max77660_chg_extcon_suspend(struct device *dev)
 
 	if (device_may_wakeup(dev)) {
 		enable_irq_wake(chg_extcon->chg_irq);
-		if (chg_extcon->charger->wdt_timeout)
+		if (chg_extcon->battery_present &&
+				chg_extcon->charger->wdt_timeout)
 			enable_irq_wake(chg_extcon->chg_wdt_irq);
 	} else {
-		if (chg_extcon->charger->wdt_timeout) {
+		if (chg_extcon->battery_present &&
+				chg_extcon->charger->wdt_timeout) {
 			ret = max77660_reg_clr_bits(chg_extcon->parent,
 				MAX77660_PWR_SLAVE,
 				MAX77660_REG_GLOBAL_CFG1,
@@ -868,10 +934,12 @@ static int max77660_chg_extcon_resume(struct device *dev)
 
 	if (device_may_wakeup(dev)) {
 		disable_irq_wake(chg_extcon->chg_irq);
-		if (chg_extcon->charger->wdt_timeout)
+		if (chg_extcon->battery_present &&
+			chg_extcon->charger->wdt_timeout)
 			disable_irq_wake(chg_extcon->chg_wdt_irq);
 	} else {
-		if (chg_extcon->charger->wdt_timeout) {
+		if (chg_extcon->battery_present &&
+			chg_extcon->charger->wdt_timeout) {
 			ret = max77660_reg_set_bits(chg_extcon->parent,
 				MAX77660_PWR_SLAVE,
 				MAX77660_REG_GLOBAL_CFG1,
