@@ -77,6 +77,12 @@ config VIDEO_IMX135
           maximum of 13MP (4208x3120) resolution with HDR
           capability.
 
+config VIDEO_AR0261
+        tristate "AR0261 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the AR0261 camera sensor
+
 config VIDEO_IMX132
         tristate "IMX132 camera sensor support"
         depends on I2C && ARCH_TEGRA
