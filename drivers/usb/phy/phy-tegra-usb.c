@@ -54,6 +54,12 @@
 #define AHB_MEM_PREFETCH_CFG2		0xf0
 #define PREFETCH_ENB			(1 << 31)
 
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#define USB_PLL_REG "avdd_pll_utmip"
+#else
+#define USB_PLL_REG "avdd_usb_pll"
+#endif
+
 #ifdef DEBUG
 #define DBG(stuff...)		pr_info("usb_phy: " stuff)
 #else
@@ -201,9 +207,9 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 	int err = 0;
 
 	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	phy->pllu_reg = regulator_get(&phy->pdev->dev, "avdd_usb_pll");
+	phy->pllu_reg = regulator_get(&phy->pdev->dev, USB_PLL_REG);
 	if (IS_ERR_OR_NULL(phy->pllu_reg)) {
-		ERR("Couldn't get regulator avdd_usb_pll: %ld\n",
+		ERR("Couldn't get regulator %s: %ld\n", USB_PLL_REG,
 			PTR_ERR(phy->pllu_reg));
 		phy->pllu_reg = NULL;
 		return PTR_ERR(phy->pllu_reg);
