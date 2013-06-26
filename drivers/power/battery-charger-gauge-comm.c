@@ -53,10 +53,12 @@ struct battery_charger_dev {
 
 struct battery_gauge_dev {
 	int				cell_id;
+	char				tz_name[THERMAL_NAME_LENGTH];
 	struct device			*parent_dev;
 	struct battery_gauge_ops	*ops;
 	struct list_head		list;
 	void				*drv_data;
+	struct thermal_zone_device		*battery_tz;
 };
 
 struct battery_charger_thermal_dev {
@@ -242,6 +244,29 @@ void battery_charger_unregister(struct battery_charger_dev *bc_dev)
 }
 EXPORT_SYMBOL_GPL(battery_charger_unregister);
 
+int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
+	int *temp)
+{
+	if (!bg_dev)
+		return -EINVAL;
+
+	if (!bg_dev->battery_tz)
+		bg_dev->battery_tz =
+			thermal_zone_device_find_by_name(bg_dev->tz_name);
+
+	if (!bg_dev->battery_tz) {
+		dev_info(bg_dev->parent_dev,
+			"Battery thermal zone %s is not registered yet\n",
+			bg_dev->tz_name);
+		return -ENODEV;
+	}
+
+	thermal_zone_device_update(bg_dev->battery_tz);
+	*temp = bg_dev->battery_tz->temperature / 1000;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_gauge_get_battery_temperature);
+
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	struct battery_gauge_info *bgi)
 {
@@ -266,6 +291,11 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	bg_dev->cell_id = bgi->cell_id;
 	bg_dev->ops = bgi->bg_ops;
 	bg_dev->parent_dev = dev;
+	strcpy(bg_dev->tz_name, bgi->tz_name ? : "");
+	bg_dev->battery_tz = thermal_zone_device_find_by_name(bg_dev->tz_name);
+	if (!bg_dev->battery_tz)
+		dev_info(dev, "Battery thermal zone %s is not registered yet\n",
+			bg_dev->tz_name);
 	list_add(&bg_dev->list, &gauge_list);
 	mutex_unlock(&charger_gauge_list_mutex);
 	return bg_dev;

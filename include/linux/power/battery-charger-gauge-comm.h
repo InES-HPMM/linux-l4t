@@ -63,6 +63,7 @@ struct battery_charger_thermal_info {
 
 struct battery_gauge_info {
 	int cell_id;
+	const char *tz_name;
 	struct battery_gauge_ops *bg_ops;
 };
 
@@ -80,6 +81,8 @@ int battery_charger_thermal_start_monitoring(
 int battery_charger_thermal_stop_monitoring(
 	struct battery_charger_thermal_dev *bct_dev);
 
+int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
+	int *temp);
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 		struct battery_gauge_info *bgi);
 void battery_gauge_unregister(struct battery_gauge_dev *bg_dev);
