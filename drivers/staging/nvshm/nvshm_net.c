@@ -1,14 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/device.h>
@@ -95,6 +98,8 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 				ap_iob = ap_next;
 				bb_next = ap_next->next;
 				ap_next = NVSHM_B2A(netdev.handle, bb_next);
+				/* Break ->next chain before free */
+				ap_iob->next = NULL;
 				nvshm_iobuf_free_cluster(ap_iob);
 				continue;
 			}
@@ -115,6 +120,8 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 
 		ap_iob = ap_next;
 		bb_iob = bb_next;
+		bb_next = ap_next->next;
+		ap_next = NVSHM_B2A(netdev.handle, bb_next);
 		while (bb_iob) {
 			src = NVSHM_B2A(netdev.handle, ap_iob->npdu_data)
 			      + ap_iob->data_offset;
@@ -141,7 +148,7 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 			/* Drop packet */
 			kfree_skb(skb);
 			/* move to next datagram */
-			goto next_datagram;
+			continue;
 		}
 		skb->pkt_type = PACKET_HOST;
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
@@ -149,9 +156,6 @@ void nvshm_netif_rx_event(struct nvshm_channel *chan,
 		priv->stats.rx_bytes += datagram_len;
 		if (netif_rx(skb) == NET_RX_DROP)
 			pr_debug("%s() : dropped packet\n", __func__);
-next_datagram:	/* move to next datagram */
-		bb_next = ap_next->next;
-		ap_next = NVSHM_B2A(netdev.handle, bb_next);
 	}
 }
 
