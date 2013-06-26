@@ -270,11 +270,11 @@ static void ardbeg_i2c_init(void)
 	}
 }
 
+#ifndef CONFIG_USE_OF
 static struct platform_device *ardbeg_uart_devices[] __initdata = {
 	&tegra_uarta_device,
 	&tegra_uartb_device,
 	&tegra_uartc_device,
-	&tegra_uartd_device,
 };
 
 static struct tegra_serial_platform_data ardbeg_uarta_pdata = {
@@ -291,21 +291,12 @@ static struct tegra_serial_platform_data ardbeg_uartc_pdata = {
 	.dma_req_selector = 10,
 	.modem_interrupt = false,
 };
+#endif
 
 static struct tegra_serial_platform_data ardbeg_uartd_pdata = {
 	.dma_req_selector = 19,
 	.modem_interrupt = false,
 };
-
-static struct uart_clk_parent uart_parent_clk[] = {
-	[0] = {.name = "clk_m"},
-	[1] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
-	[2] = {.name = "pll_m"},
-#endif
-};
-
-static struct tegra_uart_platform_data ardbeg_uart_pdata;
 
 /*use board file for T12x*/
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
@@ -402,51 +393,29 @@ static struct platform_device ardbeg_audio_device_rt5639 = {
 
 #endif
 
-static struct tegra_uart_platform_data ardbeg_loopback_uart_pdata;
-
-static void __init uart_debug_init(void)
+static void __init ardbeg_uart_init(void)
 {
 	int debug_port_id;
 
-	debug_port_id = uart_console_debug_init(3);
-	if (debug_port_id < 0)
-		return;
-
-	ardbeg_uart_devices[debug_port_id] = uart_console_debug_device;
-}
-
-static void __init ardbeg_uart_init(void)
-{
-	struct clk *c;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
-		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
-		if (IS_ERR_OR_NULL(c)) {
-			pr_err("Not able to get the clock for %s\n",
-						uart_parent_clk[i].name);
-			continue;
-		}
-		uart_parent_clk[i].parent_clk = c;
-		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
-	}
-	ardbeg_uart_pdata.parent_clk_list = uart_parent_clk;
-	ardbeg_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	ardbeg_loopback_uart_pdata.parent_clk_list = uart_parent_clk;
-	ardbeg_loopback_uart_pdata.parent_clk_count =
-						ARRAY_SIZE(uart_parent_clk);
-	ardbeg_loopback_uart_pdata.is_loopback = true;
+#ifndef CONFIG_USE_OF
 	tegra_uarta_device.dev.platform_data = &ardbeg_uarta_pdata;
 	tegra_uartb_device.dev.platform_data = &ardbeg_uartb_pdata;
 	tegra_uartc_device.dev.platform_data = &ardbeg_uartc_pdata;
-	tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
-
-	/* Register low speed only if it is selected */
-	if (!is_tegra_debug_uartport_hs())
-		uart_debug_init();
-
 	platform_add_devices(ardbeg_uart_devices,
 			ARRAY_SIZE(ardbeg_uart_devices));
+#endif
+	tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
+	if (!is_tegra_debug_uartport_hs()) {
+		debug_port_id = uart_console_debug_init(3);
+		if (debug_port_id < 0)
+			return;
+
+		platform_device_register(uart_console_debug_device);
+	} else {
+		tegra_uartd_device.dev.platform_data = &ardbeg_uartd_pdata;
+		platform_device_register(&tegra_uartd_device);
+	}
+
 }
 
 static struct resource tegra_rtc_resources[] = {
@@ -740,6 +709,12 @@ struct of_dev_auxdata ardbeg_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5645", 0x0, "tegra-snd-rt5645",
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5639",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006000, "serial-tegra.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006040, "serial-tegra.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-hsuart", 0x70006200, "serial-tegra.2",
 				NULL),
 	{}
 };
