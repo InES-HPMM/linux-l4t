@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/max17048_battery.h>
 #include <linux/power/battery-charger-gauge-comm.h>
+#include <linux/pm.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -710,33 +711,31 @@ static void max17048_shutdown(struct i2c_client *client)
 
 }
 
-#ifdef CONFIG_PM
-
-static int max17048_suspend(struct i2c_client *client,
-		pm_message_t state)
+#ifdef CONFIG_PM_SLEEP
+static int max17048_suspend(struct device *dev)
 {
-	struct max17048_chip *chip = i2c_get_clientdata(client);
+	struct max17048_chip *chip = dev_get_drvdata(dev);
 	int ret;
 
 	cancel_delayed_work_sync(&chip->work);
-	ret = max17048_write_word(client, MAX17048_HIBRT, 0xffff);
+	ret = max17048_write_word(chip->client, MAX17048_HIBRT, 0xffff);
 	if (ret < 0) {
-		dev_err(&client->dev, "failed in entering hibernate mode\n");
+		dev_err(dev, "failed in entering hibernate mode\n");
 		return ret;
 	}
 
 	return 0;
 }
 
-static int max17048_resume(struct i2c_client *client)
+static int max17048_resume(struct device *dev)
 {
-	struct max17048_chip *chip = i2c_get_clientdata(client);
+	struct max17048_chip *chip = dev_get_drvdata(dev);
 	int ret;
 	struct max17048_battery_model *mdata = chip->pdata->model_data;
 
-	ret = max17048_write_word(client, MAX17048_HIBRT, mdata->hibernate);
+	ret = max17048_write_word(chip->client, MAX17048_HIBRT, mdata->hibernate);
 	if (ret < 0) {
-		dev_err(&client->dev, "failed in exiting hibernate mode\n");
+		dev_err(dev, "failed in exiting hibernate mode\n");
 		return ret;
 	}
 
@@ -744,13 +743,9 @@ static int max17048_resume(struct i2c_client *client)
 
 	return 0;
 }
-
-#else
-
-#define max17048_suspend NULL
-#define max17048_resume NULL
-
 #endif /* CONFIG_PM */
+
+static SIMPLE_DEV_PM_OPS(max17048_pm_ops, max17048_suspend, max17048_resume);
 
 #ifdef CONFIG_OF
 static const struct of_device_id max17048_dt_match[] = {
@@ -770,11 +765,10 @@ static struct i2c_driver max17048_i2c_driver = {
 	.driver	= {
 		.name	= "max17048",
 		.of_match_table = of_match_ptr(max17048_dt_match),
+		.pm = &max17048_pm_ops,
 	},
 	.probe		= max17048_probe,
 	.remove		= max17048_remove,
-	.suspend	= max17048_suspend,
-	.resume		= max17048_resume,
 	.id_table	= max17048_id,
 	.shutdown	= max17048_shutdown,
 };
