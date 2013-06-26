@@ -19,6 +19,9 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/mpu.h>
+#include <linux/delay.h>
+#include <linux/err.h>
+#include <media/ar0261.h>
 
 #include "board-ardbeg.h"
 
@@ -98,12 +101,129 @@ static void mpuirq_init(void)
 		ARRAY_SIZE(inv_mpu9250_i2c0_board_info));
 }
 
+static struct regulator *ardbeg_vcmvdd;
+
+static int ardbeg_get_extra_regulators(void)
+{
+	if (!ardbeg_vcmvdd) {
+		ardbeg_vcmvdd = regulator_get(NULL, "avdd_af1_cam");
+		if (WARN_ON(IS_ERR(ardbeg_vcmvdd))) {
+			pr_err("%s: can't get regulator avdd_af1_cam: %ld\n",
+					__func__, PTR_ERR(ardbeg_vcmvdd));
+			regulator_put(ardbeg_vcmvdd);
+			ardbeg_vcmvdd = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+
+static int ardbeg_ar0261_power_on(struct ar0261_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
+		return -EFAULT;
+
+	if (ardbeg_get_extra_regulators())
+		goto ardbeg_ar0261_poweron_fail;
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM_AF_PWDN, 1);
+
+
+	err = regulator_enable(ardbeg_vcmvdd);
+	if (unlikely(err))
+		goto ar0261_vcm_fail;
+
+	err = regulator_enable(pw->dvdd);
+	if (unlikely(err))
+		goto ar0261_dvdd_fail;
+
+	err = regulator_enable(pw->avdd);
+	if (unlikely(err))
+		goto ar0261_avdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (unlikely(err))
+		goto ar0261_iovdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM2_PWDN, 1);
+
+	gpio_set_value(CAM_RSTN, 1);
+
+	return 0;
+ar0261_iovdd_fail:
+	regulator_disable(pw->dvdd);
+
+ar0261_dvdd_fail:
+	regulator_disable(pw->avdd);
+
+ar0261_avdd_fail:
+	regulator_disable(ardbeg_vcmvdd);
+
+ar0261_vcm_fail:
+	pr_err("%s vcmvdd failed.\n", __func__);
+	return -ENODEV;
+
+ardbeg_ar0261_poweron_fail:
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_ar0261_power_off(struct ar0261_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd ||
+					!ardbeg_vcmvdd)))
+		return -EFAULT;
+
+	gpio_set_value(CAM_RSTN, 0);
+
+	usleep_range(1, 2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->avdd);
+
+
+	regulator_disable(ardbeg_vcmvdd);
+
+	return 0;
+}
+
+struct ar0261_platform_data ardbeg_ar0261_data = {
+	.power_on = ardbeg_ar0261_power_on,
+	.power_off = ardbeg_ar0261_power_off,
+};
+
+static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
+	{
+		I2C_BOARD_INFO("ar0261", 0x36),
+		.platform_data = &ardbeg_ar0261_data,
+	},
+};
+
+
+static int ardbeg_camera_init(void)
+{
+	pr_debug("%s: ++\n", __func__);
+
+
+	i2c_register_board_info(2, ardbeg_i2c_board_info_e1823,
+			ARRAY_SIZE(ardbeg_i2c_board_info_e1823));
+	return 0;
+}
+
 int __init ardbeg_sensors_init(void)
 {
 	mpuirq_init();
+	ardbeg_camera_init();
 /*
 	i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
-		ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
+			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
 */
 	return 0;
 }

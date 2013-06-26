@@ -67,6 +67,9 @@ int ardbeg_pmon_init(void);
 /* AS3720 IRQs */
 #define AS3722_IRQ_BASE         TEGRA_NR_IRQS
 
+#define CAM_RSTN TEGRA_GPIO_PBB3
+#define CAM2_PWDN TEGRA_GPIO_PBB6
+#define CAM_AF_PWDN TEGRA_GPIO_PBB7
 /* Baseband IDs */
 enum tegra_bb_type {
 	TEGRA_BB_NEMO = 1,
