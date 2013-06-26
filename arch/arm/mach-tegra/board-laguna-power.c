@@ -146,6 +146,7 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avdd_sata", NULL),
 	REGULATOR_SUPPLY("vdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {
@@ -514,6 +515,7 @@ static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
