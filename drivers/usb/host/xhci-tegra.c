@@ -387,24 +387,6 @@ static void tegra_xhci_setup_gpio_for_ss_lane(struct tegra_xhci_hcd *tegra)
 	}
 }
 
-static bool is_any_hs_connected(struct xhci_hcd *xhci)
-{
-	__le32 __iomem *addr;
-	int i;
-	int ports;
-	u32 portsc;
-
-	ports = HCS_MAX_PORTS(xhci->hcs_params1);
-	addr = &xhci->op_regs->port_status_base;
-	for (i = 0; i < ports; i++) {
-		portsc = xhci_readl(xhci, addr);
-		if ((portsc & PORT_CONNECT) && DEV_HIGHSPEED(portsc))
-			return true;
-		addr += NUM_PORT_REGS;
-	}
-	return false;
-}
-
 static void debug_print_portsc(struct xhci_hcd *xhci)
 {
 	__le32 __iomem *addr;
@@ -2482,16 +2464,6 @@ done:
 	if (xhci->main_hcd == hcd) {
 		utmi_phy_pad_disable();
 		utmi_phy_iddq_override(true);
-		/* port ownership to SNPS when no HS connected to save power */
-		if (!is_any_hs_connected(xhci))
-			tegra_xhci_release_port_ownership(tegra, true);
-	} else if (xhci->shared_hcd == hcd) {
-		/* save leakage power when SS not in use.
-		 * This is also done when fw mbox message is received for freq
-		 * decrease but on T114 we don't change freq due to sw WAR
-		 * used for hs disconnect issue.
-		 */
-		tegra_xhci_rx_idle_mode_override(tegra, true);
 	}
 	mutex_unlock(&tegra->sync_lock);
 	return 0;
@@ -2531,10 +2503,6 @@ static int tegra_xhci_bus_resume(struct usb_hcd *hcd)
 	if (xhci->main_hcd == hcd && tegra->usb2_rh_suspend) {
 		utmi_phy_pad_enable();
 		utmi_phy_iddq_override(false);
-		tegra_xhci_release_port_ownership(tegra, false);
-	} else if (xhci->shared_hcd == hcd && tegra->usb3_rh_suspend) {
-		/* clear ovrd bits */
-		tegra_xhci_rx_idle_mode_override(tegra, false);
 	}
 	if (tegra->usb2_rh_suspend && tegra->usb3_rh_suspend) {
 		if (tegra->ss_pwr_gated && tegra->host_pwr_gated)
