@@ -1185,6 +1185,10 @@ static struct regulator_consumer_supply fixed_reg_en_tca6408_p0_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_1v2_s", NULL),
 };
 
+static struct regulator_consumer_supply fixed_reg_en_vdd_cpu_fixed_supply[] = {
+	REGULATOR_SUPPLY("vdd_cpu_fixed", NULL),
+};
+
 FIXED_REG(0,	battery_ardbeg,	battery_ardbeg,
 	NULL,	0,	0,	-1,
 	false,	true,	0,	3300, 0);
@@ -1251,6 +1255,10 @@ FIXED_REG(13,	tca6408_p6,	tca6408_p6,
 FIXED_REG(14,	tca6408_p0,	tca6408_p0,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(0),
 	false,	true,	0,	1200, 0);
+
+FIXED_REG(15,	vdd_cpu_fixed,	vdd_cpu_fixed,
+	NULL,	0,	1,	-1,
+	false,	true,	0,	1000,	0);
 
 /* Always ON /Battery regulator */
 static struct regulator_consumer_supply fixed_reg_en_battery_e1731_supply[] = {
@@ -1360,6 +1368,9 @@ FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	ADD_FIXED_REG(vdd_dis_3v3a),		\
 	ADD_FIXED_REG(vdd_hdmi_5v0),
 
+#define ARDBEG_E1735_FIXED_REG			\
+	ADD_FIXED_REG(vdd_cpu_fixed),
+
 static struct platform_device *fixed_reg_devs_e1733[] = {
 	ARDBEG_COMMON_FIXED_REG
 	ARDBEG_E1733_FIXED_REG
@@ -1367,6 +1378,7 @@ static struct platform_device *fixed_reg_devs_e1733[] = {
 
 static struct platform_device *fixed_reg_devs_e1735[] = {
 	ARDBEG_COMMON_FIXED_REG
+	ARDBEG_E1735_FIXED_REG
 };
 
 static struct platform_device *pfixed_reg_devs[] = {
