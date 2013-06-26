@@ -543,6 +543,7 @@ config TEGRA_GADGET_BOOST_CPU_FREQ
 	range 0 1300 if ARCH_TEGRA_3x_SOC
 	range 0 1800 if ARCH_TEGRA_11x_SOC
 	range 0 2000 if ARCH_TEGRA_14x_SOC
+	range 0 2000 if ARCH_TEGRA_12x_SOC
 	default 0
 	help
 	  Devices need to boost frequency of CPU when they are connected
@@ -556,6 +557,7 @@ config TEGRA_EHCI_BOOST_CPU_FREQ
         range 0 1300 if ARCH_TEGRA_3x_SOC
         range 0 1800 if ARCH_TEGRA_11x_SOC
         range 0 2000 if ARCH_TEGRA_14x_SOC
+        range 0 2000 if ARCH_TEGRA_12x_SOC
         default 0
         help
           This value is the amount of the cpu frequency (in Mhz)
