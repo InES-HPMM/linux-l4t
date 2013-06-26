@@ -204,6 +204,13 @@ static int dvfs_rail_set_voltage_reg(struct dvfs_rail *rail, int millivolts)
 {
 	int ret;
 
+	/*
+	 * safely return success for low voltage requests on fixed regulator
+	 * (higher requests will go through and fail, as they should)
+	 */
+	if (rail->fixed_millivolts && (millivolts <= rail->fixed_millivolts))
+		return 0;
+
 	rail->updating = true;
 	rail->reg_max_millivolts = rail->reg_max_millivolts ==
 		rail->max_millivolts ?
@@ -317,10 +324,16 @@ static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 			min_mv = rail->therm_mv_floors[i];
 	}
 
-	if (rail->override_millivolts)
+	if (rail->override_millivolts) {
 		millivolts = rail->override_millivolts;
-	else
+	} else {
+		/* apply offset and clip up to pll mode fixed mv */
 		millivolts += rail->offs_millivolts;
+		if (!rail->dfll_mode && rail->fixed_millivolts &&
+		    (millivolts < rail->fixed_millivolts))
+			millivolts = rail->fixed_millivolts;
+	}
+
 	if (millivolts > rail->max_millivolts)
 		millivolts = rail->max_millivolts;
 	else if (millivolts < min_mv)
@@ -377,6 +390,76 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	return ret;
 }
 
+static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
+{
+	struct regulator *reg;
+	char reg_id[80];
+	struct dvfs *d;
+	int v, i;
+	unsigned long dfll_boost;
+
+	strcpy(reg_id, rail->reg_id);
+	strcat(reg_id, "_fixed");
+	reg = regulator_get(NULL, reg_id);
+	if (IS_ERR(reg))
+		return reg;
+
+	v = regulator_get_voltage(reg) / 1000;
+	if ((v < rail->min_millivolts) || (v > rail->nominal_millivolts) ||
+	    (rail->therm_mv_floors && v < rail->therm_mv_floors[0])) {
+		pr_err("tegra_dvfs: ivalid fixed %s voltage %d\n",
+		       rail->reg_id, v);
+		return ERR_PTR(-EINVAL);
+	}
+
+	/*
+	 * Only fixed at nominal voltage vdd_core regulator is allowed, same
+	 * is true for cpu rail if dfll mode is not supported at all. No thermal
+	 * capping can be implemented in this case.
+	 */
+	if (!IS_ENABLED(CONFIG_ARCH_TEGRA_HAS_CL_DVFS) ||
+	    (rail != tegra_cpu_rail)) {
+		if (v != rail->nominal_millivolts) {
+			pr_err("tegra_dvfs: %s fixed below nominal at %d\n",
+			       rail->reg_id, v);
+			return ERR_PTR(-EINVAL);
+		}
+		if (rail->therm_mv_caps) {
+			pr_err("tegra_dvfs: cannot fix %s with thermal caps\n",
+			       rail->reg_id, v);
+			return ERR_PTR(-ENOSYS);
+		}
+		return reg;
+	}
+
+	/*
+	 * If dfll mode is supported, fixed vdd_cpu regulator may be below
+	 * nominal in pll mode - maximum cpu rate in pll mode is limited
+	 * respectively. Regulator is required to allow automatic scaling
+	 * in dfll mode.
+	 *
+	 * FIXME: platform data to explicitly identify such "hybrid" regulator?
+	 */
+	d = list_first_entry(&rail->dvfs, struct dvfs, reg_node);
+	for (i = 0; i < d->num_freqs; i++) {
+		if (d->millivolts[i] > v)
+			break;
+	}
+
+	if (!i) {
+		pr_err("tegra_dvfs: %s fixed at %d: too low for min rate\n",
+		       rail->reg_id, v);
+		return ERR_PTR(-EINVAL);
+	}
+
+	dfll_boost = (d->freqs[d->num_freqs - 1] - d->freqs[i - 1]);
+	if (d->dfll_data.max_rate_boost < dfll_boost)
+		d->dfll_data.max_rate_boost = dfll_boost;
+
+	rail->fixed_millivolts = v;
+	return reg;
+}
+
 static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 {
 	struct regulator *reg;
@@ -385,9 +468,12 @@ static int dvfs_rail_connect_to_regulator(struct dvfs_rail *rail)
 	if (!rail->reg) {
 		reg = regulator_get(NULL, rail->reg_id);
 		if (IS_ERR(reg)) {
-			pr_err("tegra_dvfs: failed to connect %s rail\n",
-			       rail->reg_id);
-			return -EINVAL;
+			reg = get_fixed_regulator(rail);
+			if (IS_ERR(reg)) {
+				pr_err("tegra_dvfs: failed to connect %s rail\n",
+				       rail->reg_id);
+				return PTR_ERR(reg);
+			}
 		}
 		rail->reg = reg;
 	}
@@ -570,6 +656,9 @@ int tegra_dvfs_override_core_voltage(int override_mv)
 
 	if (!rail)
 		return -ENOENT;
+
+	if (rail->fixed_millivolts)
+		return -ENOSYS;
 
 	floor = rail->min_override_millivolts;
 	ceiling = rail->nominal_millivolts;

@@ -63,8 +63,10 @@ struct dvfs_rail {
 	int max_millivolts;
 	int reg_max_millivolts;
 	int nominal_millivolts;
+	int fixed_millivolts;
 	int override_millivolts;
 	int min_override_millivolts;
+
 	const int *therm_mv_floors;
 	int therm_mv_floors_num;
 	const int *therm_mv_caps;
