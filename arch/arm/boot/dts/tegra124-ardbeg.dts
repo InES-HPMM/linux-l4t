@@ -9,7 +9,7 @@
 	#size-cells = <1>;
 
 	chosen {
-		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,2400n8 earlyprintk";
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
 	};
@@ -17,6 +17,21 @@
 	gpio: gpio@6000d000 {
 		status = "okay";
 	};
+
+        serial@70006000 {
+                compatible = "nvidia,tegra114-hsuart";
+                status = "okay";
+        };
+
+        serial@70006040 {
+                compatible = "nvidia,tegra114-hsuart";
+                status = "okay";
+        };
+
+        serial@70006200 {
+                compatible = "nvidia,tegra114-hsuart";
+                status = "okay";
+        };
 
 	memory@0x80000000 {
 		device_type = "memory";
@@ -47,4 +62,5 @@
 			status = "okay";
 		};
 	};
+
 };
