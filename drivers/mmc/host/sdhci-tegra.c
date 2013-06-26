@@ -54,7 +54,6 @@
 #define SDHCI_VNDR_CLK_CTRL_PADPIPE_CLKEN_OVERRIDE	0x8
 #define SDHCI_VNDR_CLK_CTRL_SPI_MODE_CLKEN_OVERRIDE	0x4
 #define SDHCI_VNDR_CLK_CTRL_INPUT_IO_CLK		0x2
-#define SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT	8
 #define SDHCI_VNDR_CLK_CTRL_TAP_VALUE_SHIFT	16
 #define SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT	24
 #define SDHCI_VNDR_CLK_CTRL_SDR50_TUNING		0x20
@@ -2387,11 +2386,9 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	of_property_read_u32(np, "tap-delay", &plat->tap_delay);
 	of_property_read_u32(np, "trim-delay", &plat->trim_delay);
 	of_property_read_u32(np, "ddr-clk-limit", &plat->ddr_clk_limit);
+	of_property_read_u32(np, "max-clk-limit", &plat->max_clk_limit);
 
-	if (of_property_read_u32(np, "base-clk", &plat->base_clk)) {
-		dev_err(&pdev->dev, "base-clk not set\n");
-		return NULL;
-	}
+	of_property_read_u32(np, "uhs_mask", &plat->uhs_mask);
 
 	if (of_find_property(np, "built-in", NULL))
 		plat->mmc_data.built_in = 1;
