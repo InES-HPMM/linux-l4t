@@ -955,10 +955,11 @@ static void tegra_bb_emc_dvfs(struct work_struct *work)
 		 * do not store prev_state */
 		spin_unlock_irqrestore(&bb->lock, flags);
 
-		pm_runtime_get_sync(bb->dev);
 		pr_info("%s: bbc crash detected, set EMC to max\n", __func__);
-		if (bb->prev_state != BBC_SET_FLOOR)
+		if (bb->prev_state != BBC_SET_FLOOR) {
+			pm_runtime_get_sync(bb->dev);
 			clk_prepare_enable(bb->emc_clk);
+		}
 
 		tegra_emc_dsr_override(TEGRA_EMC_DSR_OVERRIDE);
 		clk_set_rate(bb->emc_clk, BBC_MC_MAX_FREQ);
