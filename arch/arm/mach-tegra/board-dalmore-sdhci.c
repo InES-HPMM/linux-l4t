@@ -111,7 +111,6 @@ struct tegra_sdhci_platform_data dalmore_tegra_sdhci_platform_data0 = {
 	.ddr_clk_limit = 41000000,
 	.max_clk_limit = 82000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
-	.base_clk = 208000000,
 };
 
 static struct resource sdhci_resource0[] = {
