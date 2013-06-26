@@ -546,6 +546,7 @@ struct palmas_extcon_platform_data {
 };
 
 struct palmas_battery_platform_data {
+	const char *therm_zone_name;
 	/* Battery Values */
 	int battery_soldered; /* if battery detection should not be used */
 	int battery_status_interval; /* time in ms for charge status polling */

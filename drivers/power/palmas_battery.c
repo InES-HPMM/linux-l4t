@@ -52,7 +52,6 @@
 
 /* GPADC Channels */
 #define VBAT_CHANNEL		"vbat_channel"
-#define TEMP_CHANNEL		"temp_channel"
 
 /* Voltage that that is used for the EDV */
 #define EDV_VOLTAGE	 (cell->config->edv->averaging ? \
@@ -625,32 +624,14 @@ static void palmas_battery_voltage_now(struct palmas_battery_info *di)
 	di->battery_voltage_uV = ret*1000;
 }
 
-static void palmas_battery_temperature(struct palmas_battery_info *di)
-{
-	int temp, adc_code, ret;
-
-	ret = palmas_gpadc_conversion(TEMP_CHANNEL);
-	if (ret < 0)
-		dev_err(di->dev, "Error in Battery Voltage conversion\n");
-
-	adc_code = ret;
-	for (temp = 0; temp < di->battery_temperature_chart_size; temp++) {
-		if (adc_code >= di->battery_temperature_chart[temp])
-			break;
-	}
-	/*
-	 * first 2 values are for negative temperature
-	 * temperature in tenths of degree Celsius
-	 */
-	di->battery_termperature_tenthC = (temp - 2) * 10;
-}
-
 static int palmas_battery_get_props(struct power_supply *psy,
 				enum power_supply_property psp,
 					union power_supply_propval *val)
 {
 	struct palmas_battery_info *di = container_of(psy,
 		struct palmas_battery_info, battery);
+	int temp;
+	int ret;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -671,8 +652,10 @@ static int palmas_battery_get_props(struct power_supply *psy,
 		val->intval = di->battery_current_uA;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		palmas_battery_temperature(di);
-		val->intval = di->battery_termperature_tenthC;
+		ret = battery_gauge_get_battery_temperature(di->bg_dev, &temp);
+		if (ret < 0)
+			return -EINVAL;
+		val->intval = temp * 10;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = (di->battery_online || di->battery_soldered);
@@ -1631,6 +1614,7 @@ static int palmas_battery_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	palmas_battery_gauge_info.tz_name = pdata->therm_zone_name;
 	di->bg_dev = battery_gauge_register(di->dev, &palmas_battery_gauge_info);
 	if (IS_ERR(di->bg_dev)) {
 		ret = PTR_ERR(di->bg_dev);
