@@ -41,7 +41,7 @@
 #define ARDBEG_WLAN_PWR	TEGRA_GPIO_PX7
 #define ARDBEG_WLAN_WOW	TEGRA_GPIO_PU5
 
-#define ARDBEG_SD_CD	(MAX77660_GPIO_BASE + MAX77660_GPIO9)
+#define ARDBEG_SD_CD	TEGRA_GPIO_PV2
 
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
@@ -158,6 +158,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
+	.tap_delay = 0,
+	.trim_delay = 0x3,
 /*	.max_clk = 12000000, */
 };
 
@@ -166,6 +168,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 1,
+	.tap_delay = 0x4,
+	.trim_delay = 0x4,
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
