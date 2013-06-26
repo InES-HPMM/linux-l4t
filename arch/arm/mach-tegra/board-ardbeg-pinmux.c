@@ -216,11 +216,11 @@ static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 	/*Set DAP2 drive (required for Codec Master Mode)*/
 	SET_DRIVE(DAP2, DISABLE, ENABLE, DIV_1, 51, 51, FASTEST, FASTEST),
 
-	/* FIXME: update settings for t124 ardbeg */
-	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 36, 20, SLOW, SLOW),
+	/* SDMMC1 */
+	SET_DRIVE(SDIO1, ENABLE, DISABLE, DIV_1, 54, 70, FASTEST, FASTEST),
 
 	/* SDMMC3 */
-	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 54, 70, FASTEST, FASTEST),
+	SET_DRIVE(SDIO3, ENABLE, DISABLE, DIV_1, 20, 42, FASTEST, FASTEST),
 
 	/* SDMMC4 */
 	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 1, 2, FASTEST,

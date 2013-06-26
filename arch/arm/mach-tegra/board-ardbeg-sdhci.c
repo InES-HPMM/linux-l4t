@@ -140,26 +140,24 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 		.built_in = 0,
 		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
-#ifndef CONFIG_MMC_EMBEDDED_SDIO
-	.pm_flags = MMC_PM_KEEP_POWER,
-#endif
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.tap_delay = 0x3,
-	.trim_delay = 0xA,
-	.ddr_clk_limit = 41000000,
-	/* FIXME remove uhs_mask for T148 silicon */
-	.uhs_mask = MMC_UHS_MASK_SDR104 |
-		MMC_UHS_MASK_DDR50,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.tap_delay = 0,
+	.trim_delay = 0x2,
+	.ddr_clk_limit = 41000000,
+	.uhs_mask = MMC_UHS_MASK_SDR104 |
+		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
+};
+
+static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
+	.cd_gpio = ARDBEG_SD_CD,
+	.wp_gpio = -1,
+	.power_gpio = -1,
+	.tap_delay = 0,
 	.trim_delay = 0x3,
+	.uhs_mask = MMC_UHS_MASK_SDR104 |
+		MMC_UHS_MASK_DDR50 | MMC_UHS_MASK_SDR50,
 /*	.max_clk = 12000000, */
 };
 
@@ -173,7 +171,8 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.mmc_data = {
 		.built_in = 1,
 		.ocr_mask = MMC_OCR_1V8_MASK,
-	}
+	},
+	.uhs_mask = MMC_MASK_HS200,
 /*	.max_clk = 12000000, */
 };
 
