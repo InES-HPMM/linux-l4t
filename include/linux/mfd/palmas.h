@@ -228,6 +228,8 @@ struct palmas {
 	/* Stored chip id */
 	int id;
 
+	unsigned int submodule_lists;
+
 	/* IRQ Data */
 	int irq;
 	u32 irq_mask;
@@ -374,6 +376,7 @@ enum palmas_chip_id {
 	TWL6037,
 	TPS65913,
 	TPS80036,
+	PALMAS_MAX_CHIP_ID,
 };
 
 enum PALMAS_CLOCK32K {

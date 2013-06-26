@@ -32,7 +32,7 @@
 			PALMAS_EXT_CONTROL_NSLEEP)
 
 enum palmas_ids {
-	PALMAS_PIN_MUX_ID,
+	PALMAS_PIN_MUX_ID = 0,
 	PALMAS_PMIC_ID,
 	PALMAS_GPIO_ID,
 	PALMAS_LEDS_ID,
@@ -56,6 +56,26 @@ static struct resource palmas_rtc_resources[] = {
 		.end    = PALMAS_RTC_ALARM_IRQ,
 		.flags  = IORESOURCE_IRQ,
 	},
+};
+
+#define TPS65913_SUB_MODULE	(BIT(PALMAS_PIN_MUX_ID) | 		\
+		BIT(PALMAS_PMIC_ID) | BIT(PALMAS_GPIO_ID) | 		\
+		BIT(PALMAS_LEDS_ID) | BIT(PALMAS_WDT_ID) |		\
+		BIT(PALMAS_RTC_ID) | BIT(PALMAS_PWRBUTTON_ID) |		\
+		BIT(PALMAS_GPADC_ID) |	BIT(PALMAS_RESOURCE_ID) |	\
+		BIT(PALMAS_CLK_ID) | BIT(PALMAS_PWM_ID)		| 	\
+		BIT(PALMAS_USB_ID) | BIT(PALMAS_EXTCON_ID))
+
+#define TPS80036_SUB_MODULE	(TPS65913_SUB_MODULE |			\
+		BIT(PALMAS_BATTERY_GAUGE_ID) | BIT(PALMAS_CHARGER_ID) |	\
+		BIT(PALMAS_SIM_ID))
+
+static unsigned int submodule_lists[PALMAS_MAX_CHIP_ID] = {
+	[PALMAS]	= TPS65913_SUB_MODULE,
+	[TWL6035]	= TPS65913_SUB_MODULE,
+	[TWL6037]	= TPS65913_SUB_MODULE,
+	[TPS65913]	= TPS65913_SUB_MODULE,
+	[TPS80036]	= TPS80036_SUB_MODULE,
 };
 
 static const struct mfd_cell palmas_children[] = {
@@ -1041,6 +1061,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	unsigned int reg, addr;
 	int slave;
 	struct mfd_cell *children;
+	int child_count;
 
 	pdata = dev_get_platdata(&i2c->dev);
 
@@ -1063,6 +1084,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(i2c, palmas);
 	palmas->dev = &i2c->dev;
 	palmas->id = id->driver_data;
+	palmas->submodule_lists = submodule_lists[palmas->id];
 	palmas->irq = i2c->irq;
 
 	for (i = 0; i < PALMAS_NUM_CLIENTS; i++) {
@@ -1170,11 +1192,17 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 
 	palmas_clk32k_init(palmas, pdata);
 
-	children = kmemdup(palmas_children, sizeof(palmas_children),
-			   GFP_KERNEL);
+	children = kzalloc(sizeof(*children) * ARRAY_SIZE(palmas_children),
+			GFP_KERNEL);
 	if (!children) {
 		ret = -ENOMEM;
 		goto err_irq;
+	}
+
+	child_count = 0;
+	for (i = 0; i< ARRAY_SIZE(palmas_children); ++i) {
+		if (palmas->submodule_lists & BIT(palmas_children[i].id))
+			children[child_count++] = palmas_children[i];
 	}
 
 	children[PALMAS_PMIC_ID].platform_data = pdata->pmic_pdata;
@@ -1194,7 +1222,7 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 	children[PALMAS_CLK_ID].pdata_size = sizeof(*pdata->clk_pdata);
 
 	ret = mfd_add_devices(palmas->dev, -1,
-			      children, ARRAY_SIZE(palmas_children),
+			      children, child_count,
 			      NULL, palmas->irq_chip_data->irq_base,
 			      NULL);
 	kfree(children);
