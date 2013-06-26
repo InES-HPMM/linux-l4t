@@ -43,6 +43,11 @@
 #define VBUS_REGULATOR_ENABLE_TIME	500000
 #define NV_CHARGER_CURRENT_LIMIT	2000
 
+enum charging_states {
+	ENABLED_HALF_IBAT = 1,
+	ENABLED_FULL_IBAT,
+	DISABLED,
+};
 
 struct palmas_charger_chip {
 	struct device			*dev;
@@ -75,6 +80,10 @@ struct palmas_charger_chip {
 	int				chg_status;
 	struct palmas			*palmas;
 	bool				battery_presense;
+	int				charging_state;
+	int				cable_connected;
+
+	struct battery_charger_thermal_dev *bc_therm_dev;
 };
 
 /* input current limit */
@@ -118,6 +127,24 @@ static int palmas_charger_enable(struct palmas_charger_chip *palmas_chip)
 			"register update failed, err %d\n", ret);
 	return ret;
 }
+
+int palmas_charger_disable(struct palmas_charger_chip *palmas_chip)
+{
+	int ret;
+
+	dev_info(palmas_chip->dev, "Charging disabled\n");
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG01,
+			PALMAS_ENABLE_CHARGE_MASK, PALMAS_DISABLE_CHARGE);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"register update failed, err %d\n", ret);
+		return ret;
+	}
+	palmas_chip->charging_state = DISABLED;
+	return ret;
+}
+
 
 static int palmas_vbus_regulator_enable_time(struct regulator_dev *rdev)
 {
@@ -218,7 +245,8 @@ static int palmas_init(struct palmas_charger_chip *palmas_chip)
 	 * Configure inout voltage to 4.52 in case of NV
 	 * NV charger.
 	 */
-	if (palmas_chip->in_current_limit == 2000)
+	if (palmas_chip->in_current_limit == 2000
+		|| palmas_chip->in_current_limit == 1000)
 		val |= PALMAS_NVCHARGER_INPUT_VOL_SEL;
 	else
 		val |= PALMAS_DEFAULT_INPUT_VOL_SEL;
@@ -233,6 +261,106 @@ static int palmas_init(struct palmas_charger_chip *palmas_chip)
 	palmas_set_usbsuspend(palmas_chip, 0);
 	return ret;
 }
+
+int palmas_full_current_enable(struct palmas_charger_chip *palmas_chip)
+{
+	int ret;
+
+	palmas_charger_enable(palmas_chip);
+
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG04, PALMAS_CHARGE_VOLTAGE_MASK,
+			PALMAS_CHARGE_VOLTAGE_4112MV);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"Failed to update charge voltage");
+		return ret;
+	}
+
+	ret = palmas_init(palmas_chip);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"Failed to set full charging current");
+		return ret;
+	}
+	palmas_chip->charging_state = ENABLED_FULL_IBAT;
+	return 0;
+}
+
+int palmas_half_current_enable(struct palmas_charger_chip *palmas_chip)
+{
+	int ret, temp;
+
+	palmas_charger_enable(palmas_chip);
+
+	ret = palmas_update_bits(palmas_chip->palmas, PALMAS_CHARGER_BASE,
+			PALMAS_CHARGER_REG04, PALMAS_CHARGE_VOLTAGE_MASK,
+			PALMAS_CHARGE_VOLTAGE_4048MV);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"Failed to update charge voltage");
+		return ret;
+	}
+
+	temp = palmas_chip->in_current_limit;
+	palmas_chip->in_current_limit = palmas_chip->in_current_limit/2;
+
+	ret = palmas_init(palmas_chip);
+	if (ret < 0) {
+		dev_err(palmas_chip->dev,
+			"Failed to set half charging current");
+		return ret;
+	}
+
+	palmas_chip->in_current_limit = temp;
+	palmas_chip->charging_state = ENABLED_HALF_IBAT;
+
+	return 0;
+}
+
+static int palams_charger_thermal_configure(
+		struct battery_charger_thermal_dev *bct_dev,
+		int temp, bool enable_charger, bool enable_charg_half_current,
+		int battery_voltage)
+{
+	struct palmas_charger_chip *chip;
+	int temperature;
+
+	chip = battery_charger_thermal_get_drvdata(bct_dev);
+	if (!chip->cable_connected)
+		return 0;
+
+	temperature = temp;
+	dev_info(chip->dev, "Battery temp %d\n", temperature);
+	if (enable_charger) {
+		if (!enable_charg_half_current &&
+			chip->charging_state != ENABLED_FULL_IBAT) {
+			palmas_full_current_enable(chip);
+			battery_charging_status_update(chip->bc_dev,
+					BATTERY_CHARGING);
+		} else if (enable_charg_half_current &&
+			chip->charging_state != ENABLED_HALF_IBAT)
+			palmas_half_current_enable(chip);
+			battery_charging_status_update(chip->bc_dev,
+					BATTERY_CHARGING);
+	} else {
+		if (chip->charging_state != DISABLED) {
+			palmas_charger_disable(chip);
+			battery_charging_status_update(chip->bc_dev,
+					BATTERY_DISCHARGING);
+		}
+	}
+	return 0;
+}
+
+struct battery_charger_thermal_ops palams_charger_thermal_ops = {
+	.thermal_configure = palams_charger_thermal_configure,
+};
+
+struct battery_charger_thermal_info palams_charger_thermal_info = {
+	.cell_id = 0,
+	.bct_ops = &palams_charger_thermal_ops,
+};
 
 static int palmas_charger_init(struct palmas_charger_chip *palmas_chip)
 {
@@ -352,19 +480,25 @@ static int palmas_set_charging_current(struct regulator_dev *rdev,
 	palmas_chip->in_current_limit = max_uA/1000;
 
 	if ((val & PALMAS_VBUS_STAT) == PALMAS_VBUS_UNKNOWN) {
+		palmas_chip->cable_connected = 0;
 		palmas_chip->in_current_limit = 500;
-		ret = palmas_init(palmas_chip);
+		palmas_full_current_enable(palmas_chip);
 		if (ret < 0)
 			goto error;
 		battery_charging_status_update(palmas_chip->bc_dev,
 					BATTERY_DISCHARGING);
+		battery_charger_thermal_stop_monitoring(
+				palmas_chip->bc_therm_dev);
 	} else {
+		palmas_chip->cable_connected = 1;
 		palmas_chip->chg_status = BATTERY_CHARGING;
-		ret = palmas_init(palmas_chip);
+		palmas_full_current_enable(palmas_chip);
 		if (ret < 0)
 			goto error;
 		battery_charging_status_update(palmas_chip->bc_dev,
 				BATTERY_CHARGING);
+		battery_charger_thermal_start_monitoring(
+				palmas_chip->bc_therm_dev);
 	}
 	return 0;
 error:
@@ -873,12 +1007,29 @@ static int palmas_probe(struct platform_device *pdev)
 	}
 	battery_charger_set_drvdata(palmas_chip->bc_dev, palmas_chip);
 
+	palams_charger_thermal_info.polling_time_sec =
+			pdata->bcharger_pdata->temperature_poll_period_secs;
+	palams_charger_thermal_info.tz_name =
+			pdata->bcharger_pdata->battery_tz_name;
+
+	if (!palams_charger_thermal_info.polling_time_sec)
+		goto skip_bcharger_init;
+
+	palmas_chip->bc_therm_dev = battery_charger_thermal_register(&pdev->dev,
+			&palams_charger_thermal_info, palmas_chip);
+	if (IS_ERR(palmas_chip->bc_therm_dev)) {
+		ret = PTR_ERR(palmas_chip->bc_therm_dev);
+		dev_err(&pdev->dev,
+			"battery charger thermal register failed: %d\n", ret);
+		goto scrub_bcharger_reg;
+	}
+
 skip_bcharger_init:
 	ret = palmas_fault_clear_sts(palmas_chip);
 	if (ret < 0) {
 		dev_err(palmas_chip->dev,
 			"fault clear status failed %d\n", ret);
-		goto scrub_bcharger_reg;
+		goto scrub_thermal_chg_reg;
 	}
 
 	ret = request_threaded_irq(palmas_chip->irq, NULL,
@@ -887,7 +1038,7 @@ skip_bcharger_init:
 	if (ret < 0) {
 		dev_err(palmas_chip->dev, "request IRQ %d fail, err = %d\n",
 				palmas_chip->irq, ret);
-		goto scrub_bcharger_reg;
+		goto scrub_thermal_chg_reg;
 	}
 
 	if (pdata->bcharger_pdata) {
@@ -900,6 +1051,9 @@ skip_bcharger_init:
 
 scrub_irq:
 	free_irq(palmas_chip->irq, palmas_chip);
+scrub_thermal_chg_reg:
+	if (palmas_chip->bc_therm_dev)
+		battery_charger_thermal_unregister(palmas_chip->bc_therm_dev);
 scrub_bcharger_reg:
 	if (pdata->bcharger_pdata)
 		battery_charger_unregister(palmas_chip->bc_dev);
@@ -919,6 +1073,9 @@ static int palmas_remove(struct platform_device *pdev)
 
 	free_irq(palmas_chip->irq, palmas_chip);
 	if (palmas_chip->battery_presense) {
+		if (palmas_chip->bc_therm_dev)
+			battery_charger_thermal_unregister(
+					palmas_chip->bc_therm_dev);
 		battery_charger_unregister(palmas_chip->bc_dev);
 		palmas_bcharger_deinit(palmas_chip);
 	}

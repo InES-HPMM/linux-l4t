@@ -504,6 +504,7 @@ struct palmas_vbus_platform_data {
 };
 
 struct palmas_bcharger_platform_data {
+	const char *battery_tz_name;
 	int max_charge_volt_mV;
 	int max_charge_current_mA;
 	int charging_term_current_mA;
@@ -512,6 +513,7 @@ struct palmas_bcharger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
+	int temperature_poll_period_secs;
 };
 
 struct palmas_charger_platform_data {
@@ -3811,6 +3813,7 @@ enum usb_irq_events {
 #define PALMAS_DISABLE_CHARGE          0x00
 #define PALMAS_ENABLE_CHARGE           0x10
 #define PALMAS_ENABLE_VBUS             0x20
+#define PALMAS_DISABLE_CHARGE		0x00
 
 #define PALMAS_REG0                    0x0
 #define PALMAS_EN_HIZ                  BIT(7)
@@ -3850,6 +3853,10 @@ enum usb_irq_events {
 #define PALMAS_INPUT_VOLTAGE_MASK      0x78
 #define PALMAS_NVCHARGER_INPUT_VOL_SEL 0x40
 #define PALMAS_DEFAULT_INPUT_VOL_SEL   0x30
+
+#define PALMAS_CHARGE_VOLTAGE_MASK		0xFC
+#define PALMAS_CHARGE_VOLTAGE_4112MV		0x98
+#define PALMAS_CHARGE_VOLTAGE_4048MV		0x88
 
 #define PALMAS_MAX_REGS                (PALMAS_REVISION_REG + 1)
 
