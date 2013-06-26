@@ -302,6 +302,8 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX1, false, 0),
+	/* DVFS_CLK set as GPIO to control RT8812 mode (high on boot) */
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX2, false, 1),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX3, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PV1, true, 0),
