@@ -1889,7 +1889,6 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 				}
 			}
 			tap_data = tuning_data->tap_data[i];
-
 			/*
 			 * If nominal vcore is not specified, run tuning once
 			 * and set the tap value. Tuning might fail but this is
@@ -1906,25 +1905,16 @@ static int sdhci_tegra_execute_tuning(struct sdhci_host *sdhci, u32 opcode)
 			voltage = tuning_params[freq_band].voltages[i];
 			if (voltage > tegra_host->nominal_vcore_mv) {
 				voltage = tegra_host->nominal_vcore_mv;
-				if (tuning_data->nominal_vcore_tun_done) {
+				if ((tuning_data->nominal_vcore_tun_done) &&
+				(tuning_params[freq_band].nr_voltages == 1)) {
 					spin_lock(&sdhci->lock);
 					continue;
 				}
-			}
-			if (voltage < tegra_host->min_vcore_override_mv) {
+			} else if (voltage <
+					tegra_host->min_vcore_override_mv) {
 				voltage = tegra_host->min_vcore_override_mv;
-				/*
-				 * If nominal and min override voltages are
-				 * equal, set one shot tuning and mark min
-				 * override tuning as done.
-				 */
-				if (voltage == tegra_host->nominal_vcore_mv) {
-					tuning_data->one_shot_tuning = true;
-					tuning_data->override_vcore_tun_done =
-						true;
-				}
-
-				if (tuning_data->override_vcore_tun_done) {
+				if ((tuning_data->override_vcore_tun_done) &&
+				(tuning_params[freq_band].nr_voltages == 1)) {
 					spin_lock(&sdhci->lock);
 					continue;
 				}
@@ -1976,7 +1966,7 @@ skip_vcore_override:
 				if (voltage == tegra_host->nominal_vcore_mv)
 					tuning_data->nominal_vcore_tun_done =
 						true;
-				else if (voltage >=
+				if (voltage >=
 					tegra_host->min_vcore_override_mv)
 					tuning_data->override_vcore_tun_done =
 						true;
