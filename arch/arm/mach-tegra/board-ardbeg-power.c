@@ -148,6 +148,8 @@ static struct regulator_consumer_supply as3722_sd2_supply[] = {
 };
 
 static struct regulator_consumer_supply as3722_sd4_supply[] = {
+	REGULATOR_SUPPLY("avdd_hdmi","tegradc.1"),
+	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_pex_pll", "tegra-pcie"),
 	REGULATOR_SUPPLY("avddio_pex", "tegra-pcie"),
 	REGULATOR_SUPPLY("dvddio_pex", "tegra-pcie"),
@@ -1118,8 +1120,6 @@ static struct regulator_consumer_supply fixed_reg_en_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 #endif
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_pex", "tegra-pcie"),
 };
 
@@ -1144,7 +1144,6 @@ static struct regulator_consumer_supply fixed_reg_en_e1733_cdc_1v2_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_sys_5v0_supply[] = {
-	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 	REGULATOR_SUPPLY("vdd_spk_5v0", NULL),
 	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639"),
 	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645"),
@@ -1280,13 +1279,13 @@ FIXED_REG(5,	vdd_dis_3v3a,	vdd_dis_3v3a,
 	0);
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
-FIXED_REG(6,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
+FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
-	TEGRA_GPIO_PH7,	true,	true,	0,	5000,	5000);
+	TEGRA_GPIO_PH7,	false,	true,	0,	5000,	5000);
 #else
-FIXED_REG(6,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
+FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	NULL,	0,	0,
-	TEGRA_GPIO_PK6,	true,	true,	0,	5000,	5000);
+	TEGRA_GPIO_PK6,	false,	true,	0,	5000,	5000);
 #endif
 
 /*
@@ -1295,6 +1294,7 @@ FIXED_REG(6,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 #define ADD_FIXED_REG(_name)    (&fixed_reg_en_##_name##_dev)
 #define ARDBEG_E1733_COMMON_FIXED_REG	\
 	ADD_FIXED_REG(battery_e1733),		\
+	ADD_FIXED_REG(vdd_hdmi_5v0),		\
 	ADD_FIXED_REG(usb0_vbus),		\
 	ADD_FIXED_REG(usb1_vbus),		\
 	ADD_FIXED_REG(usb2_vbus),		\
