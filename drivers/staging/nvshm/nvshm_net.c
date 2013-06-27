@@ -278,28 +278,17 @@ static int nvshm_netops_xmit_frame(struct sk_buff *skb, struct net_device *dev)
 	pr_debug("len=%d\n", len);
 
 	/* write data from skb (data,len) to net_device dev */
-#if 1 /* temporary debug code. delete later */
-	{
-		int i;
-		for (i = 0; i < len; i++)
-			pr_debug("skb data[%d]=%d\n", i, (unsigned)data[i]);
-	}
-#endif
 	remain = len;
 	while (remain) {
 		pr_debug("remain=%d\n", remain);
 		to_send = remain < MAX_XMIT_SIZE ? remain : MAX_XMIT_SIZE;
 		iob = nvshm_iobuf_alloc(priv->pchan, to_send);
 		if (!iob) {
-			if (priv->errno) {
-				pr_debug("%s iobuf alloc failed\n", __func__);
-				if (list)
-					nvshm_iobuf_free_cluster(list);
-				return NETDEV_TX_BUSY; /* was return -ENOMEM; */
-			} else {
-				pr_debug("%s: Xoff condition\n", __func__);
-				return NETDEV_TX_BUSY; /* was return 0; */
-			}
+			pr_warn("%s iobuf alloc failed\n", __func__);
+			netif_stop_queue(dev);
+			if (list)
+				nvshm_iobuf_free_cluster(list);
+			return NETDEV_TX_BUSY; /* was return -ENOMEM; */
 		}
 
 		iob->length = to_send;
