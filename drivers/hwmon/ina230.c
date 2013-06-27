@@ -206,7 +206,18 @@ static s32 __locked_start_current_mon(struct i2c_client *client)
 		return retval;
 	}
 
-	shunt_uV = data->pdata->resistor * data->pdata->current_threshold;
+	if (data->pdata->resistor) {
+		shunt_uV = data->pdata->resistor;
+		shunt_uV *= data->pdata->current_threshold;
+	} else {
+		s32 v;
+		/* no resistor value defined, compute shunt_uV the hard way */
+		v = data->pdata->precision_multiplier * 5120 * 25;
+		v /= data->pdata->calibration_data;
+		v *= data->pdata->current_threshold;
+		v /= data->pdata->power_lsb;
+		shunt_uV = (s16)(v & 0xffff);
+	}
 	if (data->pdata->shunt_polarity_inverted)
 		shunt_uV *= -1;
 
