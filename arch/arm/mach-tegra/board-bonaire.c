@@ -38,6 +38,7 @@
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/tegra_uart.h>
 #include <linux/serial_tegra.h>
+#include <linux/of_platform.h>
 #include <mach/clk.h>
 #include <mach/gpio-tegra.h>
 #include <mach/iomap.h>
@@ -615,6 +616,30 @@ static void __init tegra_bonaire_init(void)
 	tegra_register_fuse();
 }
 
+#ifdef CONFIG_USE_OF
+struct of_dev_auxdata tegra_bonaire_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE, "gk20a",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-vic", TEGRA_VIC_BASE, "vic03", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-msenc", TEGRA_MSENC_BASE, "msenc",
+		NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-vi", TEGRA_VI_BASE, "vi", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-isp", TEGRA_ISP_BASE, "isp", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-tsec", TEGRA_TSEC_BASE, "tsec", NULL),
+	{}
+};
+#endif
+
+static void __init tegra_bonaire_dt_init(void)
+{
+	of_platform_populate(NULL, of_default_bus_match_table,
+		tegra_bonaire_auxdata_lookup, &platform_bus);
+
+	tegra_bonaire_init();
+}
+
 static void __init tegra_bonaire_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
@@ -641,7 +666,7 @@ MACHINE_START(BONAIRE, BONAIRE_BOARD_NAME)
 	.init_early	= tegra12x_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.handle_irq	= gic_handle_irq,
-	.init_machine	= tegra_bonaire_init,
+	.init_machine	= tegra_bonaire_dt_init,
 	.timer		= &tegra_sys_timer,
 	.dt_compat	= bonaire_dt_board_compat,
 MACHINE_END
