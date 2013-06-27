@@ -31,6 +31,7 @@
 #include <mach/pinmux.h>
 #include <mach/tegra_usb_pmc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
+#include <mach/hardware.h>
 
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 #include <mach/pinmux-t14.h>
@@ -445,11 +446,10 @@ static int _usb_phy_init(struct tegra_usb_phy *phy)
 		writel(val, base + USB_NEW_CONTROL);
 	}
 	val =  readl(base + TEGRA_STREAM_DISABLE);
-#if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	val |= TEGRA_STREAM_DISABLE_OFFSET;
-#else
-	val &= ~TEGRA_STREAM_DISABLE_OFFSET;
-#endif
+	if (!tegra_platform_is_silicon())
+		val |= TEGRA_STREAM_DISABLE_OFFSET;
+	else
+		val &= ~TEGRA_STREAM_DISABLE_OFFSET;
 	writel(val , base + TEGRA_STREAM_DISABLE);
 
 	return 0;
@@ -474,11 +474,11 @@ static int usb_phy_reset(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-#if !defined(CONFIG_TEGRA_SILICON_PLATFORM)
-	val =  readl(base + TEGRA_STREAM_DISABLE);
-	val |= TEGRA_STREAM_DISABLE_OFFSET;
-	writel(val , base + TEGRA_STREAM_DISABLE);
-#endif
+	if (!tegra_platform_is_silicon()) {
+		val =  readl(base + TEGRA_STREAM_DISABLE);
+		val |= TEGRA_STREAM_DISABLE_OFFSET;
+		writel(val , base + TEGRA_STREAM_DISABLE);
+	}
 	val = readl(base + USB_TXFILLTUNING);
 	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
 		val = USB_FIFO_TXFILL_THRES(0x10);
@@ -733,10 +733,8 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 {
 	struct tegra_usb_pmc_data *pmc = &pmc_data[phy->inst];
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
 	unsigned long parent_rate;
 	int i;
-	#endif
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
@@ -749,19 +747,19 @@ static int utmi_phy_open(struct tegra_usb_phy *phy)
 
 	phy->utmi_xcvr_setup = utmi_phy_xcvr_setup_value(phy);
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	parent_rate = clk_get_rate(clk_get_parent(phy->pllu_clk));
-	for (i = 0; i < ARRAY_SIZE(utmip_freq_table); i++) {
-		if (utmip_freq_table[i].freq == parent_rate) {
-			phy->freq = &utmip_freq_table[i];
-			break;
+	if (tegra_platform_is_silicon()) {
+		parent_rate = clk_get_rate(clk_get_parent(phy->pllu_clk));
+		for (i = 0; i < ARRAY_SIZE(utmip_freq_table); i++) {
+			if (utmip_freq_table[i].freq == parent_rate) {
+				phy->freq = &utmip_freq_table[i];
+				break;
+			}
+		}
+		if (!phy->freq) {
+			pr_err("invalid pll_u parent rate %ld\n", parent_rate);
+			return -EINVAL;
 		}
 	}
-	if (!phy->freq) {
-		pr_err("invalid pll_u parent rate %ld\n", parent_rate);
-		return -EINVAL;
-	}
-	#endif
 
 	/* Power-up the VBUS, ID detector for UTMIP PHY */
 	if (phy->pdata->id_det_type == TEGRA_USB_ID)
@@ -1060,12 +1058,12 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_HS_SYNC_START_DLY(config->hssync_start_delay);
 	writel(val, base + UTMIP_HSRX_CFG1);
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	val = readl(base + UTMIP_DEBOUNCE_CFG0);
-	val &= ~UTMIP_BIAS_DEBOUNCE_A(~0);
-	val |= UTMIP_BIAS_DEBOUNCE_A(phy->freq->debounce);
-	writel(val, base + UTMIP_DEBOUNCE_CFG0);
-	#endif
+	if (tegra_platform_is_silicon()) {
+		val = readl(base + UTMIP_DEBOUNCE_CFG0);
+		val &= ~UTMIP_BIAS_DEBOUNCE_A(~0);
+		val |= UTMIP_BIAS_DEBOUNCE_A(phy->freq->debounce);
+		writel(val, base + UTMIP_DEBOUNCE_CFG0);
+	}
 
 	val = readl(base + UTMIP_MISC_CFG0);
 	val &= ~UTMIP_SUSPEND_EXIT_ON_EDGE;
@@ -1108,12 +1106,12 @@ static int utmi_phy_power_on(struct tegra_usb_phy *phy)
 	val |= UTMIP_XCVR_TERM_RANGE_ADJ(config->term_range_adj);
 	writel(val, base + UTMIP_XCVR_CFG1);
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	val = readl(base + UTMIP_BIAS_CFG1);
-	val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
-	val |= UTMIP_BIAS_PDTRK_COUNT(phy->freq->pdtrk_count);
-	writel(val, base + UTMIP_BIAS_CFG1);
-	#endif
+	if (tegra_platform_is_silicon()) {
+		val = readl(base + UTMIP_BIAS_CFG1);
+		val &= ~UTMIP_BIAS_PDTRK_COUNT(~0);
+		val |= UTMIP_BIAS_PDTRK_COUNT(phy->freq->pdtrk_count);
+		writel(val, base + UTMIP_BIAS_CFG1);
+	}
 
 	val = readl(base + UTMIP_SPARE_CFG0);
 	val &= ~FUSE_SETUP_SEL;

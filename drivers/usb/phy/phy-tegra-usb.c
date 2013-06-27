@@ -196,34 +196,34 @@ static void tegra_usb_phy_release_clocks(struct tegra_usb_phy *phy)
 			phy->pdata->u_data.host.remote_wakeup_supported)
 			tegra_clk_disable_unprepare(phy->ctrlr_clk);
 	clk_put(phy->ctrlr_clk);
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	tegra_clk_disable_unprepare(phy->pllu_clk);
-	clk_put(phy->pllu_clk);
-	#endif
+	if (tegra_platform_is_silicon()) {
+		tegra_clk_disable_unprepare(phy->pllu_clk);
+		clk_put(phy->pllu_clk);
+	}
 }
 
 static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 {
 	int err = 0;
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	phy->pllu_reg = regulator_get(&phy->pdev->dev, USB_PLL_REG);
-	if (IS_ERR_OR_NULL(phy->pllu_reg)) {
-		ERR("Couldn't get regulator %s: %ld\n", USB_PLL_REG,
-			PTR_ERR(phy->pllu_reg));
-		phy->pllu_reg = NULL;
-		return PTR_ERR(phy->pllu_reg);
-	}
-	regulator_enable(phy->pllu_reg);
+	if (tegra_platform_is_silicon()) {
+		phy->pllu_reg = regulator_get(&phy->pdev->dev, USB_PLL_REG);
+		if (IS_ERR_OR_NULL(phy->pllu_reg)) {
+			ERR("Couldn't get regulator %s: %ld\n", USB_PLL_REG,
+				PTR_ERR(phy->pllu_reg));
+			phy->pllu_reg = NULL;
+			return PTR_ERR(phy->pllu_reg);
+		}
+		regulator_enable(phy->pllu_reg);
 
-	phy->pllu_clk = clk_get_sys(NULL, "pll_u");
-	if (IS_ERR(phy->pllu_clk)) {
-		ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
-		err = PTR_ERR(phy->pllu_clk);
-		goto fail_pll;
+		phy->pllu_clk = clk_get_sys(NULL, "pll_u");
+		if (IS_ERR(phy->pllu_clk)) {
+			ERR("inst:[%d] Can't get pllu_clk clock\n", phy->inst);
+			err = PTR_ERR(phy->pllu_clk);
+			goto fail_pll;
+		}
+		tegra_clk_prepare_enable(phy->pllu_clk);
 	}
-	tegra_clk_prepare_enable(phy->pllu_clk);
-	#endif
 
 	phy->ctrlr_clk = clk_get(&phy->pdev->dev, NULL);
 	if (IS_ERR(phy->ctrlr_clk)) {
@@ -266,14 +266,15 @@ fail_sclk:
 	clk_put(phy->ctrlr_clk);
 
 fail_ctrlr_clk:
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	tegra_clk_disable_unprepare(phy->pllu_clk);
-	clk_put(phy->pllu_clk);
-
+	if (tegra_platform_is_silicon()) {
+		tegra_clk_disable_unprepare(phy->pllu_clk);
+		clk_put(phy->pllu_clk);
+	}
 fail_pll:
-	regulator_disable(phy->pllu_reg);
-	regulator_put(phy->pllu_reg);
-	#endif
+	if (tegra_platform_is_silicon()) {
+		regulator_disable(phy->pllu_reg);
+		regulator_put(phy->pllu_reg);
+	}
 
 	return err;
 }
@@ -318,12 +319,10 @@ void tegra_usb_phy_close(struct usb_phy *x)
 
 	tegra_usb_phy_release_clocks(phy);
 
-	#ifdef CONFIG_TEGRA_SILICON_PLATFORM
-	if (phy->pllu_reg) {
+	if (tegra_platform_is_silicon() && phy->pllu_reg) {
 		regulator_disable(phy->pllu_reg);
 		regulator_put(phy->pllu_reg);
 	}
-	#endif
 }
 
 irqreturn_t tegra_usb_phy_irq(struct tegra_usb_phy *phy)
