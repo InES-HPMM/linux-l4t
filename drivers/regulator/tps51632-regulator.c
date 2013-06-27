@@ -287,6 +287,8 @@ static struct tps51632_regulator_platform_data *
 					TPS51632_MIN_VOLATGE;
 	pdata->max_voltage_uV = pdata->reg_init_data->constraints.max_uV ? :
 					TPS51632_MAX_VOLATGE;
+	pdata->slew_rate_uv_per_us =
+				pdata->reg_init_data->constraints.ramp_delay;
 	return pdata;
 }
 #else
