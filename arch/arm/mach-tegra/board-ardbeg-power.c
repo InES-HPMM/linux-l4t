@@ -581,6 +581,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("avdd_pll_m", NULL),
 	REGULATOR_SUPPLY("avdd_pll_cud2dpd", NULL),
 	REGULATOR_SUPPLY("avdd_pll_utmip", NULL),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
 	REGULATOR_SUPPLY("avdd_pll_x", NULL),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_csi_dsi_pll", "tegradc.1"),
@@ -598,6 +599,7 @@ static struct regulator_consumer_supply palmas_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_pex_pll", NULL),
 	REGULATOR_SUPPLY("avddio_pex_pll", NULL),
 	REGULATOR_SUPPLY("dvddio_pex", NULL),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
 };
 
 static struct regulator_consumer_supply palmas_ldo3_supply[] = {
@@ -1174,9 +1176,15 @@ FIXED_REG(1,	usb0_vbus,	usb0_vbus,
 	NULL,	0,	0,	TEGRA_GPIO_PN4,
 	true,	true,	0,	5000,	0);
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+FIXED_REG(2,	usb1_vbus,	usb1_vbus,
+	NULL,	0,	0,	TEGRA_GPIO_PK6,
+	true,	true,	0,	5000,	0);
+#else
 FIXED_REG(2,	usb1_vbus,	usb1_vbus,
 	NULL,	0,	0,	TEGRA_GPIO_PN5,
 	true,	true,	0,	5000,	0);
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 FIXED_REG(3,	usb2_vbus,	usb2_vbus,
