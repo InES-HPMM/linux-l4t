@@ -1331,6 +1331,9 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
 
 	return ret;
 }
+#ifdef CONFIG_OVERLAYFS_FS
+EXPORT_SYMBOL(do_splice_direct);
+#endif
 
 static int splice_pipe_to_pipe(struct pipe_inode_info *ipipe,
 			       struct pipe_inode_info *opipe,
