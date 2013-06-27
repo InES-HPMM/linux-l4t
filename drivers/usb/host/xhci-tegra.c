@@ -305,10 +305,12 @@ struct tegra_xhci_hcd {
 	u32 cmd_type;
 	u32 cmd_data;
 
-	struct regulator *xusb_vbus_reg;
-	struct regulator *xusb_avddio_usb3_reg;
-	struct regulator *xusb_hvdd_usb3_reg;
-	struct regulator *xusb_avdd_usb3_pll_reg;
+	struct regulator *xusb_s5p0v_reg;
+	struct regulator *xusb_s5p0v1_reg;
+	struct regulator *xusb_s5p0v2_reg;
+	struct regulator *xusb_s1p05v_reg;
+	struct regulator *xusb_s3p3v_reg;
+	struct regulator *xusb_s1p8v_reg;
 
 	struct work_struct mbox_work;
 	struct work_struct ss_elpg_exit_work;
@@ -584,98 +586,145 @@ static void tegra_xhci_cfg(struct tegra_xhci_hcd *tegra)
 static int tegra_xusb_regulator_init(struct tegra_xhci_hcd *tegra,
 		struct platform_device *pdev)
 {
+	struct tegra_xusb_regulator_name *supply = &tegra->bdata->supply;
 	int err = 0;
 
-	tegra->xusb_hvdd_usb3_reg =
-			devm_regulator_get(&pdev->dev, "hvdd_usb");
-	if (IS_ERR(tegra->xusb_hvdd_usb3_reg)) {
-		dev_err(&pdev->dev, "hvdd_usb: regulator not found: %ld."
-			, PTR_ERR(tegra->xusb_hvdd_usb3_reg));
-		err = PTR_ERR(tegra->xusb_hvdd_usb3_reg);
+	tegra->xusb_s3p3v_reg =
+			devm_regulator_get(&pdev->dev, supply->s3p3v);
+	if (IS_ERR(tegra->xusb_s3p3v_reg)) {
+		dev_err(&pdev->dev, "3p3v: regulator not found: %ld."
+			, PTR_ERR(tegra->xusb_s3p3v_reg));
+		err = PTR_ERR(tegra->xusb_s3p3v_reg);
 		goto err_null_regulator;
 	} else {
-		err = regulator_enable(tegra->xusb_hvdd_usb3_reg);
+		err = regulator_enable(tegra->xusb_s3p3v_reg);
 		if (err < 0) {
 			dev_err(&pdev->dev,
-				"hvdd_usb3: regulator enable failed:%d\n", err);
+				"3p3v: regulator enable failed:%d\n", err);
 			goto err_null_regulator;
 		}
 	}
 
-	tegra->xusb_vbus_reg = devm_regulator_get(&pdev->dev, "usb_vbus");
-	if (IS_ERR(tegra->xusb_vbus_reg)) {
-		dev_err(&pdev->dev, "vbus regulator not found: %ld."
-			, PTR_ERR(tegra->xusb_vbus_reg));
-		err = PTR_ERR(tegra->xusb_vbus_reg);
-		goto err_put_hvdd_usb3;
+	tegra->xusb_s5p0v_reg = devm_regulator_get(&pdev->dev, supply->s5p0v);
+	if (IS_ERR(tegra->xusb_s5p0v_reg)) {
+		dev_err(&pdev->dev, "5p0v regulator not found: %ld."
+			, PTR_ERR(tegra->xusb_s5p0v_reg));
+		err = PTR_ERR(tegra->xusb_s5p0v_reg);
+		goto err_put_s3p3v_reg;
 	} else {
-		err = regulator_enable(tegra->xusb_vbus_reg);
+		err = regulator_enable(tegra->xusb_s5p0v_reg);
 		if (err < 0) {
 			dev_err(&pdev->dev,
-				"vbus: regulator enable failed:%d\n", err);
-			goto err_put_hvdd_usb3;
+				"5p0v: regulator enable failed:%d\n", err);
+			goto err_put_s3p3v_reg;
 		}
 	}
 
-	tegra->xusb_avdd_usb3_pll_reg =
-		devm_regulator_get(&pdev->dev, "avdd_usb_pll");
-	if (IS_ERR(tegra->xusb_avdd_usb3_pll_reg)) {
-		dev_err(&pdev->dev, "avdd_usb3_pll regulator not found: %ld."
-			, PTR_ERR(tegra->xusb_avdd_usb3_pll_reg));
-		err = PTR_ERR(tegra->xusb_avdd_usb3_pll_reg);
-		goto err_put_vbus;
+	tegra->xusb_s1p8v_reg =
+		devm_regulator_get(&pdev->dev, supply->s1p8v);
+	if (IS_ERR(tegra->xusb_s1p8v_reg)) {
+		dev_err(&pdev->dev, "1p8v regulator not found: %ld."
+			, PTR_ERR(tegra->xusb_s1p8v_reg));
+		err = PTR_ERR(tegra->xusb_s1p8v_reg);
+		goto err_put_s5p0v_reg;
 	} else {
-		err = regulator_enable(tegra->xusb_avdd_usb3_pll_reg);
+		err = regulator_enable(tegra->xusb_s1p8v_reg);
 		if (err < 0) {
 			dev_err(&pdev->dev,
-			"avdd_usb3_pll: regulator enable failed:%d\n", err);
-			goto err_put_vbus;
+			"1p8v: regulator enable failed:%d\n", err);
+			goto err_put_s5p0v_reg;
 		}
 	}
 
-	tegra->xusb_avddio_usb3_reg =
-			devm_regulator_get(&pdev->dev, "avddio_usb");
-	if (IS_ERR(tegra->xusb_avddio_usb3_reg)) {
-		dev_err(&pdev->dev, "avddio_usb3: regulator not found: %ld."
-			, PTR_ERR(tegra->xusb_avddio_usb3_reg));
-		err = PTR_ERR(tegra->xusb_avddio_usb3_reg);
-		goto err_put_usb3_pll;
+	tegra->xusb_s1p05v_reg =
+			devm_regulator_get(&pdev->dev, supply->s1p05v);
+	if (IS_ERR(tegra->xusb_s1p05v_reg)) {
+		dev_err(&pdev->dev, "1p05v: regulator not found: %ld."
+			, PTR_ERR(tegra->xusb_s1p05v_reg));
+		err = PTR_ERR(tegra->xusb_s1p05v_reg);
+		goto err_put_s1p8v_reg;
 	} else {
-		err = regulator_enable(tegra->xusb_avddio_usb3_reg);
+		err = regulator_enable(tegra->xusb_s1p05v_reg);
 		if (err < 0) {
 			dev_err(&pdev->dev,
-			"avddio_usb3: regulator enable failed:%d\n", err);
-			goto err_put_usb3_pll;
+			"1p05v: regulator enable failed:%d\n", err);
+			goto err_put_s1p8v_reg;
 		}
 	}
 
+	if (tegra->bdata->uses_different_vbus_per_port) {
+		tegra->xusb_s5p0v1_reg = devm_regulator_get(&pdev->dev,
+						supply->s5p0v1);
+		if (IS_ERR(tegra->xusb_s5p0v1_reg)) {
+			dev_err(&pdev->dev, "5p0v1 regulator not found: %ld."
+				, PTR_ERR(tegra->xusb_s5p0v1_reg));
+			err = PTR_ERR(tegra->xusb_s5p0v1_reg);
+			goto err_put_s1p05v_reg;
+		} else {
+			err = regulator_enable(tegra->xusb_s5p0v1_reg);
+			if (err < 0) {
+				dev_err(&pdev->dev,
+				"5p0v1: regulator enable failed:%d\n", err);
+				goto err_put_s1p05v_reg;
+			}
+		}
+
+		tegra->xusb_s5p0v2_reg = devm_regulator_get(&pdev->dev,
+						supply->s5p0v2);
+		if (IS_ERR(tegra->xusb_s5p0v2_reg)) {
+			dev_err(&pdev->dev, "5p0v2 regulator not found: %ld."
+				, PTR_ERR(tegra->xusb_s5p0v2_reg));
+			err = PTR_ERR(tegra->xusb_s5p0v2_reg);
+			goto err_put_s1p5v1_reg;
+		} else {
+			err = regulator_enable(tegra->xusb_s5p0v2_reg);
+			if (err < 0) {
+				dev_err(&pdev->dev,
+				"5p0v2: regulator enable failed:%d\n", err);
+				goto err_put_s1p5v1_reg;
+			}
+		}
+	}
 	return err;
 
-err_put_usb3_pll:
-	regulator_disable(tegra->xusb_avdd_usb3_pll_reg);
-err_put_vbus:
-	regulator_disable(tegra->xusb_vbus_reg);
-err_put_hvdd_usb3:
-	regulator_disable(tegra->xusb_hvdd_usb3_reg);
+err_put_s1p5v1_reg:
+	if (tegra->bdata->uses_different_vbus_per_port)
+		regulator_disable(tegra->xusb_s5p0v1_reg);
+err_put_s1p05v_reg:
+	regulator_disable(tegra->xusb_s1p05v_reg);
+err_put_s1p8v_reg:
+	regulator_disable(tegra->xusb_s1p8v_reg);
+err_put_s5p0v_reg:
+	regulator_disable(tegra->xusb_s5p0v_reg);
+err_put_s3p3v_reg:
+	regulator_disable(tegra->xusb_s3p3v_reg);
 err_null_regulator:
-	tegra->xusb_vbus_reg = NULL;
-	tegra->xusb_avddio_usb3_reg = NULL;
-	tegra->xusb_hvdd_usb3_reg = NULL;
-	tegra->xusb_avdd_usb3_pll_reg = NULL;
+	tegra->xusb_s5p0v_reg = NULL;
+	tegra->xusb_s5p0v1_reg = NULL;
+	tegra->xusb_s5p0v2_reg = NULL;
+	tegra->xusb_s1p05v_reg = NULL;
+	tegra->xusb_s3p3v_reg = NULL;
+	tegra->xusb_s1p8v_reg = NULL;
 	return err;
 }
 
 static void tegra_xusb_regulator_deinit(struct tegra_xhci_hcd *tegra)
 {
-	regulator_disable(tegra->xusb_avddio_usb3_reg);
-	regulator_disable(tegra->xusb_avdd_usb3_pll_reg);
-	regulator_disable(tegra->xusb_vbus_reg);
-	regulator_disable(tegra->xusb_hvdd_usb3_reg);
+	regulator_disable(tegra->xusb_s1p05v_reg);
+	regulator_disable(tegra->xusb_s1p8v_reg);
+	regulator_disable(tegra->xusb_s5p0v_reg);
+	regulator_disable(tegra->xusb_s3p3v_reg);
+	if (tegra->bdata->uses_different_vbus_per_port) {
+		regulator_disable(tegra->xusb_s5p0v1_reg);
+		regulator_disable(tegra->xusb_s5p0v2_reg);
+	}
 
-	tegra->xusb_avddio_usb3_reg = NULL;
-	tegra->xusb_avdd_usb3_pll_reg = NULL;
-	tegra->xusb_vbus_reg = NULL;
-	tegra->xusb_hvdd_usb3_reg = NULL;
+	tegra->xusb_s1p05v_reg = NULL;
+	tegra->xusb_s1p8v_reg = NULL;
+	tegra->xusb_s5p0v_reg = NULL;
+	tegra->xusb_s5p0v1_reg = NULL;
+	tegra->xusb_s5p0v2_reg = NULL;
+	tegra->xusb_s3p3v_reg = NULL;
 }
 
 /*
@@ -2650,8 +2699,8 @@ tegra_xhci_suspend(struct platform_device *pdev,
 		"%s: Couldn't enable USB host mode wakeup, irq=%d, error=%d\n",
 		__func__, tegra->usb3_irq, ret);
 	}
-	regulator_disable(tegra->xusb_avdd_usb3_pll_reg);
-	regulator_disable(tegra->xusb_avddio_usb3_reg);
+	regulator_disable(tegra->xusb_s1p8v_reg);
+	regulator_disable(tegra->xusb_s1p05v_reg);
 	tegra_usb2_clocks_deinit(tegra);
 
 	return ret;
@@ -2670,8 +2719,8 @@ tegra_xhci_resume(struct platform_device *pdev)
 	disable_irq_wake(tegra->usb3_irq);
 	tegra->lp0_exit = true;
 
-	regulator_enable(tegra->xusb_avddio_usb3_reg);
-	regulator_enable(tegra->xusb_avdd_usb3_pll_reg);
+	regulator_enable(tegra->xusb_s1p05v_reg);
+	regulator_enable(tegra->xusb_s1p8v_reg);
 	tegra_usb2_clocks_init(tegra);
 
 	return 0;

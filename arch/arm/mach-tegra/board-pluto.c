@@ -1137,6 +1137,13 @@ static struct tegra_xusb_board_data xusb_bdata = {
 	/* ss_portmap[0:3] = SS0 map, ss_portmap[4:7] = SS1 map */
 	.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0),
 	.uses_external_pmic = true,
+	.supply = {
+		.s5p0v = "usb_vbus",
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_usb_pll",
+		.s1p2v = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
 };
 
 static void pluto_xusb_init(void)

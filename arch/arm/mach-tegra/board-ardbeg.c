@@ -659,10 +659,32 @@ static void ardbeg_usb_init(void)
 }
 
 static struct tegra_xusb_board_data xusb_bdata = {
-	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 |
-			TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P1 |
-				TEGRA_XUSB_USB2_P2,
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_USB2_P1,
+	.supply = {
+		.s5p0v = "usb_vbus0",
+		.s5p0v1 = "usb_vbus1",
+		.s5p0v2 = "usb_vbus2",
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_usb_pll",
+		.s1p2v = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
+#else
+	.portmap = TEGRA_XUSB_SS_P0 | TEGRA_XUSB_USB2_P0 | TEGRA_XUSB_SS_P1 |
+			TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_USB2_P2,
+	.supply = {
+		.s5p0v = "usb_vbus0",
+		.s5p0v1 = "usb_vbus1",
+		.s5p0v2 = "usb_vbus2",
+		.s3p3v = "hvdd_usb",
+		.s1p8v = "avdd_pll_utmip",
+		.s1p2v = "vddio_hsic",
+		.s1p05v = "avddio_usb",
+	},
+#endif
 	.uses_external_pmic = false,
+	.uses_different_vbus_per_port = true,
 };
 
 static void ardbeg_xusb_init(void)
@@ -695,9 +717,6 @@ static void ardbeg_xusb_init(void)
 		xusb_bdata.gpio_controls_muxed_ss_lanes = false;
 		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
 			(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
-
-		/* FIXME remove below when T124 runs on Ardbeg */
-		xusb_bdata.portmap &= ~(TEGRA_XUSB_SS_P1 | TEGRA_XUSB_USB2_P2);
 
 		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
 			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
