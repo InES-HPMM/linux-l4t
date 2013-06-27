@@ -2869,9 +2869,19 @@ finish_open_created:
 	error = may_open(&nd->path, acc_mode, open_flag);
 	if (error)
 		goto out;
+
+#ifdef CONFIG_OVERLAYFS_FS
+	BUG_ON(*opened & FILE_OPENED); /* once it's opened, it's opened */
+	error = vfs_open(&nd->path, file, current_cred());
+	if (!error) {
+		*opened |= FILE_OPENED;
+	} else
+#else
 	file->f_path.mnt = nd->path.mnt;
 	error = finish_open(file, nd->path.dentry, NULL, opened);
-	if (error) {
+	if (error)
+#endif
+	{
 		if (error == -EOPENSTALE)
 			goto stale_open;
 		goto out;
