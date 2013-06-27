@@ -150,6 +150,7 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("vdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
 	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {
@@ -166,13 +167,6 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
 	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
-#ifdef CONFIG_ARCH_TEGRA_12x_SOC
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
-#endif
 	/* emmc 1.8v misssing
 	keyboard & touchpad 1.8v missing */
 };
@@ -320,6 +314,13 @@ static const struct i2c_board_info tca6416_expander[] = {
 	},
 };
 
+static const struct i2c_board_info tca6408_expander[] = {
+	{
+		I2C_BOARD_INFO("tca6408", 0x20),
+		.platform_data = &tca6416_pdata,
+	},
+};
+
 static struct i2c_board_info __initdata as3722_regulators[] = {
 	{
 		I2C_BOARD_INFO("as3722", 0x40),
@@ -348,9 +349,30 @@ int __init laguna_as3722_regulator_init(void)
 	as3722_sd6_reg_idata.constraints.init_uV = 1000000;
 	printk(KERN_INFO "%s: i2c_register_board_info\n",
 			__func__);
+
+	if (board_info.board_id == BOARD_PM358) {
+		switch (board_info.fab) {
+		case BOARD_FAB_A01:
+			as3722_pdata.reg_pdata[AS3722_LDO5] =
+				&as3722_ldo7_reg_pdata;
+			as3722_pdata.reg_pdata[AS3722_LDO7] =
+				&as3722_ldo5_reg_pdata;
+			as3722_pdata.reg_pdata[AS3722_LDO4] =
+				&as3722_ldo10_reg_pdata;
+			as3722_pdata.reg_pdata[AS3722_LDO10] =
+				&as3722_ldo4_reg_pdata;
+			break;
+		default:
+			break;
+		}
+	}
 	i2c_register_board_info(4, as3722_regulators,
 			ARRAY_SIZE(as3722_regulators));
-	if (board_info.board_id == BOARD_PM359 ||
+	if (board_info.board_id == BOARD_PM358 &&
+			board_info.fab == BOARD_FAB_A00)
+		i2c_register_board_info(0, tca6408_expander,
+				ARRAY_SIZE(tca6408_expander));
+	else if	(board_info.board_id == BOARD_PM359 ||
 			board_info.board_id == BOARD_PM358)
 		i2c_register_board_info(0, tca6416_expander,
 				ARRAY_SIZE(tca6416_expander));
@@ -466,7 +488,6 @@ static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
 
 /* Gated by GPIO_PH7  in FAB B and further*/
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
 
@@ -520,6 +541,13 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_kp_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_tp_1v8", NULL),
 	REGULATOR_SUPPLY("vdd_modem_1v8", NULL),
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
+#endif
 };
 
 /* gated by TCA6416 GPIO EXP GPIO0 */
@@ -567,6 +595,11 @@ static struct regulator_consumer_supply fixed_reg_vdd_cdc_1v2_aud_supply[] = {
 static struct regulator_consumer_supply fixed_reg_vdd_amp_shut_aud_supply[] = {
 	REGULATOR_SUPPLY("epamp", "tegra-snd-rt5645.0"),
 };
+
+static struct regulator_consumer_supply fixed_reg_vdd_dsi_mux_supply[] = {
+	REGULATOR_SUPPLY("vdd_3v3_dsi", "NULL"),
+};
+
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,		\
@@ -662,6 +695,9 @@ FIXED_REG(17,	vdd_cdc_1v2_aud,	vdd_cdc_1v2_aud,	NULL,	0,	0,
 
 FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
 		PMU_TCA6416_GPIO(3),	false,	true,	0,	1200);
+
+FIXED_REG(19,	vdd_dsi_mux,		vdd_dsi_mux,	NULL,	0,	0,
+		PMU_TCA6416_GPIO(13),	false,	true,	0,	3300);
 /*
  * Creating the fixed regulator device tables
  */
@@ -689,7 +725,8 @@ FIXED_REG(18,	vdd_amp_shut_aud,	vdd_amp_shut_aud,	NULL,	0,	0,
 #define LAGUNA_PM358_FIXED_REG		\
 	ADD_FIXED_REG(dcdc_1v2),	\
 	ADD_FIXED_REG(vdd_cdc_1v2_aud),	\
-	ADD_FIXED_REG(vdd_amp_shut_aud)
+	ADD_FIXED_REG(vdd_amp_shut_aud), \
+	ADD_FIXED_REG(vdd_dsi_mux)
 
 #define LAGUNA_PM359_FIXED_REG		\
 	ADD_FIXED_REG(dcdc_1v2),	\
