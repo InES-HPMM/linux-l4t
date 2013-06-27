@@ -632,18 +632,26 @@ static void ardbeg_modem_init(void)
 
 #ifndef CONFIG_USE_OF
 static struct platform_device *ardbeg_spi_devices[] __initdata = {
+	&tegra11_spi_device1,
 	&tegra11_spi_device4,
 };
 
-static struct tegra_spi_platform_data ardbeg_spi_pdata = {
-	.dma_req_sel		= 0,
+static struct tegra_spi_platform_data ardbeg_spi1_pdata = {
+	.dma_req_sel		= 15,
+	.spi_max_frequency	= 25000000,
+	.clock_always_on	= false,
+};
+
+static struct tegra_spi_platform_data ardbeg_spi4_pdata = {
+	.dma_req_sel		= 18,
 	.spi_max_frequency	= 25000000,
 	.clock_always_on	= false,
 };
 
 static void __init ardbeg_spi_init(void)
 {
-	tegra11_spi_device4.dev.platform_data = &ardbeg_spi_pdata;
+	tegra11_spi_device1.dev.platform_data = &ardbeg_spi1_pdata;
+	tegra11_spi_device4.dev.platform_data = &ardbeg_spi4_pdata;
 	platform_add_devices(ardbeg_spi_devices,
 			ARRAY_SIZE(ardbeg_spi_devices));
 }
