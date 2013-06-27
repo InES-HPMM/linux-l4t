@@ -404,6 +404,9 @@ int __inode_permission(struct inode *inode, int mask)
 
 	return security_inode_permission(inode, mask);
 }
+#ifdef CONFIG_OVERLAYFS_FS
+EXPORT_SYMBOL(__inode_permission);
+#endif
 
 /**
  * sb_permission - Check superblock-level permissions

@@ -41,10 +41,12 @@ static inline int __sync_blockdev(struct block_device *bdev, int wait)
  */
 extern void __init chrdev_init(void);
 
+#ifndef CONFIG_OVERLAYFS_FS
 /*
  * namei.c
  */
 extern int __inode_permission(struct inode *, int);
+#endif
 
 /*
  * namespace.c
