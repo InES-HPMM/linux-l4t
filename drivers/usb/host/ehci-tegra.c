@@ -669,7 +669,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 			;
 
 		/* wait for any control packets sent to root hub to complete */
-		mdelay(1000);
+		msleep(1000);
 	}
 
 	usb_remove_hcd(hcd);
