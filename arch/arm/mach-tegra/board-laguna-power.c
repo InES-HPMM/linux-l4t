@@ -686,9 +686,11 @@ static int __init laguna_fixed_regulator_init(void)
 	else if (board_info.board_id == BOARD_PM359)
 		return platform_add_devices(fixed_reg_devs_pm359,
 				ARRAY_SIZE(fixed_reg_devs_pm359));
-	else
+	else if (board_info.board_id == BOARD_PM363)
 		return platform_add_devices(fixed_reg_devs_pm363,
 				ARRAY_SIZE(fixed_reg_devs_pm363));
+
+	return 0;
 }
 
 subsys_initcall_sync(laguna_fixed_regulator_init);
