@@ -383,18 +383,18 @@ PALMAS_PDATA_INIT(ti913_ldo1, 1050, 1250, palmas_rails(ti913_smps7),
 		1, 1, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo2, 1200, 1200, palmas_rails(ti913_smps6),
 		0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_ldo3, 3100, 3100, palmas_rails(ti913_regen1),
+PALMAS_PDATA_INIT(ti913_ldo3, 3100, 3100, NULL,
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo4, 1200, 1200, palmas_rails(ti913_smps6),
 		0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_ldo5, 2700, 2700, palmas_rails(ti913_regen1),
+PALMAS_PDATA_INIT(ti913_ldo5, 2700, 2700, NULL,
 		0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_ldo6, 1800, 1800, palmas_rails(ti913_regen1),
+PALMAS_PDATA_INIT(ti913_ldo6, 1800, 1800, NULL,
 		0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_ldo7, 2700, 2700, palmas_rails(ti913_regen1),
+PALMAS_PDATA_INIT(ti913_ldo7, 2700, 2700, NULL,
 		0, 0, 1, 0);
 /* TODO PALMAS_PDATA_INIT(ti913_ldo8, 1000, 1100, NULL, 1, 1, 1, NORMAL);*/
-PALMAS_PDATA_INIT(ti913_ldo9, 1800, 3300, palmas_rails(ti913_regen1),
+PALMAS_PDATA_INIT(ti913_ldo9, 1800, 3300, NULL,
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldoln, 1050, 1050, palmas_rails(ti913_smps6),
 		0, 0, 1, 0);
@@ -801,12 +801,14 @@ PALMAS_PDATA_INIT(smps9, 1800, 1800, NULL, 1, 1, 0);
 PALMAS_PDATA_INIT(ldo1, 1050, 1050, palmas_rails(smps3), 0, 0, 1);
 PALMAS_PDATA_INIT(ldo2, 2800, 3000, palmas_rails(smps6), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo3, 2800, 3000, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo4, 2800, 3000, palmas_rails(smps3), 0, 0, 0);
+//PALMAS_PDATA_INIT(ldo4, 2800, 3000, palmas_rails(smps3), 0, 0, 0);
+PALMAS_PDATA_INIT(ldo4, 1500, 2100, palmas_rails(smps3), 0, 0, 0);
 PALMAS_PDATA_INIT(ldo5, 1100, 1100, palmas_rails(smps6), 1, 1, 1);
 PALMAS_PDATA_INIT(ldo6, 2700, 2700, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo7, 2800, 2800, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo8, 2800, 3000, NULL, 0, 0, 0);
-PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 1, 1, 0);
+//PALMAS_PDATA_INIT(ldo9, 2800, 3000, palmas_rails(smps3), 1, 1, 0);
+PALMAS_PDATA_INIT(ldo9, 1500, 2100, palmas_rails(smps3), 1, 1, 0);
 PALMAS_PDATA_INIT(ldo10, 1800, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo11, 3300, 3300, NULL, 0, 0, 0);
 PALMAS_PDATA_INIT(ldo12, 2800, 3000, palmas_rails(smps9), 1, 1, 0);
