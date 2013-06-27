@@ -182,6 +182,7 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_eeprom", NULL),
 	REGULATOR_SUPPLY("vddio_cam", "tegra_camera"),
 	REGULATOR_SUPPLY("vddio_cam", "vi"),
+	REGULATOR_SUPPLY("dvdd", "spi0.0"),
 };
 
 static struct regulator_consumer_supply as3722_sd6_supply[] = {
