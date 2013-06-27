@@ -159,9 +159,12 @@ void nvshm_iobuf_process_freed(struct nvshm_iobuf *desc)
 		/* update rate counter */
 		if ((chan >= 0) &&
 		    (chan < NVSHM_MAX_CHANNELS)) {
-			if (priv->chan[chan].rate_counter++ ==
-			    NVSHM_RATE_LIMIT_TRESHOLD)
+			if ((priv->chan[chan].rate_counter++ ==
+			     NVSHM_RATE_LIMIT_TRESHOLD)
+			    && (priv->chan[chan].xoff)) {
+				priv->chan[chan].xoff = 0;
 				callback = 1;
+			}
 		}
 		desc->sg_next = NULL;
 		desc->next = NULL;
@@ -211,9 +214,12 @@ void nvshm_iobuf_free(struct nvshm_iobuf *desc)
 			/* update rate counter */
 			if ((chan >= 0) &&
 			    (chan < NVSHM_MAX_CHANNELS)) {
-				if (priv->chan[chan].rate_counter++ ==
-				    NVSHM_RATE_LIMIT_TRESHOLD)
+				if ((priv->chan[chan].rate_counter++ ==
+				     NVSHM_RATE_LIMIT_TRESHOLD)
+				    && (priv->chan[chan].xoff)) {
+					priv->chan[chan].xoff = 0;
 					callback = 1;
+				}
 			}
 			desc->sg_next = NULL;
 			desc->next = NULL;
@@ -408,123 +414,6 @@ int nvshm_iobuf_check(struct nvshm_iobuf *iob)
 	return 0;
 }
 
-#ifdef IOBUF_CHECK
-static int iobuf_sanity_check(struct nvshm_handle *handle)
-{
-	struct nvshm_iobuf *list = NULL, *iob = NULL;
-	int n = 0;
-	int pass, lastpass;
-
-	/* Test size limit */
-	pr_debug("%s Alloc request too big. Expect: failure\n", __func__);
-	iob = nvshm_iobuf_alloc(&handle->chan[0], 1000000);
-	if (iob != NULL) {
-		pr_err("%s: alloc size limit test failed\n", __func__);
-		return -1;
-	}
-	pr_debug("%s Alloc request too big. Passed\n", __func__);
-
-	list = iob = NULL;
-
-	pr_debug("%s Alloc test. Expect: success\n", __func__);
-	iob = nvshm_iobuf_alloc(&handle->chan[0], 10);
-	if (iob == NULL) {
-		pr_err("%s: alloc test failed\n", __func__);
-		return -1;
-	}
-	pr_debug("%s Alloc test. passed\n", __func__);
-
-	pr_debug("%s free test. Expect: success\n", __func__);
-	nvshm_iobuf_free(iob);
-	pr_debug("%s free test. passed\n", __func__);
-
-	pr_debug("%s double free test. Expect: failure\n", __func__);
-	/* Test double free (harmless but error msg in dmesg */
-	nvshm_iobuf_free(iob);
-	pr_debug("%s double free test. passed\n", __func__);
-
-	lastpass = 0;
-	for (pass = 0; pass < 2; pass++) {
-		list = iob = NULL;
-		n = 0;
-		pr_debug("%s Mass alloc #%d. Exp: failure after #%ld alloc\n",
-			__func__,
-			pass,
-			handle->desc_size / sizeof(struct nvshm_iobuf));
-		/* Test alloc limit */
-		do {
-			iob = nvshm_iobuf_alloc(&handle->chan[0], 100);
-			if (iob)
-				n++;
-			if (list) {
-				if (iob) {
-					iob->next = NVSHM_A2B(handle, list);
-					list = iob;
-				}
-			} else {
-				list = iob;
-			}
-		} while (iob);
-		if (lastpass) {
-			if (n < lastpass) {
-				pr_err("%s Mass alloc #%d. last %d curr %d\n",
-				       __func__, pass, lastpass, n);
-				return -1;
-			}
-		}
-		lastpass = n;
-		pr_debug("%s Mass alloc #%d. Num of alloc=%d\n",
-			__func__, pass, n);
-
-		pr_debug("%s free cluster test #%d. Expect: success\n",
-			__func__, pass);
-		nvshm_iobuf_free_cluster(list);
-		pr_debug("%s free cluster test #%d. passed\n", __func__, pass);
-	}
-
-	lastpass = 0;
-	for (pass = 0; pass < 2; pass++) {
-		list = iob = NULL;
-		n = 0;
-		pr_debug("%s Mass alloc (trans) #%d. Exp:  fail after #%ld\n",
-			__func__,
-			pass,
-			handle->desc_size / sizeof(struct nvshm_iobuf));
-		/* Test alloc limit */
-		do {
-			iob = nvshm_iobuf_alloc(&handle->chan[0], 100);
-			if (iob)
-				n++;
-
-			if (list) {
-				if (iob) {
-					iob->sg_next = NVSHM_A2B(handle, list);
-					list = iob;
-				}
-			} else {
-				list = iob;
-			}
-		} while (iob);
-		if (lastpass)
-			if (n < lastpass) {
-				pr_err("%s Mass alloc (trans) #%d. %d/%d\n",
-				       __func__, pass, lastpass, n);
-				return -1;
-			}
-		lastpass = n;
-		pr_debug("%s Mass alloc (trans) #%d. Num=%d\n",
-			__func__, pass, n);
-
-		pr_debug("%s free cluster test (trans) #%d. Expect: success\n",
-			__func__, pass);
-		nvshm_iobuf_free_cluster(list);
-		pr_debug("%s free cluster test (trans) #%d. passed\n",
-			__func__, pass);
-	}
-	return 0;
-}
-#endif
-
 int nvshm_iobuf_init(struct nvshm_handle *handle)
 {
 	struct nvshm_iobuf *iob;
@@ -535,19 +424,9 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 
 	spin_lock_init(&alloc.lock);
 	ndesc = handle->desc_size / sizeof(struct nvshm_iobuf) ;
-	if (ndesc < 64) {
-		pr_err("%s: no enougth space for serious tests ndesc=%d\n",
-		       __func__, ndesc);
-		return -1;
-	}
 	alloc.nbuf = ndesc;
 	alloc.free_count = 0;
 	datasize =  handle->data_size / ndesc;
-	if (datasize < 2048) {
-		pr_err("%s: no enougth space for serious tests data size=%d\n",
-		       __func__, datasize);
-		return -1;
-	}
 	spin_lock(&alloc.lock);
 	if (handle->shared_queue_tail != handle->desc_base_virt) {
 		pr_err("%s initial tail != desc_base_virt not supported yet\n",
@@ -562,6 +441,7 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 	dataptr += datasize;
 	iob->data_offset = NVSHM_DEFAULT_OFFSET;
 	iob->total_length = datasize;
+	iob->chan = -1;
 	iob->next = NULL;
 	iob->pool_id = NVSHM_AP_POOL_ID;
 	iob->ref = 1;
@@ -588,9 +468,5 @@ int nvshm_iobuf_init(struct nvshm_handle *handle)
 			 (long)alloc.free_pool_tail
 			 - (long)alloc.free_pool_head);
 	spin_unlock(&alloc.lock);
-#ifdef IOBUF_CHECK
-	if (iobuf_sanity_check(handle))
-		pr_err("%s iobuf sanity check failure!\n", __func__);
-#endif
 	return 0;
 }

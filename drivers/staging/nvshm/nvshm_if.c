@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/debugfs.h>
@@ -86,6 +88,7 @@ int nvshm_write(struct nvshm_channel *handle, struct nvshm_iobuf *iob)
 	}
 	priv->chan[handle->index].rate_counter -= count;
 	if (priv->chan[handle->index].rate_counter < 0) {
+		priv->chan[handle->index].xoff = 1;
 		pr_warn("%s: rate limit hit on chan %d\n", __func__,
 			handle->index);
 		ret = 1;

@@ -1,15 +1,17 @@
 /*
- * Copyright (C) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _NVSHM_TYPES_H
@@ -41,11 +43,11 @@
 
 #define NVSHM_AP_POOL_ID (128) /* IOPOOL ID - use 128-255 for AP */
 
-#define NVSHM_RATE_LIMIT_TTY (256)
-#define NVSHM_RATE_LIMIT_LOG (512)
-#define NVSHM_RATE_LIMIT_NET (2048)
-#define NVSHM_RATE_LIMIT_RPC (256)
-#define NVSHM_RATE_LIMIT_TRESHOLD (8)
+#define NVSHM_RATE_LIMIT_TTY (128)
+#define NVSHM_RATE_LIMIT_LOG (256)
+#define NVSHM_RATE_LIMIT_NET (512)
+#define NVSHM_RATE_LIMIT_RPC (128)
+#define NVSHM_RATE_LIMIT_TRESHOLD (16)
 
 /* NVSHM_IPC mailbox messages ids */
 enum nvshm_ipc_mailbox {
@@ -153,6 +155,7 @@ struct nvshm_channel {
 	struct nvshm_if_operations *ops;
 	void *data;
 	int rate_counter;
+	int xoff;
 	struct work_struct start_tx_work;
 };
 
