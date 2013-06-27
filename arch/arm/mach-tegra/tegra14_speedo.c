@@ -76,6 +76,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku)
 		break;
 
 	case 0x03:
+	case 0x83:
 		cpu_speedo_id = 1;
 		soc_speedo_id = 1;
 		threshold_index = 1;
