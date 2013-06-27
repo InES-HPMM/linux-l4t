@@ -31,6 +31,7 @@
 #include <mach/pinmux-t12.h>
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #define DEFAULT_DRIVE(_name)					\
 	{							\
 		.pingroup = TEGRA_DRIVE_PINGROUP_##_name,	\
@@ -195,7 +196,9 @@
 		.od         = TEGRA_PIN_OD_DEFAULT,         \
 		.ioreset    = TEGRA_PIN_IO_RESET_DEFAULT,   \
 	}
-
+#else
+/* All the above macros are defined in pinmux-t12.h */
+#endif
 static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	/* DEFAULT_DRIVE(<pin_group>), */

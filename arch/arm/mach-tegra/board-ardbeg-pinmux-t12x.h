@@ -318,7 +318,7 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG0, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PG1, false, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH2, false, 1),/*backlight enable*/
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH3, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH4, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PH5, false, 0),
@@ -329,7 +329,7 @@ static struct gpio_init_pin_info init_gpio_mode_ardbeg_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK1, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PJ0, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK3, true, 0),
-	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK4, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK4, false, 1),/*touch reset*/
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK2, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI6, true, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PI2, false, 0),
