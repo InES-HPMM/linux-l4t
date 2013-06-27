@@ -29,7 +29,6 @@
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/tps65090.h>
 #include <linux/regulator/max77663-regulator.h>
-#include <linux/regulator/tps51632-regulator.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -512,44 +511,6 @@ static struct i2c_board_info __initdata tps65090_regulators[] = {
 	{
 		I2C_BOARD_INFO("tps65090", 0x48),
 		.platform_data	= &tps65090_pdata,
-	},
-};
-
-/* TPS51632 DC-DC converter */
-static struct regulator_consumer_supply tps51632_dcdc_supply[] = {
-	REGULATOR_SUPPLY("vdd_cpu", NULL),
-};
-
-static struct regulator_init_data tps51632_init_data = {
-	.constraints = {						\
-		.min_uV = 500000,					\
-		.max_uV = 1520000,					\
-		.valid_modes_mask = (REGULATOR_MODE_NORMAL |		\
-					REGULATOR_MODE_STANDBY),	\
-		.valid_ops_mask = (REGULATOR_CHANGE_MODE |		\
-					REGULATOR_CHANGE_STATUS |	\
-					 REGULATOR_CHANGE_CONTROL |	\
-					REGULATOR_CHANGE_VOLTAGE),	\
-		.always_on = 1,						\
-		.boot_on =  1,						\
-		.apply_uV = 0,						\
-	},								\
-	.num_consumer_supplies = ARRAY_SIZE(tps51632_dcdc_supply),	\
-		.consumer_supplies = tps51632_dcdc_supply,		\
-};
-
-static struct tps51632_regulator_platform_data tps51632_pdata = {
-	.reg_init_data = &tps51632_init_data,
-	.enable_pwm_dvfs = false,
-	.max_voltage_uV = 1520000,
-	.base_voltage_uV = 500000,
-/*	.slew_rate_uv_per_us = 6000,*/
-};
-
-static struct i2c_board_info __initdata tps51632_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("tps51632", 0x43),
-		.platform_data	= &tps51632_pdata,
 	},
 };
 
@@ -1251,7 +1212,6 @@ int __init dalmore_regulator_init(void)
 	else
 		dalmore_max77663_regulator_init();
 
-	i2c_register_board_info(4, tps51632_boardinfo, 1);
 	platform_device_register(&dalmore_pda_power_device);
 	platform_device_register(&dalmore_gps_regulator_device);
 	return 0;
