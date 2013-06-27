@@ -80,6 +80,12 @@ enum {
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
 
+#define PMC_IO_DPD2_REQ			0x1C0
+#define PMC_IO_DPD2_REQ_CODE_SHIFT	30
+#define PMC_IO_DPD2_REQ_CODE_DPD_OFF	0x1
+#define PMC_IO_DPD2_REQ_CODE_DPD_ON	0x2
+#define PMC_IO_DPD2_REQ_DISC_BIAS	(0x1 << 27)
+
 /* FIXME: actual Tegar14 list */
 #define BURST_REG_LIST \
 	DEFINE_REG(TEGRA_EMC_BASE, EMC_RC),			\
@@ -291,6 +297,7 @@ static void __iomem *emc1_base = IO_ADDRESS(TEGRA_EMC1_BASE);
 #endif
 static void __iomem *mc_base = IO_ADDRESS(TEGRA_MC_BASE);
 static void __iomem *clk_base = IO_ADDRESS(TEGRA_CLK_RESET_BASE);
+static void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
 
 static inline void emc_writel(u32 val, unsigned long addr)
 {
@@ -641,7 +648,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	int i, dll_change, pre_wait;
 	bool dyn_sref_enabled, zcal_long;
 
-	u32 dll_override, emc_cfg_dig_dll;
+	u32 dll_override, emc_cfg_dig_dll, pmc_dpd;
 	u32 t_start, t_diff;
 
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
@@ -676,6 +683,11 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	if (dqs_preset(next_timing, last_timing)) {
 		if (pre_wait < 30)
 			pre_wait = 30; /* (T148) 30us+ for dqs vref settled */
+		/* Take the DISC pads out of DPD. */
+		pmc_dpd = (PMC_IO_DPD2_REQ_CODE_DPD_OFF <<
+			   PMC_IO_DPD2_REQ_CODE_SHIFT);
+		writel(pmc_dpd | PMC_IO_DPD2_REQ_DISC_BIAS,
+		       pmc_base + PMC_IO_DPD2_REQ);
 	}
 	emc_timing_update();
 	t_start = tegra_read_usec_raw();
@@ -783,6 +795,16 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 			__raw_writel(next_timing->burst_up_down_regs[i],
 				burst_up_down_reg_addr[i]);
 		wmb();
+	}
+
+	/* 14.3 Check if we are entering schmit mode. If we are, then DPD can
+	   be requested for the BG BIAS cells of the DISC pads. */
+	if (~next_timing->burst_regs[EMC_XM2DQSPADCTRL2_INDEX] &
+	    EMC_XM2DQSPADCTRL2_RX_FT_REC_ENABLE) {
+		pmc_dpd = (PMC_IO_DPD2_REQ_CODE_DPD_ON <<
+			   PMC_IO_DPD2_REQ_CODE_SHIFT);
+		writel(pmc_dpd | PMC_IO_DPD2_REQ_DISC_BIAS,
+		       pmc_base + PMC_IO_DPD2_REQ);
 	}
 
 	/* 15. restore auto-cal. On t148, this is just a reprogramming - its
