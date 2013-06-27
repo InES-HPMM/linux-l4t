@@ -29,6 +29,7 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/gpio.h>
 
 #include <mach/irqs.h>
 #include <mach/hardware.h>
@@ -94,10 +95,21 @@
 #define CL_DVFS_OUTPUT_CFG_MIN_SHIFT	8
 #define CL_DVFS_OUTPUT_CFG_MIN_MASK     \
 		(OUT_MASK << CL_DVFS_OUTPUT_CFG_MIN_SHIFT)
+#define CL_DVFS_OUTPUT_CFG_PWM_DELTA	(0x1 << 7)
+#define CL_DVFS_OUTPUT_CFG_PWM_ENABLE	(0x1 << 6)
+#define CL_DVFS_OUTPUT_CFG_PWM_DIV_SHIFT 0
+#define CL_DVFS_OUTPUT_CFG_PWM_DIV_MASK  \
+		(OUT_MASK << CL_DVFS_OUTPUT_CFG_PWM_DIV_SHIFT)
 
 #define CL_DVFS_OUTPUT_FORCE		0x24
+#define CL_DVFS_OUTPUT_FORCE_ENABLE	(0x1 << 6)
+#define CL_DVFS_OUTPUT_FORCE_VALUE_SHIFT 0
+#define CL_DVFS_OUTPUT_FORCE_VALUE_MASK  \
+		(OUT_MASK << CL_DVFS_OUTPUT_FORCE_VALUE_SHIFT)
+
 #define CL_DVFS_MONITOR_CTRL		0x28
 #define CL_DVFS_MONITOR_CTRL_DISABLE	0
+#define CL_DVFS_MONITOR_CTRL_OUT	5
 #define CL_DVFS_MONITOR_CTRL_FREQ	6
 #define CL_DVFS_MONITOR_DATA		0x2c
 #define CL_DVFS_MONITOR_DATA_NEW	(0x1 << 16)
@@ -252,12 +264,56 @@ static inline void invalidate_request(struct tegra_cl_dvfs *cld)
 	cl_dvfs_wmb(cld);
 }
 
-static inline int output_enable(struct tegra_cl_dvfs *cld)
+static inline bool is_i2c(struct tegra_cl_dvfs *cld)
+{
+	return cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C;
+}
+
+static inline u8 get_output_bottom(struct tegra_cl_dvfs *cld)
+{
+	return is_i2c(cld) ? 0 : cld->out_map[0]->reg_value;
+}
+
+static inline u8 get_output_top(struct tegra_cl_dvfs *cld)
+{
+	return is_i2c(cld) ?  cld->num_voltages - 1 :
+		cld->out_map[cld->num_voltages - 1]->reg_value;
+}
+
+static int output_enable(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
 
-	/* FIXME: PWM output control */
-	val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+	if (is_i2c(cld)) {
+		val |= CL_DVFS_OUTPUT_CFG_I2C_ENABLE;
+	} else {
+		int gpio = cld->p_data->u.pmu_pwm.out_gpio;
+		if (gpio) {
+			int v = cld->p_data->u.pmu_pwm.out_enable_high ? 1 : 0;
+			__gpio_set_value(gpio, v);
+			return 0;
+		}
+		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
+	}
+
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_wmb(cld);
+	return  0;
+}
+
+static int output_disable_pwm(struct tegra_cl_dvfs *cld)
+{
+	u32 val;
+
+	int gpio = cld->p_data->u.pmu_pwm.out_gpio;
+	if (gpio) {
+		int v = cld->p_data->u.pmu_pwm.out_enable_high ? 0 : 1;
+		__gpio_set_value(gpio, v);
+		return 0;
+	}
+
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	val &= ~CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
 	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
 	cl_dvfs_wmb(cld);
 	return  0;
@@ -326,7 +382,10 @@ static noinline int output_disable_flush(struct tegra_cl_dvfs *cld)
 
 static inline int output_disable_ol_prepare(struct tegra_cl_dvfs *cld)
 {
-	/* FIXME: PWM output control */
+	/* PWM output control */
+	if (!is_i2c(cld))
+		return output_disable_pwm(cld);
+
 	/*
 	 * If cl-dvfs h/w does not require output to be quiet before disable,
 	 * s/w can stop I2C communications at any time (including operations
@@ -344,7 +403,10 @@ static inline int output_disable_ol_prepare(struct tegra_cl_dvfs *cld)
 
 static inline int output_disable_post_ol(struct tegra_cl_dvfs *cld)
 {
-	/* FIXME: PWM output control */
+	/* PWM output control */
+	if (!is_i2c(cld))
+		return 0;
+
 	/*
 	 * If cl-dvfs h/w requires output to be quiet before disable, s/w
 	 * should stop I2C communications only after the switch to open loop
@@ -371,7 +433,7 @@ static inline void set_mode(struct tegra_cl_dvfs *cld,
 static inline u8 get_output_cap(struct tegra_cl_dvfs *cld,
 				struct dfll_rate_req *req)
 {
-	u32 thermal_cap = cld->num_voltages - 1;
+	u32 thermal_cap = get_output_top(cld);
 
 	if (cld->therm_cap_idx && (cld->therm_cap_idx <= cld->therm_caps_num))
 		thermal_cap = cld->thermal_out_caps[cld->therm_cap_idx - 1];
@@ -382,11 +444,12 @@ static inline u8 get_output_cap(struct tegra_cl_dvfs *cld,
 
 static inline u8 get_output_min(struct tegra_cl_dvfs *cld)
 {
-	u32 tune_min, thermal_min;
+	u32 tune_min = get_output_bottom(cld);
+	u32 thermal_min = tune_min;
 
 	tune_min = cld->tune_state == TEGRA_CL_DVFS_TUNE_LOW ?
-		0 : cld->tune_high_out_min;
-	thermal_min = 0;
+		tune_min : cld->tune_high_out_min;
+
 	if (cld->therm_floor_idx < cld->therm_floors_num)
 		thermal_min = cld->thermal_out_floors[cld->therm_floor_idx];
 
@@ -550,11 +613,12 @@ static void tune_timer_cb(unsigned long data)
 
 	clk_lock_save(cld->dfll_clk, &flags);
 
-	/* FIXME: PWM output control */
 	if (cld->tune_state == TEGRA_CL_DVFS_TUNE_HIGH_REQUEST) {
 		out_min = cld->lut_min;
 		val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
-		out_last = (val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK;
+		out_last = is_i2c(cld) ?
+			(val >> CL_DVFS_I2C_STS_I2C_LAST_SHIFT) & OUT_MASK :
+			out_min; /* no way to stall PWM: out_last >= out_min */
 
 		if (!(val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) &&
 		    (out_last >= cld->tune_high_out_min)  &&
@@ -612,12 +676,22 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
 	} while (!(data & CL_DVFS_MONITOR_DATA_NEW));
 
-	/* Defer calibration if I2C transaction is pending */
-	/* FIXME: PWM output control */
-	val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
-	if (val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) {
-		calibration_timer_update(cld);
-		return;
+	if (is_i2c(cld)) {
+		/* Defer calibration if I2C transaction is pending */
+		val = cl_dvfs_readl(cld, CL_DVFS_I2C_STS);
+		if (val & CL_DVFS_I2C_STS_I2C_REQ_PENDING) {
+			calibration_timer_update(cld);
+			return;
+		}
+	} else {
+		/* Get last output, then restore default frequency monitoring */
+		cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_OUT,
+				CL_DVFS_MONITOR_CTRL);
+		cl_dvfs_wmb(cld);
+		val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+			CL_DVFS_MONITOR_DATA_MASK;
+		cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_FREQ,
+				CL_DVFS_MONITOR_CTRL);
 	}
 
 	/* Adjust minimum rate */
@@ -696,9 +770,9 @@ static u8 find_mv_out_cap(struct tegra_cl_dvfs *cld, int mv)
 	for (cap = 0; cap < cld->num_voltages; cap++) {
 		uv = cld->out_map[cap]->reg_uV;
 		if (uv >= mv * 1000)
-			return cap;
+			return is_i2c(cld) ? cap : cld->out_map[cap]->reg_value;
 	}
-	return cap - 1;	/* maximum possible output */
+	return get_output_top(cld);	/* maximum possible output */
 }
 
 static u8 find_mv_out_floor(struct tegra_cl_dvfs *cld, int mv)
@@ -709,12 +783,12 @@ static u8 find_mv_out_floor(struct tegra_cl_dvfs *cld, int mv)
 	for (floor = 0; floor < cld->num_voltages; floor++) {
 		uv = cld->out_map[floor]->reg_uV;
 		if (uv > mv * 1000) {
-			if (!floor)
-				return 0; /* minimum possible output */
+			if (!floor)	/* minimum possible output */
+				return get_output_bottom(cld);
 			break;
 		}
 	}
-	return floor - 1;
+	return is_i2c(cld) ? floor - 1 : cld->out_map[floor - 1]->reg_value;
 }
 
 static int find_safe_output(
@@ -835,7 +909,12 @@ static void cl_dvfs_init_maps(struct tegra_cl_dvfs *cld)
 		BUG_ON(!m);
 		if (m != cld->out_map[j - 1])
 			cld->out_map[j++] = m;
-		cld->clk_dvfs_map[i] = j - 1;
+		if (is_i2c(cld)) {
+			cld->clk_dvfs_map[i] = j - 1;
+		} else {
+			cld->clk_dvfs_map[i] = cld->out_map[j - 1]->reg_value;
+			BUG_ON(cld->clk_dvfs_map[i] > OUT_MASK + 1);
+		}
 	}
 	BUG_ON(j > MAX_CL_DVFS_VOLTAGES);
 	cld->num_voltages = j;
@@ -851,15 +930,15 @@ static void cl_dvfs_init_tuning_thresholds(struct tegra_cl_dvfs *cld)
 	 * range set it at maximum output level to effectively disable tuning
 	 * parameters adjustment.
 	 */
-	cld->tune_high_out_min = cld->num_voltages - 1;
-	cld->tune_high_out_start = cld->num_voltages - 1;
+	cld->tune_high_out_min = get_output_top(cld);
+	cld->tune_high_out_start = cld->tune_high_out_min;
 	mv = cld->safe_dvfs->dfll_data.tune_high_min_millivolts;
 	if (mv >= cld->safe_dvfs->dfll_data.min_millivolts) {
 		u8 out_min = find_mv_out_cap(cld, mv);
 		u8 out_start = find_mv_out_cap(
 			cld, mv + CL_DVFS_TUNE_HIGH_MARGIN_MV);
 		out_start = max(out_start, (u8)(out_min + 1));
-		if ((out_start + 1) < cld->num_voltages) {
+		if (out_start < get_output_top(cld)) {
 			cld->tune_high_out_min = out_min;
 			cld->tune_high_out_start = out_start;
 			if (cld->minimax_output <= out_start)
@@ -912,7 +991,7 @@ static void cl_dvfs_init_cold_output_floor(struct tegra_cl_dvfs *cld)
 		cld->thermal_out_floors[i] = find_mv_out_cap(
 			cld, cld->safe_dvfs->dvfs_rail->therm_mv_floors[i]);
 	}
-	BUG_ON(cld->thermal_out_floors[0] + 2 >= cld->num_voltages);
+	BUG_ON(cld->thermal_out_floors[0] + 1 >= get_output_top(cld));
 	if (cld->minimax_output <= cld->thermal_out_floors[0])
 		cld->minimax_output = cld->thermal_out_floors[0] + 1;
 }
@@ -924,7 +1003,8 @@ static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
 	cl_dvfs_init_cold_output_floor(cld);
 
 	/* make sure safe output is safe at any temperature */
-	cld->safe_output = cld->thermal_out_floors[0] ? : 1;
+	cld->safe_output = cld->thermal_out_floors[0] ? :
+		get_output_bottom(cld) + 1;
 	if (cld->minimax_output <= cld->safe_output)
 		cld->minimax_output = cld->safe_output + 1;
 
@@ -934,7 +1014,26 @@ static void cl_dvfs_init_output_thresholds(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_init_pwm_if(struct tegra_cl_dvfs *cld)
 {
-	/* FIXME: not supported */
+	u32 val, div;
+	struct tegra_cl_dvfs_platform_data *p_data = cld->p_data;
+	bool delta_mode = p_data->u.pmu_pwm.delta_mode;
+
+	div = GET_DIV(cld->ref_rate, p_data->u.pmu_pwm.pwm_rate, 1);
+
+	val = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_CFG);
+	val |= delta_mode ? CL_DVFS_OUTPUT_CFG_PWM_DELTA : 0;
+	val |= (div << CL_DVFS_OUTPUT_CFG_PWM_DIV_SHIFT) &
+		CL_DVFS_OUTPUT_CFG_PWM_DIV_MASK;
+
+	/*
+	 * Keep PWM output always enabled if there is an external output buffer
+	 * controlled by dedicated GPIO.
+	 */
+	if (p_data->u.pmu_pwm.out_gpio)
+		val |= CL_DVFS_OUTPUT_CFG_PWM_ENABLE;
+
+	cl_dvfs_writel(cld, val, CL_DVFS_OUTPUT_CFG);
+	cl_dvfs_wmb(cld);
 }
 
 static void cl_dvfs_init_i2c_if(struct tegra_cl_dvfs *cld)
@@ -994,17 +1093,20 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		 */
 		out_min = get_output_min(cld);
 		out_max = get_output_cap(cld, NULL);
-		cld->lut_min = 0;
-		cld->lut_max = cld->num_voltages - 1;
+		cld->lut_min = get_output_bottom(cld);
+		cld->lut_max = get_output_top(cld);
 	} else {
+		/* LUT available only for I2C, no dynamic config WAR for PWM */
+		BUG_ON(!is_i2c(cld));
+
 		/*
 		 * Allow the entire range of LUT indexes, but limit output
 		 * voltage in LUT mapping (this "indirect" application of limits
 		 * is used, because h/w does not support dynamic change of index
 		 * limits, but dynamic reload of LUT is fine).
 		 */
-		out_min = 0;
-		out_max = cld->num_voltages - 1;
+		out_min = get_output_bottom(cld);
+		out_max = get_output_top(cld);
 		cld->lut_min = get_output_min(cld);
 		cld->lut_max = get_output_cap(cld, NULL);
 	}
@@ -1021,7 +1123,9 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 		       CL_DVFS_INTR_STS);
 
 	/* fill in LUT table */
-	cl_dvfs_load_lut(cld);
+	if (is_i2c(cld))
+		cl_dvfs_load_lut(cld);
+
 	if (cld->p_data->flags & TEGRA_CL_DVFS_DYN_OUTPUT_CFG) {
 		/* dynamic update of output register allowed - no need to reload
 		   lut - use lut limits as output register setting shadow */
@@ -1030,7 +1134,7 @@ static void cl_dvfs_init_out_if(struct tegra_cl_dvfs *cld)
 	}
 
 	/* configure transport */
-	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
+	if (is_i2c(cld))
 		cl_dvfs_init_i2c_if(cld);
 	else
 		cl_dvfs_init_pwm_if(cld);
@@ -1085,7 +1189,7 @@ static void cl_dvfs_init_cntrl_logic(struct tegra_cl_dvfs *cld)
 
 static int cl_dvfs_enable_clocks(struct tegra_cl_dvfs *cld)
 {
-	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
+	if (is_i2c(cld))
 		clk_enable(cld->i2c_clk);
 
 	clk_enable(cld->ref_clk);
@@ -1095,7 +1199,7 @@ static int cl_dvfs_enable_clocks(struct tegra_cl_dvfs *cld)
 
 static void cl_dvfs_disable_clocks(struct tegra_cl_dvfs *cld)
 {
-	if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_I2C)
+	if (is_i2c(cld))
 		clk_disable(cld->i2c_clk);
 
 	clk_disable(cld->ref_clk);
@@ -1115,8 +1219,17 @@ static int cl_dvfs_init(struct tegra_cl_dvfs *cld)
 			return ret;
 		}
 		cld->i2c_rate = clk_get_rate(cld->i2c_clk);
+	} else if (cld->p_data->pmu_if == TEGRA_CL_DVFS_PMU_PWM) {
+		int gpio = cld->p_data->u.pmu_pwm.out_gpio;
+		int flags = cld->p_data->u.pmu_pwm.out_enable_high ?
+			GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+		if (gpio && gpio_request_one(gpio, flags, "cl_dvfs_pwm")) {
+			pr_err("%s: Failed to request pwm gpio %d\n",
+			       __func__, gpio);
+			return -EPERM;
+		}
 	} else {
-		pr_err("%s: PMU interface is not I2C\n", __func__);
+		pr_err("%s: unknown PMU interface\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1695,7 +1808,8 @@ static int vmax_get(void *data, u64 *val)
 	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 	v = cld->lut_max;
-	*val = cld->out_map[v]->reg_uV / 1000;
+	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
+		cld->p_data->vdd_map[v].reg_uV / 1000;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmax_fops, vmax_get, NULL, "%llu\n");
@@ -1705,7 +1819,8 @@ static int vmin_get(void *data, u64 *val)
 	u32 v;
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 	v = cld->lut_min;
-	*val = cld->out_map[v]->reg_uV / 1000;
+	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
+		cld->p_data->vdd_map[v].reg_uV / 1000;
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(vmin_fops, vmin_get, NULL, "%llu\n");
@@ -1736,6 +1851,53 @@ static int tune_high_mv_set(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(tune_high_mv_fops, tune_high_mv_get, tune_high_mv_set,
 			"%llu\n");
+
+static int fout_mv_get(void *data, u64 *val)
+{
+	u32 v;
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+	v = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE) & OUT_MASK;
+	*val = cld->p_data->vdd_map[v].reg_uV / 1000;
+	return 0;
+}
+static int fout_mv_set(void *data, u64 val)
+{
+	u32 v;
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct tegra_cl_dvfs *cld = c->u.dfll.cl_dvfs;
+
+	/* FIXME: do we need it in i2c mode ? */
+	if (is_i2c(cld))
+		return -ENOSYS;
+
+	clk_lock_save(c, &flags);
+	clk_enable(cld->soc_clk);
+
+	v = cl_dvfs_readl(cld, CL_DVFS_OUTPUT_FORCE);
+	if (val) {
+		val = find_mv_out_cap(cld, (int)val);
+		v = (v & CL_DVFS_OUTPUT_FORCE_ENABLE) | (u32)val;
+		cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
+		cl_dvfs_wmb(cld);
+
+		if (!(v & CL_DVFS_OUTPUT_FORCE_ENABLE)) {
+			v |= CL_DVFS_OUTPUT_FORCE_ENABLE;
+			cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
+			cl_dvfs_wmb(cld);
+		}
+	} else if (v & CL_DVFS_OUTPUT_FORCE_ENABLE) {
+		v &= ~CL_DVFS_OUTPUT_FORCE_ENABLE;
+		cl_dvfs_writel(cld, v, CL_DVFS_OUTPUT_FORCE);
+		cl_dvfs_wmb(cld);
+	}
+
+	clk_disable(cld->soc_clk);
+	clk_unlock_restore(c, &flags);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(fout_mv_fops, fout_mv_get, fout_mv_set, "%llu\n");
+
 static int fmin_get(void *data, u64 *val)
 {
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
@@ -1890,6 +2052,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	if (!debugfs_create_file("tune_high_mv", S_IRUGO | S_IWUSR,
 		cl_dvfs_dentry, dfll_clk, &tune_high_mv_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("force_out_mv", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &fout_mv_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("dvco_min", S_IRUGO,

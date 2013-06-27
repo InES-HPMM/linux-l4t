@@ -74,7 +74,11 @@ struct tegra_cl_dvfs_platform_data {
 			bool			addr_10;
 		} pmu_i2c;
 		struct {
-			/* FIXME: to be defined */
+			unsigned long		pwm_rate;
+			bool			delta_mode;
+
+			int			out_gpio;
+			bool			out_enable_high;
 		} pmu_pwm;
 	} u;
 
