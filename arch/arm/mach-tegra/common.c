@@ -400,6 +400,7 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 	{ "sbc4.sclk",	NULL,		40000000,	false},
 	{ "sbc5.sclk",	NULL,		40000000,	false},
 	{ "sbc6.sclk",	NULL,		40000000,	false},
+	{ "gpu",	NULL,		0,		true},
 #ifdef CONFIG_TEGRA_PLLM_SCALED
 	{ "vi",		"pll_p",	0,		false},
 #endif
