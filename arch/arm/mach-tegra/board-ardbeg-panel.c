@@ -46,14 +46,6 @@
 #include "tegra12_host1x_devices.h"
 #endif
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
-#define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
-#else
-/* TODO: update gpio for t124 ardbeg */
-#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
-#define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
-#endif
 
 struct platform_device * __init ardbeg_host1x_init(void)
 {
@@ -81,13 +73,6 @@ struct platform_device * __init ardbeg_host1x_init(void)
 
 #ifdef CONFIG_TEGRA_DC
 
-/* HDMI Hotplug detection pin */
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-#define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
-#else
-/* TODO: update for t124 ardbeg */
-#define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
-#endif
 
 /* hdmi related regulators */
 static struct regulator *ardbeg_hdmi_reg;

@@ -90,6 +90,34 @@ machine driver of rt5639 and for ardebeg we use the below tegra
 GPIO, also the GPIO is same for T114 interposer and T124*/
 #define TEGRA_GPIO_LDO_EN	TEGRA_GPIO_PR2
 
+/*GPIOs used by board panel file */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
+#define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
+#else
+#define DSI_PANEL_RST_GPIO      TEGRA_GPIO_PH3
+#define DSI_PANEL_BL_PWM_GPIO   TEGRA_GPIO_PH1
+#endif
+
+/* HDMI Hotplug detection pin */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+#define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
+#else
+#define ardbeg_hdmi_hpd	TEGRA_GPIO_PN7
+#endif
+
+/* I2C related GPIOs */
+/* Same for interposer and t124 */
+#define TEGRA_GPIO_I2C1_SCL	TEGRA_GPIO_PC4
+#define TEGRA_GPIO_I2C1_SDA	TEGRA_GPIO_PC5
+#define TEGRA_GPIO_I2C2_SCL	TEGRA_GPIO_PT5
+#define TEGRA_GPIO_I2C2_SDA	TEGRA_GPIO_PT6
+#define TEGRA_GPIO_I2C3_SCL	TEGRA_GPIO_PBB1
+#define TEGRA_GPIO_I2C3_SDA	TEGRA_GPIO_PBB2
+#define TEGRA_GPIO_I2C4_SCL	TEGRA_GPIO_PV4
+#define TEGRA_GPIO_I2C4_SDA	TEGRA_GPIO_PV5
+#define TEGRA_GPIO_I2C5_SCL	TEGRA_GPIO_PZ6
+#define TEGRA_GPIO_I2C5_SDA	TEGRA_GPIO_PZ7
 
 /* Laguna specific */
 
