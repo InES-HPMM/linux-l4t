@@ -619,8 +619,17 @@ static __devinit int asoc_dmic_probe(struct platform_device *pdev)
 		goto err_put_clk;
 	}
 
+	ret = tegra_pcm_platform_register(&pdev->dev);
+	if (ret) {
+		dev_err(&pdev->dev, "Could not register PCM: %d\n", ret);
+		goto err_unregister_dai;
+	}
+
 	tegra_dmic_debug_add(dmic, pdev->id);
 	return 0;
+
+err_unregister_dai:
+	snd_soc_unregister_dai(&pdev->dev);
 
 err_put_clk:
 	if (dmic->parent)
@@ -641,6 +650,7 @@ static int __devexit asoc_dmic_remove(struct platform_device *pdev)
 	struct resource *res;
 
 	tegra_dmic_debug_remove(dmic);
+	tegra_pcm_platform_unregister(&pdev->dev);
 	snd_soc_unregister_dai(&pdev->dev);
 	iounmap(dmic->io_base);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

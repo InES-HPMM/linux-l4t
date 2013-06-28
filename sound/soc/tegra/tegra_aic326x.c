@@ -1365,10 +1365,11 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 		.name = "AIC3262",
 		.stream_name = "AIC3262 PCM HIFI",
 		.codec_name = "tlv320aic3262-codec",
-		.platform_name = "tegra-pcm-audio",
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
+		.platform_name = "tegra20-i2s.0",
 		.cpu_dai_name = "tegra20-i2s.0",
 #else
+		.platform_name = "tegra30-i2s.1",
 		.cpu_dai_name = "tegra30-i2s.1",
 #endif
 		.codec_dai_name = "aic326x-asi1",
@@ -1379,11 +1380,12 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 		.name = "SPDIF",
 		.stream_name = "SPDIF PCM",
 		.codec_name = "spdif-dit.0",
-		.platform_name = "tegra-pcm-audio",
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		.cpu_dai_name = "tegra20-spdif",
+		.platform_name = "tegra20-spdif",
 #else
 		.cpu_dai_name = "tegra30-spdif",
+		.platform_name = "tegra30-spdif",
 #endif
 		.codec_dai_name = "dit-hifi",
 		.ops = &tegra_aic326x_spdif_ops,
@@ -1392,11 +1394,12 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 		.name = "BT-SCO",
 		.stream_name = "BT SCO PCM",
 		.codec_name = "spdif-dit.1",
-		.platform_name = "tegra-pcm-audio",
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 		.cpu_dai_name = "tegra20-i2s.1",
+		.platform_name = "tegra20-i2s.1",
 #else
 		.cpu_dai_name = "tegra30-i2s.3",
+		.platform_name = "tegra30-i2s.3",
 #endif
 		.codec_dai_name = "dit-hifi",
 		.init = tegra_aic326x_init,
@@ -1406,7 +1409,6 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 			.name = "VOICE CALL",
 			.stream_name = "VOICE CALL PCM",
 			.codec_name = "tlv320aic3262-codec",
-			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
 			.codec_dai_name = "aic326x-asi3",
 			.ops = &tegra_aic326x_voice_call_ops,
@@ -1415,7 +1417,6 @@ static struct snd_soc_dai_link tegra_aic326x_dai[] = {
 			.name = "BT VOICE CALL",
 			.stream_name = "BT VOICE CALL PCM",
 			.codec_name = "spdif-dit.2",
-			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
 			.codec_dai_name = "dit-hifi",
 			.ops = &tegra_aic326x_bt_voice_call_ops,
@@ -1599,8 +1600,17 @@ static int tegra_aic326x_driver_probe(struct platform_device *pdev)
 
 	tegra_aic326x_dai[DAI_LINK_HIFI].cpu_dai_name =
 	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_aic326x_dai[DAI_LINK_HIFI].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
 
 	tegra_aic326x_dai[DAI_LINK_BTSCO].cpu_dai_name =
+	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+	tegra_aic326x_dai[DAI_LINK_BTSCO].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+
+	tegra_aic326x_dai[DAI_LINK_VOICE_CALL].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_aic326x_dai[DAI_LINK_BT_VOICE_CALL].platform_name =
 	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 #endif
 

@@ -1253,7 +1253,7 @@ static struct snd_soc_dai_link tegra_aic325x_dai[] = {
 		.name = "TLV320AIC325x",
 		.stream_name = "TLV320AIC325x",
 		.codec_name = "tlv320aic325x-codec",
-		.platform_name = "tegra-pcm-audio",
+		.platform_name = "tegra30-i2s.0",
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_dai_name = "tlv320aic325x-MM_EXT",
 		.init = tegra_aic325x_init,
@@ -1263,7 +1263,7 @@ static struct snd_soc_dai_link tegra_aic325x_dai[] = {
 		.name = "BT-SCO",
 		.stream_name = "BT SCO PCM",
 		.codec_name = "spdif-dit.1",
-		.platform_name = "tegra-pcm-audio",
+		.platform_name = "tegra30-i2s.3",
 		.cpu_dai_name = "tegra30-i2s.3",
 		.codec_dai_name = "dit-hifi",
 		.init = tegra_aic325x_init,
@@ -1273,7 +1273,6 @@ static struct snd_soc_dai_link tegra_aic325x_dai[] = {
 			.name = "VOICE CALL",
 			.stream_name = "VOICE CALL PCM",
 			.codec_name = "tlv320aic325x-codec",
-			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
 			.codec_dai_name = "tlv320aic325x-MM_EXT",
 			.ops = &tegra_aic325x_voice_call_ops,
@@ -1282,7 +1281,6 @@ static struct snd_soc_dai_link tegra_aic325x_dai[] = {
 			.name = "BT VOICE CALL",
 			.stream_name = "BT VOICE CALL PCM",
 			.codec_name = "spdif-dit.2",
-			.platform_name = "tegra-pcm-audio",
 			.cpu_dai_name = "dit-hifi",
 			.codec_dai_name = "dit-hifi",
 			.ops = &tegra_aic325x_bt_voice_call_ops,
@@ -1517,8 +1515,17 @@ static __devinit int tegra_aic325x_driver_probe(struct platform_device *pdev)
 
 	tegra_aic325x_dai[DAI_LINK_HIFI].cpu_dai_name =
 	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_aic325x_dai[DAI_LINK_HIFI].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
 
 	tegra_aic325x_dai[DAI_LINK_BTSCO].cpu_dai_name =
+	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+	tegra_aic325x_dai[DAI_LINK_BTSCO].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
+
+	tegra_aic325x_dai[DAI_LINK_VOICE_CALL].platform_name =
+	tegra_i2s_dai_name[machine->codec_info[HIFI_CODEC].i2s_id];
+	tegra_aic325x_dai[DAI_LINK_BT_VOICE_CALL].platform_name =
 	tegra_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 
 	card->dapm.idle_bias_off = 1;
