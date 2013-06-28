@@ -11,5 +11,7 @@ obj-$(CONFIG_VIDEO_OMAP1)		+= omap1_camera.o
 obj-$(CONFIG_VIDEO_PXA27x)		+= pxa_camera.o
 obj-$(CONFIG_VIDEO_SH_MOBILE_CEU)	+= sh_mobile_ceu_camera.o
 obj-$(CONFIG_VIDEO_SH_MOBILE_CSI2)	+= sh_mobile_csi2.o
+obj-$(CONFIG_VIDEO_TEGRA)		+= tegra_v4l2_camera.o
 
 ccflags-y += -I$(srctree)/drivers/media/i2c/soc_camera
+ccflags-y += -I$(srctree)/drivers/video/tegra/host
