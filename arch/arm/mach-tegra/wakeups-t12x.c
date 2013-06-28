@@ -27,18 +27,18 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PO5,				/* wake0 */
 	TEGRA_GPIO_PV1,				/* wake1 */
 	-EINVAL,				/* wake2 */
-	-EINVAL,				/* wake3 */
+	TEGRA_GPIO_PB6,				/* wake3 */
 	TEGRA_GPIO_PN7,				/* wake4 */
 	-EINVAL,				/* wake5 */
 	TEGRA_GPIO_PU5,				/* wake6 */
 	TEGRA_GPIO_PU6,				/* wake7 */
 	TEGRA_GPIO_PC7,				/* wake8 */
-	-EINVAL,				/* wake9 */
-	-EINVAL,				/* wake10 */
+	TEGRA_GPIO_PS2,				/* wake9 */
+	TEGRA_GPIO_PAA1,			/* wake10 */
 	TEGRA_GPIO_PW3,				/* wake11 */
 	TEGRA_GPIO_PW2,				/* wake12 */
-	-EINVAL,				/* wake13 */
-	-EINVAL,				/* wake14 */
+	TEGRA_GPIO_PY6,				/* wake13 */
+	TEGRA_GPIO_PDD3,			/* wake14 */
 	TEGRA_GPIO_PJ2,				/* wake15 */
 	-EINVAL,				/* wake16 */
 	-EINVAL,				/* wake17 */
@@ -53,10 +53,10 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PS5,				/* wake26 */
 	TEGRA_GPIO_PS0,				/* wake27 */
 	TEGRA_GPIO_PS6,				/* wake28 */
-	-EINVAL,				/* wake29 */
-	-EINVAL,				/* wake30 */
+	TEGRA_GPIO_PS7,				/* wake29 */
+	TEGRA_GPIO_PN2,				/* wake30 */
 	-EINVAL,				/* wake31 */
-	-EINVAL,				/* wake32 */
+	TEGRA_GPIO_PO4,				/* wake32 */
 	TEGRA_GPIO_PJ0,				/* wake33 */
 	TEGRA_GPIO_PK2,				/* wake34 */
 	TEGRA_GPIO_PI6,				/* wake35 */
@@ -68,47 +68,48 @@ static int tegra_gpio_wakes[] = {
 	-EINVAL,				/* wake41 */
 	-EINVAL,				/* wake42 */
 	-EINVAL,				/* wake43 */
-	-EINVAL,				/* wake44 */
+	TEGRA_GPIO_PC5,				/* wake44 */
 	TEGRA_GPIO_PBB6,			/* wake45 */
-	-EINVAL,				/* wake46 */
-	-EINVAL,				/* wake47 */
-	-EINVAL,				/* wake48 */
+	TEGRA_GPIO_PZ7,				/* wake46 */
+	TEGRA_GPIO_PT6,				/* wake47 */
+	TEGRA_GPIO_PBB6,			/* wake48 */
 	TEGRA_GPIO_PR7,				/* wake49 */
 	TEGRA_GPIO_PR4,				/* wake50 */
 	TEGRA_GPIO_PQ0,				/* wake51 */
-	-EINVAL,				/* wake52 */
-	-EINVAL,				/* wake53 */
+	TEGRA_GPIO_PEE3,			/* wake52 */
+	TEGRA_GPIO_PBB1,			/* wake53 */
 	TEGRA_GPIO_PQ5,				/* wake54 */
-	-EINVAL,				/* wake55 */
-	-EINVAL,				/* wake56 */
+	TEGRA_GPIO_PA1,				/* wake55 */
+	TEGRA_GPIO_PV2,				/* wake56 */
 	TEGRA_GPIO_PK6,				/* wake57 */
 	-EINVAL,				/* wake58 */
 	TEGRA_GPIO_PFF2,			/* wake59 */
+	-EINVAL,				/* wake60 */
 };
 
 static int tegra_wake_event_irq[] = {
 	-EAGAIN, /* ULPI DATA4 */		/* wake0 */
 	-EAGAIN,				/* wake1 */
-	-EAGAIN,				/* wake2 */
-	INT_SDMMC3, /* SDMMC3 DAT1 */		/* wake3 */
-	INT_HDMI, /* HDMI INT */		/* wake4 */
+	-EINVAL,				/* wake2 */
+	-EAGAIN, /* SDMMC3 DAT1 */		/* wake3 */
+	-EAGAIN, /* HDMI INT */		/* wake4 */
 	-EAGAIN,				/* wake5 */
 	-EAGAIN,				/* wake6 */
 	-EAGAIN,				/* wake7 */
 	-EAGAIN,				/* wake8 */
-	INT_UARTC, /* UART3 RXD */		/* wake9 */
-	INT_SDMMC4, /* SDMMC4 DAT1 */		/* wake10 */
+	-EAGAIN, /* UART3 RXD */		/* wake9 */
+	-EAGAIN, /* SDMMC4 DAT1 */		/* wake10 */
 	-EAGAIN,				/* wake11 */
 	-EAGAIN,				/* wake12 */
-	INT_SDMMC1, /* SDMMC1 DAT1 */		/* wake13 */
-	INT_PCIE, /* PEX_WAKE_N */		/* wake14 */
-	INT_THERMAL, /* soc_therm_oc4_n:i, PG_OC */	/* wake15 */
-	INT_RTC,				/* wake16 */
+	-EAGAIN, /* SDMMC1 DAT1 */		/* wake13 */
+	-EAGAIN, /* PEX_WAKE_N */		/* wake14 */
+	-EAGAIN, /* soc_therm_oc4_n:i, PG_OC */	/* wake15 */
+	-EINVAL,				/* wake16 */
 	INT_KBC,				/* wake17 */
 	INT_EXTERNAL_PMU,			/* wake18 */
-	INT_USB,				/* wake19 */
+	-EINVAL, /* INT_USB */			/* wake19 */
 	-EINVAL,				/* wake20 */
-	INT_USB,				/* wake21 */
+	-EINVAL, /* INT_USB */			/* wake21 */
 	-EINVAL,				/* wake22 */
 	-EAGAIN,				/* wake23 */
 	-EAGAIN,				/* wake24 */
@@ -116,37 +117,38 @@ static int tegra_wake_event_irq[] = {
 	-EAGAIN,				/* wake26 */
 	-EAGAIN,				/* wake27 */
 	-EAGAIN,				/* wake28 */
-	INT_THERMAL, /* soc_therm_oc1_n:i, GPU_OC_INT */	/* wake29 */
-	INT_AUDIO_CLUSTER, /* I2S0 SDATA OUT */		/* wake30 */
+	-EAGAIN, /* soc_therm_oc1_n:i, GPU_OC_INT */	/* wake29 */
+	-EAGAIN, /* I2S0 SDATA OUT */		/* wake30 */
 	-EINVAL,				/* wake31 */
-	INT_USB2, /* ULPI DATA3 */		/* wake32 */
+	-EAGAIN, /* ULPI DATA3 */		/* wake32 */
 	-EAGAIN,				/* wake33 */
 	-EAGAIN,				/* wake34 */
 	-EAGAIN,				/* wake35 */
-	-EAGAIN,				/* wake36 */
-	-EINVAL, /* TEGRA_USB3_VBUS, */		/* wake37 */
-	-EINVAL, /* TEGRA_USB3_ID, */		/* wake38 */
+	-EINVAL,				/* wake36 */
+	-EINVAL,				/* wake37 */
+	-EINVAL,				/* wake38 */
 	INT_USB, /* TEGRA_USB1_UTMIP, */	/* wake39 */
-	-EINVAL,				/* wake40 */
+	INT_USB2, /* TEGRA_USB2_UTMIP */	/* wake40 */
 	INT_USB3, /* TEGRA_USB3_UTMIP, */	/* wake41 */
-	INT_USB, /* USB1 UHSIC PHY */		/* wake42 */
-	INT_USB3, /* USB3 UHSIC PHY */		/* wake43 */
-	INT_I2C, /* I2C1 DAT */		/* wake44 */
+	-EINVAL, /* INT_USB2, USB2 UHSIC PHY */		/* wake42 */
+	-EINVAL, /* INT_USB3, USB3 UHSIC PHY */		/* wake43 */
+	-EAGAIN, /* I2C1 DAT */			/* wake44 */
 	-EAGAIN,				/* wake45 */
-	INT_I2C5, /* PWR I2C DAT */		/* wake46 */
-	INT_I2C2, /* I2C2 DAT */		/* wake47 */
-	INT_I2C3, /* I2C3 DAT */		/* wake48 */
+	-EAGAIN, /* PWR I2C DAT */		/* wake46 */
+	-EAGAIN, /* I2C2 DAT */			/* wake47 */
+	-EAGAIN, /* I2C3 DAT */			/* wake48 */
 	-EAGAIN,				/* wake49 */
 	-EAGAIN,				/* wake50 */
-	INT_KBC, /* KBC11 */			/* wake51 */
-	INT_HDMI, /* HDMI CEC */		/* wake52 */
-	INT_I2C3, /* I2C3 CLK */		/* wake53 */
+	-EAGAIN, /* KBC11 */			/* wake51 */
+	-EAGAIN, /* HDMI CEC */			/* wake52 */
+	-EAGAIN, /* I2C3 CLK */			/* wake53 */
 	-EAGAIN,				/* wake54 */
-	INT_UARTC, /* UART3 CTS */		/* wake55 */
-	INT_SDMMC3, /* SDMMC3 CD */		/* wake56 */
+	-EAGAIN, /* UART3 CTS */		/* wake55 */
+	-EAGAIN, /* SDMMC3 CD */		/* wake56 */
 	-EAGAIN, /* EN_VDD_HDMI, */		/* wake57 */
-	-EAGAIN,				/* wake58 */
+	INT_XUSB_PADCTL,			/* wake58 */
 	-EAGAIN,				/* wake59 */
+	-EINVAL,				/* wake60 */
 };
 
 static int last_gpio = -1;
