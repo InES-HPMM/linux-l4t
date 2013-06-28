@@ -1032,7 +1032,7 @@ static int setup_stream(struct dtv_stream *stream,
 		stream->buf_size, stream->num_bufs);
 
 	/* init refs to buffers */
-	stream->bufs = kmalloc(stream->num_bufs * sizeof(struct dtv_buffer *),
+	stream->bufs = kmalloc(stream->num_bufs * sizeof(struct dtv_buffer),
 			       GFP_KERNEL);
 	if (!stream->bufs)
 		return -ENOMEM;
