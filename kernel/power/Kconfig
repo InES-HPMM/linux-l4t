@@ -19,12 +19,24 @@ config SUSPEND_FREEZER
 	  Turning OFF this setting is NOT recommended! If in doubt, say Y.
 
 config HAS_WAKELOCK
-	bool
+	bool "Has Wakelock"
 	default y
+	help
+	  A wake_lock prevents the system from entering suspend or
+	  other low power states when active.
+	  Wake_lock has options to stop the system from suspending if a
+	  module holding wake_lock is active with some task.
+	  If in doubt, enable CONFIG_WAKELOCK too.
 
 config WAKELOCK
-	bool
+	bool "Wakelock"
 	default y
+	help
+	  A wake_lock prevents the system from entering suspend or
+	  other low power states when active.
+	  Wake_lock has options to stop the system from suspending if a
+	  module holding wake_lock is active with some task.
+	  If in doubt, enable CONFIG_HAS_WAKELOCK too.
 
 config HIBERNATE_CALLBACKS
 	bool
