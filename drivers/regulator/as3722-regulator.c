@@ -540,6 +540,11 @@ static int as3722_ldo_set_current_limit(struct regulator_dev *dev,
 			AS3722_LDO_ILIMIT_MASK, val);
 }
 
+static int as3722_ldo_enable_time(struct regulator_dev *dev)
+{
+	return 2000;
+}
+
 static struct regulator_ops as3722_ldo_ops = {
 	.is_enabled = as3722_ldo_is_enabled,
 	.enable = as3722_ldo_enable,
@@ -549,6 +554,7 @@ static struct regulator_ops as3722_ldo_ops = {
 	.set_voltage = as3722_ldo_set_voltage,
 	.get_current_limit = as3722_ldo_get_current_limit,
 	.set_current_limit = as3722_ldo_set_current_limit,
+	.enable_time = as3722_ldo_enable_time,
 };
 
 /*
@@ -861,6 +867,11 @@ static int as3722_sd_set_voltage(struct regulator_dev *dev,
 							selector);
 }
 
+static int as3722_sd_enable_time(struct regulator_dev *dev)
+{
+	return 2000;
+}
+
 static struct regulator_ops as3722_sd_ops = {
 	.is_enabled = as3722_sd_is_enabled,
 	.enable = as3722_sd_enable,
@@ -870,6 +881,7 @@ static struct regulator_ops as3722_sd_ops = {
 	.set_voltage = as3722_sd_set_voltage,
 	.get_mode = as3722_sd_get_mode,
 	.set_mode = as3722_sd_set_mode,
+	.enable_time = as3722_sd_enable_time,
 };
 
 static struct regulator_desc regulators[] = {
