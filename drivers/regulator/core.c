@@ -1117,6 +1117,15 @@ static int set_machine_constraints(struct regulator_dev *rdev,
 			rdev_err(rdev, "failed to enable\n");
 			goto out;
 		}
+
+		ret = _regulator_get_enable_time(rdev);
+		if (ret > 0) {
+			if (ret >= 1000) {
+				mdelay(ret / 1000);
+				udelay(ret % 1000);
+			} else
+				udelay(ret);
+		}
 	}
 
 	if (rdev->constraints->ramp_delay && ops->set_ramp_delay) {
