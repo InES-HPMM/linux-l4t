@@ -95,6 +95,7 @@ struct soctherm_throttle_dev {
 	u8 divisor;
 	u16 duration;
 	u8 step;
+	char *throttling_depth;
 };
 
 enum throt_mode {

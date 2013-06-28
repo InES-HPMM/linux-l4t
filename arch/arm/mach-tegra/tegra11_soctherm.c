@@ -36,6 +36,7 @@
 #include <linux/uaccess.h>
 #include <linux/thermal.h>
 #include <linux/platform_data/thermal_sensors.h>
+#include <linux/bug.h>
 
 #include <mach/tegra_fuse.h>
 
@@ -72,12 +73,14 @@ static const int precision; /* default 0 -> low precision */
 #define CTL_LVL0_CPU0_DN_THRESH_MASK	0xff
 #define CTL_LVL0_CPU0_EN_SHIFT		8
 #define CTL_LVL0_CPU0_EN_MASK		0x1
-#define CTL_LVL0_CPU0_DEV_THROT_LIGHT	0x1
-#define CTL_LVL0_CPU0_DEV_THROT_HEAVY	0x2
 #define CTL_LVL0_CPU0_CPU_THROT_SHIFT	5
 #define CTL_LVL0_CPU0_CPU_THROT_MASK	0x3
+#define CTL_LVL0_CPU0_CPU_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_CPU_THROT_HEAVY	0x2
 #define CTL_LVL0_CPU0_GPU_THROT_SHIFT	3
 #define CTL_LVL0_CPU0_GPU_THROT_MASK	0x3
+#define CTL_LVL0_CPU0_GPU_THROT_LIGHT	0x1
+#define CTL_LVL0_CPU0_GPU_THROT_HEAVY	0x2
 #define CTL_LVL0_CPU0_MEM_THROT_SHIFT	2
 #define CTL_LVL0_CPU0_MEM_THROT_MASK	0x1
 #define CTL_LVL0_CPU0_STATUS_SHIFT	0
@@ -172,6 +175,8 @@ static const int precision; /* default 0 -> low precision */
 #define TS_TEMP2_MEM_TEMP_MASK		0xffff
 #define TS_TEMP2_PLLX_TEMP_SHIFT	0
 #define TS_TEMP2_PLLX_TEMP_MASK		0xffff
+
+#define TS_TEMP_SW_OVERRIDE		0x1d8
 
 #define TH_INTR_STATUS			0x84
 #define TH_INTR_ENABLE			0x88
@@ -329,6 +334,14 @@ static const int precision; /* default 0 -> low precision */
 #define THROT_PSKIP_RAMP_STEP_SHIFT		0
 #define THROT_PSKIP_RAMP_STEP_MASK		0xff
 
+#define THROT_PSKIP_CTRL_LITE_GPU	0x438
+#define THROT_PSKIP_CTRL_THROT_DEPTH_SHIFT		16
+#define THROT_PSKIP_CTRL_THROT_DEPTH_MASK		0x7
+#define THROT_DEPTH_NONE	0x0
+#define THROT_DEPTH_LOW		0x1
+#define THROT_DEPTH_MED		0x2
+#define THROT_DEPTH_HIG		0x4
+
 #define THROT_PRIORITY_LITE			0x444
 #define THROT_PRIORITY_LITE_PRIO_SHIFT		0
 #define THROT_PRIORITY_LITE_PRIO_MASK		0xff
@@ -392,7 +405,6 @@ static const int precision; /* default 0 -> low precision */
 #define PMU_16BIT_SUPPORT_MASK			0x1
 #define PMU_I2C_ADDRESS_SHIFT			0
 #define PMU_I2C_ADDRESS_MASK			0x7f
-
 
 #define THROT_PSKIP_CTRL(throt, dev)		(THROT_PSKIP_CTRL_LITE_CPU + \
 						(THROT_OFFSET * throt) + \
@@ -483,6 +495,27 @@ static inline long temp_convert(int cap, int a, int b)
 	cap *= LOWER_PRECISION_FOR_CONV(500);
 	cap /= 8;
 	return cap;
+}
+
+static inline u32 temp_translate_rev(long temp)
+{
+	int sign;
+	int low_bit;
+
+	u32 lsb = 0;
+	u32 abs = 0;
+	u32 reg = 0;
+	sign = (temp > 0 ? 1 : -1);
+	low_bit = (sign > 0 ? 0 : 1);
+	temp *= sign;
+	/* high precision only */
+	if (!PRECISION_IS_LOWER()) {
+		lsb = ((temp % 1000) > 0) ? 1 : 0;
+		abs = (temp - 500 * lsb) / 1000;
+		abs &= 0xff;
+		reg = ((abs << 8) | (lsb << 7) | low_bit);
+	}
+	return reg;
 }
 
 #ifdef CONFIG_THERMAL
@@ -583,10 +616,24 @@ static const struct soctherm_sensor default_t14x_sensor_params = {
 	.pdiv_ATE  = 8,
 };
 
+/* TODO: not the final sensor data for T124 */
+static const struct soctherm_sensor default_t12x_sensor_params = {
+	.tall      = 16300,
+	.tiddq     = 1,
+	.ten_count = 1,
+	.tsample   = 120,
+	.tsamp_ATE = 481,
+	.pdiv      = 8,
+	.pdiv_ATE  = 8,
+};
+
 static const unsigned long default_t11x_soctherm_clk_rate = 51000000;
 static const unsigned long default_t11x_tsensor_clk_rate = 500000;
 static const unsigned long default_t14x_soctherm_clk_rate = 51000000;
 static const unsigned long default_t14x_tsensor_clk_rate = 400000;
+/* TODO : finalize the default clk rate */
+static const unsigned long default_t12x_soctherm_clk_rate = 51000000;
+static const unsigned long default_t12x_tsensor_clk_rate = 400000;
 
 /* SOC- OCx to theirt GPIO which is wakeup capable. This is T114 specific */
 static int soctherm_ocx_to_wake_gpio[TEGRA_SOC_OC_IRQ_MAX] = {
@@ -630,7 +677,6 @@ static inline void prog_hw_shutdown(struct thermal_trip_info *trip_state,
 
 	trip_temp = LOWER_PRECISION_FOR_TEMP(trip_state->trip_temp / 1000);
 
-
 	r = soctherm_readl(THERMTRIP);
 	if (therm == THERM_CPU) {
 		r = REG_SET(r, THERMTRIP_CPU_EN, 1);
@@ -664,14 +710,15 @@ static inline void prog_hw_threshold(struct thermal_trip_info *trip_state,
 	r = REG_SET(r, CTL_LVL0_CPU0_UP_THRESH, trip_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_DN_THRESH, trip_temp);
 	r = REG_SET(r, CTL_LVL0_CPU0_EN, 1);
+
 	r = REG_SET(r, CTL_LVL0_CPU0_CPU_THROT,
 		    throt == THROTTLE_HEAVY ?
-		    CTL_LVL0_CPU0_DEV_THROT_HEAVY :
-		    CTL_LVL0_CPU0_DEV_THROT_LIGHT);
+		    CTL_LVL0_CPU0_CPU_THROT_HEAVY :
+		    CTL_LVL0_CPU0_CPU_THROT_LIGHT);
 	r = REG_SET(r, CTL_LVL0_CPU0_GPU_THROT,
 		    throt == THROTTLE_HEAVY ?
-		    CTL_LVL0_CPU0_DEV_THROT_HEAVY :
-		    CTL_LVL0_CPU0_DEV_THROT_LIGHT);
+		    CTL_LVL0_CPU0_GPU_THROT_HEAVY :
+		    CTL_LVL0_CPU0_GPU_THROT_LIGHT);
 
 	soctherm_writel(r, reg_off);
 }
@@ -805,12 +852,22 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 		r = soctherm_readl(CPU_PSKIP_STATUS + (j * 4));
 		if (!REG_GET(r, CPU_PSKIP_STATUS_ENABLED))
 			continue;
-
+		if (tegra_chip_id == TEGRA_CHIPID_TEGRA12 &&
+			j == THROTTLE_DEV_GPU) {
+			for (i = THROTTLE_LIGHT; i <= THROTTLE_HEAVY; i++) {
+				if (strnstr(trip_state->cdev_type,
+					throt_names[i], THERMAL_NAME_LENGTH) &&
+					plat_data.throttle[i].devs[j].enable)
+					*cur_state |= (j + 1);
+					/* bit1: CPU bit2: GPU */
+			}
+			continue;
+		}
 		m = REG_GET(r, CPU_PSKIP_STATUS_M);
 		n = REG_GET(r, CPU_PSKIP_STATUS_N);
 		for (i = THROTTLE_LIGHT; i <= THROTTLE_HEAVY; i++) {
 			if (strnstr(trip_state->cdev_type,
-					throt_names[i], THERMAL_NAME_LENGTH) &&
+				throt_names[i], THERMAL_NAME_LENGTH) &&
 				plat_data.throttle[i].devs[j].enable &&
 				m == plat_data.throttle[i].devs[j].dividend &&
 				n == plat_data.throttle[i].devs[j].divisor)
@@ -1491,6 +1548,7 @@ static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 {
 	u32 r;
 	int i;
+	u8 gk20a_throt;
 	bool throt_enable = false;
 	struct soctherm_throttle_dev *dev;
 	struct soctherm_throttle *data = &plat_data.throttle[throt];
@@ -1501,15 +1559,37 @@ static void tegra11_soctherm_throttle_program(enum soctherm_throttle_id throt)
 			continue;
 		throt_enable = true;
 
+		if (i == THROTTLE_DEV_GPU && tegra_chip_id ==
+				TEGRA_CHIPID_TEGRA12) {
+			/* gk20a interface N:3 Mapping */
+			if (!strcmp(dev->throttling_depth,
+				"heavy_throttling"))
+				gk20a_throt = THROT_DEPTH_HIG;
+			else if (!strcmp(dev->throttling_depth,
+				"medium_throttling"))
+				gk20a_throt = THROT_DEPTH_MED;
+			else
+				gk20a_throt = THROT_DEPTH_LOW;
+
+			r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
+			r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+
+			r = REG_SET(r, THROT_PSKIP_CTRL_THROT_DEPTH,
+				gk20a_throt);
+
+			soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
+			continue;
+		}
 		if (dev->depth) {
 			THROT_DEPTH(dev, dev->depth);
-		} else if (!dev->dividend || !dev->divisor || !dev->duration ||
-			   !dev->step) {
+		} else if (!dev->dividend || !dev->divisor
+			|| !dev->duration || !dev->step) {
 			THROT_DEPTH(dev, THROT_DEPTH_DEFAULT);
 		}
 
 		r = soctherm_readl(THROT_PSKIP_CTRL(throt, i));
 		r = REG_SET(r, THROT_PSKIP_CTRL_ENABLE, dev->enable);
+
 		r = REG_SET(r, THROT_PSKIP_CTRL_DIVIDEND, dev->dividend);
 		r = REG_SET(r, THROT_PSKIP_CTRL_DIVISOR, dev->divisor);
 		soctherm_writel(r, THROT_PSKIP_CTRL(throt, i));
@@ -1585,14 +1665,24 @@ static int __init soctherm_clk_init(void)
 	}
 
 	/* initialize default clock rates */
-	default_soctherm_clk_rate =
-		tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
-		default_t14x_soctherm_clk_rate :
-		default_t11x_soctherm_clk_rate;
-	default_tsensor_clk_rate =
-		tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
-		default_t14x_tsensor_clk_rate :
-		default_t11x_tsensor_clk_rate;
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11) {
+		default_soctherm_clk_rate =
+			default_t11x_soctherm_clk_rate;
+		default_tsensor_clk_rate =
+			default_t11x_tsensor_clk_rate;
+	} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14) {
+		default_soctherm_clk_rate =
+			default_t14x_soctherm_clk_rate;
+		default_tsensor_clk_rate =
+			default_t14x_tsensor_clk_rate;
+	} else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+		default_soctherm_clk_rate =
+			default_t12x_soctherm_clk_rate;
+		default_tsensor_clk_rate =
+			default_t12x_tsensor_clk_rate;
+	} else {
+		BUG();
+	}
 
 	plat_data.soctherm_clk_rate =
 		plat_data.soctherm_clk_rate ?: default_soctherm_clk_rate;
@@ -1646,7 +1736,14 @@ static int soctherm_fuse_read_vsensor(void)
 	calib_ft = MAKE_SIGNED32(calib_ft, FUSE_SHIFT_FT_BITS);
 
 	nominal_calib_cp = 25;
-	nominal_calib_ft = tegra_chip_id == TEGRA_CHIPID_TEGRA14 ? 105 : 90;
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+		nominal_calib_ft = 90;
+	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
+		nominal_calib_ft = 105;
+	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+		nominal_calib_ft = 105;
+	else
+		BUG();
 
 	/* use HI precision to calculate: use fuse_temp in 0.5C */
 	actual_temp_cp = 2 * nominal_calib_cp + calib_cp;
@@ -1759,6 +1856,7 @@ static int soctherm_fuse_read_tsensor(enum soctherm_sense sensor)
 				(s64)therm_b * t14x_fuse_corr_alpha[sensor] +
 				t14x_fuse_corr_beta[sensor], (s64)1000000LL);
 		}
+		/* TO DO: Add therm_a & therm_b calculation for T124 */
 	}
 
 	therm_a = LOWER_PRECISION_FOR_TEMP(therm_a);
@@ -1820,9 +1918,14 @@ static int soctherm_init_platform_data(void)
 	long rem;
 	u32 r;
 
-	sensor_defaults = tegra_chip_id == TEGRA_CHIPID_TEGRA14 ?
-		default_t14x_sensor_params : default_t11x_sensor_params;
-
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA11)
+		sensor_defaults = default_t11x_sensor_params;
+	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA14)
+		sensor_defaults = default_t14x_sensor_params;
+	else if (tegra_chip_id == TEGRA_CHIPID_TEGRA12)
+		sensor_defaults = default_t12x_sensor_params;
+	else
+		BUG();
 	/* initialize default values for unspecified params */
 	for (i = 0; i < TSENSE_SIZE; i++) {
 		therm = &plat_data.therm[tsensor2therm_map[i]];
@@ -2129,7 +2232,8 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 	int ret;
 
 	if (!(tegra_chip_id == TEGRA_CHIPID_TEGRA11 ||
-	      tegra_chip_id == TEGRA_CHIPID_TEGRA14)) {
+	      tegra_chip_id == TEGRA_CHIPID_TEGRA14 ||
+	      tegra_chip_id == TEGRA_CHIPID_TEGRA12)) {
 		pr_err("%s: Unknown chip_id %d", __func__, tegra_chip_id);
 		return -1;
 	}
@@ -2158,8 +2262,6 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 		return ret;
 	}
 
-
-	/* enable threaded interrupts */
 	if (request_threaded_irq(INT_THERMAL, soctherm_thermal_isr,
 				 soctherm_thermal_thread_func, IRQF_ONESHOT,
 				 "soctherm_thermal", NULL) < 0)
@@ -2257,7 +2359,6 @@ static int regs_show(struct seq_file *s, void *data)
 		if (i == THERM_MEM)
 			continue;
 		seq_printf(s, "%s:\n", therm_names[i]);
-
 		for (level = 0; level < 4; level++) {
 			r = soctherm_readl(TS_THERM_REG_OFFSET(CTL_LVL0_CPU0,
 								level, i));
@@ -2268,18 +2369,21 @@ static int regs_show(struct seq_file *s, void *data)
 			seq_printf(s, "%d) ", LOWER_PRECISION_FOR_CONV(state));
 			state = REG_GET(r, CTL_LVL0_CPU0_EN);
 			seq_printf(s, "En(%d) ", state);
+
 			state = REG_GET(r, CTL_LVL0_CPU0_CPU_THROT);
-			seq_printf(s, "Throt-CPU");
+			seq_printf(s, "CPU Throt");
 			seq_printf(s, "(%s) ", state ?
-				state == CTL_LVL0_CPU0_DEV_THROT_LIGHT ? "L" :
-				state == CTL_LVL0_CPU0_DEV_THROT_HEAVY ? "H" :
+			state == CTL_LVL0_CPU0_CPU_THROT_LIGHT ? "L" :
+			state == CTL_LVL0_CPU0_CPU_THROT_HEAVY ? "H" :
 				"H+L" : "none");
+
 			state = REG_GET(r, CTL_LVL0_CPU0_GPU_THROT);
-			seq_printf(s, "Throt-GPU");
+			seq_printf(s, "GPU Throt");
 			seq_printf(s, "(%s) ", state ?
-				state == CTL_LVL0_CPU0_DEV_THROT_LIGHT ? "L" :
-				state == CTL_LVL0_CPU0_DEV_THROT_HEAVY ? "H" :
+			state == CTL_LVL0_CPU0_GPU_THROT_LIGHT ? "L" :
+			state == CTL_LVL0_CPU0_GPU_THROT_HEAVY ? "H" :
 				"H+L" : "none");
+
 			state = REG_GET(r, CTL_LVL0_CPU0_STATUS);
 			seq_printf(s, "Status(%s)\n",
 				   state == 0 ? "LO" :
@@ -2327,11 +2431,26 @@ static int regs_show(struct seq_file *s, void *data)
 	state = REG_GET(r, THROT_STATUS_ENABLED);
 	seq_printf(s, "enabled(%d)\n", state);
 
-	for (j = 0; j < THROTTLE_DEV_SIZE; j++) {
-		r = soctherm_readl(CPU_PSKIP_STATUS + (j * 4));
+	r = soctherm_readl(CPU_PSKIP_STATUS);
+	state = REG_GET(r, CPU_PSKIP_STATUS_M);
+	seq_printf(s, "%s PSKIP STATUS: M(%d) ",
+		throt_dev_names[0], state);
+
+	state = REG_GET(r, CPU_PSKIP_STATUS_N);
+	seq_printf(s, "N(%d) ", state);
+	state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
+	seq_printf(s, "enabled(%d)\n", state);
+
+	r = soctherm_readl(CPU_PSKIP_STATUS + 4);
+	if (tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+		state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
+		seq_printf(s, "%s PSKIP STATUS: ",
+		throt_dev_names[1]);
+		seq_printf(s, "enabled(%d)\n", state);
+	} else {
 		state = REG_GET(r, CPU_PSKIP_STATUS_M);
 		seq_printf(s, "%s PSKIP STATUS: M(%d) ",
-			   throt_dev_names[j], state);
+			   throt_dev_names[1], state);
 		state = REG_GET(r, CPU_PSKIP_STATUS_N);
 		seq_printf(s, "N(%d) ", state);
 		state = REG_GET(r, CPU_PSKIP_STATUS_ENABLED);
@@ -2354,15 +2473,23 @@ static int regs_show(struct seq_file *s, void *data)
 			seq_printf(s, "%5s  %3s  %2d  ",
 				   j ? "" : throt_names[i],
 				   throt_dev_names[j], state);
-			state = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
-			seq_printf(s, "%8d  ", state);
-			state = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
-			seq_printf(s, "%7d  ", state);
-			r = soctherm_readl(THROT_PSKIP_RAMP(i, j));
-			state = REG_GET(r, THROT_PSKIP_RAMP_DURATION);
-			seq_printf(s, "%8d  ", state);
-			state = REG_GET(r, THROT_PSKIP_RAMP_STEP);
-			seq_printf(s, "%4d  ", state);
+
+			if (j == THROTTLE_DEV_GPU &&
+				tegra_chip_id == TEGRA_CHIPID_TEGRA12) {
+				state = REG_GET(r,
+					THROT_PSKIP_CTRL_THROT_DEPTH);
+				seq_printf(s, "throt depth: %s  ", state);
+			} else {
+				state = REG_GET(r, THROT_PSKIP_CTRL_DIVIDEND);
+				seq_printf(s, "%8d  ", state);
+				state = REG_GET(r, THROT_PSKIP_CTRL_DIVISOR);
+				seq_printf(s, "%7d  ", state);
+				r = soctherm_readl(THROT_PSKIP_RAMP(i, j));
+				state = REG_GET(r, THROT_PSKIP_RAMP_DURATION);
+				seq_printf(s, "%8d  ", state);
+				state = REG_GET(r, THROT_PSKIP_RAMP_STEP);
+				seq_printf(s, "%4d  ", state);
+			}
 
 			if (j) {
 				seq_printf(s, "\n");
@@ -2431,7 +2558,100 @@ static int convert_set(void *data, u64 val)
 	read_hw_temp = !val;
 	return 0;
 }
+
+static int cputemp_get(void *data, u64 *val)
+{
+	u32 reg;
+	reg = soctherm_readl(TS_TEMP1);
+	*val = (reg & 0xffff0000) >> 16;
+	return 0;
+}
+
+static int cputemp_set(void *data, u64 temp)
+{
+	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_orig = soctherm_readl(TS_TEMP1);
+	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
+	soctherm_writel(reg_val, TS_TEMP1);
+	return 0;
+}
+
+static int gputemp_get(void *data, u64 *val)
+{
+	u32 reg;
+	reg = soctherm_readl(TS_TEMP1);
+	*val = (reg & 0x0000ffff);
+	return 0;
+}
+
+static int gputemp_set(void *data, u64 temp)
+{
+	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_orig = soctherm_readl(TS_TEMP1);
+	reg_val = reg_val | (reg_orig & 0xffff0000);
+	soctherm_writel(reg_val, TS_TEMP1);
+	return 0;
+}
+
+static int memtemp_get(void *data, u64 *val)
+{
+	u32 reg;
+	reg = soctherm_readl(TS_TEMP2);
+	*val = (reg & 0xffff0000) >> 16;
+	return 0;
+}
+
+static int memtemp_set(void *data, u64 temp)
+{
+	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_orig = soctherm_readl(TS_TEMP2);
+	reg_val = (reg_val << 16) | (reg_orig & 0xffff);
+	soctherm_writel(reg_val, TS_TEMP2);
+	return 0;
+}
+
+static int plltemp_get(void *data, u64 *val)
+{
+	u32 reg;
+	reg = soctherm_readl(TS_TEMP2);
+	*val = (reg & 0x0000ffff);
+	return 0;
+}
+
+static int plltemp_set(void *data, u64 temp)
+{
+	u32 reg_val = temp_translate_rev(temp);
+	u32 reg_orig = soctherm_readl(TS_TEMP2);
+	reg_val = reg_val | (reg_orig & 0xffff0000);
+	soctherm_writel(reg_val, TS_TEMP2);
+	return 0;
+}
+
+static int tempoverride_get(void *data, u64 *val)
+{
+	*val = soctherm_readl(TS_TEMP_SW_OVERRIDE);
+
+	return 0;
+}
+
+static int tempoverride_set(void *data, u64 val)
+{
+	soctherm_writel(val, TS_TEMP_SW_OVERRIDE);
+
+	return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(cputemp_fops, cputemp_get, cputemp_set, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(gputemp_fops, gputemp_get, gputemp_set, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(memtemp_fops, memtemp_get, memtemp_set, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(plltemp_fops, plltemp_get, plltemp_set, "%llu\n");
+
+DEFINE_SIMPLE_ATTRIBUTE(tempoverride_fops, tempoverride_get, tempoverride_set, "%llu\n");
 
 static int __init soctherm_debug_init(void)
 {
@@ -2442,6 +2662,16 @@ static int __init soctherm_debug_init(void)
 				NULL, &regs_fops);
 	debugfs_create_file("convert", 0644, tegra_soctherm_root,
 				NULL, &convert_fops);
+	debugfs_create_file("cputemp", 0644, tegra_soctherm_root,
+				NULL, &cputemp_fops);
+	debugfs_create_file("gputemp", 0644, tegra_soctherm_root,
+				NULL, &gputemp_fops);
+	debugfs_create_file("memtemp", 0644, tegra_soctherm_root,
+				NULL, &memtemp_fops);
+	debugfs_create_file("plltemp", 0644, tegra_soctherm_root,
+				NULL, &plltemp_fops);
+	debugfs_create_file("tempoverride", 0644, tegra_soctherm_root,
+				NULL, &tempoverride_fops);
 	return 0;
 }
 late_initcall(soctherm_debug_init);

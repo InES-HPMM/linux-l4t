@@ -1347,3 +1347,114 @@ static int __init ardbeg_fixed_regulator_init(void)
 }
 
 subsys_initcall_sync(ardbeg_fixed_regulator_init);
+
+/* TO DO: set default governor for gpu throttling */
+/*
+static struct thermal_zone_params bonaire_soctherm_therm_gpu_tzp = {
+	.governor_name = "pid_thermal_gov",
+};
+*/
+
+
+/* TO DO: This number will be changed post-silicon */
+/* sample table */
+/*
+static struct soctherm_platform_data bonaire_soctherm_data = {
+	.therm = {
+		[THERM_CPU] = {
+			.zone_enable = true,
+			.passive_delay = 1000,
+			.hotspot_offset = 6000,
+			.num_trips = 3,
+			.trips = {
+				{
+					.cdev_type = "tegra-balanced",
+					.trip_temp = 84000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 94000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 104000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_GPU] = {
+			.zone_enable = true,
+			.num_trips = 3,
+			.trips = {
+				{
+					.cdev_type = "gk20a_cdev",
+					.trip_temp = 80000,
+					.trip_type = THERMAL_TRIP_PASSIVE,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-heavy",
+					.trip_temp = 90000,
+					.trip_type = THERMAL_TRIP_HOT,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+				{
+					.cdev_type = "tegra-shutdown",
+					.trip_temp = 102000,
+					.trip_type = THERMAL_TRIP_CRITICAL,
+					.upper = THERMAL_NO_LIMIT,
+					.lower = THERMAL_NO_LIMIT,
+				},
+			},
+			.tzp = &soctherm_tzp,
+		},
+		[THERM_PLL] = {
+			.zone_enable = true,
+		},
+	},
+	.throttle = {
+		[THROTTLE_LIGHT] = {
+			.priority = 0x0f,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = false,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = false,
+				},
+			},
+		},
+		[THROTTLE_HEAVY] = {
+			.priority = 0xf0,
+			.devs = {
+				[THROTTLE_DEV_CPU] = {
+					.enable = true,
+					.depth = 80,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.throttling_depth = "heavy_throttling",
+				},
+			},
+		},
+		[THROTTLE_OC1] = {
+		},
+	},
+};
+
+int __init bonaire_soctherm_init(void)
+{
+	return tegra11_soctherm_init(&bonaire_soctherm_data);
+}
+*/
