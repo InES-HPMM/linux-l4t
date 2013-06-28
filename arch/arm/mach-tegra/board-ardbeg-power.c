@@ -44,6 +44,7 @@
 #include "devices.h"
 #include "iomap.h"
 #include "tegra-board-id.h"
+#include "tegra_cl_dvfs.h"
 
 #define PMC_CTRL                0x0
 #define PMC_CTRL_INTR_LOW       (1 << 17)
@@ -1449,6 +1450,83 @@ static struct platform_device *pfixed_reg_devs[] = {
 	ARBDEG_1731_COMMON_FIXED_REG
 };
 
+#define ARDBEG_E1735_CVB_ALIGNMENT	18750
+#define ARDBEG_DEFAULT_CVB_ALIGNMENT	10000
+int tegra_get_cvb_alignment_uV(void)
+{
+	struct board_info pmu_board_info;
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if (pmu_board_info.board_id == BOARD_E1735)
+		return ARDBEG_E1735_CVB_ALIGNMENT;
+	else
+		return ARDBEG_DEFAULT_CVB_ALIGNMENT;
+}
+
+#ifdef CONFIG_ARCH_TEGRA_HAS_CL_DVFS
+/* board parameters for cpu dfll */
+static struct tegra_cl_dvfs_cfg_param ardbeg_cl_dvfs_param = {
+	.sample_rate = 50000,
+
+	.force_mode = TEGRA_CL_DVFS_FORCE_FIXED,
+	.cf = 10,
+	.ci = 0,
+	.cg = 2,
+
+	.droop_cut_value = 0xF,
+	.droop_restore_ramp = 0x0,
+	.scale_out_ramp = 0x0,
+};
+
+/* E1735 RT8812C volatge map */
+#define E1735_CPU_VDD_MAP_SIZE 33
+static struct voltage_reg_map e1735_cpu_vdd_map[E1735_CPU_VDD_MAP_SIZE];
+static inline void e1735_fill_reg_map(void)
+{
+	int i;
+	for (i = 0; i < E1735_CPU_VDD_MAP_SIZE; i++) {
+		e1735_cpu_vdd_map[i].reg_value = i;
+		e1735_cpu_vdd_map[i].reg_uV =
+			675000 + ARDBEG_E1735_CVB_ALIGNMENT * i;
+	}
+}
+
+static struct tegra_cl_dvfs_platform_data e1735_cl_dvfs_data = {
+	.dfll_clk_name = "dfll_cpu",
+	.pmu_if = TEGRA_CL_DVFS_PMU_PWM,
+	.u.pmu_pwm = {
+		.pwm_rate = 12750000,
+		.out_gpio = TEGRA_GPIO_PS5,
+		.out_enable_high = false,
+	},
+	.vdd_map = e1735_cpu_vdd_map,
+	.vdd_map_size = E1735_CPU_VDD_MAP_SIZE,
+
+	.cfg_param = &ardbeg_cl_dvfs_param,
+};
+
+static int __init ardbeg_cl_dvfs_init(u16 pmu_board_id)
+{
+	struct tegra_cl_dvfs_platform_data *data = NULL;
+
+	if (pmu_board_id == BOARD_E1735) {
+		e1735_fill_reg_map();
+		data = &e1735_cl_dvfs_data;
+	}
+
+	if (data) {
+		data->flags = TEGRA_CL_DVFS_DYN_OUTPUT_CFG;
+		tegra_cl_dvfs_device.dev.platform_data = data;
+		platform_device_register(&tegra_cl_dvfs_device);
+	}
+	return 0;
+}
+#else
+static inline int ardbeg_cl_dvfs_init(u16 pmu_board_id)
+{ return 0; }
+#endif
+
 static int __init ardbeg_fixed_regulator_init(void)
 {
 	struct board_info pmu_board_info;
@@ -1457,6 +1535,7 @@ static int __init ardbeg_fixed_regulator_init(void)
 		return 0;
 
 	tegra_get_pmu_board_info(&pmu_board_info);
+	ardbeg_cl_dvfs_init(pmu_board_info.board_id);
 
 	if (pmu_board_info.board_id == BOARD_E1731)
 		return platform_add_devices(pfixed_reg_devs,
