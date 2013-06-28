@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,7 +30,7 @@ struct vb2_dc_conf {
 struct vb2_dc_buf {
 	struct vb2_dc_conf		*conf;
 	void				*vaddr;
-	dma_addr_t			paddr;
+	phys_addr_t			paddr;
 	unsigned long			size;
 	struct vm_area_struct		*vma;
 	atomic_t			refcount;
@@ -47,7 +47,7 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 	struct vb2_dc_buf *buf;
 	int ret;
 
-	buf = kzalloc(sizeof *buf, GFP_KERNEL);
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf) {
 		ret = -ENOMEM;
 		goto exit;
@@ -61,8 +61,8 @@ static void *vb2_dma_nvmap_alloc(void *alloc_ctx, unsigned long size)
 		goto exit_free;
 	}
 
-	buf->paddr = nvmap_pin(conf->nvmap_client, buf->nvmap_ref);
-	if (IS_ERR_VALUE(buf->paddr)) {
+	ret = nvmap_pin(conf->nvmap_client, buf->nvmap_ref, &buf->paddr);
+	if (ret) {
 		dev_err(conf->dev, "nvmap_pin failed\n");
 		ret = -ENOMEM;
 		goto exit_dealloc;
@@ -163,7 +163,7 @@ static int vb2_dma_nvmap_mmap(void *buf_priv, struct vm_area_struct *vma)
 			__func__, paddr, vm_start, PAGE_SIZE);
 	}
 
-	vma->vm_flags		|= VM_DONTEXPAND | VM_RESERVED;
+	vma->vm_flags		|= VM_DONTEXPAND | VM_DONTDUMP;
 	vma->vm_private_data	= &buf->handler;
 	vma->vm_ops		= &vb2_common_vm_ops;
 
@@ -180,7 +180,7 @@ static void *vb2_dma_nvmap_get_userptr(void *alloc_ctx, unsigned long vaddr,
 	dma_addr_t paddr = 0;
 	int ret;
 
-	buf = kzalloc(sizeof *buf, GFP_KERNEL);
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
@@ -227,7 +227,7 @@ void *vb2_dma_nvmap_init_ctx(struct device *dev)
 	struct vb2_dc_conf *conf;
 	int ret;
 
-	conf = kzalloc(sizeof *conf, GFP_KERNEL);
+	conf = kzalloc(sizeof(*conf), GFP_KERNEL);
 	if (!conf) {
 		ret = -ENOMEM;
 		goto exit;
