@@ -185,7 +185,7 @@ static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-#ifndef CONFIG_USE_OF
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 static struct tegra_i2c_platform_data ardbeg_i2c1_platform_data = {
 	.bus_clk_rate	= 100000,
 	.scl_gpio	= TEGRA_GPIO_I2C1_SCL,
@@ -241,6 +241,7 @@ static void ardbeg_i2c_init(void)
 {
 	struct board_info board_info;
 	tegra_get_board_info(&board_info);
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #ifndef CONFIG_USE_OF
 	tegra11_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
 	tegra11_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
@@ -254,7 +255,21 @@ static void ardbeg_i2c_init(void)
 	platform_device_register(&tegra11_i2c_device2);
 	platform_device_register(&tegra11_i2c_device1);
 #endif
-/*use board file for T12x*/
+#else
+	/* T124 does not use device tree as of now */
+	tegra14_i2c_device1.dev.platform_data = &ardbeg_i2c1_platform_data;
+	tegra14_i2c_device2.dev.platform_data = &ardbeg_i2c2_platform_data;
+	tegra14_i2c_device3.dev.platform_data = &ardbeg_i2c3_platform_data;
+	tegra14_i2c_device4.dev.platform_data = &ardbeg_i2c4_platform_data;
+	tegra14_i2c_device5.dev.platform_data = &ardbeg_i2c5_platform_data;
+
+	platform_device_register(&tegra14_i2c_device5);
+	platform_device_register(&tegra14_i2c_device4);
+	platform_device_register(&tegra14_i2c_device3);
+	platform_device_register(&tegra14_i2c_device2);
+	platform_device_register(&tegra14_i2c_device1);
+#endif
+
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || !defined(CONFIG_USE_OF)
 	i2c_register_board_info(0, &rt5639_board_info, 1);
 	i2c_register_board_info(0, &rt5645_board_info, 1);
