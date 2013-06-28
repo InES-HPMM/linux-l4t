@@ -157,6 +157,13 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("vddio_bb", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-xhci"),
+#endif
 	/* emmc 1.8v misssing
 	keyboard & touchpad 1.8v missing */
 };
@@ -429,13 +436,14 @@ static struct regulator_consumer_supply fixed_reg_aon_1v2_supply[] = {
 static struct regulator_consumer_supply fixed_reg_usb1_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+	REGULATOR_SUPPLY("usb_vbus0", "tegra-xhci"),
 
 };
 
 /* EN_USB2_3_VBUS From TEGRA GPIO PN5 */
 static struct regulator_consumer_supply fixed_reg_usb3_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
+	REGULATOR_SUPPLY("usb_vbus2", "tegra-xhci"),
 };
 
 
@@ -479,7 +487,6 @@ static struct regulator_consumer_supply fixed_reg_5v0_supply[] = {
 
 static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("avdd_lvds0_pll", NULL),
-	REGULATOR_SUPPLY("vdd_utmip_pll", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
 	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645"),
@@ -507,10 +514,13 @@ static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
+#endif
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
 	REGULATOR_SUPPLY("vddio_hv", "NULL"),
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
