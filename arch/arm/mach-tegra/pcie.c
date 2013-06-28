@@ -1015,10 +1015,8 @@ static int tegra_pcie_enable_controller(void)
 	val &= ~(AFI_PCIE_CONFIG_PCIEC0_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_PCIEC1_DISABLE_DEVICE |
 		 AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_MASK);
-#ifdef CONFIG_ARCH_TEGRA_3x_SOC
-	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
-	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
-#elif CONFIG_TEGRA_FPGA_PLATFORM
+#ifdef CONFIG_ARCH_TEGRA_12x_SOC
+#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 	/* FPGA supports only x2_x1 bar config */
 	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_X2_X1;
 #else
@@ -1051,6 +1049,10 @@ static int tegra_pcie_enable_controller(void)
 		}
 	}
 #endif
+#else
+	val &= ~AFI_PCIE_CONFIG_PCIEC2_DISABLE_DEVICE;
+	val |= AFI_PCIE_CONFIG_SM2TMS0_XBAR_CONFIG_411;
+#endif
 	afi_writel(val, AFI_PCIE_CONFIG);
 
 	/* Enable Gen 2 capability of PCIE */
@@ -1058,12 +1060,7 @@ static int tegra_pcie_enable_controller(void)
 	afi_writel(val, AFI_FUSE);
 
 	timeout = 0;
-	/* All T124 PADS programming moved to XUSB_PADCTL address space */
-
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
-	/* Initialze internal PHY, enable up to 16 PCIE lanes */
-	pads_writel(0x0, PADS_CTL_SEL);
-
 #ifndef CONFIG_ARCH_TEGRA_12x_SOC
 	/* override IDDQ to 1 on all 4 lanes */
 	val = pads_readl(PADS_CTL) | PADS_CTL_IDDQ_1L;
@@ -1121,10 +1118,6 @@ static int tegra_pcie_enable_controller(void)
 		return ret;
 	}
 #endif
-	/* enable TX/RX data */
-	val = pads_readl(PADS_CTL);
-	val |= (PADS_CTL_TX_DATA_EN_1L | PADS_CTL_RX_DATA_EN_1L);
-	pads_writel(val, PADS_CTL);
 #endif
 
 	/* Take the PCIe interface module out of reset */
@@ -1781,8 +1774,10 @@ static int __init tegra_pcie_probe(struct platform_device *pdev)
 		__func__, tegra_pcie.plat_data->port_status[0]);
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[1] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[1]);
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
 	dev_dbg(&pdev->dev, "PCIE.C: %s : _port_status[2] %d\n",
 		__func__, tegra_pcie.plat_data->port_status[2]);
+#endif
 	ret = tegra_pcie_init();
 
 	return ret;

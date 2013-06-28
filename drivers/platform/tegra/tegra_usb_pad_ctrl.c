@@ -25,8 +25,6 @@ static DEFINE_SPINLOCK(utmip_pad_lock);
 static DEFINE_SPINLOCK(xusb_padctl_lock);
 static int utmip_pad_count;
 static struct clk *utmi_pad_clk;
-#define PLL_LOCK_MIN_TIME 100
-#define PLL_LOCK_MAX_TIME 1000
 
 void tegra_xhci_ss_wake_on_interrupts(u32 portmap, bool enable)
 {
@@ -373,13 +371,15 @@ void tegra_usb_pad_reg_write(u32 reg_offset, u32 val)
 EXPORT_SYMBOL_GPL(tegra_usb_pad_reg_write);
 
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
-int pcie_phy_pad_enable(int lane_owner)
+static int tegera_xusb_padctl_phy_enable(void)
 {
 	unsigned long val, flags, timeout;
 	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+	static bool phy_enabled = false;
 
-	spin_lock_irqsave(&xusb_padctl_lock, flags);
-
+	/* return if PHY is already enabled by any of clients */
+	if (phy_enabled)
+		return 0;
 	/* set up PLL inputs in PLL_CTL1 */
 	val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
 	val &= ~XUSB_PADCTL_IOPHY_PLL_P0_CTL1_REFCLK_SEL_MASK;
@@ -404,12 +404,26 @@ int pcie_phy_pad_enable(int lane_owner)
 	timeout = 300;
 	do {
 		val = readl(pad_base + XUSB_PADCTL_IOPHY_PLL_P0_CTL1_0);
-		usleep_range(PLL_LOCK_MIN_TIME, PLL_LOCK_MAX_TIME);
+		udelay(100);
 		if (--timeout == 0) {
 			pr_err("Tegra PCIe error: timeout waiting for PLL\n");
 			return -EBUSY;
 		}
 	} while (!(val & XUSB_PADCTL_IOPHY_PLL_P0_CTL1_PLL0_LOCKDET));
+	phy_enabled = true;
+
+	return 0;
+}
+
+int pcie_phy_pad_enable(int lane_owner)
+{
+	unsigned long val, flags;
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+
+	spin_lock_irqsave(&xusb_padctl_lock, flags);
+
+	if (tegera_xusb_padctl_phy_enable())
+		return -ENXIO;
 
 	/* disable IDDQ for all lanes based on odmdata */
 	/* in same way as for lane ownership done below */
