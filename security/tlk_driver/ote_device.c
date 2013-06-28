@@ -32,7 +32,7 @@
 
 #include "ote_protocol.h"
 
-#define SET_ANSWER(a, r, ro)	{ a.result = r; a.return_origin = ro; }
+#define SET_ANSWER(a, r, ro)	{ a.result = r; a.result_origin = ro; }
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/nvsecurity.h>
@@ -293,7 +293,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 		if (!cmd_desc || (operation->list_count && !params)) {
 			SET_ANSWER(answer,
 				   OTE_ERROR_OUT_OF_MEMORY,
-				   OTE_ERROR_ORIGIN_COMMS);
+				   OTE_RESULT_ORIGIN_COMMS);
 			pr_err("failed to get cmd_desc/params\n");
 			goto error;
 		}
@@ -322,7 +322,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 		if (!cmd_desc) {
 			SET_ANSWER(answer,
 				   OTE_ERROR_OUT_OF_MEMORY,
-				   OTE_ERROR_ORIGIN_COMMS);
+				   OTE_RESULT_ORIGIN_COMMS);
 			pr_err("failed to get cmd_desc\n");
 			goto error;
 		}
@@ -344,7 +344,7 @@ static long te_handle_trustedapp_ioctl(struct file *file,
 		if (!cmd_desc || (operation->list_count && !params)) {
 			SET_ANSWER(answer,
 				   OTE_ERROR_OUT_OF_MEMORY,
-				   OTE_ERROR_ORIGIN_COMMS);
+				   OTE_RESULT_ORIGIN_COMMS);
 			pr_err("failed to get cmd_desc/params\n");
 			goto error;
 		}

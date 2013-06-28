@@ -67,13 +67,13 @@ enum {
  */
 enum {
 	/* Originated from OTE Client API */
-	OTE_ERROR_ORIGIN_API	     = 1,
+	OTE_RESULT_ORIGIN_API = 1,
 	/* Originated from Underlying Communication Stack */
-	OTE_ERROR_ORIGIN_COMMS	     = 2,
+	OTE_RESULT_ORIGIN_COMMS = 2,
 	/* Originated from Common OTE Code */
-	OTE_ERROR_ORIGIN_KERNEL	     = 3,
+	OTE_RESULT_ORIGIN_KERNEL = 3,
 	/* Originated from Trusted APP Code */
-	OTE_ERROR_ORIGIN_TRUSTED_APP = 4,
+	OTE_RESULT_ORIGIN_TRUSTED_APP = 4,
 };
 
 #endif

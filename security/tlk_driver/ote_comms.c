@@ -291,7 +291,7 @@ void te_open_session(struct te_opensession *cmd,
 	ret = te_setup_temp_buffers(request, context);
 	if (ret != OTE_SUCCESS) {
 		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
-		SET_RESULT(request, ret, OTE_ERROR_ORIGIN_API);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
 		return;
 	}
 
@@ -338,7 +338,7 @@ void te_launch_operation(struct te_launchop *cmd,
 	ret = te_setup_temp_buffers(request, context);
 	if (ret != OTE_SUCCESS) {
 		pr_err("te_setup_temp_buffers failed err (0x%x)\n", ret);
-		SET_RESULT(request, ret, OTE_ERROR_ORIGIN_API);
+		SET_RESULT(request, ret, OTE_RESULT_ORIGIN_API);
 		return;
 	}
 

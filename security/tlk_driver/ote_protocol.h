@@ -167,7 +167,7 @@ struct te_request {
 struct te_answer {
 	uint32_t	result;
 	uint32_t	session_id;
-	uint32_t	return_origin;
+	uint32_t	result_origin;
 };
 
 void te_open_session(struct te_opensession *cmd,
