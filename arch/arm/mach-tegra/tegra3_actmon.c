@@ -502,8 +502,13 @@ static struct actmon_dev actmon_dev_emc = {
 	.boost_freq_step	= 16000,
 	.boost_up_coef		= 200,
 	.boost_down_coef	= 50,
+#if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	.boost_up_threshold	= 70,
+	.boost_down_threshold	= 50,
+#else
 	.boost_up_threshold	= 60,
 	.boost_down_threshold	= 40,
+#endif
 
 	.up_wmark_window	= 1,
 	.down_wmark_window	= 3,
