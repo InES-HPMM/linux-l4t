@@ -56,6 +56,8 @@
 #define DEFAULT_THERMAL_GOVERNOR       "fair_share"
 #elif defined(CONFIG_THERMAL_DEFAULT_GOV_USER_SPACE)
 #define DEFAULT_THERMAL_GOVERNOR       "user_space"
+#elif defined(CONFIG_THERMAL_DEFAULT_GOV_PID)
+#define DEFAULT_THERMAL_GOVERNOR       "pid_thermal_gov"
 #endif
 
 struct thermal_zone_device;
