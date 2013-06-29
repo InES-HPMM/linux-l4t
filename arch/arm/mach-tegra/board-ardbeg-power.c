@@ -379,11 +379,27 @@ int __init ardbeg_ams_regulator_init(void)
 #define palmas_ti913_ldousb_supply as3722_ldo11_supply
 
 static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
-	REGULATOR_SUPPLY("vdd_3v3", NULL),
-	REGULATOR_SUPPLY("vdd_sys_1s_cdc", NULL),
-	REGULATOR_SUPPLY("vdd_sys_1s_bl", NULL),
 	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645.0"),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("hvdd_pex", "tegra-pcie"),
+	REGULATOR_SUPPLY("hvdd_pex_pll_e", "tegra-pcie"),
+	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
+	REGULATOR_SUPPLY("vdd", "0-0069"),
+	REGULATOR_SUPPLY("vdd", "0-000c"),
+	REGULATOR_SUPPLY("vdd", "0-0077"),
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
+#endif
 };
 
 PALMAS_PDATA_INIT(ti913_smps123, 900, 1400, NULL, 1, 1, 1, NORMAL);
@@ -405,13 +421,13 @@ PALMAS_PDATA_INIT(ti913_ldo6, 1800, 1800, NULL,
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo7, 2700, 2700, NULL,
 		0, 0, 1, 0);
-/* TODO PALMAS_PDATA_INIT(ti913_ldo8, 1000, 1100, NULL, 1, 1, 1, NORMAL);*/
+PALMAS_PDATA_INIT(ti913_ldo8, 1000, 1000, NULL, 1, 1, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldo9, 1800, 3300, NULL,
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldoln, 1050, 1050, palmas_rails(ti913_smps6),
 		0, 0, 1, 0);
 PALMAS_PDATA_INIT(ti913_ldousb, 1800, 1800, NULL, 0, 0, 1, 0);
-PALMAS_PDATA_INIT(ti913_regen1, 3000, 3300, NULL, 1, 1, 1, 0);
+PALMAS_PDATA_INIT(ti913_regen1, 2800, 3300, NULL, 1, 1, 1, 0);
 
 #define PALMAS_REG_PDATA(_sname) &reg_idata_##_sname
 static struct regulator_init_data *ardbeg_1735_reg_data[PALMAS_NUM_REGS] = {
@@ -432,7 +448,7 @@ static struct regulator_init_data *ardbeg_1735_reg_data[PALMAS_NUM_REGS] = {
 	PALMAS_REG_PDATA(ti913_ldo5),
 	PALMAS_REG_PDATA(ti913_ldo6),
 	PALMAS_REG_PDATA(ti913_ldo7),
-	NULL, /* TODO PALMAS_REG_PDATA(ti913_ldo8),*/
+	PALMAS_REG_PDATA(ti913_ldo8),
 	PALMAS_REG_PDATA(ti913_ldo9),
 	NULL,
 	NULL,
@@ -460,7 +476,7 @@ PALMAS_REG_INIT(ti913_ldo4, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo5, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo6, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo7, 0, 0, 0, 0, 0);
-/* TODO PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0, 0);*/
+PALMAS_REG_INIT(ti913_ldo8, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldo9, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldoln, 0, 0, 0, 0, 0);
 PALMAS_REG_INIT(ti913_ldousb, 0, 0, 0, 0, 0);
@@ -485,7 +501,7 @@ static struct palmas_reg_init *ardbeg_1735_reg_init[PALMAS_NUM_REGS] = {
 	PALMAS_REG_INIT_DATA(ti913_ldo5),
 	PALMAS_REG_INIT_DATA(ti913_ldo6),
 	PALMAS_REG_INIT_DATA(ti913_ldo7),
-	NULL, /*PALMAS_REG_INIT_DATA(ti913_ldo8), */
+	PALMAS_REG_INIT_DATA(ti913_ldo8),
 	PALMAS_REG_INIT_DATA(ti913_ldo9),
 	NULL,
 	NULL,
@@ -1090,6 +1106,7 @@ int __init ardbeg_regulator_init(void)
 		reg_init_data_ldo5.enable_tracking = true;
 		reg_init_data_ldo5.tracking_regulator = PALMAS_REG_SMPS12;
 	} else if (pmu_board_info.board_id == BOARD_E1735) {
+		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
 	}
 
@@ -1176,26 +1193,13 @@ static struct regulator_consumer_supply fixed_reg_en_lcd_bl_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_bl_en", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_as3722_gpio2_supply[] = {
-	REGULATOR_SUPPLY("avdd_usb", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-udc.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.0"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.1"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
-#endif
-	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
-	REGULATOR_SUPPLY("avdd_pex", "tegra-pcie"),
+static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
+	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
+#define fixed_reg_en_as3722_gpio2_supply palmas_ti913_regen1_supply
+
 static struct regulator_consumer_supply fixed_reg_en_as3722_gpio4_supply[] = {
-	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
-	REGULATOR_SUPPLY("hvdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
 
@@ -1219,6 +1223,12 @@ static struct regulator_consumer_supply fixed_reg_en_tca6408_p0_supply[] = {
 static struct regulator_consumer_supply fixed_reg_en_vdd_cpu_fixed_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu_fixed", NULL),
 };
+
+#define fixed_reg_en_ti913_gpio2_supply fixed_reg_en_as3722_gpio1_supply
+#define fixed_reg_en_ti913_gpio3_supply fixed_reg_en_as3722_gpio4_supply
+#define fixed_reg_en_ti913_gpio4_supply fixed_reg_en_tca6408_p0_supply
+#define fixed_reg_en_ti913_gpio6_supply fixed_reg_en_tca6408_p2_supply
+#define fixed_reg_en_ti913_gpio7_supply fixed_reg_en_tca6408_p6_supply
 
 FIXED_REG(0,	battery_ardbeg,	battery_ardbeg,
 	NULL,	0,	0,	-1,
@@ -1279,6 +1289,16 @@ FIXED_REG(11,	tca6408_p2,	tca6408_p2,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(2),
 	false,	true,	0,	1200, 0);
 
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
+FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
+	NULL,	0,	0,
+	TEGRA_GPIO_PH7,	false,	true,	0,	5000,	5000);
+#else
+FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
+	NULL,	0,	0,
+	TEGRA_GPIO_PK6,	false,	true,	0,	5000,	5000);
+#endif
+
 FIXED_REG(13,	tca6408_p6,	tca6408_p6,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(6),
 	false,	true,	0,	1800, 0);
@@ -1287,7 +1307,27 @@ FIXED_REG(14,	tca6408_p0,	tca6408_p0,
 	AS3722_SUPPLY(sd5),	0,	0,	PMU_TCA6416_GPIO(0),
 	false,	true,	0,	1200, 0);
 
-FIXED_REG(15,	vdd_cpu_fixed,	vdd_cpu_fixed,
+FIXED_REG(15,	ti913_gpio2,	ti913_gpio2,
+	NULL,	1,	1,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO2,
+	false,	true,	0,	3300, 0);
+
+FIXED_REG(16,	ti913_gpio3,	ti913_gpio3,
+	NULL,	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,
+	false,	true,	0,	3300,	0);
+
+FIXED_REG(17,	ti913_gpio4,	ti913_gpio4,
+	NULL,	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO4,
+	false,	true,	0,	1200,	0);
+
+FIXED_REG(18,	ti913_gpio6,	ti913_gpio6,
+	NULL,	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,
+	false,	true,	0,	1200,	0);
+
+FIXED_REG(19,	ti913_gpio7,	ti913_gpio7,
+	NULL,	0,	0,	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO7,
+	false,	true,	0,	1800,	0);
+
+FIXED_REG(20,	vdd_cpu_fixed,	vdd_cpu_fixed,
 	NULL,	0,	1,	-1,
 	false,	true,	0,	1000,	0);
 
@@ -1324,10 +1364,6 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_dis_3v3a_supply[] = {
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
 
-static struct regulator_consumer_supply fixed_reg_en_vdd_hdmi_5v0_supply[] = {
-	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
-};
-
 FIXED_REG(0,	battery_e1731,	battery_e1731,
 	NULL,	0,	0,
 	-1,	false, true,	0,	3300,	0);
@@ -1357,16 +1393,6 @@ FIXED_REG(5,	vdd_dis_3v3a,	vdd_dis_3v3a,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,	true, true,	0,	3300,
 	0);
 
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
-	NULL,	0,	0,
-	TEGRA_GPIO_PH7,	false,	true,	0,	5000,	5000);
-#else
-FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
-	NULL,	0,	0,
-	TEGRA_GPIO_PK6,	false,	true,	0,	5000,	5000);
-#endif
-
 /*
  * Creating fixed regulator device tables
  */
@@ -1390,6 +1416,14 @@ FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	ADD_FIXED_REG(tca6408_p6),		\
 	ADD_FIXED_REG(tca6408_p0),
 
+#define ARDBEG_E1735_FIXED_REG			\
+	ADD_FIXED_REG(ti913_gpio2),		\
+	ADD_FIXED_REG(ti913_gpio3),		\
+	ADD_FIXED_REG(ti913_gpio4),		\
+	ADD_FIXED_REG(ti913_gpio6),		\
+	ADD_FIXED_REG(ti913_gpio7),		\
+	ADD_FIXED_REG(vdd_cpu_fixed),
+
 #define ARBDEG_1731_COMMON_FIXED_REG	\
 	ADD_FIXED_REG(battery_e1731),		\
 	ADD_FIXED_REG(vdd_cdc_1v2),		\
@@ -1398,9 +1432,6 @@ FIXED_REG(12,	vdd_hdmi_5v0,	vdd_hdmi_5v0,
 	ADD_FIXED_REG(vdd_usb0_5v0),		\
 	ADD_FIXED_REG(vdd_dis_3v3a),		\
 	ADD_FIXED_REG(vdd_hdmi_5v0),
-
-#define ARDBEG_E1735_FIXED_REG			\
-	ADD_FIXED_REG(vdd_cpu_fixed),
 
 static struct platform_device *fixed_reg_devs_e1733[] = {
 	ARDBEG_COMMON_FIXED_REG
