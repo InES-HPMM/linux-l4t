@@ -350,35 +350,13 @@ static struct local_timer_ops tegra_local_timer_ops __cpuinitdata = {
 };
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_HOTPLUG_CPU)
-static int __cpuinit hotplug_notify(struct notifier_block *self,
-			unsigned long action, void *cpu_nr)
+void tegra_cputimer_reset_irq_affinity(int cpu)
 {
-	unsigned int cpu = (unsigned int)cpu_nr;
-
-	switch (action) {
-	case CPU_DOWN_PREPARE:
-	case CPU_DOWN_PREPARE_FROZEN:
-		/* Reassign the affinity of the wake IRQ to CPU0 */
-		(void)irq_set_affinity(tegra_cputimer_irq[cpu].irq,
-							cpumask_of(0));
-		break;
-	default:
-		break;
-	}
-
-	return NOTIFY_OK;
+	/* Reassign the affinity of the wake IRQ to CPU0 */
+	(void)irq_set_affinity(tegra_cputimer_irq[cpu].irq,
+			       cpumask_of(0));
 }
-
-static struct notifier_block __cpuinitdata hotplug_notifier_block = {
-	.notifier_call = hotplug_notify,
-};
-
-static int __init hotplug_cpu_register(void)
-{
-	return register_cpu_notifier(&hotplug_notifier_block);
-}
-early_initcall(hotplug_cpu_register);
-#endif /* CONFIG_PM_SLEEP && CONFIG_HOTPLUG_CPU */
+#endif
 
 void __init tegra_cpu_timer_init(void)
 {

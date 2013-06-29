@@ -36,6 +36,7 @@
 #include "clock.h"
 #include "sleep.h"
 #include "cpu-tegra.h"
+#include "timer.h"
 
 #include "common.h"
 #include "iomap.h"
@@ -432,9 +433,15 @@ void tegra_smp_restore_power_mask()
 }
 #endif
 
-#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
-static int tegra_cpu_disable(unsigned int cpu)
+
+#ifdef CONFIG_HOTPLUG_CPU
+int tegra_cpu_disable(unsigned int cpu)
 {
+	if (cpu == 0) return -EPERM;
+	/* only call this if the cputimer is in use */
+#if !defined(CONFIG_ARM_ARCH_TIMER) && !defined(CONFIG_HAVE_ARM_TWD)
+	tegra_cputimer_reset_irq_affinity(cpu);
+#endif
 	return 0;
 }
 #endif
@@ -447,8 +454,6 @@ struct smp_operations tegra_smp_ops __initdata = {
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_kill		= tegra_cpu_kill,
 	.cpu_die		= tegra_cpu_die,
-#ifdef CONFIG_TEGRA_VIRTUAL_CPUID
 	.cpu_disable		= tegra_cpu_disable,
-#endif
 #endif
 };

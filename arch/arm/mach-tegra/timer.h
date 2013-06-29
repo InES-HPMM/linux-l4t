@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/timer.h
  *
- * Copyright (C) 2010-2013 NVIDIA Corporation
+ * Copyright (c) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -69,6 +69,10 @@ static inline int tegra_twd_get_state(struct tegra_twd_context *context)
 { return -ENODEV; }
 static inline void tegra_twd_suspend(struct tegra_twd_context *context) {}
 static inline void tegra_twd_resume(struct tegra_twd_context *context) {}
+#endif
+
+#if !defined(CONFIG_ARM_ARCH_TIMER) && !defined(CONFIG_HAVE_ARM_TWD)
+void tegra_cputimer_reset_irq_affinity(int cpu);
 #endif
 
 #if defined(CONFIG_ARM_ARCH_TIMER) && defined(CONFIG_PM_SLEEP)
