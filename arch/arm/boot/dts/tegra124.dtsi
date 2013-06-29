@@ -41,9 +41,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		ranges = <0x54000000 0x54000000 0x01000000
-			  0x57000000 0x57000000 0x01000000
-			  0x58000000 0x58000000 0x01000000>;
+		ranges = <0x53000000 0x53000000 0x06000000>;
 
 		vi {
 			compatible = "nvidia,tegra124-vi";
@@ -114,11 +112,12 @@
 
 		gk20a {
 			compatible = "nvidia,tegra124-gk20a";
-			interrupts = <0 209 0x04   /* mpcore syncpt */
-				      0 210 0x04>; /* mpcore general */
-			reg = <0x57000000 0x01000000>,
+			reg = <0x538F0000 0x00001000>,
+			      <0x57000000 0x01000000>,
 			      <0x58000000 0x01000000>;
-			nvidia,memory-clients = <34 35>;
+			interrupts = <0 209 0x04
+				      0 210 0x04>;
+			nvidia,memory-clients = <56 57>;
 		};
 	};
 
