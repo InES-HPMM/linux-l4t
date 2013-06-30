@@ -92,6 +92,13 @@ config VIDEO_M32R_AR_M64278
 	  To compile this driver as a module, choose M here: the
 	  module will be called arv.
 
+config VIDEO_TEGRA
+	tristate "Tegra soc_camera host driver"
+	depends on VIDEO_DEV && ARCH_TEGRA && SOC_CAMERA && HAS_DMA && HAVE_CLK
+	select VIDEOBUF2_DMA_NVMAP
+	---help---
+	  This is a v4l2 driver for the Tegra camera interface
+
 config VIDEO_OMAP2
 	tristate "OMAP2 Camera Capture Interface driver"
 	depends on VIDEO_DEV && ARCH_OMAP2 && VIDEO_V4L2_INT_DEVICE
