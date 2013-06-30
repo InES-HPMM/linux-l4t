@@ -2369,6 +2369,16 @@ static int imx135_get_extra_regulators(struct imx135_power_rail *pw)
 		}
 	}
 
+	if (!pw->ext_reg2) {
+		pw->ext_reg2 = regulator_get(NULL, "imx135_reg2");
+		if (WARN_ON(IS_ERR(pw->ext_reg2))) {
+			pr_err("%s: can't get regulator imx135_reg2: %ld\n",
+				__func__, PTR_ERR(pw->ext_reg2));
+			pw->ext_reg2 = NULL;
+			return -ENODEV;
+		}
+	}
+
 	return 0;
 }
 
@@ -2387,6 +2397,10 @@ static int imx135_power_on(struct imx135_power_rail *pw)
 		err = regulator_enable(pw->ext_reg1);
 		if (unlikely(err))
 			goto imx135_ext_reg1_fail;
+
+		err = regulator_enable(pw->ext_reg2);
+		if (unlikely(err))
+			goto imx135_ext_reg2_fail;
 
 	}
 
@@ -2416,6 +2430,10 @@ imx135_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 imx135_avdd_fail:
+	if (pw->ext_reg2)
+		regulator_disable(pw->ext_reg2);
+
+imx135_ext_reg2_fail:
 	if (pw->ext_reg1)
 		regulator_disable(pw->ext_reg1);
 	gpio_set_value(info->pdata->af_gpio, 0);
@@ -2440,8 +2458,10 @@ static int imx135_power_off(struct imx135_power_rail *pw)
 	regulator_disable(pw->iovdd);
 	regulator_disable(pw->avdd);
 
-	if (info->pdata->ext_reg)
+	if (info->pdata->ext_reg) {
 		regulator_disable(pw->ext_reg1);
+		regulator_disable(pw->ext_reg2);
+	}
 
 	return 0;
 }
@@ -2493,10 +2513,14 @@ static int imx135_power_put(struct imx135_power_rail *pw)
 	if (likely(pw->ext_reg1))
 		regulator_put(pw->ext_reg1);
 
+	if (likely(pw->ext_reg2))
+		regulator_put(pw->ext_reg2);
+
 	pw->avdd = NULL;
 	pw->iovdd = NULL;
 	pw->dvdd = NULL;
 	pw->ext_reg1 = NULL;
+	pw->ext_reg2 = NULL;
 
 	return 0;
 }

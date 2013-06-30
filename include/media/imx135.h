@@ -73,6 +73,7 @@ struct imx135_power_rail {
 	struct regulator *avdd;
 	struct regulator *iovdd;
 	struct regulator *ext_reg1;
+	struct regulator *ext_reg2;
 };
 
 struct imx135_platform_data {
