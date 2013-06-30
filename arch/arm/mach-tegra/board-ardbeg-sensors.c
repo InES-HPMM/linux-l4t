@@ -25,6 +25,7 @@
 #include <media/ar0261.h>
 #include <media/imx135.h>
 #include <media/dw9718.h>
+#include <media/as364x.h>
 
 #include "board.h"
 #include "board-common.h"
@@ -382,6 +383,24 @@ static struct dw9718_platform_data ardbeg_dw9718_data = {
 	.detect = ardbeg_dw9718_detect,
 };
 
+static struct as364x_platform_data ardbeg_as3648_data = {
+	.config		= {
+		.led_mask	= 3,
+		.max_total_current_mA = 1000,
+		.max_peak_current_mA = 600,
+		.vin_low_v_run_mV = 3070,
+		.strobe_type = 1,
+		},
+	.pinstate	= {
+		.mask	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0),
+		.values	= 1 << (CAM_FLASH_STROBE - TEGRA_GPIO_PBB0)
+		},
+	.dev_name	= "torch",
+	.type		= AS3648,
+	.gpio_strobe	= CAM_FLASH_STROBE,
+};
+
+
 static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
 	{
 		I2C_BOARD_INFO("imx135", 0x10),
@@ -394,6 +413,10 @@ static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
 	{
 		I2C_BOARD_INFO("dw9718", 0x0c),
 		.platform_data = &ardbeg_dw9718_data,
+	},
+	{
+		I2C_BOARD_INFO("as3648", 0x30),
+		.platform_data = &ardbeg_as3648_data,
 	},
 };
 
