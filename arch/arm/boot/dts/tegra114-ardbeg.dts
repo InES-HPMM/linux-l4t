@@ -784,26 +784,6 @@
 	i2c@7000c500 {
 		status = "okay";
 		clock-frequency = <400000>;
-
-		imx135@10 {
-			compatible = "nvidia,imx135";
-			cam1-gpios = <&gpio 221 0>; /* gpio PBB5 */
-			reset-gpios = <&gpio 219 0>; /* gpio PBB3 */
-			af-gpios = <&gpio 225 0>; /* gpio PCC1 */
-			nvidia,ext_reg; /* Extra power-regulators needed */
-			reg = <0x10>;
-			status = "okay";
-		};
-
-		ad5816@0E {
-			compatible = "nvidia,ad5816";
-			reg = <0x0E>;
-			nvidia,cfg = <0>;
-			nvidia,num = <0>;
-			nvidia,sync = <0>;
-			nvidia,dev_name = "focuser";
-			status = "okay";
-		};
 	};
 
 	i2c@7000c700 {

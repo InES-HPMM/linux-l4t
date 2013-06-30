@@ -69,6 +69,7 @@ int ardbeg_pmon_init(void);
 
 #define CAM_RSTN TEGRA_GPIO_PBB3
 #define CAM2_PWDN TEGRA_GPIO_PBB6
+#define CAM1_PWDN TEGRA_GPIO_PBB5
 #define CAM_AF_PWDN TEGRA_GPIO_PBB7
 /* Baseband IDs */
 enum tegra_bb_type {

@@ -22,6 +22,8 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <media/ar0261.h>
+#include <media/imx135.h>
+#include <media/dw9718.h>
 
 #include "board-ardbeg.h"
 
@@ -199,10 +201,194 @@ struct ar0261_platform_data ardbeg_ar0261_data = {
 	.power_off = ardbeg_ar0261_power_off,
 };
 
+static int ardbeg_imx135_get_extra_regulators(struct imx135_power_rail *pw)
+{
+	if (!pw->ext_reg1) {
+		pw->ext_reg1 = regulator_get(NULL, "imx135_reg1");
+		if (WARN_ON(IS_ERR(pw->ext_reg1))) {
+			pr_err("%s: can't get regulator imx135_reg1: %ld\n",
+				__func__, PTR_ERR(pw->ext_reg1));
+			pw->ext_reg1 = NULL;
+			return -ENODEV;
+		}
+	}
+
+	if (!pw->ext_reg2) {
+		pw->ext_reg2 = regulator_get(NULL, "imx135_reg2");
+		if (WARN_ON(IS_ERR(pw->ext_reg2))) {
+			pr_err("%s: can't get regulator imx135_reg2: %ld\n",
+				__func__, PTR_ERR(pw->ext_reg2));
+			pw->ext_reg2 = NULL;
+			return -ENODEV;
+		}
+	}
+
+	return 0;
+}
+
+static int ardbeg_imx135_power_on(struct imx135_power_rail *pw)
+{
+	int err;
+
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	if (ardbeg_imx135_get_extra_regulators(pw))
+		goto imx135_poweron_fail;
+
+	err = regulator_enable(pw->ext_reg1);
+	if (unlikely(err))
+		goto imx135_ext_reg1_fail;
+
+	err = regulator_enable(pw->ext_reg2);
+	if (unlikely(err))
+		goto imx135_ext_reg2_fail;
+
+
+	gpio_set_value(CAM_RSTN, 0);
+	gpio_set_value(CAM_AF_PWDN, 1);
+	gpio_set_value(CAM1_PWDN, 0);
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd);
+	if (err)
+		goto imx135_avdd_fail;
+
+	err = regulator_enable(pw->iovdd);
+	if (err)
+		goto imx135_iovdd_fail;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM_RSTN, 1);
+	gpio_set_value(CAM1_PWDN, 1);
+
+	usleep_range(300, 310);
+
+	return 1;
+
+
+imx135_iovdd_fail:
+	regulator_disable(pw->avdd);
+
+imx135_avdd_fail:
+	if (pw->ext_reg2)
+		regulator_disable(pw->ext_reg2);
+
+imx135_ext_reg2_fail:
+	if (pw->ext_reg1)
+		regulator_disable(pw->ext_reg1);
+	gpio_set_value(CAM_AF_PWDN, 0);
+
+imx135_ext_reg1_fail:
+imx135_poweron_fail:
+	pr_err("%s failed.\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_imx135_power_off(struct imx135_power_rail *pw)
+{
+	if (unlikely(WARN_ON(!pw || !pw->iovdd || !pw->avdd)))
+		return -EFAULT;
+
+	usleep_range(1, 2);
+	gpio_set_value(CAM_RSTN, 0);
+	usleep_range(1, 2);
+
+	regulator_disable(pw->iovdd);
+	regulator_disable(pw->avdd);
+
+	regulator_disable(pw->ext_reg1);
+	regulator_disable(pw->ext_reg2);
+
+	return 0;
+}
+
+struct imx135_platform_data ardbeg_imx135_data = {
+	.power_on = ardbeg_imx135_power_on,
+	.power_off = ardbeg_imx135_power_off,
+};
+
+static int ardbeg_dw9718_power_on(struct dw9718_power_rail *pw)
+{
+	int err;
+	pr_info("%s\n", __func__);
+
+	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
+		return -EFAULT;
+
+	err = regulator_enable(pw->vdd);
+	if (unlikely(err))
+		goto dw9718_vdd_fail;
+
+	err = regulator_enable(pw->vdd_i2c);
+	if (unlikely(err))
+		goto dw9718_i2c_fail;
+
+	usleep_range(1000, 1020);
+
+	/* return 1 to skip the in-driver power_on sequence */
+	pr_debug("%s --\n", __func__);
+	return 1;
+
+dw9718_i2c_fail:
+	regulator_disable(pw->vdd);
+
+dw9718_vdd_fail:
+	pr_err("%s FAILED\n", __func__);
+	return -ENODEV;
+}
+
+static int ardbeg_dw9718_power_off(struct dw9718_power_rail *pw)
+{
+	pr_info("%s\n", __func__);
+
+	if (unlikely(!pw || !pw->vdd || !pw->vdd_i2c))
+		return -EFAULT;
+
+	regulator_disable(pw->vdd);
+	regulator_disable(pw->vdd_i2c);
+
+	return 1;
+}
+
+static u16 dw9718_devid;
+static int ardbeg_dw9718_detect(void *buf, size_t size)
+{
+	dw9718_devid = 0x9718;
+	return 0;
+}
+
+static struct nvc_focus_cap dw9718_cap = {
+	.settle_time = 30,
+	.slew_rate = 0x3A200C,
+	.focus_macro = 450,
+	.focus_infinity = 200,
+	.focus_hyper = 200,
+};
+
+static struct dw9718_platform_data ardbeg_dw9718_data = {
+	.cfg = NVC_CFG_NODEV,
+	.num = 0,
+	.sync = 0,
+	.dev_name = "focuser",
+	.cap = &dw9718_cap,
+	.power_on = ardbeg_dw9718_power_on,
+	.power_off = ardbeg_dw9718_power_off,
+	.detect = ardbeg_dw9718_detect,
+};
+
 static struct i2c_board_info ardbeg_i2c_board_info_e1823[] = {
+	{
+		I2C_BOARD_INFO("imx135", 0x10),
+		.platform_data = &ardbeg_imx135_data,
+	},
 	{
 		I2C_BOARD_INFO("ar0261", 0x36),
 		.platform_data = &ardbeg_ar0261_data,
+	},
+	{
+		I2C_BOARD_INFO("dw9718", 0x0c),
+		.platform_data = &ardbeg_dw9718_data,
 	},
 };
 
