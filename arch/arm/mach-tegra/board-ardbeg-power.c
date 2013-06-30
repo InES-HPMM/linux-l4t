@@ -119,6 +119,7 @@ static struct regulator_consumer_supply as3722_ldo6_supply[] = {
 
 static struct regulator_consumer_supply as3722_ldo7_supply[] = {
 	REGULATOR_SUPPLY("vdd_cam_1v1_cam", NULL),
+	REGULATOR_SUPPLY("imx135_reg2", NULL),
 };
 
 static struct regulator_consumer_supply as3722_ldo9_supply[] = {
@@ -594,6 +595,7 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 
 static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 	REGULATOR_SUPPLY("vdd_cam_1v1_cam", NULL),
+	REGULATOR_SUPPLY("imx135_reg2", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
