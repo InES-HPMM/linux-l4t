@@ -1269,9 +1269,9 @@ static int __init tegra_max_core_current(char *options)
 {
 	char *p = options;
 	max_core_current = memparse(p, &p);
-	return 1;
+	return 0;
 }
-__setup("core_edp_ma=", tegra_max_core_current);
+early_param("core_edp_ma", tegra_max_core_current);
 
 int get_emc_max_dvfs(void)
 {

@@ -35,7 +35,9 @@ static bool tegra_dvfs_core_disabled;
 #define KHZ 1000
 #define MHZ 1000000
 
-/* FIXME: need tegra11 step */
+#define TEGRA11_MIN_CORE_CURRENT	6000
+#define TEGRA11_CORE_VOLTAGE_CAP	1120
+
 #define VDD_SAFE_STEP			100
 
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
@@ -735,6 +737,22 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	int i;
 	int mv = tegra_core_speedo_mv();
 	int core_edp_voltage = get_core_edp();
+	int core_edp_current = get_maximum_core_current_supported();
+
+	/*
+	 * If core regulator current limit is below minimum required to reach
+	 * nominal frequencies, cap core voltage, and through dvfs table all
+	 * core domain frequencies at the respective limits.
+	 */
+	if (core_edp_current < TEGRA11_MIN_CORE_CURRENT) {
+		core_edp_voltage = min(core_edp_voltage,
+				       TEGRA11_CORE_VOLTAGE_CAP);
+		pr_warn("tegra11_dvfs: vdd core current limit         %d mA\n"
+			"              below min current requirements %d mA\n"
+			"              !!!! CORE VOLTAGE IS CAPPED AT %d mV\n",
+			core_edp_current, TEGRA11_MIN_CORE_CURRENT,
+			TEGRA11_CORE_VOLTAGE_CAP);
+	}
 
 	/*
 	 * Start with nominal level for the chips with this speedo_id. Then,
@@ -742,7 +760,7 @@ static int __init get_core_nominal_mv_index(int speedo_id)
 	 * (if edp limit is set).
 	 */
 	if (!core_edp_voltage)
-		core_edp_voltage = 1100;	/* default 1.1V EDP limit */
+		core_edp_voltage = TEGRA11_CORE_VOLTAGE_CAP;
 
 	mv = min(mv, core_edp_voltage);
 
