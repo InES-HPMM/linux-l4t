@@ -1108,6 +1108,8 @@ int __init ardbeg_regulator_init(void)
 	} else if (pmu_board_info.board_id == BOARD_E1735) {
 		regulator_has_full_constraints();
 		ardbeg_tps65913_regulator_init();
+	} else if (pmu_board_info.board_id == BOARD_E1736) {
+		return tn8_regulator_init();
 	}
 
 	return 0;

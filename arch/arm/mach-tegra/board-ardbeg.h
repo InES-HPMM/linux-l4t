@@ -167,4 +167,8 @@ int laguna_regulator_init(void);
 #define I2C_KB_IRQ	TEGRA_GPIO_PC7
 #define I2C_TP_IRQ	TEGRA_GPIO_PW3
 
+/* TN8 specific */
+
+int tn8_regulator_init(void);
+
 #endif
