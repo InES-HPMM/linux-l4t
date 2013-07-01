@@ -117,9 +117,6 @@ enum {
 	(SMMU_STATS_CACHE_COUNT_BASE + 8 * cache + 4 * hitmiss)
 
 #define SMMU_TRANSLATION_ENABLE_0		0x228
-#define SMMU_TRANSLATION_ENABLE_1		0x22c
-#define SMMU_TRANSLATION_ENABLE_2		0x230
-#define SMMU_TRANSLATION_ENABLE_3		0x234
 
 #define SMMU_AFI_ASID	0x238   /* PCIE */
 
@@ -344,10 +341,8 @@ struct smmu_device {
 	/*
 	 * Register image savers for suspend/resume
 	 */
-	unsigned long translation_enable_0;
-	unsigned long translation_enable_1;
-	unsigned long translation_enable_2;
-	unsigned long translation_enable_3;
+	int num_translation_enable;
+	unsigned long translation_enable[4];
 	unsigned long asid_security;
 
 	struct dentry *debugfs_root;
@@ -540,10 +535,10 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 			__smmu_client_set_hwgrp(c, c->swgids, 1);
 	}
 
-	smmu_write(smmu, smmu->translation_enable_0, SMMU_TRANSLATION_ENABLE_0);
-	smmu_write(smmu, smmu->translation_enable_1, SMMU_TRANSLATION_ENABLE_1);
-	smmu_write(smmu, smmu->translation_enable_2, SMMU_TRANSLATION_ENABLE_2);
-	smmu_write(smmu, smmu->translation_enable_3, SMMU_TRANSLATION_ENABLE_3);
+	for (i = 0; i < smmu->num_translation_enable; i++)
+		smmu_write(smmu, smmu->translation_enable[i],
+			   SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
+
 	smmu_write(smmu, smmu->asid_security, SMMU_ASID_SECURITY);
 	smmu_write(smmu, SMMU_TLB_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_TLB));
 	smmu_write(smmu, SMMU_PTC_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_PTC));
@@ -1646,14 +1641,13 @@ err_out:
 
 int tegra_smmu_suspend(struct device *dev)
 {
+	int i;
 	struct smmu_device *smmu = dev_get_drvdata(dev);
 
-	save_smmu_device = dev;
+	for (i = 0; i < smmu->num_translation_enable; i++)
+		smmu->translation_enable[i] = smmu_read(smmu,
+				SMMU_TRANSLATION_ENABLE_0 + i * sizeof(u32));
 
-	smmu->translation_enable_0 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_0);
-	smmu->translation_enable_1 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_1);
-	smmu->translation_enable_2 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_2);
-	smmu->translation_enable_3 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_3);
 	smmu->asid_security = smmu_read(smmu, SMMU_ASID_SECURITY);
 	return 0;
 }
@@ -1731,13 +1725,16 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA14))
 		smmu->swgids = 0x00000020018659fe;
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
-	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
 		smmu->swgids = 0x06f9000001fec9cf;
+		smmu->num_translation_enable = 4;
+	} else {
+		smmu->num_translation_enable = 3;
+	}
 
-	smmu->translation_enable_0 = ~0;
-	smmu->translation_enable_1 = ~0;
-	smmu->translation_enable_2 = ~0;
-	smmu->translation_enable_3 = ~0;
+	for (i = 0; i < smmu->num_translation_enable; i++)
+		smmu->translation_enable[i] = ~0;
+
 	smmu->asid_security = 0;
 
 	for (i = 0; i < smmu->num_as; i++) {
