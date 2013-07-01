@@ -38,11 +38,6 @@
 		reg = <0x00000000 0x80000000 0x20000000>;
 	};
 
-	i2c@7000c500 {
-		status = "okay";
-		clock-frequency = <400000>;
-	};
-
 	spi@7000d400 {
 		status = "okay";
 		spi-max-frequency = <25000000>;
