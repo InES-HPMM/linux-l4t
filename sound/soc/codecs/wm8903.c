@@ -2,7 +2,7 @@
  * wm8903.c  --  WM8903 ALSA SoC Audio driver
  *
  * Copyright 2008-12 Wolfson Microelectronics
- * Copyright 2011-2012 NVIDIA, Inc.
+ * Copyright (C) 2011-2013 NVIDIA Corporation. All rights reserved.
  *
  * Author: Mark Brown <broonie@opensource.wolfsonmicro.com>
  *
@@ -35,6 +35,8 @@
 #include <sound/initval.h>
 #include <sound/wm8903.h>
 #include <trace/events/asoc.h>
+
+#include <mach/hardware.h>
 
 #include "wm8903.h"
 
@@ -1484,11 +1486,10 @@ static int wm8903_hw_params(struct snd_pcm_substream *substream,
 
 	aif1 &= ~WM8903_AIF_WL_MASK;
 
-#if defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	bclk = 8 * fs;
-#else
-	bclk = 4 * fs;
-#endif
+	if (tegra_platform_is_fpga())
+		bclk = 8 * fs;
+	else
+		bclk = 4 * fs;
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
