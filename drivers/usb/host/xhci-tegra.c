@@ -454,6 +454,9 @@ static void update_speed(struct tegra_xhci_hcd *tegra, u8 port)
 	struct usb_hcd *hcd = xhci_to_hcd(tegra->xhci);
 	u32 portsc;
 
+	if (tegra->hc_in_elpg)
+		return;
+
 	portsc = readl(hcd->regs + BAR0_XHCI_OP_PORTSC(port +
 						BAR0_XHCI_OP_PORTSC_UTMIP_0));
 	if (DEV_FULLSPEED(portsc))
@@ -3732,15 +3735,13 @@ static void tegra_xhci_shutdown(struct platform_device *pdev)
 
 	if (tegra->hc_in_elpg) {
 		mutex_lock(&tegra->sync_lock);
-		tegra_xhci_host_partition_elpg_exit(tegra);
+		pmc_init(tegra, 0);
 		mutex_unlock(&tegra->sync_lock);
+	} else {
+		xhci = tegra->xhci;
+		hcd = xhci_to_hcd(xhci);
+		xhci_shutdown(hcd);
 	}
-
-	fw_log_deinit(tegra);
-
-	xhci = tegra->xhci;
-	hcd = xhci_to_hcd(xhci);
-	xhci_shutdown(hcd);
 }
 
 static struct platform_driver tegra_xhci_driver = {
