@@ -6,4 +6,16 @@
 	model = "NVIDIA Tegra124 bonaire simulation";
 	compatible = "nvidia,bonaire", "nvidia,tegra124";
 
+
+	chosen {
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	memory@0x80000000 {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		device_type = "memory";
+		reg = <0x80000000 0x20000000>;
+	};
 };
