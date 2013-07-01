@@ -1028,6 +1028,20 @@ struct max77660_charger_platform_data {
 };
 
 /*
+ * ADC wakeup property: Wakup the system from suspend when threshold crossed.
+ * @adc_channel_number: ADC channel number for monitoring.
+ * @adc_avg_sample: Average number of ADC samples.
+ * @adc_high_threshold: ADC High raw data for upper threshold to generate int.
+ * @adc_low_threshold: ADC low raw data for lower threshold to generate int.
+ */
+struct max77660_adc_wakeup_property {
+	int adc_channel_number;
+	int adc_avg_sample;
+	int adc_high_threshold;
+	int adc_low_threshold;
+};
+
+/*
  * max77660_adc_platform_data: Platform data for ADC.
  * @adc_current_uA: ADC current source in uA.
  * @adc_avg_sample: Average ADC sample. 0 Means 1 sample.
@@ -1038,6 +1052,7 @@ struct max77660_adc_platform_data {
 	int adc_avg_sample;
 	unsigned adc_ref_enabled:1;
 	struct iio_map *channel_mapping;
+	struct max77660_adc_wakeup_property *adc_wakeup_data;
 };
 
 /*

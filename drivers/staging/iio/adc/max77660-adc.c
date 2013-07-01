@@ -75,6 +75,8 @@ struct max77660_adc {
 	int				irq;
 	struct max77660_adc_info	*adc_info;
 	struct completion		conv_completion;
+	struct max77660_adc_wakeup_property adc_wake_props;
+	bool				wakeup_props_available;
 };
 
 static inline int max77660_is_valid_channel(struct  max77660_adc *adc, int chan)
@@ -105,6 +107,10 @@ static irqreturn_t max77660_adc_irq(int irq, void *data)
 
 	if (status & MAX77660_ADCINT_ADCCONVINT)
 		complete(&adc->conv_completion);
+	else if (status & MAX77660_ADCINT_DTRINT)
+		dev_info(adc->dev, "DTR int occured\n");
+	else if (status & MAX77660_ADCINT_DTFINT)
+		dev_info(adc->dev, "DTF int occured\n");
 	else
 		dev_err(adc->dev, "ADC-IRQ for unknown reason, 0x%02x\n",
 			status);
@@ -409,6 +415,12 @@ static int max77660_adc_probe(struct platform_device *pdev)
 	}
 
 	device_set_wakeup_capable(&pdev->dev, 1);
+	if (adc_pdata->adc_wakeup_data) {
+		memcpy(&adc->adc_wake_props, adc_pdata->adc_wakeup_data,
+			sizeof(struct max77660_adc_wakeup_property));
+		adc->wakeup_props_available = true;
+		device_wakeup_enable(&pdev->dev);
+	}
 	return 0;
 
 out_irq_free:
@@ -430,13 +442,137 @@ static int max77660_adc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int max77660_adc_wakeup_configure(struct max77660_adc *adc)
+{
+	int thres_h, thres_l, ch;
+	u8 int_mask, ch1, ch0;
+	u8 adc_avg;
+	int ret;
+
+	thres_h = 0;
+	thres_l = 0;
+	int_mask = 0xFF;
+	ch = adc->adc_wake_props.adc_channel_number;
+	if (adc->adc_wake_props.adc_high_threshold > 0) {
+		thres_h = adc->adc_wake_props.adc_high_threshold & 0xFFF;
+		int_mask &= ~MAX77660_ADCINT_DTRINT;
+	}
+	if (adc->adc_wake_props.adc_low_threshold > 0) {
+		thres_l = adc->adc_wake_props.adc_low_threshold & 0xFFF;
+		int_mask &= ~MAX77660_ADCINT_DTFINT;
+	}
+
+	ch0 = (ch > 7) ? 0 : BIT(ch);
+	ch1 = (ch > 7) ? BIT(ch - 8) : 0;
+
+	if (adc->adc_wake_props.adc_avg_sample <= 1)
+		adc_avg = MAX77660_ADCCTRL_ADCAVG(0);
+	else if (adc->adc_wake_props.adc_avg_sample <= 2)
+		adc_avg = MAX77660_ADCCTRL_ADCAVG(1);
+	else if (adc->adc_wake_props.adc_avg_sample <= 16)
+		adc_avg = MAX77660_ADCCTRL_ADCAVG(2);
+	else
+		adc_avg = MAX77660_ADCCTRL_ADCAVG(3);
+
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_DTRL, thres_h & 0xFF);
+	if (ret < 0) {
+		dev_err(adc->dev, "DTRL write failed: %d\n", ret);
+		return ret;
+	}
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_DTRH, (thres_h >> 8) & 0xF);
+	if (ret < 0) {
+		dev_err(adc->dev, "DTRH write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_DTFL, thres_l & 0xFF);
+	if (ret < 0) {
+		dev_err(adc->dev, "DTFL write failed: %d\n", ret);
+		return ret;
+	}
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_DTFH, (thres_l >> 8) & 0xF);
+	if (ret < 0) {
+		dev_err(adc->dev, "DTFH write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_ADCSEL0, ch0);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCSEL0 write failed: %d\n", ret);
+		return ret;
+	}
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_ADCSEL1, ch1);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCSEL1 write failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_update(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_ADCCTRL, adc_avg,
+			MAX77660_ADCCTRL_ADCAVG_MASK);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCCTRL update failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_ADCINTM, int_mask);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCINTM write failed\n");
+		return ret;
+	}
+
+	ret = max77660_reg_update(adc->parent, MAX77660_PWR_SLAVE,
+		MAX77660_REG_ADCCTRL, MAX77660_ADCCTRL_ADCCONT,
+		MAX77660_ADCCTRL_ADCCONT);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCCTR update failed: %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+
+static int max77660_adc_wakeup_reset(struct max77660_adc *adc)
+{
+	int ret;
+
+	ret = max77660_reg_write(adc->parent, MAX77660_PWR_SLAVE,
+			MAX77660_REG_ADCINTM, 0xFF);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCINTM write failed\n");
+		return ret;
+	}
+
+	ret = max77660_reg_update(adc->parent, MAX77660_PWR_SLAVE,
+		MAX77660_REG_ADCCTRL, 0, MAX77660_ADCCTRL_ADCCONT);
+	if (ret < 0) {
+		dev_err(adc->dev, "ADCCTR update failed: %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
+
 static int max77660_adc_suspend(struct device *dev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(dev);
 	struct max77660_adc *adc = iio_priv(iodev);
+	int ret;
 
-	if (device_may_wakeup(dev))
-		enable_irq_wake(adc->irq);
+	if (!device_may_wakeup(dev) || !adc->wakeup_props_available)
+		goto skip_wakeup;
+
+	ret = max77660_adc_wakeup_configure(adc);
+	if (ret < 0)
+		goto skip_wakeup;
+
+	enable_irq_wake(adc->irq);
+skip_wakeup:
 	return 0;
 }
 
@@ -444,9 +580,17 @@ static int max77660_adc_resume(struct device *dev)
 {
 	struct iio_dev *iodev = dev_to_iio_dev(dev);
 	struct max77660_adc *adc = iio_priv(iodev);
+	int ret;
 
-	if (device_may_wakeup(dev))
-		disable_irq_wake(adc->irq);
+	if (!device_may_wakeup(dev) || !adc->wakeup_props_available)
+		goto skip_wakeup;
+
+	ret = max77660_adc_wakeup_reset(adc);
+	if (ret < 0)
+		goto skip_wakeup;
+
+	disable_irq_wake(adc->irq);
+skip_wakeup:
 	return 0;
 };
 #endif
