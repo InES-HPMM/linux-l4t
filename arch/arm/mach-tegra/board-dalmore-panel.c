@@ -537,9 +537,13 @@ int __init dalmore_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 	/* Copy the bootloader fb to the fb. */
-	__tegra_move_framebuffer(&dalmore_nvmap_device,
-		tegra_fb_start, tegra_bootloader_fb_start,
-			min(tegra_fb_size, tegra_bootloader_fb_size));
+	if (tegra_bootloader_fb_size)
+		__tegra_move_framebuffer(&dalmore_nvmap_device,
+				tegra_fb_start, tegra_bootloader_fb_start,
+				min(tegra_fb_size, tegra_bootloader_fb_size));
+	else
+		__tegra_clear_framebuffer(&dalmore_nvmap_device,
+					  tegra_fb_start, tegra_fb_size);
 
 	res = platform_get_resource_byname(&dalmore_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
