@@ -73,11 +73,13 @@ enum {
 
 #define SMMU_TLB_CONFIG_HIT_UNDER_MISS__ENABLE	(1 << 29)
 #define SMMU_TLB_CONFIG_ACTIVE_LINES__VALUE	0x10
-#define SMMU_TLB_CONFIG_RESET_VAL		0x30000010
+#define SMMU_TLB_CONFIG_RESET_VAL		0x20000010
+#define SMMU_TLB_RR_ARB				(1 << 28)
 
 #define SMMU_PTC_CONFIG_CACHE__ENABLE		(1 << 29)
 #define SMMU_PTC_CONFIG_INDEX_MAP__PATTERN	0x3f
-#define SMMU_PTC_CONFIG_RESET_VAL		0x2800003f
+#define SMMU_PTC_CONFIG_RESET_VAL		0x2000003f
+#define SMMU_PTC_REQ_LIMIT			(8 << 24)
 
 #define SMMU_PTB_ASID				0x1c
 #define SMMU_PTB_ASID_CURRENT_SHIFT		0
@@ -562,8 +564,19 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 		smmu_write(smmu,
 			   smmu->asid_security[i], smmu_asid_security_ofs[i]);
 
-	smmu_write(smmu, SMMU_TLB_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_TLB));
-	smmu_write(smmu, SMMU_PTC_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_PTC));
+	val = SMMU_PTC_CONFIG_RESET_VAL;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+		val |= SMMU_PTC_REQ_LIMIT;
+
+	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_PTC));
+
+	val = SMMU_TLB_CONFIG_RESET_VAL;
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+		val |= SMMU_TLB_RR_ARB;
+
+	smmu_write(smmu, val, SMMU_CACHE_CONFIG(_TLB));
 
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
 	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
