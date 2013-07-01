@@ -147,9 +147,14 @@
 #include <media/ov9772.h>
 #include "nvc_utilities.h"
 
+#include <mach/hardware.h>
+
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
 #endif
+
+#undef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #define OV9772_ID			0x9772
 #define OV9772_SENSOR_TYPE		NVC_IMAGER_TYPE_RAW
@@ -160,8 +165,9 @@
 #define OV9772_TABLE_END		1
 #define OV9772_TABLE_RESET		2
 #define OV9772_TABLE_RESET_TIMEOUT	50
-#define OV9772_NUM_MODES		ARRAY_SIZE(ov9772_mode_table)
-#define OV9772_MODE_UNKNOWN		(OV9772_NUM_MODES + 1)
+#define OV9772_NUM_MODES_MAX	MAX(ARRAY_SIZE(ov9772_mode_table_non_fpga)\
+					, ARRAY_SIZE(ov9772_mode_table_fpga))
+/*#define OV9772_MODE_UNKNOWN		(OV9772_NUM_MODES + 1)*/
 #define OV9772_LENS_MAX_APERTURE	0 /* / _INT2FLOAT_DIVISOR */
 #define OV9772_LENS_FNUMBER		0 /* / _INT2FLOAT_DIVISOR */
 #define OV9772_LENS_FOCAL_LENGTH	6120 /* / _INT2FLOAT_DIVISOR */
@@ -323,7 +329,6 @@ static struct ov9772_reg *test_patterns[] = {
 	tp_checker_seq,
 };
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 static struct ov9772_reg ov9772_1280x720_i2c[] = {
 	{OV9772_TABLE_RESET, 0},
 	{OV9772_TABLE_WAIT_MS, 100},
@@ -406,7 +411,6 @@ static struct ov9772_reg ov9772_1280x720_i2c[] = {
 
 	{OV9772_TABLE_END, 0x0000}
 };
-#endif
 
 #ifdef OV9772_ENABLE_1284x724
 static struct ov9772_reg ov9772_1284x724_i2c[] = {
@@ -623,7 +627,7 @@ static struct ov9772_reg ov9772_960x720_i2c[] = {
  * Steps to add a resolution:
  * 1. Add I2C data table
  * 2. Add ov9772_mode_data table
- * 3. Add entry to the ov9772_mode_table
+ * 3. Add entry to the ov9772_mode_table_non_fpga and/or ov9772_mode_table_fpga
  */
 #ifdef OV9772_ENABLE_1284x724
 static struct ov9772_mode_data ov9772_1284x724 = {
@@ -715,7 +719,7 @@ static struct ov9772_mode_data ov9772_960x720 = {
 	.p_mode_i2c			= ov9772_960x720_i2c,
 };
 #endif
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+
 static struct ov9772_mode_data ov9772_1280x720 = {
 	.sensor_mode = {
 		.res_x			= 1280,
@@ -759,9 +763,12 @@ static struct ov9772_mode_data ov9772_1280x720 = {
 	},
 	.p_mode_i2c			= ov9772_1280x720_i2c,
 };
-#endif
 
-static struct ov9772_mode_data *ov9772_mode_table[] = {
+static struct ov9772_mode_data **ov9772_mode_table;
+
+static unsigned int ov9772_num_modes;
+
+static struct ov9772_mode_data *ov9772_mode_table_non_fpga[] = {
 	[0] =
 #ifdef OV9772_ENABLE_1284x724
 	&ov9772_1284x724,
@@ -769,11 +776,18 @@ static struct ov9772_mode_data *ov9772_mode_table[] = {
 #ifdef OV9772_ENABLE_960x720
 	&ov9772_960x720,
 #endif
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	&ov9772_1280x720,
-#endif
 };
 
+static struct ov9772_mode_data *ov9772_mode_table_fpga[] = {
+	[0] =
+#ifdef OV9772_ENABLE_1284x724
+	&ov9772_1284x724,
+#endif
+#ifdef OV9772_ENABLE_960x720
+	&ov9772_960x720,
+#endif
+	&ov9772_1280x720,
+};
 
 static int ov9772_i2c_rd8(struct i2c_client *client, u16 reg, u8 *val)
 {
@@ -1520,14 +1534,14 @@ static int ov9772_mode_rd(struct ov9772_info *info,
 		return 0;
 	}
 
-	for (i = 0; i < OV9772_NUM_MODES; i++) {
+	for (i = 0; i < ov9772_num_modes; i++) {
 		if ((res_x == ov9772_mode_table[i]->sensor_mode.res_x) &&
 		   (res_y == ov9772_mode_table[i]->sensor_mode.res_y)) {
 			break;
 		}
 	}
 
-	if (i == OV9772_NUM_MODES) {
+	if (i == ov9772_num_modes) {
 		dev_err(&info->i2c_client->dev,
 			"%s invalid resolution: %dx%d\n",
 			__func__, res_x, res_y);
@@ -2036,7 +2050,8 @@ static long ov9772_ioctl(struct file *file,
 	struct ov9772_info *info = file->private_data;
 	struct nvc_imager_bayer mode;
 	struct nvc_imager_mode_list mode_list;
-	struct nvc_imager_mode mode_table[OV9772_NUM_MODES];
+	struct nvc_imager_mode mode_table[OV9772_NUM_MODES_MAX];
+	unsigned int mode_table_size;
 	struct nvc_imager_dnvc dnvc;
 	const void *data_ptr;
 	s32 num_modes;
@@ -2044,6 +2059,15 @@ static long ov9772_ioctl(struct file *file,
 	int pwr;
 	int err;
 
+
+	if (tegra_platform_is_fpga()) {
+		ov9772_mode_table = ov9772_mode_table_fpga;
+		ov9772_num_modes = ARRAY_SIZE(ov9772_mode_table_fpga);
+	} else {
+		ov9772_mode_table = ov9772_mode_table_non_fpga;
+		ov9772_num_modes = ARRAY_SIZE(ov9772_mode_table_non_fpga);
+	}
+	mode_table_size = sizeof(struct nvc_imager_mode) * ov9772_num_modes;
 	switch (cmd) {
 	case NVC_IOCTL_FUSE_ID:
 		err = ov9772_get_fuse_id(info);
@@ -2131,7 +2155,7 @@ static long ov9772_ioctl(struct file *file,
 		 * then it just returns the count.
 		 */
 		dev_dbg(&info->i2c_client->dev, "%s MODE_RD n=%d\n",
-			__func__, OV9772_NUM_MODES);
+			__func__, ov9772_num_modes);
 		if (copy_from_user(&mode_list, (const void __user *)arg,
 				sizeof(struct nvc_imager_mode_list))) {
 			dev_err(&info->i2c_client->dev,
@@ -2140,7 +2164,7 @@ static long ov9772_ioctl(struct file *file,
 			return -EFAULT;
 		}
 
-		num_modes = OV9772_NUM_MODES;
+		num_modes = ov9772_num_modes;
 		if (mode_list.p_num_mode != NULL) {
 			if (copy_to_user((void __user *)mode_list.p_num_mode,
 					 &num_modes, sizeof(num_modes))) {
@@ -2152,13 +2176,13 @@ static long ov9772_ioctl(struct file *file,
 		}
 
 		if (mode_list.p_modes != NULL) {
-			for (i = 0; i < OV9772_NUM_MODES; i++) {
+			for (i = 0; i < ov9772_num_modes; i++) {
 				mode_table[i] =
 					ov9772_mode_table[i]->sensor_mode;
 			}
 			if (copy_to_user((void __user *)mode_list.p_modes,
 					 (const void *)&mode_table,
-					 sizeof(mode_table))) {
+					 mode_table_size)) {
 				dev_err(&info->i2c_client->dev,
 					"%s copy_to_user err line %d\n",
 					__func__, __LINE__);

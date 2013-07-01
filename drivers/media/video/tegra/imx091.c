@@ -36,9 +36,15 @@
 
 #include "nvc_utilities.h"
 
+#include <mach/hardware.h>
+
 #ifdef CONFIG_DEBUG_FS
 #include <media/nvc_debugfs.h>
 #endif
+
+#undef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 
 #define IMX091_ID			0x0091
 #define IMX091_ID_ADDRESS   0x0000
@@ -51,8 +57,9 @@
 #define IMX091_SIZEOF_I2C_BUF		16
 #define IMX091_TABLE_WAIT_MS		0
 #define IMX091_TABLE_END		1
-#define IMX091_NUM_MODES		ARRAY_SIZE(imx091_mode_table)
-#define IMX091_MODE_UNKNOWN		(IMX091_NUM_MODES + 1)
+#define IMX091_NUM_MODES_MAX	MAX(ARRAY_SIZE(imx091_mode_table_non_fpga)\
+					, ARRAY_SIZE(imx091_mode_table_fpga))
+/*#define IMX091_MODE_UNKNOWN		(IMX091_NUM_MODES + 1)*/
 #define IMX091_LENS_MAX_APERTURE	0 /* / _INT2FLOAT_DIVISOR */
 #define IMX091_LENS_FNUMBER		0 /* / _INT2FLOAT_DIVISOR */
 #define IMX091_LENS_FOCAL_LENGTH	4760 /* / _INT2FLOAT_DIVISOR */
@@ -143,23 +150,13 @@ static struct nvc_imager_cap imx091_dflt_cap = {
 	.csi_port		= 0,
 	.data_lanes		= 4,
 	.virtual_channel_id	= 0,
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	.discontinuous_clk_mode	= 0,
-	.cil_threshold_settle	= 0xd,
-#else
 	.discontinuous_clk_mode	= 1,
 	.cil_threshold_settle	= 0x0,
-#endif
 	.min_blank_time_width	= 16,
 	.min_blank_time_height	= 16,
 	.preferred_mode_index	= 1,
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
-	.focuser_guid	= 0,
-	.torch_guid		= 0,
-#else
 	.focuser_guid	= NVC_FOCUS_GUID(0),
 	.torch_guid		= NVC_TORCH_GUID(0),
-#endif
 	.cap_version		= NVC_IMAGER_CAPABILITIES_VERSION2,
 };
 
@@ -219,7 +216,6 @@ static struct imx091_reg *test_patterns[] = {
 static int imx091_power_on(struct nvc_regulator *vreg);
 static int imx091_power_off(struct nvc_regulator *vreg);
 
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 #define IMX091_WAIT_1000_MS 1000
 /* The setting is for 1-lane mode.
  * THS time is different as well. They are set
@@ -446,7 +442,7 @@ static struct imx091_reg imx091_FPGA_1052x1560_i2c[] = {
 	{IMX091_TABLE_WAIT_MS, IMX091_WAIT_MS},
 	{IMX091_TABLE_END, 0x00}
 };
-#else
+
 static struct imx091_reg imx091_4208x3120_i2c[] = {
 	/* Reset */
 	{0x0103, 0x01},
@@ -978,7 +974,6 @@ static struct imx091_reg imx091_524X390_i2c[] = {
 
 	{IMX091_TABLE_END, 0x00}
 };
-#endif /* !CONFIG_TEGRA_FPGA_PLATFORM */
 
 /* Each resolution requires the below data table setup and the corresponding
  * I2C data table.
@@ -991,9 +986,8 @@ static struct imx091_reg imx091_524X390_i2c[] = {
  * Steps to add a resolution:
  * 1. Add I2C data table
  * 2. Add imx091_mode_data table
- * 3. Add entry to the imx091_mode_table
+ * 3. Add entry to the imx091_mode_table_non_fpga and/or imx091_mode_table_fpga
  */
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
 static struct imx091_mode_data imx091_FPGA_4160x3120 = {
 	.sensor_mode = {
 		.res_x			= 4160,
@@ -1079,7 +1073,7 @@ static struct imx091_mode_data imx091_FPGA_1052x1560 = {
 	},
 	.p_mode_i2c			= imx091_FPGA_1052x1560_i2c,
 };
-#else
+
 static struct imx091_mode_data imx091_4208x3120 = {
 	.sensor_mode = {
 		.res_x			= 4096,
@@ -1294,21 +1288,22 @@ static struct imx091_mode_data imx091_524x390 = {
 	},
 	.p_mode_i2c			= imx091_524X390_i2c,
 };
-#endif /* CONFIG_TEGRA_FPGA_PLATFORM */
 
-static struct imx091_mode_data *imx091_mode_table[] = {
-#ifdef CONFIG_TEGRA_FPGA_PLATFORM
+static struct imx091_mode_data **imx091_mode_table;
+static unsigned int imx091_num_modes;
+
+static struct imx091_mode_data *imx091_mode_table_fpga[] = {
 	&imx091_FPGA_1052x1560,
 	&imx091_FPGA_4160x3120,
-#else
+};
+
+static struct imx091_mode_data *imx091_mode_table_non_fpga[] = {
 	&imx091_4208x3120,
 	&imx091_1948x1096,
 	&imx091_1308x736,
 	&imx091_2104x1560,
 	&imx091_524x390,
-#endif
 };
-
 
 static int imx091_i2c_rd8(struct i2c_client *client, u16 reg, u8 *val)
 {
@@ -2217,14 +2212,14 @@ static int imx091_mode_rd(struct imx091_info *info,
 		return 0;
 	}
 
-	for (i = 0; i < IMX091_NUM_MODES; i++) {
+	for (i = 0; i < imx091_num_modes; i++) {
 		if ((res_x == imx091_mode_table[i]->sensor_mode.res_x) &&
 		    (res_y == imx091_mode_table[i]->sensor_mode.res_y)) {
 			break;
 		}
 	}
 
-	if (i == IMX091_NUM_MODES) {
+	if (i == imx091_num_modes) {
 		dev_err(&info->i2c_client->dev,
 			"%s invalid resolution: %dx%d\n",
 			__func__, res_x, res_y);
@@ -2752,13 +2747,25 @@ static long imx091_ioctl(struct file *file,
 	struct imx091_info *info = file->private_data;
 	struct nvc_imager_bayer mode;
 	struct nvc_imager_mode_list mode_list;
-	struct nvc_imager_mode mode_table[IMX091_NUM_MODES];
+	struct nvc_imager_mode mode_table[IMX091_NUM_MODES_MAX];
 	struct nvc_imager_dnvc dnvc;
+	unsigned int mode_table_size;
 	const void *data_ptr;
 	s32 num_modes;
 	u32 i;
 	int pwr;
 	int err;
+
+	if (tegra_platform_is_fpga()) {
+		imx091_mode_table = imx091_mode_table_fpga;
+		imx091_num_modes = ARRAY_SIZE(imx091_mode_table_fpga);
+
+	} else {
+		imx091_mode_table = imx091_mode_table_non_fpga;
+		imx091_num_modes = ARRAY_SIZE(imx091_mode_table_non_fpga);
+	}
+
+	mode_table_size = sizeof(struct nvc_imager_mode) * imx091_num_modes;
 
 	switch (cmd) {
 	case NVC_IOCTL_FUSE_ID:
@@ -2847,7 +2854,7 @@ static long imx091_ioctl(struct file *file,
 		 * then it just returns the count.
 		 */
 		dev_dbg(&info->i2c_client->dev, "%s MODE_RD n=%d\n",
-			__func__, IMX091_NUM_MODES);
+			__func__, imx091_num_modes);
 		if (copy_from_user(&mode_list, (const void __user *)arg,
 				   sizeof(struct nvc_imager_mode_list))) {
 			dev_err(&info->i2c_client->dev,
@@ -2856,7 +2863,7 @@ static long imx091_ioctl(struct file *file,
 			return -EFAULT;
 		}
 
-		num_modes = IMX091_NUM_MODES;
+		num_modes = imx091_num_modes;
 		if (mode_list.p_num_mode != NULL) {
 			if (copy_to_user((void __user *)mode_list.p_num_mode,
 					 &num_modes, sizeof(num_modes))) {
@@ -2868,13 +2875,13 @@ static long imx091_ioctl(struct file *file,
 		}
 
 		if (mode_list.p_modes != NULL) {
-			for (i = 0; i < IMX091_NUM_MODES; i++) {
+			for (i = 0; i < imx091_num_modes; i++) {
 				mode_table[i] =
 					     imx091_mode_table[i]->sensor_mode;
 			}
 			if (copy_to_user((void __user *)mode_list.p_modes,
 					 (const void *)&mode_table,
-					 sizeof(mode_table))) {
+					 mode_table_size)) {
 				dev_err(&info->i2c_client->dev,
 					"%s copy_to_user err line %d\n",
 					__func__, __LINE__);
@@ -3403,6 +3410,14 @@ static int imx091_probe(
 	unsigned long clock_probe_rate;
 	int err;
 	const char *mclk_name;
+
+	if (tegra_platform_is_fpga()) {
+		imx091_dflt_cap.discontinuous_clk_mode	= 0;
+		imx091_dflt_cap.cil_threshold_settle	= 0xd;
+		imx091_dflt_cap.focuser_guid	= 0;
+		imx091_dflt_cap.torch_guid	= 0;
+	}
+
 	dev_dbg(&client->dev, "%s +++++\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (info == NULL) {
