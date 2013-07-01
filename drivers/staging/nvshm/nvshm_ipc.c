@@ -254,25 +254,24 @@ static void ipc_work(struct work_struct *work)
 	switch (cmd) {
 	case NVSHM_IPC_READY:
 		/* most encountered message - process queue */
-		if (cmd == handle->old_status) {
-			/* Process IPC queue but do not notify sysfs */
-			if (handle->configured) {
-				nvshm_process_queue(handle);
-				if (handle->errno) {
-					pr_err("%s: cleanup interfaces\n",
-					       __func__);
-					nvshm_abort_queue(handle);
-					cleanup_interfaces(handle);
-					break;
-				}
-			}
-		} else {
+		if (cmd != handle->old_status) {
 			if (ipc_readconfig(handle))
 				goto ipc_exit;
 
 			nvshm_iobuf_init(handle);
 			nvshm_init_queue(handle);
 			init_interfaces(handle);
+		}
+		/* Process IPC queue but do not notify sysfs */
+		if (handle->configured) {
+			nvshm_process_queue(handle);
+			if (handle->errno) {
+				pr_err("%s: cleanup interfaces\n",
+				       __func__);
+				nvshm_abort_queue(handle);
+				cleanup_interfaces(handle);
+				break;
+			}
 		}
 		break;
 	case NVSHM_IPC_BOOT_FW_REQ:
