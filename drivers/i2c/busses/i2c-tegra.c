@@ -756,6 +756,10 @@ err:
 	if (i2c_dev->chipdata->has_xfer_complete_interrupt)
 		mask |= I2C_INT_ALL_PACKETS_XFER_COMPLETE;
 
+	if (!(i2c_dev->use_single_xfer_complete &&
+			i2c_dev->chipdata->has_xfer_complete_interrupt))
+		mask |= I2C_INT_ALL_PACKETS_XFER_COMPLETE;
+
 	if (i2c_dev->chipdata->has_hw_arb_support)
 		mask |= I2C_INT_BUS_CLEAR_DONE;
 
@@ -906,6 +910,10 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 		int_mask |= I2C_INT_RX_FIFO_DATA_REQ;
 		i2c_dev->use_single_xfer_complete = false;
 	}
+
+	if (!(i2c_dev->use_single_xfer_complete &&
+			i2c_dev->chipdata->has_xfer_complete_interrupt))
+		int_mask |= I2C_INT_ALL_PACKETS_XFER_COMPLETE;
 
 	if (!i2c_dev->chipdata->has_xfer_complete_interrupt)
 		spin_unlock_irqrestore(&i2c_dev->fifo_lock, flags);
