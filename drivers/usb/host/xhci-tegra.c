@@ -1323,7 +1323,7 @@ static void tegra_xhci_rx_idle_mode_override(struct tegra_xhci_hcd *tegra,
 			padregs->iophy_misc_pad_p1_ctl3_0);
 
 		/* SATA lane also if USB3_SS port1 mapped to it */
-		if (XUSB_DEVICE_ID_T124 == tegra->device_id &&
+		if (XUSB_DEVICE_ID_T114 != tegra->device_id &&
 				tegra->bdata->lane_owner & BIT(0)) {
 			reg = readl(tegra->padctl_base +
 				padregs->iophy_misc_pad_s0_ctl3_0);
@@ -1655,7 +1655,7 @@ static void tegra_xhci_program_ss_pad(struct tegra_xhci_hcd *tegra,
 
 	tegra_xhci_restore_dfe_ctle_context(tegra, port);
 	/* SATA also if USB3_SS port1 mapped to it */
-	if ((port == 1) && (XUSB_DEVICE_ID_T124 == tegra->device_id) &&
+	if ((port == 1) && (XUSB_DEVICE_ID_T114 != tegra->device_id) &&
 			(tegra->bdata->lane_owner & BIT(0)))
 		tegra_xhci_restore_dfe_ctle_context(tegra, 3);
 }
@@ -1708,7 +1708,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 
 	reg = readl(tegra->padctl_base + padregs->usb2_oc_map_0);
 	reg = USB2_OC_MAP_PORT0 | USB2_OC_MAP_PORT1;
-	if (XUSB_DEVICE_ID_T124 == tegra->device_id)
+	if (tegra->bdata->portmap & TEGRA_XUSB_USB2_P2)
 		reg |= USB2_OC_MAP_PORT2;
 	writel(reg, tegra->padctl_base + padregs->usb2_oc_map_0);
 
@@ -1751,7 +1751,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 			padregs->iophy_misc_pad_p1_ctl3_0);
 
 		/* SATA lane also if USB3_SS port1 mapped to it but unused */
-		if (XUSB_DEVICE_ID_T124 == tegra->device_id &&
+		if (XUSB_DEVICE_ID_T114 != tegra->device_id &&
 				tegra->bdata->lane_owner & BIT(0)) {
 			reg = readl(tegra->padctl_base +
 				padregs->iophy_misc_pad_s0_ctl3_0);
@@ -1761,7 +1761,7 @@ tegra_xhci_padctl_portmap_and_caps(struct tegra_xhci_hcd *tegra)
 				padregs->iophy_misc_pad_s0_ctl3_0);
 		}
 	}
-	if (XUSB_DEVICE_ID_T124 == tegra->device_id) {
+	if (XUSB_DEVICE_ID_T114 != tegra->device_id) {
 		tegra_xhci_setup_gpio_for_ss_lane(tegra);
 		usb3_phy_pad_enable(tegra->bdata->lane_owner);
 	}
@@ -2662,7 +2662,7 @@ tegra_xhci_process_mbox_message(struct work_struct *work)
 		tegra_xhci_restore_dfe_ctle_context(tegra, tegra->cmd_data);
 		/* SATA lane also if USB3_SS port1 mapped to it */
 		if (tegra->cmd_data == 0x1 &&
-			XUSB_DEVICE_ID_T124 == tegra->device_id &&
+			XUSB_DEVICE_ID_T114 != tegra->device_id &&
 				tegra->bdata->lane_owner & BIT(0)) {
 			tegra_xhci_save_dfe_ctle_context(tegra, 3);
 			tegra_xhci_restore_dfe_ctle_context(tegra, 3);
