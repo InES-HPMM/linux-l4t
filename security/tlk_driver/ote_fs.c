@@ -21,7 +21,6 @@
 #include <linux/list.h>
 #include <linux/completion.h>
 #include <linux/workqueue.h>
-#include <linux/freezer.h>
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
 
@@ -63,13 +62,13 @@ int te_handle_fs_ioctl(struct file *file, unsigned int ioctl_num,
 
 		ptr_user_req = (struct te_file_req *)ioctl_param;
 
-		set_freezable();
-
 		set_bit(TE_FS_READY_BIT, &fs_ready);
 
 		/* wait for a new request */
-		while (wait_for_completion_interruptible(&req_ready))
-			try_to_freeze();
+		if (wait_for_completion_interruptible(&req_ready)) {
+			clear_bit(TE_FS_READY_BIT, &fs_ready);
+			return -ENODATA;
+		}
 
 		/* dequeue new request from the secure world */
 		req_node = list_first_entry(&req_list, struct te_file_req_node,
@@ -181,11 +180,8 @@ static void _te_fs_file_operation(const char *name, void *buf, int len,
 	list_add_tail(&req_list, &req_node->node);
 	complete(&req_ready);
 
-	set_freezable();
-
 	/* wait for the consumer's signal */
-	while (wait_for_completion_interruptible(&req_complete))
-		try_to_freeze();
+	wait_for_completion(&req_complete);
 
 	kfree(new_req);
 
