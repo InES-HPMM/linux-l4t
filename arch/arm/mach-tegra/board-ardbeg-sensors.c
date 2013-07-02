@@ -21,11 +21,15 @@
 #include <linux/mpu.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/nct1008.h>
 #include <media/ar0261.h>
 #include <media/imx135.h>
 #include <media/dw9718.h>
 
+#include "board.h"
+#include "board-common.h"
 #include "board-ardbeg.h"
+#include "tegra-board-id.h"
 
 static struct i2c_board_info ardbeg_i2c_board_info_cm32181[] = {
 	{
@@ -404,10 +408,68 @@ static int ardbeg_camera_init(void)
 	return 0;
 }
 
+static struct nct1008_platform_data ardbeg_nct72_pdata = {
+	.supported_hwrev = true,
+	.ext_range = true,
+	.conv_rate = 0x06, /* 4Hz conversion rate */
+	.offset = 0,
+	.shutdown_ext_limit = 85, /* C */
+	.shutdown_local_limit = 120, /* C */
+
+	.num_trips = 0,
+	.trips = {
+		{
+			.cdev_type = "suspend_soctherm",
+			.trip_temp = 50000,
+			.trip_type = THERMAL_TRIP_ACTIVE,
+			.upper = 1,
+			.lower = 1,
+			.hysteresis = 5000,
+		},
+	},
+};
+
+static struct i2c_board_info ardbeg_i2c_nct72_board_info[] = {
+	{
+		I2C_BOARD_INFO("nct72", 0x4c),
+		.platform_data = &ardbeg_nct72_pdata,
+		.irq = -1,
+	}
+};
+
+static int ardbeg_nct72_init(void)
+{
+	int nct72_port = TEGRA_GPIO_PI6;
+	int ret = 0;
+
+/*
+	tegra_add_cdev_trips(ardbeg_nct72_pdata.trips,
+				&ardbeg_nct72_pdata.num_trips);
+*/
+	ardbeg_i2c_nct72_board_info[0].irq = gpio_to_irq(nct72_port);
+
+	ret = gpio_request(nct72_port, "temp_alert");
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_direction_input(nct72_port);
+	if (ret < 0) {
+		pr_info("%s: calling gpio_free(nct72_port)", __func__);
+		gpio_free(nct72_port);
+	}
+
+	/* ardbeg has thermal sensor on GEN2-I2C i.e. instance 1 */
+	i2c_register_board_info(1, ardbeg_i2c_nct72_board_info,
+		ARRAY_SIZE(ardbeg_i2c_nct72_board_info));
+
+	return ret;
+}
+
 int __init ardbeg_sensors_init(void)
 {
 	mpuirq_init();
 	ardbeg_camera_init();
+	ardbeg_nct72_init();
 /*
 	i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
