@@ -93,10 +93,11 @@ static void battery_thermal_check_temperature(struct work_struct *work)
 {
 	struct battery_charger_thermal_dev *bct_dev;
 	struct device *dev;
-	int temperature;
+	long temperature;
 	bool charger_enable_state;
 	bool charger_current_half;
 	int battery_thersold_voltage;
+	int ret;
 
 	bct_dev = container_of(work, struct battery_charger_thermal_dev,
 					poll_temp_monitor_wq.work);
@@ -114,9 +115,13 @@ static void battery_thermal_check_temperature(struct work_struct *work)
 		return;
 	}
 
-	thermal_zone_device_update(bct_dev->battery_tz);
-	temperature = bct_dev->battery_tz->temperature / 1000;
+	ret = thermal_zone_get_temp(bct_dev->battery_tz, &temperature);
+	if (ret < 0) {
+		dev_err(dev, "Temperature read failed: %d\n ", ret);
+		goto exit;
+	}
 
+	temperature = temperature / 1000;
 	charger_enable_state = true;
 	charger_current_half = false;
 	battery_thersold_voltage = 4250;
@@ -134,6 +139,7 @@ static void battery_thermal_check_temperature(struct work_struct *work)
 			charger_enable_state, charger_current_half,
 			battery_thersold_voltage);
 
+exit:
 	if (bct_dev->start_monitoring)
 		schedule_delayed_work(&bct_dev->poll_temp_monitor_wq,
 			msecs_to_jiffies(bct_dev->polling_time_sec * HZ));
@@ -278,6 +284,9 @@ EXPORT_SYMBOL_GPL(battery_charging_restart);
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp)
 {
+	int ret;
+	long temperature;
+
 	if (!bg_dev)
 		return -EINVAL;
 
@@ -292,8 +301,11 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 		return -ENODEV;
 	}
 
-	thermal_zone_device_update(bg_dev->battery_tz);
-	*temp = bg_dev->battery_tz->temperature / 1000;
+	ret = thermal_zone_get_temp(bg_dev->battery_tz, &temperature);
+	if (ret < 0)
+		return ret;
+
+	*temp = temperature / 1000;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(battery_gauge_get_battery_temperature);
