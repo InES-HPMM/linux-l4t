@@ -268,7 +268,7 @@ static struct regulator_consumer_supply palmas_regen1_supply[] = {
 static struct regulator_consumer_supply palmas_regen2_supply[] = {
 };
 
-PALMAS_REGS_PDATA(smps123, 900,  1300, NULL, 0, 0, 0, 0,
+PALMAS_REGS_PDATA(smps123, 900,  1350, NULL, 0, 0, 0, 0,
 	0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, 0,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);

@@ -249,7 +249,7 @@ static struct regulator_consumer_supply palmas_regen2_supply[] = {
 	REGULATOR_SUPPLY("vdd_mic", NULL),
 };
 
-PALMAS_REGS_PDATA(smps123, 900,  1300, NULL, 0, 0, 0, NORMAL,
+PALMAS_REGS_PDATA(smps123, 900,  1350, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_ENABLE1, 0, 2500, 0);
 PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, NORMAL,
 		0, PALMAS_EXT_CONTROL_NSLEEP, 0, 2500, 0);
