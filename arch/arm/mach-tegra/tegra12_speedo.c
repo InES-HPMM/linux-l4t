@@ -69,13 +69,6 @@ void tegra_init_speedo_data(void)
 {
 	cpu_speedo_value = TEGRA124_CPU_SPEEDO;
 
-	cpu_process_id  = -1;
-	core_process_id = -1;
-	gpu_process_id  = -1;
-	cpu_speedo_id   = -1;
-	soc_speedo_id   = -1;
-	gpu_speedo_id   = -1;
-
 	cpu_speedo_0_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_0);
 	cpu_speedo_1_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_1);
 	cpu_speedo_2_value = tegra_fuse_readl(FUSE_CPU_SPEEDO_2);
