@@ -233,7 +233,6 @@ static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 
 /* Initially setting all used GPIO's to non-TRISTATE */
 static __initdata struct tegra_pingroup_config ardbeg_pinmux_set_nontristate[] = {
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_X5_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
 	DEFAULT_PINMUX(GPIO_X6_AUD,     RSVD3,  PULL_UP,      NORMAL,    INPUT),
@@ -298,9 +297,6 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_set_nontristate[] =
 	DEFAULT_PINMUX(HDMI_INT,        RSVD,   PULL_DOWN,    NORMAL,    INPUT),
 
 	DEFAULT_PINMUX(GMI_AD9,         PWM1,   NORMAL,    NORMAL,     OUTPUT),
-#else
-	/* TODO: update for t124 ardbeg */
-#endif
 };
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
