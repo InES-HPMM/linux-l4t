@@ -49,6 +49,7 @@ struct battery_charger_dev {
 	struct battery_charging_ops	*ops;
 	struct list_head		list;
 	void				*drv_data;
+	struct delayed_work		restart_charging_wq;
 };
 
 struct battery_gauge_dev {
@@ -58,7 +59,7 @@ struct battery_gauge_dev {
 	struct battery_gauge_ops	*ops;
 	struct list_head		list;
 	void				*drv_data;
-	struct thermal_zone_device		*battery_tz;
+	struct thermal_zone_device	*battery_tz;
 };
 
 struct battery_charger_thermal_dev {
@@ -73,6 +74,20 @@ struct battery_charger_thermal_dev {
 	struct thermal_zone_device		*battery_tz;
 	bool					start_monitoring;
 };
+
+static void battery_charger_restart_charging_wq(struct work_struct *work)
+{
+	struct battery_charger_dev *bc_dev;
+
+	bc_dev = container_of(work, struct battery_charger_dev,
+					restart_charging_wq.work);
+	if (!bc_dev->ops->restart_charging) {
+		dev_err(bc_dev->parent_dev,
+				"No callback for restart charging\n");
+		return;
+	}
+	bc_dev->ops->restart_charging(bc_dev);
+}
 
 static void battery_thermal_check_temperature(struct work_struct *work)
 {
@@ -230,6 +245,9 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->ops = bci->bc_ops;
 	bc_dev->parent_dev = dev;
 	list_add(&bc_dev->list, &charger_list);
+
+	INIT_DELAYED_WORK(&bc_dev->restart_charging_wq,
+			battery_charger_restart_charging_wq);
 	mutex_unlock(&charger_gauge_list_mutex);
 	return bc_dev;
 }
@@ -243,6 +261,19 @@ void battery_charger_unregister(struct battery_charger_dev *bc_dev)
 	kfree(bc_dev);
 }
 EXPORT_SYMBOL_GPL(battery_charger_unregister);
+
+int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec)
+{
+	if (!bc_dev->ops->restart_charging) {
+		dev_err(bc_dev->parent_dev,
+			"No callback for restart charging\n");
+		return -EINVAL;
+	}
+	schedule_delayed_work(&bc_dev->restart_charging_wq,
+			msecs_to_jiffies(after_sec * HZ));
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charging_restart);
 
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp)
