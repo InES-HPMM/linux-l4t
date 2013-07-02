@@ -483,6 +483,7 @@ static struct soctherm_platform_data plat_data;
 static bool soctherm_init_platform_done;
 static bool read_hw_temp = true;
 static bool soctherm_suspended;
+static bool soctherm_high_voltage_range = true;
 
 static struct clk *soctherm_clk;
 static struct clk *tsensor_clk;
@@ -1905,6 +1906,55 @@ static void soctherm_therm_trip_init(struct tegra_tsensor_pmu_data *data)
 	pmc_writel(val, PMC_SCRATCH55);
 }
 
+static void soctherm_adjust_cpu_zone(void)
+{
+	u32 r;
+	int cpu;
+	unsigned long cpu_temp, pll_temp;
+
+	if (soctherm_suspended)
+		return;
+
+	if (soctherm_high_voltage_range) {
+		r = soctherm_readl(TS_TEMP1);
+		cpu_temp = temp_translate(REG_GET(r, TS_TEMP1_CPU_TEMP));
+
+		r = soctherm_readl(TS_TEMP2);
+		pll_temp = temp_translate(REG_GET(r, TS_TEMP2_PLLX_TEMP));
+
+		/* Program hotspot offsets per CPU ~ PLL diff */
+		r = soctherm_readl(TS_HOTSPOT_OFF);
+		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
+					(cpu_temp - pll_temp) / 1000);
+		soctherm_writel(r, TS_HOTSPOT_OFF);
+
+		/* Stop CPUn TSOSCs */
+		for (cpu = 0; cpu <= TSENSE_CPU3; cpu++) {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET
+						(TS_CPU0_CONFIG0, cpu));
+			r = REG_SET(r, TS_CPU0_CONFIG0_STOP, 1);
+			soctherm_writel(r, TS_TSENSE_REG_OFFSET
+						(TS_CPU0_CONFIG0, cpu));
+		}
+	} else {
+		/* Program hotspot offsets per config */
+		r = soctherm_readl(TS_HOTSPOT_OFF);
+		r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
+			plat_data.therm[THERM_CPU].hotspot_offset / 1000);
+
+		soctherm_writel(r, TS_HOTSPOT_OFF);
+
+		/* UN-Stop CPUn TSOSCs */
+		for (cpu = 0; cpu <= TSENSE_CPU3; cpu++) {
+			r = soctherm_readl(TS_TSENSE_REG_OFFSET
+						(TS_CPU0_CONFIG0, cpu));
+			r = REG_SET(r, TS_CPU0_CONFIG0_STOP, 0);
+			soctherm_writel(r, TS_TSENSE_REG_OFFSET
+						(TS_CPU0_CONFIG0, cpu));
+		}
+	}
+}
+
 static int soctherm_init_platform_data(void)
 {
 	struct soctherm_therm *therm;
@@ -1955,6 +2005,8 @@ static int soctherm_init_platform_data(void)
 				return -EINVAL;
 		}
 	}
+
+	soctherm_adjust_cpu_zone();
 
 	/* Sanitize therm trips */
 	for (i = 0; i < THERM_SIZE; i++) {
@@ -2269,6 +2321,14 @@ int __init tegra11_soctherm_init(struct soctherm_platform_data *data)
 		return -1;
 
 	return 0;
+}
+
+void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
+{
+	if (soctherm_high_voltage_range != high_voltage_range) {
+		soctherm_high_voltage_range = high_voltage_range;
+		soctherm_adjust_cpu_zone();
+	}
 }
 
 #ifdef CONFIG_DEBUG_FS
