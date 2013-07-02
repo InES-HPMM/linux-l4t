@@ -819,6 +819,26 @@ defined(CONFIG_ARCH_TEGRA_12x_SOC))
 #define TEGRA_MIPI_BIF_SIZE		SZ_1K
 #endif
 
+#if defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#define TEGRA_AFC0_BASE		0x70307000
+#define TEGRA_AFC0_SIZE		SZ_256
+
+#define TEGRA_AFC1_BASE		0x70307100
+#define TEGRA_AFC1_SIZE		SZ_256
+
+#define TEGRA_AFC2_BASE		0x70307200
+#define TEGRA_AFC2_SIZE		SZ_256
+
+#define TEGRA_AFC3_BASE		0x70307300
+#define TEGRA_AFC3_SIZE		SZ_256
+
+#define TEGRA_AFC4_BASE		0x70307400
+#define TEGRA_AFC4_SIZE		SZ_256
+
+#define TEGRA_AFC5_BASE		0x70307500
+#define TEGRA_AFC5_SIZE		SZ_256
+#endif
+
 /* On TEGRA, many peripherals are very closely packed in
  * two 256 MB io windows (that actually only use about 64 KB
  * at the start of each).
