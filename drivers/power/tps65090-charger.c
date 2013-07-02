@@ -248,14 +248,13 @@ static int tps65090_charger_probe(struct platform_device *pdev)
 	}
 
 	charger_data->bc_dev = battery_charger_register(&pdev->dev,
-				&tps65090_charger_bci);
+				&tps65090_charger_bci, charger_data);
 	if (IS_ERR(charger_data->bc_dev)) {
 		ret = PTR_ERR(charger_data->bc_dev);
 		dev_err(&pdev->dev, "battery charger register failed: %d\n",
 			ret);
 		goto chg_reg_err;
 	}
-	battery_charger_set_drvdata(charger_data->bc_dev, charger_data);
 
 	ret = tps65090_config_charger(charger_data);
 	if (ret < 0) {

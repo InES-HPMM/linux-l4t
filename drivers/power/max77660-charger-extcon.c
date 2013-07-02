@@ -1012,14 +1012,13 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 	}
 
 	chg_extcon->bc_dev = battery_charger_register(&pdev->dev,
-						&max77660_charger_bci);
+					&max77660_charger_bci, chg_extcon);
 	if (IS_ERR(chg_extcon->bc_dev)) {
 		ret = PTR_ERR(chg_extcon->bc_dev);
 		dev_err(&pdev->dev, "battery charger register failed: %d\n",
 			ret);
 		goto chg_reg_err;
 	}
-	battery_charger_set_drvdata(chg_extcon->bc_dev, chg_extcon);
 
 	max77660_charger_thermal_info.polling_time_sec =
 			bcharger_pdata->temperature_poll_period_secs;

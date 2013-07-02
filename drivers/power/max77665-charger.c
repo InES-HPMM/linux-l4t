@@ -849,14 +849,13 @@ static int max77665_battery_probe(struct platform_device *pdev)
 				max77665_set_ideal_input_current_work);
 
 	charger->bc_dev = battery_charger_register(&pdev->dev,
-					&max77665_charger_bci);
+					&max77665_charger_bci, charger);
 	if (IS_ERR(charger->bc_dev)) {
 		ret = PTR_ERR(charger->bc_dev);
 		dev_err(&pdev->dev, "battery charger register failed: %d\n",
 			ret);
 		goto free_lock;
 	}
-	battery_charger_set_drvdata(charger->bc_dev, charger);
 
 	/* modify OTP setting of input current limit to 100ma */
 	ret = max77665_set_max_input_current(charger, 100);

@@ -676,14 +676,14 @@ static int max17048_probe(struct i2c_client *client,
 		goto error;
 	}
 
-	chip->bg_dev = battery_gauge_register(&client->dev, &max17048_bgi);
+	chip->bg_dev = battery_gauge_register(&client->dev, &max17048_bgi,
+				chip);
 	if (IS_ERR(chip->bg_dev)) {
 		ret = PTR_ERR(chip->bg_dev);
 		dev_err(&client->dev, "battery gauge register failed: %d\n",
 			ret);
 		goto bg_err;
 	}
-	battery_gauge_set_drvdata(chip->bg_dev, chip);
 
 	INIT_DEFERRABLE_WORK(&chip->work, max17048_work);
 	schedule_delayed_work(&chip->work, 0);

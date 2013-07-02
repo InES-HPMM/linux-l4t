@@ -998,14 +998,13 @@ static int palmas_probe(struct platform_device *pdev)
 	}
 
 	palmas_chip->bc_dev = battery_charger_register(&pdev->dev,
-					&palmas_charger_bci);
+					&palmas_charger_bci, palmas_chip);
 	if (IS_ERR(palmas_chip->bc_dev)) {
 		ret = PTR_ERR(palmas_chip->bc_dev);
 		dev_err(&pdev->dev, "battery charger register failed: %d\n",
 			ret);
 		goto scrub_bcharger_init;
 	}
-	battery_charger_set_drvdata(palmas_chip->bc_dev, palmas_chip);
 
 	palams_charger_thermal_info.polling_time_sec =
 			pdata->bcharger_pdata->temperature_poll_period_secs;

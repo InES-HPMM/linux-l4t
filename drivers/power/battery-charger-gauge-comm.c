@@ -227,7 +227,7 @@ int battery_charger_thermal_stop_monitoring(
 EXPORT_SYMBOL_GPL(battery_charger_thermal_stop_monitoring);
 
 struct battery_charger_dev *battery_charger_register(struct device *dev,
-	struct battery_charger_info *bci)
+	struct battery_charger_info *bci, void *drv_data)
 {
 	struct battery_charger_dev *bc_dev;
 
@@ -250,6 +250,7 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	bc_dev->cell_id = bci->cell_id;
 	bc_dev->ops = bci->bc_ops;
 	bc_dev->parent_dev = dev;
+	bc_dev->drv_data = drv_data;
 	list_add(&bc_dev->list, &charger_list);
 
 	INIT_DELAYED_WORK(&bc_dev->restart_charging_wq,
@@ -311,7 +312,7 @@ int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 EXPORT_SYMBOL_GPL(battery_gauge_get_battery_temperature);
 
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
-	struct battery_gauge_info *bgi)
+	struct battery_gauge_info *bgi, void *drv_data)
 {
 	struct battery_gauge_dev *bg_dev;
 
@@ -334,6 +335,7 @@ struct battery_gauge_dev *battery_gauge_register(struct device *dev,
 	bg_dev->cell_id = bgi->cell_id;
 	bg_dev->ops = bgi->bg_ops;
 	bg_dev->parent_dev = dev;
+	bg_dev->drv_data = drv_data;
 	strcpy(bg_dev->tz_name, bgi->tz_name ? : "");
 	bg_dev->battery_tz = thermal_zone_device_find_by_name(bg_dev->tz_name);
 	if (!bg_dev->battery_tz)

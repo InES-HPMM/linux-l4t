@@ -858,14 +858,13 @@ static int bq2419x_probe(struct i2c_client *client,
 	}
 
 	bq2419x->bc_dev = battery_charger_register(bq2419x->dev,
-			&bq2419x_charger_bci);
+			&bq2419x_charger_bci, bq2419x);
 	if (IS_ERR(bq2419x->bc_dev)) {
 		ret = PTR_ERR(bq2419x->bc_dev);
 		dev_err(bq2419x->dev, "battery charger register failed: %d\n",
 			ret);
 		goto scrub_chg_reg;
 	}
-	battery_charger_set_drvdata(bq2419x->bc_dev, bq2419x);
 
 	ret = bq2419x_init_vbus_regulator(bq2419x, pdata);
 	if (ret < 0) {

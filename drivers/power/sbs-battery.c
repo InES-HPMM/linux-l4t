@@ -826,14 +826,13 @@ skip_gpio:
 		goto exit_psupply;
 	}
 
-	chip->bg_dev = battery_gauge_register(&client->dev, &sbs_bgi);
+	chip->bg_dev = battery_gauge_register(&client->dev, &sbs_bgi, chip);
 	if (IS_ERR(chip->bg_dev)) {
 		rc = PTR_ERR(chip->bg_dev);
 		dev_err(&client->dev, "battery gauge register failed: %d\n",
 			rc);
 		goto bg_err;
 	}
-	battery_gauge_set_drvdata(chip->bg_dev, chip);
 
 	dev_info(&client->dev,
 		"%s: battery gas gauge device registered\n", client->name);

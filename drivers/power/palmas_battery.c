@@ -1615,13 +1615,13 @@ static int palmas_battery_probe(struct platform_device *pdev)
 	}
 
 	palmas_battery_gauge_info.tz_name = pdata->therm_zone_name;
-	di->bg_dev = battery_gauge_register(di->dev, &palmas_battery_gauge_info);
+	di->bg_dev = battery_gauge_register(di->dev, &palmas_battery_gauge_info,
+					di);
 	if (IS_ERR(di->bg_dev)) {
 		ret = PTR_ERR(di->bg_dev);
 		dev_err(di->dev, "battery gauge register failed: %d\n", ret);
 		goto bg_err;
 	}
-	battery_gauge_set_drvdata(di->bg_dev, di);
 	return 0;
 
 bg_err:

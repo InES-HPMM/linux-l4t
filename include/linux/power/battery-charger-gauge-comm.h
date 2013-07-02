@@ -69,7 +69,7 @@ struct battery_gauge_info {
 };
 
 struct battery_charger_dev *battery_charger_register(struct device *dev,
-		struct battery_charger_info *bci);
+		struct battery_charger_info *bci, void *drv_data);
 void battery_charger_unregister(struct battery_charger_dev *bc_dev);
 int battery_charging_status_update(struct battery_charger_dev *bc_dev,
 		enum battery_charger_status status);
@@ -88,7 +88,7 @@ int battery_charger_thermal_stop_monitoring(
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp);
 struct battery_gauge_dev *battery_gauge_register(struct device *dev,
-		struct battery_gauge_info *bgi);
+		struct battery_gauge_info *bgi, void *drv_data);
 void battery_gauge_unregister(struct battery_gauge_dev *bg_dev);
 
 void *battery_charger_get_drvdata(struct battery_charger_dev *bc_dev);
