@@ -934,6 +934,8 @@ static int nvavp_os_init(struct nvavp_info *nvavp)
 	/* Find nvmem carveout */
 	if (!pfn_valid(__phys_to_pfn(0x8e000000))) {
 		nvavp->os_info.phys = 0x8e000000;
+	} else if (!pfn_valid(__phys_to_pfn(0xfde00000))) {
+		nvavp->os_info.phys = 0xfde00000;
 	} else if (!pfn_valid(__phys_to_pfn(0x9e000000))) {
 		nvavp->os_info.phys = 0x9e000000;
 	} else if (!pfn_valid(__phys_to_pfn(0xbe000000))) {
@@ -1581,7 +1583,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 #elif defined(CONFIG_TEGRA_AVP_KERNEL_ON_SMMU) /* Tegra3 with SMMU */
 	heap_mask = NVMAP_HEAP_IOVMM;
 #else /* nvmem= carveout */
-	heap_mask = 0;
+	heap_mask = NVMAP_HEAP_CARVEOUT_GENERIC;
 #endif
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
