@@ -287,6 +287,7 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_VOLTAGE_OCV
 };
 
 static int max17048_write_rcomp_seg(struct i2c_client *client,
