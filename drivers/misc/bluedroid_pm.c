@@ -1,7 +1,7 @@
 /*
  * drivers/misc/bluedroid_pm.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2013, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@
 #include <linux/interrupt.h>
 #include <linux/wakelock.h>
 #include <linux/slab.h>
+#include <linux/pm_qos.h>
+#include <linux/bluedroid_pm.h>
 
 #define PROC_DIR	"bluetooth/sleep"
 struct bluedroid_pm_data {
@@ -43,11 +45,13 @@ struct bluedroid_pm_data {
 	int host_wake;
 	int ext_wake;
 	int is_blocked;
+	int resume_min_frequency;
 	unsigned host_wake_irq;
 	struct regulator *vdd_3v3;
 	struct regulator *vdd_1v8;
 	struct rfkill *rfkill;
 	struct wake_lock wake_lock;
+	struct pm_qos_request resume_cpu_freq_req;
 };
 
 struct proc_dir_entry *proc_bt_dir, *bluetooth_sleep_dir;
@@ -83,6 +87,9 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 			regulator_disable(bluedroid_pm->vdd_1v8);
 		if (bluedroid_pm->ext_wake)
 			wake_unlock(&bluedroid_pm->wake_lock);
+		if (bluedroid_pm->resume_min_frequency)
+			pm_qos_remove_request(&bluedroid_pm->
+						resume_cpu_freq_req);
 	} else {
 		if (bluedroid_pm->vdd_3v3)
 			regulator_enable(bluedroid_pm->vdd_3v3);
@@ -92,6 +99,11 @@ static int bluedroid_pm_rfkill_set_power(void *data, bool blocked)
 			gpio_set_value(bluedroid_pm->gpio_shutdown, 1);
 		if (bluedroid_pm->gpio_reset)
 			gpio_set_value(bluedroid_pm->gpio_reset, 1);
+		if (bluedroid_pm->resume_min_frequency)
+			pm_qos_add_request(&bluedroid_pm->
+						resume_cpu_freq_req,
+						PM_QOS_CPU_FREQ_MIN,
+						PM_QOS_DEFAULT_VALUE);
 	}
 	bluedroid_pm->is_blocked = blocked;
 	return 0;
@@ -115,6 +127,7 @@ EXPORT_SYMBOL(bluedroid_pm_set_ext_state);
 static int bluedroid_pm_probe(struct platform_device *pdev)
 {
 	static struct bluedroid_pm_data *bluedroid_pm;
+	struct bluedroid_pm_platform_data *pdata = pdev->dev.platform_data;
 	struct rfkill *rfkill;
 	struct resource *res;
 	int ret;
@@ -248,6 +261,11 @@ static int bluedroid_pm_probe(struct platform_device *pdev)
 		bluedroid_pm->ext_wake = 0;
 	}
 
+	/* Update resume_min_frequency, if pdata is passed from board files */
+	if (pdata)
+		bluedroid_pm->resume_min_frequency =
+						pdata->resume_min_frequency;
+
 	platform_set_drvdata(pdev, bluedroid_pm);
 	pr_debug("RFKILL BT driver successfully registered");
 	return 0;
@@ -365,9 +383,17 @@ static ssize_t lpm_write_proc(struct file *file, const char __user *buffer,
 
 	if (!bluedroid_pm->is_blocked) {
 		if (buf[0] == '0') {
+			if (bluedroid_pm->resume_min_frequency)
+				pm_qos_update_request(&bluedroid_pm->
+							resume_cpu_freq_req,
+							PM_QOS_DEFAULT_VALUE);
 			gpio_set_value(bluedroid_pm->ext_wake, 0);
 			wake_unlock(&bluedroid_pm->wake_lock);
 		} else if (buf[0] == '1') {
+			if (bluedroid_pm->resume_min_frequency)
+				pm_qos_update_request(&bluedroid_pm->
+							resume_cpu_freq_req,
+							bluedroid_pm->resume_min_frequency);
 			gpio_set_value(bluedroid_pm->ext_wake, 1);
 			wake_lock(&bluedroid_pm->wake_lock);
 		} else {
