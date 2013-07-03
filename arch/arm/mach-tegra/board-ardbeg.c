@@ -61,6 +61,7 @@
 #include <mach/tegra_fiq_debugger.h>
 
 #include <mach/pinmux.h>
+#include <mach/pinmux-t12.h>
 #include <mach/io_dpd.h>
 #include <mach/i2s.h>
 #include <mach/isomgr.h>
@@ -621,6 +622,25 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 };
 
+static struct gpio modem_gpios[] = { /* Bruce modem */
+	{MODEM_EN, GPIOF_OUT_INIT_HIGH, "MODEM EN"},
+	{MDM_RST, GPIOF_OUT_INIT_LOW, "MODEM RESET"},
+};
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_baseband_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.unaligned_dma_buf_supported = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+};
+
 static struct tegra_usb_platform_data tegra_ehci2_hsic_smsc_hub_pdata = {
 	.port_otg = false,
 	.has_hostpc = true,
@@ -776,6 +796,52 @@ static void ardbeg_xusb_init(void)
 		tegra_xusb_init(&xusb_bdata);
 }
 
+static int baseband_init(void)
+{
+	int ret;
+
+	ret = gpio_request_array(modem_gpios, ARRAY_SIZE(modem_gpios));
+	if (ret) {
+		pr_warn("%s:gpio request failed\n", __func__);
+		return ret;
+	}
+
+	/* enable pull-down for MDM_COLD_BOOT */
+	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_ULPI_DATA4,
+				    TEGRA_PUPD_PULL_DOWN);
+
+	/* export GPIO for user space access through sysfs */
+	gpio_export(MDM_RST, false);
+
+	return 0;
+}
+
+static const struct tegra_modem_operations baseband_operations = {
+	.init = baseband_init,
+};
+
+static struct tegra_usb_modem_power_platform_data baseband_pdata = {
+	.ops = &baseband_operations,
+	.regulator_name = "vdd_wwan_mdm",
+	.wake_gpio = -1,
+	.boot_gpio = MDM_COLDBOOT,
+	.boot_irq_flags = IRQF_TRIGGER_RISING |
+				    IRQF_TRIGGER_FALLING |
+				    IRQF_ONESHOT,
+	.autosuspend_delay = 2000,
+	.short_autosuspend_delay = 50,
+	.tegra_ehci_device = &tegra_ehci2_device,
+	.tegra_ehci_pdata = &tegra_ehci2_hsic_baseband_pdata,
+};
+
+static struct platform_device icera_bruce_device = {
+	.name = "tegra_usb_modem_power",
+	.id = -1,
+	.dev = {
+		.platform_data = &baseband_pdata,
+	},
+};
+
 static void ardbeg_modem_init(void)
 {
 	int modem_id = tegra_get_modem_id();
@@ -786,6 +852,10 @@ static void ardbeg_modem_init(void)
 	pr_info("%s: modem_id = %d\n", __func__, modem_id);
 
 	switch (modem_id) {
+	case TEGRA_BB_BRUCE:
+		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB))
+			platform_device_register(&icera_bruce_device);
+		break;
 	case TEGRA_BB_HSIC_HUB: /* HSIC hub */
 		if (!(usb_port_owner_info & HSIC1_PORT_OWNER_XUSB)) {
 			tegra_ehci2_device.dev.platform_data =

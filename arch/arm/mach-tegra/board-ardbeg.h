@@ -72,9 +72,15 @@ int ardbeg_pmon_init(void);
 #define CAM2_PWDN TEGRA_GPIO_PBB6
 #define CAM1_PWDN TEGRA_GPIO_PBB5
 #define CAM_AF_PWDN TEGRA_GPIO_PBB7
+
+/* Modem related GPIOs */
+#define MODEM_EN		TEGRA_GPIO_PS4
+#define MDM_RST			TEGRA_GPIO_PS3
+#define MDM_COLDBOOT		TEGRA_GPIO_PO5
+
 /* Baseband IDs */
 enum tegra_bb_type {
-	TEGRA_BB_NEMO = 1,
+	TEGRA_BB_BRUCE = 1,
 	TEGRA_BB_HSIC_HUB = 6,
 };
 
