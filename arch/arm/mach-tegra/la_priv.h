@@ -54,6 +54,13 @@ do { \
 		return -EINVAL; \
 } while (0)
 
+#define LAST_DISP_CLIENT_ID	ID(DISPLAYD)
+#define NUM_DISP_CLIENTS	(LAST_DISP_CLIENT_ID - FIRST_DISP_CLIENT_ID + 1)
+#define DISP_CLIENT_ID(id)	(ID(id) - FIRST_DISP_CLIENT_ID)
+
+#define T12X_MC_LA_MAX_VALUE	255
+
+
 struct la_client_info {
 	unsigned int fifo_size_in_atoms;
 	unsigned int expiration_in_ns;	/* worst case expiration value */
@@ -65,6 +72,7 @@ struct la_client_info {
 	bool scaling_supported;
 	unsigned int init_la;		/* initial la to set for client */
 	unsigned int la_set;
+	unsigned int la_ref_clk_mhz;
 };
 
 struct la_scaling_info {
@@ -99,6 +107,8 @@ struct ptsa_info {
 	unsigned int ve_ptsa_rate;
 	unsigned int ve_ptsa_min;
 	unsigned int ve_ptsa_max;
+	unsigned int ve2_ptsa_min;
+	unsigned int ve2_ptsa_max;
 	unsigned int ring2_ptsa_rate;
 	unsigned int ring2_ptsa_min;
 	unsigned int ring2_ptsa_max;
@@ -119,7 +129,47 @@ struct ptsa_info {
 	unsigned int heg_extra_snap_level;
 	unsigned int ptsa_grant_dec;
 	unsigned int bbcll_earb_cfg;
+
+	unsigned int isp_ptsa_min;
+	unsigned int isp_ptsa_max;
+	unsigned int a9avppc_ptsa_min;
+	unsigned int a9avppc_ptsa_max;
+	unsigned int avp_ptsa_min;
+	unsigned int avp_ptsa_max;
+	unsigned int r0_dis_ptsa_min;
+	unsigned int r0_dis_ptsa_max;
+	unsigned int r0_disb_ptsa_min;
+	unsigned int r0_disb_ptsa_max;
+	unsigned int vd_ptsa_min;
+	unsigned int vd_ptsa_max;
+	unsigned int mse_ptsa_min;
+	unsigned int mse_ptsa_max;
+	unsigned int gk_ptsa_min;
+	unsigned int gk_ptsa_max;
+	unsigned int vicpc_ptsa_min;
+	unsigned int vicpc_ptsa_max;
+	unsigned int apb_ptsa_min;
+	unsigned int apb_ptsa_max;
+	unsigned int pcx_ptsa_min;
+	unsigned int pcx_ptsa_max;
+	unsigned int host_ptsa_min;
+	unsigned int host_ptsa_max;
+	unsigned int ahb_ptsa_min;
+	unsigned int ahb_ptsa_max;
+	unsigned int sax_ptsa_min;
+	unsigned int sax_ptsa_max;
+	unsigned int aud_ptsa_min;
+	unsigned int aud_ptsa_max;
+	unsigned int sd_ptsa_min;
+	unsigned int sd_ptsa_max;
+	unsigned int usbx_ptsa_min;
+	unsigned int usbx_ptsa_max;
+	unsigned int usbd_ptsa_min;
+	unsigned int usbd_ptsa_max;
+	unsigned int ftop_ptsa_min;
+	unsigned int ftop_ptsa_max;
 };
+
 
 struct la_chip_specific {
 	int ns_per_tick;
@@ -129,16 +179,24 @@ struct la_chip_specific {
 	int la_info_array_size;
 	struct la_client_info *la_info_array;
 	unsigned short id_to_index[ID(MAX_ID) + 1];
-	unsigned int disp_bw_array[ID(DISPLAYD) - ID(DISPLAY_0A) + 1];
+	unsigned int disp_bw_array[NUM_DISP_CLIENTS];
+	struct disp_client disp_clients[NUM_DISP_CLIENTS];
+	unsigned int ispa_read_bw;
+	unsigned int ispa_write_bw;
+	unsigned int ispb_write_bw;
 	struct la_scaling_info scaling_info[ID(MAX_ID)];
 	int la_scaling_enable_count;
 	struct dentry *latency_debug_dir;
 	struct ptsa_info ptsa_info;
 	bool disable_la;
 	bool disable_ptsa;
+	struct la_to_dc_params la_params;
 
 	void (*init_ptsa)(void);
 	void (*update_display_ptsa_rate)(unsigned int *disp_bw_array);
+	int (*set_disp_la)(enum tegra_la_id id,
+				unsigned int bw_mbps,
+				struct dc_to_la_params disp_params);
 	int (*set_la)(enum tegra_la_id id, unsigned int bw_mbps);
 	int (*enable_la_scaling)(enum tegra_la_id id,
 				unsigned int threshold_low,
@@ -152,5 +210,6 @@ struct la_chip_specific {
 void tegra_la_get_t3_specific(struct la_chip_specific *cs);
 void tegra_la_get_t14x_specific(struct la_chip_specific *cs);
 void tegra_la_get_t11x_specific(struct la_chip_specific *cs);
+void tegra_la_get_t12x_specific(struct la_chip_specific *cs);
 
 #endif /* _MACH_TEGRA_LA_PRIV_H_ */

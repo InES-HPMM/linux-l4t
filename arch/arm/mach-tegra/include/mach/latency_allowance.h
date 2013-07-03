@@ -17,6 +17,14 @@
 #ifndef _MACH_TEGRA_LATENCY_ALLOWANCE_H_
 #define _MACH_TEGRA_LATENCY_ALLOWANCE_H_
 
+#define FIRST_DISP_CLIENT_ID	TEGRA_LA_DISPLAY_0A
+#define DISP_CLIENT_LA_ID(id)	(id - FIRST_DISP_CLIENT_ID)
+
+
+/* Note:- When adding new display realted IDs, please add them adjacent/amongst
+	  the existing display related IDs. This is required because certain
+	  display related macros/strcuts assume that all display related
+	  tegra_la_ids are adjacent to each other.*/
 enum tegra_la_id {
 	TEGRA_LA_AFIR = 0,			/* T30 specific */
 	TEGRA_LA_AFIW,				/* T30 specific */
@@ -42,6 +50,8 @@ enum tegra_la_id {
 	TEGRA_LA_G2SR,
 	TEGRA_LA_G2DR,
 	TEGRA_LA_G2DW,
+	TEGRA_LA_GPUSRD,			/* T12x specific */
+	TEGRA_LA_GPUSWR,			/* T12x specific */
 	TEGRA_LA_HOST1X_DMAR,
 	TEGRA_LA_HOST1XR,
 	TEGRA_LA_HOST1XW,
@@ -107,11 +117,59 @@ enum tegra_la_id {
 	TEGRA_LA_ISP_RA,			/* T14x specific */
 	TEGRA_LA_ISP_WA,			/* T14x specific */
 	TEGRA_LA_ISP_WB,			/* T14x specific */
+	TEGRA_LA_ISP_RAB,			/* T12x specific */
+	TEGRA_LA_ISP_WAB,			/* T12x specific */
+	TEGRA_LA_ISP_WBB,			/* T12x specific */
 	TEGRA_LA_BBCR,				/* T14x specific */
 	TEGRA_LA_BBCW,				/* T14x specific */
 	TEGRA_LA_BBCLLR,			/* T14x specific */
+	TEGRA_LA_SDMMCR,			/* T12x specific */
+	TEGRA_LA_SDMMCRA,			/* T12x specific */
+	TEGRA_LA_SDMMCRAA,			/* T12x specific */
+	TEGRA_LA_SDMMCRAB,			/* T12x specific */
+	TEGRA_LA_SDMMCW,			/* T12x specific */
+	TEGRA_LA_SDMMCWA,			/* T12x specific */
+	TEGRA_LA_SDMMCWAA,			/* T12x specific */
+	TEGRA_LA_SDMMCWAB,			/* T12x specific */
+	TEGRA_LA_VICSRD,			/* T12x specific */
+	TEGRA_LA_VICSWR,			/* T12x specific */
 	TEGRA_LA_MAX_ID
 };
+
+enum disp_win_type {
+	TEGRA_LA_DISP_WIN_TYPE_FULL,
+	TEGRA_LA_DISP_WIN_TYPE_FULLA,
+	TEGRA_LA_DISP_WIN_TYPE_FULLB,
+	TEGRA_LA_DISP_WIN_TYPE_SIMPLE,
+	TEGRA_LA_DISP_WIN_TYPE_CURSOR,
+	TEGRA_LA_DISP_WIN_TYPE_NUM_TYPES
+};
+
+struct disp_client {
+	enum disp_win_type win_type;
+	unsigned int mccif_size_bytes;
+	unsigned int line_buf_sz_bytes;
+};
+
+struct dc_to_la_params {
+	unsigned int thresh_lwm_bytes;
+	unsigned int spool_up_buffering_adj_bytes;
+	unsigned int total_dc0_bw;
+	unsigned int total_dc1_bw;
+};
+
+struct la_to_dc_params {
+	unsigned int fp_factor;
+	unsigned int (*la_real_to_fp)(unsigned int val);
+	unsigned int (*la_fp_to_real)(unsigned int val);
+	unsigned int static_la_minus_snap_arb_to_row_srt_emcclks_fp;
+	unsigned int dram_width_bits;
+	unsigned int disp_catchup_factor_fp;
+};
+
+int tegra_set_disp_latency_allowance(enum tegra_la_id id,
+					unsigned int bandwidth_in_mbps,
+					struct dc_to_la_params disp_params);
 
 int tegra_set_latency_allowance(enum tegra_la_id id,
 				unsigned int bandwidth_in_mbps);
@@ -124,5 +182,12 @@ int tegra_enable_latency_scaling(enum tegra_la_id id,
 				    unsigned int threshold_high);
 
 void tegra_disable_latency_scaling(enum tegra_la_id id);
+
+struct la_to_dc_params tegra_get_la_to_dc_params(void);
+
+/* FIXME!!:- This function needs to be implemented properly elsewhere. */
+unsigned int tegra_get_dvfs_time_nsec(unsigned long emc_freq_mhz);
+
+extern const struct disp_client *tegra_la_disp_clients_info;
 
 #endif /* _MACH_TEGRA_LATENCY_ALLOWANCE_H_ */

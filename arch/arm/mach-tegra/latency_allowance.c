@@ -44,6 +44,23 @@ static struct la_chip_specific cs;
 module_param_named(disable_la, cs.disable_la, bool, 0644);
 module_param_named(disable_ptsa, cs.disable_ptsa, bool, 0644);
 
+/* FIXME!!:- This function needs to be implemented properly. */
+unsigned int tegra_get_dvfs_time_nsec(unsigned long emc_freq_mhz)
+{
+	if ((emc_freq_mhz >= 100) && (emc_freq_mhz <= 120))
+		return 6679;
+	else if ((emc_freq_mhz >= 200) && (emc_freq_mhz <= 220))
+		return 3954;
+	else if ((emc_freq_mhz >= 400) && (emc_freq_mhz <= 420))
+		return 2396;
+	else if ((emc_freq_mhz >= 780) && (emc_freq_mhz <= 800))
+		return 1583;
+	else if ((emc_freq_mhz >= 920) && (emc_freq_mhz <= 940))
+		return 1452;
+	else
+		return 3000;
+}
+
 static void init_chip_specific(void)
 {
 	enum tegra_chipid cid;
@@ -67,9 +84,17 @@ static void init_chip_specific(void)
 	case TEGRA_CHIPID_TEGRA14:
 		tegra_la_get_t14x_specific(&cs);
 		break;
+	case TEGRA_CHIPID_TEGRA12:
+		tegra_la_get_t12x_specific(&cs);
+		break;
 	default:
 		cs.set_la = NULL;
 	}
+}
+
+struct la_to_dc_params tegra_get_la_to_dc_params(void)
+{
+	return cs.la_params;
 }
 
 static void set_la(struct la_client_info *ci, int la)
@@ -139,6 +164,16 @@ static int default_set_la(enum tegra_la_id id, unsigned int bw_mbps)
 	la_to_set = (la_to_set > cs.la_max_value) ? cs.la_max_value : la_to_set;
 
 	set_la(ci, la_to_set);
+	return 0;
+}
+
+int tegra_set_disp_latency_allowance(enum tegra_la_id id,
+					unsigned int bw_mbps,
+					struct dc_to_la_params disp_params) {
+	if (cs.set_disp_la)
+		return cs.set_disp_la(id, bw_mbps, disp_params);
+	else if (cs.set_la)
+		return cs.set_la(id, bw_mbps);
 	return 0;
 }
 
@@ -290,6 +325,7 @@ static __init int tegra_la_syscore_init(void)
 static int __init tegra_latency_allowance_init(void)
 {
 	unsigned int i;
+	enum tegra_chipid cid = tegra_get_chipid();
 
 	init_chip_specific();
 
@@ -297,9 +333,54 @@ static int __init tegra_latency_allowance_init(void)
 		cs.id_to_index[cs.la_info_array[i].id] = i;
 
 	for (i = 0; i < cs.la_info_array_size; i++) {
-		if (cs.la_info_array[i].init_la)
+		if (cs.la_info_array[i].init_la) {
+			unsigned int la_to_set = 0;
+
+			if ((cid == TEGRA_CHIPID_TEGRA12) &&
+				(cs.la_info_array[i].id == ID(MSENCSRD))) {
+				/* This is a special case. */
+				struct clk *emc_clk = clk_get(NULL, "emc");
+				unsigned long emc_freq_mhz =
+							clk_get_rate(emc_clk) /
+							1000000;
+				unsigned int val_1 = 53;
+				unsigned int val_2 = 24;
+
+				if (210 > emc_freq_mhz)
+					val_1 = val_1 * 210 / emc_freq_mhz;
+
+				if (574 > emc_freq_mhz)
+					val_2 = val_2 * 574 / emc_freq_mhz;
+
+				la_to_set = min3(T12X_MC_LA_MAX_VALUE,
+						val_1,
+						val_2);
+			} else if (cs.la_info_array[i].la_ref_clk_mhz != 0) {
+				/* In this case we need to scale LA with emc
+				   frequency. */
+				struct clk *emc_clk = clk_get(NULL, "emc");
+				unsigned long emc_freq_mhz =
+							clk_get_rate(emc_clk) /
+							1000000;
+
+				if (cs.la_info_array[i].la_ref_clk_mhz <=
+					emc_freq_mhz) {
+					la_to_set =
+						min(cs.la_info_array[i].init_la,
+							T12X_MC_LA_MAX_VALUE);
+				} else {
+					la_to_set =
+					min(cs.la_info_array[i].init_la *
+					cs.la_info_array[i].la_ref_clk_mhz /
+					emc_freq_mhz,
+					T12X_MC_LA_MAX_VALUE);
+				}
+			} else
+				la_to_set = cs.la_info_array[i].init_la;
+
 			set_la(&cs.la_info_array[i],
-				cs.la_info_array[i].init_la);
+				la_to_set);
+		}
 	}
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 	tegra_set_latency_allowance(TEGRA_LA_G2PR, 20);
