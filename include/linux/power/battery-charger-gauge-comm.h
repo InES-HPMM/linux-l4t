@@ -66,9 +66,11 @@ int battery_charging_status_update(struct battery_charger_dev *bc_dev,
 		enum battery_charger_status status);
 int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec);
 int battery_charger_thermal_start_monitoring(
-		struct battery_charger_dev *bct_dev);
+		struct battery_charger_dev *bc_dev);
 int battery_charger_thermal_stop_monitoring(
-		struct battery_charger_dev *bct_dev);
+		struct battery_charger_dev *bc_dev);
+int battery_charger_acquire_wake_lock(struct battery_charger_dev *bc_dev);
+int battery_charger_release_wake_lock(struct battery_charger_dev *bc_dev);
 
 int battery_gauge_get_battery_temperature(struct battery_gauge_dev *bg_dev,
 	int *temp);

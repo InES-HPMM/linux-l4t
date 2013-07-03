@@ -32,6 +32,7 @@
 #include <linux/thermal.h>
 #include <linux/list.h>
 #include <linux/power/battery-charger-gauge-comm.h>
+#include <linux/wakelock.h>
 
 #define JETI_TEMP_COLD		0
 #define JETI_TEMP_COOL		10
@@ -54,6 +55,7 @@ struct battery_charger_dev {
 	int				polling_time_sec;
 	struct thermal_zone_device	*battery_tz;
 	bool				start_monitoring;
+	struct wake_lock		charger_wake_lock;
 };
 
 struct battery_gauge_dev {
@@ -162,6 +164,20 @@ int battery_charger_thermal_stop_monitoring(
 }
 EXPORT_SYMBOL_GPL(battery_charger_thermal_stop_monitoring);
 
+int battery_charger_acquire_wake_lock(struct battery_charger_dev *bc_dev)
+{
+	wake_lock(&bc_dev->charger_wake_lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charger_acquire_wake_lock);
+
+int battery_charger_release_wake_lock(struct battery_charger_dev *bc_dev)
+{
+	wake_unlock(&bc_dev->charger_wake_lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(battery_charger_release_wake_lock);
+
 int battery_charging_restart(struct battery_charger_dev *bc_dev, int after_sec)
 {
 	if (!bc_dev->ops->restart_charging) {
@@ -214,6 +230,8 @@ struct battery_charger_dev *battery_charger_register(struct device *dev,
 	INIT_DELAYED_WORK(&bc_dev->restart_charging_wq,
 			battery_charger_restart_charging_wq);
 
+	wake_lock_init(&bc_dev->charger_wake_lock, WAKE_LOCK_SUSPEND,
+						"charger-suspend-lock");
 	list_add(&bc_dev->list, &charger_list);
 	mutex_unlock(&charger_gauge_list_mutex);
 	return bc_dev;
@@ -226,6 +244,7 @@ void battery_charger_unregister(struct battery_charger_dev *bc_dev)
 	list_del(&bc_dev->list);
 	cancel_delayed_work(&bc_dev->poll_temp_monitor_wq);
 	cancel_delayed_work(&bc_dev->restart_charging_wq);
+	wake_lock_destroy(&bc_dev->charger_wake_lock);
 	mutex_unlock(&charger_gauge_list_mutex);
 	kfree(bc_dev);
 }
