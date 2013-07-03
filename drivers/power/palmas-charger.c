@@ -43,6 +43,8 @@
 #define VBUS_REGULATOR_ENABLE_TIME	500000
 #define NV_CHARGER_CURRENT_LIMIT	2000
 
+#define PALMAS_RESTART_CHARGING_AFTER_DONE	(15 * 60)
+
 enum charging_states {
 	ENABLED_HALF_IBAT = 1,
 	ENABLED_FULL_IBAT,
@@ -82,6 +84,8 @@ struct palmas_charger_chip {
 	bool				battery_presense;
 	int				charging_state;
 	int				cable_connected;
+	int				chg_restart_time_sec;
+	int				last_charging_current;
 };
 
 /* input current limit */
@@ -432,6 +436,7 @@ static int palmas_set_charging_current(struct regulator_dev *rdev,
 	}
 
 	palmas_chip->in_current_limit = max_uA/1000;
+	palmas_chip->last_charging_current = max_uA;
 
 	if ((val & PALMAS_VBUS_STAT) == PALMAS_VBUS_UNKNOWN) {
 		palmas_chip->cable_connected = 0;
@@ -654,8 +659,14 @@ static irqreturn_t palmas_charger_irq(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	if ((val & PALMAS_CHRG_STATE_MASK) == PALMAS_CHRG_STATE_CHARGE_DONE)
+	if ((val & PALMAS_CHRG_STATE_MASK) == PALMAS_CHRG_STATE_CHARGE_DONE) {
 		dev_info(palmas_chip->dev, "Charging completed\n");
+		battery_charging_status_update(palmas_chip->bc_dev,
+					BATTERY_CHARGING_DONE);
+		battery_charger_thermal_stop_monitoring(palmas_chip->bc_dev);
+		battery_charging_restart(palmas_chip->bc_dev,
+					palmas_chip->chg_restart_time_sec);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -916,9 +927,30 @@ static int palams_charger_thermal_configure(
 	return 0;
 }
 
+static int palmas_charger_restart_charging(struct battery_charger_dev *bc_dev)
+{
+	struct palmas_charger_chip *chip = battery_charger_get_drvdata(bc_dev);
+	int ret;
+
+	if (!chip->cable_connected)
+		return 0;
+
+	dev_info(chip->dev, "Restarting the charging\n");
+	ret = palmas_set_charging_current(chip->chg_rdev,
+			chip->last_charging_current,
+			chip->last_charging_current);
+	if (ret < 0) {
+		dev_err(chip->dev, "restarting of charging failed: %d\n", ret);
+		battery_charging_restart(chip->bc_dev,
+				chip->chg_restart_time_sec);
+	}
+	return ret;
+}
+
 static struct battery_charging_ops palmas_charger_bci_ops = {
 	.get_charging_status = palmas_charger_get_status,
 	.thermal_configure = palams_charger_thermal_configure,
+	.restart_charging = palmas_charger_restart_charging,
 };
 
 static struct battery_charger_info palmas_charger_bci = {
@@ -984,6 +1016,7 @@ static int palmas_probe(struct platform_device *pdev)
 		goto scrub_vbus_reg;
 	}
 
+	palmas_chip->chg_restart_time_sec = PALMAS_RESTART_CHARGING_AFTER_DONE;
 	palmas_charger_bci.polling_time_sec =
 			pdata->bcharger_pdata->temperature_poll_period_secs;
 	palmas_charger_bci.tz_name =
