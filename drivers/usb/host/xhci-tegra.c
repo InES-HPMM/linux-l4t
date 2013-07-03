@@ -2742,7 +2742,8 @@ static irqreturn_t tegra_xhci_padctl_irq(int irq, void *ptrdev)
 	if (elpg_program0 & (SS_PORT0_WAKEUP_EVENT | SS_PORT1_WAKEUP_EVENT))
 		tegra->ss_wake_event = true;
 	else if (elpg_program0 &
-			(USB2_PORT0_WAKEUP_EVENT | USB2_PORT1_WAKEUP_EVENT))
+			(USB2_PORT0_WAKEUP_EVENT | USB2_PORT1_WAKEUP_EVENT |
+				USB2_PORT2_WAKEUP_EVENT))
 		tegra->hs_wake_event = true;
 
 	if (tegra->ss_wake_event || tegra->hs_wake_event) {
