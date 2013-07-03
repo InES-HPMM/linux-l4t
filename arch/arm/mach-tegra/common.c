@@ -143,6 +143,7 @@ unsigned long tegra_tzram_size;
 bool tegra_lp0_vec_relocate;
 unsigned long tegra_grhost_aperture = ~0ul;
 static   bool is_tegra_debug_uart_hsport;
+static struct board_info main_board_info;
 static struct board_info pmu_board_info;
 static struct board_info display_board_info;
 static int panel_id;
@@ -1398,16 +1399,33 @@ void tegra_get_board_info(struct board_info *bi)
 		bi->major_revision = 0xDD;
 		bi->minor_revision = 0xDD;
 #else
-		bi->board_id = (system_serial_high >> 16) & 0xFFFF;
-		bi->sku = (system_serial_high) & 0xFFFF;
-		bi->fab = (system_serial_low >> 24) & 0xFF;
-		bi->major_revision = (system_serial_low >> 16) & 0xFF;
-		bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+		if (system_serial_high || system_serial_low) {
+			bi->board_id = (system_serial_high >> 16) & 0xFFFF;
+			bi->sku = (system_serial_high) & 0xFFFF;
+			bi->fab = (system_serial_low >> 24) & 0xFF;
+			bi->major_revision = (system_serial_low >> 16) & 0xFF;
+			bi->minor_revision = (system_serial_low >> 8) & 0xFF;
+		} else {
+			memcpy(bi, &main_board_info, sizeof(struct board_info));
+		}
 #endif
 #ifdef CONFIG_OF
 	}
 #endif
 }
+
+static int __init tegra_main_board_info(char *info)
+{
+	char *p = info;
+	main_board_info.board_id = memparse(p, &p);
+	main_board_info.sku = memparse(p+1, &p);
+	main_board_info.fab = memparse(p+1, &p);
+	main_board_info.major_revision = memparse(p+1, &p);
+	main_board_info.minor_revision = memparse(p+1, &p);
+	return 1;
+}
+
+__setup("board_info=", tegra_main_board_info);
 
 static int __init tegra_pmu_board_info(char *info)
 {
