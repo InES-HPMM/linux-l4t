@@ -7019,7 +7019,7 @@ struct clk tegra_list_clks[] = {
 
 
 /* XUSB clocks */
-#define XUSB_ID "tegra_xhci"
+#define XUSB_ID "tegra-xhci"
 
 static struct clk tegra_xusb_source_clks[] = {
 	PERIPH_CLK("xusb_host_src",	XUSB_ID, "host_src",	143,	0x600,	120000000, mux_clkm_pllp_pllc_pllre,	MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET | PERIPH_ON_APB),
