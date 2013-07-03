@@ -6960,7 +6960,6 @@ struct clk tegra_list_clks[] = {
 	SHARED_EMC_CLK("3d.emc",	"tegra_gk20a",	"emc",	&tegra_clk_emc, NULL, 0, 0,		BIT(EMC_USER_3D)),
 	SHARED_EMC_CLK("msenc.emc",	"tegra_msenc",	"emc",	&tegra_clk_emc, NULL, 0, SHARED_BW,	BIT(EMC_USER_MSENC)),
 	SHARED_EMC_CLK("tsec.emc",	"tegra_tsec",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
-	SHARED_EMC_CLK("sdmmc4.emc", "sdhci-tegra.3",	"emc",	&tegra_clk_emc, NULL, 0, 0, 0),
 	SHARED_EMC_CLK("camera.emc", "vi",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW,	BIT(EMC_USER_VI)),
 	SHARED_EMC_CLK("iso.emc",	"iso",		"emc",	&tegra_clk_emc, NULL, 0, SHARED_ISO_BW, 0),
 	SHARED_EMC_CLK("floor.emc",	"floor.emc",	NULL,	&tegra_clk_emc, NULL, 0, 0, 0),
