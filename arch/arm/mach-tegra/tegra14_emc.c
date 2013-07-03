@@ -81,6 +81,7 @@ enum {
 #define EMC_CLK_SOURCE_SHIFT		29
 #define EMC_CLK_SOURCE_MASK		(0x7 << EMC_CLK_SOURCE_SHIFT)
 #define EMC_CLK_LOW_JITTER_ENABLE	(0x1 << 31)
+#define EMC_CLK_FORCE_CC_TRIGGER	(0x1 << 27)
 #define	EMC_CLK_MC_SAME_FREQ		(0x1 << 16)
 
 #define PMC_IO_DPD2_REQ			0x1C0
@@ -271,6 +272,7 @@ static ktime_t clkchange_time;
 static int clkchange_delay = 100;
 
 static const struct tegra14_emc_table *tegra_emc_table;
+static const struct tegra14_emc_table *tegra_emc_table_derated;
 static int tegra_emc_table_size;
 
 static u32 dram_dev_num;
@@ -405,9 +407,12 @@ static inline void auto_cal_disable(void)
 static inline void set_over_temp_timing(
 	const struct tegra14_emc_table *next_timing, unsigned long state)
 {
-#define REFRESH_SPEEDUP(val)						\
-	do {								\
-		val = ((val) & 0xFFFF0000) | (((val) & 0xFFFF) >> 2);	\
+#define REFRESH_X2	1
+#define REFRESH_X4	2
+#define REFRESH_SPEEDUP(val, speedup)				\
+	do {							\
+		val = ((val) & 0xFFFF0000) |			\
+			(((val) & 0xFFFF) >> (speedup));	\
 	} while (0)
 
 	u32 ref = next_timing->burst_regs[EMC_REFRESH_INDEX];
@@ -417,10 +422,16 @@ static inline void set_over_temp_timing(
 	switch (state) {
 	case DRAM_OVER_TEMP_NONE:
 		break;
-	case DRAM_OVER_TEMP_REFRESH:
-		REFRESH_SPEEDUP(ref);
-		REFRESH_SPEEDUP(pre_ref);
-		REFRESH_SPEEDUP(dsr_cntrl);
+	case DRAM_OVER_TEMP_REFRESH_X2:
+		REFRESH_SPEEDUP(ref, REFRESH_X2);
+		REFRESH_SPEEDUP(pre_ref, REFRESH_X2);
+		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X2);
+		break;
+	case DRAM_OVER_TEMP_REFRESH_X4:
+	case DRAM_OVER_TEMP_THROTTLE:
+		REFRESH_SPEEDUP(ref, REFRESH_X4);
+		REFRESH_SPEEDUP(pre_ref, REFRESH_X4);
+		REFRESH_SPEEDUP(dsr_cntrl, REFRESH_X4);
 		break;
 	default:
 		WARN(1, "%s: Failed to set dram over temp state %lu\n",
@@ -650,8 +661,11 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 	u32 dll_override, emc_cfg_dig_dll, pmc_dpd;
 	u32 t_start, t_diff;
 
+	u32 use_prelock = 0;
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
-	u32 use_prelock = next_timing->emc_cfg_dig_dll & EMC_CFG_DIG_DLL_EN;
+
+	if (!(clk_setting & EMC_CLK_FORCE_CC_TRIGGER))
+		use_prelock = next_timing->emc_cfg_dig_dll & EMC_CFG_DIG_DLL_EN;
 
 	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
 	dll_change = get_dll_change(next_timing, last_timing);
@@ -699,7 +713,7 @@ static noinline void emc_set_clock(const struct tegra14_emc_table *next_timing,
 			continue;
 		__raw_writel(next_timing->burst_regs[i], burst_reg_addr[i]);
 	}
-	if (!use_prelock)
+	if (!use_prelock && !(clk_setting & EMC_CLK_FORCE_CC_TRIGGER))
 		writel(next_timing->emc_cfg_dig_dll | EMC_CFG_DIG_DLL_RESET |
 		       EMC_CFG_DIG_DLL_OVERRIDE_EN, emc_base + EMC_CFG_DIG_DLL);
 
@@ -907,9 +921,16 @@ int tegra_emc_set_rate(unsigned long rate)
 		udelay(clkchange_delay - (int)last_change_delay);
 
 	spin_lock_irqsave(&emc_access_lock, flags);
-	emc_set_clock(&tegra_emc_table[i], last_timing, clk_setting);
-	clkchange_time = ktime_get();
-	emc_timing = &tegra_emc_table[i];
+	/* Pick from the EMC tables based on the status of the over temp state
+	   flag. */
+	emc_set_clock(dram_over_temp_state != DRAM_OVER_TEMP_THROTTLE ?
+		      &tegra_emc_table[i] : &tegra_emc_table_derated[i],
+		      last_timing, clk_setting);
+	clkchange_time = timekeeping_suspended ? clkchange_time : ktime_get();
+	emc_timing = dram_over_temp_state != DRAM_OVER_TEMP_THROTTLE ?
+		&tegra_emc_table[i] : &tegra_emc_table_derated[i];
+	if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE)
+		pr_debug("[emc] Picked derated freq.\n");
 	spin_unlock_irqrestore(&emc_access_lock, flags);
 
 	emc_last_stats_update(i);
@@ -1212,7 +1233,9 @@ static int purge_emc_table(unsigned long max_rate)
 #define purge_emc_table(max_rate) (0)
 #endif
 
-static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
+static int init_emc_table(const struct tegra14_emc_table *table,
+			  const struct tegra14_emc_table *table_der,
+			  int table_size)
 {
 	int i, mv;
 	u32 reg;
@@ -1256,6 +1279,20 @@ static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
 		return -ENODATA;
 	}
 
+	/* Check that the derated table and non-derated table match. */
+	if (WARN(!table_der, "tegra: emc: Missing derated tables!\n"))
+		return -EINVAL;
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (table[i].rate        != table_der[i].rate ||
+		    table[i].rev         != table_der[i].rev ||
+		    table[i].emc_min_mv  != table_der[i].emc_min_mv ||
+		    table[i].src_sel_reg != table_der[i].src_sel_reg) {
+			pr_err("tegra: emc: Derated table mismatch.\n");
+			return -EINVAL;
+		}
+	}
+	pr_info("tegra: emc: Derated table is valid.\n");
+
 	/* Match EMC source/divider settings with table entries */
 	for (i = 0; i < tegra_emc_table_size; i++) {
 		unsigned long table_rate = table[i].rate;
@@ -1295,6 +1332,7 @@ static int init_emc_table(const struct tegra14_emc_table *table, int table_size)
 	}
 
 	tegra_emc_table = table;
+	tegra_emc_table_derated = table_der;
 
 	/*
 	 * Purge rates that cannot be reached because table does not specify
@@ -1439,7 +1477,8 @@ static int tegra14_emc_probe(struct platform_device *pdev)
 	emc_writel(padctrl, EMC_XM2CMDPADCTRL);
 #endif
 
-	return init_emc_table(pdata->tables, pdata->num_tables);
+	return init_emc_table(pdata->tables, pdata->tables_derated,
+			      pdata->num_tables);
 }
 
 static struct platform_driver tegra14_emc_driver = {
@@ -1613,18 +1652,41 @@ int tegra_emc_dsr_status(void)
 
 int tegra_emc_set_over_temp_state(unsigned long state)
 {
+	int offset;
 	unsigned long flags;
 
-	if (dram_type != DRAM_TYPE_LPDDR2)
+	if (dram_type != DRAM_TYPE_LPDDR2 || !emc_timing)
 		return -ENODEV;
 
-	if (state > DRAM_OVER_TEMP_REFRESH)
+	if (state > DRAM_OVER_TEMP_THROTTLE)
 		return -EINVAL;
 
-	spin_lock_irqsave(&emc_access_lock, flags);
+	/* Silently do nothing if there is no state change. */
+	if (state == dram_over_temp_state)
+		return 0;
 
-	/* Update refresh timing if state changed */
-	if (emc_timing && (dram_over_temp_state != state)) {
+	/*
+	 * If derating needs to be turned on/off force a clock change. That
+	 * will take care of the refresh as well. In derating is not going to
+	 * be changed then all that is needed is an update to the refresh
+	 * settings.
+	 */
+	spin_lock_irqsave(&emc_access_lock, flags);
+	if (state == DRAM_OVER_TEMP_THROTTLE) {
+		dram_over_temp_state = state;
+		offset = emc_timing - tegra_emc_table;
+		emc_set_clock(emc_timing, &tegra_emc_table_derated[offset],
+			      tegra_emc_clk_sel[offset].value |
+			      EMC_CLK_FORCE_CC_TRIGGER);
+		emc_timing = &tegra_emc_table_derated[offset];
+	} else if (dram_over_temp_state == DRAM_OVER_TEMP_THROTTLE) {
+		dram_over_temp_state = state;
+		offset = emc_timing - tegra_emc_table_derated;
+		emc_set_clock(emc_timing, &tegra_emc_table[offset],
+			      tegra_emc_clk_sel[offset].value |
+			      EMC_CLK_FORCE_CC_TRIGGER);
+		emc_timing = &tegra_emc_table[offset];
+	} else {
 		set_over_temp_timing(emc_timing, state);
 		emc_timing_update();
 		if (state != DRAM_OVER_TEMP_NONE)
@@ -1632,6 +1694,7 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 		dram_over_temp_state = state;
 	}
 	spin_unlock_irqrestore(&emc_access_lock, flags);
+
 	return 0;
 }
 

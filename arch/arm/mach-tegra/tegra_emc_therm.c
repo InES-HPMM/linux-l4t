@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/therm-dram.c
  *
- * Copyright (C) 2013 NVIDIA Corporation
+ * Copyright (C) 2013 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -63,19 +63,24 @@ static void emc_mr4_poll(unsigned long nothing)
 		/*
 		 * Temp is fine - go back to regular refresh.
 		 */
-		pr_info("[dram-therm] Disabling 4x refresh\n");
+		pr_info("[dram-therm] Setting nominal refresh + timings.\n");
 		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_NONE);
 		break;
 	case 4:
-		/*
-		 * Temp is high - 4x refresh.
-		 */
-		pr_info("[dram-therm] Enabling 4x refresh\n");
-		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_REFRESH);
+		pr_info("[dram-therm] Enabling 2x refresh.\n");
+		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_REFRESH_X2);
+		break;
+	case 5:
+		pr_info("[dram-therm] Enabling 4x refresh.\n");
+		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_REFRESH_X4);
+		break;
+	case 6:
+		pr_info("[dram-therm] Enabling 4x refresh + derating.\n");
+		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_THROTTLE);
 		break;
 	default:
-		pr_info("[dram-therm] Enabling 4x refresh\n");
-		tegra_emc_set_over_temp_state(DRAM_OVER_TEMP_REFRESH);
+		WARN(1, "%s: Invalid DRAM temp state %d\n",
+		     __func__, dram_temp);
 		break;
 	}
 	prev_temp = dram_temp;

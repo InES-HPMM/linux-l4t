@@ -479,7 +479,9 @@ static inline void set_over_temp_timing(
 	switch (state) {
 	case DRAM_OVER_TEMP_NONE:
 		break;
-	case DRAM_OVER_TEMP_REFRESH:
+	case DRAM_OVER_TEMP_REFRESH_X2:
+	case DRAM_OVER_TEMP_REFRESH_X4:
+	case DRAM_OVER_TEMP_THROTTLE:
 		REFRESH_SPEEDUP(ref);
 		REFRESH_SPEEDUP(pre_ref);
 		REFRESH_SPEEDUP(dsr_cntrl);
@@ -1726,7 +1728,7 @@ int tegra_emc_set_over_temp_state(unsigned long state)
 	if (dram_type != DRAM_TYPE_LPDDR2)
 		return -ENODEV;
 
-	if (state > DRAM_OVER_TEMP_REFRESH)
+	if (state > DRAM_OVER_TEMP_THROTTLE)
 		return -EINVAL;
 
 	spin_lock_irqsave(&emc_access_lock, flags);

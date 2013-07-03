@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
- * Copyright (C) 2012 NVIDIA Corporation.
+ * Copyright (C) 2012-2013 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -142,6 +142,7 @@ struct tegra14_emc_pdata {
 	const char *description;
 	int num_tables;
 	struct tegra14_emc_table *tables;
+	struct tegra14_emc_table *tables_derated;
 };
 
 #define TEGRA12_EMC_MAX_NUM_REGS	300

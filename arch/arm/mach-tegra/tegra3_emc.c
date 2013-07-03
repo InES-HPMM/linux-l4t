@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_emc.c
  *
- * Copyright (C) 2011-2012, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2011-2013, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -323,7 +323,9 @@ static inline void set_over_temp_timing(
 	switch (state) {
 	case DRAM_OVER_TEMP_NONE:
 		break;
-	case DRAM_OVER_TEMP_REFRESH:
+	case DRAM_OVER_TEMP_REFRESH_X2:
+	case DRAM_OVER_TEMP_REFRESH_X4:
+	case DRAM_OVER_TEMP_THROTTLE:
 		REFRESH_SPEEDUP(ref);
 		REFRESH_SPEEDUP(pre_ref);
 		REFRESH_SPEEDUP(dsr_cntrl);

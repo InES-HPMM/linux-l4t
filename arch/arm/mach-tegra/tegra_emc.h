@@ -27,7 +27,9 @@ extern u8 tegra_emc_bw_efficiency;
 
 enum {
 	DRAM_OVER_TEMP_NONE = 0,
-	DRAM_OVER_TEMP_REFRESH,
+	DRAM_OVER_TEMP_REFRESH_X2,
+	DRAM_OVER_TEMP_REFRESH_X4,
+	DRAM_OVER_TEMP_THROTTLE, /* 4x Refresh + derating. */
 };
 
 enum emc_user_id {
