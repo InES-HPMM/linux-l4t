@@ -195,11 +195,11 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 	if (bthrot->cur_state == cur_state)
 		return 0;
 
+	if (bthrot->cur_state == 0 && cur_state)
+		bthrot->throttle_count++;
+
 	direction = bthrot->cur_state >= cur_state;
 	bthrot->cur_state = cur_state;
-
-	if (cur_state == 1 && direction == 0)
-		bthrot->throttle_count++;
 
 	mutex_lock(&bthrot_list_lock);
 	list_for_each_entry(bthrot, &bthrot_list, node) {
