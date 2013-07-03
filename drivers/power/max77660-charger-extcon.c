@@ -47,6 +47,7 @@
 
 #define CHARGER_USB_EXTCON_REGISTRATION_DELAY	5000
 #define CHARGER_TYPE_DETECTION_DEBOUNCE_TIME_MS	500
+#define MAX77660_RESTART_CHARGING_AFTER_DONE      (15 * 60)
 
 #define BATT_TEMP_HOT				56
 #define BATT_TEMP_WARM				45
@@ -103,6 +104,8 @@ struct max77660_chg_extcon {
 	int				charging_state;
 	int				cable_connected_state;
 	int				battery_present;
+	int				chg_restart_time_sec;
+	int				last_charging_current;
 };
 
 struct max77660_chg_extcon *max77660_ext;
@@ -362,6 +365,7 @@ static int max77660_set_charging_current(struct regulator_dev *rdev,
 		goto error;
 	}
 
+	chip->last_charging_current = max_uA;
 	charger->in_current_lim = max_uA/1000;
 	charger->status = BATTERY_DISCHARGING;
 
@@ -539,6 +543,11 @@ static int max77660_charger_detail_irq(int irq, void *data, u8 *val)
 		case MAX77660_CHG_DTLS_DONE:
 			dev_info(chip->dev,
 			"Fast Charge current Interrupt: DONE\n");
+			battery_charging_status_update(chip->bc_dev,
+						BATTERY_CHARGING_DONE);
+			battery_charger_thermal_stop_monitoring(chip->bc_dev);
+			battery_charging_restart(chip->bc_dev,
+					chip->chg_restart_time_sec);
 
 			break;
 		case MAX77660_CHG_DTLS_DONE_QBAT_ON:
@@ -862,9 +871,30 @@ static int max77660_charger_thermal_configure(
 	return 0;
 }
 
+static int max77660_charging_restart(struct battery_charger_dev *bc_dev)
+{
+	struct max77660_chg_extcon *chip = battery_charger_get_drvdata(bc_dev);
+	int ret;
+
+	if (!chip->cable_connected)
+		return 0;
+
+	dev_info(chip->dev, "Restarting the charging\n");
+	ret = max77660_set_charging_current(chip->chg_rdev,
+			chip->last_charging_current,
+			chip->last_charging_current);
+	if (ret < 0) {
+		dev_err(chip->dev, "restarting of charging failed: %d\n", ret);
+		battery_charging_restart(chip->bc_dev,
+				chip->chg_restart_time_sec);
+	}
+	return ret;
+}
+
 static struct battery_charging_ops max77660_charger_bci_ops = {
 	.get_charging_status = max77660_charger_get_status,
 	.thermal_configure = max77660_charger_thermal_configure,
+	.restart_charging = max77660_charging_restart,
 };
 
 static struct battery_charger_info max77660_charger_bci = {
@@ -1000,6 +1030,8 @@ static int max77660_chg_extcon_probe(struct platform_device *pdev)
 		goto chg_reg_err;
 	}
 
+	/* Charging auto restart time */
+	chg_extcon->chg_restart_time_sec = MAX77660_RESTART_CHARGING_AFTER_DONE;
 	max77660_charger_bci.polling_time_sec =
 			bcharger_pdata->temperature_poll_period_secs;
 	max77660_charger_bci.tz_name = bcharger_pdata->tz_name;
