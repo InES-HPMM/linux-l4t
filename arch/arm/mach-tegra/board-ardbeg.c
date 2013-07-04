@@ -716,18 +716,40 @@ static void ardbeg_xusb_init(void)
 	} else {
 		/* Ardbeg */
 		xusb_bdata.gpio_controls_muxed_ss_lanes = false;
-		xusb_bdata.ss_portmap = (TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
-			(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
 
-		if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
-				TEGRA_XUSB_SS_P0);
+		if (board_info.board_id == BOARD_E1781) {
+			pr_info("Shield ERS-S. 0x%x\n", board_info.board_id);
+			/* Shield ERS-S */
+			xusb_bdata.ss_portmap =
+				(TEGRA_XUSB_SS_PORT_MAP_USB2_P1 << 0) |
+				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
 
-		if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
-			xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1);
+			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0);
+
+			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+				xusb_bdata.portmap &= ~(
+					TEGRA_XUSB_USB2_P1 | TEGRA_XUSB_SS_P0 |
+					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
+		} else {
+			pr_info("Shield ERS 0x%x\n", board_info.board_id);
+			/* Shield ERS */
+			xusb_bdata.ss_portmap =
+				(TEGRA_XUSB_SS_PORT_MAP_USB2_P0 << 0) |
+				(TEGRA_XUSB_SS_PORT_MAP_USB2_P2 << 4);
+
+			if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB))
+				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P0 |
+					TEGRA_XUSB_SS_P0);
+
+			if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB))
+				xusb_bdata.portmap &= ~(TEGRA_XUSB_USB2_P1 |
+					TEGRA_XUSB_USB2_P2 | TEGRA_XUSB_SS_P1);
+		}
 		/* FIXME Add for UTMIP2 when have odmdata assigend */
 	}
-	tegra_xusb_init(&xusb_bdata);
+	if (xusb_bdata.portmap)
+		tegra_xusb_init(&xusb_bdata);
 }
 
 static void ardbeg_modem_init(void)
