@@ -164,6 +164,8 @@ static int sdio_read_cccr(struct mmc_card *card, u32 ocr)
 				goto out;
 
 			if (mmc_host_uhs(card->host)) {
+				card->sw_caps.sd3_bus_mode |=
+					SD_MODE_UHS_SDR25 | SD_MODE_UHS_SDR12;
 				if (data & SDIO_UHS_DDR50)
 					card->sw_caps.sd3_bus_mode
 						|= SD_MODE_UHS_DDR50;
