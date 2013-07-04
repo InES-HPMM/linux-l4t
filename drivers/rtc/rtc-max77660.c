@@ -99,7 +99,7 @@ static int max77660_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	max77660_register_to_time(tm, buf);
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
 		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
 		tm->tm_hour, tm->tm_min, tm->tm_sec);
 
@@ -114,7 +114,7 @@ static int max77660_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	u8 buf[RTC_MAX_BUF];
 	int ret;
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n",
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n",
 		__func__, tm->tm_year, tm->tm_mon, tm->tm_mday,
 		tm->tm_hour, tm->tm_min, tm->tm_sec);
 
@@ -156,7 +156,7 @@ static int max77660_rtc_alarm_irq_enable(struct device *dev,
 		return -ESHUTDOWN;
 	}
 
-	dev_info(dev, "%s(): enabled %u\n", __func__, enabled);
+	dev_dbg(dev, "%s(): enabled %u\n", __func__, enabled);
 
 	if (enabled)
 		ret = max77660_reg_clr_bits(rtc->parent, MAX77660_RTC_SLAVE,
@@ -168,6 +168,7 @@ static int max77660_rtc_alarm_irq_enable(struct device *dev,
 		dev_err(rtc->dev, "RTC_IRQ_MASK update failed: %d\n", ret);
 		return ret;
 	}
+	rtc->alarm1_enabled = enabled;
 	return 0;
 }
 
@@ -190,9 +191,10 @@ static int max77660_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return ret;
 	}
 	max77660_register_to_time(&alrm->time, buf);
-	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
 		alrm->time.tm_year, alrm->time.tm_mon, alrm->time.tm_mday,
 		alrm->time.tm_hour, alrm->time.tm_min, alrm->time.tm_sec);
+	alrm->enabled = rtc->alarm1_enabled;
 	return 0;
 }
 
@@ -216,7 +218,7 @@ static int max77660_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return ret;
 	}
 
-	dev_info(dev, "%s() %d %d %d %d %d %d\n", __func__,
+	dev_dbg(dev, "%s() %d %d %d %d %d %d\n", __func__,
 		alrm->time.tm_year, alrm->time.tm_mon, alrm->time.tm_mday,
 		alrm->time.tm_hour, alrm->time.tm_min, alrm->time.tm_sec);
 	max77660_time_to_register(&alrm->time, buf);
@@ -317,6 +319,8 @@ static int max77660_rtc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	device_init_wakeup(&pdev->dev, 1);
+
 	mutex_init(&rtc->rtc_reg_lock);
 	rtc->rtc = rtc_device_register("max77660-rtc", &pdev->dev,
 				       &max77660_rtc_ops, THIS_MODULE);
@@ -334,7 +338,6 @@ static int max77660_rtc_probe(struct platform_device *pdev)
 		goto out_rtc_free;
 	}
 
-	device_set_wakeup_capable(&pdev->dev, 1);
 	return 0;
 
 out_rtc_free:
@@ -370,6 +373,8 @@ static int max77660_rtc_suspend(struct device *dev)
 	int ret;
 
 	if (device_may_wakeup(dev)) {
+		struct rtc_wkalrm alm;
+
 		enable_irq_wake(rtc->irq);
 
 		/* Set RTC can generate the wakeup signal */
@@ -377,6 +382,15 @@ static int max77660_rtc_suspend(struct device *dev)
 			MAX77660_REG_GLOBAL_CFG2, MAX77660_GLBLCNFG2_RTCWKEN);
 		if (ret < 0)
 			dev_err(rtc->dev, "RTC wake enable failed: %d\n", ret);
+
+		ret = max77660_rtc_read_alarm(dev, &alm);
+		if (!ret) {
+			dev_info(dev, "%s() alrm %d time %d %d %d %d %d %d\n",
+				__func__, alm.enabled, alm.time.tm_year,
+				alm.time.tm_mon, alm.time.tm_mday,
+				alm.time.tm_hour, alm.time.tm_min,
+				alm.time.tm_sec);
+		}
 	}
 	return 0;
 }
@@ -387,6 +401,8 @@ static int max77660_rtc_resume(struct device *dev)
 	int ret;
 
 	if (device_may_wakeup(dev)) {
+		struct rtc_time tm;
+
 		disable_irq_wake(rtc->irq);
 
 		/* Set RTC can generate the wakeup signal */
@@ -394,6 +410,12 @@ static int max77660_rtc_resume(struct device *dev)
 			MAX77660_REG_GLOBAL_CFG2, MAX77660_GLBLCNFG2_RTCWKEN);
 		if (ret < 0)
 			dev_err(rtc->dev, "RTC wake enable failed: %d\n", ret);
+
+		ret = max77660_rtc_read_time(dev, &tm);
+		if (!ret)
+			dev_info(dev, "%s() %d %d %d %d %d %d\n",
+				__func__, tm.tm_year, tm.tm_mon, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec);
 	}
 	return 0;
 };
