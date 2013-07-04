@@ -162,14 +162,6 @@ int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 		goto done;
 	}
 
-	/* register modem client */
-	ret = edp_register_client(mgr, &bbc->modem_edp_client);
-	if (ret) {
-		dev_err(dev, "unable to register bbc edp client\n");
-		goto done;
-	}
-	bbc->edp_client_registered = 1;
-
 	/* unregister modem_boot_client */
 	ret = edp_unregister_client(bbc->modem_boot_edp_client);
 	if (ret) {
@@ -178,6 +170,15 @@ int tegra_bbc_proxy_edp_register(struct device *dev, u32 num_states,
 	}
 
 	bbc->edp_boot_client_registered = 0;
+
+	/* register modem client */
+	ret = edp_register_client(mgr, &bbc->modem_edp_client);
+	if (ret) {
+		dev_err(dev, "unable to register bbc edp client\n");
+		goto done;
+	}
+
+	bbc->edp_client_registered = 1;
 
 	ap = edp_get_client(bbc->ap_name);
 	if (!ap) {
