@@ -37,6 +37,8 @@
 #include "iomap.h"
 #include "mcerr.h"
 
+static bool mcerr_throttle_enabled = true;
+
 void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
 #ifdef MC_DUAL_CHANNEL
 void __iomem *mc1 = IO_ADDRESS(TEGRA_MC1_BASE);
@@ -204,7 +206,7 @@ static irqreturn_t tegra_mc_error_isr(int irq, void *data)
 	mc_info = chip_specific.mcerr_info(stat);
 	chip_specific.mcerr_info_update(client, stat);
 
-	if (count >= MAX_PRINTS) {
+	if (mcerr_throttle_enabled && count >= MAX_PRINTS) {
 		schedule_delayed_work(&unthrottle_prints_work, HZ/2);
 		if (count == MAX_PRINTS)
 			pr_err("Too many MC errors; throttling prints\n");
@@ -324,6 +326,40 @@ static const struct file_operations mcerr_debugfs_fops = {
 	.release        = single_release,
 };
 
+static int __get_throttle(void *data, u64 *val)
+{
+	*val = mcerr_throttle_enabled;
+	return 0;
+}
+
+static int __set_throttle(void *data, u64 val)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&mc_lock, flags);
+	error_count = 0;
+	spin_unlock_irqrestore(&mc_lock, flags);
+
+	mcerr_throttle_enabled = (bool) val;
+	return 0;
+}
+
+static int mcerr_throttle_debugfs_fops_open(struct inode *inode,
+					    struct file *file)
+{
+	__simple_attr_check_format("%llu\n", 0ull);
+	return simple_attr_open(inode, file, __get_throttle,
+			      __set_throttle, "%llu\n");
+}
+
+static const struct file_operations mcerr_throttle_debugfs_fops = {
+	.open    = mcerr_throttle_debugfs_fops_open,
+	.release = simple_attr_release,
+	.read    = simple_attr_read,
+	.write   = simple_attr_write,
+	.llseek  = generic_file_llseek,
+};
+
 static int __init tegra_mcerr_init(void)
 {
 	u32 reg;
@@ -379,6 +415,9 @@ static int __init tegra_mcerr_init(void)
 	}
 	debugfs_create_file("mcerr", 0644, mcerr_debugfs_dir, NULL,
 			    &mcerr_debugfs_fops);
+	debugfs_create_file("mcerr_throttle", S_IRUGO | S_IWUSR,
+			    mcerr_debugfs_dir, NULL,
+			    &mcerr_throttle_debugfs_fops);
 done:
 	return ret;
 }
