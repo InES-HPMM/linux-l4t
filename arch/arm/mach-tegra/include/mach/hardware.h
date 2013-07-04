@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2011-2012 NVIDIA Corp.
+ * Copyright (c) 2011-2013 NVIDIA CORPORATION. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -59,6 +59,7 @@ enum tegra_platform {
 
 extern enum tegra_revision tegra_revision;
 enum tegra_chipid tegra_get_chipid(void);
+unsigned int tegra_get_minor_rev(void);
 
 #ifdef CONFIG_TEGRA_SIMULATION_SPLIT_MEM
 int tegra_split_mem_active(void);

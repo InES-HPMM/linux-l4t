@@ -513,6 +513,14 @@ enum tegra_revision tegra_get_revision(void)
 	return tegra_id.revision;
 }
 
+unsigned int tegra_get_minor_rev(void)
+{
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
+		tegra_get_tegraid_from_hw();
+
+	return tegra_id.minor;
+}
+
 #ifdef CONFIG_TEGRA_PRE_SILICON_SUPPORT
 void tegra_get_netlist_revision(u32 *netlist, u32 *patchid)
 {
