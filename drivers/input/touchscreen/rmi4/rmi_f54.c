@@ -2034,7 +2034,7 @@ static ssize_t rmi_fn_54_get_report_store(struct device *dev,
 	mutex_lock(&instance_data->status_mutex);
 	if (instance_data->status != IDLE) {
 		if (instance_data->status != BUSY) {
-			dev_err(dev, "F54 status is in an abnormal state: 0x%x",
+			dev_dbg(dev, "F54 status is in an abnormal state: 0x%x",
 							instance_data->status);
 		} else {
 			dev_info(dev, "F54 status is currently busy: Ignoring request");
@@ -2879,7 +2879,7 @@ static ssize_t SynSens_char_dev_read(struct file *filp, const char __user *buf,
 	** mutex_lock(&(my_instance_data->raw_data_feed->mutex_file_op));
 	*/
 	if (curr_sleep >= 3000000) {
-	  pr_info("#");
+		pr_debug("#");
 	}
 
 	ret_value = copy_to_user((void __user *)buf,
