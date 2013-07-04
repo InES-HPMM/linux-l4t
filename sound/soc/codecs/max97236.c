@@ -511,6 +511,17 @@ static void max97236_report_jack_state(struct max97236_priv *max97236,
 			status_reg[2],
 			string);
 
+	/* unmute left and right volume */
+	if ((state == SND_JACK_HEADSET) ||
+			(state == SND_JACK_HEADPHONE)) {
+		regmap_update_bits(max97236->regmap,
+				M97236_REG_07_LEFT_VOLUME,
+				M97236_MUTEL_MASK, 0);
+		regmap_update_bits(max97236->regmap,
+				M97236_REG_08_RIGHT_VOLUME,
+				M97236_MUTER_MASK, 0);
+	}
+
 	if (max97236->jack_state != state) {
 		snd_soc_jack_report(max97236->jack, state,
 				SND_JACK_HEADSET | SND_JACK_LINEOUT);
