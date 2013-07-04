@@ -455,7 +455,7 @@ static struct regulator_consumer_supply fixed_reg_vdd_hdmi_5v0_supply[] = {
 
 /* Gated by GPIO_PH7  in FAB B and further*/
 static struct regulator_consumer_supply fixed_reg_vdd_hdmi_supply[] = {
-	REGULATOR_SUPPLY("avdd_hdmi", "NULL"),
+	REGULATOR_SUPPLY("avdd_hdmi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_hdmi_pll", "tegradc.1"),
 };
 /* LCD_BL_EN GMI_AD10 */
@@ -524,7 +524,7 @@ static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 #endif
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
-	REGULATOR_SUPPLY("vddio_hv", "NULL"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
 };
 

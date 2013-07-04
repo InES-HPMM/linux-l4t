@@ -380,7 +380,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd_sys_1s_cdc", NULL),
 	REGULATOR_SUPPLY("vdd_sys_1s_bl", NULL),
 	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("vddio_hv", "NULL"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 };
 
 PALMAS_PDATA_INIT(ti913_smps123, 900, 1400, NULL, 1, 1, 1, NORMAL);
@@ -1163,7 +1163,7 @@ static struct regulator_consumer_supply fixed_reg_en_as3722_gpio2_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_as3722_gpio4_supply[] = {
-	REGULATOR_SUPPLY("vddio_hv", "NULL"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
 };
