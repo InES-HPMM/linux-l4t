@@ -465,7 +465,7 @@ static int pn_socket_ioctl(struct socket *sock, unsigned int cmd,
 		if (get_user(type, (__u16 __user *)arg))
 			return -EFAULT;
 
-		printk(KERN_DEBUG "Phonet register resource type %d on %x\n",
+		printk(KERN_DEBUG "Phonet register resource type %d on %p\n",
 					 type, pn);
 		pn->resource_type = type;
 		return 0;
