@@ -131,7 +131,7 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_common[] = {
 	DEFAULT_PINMUX(KB_ROW3,       SYS,         NORMAL,    NORMAL,   OUTPUT),
 
 	/* DISPLAYA_ALT pinmux */
-	DEFAULT_PINMUX(KB_ROW6,       DISPLAYA_ALT, PULL_DOWN, NORMAL,   INPUT),
+	DEFAULT_PINMUX(KB_ROW6,       DISPLAYA_ALT, NORMAL, NORMAL,   INPUT),
 
 	/* I2CPWR pinmux */
 	I2C_PINMUX(PWR_I2C_SCL, I2CPWR, NORMAL, NORMAL, INPUT, DEFAULT, ENABLE),

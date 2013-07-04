@@ -471,6 +471,7 @@ static void ardbeg_panel_select(void)
 				DSI_PANEL_RST_GPIO;
 			ardbeg_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
 				DSI_PANEL_BL_PWM_GPIO;
+			ardbeg_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
 		}
 
 		if (panel->init_fb_data)
