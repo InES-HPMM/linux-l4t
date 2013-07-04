@@ -232,6 +232,7 @@ static __initdata struct tegra_drive_pingroup_config ardbeg_drive_pinmux[] = {
 };
 
 /* Initially setting all used GPIO's to non-TRISTATE */
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 static __initdata struct tegra_pingroup_config ardbeg_pinmux_set_nontristate[] = {
 	DEFAULT_PINMUX(GPIO_X4_AUD,     RSVD,   PULL_DOWN,    NORMAL,    OUTPUT),
 	DEFAULT_PINMUX(GPIO_X5_AUD,     RSVD,   PULL_UP,      NORMAL,    INPUT),
@@ -298,6 +299,7 @@ static __initdata struct tegra_pingroup_config ardbeg_pinmux_set_nontristate[] =
 
 	DEFAULT_PINMUX(GMI_AD9,         PWM1,   NORMAL,    NORMAL,     OUTPUT),
 };
+#endif
 
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC
 #include "board-ardbeg-pinmux-t11x.h"
@@ -323,8 +325,10 @@ static void __init ardbeg_gpio_init_configure(void)
 
 int __init ardbeg_pinmux_init(void)
 {
+#ifdef CONFIG_ARCH_TEGRA_11x_SOC
 	tegra_pinmux_config_table(ardbeg_pinmux_set_nontristate,
 					ARRAY_SIZE(ardbeg_pinmux_set_nontristate));
+#endif
 	ardbeg_gpio_init_configure();
 
 	tegra_pinmux_config_table(ardbeg_pinmux_common, ARRAY_SIZE(ardbeg_pinmux_common));
