@@ -87,6 +87,19 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 	handle->data_size = conf->region_ap_data_size;
 	pr_debug("%s data_size=%d\n", __func__, (int)handle->data_size);
 
+	if (NVSHM_MAJOR(conf->version) < 2) {
+		handle->stats_base_virt = 0;
+		handle->stats_size = 0;
+	} else {
+		handle->stats_base_virt = handle->mb_base_virt
+			+ conf->region_dxp1_stats_offset;
+		pr_debug("%s stats_base_virt=0x%p\n",
+			 __func__, handle->stats_base_virt);
+
+		handle->stats_size = conf->region_dxp1_stats_size;
+		pr_debug("%s stats_size=%lu\n", __func__, handle->stats_size);
+	}
+
 #ifndef CONFIG_TEGRA_BASEBAND_SIMU
 	handle->shared_queue_head =
 		(struct nvshm_iobuf *)(handle->ipc_base_virt
@@ -175,6 +188,9 @@ static int init_interfaces(struct nvshm_handle *handle)
 		nvshm_rpc_dispatcher_init();
 	}
 
+	pr_debug("%s init statistics support\n", __func__);
+	nvshm_stats_init(handle);
+
 	return 0;
 }
 
@@ -223,6 +239,9 @@ static int cleanup_interfaces(struct nvshm_handle *handle)
 		nvshm_rpc_dispatcher_cleanup();
 		nvshm_rpc_cleanup();
 	}
+
+	pr_debug("%s cleanup statistics support\n", __func__);
+	nvshm_stats_cleanup();
 
 	/* Remove serial sysfs entry */
 	tegra_bb_set_ipc_serial(handle->tegra_bb, NULL);

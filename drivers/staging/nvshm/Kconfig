@@ -1,5 +1,5 @@
 config NVSHM
-	tristate "NV Tegra Baseband Shared Memory Interface"
+	bool "NV Tegra Baseband Shared Memory Interface"
 	depends on ARCH_TEGRA
 	depends on TEGRA_BASEBAND
 	depends on SUNRPC
@@ -8,7 +8,7 @@ config NVSHM
 	    driver on NVIDIA Tegra integrated baseband
 
 config NVSHM_RPC_RSM
-	tristate "RPC mechanism for the resource manager"
+	bool "RPC mechanism for the resource manager"
 	default y
 	depends on NVSHM
 	depends on TEGRA_BBC_PROXY

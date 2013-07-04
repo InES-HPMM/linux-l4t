@@ -114,6 +114,9 @@ struct nvshm_config {
 	int queue_bb_offset;
 	struct nvshm_chan_map chan_map[NVSHM_MAX_CHANNELS];
 	char serial[NVSHM_SERIAL_BYTE_SIZE];
+	int region_dxp1_stats_offset;
+	int region_dxp1_stats_size;
+	int guard;
 };
 
 /*

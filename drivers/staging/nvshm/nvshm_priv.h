@@ -26,6 +26,7 @@
 #include <asm/memory.h>
 #include <asm/cacheflush.h>
 #include <asm/outercache.h>
+#include "nvshm_types.h"
 /*
  * Test stub is used to implement nvshm on private memory for testing purpose.
  * Data are allocated into this private memory but queues loop on themselves
@@ -74,10 +75,12 @@ struct nvshm_handle {
 	void *mb_base_virt;
 	void *desc_base_virt; /* AP desc region */
 	void *data_base_virt; /* AP data region */
+	void *stats_base_virt;
 	unsigned long ipc_size;
 	unsigned long mb_size;
 	unsigned long desc_size;
 	unsigned long data_size;
+	unsigned long stats_size;
 	struct nvshm_iobuf *shared_queue_head; /* shared desc list */
 	struct nvshm_iobuf *shared_queue_tail; /* shared desc list */
 	struct nvshm_iobuf *free_pool_head;    /* free desc list */
@@ -103,6 +106,9 @@ extern void nvshm_net_cleanup(void);
 
 extern int nvshm_rpc_init(struct nvshm_handle *handle);
 extern void nvshm_rpc_cleanup(void);
+
+extern void nvshm_stats_init(struct nvshm_handle *handle);
+extern void nvshm_stats_cleanup(void);
 
 extern int nvshm_rpc_dispatcher_init(void);
 extern void nvshm_rpc_dispatcher_cleanup(void);
