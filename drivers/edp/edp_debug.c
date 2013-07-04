@@ -34,7 +34,7 @@ static int reduce_cap(struct edp_manager *m, unsigned int new_max)
 	unsigned int delta = m->max - new_max;
 	unsigned int remain;
 	struct edp_client c = {
-		.name = ".",
+		.name = ".debug",
 		.states = &delta,
 		.num_states = 1,
 		.e0_index = 0,
