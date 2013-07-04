@@ -41,6 +41,18 @@ static inline struct device *to_tps65090_dev(struct regulator_dev *rdev)
 	return rdev_get_dev(rdev)->parent;
 }
 
+static inline bool is_dcdc(int id)
+{
+	switch (id) {
+	case TPS65090_REGULATOR_DCDC1:
+	case TPS65090_REGULATOR_DCDC2:
+	case TPS65090_REGULATOR_DCDC3:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static int tps65090_reg_enable(struct regulator_dev *rdev)
 {
 	struct tps65090_regulator *ri = rdev_get_drvdata(rdev);
@@ -71,57 +83,6 @@ static int tps65090_reg_enable(struct regulator_dev *rdev)
 	return regulator_enable_regmap(rdev);
 }
 
-static struct regulator_ops tps65090_ext_control_ops = {
-};
-
-static struct regulator_ops tps65090_reg_contol_ops = {
-	.enable		= tps65090_reg_enable,
-	.disable	= regulator_disable_regmap,
-	.is_enabled	= regulator_is_enabled_regmap,
-};
-
-static struct regulator_ops tps65090_ldo_ops = {
-};
-
-#define tps65090_REG_DESC(_id, _sname, _en_reg, _ops)	\
-{							\
-	.name = "TPS65090_RAILS"#_id,			\
-	.supply_name = _sname,				\
-	.id = TPS65090_REGULATOR_##_id,			\
-	.ops = &_ops,					\
-	.enable_reg = _en_reg,				\
-	.enable_mask = BIT(0),				\
-	.type = REGULATOR_VOLTAGE,			\
-	.owner = THIS_MODULE,				\
-}
-
-static struct regulator_desc tps65090_regulator_desc[] = {
-	tps65090_REG_DESC(DCDC1, "vsys1",   0x0C, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(DCDC2, "vsys2",   0x0D, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(DCDC3, "vsys3",   0x0E, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET1,  "infet1",  0x0F, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET2,  "infet2",  0x10, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET3,  "infet3",  0x11, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET4,  "infet4",  0x12, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET5,  "infet5",  0x13, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET6,  "infet6",  0x14, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(FET7,  "infet7",  0x15, tps65090_reg_contol_ops),
-	tps65090_REG_DESC(LDO1,  "vsys-l1", 0,    tps65090_ldo_ops),
-	tps65090_REG_DESC(LDO2,  "vsys-l2", 0,    tps65090_ldo_ops),
-};
-
-static inline bool is_dcdc(int id)
-{
-	switch (id) {
-	case TPS65090_REGULATOR_DCDC1:
-	case TPS65090_REGULATOR_DCDC2:
-	case TPS65090_REGULATOR_DCDC3:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static int tps65090_config_ext_control(
 	struct tps65090_regulator *ri, bool enable)
 {
@@ -142,7 +103,7 @@ static int tps65090_regulator_disable_ext_control(
 		struct tps65090_regulator *ri,
 		struct tps65090_regulator_plat_data *tps_pdata)
 {
-	int ret = 0;
+	int ret;
 	struct device *parent = ri->dev->parent;
 	unsigned int reg_en_reg = ri->desc->enable_reg;
 
@@ -176,6 +137,45 @@ static void tps65090_configure_regulator_config(
 		config->ena_gpio_flags = gpio_flag;
 	}
 }
+
+static struct regulator_ops tps65090_ext_control_ops = {
+};
+
+static struct regulator_ops tps65090_reg_contol_ops = {
+	.enable		= tps65090_reg_enable,
+	.disable	= regulator_disable_regmap,
+	.is_enabled	= regulator_is_enabled_regmap,
+};
+
+static struct regulator_ops tps65090_ldo_ops = {
+};
+
+#define tps65090_REG_DESC(_id, _sname, _en_reg, _ops)	\
+{							\
+	.name = "TPS65090-RAILS-"#_id,			\
+	.supply_name = _sname,				\
+	.id = TPS65090_REGULATOR_##_id,			\
+	.ops = &_ops,					\
+	.enable_reg = _en_reg,				\
+	.enable_mask = BIT(0),				\
+	.type = REGULATOR_VOLTAGE,			\
+	.owner = THIS_MODULE,				\
+}
+
+static struct regulator_desc tps65090_regulator_desc[] = {
+	tps65090_REG_DESC(DCDC1, "vsys1",   0x0C, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(DCDC2, "vsys2",   0x0D, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(DCDC3, "vsys3",   0x0E, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET1,  "infet1",  0x0F, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET2,  "infet2",  0x10, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET3,  "infet3",  0x11, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET4,  "infet4",  0x12, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET5,  "infet5",  0x13, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET6,  "infet6",  0x14, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(FET7,  "infet7",  0x15, tps65090_reg_contol_ops),
+	tps65090_REG_DESC(LDO1,  "vsys-l1", 0,    tps65090_ldo_ops),
+	tps65090_REG_DESC(LDO2,  "vsys-l2", 0,    tps65090_ldo_ops),
+};
 
 #ifdef CONFIG_OF
 static struct of_regulator_match tps65090_matches[] = {

@@ -29,6 +29,7 @@
 #include <linux/mfd/palmas.h>
 #include <linux/mfd/tps65090.h>
 #include <linux/regulator/max77663-regulator.h>
+#include <linux/regulator/tps51632-regulator.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
@@ -123,8 +124,7 @@ static struct regulator_consumer_supply tps65090_fet7_supply[] = {
 	REGULATOR_SUPPLY("avdd", "bluedroid_pm.0"),
 };
 
-#define tps65090_rails(_name) "tps65090_"#_name
-
+#define tps65090_rails(id) "tps65090-"#id
 #define TPS65090_PDATA_INIT(_id, _name, _supply_reg,			\
 	_always_on, _boot_on, _apply_uV, _en_ext_ctrl, _gpio, _wait_to)	\
 static struct regulator_init_data ri_data_##_name =			\
@@ -166,27 +166,28 @@ TPS65090_PDATA_INIT(FET5, fet5, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 TPS65090_PDATA_INIT(FET6, fet6, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 TPS65090_PDATA_INIT(FET7, fet7, tps65090_rails(DCDC2), 0, 0, 0, false, -1, 0);
 
-#define ADD_TPS65090_REG(_name) (&tps65090_regulator_pdata_##_name)
 static struct tps65090_charger_data bcharger_pdata = {
 	.irq_base = TPS65090_TEGRA_IRQ_BASE,
 	.update_status = sbs_update,
 };
 
+#define ADD_TPS65090_REG(_name) (&tps65090_regulator_pdata_##_name)
 static struct tps65090_platform_data tps65090_pdata = {
 	.irq_base = TPS65090_TEGRA_IRQ_BASE,
 	.reg_pdata = {
-		ADD_TPS65090_REG(dcdc1),
-		ADD_TPS65090_REG(dcdc2),
-		ADD_TPS65090_REG(dcdc3),
-		ADD_TPS65090_REG(ldo1),
-		ADD_TPS65090_REG(ldo2),
-		ADD_TPS65090_REG(fet1),
-		ADD_TPS65090_REG(fet3),
-		ADD_TPS65090_REG(fet4),
-		ADD_TPS65090_REG(fet5),
-		ADD_TPS65090_REG(fet6),
-		ADD_TPS65090_REG(fet7),
-	},
+			ADD_TPS65090_REG(dcdc1),
+			ADD_TPS65090_REG(dcdc2),
+			ADD_TPS65090_REG(dcdc3),
+			ADD_TPS65090_REG(fet1),
+			NULL,
+			ADD_TPS65090_REG(fet3),
+			ADD_TPS65090_REG(fet4),
+			ADD_TPS65090_REG(fet5),
+			ADD_TPS65090_REG(fet6),
+			ADD_TPS65090_REG(fet7),
+			ADD_TPS65090_REG(ldo1),
+			ADD_TPS65090_REG(ldo2),
+		},
 	.charger_pdata = &bcharger_pdata,
 };
 
