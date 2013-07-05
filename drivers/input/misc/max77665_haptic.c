@@ -65,27 +65,6 @@ struct max77665_haptic {
 	struct edp_client *haptic_edp_client;
 };
 
-static int max77665_read_reg(struct max77665_haptic *chip, u8 reg, u8 *val)
-{
-	int ret;
-	struct device *dev = chip->dev;
-
-	ret = max77665_read(dev->parent, MAX77665_I2C_SLAVE_HAPTIC, reg, val);
-	return ret;
-}
-
-static int max77665_write_reg(struct max77665_haptic *chip, u8 reg, u8 value)
-{
-	int ret;
-	struct device *dev = chip->dev;
-
-	ret = max77665_write(dev->parent, MAX77665_I2C_SLAVE_HAPTIC,
-							reg, value);
-	if (ret)
-		return ret;
-	return 0;
-}
-
 static int max77665_haptic_set_duty_cycle(struct max77665_haptic *chip)
 {
 	int duty, i;
@@ -128,13 +107,17 @@ static int max77665_haptic_set_duty_cycle(struct max77665_haptic *chip)
 
 		if (internal_mode_valid) {
 			if (chip->internal_mode_pattern % 2 == 1)
-				max77665_write_reg(chip, reg1,
-					chip->feedback_duty_cycle);
+				max77665_write(chip->dev->parent,
+					MAX77665_I2C_SLAVE_HAPTIC,
+					reg1, chip->feedback_duty_cycle);
 			else
-				max77665_write_reg(chip, reg1,
-					chip->feedback_duty_cycle << 4);
+				max77665_write(chip->dev->parent,
+					MAX77665_I2C_SLAVE_HAPTIC,
+					reg1, chip->feedback_duty_cycle << 4);
 
-			max77665_write_reg(chip, reg2, duty_index);
+			max77665_write(chip->dev->parent,
+				MAX77665_I2C_SLAVE_HAPTIC,
+				reg2, duty_index);
 		}
 	}
 	return ret;
@@ -148,7 +131,8 @@ static void max77665_haptic_configure(struct max77665_haptic *chip)
 	value1 = chip->type << MAX77665_MOTOR_TYPE_SHIFT |
 		chip->enabled << MAX77665_ENABLE_SHIFT |
 		chip->mode << MAX77665_MODE_SHIFT | chip->pwm_divisor;
-	max77665_write_reg(chip, MAX77665_HAPTIC_REG_CONF2, value1);
+	max77665_write(chip->dev->parent, MAX77665_I2C_SLAVE_HAPTIC,
+		MAX77665_HAPTIC_REG_CONF2, value1);
 
 	if (chip->mode == MAX77665_INTERNAL_MODE && chip->enabled) {
 		max77665_write(chip->dev->parent, MAX77665_I2C_SLAVE_PMIC,
@@ -158,7 +142,8 @@ static void max77665_haptic_configure(struct max77665_haptic *chip)
 			chip->motor_startup_val << MAX77665_MOTOR_STRT_SHIFT |
 			chip->scf_val;
 
-		max77665_write_reg(chip, MAX77665_HAPTIC_REG_CONF1, value1);
+		max77665_write(chip->dev->parent, MAX77665_I2C_SLAVE_HAPTIC,
+			MAX77665_HAPTIC_REG_CONF1, value1);
 
 		switch (chip->internal_mode_pattern) {
 		case 0:
@@ -191,8 +176,12 @@ static void max77665_haptic_configure(struct max77665_haptic *chip)
 		}
 
 		if (internal_mode_valid) {
-			max77665_write_reg(chip, reg1, value1);
-			max77665_write_reg(chip, reg2, value2);
+			max77665_write(chip->dev->parent,
+				MAX77665_I2C_SLAVE_HAPTIC,
+				reg1, value1);
+			max77665_write(chip->dev->parent,
+				MAX77665_I2C_SLAVE_HAPTIC,
+				reg2, value2);
 			value1 = chip->internal_mode_pattern
 					<< MAX77665_CYCLE_SHIFT |
 			      chip->internal_mode_pattern
@@ -201,8 +190,9 @@ static void max77665_haptic_configure(struct max77665_haptic *chip)
 					<< MAX77665_SIG_DUTY_SHIFT |
 			      chip->internal_mode_pattern
 					<< MAX77665_PWM_DUTY_SHIFT;
-		max77665_write_reg(chip,
-			MAX77665_HAPTIC_REG_DRVCONF, value1);
+			max77665_write(chip->dev->parent,
+				MAX77665_I2C_SLAVE_HAPTIC,
+				MAX77665_HAPTIC_REG_DRVCONF, value1);
 		}
 	}
 }
