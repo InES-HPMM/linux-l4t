@@ -161,12 +161,12 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 };
 
 static struct regulator_consumer_supply as3722_sd5_supply[] = {
-	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5645.0"),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sys_2", NULL),
@@ -379,7 +379,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("vdd_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_sys_1s_cdc", NULL),
 	REGULATOR_SUPPLY("vdd_sys_1s_bl", NULL),
-	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645.0"),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 };
 
@@ -704,9 +704,9 @@ static struct regulator_consumer_supply palmas_regen1_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_regen2_supply[] = {
-	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645.0"),
 };
 
 static struct regulator_consumer_supply palmas_regen4_supply[] = {
@@ -1132,8 +1132,8 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_sd_supply[] = {
 
 static struct regulator_consumer_supply fixed_reg_en_vdd_sys_5v0_supply[] = {
 	REGULATOR_SUPPLY("vdd_spk_5v0", NULL),
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_dcdc_1v8_supply[] = {
@@ -1169,7 +1169,7 @@ static struct regulator_consumer_supply fixed_reg_en_as3722_gpio4_supply[] = {
 };
 
 static struct regulator_consumer_supply fixed_reg_en_tca6408_p2_supply[] = {
-	REGULATOR_SUPPLY("ldoen", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("ldoen", "tegra-snd-rt5639.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_en_as3722_gpio1_supply[] = {
@@ -1216,7 +1216,7 @@ FIXED_REG(4,	vdd_sd,	vdd_sd,
 	false,	true,	0,	3300,	0);
 
 FIXED_REG(5,	vdd_sys_5v0,	vdd_sys_5v0,
-	NULL,	1,	1,	-1,
+	NULL,	0,	0,	-1,
 	false,	true,	0,	5000, 0);
 
 FIXED_REG(6,	dcdc_1v8,	dcdc_1v8,
