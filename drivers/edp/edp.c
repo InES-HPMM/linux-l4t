@@ -59,7 +59,7 @@ static void promote(struct work_struct *work)
 
 	mutex_lock(&edp_lock);
 
-	if (m->num_denied && m->remaining) {
+	if (m->num_denied && m->remaining && m->gov) {
 		prev_denied = m->num_denied;
 		m->gov->promote(m);
 		if (prev_denied != m->num_denied)
@@ -115,7 +115,6 @@ int edp_set_governor_unlocked(struct edp_manager *mgr,
 		return -EINVAL;
 
 	if (mgr->gov) {
-		cancel_work_sync(&mgr->work);
 		if (mgr->gov->stop)
 			mgr->gov->stop(mgr);
 		mgr->gov->refcnt--;
@@ -145,26 +144,31 @@ int edp_set_governor_unlocked(struct edp_manager *mgr,
 
 int edp_unregister_manager(struct edp_manager *mgr)
 {
-	int r = 0;
-
 	if (!mgr)
 		return -EINVAL;
 
 	mutex_lock(&edp_lock);
-	if (!mgr->registered) {
-		r = -ENODEV;
-	} else if (!list_empty(&mgr->clients)) {
-		r = -EBUSY;
-	} else {
-		manager_remove_dentry(mgr);
-		edp_manager_remove_kobject(mgr);
-		edp_set_governor_unlocked(mgr, NULL);
-		list_del(&mgr->link);
-		mgr->registered = false;
-	}
-	mutex_unlock(&edp_lock);
 
-	return r;
+	if (!mgr->registered) {
+		mutex_unlock(&edp_lock);
+		return -ENODEV;
+	}
+
+	if (!list_empty(&mgr->clients)) {
+		mutex_unlock(&edp_lock);
+		return -EBUSY;
+	}
+
+	manager_remove_dentry(mgr);
+	edp_manager_remove_kobject(mgr);
+	edp_set_governor_unlocked(mgr, NULL);
+	list_del(&mgr->link);
+	mgr->registered = false;
+
+	mutex_unlock(&edp_lock);
+	cancel_work_sync(&mgr->work);
+
+	return 0;
 }
 EXPORT_SYMBOL(edp_unregister_manager);
 
