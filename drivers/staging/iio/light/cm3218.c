@@ -60,14 +60,14 @@ enum als_state {
 };
 
 enum i2c_state {
-	I2C_XFER_NOT_OK,
+	I2C_XFER_NOT_ENABLED,
 	I2C_XFER_OK_REG_NOT_SYNC,
 	I2C_XFER_OK_REG_SYNC,
 };
 
 struct cm3218_chip {
 	struct i2c_client		*client;
-	struct i2c_device_id		*id;
+	const struct i2c_device_id	*id;
 	struct regulator_bulk_data	*consumers;
 	struct notifier_block		regulator_nb;
 	int				i2c_xfer_state;
@@ -172,7 +172,7 @@ static int _cm3218_register_read(struct cm3218_chip *chip, int reg, int *val)
 	if (!chip->regmap)
 		return -ENODEV;
 
-	if (chip->i2c_xfer_state ==  I2C_XFER_NOT_OK) {
+	if (chip->i2c_xfer_state ==  I2C_XFER_NOT_ENABLED) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
@@ -200,7 +200,7 @@ static int _cm3218_register_write(struct cm3218_chip *chip, int reg, int mask,
 	if (!chip->regmap)
 		return -ENODEV;
 
-	if (chip->i2c_xfer_state == I2C_XFER_NOT_OK) {
+	if (chip->i2c_xfer_state == I2C_XFER_NOT_ENABLED) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
@@ -239,7 +239,7 @@ static int _cm3218_register_sync(struct cm3218_chip *chip)
 	if (!chip->regmap)
 		return -ENODEV;
 
-	if (chip->i2c_xfer_state == I2C_XFER_NOT_OK) {
+	if (chip->i2c_xfer_state == I2C_XFER_NOT_ENABLED) {
 		dev_err(&chip->client->dev,
 			"idname:%s func:%s line:%d device not ready for i2c xfer\n",
 			chip->id->name, __func__, __LINE__);
@@ -470,7 +470,7 @@ static int cm3218_power_manager(struct notifier_block *regulator_nb,
 		cm3218_activate_standby_mode(chip);
 	} else if (event & (REGULATOR_EVENT_DISABLE |
 			REGULATOR_EVENT_FORCE_DISABLE)) {
-		chip->i2c_xfer_state = I2C_XFER_NOT_OK;
+		chip->i2c_xfer_state = I2C_XFER_NOT_ENABLED;
 	}
 	return NOTIFY_OK;
 }
@@ -573,7 +573,7 @@ static int cm3218_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"idname:%s func:%s line:%d iio_device_register fails\n",
 			id->name, __func__, __LINE__);
-		goto fail;
+		goto free_iio_dev;
 	}
 
 	cm3218_reg_defaults.def = id->driver_data ?
@@ -585,33 +585,33 @@ static int cm3218_probe(struct i2c_client *client,
 			"idname:%s func:%s line:%d devm_regmap_init_i2c fails\n",
 			id->name, __func__, __LINE__);
 		ret = -ENOMEM;
-		goto fail;
+		goto unregister_iio_dev;
 	}
 	chip->regmap = regmap;
 
 	ret = devm_regulator_bulk_get(&client->dev,
 					ARRAY_SIZE(cm3218_consumers),
 					cm3218_consumers);
-	if (ret)
-		dev_err(&client->dev,
-			"idname:%s func:%s line:%d regulator_get fails\n",
+	if (ret) {
+		dev_info(&client->dev,
+			"idname:%s func:%s line:%d regulator not found.\n"
+			"Assuming regulator is not needed\n",
 			id->name, __func__, __LINE__);
-	else
+		goto finish;
+	} else {
 		chip->consumers = cm3218_consumers;
-
-	if (chip->consumers) {
-		chip->regulator_nb.notifier_call = cm3218_power_manager;
-		ret = regulator_register_notifier(chip->consumers[0].consumer,
-						&chip->regulator_nb);
-		if (ret) {
-			dev_err(&client->dev,
-				"idname:%s func:%s line:%d regulator_register_notifier fails\n",
-				id->name, __func__, __LINE__);
-			goto fail;
-		}
 	}
 
-	chip->als_state = 0;
+	chip->regulator_nb.notifier_call = cm3218_power_manager;
+	ret = regulator_register_notifier(chip->consumers[0].consumer,
+					&chip->regulator_nb);
+	if (ret) {
+		dev_err(&client->dev,
+			"idname:%s func:%s line:%d regulator_register_notifier fails\n",
+			id->name, __func__, __LINE__);
+		goto unregister_iio_dev;
+	}
+
 	if (regulator_is_enabled(chip->consumers[0].consumer)) {
 		chip->i2c_xfer_state = I2C_XFER_OK_REG_NOT_SYNC;
 		ret = cm3218_activate_standby_mode(chip);
@@ -619,15 +619,24 @@ static int cm3218_probe(struct i2c_client *client,
 			dev_err(&client->dev,
 				"idname:%s func:%s line:%d regulator_register_notifier fails\n",
 				id->name, __func__, __LINE__);
-			goto fail;
+			goto unregister_regulator_notifier;
 		}
 	}
 
+finish:
+	chip->als_state = I2C_XFER_NOT_ENABLED;
+	chip->id = id;
 	dev_info(&client->dev, "idname:%s func:%s line:%d probe success\n",
 			id->name, __func__, __LINE__);
 	return 0;
 
-fail:
+
+unregister_regulator_notifier:
+	regulator_unregister_notifier(chip->consumers[0].consumer,
+					&chip->regulator_nb);
+unregister_iio_dev:
+	iio_device_unregister(indio_dev);
+free_iio_dev:
 	iio_device_free(indio_dev);
 	return ret;
 }
