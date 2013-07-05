@@ -206,6 +206,77 @@ enum {
 #define SMMU_ASID_DISABLE	0
 #define SMMU_ASID_ASID(n)	((n) & ~SMMU_ASID_ENABLE(0))
 
+/* FIXME: client ID, only valid for T124 */
+#define CSR_PTCR 0
+#define CSR_DISPLAY0A 1
+#define CSR_DISPLAY0AB 2
+#define CSR_DISPLAY0B 3
+#define CSR_DISPLAY0BB 4
+#define CSR_DISPLAY0C 5
+#define CSR_DISPLAY0CB 6
+#define CSR_AFIR 14
+#define CSR_AVPCARM7R 15
+#define CSR_DISPLAYHC 16
+#define CSR_DISPLAYHCB 17
+#define CSR_HDAR 21
+#define CSR_HOST1XDMAR 22
+#define CSR_HOST1XR 23
+#define CSR_MSENCSRD 28
+#define CSR_PPCSAHBDMAR 29
+#define CSR_PPCSAHBSLVR 30
+#define CSR_SATAR 31
+#define CSR_VDEBSEVR 34
+#define CSR_VDEMBER 35
+#define CSR_VDEMCER 36
+#define CSR_VDETPER 37
+#define CSR_MPCORELPR 38
+#define CSR_MPCORER 39
+#define CSW_MSENCSWR 43
+#define CSW_AFIW 49
+#define CSW_AVPCARM7W 50
+#define CSW_HDAW 53
+#define CSW_HOST1XW 54
+#define CSW_MPCORELPW 56
+#define CSW_MPCOREW 57
+#define CSW_PPCSAHBDMAW 59
+#define CSW_PPCSAHBSLVW 60
+#define CSW_SATAW 61
+#define CSW_VDEBSEVW 62
+#define CSW_VDEDBGW 63
+#define CSW_VDEMBEW 64
+#define CSW_VDETPMW 65
+#define CSR_ISPRA 68
+#define CSW_ISPWA 70
+#define CSW_ISPWB 71
+#define CSR_XUSB_HOSTR 74
+#define CSW_XUSB_HOSTW 75
+#define CSR_XUSB_DEVR 76
+#define CSW_XUSB_DEVW 77
+#define CSR_ISPRAB 78
+#define CSW_ISPWAB 80
+#define CSW_ISPWBB 81
+#define CSR_TSECSRD 84
+#define CSW_TSECSWR 85
+#define CSR_A9AVPSCR 86
+#define CSW_A9AVPSCW 87
+#define CSR_GPUSRD 88
+#define CSW_GPUSWR 89
+#define CSR_DISPLAYT 90
+#define CSR_SDMMCRA 96
+#define CSR_SDMMCRAA 97
+#define CSR_SDMMCR 98
+#define CSR_SDMMCRAB 99
+#define CSW_SDMMCWA 100
+#define CSW_SDMMCWAA 101
+#define CSW_SDMMCW 102
+#define CSW_SDMMCWAB 103
+#define CSR_VICSRD 108
+#define CSW_VICSWR 109
+#define CSW_VIW 114
+#define CSR_DISPLAYD 115
+
+#define SMMU_CLIENT_CONF0	0x40
+
 #define smmu_client_enable_hwgrp(c, m)	smmu_client_set_hwgrp(c, m, 1)
 #define smmu_client_disable_hwgrp(c)	smmu_client_set_hwgrp(c, 0, 0)
 #define __smmu_client_enable_hwgrp(c, m) __smmu_client_set_hwgrp(c, m, 1)
@@ -307,6 +378,32 @@ static inline u32 ahb_read(struct smmu_device *smmu, size_t offs)
 static inline void ahb_write(struct smmu_device *smmu, u32 val, size_t offs)
 {
 	writel(val, smmu->regs_ahbarb + offs);
+}
+
+static void __smmu_client_ordered(struct smmu_device *smmu, int id)
+{
+	size_t offs;
+	u32 val;
+
+	offs = SMMU_CLIENT_CONF0;
+	offs += (id / BITS_PER_LONG) * sizeof(u32);
+
+	val = smmu_read(smmu, offs);
+	val |= BIT(id % BITS_PER_LONG);
+	smmu_write(smmu, val, offs);
+}
+
+static void smmu_client_ordered(struct smmu_device *smmu)
+{
+	int i, id[] = {
+		CSW_SDMMCWA,
+		CSW_SDMMCWAA,
+		CSW_SDMMCW,
+		CSW_SDMMCWAB,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(id); i++)
+		__smmu_client_ordered(smmu, id[i]);
 }
 
 #define VA_PAGE_TO_PA(va, page)	\
@@ -450,6 +547,10 @@ static void smmu_setup_regs(struct smmu_device *smmu)
 	smmu_write(smmu, smmu->asid_security, SMMU_ASID_SECURITY);
 	smmu_write(smmu, SMMU_TLB_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_TLB));
 	smmu_write(smmu, SMMU_PTC_CONFIG_RESET_VAL, SMMU_CACHE_CONFIG(_PTC));
+
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+	    (tegra_get_chipid() == TEGRA_CHIPID_TEGRA12))
+		smmu_client_ordered(smmu);
 
 	smmu_flush_regs(smmu, 1);
 
