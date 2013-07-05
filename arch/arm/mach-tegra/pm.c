@@ -131,7 +131,7 @@ static u64 suspend_entry_time;
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-static void update_pmc_registers(int instance);
+static void update_pmc_registers(unsigned long rate);
 #endif
 
 struct suspend_context tegra_sctx;
@@ -1209,7 +1209,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 	}
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
-	update_pmc_registers(1);
+	update_pmc_registers(tegra_lp1bb_emc_min_rate_get());
 #endif
 
 	if (tegra_is_voice_call_active()) {
@@ -1840,9 +1840,12 @@ static inline bool pmc_write_check(int index, int bit_position)
 		return false;
 }
 
-static void update_pmc_registers(int instance)
+static void update_pmc_registers(unsigned long rate)
 {
 	u32 i, j;
+	int instance = 1;
+
+	/* FIXME: convert rate to instance */
 
 	/* Based on index, we select that block of scratches */
 	u32 base2 = (tegra_wb0_params_address + (instance - 1) *
