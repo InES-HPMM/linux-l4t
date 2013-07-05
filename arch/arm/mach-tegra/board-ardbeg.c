@@ -555,11 +555,12 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.idle_wait_delay = 17,
 		.term_range_adj = 6,
 		.xcvr_setup = 15,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
+		.xcvr_lsfslew = 0,
+		.xcvr_lsrslew = 3,
 		.xcvr_setup_offset = 0,
-		.xcvr_use_fuses = 1,
+		.xcvr_use_fuses = 0,
 		.vbus_oc_map = 0x4,
+		.xcvr_hsslew_lsb = 2,
 	},
 };
 
