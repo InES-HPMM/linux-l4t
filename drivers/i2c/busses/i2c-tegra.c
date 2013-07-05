@@ -155,6 +155,7 @@ struct tegra_i2c_chipdata {
 	bool has_clk_divisor_std_fast_mode;
 	bool has_continue_xfer_support;
 	u16 clk_divisor_std_fast_mode;
+	u16 clk_divisor_fast_plus_mode;
 	u16 clk_divisor_hs_mode;
 	int clk_multiplier_hs_mode;
 	bool has_config_load_reg;
@@ -217,6 +218,7 @@ struct tegra_i2c_dev {
 	bool is_clkon_always;
 	bool is_high_speed_enable;
 	u16 hs_master_code;
+	u16 clk_divisor_non_hs_mode;
 	bool use_single_xfer_complete;
 	const struct tegra_i2c_chipdata *chipdata;
 	int scl_gpio;
@@ -623,7 +625,7 @@ static void tegra_i2c_set_clk_rate(struct tegra_i2c_dev *i2c_dev)
 			* (i2c_dev->chipdata->clk_divisor_hs_mode + 1);
 	else
 		clk_multiplier = I2C_CLK_MULTIPLIER_STD_FAST_MODE
-		* (i2c_dev->chipdata->clk_divisor_std_fast_mode + 1);
+		* (i2c_dev->clk_divisor_non_hs_mode + 1);
 
 	clk_set_rate(i2c_dev->div_clk, i2c_dev->bus_clk_rate
 							* clk_multiplier);
@@ -658,7 +660,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	clk_divisor |= i2c_dev->chipdata->clk_divisor_hs_mode;
 	if (i2c_dev->chipdata->has_clk_divisor_std_fast_mode)
-		clk_divisor |= i2c_dev->chipdata->clk_divisor_std_fast_mode
+		clk_divisor |= i2c_dev->clk_divisor_non_hs_mode
 				<< I2C_CLK_DIVISOR_STD_FAST_MODE_SHIFT;
 	i2c_writel(i2c_dev, clk_divisor, I2C_CLK_DIVISOR);
 
@@ -1282,6 +1284,7 @@ static struct tegra_i2c_chipdata tegra114_i2c_chipdata = {
 	.has_fast_clock = false,
 	.has_clk_divisor_std_fast_mode = true,
 	.clk_divisor_std_fast_mode = 0x19,
+	.clk_divisor_fast_plus_mode = 0x10,
 	.clk_divisor_hs_mode = 1,
 	.clk_multiplier_hs_mode = 3,
 	.has_config_load_reg = false,
@@ -1295,6 +1298,7 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.has_fast_clock = false,
 	.has_clk_divisor_std_fast_mode = true,
 	.clk_divisor_std_fast_mode = 0x19,
+	.clk_divisor_fast_plus_mode = 0x19,
 	.clk_divisor_hs_mode = 1,
 	.clk_multiplier_hs_mode = 3,
 	.has_config_load_reg = true,
@@ -1444,6 +1448,11 @@ static int tegra_i2c_probe(struct platform_device *pdev)
 	i2c_dev->is_clkon_always = pdata->is_clkon_always;
 	i2c_dev->bus_clk_rate = pdata->bus_clk_rate ? pdata->bus_clk_rate: 100000;
 	i2c_dev->is_high_speed_enable = pdata->is_high_speed_enable;
+	i2c_dev->clk_divisor_non_hs_mode =
+			i2c_dev->chipdata->clk_divisor_std_fast_mode;
+	if (i2c_dev->bus_clk_rate == 1000000)
+		i2c_dev->clk_divisor_non_hs_mode =
+			i2c_dev->chipdata->clk_divisor_fast_plus_mode;
 	i2c_dev->msgs = NULL;
 	i2c_dev->msgs_num = 0;
 	i2c_dev->is_dvc = pdata->is_dvc;
