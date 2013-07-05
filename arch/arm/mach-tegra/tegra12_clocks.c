@@ -5859,7 +5859,7 @@ static struct clk tegra_dfll_cpu = {
 	.max_rate  = 2000000000,
 };
 
-static struct clk_pll_freq_table tegra_pllss_freq_table[] = {
+static struct clk_pll_freq_table tegra_pllc4_freq_table[] = {
 	{ 12000000, 600000000, 100, 1, 2},
 	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
 	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
@@ -5880,13 +5880,22 @@ static struct clk tegra_pll_c4 = {
 		.input_max = 1000000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
-		.vco_min   = 300000000,
-		.vco_max   = 600000000,
-		.freq_table = tegra_pllss_freq_table,
+		.vco_min   = 600000000,
+		.vco_max   = 1200000000,
+		.freq_table = tegra_pllc4_freq_table,
 		.lock_delay = 300,
 		.misc1 = 0x8,
 		.round_p_to_pdiv = pllss_round_p_to_pdiv,
 	},
+};
+
+static struct clk_pll_freq_table tegra_plldp_freq_table[] = {
+	{ 12000000, 600000000, 100, 1, 2},
+	{ 13000000, 600000000,  92, 1, 2},	/* actual: 598.0 MHz */
+	{ 16800000, 600000000,  71, 1, 2},	/* actual: 596.4 MHz */
+	{ 19200000, 600000000,  62, 1, 2},	/* actual: 595.2 MHz */
+	{ 26000000, 600000000,  92, 2, 2},	/* actual: 598.0 MHz */
+	{ 0, 0, 0, 0, 0, 0 },
 };
 
 static struct clk tegra_pll_dp = {
@@ -5901,13 +5910,22 @@ static struct clk tegra_pll_dp = {
 		.input_max = 1000000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
-		.vco_min   = 300000000,
-		.vco_max   = 600000000,
-		.freq_table = tegra_pllss_freq_table,
+		.vco_min   = 600000000,
+		.vco_max   = 1200000000,
+		.freq_table = tegra_plldp_freq_table,
 		.lock_delay = 300,
 		.misc1 = 0x8,
 		.round_p_to_pdiv = pllss_round_p_to_pdiv,
 	},
+};
+
+static struct clk_pll_freq_table tegra_plld2_freq_table[] = {
+	{ 12000000, 594000000,  99, 1, 2},
+	{ 13000000, 594000000,  91, 1, 2},	/* actual: 591.5 MHz */
+	{ 16800000, 594000000,  71, 1, 2},	/* actual: 596.4 MHz */
+	{ 19200000, 594000000,  62, 1, 2},	/* actual: 595.2 MHz */
+	{ 26000000, 594000000,  91, 2, 2},	/* actual: 591.5 MHz */
+	{ 0, 0, 0, 0, 0, 0 },
 };
 
 static struct clk tegra_pll_d2 = {
@@ -5922,9 +5940,9 @@ static struct clk tegra_pll_d2 = {
 		.input_max = 1000000000,
 		.cf_min    = 12000000,
 		.cf_max    = 19200000,	/* s/w policy, h/w capability 38 MHz */
-		.vco_min   = 300000000,
-		.vco_max   = 600000000,
-		.freq_table = tegra_pllss_freq_table,
+		.vco_min   = 600000000,
+		.vco_max   = 1200000000,
+		.freq_table = tegra_plld2_freq_table,
 		.lock_delay = 300,
 		.misc1 = 0x570 - 0x4b8,
 		.round_p_to_pdiv = pllss_round_p_to_pdiv,
@@ -6884,7 +6902,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("tsec",	"tsec",			NULL,	83,	0x1f4,	600000000, mux_pllp_pllc2_c_c3_pllm_clkm,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK("host1x",	"host1x",		NULL,	28,	0x180,	324000000, mux_pllm_pllc2_c_c3_pllp_plla,	MUX | MUX8 | DIV_U71 | DIV_U71_INT),
 	PERIPH_CLK_EX("dtv",	"dtv",			NULL,	79,	0x1dc,	250000000, mux_clk_m,			PERIPH_ON_APB,	&tegra_dtv_clk_ops),
-	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	198000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8 | DIV_U71),
+	PERIPH_CLK("hdmi",	"hdmi",			NULL,	51,	0x18c,	594000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8 | DIV_U71),
 	PERIPH_CLK("disp1",	"tegradc.0",		NULL,	27,	0x138,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	198000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8,	&tegra_sor_clk_ops),
