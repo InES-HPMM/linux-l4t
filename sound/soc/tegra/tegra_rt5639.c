@@ -83,7 +83,6 @@ struct tegra_rt5639 {
 	struct regulator *digital_reg;
 	struct regulator *analog_reg;
 	struct regulator *spk_reg;
-	struct regulator *mic_reg;
 	struct regulator *dmic_reg;
 	struct snd_soc_card *pcard;
 };
@@ -928,16 +927,6 @@ static int tegra_rt5639_driver_probe(struct platform_device *pdev)
 		regulator_enable(machine->analog_reg);
 
 	/*
-	*mic_reg - provided the micbias power and jack detection power
-	*for the codec and must be ON always
-	*/
-	machine->mic_reg = regulator_get(&pdev->dev, "micvdd");
-	if (IS_ERR(machine->mic_reg))
-		machine->mic_reg = 0;
-	else
-		regulator_enable(machine->mic_reg);
-
-	/*
 	*spk_reg - provided the speaker power and can be turned ON
 	*on need basis, when required
 	*/
@@ -1043,8 +1032,6 @@ static int tegra_rt5639_driver_remove(struct platform_device *pdev)
 		regulator_put(machine->digital_reg);
 	if (machine->analog_reg)
 		regulator_put(machine->analog_reg);
-	if (machine->mic_reg)
-		regulator_put(machine->mic_reg);
 	if (machine->spk_reg)
 		regulator_put(machine->spk_reg);
 	if (machine->dmic_reg)
