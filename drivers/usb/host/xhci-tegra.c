@@ -209,11 +209,13 @@ struct tegra_xhci_firmware_log {
 	void *virt_addr;		/* kernel va of the shared log buffer */
 	struct log_entry *dequeue;	/* current dequeue pointer (va) */
 	struct circ_buf circ;		/* big circular buffer */
+	u32 seq;			/* log sequence number */
 
 	struct task_struct *thread;	/* a thread to consume log */
 	struct mutex mutex;
 	wait_queue_head_t read_wait;
 	wait_queue_head_t write_wait;
+	wait_queue_head_t intr_wait;
 	struct dentry *path;
 	struct dentry *log_file;
 	unsigned long flags;
@@ -626,6 +628,39 @@ static inline bool circ_buffer_full(struct circ_buf *circ)
 	return (space <= FW_LOG_SIZE);
 }
 
+static inline bool fw_log_available(struct tegra_xhci_hcd *tegra)
+{
+	return (tegra->log.dequeue->owner == DRIVER);
+}
+
+/**
+ * fw_log_wait_empty_timeout - wait firmware log thread to clean up shared
+ *	log buffer.
+ * @param tegra:	tegra_xhci_hcd context
+ * @param msec:		timeout value in millisecond
+ * @return true:	shared log buffer is empty,
+ *	   false:	shared log buffer isn't empty.
+ */
+static inline bool fw_log_wait_empty_timeout(struct tegra_xhci_hcd *tegra,
+		unsigned timeout)
+{
+	u32 target = jiffies + msecs_to_jiffies(timeout);
+	bool ret;
+
+	mutex_lock(&tegra->log.mutex);
+
+	while (fw_log_available(tegra) && time_is_after_jiffies(target)) {
+		mutex_unlock(&tegra->log.mutex);
+		usleep_range(1000, 2000);
+		mutex_lock(&tegra->log.mutex);
+	}
+
+	ret = fw_log_available(tegra);
+	mutex_unlock(&tegra->log.mutex);
+
+	return ret;
+}
+
 /**
  * fw_log_copy - copy firmware log from device's buffer to driver's circular
  *	buffer.
@@ -644,9 +679,8 @@ static inline bool fw_log_copy(struct tegra_xhci_hcd *tegra)
 	int buffer_len, copy_len;
 	struct log_entry *entry;
 	struct log_entry *first = tegra->log.virt_addr;
-	static u32 last_seq = -1;
 
-	while (tegra->log.dequeue->owner == DRIVER) {
+	while (fw_log_available(tegra)) {
 
 		/* calculate maximum contiguous driver buffer length */
 		head = circ->head;
@@ -661,12 +695,13 @@ static inline bool fw_log_copy(struct tegra_xhci_hcd *tegra)
 		entry = tegra->log.dequeue;
 		copy_len = 0;
 		do {
-			if ((last_seq + 1) != entry->sequence_no) {
+			if (tegra->log.seq != entry->sequence_no) {
 				dev_warn(dev,
 				"%s: discontinuous seq no, expect %u get %u\n",
-				__func__, last_seq + 1, entry->sequence_no);
+				__func__, tegra->log.seq, entry->sequence_no);
 			}
-			last_seq = entry->sequence_no;
+			tegra->log.seq = entry->sequence_no + 1;
+
 			copy_len += FW_LOG_SIZE;
 			buffer_len -= FW_LOG_SIZE;
 			if (!buffer_len)
@@ -705,7 +740,7 @@ static int fw_log_thread(void *data)
 			mutex_unlock(&tegra->log.mutex);
 			dev_info(dev, "%s: circ buffer full\n", __func__);
 			wait_event_interruptible(tegra->log.write_wait,
-					!circ_buffer_full(circ));
+			    kthread_should_stop() || !circ_buffer_full(circ));
 			mutex_lock(&tegra->log.mutex);
 		}
 
@@ -714,7 +749,8 @@ static int fw_log_thread(void *data)
 
 		/* relax if no logs left  */
 		if (!logs_left)
-			schedule_timeout_interruptible(FW_LOG_THREAD_RELAX);
+			wait_event_interruptible_timeout(tegra->log.intr_wait,
+				fw_log_available(tegra), FW_LOG_THREAD_RELAX);
 	} while (!kthread_should_stop());
 
 	dev_dbg(dev, "stop firmware log thread\n");
@@ -809,6 +845,7 @@ static const struct file_operations firmware_log_fops = {
 		.open		= fw_log_file_open,
 		.release	= fw_log_file_close,
 		.read		= fw_log_file_read,
+		.owner		= THIS_MODULE,
 };
 
 static int fw_log_init(struct tegra_xhci_hcd *tegra)
@@ -844,6 +881,7 @@ static int fw_log_init(struct tegra_xhci_hcd *tegra)
 
 	init_waitqueue_head(&tegra->log.read_wait);
 	init_waitqueue_head(&tegra->log.write_wait);
+	init_waitqueue_head(&tegra->log.intr_wait);
 
 	mutex_init(&tegra->log.mutex);
 
@@ -891,6 +929,7 @@ static void fw_log_deinit(struct tegra_xhci_hcd *tegra)
 	struct platform_device *pdev = tegra->pdev;
 
 	if (test_and_clear_bit(FW_LOG_CONTEXT_VALID, &tegra->log.flags)) {
+
 		debugfs_remove(tegra->log.log_file);
 		debugfs_remove(tegra->log.path);
 
@@ -898,9 +937,12 @@ static void fw_log_deinit(struct tegra_xhci_hcd *tegra)
 		wake_up_interruptible(&tegra->log.write_wait);
 		kthread_stop(tegra->log.thread);
 
+		mutex_lock(&tegra->log.mutex);
 		dma_free_writecombine(&pdev->dev, FW_LOG_RING_SIZE,
 			tegra->log.virt_addr, tegra->log.phys_addr);
 		vfree(tegra->log.circ.buf);
+		tegra->log.circ.head = tegra->log.circ.tail = 0;
+		mutex_unlock(&tegra->log.mutex);
 
 		mutex_destroy(&tegra->log.mutex);
 	}
@@ -2910,6 +2952,12 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	tegra_xhci_ss_wake_on_interrupts(tegra->bdata->portmap, true);
 	tegra_xhci_hs_wake_on_interrupts(tegra->bdata->portmap, true);
 
+	/* In ELPG, firmware log context is gone. Rewind shared log buffer. */
+	if (fw_log_wait_empty_timeout(tegra, 100))
+		xhci_warn(xhci, "%s still has logs\n", __func__);
+	tegra->log.dequeue = tegra->log.virt_addr;
+	tegra->log.seq = 0;
+
 done:
 	/* pads are disabled only if usb2 root hub in xusb is idle */
 	/* pads will actually be disabled only when all usb2 ports are idle */
@@ -3008,6 +3056,8 @@ static irqreturn_t tegra_xhci_irq(struct usb_hcd *hcd)
 	} else
 		iret = xhci_irq(hcd);
 	spin_unlock(&tegra->lock);
+
+	wake_up_interruptible(&tegra->log.intr_wait);
 
 	return iret;
 }
