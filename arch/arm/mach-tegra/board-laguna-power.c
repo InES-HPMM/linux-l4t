@@ -477,6 +477,7 @@ static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
 	REGULATOR_SUPPLY("vdd_tp_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_dtv_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_modem_3v3", NULL),
+	REGULATOR_SUPPLY("vdd", "1-004c"),
 };
 
 /* AS3722 GPIO1*/
