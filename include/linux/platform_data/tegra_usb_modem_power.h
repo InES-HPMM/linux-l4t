@@ -42,6 +42,7 @@ struct tegra_modem_operations {
 struct tegra_usb_modem_power_platform_data {
 	const struct tegra_modem_operations *ops;
 	const struct usb_device_id *modem_list; /* supported modem list */
+	const char *regulator_name;	/* regulator id or supply name */
 	int wake_gpio;			/* remote wakeup gpio */
 	unsigned long wake_irq_flags;	/* remote wakeup irq flags */
 	int boot_gpio;			/* modem boot gpio */

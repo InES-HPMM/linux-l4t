@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/pm_qos.h>
+#include <linux/regulator/consumer.h>
 #include <linux/edp.h>
 #include <mach/gpio-tegra.h>
 #include <linux/platform_data/tegra_usb_modem_power.h>
@@ -45,6 +46,7 @@
 struct tegra_usb_modem {
 	struct tegra_usb_modem_power_platform_data *pdata;
 	struct platform_device *pdev;
+	struct regulator *regulator; /* modem power regulator */
 	unsigned int wake_cnt;	/* remote wakeup counter */
 	unsigned int wake_irq;	/* remote wakeup irq */
 	bool wake_irq_wakeable; /* LP0 wakeable */
@@ -718,6 +720,22 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	modem->pdata = pdata;
 	modem->pdev = pdev;
 
+	/* turn on modem regulator if required */
+	if (pdata->regulator_name) {
+		modem->regulator =
+			regulator_get(&pdev->dev, pdata->regulator_name);
+		if (!IS_ERR(modem->regulator)) {
+			ret = regulator_enable(modem->regulator);
+			if (ret)
+				goto error;
+		} else {
+			dev_err(&pdev->dev, "failed to get regulator %s\n",
+				pdata->regulator_name);
+			ret = PTR_ERR(modem->regulator);
+			goto error;
+		}
+	}
+
 	if (pdata->modem_boot_edp_client && pdata->edp_manager_name) {
 		mutex_init(&modem->edp_lock);
 
@@ -773,7 +791,7 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 	if (modem->ops && modem->ops->init) {
 		ret = modem->ops->init();
 		if (ret)
-			return ret;
+			goto error;
 	}
 
 	/* if wake gpio is not specified we rely on native usb remote wake */
@@ -871,6 +889,9 @@ error:
 	if (modem->edp_boot_client_registered)
 		edp_unregister_client(modem->modem_boot_edp_client);
 
+	if (!IS_ERR(modem->regulator))
+		regulator_put(modem->regulator);
+
 	return ret;
 }
 
@@ -938,6 +959,9 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->edp_client_registered)
 		edp_unregister_client(&modem->modem_edp_client);
+
+	if (!IS_ERR(modem->regulator))
+		regulator_put(modem->regulator);
 
 	cancel_delayed_work_sync(&modem->recovery_work);
 	cancel_work_sync(&modem->host_load_work);
