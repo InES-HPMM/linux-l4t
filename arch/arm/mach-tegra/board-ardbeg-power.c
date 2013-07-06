@@ -1022,6 +1022,13 @@ static struct tegra_suspend_platform_data ardbeg_suspend_data = {
 
 int __init ardbeg_suspend_init(void)
 {
+	struct board_info pmu_board_info;
+
+	tegra_get_pmu_board_info(&pmu_board_info);
+
+	if (pmu_board_info.board_id == BOARD_E1735)
+		ardbeg_suspend_data.cpu_timer = 2500;
+
 	tegra_init_suspend(&ardbeg_suspend_data);
 	return 0;
 }
