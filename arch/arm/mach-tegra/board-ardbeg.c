@@ -369,17 +369,22 @@ static void ardbeg_audio_init(void)
 		/*Laguna*/
 		ardbeg_audio_pdata_rt5645.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
+		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high = 1;
 		ardbeg_audio_pdata_rt5645.gpio_ldo1_en = -1;
 	} else {
 		/*Ardbeg*/
 		ardbeg_audio_pdata_rt5645.gpio_hp_det =
 			TEGRA_GPIO_HP_DET;
+		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high = 0;
 		ardbeg_audio_pdata_rt5645.gpio_ldo1_en =
 			TEGRA_GPIO_LDO_EN;
 	}
 
 	ardbeg_audio_pdata_rt5639.gpio_hp_det =
 		ardbeg_audio_pdata_rt5645.gpio_hp_det;
+
+	ardbeg_audio_pdata_rt5639.gpio_hp_det_active_high =
+		ardbeg_audio_pdata_rt5645.gpio_hp_det_active_high;
 
 	ardbeg_audio_pdata_rt5639.gpio_ldo1_en =
 		ardbeg_audio_pdata_rt5645.gpio_ldo1_en;
