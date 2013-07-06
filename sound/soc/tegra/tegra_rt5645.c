@@ -404,7 +404,6 @@ static struct snd_soc_jack_gpio tegra_rt5645_hp_jack_gpio = {
 	.name = "headphone detect",
 	.report = SND_JACK_HEADPHONE,
 	.debounce_time = 150,
-	.invert = 1,
 };
 
 #ifdef CONFIG_SWITCH
@@ -626,6 +625,8 @@ static int tegra_rt5645_init(struct snd_soc_pcm_runtime *rtd)
 
 	if (gpio_is_valid(pdata->gpio_hp_det)) {
 		tegra_rt5645_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+		tegra_rt5645_hp_jack_gpio.invert =
+			!pdata->gpio_hp_det_active_high;
 		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
 				&tegra_rt5645_hp_jack);
 #ifndef CONFIG_SWITCH

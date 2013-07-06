@@ -56,6 +56,7 @@ struct tegra_asoc_platform_data {
 	const char *codec_dai_name;
 	int gpio_spkr_en;
 	int gpio_hp_det;
+	int gpio_hp_det_active_high;
 	int gpio_hp_mute;
 	int gpio_int_mic_en;
 	int gpio_ext_mic_en;
