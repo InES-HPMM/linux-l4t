@@ -603,7 +603,7 @@ FIXED_REG(4,	vdd_hdmi_5v0,	vdd_hdmi_5v0,	NULL,	0,	0,
 
 FIXED_REG(5,	vdd_hdmi,	vdd_hdmi,	AS3722_SUPPLY(sd4),
 		0,	0,
-		TEGRA_GPIO_PH7,	false,	true,	0,	3300);
+		TEGRA_GPIO_PH7,	false,	false,	0,	3300);
 
 FIXED_REG(6,	usb1_vbus,	usb1_vbus,	NULL,	0,	0,
 		TEGRA_GPIO_PN4,	true,	true,	0,	5000);
