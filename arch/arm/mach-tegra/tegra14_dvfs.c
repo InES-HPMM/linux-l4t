@@ -40,6 +40,13 @@ static bool tegra_dvfs_core_disabled;
 static int vdd_core_vmin_trips_table[MAX_THERMAL_LIMITS] = { 20, };
 static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
 
+static int vdd_cpu_vmax_trips_table[MAX_THERMAL_LIMITS] = { 62,   72, };
+static int vdd_cpu_therm_caps_table[MAX_THERMAL_LIMITS] = { 1180, 1150, };
+
+static struct tegra_cooling_device cpu_vmax_cdev = {
+	.cdev_type = "cpu_hot",
+};
+
 static struct tegra_cooling_device cpu_vmin_cdev = {
 	.cdev_type = "cpu_cold",
 };
@@ -55,6 +62,7 @@ static struct dvfs_rail tegra14_dvfs_rail_vdd_cpu = {
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.vmin_cdev = &cpu_vmin_cdev,
+	.vmax_cdev = &cpu_vmax_cdev,
 };
 
 static struct dvfs_rail tegra14_dvfs_rail_vdd_core = {
@@ -445,6 +453,29 @@ static int __init get_thermal_profile_size(
 		return -EINVAL;
 	}
 	return i + 1;
+}
+
+static void __init init_rail_vmax_thermal_profile(
+	int *therm_trips_table, int *therm_caps_table,
+	struct dvfs_rail *rail, struct dvfs_dfll_data *d)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_caps_table, rail, d);
+	if (i <= 0) {
+		rail->vmax_cdev = NULL;
+		WARN(1, "%s: invalid Vmax thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal caps */
+	rail->therm_mv_caps = therm_caps_table;
+	rail->therm_mv_caps_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmax_cdev) {
+		rail->vmax_cdev->trip_temperatures_num = i;
+		rail->vmax_cdev->trip_temperatures = therm_trips_table;
+	}
 }
 
 static void __init init_rail_vmin_thermal_profile(
@@ -880,6 +911,9 @@ void __init tegra14x_init_dvfs(void)
 	BUG_ON((i == ARRAY_SIZE(cpu_cvb_dvfs_table)) || ret);
 
 	/* Init thermal limits */
+	init_rail_vmax_thermal_profile(
+		vdd_cpu_vmax_trips_table, vdd_cpu_therm_caps_table,
+		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);
 	init_rail_vmin_thermal_profile(cpu_cvb_dvfs_table[i].therm_trips_table,
 		cpu_cvb_dvfs_table[i].therm_floors_table,
 		&tegra14_dvfs_rail_vdd_cpu, &cpu_dvfs.dfll_data);

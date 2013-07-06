@@ -231,7 +231,7 @@ static struct core_edp_entry core_edp_table[] = {
 	.leakage_consts_n   = {  489500,  730600,  867600, 1000000 },	\
 	.ijk_scaled         = 1000,					\
 	.leakage_min        = 30,					\
-	/* .volt_temp_cap = { 70, 1240 }, - TODO for T148 */		\
+	.volt_temp_cap	    = { 80, 1200 },				\
 	.leakage_consts_ijk = LEAKAGE_CONSTS_IJK_COMMON
 
 static struct tegra_edp_cpu_leakage_params t14x_leakage_params[] = {
