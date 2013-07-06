@@ -280,7 +280,7 @@ struct tegra_hdmi_out ardbeg_hdmi_out = {
 static struct tegra_dc_out ardbeg_disp2_out = {
 	.type		= TEGRA_DC_OUT_HDMI,
 	.flags		= TEGRA_DC_OUT_HOTPLUG_HIGH,
-	.parent_clk	= "pll_d2_out0",
+	.parent_clk	= "pll_d2",
 
 	.dcc_bus	= 3,
 	.hotplug_gpio	= ardbeg_hdmi_hpd,
