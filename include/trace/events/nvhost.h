@@ -776,6 +776,130 @@ TRACE_EVENT(nvhost_channel_submitted_gpfifo,
 		__entry->flags, __entry->wait_id, __entry->wait_value,
 		__entry->incr_id, __entry->incr_value)
 );
+
+
+TRACE_EVENT(nvhost_as_dev_open,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+TRACE_EVENT(nvhost_as_dev_release,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+
+TRACE_EVENT(nvhost_as_ioctl_bind_channel,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+
+TRACE_EVENT(nvhost_as_ioctl_alloc_space,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+TRACE_EVENT(nvhost_as_ioctl_free_space,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+TRACE_EVENT(nvhost_as_ioctl_map_buffer,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+TRACE_EVENT(nvhost_as_ioctl_unmap_buffer,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
+TRACE_EVENT(nvhost_gk20a_mmu_fault,
+	    TP_PROTO(u32 fault_hi, u32 fault_lo,
+		     u32 fault_info,
+		     u32 instance,
+		     u32 engine_id,
+		     const char *engine,
+		     const char *client,
+		     const char *fault_type),
+	    TP_ARGS(fault_hi, fault_lo, fault_info,
+		    instance, engine_id, engine, client, fault_type),
+	    TP_STRUCT__entry(
+			 __field(u32, fault_hi)
+			 __field(u32, fault_lo)
+			 __field(u32, fault_info)
+			 __field(u32, instance)
+			 __field(u32, engine_id)
+			 __field(const char *, engine)
+			 __field(const char *, client)
+			 __field(const char *, fault_type)
+			 ),
+	    TP_fast_assign(
+		       __entry->fault_hi = fault_hi;
+		       __entry->fault_lo = fault_lo;
+		       __entry->fault_info = fault_info;
+		       __entry->instance = instance;
+		       __entry->engine_id = engine_id;
+		       __entry->engine = engine;
+		       __entry->client = client;
+		       __entry->fault_type = fault_type;
+		       ),
+	    TP_printk("fault=0x%x,%08x info=0x%x instance=0x%x engine_id=%d engine=%s client=%s type=%s",
+		      __entry->fault_hi, __entry->fault_lo,
+		      __entry->fault_info, __entry->instance, __entry->engine_id,
+		      __entry->engine, __entry->client, __entry->fault_type)
+);
+
 #endif /*  _TRACE_NVHOST_H */
 
 /* This part must be outside protection */
