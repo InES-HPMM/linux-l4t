@@ -671,10 +671,12 @@ static int __init set_cpu_dvfs_data(
 		return -ENOENT;
 	}
 
-	/* Must have crossover between dfll and pll operating ranges */
+	/* In the dfll operating range dfll voltage at any rate should be
+	   better (below) than pll voltage */
 	if (!fmin_use_dfll || (fmin_use_dfll > fmax_at_vmin)) {
-		pr_err("tegra12_dvfs: no crossover of dfll and pll voltages\n");
-		return -EINVAL;
+		WARN(1, "tegra12_dvfs: pll voltage is below dfll in the dfll"
+			" operating range\n");
+		fmin_use_dfll = fmax_at_vmin;
 	}
 
 	/* dvfs tables are successfully populated - fill in the rest */
