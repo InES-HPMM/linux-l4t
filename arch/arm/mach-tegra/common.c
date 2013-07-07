@@ -1435,7 +1435,7 @@ static int __init tegra_pmu_board_info(char *info)
 	pmu_board_info.fab = memparse(p+1, &p);
 	pmu_board_info.major_revision = memparse(p+1, &p);
 	pmu_board_info.minor_revision = memparse(p+1, &p);
-	return 1;
+	return 0;
 }
 
 void tegra_get_pmu_board_info(struct board_info *bi)
@@ -1443,7 +1443,7 @@ void tegra_get_pmu_board_info(struct board_info *bi)
 	memcpy(bi, &pmu_board_info, sizeof(struct board_info));
 }
 
-__setup("pmuboard=", tegra_pmu_board_info);
+early_param("pmuboard", tegra_pmu_board_info);
 
 static int __init tegra_display_board_info(char *info)
 {
