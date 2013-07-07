@@ -468,8 +468,8 @@ static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
 	REGULATOR_SUPPLY("hvdd_pex", NULL),
 	REGULATOR_SUPPLY("hvdd_pex_pll", NULL),
 	REGULATOR_SUPPLY("vdd_sys_cam_3v3", NULL),
-	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("micvdd", "tegra-snd-rt5639.0"),
 	REGULATOR_SUPPLY("vdd_gps_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_nfc_3v3", NULL),
 	REGULATOR_SUPPLY("vdd_3v3_sensor", NULL),
@@ -482,8 +482,8 @@ static struct regulator_consumer_supply fixed_reg_3v3_supply[] = {
 
 /* AS3722 GPIO1*/
 static struct regulator_consumer_supply fixed_reg_5v0_supply[] = {
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("spkvdd", "tegra-snd-rt5639.0"),
 	REGULATOR_SUPPLY("vdd_5v0_sensor", NULL),
 };
 
@@ -491,12 +491,12 @@ static struct regulator_consumer_supply fixed_reg_dcdc_1v8_supply[] = {
 	REGULATOR_SUPPLY("avdd_lvds0_pll", NULL),
 	REGULATOR_SUPPLY("dvdd_lcd", NULL),
 	REGULATOR_SUPPLY("vdd_ds_1v8", NULL),
-	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5645"),
-	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5639"),
-	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5645.0"),
+	REGULATOR_SUPPLY("avdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("dbvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5639.0"),
+	REGULATOR_SUPPLY("dmicvdd", "tegra-snd-rt5645.0"),
 	REGULATOR_SUPPLY("vdd_1v8b_nfc", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_sensor", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_sdmmc", NULL),
@@ -542,11 +542,11 @@ static struct regulator_consumer_supply fixed_reg_sdmmc_en_supply[] = {
 
 /* only adding for PM358 */
 static struct regulator_consumer_supply fixed_reg_vdd_cdc_1v2_aud_supply[] = {
-	REGULATOR_SUPPLY("ldoen", "tegra-snd-rt5639"),
+	REGULATOR_SUPPLY("ldoen", "tegra-snd-rt5639.0"),
 };
 
 static struct regulator_consumer_supply fixed_reg_vdd_amp_shut_aud_supply[] = {
-	REGULATOR_SUPPLY("epamp", "tegra-snd-rt5645"),
+	REGULATOR_SUPPLY("epamp", "tegra-snd-rt5645.0"),
 };
 /* Macro for defining fixed regulator sub device data */
 #define FIXED_SUPPLY(_name) "fixed_reg_"#_name
