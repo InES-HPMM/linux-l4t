@@ -499,6 +499,16 @@ static struct palmas_reg_init *ardbeg_1735_reg_init[PALMAS_NUM_REGS] = {
 	NULL,
 };
 
+struct palmas_clk32k_init_data palmas_ti913_clk32k_idata[] = {
+	{
+		.clk32k_id = PALMAS_CLOCK32KG,
+		.enable = true,
+	}, {
+		.clk32k_id = PALMAS_CLOCK32KG_AUDIO,
+		.enable = true,
+	},
+};
+
 static struct palmas_pinctrl_config palmas_ti913_pincfg[] = {
 	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
@@ -507,7 +517,7 @@ static struct palmas_pinctrl_config palmas_ti913_pincfg[] = {
 	PALMAS_PINMUX(GPIO2, GPIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO3, GPIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO4, GPIO, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO5, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO5, CLK32KGAUDIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO6, GPIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO7, GPIO, DEFAULT, DEFAULT),
 };
@@ -530,6 +540,8 @@ static struct palmas_platform_data palmas_ti913_pdata = {
 	.pmic_pdata = &pmic_ti913_platform,
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_ti913_pinctrl_pdata,
+	.clk32k_init_data =  palmas_ti913_clk32k_idata,
+	.clk32k_init_data_size = ARRAY_SIZE(palmas_ti913_clk32k_idata),
 };
 
 static struct i2c_board_info palma_ti913_device[] = {
