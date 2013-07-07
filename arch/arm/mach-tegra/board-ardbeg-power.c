@@ -275,7 +275,8 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	{
 		/* otp = 0x3  CLK 23KHZ WIFI */
 		.gpio = AS3722_GPIO5,
-		.mode = AS3722_GPIO_MODE_ADC_IN,
+		.mode = AS3722_GPIO_MODE_OUTPUT_VDDL,
+		.iosf = AS3722_GPIO_IOSF_Q32K_OUT,
 	},
 	{
 		/* otp = 0x3  SKIN TEMP */
