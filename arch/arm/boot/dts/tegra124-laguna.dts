@@ -4,7 +4,7 @@
 
 / {
 	model = "NVIDIA Tegra124 Laguna";
-	compatible = "nvidia,laguna", "nvidia,tegra124";
+	compatible = "nvidia,ardbeg", "nvidia,tegra124";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
@@ -12,6 +12,10 @@
 		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
 		linux,initrd-start = <0x85000000>;
 		linux,initrd-end = <0x851bc400>;
+	};
+
+	gpio: gpio@6000d000 {
+		status = "okay";
 	};
 
         serial@70006000 {
@@ -31,7 +35,7 @@
 
 	memory@0x80000000 {
 		device_type = "memory";
-		reg = <0x80000000 0x20000000>;
+		reg = <0x80000000 0x80000000>;
 	};
 
 	spi@7000d400 {
