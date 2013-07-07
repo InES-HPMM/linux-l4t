@@ -2149,6 +2149,9 @@ static const char * __init tegra_get_family(void)
 	case TEGRA_CHIPID_TEGRA11:
 		cid = 11;
 		break;
+	case TEGRA_CHIPID_TEGRA12:
+		cid = 12;
+		break;
 	case TEGRA_CHIPID_TEGRA14:
 		cid = 14;
 		break;
