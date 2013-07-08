@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/iovmm.h
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2013, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -165,13 +165,11 @@ static inline int tegra_iovmm_vm_insert_pages(struct tegra_iovmm_area *area,
 					      struct page **pages, size_t count)
 {
 	dma_addr_t da;
-	struct device *dev = area->dev;
-	struct dma_map_ops *ops = get_dma_ops(dev);
 	DEFINE_DMA_ATTRS(attrs);
 
 	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
-	da = ops->map_pages(dev, pages, va, count, 0, &attrs);
-	return dma_mapping_error(dev, da) ? -ENOMEM : 0;
+	da = dma_map_pages_at_attrs(area->dev, pages, va, count, 0, &attrs);
+	return dma_mapping_error(area->dev, da) ? -ENOMEM : 0;
 }
 
 #ifdef CONFIG_IOMMU_API
