@@ -69,6 +69,7 @@ static struct regulator_consumer_supply as3722_ldo0_supply[] = {
 
 static struct regulator_consumer_supply as3722_ldo1_supply[] = {
 	REGULATOR_SUPPLY("vddio_cam", "vi"),
+	REGULATOR_SUPPLY("pwrdet_cam", NULL),
 	REGULATOR_SUPPLY("vdd_cam_1v8_cam", NULL),
 	REGULATOR_SUPPLY("vif", "2-0010"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
@@ -78,6 +79,7 @@ static struct regulator_consumer_supply as3722_ldo2_supply[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
 	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
+	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 	REGULATOR_SUPPLY("avdd_hsic_com", NULL),
 	REGULATOR_SUPPLY("avdd_hsic_mdm", NULL),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
@@ -143,6 +145,7 @@ static struct regulator_consumer_supply as3722_sd4_supply[] = {
 	REGULATOR_SUPPLY("avdd_pex_pll", NULL),
 	REGULATOR_SUPPLY("avddio_pex_pll", NULL),
 	REGULATOR_SUPPLY("dvddio_pex", NULL),
+	REGULATOR_SUPPLY("pwrdet_pex_ctl", NULL),
 	REGULATOR_SUPPLY("avdd_sata", NULL),
 	REGULATOR_SUPPLY("vdd_sata", NULL),
 	REGULATOR_SUPPLY("avdd_sata_pll", NULL),
@@ -153,10 +156,15 @@ static struct regulator_consumer_supply as3722_sd5_supply[] = {
 	REGULATOR_SUPPLY("vddio_sys", NULL),
 	REGULATOR_SUPPLY("vddio_sys_2", NULL),
 	REGULATOR_SUPPLY("vddio_audio", NULL),
+	REGULATOR_SUPPLY("pwrdet_audio", NULL),
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc4", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("vddio_uart", NULL),
+	REGULATOR_SUPPLY("pwrdet_uart", NULL),
 	REGULATOR_SUPPLY("vddio_bb", NULL),
+	REGULATOR_SUPPLY("pwrdet_bb", NULL),
 	REGULATOR_SUPPLY("vddio_gmi", NULL),
+	REGULATOR_SUPPLY("pwrdet_nand", NULL),
 	REGULATOR_SUPPLY("avdd_osc", NULL),
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	REGULATOR_SUPPLY("avdd_pll_utmip", "tegra-udc.0"),
@@ -525,7 +533,9 @@ static struct regulator_consumer_supply fixed_reg_as3722_gpio2_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
 #endif
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.0"),
+	REGULATOR_SUPPLY("pwrdet_sdmmc1", NULL),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 	REGULATOR_SUPPLY("hvdd_sata", NULL),
 };
 
