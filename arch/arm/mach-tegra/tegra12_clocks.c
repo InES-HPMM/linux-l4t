@@ -1194,8 +1194,10 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 			}
 		}
 
+		tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 		ret = clk_set_parent(c->parent, dfll);
 		if (ret) {
+			tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 			pr_err("Failed to switch cpu to %s\n", dfll->name);
 			return ret;
 		}
@@ -1204,6 +1206,7 @@ static int tegra12_cpu_clk_dfll_on(struct clk *c, unsigned long rate,
 
 		/* prevent legacy dvfs voltage scaling */
 		tegra_dvfs_dfll_mode_set(c->dvfs, rate);
+		tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	}
 	return 0;
 }
@@ -1218,7 +1221,23 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 
 	rate = min(rate, c->max_rate - c->dvfs->dfll_data.max_rate_boost);
 	pll = (rate <= c->u.cpu.backup_rate) ? c->u.cpu.backup : c->u.cpu.main;
+	dfll_rate_min = max(rate, dfll_rate_min);
 
+	/* set target rate last time in dfll mode */
+	if (old_rate != dfll_rate_min) {
+		ret = tegra_dvfs_set_rate(c, dfll_rate_min);
+		if (!ret)
+			ret = clk_set_rate(dfll, dfll_rate_min);
+
+		if (ret) {
+			pr_err("Failed to set cpu rate %lu on source %s\n",
+			       dfll_rate_min, dfll->name);
+			return ret;
+		}
+	}
+
+	/* unlock dfll - release volatge rail control */
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	ret = tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 0);
 	if (ret) {
 		pr_err("Failed to unlock %s\n", dfll->name);
@@ -1226,7 +1245,7 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	}
 
 	/* restore legacy dvfs operations and set appropriate voltage */
-	ret = tegra_dvfs_dfll_mode_clear(c->dvfs, max(rate, dfll_rate_min));
+	ret = tegra_dvfs_dfll_mode_clear(c->dvfs, dfll_rate_min);
 	if (ret) {
 		pr_err("Failed to set cpu rail for rate %lu\n", rate);
 		goto back_to_dfll;
@@ -1250,11 +1269,13 @@ static int tegra12_cpu_clk_dfll_off(struct clk *c, unsigned long rate,
 	if (old_rate <= rate)
 		tegra_dvfs_set_rate(c, rate);
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return 0;
 
 back_to_dfll:
 	tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
 	tegra_dvfs_dfll_mode_set(c->dvfs, old_rate);
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return ret;
 }
 
@@ -1292,7 +1313,7 @@ static long tegra12_cpu_clk_round_rate(struct clk *c, unsigned long rate)
 	unsigned long max_rate = c->max_rate;
 
 	/* Remove dfll boost to maximum rate when running on PLL */
-	if (!c->dvfs || !tegra_dvfs_is_dfll_scale(c->dvfs, rate))
+	if (c->dvfs && !tegra_dvfs_is_dfll_scale(c->dvfs, rate))
 		max_rate -= c->dvfs->dfll_data.max_rate_boost;
 
 	if (rate > max_rate)
