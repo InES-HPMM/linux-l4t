@@ -98,6 +98,7 @@
 #define PMC_PLLP_WB0_OVERRIDE		0xf8
 #define PMC_PLLM_WB0_OVERRIDE		0x1dc
 
+#define CLK_RESET_CLK_SOURCE_EMC	0x19c
 #define CLK_RESET_CLK_SOURCE_MSELECT	0x3b4
 #define CLK_RESET_CLK_ENB_H_SET		0x328
 #define CLK_RESET_CLK_ENB_H_CLR		0x32c
@@ -696,8 +697,7 @@ zcal_done:
 	 * AP to BB, so that memory transactions can take place
 	 */
 	mov32	r4, TEGRA_PMC_BASE
-	ldr	r1, [r4, #PMC_IPC_SET]
-	orr	r1, r1, #PMC_IPC_SET_MEM_STS
+	mov	r1, #PMC_IPC_SET_MEM_STS
 	str	r1, [r4, #PMC_IPC_SET]
 self_refresh_skip:
 #endif
@@ -802,8 +802,7 @@ tegra3_tear_down_core:
 	bne	lp1bb_entry
 
 	/* Write PMC_IPC_CLR[mem_sts] = 1 */
-	ldr	r1, [r4, #PMC_IPC_CLR]
-	orr	r1, r1, #PMC_IPC_CLR_MEM_STS
+	mov	r1, #PMC_IPC_CLR_MEM_STS
 	str	r1, [r4, #PMC_IPC_CLR]
 
 	/* Clear FLOW_IPC_STS[AP2BB_MSC_STS[0]] */
@@ -1057,18 +1056,26 @@ lp1_volt_skip:
 	bic	r0, r0, #(1 << 12)
 	str	r0, [r4, #PMC_PLLP_WB0_OVERRIDE]
 #endif
-	b	powerdown_pll_pcx
 
-powerdown_pll_pcx:
 	ldr	r11, [r4, #PMC_SCRATCH37]	@ load the LP1 flags
 	tst	r11, #TEGRA_POWER_LP1_AUDIO	@ check if voice call is going on
 	bne	powerdown_pll_cx		@ if yes, do not turn off pll-p/pll-a
 
 #if defined(CONFIG_ARCH_TEGRA_14x_SOC)
+	/* BB needs PLLP and EMC in LP1BB */
 	ldr	r0, lp_enter_state
-	cmp	r0, #PMC_LP_STATE_LP1BB
-	beq	powerdown_pll_cx
+	cmp	r0, #PMC_LP_STATE_LP1BB         @ check if we're entering LP1BB
+	bne	powerdown_pll_pacx              @ if not, turn off plls p/a/c/x
+	/* find source pll of EMC */
+	ldr	r0, [r5, #CLK_RESET_CLK_SOURCE_EMC]
+	mov	r0, r0, lsr #0x1d
+	cmp	r0, #0x1                        @ EMC clocked by PLLC_OUT0?
+	beq	powerdown_pll_x                 @ if yes, just turn off pll-x
+	cmp	r0, #0x7                        @ EMC clocked by PLLC_UD?
+	beq	powerdown_pll_x                 @ if yes, just turn off pll-x
+	b	powerdown_pll_cx                @ if not, turn off pll-c/pll-x
 #endif
+powerdown_pll_pacx:
 	ldr	r0, [r5, #CLK_RESET_PLLP_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLP_BASE]
@@ -1080,6 +1087,7 @@ powerdown_pll_cx:
 	ldr	r0, [r5, #CLK_RESET_PLLC_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLC_BASE]
+powerdown_pll_x:
 	ldr	r0, [r5, #CLK_RESET_PLLX_BASE]
 	bic	r0, r0, #(1<<30)
 	str	r0, [r5, #CLK_RESET_PLLX_BASE]

@@ -781,8 +781,7 @@ unsigned int tegra_idle_power_down_last(unsigned int sleep_time,
 			/* Clear mem_sts since SDRAM will not be accessible
 			 * to BBC in this state.
 			 */
-			val = readl(pmc + PMC_IPC_CLR);
-			val |= PMC_IPC_CLR_MEM_STS;
+			val = PMC_IPC_CLR_MEM_STS;
 			writel(val, pmc + PMC_IPC_CLR);
 
 			tegra_stop_mc_clk(PHYS_OFFSET - PAGE_OFFSET);
