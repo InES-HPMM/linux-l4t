@@ -1396,6 +1396,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	const struct clk_mux_sel *sel;
 	unsigned long rate = clk_get_rate(c->parent);
 	struct clk *dfll = c->parent->u.cpu.dynamic ? : p->u.cpu.dynamic;
+	struct clk *p_source_old = NULL;
 	struct clk *p_source;
 
 	pr_debug("%s: %s %s\n", __func__, c->name, p->name);
@@ -1453,6 +1454,7 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		return 0;	/* already switched - exit */
 	}
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, true);
 	if (c->parent->parent->parent == dfll) {
 		/* G (DFLL selected as clock source) => LP switch:
 		 * turn DFLL into open loop mode ("release" VDD_CPU rail)
@@ -1467,23 +1469,33 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 		ret = clk_set_rate(p_source, rate);
 		if (ret)
 			goto abort;
-	} else if (p->parent->parent == dfll) {
+	} else if ((p->parent->parent == dfll) ||
+		   (p->dvfs && tegra_dvfs_is_dfll_range(p->dvfs, rate))) {
 		/* LP => G (DFLL selected as clock source) switch:
 		 * set DFLL rate ready (DFLL is still disabled)
 		 * (set target p_source as dfll, G source is already selected)
 		 */
 		p_source = dfll;
-		ret = clk_set_rate(p_source, rate);
+		ret = clk_set_rate(dfll,
+			tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail) ? rate :
+			max(rate, p->dvfs->dfll_data.use_dfll_rate_min));
+		if (ret)
+			goto abort;
+
+		ret = tegra_dvfs_rail_dfll_mode_set_cold(tegra_cpu_rail);
 		if (ret)
 			goto abort;
 	} else
-		/* DFLL is not selcted on either side of the switch:
+		/* DFLL is not selected on either side of the switch:
 		 * set target p_source equal to current clock source
 		 */
 		p_source = c->parent->parent->parent;
 
 	/* Switch new parent to target clock source if necessary */
 	if (p->parent->parent != p_source) {
+		clk_enable(p->parent->parent);
+		clk_enable(p->parent);
+		p_source_old = p->parent->parent;
 		ret = clk_set_parent(p->parent, p_source);
 		if (ret) {
 			pr_err("%s: Failed to set parent %s for %s\n",
@@ -1508,21 +1520,48 @@ static int tegra12_cpu_cmplx_clk_set_parent(struct clk *c, struct clk *p)
 	}
 
 	/* Disabling old parent scales old mode voltage rail */
-	if (c->refcnt && c->parent)
+	if (c->refcnt)
 		clk_disable(c->parent);
+	if (p_source_old) {
+		clk_disable(p->parent);
+		clk_disable(p_source_old);
+	}
 
 	clk_reparent(c, p);
 
-	/* Lock DFLL now (resume closed loop VDD_CPU control) */
-	if (p_source == dfll)
-		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	/*
+	 * Lock DFLL now (resume closed loop VDD_CPU control).
+	 * G CPU operations are resumed on DFLL if it was the last G CPU
+	 * clock source, or if resume rate is in DFLL usage range in case
+	 * when auto-switch between PLL and DFLL is enabled.
+	 */
+	if (p_source == dfll) {
+		if (tegra_dvfs_rail_is_dfll_mode(tegra_cpu_rail)) {
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+		} else {
+			clk_set_rate(dfll, rate);
+			tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+			tegra_dvfs_dfll_mode_set(p->dvfs, rate);
+		}
+	}
 
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
 	return 0;
 
 abort:
 	/* Re-lock DFLL if necessary after aborted switch */
-	if (c->parent->parent->parent == dfll)
+	if (c->parent->parent->parent == dfll) {
+		clk_set_rate(dfll, rate);
 		tegra_clk_cfg_ex(dfll, TEGRA_CLK_DFLL_LOCK, 1);
+	}
+	if (p_source_old) {
+		clk_disable(p->parent);
+		clk_disable(p_source_old);
+	}
+	tegra_dvfs_rail_mode_updating(tegra_cpu_rail, false);
+
+	pr_err("%s: aborted switch from %s to %s\n",
+	       __func__, c->parent->name, p->name);
 	return ret;
 }
 
