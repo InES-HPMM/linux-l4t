@@ -303,7 +303,7 @@ static int hpt_longCmd_execute(unsigned char *i2c_cmds, int size)
 }
 #endif
 
-static int a2220_set_boot_mode()
+static int a2220_set_boot_mode(void)
 {
 	int rc;
 	int retry = RETRY_CNT;
@@ -354,11 +354,10 @@ static int a2220_set_boot_mode()
 static ssize_t a2220_bootup_init(struct a2220img *pImg)
 {
 	struct a2220img *vp = pImg;
-	int rc, pass = 0;
+	int rc = 0, pass = 0;
 	int remaining;
 	int retry = RETRY_CNT;
 	unsigned char *index;
-	char buf[2];
 
 	mdelay(10);
 
