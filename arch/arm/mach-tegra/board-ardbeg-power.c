@@ -511,10 +511,16 @@ struct palmas_clk32k_init_data palmas_ti913_clk32k_idata[] = {
 	},
 };
 
+static struct palmas_extcon_platform_data palmas_extcon_pdata = {
+	.connection_name = "palmas-extcon",
+	.enable_vbus_detection = true,
+	.enable_id_pin_detection = true,
+};
+
 static struct palmas_pinctrl_config palmas_ti913_pincfg[] = {
 	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
-	PALMAS_PINMUX(GPIO0, GPIO, DEFAULT, DEFAULT),
+	PALMAS_PINMUX(GPIO0, ID, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO1, GPIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO2, GPIO, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(GPIO3, GPIO, DEFAULT, DEFAULT),
@@ -544,6 +550,7 @@ static struct palmas_platform_data palmas_ti913_pdata = {
 	.pinctrl_pdata = &palmas_ti913_pinctrl_pdata,
 	.clk32k_init_data =  palmas_ti913_clk32k_idata,
 	.clk32k_init_data_size = ARRAY_SIZE(palmas_ti913_clk32k_idata),
+	.extcon_pdata = &palmas_extcon_pdata,
 };
 
 static struct i2c_board_info palma_ti913_device[] = {
