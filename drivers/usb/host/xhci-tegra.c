@@ -449,16 +449,16 @@ static void debug_print_portsc(struct xhci_hcd *xhci)
 	}
 }
 
-static void update_speed(struct tegra_xhci_hcd *tegra, u8 port)
+static void update_speed(struct tegra_xhci_hcd *tegra, u8 port, bool setup_wake)
 {
 	struct usb_hcd *hcd = xhci_to_hcd(tegra->xhci);
 	u32 portsc;
 
-	if (tegra->hc_in_elpg)
+	/* we don't need speed information to disable PMC */
+	if (!setup_wake)
 		return;
 
-	portsc = readl(hcd->regs + BAR0_XHCI_OP_PORTSC(port +
-						BAR0_XHCI_OP_PORTSC_UTMIP_0));
+	portsc = readl(hcd->regs + BAR0_XHCI_OP_PORTSC(port));
 	if (DEV_FULLSPEED(portsc))
 		pmc_data.port_speed = USB_PMC_PORT_SPEED_FULL;
 	else if (DEV_HIGHSPEED(portsc))
@@ -487,28 +487,28 @@ static void pmc_init(struct tegra_xhci_hcd *tegra, bool setup_wake)
 	if (portmap & TEGRA_XUSB_USB2_P0) {
 		pmc_data.instance = (tegra->pdata->pmc_portmap >> 0) & 0xf;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
-		update_speed(tegra, pmc_data.instance);
+		update_speed(tegra, pmc_data.instance, setup_wake);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_USB2_P1) {
 		pmc_data.instance = (tegra->pdata->pmc_portmap >> 4) & 0xf;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
-		update_speed(tegra, pmc_data.instance);
+		update_speed(tegra, pmc_data.instance, setup_wake);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_USB2_P2) {
 		pmc_data.instance = (tegra->pdata->pmc_portmap >> 8) & 0xf;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_UTMI;
-		update_speed(tegra, pmc_data.instance);
+		update_speed(tegra, pmc_data.instance, setup_wake);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
 	if (portmap & TEGRA_XUSB_HSIC_P0) {
 		pmc_data.instance = PMC_PORT_UHSIC_P0;
 		pmc_data.phy_type = TEGRA_USB_PHY_INTF_HSIC;
-		update_speed(tegra, pmc_data.instance);
+		update_speed(tegra, pmc_data.instance, setup_wake);
 		tegra_usb_pmc_init(&pmc_data);
 		setup_wake_detect(setup_wake);
 	}
