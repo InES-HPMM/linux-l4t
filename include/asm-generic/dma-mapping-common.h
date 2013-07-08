@@ -40,6 +40,9 @@ static inline dma_addr_t dma_map_single_at_attrs(struct device *dev, void *ptr,
 	addr = ops->map_page_at(dev, virt_to_page(ptr), handle,
 			     (unsigned long)ptr & ~PAGE_MASK, size,
 			     dir, attrs);
+	debug_dma_map_page(dev, virt_to_page(ptr),
+			   (unsigned long)ptr & ~PAGE_MASK, size,
+			   dir, addr, true);
 	return addr;
 }
 
