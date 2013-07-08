@@ -22,14 +22,15 @@
 #include <linux/mpu.h>
 
 
+#define AKM_VERSION			(23)
 #define AKM_NAME			"akm89xx"
 #define AKM_HW_DELAY_POR_MS		(50)
 #define AKM_HW_DELAY_TSM_MS		(10)	/* Time Single Measurement */
 #define AKM_HW_DELAY_US			(100)
 #define AKM_HW_DELAY_ROM_ACCESS_US	(200)
 #define AKM_POLL_DELAY_MS_DFLT		(200)
-#define AKM_MPU_RETRY_COUNT		(20)
-#define AKM_MPU_RETRY_DELAY_MS		(100)
+#define AKM_MPU_RETRY_COUNT		(50)
+#define AKM_MPU_RETRY_DELAY_MS		(20)
 #define AKM_ERR_CNT_MAX			(20)
 
 #define AKM_INPUT_RESOLUTION		(1)
@@ -109,14 +110,18 @@
 #define WR				(0)
 #define RD				(1)
 
+#define AKM_DBG_SPEW_MSG		(1 << 0)
+#define AKM_DBG_SPEW_MAGNETIC_FIELD	(1 << 1)
+#define AKM_DBG_SPEW_MAGNETIC_FIELD_RAW	(1 << 2)
+
 enum AKM_DATA_INFO {
-	AKM_DATA_INFO_MAGNETIC_FIELD = 0,
-	AKM_DATA_INFO_MAGNETIC_FIELD_RAW,
-	AKM_DATA_INFO_CALIBRATION,
-	AKM_DATA_INFO_SELF_TEST,
-	AKM_DATA_INFO_SELF_TEST_RAW,
+	AKM_DATA_INFO_DATA = 0,
+	AKM_DATA_INFO_VER,
 	AKM_DATA_INFO_RESET,
-	AKM_DATA_INFO_REGISTERS,
+	AKM_DATA_INFO_REGS,
+	AKM_DATA_INFO_DBG,
+	AKM_DATA_INFO_MAGNETIC_FIELD_SPEW,
+	AKM_DATA_INFO_MAGNETIC_FIELD_RAW_SPEW,
 	AKM_DATA_INFO_LIMIT_MAX,
 };
 
@@ -151,6 +156,7 @@ struct akm_inf {
 	unsigned int range_i;		/* max_range index */
 	unsigned int resolution;	/* report when new data outside this */
 	unsigned int data_info;		/* data info to return */
+	unsigned int dbg;		/* device id */
 	unsigned int dev_id;		/* device id */
 	bool use_mpu;			/* if device behind MPU */
 	bool initd;			/* set if initialized */
@@ -306,10 +312,10 @@ static int akm_pm(struct akm_inf *inf, bool enable)
 	if (err > 0)
 		err = 0;
 	if (err)
-		dev_err(&inf->i2c->dev, "%s enable=%x ERR=%d\n",
+		dev_err(&inf->i2c->dev, "%s pwr=%x ERR=%d\n",
 			__func__, enable, err);
 	else
-		dev_dbg(&inf->i2c->dev, "%s enable=%x\n",
+		dev_dbg(&inf->i2c->dev, "%s pwr=%x\n",
 			__func__, enable);
 	return err;
 }
@@ -370,7 +376,7 @@ static int akm_nvi_mpu_bypass_request(struct akm_inf *inf)
 			if ((!err) || (err == -EPERM))
 				break;
 
-			mdelay(AKM_MPU_RETRY_DELAY_MS);
+			msleep(AKM_MPU_RETRY_DELAY_MS);
 		}
 		if (err == -EPERM)
 			err = 0;
@@ -551,6 +557,14 @@ static void akm_report(struct akm_inf *inf, u8 *data, s64 ts)
 {
 	akm_calc(inf, data);
 	mutex_lock(&inf->mutex_data);
+	if (inf->dbg & AKM_DBG_SPEW_MAGNETIC_FIELD_RAW)
+		dev_info(&inf->i2c->dev, "r %d %d %d %lld\n",
+			 inf->xyz_raw[AXIS_X], inf->xyz_raw[AXIS_Y],
+			 inf->xyz_raw[AXIS_Z], ts);
+	if (inf->dbg & AKM_DBG_SPEW_MAGNETIC_FIELD)
+		dev_info(&inf->i2c->dev, "%d %d %d %lld\n",
+			 inf->xyz[AXIS_X], inf->xyz[AXIS_Y],
+			 inf->xyz[AXIS_Z], ts);
 	input_report_rel(inf->idev, REL_X, inf->xyz[AXIS_X]);
 	input_report_rel(inf->idev, REL_Y, inf->xyz[AXIS_Y]);
 	input_report_rel(inf->idev, REL_Z, inf->xyz[AXIS_Z]);
@@ -756,26 +770,25 @@ static int akm_enable(struct akm_inf *inf, bool enable)
 {
 	int err = 0;
 
-	akm_pm(inf, true);
-	if (!inf->initd)
-		err = akm_init_hw(inf);
-	if (!err) {
-		if (enable) {
+	if (enable) {
+		akm_pm(inf, true);
+		if (!inf->initd)
+			err = akm_init_hw(inf);
+		if (!err) {
 			inf->data_out = AKM_CNTL1_MODE_SINGLE;
 			err |= akm_delay(inf, inf->poll_delay_us);
 			err |= akm_mode_wr(inf, true, inf->range_i,
 					  inf->data_out & AKM_CNTL1_MODE_MASK);
 			if (!err)
 				inf->enable = true;
-		} else {
-			inf->enable = false;
-			err = akm_mode_wr(inf, false, inf->range_i,
-					  AKM_CNTL1_MODE_POWERDOWN);
-			if (!err)
-				akm_pm(inf, false);
 		}
-	} else {
-		akm_pm(inf, false);
+	} else if (inf->enable) {
+		err = akm_mode_wr(inf, false, inf->range_i,
+				  AKM_CNTL1_MODE_POWERDOWN);
+		if (!err) {
+			akm_pm(inf, false);
+			inf->enable = false;
+		}
 	}
 	return err;
 }
@@ -798,7 +811,8 @@ static ssize_t akm_enable_store(struct device *dev,
 		en = true;
 	else
 		en = false;
-	dev_dbg(&inf->i2c->dev, "%s: %x\n", __func__, en);
+	if (inf->dbg & AKM_DBG_SPEW_MSG)
+		dev_info(&inf->i2c->dev, "%s: %x\n", __func__, en);
 	err = akm_enable(inf, en);
 	if (err) {
 		dev_err(&inf->i2c->dev, "%s: %x ERR=%d\n", __func__, en, err);
@@ -835,12 +849,14 @@ static ssize_t akm_delay_store(struct device *dev,
 	if (err)
 		return -EINVAL;
 
-	dev_dbg(&inf->i2c->dev, "%s: %u\n", __func__, delay_us);
 	if (delay_us < (AKM_INPUT_DELAY_MS_MIN * 1000))
 		delay_us = (AKM_INPUT_DELAY_MS_MIN * 1000);
 	if ((inf->enable) && (delay_us != inf->poll_delay_us))
 		err = akm_delay(inf, delay_us);
 	if (!err) {
+		if (inf->dbg & AKM_DBG_SPEW_MSG)
+			dev_info(&inf->i2c->dev, "%s: %u\n",
+				 __func__, delay_us);
 		inf->poll_delay_us = delay_us;
 	} else {
 		dev_err(&inf->i2c->dev, "%s: %u ERR=%d\n",
@@ -968,6 +984,27 @@ static ssize_t akm_data_store(struct device *dev,
 
 	dev_dbg(&inf->i2c->dev, "%s %u\n", __func__, data_info);
 	inf->data_info = data_info;
+	switch (data_info) {
+	case AKM_DATA_INFO_DATA:
+		inf->dbg = 0;
+		break;
+
+	case AKM_DATA_INFO_DBG:
+		inf->dbg ^= AKM_DBG_SPEW_MSG;
+		break;
+
+	case AKM_DATA_INFO_MAGNETIC_FIELD_SPEW:
+		inf->dbg ^= AKM_DBG_SPEW_MAGNETIC_FIELD;
+		break;
+
+	case AKM_DATA_INFO_MAGNETIC_FIELD_RAW_SPEW:
+		inf->dbg ^= AKM_DBG_SPEW_MAGNETIC_FIELD_RAW;
+		break;
+
+	default:
+		break;
+	}
+
 	return count;
 }
 
@@ -976,112 +1013,33 @@ static ssize_t akm_data_show(struct device *dev,
 			     char *buf)
 {
 	struct akm_inf *inf;
+	ssize_t t;
 	u8 data[16];
-	s16 x = 0;
-	s16 y = 0;
-	s16 z = 0;
 	enum AKM_DATA_INFO data_info;
 	bool enable;
-	char const *info_str;
+	unsigned int i;
 	int err = 0;
 
 	inf = dev_get_drvdata(dev);
 	data_info = inf->data_info;
-	inf->data_info = AKM_DATA_INFO_MAGNETIC_FIELD;
+	inf->data_info = AKM_DATA_INFO_DATA;
 	enable = inf->enable;
 	switch (data_info) {
-	case AKM_DATA_INFO_MAGNETIC_FIELD:
-		if (inf->enable) {
-			mutex_lock(&inf->mutex_data);
-			x = inf->xyz[AXIS_X];
-			y = inf->xyz[AXIS_Y];
-			z = inf->xyz[AXIS_Z];
-			mutex_unlock(&inf->mutex_data);
-			info_str = "magnetic_field";
-		} else {
-			info_str = "ERR: DISABLED";
-		}
-		break;
+	case AKM_DATA_INFO_DATA:
+		mutex_lock(&inf->mutex_data);
+		t = sprintf(buf, "magnetic_field: %hd, %hd, %hd   ",
+			    inf->xyz[AXIS_X],
+			    inf->xyz[AXIS_Y],
+			    inf->xyz[AXIS_Z]);
+		t += sprintf(buf + t, "raw: %hd, %hd, %hd\n",
+			     inf->xyz_raw[AXIS_X],
+			     inf->xyz_raw[AXIS_Y],
+			     inf->xyz_raw[AXIS_Z]);
+		mutex_unlock(&inf->mutex_data);
+		return t;
 
-	case AKM_DATA_INFO_MAGNETIC_FIELD_RAW:
-		if (inf->enable) {
-			mutex_lock(&inf->mutex_data);
-			x = inf->xyz_raw[AXIS_X];
-			y = inf->xyz_raw[AXIS_Y];
-			z = inf->xyz_raw[AXIS_Z];
-			mutex_unlock(&inf->mutex_data);
-			info_str = "raw_data";
-		} else {
-			info_str = "ERR: DISABLED";
-		}
-		break;
-
-	case AKM_DATA_INFO_CALIBRATION:
-		err = 0;
-		if (!inf->initd)
-			err = akm_enable(inf, enable);
-		if (err) {
-			info_str = "calibration ERR";
-		} else {
-			x = (s16)inf->asa.asa[AXIS_X];
-			y = (s16)inf->asa.asa[AXIS_Y];
-			z = (s16)inf->asa.asa[AXIS_Z];
-			info_str = "calibration";
-		}
-		break;
-
-	case AKM_DATA_INFO_SELF_TEST:
-		akm_enable(inf, false);
-		akm_pm(inf, true);
-		if (!inf->initd) {
-			err = akm_init_hw(inf);
-		} else {
-			err = akm_nvi_mpu_bypass_request(inf);
-			if (!err) {
-				err = akm_self_test(inf);
-				akm_nvi_mpu_bypass_release(inf);
-			}
-		}
-		if (err < 0) {
-			info_str = "self_test ERR";
-		} else {
-			mutex_lock(&inf->mutex_data);
-			x = inf->xyz[AXIS_X];
-			y = inf->xyz[AXIS_Y];
-			z = inf->xyz[AXIS_Z];
-			mutex_unlock(&inf->mutex_data);
-			if (err > 0)
-				info_str = "self_test FAIL";
-			else
-				info_str = "self_test PASS";
-		}
-		akm_enable(inf, enable);
-		break;
-
-	case AKM_DATA_INFO_SELF_TEST_RAW:
-		akm_enable(inf, false);
-		akm_pm(inf, true);
-		if (!inf->initd) {
-			err = akm_init_hw(inf);
-		} else {
-			err = akm_nvi_mpu_bypass_request(inf);
-			if (!err) {
-				err = akm_self_test(inf);
-				akm_nvi_mpu_bypass_release(inf);
-			}
-		}
-		if (err < 0) {
-			info_str = "self_test ERR";
-		} else {
-			mutex_lock(&inf->mutex_data);
-			x = inf->xyz_raw[AXIS_X];
-			y = inf->xyz_raw[AXIS_Y];
-			z = inf->xyz_raw[AXIS_Z];
-			mutex_unlock(&inf->mutex_data);
-			info_str = "self_test raw";
-		}
-		akm_enable(inf, enable);
-		break;
+	case AKM_DATA_INFO_VER:
+		return sprintf(buf, "version=%u\n", AKM_VERSION);
 
 	case AKM_DATA_INFO_RESET:
 		akm_pm(inf, true);
@@ -1089,31 +1047,50 @@ static ssize_t akm_data_show(struct device *dev,
 				  inf->data_out & AKM_CNTL1_MODE_MASK);
 		akm_enable(inf, enable);
 		if (err)
-			return sprintf(buf, "reset ERR\n");
+			return sprintf(buf, "reset ERR %d\n", err);
 		else
 			return sprintf(buf, "reset done\n");
 
-	case AKM_DATA_INFO_REGISTERS:
+	case AKM_DATA_INFO_REGS:
+		if (!inf->initd)
+			t = sprintf(buf, "calibration: NEED ENABLE\n");
+		else
+			t = sprintf(buf, "calibration: x=%#2x y=%#2x z=%#2x\n",
+				    inf->asa.asa[AXIS_X],
+				    inf->asa.asa[AXIS_Y],
+				    inf->asa.asa[AXIS_Z]);
 		err = akm_nvi_mpu_bypass_request(inf);
 		if (!err) {
 			err = akm_i2c_rd(inf, AKM_REG_WIA, AKM_REG_ASAX, data);
 			akm_nvi_mpu_bypass_release(inf);
 		}
-		if (err)
-			return sprintf(buf, "register read ERR\n");
+		if (err) {
+			t += sprintf(buf + t, "registers: ERR %d\n", err);
+		} else {
+			t += sprintf(buf + t, "registers:\n");
+			for (i = 0; i < AKM_REG_ASAX; i++)
+				t += sprintf(buf + t, "%#2x=%#2x\n",
+					     AKM_REG_WIA + i, data[i]);
+		}
+		return t;
 
-		return sprintf(buf, "%x %x %x %x %x %x %x %x %x %x\n",
-			       data[0], data[1], data[2],
-			       le16_to_cpup((__le16 *)(&data[3])),
-			       le16_to_cpup((__le16 *)(&data[5])),
-			       le16_to_cpup((__le16 *)(&data[7])),
-			       data[9], data[10], data[11], data[12]);
+	case AKM_DATA_INFO_DBG:
+		return sprintf(buf, "debug spew=%x\n",
+			       inf->dbg & AKM_DBG_SPEW_MSG);
+
+	case AKM_DATA_INFO_MAGNETIC_FIELD_SPEW:
+		return sprintf(buf, "xyz_ts spew=%x\n",
+			       !!(inf->dbg & AKM_DBG_SPEW_MAGNETIC_FIELD));
+
+	case AKM_DATA_INFO_MAGNETIC_FIELD_RAW_SPEW:
+		return sprintf(buf, "xyz_raw_ts spew=%x\n",
+			       !!(inf->dbg & AKM_DBG_SPEW_MAGNETIC_FIELD_RAW));
 
 	default:
-		return -EINVAL;
+		break;
 	}
 
-	return sprintf(buf, "%s: %hd, %hd, %hd\n", info_str, x, y, z);
+	return -EINVAL;
 }
 
 static ssize_t akm_mpu_fifo_enable_store(struct device *dev,
@@ -1167,6 +1144,54 @@ static ssize_t akm_microamp_show(struct device *dev,
 	return sprintf(buf, "%u\n", AKM_INPUT_POWER_UA);
 }
 
+static ssize_t akm_self_test_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct akm_inf *inf;
+	ssize_t t;
+	bool enable;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	enable = inf->enable;
+	akm_enable(inf, false);
+	akm_pm(inf, true);
+	if (!inf->initd) {
+		err = akm_init_hw(inf);
+	} else {
+		err = akm_nvi_mpu_bypass_request(inf);
+		if (!err) {
+			err = akm_self_test(inf);
+			akm_nvi_mpu_bypass_release(inf);
+		}
+	}
+	if (err < 0) {
+		t = sprintf(buf, "ERR: %d\n", err);
+	} else {
+		t = sprintf(buf, "%d   xyz: %hd %hd %hd   raw: %hd %hd %hd   ",
+			    err,
+			    inf->xyz[AXIS_X],
+			    inf->xyz[AXIS_Y],
+			    inf->xyz[AXIS_Z],
+			    inf->xyz_raw[AXIS_X],
+			    inf->xyz_raw[AXIS_Y],
+			    inf->xyz_raw[AXIS_Z]);
+		if (err > 0) {
+			if (err & (1 << AXIS_X))
+				t += sprintf(buf + t, "X ");
+			if (err & (1 << AXIS_Y))
+				t += sprintf(buf + t, "Y ");
+			if (err & (1 << AXIS_Z))
+				t += sprintf(buf + t, "Z ");
+			t += sprintf(buf + t, "FAILED\n");
+		} else {
+			t += sprintf(buf + t, "PASS\n");
+		}
+	}
+	akm_enable(inf, enable);
+	return t;
+}
+
 static ssize_t akm_orientation_show(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
@@ -1196,6 +1221,8 @@ static DEVICE_ATTR(divisor, S_IRUGO,
 		   akm_divisor_show, NULL);
 static DEVICE_ATTR(microamp, S_IRUGO,
 		   akm_microamp_show, NULL);
+static DEVICE_ATTR(self_test, S_IRUGO,
+		   akm_self_test_show, NULL);
 static DEVICE_ATTR(orientation, S_IRUGO,
 		   akm_orientation_show, NULL);
 
@@ -1207,6 +1234,7 @@ static struct attribute *akm_attrs[] = {
 	&dev_attr_divisor.attr,
 	&dev_attr_microamp.attr,
 	&dev_attr_data.attr,
+	&dev_attr_self_test.attr,
 	&dev_attr_orientation.attr,
 	&dev_attr_mpu_fifo_en.attr,
 	NULL
@@ -1460,23 +1488,6 @@ akm_probe_again:
 	return err;
 }
 
-static int akm_suspend(struct device *dev)
-{
-	struct akm_inf *inf;
-	int err;
-
-	inf = dev_get_drvdata(dev);
-	err = akm_enable(inf, false);
-	if (err)
-		dev_err(dev, "%s ERR\n", __func__);
-	dev_info(dev, "%s done\n", __func__);
-	return 0;
-}
-
-static const struct dev_pm_ops akm_pm_ops = {
-	.suspend	= akm_suspend,
-};
-
 static const struct i2c_device_id akm_i2c_device_id[] = {
 	{AKM_NAME, 0},
 	{"ak8963", 0},
@@ -1505,7 +1516,6 @@ static struct i2c_driver akm_driver = {
 		.name		= AKM_NAME,
 		.owner		= THIS_MODULE,
 		.of_match_table = of_match_ptr(akm_of_match),
-		.pm		= &akm_pm_ops,
 	},
 	.id_table	= akm_i2c_device_id,
 	.shutdown	= akm_shutdown,

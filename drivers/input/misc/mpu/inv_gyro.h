@@ -63,6 +63,33 @@
 #define NVI_PM_ON			(6)
 #define NVI_PM_ON_FULL			(7)
 
+#define AXIS_X				(0)
+#define AXIS_Y				(1)
+#define AXIS_Z				(2)
+
+#define NVI_DBG_SPEW_MSG		(1 << 0)
+#define NVI_DBG_SPEW_AUX		(1 << 1)
+#define NVI_DBG_SPEW_GYRO		(1 << 2)
+#define NVI_DBG_SPEW_TEMP		(1 << 3)
+#define NVI_DBG_SPEW_ACCL		(1 << 4)
+#define NVI_DBG_SPEW_ACCL_RAW		(1 << 5)
+#define NVI_DBG_SPEW_FIFO		(1 << 6)
+
+enum NVI_DATA_INFO {
+	NVI_DATA_INFO_DATA = 0,
+	NVI_DATA_INFO_VER,
+	NVI_DATA_INFO_RESET,
+	NVI_DATA_INFO_REGS,
+	NVI_DATA_INFO_DBG,
+	NVI_DATA_INFO_AUX_SPEW,
+	NVI_DATA_INFO_GYRO_SPEW,
+	NVI_DATA_INFO_TEMP_SPEW,
+	NVI_DATA_INFO_ACCL_SPEW,
+	NVI_DATA_INFO_ACCL_RAW_SPEW,
+	NVI_DATA_INFO_FIFO_SPEW,
+	NVI_DATA_INFO_LIMIT_MAX,
+};
+
 /**
  *  struct inv_reg_map_s - Notable slave registers.
  *  @who_am_i:		Upper 6 bits of the device's slave address.
@@ -314,7 +341,6 @@ struct aux_ports {
 	bool reset_fifo;
 	bool enable;
 	bool en3050;
-	bool dbg;
 };
 
 struct nvi_hw {
@@ -397,7 +423,6 @@ struct inv_gyro_state_s {
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *mpu_slave;
 	struct regulator_bulk_data vreg[2];
-	bool fifo_reset_3050;
 	unsigned char i2c_addr;
 	unsigned char sample_divider;
 	unsigned char fifo_divider;
@@ -412,15 +437,21 @@ struct inv_gyro_state_s {
 	u16 fifo_sample_size;
 	bool shutdown;
 	bool suspend;
+	bool fifo_reset_3050;
 	unsigned int mot_cnt;
-	short temp_val;
-	s64 temp_ts;
 	s64 fifo_ts;
 	s64 gyro_start_ts;
+	unsigned int data_info;
+	unsigned int dbg;
 #if DEBUG_SYSFS_INTERFACE
 	u16 dbg_i2c_addr;
 	u8 dbg_reg;
 #endif /* DEBUG_SYSFS_INTERFACE */
+	s64 temp_ts;
+	s16 temp_val;
+	s16 gyro[3];
+	s16 accl[3];
+	s16 accl_raw[3];
 	u8 buf[NVI_FIFO_SAMPLE_SIZE_MAX * 2]; /* (* 2)=FIFO OVERFLOW OFFSET */
 };
 
@@ -566,7 +597,6 @@ struct inv_mpu_slave {
 #define MPU6500_ID			(0x70)
 #define MPU6500_PRODUCT_REVISION	(1)
 #define MPU6500_MEM_REV_ADDR		(0x17)
-#define MPU6500_REV			(2)
 #define MPU9250_ID			(0x71)
 
 #define BIT_PRFTCH_EN                           0x40

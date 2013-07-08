@@ -23,7 +23,6 @@
  *      @details This driver currently works for the ITG3500, MPU6050, MPU9150
  *               MPU3050
  */
-#define DEBUG_FIFO_DATA_SPEW	(0)
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -45,6 +44,8 @@
 
 #include "inv_gyro.h"
 
+
+#define NVI_VERSION			(23)
 
 /* regulator names in order of powering on */
 static char *nvi_vregs[] = {
@@ -146,12 +147,6 @@ int inv_i2c_read_base(struct inv_gyro_state_s *st, unsigned short i2c_addr,
 	struct i2c_msg msgs[2];
 	int res;
 
-	if (st->shutdown)
-		return 0;
-
-	if (!data)
-		return -EINVAL;
-
 	msgs[0].addr = i2c_addr;
 	msgs[0].flags = 0;	/* write */
 	msgs[0].buf = &reg;
@@ -164,7 +159,7 @@ int inv_i2c_read_base(struct inv_gyro_state_s *st, unsigned short i2c_addr,
 
 	res = i2c_transfer(st->sl_handle, msgs, 2);
 	pr_debug("%s RD%02X%02X%02X res=%d\n",
-		st->hw_s->name, i2c_addr, reg, length, res);
+		 st->hw_s->name, i2c_addr, reg, length, res);
 	if (res < 2) {
 		if (res >= 0)
 			res = -EIO;
@@ -188,9 +183,6 @@ int inv_i2c_single_write_base(struct inv_gyro_state_s *st,
 	struct i2c_msg msg;
 	int res;
 
-	if (st->shutdown)
-		return 0;
-
 	tmp[0] = reg;
 	tmp[1] = data;
 
@@ -200,7 +192,7 @@ int inv_i2c_single_write_base(struct inv_gyro_state_s *st,
 	msg.len = 2;
 
 	res = i2c_transfer(st->sl_handle, &msg, 1);
-	pr_debug("%s WS%02X%02X%02X res=%d\n",
+	pr_debug("%s WR%02X%02X%02X res=%d\n",
 		 st->hw_s->name, i2c_addr, reg, data, res);
 	if (res < 1) {
 		if (res == 0)
@@ -501,7 +493,9 @@ static int nvi_int_enable_wr(struct inv_gyro_state_s *inf, bool enable)
 		err = inv_i2c_single_write(inf, inf->reg->int_enable, val);
 		if (!err) {
 			inf->hw.int_enable = val;
-			dev_dbg(&inf->i2c->dev, "%s: %x\n", __func__, val);
+			if (inf->dbg & NVI_DBG_SPEW_MSG)
+				dev_info(&inf->i2c->dev, "%s: %x\n",
+					 __func__, val);
 		}
 	}
 	return err;
@@ -1128,12 +1122,13 @@ static int nvi_global_delay(struct inv_gyro_state_s *inf)
 	/* set the limits */
 	if (delay_us < inf->chip_config.min_delay_us)
 		delay_us = inf->chip_config.min_delay_us;
-	if (delay_us > MAX_FIFO_RATE)
-		delay_us = MAX_FIFO_RATE;
+	if (delay_us > NVI_DELAY_US_MAX)
+		delay_us = NVI_DELAY_US_MAX;
 	/* program if new value */
 	if (delay_us != inf->sample_delay_us) {
-		if (inf->aux.dbg)
-			pr_info("%s %lu\n", __func__, delay_us);
+		if (inf->dbg)
+			dev_info(&inf->i2c->dev, "%s %lu\n",
+				 __func__, delay_us);
 		delay_us_old = inf->sample_delay_us;
 		inf->sample_delay_us = delay_us;
 		delay_us <<= 1;
@@ -1188,10 +1183,10 @@ static void nvi_aux_dbg(struct inv_gyro_state_s *inf, char *tag, int val)
 	u8 data[4];
 	int i;
 
-	if (!inf->aux.dbg)
+	if (!(inf->dbg & NVI_DBG_SPEW_AUX))
 		return;
 
-	pr_info("%s %s %d\n", __func__, tag, val);
+	dev_info(&inf->i2c->dev, "%s %s %d\n", __func__, tag, val);
 	for (i = 0; i < AUX_PORT_MAX; i++) {
 		inv_i2c_read(inf, (REG_I2C_SLV0_ADDR + (i * 3)), 3, data);
 		inv_i2c_read(inf, (REG_I2C_SLV0_DO + i), 1, &data[3]);
@@ -1655,7 +1650,7 @@ int nvi_mpu_dev_valid(struct nvi_mpu_port *nmp, u8 *data)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s\n", __func__);
 	} else {
 		pr_debug("%s ERR -EAGAIN\n", __func__);
@@ -1688,7 +1683,7 @@ int nvi_mpu_port_alloc(struct nvi_mpu_port *nmp)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s\n", __func__);
 	} else {
 		pr_debug("%s ERR -EAGAIN\n", __func__);
@@ -1720,7 +1715,7 @@ int nvi_mpu_port_free(int port)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s port %d\n", __func__, port);
 	} else {
 		pr_debug("%s port %d ERR -EAGAIN\n", __func__, port);
@@ -1746,7 +1741,7 @@ int nvi_mpu_enable(int port, bool enable, bool fifo_enable)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s port %d: %x\n", __func__, port, enable);
 	} else {
 		pr_debug("%s port %d: %x ERR -EAGAIN\n",
@@ -1773,7 +1768,7 @@ int nvi_mpu_delay_ms(int port, u8 delay_ms)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s port %d: %u\n", __func__, port, delay_ms);
 	} else {
 		pr_debug("%s port %d: %u ERR -EAGAIN\n",
@@ -1803,7 +1798,7 @@ int nvi_mpu_delay_us(int port, unsigned long delay_us)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s port %d: %lu\n", __func__, port, delay_us);
 	} else {
 		pr_debug("%s port %d: %lu ERR -EAGAIN\n",
@@ -1856,7 +1851,7 @@ int nvi_mpu_bypass_request(bool enable)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s\n", __func__);
 	} else {
 		pr_debug("%s ERR -EAGAIN\n", __func__);
@@ -1881,7 +1876,7 @@ int nvi_mpu_bypass_release(void)
 
 	inf = inf_local;
 	if (inf != NULL) {
-		if (inf->aux.dbg)
+		if (inf->dbg & NVI_DBG_SPEW_AUX)
 			pr_info("%s\n", __func__);
 	} else {
 		pr_debug("%s\n", __func__);
@@ -2018,17 +2013,17 @@ static ssize_t nvi_gyro_enable_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_gyro_enable_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+static ssize_t nvi_gyro_enable_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
 
 	return sprintf(buf, "%u\n", inf->chip_config.gyro_enable);
 }
 
-ssize_t nvi_gyro_fifo_enable_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
+static ssize_t nvi_gyro_fifo_enable_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
 {
 	struct inv_gyro_state_s *inf;
 	unsigned char fifo_enable;
@@ -2058,8 +2053,9 @@ ssize_t nvi_gyro_fifo_enable_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_gyro_fifo_enable_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
+static ssize_t nvi_gyro_fifo_enable_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
 
@@ -2183,7 +2179,7 @@ static ssize_t nvi_gyro_max_range_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_gyro_max_range_show(struct device *dev,
+static ssize_t nvi_gyro_max_range_show(struct device *dev,
 				       struct device_attribute *attr, char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
@@ -2319,8 +2315,8 @@ static ssize_t nvi_accl_delay_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_accl_delay_show(struct device *dev,
-			    struct device_attribute *attr, char *buf)
+static ssize_t nvi_accl_delay_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
 {
 	struct inv_gyro_state_s *inf;
 
@@ -2409,8 +2405,8 @@ static ssize_t nvi_accl_max_range_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_accl_max_range_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t nvi_accl_max_range_show(struct device *dev,
+				       struct device_attribute *attr, char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
 	unsigned int range;
@@ -2435,6 +2431,8 @@ static ssize_t nvi_lpa_delay_enable_store(struct device *dev,
 	if (err)
 		return err;
 
+	if (lpa_delay_us > NVI_DELAY_US_MAX)
+		lpa_delay_us = NVI_DELAY_US_MAX;
 	dev_dbg(&inf->i2c->dev, "%s: %lu\n", __func__, lpa_delay_us);
 	mutex_lock(&inf->mutex);
 	inf->chip_config.lpa_delay_us = lpa_delay_us;
@@ -2855,17 +2853,17 @@ static ssize_t nvi_temp_enable_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_temp_enable_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+static ssize_t nvi_temp_enable_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
 
 	return sprintf(buf, "%u\n", inf->chip_config.temp_enable);
 }
 
-ssize_t nvi_temp_fifo_enable_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
+static ssize_t nvi_temp_fifo_enable_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
 {
 	struct inv_gyro_state_s *inf;
 	unsigned char fifo_enable;
@@ -2900,8 +2898,9 @@ ssize_t nvi_temp_fifo_enable_store(struct device *dev,
 	return count;
 }
 
-ssize_t nvi_temp_fifo_enable_show(struct device *dev,
-				  struct device_attribute *attr, char *buf)
+static ssize_t nvi_temp_fifo_enable_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
 {
 	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
 
@@ -3127,6 +3126,588 @@ static ssize_t inv_power_state_show(struct device *dev,
 		return sprintf(buf, "1\n");
 }
 
+static u16 nvi_report_accl(struct inv_gyro_state_s *inf, u8 *data, s64 ts)
+{
+	s16 val[3];
+	s16 raw[3];
+	u16 buf_i;
+	unsigned int i;
+
+	if (inf->chip_type == INV_MPU3050) {
+		if (inf->mpu_slave != NULL) {
+			inf->mpu_slave->combine_data(data, raw);
+			for (i = 0; i < 3; i++)
+				val[i] = raw[i];
+		} else {
+			return 0;
+		}
+	} else {
+		raw[AXIS_X] = be16_to_cpup((__be16 *)&data[0]);
+		raw[AXIS_Y] = be16_to_cpup((__be16 *)&data[2]);
+		raw[AXIS_Z] = be16_to_cpup((__be16 *)&data[4]);
+		val[AXIS_X] = raw[AXIS_X] * inf->chip_info.multi;
+		val[AXIS_Y] = raw[AXIS_Y] * inf->chip_info.multi;
+		val[AXIS_Z] = raw[AXIS_Z] * inf->chip_info.multi;
+	}
+
+	buf_i = 0;
+	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_XA)) {
+		input_report_rel(inf->idev, REL_RX, val[AXIS_X]);
+		buf_i += 2;
+	} else {
+		raw[AXIS_X] = 0;
+		val[AXIS_X] = 0;
+	}
+	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_YA)) {
+		input_report_rel(inf->idev, REL_RY, val[AXIS_Y]);
+		buf_i += 2;
+	} else {
+		raw[AXIS_Y] = 0;
+		val[AXIS_Y] = 0;
+	}
+	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_ZA)) {
+		input_report_rel(inf->idev, REL_RZ, val[AXIS_Z]);
+		buf_i += 2;
+	} else {
+		raw[AXIS_Z] = 0;
+		val[AXIS_Z] = 0;
+	}
+	for (i = 0; i < 3; i++) {
+		inf->accl_raw[i] = raw[i];
+		inf->accl[i] = val[i];
+	}
+	if (inf->dbg & NVI_DBG_SPEW_ACCL_RAW)
+		dev_info(&inf->i2c->dev, "ACCL_RAW %d %d %d %lld\n",
+			 raw[AXIS_X], raw[AXIS_Y], raw[AXIS_Z], ts);
+	if (inf->dbg & NVI_DBG_SPEW_ACCL)
+		dev_info(&inf->i2c->dev, "ACCL %d %d %d %lld\n",
+			 val[AXIS_X], val[AXIS_Y], val[AXIS_Z], ts);
+	return buf_i;
+}
+
+static void nvi_report_temp(struct inv_gyro_state_s *inf, u8 *data, s64 ts)
+{
+	mutex_lock(&inf->mutex_temp);
+	inf->temp_val = be16_to_cpup((__be16 *)data);
+	inf->temp_ts = ts;
+	if (inf->dbg & NVI_DBG_SPEW_TEMP)
+		dev_info(&inf->i2c->dev, "TEMP %d %lld\n", inf->temp_val, ts);
+	mutex_unlock(&inf->mutex_temp);
+}
+
+static u16 nvi_report_gyro(struct inv_gyro_state_s *inf,
+			   u8 *data, u8 mask, s64 ts)
+{
+	s16 val[3];
+	u16 buf_i;
+	bool report;
+	unsigned int i;
+
+	if (ts < inf->gyro_start_ts)
+		report = false;
+	else
+		report = true;
+	for (i = 0; i < 3; i++)
+		val[i] = 0;
+	buf_i = 0;
+	if (mask & 4) {
+		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_XG))) {
+			val[AXIS_X] = be16_to_cpup((__be16 *)&data[buf_i]);
+			input_report_rel(inf->idev, REL_X, val[AXIS_X]);
+		}
+		buf_i += 2;
+	}
+	if (mask & 2) {
+		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_YG))) {
+			val[AXIS_Y] = be16_to_cpup((__be16 *)&data[buf_i]);
+			input_report_rel(inf->idev, REL_Y, val[AXIS_Y]);
+		}
+		buf_i += 2;
+	}
+	if (mask & 1) {
+		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_ZG))) {
+			val[AXIS_Z] = be16_to_cpup((__be16 *)&data[buf_i]);
+			input_report_rel(inf->idev, REL_Z, val[AXIS_Z]);
+		}
+		buf_i += 2;
+	}
+	for (i = 0; i < 3; i++)
+		inf->gyro[i] = val[i];
+	if (inf->dbg & NVI_DBG_SPEW_GYRO)
+		dev_info(&inf->i2c->dev, "GYRO %d %d %d %lld\n",
+			 val[AXIS_X], val[AXIS_Y], val[AXIS_Z], ts);
+	return buf_i;
+}
+
+static void nvi_sync(struct inv_gyro_state_s *inf, s64 ts)
+{
+	input_report_rel(inf->idev, REL_MISC, (unsigned int)(ts >> 32));
+	input_report_rel(inf->idev, REL_WHEEL,
+			 (unsigned int)(ts & 0xffffffff));
+	input_sync(inf->idev);
+}
+
+static int nvi_accl_read(struct inv_gyro_state_s *inf, s64 ts)
+{
+	u8 data[6];
+	int err;
+
+	err = inv_i2c_read(inf, inf->reg->raw_accl, 6, data);
+	if (!err)
+		err = nvi_report_accl(inf, data, ts);
+	return err;
+}
+
+static u16 nvi_fifo_read_accl(struct inv_gyro_state_s *inf,
+			      u16 buf_index, s64 ts)
+{
+	if (inf->hw.fifo_en & inf->reg->accl_fifo_en) {
+		nvi_report_accl(inf, &inf->buf[buf_index], ts);
+		buf_index += 6;
+	}
+	return buf_index;
+}
+
+static u16 nvi_fifo_read_gyro(struct inv_gyro_state_s *inf,
+			      u16 buf_index, s64 ts)
+{
+	u8 mask;
+
+	if (inf->hw.fifo_en & BIT_TEMP_FIFO_EN) {
+		nvi_report_temp(inf, &inf->buf[buf_index], ts);
+		buf_index += 2;
+	}
+	mask = inf->hw.fifo_en;
+	mask &= (BIT_GYRO_XOUT | BIT_GYRO_YOUT | BIT_GYRO_ZOUT);
+	mask >>= 4;
+	if (mask) {
+		buf_index += nvi_report_gyro(inf, &inf->buf[buf_index],
+					     mask, ts);
+	}
+	return buf_index;
+}
+
+static irqreturn_t nvi_irq_thread(int irq, void *dev_id)
+{
+	struct inv_gyro_state_s *inf;
+	struct aux_port *ap;
+	u8 mask;
+	u16 fifo_count = 0;
+	u16 fifo_sample_size;
+	u16 fifo_rd_n;
+	u16 fifo_align;
+	u16 buf_index;
+	s64 ts;
+	s64 ts_irq;
+	s64 delay;
+	bool sync;
+	unsigned int ts_len;
+	unsigned int samples;
+	unsigned int copied;
+	unsigned int len;
+	int i;
+	int err;
+
+	inf = (struct inv_gyro_state_s *)dev_id;
+	if (inf->mot_cnt)
+		inf->mot_cnt--;
+	/* if only accelermeter data */
+	if ((inf->hw.pwr_mgmt_1 & inf->reg->cycle) || (inf->hw.int_enable &
+						       BIT_MOT_EN)) {
+		if (inf->hw.int_enable & BIT_MOT_EN) {
+			inf->mot_cnt = inf->chip_config.mot_cnt;
+			nvi_motion_detect_enable(inf, 0);
+			nvi_int_enable_wr(inf, true);
+			if (inf->chip_config.mot_enable == NVI_MOT_DBG)
+				pr_info("%s motion detect off\n", __func__);
+		}
+		ts = nvi_ts_ns();
+		err = nvi_accl_read(inf, ts);
+		if (err < 0)
+			goto nvi_irq_thread_exit;
+
+		nvi_sync(inf, ts);
+		if (inf->mot_cnt && (inf->chip_config.mot_enable ==
+				     NVI_MOT_DBG))
+			pr_info("%s SENDING MOTION DETECT DATA\n", __func__);
+		if (((inf->hw.accl_config & 0x07) == 0x07) && (!inf->mot_cnt))
+			nvi_int_enable_wr(inf, true);
+		goto nvi_irq_thread_exit;
+	}
+
+	/* handle FIFO disabled data */
+	sync = false;
+	ts = nvi_ts_ns();
+	if (inf->chip_config.accl_enable && (!(inf->hw.fifo_en &
+					       inf->reg->accl_fifo_en))) {
+		err = nvi_accl_read(inf, ts);
+		if (err > 0)
+			sync = true;
+	}
+	if (inf->chip_config.temp_enable &&
+				     (!(inf->hw.fifo_en & BIT_TEMP_FIFO_EN))) {
+		err = inv_i2c_read(inf, inf->reg->temperature, 2, inf->buf);
+		if (!err)
+			nvi_report_temp(inf, inf->buf, ts);
+	}
+	mask = (BIT_GYRO_XOUT | BIT_GYRO_YOUT | BIT_GYRO_ZOUT);
+	mask &= ~inf->hw.fifo_en;
+	mask >>= 4;
+	if (inf->chip_config.gyro_enable && mask) {
+		buf_index = 0;
+		err = 0;
+		if (mask & 4) {
+			err = inv_i2c_read(inf, inf->reg->raw_gyro,
+					   2, &inf->buf[buf_index]);
+			buf_index = 2;
+		}
+		if (mask & 2) {
+			err |= inv_i2c_read(inf, inf->reg->raw_gyro + 2,
+					    2, &inf->buf[buf_index]);
+			buf_index += 2;
+		}
+		if (mask & 1)
+			err |= inv_i2c_read(inf, inf->reg->raw_gyro + 4,
+					    2, &inf->buf[buf_index]);
+		if (!err) {
+			buf_index = nvi_report_gyro(inf, inf->buf, mask, ts);
+			if (buf_index)
+				sync = true;
+		}
+	}
+	if (sync)
+		nvi_sync(inf, ts);
+	nvi_aux_read(inf);
+	if (!inf->fifo_sample_size)
+		goto nvi_irq_thread_exit;
+
+	/* handle FIFO enabled data */
+	fifo_sample_size = inf->fifo_sample_size;
+	if (!fifo_sample_size)
+		goto nvi_irq_thread_exit;
+
+	/* must get IRQ timestamp len first for timestamp best-fit algorithm */
+	ts_len = kfifo_len(&inf->trigger.timestamps);
+	err = inv_i2c_read(inf, inf->reg->fifo_count_h, 2, inf->buf);
+	if (err)
+		goto nvi_irq_thread_exit;
+
+	fifo_count = be16_to_cpup((__be16 *)(&inf->buf));
+	/* FIFO threshold */
+	if (inf->chip_config.fifo_thr > fifo_sample_size) {
+		if (fifo_count > inf->chip_config.fifo_thr) {
+			dev_dbg(&inf->i2c->dev, "FIFO threshold exceeded\n");
+			goto nvi_irq_thread_exit_reset;
+		}
+	}
+
+	fifo_align = fifo_count % fifo_sample_size;
+	if (fifo_count < fifo_sample_size + fifo_align)
+		goto nvi_irq_thread_exit;
+
+	if (inf->chip_type == INV_MPU3050) {
+		/* FIFO HW BUG WAR:
+		 * The MPU3050 will fire an IRQ on incomplete sampling of data
+		 * to the FIFO causing misalignment of data.  The WAR is to
+		 * simply wait for the next IRQ.  This misalignment problem
+		 * usually works itself out with the next data sample.
+		 * The safety net is a FIFO reset, should the problem not work
+		 * itself out by the time the FIFO threshold is reached.
+		 */
+		if (inf->fifo_reset_3050) {
+			if (fifo_align)
+				goto nvi_irq_thread_exit;
+		} else {
+			if (fifo_align != 2)
+				goto nvi_irq_thread_exit;
+		}
+	}
+
+	ts = inf->fifo_ts;
+	delay = inf->sample_delay_us * 1000;
+	samples = (fifo_count / fifo_sample_size);
+	if (inf->dbg & NVI_DBG_SPEW_FIFO)
+		dev_info(&inf->i2c->dev,
+			 "fifo_count=%u sample_size=%u offset=%u samples=%u\n",
+			 fifo_count, fifo_sample_size, fifo_align, samples);
+	fifo_rd_n = 0;
+	buf_index = 0;
+	while (samples) {
+		if (buf_index >= fifo_rd_n) {
+			fifo_rd_n = sizeof(inf->buf);
+			fifo_rd_n -= fifo_align;
+			fifo_rd_n /= fifo_sample_size;
+			if (samples < fifo_rd_n)
+				fifo_rd_n = samples;
+			fifo_rd_n *= fifo_sample_size;
+			fifo_rd_n += fifo_align;
+			if (inf->chip_type == INV_MPU3050)
+				fifo_rd_n -= 2; /* FIFO_FOOTER */
+			err = inv_i2c_read(inf, inf->reg->fifo_r_w,
+					   fifo_rd_n, inf->buf);
+			if (err)
+				goto nvi_irq_thread_exit;
+
+			buf_index = fifo_align;
+			if (inf->chip_type == INV_MPU3050) {
+				if (inf->fifo_reset_3050) {
+					inf->fifo_reset_3050 = false;
+					fifo_align += 2;
+				}
+			}
+		}
+
+		if (ts_len) {
+			len = ts_len;
+			for (i = 0; i < len; i++) {
+				err = kfifo_out_peek(&inf->trigger.timestamps,
+						     &ts_irq, 1);
+				if (err != 1)
+					goto nvi_irq_thread_exit_reset;
+
+				if (ts < (ts_irq - delay))
+					break;
+
+				err = kfifo_to_user(&inf->trigger.timestamps,
+						    &ts_irq, sizeof(ts_irq),
+						    &copied);
+				if (err)
+					goto nvi_irq_thread_exit_reset;
+
+				ts_len--;
+				if (ts < (ts_irq + delay)) {
+					ts = ts_irq;
+					break;
+				}
+			}
+			if ((inf->dbg & NVI_DBG_SPEW_FIFO) && (ts != ts_irq))
+				dev_info(&inf->i2c->dev,
+					 "%s TS=%lld != IRQ=%lld s=%u i=%u\n",
+					__func__, ts, ts_irq, samples, ts_len);
+		} else {
+			if (inf->dbg & NVI_DBG_SPEW_FIFO)
+				dev_info(&inf->i2c->dev,
+					 "%s NO IRQ_TS TS=%lld s=%u\n",
+					 __func__, ts, samples);
+		}
+		if (inf->chip_type == INV_MPU3050) {
+			buf_index = nvi_fifo_read_gyro(inf, buf_index, ts);
+			buf_index = nvi_fifo_read_accl(inf, buf_index, ts);
+			buf_index += 2; /* FIFO_FOOTER */
+		} else {
+			buf_index = nvi_fifo_read_accl(inf, buf_index, ts);
+			buf_index = nvi_fifo_read_gyro(inf, buf_index, ts);
+		}
+		nvi_sync(inf, ts);
+		for (i = 0; i < AUX_PORT_SPECIAL; i++) {
+			ap = &inf->aux.port[i];
+			if (ap->fifo_en &&
+				      (inf->hw.i2c_slv_ctrl[i] & BIT_SLV_EN)) {
+				len = ap->nmp.ctrl & BITS_I2C_SLV_CTRL_LEN;
+				if (ap->nmp.handler != NULL)
+					ap->nmp.handler(&inf->buf[buf_index],
+							len, ts,
+							ap->nmp.ext_driver);
+				buf_index += len;
+			}
+		}
+		ts += delay;
+		samples--;
+	}
+	if (ts_len) {
+		if (inf->dbg & NVI_DBG_SPEW_FIFO)
+			dev_info(&inf->i2c->dev, "%s SYNC TO IRQ_TS %lld\n",
+				 __func__, ts);
+		for (i = 0; i < ts_len; i++) {
+			err = kfifo_to_user(&inf->trigger.timestamps,
+					    &ts, sizeof(ts), &copied);
+			if (err)
+				goto nvi_irq_thread_exit_reset;
+		}
+	}
+
+	inf->fifo_ts = ts;
+	return IRQ_HANDLED;
+
+nvi_irq_thread_exit:
+	/* Ensure HW touched to clear IRQ */
+	inv_i2c_read(inf, inf->reg->int_status, 1, inf->buf);
+	return IRQ_HANDLED;
+
+nvi_irq_thread_exit_reset:
+	if (inf->dbg & NVI_DBG_SPEW_FIFO)
+		dev_info(&inf->i2c->dev,
+			 "%s fifo_count=%u fifo_sample_size=%u\n",
+			 __func__, fifo_count, fifo_sample_size);
+	nvi_reset(inf, true, false);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t nvi_irq_handler(int irq, void *dev_id)
+{
+	struct inv_gyro_state_s *inf;
+	long long timestamp;
+
+	inf = (struct inv_gyro_state_s *)dev_id;
+	spin_lock(&inf->time_stamp_lock);
+	if (inf->hw.user_ctrl & BIT_FIFO_EN) {
+		timestamp = nvi_ts_ns();
+		kfifo_in(&inf->trigger.timestamps, &timestamp, 1);
+	}
+	spin_unlock(&inf->time_stamp_lock);
+	return IRQ_WAKE_THREAD;
+}
+
+static ssize_t nvi_data_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count)
+{
+	struct inv_gyro_state_s *inf;
+	unsigned int data_info;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	err = kstrtouint(buf, 10, &data_info);
+	if (err)
+		return -EINVAL;
+
+	if (data_info >= NVI_DATA_INFO_LIMIT_MAX)
+		return -EINVAL;
+
+	dev_dbg(&inf->i2c->dev, "%s %u\n", __func__, data_info);
+	inf->data_info = data_info;
+	switch (data_info) {
+	case NVI_DATA_INFO_DATA:
+		inf->dbg = 0;
+		break;
+
+	case NVI_DATA_INFO_DBG:
+		inf->dbg ^= NVI_DBG_SPEW_MSG;
+		break;
+
+	case NVI_DATA_INFO_AUX_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_AUX;
+		nvi_aux_dbg(inf, "SNAPSHOT", 0);
+		break;
+
+	case NVI_DATA_INFO_GYRO_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_GYRO;
+		break;
+
+	case NVI_DATA_INFO_TEMP_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_TEMP;
+		break;
+
+	case NVI_DATA_INFO_ACCL_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_ACCL;
+		break;
+
+	case NVI_DATA_INFO_ACCL_RAW_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_ACCL_RAW;
+		break;
+
+	case NVI_DATA_INFO_FIFO_SPEW:
+		inf->dbg ^= NVI_DBG_SPEW_FIFO;
+		break;
+
+	default:
+		break;
+	}
+
+	return count;
+}
+
+static ssize_t nvi_data_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
+{
+	struct inv_gyro_state_s *inf;
+	ssize_t t = 0;
+	enum NVI_DATA_INFO data_info;
+	char data;
+	unsigned int i;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	data_info = inf->data_info;
+	inf->data_info = NVI_DATA_INFO_DATA;
+	switch (data_info) {
+	case NVI_DATA_INFO_DATA:
+		t = sprintf(buf, "ACCL_RAW %hd %hd %hd\n",
+			    inf->accl_raw[AXIS_X],
+			    inf->accl_raw[AXIS_Y],
+			    inf->accl_raw[AXIS_Z]);
+		t += sprintf(buf + t, "ACCL %hd %hd %hd\n",
+			     inf->accl[AXIS_X],
+			     inf->accl[AXIS_Y],
+			     inf->accl[AXIS_Z]);
+		t += sprintf(buf + t, "GYRO %hd %hd %hd\n",
+			     inf->gyro[AXIS_X],
+			     inf->gyro[AXIS_Y],
+			     inf->gyro[AXIS_Z]);
+		mutex_lock(&inf->mutex_temp);
+		t += sprintf(buf + t, "TEMP %hd %lld\n",
+			     inf->temp_val,
+			     inf->temp_ts);
+		mutex_unlock(&inf->mutex_temp);
+		return t;
+
+	case NVI_DATA_INFO_VER:
+		return sprintf(buf, "version=%u\n", NVI_VERSION);
+
+	case NVI_DATA_INFO_RESET:
+		err = nvi_pm(inf, NVI_PM_OFF_FORCE);
+		err |= nvi_pm(inf, NVI_PM_AUTO);
+		if (err)
+			return sprintf(buf, "reset ERR\n");
+		else
+			return sprintf(buf, "reset done\n");
+
+	case NVI_DATA_INFO_REGS:
+		for (i = 0; i < inf->hw_s->num_reg; i++) {
+			if (i == inf->reg->fifo_r_w)
+				data = 0;
+			else
+				inv_i2c_read(inf, i, 1, &data);
+			t += sprintf(buf + t, "%#2x=%#2x\n", i, data);
+		}
+		return t;
+
+	case NVI_DATA_INFO_DBG:
+		return sprintf(buf, "DBG spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_MSG));
+
+	case NVI_DATA_INFO_AUX_SPEW:
+		return sprintf(buf, "AUX spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_AUX));
+
+	case NVI_DATA_INFO_GYRO_SPEW:
+		return sprintf(buf, "GYRO spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_GYRO));
+
+	case NVI_DATA_INFO_TEMP_SPEW:
+		return sprintf(buf, "TEMP spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_TEMP));
+
+	case NVI_DATA_INFO_ACCL_SPEW:
+		return sprintf(buf, "ACCL spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_ACCL));
+
+	case NVI_DATA_INFO_ACCL_RAW_SPEW:
+		return sprintf(buf, "ACCL_RAW spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_ACCL_RAW));
+
+	case NVI_DATA_INFO_FIFO_SPEW:
+		return sprintf(buf, "FIFO spew=%x\n",
+			       !!(inf->dbg & NVI_DBG_SPEW_FIFO));
+
+	default:
+		break;
+	}
+
+	return -EINVAL;
+}
+
 #if DEBUG_SYSFS_INTERFACE
 static ssize_t nvi_dbg_i2c_addr_store(struct device *dev,
 				      struct device_attribute *attr,
@@ -3233,467 +3814,7 @@ static ssize_t nvi_dbg_dat_show(struct device *dev,
 		       __func__, dbg_i2c_addr, inf->dbg_reg, dbg_dat, err);
 	return ret;
 }
-
-static ssize_t nvi_dbg_aux_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf, size_t count)
-{
-	struct inv_gyro_state_s *inf;
-	unsigned int enable;
-	int err;
-
-	inf = dev_get_drvdata(dev);
-	err = kstrtouint(buf, 10, &enable);
-	if (err)
-		return err;
-
-	inf->aux.dbg = true;
-	nvi_aux_dbg(inf, "SNAPSHOT", 0);
-	if (enable)
-		inf->aux.dbg = true;
-	else
-		inf->aux.dbg = false;
-	return count;
-}
-
-static ssize_t nvi_dbg_aux_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct inv_gyro_state_s *inf = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%x\n", inf->aux.dbg);
-}
 #endif /* DEBUG_SYSFS_INTERFACE */
-
-
-static u16 nvi_report_accl(struct inv_gyro_state_s *inf, u8 *data)
-{
-	u16 val[3];
-	u16 buf_index;
-
-	if (inf->chip_type == INV_MPU3050) {
-		if (inf->mpu_slave != NULL)
-			inf->mpu_slave->combine_data(data, val);
-	} else {
-		val[0] = ((data[0] << 8) | data[1]) * inf->chip_info.multi;
-		val[1] = ((data[2] << 8) | data[3]) * inf->chip_info.multi;
-		val[2] = ((data[4] << 8) | data[5]) * inf->chip_info.multi;
-	}
-	buf_index = 0;
-	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_XA)) {
-		input_report_rel(inf->idev, REL_RX, val[0]);
-		buf_index += 2;
-	}
-	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_YA)) {
-		input_report_rel(inf->idev, REL_RY, val[1]);
-		buf_index += 2;
-	}
-	if (!(inf->hw.pwr_mgmt_2 & BIT_STBY_ZA)) {
-		input_report_rel(inf->idev, REL_RZ, val[2]);
-		buf_index += 2;
-	}
-	return buf_index;
-}
-
-static void nvi_report_temp(struct inv_gyro_state_s *inf, u8 *data, s64 ts)
-{
-	mutex_lock(&inf->mutex_temp);
-	inf->temp_val = (data[0] << 8) | data[1];
-	inf->temp_ts = ts;
-	mutex_unlock(&inf->mutex_temp);
-}
-
-static u16 nvi_report_gyro(struct inv_gyro_state_s *inf,
-			   u8 *data, u8 mask, s64 ts)
-{
-	u16 val;
-	u16 buf_index;
-	bool report;
-
-	if (ts < inf->gyro_start_ts)
-		report = false;
-	else
-		report = true;
-	buf_index = 0;
-	if (mask & 4) {
-		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_XG))) {
-			val = (data[buf_index] << 8) | data[buf_index + 1];
-			input_report_rel(inf->idev, REL_X, val);
-		}
-		buf_index += 2;
-	}
-	if (mask & 2) {
-		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_YG))) {
-			val = (data[buf_index] << 8) | data[buf_index + 1];
-			input_report_rel(inf->idev, REL_Y, val);
-		}
-		buf_index += 2;
-	}
-	if (mask & 1) {
-		if (report && (!(inf->hw.pwr_mgmt_2 & BIT_STBY_ZG))) {
-			val = (data[buf_index] << 8) | data[buf_index + 1];
-			input_report_rel(inf->idev, REL_Z, val);
-		}
-		buf_index += 2;
-	}
-	return buf_index;
-}
-
-static void nvi_sync(struct inv_gyro_state_s *inf, s64 ts)
-{
-	input_report_rel(inf->idev, REL_MISC, (unsigned int)(ts >> 32));
-	input_report_rel(inf->idev, REL_WHEEL,
-			 (unsigned int)(ts & 0xffffffff));
-	input_sync(inf->idev);
-}
-
-static int nvi_accl_read(struct inv_gyro_state_s *inf)
-{
-	u8 data[6];
-	int err;
-
-	err = inv_i2c_read(inf, inf->reg->raw_accl, 6, data);
-	if (!err)
-		err = nvi_report_accl(inf, data);
-	return err;
-}
-
-static u16 nvi_fifo_read_accl(struct inv_gyro_state_s *inf,
-			      u16 buf_index)
-{
-	if (inf->hw.fifo_en & inf->reg->accl_fifo_en) {
-		nvi_report_accl(inf, &inf->buf[buf_index]);
-#if DEBUG_FIFO_DATA_SPEW
-		pr_info("%s %x %x %x\n", __func__,
-			(inf->buf[buf_index+0] << 8) | inf->buf[buf_index+1],
-			(inf->buf[buf_index+2] << 8) | inf->buf[buf_index+3],
-			(inf->buf[buf_index+4] << 8) | inf->buf[buf_index+5]);
-#endif /* DEBUG_FIFO_DATA_SPEW */
-		buf_index += 6;
-	}
-	return buf_index;
-}
-
-static u16 nvi_fifo_read_gyro(struct inv_gyro_state_s *inf,
-			      u16 buf_index, s64 ts)
-{
-	u8 mask;
-
-	if (inf->hw.fifo_en & BIT_TEMP_FIFO_EN) {
-		nvi_report_temp(inf, &inf->buf[buf_index], ts);
-#if DEBUG_FIFO_DATA_SPEW
-		pr_info("%s %x\n", __func__,
-			(inf->buf[buf_index+0] << 8) | inf->buf[buf_index+1]);
-#endif /* DEBUG_FIFO_DATA_SPEW */
-		buf_index += 2;
-	}
-	mask = inf->hw.fifo_en;
-	mask &= (BIT_GYRO_XOUT | BIT_GYRO_YOUT | BIT_GYRO_ZOUT);
-	mask >>= 4;
-	if (mask) {
-#if DEBUG_FIFO_DATA_SPEW
-		pr_info("%s %x %x %x\n", __func__,
-			(inf->buf[buf_index+0] << 8) | inf->buf[buf_index+1],
-			(inf->buf[buf_index+2] << 8) | inf->buf[buf_index+3],
-			(inf->buf[buf_index+4] << 8) | inf->buf[buf_index+5]);
-#endif /* DEBUG_FIFO_DATA_SPEW */
-		buf_index += nvi_report_gyro(inf, &inf->buf[buf_index],
-					     mask, ts);
-	}
-	return buf_index;
-}
-
-static irqreturn_t nvi_irq_thread(int irq, void *dev_id)
-{
-	struct inv_gyro_state_s *inf;
-	struct aux_port *ap;
-	u8 mask;
-	u16 fifo_count = 0;
-	u16 fifo_sample_size;
-	u16 fifo_rd_n;
-	u16 fifo_align;
-	u16 buf_index;
-	s64 ts;
-	s64 ts_irq;
-	s64 delay;
-	bool sync;
-	unsigned int ts_len;
-	unsigned int sample_count;
-	unsigned int copied;
-	unsigned int len;
-	int i;
-	int err;
-
-	inf = (struct inv_gyro_state_s *)dev_id;
-	if (inf->mot_cnt)
-		inf->mot_cnt--;
-	/* if only accelermeter data */
-	if ((inf->hw.pwr_mgmt_1 & inf->reg->cycle) || (inf->hw.int_enable &
-						       BIT_MOT_EN)) {
-		if (inf->hw.int_enable & BIT_MOT_EN) {
-			inf->mot_cnt = inf->chip_config.mot_cnt;
-			nvi_motion_detect_enable(inf, 0);
-			nvi_int_enable_wr(inf, true);
-			if (inf->chip_config.mot_enable == NVI_MOT_DBG)
-				pr_info("%s motion detect off\n", __func__);
-		}
-		ts = nvi_ts_ns();
-		err = nvi_accl_read(inf);
-		if (err < 0)
-			goto nvi_irq_thread_exit;
-
-		nvi_sync(inf, ts);
-		if (inf->mot_cnt && (inf->chip_config.mot_enable ==
-				     NVI_MOT_DBG))
-			pr_info("%s SENDING MOTION DETECT DATA\n", __func__);
-		if (((inf->hw.accl_config & 0x07) == 0x07) && (!inf->mot_cnt))
-			nvi_int_enable_wr(inf, true);
-		goto nvi_irq_thread_exit;
-	}
-
-	/* handle FIFO disabled data */
-	sync = false;
-	ts = nvi_ts_ns();
-	if (inf->chip_config.accl_enable && (!(inf->hw.fifo_en &
-					       inf->reg->accl_fifo_en))) {
-		err = nvi_accl_read(inf);
-		if (err > 0)
-			sync = true;
-	}
-	if (inf->chip_config.temp_enable &&
-				     (!(inf->hw.fifo_en & BIT_TEMP_FIFO_EN))) {
-		err = inv_i2c_read(inf, inf->reg->temperature, 2, inf->buf);
-		if (!err)
-			nvi_report_temp(inf, inf->buf, ts);
-	}
-	mask = (BIT_GYRO_XOUT | BIT_GYRO_YOUT | BIT_GYRO_ZOUT);
-	mask &= ~inf->hw.fifo_en;
-	mask >>= 4;
-	if (inf->chip_config.gyro_enable && mask) {
-		buf_index = 0;
-		err = 0;
-		if (mask & 4) {
-			err = inv_i2c_read(inf, inf->reg->raw_gyro,
-					   2, &inf->buf[buf_index]);
-			buf_index = 2;
-		}
-		if (mask & 2) {
-			err |= inv_i2c_read(inf, inf->reg->raw_gyro + 2,
-					    2, &inf->buf[buf_index]);
-			buf_index += 2;
-		}
-		if (mask & 1)
-			err |= inv_i2c_read(inf, inf->reg->raw_gyro + 4,
-					    2, &inf->buf[buf_index]);
-		if (!err) {
-			buf_index = nvi_report_gyro(inf, inf->buf, mask, ts);
-			if (buf_index)
-				sync = true;
-		}
-	}
-	if (sync)
-		nvi_sync(inf, ts);
-	nvi_aux_read(inf);
-	if (!inf->fifo_sample_size)
-		goto nvi_irq_thread_exit;
-
-	/* handle FIFO enabled data */
-	fifo_sample_size = inf->fifo_sample_size;
-	if (!fifo_sample_size)
-		goto nvi_irq_thread_exit;
-
-	/* must get IRQ timestamps first for timestamp best-fit algorithm */
-	ts_len = kfifo_len(&inf->trigger.timestamps);
-	err = inv_i2c_read(inf, inf->reg->fifo_count_h, 2, inf->buf);
-	if (err)
-		goto nvi_irq_thread_exit;
-
-	fifo_count = be16_to_cpup((__be16 *)(&inf->buf));
-	/* FIFO threshold */
-	if (inf->chip_config.fifo_thr > fifo_sample_size) {
-		if (fifo_count > inf->chip_config.fifo_thr) {
-			dev_dbg(&inf->i2c->dev, "FIFO threshold exceeded\n");
-			goto nvi_irq_thread_exit_reset;
-		}
-	}
-
-	fifo_align = fifo_count % fifo_sample_size;
-	if (fifo_count < fifo_sample_size + fifo_align)
-		goto nvi_irq_thread_exit;
-
-	if (inf->chip_type == INV_MPU3050) {
-		/* FIFO HW BUG WAR:
-		 * The MPU3050 will fire an IRQ on incomplete sampling of data
-		 * to the FIFO causing misalignment of data.  The WAR is to
-		 * simply wait for the next IRQ when this misalignment problem
-		 * usually works itself out with the next data sample.
-		 * The safety net is a FIFO reset, should the problem not work
-		 * itself out by the time the FIFO threshold is reached.
-		 */
-		if (inf->fifo_reset_3050) {
-			if (fifo_align)
-				goto nvi_irq_thread_exit;
-		} else {
-			if (fifo_align != 2)
-				goto nvi_irq_thread_exit;
-		}
-	}
-
-	ts = inf->fifo_ts;
-	delay = inf->sample_delay_us * 1000;
-	sample_count = (fifo_count / fifo_sample_size);
-	/* Ideally sample_count >= ts_len. If not, pull excess timestamps */
-	if (sample_count < ts_len) {
-		len = ts_len - sample_count;
-		for (i = 0; i < len; i++) {
-			err = kfifo_to_user(&inf->trigger.timestamps,
-					    &ts_irq, sizeof(ts_irq), &copied);
-			if (err)
-				goto nvi_irq_thread_exit_reset;
-
-			ts_len--;
-		}
-		ts = ts_irq + delay;
-		dev_dbg(&inf->i2c->dev, "%s SYNC FIFO to TS %lld\n",
-			__func__, ts);
-	}
-#if DEBUG_FIFO_DATA_SPEW
-	pr_info("fifo_count=%u sample_size=%u fifo_align=%u sample_count=%u\n",
-		fifo_count, fifo_sample_size, fifo_align, sample_count);
-#endif /* DEBUG_FIFO_DATA_SPEW */
-	fifo_rd_n = 0;
-	buf_index = 0;
-	while (sample_count) {
-		if (buf_index >= fifo_rd_n) {
-			fifo_rd_n = (ARRAY_SIZE(inf->buf) - fifo_align) /
-							      fifo_sample_size;
-			if (sample_count < fifo_rd_n)
-				fifo_rd_n = sample_count;
-			fifo_rd_n *= fifo_sample_size;
-			fifo_rd_n += fifo_align;
-			if (inf->chip_type == INV_MPU3050)
-				fifo_rd_n -= 2; /* FIFO_FOOTER */
-			err = inv_i2c_read(inf, inf->reg->fifo_r_w,
-					   fifo_rd_n, inf->buf);
-			if (err)
-				goto nvi_irq_thread_exit;
-
-			buf_index = fifo_align;
-			if (inf->chip_type == INV_MPU3050) {
-				if (inf->fifo_reset_3050) {
-					inf->fifo_reset_3050 = false;
-					fifo_align += 2;
-				}
-			}
-		}
-		if (ts_len) {
-			len = ts_len;
-			for (i = 0; i < len; i++) {
-				err = kfifo_out_peek(&inf->trigger.timestamps,
-						     &ts_irq, 1);
-				if (err != 1)
-					goto nvi_irq_thread_exit_reset;
-
-				if (ts < (ts_irq - delay))
-					break;
-
-				err = kfifo_to_user(&inf->trigger.timestamps,
-						    &ts_irq, sizeof(ts_irq),
-						    &copied);
-				if (err)
-					goto nvi_irq_thread_exit_reset;
-
-				ts_len--;
-				if (ts < (ts_irq + delay)) {
-					ts = ts_irq;
-					break;
-				}
-			}
-		}
-		if (ts != ts_irq)
-			dev_dbg(&inf->i2c->dev, "%s NOSYNC TS=%lld IRQ=%lld\n",
-				__func__, ts, ts_irq);
-		if (inf->chip_type == INV_MPU3050) {
-			buf_index = nvi_fifo_read_gyro(inf, buf_index, ts);
-			buf_index = nvi_fifo_read_accl(inf, buf_index);
-			buf_index += 2; /* FIFO_FOOTER */
-		} else {
-			buf_index = nvi_fifo_read_accl(inf, buf_index);
-			buf_index = nvi_fifo_read_gyro(inf, buf_index, ts);
-		}
-		nvi_sync(inf, ts);
-		for (i = 0; i < AUX_PORT_SPECIAL; i++) {
-			ap = &inf->aux.port[i];
-			if ((inf->hw.i2c_slv_ctrl[i] & BIT_SLV_EN) &&
-				    (inf->hw.i2c_slv_addr[i] & BIT_I2C_READ) &&
-								 ap->fifo_en) {
-				len = ap->nmp.ctrl & BITS_I2C_SLV_CTRL_LEN;
-				if (ap->nmp.handler != NULL)
-					ap->nmp.handler(&inf->buf[buf_index],
-							len, ts,
-							ap->nmp.ext_driver);
-				buf_index += len;
-			}
-		}
-		ts += delay;
-		sample_count--;
-	}
-	inf->fifo_ts = ts;
-nvi_irq_thread_exit:
-	return IRQ_HANDLED;
-
-nvi_irq_thread_exit_reset:
-	dev_dbg(&inf->i2c->dev, "%s fifo_count=%u fifo_sample_size=%u\n",
-		__func__, fifo_count, fifo_sample_size);
-	nvi_reset(inf, true, false);
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t nvi_irq_handler(int irq, void *dev_id)
-{
-	struct inv_gyro_state_s *inf;
-	long long timestamp;
-
-	inf = (struct inv_gyro_state_s *)dev_id;
-	spin_lock(&inf->time_stamp_lock);
-	if (inf->hw.user_ctrl & BIT_FIFO_EN) {
-		timestamp = nvi_ts_ns();
-		kfifo_in(&inf->trigger.timestamps, &timestamp, 1);
-	}
-	spin_unlock(&inf->time_stamp_lock);
-	return IRQ_WAKE_THREAD;
-}
-
-#ifdef CONFIG_PM
-static int nvi_suspend(struct device *dev)
-{
-	struct inv_gyro_state_s *inf;
-	int err;
-
-	inf = dev_get_drvdata(dev);
-	inf->suspend = true;
-	err = nvi_pm(inf, NVI_PM_OFF_FORCE);
-	if (err)
-		dev_err(dev, "%s ERR\n", __func__);
-	dev_info(dev, "%s done\n", __func__);
-	return 0;
-}
-
-static int nvi_resume(struct device *dev)
-{
-	struct inv_gyro_state_s *inf;
-
-	inf = dev_get_drvdata(dev);
-	inf->suspend = false;
-	dev_info(dev, "%s done\n", __func__);
-	return 0;
-}
-
-static const struct dev_pm_ops nvi_pm_ops = {
-	.suspend = nvi_suspend,
-	.resume = nvi_resume,
-};
-#endif /* CONFIG_PM */
 
 static DEVICE_ATTR(gyro_enable, S_IRUGO | S_IWUSR | S_IWGRP,
 		   nvi_gyro_enable_show, nvi_gyro_enable_store);
@@ -3757,14 +3878,14 @@ static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
 		   nvi_enable_show, nvi_enable_store);
 static DEVICE_ATTR(self_test, S_IRUGO,
 		   inv_self_test_show, NULL);
+static DEVICE_ATTR(data, S_IRUGO | S_IWUSR | S_IWGRP,
+		   nvi_data_show, nvi_data_store);
 static DEVICE_ATTR(dbg_reg, S_IRUGO | S_IWUSR | S_IWGRP,
 		   nvi_dbg_reg_show, nvi_dbg_reg_store);
 static DEVICE_ATTR(dbg_dat, S_IRUGO | S_IWUSR | S_IWGRP,
 		   nvi_dbg_dat_show, nvi_dbg_dat_store);
 static DEVICE_ATTR(dbg_i2c_addr, S_IRUGO | S_IWUSR | S_IWGRP,
 		   nvi_dbg_i2c_addr_show, nvi_dbg_i2c_addr_store);
-static DEVICE_ATTR(dbg_aux, S_IRUGO | S_IWUSR | S_IWGRP,
-		   nvi_dbg_aux_show, nvi_dbg_aux_store);
 static DEVICE_ATTR(reg_dump, S_IRUGO,
 		   inv_reg_dump_show, NULL);
 static DEVICE_ATTR(power_state, S_IRUGO | S_IWUSR | S_IWGRP,
@@ -3816,9 +3937,7 @@ static struct device_attribute *inv_mpu6050_attributes[] = {
 	&dev_attr_bypass_timeout_ms,
 	&dev_attr_min_delay_us,
 	&dev_attr_fifo_threshold,
-#if DEBUG_SYSFS_INTERFACE
-	&dev_attr_dbg_aux,
-#endif /* DEBUG_SYSFS_INTERFACE */
+	&dev_attr_data,
 	NULL
 };
 
@@ -4129,12 +4248,46 @@ static int nvi_dev_init(struct inv_gyro_state_s *inf,
 	return err;
 }
 
+static int nvi_suspend(struct device *dev)
+{
+	struct inv_gyro_state_s *inf;
+	int err;
+
+	inf = dev_get_drvdata(dev);
+	inf->suspend = true;
+	disable_irq(inf->i2c->irq);
+	err = nvi_pm(inf, NVI_PM_OFF_FORCE);
+	if (err)
+		dev_err(dev, "%s ERR\n", __func__);
+	if (inf->dbg & NVI_DBG_SPEW_MSG)
+		dev_info(dev, "%s done\n", __func__);
+	return 0;
+}
+
+static int nvi_resume(struct device *dev)
+{
+	struct inv_gyro_state_s *inf;
+
+	inf = dev_get_drvdata(dev);
+	inf->suspend = false;
+	enable_irq(inf->i2c->irq);
+	if (inf->dbg & NVI_DBG_SPEW_MSG)
+		dev_info(dev, "%s done\n", __func__);
+	return 0;
+}
+
+static const struct dev_pm_ops nvi_pm_ops = {
+	.suspend = nvi_suspend,
+	.resume = nvi_resume,
+};
+
 static void nvi_shutdown(struct i2c_client *client)
 {
 	struct inv_gyro_state_s *inf;
 	int i;
 
 	inf = i2c_get_clientdata(client);
+	disable_irq(inf->i2c->irq);
 	if (inf != NULL) {
 		for (i = 0; i < AUX_PORT_SPECIAL; i++) {
 			if (inf->aux.port[i].nmp.shutdown_bypass) {

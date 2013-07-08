@@ -382,8 +382,6 @@ int inv_get_silicon_rev_mpu6500(struct inv_gyro_state_s *st)
 	}
 	if (result)
 		return result;
-	if (sw_rev > MPU6500_REV)
-		return -EINVAL;
 
 	/* these values are place holders and not real values */
 	chip_info->product_id = MPU6500_PRODUCT_REVISION;
