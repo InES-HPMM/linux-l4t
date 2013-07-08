@@ -1299,8 +1299,8 @@ static struct tegra_i2c_chipdata tegra148_i2c_chipdata = {
 	.has_clk_divisor_std_fast_mode = true,
 	.clk_divisor_std_fast_mode = 0x19,
 	.clk_divisor_fast_plus_mode = 0x19,
-	.clk_divisor_hs_mode = 1,
-	.clk_multiplier_hs_mode = 3,
+	.clk_divisor_hs_mode = 2,
+	.clk_multiplier_hs_mode = 13,
 	.has_config_load_reg = true,
 };
 
