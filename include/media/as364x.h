@@ -58,6 +58,7 @@ struct as364x_config {
 	/* LED configuration, two identical leds must be connected. */
 	u16 max_total_current_mA; /* Both leds' maximum peak current in mA */
 	u16 max_peak_current_mA; /* This led's maximum peak current in mA */
+	u16 max_torch_current_mA; /* This leds maximum torch current in mA */
 	u16 max_peak_duration_ms; /* the maximum duration max_peak_current_mA
 				     can be applied */
 	u16 max_sustained_current_mA; /* This leds maximum sustained current

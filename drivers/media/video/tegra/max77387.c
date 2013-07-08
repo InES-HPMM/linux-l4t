@@ -196,8 +196,12 @@
 #define max77387_max_torch_cap_size (max77387_torch_timeout_size * 2\
 			+ max77387_torch_timeout_size * 2)
 
-#define GET_CURRENT_BY_INDEX(c)	((c) * 125 / 8)		/* mul 15.625 mA */
-#define GET_INDEX_BY_CURRENT(c)	((c) * 8 / 125)		/* div by 15.625 mA */
+/* mul 15625 uA */
+#define GET_CURRENT_UA_INDEX(c)	((c) * max77387_caps.curr_step_uA)
+/* mul 15.625 mA */
+#define GET_CURRENT_BY_INDEX(c)	((c) * max77387_caps.curr_step_uA / 1000)
+/* div by 15.625 mA */
+#define GET_INDEX_BY_CURRENT(c)	((c) * 1000 / max77387_caps.curr_step_uA)
 
 struct max77387_caps_struct {
 	u32 curr_step_uA;
@@ -258,6 +262,8 @@ struct max77387_info {
 	int flash_cap_size;
 	int torch_cap_size;
 	int pwr_state;
+	u8 max_flash[2];
+	u8 max_torch[2];
 	u16 chip_id;
 	u8 op_mode;
 	u8 power_is_on;
@@ -505,10 +511,6 @@ static int max77387_set_leds(struct max77387_info *info,
 		u8 mask, u8 curr1, u8 curr2)
 {
 	struct max77387_settings *pst = &info->settings;
-	u32 f_levels1 = info->flash_cap[0]->numberoflevels - 2;
-	u32 f_levels2 = info->flash_cap[1]->numberoflevels - 2;
-	u32 t_levels1 = info->torch_cap[0]->numberoflevels - 2;
-	u32 t_levels2 = info->torch_cap[1]->numberoflevels - 2;
 	int err = 0;
 	u8 fled_en = 0;
 	u8 regs[11];
@@ -536,13 +538,13 @@ static int max77387_set_leds(struct max77387_info *info,
 
 	if (mask & 1) {
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
-			if (curr1 > f_levels1)
-				curr1 = f_levels1;
+			if (curr1 > info->max_flash[0])
+				curr1 = info->max_flash[0];
 			fled_en |= (pst->fled_trig & FLASH_TRIG_MASK);
 			regs[0] = FLASH_CURRENT(curr1);
 		} else {
-			if (curr1 > t_levels1)
-				curr1 = t_levels1;
+			if (curr1 > info->max_torch[0])
+				curr1 = info->max_torch[0];
 			fled_en |= (pst->fled_trig & TORCH_TRIG_MASK);
 			regs[2] = TORCH_CURRENT(curr1);
 		}
@@ -550,13 +552,13 @@ static int max77387_set_leds(struct max77387_info *info,
 
 	if (mask & 2) {
 		if (info->op_mode == MAXFLASH_MODE_FLASH) {
-			if (curr2 > f_levels2)
-				curr2 = f_levels2;
+			if (curr2 > info->max_flash[1])
+				curr2 = info->max_flash[1];
 			fled_en |= (pst->fled_trig & FLASH_TRIG_MASK);
 			regs[1] = FLASH_CURRENT(curr2);
 		} else {
-			if (curr2 > t_levels2)
-				curr2 = t_levels2;
+			if (curr2 > info->max_torch[1])
+				curr2 = info->max_torch[1];
 			fled_en |= (pst->fled_trig & TORCH_TRIG_MASK);
 			regs[3] = TORCH_CURRENT(curr2);
 		}
@@ -625,7 +627,7 @@ static void max77387_update_config(struct max77387_info *info)
 	for (i = 0; i < ARRAY_SIZE(max77387_def_flash_levels); i++) {
 		max77387_def_flash_levels[i].guidenum = i;
 		max77387_def_flash_levels[i].luminance =
-			(i + 1) * max77387_caps.curr_step_uA;
+			GET_CURRENT_UA_INDEX(i + 1);
 		dev_dbg(info->dev, "0x%02x - %d\n",
 			i, max77387_def_flash_levels[i].luminance);
 	}
@@ -992,29 +994,34 @@ static int max77387_configure(struct max77387_info *info, bool update)
 		pfcap->version = NVC_TORCH_CAPABILITY_VER_1;
 		pfcap->led_idx = i;
 		pfcap->attribute = 0;
-		pfcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
 		pfcap->granularity = pcfg->led_config[i].granularity;
 		pfcap->timeout_num = ARRAY_SIZE(max77387_flash_timer);
 		ptmcap = info->flash_timeouts[i];
 		pfcap->timeout_off = (void *)ptmcap - (void *)pfcap;
 		pfcap->flash_torch_ratio =
 				pcfg->led_config[i].flash_torch_ratio;
+
+		plvls = pcfg->led_config[i].lumi_levels;
+		pfcap->levels[0].guidenum = MAX77387_LEVEL_OFF;
+		pfcap->levels[0].luminance = 0;
+		for (j = 1; j < pcfg->led_config[i].flash_levels + 1; j++) {
+			if (GET_CURRENT_BY_INDEX(plvls[j - 1].guidenum) >
+				pcfg->max_peak_current_mA)
+				break;
+
+			pfcap->levels[j].guidenum = plvls[j - 1].guidenum;
+			pfcap->levels[j].luminance = plvls[j - 1].luminance;
+			info->max_flash[i] = plvls[j - 1].guidenum;
+			dev_dbg(info->dev, "%02d - %d\n",
+				pfcap->levels[j].guidenum,
+				pfcap->levels[j].luminance);
+		}
+		pfcap->numberoflevels = j;
 		dev_dbg(info->dev,
 			"%s flash#%d, attr: %x, levels: %d, g: %d, ratio: %d\n",
 			__func__, pfcap->led_idx, pfcap->attribute,
 			pfcap->numberoflevels, pfcap->granularity,
 			pfcap->flash_torch_ratio);
-
-		plvls = pcfg->led_config[i].lumi_levels;
-		pfcap->levels[0].guidenum = MAX77387_LEVEL_OFF;
-		pfcap->levels[0].luminance = 0;
-		for (j = 1; j < pfcap->numberoflevels; j++) {
-			pfcap->levels[j].guidenum = plvls[j - 1].guidenum;
-			pfcap->levels[j].luminance = plvls[j - 1].luminance;
-			dev_dbg(info->dev, "%02d - %d\n",
-				pfcap->levels[j].guidenum,
-				pfcap->levels[j].luminance);
-		}
 
 		ptmcap->timeout_num = pfcap->timeout_num;
 		for (j = 0; j < ptmcap->timeout_num; j++) {
@@ -1029,25 +1036,30 @@ static int max77387_configure(struct max77387_info *info, bool update)
 		ptcap->version = NVC_TORCH_CAPABILITY_VER_1;
 		ptcap->led_idx = i;
 		ptcap->attribute = 0;
-		ptcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
 		ptcap->granularity = pcfg->led_config[i].granularity;
 		ptcap->timeout_num = ARRAY_SIZE(max77387_torch_timer);
 		ptmcap = info->torch_timeouts[i];
 		ptcap->timeout_off = (void *)ptmcap - (void *)ptcap;
-		dev_dbg(info->dev, "torch#%d, attr: %x, levels: %d, g: %d\n",
-			ptcap->led_idx, ptcap->attribute,
-			ptcap->numberoflevels, ptcap->granularity);
 
 		plvls = pcfg->led_config[i].lumi_levels;
 		ptcap->levels[0].guidenum = MAX77387_LEVEL_OFF;
 		ptcap->levels[0].luminance = 0;
 		for (j = 1; j < ptcap->numberoflevels; j++) {
+			if (GET_CURRENT_BY_INDEX(plvls[j - 1].guidenum) >
+				pcfg->max_torch_current_mA)
+				break;
+
 			ptcap->levels[j].guidenum = plvls[j - 1].guidenum;
 			ptcap->levels[j].luminance = plvls[j - 1].luminance;
+			info->max_torch[i] = plvls[j - 1].guidenum;
 			dev_dbg(info->dev, "%02d - %d\n",
 				ptcap->levels[j].guidenum,
 				ptcap->levels[j].luminance);
 		}
+		ptcap->numberoflevels = j;
+		dev_dbg(info->dev, "torch#%d, attr: %x, levels: %d, g: %d\n",
+			ptcap->led_idx, ptcap->attribute,
+			ptcap->numberoflevels, ptcap->granularity);
 
 		ptmcap->timeout_num = ptcap->timeout_num;
 		for (j = 0; j < ptmcap->timeout_num; j++) {

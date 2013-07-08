@@ -137,6 +137,8 @@ struct lm3565_info {
 	atomic_t in_use;
 	unsigned int edp_state;
 	int pwr_state;
+	u8 max_flash;
+	u8 max_torch;
 	u8 op_mode;
 	u8 power_on;
 	u8 new_timer;
@@ -415,8 +417,6 @@ static int lm3565_get_lut_index(u16 val, const u16 *lut, int num)
 
 static int lm3565_set_leds(struct lm3565_info *info, u8 curr)
 {
-	struct nvc_torch_flash_capabilities_v1 *pfcap = &info->flash_cap;
-	struct nvc_torch_torch_capabilities_v1 *ptcap = &info->torch_cap;
 	int err = 0;
 	u8 regs[6];
 	u8 om;
@@ -437,13 +437,13 @@ static int lm3565_set_leds(struct lm3565_info *info, u8 curr)
 		goto set_leds_end;
 
 	if (info->op_mode == LM3565_MODE_FLASH) {
-		if (curr >= pfcap->numberoflevels - 1)
-			curr = pfcap->numberoflevels - 2;
+		if (curr >= info->max_flash)
+			curr = info->max_flash;
 		om = 0x0b;
 		stb = info->flash_strobe;
 	} else {
-		if (curr >= ptcap->numberoflevels - 1)
-			curr = ptcap->numberoflevels - 2;
+		if (curr >= info->max_torch)
+			curr = info->max_torch;
 		curr <<= 4;
 		om = 0x0a;
 		stb = 0;
@@ -572,6 +572,9 @@ static void lm3565_config_init(struct lm3565_info *info)
 	if (pcfg_cust->max_peak_duration_ms)
 		pcfg->max_peak_duration_ms = pcfg_cust->max_peak_duration_ms;
 
+	if (pcfg_cust->max_torch_current_mA)
+		pcfg->max_torch_current_mA = pcfg_cust->max_torch_current_mA;
+
 	if (pcfg_cust->max_sustained_current_mA)
 		pcfg->max_sustained_current_mA =
 			pcfg_cust->max_sustained_current_mA;
@@ -641,12 +644,13 @@ static int lm3565_configure(struct lm3565_info *info, bool update)
 	pfcap->levels[0].luminance = 0;
 	plvls = pcfg->led_config.lumi_levels;
 	for (i = 1; i < LM3565_MAX_FLASH_LEVEL; i++) {
-		pfcap->levels[i].guidenum = plvls[i - 1].guidenum;
-		if (pfcap->levels[i].guidenum > pcfg->max_peak_current_mA) {
-			pfcap->levels[i].guidenum = 0;
+		if (lm3565_get_current_mA(plvls[i - 1].guidenum) >
+			pcfg->max_peak_current_mA)
 			break;
-		}
+
+		pfcap->levels[i].guidenum = plvls[i - 1].guidenum;
 		pfcap->levels[i].luminance = plvls[i - 1].luminance;
+		info->max_flash = plvls[i - 1].guidenum;
 		dev_dbg(info->dev, "%02d - %d\n",
 			pfcap->levels[i].guidenum, pfcap->levels[i].luminance);
 	}
@@ -669,8 +673,13 @@ static int lm3565_configure(struct lm3565_info *info, bool update)
 	ptcap->levels[0].guidenum = LM3565_LEVEL_OFF;
 	ptcap->levels[0].luminance = 0;
 	for (i = 1; i < LM3565_MAX_TORCH_LEVEL; i++) {
+		if (torch_levels[i - 1].luminance / 1000 >
+			pcfg->max_torch_current_mA)
+			break;
+
 		ptcap->levels[i].guidenum = torch_levels[i - 1].guidenum;
 		ptcap->levels[i].luminance = torch_levels[i - 1].luminance;
+		info->max_torch = torch_levels[i - 1].guidenum;
 	}
 	ptcap->numberoflevels = i;
 	ptcap->timeout_num = LM3565_TORCH_TIMER_NUM;

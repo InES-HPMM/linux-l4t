@@ -35,7 +35,6 @@
 
 /* #define DEBUG_I2C_TRAFFIC */
 
-#define LEDS_SUPPORTED			2
 #define AS364X_MAX_FLASH_LEVEL		256
 #define AS364X_MAX_TORCH_LEVEL		128
 
@@ -83,8 +82,8 @@
 			(sizeof(struct nvc_torch_timer_capabilities_v1) \
 			+ sizeof(struct nvc_torch_timeout_v1) \
 			* AS364X_FLASH_TIMER_NUM)
-#define as364x_max_flash_cap_size (as364x_flash_cap_size * LEDS_SUPPORTED \
-			+ as364x_flash_timeout_size * LEDS_SUPPORTED)
+#define as364x_max_flash_cap_size (as364x_flash_cap_size * 2 \
+			+ as364x_flash_timeout_size * 2)
 
 #define as364x_torch_cap_size \
 			(sizeof(struct nvc_torch_torch_capabilities_v1) \
@@ -94,8 +93,8 @@
 			(sizeof(struct nvc_torch_timer_capabilities_v1) \
 			+ sizeof(struct nvc_torch_timeout_v1) \
 			* AS364X_TORCH_TIMER_NUM)
-#define as364x_max_torch_cap_size (as364x_torch_timeout_size * LEDS_SUPPORTED\
-			+ as364x_torch_timeout_size * LEDS_SUPPORTED)
+#define as364x_max_torch_cap_size (as364x_torch_timeout_size * 2\
+			+ as364x_torch_timeout_size * 2)
 
 struct as364x_caps_struct {
 	char *name;
@@ -135,16 +134,18 @@ struct as364x_info {
 	struct as364x_platform_data *pdata;
 	const struct as364x_caps_struct *dev_cap;
 	struct nvc_torch_capability_query query;
-	struct nvc_torch_flash_capabilities_v1 *flash_cap[LEDS_SUPPORTED];
-	struct nvc_torch_timer_capabilities_v1 *flash_timeouts[LEDS_SUPPORTED];
-	struct nvc_torch_torch_capabilities_v1 *torch_cap[LEDS_SUPPORTED];
-	struct nvc_torch_timer_capabilities_v1 *torch_timeouts[LEDS_SUPPORTED];
+	struct nvc_torch_flash_capabilities_v1 *flash_cap[2];
+	struct nvc_torch_timer_capabilities_v1 *flash_timeouts[2];
+	struct nvc_torch_torch_capabilities_v1 *torch_cap[2];
+	struct nvc_torch_timer_capabilities_v1 *torch_timeouts[2];
 	struct as364x_config config;
 	struct as364x_reg_cache regs;
 	atomic_t in_use;
 	int flash_cap_size;
 	int torch_cap_size;
 	int pwr_state;
+	u8 max_flash[2];
+	u8 max_torch[2];
 	u8 s_mode;
 	u8 op_mode;
 	u8 led_num;
@@ -308,22 +309,22 @@ static int as364x_set_leds(struct as364x_info *info,
 
 	if (mask & 1) {
 		if (info->op_mode == AS364X_REG_CONTROL_MODE_FLASH) {
-			if (curr1 >= info->flash_cap[0]->numberoflevels)
-				curr1 = info->flash_cap[0]->numberoflevels - 1;
+			if (curr1 >= info->max_flash[0])
+				curr1 = info->max_flash[0];
 		} else {
-			if (curr1 >= info->torch_cap[0]->numberoflevels)
-				curr1 = info->torch_cap[0]->numberoflevels - 1;
+			if (curr1 >= info->max_torch[0])
+				curr1 = info->max_torch[0];
 		}
 	} else
 		curr1 = 0;
 
 	if (mask & 2 && info->dev_cap->led2_support) {
 		if (info->op_mode == AS364X_REG_CONTROL_MODE_FLASH) {
-			if (curr2 >= info->flash_cap[0]->numberoflevels)
-				curr2 = info->flash_cap[0]->numberoflevels - 1;
+			if (curr2 >= info->max_flash[1])
+				curr2 = info->max_flash[1];
 		} else {
-			if (curr2 >= info->torch_cap[0]->numberoflevels)
-				curr2 = info->torch_cap[0]->numberoflevels - 1;
+			if (curr2 >= info->max_torch[1])
+				curr2 = info->max_torch[1];
 		}
 	} else
 		curr2 = 0;
@@ -478,6 +479,9 @@ static void as364x_config_init(struct as364x_info *info)
 	if (pcfg_cust->max_peak_current_mA)
 		pcfg->max_peak_current_mA = pcfg_cust->max_peak_current_mA;
 
+	if (pcfg_cust->max_torch_current_mA)
+		pcfg->max_torch_current_mA = pcfg_cust->max_torch_current_mA;
+
 	if (pcfg_cust->max_peak_duration_ms)
 		pcfg->max_peak_duration_ms = pcfg_cust->max_peak_duration_ms;
 
@@ -488,7 +492,7 @@ static void as364x_config_init(struct as364x_info *info)
 	if (pcfg_cust->min_current_mA)
 		pcfg->min_current_mA = pcfg_cust->min_current_mA;
 
-	for (i = 0; i < LEDS_SUPPORTED; i++) {
+	for (i = 0; i < 2; i++) {
 		if (pcfg_cust->led_config[i].flash_levels &&
 			pcfg_cust->led_config[i].flash_torch_ratio &&
 			pcfg_cust->led_config[i].granularity &&
@@ -592,7 +596,7 @@ static int as364x_configure(struct as364x_info *info, bool update)
 	info->led_num = 1;
 	if (!pcfg->synchronized_led && pcap->led2_support &&
 		(info->led_mask & 3) == 3)
-		info->led_num = LEDS_SUPPORTED;
+		info->led_num = 2;
 
 	pqry->version = NVC_TORCH_CAPABILITY_VER_1;
 	pqry->flash_num = info->led_num;
@@ -631,39 +635,39 @@ static int as364x_configure(struct as364x_info *info, bool update)
 			pcap->max_indicator_curr_mA;
 	}
 
-	if (pcfg->boost_mode)
-		val = pcap->curr_step_uA;
-	else
-		val = pcap->curr_step_boost_uA;
-
 	for (i = 0; i < pqry->flash_num; i++) {
 		pfcap = info->flash_cap[i];
 		pfcap->version = NVC_TORCH_CAPABILITY_VER_1;
 		pfcap->led_idx = i;
 		pfcap->attribute = 0;
-		pfcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
 		pfcap->granularity = pcfg->led_config[i].granularity;
 		pfcap->timeout_num = ARRAY_SIZE(as364x_flash_timer);
 		ptmcap = info->flash_timeouts[i];
 		pfcap->timeout_off = (void *)ptmcap - (void *)pfcap;
 		pfcap->flash_torch_ratio =
 				pcfg->led_config[i].flash_torch_ratio;
+
+		plvls = pcfg->led_config[i].lumi_levels;
+		pfcap->levels[0].guidenum = AS364X_LEVEL_OFF;
+		pfcap->levels[0].luminance = 0;
+		for (j = 1; j < pcfg->led_config[i].flash_levels + 1; j++) {
+			if (GET_CURRENT_BY_INDEX(info, plvls[j - 1].guidenum) >
+				pcfg->max_peak_current_mA)
+				break;
+
+			pfcap->levels[j].guidenum = plvls[j - 1].guidenum;
+			pfcap->levels[j].luminance = plvls[j - 1].luminance;
+			info->max_flash[i] = plvls[j - 1].guidenum;
+			dev_dbg(info->dev, "%03d - %d\n",
+				pfcap->levels[j].guidenum,
+				pfcap->levels[j].luminance);
+		}
+		pfcap->numberoflevels = j;
 		dev_dbg(info->dev,
 			"%s flash#%d, attr: %x, levels: %d, g: %d, ratio: %d\n",
 			__func__, pfcap->led_idx, pfcap->attribute,
 			pfcap->numberoflevels, pfcap->granularity,
 			pfcap->flash_torch_ratio);
-
-		plvls = pcfg->led_config[i].lumi_levels;
-		pfcap->levels[0].guidenum = AS364X_LEVEL_OFF;
-		pfcap->levels[0].luminance = 0;
-		for (j = 1; j < pfcap->numberoflevels; j++) {
-			pfcap->levels[j].guidenum = plvls[j - 1].guidenum;
-			pfcap->levels[j].luminance = plvls[j - 1].luminance;
-			dev_dbg(info->dev, "%03d - %d\n",
-				pfcap->levels[j].guidenum,
-				pfcap->levels[j].luminance);
-		}
 
 		ptmcap->timeout_num = pfcap->timeout_num;
 		for (j = 0; j < ptmcap->timeout_num; j++) {
@@ -678,27 +682,32 @@ static int as364x_configure(struct as364x_info *info, bool update)
 		ptcap->version = NVC_TORCH_CAPABILITY_VER_1;
 		ptcap->led_idx = i;
 		ptcap->attribute = 0;
-		ptcap->numberoflevels = pcfg->led_config[i].flash_levels + 1;
-		if (ptcap->numberoflevels > AS364X_MAX_TORCH_LEVEL)
-			ptcap->numberoflevels = AS364X_MAX_TORCH_LEVEL;
 		ptcap->granularity = pcfg->led_config[i].granularity;
 		ptcap->timeout_num = ARRAY_SIZE(as364x_torch_timer);
 		ptmcap = info->torch_timeouts[i];
 		ptcap->timeout_off = (void *)ptmcap - (void *)ptcap;
-		dev_dbg(info->dev, "torch#%d, attr: %x, levels: %d, g: %d\n",
-			ptcap->led_idx, ptcap->attribute,
-			ptcap->numberoflevels, ptcap->granularity);
 
 		plvls = pcfg->led_config[i].lumi_levels;
 		ptcap->levels[0].guidenum = AS364X_LEVEL_OFF;
 		ptcap->levels[0].luminance = 0;
-		for (j = 1; j < ptcap->numberoflevels; j++) {
+		for (j = 1; j < pcfg->led_config[i].flash_levels + 1; j++) {
+			if (GET_CURRENT_BY_INDEX(info, plvls[j - 1].guidenum) >
+				pcfg->max_torch_current_mA)
+				break;
+
 			ptcap->levels[j].guidenum = plvls[j - 1].guidenum;
 			ptcap->levels[j].luminance = plvls[j - 1].luminance;
+			info->max_torch[i] = plvls[j - 1].guidenum;
 			dev_dbg(info->dev, "%03d - %d\n",
 				ptcap->levels[j].guidenum,
 				ptcap->levels[j].luminance);
 		}
+		ptcap->numberoflevels = j;
+		if (ptcap->numberoflevels > AS364X_MAX_TORCH_LEVEL)
+			ptcap->numberoflevels = AS364X_MAX_TORCH_LEVEL;
+		dev_dbg(info->dev, "torch#%d, attr: %x, levels: %d, g: %d\n",
+			ptcap->led_idx, ptcap->attribute,
+			ptcap->numberoflevels, ptcap->granularity);
 
 		ptmcap->timeout_num = ptcap->timeout_num;
 		for (j = 0; j < ptmcap->timeout_num; j++) {
@@ -1292,14 +1301,14 @@ static void as364x_caps_layout(struct as364x_info *info)
 	int i;
 
 	start_ptr = (void *)info + sizeof(*info);
-	for (i = 0; i < LEDS_SUPPORTED; i++) {
+	for (i = 0; i < 2; i++) {
 		info->flash_cap[i] = start_ptr;
 		info->flash_timeouts[i] = start_ptr + as364x_flash_cap_size;
 		start_ptr += AS364X_FLASH_CAP_TIMEOUT_SIZE;
 	}
 	info->flash_cap_size = AS364X_FLASH_CAP_TIMEOUT_SIZE;
 
-	for (i = 0; i < LEDS_SUPPORTED; i++) {
+	for (i = 0; i < 2; i++) {
 		info->torch_cap[i] = start_ptr;
 		info->torch_timeouts[i] = start_ptr + as364x_torch_cap_size;
 		start_ptr += AS364X_TORCH_CAP_TIMEOUT_SIZE;
