@@ -53,6 +53,7 @@
 #include <linux/serial_tegra.h>
 #include <linux/edp.h>
 #include <linux/usb/tegra_usb_phy.h>
+#include <linux/mfd/palmas.h>
 
 #include <mach/clk.h>
 #include <mach/irqs.h>
@@ -646,6 +647,23 @@ static struct tegra_usb_otg_data tegra_otg_pdata = {
 static void ardbeg_usb_init(void)
 {
 	int usb_port_owner_info = tegra_get_usb_port_owner_info();
+	int modem_id = tegra_get_modem_id();
+	struct board_info bi;
+
+	tegra_get_pmu_board_info(&bi);
+
+	switch (bi.board_id) {
+	case BOARD_E1733:
+		/* Host cable is detected through USB ID */
+		tegra_udc_pdata.id_det_type = TEGRA_USB_ID;
+		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_ID;
+		break;
+	case BOARD_E1735:
+		/* Host cable is detected through PMU Interrupt */
+		tegra_udc_pdata.id_det_type = TEGRA_USB_PMU_ID;
+		tegra_ehci1_utmi_pdata.id_det_type = TEGRA_USB_PMU_ID;
+		tegra_otg_pdata.id_extcon_dev_name = "palmas-extcon";
+	}
 
 	if (!(usb_port_owner_info & UTMI1_PORT_OWNER_XUSB)) {
 		tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
