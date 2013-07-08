@@ -600,6 +600,26 @@ static void __init u300_init_check_chip(void)
 	}
 }
 
+/* Forward declare this function from the watchdog */
+void coh901327_watchdog_reset(void);
+
+static void u300_restart(enum reboot_mode mode, const char *cmd)
+{
+	switch (mode) {
+	case REBOOT_SOFT:
+	case REBOOT_HARD:
+#ifdef CONFIG_COH901327_WATCHDOG
+		coh901327_watchdog_reset();
+#endif
+		break;
+	default:
+		/* Do nothing */
+		break;
+	}
+	/* Wait for system do die/reset. */
+	while (1);
+}
+
 /*
  * Some devices and their resources require reserved physical memory from
  * the end of the available RAM. This function traverses the list of devices

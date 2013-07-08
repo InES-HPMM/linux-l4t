@@ -311,12 +311,12 @@ static struct samsung_pwm_variant exynos4_pwm_variant = {
 	.tclk_mask	= 0,
 };
 
-void exynos4_restart(char mode, const char *cmd)
+void exynos4_restart(enum reboot_mode mode, const char *cmd)
 {
 	__raw_writel(0x1, S5P_SWRESET);
 }
 
-void exynos5_restart(char mode, const char *cmd)
+void exynos5_restart(enum reboot_mode mode, const char *cmd)
 {
 	struct device_node *np;
 	u32 val;

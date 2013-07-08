@@ -41,7 +41,7 @@
 #endif
 #include <linux/pm.h>
 #include <linux/tegra-powergate.h>
-
+#include <linux/reboot.h>
 #include <linux/export.h>
 #include <linux/bootmem.h>
 #include <linux/tegra-soc.h>
@@ -283,7 +283,7 @@ void ahb_gizmo_writel(unsigned long val, void __iomem *reg)
 	spin_unlock_irqrestore(&ahb_lock, flags);
 }
 
-void tegra_assert_system_reset(char mode, const char *cmd)
+void tegra_assert_system_reset(enum reboot_mode mode, const char *cmd)
 {
 	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0);
 	u32 reg;
