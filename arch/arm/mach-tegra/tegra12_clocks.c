@@ -452,8 +452,13 @@
 #define UTMIP_PLL_CFG2_STABLE_COUNT(x)			(((x) & 0xfff) << 6)
 #define UTMIP_PLL_CFG2_ACTIVE_DLY_COUNT(x)		(((x) & 0x3f) << 18)
 #define UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN	(1 << 0)
+#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERUP		(1 << 1)
 #define UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN	(1 << 2)
+#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERUP		(1 << 3)
 #define UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERDOWN	(1 << 4)
+#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERUP		(1 << 5)
+#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN	(1 << 24)
+#define UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERUP		(1 << 25)
 
 #define UTMIP_PLL_CFG1					0x484
 #define UTMIP_PLL_CFG1_ENABLE_DLY_COUNT(x)		(((x) & 0x1f) << 27)
@@ -1936,9 +1941,14 @@ static void tegra12_utmi_param_configure(struct clk *c)
 			utmi_parameters[i].active_delay_count);
 
 	/* Remove power downs from UTMIP PLL control bits */
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERUP;
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERUP;
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERUP;
+	reg |= UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERUP;
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_A_POWERDOWN;
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_B_POWERDOWN;
 	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_C_POWERDOWN;
+	reg &= ~UTMIP_PLL_CFG2_FORCE_PD_SAMP_D_POWERDOWN;
 
 	clk_writel(reg, UTMIP_PLL_CFG2);
 
@@ -1978,7 +1988,7 @@ static void tegra12_utmi_param_configure(struct clk *c)
 	   ports are assigned to USB2 */
 	reg = clk_readl(UTMIPLL_HW_PWRDN_CFG0);
 	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_SWCTL;
-	reg &= ~UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
+	reg |= UTMIPLL_HW_PWRDN_CFG0_IDDQ_OVERRIDE;
 	clk_writel(reg, UTMIPLL_HW_PWRDN_CFG0);
 
 	udelay(1);
