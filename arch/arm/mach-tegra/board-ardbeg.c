@@ -160,9 +160,8 @@ static __initdata struct tegra_clk_init_table ardbeg_clk_init_table[] = {
 	{ "dam2",	"clk_m",	12000000,	false},
 	{ "audio1",	"i2s1_sync",	0,		false},
 	{ "audio3",	"i2s3_sync",	0,		false},
-	/* Setting vi_sensor-clk to true for validation purpose, will imapact
-	 * power, later set to be false.*/
 	{ "vi_sensor",	"pll_p",	150000000,	false},
+	{ "vi_sensor2",	"pll_p",	150000000,	false},
 	{ "cilab",	"pll_p",	150000000,	false},
 	{ "cilcd",	"pll_p",	150000000,	false},
 	{ "cile",	"pll_p",	150000000,	false},
