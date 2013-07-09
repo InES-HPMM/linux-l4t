@@ -4,6 +4,8 @@ targets += dtbs
 dtb-$(CONFIG_MACH_EXUMA) := tegra132-exuma.dtb
 targets += $(dtb-y)
 
+DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
+
 dtbs: $(addprefix $(obj)/, $(dtb-y))
 
 clean-files := *.dtb
