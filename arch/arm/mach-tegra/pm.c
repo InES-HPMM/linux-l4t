@@ -657,7 +657,7 @@ static inline void tegra_stop_mc_clk(unsigned long v2p)
 			  __pa(&tegra_resume_timestamps_end));
 	trace_smc_sleep_core(NVSEC_SMC_START);
 
-	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE6,
+	tegra_generic_smc(0xFFFFFFFC, 0xFFFFFFE5,
 			  (TEGRA_RESET_HANDLER_BASE +
 			   tegra_cpu_reset_handler_offset));
 
