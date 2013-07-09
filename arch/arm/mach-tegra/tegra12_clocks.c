@@ -7408,13 +7408,39 @@ bool tegra_clk_is_parent_allowed(struct clk *c, struct clk *p)
 	 * respective muxes statically.
 	 */
 
-	/* pll_c can be used as a clock source for EMC only on configuration
-	   with dual cbus, or as a clock source for single cbus */
-	if (p == &tegra_pll_c) {
+	/*
+	 * In configuration with dual cbus pll_c can be used as a scaled clock
+	 * source for EMC only when pll_m is fixed, or as a general fixed rate
+	 * clock source for EMC and other peripherals if pll_m is scaled. In
+	 * configuration with single cbus pll_c can be used as a scaled cbus
+	 * clock source only. No direct use for pll_c by super clocks.
+	 */
+	if ((p == &tegra_pll_c) && (c != &tegra_pll_c_out1)) {
+		if (c->ops == &tegra_super_ops)
+			return false;
 #ifdef CONFIG_TEGRA_DUAL_CBUS
+#ifndef CONFIG_TEGRA_PLLM_SCALED
 		return c->flags & PERIPH_EMC_ENB;
+#endif
 #else
 		return c->flags & PERIPH_ON_CBUS;
+#endif
+	}
+
+	/*
+	 * In any configuration pll_m must not be used as a clock source for
+	 * cbus modules. If pll_m is scaled it can be used as EMC source only.
+	 * Otherwise fixed rate pll_m can be used as clock source for EMC and
+	 * other peripherals. No direct use for pll_m by super clocks.
+	 */
+	if ((p == &tegra_pll_m) && (c != &tegra_pll_m_out1)) {
+		if (c->ops == &tegra_super_ops)
+			return false;
+
+		if (c->flags & PERIPH_ON_CBUS)
+			return false;
+#ifdef CONFIG_TEGRA_PLLM_SCALED
+		return c->flags & PERIPH_EMC_ENB;
 #endif
 	}
 	return true;
