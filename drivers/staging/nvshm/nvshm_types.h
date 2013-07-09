@@ -37,8 +37,8 @@
  *  config: SHM serial version is PCID */
 #define NVSHM_CONFIG_SERIAL_VERSION (0x00010002)
 #define NVSHM_CONFIG_V3_VERSION (0x00010003)
-/** Current configuration version (major/minor) */
-#define NVSHM_CONFIG_VERSION NVSHM_CONFIG_V3_VERSION
+/** Version with statistics export support, otherwise compatible with V3 */
+#define NVSHM_CONFIG_STATS_VERSION (0x00020001)
 
 
 #define NVSHM_AP_POOL_ID (128) /* IOPOOL ID - use 128-255 for AP */

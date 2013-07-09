@@ -37,11 +37,13 @@ static int ipc_readconfig(struct nvshm_handle *handle)
 
 	conf = (struct nvshm_config *)(handle->mb_base_virt
 				       + NVSHM_CONFIG_OFFSET);
-	if (conf->version != NVSHM_CONFIG_VERSION) {
-		pr_err("%s:No SHM: protocol mismatch: BBC=%x  AP=%x\n",
-			 __func__,
-			 (unsigned int)conf->version,
-			 NVSHM_CONFIG_VERSION);
+	if ((conf->version != NVSHM_CONFIG_STATS_VERSION) &&
+	    (conf->version != NVSHM_CONFIG_V3_VERSION)) {
+		pr_err("%s:No SHM: protocol mismatch: BBC=%x AP=%x/%x\n",
+		       __func__,
+		       (unsigned int)conf->version,
+		       NVSHM_CONFIG_V3_VERSION,
+		       NVSHM_CONFIG_STATS_VERSION);
 		return -1;
 	}
 	if (handle->ipc_size != conf->shmem_size) {
