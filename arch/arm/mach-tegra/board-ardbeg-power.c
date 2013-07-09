@@ -392,6 +392,7 @@ static struct regulator_consumer_supply palmas_ti913_regen1_supply[] = {
 	REGULATOR_SUPPLY("hvdd_pex_pll_e", "tegra-pcie"),
 	REGULATOR_SUPPLY("vddio_pex_ctl", "tegra-pcie"),
 	REGULATOR_SUPPLY("vdd", "0-0069"),
+	REGULATOR_SUPPLY("vdd", "0-0048"),
 	REGULATOR_SUPPLY("vdd", "0-000c"),
 	REGULATOR_SUPPLY("vdd", "0-0077"),
 #ifdef CONFIG_ARCH_TEGRA_11x_SOC

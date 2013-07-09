@@ -470,9 +470,9 @@ int __init ardbeg_sensors_init(void)
 	mpuirq_init();
 	ardbeg_camera_init();
 	ardbeg_nct72_init();
-/*
+
 	i2c_register_board_info(0, ardbeg_i2c_board_info_cm32181,
 			ARRAY_SIZE(ardbeg_i2c_board_info_cm32181));
-*/
+
 	return 0;
 }
