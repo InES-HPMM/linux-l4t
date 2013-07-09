@@ -414,6 +414,20 @@ static __initdata struct tegra_clk_init_table tegra12x_clk_init_table[] = {
 #endif
 	{ NULL,		NULL,		0,		0},
 };
+static __initdata struct tegra_clk_init_table tegra12x_cbus_init_table[] = {
+	/* Initialize c2bus, c3bus, or cbus at the end of the list
+	 * after all the clocks are moved under the proper parents.
+	 */
+#ifdef CONFIG_TEGRA_DUAL_CBUS
+	{ "c2bus",	"pll_c2",	250000000,	false },
+	{ "c3bus",	"pll_c3",	250000000,	false },
+	{ "pll_c",	NULL,		768000000,	false },
+#else
+	{ "cbus",	"pll_c",	200000000,	false },
+#endif
+	{ "pll_c_out1",	"pll_c",	100000000,	false },
+	{ NULL,		NULL,		0,		0},
+};
 #endif
 #ifdef CONFIG_ARCH_TEGRA_14x_SOC
 static __initdata struct tegra_clk_init_table tegra14x_clk_init_table[] = {
@@ -909,6 +923,7 @@ void __init tegra12x_init_early(void)
 	tegra12x_init_dvfs();
 	tegra_common_init_clock();
 	tegra_clk_init_from_table(tegra12x_clk_init_table);
+	tegra_clk_init_cbus_plls_from_table(tegra12x_cbus_init_table);
 	tegra_init_cache(true);
 	tegra_pmc_init();
 	tegra_powergate_init();
