@@ -669,12 +669,16 @@ static void ardbeg_usb_init(void)
 		/* Setup the udc platform data */
 		tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	}
-
-	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
-		platform_device_register(&tegra_ehci2_device);
+	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
+		if (!modem_id) {
+			tegra_ehci2_device.dev.platform_data =
+				&tegra_ehci2_utmi_pdata;
+			platform_device_register(&tegra_ehci2_device);
+		}
+	}
 #endif
+	if (!(usb_port_owner_info & UTMI3_PORT_OWNER_XUSB)) {
 		tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 		platform_device_register(&tegra_ehci3_device);
 	}
