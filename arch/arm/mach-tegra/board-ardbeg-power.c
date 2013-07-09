@@ -332,6 +332,7 @@ static struct as3722_platform_data as3722_pdata = {
 	.num_gpio_cfgs = ARRAY_SIZE(as3722_gpio_cfgs),
 	.gpio_cfgs     = as3722_gpio_cfgs,
 	.rtc_pdata	= &as3722_rtc_pdata,
+	.use_power_off = true,
 };
 
 static struct i2c_board_info __initdata as3722_regulators[] = {
