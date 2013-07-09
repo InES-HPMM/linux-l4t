@@ -6970,7 +6970,6 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("disp2",	"tegradc.1",		NULL,	26,	0x13c,	600000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8),
 	PERIPH_CLK_EX("sor0",	"sor0",			NULL,	182,	0x414,	198000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8,	&tegra_sor_clk_ops),
 	PERIPH_CLK("dpaux",	"dpaux",		NULL,	181,	0,	24000000, mux_clk_m,			0),
-	/* PERIPH_CLK("hdmi-audio",	"hdmi-audio",		NULL,	176,	0x414,	198000000, mux_pllp_pllm_plld_plla_pllc_plld2_clkm,	MUX | MUX8), */
 	PERIPH_CLK("usbd",	"tegra-udc.0",		NULL,	22,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	480000000, mux_clk_m,			0),
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	480000000, mux_clk_m,			0),
@@ -6989,7 +6988,7 @@ struct clk tegra_list_clks[] = {
 	PERIPH_CLK("dsialp",	"tegradc.0",		"dsialp", 147,	0x620,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("dsiblp",	"tegradc.1",		"dsiblp", 148,	0x624,	156000000, mux_pllp_pllc_clkm,		MUX | DIV_U71),
 	PERIPH_CLK("entropy",	"entropy",		NULL, 149,	0x628,	102000000, mux_pllp_clkm1,		MUX | MUX8 | DIV_U71),
-	PERIPH_CLK("hdmi_audio", "hdmi_audio",		NULL, 176,	0x668,	26000000,  mux_pllp_pllc_clkm,		MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
+	PERIPH_CLK("hdmi_audio", "hdmi_audio",		NULL, 176,	0x668,	48000000,  mux_pllp_pllc_clkm,		MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
 	PERIPH_CLK("clk72mhz",	"clk72mhz",		NULL, 177,	0x66c,	102000000, mux_pllp3_pllc_clkm,		MUX | MUX8 | DIV_U71 | PERIPH_NO_RESET),
 
 	PERIPH_CLK("tsensor",	"tegra-tsensor",	NULL,	100,	0x3b8,	216000000, mux_pllp_pllc_clkm_clk32,	MUX | DIV_U71 | PERIPH_ON_APB),
