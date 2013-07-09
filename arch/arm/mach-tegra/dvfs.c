@@ -390,6 +390,22 @@ static int dvfs_rail_update(struct dvfs_rail *rail)
 	return ret;
 }
 
+/*
+ * This function is called on entry to suspend, or when rail scaling is disabled
+ * - can't do anything in either case if regulsator is fixed in pll mode. Since
+ * the pll mode frequency is already capped according to fixed voltage level, it
+ * is safe to substitute fixed level for nominal, just for stats update.
+ */
+static int dvfs_rail_set_nominal(struct dvfs_rail *rail)
+{
+	int mv;
+	if (!rail->dfll_mode && rail->fixed_millivolts)
+		mv = rail->fixed_millivolts;
+	else
+		mv = dvfs_rail_apply_limits(rail, rail->nominal_millivolts);
+	return dvfs_rail_set_voltage(rail, mv);
+}
+
 static struct regulator *get_fixed_regulator(struct dvfs_rail *rail)
 {
 	struct regulator *reg;
@@ -804,9 +820,7 @@ static int tegra_dvfs_suspend_one(void)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		if (!rail->suspended && !rail->disabled &&
 		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
-			int mv = dvfs_rail_apply_limits(
-				rail, rail->nominal_millivolts);
-			ret = dvfs_rail_set_voltage(rail, mv);
+			ret = dvfs_rail_set_nominal(rail);
 			if (ret)
 				return ret;
 			rail->suspended = true;
@@ -900,8 +914,7 @@ static void __tegra_dvfs_rail_disable(struct dvfs_rail *rail)
 		return;
 	}
 
-	ret = dvfs_rail_set_voltage(rail,
-		dvfs_rail_apply_limits(rail, rail->nominal_millivolts));
+	ret = dvfs_rail_set_nominal(rail);
 	if (ret) {
 		pr_info("dvfs: failed to set regulator %s to disable "
 			"voltage %d\n", rail->reg_id,
