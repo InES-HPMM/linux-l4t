@@ -107,6 +107,8 @@ enum {
 #define SMMU_PTC_FLUSH_TYPE_ADR			1
 #define SMMU_PTC_FLUSH_ADR_SHIFT		4
 
+#define SMMU_PTC_FLUSH_1			0x9b8
+
 #define SMMU_ASID_SECURITY			0x38
 
 #define SMMU_STATS_CACHE_COUNT_BASE		0x1f0
@@ -308,6 +310,9 @@ static inline void ahb_write(struct smmu_device *smmu, u32 val, size_t offs)
 #define VA_PAGE_TO_PA(va, page)	\
 	(page_to_phys(page) + ((unsigned long)(va) & ~PAGE_MASK))
 
+#define VA_PAGE_TO_PA_HI(va, page)	\
+	(u32)((u64)(page_to_phys(page)) >> 32)
+
 #define FLUSH_CPU_DCACHE(va, page, size)	\
 	do {	\
 		unsigned long _pa_ = VA_PAGE_TO_PA(va, page);		\
@@ -462,12 +467,20 @@ static void smmu_flush_ptc(struct smmu_device *smmu, unsigned long *pte,
 {
 	u32 val;
 
-	if (pte)
-		val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
-	else
-		val = SMMU_PTC_FLUSH_TYPE_ALL;
+	if (!pte) {
+		smmu_write(smmu, SMMU_PTC_FLUSH_TYPE_ALL, SMMU_PTC_FLUSH);
+		goto out;
+	}
 
+	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) &&
+		(tegra_get_chipid() == TEGRA_CHIPID_TEGRA12)) {
+		val = VA_PAGE_TO_PA_HI(pte, page);
+		smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
+	}
+
+	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
+out:
 	FLUSH_SMMU_REGS(smmu);
 }
 
@@ -533,9 +546,7 @@ static void flush_ptc_and_tlb_range(struct smmu_device *smmu,
 	while (iova < end) {
 		u32 val;
 
-		val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
-		smmu_write(smmu, val, SMMU_PTC_FLUSH);
-		FLUSH_SMMU_REGS(smmu);
+		smmu_flush_ptc(smmu, pte, page);
 		pte += unit / PAGE_SIZE;
 
 		val = SMMU_TLB_FLUSH_VA(iova, GROUP);
@@ -790,9 +801,7 @@ static int alloc_pdir(struct smmu_as *as)
 	for (pdn = 0; pdn < SMMU_PDIR_COUNT; pdn++)
 		pdir[pdn] = _PDE_VACANT(pdn);
 	FLUSH_CPU_DCACHE(pdir, as->pdir_page, SMMU_PDIR_SIZE);
-	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pdir, as->pdir_page);
-	smmu_write(smmu, val, SMMU_PTC_FLUSH);
-	FLUSH_SMMU_REGS(as->smmu);
+	smmu_flush_ptc(smmu, pdir, as->pdir_page);
 	val = SMMU_TLB_FLUSH_VA_MATCH_ALL |
 		SMMU_TLB_FLUSH_ASID_MATCH__ENABLE |
 		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
