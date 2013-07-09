@@ -211,6 +211,8 @@ enum {
 #define __smmu_client_enable_hwgrp(c, m) __smmu_client_set_hwgrp(c, m, 1)
 #define __smmu_client_disable_hwgrp(c)	__smmu_client_set_hwgrp(c, 0, 0)
 
+static struct device *save_smmu_device;
+
 static size_t tegra_smmu_get_offset_base(int id)
 {
 	if (!(id & BIT(5)))
@@ -1514,9 +1516,11 @@ err_out:
 	smmu_debugfs_delete(smmu);
 }
 
-static int tegra_smmu_suspend(struct device *dev)
+int tegra_smmu_suspend(struct device *dev)
 {
 	struct smmu_device *smmu = dev_get_drvdata(dev);
+
+	save_smmu_device = dev;
 
 	smmu->translation_enable_0 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_0);
 	smmu->translation_enable_1 = smmu_read(smmu, SMMU_TRANSLATION_ENABLE_1);
@@ -1525,8 +1529,15 @@ static int tegra_smmu_suspend(struct device *dev)
 	smmu->asid_security = smmu_read(smmu, SMMU_ASID_SECURITY);
 	return 0;
 }
+EXPORT_SYMBOL(tegra_smmu_suspend);
 
-static int tegra_smmu_resume(struct device *dev)
+struct device *get_smmu_device(void)
+{
+	return save_smmu_device;
+}
+EXPORT_SYMBOL(get_smmu_device);
+
+int tegra_smmu_resume(struct device *dev)
 {
 	struct smmu_device *smmu = dev_get_drvdata(dev);
 	unsigned long flags;
@@ -1536,6 +1547,7 @@ static int tegra_smmu_resume(struct device *dev)
 	spin_unlock_irqrestore(&smmu->lock, flags);
 	return 0;
 }
+EXPORT_SYMBOL(tegra_smmu_resume);
 
 static int tegra_smmu_probe(struct platform_device *pdev)
 {
