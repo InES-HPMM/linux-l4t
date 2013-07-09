@@ -677,6 +677,8 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	tegra_usb_phy_power_off(tegra->phy);
 	usb_phy_shutdown(get_usb_phy(tegra->phy));
 
+	tegra_pd_remove_device(&pdev->dev);
+
 	return 0;
 }
 

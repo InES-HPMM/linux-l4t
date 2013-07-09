@@ -3774,6 +3774,7 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	utmi_phy_pad_disable();
 	utmi_phy_iddq_override(true);
 
+	tegra_pd_remove_device(&pdev->dev);
 	return 0;
 }
 
