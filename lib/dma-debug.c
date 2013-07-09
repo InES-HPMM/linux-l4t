@@ -142,6 +142,24 @@ static const char *type2name[4] = { "single", "page",
 static const char *dir2name[4] = { "DMA_BIDIRECTIONAL", "DMA_TO_DEVICE",
 				   "DMA_FROM_DEVICE", "DMA_NONE" };
 
+/* dma statistics per device */
+struct dma_dev_info {
+	struct list_head list;
+	struct device *dev;
+	spinlock_t lock;	/* Protects dma_dev_info itself */
+
+	int current_allocs;
+	int total_allocs;
+	int max_allocs;
+
+	int current_alloc_size;
+	int total_alloc_size;
+	int max_alloc_size;
+};
+
+static LIST_HEAD(dev_info_list);
+static DEFINE_SPINLOCK(dev_info_lock); /* Protects dev_info_list */
+
 /*
  * The access to some variables in this macro is racy. We can't use atomic_t
  * here because all these variables are exported to debugfs. Some of them even
@@ -413,6 +431,79 @@ void debug_dma_dump_mappings(struct device *dev)
 EXPORT_SYMBOL(debug_dma_dump_mappings);
 
 /*
+ * device info snapshot updating functions
+ */
+static void ____dev_info_incr(struct dma_dev_info *info,
+			      struct dma_debug_entry *entry)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&info->lock, flags);
+
+	info->current_allocs++;
+	info->total_allocs++;
+	if (info->current_allocs > info->max_allocs)
+		info->max_allocs = info->current_allocs;
+
+	info->current_alloc_size += entry->size;
+	info->total_alloc_size += entry->size;
+	if (info->current_alloc_size > info->max_alloc_size)
+		info->max_alloc_size = info->current_alloc_size;
+
+	spin_unlock_irqrestore(&info->lock, flags);
+}
+
+static void ____dev_info_decr(struct dma_dev_info *info,
+			      struct dma_debug_entry *entry)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&info->lock, flags);
+
+	info->current_allocs--;
+	info->current_alloc_size -= entry->size;
+
+	spin_unlock_irqrestore(&info->lock, flags);
+}
+
+static void __dev_info_fn(struct dma_debug_entry *entry,
+	 void (*fn)(struct dma_dev_info *, struct dma_debug_entry *))
+{
+	struct dma_dev_info *info;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev_info_lock, flags);
+
+	list_for_each_entry(info, &dev_info_list, list)
+		if (info->dev == entry->dev)
+			goto found;
+
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	if (!info) {
+		dev_err(entry->dev, "Out of memory at %s\n", __func__);
+		spin_unlock_irqrestore(&dev_info_lock, flags);
+		return;
+	}
+
+	spin_lock_init(&info->lock);
+	info->dev = entry->dev;
+	list_add(&info->list, &dev_info_list);
+found:
+	spin_unlock_irqrestore(&dev_info_lock, flags);
+	fn(info, entry);
+}
+
+static inline void dev_info_alloc(struct dma_debug_entry *entry)
+{
+	__dev_info_fn(entry, ____dev_info_incr);
+}
+
+static inline void dev_info_free(struct dma_debug_entry *entry)
+{
+	__dev_info_fn(entry, ____dev_info_decr);
+}
+
+/*
  * Wrapper function for adding an entry to the hash.
  * This function takes care of locking itself.
  */
@@ -424,6 +515,8 @@ static void add_dma_entry(struct dma_debug_entry *entry)
 	bucket = get_hash_bucket(entry, &flags);
 	hash_bucket_add(bucket, entry);
 	put_hash_bucket(bucket, &flags);
+
+	dev_info_alloc(entry);
 }
 
 static struct dma_debug_entry *__dma_entry_alloc(void)
@@ -729,6 +822,24 @@ static int _dump_allocs(struct seq_file *s, void *data)
 	return 0;
 }
 
+static int _dump_dev_info(struct seq_file *s, void *data)
+{
+	struct dma_dev_info *i;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev_info_lock, flags);
+
+	list_for_each_entry(i, &dev_info_list, list)
+		seq_printf(s,
+			   "dev=%s curallocs=%d totallocs=%d maxallocs=%d cursize=%d totsize=%d maxsize=%d\n",
+			   dev_name(i->dev), i->current_allocs, i->total_allocs,
+			   i->max_allocs, i->current_alloc_size,
+			   i->total_alloc_size, i->max_alloc_size);
+
+	spin_unlock_irqrestore(&dev_info_lock, flags);
+	return 0;
+}
+
 #define DEFINE_DEBUGFS(__name, __func, __data)                          \
 static int __name ## _open(struct inode *inode, struct file *file)      \
 {                                                                       \
@@ -743,6 +854,7 @@ static const struct file_operations __name ## _fops = {                 \
 
 DEFINE_DEBUGFS(_dump_allocs, _dump_allocs, NULL);
 DEFINE_DEBUGFS(_dump_allocs_detail, _dump_allocs, (void *)1);
+DEFINE_DEBUGFS(_dump_dev_info, _dump_dev_info, NULL);
 #undef DEFINE_DEBUGFS
 
 static int map_dump_debug_fs_init(void)
@@ -756,6 +868,9 @@ static int map_dump_debug_fs_init(void)
 		return -ENOMEM;
 
 	if (!CREATE_FILE(dump_allocs_detail))
+		return -ENOMEM;
+
+	if (!CREATE_FILE(dump_dev_info))
 		return -ENOMEM;
 
 #undef CREATE_FILE
@@ -1054,6 +1169,8 @@ static void check_unmap(struct dma_debug_entry *ref)
 			   ref->dev_addr, ref->size,
 			   type2name[entry->type]);
 	}
+
+	dev_info_free(entry);
 
 	hash_bucket_del(entry);
 	dma_entry_free(entry);
