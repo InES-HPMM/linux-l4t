@@ -21,7 +21,7 @@
 #include "devices.h"
 #include "fuse.h"
 
-#if defined(CONFIG_ARCH_TEGRA_11x_SOC) || defined(CONFIG_ARCH_TEGRA_12x_SOC)
+#ifdef CONFIG_TEGRA_XUSB_PLATFORM
 static struct tegra_xusb_platform_data tegra_xusb_plat_data = {};
 
 static void tegra_xusb_read_usb_calib(void)

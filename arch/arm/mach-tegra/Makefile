@@ -80,7 +80,7 @@ AFLAGS_sleep.o :=-Wa,-march=armv7-a$(plus_sec)
 obj-y                                   += tegra_fuse.o
 obj-y                                   += kfuse.o
 obj-y                                   += csi.o
-obj-$(CONFIG_USB_SUPPORT)               += xusb.o
+obj-y                                   += xusb.o
 
 obj-y                                   += powergate.o
 obj-y                                   += powergate-ops-txx.o
