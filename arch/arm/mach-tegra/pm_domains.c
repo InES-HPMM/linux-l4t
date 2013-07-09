@@ -280,6 +280,15 @@ void tegra_pd_add_device(struct device *dev)
 }
 EXPORT_SYMBOL(tegra_pd_add_device);
 
+void tegra_pd_remove_device(struct device *dev)
+{
+	struct generic_pm_domain *genpd = dev_to_genpd(dev);
+
+	if (!IS_ERR_OR_NULL(genpd))
+		pm_genpd_remove_device(genpd, dev);
+}
+EXPORT_SYMBOL(tegra_pd_remove_device);
+
 void tegra_pd_add_sd(struct generic_pm_domain *sd)
 {
 	struct generic_pm_domain *master = tegra_pd_get_domain(sd->name);
