@@ -14,6 +14,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/delay.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/atomic.h>
 
@@ -392,6 +393,68 @@ err_power_off:
 	WARN(1, "Could not Railgate Partition %d", id);
 	return ret;
 }
+
+int hack_tegra12x_gpu_unpowergate(void)
+{
+	int ret;
+	int id = TEGRA_POWERGATE_GPU;
+	struct powergate_partition_info *pg_info =
+					&tegra12x_powergate_partition_info[id];
+	struct regulator * gpu_reg;
+
+	printk("%s(): start\n", __func__);
+	gpu_reg = regulator_get(NULL, "vdd_gpu");
+	if (IS_ERR_OR_NULL(gpu_reg))
+		BUG_ON(1);
+
+	regulator_set_voltage(gpu_reg, 1000000, 1000000);
+	ret = regulator_enable(gpu_reg);
+	if (ret)
+		BUG_ON(1);
+
+	/* TBD: call regulator api to turn on VDD_GPU */
+	if (0)
+               goto err_power;
+
+	/* If first clk_ptr is null, fill clk info for the partition */
+	if (!pg_info->clk_info[0].clk_ptr)
+		get_clk_info(pg_info);
+
+	/* Un-Powergating fails if all clks are not enabled */
+	ret = partition_clk_enable(pg_info);
+	if (ret)
+		goto err_clk_on;
+
+	udelay(10);
+
+	/* disable clamp */
+	pmc_write(0, PMC_GPU_RG_CNTRL_0);
+
+	udelay(10);
+
+	powergate_partition_assert_reset(pg_info);
+	udelay(10);
+	powergate_partition_deassert_reset(pg_info);
+
+	udelay(10);
+
+	tegra_powergate_mc_flush_done(id);
+
+	udelay(10);
+
+	/* Disable all clks enabled earlier. Drivers should enable clks */
+	// partition_clk_disable(pg_info);
+
+	printk("%s(): end\n", __func__);
+	return 0;
+
+err_clk_on:
+	powergate_module(id);
+err_power:
+	WARN(1, "Could not Un-Railgate %d", id);
+	return ret;
+}
+EXPORT_SYMBOL(hack_tegra12x_gpu_unpowergate);
 
 static int tegra12x_gpu_unpowergate(int id, struct powergate_partition_info *pg_info)
 {
