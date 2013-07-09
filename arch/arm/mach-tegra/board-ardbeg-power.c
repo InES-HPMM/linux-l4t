@@ -257,7 +257,7 @@ static struct as3722_gpio_config as3722_gpio_cfgs[] = {
 	{
 		/* otp = 0x1  => REGEN_3 = LP0 gate (1.8V, 5 V)*/
 		.gpio = AS3722_GPIO1,
-		.invert     = AS3722_GPIO_CFG_INVERT, /* don't go into LP0 */
+		.invert     = AS3722_GPIO_CFG_NO_INVERT,
 		.mode       = AS3722_GPIO_MODE_OUTPUT_VDDH,
 		.output_state = AS3722_GPIO_CFG_OUTPUT_ENABLED,
 	},
