@@ -290,7 +290,7 @@ static void as3722_power_off(void)
 		return;
 
 	as3722_set_bits(as3722_dev, AS3722_RESET_CONTROL_REG,
-		AS3722_POWER_OFF_MASK, 1);
+		AS3722_POWER_OFF_MASK, AS3722_POWER_OFF_MASK);
 }
 
 static int as3722_i2c_probe(struct i2c_client *i2c,
