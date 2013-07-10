@@ -173,6 +173,7 @@ config ARCH_TEGRA_12x_SOC
 	select THERMAL
 	select PM_GENERIC_DOMAINS if PM
 	select PINCTRL
+	select TEGRA_DC_TEMPORAL_DITHER
 	help
 	  Support for NVIDIA Tegra 12x family of SoCs, based upon the
 	  ARM Cortex-A15MP CPU
