@@ -131,7 +131,7 @@ static struct i2c_board_info __initdata bq2419x_boardinfo[] = {
 	},
 };
 
-struct max17048_battery_model max17048_mdata __initdata = {
+static struct max17048_battery_model max17048_mdata = {
 	.rcomp          = 105,
 	.soccheck_A     = 240,
 	.soccheck_B     = 242,
@@ -156,7 +156,7 @@ struct max17048_battery_model max17048_mdata __initdata = {
 	},
 };
 
-struct max17048_platform_data max17048_pdata = {
+static struct max17048_platform_data max17048_pdata = {
 	.model_data = &max17048_mdata,
 };
 

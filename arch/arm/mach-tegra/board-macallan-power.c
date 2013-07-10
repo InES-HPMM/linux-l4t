@@ -380,7 +380,7 @@ static struct palmas_pinctrl_platform_data palmas_pinctrl_pdata = {
 	.dvfs2_enable = false,
 };
 
-struct palmas_extcon_platform_data palmas_extcon_pdata = {
+static struct palmas_extcon_platform_data palmas_extcon_pdata = {
 	.connection_name = "palmas-extcon",
 	.enable_vbus_detection = true,
 	.enable_id_pin_detection = true,

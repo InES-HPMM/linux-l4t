@@ -623,7 +623,7 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	.dvfs_init_data_size = ARRAY_SIZE(palmas_dvfs_idata),
 };
 
-struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
+static struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
 	{
 		.clk32k_id = PALMAS_CLOCK32KG,
 		.enable = true,
