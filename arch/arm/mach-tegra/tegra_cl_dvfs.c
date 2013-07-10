@@ -256,6 +256,14 @@ static inline void cl_dvfs_wmb(struct tegra_cl_dvfs *cld)
 	cl_dvfs_readl(cld, CL_DVFS_CTRL);
 }
 
+static inline void switch_monitor(struct tegra_cl_dvfs *cld, u32 selector)
+{
+	/* delay to make sure selector has switched */
+	cl_dvfs_writel(cld, selector, CL_DVFS_MONITOR_CTRL);
+	cl_dvfs_wmb(cld);
+	udelay(1);
+}
+
 static inline void invalidate_request(struct tegra_cl_dvfs *cld)
 {
 	u32 val = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
@@ -662,12 +670,8 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 		return;
 	cld->last_calibration = now;
 
-	if (cl_dvfs_readl(cld, CL_DVFS_MONITOR_CTRL) !=
-	    CL_DVFS_MONITOR_CTRL_FREQ)
-		cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_FREQ,
-				CL_DVFS_MONITOR_CTRL);
-
 	/* Synchronize with sample period, and get rate measurements */
+	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
 	data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
 	do {
 		data = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA);
@@ -684,14 +688,10 @@ static void cl_dvfs_calibrate(struct tegra_cl_dvfs *cld)
 			return;
 		}
 	} else {
-		/* Get last output, then restore default frequency monitoring */
-		cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_OUT,
-				CL_DVFS_MONITOR_CTRL);
-		cl_dvfs_wmb(cld);
+		/* Get last output (there is no such thing as pending PWM) */
+		switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
 		val = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
 			CL_DVFS_MONITOR_DATA_MASK;
-		cl_dvfs_writel(cld, CL_DVFS_MONITOR_CTRL_FREQ,
-				CL_DVFS_MONITOR_CTRL);
 	}
 
 	/* Adjust minimum rate */
@@ -1778,30 +1778,45 @@ static int monitor_get(void *data, u64 *val)
 	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
 
 	clk_enable(cld->soc_clk);
-
 	clk_lock_save(c, &flags);
+
+	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_FREQ);
+
 	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
 		CL_DVFS_MONITOR_DATA_MASK;
-
-	if (cl_dvfs_readl(cld, CL_DVFS_MONITOR_CTRL) ==
-	    CL_DVFS_MONITOR_CTRL_FREQ) {
-		v = GET_MONITORED_RATE(v, cld->ref_rate);
-		s = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
-		s = (s & CL_DVFS_FREQ_REQ_SCALE_MASK) >>
-			CL_DVFS_FREQ_REQ_SCALE_SHIFT;
-		*val = (u64)v * (s + 1) / 256;
-
-		clk_unlock_restore(c, &flags);
-		clk_disable(cld->soc_clk);
-		return 0;
-	}
-	*val = v;
+	v = GET_MONITORED_RATE(v, cld->ref_rate);
+	s = cl_dvfs_readl(cld, CL_DVFS_FREQ_REQ);
+	s = (s & CL_DVFS_FREQ_REQ_SCALE_MASK) >> CL_DVFS_FREQ_REQ_SCALE_SHIFT;
+	*val = (u64)v * (s + 1) / 256;
 
 	clk_unlock_restore(c, &flags);
 	clk_disable(cld->soc_clk);
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
+
+static int output_get(void *data, u64 *val)
+{
+	u32 v;
+	unsigned long flags;
+	struct clk *c = (struct clk *)data;
+	struct tegra_cl_dvfs *cld = ((struct clk *)data)->u.dfll.cl_dvfs;
+
+	clk_enable(cld->soc_clk);
+	clk_lock_save(c, &flags);
+
+	switch_monitor(cld, CL_DVFS_MONITOR_CTRL_OUT);
+
+	v = cl_dvfs_readl(cld, CL_DVFS_MONITOR_DATA) &
+		CL_DVFS_MONITOR_DATA_MASK;
+	*val = is_i2c(cld) ? cld->out_map[v]->reg_uV / 1000 :
+		cld->p_data->vdd_map[v].reg_uV / 1000;
+
+	clk_unlock_restore(c, &flags);
+	clk_disable(cld->soc_clk);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(output_fops, output_get, NULL, "%llu\n");
 
 static int vmax_get(void *data, u64 *val)
 {
@@ -2040,6 +2055,10 @@ int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
 
 	if (!debugfs_create_file("monitor", S_IRUGO,
 		cl_dvfs_dentry, dfll_clk, &monitor_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("output_mv", S_IRUGO,
+		cl_dvfs_dentry, dfll_clk, &output_fops))
 		goto err_out;
 
 	if (!debugfs_create_file("vmax_mv", S_IRUGO,
