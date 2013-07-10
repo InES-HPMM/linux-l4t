@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/pm_domains.c
  *
- * Copyright (c) 2012-2013 NVIDIA Corporation.
+ * Copyright (c) 2012-2013, NVIDIA CORPORATION. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -106,7 +106,7 @@ static int tegra_pd_thaw_dev(struct device *dev)
 
 static bool tegra_pd_active_wakeup(struct device *dev)
 {
-	return false;
+	return device_may_wakeup(dev);
 }
 
 static int tegra_pd_save_dev(struct device *dev)
