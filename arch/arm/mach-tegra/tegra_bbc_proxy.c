@@ -26,6 +26,7 @@
 #include <mach/isomgr.h>
 #include <mach/latency_allowance.h>
 #include <mach/tegra_bbc_proxy.h>
+#include <mach/tegra_bbc_thermal.h>
 
 #define MAX_MODEM_EDP_STATES 10
 
@@ -777,6 +778,9 @@ static int tegra_bbc_proxy_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "can't margin for bbc bw\n");
 	else
 		bbc->margin = MAX_ISO_BW_REQ;
+
+	/* thermal zones from bbc */
+	tegra_bbc_thermal_init();
 
 	attrs = mc_attributes;
 	while ((attr = *attrs++)) {

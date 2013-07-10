@@ -637,6 +637,17 @@ config TEGRA_BBC_PROXY
 	  and Latency Allowance settings. Additional setting adjustments
 	  can be done from user space through sysfs.
 
+config TEGRA_BBC_THERMAL
+	bool "Enable BBC Thermal reporting support"
+	depends on NVSHM
+	depends on TEGRA_BBC_PROXY
+	default y
+	help
+	  Enables the reporting of BBC-managed temperature sensors values as
+	  thermal zones.  This uses the statistics framework where the data
+	  reside, and thus depends on the NVSHM driver to provides the API to
+	  browse the BBC statistics and be notified of modem [re-]boot.
+
 config TEGRA_PLLM_RESTRICTED
 	bool "Restrict PLLM usage as module clock source"
 	depends on !ARCH_TEGRA_2x_SOC
