@@ -68,26 +68,57 @@ static u8 iso_share_calc_t114_lpddr3_dc(unsigned long iso_bw);
 u8 tegra_emc_bw_efficiency = 80;
 
 static struct emc_iso_usage tegra11_ddr3_emc_iso_usage[] = {
-	{ BIT(EMC_USER_DC),			80},
-	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45},
+	{ BIT(EMC_USER_DC1),				80},
+	{ BIT(EMC_USER_DC2),				80},
+	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),	45},
+	{ BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),		45},
+	{ BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),		45},
 };
 
 static struct emc_iso_usage tegra11_lpddr3_emc_iso_usage[] = {
 	{
-		BIT(EMC_USER_DC),
+		BIT(EMC_USER_DC1),
 		80, iso_share_calc_t114_lpddr3_dc
 	},
 	{
-		BIT(EMC_USER_DC) | BIT(EMC_USER_VI),
+		BIT(EMC_USER_DC2),
+		80, iso_share_calc_t114_lpddr3_dc
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
 		45, iso_share_calc_t114_lpddr3_default
 	},
 	{
-		BIT(EMC_USER_DC) | BIT(EMC_USER_MSENC),
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),
+		45, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_MSENC),
 		50, iso_share_calc_t114_lpddr3_default
 	},
 	{
-		BIT(EMC_USER_DC) | BIT(EMC_USER_3D),
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_3D),
 		50, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_VDE),
+		45, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),
+		45, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC2) | BIT(EMC_USER_MSENC),
+		50, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC2) | BIT(EMC_USER_3D),
+		50, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC2) | BIT(EMC_USER_VDE),
+		45, iso_share_calc_t114_lpddr3_default
 	},
 };
 

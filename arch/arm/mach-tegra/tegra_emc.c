@@ -105,7 +105,8 @@ unsigned long tegra_emc_apply_efficiency(unsigned long total_bw,
 [EMC_USER_##module] = #module
 
 static const char *emc_user_names[EMC_USER_NUM] = {
-	USER_NAME(DC),
+	USER_NAME(DC1),
+	USER_NAME(DC2),
 	USER_NAME(VI),
 	USER_NAME(MSENC),
 	USER_NAME(2D),
