@@ -636,9 +636,6 @@ bool tegra12x_powergate_skip(int id)
 	switch (id) {
 	case TEGRA_POWERGATE_VDEC:
 	case TEGRA_POWERGATE_VENC:
-	case TEGRA_POWERGATE_XUSBA:
-	case TEGRA_POWERGATE_XUSBB:
-	case TEGRA_POWERGATE_XUSBC:
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
 	case TEGRA_POWERGATE_SATA:
 #endif

@@ -700,12 +700,14 @@ static void __init tegra_init_power(void)
 			!defined(CONFIG_TEGRA_PCIE_SKIP_POWERGATING)
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_PCIE);
 #endif
-#ifdef CONFIG_ARCH_TEGRA_11x_SOC
-	/* some partitions need to be powergated by default for t11x */
-	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
+
+#if defined(CONFIG_TEGRA_XUSB_PLATFORM)
+	/* powergate xusb partitions by default */
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBB);
+	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBA);
 	tegra_powergate_partition_with_clk_off(TEGRA_POWERGATE_XUSBC);
 #endif
+
 }
 
 static inline unsigned long gizmo_readl(unsigned long offset)
