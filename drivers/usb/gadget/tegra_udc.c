@@ -987,6 +987,9 @@ tegra_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		req->req.dma = dma_map_single_attrs(dev, req->req.buf, ext, dir,
 						    &attrs);
+		if (dma_mapping_error(dev, req->req.dma))
+			return -EAGAIN;
+
 		dma_sync_single_for_device(dev, req->req.dma, orig, dir);
 
 		req->mapped = 1;
@@ -1734,6 +1737,9 @@ static void ch9getstatus(struct tegra_udc *udc, u8 request_type, u16 value,
 		dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 		req->req.dma = dma_map_single_attrs(dev, req->req.buf, ext, dir,
 						    &attrs);
+		if (dma_mapping_error(dev, req->req.dma))
+			return;
+
 		dma_sync_single_for_device(dev, req->req.dma, orig, dir);
 
 		req->mapped = 1;
