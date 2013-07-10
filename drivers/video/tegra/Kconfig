@@ -244,6 +244,22 @@ config NVMAP_DEFERRED_CACHE_MAINT
 	  deferred ranges is big enough, we flush whole inner or outer
 	  cache.
 
+config NVMAP_DMABUF_STASH
+	bool "Enable stashing of IOVA maps with dmabuf"
+	depends on TEGRA_NVMAP
+	help
+	  Set to Y if you would like nvmap to stash maps when using dma
+	  bufs. This will speed up remapping of the same handle at the cost
+	  of using more IOVA space.
+
+config NVMAP_DMABUF_STASH_STATS
+	bool "Enable stat tracking on the stash"
+	depends on NVMAP_DMABUF_STASH
+	help
+	  Say Y to enable tracking of basic cache statistics on the dmabuf
+	  stash. This adds some overhead but should be very useful for
+	  debugging memory leaks.
+
 config NVMAP_VPR
 	bool "Enable VPR Heap."
 	depends on TEGRA_NVMAP
