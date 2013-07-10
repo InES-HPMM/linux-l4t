@@ -1010,7 +1010,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	void __iomem *tegra_mc = IO_ADDRESS(TEGRA_MC_BASE);
 	unsigned int size, bbc_mem_regions_0;
 	struct clk *c;
-
+	unsigned int mb_size = SZ_4K + SZ_128K; /* config + stats */
 
 	if (!pdev) {
 		pr_err("%s platform device is NULL!\n", __func__);
@@ -1115,14 +1115,12 @@ static int tegra_bb_probe(struct platform_device *pdev)
 
 	pdata->bb_handle = bb;
 
-	/* Map mb_virt uncached (first 4K of IPC) */
-	bb->mb_virt = ioremap_nocache(bb->ipc_phy,
-					      SZ_1K*4);
+	/* Map mb_virt uncached (first 132K of IPC for config + statistics) */
+	bb->mb_virt = ioremap_nocache(bb->ipc_phy, mb_size);
 	pr_debug("%s: uncached IPC Virtual=0x%p\n", __func__, bb->mb_virt);
 
 	/* IPC memory is cached */
-	bb->ipc_virt =  ioremap_cached(bb->ipc_phy,
-					bb->ipc_size);
+	bb->ipc_virt =  ioremap_cached(bb->ipc_phy, bb->ipc_size);
 	pr_debug("%s: IPC Virtual=0x%p\n", __func__, bb->ipc_virt);
 
 	/* clear the first 4K of IPC memory */
@@ -1206,7 +1204,7 @@ static int tegra_bb_probe(struct platform_device *pdev)
 	bb->nvshm_pdata.ipc_base_virt = bb->ipc_virt;
 	bb->nvshm_pdata.ipc_size = bb->ipc_size;
 	bb->nvshm_pdata.mb_base_virt = bb->mb_virt;
-	bb->nvshm_pdata.mb_size = 4*SZ_1K;
+	bb->nvshm_pdata.mb_size = mb_size;
 	bb->nvshm_pdata.bb_irq = bb->irq;
 	bb->nvshm_pdata.tegra_bb = pdev;
 	bb->nvshm_device.name = "nvshm";
